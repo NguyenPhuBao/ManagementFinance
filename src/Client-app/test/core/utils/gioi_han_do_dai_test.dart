@@ -144,4 +144,55 @@ void main() {
             'bill "Name" varchar(100); category "NameCategory" varchar(200). '
             'Đổi số ở đây mà không đo lại CSDL là mở lại G31.');
   });
+
+  // ── Giới hạn SỐ, khác giới hạn CHUỖI ở trên ───────────────────────────────
+  //
+  // Cùng một lớp lỗi với G31 nhưng ở một cột khác kiểu: `wallet."Balance"` là
+  // `numeric(15,2)`, tức nhiều nhất **13 chữ số phần nguyên**. Ô nhập số dư
+  // không giới hạn gì, nên gõ 14 chữ số là tràn — PostgreSQL trả SQLSTATE
+  // `22003`, mà `sync.service.js` KHÔNG có nhánh nào cho mã ấy nên nó rơi về
+  // `DB_ERROR`. Danh sách lỗi vĩnh viễn của `SyncEngine` là danh sách **trắng**
+  // và `DB_ERROR` không nằm trong đó, nên ví bị **gửi lại ở mọi chu kỳ đồng
+  // bộ**, im lặng, kéo giãn cách luỹ tiến lên cả hàng đợi.
+  //
+  // Đo 2026-09-18 bằng `information_schema.columns` và đọc `sync.service.js`.
+  group('GioiHanSoChuSo', () {
+    TextEditingValue v(String s) =>
+        TextEditingValue(text: s, selection: TextSelection.collapsed(offset: s.length));
+
+    test('cho gõ tới đúng số chữ số tối đa', () {
+      const loc = GioiHanSoChuSo(13);
+      final ra = loc.formatEditUpdate(v('123456789012'), v('1234567890123'));
+      expect(ra.text, '1234567890123');
+    });
+
+    test('chặn chữ số thứ 14', () {
+      const loc = GioiHanSoChuSo(13);
+      final ra = loc.formatEditUpdate(v('1234567890123'), v('12345678901234'));
+      expect(ra.text, '1234567890123',
+          reason: 'Giữ nguyên chuỗi cũ thay vì cắt đuôi — cùng cách xử lý với '
+              '`GioiHanDoRong`, vì con trỏ có thể đang ở giữa.');
+    });
+
+    test('bỏ qua dấu chấm ngăn nghìn khi đếm', () {
+      const loc = GioiHanSoChuSo(13);
+      // Ô số dư tự chèn dấu chấm sau mỗi lần gõ, nên chuỗi cũ mang chấm còn
+      // chuỗi mới thì chưa. Đếm cả dấu chấm là chặn sớm hơn thật khoảng 1/4.
+      final ra = loc.formatEditUpdate(v('1.234.567'), v('12345678'));
+      expect(ra.text, '12345678');
+    });
+
+    test('chuỗi rỗng và giá trị ngắn đi qua nguyên vẹn', () {
+      const loc = GioiHanSoChuSo(13);
+      expect(loc.formatEditUpdate(v('123'), v('')).text, '');
+      expect(loc.formatEditUpdate(v('1234567890123'), v('12')).text, '12');
+    });
+
+    test('số chữ số tối đa khớp numeric(15,2) của cột Balance', () {
+      expect(kSoChuSoToiDaSoTien, 13,
+          reason: 'numeric(15,2) = 15 chữ số tổng, 2 trong đó là phần thập '
+              'phân, nên phần nguyên còn 13. Nới số này mà không đo lại cột là '
+              'mở lại đúng vòng lặp đẩy vô hạn mà G31 từng gây ra.');
+    });
+  });
 }

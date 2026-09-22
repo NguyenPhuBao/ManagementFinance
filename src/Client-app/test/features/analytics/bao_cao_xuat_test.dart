@@ -36,68 +36,17 @@ void main() {
         tieuDe: tieuDe,
       );
 
-  group('khoangCuaPhamVi — mọi phạm vi đều trả biên [from, to)', () {
-    test('Tháng này lấy trọn tháng đang đứng', () {
-      final k = khoangCuaPhamVi(PhamViThoiGian.thangNay,
-          now: DateTime(2026, 9, 15, 10, 30));
-      expect(k.from, DateTime(2026, 9, 1));
-      expect(k.to, DateTime(2026, 10, 1));
-    });
-
-    test('Tháng trước ở tháng 1 phải lùi sang tháng 12 NĂM TRƯỚC', () {
-      final k = khoangCuaPhamVi(PhamViThoiGian.thangTruoc,
-          now: DateTime(2026, 1, 20));
-      expect(k.from, DateTime(2025, 12, 1),
-          reason: 'Trừ 1 vào tháng mà không cuộn năm là báo cáo "tháng trước" '
-              'của tháng 1 rỗng trơn — không lỗi nào báo.');
-      expect(k.to, DateTime(2026, 1, 1));
-    });
-
-    test('Quý này gom đúng ba tháng của quý đang đứng', () {
-      final k =
-          khoangCuaPhamVi(PhamViThoiGian.quyNay, now: DateTime(2026, 9, 9));
-      expect(k.from, DateTime(2026, 7, 1),
-          reason: 'Tháng 9 thuộc quý III (7–9), không phải "ba tháng gần đây".');
-      expect(k.to, DateTime(2026, 10, 1));
-    });
-
-    test('Quý IV kết thúc ở 01/01 năm sau', () {
-      final k =
-          khoangCuaPhamVi(PhamViThoiGian.quyNay, now: DateTime(2026, 12, 31));
-      expect(k.from, DateTime(2026, 10, 1));
-      expect(k.to, DateTime(2027, 1, 1));
-    });
-
-    test('Tuỳ chỉnh: ngày cuối người dùng chọn phải NẰM TRONG báo cáo', () {
-      final k = khoangCuaPhamVi(
-        PhamViThoiGian.tuyChinh,
-        now: DateTime(2026, 9, 9),
-        tuyChon: (from: DateTime(2026, 9, 1), to: DateTime(2026, 9, 30)),
-      );
-      expect(k.from, DateTime(2026, 9, 1));
-      expect(k.to, DateTime(2026, 10, 1),
-          reason: 'Bộ chọn ngày trả 00:00, nên lấy thẳng ngày cuối làm biên '
-              '`to` MỞ là mất trọn ngày cuối cùng — người dùng chọn tới 30/09 '
-              'mà khoản ngày 30/09 không có trong báo cáo.');
-    });
-
-    test('Tuỳ chỉnh qua 29/02 của năm nhuận không mất ngày nào', () {
-      final k = khoangCuaPhamVi(
-        PhamViThoiGian.tuyChinh,
-        now: DateTime(2028, 3, 1),
-        tuyChon: (from: DateTime(2028, 2, 1), to: DateTime(2028, 2, 29)),
-      );
-      expect(k.to, DateTime(2028, 3, 1));
-    });
-
-    test('Tuỳ chỉnh thiếu khoảng thì lùi về tháng này chứ không nổ', () {
-      final k = khoangCuaPhamVi(PhamViThoiGian.tuyChinh,
-          now: DateTime(2026, 9, 9), tuyChon: null);
-      expect(k.from, DateTime(2026, 9, 1),
-          reason: 'Người dùng bấm "Tuỳ chỉnh" rồi thoát bộ chọn — màn xem '
-              'trước vẫn phải mở được.');
-    });
-  });
+  // ── group `khoangCuaPhamVi` đã BỎ ngày 2026-09-18 ────────────────────────
+  //
+  // Bảy ca ở đây canh bốn phạm vi cứng của bộ chọn CŨ trên trang Xuất báo cáo.
+  // Hàm và enum ấy bỏ hẳn cùng ngày: trang nay dùng `Ky` và `moChonPhamVi`
+  // chung với trang Phân tích, nên luật biên kỳ chỉ còn MỘT chỗ định nghĩa và
+  // `pham_vi_ky_test.dart` là nơi canh nó.
+  //
+  // ⚠️ Vế **không** mất theo: khoảng tuỳ chọn phải cộng một ngày vào biên phải.
+  // `khoangCuaPhamVi` tự cộng, `Ky.tuyChon` thì không — nên phép canh chuyển
+  // sang `export_report_page_test.dart`, ca "kỳ đến từ route giữ nguyên NGÀY
+  // CUỐI", nơi nó đo đúng đường mà thông báo Tổng kết tuần đi qua.
 
   group('dungBaoCao — lọc', () {
     final loc = LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1));
@@ -234,6 +183,33 @@ void main() {
       expect(bc.tong.thu, 0);
       expect(bc.tong.chi, 0);
       expect(bc.rong, isTrue);
+    });
+  });
+
+  group('inKhoiTheoKy — G44', () {
+    final ky = LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1));
+    const ns = DongNganSach(
+      categoryId: 'c_gd',
+      ten: 'Giáo dục',
+      hanMuc: 50000,
+      daChi: 45000,
+    );
+
+    test('kỳ rỗng thì không in khối theo kỳ, dù ngân sách vẫn còn dữ liệu', () {
+      final bc = dungBaoCao([], loc: ky, nganSach: const [ns]);
+      expect(bc.nganSach, isNotEmpty,
+          reason: 'Chính chỗ này là G44: ngân sách KHÔNG tự rỗng theo một kỳ '
+              'rỗng, nên không khối nào khác tái hiện được lỗi ấy.');
+      expect(inKhoiTheoKy(bc), isFalse);
+    });
+
+    test('kỳ có giao dịch thì in khối theo kỳ', () {
+      final bc = dungBaoCao(
+        [g(ngay: DateTime(2026, 9, 5))],
+        loc: ky,
+        nganSach: const [ns],
+      );
+      expect(inKhoiTheoKy(bc), isTrue);
     });
   });
 

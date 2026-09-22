@@ -135,6 +135,6 @@ void main() {
     expect(find.text('Ăn uống • Tiền mặt'), findsOneWidget);
     expect(find.textContaining('6f8e6b7a'), findsNothing,
         reason: 'Trước 2026-09-06 dòng phụ là "Ví: <UUID>".');
-    expect(find.text('-25.000đ'), findsOneWidget);
+    expect(find.text('-25.000 đ'), findsOneWidget);
   });
 }

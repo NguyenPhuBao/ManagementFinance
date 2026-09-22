@@ -1,8 +1,7 @@
 # FlowMoney — Ứng dụng quản lý tài chính cá nhân
 
 Đồ án tốt nghiệp. Ứng dụng di động ghi chép thu chi, ví, ngân sách, hoá đơn và
-mục tiêu tiết kiệm, có phân loại giao dịch bằng AI và đối soát với giao dịch
-ngân hàng.
+mục tiêu tiết kiệm, có phân loại giao dịch bằng AI.
 
 Kiến trúc **offline-first**: mọi thao tác ghi vào SQLite trên máy trước và hiện
 lên màn hình ngay; một bộ đồng bộ nền đẩy/kéo hai chiều với server sau. Người

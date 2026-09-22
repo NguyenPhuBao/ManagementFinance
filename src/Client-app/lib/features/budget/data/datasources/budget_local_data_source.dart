@@ -51,6 +51,10 @@ abstract class BudgetLocalDataSource {
 
   /// Ví của tài khoản, để tra tên ví cho dòng giao dịch.
   Future<List<Wallet>> getWallets(int idaccount);
+
+  /// Mốc giao dịch **sớm nhất** của tài khoản — tuổi dữ liệu, làm mẫu số cho
+  /// `cuaSoNhinLai`. `null` = chưa có giao dịch nào.
+  Future<DateTime?> mocGiaoDichDauTien(int idaccount);
 }
 
 class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
@@ -163,11 +167,18 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
 
   @override
   Future<List<Category>> getAllCategories(int idaccount) {
-    return db.categoryDao.getAll(idaccount);
+    // Chỉ nuôi `lookupFor` — bảng TRA TÊN, không phải danh sách để chọn: phải
+    // giữ hàng mặc định toàn cục (idaccount = 0) và hàng đã xoá mềm, nếu không
+    // ngân sách trên danh mục ấy hiện "Danh mục đã xoá" (họ G41; E8 2026-09-19).
+    return db.categoryDao.getBangTraTen(idaccount);
   }
 
   @override
   Future<List<Wallet>> getWallets(int idaccount) {
     return db.walletDao.getAll(idaccount);
   }
+
+  @override
+  Future<DateTime?> mocGiaoDichDauTien(int idaccount) =>
+      db.transactionDao.getFirstTransactionDate(idaccount);
 }

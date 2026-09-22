@@ -1,4 +1,5 @@
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/transaction/domain/khoang_tien.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_filter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -123,5 +124,43 @@ void main() {
     expect(g.walletId, isNull);
     expect(g.categoryId, 'c-food');
     expect(g.isActive, isTrue);
+  });
+
+  test('lọc theo khoảng tiền, áp cho cả thu lẫn chi lẫn chuyển khoản', () {
+    // list: a=55.000 chi · b=9.000.000 thu · c=200.000 transfer · d=45.000 chi
+    const filter = TransactionFilter(khoangTien: KhoangTien(tu: 100000));
+    final ket = applyTransactionFilter(list, filter);
+    expect(ket.map((t) => t.id), ['b', 'c'],
+        reason: 'khoản trên 100k không phân biệt chiều tiền');
+  });
+
+  test('khoảng tiền làm bộ lọc thành "đang lọc"', () {
+    expect(
+        const TransactionFilter(khoangTien: KhoangTien(tu: 1)).isActive, isTrue);
+    expect(const TransactionFilter(khoangTien: KhoangTien()).isActive, isTrue,
+        reason: 'khoảng rỗng KHÁC null: người dùng đã mở sheet và bấm Áp dụng');
+    expect(const TransactionFilter().isActive, isFalse);
+  });
+
+  test('copyWith đặt được khoảng tiền, và clearKhoangTien xoá nó', () {
+    const goc = TransactionFilter();
+    final co = goc.copyWith(khoangTien: const KhoangTien(tu: 500000));
+    expect(co.khoangTien?.tu, 500000);
+
+    // ⚠️ Không truyền gì thì GIỮ NGUYÊN — đây là chỗ khuôn `?? this.` dễ hiểu
+    // nhầm thành "xoá".
+    expect(co.copyWith(query: 'abc').khoangTien?.tu, 500000);
+
+    expect(co.copyWith(clearKhoangTien: true).khoangTien, isNull);
+  });
+
+  test('khoảng tiền chồng với bộ lọc khác: cả hai điều kiện cùng phải đúng', () {
+    const filter = TransactionFilter(
+      type: TransactionTypeFilter.chi,
+      khoangTien: KhoangTien(tu: 50000),
+    );
+    expect(applyTransactionFilter(list, filter).map((t) => t.id), ['a'],
+        reason:
+            'b là thu (loại), c là transfer (loại), d chỉ 45.000 (dưới ngưỡng)');
   });
 }

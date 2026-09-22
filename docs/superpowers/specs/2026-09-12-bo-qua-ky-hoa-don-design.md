@@ -293,7 +293,7 @@ trong `reason:` nó canh chừng điều gì.
 | `test/features/bill/presentation/pages/bill_page_test.dart` | Tab đổi tên; kỳ `Skipped` nằm tab 2, không nằm tab 1; không cộng vào tổng nợ |
 | `test/core/sync/sync_payload_contract_test.dart` | Hai ca ở mục 7 |
 
-⚠️ `.gitignore` chặn `test/` (dòng 78) — mọi tệp test mới phải `git add -f`
+⚠️ `.gitignore` chặn `test/` (dòng 78) — mọi tệp test mới phải `git add -f` ✅ **HẾT HIỆU LỰC 2026-09-21**, luật ấy đã bỏ
 **từng đường dẫn một**; `git add src/Client-app/test` thất bại toàn lệnh.
 
 ## 9. Ba rủi ro, và cách đóng từng cái

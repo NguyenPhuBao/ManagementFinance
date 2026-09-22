@@ -57,7 +57,7 @@ void main() {
     await tester.pumpWidget(
         harness(tx(note: 'Cà phê sáng', categoryId: 'c-food')));
 
-    expect(find.text('-25.000đ'), findsOneWidget);
+    expect(find.text('-25.000 đ'), findsOneWidget);
     expect(find.text('Ăn uống'), findsOneWidget);
     expect(find.text('Tiền mặt'), findsOneWidget);
     expect(find.text('Cà phê sáng'), findsOneWidget);

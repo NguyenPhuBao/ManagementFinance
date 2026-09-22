@@ -33,7 +33,17 @@ class BudgetRulesPage extends StatelessWidget {
   /// null = tạo mới.
   final String? budgetId;
 
-  const BudgetRulesPage({super.key, this.budgetId});
+  /// Điền sẵn khi form được mở từ thẻ "Chưa đặt ngân sách" trên trang
+  /// Ngân sách — `?category=<id>&amount=<số>`. Chỉ có nghĩa ở đường tạo mới.
+  final String? danhMucChonSan;
+  final double? soTienChonSan;
+
+  const BudgetRulesPage({
+    super.key,
+    this.budgetId,
+    this.danhMucChonSan,
+    this.soTienChonSan,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +52,25 @@ class BudgetRulesPage extends StatelessWidget {
     return BlocProvider<BudgetCubit>(
       create: (_) =>
           sl<BudgetCubit>()..loadEditor(idaccount, budgetId: budgetId),
-      child: _BudgetRulesContent(idaccount: idaccount),
+      child: _BudgetRulesContent(
+        idaccount: idaccount,
+        danhMucChonSan: danhMucChonSan,
+        soTienChonSan: soTienChonSan,
+      ),
     );
   }
 }
 
 class _BudgetRulesContent extends StatelessWidget {
   final int? idaccount;
-  const _BudgetRulesContent({required this.idaccount});
+  final String? danhMucChonSan;
+  final double? soTienChonSan;
+
+  const _BudgetRulesContent({
+    required this.idaccount,
+    this.danhMucChonSan,
+    this.soTienChonSan,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -76,11 +97,21 @@ class _BudgetRulesContent extends StatelessWidget {
       buildWhen: (_, s) =>
           s is BudgetEditorReady || s is BudgetLoading || s is BudgetError,
       builder: (context, state) => switch (state) {
-        BudgetEditorReady(:final categories, :final editing) => BudgetForm(
+        BudgetEditorReady(
+          :final categories,
+          :final editing,
+          :final soNgayCuaSo,
+          :final soNgayConThieu
+        ) =>
+          BudgetForm(
             categories: categories,
             suggestFor: (id) =>
                 context.read<BudgetCubit>().suggestAmount(idaccount, id),
             editing: editing,
+            danhMucChonSan: danhMucChonSan,
+            soTienChonSan: soTienChonSan,
+            soNgayCuaSo: soNgayCuaSo,
+            soNgayConThieu: soNgayConThieu,
             onSubmit: (draft) => _submit(context, draft),
           ),
         BudgetError(:final message) => _ErrorScaffold(message: message),
@@ -141,6 +172,7 @@ class _ErrorScaffold extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),

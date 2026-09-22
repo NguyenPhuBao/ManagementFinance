@@ -15,8 +15,16 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Predictive back TẮT (2026-09-19, UX E3): targetSdk 36 bật nó mặc định,
+         và khi bật thì Android chỉ giao Back cho Flutter nếu lời gọi
+         setFrameworkHandlesBack cuối cùng là true - mà Navigator của nhánh
+         StatefulShellRoute mới dựng phát canHandlePop:false, listener của
+         navigator gốc cho qua (chỉ hỏi canPop(), không hỏi PopScope), nên Back
+         ở tab Phân tích đóng thẳng activity. Tắt thì Back đi đường KEYCODE_BACK
+         -> popRoute -> PopScope của shell. Có test đọc tệp này canh. -->
     <application
-        android:label="flowmoney"
+        android:enableOnBackInvokedCallback="false"
+        android:label="FlowMoney"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

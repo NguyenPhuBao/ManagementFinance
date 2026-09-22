@@ -35,7 +35,6 @@ TransactionRowContent buildTransactionRowContent(
   TransactionEntity tx,
   TransactionLookup lookup,
 ) {
-  final money = CurrencyFormatter.formatSoThoi(tx.amount);
   final wallet = lookup.walletName(tx.walletId);
   final note = tx.note.trim();
 
@@ -48,7 +47,7 @@ TransactionRowContent buildTransactionRowContent(
       subtitle: dest == null ? wallet : '$wallet → ${lookup.walletName(dest)}',
       icon: Icons.swap_horiz,
       colour: AppColors.primary,
-      amountText: '$moneyđ',
+      amountText: CurrencyFormatter.format(tx.amount),
       amountColor: AppColors.primary,
     );
   }
@@ -70,7 +69,7 @@ TransactionRowContent buildTransactionRowContent(
     colour: category == null
         ? typeColour
         : categoryColorFrom(category.colour, fallback: typeColour),
-    amountText: '${isExpense ? '-' : '+'}$moneyđ',
+    amountText: CurrencyFormatter.formatCoDau(tx.amount, thu: !isExpense),
     amountColor: typeColour,
   );
 }

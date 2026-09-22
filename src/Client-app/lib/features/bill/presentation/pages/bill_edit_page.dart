@@ -34,6 +34,7 @@ class _BillEditPageState extends State<BillEditPage> {
   late TextEditingController _nameController;
   late TextEditingController _amountController;
   late TextEditingController _noteController;
+
   /// Chu kỳ + ngày bắt đầu; ngày đến hạn suy ra. Xem `BillSchedule`.
   late BillSchedule _lich;
 
@@ -252,6 +253,7 @@ class _BillEditPageState extends State<BillEditPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -275,189 +277,207 @@ class _BillEditPageState extends State<BillEditPage> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE0E0DB)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    inputFormatters: const [
-                      GioiHanDoRong(DoRongCot.tenHoaDon),
-                    ],
-                    decoration: const InputDecoration(
-                      labelText: 'Tên dịch vụ / Hóa đơn',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Số tiền (VNĐ)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Ngày bắt đầu hóa đơn'),
-                    subtitle: Text(dateFormatter.format(_lich.startDate)),
-                    trailing: const Icon(Icons.calendar_today,
-                        color: AppColors.primary),
-                    onTap: _pickStartDate,
-                  ),
-                  // Ba mốc của kỳ (v21) — cùng khối với form Thêm: kết thúc
-                  // kỳ suy từ chu kỳ, ân hạn theo số ngày, hạn = kết thúc +
-                  // ân hạn. Xem `BillSchedule` và `bill_an_han.dart`.
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    enabled: false,
-                    title: const Text('Ngày kết thúc kỳ'),
-                    subtitle: Text(dateFormatter.format(_lich.ketThucKy)),
-                    trailing: const Icon(Icons.lock_outline,
-                        color: AppColors.primary),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Hạn trả sau khi kết thúc kỳ',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  const SizedBox(height: 6),
-                  BoChonAnHan(
-                    giaTri: _lich.anHanNgay,
-                    loi: _lich.dateError,
-                    onChanged: (n) => setState(
-                        () => _lich = _lich.copyWith(anHanNgay: n)),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    enabled: false,
-                    title: const Text('Hạn thanh toán'),
-                    subtitle: Text(dateFormatter.format(_lich.dueDate)),
-                    trailing: const Icon(Icons.lock_outline,
-                        color: AppColors.primary),
-                  ),
-                  _canhBaoHanCuWidget(),
-                  const SizedBox(height: 8),
-                  const Text('Chu kỳ',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  const SizedBox(height: 6),
-                  // Cùng thanh chọn với form Thêm (06/09). Trước là
-                  // `DropdownButtonFormField` — cùng một ô chu kỳ mà hai form
-                  // hai kiểu.
-                  SegmentedChoice<String>(
-                    keyPrefix: 'bill-cycle',
-                    options: const [
-                      SegmentedOption(kBillCycleWeek, 'Hàng tuần'),
-                      SegmentedOption(kBillCycleMonth, 'Hàng tháng'),
-                      SegmentedOption(kBillCycleQuarter, 'Hàng quý'),
-                      SegmentedOption(kBillCycleYear, 'Hàng năm'),
-                    ],
-                    selected: _lich.timeRecurrence,
-                    onChanged: (val) => setState(
-                        () => _lich = _lich.copyWith(timeRecurrence: val)),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Expanded(child: Text('Lặp lại theo chu kỳ')),
-                      Switch(
-                        key: const ValueKey('bill-recurrence-switch'),
-                        value: _lich.repeat,
-                        onChanged: (v) =>
-                            setState(() => _lich = _lich.copyWith(repeat: v)),
+              // Flutter 3.47 thêm assertion: ListTile nằm trong Container có màu mà không có
+              // Material riêng thì ink splash bị che — báo qua FlutterError, widget test bắt
+              // được (P0 nâng Flutter, 2026-09-19). Material trong suốt là lớp vẽ cho ListTile;
+              // không đổi gì nhìn thấy được.
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _nameController,
+                      inputFormatters: const [
+                        GioiHanDoRong(DoRongCot.tenHoaDon),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'Tên dịch vụ / Hóa đơn',
+                        border: OutlineInputBorder(),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String?>(
-                    key: const ValueKey('bill-reminder-dropdown'),
-                    initialValue: _nhacTruoc,
-                    decoration: const InputDecoration(
-                      labelText: 'Nhắc trước hạn',
-                      border: OutlineInputBorder(),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('Không nhắc')),
-                      DropdownMenuItem(value: '1', child: Text('1 ngày')),
-                      DropdownMenuItem(value: '3', child: Text('3 ngày')),
-                      DropdownMenuItem(value: '5', child: Text('5 ngày')),
-                      DropdownMenuItem(value: '7', child: Text('7 ngày')),
-                    ],
-                    onChanged: (v) => setState(() => _nhacTruoc = v),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.smart_toy, color: AppColors.primary),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Tự động thanh toán'),
-                            Text(
-                              'Trừ từ ví thanh toán khi đến hạn',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      // `bill."Amount"` là `numeric(15,2)` — chữ số thứ 14 làm
+                      // hoá đơn kẹt hàng đợi đẩy vĩnh viễn, im lặng. Xem
+                      // `kSoChuSoToiDaSoTien`.
+                      inputFormatters: const [
+                        GioiHanSoChuSo(kSoChuSoToiDaSoTien),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'Số tiền (VNĐ)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Ngày bắt đầu hóa đơn'),
+                      subtitle: Text(dateFormatter.format(_lich.startDate)),
+                      trailing: const Icon(Icons.calendar_today,
+                          color: AppColors.primary),
+                      onTap: _pickStartDate,
+                    ),
+                    // Ba mốc của kỳ (v21) — cùng khối với form Thêm: kết thúc
+                    // kỳ suy từ chu kỳ, ân hạn theo số ngày, hạn = kết thúc +
+                    // ân hạn. Xem `BillSchedule` và `bill_an_han.dart`.
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      enabled: false,
+                      title: const Text('Ngày kết thúc kỳ'),
+                      subtitle: Text(dateFormatter.format(_lich.ketThucKy)),
+                      trailing: const Icon(Icons.lock_outline,
+                          color: AppColors.primary),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Hạn trả sau khi kết thúc kỳ',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(height: 6),
+                    BoChonAnHan(
+                      giaTri: _lich.anHanNgay,
+                      loi: _lich.dateError,
+                      onChanged: (n) =>
+                          setState(() => _lich = _lich.copyWith(anHanNgay: n)),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      enabled: false,
+                      title: const Text('Hạn thanh toán'),
+                      subtitle: Text(dateFormatter.format(_lich.dueDate)),
+                      trailing: const Icon(Icons.lock_outline,
+                          color: AppColors.primary),
+                    ),
+                    _canhBaoHanCuWidget(),
+                    const SizedBox(height: 8),
+                    const Text('Chu kỳ',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(height: 6),
+                    // Cùng thanh chọn với form Thêm (06/09). Trước là
+                    // `DropdownButtonFormField` — cùng một ô chu kỳ mà hai form
+                    // hai kiểu.
+                    SegmentedChoice<String>(
+                      keyPrefix: 'bill-cycle',
+                      options: const [
+                        SegmentedOption(kBillCycleWeek, 'Hàng tuần'),
+                        SegmentedOption(kBillCycleMonth, 'Hàng tháng'),
+                        SegmentedOption(kBillCycleQuarter, 'Hàng quý'),
+                        SegmentedOption(kBillCycleYear, 'Hàng năm'),
+                      ],
+                      selected: _lich.timeRecurrence,
+                      onChanged: (val) => setState(
+                          () => _lich = _lich.copyWith(timeRecurrence: val)),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('Lặp lại theo chu kỳ')),
+                        Switch(
+                          key: const ValueKey('bill-recurrence-switch'),
+                          value: _lich.repeat,
+                          onChanged: (v) =>
+                              setState(() => _lich = _lich.copyWith(repeat: v)),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      key: const ValueKey('bill-reminder-dropdown'),
+                      initialValue: _nhacTruoc,
+                      decoration: const InputDecoration(
+                        labelText: 'Nhắc trước hạn',
+                        border: OutlineInputBorder(),
                       ),
-                      Switch(
-                        key: const ValueKey('bill-autopay-switch'),
-                        value: _tuTra,
-                        onChanged: (v) => setState(() => _tuTra = v),
+                      items: const [
+                        DropdownMenuItem(
+                            value: null, child: Text('Không nhắc')),
+                        DropdownMenuItem(value: '1', child: Text('1 ngày')),
+                        DropdownMenuItem(value: '3', child: Text('3 ngày')),
+                        DropdownMenuItem(value: '5', child: Text('5 ngày')),
+                        DropdownMenuItem(value: '7', child: Text('7 ngày')),
+                      ],
+                      onChanged: (v) => setState(() => _nhacTruoc = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.smart_toy, color: AppColors.primary),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tự động thanh toán'),
+                              Text(
+                                'Trừ từ ví thanh toán khi đến hạn',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          key: const ValueKey('bill-autopay-switch'),
+                          value: _tuTra,
+                          onChanged: (v) => setState(() => _tuTra = v),
+                        ),
+                      ],
+                    ),
+                    if (_tuTra) ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        kBillAutoPayHint,
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
-                  ),
-                  if (_tuTra) ...[
-                    const SizedBox(height: 4),
-                    const Text(
-                      kBillAutoPayHint,
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<Wallet>(
+                      initialValue: _selectedWallet,
+                      decoration: const InputDecoration(
+                        labelText: 'Ví thanh toán',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _wallets
+                          .map((w) =>
+                              DropdownMenuItem(value: w, child: Text(w.name)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedWallet = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<Category>(
+                      initialValue: _selectedCategory,
+                      decoration: const InputDecoration(
+                        labelText: 'Danh mục',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _categories
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c.name)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedCategory = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _noteController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ghi chú',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<Wallet>(
-                    initialValue: _selectedWallet,
-                    decoration: const InputDecoration(
-                      labelText: 'Ví thanh toán',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _wallets
-                        .map((w) => DropdownMenuItem(value: w, child: Text(w.name)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedWallet = val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<Category>(
-                    initialValue: _selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Danh mục',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _categories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedCategory = val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Ghi chú',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -484,7 +504,8 @@ class _BillEditPageState extends State<BillEditPage> {
                     ),
                     child: const Text(
                       'Cập nhật',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),

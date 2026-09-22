@@ -85,6 +85,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -153,6 +154,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.outline),
                         suffixIcon: IconButton(
+                          tooltip: 'Hiện / ẩn mật khẩu',
                           icon: Icon(
                             _obscureCurrent ? Icons.visibility : Icons.visibility_off,
                             color: AppColors.outline,
@@ -194,6 +196,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.outline),
                         suffixIcon: IconButton(
+                          tooltip: 'Hiện / ẩn mật khẩu',
                           icon: Icon(
                             _obscureNew ? Icons.visibility : Icons.visibility_off,
                             color: AppColors.outline,
@@ -276,6 +279,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock_outline, color: AppColors.outline),
                         suffixIcon: IconButton(
+                          tooltip: 'Hiện / ẩn mật khẩu',
                           icon: Icon(
                             _obscureConfirm ? Icons.visibility : Icons.visibility_off,
                             color: AppColors.outline,

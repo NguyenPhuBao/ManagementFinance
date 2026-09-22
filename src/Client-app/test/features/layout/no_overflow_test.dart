@@ -1,8 +1,12 @@
-/// Ba hàng bố cục từng **tràn** trên điện thoại thật.
+/// Những hàng bố cục từng **tràn** trên điện thoại thật.
 ///
-/// Cả ba cùng một hình mẫu hỏng: một `Text` **không co được** đặt cạnh một
+/// Cả nhóm cùng một hình mẫu hỏng: một `Text` **không co được** đặt cạnh một
 /// phần tử bề rộng cố định. Chữ dài bao nhiêu thì `Text` chiếm bấy nhiêu, phần
 /// còn lại bị đẩy ra ngoài khung và Flutter vẽ sọc vàng-đen lên giao diện.
+///
+/// ⚠️ Tệp này từng canh **ba** hàng. Hàng thứ ba — `BankHeaderRow` của trang
+/// liên kết ngân hàng, chỗ tràn nặng nhất từng đo được (21px) — mất theo tính
+/// năng khi nhóm bỏ liên kết ngân hàng ngày 2026-09-18.
 ///
 /// Vì sao không ai thấy trước đó: bộ kiểm thử tự động của dự án chạy Chrome ở
 /// **1280px**, rộng gấp ba lần chỗ các hàng này bắt đầu tràn. Chỉ khi chạy trên
@@ -18,8 +22,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/bill/presentation/widgets/bill_status_header.dart';
-import 'package:flowmoney/features/home/presentation/widgets/home_action_buttons.dart';
-import 'package:flowmoney/features/wallet/presentation/widgets/bank_header_row.dart';
 
 /// Các bề rộng logic cần chịu được.
 const beRong = <double>[320, 360, 411];
@@ -114,55 +116,4 @@ void main() {
     });
   });
 
-  group('hai nút trang chủ', () {
-    for (final w in beRong) {
-      testWidgets('rộng ${w.toInt()}dp', (tester) async {
-        final loi = await dungTrongKhung(
-          tester,
-          HomeActionButtons(onAdd: () {}, onReport: () {}),
-          w,
-        );
-
-        expect(loi, isNull,
-            reason: 'Tràn ở ${w.toInt()}dp. Hai nút chia đôi màn hình, và nhãn '
-                '"Thêm giao dịch" cộng icon vượt phần của nó ở màn hẹp.');
-      });
-    }
-  });
-
-  group('thẻ ngân hàng ở trang liên kết', () {
-    for (final w in beRong) {
-      testWidgets('rộng ${w.toInt()}dp', (tester) async {
-        final loi = await dungTrongKhung(
-          tester,
-          const BankHeaderRow(
-            bankName: 'Ngân hàng Techcombank',
-            statusText: 'Đang kết nối API',
-            chipText: 'Cổng API an toàn',
-          ),
-          w,
-        );
-
-        expect(loi, isNull,
-            reason: 'Tràn ở ${w.toInt()}dp — đây là chỗ tràn nặng nhất tìm '
-                'được trên máy thật (21px).');
-      });
-    }
-
-    testWidgets('tên ngân hàng dài vẫn không tràn', (tester) async {
-      final loi = await dungTrongKhung(
-        tester,
-        const BankHeaderRow(
-          bankName: 'Ngân hàng Thương mại Cổ phần Kỹ Thương Việt Nam',
-          statusText: 'Đang kết nối API',
-          chipText: 'Cổng API an toàn',
-        ),
-        360,
-      );
-
-      expect(loi, isNull,
-          reason: 'Tên đầy đủ của ngân hàng dài hơn hẳn tên rút gọn, và danh '
-              'sách ngân hàng sẽ còn thêm.');
-    });
-  });
 }

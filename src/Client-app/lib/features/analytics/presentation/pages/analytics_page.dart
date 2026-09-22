@@ -8,6 +8,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
+import '../../../ai_edge/domain/goi_so_phan_tich.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../core/di/injection_container.dart';
@@ -238,7 +240,7 @@ class _NoiDung extends StatelessWidget {
 
 // ── Định dạng dùng chung ──────────────────────────────────────────────────
 
-String _dong(double x) => '${CurrencyFormatter.formatSoThoi(x.round())}đ';
+String _dong(double x) => CurrencyFormatter.format(x);
 
 /// "Tăng 25% so với T8" / "Giảm 5% so với Tuần 37" / "Không có dữ liệu T9 2025".
 ///
@@ -266,10 +268,11 @@ class _Header extends StatelessWidget {
     // Trái co, phải giữ: ở 411dp thì "Thống kê" + nút xuất + ô chọn tháng
     // không đủ chỗ (tràn 53px trên máy ảo). Tiêu đề nhường trước vì nó là
     // thứ người dùng đã biết; ô chọn tháng mới là thứ họ cần đọc được.
+    // Không có icon menu: bản trước vẽ một `Icon` trần trông hệt hamburger mở
+    // drawer của Trang chủ, mà trang này không có drawer và icon không bọc nút
+    // nào — bấm không xảy ra gì (UX 2026-09-19, A2).
     return Row(
       children: [
-        const Icon(Icons.menu, color: AppColors.textSecondary, size: 28),
-        const SizedBox(width: 12),
         // Tỉ lệ 1:2, KHÔNG phải Expanded + Flexible bằng nhau: flex chia chỗ
         // trống theo hệ số bất kể con cần bao nhiêu, nên bản đầu cho tiêu đề
         // một nửa trong khi nó chỉ cần ~95px — và ô tháng bị cắt thành
@@ -278,7 +281,12 @@ class _Header extends StatelessWidget {
         const Flexible(
           flex: 2,
           child: Text(
-            'Thống kê',
+            // Một đích một tên (D4, 2026-09-19): tab gọi là "Phân tích" nên
+            // tiêu đề trang cũng thế. Drawer đã thôi có mục "Thống kê", nên
+            // không còn chỗ thứ hai nào gọi trang này bằng tên khác.
+            // Đúng 9 ký tự như tên cũ, nên phép đo bề rộng ở chú thích ngay
+            // trên không đổi.
+            'Phân tích',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -436,7 +444,12 @@ class _KhoiTong extends StatelessWidget {
             Expanded(
               child: _TheTong(
                 title: 'Tổng thu',
-                amount: '+${_dong(tk.tong.thu)}',
+                // `formatCoDau` chứ không nối dấu bằng tay: **số 0 không mang
+                // dấu**. Kỳ không có khoản thu (hoặc chi) nào là ca thường từ
+                // khi trang xem được năm đơn vị, và `-0 đ` đọc như một con số
+                // âm bằng không. Cùng luật đã áp cho bảng "Phân bổ theo ví"
+                // (2026-09-15) và thẻ tổng trang Sổ giao dịch (2026-09-21).
+                amount: CurrencyFormatter.formatCoDau(tk.tong.thu, thu: true),
                 diff: _soVoiNen(
                     phanTramSoVoi(tk.tong.thu, nen.nen.thu), nen.nhan),
                 icon: Icons.arrow_upward,
@@ -447,7 +460,7 @@ class _KhoiTong extends StatelessWidget {
             Expanded(
               child: _TheTong(
                 title: 'Tổng chi',
-                amount: '-${_dong(tk.tong.chi)}',
+                amount: CurrencyFormatter.formatCoDau(tk.tong.chi, thu: false),
                 diff: _soVoiNen(
                     phanTramSoVoi(tk.tong.chi, nen.nen.chi), nen.nhan),
                 icon: Icons.arrow_downward,
@@ -458,6 +471,10 @@ class _KhoiTong extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _TheConLai(tk: tk),
+        // Khối Nhận xét (Edge-SLM P2, A6): gói số đọc `tk` qua đúng các hàm
+        // ba thẻ trên đang dùng, nên câu khớp con số của thẻ.
+        const SizedBox(height: 16),
+        KhoiNhanXet(goi: GoiSoPhanTich.tu(tk)),
       ],
     );
   }
@@ -2035,9 +2052,8 @@ class _KhoiDongTien extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
                       child: Text(
-                        dt.thayDoi >= 0
-                            ? CurrencyFormatter.formatIncome(dt.thayDoi)
-                            : CurrencyFormatter.formatExpense(dt.thayDoi),
+                        CurrencyFormatter.formatCoDau(dt.thayDoi,
+                            thu: dt.thayDoi >= 0),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -2322,6 +2338,25 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = tk.soLieu;
+
+    // Cả BA chỉ số của khối này đều nói về **chi**, nên một kỳ không có khoản
+    // chi nào cho ra một thẻ gồm `0 đ` và hai dấu `—`: chiếm chỗ, không mang
+    // tin nào. Kỳ như thế **không** rơi vào nhánh `thongKe.rong` — nhánh ấy đòi
+    // `thu == 0` **và** `chi == 0` — nên nó đi thẳng vào thân trang.
+    //
+    // ⚠️ Phải đòi **cả ba** cùng rỗng, không chỉ hai trường `null`:
+    // `chiMoiNgay` khác 0 là một con số có thật và đáng nói, kể cả khi kỳ không
+    // xác định được ngày chi nhiều nhất.
+    //
+    // ⚠️ Và phép chốt đọc đúng `s` — chính thứ đang được vẽ — chứ không đọc
+    // `tk.tong.chi`: hai vế của cùng một câu mà lấy từ hai chỗ khác nhau thì có
+    // ngày chúng nói ngược nhau, im lặng.
+    if (s.chiMoiNgay == 0 &&
+        s.ngayChiNhieuNhat == null &&
+        s.khoanChiLonNhat == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -2842,7 +2877,8 @@ class _KhoiTopChi extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: Text(
-                          CurrencyFormatter.formatExpense(-ds[i].soTien),
+                          CurrencyFormatter.formatCoDau(-ds[i].soTien,
+                              thu: false),
                           maxLines: 1,
                           style: const TextStyle(
                             fontSize: 14,

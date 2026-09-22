@@ -1,21 +1,23 @@
-/// Bốn sự kiện thời gian thực backend phát tới room `account_<idaccount>`.
+/// Ba sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// backend phát tới room `account_<idaccount>`.
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///
-/// Client **không đọc bất kỳ trường nào** trong payload. `bank_transaction
-/// .incoming` được phát từ hai đường với hai hình dạng khác nhau:
-/// `workers/bank.worker.js` gửi snake_case (`date_transaction`,
-/// `account_number`, `gateway`), còn `modules/notification/notification
-/// .service.js` gửi camelCase kèm `title`/`message`. Cùng một tên sự kiện.
+/// Client **không đọc bất kỳ trường nào** trong payload. Một tên sự kiện
+/// không bảo đảm một hình dạng payload: backend phát qua EventBus từ nhiều
+/// chỗ, và client không biết bản backend đang chạy trên máy chủ dựng payload
+/// bằng khoá gì.
 ///
 /// Đọc trường ở đây là tự chuốc lấy loại lỗi im lặng của quy tắc 4 `CLAUDE.md`.
 /// Chọn không đọc gì cả thì cái bẫy ấy không còn tồn tại: chữ hiện ra là hằng
 /// số tiếng Việt do client chọn, còn dữ liệu thật đi đường `/sync/pull` như mọi
 /// khi.
+///
+/// ⚠️ `bank_transaction.incoming` **cố ý không nằm ở đây**. Backend vẫn phát
+/// nó (SePay webhook → `workers/bank.worker.js`), nhưng nhóm đã bỏ liên kết
+/// ngân hàng khỏi sản phẩm ngày 2026-09-18, nên client bỏ qua nó đúng như với
+/// mọi tên lạ — xem [realtimeEventFromName].
 enum RealtimeEvent {
-  /// `bank_transaction.incoming`
-  giaoDichNganHang,
-
   /// `ocr.completed`
   ocrXong,
 
@@ -36,10 +38,11 @@ enum RealtimeEvent {
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
 /// kiện mới sẽ không làm vỡ bản client đang chạy.
+///
+/// `bank_transaction.incoming` rơi vào nhánh `null` như một tên lạ, dù nó là
+/// một sự kiện có thật của backend: liên kết ngân hàng đã bị bỏ khỏi sản phẩm.
 RealtimeEvent? realtimeEventFromName(String name) {
   switch (name) {
-    case 'bank_transaction.incoming':
-      return RealtimeEvent.giaoDichNganHang;
     case 'ocr.completed':
       return RealtimeEvent.ocrXong;
     case 'ocr.duplicate':
@@ -64,8 +67,6 @@ extension RealtimeEventX on RealtimeEvent {
   /// "sự kiện im lặng"; `AppToast` chỉ đọc getter này, không tự liệt kê.
   String? get loiNhan {
     switch (this) {
-      case RealtimeEvent.giaoDichNganHang:
-        return 'Vừa có giao dịch mới từ ngân hàng';
       case RealtimeEvent.ocrXong:
         return 'Đã bóc tách xong hoá đơn';
       case RealtimeEvent.ocrTrung:

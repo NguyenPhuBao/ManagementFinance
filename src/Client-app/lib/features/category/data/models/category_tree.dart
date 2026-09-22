@@ -35,6 +35,7 @@ class CategoryChildDraft {
     required this.icon,
     required this.colour,
     required List<String> keywords,
+    this.aiCoDinh = false,
   }) : keywords = List.unmodifiable(keywords);
 
   final String? id;
@@ -45,6 +46,10 @@ class CategoryChildDraft {
   final String icon;
   final String colour;
   final List<String> keywords;
+
+  /// Cờ "Cố định — AI không đề xuất cắt" (cục bộ, schema v24). Mặc định
+  /// `false` để mọi chỗ dựng draft cũ giữ nguyên hành vi.
+  final bool aiCoDinh;
 }
 
 class CategoryGroupDraft {

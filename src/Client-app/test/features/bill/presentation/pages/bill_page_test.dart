@@ -244,7 +244,12 @@ void main() {
       _bill(id: 'c', dueDate: DateTime(2026, 10, 4), amount: 123000),
     ]);
 
-    expect(find.textContaining('60.000'), findsOneWidget,
+    // Đọc thẳng widget của thẻ tổng: từ chặng 1.3 khối Nhận xét ngay dưới
+    // nhắc lại cùng con số trong câu và trong thẻ số liệu, nên
+    // `find.textContaining('60.000')` tìm ra ba chỗ.
+    final tong = tester
+        .widget<Text>(find.byKey(const ValueKey('bill-tong-con-phai-tra')));
+    expect(tong.data, contains('60.000'),
         reason: 'Gộp cả kỳ tháng sau thì thẻ hiện 183.000 đ trong khi tháng '
             'này chỉ nợ 60.000 đ.');
     expect(find.textContaining('2 hóa đơn chưa thanh toán'), findsOneWidget);

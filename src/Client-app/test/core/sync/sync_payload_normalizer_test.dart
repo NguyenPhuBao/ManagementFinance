@@ -166,4 +166,40 @@ void main() {
         reason: 'Cột Status của server là NOT NULL DEFAULT Active. Vắng mặt '
             'nghĩa là ví còn dùng, không phải "hãy lưu trữ".');
   });
+
+  // ── Cột thứ BA có ràng buộc kiểm tra, và là cột duy nhất còn bỏ ngỏ ───────
+  //
+  // `chk_wallet_currency CHECK (Currency = ANY (ARRAY['VND','USD']))` — đo
+  // 2026-09-18. `type` và `status` đều đã có lớp chuẩn hoá ở đây sau khi mỗi
+  // cột làm ví kẹt hàng đợi đẩy một lần; `currency` thì chưa, dù nó chịu đúng
+  // một kiểu ràng buộc.
+  //
+  // Hiện chưa có màn nào cho đổi tiền tệ nên chưa có đường sinh giá trị lạ.
+  // Nhưng `WalletRepositoryImpl.addWallet` nhận `String currency` như một tham
+  // số thường, nên chỗ gọi tiếp theo là đủ để mở lại vòng lặp đẩy vô hạn.
+
+  test('tiền tệ lạ KHÔNG được gửi nguyên si lên server', () {
+    const choPhep = {'VND', 'USD'};
+    for (final la in ['vnd', 'EUR', 'đồng', 'linh tinh', '']) {
+      final payload = SyncPayloadNormalizer.walletForPush({'currency': la});
+      expect(choPhep.contains(payload['currency']), isTrue,
+          reason: 'Tiền tệ "$la" bị đẩy lên nguyên si là vỡ '
+              'chk_wallet_currency — cùng bài học với `type` và `status`.');
+    }
+  });
+
+  test('tiền tệ hợp lệ giữ nguyên, chữ thường được nâng lên', () {
+    expect(SyncPayloadNormalizer.walletForPush({'currency': 'USD'})['currency'],
+        'USD');
+    expect(SyncPayloadNormalizer.walletForPush({'currency': 'vnd'})['currency'],
+        'VND',
+        reason: 'Nâng chữ thường thay vì gộp về VND: "vnd" rõ ràng là VND, và '
+            'gộp mù sẽ biến một ví USD viết thường thành ví VND.');
+  });
+
+  test('thiếu khoá currency thì đẩy lên VND', () {
+    expect(SyncPayloadNormalizer.walletForPush({'type': 'cash'})['currency'],
+        'VND',
+        reason: 'Cột Currency của server là NOT NULL DEFAULT VND.');
+  });
 }

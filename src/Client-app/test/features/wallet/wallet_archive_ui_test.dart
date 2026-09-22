@@ -186,6 +186,11 @@ void main() {
     );
 
     // Ví lưu trữ nằm sau ví thường, nên nút ba chấm của nó là nút cuối.
+    // ⚠️ `ensureVisible` bắt buộc từ chặng 1.5: khối Nhận xét thêm ~100 px
+    // vào đầu trang, đẩy mục lưu trữ xuống dưới mép khung 600 px của bộ test.
+    // Cú `tap` khi ấy trượt và ca đỏ ở một chỗ trông chẳng liên quan.
+    await tester.ensureVisible(find.byIcon(Icons.more_vert).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
 
@@ -205,6 +210,11 @@ void main() {
 
     expect(find.textContaining('ĐÃ LƯU TRỮ'), findsNothing);
 
+    // ⚠️ `ensureVisible` bắt buộc từ chặng 1.5: khối Nhận xét thêm ~100 px
+    // vào đầu trang, đẩy mục lưu trữ xuống dưới mép khung 600 px của bộ test.
+    // Cú `tap` khi ấy trượt và ca đỏ ở một chỗ trông chẳng liên quan.
+    await tester.ensureVisible(find.byIcon(Icons.more_vert).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lưu trữ'));
@@ -236,6 +246,11 @@ void main() {
     ]);
     await _moTrang(tester, repo);
 
+    // ⚠️ `ensureVisible` bắt buộc từ chặng 1.5: khối Nhận xét thêm ~100 px
+    // vào đầu trang, đẩy mục lưu trữ xuống dưới mép khung 600 px của bộ test.
+    // Cú `tap` khi ấy trượt và ca đỏ ở một chỗ trông chẳng liên quan.
+    await tester.ensureVisible(find.byIcon(Icons.more_vert).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lưu trữ'));
@@ -256,6 +271,11 @@ void main() {
     ]);
     await _moTrang(tester, repo);
 
+    // ⚠️ `ensureVisible` bắt buộc từ chặng 1.5: khối Nhận xét thêm ~100 px
+    // vào đầu trang, đẩy mục lưu trữ xuống dưới mép khung 600 px của bộ test.
+    // Cú `tap` khi ấy trượt và ca đỏ ở một chỗ trông chẳng liên quan.
+    await tester.ensureVisible(find.byIcon(Icons.more_vert).last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bỏ lưu trữ'));

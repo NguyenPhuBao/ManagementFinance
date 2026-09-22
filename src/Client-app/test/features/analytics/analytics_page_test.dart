@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/features/ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
@@ -271,6 +272,16 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('header không vẽ icon menu chết', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(find.byIcon(Icons.menu), findsNothing,
+        reason: 'Icon menu ở header từng là `Icon` trần, không bọc nút — vẽ '
+            'giống hamburger mở drawer của Trang chủ nhưng bấm không làm gì. '
+            'Trang này không có drawer, nên không vẽ icon ấy (UX 2026-09-19, A2).');
+  });
+
   testWidgets('tháng lấy từ ĐỒNG HỒ, không phải hằng số', (tester) async {
     await moTrang(tester);
     await phat(tester, _tk());
@@ -281,13 +292,54 @@ void main() {
     expect(find.textContaining('T6 2026'), findsNothing);
   });
 
+  // ── Khối Nhận xét (Edge-SLM P2, Task 14 — đóng A6) ────────────────────
+  //
+  // Đặt ở đây thay vì tệp riêng để dùng lại helper `_tk` (100 dòng dựng đúng
+  // cấu trúc `ThongKeKy`); chép nó sang tệp khác là hai bản phải giữ đồng bộ.
+  testWidgets('khối Nhận xét đứng sau ba thẻ tổng, câu đúng số của stream',
+      (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(find.byType(KhoiNhanXet), findsOneWidget,
+        reason: 'A6: trang Phân tích phải có khối Nhận xét (Stitch b396533b…).');
+    // chi 1.250.000 so với 1.000.000 kỳ trước = +25,0 % — đúng `phanTramSoVoi`
+    // mà thẻ "Tổng chi" ngay trên đang in.
+    expect(
+      find.textContaining(
+          'Kỳ này chi 1.250.000 đ, tăng 25,0% so với kỳ trước'),
+      findsOneWidget,
+      reason: 'Gói số đọc `ThongKeKy` qua đúng hàm trang đang dùng; câu phải '
+          'khớp con số của thẻ ngay trên nó.',
+    );
+    // Khối nằm NGAY SAU thẻ "Số dư còn lại", trước khối Xu hướng.
+    final yConLai = tester.getBottomLeft(find.text('Số dư còn lại')).dy;
+    final yNhanXet = tester.getTopLeft(find.byType(KhoiNhanXet)).dy;
+    final yXuHuong =
+        tester.getTopLeft(find.textContaining('Xu hướng 6 tháng')).dy;
+    expect(yNhanXet, greaterThan(yConLai));
+    expect(yNhanXet, lessThan(yXuHuong),
+        reason: 'Vị trí theo kế hoạch: sau `_TheConLai`, trước Xu hướng.');
+  });
+
+  testWidgets('kỳ rỗng → không khối Nhận xét (trang đã hiện `_Rong`)',
+      (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk(thu: 0, chi: 0, chiTruoc: 0));
+
+    expect(find.byType(KhoiNhanXet), findsNothing,
+        reason: 'Nhánh rỗng của trang không dựng `_KhoiTong`, nên khối đi '
+            'theo nó cũng không dựng — không hai thẻ cùng nói "chưa có giao '
+            'dịch".');
+  });
+
   testWidgets('ba thẻ tổng hiện số từ stream', (tester) async {
     await moTrang(tester);
     await phat(tester, _tk());
 
-    expect(find.text('+5.000.000đ'), findsOneWidget);
-    expect(find.text('-1.250.000đ'), findsOneWidget);
-    expect(find.text('3.750.000đ'), findsOneWidget,
+    expect(find.text('+5.000.000 đ'), findsOneWidget);
+    expect(find.text('-1.250.000 đ'), findsOneWidget);
+    expect(find.text('3.750.000 đ'), findsOneWidget,
         reason: 'Số dư còn lại = thu − chi của tháng đang xem.');
   });
 
@@ -306,7 +358,7 @@ void main() {
     await moTrang(tester);
     await phat(tester, _tk(thu: 1000000, chi: 1500000));
 
-    expect(find.text('-500.000đ'), findsOneWidget,
+    expect(find.text('-500.000 đ'), findsOneWidget,
         reason: 'Kẹp về 0 là giấu đi việc tháng này đã âm. Người dùng mở trang '
             'này chính là để biết điều đó.');
   });
@@ -333,7 +385,7 @@ void main() {
     expect(find.text('36% tổng chi'), findsOneWidget,
         reason: 'Không bịa ngân sách cho danh mục chưa đặt: nhãn phải đổi, '
             'không được hiện "0% ngân sách".');
-    expect(find.text('800.000đ'), findsOneWidget);
+    expect(find.text('800.000 đ'), findsOneWidget);
   });
 
   testWidgets('mức danh mục: 4 lát đầu + "Khác", tâm hiện tổng của lát',
@@ -374,7 +426,7 @@ void main() {
 
     expect(find.textContaining('Chưa có giao dịch nào trong T9 2026'),
         findsOneWidget);
-    expect(find.text('+0đ'), findsNothing);
+    expect(find.text('+0 đ'), findsNothing);
     expect(find.text('Chi tiêu theo hạng mục'), findsNothing,
         reason: 'Donut của một tháng rỗng là một vòng tròn xám với chữ "0" ở '
             'giữa — trông như lỗi tải dữ liệu.');
@@ -963,7 +1015,7 @@ void main() {
               'tháng làm mẫu số là các lát cộng lại không ra 100% mà không '
               'một dòng log nào báo (§2.1 spec).');
       expect(find.text('6.5M'), findsNothing);
-      expect(find.text('-6.500.000đ'), findsOneWidget,
+      expect(find.text('-6.500.000 đ'), findsOneWidget,
           reason: 'Thẻ đầu trang thì vẫn là tổng chi thật của tháng — hai con '
               'số khác nhau là đúng, và đó chính là chỗ dễ "sửa" nhầm.');
     });
@@ -1035,6 +1087,9 @@ void main() {
         ),
       );
 
+      // Khối Nhận xét (2026-09-19) đẩy hàng chip xuống dưới mép khung 600dp;
+      // chạm vào chỗ không hiện thì không trúng gì mà test vẫn xanh nửa chừng.
+      await tester.ensureVisible(find.byKey(const Key('chip-xu-huong-c_an')));
       await tester.tap(find.byKey(const Key('chip-xu-huong-c_an')));
       await tester.pumpAndSettle();
 
@@ -1205,6 +1260,96 @@ void main() {
       expect(find.text('Top 5 khoản chi'), findsOneWidget);
     });
 
+    // ── Khối Số liệu nhanh tự ẩn khi không có gì để nói ────────────────────
+    //
+    // Lượt soát 2026-09-21 ("khối nào chưa tự ẩn khi rỗng") tìm ra đây là khối
+    // **duy nhất** của trang không có chốt nào — không ở `_than`, cũng không
+    // trong chính widget. Mọi khối khác đều tự ẩn.
+    //
+    // Cả **ba** chỉ số của nó đều nói về CHI, nên một kỳ chỉ có thu cho ra một
+    // thẻ gồm `0 đ` và hai dấu `—`: chiếm chỗ, không mang tin nào. Kỳ như thế
+    // **không** rơi vào nhánh `thongKe.rong` (vốn đòi thu == 0 **và** chi == 0),
+    // nên nó đi thẳng vào thân trang.
+
+    testWidgets('kỳ chỉ có thu: khối Số liệu nhanh tự ẩn', (tester) async {
+      await moCao(tester);
+      await phat(
+        tester,
+        _tk(
+          thu: 5000000,
+          chi: 0,
+          soLieu: const SoLieuNhanh(
+            chiMoiNgay: 0,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+        ),
+      );
+
+      expect(
+        find.text('Số liệu nhanh'),
+        findsNothing,
+        reason: 'ba chỉ số đều về chi; kỳ không có khoản chi nào thì thẻ chỉ '
+            'còn "0 đ" và hai dấu "—"',
+      );
+      expect(
+        find.text('Tổng thu'),
+        findsOneWidget,
+        reason: 'ĐÒI KẾT QUẢ: phần còn lại của trang phải nguyên vẹn. Thiếu vế '
+            'này thì một bản sai ẩn nhầm cả thân trang cũng làm ca trên xanh',
+      );
+    });
+
+    // Cùng họ với hai lỗi đã sửa trước đó — bảng "Phân bổ theo ví"
+    // (2026-09-15) và thẻ tổng của trang Sổ giao dịch (2026-09-21). Đây là chỗ
+    // thứ BA: thẻ tổng của trang Phân tích **nối dấu bằng tay**
+    // (`'-${_dong(...)}'`) thay vì đi qua `formatCoDau`, nên kỳ không có khoản
+    // chi nào in ra `-0 đ` — một con số âm bằng không.
+    //
+    // Máy ảo bắt được ngày 2026-09-21, trong chính lượt nghiệm thu khối Số
+    // liệu nhanh: dựng được kỳ "chỉ có thu" thì cả hai lỗi cùng hiện ra một
+    // lúc. Bài học: một hàm sinh ra để dẹp một bẫy chỉ dẹp được những chỗ đã
+    // gọi nó.
+    testWidgets('kỳ không có khoản chi: thẻ tổng in "0 đ", không phải "-0 đ"',
+        (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk(thu: 5000000, chi: 0));
+
+      expect(
+        find.text('-0 đ'),
+        findsNothing,
+        reason: 'số 0 không mang dấu — "-0 đ" đọc như một khoản chi',
+      );
+      expect(
+        find.text('0 đ'),
+        findsWidgets,
+        reason: 'ĐÒI KẾT QUẢ: thẻ Tổng chi vẫn phải hiện con số 0 trần; thiếu '
+            'vế này thì một bản sai giấu hẳn thẻ cũng làm kỳ vọng trên xanh',
+      );
+    });
+
+    testWidgets('chỉ cần MỘT chỉ số có gì để nói là khối vẫn hiện',
+        (tester) async {
+      await moCao(tester);
+      // `chiMoiNgay` khác 0 trong khi hai trường kia `null` — đúng hình dạng
+      // `tkDayDu()`. Chốt phải đòi **cả ba** cùng rỗng: đòi mỗi hai `null` là
+      // giấu mất một con số trung bình có thật.
+      await phat(
+        tester,
+        _tk(
+          soLieu: const SoLieuNhanh(
+            chiMoiNgay: 41666.67,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+        ),
+      );
+
+      expect(find.text('Số liệu nhanh'), findsOneWidget);
+    });
+
     testWidgets('⚠️ khối dòng tiền LUÔN kèm câu nói rõ nó là số suy ngược',
         (tester) async {
       await moCao(tester);
@@ -1268,7 +1413,11 @@ void main() {
       await moCao(tester);
       await phat(tester, tkDayDu());
 
-      double mepPhai(String chu) => tester.getRect(find.text(chu)).right;
+      // `.last`: từ B3 (2026-09-19) thẻ "Tổng thu" (18px, đứng trên) và dòng
+      // ví trong bảng (13px) đọc cùng một chuỗi "+5.000.000 đ" — trước đó thẻ
+      // tổng nối `đ` tay không cách nên hai chuỗi tình cờ khác nhau. Cột cần
+      // đo là cột của BẢNG, tức widget đứng sau trong cây.
+      double mepPhai(String chu) => tester.getRect(find.text(chu).last).right;
 
       expect(
         mepPhai('-900.000 đ'),
@@ -1584,10 +1733,10 @@ void main() {
       final b = boSoLieu(thu: 20000000, diVay: 5000000, traNo: 3000000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('12.000.000đ'), findsOneWidget,
+      expect(find.text('12.000.000 đ'), findsOneWidget,
           reason: '(20tr − 5tr vay) − 3tr trả nợ. Đây là ca lật thiết kế: lấy '
               'nguyên tong.thu thì tháng đi vay lại trông đẹp lên.');
-      expect(find.text('17.000.000đ'), findsNothing,
+      expect(find.text('17.000.000 đ'), findsNothing,
           reason: '17tr là con số của công thức sai — tong.thu − traNo.');
     });
 
@@ -1596,7 +1745,7 @@ void main() {
       final b = boSoLieu(thu: 20000000, thuNo: 6000000, khacVao: 2000000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('12.000.000đ'), findsOneWidget,
+      expect(find.text('12.000.000 đ'), findsOneWidget,
           reason: 'thu hồi vốn là tiền cũ quay về; khoản vay/nợ tiền vào không '
               'rõ vai chỉ có thể là đi vay hoặc thu nợ — không lối nào là thu nhập');
     });
@@ -1606,7 +1755,7 @@ void main() {
       final b = boSoLieu(thu: 4000000, traNo: 6500000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('-2.500.000đ'), findsOneWidget,
+      expect(find.text('-2.500.000 đ'), findsOneWidget,
           reason: 'kẹp về 0 là giấu đúng kỳ người dùng cần thấy nhất');
     });
 
@@ -1650,11 +1799,11 @@ void main() {
       expect(find.text('Dự báo 30 ngày tới'), findsOneWidget);
       expect(find.text('Còn tiêu được'), findsOneWidget);
       // 10.000.000 − (800 + 250 + 500 + 120 + 400 + 800)k = 7.130.000
-      expect(find.text('7.130.000đ'), findsOneWidget);
+      expect(find.text('7.130.000 đ'), findsOneWidget);
       expect(find.text('Số dư hiện tại'), findsOneWidget);
-      expect(find.text('10.000.000đ'), findsOneWidget);
+      expect(find.text('10.000.000 đ'), findsOneWidget);
       expect(find.text('Nếu tiêu đúng ngân sách'), findsOneWidget);
-      expect(find.text('5.930.000đ'), findsOneWidget);
+      expect(find.text('5.930.000 đ'), findsOneWidget);
       expect(find.byType(LineChart), findsWidgets);
     });
 
@@ -1684,7 +1833,7 @@ void main() {
                 ngay: DateTime(2026, 9, 25))
           ])));
       expect(
-          find.text('Ví Tiền mặt thiếu 1.500.000đ để trả cam kết ngày 25/09'),
+          find.text('Ví Tiền mặt thiếu 1.500.000 đ để trả cam kết ngày 25/09'),
           findsOneWidget);
     });
 
@@ -1714,7 +1863,7 @@ void main() {
       expect(
           find.text('Không có hoá đơn hay trích tự động nào trong 30 ngày tới'),
           findsOneWidget);
-      expect(find.text('10.000.000đ'), findsWidgets);
+      expect(find.text('10.000.000 đ'), findsWidgets);
     });
 
     testWidgets('kỳ đang xem RỖNG vẫn hiện dự báo — nó không nói về kỳ',

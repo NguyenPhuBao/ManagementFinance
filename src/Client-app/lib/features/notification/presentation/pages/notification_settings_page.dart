@@ -235,6 +235,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),

@@ -200,6 +200,32 @@ String nhanOChon(Ky ky, DateTime moc) {
   return '$ten (${ky.nhanNgan})';
 }
 
+/// Như [nhanOChon] nhưng cho chỗ **không chật**: kỳ đã qua giữ nguyên khoảng
+/// ngày (`"Tuần 37 (07/09 – 13/09)"`) thay vì rút về `"Tuần 37"`.
+///
+/// ## Vì sao cần hàm thứ hai thay vì sửa [nhanOChon]
+///
+/// Hai hàm phục vụ hai chỗ có bề ngang khác hẳn nhau, và **cả hai lựa chọn đều
+/// đúng ở chỗ của nó**:
+///
+/// * Ô chọn kỳ trên header trang Phân tích **hẹp** — nó đã tràn 53px một lần,
+///   và chính vì thế `nhanNgan` tồn tại. Ở đó "Tuần 37" là đủ vì hàng chip và
+///   biểu đồ ngay dưới đã nói kỳ nào.
+/// * Nút chọn kỳ của trang Xuất báo cáo và từng dòng trong bộ chọn thì **chiếm
+///   trọn chiều ngang**. Ở đó "Tuần 37" trần **không cho biết đó là khoảng
+///   nào**, mà người dùng sắp xuất một tờ báo cáo theo đúng khoảng ấy.
+///
+/// Hàm này sinh ra ngày 2026-09-18, sau khi nghiệm thu máy ảo bắt được nút của
+/// trang Xuất báo cáo nói `"Tuần 37"` trong khi dòng người dùng vừa chạm nói
+/// `"Tuần 37 (07/09 – 13/09)"` — hai cách gọi tên cho cùng một kỳ, cách nhau
+/// đúng một cú chạm. Bộ test mù trước lỗi ấy vì cả hai chuỗi đều hợp lý.
+///
+/// ⚠️ Nó **thay một bản chép tay**: `ChonPhamViSheet._dong` vốn tự viết lại
+/// đúng biểu thức này. Nay cả dòng danh sách lẫn nút đều gọi vào đây, nên hai
+/// chỗ không thể trôi xa nhau nữa.
+String nhanRong(Ky ky, DateTime moc) =>
+    ky.chua(moc) ? nhanOChon(ky, moc) : ky.nhan;
+
 /// Tên **kỳ liền trước** của [ky], cho câu "so với …" ở ba thẻ tổng.
 ///
 /// Bỏ năm khi kỳ trước cùng năm với kỳ đang xem: thẻ tổng rất hẹp ở 411dp, và

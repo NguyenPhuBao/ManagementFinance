@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Cache phiên Kotlin, sinh ra khi build với Flutter 3.47 / Kotlin 2.2
+.kotlin/

@@ -41,14 +41,28 @@ abstract class BudgetRepository {
     DateTime? now,
   });
 
-  /// Gợi ý hạn mức: trung bình chi của [categoryId] trong **ba tháng dương
-  /// lịch trước** tháng hiện tại, làm tròn lên bội 10.000. Null khi ba tháng
-  /// ấy không có khoản chi nào — không có gì để gợi ý.
+  /// Gợi ý hạn mức: mức chi trung bình **mỗi tháng** của [categoryId], suy từ
+  /// `cuaSoNhinLai` (cửa sổ cuộn ≤ 90 ngày) rồi làm tròn lên bội 10.000.
+  /// `null` khi cửa sổ ấy không có khoản chi nào, hoặc khi tài khoản còn quá
+  /// trẻ để nói — cả hai đều nghĩa là "không có gì để gợi ý".
   Future<double?> suggestAmount(
     int idaccount,
     String categoryId, {
     DateTime? now,
   });
+
+  /// Độ dài cửa sổ nhìn lại đang dùng, tính bằng ngày; `null` khi chưa đủ dữ
+  /// liệu.
+  ///
+  /// Giao diện cần con số này để **nói ra** khi một mức "mỗi tháng" được suy từ
+  /// mẫu ngắn. Nó đi cùng cả danh sách chứ không lặp ở từng danh mục: mẫu số là
+  /// tuổi dữ liệu của **tài khoản**.
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now});
+
+  /// Tuổi dữ liệu của tài khoản tính bằng ngày trọn — từ giao dịch sớm nhất
+  /// tới [now]. `null` khi chưa có giao dịch nào. Nuôi `soNgayConThieu` để giao
+  /// diện nói "cần thêm N ngày" thay vì im.
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now});
 
   /// [categoryId] là **bắt buộc**: một ngân sách thuộc về đúng một danh mục.
   /// Truyền null sẽ bị từ chối — "ngân sách tổng" đã bỏ từ 2026-09-04. Hàng cũ

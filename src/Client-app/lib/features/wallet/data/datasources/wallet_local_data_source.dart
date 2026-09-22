@@ -4,6 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/rang_buoc_vi.dart';
+import '../../domain/wallet_status.dart';
 import '../models/wallet_entity.dart';
 
 /// Abstract — cho phép mock trong test
@@ -143,10 +144,36 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     }
   }
 
+  /// Chiều **ngược lại** của chốt "không lưu trữ ví mặc định" trong
+  /// [setArchived].
+  ///
+  /// Hai chốt cho cùng một trạng thái hỏng — cờ mặc định trỏ vào một ví không
+  /// nằm trong bộ chọn nào — nhưng người dùng đến đó bằng hai đường khác nhau,
+  /// nên chốt kia không bắt được đường này. Thiếu tới 2026-09-18.
+  ///
+  /// Hỏng **im lặng**: `chonViChonSan` tìm ví mặc định trong danh sách đã lọc
+  /// (`getActive`); không thấy thì lặng lẽ rơi về ví đầu. Không exception,
+  /// không cảnh báo — người dùng chỉ thấy công tắc mình vừa bật chẳng làm gì.
+  ///
+  /// ⚠️ Chỉ canh đường **người dùng chủ động** bật, vì nó nằm ở datasource.
+  /// Nhánh kéo về ghi thẳng qua `walletDao`, nên trạng thái "ví lưu trữ mang cờ
+  /// mặc định" **vẫn đến được từ máy khác** — và phải đến được, chặn cả chiều
+  /// ấy là ví kẹt hàng đợi kéo về. Cùng lý lẽ với chốt trong [setArchived],
+  /// thứ cũng chỉ canh chiều lưu trữ.
+  void _kiemViMacDinhConDung(WalletEntity wallet) {
+    if (!wallet.isDefault) return;
+    if (WalletStatus.laHoatDong(wallet.status)) return;
+    throw CacheException(
+        'Ví "${wallet.name}" đang lưu trữ nên không đặt làm ví mặc định được. '
+        'Cờ mặc định chỉ dùng để chọn sẵn ví khi ghi giao dịch, mà ví lưu trữ '
+        'không nằm trong danh sách chọn. Hãy bỏ lưu trữ ví trước.');
+  }
+
   @override
   Future<void> insert(WalletEntity wallet) async {
     try {
       await _kiemRangBuocServer(wallet);
+      _kiemViMacDinhConDung(wallet);
       await _db.walletDao.insert(_toCompanion(wallet));
       await _giuMotViMacDinh(wallet);
     } catch (e) {
@@ -159,6 +186,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   Future<void> update(WalletEntity wallet) async {
     try {
       await _kiemRangBuocServer(wallet);
+      _kiemViMacDinhConDung(wallet);
       await _db.walletDao.update_(_toCompanion(wallet));
       await _giuMotViMacDinh(wallet);
     } catch (e) {
@@ -173,15 +201,30 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
       final wallet = await _db.walletDao.getById(id);
       if (wallet != null) {
         // 1. Ràng buộc 1: Ví có tiền (balance != 0)
+        //
+        // ⚠️ Câu này KHÔNG còn hứa "điều chuyển số dư về 0đ rồi xoá được".
+        // Từ khi số dư suy từ sổ giao dịch (G37), mọi cách đưa số dư về 0 đều
+        // **sinh thêm một giao dịch** — nên làm đúng lời khuyên ấy xong thì
+        // ràng buộc 2 chặn lại, và người dùng đi hết một vòng để về chỗ cũ.
+        // Lối thoát có thật cho ví đã dùng là **lưu trữ**, nên câu này nói
+        // thẳng ra thế.
         if (wallet.balance != 0) {
           final formatted = CurrencyFormatter.format(wallet.balance);
-          throw CacheException('Ví "${wallet.name}" đang có số dư ($formatted). Vui lòng điều chuyển số dư về 0đ trước khi xóa!');
+          throw CacheException(
+              'Ví "${wallet.name}" đang có số dư ($formatted). Ví đã phát sinh '
+              'số dư thì không xoá được nữa. Hãy lưu trữ ví để cất nó khỏi các '
+              'bộ chọn mà vẫn giữ nguyên lịch sử.');
         }
 
         // 2. Ràng buộc 2: Ví đã có giao dịch phát sinh
-        final txs = await _db.transactionDao.getByWallet(id);
-        if (txs.isNotEmpty) {
-          throw CacheException('Ví "${wallet.name}" đã có ${txs.length} giao dịch phát sinh. Không thể xóa ví để bảo toàn lịch sử tài chính!');
+        //
+        // ⚠️ Đếm qua `demGiaoDichLienQuan`, KHÔNG phải `getByWallet`: hàm sau
+        // chỉ nhìn cột `walletId`, nên một ví **chỉ nhận tiền chuyển vào** bị
+        // coi là chưa từng dùng và xoá được — đi ngược đúng câu "bảo toàn lịch
+        // sử tài chính" ngay bên dưới.
+        final soGiaoDich = await _db.transactionDao.demGiaoDichLienQuan(id);
+        if (soGiaoDich > 0) {
+          throw CacheException('Ví "${wallet.name}" đã có $soGiaoDich giao dịch phát sinh. Không thể xóa ví để bảo toàn lịch sử tài chính!');
         }
 
         // 3. Ràng buộc 3: Ví đang liên kết với Mục tiêu tiết kiệm
@@ -196,6 +239,26 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
               'Ví "${wallet.name}" đang là ví tích lũy của mục tiêu '
               '"${linkedGoals.first.name}". Mở mục tiêu đó, bấm biểu tượng '
               'đổi ví ở góc trên để chọn ví khác, rồi xóa ví này.');
+        }
+
+        // 4. Ràng buộc 4: Ví đang là ví thanh toán của một hoá đơn.
+        //
+        // Thiếu chốt này tới 2026-09-18, và nó hỏng **im lặng** theo một chiều
+        // riêng: `payBill` **không kiểm ví còn sống**, nên hoá đơn vẫn trả
+        // được sau khi ví bị xoá — khoản chi mới rơi vào một ví đã bị loại
+        // khỏi mọi phép cộng tổng. Tiền biến mất khỏi màn hình trong khi hoá
+        // đơn báo "đã trả".
+        //
+        // Phía PostgreSQL `fk_bill_wallet` là **ON DELETE RESTRICT**, tức
+        // server cũng coi đây là liên kết không được phá; client chỉ đang nói
+        // cùng một luật sớm hơn.
+        final bills = await _db.billDao.getAll(wallet.idaccount);
+        final billGanVi = bills.where((b) => b.walletId == id).toList();
+        if (billGanVi.isNotEmpty) {
+          throw CacheException(
+              'Ví "${wallet.name}" đang là ví thanh toán của hoá đơn '
+              '"${billGanVi.first.name}". Mở hoá đơn đó, đổi ví thanh toán '
+              'sang ví khác, rồi xóa ví này.');
         }
       }
 

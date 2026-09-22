@@ -26,6 +26,7 @@ void main() {
       isDefault: false,
       isGroup: false,
       isLocalOnly: false,
+      aiCoDinh: false,
       isDeleted: false,
       syncStatus: 'synced',
       syncRetryCount: 0,

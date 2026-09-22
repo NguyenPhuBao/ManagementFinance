@@ -25,44 +25,27 @@ export 'thong_ke_thang.dart' show TongThuChi, rutGon;
 // test của trang Xuất báo cáo không phải đổi.
 export 'pham_vi_ky.dart' show khoangKyTruoc;
 
-/// Phạm vi thời gian trên trang Xuất báo cáo — đúng bốn nút của màn Stitch.
-enum PhamViThoiGian { thangNay, thangTruoc, quyNay, tuyChinh }
-
-/// Biên `[from, to)` ứng với [pv].
-///
-/// [tuyChon] là khoảng người dùng chọn từ bộ chọn ngày, **cả hai đầu là ngày**
-/// (00:00). Biên `to` trả về đã cộng thêm một ngày để ngày cuối cùng người dùng
-/// chọn nằm TRONG báo cáo — lấy thẳng `tuyChon.to` là mất trọn ngày ấy.
-///
-/// [tuyChon] `null` khi người dùng bấm "Tuỳ chỉnh" rồi thoát bộ chọn; khi ấy
-/// lùi về tháng này thay vì nổ.
-({DateTime from, DateTime to}) khoangCuaPhamVi(
-  PhamViThoiGian pv, {
-  required DateTime now,
-  ({DateTime from, DateTime to})? tuyChon,
-}) {
-  switch (pv) {
-    case PhamViThoiGian.thangNay:
-      return bienThang(now.year, now.month);
-    case PhamViThoiGian.thangTruoc:
-      // `month - 1` bằng 0 tự cuộn về tháng 12 năm trước nhờ `DateTime`.
-      return bienThang(now.year, now.month - 1);
-    case PhamViThoiGian.quyNay:
-      final thangDauQuy = ((now.month - 1) ~/ 3) * 3 + 1;
-      return (
-        from: DateTime(now.year, thangDauQuy, 1),
-        to: DateTime(now.year, thangDauQuy + 3, 1),
-      );
-    case PhamViThoiGian.tuyChinh:
-      if (tuyChon == null) return bienThang(now.year, now.month);
-      final t = tuyChon.to;
-      return (
-        from: DateTime(tuyChon.from.year, tuyChon.from.month, tuyChon.from.day),
-        // `day + 1` tự cuộn qua cuối tháng, cuối năm và 29/02 năm nhuận.
-        to: DateTime(t.year, t.month, t.day + 1),
-      );
-  }
-}
+// ── `PhamViThoiGian` và `khoangCuaPhamVi` đã BỎ ngày 2026-09-18 ─────────────
+//
+// Chúng là bộ chọn kỳ **riêng** của trang Xuất báo cáo: bốn giá trị cứng
+// *Tháng này · Tháng trước · Quý này · Tùy chỉnh*, lấy đúng bốn nút của màn
+// Stitch. Từ P1 (2026-09-15) trang Phân tích đã có `Ky` với năm đơn vị, nên
+// app mang **hai** bộ luật song song cho cùng khái niệm "kỳ" — đúng khuôn "bản
+// chép tay thứ N" mà dự án đã trả giá nhiều lần.
+//
+// Cái giá cụ thể ở đây không phải là lỗi mà là **thứ không làm được**: trang
+// Xuất báo cáo không xuất nổi theo tuần hay theo năm, dù `tongThuChi` và
+// `getExpenses` bên dưới vốn nhận khoảng bất kỳ. Nay trang dùng thẳng `Ky` và
+// `moChonPhamVi`, nên hai trang chọn kỳ bằng cùng một widget và cùng một luật.
+//
+// Thứ thay thế từng phần:
+//   • `khoangCuaPhamVi(thangNay)`   → `Ky.thang(nam, thang)`
+//   • `khoangCuaPhamVi(quyNay)`     → `Ky.quy(nam, quy)`
+//   • `khoangCuaPhamVi(tuyChinh)`   → `Ky.tuyChon(from:, to:)`
+//
+// ⚠️ Một khác biệt **im lặng** khi chuyển: `khoangCuaPhamVi` TỰ cộng một ngày
+// vào biên phải của khoảng tuỳ chọn, còn `Ky.tuyChon` bắt người gọi tự cộng.
+// Quên vế ấy là báo cáo hụt đúng ngày cuối cùng người dùng chọn.
 
 
 /// Số dư ví ở hai đầu của kỳ báo cáo.
@@ -316,6 +299,29 @@ class BaoCao {
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);
   double? get chiSoVoiTruoc => phanTramSoVoi(tong.chi, tongTruoc.chi);
 }
+
+/// "Kỳ này có in các khối THEO KỲ không" — **định nghĩa duy nhất**, dùng chung
+/// cho màn Xem trước và cho tệp xuất (PDF lẫn CSV).
+///
+/// ## Vì sao là một hàm chứ không phải `!bc.rong` viết thẳng
+///
+/// Phần lớn khối tự rỗng theo một kỳ rỗng, nên chúng gác bằng `isNotEmpty` và
+/// trùng khớp với màn Xem trước mà không ai phải nghĩ. **Ngân sách thì không**:
+/// nó tồn tại độc lập với giao dịch, nên `bc.nganSach` vẫn đầy khi kỳ chẳng có
+/// gì — và tệp xuất đã in bảng *Ngân sách kỳ này* cho một kỳ rỗng suốt từ
+/// 2026-09-09 tới khi G44 đóng, trong khi màn Xem trước giấu nó.
+///
+/// Con số in ra **không sai** (ngân sách ấy có thật), nên không ai đọc tệp mà
+/// phát hiện được — đó mới là chỗ nguy. Chỗ này là một luật sản phẩm: *người
+/// đọc hiểu mọi bảng trong tệp là "của kỳ này", mà "đã chi" của ngân sách đếm
+/// theo kỳ của **chính nó**.* Đặt nó thành một hàm có tên là để chỗ gọi thứ tư
+/// hỏi đúng câu ấy thay vì phát minh lại một điều kiện `isNotEmpty` trần —
+/// cùng khuôn với `khoanVaoThongKe`, `viTinhVaoTong` và `billPayStatus`.
+///
+/// ⚠️ Không phải mọi thứ trong tệp đều theo kỳ. Đầu báo cáo, ba thẻ tổng, ba
+/// dòng kỳ trước và khối Dòng tiền **vẫn in** khi kỳ rỗng, và cả hai bên đã
+/// khớp nhau sẵn ở đó — số dư đầu kỳ bằng cuối kỳ là một câu trả lời có nghĩa.
+bool inKhoiTheoKy(BaoCao bc) => !bc.rong;
 
 /// Dựng báo cáo từ [ds] theo [loc].
 ///

@@ -34,6 +34,7 @@ Category makeCategory({
       isDefault: isDefault,
       isDeleted: false,
       isLocalOnly: !isDefault,
+      aiCoDinh: false,
       syncStatus: 'pending',
       syncRetryCount: 0,
       updatedAt: updatedAt ?? DateTime(2026, 8, 21),
@@ -243,10 +244,10 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   ) =>
       const Stream.empty();
 }

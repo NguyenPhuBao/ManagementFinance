@@ -52,6 +52,7 @@ void main() {
   /// tài khoản — nó đứng cuối. Bản đầu của tệp này bỏ bước chọn danh mục, nên
   /// bài kiểm dừng ở chốt "Vui lòng chọn danh mục" và **xanh vì lý do sai**.
   Future<void> dienDuForm(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Khoản chi'));
@@ -127,7 +128,7 @@ void main() {
 
     await dienDuForm(tester);
 
-    await tester.tap(find.text('Lưu giao dịch'));
+    await tester.tap(find.byIcon(Icons.check)); // ✓ là nút lưu từ 2026-09-19
     await tester.pumpAndSettle();
 
     expect(transactions.added, isEmpty,
@@ -144,7 +145,7 @@ void main() {
 
     await dienDuForm(tester);
 
-    await tester.tap(find.text('Lưu giao dịch'));
+    await tester.tap(find.byIcon(Icons.check)); // ✓ là nút lưu từ 2026-09-19
     await tester.pump();
 
     expect(find.text('Chưa xác định được tài khoản đăng nhập'), findsOneWidget,

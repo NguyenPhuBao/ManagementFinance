@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/di/injection_container.dart';
+import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
+import 'thoat_hai_lan.dart';
 
 class MainShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -36,7 +39,16 @@ class MainShell extends StatelessWidget {
     final uiIndex = _getUIIndex(navigationShell.currentIndex);
 
     return Scaffold(
-      body: navigationShell,
+      // Back ở tab khác thì về Trang chủ; ở Trang chủ thì "Nhấn lần nữa để
+      // thoát" (UX 2026-09-19, E3). Bản trước không có PopScope: Back là ra
+      // launcher ngay.
+      body: ThoatHaiLan(
+        laTabDau: () => navigationShell.currentIndex == 0,
+        veTabDau: () => navigationShell.goBranch(0),
+        baoNhanLanNua: () =>
+            sl<ThongBaoNhanh>().hien('Nhấn lần nữa để thoát'),
+        child: navigationShell,
+      ),
       backgroundColor: AppColors.background,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
@@ -66,7 +78,15 @@ class MainShell extends StatelessWidget {
             _buildNavItem(context, 'Trang chủ', Icons.home_outlined, 0, uiIndex),
             _buildNavItem(context, 'Phân tích', Icons.analytics_outlined, 1, uiIndex),
             const SizedBox(width: 72), // Space for FAB
-            _buildNavItem(context, 'Ngân sách', Icons.account_balance_wallet_outlined, 3, uiIndex),
+            // ⚠️ Nhãn "Giao dịch" chứ KHÔNG "Sổ giao dịch": ô nhãn rộng CỐ
+            // ĐỊNH 72dp (xem `_buildNavItem`) và mọi nhãn vừa được đều ≤ 9 ký
+            // tự — "Sổ giao dịch" là 12. Tên đầy đủ vẫn ở tiêu đề trang.
+            //
+            // Icon `list_alt` chứ không `receipt_long`: `receipt_long` đã là
+            // "Hóa đơn & Dịch vụ" trong drawer, và một glyph mang hai nghĩa
+            // đúng là lỗi D8 vừa gỡ cùng ngày (heo đất từng vừa là Ngân sách
+            // vừa là Mục tiêu tiết kiệm).
+            _buildNavItem(context, 'Giao dịch', Icons.list_alt_outlined, 3, uiIndex),
             _buildNavItem(context, 'Cá nhân', Icons.person_outline, 4, uiIndex),
           ],
         ),

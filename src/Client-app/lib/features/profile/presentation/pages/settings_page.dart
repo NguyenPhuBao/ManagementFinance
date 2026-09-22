@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../widgets/vung_nguy_hiem_card.dart';
+import '../widgets/noi_dung_cai_dat.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -22,15 +22,12 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.support_agent, color: AppColors.primary),
-            onPressed: () {},
-          ),
-        ],
+        // Nút "hỗ trợ" đã gỡ 2026-09-19: `onPressed: () {}`, và dự án chưa có
+        // kênh hỗ trợ nào để trỏ tới.
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -39,13 +36,10 @@ class SettingsPage extends StatelessWidget {
           children: [
             _buildUserSummaryCard(),
             const SizedBox(height: 24),
-            _buildSecurityPreferencesCard(context),
-            const SizedBox(height: 24),
-            BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) => VungNguyHiemCard(
-                user: state is AuthSuccess ? state.user : null,
-              ),
-            ),
+            // Thân trang nay là widget dùng chung với tab Cá nhân (nhóm D,
+            // 2026-09-19). Route này GIỮ NGUYÊN vì bốn route con khai báo
+            // bên trong nó — xem `NoiDungCaiDat`.
+            const NoiDungCaiDat(),
           ],
         ),
       ),
@@ -93,7 +87,10 @@ class SettingsPage extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      // `onPrimaryContainer`, KHÔNG phải `primary`: hai hằng
+                      // ấy cùng là #1A1A19 nên chữ chìm hẳn vào nền — cùng
+                      // lỗi A9 đã sửa ở drawer.
+                      color: AppColors.onPrimaryContainer,
                     ),
                   ),
                 ),
@@ -145,6 +142,7 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Sửa',
                 icon: const Icon(Icons.edit, color: AppColors.textSecondary),
                 onPressed: () => context.push('/settings/edit-profile'),
               ),
@@ -155,100 +153,4 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSecurityPreferencesCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: Text(
-              'BẢO MẬT & TÙY CHỌN',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          _buildActionItem(
-            icon: Icons.person_outline,
-            title: 'Thông tin cá nhân',
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () => context.push('/settings/edit-profile'),
-          ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.lock_outline,
-            title: 'Đổi mật khẩu',
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () => context.push('/settings/change-password'),
-          ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.verified_user_outlined,
-            title: 'Bảo mật 2 yếu tố (MFA)',
-            trailing: Switch(
-              value: true,
-              onChanged: (val) {},
-              activeThumbColor: Colors.white,
-              activeTrackColor: const Color(0xFF006E1C),
-            ),
-            onTap: () {},
-          ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.cloud_sync_outlined,
-            title: 'Đồng bộ dữ liệu Cloud',
-            trailing: const Icon(Icons.check_circle, color: Color(0xFF006E1C)),
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionItem({
-    required IconData icon,
-    required String title,
-    required Widget trailing,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.textSecondary, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            trailing,
-          ],
-        ),
-      ),
-    );
-  }
 }
-

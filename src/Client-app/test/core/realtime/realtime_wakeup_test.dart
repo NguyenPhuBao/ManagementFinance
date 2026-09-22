@@ -33,13 +33,6 @@ void main() {
         dongBoNgay: () async => soLanDongBo++,
       );
 
-  test('giao dịch ngân hàng đánh thức đồng bộ', () async {
-    noi();
-    nguon.add(RealtimeEvent.giaoDichNganHang);
-    await Future<void>.delayed(Duration.zero);
-    expect(soLanDongBo, 1);
-  });
-
   test('OCR xong đánh thức đồng bộ', () async {
     noi();
     nguon.add(RealtimeEvent.ocrXong);
@@ -70,7 +63,7 @@ void main() {
   test('nhiều sự kiện thì đồng bộ nhiều lần', () async {
     noi();
     nguon
-      ..add(RealtimeEvent.giaoDichNganHang)
+      ..add(RealtimeEvent.dongBoXong)
       ..add(RealtimeEvent.ocrTrung)
       ..add(RealtimeEvent.ocrXong);
     await Future<void>.delayed(Duration.zero);
@@ -84,7 +77,7 @@ void main() {
     await sub!.cancel();
     sub = null;
 
-    nguon.add(RealtimeEvent.giaoDichNganHang);
+    nguon.add(RealtimeEvent.ocrXong);
     await Future<void>.delayed(Duration.zero);
 
     expect(soLanDongBo, 0,

@@ -6,7 +6,9 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/models/budget_period.dart';
+import '../../domain/cua_so_nhin_lai.dart';
 import '../widgets/budget_visuals.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 /// Dữ liệu form đã chuẩn hoá, sẵn sàng ghi xuống.
 ///
@@ -54,10 +56,28 @@ class BudgetForm extends StatefulWidget {
 
   final void Function(BudgetDraft) onSubmit;
 
-  /// Gợi ý hạn mức cho một danh mục (trung bình chi ba tháng trước). `null`
+  /// Gợi ý hạn mức cho một danh mục — mức chi trung bình mỗi tháng suy từ
+  /// `cuaSoNhinLai` (cửa sổ **cuộn** ≤ 90 ngày, từ 2026-09-21). `null`
   /// = không gợi ý. Là callback chứ không phải repository: form vẫn không đọc
   /// cubit, và test tiêm thẳng một hàm.
   final Future<double?> Function(String categoryId)? suggestFor;
+
+  /// Danh mục và số tiền điền sẵn khi form được mở từ thẻ "Chưa đặt ngân
+  /// sách" (Task 6). ⚠️ Chỉ có hiệu lực ở đường **tạo mới**: [editing] khác
+  /// `null` thì ngân sách đang sửa thắng, vì đè lên nó là lặng lẽ đổi hạn mức
+  /// người dùng đã đặt.
+  final String? danhMucChonSan;
+  final double? soTienChonSan;
+
+  /// Độ dài cửa sổ nhìn lại đã sinh ra con số của [suggestFor]. Ngắn hơn 90
+  /// ngày thì nhãn **nói ra** — một mức "mỗi tháng" dựng từ hai tuần mà không
+  /// nói gì là bịa một lời hứa. `null` = **chưa biết**, nhãn cũng im vế ấy chứ
+  /// không đoán.
+  final int? soNgayCuaSo;
+
+  /// Số ngày còn thiếu để gợi ý được; `null` = không cần nói. Xem
+  /// `soNgayConThieu` ở `cua_so_nhin_lai.dart`.
+  final int? soNgayConThieu;
 
   const BudgetForm({
     super.key,
@@ -65,6 +85,10 @@ class BudgetForm extends StatefulWidget {
     required this.editing,
     required this.onSubmit,
     this.suggestFor,
+    this.danhMucChonSan,
+    this.soTienChonSan,
+    this.soNgayCuaSo,
+    this.soNgayConThieu,
   });
 
   @override
@@ -119,7 +143,9 @@ class _BudgetFormState extends State<BudgetForm> {
     super.initState();
     final b = widget.editing;
     _amountController = TextEditingController(
-        text: b == null ? '' : b.amount.round().toString());
+        text: b != null
+            ? b.amount.round().toString()
+            : widget.soTienChonSan?.round().toString() ?? '');
     _thresholdController = TextEditingController(
         text: b?.thresholdWarningAmount?.round().toString() ?? '');
     // 0 không phải ngưỡng người dùng đặt: backend từng điền `0` cho ô để trống
@@ -130,9 +156,10 @@ class _BudgetFormState extends State<BudgetForm> {
     // `BudgetEntity.warningRatio`.
     final percent = b?.thresholdWarningPercent;
     _thresholdPercentController = TextEditingController(
-        text: percent == null || percent <= 0 ? '' : percent.round().toString());
+        text:
+            percent == null || percent <= 0 ? '' : percent.round().toString());
     _noteController = TextEditingController(text: b?.note ?? '');
-    _categoryId = b?.categoryId;
+    _categoryId = b?.categoryId ?? widget.danhMucChonSan;
     // Ngân sách đang sửa giữ nguyên chu kỳ đã lưu, kể cả khi nó là null
     // ("Ngày cụ thể"). Chỉ khi tạo mới mới rơi về mặc định hàng tháng.
     _timeRecurrence = b == null ? BudgetRecurrence.month : b.timeRecurrence;
@@ -172,8 +199,7 @@ class _BudgetFormState extends State<BudgetForm> {
   ///
   /// Theo chu kỳ thì đây là cuối kỳ đầu, tính lại ngay khi đổi chu kỳ hoặc đổi
   /// ngày bắt đầu. "Ngày cụ thể" thì là ngày người dùng chọn.
-  DateTime? get _ngayKetThucHienThi =>
-      _theoChuKy ? _cuoiKyDau : _endDate;
+  DateTime? get _ngayKetThucHienThi => _theoChuKy ? _cuoiKyDau : _endDate;
 
   /// Ngày kết thúc thật sự **ghi xuống**.
   ///
@@ -527,7 +553,8 @@ class _BudgetFormState extends State<BudgetForm> {
       // Một ngân sách thuộc về đúng MỘT danh mục — "Ngân sách tổng" đã bỏ ngày
       // 2026-09-04. Repository cũng chặn, nhưng để nó chặn thì người dùng chỉ
       // nhận một snackbar đỏ chứ không thấy ô nào còn thiếu.
-      validator: (v) => v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
+      validator: (v) =>
+          v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
       onChanged: (v) {
         setState(() => _categoryId = v);
         _loadSuggestion(v);
@@ -535,22 +562,50 @@ class _BudgetFormState extends State<BudgetForm> {
     );
   }
 
-  /// "3 tháng gần nhất bạn chi trung bình X" kèm nút điền thẳng vào ô hạn mức.
+  /// "Bạn chi trung bình X mỗi tháng" kèm nút điền thẳng vào ô hạn mức.
   /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 đ" là gợi ý
   /// sai, tệ hơn không gợi ý.
+  ///
+  /// ⚠️ Câu này **không nêu một cửa sổ cố định**. Nó từng nói "3 tháng gần
+  /// nhất", và từ 2026-09-21 câu ấy thành lời nói dối: `suggestAmount` nay suy
+  /// từ `cuaSoNhinLai` — một cửa sổ **cuộn**, dài tối đa 90 ngày nhưng ngắn lại
+  /// theo tuổi dữ liệu của tài khoản. Máy ảo bắt được: tài khoản 20 ngày tuổi
+  /// vẫn hiện "3 tháng gần nhất".
+  ///
+  /// ✅ Từ 2026-09-21 nó nói **số ngày thật** khi cửa sổ ngắn hơn 90 ngày —
+  /// người dùng chốt (Task 6): thẻ "Chưa đặt ngân sách" đã nói "Suy từ 20 ngày
+  /// gần nhất", nên form mở ra từ nó không được lùi về một lời hứa mơ hồ hơn.
+  /// ⚠️ Nhưng `null` vẫn là **chưa biết**: khi ấy nhãn im vế số ngày chứ không
+  /// đoán, và cửa sổ đủ 90 ngày thì câu ấy chỉ còn là tiếng ồn.
   Widget _suggestionHint() {
     final s = _suggestion;
-    if (s == null) return const SizedBox.shrink();
+    if (s == null) {
+      // Không có số vì tài khoản còn trẻ → nói ra. Không có số vì danh mục
+      // không có khoản chi → im như cũ ("trung bình 0 đ" tệ hơn không gợi ý).
+      final thieu = widget.soNgayConThieu;
+      if (thieu == null || _categoryId == null) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'Cần thêm $thieu ngày dữ liệu để gợi ý hạn mức.',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      );
+    }
+    final soNgay = widget.soNgayCuaSo;
+    final veCuaSo = soNgay == null || soNgay >= kSoNgayNhinLai
+        ? ''
+        : ', suy từ $soNgay ngày gần nhất';
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              '3 tháng gần nhất bạn chi trung bình '
-              '${CurrencyFormatter.format(s)}',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              'Bạn chi trung bình ${CurrencyFormatter.format(s)} mỗi tháng'
+                  '$veCuaSo',
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
           TextButton(
@@ -568,6 +623,8 @@ class _BudgetFormState extends State<BudgetForm> {
       key: const ValueKey('budget-amount'),
       controller: _amountController,
       keyboardType: TextInputType.number,
+      // budget."TotalAmount" là numeric(15,2) — xem kSoChuSoToiDaSoTien.
+      inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
       style: const TextStyle(
         fontSize: 16,
         color: AppColors.primary,
@@ -587,6 +644,8 @@ class _BudgetFormState extends State<BudgetForm> {
     return TextFormField(
       controller: _thresholdController,
       keyboardType: TextInputType.number,
+      // budget."Threshold_Warning_Amount" là numeric(15,2) — xem kSoChuSoToiDaSoTien.
+      inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
       style: const TextStyle(fontSize: 16, color: AppColors.primary),
       decoration: _inputDecoration('Ví dụ: 500000'),
       validator: (value) {
@@ -697,8 +756,8 @@ class _BudgetFormState extends State<BudgetForm> {
             const SizedBox(width: 12),
             Text(
               _formatDay(_startDate),
-              style: const TextStyle(
-                  fontSize: 16, color: AppColors.textPrimary),
+              style:
+                  const TextStyle(fontSize: 16, color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -769,8 +828,7 @@ class _BudgetFormState extends State<BudgetForm> {
 
   // ── Mảnh dùng lại ───────────────────────────────────────────────────────────
 
-  String _formatDay(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
+  String _formatDay(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
       '${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   Widget _sectionTitle(String title) => Padding(

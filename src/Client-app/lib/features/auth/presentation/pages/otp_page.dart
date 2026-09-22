@@ -20,6 +20,9 @@ class _OtpPageState extends State<OtpPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  /// Câu báo đã gửi lại mã. Tách khỏi [_errorMessage] vì hai câu mang hai màu.
+  String? _infoMessage;
+
   final AuthRepository _authRepository = sl<AuthRepository>();
 
   @override
@@ -56,6 +59,7 @@ class _OtpPageState extends State<OtpPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _infoMessage = null;
     });
 
     try {
@@ -77,6 +81,36 @@ class _OtpPageState extends State<OtpPage> {
     }
   }
 
+  /// Gửi lại mã: đi đúng đường đã gửi mã lần đầu (`forgotPassword`), xoá sáu
+  /// ô vì mã cũ đã vô hiệu, và nói cho người dùng biết đã gửi. Bản trước là
+  /// handler rỗng — người lỡ mất mã không có lối nào ngoài quay lại nhập email
+  /// (lộ ra qua `khong_co_nut_chet_test`, 2026-09-19).
+  Future<void> _handleResend() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _infoMessage = null;
+    });
+    try {
+      await _authRepository.forgotPassword(widget.email);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _infoMessage = 'Đã gửi lại mã tới ${widget.email}';
+        for (final c in _controllers) {
+          c.clear();
+        }
+      });
+      _focusNodes.first.requestFocus();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,6 +119,7 @@ class _OtpPageState extends State<OtpPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 24),
           onPressed: () => context.pop(),
         ),
@@ -182,6 +217,24 @@ class _OtpPageState extends State<OtpPage> {
                           }),
                         ),
                         const SizedBox(height: 16),
+                        if (_infoMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.mark_email_read_outlined,
+                                    color: AppColors.income, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _infoMessage!,
+                                    style: const TextStyle(
+                                        color: AppColors.income, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (_errorMessage != null)
                           Container(
                             padding: const EdgeInsets.all(10),
@@ -231,9 +284,7 @@ class _OtpPageState extends State<OtpPage> {
                         ),
                         const SizedBox(height: 16),
                         TextButton(
-                          onPressed: () {
-                            // Resend OTP logic
-                          },
+                          onPressed: _isLoading ? null : _handleResend,
                           child: const Text(
                             'Gửi lại mã OTP',
                             style: TextStyle(

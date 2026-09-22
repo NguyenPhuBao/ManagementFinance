@@ -60,14 +60,19 @@ coverage/
 *.db
 *.db-journal
 
-# Documentation — chỉ push docs/superpowers/backend/ (tài liệu backend cần đọc)
-docs/bill/
+# Documentation — phần lớn tài liệu làm việc giữ ở máy.
+#
+# ⚠️ Bỏ chặn 2026-09-21: `docs/bill/` (CLAUDE.md viện dẫn BILL_DOCUMENTATION.md
+# như NGUỒN cho mọi việc hoá đơn) và `docs/superpowers/specs/` (13/24 spec đã
+# phải `add -f`, và hai spec CLAUDE.md gọi là "đã duyệt" thì chỉ có trên một
+# máy). Một luật mà người ta phải phá đều đặn là một luật sai.
+#
+# `plans/` thì GIỮ: người dùng chốt kế hoạch làm việc cá nhân không lên nhánh.
 docs/category/
 docs/deploy_Cloud/
 docs/superpowers/auth/
 docs/superpowers/client-app/
 docs/superpowers/plans/
-docs/superpowers/specs/
 docs/superpowers/sync/*
 # … trừ tài liệu tổng kết đồng bộ: nó mô tả hợp đồng giữa client và backend nên
 # phải đi theo repo (bỏ chặn 2026-09-14, theo yêu cầu của người dùng).
@@ -79,9 +84,18 @@ src/Backend/scripts/seed_roles.js
 plugins/
 src/Backend/prisma/migrations/
 
-# Test Suites (Local test scripts)
-Test/
-test/
+# Test Suites (Local test scripts) — CHỈ của backend.
+#
+# ⚠️ Trước 2026-09-21 hai dòng này là `Test/` và `test/` trần, và chúng chặn
+# luôn `src/Client-app/test/` — thư mục test DUY NHẤT thật sự tồn tại trong
+# repo. Hậu quả: mọi tệp test mới biến mất khỏi `git status` một cách im lặng,
+# phải nhớ `git add -f` từng tệp, và công cụ Grep mù với cả bộ test.
+#
+# ⚠️ Bỏ mỗi dòng `test/` là sửa mà KHÔNG có tác dụng: repo đặt
+# `core.ignorecase = true`, nên `Test/` cũng khớp `test/`. Đo bằng repo thử
+# 2026-09-21. Phải hẹp CẢ HAI, và đường dẫn đầy đủ dưới đây vẫn chặn đúng
+# `src/Backend/Test/` lẫn `src/Backend/test/` như cũ.
+src/Backend/Test/
 
 # Cấu hình cục bộ của AI assistant — không thuộc mã nguồn ứng dụng.
 # Đã từng bị đẩy nhầm lên (commit 5e7018b) rồi phải gỡ ra (0cbb7cd).

@@ -97,6 +97,8 @@ void main() {
 
   Future<void> chonDanhMuc(WidgetTester tester,
       {required String tab, required String name}) async {
+    // Thẻ form nằm trong vùng cuộn giữa số tiền và bàn phím neo đáy.
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tab));
@@ -116,23 +118,26 @@ void main() {
   }
 
   Future<void> luu(WidgetTester tester) async {
-    await tester.tap(find.text('Lưu giao dịch'));
+    // Phím ✓ là nút lưu từ 2026-09-19 (bàn phím neo đáy, Stitch `acf6f17e…`).
+    await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('chỉ còn hai loại: Giao dịch và Chuyển khoản', (tester) async {
+  testWidgets('ba đoạn Chi tiêu · Thu nhập · Chuyển khoản (theo Stitch)',
+      (tester) async {
     await tester.pumpWidget(app(
       categoryRepository: categories(),
       transactionRepository: FakeTransactionRepository(),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Giao dịch'), findsOneWidget);
+    // 2026-09-05 → 2026-09-19 thanh này chỉ có "Giao dịch / Chuyển khoản":
+    // đi lệch Stitch. Chiều tiền VẪN suy từ danh mục; đoạn Chi/Thu chỉ là
+    // lối vào (đặt tab bảng danh mục) — xem `add_transaction_bo_cuc_test`.
+    expect(find.text('Chi tiêu'), findsOneWidget);
+    expect(find.text('Thu nhập'), findsOneWidget);
     expect(find.text('Chuyển khoản'), findsOneWidget);
-    expect(find.text('Chi tiêu'), findsNothing,
-        reason: 'Chiều tiền nay suy từ danh mục, không còn là một loại.');
-    expect(find.text('Thu nhập'), findsNothing);
-    expect(find.byKey(const Key('transaction-type-2')), findsNothing);
+    expect(find.text('Giao dịch'), findsNothing);
   });
 
   testWidgets('danh mục vay/nợ hiện hàng Chiều tiền; danh mục chi thì không',
@@ -238,6 +243,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await chonDanhMuc(tester, tab: 'Vay / nợ', name: 'Đi vay');
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
 
@@ -255,7 +261,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('transaction-type-1')));
+    await tester.tap(find.byKey(const Key('transaction-type-transfer')));
     await tester.pumpAndSettle();
     expect(find.text('Ví nguồn (Từ ví)'), findsOneWidget);
     expect(find.text('Ví đích (Đến ví)'), findsOneWidget);
@@ -349,7 +355,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sửa giao dịch'), findsOneWidget);
-      expect(find.text('25.000đ'), findsOneWidget);
+      expect(find.text('25.000 đ'), findsOneWidget);
       expect(find.text('Ăn uống'), findsOneWidget);
       expect(find.textContaining('Ngân hàng'), findsOneWidget,
           reason: 'Ví phải là ví của giao dịch, không phải ví đầu danh sách.');

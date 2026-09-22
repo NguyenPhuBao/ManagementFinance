@@ -14,6 +14,7 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../database/daos/notification_dao.dart';
 import '../sync/sync_models.dart';
+import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
@@ -46,6 +47,20 @@ typedef WeekActivityLoader = Future<bool> Function(
   int idaccount,
   DateTime from,
   DateTime to,
+);
+
+/// Dựng kế hoạch tái phân bổ (tầng 2 Edge-SLM) cho loại thông báo
+/// `budgetRebalance`. `null` = không ngân sách nào thâm hụt đủ ngưỡng.
+///
+/// ⚠️ Nhận **[budgets] đã nạp** chứ không tự đi hỏi lại, khác mọi loader trên.
+/// Vòng quét vừa đọc đúng danh sách ấy cho bộ luật ngân sách, nên đọc lần thứ hai
+/// là hai **ảnh chụp khác nhau** của cùng dữ liệu — thông báo "dự kiến vượt" sẽ
+/// nói về một trạng thái khác với thông báo "sắp vượt" sinh cùng lượt, và cả hai
+/// đều trông hợp lý.
+typedef KeHoachTaiPhanBoLoader = Future<KeHoachTaiPhanBo?> Function(
+  int idaccount,
+  List<BudgetView> budgets,
+  DateTime now,
 );
 
 /// Nạp các giao dịch từ [from] trở đi để soi "khoản chi lớn" (#7,
@@ -95,6 +110,10 @@ class NotificationScanner {
   /// Bỏ trống thì luật **Khoản chi lớn** tắt hẳn — cùng khuôn với
   /// `loadWeekActivity`.
   final LargeExpenseLoader? loadChiLon;
+
+  /// Bỏ trống thì luật **Đề xuất cân đối ngân sách** tắt hẳn — cùng khuôn
+  /// với `loadChiLon`.
+  final KeHoachTaiPhanBoLoader? loadKeHoach;
 
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
@@ -189,6 +208,7 @@ class NotificationScanner {
     this.loadWallets,
     this.loadWeekActivity,
     this.loadChiLon,
+    this.loadKeHoach,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
@@ -368,6 +388,22 @@ class NotificationScanner {
         chiLon = await docChi(idaccount, at.subtract(cuaSoSuKien));
       }
 
+      // Cùng kỷ luật "chỉ hỏi khi có thể dùng tới", nhưng điều kiện là công tắc
+      // **nhóm** chứ không phải một ngưỡng riêng: loại này không có công tắc của
+      // riêng nó. Tắt nhóm Ngân sách thì ứng viên sẽ bị lọc bỏ ngay sau đây, nên
+      // dựng kế hoạch là trả giá một lượt đọc toàn bộ sổ giao dịch cho một kết
+      // quả chắc chắn bị vứt đi.
+      //
+      // Ngân sách rỗng cũng bỏ qua: `taiPhanBoCua` sẽ trả `null`, nhưng nguồn dữ
+      // liệu thì đã kịp đọc cả bảng giao dịch để tính thu nhập ba tháng.
+      KeHoachTaiPhanBo? keHoach;
+      final docKeHoach = loadKeHoach;
+      if (docKeHoach != null &&
+          budgets.isNotEmpty &&
+          prefs.chapNhan(NotificationKind.budgetRebalance)) {
+        keHoach = await docKeHoach(idaccount, budgets, at);
+      }
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -384,6 +420,7 @@ class NotificationScanner {
           tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
           chiLon: chiLon,
           nguongChiLon: prefs.nguongChiLon,
+          keHoachTaiPhanBo: keHoach,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông

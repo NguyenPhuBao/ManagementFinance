@@ -12,6 +12,8 @@ import '../widgets/bill_status_header.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
+import '../../../ai_edge/domain/goi_so_hoa_don.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../domain/bill_status.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
@@ -76,7 +78,8 @@ class _BillPageState extends State<BillPage> {
   Future<void> _napTenGoi(int accountId) async {
     final db = sl<AppDatabase>();
     final vi = await db.walletDao.getAll(accountId);
-    final dm = await db.categoryDao.getAll(accountId);
+    // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
+    final dm = await db.categoryDao.getBangTraTen(accountId);
     if (!mounted) return;
     setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
   }
@@ -106,6 +109,7 @@ class _BillPageState extends State<BillPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -164,6 +168,17 @@ class _BillPageState extends State<BillPage> {
                           progress: state.summary.progress,
                         ),
                       ),
+                      // Khối Nhận xét (Edge-SLM, chặng 1.3) — màn Stitch
+                      // `179dbd70…`: đứng GIỮA thẻ tổng quan và hàng tab, vì
+                      // nó nói về **cả kỳ**, đúng phạm vi thẻ ngay trên nó.
+                      // Đặt dưới hàng tab là nó rơi vào một trong hai danh
+                      // sách và trông như nhận xét riêng của tab ấy.
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: KhoiNhanXet(
+                          goi: GoiSoHoaDon.tu(state.bills, now: now),
+                        ),
+                      ),
                       TabBar(
                         labelColor: AppColors.primary,
                         unselectedLabelColor: AppColors.textSecondary,
@@ -185,7 +200,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.chuaDong,
                               now: now,
-                                                            dateFormatter: dateFormatter,
+                              dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
                               payments: state.payments,
                             ),
@@ -193,7 +208,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.daDong,
                               now: now,
-                                                            dateFormatter: dateFormatter,
+                              dateFormatter: dateFormatter,
                               khiTrong: 'Chưa có kỳ nào đã đóng.',
                               payments: state.payments,
                             ),
@@ -229,18 +244,25 @@ class _BillPageState extends State<BillPage> {
     required Map<String, Transaction> payments,
   }) {
     if (bills.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
-        child: Column(
-          children: [
-            Text(
-              khiTrong,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            _buildDecorativeIllustration(),
-          ],
+      // ⚠️ Cuộn được, dù nội dung ngắn: khối này nằm trong `Expanded` nên
+      // chiều cao của nó là **phần còn lại của màn**, không phải chiều cao tự
+      // nhiên. Bản trước là `Padding` + `Column` trần và tràn 73 px ngay khi
+      // khối Nhận xét (chặng 1.3) lấy bớt chỗ ở khổ màn thấp. Máy cao thì
+      // không thấy gì đổi.
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+          child: Column(
+            children: [
+              Text(
+                khiTrong,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              _buildDecorativeIllustration(),
+            ],
+          ),
         ),
       );
     }
@@ -346,6 +368,11 @@ class _BillPageState extends State<BillPage> {
               const SizedBox(height: 4),
               Text(
                 totalAmountStr,
+                // Khoá để ca test trỏ đúng con số của THẺ TỔNG. Từ chặng 1.3,
+                // khối Nhận xét ngay dưới nhắc lại cùng con số ấy trong câu và
+                // trong thẻ số liệu, nên `find.textContaining` không còn phân
+                // biệt được ba chỗ.
+                key: const ValueKey('bill-tong-con-phai-tra'),
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -521,8 +548,7 @@ class _BillPageState extends State<BillPage> {
                           if (daBoQua)
                             TextButton.icon(
                               key: ValueKey('bill-undo-skip-${bill.id}'),
-                              onPressed: () =>
-                                  hoiHoanTacBoQua(context, bill),
+                              onPressed: () => hoiHoanTacBoQua(context, bill),
                               icon: const Icon(Icons.undo, size: 16),
                               label: const FittedBox(
                                 fit: BoxFit.scaleDown,

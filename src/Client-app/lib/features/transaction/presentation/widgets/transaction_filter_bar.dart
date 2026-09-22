@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/khoang_tien.dart';
 import '../../domain/transaction_filter.dart';
 import '../../domain/transaction_lookup.dart';
+import 'chon_khoang_tien_sheet.dart';
 
 /// Thanh lọc của sổ giao dịch: ô tìm theo ghi chú, chip loại, chip ví, chip
 /// danh mục và nút xoá lọc.
@@ -101,6 +103,17 @@ class _TransactionFilterBarState extends State<TransactionFilterBar> {
     widget.onChanged(_filter.copyWith(categoryId: category.id));
   }
 
+  Future<void> _pickKhoangTien() async {
+    final chon = await moChonKhoangTien(context, hienTai: _filter.khoangTien);
+    // `null` = đóng sheet mà không chọn — giữ nguyên bộ lọc đang có.
+    if (chon == null) return;
+    // Khoảng RỖNG = người dùng chủ động bỏ lọc. Hai ý khác nhau, gộp lại là
+    // bấm ra ngoài sheet cũng xoá mất bộ lọc.
+    widget.onChanged(chon.rong
+        ? _filter.copyWith(clearKhoangTien: true)
+        : _filter.copyWith(khoangTien: chon));
+  }
+
   @override
   Widget build(BuildContext context) {
     final walletId = _filter.walletId;
@@ -121,6 +134,7 @@ class _TransactionFilterBarState extends State<TransactionFilterBar> {
               suffixIcon: _filter.query.isEmpty
                   ? null
                   : IconButton(
+                    tooltip: 'Đóng',
                       icon: const Icon(Icons.close, size: 18),
                       onPressed: () =>
                           widget.onChanged(_filter.copyWith(query: '')),
@@ -169,6 +183,16 @@ class _TransactionFilterBarState extends State<TransactionFilterBar> {
                           'Danh mục'),
                   selected: categoryId != null,
                   onTap: _pickCategory,
+                ),
+                const SizedBox(width: 8),
+                _chip(
+                  key: const Key('filter-khoang-tien'),
+                  icon: Icons.payments_outlined,
+                  // Nhãn dựng ở tầng thuần (`nhanKhoangTien`) để test được —
+                  // tầng vẽ không test được bề rộng thật (bẫy 4.9).
+                  label: nhanKhoangTien(_filter.khoangTien),
+                  selected: _filter.khoangTien != null,
+                  onTap: _pickKhoangTien,
                 ),
                 if (_filter.isActive) ...[
                   const SizedBox(width: 4),

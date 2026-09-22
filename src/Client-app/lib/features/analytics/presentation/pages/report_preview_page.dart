@@ -49,6 +49,7 @@ class ReportPreviewPage extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -71,7 +72,9 @@ class ReportPreviewPage extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           _baThe(),
-          if (baoCao.rong) ...[
+          // Cùng vị từ với tệp xuất (`xuat_tep.dart`) — hai bên từng nói khác
+          // nhau đúng ở khối Ngân sách, G44.
+          if (!inKhoiTheoKy(baoCao)) ...[
             const SizedBox(height: 16),
             _khiRong(),
           ] else ...[
@@ -381,9 +384,8 @@ class ReportPreviewPage extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
                       child: Text(
-                        dt.thayDoi >= 0
-                            ? CurrencyFormatter.formatIncome(dt.thayDoi)
-                            : CurrencyFormatter.formatExpense(dt.thayDoi),
+                        CurrencyFormatter.formatCoDau(dt.thayDoi,
+                            thu: dt.thayDoi >= 0),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -1088,9 +1090,7 @@ class ReportPreviewPage extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text(
-                laThu
-                    ? CurrencyFormatter.formatIncome(d.soTien)
-                    : CurrencyFormatter.formatExpense(d.soTien),
+                CurrencyFormatter.formatCoDau(d.soTien, thu: laThu),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

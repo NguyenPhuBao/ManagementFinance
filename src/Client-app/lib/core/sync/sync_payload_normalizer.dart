@@ -100,7 +100,28 @@ class SyncPayloadNormalizer {
     // này; đo lại cùng ngày: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`.
     normalized['status'] =
         WalletStatus.tuKhoa(normalized['status']?.toString()).khoaGuiLen;
+    // Cột thứ BA có ràng buộc kiểm tra, và là cột cuối cùng còn bỏ ngỏ tới
+    // 2026-09-18: `chk_wallet_currency` chỉ nhận `'VND'` và `'USD'`. Hai cột
+    // trên đã có lớp này sau khi mỗi cột làm ví **kẹt hàng đợi đẩy vĩnh viễn**
+    // một lần (`ewallet`/`debt` ở `type`, `'Inactive'` ở `status`); cột này
+    // chịu đúng một kiểu ràng buộc mà chưa từng được che.
+    //
+    // Chưa có màn nào cho đổi tiền tệ nên chưa có đường sinh giá trị lạ — đây
+    // là lớp phòng thủ đặt trước, vì `WalletRepositoryImpl.addWallet` nhận
+    // `currency` như một tham số thường và chỗ gọi tiếp theo là đủ để mở lại
+    // vòng lặp ấy.
+    normalized['currency'] = tienTeGuiLen(normalized['currency']?.toString());
     return normalized;
+  }
+
+  /// Mã tiền tệ hợp lệ với `chk_wallet_currency`, từ một giá trị bất kỳ.
+  ///
+  /// Chữ thường được **nâng lên** chứ không gộp mù về `VND`: `'usd'` rõ ràng là
+  /// `USD`, và gộp nó thành `VND` sẽ đổi ý nghĩa số dư của một ví. Mọi thứ
+  /// không nhận ra được mới về `VND` — mặc định của cột trên server.
+  static String tienTeGuiLen(String? raw) {
+    final khoa = raw?.trim().toUpperCase();
+    return (khoa == 'USD' || khoa == 'VND') ? khoa! : 'VND';
   }
 
   static Map<String, dynamic> categoryForPush(Map<String, dynamic> payload) {

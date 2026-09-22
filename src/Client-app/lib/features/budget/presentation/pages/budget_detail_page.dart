@@ -62,7 +62,8 @@ class _BudgetDetailContent extends StatelessWidget {
                     expired: state.expired, budget: state.view.budget)
                 ? null
                 : () => context.push('/budget/rules?id=$budgetId'),
-            onTapTransaction: (tx) => _showTransaction(context, tx, state.lookup),
+            onTapTransaction: (tx) =>
+                _showTransaction(context, tx, state.lookup),
           ),
         BudgetDetailError(:final message) => Scaffold(
             backgroundColor: AppColors.background,

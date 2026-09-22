@@ -43,6 +43,27 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (await q.getSingle()).read(moc);
   }
 
+  /// Mốc giao dịch **sớm nhất** của tài khoản — tức **tuổi dữ liệu**.
+  ///
+  /// Là mẫu số của `cuaSoNhinLai` (`features/budget/domain/cua_so_nhin_lai.dart`):
+  /// mọi con số "trung bình mỗi tháng" trong app chia cho số ngày mà cửa sổ ấy
+  /// trả về. `null` = tài khoản chưa có giao dịch nào, và bên kia đọc nó là
+  /// *chưa đủ để nói*.
+  ///
+  /// ⚠️ Chỉ khác [getLastTransactionDate] đúng một chữ `min`/`max`, nên rất dễ
+  /// lẫn — mà lấy nhầm đầu kia thì mẫu số teo lại và mọi mức tháng phồng lên.
+  ///
+  /// ⚠️ Bỏ hàng đã xoá mềm: để chúng làm mốc là kéo dài mẫu số bằng dữ liệu
+  /// người dùng đã bỏ đi, và mọi mức tháng nhỏ đi một cách im lặng.
+  Future<DateTime?> getFirstTransactionDate(int idaccount) async {
+    final moc = transactions.date.min();
+    final q = selectOnly(transactions)
+      ..addColumns([moc])
+      ..where(transactions.idaccount.equals(idaccount) &
+          transactions.deletedAt.isNull());
+    return (await q.getSingle()).read(moc);
+  }
+
   /// Stream theo dõi realtime theo idaccount
   Stream<List<Transaction>> watchAll(int idaccount) {
     return (select(transactions)
@@ -98,13 +119,41 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
-  /// Lọc theo ví
+  /// Lọc theo ví — **chỉ ví NGUỒN**, tức cột `walletId`.
+  ///
+  /// ⚠️ Cố ý không đếm khoản chuyển *đến* ví này: chúng nằm ở cột
+  /// `walletTransfer`. Chỗ nào cần câu hỏi "ví này có dính giao dịch nào không"
+  /// thì dùng [demGiaoDichLienQuan]; nhầm hai hàm là chỗ đã sinh ra một lỗ hổng
+  /// thật (xem chú thích của hàm ấy).
   Future<List<Transaction>> getByWallet(String walletId) {
     return (select(transactions)
           ..where(
               (t) => t.walletId.equals(walletId) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .get();
+  }
+
+  /// Số giao dịch còn sống **dính tới** [walletId] theo bất kỳ vai nào: ví
+  /// nguồn (`walletId`) **hoặc** ví đích của khoản chuyển (`walletTransfer`).
+  ///
+  /// Sinh ra ngày 2026-09-18 cho chốt xoá ví. Trước đó chốt ấy hỏi qua
+  /// [getByWallet], hàm chỉ nhìn cột `walletId` — nên một ví **chỉ nhận tiền
+  /// chuyển vào**, chưa từng chi gì, bị coi là "chưa có giao dịch" và **xoá
+  /// được**. Điều đó đi ngược chính lời hứa "bảo toàn lịch sử tài chính" mà
+  /// thông báo của chốt ấy nói ra, và hỏng **im lặng**: ví biến mất, còn khoản
+  /// chuyển thì ở lại trỏ vào một ví không còn trong danh sách nào.
+  ///
+  /// Đếm chứ không trả danh sách: chỗ gọi chỉ cần biết *có hay không*, và một
+  /// ví dùng lâu năm có thể mang hàng nghìn hàng.
+  Future<int> demGiaoDichLienQuan(String walletId) async {
+    final bien = countAll();
+    final q = selectOnly(transactions)
+      ..addColumns([bien])
+      ..where((transactions.walletId.equals(walletId) |
+              transactions.walletTransfer.equals(walletId)) &
+          transactions.deletedAt.isNull());
+    final row = await q.getSingle();
+    return row.read(bien) ?? 0;
   }
 
   /// Lọc theo khoảng thời gian
@@ -130,16 +179,28 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return getByDateRange(idaccount, from, to);
   }
 
-  /// Stream lọc theo tháng realtime
-  Stream<List<Transaction>> watchByMonth(int idaccount, int year, int month) {
-    final from = DateTime(year, month, 1);
-    final to = DateTime(year, month + 1, 0, 23, 59, 59);
+  /// Stream giao dịch của một tài khoản trong khoảng `[from, to)`, mới nhất
+  /// trước.
+  ///
+  /// ⚠️ Biên `to` **MỞ**, cùng quy ước với `tuanTruoc` và `tongThuChi` ngay dưới
+  /// đây. Hàm này **thay** `watchByMonth` ngày 2026-09-21, khi trang Sổ giao
+  /// dịch bỏ phép buộc-theo-tháng để xem được theo tuần/quý/năm/khoảng tuỳ chọn.
+  ///
+  /// Bản cũ dùng biên ĐÓNG (`isSmallerOrEqualValue` với `to` đặt ở 23:59:59
+  /// ngày cuối tháng). Giữ lại cả hai là để **hai quy ước biên** sống chung
+  /// trong một DAO, và khi ấy một khoản ghi đúng mốc giao giữa hai kỳ bị đếm
+  /// vào **cả hai** — không exception, chỉ là một con số lớn hơn thực tế.
+  Stream<List<Transaction>> watchKhoang(
+    int idaccount,
+    DateTime from,
+    DateTime to,
+  ) {
     return (select(transactions)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
-              t.date.isSmallerOrEqualValue(to))
+              t.date.isSmallerThanValue(to))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
   }

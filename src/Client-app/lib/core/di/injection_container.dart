@@ -29,6 +29,8 @@ import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
+import '../../features/ai_edge/domain/tai_phan_bo.dart';
+import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
 import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
@@ -52,6 +54,7 @@ import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
+import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
@@ -237,8 +240,19 @@ Future<void> setupDependencies() async {
     ),
   );
   // Factory: mỗi trang một cubit, tự huỷ khi trang đóng.
+  // Nguồn dữ liệu Tầng 2 tái phân bổ (Edge-SLM P2) — trang Ngân sách và bộ quét
+  // thông báo dùng chung, để thẻ trên màn và thông báo không nói hai chuyện.
+  sl.registerLazySingleton<TaiPhanBoNguon>(
+    () => TaiPhanBoNguonImpl(
+      db: sl<AppDatabase>(),
+      budgets: sl<BudgetRepository>(),
+    ),
+  );
   sl.registerFactory<BudgetCubit>(
-    () => BudgetCubit(repository: sl<BudgetRepository>()),
+    () => BudgetCubit(
+      repository: sl<BudgetRepository>(),
+      taiPhanBoNguon: sl<TaiPhanBoNguon>(),
+    ),
   );
   sl.registerFactory<BudgetDetailCubit>(
     () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
@@ -275,6 +289,9 @@ Future<void> setupDependencies() async {
   // phản ứng ngay với cú nhấp nháy đầu tiên; dải báo hỏi "có đáng nói với
   // người dùng không" và phải chờ trạng thái ổn định.
   sl.registerLazySingleton<ConnectionMonitor>(() => ConnectionMonitor());
+
+  // Kênh thông báo tự do một dòng cho AppToast (2026-09-19, E3 của lượt UX).
+  sl.registerLazySingleton<ThongBaoNhanh>(() => ThongBaoNhanh());
 
   // Kênh thời gian thực. Cũng tách khỏi SyncEngine, và cũng vì hai câu hỏi
   // khác nhau: SyncEngine hỏi "khi nào thì đồng bộ", kênh này chỉ thuật lại
@@ -391,6 +408,30 @@ Future<void> setupDependencies() async {
               tenDanhMuc: t.categoryId == null ? null : ten[t.categoryId],
             ),
         ];
+      },
+      // Đề xuất cân đối ngân sách (Edge-SLM P2). Dùng **đúng** `TaiPhanBoNguon`
+      // + `taiPhanBoCua` mà `BudgetCubit` dùng — một định nghĩa duy nhất. Một
+      // phép tính riêng ở đây là bản thứ hai của luật 39 điều, và hai bản sẽ nói
+      // hai chuyện khác nhau: thông báo bảo "Ăn uống dự kiến vượt" còn thẻ trên
+      // trang lại nói về "Mua sắm", im lặng.
+      //
+      // `budgets` đến từ chính lượt quét đang chạy chứ không đọc lại — xem
+      // `KeHoachTaiPhanBoLoader`.
+      loadKeHoach: (idaccount, budgets, now) async {
+        final dangChay = [
+          for (final v in budgets)
+            if (!v.budget.isExpired(now)) v,
+        ];
+        if (dangChay.isEmpty) return null;
+        final d = await sl<TaiPhanBoNguon>().nap(idaccount, dangChay, now);
+        return taiPhanBoCua(
+          dangChay: dangChay,
+          now: now,
+          coDinh: d.coDinh,
+          thuNhapMoiThang: d.thuNhapMoiThang,
+          mucThangTheoNganSach: d.mucThangTheoNganSach,
+          phanHoi: d.phanHoi,
+        );
       },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),

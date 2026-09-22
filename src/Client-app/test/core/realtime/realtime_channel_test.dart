@@ -192,14 +192,13 @@ void main() {
     await kenh.stop();
   });
 
-  test('bốn sự kiện có thật được phát ra thành RealtimeEvent', () async {
+  test('ba sự kiện client quan tâm được phát ra thành RealtimeEvent', () async {
     final kenh = dungKenh();
     final thay = <RealtimeEvent>[];
     final sub = kenh.events.listen(thay.add);
     await kenh.start(idaccount: 10);
 
     daTao.single
-      ..banSuKien('bank_transaction.incoming', {'amount': 500000})
       ..banSuKien('ocr.completed', {'total_amount': 1})
       ..banSuKien('ocr.duplicate', {'error': 'trùng'})
       // Hình dạng thật của backend (`core/socket.js` emitSyncCompleted):
@@ -211,7 +210,6 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(thay, [
-      RealtimeEvent.giaoDichNganHang,
       RealtimeEvent.ocrXong,
       RealtimeEvent.ocrTrung,
       RealtimeEvent.dongBoXong,
@@ -230,12 +228,17 @@ void main() {
     daTao.single
       ..banSuKien('notification.new', {})
       ..banSuKien('audit_activity', {})
+      // Sự kiện CÓ THẬT của backend, nhưng liên kết ngân hàng đã bị bỏ khỏi
+      // sản phẩm ngày 2026-09-18. Máy chủ vẫn phát nó, nên đây là ca thật chứ
+      // không phải giả định.
+      ..banSuKien('bank_transaction.incoming', {'amount': 500000})
       ..banSuKien('linh tinh', null);
     await Future<void>.delayed(Duration.zero);
 
     expect(thay, isEmpty,
-        reason: 'Backend thêm sự kiện mới không được làm vỡ bản client đang '
-            'chạy trên máy người dùng.');
+        reason: 'Backend thêm sự kiện mới — hoặc giữ một sự kiện client đã '
+            'thôi quan tâm — không được làm vỡ bản client đang chạy trên máy '
+            'người dùng.');
 
     await sub.cancel();
     await kenh.stop();
@@ -249,7 +252,7 @@ void main() {
     await kenh.start(idaccount: 10);
 
     daTao.single
-      ..banSuKien('bank_transaction.incoming', null)
+      ..banSuKien('sync.completed', null)
       ..banSuKien('ocr.completed', 'chuỗi chứ không phải map')
       ..banSuKien('ocr.duplicate', <dynamic>[1, 2, 3]);
     await Future<void>.delayed(Duration.zero);
@@ -271,7 +274,7 @@ void main() {
     final socket = daTao.single;
 
     await kenh.stop();
-    socket.banSuKien('bank_transaction.incoming', {});
+    socket.banSuKien('ocr.completed', {});
     await Future<void>.delayed(Duration.zero);
 
     expect(socket.daDispose, isTrue,

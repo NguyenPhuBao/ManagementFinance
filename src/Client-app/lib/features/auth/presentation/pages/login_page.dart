@@ -241,6 +241,7 @@ class _LoginPageState extends State<LoginPage> {
                                             Icons.lock_outline,
                                             color: AppColors.outline),
                                         suffixIcon: IconButton(
+                                          tooltip: 'Hiện / ẩn mật khẩu',
                                           icon: Icon(
                                             _obscurePassword
                                                 ? Icons.visibility

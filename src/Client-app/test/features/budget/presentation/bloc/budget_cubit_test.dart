@@ -22,6 +22,11 @@ import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 class _FakeRepository implements BudgetRepository {
   final List<String> calls = [];
   List<BudgetView> budgets = const [];
+
+  /// Danh mục chi mà `getExpenseCategories` trả về, và mức tháng gợi ý cho
+  /// từng danh mục — hai thứ nuôi thẻ "Chưa đặt ngân sách".
+  List<Category> categories = const [];
+  Map<String, double?> goiY = const {};
   Object? throwOnAdd;
 
   @override
@@ -82,7 +87,7 @@ class _FakeRepository implements BudgetRepository {
   @override
   Future<List<Category>> getExpenseCategories(int idaccount) async {
     calls.add('getExpenseCategories($idaccount)');
-    return const [];
+    return categories;
   }
 
   @override
@@ -127,8 +132,27 @@ class _FakeRepository implements BudgetRepository {
     DateTime? now,
   }) async {
     calls.add('suggestAmount($idaccount, $categoryId)');
-    return null;
+    return goiY[categoryId];
   }
+
+  @override
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async {
+    calls.add('soNgayCuaSoNhinLai($idaccount)');
+    return soNgayCuaSo;
+  }
+
+  /// Độ dài cửa sổ nhìn lại mà lớp giả này trả về. `null` = tài khoản chưa đủ
+  /// dữ liệu, và khi ấy thẻ đề xuất phải im hẳn.
+  int? soNgayCuaSo;
+
+  @override
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now}) async {
+    calls.add('soNgayCoDuLieu($idaccount)');
+    return soNgayCoDuLieuTra;
+  }
+
+  /// Tuổi dữ liệu mà lớp giả trả về. `null` = chưa có giao dịch.
+  int? soNgayCoDuLieuTra;
 }
 
 /// Đồng hồ đóng băng của bộ test này. Việc phân tab hỏi "hết hạn chưa", nên để
@@ -195,6 +219,98 @@ void main() {
       await cubit.loadEditor(null);
       expect(cubit.state, isA<BudgetError>());
       expect(repo.calls, isEmpty);
+    });
+  });
+
+  group('Đề xuất tạo ngân sách', () {
+    Category cat(String id, String ten) => Category(
+          id: id,
+          idaccount: 7,
+          name: ten,
+          classify: 'chi',
+          isDefault: false,
+          isGroup: false,
+          aiCoDinh: false,
+          icon: '',
+          colour: '',
+          isLocalOnly: false,
+          syncStatus: 'synced',
+          syncRetryCount: 0,
+          updatedAt: _bayGio,
+          isDeleted: false,
+        );
+
+    void dungDuLieu() {
+      repo.soNgayCuaSo = 20;
+      repo.categories = [cat('an', 'Ăn uống'), cat('giaitri', 'Giải trí')];
+      repo.goiY = const {'an': 500000, 'giaitri': 300000};
+    }
+
+    test('⚠️ vẫn tính khi cubit KHÔNG có nguồn Tầng 2', () async {
+      dungDuLieu();
+
+      await cubit.loadBudgets(7);
+
+      final s = cubit.state as BudgetLoaded;
+      expect(
+        s.deXuat?.ds.map((d) => d.categoryId).toList(),
+        ['an', 'giaitri'],
+        reason: '`_phat` THOÁT SỚM khi `taiPhanBoNguon == null` — đường của '
+            'test cũ và của mọi chỗ không nối nguồn Tầng 2. Tính đề xuất sau '
+            'phép rẽ nhánh ấy là để thẻ KHÔNG BAO GIỜ hiện ở những chỗ đó, và '
+            'hỏng im lặng vì một thẻ không hiện trông y hệt một thẻ không có '
+            'gì để nói',
+      );
+      expect(s.deXuat?.soNgayCuaSo, 20);
+    });
+
+    test('tài khoản 10 ngày tuổi: không đề xuất, nhưng NÓI thiếu 4 ngày',
+        () async {
+      repo.soNgayCuaSo = null; // cửa sổ chưa mở
+      repo.soNgayCoDuLieuTra = 10;
+
+      await cubit.loadBudgets(7);
+
+      final s = cubit.state as BudgetLoaded;
+      expect(s.deXuat, isNull);
+      expect(s.soNgayConThieu, 4,
+          reason: 'im lặng ở đây chính là thứ đã che suggestAmount chết hai tuần');
+    });
+
+    test('có đề xuất thì KHÔNG hỏi tuổi dữ liệu', () async {
+      dungDuLieu();
+      repo.soNgayCoDuLieuTra = 20;
+
+      await cubit.loadBudgets(7);
+
+      expect(repo.calls, isNot(contains('soNgayCoDuLieu(7)')),
+          reason: 'một phép đọc thừa ở mỗi lần phát lại stream');
+      expect((cubit.state as BudgetLoaded).soNgayConThieu, isNull);
+    });
+
+    test('danh mục đã có ngân sách thì không được gợi ý lại', () async {
+      dungDuLieu();
+      repo.budgets = [_view(id: 'b1')];
+
+      await cubit.loadBudgets(7);
+
+      final s = cubit.state as BudgetLoaded;
+      expect(s.deXuat, isNotNull,
+          reason: 'ĐÒI KẾT QUẢ: ngân sách b1 không gắn danh mục nào nên hai '
+              'ứng viên vẫn còn nguyên');
+      expect(s.deXuat!.ds, hasLength(2));
+    });
+
+    test('tài khoản chưa đủ dữ liệu thì không gợi ý gì', () async {
+      dungDuLieu();
+      repo.soNgayCuaSo = null;
+
+      await cubit.loadBudgets(7);
+
+      final s = cubit.state as BudgetLoaded;
+      expect(s.deXuat, isNull);
+      expect(repo.calls, isNot(contains('suggestAmount(7, an)')),
+          reason: 'cửa sổ im thì thôi hỏi luôn — mỗi lời gọi là một truy vấn');
     });
   });
 
@@ -345,6 +461,28 @@ void main() {
       expect(cubit.state, isA<BudgetError>(),
           reason: 'Form trống sẽ dụ người dùng nhập lại rồi bấm Lưu, và thay '
               'đổi đó không gắn vào bản ghi nào.');
+    });
+
+    test('mang theo độ dài cửa sổ để nhãn gợi ý nói ra được', () async {
+      repo.soNgayCuaSo = 20;
+
+      await cubit.loadEditor(7);
+
+      expect((cubit.state as BudgetEditorReady).soNgayCuaSo, 20,
+          reason: 'thiếu vế này thì nhãn form im vế "suy từ N ngày" trên mọi '
+              'tài khoản, **im lặng** — trông y hặt một cửa sổ đã đủ 90 ngày');
+    });
+
+    test('phép đo độ dài cửa sổ im thì form vẫn mở', () async {
+      repo.soNgayCuaSo = null;
+
+      await cubit.loadEditor(7);
+
+      final state = cubit.state as BudgetEditorReady;
+      expect(state.soNgayCuaSo, isNull);
+      expect(state.isCreating, isTrue,
+          reason: 'ĐÒI KẾT QUẢ: số ngày là phần phụ của nhãn, không được '
+              'phép đổi cả form thành một màn lỗi');
     });
 
     test('mở ngân sách có thật thì nạp đúng bản ghi', () async {

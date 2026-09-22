@@ -33,6 +33,14 @@ thông báo như thế chỉ có giá trị bằng đúng cái màn hình nó m�
 
 Không có chỗ nào trong app xem được **một tuần**.
 
+> ⚠️ **Bảng trên là ảnh chụp ngày 2026-09-07 và cả ba dòng đầu nay đã lỗi thời** —
+> giữ nguyên vì nó ghi lại *vì sao* thông báo Tổng kết tuần ra đời. Hiện trạng:
+> `/analytics` đọc dữ liệu thật và xem được **tuần · tháng · quý · năm · khoảng tuỳ
+> chọn** từ 2026-09-15 (P1, mục **3.20** `ANALYTICS_FEATURE.md`); `/transactions`
+> thôi khoá theo tháng từ 2026-09-21 và dùng **chung** bộ chọn kỳ ấy, nên
+> `_selectedMonthDate` không còn tồn tại. Câu *"không có chỗ nào trong app xem được
+> một tuần"* vì thế **hết hiệu lực từ 2026-09-15**.
+
 Người dùng đã quyết (2026-09-07): **chuẩn bị tài liệu, làm sau, khi phần thống
 kê/báo cáo đã có thật.**
 
@@ -43,6 +51,11 @@ kê/báo cáo đã có thật.**
   hai tháng** (thứ Hai 29/06 → Chủ nhật 05/07) thì họ chỉ thấy một nửa, mà
   không có gì trên màn hình nói cho họ biết là đang thiếu. Một lời mời dẫn tới
   chỗ sai còn hại hơn không mời.
+  > ⚠️ **Lý lẽ này hết hiệu lực từ 2026-09-21.** Trang Sổ giao dịch nay xem được
+  > **theo tuần** bằng chính bộ chọn kỳ của trang Phân tích, nên tuần vừa kết thúc
+  > không còn "nằm lẫn trong tháng" và tuần vắt qua hai tháng hiện đủ. Phương án bị
+  > loại vì một trở ngại **nay không còn** — nếu có ai xem lại deeplink của thông báo
+  > Tổng kết tuần thì đây là chỗ phải đọc trước. *(Chưa xem lại; ghi để không mất dấu.)*
 - **Trỏ vào `/home`.** Thật nhưng nhạt: chạm vào thông báo rồi quay về đúng chỗ
   vừa đứng thì gần như không đi đâu cả.
 - **Nối trang Phân tích vào dữ liệu thật trước.** Đúng chỗ đáng lẽ phải đến,
@@ -253,5 +266,5 @@ Ba việc kiểm trên máy ảo của cùng phiên (`khoaNhom`, thông báo khi
 hoàn toàn, giờ im lặng) nằm ở `docs/NOTIFICATION_FEATURE.md` mục 5c và mục 8,
 không liên quan tới tài liệu này.
 
-⚠️ Thư mục `docs/superpowers/specs/` bị `.gitignore` **dòng 67** chặn — tệp này
-phải `git add -f`, nếu không nó biến mất âm thầm.
+✅ **HẾT HIỆU LỰC 2026-09-21** — luật `docs/superpowers/specs/` đã bỏ khỏi
+`.gitignore`, mọi spec nay đi theo repo như tài liệu bình thường.

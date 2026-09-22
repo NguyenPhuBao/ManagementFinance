@@ -49,6 +49,60 @@ abstract final class DoRongCot {
   static const int tenDanhMuc = 200;
 }
 
+/// Số chữ số phần nguyên tối đa cho một ô nhập tiền.
+///
+/// `wallet."Balance"` là **`numeric(15,2)`** (đo 2026-09-18): 15 chữ số tổng,
+/// hai trong đó dành cho phần thập phân, nên phần nguyên còn **13**.
+///
+/// ## Vì sao phải chặn ở ô nhập
+///
+/// Cùng một lớp lỗi với G31 nhưng ở cột kiểu số. Tràn `numeric` cho SQLSTATE
+/// **`22003`**, mà `sync.service.js` không có nhánh nào cho mã ấy — nó rơi về
+/// `DB_ERROR`. Danh sách lỗi vĩnh viễn của `SyncEngine` là danh sách **trắng**,
+/// và `DB_ERROR` không nằm trong đó, nên ví bị **gửi lại ở mọi chu kỳ đồng
+/// bộ**: không lỗi, không log, chỉ một hàng đợi càng lúc càng chậm. Đúng vòng
+/// lặp mà G31 và G14 sinh ra để chặn.
+///
+/// Với tiền Việt, 13 chữ số là gần mười nghìn tỷ đồng — xa hơn mọi số dư thật,
+/// nên giới hạn này chỉ chạm tới khi người dùng gõ nhầm (giữ phím 0).
+const int kSoChuSoToiDaSoTien = 13;
+
+/// Bộ lọc ô nhập tiền: không cho vượt [toiDa] **chữ số**.
+///
+/// Khác [GioiHanDoRong] ở chỗ nó đếm **chữ số**, không đếm ký tự: ô số dư tự
+/// chèn dấu chấm ngăn nghìn sau mỗi lần gõ, nên đếm cả dấu chấm sẽ chặn sớm hơn
+/// thật khoảng một phần tư.
+///
+/// Đặt **sau** `FilteringTextInputFormatter.digitsOnly` trong danh sách
+/// `inputFormatters` — tuy phép đếm ở đây tự bỏ mọi ký tự không phải chữ số nên
+/// thứ tự không đổi kết quả.
+class GioiHanSoChuSo extends TextInputFormatter {
+  const GioiHanSoChuSo(this.toiDa);
+
+  final int toiDa;
+
+  static int _demChuSo(String s) {
+    var n = 0;
+    for (final ma in s.codeUnits) {
+      // '0' = 48, '9' = 57.
+      if (ma >= 48 && ma <= 57) n++;
+    }
+    return n;
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (_demChuSo(newValue.text) <= toiDa) return newValue;
+    // Đã đủ mà gõ thêm thì giữ nguyên chuỗi cũ thay vì cắt đuôi — cùng cách xử
+    // lý với `GioiHanDoRong`, vì con trỏ có thể đang ở giữa và cắt đuôi là xoá
+    // chữ số người dùng không đụng tới.
+    return oldValue;
+  }
+}
+
 /// Phần đầu dài nhất của [chuoi] có tổng số code point không quá [toiDa].
 ///
 /// Cắt theo **trọn cụm grapheme**: không bao giờ để lại nửa emoji hay một chữ

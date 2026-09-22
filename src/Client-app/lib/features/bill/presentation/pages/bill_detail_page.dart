@@ -79,7 +79,10 @@ class _BillDetailPageState extends State<BillDetailPage> {
       tatCa = await db.billDao.getAll(accountId);
       khoanChi = await db.transactionDao.getBillPayments(accountId);
       final vi = await db.walletDao.getAll(accountId);
-      final dm = await db.categoryDao.getAll(accountId);
+      // Bảng TRA TÊN, không phải danh sách để chọn: giữ hàng mặc định toàn cục
+      // (idaccount = 0) và hàng đã xoá mềm — cùng lỗi G41, lộ ở hoá đơn ngày
+      // 2026-09-19 (E8): `getAll` làm 2/3 thẻ hiện "Danh mục đã xoá".
+      final dm = await db.categoryDao.getBangTraTen(accountId);
       lookup = TransactionLookup(wallets: vi, categories: dm);
     }
     if (!mounted) return;

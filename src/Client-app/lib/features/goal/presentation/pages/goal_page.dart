@@ -8,6 +8,8 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
+import '../../../ai_edge/domain/goi_so_muc_tieu.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../widgets/goal_appearance.dart';
 import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
@@ -147,6 +149,7 @@ class _GoalPageContent extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -200,7 +203,11 @@ class _GoalPageContent extends StatelessWidget {
                   : 'Hãy tạo mục tiêu đầu tiên để theo dõi tiến độ tích lũy '
                       'tài chính của bạn!',
             )
-          else
+          else ...[
+            // Khối Nhận xét (Edge-SLM P2, A6): nói về mục tiêu ĐẦU TIÊN đang
+            // theo đuổi — đúng thứ tự ưu tiên người dùng đã kéo thả.
+            KhoiNhanXet(goi: GoiSoMucTieu.tu(goals, now: DateTime.now())),
+            const SizedBox(height: 16),
             // Kéo thả để sắp thứ tự ưu tiên.
             //
             // `shrinkWrap` + `NeverScrollableScrollPhysics` vì nó nằm trong
@@ -240,6 +247,7 @@ class _GoalPageContent extends StatelessWidget {
                 context.read<GoalCubit>().sapLaiUuTien(ra);
               },
             ),
+          ],
           if (goals.length > 1)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),

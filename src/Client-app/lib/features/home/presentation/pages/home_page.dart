@@ -6,10 +6,15 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
+import '../widgets/drawer_trang_chu.dart';
+import '../widgets/the_so_lieu_thang.dart';
+import '../../domain/thu_chi_thang.dart';
+import '../../../ai_edge/domain/goi_so_trang_chu.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../goal/data/models/goal_entity.dart';
@@ -54,8 +59,13 @@ class HomePage extends StatelessWidget {
                   authState.user != null &&
                   authState.user!.dangChoXoa)
                 TheChoXoaTrangChu(user: authState.user!),
-              const SizedBox(height: 32),
-              _buildHeroSection(context),
+              // Slogan hai dòng và nút hero "Thêm giao dịch" đã bỏ ngày
+              // 2026-09-19 (nhóm D, D10+D11): slogan chiếm ~120dp đầu màn mà
+              // không nói gì về tiền của người dùng, còn hero là lối vào thứ
+              // NĂM tới cùng màn Thêm giao dịch — và là lối duy nhất không
+              // thêm được gì, trong khi ba nút tròn đã đặt sẵn chiều từ C4.
+              // "Xem báo cáo" bỏ theo: drawer có "Xuất báo cáo", tab Phân
+              // tích có nút riêng.
               const SizedBox(height: 32),
 
               // Khối thông báo đã được GỠ khỏi trang chủ ngày 2026-09-08 theo
@@ -94,10 +104,7 @@ class HomePage extends StatelessWidget {
                       // tắt "Tính vào tổng tài sản", nên con số trang chủ lệch
                       // với chính con số trên màn Quản lý ví — im lặng, không màn
                       // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
-                      final totalBalance = wallets
-                          .where((w) => viTinhVaoTong(
-                              includeInTotal: w.includeInTotal, status: w.status))
-                          .fold<double>(0.0, (sum, w) => sum + w.balance);
+                      final totalBalance = _tongTaiSan(wallets);
                       if (snapshot.hasData) {
                         debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
                         for (final w in wallets) {
@@ -148,20 +155,14 @@ class HomePage extends StatelessWidget {
                         }
                       }
 
-                      double monthlyIncome = 0;
-                      double monthlyExpense = 0;
-
-                      for (final t in transactions) {
-                        if (t.date.year == now.year && t.date.month == now.month) {
-                          if (t.type == 'thu') monthlyIncome += t.amount;
-                          if (t.type == 'chi') monthlyExpense += t.amount;
-                        }
-                      }
+                      // Một định nghĩa cho thu/chi tháng — khối Nhận xét cuối
+                      // trang đọc cùng hàm này (`_buildNhanXet`).
+                      final thang = thuChiThangCua(transactions, now);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStatsGrid(monthlyIncome, monthlyExpense),
+                          TheSoLieuThang(thu: thang.thu, chi: thang.chi),
                           const SizedBox(height: 32),
                           StreamBuilder<List<Wallet>>(
                             stream: walletStream,
@@ -191,7 +192,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 32),
               _buildBudgetSection(context, currentUserId),
               const SizedBox(height: 32),
-              _buildInsightCard(),
+              _buildNhanXet(context, currentUserId),
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
@@ -208,6 +209,7 @@ class HomePage extends StatelessWidget {
           children: [
             Builder(
               builder: (context) => IconButton(
+                tooltip: 'Mở menu',
                 icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -243,139 +245,34 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  /// Drawer là widget riêng (`DrawerTrangChu`) từ 2026-09-19 để test được mà
+  /// không dựng cả trang; ở đây chỉ còn đọc tên/email từ bloc và nối callback.
   Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: AppColors.background,
-      child: SafeArea(
-        child: Column(
-          children: [
-            BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                final user = (state is AuthSuccess) ? state.user : null;
-                final name = (user?.name != null && user!.name.isNotEmpty)
-                    ? user.name
-                    : ((user?.username != null && user!.username.isNotEmpty)
-                        ? user.username
-                        : 'Người dùng');
-                final email = user?.email ?? '';
-
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: AppColors.primaryContainer,
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (email.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                email,
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textSecondary),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const Divider(color: AppColors.outlineVariant),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                children: [
-                  _buildDrawerItem(context, 'Quản lý ví', Icons.account_balance_wallet, '/wallets'),
-                  _buildDrawerItem(context, 'Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
-                  _buildDrawerItem(context, 'Ngân sách', Icons.savings, '/budget'),
-                  _buildDrawerItem(context, 'Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
-                  _buildDrawerItem(context, 'Thống kê', Icons.analytics, '/analytics'),
-                  _buildDrawerItem(context, 'Xuất báo cáo', Icons.description, '/reports'),
-                  _buildDrawerItem(context, 'Trợ lý AI', Icons.smart_toy, '/ai-chat'),
-                  const SizedBox(height: 16),
-                  const Divider(color: AppColors.outlineVariant),
-                  const SizedBox(height: 16),
-                  _buildDrawerItem(context, 'Cá nhân', Icons.person, '/profile'),
-                  _buildDrawerItem(context, 'Cài đặt', Icons.settings, '/settings'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem(BuildContext context, String title, IconData icon, String route) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-      dense: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onTap: () {
-        context.pop(); // close drawer
-        if (route == '/reports') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng Xuất báo cáo đang phát triển')));
-        } else {
-          context.push(route);
-        }
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = (state is AuthSuccess) ? state.user : null;
+        final name = (user?.name != null && user!.name.isNotEmpty)
+            ? user.name
+            : ((user?.username != null && user!.username.isNotEmpty)
+                ? user.username
+                : '');
+        return DrawerTrangChu(
+          ten: name,
+          email: user?.email ?? '',
+          onChon: (duong) {
+            context.pop(); // đóng drawer
+            context.push(duong);
+          },
+          onDangXuat: () async {
+            context.pop(); // đóng drawer trước, hộp thoại mở trên trang
+            final dongY = await xacNhanDangXuat(context);
+            if (dongY == true && context.mounted) {
+              context.read<AuthBloc>().add(LogoutRequested());
+              context.go('/login');
+            }
+          },
+        );
       },
-    );
-  }
-
-  Widget _buildHeroSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF111827), Color(0xFF4B5563)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ).createShader(bounds),
-          child: const Text(
-            'Kiểm soát tiền bạc.\nLàm chủ tương lai.',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-              color: Colors.white, // required for ShaderMask
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        HomeActionButtons(
-          onAdd: () => context.push('/add'),
-          onReport: () => context.go('/analytics'),
-        ),
-      ],
     );
   }
 
@@ -427,7 +324,7 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '${CurrencyFormatter.formatSoThoi(totalBalance)}đ',
+            CurrencyFormatter.format(totalBalance),
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.bold,
@@ -449,21 +346,21 @@ class HomePage extends StatelessWidget {
           icon: Icons.account_balance_wallet_outlined,
           label: 'Thêm thu',
           isDark: true,
-          onTap: () => context.push('/add'),
+          onTap: () => context.push('/add', extra: 'thu'),
         ),
         _buildActionItem(
           context: context,
           icon: Icons.payments_outlined,
           label: 'Thêm chi',
           isDark: true,
-          onTap: () => context.push('/add'),
+          onTap: () => context.push('/add', extra: 'chi'),
         ),
         _buildActionItem(
           context: context,
           icon: Icons.sync_alt,
           label: 'Chuyển',
           isDark: false,
-          onTap: () => context.push('/add'),
+          onTap: () => context.push('/add', extra: 'transfer'),
         ),
         _buildActionItem(
           context: context,
@@ -526,62 +423,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid(double income, double expense) {
-    final net = income - expense;
-    return Row(
-      children: [
-        Expanded(child: _buildStatCard('Thu nhập', '${CurrencyFormatter.formatSoThoi(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
-        const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Chi tiêu', '${CurrencyFormatter.formatSoThoi(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
-        const SizedBox(width: 12),
-        Expanded(
-            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String label, String amount, double progress, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            amount,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: color.withValues(alpha: 0.1),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            borderRadius: BorderRadius.circular(4),
-            minHeight: 4,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRecentTransactions(
     BuildContext context,
     List<Transaction> transactions,
@@ -603,7 +444,9 @@ class HomePage extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () => context.push('/transactions'),
+              // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
+              // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
+              onPressed: () => context.go('/transactions'),
               child: const Text('Xem tất cả',
                   style: TextStyle(
                       color: AppColors.primary,
@@ -742,49 +585,65 @@ class HomePage extends StatelessWidget {
       stream: stream,
       builder: (_, snapshot) => HomeBudgetCard(
         budgets: snapshot.data ?? const [],
-        onTap: () => context.go('/budget'),
+        // ⚠️ `push` chứ không `go`: `/budget` rời shell ngày 2026-09-19 nên
+        // nó chồng lên Trang chủ và cần nút Back. `go` ở đây là thay cả
+        // stack — thanh tab biến mất, không còn đường quay lại.
+        onTap: () => context.push('/budget'),
       ),
     );
   }
 
-  Widget _buildInsightCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1c1c1b),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.lightbulb, color: Color(0xFFFDE047), size: 24),
-              const SizedBox(width: 12),
-              const Text('Insight AI',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child:
-                    const Text('Mới', style: TextStyle(color: Colors.white, fontSize: 12)),
+  /// Tổng tài sản — phép lọc ở `viTinhVaoTong`, định nghĩa DUY NHẤT của "ví
+  /// nào được cộng vào tổng". Bản trước là `fold` trần trên mọi ví (cộng cả ví
+  /// đã tắt "Tính vào tổng tài sản"), lệch với màn Quản lý ví — im lặng.
+  /// Tách thành hàm vì thẻ tài sản và khối Nhận xét cùng đọc nó.
+  static double _tongTaiSan(List<Wallet> wallets) => wallets
+      .where((w) => viTinhVaoTong(
+          includeInTotal: w.includeInTotal, status: w.status))
+      .fold<double>(0.0, (sum, w) => sum + w.balance);
+
+  /// Khối Nhận xét nền tối (Edge-SLM P2, A6) — thay thẻ gợi ý tĩnh cũ (chữ cứng,
+  /// không đọc dữ liệu nào).
+  ///
+  /// Gói số nhận **đúng các con số trang đang hiện**: thu/chi tháng qua
+  /// `thuChiThangCua` (cùng hàm với `TheSoLieuThang`), tổng số dư qua
+  /// `_tongTaiSan` (cùng hàm với thẻ tài sản), ngân sách qua cùng stream của
+  /// `_buildBudgetSection`. Ba stream bọc nhau ở đây thay vì kéo khối vào
+  /// trong `StreamBuilder` giao dịch phía trên: khối đứng cuối trang, sau thẻ
+  /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
+  /// dịch.
+  Widget _buildNhanXet(BuildContext context, int? idaccount) {
+    final db = sl<AppDatabase>();
+    final txStream = idaccount != null
+        ? db.transactionDao.watchAll(idaccount)
+        : Stream<List<Transaction>>.value(const []);
+    final walletStream = idaccount != null
+        ? db.walletDao.watchAll(idaccount)
+        : Stream<List<Wallet>>.value(const []);
+    final budgetStream = idaccount != null
+        ? sl<BudgetRepository>().watchBudgets(idaccount)
+        : Stream<List<BudgetView>>.value(const []);
+    return StreamBuilder<List<Transaction>>(
+      stream: txStream,
+      builder: (_, tx) => StreamBuilder<List<Wallet>>(
+        stream: walletStream,
+        builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
+          stream: budgetStream,
+          builder: (_, budgets) {
+            final now = DateTime.now();
+            final thang = thuChiThangCua(tx.data ?? const [], now);
+            return KhoiNhanXet(
+              goi: GoiSoTrangChu.tu(
+                thu: thang.thu,
+                chi: thang.chi,
+                tongSoDu: _tongTaiSan(wallets.data ?? const []),
+                nganSach: budgets.data ?? const [],
+                now: now,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Thêm thêm giao dịch thu/chi hàng ngày để trợ lý AI phân tích và đưa ra lời khuyên tài chính cá nhân hóa.',
-            style: TextStyle(
-                fontSize: 14, color: Colors.white70, height: 1.5, letterSpacing: 0),
-          ),
-        ],
+              nenToi: true,
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import '../../../core/category/category_name.dart';
 import '../data/models/transaction_entity.dart';
+import 'khoang_tien.dart';
 
 enum TransactionTypeFilter { all, thu, chi, transfer }
 
@@ -11,6 +12,7 @@ class TransactionFilter {
     this.walletId,
     this.categoryId,
     this.query = '',
+    this.khoangTien,
   });
 
   final TransactionTypeFilter type;
@@ -18,10 +20,15 @@ class TransactionFilter {
   final String? categoryId;
   final String query;
 
+  /// Khoảng số tiền; `null` = không lọc theo tiền. Xem `khoang_tien.dart` —
+  /// phép so nằm trong chính lớp ấy, không chép ra đây.
+  final KhoangTien? khoangTien;
+
   bool get isActive =>
       type != TransactionTypeFilter.all ||
       walletId != null ||
       categoryId != null ||
+      khoangTien != null ||
       query.trim().isNotEmpty;
 
   TransactionFilter copyWith({
@@ -31,12 +38,15 @@ class TransactionFilter {
     String? categoryId,
     bool clearCategory = false,
     String? query,
+    KhoangTien? khoangTien,
+    bool clearKhoangTien = false,
   }) =>
       TransactionFilter(
         type: type ?? this.type,
         walletId: clearWallet ? null : (walletId ?? this.walletId),
         categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
         query: query ?? this.query,
+        khoangTien: clearKhoangTien ? null : (khoangTien ?? this.khoangTien),
       );
 }
 
@@ -68,6 +78,11 @@ List<TransactionEntity> applyTransactionFilter(
     }
     final categoryId = filter.categoryId;
     if (categoryId != null && t.categoryId != categoryId) return false;
+    // `amount` luôn dương ở SQLite client (chiều tiền nằm ở `type`), nên khoảng
+    // tiền áp cho cả thu, chi lẫn khoản chuyển — "khoản trên 500k" không phân
+    // biệt chiều.
+    final khoangTien = filter.khoangTien;
+    if (khoangTien != null && !khoangTien.chua(t.amount)) return false;
     if (query.isNotEmpty && !_khoaTimKiem(t.note).contains(query)) return false;
     return true;
   }).toList();

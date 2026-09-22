@@ -70,6 +70,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 24),
           onPressed: () => context.pop(),
         ),
@@ -143,6 +144,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             decoration: InputDecoration(
                               prefixIcon: const Icon(Icons.lock_outline, color: AppColors.outline),
                               suffixIcon: IconButton(
+                                tooltip: 'Hiện / ẩn mật khẩu',
                                 icon: Icon(
                                   _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                   color: AppColors.outline,
@@ -201,6 +203,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             decoration: InputDecoration(
                               prefixIcon: const Icon(Icons.lock_outline, color: AppColors.outline),
                               suffixIcon: IconButton(
+                                tooltip: 'Hiện / ẩn mật khẩu',
                                 icon: Icon(
                                   _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
                                   color: AppColors.outline,

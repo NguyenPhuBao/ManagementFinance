@@ -429,30 +429,37 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         border: Border.all(color: AppColors.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        children: [
-          for (var i = 0; i < widget.wallets.length; i++) ...[
-            if (i > 0) const Divider(height: 1),
-            ListTile(
-              key: ValueKey('bill-pay-wallet-${widget.wallets[i].id}'),
-              dense: true,
-              leading: Icon(
-                widget.wallets[i].id == _vi?.id
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: AppColors.primary,
-                size: 20,
+      // Flutter 3.47 thêm assertion: ListTile nằm trong Container có màu mà không có
+      // Material riêng thì ink splash bị che — báo qua FlutterError, widget test bắt
+      // được (P0 nâng Flutter, 2026-09-19). Material trong suốt là lớp vẽ cho ListTile;
+      // không đổi gì nhìn thấy được.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          children: [
+            for (var i = 0; i < widget.wallets.length; i++) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                key: ValueKey('bill-pay-wallet-${widget.wallets[i].id}'),
+                dense: true,
+                leading: Icon(
+                  widget.wallets[i].id == _vi?.id
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                title: Text(widget.wallets[i].name),
+                subtitle: Text(
+                    'Số dư: ${CurrencyFormatter.format(widget.wallets[i].balance)}'),
+                onTap: () => setState(() {
+                  _vi = widget.wallets[i];
+                  _dangChonVi = false;
+                }),
               ),
-              title: Text(widget.wallets[i].name),
-              subtitle:
-                  Text('Số dư: ${CurrencyFormatter.format(widget.wallets[i].balance)}'),
-              onTap: () => setState(() {
-                _vi = widget.wallets[i];
-                _dangChonVi = false;
-              }),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -6,7 +6,10 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../ai_edge/presentation/pages/ke_hoach_tai_phan_bo_sheet.dart';
 import '../../data/models/budget_entity.dart';
+import '../../data/repositories/budget_repository.dart';
 import '../bloc/budget_cubit.dart';
 import 'budget_tabs_view.dart';
 
@@ -72,6 +75,23 @@ class _BudgetPageContent extends StatelessWidget {
             onDelete: (v) => _confirmDelete(context, v),
             onShowDetail: (v) => _showDetail(context, v),
             onOpenAnalytics: () => context.go('/analytics'),
+            onTaoTuDeXuat: (d) => _openEditor(
+              context,
+              danhMuc: d.categoryId,
+              soTien: d.mucThang,
+            ),
+            onXemKeHoach: (kh) {
+              // Mã tài khoản đọc từ phiên, không từ kế hoạch (quy tắc 2).
+              final idaccount = currentAccountIdOrNull(context);
+              if (idaccount == null) return;
+              moKeHoachTaiPhanBoSheet(
+                context,
+                keHoach: kh,
+                idaccount: idaccount,
+                budgets: sl<BudgetRepository>(),
+                ghiPhanHoi: sl<AppDatabase>().aiFeedbackDao.ghi,
+              );
+            },
           ),
         BudgetError(:final message) => _ErrorScaffold(message: message),
         _ => const Scaffold(
@@ -85,6 +105,26 @@ class _BudgetPageContent extends StatelessWidget {
 
 // ─── Các trạng thái ──────────────────────────────────────────────────────────
 
+/// `AppBar` tối giản cho hai trạng thái không có header riêng.
+///
+/// ⚠️ Trước 2026-09-19 cả hai **không có `AppBar` nào** — không sao, vì trang
+/// khi ấy là một tab và thanh dưới luôn ở đó. Từ khi `/budget` rời shell và
+/// được `push` từ drawer, thiếu nó là một màn trắng không lối ra, và đó đúng
+/// là màn mà **tài khoản mới gặp trước tiên**.
+AppBar _thanhTieuDe() => AppBar(
+      backgroundColor: AppColors.surface,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      title: const Text(
+        'Ngân sách',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+
 class _ErrorScaffold extends StatelessWidget {
   final String message;
   const _ErrorScaffold({required this.message});
@@ -93,6 +133,7 @@ class _ErrorScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _thanhTieuDe(),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -122,6 +163,7 @@ class _EmptyScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _thanhTieuDe(),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -160,8 +202,7 @@ class _EmptyScaffold extends StatelessWidget {
                   ),
                   child: const Text(
                     'Tạo ngân sách mới',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -175,8 +216,31 @@ class _EmptyScaffold extends StatelessWidget {
 
 // ─── Điều hướng và hộp thoại ─────────────────────────────────────────────────
 
-void _openEditor(BuildContext context, {String? id}) {
-  context.push(id == null ? '/budget/rules' : '/budget/rules?id=$id');
+void _openEditor(
+  BuildContext context, {
+  String? id,
+  String? danhMuc,
+  double? soTien,
+}) {
+  if (id != null) {
+    context.push('/budget/rules?id=$id');
+    return;
+  }
+  if (danhMuc == null) {
+    context.push('/budget/rules');
+    return;
+  }
+  // `Uri` dựng bằng `queryParameters` chứ không nối chuỗi tay: mã danh mục
+  // là UUID hôm nay, nhưng một ký tự cần thoát lọt vào thì đường dẫn hỏng
+  // **im lặng** — form mở ra trống trơn, không lỗi nào.
+  final uri = Uri(
+    path: '/budget/rules',
+    queryParameters: {
+      'category': danhMuc,
+      if (soTien != null) 'amount': soTien.round().toString(),
+    },
+  );
+  context.push(uri.toString());
 }
 
 Future<bool> _confirmDelete(BuildContext context, BudgetView view) async {

@@ -168,6 +168,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           leading: IconButton(
+            tooltip: 'Quay lại',
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.pop()),
           title: Text(

@@ -8,6 +8,8 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/bao_cao_repository.dart';
 import '../../domain/bao_cao_xuat.dart';
+import '../../domain/pham_vi_ky.dart';
+import '../widgets/chon_pham_vi_sheet.dart';
 import 'report_preview_page.dart';
 
 /// Trang **Xuất báo cáo** — chọn bộ lọc rồi mở màn Xem trước.
@@ -49,8 +51,15 @@ class ExportReportPage extends StatefulWidget {
 }
 
 class _ExportReportPageState extends State<ExportReportPage> {
-  late PhamViThoiGian _pv;
-  ({DateTime from, DateTime to})? _tuyChon;
+  /// Kỳ đang chọn — **cùng kiểu với trang Phân tích** (2026-09-18).
+  ///
+  /// Trước bản này trang giữ một `PhamViThoiGian` riêng: bốn chip cứng
+  /// *Tháng này · Tháng trước · Quý này · Tùy chỉnh*. Hai bộ luật song song cho
+  /// cùng khái niệm "kỳ" là đúng khuôn "bản chép tay thứ N" mà dự án đã trả giá
+  /// nhiều lần — và cái giá cụ thể ở đây là trang **không xuất được theo tuần
+  /// hay theo năm**, dù mọi phép đếm bên dưới (`tongThuChi`, `getExpenses`) vốn
+  /// nhận khoảng bất kỳ. `PhamViThoiGian` và `khoangCuaPhamVi` đã bỏ hẳn.
+  late Ky _ky;
 
   @override
   void initState() {
@@ -58,8 +67,18 @@ class _ExportReportPageState extends State<ExportReportPage> {
     final tu = widget.tuNgay;
     final den = widget.denNgay;
     final hopLe = tu != null && den != null && !den.isBefore(tu);
-    _pv = hopLe ? PhamViThoiGian.tuyChinh : PhamViThoiGian.thangNay;
-    if (hopLe) _tuyChon = (from: tu, to: den);
+    final nay = _now;
+    _ky = hopLe
+        // ⚠️ `Ky.tuyChon` **không** tự cộng một ngày vào biên phải, khác hẳn
+        // `khoangCuaPhamVi` cũ. [denNgay] là ngày CUỐI CÙNG ĐƯỢC TÍNH VÀO, nên
+        // thiếu vế `+ 1` ở đây là báo cáo hụt đúng ngày ấy — không exception,
+        // không dòng log, chỉ một con số nhỏ hơn thực tế. Đường vào của thông
+        // báo Tổng kết tuần đi qua đúng chỗ này; có ca test canh.
+        ? Ky.tuyChon(
+            from: DateTime(tu.year, tu.month, tu.day),
+            to: DateTime(den.year, den.month, den.day + 1),
+          )
+        : Ky.thang(nay.year, nay.month);
   }
 
   String? _walletId;
@@ -71,13 +90,6 @@ class _ExportReportPageState extends State<ExportReportPage> {
   bool _dangDung = false;
 
   DateTime get _now => (widget.clock ?? DateTime.now)();
-
-  static const _nhanPhamVi = {
-    PhamViThoiGian.thangNay: 'Tháng này',
-    PhamViThoiGian.thangTruoc: 'Tháng trước',
-    PhamViThoiGian.quyNay: 'Quý này',
-    PhamViThoiGian.tuyChinh: 'Tùy chỉnh',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +106,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
@@ -198,7 +211,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
   }
 
   Future<void> _moXemTruoc(BaoCaoRepository repo, int idaccount) async {
-    final k = khoangCuaPhamVi(_pv, now: _now, tuyChon: _tuyChon);
+    final k = _ky;
     setState(() => _dangDung = true);
     try {
       final bc = await repo.layBaoCao(
@@ -227,73 +240,62 @@ class _ExportReportPageState extends State<ExportReportPage> {
     }
   }
 
-  Future<void> _chonKhoangTuyChinh() async {
-    final chon = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(_now.year + 1, 12, 31),
-      currentDate: _now,
-    );
-    if (!mounted) return;
-    setState(() {
-      _pv = PhamViThoiGian.tuyChinh;
-      // `null` khi người dùng thoát bộ chọn — giữ nguyên khoảng cũ thay vì
-      // xoá, và `khoangCuaPhamVi` tự lùi về tháng này nếu chưa từng chọn.
-      if (chon != null) _tuyChon = (from: chon.start, to: chon.end);
-    });
+  /// Mở bộ chọn kỳ — **cùng bottom sheet với trang Phân tích**.
+  ///
+  /// Không dựng bộ chọn riêng ở đây: `moChonPhamVi` đã mang sẵn năm đơn vị,
+  /// luật "12 tuần · 12 tháng · 8 quý · 5 năm" của `soKyTrongBoChon`, phép kẹp
+  /// `khoangKhoiTaoBoChonNgay` của G43, và vế `day + 1` cho khoảng tuỳ ý. Dựng
+  /// lại là chép tay bốn thứ ấy.
+  ///
+  /// [moc] lấy từ đồng hồ **tiêm được** chứ không phải `DateTime.now()`: bộ
+  /// chọn liệt kê các kỳ gần nhất tính từ mốc, nên một widget tự gọi đồng hồ
+  /// máy sẽ đổi nghĩa "Tháng này" vào ngày 1 hằng tháng.
+  ///
+  /// ⚠️ Đổi lại, khoảng tuỳ ý nay chặn ở **hôm nay** thay vì cuối năm sau như
+  /// bộ chọn cũ của trang — tức thôi xuất được kỳ chứa ngày tương lai. Chấp
+  /// nhận có chủ ý để hai trang nói cùng một luật; giao dịch ghi ngày tương lai
+  /// vẫn vào báo cáo bình thường khi kỳ đang xem chứa chúng.
+  Future<void> _moChonKy() async {
+    final chon = await moChonPhamVi(context, kyHienTai: _ky, moc: _now);
+    if (!mounted || chon == null) return;
+    setState(() => _ky = chon);
   }
 
-  Widget _chonThoiGian() => Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerHigh,
+  /// Nút mở bộ chọn kỳ. Nhãn đi qua **`nhanOChon`** — cùng hàm mà header trang
+  /// Phân tích và từng dòng trong chính bộ chọn dùng, nên kỳ chứa hôm nay hiện
+  /// "Tháng này (T9 2026)" ở cả ba chỗ thay vì ba cách gọi tên khác nhau.
+  ///
+  /// Nút chiếm trọn chiều ngang nên chứa được nhãn dài; ô header của trang Phân
+  /// tích thì hẹp và đã tràn 53px một lần, đó là lý do nó còn có `nhanNgan`.
+  Widget _chonThoiGian() => Material(
+        color: AppColors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          key: const Key('nutChonPhamVi'),
+          onTap: _moChonKy,
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            for (final pv in PhamViThoiGian.values)
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (pv == PhamViThoiGian.tuyChinh) {
-                      _chonKhoangTuyChinh();
-                    } else {
-                      setState(() => _pv = pv);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _pv == pv ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: _pv == pv
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _nhanPhamVi[pv]!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              _pv == pv ? FontWeight.w600 : FontWeight.w500,
-                          color: _pv == pv
-                              ? AppColors.primary
-                              : const Color(0xFF46464C),
-                        ),
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined,
+                    size: 18, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    nhanRong(_ky, _now),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
-              ),
-          ],
+                const Icon(Icons.expand_more,
+                    size: 20, color: Color(0xFF46464C)),
+              ],
+            ),
+          ),
         ),
       );
 

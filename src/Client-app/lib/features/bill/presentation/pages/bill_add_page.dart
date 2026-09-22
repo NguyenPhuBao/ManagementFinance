@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
@@ -206,6 +207,7 @@ class _BillAddPageState extends State<BillAddPage> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -290,8 +292,10 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildTextField(
             controller: _amountController,
             icon: Icons.monetization_on_outlined,
-            placeholder: '0đ',
+            placeholder: CurrencyFormatter.format(0),
             keyboardType: TextInputType.number,
+            // bill."Amount" là numeric(15,2). Xem kSoChuSoToiDaSoTien.
+            inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
           ),
           const SizedBox(height: 16),
 
@@ -591,7 +595,7 @@ class _BillAddPageState extends State<BillAddPage> {
                 items: _wallets.map<DropdownMenuItem<Wallet>>((Wallet wallet) {
                   return DropdownMenuItem<Wallet>(
                     value: wallet,
-                    child: Text('${wallet.name} - ${wallet.balance.toStringAsFixed(0)}đ'),
+                    child: Text('${wallet.name} - ${CurrencyFormatter.format(wallet.balance)}'),
                   );
                 }).toList(),
               ),

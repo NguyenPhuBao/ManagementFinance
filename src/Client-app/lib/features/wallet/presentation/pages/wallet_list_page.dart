@@ -13,6 +13,8 @@ import '../../../../features/auth/data/models/user_model.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
 import '../../data/models/wallet_entity.dart';
+import '../../../ai_edge/domain/goi_so_vi.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 
 /// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
@@ -62,6 +64,7 @@ class _WalletListView extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -137,6 +140,15 @@ class _WalletListView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildOverviewCard(totalBalance, soViLuuTru),
+                const SizedBox(height: 16),
+                // Khối Nhận xét (Edge-SLM, chặng 1.5) — đứng NGAY DƯỚI thẻ
+                // tổng quan vì nó giải thích đúng con số vừa ở trên: vì sao
+                // tổng tài sản không bằng tổng các ví nhìn thấy.
+                //
+                // Truyền `wallets` (MỌI ví, kể cả lưu trữ) chứ không phải
+                // `viHoatDong`: chỗ tiền bị loại khỏi tổng chính là thứ khối
+                // này phải đếm được.
+                KhoiNhanXet(goi: GoiSoVi.tu(_choGoiSo(wallets))),
                 const SizedBox(height: 24),
                 _buildWalletListHeader(),
                 const SizedBox(height: 12),
@@ -148,8 +160,6 @@ class _WalletListView extends StatelessWidget {
                     idaccount: idaccount,
                   ),
                 ],
-                const SizedBox(height: 24),
-                _buildBankIntegrationSection(context),
                 const SizedBox(height: 32),
               ],
             ),
@@ -163,6 +173,20 @@ class _WalletListView extends StatelessWidget {
       ],
     );
   }
+
+  /// Quy đổi sang kiểu của tầng thuần. Gói số cố ý không biết `WalletEntity`
+  /// — cùng lý do với `viTinhVaoTong`, vốn chạy trên hai kiểu dữ liệu.
+  List<ViChoGoiSo> _choGoiSo(List<WalletEntity> vis) => [
+        for (final w in vis)
+          ViChoGoiSo(
+            ten: w.name,
+            soDu: w.balance,
+            includeInTotal: w.includeInTotal,
+            status: w.status,
+            isDeleted: w.isDeleted,
+            allowNegative: w.allowNegative,
+          ),
+      ];
 
   Widget _buildOverviewCard(double totalBalance, int soViLuuTru) {
     return Container(
@@ -251,7 +275,12 @@ class _WalletListView extends StatelessWidget {
               },
               onDelete: () => _confirmDelete(context, w),
               onArchive: () => doiLuuTru(context, w, idaccount),
-              onXemGiaoDich: () => context.push('/transactions?wallet=${w.id}'),
+              // ⚠️ `go` chứ KHÔNG `push`: từ 2026-09-19 `/transactions` là một
+              // nhánh shell, còn màn này nằm NGOÀI shell (drawer push nó).
+              // `push` một route trong shell từ ngoài shell bắt go_router dựng
+              // bản shell thứ hai và Navigator ném
+              // `!keyReservation.contains(key)` — app chết màn đỏ.
+              onXemGiaoDich: () => context.go('/transactions?wallet=${w.id}'),
             ),
           );
         }),
@@ -326,89 +355,6 @@ class _WalletListView extends StatelessWidget {
             idaccount: idaccount,
           );
     }
-  }
-
-  Widget _buildBankIntegrationSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'LIÊN KẾT NGÂN HÀNG',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 0.6,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: () => context.push('/wallets/bank-link'),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Liên kết tài khoản ngân hàng',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.textSecondary, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -537,8 +483,10 @@ class _MucLuuTruState extends State<_MucLuuTru> {
                   }
                 },
                 onArchive: () => doiLuuTru(context, w, widget.idaccount),
+                // `go` chứ không `push` — cùng lý do với chỗ gọi kia trong
+                // tệp này: màn Ví ngoài shell, `/transactions` trong shell.
                 onXemGiaoDich: () =>
-                    context.push('/transactions?wallet=${w.id}'),
+                    context.go('/transactions?wallet=${w.id}'),
               ),
             ),
           ),

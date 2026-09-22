@@ -265,6 +265,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
       elevation: 0,
       centerTitle: true,
       leading: IconButton(
+        tooltip: 'Quay lại',
         icon: const Icon(Icons.arrow_back, color: AppColors.primary),
         onPressed: () => context.pop(),
       ),
@@ -409,6 +410,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
+                        // Ô này sinh khoản ĐIỀU CHỈNH số dư, nên con số gõ vào
+                        // đi thẳng vào `wallet."Balance"` — `numeric(15,2)`.
+                        // Xem `kSoChuSoToiDaSoTien`.
+                        const GioiHanSoChuSo(kSoChuSoToiDaSoTien),
                       ],
                       onChanged: (value) {
                         final digitsOnly = value.replaceAll('.', '');

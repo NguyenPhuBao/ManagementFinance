@@ -43,11 +43,27 @@ void main() {
         tieuDe: tieuDe,
       );
 
-  BaoCao baoCao(List<DongGiaoDich> ds, {double? soDu}) => dungBaoCao(
+  BaoCao baoCao(
+    List<DongGiaoDich> ds, {
+    double? soDu,
+    List<DongNganSach> nganSach = const [],
+  }) =>
+      dungBaoCao(
         ds,
         loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)),
         soDuHienTai: soDu,
+        nganSach: nganSach,
       );
+
+  /// Một ngân sách **đang chạy** của kỳ. Cố ý để `daChi` khác 0: đó chính là
+  /// con số của G44 — nó đếm theo kỳ của chính ngân sách, không theo kỳ báo
+  /// cáo, nên với một kỳ báo cáo rỗng nó vẫn khác 0.
+  const nsGiaoDuc = DongNganSach(
+    categoryId: 'c_gd',
+    ten: 'Giáo dục',
+    hanMuc: 50000,
+    daChi: 45000,
+  );
 
   String csv(BaoCao bc) => csvBaoCao(
         bc,
@@ -278,6 +294,35 @@ void main() {
     });
   });
 
+  // ── G44 — kỳ rỗng thì khối ngân sách cũng phải biến mất ───────────────────
+  //
+  // Khối này là khối **duy nhất** của báo cáo tồn tại độc lập với giao dịch:
+  // mọi khối khác tự rỗng theo một kỳ rỗng, còn ngân sách thì không. Vì thế
+  // nó từng là chỗ duy nhất tệp xuất nói khác màn Xem trước — tệp in bảng
+  // *Ngân sách kỳ này* cho một kỳ chẳng có gì, và con số in ra thì **đúng**
+  // (ngân sách ấy có thật) nên không ai đọc tệp mà phát hiện được.
+  group('csvBaoCao — ngân sách khi kỳ rỗng (G44)', () {
+    test('kỳ rỗng thì bỏ hẳn khối ngân sách, dù ngân sách ấy có thật', () {
+      final s = csv(baoCao([], nganSach: const [nsGiaoDuc]));
+      expect(s, isNot(contains('NGÂN SÁCH KỲ NÀY')),
+          reason: 'Người đọc tệp hiểu mọi bảng trong đó là "của kỳ này", mà '
+              '"đã chi" của ngân sách đếm theo kỳ của CHÍNH NÓ. Với một kỳ '
+              'báo cáo rỗng thì cả bảng nói về một khoảng thời gian khác — '
+              'và người đọc PDF không có chỗ hỏi lại.');
+    });
+
+    test('kỳ có giao dịch thì khối ngân sách vẫn in như cũ', () {
+      final s = csv(baoCao(
+        [g(ngay: DateTime(2026, 9, 5))],
+        nganSach: const [nsGiaoDuc],
+      ));
+      expect(khoi(s, 'NGÂN SÁCH KỲ NÀY'), [
+        'Danh mục;Đã chi;Hạn mức;Còn lại',
+        'Giáo dục;45000;50000;5000',
+      ], reason: 'G44 chỉ đổi hành vi của ca RỖNG. Ca thường không được đụng.');
+    });
+  });
+
   group('csvBaoCao — top 5 khoản chi', () {
     test('bảng mang số thứ tự, và số tiền có dấu âm', () {
       final s = csv(hasoSanh());
@@ -376,6 +421,20 @@ void main() {
     test('báo cáo rỗng vẫn ra tệp, không nổ', () async {
       final b = await pdf(baoCao([]));
       expect(String.fromCharCodes(b.take(5)), '%PDF-');
+    });
+
+    test('kỳ rỗng: ngân sách KHÔNG làm tệp dài thêm một dòng nào (G44)',
+        () async {
+      // PDF nén luồng nội dung nên không tìm chuỗi "NGÂN SÁCH KỲ NÀY" trong
+      // byte được. Phép đo thay thế: cùng một kỳ rỗng, một bản có ngân sách và
+      // một bản không — nếu bảng bị in thì bản đầu **dài hơn**. Bản sai (bỏ vế
+      // `inKhoiTheoKy` ở nguồn hàng) làm ca này đỏ với chênh lệch vài trăm byte.
+      final coNs = await pdf(baoCao([], nganSach: const [nsGiaoDuc]));
+      final khongNs = await pdf(baoCao([]));
+      expect(coNs.length, khongNs.length,
+          reason: 'Đây là lỗi G44 ở nhánh PDF — chính nhánh mà lượt nghiệm thu '
+              'máy ảo đã bắt được bảng *Ngân sách kỳ này* trong tệp của một kỳ '
+              'không có giao dịch nào.');
     });
 
     test('mọi ký tự HẰNG mà PDF in ra đều có glyph trong font nhúng', () {

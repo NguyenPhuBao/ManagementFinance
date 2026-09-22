@@ -214,8 +214,8 @@ class _HeaderCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               b.note,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
         ],
@@ -426,9 +426,8 @@ class _HistoryBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                  color: isCurrent
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  color:
+                      isCurrent ? AppColors.primary : AppColors.textSecondary,
                 ),
               ),
             ),

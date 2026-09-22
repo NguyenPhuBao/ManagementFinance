@@ -53,6 +53,7 @@ class _AiChatPageState extends State<AiChatPage> {
       backgroundColor: AppColors.surfaceContainerLow,
       elevation: 0,
       leading: IconButton(
+        tooltip: 'Quay lại',
         icon: const Icon(Icons.arrow_back, color: AppColors.primary),
         onPressed: () => context.pop(),
       ),
@@ -94,6 +95,7 @@ class _AiChatPageState extends State<AiChatPage> {
       ),
       actions: [
         IconButton(
+          tooltip: 'Cài đặt',
           icon: const Icon(Icons.settings, color: AppColors.onSurfaceVariant),
           onPressed: () {},
         ),
@@ -389,6 +391,7 @@ class _AiChatPageState extends State<AiChatPage> {
               padding: const EdgeInsets.all(8),
             ),
             IconButton(
+              tooltip: 'Chọn ảnh',
               icon: const Icon(Icons.image_outlined, color: AppColors.onSurfaceVariant),
               onPressed: () {},
               constraints: const BoxConstraints(),
@@ -409,6 +412,7 @@ class _AiChatPageState extends State<AiChatPage> {
               ),
             ),
             IconButton(
+              tooltip: 'Ghi âm',
               icon: const Icon(Icons.mic_none, color: AppColors.onSurfaceVariant),
               onPressed: () {},
               constraints: const BoxConstraints(),
@@ -420,6 +424,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
+                tooltip: 'Gửi',
                 icon: const Icon(Icons.send, color: Colors.white),
                 onPressed: () {
                   _textController.clear();

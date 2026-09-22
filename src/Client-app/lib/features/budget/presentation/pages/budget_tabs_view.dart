@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../ai_edge/domain/goi_so_ngan_sach.dart';
+import '../../../ai_edge/domain/tai_phan_bo.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import '../../../ai_edge/presentation/widgets/the_ke_hoach.dart';
 import '../../data/models/budget_entity.dart';
-import '../../domain/budget_pace.dart';
 import '../../domain/budget_locking.dart';
+import '../../domain/budget_pace.dart';
+import '../../domain/de_xuat_ngan_sach.dart';
 import '../bloc/budget_state.dart';
 import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
+import '../widgets/the_chua_du_du_lieu.dart';
+import '../widgets/the_de_xuat_ngan_sach.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.
 ///
@@ -27,6 +34,15 @@ class BudgetTabsView extends StatelessWidget {
   /// link không hiện — thà thiếu còn hơn có một link không đi đâu cả.
   final VoidCallback? onOpenAnalytics;
 
+  /// Mở sheet kế hoạch tái phân bổ (Edge-SLM P2). Bỏ trống thì thẻ kế hoạch
+  /// không có nút "Xem kế hoạch" — cùng lối với [onOpenAnalytics].
+  final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
+
+  /// Mở form tạo ngân sách đã điền sẵn từ một dòng của thẻ "Chưa đặt ngân
+  /// sách". Bỏ trống thì thẻ không dựng — cùng lối [onXemKeHoach]: một nút
+  /// không đi đâu là nút chết (`khong_co_nut_chet_test`).
+  final void Function(DeXuatNganSach)? onTaoTuDeXuat;
+
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
   final DateTime? now;
@@ -39,6 +55,8 @@ class BudgetTabsView extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.onXemKeHoach,
+    this.onTaoTuDeXuat,
     this.now,
   });
 
@@ -52,7 +70,13 @@ class BudgetTabsView extends StatelessWidget {
           backgroundColor: AppColors.surface,
           elevation: 0,
           scrolledUnderElevation: 0,
-          automaticallyImplyLeading: false,
+          // ⚠️ KHÔNG đặt `automaticallyImplyLeading: false`. Cờ ấy đúng hồi
+          // trang này là một **tab** (tab thì không có gì để pop), nhưng
+          // `/budget` đã rời `StatefulShellRoute` ngày 2026-09-19 và nay được
+          // `push` từ drawer — để cờ lại là biến trang thành **ngõ cụt**:
+          // không mũi tên quay lại, và cũng không còn thanh tab bên dưới vì
+          // route chồng lên toàn màn. Để mặc định thì Flutter tự hiện mũi tên
+          // khi có thứ để pop và tự giấu khi không — đúng ở cả hai vai.
           title: const Text(
             'Ngân sách',
             style: TextStyle(
@@ -66,8 +90,8 @@ class BudgetTabsView extends StatelessWidget {
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
             indicatorSize: TabBarIndicatorSize.tab,
-            labelStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600),
+            labelStyle:
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             tabs: [
               Tab(text: 'Đang hoạt động (${state.active.length})'),
               Tab(text: 'Đã hết hạn (${state.expired.length})'),
@@ -84,6 +108,8 @@ class BudgetTabsView extends StatelessWidget {
                 onDelete: onDelete,
                 onShowDetail: onShowDetail,
                 onOpenAnalytics: onOpenAnalytics,
+                onXemKeHoach: onXemKeHoach,
+                onTaoTuDeXuat: onTaoTuDeXuat,
                 now: now,
               ),
               _ExpiredTab(
@@ -109,6 +135,8 @@ class _ActiveTab extends StatelessWidget {
   final Future<bool> Function(BudgetView) onDelete;
   final void Function(BudgetView) onShowDetail;
   final VoidCallback? onOpenAnalytics;
+  final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
+  final void Function(DeXuatNganSach)? onTaoTuDeXuat;
 
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
@@ -121,6 +149,8 @@ class _ActiveTab extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.onXemKeHoach,
+    this.onTaoTuDeXuat,
     this.now,
   });
 
@@ -132,6 +162,44 @@ class _ActiveTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _OverviewCard(state: state),
+          // Khối Nhận xét (Edge-SLM P2, A6): nói về ngân sách CĂNG NHẤT — cùng
+          // `pickHomeBudget` với thẻ Trang chủ. Không dựng khi chưa có ngân
+          // sách: `_InlineEmpty` bên dưới đã nói đúng câu ấy.
+          if (state.active.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            KhoiNhanXet(
+              goi: GoiSoNganSach.tu(
+                state.active,
+                now: now ?? DateTime.now(),
+                keHoach: state.keHoach,
+              ),
+            ),
+            // Thẻ kế hoạch tái phân bổ (Tầng 2) — đứng ngay dưới câu nhận xét
+            // đã nhắc tới nó. `keHoach` chỉ khác null khi có thâm hụt.
+            if (state.keHoach case final kh?) ...[
+              const SizedBox(height: 12),
+              TheKeHoach(
+                keHoach: kh,
+                onXem: onXemKeHoach == null ? null : () => onXemKeHoach!(kh),
+                onXemPhanTich: onOpenAnalytics,
+              ),
+            ],
+          ],
+          // Thẻ "Chưa đặt ngân sách" (mục ④) — **dưới** khối Nhận xét và thẻ
+          // kế hoạch, **trên** tiêu đề "Danh mục chi tiêu": nó là gợi ý cho
+          // chính danh sách ngay dưới. Không dựng khi `deXuat` là `null` —
+          // luật ẩn nằm ở `chonDeXuat`, widget không giữ bản thứ hai.
+          if (state.deXuat case final g? when onTaoTuDeXuat != null) ...[
+            const SizedBox(height: 16),
+            TheDeXuatNganSach(goi: g, onTao: onTaoTuDeXuat!),
+          ],
+          // Tài khoản còn trẻ: nói ra thay vì im. Chỉ khi KHÔNG có đề xuất —
+          // `soNgayConThieu` chỉ khác null trong đúng trường hợp ấy (cubit lo).
+          if (state.soNgayConThieu case final thieu?
+              when state.deXuat == null) ...[
+            const SizedBox(height: 16),
+            TheChuaDuDuLieu(soNgayConThieu: thieu),
+          ],
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -276,8 +344,8 @@ class _ReadOnlyNotice extends StatelessWidget {
                   ? 'Ngân sách đã hết hạn chỉ xem được. Thẻ chưa đồng bộ được '
                       'thì vẫn sửa hoặc xoá được.'
                   : 'Ngân sách đã hết hạn chỉ xem được, không sửa hay xoá.',
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
         ],
@@ -295,7 +363,13 @@ class _OverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vuot = state.totalRemaining < 0;
-    final mau = vuot ? AppColors.error : AppColors.income;
+    // Cùng thang bốn màu với thẻ danh mục (`budgetHealthOfRatio`): bản trước
+    // chỉ có hai màu vượt / chưa vượt nên tô xanh ở 90% (UX 2026-09-19, E5).
+    // Tỉ lệ THÔ, không lấy `percentSpent` (đã cắt trần 1.0 cho thanh).
+    final mau = budgetHealthColour(budgetHealthOfRatio(
+      ratio: state.totalAmount <= 0 ? 0 : state.totalSpent / state.totalAmount,
+      over: vuot,
+    ));
     // Bản dựng hình ghi "% ngân sách CÒN LẠI", không phải "đã dùng".
     final conLai = ((1 - state.percentSpent) * 100).round().clamp(0, 100);
 
@@ -645,13 +719,14 @@ class _InlineEmpty extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          const Icon(Icons.savings_outlined, size: 48, color: AppColors.outline),
+          const Icon(Icons.savings_outlined,
+              size: 48, color: AppColors.outline),
           const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 14, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),

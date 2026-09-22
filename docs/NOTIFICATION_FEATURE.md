@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · bản trước 2026-09-08 · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -73,9 +73,9 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-**Mười bảy loại** trong bảng dưới, xếp vào **năm nhóm** công tắc.
+**Mười tám loại** trong bảng dưới, xếp vào **năm nhóm** công tắc.
 
-⚠️ **`enum NotificationKind` có MƯỜI TÁM giá trị, không phải mười bảy** — đếm bằng máy 2026-09-17. Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Cột cuối đánh dấu những loại
+⚠️ **`enum NotificationKind` có MƯỜI CHÍN giá trị, không phải mười tám** — đếm bằng máy 2026-09-20. Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 và *mười bảy* của 2026-09-17 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Đừng cộng dồn — hãy đếm lại. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
@@ -83,6 +83,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | Ngân sách | Chạm ngưỡng | `budgetNearLimit` | |
 | | Vượt hạn mức | `budgetOverspent` | |
 | | **Khoản chi lớn** | `largeExpense` | |
+| | **Đề xuất cân đối** | `budgetRebalance` | |
 | Hoá đơn | Sắp đến hạn | `billDueSoon` | |
 | | Quá hạn | `billOverdue` | |
 | | **Đã tự thanh toán** | `billAutoPaid` | ⚠️ có |
@@ -165,9 +166,15 @@ toast, và mỗi sự kiện đều đánh thức đồng bộ *(trừ `ocr.dupl
 `AppNotifications` — đó là quyết định có chủ ý, không phải việc còn sót: thông
 báo trong bảng ấy là dữ liệu **suy ra được** từ ngân sách/hoá đơn/mục tiêu trên
 từng máy, còn tin từ server thì không. Chi tiết ở mục 2 của
-`docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`. Phần
-còn thiếu là **màn duyệt giao dịch** (G26 `CLIENT_APP_KNOWN_GAPS.md`), không
-phải kênh truyền.
+`docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`.
+
+⚠️ **Cập nhật 2026-09-18 — client nay dịch ĐÚNG BA sự kiện, và một trong ba tên
+đã đổi.** Nhóm bỏ liên kết ngân hàng, nên `bank_transaction.incoming` **thôi
+được dịch** và toast *"Vừa có giao dịch mới từ ngân hàng"* không còn. Ba tên
+hiện nay: `ocr.completed`, `ocr.duplicate`, `sync.completed`. Câu "phần còn
+thiếu là **màn duyệt giao dịch** (G26)" đứng ở đây tới hôm ấy **không còn
+đúng** — G26 đóng bằng quyết định sản phẩm, màn ấy không thiếu mà không còn
+nằm trong sản phẩm.
 
 ---
 
@@ -351,8 +358,9 @@ tránh.
 
 Vẫn **không** là một `NotificationKind`. Lời nhắc này cố ý đứng ngoài bảng ấy,
 và đó là quyết định trung tâm của nó. (Lúc viết dòng này bảng có mười bốn loại;
-nay là **mười bảy** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm
-2026-09-09, `largeExpense` thêm 2026-09-17. Con số thì đổi, còn lý lẽ dưới đây thì không.)
+nay là **mười tám** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm
+2026-09-09, `largeExpense` thêm 2026-09-17, `budgetRebalance` thêm 2026-09-20.
+Con số thì đổi, còn lý lẽ dưới đây thì không.)
 
 **Vì sao đứng ngoài bộ luật.** Mọi loại trong bảng đều là *bản ghi* một việc đã
 xảy ra, và người dùng đọc lại chúng trong trung tâm thông báo. Lời nhắc này
@@ -914,6 +922,90 @@ còn gì để gỡ, nên báo là làm phiền vô cớ.
 
 ---
 
+## 5g. Đề xuất cân đối ngân sách (2026-09-20)
+
+Loại thông báo **thứ 19 của enum** — hàng thứ **18** của bảng mục 3 — và là
+Task 16 của Edge-SLM P2. Nó là mặt *thông báo* của thẻ "Đề xuất cân đối" trên
+trang Ngân sách: cùng một kế hoạch, hai cách gặp người dùng.
+
+### ⚠️ Nguồn kế hoạch là `taiPhanBoCua`, KHÔNG phải một phép tính thứ hai
+
+Bộ luật chỉ **nhận** `KeHoachTaiPhanBo` đã dựng; nó không biết gì về thâm hụt,
+dư địa, cờ Cố định hay ngưỡng. Chỗ nối (`injection_container.dart`) gọi đúng
+`TaiPhanBoNguon` + `taiPhanBoCua` mà `BudgetCubit` gọi — **một định nghĩa duy
+nhất** cho một luật 39 điều.
+
+Hỏng nếu làm khác: thông báo nói *"Ăn uống dự kiến vượt"* trong khi thẻ trên
+trang nói về *"Mua sắm"*, cả hai đều trông hợp lý và không gì báo lỗi.
+
+### ⚠️ Khoá chỉ có TUẦN — không ngân sách, không số tiền
+
+`budgetRebalance:<nam>-W<tuan>` (tuần ISO, qua `khoaTuan`). Kế hoạch là một hàm
+của *dự phóng cuối kỳ*, mà dự phóng là một hàm của `spent`: nó đổi sau **mỗi**
+giao dịch. Nhét `budget.id` hay số tiền thâm hụt vào khoá là biến mỗi lượt quét
+thành một thông báo mới — đúng cái bẫy mà cột `dedupeKey` sinh ra để chặn (mục
+4.2), và một lượt quét nổ sau mỗi chu kỳ đồng bộ cộng mỗi lần app quay lại từ
+nền, tức vài lần mỗi ngày.
+
+Hệ quả **cố ý**: ngân sách A được báo thứ Hai, người dùng cân đối xong, rồi B
+thâm hụt thứ Tư → **không báo lại** trong tuần ấy. Đó là trần chứ không phải
+lỗi. Thẻ trên trang Ngân sách vẫn hiện ngay khi mở, và đây là một lời *đề xuất*
+— không phải cảnh báo tiền đã rời ví.
+
+### Câu chữ không nêu số — và ở đây còn chặt hơn Tổng kết tuần
+
+Với `weeklySummary` lý do là "thông báo là cái cửa, không phải bản báo cáo".
+Ở đây có thêm một lý do mạnh hơn: con số duy nhất đúng là con số **tại lúc mở
+trang**. In nó vào thông báo là hứa một điều sẽ sai ngay khi người dùng tiêu
+tiếp, và thông báo thì nằm lại trong trung tâm hàng tuần.
+
+Tên ngân sách thì **vẫn nói** — không có nó thì người dùng phải mở app ra mới
+biết thông báo nói về cái gì.
+
+### Hai câu, không một
+
+Kế hoạch còn dòng nguồn bù → *"… dự kiến vượt hạn mức. Xem kế hoạch bớt từ ngân
+sách khác."* Không còn dòng nào → *"… dự kiến vượt hạn mức, và không ngân sách
+nào còn dư địa để bù."*
+
+Ca thứ hai vẫn báo — nó là ca **đáng báo nhất**, vì không cứu được bằng cách san
+sẻ. Nhưng câu phải đổi: `TheKeHoach` giấu nút "Xem kế hoạch" khi `dong` rỗng
+(sheet rỗng là ngõ cụt), nên mời người dùng xem một thứ không tồn tại là lời hứa
+suông.
+
+### Nhóm Ngân sách, và công tắc nhóm là thứ chặn phép đọc
+
+`budgetRebalance` vào nhóm `budget` cùng ba loại sẵn có, và **chịu** công tắc
+nhóm — `luonBao` dành riêng cho những loại báo việc app tự rút tiền lúc người
+dùng vắng mặt.
+
+⚠️ Khác `largeExpense` và `weeklySummary`, loại này **không có công tắc riêng**
+làm cửa chặn phép đọc, nên điều kiện ấy là chính công tắc nhóm:
+`loadKeHoach` chỉ chạy khi `prefs.chapNhan(NotificationKind.budgetRebalance)`
+**và** có ít nhất một ngân sách. Dựng kế hoạch là đọc toàn bộ sổ giao dịch để
+tính thu nhập mỗi tháng, cộng một `suggestAmount` cho từng ngân sách — trả giá
+chừng ấy cho một kết quả bị lọc bỏ ngay sau đó là lãng phí **im lặng**: không
+hàng nào, không lỗi nào, chỉ một lượt quét chậm hơn. Cả hai vế có ca test riêng,
+và cả hai đã được kiểm bằng bản sai có chủ ý.
+
+### ⚠️ Loader nhận `budgets` đã nạp, khác mọi loader khác
+
+`KeHoachTaiPhanBoLoader` nhận `(idaccount, budgets, now)`. Vòng quét vừa đọc
+đúng danh sách ấy cho bộ luật ngân sách, nên đọc lần thứ hai là hai **ảnh chụp
+khác nhau** của cùng dữ liệu — thông báo "dự kiến vượt" sẽ nói về một trạng thái
+khác với thông báo "sắp vượt" sinh cùng lượt, và cả hai đều trông hợp lý.
+
+### Mốc sự kiện là `now`
+
+Khác `largeExpense` (ngày giao dịch) và `weeklySummary` (lúc tuần khép): "dự
+kiến vượt" là trạng thái **tại lúc quét**, không có mốc nào khác để lấy. Nó vẫn
+đi qua cửa sổ `silenceBefore` như mọi loại, nên lần bật tính năng đầu tiên không
+bắn một loạt đề xuất của quá khứ.
+
+**Không đổi schema**, không thêm trường đồng bộ.
+
+---
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG
@@ -1114,7 +1206,7 @@ client đọc lại khi pull (`sync_engine.dart:741`). Không có việc gì ph�
 Đính chính được ghi lại trong tài liệu backend thay vì xoá lặng lẽ, vì nhận
 định sai ấy đã đi qua ít nhất hai bản tài liệu.
 
-Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng. ⚠️ Cập nhật 2026-09-09: vế "client cố ý chưa nối socket" **cũng đã hết đúng** — client nối rồi; phần còn thiếu là màn duyệt giao dịch (G26), không phải kênh.
+Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng. ⚠️ Cập nhật 2026-09-09: vế "client cố ý chưa nối socket" **cũng đã hết đúng** — client nối rồi; phần còn thiếu là màn duyệt giao dịch (G26), không phải kênh. ⚠️ Cập nhật 2026-09-18: **vế "phần còn thiếu" ấy nay cũng hết đúng** — nhóm bỏ liên kết ngân hàng, G26 đóng bằng quyết định sản phẩm, và client thôi dịch `bank_transaction.incoming`. Không còn gì thiếu ở hướng này.
 (đã là bước 1 vì lý do khác), backend không
 có scheduler, queue `send-notification` rỗng cả ba phía — không ai đẩy việc
 vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
@@ -1190,13 +1282,25 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 → app chết màn đỏ.** go_router phải dựng thêm một bản shell thứ hai chồng lên
 bản đang có, hai bản trùng page key, và `Navigator` ném
 `!keyReservation.contains(key)`. Đây là chuyện đã xảy ra: bấm vào thông báo
-ngân sách từ `/notifications` (ngoài shell) sang `/budget` (trong shell).
+ngân sách từ `/notifications` (ngoài shell) sang `/budget` — **khi ấy** `/budget`
+còn nằm trong shell. ⚠️ Câu trên là **lịch sử**: từ 2026-09-19 `/budget` đã rời
+shell thành route gốc, nên chính deeplink ấy nay đi đường `push` và an toàn.
+Cái bẫy thì vẫn nguyên — chỉ là route rơi vào nó nay là `/transactions`.
 
 Dùng `thuocThanhTab()` trong `notification_deeplink.dart` để chọn `go` hay
-`push`. Bốn nhánh tab là `/home`, `/analytics`, `/budget`, `/profile` — danh
-sách ấy giữ đồng bộ **tay** với `app_router.dart`.
+`push`. Bốn nhánh tab là `/home`, `/analytics`, **`/transactions`**, `/profile`
+— danh sách ấy giữ đồng bộ **tay** với `app_router.dart`.
 
-⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) đều **ngoài** shell
+⚠️ **Hai route đã ĐỔI VAI ngày 2026-09-19 (nhóm D), và đổi theo hai chiều khác
+nhau:** `/budget` **rời** shell thành route gốc (nó nhường chỗ ở thanh dưới cho
+Sổ giao dịch), còn `/transactions` **vào** shell thành nhánh thứ ba. Bộ luật
+sinh deeplink tới **cả hai** — ngân sách (mục 5c) và khoản chi lớn (mục 5f) —
+nên quên cập nhật `nhanhThanhTab` là hỏng theo hai chiều: `/transactions` bị bỏ
+sót → `push` từ `/notifications` → **chết màn đỏ**; `/budget` bị để lại → `go`
+tới một route ngoài shell → thay cả stack, **thanh tab biến mất**, không còn
+đường quay lại. Sửa đúng một dòng hằng ấy thì cả hai tự đúng.
+
+⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) vẫn **ngoài** shell
 nên `push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
 vòng kiểm trước đó.
 
@@ -1275,6 +1379,10 @@ gom hết output tới khi tiến trình kết thúc, nên một lượt treo tr
 lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 
 **7.11 `AndroidManifest.xml` là vùng mù của mọi công cụ trong dự án này.**
+*(Ví dụ thứ hai, 2026-09-19, ngoài thông báo: `android:enableOnBackInvokedCallback="false"`
+tắt predictive back để nút Back tới được `PopScope` của shell — thiếu nó, Back ở
+tab Phân tích đóng thẳng activity trên Android 16; test đọc manifest ở
+`test/shared/widgets/main_shell_back_test.dart`, chi tiết ở mục 14 `PROJECT_CONTEXT.md`.)*
 `flutter test` không đọc nó, `flutter analyze` không đọc nó, `flutter build apk`
 vẫn thành công. `flutter_local_notifications` cần **ba** receiver được khai báo
 tay và **không tự khai báo cái nào**:
@@ -1325,9 +1433,10 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | Tệp | Canh gì |
 |---|---|
 | `test/core/notification/notification_rules_large_expense_test.dart` (2026-09-17) | Luật **Khoản chi lớn** (mục 5f): ngưỡng `0` và ngưỡng âm đều IM; biên **đóng** ở đúng ngưỡng; khoản chuyển / điều chỉnh số dư / **mở sổ** không báo còn khoản chưa phân loại vẫn báo; khoá `bigSpend:<id>` không chứa số tiền và không đổi giữa hai lượt quét; `createdAt` là **ngày giao dịch** nên `silenceBefore` chặn được khoản cũ; câu chữ có và không có tên danh mục |
+| `test/core/notification/notification_rules_rebalance_test.dart` (2026-09-20) | Luật **Đề xuất cân đối** (mục 5g): kế hoạch `null` thì im; khoá chỉ có **tuần ISO** nên hai lượt quét khác ngày trong cùng tuần cho **cùng** khoá còn sang tuần thì khác; tuần bắc qua năm dương lịch (31/12/2025 → `2026-W01`); `body` **không chứa chữ số** nhưng **có** tên ngân sách; kế hoạch hết nguồn bù vẫn báo bằng **câu khác** (không mời "Xem kế hoạch"); nhóm `budget` và **chịu** công tắc nhóm; `silenceBefore` lọc được; cold start suy ra `/budget` |
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
 | `test/core/notification/badge_updater_test.dart` | Badge mang đúng số chưa đọc và lọc theo `idaccount`; **huỷ CHỌN LỌC** trên khay — hàng đã đọc bị huỷ, hàng chưa đọc giữ nguyên, và **thông báo mà bảng không biết thì không bị đụng tới** (nhắc ghi chép, lịch nổ lúc app đóng); **KHÔNG BAO GIỜ gọi `cancelAll()`** vì nó cuốn theo cả lịch đang chờ; `start()` luỹ đẳng, `stop()` cắt đứt hẳn |
-| `test/core/notification/notification_scanner_test.dart` | Ngưỡng số dư ví thấp đi được **từ kho tuỳ chọn tới bộ luật** (và không đặt thì im) — cùng phép canh đã có cho số ngày nhắc hoá đơn; quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/notification_scanner_test.dart` | Ngưỡng số dư ví thấp đi được **từ kho tuỳ chọn tới bộ luật** (và không đặt thì im) — cùng phép canh đã có cho số ngày nhắc hoá đơn; quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét. Từ 2026-09-20 canh thêm **chỗ nối tầng 2**: có kế hoạch thì ghi đúng một hàng, hai lượt quét cùng tuần chỉ một hàng, và **loader không được gọi lần nào** khi tắt nhóm Ngân sách hoặc khi không có ngân sách nào — hai ca sau đã kiểm bằng bản sai có chủ ý |
 | `test/core/notification/app_lifecycle_watcher_test.dart` | Watcher thật sự được đăng ký vào `WidgetsBinding` (không thì stream im lặng mãi, **không lỗi không log**); stream là **broadcast** nên nghe lại được sau khi huỷ; `dispose()` gỡ observer và luỹ đẳng |
 | `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |
 | `test/core/notification/os/os_notifier_native_test.dart` | Chặn ở tầng `MethodChannel`: `init()` luỹ đẳng, `show()` đẩy đúng id/tiêu đề/nội dung/payload, id kênh Android không đổi, `cancelAll()`, và **không** xin quyền báo thức chính xác |
@@ -1337,7 +1446,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
 | `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
-| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười tám** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
+| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười chín** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Ngưỡng số dư ví hiện đúng thứ đã lưu và ghi ngay khi đổi (⚠️ thẻ ấy nằm cuối trang cuộn, ở 800px của môi trường test nó dưới mép màn hình nên phải `ensureVisible` trước khi `tap`, nếu không cú chạm trượt ra nền); công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì. Từ 2026-09-07 canh thêm thẻ **NHẮC GHI CHÉP**: công tắc tắt sẵn, bật thì ghi ngay, hàng chọn giờ **chỉ hiện khi công tắc bật**, và giờ hiển thị là 20:00 chứ không phải 08:00 của hoá đơn. ⚠️ Thẻ này cũng nằm cuối trang cuộn nên vẫn phải `ensureVisible` |
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch. Từ 2026-09-07 canh thêm **nhắc ghi chép hằng ngày** (mục 4.7): tắt sẵn; bật thì đúng **ba** lịch; giờ lấy từ tuỳ chọn **riêng** chứ không phải `gioNhac`; hôm nay đã có giao dịch thì bỏ lịch hôm nay còn giữ hai lịch sau; giao dịch **hôm qua** không cứu được hôm nay (so theo NGÀY, không theo 24 giờ); `null` = chưa từng ghi = **vẫn nhắc**; giờ đã trôi qua thì bỏ hôm nay; và ca quan trọng nhất — **ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay**, chính là lý do chọn ba lịch rời thay vì một lịch lặp |
@@ -1352,10 +1461,10 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
-| `test/shared/app_toast_test.dart` | Ba nguồn toast và thứ tự ưu tiên giữa chúng. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
+| `test/shared/app_toast_test.dart` | Ba nguồn toast gốc và thứ tự ưu tiên giữa chúng; nguồn chữ tự do `ThongBaoNhanh` (2026-09-19) có tệp riêng `app_toast_thong_bao_nhanh_test.dart`. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
 | `test/features/layout/no_overflow_test.dart` | Ba hàng từng tràn, dựng ở **320/360/411dp** — bắt bằng `tester.takeException()` |
 
-⚠️ `.gitignore` có `test/` (dòng 78, đo 2026-09-10 — từng ghi 77) → file test mới bị bỏ qua **âm thầm**. Phải
+⚠️ `.gitignore` có `test/` (dòng 78, đo 2026-09-10 — từng ghi 77) → file test mới bị bỏ qua **âm thầm**. ✅ **HẾT HIỆU LỰC 2026-09-21** — luật `test/` đã bỏ khỏi `.gitignore` (quy tắc 6 `CLAUDE.md`); tệp test mới nay hiện bình thường, không cần `-f`. *(Câu dưới giữ nguyên làm ảnh chụp.)* Phải
 `git add -f` **từng đường dẫn** (thêm cả thư mục thì git từ chối nguyên lệnh).
 
 ### ⚠️ `flutter test` xanh KHÔNG đủ cho vùng này
@@ -1503,8 +1612,12 @@ thì một trong hai phải chịu thiệt.
 | Mất kết nối | Sau ngưỡng ổn định | "Không có kết nối — thay đổi vẫn được lưu trên máy" |
 | Đã kết nối lại | Sau ngưỡng ổn định | "Đã kết nối lại" |
 | Kết quả đồng bộ | `SyncEngine.pushResultStream` | "Đã đồng bộ xong" / "Một số thay đổi chưa lên được máy chủ" |
+| Chữ tự do (từ 2026-09-19) | `ThongBaoNhanh.stream` (`core/ui/thong_bao_nhanh.dart`, đăng ký ở `sl`) | Bất kỳ câu một dòng nào — hiện dùng cho "Nhấn lần nữa để thoát" (E3 của lượt UX). Bậc **thấp nhất**, nguồn riêng; tham số `thongBaoNhanh` mặc định rỗng nên chỗ dựng `AppToast` cũ không phải đổi |
 
-**Cả ba đều tự ẩn sau vài giây.** Bản đầu giữ dải mất kết nối cho tới khi có
+(Sự kiện thời gian thực là nguồn thứ tư về mặt mã — xem mục 5 và
+`realtime_event.dart` — nhưng nội dung của nó suy từ enum, không phải chữ tự do.)
+
+**Cả ba dải đầu đều tự ẩn sau vài giây, dải chữ tự do cũng vậy.** Bản đầu giữ dải mất kết nối cho tới khi có
 mạng, với lập luận "trạng thái kéo dài thì phải hiển thị kéo dài". Người dùng
 thử trên máy thật và yêu cầu đổi: một dải đứng mãi trên đầu màn hình gây khó
 chịu hơn là hữu ích.

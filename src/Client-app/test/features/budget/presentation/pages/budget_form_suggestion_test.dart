@@ -1,4 +1,5 @@
-/// Form ngân sách gợi ý hạn mức từ chi tiêu ba tháng trước của danh mục.
+/// Form ngân sách gợi ý hạn mức từ chi tiêu gần đây của danh mục — cửa sổ
+/// **cuộn** ≤ 90 ngày kể từ 2026-09-21, không còn là ba tháng lịch đã đóng.
 ///
 /// Vì sao cần: người mới đặt hạn mức thường đoán một con số tròn, rồi thấy
 /// ngân sách vượt ngay tháng đầu. Spendee và Money Lover đều nhắc "tháng
@@ -24,6 +25,7 @@ void main() {
       isDefault: false,
       isGroup: false,
       isLocalOnly: false,
+      aiCoDinh: false,
       isDeleted: false,
       syncStatus: 'synced',
       syncRetryCount: 0,
@@ -54,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('chọn danh mục thì hiện gợi ý theo chi tiêu ba tháng trước',
+  testWidgets('chọn danh mục thì hiện gợi ý theo chi tiêu gần đây',
       (tester) async {
     final hoi = <String>[];
     await dung(tester, suggestFor: (id) async {
@@ -83,13 +85,33 @@ void main() {
             '`CurrencyFormatter.parse` đọc được lúc lưu.');
   });
 
-  testWidgets('không có dữ liệu ba tháng trước thì không hiện gì', (tester) async {
+  testWidgets('không có lịch sử thì không hiện gì', (tester) async {
     await dung(tester, suggestFor: (_) async => null);
     await chonAnUong(tester);
 
     expect(find.text('Dùng số này'), findsNothing);
-    expect(find.textContaining('3 tháng gần nhất'), findsNothing,
+    expect(find.textContaining('trung bình'), findsNothing,
         reason: 'Một dòng "trung bình 0 đ" là gợi ý sai, tệ hơn không gợi ý.');
+  });
+
+  testWidgets('⚠️ nhãn KHÔNG nêu một cửa sổ cố định', (tester) async {
+    await dung(tester, suggestFor: (_) async => 1200000);
+    await chonAnUong(tester);
+
+    expect(
+      find.textContaining('trung bình'),
+      findsOneWidget,
+      reason: 'ĐÒI KẾT QUẢ: nhãn vẫn phải có mặt. Thiếu vế này thì một bản sai '
+          'xoá hẳn nhãn cũng làm kỳ vọng dưới xanh',
+    );
+    expect(
+      find.textContaining('3 tháng'),
+      findsNothing,
+      reason: '`suggestAmount` nay suy từ `cuaSoNhinLai` — cửa sổ CUỘN, ngắn '
+          'lại theo tuổi dữ liệu của tài khoản. Nhãn nêu "3 tháng gần nhất" là '
+          'nói dối về chính cửa sổ của nó, và máy ảo bắt được đúng điều đó '
+          'ngày 2026-09-21 trên một tài khoản 20 ngày tuổi',
+    );
   });
 
   testWidgets('không tiêm callback thì form vẫn như cũ', (tester) async {

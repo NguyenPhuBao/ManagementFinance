@@ -7,6 +7,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../widgets/noi_dung_cai_dat.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -23,10 +25,9 @@ class ProfilePage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.primary),
-          onPressed: () {},
-        ),
+        // Không có hamburger: tab này không có drawer. Bản trước vẽ nút với
+        // `onPressed: () {}` — vẽ như sống mà bấm không làm gì (UX 2026-09-19).
+        automaticallyImplyLeading: false,
         actions: [
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
@@ -43,90 +44,34 @@ class ProfilePage extends StatelessWidget {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 32),
-            _buildSection(
-              title: 'QUẢN LÝ TÀI KHOẢN',
-              items: [
-                _ProfileItem(
-                  icon: Icons.account_balance,
-                  title: 'Hóa đơn',
-                  onTap: () => context.push('/bills'),
-                ),
-                _ProfileItem(
-                  icon: Icons.savings_outlined,
-                  title: 'Mục tiêu tiết kiệm',
-                  onTap: () => context.push('/goals'),
-                ),
-                _ProfileItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Ví',
-                  onTap: () => context.push('/wallets'),
-                ),
-                _ProfileItem(
-                  icon: Icons.category_outlined,
-                  title: 'Danh mục tùy chỉnh',
-                  onTap: () => context.push('/categories'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'CÀI ĐẶT',
-              items: [
-                _ProfileItem(
-                  icon: Icons.notifications_none,
-                  title: 'Thông báo',
-                  // Mục này dẫn tới trang CÀI ĐẶT thông báo, không phải trung
-                  // tâm thông báo — lối vào trung tâm là chuông ở trang chủ.
-                  onTap: () => context.push('/settings/notifications'),
-                ),
-                _ProfileItem(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Giao diện',
-                  trailing: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.light_mode, size: 14, color: AppColors.primary),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const SizedBox(
-                          width: 40,
-                          height: 24,
-                          child: Center(
-                            child: Icon(Icons.dark_mode_outlined, size: 14, color: AppColors.textSecondary),
-                          ),
-                        ),
-                      ],
-                    ),
+            // Nhóm "QUẢN LÝ TÀI KHOẢN" (Hóa đơn, Mục tiêu, Ví, Danh mục) đã
+            // bỏ hẳn ngày 2026-09-19 (nhóm D): bốn mục ấy lặp lại đúng drawer,
+            // và lối B cho drawer giữ module còn tab này giữ hồ sơ + cài đặt.
+            // Cùng lúc, xung đột icon heo đất biến mất — `Icons.savings` là
+            // Ngân sách ở drawer, `Icons.savings_outlined` từng là Mục tiêu
+            // tiết kiệm ở đây (D8).
+            //
+            // Thân trang `/settings` nay nằm ngay tại đây thay vì sau một cú
+            // nhảy tới một trang vẽ ĐÚNG cái avatar phía trên lần nữa.
+            //
+            // ⚠️ Nhóm "CÀI ĐẶT" đi qua khe `giua` chứ không đặt SAU widget
+            // này: khối Vùng nguy hiểm nằm bên trong `NoiDungCaiDat` và phải
+            // ở **cuối trang**. Đặt sau là đẩy nút xoá tài khoản vào giữa,
+            // ngay trên một dòng cài đặt vô hại.
+            NoiDungCaiDat(
+              giua: _buildSection(
+                title: 'CÀI ĐẶT',
+                items: [
+                  _ProfileItem(
+                    icon: Icons.notifications_none,
+                    // D7: tên cũ "Thông báo" lẫn với TRUNG TÂM thông báo, thứ
+                    // vào bằng chuông ở Trang chủ — hai chỗ khác hẳn nhau.
+                    // Đây là trang CÀI ĐẶT thông báo.
+                    title: 'Cài đặt thông báo',
+                    onTap: () => context.push('/settings/notifications'),
                   ),
-                  onTap: () {},
-                ),
-                _ProfileItem(
-                  icon: Icons.shield_outlined,
-                  title: 'Thông tin và bảo mật',
-                  onTap: () => context.push('/settings'),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 32),
             _buildLogoutButton(context),
@@ -198,20 +143,31 @@ class ProfilePage extends StatelessWidget {
                   Positioned(
                     bottom: 4,
                     right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                    // ⚠️ Trước 2026-09-19 đây là `Container` + `Icon` **trần**:
+                    // không `InkWell`, không handler nào cả — vẽ như nút mà
+                    // chưa bao giờ bấm được. Test quét `khong_co_nut_chet_test`
+                    // không thấy vì nó tìm *handler rỗng*, còn đây là nút
+                    // **không có handler**; trang Cài đặt cũ thì đúng nút ấy
+                    // có nối vào `/settings/edit-profile`.
+                    child: InkWell(
+                      onTap: () => context.push('/settings/edit-profile'),
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.edit,
+                            color: Colors.white, size: 18),
                       ),
-                      child: const Icon(Icons.edit, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
@@ -293,8 +249,7 @@ class ProfilePage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            items[index].trailing ??
-                                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
+                            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
                           ],
                         ),
                       ),
@@ -315,32 +270,7 @@ class ProfilePage extends StatelessWidget {
     return OutlinedButton.icon(
       icon: const Icon(Icons.logout, size: 20),
       onPressed: () async {
-        // Hiện dialog xác nhận
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            title: const Text('Đăng xuất',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text(
-                'Bạn có chắc muốn đăng xuất không?\nBạn vẫn có thể đăng nhập offline sau khi đăng xuất.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Huỷ'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: Colors.white),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Đăng xuất'),
-              ),
-            ],
-          ),
-        );
-
+        final confirmed = await xacNhanDangXuat(context);
         if (confirmed == true && context.mounted) {
           context.read<AuthBloc>().add(LogoutRequested());
           context.go('/login');
@@ -369,12 +299,10 @@ class _ProfileItem {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   _ProfileItem({
     required this.icon,
     required this.title,
     required this.onTap,
-    this.trailing,
   });
 }

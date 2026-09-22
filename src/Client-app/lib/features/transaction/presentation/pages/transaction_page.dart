@@ -8,6 +8,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../../analytics/domain/pham_vi_ky.dart';
+import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
@@ -44,7 +46,10 @@ class TransactionPage extends StatefulWidget {
 }
 
 class _TransactionPageState extends State<TransactionPage> {
-  late DateTime _selectedMonthDate;
+  /// Kỳ đang xem. Thay `_selectedMonthDate` ngày 2026-09-21: trang này không
+  /// còn khoá theo tháng, nó xem được tuần / tháng / quý / năm / khoảng tuỳ
+  /// chọn bằng chính `Ky` mà trang Phân tích và Xuất báo cáo dùng.
+  late Ky _ky;
 
   /// Điều kiện lọc hiện tại; giữ nguyên khi đổi tháng — người dùng đang xem
   /// "chi ở ví Tiết kiệm" thì lật sang tháng trước vẫn muốn xem đúng thứ đó.
@@ -66,7 +71,41 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   void initState() {
     super.initState();
-    _selectedMonthDate = DateTime.now();
+    // Mở trang ở tháng hiện tại — giữ đúng nếp cũ, và khớp với kỳ mà bloc tự
+    // đăng ký ở `LoadTransactionsEvent`.
+    final now = DateTime.now();
+    _ky = Ky.thang(now.year, now.month);
+  }
+
+  /// Đường tắt "Xem giao dịch" của màn Quản lý ví phải lọc sẵn ví **kể cả khi
+  /// trang đã sống từ trước** — G48.
+  ///
+  /// `/transactions` nằm trong một `StatefulShellBranch`, và Navigator của
+  /// nhánh **giữ State sống**. Lần `go('/transactions?wallet=…')` thứ hai dựng
+  /// một `TransactionPage` mới cùng kiểu ở cùng vị trí, nên Flutter **cập nhật**
+  /// State cũ thay vì tạo State mới: `initState` không chạy lại và
+  /// [TransactionPage.initialWalletId] mới bị bỏ qua **im lặng**. Người dùng
+  /// thấy sổ đầy đủ và tưởng chừng ấy khoản đều thuộc ví họ vừa bấm.
+  ///
+  /// Hai chốt, phá cái nào cũng hỏng im lặng:
+  ///
+  /// - Chỉ đổi khi ví **thật sự khác lần trước**. Áp lại ở mọi lần dựng lại là
+  ///   quay về đúng cái bẫy mà chú thích của [_filter] cảnh báo: người dùng bỏ
+  ///   lọc ra rồi nó tự giành lại.
+  /// - `null` **không** có nghĩa "hãy xem mọi ví". Trang được dựng lại mà không
+  ///   nêu ví nào thì giữ nguyên thứ đang xem; coi `null` là lệnh bỏ lọc thì bộ
+  ///   lọc tự bay mất mỗi lần cây widget dựng lại.
+  ///
+  /// Phép này **không** trả lời câu hỏi rộng hơn — bộ lọc có nên sống sót qua
+  /// một lần ghé tab hay không; nó chỉ chốt một điều hẹp và rõ: **một lệnh điều
+  /// hướng có nêu đích danh ví thì thắng bộ lọc đang có**.
+  @override
+  void didUpdateWidget(TransactionPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final viMoi = widget.initialWalletId;
+    if (viMoi != null && viMoi != oldWidget.initialWalletId) {
+      setState(() => _filter = _filter.copyWith(walletId: viMoi));
+    }
   }
 
   void _ensureLookupStreams(int idaccount) {
@@ -77,20 +116,34 @@ class _TransactionPageState extends State<TransactionPage> {
     _categories = db.categoryDao.watchAll(idaccount);
   }
 
-  void _changeMonth(int deltaYears, int deltaMonths, BuildContext blocContext) {
-    setState(() {
-      _selectedMonthDate = DateTime(
-        _selectedMonthDate.year + deltaYears,
-        _selectedMonthDate.month + deltaMonths,
-        1,
-      );
-    });
-    blocContext.read<TransactionBloc>().add(
-          FilterMonthEvent(
-            year: _selectedMonthDate.year,
-            month: _selectedMonthDate.month,
-          ),
-        );
+  /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
+  /// `lui()`, để không đẻ ra quy ước dấu thứ hai.
+  ///
+  /// `lui` lùi theo **đơn vị lịch** chứ không trừ số ngày, và với kỳ tuỳ chọn
+  /// thì lùi đúng bằng độ dài khoảng.
+  void _doiKy(int soKy, BuildContext blocContext) {
+    setState(() => _ky = lui(_ky, soKy));
+    blocContext.read<TransactionBloc>().add(ChonKyEvent(_ky));
+  }
+
+  /// Mở bộ chọn phạm vi — **cùng** sheet hai tầng mà trang Phân tích và trang
+  /// Xuất báo cáo dùng.
+  ///
+  /// Không dựng bộ chọn riêng ở đây: `moChonPhamVi` đã mang sẵn năm đơn vị và
+  /// luật "12 kỳ / 8 quý / 5 năm", và một bản thứ hai là hai luật phải giữ đồng
+  /// bộ bằng tay.
+  Future<void> _chonKy(BuildContext blocContext) async {
+    final chon = await moChonPhamVi(
+      context,
+      kyHienTai: _ky,
+      moc: DateTime.now(),
+    );
+    // ⚠️ Sau `await`, widget có thể đã rời cây — dùng context khi ấy là lỗi.
+    if (chon == null || !mounted) return;
+    setState(() => _ky = chon);
+    if (blocContext.mounted) {
+      blocContext.read<TransactionBloc>().add(ChonKyEvent(chon));
+    }
   }
 
   @override
@@ -143,25 +196,19 @@ class _TransactionPageState extends State<TransactionPage> {
               ),
               centerTitle: true,
             ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () async {
-                final result = await context.push('/add');
-                if (result == true && blocContext.mounted) {
-                  blocContext.read<TransactionBloc>().add(
-                        FilterMonthEvent(
-                          year: _selectedMonthDate.year,
-                          month: _selectedMonthDate.month,
-                        ),
-                      );
-                }
-              },
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
-            ),
+            // ⚠️ KHÔNG có FAB ở đây. Từ 2026-09-19 (nhóm D) trang này là một
+            // **tab**, nên FAB tròn ở giữa thanh dưới luôn hiện trên nó — vẽ
+            // thêm một cái nữa là hai nút cách nhau chừng 40px làm đúng một
+            // việc (`push('/add')`). Máy ảo bắt được trong khi 2945 ca test
+            // đều xanh.
+            //
+            // Gỡ an toàn vì danh sách là **stream** (`watchKhoang`):
+            // `ChonKyEvent` mà FAB cũ phát sau khi quay lại chỉ đặt lại
+            // đúng tháng đang xem, tức thừa.
             body: SafeArea(
               child: Column(
                 children: [
-                  _buildMonthSelector(blocContext),
+                  _buildKySelector(blocContext),
                   Expanded(
                     child: BlocBuilder<TransactionBloc, TransactionState>(
                       builder: (context, state) {
@@ -173,8 +220,8 @@ class _TransactionPageState extends State<TransactionPage> {
                           // Bộ lọc chạy trên danh sách tháng đã có trong bloc;
                           // thẻ tổng và danh sách cùng tính trên tập đã lọc để
                           // hai thứ luôn nói cùng một chuyện.
-                          final txs = applyTransactionFilter(
-                              state.monthlyTransactions, _filter);
+                          final txs =
+                              applyTransactionFilter(state.giaoDich, _filter);
                           final summary = summarizeTransactions(txs);
 
                           return StreamBuilder<List<Wallet>>(
@@ -267,10 +314,7 @@ class _TransactionPageState extends State<TransactionPage> {
             ),
           );
           if (result == true && blocContext.mounted) {
-            blocContext.read<TransactionBloc>().add(FilterMonthEvent(
-                  year: _selectedMonthDate.year,
-                  month: _selectedMonthDate.month,
-                ));
+            blocContext.read<TransactionBloc>().add(ChonKyEvent(_ky));
           }
         },
         onDelete: () async {
@@ -290,36 +334,56 @@ class _TransactionPageState extends State<TransactionPage> {
     );
   }
 
-  Widget _buildMonthSelector(BuildContext blocContext) {
-    final monthStr = DateFormat('MM/yyyy').format(_selectedMonthDate);
-
+  Widget _buildKySelector(BuildContext blocContext) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
+            tooltip: 'Kỳ trước',
             icon: const Icon(Icons.chevron_left, color: AppColors.primary),
-            onPressed: () => _changeMonth(0, -1, blocContext),
+            onPressed: () => _doiKy(1, blocContext),
           ),
-          Row(
-            children: [
-              const Icon(Icons.calendar_month, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Tháng $monthStr',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+          // ⚠️ `Expanded` chứ không để `Row` tự co: nhãn kỳ tuỳ chọn
+          // ("26/08 – 11/09") dài hơn hẳn nhãn tháng, và ở 411dp hai mũi tên đã
+          // ăn mất chỗ hai bên. Cho nó chiếm trọn khoảng giữa thì phép căn giữa
+          // mới có mốc, và chuỗi dài cắt bằng dấu ba chấm thay vì đẩy mũi tên
+          // ra khỏi màn hình.
+          Expanded(
+            child: InkWell(
+              key: const Key('so-giao-dich-chon-ky'),
+              onTap: () => _chonKy(blocContext),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_month,
+                        color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        nhanRong(_ky, DateTime.now()),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
           IconButton(
+            tooltip: 'Kỳ sau',
             icon: const Icon(Icons.chevron_right, color: AppColors.primary),
-            onPressed: () => _changeMonth(0, 1, blocContext),
+            onPressed: () => _doiKy(-1, blocContext),
           ),
         ],
       ),
@@ -348,13 +412,16 @@ class _TransactionPageState extends State<TransactionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryColumn('Thu nhập', '+${CurrencyFormatter.formatSoThoi(totalIncome)}đ', AppColors.income),
+          // `formatCoDau` chứ không `formatIncome`/`formatExpense`: kỳ rỗng là
+          // ca THƯỜNG từ khi trang xem được năm đơn vị, và số 0 không mang dấu
+          // (cột "Thu net" ngay bên cạnh vốn đã theo luật ấy).
+          _buildSummaryColumn('Thu nhập', CurrencyFormatter.formatCoDau(totalIncome, thu: true), AppColors.income),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-          _buildSummaryColumn('Chi tiêu', '-${CurrencyFormatter.formatSoThoi(totalExpense)}đ', AppColors.error),
+          _buildSummaryColumn('Chi tiêu', CurrencyFormatter.formatCoDau(totalExpense, thu: false), AppColors.error),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
           _buildSummaryColumn(
             'Thu net',
-            '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ',
+            CurrencyFormatter.formatCoDau(net, thu: net >= 0),
             net >= 0 ? AppColors.income : AppColors.error,
           ),
         ],
@@ -408,7 +475,9 @@ class _TransactionPageState extends State<TransactionPage> {
           Text(
             filtered
                 ? 'Không có giao dịch nào khớp bộ lọc'
-                : 'Chưa có giao dịch nào trong tháng này',
+                // "kỳ này" chứ không "tháng này": trang thôi khoá theo tháng từ
+                // 2026-09-21, và header ngay trên đã nói kỳ nào.
+                : 'Chưa có giao dịch nào trong kỳ này',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -493,7 +562,7 @@ class _TransactionPageState extends State<TransactionPage> {
                       ),
                     ),
                     Text(
-                      '${dayNet >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(dayNet)}đ',
+                      CurrencyFormatter.formatCoDau(dayNet, thu: dayNet >= 0),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,

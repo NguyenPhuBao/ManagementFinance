@@ -28,7 +28,6 @@ import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
-import '../../features/wallet/presentation/pages/bank_link_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
 import '../../features/category/presentation/pages/category_add_page.dart';
@@ -152,8 +151,23 @@ class AppRouter {
                 ),
               ]),
               StatefulShellBranch(routes: [
+                // ⚠️ Nhánh này từng là `/budget`. Đổi sang Sổ giao dịch ngày
+                // 2026-09-19 (nhóm D): sổ là thứ mở nhiều lần mỗi ngày mà
+                // trước đó không có lối vào cố định, còn ngân sách là thứ đặt
+                // một lần rồi xem lại thỉnh thoảng — đúng chỗ cho drawer.
+                //
+                // Đổi ở đây thì PHẢI đổi `nhanhThanhTab` cùng lúc
+                // (`core/notification/notification_deeplink.dart`), nếu không
+                // thông báo chọn nhầm `go`/`push` và một chiều là màn đỏ.
                 GoRoute(
-                    path: '/budget', builder: (_, __) => const BudgetPage()),
+                  // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản
+                  // lý ví. Query param chứ không `extra`: `extra` mất khi
+                  // GoRouter dựng lại route, còn tham số trên URL thì sống sót.
+                  path: '/transactions',
+                  builder: (_, state) => TransactionPage(
+                    initialWalletId: state.uri.queryParameters['wallet'],
+                  ),
+                ),
               ]),
               StatefulShellBranch(routes: [
                 GoRoute(
@@ -178,16 +192,8 @@ class AppRouter {
             ),
           ),
 
-          // Transactions
-          GoRoute(
-            path: '/transactions',
-            // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản lý ví.
-            // Query param chứ không `extra`: `extra` mất khi GoRouter dựng lại
-            // route, còn tham số trên URL thì sống sót.
-            builder: (_, state) => TransactionPage(
-              initialWalletId: state.uri.queryParameters['wallet'],
-            ),
-          ),
+          // `/transactions` đã chuyển vào nhánh shell thứ ba ngày 2026-09-19
+          // (nhóm D) — xem khối `StatefulShellRoute` phía trên.
           GoRoute(
             path: '/add',
             // `extra` là EditTransactionArgs → trang mở ở chế độ sửa.
@@ -195,6 +201,9 @@ class AppRouter {
               initial: state.extra is EditTransactionArgs
                   ? state.extra as EditTransactionArgs
                   : null,
+              // `extra` là `String` 'chi' | 'thu' | 'transfer' → chiều đặt
+              // sẵn cho ba nút tắt ở Trang chủ (UX 2026-09-19, C4).
+              huongBanDau: state.extra is String ? state.extra as String : null,
             ),
             routes: [
               GoRoute(
@@ -210,28 +219,35 @@ class AppRouter {
           GoRoute(
             path: '/wallets',
             builder: (_, __) => const WalletListPage(),
-            routes: [
-              GoRoute(
-                path: 'bank-link',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, __) => const BankLinkPage(),
-              ),
-            ],
           ),
           GoRoute(
               path: '/wallets/add', builder: (_, __) => const WalletAddPage()),
-          GoRoute(path: '/bank-link', builder: (_, __) => const BankLinkPage()),
           GoRoute(
             path: '/wallets/:id/edit',
             builder: (_, s) => WalletEditPage(id: s.pathParameters['id']!),
           ),
 
+          // Ngân sách rời `StatefulShellRoute` ngày 2026-09-19 (nhóm D): nó
+          // nhường chỗ ở thanh dưới cho Sổ giao dịch và về sống trong drawer.
+          // Chỗ này chỉ là đưa cha về đứng cùng hai con — `/budget/rules` và
+          // `/budget/detail/:id` vốn đã là route gốc từ trước.
+          //
+          // ⚠️ Chỗ gọi phải dùng `push` chứ không `go`, nếu không nó thay cả
+          // stack và thanh tab biến mất.
+          GoRoute(path: '/budget', builder: (_, __) => const BudgetPage()),
+
           // Budget rules
           // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.
+          // `?category=<id>&amount=<số>` = tạo mới đã điền sẵn, từ thẻ "Chưa
+          // đặt ngân sách". `amount` hỏng thì `tryParse` trả `null` và ô hạn mức
+          // để trống — một đường dẫn bị sửa tay không được làm đổ cả trang.
           GoRoute(
               path: '/budget/rules',
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
+                    danhMucChonSan: state.uri.queryParameters['category'],
+                    soTienChonSan: double.tryParse(
+                        state.uri.queryParameters['amount'] ?? ''),
                   )),
           // Chi tiết một ngân sách. Đặt dưới `/budget/detail/` chứ không phải
           // `/budget/:id` vì `/budget/rules` đã tồn tại và sẽ bị tham số nuốt.

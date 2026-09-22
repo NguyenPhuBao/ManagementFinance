@@ -161,7 +161,11 @@ riêng** khỏi `events`:
 
 - `events` giữ nguyên cam kết "không đọc payload" của `realtime_event.dart` —
   lý do cam kết ấy là `bank_transaction.incoming` phát từ **hai** chỗ với hai
-  hình dạng. `account.force_logout` thì chỉ phát qua **một** hàm
+  hình dạng. *(2026-09-18: sự kiện ấy client thôi dịch, vì nhóm bỏ liên kết
+  ngân hàng. Cam kết và kiến trúc hai luồng ở đây **giữ nguyên** — lý lẽ tổng
+  quát là một tên sự kiện đi qua EventBus không bảo đảm một hình dạng payload,
+  ví dụ mất đi không làm nó mất.)* `account.force_logout` thì chỉ phát qua
+  **một** hàm
   (`core/socket.js:170-191`, gọi từ `admin.service.js:140`, `:199` và
   `scheduler.service.js:116`), nên đọc payload ở đây là an toàn.
 - `_khiCoSuKien` bắt tên `account.force_logout` **trước** `realtimeEventFromName`.

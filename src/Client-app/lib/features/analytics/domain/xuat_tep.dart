@@ -89,7 +89,7 @@ String csvBaoCao(
 
   // Khối này bỏ hẳn khi kỳ rỗng — cùng luật với màn Xem trước, nơi nó chỉ dựng
   // ở nhánh không rỗng. In ra toàn số 0 là vẽ ra một kỳ có thật.
-  if (!bc.rong) {
+  if (inKhoiTheoKy(bc)) {
     final sl = bc.soLieu;
     final coNgay = sl.ngayChiNhieuNhat != null;
     final coKhoan = sl.khoanChiLonNhat != null;
@@ -128,7 +128,9 @@ String csvBaoCao(
     dong([]);
   }
 
-  if (bc.nganSach.isNotEmpty) {
+  // ⚠️ Vế `inKhoiTheoKy` phải đứng đây dù mọi khối khác chỉ cần `isNotEmpty`:
+  // ngân sách là khối duy nhất KHÔNG tự rỗng theo một kỳ rỗng (G44).
+  if (inKhoiTheoKy(bc) && bc.nganSach.isNotEmpty) {
     dong(['NGÂN SÁCH KỲ NÀY']);
     dong(['Danh mục', 'Đã chi', 'Hạn mức', 'Còn lại']);
     for (final n in bc.nganSach) {
@@ -271,10 +273,14 @@ Future<Uint8List> pdfBaoCao(
           for (final d in bc.thuTheoDanhMuc)
             [d.ten, _vnd(d.soTien), '${_tiLe(d.tiLe)}%'],
         ]),
+        // ⚠️ `inKhoiTheoKy` chặn ở NGUỒN HÀNG chứ không quanh `_pdfBang`: hàm
+        // ấy tự bỏ bảng khi không còn hàng nào, nên một danh sách rỗng là đủ.
+        // Ngân sách là khối duy nhất không tự rỗng theo kỳ rỗng (G44).
         ..._pdfBang(
             'NGÂN SÁCH KỲ NÀY', ['Danh mục', 'Đã chi', 'Hạn mức', 'Còn lại'], [
-          for (final n in bc.nganSach)
-            [n.ten, _vnd(n.daChi), _vnd(n.hanMuc), _vnd(n.conLai)],
+          if (inKhoiTheoKy(bc))
+            for (final n in bc.nganSach)
+              [n.ten, _vnd(n.daChi), _vnd(n.hanMuc), _vnd(n.conLai)],
         ]),
         ..._pdfBang('PHÂN BỔ THEO VÍ', ['Ví', 'Thu', 'Chi', 'Giao dịch'], [
           for (final v in bc.theoVi)
@@ -498,7 +504,7 @@ PdfColor _mauSoVoi(double? phanTram, {required bool tangLaTot}) =>
 /// Khối "Số liệu nhanh" của PDF; bỏ hẳn khi kỳ rỗng, cùng luật với CSV và với
 /// màn Xem trước.
 List<pw.Widget> _pdfSoLieuNhanh(BaoCao bc) {
-  if (bc.rong) return [];
+  if (!inKhoiTheoKy(bc)) return [];
   final sl = bc.soLieu;
   final ngay = sl.ngayChiNhieuNhat;
   final khoan = sl.khoanChiLonNhat;

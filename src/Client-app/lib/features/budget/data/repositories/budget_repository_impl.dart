@@ -7,6 +7,7 @@ import '../../../../core/sync/sync_engine.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/budget_history.dart';
+import '../../domain/cua_so_nhin_lai.dart';
 import '../datasources/budget_local_data_source.dart';
 import '../models/budget_entity.dart';
 import 'budget_repository.dart';
@@ -167,20 +168,45 @@ class BudgetRepositoryImpl implements BudgetRepository {
     DateTime? now,
   }) async {
     final moment = now ?? clock();
-    const months = 3;
-    var total = 0.0;
-    for (var i = 1; i <= months; i++) {
-      // `DateTime` tự quy tháng âm về năm trước, nên tháng 1 lùi 3 vẫn đúng.
-      total += await localDataSource.sumExpenses(
-        idaccount: idaccount,
-        categoryId: categoryId,
-        from: DateTime(moment.year, moment.month - i, 1),
-        to: DateTime(moment.year, moment.month - i + 1, 1),
-      );
-    }
+
+    // ⚠️ Mẫu số là tuổi dữ liệu của **TÀI KHOẢN**, không phải của danh mục
+    // đang xét: một danh mục vừa phát sinh hôm qua sẽ có mẫu số 1 ngày và mức
+    // tháng phồng lên hàng chục lần, mà con số ấy trông hoàn toàn hợp lý.
+    final cuaSo = cuaSoNhinLai(
+      moment,
+      await localDataSource.mocGiaoDichDauTien(idaccount),
+    );
+    // Chưa đủ dữ liệu để hứa một mức "mỗi tháng" — im hẳn, đừng đoán.
+    if (cuaSo == null) return null;
+
+    final total = await localDataSource.sumExpenses(
+      idaccount: idaccount,
+      categoryId: categoryId,
+      from: cuaSo.from,
+      to: cuaSo.to,
+    );
     if (total <= 0) return null;
+
     const step = 10000;
-    return (total / months / step).ceil() * step.toDouble();
+    final mucThang = total / cuaSo.soNgay * kSoNgayMotThang;
+    return (mucThang / step).ceil() * step.toDouble();
+  }
+
+  @override
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async {
+    final cuaSo = cuaSoNhinLai(
+      now ?? clock(),
+      await localDataSource.mocGiaoDichDauTien(idaccount),
+    );
+    return cuaSo?.soNgay;
+  }
+
+  @override
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now}) async {
+    final moc = await localDataSource.mocGiaoDichDauTien(idaccount);
+    if (moc == null) return null;
+    // Ngày trọn, không làm tròn lên — cùng phép đếm với `cuaSoNhinLai`.
+    return (now ?? clock()).difference(moc).inDays;
   }
 
   /// Tính số đã chi và gắn tên/biểu tượng danh mục.

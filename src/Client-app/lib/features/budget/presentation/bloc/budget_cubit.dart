@@ -3,7 +3,11 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/budget_entity.dart';
+import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../data/repositories/budget_repository.dart';
+import '../../data/tai_phan_bo_nguon.dart';
+import '../../domain/cua_so_nhin_lai.dart';
+import '../../domain/de_xuat_ngan_sach.dart';
 import 'budget_state.dart';
 
 export 'budget_state.dart';
@@ -19,10 +23,22 @@ class BudgetCubit extends Cubit<BudgetState> {
   /// máy chạy nó: "hết hạn chưa" là câu hỏi về thời điểm.
   final DateTime Function() clock;
 
+  /// Nguồn dữ liệu Tầng 2 tái phân bổ (Edge-SLM). `null` = không tính kế
+  /// hoạch — đường của test cũ và của trang không cần; khi ấy state phát
+  /// **đồng bộ** như trước, không thêm một microtask nào.
+  final TaiPhanBoNguon? taiPhanBoNguon;
+
   StreamSubscription<List<BudgetView>>? _subscription;
 
-  BudgetCubit({required this.repository, DateTime Function()? clock})
-      : clock = clock ?? DateTime.now,
+  /// Số thứ tự lượt phát — lượt `nap` chậm về sau lượt mới hơn thì bỏ, không
+  /// để dữ liệu cũ đè dữ liệu mới.
+  int _lan = 0;
+
+  BudgetCubit({
+    required this.repository,
+    DateTime Function()? clock,
+    this.taiPhanBoNguon,
+  })  : clock = clock ?? DateTime.now,
         super(const BudgetInitial());
 
   /// Theo dõi danh sách ngân sách. Phát lại cả khi có giao dịch mới.
@@ -38,7 +54,7 @@ class BudgetCubit extends Cubit<BudgetState> {
     emit(const BudgetLoading());
     _subscription?.cancel();
     _subscription = repository.watchBudgets(idaccount).listen(
-          (views) => emit(_loadedFrom(views)),
+          (views) => _phat(views, idaccount),
           onError: (Object e) => emit(BudgetError(e.toString())),
         );
   }
@@ -50,9 +66,106 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
     emit(const BudgetLoading());
     try {
-      emit(_loadedFrom(await repository.getBudgets(idaccount)));
+      await _phat(await repository.getBudgets(idaccount), idaccount);
     } catch (e) {
       emit(BudgetError(e.toString()));
+    }
+  }
+
+  /// Phát `BudgetLoaded`: đồng bộ khi không có nguồn Tầng 2; có nguồn thì nạp
+  /// dữ liệu rồi tính kế hoạch, và chỉ phát nếu vẫn là lượt mới nhất.
+  Future<void> _phat(List<BudgetView> views, int idaccount) async {
+    final n = ++_lan;
+    var loaded = _loadedFrom(views);
+    // ⚠️ Đề xuất tạo ngân sách tính TRƯỚC phép rẽ nhánh dưới đây, và đi vào cả
+    // hai đường phát. Nó **không** phụ thuộc nguồn Tầng 2; đặt nó sau `return`
+    // là để thẻ không bao giờ hiện ở mọi chỗ không nối `TaiPhanBoNguon` — và
+    // hỏng im lặng, vì một thẻ không hiện trông y hệt một thẻ không có gì để
+    // nói.
+    final deXuat = await _deXuat(idaccount, loaded.active);
+    // "Cần thêm N ngày" chỉ có nghĩa khi không có đề xuất nào; và phép đo này
+    // là phần phụ — hỏng thì im, không đổi cả trang thành lỗi.
+    int? thieu;
+    if (deXuat == null) {
+      try {
+        thieu = soNgayConThieu(await repository.soNgayCoDuLieu(idaccount));
+      } catch (_) {
+        thieu = null;
+      }
+    }
+    if (n != _lan || isClosed) return;
+    loaded = loaded.copyWithDeXuat(deXuat, soNgayConThieu: thieu);
+
+    final nguon = taiPhanBoNguon;
+    if (nguon == null) {
+      emit(loaded);
+      return;
+    }
+    try {
+      final now = clock();
+      final d = await nguon.nap(idaccount, loaded.active, now);
+      final kh = taiPhanBoCua(
+        dangChay: loaded.active,
+        now: now,
+        coDinh: d.coDinh,
+        thuNhapMoiThang: d.thuNhapMoiThang,
+        mucThangTheoNganSach: d.mucThangTheoNganSach,
+        phanHoi: d.phanHoi,
+      );
+      if (n != _lan || isClosed) return;
+      emit(BudgetLoaded(
+        active: loaded.active,
+        expired: loaded.expired,
+        totalAmount: loaded.totalAmount,
+        totalSpent: loaded.totalSpent,
+        keHoach: kh,
+        deXuat: loaded.deXuat,
+        soNgayConThieu: loaded.soNgayConThieu,
+      ));
+    } catch (e) {
+      // Kế hoạch là phần phụ: nguồn hỏng thì trang vẫn hiện ngân sách.
+      if (n != _lan || isClosed) return;
+      emit(loaded);
+    }
+  }
+
+  /// Danh mục chi đáng đặt ngân sách mà chưa có.
+  ///
+  /// Mỗi ứng viên một lời gọi `suggestAmount`, tức mỗi ứng viên một truy vấn.
+  /// Danh mục chi của một tài khoản là con số nhỏ nên chấp nhận được; nếu có
+  /// ngày nó chậm thấy rõ thì chỗ sửa là ở repository, không phải ở đây.
+  ///
+  /// Nuốt mọi lỗi: đây là một gợi ý phụ, không đáng để thay cả trang bằng
+  /// `BudgetError`. Cùng lối với `suggestAmount` của form.
+  Future<GoiDeXuat?> _deXuat(int idaccount, List<BudgetView> dangChay) async {
+    try {
+      final soNgay = await repository.soNgayCuaSoNhinLai(idaccount);
+      if (soNgay == null) return null;
+
+      final daCo = {
+        for (final v in dangChay)
+          if (v.budget.categoryId case final id?) id,
+      };
+      // `getExpenseCategories` ĐÃ lọc `classify = 'chi'` — đừng lọc lần nữa.
+      final cats = await repository.getExpenseCategories(idaccount);
+
+      final muc = <String, double?>{};
+      for (final c in cats) {
+        if (daCo.contains(c.id)) continue;
+        muc[c.id] = await repository.suggestAmount(idaccount, c.id);
+      }
+
+      return chonDeXuat(
+        danhMucChi: [
+          for (final c in cats)
+            (id: c.id, ten: c.name, icon: c.icon, colour: c.colour),
+        ],
+        daCoNganSach: daCo,
+        mucThangTheoDanhMuc: muc,
+        soNgayCuaSo: soNgay,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -102,7 +215,30 @@ class BudgetCubit extends Cubit<BudgetState> {
         emit(const BudgetError('Ngân sách này không còn tồn tại.'));
         return;
       }
-      emit(BudgetEditorReady(categories: categories, editing: editing));
+      // Số ngày của cửa sổ là phần **phụ** của nhãn gợi ý: nó hỏng thì nhãn
+      // im vế ấy, chứ không đổi cả form thành một màn lỗi.
+      int? soNgay;
+      try {
+        soNgay = await repository.soNgayCuaSoNhinLai(idaccount);
+      } catch (_) {
+        soNgay = null;
+      }
+      // Cửa sổ chưa mở thì nhãn form NÓI RA còn thiếu bao nhiêu ngày, thay vì
+      // im — cùng lý lẽ với thẻ ở trang danh sách.
+      int? thieu;
+      if (soNgay == null) {
+        try {
+          thieu = soNgayConThieu(await repository.soNgayCoDuLieu(idaccount));
+        } catch (_) {
+          thieu = null;
+        }
+      }
+      emit(BudgetEditorReady(
+        categories: categories,
+        editing: editing,
+        soNgayCuaSo: soNgay,
+        soNgayConThieu: thieu,
+      ));
     } catch (e) {
       emit(BudgetError(e.toString()));
     }
@@ -178,8 +314,9 @@ class BudgetCubit extends Cubit<BudgetState> {
 
   /// `ArgumentError.toString()` in ra cả tên tham số và giá trị — không phải
   /// thứ để đưa thẳng cho người dùng đọc.
-  String _readable(Object e) =>
-      e is ArgumentError ? (e.message?.toString() ?? e.toString()) : e.toString();
+  String _readable(Object e) => e is ArgumentError
+      ? (e.message?.toString() ?? e.toString())
+      : e.toString();
 
   @override
   Future<void> close() {
