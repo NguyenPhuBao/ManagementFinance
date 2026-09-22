@@ -120,6 +120,11 @@ không phải ngày nghiệm thu — bẫy driver `DeviceInterfaceGUIDs`, mục 
 
 Quay video 4, 5, 6 — đó là ba bằng chứng *đúng*, *đúng giọng*, *đúng nghĩa Edge*.
 
+> ✅ **CỔNG A QUA 2026-09-22 tối** — sáu điểm đo trên OnePlus 13R, bảng ở mục **9.9**
+> `docs/AI_EDGE_FEATURE.md` (điểm 2 bằng ảnh chụp liên tiếp thay video; điểm 4 = không bịa nhưng
+> mô hình chọn số liên quan thay vì nói "không có dữ liệu"). Theo thứ tự ở đầu
+> `2026-09-21-ai-viec-tiep-theo.md`, việc kế là **tải nền + resume** rồi mới **chặng 3**.
+
 ## Chặng 3 — Đo: bậc 1 hỏng ở đâu (cổng B)
 
 **Không phải task mã.** Một buổi, trên máy thật với tài khoản thật (39 giao dịch, 20 ngày):

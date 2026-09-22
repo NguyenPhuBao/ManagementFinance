@@ -42,12 +42,20 @@ class BiChan extends SuKienGac {
   String toString() => 'BiChan($cau)';
 }
 
-/// Dấu kết câu **theo sau bởi khoảng trắng hoặc hết chuỗi** — dấu chấm ngăn
-/// nghìn (`2.141.000`) theo sau bởi chữ số nên không khớp.
-final RegExp _ketCau = RegExp(r'[.!?](?=\s|$)');
+/// Dấu kết câu **theo sau bởi khoảng trắng** — dấu chấm ngăn nghìn
+/// (`2.141.000`) theo sau bởi chữ số nên không khớp.
+///
+/// ⚠️ **Cuối bộ đệm KHÔNG phải kết câu.** Đo trên OnePlus 13R 2026-09-22: mô
+/// hình phát token *"…là 2."* rồi *"141.000 đ."* — bộ đệm dừng ở `2.` đúng một
+/// nhịp, bản đầu (regex có `|$`) coi đó là câu xong, bộ kiểm chặn "2" và cả
+/// lượt rơi về câu lùi. Fake stream của test đưa nguyên con số nên 3392 ca
+/// đều mù. Câu cuối không có khoảng trắng theo sau do [gacTheoCau] kiểm khi
+/// luồng **đã đóng**.
+final RegExp _ketCau = RegExp(r'[.!?](?=\s)');
 
 /// Tách [dem] thành (các câu hoàn chỉnh đã trim, phần còn lại chưa có dấu
-/// kết). Phần còn lại giữ nguyên chữ, chỉ bỏ khoảng trắng đầu.
+/// kết **theo sau bởi khoảng trắng**). Phần còn lại giữ nguyên chữ, chỉ bỏ
+/// khoảng trắng đầu.
 (List<String>, String) tachCauHoanChinh(String dem) {
   final cau = <String>[];
   var batDau = 0;

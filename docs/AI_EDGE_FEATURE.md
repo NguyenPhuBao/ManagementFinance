@@ -8,7 +8,7 @@
 > **SLM on-device** (P3, ✅ **XONG 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
 
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
-**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task.** 🔧 **Việc số 1 của lộ trình MÃ XONG 2026-09-22 tối** (mục **9.8**: streaming chặn theo câu · `kiemNhan` · `kiemGiong` nối vào hỏi đáp · sáu gói · chip mới · few-shot hỏi đáp) — **chưa đo máy thật**, nên cổng A vẫn chưa ghi ✅.
+**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task.** ✅ **Việc số 1 của lộ trình XONG 2026-09-22 tối** (mã: mục **9.8** — streaming chặn theo câu · `kiemNhan` · `kiemGiong` nối vào hỏi đáp · sáu gói · chip mới · few-shot hỏi đáp; đo máy thật: mục **9.9**) — **CỔNG A QUA**. Lượt đo bắt hai lỗi thật (bẫy 4.18, 4.19).
 
 🛑 **NHƯNG CỔNG A CHƯA QUA — đừng đọc "P3 xong" thành "cổng A xong".** Đối chiếu sáu điểm
 của cổng (`docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md:100`) với chính
@@ -17,10 +17,10 @@ bảng đo mục 9, làm cuối ngày 2026-09-22:
 | # | Điểm cổng A | Trạng thái |
 |---|---|---|
 | 1 | Màn Cài đặt AI báo mô hình đã tải, đúng dung lượng | ✅ |
-| 2 | Chữ **hiện dần** (streaming) khi trả lời | 🔧 **mã xong 2026-09-22** (việc số 1 — chặn theo câu, mục **9.8**), **chưa đo máy thật** |
+| 2 | Chữ **hiện dần** (streaming) khi trả lời | ✅ **đo máy thật 2026-09-22 tối** (mục **9.9**): câu tổng hợp 429 ký tự sinh 8,7 s, bong bóng lớn dần **theo từng câu** — 1 → 3 → 4 câu ở ≈ 3,8 / 5,9 / 7,6 s, chip còn xám; token đầu 1,7 s |
 | 3 | Logcat có dòng nạp mô hình và thời gian sinh | ✅ 8.654 ms / 0,9–3,3 s |
-| 4 | Hỏi câu mà gói số **không có** số → rơi về mẫu câu, không bịa | 🔧 **mã xong 2026-09-22** (`kiemNhan` + chip mới + few-shot hỏi đáp, mục **9.8**), **chưa đo máy thật** — trước đó ⚠️ đang hỏng, xem 9.5 |
-| 5 | Mô hình trấn an sai mức → rơi về mẫu câu (`kiemGiong`) | 🔧 **mã xong 2026-09-22** — trước đó không phải "chưa đo" mà là **chưa nối**: đường hỏi đáp chỉ gọi `kiemSoNhieuGoi`; nay `kiemCauTraLoi` nối cả ba lớp. **Chưa đo máy thật** |
+| 4 | Hỏi câu mà gói số **không có** số → rơi về mẫu câu, không bịa | ✅ **không bịa** (đo 9.9): hỏi *"Du bao tiet kiem cua toi la bao nhieu?"* → *"Tổng thu là 15.135.000 đ, tổng chi là 2.141.000 đ, còn lại là 12.994.000 đ."* — ba số thật, **đúng nhãn** (trước: *"Dự báo tiết kiệm là 85,4%"*). ⚠️ Mô hình **không** nói "không có dữ liệu" mà chọn số liên quan; không có gì sai để chặn nên không rơi về mẫu. Trước đó ⚠️ đang hỏng, xem 9.5 |
+| 5 | Mô hình trấn an sai mức → rơi về mẫu câu (`kiemGiong`) | ✅ **nối và đo** (9.9): gói ngân sách ở mức cảnh báo (Giáo dục 90,0 %), hỏi *"Toi co dang on khong? Ngan sach the nao?"* → *"…Ngân sách căng nhất là 90,0%."* — **không** cụm trấn an, không phải chặn. ⚠️ Lớp chắn chưa bị kích trên máy (mô hình không trấn an); ca `kiem_cau_tra_loi_test` *"⭐ trấn an khi có gói cảnh báo bị chặn"* là bằng chứng nó sống. Trước đó không phải "chưa đo" mà là **chưa nối** |
 | 6 | Chế độ máy bay → vẫn trả lời | ✅ 1.898 ms, 0 request |
 
 ⚠️ **Điểm 4 từng hỏng theo một đường không ai lường:** nó không bịa **con số** (`kiemSo` chặn
@@ -35,8 +35,9 @@ có**, và few-shot hỏi đáp có ví dụ *"không có số liệu → trả 
 Thứ tự việc để đóng cổng A nằm ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
 ✅ Streaming (điểm 2) làm bằng `Chat.generateChatResponseAsync()` có sẵn của gói, và mâu
 thuẫn với `kiemSo` (bộ kiểm chỉ chạy trên câu đầy đủ) giải bằng **gác theo câu** — người
-dùng chốt 2026-09-22, mục **9.8**. 🛑 **Ba điểm 2, 4, 5 vẫn phải đo trên OnePlus 13R** trước
-khi ghi ✅ — máy ảo x86_64 luôn rơi về mẫu câu nên không đo được gì ở đây.
+dùng chốt 2026-09-22, mục **9.8**. ✅ **Ba điểm 2, 4, 5 đã đo trên OnePlus 13R tối 2026-09-22** (mục **9.9**) — **CỔNG A QUA**. Lượt đo
+bắt thêm **hai lỗi thật** 3392 ca test đều mù: token cắt con số ở cuối bộ đệm (bẫy **4.18**) và
+thẻ số liệu so chuỗi con (bẫy **4.19**).
 
 > ⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, phát hiện khi thi công Task 7** (2026-09-22) — ghi ở đây
 > vì hai chỗ đầu sẽ tái phát ở Task 8: **(1)** kế hoạch lưu công tắc bằng `SharedPreferences`, mà
@@ -126,7 +127,7 @@ lib/features/ai_edge/
             bo_dien_giai.dart · mau_cau.dart · dau_van.dart · tai_phan_bo.dart · kiem_so.dart
             ap_dung_ke_hoach.dart · kiem_giong.dart
             (P3) slm_prompt.dart · chu_de_chan.dart
-            (việc số 1, 2026-09-22) kiem_nhan.dart · kiem_cau_tra_loi.dart — định nghĩa DUY NHẤT của "một câu được hiện" · gac_cau.dart — gác theo câu trên stream token
+            (việc số 1, 2026-09-22) kiem_nhan.dart · kiem_cau_tra_loi.dart — định nghĩa DUY NHẤT của "một câu được hiện" · gac_cau.dart — gác theo câu trên stream token · the_cua_cau.dart — thẻ số liệu của một câu (cùng phép khớp với bộ kiểm số)
   data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart · tai_tep_dio.dart · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
@@ -157,6 +158,8 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.15 | **Streaming và bộ kiểm loại trừ nhau nếu hiện từng token** — bộ kiểm chỉ có nghĩa trên câu đầy đủ | người đọc thấy con số sai **trước** khi câu bị chặn; ca test của bộ kiểm vẫn xanh vì nó không biết gì về thứ tự hiện. Chốt: `gacTheoCau` — hiện theo **câu**, trượt là `huy()` và không còn sự kiện nào sau đó | `gac_cau_test.dart` *"⭐ câu trượt: phát BiChan, huỷ đúng một lần, câu sau KHÔNG hiện"*; `ai_chat_page_test.dart` nhóm *"streaming CHẶN THEO CÂU"* |
 | 4.16 | **Ca "few-shot không chứa số ngoài gói" cắt khối sai mốc** — nó cắt tới `lastIndexOf('Số liệu:')`, tức gộp cả câu chỉ dẫn *"dưới 40 từ"* vào khối ví dụ, và 40 chỉ qua vì tình cờ là chuỗi con của "400.000" | ca xanh suốt từ P3 Task 1; lộ ra khi bản hỏi đáp mang *"dưới 80 từ"* và 80 không là chuỗi con của gì cả. Nay cắt tới đầu câu chỉ dẫn ở **cả hai** ca | `slm_prompt_test.dart` hai ca *"KHÔNG được chứa số ngoài gói"* |
 | 4.17 | **So từ khoá bằng `contains` là so chuỗi con** — "chiều" chứa "chi", nên *"Chiều nay tiêu 2.141.000 đ"* qua `kiemNhan` bản đầu | không lỗi; ca thử đầu viết *"Chính xác…"* và **xanh ngay** vì "chính" có dấu sắc không chứa "chi" — ca xanh ngay là ca không canh gì. Nay so theo **tập âm tiết** | `kiem_nhan_test.dart` *"từ khoá so theo ÂM TIẾT, không theo chuỗi con"* |
+| 4.18 | **Cuối bộ đệm token KHÔNG phải cuối câu** — mô hình phát *"…là 2."* rồi *"141.000 đ."*; regex kết câu có `\|$` coi `2.` là câu xong, bộ kiểm chặn "2", cả lượt rơi về câu lùi | không lỗi; câu lùi trông y như mô hình yếu. Fake stream của test đưa nguyên con số nên **3392 ca đều mù** — chỉ máy thật thấy, ngay câu đầu tiên. Kết câu nay chỉ khi dấu chấm **theo sau bởi khoảng trắng**; phần đuôi do `gacTheoCau` kiểm khi luồng **đã đóng**. ⚠️ Ca tái hiện phải cắt token **ngay sau** dấu chấm (`'…là 2.'` + `'141.000'`); cắt trước dấu chấm thì bản sai cũng xanh | `gac_cau_test.dart` *"⭐ dấu chấm ở CUỐI bộ đệm chưa phải kết câu"* và *"⭐ token cắt giữa con số"* |
+| 4.19 | **Thẻ số liệu so CHUỖI CON** (`cau.contains(s.chuoi)`) — có từ P3 Task 8, lộ ra khi hai gói mới mang số đếm ngắn: câu *"…tổng thu 15.135.000 đ"* kéo theo *Số cam kết 15 · Quá hạn 1 · Số ví 4 · Ví đang âm 1* | thẻ vẫn là số thật của gói nên không chốt nào đỏ; người đọc tin câu vừa nói tới hoá đơn quá hạn. Nay `theCuaCau` dùng **cùng phép khớp với bộ kiểm số** (`trichSo` + `soLieuKhop`), hai nhãn cùng số → một thẻ | `the_cua_cau_test.dart` *"⭐ số đếm ngắn KHÔNG khớp vì là chuỗi con của một số tiền"* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -222,8 +225,9 @@ sửa tên danh mục lặng lẽ **tắt cờ**; có ca test canh (*"sửa tên
 | `test/core/notification/notification_deeplink_test.dart` (sửa) | — | Task 16 — phép canh "đủ mọi loại" **tự đỏ** khi enum thêm giá trị: phải dựng thêm `keHoachTaiPhanBo` cho `tatCaUngVien()`. Đúng cách lưới ấy sinh ra để làm việc | 2026-09-20 |
 | `test/features/ai_edge/domain/kiem_nhan_test.dart` | 12 | việc số 1 — bộ kiểm NHÃN: ⭐ câu đo trên máy thật *"Tỉ lệ phân bổ là 85,4%"* bị chặn; đúng nhãn qua; số khớp hai nhãn ở hai gói đủ một nhãn; nhãn nhiều âm tiết đòi đủ; so theo **âm tiết** ("chiều" ≠ "chi"); `tuKhoaNhan` bỏ âm tiết chung | 2026-09-22 |
 | `test/features/ai_edge/domain/kiem_cau_tra_loi_test.dart` | 9 | việc số 1 — định nghĩa duy nhất "một câu được hiện": `mucTongHop` (một gói cảnh báo → cả câu cảnh báo); ⭐ trấn an khi có gói cảnh báo bị chặn (điểm 5 cổng A, trước đó **chưa nối**); số bịa / sai nhãn / báo động khi bình thường bị chặn; phủ định ba từ giữ nguyên | 2026-09-22 |
-| `test/features/ai_edge/domain/gac_cau_test.dart` | 9 | việc số 1 — gác theo câu: `tachCauHoanChinh` không cắt ở chấm ngăn nghìn; ⭐ câu trượt → `BiChan`, huỷ **một** lần, câu sau **không** hiện (dựng `StreamController` thật); hết luồng không dấu kết vẫn kiểm phần đuôi; luồng rỗng không phát gì | 2026-09-22 |
+| `test/features/ai_edge/domain/gac_cau_test.dart` | 11 | việc số 1 — gác theo câu: ⭐ **cuối bộ đệm chưa phải kết câu** và **token cắt ngay sau dấu chấm** (hai ca từ lỗi máy thật, bẫy 4.18); `tachCauHoanChinh` không cắt ở chấm ngăn nghìn; ⭐ câu trượt → `BiChan`, huỷ **một** lần, câu sau **không** hiện (dựng `StreamController` thật); hết luồng không dấu kết vẫn kiểm phần đuôi; luồng rỗng không phát gì | 2026-09-22 |
 | `test/features/ai_edge/data/nguon_goi_so_test.dart` | 3 | việc số 1 — **sáu** gói theo thứ tự cố định; hoá đơn hỏi đúng `idaccount`; ví đọc **một** lần. Fake ghi đè `noSuchMethod` — chỉ dựng hàm được gọi, hàm lạ thì ném | 2026-09-22 |
+| `test/features/ai_edge/domain/the_cua_cau_test.dart` | 5 | đo cổng A — thẻ của một câu: ⭐ số đếm ngắn không khớp vì là chuỗi con của số tiền (bẫy 4.19); cùng loại/ngưỡng với bộ kiểm số; hai nhãn cùng số → một thẻ; câu không số → không thẻ | 2026-09-22 |
 | `test/features/ai_edge/domain/slm_prompt_test.dart` (+7) | 7 | việc số 1 — `promptHoiDap`: ba ví dụ có Câu hỏi/Trả lời; ⭐ có ví dụ trả lời **không chữ số**; bất biến số-trong-gói cho bộ mới (⚠️ mốc cắt sửa ở **cả hai** ca — bẫy 4.16); chỉ dẫn "dùng đúng nhãn"; tiêu đề `== Ngân sách ==` đứng trước số liệu; gói thiếu dữ liệu in câu mẫu; prompt nhận xét **không đổi** | 2026-09-22 |
 | `test/features/ai_chat/ai_chat_page_test.dart` (+4) | 4 | việc số 1 — nhóm *"streaming CHẶN THEO CÂU"*: câu qua kiểm hiện **khi luồng còn mở**; bị chặn khi chưa câu nào → câu lùi, không lộ "85,4"; bị chặn sau một câu → **giữ** câu ấy, không câu lùi; luồng lỗi → câu "không chạy được", ô nhập mở lại. Khe tiêm `onHoi` nay nhận `Stream<SuKienGac>`; chip test đổi sang bộ mới | 2026-09-22 |
 
@@ -683,16 +687,46 @@ thật sự xảy ra thay vì bịa nhãn.
 **Test:** 44 ca mới ở 6 tệp, 4 tệp mới (`kiem_nhan_test` 12 · `kiem_cau_tra_loi_test` 9 ·
 `gac_cau_test` 9 · `data/nguon_goi_so_test` 3 — fake `noSuchMethod`, chỉ dựng hàm được gọi);
 `slm_prompt_test` +7, `ai_chat_page_test` +4 (khe tiêm `onHoi` nay nhận `Stream<SuKienGac>`).
-Toàn bộ **3392/3392**, analyze 26. Hai bẫy lộ ra trong lượt: **4.16** (ca few-shot cắt sai
+Toàn bộ **3392/3392** trước khi đo máy thật, **3399/3399** sau (mục 9.9: +2 `gac_cau_test`, +5 tệp mới `the_cua_cau_test`), analyze 26. Hai bẫy lộ ra trong lượt viết mã: **4.16** (ca few-shot cắt sai
 mốc, xanh nhờ "40" ⊂ "400.000") và **4.17** (`contains` là chuỗi con; ca thử đầu *"Chính
 xác…"* xanh ngay vì "chính" có dấu sắc — ca xanh ngay là ca không canh gì).
 
-🛑 **Chưa đo máy thật.** Ba điểm 2, 4, 5 của cổng A cần OnePlus 13R (máy ảo x86_64 rơi về
-mẫu câu). Việc đo: hỏi chip 1 → chữ hiện theo câu, logcat `[SLM] sinh dần xong … (token đầu
-N ms …)`; hỏi *"Dự báo tiết kiệm của tôi?"* → hoặc câu "không có số liệu" hoặc câu lùi, **không**
-có "85,4%" mang nhãn lạ; dựng ngân sách ≥ 90 % rồi hỏi *"tôi có đang ổn không"* → không câu trấn
-an. `SlmRuntime.sinh` (không stream) **giữ nguyên** cho `SlmDienGiai` — lối B vẫn không đăng ký
-lớp ấy.
+`SlmRuntime.sinh` (không stream) **giữ nguyên** cho `SlmDienGiai` — lối B vẫn không đăng ký lớp
+ấy. Đo máy thật ở mục **9.9** ngay dưới.
+
+### 9.9 Đo cổng A trên máy thật (2026-09-22 tối) — ✅ CỔNG A QUA
+
+OnePlus 13R, bản `--release` cài đè (giữ mô hình đã tải và phiên tài khoản 10), backend dev qua
+`adb reverse tcp:3000` với `baseUrl` đổi tạm `127.0.0.1` (**đã hoàn tác, không commit**). Câu hỏi
+tự do gõ bằng `adb shell input text` nên **không dấu** — mô hình vẫn hiểu; chip thì có dấu.
+Ảnh chụp liên tiếp bằng `screencap` **trên máy** (~0,4 s/khung) rồi `pull` thư mục riêng.
+
+| Lượt | Câu hỏi | Kết quả | Thời gian |
+|---|---|---|---|
+| Nạp | — | — | 3.729–4.523 ms (bốn lần; Task 9 đo 8.654 ms) |
+| Chip 1 *"Chi tiêu tháng này"* | 61 ký tự, **một** câu | qua cả ba lớp; thẻ đúng hai số câu nhắc | 1.596–2.869 ms; token đầu 549 ms (ấm) / 1.766 ms (sau nạp) |
+| Chip 2 *"Tình hình ngân sách"* | 56 ký tự | qua | 1.565 ms; token đầu 942 ms |
+| **Điểm 4** — *"Du bao tiet kiem cua toi la bao nhieu?"* | *"Tổng thu là 15.135.000 đ, tổng chi là 2.141.000 đ, còn lại là 12.994.000 đ."* | **không bịa**, ba nhãn đúng; không nói "không có dữ liệu" | 3.135 ms; token đầu 1.682 ms |
+| **Điểm 5** — *"Toi co dang on khong? Ngan sach the nao?"* (Giáo dục 90,0 % → gói cảnh báo) | *"Thu là 15.135.000 đ, Chi là 2.141.000 đ, còn lại là 12.994.000 đ. Ngân sách căng nhất là 90,0%."* | **không trấn an**, không phải chặn | 3.371 ms |
+| **Điểm 2** — *"Tom tat tinh hinh tai chinh thang nay…"* | **429 ký tự, 4 câu** (chi tiêu · ngân sách · mục tiêu · hoá đơn), mọi số đúng nhãn | bong bóng **1 → 3 → 4 câu** ở ≈ 3,8 / 5,9 / 7,6 s sau khi bắt đầu sinh, chip xám suốt; xong ở 8.672 ms | token đầu 1.674 ms |
+
+**Hai lỗi thật lượt này bắt được, cả hai 3392 ca test mù:**
+
+1. ⭐ **Câu đầu tiên trên máy bị chặn**: *"Chi tiêu tháng này là 2."* — token cắt con số ngay sau
+   dấu chấm ngăn nghìn, bộ đệm dừng ở `2.` một nhịp, regex `[.!?](?=\s|$)` coi đó là kết câu.
+   Bẫy **4.18**; sửa + hai ca; đo lại: qua.
+2. **Thẻ số liệu in số đếm không ai nhắc** (*Số cam kết 15 · Chưa trả 3 · Quá hạn 1 · Số ví 4 · Ví
+   đang âm 1*) vì so chuỗi con — lỗi có từ Task 8, chỉ lộ khi có gói mang số đếm ngắn. Bẫy
+   **4.19**; `theCuaCau` mới + 5 ca; đo lại: đúng hai thẻ.
+
+⚠️ Điều đáng ghi về **điểm 4**: `kiemNhan` đóng đúng đường đã hỏng (gắn nhãn lạ cho số thật),
+nhưng mô hình E2B **không** chọn nói "không có dữ liệu" dù few-shot có ví dụ ấy — nó trả lời bằng
+những số liên quan thật. Đó là hành vi chấp nhận được (không sai, không bịa) chứ không phải hành
+vi lý tưởng; muốn hơn thì phải function calling (việc số 3), không phải thêm lớp chắn.
+
+⚠️ Bốn bẫy thao tác máy thật của lượt này ghi ở `CLAUDE.md` mục *"Chạy trên MÁY THẬT"* (màn quét
+`InstallGuideActivity` của OnePlus chặn `adb install` im lặng; `adb pull /sdcard/Download/` kéo cả
+ảnh riêng của người dùng; `input text` không gõ được dấu; Enter không gửi được ô chat).
 
 ---
 

@@ -14,22 +14,33 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('tachCauHoanChinh', () {
-    test('tách ở . ! ? theo sau bởi khoảng trắng hoặc hết chuỗi', () {
+    test('tách ở . ! ? theo sau bởi khoảng trắng; CUỐI CHUỖI thì chưa', () {
+      // Cuối bộ đệm không phải cuối câu khi luồng còn mở — xem ca ⭐ dưới.
       final (cau, conLai) = tachCauHoanChinh(
         'Chi 2.141.000 đ trên 15.135.000 đ thu. Để dành 85,4%! Còn 9 ngày?',
       );
       expect(cau, [
         'Chi 2.141.000 đ trên 15.135.000 đ thu.',
         'Để dành 85,4%!',
-        'Còn 9 ngày?',
       ]);
-      expect(conLai, '');
+      expect(conLai, 'Còn 9 ngày?');
     });
 
     test('⭐ dấu chấm ngăn nghìn KHÔNG phải kết câu', () {
       final (cau, conLai) = tachCauHoanChinh('Chi 2.141');
       expect(cau, isEmpty);
       expect(conLai, 'Chi 2.141');
+    });
+
+    test('⭐ dấu chấm ở CUỐI bộ đệm chưa phải kết câu — token cắt giữa con số',
+        () {
+      // Đo trên OnePlus 13R 2026-09-22: mô hình phát "…là 2" rồi ".141.000 đ."
+      // — bộ đệm dừng ở "là 2." đúng một nhịp, bản đầu coi đó là câu xong,
+      // bộ kiểm chặn "2" (không khớp số nào) và cả lượt rơi về câu lùi.
+      // Fake stream của test đưa nguyên con số nên không bao giờ thấy.
+      final (cau, conLai) = tachCauHoanChinh('Chi tiêu tháng này là 2.');
+      expect(cau, isEmpty);
+      expect(conLai, 'Chi tiêu tháng này là 2.');
     });
 
     test('phần chưa có dấu kết giữ lại làm phần còn lại', () {
@@ -87,6 +98,22 @@ void main() {
         const BiChan('Tỉ lệ phân bổ 85,4%.'),
       ]);
       expect(soLanHuy, 1);
+    });
+
+    test('⭐ token cắt giữa con số: câu chỉ kiểm khi số đã đủ', () async {
+      // Chính lượt đo 2026-09-22: vết cắt nằm NGAY SAU dấu chấm — token "…là
+      // 2." rồi "141.000 đ. ". Với bản sai, sự kiện đầu là
+      // BiChan('Chi tiêu tháng này là 2.'). ⚠️ Cắt trước dấu chấm ("là 2" +
+      // ".141") thì bản sai cũng xanh — ca đầu viết thế và không canh gì.
+      final sk = await gacTheoCau(
+        tokens(['Chi tiêu tháng này là 2.', '141.000 đ. ', 'Xong.']),
+        kiem: (c) => !c.endsWith(' 2.'),
+        huy: () async {},
+      ).toList();
+      expect(sk, [
+        const CauQua('Chi tiêu tháng này là 2.141.000 đ.'),
+        const CauQua('Xong.'),
+      ]);
     });
 
     test('hết luồng mà không có dấu kết: phần còn lại vẫn là một câu phải kiểm',

@@ -36,6 +36,7 @@ import '../../../ai_edge/domain/gac_cau.dart';
 import '../../../ai_edge/domain/goi_so.dart';
 import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
+import '../../../ai_edge/domain/the_cua_cau.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.
@@ -316,13 +317,10 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   /// Thẻ số liệu = **những con số câu ấy thật sự nhắc tới**, lấy từ gói. Không
-  /// phải mọi số của cả bốn gói: một câu hai dòng kèm hai mươi thẻ thì thẻ
-  /// thôi là nguồn kiểm chứng, nó thành tiếng ồn.
-  List<String> _theChoCau(String cau, List<GoiSo> goi) => [
-        for (final g in goi)
-          for (final s in g.soLieu)
-            if (cau.contains(s.chuoi)) '${s.nhan} ${s.chuoi}',
-      ];
+  /// phải mọi số của cả sáu gói: một câu hai dòng kèm hai mươi thẻ thì thẻ
+  /// thôi là nguồn kiểm chứng, nó thành tiếng ồn. Phép khớp ở `theCuaCau` —
+  /// ⚠️ **không** so chuỗi con (đã vấp thật, xem docstring ở đó).
+  List<String> _theChoCau(String cau, List<GoiSo> goi) => theCuaCau(cau, goi);
 
   void _cuonXuong() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

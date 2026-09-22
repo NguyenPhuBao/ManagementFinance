@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
-### 🔧 Edge AI — việc số 1 của lộ trình: chất lượng câu trả lời + mã cho cổng A (2026-09-22 tối) — MÃ XONG, CHƯA ĐO MÁY THẬT
+### ✅ Edge AI — việc số 1 của lộ trình: chất lượng câu trả lời + CỔNG A QUA (2026-09-22 tối)
 
 Thứ tự việc ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`; chi tiết ở mục **9.8**
 `docs/AI_EDGE_FEATURE.md`. Sáu thay đổi, **không đổi schema** (v24), **không đổi payload**, không
@@ -607,15 +607,21 @@ trượt thì **giữ** các câu ấy); **`kiemNhan`** lớp chắn thứ ba (s
 của "một câu được hiện" = số + nhãn + giọng, và đây là chỗ **nối `kiemGiong` vào hỏi đáp** (trước
 đó chưa nối — bảng cổng A ghi "chưa đo" là sai chữ); `NguonGoiSo` gom **sáu** gói (thêm hoá đơn,
 ví); bốn chip **chỉ hỏi thứ một gói có**; `promptHoiDap` có few-shot riêng, một ví dụ *không có số
-liệu → không chữ số*. Test **3392/3392** (+44, bốn tệp mới), analyze 26.
+liệu → không chữ số*. Test **3392/3392** (+44, bốn tệp mới) sau phần mã, **3399/3399** sau đo máy thật, analyze 26.
 
 ⚠️ Người dùng hỏi *"vậy là chỉ hỏi được thứ có sẵn thôi à"* — **đúng**: bậc này mô hình chỉ thấy gói
 số (~30 con số của sáu màn). Thứ gỡ giới hạn là **function calling** (việc số 3); người dùng chốt
 **giữ thứ tự** (việc này → đo chặng 3 → function calling), vì ba lớp chắn dùng lại nguyên vẹn cho
 bậc sau và đo chặng 3 trên một bậc còn bịa nhãn là đo vô nghĩa.
 
-🛑 **Còn lại của việc số 1: đo ba điểm 2/4/5 cổng A trên OnePlus 13R** (máy ảo x86_64 rơi về mẫu
-câu). Cách đo ở cuối mục 9.8.
+✅ **Đo trên OnePlus 13R tối cùng ngày — CỔNG A QUA** (mục **9.9** `AI_EDGE_FEATURE.md`): câu tổng
+hợp 4 câu / 429 ký tự hiện dần 1 → 3 → 4 câu; hỏi "dự báo tiết kiệm" → ba số thật đúng nhãn,
+không bịa (nhưng mô hình chọn số liên quan thay vì nói "không có dữ liệu"); hỏi "có đang ổn không"
+khi ngân sách 90 % → không trấn an. ⚠️ **Lượt đo bắt hai lỗi thật mà 3392 ca test mù**: câu đầu
+tiên trên máy bị chặn vì token cắt con số **ngay sau dấu chấm** (`…là 2.` + `141.000`) và regex
+kết câu coi cuối bộ đệm là kết câu (bẫy 4.18); thẻ số liệu so **chuỗi con** in *Số cam kết 15* cho
+câu chỉ nhắc *15.135.000 đ* (bẫy 4.19, có từ P3 Task 8). Cả hai sửa + test + đo lại cùng tối.
+**Bước tiếp theo thứ tự đã duyệt: việc số 2 — tải nền + resume** (spec `2026-09-22-tai-mo-hinh-nen-resume-design.md`, kế hoạch 7 task đã lên git; lối B đã duyệt, thi công inline, **không** brainstorm lại), rồi **chặng 3** của lộ trình kiến trúc (đo bậc 1 hỏng ở đâu, không phải task mã).
 
 
 ### ✅ Edge AI chặng 2 — P3 cắm SLM, XONG TRỌN 10 TASK (2026-09-22)
