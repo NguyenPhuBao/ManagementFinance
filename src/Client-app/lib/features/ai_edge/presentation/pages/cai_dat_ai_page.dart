@@ -387,33 +387,39 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
         ],
       );
 
-  Widget _chipHoatDong() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.income.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                  color: AppColors.income, shape: BoxShape.circle),
+  /// ⚠️ Chip này phải theo **công tắc**, không chỉ theo việc tệp có trên máy.
+  /// Để nguyên chữ "Hoạt động" khi công tắc đã tắt là đặt một lời khẳng định
+  /// xanh lá ngay trên chính cái công tắc đang nói ngược lại — và người dùng
+  /// tin cái chip. Thấy được khi nhìn màn thật trên máy ảo 2026-09-22.
+  Widget _chipHoatDong() {
+    final mau = _bat ? AppColors.income : AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: mau.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: mau, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            _bat ? 'Hoạt động' : 'Đang tắt',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: mau,
             ),
-            const SizedBox(width: 5),
-            const Text(
-              'Hoạt động',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.income,
-              ),
-            ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _dongWifi() => Row(
         children: [

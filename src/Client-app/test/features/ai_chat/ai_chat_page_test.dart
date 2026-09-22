@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -150,5 +151,67 @@ void main() {
     await t.pumpWidget(boc(const AiChatPage(coMoHinh: true)));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
+  });
+
+  group('Vì sao ô nhập bị khoá — hai lý do, hai câu', () {
+    // ⚠️ Lỗi này chỉ lộ khi nhìn màn thật: băng nhắc nói "Chưa có mô hình trên
+    // máy" cho CẢ trường hợp người dùng đã tải xong 2,41 GB rồi tự tắt công
+    // tắc — họ sẽ đi tải lại một thứ đang nằm sẵn trong máy. `flutter test`
+    // mù với nó vì widget test chỉ dựng được một nhánh.
+    test('chưa có tệp → nói chưa tải', () {
+      expect(cauKhoaHoiDap(coTep: false), kChuaCoMoHinh);
+      expect(cauKhoaHoiDap(coTep: false), contains('tải'));
+    });
+
+    test('có tệp mà vẫn khoá → nói công tắc đang tắt, KHÔNG rủ tải lại', () {
+      expect(cauKhoaHoiDap(coTep: true), kCongTacDangTat);
+      expect(cauKhoaHoiDap(coTep: true), isNot(contains('2,41 GB')),
+          reason: 'Rủ tải lại một tệp đã có là đẩy người dùng đi mất 2,41 GB '
+              'cho đúng thứ họ đang có sẵn.');
+    });
+  });
+
+  testWidgets('⚠️ quay lại từ Cài đặt AI thì ĐỌC LẠI trạng thái', (t) async {
+    // Đo được trên máy ảo 2026-09-22: tắt công tắc ở màn Cài đặt AI rồi quay
+    // về, chip vẫn xanh và ô nhập vẫn mở — vì `initState` chỉ chạy một lần còn
+    // `pop` thì không dựng lại State. Người dùng chỉ biết khi bấm vào và không
+    // có gì xảy ra. Cùng họ với G48.
+    //
+    // Phải dựng `GoRouter` THẬT: `push` rồi `pop` là chính thứ cần tái hiện,
+    // và `MaterialApp` trần không có `context.push`.
+    var soLanDo = 0;
+    final router = GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, __) => AiChatPage(
+          doTrangThai: () async {
+            soLanDo++;
+            return (true, true);
+          },
+        ),
+      ),
+      GoRoute(
+        path: '/ai-settings',
+        builder: (_, __) => const Scaffold(body: Text('màn cài đặt')),
+      ),
+    ]);
+    addTearDown(router.dispose);
+
+    await t.pumpWidget(
+      MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    );
+    await t.pumpAndSettle();
+    expect(soLanDo, 1, reason: 'Lần đầu dựng thì phải đọc một lần.');
+
+    await t.tap(find.byIcon(Icons.settings));
+    await t.pumpAndSettle();
+    expect(find.text('màn cài đặt'), findsOneWidget,
+        reason: 'Nút bánh răng là lối vào DUY NHẤT của /ai-settings.');
+
+    router.pop();
+    await t.pumpAndSettle();
+    expect(soLanDo, 2,
+        reason: 'Quay về mà không đọc lại thì màn này nói một đằng còn công '
+            'tắc ở màn kia đã một nẻo.');
   });
 }

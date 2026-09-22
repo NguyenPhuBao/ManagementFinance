@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/features/ai_edge/data/cong_tac_ai.dart';
 import 'package:flowmoney/features/ai_edge/presentation/pages/cai_dat_ai_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
@@ -75,4 +76,33 @@ void main() {
       expect(t.takeException(), isNull, reason: 'daCoMoHinh=$co');
     }
   });
+
+  testWidgets('⚠️ chip trạng thái theo CÔNG TẮC, không chỉ theo tệp',
+      (t) async {
+    // Đã tải mà công tắc tắt thì chip xanh "Hoạt động" là một lời khẳng định
+    // đặt ngay trên chính cái công tắc đang nói ngược lại — và người dùng tin
+    // cái chip. Thấy được khi nhìn màn thật, `flutter test` thì không.
+    await t.pumpWidget(boc(const CaiDatAiPage(
+      daCoMoHinh: true,
+      congTac: _CongTacTat(),
+    )));
+    await t.pumpAndSettle();
+    expect(find.text('Đang tắt'), findsOneWidget);
+    expect(find.text('Hoạt động'), findsNothing);
+  });
+
+  testWidgets('công tắc bật thì chip nói Hoạt động', (t) async {
+    await t.pumpWidget(boc(const CaiDatAiPage(daCoMoHinh: true)));
+    await t.pumpAndSettle();
+    expect(find.text('Hoạt động'), findsOneWidget);
+  });
+}
+
+/// Kho tuỳ chọn giả: luôn tắt. `FlutterSecureStorage` thật ném trong
+/// `flutter test` (không có kênh nền tảng) và `CongTacAi` nuốt lỗi rồi trả
+/// mặc định **bật** — nên không có lớp này thì nhánh "tắt" không dựng được.
+class _CongTacTat extends CongTacAi {
+  const _CongTacTat();
+  @override
+  Future<bool> doc() async => false;
 }

@@ -39,8 +39,19 @@ const List<String> kChipGoiY = [
   'Tình hình ngân sách',
 ];
 
-const String _kChuaCoMoHinh =
+const String kChuaCoMoHinh =
     'Chưa có mô hình trên máy. Mở Cài đặt AI để tải về (2,41 GB) rồi hỏi lại.';
+
+const String kCongTacDangTat =
+    'Công tắc "Dùng AI trên máy" đang tắt. Bật lại ở Cài đặt AI để hỏi.';
+
+/// Vì sao ô nhập bị khoá — **hai lý do khác nhau, hai câu khác nhau**.
+///
+/// ⚠️ Gộp làm một là để một câu nói dối: người đã tải xong 2,41 GB rồi tự tắt
+/// công tắc sẽ đọc *"chưa có mô hình trên máy"* và đi tải lại. Thấy được khi
+/// nhìn màn thật trên máy ảo, `flutter test` thì mù vì nó chỉ dựng một nhánh.
+String cauKhoaHoiDap({required bool coTep}) =>
+    coTep ? kCongTacDangTat : kChuaCoMoHinh;
 
 /// ⚠️ Câu này là **nhánh lùi khi bộ kiểm số chặn**, và nó cố ý **không** nói
 /// câu mô hình vừa viết. Hiện ra kèm lời cảnh báo thì người đọc vẫn nhớ con số
@@ -73,6 +84,7 @@ class AiChatPage extends StatefulWidget {
     this.onHoi,
     this.traLoiMau,
     this.theSoLieuMau,
+    this.doTrangThai,
   });
 
   /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
@@ -86,6 +98,9 @@ class AiChatPage extends StatefulWidget {
   final List<String>? traLoiMau;
   final List<String>? theSoLieuMau;
 
+  /// Khe tiêm cho test: đọc `(có tệp, công tắc đang bật)`. `null` = hỏi DI.
+  final Future<(bool, bool)> Function()? doTrangThai;
+
   @override
   State<AiChatPage> createState() => _AiChatPageState();
 }
@@ -95,8 +110,12 @@ class _AiChatPageState extends State<AiChatPage> {
   final _cuon = ScrollController();
   final _tinNhan = <_TinNhan>[];
 
-  bool _coMoHinh = false;
+  /// Hai cờ chứ không một: xem [cauKhoaHoiDap].
+  bool _coTep = false;
+  bool _batCongTac = true;
   bool _dangHoi = false;
+
+  bool get _coMoHinh => _coTep && _batCongTac;
 
   @override
   void initState() {
@@ -110,23 +129,41 @@ class _AiChatPageState extends State<AiChatPage> {
     }
 
     if (widget.coMoHinh != null) {
-      _coMoHinh = widget.coMoHinh!;
+      _coTep = widget.coMoHinh!;
     } else {
       _doMoHinh();
     }
   }
 
   Future<void> _doMoHinh() async {
-    if (!sl.isRegistered<MoHinhTaiVe>() || !sl.isRegistered<CongTacAi>()) {
-      return;
-    }
-    // Hai điều kiện, không một: tệp có trên máy **và** người dùng chưa tắt
-    // công tắc ở màn Cài đặt AI. Bỏ vế thứ hai thì công tắc ấy không gác gì —
-    // ở lối B, DI không gác hộ nữa (Task 7 Step 4).
-    final co = await sl<MoHinhTaiVe>().daCo();
-    final bat = await sl<CongTacAi>().doc();
+    final (co, bat) = await (widget.doTrangThai ?? _doTuDi)();
     if (!mounted) return;
-    setState(() => _coMoHinh = co && bat);
+    setState(() {
+      _coTep = co;
+      _batCongTac = bat;
+    });
+  }
+
+  /// Hai điều kiện, không một: tệp có trên máy **và** người dùng chưa tắt công
+  /// tắc ở màn Cài đặt AI. Bỏ vế thứ hai thì công tắc ấy không gác gì — ở lối
+  /// B, DI không gác hộ nữa (Task 7 Step 4).
+  Future<(bool, bool)> _doTuDi() async {
+    if (!sl.isRegistered<MoHinhTaiVe>() || !sl.isRegistered<CongTacAi>()) {
+      return (false, true);
+    }
+    return (await sl<MoHinhTaiVe>().daCo(), await sl<CongTacAi>().doc());
+  }
+
+  /// ⚠️ Mở màn Cài đặt AI rồi **đọc lại** trạng thái khi quay về.
+  ///
+  /// `initState` chỉ chạy một lần; quay lại bằng `pop` thì nó **không** chạy
+  /// lại, nên người dùng tắt công tắc ở màn kia xong quay về vẫn thấy chip
+  /// xanh và ô nhập mở — bấm vào thì mới biết là không. Đo được trên máy ảo
+  /// ngày 2026-09-22; `flutter test` mù với nó, cùng họ với **G48**.
+  Future<void> _moCaiDatAi() async {
+    await context.push('/ai-settings');
+    if (!mounted || widget.coMoHinh != null) return;
+    await _doMoHinh();
   }
 
   @override
@@ -180,7 +217,7 @@ class _AiChatPageState extends State<AiChatPage> {
     if (id == null || id <= 0) return const _TinNhan.cuaAi(_kHong);
 
     final moHinh = sl<MoHinhTaiVe>();
-    if (!await moHinh.daCo()) return const _TinNhan.cuaAi(_kChuaCoMoHinh);
+    if (!await moHinh.daCo()) return const _TinNhan.cuaAi(kChuaCoMoHinh);
 
     final goi = await sl<NguonGoiSo>().tatCa(id);
     final runtime = sl<SlmRuntime>();
@@ -271,7 +308,7 @@ class _AiChatPageState extends State<AiChatPage> {
           icon: const Icon(Icons.settings, color: AppColors.onSurfaceVariant),
           // Lối vào DUY NHẤT của `/ai-settings` (Task 7). Route ấy nằm ngoài
           // shell nên phải `push` — `go` thì thanh tab biến mất.
-          onPressed: () => context.push('/ai-settings'),
+          onPressed: _moCaiDatAi,
         ),
       ],
       bottom: PreferredSize(
@@ -458,15 +495,15 @@ class _AiChatPageState extends State<AiChatPage> {
             const Icon(Icons.info_outline,
                 size: 16, color: AppColors.onSurfaceVariant),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text(
-                _kChuaCoMoHinh,
-                style: TextStyle(
+                cauKhoaHoiDap(coTep: _coTep),
+                style: const TextStyle(
                     fontSize: 12, color: AppColors.onSurfaceVariant),
               ),
             ),
             TextButton(
-              onPressed: () => context.push('/ai-settings'),
+              onPressed: _moCaiDatAi,
               child: const Text('Cài đặt AI'),
             ),
           ],
@@ -498,7 +535,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 decoration: InputDecoration(
                   hintText: _coMoHinh
                       ? 'Hỏi về số liệu của bạn…'
-                      : 'Cần tải mô hình trước',
+                      : (_coTep ? 'AI trên máy đang tắt' : 'Cần tải mô hình trước'),
                   hintStyle: const TextStyle(color: AppColors.outline),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
