@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
+  flutter_gemma
   flutter_secure_storage_windows
   flutter_timezone
   share_plus
