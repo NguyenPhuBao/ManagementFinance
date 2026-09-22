@@ -309,6 +309,64 @@ một mili giây. Dùng HNSW ở quy mô này là trả giá độ chính xác m
 | **E2B chọn tool không đáng tin** | Mô hình 2B gọi sai tool hoặc sai tham số là chuyện thường. Cần `ToolChoice.auto`, **trần số vòng lặp**, và rơi về mẫu câu khi hết trần |
 | **Chiều ghi không có lưới** | `kiemSo` kiểm **chữ**, không kiểm **hành động** — xem mục 8 |
 
+### 5.5 Đo RAG on-device (spike, 2026-09-22, OnePlus 13R / Snapdragon 8 Gen 3)
+
+App đo vứt đi, ngoài repo. Corpus **30 đoạn kiến thức tài chính chung tiếng Việt**, không dữ
+liệu cá nhân; 5 câu hỏi, mỗi câu có một đoạn mong đợi; `topK: 3`.
+
+| Đại lượng | Giá trị |
+|---|---|
+| `flutter_gemma_rag_sqlite` | **1.3.2** — **tương thích `flutter_gemma` 1.8.3**, không đòi nâng |
+| Kho vector | KNN chạy **trong SQLite** qua `sqlite-vec` (bảng ảo `vec0`) — không brute-force Dart, không index trong RAM |
+| Mô hình đo được | **Gecko 110M English** — `Gecko_256_quant.tflite` |
+| Dung lượng | **114.141.184 B** (109 MiB) + tokenizer **794.346 B** |
+| Chiều vector | **768** (đo thật từ `VectorStoreStats`) |
+| RAM đỉnh | **533 MB PSS** · 655 MB RSS |
+| `FlutterGemma.initialize` | 28 ms |
+| `installEmbedder().install()` | 165 ms |
+| `createEmbeddingModel()` | 531 ms |
+| `rag.initialize` | 34 ms |
+| Index 30 đoạn | **7.608 ms** = **253,6 ms/đoạn** |
+| Tệp CSDL sau index | 3.203.072 B (~104 KB/đoạn) |
+| Truy vấn (TB 5 câu) | **251 ms** |
+| Top-3 đúng | **3/5** |
+| **Tổng tải nếu ship** | 2,41 GB (Gemma 4 E2B) + 109 MB = **~2,52 GB** (+4,5%) |
+
+**Ngưỡng đặt trước ở lộ trình (M4):** truy vấn < ~200 ms **và** top-3 ≥ 4/5. Đo được **251 ms**
+và **3/5** — **không đạt cả hai**.
+
+#### 🛑 Quyết định M4: KHÔNG làm RAG phía client ở dạng hiện tại
+
+Chuyển kiến thức chung sang **backend RAG** (chặng 6); client gọi một endpoint. Câu *"hệ thống có
+áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. Lý do bằng số:
+
+1. **Mô hình duy nhất tải tự do là English-only.** Gecko cho **3/5** trên câu hỏi tiếng Việt; hai
+   câu hỏng là hai câu cần hiểu ngữ nghĩa tiếng Việt tinh hơn (*"Nên trả nợ trước hay đầu tư
+   trước?"*, *"Tỉ lệ tiết kiệm tính thế nào?"*). Corpus của FlowMoney là tiếng Việt, nên đây
+   không phải hạn chế bên lề mà là hạn chế trúng đích.
+2. **Mọi bản đa ngữ đều gated.** `google/embeddinggemma-300m*` **và** `litert-community/embeddinggemma-300m`
+   đều trả **401** khi tải không token (đo 2026-09-22) — `gated: manual` / `gated: auto`. Ship một
+   mô hình mà mỗi máy phải có token HuggingFace là không ship được.
+3. **Độ trễ trên ngưỡng ngay cả khi bỏ qua hai điều trên**: 251 ms một truy vấn, và 253 ms mỗi
+   đoạn khi index.
+
+⚠️ **Hai lỗi của gói, đáng nhớ nếu ai đó mở lại hướng này.** (a) `EmbeddingModel.gecko110M` trong
+`flutter_gemma-1.8.3/lib/rag/embedding_models.dart` trỏ tới `…/resolve/main/gecko.tflite` — đường
+ấy trả **404**; tệp thật mang tên `Gecko_<seqlen>_{quant,f32}.tflite` (`Gecko_256_quant.tflite`
+114 MB, `Gecko_1024_quant.tflite` 146 MB, `Gecko_256_f32.tflite` 443 MB). (b) Bảng cùng tệp ghi
+Gecko *"110MB"* và EmbeddingGemma 300M *"300MB"*, nhưng cả năm mục đều khai `needsAuth: true` —
+đúng với EmbeddingGemma, **sai với Gecko** (repo `litert-community/Gecko-110m-en` có
+`gated: false`).
+
+⚠️ **Chữ ký API thật** (kế hoạch spike đoán sai ba chỗ): `RetrievalResult` mang `id` / `content` /
+`similarity` — **không** có `document` hay `score`; entry point là `FlutterGemmaPlugin.instance`,
+**không** `FlutterGemma.instance`; và `installEmbedder().install()` **đã** tự đặt mô hình làm
+active embedder nên không cần bước đặt riêng.
+
+⚠️ Build app spike vấp `Could not close incremental caches` ở `compileDebugKotlin` và **`flutter
+clean` không cứu được** — chỉ khỏi khi thêm `kotlin.incremental=false` cùng
+`kotlin.compiler.execution.strategy=in-process` vào `android/gradle.properties`.
+
 ---
 
 ## 6. Bốn bất biến — đây mới *là* kiến trúc
