@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/interceptors/auth_interceptor.dart';
@@ -30,6 +32,10 @@ import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
+import '../../features/ai_edge/data/cong_tac_ai.dart';
+import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
+import '../../features/ai_edge/data/slm_cache.dart';
+import '../../features/ai_edge/data/slm_runtime.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -453,6 +459,67 @@ Future<void> setupDependencies() async {
           sl<ReminderScheduler>().resync(idaccount),
     ),
   );
+
+  // ── AI trên máy (Edge AI P3) ───────────────────────────────────────────────
+  // Cả ba đều `registerLazySingleton`: không cái nào được dựng cho tới khi màn
+  // Cài đặt AI hoặc màn Trợ lý AI chạm vào. Quan trọng với `SlmRuntime` —
+  // dựng nó là nạp engine native, thứ không được xảy ra lúc mở app.
+  sl.registerLazySingleton<SlmRuntime>(SlmRuntimeThat.new);
+
+  sl.registerLazySingleton<MoHinhTaiVe>(
+    () => MoHinhTaiVe(
+      thuMuc: getApplicationSupportDirectory,
+      // ⚠️ `Dio()` TRẦN, cố ý KHÔNG phải `sl<DioClient>().dio`.
+      //
+      // `AuthInterceptor.onRequest` gắn `Authorization: Bearer <token>` vào
+      // **mọi** request đi qua Dio của dự án, không lọc theo host — mà đích ở
+      // đây là `huggingface.co`. Dùng chung Dio là gửi access token của người
+      // dùng cho một bên thứ ba, im lặng. Tải mô hình là một lượt GET tệp
+      // công khai, không cần thứ gì của phiên đăng nhập.
+      //
+      // (Kế hoạch P3 Step 4 viết `sl<Dio>()`; dự án không đăng ký `Dio` trần
+      // nào, và nếu đăng ký thì cũng không được lấy cái có interceptor.)
+      taiTep: (url, dich, bao) async {
+        await Dio().download(
+          url,
+          dich.path,
+          onReceiveProgress: (n, t) => bao(t > 0 ? n / t : 0),
+        );
+      },
+    ),
+  );
+
+  sl.registerLazySingleton<SlmCache>(
+    () => SlmCache(thuMuc: getApplicationSupportDirectory),
+  );
+
+  sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
+
+  // 🛑 CỐ Ý KHÔNG đăng ký `BoDienGiai` — người dùng chốt LỐI B ngày 2026-09-21.
+  //
+  // Không đăng ký thì `KhoiNhanXet` tự dùng `const MauCau()`, nên sáu khối Nhận
+  // xét (Ngân sách · Phân tích · Mục tiêu · Trang chủ · Hoá đơn · Quản lý ví)
+  // **giữ mẫu câu**: hiện tức thì, không chờ 2,3 giây, không "nhảy" từ mẫu
+  // sang câu mô hình.
+  //
+  // Vì sao: P1 đo được câu mô hình ở khối Nhận xét **gần bằng mẫu câu** — khác
+  // nhau ở giọng văn, không ở thông tin, và mẫu câu còn gọn hơn. Cái giá là
+  // 2,3 s mỗi khối cộng 2,41 GB tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**,
+  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8), nơi tự dựng
+  // `SlmDienGiai` lấy từ `sl<SlmRuntime>()` / `sl<SlmCache>()` / `sl<MoHinhTaiVe>()`.
+  //
+  // ⚠️ Đổi sang LỐI A (mô hình viết câu ở cả sáu khối) chỉ là bỏ dấu chú thích
+  // của khối dưới — một commit, không sửa màn nào. Đừng làm nếu người dùng chưa
+  // đổi ý. Công tắc "Dùng AI trên máy" ở lối B do chính màn Trợ lý AI đọc
+  // (`CongTacAi`), không để DI gác hộ.
+  //
+  // if (await sl<CongTacAi>().doc()) {
+  //   sl.registerLazySingleton<BoDienGiai>(() => SlmDienGiai(
+  //         runtime: sl<SlmRuntime>(),
+  //         cache: sl<SlmCache>(),
+  //         moHinh: sl<MoHinhTaiVe>(),
+  //       ));
+  // }
 
   await sl.allReady();
 }
