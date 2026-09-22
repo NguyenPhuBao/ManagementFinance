@@ -20,6 +20,36 @@ import 'nguon_tai_nen.dart';
 /// nhưng không ai tìm lại được nó — hỏng đúng thứ lát này làm ra.
 const String kTaskId = 'gemma-4-E2B';
 
+/// Tin tiến độ từ một `TaskProgressUpdate`, hoặc `null` khi con số **không
+/// phải tiến độ**.
+///
+/// ⚠️ Gói dùng **giá trị âm làm mã trạng thái** trong chính trường tiến độ:
+/// −1 hỏng · −2 huỷ · −3 không thấy · −4 chờ thử lại · −5 tạm dừng. Đo trên
+/// Realme RMX2205 2026-09-22: bản đầu đưa thẳng lên màn thành *"Đang tải…
+/// −400%"* / *"−9,64 GB / 2,41 GB"*. Trạng thái đã có `TaskStatusUpdate` lo,
+/// nên tin tiến độ âm thì **bỏ**.
+TinLuot? tinTuTienDo(double progress) {
+  if (progress < 0) return null;
+  return (trangThai: TrangThaiLuot.dangChay, phanTram: progress, loi: null);
+}
+
+/// `null` = trạng thái không đáng phát lên giao diện.
+///
+/// ⚠️ `enqueued` → `dangCho` chứ không `dangChay`: khi `requiresWiFi` bật mà
+/// máy chỉ có 4G, lượt **nằm ở `enqueued` vô thời hạn** và không có lỗi nào
+/// được phát — đó chính là "chờ Wi-Fi" mà màn phải nói ra. Nhưng
+/// `waitingToRetry` thì **không** phải dangCho: đó là lỗi mạng đang được thử
+/// lại (máy vẫn ở Wi-Fi), nói "Đang chờ Wi-Fi" là chỉ sai nguyên nhân — giữ
+/// `dangChay` với tiến độ cuối, hết ba lần thử thì gói phát `failed`.
+TrangThaiLuot? dichTrangThai(TaskStatus s) => switch (s) {
+      TaskStatus.enqueued => TrangThaiLuot.dangCho,
+      TaskStatus.running || TaskStatus.waitingToRetry => TrangThaiLuot.dangChay,
+      TaskStatus.paused => TrangThaiLuot.tamDung,
+      TaskStatus.complete => TrangThaiLuot.xong,
+      TaskStatus.canceled => TrangThaiLuot.huy,
+      TaskStatus.failed || TaskStatus.notFound => TrangThaiLuot.hong,
+    };
+
 class BackgroundDownloaderTaiNen implements NguonTaiNen {
   final _phat = StreamController<TinLuot>.broadcast();
   final _tai = FileDownloader();
@@ -79,12 +109,17 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
     if (t == null) return null;
     final ghi = await _tai.database.recordForId(kTaskId);
     if (ghi == null) return null;
-    final tt = _dich(ghi.status);
+    final tt = dichTrangThai(ghi.status);
     // Lượt ĐÃ HUỶ là trạng thái cuối, không phải "đang sống": trả nó về là
     // `khoiPhuc()` phát một tin thừa và `tiepTuc()` đi tìm một lượt để nối
     // thay vì bắt đầu lượt mới. Lượt hỏng thì GIỮ — nó nối lại được.
     if (tt == null || tt == TrangThaiLuot.huy) return null;
-    return (trangThai: tt, phanTram: ghi.progress, loi: null);
+    // Bản ghi cũng mang tiến độ âm làm mã (xem `tinTuTienDo`).
+    return (
+      trangThai: tt,
+      phanTram: ghi.progress < 0 ? 0.0 : ghi.progress,
+      loi: null,
+    );
   }
 
   @override
@@ -112,16 +147,14 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
   void _nhan(TaskUpdate u) {
     if (u.task.taskId != kTaskId) return;
     if (u is TaskProgressUpdate) {
-      _phanTramCuoi = u.progress;
-      _phat.add((
-        trangThai: TrangThaiLuot.dangChay,
-        phanTram: u.progress,
-        loi: null,
-      ));
+      final tin = tinTuTienDo(u.progress);
+      if (tin == null) return;
+      _phanTramCuoi = tin.phanTram;
+      _phat.add(tin);
       return;
     }
     if (u is TaskStatusUpdate) {
-      final tt = _dich(u.status);
+      final tt = dichTrangThai(u.status);
       if (tt == null) return;
       _phat.add((
         trangThai: tt,
@@ -130,19 +163,6 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
       ));
     }
   }
-
-  /// ⚠️ `enqueued` dịch thành `dangCho` chứ không `dangChay`: khi `requiresWiFi`
-  /// bật mà máy chỉ có 4G, lượt **nằm ở `enqueued` vô thời hạn** và không có
-  /// lỗi nào được phát. Đó chính là trạng thái "chờ Wi-Fi" mà màn phải nói ra.
-  TrangThaiLuot? _dich(TaskStatus s) => switch (s) {
-        TaskStatus.enqueued || TaskStatus.waitingToRetry =>
-          TrangThaiLuot.dangCho,
-        TaskStatus.running => TrangThaiLuot.dangChay,
-        TaskStatus.paused => TrangThaiLuot.tamDung,
-        TaskStatus.complete => TrangThaiLuot.xong,
-        TaskStatus.canceled => TrangThaiLuot.huy,
-        TaskStatus.failed || TaskStatus.notFound => TrangThaiLuot.hong,
-      };
 
   Future<void> dong() async {
     await _nghe?.cancel();
