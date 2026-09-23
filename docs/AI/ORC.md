@@ -68,6 +68,11 @@ Chức năng **Receipt OCR (F013)** trong Module AI đóng vai trò là **Tầng
   - **Tầng 2 (Danh mục):** Khi là `Transaction`, phân loại danh mục thu/chi (`Idcategory`). Khi là `Transfer`, **bỏ qua hoàn toàn phân loại danh mục** (`Idcategory = NULL`).
 
 
+> ⚠️ **CẬP NHẬT PHÂN CHIA TRÁCH NHIỆM (PO chốt 2026-09-23):**
+> 1. **Khử trùng lặp (Deduplication Engine):** Đã được chuyển giao **HOÀN TOÀN sang Client-app** để đối soát trực tiếp trên Drift SQLite v24 cục bộ, phản hồi tức thì và không phụ thuộc mạng.
+> 2. **Tầng OCR sâu nhất:** Sử dụng Gemini 2.0 Flash Multimodal được **giữ lại tại Backend** để quản lý an toàn `GEMINI_API_KEY`, tuyệt đối không đưa key lên mobile.
+> 3. **Module Bank:** Kênh tích hợp ngân hàng (SePay / BankSync) tạm dừng hoàn toàn do lý do chính sách.
+
 ---
 
 ## 2. QUY CHUẨN BÓC TÁCH DỮ LIỆU TỪ HÌNH ẢNH (EXTRACTION SCHEMAS)

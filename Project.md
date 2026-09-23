@@ -1597,67 +1597,34 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 
 
 
-### 8.5. Module AI
+### 8.5. Module AI — Hệ Sinh Thái Trí Tuệ Nhân Tạo
 
-#### 8.5.1. Tổng quan
+> **Tài liệu nguồn sự thật chi tiết:** [`docs/AI/LogicBusinessAI.md`](docs/AI/LogicBusinessAI.md), [`docs/AI/AI_ARCHITECTURE_DIAGRAM.md`](docs/AI/AI_ARCHITECTURE_DIAGRAM.md).
 
-| Chức năng | Phương án AI | Trạng thái |
-|----------|-------------|-----------|
-| OCR hóa đơn | Tesseract.js (self-hosted) | ⬜ Chưa làm |
-| AI phân loại giao dịch | Self-train model (fastText/BERT-tiny) | ⬜ Chưa làm |
-| AI Phân tích hành vi chi tiêu | Algorithmic + Self-train | ⬜ Chưa làm |
-| AI Dự báo chi tiêu | Self-train model (time-series) | ⬜ Chưa làm |
-| AI Đưa lời khuyên tài chính | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm |
-| AI Đề xuất phân bổ dòng tiền | Algorithmic + LLM API giải thích | ⬜ Chưa làm |
-| Chatbot AI | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm (sau cùng) |
+#### 8.5.1. Danh mục 10 chức năng AI & Phân chia trách nhiệm (PO phê duyệt 2026-09-23)
 
-#### 8.5.2. Chiến lược AI: Self-train Model vs LLM API
+| STT | Tên Chức Năng | Nơi Triển Khai | Trách Nhiệm Kỹ Thuật & Cơ Chế Phối Hợp | Trạng Thái |
+|:---:|---|:---:|---|:---:|
+| **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Xử lý Tầng 1 (Keyword) và Tầng 2 (NLP / Token overlap) chạy cục bộ trên SQLite v24 để phản hồi tức thì.<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash). Mobile chỉ gọi lên khi T1, T2 không đủ tự tin, có lọc PII Masking. | 🟡 **Đang làm** |
+| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, tiền xử lý, giao diện chỉnh sửa & xác nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 2.0 Flash Multimodal để bóc tách ảnh phức tạp bằng API Key tập trung. | 🟡 **Đang làm** |
+| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (100%) | Đẩy HOÀN TOÀN sang Client-app. Xử lý đối soát cục bộ trên SQLite v24 (theo `bank_tran_id`, thời gian, số tiền, nội dung). | 🟡 **Đang làm** |
+| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (100%) | Thuần AI tại Backend: **Function-Calling** truy vấn số liệu cá nhân có cấu trúc (qua JWT token) + **RAG** cho kiến thức tài chính chung/tĩnh. Tuyệt đối không index dữ liệu người dùng lên vector DB. | 🔴 **Chưa hoàn thành**<br>*(Làm tại Backend đợt này)* |
+| **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
+| **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
+| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (gốc)<br>+<br>**Client-app** (thống kê) | Xây dựng gốc tại Backend (chấm điểm sức khỏe tài chính, phân bổ 50/30/20, tư vấn tài chính). Client-app đóng gói dữ liệu thống kê gửi về định kỳ để đánh giá. | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này)* |
+| **8** | **Phát Hiện Chi Tiêu Bất Thường** *(Anomaly Detection)* | **Client-app** (100%) | Chạy 100% tại Client-app. Phát hiện chi tiêu đột biến qua ngưỡng người dùng đặt `nguongChiLon` và bộ luật `notification_rules.dart`. | 🟢 **Đã hoàn thành** *(Client-app)* |
+| **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Chức năng mới: Hệ chuyên gia tính Essentiality, lựa chọn nguồn bù Donor C1–C7, thuật toán Welford O(1), chạy 100% offline. | 🟡 **Đang làm** *(Client-app)* |
+| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình SLM cục bộ (**Gemma 4 E2B**, 2.41GB qua LiteRT) chạy trực tiếp trên GPU máy để học hỏi thói quen và diễn giải cho mục 6 và 9. | 🟡 **Đang làm** *(Client-app)* |
 
-```
-Self-train model (fastText/LSTM/Prophet):  Phân loại GD, Phân tích hành vi, Dự báo, Budget math
-LLM API (OpenAI/HuggingFace):              Lời khuyên, Giải thích Budget, Chatbot
-Tesseract.js:                              OCR
-```
-
-| Phương án | Dùng cho | Lý do |
-|-----------|----------|-------|
-| **Self-train model** | Phân loại giao dịch, Phân tích hành vi, Dự báo chi tiêu, Budget math | Output cố định / dữ liệu có cấu trúc / không cần sinh ngôn ngữ |
-| **LLM API** | Chatbot, Lời khuyên tài chính, Giải thích Budget | Cần NLU + NLG (sinh ngôn ngữ tự nhiên), cá nhân hóa |
-
-#### 8.5.3. Kiến trúc AI (3 lớp)
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    AI/ML LAYER                           │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │ Transaction  │ │ Behavior     │ │ Expense          │ │
-│  │ Classifier   │ │ Analyzer     │ │ Forecaster       │ │
-│  │ (fastText)   │ │ (Clustering) │ │ (Prophet/LSTM)   │ │
-│  └──────────────┘ └──────────────┘ └──────────────────┘ │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │ Budget       │ │ Financial    │ │ Chatbot          │ │
-│  │ Allocator    │ │ Advisor      │ │ Assistant        │ │
-│  │ (Algorithm)  │ │ (LLM API)    │ │ (LLM API)        │ │
-│  └──────────────┘ └──────────────┘ └──────────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│                   ML PLATFORM                            │
-│  ┌──────────┐  ┌──────────┐  ┌────────────────────────┐ │
-│  │ Training │  │ Model    │  │ Feature Store          │ │
-│  │ Pipeline │  │ Serving  │  │ (category, amount,     │ │
-│  │ (scripts)│  │ (Worker) │  │  date, frequency...)   │ │
-│  └──────────┘  └──────────┘  └────────────────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│                  DATA SOURCES                            │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐ │
-│  │ Category │  │ Transaction  │  │ Budget / Goal      │ │
-│  │ (29 cats)│  │ (UUID, amt,  │  │ (target, deadline, │ │
-│  │ classify │  │  description │  │  strategy rules)   │ │
-│  │ thu/chi  │  │  categoryId) │  │                    │ │
-│  └──────────┘  └──────────────┘  └────────────────────┘ │
-│                  ↑ Sync từ Client-app qua                │
-│                  POST /api/sync/push (LWW conflict)       │
-└─────────────────────────────────────────────────────────┘
-```
+#### 8.5.2. Nguyên tắc phân chia kiến trúc giữa Client-app & Backend
+- **Đưa các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) lên Client-app:** Tốc độ phản hồi tức thì ($< 15\text{ms}$), không phụ thuộc mạng, bảo vệ quyền riêng tư 100% offline (F1 & Nghị định 13/2023/NĐ-CP), tối đa hóa trải nghiệm người dùng (UX).
+- **Backend chỉ giữ 4 tác vụ cốt lõi:**
+  1. Tầng sâu nhất gọi LLM của Tự động phân loại giao dịch (Tier 3 Classifier - Gemini Flash reasoning).
+  2. Tầng sâu nhất gọi LLM của Quét hóa đơn & Biên lai (Receipt OCR - Gemini Flash multimodal).
+  3. Trợ lý tài chính thông minh (Chatbot / Copilot - thuần AI, Function-calling + RAG kiến thức tĩnh).
+  4. Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Financial Health Score & Insights - kết hợp gói thống kê từ Client-app).
+- **Bảo mật:** Toàn bộ API Key (`GEMINI_API_KEY`) nằm an toàn tại Backend AI Gateway; **tuyệt đối không đưa API Key lên Client Mobile**. Áp dụng tầng lọc PII Masking (`masking.util.js`) trước khi gửi dữ liệu sang Google Gemini.
+- **Nguyên tắc bảo tồn 100% mã nguồn Backend làm cơ sở cho Client-app:** Toàn bộ mã nguồn, dịch vụ và logic đã hoàn thành tại Backend (kể cả Deduplication Engine `dedup.service.js`, Tầng 1 Keyword Matcher, Tầng 2 NLP Matcher...) **VẪN ĐƯỢC GIỮ LẠI NGUYÊN VẸN TRONG BACKEND**, làm cơ sở đối chiếu, làm nền tảng tham chiếu chuẩn hóa cho Client-app xây dựng tiếp và hỗ trợ kiểm thử liên thông (fallback). **TUYỆT ĐỐI KHÔNG TỰ Ý XÓA BỎ NỘI DUNG ĐÃ LÀM TẠI BACKEND.**
 
 #### 8.5.4. OCR hóa đơn
 
@@ -2743,6 +2710,27 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     3. Che số tài khoản ngân hàng: định dạng `[STK]`.
     4. Che địa chỉ email: định dạng `[EMAIL]`.
   - **Thi hành Strict Grounding chống ảo giác danh mục:** Bộ phân loại `llm.classifier.js` kiểm tra nghiêm ngặt kết quả trả về từ LLM; nếu model trả về `category_id` không thuộc danh sách danh mục hợp lệ của người dùng, hệ thống lập tức từ chối (`return null`), ngăn chặn triệt để UUID lạ ghi vào CSDL.
+
+### 11.42. Quyết Định Phân Định Phạm Vi 10 Chức Năng Hệ Sinh Thái AI Giữa Client-App & Backend (2026-09-23)
+- **Tài liệu nguồn sự thật:** [`docs/AI/LogicBusinessAI.md`](docs/AI/LogicBusinessAI.md).
+- **Quyết định chiến lược của PO:** 
+  - Toàn bộ các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) có tốc độ xử lý nhanh được đưa lên **Client-app (Mobile)** nhằm giảm triệt để độ trễ mạng, chạy offline mượt mà, bảo vệ dữ liệu cá nhân theo cam kết F1 và tối đa hóa trải nghiệm người dùng (UX).
+  - Backend đóng vai trò AI Gateway giữ bí mật `GEMINI_API_KEY` (không đưa lên mobile) và chỉ đảm nhận các chức năng thuần AI và gọi Cloud LLM.
+- **Bảng phân định phạm vi & trạng thái 10 chức năng AI:**
+  1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword) & T2 (NLP/Token overlap) trên SQLite; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟡 *Đang làm*.
+  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app xử lý giao diện/chụp ảnh/xác nhận; Backend giữ tầng sâu nhất gọi Gemini 2.0 Flash Multimodal $\rightarrow$ 🟡 *Đang làm*.
+  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Đẩy hoàn toàn sang Client-app đối soát cục bộ trên SQLite v24 $\rightarrow$ 🟡 *Đang làm (chuyển giao sang mobile)*.
+  4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Thuần AI xây dựng tại Backend trong đợt này (Function-calling truy vấn số liệu có cấu trúc + RAG kiến thức tĩnh) $\rightarrow$ 🔴 *Chưa hoàn thành (trọng tâm đợt này)*.
+  5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
+  6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
+  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Xây dựng tại Backend là gốc (chấm điểm, phân tích 50/30/20, lời khuyên); Client-app đóng gói dữ liệu thống kê gửi về định kỳ $\rightarrow$ 🔴 *Chưa hoàn thành (xây dựng đợt này)*.
+  8. **Phát hiện chi tiêu bất thường (Spending Anomaly Detection):** Đẩy qua Client-app (ngưỡng `nguongChiLon` & `notification_rules.dart`) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
+  9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7, Welford O(1)) $\rightarrow$ 🟡 *Đang làm*.
+  10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị để học hỏi và diễn giải ngôn ngữ cho mục 6 và 9 $\rightarrow$ 🟡 *Đang làm*.
+- **Nguyên tắc bảo tồn 100% mã nguồn Backend làm cơ sở đối chiếu:**
+  - Các chức năng được chuyển giao hoặc đưa lên Client-app (như T1 Keyword Matcher, T2 NLP Matcher, Bộ khử trùng Deduplication Engine `dedup.service.js`...) **HIỆN TẠI VẪN ĐƯỢC GIỮ LẠI NGUYÊN VẸN TRONG BACKEND**, làm cơ sở chuẩn hóa (ground truth baseline) cho đội ngũ Client-app đối soát, kế thừa và xây dựng tiếp.
+  - **QUY TẮC CỐT LÕI: TUYỆT ĐỐI KHÔNG TỰ Ý XÓA BỎ BẤT KỲ MÃ NGUỒN HAY TÀI LIỆU NÀO ĐÃ LÀM TẠI BACKEND.**
+
 
 
 
