@@ -14,6 +14,7 @@ const String kTenCongCuNganSach = 'danh_sach_ngan_sach';
 const String kTenCongCuHoaDon = 'danh_sach_hoa_don';
 const String kTenCongCuVi = 'danh_sach_vi';
 const String kTenCongCuChiTieu = 'chi_tieu_theo_ky';
+const String kTenCongCuMucTieu = 'danh_sach_muc_tieu';
 
 /// Trần số LỜI GỌI tool trong một câu hỏi. Gọi song song đếm từng lời; tool bịa
 /// tên cũng tốn một suất, để vòng lặp không quay vô hạn.
@@ -53,5 +54,6 @@ String cauDangTraCuu(String tenCongCu) => switch (tenCongCu) {
       kTenCongCuHoaDon => 'Đang tra cứu hoá đơn…',
       kTenCongCuVi => 'Đang tra cứu ví…',
       kTenCongCuChiTieu => 'Đang tra cứu chi tiêu…',
+      kTenCongCuMucTieu => 'Đang tra cứu mục tiêu…',
       _ => 'Đang tra cứu…',
     };
