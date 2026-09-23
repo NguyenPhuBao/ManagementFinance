@@ -107,7 +107,16 @@ class SlmRuntimeThat implements SlmRuntime {
         // — lỗi **cứng**, câu trả lời rỗng, không phải chỉ chậm đi. Cắt bớt
         // dữ liệu để vừa trần cũ là cắt đúng thứ lát 4a thêm vào, nên trần
         // được nới thay vì gói bị xén.
-        maxTokens: 2048,
+        //
+        // 2048 → 4096 ở bước 2 (2026-09-23): bảy khai báo tool (`tools_json`
+        // 4.393 ký tự) cộng một phiên hai lời gọi (mục tiêu + chi tiêu) vượt
+        // trần 2048 trên Realme — lỗi lần này là `FAILED_PRECONDITION: Prefill
+        // input length exceeds available state entries`, **khác chuỗi** với
+        // bẫy 4.29 nhưng cùng một bệnh. Giá đo được trên Realme (CPU): RAM đỉnh
+        // `TOTAL PSS` 2,04 → 2,78 GB (+0,71 GiB) và swap của app 0 → 1,17 GB —
+        // **vượt** ngưỡng ≤ 0,5 GB của spec bước 2 mục 3.10; người dùng duyệt
+        // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
+        maxTokens: 4096,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
       );
     } finally {
