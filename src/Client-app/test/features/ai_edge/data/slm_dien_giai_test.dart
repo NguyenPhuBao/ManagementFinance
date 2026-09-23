@@ -6,6 +6,8 @@ import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
 import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
+import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
@@ -36,6 +38,14 @@ class _RuntimeGia implements SlmRuntime {
   @override
   Stream<String> sinhDan(String prompt, {int tranToken = 300}) =>
       Stream.value(traLoi(prompt));
+
+  @override
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  }) =>
+      throw UnimplementedError('SlmDienGiai không mở phiên tool');
 
   @override
   Future<void> huy() async {}

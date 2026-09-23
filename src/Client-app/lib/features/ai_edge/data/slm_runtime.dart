@@ -7,11 +7,15 @@
 /// phát triển.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
 import '../domain/canary_gpu.dart';
+import '../domain/cong_cu.dart';
+import 'phien_cong_cu.dart';
 
 /// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
 abstract class SlmRuntime {
@@ -27,6 +31,16 @@ abstract class SlmRuntime {
   /// (việc số 1, 2026-09-22) — người gọi gác theo câu (`gacTheoCau`) chứ
   /// không hiện thẳng token: bộ kiểm chỉ có nghĩa trên câu đầy đủ.
   Stream<String> sinhDan(String prompt, {int tranToken});
+
+  /// Mở một PHIÊN hội thoại có tool (chặng 4b). [heThong] đi bằng system
+  /// instruction native của LiteRT-LM; [cauHoi] là tin người dùng đã xếp vào
+  /// phiên. Ném `StateError` khi mô hình chưa nạp — người gọi bắt và rơi về
+  /// câu "không chạy được" (L4).
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  });
 
   /// Dừng lượt sinh đang chạy (engine native thôi giải mã). Không có lượt nào
   /// đang chạy thì im lặng.
@@ -153,6 +167,51 @@ class SlmRuntimeThat implements SlmRuntime {
   }
 
   @override
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  }) async {
+    final m = _model;
+    if (m == null) throw StateError('Mô hình chưa nạp');
+
+    final tools = [
+      for (final k in congCu)
+        Tool(name: k.ten, description: k.moTa, parameters: k.thamSo),
+    ];
+    // Đo cho bẫy 4.29: khai báo tool do runtime native dựng từ tools_json cũng
+    // chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. Chuỗi này cùng nội dung
+    // với thứ gói gửi xuống SDK (`SdkResponseParser.serializeToolsForSdk`).
+    final doDaiToolsJson = jsonEncode([
+      for (final k in congCu)
+        {
+          'type': 'function',
+          'function': {
+            'name': k.ten,
+            'description': k.moTa,
+            'parameters': k.thamSo,
+          },
+        },
+    ]).length;
+
+    final dongHo = Stopwatch()..start();
+    // Gemma 4 trên LiteRT-LM: tools đi bằng tools_json lúc tạo hội thoại; prompt
+    // tool phía Dart bị gói bỏ qua, nên ToolChoice chỉ có nghĩa với `none`.
+    final chat = await m.createChat(
+      temperature: 0.2,
+      tools: tools,
+      supportsFunctionCalls: true,
+      toolChoice: ToolChoice.auto,
+      systemInstruction: heThong,
+    );
+    await chat.addQueryChunk(Message.text(text: cauHoi, isUser: true));
+    debugPrint('[SLM][tool] mở phiên sau ${dongHo.elapsedMilliseconds} ms: '
+        '${congCu.length} tool, tools_json $doDaiToolsJson ký tự, '
+        'hệ thống ${heThong.length} ký tự, câu hỏi ${cauHoi.length} ký tự');
+    return _PhienThat(chat);
+  }
+
+  @override
   Future<void> huy() async {
     final chat = _chatDangSinh;
     if (chat == null) return;
@@ -172,5 +231,69 @@ class SlmRuntimeThat implements SlmRuntime {
       debugPrint('[SLM] đóng mô hình hỏng: $e');
     }
     _model = null;
+  }
+}
+
+/// Bản thật của [PhienCongCu] — bọc `InferenceChat` của gói. Mỗi câu hỏi một
+/// phiên, cùng lý lẽ với `sinh`/`sinhDan`: không để câu trước ảnh hưởng câu sau.
+class _PhienThat implements PhienCongCu {
+  _PhienThat(this._chat);
+  final InferenceChat _chat;
+
+  @override
+  Stream<SuKienLuot> sinhLuot() async* {
+    final dongHo = Stopwatch()..start();
+    var tokenDau = -1;
+    var soKyTu = 0;
+    var soLoiGoi = 0;
+    try {
+      await for (final r in _chat.generateChatResponseAsync()) {
+        // `ModelResponse` là sealed: thêm subtype là lỗi biên dịch ở đây, không
+        // phải một sự kiện rơi im lặng.
+        switch (r) {
+          case TextResponse(:final token):
+            if (tokenDau < 0) tokenDau = dongHo.elapsedMilliseconds;
+            soKyTu += token.length;
+            yield Chu(token);
+          case FunctionCallResponse(:final name, :final args):
+            soLoiGoi++;
+            yield GoiCongCu(name, args);
+          case ParallelFunctionCallResponse(:final calls):
+            for (final c in calls) {
+              soLoiGoi++;
+              yield GoiCongCu(c.name, c.args);
+            }
+          case ThinkingResponse():
+            // Gemma 4 không bật thinking; nếu gói có phát thì không phải chữ
+            // cho người đọc.
+            break;
+        }
+      }
+    } finally {
+      debugPrint('[SLM][tool] lượt sinh xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(token đầu $tokenDau ms; $soKyTu ký tự; $soLoiGoi lời gọi)');
+    }
+  }
+
+  @override
+  Future<void> traKetQua(String ten, Map<String, dynamic> json) =>
+      _chat.addQueryChunk(Message.toolResponse(toolName: ten, response: json));
+
+  @override
+  Future<void> huy() async {
+    try {
+      await _chat.stopGeneration();
+    } catch (e) {
+      debugPrint('[SLM][tool] huỷ lượt sinh hỏng: $e');
+    }
+  }
+
+  @override
+  Future<void> dong() async {
+    try {
+      await _chat.close();
+    } catch (e) {
+      debugPrint('[SLM][tool] đóng phiên hỏng: $e');
+    }
   }
 }
