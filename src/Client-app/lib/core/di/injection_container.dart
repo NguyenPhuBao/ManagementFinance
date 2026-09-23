@@ -37,6 +37,7 @@ import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
+import '../../features/ai_edge/data/bo_cong_cu.dart';
 import '../../features/ai_edge/data/slm_runtime.dart';
 import '../../features/ai_edge/data/nguon_tai_nen.dart';
 import '../../features/ai_edge/data/tai_nen_background_downloader.dart';
@@ -512,6 +513,17 @@ Future<void> setupDependencies() async {
       phanTich: sl<AnalyticsRepository>(),
       nganSach: sl<BudgetRepository>(),
       mucTieu: sl<GoalRepository>(),
+      vi: sl<WalletRepository>(),
+      hoaDon: sl<BillRepository>(),
+    ),
+  );
+
+  // Bộ tool của bậc tool (chặng 4b): bốn tool ĐỌC, lazy như `NguonGoiSo` — chỉ
+  // dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
+  sl.registerLazySingleton<BoCongCu>(
+    () => BoCongCu.macDinh(
+      phanTich: sl<AnalyticsRepository>(),
+      nganSach: sl<BudgetRepository>(),
       vi: sl<WalletRepository>(),
       hoaDon: sl<BillRepository>(),
     ),

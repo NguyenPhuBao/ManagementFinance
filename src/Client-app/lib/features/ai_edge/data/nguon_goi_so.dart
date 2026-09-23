@@ -20,8 +20,10 @@ library;
 import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../bill/data/repositories/bill_repository.dart';
+import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../goal/data/repositories/goal_repository.dart';
+import '../../wallet/data/models/wallet_entity.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../domain/goi_so.dart';
@@ -31,6 +33,33 @@ import '../domain/goi_so_ngan_sach.dart';
 import '../domain/goi_so_phan_tich.dart';
 import '../domain/goi_so_trang_chu.dart';
 import '../domain/goi_so_vi.dart';
+
+/// Ví entity → kiểu thuần của gói số (gói số cố ý không biết `WalletEntity`).
+/// Một chỗ chép cho cả `NguonGoiSo` (gói ví) lẫn tool `danh_sach_vi` (chặng
+/// 4b): hai bản chép là hai lần quên một trường — `allowNegative` là trường dễ
+/// quên nhất, và quên nó là mọi thẻ tín dụng thành "ví đang âm".
+///
+/// ⚠️ Trang Quản lý ví còn một bản riêng, `_choGoiSo` ở `wallet_list_page.dart`,
+/// cùng phép quy đổi — chưa gộp về đây.
+List<ViChoGoiSo> viChoGoiSoTu(List<WalletEntity> vis) => [
+      for (final w in vis)
+        ViChoGoiSo(
+          ten: w.name,
+          soDu: w.balance,
+          includeInTotal: w.includeInTotal,
+          status: w.status,
+          isDeleted: w.isDeleted,
+          allowNegative: w.allowNegative,
+        ),
+    ];
+
+/// Ngân sách ĐANG CHẠY — cùng phép lọc `isExpired` mà trang Ngân sách và bộ quét
+/// thông báo dùng. Tool `danh_sach_ngan_sach` gọi lại hàm này: đưa một ngân sách
+/// đã hết hạn cho mô hình là đưa một con số không còn nghĩa gì với hôm nay.
+List<BudgetView> nganSachDangChay(List<BudgetView> tatCa, DateTime now) => [
+      for (final v in tatCa)
+        if (!v.budget.isExpired(now)) v,
+    ];
 
 class NguonGoiSo {
   NguonGoiSo({
@@ -58,14 +87,9 @@ class NguonGoiSo {
 
     final tk = await phanTich.watchKy(idaccount, ky: ky, now: moc).first;
 
-    // ⚠️ Chỉ ngân sách **đang chạy**, cùng phép lọc `isExpired` mà trang Ngân
-    // sách và bộ quét thông báo dùng. Gói một ngân sách đã hết hạn vào đây là
-    // đưa mô hình một con số không còn nghĩa gì với hôm nay.
+    // ⚠️ Chỉ ngân sách **đang chạy** — xem `nganSachDangChay`.
     final tatCaNganSach = await nganSach.watchBudgets(idaccount, now: moc).first;
-    final dangChay = [
-      for (final v in tatCaNganSach)
-        if (!v.budget.isExpired(moc)) v,
-    ];
+    final dangChay = nganSachDangChay(tatCaNganSach, moc);
 
     final goals = await mucTieu.watchGoals(idaccount).first;
 
@@ -84,19 +108,7 @@ class NguonGoiSo {
         tongSoDu += w.balance;
       }
     }
-    // Cùng phép quy đổi với `_choGoiSo` của trang Quản lý ví: gói số cố ý
-    // không biết `WalletEntity`.
-    final viChoGoi = [
-      for (final w in vis)
-        ViChoGoiSo(
-          ten: w.name,
-          soDu: w.balance,
-          includeInTotal: w.includeInTotal,
-          status: w.status,
-          isDeleted: w.isDeleted,
-          allowNegative: w.allowNegative,
-        ),
-    ];
+    final viChoGoi = viChoGoiSoTu(vis);
 
     return [
       GoiSoPhanTich.tu(tk),
