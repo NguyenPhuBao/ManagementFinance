@@ -248,8 +248,9 @@ từng việc:
 5. **Chiều ghi luôn xác nhận**, và form xác nhận dựng từ **tham số**, không từ câu mô
    hình viết. 🛑 Không hàm nào bật `auto_pay` / trích tự động / **xoá** bất cứ gì.
 6. **TDD**: test đỏ trước; ca xanh ngay từ đầu **phải thử bản sai có chủ ý**.
-7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3106/3106, 1 skip**) và
-   `flutter analyze` (**26 issue, 0 error**). Đụng giao diện → **nghiệm thu máy ảo 411dp**.
+7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3585/3585, 3 skip** — đo 2026-09-23 tối
+   sau bước 1b; mốc 3106/3106, 1 skip là của 2026-09-20) và `flutter analyze` (**26 issue, 0 error**).
+   Đụng giao diện → **nghiệm thu máy ảo 411dp**.
 8. ✅ Tệp test mới **không cần `git add -f` nữa** — luật `test/` bỏ khỏi `.gitignore`
    ngày 2026-09-21 (quy tắc 6 `CLAUDE.md`).
 
