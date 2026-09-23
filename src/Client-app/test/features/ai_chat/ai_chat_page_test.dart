@@ -326,4 +326,64 @@ void main() {
               'đó, kẻo người dùng tưởng hỏng vĩnh viễn.');
     });
   });
+
+  group('bậc tool (chặng 4b)', () {
+    Future<void> hoi(WidgetTester t) async {
+      await t.enterText(find.byType(TextField), 'Hoá đơn nào quá hạn?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump();
+    }
+
+    testWidgets('DangTraCuu đổi dòng chỉ báo theo tool; null trả về "Đang nghĩ…"', (t) async {
+      final c = StreamController<SuKienGac>();
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, onHoi: (_) => c.stream)));
+      await hoi(t);
+      expect(find.text('Đang nghĩ…'), findsOneWidget);
+
+      c.add(const DangTraCuu('danh_sach_hoa_don'));
+      await t.pump();
+      expect(find.text('Đang tra cứu hoá đơn…'), findsOneWidget,
+          reason: '20 giây trên CPU mà dòng chỉ báo vẫn nói "Đang nghĩ" là không nói gì');
+      expect(find.text('Đang nghĩ…'), findsNothing);
+
+      c.add(const DangTraCuu(null));
+      await t.pump();
+      expect(find.text('Đang nghĩ…'), findsOneWidget);
+
+      c.add(const CauQua('Kiem đã quá hạn 45.000 đ.'));
+      await c.close();
+      await t.pumpAndSettle();
+      expect(find.text('Kiem đã quá hạn 45.000 đ.'), findsOneWidget);
+    });
+
+    testWidgets('⭐ KhongTraCuu → hỏi lại BẬC 1 với CÙNG câu hỏi, hiện câu của bậc 1', (t) async {
+      String? cauBac1;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.value(const KhongTraCuu()),
+        onHoiBac1: (c) {
+          cauBac1 = c;
+          return Stream.value(const CauQua('Tổng chi 1.200.000 đ.'));
+        },
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(cauBac1, 'Hoá đơn nào quá hạn?');
+      expect(find.text('Tổng chi 1.200.000 đ.'), findsOneWidget);
+      expect(find.textContaining('chưa chắc'), findsNothing);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
+
+    testWidgets('KhongTraCuu mà bậc 1 cũng bị chặn → câu lùi "chưa chắc", một lần', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.value(const KhongTraCuu()),
+        onHoiBac1: (_) => Stream.value(const BiChan('Tỉ lệ phân bổ 85,4%.')),
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(find.textContaining('chưa chắc'), findsOneWidget);
+      expect(find.textContaining('85,4'), findsNothing);
+    });
+  });
 }
