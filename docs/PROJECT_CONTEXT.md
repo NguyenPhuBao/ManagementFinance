@@ -596,10 +596,10 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa (2026-09-23)
+### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa, và màn Cài đặt AI thôi đè lỗi cũ (2026-09-23)
 
-Việc nhỏ kẹp đầu phiên, **trước** khi mở lát 4b — người dùng chốt thứ tự *sửa lỗi trước, tính
-năng sau*.
+Hai việc nhỏ kẹp đầu phiên, **trước** khi mở lát 4b — người dùng chốt thứ tự *sửa lỗi trước, tính
+năng sau*. Mỗi việc một commit.
 
 **`chuoiTheoNhan` — bảng tra nhãn của mẫu câu, nay một định nghĩa** (`ai_edge/domain/goi_so.dart`).
 Sáu gói số từng tự dựng mỗi gói một bảng tra nhãn → chuỗi cho mẫu câu. Chỉ gói ngân sách có
@@ -613,7 +613,18 @@ của mục-đầu-thắng, tức **nói ngược mã**. Nay cả sáu gói gọ
 `chuoiTheoNhan` (`goi_so_test.dart`; bản mục-cuối-thắng đỏ đúng `'45.000 đ' instead of '1'`). Một
 gói tự viết lại map literal thì **không ca nào đỏ** — lát này không thêm test quét.
 
-Test **3469/3469** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
+**Màn Cài đặt AI thôi đè lượt hỏng của lần trước thành "Chưa tải"** (bẫy **4.32**
+`AI_EDGE_FEATURE.md`). Lúc mở màn, `_doTrangThai()` (chờ `daCo()`) và `khoiPhuc()` (chờ
+`luotDangSong()`) chạy song song, và phép về **sau** thắng. Tệp dở của một lượt hỏng chưa đủ cỡ nên
+`daCo()` = `false`; về sau tin khôi phục thì nó đè "Tải không xong" thành "Chưa tải" — mất nút
+**Thử lại** (nối từ chỗ đứt khi nối được), còn nút **Tải**. Nay phép dò không đè `loi`, cùng ba
+trạng thái nó vốn đã chừa. Cùng lượt sửa **chú thích tự mâu thuẫn** ở `_khoiLoi()`: một câu còn tả
+bản cũ hứa *"phần đã tải được giữ lại"*, câu ngay dưới tả bản hiện hành không hứa. ⚠️ Mới kiểm bằng
+**bộ giả**: bản thật `luotDangSong()` luôn trả `loi: null` (màn hiện câu dự phòng), và lượt hỏng có
+được `taskForId` của `background_downloader` trả về hay không thì **chưa đo** — tức chưa biết máy
+thật có đi tới đường này không.
+
+Test **3470/3470** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
 
 ### 🛑 Edge AI — chặng 4a: tên đối tượng trong gói số — CỔNG CHƯA ĐẠT (2026-09-23)
 

@@ -110,11 +110,17 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
   Future<void> _doTrangThai() async {
     final co = await _moHinh?.daCo() ?? false;
     if (!mounted) return;
-    // ⚠️ Chỉ đặt lại khi KHÔNG có lượt nào sống: lượt dò này là bất đồng bộ,
-    // về muộn hơn một sự kiện của nguồn là thanh tiến độ biến mất giữa chừng.
+    // ⚠️ Chỉ đặt lại khi nguồn CHƯA nói gì về một lượt nào: lượt dò này là
+    // bất đồng bộ, và về muộn hơn một sự kiện của nguồn là thanh tiến độ biến
+    // mất giữa chừng — hoặc câu lỗi của lượt hỏng lần trước (mà `khoiPhuc()`
+    // vừa dựng lại) bị đè thành "Chưa tải": tệp dở chưa đủ cỡ nên phép dò trả
+    // `false`, người dùng mất nút Thử lại (nối từ chỗ đứt khi nối được) và
+    // nhận nút Tải — lượt mới từ 0, hoặc bị gói từ chối nếu nó còn giữ lượt
+    // hỏng cùng `taskId` (chưa đo).
     if (_tt == TrangThaiMoHinh.dangTai ||
         _tt == TrangThaiMoHinh.tamDung ||
-        _tt == TrangThaiMoHinh.choMang) {
+        _tt == TrangThaiMoHinh.choMang ||
+        _tt == TrangThaiMoHinh.loi) {
       return;
     }
     setState(() {
@@ -453,11 +459,11 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             icon: Icons.error_outline,
             mauIcon: AppColors.error,
             tieuDe: 'Tải không xong',
-            // Tệp dở ĐƯỢC GIỮ (resume, 2026-09-22): Thử lại là tiếp tục từ
-            // chỗ đứt, không tải lại từ đầu — nói ra để người dùng không
-            // tưởng mình mất nửa gói dữ liệu.
-            // Không hứa giữ phần đã tải: sau lỗi, `tiepTuc` nối được thì
-            // nối, không thì tải lại — người dùng không cần biết trước.
+            // Tệp dở ĐƯỢC GIỮ (resume, 2026-09-22) và Thử lại đi `tiepTuc`:
+            // nối được thì nối từ chỗ đứt, không thì tải lại (bẫy 4.23). Nên
+            // câu KHÔNG hứa giữ phần đã tải — người dùng không cần biết trước.
+            // *(Hai câu chú thích ở đây từng nói ngược nhau: một câu còn tả
+            // bản cũ hứa "phần đã tải được giữ lại", câu kia tả bản hiện hành.)*
             phu: '${_loi ?? 'Kết nối đứt giữa chừng.'} Bấm Thử lại để tải tiếp.',
           ),
           const SizedBox(height: 14),

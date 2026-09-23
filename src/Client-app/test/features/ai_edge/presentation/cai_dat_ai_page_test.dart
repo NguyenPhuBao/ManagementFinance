@@ -6,6 +6,7 @@
 /// thu máy ảo vẫn bắt buộc.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -125,6 +126,47 @@ void main() {
     expect(find.textContaining('30'), findsWidgets,
         reason: 'Không hỏi lại thì màn hiện "Chưa tải mô hình" trong khi lượt '
             'tải vẫn đang chạy ở nền, và nút Tải sẽ đẻ lượt thứ hai.');
+  });
+
+  testWidgets(
+      '⭐ lượt HỎNG của lần chạy trước KHÔNG bị phép dò tệp về muộn đè thành '
+      '"Chưa tải"', (t) async {
+    // Lúc mở màn có hai phép bất đồng bộ chạy song song: `khoiPhuc()` hỏi lại
+    // lượt cũ, `_doTrangThai()` dò tệp trên đĩa. Tệp dở của một lượt hỏng
+    // chưa đủ cỡ nên phép dò trả `false` — và về SAU tin khôi phục thì nó từng
+    // đè "Tải không xong" thành "Chưa tải" (ghi ở mục 9.10).
+    //
+    // `loi: null` là CHÉP bản thật: `luotDangSong()` của
+    // `tai_nen_background_downloader.dart` không bao giờ mang chuỗi lỗi, nên
+    // màn hiện câu dự phòng. Dựng lượt có chuỗi lỗi là thử một hình dạng máy
+    // thật không sinh ra.
+    final nguon = NguonTaiNenGia()
+      ..dungSanLuotCu(
+          (trangThai: TrangThaiLuot.hong, phanTram: 0.4, loi: null));
+    final tam = Directory.systemTemp.createTempSync('caidat');
+    addTearDown(() => tam.deleteSync(recursive: true));
+    final thuMucCham = Completer<Directory>();
+    final m = MoHinhTaiVe(thuMuc: () => thuMucCham.future, nguon: nguon);
+    addTearDown(m.dong);
+
+    await t.pumpWidget(boc(CaiDatAiPage(moHinh: m, congTac: const CongTacAi())));
+    await t.pump(const Duration(milliseconds: 50));
+    expect(find.text('Thử lại'), findsOneWidget,
+        reason: 'tiền đề: tin khôi phục lượt hỏng tới TRƯỚC phép dò tệp');
+
+    thuMucCham.complete(tam);
+    await t.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Thử lại'), findsOneWidget,
+        reason: 'Đè thành "Chưa tải" là mất nút Thử lại — thứ nối lượt hỏng '
+            'từ chỗ đứt khi nối được — và để lại nút Tải: một lượt mới từ 0 '
+            'cho tệp 2,41 GB, hoặc bị gói từ chối nếu nó còn giữ lượt hỏng.');
+    expect(find.text('Tải không xong'), findsOneWidget,
+        reason: 'câu lỗi là thứ duy nhất nói cho người dùng vì sao chưa có '
+            'mô hình');
+    expect(find.textContaining('Kết nối đứt giữa chừng'), findsOneWidget,
+        reason: 'lượt khôi phục không mang chuỗi lỗi → câu dự phòng');
+    expect(find.text('Tải mô hình'), findsNothing);
   });
 
   testWidgets('trạng thái chờ mạng nói RA, không hiện như đang tải', (t) async {
