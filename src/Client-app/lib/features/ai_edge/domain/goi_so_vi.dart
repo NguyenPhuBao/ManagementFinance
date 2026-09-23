@@ -46,6 +46,10 @@ class ViChoGoiSo {
 /// lại đuôi lẻ. Không có ngưỡng thì một ví đúng bằng 0 có thể bị gọi là âm.
 const double _nguongAm = -0.5;
 
+/// Ví âm NGOÀI Ý MUỐN — một định nghĩa cho gói ví và tool `danh_sach_vi`
+/// (chặng 4b). Ví bật cờ cho phép âm (G27) không tính.
+bool viDangAm(ViChoGoiSo v) => v.soDu < _nguongAm && !v.allowNegative;
+
 class GoiSoVi extends GoiSo {
   @override
   String get man => 'vi';
@@ -97,8 +101,38 @@ class GoiSoVi extends GoiSo {
         soNgoai++;
       }
 
-      if (v.soDu < _nguongAm && !v.allowNegative) am++;
+      if (viDangAm(v)) am++;
     }
+
+    // Chặng 4a: mỗi ví góp một mục mang TÊN của nó, để câu hỏi "ví nào đang
+    // âm" đáp được bằng tên thay vì bằng số đếm (câu 15 bảng đo, mục 5.6
+    // `docs/AI_AGENT_ARCHITECTURE.md`).
+    //
+    // ⚠️ Ví đã xoá mềm bị loại — cùng luật đã loại nó khỏi mọi phép đếm ở
+    // trên. Ví **ngoài tổng** thì GIỮ: nó bị loại khỏi *tổng*, không bị loại
+    // khỏi *danh sách ví*, và chính nó là thứ gói này sinh ra để giải thích.
+    //
+    // ⚠️ Số dư tăng dần nên ví âm đứng đầu — mô hình đọc từ trên xuống.
+    final conSong = [
+      for (final v in vis)
+        if (!v.isDeleted) v,
+    ]..sort((x, y) => x.soDu.compareTo(y.soDu));
+    // ⚠️ Ví âm mang nhãn NÓI RÕ là đang âm. Đo máy thật 2026-09-23: gói nói
+    // `Ví đang âm: 1` và riêng rẽ `test · Số dư: -100.000 đ`, không chỗ nào
+    // nói test LÀ ví âm — mô hình sinh *"Số ví đang âm là -100.000 đ"*, tức
+    // nối hai mục bằng cách **bịa nhãn**, và `kiemNhan` chặn. Nhãn phải mang
+    // chính trạng thái mà câu hỏi hỏi.
+    //
+    // ⚠️ Nhãn là `Đang âm`, KHÁC `Ví đang âm` của mục đếm: mẫu câu tra
+    // `s['Ví đang âm']` và phải nhận số đếm.
+    final theoVi = <SoLieu>[
+      for (final v in conSong.take(kToiDaMucMoiGoi))
+        soTien(
+          viDangAm(v) ? 'Đang âm' : 'Số dư',
+          v.soDu,
+          ten: v.ten,
+        ),
+    ];
 
     final rong = soTrong == 0 && soNgoai == 0;
     return GoiSoVi._(
@@ -117,6 +151,9 @@ class GoiSoVi extends GoiSo {
               if (soNgoai > 0) soDem('Ví ngoài tổng', soNgoai),
               if (soNgoai > 0) soTien('Không tính vào tổng', ngoai),
               if (am > 0) soDem('Ví đang âm', am),
+              // Đặt CUỐI: mẫu câu tra mục theo nhãn, nên các mục tổng hợp ở
+              // trên phải gặp trước.
+              ...theoVi,
             ],
     );
   }
@@ -133,7 +170,7 @@ class GoiSoVi extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
 
     // Ví âm nói TRƯỚC: đó là thứ duy nhất ở đây cần người dùng làm gì đó.
     if (soViAm > 0) {

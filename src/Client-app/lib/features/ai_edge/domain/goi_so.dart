@@ -19,8 +19,30 @@ import 'nhan_xet.dart';
 
 enum LoaiSo { tien, phanTram, soNgay, soDem }
 
+/// Trần số mục mà **một** gói được nhồi vào prompt cho mỗi loại danh sách.
+///
+/// ⚠️ Đây là tham số **đo được**, không phải hằng đoán: prompt hỏi đáp đã
+/// 1.700 ký tự và token đầu 4,6 s trên CPU của Realme RMX2205 (bảng đo mục
+/// 5.6 `docs/AI_AGENT_ARCHITECTURE.md`). Đổi số này thì phải đo lại độ dài
+/// prompt và token đầu trên máy thật, không suy từ máy ảo.
+const int kToiDaMucMoiGoi = 4;
+
 class SoLieu {
   final String nhan;
+
+  /// Tên **đối tượng** mang con số này: `Giáo dục`, `Tiền mặt`, `Kiem`.
+  ///
+  /// Tách khỏi [nhan] — thứ gọi tên *chỉ số* (`Tỉ lệ`, `Còn thiếu`, `Số dư`).
+  ///
+  /// 🛑 Đừng ghép hai thứ vào [nhan]. `kiemNhan` đòi câu chứa **mọi** âm tiết
+  /// có nghĩa của nhãn, nên nhãn ghép `Giáo dục · Tỉ lệ` đòi câu phải có cả
+  /// "tỉ" lẫn "lệ", và câu tự nhiên nhất — *"Giáo dục đã dùng 90,0%"* — bị
+  /// chính lớp chắn ấy chặn, **im lặng**.
+  ///
+  /// `null` là ca **thường**, không phải dấu hiệu thiếu dữ liệu: tổng thu,
+  /// tổng chi, số ví không thuộc về một đối tượng nào.
+  final String? ten;
+
   final double soTho;
 
   /// Chuỗi đã định dạng — xem docstring đầu tệp.
@@ -29,40 +51,63 @@ class SoLieu {
 
   const SoLieu({
     required this.nhan,
+    this.ten,
     required this.soTho,
     required this.chuoi,
     required this.loai,
   });
 }
 
-SoLieu soTien(String nhan, double v) => SoLieu(
+SoLieu soTien(String nhan, double v, {String? ten}) => SoLieu(
       nhan: nhan,
+      ten: ten,
       soTho: v,
       chuoi: CurrencyFormatter.format(v),
       loai: LoaiSo.tien,
     );
 
 /// G2: một chữ số thập phân, phẩy thập phân. [phanTram] ở thang 0–100.
-SoLieu soPhanTram(String nhan, double phanTram) => SoLieu(
+SoLieu soPhanTram(String nhan, double phanTram, {String? ten}) => SoLieu(
       nhan: nhan,
+      ten: ten,
       soTho: phanTram,
       chuoi: '${phanTram.toStringAsFixed(1).replaceAll('.', ',')}%',
       loai: LoaiSo.phanTram,
     );
 
-SoLieu soNgay(String nhan, int ngay) => SoLieu(
+SoLieu soNgay(String nhan, int ngay, {String? ten}) => SoLieu(
       nhan: nhan,
+      ten: ten,
       soTho: ngay.toDouble(),
       chuoi: '$ngay ngày',
       loai: LoaiSo.soNgay,
     );
 
-SoLieu soDem(String nhan, int n) => SoLieu(
+SoLieu soDem(String nhan, int n, {String? ten}) => SoLieu(
       nhan: nhan,
+      ten: ten,
       soTho: n.toDouble(),
       chuoi: '$n',
       loai: LoaiSo.soDem,
     );
+
+/// Bảng tra **nhãn → chuỗi** cho mẫu câu — định nghĩa DUY NHẤT, cả sáu gói
+/// dùng. Mục **ĐẦU TIÊN** của mỗi nhãn thắng.
+///
+/// ⚠️ Không phải `{for (final x in soLieu) x.nhan: x.chuoi}`: map literal lấy
+/// giá trị **cuối** khi trùng khoá. Từ chặng 4a một gói mang được nhiều mục
+/// cùng nhãn (mỗi ngân sách một `Tỉ lệ`, mỗi ví một `Số dư`), và mẫu câu phải
+/// nhận mục **tổng hợp** — thứ các gói đặt TRƯỚC danh sách. Khuôn cũ làm câu
+/// nhận xét về Giáo dục in tỉ lệ của Mua sắm (bẫy **4.30**), sai **im lặng**,
+/// và ca `contains('Giáo dục')` vẫn xanh. Năm gói kia khi ấy chỉ an toàn nhờ
+/// đặt nhãn danh sách khác nhãn tổng hợp (`Đang âm` / `Ví đang âm`).
+Map<String, String> chuoiTheoNhan(List<SoLieu> soLieu) {
+  final s = <String, String>{};
+  for (final x in soLieu) {
+    s.putIfAbsent(x.nhan, () => x.chuoi);
+  }
+  return s;
+}
 
 abstract class GoiSo {
   /// Tên màn: `ngan_sach` | `phan_tich` | `trang_chu` | `muc_tieu`.
@@ -76,4 +121,19 @@ abstract class GoiSo {
   NhanXet mauCau();
 
   String get dauVan => dauVanCua(this);
+
+  /// Tên các **đối tượng** gói mang theo — mặc định là mọi [SoLieu.ten].
+  ///
+  /// Bộ kiểm số đọc danh sách này để biết chữ số nào nằm **trong một tên**
+  /// (`Tiền nhà T9`) chứ không phải một con số (`trichSoNgoaiTen`, bước 1c).
+  ///
+  /// ⚠️ Gói nào in vào mẫu câu một tên **không** gắn trên [SoLieu] nào thì phải
+  /// cộng tên ấy ở đây. Quên thì mẫu câu nêu một tên có chữ số bị chính bộ
+  /// kiểm chặn, và câu mô hình nêu đúng tên ấy cũng vậy — im lặng. Đừng gắn
+  /// tên ấy lên [SoLieu] để né: làm thế là đổi luật "mục có tên đòi câu nêu
+  /// tên" của `kiemNhan`.
+  Iterable<String> get tenDoiTuong => [
+        for (final s in soLieu)
+          if (s.ten != null) s.ten!,
+      ];
 }

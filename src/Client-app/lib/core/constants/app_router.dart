@@ -43,6 +43,7 @@ import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
 import '../../features/ai_chat/presentation/pages/ai_chat_page.dart';
+import '../../features/ai_edge/presentation/pages/cai_dat_ai_page.dart';
 import '../../features/notification/presentation/pages/notification_center_page.dart';
 import '../../features/notification/presentation/pages/notification_settings_page.dart';
 
@@ -370,6 +371,18 @@ class AppRouter {
 
           // Other
           GoRoute(path: '/ai-chat', builder: (_, __) => const AiChatPage()),
+
+          // Cài đặt của mảng AI trên máy: tải / xoá mô hình, công tắc dùng nó.
+          //
+          // ⚠️ NGOÀI `StatefulShellRoute`, và **không** có mặt trong
+          // `nhanhThanhTab` (`core/notification/notification_deeplink.dart`):
+          // lối vào duy nhất là nút ở màn Trợ lý AI, nên nó phải `push` để có
+          // nút Back. Kéo nó vào một nhánh tab là làm mọi deeplink tới nó chết
+          // màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`).
+          GoRoute(
+            path: '/ai-settings',
+            builder: (_, __) => const CaiDatAiPage(),
+          ),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
               path: '/settings/change-password',

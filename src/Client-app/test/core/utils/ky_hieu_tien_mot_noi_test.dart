@@ -22,11 +22,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   /// Tệp còn được phép, kèm số chỗ và lý do — cùng khuôn `khong_co_nut_chet_test`.
   const choChot = <String, (int, String)>{
-    'features/ai_chat/presentation/pages/ai_chat_page.dart': (
-      1,
-      'Màn mockup tĩnh "3.200.000đ"; giữ hay gỡ là mục D9 của danh sách UX '
-          '2026-09-19, chờ chốt.',
-    ),
+    // `ai_chat_page.dart` rút khỏi danh sách ngày 2026-09-22 (P3 Task 8): con
+    // số "3.200.000đ" là của bản mockup tĩnh, nay đã gỡ cùng cả khối bịa số.
     'features/bill/presentation/pages/bill_delete_page.dart': (
       1,
       'Chuỗi cố định "260.000đ" trong một màn mockup không nối vào router — '

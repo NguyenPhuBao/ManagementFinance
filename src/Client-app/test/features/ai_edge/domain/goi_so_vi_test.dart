@@ -5,6 +5,7 @@
 /// bị loại khỏi tổng: ví tắt cờ `includeInTotal`, và ví đã lưu trữ.
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_vi.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
@@ -136,5 +137,89 @@ void main() {
         expect(kiemSo(cau, g), isTrue, reason: cau);
       });
     }
+  });
+
+  group('danh sách ví có TÊN (chặng 4a)', () {
+    // Đúng bốn ví của tài khoản 10 ngày 2026-09-22 (bảng đo mục 5.6).
+    List<ViChoGoiSo> bonVi() => [
+          _vi('Tiền mặt', 9903000),
+          _vi('test', -100000),
+          _vi('Tiết kiệm', 3201000),
+          _vi('tiết kiệm mua nhà', 0),
+        ];
+
+    test('mỗi ví góp một mục mang TÊN ví', () {
+      final g = GoiSoVi.tu(bonVi());
+      // Lọc theo `ten`, không theo nhãn: nhãn đổi theo trạng thái ví
+      // (`Đang âm` / `Số dư`), và đó chính là điểm của lát này.
+      final ten = g.soLieu.where((s) => s.ten != null).map((s) => s.ten);
+      expect(ten, containsAll(<String>['Tiền mặt', 'test', 'Tiết kiệm']),
+          reason: 'Câu 15 của bảng đo — "ví nào đang âm" — nhận về "Ví đang '
+              'âm: 1" vì gói chỉ có số đếm, không có tên.');
+    });
+
+    test('⭐ ví ÂM mang nhãn nói rõ là đang âm', () {
+      final g = GoiSoVi.tu(bonVi());
+      final am = g.soLieu.where((s) => s.nhan == 'Đang âm').toList();
+      expect(am.map((s) => s.ten), ['test'],
+          reason: 'Đo máy thật 2026-09-23: gói nói "Ví đang âm = 1" và riêng '
+              'rẽ "test · Số dư = -100.000 đ", không chỗ nào nói test LÀ ví '
+              'âm. Mô hình sinh "Số ví đang âm là -100.000 đ" — nối hai mục '
+              'bằng cách bịa nhãn, và bị chặn.');
+      expect(am.single.soTho, -100000);
+      expect(g.soLieu.where((s) => s.nhan == 'Số dư').map((s) => s.ten),
+          isNot(contains('test')),
+          reason: 'Một ví chỉ có MỘT mục — hai mục cùng số dư là tự dựng lại '
+              'tình huống trùng giá trị mà thẻ số liệu phải gỡ.');
+    });
+
+    test('ví âm ĐỨNG ĐẦU danh sách', () {
+      final g = GoiSoVi.tu(bonVi());
+      final coTen = g.soLieu.where((s) => s.ten != null).toList();
+      expect(coTen.first.ten, 'test');
+    });
+
+    test('nhãn mới KHÁC nhãn của mục đếm, để mẫu câu không bị đè', () {
+      final g = GoiSoVi.tu(bonVi());
+      expect(g.soLieu.where((s) => s.nhan == 'Ví đang âm').single.chuoi, '1',
+          reason: 'Mẫu câu tra `s[\'Ví đang âm\']` và phải nhận SỐ ĐẾM.');
+    });
+
+    test('ví đã XOÁ MỀM không vào danh sách', () {
+      final g = GoiSoVi.tu([
+        _vi('Tiền mặt', 9903000),
+        _vi('đã xoá', 500000, daXoa: true),
+      ]);
+      final ten = g.soLieu.where((s) => s.nhan == 'Số dư').map((s) => s.ten);
+      expect(ten, isNot(contains('đã xoá')),
+          reason: 'Ví đã xoá mềm không còn là ví của người dùng ở bất kỳ vế '
+              'nào — cùng luật đã loại nó khỏi tổng tài sản (lỗi G42 ở dạng '
+              'khác: cộng ví đã xoá vào một con số hiển thị).');
+    });
+
+    test('ví NGOÀI TỔNG vẫn vào danh sách — nó vẫn là ví có thật', () {
+      final g = GoiSoVi.tu([
+        _vi('Tiền mặt', 9903000),
+        _vi('Ví du lịch', 700000, trongTong: false),
+      ]);
+      final ten = g.soLieu.where((s) => s.nhan == 'Số dư').map((s) => s.ten);
+      expect(ten, contains('Ví du lịch'),
+          reason: 'Nó bị loại khỏi TỔNG, không bị loại khỏi danh sách ví — '
+              'và chính nó là thứ gói này sinh ra để giải thích.');
+    });
+
+    test('không vượt trần kToiDaMucMoiGoi ví', () {
+      final g = GoiSoVi.tu([
+        ...bonVi(),
+        _vi('Ví 5', 1000),
+        _vi('Ví 6', 2000),
+      ]);
+      expect(g.soLieu.where((s) => s.nhan == 'Số dư').length,
+          lessThanOrEqualTo(kToiDaMucMoiGoi));
+    });
+
+    test('chưa có ví nào thì vẫn không thẻ nào', () {
+      expect(GoiSoVi.tu(const []).soLieu, isEmpty);
+    });
   });
 }

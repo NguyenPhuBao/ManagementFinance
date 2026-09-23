@@ -1,4 +1,6 @@
 import '../../../core/database/app_database.dart';
+import '../../analytics/domain/pham_vi_ky.dart';
+import '../../analytics/domain/thong_ke_thang.dart';
 
 /// Tổng thu và tổng chi của tháng chứa [now] — con số của thẻ số liệu tháng
 /// ở Trang chủ (`TheSoLieuThang`).
@@ -8,19 +10,31 @@ import '../../../core/database/app_database.dart';
 /// là *số trên thẻ = số trong gói*; hai vòng lặp chép tay là hai định nghĩa
 /// sẽ lệch nhau im lặng.
 ///
-/// Cố ý là phép cộng **thô** theo `type` — đúng như thẻ đã làm từ đầu, không
-/// đi qua `khoanVaoThongKe` — để gói số nhận đúng con số người dùng đang thấy
-/// ngay phía trên. Đổi luật thì đổi ở đây, cả hai chỗ đổi theo.
+/// Từ 2026-09-23 nó **đi qua `tongThuChi`** của trang Phân tích — cùng hàm mà
+/// tool `chi_tieu_theo_ky` của trợ lý AI đọc — và cắt tháng bằng `Ky.thang`,
+/// cùng biên `[from, to)` với tháng của trang ấy. Trước đó nó cộng **thô**
+/// theo `type`, nên đếm cả khoản điều chỉnh số dư lẫn khoản "Số dư ban đầu":
+/// Trang chủ nói thu 15.145.000 đ trong khi trang Phân tích và trợ lý nói
+/// 15.135.000 đ. Người dùng chốt con số của Phân tích là con số đúng.
+/// ⚠️ Đừng viết lại vòng cộng ở đây — một vòng thứ hai là định nghĩa thứ hai.
 ({double thu, double chi}) thuChiThangCua(
   Iterable<Transaction> ds,
   DateTime now,
 ) {
-  var thu = 0.0;
-  var chi = 0.0;
-  for (final t in ds) {
-    if (t.date.year != now.year || t.date.month != now.month) continue;
-    if (t.type == 'thu') thu += t.amount;
-    if (t.type == 'chi') chi += t.amount;
-  }
-  return (thu: thu, chi: chi);
+  final thang = Ky.thang(now.year, now.month);
+  final tong = tongThuChi(
+    [
+      for (final t in ds)
+        KhoanThuChi(
+          ngay: t.date,
+          soTien: t.amount,
+          loai: t.type,
+          categoryId: t.categoryId,
+          ghiChu: t.note,
+        ),
+    ],
+    from: thang.from,
+    to: thang.to,
+  );
+  return (thu: tong.thu, chi: tong.chi);
 }

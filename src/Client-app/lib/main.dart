@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/ui/thong_bao_nhanh.dart';
+import 'features/ai_edge/domain/canary_cong_cu.dart';
 import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
@@ -70,6 +72,14 @@ void main() async {
   }
 
   runApp(FlowMoneyApp(initialRoute: initialRoute, authBloc: authBloc));
+
+  // Canary phiên có tool (bước 1b): xét dấu sót của lần chạy trước NGAY lúc
+  // mở app — lúc lịch sử lý do thoát của Android còn nguyên bản ghi của cú sập
+  // (nếu có). Không chặn khởi động, không bao giờ ném. Chỉ Android: kênh lý do
+  // thoát nằm ở `MainActivity`, và trên web không có tệp cục bộ nào để xét.
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    unawaited(sl<CanaryCongCu>().xetDauSot());
+  }
 }
 
 /// Nạp bảng múi giờ và đặt múi giờ địa phương.

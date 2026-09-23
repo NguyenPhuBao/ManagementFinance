@@ -7,6 +7,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
 import 'goi_so.dart';
 import 'nhan_xet.dart';
@@ -46,6 +47,41 @@ class GoiSoHoaDon extends GoiSo {
       if (billDisplayStatusOf(b, now) == BillDisplayStatus.overdue) quaHan++;
     }
 
+    // Chặng 4a: mỗi hoá đơn còn phải trả góp một mục mang TÊN, để câu hỏi
+    // "hoá đơn nào quá hạn" đáp được bằng tên (câu 13 bảng đo, mục 5.6
+    // `docs/AI_AGENT_ARCHITECTURE.md` — câu ấy trả lời sang hẳn chủ đề khác).
+    //
+    // ⚠️ Lặp ĐÚNG phép chặn ở cuối tháng của vòng đếm quá hạn ngay trên: nếu
+    // không, danh sách nói về một tập hoá đơn khác với các con số tổng ngay
+    // cạnh nó — hai vế của cùng một câu, đếm trên hai tập, và không gì báo.
+    //
+    // ⚠️ Vị từ "còn phải trả" có MỘT định nghĩa duy nhất ở `bill_pay_status`.
+    // Hạn gần nhất trước, nên hoá đơn quá hạn tự đứng đầu.
+    final conTra = [
+      for (final b in bills)
+        if (b.dueDate.isBefore(cuoiKy) && conPhaiTra(b)) b,
+    ]..sort((x, y) => x.dueDate.compareTo(y.dueDate));
+    // ⚠️ Hoá đơn quá hạn mang nhãn NÓI RÕ là quá hạn, không dùng chung nhãn
+    // `Phải trả`. Đo máy thật 2026-09-23: gói nói `Quá hạn: 1` và riêng rẽ
+    // `Kiem · Phải trả: 45.000 đ`, **không chỗ nào nói Kiem LÀ cái quá hạn** —
+    // mô hình phải nối hai mục bằng suy luận, và E2B trả lời bằng con số tổng
+    // thay vì bằng tên. Danh sách có tên là **cần nhưng chưa đủ**: nhãn phải
+    // mang chính trạng thái mà câu hỏi hỏi.
+    //
+    // ⚠️ Nhãn là `Đã quá hạn`, KHÁC `Quá hạn` của mục đếm: mẫu câu tra
+    // `s['Quá hạn']` và phải nhận số đếm. `chuoiTheoNhan` lấy mục ĐẦU và mục
+    // đếm đứng trước danh sách, nên nhãn khác nhau là lớp chắn thứ hai.
+    final theoHoaDon = <SoLieu>[
+      for (final b in conTra.take(kToiDaMucMoiGoi))
+        soTien(
+          billDisplayStatusOf(b, now) == BillDisplayStatus.overdue
+              ? 'Đã quá hạn'
+              : 'Phải trả',
+          b.amount,
+          ten: b.name,
+        ),
+    ];
+
     // Kỳ không có hoá đơn nào đáng nói: không thẻ số liệu nào, chỉ một câu.
     // Thẻ "Quá hạn: 0" hay "Tiến độ: 0,0%" ở đây là ô trống đội lốt số liệu.
     final rong = tom.unpaidCount == 0 && tom.paidCount == 0;
@@ -61,6 +97,9 @@ class GoiSoHoaDon extends GoiSo {
               soPhanTram('Tiến độ', tom.progress * 100),
               if (tom.unpaidCount > 0) soDem('Chưa trả', tom.unpaidCount),
               if (quaHan > 0) soDem('Quá hạn', quaHan),
+              // Đặt CUỐI: mẫu câu tra mục theo nhãn, các mục tổng hợp ở trên
+              // phải gặp trước.
+              ...theoHoaDon,
             ],
     );
   }
@@ -77,7 +116,7 @@ class GoiSoHoaDon extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
 
     // Quá hạn nói trước mọi thứ khác: đó là thứ duy nhất ở đây cần làm ngay.
     if (quaHan > 0) {

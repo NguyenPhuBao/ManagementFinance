@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -19,6 +20,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -227,6 +229,68 @@ void main() {
       expect(await db.walletDao.getById('w-cua-tai-khoan-cu'), null,
           reason: 'Người dùng mở lại app mà không đăng xuất/đăng nhập lại thì '
               'dữ liệu rác của tài khoản cũ vẫn phải được dọn');
+    });
+
+    /// Cache câu SLM (`data/slm_cache.dart`) nằm ngoài SQLite — một tệp JSON
+    /// duy nhất cho cả máy — nên `purgeDataForOtherAccounts` không chạm tới
+    /// được. Hai ca dưới đây canh **hai chiều** của cùng một luật.
+    test('Đổi tài khoản thì cache câu SLM cũng bị dọn', () async {
+      final thuMuc = Directory.systemTemp.createTempSync('slm_cache_doi_tk');
+      addTearDown(() => thuMuc.deleteSync(recursive: true));
+      final cache = SlmCache(thuMuc: () async => thuMuc);
+      await cache.nap();
+      await cache.ghi('van-tay-cua-9', 'Tháng này bạn chi 4,2 triệu.');
+      sl.registerSingleton<SlmCache>(cache);
+
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value('w-cua-tai-khoan-cu'),
+        idaccount: const Value(9),
+        name: const Value('Ví cũ'),
+        type: const Value('cash'),
+        balance: const Value(0),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      final repo = _FakeAuthRepository(
+        session: SessionStatus.valid,
+        cachedUser: _user('10'),
+      );
+      expect(await checkAuth(repo), isA<AuthSuccess>());
+
+      expect(cache.doc('van-tay-cua-9'), isNull,
+          reason: 'Câu trong cache nói về số liệu tài chính của MỘT tài '
+              'khoản. Trên máy dùng chung, người sau không được thấy câu của '
+              'người trước.');
+    });
+
+    test('Đăng nhập lại CÙNG tài khoản thì cache câu SLM được GIỮ', () async {
+      final thuMuc = Directory.systemTemp.createTempSync('slm_cache_cung_tk');
+      addTearDown(() => thuMuc.deleteSync(recursive: true));
+      final cache = SlmCache(thuMuc: () async => thuMuc);
+      await cache.nap();
+      await cache.ghi('van-tay-cua-10', 'Tháng này bạn chi 4,2 triệu.');
+      sl.registerSingleton<SlmCache>(cache);
+
+      // KHÔNG có hàng nào của tài khoản khác → `purgeDataForOtherAccounts`
+      // xoá 0 hàng → không có "đổi người dùng" nào xảy ra.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value('w-cua-chinh-minh'),
+        idaccount: const Value(10),
+        name: const Value('Ví của tôi'),
+        type: const Value('cash'),
+        balance: const Value(0),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      final repo = _FakeAuthRepository(
+        session: SessionStatus.valid,
+        cachedUser: _user('10'),
+      );
+      expect(await checkAuth(repo), isA<AuthSuccess>());
+
+      expect(cache.doc('van-tay-cua-10'), isNotNull,
+          reason: 'Dọn ở đây là vứt tới 200 câu, mỗi câu đã trả 2,3 giây chạy '
+              'mô hình để có — trong khi chẳng có người dùng nào đổi.');
     });
 
     test('idaccount hỏng/rỗng → KHÔNG mặc định thành admin (id 1)', () async {

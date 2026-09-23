@@ -9,7 +9,8 @@
 > và không phải nguồn sự thật — **mọi con số dưới đây phải đối chiếu lại với mã**.
 > Mỗi con số đều ghi cách đếm để người sau đếm lại được.
 >
-> **Mọi số liệu trong tài liệu này đếm bằng máy ngày 2026-09-21.**
+> **Mọi số liệu trong tài liệu này đếm bằng máy ngày 2026-09-21** — trừ những phần viết sau, vốn
+> ghi ngày đo ngay tại chỗ (mục 5.5, 5.6, 11, 12, 13 mang số của 2026-09-22 và 2026-09-23).
 
 ---
 
@@ -90,31 +91,40 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
                      │
                      │  abstract class BoDienGiai { Future<NhanXet> dienGiai(GoiSo); }
                      │
-┌─ VÒNG 2 — KỂ CHUYỆN ───────────────────── 📝 P3, 0 DÒNG MÃ ────────┐
+┌─ VÒNG 2 — KỂ CHUYỆN ──────────────── ✅ P3 XONG 22/09, CỔNG A QUA ─┐
 │                                                                     │
-│   Gemma 4 E2B   (GPU → CPU → mẫu câu)                               │
-│        nhận GoiSo ĐÃ TÍNH  ──► sinh câu  ──► kiemSo()               │
-│                                     │                                │
+│   Gemma 4 E2B   (GPU → canary → CPU → mẫu câu)                      │
+│        nhận GoiSo ĐÃ TÍNH  ──► sinh câu ──► kiemCauTraLoi()         │
+│                                     │      = kiemSo + kiemNhan      │
+│                                     │        + kiemGiong            │
 │                              qua ───┴─── trượt ──► goi.mauCau()     │
 │                                                                      │
+│   ↳ chặn THEO CÂU: đủ một câu mới kiểm, trượt thì huỷ sinh          │
 │   ↳ CHỈ màn Trợ lý AI (lối B — BoDienGiai KHÔNG đăng ký vào DI)     │
 └──────────────────────────────────────────────────────────────────────┘
 
-┌─ VÒNG 3 — AGENT ──────────────────── ⬜ ĐỀ XUẤT, CHƯA CHỐT ────────┐
+┌─ VÒNG 3 — AGENT ──────────── ✅ LÁT 4b XONG 23/09, CỔNG C ĐẠT ─────┐
 │                                                                     │
-│   tools_json native (SdkPassthrough)                                │
-│     9 tool trỏ vào hàm domain ĐÃ CÓ + 1 tool tra cứu kiến thức      │
+│   tools_json native — 4 tool ĐỌC trỏ vào hàm domain ĐÃ CÓ          │
+│     (ngân sách · hoá đơn · ví · chi tiêu theo kỳ)                   │
 │        │                                                             │
 │        ▼                                                             │
-│   mỗi tool TRẢ List<SoLieu>  ──►  gói số TÍCH LUỸ  ──►  kiemSo      │
+│   mỗi tool TRẢ hàng (tên + trạng thái + List<SoLieu>)               │
+│        ──►  GoiSoTraCuu TÍCH LUỸ  ──►  kiemCauTraLoi()              │
 │                                                                      │
-│   + vector index TĨNH cho kiến thức tài chính chung                 │
-│     (asset đóng gói lúc build — không database, không server)       │
+│   ↳ hoiBangCongCu: trần 3 lời gọi · L1 chưa tool nào → vòng 2       │
+│   ↳ canary phiên tool (1b): máy từng SẬP NATIVE ở phiên có tool     │
+│     (Android xác nhận lý do thoát) → không mở phiên, đi vòng 2      │
+│   🛑 vector index phía CLIENT: BỎ (đo 22/09, mục 5.5)               │
+│      kiến thức chung → backend RAG; số cá nhân → function-calling   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Ba vòng, một hợp đồng.** `BoDienGiai` là interface hai dòng; vòng 2 và vòng 3 đều
-là bản thi công của nó. Vòng 1 không biết vòng nào đang chạy phía trên.
+**Ba vòng, một hợp đồng — và hợp đồng ấy là `GoiSo`.** Vòng 2 trên màn Trợ lý AI nhận sáu gói
+dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; ba lớp chắn và thẻ số liệu
+chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
+đồng là `BoDienGiai` và "vòng 2 và vòng 3 đều là bản thi công của nó" — sai từ lối B, khi màn
+Trợ lý AI tự dựng đường sinh câu và `BoDienGiai` không được đăng ký; vòng 3 là `hoiBangCongCu`.)*
 
 ---
 
@@ -260,7 +270,7 @@ rồi để mô hình viết một câu. Mô hình **không quyết định gì,
 
 ---
 
-## 5. Vòng 3 — agent (đề xuất, chưa chốt)
+## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
 
 ### 5.1 Mười tool
 
@@ -367,6 +377,230 @@ active embedder nên không cần bước đặt riêng.
 clean` không cứu được** — chỉ khỏi khi thêm `kotlin.incremental=false` cùng
 `kotlin.compiler.execution.strategy=in-process` vào `android/gradle.properties`.
 
+### 5.6 Bảng đo chặng 3 — bậc 1 hỏng ở đâu ✅ **ĐO XONG 2026-09-22 (tối muộn)**
+
+> 🛑 **Đọc cả mục "Đo lại sau chặng 4a" ở cuối mục này trước khi dùng bảng.** Lát 4a đã chữa
+> được **một** trong bốn câu nhóm A và chứng minh ba câu còn lại **không** chữa được bằng gói số
+> — chúng cần tool. Đơn đặt hàng sáu tool bên dưới vì thế **vẫn đứng**, nhưng hình dạng của nó đã
+> rõ hơn: tool phải trả **một hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời.
+
+**Máy:** Realme RMX2205 (Dimensity 1100, Mali-G77, Android 13, 360 dp), APK **release**, nạp
+**CPU** (canary đã ghi dấu GPU sập từ lượt trước). **Tài khoản:** 10 (`tadd1632004@gmail.com`),
+dữ liệu thật. **Nạp mô hình:** 9.196 ms (XNNPack cache đã có sẵn). **Sinh câu:** 4,8–8,9 s mỗi
+câu, token đầu 4,5–8,2 s.
+
+**Điều kiện vào đã thoả:** cổng A đóng ✅ (mục **9.9** `docs/AI_EDGE_FEATURE.md`).
+
+**Dữ liệu nền lúc đo** (đọc từ chính app, để chấm được đúng/sai):
+
+- Trang chủ: tổng số dư **13.004.000**, thu nhập **15.145.000**, chi tiêu **2.141.000**
+- Ngân sách (4 đang chạy): còn **1.340.000** (72 %), đã dùng 510.000/1.850.000 —
+  Giáo dục 45k/50k (**90,0 %**), Ăn uống 50k/500k, Di chuyển 355k/450k, Mua sắm 60k/850k
+- Mục tiêu (2): MuaXe **55,0 %** (thiếu 899.000, còn 583 ngày, đúng kế hoạch), MuaDT 13,3 %
+- Hoá đơn: còn phải trả **155.000**, đã trả 65.000, chưa trả **3**, quá hạn **1** ("Kiem")
+- Ví (4): Tiền mặt 9.903.000 · test **−100.000** · Tiết kiệm 3.201.000 · mua nhà 0
+
+#### Bảng 20 hàng
+
+Ký hiệu cột *Kết quả*: **✅** trả lời được · **MẪU** rơi về mẫu câu · **SAI** số/nhãn sai lọt qua ·
+**LỆCH** trả lời được nhưng không trả lời điều được hỏi.
+
+| # | Câu hỏi (gõ không dấu) | Mô hình trả lời | Kết quả | Thiếu gì trong sáu gói |
+|---|---|---|---|---|
+| 1 | Ngân sách của tôi thế nào | *(bị chặn)* "Ngân sách của bạn đang ở mức 90,0%" | **MẪU** | — nhãn "Tỉ lệ" không khớp câu |
+| 2 | Còn bao nhiêu **tiền** ngân sách tháng này | "Ngân sách căng nhất là 90,0%" | **LỆCH** | tổng còn lại 1.340.000 |
+| 3 | Ngân sách **nào** sắp hết | "Ngân sách căng nhất là 90,0%" | **LỆCH** | **tên** ngân sách |
+| 4 | % ngân sách **Ăn uống** | "Không có dữ liệu để trả lời câu hỏi của bạn" | **MẪU** ✓ | ngân sách tra theo tên |
+| 5 | Tháng sau nên đặt ngân sách bao nhiêu | "Ngân sách căng nhất là 90,0%" | **LỆCH** | gợi ý hạn mức |
+| 6 | Tháng này tôi chi bao nhiêu | "Chi tiêu tháng này là 2.141.000 đ trên tổng thu 15.135.000 đ" | **✅** | — |
+| 7 | **Tuần này** tiêu bao nhiêu | *(bị chặn)* "Hôm nay bạn đã chi 556 đ" | **MẪU** | chi theo kỳ tuỳ ý |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | **LỆCH** | **tên** danh mục |
+| 9 | **Tháng trước** chi bao nhiêu | "**Tháng này** tổng chi là 2.141.000 đ…" | **LỆCH** | kỳ trước |
+| 10 | Mục tiêu MuaXe thế nào rồi | "đạt tiến độ 55,0%, còn thiếu 899.000 đ và còn 583 ngày" | **✅** | — |
+| 11 | **Khi nào** đạt mục tiêu tiết kiệm | "…không có thông tin cụ thể trong dữ liệu" | **✅** | dự báo ngày đạt |
+| 12 | Còn bao nhiêu **hoá đơn chưa trả** | "Đã trả: 65.000 đ" | **LỆCH** | 🛑 **không thiếu** — chọn nhầm |
+| 13 | **Hoá đơn nào** quá hạn | "Ngân sách căng nhất là 90,0%" | **LỆCH** | **tên** hoá đơn *(sang hẳn chủ đề khác)* |
+| 14 | Tiền trong **ví** còn bao nhiêu | "Còn lại là 12.994.000 đ" | **LỆCH** | 🛑 **không thiếu** — nhầm thu−chi với số dư |
+| 15 | **Ví nào** đang âm | "Ví đang âm: 1" *(thẻ hiện sai: "Quá hạn 1")* | **LỆCH** | **tên** ví |
+| 16 | Tiền trong ví **có đủ** trả hoá đơn không | "Còn phải trả 155.000 đ cho hóa đơn" | **LỆCH** | phép **so sánh** hai gói |
+| 17 | Trả hết hoá đơn thì **còn** bao nhiêu | "Tổng số tiền còn phải trả cho hóa đơn là 155.000 đ" | **LỆCH** | phép **trừ** |
+| 18 | Chi tiêu **có vượt** thu nhập không | "Chi tiêu của bạn là 2.141.000 đ trên tổng thu 15.135.000 đ" | **✅** | — |
+| 19 | Tháng này để dành bao nhiêu % | "Để dành được 85,4% thu nhập" | **✅** | — |
+| 20 | Có tất cả **bao nhiêu ví** | đổ **năm** con số của cả gói, không nêu "4 ví" | **LỆCH** | 🛑 **không thiếu** — "Số ví 4" có sẵn |
+
+**Tổng: ✅ 5 · MẪU 3 · SAI 0 · LỆCH 12.**
+
+#### Bốn điều bảng này nói ra
+
+**1. Bậc 1 không bịa — nó lệch.** `SAI = 0` trên 20 câu: ba lớp chắn làm đúng việc. Nhưng **12/20
+lệch câu hỏi**, tức hơn một nửa. Nếu chỉ đếm hai ô "trả lời được / rơi mẫu" như bản kế hoạch đầu
+thì bảng này sẽ đọc thành *"8/20 hỏng"*, và **bốn tool quan trọng nhất sẽ không được đặt hàng**.
+Cột thứ tư là thứ giữ lại kết luận đúng.
+
+**2. Thứ thiếu nhất không phải con số — là CÁI TÊN.** Bốn câu (3, 8, 13, 15) hỏi *"cái nào"* và
+cả bốn đều hỏng theo cùng một kiểu: gói số mang **giá trị** mà không mang **định danh**. Người
+dùng hỏi *"ngân sách nào sắp hết"* thì muốn nghe **"Giáo dục"**, không phải **"90,0%"**. Đây là
+đơn đặt hàng rõ nhất của cả bảng, và nó **rẻ**: các hàm domain đã trả về entity có tên sẵn, chỉ
+là `NguonGoiSo` rút lấy con số rồi bỏ tên lại.
+
+**3. Ba câu hỏng mà KHÔNG cần tool nào** (12, 14, 20): số cần trả lời **đã có trong gói** và mô
+hình vẫn chọn nhầm. Câu 14 nguy hiểm nhất — hỏi tiền trong ví (13.004.000), trả lời *"Còn lại
+12.994.000 đ"* (= thu − chi của kỳ); hai số **khác nghĩa mà chênh đúng 10.000 đ**, người dùng
+không có cách nào nhận ra. Chữa bằng tool là chữa nhầm bệnh: thứ cần sửa là **nhãn trong prompt**
+và cách chọn gói, không phải thêm nguồn dữ liệu.
+
+**4. Hai câu đòi vòng lặp chứ không đòi tool** (16, 17): *"có đủ không"* và *"trả xong còn bao
+nhiêu"* cần **so sánh** và **trừ** giữa hai gói. Đúng như bất biến đã khoá — **lớp AI không tính**
+— nên chúng chỉ giải được ở vòng 3 bằng cách gọi hai tool rồi để **hàm domain** làm phép tính,
+không phải để mô hình tự trừ.
+
+#### Đơn đặt hàng tool — rút TỪ BẢNG, không từ mục 5.1
+
+Xếp theo số câu mỗi tool cứu được:
+
+| # | Tool | Cứu câu | Ghi chú |
+|---|---|---|---|
+| 1 | `danhSachNganSach()` → tên · đã chi · hạn mức · % · còn lại | 2, 3, 4, 5 | **đắt giá nhất**; mang cả tên lẫn tổng |
+| 2 | `danhSachHoaDon()` → tên · hạn · số tiền · trạng thái | 12, 13, 16, 17 | gồm cả "hoá đơn nào quá hạn" |
+| 3 | `danhSachVi()` → tên · số dư · cờ âm | 14, 15, 20 | chữa luôn cú nhầm 12.994.000 / 13.004.000 |
+| 4 | `chiTieuTheoKy(tu, den)` → tổng thu · tổng chi · theo danh mục **có tên** | 7, 8, 9 | kỳ tuỳ ý + tên danh mục |
+| 5 | `duBaoMucTieu(id)` | 11 | chỉ có nghĩa khi mục tiêu chậm kế hoạch |
+| 6 | `goiYHanMuc(danhMuc)` | 5 | đã có `suggestAmount`, chỉ cần khai |
+
+🛑 **Mục 5.1 đoán MƯỜI tool; bảng đo đặt hàng SÁU**, và **bốn cái đứng đầu đều là "trả về danh
+sách có tên"** — một hình dạng mà mục 5.1 không hề dự đoán (nó nghĩ theo hướng "mỗi hàm domain
+một tool"). Đây đúng là lý do lộ trình bắt đo trước khi dựng: ba tool của 5.1 (`traCuuKienThuc`
+và hai tool phái sinh) **không câu nào trong 20 câu cần tới**.
+
+#### Đo lại sau chặng 4a (2026-09-23) — 🛑 CỔNG CHƯA ĐẠT, nhóm A **1/4**
+
+Lát 4a (spec `specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`) cho mỗi con số mang
+**tên đối tượng**, rồi đo lại **bốn câu nhóm A** trên cùng máy, cùng tài khoản. Không đo lại trọn
+20 câu vì cổng đã trượt ngay ở nhóm A.
+
+| # | Câu hỏi | Trước 4a | Sau 4a |
+|---|---|---|---|
+| 3 | Ngân sách **nào** sắp hết | "Ngân sách căng nhất là 90,0%" | ⭐ **"…là Giáo dục với tỉ lệ 90,0%"** ✅ |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | **LỆCH** — vẫn trả lời về ngân sách |
+| 13 | **Hoá đơn nào** quá hạn | trả lời về *ngân sách* | **LỆCH** — đúng chủ đề, nhưng lấy mục đếm ("là 1") |
+| 15 | **Ví nào** đang âm | LỆCH + thẻ sai nhãn | **MẪU** — bị chặn, an toàn |
+
+**Điều kiện 3 của cổng (SAI = 0) đạt** sau khi đóng một hồi quy; điều kiện 1 (≥ 3/4) **trượt**.
+
+⭐ **Bài học trung tâm: danh sách có tên là CẦN nhưng CHƯA ĐỦ.** Một lượt log gói số thật chứng
+minh cả bốn gói mang tên **đúng như thiết kế**:
+
+```
+phan_tich > Cho vay / Chi = 800.000 đ          ngan_sach > Giáo dục / Tỉ lệ = 90,0%
+hoa_don   > Kiem / Phải trả = 45.000 đ         vi        > test / Số dư = -100.000 đ
+```
+
+Nhưng gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải trả: 45.000 đ` ở dòng khác — **không chỗ
+nào nói Kiem LÀ cái quá hạn**. Mô hình phải **nối hai mục rời bằng suy luận**, và E2B không làm
+được: nó trả lời bằng con số tổng. Ví y hệt (`Ví đang âm: 1` vs `test · Số dư: -100.000 đ`).
+
+Gắn trạng thái vào nhãn (`Đã quá hạn`, `Đang âm`) **không cứu được** câu 13 — nhưng nó lộ ra một
+hồi quy đáng giá hơn, xem dưới.
+
+🛑 **Hệ quả cho chặng 4:** ba câu còn hỏng **không** chữa được bằng cách làm gói số giàu thêm. Mô
+hình đã chứng minh là không nối được hai mục rời, nên thứ cần là **tool trả về một hàng đầy đủ**
+(tên + số + trạng thái trong cùng một kết quả), tức đúng hình dạng mà bảng 5.6 đặt hàng. Đừng
+tinh chỉnh gói số thêm nữa.
+
+#### Hồi quy mà lát 4a suýt để lại — và luật siết ra từ nó
+
+Nhãn `Đang âm` làm câu **"Số ví đang âm: −100.000 đ"** *lọt qua* `kiemNhan`, trong khi bản **trước
+chặng 4a vẫn chặn được**. Câu ấy **sai nghĩa** — số ví là 1, không phải −100.000 đ — nhưng nhãn có
+từ khoá "đang"/"âm" và câu chứa đủ cả hai.
+
+Gốc: lát 4a bản đầu cho một số hợp lệ khi câu khớp **nhãn HOẶC tên**. Gói nay mang nhiều mục cùng
+nhãn (bốn ngân sách cùng `Tỉ lệ`, các ví cùng `Số dư`), nên một câu chỉ nhắc nhãn **không nói được
+nó đang nói về cái nào**.
+
+**Luật sau khi siết:** mục **có tên** thì đòi câu nêu **tên**; mục không tên giữ luật cũ. Câu 3 vẫn
+lọt vì 90,0% cũng là `Ngân sách căng nhất` của gói trang chủ — một mục **không tên** — nên vế nhãn
+vẫn dùng được. Đo lại: câu sai bị chặn trở lại.
+
+#### Hai lỗi thật lượt đo bắt được — ngoài phạm vi chặng 3
+
+- ✅ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn cùng giá trị** — **đã sửa ở chặng 4a**
+  (Task 3, `20bbc05`). Câu 15: câu trả lời là *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn
+  1"** — nhãn của *hoá đơn quá hạn*. Cả hai cùng bằng **1**, và `theCuaCau` khớp theo **giá trị**
+  nên lấy nhầm nhãn. Cùng họ bẫy **4.19** (thẻ so chuỗi con) nhưng nguyên nhân khác: **trùng giá
+  trị**, không phải chuỗi con. Thẻ nay ưu tiên mục mà **câu nhắc tới** (cùng phép âm tiết với
+  `kiemNhan`) — bẫy **4.27** `AI_EDGE_FEATURE.md`. *(Dòng này từng ghi "Chưa sửa" — đúng lúc đo,
+  sai từ tối cùng ngày.)*
+- ✅ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số — ĐÓNG 2026-09-23** (bước 1a của thứ tự
+  mới). Trang chủ hiện *Thu nhập 15.145.000*, gói phân tích trả *Tổng thu 15.135.000* (đo cùng
+  lúc, cùng tài khoản): thẻ Trang chủ cộng **thô** theo `type`, nên đếm cả khoản điều chỉnh số dư
+  lẫn khoản "Số dư ban đầu" mà `khoanVaoThongKe` cố ý loại. Người dùng chốt con số của Phân tích
+  là con số đúng; `thuChiThangCua` nay **đi qua `tongThuChi`**, và nghiệm thu máy ảo cho thấy thẻ
+  Trang chủ, khối Nhận xét, trang Phân tích cùng nói **15.135.000**. *(Dòng này từng ghi "chưa rõ
+  bên nào đúng — đừng sửa trước khi chốt" — đúng tới lúc người dùng chốt.)*
+
+#### Đo lại sau chặng 4b (2026-09-23 chiều) — ✅ CỔNG C ĐẠT, nhóm A **4/4** Realme · **3/4** OnePlus
+
+Lát 4b (spec `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`) làm đúng thứ 4a chỉ ra:
+**tool trả về một hàng đầy đủ**. Bốn tool đọc, prompt không mang số, dữ liệu vào qua tool. Đo trên
+APK release, tài khoản 10, cả hai máy. Cột trước 4a và sau 4a là Realme, cùng máy với cột đầu của
+cột sau 4b.
+
+| # | Câu hỏi | Trước 4a | Sau 4a | Sau 4b — Realme (CPU) | Sau 4b — OnePlus (GPU) |
+|---|---|---|---|---|---|
+| 3 | Ngân sách **nào** sắp hết | "…căng nhất là 90,0%" | ✅ "…là Giáo dục với tỉ lệ 90,0%" | ✅ "Ngân sách Giáo dục còn 8 ngày." | **LỆCH** — gộp cả bốn ngân sách vào "sắp hết" |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | LỆCH | ✅ liệt kê có tên, giảm dần (Cho vay 800.000 đ đầu) | ✅ "…có chi phí **cao nhất** là: Cho vay (800.000 đ), …" |
+| 13 | **Hoá đơn nào** quá hạn | trả lời về ngân sách | LỆCH | ✅ "Hoa đơn **Kiem** đã quá hạn với số tiền là 45.000 đ…" | ✅ cùng |
+| 15 | **Ví nào** đang âm | LỆCH + thẻ sai | MẪU | ✅ "Ví **test** đang âm với số dư là -100.000 đ." | ✅ cùng |
+| 2 | Còn bao nhiêu tiền ngân sách | — | — | ✅ 1.340.000 đ | ✅ |
+| 9 | Tháng trước chi bao nhiêu | — | — | ✅ 0 đ (đúng — không có dữ liệu tháng 8) | ✅ |
+| ĐC1 | Lãi suất tiết kiệm | — | — | LỆCH, không bịa (tổng chi/thu tháng này) | L3 sau 3 lời gọi, mẫu câu lặp — lỗi thật, đã sửa |
+| ĐC2 | Tháng này chi bao nhiêu (câu 6) | ✅ | ✅ | ✅ không tụt | ✅ |
+
+⭐ **Bốn câu *"cái nào"* hỏng suốt chặng 3 và 4a nay trả lời bằng tên.** Mô hình gọi **đúng tool và
+đúng tham số ở 8/8 câu** trên mỗi máy, lượt gọi tool luôn phát **0 ký tự** chữ, và câu trả lời chép
+tên + số từ đúng một hàng — không còn phải nối hai mục rời. Số câu **bịa số: 0**; lần sập: **0**.
+Tổng một câu 10–15 s trên Realme CPU, 4,5–8,6 s trên OnePlus GPU.
+
+⚠️ **Ba lỗi thật, cả ba chỉ OnePlus lộ ra, đều đã sửa cùng ngày** (bẫy 4.34–4.36 `AI_EDGE_FEATURE.md`):
+thẻ số liệu gán nhầm đối tượng khi hai hàng cùng giá trị ở hai câu khác nhau; mẫu câu L3 lặp hàng
+và mất nhãn kỳ sau ba lời gọi; câu trả lời dạng markdown lộ dấu `*`. ⚠️ Và một điều **không phải
+lỗi mà là giới hạn**: ĐC1 vẫn không bao giờ nói *"không có dữ liệu lãi suất"* — mô hình luôn chọn
+tool gần nghĩa nhất (Realme) hoặc thử nhiều kỳ cho tới trần (OnePlus). Chốt giữ nó khỏi bịa là
+bộ kiểm số và thang lùi, không phải mô hình. Bảng đầy đủ: mục **9.14** `AI_EDGE_FEATURE.md`.
+
+#### Một bẫy đo, sẽ tái phát
+
+⚠️ **`adb shell input text` làm hỏng chữ hoa giữa từ**: gõ `MuaXe` ra **`Mũae`** trên màn hình
+(đã chụp lại). Câu hỏi chứa tên riêng phải **chụp màn kiểm lại chữ đã vào** trước khi tin kết quả;
+lượt này câu 10 vẫn hợp lệ chỉ vì gói mục tiêu chỉ mang một mục tiêu nên tên không ảnh hưởng.
+
+**Bốn cột, không phải ba.** Cột *Kết quả* nhận một trong **bốn** giá trị, và giá trị thứ tư là
+thứ lượt đo cổng A phát hiện nên phải có chỗ riêng:
+
+1. **Trả lời được** — đúng câu hỏi, số thật.
+2. **Rơi về mẫu câu** — một chốt chặn, người dùng nhận câu mẫu.
+3. **Trả lời sai** — số sai hoặc nhãn sai lọt qua mọi chốt.
+4. ⚠️ **Trả lời được nhưng lệch câu hỏi** — mô hình **không nói "không có dữ liệu"** dù few-shot
+   có ví dụ ấy; nó chọn con số liên quan thật gần nghĩa nhất rồi trả lời. Mọi số đều đúng, mọi
+   chốt đều cho qua, nhưng nó không trả lời điều được hỏi. Đây **chính là tín hiệu đặt hàng
+   tool** rõ nhất — đừng gộp nó vào ô "trả lời được".
+
+**Ba điều người đo cần biết trước:**
+
+- **Bậc 1 chỉ thấy ~30 con số của sáu gói** (`NguonGoiSo.tatCa`): phân tích · ngân sách · mục tiêu
+  · hoá đơn · ví · trang chủ. Mọi câu hỏi ngoài các nhãn ấy là "hỏng" **theo định nghĩa của
+  bảng** — đó là điều muốn đo, không phải lỗi cần sửa tại chỗ.
+- Câu hỏi gõ bằng `adb shell input text` **không có dấu**; mô hình vẫn hiểu. Ghi rõ trong bảng.
+- `debugPrint` bị tiết lưu nên logcat mất dòng — **số trên màn hình mới là số đủ** (bẫy 8.6
+  `AI_EDGE_FEATURE.md`).
+
+🛑 **Nếu 0 câu hỏng thì vòng 3 không có việc** — dừng lộ trình và báo; đó cũng là một kết quả.
+Với những gì đo được ngày 2026-09-22, khả năng ấy thấp.
+
+**Ra cổng B:** bảng trên điền đủ 20 hàng + danh sách tool **rút từ bảng**, không phải từ mười tool
+ứng viên ở mục 5.1. Dựng 10 tool rồi thấy 7 cái không ai gọi là cùng một lớp lãng phí với lát
+"cửa sổ nhìn lại": một hàm đúng từng dòng mà đầu vào chết thì vẫn vô dụng.
+
 ---
 
 ## 6. Bốn bất biến — đây mới *là* kiến trúc
@@ -407,13 +641,23 @@ Xem mục 8.
 
 ## 7. Bộ kiểm số — cơ chế
 
-`kiem_so.dart`, 57 dòng. Trích **mọi** con số trong câu bằng regex rồi đòi từng số
-khớp một `SoLieu` của gói:
+`kiem_so.dart`, 152 dòng *(đếm 2026-09-23 sau bước 1c; câu cũ ghi "57 dòng" — đã lạc hậu từ
+trước, ngay trước 1c tệp là 77 dòng)*. Trích **mọi** con số trong câu bằng regex — **trừ chữ số
+nằm trong tên một đối tượng của gói** — rồi đòi từng số khớp một `SoLieu` của gói:
 
 ```dart
-bool kiemSo(String cau, GoiSo goi) =>
-    trichSo(cau).every((x) => goi.soLieu.any((s) => _khop(x, s)));
+bool kiemSo(String cau, GoiSo goi) => trichSoNgoaiTen(cau, [goi])
+    .every((x) => goi.soLieu.any((s) => _khop(x, s)));
 ```
+
+**Tên đối tượng có chữ số** (bước 1c, 2026-09-23): tên `Tiền nhà T9` mang chữ số "9" mà không
+phải con số. Trước 1c, `trichSo` đọc nó là số không có trong gói, nên mọi câu **đúng** nêu tên
+ấy bị chặn — đo trên tài khoản 10: **5/9** hoá đơn và **1/16** danh mục có chữ số trong tên.
+`trichSoNgoaiTen` bỏ khỏi câu những tên của gói (`GoiSo.tenDoiTuong`) trước khi trích, với bốn
+điều kiện để lớp chắn không bị nới cho câu bịa: tên phải **có chữ cái** (tên toàn chữ số như
+`2027` không được miễn); khớp **trọn từ** ở cả hai đầu (không khớp *"an 5"* bên trong *"Ban 5"*);
+so theo `normalizeCategoryName` (không phân biệt hoa thường, NFC); tên **dài** bỏ trước. Tên là
+dữ liệu của gói, không do mô hình sinh. `kiemNhan` và `theCuaCau` trích số bằng **cùng** hàm ấy.
 
 **Dung sai theo loại:**
 
@@ -528,35 +772,81 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 | Bậc | Là gì | Trạng thái | Bằng chứng |
 |---|---|---|---|
 | **0** | Hệ luật + mẫu câu | ✅ **đang chạy**, 6 màn | `grep -rl 'KhoiNhanXet(' lib/` → 7 tệp (trừ 1 định nghĩa) |
-| **1** | SLM kể chuyện | 📝 kế hoạch 10 task, **0 dòng mã** | `grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có; `git log -S` cho thấy gói **chưa từng** vào pubspec |
-| **2** | Agent | ⬜ **chưa có kế hoạch** | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → 0 |
+| **1** | SLM kể chuyện | ✅ **đang chạy** từ 2026-09-22 (P3 xong 10/10 task, cổng A qua) | `grep flutter_gemma pubspec.yaml` → **5**; **4** tệp `slm_*` trong `lib/` (`slm_prompt`, `slm_cache`, `slm_runtime`, `slm_dien_giai`); mô hình chạy thật trên OnePlus 13R và Realme RMX2205 — mục **9**, **9.9**, **9.10** `AI_EDGE_FEATURE.md`. *(Ô này ghi "📝 kế hoạch 10 task, 0 dòng mã" cho tới 2026-09-22, với bằng chứng "`grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có" — đếm lại bằng máy cùng ngày thì cả hai vế đã đổi. Và lưu ý **bốn** chứ không phải sáu tệp `slm_*`: `slm_dien_giai.dart` cố ý **không** được đăng ký vào DI theo lối B.)* |
+| **2** | Agent | ✅ **đang chạy** từ 2026-09-23 (lát 4b xong 9/9 task, **cổng C đạt** trên hai máy) — bốn tool **đọc**, vòng lặp trần 3 lời gọi, bậc 1 làm nhánh lùi | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → **3 dòng, 1 tệp** (`slm_runtime.dart`: `Tool(` · `ToolChoice.auto`; embedding/cosine vẫn **0** — RAG client cố ý bỏ, mục 5.5); vòng lặp ở `ai_edge/data/vong_lap_cong_cu.dart`; đo máy thật mục **9.14** `AI_EDGE_FEATURE.md`. *(Ô này ghi "⬜ chưa có kế hoạch … → 0" cho tới 2026-09-23.)* |
 
-⚠️ Gói `flutter_gemma` **có trong pub cache** nhưng đến từ **app spike P1** ở
-`D:/flowmoney-spike` — tài liệu ghi rõ *"mã vứt đi, không commit"*. Mô hình đã chứng
-minh chạy thật trên OnePlus 13R, nhưng **không một dòng nào của phép đo ấy nằm trong
-repo**.
+✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
+**app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
+P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
+`flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
+mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **47** tệp test / **466** ca
+(đếm 2026-09-23 tối muộn sau bước 1c — +18 ca, không thêm tệp; mốc **47 / 448** là sau bước 1b, ba
+tệp mới của canary phiên có tool; mốc **44 / 424** là sau lát 4b,
+và mốc *"`ai_edge` 33 tệp / 294 ca"* từng ghi ở đây là của 2026-09-22), và mô
+hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
+khi canary bắt được cú sập native trên Mali).
 
 ### 11.1 Câu trung thực nếu được hỏi "đã làm tới đâu"
 
-> Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
-> 6 màn, offline, tức thì. Phần **mô hình** đã đo thật trên Snapdragon 8 Gen 3 và có
-> bảng số liệu, nhưng **chưa cắm vào app** — kế hoạch thi công đã viết, chưa chạy.
-> Phần **agent** thì chưa có kế hoạch, mới ở mức đánh giá khả thi.
+*(Cập nhật 2026-09-23 sau cổng C — viết lại lần hai; bản 2026-09-22 nói phần agent "**chưa có**",
+đúng tới trưa 23/09; bản trước nữa nói mô hình "**chưa cắm vào app**".)*
 
-Không nên nói *"đã có AI Agent"* — hiện tại không đúng ở cả ba vế của cụm từ ấy.
+> Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
+> 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
+> thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
+> mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
+> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
+> một **agent tối thiểu**: mô hình tự chọn một trong **bốn tool chỉ đọc** (ngân sách · hoá đơn ·
+> ví · chi tiêu theo kỳ), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
+> từ đúng những hàng ấy — trần 3 lời gọi, không tool nào ghi dữ liệu. Đo trên hai máy thật: bốn
+> câu hỏi *"cái nào"* từng hỏng nay trả lời **bằng tên** (Realme 4/4, OnePlus 3/4), 0 câu bịa số.
+
+Nay **nói được *"là AI Agent"*** — đúng mốc cổng C của lộ trình — nhưng nói kèm hai giới hạn thật:
+tool **chỉ đọc** (chiều ghi vẫn qua tay người dùng, bất biến ④), và hỏi thứ không tool nào có thì
+mô hình **không nói "không có"** mà chọn tool gần nghĩa nhất (mục 5.6, *"Đo lại sau chặng 4b"*).
+*"Edge AI"* đúng từ khi mô hình chạy on-device; *"RAG"* thì **cố ý không làm ở client** (mục
+**5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
+người dùng.
 
 ---
 
-## 12. Lộ trình — ba bước, theo đúng thứ tự phụ thuộc
+## 12. Lộ trình — bốn bước, theo đúng thứ tự phụ thuộc *(tiêu đề từng ghi "ba bước" — lỗi thời từ khi chặng 4 tách làm 4a và 4b)*
 
-1. **P3** (10 task đã viết) — cắm mô hình, chứng minh nó chạy trong app thật,
-   `kiemSo` bắt được câu sai trên máy thật.
-2. **Tool layer** — khai báo 9 tool trỏ vào hàm domain đã có + `traCuuKienThuc`, mỗi
-   tool trả `List<SoLieu>`.
-3. **Vòng lặp + trần** — cộng vector index tĩnh cho kiến thức chung.
+1. ✅ **P3 XONG 2026-09-22** (trọn 10 task) — mô hình đã cắm và chạy trong app thật trên hai
+   máy; ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` bắt được câu sai trên máy thật.
+   **Cổng A qua** tối cùng ngày.
+2. ✅ **Đo xong 2026-09-22 (tối muộn)** — *"bậc 1 hỏng ở đâu"*, bảng 20 hàng ở mục **5.6**, đo
+   trên Realme RMX2205 với tài khoản thật. Kết quả: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi
+   12**. Đơn đặt hàng là **sáu** tool, bốn cái đứng đầu đều có hình dạng *"trả về danh sách có
+   **tên**"* — thứ mười tool ứng viên ở mục 5.1 không hề dự đoán. **Cổng B qua.**
+3. 🛑 **Lát 4a — phần "sửa prompt và nhãn" — XONG MÃ 2026-09-23, cổng chưa đạt** (nhóm A **1/4**).
+   Nó chữa được câu 3 và sửa hai lỗi đang chạy, nhưng chứng minh **danh sách có tên là CẦN nhưng
+   CHƯA ĐỦ**: mô hình không nối được hai mục rời. Xem "Đo lại sau chặng 4a" ở mục **5.6**.
+4. ✅ **Lát 4b — tool layer + vòng lặp: XONG 9/9 task, CỔNG C ĐẠT trên hai máy (2026-09-23).**
+   Màn Trợ lý AI đi bậc tool từ `863c4cd`; đo tám câu trên Realme và OnePlus, nhóm A 4/4 · 3/4
+   trả lời bằng tên, 0 câu bịa số, 0 lần sập — mục 5.6 *"Đo lại sau chặng 4b"* và mục **9.14**
+   `AI_EDGE_FEATURE.md`. Lượt đo bắt ba lỗi thật, sửa cùng ngày (bẫy **4.34–4.36**). Trước đó:
+   với `flutter_gemma_litertlm` 1.7.0 engine **sập native** ở mọi phiên có tool trên **cả hai
+   máy**; nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 (người dùng duyệt) thì
+   hết (mục **9.13**, bẫy **4.33**). Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
+   dùng chốt **bốn** tool (không phải sáu) cho lát này — `danh_sach_ngan_sach` · `danh_sach_hoa_don`
+   · `danh_sach_vi` · `chi_tieu_theo_ky`; `duBaoMucTieu`, `goiYHanMuc`, nhóm D để lát sau. Trần **3
+   lời gọi**, không tool ghi, hướng **A** (tool THAY gói số trong prompt).
+   ⚠️ Hình dạng đã đổi sau 4a: tool trả **một hàng đầy đủ** (tên + số + trạng thái trong cùng
+   kết quả) — `HangSoLieu`, tích luỹ vào `GoiSoTraCuu extends GoiSo`. Bất biến ② *"mọi tool trả
+   `List<SoLieu>`"* (mục 5.2, 6) vẫn đúng: `SoLieu` đi **theo hàng** chứ không rời, và ba lớp chắn
+   nhận `[goiTraCuu]` y như sáu gói cũ.
 
-Bước 1 là **điều kiện của cả hai bước sau**, nên bất kể chốt vòng 3 hay không, nó vẫn
-là việc kế tiếp.
+*(Bản cũ của bước 3 ghi ba câu 12, 14, 20 "không cần tool nào, sửa ở prompt và nhãn, nên làm
+trước khi dựng tool". Vế "làm trước" đã làm — đó là lát 4a. Vế "không cần tool nào" thì **chỉ
+đúng một phần**: sửa nhãn cứu được câu 3, còn 8, 13, 15 vẫn cần tool.)*
+
+*(Bản cũ của mục này ghi bước 3 là "cộng **vector index tĩnh** cho kiến thức chung" và bước 2 là
+"9 tool + `traCuuKienThuc`". Cả hai đã đổi ngày 2026-09-22: RAG phía client **bỏ hẳn** — mục
+**5.5** đo được mô hình embedding tải tự do duy nhất là English-only, top-3 đúng 3/5 trên câu
+tiếng Việt, truy vấn 251 ms trên ngưỡng 200 ms — nên kiến thức chung chuyển sang **backend RAG**,
+và NPBao đã chốt lối ① cùng ngày. Câu "Bước 1 là điều kiện của cả hai bước sau, nên nó vẫn là
+việc kế tiếp" cũng đã hết hiệu lực: bước 1 xong rồi.)*
 
 ---
 
@@ -581,11 +871,32 @@ tool.
 trả lời không nổi, rồi mới quyết vòng 3 bằng **danh sách câu hỏi hỏng thật** chứ
 không bằng phỏng đoán.
 
+✅ **Đề xuất này đã làm TRỌN VẸN trong ngày 2026-09-22** — P3 trọn 10 task và cổng A qua (nửa
+đầu), rồi phép đo 20 câu và cổng B qua (nửa sau, bảng ở mục **5.6**). **Câu hỏi của mục 13 nay
+ĐÃ TRẢ LỜI ĐƯỢC bằng số đo, không còn phải cân nhắc**: bậc 1 để lọt **12/20** câu *"trả lời được
+nhưng lệch câu hỏi"* — quá nửa — nên đi tiếp bậc 2 là **có cơ sở**, và bảng đo còn nói luôn cần
+**sáu** tool nào. ⚠️ Nhưng bảng cũng nói ba câu trong số ấy **không cần tool** (mô hình chọn nhầm
+số đã có sẵn) — nên bậc 2 **không** phải là toàn bộ câu trả lời, và phần rẻ nhất là sửa
+prompt/nhãn trước.
+
+⚠️ Dữ kiện mà lượt đo cổng A bổ sung cho mục này — *"mô hình không nói không có dữ liệu, nó chọn
+số liên quan thật gần nghĩa nhất"* — **đúng một nửa**: chặng 3 đo được **hai** câu mô hình nói
+thẳng là không có (câu 4 và 11), nên nó là **không đáng tin cậy** chứ không phải **không bao
+giờ**. Phần còn lại của câu ấy thì đúng và là lý do bảng 5.6 có **bốn** cột: loại câu này
+**không** hiện ra dưới dạng câu mẫu hay câu sai, nên đếm hai ô ấy là bỏ sót quá nửa kết quả.
+
 🛑 Đúng bài học lát *"cửa sổ nhìn lại"* vừa trả giá ngày 2026-09-21: `suggestAmount`
 đúng từng dòng suốt từ 2026-09-06 nhưng đầu vào là một cửa sổ mà dữ liệu thật không
 lấp đầy, nên nó **chưa từng hiện một con số nào**. Bộ test mù vì nó dựng sẵn dữ liệu.
 Thứ bắt được là một phép đo trên **CSDL thật**. Quyết định về vòng 3 cũng phải đi
 đường ấy.
+
+✅ **Bậc 2 đã làm (lát 4b, 2026-09-23) — đối chiếu bảng dự đoán trên với số đo cổng C:** độ trễ
+đoán *"~4,7–7 s"* — đo được **4,5–8,6 s** trên OnePlus GPU, **10–15 s** trên Realme CPU (sau khi
+nạp); rủi ro đoán *"E2B chọn sai tool là chuyện thường"* — đo được mô hình chọn **đúng tool và
+đúng tham số ở 8/8 câu trên mỗi máy**, lỗi thật lại nằm ở phía **app** (thẻ, mẫu câu, markdown —
+bẫy 4.34–4.36 `AI_EDGE_FEATURE.md`); công đoán *"+3 task"* — thực tế **9 task**, trong đó một nửa
+là tầng dữ liệu (bốn hàm dựng hàng + bốn adapter).
 
 ---
 
@@ -596,5 +907,5 @@ Thứ bắt được là một phép đo trên **CSDL thật**. Quyết định 
 | Tính năng, bẫy, bảng đo P1 | `docs/AI_EDGE_FEATURE.md` — mục **8** (đo), **10** (mảng này thực chất là gì), **11** (bản đồ năng lực) |
 | Kế hoạch cắm mô hình | `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md` |
 | Đặc tả gốc (backend quản) | `docs/AI/AI_Edge-SLM.md/Client-app.md` · `docs/AI/Standard_RAG.md` |
-| Chỗ sai của đặc tả gốc | `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md` |
+| Chỗ sai của đặc tả gốc | Vòng **hai** (đang mở): `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`. Vòng **một** đã đóng ở `b147fee` (2026-09-22): `DA-XONG/AI_EDGE_SLM_SUA_TAI_LIEU.md` và `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` |
 | Việc còn mở của cả dự án | `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` |

@@ -44,4 +44,37 @@ void main() {
       expect(File('assets/icon/$t').existsSync(), isTrue, reason: t);
     }
   });
+
+  // ⚠️ Quyền INTERNET phải nằm ở manifest CHÍNH, không chỉ ở bản debug.
+  //
+  // Flutter tạo sẵn `android/app/src/debug/AndroidManifest.xml` có quyền này
+  // (nó cần cho hot reload), nên thiếu ở `main/` KHÔNG hỏng gì mà cả dự án
+  // nhìn thấy được: mọi bản debug — tức mọi lượt nghiệm thu máy ảo từ trước
+  // tới nay — gọi backend bình thường. Lỗi chỉ hiện khi CHẠY một bản release,
+  // và hiện dưới dạng "Không có kết nối mạng", đúng chữ mà app dùng cho lúc
+  // rớt sóng — nên nó còn dẫn người đọc đi kiểm tra Wi-Fi thay vì manifest.
+  //
+  // Đo thật 2026-09-22 (P3 Task 9, OnePlus 13R, bản release đầu tiên của dự
+  // án): app không đăng nhập được, trong khi `adb shell curl` tới đúng URL ấy
+  // từ chính máy đó trả về HTTP 200 — tức đường mạng tốt, chỉ app bị cấm.
+  test('manifest chính khai quyền INTERNET (bản release không có mạng nếu thiếu)',
+      () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(manifest,
+        contains('android:name="android.permission.INTERNET"'),
+        reason: 'Thiếu ở main/ thì chỉ bản debug gọi được backend; bản release '
+            'im lặng báo "Không có kết nối mạng" ở mọi màn cần server.');
+  });
+
+  test('manifest khai FOREGROUND_SERVICE_DATA_SYNC (Android 14+ đòi)', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(
+        manifest,
+        contains(
+            'android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"'),
+        reason: 'background_downloader chạy foreground service loại dataSync; '
+            'thiếu quyền thì build vẫn xanh và lượt tải chết trên máy thật.');
+  });
 }

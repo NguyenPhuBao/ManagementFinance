@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
 import '../../../../core/auth/buoc_dang_xuat.dart';
+import '../../../ai_edge/data/slm_cache.dart';
 import '../../../category/data/services/default_category_seeder.dart';
 import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
@@ -275,7 +276,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Dọn dữ liệu tài khoản khác Ở ĐÂY NỮA, không chỉ ở luồng đăng nhập:
         // người dùng mở lại app mà không đăng xuất/đăng nhập lại thì dữ liệu
         // rác của tài khoản cũ vẫn nằm nguyên trong máy.
-        await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
+        await _donDuLieuTaiKhoanKhac(idAcc);
         final personal = sl.isRegistered<PersonalDefaultCategories>()
             ? sl<PersonalDefaultCategories>()
             : null;
@@ -334,7 +335,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Dọn dữ liệu cục bộ của các tài khoản KHÁC trước khi bật đồng bộ:
         // dòng dữ liệu sót lại từ tài khoản cũ sẽ bị đẩy đi dưới id cũ và
         // luôn thất bại (Ownership mismatch hoặc vỡ khoá ngoại).
-        await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
+        await _donDuLieuTaiKhoanKhac(idAcc);
         final personal = sl.isRegistered<PersonalDefaultCategories>()
             ? sl<PersonalDefaultCategories>()
             : null;
@@ -478,6 +479,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (sl.isRegistered<SyncEngine>()) {
         sl<SyncEngine>().scheduleSync();
       }
+    }
+  }
+
+  /// Dọn dữ liệu cục bộ của **các tài khoản khác**, rồi dọn theo những thứ
+  /// cục bộ khác bám vào cùng một câu hỏi "máy này vừa đổi người dùng?".
+  ///
+  /// ⚠️ Điều kiện là **chính số hàng `purgeDataForOtherAccounts` vừa xoá**,
+  /// không phải một phép so `idaccount` thứ hai. Hai lý do: một luật ở hai chỗ
+  /// thì sẽ có ngày nói hai chuyện khác nhau; và câu hỏi cần trả lời đúng là
+  /// *"trên máy này vừa có dữ liệu của người khác"* — `removed > 0` **là** câu
+  /// trả lời ấy.
+  ///
+  /// Hệ quả cố ý: **đăng xuất rồi đăng nhập lại cùng tài khoản thì cache câu
+  /// SLM được GIỮ** (không hàng nào bị xoá → `removed == 0`). Vứt nó đi là vứt
+  /// tới 200 câu, mỗi câu đã trả 2,3 giây chạy mô hình để có.
+  Future<void> _donDuLieuTaiKhoanKhac(int idAcc) async {
+    final daDon = await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
+    if (daDon <= 0) return;
+
+    // Câu trong cache SLM nói về số liệu tài chính của MỘT tài khoản. Trên máy
+    // dùng chung, người sau không được thấy câu của người trước. Dấu vân gần
+    // như chắc chắn khác nhau — nhưng "gần như" không phải cơ chế cô lập, và
+    // đó đúng là lý do `purgeDataForOtherAccounts` tồn tại dù mọi truy vấn
+    // SQLite đã lọc theo `idaccount`.
+    if (sl.isRegistered<SlmCache>()) {
+      await sl<SlmCache>().xoaHet();
     }
   }
 }

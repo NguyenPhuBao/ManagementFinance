@@ -21,7 +21,9 @@ Bản vẽ lại khớp mã (mục 8) xem được ở đây:
 1. **Sơ đồ mẫu là kiến trúc ĐÍCH, không phải kiến trúc hiện có.** Khoảng một
    phần ba đã chạy thật (Pipeline A trên backend; xác thực, mã hoá theo trường,
    hạ tầng Redis/Socket.io); phần còn lại (Edge SLM, Gateway, Zod, Pipeline B/C,
-   ChromaDB, OpenAI) là **0 dòng mã**.
+   ChromaDB, OpenAI) là **0 dòng mã**. ⚠️ *(Câu này đo ngày 2026-09-17. **Edge SLM
+   không còn nằm trong danh sách ấy** — P3 xong 2026-09-22, mô hình chạy thật trên
+   hai máy; xem mục **9** `docs/AI_EDGE_FEATURE.md`. Các mục còn lại chưa đo lại.)*
 2. **Có sáu chỗ sơ đồ nói ngược với mã** (mục 2.2), trong đó một chỗ là **lỗi
    mã thật** đang chạy: grounding của LLM classifier không được thi hành —
    `category_id` bịa vẫn lọt xuống (`llm.classifier.js:123-133`).
@@ -284,6 +286,18 @@ Zod từ đầu), **3.3 Chroma trước C**; khối 2 và A-client độc lập.
 - Bọc Tầng 1–2 của khối 2 trong `Isolate.run()` chạy sau mỗi `sync.completed` (đã có sự kiện). Mã tầng ấy phải là hàm thuần (truyền danh sách vào, trả JSON ra).
 
 ### Khối 2 — On-device Edge AI *(client, XL)*
+
+> ⚠️ **Bảng này là kế hoạch của ngày 2026-09-17, giữ nguyên làm ảnh chụp — nó đã
+> lệch hiện trạng ở bốn chỗ.** P2 xong 2026-09-20, P3 xong 2026-09-22, mô hình đã
+> chạy thật trên hai máy. Khác biệt: (1) client dựng **một** bảng cục bộ
+> `ai_rebalancing_feedbacks` cộng cột `categories.ai_co_dinh`, **không** ba bảng —
+> đặc tả cũng đã sửa theo ở `b147fee`; (2) mô hình là **Gemma 4 E2B, 2,41 GB**,
+> không phải ≈ 550 MB; (3) **không dùng ngưỡng RAM** làm điều kiện rơi bậc — phép
+> đo P1 cho thấy RAM đỉnh phụ thuộc backend suy luận (GPU ~0,96 GB, CPU 1,7–3,3 GB)
+> chứ không phụ thuộc cỡ mô hình, nên bậc thang thật là canary GPU + `try/catch`;
+> (4) **Tầng 1 chưa thi công** — `saving_goal_ratio` vẫn chưa chốt nguồn (đơn vòng
+> hai `CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` §1.2). Trạng thái thật ở mục **9**
+> `docs/AI_EDGE_FEATURE.md`.
 
 | Việc | Chi tiết | Vướng |
 |---|---|---|

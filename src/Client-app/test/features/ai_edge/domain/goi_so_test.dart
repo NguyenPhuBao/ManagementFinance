@@ -28,4 +28,60 @@ void main() {
     expect(soDem('Số cam kết', 3).chuoi, '3');
     expect(soDem('Số cam kết', 3).loai, LoaiSo.soDem);
   });
+
+  group('SoLieu.ten — tên đối tượng mang con số (chặng 4a)', () {
+    test('mặc định null: số không thuộc đối tượng nào là ca THƯỜNG', () {
+      expect(soTien('Tổng chi', 2141000).ten, isNull,
+          reason: 'Tổng chi không thuộc về một danh mục nào. `null` ở đây là '
+              'đúng nghĩa, không phải dấu hiệu thiếu dữ liệu.');
+    });
+
+    test('chép nguyên tên đối tượng, KHÔNG ghép vào nhãn', () {
+      final s = soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục');
+      expect(s.ten, 'Giáo dục');
+      expect(s.nhan, 'Tỉ lệ',
+          reason: 'Ghép thành "Giáo dục · Tỉ lệ" là bẫy §3.1 của spec: '
+              '`kiemNhan` đòi câu chứa MỌI âm tiết có nghĩa của nhãn, nên nhãn '
+              'ghép đòi cả "tỉ" lẫn "lệ", và câu tự nhiên nhất — "Giáo dục đã '
+              'dùng 90,0%" — bị chính lớp chắn ấy chặn, im lặng.');
+    });
+
+    test('cả bốn helper đều nhận ten', () {
+      expect(soTien('Số dư', 1, ten: 'Tiền mặt').ten, 'Tiền mặt');
+      expect(soPhanTram('Tỉ lệ', 1, ten: 'Giáo dục').ten, 'Giáo dục');
+      expect(soNgay('Còn', 1, ten: 'MuaXe').ten, 'MuaXe');
+      expect(soDem('Quá hạn', 1, ten: 'Kiem').ten, 'Kiem');
+    });
+
+    test('ten không làm đổi chuỗi hiển thị', () {
+      expect(soTien('Số dư', 9903000, ten: 'Tiền mặt').chuoi, '9.903.000 đ',
+          reason: '`chuoi` là ba thứ cùng lúc (thẻ, tập cho phép của bộ kiểm '
+              'số, phần vào prompt) — thêm tên không được chạm vào nó.');
+    });
+
+    test('trần số mục mỗi gói là 4', () {
+      expect(kToiDaMucMoiGoi, 4,
+          reason: 'Prompt hỏi đáp đã 1.700 ký tự và token đầu 4,6 s trên CPU. '
+              'Đây là tham số ĐO được: đổi nó thì phải đo lại trên máy thật.');
+    });
+  });
+
+  group('chuoiTheoNhan — bảng tra nhãn của mẫu câu (bẫy 4.30)', () {
+    test('⭐ nhãn trùng → mục ĐẦU thắng, mọi nhãn khác vẫn có mặt', () {
+      final s = chuoiTheoNhan([
+        soDem('Quá hạn', 1),
+        soTien('Còn phải trả', 155000),
+        soTien('Quá hạn', 45000, ten: 'Kiem'),
+      ]);
+      expect(
+        s,
+        {'Quá hạn': '1', 'Còn phải trả': '155.000 đ'},
+        reason: 'Mục tổng hợp đứng TRƯỚC danh sách và mẫu câu tra nó theo '
+            'nhãn. Map literal `{for … x.nhan: x.chuoi}` lấy giá trị CUỐI khi '
+            'trùng khoá, nên "Có 1 hoá đơn quá hạn" sẽ in thành "Có 45.000 đ '
+            'hoá đơn quá hạn" — đúng khuôn đã làm câu về Giáo dục in tỉ lệ '
+            'của Mua sắm (7,1%), sai im lặng.',
+      );
+    });
+  });
 }

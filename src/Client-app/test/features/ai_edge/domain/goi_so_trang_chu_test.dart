@@ -94,6 +94,25 @@ void main() {
     expect(nx.theSoLieu.last.nhan, 'Ngân sách căng nhất');
   });
 
+  test('tên ngân sách có chữ số: mẫu câu vẫn tự qua bộ kiểm số (bước 1c)', () {
+    final g = GoiSoTrangChu.tu(
+      thu: 15000000,
+      chi: 8200000,
+      tongSoDu: 13054000,
+      nganSach: [_ns('Học phí K12', 3000000, 2100000)],
+      now: now,
+    );
+    final cau = g.mauCau().cau;
+    expect(cau, endsWith(' Ngân sách Học phí K12 đã dùng 70,0%.'));
+    expect(
+      kiemSo(cau, g),
+      isTrue,
+      reason: 'Tên ngân sách nằm ở tenNganSach chứ không trên SoLieu "Ngân sách '
+          'căng nhất" — gói phải tự khai nó ở tenDoiTuong, nếu không "12" của '
+          'tên bị đọc là một con số bịa.',
+    );
+  });
+
   test('mẫu câu tự qua bộ kiểm số ở mọi nhánh', () {
     for (final g in [
       GoiSoTrangChu.tu(
