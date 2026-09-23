@@ -1,8 +1,17 @@
 # Bước 2 — ba tool đọc (mục tiêu · gợi ý hạn mức · tìm giao dịch) + phép đo 20 câu lệnh (thiết kế)
 
 **Ngày:** 2026-09-23 · **Nhánh:** `TranQuangDat` @ `a16b3d2` · **Trạng thái:** ✅ **đã duyệt** — thiết kế ba
-phần duyệt trong chat cùng ngày, ba quyết định thêm lúc viết duyệt ở phiên sau (mục 1.2, hàng 11–13); chưa có
-kế hoạch, chưa dòng mã nào
+phần duyệt trong chat cùng ngày, ba quyết định thêm lúc viết duyệt ở phiên sau (mục 1.2, hàng 11–13).
+🛑 **Mã xong (task 1–8, `daf201a` → `bc03303`), CỔNG D CHƯA ĐẠT** — lần đo 1, Realme 2026-09-24: nhóm A 7/8 (tụt) ·
+nhóm B 2/4 · nhóm C 13/20 tool · 5/20 tham số · 5 câu SAI (mục **9.17** `docs/AI_EDGE_FEATURE.md`).
+
+> ⚠️ **Chỗ thi công KHÁC spec** (chi tiết: đầu tệp kế hoạch `…/plans/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md`):
+> (1) mục 3.10 dặn prompt ghi mẫu `12/09` — **không** ghi, vì ca test cấm mọi chữ số ngoài `60` trong prompt hệ
+> thống; (2) nhãn tổng hợp của `goi_y_han_muc` là `Số ngày gần nhất`, không `Số ngày dữ liệu` — để câu *"suy từ
+> 19 ngày gần nhất"* qua `kiemNhan`; (3) `timGiaoDich` bỏ khoản ghi sổ qua **`khoanVaoThongKe`** (định nghĩa duy
+> nhất), `toiDa` bắt buộc, `loi` có kiểu `LoiKhopTen`; (4) mục 3.10 dặn grep `too long` — lỗi vượt trần thật ở phiên
+> có tool là **`FAILED_PRECONDITION: Prefill input length exceeds…`** (bẫy 4.39); (5) ngưỡng RAM ≤ 0,5 GB bị
+> **vượt** (+0,71 GiB) và người dùng duyệt giữ `maxTokens` 4096; (6) mục 3.8 ghi 5 chỗ gọi — thật ra 4.
 **Đầu vào:** đơn đặt hàng tool, mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md` (hai tool còn lại: dự báo mục
 tiêu — câu 11, gợi ý hạn mức — câu 5); nửa sau mục **2.1** `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`
 (tool tìm giao dịch + phép đo 20 câu lệnh); tầng tool của lát 4b (spec

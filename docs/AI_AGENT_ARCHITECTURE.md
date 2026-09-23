@@ -271,7 +271,7 @@ rồi để mô hình viết một câu. Mô hình **không quyết định gì,
 
 ---
 
-## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; bước 2 thêm ba, 🚧 đang thi công; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
+## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; bước 2 thêm ba, mã xong, 🛑 cổng D chưa đạt 2026-09-24; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
 
 ### 5.1 Mười tool
 
@@ -780,7 +780,7 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 |---|---|---|---|
 | **0** | Hệ luật + mẫu câu | ✅ **đang chạy**, 6 màn | `grep -rl 'KhoiNhanXet(' lib/` → 7 tệp (trừ 1 định nghĩa) |
 | **1** | SLM kể chuyện | ✅ **đang chạy** từ 2026-09-22 (P3 xong 10/10 task, cổng A qua) | `grep flutter_gemma pubspec.yaml` → **5**; **4** tệp `slm_*` trong `lib/` (`slm_prompt`, `slm_cache`, `slm_runtime`, `slm_dien_giai`); mô hình chạy thật trên OnePlus 13R và Realme RMX2205 — mục **9**, **9.9**, **9.10** `AI_EDGE_FEATURE.md`. *(Ô này ghi "📝 kế hoạch 10 task, 0 dòng mã" cho tới 2026-09-22, với bằng chứng "`grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có" — đếm lại bằng máy cùng ngày thì cả hai vế đã đổi. Và lưu ý **bốn** chứ không phải sáu tệp `slm_*`: `slm_dien_giai.dart` cố ý **không** được đăng ký vào DI theo lối B.)* |
-| **2** | Agent | ✅ **đang chạy** từ 2026-09-23 (lát 4b xong 9/9 task, **cổng C đạt** trên hai máy) — bảy tool **đọc** (bốn của 4b; ba của bước 2 — 🚧 mã xong, **chưa đo máy thật**, cổng D chưa chạy), vòng lặp trần 3 lời gọi, bậc 1 làm nhánh lùi | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → **3 dòng, 1 tệp** (`slm_runtime.dart`: `Tool(` · `ToolChoice.auto`; embedding/cosine vẫn **0** — RAG client cố ý bỏ, mục 5.5); vòng lặp ở `ai_edge/data/vong_lap_cong_cu.dart`; đo máy thật mục **9.14** `AI_EDGE_FEATURE.md`. *(Ô này ghi "⬜ chưa có kế hoạch … → 0" cho tới 2026-09-23.)* |
+| **2** | Agent | ✅ **đang chạy** từ 2026-09-23 (lát 4b xong 9/9 task, **cổng C đạt** trên hai máy) — bảy tool **đọc** (bốn của 4b; ba của bước 2 — mã xong, 🛑 **cổng D chưa đạt** lần đo 1 ngày 2026-09-24: nhóm C 13/20 tool · 5/20 tham số, nhóm A tụt 7/8, 5 câu SAI — mục 9.17 `AI_EDGE_FEATURE.md`), vòng lặp trần 3 lời gọi, bậc 1 làm nhánh lùi | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → **3 dòng, 1 tệp** (`slm_runtime.dart`: `Tool(` · `ToolChoice.auto`; embedding/cosine vẫn **0** — RAG client cố ý bỏ, mục 5.5); vòng lặp ở `ai_edge/data/vong_lap_cong_cu.dart`; đo máy thật mục **9.14** `AI_EDGE_FEATURE.md`. *(Ô này ghi "⬜ chưa có kế hoạch … → 0" cho tới 2026-09-23.)* |
 
 ✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
 **app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
@@ -805,7 +805,7 @@ khi canary bắt được cú sập native trên Mali).
 > (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
 > một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** (ngân sách · hoá đơn ·
 > ví · chi tiêu theo kỳ — bốn của lát 4b, đã đo cổng C; mục tiêu · gợi ý hạn mức · tìm giao dịch
-> — bước 2, chưa đo máy thật), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
+> — bước 2, cổng D **chưa đạt**: mô hình còn chọn sai tool và đọc lời từ chối thành "không có dữ liệu"), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
 > từ đúng những hàng ấy — trần 3 lời gọi, không tool nào ghi dữ liệu. Đo trên hai máy thật: bốn
 > câu hỏi *"cái nào"* từng hỏng nay trả lời **bằng tên** (Realme 4/4, OnePlus 3/4), 0 câu bịa số.
 

@@ -605,9 +605,10 @@ trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a
 thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
 giao dịch + phép đo 20 câu lệnh *(✅ spec đã duyệt —
 `superpowers/specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`, viết tối muộn 2026-09-23, ba chỗ
-thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); 🚧 **đang thi công** — task 1–8 của kế hoạch 9 task xong,
+thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); mã xong task 1–8 của kế hoạch 9 task,
 `BoCongCu` **bảy** tool; spike Realme đo bảy khai báo vượt trần 2048 nên `maxTokens` nay **4096** (RAM đỉnh
-+0,71 GiB, vượt ngưỡng 0,5 GB — người dùng duyệt); còn task 9 đo cổng D)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
++0,71 GiB, vượt ngưỡng 0,5 GB — người dùng duyệt); 🛑 **cổng D chưa đạt** lần đo 1 ngày 2026-09-24 — nhóm C
+13/20 tool · 5/20 tham số, nhóm A tụt (7/8), 5 câu SAI (mục 9.17 `AI_EDGE_FEATURE.md`); hướng sửa chờ người dùng)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
 nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4

@@ -272,6 +272,9 @@ Vế sau **đã làm đúng như đề nghị**; vế đầu sai từ 2026-09-22
    (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
    domain có sẵn và trả hàng có tên; chưa tool nào chạy thì rơi về đường P3 (`AI_EDGE_FEATURE.md`
    mục 9.14). Vẫn **không** gọi API server nào: mọi thứ chạy trên máy.
+   **2026-09-24 (bước 2):** thêm ba tool chỉ đọc — `danh_sach_muc_tieu` · `goi_y_han_muc` · `tim_giao_dich`
+   — nên bậc tool nay có **bảy** tool; vẫn không tool nào ghi và không gọi API server nào
+   (`AI_EDGE_FEATURE.md` mục 9.17).
 3. Con số "436 dòng" là của bản tĩnh cũ; tệp nay dài hơn nhiều (`wc -l` trước khi trích).
 
 **Câu thay thế:** *"Tầng 3 được tích hợp vào màn chat có sẵn `lib/features/ai_chat/presentation/pages/
