@@ -69,7 +69,8 @@ class GoiSoHoaDon extends GoiSo {
     // mang chính trạng thái mà câu hỏi hỏi.
     //
     // ⚠️ Nhãn là `Đã quá hạn`, KHÁC `Quá hạn` của mục đếm: mẫu câu tra
-    // `s['Quá hạn']` và phải nhận số đếm, mà map lấy giá trị cuối khi trùng.
+    // `s['Quá hạn']` và phải nhận số đếm. `chuoiTheoNhan` lấy mục ĐẦU và mục
+    // đếm đứng trước danh sách, nên nhãn khác nhau là lớp chắn thứ hai.
     final theoHoaDon = <SoLieu>[
       for (final b in conTra.take(kToiDaMucMoiGoi))
         soTien(
@@ -115,7 +116,7 @@ class GoiSoHoaDon extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
 
     // Quá hạn nói trước mọi thứ khác: đó là thứ duy nhất ở đây cần làm ngay.
     if (quaHan > 0) {

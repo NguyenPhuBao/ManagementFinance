@@ -121,8 +121,8 @@ class GoiSoNganSach extends GoiSo {
           ],
         ],
         // Đặt CUỐI: các mục trên là của ngân sách căng nhất và mẫu câu tra
-        // chúng theo nhãn (`{for … x.nhan: x.chuoi}`), nên chúng phải gặp
-        // trước để không bị mục cùng nhãn của ngân sách khác đè mất.
+        // chúng theo nhãn qua `chuoiTheoNhan` — mục ĐẦU thắng — nên chúng phải
+        // gặp trước để không bị mục cùng nhãn của ngân sách khác đè mất.
         ...theoTen,
       ],
     );
@@ -140,18 +140,12 @@ class GoiSoNganSach extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    // ⚠️ Lấy mục ĐẦU TIÊN của mỗi nhãn, không phải mục cuối.
-    //
-    // `{for (final x in soLieu) x.nhan: x.chuoi}` — khuôn năm gói kia vẫn
-    // dùng — cho giá trị **cuối** khi trùng khoá. Từ chặng 4a gói này mang
-    // nhiều mục cùng nhãn `Tỉ lệ` (một cho mỗi ngân sách), nên khuôn ấy làm
-    // câu nhận xét về Giáo dục in tỉ lệ của ngân sách đứng cuối danh sách:
-    // *"Giáo dục: đã dùng 45.000 đ / 50.000 đ (7,1%)"* — sai **im lặng**, và
-    // ca `contains('Giáo dục')` vẫn xanh.
-    final s = <String, String>{};
-    for (final x in soLieu) {
-      s.putIfAbsent(x.nhan, () => x.chuoi);
-    }
+    // ⚠️ Mục ĐẦU TIÊN của mỗi nhãn (`chuoiTheoNhan`), không phải mục cuối.
+    // Gói này mang nhiều mục cùng nhãn `Tỉ lệ` (một cho mỗi ngân sách), và map
+    // lấy mục cuối làm câu nhận xét về Giáo dục in tỉ lệ của ngân sách đứng
+    // cuối danh sách: *"Giáo dục: đã dùng 45.000 đ / 50.000 đ (7,1%)"* — bẫy
+    // **4.30**, sai **im lặng**, và ca `contains('Giáo dục')` vẫn xanh.
+    final s = chuoiTheoNhan(soLieu);
     final cau = vuot
         ? '$ten đã vượt hạn mức: ${s['Đã chi']} / ${s['Hạn mức']} '
             '(${s['Tỉ lệ']}), còn ${s['Còn']}.'

@@ -76,7 +76,7 @@ class GoiSoTrangChu extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
     final vuot = chi > thu;
     final b = StringBuffer('Tháng này thu ${s['Thu']}, chi ${s['Chi']}, ');
     b.write(vuot

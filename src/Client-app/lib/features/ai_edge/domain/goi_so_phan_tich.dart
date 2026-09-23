@@ -115,7 +115,7 @@ class GoiSoPhanTich extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
     final b = StringBuffer('Kỳ này chi ${s['Tổng chi']}');
     final pt = soKyTruoc;
     if (pt != null) {

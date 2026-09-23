@@ -91,6 +91,24 @@ SoLieu soDem(String nhan, int n, {String? ten}) => SoLieu(
       loai: LoaiSo.soDem,
     );
 
+/// Bảng tra **nhãn → chuỗi** cho mẫu câu — định nghĩa DUY NHẤT, cả sáu gói
+/// dùng. Mục **ĐẦU TIÊN** của mỗi nhãn thắng.
+///
+/// ⚠️ Không phải `{for (final x in soLieu) x.nhan: x.chuoi}`: map literal lấy
+/// giá trị **cuối** khi trùng khoá. Từ chặng 4a một gói mang được nhiều mục
+/// cùng nhãn (mỗi ngân sách một `Tỉ lệ`, mỗi ví một `Số dư`), và mẫu câu phải
+/// nhận mục **tổng hợp** — thứ các gói đặt TRƯỚC danh sách. Khuôn cũ làm câu
+/// nhận xét về Giáo dục in tỉ lệ của Mua sắm (bẫy **4.30**), sai **im lặng**,
+/// và ca `contains('Giáo dục')` vẫn xanh. Năm gói kia khi ấy chỉ an toàn nhờ
+/// đặt nhãn danh sách khác nhãn tổng hợp (`Đang âm` / `Ví đang âm`).
+Map<String, String> chuoiTheoNhan(List<SoLieu> soLieu) {
+  final s = <String, String>{};
+  for (final x in soLieu) {
+    s.putIfAbsent(x.nhan, () => x.chuoi);
+  }
+  return s;
+}
+
 abstract class GoiSo {
   /// Tên màn: `ngan_sach` | `phan_tich` | `trang_chu` | `muc_tieu`.
   String get man;

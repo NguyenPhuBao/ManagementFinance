@@ -166,7 +166,7 @@ class GoiSoVi extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
 
     // Ví âm nói TRƯỚC: đó là thứ duy nhất ở đây cần người dùng làm gì đó.
     if (soViAm > 0) {

@@ -65,4 +65,23 @@ void main() {
               'Đây là tham số ĐO được: đổi nó thì phải đo lại trên máy thật.');
     });
   });
+
+  group('chuoiTheoNhan — bảng tra nhãn của mẫu câu (bẫy 4.30)', () {
+    test('⭐ nhãn trùng → mục ĐẦU thắng, mọi nhãn khác vẫn có mặt', () {
+      final s = chuoiTheoNhan([
+        soDem('Quá hạn', 1),
+        soTien('Còn phải trả', 155000),
+        soTien('Quá hạn', 45000, ten: 'Kiem'),
+      ]);
+      expect(
+        s,
+        {'Quá hạn': '1', 'Còn phải trả': '155.000 đ'},
+        reason: 'Mục tổng hợp đứng TRƯỚC danh sách và mẫu câu tra nó theo '
+            'nhãn. Map literal `{for … x.nhan: x.chuoi}` lấy giá trị CUỐI khi '
+            'trùng khoá, nên "Có 1 hoá đơn quá hạn" sẽ in thành "Có 45.000 đ '
+            'hoá đơn quá hạn" — đúng khuôn đã làm câu về Giáo dục in tỉ lệ '
+            'của Mua sắm (7,1%), sai im lặng.',
+      );
+    });
+  });
 }

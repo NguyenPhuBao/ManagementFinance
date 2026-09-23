@@ -596,6 +596,25 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
+### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa (2026-09-23)
+
+Việc nhỏ kẹp đầu phiên, **trước** khi mở lát 4b — người dùng chốt thứ tự *sửa lỗi trước, tính
+năng sau*.
+
+**`chuoiTheoNhan` — bảng tra nhãn của mẫu câu, nay một định nghĩa** (`ai_edge/domain/goi_so.dart`).
+Sáu gói số từng tự dựng mỗi gói một bảng tra nhãn → chuỗi cho mẫu câu. Chỉ gói ngân sách có
+`putIfAbsent` (mục **đầu** thắng — cách chữa bẫy **4.30** ở chặng 4a); năm gói kia vẫn map literal
+`{for … x.nhan: x.chuoi}`, tức mục **cuối** thắng. Chưa câu nào hỏng, vì các mục danh sách chặng 4a
+thêm vào cố ý mang nhãn khác nhãn tổng hợp (`Đang âm` / `Ví đang âm`, `Đã quá hạn` / `Quá hạn`) —
+nhưng chú thích *"đặt CUỐI để các mục tổng hợp ở trên gặp trước"* ở gói ví và gói hoá đơn là lý lẽ
+của mục-đầu-thắng, tức **nói ngược mã**. Nay cả sáu gói gọi `chuoiTheoNhan`.
+
+⚠️ Qua API công khai của gói **không dựng được** nhãn trùng, nên ca canh nằm ở chính
+`chuoiTheoNhan` (`goi_so_test.dart`; bản mục-cuối-thắng đỏ đúng `'45.000 đ' instead of '1'`). Một
+gói tự viết lại map literal thì **không ca nào đỏ** — lát này không thêm test quét.
+
+Test **3469/3469** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
+
 ### 🛑 Edge AI — chặng 4a: tên đối tượng trong gói số — CỔNG CHƯA ĐẠT (2026-09-23)
 
 Spec `superpowers/specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`, chín task, thi công
@@ -629,7 +648,8 @@ thứ ba của **8.6** trong `AI_EDGE_FEATURE.md`:
    output; nới 1024 → 2048. Prompt đi từ 1.704 lên ~2.280 ký tự, token đầu 4,6 s → 8,4–11,1 s.
 2. **Mẫu câu ngân sách in tỉ lệ của ngân sách KHÁC** — `{x.nhan: x.chuoi}` lấy giá trị cuối, nên
    câu về Giáo dục in *"(7,1%)"* của Mua sắm. Sai **im lặng**, và ca `contains('Giáo dục')` viết
-   cùng lát **xanh suốt** — cùng bài học G43.
+   cùng lát **xanh suốt** — cùng bài học G43. *(✅ Từ 2026-09-23 cả sáu gói tra nhãn qua
+   `chuoiTheoNhan` — xem khối đầu mục này.)*
 3. **Nhãn giàu hơn làm một câu SAI lọt qua `kiemNhan`**: *"Số ví đang âm: −100.000 đ"* (số ví là
    1) lọt, trong khi bản **trước** chặng 4a chặn được. Luật siết ra từ đây: mục **có tên** đòi câu
    nêu **tên**; mục không tên giữ luật cũ.

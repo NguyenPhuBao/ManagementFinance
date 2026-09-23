@@ -103,7 +103,7 @@ class GoiSoMucTieu extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
     final quaHan = ngayConLai < 0;
     final duoi = quaHan
         ? 'đã quá hạn'

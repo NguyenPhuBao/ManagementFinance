@@ -194,11 +194,11 @@ void main() {
       expect(
         g.mauCau().cau,
         contains('90,0%'),
-        reason: 'Mẫu câu tra mục theo nhãn bằng `{for … x.nhan: x.chuoi}`, và '
-            'map ấy lấy giá trị CUỐI khi trùng khoá. Bốn ngân sách cùng mang '
-            'nhãn "Tỉ lệ", nên đặt danh sách ở cuối là câu nhận xét về Giáo '
-            'dục lại in tỉ lệ của Mua sắm (7,1%) — sai im lặng, và ca '
-            '"contains(Giáo dục)" ở trên vẫn xanh.',
+        reason: 'Mẫu câu tra mục theo nhãn qua `chuoiTheoNhan`. Nếu bảng tra '
+            'lấy giá trị CUỐI khi trùng khoá (khuôn `{for … x.nhan: x.chuoi}` '
+            'cũ) thì — vì bốn ngân sách cùng mang nhãn "Tỉ lệ" và danh sách '
+            'đứng cuối — câu nhận xét về Giáo dục in tỉ lệ của Mua sắm (7,1%): '
+            'sai im lặng, và ca "contains(Giáo dục)" ở trên vẫn xanh.',
       );
       expect(g.mauCau().cau, isNot(contains('7,1%')));
     });
