@@ -50,7 +50,7 @@ ThongKeKy _tk({double thu = 15135000, double chi = 2141000, List<DongDanhMuc> da
 void main() {
   final now = DateTime(2026, 9, 23, 10);
 
-  group('kyTuMa — năm mã, cùng phép dựng với bộ chọn kỳ trang Phân tích', () {
+  group('kyTuMa — tám mã, cùng phép dựng với bộ chọn kỳ trang Phân tích', () {
     test('thang_nay / thang_truoc / nam_nay', () {
       expect(kyTuMa('thang_nay', now)!.from, DateTime(2026, 9, 1));
       expect(kyTuMa('thang_truoc', now)!.from, DateTime(2026, 8, 1));
@@ -62,8 +62,36 @@ void main() {
       expect(kyTuMa('quy_nay', now)!.from, DateTime(2026, 7, 1));
     });
     test('mã lạ → null', () {
-      expect(kyTuMa('hom_qua', now), isNull);
+      expect(kyTuMa('hom_kia', now), isNull);
       expect(kyTuMa('', now), isNull);
+    });
+    test('hom_nay / hom_qua là trọn MỘT ngày, biên [from, to)', () {
+      expect(kyTuMa('hom_nay', now)!.from, DateTime(2026, 9, 23));
+      expect(kyTuMa('hom_nay', now)!.to, DateTime(2026, 9, 24));
+      expect(kyTuMa('hom_qua', now)!.from, DateTime(2026, 9, 22));
+      expect(kyTuMa('hom_qua', now)!.to, DateTime(2026, 9, 23));
+    });
+    test('hom_qua qua biên tháng, biên năm, tháng hai năm nhuận và năm thường', () {
+      expect(kyTuMa('hom_qua', DateTime(2026, 10, 1, 8))!.from, DateTime(2026, 9, 30));
+      expect(kyTuMa('hom_qua', DateTime(2027, 1, 1, 8))!.from, DateTime(2026, 12, 31));
+      expect(kyTuMa('hom_qua', DateTime(2028, 3, 1, 8))!.from, DateTime(2028, 2, 29));
+      expect(kyTuMa('hom_qua', DateTime(2027, 3, 1, 8))!.from, DateTime(2027, 2, 28));
+    });
+    test('tuan_truoc là tuần liền trước tuần chứa hôm nay (lui, không trừ 7 ngày tay)', () {
+      final nay = kyTuMa('tuan_nay', now)!;
+      final truoc = kyTuMa('tuan_truoc', now)!;
+      expect(truoc.to, nay.from);
+      expect(nay.from.difference(truoc.from).inDays, 7);
+    });
+    test('kMaKy: tám mã theo thứ tự, chữ kèm KHÔNG có chữ số', () {
+      expect(kMaKy.keys.toList(), [
+        'hom_nay', 'hom_qua', 'tuan_nay', 'tuan_truoc',
+        'thang_nay', 'thang_truoc', 'quy_nay', 'nam_nay',
+      ]);
+      for (final e in kMaKy.entries) {
+        expect(RegExp(r'\d').hasMatch(e.value), isFalse, reason: e.key);
+        expect(kyTuMa(e.key, now), isNotNull, reason: 'mọi mã trong bảng phải dựng được kỳ');
+      }
     });
   });
 
@@ -88,9 +116,9 @@ void main() {
   });
 
   test('mã lạ → từ chối, không đoán kỳ', () {
-    final kq = hangChiTieu(_tk(), ma: 'hom_qua');
+    final kq = hangChiTieu(_tk(), ma: 'hom_kia');
     expect(kq.hang, isEmpty);
-    expect(kq.loi, loiMaKy('hom_qua'));
+    expect(kq.loi, loiMaKy('hom_kia'));
     expect(kq.loi, contains('thang_truoc'));
   });
 }

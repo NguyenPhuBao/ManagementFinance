@@ -172,8 +172,8 @@ void main() {
   });
 
   test('chi tiêu: mã lạ → từ chối mà KHÔNG hỏi repository', () async {
-    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'hom_qua'}, idaccount: 10, now: now))!;
-    expect(kq.loi, contains('hom_qua'));
+    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'hom_kia'}, idaccount: 10, now: now))!;
+    expect(kq.loi, contains('hom_kia'));
     expect(phanTich.kyDaHoi, isNull, reason: 'không đoán kỳ rồi đi đọc dữ liệu của kỳ đoán');
   });
 }

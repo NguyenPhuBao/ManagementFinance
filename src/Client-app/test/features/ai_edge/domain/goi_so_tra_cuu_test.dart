@@ -239,4 +239,28 @@ void main() {
       );
     });
   });
+
+  test('⭐ tenLienQuan của mọi lượt vào tenDoiTuong — chữ số trong tên không bị đọc là số (bước 2)', () {
+    final g = GoiSoTraCuu()
+      ..them(
+        'tim_giao_dich',
+        KetQuaCongCu(
+          hang: [
+            HangSoLieu(
+              ten: 'Cà phê',
+              trangThai: 'khoản chi · test1 · Tiền mặt',
+              canhBao: false,
+              soLieu: [soTien('Số tiền', 35000, ten: 'Cà phê')],
+            ),
+          ],
+          tongHop: const [],
+          tenLienQuan: const ['test1', 'Tiền mặt'],
+        ),
+      );
+    expect(g.tenDoiTuong, containsAll(['Cà phê', 'test1', 'Tiền mặt']));
+    expect(kiemSo('Cà phê 35.000 đ, danh mục test1.', g), isTrue,
+        reason: '"1" của tên danh mục test1 không phải một con số (1/16 danh mục '
+            'thật mang chữ số)');
+    expect(kiemSo('Cà phê 35.000 đ, danh mục test1.', GoiSoTraCuu()), isFalse);
+  });
 }

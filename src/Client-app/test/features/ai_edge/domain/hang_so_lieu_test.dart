@@ -66,4 +66,13 @@ void main() {
         reason: 'Không có khoá "hang" rỗng: mô hình đọc `{}` rỗng là "không có '
             'gì" trong khi thật ra là "tham số sai" — hai câu trả lời khác nhau.');
   });
+
+  test('tenLienQuan KHÔNG vào json — tên đã có trong trang_thai / loi (bước 2)', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: [], tenLienQuan: ['test1']);
+    expect(kq.json.containsKey('tenLienQuan'), isFalse);
+    expect(kq.json, isEmpty);
+    const tuChoi = KetQuaCongCu.loi('danh_muc "x" không khớp.', tenLienQuan: ['Ăn uống']);
+    expect(tuChoi.tenLienQuan, ['Ăn uống']);
+    expect(tuChoi.json, {'loi': 'danh_muc "x" không khớp.'});
+  });
 }

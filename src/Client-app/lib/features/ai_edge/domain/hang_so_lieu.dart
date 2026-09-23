@@ -57,14 +57,22 @@ class KetQuaCongCu {
   /// gọi biết tool ĐÃ chạy (không phải L1).
   final String? loi;
 
+  /// Tên xuất hiện trong kết quả mà KHÔNG nằm trên `SoLieu` nào — tên danh mục /
+  /// ví trong chữ trạng thái của hàng giao dịch, tên khớp tham số, danh sách tên
+  /// trong lời từ chối (bước 2). `GoiSoTraCuu` gom chúng vào `tenDoiTuong` để
+  /// chữ số trong những tên ấy không bị bộ kiểm đọc là số (bước 1c). **Không** vào
+  /// [json]: tên đã có sẵn trong `trang_thai` / `loi`.
+  final List<String> tenLienQuan;
+
   const KetQuaCongCu({
     required this.hang,
     required this.tongHop,
     this.chuThem = const {},
     this.loi,
+    this.tenLienQuan = const [],
   });
 
-  const KetQuaCongCu.loi(String vi)
+  const KetQuaCongCu.loi(String vi, {this.tenLienQuan = const []})
       : hang = const [],
         tongHop = const [],
         chuThem = const {},

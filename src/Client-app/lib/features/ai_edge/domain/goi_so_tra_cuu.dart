@@ -35,6 +35,9 @@ class GoiSoTraCuu extends GoiSo {
   final List<SoLieu> tongHop = [];
   final List<String> tenCongCuDaChay = [];
 
+  /// Tên liên quan của mọi lượt (`KetQuaCongCu.tenLienQuan`) — bước 2.
+  final List<String> tenLienQuan = [];
+
   /// Kết quả nguyên vẹn của từng lượt gọi, theo thứ tự — nguồn của [mauCau].
   final List<KetQuaCongCu> _luot = [];
 
@@ -57,8 +60,15 @@ class GoiSoTraCuu extends GoiSo {
     tenCongCuDaChay.add(tenCongCu);
     hang.addAll(kq.hang);
     tongHop.addAll(kq.tongHop);
+    tenLienQuan.addAll(kq.tenLienQuan);
     _luot.add(kq);
   }
+
+  /// Mặc định (mọi `SoLieu.ten`) **cộng** tên liên quan của các lượt: tên danh
+  /// mục / ví trong trạng thái của hàng giao dịch không gắn trên `SoLieu` nào,
+  /// nhưng mẫu câu in chúng và mô hình được phép nêu chúng.
+  @override
+  Iterable<String> get tenDoiTuong => [...super.tenDoiTuong, ...tenLienQuan];
 
   @override
   NhanXet mauCau() {

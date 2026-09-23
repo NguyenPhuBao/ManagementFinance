@@ -14,9 +14,10 @@ class CongCuChiTieu implements CongCu {
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
         ten: kTenCongCuChiTieu,
-        moTa: 'Tổng chi, tổng thu và chi theo từng DANH MỤC (có tên) của một kỳ: tuần '
-            'này, tháng này, tháng trước, quý này, năm nay. Gọi khi hỏi tiêu bao nhiêu '
-            'trong một kỳ, hoặc chi nhiều nhất vào danh mục nào.',
+        moTa: 'Tổng chi, tổng thu và chi theo từng DANH MỤC (có tên) của một kỳ: hôm '
+            'nay, hôm qua, tuần này, tuần trước, tháng này, tháng trước, quý này, năm '
+            'nay. Gọi khi hỏi tiêu bao nhiêu trong một kỳ, hoặc chi nhiều nhất vào danh '
+            'mục nào.',
         thamSo: {
           'type': 'object',
           'properties': {
