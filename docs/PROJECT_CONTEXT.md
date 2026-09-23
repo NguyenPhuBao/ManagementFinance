@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### 🛑 Edge AI — lát 4b: Task 1–4 xong mã, DỪNG ở cổng Task 4 — engine sập native khi phiên mang tool, trên cả hai máy (2026-09-23)
+### 🚧 Edge AI — lát 4b: Task 1–4 xong; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23)
 
 Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
 Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
@@ -605,17 +605,24 @@ cho L2/L3), `CongCu` / `KhaiBaoCongCu` / bốn tên tool / `kTranGoiCongCu`, `Ph
 `PhienCongCuGia`, `DangTraCuu` / `KhongTraCuu` trong `SuKienGac`, `kPromptHeThongCongCu`, và
 `SlmRuntime.moPhien` (bản thật `_PhienThat` trong `slm_runtime.dart`, test quét 16 giữ nguyên).
 **Chưa nối vào màn nào** — app đang chạy vẫn là bậc 1. Test **3496/3496** (3 skip), analyze
-**26**; schema, payload, `pubspec` không đổi.
+**26**; schema, payload không đổi — ⚠️ **`pubspec` CÓ đổi** (xem dưới).
 
-🛑 **Spike Task 4: engine SẬP NATIVE khi phiên mang tool, trên CẢ HAI máy** — Realme RMX2205 (CPU,
+🛑 **Spike Task 4 với gói cũ: engine SẬP NATIVE khi phiên mang tool, trên CẢ HAI máy** — Realme RMX2205 (CPU,
 Android 13) **3/3** `SIGSEGV`, OnePlus 13R (GPU, Android 16, máy demo) **2/2** `SIGBUS`, cùng một
 đường: `ConstrainedDecoder::ProcessLogits` → `CompositeLogitMask::Apply` → con trỏ hàm rác vào
 `libGemmaModelConstraintProvider.so`, ngay lượt giải mã đầu, **kể cả câu "Xin chao"** không cần
 tool. Phép đối chứng: đường bậc 1 (không tool) trên **cùng APK, cùng máy** trả lời đúng. Gốc nằm ở
 gói: `flutter_gemma_litertlm` 1.7.0 **gắn cứng** `enable_constrained_decoding = true` hễ phiên có
-tool (`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Có bản `flutter_gemma` 1.9.0 /
-`flutter_gemma_litertlm` 1.8.0, chưa biết có sửa không. Theo kế hoạch: **dừng**, Task 5–8 chưa
-dựng, chờ người dùng chọn hướng. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`.
+tool (`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Thi công dừng; người dùng chọn đo
+thêm OnePlus (cũng sập) rồi chọn **nâng gói lên bản mới nhất**.
+
+✅ **Nâng `flutter_gemma` 1.8.3 → 1.9.0, `flutter_gemma_litertlm` ^1.7.0 → 1.8.0** (`af2aa81`,
+người dùng **duyệt đích danh** việc đổi `pubspec`, phá chốt "không đổi pubspec" của spec 4b và chốt
+ghim 1.8.3 từ P0; gói engine nay ghim **cứng**; changelog litertlm 1.7.1: *"tool calls no longer
+crash the app"*). Đo lại cùng móc spike: **6/6 không sập** trên hai máy; E2B gọi đúng `danh_sach_vi`
+ở 4/4 câu cần tool, lượt gọi **0 ký tự chữ**, câu trả lời nêu đúng tên + số trong JSON; 2/2 câu chào
+không gọi tool (→ L1). Câu cần tool ~9 s OnePlus / ~12 s Realme; đường bậc 1 trên cả hai máy không
+đổi. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`. Tiếp **Task 5**.
 
 ⚠️ **Hai chỗ spec/kế hoạch sai, lộ ra khi thi công:** (1) ca test của kế hoạch so thẳng danh sách
 **record chứa `Map`** (`ketQuaDaNhan`) — đỏ trên cả mã đúng, vì record so `==` từng trường, `Map`

@@ -8,7 +8,7 @@
 > **SLM on-device** (P3, ✅ **XONG 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
 
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
-✅ **P3 XONG TRỌN 10/10 TASK ngày 2026-09-22.** *(Câu mở đầu ở đây từng ghi "ĐANG THI CÔNG — xong Task 1–8 / 10"; nó là ảnh chụp giữa ngày và đã nói ngược chính cuối đoạn này, nơi ghi "P3 đến đây là xong 10/10 task".)* Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task.** ✅ **Việc số 2 — tải nền + resume — XONG 2026-09-22 tối muộn** (7 task, mục **9.10**: đo trên **Realme RMX2205 / Dimensity 1100** — máy thứ hai của dự án; sáu lỗi thật, trong đó **nạp GPU sập native trên Mali** chữa bằng canary). ✅ **Việc số 1 của lộ trình XONG 2026-09-22 tối** (mã: mục **9.8** — streaming chặn theo câu · `kiemNhan` · `kiemGiong` nối vào hỏi đáp · sáu gói · chip mới · few-shot hỏi đáp; đo máy thật: mục **9.9**) — **CỔNG A QUA**. Lượt đo bắt hai lỗi thật (bẫy 4.18, 4.19). 🛑 **Lát 4b (2026-09-23): Task 1–4 xong mã, DỪNG ở cổng Task 4** — spike: engine **sập native** khi phiên mang tool trên **cả hai máy** (Realme 3/3, OnePlus 13R 2/2), trong khi đường không tool cùng APK chạy bình thường (mục **9.13**, bẫy **4.33**); Task 5–8 chưa dựng, chờ người dùng chọn hướng.
+✅ **P3 XONG TRỌN 10/10 TASK ngày 2026-09-22.** *(Câu mở đầu ở đây từng ghi "ĐANG THI CÔNG — xong Task 1–8 / 10"; nó là ảnh chụp giữa ngày và đã nói ngược chính cuối đoạn này, nơi ghi "P3 đến đây là xong 10/10 task".)* Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task.** ✅ **Việc số 2 — tải nền + resume — XONG 2026-09-22 tối muộn** (7 task, mục **9.10**: đo trên **Realme RMX2205 / Dimensity 1100** — máy thứ hai của dự án; sáu lỗi thật, trong đó **nạp GPU sập native trên Mali** chữa bằng canary). ✅ **Việc số 1 của lộ trình XONG 2026-09-22 tối** (mã: mục **9.8** — streaming chặn theo câu · `kiemNhan` · `kiemGiong` nối vào hỏi đáp · sáu gói · chip mới · few-shot hỏi đáp; đo máy thật: mục **9.9**) — **CỔNG A QUA**. Lượt đo bắt hai lỗi thật (bẫy 4.18, 4.19). 🚧 **Lát 4b (2026-09-23): Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói** — với `flutter_gemma` 1.8.3 / `flutter_gemma_litertlm` 1.7.0 engine **sập native** ở mọi phiên có tool trên **cả hai máy**; nâng lên **1.9.0 / 1.8.0** (`af2aa81`, người dùng duyệt) thì **6/6 không sập** và E2B gọi đúng tool (mục **9.13**, bẫy **4.33**). Task 5–8 đang làm.
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -147,7 +147,7 @@ lib/features/ai_edge/
   data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart (từ tối 2026-09-22 đứng trên NguonTaiNen; tai_tep_dio.dart ĐÃ BỎ) · nguon_tai_nen.dart — giao diện lượt tải sống lâu hơn tiến trình + bản giả · tai_nen_background_downloader.dart — tệp DUY NHẤT import background_downloader · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
   domain/   (tải nền) hoi_dung_4g.dart — chuỗi hộp thoại dữ liệu di động · canary_gpu.dart — dấu canary GPU (Mali sập native)
   domain/   (lát 4b, 2026-09-23 — Task 1–4, CHƯA NỐI VÀO MÀN NÀO) hang_so_lieu.dart — HangSoLieu + KetQuaCongCu · goi_so_tra_cuu.dart — gói tích luỹ của bậc tool · cong_cu.dart — CongCu, KhaiBaoCongCu, bốn tên tool, kTranGoiCongCu · gac_cau.dart thêm DangTraCuu / KhongTraCuu · slm_prompt.dart thêm kPromptHeThongCongCu
-  data/     (lát 4b) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — SẬP NATIVE trên cả Realme lẫn OnePlus với gói 1.7.0, bẫy 4.33)
+  data/     (lát 4b) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — sập native với gói 1.7.0, chạy được từ 1.8.0, bẫy 4.33)
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -192,7 +192,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.30 | ⭐ **Mẫu câu in số của đối tượng KHÁC khi gói có nhiều mục trùng nhãn** | `{for (final x in soLieu) x.nhan: x.chuoi}` lấy giá trị **cuối**. Bốn ngân sách cùng nhãn `Tỉ lệ` → câu nhận xét về Giáo dục in *"(7,1%)"* của Mua sắm — sai **im lặng**, và khối Nhận xét hiện đúng câu ấy. ⚠️ Ca `contains('Giáo dục')` viết cùng lát **xanh suốt**: cùng bài học G43, ca test phải đòi **kết quả**. Chữa bằng **`chuoiTheoNhan`** ở `goi_so.dart` — bảng tra nhãn **một định nghĩa**, mục **đầu** thắng. ✅ **Cả sáu gói** đi qua nó từ 2026-09-23; trước đó chỉ gói ngân sách có `putIfAbsent` chép tay, còn năm gói kia chỉ an toàn nhờ **đặt nhãn danh sách khác nhãn tổng hợp** (`Đang âm` / `Ví đang âm`, `Đã quá hạn` / `Quá hạn`), và chú thích *"đặt CUỐI để các mục tổng hợp gặp trước"* ở hai gói ấy nói ngược mã. ⚠️ Qua API công khai của gói **không dựng được** nhãn trùng, nên ca test canh nằm ở chính `chuoiTheoNhan`; một gói tự viết lại map literal thì **không ca nào đỏ** | `goi_so_test.dart` *"⭐ nhãn trùng → mục ĐẦU thắng"*; `goi_so_ngan_sach_test.dart` *"⭐ mẫu câu nêu tỉ lệ của CHÍNH ngân sách nó nói tới"* |
 | 4.31 | ⭐ **Nhãn giàu hơn có thể làm câu SAI lọt qua `kiemNhan`** | nhãn `Đang âm` (ví âm) có từ khoá "đang"/"âm", nên câu *"Số ví đang âm: −100.000 đ"* — **sai nghĩa**, số ví là 1 — lọt qua, trong khi bản **trước** chặng 4a chặn được. Gốc: luật "khớp nhãn **HOẶC** tên" quá lỏng khi gói mang nhiều mục cùng nhãn. Luật nay: mục **có tên** đòi câu nêu **tên**; mục không tên giữ luật cũ | `kiem_nhan_test.dart` *"⭐ mục CÓ TÊN đòi câu nêu TÊN"* |
 | 4.32 | **Lúc mở màn Cài đặt AI, phép dò tệp chạy SONG SONG với `khoiPhuc()`** — `_doTrangThai()` chờ `daCo()`, `khoiPhuc()` chờ `luotDangSong()`, và phép về **sau** thắng (2026-09-23) | tệp dở của một lượt hỏng chưa đủ cỡ nên `daCo()` = `false`; về sau tin khôi phục thì màn đè "Tải không xong" thành "Chưa tải" — mất nút **Thử lại** (đi `tiepTuc`, nối từ chỗ đứt khi nối được), còn lại nút **Tải**. Nay phép dò **không đè mọi trạng thái nguồn đã báo về một lượt** — `dangTai` · `tamDung` · `choMang` · `loi`. ⚠️ Mới kiểm bằng **bộ giả**: bản thật `luotDangSong()` luôn trả `loi: null` (màn hiện câu dự phòng *"Kết nối đứt giữa chừng."*), và lượt **hỏng** có được `taskForId` của `background_downloader` trả về hay không thì **chưa đo** | `cai_dat_ai_page_test.dart` *"⭐ lượt HỎNG của lần chạy trước KHÔNG bị phép dò tệp về muộn đè thành 'Chưa tải'"* |
-| 4.33 | ⭐ **Phiên có tool là phiên GIẢI MÃ CÓ RÀNG BUỘC — và với gói 1.7.0 nó sập NATIVE ngay lượt giải mã đầu, trên CẢ HAI máy** (2026-09-23, spike lát 4b) | `flutter_gemma_litertlm` 1.7.0 gắn cứng `enable_constrained_decoding = true` khi có tool (`litert_lm_client.dart:1083`), không tham số tắt; `CompositeLogitMask::Apply` nhảy qua một con trỏ hàm rác vào `libGemmaModelConstraintProvider.so` — Realme (CPU) `SIGSEGV`/`SEGV_ACCERR` **3/3**, OnePlus 13R (GPU) `SIGBUS`/`BUS_ADRALN` **2/2** — kể cả câu không cần tool. `try/catch` vô dụng, app văng; `flutter test` mù hoàn toàn vì x86_64 không chạy engine. Đường không tool trên cùng APK chạy bình thường. ⚠️ Nếu có ngày bật lại phiên có tool (gói mới sửa được lỗi này), phải có **canary** kiểu 4.24 quanh lượt giải mã đầu của phiên ấy — một cú sập native ở đây là app văng **mỗi lần** người dùng hỏi | *(đo máy thật — mục 9.13)* |
+| 4.33 | ⭐ **Phiên có tool là phiên GIẢI MÃ CÓ RÀNG BUỘC — và với gói 1.7.0 nó sập NATIVE ngay lượt giải mã đầu, trên CẢ HAI máy** (2026-09-23, spike lát 4b) | `flutter_gemma_litertlm` 1.7.0 gắn cứng `enable_constrained_decoding = true` khi có tool (`litert_lm_client.dart:1083`), không tham số tắt; `CompositeLogitMask::Apply` nhảy qua một con trỏ hàm rác vào `libGemmaModelConstraintProvider.so` — Realme (CPU) `SIGSEGV`/`SEGV_ACCERR` **3/3**, OnePlus 13R (GPU) `SIGBUS`/`BUS_ADRALN` **2/2** — kể cả câu không cần tool. `try/catch` vô dụng, app văng; `flutter test` mù hoàn toàn vì x86_64 không chạy engine. Đường không tool trên cùng APK chạy bình thường. ✅ **Chữa bằng nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0** (`af2aa81`, người dùng duyệt đích danh): đo lại **6/6 không sập** trên hai máy. ⚠️ Rủi ro còn lại: máy khác **chưa đo**, và một cú sập native ở đây là app văng **mỗi lần** người dùng hỏi — một canary kiểu 4.24 quanh lượt giải mã đầu của phiên có tool sẽ chặn được, **chưa làm**. Đừng hạ gói về 1.7.x | *(đo máy thật — mục 9.13)* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -888,7 +888,7 @@ giàu thêm; thứ cần là **tool trả một hàng đầy đủ** — việc 
 8,4–11,1 s**. Trần `maxTokens` nới **1024 → 2048** (nó là hằng của client, không phải giới hạn
 của Gemma, và là trần cho **tổng** input + output).
 
-### 9.13 Chặng 4b — spike tool-calling (2026-09-23) — 🛑 ENGINE SẬP NATIVE KHI PHIÊN MANG TOOL, TRÊN CẢ HAI MÁY
+### 9.13 Chặng 4b — spike tool-calling (2026-09-23) — 🛑 gói cũ SẬP NATIVE trên cả hai máy → ✅ NÂNG GÓI, CỔNG TASK 4 ĐẠT
 
 Task 4 của kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`: APK release
 kèm móc tạm `/spike` (**không commit**) mở một phiên có **một** tool (`danh_sach_vi`, JSON giả)
@@ -920,7 +920,7 @@ có tool (`lib/src/ffi/litert_lm_client.dart:1080–1086`) — không tham số 
 bản Android, hai backend đều sập ở cùng một chỗ, nên với phiên bản gói này **mọi** phiên có tool
 đều sập, bất kể câu hỏi (câu không cần tool vẫn sập). `try/catch` không bắt được gì; app văng về
 màn chính. `flutter pub outdated` cùng ngày: có `flutter_gemma` **1.9.0** và
-`flutter_gemma_litertlm` **1.8.0** — chưa biết có sửa lỗi này không.
+`flutter_gemma_litertlm` **1.8.0** — và bản mới **đã sửa** lỗi này, xem tiểu mục ngay dưới.
 
 **Đo được kèm, còn giá trị khi lỗi sập được sửa:**
 - Mở phiên có tool mất **2.669 ms** (Realme) / **1.583–2.081 ms** (OnePlus), trong đó **935 ms** /
@@ -931,23 +931,50 @@ màn chính. `flutter pub outdated` cùng ngày: có `flutter_gemma` **1.9.0** v
 - Nạp mô hình: Realme CPU có cache XNNPack **~0,8 s** (lần đầu trên máy ấy 27 s, mục 9.10);
   OnePlus GPU **9,3 s** lần đầu sau khi cài APK, **3,7 s** lần sau.
 
-**Các điều spec và kế hoạch đoán, đối chiếu:** (1) bốn tên `Tool` · `ToolChoice` ·
-`FunctionCallResponse` · `ParallelFunctionCallResponse` có trong barrel `flutter_gemma.dart`, và
-`ModelResponse` là `sealed` đúng bốn lớp con — ✅ `flutter analyze` xác nhận; (2) *"lượt gọi tool
-không phát chữ"* và (3) *"`ToolChoice.auto` đủ để E2B gọi tool"* — **chưa kiểm được**, engine sập
-trước token đầu; (4) *"bốn tool dưới ~600 token"* — chưa đo. ⚠️ Spec 3.7 bảo đo
-`chat.currentTokens` để canh bẫy 4.29 — **không dùng được**: thuộc tính ấy chỉ cộng token của
-**câu trả lời** (`flutter_gemma` `lib/core/chat.dart:706–708`; ảnh +257 ở `:193`), không tính câu
-hỏi, chỉ dẫn hệ thống hay `tools_json`. Phép đo quyết định vẫn là lỗi native `INVALID_ARGUMENT …
-too long`.
-
 ⚠️ **Bẫy của phép đo:** lượt 1, `logcat -d` chạy sau cú sập **không** có dòng `print` nào của móc
 tạm; lượt 2 và 3 ghi logcat **trực tiếp ra tệp** trong lúc chạy thì có đủ. Chưa rõ vì sao. Với
 một phép đo có thể sập native, ghi logcat trực tiếp chứ đừng dựa vào một lần `logcat -d`.
 
-**Cổng Task 4 trượt** — không thấy `GoiCongCu` nào. Theo kế hoạch: **dừng**, Task 5–8 **chưa
-dựng**. Mã Task 1–4 (kiểu thuần, `GoiSoTraCuu`, `PhienCongCu`, `moPhien`) đã commit nhưng **chưa
-nối vào màn nào**, nên app đang chạy vẫn là bậc 1. Bẫy **4.33**.
+Với gói cũ, **cổng Task 4 trượt** — không thấy `GoiCongCu` nào; thi công dừng, người dùng chọn đo
+thêm trên OnePlus rồi chọn **nâng gói lên bản mới nhất** (changelog `flutter_gemma_litertlm` 1.7.1:
+*"Native runtime `native-v0.17.0-a`: tool calls no longer crash the app"*).
+
+#### Sau khi nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 — ✅ CỔNG TASK 4 ĐẠT
+
+Commit `af2aa81` (người dùng duyệt đích danh việc đổi `pubspec`). Cùng móc spike, cùng câu:
+
+| Máy | Câu | Nạp · mở phiên | Lượt 1 | Lượt 2 (câu trả lời) |
+|---|---|---|---|---|
+| OnePlus | `Vi nao dang am?` | 4.340 · 2.062 ms | **gọi `danh_sach_vi {}`**, 1.912 ms, **0 ký tự chữ** | *"Ví test đang âm với số dư là -100.000 đ."* — token đầu 347 ms, 1.136 ms |
+| OnePlus | `Toi co tat ca bao nhieu vi?` | 3.764 · 2.131 ms | gọi `danh_sach_vi {}`, 1.878 ms, 0 ký tự | *"Bạn có 4 ví. Tổng tài sản là 13.004.000 đ."* — 1.391 ms |
+| OnePlus | `Xin chao` (đối chứng) | 4.116 · 2.180 ms | **không gọi tool** — *"Chào bạn, tôi là trợ lý tài chính của FlowMoney. Tôi có thể giúp gì cho bạn?"* | — |
+| OnePlus | chip *"Chi tiêu tháng này"* — bậc 1 | 3.775 ms | token đầu 1.720 ms, xong 3.155 ms, câu + ba thẻ đúng | — |
+| Realme | `Vi nao dang am?` | 1.103 · 2.784 ms | gọi `danh_sach_vi {}`, 4.850 ms, 0 ký tự | *"Ví test đang âm với số dư là -100.000 đ."* — token đầu 2.733 ms, 3.683 ms |
+| Realme | `Toi co tat ca bao nhieu vi?` | 820 · 2.788 ms | gọi `danh_sach_vi {}`, 3.047 ms, 0 ký tự | *"Bạn có 4 ví. Các ví có số dư như sau: test: -100.000 đ, mua nhà: 0 đ, Tiết kiệm: 3.201.000 đ, Tiền mặt: 9.903.000 đ."* — 5.378 ms |
+| Realme | `Xin chao` (đối chứng) | 541 · 3.152 ms | không gọi tool — lời chào, không chữ số | — |
+| Realme | chip *"Chi tiêu tháng này"* — bậc 1 | 457 ms | token đầu 10.387 ms, xong 12.919 ms (trước khi nâng: 10.711 / 13.454) | — |
+
+**6/6 không sập.** Mọi tên và số trong câu trả lời đều có trong JSON tool trả về. Tính từ lúc gửi,
+một câu cần tool mất khoảng **9 s** trên OnePlus (phần lớn là nạp mô hình lần đầu sau khi mở app) và
+**~12 s** trên Realme CPU — **không chậm hơn** bậc 1 trên CPU (~13 s), vì prompt của từng lượt ngắn
+hơn nhiều so với prompt sáu gói của bậc 1. Ước lượng *"Realme CPU ~20–25 s"* ở spec 1.2 là quá bi
+quan. Dựng FST ràng buộc vẫn tốn **0,66 s** (OnePlus) / **1,0–1,2 s** (Realme) ở **mỗi** phiên.
+
+**Các điều spec và kế hoạch đoán, đối chiếu:** (1) bốn tên `Tool` · `ToolChoice` ·
+`FunctionCallResponse` · `ParallelFunctionCallResponse` có trong barrel `flutter_gemma.dart`, và
+`ModelResponse` là `sealed` đúng bốn lớp con — ✅ `flutter analyze` xác nhận (cả 1.8.3 lẫn 1.9.0);
+(2) *"lượt gọi tool không phát chữ"* — ✅ **0 ký tự** ở cả 4/4 lượt gọi; (3) *"`ToolChoice.auto`
+đủ để E2B gọi tool"* — ✅ 4/4 câu cần tool đều gọi, và 2/2 câu chào **không** gọi; (4) *"bốn tool
+dưới ~600 token"* — chưa đo (mới một tool, 323 ký tự). ⚠️ Spec 3.7 bảo đo `chat.currentTokens` để
+canh bẫy 4.29 — **không dùng được**: thuộc tính ấy chỉ cộng token của **câu trả lời**
+(`flutter_gemma` `lib/core/chat.dart:706–708`; ảnh +257 ở `:193`), không tính câu hỏi, chỉ dẫn hệ
+thống hay `tools_json`. Phép đo quyết định vẫn là lỗi native `INVALID_ARGUMENT … too long`.
+
+⚠️ Câu chào không gọi tool thì mô hình **trả lời thẳng** — trong vòng lặp thật đó là **L1**: câu bị
+vứt, màn rơi về bậc 1. Đúng thiết kế, và là lý do L1 phải có: câu thẳng ở bước này không có dữ liệu
+nào trước mắt mô hình.
+
+Móc tạm đã gỡ. Bước tiếp theo: **Task 5** (bốn hàm dựng hàng). Bẫy **4.33**.
 
 ---
 

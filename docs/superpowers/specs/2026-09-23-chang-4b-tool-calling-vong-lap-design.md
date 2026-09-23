@@ -6,16 +6,20 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 **Khung cố định:** lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`, mục
 *"Chặng 4"* · **Ba quyết định của người dùng trong lượt brainstorm 2026-09-23** (mục 1.2)
 
-> 🛑 **THI CÔNG DỪNG Ở CỔNG TASK 4 (2026-09-23).** Task 1–4 xong mã (`0c9ca1e` → `87ef4f3`),
-> chưa nối vào màn nào. Spike: engine **sập native** khi phiên mang tool trên **cả hai máy** —
-> Realme RMX2205 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong `CompositeLogitMask::Apply`
-> ngay lượt giải mã đầu, kể cả câu không cần tool; đường bậc 1 cùng APK chạy bình thường. Mục **9.13** + bẫy **4.33** `docs/AI_EDGE_FEATURE.md`.
+> 🚧 **ĐANG THI CÔNG — Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói (2026-09-23).** Task 1–4
+> (`0c9ca1e` → `87ef4f3`) chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
+> tool trên **cả hai máy** — Realme 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong
+> `CompositeLogitMask::Apply`. ⚠️ **Mục 4 dưới đây ("không thêm gói `pubspec`") ĐÃ BỊ PHÁ, có duyệt**:
+> người dùng duyệt đích danh nâng `flutter_gemma` 1.8.3 → **1.9.0** và `flutter_gemma_litertlm`
+> ^1.7.0 → **1.8.0** (`af2aa81`) — sau đó **6/6 không sập**, E2B gọi đúng tool, lượt gọi 0 ký tự
+> chữ. Mục **9.13** + bẫy **4.33** `docs/AI_EDGE_FEATURE.md`.
 > **Hai chỗ spec đoán sai:** (1) mục **2** tả `tools_json` native nhưng **không** nói gói gắn cứng
 > `enable_constrained_decoding = true` hễ có tool (`flutter_gemma_litertlm-1.7.0/lib/src/ffi/
 > litert_lm_client.dart:1080–1086`) — chính thứ sập; (2) mục **3.7** bảo đo `chat.currentTokens`
 > để canh trần token — thuộc tính ấy chỉ cộng token **câu trả lời** (`flutter_gemma-1.8.3/lib/core/
-> chat.dart:706–708`), không đo được thứ bẫy 4.29 cần. Ngân sách độ trễ mục **1.2** cũng chưa tính
-> **935 ms** dựng FST ràng buộc ở **mỗi** phiên.
+> chat.dart:706–708`), không đo được thứ bẫy 4.29 cần. Ngân sách độ trễ mục **1.2** chưa tính
+> **0,7–1,2 s** dựng FST ràng buộc ở **mỗi** phiên — nhưng tổng thể lại **nhanh hơn** ước lượng:
+> câu cần tool ~9 s OnePlus / ~12 s Realme, không phải 20–25 s.
 
 ---
 
