@@ -7,9 +7,9 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 *"Chặng 4"* · **Ba quyết định của người dùng trong lượt brainstorm 2026-09-23** (mục 1.2)
 
 > 🛑 **THI CÔNG DỪNG Ở CỔNG TASK 4 (2026-09-23).** Task 1–4 xong mã (`0c9ca1e` → `87ef4f3`),
-> chưa nối vào màn nào. Spike trên Realme RMX2205: engine **sập native 3/3** khi phiên mang tool —
-> `SIGSEGV` trong `CompositeLogitMask::Apply` ngay lượt giải mã đầu, kể cả câu không cần tool;
-> đường bậc 1 cùng APK chạy bình thường. Mục **9.13** + bẫy **4.33** `docs/AI_EDGE_FEATURE.md`.
+> chưa nối vào màn nào. Spike: engine **sập native** khi phiên mang tool trên **cả hai máy** —
+> Realme RMX2205 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong `CompositeLogitMask::Apply`
+> ngay lượt giải mã đầu, kể cả câu không cần tool; đường bậc 1 cùng APK chạy bình thường. Mục **9.13** + bẫy **4.33** `docs/AI_EDGE_FEATURE.md`.
 > **Hai chỗ spec đoán sai:** (1) mục **2** tả `tools_json` native nhưng **không** nói gói gắn cứng
 > `enable_constrained_decoding = true` hễ có tool (`flutter_gemma_litertlm-1.7.0/lib/src/ffi/
 > litert_lm_client.dart:1080–1086`) — chính thứ sập; (2) mục **3.7** bảo đo `chat.currentTokens`

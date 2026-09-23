@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### 🛑 Edge AI — lát 4b: Task 1–4 xong mã, DỪNG ở cổng Task 4 — engine sập native khi phiên mang tool (2026-09-23)
+### 🛑 Edge AI — lát 4b: Task 1–4 xong mã, DỪNG ở cổng Task 4 — engine sập native khi phiên mang tool, trên cả hai máy (2026-09-23)
 
 Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
 Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
@@ -607,20 +607,21 @@ cho L2/L3), `CongCu` / `KhaiBaoCongCu` / bốn tên tool / `kTranGoiCongCu`, `Ph
 **Chưa nối vào màn nào** — app đang chạy vẫn là bậc 1. Test **3496/3496** (3 skip), analyze
 **26**; schema, payload, `pubspec` không đổi.
 
-🛑 **Spike Task 4 trên Realme RMX2205: engine SẬP NATIVE 3/3 khi phiên mang tool** — `SIGSEGV`
-(`SEGV_ACCERR`) trong `ConstrainedDecoder::ProcessLogits` → `CompositeLogitMask::Apply`, ngay lượt
-giải mã đầu, backtrace trùng từng offset cả ba lần, **kể cả câu "Xin chao"** không cần tool. Phép
-đối chứng: đường bậc 1 (không tool) trên **cùng APK, cùng máy** trả lời đúng. Gốc nằm ở gói:
-`flutter_gemma_litertlm` 1.7.0 **gắn cứng** `enable_constrained_decoding = true` hễ phiên có tool
-(`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Có bản `flutter_gemma` 1.9.0 /
+🛑 **Spike Task 4: engine SẬP NATIVE khi phiên mang tool, trên CẢ HAI máy** — Realme RMX2205 (CPU,
+Android 13) **3/3** `SIGSEGV`, OnePlus 13R (GPU, Android 16, máy demo) **2/2** `SIGBUS`, cùng một
+đường: `ConstrainedDecoder::ProcessLogits` → `CompositeLogitMask::Apply` → con trỏ hàm rác vào
+`libGemmaModelConstraintProvider.so`, ngay lượt giải mã đầu, **kể cả câu "Xin chao"** không cần
+tool. Phép đối chứng: đường bậc 1 (không tool) trên **cùng APK, cùng máy** trả lời đúng. Gốc nằm ở
+gói: `flutter_gemma_litertlm` 1.7.0 **gắn cứng** `enable_constrained_decoding = true` hễ phiên có
+tool (`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Có bản `flutter_gemma` 1.9.0 /
 `flutter_gemma_litertlm` 1.8.0, chưa biết có sửa không. Theo kế hoạch: **dừng**, Task 5–8 chưa
 dựng, chờ người dùng chọn hướng. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`.
 
-⚠️ **Hai chỗ kế hoạch sai, lộ ra khi thi công:** (1) ca test so thẳng danh sách **record chứa
-`Map`** (`ketQuaDaNhan`) đỏ trên cả mã đúng — record so `==` từng trường, `Map` so bằng danh tính,
-matcher `equals` không so sâu vào record; Task 3 đã trải cặp thành danh sách, Task 7 còn một ca
-cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính ấy chỉ cộng token
-của **câu trả lời**, không đo được thứ bẫy ấy cần.
+⚠️ **Hai chỗ spec/kế hoạch sai, lộ ra khi thi công:** (1) ca test của kế hoạch so thẳng danh sách
+**record chứa `Map`** (`ketQuaDaNhan`) — đỏ trên cả mã đúng, vì record so `==` từng trường, `Map`
+so bằng danh tính, matcher `equals` không so sâu vào record; Task 3 đã trải cặp thành danh sách,
+Task 7 còn một ca cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính
+ấy chỉ cộng token của **câu trả lời**, không đo được thứ bẫy ấy cần.
 
 ### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa, và màn Cài đặt AI thôi đè lỗi cũ (2026-09-23)
 

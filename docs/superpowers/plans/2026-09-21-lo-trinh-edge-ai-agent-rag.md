@@ -28,8 +28,8 @@
 > nên ba câu còn hỏng **không** chữa được bằng gói số.
 > **Việc tiếp theo: lát 4b** — tool-calling + vòng lặp, với hình dạng nay đã rõ: tool trả **một
 > hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời. 🛑 **Thi công Task 1–4 xong mã
-> ngày 2026-09-23 rồi DỪNG ở cổng Task 4**: spike trên Realme — engine **sập native 3/3** khi phiên
-> mang tool (`flutter_gemma_litertlm` 1.7.0 gắn cứng giải mã có ràng buộc; mục **9.13**, bẫy
+> ngày 2026-09-23 rồi DỪNG ở cổng Task 4**: spike — engine **sập native** khi phiên mang tool
+> trên **cả hai máy** (Realme 3/3, OnePlus 13R 2/2) (`flutter_gemma_litertlm` 1.7.0 gắn cứng giải mã có ràng buộc; mục **9.13**, bẫy
 > **4.33** `AI_EDGE_FEATURE.md`), Task 5–8 chờ người dùng chọn hướng. Spec đã duyệt + kế hoạch 9
 > task: `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`,
 > `plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`. Khung cố định của chặng 4 ở dưới **đổi hai
