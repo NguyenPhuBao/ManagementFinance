@@ -769,8 +769,9 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 **app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
 P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
 `flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
-mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **44** tệp test / **424** ca
-(đếm 2026-09-23 sau lát 4b; mốc *"`ai_edge` 33 tệp / 294 ca"* từng ghi ở đây là của 2026-09-22), và mô
+mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **47** tệp test / **448** ca
+(đếm 2026-09-23 tối sau bước 1b — ba tệp mới của canary phiên có tool; mốc **44 / 424** là sau lát 4b,
+và mốc *"`ai_edge` 33 tệp / 294 ca"* từng ghi ở đây là của 2026-09-22), và mô
 hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
 khi canary bắt được cú sập native trên Mali).
 
