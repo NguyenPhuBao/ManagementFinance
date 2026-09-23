@@ -17,7 +17,7 @@ import '../../../core/utils/currency_formatter.dart';
 import 'dau_van.dart';
 import 'nhan_xet.dart';
 
-enum LoaiSo { tien, phanTram, soNgay, soDem }
+enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang }
 
 /// Trần số mục mà **một** gói được nhồi vào prompt cho mỗi loại danh sách.
 ///
@@ -90,6 +90,27 @@ SoLieu soDem(String nhan, int n, {String? ten}) => SoLieu(
       chuoi: '$n',
       loai: LoaiSo.soDem,
     );
+
+/// Một NGÀY theo lịch — hàng giao dịch mang nó (bước 2). [SoLieu.chuoi] là
+/// `dd/MM`, thêm `/yyyy` khi khác năm của [now]: năm hiện tại in ra là tiếng ồn,
+/// năm khác mà thiếu thì sai nghĩa. [SoLieu.soTho] = `yyyy·10000 + MM·100 + dd`
+/// — `_khop` của `kiem_so.dart` bóc ngày, tháng, năm lại từ đó.
+SoLieu soNgayThang(
+  String nhan,
+  DateTime ngay, {
+  String? ten,
+  required DateTime now,
+}) {
+  String hai(int x) => x.toString().padLeft(2, '0');
+  final ngayThang = '${hai(ngay.day)}/${hai(ngay.month)}';
+  return SoLieu(
+    nhan: nhan,
+    ten: ten,
+    soTho: (ngay.year * 10000 + ngay.month * 100 + ngay.day).toDouble(),
+    chuoi: ngay.year == now.year ? ngayThang : '$ngayThang/${ngay.year}',
+    loai: LoaiSo.ngayThang,
+  );
+}
 
 /// Bảng tra **nhãn → chuỗi** cho mẫu câu — định nghĩa DUY NHẤT, cả sáu gói
 /// dùng. Mục **ĐẦU TIÊN** của mỗi nhãn thắng.

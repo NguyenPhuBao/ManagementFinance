@@ -6,9 +6,10 @@
 /// gói số) và SLM (P3). Đây là lớp chắn **duy nhất** giữa mô hình và người
 /// dùng, nên nó không được nới vì mô hình lớn hơn (spec mục 4.4).
 ///
-/// Giới hạn cố ý: ngày tháng (`12/09`) cũng là số. Mẫu câu của app không in
-/// ngày; nếu sau này gói số cần ngày thì thêm `LoaiSo.ngayThang` chứ đừng nới
-/// regex.
+/// Ngày tháng (`12/09`, `12/09/2026`) là một LOẠI số riêng từ bước 2
+/// (`LoaiSo.ngayThang`): [trichSo] tách ngày **trước** rồi mới trích số, và
+/// ngày chỉ khớp mục ngày. Chỉ `dd/mm` và `dd/mm/yyyy` là ngày — nới thêm dạng
+/// (`12/09/26`, "12 tháng 9") là mở cửa cho số bịa.
 ///
 /// ⚠️ Chữ số nằm **trong tên một đối tượng** của gói (`Tiền nhà T9`) không phải
 /// con số — [trichSoNgoaiTen] bỏ những tên ấy khỏi câu trước khi trích (bước
@@ -22,8 +23,25 @@ import 'goi_so.dart';
 class SoTrich {
   final double giaTri;
   final bool laPhanTram;
-  const SoTrich(this.giaTri, {required this.laPhanTram});
+
+  /// Một NGÀY `dd/mm` hoặc `dd/mm/yyyy` (bước 2). Khi ấy [giaTri] là
+  /// `tháng·100 + ngày`, và [nam] là năm nếu câu có ghi — `null` khi câu chỉ ghi
+  /// ngày/tháng.
+  final bool laNgay;
+  final int? nam;
+
+  const SoTrich(
+    this.giaTri, {
+    required this.laPhanTram,
+    this.laNgay = false,
+    this.nam,
+  });
 }
+
+/// Ngày `dd/mm` hoặc `dd/mm/yyyy` đứng riêng — không chữ số hay `/` dính hai
+/// bên. `12/09/26` không khớp (năm hai chữ số) và đi tiếp như ba con số.
+final RegExp _mauNgay =
+    RegExp(r'(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}))?(?![\d/])');
 
 /// Nhóm 1: dấu âm (`-` hoặc `−`); nhóm 2: phần nguyên có chấm nghìn
 /// (`2.100.000`) hoặc số trần; nhóm 3: phần thập phân sau **phẩy**; nhóm 4: hậu
@@ -34,19 +52,56 @@ class SoTrich {
 final RegExp _mau =
     RegExp(r'(-|−)?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?\s*(%)?');
 
-/// Mọi chuỗi số trong [cau], đã chuẩn hoá về `double`.
-List<SoTrich> trichSo(String cau) => [
-      for (final m in _mau.allMatches(cau))
-        SoTrich(
-          (m.group(1) == null ? 1 : -1) *
-              double.parse(
-                '${m.group(2)!.replaceAll('.', '')}.${m.group(3) ?? '0'}',
-              ),
-          laPhanTram: m.group(4) != null,
-        ),
-    ];
+/// Mọi chuỗi số trong [cau], đã chuẩn hoá về `double`, theo thứ tự trong câu.
+///
+/// Ngày tách **trước**: `12/09` không được thành hai con số 12 và 9. Ngày hợp lệ
+/// được thay bằng khoảng trắng **cùng độ dài** — giữ vị trí để kết quả theo thứ
+/// tự câu, và để hai cụm số hai bên không dính thành một số mới. Dạng khớp mẫu
+/// mà không hợp lệ (`45/13`) để nguyên cho phép trích số: không phải ngày thì
+/// là số, và số không có trong gói thì bị chặn.
+List<SoTrich> trichSo(String cau) {
+  final theoViTri = <(int, SoTrich)>[];
+  final conLai = StringBuffer();
+  var daChep = 0;
+  for (final m in _mauNgay.allMatches(cau)) {
+    final ngay = int.parse(m.group(1)!);
+    final thang = int.parse(m.group(2)!);
+    if (ngay < 1 || ngay > 31 || thang < 1 || thang > 12) continue;
+    theoViTri.add((
+      m.start,
+      SoTrich(
+        (thang * 100 + ngay).toDouble(),
+        laPhanTram: false,
+        laNgay: true,
+        nam: m.group(3) == null ? null : int.parse(m.group(3)!),
+      ),
+    ));
+    conLai
+      ..write(cau.substring(daChep, m.start))
+      ..write(' ' * (m.end - m.start));
+    daChep = m.end;
+  }
+  conLai.write(cau.substring(daChep));
+  for (final m in _mau.allMatches(conLai.toString())) {
+    theoViTri.add((
+      m.start,
+      SoTrich(
+        (m.group(1) == null ? 1 : -1) *
+            double.parse(
+              '${m.group(2)!.replaceAll('.', '')}.${m.group(3) ?? '0'}',
+            ),
+        laPhanTram: m.group(4) != null,
+      ),
+    ));
+  }
+  theoViTri.sort((a, b) => a.$1.compareTo(b.$1));
+  return [for (final x in theoViTri) x.$2];
+}
 
 bool _khop(SoTrich x, SoLieu s) {
+  // Ngày chỉ khớp mục ngày và ngược lại — "còn 12 ngày" không được lọt nhờ
+  // một ngày 12/09 có thật, ngày 12/09 không được lọt nhờ số đếm 912.
+  if (x.laNgay != (s.loai == LoaiSo.ngayThang)) return false;
   final lech = (x.giaTri - s.soTho).abs();
   return switch (s.loai) {
     // Nửa đồng: đuôi lẻ của double, cùng ngưỡng với đối soát số dư.
@@ -54,8 +109,14 @@ bool _khop(SoTrich x, SoLieu s) {
     // Một chữ số thập phân (G2) → sai số làm tròn tối đa 0,05.
     LoaiSo.phanTram => x.laPhanTram && lech <= 0.05,
     LoaiSo.soNgay || LoaiSo.soDem => !x.laPhanTram && lech == 0,
+    // Ngày và tháng phải trùng; năm chỉ so khi câu có ghi năm.
+    LoaiSo.ngayThang => _cungNgay(x, s.soTho.round()),
   };
 }
+
+bool _cungNgay(SoTrich x, int soTho) =>
+    soTho % 10000 == x.giaTri.round() &&
+    (x.nam == null || x.nam == soTho ~/ 10000);
 
 final RegExp _coChuCai = RegExp(r'\p{L}', unicode: true);
 final RegExp _coChuSo = RegExp(r'\d');

@@ -178,4 +178,68 @@ void main() {
       );
     });
   });
+
+  // ── Ngày tháng (bước 2, 2026-09-23) ─────────────────────────────────────
+  //
+  // Hàng giao dịch mang NGÀY (`12/09`). Trước bước 2, `trichSo` đọc nó là hai
+  // con số 12 và 9 — không có trong gói — nên mọi câu nêu ngày đều bị chặn.
+  // Ngày phải là một LOẠI số riêng: số trần không được khớp mục ngày, và ngày
+  // không được khớp mục tiền / số đếm, nếu không số bịa lọt nhờ trùng chữ số.
+  group('ngày tháng — LoaiSo.ngayThang (bước 2)', () {
+    final now = DateTime(2026, 9, 23);
+    _Gia coNgay() => _Gia([
+          soTien('Số tiền', 50000, ten: 'Ăn uống'),
+          soNgayThang('Ngày', DateTime(2026, 9, 12), ten: 'Ăn uống', now: now),
+        ]);
+
+    test('⭐ trichSo tách NGÀY trước số: 12/09 là một ngày, không phải 12 và 9', () {
+      final s = trichSo('Ăn uống 50.000 đ ngày 12/09.');
+      expect(s.map((x) => x.laNgay).toList(), [false, true]);
+      expect(s[1].giaTri, 912, reason: 'ngày mã hoá tháng·100 + ngày');
+      expect(s[1].nam, isNull, reason: 'câu không ghi năm');
+    });
+
+    test('kết quả theo đúng thứ tự trong câu', () {
+      final s = trichSo('Ngày 12/09 chi 50.000 đ.');
+      expect(s.map((x) => x.laNgay).toList(), [true, false]);
+      expect(s[1].giaTri, 50000);
+    });
+
+    test('câu nêu đúng ngày lọt; ngày sai bị chặn', () {
+      expect(kiemSo('Ăn uống 50.000 đ ngày 12/09.', coNgay()), isTrue);
+      expect(kiemSo('Ăn uống 50.000 đ ngày 13/09.', coNgay()), isFalse,
+          reason: '13/09 không có trong gói — mô hình vừa bịa một ngày');
+    });
+
+    test('năm chỉ so khi câu có ghi năm', () {
+      expect(kiemSo('Ngày 12/09/2026.', coNgay()), isTrue);
+      expect(kiemSo('Ngày 12/09/2025.', coNgay()), isFalse);
+      final khacNam = _Gia([soNgayThang('Ngày', DateTime(2025, 12, 28), now: now)]);
+      expect(kiemSo('Ngày 28/12.', khacNam), isTrue,
+          reason: 'câu không ghi năm thì không có năm nào để sai');
+    });
+
+    test('⭐ số trần KHÔNG khớp mục ngày, ngày KHÔNG khớp mục số', () {
+      expect(kiemSo('Còn 12 ngày.', coNgay()), isFalse,
+          reason: '"12" trần không phải ngày 12/09 — khớp thì một số bịa lọt nhờ '
+              'trùng chữ số với một ngày có thật');
+      final soThuong = _Gia([soDem('Số khoản', 912), soNgay('Còn', 12)]);
+      expect(kiemSo('Ngày 12/09.', soThuong), isFalse,
+          reason: 'ngày 12/09 (mã 912) không phải số đếm 912');
+    });
+
+    test('dạng không hợp lệ không phải ngày — đi tiếp như số (chiều an toàn)', () {
+      expect(trichSo('45/13').map((x) => (x.giaTri, x.laNgay)).toList(),
+          [(45.0, false), (13.0, false)]);
+      final hai = trichSo('12/09/26');
+      expect(hai.length, 3, reason: 'năm hai chữ số không phải dạng ngày hợp lệ');
+      expect(hai.every((x) => !x.laNgay), isTrue);
+      expect(kiemSo('Ngày 12/09/26.', coNgay()), isFalse);
+    });
+
+    test('mô hình viết "ngày 12 tháng 9" → hai số trần → bị chặn', () {
+      expect(kiemSo('Ăn uống 50.000 đ ngày 12 tháng 9.', coNgay()), isFalse,
+          reason: 'hỏng theo chiều an toàn: rơi về mẫu câu; prompt dặn chép nguyên ngày');
+    });
+  });
 }

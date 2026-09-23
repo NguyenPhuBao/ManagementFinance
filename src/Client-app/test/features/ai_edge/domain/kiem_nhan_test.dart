@@ -250,4 +250,13 @@ void main() {
       );
     });
   });
+
+  test('mục NGÀY của một hàng mang tên → câu nêu ngày phải nêu tên (bước 2)', () {
+    final g = _Gia('tra_cuu', [
+      soNgayThang('Ngày', DateTime(2026, 9, 4), ten: 'Ăn uống', now: DateTime(2026, 9, 23)),
+    ]);
+    expect(kiemNhan('Ăn uống ngày 04/09.', [g]), isTrue);
+    expect(kiemNhan('Có một khoản ngày 04/09.', [g]), isFalse,
+        reason: 'luật 4a không đổi: mục có tên đòi câu nêu tên');
+  });
 }

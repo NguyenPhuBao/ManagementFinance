@@ -147,7 +147,7 @@ gồm cả tiền đi vay"* — im lặng, không exception, không log.
 ### 3.2 Gói số — hợp đồng trung tâm
 
 ```dart
-enum LoaiSo { tien, phanTram, soNgay, soDem }
+enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang }  // ngayThang: bước 2, chỉ hàng giao dịch
 
 class SoLieu {
   final String nhan;     // "Đã chi"
@@ -666,12 +666,18 @@ dữ liệu của gói, không do mô hình sinh. `kiemNhan` và `theCuaCau` tr�
 | `tien` | ≤ 0,5 đ | đuôi lẻ của `double`, cùng ngưỡng với đối soát số dư |
 | `phanTram` | ≤ 0,05 | G2 in một chữ số thập phân → sai số làm tròn tối đa 0,05 |
 | `soNgay` / `soDem` | **= 0** | không có gì để làm tròn |
+| `ngayThang` | ngày **và** tháng trùng; năm chỉ so khi câu ghi năm | bước 2 — dành cho hàng giao dịch |
 
 ⚠️ Regex bắt **cả dấu âm** (`-` và `−`) vì `soPhanTram` giữ dấu (`-8,3%`) — mất dấu
 là đảo nghĩa tăng/giảm mà bộ kiểm vẫn cho qua.
 
-**Giới hạn cố ý:** ngày tháng (`12/09`) cũng là số. Mẫu câu của app không in ngày;
-nếu sau này gói số cần ngày thì **thêm `LoaiSo.ngayThang`** chứ đừng nới regex.
+**Ngày tháng là một loại số riêng từ bước 2** (2026-09-23, `LoaiSo.ngayThang` — trước đó
+ngày `12/09` bị đọc là hai con số 12 và 9, và đoạn này ghi nó là *giới hạn cố ý* chờ đúng lối
+ấy). `trichSo` tách ngày **trước** rồi mới trích số; ngày chỉ khớp mục ngày, số trần không
+bao giờ khớp mục ngày. Chỉ `dd/mm` và `dd/mm/yyyy` là ngày: `12/09/26`, `45/13` hay *"12
+tháng 9"* đi tiếp như số và bị chặn nếu không có trong gói — chiều an toàn. Sáu gói số cũ
+và bốn tool của 4b **không** mang ngày; nơi dùng duy nhất sẽ là hàng giao dịch của tool
+`tim_giao_dich` (bước 2 — đang thi công, spec `2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`).
 
 **Câu không có số nào thì lọt** — không có gì để bịa.
 
