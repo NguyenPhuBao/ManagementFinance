@@ -133,3 +133,17 @@ String promptHoiDap(String cauHoi, List<GoiSo> goi) =>
     'để trả lời thì nói rõ là không có, không lấy số khác thay.\n'
     'Số liệu:\n${goi.map(_khoiSoLieu).join('\n')}\n'
     'Câu hỏi: $cauHoi\nTrả lời:';
+
+/// Chỉ dẫn hệ thống cho BẬC TOOL (chặng 4b, spec mục 3.7) — đi bằng
+/// `systemInstruction` native của LiteRT-LM, không nằm trong tin người dùng.
+///
+/// KHÔNG few-shot: thứ dẫn E2B chọn tool là mô tả tool tiếng Việt (`KhaiBaoCongCu.moTa`).
+/// Không mang con số nào ngoài giới hạn độ dài — một số ở đây là một số mô hình
+/// có thể chép vào câu mà không gói nào có (ca test canh).
+const String kPromptHeThongCongCu =
+    'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Bạn KHÔNG có sẵn số liệu nào '
+    'của người dùng: muốn biết bất kỳ con số hay tên nào (ngân sách, hoá đơn, ví, '
+    'chi tiêu), hãy gọi công cụ phù hợp TRƯỚC khi trả lời. Khi trả lời: chỉ dùng '
+    'tên và số mà công cụ trả về, chép nguyên chuỗi số (kể cả "đ" và dấu phẩy), nêu '
+    'tên đối tượng trước con số, không tự tính toán hay suy đoán. Công cụ báo không '
+    'có dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ.';

@@ -208,4 +208,21 @@ void main() {
     expect(() => promptCauTheoMan(_GoiGia('trang_chu', const [])),
         returnsNormally);
   });
+
+  group('kPromptHeThongCongCu (bậc tool, chặng 4b)', () {
+    test('bảo gọi công cụ TRƯỚC khi trả lời và chép nguyên chuỗi số', () {
+      expect(kPromptHeThongCongCu, contains('công cụ'));
+      expect(kPromptHeThongCongCu, contains('TRƯỚC'));
+      expect(kPromptHeThongCongCu, contains('chép nguyên'));
+    });
+    test('không mang con số nào ngoài giới hạn độ dài', () {
+      final so = RegExp(r'\d+')
+          .allMatches(kPromptHeThongCongCu)
+          .map((m) => m.group(0))
+          .toList();
+      expect(so, ['60'],
+          reason: 'Một số khác trong chỉ dẫn hệ thống là một số mô hình có thể '
+              'chép vào câu — mà nó không có trong gói nào.');
+    });
+  });
 }

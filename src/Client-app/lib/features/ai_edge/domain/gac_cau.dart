@@ -42,6 +42,35 @@ class BiChan extends SuKienGac {
   String toString() => 'BiChan($cau)';
 }
 
+/// Vòng lặp tool (chặng 4b) báo cho màn: [ten] là tool đang chạy; `null` = đã
+/// có hàng và mô hình đang viết câu — màn về "Đang nghĩ…". Không phải câu, không
+/// đi qua bộ kiểm.
+class DangTraCuu extends SuKienGac {
+  final String? ten;
+  const DangTraCuu(this.ten);
+
+  @override
+  bool operator ==(Object other) => other is DangTraCuu && other.ten == ten;
+  @override
+  int get hashCode => ten.hashCode;
+  @override
+  String toString() => 'DangTraCuu($ten)';
+}
+
+/// L1 (spec 4b mục 3.6): lượt đầu mô hình trả lời thẳng, không gọi tool nào —
+/// câu ấy bị vứt (không có dữ liệu trước mắt mô hình), màn tự rơi về bậc 1.
+/// Không còn sự kiện nào sau nó.
+class KhongTraCuu extends SuKienGac {
+  const KhongTraCuu();
+
+  @override
+  bool operator ==(Object other) => other is KhongTraCuu;
+  @override
+  int get hashCode => 0;
+  @override
+  String toString() => 'KhongTraCuu()';
+}
+
 /// Dấu kết câu **theo sau bởi khoảng trắng** — dấu chấm ngăn nghìn
 /// (`2.141.000`) theo sau bởi chữ số nên không khớp.
 ///

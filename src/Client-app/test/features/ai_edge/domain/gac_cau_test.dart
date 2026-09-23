@@ -155,4 +155,15 @@ void main() {
       expect(sk, [const CauQua('A 1.'), const BiChan('B 2.')]);
     });
   });
+
+  group('hai sự kiện của vòng lặp tool (chặng 4b)', () {
+    test('DangTraCuu so bằng theo tên; null = mô hình đang viết', () {
+      expect(const DangTraCuu('danh_sach_vi'), const DangTraCuu('danh_sach_vi'));
+      expect(const DangTraCuu(null), const DangTraCuu(null));
+      expect(const DangTraCuu('a'), isNot(const DangTraCuu(null)));
+    });
+    test('KhongTraCuu là singleton về nghĩa', () {
+      expect(const KhongTraCuu(), const KhongTraCuu());
+    });
+  });
 }

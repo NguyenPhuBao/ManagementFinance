@@ -306,6 +306,10 @@ class _AiChatPageState extends State<AiChatPage> {
           _cuonXuong();
         case BiChan(:final cau):
           debugPrintCauHong(cau);
+        case DangTraCuu():
+        case KhongTraCuu():
+          // Task 8 của kế hoạch 4b nối hai sự kiện này vào màn.
+          break;
       }
     }
     if (cauDaQua.isEmpty) {
