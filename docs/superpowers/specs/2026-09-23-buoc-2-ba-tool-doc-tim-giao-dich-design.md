@@ -1,7 +1,8 @@
 # Bước 2 — ba tool đọc (mục tiêu · gợi ý hạn mức · tìm giao dịch) + phép đo 20 câu lệnh (thiết kế)
 
-**Ngày:** 2026-09-23 · **Nhánh:** `TranQuangDat` @ `a16b3d2` · **Trạng thái:** chờ người dùng đọc spec — thiết
-kế ba phần đã duyệt trong chat cùng ngày (mục 1.2)
+**Ngày:** 2026-09-23 · **Nhánh:** `TranQuangDat` @ `a16b3d2` · **Trạng thái:** ✅ **đã duyệt** — thiết kế ba
+phần duyệt trong chat cùng ngày, ba quyết định thêm lúc viết duyệt ở phiên sau (mục 1.2, hàng 11–13); chưa có
+kế hoạch, chưa dòng mã nào
 **Đầu vào:** đơn đặt hàng tool, mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md` (hai tool còn lại: dự báo mục
 tiêu — câu 11, gợi ý hạn mức — câu 5); nửa sau mục **2.1** `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`
 (tool tìm giao dịch + phép đo 20 câu lệnh); tầng tool của lát 4b (spec
@@ -37,11 +38,12 @@ trả `List<SoLieu>` (đi theo hàng) · ③ luôn có đường lùi · ④ **k
 | 8 | Ba chỗ chỉnh khi trình phần 2 | Tool mục tiêu thêm **Đã tích** và **Mục tiêu**; tool tìm thêm **`sap_xep`**; tên danh mục/ví của hàng gom vào **`KetQuaCongCu.tenLienQuan`** chứ không ghi ở từng hàng |
 | 9 | Tham số tiền | **Số đồng** theo JSON Schema; chuỗi chữ số được nhận; *"500k"* / *"nửa triệu"* thì tool **từ chối** kèm ví dụ — quy đổi là việc của mô hình và chính là thứ phép đo chấm; bảng quy đổi *"k / củ"* để bước 3. `so_tien_tu > so_tien_den` cũng từ chối, không tự hoán đổi |
 | 10 | Giao diện | Không khối mới → **không lên Stitch** (tiền lệ mục 1.2 spec 4b); chỉ thêm nhãn cho dòng chỉ báo |
+| 11 | Giao dịch ghi ngày tương lai (sau `now`) | Tool tìm giao dịch **bỏ** — CSDL thật có hai khoản trích mục tiêu hẹn trước (10/10, 10/11); không bỏ thì *"lần cuối tôi nạp tiền cho muaxe là ngày nào"* nhận **10/11**, một việc chưa xảy ra. Cùng lý lẽ với `cuaSoNhinLai` (đóng cửa sổ tại `now`). Mục 3.8 bước 4 |
+| 12 | Ngưỡng giữ `maxTokens: 4096` | Giữ khi **không sập**, **không bị hệ thống giết**, và RAM đỉnh tăng **≤ 0,5 GB** so với 2.048, đo trên cả hai máy; vượt thì **dừng và báo người dùng**. Mục 3.10 |
+| 13 | Luật tiêu đề dòng giao dịch | **Tách** thành hàm thuần `tieuDeGiaoDich` ở `transaction/domain/`; `buildTransactionRowContent` (4 chỗ gọi) gọi lại nó — tool và Sổ giao dịch dùng **một** luật. Mục 3.8 bước 6 |
 
-⚠️ **Một quyết định THÊM LÚC VIẾT spec — người dùng soát ở đây:** tool tìm giao dịch **bỏ giao dịch ghi ngày
-tương lai** (sau `now`). CSDL thật có hai khoản trích mục tiêu hẹn trước (10/10, 10/11); không bỏ thì câu
-*"lần cuối tôi nạp tiền cho muaxe là ngày nào"* nhận **10/11** — một việc chưa xảy ra. Cùng lý lẽ với
-`cuaSoNhinLai` (đóng cửa sổ tại `now`). Mục 3.8.
+*(Hàng 11–13 là ba quyết định spec thêm **lúc viết**, chưa hỏi trong chat; người dùng duyệt cả ba ở phiên sau,
+2026-09-23.)*
 
 ### 1.3 Dữ liệu nền (đo 2026-09-23 trên CSDL máy ảo, tài khoản 10, chỉ đọc)
 
@@ -255,14 +257,15 @@ Các bước, theo thứ tự:
    khoảng tiền qua `KhoangTien.chua`). `chuyen` ⇔ `TransactionTypeFilter.transfer`; `tatCa` ⇔ `all`.
 3. **Bỏ** khoản điều chỉnh số dư (`laKhoanDieuChinh`) và khoản mở sổ (`laKhoanMoSo`) — ghi sổ, không phải
    thu chi. Khoản **chuyển** giữ lại khi `chieu` là `chuyen` hoặc `tatCa`.
-4. **Bỏ khoản ghi ngày sau `now`** (quyết định thêm lúc viết — mục 1.2).
+4. **Bỏ khoản ghi ngày sau `now`** (mục 1.2 hàng 11).
 5. `soKhop` và ba tổng tính trên **mọi** khoản còn lại (`summarizeTransactions` cho thu/chi; tổng chuyển cộng ở
    đây — không ở `ai_edge`).
 6. Xếp: `soTien` giảm dần, hoặc `moiNhat` theo ngày giảm dần; lấy `toiDa`; dựng `DongTimThay` với tên từ
    `lookup` (danh mục kể cả đã xoá mềm; `null` → *Chưa phân loại* trong chữ trạng thái).
    **Tên hàng** theo đúng luật tiêu đề dòng của Sổ giao dịch: ghi chú → tên danh mục → nhãn loại
    (`transactionTypeLabel`: *Khoản chi · Khoản thu · Chuyển khoản*). Luật ấy hiện nằm **trong**
-   `buildTransactionRowContent` (tầng giao diện, 5 chỗ gọi) → **tách** thành hàm thuần `tieuDeGiaoDich` ở
+   `buildTransactionRowContent` (tầng giao diện, **4** chỗ gọi trong `lib/` — đếm bằng máy 2026-09-23; bản
+   nháp ghi 5) → **tách** thành hàm thuần `tieuDeGiaoDich` ở
    `transaction/domain/` và cho widget gọi lại nó — một định nghĩa, khuôn `viChoGoiSoTu` của 4b. Chép lại luật
    ở hàm tìm là bản thứ hai, và hai bản sẽ lệch nhau ngày một bên đổi.
 
