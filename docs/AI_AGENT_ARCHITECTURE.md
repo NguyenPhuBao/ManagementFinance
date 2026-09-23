@@ -765,9 +765,15 @@ người dùng.
 3. 🛑 **Lát 4a — phần "sửa prompt và nhãn" — XONG MÃ 2026-09-23, cổng chưa đạt** (nhóm A **1/4**).
    Nó chữa được câu 3 và sửa hai lỗi đang chạy, nhưng chứng minh **danh sách có tên là CẦN nhưng
    CHƯA ĐỦ**: mô hình không nối được hai mục rời. Xem "Đo lại sau chặng 4a" ở mục **5.6**.
-4. ⬜ **Lát 4b — tool layer + vòng lặp.** Khai sáu tool, trần 3 lượt gọi, không tool ghi.
-   ⚠️ Hình dạng đã đổi sau 4a: tool phải trả **một hàng đầy đủ** (tên + số + trạng thái trong
-   cùng kết quả), **không** phải nhiều `SoLieu` rời — đó chính là thứ 4a đo được là không đủ.
+4. 📝 **Lát 4b — tool layer + vòng lặp: spec đã duyệt + kế hoạch 9 task (2026-09-23), CHƯA thi
+   công.** Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
+   dùng chốt **bốn** tool (không phải sáu) cho lát này — `danh_sach_ngan_sach` · `danh_sach_hoa_don`
+   · `danh_sach_vi` · `chi_tieu_theo_ky`; `duBaoMucTieu`, `goiYHanMuc`, nhóm D để lát sau. Trần **3
+   lời gọi**, không tool ghi, hướng **A** (tool THAY gói số trong prompt).
+   ⚠️ Hình dạng đã đổi sau 4a: tool trả **một hàng đầy đủ** (tên + số + trạng thái trong cùng
+   kết quả) — `HangSoLieu`, tích luỹ vào `GoiSoTraCuu extends GoiSo`. Bất biến ② *"mọi tool trả
+   `List<SoLieu>`"* (mục 5.2, 6) vẫn đúng: `SoLieu` đi **theo hàng** chứ không rời, và ba lớp chắn
+   nhận `[goiTraCuu]` y như sáu gói cũ.
 
 *(Bản cũ của bước 3 ghi ba câu 12, 14, 20 "không cần tool nào, sửa ở prompt và nhãn, nên làm
 trước khi dựng tool". Vế "làm trước" đã làm — đó là lát 4a. Vế "không cần tool nào" thì **chỉ

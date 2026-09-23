@@ -626,6 +626,20 @@ thật có đi tới đường này không.
 
 Test **3470/3470** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
 
+📝 **Lát 4b — spec đã duyệt và kế hoạch đã viết cùng ngày, CHƯA thi công** (người dùng đọc kế hoạch
+trước). Spec `superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md` — ba quyết định
+của người dùng trong lượt brainstorm: đích = tầng tool + **bốn** tool *"danh sách có tên"*
+(`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`); chấp nhận hai
+lượt sinh trên cả Realme CPU lẫn OnePlus, đo thật; **hướng A — tool THAY gói số trong prompt** (B tái
+hiện lỗi 4a, C không phải agent). Hình dạng: `HangSoLieu` tích luỹ vào `GoiSoTraCuu extends GoiSo`
+(ba lớp chắn dùng nguyên), `PhienCongCu` thuần (bản thật chỉ trong `slm_runtime.dart`), vòng lặp tự
+viết trần 3 lời gọi + thang lùi L1–L4 — **L1** (chưa tool nào chạy thì không hiện câu, rơi về bậc 1)
+là chốt chặn câu bịa **không số** mà `kiemSo` mù. Mục 2 của spec ghi những điều đọc được từ mã gói
+`flutter_gemma` 1.8.3 kèm dòng. Kế hoạch **9 task** ở
+`superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md` (thư mục gitignore): Task 4 là
+**spike trên Realme** — chưa thấy `FunctionCallResponse` thì chưa dựng tầng. M3 (luật ngủ đông) không
+chặn lát này: không tool nào chạm `tai_phan_bo.dart`.
+
 ### 🛑 Edge AI — chặng 4a: tên đối tượng trong gói số — CỔNG CHƯA ĐẠT (2026-09-23)
 
 Spec `superpowers/specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`, chín task, thi công
