@@ -46,6 +46,10 @@ class ViChoGoiSo {
 /// lại đuôi lẻ. Không có ngưỡng thì một ví đúng bằng 0 có thể bị gọi là âm.
 const double _nguongAm = -0.5;
 
+/// Ví âm NGOÀI Ý MUỐN — một định nghĩa cho gói ví và tool `danh_sach_vi`
+/// (chặng 4b). Ví bật cờ cho phép âm (G27) không tính.
+bool viDangAm(ViChoGoiSo v) => v.soDu < _nguongAm && !v.allowNegative;
+
 class GoiSoVi extends GoiSo {
   @override
   String get man => 'vi';
@@ -97,7 +101,7 @@ class GoiSoVi extends GoiSo {
         soNgoai++;
       }
 
-      if (v.soDu < _nguongAm && !v.allowNegative) am++;
+      if (viDangAm(v)) am++;
     }
 
     // Chặng 4a: mỗi ví góp một mục mang TÊN của nó, để câu hỏi "ví nào đang
@@ -124,7 +128,7 @@ class GoiSoVi extends GoiSo {
     final theoVi = <SoLieu>[
       for (final v in conSong.take(kToiDaMucMoiGoi))
         soTien(
-          v.soDu < _nguongAm && !v.allowNegative ? 'Đang âm' : 'Số dư',
+          viDangAm(v) ? 'Đang âm' : 'Số dư',
           v.soDu,
           ten: v.ten,
         ),
