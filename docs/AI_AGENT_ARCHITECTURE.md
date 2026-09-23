@@ -515,10 +515,13 @@ vẫn dùng được. Đo lại: câu sai bị chặn trở lại.
 
 #### Hai lỗi thật lượt đo bắt được — ngoài phạm vi chặng 3
 
-- ⚠️ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn cùng giá trị.** Câu 15: câu trả lời là
-  *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*. Cả hai
-  cùng bằng **1**, và `theCuaCau` khớp theo **giá trị** nên lấy nhầm nhãn. Cùng họ bẫy **4.19**
-  (thẻ so chuỗi con) nhưng nguyên nhân khác: **trùng giá trị**, không phải chuỗi con. Chưa sửa.
+- ✅ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn cùng giá trị** — **đã sửa ở chặng 4a**
+  (Task 3, `20bbc05`). Câu 15: câu trả lời là *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn
+  1"** — nhãn của *hoá đơn quá hạn*. Cả hai cùng bằng **1**, và `theCuaCau` khớp theo **giá trị**
+  nên lấy nhầm nhãn. Cùng họ bẫy **4.19** (thẻ so chuỗi con) nhưng nguyên nhân khác: **trùng giá
+  trị**, không phải chuỗi con. Thẻ nay ưu tiên mục mà **câu nhắc tới** (cùng phép âm tiết với
+  `kiemNhan`) — bẫy **4.27** `AI_EDGE_FEATURE.md`. *(Dòng này từng ghi "Chưa sửa" — đúng lúc đo,
+  sai từ tối cùng ngày.)*
 - ⚠️ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số.** Trang chủ hiện *Thu nhập 15.145.000*,
   gói phân tích trả *Tổng thu 15.135.000* (đo cùng lúc, cùng tài khoản). Chênh ấy lan sang mọi
   câu trả lời dùng tổng thu. Chưa rõ bên nào đúng — **đừng sửa bên nào trước khi chốt con số nào

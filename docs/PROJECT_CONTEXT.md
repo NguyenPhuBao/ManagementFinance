@@ -679,13 +679,15 @@ thì còn bao nhiêu"* cần **so sánh** và **trừ** giữa hai gói. Đúng 
 không tính** — nên chúng chỉ giải được ở vòng 3 bằng cách gọi hai tool rồi để **hàm domain** làm
 phép tính.
 
-⚠️ **Hai lỗi thật lượt đo bắt được, ngoài phạm vi chặng 3, chưa sửa:**
+⚠️ **Hai lỗi thật lượt đo bắt được, ngoài phạm vi chặng 3** — cái đầu ✅ **đã sửa ở chặng 4a**, cái
+sau **vẫn mở** *(dòng này từng ghi "chưa sửa" cho cả hai — đúng lúc viết, sai từ tối cùng ngày)*:
 
-1. **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn trùng GIÁ TRỊ.** Câu 15 trả lời *"Ví đang
-   âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*. Cả hai cùng bằng
-   **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ bẫy **4.19** nhưng nguyên nhân khác hẳn:
-   trùng giá trị, không phải chuỗi con.
-2. **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
+1. ✅ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn trùng GIÁ TRỊ** — sửa ở chặng 4a Task 3
+   (`20bbc05`). Câu 15 trả lời *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của
+   *hoá đơn quá hạn*. Cả hai cùng bằng **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ bẫy
+   **4.19** nhưng nguyên nhân khác hẳn: trùng giá trị, không phải chuỗi con. Thẻ nay ưu tiên mục mà
+   câu nhắc tới — bẫy **4.27** `AI_EDGE_FEATURE.md`.
+2. ⚠️ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
    phân tích *Tổng thu 15.135.000*, đo cùng lúc cùng tài khoản. Chênh ấy lan sang mọi câu trả lời
    dùng tổng thu. **Đừng sửa bên nào trước khi chốt con số nào mới đúng** — cùng lối đã xử lý chỗ
    lệch *"3 hoá đơn"* / *"Cần thanh toán (4)"*.
