@@ -33,7 +33,9 @@ import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
+import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
+import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
@@ -471,9 +473,19 @@ Future<void> setupDependencies() async {
   // dựng nó là nạp engine native, thứ không được xảy ra lúc mở app.
   // Canary GPU: Mali (Dimensity 1100) sập native khi gắn delegate OpenCL —
   // xem `domain/canary_gpu.dart`. Dấu nằm cùng thư mục với tệp mô hình.
+  // Canary phiên có tool (bước 1b): đăng ký RIÊNG vì `main.dart` xét dấu sót
+  // của nó lúc khởi động, khi `SlmRuntime` chưa được dựng — dựng lớp này chỉ
+  // là giữ hai hàm, không chạm engine. Nguồn lý do thoát là kênh Android thật.
+  sl.registerLazySingleton<CanaryCongCu>(
+    () => CanaryCongCu(
+      thuMuc: getApplicationSupportDirectory,
+      nguon: const NguonLyDoThoatAndroid(),
+    ),
+  );
   sl.registerLazySingleton<SlmRuntime>(
     () => SlmRuntimeThat(
       canary: const CanaryGpu(thuMuc: getApplicationSupportDirectory),
+      canaryCongCu: sl<CanaryCongCu>(),
     ),
   );
 

@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
+import '../domain/canary_cong_cu.dart';
 import '../domain/canary_gpu.dart';
 import '../domain/cong_cu.dart';
 import 'phien_cong_cu.dart';
@@ -35,7 +36,8 @@ abstract class SlmRuntime {
   /// Mở một PHIÊN hội thoại có tool (chặng 4b). [heThong] đi bằng system
   /// instruction native của LiteRT-LM; [cauHoi] là tin người dùng đã xếp vào
   /// phiên. Ném `StateError` khi mô hình chưa nạp — người gọi bắt và rơi về
-  /// câu "không chạy được" (L4).
+  /// câu "không chạy được" (L4). Ném `BacCongCuDaTat` khi máy này từng sập
+  /// native ở phiên có tool (canary 1b) — người gọi rơi về bậc 1 (L1).
   Future<PhienCongCu> moPhien({
     required String heThong,
     required String cauHoi,
@@ -53,7 +55,10 @@ class SlmRuntimeThat implements SlmRuntime {
   /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
   final CanaryGpu? canary;
 
-  SlmRuntimeThat({this.canary});
+  /// Dấu canary của phiên có tool (bước 1b) — `null` chỉ trong test.
+  final CanaryCongCu? canaryCongCu;
+
+  SlmRuntimeThat({this.canary, this.canaryCongCu});
 
   InferenceModel? _model;
   bool _daKhoiTao = false;
@@ -175,6 +180,11 @@ class SlmRuntimeThat implements SlmRuntime {
     final m = _model;
     if (m == null) throw StateError('Mô hình chưa nạp');
 
+    // Canary 1b (bẫy 4.33): máy này từng sập native ở phiên có tool — và lần
+    // thoát ấy được Android xác nhận là sập, không phải bị giết — thì không mở
+    // phiên nữa. Vòng lặp nhận lỗi này và đi bậc 1, im lặng.
+    if (await canaryCongCu?.daTat() ?? false) throw const BacCongCuDaTat();
+
     final tools = [
       for (final k in congCu)
         Tool(name: k.ten, description: k.moTa, parameters: k.thamSo),
@@ -208,7 +218,7 @@ class SlmRuntimeThat implements SlmRuntime {
     debugPrint('[SLM][tool] mở phiên sau ${dongHo.elapsedMilliseconds} ms: '
         '${congCu.length} tool, tools_json $doDaiToolsJson ký tự, '
         'hệ thống ${heThong.length} ký tự, câu hỏi ${cauHoi.length} ký tự');
-    return _PhienThat(chat);
+    return _PhienThat(chat, canaryCongCu);
   }
 
   @override
@@ -237,11 +247,16 @@ class SlmRuntimeThat implements SlmRuntime {
 /// Bản thật của [PhienCongCu] — bọc `InferenceChat` của gói. Mỗi câu hỏi một
 /// phiên, cùng lý lẽ với `sinh`/`sinhDan`: không để câu trước ảnh hưởng câu sau.
 class _PhienThat implements PhienCongCu {
-  _PhienThat(this._chat);
+  _PhienThat(this._chat, this._canary);
   final InferenceChat _chat;
+  final CanaryCongCu? _canary;
 
+  /// Mỗi lượt đi qua canary 1b: dấu có mặt từ trước khi engine giải mã tới sự
+  /// kiện đầu tiên — khoảng mà bản engine cũ sập (bẫy 4.33).
   @override
-  Stream<SuKienLuot> sinhLuot() async* {
+  Stream<SuKienLuot> sinhLuot() => quaCanary(_sinhLuot, _canary);
+
+  Stream<SuKienLuot> _sinhLuot() async* {
     final dongHo = Stopwatch()..start();
     var tokenDau = -1;
     var soKyTu = 0;

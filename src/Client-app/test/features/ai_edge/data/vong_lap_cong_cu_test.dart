@@ -8,6 +8,7 @@ import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/vong_lap_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
@@ -17,8 +18,11 @@ import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RuntimeGia implements SlmRuntime {
-  _RuntimeGia(this.phien);
+  _RuntimeGia(this.phien, {this.loiMoPhien});
   final PhienCongCu phien;
+
+  /// Có giá trị thì `moPhien` ném nó thay vì mở phiên.
+  final Object? loiMoPhien;
   String? heThongDaNhan;
   String? cauHoiDaNhan;
   List<KhaiBaoCongCu>? khaiBaoDaNhan;
@@ -41,6 +45,8 @@ class _RuntimeGia implements SlmRuntime {
     required String cauHoi,
     required List<KhaiBaoCongCu> congCu,
   }) async {
+    final loi = loiMoPhien;
+    if (loi != null) throw loi;
     heThongDaNhan = heThong;
     cauHoiDaNhan = cauHoi;
     khaiBaoDaNhan = congCu;
@@ -240,5 +246,27 @@ void main() {
       throwsStateError,
     );
     expect(phien.daDong, isTrue);
+  });
+
+  test('bậc tool ĐÃ TẮT trên máy này (canary 1b) → bậc 1, im lặng — không phải L4',
+      () async {
+    final phien = PhienCongCuGia([
+      [goiHoaDon],
+    ]);
+    final sk = await hoiBangCongCu('Hoa don nao qua han?',
+            runtime: _RuntimeGia(phien, loiMoPhien: const BacCongCuDaTat()),
+            boCongCu: bo,
+            goi: GoiSoTraCuu(),
+            idaccount: 10,
+            now: now,
+            log: log.add)
+        .toList();
+
+    expect(sk, [const KhongTraCuu()],
+        reason: 'máy từng sập native ở phiên có tool vẫn có bậc 1 chạy tốt — '
+            'đi thẳng về đó, không hiện câu "mô hình không chạy được"');
+    expect(tool.argsDaNhan, isEmpty);
+    expect(log.any((l) => l.contains('đã tắt')), isTrue,
+        reason: 'lượt đo trên máy thật phải thấy vì sao không có lời gọi tool');
   });
 }

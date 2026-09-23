@@ -601,13 +601,42 @@ src/Backend/
 Lộ trình kiến trúc Edge AI đã đi hết phía client (chặng 1–4 xong, cổng A · B · C đạt, chặng 5
 bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ tự mới, theo hai nếp đã chốt — *sửa lỗi
 trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
-**1b** canary cho phiên có tool · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
+**1b** ✅ canary cho phiên có tool · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
 giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
 là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
 *"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
 Stitch và người dùng duyệt trước khi viết mã.
+
+### ✅ Bước 1b — canary cho phiên có tool, lối B (2026-09-23 tối)
+
+Bẫy **4.33** `AI_EDGE_FEATURE.md`: với gói cũ, phiên có tool sập **native** — app văng ở mọi câu
+hỏi, `try/catch` vô dụng. Gói mới hết sập trên hai máy đo, nhưng máy khác chưa đo; canary là lưới
+cho chúng. Người dùng chọn **lối B** trong ba lối vì dấu còn sót **không** phân biệt *sập* với *bị
+giết* — Realme giết app khi vuốt khỏi Recents, và khuôn canary GPU (dấu sót = hỏng vĩnh viễn) mà áp
+ở đây thì một lần vuốt app giữa lúc trả lời là mất bậc tool mãi trên máy ấy.
+
+**Cách làm:** `domain/canary_cong_cu.dart` — dấu có mặt từ trước khi engine giải mã tới **sự kiện
+đầu tiên** của mỗi lượt sinh (`quaCanary`); lúc app khởi động, dấu sót được đối chiếu với lý do
+thoát của Android (`ApplicationExitInfo`, API 30+, qua kênh Kotlin mới `flowmoney/ly_do_thoat` ở
+`MainActivity`) và chỉ thành "hỏng" khi lần thoát **đầu tiên sau lúc đặt dấu** là **sập native**;
+Android 10 trở xuống thì tắt khi dấu sót **hai lần liền**; dấu "hỏng" ghi phiên bản app và tự xoá khi
+app lên bản mới. Bậc tool bị tắt thì `moPhien` ném `BacCongCuDaTat` và màn đi thẳng bậc 1, im lặng.
+⚠️ Canary GPU **cố ý chưa đổi theo** — nó mang đúng giới hạn "không phân biệt sập với bị giết" (ghi ở
+bẫy 4.24), nhưng người dùng chưa gọi tên việc ấy.
+
+**Nghiệm thu máy ảo** (mục **9.15** `AI_EDGE_FEATURE.md`): đặt dấu bằng `run-as`, làm tiến trình chết
+theo ba cách rồi mở lại app — `kill -11` (Android ghi *APP CRASH(NATIVE)*) → tệp "hỏng" ghi đúng
+`versionCode=1`; `am force-stop` (*USER REQUESTED / FORCE STOP*) và `kill -9` (*SIGNALED*) → chỉ xoá
+dấu. Không cần mô hình, vì phép xét chạy lúc khởi động. **Chưa đo** trên máy thật có mô hình: gói
+mới không còn sập để tái hiện.
+
+**Test:** 24 ca mới ở 4 tệp — `canary_cong_cu_test` 15 · `nguon_ly_do_thoat_test` 4 ·
+`canary_cong_cu_noi_day_test` 4 (đọc mã nguồn của bốn mối nối, vì `flutter test` chạy trên x86_64
+nơi đường thật là vùng mù) · `vong_lap_cong_cu_test` +1. Các ca "không được tắt nhầm" xanh ngay nên
+đã thử bằng năm bản sai có chủ ý. Trọn bộ **3585/3585** (3 skip), analyze **26**. Schema, payload,
+`pubspec` không đổi; `MainActivity.kt` thêm một kênh.
 
 ### ✅ Bước 1a — Trang chủ, trang Phân tích và trợ lý AI nói CÙNG một con số thu/chi (2026-09-23 tối)
 
@@ -675,7 +704,7 @@ Test **3554/3554** (3 skip), analyze **26**; `ai_edge` + `ai_chat` **44** tệp 
 payload, `pubspec` không đổi so với `af2aa81`. **Còn mở, chờ người dùng quyết:** canary cho phiên có
 tool (bẫy 4.33) · câu chào trên Realme mất ~23 s (giá của L1) · ĐC1 không bao giờ nói "không có dữ
 liệu" · chênh 10.000 đ tổng thu (Trang chủ vs gói số). *(Tối cùng ngày: chênh 10.000 đ ✅ **đã vá**
-ở bước 1a, và canary được duyệt làm ở bước 1b — hai khối ở đầu mục này.)*
+ở bước 1a, và canary ✅ **làm xong** ở bước 1b — các khối ở đầu mục này.)*
 
 ### Edge AI — lát 4b, nửa đầu: Task 1–4 + 5a; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23 trưa — ảnh chụp, khối trên là hiện trạng)
 

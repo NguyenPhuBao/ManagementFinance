@@ -9,6 +9,8 @@
 /// Thang lùi: L1 chưa tool nào chạy → [KhongTraCuu] (màn rơi về bậc 1) · L2 tool
 /// đã chạy mà chưa câu nào qua kiểm → `mauCau()` của gói tích luỹ · L3 vượt trần
 /// lời gọi → `mauCau()` · L4 runtime ném → lỗi lan lên màn (câu "không chạy được").
+/// Riêng `BacCongCuDaTat` (máy từng sập native ở phiên có tool — canary 1b,
+/// `domain/canary_cong_cu.dart`) đi đường L1 chứ không L4: bậc 1 vẫn chạy được.
 ///
 /// ⚠️ Log bằng `print`: `debugPrint` bị tiết lưu và nuốt dòng (vế ba bẫy 8.6
 /// `AI_EDGE_FEATURE.md`), mà từng dòng ở đây là bằng chứng cổng C. Tiền lệ
@@ -19,6 +21,7 @@ library;
 
 import 'dart:async';
 
+import '../domain/canary_cong_cu.dart';
 import '../domain/cong_cu.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
@@ -40,11 +43,20 @@ Stream<SuKienGac> hoiBangCongCu(
   void Function(String) log = print,
 }) async* {
   final dongHo = Stopwatch()..start();
-  final phien = await runtime.moPhien(
-    heThong: heThong,
-    cauHoi: cauHoi,
-    congCu: boCongCu.khaiBao,
-  );
+  final PhienCongCu phien;
+  try {
+    phien = await runtime.moPhien(
+      heThong: heThong,
+      cauHoi: cauHoi,
+      congCu: boCongCu.khaiBao,
+    );
+  } on BacCongCuDaTat {
+    // Máy này từng sập native ở phiên có tool (canary 1b). Bậc 1 không mở
+    // phiên có tool nên vẫn chạy được — đi thẳng về đó, không phải L4.
+    log('[SLM][tool] bậc tool đã tắt trên máy này (từng sập native) → bậc 1 (L1)');
+    yield const KhongTraCuu();
+    return;
+  }
   var soLanGoi = 0;
   var soCauQua = 0;
   try {

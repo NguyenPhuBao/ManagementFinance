@@ -113,6 +113,8 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 │        ──►  GoiSoTraCuu TÍCH LUỸ  ──►  kiemCauTraLoi()              │
 │                                                                      │
 │   ↳ hoiBangCongCu: trần 3 lời gọi · L1 chưa tool nào → vòng 2       │
+│   ↳ canary phiên tool (1b): máy từng SẬP NATIVE ở phiên có tool     │
+│     (Android xác nhận lý do thoát) → không mở phiên, đi vòng 2      │
 │   🛑 vector index phía CLIENT: BỎ (đo 22/09, mục 5.5)               │
 │      kiến thức chung → backend RAG; số cá nhân → function-calling   │
 └──────────────────────────────────────────────────────────────────────┘
