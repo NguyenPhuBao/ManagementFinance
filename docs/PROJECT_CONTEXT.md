@@ -603,9 +603,12 @@ bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ t�
 trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
 **1b** ✅ canary cho phiên có tool · **1c** ✅ tên đối tượng có chữ số qua được lớp chắn *(thêm vào
 thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
-giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+giao dịch + phép đo 20 câu lệnh *(📝 spec viết xong tối muộn 2026-09-23 —
+`superpowers/specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`; chờ người dùng đọc, chưa có kế
+hoạch)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
-kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
+kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
+nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4
 là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
 *"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
 Stitch và người dùng duyệt trước khi viết mã.
