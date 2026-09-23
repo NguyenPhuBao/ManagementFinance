@@ -241,14 +241,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
-  dart_sentencepiece_tokenizer:
-    dependency: transitive
-    description:
-      name: dart_sentencepiece_tokenizer
-      sha256: "23fd14a3a7a736e0a85c329ab0227f8eaf9626ef83b1d98b6f37fbc284fca8c8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.1"
   dart_style:
     dependency: transitive
     description:
@@ -378,26 +370,18 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_gemma
-      sha256: "35708ea9005504433db7eb0a81ed899691fea988a2b07f626cd30b0ef0bd481e"
+      sha256: "729183ef16740ea55860289862f04bb188b94b70ae8aa97ded61b20675c0891c"
       url: "https://pub.dev"
     source: hosted
-    version: "1.8.3"
-  flutter_gemma_embeddings:
-    dependency: transitive
-    description:
-      name: flutter_gemma_embeddings
-      sha256: "05856544fe015812a59f93f215455a04e7c8c1d05f76a3fe58ecb98811149d51"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
+    version: "1.9.0"
   flutter_gemma_litertlm:
     dependency: "direct main"
     description:
       name: flutter_gemma_litertlm
-      sha256: e393e6b088cedc11e1670f5f844201f35b7563c5a4accd15a46336a426fb56e8
+      sha256: d8dd950d684d291e307732189a729753ab213fd9ad02e33d764fcc75c17400b4
       url: "https://pub.dev"
     source: hosted
-    version: "1.7.0"
+    version: "1.8.0"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
