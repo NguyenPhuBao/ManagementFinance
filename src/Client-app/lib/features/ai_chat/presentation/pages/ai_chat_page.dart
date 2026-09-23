@@ -38,6 +38,7 @@ import '../../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../../ai_edge/data/nguon_goi_so.dart';
 import '../../../ai_edge/data/slm_runtime.dart';
 import '../../../ai_edge/data/vong_lap_cong_cu.dart';
+import '../../../ai_edge/domain/bo_markdown.dart';
 import '../../../ai_edge/domain/chu_de_chan.dart';
 import '../../../ai_edge/domain/cong_cu.dart';
 import '../../../ai_edge/domain/gac_cau.dart';
@@ -353,7 +354,8 @@ class _AiChatPageState extends State<AiChatPage> {
     await for (final sk in luong) {
       switch (sk) {
         case CauQua(:final cau):
-          cauDaQua.add(cau);
+          // Gỡ markdown ở lúc HIỆN — câu đã qua kiểm, số không đổi (bẫy 4.36).
+          cauDaQua.add(boDanhDauMarkdown(cau));
           if (!mounted) return false;
           setState(() => _traLoiDangDen = cauDaQua.join(' '));
           _cuonXuong();

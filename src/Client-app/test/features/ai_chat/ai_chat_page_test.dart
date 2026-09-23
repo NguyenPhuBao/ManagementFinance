@@ -374,6 +374,21 @@ void main() {
       expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     });
 
+    testWidgets('câu markdown hiện KHÔNG còn dấu `*` (bẫy 4.36)', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.fromIterable(const [
+          DangTraCuu('danh_sach_ngan_sach'),
+          DangTraCuu(null),
+          CauQua('*   Giáo dục: Còn lại 5.000 đ.'),
+        ]),
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(find.text('Giáo dục: Còn lại 5.000 đ.'), findsOneWidget);
+      expect(find.textContaining('*'), findsNothing);
+    });
+
     testWidgets('KhongTraCuu mà bậc 1 cũng bị chặn → câu lùi "chưa chắc", một lần', (t) async {
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true,

@@ -17,8 +17,18 @@
 /// cả hai cùng mang số **1**, nên thẻ nói về một đại lượng khác hẳn câu. Số
 /// nhỏ (0, 1, 2, 3, 4) trùng nhau giữa các gói là chuyện **thường**, không
 /// phải ca hiếm. Không nhãn nào khớp câu thì mới rơi về thứ tự gói.
+///
+/// ⚠️ "Câu nhắc tới" xét theo **từng câu**, không theo cả tin nhắn — bẫy
+/// **4.34**, OnePlus bắt được ở chặng 4b (2026-09-23): tool ngân sách trả Di
+/// chuyển (hạn mức **450.000**) trước Ăn uống (còn lại **450.000**), câu trả
+/// lời nhắc cả hai tên ở **hai câu khác nhau**, và xét cả tin nhắn thì mục của
+/// Di chuyển cũng "được nhắc" nên nó thắng vì đứng trước — thẻ in *"Di chuyển ·
+/// Hạn mức 450.000 đ"* dưới câu về Ăn uống. Tách câu bằng đúng
+/// `tachCauHoanChinh` của `gacTheoCau`, nên đơn vị ở đây trùng đơn vị mà
+/// `kiemNhan` đã kiểm.
 library;
 
+import 'gac_cau.dart';
 import 'goi_so.dart';
 import 'kiem_nhan.dart';
 import 'kiem_so.dart';
@@ -38,16 +48,21 @@ bool _cauNhacToi(String cau, SoLieu s) {
 
 List<String> theCuaCau(String cau, List<GoiSo> goi) {
   final the = <String>[];
+  // Khử trùng theo giá trị trên CẢ tin nhắn: cùng một con số ở hai câu vẫn
+  // là một thẻ.
   final daCo = <String>{};
-  for (final x in trichSo(cau)) {
-    final khop = soLieuKhop(x, goi);
-    if (khop.isEmpty) continue;
-    // Trong các mục cùng giá trị, ưu tiên mục mà CÂU thật sự nhắc tới. Không
-    // mục nào khớp thì giữ hành vi cũ — cái đầu theo thứ tự gói — vì khi ấy
-    // không có căn cứ nào để chọn.
-    final uuTien = khop.where((s) => _cauNhacToi(cau, s)).toList();
-    for (final s in uuTien.isEmpty ? khop : uuTien) {
-      if (daCo.add(s.chuoi)) the.add(_nhanDayDu(s));
+  final (cacCau, du) = tachCauHoanChinh(cau);
+  for (final c in [...cacCau, if (du.trim().isNotEmpty) du.trim()]) {
+    for (final x in trichSo(c)) {
+      final khop = soLieuKhop(x, goi);
+      if (khop.isEmpty) continue;
+      // Trong các mục cùng giá trị, ưu tiên mục mà CÂU NÀY thật sự nhắc tới.
+      // Không mục nào khớp thì giữ hành vi cũ — cái đầu theo thứ tự gói — vì
+      // khi ấy không có căn cứ nào để chọn.
+      final uuTien = khop.where((s) => _cauNhacToi(c, s)).toList();
+      for (final s in uuTien.isEmpty ? khop : uuTien) {
+        if (daCo.add(s.chuoi)) the.add(_nhanDayDu(s));
+      }
     }
   }
   return the;

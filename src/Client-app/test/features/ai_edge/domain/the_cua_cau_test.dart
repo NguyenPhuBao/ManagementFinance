@@ -114,4 +114,36 @@ void main() {
               'không xét tên thì thẻ nói về Giáo dục dưới một câu về Ăn uống.');
     });
   });
+
+  group('xét theo TỪNG CÂU — bẫy 4.34 (chặng 4b, OnePlus 2026-09-23)', () {
+    // Đúng cặp máy thật bắt được: tool ngân sách trả Di chuyển (hạn mức
+    // 450.000) đứng TRƯỚC Ăn uống (còn lại 450.000). Câu trả lời nhắc cả hai
+    // tên — ở hai câu khác nhau — và thẻ in "Di chuyển · Hạn mức 450.000 đ"
+    // dưới câu "Ăn uống: … Còn lại 450.000 đ".
+    final nganSach = _Gia('tra_cuu', [
+      soTien('Còn lại', 95000, ten: 'Di chuyển'),
+      soTien('Hạn mức', 450000, ten: 'Di chuyển'),
+      soTien('Còn lại', 450000, ten: 'Ăn uống'),
+    ]);
+
+    test('⭐ số ở câu về Ăn uống lấy mục của Ăn uống, dù Di chuyển được nhắc ở câu khác',
+        () {
+      expect(
+        theCuaCau('Di chuyển còn lại 95.000 đ. Ăn uống còn lại 450.000 đ.',
+            [nganSach]),
+        ['Di chuyển · Còn lại 95.000 đ', 'Ăn uống · Còn lại 450.000 đ'],
+        reason: 'Xét cả tin nhắn thì "Di chuyển" có mặt nên mục Hạn mức của nó '
+            'cũng được ưu tiên, và nó đứng trước — đúng thẻ sai máy thật in ra. '
+            'Đơn vị phải là CÂU, cùng đơn vị với kiemNhan.',
+      );
+    });
+
+    test('câu cuối không có dấu kết vẫn được xét', () {
+      expect(
+        theCuaCau('Di chuyển còn lại 95.000 đ. Ăn uống còn lại 450.000 đ',
+            [nganSach]),
+        ['Di chuyển · Còn lại 95.000 đ', 'Ăn uống · Còn lại 450.000 đ'],
+      );
+    });
+  });
 }

@@ -120,6 +120,52 @@ void main() {
     expect(g.soLieu.length, 5);
   });
 
+  group('mẫu câu sau NHIỀU lời gọi — bẫy 4.35 (chặng 4b, OnePlus 2026-09-23)', () {
+    KetQuaCongCu chiTieu(String ky, {required bool coDuLieu}) => KetQuaCongCu(
+          hang: [
+            if (coDuLieu)
+              HangSoLieu(
+                ten: 'Cho vay',
+                trangThai: null,
+                canhBao: false,
+                soLieu: [soTien('Chi', 800000, ten: 'Cho vay')],
+              ),
+          ],
+          tongHop: [
+            soTien('Tổng chi', coDuLieu ? 2141000 : 0),
+            soTien('Tổng thu', coDuLieu ? 15135000 : 0),
+          ],
+          chuThem: {'ky': ky},
+        );
+
+    test('⭐ mỗi nhóm nêu KỲ; lượt trùng nội dung gộp nhãn kỳ, không lặp hàng', () {
+      // Đúng chuỗi lời gọi OnePlus đo được cho câu ĐC1 rồi chạm trần (L3).
+      final g = GoiSoTraCuu()
+        ..them('chi_tieu_theo_ky', chiTieu('tháng này', coDuLieu: true))
+        ..them('chi_tieu_theo_ky', chiTieu('năm nay', coDuLieu: true))
+        ..them('chi_tieu_theo_ky', chiTieu('tháng trước', coDuLieu: false));
+      final cau = g.mauCau().cau;
+      expect(
+        cau,
+        'Tháng này, năm nay — Cho vay: Chi 800.000 đ; Tổng chi: 2.141.000 đ; '
+        'Tổng thu: 15.135.000 đ. Tháng trước — Tổng chi: 0 đ; Tổng thu: 0 đ.',
+        reason: 'Bản đầu nối mọi hàng và mọi tổng không nhãn kỳ: "Tổng chi: '
+            '2.141.000 đ" đứng cạnh "Tổng chi: 0 đ", và cả bộ hàng lặp hai lần '
+            '— đúng câu máy thật hiện ra.',
+      );
+      expect(kiemSo(cau, g), isTrue, reason: 'câu rơi về phải tự qua bộ kiểm số');
+    });
+
+    test('hai lời gọi y hệt (không kỳ) → hàng chỉ nói một lần', () {
+      final g = GoiSoTraCuu()
+        ..them('danh_sach_hoa_don', _hoaDonQuaHan())
+        ..them('danh_sach_hoa_don', _hoaDonQuaHan());
+      final cau = g.mauCau().cau;
+      expect('Kiem'.allMatches(cau).length, 1);
+      expect(cau, isNot(contains('—')), reason: 'không có kỳ thì không tiền tố');
+    });
+  });
+
   group('ba lớp chắn và thẻ dùng NGUYÊN trên [goiTraCuu]', () {
     final g = GoiSoTraCuu()..them('danh_sach_hoa_don', _hoaDonQuaHan());
 
