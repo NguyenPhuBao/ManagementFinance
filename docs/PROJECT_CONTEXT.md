@@ -596,6 +596,32 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
+### 🛑 Edge AI — lát 4b: Task 1–4 xong mã, DỪNG ở cổng Task 4 — engine sập native khi phiên mang tool (2026-09-23)
+
+Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
+Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
+hàng đầy đủ), `GoiSoTraCuu extends GoiSo` (gói tích luỹ, ba lớp chắn dùng nguyên, mẫu câu thật
+cho L2/L3), `CongCu` / `KhaiBaoCongCu` / bốn tên tool / `kTranGoiCongCu`, `PhienCongCu` thuần +
+`PhienCongCuGia`, `DangTraCuu` / `KhongTraCuu` trong `SuKienGac`, `kPromptHeThongCongCu`, và
+`SlmRuntime.moPhien` (bản thật `_PhienThat` trong `slm_runtime.dart`, test quét 16 giữ nguyên).
+**Chưa nối vào màn nào** — app đang chạy vẫn là bậc 1. Test **3496/3496** (3 skip), analyze
+**26**; schema, payload, `pubspec` không đổi.
+
+🛑 **Spike Task 4 trên Realme RMX2205: engine SẬP NATIVE 3/3 khi phiên mang tool** — `SIGSEGV`
+(`SEGV_ACCERR`) trong `ConstrainedDecoder::ProcessLogits` → `CompositeLogitMask::Apply`, ngay lượt
+giải mã đầu, backtrace trùng từng offset cả ba lần, **kể cả câu "Xin chao"** không cần tool. Phép
+đối chứng: đường bậc 1 (không tool) trên **cùng APK, cùng máy** trả lời đúng. Gốc nằm ở gói:
+`flutter_gemma_litertlm` 1.7.0 **gắn cứng** `enable_constrained_decoding = true` hễ phiên có tool
+(`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Có bản `flutter_gemma` 1.9.0 /
+`flutter_gemma_litertlm` 1.8.0, chưa biết có sửa không. Theo kế hoạch: **dừng**, Task 5–8 chưa
+dựng, chờ người dùng chọn hướng. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`.
+
+⚠️ **Hai chỗ kế hoạch sai, lộ ra khi thi công:** (1) ca test so thẳng danh sách **record chứa
+`Map`** (`ketQuaDaNhan`) đỏ trên cả mã đúng — record so `==` từng trường, `Map` so bằng danh tính,
+matcher `equals` không so sâu vào record; Task 3 đã trải cặp thành danh sách, Task 7 còn một ca
+cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính ấy chỉ cộng token
+của **câu trả lời**, không đo được thứ bẫy ấy cần.
+
 ### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa, và màn Cài đặt AI thôi đè lỗi cũ (2026-09-23)
 
 Hai việc nhỏ kẹp đầu phiên, **trước** khi mở lát 4b — người dùng chốt thứ tự *sửa lỗi trước, tính
@@ -626,8 +652,8 @@ thật có đi tới đường này không.
 
 Test **3470/3470** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
 
-📝 **Lát 4b — spec đã duyệt và kế hoạch đã viết cùng ngày, CHƯA thi công** (người dùng đọc kế hoạch
-trước). Spec `superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md` — ba quyết định
+📝 **Lát 4b — spec đã duyệt và kế hoạch đã viết cùng ngày** *(ảnh chụp lúc ấy: "CHƯA thi công";
+nay đã thi công Task 1–4 và dừng ở cổng Task 4 — khối trên cùng mục này)*. Spec `superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md` — ba quyết định
 của người dùng trong lượt brainstorm: đích = tầng tool + **bốn** tool *"danh sách có tên"*
 (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`); chấp nhận hai
 lượt sinh trên cả Realme CPU lẫn OnePlus, đo thật; **hướng A — tool THAY gói số trong prompt** (B tái

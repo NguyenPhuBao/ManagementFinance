@@ -27,8 +27,11 @@
 > CHƯA ĐỦ** — mô hình không nối được hai mục rời (`Quá hạn: 1` và `Kiem · Phải trả: 45.000 đ`),
 > nên ba câu còn hỏng **không** chữa được bằng gói số.
 > **Việc tiếp theo: lát 4b** — tool-calling + vòng lặp, với hình dạng nay đã rõ: tool trả **một
-> hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời. 📝 **Spec đã duyệt + kế hoạch 9
-> task viết 2026-09-23, CHƯA thi công**: `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`,
+> hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời. 🛑 **Thi công Task 1–4 xong mã
+> ngày 2026-09-23 rồi DỪNG ở cổng Task 4**: spike trên Realme — engine **sập native 3/3** khi phiên
+> mang tool (`flutter_gemma_litertlm` 1.7.0 gắn cứng giải mã có ràng buộc; mục **9.13**, bẫy
+> **4.33** `AI_EDGE_FEATURE.md`), Task 5–8 chờ người dùng chọn hướng. Spec đã duyệt + kế hoạch 9
+> task: `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`,
 > `plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`. Khung cố định của chặng 4 ở dưới **đổi hai
 > chỗ** theo spec: *"kết quả tool là `List<SoLieu>`"* → `SoLieu` đi **theo hàng** (`HangSoLieu` →
 > `GoiSoTraCuu extends GoiSo`); *"gói số tích luỹ qua các lượt"* → tích luỹ **từ rỗng** (hướng A:

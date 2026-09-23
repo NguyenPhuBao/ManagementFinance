@@ -6,6 +6,17 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 **Khung cố định:** lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`, mục
 *"Chặng 4"* · **Ba quyết định của người dùng trong lượt brainstorm 2026-09-23** (mục 1.2)
 
+> 🛑 **THI CÔNG DỪNG Ở CỔNG TASK 4 (2026-09-23).** Task 1–4 xong mã (`0c9ca1e` → `87ef4f3`),
+> chưa nối vào màn nào. Spike trên Realme RMX2205: engine **sập native 3/3** khi phiên mang tool —
+> `SIGSEGV` trong `CompositeLogitMask::Apply` ngay lượt giải mã đầu, kể cả câu không cần tool;
+> đường bậc 1 cùng APK chạy bình thường. Mục **9.13** + bẫy **4.33** `docs/AI_EDGE_FEATURE.md`.
+> **Hai chỗ spec đoán sai:** (1) mục **2** tả `tools_json` native nhưng **không** nói gói gắn cứng
+> `enable_constrained_decoding = true` hễ có tool (`flutter_gemma_litertlm-1.7.0/lib/src/ffi/
+> litert_lm_client.dart:1080–1086`) — chính thứ sập; (2) mục **3.7** bảo đo `chat.currentTokens`
+> để canh trần token — thuộc tính ấy chỉ cộng token **câu trả lời** (`flutter_gemma-1.8.3/lib/core/
+> chat.dart:706–708`), không đo được thứ bẫy 4.29 cần. Ngân sách độ trễ mục **1.2** cũng chưa tính
+> **935 ms** dựng FST ràng buộc ở **mỗi** phiên.
+
 ---
 
 ## 1. Vì sao lát này tồn tại, và đích của nó

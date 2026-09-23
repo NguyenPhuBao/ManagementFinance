@@ -765,8 +765,11 @@ người dùng.
 3. 🛑 **Lát 4a — phần "sửa prompt và nhãn" — XONG MÃ 2026-09-23, cổng chưa đạt** (nhóm A **1/4**).
    Nó chữa được câu 3 và sửa hai lỗi đang chạy, nhưng chứng minh **danh sách có tên là CẦN nhưng
    CHƯA ĐỦ**: mô hình không nối được hai mục rời. Xem "Đo lại sau chặng 4a" ở mục **5.6**.
-4. 📝 **Lát 4b — tool layer + vòng lặp: spec đã duyệt + kế hoạch 9 task (2026-09-23), CHƯA thi
-   công.** Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
+4. 🛑 **Lát 4b — tool layer + vòng lặp: Task 1–4 xong mã, DỪNG ở cổng Task 4 (2026-09-23).**
+   Spike trên Realme: engine **sập native 3/3** khi phiên mang tool — `flutter_gemma_litertlm`
+   1.7.0 gắn cứng giải mã có ràng buộc, và `CompositeLogitMask::Apply` sập ngay lượt giải mã đầu;
+   đường bậc 1 cùng APK chạy bình thường (mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`). Tầng
+   tool **chưa nối vào màn nào**; Task 5–8 chờ người dùng chọn hướng. Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
    dùng chốt **bốn** tool (không phải sáu) cho lát này — `danh_sach_ngan_sach` · `danh_sach_hoa_don`
    · `danh_sach_vi` · `chi_tieu_theo_ky`; `duBaoMucTieu`, `goiYHanMuc`, nhóm D để lát sau. Trần **3
    lời gọi**, không tool ghi, hướng **A** (tool THAY gói số trong prompt).
