@@ -6,8 +6,19 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 **Khung cố định:** lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`, mục
 *"Chặng 4"* · **Ba quyết định của người dùng trong lượt brainstorm 2026-09-23** (mục 1.2)
 
-> 🚧 **ĐANG THI CÔNG — Task 1–4 + 5a xong, cổng Task 4 ĐẠT sau khi nâng gói (2026-09-23).** Task
-> 1–4 (`0c9ca1e` → `87ef4f3`) và 5a (`21389ea`, hàng hoá đơn) chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
+> ✅ **THI CÔNG XONG 9/9 TASK — CỔNG C ĐẠT trên cả hai máy (2026-09-23 chiều).** Màn Trợ lý AI đi
+> bậc tool từ `863c4cd`. Tám câu mục 5, APK release: nhóm A trả lời **bằng tên** Realme **4/4**,
+> OnePlus **3/4**; câu 2, 9 đúng; ĐC1 không bịa số; ĐC2 không tụt; 0 lần sập; mô hình chọn đúng tool
+> + tham số ở 8/8 câu mỗi máy. Tổng một câu 10–15 s Realme CPU / 4,5–8,6 s OnePlus GPU — nằm trong
+> dải mục 1.2. Bảng: mục **9.14** `docs/AI_EDGE_FEATURE.md`. Lượt đo bắt **ba lỗi thật** ở phía
+> app, sửa cùng ngày (`ace9a53`, bẫy **4.34–4.36**): thẻ số liệu xét "câu nhắc tới" trên cả tin nhắn;
+> `GoiSoTraCuu.mauCau()` (mục 3.3) phẳng nên sau nhiều lời gọi lặp hàng và mất nhãn kỳ — spec
+> **không lường** trường hợp mô hình gọi cùng tool với nhiều kỳ rồi chạm trần; câu trả lời bậc tool
+> có thể là markdown. Và mục **3.6** đoán sai một điều: *"trước khi có hàng, chữ bị bỏ"* đúng, nhưng
+> giá của L1 trên Realme là **~23 s** cho một câu chào (vứt câu mô hình rồi sinh lại ở bậc 1).
+>
+> *(Banner giữa ngày, giữ làm lịch sử:)* Task 1–4 (`0c9ca1e` → `87ef4f3`) và 5a (`21389ea`, hàng
+> hoá đơn) khi ấy chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
 > tool trên **cả hai máy** — Realme 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong
 > `CompositeLogitMask::Apply`. ⚠️ **Mục 4 dưới đây ("không thêm gói `pubspec`") ĐÃ BỊ PHÁ, có duyệt**:
 > người dùng duyệt đích danh nâng `flutter_gemma` 1.8.3 → **1.9.0** và `flutter_gemma_litertlm`

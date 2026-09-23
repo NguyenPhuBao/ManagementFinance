@@ -102,21 +102,26 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 │   ↳ CHỈ màn Trợ lý AI (lối B — BoDienGiai KHÔNG đăng ký vào DI)     │
 └──────────────────────────────────────────────────────────────────────┘
 
-┌─ VÒNG 3 — AGENT ──────────────────── ⬜ ĐỀ XUẤT, CHƯA CHỐT ────────┐
+┌─ VÒNG 3 — AGENT ──────────── ✅ LÁT 4b XONG 23/09, CỔNG C ĐẠT ─────┐
 │                                                                     │
-│   tools_json native (SdkPassthrough)                                │
-│     9 tool trỏ vào hàm domain ĐÃ CÓ + 1 tool tra cứu kiến thức      │
+│   tools_json native — 4 tool ĐỌC trỏ vào hàm domain ĐÃ CÓ          │
+│     (ngân sách · hoá đơn · ví · chi tiêu theo kỳ)                   │
 │        │                                                             │
 │        ▼                                                             │
-│   mỗi tool TRẢ List<SoLieu>  ──►  gói số TÍCH LUỸ  ──►  kiemSo      │
+│   mỗi tool TRẢ hàng (tên + trạng thái + List<SoLieu>)               │
+│        ──►  GoiSoTraCuu TÍCH LUỸ  ──►  kiemCauTraLoi()              │
 │                                                                      │
+│   ↳ hoiBangCongCu: trần 3 lời gọi · L1 chưa tool nào → vòng 2       │
 │   🛑 vector index phía CLIENT: BỎ (đo 22/09, mục 5.5)               │
 │      kiến thức chung → backend RAG; số cá nhân → function-calling   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Ba vòng, một hợp đồng.** `BoDienGiai` là interface hai dòng; vòng 2 và vòng 3 đều
-là bản thi công của nó. Vòng 1 không biết vòng nào đang chạy phía trên.
+**Ba vòng, một hợp đồng — và hợp đồng ấy là `GoiSo`.** Vòng 2 trên màn Trợ lý AI nhận sáu gói
+dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; ba lớp chắn và thẻ số liệu
+chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
+đồng là `BoDienGiai` và "vòng 2 và vòng 3 đều là bản thi công của nó" — sai từ lối B, khi màn
+Trợ lý AI tự dựng đường sinh câu và `BoDienGiai` không được đăng ký; vòng 3 là `hoiBangCongCu`.)*
 
 ---
 
@@ -262,7 +267,7 @@ rồi để mô hình viết một câu. Mô hình **không quyết định gì,
 
 ---
 
-## 5. Vòng 3 — agent (đề xuất, chưa chốt)
+## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
 
 ### 5.1 Mười tool
 
@@ -527,6 +532,36 @@ vẫn dùng được. Đo lại: câu sai bị chặn trở lại.
   câu trả lời dùng tổng thu. Chưa rõ bên nào đúng — **đừng sửa bên nào trước khi chốt con số nào
   mới đúng**, cùng lối đã xử lý chỗ lệch "3 hoá đơn / Cần thanh toán (4)".
 
+#### Đo lại sau chặng 4b (2026-09-23 chiều) — ✅ CỔNG C ĐẠT, nhóm A **4/4** Realme · **3/4** OnePlus
+
+Lát 4b (spec `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`) làm đúng thứ 4a chỉ ra:
+**tool trả về một hàng đầy đủ**. Bốn tool đọc, prompt không mang số, dữ liệu vào qua tool. Đo trên
+APK release, tài khoản 10, cả hai máy. Cột trước 4a và sau 4a là Realme, cùng máy với cột đầu của
+cột sau 4b.
+
+| # | Câu hỏi | Trước 4a | Sau 4a | Sau 4b — Realme (CPU) | Sau 4b — OnePlus (GPU) |
+|---|---|---|---|---|---|
+| 3 | Ngân sách **nào** sắp hết | "…căng nhất là 90,0%" | ✅ "…là Giáo dục với tỉ lệ 90,0%" | ✅ "Ngân sách Giáo dục còn 8 ngày." | **LỆCH** — gộp cả bốn ngân sách vào "sắp hết" |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | LỆCH | ✅ liệt kê có tên, giảm dần (Cho vay 800.000 đ đầu) | ✅ "…có chi phí **cao nhất** là: Cho vay (800.000 đ), …" |
+| 13 | **Hoá đơn nào** quá hạn | trả lời về ngân sách | LỆCH | ✅ "Hoa đơn **Kiem** đã quá hạn với số tiền là 45.000 đ…" | ✅ cùng |
+| 15 | **Ví nào** đang âm | LỆCH + thẻ sai | MẪU | ✅ "Ví **test** đang âm với số dư là -100.000 đ." | ✅ cùng |
+| 2 | Còn bao nhiêu tiền ngân sách | — | — | ✅ 1.340.000 đ | ✅ |
+| 9 | Tháng trước chi bao nhiêu | — | — | ✅ 0 đ (đúng — không có dữ liệu tháng 8) | ✅ |
+| ĐC1 | Lãi suất tiết kiệm | — | — | LỆCH, không bịa (tổng chi/thu tháng này) | L3 sau 3 lời gọi, mẫu câu lặp — lỗi thật, đã sửa |
+| ĐC2 | Tháng này chi bao nhiêu (câu 6) | ✅ | ✅ | ✅ không tụt | ✅ |
+
+⭐ **Bốn câu *"cái nào"* hỏng suốt chặng 3 và 4a nay trả lời bằng tên.** Mô hình gọi **đúng tool và
+đúng tham số ở 8/8 câu** trên mỗi máy, lượt gọi tool luôn phát **0 ký tự** chữ, và câu trả lời chép
+tên + số từ đúng một hàng — không còn phải nối hai mục rời. Số câu **bịa số: 0**; lần sập: **0**.
+Tổng một câu 10–15 s trên Realme CPU, 4,5–8,6 s trên OnePlus GPU.
+
+⚠️ **Ba lỗi thật, cả ba chỉ OnePlus lộ ra, đều đã sửa cùng ngày** (bẫy 4.34–4.36 `AI_EDGE_FEATURE.md`):
+thẻ số liệu gán nhầm đối tượng khi hai hàng cùng giá trị ở hai câu khác nhau; mẫu câu L3 lặp hàng
+và mất nhãn kỳ sau ba lời gọi; câu trả lời dạng markdown lộ dấu `*`. ⚠️ Và một điều **không phải
+lỗi mà là giới hạn**: ĐC1 vẫn không bao giờ nói *"không có dữ liệu lãi suất"* — mô hình luôn chọn
+tool gần nghĩa nhất (Realme) hoặc thử nhiều kỳ cho tới trần (OnePlus). Chốt giữ nó khỏi bịa là
+bộ kiểm số và thang lùi, không phải mô hình. Bảng đầy đủ: mục **9.14** `AI_EDGE_FEATURE.md`.
+
 #### Một bẫy đo, sẽ tái phát
 
 ⚠️ **`adb shell input text` làm hỏng chữ hoa giữa từ**: gõ `MuaXe` ra **`Mũae`** trên màn hình
@@ -722,33 +757,36 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 |---|---|---|---|
 | **0** | Hệ luật + mẫu câu | ✅ **đang chạy**, 6 màn | `grep -rl 'KhoiNhanXet(' lib/` → 7 tệp (trừ 1 định nghĩa) |
 | **1** | SLM kể chuyện | ✅ **đang chạy** từ 2026-09-22 (P3 xong 10/10 task, cổng A qua) | `grep flutter_gemma pubspec.yaml` → **5**; **4** tệp `slm_*` trong `lib/` (`slm_prompt`, `slm_cache`, `slm_runtime`, `slm_dien_giai`); mô hình chạy thật trên OnePlus 13R và Realme RMX2205 — mục **9**, **9.9**, **9.10** `AI_EDGE_FEATURE.md`. *(Ô này ghi "📝 kế hoạch 10 task, 0 dòng mã" cho tới 2026-09-22, với bằng chứng "`grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có" — đếm lại bằng máy cùng ngày thì cả hai vế đã đổi. Và lưu ý **bốn** chứ không phải sáu tệp `slm_*`: `slm_dien_giai.dart` cố ý **không** được đăng ký vào DI theo lối B.)* |
-| **2** | Agent | ⬜ **chưa có kế hoạch** | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → 0 |
+| **2** | Agent | ✅ **đang chạy** từ 2026-09-23 (lát 4b xong 9/9 task, **cổng C đạt** trên hai máy) — bốn tool **đọc**, vòng lặp trần 3 lời gọi, bậc 1 làm nhánh lùi | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → **3 dòng, 1 tệp** (`slm_runtime.dart`: `Tool(` · `ToolChoice.auto`; embedding/cosine vẫn **0** — RAG client cố ý bỏ, mục 5.5); vòng lặp ở `ai_edge/data/vong_lap_cong_cu.dart`; đo máy thật mục **9.14** `AI_EDGE_FEATURE.md`. *(Ô này ghi "⬜ chưa có kế hoạch … → 0" cho tới 2026-09-23.)* |
 
 ✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
 **app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
 P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
 `flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
-mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `lib/features/ai_edge/` có **33** tệp test / **294** ca, và mô
+mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **44** tệp test / **424** ca
+(đếm 2026-09-23 sau lát 4b; mốc *"`ai_edge` 33 tệp / 294 ca"* từng ghi ở đây là của 2026-09-22), và mô
 hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
 khi canary bắt được cú sập native trên Mali).
 
 ### 11.1 Câu trung thực nếu được hỏi "đã làm tới đâu"
 
-*(Cập nhật 2026-09-22 — câu dưới đây đã viết lại; bản cũ nói mô hình "**chưa cắm vào app**", đúng
-tới sáng hôm ấy.)*
+*(Cập nhật 2026-09-23 sau cổng C — viết lại lần hai; bản 2026-09-22 nói phần agent "**chưa có**",
+đúng tới trưa 23/09; bản trước nữa nói mô hình "**chưa cắm vào app**".)*
 
 > Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
 > 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
 > thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
 > mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
-> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với gói số trước khi hiện. Đã **đo trên máy
-> thật bằng 20 câu hỏi người dùng thật**: không một con số sai nào lọt ra, nhưng hơn một nửa
-> câu trả lời đúng số mà **lệch câu hỏi** — chủ yếu vì gói số mang giá trị chứ không mang tên.
-> Phần **agent** (tool-calling) thì **chưa có**; bảng đo ấy chính là thứ nói ra cần **sáu** tool
-> nào, và đó là việc tiếp theo.
+> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
+> một **agent tối thiểu**: mô hình tự chọn một trong **bốn tool chỉ đọc** (ngân sách · hoá đơn ·
+> ví · chi tiêu theo kỳ), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
+> từ đúng những hàng ấy — trần 3 lời gọi, không tool nào ghi dữ liệu. Đo trên hai máy thật: bốn
+> câu hỏi *"cái nào"* từng hỏng nay trả lời **bằng tên** (Realme 4/4, OnePlus 3/4), 0 câu bịa số.
 
-Vẫn **không nên nói *"đã có AI Agent"*** — vế "agent" chưa đúng. Hai vế kia thì nay nói được:
-*"Edge AI"* đúng từ khi mô hình chạy on-device, và *"RAG"* thì **cố ý không làm ở client** (mục
+Nay **nói được *"là AI Agent"*** — đúng mốc cổng C của lộ trình — nhưng nói kèm hai giới hạn thật:
+tool **chỉ đọc** (chiều ghi vẫn qua tay người dùng, bất biến ④), và hỏi thứ không tool nào có thì
+mô hình **không nói "không có"** mà chọn tool gần nghĩa nhất (mục 5.6, *"Đo lại sau chặng 4b"*).
+*"Edge AI"* đúng từ khi mô hình chạy on-device; *"RAG"* thì **cố ý không làm ở client** (mục
 **5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
 người dùng.
 
@@ -766,12 +804,13 @@ người dùng.
 3. 🛑 **Lát 4a — phần "sửa prompt và nhãn" — XONG MÃ 2026-09-23, cổng chưa đạt** (nhóm A **1/4**).
    Nó chữa được câu 3 và sửa hai lỗi đang chạy, nhưng chứng minh **danh sách có tên là CẦN nhưng
    CHƯA ĐỦ**: mô hình không nối được hai mục rời. Xem "Đo lại sau chặng 4a" ở mục **5.6**.
-4. 🚧 **Lát 4b — tool layer + vòng lặp: Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói
-   (2026-09-23).** Với `flutter_gemma_litertlm` 1.7.0 engine **sập native** ở mọi phiên có tool
-   trên **cả hai máy**; nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 (người
-   dùng duyệt) thì **6/6 không sập** và E2B **tự gọi đúng tool** — lần đầu dự án thấy vòng 3 chạy
-   trên máy thật (mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`). Tầng tool **chưa nối vào màn
-   nào**; Task 5a (hoá đơn) xong, 5b–5d và Task 6–9 cho phiên sau. Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
+4. ✅ **Lát 4b — tool layer + vòng lặp: XONG 9/9 task, CỔNG C ĐẠT trên hai máy (2026-09-23).**
+   Màn Trợ lý AI đi bậc tool từ `863c4cd`; đo tám câu trên Realme và OnePlus, nhóm A 4/4 · 3/4
+   trả lời bằng tên, 0 câu bịa số, 0 lần sập — mục 5.6 *"Đo lại sau chặng 4b"* và mục **9.14**
+   `AI_EDGE_FEATURE.md`. Lượt đo bắt ba lỗi thật, sửa cùng ngày (bẫy **4.34–4.36**). Trước đó:
+   với `flutter_gemma_litertlm` 1.7.0 engine **sập native** ở mọi phiên có tool trên **cả hai
+   máy**; nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 (người dùng duyệt) thì
+   hết (mục **9.13**, bẫy **4.33**). Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
    dùng chốt **bốn** tool (không phải sáu) cho lát này — `danh_sach_ngan_sach` · `danh_sach_hoa_don`
    · `danh_sach_vi` · `chi_tieu_theo_ky`; `duBaoMucTieu`, `goiYHanMuc`, nhóm D để lát sau. Trần **3
    lời gọi**, không tool ghi, hướng **A** (tool THAY gói số trong prompt).
@@ -833,6 +872,13 @@ giờ**. Phần còn lại của câu ấy thì đúng và là lý do bảng 5.6
 lấp đầy, nên nó **chưa từng hiện một con số nào**. Bộ test mù vì nó dựng sẵn dữ liệu.
 Thứ bắt được là một phép đo trên **CSDL thật**. Quyết định về vòng 3 cũng phải đi
 đường ấy.
+
+✅ **Bậc 2 đã làm (lát 4b, 2026-09-23) — đối chiếu bảng dự đoán trên với số đo cổng C:** độ trễ
+đoán *"~4,7–7 s"* — đo được **4,5–8,6 s** trên OnePlus GPU, **10–15 s** trên Realme CPU (sau khi
+nạp); rủi ro đoán *"E2B chọn sai tool là chuyện thường"* — đo được mô hình chọn **đúng tool và
+đúng tham số ở 8/8 câu trên mỗi máy**, lỗi thật lại nằm ở phía **app** (thẻ, mẫu câu, markdown —
+bẫy 4.34–4.36 `AI_EDGE_FEATURE.md`); công đoán *"+3 task"* — thực tế **9 task**, trong đó một nửa
+là tầng dữ liệu (bốn hàm dựng hàng + bốn adapter).
 
 ---
 

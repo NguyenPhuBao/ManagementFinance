@@ -596,7 +596,41 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### 🚧 Edge AI — lát 4b: Task 1–4 + 5a xong; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23)
+### ✅ Edge AI — lát 4b XONG 9/9 task, CỔNG C ĐẠT trên cả hai máy (2026-09-23 chiều)
+
+Màn **Trợ lý AI** nay đi **bậc tool**: mô hình chọn một trong bốn tool **chỉ đọc**
+(`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
+domain có sẵn và trả về **hàng có tên**, câu trả lời kiểm trên chính những hàng ấy. Chưa tool nào
+chạy thì màn rơi về bậc 1 **im lặng** (L1). Commit: `4cb0b3b` (Task 5b–5d: `hangVi` ·
+`hangNganSach` · `hangChiTieu`, `viDangAm` mở công khai) · `af11ce0` (Task 6: bốn adapter +
+`BoCongCu` + DI, tách `viChoGoiSoTu` / `nganSachDangChay`) · `af31c7f` (Task 7: vòng lặp
+`hoiBangCongCu`, trần 3 lời gọi, thang lùi L1–L4) · `863c4cd` (Task 8: nối màn, dòng chỉ báo
+*"Đang tra cứu hoá đơn…"*, `onHoiBac1`; nghiệm thu máy ảo 411dp, 0 pixel `#FFFF00`) · `ace9a53`
+(ba bản sửa từ lượt đo).
+
+**Cổng C** — tám câu, APK release, tài khoản 10 (bảng ở mục **9.14** `AI_EDGE_FEATURE.md`): nhóm A
+*"cái nào"* trả lời **bằng tên** Realme **4/4**, OnePlus **3/4**; câu 2 và 9 đúng; **0 câu bịa
+số**; **0 lần sập**; mô hình chọn đúng tool + tham số ở 8/8 câu mỗi máy. Tổng một câu (sau khi nạp)
+10–15 s Realme CPU, 4,5–8,6 s OnePlus GPU.
+
+⚠️ **Ba lỗi thật lượt đo bắt được, 3543 ca test đều mù, cả ba chỉ OnePlus lộ ra** — người dùng chọn
+sửa ngay (`ace9a53`): **4.34** thẻ số liệu gán nhầm đối tượng khi hai hàng cùng giá trị ở hai câu
+khác nhau (nay xét từng câu) · **4.35** mẫu câu L3 sau ba lời gọi lặp hàng và mất nhãn kỳ (nay
+theo lượt gọi, kèm chữ kỳ) · **4.36** câu trả lời dạng markdown lộ `*` (nay gỡ lúc hiện). Kiểm lại
+trên Realme sau khi sửa: không hồi quy.
+
+⚠️ **Kế hoạch sai ba chỗ nữa, sửa ở test khi thi công:** hang_chi_tieu có **6** ca chứ không 7 (Task 5
+là +26 chứ không +27); fixture ngân sách "Cũ" của Task 6 dựng `recurrence: true` — ngân sách lặp lại
+không đặt ngày kết thúc **không bao giờ hết hạn**, nên ca "chỉ ngân sách đang chạy" đỏ trên mã đúng;
+hai ca huỷ của Task 7 đưa câu sai ở token **cuối** mà đòi `soLanHuy == 1`, trong khi `gacTheoCau`
+chỉ huỷ khi câu trượt **giữa** luồng. Mỗi chỗ có bản sai có chủ ý chứng minh ca đã sửa canh thật.
+
+Test **3554/3554** (3 skip), analyze **26**; `ai_edge` + `ai_chat` **44** tệp / **424** ca. Schema,
+payload, `pubspec` không đổi so với `af2aa81`. **Còn mở, chờ người dùng quyết:** canary cho phiên có
+tool (bẫy 4.33) · câu chào trên Realme mất ~23 s (giá của L1) · ĐC1 không bao giờ nói "không có dữ
+liệu" · chênh 10.000 đ tổng thu (Trang chủ vs gói số).
+
+### Edge AI — lát 4b, nửa đầu: Task 1–4 + 5a; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23 trưa — ảnh chụp, khối trên là hiện trạng)
 
 Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
 Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
@@ -604,7 +638,7 @@ hàng đầy đủ), `GoiSoTraCuu extends GoiSo` (gói tích luỹ, ba lớp ch�
 cho L2/L3), `CongCu` / `KhaiBaoCongCu` / bốn tên tool / `kTranGoiCongCu`, `PhienCongCu` thuần +
 `PhienCongCuGia`, `DangTraCuu` / `KhongTraCuu` trong `SuKienGac`, `kPromptHeThongCongCu`, và
 `SlmRuntime.moPhien` (bản thật `_PhienThat` trong `slm_runtime.dart`, test quét 16 giữ nguyên).
-**Chưa nối vào màn nào** — app đang chạy vẫn là bậc 1. Test **3496/3496** (3 skip), analyze
+Lúc ấy **chưa nối vào màn nào** (nối ở Task 8, khối trên). Test **3496/3496** (3 skip), analyze
 **26**; schema, payload không đổi — ⚠️ **`pubspec` CÓ đổi** (xem dưới).
 
 🛑 **Spike Task 4 với gói cũ: engine SẬP NATIVE khi phiên mang tool, trên CẢ HAI máy** — Realme RMX2205 (CPU,
@@ -626,13 +660,13 @@ không gọi tool (→ L1). Câu cần tool ~9 s OnePlus / ~12 s Realme; đườ
 
 ✅ **Task 5a xong** (`21389ea`): `hangHoaDon` — hàng theo tên cho tool `danh_sach_hoa_don`, 8 ca, bản
 sai bỏ phép chặn cuối tháng làm đúng ca "kỳ SAU bị loại" đỏ. Test **3504/3504** (3 skip), analyze
-**26**. **Dừng ở đây theo yêu cầu người dùng** — phiên sau: 5b ví · 5c ngân sách · 5d chi tiêu theo
-kỳ (5a đã commit riêng, nên bước commit gộp của Task 5 chỉ còn ba phần ấy), rồi Task 6–9.
+**26**. Phiên ấy dừng ở đây theo yêu cầu người dùng; 5b–5d và Task 6–9 làm xong chiều cùng ngày
+(khối trên).
 
 ⚠️ **Hai chỗ spec/kế hoạch sai, lộ ra khi thi công:** (1) ca test của kế hoạch so thẳng danh sách
 **record chứa `Map`** (`ketQuaDaNhan`) — đỏ trên cả mã đúng, vì record so `==` từng trường, `Map`
 so bằng danh tính, matcher `equals` không so sâu vào record; Task 3 đã trải cặp thành danh sách,
-Task 7 còn một ca cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính
+Task 7 sửa ca còn lại cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính
 ấy chỉ cộng token của **câu trả lời**, không đo được thứ bẫy ấy cần.
 
 ### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa, và màn Cài đặt AI thôi đè lỗi cũ (2026-09-23)

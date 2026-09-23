@@ -122,6 +122,12 @@ chặn việc số 1. Làm xong việc 1 thì cái được mở khoá ở việ
 > 45.000 đ` ở dòng khác, không chỗ nào nói Kiem **LÀ** cái quá hạn, và E2B không nối được hai mục
 > rời. Nên ba câu còn hỏng **không** chữa được bằng gói số; chúng cần tool trả **một hàng đầy
 > đủ**. Việc tiếp theo là **lát 4b**.
+>
+> ✅ **Lát 4b XONG 9/9 task, cổng C ĐẠT (2026-09-23 chiều)** — bốn tool chỉ đọc, màn Trợ lý AI đi
+> bậc tool; nhóm A trả lời bằng tên Realme **4/4**, OnePlus **3/4**, 0 câu bịa số. Bảng ở mục
+> **9.14** `AI_EDGE_FEATURE.md`. Tức **"function calling" của hệ đánh số trong tệp này (chặng 2)
+> nay đã có ở dạng bốn tool đọc** — nửa sau của chặng 2 bên dưới (*"bộ hàm cho function
+> calling"*) phần nào đã làm, xem banner ở đó.
 
 🛑 **Bước này từng BỊ BỎ SÓT trong bản thứ tự đầu tiên viết cùng ngày** — bản ấy để
 "function calling" ngay sau tải nền. Sai, và lộ trình đã ghi sẵn lý do: danh sách tool phải
@@ -543,6 +549,13 @@ KhoangTien? khoangTien;   // ← mới; khoảng NGÀY không nằm ở đây m�
 ```
 
 ### ⬜ Nửa sau — bộ hàm cho function calling (chưa làm)
+
+> ⚠️ **Hạ tầng tool ĐÃ CÓ từ lát 4b (2026-09-23)** — `CongCu` / `KhaiBaoCongCu` / `BoCongCu`, vòng
+> lặp `hoiBangCongCu` (trần 3 lời gọi, thang lùi L1–L4), `GoiSoTraCuu`; thêm một tool là **một
+> adapter + một hàm dựng hàng**, không phải dựng lại hạ tầng. Nhưng **tool tìm giao dịch** của mục
+> này (ánh xạ sang `TransactionFilter` + `Ky`) thì **vẫn chưa làm**: bốn tool của 4b chỉ trả tổng
+> hợp theo danh mục / ngân sách / hoá đơn / ví, không liệt kê giao dịch. Phép đo *"chọn đúng hàm"*
+> của 4b là 8/8 câu mỗi máy với **bốn** tool — chưa phải 20 câu lệnh tìm kiếm.
 
 **Tệp:** một hàm khai `Tool` ánh xạ sang `TransactionFilter` + `Ky`. Hai thứ ấy nay
 đã đủ trường để mô hình chọn, nên phần còn lại thuần là lớp dịch câu → tham số.

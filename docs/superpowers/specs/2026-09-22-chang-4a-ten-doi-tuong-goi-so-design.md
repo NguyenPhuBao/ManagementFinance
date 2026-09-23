@@ -42,7 +42,7 @@ chung ở đây; **13 hàng, 12 câu lệch** — thì chúng **không cùng m�
 | **A** | 3, 8, 13, 15 | gói mang **giá trị** mà không mang **định danh** | lát này |
 | **B** | 12, 14, 20 | số **đã có sẵn** trong gói, mô hình chọn nhầm | lát này |
 | **C** | 2, 5, 9, *(7 — rơi mẫu)* | gói **thiếu** số (tổng còn lại, gợi ý hạn mức, kỳ tuỳ ý) | lát 4b |
-| **D** | 16, 17 | cần **so sánh** / **trừ** giữa hai gói | lát 4b |
+| **D** | 16, 17 | cần **so sánh** / **trừ** giữa hai gói | lát 4b *(⚠️ spec 4b mục 4 đã **hoãn** nhóm D sang lát sau — 4b xong 2026-09-23 với bốn tool, không có tool so sánh)* |
 
 🛑 **Nhóm A và B không cần tool nào.** Dựng tool-calling cho chúng là chữa nhầm bệnh — đó là lý
 do lối C đặt lát này **trước** lát 4b, và là cùng bài học đã cứu chặng 3 khỏi ba tool thừa.

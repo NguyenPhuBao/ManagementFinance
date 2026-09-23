@@ -26,12 +26,14 @@
 > **5.6** `docs/AI_AGENT_ARCHITECTURE.md`. ⭐ Lát ấy chứng minh **danh sách có tên là CẦN nhưng
 > CHƯA ĐỦ** — mô hình không nối được hai mục rời (`Quá hạn: 1` và `Kiem · Phải trả: 45.000 đ`),
 > nên ba câu còn hỏng **không** chữa được bằng gói số.
-> **Việc tiếp theo: lát 4b** — tool-calling + vòng lặp, với hình dạng nay đã rõ: tool trả **một
-> hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời. 🚧 **Thi công từ 2026-09-23:
-> Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói** — với `flutter_gemma_litertlm` 1.7.0 engine
-> **sập native** ở mọi phiên có tool trên cả hai máy; nâng lên `flutter_gemma` 1.9.0 + litertlm
-> 1.8.0 (người dùng duyệt) thì 6/6 không sập và E2B gọi đúng tool (mục **9.13**, bẫy **4.33**
-> `AI_EDGE_FEATURE.md`). Task 5a xong; 5b–5d và Task 6–9 cho phiên sau. Spec đã duyệt + kế hoạch 9
+> ✅ **Lát 4b XONG 9/9 task — CỔNG C ĐẠT (2026-09-23 chiều), tức câu *"là AI Agent"* nay ĐÚNG.**
+> Tool-calling + vòng lặp, tool trả **một hàng đầy đủ** (tên + số + trạng thái). Đo tám câu trên
+> Realme và OnePlus: nhóm A trả lời bằng tên **4/4 · 3/4**, 0 câu bịa số, 0 lần sập, mô hình chọn
+> đúng tool ở 8/8 câu mỗi máy (mục **9.14** `AI_EDGE_FEATURE.md`; *"Đo lại sau chặng 4b"* ở mục
+> **5.6** `AI_AGENT_ARCHITECTURE.md`). Lượt đo bắt ba lỗi thật phía app, sửa cùng ngày (bẫy
+> **4.34–4.36**). Trước đó: với `flutter_gemma_litertlm` 1.7.0 engine **sập native** ở mọi phiên
+> có tool trên cả hai máy; nâng lên `flutter_gemma` 1.9.0 + litertlm 1.8.0 (người dùng duyệt) thì
+> hết (mục **9.13**, bẫy **4.33**). Spec đã duyệt + kế hoạch 9
 > task: `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`,
 > `plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`. Khung cố định của chặng 4 ở dưới **đổi hai
 > chỗ** theo spec: *"kết quả tool là `List<SoLieu>`"* → `SoLieu` đi **theo hàng** (`HangSoLieu` →
@@ -47,7 +49,7 @@
 **Goal:** Từ hệ luật đang chạy, đi tới một hệ thống mà ba câu sau **đều đúng và kiểm được**:
 *"dùng Edge AI"*, *"là AI Agent"*, *"có áp dụng RAG"* — mà không phá bất biến *mô hình không bịa số*.
 
-**Kiến trúc đích:** `docs/AI_AGENT_ARCHITECTURE.md` — ba vòng (tất định ✅ / SLM 📝 / agent ⬜),
+**Kiến trúc đích:** `docs/AI_AGENT_ARCHITECTURE.md` — ba vòng (tất định ✅ / SLM 📝 / agent ⬜ lúc viết; nay cả ba ✅ từ 2026-09-23),
 bốn bất biến, ranh giới **văn bản vs số** giữa backend và client.
 
 ## Quyết định đã có (không hỏi lại)
@@ -243,7 +245,7 @@ Không còn gì phải chờ ở mâu thuẫn ①.
 | "Có guardrail chống bịa số" | ✅ **hôm nay** | — |
 | "Có guardrail chống diễn giải sai" | chặng 1 | Task 1 xanh + P3 nối |
 | "Dùng Edge AI / SLM on-device" | **cổng A** | arm64 đã tải mô hình; máy ảo luôn rơi về mẫu |
-| "Là AI Agent" | **cổng C** | — |
+| "Là AI Agent" | ✅ **cổng C — đạt 2026-09-23** | bốn tool **chỉ đọc**, trần 3 lời gọi; arm64 đã tải mô hình (máy ảo rơi về mẫu) |
 | "Có áp dụng RAG" | **cổng D** (client) hoặc chặng 6 (server) | theo M4 |
 | "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | chặng 6 chốt (A) | NPBao |
 
