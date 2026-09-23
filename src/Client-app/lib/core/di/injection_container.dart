@@ -520,7 +520,8 @@ Future<void> setupDependencies() async {
   // Nguồn sáu gói số cho BẬC 1 của màn Trợ lý AI — nhánh lùi L1 khi mô hình
   // không gọi tool nào. Sáu khối Nhận xét đều lấy gói từ trang của chúng; màn
   // Trợ lý AI không thuộc trang nào nên phải tự hỏi dữ liệu — qua lớp này, hoặc
-  // (từ chặng 4b) qua bốn tool của `BoCongCu` ngay dưới.
+  // (từ chặng 4b) qua các tool đọc của `BoCongCu` ngay dưới — bốn từ chặng 4b,
+  // bảy từ bước 2.
   sl.registerLazySingleton<NguonGoiSo>(
     () => NguonGoiSo(
       phanTich: sl<AnalyticsRepository>(),
@@ -531,14 +532,17 @@ Future<void> setupDependencies() async {
     ),
   );
 
-  // Bộ tool của bậc tool (chặng 4b): bốn tool ĐỌC, lazy như `NguonGoiSo` — chỉ
-  // dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
+  // Bộ tool của bậc tool: bảy tool ĐỌC (bốn của chặng 4b + ba của bước 2),
+  // lazy như `NguonGoiSo` — chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
   sl.registerLazySingleton<BoCongCu>(
     () => BoCongCu.macDinh(
       phanTich: sl<AnalyticsRepository>(),
       nganSach: sl<BudgetRepository>(),
       vi: sl<WalletRepository>(),
       hoaDon: sl<BillRepository>(),
+      mucTieu: sl<GoalRepository>(),
+      giaoDich: sl<TransactionRepository>(),
+      baoCao: sl<BaoCaoRepository>(),
     ),
   );
 

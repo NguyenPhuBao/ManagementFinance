@@ -1,4 +1,4 @@
-/// Bộ bốn tool: khai báo đúng tên/thứ tự bảng 5.6, tra theo tên, và mỗi adapter
+/// Bộ bảy tool (4b + bước 2): khai báo đúng tên/thứ tự, tra theo tên, và mỗi adapter
 /// đọc đúng repository rồi giao cho hàm dựng hàng. Fake ghi đè `noSuchMethod`
 /// để một hàm mới lỡ gọi thêm sẽ ném thay vì im lặng (nếp `nguon_goi_so_test`).
 library;
@@ -8,6 +8,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
@@ -16,6 +17,8 @@ import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
+import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -103,6 +106,23 @@ Bill _bill(String ten, DateTime dueDate) => Bill(
       syncRetryCount: 0, updatedAt: DateTime(2026, 9, 1),
     );
 
+// Ba fake cho ba tool bước 2 — tệp này chỉ kiểm khai báo, không chạy chúng,
+// nên `noSuchMethod` là đủ: gọi tới là ném, không im lặng.
+class _MucTieu implements GoalRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
+class _GiaoDich implements TransactionRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
+class _BaoCao implements BaoCaoRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
@@ -123,12 +143,22 @@ void main() {
   setUp(() {
     phanTich = _PhanTich();
     hoaDon = _HoaDon();
-    bo = BoCongCu.macDinh(phanTich: phanTich, nganSach: _NganSach(), vi: _Vi(), hoaDon: hoaDon);
+    bo = BoCongCu.macDinh(
+      phanTich: phanTich,
+      nganSach: _NganSach(),
+      vi: _Vi(),
+      hoaDon: hoaDon,
+      mucTieu: _MucTieu(),
+      giaoDich: _GiaoDich(),
+      baoCao: _BaoCao(),
+    );
   });
 
-  test('bốn khai báo, đúng tên và thứ tự bảng 5.6, mô tả tiếng Việt nói khi nào gọi', () {
-    expect(bo.khaiBao.map((k) => k.ten).toList(),
-        [kTenCongCuNganSach, kTenCongCuHoaDon, kTenCongCuVi, kTenCongCuChiTieu]);
+  test('bảy khai báo: bốn tool 4b rồi ba tool bước 2, mô tả tiếng Việt nói khi nào gọi', () {
+    expect(bo.khaiBao.map((k) => k.ten).toList(), [
+      kTenCongCuNganSach, kTenCongCuHoaDon, kTenCongCuVi, kTenCongCuChiTieu,
+      kTenCongCuMucTieu, kTenCongCuGoiYHanMuc, kTenCongCuGiaoDich,
+    ]);
     for (final k in bo.khaiBao) {
       expect(k.moTa, contains('Gọi khi'), reason: k.ten);
       expect(k.thamSo['type'], 'object', reason: k.ten);

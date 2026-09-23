@@ -605,7 +605,8 @@ trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a
 thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
 giao dịch + phép đo 20 câu lệnh *(✅ spec đã duyệt —
 `superpowers/specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`, viết tối muộn 2026-09-23, ba chỗ
-thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); chưa có kế hoạch, chưa dòng mã nào)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); 🚧 **đang thi công** — task 1–6 của kế hoạch 9 task xong,
+`BoCongCu` **bảy** tool, chưa đo máy thật)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
 nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4

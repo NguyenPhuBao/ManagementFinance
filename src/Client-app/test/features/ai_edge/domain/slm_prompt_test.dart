@@ -215,6 +215,12 @@ void main() {
       expect(kPromptHeThongCongCu, contains('TRƯỚC'));
       expect(kPromptHeThongCongCu, contains('chép nguyên'));
     });
+    test('bước 2: nêu mục tiêu, gợi ý hạn mức, giao dịch; dặn chép nguyên NGÀY tháng', () {
+      expect(kPromptHeThongCongCu, contains('mục tiêu'));
+      expect(kPromptHeThongCongCu, contains('gợi ý hạn mức'));
+      expect(kPromptHeThongCongCu, contains('từng giao dịch'));
+      expect(kPromptHeThongCongCu, contains('ngày tháng'));
+    });
     test('không mang con số nào ngoài giới hạn độ dài', () {
       final so = RegExp(r'\d+')
           .allMatches(kPromptHeThongCongCu)
