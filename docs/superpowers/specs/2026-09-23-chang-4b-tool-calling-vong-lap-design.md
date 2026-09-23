@@ -265,6 +265,11 @@ tổng **vượt** trần → L3 ngay, không chạy tool, không sinh thêm. To
 | L3 | Hết trần 3 lượt mà chưa có câu trả lời | như L2 | 0 |
 | L4 | Runtime ném | `_kHong` như hôm nay, kèm `debugPrint` | 0 |
 
+*(Thêm sau spec, bước 1b ngày 2026-09-23: `moPhien` có một lỗi **riêng** không đi L4 —
+`BacCongCuDaTat`, ném khi canary đã xác nhận máy này từng sập native ở phiên có tool; vòng lặp bắt
+nó và đi **L1** (bậc 1), vì bậc 1 không mở phiên có tool nên vẫn chạy được. Mục **9.15**
+`AI_EDGE_FEATURE.md`.)*
+
 ⚠️ **L1 là chốt quan trọng nhất.** Ở hướng A prompt không có số, nên câu trả lời thẳng chỉ có thể
 là (a) *"không có dữ liệu"* — mà bậc 1 có thể trả lời được — hoặc (b) một câu **bịa không chứa chữ
 số** (*"Bạn có một hoá đơn quá hạn là Kiem"*) — thứ `kiemSo` **không bắt được** vì không có số nào
