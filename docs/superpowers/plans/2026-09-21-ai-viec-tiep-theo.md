@@ -8,11 +8,41 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và **trọn chặng 1** xong (2026-09-21) — riêng 1.4 ⚠️ **một phần**, hai hàm còn lại là việc về trùng lặp chứ không về năng lực. Chặng 2 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và **trọn chặng 1** xong (2026-09-21) — riêng 1.4 ⚠️ **một phần**, hai hàm còn lại là việc về trùng lặp chứ không về năng lực. Từ **2026-09-23** thứ tự làm việc là mục **"THỨ TỰ … chốt lại 2026-09-23"** ngay dưới đây.
 
 ---
 
-# ⭐ THỨ TỰ THỰC HIỆN — chốt 2026-09-22
+# ⭐ THỨ TỰ THỰC HIỆN — chốt lại 2026-09-23, sau cổng C
+
+Người dùng duyệt thứ tự này chiều 2026-09-23 (*"ok vậy thì theo thứ tự bạn đề xuất"*), khi lộ
+trình kiến trúc đã đi hết phía client: chặng 1–4 xong, cổng A · B · C đạt, chặng 5 bỏ, chặng 6 là
+việc của backend. Mục *"THỨ TỰ … chốt 2026-09-22"* bên dưới nay là **lịch sử** — mọi việc của nó
+đã xong hoặc đã chuyển vào bảng này.
+
+Hai nếp người dùng đã chốt quyết định thứ tự: **sửa lỗi trước, thêm tính năng sau** và **ưu tiên
+giá trị người dùng**.
+
+| # | Việc | Trạng thái | Ghi chú |
+|---|---|---|---|
+| 1a | Thẻ thu/chi tháng ở Trang chủ đi qua `khoanVaoThongKe` | ✅ **xong 2026-09-23 tối** — `thuChiThangCua` đi qua `tongThuChi` + `Ky.thang`; 7 ca ở `home/thu_chi_thang_test.dart`; nghiệm thu máy ảo: Trang chủ, khối Nhận xét, trang Phân tích cùng 15.135.000 | Người dùng chốt **LOẠI** khoản điều chỉnh số dư và khoản "Số dư ban đầu" — con số của trang Phân tích là con số đúng. Trước 4b, hai số lệch (15.145.000 / 15.135.000) nằm ở hai trang; từ 4b trợ lý AI (tool `chi_tieu_theo_ky`) nói một số, Trang chủ nói số kia. Sửa **một chỗ**: `thuChiThangCua` — thẻ và khối Nhận xét Trang chủ đổi theo |
+| 1b | Canary cho phiên có tool (bẫy 4.33 `AI_EDGE_FEATURE.md`) | ⬜ | cùng khuôn `canary_gpu.dart`: máy sập native ở phiên có tool thì lần mở sau tự lùi về bậc 1 thay vì văng ở mọi câu hỏi |
+| 2 | Hai tool đọc còn lại của đơn đặt hàng cổng B + **tool tìm giao dịch** (nửa sau mục 2.1 tệp này) + **phép đo 20 câu lệnh** | ⬜ | hai tool: dự báo mục tiêu — dựng thành *danh sách mục tiêu có tên*, cùng hình dạng bốn tool đã có (bài học 4a) — và gợi ý hạn mức (`suggestAmount`). Phép đo chọn-đúng-hàm là **căn cứ để mở chiều ghi** |
+| 3 | **Nhập giao dịch bằng câu** (gõ) — mục 2.2, ghi **tầng 3** | ⬜ | cần brainstorm + spec + Stitch. Bản luật chạy trước, mô hình chỉ cho câu lạ; form điền sẵn dựng từ **tham số**; chốt bảng quy đổi *k / củ / lít…* với người dùng trước khi viết mã |
+| 4 | **Tạo hoá đơn · mục tiêu · ngân sách bằng lệnh** — mục 2.3, ghi **tầng 2** | ⬜ | cần brainstorm + spec; một hộp thoại có số, một lệnh một bước |
+| 5 | **Gắn danh mục hàng loạt** — mục 3.1, ghi **tầng 1** | ⬜ | cần brainstorm + spec; đo lại tỉ lệ vì 15/39 là số của 2026-09-20 |
+| 6 | Mở rộng đường vào: **giọng nói**, rồi **chụp hoá đơn** (trả lời luôn việc UX A5 — nút "Quét") | ⬜ | mục 8.7 `AI_EDGE_FEATURE.md` là **cận trên** (giọng tổng hợp, ảnh dựng bằng máy) — phải đo lại bằng giọng người và ảnh chụp thật |
+
+⚠️ Bước 3–4 **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md`: *"không tool nào ghi"* thành
+*"không tool nào ghi **thẳng** — tool chiều ghi chỉ trả đề xuất để người dùng duyệt"*. Thay đổi ấy
+phải nằm trong spec và được người dùng duyệt. Tầng 4 (bật tự trả / trích tự động) và mọi thao tác
+**xoá** vẫn **không có hàm nào** (mục 10.5 `AI_EDGE_FEATURE.md`).
+
+**Chờ người dùng gọi tên — không tự làm:** rút ngắn câu chào ~23 s trên Realme và dạy trợ lý nói
+"không có dữ liệu" (cả hai đổi hành vi L1, cần thiết kế); bảy việc UX hoãn (mục cuối tệp).
+
+---
+
+# ⭐ THỨ TỰ THỰC HIỆN — chốt 2026-09-22 *(lịch sử — thay bằng mục trên từ 2026-09-23)*
 
 Người dùng duyệt thứ tự này cuối phiên 2026-09-22, sau khi P3 xong 10/10 task.
 **Đọc mục này trước mọi mục khác trong tệp** — các chặng bên dưới là *nội dung*, mục này

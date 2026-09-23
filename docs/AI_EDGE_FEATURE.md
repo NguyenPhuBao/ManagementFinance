@@ -357,6 +357,13 @@ này thu 15.145.000 đ, chi 2.091.000 đ, còn lại 13.054.000 đ. Ngân sách 
    tích đi qua `khoanVaoThongKe`. Khối Nhận xét ở mỗi trang **chép đúng số của trang ấy** — đó là
    điều kiện 12 — nên hai khối nói hai số là *hệ quả* của hai thẻ đã nói hai số từ trước. Muốn hai
    trang khớp thì đổi `thuChiThangCua` (một chỗ), không đổi gói số.
+   ✅ **Đã vá 2026-09-23** (bước 1a của thứ tự mới, sau cổng C): người dùng chốt con số của Phân
+   tích; `thuChiThangCua` nay **đi qua `tongThuChi`** và cắt tháng bằng `Ky.thang`, nên hai trang
+   không còn hai vòng cộng. Nghiệm thu máy ảo cùng tối (tài khoản 10): thẻ Trang chủ, khối Nhận xét
+   Trang chủ và trang Phân tích cùng nói *thu 15.135.000 đ · chi 2.141.000 đ*, khối Nhận xét
+   *"…còn lại 12.994.000 đ"*. Chỗ lệch **có nghĩa hơn** từ lát 4b: trợ lý AI trả lời bằng tool
+   `chi_tieu_theo_ky` (đọc `tongThuChi`), nên trước bản vá nó nói một số còn thẻ ngay trên Trang chủ
+   nói số kia. Test: `test/features/home/thu_chi_thang_test.dart`.
 2. Thẻ "Số dư còn lại" in "Để dành **86%**" (làm tròn nguyên) còn khối in "**85,7%**" (luật G2,
    một chữ số thập phân). Cùng một `tyLeTietKiem`, hai cách làm tròn.
 
@@ -853,9 +860,10 @@ câu cũ nên đọc là *"không đáng tin cậy"* chứ không phải *"khôn
 
 **Hai lỗi của mô-đun này lượt đo bắt được:** thẻ số liệu gán nhãn của gói khác khi hai nhãn
 **trùng giá trị** (bẫy **4.27** — ✅ **đã sửa ở chặng 4a**, `20bbc05`) và **tổng thu lệch 10.000 đ**
-giữa Trang chủ (15.145.000) và gói số (15.135.000) — ⚠️ cái sau **vẫn mở**; đừng sửa bên nào trước
-khi chốt con số nào mới đúng. *(Câu ở đây từng ghi "chưa sửa" cho cả hai — đúng lúc viết, sai từ
-tối cùng ngày.)*
+giữa Trang chủ (15.145.000) và gói số (15.135.000) — ✅ cái sau **đóng 2026-09-23** (bước 1a):
+người dùng chốt con số của Phân tích, `thuChiThangCua` nay đi qua `tongThuChi` (xem mục **7.1**,
+chỗ lệch 1). *(Câu ở đây từng ghi "chưa sửa" cho cả hai, rồi "cái sau vẫn mở" — mỗi câu đúng tới
+lúc lỗi tương ứng được sửa.)*
 
 ---
 
@@ -1026,7 +1034,8 @@ theo máy), nên hai ca ấy được canh bằng unit test dựng lại **đún
 ⚠️ **Điều đo được mà chưa sửa, để người dùng quyết:** (1) câu chào trên Realme mất **~23 s** rồi
 nhận một câu tổng hợp số — giá của L1 (vứt câu mô hình, sinh lại ở bậc 1); (2) ĐC1 không bao giờ
 nói *"không có dữ liệu lãi suất"* — nó luôn tìm tool gần nhất; (3) canary cho phiên có tool
-(bẫy 4.33) vẫn **chưa làm**.
+(bẫy 4.33) vẫn **chưa làm** — ✅ người dùng **duyệt làm** ngày 2026-09-23, là bước **1b** của thứ
+tự mới (đầu `…/plans/2026-09-21-ai-viec-tiep-theo.md`). (1) và (2) vẫn chờ người dùng gọi tên.
 
 ---
 

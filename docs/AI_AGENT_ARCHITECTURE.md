@@ -528,10 +528,13 @@ vẫn dùng được. Đo lại: câu sai bị chặn trở lại.
   trị**, không phải chuỗi con. Thẻ nay ưu tiên mục mà **câu nhắc tới** (cùng phép âm tiết với
   `kiemNhan`) — bẫy **4.27** `AI_EDGE_FEATURE.md`. *(Dòng này từng ghi "Chưa sửa" — đúng lúc đo,
   sai từ tối cùng ngày.)*
-- ⚠️ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số.** Trang chủ hiện *Thu nhập 15.145.000*,
-  gói phân tích trả *Tổng thu 15.135.000* (đo cùng lúc, cùng tài khoản). Chênh ấy lan sang mọi
-  câu trả lời dùng tổng thu. Chưa rõ bên nào đúng — **đừng sửa bên nào trước khi chốt con số nào
-  mới đúng**, cùng lối đã xử lý chỗ lệch "3 hoá đơn / Cần thanh toán (4)".
+- ✅ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số — ĐÓNG 2026-09-23** (bước 1a của thứ tự
+  mới). Trang chủ hiện *Thu nhập 15.145.000*, gói phân tích trả *Tổng thu 15.135.000* (đo cùng
+  lúc, cùng tài khoản): thẻ Trang chủ cộng **thô** theo `type`, nên đếm cả khoản điều chỉnh số dư
+  lẫn khoản "Số dư ban đầu" mà `khoanVaoThongKe` cố ý loại. Người dùng chốt con số của Phân tích
+  là con số đúng; `thuChiThangCua` nay **đi qua `tongThuChi`**, và nghiệm thu máy ảo cho thấy thẻ
+  Trang chủ, khối Nhận xét, trang Phân tích cùng nói **15.135.000**. *(Dòng này từng ghi "chưa rõ
+  bên nào đúng — đừng sửa trước khi chốt" — đúng tới lúc người dùng chốt.)*
 
 #### Đo lại sau chặng 4b (2026-09-23 chiều) — ✅ CỔNG C ĐẠT, nhóm A **4/4** Realme · **3/4** OnePlus
 

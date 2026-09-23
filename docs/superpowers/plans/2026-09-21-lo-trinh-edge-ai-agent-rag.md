@@ -14,7 +14,9 @@
 > **tool-calling**, ở tệp kia là **P3**. Bảng đối chiếu đầy đủ nằm ở đầu tệp kia.
 >
 > **Trạng thái 2026-09-23 (chiều):** chặng 1 ✅ · chặng 2 ✅ (P3 xong 10/10 task) · chặng 3 ✅ ·
-> chặng 4 ✅ (**cổng C đạt**, xem 4b bên dưới) · chặng 5 🛑 bỏ ·
+> chặng 4 ✅ (**cổng C đạt**, xem 4b bên dưới) · chặng 5 🛑 bỏ · → phía client **đã đi hết lộ
+> trình này**; việc tiếp theo theo mục *"THỨ TỰ … chốt lại 2026-09-23"* ở đầu
+> `2026-09-21-ai-viec-tiep-theo.md` (người dùng duyệt cùng chiều) ·
 > ✅ **CỔNG A ĐÃ QUA** — việc số 1 của thứ tự thi công (chặn theo câu, `kiemNhan`, sáu gói số,
 > bốn chip theo gói) xong tối 2026-09-22, đo trên máy thật: bảng ở mục **9.9**
 > `docs/AI_EDGE_FEATURE.md`. ✅ Việc số 2 (**tải nền + resume**, 7 task) cũng xong cùng tối,

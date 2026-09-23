@@ -596,6 +596,52 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
+### 📋 Thứ tự làm việc mới sau cổng C (người dùng duyệt 2026-09-23 tối)
+
+Lộ trình kiến trúc Edge AI đã đi hết phía client (chặng 1–4 xong, cổng A · B · C đạt, chặng 5
+bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ tự mới, theo hai nếp đã chốt — *sửa lỗi
+trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
+**1b** canary cho phiên có tool · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
+giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
+kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
+là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
+*"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
+Stitch và người dùng duyệt trước khi viết mã.
+
+### ✅ Bước 1a — Trang chủ, trang Phân tích và trợ lý AI nói CÙNG một con số thu/chi (2026-09-23 tối)
+
+Thẻ thu/chi tháng ở Trang chủ từng **cộng thô theo `type`**, nên đếm cả khoản điều chỉnh số dư lẫn
+khoản "Số dư ban đầu" — hai thứ `khoanVaoThongKe` cố ý loại khỏi mọi thống kê. Trên tài khoản 10:
+Trang chủ *Thu nhập 15.145.000* còn trang Phân tích *Tổng thu 15.135.000*. Chỗ lệch ấy có từ
+2026-09-19 (mục 7.1 `AI_EDGE_FEATURE.md`) nhưng **nặng thêm từ lát 4b**: trợ lý AI trả lời bằng
+tool `chi_tieu_theo_ky`, vốn đọc `tongThuChi`, nên nó nói một số còn thẻ ngay trên Trang chủ nói số
+kia — đúng điều mảng AI cam kết không xảy ra. Người dùng chốt con số của **Phân tích** là con số
+đúng: tạo một ví có sẵn tiền, hay đối soát số dư, không phải có thêm thu nhập.
+
+**Sửa một chỗ:** `home/domain/thu_chi_thang.dart` — `thuChiThangCua` nay **đi qua `tongThuChi`**
+của trang Phân tích và cắt tháng bằng `Ky.thang` (biên `[from, to)`), thay vì tự cộng. Thẻ số liệu
+tháng và khối Nhận xét Trang chủ cùng đọc hàm ấy nên cả hai đổi theo; không đụng widget, không đụng
+gói số. ⚠️ Đừng viết lại vòng cộng trong tệp ấy — một vòng thứ hai là một định nghĩa thứ hai.
+
+**Test:** tệp mới `test/features/home/thu_chi_thang_test.dart`, **7** ca — 4 đỏ trên mã cũ (khoản
+điều chỉnh chiều thu · khoản số dư ban đầu · khoản điều chỉnh chiều chi · Trang chủ khớp
+`tongThuChi` trên cùng dữ liệu); 3 ca canh xanh ngay (khoản **chưa phân loại thật** vẫn được tính ·
+biên **tháng 12** sang năm mới · **29/02** năm nhuận) nên đã thử bằng **ba** bản sai có chủ ý (loại
+mọi khoản trống danh mục; lùi biên cuối một ngày; nới biên cuối một ngày) — mỗi bản làm đúng các ca
+ấy đỏ. Trọn bộ **3561/3561** (3 skip, 2 phút 48 giây), analyze **26**. Schema, payload, `pubspec`
+không đổi.
+
+**Nghiệm thu máy ảo** (`emulator-5554`, AVD `FlowMoney_16G`, tài khoản 10, không backend): thẻ
+Trang chủ *Thu nhập 15.135.000 đ · Chi tiêu 2.141.000 đ · Thu net +12.994.000 đ*; trang Phân tích
+tháng 9/2026 *Tổng thu 15.135.000 đ · Tổng chi 2.141.000 đ*; khối Nhận xét Trang chủ *"Tháng này thu
+15.135.000 đ, chi 2.141.000 đ, còn lại 12.994.000 đ…"*. Tổng số dư ví vẫn **13.004.000 đ** — chênh
+10.000 với "còn lại" là **đúng nghĩa**: khoản điều chỉnh đổi số dư thật nhưng không phải thu nhập.
+
+⚠️ **Còn một chỗ lệch nhỏ, chưa vá, không thuộc bước này:** thẻ "Số dư còn lại" ở trang Phân tích in
+*"Để dành 86%"* (làm tròn nguyên) cạnh khối Nhận xét in *"85,7%"* (luật G2) — mục 7.1
+`AI_EDGE_FEATURE.md`, chỗ lệch 2.
+
 ### ✅ Edge AI — lát 4b XONG 9/9 task, CỔNG C ĐẠT trên cả hai máy (2026-09-23 chiều)
 
 Màn **Trợ lý AI** nay đi **bậc tool**: mô hình chọn một trong bốn tool **chỉ đọc**
@@ -628,7 +674,8 @@ chỉ huỷ khi câu trượt **giữa** luồng. Mỗi chỗ có bản sai có 
 Test **3554/3554** (3 skip), analyze **26**; `ai_edge` + `ai_chat` **44** tệp / **424** ca. Schema,
 payload, `pubspec` không đổi so với `af2aa81`. **Còn mở, chờ người dùng quyết:** canary cho phiên có
 tool (bẫy 4.33) · câu chào trên Realme mất ~23 s (giá của L1) · ĐC1 không bao giờ nói "không có dữ
-liệu" · chênh 10.000 đ tổng thu (Trang chủ vs gói số).
+liệu" · chênh 10.000 đ tổng thu (Trang chủ vs gói số). *(Tối cùng ngày: chênh 10.000 đ ✅ **đã vá**
+ở bước 1a, và canary được duyệt làm ở bước 1b — hai khối ở đầu mục này.)*
 
 ### Edge AI — lát 4b, nửa đầu: Task 1–4 + 5a; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23 trưa — ảnh chụp, khối trên là hiện trạng)
 
@@ -798,17 +845,19 @@ không tính** — nên chúng chỉ giải được ở vòng 3 bằng cách g�
 phép tính.
 
 ⚠️ **Hai lỗi thật lượt đo bắt được, ngoài phạm vi chặng 3** — cái đầu ✅ **đã sửa ở chặng 4a**, cái
-sau **vẫn mở** *(dòng này từng ghi "chưa sửa" cho cả hai — đúng lúc viết, sai từ tối cùng ngày)*:
+sau ✅ **đã sửa ở bước 1a** (2026-09-23 tối) *(dòng này từng ghi "chưa sửa" cho cả hai, rồi "cái sau
+vẫn mở" — mỗi câu đúng tới lúc lỗi tương ứng được sửa)*:
 
 1. ✅ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn trùng GIÁ TRỊ** — sửa ở chặng 4a Task 3
    (`20bbc05`). Câu 15 trả lời *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của
    *hoá đơn quá hạn*. Cả hai cùng bằng **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ bẫy
    **4.19** nhưng nguyên nhân khác hẳn: trùng giá trị, không phải chuỗi con. Thẻ nay ưu tiên mục mà
    câu nhắc tới — bẫy **4.27** `AI_EDGE_FEATURE.md`.
-2. ⚠️ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
+2. ✅ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
    phân tích *Tổng thu 15.135.000*, đo cùng lúc cùng tài khoản. Chênh ấy lan sang mọi câu trả lời
-   dùng tổng thu. **Đừng sửa bên nào trước khi chốt con số nào mới đúng** — cùng lối đã xử lý chỗ
-   lệch *"3 hoá đơn"* / *"Cần thanh toán (4)"*.
+   dùng tổng thu. Dòng này từng dặn *đừng sửa bên nào trước khi chốt con số nào mới đúng*; người
+   dùng chốt con số của Phân tích ngày 2026-09-23 và bước **1a** vá thẻ Trang chủ — khối ở đầu
+   mục 14.
 
 ⚠️ **Một bẫy đo sẽ tái phát:** `adb shell input text` **làm hỏng chữ hoa giữa từ** — gõ `MuaXe`
 ra **`Mũae`** trên màn hình. Câu hỏi chứa tên riêng phải **chụp màn kiểm lại chữ đã vào** trước
@@ -1606,7 +1655,8 @@ chủ nói thu **15.145.000** còn Phân tích **15.135.000** (thẻ Trang chủ
 theo `type`, Phân tích qua `khoanVaoThongKe`) — khối Nhận xét mỗi trang cố ý
 chép đúng số của trang ấy; và "để dành **86%**" trên thẻ cạnh "**85,7%**" trong
 khối (làm tròn nguyên vs luật G2). Muốn khớp thì đổi `thuChiThangCua` — **hỏi
-người dùng trước**.
+người dùng trước**. *(✅ Chỗ lệch đầu **đã vá 2026-09-23** — người dùng chốt số của
+Phân tích, bước 1a ở đầu mục 14. Chỗ lệch sau — 86% vs 85,7% — vẫn mở.)*
 
 **Bước tiếp:** ✅ cả hai đã xong trong ngày — **P1 spike** (khối 📏 ở trên) và
 **kế hoạch P3** (`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10
