@@ -27,6 +27,7 @@ void main() {
     expect(cauDangTraCuu(kTenCongCuNganSach), 'Đang tra cứu ngân sách…');
     expect(cauDangTraCuu(kTenCongCuChiTieu), 'Đang tra cứu chi tiêu…');
     expect(cauDangTraCuu(kTenCongCuMucTieu), 'Đang tra cứu mục tiêu…');
+    expect(cauDangTraCuu(kTenCongCuGoiYHanMuc), 'Đang tính gợi ý hạn mức…');
     expect(cauDangTraCuu('bay_gio_may_gio'), 'Đang tra cứu…',
         reason: 'mô hình bịa tên tool thì dòng chỉ báo không được vỡ');
   });
