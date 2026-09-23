@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### 🚧 Edge AI — lát 4b: Task 1–4 xong; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23)
+### 🚧 Edge AI — lát 4b: Task 1–4 + 5a xong; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23)
 
 Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
 Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
@@ -622,7 +622,12 @@ ghim 1.8.3 từ P0; gói engine nay ghim **cứng**; changelog litertlm 1.7.1: *
 crash the app"*). Đo lại cùng móc spike: **6/6 không sập** trên hai máy; E2B gọi đúng `danh_sach_vi`
 ở 4/4 câu cần tool, lượt gọi **0 ký tự chữ**, câu trả lời nêu đúng tên + số trong JSON; 2/2 câu chào
 không gọi tool (→ L1). Câu cần tool ~9 s OnePlus / ~12 s Realme; đường bậc 1 trên cả hai máy không
-đổi. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`. Tiếp **Task 5**.
+đổi. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`.
+
+✅ **Task 5a xong** (`21389ea`): `hangHoaDon` — hàng theo tên cho tool `danh_sach_hoa_don`, 8 ca, bản
+sai bỏ phép chặn cuối tháng làm đúng ca "kỳ SAU bị loại" đỏ. Test **3504/3504** (3 skip), analyze
+**26**. **Dừng ở đây theo yêu cầu người dùng** — phiên sau: 5b ví · 5c ngân sách · 5d chi tiêu theo
+kỳ (5a đã commit riêng, nên bước commit gộp của Task 5 chỉ còn ba phần ấy), rồi Task 6–9.
 
 ⚠️ **Hai chỗ spec/kế hoạch sai, lộ ra khi thi công:** (1) ca test của kế hoạch so thẳng danh sách
 **record chứa `Map`** (`ketQuaDaNhan`) — đỏ trên cả mã đúng, vì record so `==` từng trường, `Map`
@@ -905,7 +910,8 @@ sau khi đo**). Nhờ nó đo được cả những nhánh mà không tải 2,41
 cũng chạy thật**: chip → gói số nạp được → nạp mô hình hỏng → câu lỗi, **không màn đỏ**.
 
 ⚠️ **`pubspec` thêm HAI gói, không phải một**: `flutter_gemma: 1.8.3` (ghim **cứng** như `fl_chart`)
-và `flutter_gemma_litertlm: ^1.7.0`. Core **không kèm engine nào** — thiếu gói thứ hai thì
+và `flutter_gemma_litertlm: ^1.7.0` *(nâng lên **1.9.0** / **1.8.0** ngày 2026-09-23 — bản cũ sập
+native ở mọi phiên có tool; khối lát 4b đầu mục này)*. Core **không kèm engine nào** — thiếu gói thứ hai thì
 `getActiveModel()` ném *"add the engine package"*, điều P1 đã đo (mục 8.5 `AI_EDGE_FEATURE.md`).
 
 ⚠️ **Ba lỗi của kế hoạch, cả ba bắt được bằng bản sai có chủ ý** — ghi lại vì chúng cùng một họ

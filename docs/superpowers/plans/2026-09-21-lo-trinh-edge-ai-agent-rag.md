@@ -31,7 +31,7 @@
 > Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói** — với `flutter_gemma_litertlm` 1.7.0 engine
 > **sập native** ở mọi phiên có tool trên cả hai máy; nâng lên `flutter_gemma` 1.9.0 + litertlm
 > 1.8.0 (người dùng duyệt) thì 6/6 không sập và E2B gọi đúng tool (mục **9.13**, bẫy **4.33**
-> `AI_EDGE_FEATURE.md`). Task 5–8 đang làm. Spec đã duyệt + kế hoạch 9
+> `AI_EDGE_FEATURE.md`). Task 5a xong; 5b–5d và Task 6–9 cho phiên sau. Spec đã duyệt + kế hoạch 9
 > task: `specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`,
 > `plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`. Khung cố định của chặng 4 ở dưới **đổi hai
 > chỗ** theo spec: *"kết quả tool là `List<SoLieu>`"* → `SoLieu` đi **theo hàng** (`HangSoLieu` →

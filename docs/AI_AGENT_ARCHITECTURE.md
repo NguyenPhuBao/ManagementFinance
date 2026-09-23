@@ -727,7 +727,8 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 ✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
 **app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
 P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
-`flutter_gemma_litertlm: ^1.7.0`, `lib/features/ai_edge/` có **33** tệp test / **294** ca, và mô
+`flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
+mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `lib/features/ai_edge/` có **33** tệp test / **294** ca, và mô
 hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
 khi canary bắt được cú sập native trên Mali).
 
@@ -770,7 +771,7 @@ người dùng.
    trên **cả hai máy**; nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 (người
    dùng duyệt) thì **6/6 không sập** và E2B **tự gọi đúng tool** — lần đầu dự án thấy vòng 3 chạy
    trên máy thật (mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`). Tầng tool **chưa nối vào màn
-   nào**; Task 5–8 đang làm. Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
+   nào**; Task 5a (hoá đơn) xong, 5b–5d và Task 6–9 cho phiên sau. Spec `docs/superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md`. Người
    dùng chốt **bốn** tool (không phải sáu) cho lát này — `danh_sach_ngan_sach` · `danh_sach_hoa_don`
    · `danh_sach_vi` · `chi_tieu_theo_ky`; `duBaoMucTieu`, `goiYHanMuc`, nhóm D để lát sau. Trần **3
    lời gọi**, không tool ghi, hướng **A** (tool THAY gói số trong prompt).

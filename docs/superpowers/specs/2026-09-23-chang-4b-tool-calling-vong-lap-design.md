@@ -6,8 +6,8 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 **Khung cố định:** lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`, mục
 *"Chặng 4"* · **Ba quyết định của người dùng trong lượt brainstorm 2026-09-23** (mục 1.2)
 
-> 🚧 **ĐANG THI CÔNG — Task 1–4 xong, cổng Task 4 ĐẠT sau khi nâng gói (2026-09-23).** Task 1–4
-> (`0c9ca1e` → `87ef4f3`) chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
+> 🚧 **ĐANG THI CÔNG — Task 1–4 + 5a xong, cổng Task 4 ĐẠT sau khi nâng gói (2026-09-23).** Task
+> 1–4 (`0c9ca1e` → `87ef4f3`) và 5a (`21389ea`, hàng hoá đơn) chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
 > tool trên **cả hai máy** — Realme 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong
 > `CompositeLogitMask::Apply`. ⚠️ **Mục 4 dưới đây ("không thêm gói `pubspec`") ĐÃ BỊ PHÁ, có duyệt**:
 > người dùng duyệt đích danh nâng `flutter_gemma` 1.8.3 → **1.9.0** và `flutter_gemma_litertlm`
