@@ -1434,7 +1434,10 @@ git commit -m "feat(ai-edge): SlmDienGiai — câu từ mô hình, năm nhánh r
 
 **Interfaces:**
 - Consumes: `MoHinhTaiVe` (Task 5).
-- Produces: route `/ai-settings`; khoá `SharedPreferences` `ai_tren_may_bat`.
+- Produces: route `/ai-settings`; khoá `ai_tren_may_bat`. ⚠️ **Đã thi công 2026-09-22 và
+  dòng này sai ở một chữ**: khoá nằm trong `flutter_secure_storage` (`data/cong_tac_ai.dart`),
+  **không** phải `SharedPreferences` — gói ấy không có trong dự án. Xem mục *"Ba chỗ kế hoạch
+  này lệch mã thật"* ở cuối tệp.
 
 - [ ] **Step 1: Test đỏ**
 
@@ -1608,6 +1611,10 @@ git commit -m "feat(ai-edge): màn Cài đặt AI — tải, xoá, công tắc d
   `sl<SlmCache>()`, `sl<MoHinhTaiVe>()` — **không** đọc `sl<BoDienGiai>()`, vì Task 7 cố
   ý không đăng ký nó. Và màn tự đọc khoá `ai_tren_may_bat`: tắt công tắc thì ô nhập khoá
   y như khi chưa tải mô hình.
+- ⚠️ **Đọc khoá ấy qua `sl<CongTacAi>().doc()`, KHÔNG qua `SharedPreferences`** — dự án
+  không có gói đó; xem mục *"Ba chỗ kế hoạch này lệch mã thật"* ở cuối tệp. Và nút bánh
+  răng của màn này (`ai_chat_page.dart:97`) là **lối vào duy nhất** của `/ai-settings`,
+  nên nó phải `context.push('/ai-settings')` — route nằm ngoài shell.
 
 - [ ] **Step 1: Test đỏ**
 
@@ -1770,10 +1777,21 @@ Run: `flutter analyze` (mức nền 26/0) rồi `flutter test --timeout 60s` (n�
 
 - [ ] **Step 2: Máy ảo x86_64 — nhánh mẫu câu**
 
-Cài APK lên `emulator-5554`, bật công tắc AI, mở bốn màn có khối Nhận xét.
-Expected: câu **mẫu**, **không** nhãn "AI", **không** toast lỗi nào; logcat có đúng một
-dòng `[SLM] sinh câu hỏng` mỗi màn. Đếm pixel vàng **thuần `#FFFF00`** = 0 (bẫy 4.10 —
-dải vàng rộng cho dương tính giả với emoji và ô chọn màu).
+Cài APK lên `emulator-5554`, bật công tắc AI, mở **sáu** màn có khối Nhận xét.
+Expected: câu **mẫu**, **không** nhãn "AI", **không** toast lỗi nào. Đếm pixel vàng
+**thuần `#FFFF00`** = 0 (bẫy 4.10 — dải vàng rộng cho dương tính giả với emoji và ô
+chọn màu).
+
+⚠️ **Hai chỗ bản đầu của Step này viết SAI, sửa 2026-09-22 trước khi chạy:**
+
+1. Bản đầu đòi *"logcat có đúng một dòng `[SLM] sinh câu hỏng` mỗi màn"*. Sai với **lối
+   B** mà người dùng chốt ngày 2026-09-21: `BoDienGiai` **cố ý không đăng ký vào DI**
+   (Task 7 Step 4), nên `KhoiNhanXet` dùng thẳng `const MauCau()` và **không chạm mô
+   hình lần nào**. Kỳ vọng đúng là **KHÔNG có dòng nào**; thấy dòng ấy mới là lỗi —
+   nghĩa là ai đó đã đăng ký `BoDienGiai`. Chạy theo nguyên văn bản đầu sẽ báo hỏng một
+   hành vi đang đúng.
+2. Bản đầu ghi *"bốn màn có khối Nhận xét"* — nay là **sáu** (Hoá đơn và Quản lý ví thêm
+   ngày 2026-09-21).
 
 - [ ] **Step 3: Máy thật — bảng đo P3**
 
@@ -1817,5 +1835,89 @@ git commit -m "docs(ai-edge): P3 xong — bảng đo máy thật, A11 đóng"
 
 | Task | Commit | Ghi chú |
 |---|---|---|
-| 0 | | id Stitch: |
-| … | | |
+| 0 | `4827124` → `91f0d8e` | id Stitch: `1da347e753964e15a91b10c473975923`. Người dùng xem và xác nhận 2026-09-22 |
+| 1 | `a00671b` | `slm_prompt.dart` |
+| 2 | `0166ea7` | `chu_de_chan.dart` |
+| 3 | `a701f28` | `slm_cache.dart` |
+| 4 | `1ab4cf9` | `slm_runtime.dart` + test quét thứ **16** |
+| 5 | `cfe2c95` | `mo_hinh_tai_ve.dart` |
+| 6 | `075ef8d` | `slm_dien_giai.dart`, sáu nhánh lùi |
+| 7 | `4f80f02` | Màn Cài đặt AI + DI + route. **Ba chỗ kế hoạch lệch mã thật** — xem ngay dưới |
+| 8 | `daa7aa2` → `66b6a09` | Màn Trợ lý AI, **đóng A11**. Thêm `nguon_goi_so.dart` và `kiemSoNhieuGoi`. Nghiệm thu máy ảo lộ **ba nhãn nói dối** — sửa ở `66b6a09` |
+| 9 | (lượt này) | Nghiệm thu **máy thật** + bảng đo mục **9** `AI_EDGE_FEATURE.md`. Mô hình chạy thật; **offline 1.898 ms, 0 request**. Bắt **bốn lỗi thật**, ba trong đó **có sẵn từ trước P3** — xem ngay dưới |
+
+### ⚠️ Task 9 — bốn chỗ kế hoạch SAI hoặc không đo được (2026-09-22)
+
+Hai chỗ đầu đã sửa thẳng vào Step 2 ở trên; hai chỗ sau chỉ lộ khi chạy.
+
+1. **Step 2 đòi *"logcat có đúng một dòng `[SLM] sinh câu hỏng` mỗi màn"*** — sai với lối B,
+   `BoDienGiai` không đăng ký nên khối Nhận xét **không chạm mô hình**. Đúng là **0 dòng**.
+2. **Step 2 ghi "bốn màn"** — nay **sáu**.
+3. **Step 3 đòi `dumpsys gfxinfo … framestats`** — **không đo được app Flutter**, trả
+   `Total frames rendered: 0` dù màn đang vẽ. Flutter không dựng khung qua View system của
+   Android. Thay bằng: chụp 10 ảnh liên tiếp trong lúc inference rồi so hash (đổi **7/10**).
+4. **Step 3 đòi *"câu thứ hai cùng gói phải 0 ms nhờ cache"*** — đường hỏi đáp **không đi qua
+   `SlmCache`**; nó gọi thẳng `SlmRuntime.sinh`. Cache chỉ nằm trong `SlmDienGiai`, mà lối B cố
+   ý không đăng ký lớp ấy — nên hôm nay `SlmCache` **không nằm trên đường chạy nào**. Chú thích
+   trong `injection_container` từng mô tả sai chỗ này, đã sửa.
+
+### 🛑 Một hạng mục MỚI mở ra từ Task 9 — tải nền + resume
+
+Lượt tải thẳng từ HuggingFace **hỏng thật** ở ~650 MB (`HttpException: Connection closed while
+receiving data`) và mất trắng chừng ấy vì đường tải không resume; tốc độ đo được trên máy thật
+chỉ **97 KB/s** (≈ 7 giờ cho 2,41 GB). Người dùng yêu cầu **tải tiếp được khi app ở nền hoặc bị
+thoát**, và chốt làm **sau** khi đóng P3. Lối đi có sẵn: `flutter_gemma` đã kéo
+`background_downloader ^9.5.6` vào dự án (phụ thuộc transitive) và dùng chính nó cho đường tải
+mô hình của gói, có **resume sau gián đoạn**.
+
+### ⚠️ Ba chỗ kế hoạch này LỆCH MÃ THẬT (đo khi thi công Task 7, 2026-09-22)
+
+Hai chỗ đầu **sẽ tái phát ở Task 8** — đọc trước khi làm tiếp.
+
+1. **`SharedPreferences` không tồn tại trong dự án.** Step 4 và dòng *Produces* của Task 7 đều
+   giả định nó có; `pubspec.yaml` không có gói ấy, và dự án **cố ý** không thêm — nơi lưu tuỳ
+   chọn là `flutter_secure_storage`, đúng lý lẽ đã ghi ở `SecureStorageNotificationPrefsStore`.
+   Bản thi công: `data/cong_tac_ai.dart`, **giữ nguyên tên khoá `ai_tren_may_bat`**, một khoá cho
+   cả máy (thứ công tắc gác là *tệp mô hình*, tài sản của máy chứ không của tài khoản). Task 8
+   đọc công tắc **qua `CongTacAi`**, không qua `SharedPreferences`.
+2. **`sl<Dio>()` là lựa chọn SAI, không chỉ là tên sai.** Dự án không đăng ký `Dio` trần; cái có
+   là `sl<DioClient>().dio`, và `AuthInterceptor.onRequest` gắn `Authorization: Bearer <token>`
+   vào **mọi** request **không lọc host**. Đích tải là `huggingface.co` — dùng Dio của dự án là
+   gửi access token của người dùng cho một bên thứ ba, **im lặng**. Bản thi công dùng `Dio()`
+   trần trong closure `taiTep`.
+3. **Ca test thứ ba của Step 1 đỏ trên cả bản đúng.** `find.textContaining('không')` phân biệt
+   hoa thường, còn câu hứa bắt đầu bằng *"Không có số liệu nào rời khỏi thiết bị."* Ca nay đòi
+   thẳng câu hứa (`'rời khỏi thiết bị'`) và đòi ở **cả hai** trạng thái.
+
+**Đã kiểm bằng bản sai có chủ ý** (bẫy *"ca test xanh mà không canh gì"*): bỏ `Expanded` ở khối
+riêng tư → ca 411dp đỏ; bỏ phép dọn cache → ca *"đổi tài khoản"* đỏ; dọn vô điều kiện → ca *"cùng
+tài khoản"* đỏ.
+
+**Nghiệm thu máy ảo 411dp** (`emulator-5554`, `-gpu swangle`): màn đúng Stitch, **0 sọc tràn**;
+công tắc tắt → thoát → vào lại **vẫn tắt**. ⚠️ Lối vào lúc nghiệm thu là **nối tạm** nút bánh răng
+của màn Trợ lý AI rồi **gỡ ra, không commit** — nút ấy là việc của Task 8.
+
+### ✅ Một việc Task 7 tìm ra mà kế hoạch không có chỗ nào ghi — ĐÃ SỬA (`f51e2d6`)
+
+**Nút "Huỷ" không dừng được lượt tải.** `MoHinhTaiVe.huy()` chỉ đặt cờ `_huy`; `taiTep` vẫn được
+`await` tới khi **xong toàn bộ 2,41 GB**, rồi mới ném `_HuyTai` và xoá tệp. Tức người dùng bấm
+Huỷ thì giao diện quay về *"Chưa tải"* trong khi máy **vẫn tải hết** nền — trên dữ liệu di động
+thì đó là 2,41 GB họ tưởng đã chặn.
+
+**Đã sửa 2026-09-22** theo yêu cầu của người dùng, và nó **đổi API của Task 5**:
+
+- `DauHuy` — tín hiệu huỷ của **từng lượt** tải (một `Completer`, không phải cờ). Cờ chỉ trả lời
+  được khi *có ai hỏi*; `Dio.download` không hỏi, nó cần được **báo**.
+- `taiTep` nhận thêm tham số thứ tư `DauHuy`. Mọi chỗ dựng `MoHinhTaiVe` phải sửa theo — gồm cả
+  `slm_dien_giai_test.dart`.
+- Huỷ nay phát `chuaTai` chứ không `loi`, và **không ném ra ngoài**.
+- Phép tải thật tách sang `data/tai_tep_dio.dart` (dùng `CancelToken`) — **để đo được**: bản đầu
+  là một closure trong `injection_container.dart`, và đó đúng là lý do không ca test nào với tới
+  nó suốt hai task.
+
+⚠️ **Bài học của lượt đo, dùng được cho mọi phép đo mạng:** `HttpResponse.flush()` của `dart:io`
+**về trơn tru trên cả kết nối đã chết**, nên một server dựng bằng `HttpServer` để đếm *"còn gửi
+thêm bao nhiêu"* báo **vẫn đang chảy** (194 gói ≈ 13 MB trong 2,4 giây) và suýt cho kết luận
+ngược hẳn. Phải dùng **`ServerSocket` thô**, nơi `onDone` báo đúng lúc đầu kia gửi FIN — con số
+thật là **thêm 0 gói**. Cũng nhờ đó mà `dio.close(force: true)` bị loại: nó chỉ bớt một gói đang
+bay (64 KB trên 2,41 GB).

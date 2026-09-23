@@ -63,6 +63,17 @@ class GoiSoPhanTich extends GoiSo {
     final coCamKet = duBao != null && duBao.camKet.isNotEmpty;
     final lonNhat = tk.topChi.isEmpty ? null : tk.topChi.first.soTien;
 
+    // Chặng 4a: top danh mục chi, mang TÊN. Câu 8 của bảng đo — "chi nhiều
+    // nhất vào danh mục nào" — nhận về `Khoản lớn nhất`, một con số của **giao
+    // dịch**; người hỏi muốn tên **danh mục**, hai thứ khác nhau.
+    //
+    // `tk.danhMuc` đã giảm dần theo số tiền và đã tra sẵn tên, nên lớp này chỉ
+    // chép — không sắp lại, không cộng trừ (test quét thứ 14).
+    final theoDanhMuc = <SoLieu>[
+      for (final d in tk.danhMuc.take(kToiDaMucMoiGoi))
+        soTien('Chi', d.soTien, ten: d.ten),
+    ];
+
     return GoiSoPhanTich._(
       tongChi: tk.tong.chi,
       tongThu: tk.tong.thu,
@@ -86,6 +97,8 @@ class GoiSoPhanTich extends GoiSo {
           soDem('Số cam kết', duBao.camKet.length),
         ],
         if (lonNhat != null) soTien('Khoản lớn nhất', lonNhat),
+        // Đặt CUỐI: mẫu câu tra mục theo nhãn, các mục tổng hợp phải gặp trước.
+        ...theoDanhMuc,
       ],
     );
   }
@@ -102,7 +115,7 @@ class GoiSoPhanTich extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    final s = chuoiTheoNhan(soLieu);
     final b = StringBuffer('Kỳ này chi ${s['Tổng chi']}');
     final pt = soKyTruoc;
     if (pt != null) {

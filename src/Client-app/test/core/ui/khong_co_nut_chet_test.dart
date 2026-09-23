@@ -19,11 +19,9 @@ void main() {
   /// (số chỗ, lý do). Mỗi mục là một quyết định **chờ người dùng chốt**, không
   /// phải một ngoại lệ vĩnh viễn.
   const conChoChot = <String, (int, String)>{
-    'features/ai_chat/presentation/pages/ai_chat_page.dart': (
-      5,
-      'Trợ lý AI chưa làm; giữ hay gỡ khỏi menu là mục D9 của danh sách '
-          'UX 2026-09-19, chờ chốt.',
-    ),
+    // `ai_chat_page.dart` đã rút khỏi danh sách này ngày 2026-09-22 (P3 Task
+    // 8, đóng A11): năm handler rỗng nay là một nút thật (bánh răng →
+    // `/ai-settings`) và bốn nút đã **gỡ hẳn** cùng khối mockup bịa số.
     'features/auth/presentation/pages/login_page.dart': (
       2,
       'Hai nút Google / Apple: backend chưa có OAuth. Chờ chốt gỡ hay làm.',

@@ -3,6 +3,7 @@
 /// thành bản định nghĩa thứ hai của nhịp chi.
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_ngan_sach.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
@@ -126,6 +127,48 @@ void main() {
     }
   });
 
+  test(
+      'tên ngân sách THÂM HỤT có chữ số, nằm ngoài danh sách có tên: mẫu câu '
+      'vẫn tự qua bộ kiểm số (bước 1c)', () {
+    // 21/09: đã qua 20/30 ngày nên dự phóng = đã chi × 1,5. Thu nhập 0 → ngưỡng
+    // thâm hụt là sàn 50.000 đ.
+    final now21 = DateTime(2026, 9, 21);
+    final ds = [
+      // 99 % — căng nhất, là ngân sách được nhận xét. Hụt 48.500 < 50.000.
+      _ns(id: 'a', ten: 'Giáo dục', amount: 100000, spent: 99000),
+      // 75 % — tỉ lệ THẤP nhất, nhưng hụt 125.000: khoản duy nhất vượt ngưỡng.
+      _ns(id: 'b', ten: 'Tiền nhà T9', amount: 1000000, spent: 750000),
+      // 95 % — hụt 42.500 < 50.000; ba ngân sách này chiếm cả ba suất tên.
+      _ns(id: 'c', ten: 'Ăn uống', amount: 100000, spent: 95000),
+      _ns(id: 'd', ten: 'Di chuyển', amount: 100000, spent: 95000),
+      _ns(id: 'e', ten: 'Mua sắm', amount: 100000, spent: 95000),
+    ];
+    final kh = taiPhanBoCua(
+      dangChay: ds,
+      now: now21,
+      coDinh: const {},
+      thuNhapMoiThang: 0,
+      mucThangTheoNganSach: const {},
+      phanHoi: const [],
+    );
+    // Hai tiền đề — ca này chỉ canh được điều nó nói khi cả hai đúng.
+    expect(kh!.thieu.displayName, 'Tiền nhà T9');
+    final g = GoiSoNganSach.tu(ds, now: now21, keHoach: kh);
+    expect(g.soLieu.where((s) => s.ten == 'Tiền nhà T9'), isEmpty,
+        reason: 'tên ngân sách thâm hụt không được nằm trên SoLieu nào, nếu '
+            'không getter mặc định đã phủ nó và ca này không canh gì');
+
+    final cau = g.mauCau().cau;
+    expect(cau, contains('Tiền nhà T9 dự kiến vượt'));
+    expect(
+      kiemSo(cau, g),
+      isTrue,
+      reason: 'Câu tóm tắt kế hoạch nêu tên ngân sách thâm hụt — thứ có thể '
+          'khác ngân sách căng nhất và nằm ngoài danh sách có tên. Gói phải tự '
+          'khai tên ấy ở tenDoiTuong.',
+    );
+  });
+
   test('cùng số → cùng dấu vân; đổi số đã chi → khác', () {
     final a =
         GoiSoNganSach.tu([_ns(amount: 3000000, spent: 2100000)], now: now);
@@ -135,5 +178,79 @@ void main() {
         GoiSoNganSach.tu([_ns(amount: 3000000, spent: 2200000)], now: now);
     expect(a.dauVan, b.dauVan);
     expect(a.dauVan, isNot(c.dauVan));
+  });
+
+  group('danh sách ngân sách có TÊN (chặng 4a)', () {
+    // Đúng bốn ngân sách của tài khoản 10 ngày 2026-09-22 (bảng đo mục 5.6).
+    List<BudgetView> bonNganSach() => [
+          _ns(id: 'b1', ten: 'Giáo dục', amount: 50000, spent: 45000),
+          _ns(id: 'b2', ten: 'Ăn uống', amount: 500000, spent: 50000),
+          _ns(id: 'b3', ten: 'Di chuyển', amount: 450000, spent: 355000),
+          _ns(id: 'b4', ten: 'Mua sắm', amount: 850000, spent: 60000),
+        ];
+
+    test('mỗi ngân sách góp một mục Tỉ lệ mang TÊN của nó', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      final tenCoTiLe = [
+        for (final s in g.soLieu)
+          if (s.nhan == 'Tỉ lệ' && s.ten != null) s.ten,
+      ];
+      expect(
+        tenCoTiLe,
+        containsAll(<String>['Giáo dục', 'Ăn uống', 'Di chuyển', 'Mua sắm']),
+        reason: 'Câu 3 của bảng đo — "ngân sách nào sắp hết" — nhận về '
+            '"Ngân sách căng nhất là 90,0%" vì gói không mang tên nào.',
+      );
+    });
+
+    test('căng nhất đứng ĐẦU danh sách', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      final coTen = g.soLieu.where((s) => s.ten != null).toList();
+      expect(coTen.first.ten, 'Giáo dục',
+          reason: 'Mô hình đọc từ trên xuống và hay lấy mục đầu khi phải '
+              'chọn một.');
+    });
+
+    test('không vượt trần kToiDaMucMoiGoi ngân sách', () {
+      final sau = [
+        ...bonNganSach(),
+        _ns(id: 'b5', ten: 'Giải trí', amount: 100000, spent: 10000),
+        _ns(id: 'b6', ten: 'Sức khoẻ', amount: 200000, spent: 20000),
+      ];
+      final g = GoiSoNganSach.tu(sau, now: now);
+      final soMucCoTen = g.soLieu.where((s) => s.ten != null).length;
+      expect(soMucCoTen, lessThanOrEqualTo(kToiDaMucMoiGoi),
+          reason: 'Prompt đã 1.700 ký tự; trần là thứ giữ nó không phình.');
+    });
+
+    test('mẫu câu KHÔNG đổi — sáu khối Nhận xét vẫn nói về MỘT ngân sách', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      expect(g.mauCau().cau, contains('Giáo dục'));
+      expect(g.mauCau().cau, isNot(contains('Mua sắm')),
+          reason: 'Khối Nhận xét là lối B — mẫu câu, một đối tượng. Lát này '
+              'chỉ mở rộng gói cho HỎI ĐÁP, không đụng sáu khối ấy.');
+    });
+
+    test('⭐ mẫu câu nêu tỉ lệ của CHÍNH ngân sách nó nói tới', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      expect(
+        g.mauCau().cau,
+        contains('90,0%'),
+        reason: 'Mẫu câu tra mục theo nhãn qua `chuoiTheoNhan`. Nếu bảng tra '
+            'lấy giá trị CUỐI khi trùng khoá (khuôn `{for … x.nhan: x.chuoi}` '
+            'cũ) thì — vì bốn ngân sách cùng mang nhãn "Tỉ lệ" và danh sách '
+            'đứng cuối — câu nhận xét về Giáo dục in tỉ lệ của Mua sắm (7,1%): '
+            'sai im lặng, và ca "contains(Giáo dục)" ở trên vẫn xanh.',
+      );
+      expect(g.mauCau().cau, isNot(contains('7,1%')));
+    });
+
+    test('mục của ngân sách căng nhất vẫn giữ nguyên, không mất nhãn nào', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      final nhan = g.soLieu.map((s) => s.nhan).toSet();
+      expect(nhan, containsAll(<String>['Đã chi', 'Hạn mức', 'Tỉ lệ', 'Còn']),
+          reason: 'Thêm danh sách không được làm mất mục nào của gói cũ — '
+              'mẫu câu tra theo nhãn và sẽ in "null" nếu thiếu.');
+    });
   });
 }

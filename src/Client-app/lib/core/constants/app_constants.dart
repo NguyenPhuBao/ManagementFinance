@@ -6,6 +6,14 @@ class AppConstants {
   static String get baseUrl {
     // ── LOCAL DEV ──────────────────────────────────────────────────────────
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      // ⚠️ `10.0.2.2` là địa chỉ host riêng của **Android emulator**; MÁY THẬT
+      // route nó ra ngoài mạng và không tới đâu cả. Để chạy backend dev với
+      // máy thật, cách rẻ nhất là `adb reverse tcp:3000 tcp:3000` rồi đổi tạm
+      // dòng dưới thành `127.0.0.1` — cổng 3000 trên loopback của máy được
+      // adb chuyển tiếp qua cáp USB. Đã dùng lối ấy cho lượt đo P3 Task 9
+      // (2026-09-22): nó không cần hai máy cùng Wi-Fi, thứ hoá ra không đúng
+      // ngay cả khi hai máy nối Wi-Fi **trùng tên** — chúng nằm ở hai dải
+      // khác nhau (192.168.1.x và 192.168.98.x) vì là hai thiết bị phát.
       return 'http://10.0.2.2:3000/api'; // Android emulator → host machine
     }
     // Dùng 127.0.0.1 chứ KHÔNG dùng `localhost`: trên Windows, `localhost`

@@ -8,7 +8,231 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và **trọn chặng 1** xong (2026-09-21) — riêng 1.4 ⚠️ **một phần**, hai hàm còn lại là việc về trùng lặp chứ không về năng lực. Chặng 2 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và **trọn chặng 1** xong (2026-09-21) — riêng 1.4 ⚠️ **một phần**, hai hàm còn lại là việc về trùng lặp chứ không về năng lực. Từ **2026-09-23** thứ tự làm việc là mục **"THỨ TỰ … chốt lại 2026-09-23"** ngay dưới đây.
+
+---
+
+# ⭐ THỨ TỰ THỰC HIỆN — chốt lại 2026-09-23, sau cổng C
+
+Người dùng duyệt thứ tự này chiều 2026-09-23 (*"ok vậy thì theo thứ tự bạn đề xuất"*), khi lộ
+trình kiến trúc đã đi hết phía client: chặng 1–4 xong, cổng A · B · C đạt, chặng 5 bỏ, chặng 6 là
+việc của backend. Mục *"THỨ TỰ … chốt 2026-09-22"* bên dưới nay là **lịch sử** — mọi việc của nó
+đã xong hoặc đã chuyển vào bảng này.
+
+Hai nếp người dùng đã chốt quyết định thứ tự: **sửa lỗi trước, thêm tính năng sau** và **ưu tiên
+giá trị người dùng**.
+
+| # | Việc | Trạng thái | Ghi chú |
+|---|---|---|---|
+| 1a | Thẻ thu/chi tháng ở Trang chủ đi qua `khoanVaoThongKe` | ✅ **xong 2026-09-23 tối** — `thuChiThangCua` đi qua `tongThuChi` + `Ky.thang`; 7 ca ở `home/thu_chi_thang_test.dart`; nghiệm thu máy ảo: Trang chủ, khối Nhận xét, trang Phân tích cùng 15.135.000 | Người dùng chốt **LOẠI** khoản điều chỉnh số dư và khoản "Số dư ban đầu" — con số của trang Phân tích là con số đúng. Trước 4b, hai số lệch (15.145.000 / 15.135.000) nằm ở hai trang; từ 4b trợ lý AI (tool `chi_tieu_theo_ky`) nói một số, Trang chủ nói số kia. Sửa **một chỗ**: `thuChiThangCua` — thẻ và khối Nhận xét Trang chủ đổi theo |
+| 1b | Canary cho phiên có tool (bẫy 4.33 `AI_EDGE_FEATURE.md`) | ✅ **xong 2026-09-23 tối** — mục 9.15 `AI_EDGE_FEATURE.md`; 24 ca; nghiệm thu máy ảo ba cách chết (`kill -11` → hỏng · `force-stop` / `kill -9` → chỉ xoá dấu). ⚠️ Thi công lệch kế hoạch một chỗ: dấu bao khoảng trước sự kiện đầu của **mỗi** lượt sinh, không chỉ lượt đầu — có lý do thoát rồi thì cửa sổ dài hơn không còn gây báo nhầm, mà bắt được cả cú sập ở lượt sau | Người dùng chốt **lối B** (2026-09-23): canary **cộng** lý do thoát lần trước của Android (`ApplicationExitInfo`, API 30+) — chỉ tắt bậc tool khi lần thoát đầu tiên sau khi đặt dấu là **sập native**; bị giết / buộc dừng / thiếu RAM thì chỉ xoá dấu. Lý do: chép nguyên khuôn GPU thì Realme (giết app khi vuốt khỏi Recents) mất bậc tool vĩnh viễn chỉ vì một lần vuốt giữa lúc trả lời. Android 10 trở xuống: tắt khi dấu sót **hai lần liền** (lối C). Kèm: dấu chỉ bao **khoảng trước sự kiện đầu tiên** của lượt sinh; dấu "hỏng" ghi **phiên bản app** và tự xoá khi app lên bản mới. Khi bậc tool bị tắt: màn đi thẳng bậc 1, im lặng |
+| 1c | **Tên đối tượng có chữ số không qua được lớp chắn** (bẫy 4.38 `AI_EDGE_FEATURE.md`) — **thêm vào thứ tự 2026-09-23 tối**, lộ ra khi soát trước bước 2 | ✅ **xong 2026-09-23 tối** — `trichSoNgoaiTen` (bỏ tên của gói khỏi câu trước khi trích số: tên có chữ cái, khớp trọn từ, không phân biệt hoa thường, tên dài trước), một phép tách âm tiết giữ chữ số cho cả tên lẫn câu, `GoiSo.tenDoiTuong` + ba override; 18 ca, 11 bản sai có chủ ý đều bị bắt; mục **9.16** | Đo trên tài khoản 10: **5/9** hoá đơn, **1/16** danh mục có chữ số trong tên — câu đúng nêu tên chúng bị cả `kiemSo` lẫn `kiemNhan` chặn. Người dùng chọn **sửa trước** bước 2 (tool tìm giao dịch sẽ đưa ghi chú *"Thanh toán hóa đơn: <tên có số>"* vào hàng). ⚠️ **Chưa đo trên máy thật** — thêm một câu về hoá đơn có chữ số trong tên vào bộ câu hồi quy của buổi đo bước 2 |
+| 2 | Hai tool đọc còn lại của đơn đặt hàng cổng B + **tool tìm giao dịch** (nửa sau mục 2.1 tệp này) + **phép đo 20 câu lệnh** | ⬜ | hai tool: dự báo mục tiêu — dựng thành *danh sách mục tiêu có tên*, cùng hình dạng bốn tool đã có (bài học 4a) — và gợi ý hạn mức (`suggestAmount`). Phép đo chọn-đúng-hàm là **căn cứ để mở chiều ghi** |
+| 3 | **Nhập giao dịch bằng câu** (gõ) — mục 2.2, ghi **tầng 3** | ⬜ | cần brainstorm + spec + Stitch. Bản luật chạy trước, mô hình chỉ cho câu lạ; form điền sẵn dựng từ **tham số**; chốt bảng quy đổi *k / củ / lít…* với người dùng trước khi viết mã |
+| 4 | **Tạo hoá đơn · mục tiêu · ngân sách bằng lệnh** — mục 2.3, ghi **tầng 2** | ⬜ | cần brainstorm + spec; một hộp thoại có số, một lệnh một bước |
+| 5 | **Gắn danh mục hàng loạt** — mục 3.1, ghi **tầng 1** | ⬜ | cần brainstorm + spec; đo lại tỉ lệ vì 15/39 là số của 2026-09-20 |
+| 6 | Mở rộng đường vào: **giọng nói**, rồi **chụp hoá đơn** (trả lời luôn việc UX A5 — nút "Quét") | ⬜ | mục 8.7 `AI_EDGE_FEATURE.md` là **cận trên** (giọng tổng hợp, ảnh dựng bằng máy) — phải đo lại bằng giọng người và ảnh chụp thật |
+
+⚠️ Bước 3–4 **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md`: *"không tool nào ghi"* thành
+*"không tool nào ghi **thẳng** — tool chiều ghi chỉ trả đề xuất để người dùng duyệt"*. Thay đổi ấy
+phải nằm trong spec và được người dùng duyệt. Tầng 4 (bật tự trả / trích tự động) và mọi thao tác
+**xoá** vẫn **không có hàm nào** (mục 10.5 `AI_EDGE_FEATURE.md`).
+
+**Chờ người dùng gọi tên — không tự làm:** rút ngắn câu chào ~23 s trên Realme và dạy trợ lý nói
+"không có dữ liệu" (cả hai đổi hành vi L1, cần thiết kế); bảy việc UX hoãn (mục cuối tệp).
+
+---
+
+# ⭐ THỨ TỰ THỰC HIỆN — chốt 2026-09-22 *(lịch sử — thay bằng mục trên từ 2026-09-23)*
+
+Người dùng duyệt thứ tự này cuối phiên 2026-09-22, sau khi P3 xong 10/10 task.
+**Đọc mục này trước mọi mục khác trong tệp** — các chặng bên dưới là *nội dung*, mục này
+là *thứ tự*.
+
+### Ba thay đổi bối cảnh của ngày 2026-09-22, đọc trước khi xếp lại
+
+1. ✅ **P3 xong 10/10 task** — mô hình đã chạy thật trên OnePlus 13R, bảng đo ở mục **9**
+   `AI_EDGE_FEATURE.md`. Mất mạng vẫn trả lời trong 1.898 ms, 0 request đi ra.
+2. 🛑 **Nhưng CỔNG A chưa qua.** Đối chiếu sáu điểm của cổng
+   (`2026-09-21-lo-trinh-edge-ai-agent-rag.md:100`) với bảng đo: điểm 1, 3, 6 ✅; điểm
+   **2 (chữ hiện dần) chưa có**; điểm **4 (hỏi thứ gói số không có → rơi về mẫu câu)
+   ĐANG HỎNG**; điểm 5 chưa đo. Đừng ghi "P3 xong nên cổng A xong" — hai thứ khác nhau.
+   *(Cập nhật tối cùng ngày: việc số 1 xong và **cổng A đã qua** — đo máy thật mục 9.9
+   `AI_EDGE_FEATURE.md`; khung ở mục 1.)*
+3. ✅ **Backend đóng cả hai tài liệu `CAN-LAM`** (gộp `main` @ `1428918`, client gộp về ở
+   `92dd5cc`): năm điểm sai đặc tả đã sửa trong `docs/AI/AI_Edge-SLM.md/Client-app.md`
+   (90 dòng), thuật ngữ đổi sang **Edge AI**, và **hai mâu thuẫn được chốt** — ① dữ liệu
+   tài chính người dùng **không** index lên vector DB server, số liệu cá nhân đi bằng
+   **function-calling**; ② giữ Cloud AI ở tầng 3 phân loại, thêm `maskTransactionDescription`
+   lọc dữ liệu nhạy cảm trước khi gửi prompt. ⚠️ Quyết định ① **khớp đúng hướng** của việc
+   số 3 dưới đây — hai đầu nay đi cùng một lối thay vì mỗi bên một kiểu.
+
+---
+
+### 🛑 Bẫy đánh số: dự án có HAI hệ "chặng" khác nhau, và chúng LỆCH nhau
+
+| "Chặng" | Trong `2026-09-21-lo-trinh-edge-ai-agent-rag.md` (lộ trình kiến trúc) | Trong **tệp này** (việc theo tính năng) |
+|---|---|---|
+| 1 | Chặn lỗi + tài liệu + spike RAG | Năm việc gói số |
+| **2** | **P3 — cắm SLM** | **Function calling** |
+| **3** | **Đo: bậc 1 hỏng ở đâu** | **Phân loại tự động** |
+| **4** | **Tool-calling + vòng lặp** | **P3** |
+| 5 | RAG client (🛑 bỏ) | Phần còn lại |
+| 6 | Backend RAG (NPBao) | — |
+
+⚠️ Đọc *"chặng 2"* ở tệp này rồi đi làm *"chặng 2"* ở tệp kia là làm nhầm hẳn một hạng mục.
+**Thứ tự dưới đây dùng LỘ TRÌNH KIẾN TRÚC làm khung** vì chỉ nó có cổng kiểm; chỗ nào nhắc
+chặng của tệp này thì ghi rõ *"(mục X tệp này)"*.
+
+---
+
+## 1 · Chất lượng câu trả lời + đóng cổng A
+
+**Vì sao đứng đầu:** đây là **lỗi đang chạy**, không phải tính năng thiếu — và nó rẻ.
+Người dùng hỏi thẳng *"AI trả lời không đúng có phải do giới hạn của SLM không"* ngày
+2026-09-22, và câu trả lời đo được là **không, phần lớn là lỗi phía ta**:
+
+| Nguyên nhân | Bằng chứng | Sửa được? |
+|---|---|---|
+| **2/4 chip hỏi thứ gói số KHÔNG CÓ** | gói mục tiêu chỉ có `Tiến độ` · `Còn thiếu` · `Còn` · `Theo nhịp hiện tại`; không có "dự báo tiết kiệm" nào. Không gói nào có "gợi ý cắt giảm" (`TaiPhanBoNguon` không vào `NguonGoiSo`) | ✅ rẻ |
+| **`kiemSo` canh SỐ, không canh NHÃN** | *"Tỉ lệ phân bổ là 85,4%"* qua được, dù 85,4 % là tỉ lệ **để dành** | ⚠️ cần thiết kế |
+| **Few-shot toàn câu nhận xét** | `promptHoiDap` dùng chung `_viDu` với `promptCauTheoMan` — không ví dụ hỏi–đáp nào, không ví dụ *"không có dữ liệu"* nào | ✅ rẻ |
+| Giới hạn thật của E2B | prompt đã dặn *"thiếu thông tin thì nói rõ"*; mô hình ~2 B không tuân nổi | 🛑 đổi mô hình cũng không khá hơn — P1 đo E4B chậm gấp đôi, tiếng Việt không hơn |
+
+**Kèm trong việc này — điểm 2 của cổng A (streaming).** ✅ Gói **có sẵn**
+`Chat.generateChatResponseAsync()` trả `Stream<ModelResponse>` (`flutter_gemma-1.8.3/lib/core/chat.dart:315`),
+nên không phải tự dựng gì.
+
+⚠️ **Nhưng streaming va chạm với `kiemSo`, và đây là câu hỏi thiết kế phải chốt trước khi
+viết mã:** bộ kiểm số chạy trên **câu đã đầy đủ**. Hiện chữ dần nghĩa là người dùng **đọc
+được câu trước khi nó bị chặn** — tức dây an toàn còn nguyên nhưng đã muộn. Ba lối để cân:
+hiện dần rồi thay bằng câu mẫu nếu trượt (người đọc thấy chữ nhảy); giữ nguyên khối như
+hôm nay (bỏ điểm 2 của cổng A); hoặc hiện chỉ báo "đang viết" có nhịp thay vì chữ thật.
+**Cần brainstorm trước khi làm.**
+
+**Đo lại cả ba điểm còn thiếu của cổng A** (2, 4, 5) trên máy thật sau khi sửa.
+
+> ✅ **XONG 2026-09-22 tối — CỔNG A QUA** (đo máy thật mục **9.9** `AI_EDGE_FEATURE.md`; lượt đo
+> bắt hai lỗi thật, bẫy 4.18/4.19). Brainstorm chốt trong chat (bounded):
+> streaming **chặn theo câu** (`gacTheoCau`, `SlmRuntime.sinhDan`/`huy`), **`kiemNhan`** lớp chắn
+> thứ ba, `kiemGiong` nối vào hỏi đáp qua `kiemCauTraLoi` (trước đó **chưa nối** — "chưa đo" ở
+> bảng cổng A là sai chữ), `NguonGoiSo` **sáu** gói, bốn chip mới, few-shot hỏi đáp riêng.
+> Chi tiết và cách đo: mục **9.8** `AI_EDGE_FEATURE.md`. 3392/3392 · analyze 26.
+> ⚠️ Người dùng hỏi *"vậy chỉ hỏi được thứ có sẵn thôi à"* — đúng, và chốt **giữ thứ tự**:
+> việc này trước, rồi mới function calling.
+
+## 2 · Tải nền + resume
+
+> ✅ **XONG 2026-09-22 tối muộn** — 7 task, nghiệm thu trên **Realme RMX2205 / Dimensity 1100**
+> (máy thứ hai của dự án), bảng đo mục **9.10** `AI_EDGE_FEATURE.md`. Lượt đo bắt sáu lỗi thật,
+> nặng nhất là **nạp GPU sập native trên Mali** → thêm canary GPU (ngoài kế hoạch, nhưng là lỗi
+> chặn). Hai giới hạn không vá: Realme force-stop khi vuốt Recents; sau force-stop / dừng vì ràng
+> buộc thì gói tải lại từ 0 (chỉ Tạm dừng mới giữ byte). **Bước tiếp: chặng 3 (mục 3 dưới).**
+
+**Spec và kế hoạch ĐÃ VIẾT XONG** — chi phí khởi động bằng không:
+
+- Spec: `docs/superpowers/specs/2026-09-22-tai-mo-hinh-nen-resume-design.md` (commit `ce4d7ca`)
+- Kế hoạch: `docs/superpowers/plans/2026-09-22-tai-mo-hinh-nen-resume.md` — **7 task**, test viết sẵn
+
+**Vì sao đứng thứ hai chứ không thứ nhất:** nó chặn **người dùng thật** tiếp cận tính năng
+(97 KB/s → ~7 giờ, đứt là mất hết), nhưng máy nghiệm thu **đã có mô hình** nên nó không
+chặn việc số 1. Làm xong việc 1 thì cái được mở khoá ở việc 2 mới đáng dùng.
+
+## 3 · Chặng 3 của lộ trình — đo: bậc 1 hỏng ở đâu ✅ **XONG 2026-09-22 (tối muộn)**
+
+> ✅ **Đã đo, cổng B qua.** Bảng 20 hàng ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md` — đo trên
+> **Realme RMX2205** (CPU), tài khoản thật. Kết quả: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi
+> 12**. Đơn đặt hàng **sáu** tool, bốn cái đứng đầu đều là *"danh sách có **tên**"* — mười tool
+> ứng viên ở mục 5.1 không dự đoán hình dạng ấy, và ba trong số chúng không câu nào cần tới.
+> ⚠️ Ba câu hỏng **không cần tool nào** (số đã có sẵn trong gói, mô hình chọn nhầm) — sửa ở
+> **prompt/nhãn**, và nên làm **trước** khi dựng tool.
+>
+> ✅ **Phần "làm trước" ấy chính là lát 4a, xong mã 2026-09-23** (spec + plan ngày 2026-09-22),
+> 🛑 **cổng của nó chưa đạt**: nhóm A **1/4**, cần ≥ 3/4. ⭐ Và nó lật một phần kết luận ở trên —
+> **danh sách có tên là CẦN nhưng CHƯA ĐỦ**: gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải trả:
+> 45.000 đ` ở dòng khác, không chỗ nào nói Kiem **LÀ** cái quá hạn, và E2B không nối được hai mục
+> rời. Nên ba câu còn hỏng **không** chữa được bằng gói số; chúng cần tool trả **một hàng đầy
+> đủ**. Việc tiếp theo là **lát 4b**.
+>
+> ✅ **Lát 4b XONG 9/9 task, cổng C ĐẠT (2026-09-23 chiều)** — bốn tool chỉ đọc, màn Trợ lý AI đi
+> bậc tool; nhóm A trả lời bằng tên Realme **4/4**, OnePlus **3/4**, 0 câu bịa số. Bảng ở mục
+> **9.14** `AI_EDGE_FEATURE.md`. Tức **"function calling" của hệ đánh số trong tệp này (chặng 2)
+> nay đã có ở dạng bốn tool đọc** — nửa sau của chặng 2 bên dưới (*"bộ hàm cho function
+> calling"*) phần nào đã làm, xem banner ở đó.
+
+🛑 **Bước này từng BỊ BỎ SÓT trong bản thứ tự đầu tiên viết cùng ngày** — bản ấy để
+"function calling" ngay sau tải nền. Sai, và lộ trình đã ghi sẵn lý do: danh sách tool phải
+**rút từ bảng đo**, không phải từ mười tool đoán sẵn ở mục 5.1 `AI_AGENT_ARCHITECTURE.md`
+(mười tool ấy là *ứng viên*, bảng đo mới là *đơn hàng*). Dựng 10 tool rồi thấy 7 cái không
+ai gọi là **cùng một lớp lãng phí** với lát "cửa sổ nhìn lại": một hàm đúng từng dòng mà
+đầu vào chết thì vẫn vô dụng.
+
+**Điều kiện vào: cổng A đã đóng.** Đo một mô hình còn bịa nhãn thì bảng đo nói dối.
+
+**Không phải task mã.** Một buổi, máy thật, tài khoản thật:
+
+1. Soạn **20 câu** người dùng thật sẽ hỏi — 5 ngân sách · 5 chi tiêu theo kỳ tuỳ ý ·
+   5 mục tiêu/hoá đơn · 5 cần **ghép nhiều nguồn**.
+2. Hỏi từng câu ở màn Trợ lý AI, ghi: *trả lời được / rơi về mẫu / trả lời sai*.
+3. Mỗi câu hỏng → ghi **con số nào thiếu trong sáu gói số**. Đó là tool cần có.
+
+**Ra cổng B:** bảng 20 hàng ở mục **5.6** `AI_AGENT_ARCHITECTURE.md` + danh sách tool rút
+từ bảng. 🛑 Nếu **0 câu hỏng** thì vòng 3 **không có việc** — dừng lộ trình và báo; đó cũng
+là một kết quả. (Với những gì đo ngày 2026-09-22, khả năng ấy thấp.)
+
+**Ước lượng:** nửa ngày.
+
+## 4 · Chặng 4 của lộ trình — tool-calling + vòng lặp
+
+**Kế hoạch chi tiết VIẾT TẠI CỔNG B**, không viết trước.
+
+⚠️ **Mục 2.1 "nửa sau" của tệp này nằm TRONG chặng 4, không phải một việc riêng** — nó là
+một hàm khai `Tool` ánh xạ sang `TransactionFilter` + `Ky`, tức một trong những tool mà
+bảng đo sẽ đặt hàng.
+
+Hai thứ đã sẵn, nên chặng này nhẹ hơn vẻ ngoài:
+
+- ✅ **Backend chốt lối ① cùng hướng** (2026-09-22): số liệu cá nhân đi bằng
+  function-calling, không index lên vector DB. Hai đầu khớp nhau.
+- ✅ Gói **có sẵn** `Chat.generateChatResponseWithTools()` (`flutter_gemma-1.8.3/lib/core/chat.dart:787`).
+
+**Khung cố định** (lộ trình mục "Chặng 4"): kết quả tool là **`List<SoLieu>`** chứ không
+phải văn bản · gói số **tích luỹ** qua các lượt, `kiemSo`/`kiemGiong` chạy trên gói tích
+luỹ · trần **3** lượt gọi tool · **không tool ghi** · test quét thứ 16 giữ nguyên.
+
+⚠️ **Chốt M3 trước khi viết kế hoạch** (luật ngủ đông: essentiality = 0,5, C4 bị C5 nuốt) —
+tool tái phân bổ sẽ lộ luật ấy ra câu trả lời.
+
+**Ra cổng C:** một câu từng hỏng ở bậc 1 nay trả lời đúng trên máy thật, logcat cho thấy
+đúng tool được gọi, và câu bịa số vẫn bị chặn. **Ước lượng:** ~2 ngày (≈ 4 task).
+
+## 5 · Gắn danh mục hàng loạt *(mục 3.1 tệp này)*
+
+Vá **38 %** dữ liệu mù (15/39 giao dịch, đo 2026-09-20). Chiều ghi **tầng 1** nên duyệt cả
+lô trong một màn; `CategorySuggestionEngine` sẵn có làm **bản đối chứng** — so hai bên là
+phép đo sạch cho báo cáo. **Cần brainstorm + spec.**
+
+## 6 · Phần còn lại của 1.4 — thống kê mục tiêu và cảnh báo ví thiếu tiền trích
+
+Xem mục **1.4**. Đòi **mở thêm nguồn dữ liệu cho trang danh sách** (state + repository), và
+là quyết định về **trùng lặp** chứ không về năng lực — cả hai hàm đang chạy thật ở trang
+Chi tiết mục tiêu. ⚠️ Cân nhắc trước: `canhBaoViKhongDu` báo một **mâu thuẫn dữ liệu thật**
+(tiền tích luỹ bị tiêu mất), có lẽ xứng một **thông báo** hơn là một vế trong câu nhận xét.
+
+---
+
+## Việc nhỏ nên kẹp vào đầu phiên
+
+1. **Soát đặc tả AI vừa được backend sửa** (`docs/AI/AI_Edge-SLM.md/Client-app.md`, 90 dòng
+   đổi ngày 2026-09-22) — đối chiếu lại với mã client xem còn chỗ nào lệch. Rẻ, và làm
+   ngay lúc tài liệu vừa đổi thì rẻ hơn nhiều so với sáu tháng nữa.
+2. **Dọn ~4,5 GB ngoài repo:** tệp mô hình trong thư mục tạm của phiên (2,5 GB) và
+   `D:/flowmoney_spike_rag` (~2 GB, từ lượt spike RAG). ⚠️ **Hỏi người dùng trước khi xoá.**
+
+## Việc chờ người dùng gọi tên — đừng tự làm
+
+**Bảy việc UX hoãn** (mục riêng cuối tệp này). Người dùng chốt *"lưu lại các phần đó để làm
+sau"* — không làm cái nào cho tới khi họ nhắc lại tên.
 
 ---
 
@@ -25,8 +249,10 @@ từng việc:
 5. **Chiều ghi luôn xác nhận**, và form xác nhận dựng từ **tham số**, không từ câu mô
    hình viết. 🛑 Không hàm nào bật `auto_pay` / trích tự động / **xoá** bất cứ gì.
 6. **TDD**: test đỏ trước; ca xanh ngay từ đầu **phải thử bản sai có chủ ý**.
-7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3106/3106, 1 skip**) và
-   `flutter analyze` (**26 issue, 0 error**). Đụng giao diện → **nghiệm thu máy ảo 411dp**.
+7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3603/3603, 3 skip** — đo 2026-09-23 tối
+   muộn sau bước 1c; mốc 3585 là sau bước 1b, 3106/3106, 1 skip là của 2026-09-20) và `flutter
+   analyze` (**26 issue, 0 error**).
+   Đụng giao diện → **nghiệm thu máy ảo 411dp**.
 8. ✅ Tệp test mới **không cần `git add -f` nữa** — luật `test/` bỏ khỏi `.gitignore`
    ngày 2026-09-21 (quy tắc 6 `CLAUDE.md`).
 
@@ -356,6 +582,13 @@ KhoangTien? khoangTien;   // ← mới; khoảng NGÀY không nằm ở đây m�
 ```
 
 ### ⬜ Nửa sau — bộ hàm cho function calling (chưa làm)
+
+> ⚠️ **Hạ tầng tool ĐÃ CÓ từ lát 4b (2026-09-23)** — `CongCu` / `KhaiBaoCongCu` / `BoCongCu`, vòng
+> lặp `hoiBangCongCu` (trần 3 lời gọi, thang lùi L1–L4), `GoiSoTraCuu`; thêm một tool là **một
+> adapter + một hàm dựng hàng**, không phải dựng lại hạ tầng. Nhưng **tool tìm giao dịch** của mục
+> này (ánh xạ sang `TransactionFilter` + `Ky`) thì **vẫn chưa làm**: bốn tool của 4b chỉ trả tổng
+> hợp theo danh mục / ngân sách / hoá đơn / ví, không liệt kê giao dịch. Phép đo *"chọn đúng hàm"*
+> của 4b là 8/8 câu mỗi máy với **bốn** tool — chưa phải 20 câu lệnh tìm kiếm.
 
 **Tệp:** một hàm khai `Tool` ánh xạ sang `TransactionFilter` + `Ky`. Hai thứ ấy nay
 đã đủ trường để mô hình chọn, nên phần còn lại thuần là lớp dịch câu → tham số.

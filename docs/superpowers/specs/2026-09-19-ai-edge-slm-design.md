@@ -251,6 +251,19 @@ kế hoạch tái phân bổ). Ô nhập tự do: gửi câu hỏi + **gói tổ
 và blocklist; **không có mô hình thì ô nhập bị khoá** kèm dòng dẫn tới màn Cài đặt AI. Trả lời hiện
 kèm thẻ số liệu. Không lưu lịch sử hội thoại qua phiên.
 
+> ⚠️ **Đã đổi 2026-09-22 (việc số 1 của lộ trình).** Bộ chip trên là ảnh chụp thiết kế: hai chip
+> *"Dự báo tiết kiệm"* và *"Gợi ý cắt giảm chi phí"* hỏi thứ **không gói nào có** (gói mục tiêu
+> không có "dự báo tiết kiệm"; kế hoạch tái phân bổ nằm **trong gói ngân sách**), và mô hình
+> trả lời bằng cách gắn nhãn của câu hỏi vào con số gần nghĩa nhất. Nay chip là *Chi tiêu tháng
+> này · Tình hình ngân sách · Tiến độ mục tiêu · Hoá đơn sắp tới*, gói tổng hợp là **sáu** gói
+> (thêm hoá đơn, ví), câu trả lời **hiện dần theo câu** và đi qua ba lớp kiểm (`kiemCauTraLoi`).
+> Nguồn sự thật: mục **9.8** `docs/AI_EDGE_FEATURE.md`.
+>
+> ⚠️ **Đổi lần hai 2026-09-23 (chặng 4b).** Câu hỏi — chip lẫn ô nhập — nay đi **bậc tool** trước:
+> mô hình chọn một trong bốn tool chỉ đọc, dữ liệu vào qua tool chứ không qua prompt. Sáu gói ở
+> trên chỉ còn là **nhánh lùi L1** khi mô hình không gọi tool nào. Nguồn sự thật: mục **9.14**
+> `docs/AI_EDGE_FEATURE.md`, spec `2026-09-23-chang-4b-tool-calling-vong-lap-design.md`.
+
 ---
 
 ## 5. Giao diện và Stitch

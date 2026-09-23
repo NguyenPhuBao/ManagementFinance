@@ -93,6 +93,19 @@ void main() {
         'Đi Nhật');
   });
 
+  test('tên mục tiêu có chữ số: mẫu câu vẫn tự qua bộ kiểm số (bước 1c)', () {
+    final g = GoiSoMucTieu.tu([_mt(ten: 'Mua xe 2027')], now: now);
+    final cau = g.mauCau().cau;
+    expect(cau, startsWith('Mua xe 2027: '));
+    expect(
+      kiemSo(cau, g),
+      isTrue,
+      reason: 'Tên mục tiêu nằm ở GoiSoMucTieu.ten chứ không trên SoLieu nào — '
+          'gói phải tự khai nó ở tenDoiTuong, nếu không "2027" của tên bị đọc '
+          'là một con số bịa và câu đúng về mục tiêu ấy luôn bị chặn.',
+    );
+  });
+
   test('mẫu câu tự qua bộ kiểm số ở mọi nhánh', () {
     for (final ds in [
       [_mt()],

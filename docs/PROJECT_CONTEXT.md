@@ -594,12 +594,406 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
 
-### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–6 / 10 (2026-09-22)
+### 📋 Thứ tự làm việc mới sau cổng C (người dùng duyệt 2026-09-23 tối)
 
-Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Sáu tệp mã đã vào, **mô hình
-chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+Lộ trình kiến trúc Edge AI đã đi hết phía client (chặng 1–4 xong, cổng A · B · C đạt, chặng 5
+bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ tự mới, theo hai nếp đã chốt — *sửa lỗi
+trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
+**1b** ✅ canary cho phiên có tool · **1c** ✅ tên đối tượng có chữ số qua được lớp chắn *(thêm vào
+thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
+giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
+kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
+là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
+*"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
+Stitch và người dùng duyệt trước khi viết mã.
+
+### ✅ Bước 1c — tên đối tượng có chữ số qua được lớp chắn (2026-09-23 tối muộn)
+
+Lượt soát tài liệu trước bước 2 đo CSDL máy ảo (tài khoản 10, chỉ đọc): **5/9** hoá đơn và
+**1/16** danh mục mang chữ số trong tên (kiểu *"Tiền nhà T9"*). Chạy thử trên mã: một câu **đúng** nêu
+tên hoá đơn như thế bị **cả `kiemSo` lẫn `kiemNhan`** chặn — `trichSo` đọc chữ số của tên là một con
+số không có trong gói, còn `amTietCua` tách bỏ chữ số nên âm tiết "t9" của tên không bao giờ có trong
+câu. Thẻ số liệu còn lấy "9" ấy khớp nhầm *"Còn 9 ngày"* của gói khác. Hỏng theo chiều an toàn (rơi về
+mẫu câu) nên không ai thấy — cổng C đo bằng hoá đơn `Kiem`. Người dùng chọn **sửa trước** bước 2.
+
+**Cách làm:** `trichSoNgoaiTen` ở `ai_edge/domain/kiem_so.dart` — định nghĩa duy nhất của "con số
+trong câu trả lời" cho `kiemSo`, `kiemNhan`, `theCuaCau` — bỏ khỏi câu các tên của gói
+(`GoiSo.tenDoiTuong`, mặc định mọi `SoLieu.ten`) rồi mới trích. Bốn chốt giữ lớp chắn không bị nới:
+tên phải có chữ cái · khớp trọn từ · so theo `normalizeCategoryName` · tên dài trước. Ba gói in tên
+không nằm trên `SoLieu` nào tự override `tenDoiTuong` (Mục tiêu, Trang chủ, Ngân sách — tên ngân sách
+thâm hụt trong câu tóm tắt kế hoạch). `amTietCua` và `tuKhoaNhan` dùng một phép tách âm tiết giữ chữ
+số, nên tên có dấu gạch (`Điện/Nước`) cũng khớp được. Bẫy **4.38**, mục **9.16** `AI_EDGE_FEATURE.md`.
+
+**Test:** 18 ca ở 7 tệp đã có; 11 bản sai có chủ ý, bản nào cũng bị bắt. Ba lớp giả `implements
+GoiSo` trong test đổi sang `extends` vì `GoiSo` thêm getter. Trọn bộ **3603/3603** (3 skip), analyze
+**26**. Schema, payload, `pubspec` không đổi. ⚠️ **Chưa đo trên máy thật** (không cắm điện thoại) —
+đo ở buổi đo bước 2, thêm một câu về hoá đơn có chữ số vào bộ hồi quy.
+
+### ✅ Bước 1b — canary cho phiên có tool, lối B (2026-09-23 tối)
+
+Bẫy **4.33** `AI_EDGE_FEATURE.md`: với gói cũ, phiên có tool sập **native** — app văng ở mọi câu
+hỏi, `try/catch` vô dụng. Gói mới hết sập trên hai máy đo, nhưng máy khác chưa đo; canary là lưới
+cho chúng. Người dùng chọn **lối B** trong ba lối vì dấu còn sót **không** phân biệt *sập* với *bị
+giết* — Realme giết app khi vuốt khỏi Recents, và khuôn canary GPU (dấu sót = hỏng vĩnh viễn) mà áp
+ở đây thì một lần vuốt app giữa lúc trả lời là mất bậc tool mãi trên máy ấy.
+
+**Cách làm:** `domain/canary_cong_cu.dart` — dấu có mặt từ trước khi engine giải mã tới **sự kiện
+đầu tiên** của mỗi lượt sinh (`quaCanary`); lúc app khởi động, dấu sót được đối chiếu với lý do
+thoát của Android (`ApplicationExitInfo`, API 30+, qua kênh Kotlin mới `flowmoney/ly_do_thoat` ở
+`MainActivity`) và chỉ thành "hỏng" khi lần thoát **đầu tiên sau lúc đặt dấu** là **sập native**;
+Android 10 trở xuống thì tắt khi dấu sót **hai lần liền**; dấu "hỏng" ghi phiên bản app và tự xoá khi
+app lên bản mới. Bậc tool bị tắt thì `moPhien` ném `BacCongCuDaTat` và màn đi thẳng bậc 1, im lặng.
+⚠️ Canary GPU **cố ý chưa đổi theo** — nó mang đúng giới hạn "không phân biệt sập với bị giết" (ghi ở
+bẫy 4.24), nhưng người dùng chưa gọi tên việc ấy.
+
+**Nghiệm thu máy ảo** (mục **9.15** `AI_EDGE_FEATURE.md`): đặt dấu bằng `run-as`, làm tiến trình chết
+theo ba cách rồi mở lại app — `kill -11` (Android ghi *APP CRASH(NATIVE)*) → tệp "hỏng" ghi đúng
+`versionCode=1`; `am force-stop` (*USER REQUESTED / FORCE STOP*) và `kill -9` (*SIGNALED*) → chỉ xoá
+dấu. Không cần mô hình, vì phép xét chạy lúc khởi động. **Chưa đo** trên máy thật có mô hình: gói
+mới không còn sập để tái hiện.
+
+**Test:** 24 ca mới ở 4 tệp — `canary_cong_cu_test` 15 · `nguon_ly_do_thoat_test` 4 ·
+`canary_cong_cu_noi_day_test` 4 (đọc mã nguồn của bốn mối nối, vì `flutter test` chạy trên x86_64
+nơi đường thật là vùng mù) · `vong_lap_cong_cu_test` +1. Các ca "không được tắt nhầm" xanh ngay nên
+đã thử bằng năm bản sai có chủ ý. Trọn bộ **3585/3585** (3 skip), analyze **26**. Schema, payload,
+`pubspec` không đổi; `MainActivity.kt` thêm một kênh.
+
+### ✅ Bước 1a — Trang chủ, trang Phân tích và trợ lý AI nói CÙNG một con số thu/chi (2026-09-23 tối)
+
+Thẻ thu/chi tháng ở Trang chủ từng **cộng thô theo `type`**, nên đếm cả khoản điều chỉnh số dư lẫn
+khoản "Số dư ban đầu" — hai thứ `khoanVaoThongKe` cố ý loại khỏi mọi thống kê. Trên tài khoản 10:
+Trang chủ *Thu nhập 15.145.000* còn trang Phân tích *Tổng thu 15.135.000*. Chỗ lệch ấy có từ
+2026-09-19 (mục 7.1 `AI_EDGE_FEATURE.md`) nhưng **nặng thêm từ lát 4b**: trợ lý AI trả lời bằng
+tool `chi_tieu_theo_ky`, vốn đọc `tongThuChi`, nên nó nói một số còn thẻ ngay trên Trang chủ nói số
+kia — đúng điều mảng AI cam kết không xảy ra. Người dùng chốt con số của **Phân tích** là con số
+đúng: tạo một ví có sẵn tiền, hay đối soát số dư, không phải có thêm thu nhập.
+
+**Sửa một chỗ:** `home/domain/thu_chi_thang.dart` — `thuChiThangCua` nay **đi qua `tongThuChi`**
+của trang Phân tích và cắt tháng bằng `Ky.thang` (biên `[from, to)`), thay vì tự cộng. Thẻ số liệu
+tháng và khối Nhận xét Trang chủ cùng đọc hàm ấy nên cả hai đổi theo; không đụng widget, không đụng
+gói số. ⚠️ Đừng viết lại vòng cộng trong tệp ấy — một vòng thứ hai là một định nghĩa thứ hai.
+
+**Test:** tệp mới `test/features/home/thu_chi_thang_test.dart`, **7** ca — 4 đỏ trên mã cũ (khoản
+điều chỉnh chiều thu · khoản số dư ban đầu · khoản điều chỉnh chiều chi · Trang chủ khớp
+`tongThuChi` trên cùng dữ liệu); 3 ca canh xanh ngay (khoản **chưa phân loại thật** vẫn được tính ·
+biên **tháng 12** sang năm mới · **29/02** năm nhuận) nên đã thử bằng **ba** bản sai có chủ ý (loại
+mọi khoản trống danh mục; lùi biên cuối một ngày; nới biên cuối một ngày) — mỗi bản làm đúng các ca
+ấy đỏ. Trọn bộ **3561/3561** (3 skip, 2 phút 48 giây), analyze **26**. Schema, payload, `pubspec`
+không đổi.
+
+**Nghiệm thu máy ảo** (`emulator-5554`, AVD `FlowMoney_16G`, tài khoản 10, không backend): thẻ
+Trang chủ *Thu nhập 15.135.000 đ · Chi tiêu 2.141.000 đ · Thu net +12.994.000 đ*; trang Phân tích
+tháng 9/2026 *Tổng thu 15.135.000 đ · Tổng chi 2.141.000 đ*; khối Nhận xét Trang chủ *"Tháng này thu
+15.135.000 đ, chi 2.141.000 đ, còn lại 12.994.000 đ…"*. Tổng số dư ví vẫn **13.004.000 đ** — chênh
+10.000 với "còn lại" là **đúng nghĩa**: khoản điều chỉnh đổi số dư thật nhưng không phải thu nhập.
+
+⚠️ **Còn một chỗ lệch nhỏ, chưa vá, không thuộc bước này:** thẻ "Số dư còn lại" ở trang Phân tích in
+*"Để dành 86%"* (làm tròn nguyên) cạnh khối Nhận xét in *"85,7%"* (luật G2) — mục 7.1
+`AI_EDGE_FEATURE.md`, chỗ lệch 2.
+
+### ✅ Edge AI — lát 4b XONG 9/9 task, CỔNG C ĐẠT trên cả hai máy (2026-09-23 chiều)
+
+Màn **Trợ lý AI** nay đi **bậc tool**: mô hình chọn một trong bốn tool **chỉ đọc**
+(`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
+domain có sẵn và trả về **hàng có tên**, câu trả lời kiểm trên chính những hàng ấy. Chưa tool nào
+chạy thì màn rơi về bậc 1 **im lặng** (L1). Commit: `4cb0b3b` (Task 5b–5d: `hangVi` ·
+`hangNganSach` · `hangChiTieu`, `viDangAm` mở công khai) · `af11ce0` (Task 6: bốn adapter +
+`BoCongCu` + DI, tách `viChoGoiSoTu` / `nganSachDangChay`) · `af31c7f` (Task 7: vòng lặp
+`hoiBangCongCu`, trần 3 lời gọi, thang lùi L1–L4) · `863c4cd` (Task 8: nối màn, dòng chỉ báo
+*"Đang tra cứu hoá đơn…"*, `onHoiBac1`; nghiệm thu máy ảo 411dp, 0 pixel `#FFFF00`) · `ace9a53`
+(ba bản sửa từ lượt đo).
+
+**Cổng C** — tám câu, APK release, tài khoản 10 (bảng ở mục **9.14** `AI_EDGE_FEATURE.md`): nhóm A
+*"cái nào"* trả lời **bằng tên** Realme **4/4**, OnePlus **3/4**; câu 2 và 9 đúng; **0 câu bịa
+số**; **0 lần sập**; mô hình chọn đúng tool + tham số ở 8/8 câu mỗi máy. Tổng một câu (sau khi nạp)
+10–15 s Realme CPU, 4,5–8,6 s OnePlus GPU.
+
+⚠️ **Ba lỗi thật lượt đo bắt được, 3543 ca test đều mù, cả ba chỉ OnePlus lộ ra** — người dùng chọn
+sửa ngay (`ace9a53`): **4.34** thẻ số liệu gán nhầm đối tượng khi hai hàng cùng giá trị ở hai câu
+khác nhau (nay xét từng câu) · **4.35** mẫu câu L3 sau ba lời gọi lặp hàng và mất nhãn kỳ (nay
+theo lượt gọi, kèm chữ kỳ) · **4.36** câu trả lời dạng markdown lộ `*` (nay gỡ lúc hiện). Kiểm lại
+trên Realme sau khi sửa: không hồi quy.
+
+⚠️ **Kế hoạch sai ba chỗ nữa, sửa ở test khi thi công:** hang_chi_tieu có **6** ca chứ không 7 (Task 5
+là +26 chứ không +27); fixture ngân sách "Cũ" của Task 6 dựng `recurrence: true` — ngân sách lặp lại
+không đặt ngày kết thúc **không bao giờ hết hạn**, nên ca "chỉ ngân sách đang chạy" đỏ trên mã đúng;
+hai ca huỷ của Task 7 đưa câu sai ở token **cuối** mà đòi `soLanHuy == 1`, trong khi `gacTheoCau`
+chỉ huỷ khi câu trượt **giữa** luồng. Mỗi chỗ có bản sai có chủ ý chứng minh ca đã sửa canh thật.
+
+Test **3554/3554** (3 skip), analyze **26**; `ai_edge` + `ai_chat` **44** tệp / **424** ca. Schema,
+payload, `pubspec` không đổi so với `af2aa81`. **Còn mở, chờ người dùng quyết:** canary cho phiên có
+tool (bẫy 4.33) · câu chào trên Realme mất ~23 s (giá của L1) · ĐC1 không bao giờ nói "không có dữ
+liệu" · chênh 10.000 đ tổng thu (Trang chủ vs gói số). *(Tối cùng ngày: chênh 10.000 đ ✅ **đã vá**
+ở bước 1a, và canary ✅ **làm xong** ở bước 1b — các khối ở đầu mục này.)*
+
+### Edge AI — lát 4b, nửa đầu: Task 1–4 + 5a; gói cũ sập native khi phiên mang tool → nâng gói, cổng Task 4 ĐẠT (2026-09-23 trưa — ảnh chụp, khối trên là hiện trạng)
+
+Thi công inline theo kế hoạch `superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md`.
+Bốn commit mã (`0c9ca1e` · `3bbc2c6` · `cd14b75` · `87ef4f3`): `HangSoLieu` + `KetQuaCongCu` (một
+hàng đầy đủ), `GoiSoTraCuu extends GoiSo` (gói tích luỹ, ba lớp chắn dùng nguyên, mẫu câu thật
+cho L2/L3), `CongCu` / `KhaiBaoCongCu` / bốn tên tool / `kTranGoiCongCu`, `PhienCongCu` thuần +
+`PhienCongCuGia`, `DangTraCuu` / `KhongTraCuu` trong `SuKienGac`, `kPromptHeThongCongCu`, và
+`SlmRuntime.moPhien` (bản thật `_PhienThat` trong `slm_runtime.dart`, test quét 16 giữ nguyên).
+Lúc ấy **chưa nối vào màn nào** (nối ở Task 8, khối trên). Test **3496/3496** (3 skip), analyze
+**26**; schema, payload không đổi — ⚠️ **`pubspec` CÓ đổi** (xem dưới).
+
+🛑 **Spike Task 4 với gói cũ: engine SẬP NATIVE khi phiên mang tool, trên CẢ HAI máy** — Realme RMX2205 (CPU,
+Android 13) **3/3** `SIGSEGV`, OnePlus 13R (GPU, Android 16, máy demo) **2/2** `SIGBUS`, cùng một
+đường: `ConstrainedDecoder::ProcessLogits` → `CompositeLogitMask::Apply` → con trỏ hàm rác vào
+`libGemmaModelConstraintProvider.so`, ngay lượt giải mã đầu, **kể cả câu "Xin chao"** không cần
+tool. Phép đối chứng: đường bậc 1 (không tool) trên **cùng APK, cùng máy** trả lời đúng. Gốc nằm ở
+gói: `flutter_gemma_litertlm` 1.7.0 **gắn cứng** `enable_constrained_decoding = true` hễ phiên có
+tool (`litert_lm_client.dart:1080–1086`), không tham số nào tắt. Thi công dừng; người dùng chọn đo
+thêm OnePlus (cũng sập) rồi chọn **nâng gói lên bản mới nhất**.
+
+✅ **Nâng `flutter_gemma` 1.8.3 → 1.9.0, `flutter_gemma_litertlm` ^1.7.0 → 1.8.0** (`af2aa81`,
+người dùng **duyệt đích danh** việc đổi `pubspec`, phá chốt "không đổi pubspec" của spec 4b và chốt
+ghim 1.8.3 từ P0; gói engine nay ghim **cứng**; changelog litertlm 1.7.1: *"tool calls no longer
+crash the app"*). Đo lại cùng móc spike: **6/6 không sập** trên hai máy; E2B gọi đúng `danh_sach_vi`
+ở 4/4 câu cần tool, lượt gọi **0 ký tự chữ**, câu trả lời nêu đúng tên + số trong JSON; 2/2 câu chào
+không gọi tool (→ L1). Câu cần tool ~9 s OnePlus / ~12 s Realme; đường bậc 1 trên cả hai máy không
+đổi. Bảng đo ở mục **9.13**, bẫy **4.33** `AI_EDGE_FEATURE.md`.
+
+✅ **Task 5a xong** (`21389ea`): `hangHoaDon` — hàng theo tên cho tool `danh_sach_hoa_don`, 8 ca, bản
+sai bỏ phép chặn cuối tháng làm đúng ca "kỳ SAU bị loại" đỏ. Test **3504/3504** (3 skip), analyze
+**26**. Phiên ấy dừng ở đây theo yêu cầu người dùng; 5b–5d và Task 6–9 làm xong chiều cùng ngày
+(khối trên).
+
+⚠️ **Hai chỗ spec/kế hoạch sai, lộ ra khi thi công:** (1) ca test của kế hoạch so thẳng danh sách
+**record chứa `Map`** (`ketQuaDaNhan`) — đỏ trên cả mã đúng, vì record so `==` từng trường, `Map`
+so bằng danh tính, matcher `equals` không so sâu vào record; Task 3 đã trải cặp thành danh sách,
+Task 7 sửa ca còn lại cùng khuôn. (2) spec 3.7 bảo đo `chat.currentTokens` cho bẫy 4.29 — thuộc tính
+ấy chỉ cộng token của **câu trả lời**, không đo được thứ bẫy ấy cần.
+
+### ✅ Edge AI — dọn trước lát 4b: bảng tra nhãn một định nghĩa, và màn Cài đặt AI thôi đè lỗi cũ (2026-09-23)
+
+Hai việc nhỏ kẹp đầu phiên, **trước** khi mở lát 4b — người dùng chốt thứ tự *sửa lỗi trước, tính
+năng sau*. Mỗi việc một commit.
+
+**`chuoiTheoNhan` — bảng tra nhãn của mẫu câu, nay một định nghĩa** (`ai_edge/domain/goi_so.dart`).
+Sáu gói số từng tự dựng mỗi gói một bảng tra nhãn → chuỗi cho mẫu câu. Chỉ gói ngân sách có
+`putIfAbsent` (mục **đầu** thắng — cách chữa bẫy **4.30** ở chặng 4a); năm gói kia vẫn map literal
+`{for … x.nhan: x.chuoi}`, tức mục **cuối** thắng. Chưa câu nào hỏng, vì các mục danh sách chặng 4a
+thêm vào cố ý mang nhãn khác nhãn tổng hợp (`Đang âm` / `Ví đang âm`, `Đã quá hạn` / `Quá hạn`) —
+nhưng chú thích *"đặt CUỐI để các mục tổng hợp ở trên gặp trước"* ở gói ví và gói hoá đơn là lý lẽ
+của mục-đầu-thắng, tức **nói ngược mã**. Nay cả sáu gói gọi `chuoiTheoNhan`.
+
+⚠️ Qua API công khai của gói **không dựng được** nhãn trùng, nên ca canh nằm ở chính
+`chuoiTheoNhan` (`goi_so_test.dart`; bản mục-cuối-thắng đỏ đúng `'45.000 đ' instead of '1'`). Một
+gói tự viết lại map literal thì **không ca nào đỏ** — lát này không thêm test quét.
+
+**Màn Cài đặt AI thôi đè lượt hỏng của lần trước thành "Chưa tải"** (bẫy **4.32**
+`AI_EDGE_FEATURE.md`). Lúc mở màn, `_doTrangThai()` (chờ `daCo()`) và `khoiPhuc()` (chờ
+`luotDangSong()`) chạy song song, và phép về **sau** thắng. Tệp dở của một lượt hỏng chưa đủ cỡ nên
+`daCo()` = `false`; về sau tin khôi phục thì nó đè "Tải không xong" thành "Chưa tải" — mất nút
+**Thử lại** (nối từ chỗ đứt khi nối được), còn nút **Tải**. Nay phép dò không đè `loi`, cùng ba
+trạng thái nó vốn đã chừa. Cùng lượt sửa **chú thích tự mâu thuẫn** ở `_khoiLoi()`: một câu còn tả
+bản cũ hứa *"phần đã tải được giữ lại"*, câu ngay dưới tả bản hiện hành không hứa. ⚠️ Mới kiểm bằng
+**bộ giả**: bản thật `luotDangSong()` luôn trả `loi: null` (màn hiện câu dự phòng), và lượt hỏng có
+được `taskForId` của `background_downloader` trả về hay không thì **chưa đo** — tức chưa biết máy
+thật có đi tới đường này không.
+
+Test **3470/3470** (3 skip), analyze **26**; schema, payload, `pubspec` không đổi.
+
+📝 **Lát 4b — spec đã duyệt và kế hoạch đã viết cùng ngày** *(ảnh chụp lúc ấy: "CHƯA thi công";
+nay đã thi công Task 1–4 và dừng ở cổng Task 4 — khối trên cùng mục này)*. Spec `superpowers/specs/2026-09-23-chang-4b-tool-calling-vong-lap-design.md` — ba quyết định
+của người dùng trong lượt brainstorm: đích = tầng tool + **bốn** tool *"danh sách có tên"*
+(`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`); chấp nhận hai
+lượt sinh trên cả Realme CPU lẫn OnePlus, đo thật; **hướng A — tool THAY gói số trong prompt** (B tái
+hiện lỗi 4a, C không phải agent). Hình dạng: `HangSoLieu` tích luỹ vào `GoiSoTraCuu extends GoiSo`
+(ba lớp chắn dùng nguyên), `PhienCongCu` thuần (bản thật chỉ trong `slm_runtime.dart`), vòng lặp tự
+viết trần 3 lời gọi + thang lùi L1–L4 — **L1** (chưa tool nào chạy thì không hiện câu, rơi về bậc 1)
+là chốt chặn câu bịa **không số** mà `kiemSo` mù. Mục 2 của spec ghi những điều đọc được từ mã gói
+`flutter_gemma` 1.8.3 kèm dòng. Kế hoạch **9 task** ở
+`superpowers/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md` (thư mục gitignore): Task 4 là
+**spike trên Realme** — chưa thấy `FunctionCallResponse` thì chưa dựng tầng. M3 (luật ngủ đông) không
+chặn lát này: không tool nào chạm `tai_phan_bo.dart`.
+
+### 🛑 Edge AI — chặng 4a: tên đối tượng trong gói số — CỔNG CHƯA ĐẠT (2026-09-23)
+
+Spec `superpowers/specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`, chín task, thi công
+inline. **3468/3468** pass · analyze **26** issue, 0 error · schema **không đổi** (v24) · payload
+**không đổi**. Bảng đo lại ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`; tường thuật ở mục
+**9.12** `docs/AI_EDGE_FEATURE.md`.
+
+**Làm gì:** `SoLieu` thêm **một** trường `ten` (`String?`) — tên đối tượng, tách khỏi `nhan` vốn
+là tên chỉ số. Bốn gói (ngân sách · ví · hoá đơn · phân tích) nhồi **danh sách** thay vì một mục,
+trần `kToiDaMucMoiGoi = 4`. `kiemNhan` và `theCuaCau` đọc `ten`; prompt nêu tên; few-shot thêm ví
+dụ dạng *"cái nào"*.
+
+**Kết quả đo trên Realme: nhóm A 1/4** — câu *"ngân sách nào sắp hết"* nay đáp **"…là Giáo dục
+với tỉ lệ 90,0%"** kèm thẻ *"Giáo dục · Tỉ lệ 90,0%"*, thay vì một con số trần. Ba câu còn lại
+(danh mục nào · hoá đơn nào · ví nào) vẫn hỏng. Điều kiện 3 của cổng (SAI = 0) **đạt** sau khi
+đóng một hồi quy; điều kiện 1 (≥ 3/4) **trượt**.
+
+⭐ **Bài học trung tâm: danh sách có tên là CẦN nhưng CHƯA ĐỦ.** Một lượt log gói số thật chứng
+minh cả bốn gói mang tên **đúng thiết kế**. Nhưng gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải
+trả: 45.000 đ` ở dòng khác — **không chỗ nào nói Kiem LÀ cái quá hạn**. Mô hình phải **nối hai
+mục rời bằng suy luận**, và E2B không làm được: nó trả lời bằng con số tổng. Ví y hệt. 🛑 Vậy ba
+câu còn hỏng **không** chữa được bằng cách làm gói giàu thêm — thứ cần là **tool trả một hàng đầy
+đủ** (tên + số + trạng thái trong cùng kết quả), tức việc của lát **4b**. Đừng tinh chỉnh gói số
+thêm nữa.
+
+⚠️ **Bốn lỗi thật lượt đo bắt được, 3462 ca test đều mù** — chi tiết ở bẫy **4.29–4.31** và vế
+thứ ba của **8.6** trong `AI_EDGE_FEATURE.md`:
+
+1. **Prompt vượt trần token là lỗi CỨNG, không phải chậm** — câu trả lời **rỗng**, không phải
+   chậm đi như kế hoạch lường. `maxTokens` là hằng của *client* và là trần cho **tổng** input +
+   output; nới 1024 → 2048. Prompt đi từ 1.704 lên ~2.280 ký tự, token đầu 4,6 s → 8,4–11,1 s.
+2. **Mẫu câu ngân sách in tỉ lệ của ngân sách KHÁC** — `{x.nhan: x.chuoi}` lấy giá trị cuối, nên
+   câu về Giáo dục in *"(7,1%)"* của Mua sắm. Sai **im lặng**, và ca `contains('Giáo dục')` viết
+   cùng lát **xanh suốt** — cùng bài học G43. *(✅ Từ 2026-09-23 cả sáu gói tra nhãn qua
+   `chuoiTheoNhan` — xem khối đầu mục này.)*
+3. **Nhãn giàu hơn làm một câu SAI lọt qua `kiemNhan`**: *"Số ví đang âm: −100.000 đ"* (số ví là
+   1) lọt, trong khi bản **trước** chặng 4a chặn được. Luật siết ra từ đây: mục **có tên** đòi câu
+   nêu **tên**; mục không tên giữ luật cũ.
+4. `debugPrint` **bị tiết lưu** nên sáu dòng log gói số bị nuốt sạch — phải `print` và mỗi mục một
+   dòng ngắn. Nó đã chặn phép chẩn đoán mất trọn một lượt build.
+
+**Việc tiếp theo:** lát **4b** — tool-calling + vòng lặp, kế hoạch viết dựa trên đơn đặt hàng sáu
+tool ở mục 5.6, với hình dạng nay đã rõ hơn: **một hàng đầy đủ**, không phải nhiều mục rời.
+
+### ✅ Edge AI — chặng 3 của lộ trình: đo bậc 1 hỏng ở đâu — CỔNG B QUA (2026-09-22 tối muộn)
+
+**Không phải task mã** — một buổi đo có biểu mẫu. Bảng 20 hàng đầy đủ ở mục **5.6**
+`docs/AI_AGENT_ARCHITECTURE.md`; đây chỉ là bản tóm.
+
+**Đo trên Realme RMX2205** (Dimensity 1100, CPU — canary đã ghi dấu GPU sập), APK **release**,
+tài khoản 10 với dữ liệu thật. Nạp mô hình **9.196 ms**, sinh câu **4,8–8,9 s**. Backend **không
+cần chạy** — mọi thứ đọc từ SQLite cục bộ.
+
+**Kết quả: ✅ 5 · rơi mẫu 3 · SAI 0 · LỆCH CÂU HỎI 12.**
+
+⭐ **Bậc 1 không bịa — nó lệch.** Ba lớp chắn (`kiemSo`, `kiemNhan`, `kiemGiong`) giữ đúng bất
+biến: **không một con số sai nào lọt ra** trong 20 câu. Nhưng hơn **một nửa** câu trả lời đúng
+số, đúng nhãn, mà **không trả lời điều được hỏi**. Nếu chấm bằng hai ô *trả lời được / rơi mẫu*
+như bản kế hoạch đầu, bảng này đọc thành *"8/20 hỏng"* và **bốn tool quan trọng nhất sẽ không
+được đặt hàng** — cột thứ tư là thứ giữ lại kết luận đúng.
+
+⭐ **Thứ thiếu nhất không phải con số, mà là CÁI TÊN.** Bốn câu hỏi *"cái nào"* — ngân sách nào
+sắp hết · danh mục nào chi nhiều nhất · hoá đơn nào quá hạn · ví nào đang âm — hỏng theo **cùng
+một kiểu**: gói số mang **giá trị** mà không mang **định danh**. Hỏi *"ngân sách nào sắp hết"*
+thì nhận *"Ngân sách căng nhất là 90,0%"* thay vì *"Giáo dục"*. Và nó **rẻ để chữa**: hàm domain
+vốn trả entity có tên sẵn, chỉ là `NguonGoiSo` rút lấy con số rồi bỏ tên lại.
+
+**Đơn đặt hàng: sáu tool** (mục 5.1 đoán **mười**, trong đó **ba cái không câu nào cần tới**) —
+`danhSachNganSach` · `danhSachHoaDon` · `danhSachVi` · `chiTieuTheoKy` · `duBaoMucTieu` ·
+`goiYHanMuc`. Bốn cái đầu đều hình dạng *"trả về danh sách **có tên**"*, thứ mục 5.1 không dự
+đoán vì nó nghĩ theo hướng "mỗi hàm domain một tool". Đây đúng là lý do lộ trình bắt **đo trước
+khi dựng**.
+
+⚠️ **Ba câu hỏng mà KHÔNG cần tool nào** (12, 14, 20): con số cần trả lời **đã nằm sẵn trong
+gói**, mô hình vẫn chọn nhầm. Chữa bằng tool là chữa nhầm bệnh — thứ cần sửa là **nhãn trong
+prompt** và cách chọn gói, và nên làm **trước** khi dựng tool. Nguy hiểm nhất là câu 14: hỏi tiền
+trong ví (**13.004.000 đ**), nhận *"Còn lại là 12.994.000 đ"* (= thu − chi của kỳ) — hai số khác
+nghĩa mà **chênh đúng 10.000 đ**, người dùng không có cách nào nhận ra.
+
+⚠️ **Hai câu đòi vòng lặp chứ không đòi tool** (16, 17): *"có đủ trả hoá đơn không"* và *"trả hết
+thì còn bao nhiêu"* cần **so sánh** và **trừ** giữa hai gói. Đúng bất biến đã khoá — **lớp AI
+không tính** — nên chúng chỉ giải được ở vòng 3 bằng cách gọi hai tool rồi để **hàm domain** làm
+phép tính.
+
+⚠️ **Hai lỗi thật lượt đo bắt được, ngoài phạm vi chặng 3** — cái đầu ✅ **đã sửa ở chặng 4a**, cái
+sau ✅ **đã sửa ở bước 1a** (2026-09-23 tối) *(dòng này từng ghi "chưa sửa" cho cả hai, rồi "cái sau
+vẫn mở" — mỗi câu đúng tới lúc lỗi tương ứng được sửa)*:
+
+1. ✅ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn trùng GIÁ TRỊ** — sửa ở chặng 4a Task 3
+   (`20bbc05`). Câu 15 trả lời *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của
+   *hoá đơn quá hạn*. Cả hai cùng bằng **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ bẫy
+   **4.19** nhưng nguyên nhân khác hẳn: trùng giá trị, không phải chuỗi con. Thẻ nay ưu tiên mục mà
+   câu nhắc tới — bẫy **4.27** `AI_EDGE_FEATURE.md`.
+2. ✅ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
+   phân tích *Tổng thu 15.135.000*, đo cùng lúc cùng tài khoản. Chênh ấy lan sang mọi câu trả lời
+   dùng tổng thu. Dòng này từng dặn *đừng sửa bên nào trước khi chốt con số nào mới đúng*; người
+   dùng chốt con số của Phân tích ngày 2026-09-23 và bước **1a** vá thẻ Trang chủ — khối ở đầu
+   mục 14.
+
+⚠️ **Một bẫy đo sẽ tái phát:** `adb shell input text` **làm hỏng chữ hoa giữa từ** — gõ `MuaXe`
+ra **`Mũae`** trên màn hình. Câu hỏi chứa tên riêng phải **chụp màn kiểm lại chữ đã vào** trước
+khi tin kết quả.
+
+**Việc tiếp theo: chặng 4** — tool-calling + vòng lặp; kế hoạch viết tại cổng B, tức bây giờ.
+
+### ✅ Edge AI — việc số 2 của lộ trình: tải mô hình chạy nền + resume (2026-09-22 tối muộn)
+
+Kế hoạch `docs/superpowers/plans/2026-09-22-tai-mo-hinh-nen-resume.md` (7 task), spec cùng ngày; chi
+tiết đo ở mục **9.10** `AI_EDGE_FEATURE.md`. `MoHinhTaiVe` thôi cầm một `Future` sống trong tiến
+trình mà đứng trên **`NguonTaiNen`** — lượt tải có danh tính do hệ thống giữ (`background_downloader`,
+taskId cố định), nên thoát app thì lượt vẫn chạy và mở lại thì `khoiPhuc()` hỏi được. `daCo()` kiểm
+**kích thước** vì tệp dở nay được giữ; sáu trạng thái, Tạm dừng/Tiếp tục/Huỷ, hộp thoại 4G. Không
+đổi schema (v24), không đổi payload; `pubspec` thêm `background_downloader` (vốn transitive), manifest
+thêm `FOREGROUND_SERVICE_DATA_SYNC`. Test **3424/3424**, 3 skip, analyze 26.
+
+⚠️ **Nghiệm thu trên máy MỚI — Realme RMX2205 (Dimensity 1100, Mali-G77, Android 13)**, người dùng
+đổi máy giữa chừng. Sáu lỗi thật lộ ra, 3411 ca test mù; nặng nhất: **nạp mô hình bằng GPU sập
+native** — `try/catch` quanh `getActiveModel` không bắt được gì, mỗi lần hỏi là một lần văng app.
+Chữa bằng **canary** (`domain/canary_gpu.dart`): dấu ghi trước khi thử GPU, xoá trong `finally`,
+mở lại thấy dấu → CPU vĩnh viễn (nạp 27 s, 7–10 s/câu trên máy ấy). Năm lỗi kia: tiến độ **âm**
+của gói là mã trạng thái (màn in −400 %); `canceled` của WorkManager khi mất Wi-Fi không phải huỷ;
+cleartext bị chặn ở worker native (chỉ chuyện đo qua server cục bộ); `waitingToRetry` ≠ chờ Wi-Fi;
+câu "phần đã tải được giữ lại" sai ở khối chờ Wi-Fi. ⚠️ **Hai giới hạn nói ra, không vá:** Realme
+UI **force-stop** app khi vuốt Recents (giết cả service nền — OEM), và sau force-stop hay dừng vì
+ràng buộc thì gói **tải lại từ 0** — chỉ Tạm dừng/Tiếp tục mới giữ byte (đo: `Range: bytes=1895276544-`).
+**Bước tiếp theo thứ tự đã duyệt: chặng 3 của lộ trình kiến trúc** — đo bậc 1 hỏng ở đâu (một buổi,
+máy thật, 20 câu; không phải task mã).
+
+### ✅ Edge AI — việc số 1 của lộ trình: chất lượng câu trả lời + CỔNG A QUA (2026-09-22 tối)
+
+Thứ tự việc ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`; chi tiết ở mục **9.8**
+`docs/AI_EDGE_FEATURE.md`. Sáu thay đổi, **không đổi schema** (v24), **không đổi payload**, không
+thêm gói: màn Trợ lý AI **hiện chữ dần theo CÂU** (`SlmRuntime.sinhDan`/`huy` + `gacTheoCau` —
+đủ câu thì kiểm rồi mới hiện, trượt thì `stopGeneration()` và không hiện; đã hiện ≥ 1 câu rồi mới
+trượt thì **giữ** các câu ấy); **`kiemNhan`** lớp chắn thứ ba (số thật gán **tên** sai — chính câu
+*"Tỉ lệ phân bổ là 85,4%"* đo trên máy thật là ca test); **`kiemCauTraLoi`** định nghĩa duy nhất
+của "một câu được hiện" = số + nhãn + giọng, và đây là chỗ **nối `kiemGiong` vào hỏi đáp** (trước
+đó chưa nối — bảng cổng A ghi "chưa đo" là sai chữ); `NguonGoiSo` gom **sáu** gói (thêm hoá đơn,
+ví); bốn chip **chỉ hỏi thứ một gói có**; `promptHoiDap` có few-shot riêng, một ví dụ *không có số
+liệu → không chữ số*. Test **3392/3392** (+44, bốn tệp mới) sau phần mã, **3399/3399** sau đo máy thật, analyze 26.
+
+⚠️ Người dùng hỏi *"vậy là chỉ hỏi được thứ có sẵn thôi à"* — **đúng**: bậc này mô hình chỉ thấy gói
+số (~30 con số của sáu màn). Thứ gỡ giới hạn là **function calling** (việc số 3); người dùng chốt
+**giữ thứ tự** (việc này → đo chặng 3 → function calling), vì ba lớp chắn dùng lại nguyên vẹn cho
+bậc sau và đo chặng 3 trên một bậc còn bịa nhãn là đo vô nghĩa.
+
+✅ **Đo trên OnePlus 13R tối cùng ngày — CỔNG A QUA** (mục **9.9** `AI_EDGE_FEATURE.md`): câu tổng
+hợp 4 câu / 429 ký tự hiện dần 1 → 3 → 4 câu; hỏi "dự báo tiết kiệm" → ba số thật đúng nhãn,
+không bịa (nhưng mô hình chọn số liên quan thay vì nói "không có dữ liệu"); hỏi "có đang ổn không"
+khi ngân sách 90 % → không trấn an. ⚠️ **Lượt đo bắt hai lỗi thật mà 3392 ca test mù**: câu đầu
+tiên trên máy bị chặn vì token cắt con số **ngay sau dấu chấm** (`…là 2.` + `141.000`) và regex
+kết câu coi cuối bộ đệm là kết câu (bẫy 4.18); thẻ số liệu so **chuỗi con** in *Số cam kết 15* cho
+câu chỉ nhắc *15.135.000 đ* (bẫy 4.19, có từ P3 Task 8). Cả hai sửa + test + đo lại cùng tối.
+*(Việc số 2 đã xong tối cùng ngày — khối ngay trên.)*
+
+
+### ✅ Edge AI chặng 2 — P3 cắm SLM, XONG TRỌN 10 TASK (2026-09-22)
+
+Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã, và từ Task 9
+thì **mô hình đã chạy thật trong app trên máy thật** — bảng đo ở **mục 9** `AI_EDGE_FEATURE.md`.
+
+⭐ **Con số đáng nhớ nhất của cả mảng:** cắt sạch mạng (Wi-Fi tắt, dữ liệu di động tắt, cầu USB
+gỡ; `curl` ra ngoài trả HTTP 000) rồi hỏi lại — mô hình trả lời sau **1.898 ms**, câu y hệt lượt
+online, **0 dòng** log mạng. Đó đúng là lý do người dùng chọn AI trên máy.
+
+⚠️ **Lượt nghiệm thu ấy bắt được BỐN lỗi thật mà 3.348 ca test đều mù**, và **ba trong bốn không
+phải lỗi của mã P3** — chúng nằm sẵn trong dự án từ trước (mục **9.7**):
+
+1. ⭐ **APK release không có quyền `INTERNET`** — quyền ấy chỉ khai ở `debug/AndroidManifest.xml`
+   (Flutter tạo sẵn cho hot reload), nên **mọi lượt nghiệm thu máy ảo của dự án từ trước tới nay**
+   dùng bản debug và che mất thiếu sót. Bản release đầu tiên không gọi được backend nào, chỉ hiện
+   *"Không có kết nối mạng"* — đúng câu dùng cho lúc rớt sóng. Nay có ca test đọc thẳng manifest.
+2. Thông báo lỗi tải in **nguyên URL ký hàng nghìn ký tự** → hàm thuần `cauLoiTai`.
+3. ⭐ Câu *"Mô hình trên máy không chạy được"* hiện ra **khi mô hình hoàn toàn bình thường** —
+   nguyên nhân thật là `AuthBloc` chưa vào `AuthSuccess` (vì `verifySession()` là lời gọi mạng,
+   phải đợi hết timeout 30 s). Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
+   `kChuaSanSangPhien` và `debugPrint` ở cả hai nhánh — trước đó `catch` nuốt lỗi **không log gì**.
+4. Tải 2,41 GB **không resume, không chạy nền** — hạng mục riêng, người dùng chốt làm sau P3.
+
+**Bài học chung:** thứ bắt được chúng không phải một ca test nào, mà là **lần đầu chạy một bản
+`--release` trên một máy thật**. Cả hai vế đều cần — bản debug che lỗi 1, máy ảo che lỗi 3 (ở đó
+`10.0.2.2` luôn tới được).
 
 | Task | Tệp | Việc |
 |---|---|---|
@@ -609,9 +1003,51 @@ chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu —
 | 4 | `data/slm_runtime.dart` | Tệp **duy nhất** chạm `flutter_gemma`; **test quét thứ 16** canh |
 | 5 | `data/mo_hinh_tai_ve.dart` | Bốn trạng thái, tiến độ, huỷ, xoá. Gọi `tai()` hai lần chồng nhau chỉ chạy **một** lượt |
 | 6 | `data/slm_dien_giai.dart` | Bản `BoDienGiai` **thứ hai**, **sáu** nhánh lùi về mẫu câu; nạp lười, đúng một lần mỗi phiên |
+| 7 | `presentation/pages/cai_dat_ai_page.dart` · `data/cong_tac_ai.dart` | Màn Cài đặt AI + route `/ai-settings` + nối DI. Bốn đăng ký **lazy** (`SlmRuntime`/`MoHinhTaiVe`/`SlmCache`/`CongTacAi`), **cố ý không đăng ký `BoDienGiai`** — lối B |
+| 8 | `ai_chat/…/ai_chat_page.dart` · `ai_edge/data/nguon_goi_so.dart` · `kiemSoNhieuGoi` | Màn Trợ lý AI chạy thật, **đóng A11** |
+
+**Task 8 — màn Trợ lý AI.** Bản cũ là **mockup tĩnh**: in *"Bạn đã chi 3.200.000đ"* và *"Ăn uống
+tăng 35% (chủ yếu là Cafe & ShopeeFood)"* — những con số không đến từ dữ liệu nào — cộng **năm**
+nút không có handler. Đúng loại lỗi mà thẻ "Insight AI" (A6) đã phải gỡ.
+
+Nay bốn chip là **câu hỏi thật**, gửi đi y như khi người dùng tự gõ (một đường, không bốn nhánh
+mã); hỏi tự do đi qua `chuDeBiChan` **trước** khi gọi mô hình; câu trả lời hiện **kèm thẻ số liệu**
+(điều kiện 12), và thẻ chỉ gồm những con số câu ấy **thật sự nhắc tới** — không phải mọi số của cả
+mọi gói (bốn lúc Task 8, **sáu** từ việc số 1 tối cùng ngày), kẻo thẻ thành tiếng ồn thay vì nguồn kiểm chứng. Ô nhập **và chip** khoá theo cùng một
+điều kiện; khoá ô mà để chip hỏi được là mở một đường vòng quanh chính cái khoá ấy.
+
+Hai thứ mới ở tầng dưới. **`ai_edge/data/nguon_goi_so.dart`** là chỗ **duy nhất** dựng gói số mà
+không đứng trên state của một trang — sáu khối Nhận xét đều lấy từ trang của chúng, còn màn Trợ lý
+AI không thuộc trang nào. *(Đúng tới 2026-09-23: từ lát 4b bốn adapter tool cũng tự đọc
+repository; lớp này nay chỉ dựng sáu gói cho bậc 1 — nhánh lùi L1.)* ⚠️ Nó đọc **`.first`** chứ không nghe lâu dài: một câu trả lời là *ảnh
+chụp tại lúc hỏi*; nghe tiếp thì câu đã hiện nói một đằng còn số liệu sau lưng nó đổi một nẻo, mà
+người dùng không có cách nào biết. Và **`kiemSoNhieuGoi`** — ⚠️ **không phải `goi.any(kiemSo)`**:
+viết thế là đòi cả câu nằm gọn trong **một** gói, nên một câu hoàn toàn đúng kiểu *"tháng này chi
+X, mục tiêu còn thiếu Y"* bị chặn, im lặng. *(Từ tối 2026-09-22 nó là vế đầu của `kiemCauTraLoi`, cùng `kiemNhan` và `kiemGiong`.)*
+
+⚠️ **Ba nhãn nói dối, cả ba chỉ máy ảo thấy** (sửa cùng ngày, `66b6a09`) — cùng một họ: một câu chữ
+khẳng định điều không đúng với trạng thái thật, và `flutter test` mù vì mỗi ca chỉ dựng một nhánh.
+
+1. **Băng nhắc gộp hai lý do làm một.** Ô nhập khoá vì *chưa tải mô hình* **hoặc** vì *công tắc
+   đang tắt*, mà câu chỉ có một — người đã tải xong 2,41 GB rồi tự tắt công tắc sẽ đọc *"chưa có
+   mô hình trên máy"* và đi tải lại thứ đang nằm sẵn trong máy. Nay là hàm thuần
+   `cauKhoaHoiDap(coTep:)`.
+2. **Quay lại từ Cài đặt AI thì màn Trợ lý không đọc lại trạng thái** — `initState` chỉ chạy một
+   lần, `pop` không dựng lại State, nên tắt công tắc ở màn kia rồi quay về vẫn thấy chip xanh và ô
+   nhập mở; bấm vào mới biết là không. **Cùng họ G48.** Nay `_moCaiDatAi()` `await` lời `push` rồi
+   đọc lại; ca test phải dựng **`GoRouter` thật** vì `push`/`pop` chính là thứ cần tái hiện.
+3. **Chip "Hoạt động" ở màn Cài đặt AI** vẫn xanh khi công tắc đã tắt — một lời khẳng định đặt
+   ngay trên chính cái công tắc đang nói ngược lại, và người dùng tin cái chip.
+
+⭐ **Mẹo nghiệm thu đáng giữ:** dựng trạng thái *"đã có mô hình"* bằng một **tệp giả**
+(`adb shell run-as com.flowmoney.flowmoney cp <tệp bất kỳ> files/gemma-4-E2B-it.litertlm`, **xoá
+sau khi đo**). Nhờ nó đo được cả những nhánh mà không tải 2,41 GB thì không bao giờ tới — và gói
+`flutter_gemma` tự từ chối tệp ấy (*"too small: 354 bytes (minimum: 1048576)"*) nên **nhánh lỗi
+cũng chạy thật**: chip → gói số nạp được → nạp mô hình hỏng → câu lỗi, **không màn đỏ**.
 
 ⚠️ **`pubspec` thêm HAI gói, không phải một**: `flutter_gemma: 1.8.3` (ghim **cứng** như `fl_chart`)
-và `flutter_gemma_litertlm: ^1.7.0`. Core **không kèm engine nào** — thiếu gói thứ hai thì
+và `flutter_gemma_litertlm: ^1.7.0` *(nâng lên **1.9.0** / **1.8.0** ngày 2026-09-23 — bản cũ sập
+native ở mọi phiên có tool; khối lát 4b đầu mục này)*. Core **không kèm engine nào** — thiếu gói thứ hai thì
 `getActiveModel()` ném *"add the engine package"*, điều P1 đã đo (mục 8.5 `AI_EDGE_FEATURE.md`).
 
 ⚠️ **Ba lỗi của kế hoạch, cả ba bắt được bằng bản sai có chủ ý** — ghi lại vì chúng cùng một họ
@@ -628,13 +1064,59 @@ Ngân sách')`, mà chuỗi ấy nằm **trong chính ví dụ
 ✅ **Hai chốt quan trọng nhất đã chứng minh canh thật**: tắt `kiemSo` thì ca *"câu BỊA SỐ"* đỏ; tắt
 `kiemGiong` thì ca *"câu ĐỦ SỐ nhưng SAI GIỌNG"* đỏ. Bộ kiểm giọng dựng ở chặng 1 nay có chỗ dùng.
 
-**Màn Stitch Cài đặt AI:** `1da347e753964e15a91b10c473975923` (2026-09-22), ⏳ **chờ người dùng
-xem** — Task 7 không dựng Flutter trước khi có xác nhận. ⚠️ API lại ghi `DESKTOP` dù truyền
-`MOBILE` (lần thứ ba), và ba trạng thái xếp dọc trong màn là để **so sánh khi thiết kế**, không
-phải bố cục thật.
+**Màn Stitch Cài đặt AI:** `1da347e753964e15a91b10c473975923` (2026-09-22), ✅ **người dùng đã xem
+và xác nhận cùng ngày**, Task 7 dựng theo nó. ⚠️ API lại ghi `DESKTOP` dù truyền `MOBILE` (lần thứ
+ba), và ba trạng thái xếp dọc trong màn là để **so sánh khi thiết kế**, không phải bố cục thật —
+bản Flutter dựng **một** trạng thái tại một thời điểm.
 
-**Mức nền:** `flutter test` **3310/3310, 2 skip**; `flutter analyze` **26**; schema **v24** không
-đổi; payload không đổi; bộ `ai_edge` **23** tệp / **184** test.
+⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, lộ ra khi thi công Task 7** — hai chỗ đầu sẽ tái phát ở
+Task 8, nên đọc trước khi làm tiếp:
+
+1. Kế hoạch lưu công tắc bằng `SharedPreferences`; **dự án không có gói ấy** (`pubspec.yaml`, đo
+   2026-09-22). Nơi lưu tuỳ chọn của dự án là `flutter_secure_storage` — `CongTacAi` theo đúng
+   khuôn `SecureStorageNotificationPrefsStore`, giữ nguyên tên khoá `ai_tren_may_bat`, **một khoá
+   cho cả máy** (thứ nó gác là tệp mô hình, tài sản của *máy* chứ không của *tài khoản*).
+2. Kế hoạch tải mô hình bằng `sl<Dio>()`. `AuthInterceptor.onRequest` gắn `Authorization: Bearer`
+   vào **mọi** request và **không lọc host**, mà đích là `huggingface.co` — dùng chung Dio của dự
+   án là **gửi access token của người dùng cho một bên thứ ba, im lặng**. Bản thi công dùng
+   `Dio()` trần: tải một tệp công khai không cần thứ gì của phiên đăng nhập.
+3. Ca test thứ ba của kế hoạch (`find.textContaining('không')`) **đỏ trên cả bản đúng** —
+   `textContaining` phân biệt hoa thường, còn câu hứa bắt đầu bằng *"Không"*. Ca nay đòi thẳng
+   câu hứa và đòi ở **cả hai** trạng thái.
+
+**Dọn cache SLM khi đổi tài khoản** (Step 5b) nằm ở `AuthBloc._donDuLieuTaiKhoanKhac`, dùng chung
+cho **cả hai** chỗ gọi `purgeDataForOtherAccounts`. ⚠️ Điều kiện là **chính số hàng hàm ấy vừa
+xoá** (`removed > 0`), không phải một phép so `idaccount` thứ hai — hệ quả **cố ý**: đăng xuất rồi
+đăng nhập lại **cùng** tài khoản thì cache được **giữ**, vì vứt nó là vứt tới 200 câu mà mỗi câu
+đã trả 2,3 giây chạy mô hình để có. Hai ca canh hai chiều, và **cả hai đã thử bằng bản sai**: bỏ
+phép dọn → ca "đổi tài khoản" đỏ; dọn vô điều kiện → ca "cùng tài khoản" đỏ.
+
+✅ **Nghiệm thu máy ảo 411dp ngày 2026-09-22**: màn dựng đúng Stitch, **0 sọc tràn**; công tắc tắt
+→ thoát trang → vào lại **vẫn tắt** (đo đầu-cuối `CongTacAi` trên kho thật). ⚠️ Lối vào lúc nghiệm
+thu là **nối tạm** nút bánh răng của màn Trợ lý AI, **không commit** — nút ấy là việc của Task 8,
+nên tới khi ấy `/ai-settings` mới có lối vào thật.
+
+*(⚠️ Đoạn dưới là lịch sử của bản Dio — **đã thay** bằng `NguonTaiNen` / `background_downloader` tối 2026-09-22 (lát tải nền + resume): `DauHuy`, `taiTep` và `tai_tep_dio.dart` **không còn**; huỷ nay là `nguon.huy()` và tệp dở được **giữ** cho lượt sau. Giữ đoạn vì nó giải thích vì sao phép huỷ phải là lệnh tới engine chứ không phải một cờ.)*
+
+✅ **Nút "Huỷ" cắt thật lượt tải — sửa cùng ngày, sau Task 7** (`f51e2d6`). Lỗi: `huy()` chỉ đặt
+một cờ `bool`, còn `taiTep` vẫn được `await` tới khi tải xong **trọn 2,41 GB** rồi mới ném và xoá
+tệp — người dùng bấm Huỷ thì màn quay về *"Chưa tải"* trong khi máy vẫn tải hết ở nền. Cờ chỉ trả
+lời được khi **có ai hỏi**, mà `Dio.download` không hỏi: nó cần được **báo**. Nay là `DauHuy` — một
+`Completer` **cho mỗi lượt tải** — và `CancelToken` ở đầu Dio. Huỷ về trạng thái `chuaTai` chứ
+không `loi`: người dùng vừa chủ ý bấm nút. Phép tải thật tách sang `data/tai_tep_dio.dart` **để đo
+được** — bản đầu viết inline trong `injection_container.dart`, và đó đúng là lý do không ca test
+nào với tới nó suốt hai task.
+
+⚠️ **Bài học của lượt đo ấy, dùng được cho mọi phép đo mạng: `HttpResponse.flush()` của `dart:io`
+về TRƠN TRU trên cả một kết nối đã chết.** Server dựng bằng `HttpServer` để đếm *"còn gửi thêm bao
+nhiêu byte sau khi huỷ"* báo **vẫn đang chảy** — 194 gói ≈ 13 MB trong 2,4 giây — và suýt nữa làm
+kết luận ngược hẳn: rằng phép huỷ hỏng. Dựng lại bằng **`ServerSocket` thô**, nơi `onDone` của
+luồng đọc báo đúng lúc đầu kia gửi FIN, thì con số thật là **thêm 0 gói**. Ba mức đo, hai mức đầu
+nói sai. Cũng nhờ nó mà `dio.close(force: true)` bị **loại**: đo được nó chỉ bớt đúng một gói đang
+bay (64 KB trên 2,41 GB).
+
+**Mức nền:** `flutter test` **3341/3341, 2 skip**; `flutter analyze` **26**; schema **v24** không
+đổi; payload không đổi; bộ `ai_edge` **25** tệp / **199** test, bộ `ai_chat` **1** tệp / **14** test.
 
 ### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 
@@ -712,12 +1194,19 @@ và người dùng đã vấp thật. ⚠️ **`grep` BỎ SÓT một dòng ti�
 chuyên gia"*), Python đọc tệp thì bắt đúng — đây là lần thứ ba công cụ lọc dòng làm sai một
 kết luận trong dự án này.
 
-**Task 5 — tài liệu cho backend.** `CAN-LAM/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md`: tên gọi,
+**Task 5 — tài liệu cho backend.** `EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` (đặt vào `CAN-LAM/`
+ngày ấy; **nay ở `DA-XONG/`** — backend đóng ở `b147fee` 2026-09-22): tên gọi,
 mâu thuẫn ① (F1 *"không rời thiết bị"* vs `Standard_RAG.md:169` *"toàn bộ dữ liệu tài chính của
 User"*), mâu thuẫn ② (tầng 3 classifier gửi mô tả giao dịch sang Gemini trong khi backend mã hoá
 `Note` at-rest). ⚠️ Đo hôm nay **chặt hơn** bản đo 2026-09-21: `.env` **không khai** hai khoá API
 ấy (16 biến), nên tầng 3 **chưa từng chạy một lần nào** — đó là lý do nó là *quyết định*, không
-phải *sự cố*. ⚠️ `CAN-LAM/` nay có **ba** tệp xin, đừng tin mục 0 của README.
+phải *sự cố*. ⚠️ `CAN-LAM/` khi ấy có **ba** tệp xin, đừng tin mục 0 của README. *(Cập nhật
+2026-09-22 tối muộn: backend đóng **cả hai** tệp AI ở `b147fee` — tệp này và
+`AI_EDGE_SLM_SUA_TAI_LIEU.md` — client kiểm lại bằng máy rồi chuyển sang `DA-XONG/`. Hai việc của
+tệp này đo được là xong thật: `grep "AI Edge"` trong `docs/AI/` ra **0** dòng, và `Standard_RAG.md`
+§6 đã chốt lối ① — số liệu cá nhân đi bằng function-calling, không index lên vector DB server. Nay
+`CAN-LAM/` có **hai** tệp: `CLIENT_BO_LIEN_KET_NGAN_HANG.md` và đơn vòng **hai**
+`AI_EDGE_SLM_SOAT_SAU_B147FEE.md` — **`ls` lại, đừng chép con số này**.)*
 
 **Task 6 — spike RAG on-device, đo trên máy thật.** Bảng đo đầy đủ ở mục **5.5**
 `AI_AGENT_ARCHITECTURE.md`. Ẩn số 1 **đạt**: `flutter_gemma_rag_sqlite` **1.3.2** tương thích
@@ -742,7 +1231,7 @@ clean` không cứu được** — chỉ khỏi khi đặt `kotlin.incremental=f
 **Mức nền sau trọn chặng:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
 schema **v24** không đổi; payload không đổi. Máy thật **OnePlus 13R `CPH2691` đã nối `adb`**
 (kiểm 2026-09-22) — điều kiện vào chặng 2 (P3) đã thoả, bẫy driver `DeviceInterfaceGUIDs`
-không tái phát. ✅ **Chặng 2 đã bắt đầu cùng ngày và xong Task 1–6/10** — xem khối *"Edge AI chặng 2"* ở đầu mục 14.
+không tái phát. ✅ **Chặng 2 đã bắt đầu cùng ngày và xong Task 1–7/10** — xem khối *"Edge AI chặng 2"* ở đầu mục 14.
 
 ### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
@@ -1122,8 +1611,7 @@ một dòng lỗi. Đường đi được là push vào `/sdcard/Download` rồi
 `cat … | run-as ‹pkg› sh -c 'cat > files/…'` — 2 GB mất 12 giây.
 
 **Bước tiếp:** ✅ **kế hoạch P3 đã viết cùng ngày** —
-`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. *(Ảnh chụp 2026-09-20; thi công bắt đầu **2026-09-22**, xong Task 1–6 — xem đầu mục 14.)* **chưa thi
-công**.
+`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. *(Ảnh chụp 2026-09-20; thi công bắt đầu **2026-09-22**, xong Task 1–7 — xem đầu mục 14. Câu "chưa thi công" ngay sau đây là của ngày viết kế hoạch.)*
 
 ⭐ **Cùng ngày còn một lượt trao đổi dài về bản chất và tương lai của mảng AI,
 kết quả ghi ở mục 10 và 11 `docs/AI_EDGE_FEATURE.md`** — đọc trước khi lên kế
@@ -1219,7 +1707,8 @@ chủ nói thu **15.145.000** còn Phân tích **15.135.000** (thẻ Trang chủ
 theo `type`, Phân tích qua `khoanVaoThongKe`) — khối Nhận xét mỗi trang cố ý
 chép đúng số của trang ấy; và "để dành **86%**" trên thẻ cạnh "**85,7%**" trong
 khối (làm tròn nguyên vs luật G2). Muốn khớp thì đổi `thuChiThangCua` — **hỏi
-người dùng trước**.
+người dùng trước**. *(✅ Chỗ lệch đầu **đã vá 2026-09-23** — người dùng chốt số của
+Phân tích, bước 1a ở đầu mục 14. Chỗ lệch sau — 86% vs 85,7% — vẫn mở.)*
 
 **Bước tiếp:** ✅ cả hai đã xong trong ngày — **P1 spike** (khối 📏 ở trên) và
 **kế hoạch P3** (`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10
@@ -2192,8 +2681,11 @@ Sankey) cũng bỏ.
 Đây là quyết định về **phạm vi sản phẩm**, không phải hoãn. Hệ quả cần nhớ:
 
 - **Đừng lên kế hoạch cho hai mục ấy nữa**, kể cả khi thấy bảng A8 còn ô trống.
-- **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** (đang rỗng) để
-  xin dư nợ gốc / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ.
+- **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** để xin dư nợ gốc
+  / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ. *(Chữ "đang
+  rỗng" đứng ở đây tới 2026-09-22 là ảnh chụp của 2026-09-16 và đã sai từ
+  2026-09-18; thư mục ấy nay có **hai** tệp xin. Lời dặn thì vẫn nguyên: đừng
+  mở lại hàng đợi **cho việc này**.)*
 - Kế hoạch `docs/superpowers/plans/2026-09-15-con-lai-mang-phan-tich.md` và
   `2026-09-15-ke-hoach.md` (cả hai gitignore) nay **không còn hạng mục nào**.
 

@@ -5,6 +5,9 @@ import 'package:flowmoney/features/ai_edge/data/slm_dien_giai.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
+import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
+import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
@@ -33,10 +36,25 @@ class _RuntimeGia implements SlmRuntime {
   }
 
   @override
+  Stream<String> sinhDan(String prompt, {int tranToken = 300}) =>
+      Stream.value(traLoi(prompt));
+
+  @override
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  }) =>
+      throw UnimplementedError('SlmDienGiai không mở phiên tool');
+
+  @override
+  Future<void> huy() async {}
+
+  @override
   Future<void> dong() async => _san = false;
 }
 
-class _Goi implements GoiSo {
+class _Goi extends GoiSo {
   @override
   final String man = 'ngan_sach';
   @override
@@ -70,9 +88,12 @@ void main() {
     return SlmDienGiai(
       runtime: rt,
       cache: cache,
+      // `coTepByte: 3` — `daCo()` nay kiểm kích thước, và tệp giả ở trên
+      // dài đúng 3 byte.
       moHinh: MoHinhTaiVe(
         thuMuc: () async => tmp,
-        taiTep: (u, d, b) async {},
+        nguon: NguonTaiNenGia(),
+        coTepByte: 3,
       ),
     );
   }
@@ -155,7 +176,7 @@ void main() {
   });
 }
 
-class _GoiThieu implements GoiSo {
+class _GoiThieu extends GoiSo {
   @override
   final String man = 'ngan_sach';
   @override

@@ -67,6 +67,32 @@ class GoiSoNganSach extends GoiSo {
     final b = v.budget;
     final nhip = budgetPaceOf(b, now);
     final pt = b.rawPercentSpent * 100;
+    // Chặng 4a: mỗi ngân sách góp một mục mang TÊN của nó, để câu hỏi "ngân
+    // sách nào sắp hết" trả lời được bằng tên thay vì bằng con số trần (câu 3
+    // bảng đo, mục 5.6 `docs/AI_AGENT_ARCHITECTURE.md`).
+    //
+    // ⚠️ Ngân sách được nhận xét (`v`) **không** vào danh sách này: mục `Tỉ lệ`
+    // của nó ở dưới đã mang `ten`. Thêm một mục trùng vừa phí prompt vừa tự
+    // dựng ra đúng tình huống "hai mục cùng giá trị" mà thẻ số liệu phải gỡ.
+    //
+    // ⚠️ Căng nhất trước: mô hình đọc từ trên xuống và hay lấy mục đầu khi
+    // phải chọn một. Thứ tự ở đây là thứ tự *đáng chú ý*, không phải thứ tự
+    // CSDL.
+    final conLai = [
+      for (final w in dangChay)
+        if (w.budget.id != b.id) w,
+    ]..sort((x, y) => y.budget.rawPercentSpent.compareTo(
+        x.budget.rawPercentSpent,
+      ));
+    final theoTen = <SoLieu>[
+      // Trần tính cả `v`, nên danh sách còn lại lấy bớt một suất.
+      for (final w in conLai.take(kToiDaMucMoiGoi - 1))
+        soPhanTram(
+          'Tỉ lệ',
+          w.budget.rawPercentSpent * 100,
+          ten: w.displayName,
+        ),
+    ];
     return GoiSoNganSach._(
       ten: v.displayName,
       hanMuc: b.amount,
@@ -79,7 +105,8 @@ class GoiSoNganSach extends GoiSo {
       soLieu: [
         soTien('Đã chi', b.spent),
         soTien('Hạn mức', b.amount),
-        soPhanTram('Tỉ lệ', pt),
+        // `ten` để câu hỏi "ngân sách nào sắp hết" đáp được bằng tên.
+        soPhanTram('Tỉ lệ', pt, ten: v.displayName),
         soNgay('Còn', nhip.daysLeft),
         // Đã vượt thì "nên chi mỗi ngày" là 0 — một con số vô nghĩa, bỏ.
         if (!b.isOverBudget) soTien('Mỗi ngày', nhip.suggestedPerDay),
@@ -93,12 +120,26 @@ class GoiSoNganSach extends GoiSo {
             soTien('Còn thiếu', keHoach.soThieu),
           ],
         ],
+        // Đặt CUỐI: các mục trên là của ngân sách căng nhất và mẫu câu tra
+        // chúng theo nhãn qua `chuoiTheoNhan` — mục ĐẦU thắng — nên chúng phải
+        // gặp trước để không bị mục cùng nhãn của ngân sách khác đè mất.
+        ...theoTen,
       ],
     );
   }
 
   @override
   bool get thieuDuLieu => ten == null;
+
+  /// Câu tóm tắt kế hoạch nêu tên ngân sách **thâm hụt** — có thể khác ngân
+  /// sách căng nhất và nằm ngoài danh sách có tên (trần `kToiDaMucMoiGoi`), nên
+  /// getter mặc định không phủ nó. Ngân sách căng nhất thì đã có trên mục
+  /// `Tỉ lệ`.
+  @override
+  Iterable<String> get tenDoiTuong => [
+        ...super.tenDoiTuong,
+        if (keHoach != null) keHoach!.thieu.displayName,
+      ];
 
   @override
   NhanXet mauCau() {
@@ -109,7 +150,12 @@ class GoiSoNganSach extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+    // ⚠️ Mục ĐẦU TIÊN của mỗi nhãn (`chuoiTheoNhan`), không phải mục cuối.
+    // Gói này mang nhiều mục cùng nhãn `Tỉ lệ` (một cho mỗi ngân sách), và map
+    // lấy mục cuối làm câu nhận xét về Giáo dục in tỉ lệ của ngân sách đứng
+    // cuối danh sách: *"Giáo dục: đã dùng 45.000 đ / 50.000 đ (7,1%)"* — bẫy
+    // **4.30**, sai **im lặng**, và ca `contains('Giáo dục')` vẫn xanh.
+    final s = chuoiTheoNhan(soLieu);
     final cau = vuot
         ? '$ten đã vượt hạn mức: ${s['Đã chi']} / ${s['Hạn mức']} '
             '(${s['Tỉ lệ']}), còn ${s['Còn']}.'

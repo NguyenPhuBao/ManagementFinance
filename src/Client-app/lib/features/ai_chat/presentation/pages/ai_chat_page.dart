@@ -1,54 +1,438 @@
+// lib/features/ai_chat/presentation/pages/ai_chat_page.dart
+/// Màn **Trợ lý AI** — nơi DUY NHẤT mô hình trên máy phục vụ.
+///
+/// Lối B, người dùng chốt 2026-09-21: sáu khối Nhận xét của P2 **giữ mẫu câu**
+/// (P1 đo được câu mô hình ở đó gần bằng mẫu, mà giá là 2,3 giây mỗi khối);
+/// mô hình chỉ hơn hẳn ở **hỏi đáp tự do**, tức đúng màn này. Vì thế màn này
+/// **tự dựng** đường sinh câu từ `sl<SlmRuntime>()` chứ không đọc
+/// `sl<BoDienGiai>()` — DI cố ý không đăng ký nó.
+///
+/// ⚠️ Bản trước là **mockup tĩnh**: nó in *"Bạn đã chi 3.200.000đ"* và *"Ăn
+/// uống tăng 35% (chủ yếu là Cafe & ShopeeFood)"* — những con số không đến từ
+/// dữ liệu nào cả, cộng năm nút không có handler. Đó đúng loại lỗi mà thẻ
+/// "Insight AI" (A6) đã phải gỡ: hứa một tính năng không tồn tại.
+///
+/// Không lưu lịch sử qua phiên (spec mục 4.6).
+///
+/// **Chữ hiện dần theo CÂU** (việc số 1, người dùng chốt 2026-09-22): token
+/// của mô hình đi qua `gacTheoCau` — đủ một câu thì `kiemCauTraLoi` (số +
+/// nhãn + giọng) rồi mới hiện; câu trượt thì huỷ sinh và **không bao giờ
+/// hiện**. Đã có câu hiện rồi mới trượt thì giữ nguyên các câu ấy (chúng đều
+/// đã kiểm) và dừng; chưa câu nào thì hiện câu lùi "chưa chắc".
+///
+/// **Bậc tool** (chặng 4b, 2026-09-23): câu hỏi đi qua `hoiBangCongCu` — mô hình
+/// chọn một trong bốn tool đọc, hàng trả về tích luỹ vào `GoiSoTraCuu`, câu cuối
+/// kiểm trên chính gói ấy. Mô hình không gọi tool nào (`KhongTraCuu`) thì màn rơi
+/// về bậc 1 — đường sáu gói dựng sẵn ở `_luongBac1` — im lặng.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/auth/current_account.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../ai_edge/data/bo_cong_cu.dart';
+import '../../../ai_edge/data/cong_tac_ai.dart';
+import '../../../ai_edge/data/mo_hinh_tai_ve.dart';
+import '../../../ai_edge/data/nguon_goi_so.dart';
+import '../../../ai_edge/data/slm_runtime.dart';
+import '../../../ai_edge/data/vong_lap_cong_cu.dart';
+import '../../../ai_edge/domain/bo_markdown.dart';
+import '../../../ai_edge/domain/chu_de_chan.dart';
+import '../../../ai_edge/domain/cong_cu.dart';
+import '../../../ai_edge/domain/gac_cau.dart';
+import '../../../ai_edge/domain/goi_so.dart';
+import '../../../ai_edge/domain/goi_so_tra_cuu.dart';
+import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
+import '../../../ai_edge/domain/slm_prompt.dart';
+import '../../../ai_edge/domain/the_cua_cau.dart';
+
+/// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
+/// người dùng tự gõ — không phải bốn nhánh mã riêng.
+///
+/// ⚠️ Mỗi chip hỏi đúng thứ **một gói số có** (phân tích · ngân sách · mục
+/// tiêu · hoá đơn). Bộ cũ có *"Dự báo tiết kiệm"* và *"Gợi ý cắt giảm chi
+/// phí"* — hai thứ không gói nào mang — và mô hình trả lời bằng cách lấy con
+/// số gần nghĩa nhất rồi gắn nhãn của câu hỏi vào (mục 9.5
+/// `AI_EDGE_FEATURE.md`). Chip là thứ người dùng bấm đầu tiên; nó không được
+/// dẫn vào đúng lỗi mà bộ kiểm sinh ra để chặn.
+const List<String> kChipGoiY = [
+  'Chi tiêu tháng này',
+  'Tình hình ngân sách',
+  'Tiến độ mục tiêu',
+  'Hoá đơn sắp tới',
+];
+
+const String kChuaCoMoHinh =
+    'Chưa có mô hình trên máy. Mở Cài đặt AI để tải về (2,41 GB) rồi hỏi lại.';
+
+const String kCongTacDangTat =
+    'Công tắc "Dùng AI trên máy" đang tắt. Bật lại ở Cài đặt AI để hỏi.';
+
+/// Vì sao ô nhập bị khoá — **hai lý do khác nhau, hai câu khác nhau**.
+///
+/// ⚠️ Gộp làm một là để một câu nói dối: người đã tải xong 2,41 GB rồi tự tắt
+/// công tắc sẽ đọc *"chưa có mô hình trên máy"* và đi tải lại. Thấy được khi
+/// nhìn màn thật trên máy ảo, `flutter test` thì mù vì nó chỉ dựng một nhánh.
+String cauKhoaHoiDap({required bool coTep}) =>
+    coTep ? kCongTacDangTat : kChuaCoMoHinh;
+
+/// ⚠️ Câu này là **nhánh lùi khi bộ kiểm số chặn**, và nó cố ý **không** nói
+/// câu mô hình vừa viết. Hiện ra kèm lời cảnh báo thì người đọc vẫn nhớ con số
+/// chứ không nhớ lời cảnh báo — cùng lý lẽ với việc `SlmDienGiai` rơi về mẫu
+/// câu trong im lặng.
+const String _kKhongChacChan =
+    'Mình chưa chắc về con số cho câu này, nên không trả lời để khỏi nói sai.';
+
+const String _kHong =
+    'Mô hình trên máy không chạy được lúc này. Bạn thử lại sau nhé.';
+
+/// Phiên đăng nhập **chưa sẵn sàng** — khác hẳn "mô hình hỏng".
+///
+/// ⚠️ Vì sao phải là câu riêng: `AuthBloc` chỉ vào `AuthSuccess` sau khi
+/// `verifySession()` trả lời, mà lời gọi ấy là **mạng**. Mở app lúc không có
+/// mạng thì nó phải đợi hết timeout (30 s) rồi mới giữ phiên cũ — và trong
+/// suốt quãng ấy `currentAccountIdOrNull` trả `null`.
+///
+/// Dùng chung câu với `_kHong` là nói với người dùng rằng **mô hình** hỏng,
+/// trong khi mô hình hoàn toàn bình thường và thứ duy nhất thiếu là mã tài
+/// khoản. Đo thật 2026-09-22 (P3 Task 9): hỏi ngay sau khi mở app trong điều
+/// kiện backend không tới được → câu "mô hình không chạy được"; chờ 45 giây
+/// rồi hỏi lại **cùng câu hỏi ấy** → mô hình nạp trong 4.103 ms và trả lời
+/// bình thường. Trớ trêu nhất là nó rơi đúng vào ca **mất mạng**, ca mà AI
+/// trên máy sinh ra để phục vụ (mục 10.2 `docs/AI_EDGE_FEATURE.md`).
+const String kChuaSanSangPhien =
+    'Đang mở lại phiên đăng nhập trên máy. Bạn đợi vài giây rồi hỏi lại nhé.';
+
+class _TinNhan {
+  const _TinNhan.cuaToi(this.cau)
+      : cuaToi = true,
+        the = const [];
+  const _TinNhan.cuaAi(this.cau, {this.the = const []}) : cuaToi = false;
+
+  final bool cuaToi;
+  final String cau;
+
+  /// Thẻ số liệu đi **kèm** câu — điều kiện 12 của đặc tả gốc: không để người
+  /// dùng chỉ thấy văn bản mà không thấy nguồn số.
+  final List<String> the;
+}
 
 class AiChatPage extends StatefulWidget {
-  const AiChatPage({super.key});
+  const AiChatPage({
+    super.key,
+    this.coMoHinh,
+    this.onHoi,
+    this.onHoiBac1,
+    this.traLoiMau,
+    this.theSoLieuMau,
+    this.doTrangThai,
+  });
+
+  /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
+  /// **không chạm DI**, để widget test dựng được cả hai trạng thái.
+  final bool? coMoHinh;
+
+  /// Khe tiêm cho test: thay cả đường sinh câu — từ chặng 4b là **vòng lặp
+  /// tool** — bằng một luồng sự kiện **đã gác** (`CauQua` / `BiChan`, cộng
+  /// `DangTraCuu` / `KhongTraCuu` của bậc tool). `null` = đường thật. Gác theo
+  /// câu và vòng lặp có test riêng (`gac_cau_test`, `vong_lap_cong_cu_test`); ở
+  /// đây test chỉ canh màn phản ứng với sự kiện.
+  final Stream<SuKienGac> Function(String cauHoi)? onHoi;
+
+  /// Khe tiêm cho test: đường BẬC 1 (sáu gói dựng sẵn) mà màn rơi về khi vòng
+  /// lặp tool phát [KhongTraCuu]. `null` = đường thật.
+  final Stream<SuKienGac> Function(String cauHoi)? onHoiBac1;
+
+  /// Khe tiêm cho test: hội thoại dựng sẵn.
+  final List<String>? traLoiMau;
+  final List<String>? theSoLieuMau;
+
+  /// Khe tiêm cho test: đọc `(có tệp, công tắc đang bật)`. `null` = hỏi DI.
+  final Future<(bool, bool)> Function()? doTrangThai;
 
   @override
   State<AiChatPage> createState() => _AiChatPageState();
 }
 
 class _AiChatPageState extends State<AiChatPage> {
-  final TextEditingController _textController = TextEditingController();
+  final _oNhap = TextEditingController();
+  final _cuon = ScrollController();
+  final _tinNhan = <_TinNhan>[];
+
+  /// Hai cờ chứ không một: xem [cauKhoaHoiDap].
+  bool _coTep = false;
+  bool _batCongTac = true;
+  bool _dangHoi = false;
+
+  /// Các câu đã qua kiểm của lượt trả lời **đang đến**, nối bằng khoảng
+  /// trắng. `null` = chưa câu nào (đang hiện "Đang nghĩ…").
+  String? _traLoiDangDen;
+
+  /// Chữ dòng chỉ báo trong lúc tool chạy (`cauDangTraCuu`); `null` = "Đang nghĩ…".
+  String? _dangTraCuu;
+
+  bool get _coMoHinh => _coTep && _batCongTac;
+
+  @override
+  void initState() {
+    super.initState();
+    _tinNhan.add(const _TinNhan.cuaAi(
+      'Xin chào! Mình trả lời dựa trên số liệu trong app của bạn — chi tiêu, '
+      'ngân sách, mục tiêu. Bạn muốn biết gì?',
+    ));
+    for (final c in widget.traLoiMau ?? const <String>[]) {
+      _tinNhan.add(_TinNhan.cuaAi(c, the: widget.theSoLieuMau ?? const []));
+    }
+
+    if (widget.coMoHinh != null) {
+      _coTep = widget.coMoHinh!;
+    } else {
+      _doMoHinh();
+    }
+  }
+
+  Future<void> _doMoHinh() async {
+    final (co, bat) = await (widget.doTrangThai ?? _doTuDi)();
+    if (!mounted) return;
+    setState(() {
+      _coTep = co;
+      _batCongTac = bat;
+    });
+  }
+
+  /// Hai điều kiện, không một: tệp có trên máy **và** người dùng chưa tắt công
+  /// tắc ở màn Cài đặt AI. Bỏ vế thứ hai thì công tắc ấy không gác gì — ở lối
+  /// B, DI không gác hộ nữa (Task 7 Step 4).
+  Future<(bool, bool)> _doTuDi() async {
+    if (!sl.isRegistered<MoHinhTaiVe>() || !sl.isRegistered<CongTacAi>()) {
+      return (false, true);
+    }
+    return (await sl<MoHinhTaiVe>().daCo(), await sl<CongTacAi>().doc());
+  }
+
+  /// ⚠️ Mở màn Cài đặt AI rồi **đọc lại** trạng thái khi quay về.
+  ///
+  /// `initState` chỉ chạy một lần; quay lại bằng `pop` thì nó **không** chạy
+  /// lại, nên người dùng tắt công tắc ở màn kia xong quay về vẫn thấy chip
+  /// xanh và ô nhập mở — bấm vào thì mới biết là không. Đo được trên máy ảo
+  /// ngày 2026-09-22; `flutter test` mù với nó, cùng họ với **G48**.
+  Future<void> _moCaiDatAi() async {
+    await context.push('/ai-settings');
+    if (!mounted || widget.coMoHinh != null) return;
+    await _doMoHinh();
+  }
 
   @override
   void dispose() {
-    _textController.dispose();
+    _oNhap.dispose();
+    _cuon.dispose();
     super.dispose();
   }
+
+  // ── Hỏi ─────────────────────────────────────────────────────────────────
+
+  Future<void> _hoi(String cauHoi) async {
+    final c = cauHoi.trim();
+    if (c.isEmpty || !_coMoHinh || _dangHoi) return;
+
+    setState(() {
+      _tinNhan.add(_TinNhan.cuaToi(c));
+      _dangHoi = true;
+      _dangTraCuu = null;
+    });
+    _oNhap.clear();
+    _cuonXuong();
+
+    // ⚠️ Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn bị vứt đi
+    // là lãng phí, và mô hình không nên thấy câu hỏi ấy.
+    if (chuDeBiChan(c)) {
+      _themCuaAi(const _TinNhan.cuaAi(kCauTuChoi));
+      return;
+    }
+
+    try {
+      final (luong, goi) = widget.onHoi != null
+          ? (widget.onHoi!(c), const <GoiSo>[])
+          : await _luongThat(c) ?? (null, const <GoiSo>[]);
+      // `null`: `_luongThat` đã tự trả một câu cố định (chưa có phiên, chưa
+      // có mô hình) và xong lượt.
+      if (luong == null) return;
+      final canBac1 = await _nhanTungCau(luong, goi);
+      if (!canBac1 || !mounted) return;
+
+      // L1 (spec 4b mục 3.6): mô hình không gọi tool nào → câu ấy bị vứt, rơi
+      // về bậc 1 hôm nay. Im lặng với người dùng (H3) — họ chỉ thấy chờ lâu hơn.
+      final (l1, g1) = widget.onHoiBac1 != null
+          ? (widget.onHoiBac1!(c), const <GoiSo>[])
+          : await _luongBac1(c);
+      await _nhanTungCau(l1, g1);
+    } catch (e, st) {
+      // ⚠️ PHẢI log. Người dùng chỉ thấy một câu chung chung ("Mô hình trên
+      // máy không chạy được lúc này"), và nếu chỗ này im thì **không còn dấu
+      // vết nào** để lần ra vì sao — nghiệm thu máy thật 2026-09-22 (P3 Task
+      // 9) vấp đúng thế: câu ấy hiện lên sau khi cài đè APK, logcat sạch
+      // trơn, và phải sửa mã rồi cài lại mới biết chuyện gì xảy ra.
+      debugPrint('[SLM] hỏi đáp hỏng: $e\n$st');
+      _themCuaAi(const _TinNhan.cuaAi(_kHong));
+    }
+  }
+
+  void _themCuaAi(_TinNhan t) {
+    if (!mounted) return;
+    setState(() {
+      _tinNhan.add(t);
+      _traLoiDangDen = null;
+      _dangTraCuu = null;
+      _dangHoi = false;
+    });
+    _cuonXuong();
+  }
+
+  /// Luồng sự kiện đã gác của đường thật, kèm gói số để dựng thẻ. `null` khi
+  /// lượt này kết thúc bằng một câu cố định (đã thêm vào hội thoại).
+  Future<(Stream<SuKienGac>, List<GoiSo>)?> _luongThat(String cauHoi) async {
+    final id = currentAccountIdOrNull(context);
+    if (id == null || id <= 0) {
+      debugPrint('[SLM] chưa hỏi được: AuthBloc chưa ở AuthSuccess (id=$id)');
+      _themCuaAi(const _TinNhan.cuaAi(kChuaSanSangPhien));
+      return null;
+    }
+
+    final moHinh = sl<MoHinhTaiVe>();
+    if (!await moHinh.daCo()) {
+      _themCuaAi(const _TinNhan.cuaAi(kChuaCoMoHinh));
+      return null;
+    }
+
+    final runtime = sl<SlmRuntime>();
+    if (!runtime.dangSan) await runtime.moHinhSan(await moHinh.duongTep());
+
+    // Bậc tool (chặng 4b, hướng A): prompt không mang số; dữ liệu chỉ vào qua
+    // tool và tích luỹ vào `goi` — chính đối tượng này về sau dựng thẻ số liệu,
+    // nên nó phải là MỘT thể hiện xuyên suốt lượt hỏi.
+    final goi = GoiSoTraCuu();
+    return (
+      hoiBangCongCu(
+        cauHoi,
+        runtime: runtime,
+        boCongCu: sl<BoCongCu>(),
+        goi: goi,
+        idaccount: id,
+        now: DateTime.now(),
+      ),
+      <GoiSo>[goi],
+    );
+  }
+
+  /// BẬC 1 — đường hỏi đáp trước chặng 4b, nay là nhánh lùi L1: sáu gói dựng
+  /// sẵn, một lượt sinh, gác theo câu trên chính sáu gói ấy.
+  Future<(Stream<SuKienGac>, List<GoiSo>)> _luongBac1(String cauHoi) async {
+    final id = currentAccountIdOrNull(context);
+    if (id == null || id <= 0) {
+      throw StateError('mất phiên giữa lượt hỏi (id=$id)');
+    }
+    final goi = await sl<NguonGoiSo>().tatCa(id);
+    final runtime = sl<SlmRuntime>();
+    // `kiemCauTraLoi` là định nghĩa duy nhất của "một câu được phép hiện":
+    // số của nhiều gói (`kiemSoNhieuGoi`) + nhãn + giọng theo mức tổng hợp.
+    return (
+      gacTheoCau(
+        runtime.sinhDan(promptHoiDap(cauHoi, goi), tranToken: 300),
+        kiem: (cau) => kiemCauTraLoi(cau, goi),
+        huy: runtime.huy,
+      ),
+      goi,
+    );
+  }
+
+  /// Hiện từng câu qua kiểm ngay khi nó tới; hết luồng thì chốt thành một tin
+  /// nhắn kèm thẻ. Câu bị chặn chỉ đi vào log. Trả `true` khi vòng lặp tool
+  /// phát [KhongTraCuu] — người gọi rơi về bậc 1.
+  Future<bool> _nhanTungCau(Stream<SuKienGac> luong, List<GoiSo> goi) async {
+    final cauDaQua = <String>[];
+    var canBac1 = false;
+    await for (final sk in luong) {
+      switch (sk) {
+        case CauQua(:final cau):
+          // Gỡ markdown ở lúc HIỆN — câu đã qua kiểm, số không đổi (bẫy 4.36).
+          cauDaQua.add(boDanhDauMarkdown(cau));
+          if (!mounted) return false;
+          setState(() => _traLoiDangDen = cauDaQua.join(' '));
+          _cuonXuong();
+        case BiChan(:final cau):
+          debugPrintCauHong(cau);
+        case DangTraCuu(:final ten):
+          if (!mounted) return false;
+          setState(() => _dangTraCuu = ten == null ? null : cauDangTraCuu(ten));
+        case KhongTraCuu():
+          canBac1 = true;
+      }
+    }
+    if (canBac1) return true;
+    if (cauDaQua.isEmpty) {
+      _themCuaAi(const _TinNhan.cuaAi(_kKhongChacChan));
+      return false;
+    }
+    final vanBan = cauDaQua.join(' ');
+    _themCuaAi(_TinNhan.cuaAi(vanBan, the: _theChoCau(vanBan, goi)));
+    return false;
+  }
+
+  /// Thẻ số liệu = **những con số câu ấy thật sự nhắc tới**, lấy từ gói. Không
+  /// phải mọi số của cả sáu gói: một câu hai dòng kèm hai mươi thẻ thì thẻ
+  /// thôi là nguồn kiểm chứng, nó thành tiếng ồn. Phép khớp ở `theCuaCau` —
+  /// ⚠️ **không** so chuỗi con (đã vấp thật, xem docstring ở đó).
+  List<String> _theChoCau(String cau, List<GoiSo> goi) => theCuaCau(cau, goi);
+
+  void _cuonXuong() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_cuon.hasClients) return;
+      _cuon.animateTo(
+        _cuon.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ── Dựng ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _buildAppBar(context),
+      appBar: _thanhTren(context),
       body: Column(
         children: [
-          _buildSuggestionChips(),
+          _hangChip(),
           Expanded(
-            child: ListView(
+            child: ListView.separated(
+              controller: _cuon,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              children: [
-                _buildAiMessage(
-                  'Xin chào! Tôi là Trợ lý AI FlowMoney. Bạn cần tôi phân tích hay tư vấn khoản chi tiêu nào hôm nay?',
-                ),
-                const SizedBox(height: 16),
-                _buildUserMessage(
-                  'Hãy phân tích chi tiêu tuần này của tôi và cảnh báo khoản nào bất thường.',
-                ),
-                const SizedBox(height: 16),
-                _buildAnalysisMessage(),
-              ],
+              itemCount: _tinNhan.length + (_dangHoi ? 1 : 0),
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (_, i) {
+                if (i >= _tinNhan.length) {
+                  final dangDen = _traLoiDangDen;
+                  return dangDen == null
+                      ? _dangSoan()
+                      : _boCuaAi(_TinNhan.cuaAi(dangDen));
+                }
+                final t = _tinNhan[i];
+                return t.cuaToi ? _boCuaToi(t) : _boCuaAi(t);
+              },
             ),
           ),
-          _buildInputBar(),
+          if (!_coMoHinh) _dongChuaCoMoHinh(),
+          _thanhNhap(),
         ],
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _thanhTren(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.surfaceContainerLow,
       elevation: 0,
@@ -58,102 +442,83 @@ class _AiChatPageState extends State<AiChatPage> {
         onPressed: () => context.pop(),
       ),
       centerTitle: true,
-      title: Column(
-        children: [
-          const Text(
-            'Trợ lý Tài chính AI',
-            style: TextStyle(
-              color: AppColors.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.income,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'ĐANG HOẠT ĐỘNG',
-                style: TextStyle(
-                  color: AppColors.onSurfaceVariant,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ],
+      title: const Text(
+        'Trợ lý Tài chính AI',
+        style: TextStyle(
+          color: AppColors.onSurface,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
       ),
       actions: [
         IconButton(
-          tooltip: 'Cài đặt',
+          tooltip: 'Cài đặt AI',
           icon: const Icon(Icons.settings, color: AppColors.onSurfaceVariant),
-          onPressed: () {},
+          // Lối vào DUY NHẤT của `/ai-settings` (Task 7). Route ấy nằm ngoài
+          // shell nên phải `push` — `go` thì thanh tab biến mất.
+          onPressed: _moCaiDatAi,
         ),
       ],
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(
-          color: AppColors.outlineVariant,
-          height: 1.0,
-        ),
+        preferredSize: const Size.fromHeight(1),
+        child: Container(color: AppColors.outlineVariant, height: 1),
       ),
     );
   }
 
-  Widget _buildSuggestionChips() {
+  Widget _hangChip() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.95),
-      ),
+      color: AppColors.background.withValues(alpha: 0.95),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            _buildChip('Phân tích chi tiêu tháng này'),
-            const SizedBox(width: 8),
-            _buildChip('Dự báo tiết kiệm'),
-            const SizedBox(width: 8),
-            _buildChip('Gợi ý cắt giảm chi phí'),
-            const SizedBox(width: 8),
-            _buildChip('Tình hình ngân sách'),
+            for (final c in kChipGoiY) ...[
+              _chip(c),
+              const SizedBox(width: 8),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.secondaryContainer,
+  Widget _chip(String nhan) {
+    final bat = _coMoHinh && !_dangHoi;
+    return Material(
+      color: bat
+          ? AppColors.secondaryContainer
+          : AppColors.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outlineVariant),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.onSurfaceVariant,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+        // ⚠️ `null` khi chưa có mô hình: ô nhập đã khoá mà chip vẫn hỏi được
+        // thì có một đường vòng quanh chính cái khoá ấy.
+        onTap: bat ? () => _hoi(nhan) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Text(
+            nhan,
+            style: TextStyle(
+              color: bat
+                  ? AppColors.onSurfaceVariant
+                  : AppColors.outline,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAiMessage(String text) {
+  Widget _boCuaAi(_TinNhan t) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,13 +548,21 @@ class _AiChatPageState extends State<AiChatPage> {
                   border: Border.all(color: AppColors.outlineVariant),
                 ),
                 child: Text(
-                  text,
+                  t.cau,
                   style: const TextStyle(
                     fontSize: 16,
                     color: AppColors.onSurface,
                   ),
                 ),
               ),
+              if (t.the.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [for (final s in t.the) _theSo(s)],
+                ),
+              ],
             ],
           ),
         ),
@@ -197,238 +570,141 @@ class _AiChatPageState extends State<AiChatPage> {
       ],
     );
   }
-  
-  Widget _buildUserMessage(String text) {
+
+  Widget _theSo(String chu) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Text(
+          chu,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+      );
+
+  Widget _boCuaToi(_TinNhan t) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         const SizedBox(width: 48),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
-              bottomRight: Radius.circular(16),
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Text(
+              t.cau,
+              style: const TextStyle(fontSize: 16, color: Colors.white),
             ),
           ),
-          child: Text(
-            text,
+        ),
+      ],
+    );
+  }
+
+  Widget _dangSoan() => Row(
+        children: [
+          const SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            _dangTraCuu ?? 'Đang nghĩ…',
             style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white,
+                color: AppColors.onSurfaceVariant, fontSize: 13),
+          ),
+        ],
+      );
+
+  Widget _dongChuaCoMoHinh() => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline,
+                size: 16, color: AppColors.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                cauKhoaHoiDap(coTep: _coTep),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.onSurfaceVariant),
+              ),
             ),
-          ),
+            TextButton(
+              onPressed: _moCaiDatAi,
+              child: const Text('Cài đặt AI'),
+            ),
+          ],
         ),
-      ],
-    );
-  }
+      );
 
-  Widget _buildAnalysisMessage() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.smart_toy, color: Colors.white, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
-                  ),
-                  border: Border.all(color: AppColors.outlineVariant),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: const TextSpan(
-                        style: TextStyle(fontSize: 16, color: AppColors.onSurface),
-                        children: [
-                          TextSpan(text: 'Dựa trên dữ liệu 7 ngày qua: Bạn đã chi '),
-                          TextSpan(
-                            text: '3.200.000đ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                          ),
-                          TextSpan(text: '.'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(8),
-                          bottomRight: Radius.circular(8),
-                        ),
-                        border: const Border(
-                          left: BorderSide(color: AppColors.error, width: 4),
-                        ),
-                      ),
-                      child: RichText(
-                        text: const TextSpan(
-                          style: TextStyle(fontSize: 16, color: AppColors.onSurface),
-                          children: [
-                            TextSpan(text: '💡 '),
-                            TextSpan(text: 'Cảnh báo: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                            TextSpan(text: 'Chi tiêu Ăn uống tăng '),
-                            TextSpan(
-                              text: '35%',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
-                            ),
-                            TextSpan(text: ' so với tuần trước (chủ yếu là Cafe & ShopeeFood).'),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Khuyên bạn nên đặt hạn mức cho tuần tới để tối ưu dòng tiền.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.track_changes, color: Colors.white, size: 18),
-                      label: const Text(
-                        'Thiết lập hạn mức ngay',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.outlineVariant),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.bar_chart, color: AppColors.primaryContainer),
-                        SizedBox(width: 12),
-                        Text(
-                          'Xem biểu đồ chi tiết',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Icon(Icons.chevron_right, color: AppColors.onSurfaceVariant),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInputBar() {
+  Widget _thanhNhap() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline, color: AppColors.onSurfaceVariant),
-              onPressed: () {},
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(8),
-            ),
-            IconButton(
-              tooltip: 'Chọn ảnh',
-              icon: const Icon(Icons.image_outlined, color: AppColors.onSurfaceVariant),
-              onPressed: () {},
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(8),
-            ),
             Expanded(
               child: TextField(
-                controller: _textController,
+                controller: _oNhap,
+                enabled: _coMoHinh && !_dangHoi,
                 maxLines: 4,
                 minLines: 1,
-                style: const TextStyle(fontSize: 16, color: AppColors.onSurface),
-                decoration: const InputDecoration(
-                  hintText: 'Hỏi Trợ lý AI bất kỳ điều gì...',
-                  hintStyle: TextStyle(color: AppColors.outlineVariant),
+                textInputAction: TextInputAction.send,
+                onSubmitted: _hoi,
+                style: const TextStyle(
+                    fontSize: 16, color: AppColors.onSurface),
+                decoration: InputDecoration(
+                  hintText: _coMoHinh
+                      ? 'Hỏi về số liệu của bạn…'
+                      : (_coTep ? 'AI trên máy đang tắt' : 'Cần tải mô hình trước'),
+                  hintStyle: const TextStyle(color: AppColors.outline),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                      vertical: 8, horizontal: 8),
                 ),
               ),
             ),
-            IconButton(
-              tooltip: 'Ghi âm',
-              icon: const Icon(Icons.mic_none, color: AppColors.onSurfaceVariant),
-              onPressed: () {},
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(8),
-            ),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: _coMoHinh && !_dangHoi
+                    ? AppColors.primary
+                    : AppColors.outline,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
                 tooltip: 'Gửi',
                 icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: () {
-                  _textController.clear();
-                },
+                onPressed: _coMoHinh && !_dangHoi
+                    ? () => _hoi(_oNhap.text)
+                    : null,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(10),
               ),
@@ -438,4 +714,10 @@ class _AiChatPageState extends State<AiChatPage> {
       ),
     );
   }
+}
+
+/// Tách ra một hàm để `debugPrint` không nằm giữa thân `_hoiThat` — và để chỗ
+/// này có tên gọi khi đọc log.
+void debugPrintCauHong(String cau) {
+  debugPrint('[SLM] câu hỏi đáp không qua bộ kiểm số, không hiện: $cau');
 }
