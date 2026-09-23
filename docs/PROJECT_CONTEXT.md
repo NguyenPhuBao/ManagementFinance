@@ -917,7 +917,8 @@ mọi gói (bốn lúc Task 8, **sáu** từ việc số 1 tối cùng ngày), k
 
 Hai thứ mới ở tầng dưới. **`ai_edge/data/nguon_goi_so.dart`** là chỗ **duy nhất** dựng gói số mà
 không đứng trên state của một trang — sáu khối Nhận xét đều lấy từ trang của chúng, còn màn Trợ lý
-AI không thuộc trang nào. ⚠️ Nó đọc **`.first`** chứ không nghe lâu dài: một câu trả lời là *ảnh
+AI không thuộc trang nào. *(Đúng tới 2026-09-23: từ lát 4b bốn adapter tool cũng tự đọc
+repository; lớp này nay chỉ dựng sáu gói cho bậc 1 — nhánh lùi L1.)* ⚠️ Nó đọc **`.first`** chứ không nghe lâu dài: một câu trả lời là *ảnh
 chụp tại lúc hỏi*; nghe tiếp thì câu đã hiện nói một đằng còn số liệu sau lưng nó đổi một nẻo, mà
 người dùng không có cách nào biết. Và **`kiemSoNhieuGoi`** — ⚠️ **không phải `goi.any(kiemSo)`**:
 viết thế là đòi cả câu nằm gọn trong **một** gói, nên một câu hoàn toàn đúng kiểu *"tháng này chi

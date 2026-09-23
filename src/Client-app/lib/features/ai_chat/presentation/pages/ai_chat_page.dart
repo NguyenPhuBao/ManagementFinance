@@ -134,9 +134,11 @@ class AiChatPage extends StatefulWidget {
   /// **không chạm DI**, để widget test dựng được cả hai trạng thái.
   final bool? coMoHinh;
 
-  /// Khe tiêm cho test: thay cả đường sinh câu bằng một luồng sự kiện **đã
-  /// gác** (`CauQua` / `BiChan`). `null` = đường thật. Gác theo câu có test
-  /// riêng (`gac_cau_test`); ở đây test chỉ canh màn phản ứng với sự kiện.
+  /// Khe tiêm cho test: thay cả đường sinh câu — từ chặng 4b là **vòng lặp
+  /// tool** — bằng một luồng sự kiện **đã gác** (`CauQua` / `BiChan`, cộng
+  /// `DangTraCuu` / `KhongTraCuu` của bậc tool). `null` = đường thật. Gác theo
+  /// câu và vòng lặp có test riêng (`gac_cau_test`, `vong_lap_cong_cu_test`); ở
+  /// đây test chỉ canh màn phản ứng với sự kiện.
   final Stream<SuKienGac> Function(String cauHoi)? onHoi;
 
   /// Khe tiêm cho test: đường BẬC 1 (sáu gói dựng sẵn) mà màn rơi về khi vòng

@@ -19,7 +19,8 @@ cùng lượt này.
 
 Đơn này là **vòng hai**, mở ra vì một lượt đối chiếu lại toàn bộ tài liệu với mã client hôm nay tìm
 được **11 chỗ** nữa — trong đó **4 cặp là tài liệu tự nói ngược chính nó**, và cả bốn cặp đều nằm
-trong phạm vi lượt sửa vừa rồi.
+trong phạm vi lượt sửa vừa rồi. *(Bổ sung 2026-09-23: thêm **một** chỗ — mục **3.6**, dòng 290 tả
+màn chat là "chưa nối API nào" — lượt soát ngày 22 bỏ sót; nay là 12.)*
 
 🛑 **Một chỗ trong số đó là lỗi của client, không phải của backend** — xem mục 2. Backend đã chép
 **đúng nguyên văn** câu mà client đưa; câu ấy lạc hậu vì client đổi mã hai ngày sau khi nộp đơn mà
@@ -146,7 +147,7 @@ dựng sẵn ba tháng dữ liệu; thứ bắt được là một phép đo tr�
 
 ---
 
-## 3. Năm chỗ lệch mã client đang chạy
+## 3. Sáu chỗ lệch mã client đang chạy *(năm chỗ ngày 22 + mục 3.6 bổ sung 2026-09-23)*
 
 ### 3.1 B2 (dòng 318) — thi hành ở đâu
 
@@ -257,6 +258,26 @@ từ tệp cục bộ đã tải sẵn. Bảo đảm bằng ba lớp: (1) phép 
 (3) không có URL nào trong đường gọi mô hình. ⚠️ Không mô tả đây là "không cấp quyền mạng": quyền
 `INTERNET` là của cả ứng dụng và **bắt buộc phải có** cho đồng bộ offline-first."*
 
+### 3.6 Dòng 290 — màn chat *"chưa nối API nào"* *(bổ sung 2026-09-23; lượt soát ngày 22 bỏ sót)*
+
+Đang nói: *"Màn hình chat `lib/features/ai_chat/presentation/pages/ai_chat_page.dart` (436 dòng) đã
+tồn tại sẵn trên client và **chưa nối API nào**. Tầng 3 nên tích hợp trực tiếp vào màn hình này thay
+vì dựng mới."*
+
+Vế sau **đã làm đúng như đề nghị**; vế đầu sai từ 2026-09-22 và sai thêm từ 2026-09-23:
+
+1. **2026-09-22 (P3):** màn chat nối mô hình Gemma 4 E2B trên máy — hỏi đáp tự do, chữ hiện dần theo
+   câu, ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` trước khi hiện (`AI_EDGE_FEATURE.md` mục 9).
+2. **2026-09-23 (chặng 4b):** màn đi **bậc tool** — mô hình tự chọn một trong **bốn tool chỉ đọc**
+   (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
+   domain có sẵn và trả hàng có tên; chưa tool nào chạy thì rơi về đường P3 (`AI_EDGE_FEATURE.md`
+   mục 9.14). Vẫn **không** gọi API server nào: mọi thứ chạy trên máy.
+3. Con số "436 dòng" là của bản tĩnh cũ; tệp nay dài hơn nhiều (`wc -l` trước khi trích).
+
+**Câu thay thế:** *"Tầng 3 được tích hợp vào màn chat có sẵn `lib/features/ai_chat/presentation/pages/
+ai_chat_page.dart` (không dựng màn mới): hỏi đáp tự do trên máy, mô hình chọn tool chỉ đọc để lấy dữ
+liệu theo tên, mọi con số kiểm với dữ liệu trước khi hiện. Không gọi API server nào."*
+
 ---
 
 ## 4. Hai chỗ nên đánh dấu *(Hoãn)* cho nhất quán
@@ -296,7 +317,7 @@ chiếu `nguongChiLon`, `Bills` hay `Goals` trong `tai_phan_bo.dart`). Đó khô
 
 ## 6. Kiểm lại bằng gì
 
-Sau khi sửa, ba lệnh sau phải ra **0** dòng:
+Sau khi sửa, bốn lệnh sau phải ra **0** dòng:
 
 ```bash
 F="docs/AI/AI_Edge-SLM.md/Client-app.md"
@@ -309,6 +330,9 @@ grep -n "Thi hành trực tiếp trong \*\*bộ luật thông báo" "$F"
 
 # 3. Không còn khẳng định "không cấp quyền" mạng, không còn bắt buộc Isolate
 grep -n "không cấp quyền mở Socket\|BẮT BUỘC PHẢI CHẠY TRONG DART ISOLATE" "$F"
+
+# 4. (bổ sung 2026-09-23) Không còn tả màn chat là chưa nối gì
+grep -n "chưa nối API nào" "$F"
 ```
 
 Và một phép kiểm **chéo** — hai câu về cửa sổ thu nhập phải cùng nói một chuyện:
@@ -317,7 +341,7 @@ Và một phép kiểm **chéo** — hai câu về cửa sổ thu nhập phải 
 grep -n "cửa sổ cuộn\|3 tháng lịch\|ba tháng" "$F"
 ```
 
-Client sẽ chạy lại cả bốn lệnh sau khi backend báo xong, và đối chiếu từng mục 1–5 với mã như lượt
+Client sẽ chạy lại cả năm lệnh sau khi backend báo xong, và đối chiếu từng mục 1–5 với mã như lượt
 này.
 
 ---

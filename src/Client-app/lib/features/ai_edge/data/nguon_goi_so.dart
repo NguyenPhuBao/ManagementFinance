@@ -6,7 +6,11 @@
 ///
 /// Khác mọi chỗ dùng gói số khác: sáu khối Nhận xét đều dựng gói từ state mà
 /// *trang của chúng* đã nạp sẵn, còn màn Trợ lý AI không thuộc màn nào — nó
-/// phải tự hỏi dữ liệu. Đây là chỗ duy nhất làm việc ấy.
+/// phải tự hỏi dữ liệu. Từ chặng 4b (2026-09-23) màn ấy có **hai** đường hỏi:
+/// bốn adapter tool (`cong_cu_*.dart`) đọc repository theo lời gọi của mô
+/// hình, còn lớp này dựng sáu gói cho **bậc 1** — nhánh lùi L1 khi mô hình
+/// không gọi tool nào (`_luongBac1` ở `ai_chat_page.dart`). Hai đường dùng
+/// chung `viChoGoiSoTu` và `nganSachDangChay` bên dưới.
 ///
 /// ⚠️ **Lớp này vẫn KHÔNG tính gì** (test quét thứ 14 canh cả thư mục
 /// `ai_edge/`): nó chỉ lấy dữ liệu rồi đưa cho đúng `GoiSo...tu()` đã có. Mọi

@@ -258,6 +258,11 @@ kèm thẻ số liệu. Không lưu lịch sử hội thoại qua phiên.
 > này · Tình hình ngân sách · Tiến độ mục tiêu · Hoá đơn sắp tới*, gói tổng hợp là **sáu** gói
 > (thêm hoá đơn, ví), câu trả lời **hiện dần theo câu** và đi qua ba lớp kiểm (`kiemCauTraLoi`).
 > Nguồn sự thật: mục **9.8** `docs/AI_EDGE_FEATURE.md`.
+>
+> ⚠️ **Đổi lần hai 2026-09-23 (chặng 4b).** Câu hỏi — chip lẫn ô nhập — nay đi **bậc tool** trước:
+> mô hình chọn một trong bốn tool chỉ đọc, dữ liệu vào qua tool chứ không qua prompt. Sáu gói ở
+> trên chỉ còn là **nhánh lùi L1** khi mô hình không gọi tool nào. Nguồn sự thật: mục **9.14**
+> `docs/AI_EDGE_FEATURE.md`, spec `2026-09-23-chang-4b-tool-calling-vong-lap-design.md`.
 
 ---
 

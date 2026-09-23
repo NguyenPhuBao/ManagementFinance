@@ -505,9 +505,10 @@ Future<void> setupDependencies() async {
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
 
-  // Nguồn gói số cho màn Trợ lý AI. Đây là chỗ DUY NHẤT dựng gói số mà không
-  // đứng trên state của một trang — sáu khối Nhận xét đều lấy từ trang của
-  // chúng; màn Trợ lý AI không thuộc trang nào nên phải tự hỏi dữ liệu.
+  // Nguồn sáu gói số cho BẬC 1 của màn Trợ lý AI — nhánh lùi L1 khi mô hình
+  // không gọi tool nào. Sáu khối Nhận xét đều lấy gói từ trang của chúng; màn
+  // Trợ lý AI không thuộc trang nào nên phải tự hỏi dữ liệu — qua lớp này, hoặc
+  // (từ chặng 4b) qua bốn tool của `BoCongCu` ngay dưới.
   sl.registerLazySingleton<NguonGoiSo>(
     () => NguonGoiSo(
       phanTich: sl<AnalyticsRepository>(),

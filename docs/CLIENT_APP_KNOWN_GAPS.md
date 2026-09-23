@@ -2087,7 +2087,7 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 20
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- ~~3 feature không có test~~ → ~~nay còn hai: profile, ai_chat~~ (đo lại 2026-09-08 bằng `find`/`flutter test`) → nay còn **một**: **ai_chat** (G33 thêm `test/features/profile/` — **2** tệp / **9** test, đếm bằng máy 2026-09-11). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 3 tệp (đếm bằng máy 2026-09-11); **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
+- ~~3 feature không có test~~ → ~~nay còn hai: profile, ai_chat~~ (đo lại 2026-09-08 bằng `find`/`flutter test`) → ~~nay còn **một**: **ai_chat**~~ (G33 thêm `test/features/profile/` — **2** tệp / **9** test, đếm bằng máy 2026-09-11) → ✅ **không còn feature nào thiếu test**: `ai_chat` có test từ P3 Task 8 (2026-09-22), nay **1** tệp / **24** ca — đếm bằng máy 2026-09-23 (quét mọi thư mục `lib/features/*` đối chiếu `test/features/*`). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 3 tệp (đếm bằng máy 2026-09-11); **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
 
 ---
 

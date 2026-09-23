@@ -9,7 +9,8 @@
 > và không phải nguồn sự thật — **mọi con số dưới đây phải đối chiếu lại với mã**.
 > Mỗi con số đều ghi cách đếm để người sau đếm lại được.
 >
-> **Mọi số liệu trong tài liệu này đếm bằng máy ngày 2026-09-21.**
+> **Mọi số liệu trong tài liệu này đếm bằng máy ngày 2026-09-21** — trừ những phần viết sau, vốn
+> ghi ngày đo ngay tại chỗ (mục 5.5, 5.6, 11, 12, 13 mang số của 2026-09-22 và 2026-09-23).
 
 ---
 
@@ -792,7 +793,7 @@ người dùng.
 
 ---
 
-## 12. Lộ trình — ba bước, theo đúng thứ tự phụ thuộc
+## 12. Lộ trình — bốn bước, theo đúng thứ tự phụ thuộc *(tiêu đề từng ghi "ba bước" — lỗi thời từ khi chặng 4 tách làm 4a và 4b)*
 
 1. ✅ **P3 XONG 2026-09-22** (trọn 10 task) — mô hình đã cắm và chạy trong app thật trên hai
    máy; ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` bắt được câu sai trên máy thật.
