@@ -1,8 +1,8 @@
 /// Thẻ số liệu đi kèm một câu trả lời — **những con số câu ấy thật sự nhắc
 /// tới** (điều kiện 12 đặc tả gốc: người dùng phải thấy nguồn số cạnh câu).
 ///
-/// Dùng **cùng phép khớp với bộ kiểm số** (`trichSo` + `soLieuKhop`), không
-/// so chuỗi con. Bản đầu (`ai_chat_page._theChoCau`, P3 Task 8) viết
+/// Dùng **cùng phép khớp với bộ kiểm số** (`trichSoNgoaiTen` + `soLieuKhop`),
+/// không so chuỗi con. Bản đầu (`ai_chat_page._theChoCau`, P3 Task 8) viết
 /// `cau.contains(s.chuoi)`, và trên máy thật 2026-09-22 tối, ngay khi hai gói
 /// hoá đơn và ví mang số đếm ngắn, câu *"…tổng thu 15.135.000 đ"* kéo theo
 /// thẻ *Số cam kết 15 · Quá hạn 1 · Số ví 4 · Ví đang âm 1* — "15", "1", "4"
@@ -53,7 +53,9 @@ List<String> theCuaCau(String cau, List<GoiSo> goi) {
   final daCo = <String>{};
   final (cacCau, du) = tachCauHoanChinh(cau);
   for (final c in [...cacCau, if (du.trim().isNotEmpty) du.trim()]) {
-    for (final x in trichSo(c)) {
+    // Số NGOÀI tên đối tượng (bước 1c): chữ số của `Tiền nhà T9` không được đẻ
+    // ra thẻ "Còn 9 ngày" của một gói khác.
+    for (final x in trichSoNgoaiTen(c, goi)) {
       final khop = soLieuKhop(x, goi);
       if (khop.isEmpty) continue;
       // Trong các mục cùng giá trị, ưu tiên mục mà CÂU NÀY thật sự nhắc tới.

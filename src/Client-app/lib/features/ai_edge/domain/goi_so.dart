@@ -121,4 +121,19 @@ abstract class GoiSo {
   NhanXet mauCau();
 
   String get dauVan => dauVanCua(this);
+
+  /// Tên các **đối tượng** gói mang theo — mặc định là mọi [SoLieu.ten].
+  ///
+  /// Bộ kiểm số đọc danh sách này để biết chữ số nào nằm **trong một tên**
+  /// (`Tiền nhà T9`) chứ không phải một con số (`trichSoNgoaiTen`, bước 1c).
+  ///
+  /// ⚠️ Gói nào in vào mẫu câu một tên **không** gắn trên [SoLieu] nào thì phải
+  /// cộng tên ấy ở đây. Quên thì mẫu câu nêu một tên có chữ số bị chính bộ
+  /// kiểm chặn, và câu mô hình nêu đúng tên ấy cũng vậy — im lặng. Đừng gắn
+  /// tên ấy lên [SoLieu] để né: làm thế là đổi luật "mục có tên đòi câu nêu
+  /// tên" của `kiemNhan`.
+  Iterable<String> get tenDoiTuong => [
+        for (final s in soLieu)
+          if (s.ten != null) s.ten!,
+      ];
 }

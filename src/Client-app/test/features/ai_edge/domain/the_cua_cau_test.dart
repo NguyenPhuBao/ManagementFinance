@@ -69,6 +69,19 @@ void main() {
     expect(theCuaCau('Bạn đang chi tiêu đúng nhịp.', [phanTich]), isEmpty);
   });
 
+  test('⭐ chữ số trong TÊN không đẻ ra thẻ của một con số khác (bước 1c)', () {
+    final hdT9 =
+        _Gia('tra_cuu', [soTien('Số tiền', 50000, ten: 'Tiền nhà T9')]);
+    final nsCon9 = _Gia('ngan_sach', [soNgay('Còn', 9)]);
+    expect(
+      theCuaCau('Tiền nhà T9 chưa trả 50.000 đ.', [hdT9, nsCon9]),
+      ['Tiền nhà T9 · Số tiền 50.000 đ'],
+      reason: 'Chữ số 9 của "T9" khớp "Còn 9 ngày" của gói ngân sách — thẻ ấy '
+          'nói về một đại lượng câu không hề nhắc tới. Thẻ là nguồn kiểm '
+          'chứng, nên nó phải đọc số bằng đúng phép của bộ kiểm.',
+    );
+  });
+
   group('trùng GIÁ TRỊ giữa hai gói — bẫy 4.27 (chặng 4a)', () {
     // Đúng ca máy thật bắt được ở chặng 3: gói hoá đơn có `Quá hạn 1`, gói ví
     // có `Ví đang âm 1`. Cùng giá trị 1, và gói hoá đơn xếp TRƯỚC gói ví.

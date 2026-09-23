@@ -94,6 +94,14 @@ class GoiSoMucTieu extends GoiSo {
   @override
   bool get thieuDuLieu => ten == null;
 
+  /// Tên mục tiêu có trong mẫu câu mà không nằm trên [SoLieu] nào — gắn nó lên
+  /// [SoLieu] thì `kiemNhan` đòi mọi câu phải nêu tên, đổi luật của gói này.
+  @override
+  Iterable<String> get tenDoiTuong => [
+        ...super.tenDoiTuong,
+        if (ten != null) ten!,
+      ];
+
   @override
   NhanXet mauCau() {
     if (thieuDuLieu) {

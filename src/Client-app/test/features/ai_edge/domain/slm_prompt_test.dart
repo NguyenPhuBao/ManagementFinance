@@ -4,7 +4,7 @@ import 'package:flowmoney/features/ai_edge/domain/slm_prompt.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
-class _GoiGia implements GoiSo {
+class _GoiGia extends GoiSo {
   @override
   final String man;
   @override

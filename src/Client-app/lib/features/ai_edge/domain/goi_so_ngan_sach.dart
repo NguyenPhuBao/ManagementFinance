@@ -131,6 +131,16 @@ class GoiSoNganSach extends GoiSo {
   @override
   bool get thieuDuLieu => ten == null;
 
+  /// Câu tóm tắt kế hoạch nêu tên ngân sách **thâm hụt** — có thể khác ngân
+  /// sách căng nhất và nằm ngoài danh sách có tên (trần `kToiDaMucMoiGoi`), nên
+  /// getter mặc định không phủ nó. Ngân sách căng nhất thì đã có trên mục
+  /// `Tỉ lệ`.
+  @override
+  Iterable<String> get tenDoiTuong => [
+        ...super.tenDoiTuong,
+        if (keHoach != null) keHoach!.thieu.displayName,
+      ];
+
   @override
   NhanXet mauCau() {
     if (thieuDuLieu) {

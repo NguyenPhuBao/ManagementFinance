@@ -601,13 +601,36 @@ src/Backend/
 Lộ trình kiến trúc Edge AI đã đi hết phía client (chặng 1–4 xong, cổng A · B · C đạt, chặng 5
 bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ tự mới, theo hai nếp đã chốt — *sửa lỗi
 trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
-**1b** ✅ canary cho phiên có tool · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
+**1b** ✅ canary cho phiên có tool · **1c** ✅ tên đối tượng có chữ số qua được lớp chắn *(thêm vào
+thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
 giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
 là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
 *"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
 Stitch và người dùng duyệt trước khi viết mã.
+
+### ✅ Bước 1c — tên đối tượng có chữ số qua được lớp chắn (2026-09-23 tối muộn)
+
+Lượt soát tài liệu trước bước 2 đo CSDL máy ảo (tài khoản 10, chỉ đọc): **5/9** hoá đơn và
+**1/16** danh mục mang chữ số trong tên (kiểu *"Tiền nhà T9"*). Chạy thử trên mã: một câu **đúng** nêu
+tên hoá đơn như thế bị **cả `kiemSo` lẫn `kiemNhan`** chặn — `trichSo` đọc chữ số của tên là một con
+số không có trong gói, còn `amTietCua` tách bỏ chữ số nên âm tiết "t9" của tên không bao giờ có trong
+câu. Thẻ số liệu còn lấy "9" ấy khớp nhầm *"Còn 9 ngày"* của gói khác. Hỏng theo chiều an toàn (rơi về
+mẫu câu) nên không ai thấy — cổng C đo bằng hoá đơn `Kiem`. Người dùng chọn **sửa trước** bước 2.
+
+**Cách làm:** `trichSoNgoaiTen` ở `ai_edge/domain/kiem_so.dart` — định nghĩa duy nhất của "con số
+trong câu trả lời" cho `kiemSo`, `kiemNhan`, `theCuaCau` — bỏ khỏi câu các tên của gói
+(`GoiSo.tenDoiTuong`, mặc định mọi `SoLieu.ten`) rồi mới trích. Bốn chốt giữ lớp chắn không bị nới:
+tên phải có chữ cái · khớp trọn từ · so theo `normalizeCategoryName` · tên dài trước. Ba gói in tên
+không nằm trên `SoLieu` nào tự override `tenDoiTuong` (Mục tiêu, Trang chủ, Ngân sách — tên ngân sách
+thâm hụt trong câu tóm tắt kế hoạch). `amTietCua` và `tuKhoaNhan` dùng một phép tách âm tiết giữ chữ
+số, nên tên có dấu gạch (`Điện/Nước`) cũng khớp được. Bẫy **4.38**, mục **9.16** `AI_EDGE_FEATURE.md`.
+
+**Test:** 18 ca ở 7 tệp đã có; 11 bản sai có chủ ý, bản nào cũng bị bắt. Ba lớp giả `implements
+GoiSo` trong test đổi sang `extends` vì `GoiSo` thêm getter. Trọn bộ **3603/3603** (3 skip), analyze
+**26**. Schema, payload, `pubspec` không đổi. ⚠️ **Chưa đo trên máy thật** (không cắm điện thoại) —
+đo ở buổi đo bước 2, thêm một câu về hoá đơn có chữ số vào bộ hồi quy.
 
 ### ✅ Bước 1b — canary cho phiên có tool, lối B (2026-09-23 tối)
 

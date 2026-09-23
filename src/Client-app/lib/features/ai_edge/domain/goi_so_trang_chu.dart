@@ -67,6 +67,14 @@ class GoiSoTrangChu extends GoiSo {
   @override
   bool get thieuDuLieu => thu == 0 && chi == 0;
 
+  /// Tên ngân sách căng nhất có trong mẫu câu mà mục "Ngân sách căng nhất" không
+  /// mang tên — xem `GoiSo.tenDoiTuong`.
+  @override
+  Iterable<String> get tenDoiTuong => [
+        ...super.tenDoiTuong,
+        if (tenNganSach != null) tenNganSach!,
+      ];
+
   @override
   NhanXet mauCau() {
     if (thieuDuLieu) {

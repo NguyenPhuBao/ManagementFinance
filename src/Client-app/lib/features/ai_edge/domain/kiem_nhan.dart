@@ -33,24 +33,33 @@ import 'kiem_so.dart';
 /// `Tổng thu` cùng có "tổng", nên "tổng" khớp được là gán nhầm chi thành thu.
 const List<String> kAmTietChung = ['tổng', 'số', 'đã', 'so', 'với', 'là'];
 
+/// Ranh giới âm tiết — **một** phép cho cả nhãn/tên lẫn câu (bước 1c).
+///
+/// ⚠️ Giữ **chữ số** trong âm tiết: tên `Tiền nhà T9` có âm tiết "t9", và bản
+/// cũ tách câu ở mọi ký tự không phải chữ nên "t9" của câu thành "t" — tên có
+/// chữ số không bao giờ khớp. Và hai phía phải tách **giống nhau**: bản cũ tách
+/// tên theo khoảng trắng còn tách câu theo mọi ký tự lạ, nên tên `Điện/Nước`
+/// cũng không bao giờ khớp.
+final RegExp _ngoaiAmTiet = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
+
 /// Âm tiết có nghĩa của [nhan], chữ thường. Nhãn chỉ toàn âm tiết chung thì
 /// giữ nguyên nhãn — không có nhãn nào rỗng từ khoá.
 List<String> tuKhoaNhan(String nhan) {
   final amTiet = nhan
       .toLowerCase()
-      .split(RegExp(r'\s+'))
+      .split(_ngoaiAmTiet)
       .where((t) => t.isNotEmpty)
       .toList();
   final coNghia = amTiet.where((t) => !kAmTietChung.contains(t)).toList();
   return coNghia.isEmpty ? amTiet : coNghia;
 }
 
-/// Tập âm tiết của [cau] — chữ thường, tách ở mọi ký tự không phải chữ.
+/// Tập âm tiết của [cau] — chữ thường, tách ở mọi ký tự không phải chữ hay số.
 /// ⚠️ So theo **âm tiết**, không theo chuỗi con: "chiều" chứa "chi" mà không
 /// phải chữ "chi".
 Set<String> amTietCua(String cau) => cau
     .toLowerCase()
-    .split(RegExp(r'[^\p{L}]+', unicode: true))
+    .split(_ngoaiAmTiet)
     .where((t) => t.isNotEmpty)
     .toSet();
 
@@ -58,7 +67,9 @@ Set<String> amTietCua(String cau) => cau
 /// gói khớp nó. Câu không có số thì lọt — không có nhãn nào để gán sai.
 bool kiemNhan(String cau, List<GoiSo> goi) {
   final amTiet = amTietCua(cau);
-  for (final x in trichSo(cau)) {
+  // Trích số NGOÀI tên đối tượng (bước 1c) — cùng phép với bộ kiểm số; còn
+  // vế "câu nêu tên" bên dưới vẫn đọc âm tiết của câu GỐC, nơi tên còn nguyên.
+  for (final x in trichSoNgoaiTen(cau, goi)) {
     final nhans = soLieuKhop(x, goi);
     if (nhans.isEmpty) return false;
     final coNhanDung = nhans.any(

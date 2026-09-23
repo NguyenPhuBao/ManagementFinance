@@ -74,6 +74,29 @@ void main() {
     expect(nx.theSoLieu, g.soLieu);
   });
 
+  test('mẫu câu tự qua bộ kiểm số khi TÊN có chữ số (bước 1c)', () {
+    final g = GoiSoTraCuu()
+      ..them(
+        'danh_sach_hoa_don',
+        KetQuaCongCu(
+          hang: [
+            HangSoLieu(
+              ten: 'Tiền nhà T9',
+              trangThai: 'chưa trả',
+              canhBao: false,
+              soLieu: [soTien('Số tiền', 50000, ten: 'Tiền nhà T9')],
+            ),
+          ],
+          tongHop: [soTien('Còn phải trả', 50000)],
+        ),
+      );
+    final cau = g.mauCau().cau;
+    expect(cau, contains('Tiền nhà T9 chưa trả: Số tiền 50.000 đ'));
+    expect(kiemSo(cau, g), isTrue,
+        reason: 'L2/L3 rơi về đúng câu này. 5/9 hoá đơn của tài khoản 10 có '
+            'chữ số trong tên — mẫu câu phải tự qua bộ kiểm với chúng.');
+  });
+
   test('mức cảnh báo theo CỜ canhBao của hàng, không theo chữ trạng thái', () {
     final coCo = GoiSoTraCuu()..them('t', _hoaDonQuaHan());
     expect(coCo.mauCau().muc, MucNhanXet.canhBao);
@@ -184,6 +207,36 @@ void main() {
     test('thẻ số liệu nêu tên', () {
       expect(theCuaCau('Kiem đã quá hạn 45.000 đ.', [g]),
           ['Kiem · Số tiền 45.000 đ']);
+    });
+
+    test('⭐ câu đúng nêu tên hoá đơn CÓ CHỮ SỐ → qua cả ba lớp (bước 1c)', () {
+      final coSo = GoiSoTraCuu()
+        ..them(
+          'danh_sach_hoa_don',
+          KetQuaCongCu(
+            hang: [
+              HangSoLieu(
+                ten: 'Kiem thu hoa don 123',
+                trangThai: 'chưa trả',
+                canhBao: false,
+                soLieu: [
+                  soTien('Số tiền', 50000, ten: 'Kiem thu hoa don 123'),
+                ],
+              ),
+            ],
+            tongHop: [soTien('Còn phải trả', 50000)],
+          ),
+        );
+      expect(
+        kiemCauTraLoi(
+          'Hoá đơn Kiem thu hoa don 123 chưa trả, số tiền 50.000 đ.',
+          [coSo],
+        ),
+        isTrue,
+        reason: 'Đúng câu đã chạy thử trên mã 2026-09-23: trước bước 1c cả '
+            'kiemSoNhieuGoi lẫn kiemNhan chặn nó, còn cùng câu với tên "Kiem" '
+            'thì qua.',
+      );
     });
   });
 }

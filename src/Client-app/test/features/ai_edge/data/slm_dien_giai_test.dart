@@ -54,7 +54,7 @@ class _RuntimeGia implements SlmRuntime {
   Future<void> dong() async => _san = false;
 }
 
-class _Goi implements GoiSo {
+class _Goi extends GoiSo {
   @override
   final String man = 'ngan_sach';
   @override
@@ -176,7 +176,7 @@ void main() {
   });
 }
 
-class _GoiThieu implements GoiSo {
+class _GoiThieu extends GoiSo {
   @override
   final String man = 'ngan_sach';
   @override

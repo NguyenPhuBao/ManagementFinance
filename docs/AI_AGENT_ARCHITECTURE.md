@@ -641,13 +641,23 @@ Xem mục 8.
 
 ## 7. Bộ kiểm số — cơ chế
 
-`kiem_so.dart`, 57 dòng. Trích **mọi** con số trong câu bằng regex rồi đòi từng số
-khớp một `SoLieu` của gói:
+`kiem_so.dart`, 152 dòng *(đếm 2026-09-23 sau bước 1c; câu cũ ghi "57 dòng" — đã lạc hậu từ
+trước, ngay trước 1c tệp là 77 dòng)*. Trích **mọi** con số trong câu bằng regex — **trừ chữ số
+nằm trong tên một đối tượng của gói** — rồi đòi từng số khớp một `SoLieu` của gói:
 
 ```dart
-bool kiemSo(String cau, GoiSo goi) =>
-    trichSo(cau).every((x) => goi.soLieu.any((s) => _khop(x, s)));
+bool kiemSo(String cau, GoiSo goi) => trichSoNgoaiTen(cau, [goi])
+    .every((x) => goi.soLieu.any((s) => _khop(x, s)));
 ```
+
+**Tên đối tượng có chữ số** (bước 1c, 2026-09-23): tên `Tiền nhà T9` mang chữ số "9" mà không
+phải con số. Trước 1c, `trichSo` đọc nó là số không có trong gói, nên mọi câu **đúng** nêu tên
+ấy bị chặn — đo trên tài khoản 10: **5/9** hoá đơn và **1/16** danh mục có chữ số trong tên.
+`trichSoNgoaiTen` bỏ khỏi câu những tên của gói (`GoiSo.tenDoiTuong`) trước khi trích, với bốn
+điều kiện để lớp chắn không bị nới cho câu bịa: tên phải **có chữ cái** (tên toàn chữ số như
+`2027` không được miễn); khớp **trọn từ** ở cả hai đầu (không khớp *"an 5"* bên trong *"Ban 5"*);
+so theo `normalizeCategoryName` (không phân biệt hoa thường, NFC); tên **dài** bỏ trước. Tên là
+dữ liệu của gói, không do mô hình sinh. `kiemNhan` và `theCuaCau` trích số bằng **cùng** hàm ấy.
 
 **Dung sai theo loại:**
 
@@ -769,8 +779,9 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 **app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
 P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
 `flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
-mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **47** tệp test / **448** ca
-(đếm 2026-09-23 tối sau bước 1b — ba tệp mới của canary phiên có tool; mốc **44 / 424** là sau lát 4b,
+mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **47** tệp test / **466** ca
+(đếm 2026-09-23 tối muộn sau bước 1c — +18 ca, không thêm tệp; mốc **47 / 448** là sau bước 1b, ba
+tệp mới của canary phiên có tool; mốc **44 / 424** là sau lát 4b,
 và mốc *"`ai_edge` 33 tệp / 294 ca"* từng ghi ở đây là của 2026-09-22), và mô
 hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
 khi canary bắt được cú sập native trên Mali).

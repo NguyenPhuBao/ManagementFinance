@@ -127,6 +127,48 @@ void main() {
     }
   });
 
+  test(
+      'tên ngân sách THÂM HỤT có chữ số, nằm ngoài danh sách có tên: mẫu câu '
+      'vẫn tự qua bộ kiểm số (bước 1c)', () {
+    // 21/09: đã qua 20/30 ngày nên dự phóng = đã chi × 1,5. Thu nhập 0 → ngưỡng
+    // thâm hụt là sàn 50.000 đ.
+    final now21 = DateTime(2026, 9, 21);
+    final ds = [
+      // 99 % — căng nhất, là ngân sách được nhận xét. Hụt 48.500 < 50.000.
+      _ns(id: 'a', ten: 'Giáo dục', amount: 100000, spent: 99000),
+      // 75 % — tỉ lệ THẤP nhất, nhưng hụt 125.000: khoản duy nhất vượt ngưỡng.
+      _ns(id: 'b', ten: 'Tiền nhà T9', amount: 1000000, spent: 750000),
+      // 95 % — hụt 42.500 < 50.000; ba ngân sách này chiếm cả ba suất tên.
+      _ns(id: 'c', ten: 'Ăn uống', amount: 100000, spent: 95000),
+      _ns(id: 'd', ten: 'Di chuyển', amount: 100000, spent: 95000),
+      _ns(id: 'e', ten: 'Mua sắm', amount: 100000, spent: 95000),
+    ];
+    final kh = taiPhanBoCua(
+      dangChay: ds,
+      now: now21,
+      coDinh: const {},
+      thuNhapMoiThang: 0,
+      mucThangTheoNganSach: const {},
+      phanHoi: const [],
+    );
+    // Hai tiền đề — ca này chỉ canh được điều nó nói khi cả hai đúng.
+    expect(kh!.thieu.displayName, 'Tiền nhà T9');
+    final g = GoiSoNganSach.tu(ds, now: now21, keHoach: kh);
+    expect(g.soLieu.where((s) => s.ten == 'Tiền nhà T9'), isEmpty,
+        reason: 'tên ngân sách thâm hụt không được nằm trên SoLieu nào, nếu '
+            'không getter mặc định đã phủ nó và ca này không canh gì');
+
+    final cau = g.mauCau().cau;
+    expect(cau, contains('Tiền nhà T9 dự kiến vượt'));
+    expect(
+      kiemSo(cau, g),
+      isTrue,
+      reason: 'Câu tóm tắt kế hoạch nêu tên ngân sách thâm hụt — thứ có thể '
+          'khác ngân sách căng nhất và nằm ngoài danh sách có tên. Gói phải tự '
+          'khai tên ấy ở tenDoiTuong.',
+    );
+  });
+
   test('cùng số → cùng dấu vân; đổi số đã chi → khác', () {
     final a =
         GoiSoNganSach.tu([_ns(amount: 3000000, spent: 2100000)], now: now);

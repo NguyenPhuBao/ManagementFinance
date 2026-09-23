@@ -79,4 +79,103 @@ void main() {
     expect(kiemSo('Đã chi 9 đ.', g), isTrue,
         reason: 'số trần theo sau đ vẫn là một con số, khớp tiền được');
   });
+
+  // ── Tên đối tượng có chữ số (bước 1c, 2026-09-23) ───────────────────────
+  //
+  // Đo trên CSDL máy ảo, tài khoản 10: 5/9 hoá đơn và 1/16 danh mục mang chữ
+  // số trong tên. `trichSo` đọc chữ số ấy là một con số không có trong gói,
+  // nên câu ĐÚNG nêu tên những hoá đơn ấy luôn bị chặn — cổng C không thấy vì
+  // hoá đơn đo được tên `Kiem`.
+  group('tên đối tượng có chữ số (bước 1c)', () {
+    _Gia hoaDon(String ten) => _Gia([soTien('Số tiền', 50000, ten: ten)]);
+
+    test('⭐ chữ số nằm TRONG tên đối tượng không bị đọc là một con số', () {
+      expect(
+        kiemSo(
+          'Hoá đơn Kiem thu hoa don 123 chưa trả, số tiền 50.000 đ.',
+          hoaDon('Kiem thu hoa don 123'),
+        ),
+        isTrue,
+        reason: 'Đúng câu đã chạy thử trên mã 2026-09-23: "123" là một phần của '
+            'tên hoá đơn. Đọc nó là số thì mọi câu đúng nêu tên hoá đơn ấy đều '
+            'bị chặn, im lặng — người dùng chỉ thấy câu rơi về mẫu.',
+      );
+    });
+
+    test('tên viết hoa khác vẫn là tên', () {
+      expect(
+        kiemSo('TIỀN NHÀ T9 chưa trả 50.000 đ.', hoaDon('Tiền nhà T9')),
+        isTrue,
+      );
+    });
+
+    test('số BỊA đứng cạnh tên vẫn bị chặn', () {
+      expect(
+        kiemSo('Tiền nhà T9 chưa trả 99.000 đ.', hoaDon('Tiền nhà T9')),
+        isFalse,
+        reason: 'Chỉ chữ số NẰM TRONG tên được bỏ qua — 99.000 thì không.',
+      );
+    });
+
+    test('một MẨU của tên đứng riêng vẫn bị kiểm như một con số', () {
+      expect(
+        kiemSo('Còn 9 ngày nữa.', hoaDon('Tiền nhà T9')),
+        isFalse,
+        reason: '"9" đứng riêng không phải tên "Tiền nhà T9". Bỏ qua mọi chữ số '
+            'từng xuất hiện trong một tên là mở cửa cho số bịa.',
+      );
+    });
+
+    test('tên phải khớp TRỌN TỪ ở cả hai đầu', () {
+      expect(
+        kiemSo('Ban 5 người chi 50.000 đ.', hoaDon('An 5')),
+        isFalse,
+        reason: '"an 5" là chuỗi con của "Ban 5" — khớp chuỗi con thì con số 5 '
+            'bịa lọt qua nhờ một tên tình cờ trùng mẩu chữ.',
+      );
+      final coSoDem5 = _Gia([
+        soTien('Số tiền', 50000, ten: 'Quỹ 9'),
+        soDem('Chưa trả', 5),
+      ]);
+      expect(
+        kiemSo('Quỹ 95 chưa trả 50.000 đ.', coSoDem5),
+        isFalse,
+        reason: '"Quỹ 95" không phải "Quỹ 9". Bỏ mẩu "Quỹ 9" thì phần "5" còn '
+            'sót khớp nhầm số đếm 5 của gói, và 95 bịa lọt qua.',
+      );
+    });
+
+    test('tên KHÔNG có chữ cái nào thì không được miễn', () {
+      expect(
+        kiemSo('Còn 2027 ngày, chưa trả 50.000 đ.', hoaDon('2027')),
+        isFalse,
+        reason: 'Tên toàn chữ số thì không phân biệt được "tên" với "con số" — '
+            'miễn nó là để mọi số 2027 trong câu đều lọt.',
+      );
+    });
+
+    test('hai tên lồng nhau: tên DÀI được bỏ trước', () {
+      final g = _Gia([
+        soTien('Số tiền', 50000, ten: 'Quỹ 9'),
+        soTien('Số tiền', 70000, ten: 'Quỹ 9 2026'),
+      ]);
+      expect(
+        kiemSo('Quỹ 9 2026 chưa trả 70.000 đ.', g),
+        isTrue,
+        reason: 'Bỏ "Quỹ 9" trước thì phần "2026" còn lại bị đọc là số, và câu '
+            'đúng về "Quỹ 9 2026" bị chặn.',
+      );
+    });
+
+    test('kiemSoNhieuGoi: tên ở gói này, số ở gói kia', () {
+      final pt = _Gia([soTien('Tổng chi', 2141000)]);
+      expect(
+        kiemSoNhieuGoi(
+          'Tiền nhà T9 chưa trả 50.000 đ, tổng chi 2.141.000 đ.',
+          [pt, hoaDon('Tiền nhà T9')],
+        ),
+        isTrue,
+      );
+    });
+  });
 }

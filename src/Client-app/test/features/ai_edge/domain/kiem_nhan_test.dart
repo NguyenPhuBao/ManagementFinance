@@ -189,6 +189,54 @@ void main() {
       expect(kiemNhan('Ví test đang âm -100.000 đ.', [vi]), isTrue);
     });
 
+    group('tên có chữ số hoặc dấu câu (bước 1c)', () {
+      test('⭐ mục có tên mang chữ số: câu nêu đúng tên thì qua', () {
+        final g = _Gia(
+            'tra_cuu', [soTien('Số tiền', 50000, ten: 'Kiem thu hoa don 123')]);
+        expect(
+          kiemNhan('Hoá đơn Kiem thu hoa don 123 chưa trả 50.000 đ.', [g]),
+          isTrue,
+          reason: 'Hai chỗ cùng hỏng: "123" bị trích như một con số không khớp '
+              'nhãn nào, và phép tách âm tiết của câu bỏ chữ số nên "123" của '
+              'tên không bao giờ có mặt — câu đúng bị chặn ở cả hai vế.',
+        );
+      });
+
+      test('tên có dấu câu: tên và câu tách âm tiết bằng CÙNG một phép', () {
+        final g =
+            _Gia('tra_cuu', [soTien('Số tiền', 300000, ten: 'Điện/Nước')]);
+        expect(
+          kiemNhan('Điện/Nước chưa trả 300.000 đ.', [g]),
+          isTrue,
+          reason: 'Tên tách theo khoảng trắng ra "điện/nước", câu tách theo mọi '
+              'ký tự không phải chữ ra "điện" và "nước" — hai phép khác nhau '
+              'thì tên có dấu gạch không bao giờ khớp.',
+        );
+      });
+
+      test('mục có tên mang chữ số: câu KHÔNG nêu tên vẫn bị chặn', () {
+        final g =
+            _Gia('tra_cuu', [soTien('Số tiền', 50000, ten: 'Tiền nhà T9')]);
+        expect(
+          kiemNhan('Hoá đơn chưa trả 50.000 đ.', [g]),
+          isFalse,
+          reason: 'Luật 4a giữ nguyên: số thuộc một đối tượng có tên thì câu '
+              'phải nêu tên ấy.',
+        );
+      });
+
+      test('nêu thiếu chữ số của tên thì chưa phải nêu tên', () {
+        final g =
+            _Gia('tra_cuu', [soTien('Số tiền', 50000, ten: 'Tiền nhà T9')]);
+        expect(
+          kiemNhan('Tiền nhà chưa trả 50.000 đ.', [g]),
+          isFalse,
+          reason: '"Tiền nhà" và "Tiền nhà T9" có thể là hai hoá đơn khác nhau '
+              '— chữ số là một phần của tên, bỏ nó đi là nói về đối tượng khác.',
+        );
+      });
+    });
+
     test('mục có tên vẫn lọt khi một mục KHÔNG tên cùng giá trị khớp nhãn',
         () {
       // Câu 3 của bảng đo: 90,0% vừa là `Giáo dục · Tỉ lệ` của gói ngân sách,
