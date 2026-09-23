@@ -1,6 +1,6 @@
 # Chặng 4b — tầng tool + vòng lặp cho màn Trợ lý AI (thiết kế)
 
-**Ngày:** 2026-09-23 · **Nhánh:** `TranQuangDat` @ `94ac53c` · **Trạng thái:** chờ duyệt
+**Ngày:** 2026-09-23 · **Nhánh:** `TranQuangDat` @ `94ac53c` · **Trạng thái:** đã duyệt (người dùng, 2026-09-23, sau lượt tự soát năm chỗ)
 **Đầu vào:** bảng đo 20 câu + đơn đặt hàng sáu tool, mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`;
 kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và mục **9.12** `docs/AI_EDGE_FEATURE.md`)
 **Khung cố định:** lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`, mục
@@ -94,7 +94,8 @@ câu 13 và 15 hỏng, và hướng A bỏ nó khỏi tầm nhìn của mô hìn
 | `SuKienLuot`, `PhienCongCu`, `PhienCongCuGia` | `ai_edge/data/phien_cong_cu.dart` — **không** import `flutter_gemma` | Giao diện **thuần** của một phiên hội thoại có tool + bản giả cho test, đúng tiền lệ `nguon_tai_nen.dart` (giao diện + `NguonTaiNenGia` cạnh nhau, bản thật ở tệp riêng) |
 | `SlmRuntime.moPhien` | `ai_edge/data/slm_runtime.dart` | Bản thật của `PhienCongCu` (lớp riêng tư trong tệp) — **chỗ duy nhất** dịch sang `Tool` / `createChat` / `generateChatResponseAsync` / `Message.toolResponse`. **Test quét 16 giữ nguyên** |
 | `CongCu` × 4 | `ai_edge/data/cong_cu_*.dart` (đọc repository) + `ai_edge/domain/hang_*.dart` (dựng hàng, thuần) | Khuôn `NguonGoiSo` ↔ `GoiSoX.tu()`: data **lấy**, domain **chép** số từ hàm domain sang hàng và gán `canhBao` từ enum domain. Không tool ghi |
-| Vòng lặp | `ai_edge/data/vong_lap_cong_cu.dart` | Điều khiển `PhienCongCu`: trần 3 lượt gọi, tích luỹ, phát `DangTraCuu(ten)`, chỉ đưa lượt cuối qua `gacTheoCau`, thang lùi (mục 3.6). Không import `flutter_gemma` |
+| `BoCongCu` | `ai_edge/data/bo_cong_cu.dart` | Gom bốn `CongCu`, khai báo cho mô hình, tra tool theo tên; đăng ký DI **lazy** như `NguonGoiSo`. Hai phép chép dữ liệu mà `NguonGoiSo` đang làm inline (ví → `ViChoGoiSo`, lọc ngân sách đang chạy) **tách thành hàm dùng chung** trong `nguon_goi_so.dart` để tool và gói số không giữ hai bản |
+| Vòng lặp | `ai_edge/data/vong_lap_cong_cu.dart` | Điều khiển `PhienCongCu`: trần 3 lời gọi, tích luỹ, phát `DangTraCuu` / `KhongTraCuu`, đưa chữ qua `gacTheoCau` **từ khi đã có hàng**, thang lùi (mục 3.6). Không import `flutter_gemma`; log bằng `print` (`// ignore_for_file: avoid_print`, tiền lệ `main.dart`) |
 
 `ai_chat_page._luongThat` đổi **một** chỗ: gọi vòng lặp thay cho `NguonGoiSo.tatCa + promptHoiDap +
 sinhDan`; đường cũ giữ nguyên làm **bậc 1** (nhánh lùi L1). `SuKienGac` (sealed) thêm `DangTraCuu`
@@ -124,13 +125,16 @@ class HangSoLieu {
 class KetQuaCongCu {
   final List<HangSoLieu> hang;   // ≤ kToiDaMucMoiGoi, đã xếp theo thứ tự đáng chú ý
   final List<SoLieu> tongHop;    // không ten: "Tổng còn lại", "Quá hạn" (đếm), "Tổng chi"…
-  Map<String, dynamic> get json; // {"hang": [...], "<nhan>": "<chuoi>", …}
+  final Map<String, String> chuThem; // chữ KHÔNG số kèm cho mô hình: {"ky": "tháng trước"}
+  final String? loi;             // tham số lạ → tool từ chối, nói vì sao
+  factory KetQuaCongCu.loi(String vi);
+  Map<String, dynamic> get json; // {"hang": [...], "<nhan>": "<chuoi>", …chuThem, "loi": …}
 }
 
-/// Gói tích luỹ của MỘT câu hỏi — implements GoiSo để ba lớp chắn dùng nguyên.
+/// Gói tích luỹ của MỘT câu hỏi — extends GoiSo để ba lớp chắn dùng nguyên.
 class GoiSoTraCuu extends GoiSo {
-  void them(KetQuaCongCu kq);
-  bool get daTraCuu;             // đã có ít nhất một tool chạy, kể cả trả 0 hàng (chốt L1)
+  void them(String tenCongCu, KetQuaCongCu kq);   // tool KHÔNG tồn tại thì không gọi — không tính là đã tra cứu
+  bool get daTraCuu;             // đã có ít nhất một tool thật chạy, kể cả trả 0 hàng (chốt L1)
   // man = 'tra_cuu'; soLieu = mọi SoLieu của hàng + tổng hợp; thieuDuLieu = !daTraCuu;
   // mauCau() = liệt kê tất định (3.6); muc = canhBao khi có hàng canhBao == true (3.5)
 }
@@ -141,13 +145,24 @@ class KhaiBaoCongCu { final String ten; final String moTa; final Map<String, dyn
 abstract class CongCu {
   KhaiBaoCongCu get khaiBao;
   /// [args] do mô hình sinh. Tool TỰ kiểm enum: giá trị lạ → từ chối (0 hàng + `loi`
-  /// trong JSON trả về), không đoán (mục 3.4, quyết định 1).
-  Future<KetQuaCongCu> chay(Map<String, dynamic> args);
+  /// trong JSON trả về), không đoán (mục 3.4, quyết định 1). [idaccount] và [now] do
+  /// vòng lặp truyền từ màn — tool không tự đọc phiên đăng nhập (quy tắc 2 `CLAUDE.md`).
+  Future<KetQuaCongCu> chay(Map<String, dynamic> args, {required int idaccount, required DateTime now});
+}
+
+/// Bộ tool: khai báo cho mô hình + tra theo tên. `null` = mô hình bịa tên tool.
+class BoCongCu {
+  List<KhaiBaoCongCu> get khaiBao;
+  Future<KetQuaCongCu?> chay(String ten, Map<String, dynamic> args, {required int idaccount, required DateTime now});
 }
 
 sealed class SuKienLuot {}                 // một lượt sinh phát:
 class Chu extends SuKienLuot { final String token; }
 class GoiCongCu extends SuKienLuot { final String ten; final Map<String, dynamic> args; }
+
+// Hai sự kiện MỚI của `SuKienGac` (sealed, ở `gac_cau.dart`) mà vòng lặp phát cho màn:
+class DangTraCuu extends SuKienGac { final String? ten; }  // ten = tool đang chạy; null = đã có hàng, mô hình đang viết
+class KhongTraCuu extends SuKienGac {}                       // L1: lượt đầu không gọi tool → màn tự rơi về bậc 1
 
 abstract class PhienCongCu {
   Stream<SuKienLuot> sinhLuot();           // kết thúc lượt: có GoiCongCu = mô hình muốn tool; không = câu trả lời
@@ -212,8 +227,10 @@ làm bốn việc ấy khó hơn là tự viết ~60 dòng trên giao diện thu
 
 ### 3.6 Trần, thang lùi, huỷ
 
-**Trần: 3 lượt gọi tool, tức tối đa 4 lượt sinh.** Lượt sinh nào có `GoiCongCu` thì chạy tool và mở
-lượt kế; đã đủ 3 lượt gọi mà lượt thứ tư **vẫn** gọi → L3, không chạy tool, không sinh thêm.
+**Trần: 3 lời gọi tool** (`kTranGoiCongCu`), tức thường là 4 lượt sinh. Lượt sinh nào có `GoiCongCu`
+thì chạy tool và mở lượt kế; một lượt gọi song song nhiều tool đếm **từng** lời gọi; lời gọi nào làm
+tổng **vượt** trần → L3 ngay, không chạy tool, không sinh thêm. Tool **bịa tên** cũng tốn một suất
+(mô hình nhận `{"loi": …}` kèm danh sách tool thật) để vòng lặp không quay vô hạn.
 
 | # | Khi nào | Làm gì | Tốn thêm |
 |---|---|---|---|
@@ -237,8 +254,11 @@ phải trả 155.000 đ."* — một câu mỗi tool đã chạy, tên trước 
 lượt đang sinh) **và** cờ huỷ mà vòng lặp kiểm **giữa hai lượt** — không chạy tool tiếp, không mở
 lượt mới. Cùng lý lẽ bẫy 4.15: trượt là huỷ ngay, không để engine giải mã tiếp.
 
-**Chữ ở lượt gọi tool** (nếu Gemma 4 có phát) **bị bỏ, chỉ ghi log** — người dùng không thấy chữ nào
-trước khi hàng về.
+**Chữ trước khi tool nào chạy bị bỏ, chỉ ghi log** — dù lượt ấy có gọi tool hay không, người dùng
+không thấy chữ nào khi mô hình chưa có dữ liệu trước mắt. Từ khi đã có hàng, **mọi** chữ của mọi
+lượt đi qua `gacTheoCau` (kiểm trên gói tích luỹ) và được hiện — kể cả một lượt vừa viết chữ vừa gọi
+tool tiếp, vì câu đã qua kiểm là câu đúng. Câu qua kiểm rồi mới có câu trượt → giữ câu đã hiện,
+**không** thay bằng mẫu câu (cùng luật với bậc 1 hôm nay); L2 chỉ khi **chưa** câu nào hiện.
 
 **Giới hạn nói ra, không vá:** sau khi một tool đã chạy, một câu **không chứa chữ số** được hiện dù
 tool trả 0 hàng (*"Bạn không có hoá đơn quá hạn"* — đúng và mong muốn). Câu bịa **tên** mà không có
@@ -331,14 +351,20 @@ Trượt thì lát này **không đóng**: ghi bảng, phân tích, quyết ti�
 
 ## 8. Phác kế hoạch (viết chi tiết bằng `writing-plans`)
 
-1. **Spike Realme**: một tool giả trên `moPhien` + một câu → logcat có `FunctionCallResponse`; đo
-   `tools_json`, token, độ trễ hai lượt. Chưa thấy lời gọi thì **chưa dựng tầng** — báo và quyết.
-2. `HangSoLieu` · `KetQuaCongCu` · `GoiSoTraCuu` (+ `mauCau`, `muc`) và ghép với `kiemCauTraLoi` /
-   `theCuaCau`.
-3. `CongCu` · `KhaiBaoCongCu` (domain) · `SuKienLuot` · `PhienCongCu` + `PhienCongCuGia`
-   (`data/phien_cong_cu.dart`) · `SlmRuntime.moPhien` (bản thật, trong `slm_runtime.dart`).
-4. Bốn tool: domain builders + data adapters + đăng ký DI.
-5. Vòng lặp + thang lùi + huỷ + log.
-6. Nối `ai_chat_page` (+ `DangTraCuu`, dòng chỉ báo), bậc 1 làm nhánh lùi.
-7. Đo cổng C + tài liệu (`AI_EDGE_FEATURE.md` 9.13, `AI_AGENT_ARCHITECTURE.md` 5.6 / 11 / 12,
+*(Thứ tự chốt khi viết kế hoạch 2026-09-23: spike cần `moPhien` thật, mà `moPhien` cần kiểu thuần
+— nên ba task kiểu/giao diện đi trước spike; spike vẫn đứng **trước** bốn tool và vòng lặp.)*
+
+1. `HangSoLieu` · `KetQuaCongCu` (domain, thuần).
+2. `GoiSoTraCuu` (+ `mauCau`, `muc`) và ghép với `kiemCauTraLoi` / `theCuaCau`.
+3. `CongCu` · `KhaiBaoCongCu` · hằng tên tool · `cauDangTraCuu` (domain) · `SuKienLuot` ·
+   `PhienCongCu` + `PhienCongCuGia` (`data/phien_cong_cu.dart`) · `DangTraCuu` / `KhongTraCuu` ở
+   `gac_cau.dart` · `kPromptHeThongCongCu` · `SlmRuntime.moPhien` (giao diện + bản giả trong test).
+4. **`moPhien` bản thật + Spike Realme**: một tool khai tay + một câu qua móc tạm `/spike` (không
+   commit) → logcat có `GoiCongCu`; đo `tools_json`, độ trễ hai lượt. Chưa thấy lời gọi thì **chưa
+   dựng tầng** — báo và quyết.
+5. Bốn hàm dựng hàng (domain): `hangNganSach` · `hangHoaDon` · `hangVi` · `hangChiTieu`.
+6. Bốn adapter data + `BoCongCu` + tách hai hàm dùng chung khỏi `NguonGoiSo` + DI.
+7. Vòng lặp `hoiBangCongCu` + thang lùi + huỷ + log.
+8. Nối `ai_chat_page` (+ `DangTraCuu`, dòng chỉ báo, `onHoiBac1`), bậc 1 làm nhánh lùi.
+9. Đo cổng C + tài liệu (`AI_EDGE_FEATURE.md` 9.13, `AI_AGENT_ARCHITECTURE.md` 5.6 / 11 / 12,
    `PROJECT_CONTEXT.md` mục 14, `CLAUDE.md` hàng AI, banner spec này).
