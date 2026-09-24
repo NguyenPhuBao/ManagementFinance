@@ -143,6 +143,12 @@ void main() {
     expect(kq.hang.single.trangThai, 'chuyển ví · Tiền mặt → Tiết kiệm');
   });
 
+  test('⭐ ví "tiet_kiem" (E2B gõ snake_case) vẫn khớp Tiết kiệm — không từ chối (bẫy 4.45)', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'vi': 'tiet_kiem', 'chieu': 'chuyen_vi'}, idaccount: 10, now: now);
+    expect(kq.loi, isNull, reason: 'C11 cổng D lần 2 rơi về L1b vì tên có gạch dưới');
+    expect(kq.hang.single.trangThai, 'chuyển ví · Tiền mặt → Tiết kiệm');
+  });
+
   test('tên ví sai → từ chối kèm tên thật (vào tenLienQuan)', () async {
     final kq = await cc.chay({'ky': 'thang_nay', 'vi': 'vi gia'}, idaccount: 10, now: now);
     expect(kq.loi, contains('Tiết kiệm mua nhà'));

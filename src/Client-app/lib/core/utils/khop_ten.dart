@@ -5,6 +5,10 @@
 /// sai chỉ tốn một lần hỏi lại), khác quy tắc trùng tên danh mục (quy tắc 7
 /// `CLAUDE.md`), nơi bỏ dấu bị cấm.
 ///
+/// Ba bậc, bậc trước thắng: bằng nhau sau chuẩn hoá → bằng nhau sau bỏ dấu →
+/// bằng nhau sau khi đọc `_` là dấu cách rồi bỏ dấu (bước 2c: E2B gõ
+/// `vi: "tiet_kiem"`, bẫy 4.45).
+///
 /// ⚠️ Không so chuỗi con: "tiết kiệm" khớp ví **Tiết kiệm**, không khớp "tiết
 /// kiệm mua nhà". ⚠️ Danh sách đem khớp phải là của CHÍNH tài khoản — lẫn hàng
 /// khuôn mặc định toàn cục (`idaccount = 0`) thì mọi tên mặc định khớp hai hàng
@@ -49,5 +53,14 @@ KetQuaKhopTen<T> khopTheoTen<T>(
     return null;
   }
 
-  return theo((s) => s) ?? theo(removeVietnameseTones) ?? KhongKhop<T>();
+  return theo((s) => s) ??
+      theo(removeVietnameseTones) ??
+      theo(_gachDuoiLaDauCach) ??
+      KhongKhop<T>();
 }
+
+/// Bậc ba (bước 2c, bẫy 4.45): E2B gõ tên theo kiểu `snake_case` — `_` đọc là
+/// dấu cách ở CẢ hai vế, rồi so bỏ dấu. Chỉ chạy khi hai bậc đầu trượt, nên tên
+/// thật có `_` vẫn thắng ở bậc 1 khi gõ y hệt.
+String _gachDuoiLaDauCach(String s) =>
+    removeVietnameseTones(normalizeCategoryName(s.replaceAll('_', ' ')));

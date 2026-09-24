@@ -7,8 +7,9 @@
 /// trần 3 (bước 2b lật vế ấy của chốt L1, spec 4b mục 3.6): cổng D lần 1 đo được
 /// E2B đọc lời từ chối thành "không có dữ liệu" (bẫy 4.40).
 ///
-/// Ba luật cho câu người dùng: không lộ mã tham số, không chép số từ tham số của
-/// mô hình (chỉ nhắc lại TÊN), không khẳng định gì về giao dịch hay dữ liệu.
+/// Ba luật cho câu người dùng: không lộ mã tham số (và không có `_` kể cả trong
+/// tên mô hình gõ — bước 2c), không chép số từ tham số của mô hình (chỉ nhắc
+/// lại TÊN), không khẳng định gì về giao dịch hay dữ liệu.
 library;
 
 import 'hang_so_lieu.dart';
@@ -56,6 +57,16 @@ KetQuaCongCu tuChoiTuKhoaLaSoTien(String giaTri) => KetQuaCongCu.loi(
       thamSoGo: const ['so_tien_tu', 'so_tien_den'],
     );
 
+/// Tên mô hình gõ, in cho NGƯỜI DÙNG: `_` đọc là dấu cách (bước 2c, bẫy 4.45 —
+/// luật (a) của spec 2b áp cả giá trị mô hình gõ, không chỉ mã tham số).
+String _tenChoNguoiDoc(String hoi) => hoi.replaceAll('_', ' ');
+
+/// Tên liên quan của một tên mô hình gõ: dạng gõ, và dạng đã đổi `_` nếu khác.
+List<String> _hoiVaBanDoc(String hoi) => [
+      hoi,
+      if (hoi.contains('_')) _tenChoNguoiDoc(hoi),
+    ];
+
 /// [loai]: chữ người đọc được của tham số — 'danh mục' · 'ví' · 'danh mục chi'.
 KetQuaCongCu tuChoiKhongKhop(
   String thamSo,
@@ -65,9 +76,9 @@ KetQuaCongCu tuChoiKhongKhop(
 }) =>
     KetQuaCongCu.loi(
       '$thamSo "$hoi" không khớp tên nào. Chỉ có: ${tenCo.join(', ')}.',
-      choNguoiDung: 'không có $loai nào tên "$hoi"',
+      choNguoiDung: 'không có $loai nào tên "${_tenChoNguoiDoc(hoi)}"',
       thamSoGo: [thamSo],
-      tenLienQuan: [...tenCo, hoi],
+      tenLienQuan: [...tenCo, ..._hoiVaBanDoc(hoi)],
     );
 
 KetQuaCongCu tuChoiKhopNhieu(
@@ -79,7 +90,8 @@ KetQuaCongCu tuChoiKhopNhieu(
     KetQuaCongCu.loi(
       '$thamSo "$hoi" khớp nhiều tên: ${tenKhop.join(', ')}. '
       'Gọi lại với đúng một tên.',
-      choNguoiDung: 'tên "$hoi" khớp nhiều $loai: ${tenKhop.join(', ')}',
+      choNguoiDung:
+          'tên "${_tenChoNguoiDoc(hoi)}" khớp nhiều $loai: ${tenKhop.join(', ')}',
       thamSoGo: [thamSo],
-      tenLienQuan: [...tenKhop, hoi],
+      tenLienQuan: [...tenKhop, ..._hoiVaBanDoc(hoi)],
     );

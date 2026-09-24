@@ -68,6 +68,21 @@ void main() {
     expect(kq.tenLienQuan, ['Dá', 'Đá', 'da']);
   });
 
+  test('⭐ tên gõ kiểu snake_case: câu người dùng đọc `_` là dấu cách; loi giữ chữ gõ; tenLienQuan cả hai (bẫy 4.45)', () {
+    final kq = tuChoiKhongKhop('vi', 'vi_gia_2', const ['Tiền mặt'], loai: 'ví');
+    expect(kq.choNguoiDung, 'không có ví nào tên "vi gia 2"',
+        reason: 'C11 cổng D lần 2 hiện "tiet_kiem" cho người dùng — luật (a) spec 2b áp cả giá trị mô hình gõ');
+    expect(kq.loi, contains('"vi_gia_2"'), reason: 'mô hình gọi lại bằng đúng chữ nó đã gõ');
+    expect(kq.tenLienQuan, ['Tiền mặt', 'vi_gia_2', 'vi gia 2'],
+        reason: 'câu mẫu in dạng đã đổi, mô hình có thể chép dạng gõ — cả hai không được đọc "2" là số');
+    expect(
+      tuChoiKhopNhieu('vi', 'tiet_kiem', const ['Tiết kiệm', 'Tiet kiem'], loai: 'ví').choNguoiDung,
+      'tên "tiet kiem" khớp nhiều ví: Tiết kiệm, Tiet kiem',
+    );
+    expect(tuChoiKhongKhop('vi', 'vi gia', const ['Tiền mặt'], loai: 'ví').tenLienQuan,
+        ['Tiền mặt', 'vi gia'], reason: 'không có `_` thì không thêm bản trùng');
+  });
+
   test('⭐ số tiền trong tu_khoa: chỉ mô hình chỗ đúng; gỡ khi lượt sau điền so_tien_*', () {
     final kq = tuChoiTuKhoaLaSoTien('500k');
     expect(kq.loi, contains('so_tien_tu'));
@@ -86,6 +101,9 @@ void main() {
       tuChoiKhoangNguoc('1000000', '200000'),
       tuChoiKhongKhop('danh_muc', 'abc', const ['Ăn uống'], loai: 'danh mục'),
       tuChoiKhopNhieu('vi', 'tiet kiem', const ['Tiết kiệm', 'Tiet kiem'], loai: 'ví'),
+      // Bước 2c: luật (a) áp cả giá trị mô hình gõ, không chỉ mã tham số.
+      tuChoiKhongKhop('vi', 'tiet_kiem', const ['Tiền mặt'], loai: 'ví'),
+      tuChoiKhopNhieu('danh_muc', 'an_uong', const ['Ăn uống', 'An uong'], loai: 'danh mục'),
     ];
     for (final kq in moiLoai) {
       final c = kq.choNguoiDung!;
