@@ -4,7 +4,7 @@
 phần duyệt trong chat cùng ngày, ba quyết định thêm lúc viết duyệt ở phiên sau (mục 1.2, hàng 11–13).
 🛑 **Mã xong (task 1–8, `daf201a` → `bc03303`), CỔNG D CHƯA ĐẠT** — lần đo 1, Realme 2026-09-24: nhóm A 7/8 (tụt) ·
 nhóm B 2/4 · nhóm C 13/20 tool · 5/20 tham số · 5 câu SAI (mục **9.17** `docs/AI_EDGE_FEATURE.md`).
-**Vòng sửa:** spec bước 2b `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` (2026-09-24, chờ người dùng đọc) —
+**Vòng sửa:** spec bước 2b `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` (2026-09-24, đã duyệt; chưa thi công) —
 nó sẽ lật câu *"Tool từ chối vẫn tính là đã chạy"* của mục 3.9 và đổi `ky` của `tim_giao_dich` (mục 3.8) thành
 bắt buộc, thêm mã `moi_luc`.
 
