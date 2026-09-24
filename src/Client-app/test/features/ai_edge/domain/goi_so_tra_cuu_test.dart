@@ -1,6 +1,7 @@
 /// Gói tích luỹ của một câu hỏi ở bậc tool. Hai điều nó phải giữ: (1) ba lớp
 /// chắn và thẻ số liệu dùng NGUYÊN — nó chỉ là một `GoiSo` nữa; (2) `daTraCuu`
-/// là chốt L1 của vòng lặp — tool trả 0 hàng vẫn là đã tra cứu.
+/// là chốt L1 của vòng lặp — tool trả 0 hàng vẫn là đã tra cứu, lượt bị TỪ CHỐI
+/// thì không (bước 2b).
 library;
 
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
@@ -8,6 +9,7 @@ import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/loi_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 import 'package:flowmoney/features/ai_edge/domain/the_cua_cau.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,11 +59,124 @@ void main() {
     expect(nx.muc, MucNhanXet.binhThuong);
   });
 
-  test('tool từ chối tham số cũng là đã chạy', () {
+  test('⭐ lượt bị TỪ CHỐI không phải đã tra cứu (bẫy 4.40 — lật một vế chốt L1 của spec 4b)', () {
     final g = GoiSoTraCuu()
-      ..them('chi_tieu_theo_ky', const KetQuaCongCu.loi('ky lạ',
-          choNguoiDung: 'chưa hiểu khoảng thời gian trong câu hỏi', thamSoGo: ['ky']));
+      ..them('chi_tieu_theo_ky', tuChoiGiaTri('ky', 'hom_kia', const ['thang_nay']));
+    expect(g.daTraCuu, isFalse,
+        reason: 'Lời từ chối nói "câu hỏi gửi tool bị hỏng", không nói "không có gì". '
+            'Cổng D lần 1: tính nó là đã tra cứu thì câu "không có dữ liệu" của '
+            'mô hình được hiện — C11, C12 SAI mà không chứa số nào.');
+    expect(g.thieuDuLieu, isTrue);
+    expect(g.tenCongCuDaChay, isEmpty);
+    expect(g.tuChoiChuaGo.single.ten, 'chi_tieu_theo_ky');
+    expect(g.choHienChuMoHinh, isFalse);
+  });
+
+  test('⭐ mọi lượt bị từ chối → mẫu câu TRUNG THỰC: nêu lý do, không khẳng định gì về dữ liệu', () {
+    final g = GoiSoTraCuu()
+      ..them('tim_giao_dich',
+          tuChoiKhongKhop('danh_muc', 'tiet kiem', const ['Ăn uống'], loai: 'danh mục'));
+    final nx = g.mauCau();
+    expect(nx.cau,
+        'Chưa tra được số liệu cho câu này: không có danh mục nào tên "tiet kiem". '
+        'Bạn thử hỏi lại cụ thể hơn.');
+    expect(nx.cau, isNot(contains('Không tìm thấy')),
+        reason: 'C8 của cổng D lần 1 nhận đúng câu ấy từ MẪU CÂU của app, trong khi có 2 khoản');
+    expect(nx.theSoLieu, isEmpty);
+    expect(nx.muc, MucNhanXet.thieuDuLieu);
+  });
+
+  test('lý do trùng nhau chỉ nói một lần, theo thứ tự', () {
+    final g = GoiSoTraCuu()
+      ..them('tim_giao_dich', tuChoiGiaTri('ky', 'x', const ['thang_nay']))
+      ..them('tim_giao_dich', tuChoiGiaTri('ky', 'y', const ['thang_nay']))
+      ..them('tim_giao_dich', tuChoiSoTien('so_tien_tu', '500k'));
+    expect(g.mauCau().cau,
+        'Chưa tra được số liệu cho câu này: chưa hiểu khoảng thời gian trong câu hỏi; '
+        'chưa hiểu số tiền trong câu hỏi. Bạn thử hỏi lại cụ thể hơn.');
+  });
+
+  test('⭐ lẫn: dữ liệu của lượt thành công + câu chưa tra được — cổng hiện chữ ĐÓNG', () {
+    final g = GoiSoTraCuu()
+      ..them('danh_sach_hoa_don', _hoaDonQuaHan())
+      ..them('goi_y_han_muc',
+          tuChoiKhongKhop('danh_muc', 'muaxe', const ['Ăn uống'], loai: 'danh mục chi'));
     expect(g.daTraCuu, isTrue);
+    expect(g.choHienChuMoHinh, isFalse,
+        reason: 'spike S3: mô hình nói "Tôi đã gợi ý hạn mức…" trong khi goi_y_han_muc bị từ chối');
+    expect(g.cauChuaTraDuoc,
+        'Chưa tra được phần còn lại: không có danh mục chi nào tên "muaxe".');
+    final nx = g.mauCau();
+    expect(nx.cau,
+        'Kiem đã quá hạn: Số tiền 45.000 đ; Còn phải trả: 155.000 đ; Quá hạn: 1. '
+        'Chưa tra được phần còn lại: không có danh mục chi nào tên "muaxe".');
+    expect(kiemSo(nx.cau, g), isTrue, reason: 'câu rơi về phải tự qua bộ kiểm số');
+    expect(nx.muc, MucNhanXet.canhBao);
+  });
+
+  test('tên sai có chữ số không đẻ ra thẻ số liệu', () {
+    final g = GoiSoTraCuu()
+      ..them('danh_sach_hoa_don', _hoaDonQuaHan())
+      ..them('tim_giao_dich',
+          tuChoiKhongKhop('danh_muc', 'abc 1', const ['Ăn uống'], loai: 'danh mục'));
+    expect(theCuaCau(g.cauChuaTraDuoc!, [g]), isEmpty,
+        reason: '"1" trong tên SAI không phải con số — không được đẻ thẻ "Quá hạn 1"');
+  });
+
+  group('gỡ lời từ chối THEO THAM SỐ (spec 2b mục 1.2 hàng 4)', () {
+    final tuChoi =
+        tuChoiKhongKhop('danh_muc', 'abc', const ['Ăn uống'], loai: 'danh mục');
+    final thanhCong = KetQuaCongCu(hang: const [], tongHop: [soDem('Số khoản', 0)]);
+
+    test('cùng tool thành công mà ĐIỀN tham số → gỡ, cổng mở', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', tuChoi)
+        ..them('tim_giao_dich', thanhCong, args: const {'danh_muc': 'Ăn uống'});
+      expect(g.tuChoiChuaGo, isEmpty);
+      expect(g.choHienChuMoHinh, isTrue);
+      expect(g.cauChuaTraDuoc, isNull);
+    });
+
+    test('⭐ cùng tool thành công mà BỎ tham số → CHƯA gỡ', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', tuChoi)
+        ..them('tim_giao_dich', thanhCong);
+      expect(g.tuChoiChuaGo, hasLength(1),
+          reason: 'bỏ bộ lọc sai rồi nói về kết quả rộng hơn như thể trả lời câu hẹp: '
+              '"các khoản chi cho danh mục abc: …" — SAI mà lọt cả ba lớp chắn');
+      expect(g.choHienChuMoHinh, isFalse);
+    });
+
+    test('điền bằng giá trị giữ chỗ → CHƯA gỡ', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', tuChoi)
+        ..them('tim_giao_dich', thanhCong, args: const {'danh_muc': 'tat_ca'});
+      expect(g.tuChoiChuaGo, hasLength(1));
+    });
+
+    test('tool KHÁC thành công → CHƯA gỡ', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', tuChoi)
+        ..them('chi_tieu_theo_ky', thanhCong, args: const {'danh_muc': 'Ăn uống'});
+      expect(g.tuChoiChuaGo, hasLength(1));
+    });
+
+    test('lượt thành công đứng TRƯỚC lời từ chối không gỡ nó', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', thanhCong, args: const {'danh_muc': 'Ăn uống'})
+        ..them('tim_giao_dich', tuChoi);
+      expect(g.tuChoiChuaGo, hasLength(1));
+    });
+
+    test('số tiền trong tu_khoa gỡ bằng so_tien_tu', () {
+      const tuKhoaLaSoTien = KetQuaCongCu.loi('tu_khoa "500k" là số tiền',
+          choNguoiDung: 'chưa hiểu số tiền trong câu hỏi',
+          thamSoGo: ['so_tien_tu', 'so_tien_den']);
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', tuKhoaLaSoTien)
+        ..them('tim_giao_dich', thanhCong, args: const {'so_tien_tu': 500000});
+      expect(g.tuChoiChuaGo, isEmpty);
+    });
   });
 
   test('⭐ mẫu câu nêu TÊN trước số và tự qua bộ kiểm số', () {

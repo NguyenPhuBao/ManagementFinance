@@ -209,18 +209,6 @@ void main() {
     expect(sk, [const DangTraCuu('bay_gio_may_gio'), const DangTraCuu(null), const KhongTraCuu()]);
   });
 
-  test('tool từ chối tham số lạ vẫn là ĐÃ tra cứu: câu không số của mô hình được hiện', () async {
-    tool = _CongCuGia(kTenCongCuHoaDon, const KetQuaCongCu.loi('trang_thai lạ',
-        choNguoiDung: 'chưa hiểu trạng thái hoá đơn', thamSoGo: ['trang_thai']));
-    bo = BoCongCu([tool]);
-    final (sk, goi, _, _) = await chay([
-      [const GoiCongCu(kTenCongCuHoaDon, {'trang_thai': 'sap_toi'})],
-      [const Chu('Mình không có dữ liệu cho trạng thái đó.')],
-    ]);
-    expect(goi.daTraCuu, isTrue);
-    expect(sk.last, const CauQua('Mình không có dữ liệu cho trạng thái đó.'));
-  });
-
   test('trả lời rỗng sau tool → mẫu câu (L2)', () async {
     final (sk, goi, _, _) = await chay([
       [goiHoaDon],
