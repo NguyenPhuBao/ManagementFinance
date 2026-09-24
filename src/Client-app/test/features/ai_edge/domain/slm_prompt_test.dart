@@ -1,6 +1,7 @@
 // test/features/ai_edge/domain/slm_prompt_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/ai_edge/domain/slm_prompt.dart';
+import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
@@ -233,6 +234,23 @@ void main() {
     test('bước 2b: dặn gọi lại khi công cụ trả "loi" (cổng D lần 1: không lượt nào gọi lại)', () {
       expect(kPromptHeThongCongCu, contains('"loi"'));
       expect(kPromptHeThongCongCu, contains('gọi lại ngay'));
+    });
+    // Cổng D lần 4–8: sáu câu có ĐIỀU KIỆN (số tiền, khoản thu, ví, danh mục, khoản
+    // lớn nhất) gọi tổng kết bốn lần liền dù mô tả chéo (2b) đã dặn — "không
+    // few-shot ở bậc tool" (spec 4b §3.7) là giả định chưa từng đo. Ví dụ định
+    // tuyến: câu hỏi kiểu nào → tool nào, tham số nào; KHÔNG chữ số.
+    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9): nêu cả hai tool cạnh tranh và các kiểu câu có điều kiện', () {
+      expect(kPromptHeThongCongCu, contains('Ví dụ'));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuGiaoDich));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuTongKet));
+      for (final dieuKien in ['số tiền', 'khoản thu', 'ví', 'danh mục', 'lớn nhất']) {
+        expect(kPromptHeThongCongCu, contains(dieuKien), reason: dieuKien);
+      }
+      expect(kPromptHeThongCongCu, contains('chieu'));
+      expect(kPromptHeThongCongCu, contains('so_tien_tu'));
+      expect(kPromptHeThongCongCu.indexOf(kTenCongCuGiaoDich),
+          lessThan(kPromptHeThongCongCu.indexOf(kTenCongCuTongKet)),
+          reason: 'ví dụ về tool liệt kê đứng trước — mô hình đọc từ trên xuống');
     });
   });
 }

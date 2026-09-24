@@ -35,11 +35,12 @@ class CongCuGiaoDich implements CongCu {
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
         ten: kTenCongCuGiaoDich,
-        moTa: 'Liệt kê TỪNG giao dịch (ghi chú, số tiền, ngày, danh mục, ví) kèm tổng '
-            'của mọi khoản khớp. Gọi khi hỏi đã tiêu gì, chi gì, những khoản nào, khoản '
-            'thu nào, khoản lớn nhất, khoản trên hay dưới một số tiền, chi từ ví nào, chi '
-            'cho danh mục nào, chuyển tiền sang ví nào, lần gần nhất hay lần cuối là khi '
-            'nào, tìm theo ghi chú. Chỉ hỏi tổng chi, tổng thu của một kỳ thì dùng '
+        // Lần đo 9: "Gọi khi" lên câu đầu — mô hình đọc câu đầu trước.
+        moTa: 'Gọi khi câu hỏi có BẤT KỲ điều kiện nào — số tiền (trên, dưới, từ … đến), '
+            'ví, danh mục, khoản thu, ghi chú, lần gần nhất — hoặc hỏi đã tiêu gì, chi gì, '
+            'những khoản nào, khoản lớn nhất, chuyển tiền sang ví nào. Liệt kê TỪNG giao '
+            'dịch (ghi chú, số tiền, ngày, danh mục, ví) kèm tổng của mọi khoản khớp. Chỉ '
+            'hỏi tổng chi, tổng thu của một kỳ mà không có điều kiện nào thì dùng '
             'tong_ket_thu_chi_ky.',
         thamSo: {
           'type': 'object',

@@ -7,6 +7,7 @@
 /// một con số, và `kiemSo` khớp được.
 library;
 
+import 'cong_cu.dart';
 import 'goi_so.dart';
 import 'nhan_xet.dart';
 
@@ -137,9 +138,14 @@ String promptHoiDap(String cauHoi, List<GoiSo> goi) =>
 /// Chỉ dẫn hệ thống cho BẬC TOOL (chặng 4b, spec mục 3.7) — đi bằng
 /// `systemInstruction` native của LiteRT-LM, không nằm trong tin người dùng.
 ///
-/// KHÔNG few-shot: thứ dẫn E2B chọn tool là mô tả tool tiếng Việt (`KhaiBaoCongCu.moTa`).
-/// Không mang con số nào ngoài giới hạn độ dài — một số ở đây là một số mô hình
-/// có thể chép vào câu mà không gói nào có (ca test canh).
+/// ⚠️ Từ lần đo 9 (2026-09-25) có **ví dụ định tuyến** — spec 4b §3.7 từng chốt
+/// "không few-shot ở bậc tool, mô tả tool là thứ duy nhất dẫn E2B", nhưng đó là
+/// giả định chưa đo: cổng D lần 4–8 sáu câu có ĐIỀU KIỆN (số tiền, khoản thu, ví,
+/// danh mục, khoản lớn nhất) gọi tổng kết **bốn lần liền** dù mô tả chéo (2b) đã
+/// dặn. Ví dụ là *câu hỏi kiểu nào → tool nào, tham số nào*, tên tool lấy từ hằng
+/// để đổi tên là test đỏ. Không mang con số nào ngoài giới hạn độ dài — một số ở
+/// đây là một số mô hình có thể chép vào câu mà không gói nào có (ca test canh);
+/// vì thế ngưỡng tiền trong ví dụ viết bằng chữ.
 const String kPromptHeThongCongCu =
     'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Bạn KHÔNG có sẵn số liệu nào '
     'của người dùng: muốn biết bất kỳ con số hay tên nào (ngân sách, hoá đơn, ví, '
@@ -148,4 +154,14 @@ const String kPromptHeThongCongCu =
     'lời ấy, chưa trả lời. Khi trả lời: chỉ dùng tên và số mà công cụ trả về, chép '
     'nguyên chuỗi số và ngày tháng (kể cả "đ", dấu phẩy và dấu gạch chéo), nêu tên '
     'đối tượng trước con số, không tự tính toán hay suy đoán. Công cụ báo không có '
-    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ.';
+    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. '
+    'Ví dụ chọn công cụ: "tháng này tôi tiêu gì trên nửa triệu", "các khoản chi hơn '
+    'một số tiền trong quý này", "liệt kê các khoản chi từ một số tiền đến một số '
+    'tiền" → $kTenCongCuGiaoDich với ky, chieu=khoan_chi, so_tien_tu hoặc so_tien_den '
+    'là số đồng của số tiền trong câu. "tháng này tôi nhận được những khoản thu nào" → '
+    '$kTenCongCuGiaoDich với chieu=khoan_thu. "ví nào đó tháng này chi những gì", "chi '
+    'gì cho một danh mục từ một ví", "các khoản chi cho một danh mục" → '
+    '$kTenCongCuGiaoDich với vi và danh_muc là tên nêu trong câu. "khoản chi lớn nhất '
+    'tháng này là gì" → $kTenCongCuGiaoDich với chieu=khoan_chi, sap_xep=so_tien. '
+    '"tháng này tôi chi bao nhiêu", "tháng này chi nhiều nhất vào danh mục nào" → '
+    '$kTenCongCuTongKet.';

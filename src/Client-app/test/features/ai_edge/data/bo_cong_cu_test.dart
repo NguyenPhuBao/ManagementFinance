@@ -155,10 +155,12 @@ void main() {
     );
   });
 
-  test('bảy khai báo: bốn tool 4b rồi ba tool bước 2, mô tả tiếng Việt nói khi nào gọi', () {
+  test('⭐ bảy khai báo: tim_giao_dich đứng ĐẦU, tổng kết ngay sau (định tuyến, lần đo 9); mô tả nói khi nào gọi', () {
+    // Trước lần đo 9 tim_giao_dich đứng CUỐI (bốn tool 4b rồi ba tool bước 2) và
+    // mô hình chọn tool có một tham số đứng trước nó cho sáu câu có điều kiện.
     expect(bo.khaiBao.map((k) => k.ten).toList(), [
-      kTenCongCuNganSach, kTenCongCuHoaDon, kTenCongCuVi, kTenCongCuTongKet,
-      kTenCongCuMucTieu, kTenCongCuGoiYHanMuc, kTenCongCuGiaoDich,
+      kTenCongCuGiaoDich, kTenCongCuTongKet, kTenCongCuNganSach, kTenCongCuHoaDon,
+      kTenCongCuVi, kTenCongCuMucTieu, kTenCongCuGoiYHanMuc,
     ]);
     for (final k in bo.khaiBao) {
       expect(k.moTa, contains('Gọi khi'), reason: k.ten);
@@ -178,6 +180,15 @@ void main() {
         reason: 'B2: hỏi để dành cho mục tiêu mà gọi goi_y_han_muc');
   });
 
+  test('⭐ mô tả thu hẹp (lần đo 9): tổng kết CHỈ khi câu không có điều kiện; tim_giao_dich mở đầu bằng "Gọi khi"', () {
+    String moTa(String ten) => bo.khaiBao.firstWhere((k) => k.ten == ten).moTa;
+    expect(moTa(kTenCongCuTongKet), contains('KHÔNG có điều kiện'),
+        reason: 'C1 C7 C10 C13 C14 C18 gọi tổng kết bốn lần liền cho câu có điều kiện');
+    expect(moTa(kTenCongCuGiaoDich), startsWith('Gọi khi'),
+        reason: 'câu đầu tiên của mô tả là thứ mô hình đọc trước');
+    expect(moTa(kTenCongCuGiaoDich), contains('BẤT KỲ điều kiện'));
+  });
+
   test('⭐ tool tổng kết mang tên nói rõ "tổng", không còn "chi_tieu" (đòn bẩy spec 2b mục 1.2 hàng 10, 2026-09-24)', () {
     expect(kTenCongCuTongKet, 'tong_ket_thu_chi_ky');
     expect(bo.khaiBao.map((k) => k.ten), contains('tong_ket_thu_chi_ky'));
@@ -190,8 +201,10 @@ void main() {
   // trả lời cùng chia. Số dưới là độ dài đã chạy qua các phiên dài nhất trên
   // Realme (spike bước 2b, task 8: 5431; đo lại 2026-09-24 14:33 sau khi đổi tên
   // tool `tong_ket_thu_chi_ky`: 5437, S1 3 lời gọi · S2 2 · S3 2, 0
-  // FAILED_PRECONDITION). Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
-  const kTranToolsJsonDaDo = 5437;
+  // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
+  // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
+  // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
+  const kTranToolsJsonDaDo = 5491;
   test('⭐ tools_json của bảy tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),

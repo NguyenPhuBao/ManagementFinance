@@ -24,7 +24,11 @@ class BoCongCu {
   BoCongCu(this.cacCongCu);
   final List<CongCu> cacCongCu;
 
-  /// Bốn tool của lát 4b (đúng thứ tự bảng 5.6 đặt hàng) rồi ba tool của bước 2.
+  /// Thứ tự là tín hiệu định tuyến (lần đo 9, 2026-09-25): `tim_giao_dich` đứng
+  /// ĐẦU, tổng kết ngay sau, rồi ba tool 4b còn lại và hai tool bước 2. Trước đó
+  /// (bốn tool 4b rồi ba tool bước 2) `tim_giao_dich` đứng cuối với chín tham số,
+  /// và sáu câu có điều kiện đều rơi vào tool một tham số đứng trước nó — bốn lần
+  /// đo liền (5–8).
   factory BoCongCu.macDinh({
     required AnalyticsRepository phanTich,
     required BudgetRepository nganSach,
@@ -35,13 +39,13 @@ class BoCongCu {
     required BaoCaoRepository baoCao,
   }) =>
       BoCongCu([
+        CongCuGiaoDich(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
+        CongCuChiTieu(phanTich),
         CongCuNganSach(nganSach),
         CongCuHoaDon(hoaDon),
         CongCuVi(vi),
-        CongCuChiTieu(phanTich),
         CongCuMucTieu(mucTieu),
         CongCuGoiYHanMuc(nganSach),
-        CongCuGiaoDich(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
       ]);
 
   List<KhaiBaoCongCu> get khaiBao => [for (final c in cacCongCu) c.khaiBao];

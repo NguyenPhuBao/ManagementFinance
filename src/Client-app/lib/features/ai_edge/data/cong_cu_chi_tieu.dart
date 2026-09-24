@@ -16,11 +16,13 @@ class CongCuChiTieu implements CongCu {
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
         ten: kTenCongCuTongKet,
+        // Lần đo 9: thu hẹp — "CHỈ khi … KHÔNG có điều kiện" (cổng D lần 4–8: sáu
+        // câu có điều kiện gọi tool này bốn lần liền).
         moTa: 'Tổng chi, tổng thu và tổng chi theo từng DANH MỤC (có tên) của một kỳ — '
-            'chỉ có TỔNG, không liệt kê từng khoản. Gọi khi hỏi tiêu bao nhiêu trong một '
-            'kỳ, hoặc danh mục nào chi nhiều nhất. Hỏi tiêu gì, những khoản nào, khoản thu '
-            'nào, khoản lớn nhất, khoản của một ví, trên hay dưới một số tiền thì dùng '
-            'tim_giao_dich.',
+            'chỉ có TỔNG, không liệt kê từng khoản. Gọi khi CHỈ hỏi tổng tiền của một kỳ '
+            '(tiêu bao nhiêu) hoặc danh mục nào chi nhiều nhất, và câu KHÔNG có điều kiện '
+            'số tiền, ví, danh mục cụ thể hay hỏi khoản thu. Mọi câu có điều kiện, hỏi '
+            'tiêu gì, những khoản nào, khoản lớn nhất thì dùng tim_giao_dich.',
         thamSo: {
           'type': 'object',
           'properties': {
