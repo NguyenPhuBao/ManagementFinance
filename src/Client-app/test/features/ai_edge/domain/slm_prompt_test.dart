@@ -230,5 +230,9 @@ void main() {
           reason: 'Một số khác trong chỉ dẫn hệ thống là một số mô hình có thể '
               'chép vào câu — mà nó không có trong gói nào.');
     });
+    test('bước 2b: dặn gọi lại khi công cụ trả "loi" (cổng D lần 1: không lượt nào gọi lại)', () {
+      expect(kPromptHeThongCongCu, contains('"loi"'));
+      expect(kPromptHeThongCongCu, contains('gọi lại ngay'));
+    });
   });
 }

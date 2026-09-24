@@ -24,13 +24,16 @@ class CongCuGoiYHanMuc implements CongCu {
         moTa: 'Gợi ý hạn mức ngân sách MỖI THÁNG cho từng danh mục chi (theo TÊN): mức '
             'chi trung bình mỗi tháng suy từ các ngày gần nhất, kèm hạn mức hiện tại nếu '
             'danh mục đã có ngân sách. Gọi khi hỏi nên đặt ngân sách bao nhiêu, hạn mức '
-            'có hợp lý không. danh_muc: tên một danh mục (tuỳ chọn).',
+            'có hợp lý không. danh_muc: tên một danh mục (tuỳ chọn). Chỉ dành cho danh '
+            'mục CHI; hỏi cần để dành bao nhiêu cho một mục tiêu thì dùng '
+            'danh_sach_muc_tieu.',
         thamSo: {
           'type': 'object',
           'properties': {
             'danh_muc': {
               'type': 'string',
-              'description': 'Tên một danh mục chi. Bỏ trống để xem mọi danh mục.',
+              'description': 'Tên một danh mục chi. Bỏ trống để xem mọi danh mục, không '
+                  'điền "tất cả".',
             },
           },
         },

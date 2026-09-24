@@ -7,8 +7,6 @@
 /// phát triển.
 library;
 
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
@@ -198,20 +196,10 @@ class SlmRuntimeThat implements SlmRuntime {
       for (final k in congCu)
         Tool(name: k.ten, description: k.moTa, parameters: k.thamSo),
     ];
-    // Đo cho bẫy 4.29: khai báo tool do runtime native dựng từ tools_json cũng
-    // chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. Chuỗi này cùng nội dung
-    // với thứ gói gửi xuống SDK (`SdkResponseParser.serializeToolsForSdk`).
-    final doDaiToolsJson = jsonEncode([
-      for (final k in congCu)
-        {
-          'type': 'function',
-          'function': {
-            'name': k.ten,
-            'description': k.moTa,
-            'parameters': k.thamSo,
-          },
-        },
-    ]).length;
+    // Đo cho bẫy 4.29 / 4.39: khai báo tool do runtime native dựng từ tools_json
+    // cũng chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. `toolsJsonCua` là định
+    // nghĩa duy nhất của chuỗi ấy — test chặn độ dài ở `bo_cong_cu_test` đo cùng nó.
+    final doDaiToolsJson = toolsJsonCua(congCu).length;
 
     final dongHo = Stopwatch()..start();
     // Gemma 4 trên LiteRT-LM: tools đi bằng tools_json lúc tạo hội thoại; prompt

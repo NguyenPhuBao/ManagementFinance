@@ -75,8 +75,8 @@ void main() {
     final k = cc.khaiBao;
     expect(k.ten, kTenCongCuGiaoDich);
     expect(k.moTa, contains('Gọi khi'));
-    expect(k.moTa, contains('500000'));
     final p = k.thamSo['properties'] as Map;
+    expect((p['so_tien_tu'] as Map)['description'], contains('500000'));
     expect(p.keys.toSet(),
         {'ky', 'so_tien_tu', 'so_tien_den', 'chieu', 'danh_muc', 'vi', 'tu_khoa', 'sap_xep'});
     expect(p['chieu']['enum'], ['khoan_chi', 'khoan_thu', 'chuyen_vi', 'tat_ca']);

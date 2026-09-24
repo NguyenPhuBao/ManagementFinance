@@ -8,6 +8,8 @@
 /// Không tool ghi — bất biến ④ `docs/AI_AGENT_ARCHITECTURE.md`.
 library;
 
+import 'dart:convert';
+
 import 'hang_so_lieu.dart';
 
 const String kTenCongCuNganSach = 'danh_sach_ngan_sach';
@@ -35,6 +37,22 @@ class KhaiBaoCongCu {
     required this.thamSo,
   });
 }
+
+/// Chuỗi `tools_json` của một bộ khai báo — đúng nội dung gói gửi xuống SDK
+/// (`SdkResponseParser.serializeToolsForSdk`). MỘT định nghĩa: `slm_runtime` đo
+/// độ dài bằng nó, `bo_cong_cu_test` chặn độ dài bằng nó (bẫy 4.39 — trần
+/// `maxTokens` là trần TỔNG, khai báo tool cũng chiếm chỗ).
+String toolsJsonCua(List<KhaiBaoCongCu> congCu) => jsonEncode([
+      for (final k in congCu)
+        {
+          'type': 'function',
+          'function': {
+            'name': k.ten,
+            'description': k.moTa,
+            'parameters': k.thamSo,
+          },
+        },
+    ]);
 
 abstract class CongCu {
   KhaiBaoCongCu get khaiBao;

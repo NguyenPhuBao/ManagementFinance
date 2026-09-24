@@ -2,10 +2,30 @@
 /// không mỗi nơi gõ lại tên.
 library;
 
+import 'dart:convert';
+
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('toolsJsonCua: đúng khuôn gói gửi xuống SDK — type function · name · description · parameters', () {
+    const k = KhaiBaoCongCu(
+      ten: 'a_b',
+      moTa: 'Gọi khi x.',
+      thamSo: {'type': 'object', 'properties': <String, dynamic>{}},
+    );
+    expect(jsonDecode(toolsJsonCua(const [k])), [
+      {
+        'type': 'function',
+        'function': {
+          'name': 'a_b',
+          'description': 'Gọi khi x.',
+          'parameters': {'type': 'object', 'properties': <String, dynamic>{}},
+        },
+      },
+    ]);
+  });
+
   test('bốn tên tool là snake_case ASCII — định danh cho mô hình', () {
     for (final t in [
       kTenCongCuNganSach,

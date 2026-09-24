@@ -17,7 +17,9 @@ class CongCuMucTieu implements CongCu {
             '(đúng hay chậm kế hoạch, quá hạn), tiến độ, đã tích, số tiền mục tiêu, còn '
             'thiếu, còn bao nhiêu ngày tới hạn, theo nhịp tích luỹ hiện tại cần thêm bao '
             'nhiêu ngày, cần và đang tích mỗi kỳ. Gọi khi hỏi mục tiêu thế nào, bao giờ '
-            'đạt, có kịp hạn không, mỗi tháng cần để dành bao nhiêu.',
+            'đạt, có kịp hạn không, mỗi tháng cần để dành bao nhiêu. Không có lịch sử '
+            'từng lần nạp: hỏi lần nạp gần nhất thì dùng tim_giao_dich với tu_khoa là '
+            'tên mục tiêu.',
         thamSo: {'type': 'object', 'properties': <String, dynamic>{}},
       );
 

@@ -35,11 +35,12 @@ class CongCuGiaoDich implements CongCu {
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
         ten: kTenCongCuGiaoDich,
-        moTa: 'Tìm và liệt kê TỪNG giao dịch (ghi chú, số tiền, ngày, danh mục, ví) theo '
-            'kỳ, khoảng số tiền, chiều tiền (khoản chi, khoản thu, chuyển ví), danh mục, '
-            'ví, từ khoá trong ghi chú. Gọi khi hỏi đã tiêu gì, những khoản nào, khoản trên '
-            'hay dưới một số tiền, lần gần nhất là khi nào. Tổng chi theo danh mục thì dùng '
-            'chi_tieu_theo_ky. so_tien_tu, so_tien_den: số đồng, ví dụ 500000.',
+        moTa: 'Liệt kê TỪNG giao dịch (ghi chú, số tiền, ngày, danh mục, ví) kèm tổng '
+            'của mọi khoản khớp. Gọi khi hỏi đã tiêu gì, chi gì, những khoản nào, khoản '
+            'thu nào, khoản lớn nhất, khoản trên hay dưới một số tiền, chi từ ví nào, chi '
+            'cho danh mục nào, chuyển tiền sang ví nào, lần gần nhất hay lần cuối là khi '
+            'nào, tìm theo ghi chú. Chỉ hỏi tổng chi, tổng thu của một kỳ thì dùng '
+            'chi_tieu_theo_ky.',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -55,19 +56,42 @@ class CongCuGiaoDich implements CongCu {
             'chieu': {
               'type': 'string',
               'enum': kChieuTim.keys.toList(),
-              'description': 'khoan_chi: khoản chi; khoan_thu: khoản thu; chuyen_vi: '
-                  'chuyển giữa hai ví; tat_ca: mọi loại (mặc định).',
+              'description': 'khoan_chi: khoản chi (hỏi tiêu, chi, mua); khoan_thu: khoản '
+                  'thu (hỏi thu, nhận, lương); chuyen_vi: chuyển giữa hai ví; tat_ca: mọi '
+                  'loại (mặc định).',
             },
-            'so_tien_tu': {'type': 'number', 'description': 'Số đồng tối thiểu.'},
-            'so_tien_den': {'type': 'number', 'description': 'Số đồng tối đa.'},
-            'danh_muc': {'type': 'string', 'description': 'Tên danh mục.'},
-            'vi': {'type': 'string', 'description': 'Tên ví.'},
-            'tu_khoa': {'type': 'string', 'description': 'Từ khoá trong ghi chú.'},
+            'so_tien_tu': {
+              'type': 'number',
+              'description': 'Số đồng tối thiểu. Câu có "trên", "hơn", "từ … trở lên" kèm '
+                  'số tiền thì PHẢI điền. Đổi ra số đồng: 500k = 500000, nửa triệu = '
+                  '500000, 1 triệu = 1000000.',
+            },
+            'so_tien_den': {
+              'type': 'number',
+              'description': 'Số đồng tối đa. Câu có "dưới", "không quá", "đến" kèm số tiền '
+                  'thì PHẢI điền.',
+            },
+            'danh_muc': {
+              'type': 'string',
+              'description': 'Tên MỘT danh mục, chỉ khi câu hỏi nêu tên danh mục. Không nêu '
+                  'thì BỎ TRỐNG, không điền "tất cả". Tên ví điền vào vi.',
+            },
+            'vi': {
+              'type': 'string',
+              'description': 'Tên MỘT ví, chỉ khi câu hỏi nêu tên ví. Không nêu thì BỎ TRỐNG, '
+                  'không điền "tất cả".',
+            },
+            'tu_khoa': {
+              'type': 'string',
+              'description': 'Chữ cần tìm trong GHI CHÚ, ví dụ tên hoá đơn, tên mục tiêu. '
+                  'Không điền số tiền, tên danh mục hay tên ví.',
+            },
             'sap_xep': {
               'type': 'string',
               'enum': kSapXepTim.keys.toList(),
-              'description': 'so_tien: lớn nhất trước (mặc định); moi_nhat: mới nhất '
-                  'trước — dùng khi hỏi lần gần nhất, gần đây.',
+              'description': 'so_tien: lớn nhất trước (mặc định), dùng khi hỏi khoản lớn '
+                  'nhất; moi_nhat: mới nhất trước, dùng khi hỏi lần gần nhất, lần cuối, gần '
+                  'đây.',
             },
           },
           'required': ['ky'],

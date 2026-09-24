@@ -167,6 +167,29 @@ void main() {
     expect(bo.tenCacCongCu, bo.khaiBao.map((k) => k.ten).toList());
   });
 
+  test('⭐ tool cạnh tranh chỉ đường cho nhau (cổng D lần 1: 7/20 câu gọi nhầm tool)', () {
+    String moTa(String ten) => bo.khaiBao.firstWhere((k) => k.ten == ten).moTa;
+    expect(moTa(kTenCongCuChiTieu), contains(kTenCongCuGiaoDich),
+        reason: 'C1, C7, C10, C13, C14, C18 gọi chi_tieu_theo_ky cho câu hỏi từng khoản');
+    expect(moTa(kTenCongCuGiaoDich), contains(kTenCongCuChiTieu));
+    expect(moTa(kTenCongCuMucTieu), contains(kTenCongCuGiaoDich),
+        reason: 'C20: hỏi lần nạp gần nhất mà gọi danh_sach_muc_tieu');
+    expect(moTa(kTenCongCuGoiYHanMuc), contains(kTenCongCuMucTieu),
+        reason: 'B2: hỏi để dành cho mục tiêu mà gọi goi_y_han_muc');
+  });
+
+  // Bẫy 4.39: `maxTokens` 4096 là trần TỔNG — khai báo tool, kết quả tool và câu
+  // trả lời cùng chia. Số dưới là độ dài đã chạy qua các phiên dài nhất trên
+  // Realme (spike bước 2b, task 8). Dài hơn → đo lại S1 / S2 / S3 trên máy rồi
+  // mới nâng số này.
+  const kTranToolsJsonDaDo = 5431;
+  test('⭐ tools_json của bảy tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
+    final n = toolsJsonCua(bo.khaiBao).length;
+    expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
+        reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
+            'dài nhất (S1 / S2 / S3, không được có FAILED_PRECONDITION) rồi mới nâng.');
+  });
+
   test('tên lạ → null (mô hình bịa tên)', () async {
     expect(await bo.chay('bay_gio_may_gio', {}, idaccount: 10, now: now), isNull);
   });
