@@ -2,9 +2,20 @@
 
 **Ngày:** 2026-09-24 · **Nhánh:** `TranQuangDat` @ `7308b85` · **Trạng thái:** ✅ **đã duyệt** 2026-09-24 — thiết
 kế bốn phần và bốn câu hỏi duyệt trong chat (mục 1.2), spec duyệt cùng ngày. Kế hoạch 10 task:
-`docs/superpowers/plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md` (gitignore) — **chưa dòng mã nào**;
-kế hoạch lệch spec **bảy** chỗ có chủ ý, ghi kèm lý do ở đầu tệp kế hoạch (đáng nhớ nhất: `them(…)` nhận `args`
-bằng tham số có tên mặc định rỗng, không phải tham số vị trí như mục 2.2; mười task thay vì chín).
+`docs/superpowers/plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md` (gitignore) — ✅ **mã xong 2026-09-24**
+(`5357209` → `e0e4a98`, thi công inline một phiên; nhật ký cuối tệp kế hoạch); kế hoạch lệch spec **bảy** chỗ có
+chủ ý, ghi kèm lý do ở đầu tệp kế hoạch (đáng nhớ nhất: `them(…)` nhận `args` bằng tham số có tên mặc định rỗng,
+không phải tham số vị trí như mục 2.2; mười task thay vì chín).
+🛑 **Cổng D lần 2 CHƯA ĐẠT** (Realme 2026-09-24, mục **9.18** `docs/AI_EDGE_FEATURE.md`): mục 1.1 lỗi 1 và 2 (mã)
+**chữa trúng** — năm câu SAI của lần 1 hết SAI, L1b chạy thật; lỗi 3 (mô tả tool) **không** — nhóm C tụt còn
+**10/20 tool · 4/20 tham số**. Lộ một cơ chế SAI **mới** ngoài phạm vi spec này: tham số thừa làm hẹp bộ lọc → lượt
+**thành công** 0 hàng → mẫu câu *"Số khoản: 0"* (C9, bẫy **4.44**); và tên `snake_case` (`vi: "tiet_kiem"`,
+bẫy **4.45**) — luật (a) mục 2.1 *"không có dấu `_`"* không lường giá trị do mô hình gõ. Spike trần token (mục
+2.7): `tools_json` **5.431** ký tự, 0 vỡ trần. Theo mục 5 bước 7: đòn bẩy kế tiếp (mục 1.2 hàng 10 — đổi tên
+`chi_tieu_theo_ky`) **chờ người dùng quyết**.
+> ⚠️ **Chỗ thi công KHÁC spec, ngoài bảy chỗ của kế hoạch:** ca `bo_cong_cu_test` *"chi_tieu_theo_ky giữ TÁM
+> mã"* (mục 4) của kế hoạch so `enum` với chính `kMaKy.keys` nên không bắt được bản sai đưa `moi_luc` vào bảng
+> chung — ca nay đòi đúng 8 mã và không có `moi_luc`.
 **Đầu vào:** cổng D lần đo 1 — mục **9.17** `docs/AI_EDGE_FEATURE.md`, bẫy **4.40**, **4.42**, **4.43**; spec bước 2
 `2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md` (mục 3.8, 3.9, 5); spec 4b
 `2026-09-23-chang-4b-tool-calling-vong-lap-design.md` (mục 3.6 — chốt L1).

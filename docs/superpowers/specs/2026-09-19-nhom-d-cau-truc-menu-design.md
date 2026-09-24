@@ -1,6 +1,7 @@
 # Nhóm D — cấu trúc menu và điều hướng (lối B)
 
-**Ngày:** 2026-09-19 · **Trạng thái:** đã duyệt, chưa thi công
+**Ngày:** 2026-09-19 · **Trạng thái:** đã duyệt · ✅ **thi công xong 2026-09-19** (từ `72d3412`; hàng *"Đụng vào điều
+hướng / menu"* của `CLAUDE.md`). *(Dòng này ghi "chưa thi công" tới 2026-09-24 — sửa ở lượt soát tài liệu của bước 2b.)*
 **Nguồn:** mục D của `docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`
 
 ---

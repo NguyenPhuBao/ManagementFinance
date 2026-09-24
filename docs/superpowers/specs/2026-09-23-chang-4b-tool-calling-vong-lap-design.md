@@ -17,11 +17,14 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 > có thể là markdown. Và mục **3.6** đoán sai một điều: *"trước khi có hàng, chữ bị bỏ"* đúng, nhưng
 > giá của L1 trên Realme là **~23 s** cho một câu chào (vứt câu mô hình rồi sinh lại ở bậc 1).
 >
-> ⚠️ **Vế *"hay từ chối tham số"* của chốt L1 (mục 3.3 `daTraCuu`, mục 3.6) SẼ BỊ LẬT ở bước 2b** —
-> spec `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md`, đã duyệt 2026-09-24, **chưa thi công**.
+> ⚠️ **Vế *"hay từ chối tham số"* của chốt L1 (mục 3.3 `daTraCuu`, mục 3.6) ĐÃ BỊ LẬT ở bước 2b**
+> (`1d21b24`, `eeac28f`, 2026-09-24) — spec `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md`.
 > Cổng D lần 1 đo được E2B đọc lời từ chối thành *"không có dữ liệu"* (bẫy **4.40**): lượt bị từ chối
-> không phải dữ liệu, nên sẽ không còn tính là đã tra cứu; mọi lời gọi bị từ chối thì hiện mẫu câu
-> trung thực (L1b), không rơi về bậc 1. Vế *"tool trả 0 hàng vẫn là đã tra cứu"* giữ nguyên.
+> không phải dữ liệu, nên nay **không** còn tính là đã tra cứu; mọi lời gọi bị từ chối thì hiện mẫu câu
+> trung thực (**L1b**), không rơi về bậc 1; còn lời từ chối chưa gỡ (gỡ theo tham số) thì chữ mô hình
+> không hiện (**L2b**). Cổng hiện chữ của vòng lặp nay là `choHienChuMoHinh`, không phải `daTraCuu`.
+> Vế *"tool trả 0 hàng vẫn là đã tra cứu"* giữ nguyên — ⚠️ nhưng cổng D lần 2 (mục **9.18**
+> `AI_EDGE_FEATURE.md`, bẫy **4.44**) cho thấy vế ấy chỉ đúng khi **bộ lọc khớp câu hỏi**.
 >
 > *(Banner giữa ngày, giữ làm lịch sử:)* Task 1–4 (`0c9ca1e` → `87ef4f3`) và 5a (`21389ea`, hàng
 > hoá đơn) khi ấy chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có

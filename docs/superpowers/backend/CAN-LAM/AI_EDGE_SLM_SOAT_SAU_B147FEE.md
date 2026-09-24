@@ -275,6 +275,9 @@ Vế sau **đã làm đúng như đề nghị**; vế đầu sai từ 2026-09-22
    **2026-09-24 (bước 2):** thêm ba tool chỉ đọc — `danh_sach_muc_tieu` · `goi_y_han_muc` · `tim_giao_dich`
    — nên bậc tool nay có **bảy** tool; vẫn không tool nào ghi và không gọi API server nào
    (`AI_EDGE_FEATURE.md` mục 9.17).
+   **2026-09-24 (bước 2b):** câu *"chưa tool nào chạy thì rơi về đường P3"* nay có thêm một nhánh — mô hình
+   **có** gọi tool mà **mọi** lời gọi bị tool từ chối (tham số sai) thì màn hiện một **mẫu câu trung thực** nêu
+   lý do (*"Chưa tra được số liệu cho câu này: …"*), **không** rơi về đường P3 (`AI_EDGE_FEATURE.md` mục 9.18).
 3. Con số "436 dòng" là của bản tĩnh cũ; tệp nay dài hơn nhiều (`wc -l` trước khi trích).
 
 **Câu thay thế:** *"Tầng 3 được tích hợp vào màn chat có sẵn `lib/features/ai_chat/presentation/pages/

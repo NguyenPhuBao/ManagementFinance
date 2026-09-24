@@ -4,9 +4,12 @@
 phần duyệt trong chat cùng ngày, ba quyết định thêm lúc viết duyệt ở phiên sau (mục 1.2, hàng 11–13).
 🛑 **Mã xong (task 1–8, `daf201a` → `bc03303`), CỔNG D CHƯA ĐẠT** — lần đo 1, Realme 2026-09-24: nhóm A 7/8 (tụt) ·
 nhóm B 2/4 · nhóm C 13/20 tool · 5/20 tham số · 5 câu SAI (mục **9.17** `docs/AI_EDGE_FEATURE.md`).
-**Vòng sửa:** spec bước 2b `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` (2026-09-24, đã duyệt; chưa thi công) —
-nó sẽ lật câu *"Tool từ chối vẫn tính là đã chạy"* của mục 3.9 và đổi `ky` của `tim_giao_dich` (mục 3.8) thành
-bắt buộc, thêm mã `moi_luc`.
+**Vòng sửa:** spec bước 2b `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` — ✅ **mã xong 2026-09-24**
+(`5357209` → `e0e4a98`), 🛑 **cổng D lần 2 chưa đạt** (mục **9.18** `docs/AI_EDGE_FEATURE.md`). Nó **đã lật** câu
+*"Tool từ chối vẫn tính là đã chạy"* của mục 3.9 (lượt bị từ chối nay không phải đã tra cứu → L1b / L2b), đổi `ky`
+của `tim_giao_dich` (mục 3.8) thành **bắt buộc** — thiếu thì từ chối, không mặc định tháng này — và thêm mã
+riêng `moi_luc` (mọi thời gian); `danh_muc` · `vi` · `tu_khoa` mang giá trị giữ chỗ nay nghĩa là không lọc, số
+tiền trong `tu_khoa` bị từ chối; mô tả tool mục 3.8 đã viết lại (spec 2b mục 2.6).
 
 > ⚠️ **Chỗ thi công KHÁC spec** (chi tiết: đầu tệp kế hoạch `…/plans/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md`):
 > (1) mục 3.10 dặn prompt ghi mẫu `12/09` — **không** ghi, vì ca test cấm mọi chữ số ngoài `60` trong prompt hệ
@@ -316,6 +319,10 @@ chi_tieu_theo_ky. so_tien_tu, so_tien_den: số đồng, ví dụ 500000."*
 
 Tham số **lạ** (không khai báo) thì bỏ qua, không từ chối. Tool từ chối vẫn **tính là đã chạy** (chốt L1 của
 4b không đổi) và vẫn tốn một suất trong trần 3.
+
+> ⚠️ **Câu trên ĐÃ BỊ LẬT ở bước 2b (2026-09-24):** lượt bị từ chối vẫn tốn một suất, nhưng **không** còn
+> tính là đã tra cứu (bẫy 4.40). Lời từ chối nay mang thêm câu cho người dùng + tham số gỡ, dựng ở
+> `loi_tham_so.dart` (`tuChoi…`); `loiMaKy` đã bỏ. Chi tiết: spec bước 2b mục 2.1–2.3.
 
 ### 3.10 Prompt, dòng chỉ báo, trần token
 
