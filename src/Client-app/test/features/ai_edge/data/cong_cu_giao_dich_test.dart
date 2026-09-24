@@ -183,6 +183,24 @@ void main() {
             'và câu "không có khoản nào" được phép hiện');
   });
 
+  test('⭐ đầu-cuối bước 2c: tu_khoa không khớp ghi chú nào → lượt THÀNH CÔNG rỗng theo bộ lọc, boLoc đúng, JSON có Đến', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'tu_khoa': 'khong co', 'so_tien_den': 1000000},
+        idaccount: 10, now: now);
+    expect(kq.loi, isNull);
+    expect(kq.rongTheoBoLoc, isTrue, reason: 'C9: 0 hàng không phải "không có giao dịch"');
+    expect(kq.boLoc, ['ghi chú chứa "khong co"', 'đến 1.000.000 đ']);
+    expect(kq.json['Đến'], '1.000.000 đ');
+    expect(kq.json['Số khoản'], '0');
+    expect(kq.tongHop.map((s) => s.nhan), isNot(contains('Đến')));
+    expect(kq.tenLienQuan, contains('khong co'));
+  });
+
+  test('boLoc dùng TÊN THẬT: vi "tiet_kiem" + chuyen_vi → "chuyển ví", "ví "Tiết kiệm""', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'chieu': 'chuyen_vi', 'vi': 'tiet_kiem'}, idaccount: 10, now: now);
+    expect(kq.boLoc, ['chuyển ví', 'ví "Tiết kiệm"']);
+    expect(kq.rongTheoBoLoc, isFalse);
+  });
+
   test('tu_khoa là chữ có chữ số (tên hoá đơn "T9") vẫn tìm bình thường', () async {
     final kq = await cc.chay({'ky': 'thang_nay', 'tu_khoa': 'T9'}, idaccount: 10, now: now);
     expect(kq.loi, isNull);
