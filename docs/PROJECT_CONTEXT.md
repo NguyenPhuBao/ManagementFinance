@@ -623,7 +623,8 @@ tool cùng chiều** (`61f66ba`): `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky`, 
 chưa đạt** (mục 9.20): tool 13/20 · 6/20 nhưng SAI 2 (bẫy 4.42 hết "chặn do may": *"một triệu"* viết bằng chữ), bẫy
 mới 4.47 (nhãn *Số khoản* ≠ chữ "giao dịch" của mô hình). Đổi nhãn đếm thành *Số giao dịch* (`a68a842`) — cổng D
 lần 5 (mục 9.21) y hệt lần 4: bẫy 4.47 chỉ đổi chỗ (C5, C17 hiện, C8 lại bị chặn), gốc là `kiemNhan` cần nhãn có
-từ đồng nghĩa; ba hướng kế tiếp chờ người dùng quyết)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+từ đồng nghĩa — ✅ **mã xong** (`235d11f`, mục 9.22: `SoLieu.nhanKhac`, `nhanKhopAmTiet` dùng chung cho `kiemNhan`
+và `theCuaCau`), 🛑 cổng D lần 6 **chưa đo** — APK đã cài Realme, để phiên sau)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
 nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4
