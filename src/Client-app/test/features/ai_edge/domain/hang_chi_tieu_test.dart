@@ -107,6 +107,18 @@ void main() {
     expect(kq.hang.first.canhBao, isFalse);
   });
 
+  test('⭐ hàng danh mục nhãn "Chi" khai xung đột "Thu" — câu C10 gán chi thành thu bị chặn (bẫy 4.42)', () {
+    final kq = hangChiTieu(_tk(danhMuc: [_dm('Cho vay', 800000)]), ma: 'thang_nay');
+    for (final h in kq.hang) {
+      for (final s in h.soLieu) {
+        expect(s.nhanXungDot, ['Thu'], reason: '${h.ten} · ${s.nhan}');
+      }
+    }
+    for (final s in kq.tongHop) {
+      expect(s.nhanXungDot, isEmpty, reason: 'mục không tên vốn đã bị đòi nhãn');
+    }
+  });
+
   test('tổng hợp Tổng chi / Tổng thu + kỳ bằng CHỮ, không số', () {
     final kq = hangChiTieu(_tk(), ma: 'thang_truoc');
     expect(kq.tongHop.map((s) => '${s.nhan}=${s.chuoi}').toList(),

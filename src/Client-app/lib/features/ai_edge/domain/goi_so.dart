@@ -56,6 +56,15 @@ class SoLieu {
   /// 4 chặn C5/C17, lần 5 chặn C8. JSON, mẫu câu và thẻ vẫn in [nhan].
   final List<String> nhanKhac;
 
+  /// Nhãn **xung đột** — đối xứng với [nhanKhac] (bẫy 4.42, 2026-09-24): mục
+  /// **có tên** chỉ bị `kiemNhan` đòi nêu tên (phép nới 4a), nên câu C10 cổng
+  /// D *"Các khoản thu bao gồm: Cho vay (800.000 đ)"* — 800.000 là **Chi** của
+  /// Cho vay — có số thật, tên thật mà mệnh đề sai vẫn lọt. Khai `['Thu']` ở
+  /// mục `Chi` thì câu nêu đủ từ khoá của một nhãn ở đây mà **không** nêu từ
+  /// khoá của [nhan] hay [nhanKhac] bị chặn. Chỉ có tác dụng với mục có tên;
+  /// mục không tên vốn đã bị đòi đúng nhãn. Từ khoá suy từ nhãn lúc chạy.
+  final List<String> nhanXungDot;
+
   const SoLieu({
     required this.nhan,
     this.ten,
@@ -63,10 +72,17 @@ class SoLieu {
     required this.chuoi,
     required this.loai,
     this.nhanKhac = const [],
+    this.nhanXungDot = const [],
   });
 }
 
-SoLieu soTien(String nhan, double v, {String? ten, List<String> nhanKhac = const []}) =>
+SoLieu soTien(
+  String nhan,
+  double v, {
+  String? ten,
+  List<String> nhanKhac = const [],
+  List<String> nhanXungDot = const [],
+}) =>
     SoLieu(
       nhan: nhan,
       ten: ten,
@@ -74,6 +90,7 @@ SoLieu soTien(String nhan, double v, {String? ten, List<String> nhanKhac = const
       chuoi: CurrencyFormatter.format(v),
       loai: LoaiSo.tien,
       nhanKhac: nhanKhac,
+      nhanXungDot: nhanXungDot,
     );
 
 /// G2: một chữ số thập phân, phẩy thập phân. [phanTram] ở thang 0–100.

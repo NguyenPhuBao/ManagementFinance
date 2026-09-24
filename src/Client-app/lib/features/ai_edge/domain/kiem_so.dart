@@ -15,6 +15,16 @@
 /// con số — [trichSoNgoaiTen] bỏ những tên ấy khỏi câu trước khi trích (bước
 /// 1c, 2026-09-23). Trước đó 5/9 hoá đơn của tài khoản 10 mang chữ số trong
 /// tên, và mọi câu đúng nêu tên chúng đều bị chặn, im lặng.
+///
+/// ⚠️ Số viết **bằng chữ** (*"một triệu"*, *"nửa triệu"*, *"hai trăm nghìn"*)
+/// cũng là con số (bẫy 4.42, 2026-09-24): cổng D C7 hỏi *"hơn nửa triệu"*, mô
+/// hình viết *"hơn một triệu"* rồi liệt kê bốn danh mục đều dưới một triệu — số
+/// và tên đều thật, mệnh đề sai, và vì không có chữ số nào ngoài gói nên ba lớp
+/// chắn im. [trichSo] tách cụm *số chữ + đơn vị* **trước** chữ số; lượng từ mơ
+/// hồ (*"vài triệu"*) thành một số không bao giờ khớp. Chữ số kèm đơn vị chữ
+/// (*"500 nghìn"*, *"2 triệu"*, *"500k"*) **cố ý** giữ nguyên cách đọc cũ (500,
+/// 2): đọc thành 500.000 là mở cửa cho câu *"trên 500k là … (500.000 đ)"* của
+/// lần đo 2 lọt — người dùng chốt 2026-09-24.
 library;
 
 import '../../../core/category/category_name.dart';
@@ -42,6 +52,72 @@ class SoTrich {
 /// bên. `12/09/26` không khớp (năm hai chữ số) và đi tiếp như ba con số.
 final RegExp _mauNgay =
     RegExp(r'(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}))?(?![\d/])');
+
+/// Từ số bằng chữ → giá trị; lượng từ mơ hồ → `NaN` (không khớp gì, tức bị
+/// chặn). *"không"* cố ý vắng: "không có" không phải số 0.
+const Map<String, double> _soChu = {
+  'nửa': 0.5,
+  'một': 1,
+  'hai': 2,
+  'ba': 3,
+  'bốn': 4,
+  'năm': 5,
+  'sáu': 6,
+  'bảy': 7,
+  'tám': 8,
+  'chín': 9,
+  'mười': 10,
+  'vài': double.nan,
+  'mấy': double.nan,
+  'dăm': double.nan,
+};
+
+const Map<String, double> _donViChu = {
+  'trăm': 100,
+  'nghìn': 1000,
+  'ngàn': 1000,
+  'triệu': 1000000,
+  'tỷ': 1000000000,
+  'tỉ': 1000000000,
+};
+
+/// Một NHÓM: từ số + một hay nhiều đơn vị (nhân nhau: *"hai trăm nghìn"*),
+/// tuỳ chọn *"rưỡi"*. Nhiều nhóm liền nhau cộng lại (*"một triệu hai trăm
+/// nghìn"*). Từ số phải có đơn vị ngay sau — *"một khoản"*, *"năm nay"* không
+/// phải số; đơn vị đứng một mình (*"hàng triệu"*) cũng không. Hai đầu phải là
+/// ranh giới từ, không phân biệt hoa thường.
+final RegExp _mauSoChu = () {
+  final so = _soChu.keys.join('|');
+  final dv = _donViChu.keys.join('|');
+  final nhom = '(?:$so)(?:\\s+(?:$dv))+(?:\\s+rưỡi)?';
+  return RegExp(
+    '(?<![\\p{L}\\p{N}])$nhom(?:\\s+$nhom)*(?![\\p{L}\\p{N}])',
+    unicode: true,
+    caseSensitive: false,
+  );
+}();
+
+final RegExp _khoangTrang = RegExp(r'\s+');
+
+/// Giá trị của một cụm khớp [_mauSoChu]. `NaN` lan qua phép cộng nên một
+/// nhóm mơ hồ làm cả cụm mơ hồ.
+double _giaTriSoChu(String cum) {
+  var tong = 0.0;
+  var nhom = double.nan;
+  var boi = 1.0;
+  for (final tu in cum.toLowerCase().split(_khoangTrang)) {
+    if (_soChu.containsKey(tu)) {
+      if (!nhom.isNaN || boi != 1.0) tong += nhom * boi;
+      nhom = _soChu[tu]!;
+      boi = 1.0;
+    } else if (_donViChu.containsKey(tu)) {
+      boi *= _donViChu[tu]!;
+    } else if (tu == 'rưỡi') {
+      nhom += 0.5;
+    }
+  }
+  return tong + nhom * boi;
+}
 
 /// Nhóm 1: dấu âm (`-` hoặc `−`); nhóm 2: phần nguyên có chấm nghìn
 /// (`2.100.000`) hoặc số trần; nhóm 3: phần thập phân sau **phẩy**; nhóm 4: hậu
@@ -82,7 +158,22 @@ List<SoTrich> trichSo(String cau) {
     daChep = m.end;
   }
   conLai.write(cau.substring(daChep));
-  for (final m in _mau.allMatches(conLai.toString())) {
+  // Số bằng chữ tách TRƯỚC chữ số, cũng thay bằng khoảng trắng cùng độ dài.
+  final sauNgay = conLai.toString();
+  final sauChu = StringBuffer();
+  daChep = 0;
+  for (final m in _mauSoChu.allMatches(sauNgay)) {
+    theoViTri.add((
+      m.start,
+      SoTrich(_giaTriSoChu(m.group(0)!), laPhanTram: false),
+    ));
+    sauChu
+      ..write(sauNgay.substring(daChep, m.start))
+      ..write(' ' * (m.end - m.start));
+    daChep = m.end;
+  }
+  sauChu.write(sauNgay.substring(daChep));
+  for (final m in _mau.allMatches(sauChu.toString())) {
     theoViTri.add((
       m.start,
       SoTrich(

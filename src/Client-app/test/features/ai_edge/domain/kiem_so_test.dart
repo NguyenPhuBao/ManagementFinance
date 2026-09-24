@@ -185,6 +185,76 @@ void main() {
   // con số 12 và 9 — không có trong gói — nên mọi câu nêu ngày đều bị chặn.
   // Ngày phải là một LOẠI số riêng: số trần không được khớp mục ngày, và ngày
   // không được khớp mục tiền / số đếm, nếu không số bịa lọt nhờ trùng chữ số.
+  // Cổng D lần 4–6 (mục 9.20–9.23): C7 hỏi "hơn nửa triệu", mô hình viết
+  // "hơn MỘT TRIỆU" bằng chữ rồi liệt kê bốn danh mục đều dưới một triệu. Không
+  // chữ số nào ngoài gói nên kiemSo im — ba lần đo trước câu ấy chỉ bị chặn
+  // DO MAY vì mô hình chép "1 triệu" bằng chữ số.
+  group('số viết bằng CHỮ là một con số — bẫy 4.42', () {
+    final tongKet = _Gia([
+      soTien('Tổng chi', 2141000),
+      soTien('Chi', 800000, ten: 'Cho vay'),
+      soTien('Chi', 500000, ten: 'Chưa phân loại'),
+      soTien('Chi', 355000, ten: 'Di chuyển'),
+      soTien('Chi', 301000, ten: 'Chi khác'),
+    ]);
+
+    test('⭐ câu C7 đo trên Realme 2026-09-24 bị chặn vì "một triệu" không có trong gói', () {
+      expect(
+        kiemSo(
+          'Các khoản chi có giá trị hơn một triệu là: Cho vay (800.000 đ), '
+          'Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ).',
+          tongKet,
+        ),
+        isFalse,
+        reason: 'Nguyên văn C7 lần 4, 5, 6 — mọi số và tên đều thật, mệnh đề '
+            '"hơn một triệu" sai. Đọc "một triệu" là 1.000.000 thì gói không có '
+            'và câu rơi mẫu câu như ba lần chặn-do-may trước đó.',
+      );
+    });
+
+    test('trichSo đọc đúng các dạng số chữ + đơn vị', () {
+      double mot(String cau) => trichSo(cau).single.giaTri;
+      expect(mot('hơn một triệu'), 1000000);
+      expect(mot('nửa triệu'), 500000);
+      expect(mot('hai trăm nghìn'), 200000);
+      expect(mot('năm trăm ngàn'), 500000);
+      expect(mot('mười nghìn'), 10000);
+      expect(mot('ba tỷ'), 3000000000);
+      expect(mot('một triệu rưỡi'), 1500000);
+      expect(mot('một triệu hai trăm nghìn'), 1200000,
+          reason: 'hai nhóm liền nhau cộng lại');
+    });
+
+    test('không phân biệt hoa thường', () {
+      expect(trichSo('Hơn Một Triệu đồng').single.giaTri, 1000000);
+    });
+
+    test('số chữ CÓ trong gói thì qua — diễn đạt lại một con số thật không phải bịa', () {
+      final g = _Gia([soTien('Tổng chi', 1000000)]);
+      expect(kiemSo('Tổng chi là một triệu đồng.', g), isTrue);
+    });
+
+    test('lượng từ mơ hồ ("vài triệu", "mấy nghìn") là số KHÔNG BAO GIỜ khớp gói', () {
+      expect(trichSo('vài triệu').single.giaTri.isNaN, isTrue);
+      expect(kiemSo('Bạn đã chi vài triệu.', tongKet), isFalse,
+          reason: 'một lượng không kiểm được thì không được hiện');
+      expect(kiemSo('Còn mấy nghìn.', tongKet), isFalse);
+    });
+
+    test('từ số KHÔNG đi kèm đơn vị không phải con số: "một khoản", "năm nay", "một hóa đơn"', () {
+      expect(trichSo('Có một khoản chi trong năm nay và một hóa đơn.'), isEmpty);
+    });
+
+    test('đơn vị đứng một mình ("hàng triệu") không phải con số', () {
+      expect(trichSo('bạn có hàng triệu lý do'), isEmpty);
+    });
+
+    test('thứ tự theo câu, và số chữ không dính với chữ số cạnh nó', () {
+      final s = trichSo('hơn một triệu ở 2 khoản');
+      expect(s.map((x) => x.giaTri).toList(), [1000000, 2]);
+    });
+  });
+
   group('ngày tháng — LoaiSo.ngayThang (bước 2)', () {
     final now = DateTime(2026, 9, 23);
     _Gia coNgay() => _Gia([

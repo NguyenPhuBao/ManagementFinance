@@ -279,6 +279,83 @@ void main() {
     });
   });
 
+  // Cổng D lần 4–6 (mục 9.20–9.23), câu C10 "tháng này tôi nhận được những khoản
+  // thu nào": mô hình gọi tổng kết rồi viết "Các khoản thu bao gồm: Cho vay
+  // (800.000 đ)…" — 800.000 là CHI của Cho vay. Mục có tên chỉ bị đòi nêu tên
+  // (phép nới 4a), nên số thật + tên thật gán vào nhãn NGƯỢC vẫn lọt.
+  group('nhãn XUNG ĐỘT của mục có tên — bẫy 4.42 (cổng D C10, 2026-09-24)', () {
+    // Đúng gói tổng kết của C10: hàng danh mục nhãn "Chi", xung đột với "Thu".
+    final tongKet = _Gia('tra_cuu', [
+      soTien('Tổng chi', 2141000),
+      soTien('Tổng thu', 15135000),
+      soTien('Chi', 800000, ten: 'Cho vay', nhanXungDot: const ['Thu']),
+      soTien('Chi', 500000, ten: 'Chưa phân loại', nhanXungDot: const ['Thu']),
+    ]);
+
+    test('⭐ câu C10 đo trên Realme 2026-09-24 bị chặn: gán số CHI của Cho vay làm "khoản thu"', () {
+      expect(
+        kiemNhan(
+          'Trong tháng này, tổng thu là 15.135.000 đ. Các khoản thu bao gồm: '
+          'Cho vay (800.000 đ), Chưa phân loại (500.000 đ).',
+          [tongKet],
+        ),
+        isFalse,
+        reason: 'Nguyên văn C10 lần 4, 5, 6: câu có "thu" (nhãn xung đột) mà '
+            'không có "chi" (nhãn của con số) — mệnh đề sai dù số và tên thật.',
+      );
+    });
+
+    test('câu đúng A8 nêu tên VÀ có chữ "chi" thì qua', () {
+      expect(
+        kiemNhan(
+          'Trong tháng này, tổng chi là 2.141.000 đ. Các danh mục chi lớn nhất '
+          'là: Cho vay (800.000 đ), Chưa phân loại (500.000 đ).',
+          [tongKet],
+        ),
+        isTrue,
+      );
+    });
+
+    test('câu chỉ nêu TÊN, không nhắc nhãn nào, vẫn qua — phép nới 4a nguyên vẹn', () {
+      expect(kiemNhan('Cho vay: 800.000 đ.', [tongKet]), isTrue,
+          reason: 'xung đột chỉ chặn khi câu GÁN nhãn ngược, không đòi nhãn chính');
+    });
+
+    test('câu có cả hai nhãn (chi lẫn thu) thì qua — lớp chắn từ vựng không định vị', () {
+      expect(
+        kiemNhan(
+          'Tổng thu 15.135.000 đ; khoản chi lớn nhất là Cho vay 800.000 đ.',
+          [tongKet],
+        ),
+        isTrue,
+      );
+    });
+
+    test('nhãn THAY THẾ cũng đủ để không bị coi là gán ngược', () {
+      final g = _Gia('tra_cuu', [
+        soTien('Chi', 800000,
+            ten: 'Cho vay', nhanKhac: const ['Tiêu'], nhanXungDot: const ['Thu']),
+        soTien('Tổng thu', 1),
+      ]);
+      expect(kiemNhan('Khoản thu 1 đ; đã tiêu cho Cho vay 800.000 đ.', [g]), isTrue);
+    });
+
+    test('đối chứng: không khai xung đột thì câu C10 vẫn lọt (đúng luật 4a cũ)', () {
+      final khong = _Gia('tra_cuu', [
+        soTien('Tổng thu', 15135000),
+        soTien('Chi', 800000, ten: 'Cho vay'),
+      ]);
+      expect(
+        kiemNhan('Tổng thu 15.135.000 đ. Các khoản thu: Cho vay (800.000 đ).', [khong]),
+        isTrue,
+      );
+    });
+
+    test('mục KHÔNG tên không đổi: vẫn phải nêu đúng nhãn', () {
+      expect(kiemNhan('Tổng thu là 2.141.000 đ.', [tongKet]), isFalse);
+    });
+  });
+
   test('mục NGÀY của một hàng mang tên → câu nêu ngày phải nêu tên (bước 2)', () {
     final g = _Gia('tra_cuu', [
       soNgayThang('Ngày', DateTime(2026, 9, 4), ten: 'Ăn uống', now: DateTime(2026, 9, 23)),

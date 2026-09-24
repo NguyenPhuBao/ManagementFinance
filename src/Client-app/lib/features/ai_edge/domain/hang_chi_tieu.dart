@@ -71,7 +71,11 @@ KetQuaCongCu hangChiTieu(ThongKeKy tk, {required String ma}) {
         ten: d.ten,
         trangThai: null,
         canhBao: false,
-        soLieu: [soTien('Chi', d.soTien, ten: d.ten)],
+        // Xung đột "Thu" (bẫy 4.42): C10 cổng D gán số Chi của Cho vay làm
+        // "khoản thu". Chữ hoa — test quét 14 chỉ cấm chuỗi chiều tiền thường.
+        soLieu: [
+          soTien('Chi', d.soTien, ten: d.ten, nhanXungDot: const ['Thu']),
+        ],
       ),
   ];
   return KetQuaCongCu(

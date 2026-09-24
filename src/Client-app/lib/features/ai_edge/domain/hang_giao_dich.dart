@@ -60,7 +60,8 @@ KetQuaCongCu hangGiaoDich(
           trangThai: _trangThai(d),
           canhBao: false,
           soLieu: [
-            soTien('Số tiền', d.soTien, ten: d.tieuDe),
+            soTien('Số tiền', d.soTien,
+                ten: d.tieuDe, nhanXungDot: _xungDot(d.chieu)),
             soNgayThang('Ngày', d.ngay, ten: d.tieuDe, now: now),
           ],
         ),
@@ -108,6 +109,15 @@ KetQuaCongCu hangGiaoDich(
     }.toList(),
   );
 }
+
+/// Nhãn xung đột theo chiều của dòng (bẫy 4.42): khoản chi bị gọi là "khoản
+/// thu" (hay ngược lại) thì `kiemNhan` chặn. Khoản chuyển cố ý không khai —
+/// người dùng vẫn gọi tiền chuyển đi là "chi". Chữ hoa vì test quét 14.
+List<String> _xungDot(ChieuTim c) => switch (c) {
+      ChieuTim.chi => const ['Thu'],
+      ChieuTim.thu => const ['Chi'],
+      ChieuTim.chuyen || ChieuTim.tatCa => const [],
+    };
 
 /// Chữ chiều cho tiền tố bộ lọc — cùng từ với `_trangThai`.
 String _chuChieu(ChieuTim c) => switch (c) {
