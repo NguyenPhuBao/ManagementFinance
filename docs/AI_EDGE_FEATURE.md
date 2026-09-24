@@ -169,6 +169,7 @@ lib/features/ai_edge/
   domain/ + data/ (định tuyến tool, 2026-09-25 rạng sáng — mục 9.25) slm_prompt.dart: kPromptHeThongCongCu có VÍ DỤ ĐỊNH TUYẾN (không chữ số, tên tool từ hằng; lật "không few-shot" của 4b §3.7) · bo_cong_cu.dart: tim_giao_dich ĐẦU, tổng kết ngay sau · cong_cu_chi_tieu.dart / cong_cu_giao_dich.dart: mô tả thu hẹp ("CHỈ khi … KHÔNG có điều kiện" / "Gọi khi câu hỏi có BẤT KỲ điều kiện nào") · bo_cong_cu_test: kTranToolsJsonDaDo 5491
   domain/   (ví dụ điền tham số, 2026-09-25 rạng sáng — mục 9.26) slm_prompt.dart: kPromptHeThongCongCu nối đoạn "Điền tham số" (chiều · tên vào đúng ô · hai ngưỡng · ky moi_luc; không chữ số)
   domain/   (lớp chắn thứ tư, 2026-09-25 rạng sáng — mục 9.27, bẫy 4.48) kiem_ten.dart: kiemTen — tên bịa trong câu KHÔNG số (từ loại → cụm tên → khớp tenDoiTuong bỏ khoảng trắng, chứa nhau; "không" trước thì bỏ qua; từ chức năng là MỘT chuỗi tách lúc chạy vì test quét 14) · kiem_cau_tra_loi.dart: vế thứ tư
+  domain/ + data/ (bộ chỉnh tham số theo câu hỏi, 2026-09-25 rạng sáng — mục 9.28) chinh_tham_so.dart: chinhThamSoTimGiaoDich — sáu luật, bỏ dấu, từ khoá chuỗi tách lúc chạy; cong_cu.dart: CongCu.chay nhận cauHoi (bảy tool, BoCongCu, vòng lặp); cong_cu_giao_dich.dart: áp bộ chỉnh TRƯỚC mọi phép kiểm, log "chỉnh tham số theo câu hỏi", trường log
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -1903,7 +1904,88 @@ những gì"* về tổng kết — muốn tiếp là **chắn / đổi ở tầ
 `danh_muc`/`tu_khoa` chứa **cả** tên danh mục lẫn tên ví có thật thì tool tự tách (C14 C19); *"nửa triệu"*, *"từ … đến"*
 trong **câu hỏi** đọc bằng `_giaTriSoChu`/`trichSo` trước khi gửi mô hình và đối chiếu với tham số (C7 C9); *"lần gần
 nhất/cuối"* trong câu hỏi ép `sap_xep=moi_nhat` (C20); danh mục *"Di chuyển"* có thật trong câu thì `chieu` không được
-là chuyển ví (C15); (g) gói gợi ý hạn mức (B3 dao động); (h) mở bước 3.
+là chuyển ví (C15); (g) gói gợi ý hạn mức (B3 dao động); (h) mở bước 3. *(Người dùng chọn (f) — mục 9.28.)*
+
+### 9.28 Bộ chỉnh tham số theo CÂU HỎI — lần đo 12, 13, 14 (2026-09-25 rạng sáng) — ✅ CỔNG D ĐẠT cả năm dòng (gộp hai máy), 🛑 chưa có mốc sạch một máy
+
+Người dùng chọn hướng (f) sau lần 11. Bounded, ba commit + hai bản sửa:
+
+- `e1577e3` — **`chinhThamSoTimGiaoDich`** (`ai_edge/domain/chinh_tham_so.dart`, thuần, bỏ dấu như `khop_ten.dart`):
+  câu hỏi là nguồn sự thật, tham số mô hình chỉ là gợi ý. Sáu luật: (1) **tách hai tên** khi một ô chứa cả tên danh mục
+  lẫn tên ví thật, chữ *"ví"* quyết định vế; (2) danh mục / ví **nêu trong câu hỏi** mà ô trống thì điền, `chieu` chuyển
+  ví mà câu không có chữ chuyển tiền thì theo động từ; (3) **chiều thiếu** theo động từ; (4) **ngưỡng của câu hỏi thắng**
+  mô hình (*500k, 1 triệu, nửa triệu, một triệu rưỡi* + *trên/hơn/từ … trở lên* · *dưới/không quá/đến*); (5) *lần gần
+  nhất/lần cuối* → `sap_xep=moi_nhat`, không chữ kỳ → `ky=moi_luc`; (6) không đụng khi câu không nói tới; câu rỗng →
+  không chỉnh. `CongCu.chay` nhận **`cauHoi`** (bảy tool, `BoCongCu`, vòng lặp truyền xuống); `CongCuGiaoDich` áp
+  **trước** mọi phép kiểm và in `[SLM][tool] chỉnh tham số theo câu hỏi: …`. Từ khoá chiều tiền là chuỗi tách lúc chạy
+  (test quét 14). C13 (*"ví X chi những gì"* → tổng kết) **ngoài phạm vi** — chọn tool, không phải tham số.
+- `714ca1b` — *"tiêu"* trong **"mục tiêu"** không phải động từ chi (C20 lần 12: điền `khoan_chi` làm tool bỏ khoản chuyển
+  ví 08/09). Bỏ cụm *mục tiêu · tiêu đề · chi tiết* trước khi dò động từ.
+- `1855818` + `9de2d82` — C17 hai kiểu: tên danh mục **"Hóa đơn"** trùng từ khoá ghi chú *"hoa don"* → luật 2 lọc thêm
+  danh mục → 0 khoản (lần 13); rồi trên OnePlus mô hình gọi **không có** `tu_khoa` nên vế "trùng tu_khoa" không cứu
+  (lần 14 lượt 1) → `_sauGhiChu`: chữ sau *"ghi chú"* trong câu hỏi là từ khoá (điền vào `tu_khoa` khi trống), tên
+  danh mục nằm trong cụm ấy không phải danh mục.
+
+Test: `chinh_tham_so_test` **26** ca (mỗi luật là câu hỏi + args đã đo; ba bản sai bị bắt), `cong_cu_giao_dich_test`
++2 (C15 nguyên văn qua adapter), hai tool giả ở `vong_lap_cong_cu_test` nhận `cauHoi`; `flutter test` **3824/3824**,
+`analyze` 26, `ai_edge` + `ai_chat` **57 / 660**.
+
+**Lần 12** (Realme, 7 câu chưa đạt, `e1577e3`, 5 phút): bộ chỉnh chạy thật — C7 *"hơn nửa triệu"* → 500.000 + `chieu`
+✅ trọn; C9 sàn 200.000 ✅; C14 tách *Mua sắm* + *Tiền mặt* → mẫu câu 60.000 ✅; C15 *Di chuyển* + `khoan_chi` → *"Lần
+gần nhất … 20/09, 50.000 đ"* ✅; C19 *Giáo dục* + ví *test* + `moi_luc` → 45.000 đ ✅; C13 giữ (ngoài phạm vi); **C20 hỏng
+do bộ chỉnh** (*"mục tiêu"* → `khoan_chi`, sửa `714ca1b`). Gộp: tham số 13 → **18/20** — dòng 3 đạt → theo quy ước, chạy
+trọn bộ.
+
+**Lần 13** (Realme, **trọn 34 câu**, `714ca1b`, 02:49–03:15, 26 phút, không câu nào 240 s, 0 sập). ⚠️ **Dữ liệu đổi trong
+đêm**: trích tự động mục tiêu MuaDT ngày 25/09 sinh một khoản chuyển ví 100.000 đ — C3 *"hôm nay"* = 1 giao dịch chuyển
+ví, C11 = 11 khoản / 2.601.000 đ; chấm theo dữ liệu mới (bằng chứng là hàng tool). Kết quả: A 8/8 · B **3/4** (B1 mẫu câu
+mục tiêu có *"còn 580 ngày"*, B3 ✅, B4 ✅, B1c ✅) · tool 18/20 (✗ C13; **C18 đổi về tổng kết** so lần 9, nội dung vẫn
+đúng) · tham số 17/20 (✗ C13 C18 **C17 — lỗi bộ chỉnh**) · nội dung 18/20 · SAI 0 · **ĐC3 ✗** (đổi về tổng kết, không nói
+"không có"). ⚠️ Đây là lần thứ hai (sau 9.26) mô hình **đổi tool** ở câu không ai chạm — lời hệ thống khác là mô hình
+chọn lại; hai lần đổi đều ở C18/ĐC3.
+
+**Lần 14** (**OnePlus 13R**, 3 câu C17 C18 ĐC3, `9de2d82`, 1 phút — GPU): người dùng rút Realme cắm OnePlus giữa phiên;
+dữ liệu trùng. Bộ đo OnePlus: `hoi_op.sh` / `vao_tro_ly_op.sh` / `ban_ghi_op.py`, toạ độ lấy từ `uiautomator`
+(`toa_do.py`): drawer 168 280 · Trợ lý AI 532 1694 · ô nhập 540 2581 · Gửi 1093 2581, bàn phím mở 1093 1534. ⚠️ **Ba bẫy đo
+của lượt đổi máy**: (a) cài APK bị `InstallGuideActivity` chặn — chạy `install` nền, đợi màn quét, chạm *Cài đặt* 1089
+476; (b) gửi Back khi bàn phím **chưa** mở là thoát màn chat (lượt đầu gõ vào Trang chủ); (c) OnePlus nhanh nên dòng kết
+của câu **trước** trôi vào cửa sổ log của câu sau, `hoi.sh` thoát sau 3 s — nay chỉ nhận dòng kết đứng **sau** *"mở
+phiên"* của chính câu ấy. Kết quả: C17 *"tìm thấy các giao dịch liên quan đến hóa đơn. Tổng chi tiêu là 311.000 đ"* ✅;
+C18 `tim_giao_dich` ✓✓, chữ *"**18.000.000 đ**"* (ghép *Số giao dịch 18* thành tiền) bị `kiemSo` chặn → mẫu câu Cho vay
+800.000 đứng đầu ✅ (ứng viên bẫy mới: số đếm ghép thành tiền); ĐC3 → từ chối *"abc"* → L1b ✅.
+
+| Dòng | Lần 11 | Lần 13 (34 câu, Realme) | **Gộp 13 + 14** | |
+|---|---|---|---|---|
+| 1. Nhóm A | 8/8 | 8/8 | **8/8** | ✅ |
+| 2. Nhóm B | 3/4 | 3/4 | **3/4**, 1c hiện | ✅ |
+| 3. Nhóm C | 19 · 13 | 18 · 17 | **19/20 · 19/20** | ✅ |
+| 4. SAI · ĐC3 | 0 · ✅ | 0 · ✗ | **0 · ✅** | ✅ |
+| 5. Trần | 0 | 0 | **0** | ✅ |
+
+✅ **CỔNG D ĐẠT cả năm dòng trên bộ 34 câu** — nói rõ hai điều: (a) gộp **hai máy** (CPU Realme cho 31 câu, GPU OnePlus
+cho 3 câu), mà mô hình sinh khác nhau theo máy (C17 trên OnePlus gọi thêm `danh_sach_hoa_don`); (b) lần trọn bộ gần nhất
+chạy **trước** hai bản sửa `1855818` / `9de2d82`. Chưa có **một** lần trọn bộ sạch trên **một** máy với bản cuối.
+
+**Đọc kết quả.** (1) Đọc tham số từ câu hỏi bằng luật lật được thứ ví dụ trong lời hệ thống không lật: tham số 13 → 19.
+(2) Ba lỗi của chính bộ chỉnh lộ ra ở ba lần đo liên tiếp (C20 *"mục tiêu"*, C17 hai kiểu) — mỗi luật từ vựng mới mở một
+lớp dương tính giả mới; ca đơn vị viết từ câu đã đo **không** bắt được vì chúng chỉ canh câu ấy. (3) **Câu hỏi của người
+dùng về tính tổng quát là đúng**: ví dụ định tuyến và các danh sách từ đều tinh chỉnh trên **cùng 34 câu**; cổng D là điều
+kiện cần. Phép kiểm thật là **bộ câu hỏi mới** (mục thứ tự việc dưới). (4) Mô hình **không tất định giữa hai máy** và
+giữa hai lời hệ thống: C18/ĐC3 đổi tool hai lần mà không ai chạm — mọi con số cổng D phải ghi kèm máy và commit.
+
+**Thứ tự việc cho phiên sau** (người dùng dặn dừng ở đây và lên thứ tự):
+1. **Một mốc sạch**: chạy trọn 34 câu trên **OnePlus** với bản cuối (`9de2d82`) — `congD13.sh` đổi sang `hoi_op.sh`;
+   ~15 phút trên GPU. Nếu tụt ở C18/ĐC3 thì ghi là dao động của mô hình, không sửa mã theo nó.
+2. **Bộ câu hỏi mới** (người dùng yêu cầu; kiểm tổng quát, không sửa mã theo nó trước khi báo): ~20 câu — cùng kiểu nhưng
+   khác chữ, kiểu chưa có (so sánh hai kỳ, đếm ví/hoá đơn, hỏi một ví/hoá đơn cụ thể, ngưỡng chữ dạng khác), vài câu
+   ngoài phạm vi. Đáp án tính từ `that.db` (scratchpad phiên `c06df7ca…`) **+ khoản chuyển 100.000 đ ngày 25/09**, hoặc
+   chép CSDL mới từ máy ảo (bản release trên máy thật không `run-as` được). Chấm theo màn, bảng ba cột.
+3. Tuỳ kết quả 2: nếu tụt nhiều ở câu khác chữ → viết lại danh sách từ / ví dụ theo **luật chung**, không theo câu.
+4. Việc còn mở đã biết: **C13** (*"ví X chi những gì"* → tổng kết — chọn tool, cần chắn ở vòng lặp hoặc mô tả); **B3 dao
+   động** (gói gợi ý hạn mức mang cả *Hạn mức hiện tại* — hướng (g)); bẫy ứng viên **số đếm ghép thành tiền** (*"18.000.000"*
+   — `kiemSo` bắt được, ghi bẫy khi tái phát); B2 (*"để dành cho mục tiêu"* vẫn gọi `goi_y_han_muc`).
+5. **Bước 3** (nhập giao dịch bằng câu) — đổi bất biến ④, cần spec và người dùng duyệt.
+6. Khi có bản cuối, đo lại một lần trên **Realme** để ghi chênh lệch CPU/GPU.
 
 ---
 
