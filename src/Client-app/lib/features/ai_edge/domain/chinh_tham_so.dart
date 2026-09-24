@@ -209,7 +209,16 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   return KetQuaChinhThamSo(a, ghi);
 }
 
-String? _chieuTheoDongTu(String q) {
+/// Cụm mang chữ chiều tiền mà KHÔNG nói chiều: "mục tiêu" có "tiêu" (C20 lần
+/// 12: khoản nạp mục tiêu là chuyển ví, bộ chỉnh đọc thành khoản chi). Bỏ khỏi
+/// câu trước khi dò động từ.
+final List<String> _cumKhongPhaiDongTu = 'muc tieu|tieu de|chi tiet'.split('|');
+
+String? _chieuTheoDongTu(String q0) {
+  var q = q0;
+  for (final c in _cumKhongPhaiDongTu) {
+    q = q.replaceAll(_tronTu(c), ' ');
+  }
   final thu = _tuThu.any((t) => _co(q, t));
   final chi = _tuChi.any((t) => _co(q, t));
   if (thu == chi) return null;

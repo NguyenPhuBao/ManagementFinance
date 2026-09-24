@@ -105,6 +105,15 @@ void main() {
       expect(chinh('hom nay toi co giao dich nao khong', {'ky': 'hom_nay'}).containsKey('chieu'),
           isFalse);
     });
+    test('⭐ C20 lần 12: "tiêu" trong "mục tiêu" KHÔNG phải động từ chi — chieu để trống', () {
+      final r = chinh('lan cuoi toi nap tien cho muc tieu muaxe la ngay nao', {
+        'ky': 'moi_luc', 'tu_khoa': 'muaxe',
+      });
+      expect(r.containsKey('chieu'), isFalse,
+          reason: 'Trên Realme bộ chỉnh điền khoan_chi và tool bỏ mất khoản chuyển ví 08/09 '
+              '— khoản nạp mục tiêu là chuyển ví, câu hỏi không nói chi hay thu.');
+      expect(r['sap_xep'], 'moi_nhat');
+    });
     test('chieu mô hình đã điền (đúng hay sai) không bị đè — trừ luật 2', () {
       expect(chinh('cac khoan chi hon nua trieu', {'ky': 'quy_nay', 'chieu': 'khoan_thu'})['chieu'],
           'khoan_thu');
