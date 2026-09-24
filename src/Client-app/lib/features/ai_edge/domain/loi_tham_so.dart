@@ -47,6 +47,15 @@ KetQuaCongCu tuChoiKhoangNguoc(String tu, String den) => KetQuaCongCu.loi(
       thamSoGo: const ['so_tien_tu', 'so_tien_den'],
     );
 
+/// Số tiền nằm nhầm trong `tu_khoa` (bước 2b, bẫy 4.43). Gỡ khi lượt sau điền
+/// `so_tien_tu` hoặc `so_tien_den` — tức mô hình đã dời số tiền về đúng chỗ.
+KetQuaCongCu tuChoiTuKhoaLaSoTien(String giaTri) => KetQuaCongCu.loi(
+      'tu_khoa "$giaTri" là số tiền — tu_khoa chỉ tìm chữ trong ghi chú; số tiền '
+      'dùng so_tien_tu / so_tien_den, số đồng, ví dụ 500000.',
+      choNguoiDung: _chuaHieuSoTien,
+      thamSoGo: const ['so_tien_tu', 'so_tien_den'],
+    );
+
 /// [loai]: chữ người đọc được của tham số — 'danh mục' · 'ví' · 'danh mục chi'.
 KetQuaCongCu tuChoiKhongKhop(
   String thamSo,

@@ -68,6 +68,15 @@ void main() {
     expect(kq.tenLienQuan, ['Dá', 'Đá', 'da']);
   });
 
+  test('⭐ số tiền trong tu_khoa: chỉ mô hình chỗ đúng; gỡ khi lượt sau điền so_tien_*', () {
+    final kq = tuChoiTuKhoaLaSoTien('500k');
+    expect(kq.loi, contains('so_tien_tu'));
+    expect(kq.loi, contains('500000'));
+    expect(kq.choNguoiDung, 'chưa hiểu số tiền trong câu hỏi');
+    expect(kq.thamSoGo, ['so_tien_tu', 'so_tien_den']);
+    expect(RegExp(r'\d').hasMatch(kq.choNguoiDung!), isFalse);
+  });
+
   test('⭐ ba luật của câu cho người dùng — mọi loại từ chối (spec 2b mục 2.1)', () {
     final moiLoai = <KetQuaCongCu>[
       for (final p in ['ky', 'chieu', 'sap_xep', 'trang_thai'])

@@ -78,6 +78,13 @@ void main() {
         [('Di chuyển', 'chưa có ngân sách'), ('Ăn uống', 'đã có ngân sách')]);
   });
 
+  test('⭐ danh_muc là giá trị giữ chỗ → mọi danh mục, như không truyền (bẫy 4.43)', () async {
+    final goc = await CongCuGoiYHanMuc(_NganSach()).chay({}, idaccount: 10, now: now);
+    final kq = await CongCuGoiYHanMuc(_NganSach()).chay({'danh_muc': 'tất cả'}, idaccount: 10, now: now);
+    expect(kq.loi, isNull, reason: 'spike S3: goi_y_han_muc {danh_muc: "tất cả"} bị từ chối');
+    expect(kq.json, goc.json);
+  });
+
   test('⭐ danh_muc gõ không dấu → chỉ hàng ấy', () async {
     final kq = await CongCuGoiYHanMuc(_NganSach()).chay({'danh_muc': 'an uong'}, idaccount: 10, now: now);
     expect(kq.hang.single.ten, 'Ăn uống');

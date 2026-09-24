@@ -133,4 +133,33 @@ void main() {
   test('tham số lạ bỏ qua', () async {
     expect((await cc.chay({'la': true}, idaccount: 10, now: now)).loi, isNull);
   });
+
+  test('⭐ giá trị giữ chỗ ở danh_muc / vi / tu_khoa → kết quả GIỐNG HỆT không truyền (bẫy 4.43)', () async {
+    final goc = await cc.chay({'ky': 'thang_nay'}, idaccount: 10, now: now);
+    for (final args in <Map<String, dynamic>>[
+      {'ky': 'thang_nay', 'danh_muc': 'tat_ca'},
+      {'ky': 'thang_nay', 'vi': 'tất_cả'},
+      {'ky': 'thang_nay', 'tu_khoa': 'tất cả'},
+      {'ky': 'thang_nay', 'danh_muc': 'ALL', 'vi': 'tat ca'},
+    ]) {
+      final kq = await cc.chay(args, idaccount: 10, now: now);
+      expect(kq.loi, isNull, reason: 'C8 ($args): tool từ chối oan, mô hình đọc thành "không có"');
+      expect(kq.json, goc.json, reason: '$args');
+    }
+  });
+
+  test('⭐ tu_khoa là số tiền → từ chối TRƯỚC khi đọc dữ liệu', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'tu_khoa': '500k'}, idaccount: 10, now: now);
+    expect(kq.loi, contains('so_tien_tu'));
+    expect(kq.choNguoiDung, 'chưa hiểu số tiền trong câu hỏi');
+    expect(giaoDich.khoangDaHoi, isEmpty,
+        reason: 'để nguyên thì tìm "500k" trong ghi chú ra 0 khoản — một lượt THÀNH CÔNG, '
+            'và câu "không có khoản nào" được phép hiện');
+  });
+
+  test('tu_khoa là chữ có chữ số (tên hoá đơn "T9") vẫn tìm bình thường', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'tu_khoa': 'T9'}, idaccount: 10, now: now);
+    expect(kq.loi, isNull);
+    expect(giaoDich.khoangDaHoi, hasLength(1));
+  });
 }

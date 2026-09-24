@@ -11,6 +11,7 @@ import '../domain/cong_cu.dart';
 import '../domain/hang_goi_y_han_muc.dart';
 import '../domain/hang_so_lieu.dart';
 import '../domain/loi_tham_so.dart';
+import '../domain/tham_so_mo_hinh.dart';
 import 'nguon_goi_so.dart';
 
 class CongCuGoiYHanMuc implements CongCu {
@@ -43,8 +44,9 @@ class CongCuGoiYHanMuc implements CongCu {
   }) async {
     var danhMuc = await nganSach.getExpenseCategories(idaccount);
     String? tenDaKhop;
-    final hoi = args['danh_muc']?.toString().trim() ?? '';
-    if (hoi.isNotEmpty) {
+    // Giá trị giữ chỗ ("tất cả") = không lọc — spike S3 của bước 2 (bẫy 4.43).
+    final hoi = thamSoTen(args['danh_muc']);
+    if (hoi != null) {
       switch (khopTheoTen<Category>(hoi, danhMuc, (c) => c.name)) {
         case KhopMot(:final muc):
           danhMuc = [muc];

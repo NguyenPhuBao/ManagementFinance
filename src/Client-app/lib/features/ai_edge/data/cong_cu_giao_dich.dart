@@ -18,6 +18,7 @@ import '../domain/hang_chi_tieu.dart';
 import '../domain/hang_giao_dich.dart';
 import '../domain/hang_so_lieu.dart';
 import '../domain/loi_tham_so.dart';
+import '../domain/tham_so_mo_hinh.dart';
 
 class CongCuGiaoDich implements CongCu {
   CongCuGiaoDich({
@@ -93,12 +94,20 @@ class CongCuGiaoDich implements CongCu {
     final khoang = KhoangTien(tu: tu.so, den: den.so);
     if (!khoang.hopLe) return tuChoiKhoangNguoc(_tho(tu.so!), _tho(den.so!));
 
+    // Tham số tên / từ khoá: giá trị giữ chỗ ("tat_ca") nghĩa là KHÔNG LỌC — cổng
+    // D lần 1 đo được mô hình dùng nó thế, và tool từng từ chối vì không có danh
+    // mục / ví nào tên ấy (bẫy 4.43).
+    final tuKhoa = thamSoTen(args['tu_khoa']);
+    // Số tiền trong từ khoá: để nguyên thì tìm "500k" trong ghi chú ra 0 khoản —
+    // một lượt THÀNH CÔNG, và câu "không có khoản nào" được phép hiện.
+    if (tuKhoa != null && laSoTien(tuKhoa)) return tuChoiTuKhoaLaSoTien(tuKhoa);
+
     final tieuChi = TieuChiTim(
       chieu: chieu,
       khoangTien: khoang.rong ? null : khoang,
-      tenDanhMuc: args['danh_muc']?.toString(),
-      tenVi: args['vi']?.toString(),
-      tuKhoa: args['tu_khoa']?.toString() ?? '',
+      tenDanhMuc: thamSoTen(args['danh_muc']),
+      tenVi: thamSoTen(args['vi']),
+      tuKhoa: tuKhoa ?? '',
       sapXep: sapXep,
     );
     final kq = timGiaoDich(
