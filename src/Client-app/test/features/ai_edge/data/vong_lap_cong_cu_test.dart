@@ -116,7 +116,7 @@ const goiHoaDon = GoiCongCu(kTenCongCuHoaDon, {'trang_thai': 'qua_han'});
 /// Lượt `tim_giao_dich` THÀNH CÔNG mà 0 khoản — C9 cổng D lần 2 (bước 2c).
 KetQuaCongCu _timRong() => KetQuaCongCu(
       hang: const [],
-      tongHop: [soDem('Số khoản', 0), soTien('Tổng chi', 0)],
+      tongHop: [soDem('Số giao dịch', 0), soTien('Tổng chi', 0)],
       soLieuBoLoc: [soTien('Đến', 1000000)],
       boLoc: const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
       rongTheoBoLoc: true,
@@ -128,7 +128,7 @@ KetQuaCongCu _timCoHang() => KetQuaCongCu(
         HangSoLieu(ten: 'Cho vay', trangThai: 'khoản chi · test1 · Tiền mặt', canhBao: false,
             soLieu: [soTien('Số tiền', 800000, ten: 'Cho vay')]),
       ],
-      tongHop: [soDem('Số khoản', 1), soTien('Tổng chi', 800000)],
+      tongHop: [soDem('Số giao dịch', 1), soTien('Tổng chi', 800000)],
       boLoc: const ['khoản chi'],
       chuThem: const {'ky': 'tháng này'},
       tenLienQuan: const ['test1', 'Tiền mặt'],
@@ -356,7 +356,7 @@ void main() {
     final cau = sk.whereType<CauQua>().single.cau;
     expect(cau, goi.mauCau().cau);
     expect(cau, 'Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào khớp.',
-        reason: 'C9 cổng D lần 2: mẫu câu L2 nói "Số khoản: 0" trong khi có 2 khoản — người đọc phải thấy bộ lọc đã hẹp ở đâu');
+        reason: 'C9 cổng D lần 2: mẫu câu L2 nói "Số giao dịch: 0" trong khi có 2 khoản — người đọc phải thấy bộ lọc đã hẹp ở đâu');
     expect(sk.whereType<KhongTraCuu>(), isEmpty);
     expect(log.any((l) => l.contains('(L2c)')), isTrue);
     expect(log.any((l) => l.contains('lượt rỗng theo bộ lọc')), isTrue, reason: 'log bỏ chữ phải nêu lý do');

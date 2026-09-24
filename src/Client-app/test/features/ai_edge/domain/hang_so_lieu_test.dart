@@ -89,7 +89,7 @@ void main() {
   test('⭐ bộ lọc dội lại (bước 2c): soLieuBoLoc vào json y như tongHop; boLoc và rongTheoBoLoc KHÔNG vào', () {
     final kq = KetQuaCongCu(
       hang: const [],
-      tongHop: [soDem('Số khoản', 0)],
+      tongHop: [soDem('Số giao dịch', 0)],
       soLieuBoLoc: [soTien('Đến', 1000000)],
       boLoc: const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
       rongTheoBoLoc: true,
@@ -97,7 +97,7 @@ void main() {
     );
     expect(
       kq.json,
-      {'Số khoản': '0', 'Đến': '1.000.000 đ', 'ky': 'tháng này'},
+      {'Số giao dịch': '0', 'Đến': '1.000.000 đ', 'ky': 'tháng này'},
       reason: 'JSON gửi mô hình KHÔNG đổi so với khi Từ/Đến còn ở tongHop — mô hình vẫn '
           'thấy khoảng đã hiểu; boLoc chứa chữ số nên không được lọt vào JSON',
     );

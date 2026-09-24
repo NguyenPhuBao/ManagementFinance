@@ -190,7 +190,7 @@ void main() {
     expect(kq.rongTheoBoLoc, isTrue, reason: 'C9: 0 hàng không phải "không có giao dịch"');
     expect(kq.boLoc, ['ghi chú chứa "khong co"', 'đến 1.000.000 đ']);
     expect(kq.json['Đến'], '1.000.000 đ');
-    expect(kq.json['Số khoản'], '0');
+    expect(kq.json['Số giao dịch'], '0');
     expect(kq.tongHop.map((s) => s.nhan), isNot(contains('Đến')));
     expect(kq.tenLienQuan, contains('khong co'));
   });

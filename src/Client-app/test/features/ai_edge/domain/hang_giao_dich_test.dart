@@ -49,14 +49,14 @@ void main() {
     expect(r.hang.every((h) => !h.canhBao), isTrue);
   });
 
-  test('tổng hợp theo CHIỀU đã hỏi; Số khoản là mọi khoản khớp', () {
+  test('tổng hợp theo CHIỀU đã hỏi; Số giao dịch là mọi khoản khớp', () {
     Map<String, String> tong(TieuChiTim t) => {
           for (final s in hangGiaoDich(kq, tieuChi: t, chuKy: 'tháng này', now: now).tongHop)
             s.nhan: s.chuoi,
         };
-    expect(tong(const TieuChiTim(chieu: ChieuTim.chi)), {'Số khoản': '7', 'Tổng chi': '2.031.000 đ'});
-    expect(tong(const TieuChiTim(chieu: ChieuTim.chuyen)), {'Số khoản': '7', 'Tổng chuyển': '900.000 đ'});
-    expect(tong(const TieuChiTim()).keys, ['Số khoản', 'Tổng chi', 'Tổng thu', 'Tổng chuyển']);
+    expect(tong(const TieuChiTim(chieu: ChieuTim.chi)), {'Số giao dịch': '7', 'Tổng chi': '2.031.000 đ'});
+    expect(tong(const TieuChiTim(chieu: ChieuTim.chuyen)), {'Số giao dịch': '7', 'Tổng chuyển': '900.000 đ'});
+    expect(tong(const TieuChiTim()).keys, ['Số giao dịch', 'Tổng chi', 'Tổng thu', 'Tổng chuyển']);
   });
 
   test('⭐ khoảng tiền đã hiểu DỘI LẠI ở soLieuBoLoc, KHÔNG ở tongHop; json vẫn có Từ (bước 2c)', () {
@@ -64,16 +64,27 @@ void main() {
         tieuChi: const TieuChiTim(chieu: ChieuTim.chi, khoangTien: KhoangTien(tu: 500000)),
         chuKy: 'tháng này', now: now);
     expect({for (final s in r.soLieuBoLoc) s.nhan: s.chuoi}, {'Từ': '500.000 đ'});
-    expect(r.tongHop.map((s) => s.nhan).toList(), ['Số khoản', 'Tổng chi'],
+    expect(r.tongHop.map((s) => s.nhan).toList(), ['Số giao dịch', 'Tổng chi'],
         reason: 'còn ở tongHop thì mẫu câu in "Từ: 500.000 đ" thành một vế dữ liệu');
     expect(r.json['Từ'], '500.000 đ', reason: 'JSON gửi mô hình không đổi');
     expect(r.json.containsKey('Đến'), isFalse);
   });
 
+  test('⭐ nhãn đếm là "Số giao dịch" — chữ mô hình "Có 6 giao dịch." qua kiemNhan (bẫy 4.47)', () {
+    final goi = GoiSoTraCuu()
+      ..them('tim_giao_dich', hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now));
+    expect(goi.tongHop.first.nhan, 'Số giao dịch');
+    expect(kiemNhan('Trong tháng này bạn có 7 giao dịch.', [goi]), isTrue,
+        reason: 'cổng D lần 4 C5/C17: nhãn cũ "Số khoản" đòi chữ "khoản" mà mô hình nói "giao dịch" — '
+            'hai câu đúng rơi mẫu câu');
+    expect(kiemNhan('Trong tháng này bạn có 7 khoản.', [goi]), isFalse,
+        reason: 'đối chứng: chữ "khoản" không còn là từ khoá của nhãn');
+  });
+
   test('⭐ rongTheoBoLoc: đúng khi soKhop == 0 (bẫy 4.44), sai khi có khoản, không đặt ở lời từ chối', () {
     const rong = KetQuaTimGiaoDich(dong: [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0);
     expect(hangGiaoDich(rong, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).rongTheoBoLoc, isTrue,
-        reason: 'C9 cổng D lần 2: tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" trong khi có 2');
+        reason: 'C9 cổng D lần 2: tu_khoa "chi" → 0 khoản → mẫu câu "Số giao dịch: 0" trong khi có 2');
     expect(hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).rongTheoBoLoc, isFalse);
     const loi = KetQuaTimGiaoDich.loi(LoiKhopTen(
         truong: TruongTen.vi, hoi: 'vi gia', nhieu: false, tenGoiY: ['Tiền mặt']));

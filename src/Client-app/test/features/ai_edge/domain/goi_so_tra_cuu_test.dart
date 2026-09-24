@@ -35,7 +35,7 @@ KetQuaCongCu _timRong({
 }) =>
     KetQuaCongCu(
       hang: const [],
-      tongHop: [soDem('Số khoản', 0), soTien('Tổng chi', 0)],
+      tongHop: [soDem('Số giao dịch', 0), soTien('Tổng chi', 0)],
       soLieuBoLoc: [soTien('Đến', 1000000)],
       boLoc: boLoc,
       rongTheoBoLoc: true,
@@ -53,7 +53,7 @@ KetQuaCongCu _timCoHang({List<String> boLoc = const ['khoản chi', 'từ 500.00
           soLieu: [soTien('Số tiền', 800000, ten: 'Cho vay')],
         ),
       ],
-      tongHop: [soDem('Số khoản', 1), soTien('Tổng chi', 800000)],
+      tongHop: [soDem('Số giao dịch', 1), soTien('Tổng chi', 800000)],
       soLieuBoLoc: [soTien('Từ', 500000)],
       boLoc: boLoc,
       chuThem: const {'ky': 'tháng này'},
@@ -160,7 +160,7 @@ void main() {
   group('gỡ lời từ chối THEO THAM SỐ (spec 2b mục 1.2 hàng 4)', () {
     final tuChoi =
         tuChoiKhongKhop('danh_muc', 'abc', const ['Ăn uống'], loai: 'danh mục');
-    final thanhCong = KetQuaCongCu(hang: const [], tongHop: [soDem('Số khoản', 0)]);
+    final thanhCong = KetQuaCongCu(hang: const [], tongHop: [soDem('Số giao dịch', 0)]);
 
     test('cùng tool thành công mà ĐIỀN tham số → gỡ, cổng mở', () {
       final g = GoiSoTraCuu()
@@ -265,12 +265,12 @@ void main() {
       expect((GoiSoTraCuu()..them('t', _timCoHang())).cauNoiThem, isNull);
     });
 
-    test('⭐ mauCau nhóm rỗng: tiền tố + "không có giao dịch nào khớp." — KHÔNG "Số khoản: 0"', () {
+    test('⭐ mauCau nhóm rỗng: tiền tố + "không có giao dịch nào khớp." — KHÔNG "Số giao dịch: 0"', () {
       final g = GoiSoTraCuu()..them('tim_giao_dich', _timRong());
       final nx = g.mauCau();
       expect(nx.cau, 'Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào khớp.',
-          reason: 'câu SAI C9: "Tháng này — Số khoản: 0; Tổng chi: 0 đ; …; Đến: 1.000.000 đ." trong khi có 2 khoản');
-      expect(nx.cau, isNot(contains('Số khoản')));
+          reason: 'câu SAI C9: "Tháng này — Số giao dịch: 0; Tổng chi: 0 đ; …; Đến: 1.000.000 đ." trong khi có 2 khoản');
+      expect(nx.cau, isNot(contains('Số giao dịch')));
       expect(kiemSo(nx.cau, g), isTrue, reason: 'câu rơi về phải tự qua bộ kiểm số');
       expect(nx.muc, MucNhanXet.binhThuong);
     });
@@ -280,7 +280,7 @@ void main() {
       final cau = g.mauCau().cau;
       expect(cau,
           'Tháng này, khoản chi, từ 500.000 đ — Cho vay khoản chi · test1 · Tiền mặt: '
-          'Số tiền 800.000 đ; Số khoản: 1; Tổng chi: 800.000 đ.');
+          'Số tiền 800.000 đ; Số giao dịch: 1; Tổng chi: 800.000 đ.');
       expect(cau, isNot(contains('Từ:')));
       expect(kiemSo(cau, g), isTrue);
       expect(kiemNhan(cau, [g]), isTrue);

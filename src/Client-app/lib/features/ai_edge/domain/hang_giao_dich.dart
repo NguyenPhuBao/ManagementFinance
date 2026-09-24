@@ -66,7 +66,10 @@ KetQuaCongCu hangGiaoDich(
         ),
     ],
     tongHop: [
-      soDem('Số khoản', kq.soKhop),
+      // "Số giao dịch", không "Số khoản": `kiemNhan` đòi câu nêu từ khoá của
+      // nhãn, và mô hình nói "6 giao dịch" — nhãn cũ chặn câu đúng (bẫy 4.47,
+      // cổng D lần 4, 2026-09-24).
+      soDem('Số giao dịch', kq.soKhop),
       if (tatCa || chieu == ChieuTim.chi) soTien('Tổng chi', kq.tongChi),
       if (tatCa || chieu == ChieuTim.thu) soTien('Tổng thu', kq.tongThu),
       if (tatCa || chieu == ChieuTim.chuyen)
@@ -85,7 +88,7 @@ KetQuaCongCu hangGiaoDich(
       if (tieuChi.sapXep == SapXepTim.moiNhat) 'mới nhất trước',
     ],
     // 0 khoản với bộ lọc chữ tự do không phải câu trả lời (bẫy 4.44): C9 cổng D
-    // lần 2 — tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" trong khi có 2.
+    // lần 2 — tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" (nhãn khi ấy) trong khi có 2.
     rongTheoBoLoc: kq.soKhop == 0,
     chuThem: {
       'ky': chuKy,
