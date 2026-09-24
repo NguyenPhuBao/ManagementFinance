@@ -168,6 +168,7 @@ lib/features/ai_edge/
   domain/   (đóng bẫy 4.42, 2026-09-24 đêm — mục 9.24, ba commit) kiem_so.dart: trichSo đọc số viết bằng chữ (_soChu · _donViChu · _mauSoChu · _giaTriSoChu), boTenDoiTuong tách từ trichSoNgoaiTen (kiemNhan dùng với MỌI tên) · goi_so.dart: SoLieu.nhanXungDot, soTien nhận nó · kiem_nhan.dart: ganNhanNguoc (xét trên câu đã bỏ tên) · hang_chi_tieu.dart, goi_so_phan_tich.dart: Chi ↔ ['Thu'] · hang_giao_dich.dart: _nhanChieu / _nguoc — chiều dòng là nhãn thay thế, chiều ngược là xung đột
   domain/ + data/ (định tuyến tool, 2026-09-25 rạng sáng — mục 9.25) slm_prompt.dart: kPromptHeThongCongCu có VÍ DỤ ĐỊNH TUYẾN (không chữ số, tên tool từ hằng; lật "không few-shot" của 4b §3.7) · bo_cong_cu.dart: tim_giao_dich ĐẦU, tổng kết ngay sau · cong_cu_chi_tieu.dart / cong_cu_giao_dich.dart: mô tả thu hẹp ("CHỈ khi … KHÔNG có điều kiện" / "Gọi khi câu hỏi có BẤT KỲ điều kiện nào") · bo_cong_cu_test: kTranToolsJsonDaDo 5491
   domain/   (ví dụ điền tham số, 2026-09-25 rạng sáng — mục 9.26) slm_prompt.dart: kPromptHeThongCongCu nối đoạn "Điền tham số" (chiều · tên vào đúng ô · hai ngưỡng · ky moi_luc; không chữ số)
+  domain/   (lớp chắn thứ tư, 2026-09-25 rạng sáng — mục 9.27, bẫy 4.48) kiem_ten.dart: kiemTen — tên bịa trong câu KHÔNG số (từ loại → cụm tên → khớp tenDoiTuong bỏ khoảng trắng, chứa nhau; "không" trước thì bỏ qua; từ chức năng là MỘT chuỗi tách lúc chạy vì test quét 14) · kiem_cau_tra_loi.dart: vế thứ tư
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -230,7 +231,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.45 | **E2B viết tên theo kiểu `snake_case`** — cổng D lần 2 C11 | `vi: "tiet_kiem"` — `khopTheoTen` không đổi `_` thành dấu cách nên **không khớp** ví *Tiết kiệm* → từ chối → L1b (đúng luật, không SAI). Hai hệ quả: câu hỏi đúng ý thành *"chưa tra được"*; và câu cho người dùng hiện **`"tiet_kiem"`** — luật (a) *"không có dấu `_`"* của spec 2b chỉ nghĩ tới **mã tham số**, không nghĩ tới **giá trị** mô hình gõ (ca *"ba luật"* chỉ thử tên không có `_`). Mô hình chưa gọi lại lần nào sau lời từ chối (0/2), dù chỉ dẫn hệ thống nay dặn *"gọi lại ngay"*. ✅ **Sửa ở bước 2c** (`1301de9`): `khopTheoTen` thêm **bậc ba** — đổi `_` thành dấu cách ở cả hai vế rồi so bỏ dấu, chỉ chạy khi hai bậc đầu trượt; câu người dùng của lời từ chối in tên gõ với `_` đổi thành dấu cách. Đo lại (mục 9.19): C11 `vi: "tiet_kiem"` khớp *Tiết kiệm* → 10 khoản, 2.501.000 đ đúng đáp án (mẫu câu có ích — chữ mô hình bị chặn vì bẫy 4.46) | `khop_ten_test` *"⭐ bậc ba…"*, *"⭐ bậc 2 THẮNG bậc 3"*; `loi_tham_so_test` *"⭐ tên gõ kiểu snake_case"*; `cong_cu_giao_dich_test` *"⭐ ví "tiet_kiem""* |
 | 4.46 | **E2B đọc SỐ DÒNG HIỆN (4 = `kToiDaMucMoiGoi`) thành số khoản** — cổng D lần 3 C11, C16, 2026-09-24 | tool trả 4 hàng + `Số khoản: 10` (C11) / `36` (C16); mô hình viết *"bạn đã có **4** giao dịch chuyển tiền sang ví Tiết kiệm"* và *"Dưới đây là **4** giao dịch chi tiêu gần nhất"* — `kiemSo` chặn vì 4 không có trong gói, câu rơi về mẫu câu (L2). Chặn **đúng** (câu sai thật), nhưng là lý do C11 không hiện chữ mô hình dù tool và tham số đều đúng. Bẫy 10 của spec bước 2 (`soKhop ≠ dong.length`) đã lo phía app, chưa lo phía mô hình. ⚠️ **Chưa sửa**, chưa ai chọn hướng (ứng viên: chữ kèm *"hiện 4 trong 10"* trong JSON — nhưng `chuThem` cấm chữ số). Lần 4 tái phát ở C11, C12 | *(đo máy thật — mục 9.19, 9.20)* |
 | 4.47 | **Nhãn `Số khoản` đòi chữ "khoản" mà mô hình nói "giao dịch"** — cổng D lần 4 C5, C17, 2026-09-24 | `kiemNhan` đòi câu nêu từ khoá của nhãn mà con số khớp; `hangGiaoDich` đặt nhãn *Số khoản* cho `soKhop`, mô hình viết *"bạn đã có 6 giao dịch"* / *"Có 5 giao dịch có ghi chú…"* — số đúng, nhãn không có chữ "khoản" → chặn, câu đúng rơi mẫu câu. Lần 3 C17 lọt chỉ vì câu dài hơn tình cờ chứa chữ "khoản" ở phần sau. ⚠️ **Đổi nhãn thành *"Số giao dịch"* (`a68a842`) chỉ ĐỔI CHỖ bẫy** — lần đo 5 (mục 9.21): C5, C17 hiện được nhưng C8 *"Có 2 khoản thu…"* lại bị chặn. Gốc là `kiemNhan` đòi từ khoá của **một** nhãn trong khi mô hình dùng "khoản" / "giao dịch" thay nhau; cần nhãn có **từ đồng nghĩa**. ✅ **Sửa gốc ở `235d11f`** (mục 9.22): `SoLieu.nhanKhac` + `nhanKhopAmTiet` dùng chung cho `kiemNhan` và `theCuaCau`; nhãn chính *Số giao dịch*, thay thế *Số khoản*. ✅ **ĐÓNG — đo cổng D lần 6 tối 2026-09-24** (mục 9.23): C5, C8, C17 cùng hiện chữ trong một lượt, năm câu còn bị chặn không câu nào vì "khoản"/"giao dịch"; 33/34 câu y hệt lần 5, chỉ C8 đổi | `kiem_nhan_test` nhóm *"nhãn có TỪ ĐỒNG NGHĨA"*; `the_cua_cau_test` *"⭐ thẻ nhận ra mục qua nhãn THAY THẾ"*; `hang_giao_dich_test` *"⭐ nhãn đếm là "Số giao dịch""*; *(đo máy thật — mục 9.20, 9.21, 9.23)* |
-| 4.48 | ⭐ **Câu KHÔNG có số nêu TÊN BỊA lọt cả ba lớp chắn** — cổng D lần 10 B1, 2026-09-25 | *"Bạn có thể đặt mục tiêu mua xe hoặc **mua nhà**."* — mục tiêu thật là MuaXe và MuaDT (mua điện thoại). `kiemSo` và `kiemNhan` chỉ kiểm **khi câu có con số** (câu không số thì lọt — "không có gì để bịa"), `kiemGiong` chỉ kiểm giọng theo mức; không lớp nào kiểm **tên**. Lần 4–9 B1 nêu tên thật nên không lộ. Chưa sửa; ứng viên: lớp chắn thứ tư — câu nêu *"mục tiêu / danh mục / ví / hoá đơn X"* mà X không khớp tên nào của gói (`tenDoiTuong`, so theo `khopTheoTen`) thì chặn; cần spec ngắn | *(đo máy thật — mục 9.26)* |
+| 4.48 | ⭐ **Câu KHÔNG có số nêu TÊN BỊA lọt cả ba lớp chắn** — cổng D lần 10 B1, 2026-09-25 | *"Bạn có thể đặt mục tiêu mua xe hoặc **mua nhà**."* — mục tiêu thật là MuaXe và MuaDT (mua điện thoại). `kiemSo` và `kiemNhan` chỉ kiểm **khi câu có con số** (câu không số thì lọt — "không có gì để bịa"), `kiemGiong` chỉ kiểm giọng theo mức; không lớp nào kiểm **tên**. Lần 4–9 B1 nêu tên thật nên không lộ. ✅ **ĐÓNG `ec13fdf`** (mục 9.27): lớp chắn thứ tư `kiemTen` — sau từ loại (*mục tiêu / danh mục / ví / hoá đơn / ngân sách*) cụm tên phải khớp một `tenDoiTuong` của gói bất kỳ (bỏ khoảng trắng, chứa nhau), *và/hoặc* nối cụm kế, "không" trước từ loại thì bỏ qua; lần đo 11 mô hình viết y hệt câu ấy và bị chặn → mẫu câu | `kiem_ten_test` (⭐ câu B1 nguyên văn; hai bản sai bị bắt); `kiem_cau_tra_loi_test` *"lớp thứ tư đã NỐI"*; *(đo máy thật — mục 9.26, 9.27)* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -1868,7 +1869,41 @@ dao động (8 ✅ · 9 ✗ · 10 ✅) với cùng tool, cùng gói: mô hình *
 
 **Việc tiếp theo — chờ người dùng quyết** (câu chưa đạt để hỏi lại: B1 C7 C9 C13 C14 C15 C19 C20): (i) lớp chắn tên
 (4.48) — đưa SAI về 0; (f) tách hai tên và đọc *"nửa triệu"* ở tầng mã — tham số; (g) gói gợi ý hạn mức (B3 dao động);
-(h) mở bước 3.
+(h) mở bước 3. *(Người dùng chọn (i) — mục 9.27.)*
+
+### 9.27 Lớp chắn thứ tư `kiemTen` — tên bịa trong câu không số (2026-09-25 rạng sáng) — ✅ bẫy 4.48 ĐÓNG, SAI = 0, 🛑 tham số 13/20
+
+Người dùng chọn hướng (i) sau lần đo 10. Bounded, `ec13fdf`, tệp mới `ai_edge/domain/kiem_ten.dart` + `kiem_ten_test.dart`.
+Luật: sau **từ loại** (*mục tiêu · danh mục · ví · hoá đơn/hóa đơn · ngân sách*) là một cụm tên tới dấu câu hoặc tới **từ
+chức năng** (*và, hoặc, là, của, đang, nào, chi, thu, dụ…*); mỗi cụm phải khớp một `tenDoiTuong` của **gói bất kỳ** —
+`normalizeCategoryName` rồi **bỏ khoảng trắng**, **chứa nhau** là đủ (*"mua xe"* ↔ `MuaXe`; *"Kiem thu hoa don"* nằm
+trong tiêu đề dài); *và / hoặc / dấu phẩy* nối cụm kế; cụm rỗng (*"các danh mục **chi** lớn nhất"*, *"mục tiêu **đang**
+theo đuổi"*) không phải khẳng định; **"không"** đứng trước từ loại thì bỏ qua (*"không có danh mục nào tên abc"* là câu
+thật). Không bỏ dấu. Nối vào `kiemCauTraLoi` làm vế thứ tư. ⚠️ Từ chức năng giữ dạng **một chuỗi tách lúc chạy** vì test
+quét 14 cấm `'chi'` / `'thu'` đứng riêng trong `ai_edge/` — ở đây chúng là chữ của câu tiếng Việt, không phải phép so
+chiều tiền. Test **+10** (`kiem_ten_test` 9 — hai bản sai bị bắt: bỏ *"chi"* khỏi từ chức năng làm đỏ ca A8, tắt phủ
+định làm đỏ ca *"không có danh mục abc"*; `kiem_cau_tra_loi_test` +1 canh lớp đã nối), `flutter test` **3796/3796**,
+`analyze` 26, `ai_edge` + `ai_chat` **56 / 632**.
+
+**Lần đo 11 — 8 câu chưa đạt của lần 10** (B1 C7 C9 C13 C14 C15 C19 C20; Realme, APK `ec13fdf`, 02:02–02:08, 6 phút, 0
+sập, 0 vỡ trần; màn chụp kiểm trước khi chạy). Mô hình viết **y hệt** câu B1 của lần 10 — và lớp chắn tên **bắt được**:
+
+| # | Lần 10 | **Lần 11** | Chấm |
+|---|---|---|---|
+| B1 | SAI *"mục tiêu mua xe hoặc mua nhà"* | chữ ấy bị `kiemTen` chặn → L2 mẫu câu: *"MuaXe đúng kế hoạch: Tiến độ 55,0%, Đã tích 1.101.000 đ, Mục tiêu 2.000.000 đ, Còn thiếu 899.000 đ, Còn 580 ngày, Theo nhịp hiện tại cần thêm 17 ngày, …; MuaDT đúng kế hoạch: … Còn 345 ngày, Theo nhịp hiện tại cần thêm 130 ngày, …"* | ✅ mẫu câu có ích — *"khi nào đạt"* có câu trả lời (còn 580 ngày, theo nhịp 17 ngày); **SAI → ✅** |
+| C7 C9 C13 C14 C15 C19 C20 | (như 9.26) | **giữ y hệt** lần 10 — cùng tool, cùng tham số, cùng câu hiện | không đổi (lớp chắn tên không có tác dụng phụ) |
+
+**Gộp** (26 câu giữ từ lần 9–10): nhóm A **8/8** · nhóm B **3/4** (B1 B3 B4 B1c ✅ — B2 L1b) · nhóm C tool **19/20** ·
+tham số **13/20** · nội dung đúng **13/20** · **SAI 0** · ĐC3 ✅ · trần ✅. Cổng D còn đúng **một** dòng chưa đạt: **tham
+số ≥ 16/20** (C7 C9 C14 C15 C19 C20) và C13 tool. Bảy câu ấy đều là chỗ ví dụ trong lời hệ thống đã **hết tác dụng**
+(9.26): tách hai tên trong một câu, *"nửa triệu"*, sàn *"từ … đến"*, `sap_xep`, *"di chuyển"* ≠ chuyển ví, *"ví X chi
+những gì"* về tổng kết — muốn tiếp là **chắn / đổi ở tầng mã** (hướng (f)).
+
+**Việc tiếp theo — chờ người dùng quyết** (câu chưa đạt: C7 C9 C13 C14 C15 C19 C20): (f) chắn tham số ở tầng mã —
+`danh_muc`/`tu_khoa` chứa **cả** tên danh mục lẫn tên ví có thật thì tool tự tách (C14 C19); *"nửa triệu"*, *"từ … đến"*
+trong **câu hỏi** đọc bằng `_giaTriSoChu`/`trichSo` trước khi gửi mô hình và đối chiếu với tham số (C7 C9); *"lần gần
+nhất/cuối"* trong câu hỏi ép `sap_xep=moi_nhat` (C20); danh mục *"Di chuyển"* có thật trong câu thì `chieu` không được
+là chuyển ví (C15); (g) gói gợi ý hạn mức (B3 dao động); (h) mở bước 3.
 
 ---
 
