@@ -75,11 +75,31 @@ class KetQuaCongCu {
   /// tên ấy không bị bộ kiểm đọc là số (bước 1c). **Không** vào [json].
   final List<String> tenLienQuan;
 
+  /// Lượt THÀNH CÔNG mà 0 khoản khớp bộ lọc (bước 2c, bẫy 4.44). Với tool lọc
+  /// bằng chữ tự do (`tim_giao_dich`), 0 khoản không phải câu trả lời mà là
+  /// một báo cáo về bộ lọc — `GoiSoTraCuu` đóng cổng hiện chữ và không bao giờ
+  /// gỡ. Chỉ `hangGiaoDich` đặt. **Không** vào [json].
+  final bool rongTheoBoLoc;
+
+  /// Chữ từng điều kiện lọc đã dùng, theo thứ tự cố định (spec 2c mục 2.2), cho
+  /// mẫu câu. Được chứa chữ số (khoảng tiền) vì **không** vào [json] — khác
+  /// [chuThem]; mỗi con số ở đây phải bằng đúng `chuoi` của một mục
+  /// [soLieuBoLoc].
+  final List<String> boLoc;
+
+  /// Số liệu dội lại của bộ lọc (Từ / Đến): nằm trong gói (`kiemSo`, thẻ) và
+  /// vào [json] y như [tongHop], nhưng mẫu câu **không** in thành vế — tiền tố
+  /// [boLoc] đã nêu.
+  final List<SoLieu> soLieuBoLoc;
+
   const KetQuaCongCu({
     required this.hang,
     required this.tongHop,
     this.chuThem = const {},
     this.tenLienQuan = const [],
+    this.rongTheoBoLoc = false,
+    this.boLoc = const [],
+    this.soLieuBoLoc = const [],
   })  : loi = null,
         choNguoiDung = null,
         thamSoGo = const [];
@@ -94,11 +114,15 @@ class KetQuaCongCu {
   })  : hang = const [],
         tongHop = const [],
         chuThem = const {},
+        rongTheoBoLoc = false,
+        boLoc = const [],
+        soLieuBoLoc = const [],
         loi = vi;
 
   Map<String, dynamic> get json => {
         if (hang.isNotEmpty) 'hang': [for (final h in hang) h.json],
         for (final s in tongHop) s.nhan: s.chuoi,
+        for (final s in soLieuBoLoc) s.nhan: s.chuoi,
         ...chuThem,
         if (loi != null) 'loi': loi,
       };

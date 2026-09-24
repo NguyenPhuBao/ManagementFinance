@@ -86,6 +86,37 @@ void main() {
     expect(kq.thamSoGo, ['vi']);
   });
 
+  test('⭐ bộ lọc dội lại (bước 2c): soLieuBoLoc vào json y như tongHop; boLoc và rongTheoBoLoc KHÔNG vào', () {
+    final kq = KetQuaCongCu(
+      hang: const [],
+      tongHop: [soDem('Số khoản', 0)],
+      soLieuBoLoc: [soTien('Đến', 1000000)],
+      boLoc: const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
+      rongTheoBoLoc: true,
+      chuThem: const {'ky': 'tháng này'},
+    );
+    expect(
+      kq.json,
+      {'Số khoản': '0', 'Đến': '1.000.000 đ', 'ky': 'tháng này'},
+      reason: 'JSON gửi mô hình KHÔNG đổi so với khi Từ/Đến còn ở tongHop — mô hình vẫn '
+          'thấy khoảng đã hiểu; boLoc chứa chữ số nên không được lọt vào JSON',
+    );
+    expect(kq.rongTheoBoLoc, isTrue);
+    expect(kq.boLoc, hasLength(2));
+  });
+
+  test('mặc định không rỗng theo bộ lọc, không bộ lọc; lời từ chối cũng vậy', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: []);
+    expect(kq.rongTheoBoLoc, isFalse);
+    expect(kq.boLoc, isEmpty);
+    expect(kq.soLieuBoLoc, isEmpty);
+    const tc = KetQuaCongCu.loi('x', choNguoiDung: 'y', thamSoGo: ['ky']);
+    expect(tc.rongTheoBoLoc, isFalse);
+    expect(tc.boLoc, isEmpty);
+    expect(tc.soLieuBoLoc, isEmpty);
+    expect(tc.json, {'loi': 'x'});
+  });
+
   test('kết quả THÀNH CÔNG không mang câu từ chối hay tham số gỡ', () {
     const kq = KetQuaCongCu(hang: [], tongHop: []);
     expect(kq.loi, isNull);
