@@ -43,6 +43,7 @@ class CongCuChiTieu implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final ma = args['ky']?.toString() ?? '';
     final ky = kyTuMa(ma, now);

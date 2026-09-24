@@ -13,6 +13,7 @@ import '../../budget/data/repositories/budget_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../transaction/domain/khoang_tien.dart';
 import '../../transaction/domain/tim_giao_dich.dart';
+import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
 import '../domain/goi_so.dart';
 import '../domain/hang_chi_tieu.dart';
@@ -26,7 +27,11 @@ class CongCuGiaoDich implements CongCu {
     required this.giaoDich,
     required this.nganSach,
     required this.baoCao,
+    this.log = print,
   });
+
+  /// Log khi bộ chỉnh tham số đổi gì đó — `print`, không `debugPrint` (bẫy 4.31).
+  final void Function(String) log;
 
   final TransactionRepository giaoDich;
   final BudgetRepository nganSach;
@@ -104,29 +109,44 @@ class CongCuGiaoDich implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
-    final maKy = args['ky']?.toString().trim() ?? '';
+    // Bộ chỉnh tham số theo CÂU HỎI (mục 9.28): câu hỏi là nguồn sự thật,
+    // tham số của mô hình chỉ là gợi ý. Chạy TRƯỚC mọi phép kiểm.
+    final dsVi = await baoCao.watchVi(idaccount).first;
+    final dsDm = await baoCao.watchDanhMuc(idaccount).first;
+    final chinh = chinhThamSoTimGiaoDich(
+      cauHoi,
+      args,
+      tenDanhMuc: [for (final d in dsDm) d.ten],
+      tenVi: [for (final v in dsVi) v.ten],
+    );
+    if (chinh.ghiChu.isNotEmpty) {
+      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+    }
+    final a = chinh.args;
+    final maKy = a['ky']?.toString().trim() ?? '';
     final ky = _kyCua(maKy, now);
     if (ky == null) return tuChoiGiaTri('ky', maKy, [...kMaKy.keys, kMaKyMoiLuc]);
 
-    final maChieu = args['chieu']?.toString() ?? 'tat_ca';
+    final maChieu = a['chieu']?.toString() ?? 'tat_ca';
     final chieu = kChieuTim[maChieu];
     if (chieu == null) return tuChoiGiaTri('chieu', maChieu, kChieuTim.keys);
-    final maXep = args['sap_xep']?.toString() ?? 'so_tien';
+    final maXep = a['sap_xep']?.toString() ?? 'so_tien';
     final sapXep = kSapXepTim[maXep];
     if (sapXep == null) return tuChoiGiaTri('sap_xep', maXep, kSapXepTim.keys);
 
-    final tu = _soDong(args['so_tien_tu']);
-    if (tu.sai) return tuChoiSoTien('so_tien_tu', args['so_tien_tu']);
-    final den = _soDong(args['so_tien_den']);
-    if (den.sai) return tuChoiSoTien('so_tien_den', args['so_tien_den']);
+    final tu = _soDong(a['so_tien_tu']);
+    if (tu.sai) return tuChoiSoTien('so_tien_tu', a['so_tien_tu']);
+    final den = _soDong(a['so_tien_den']);
+    if (den.sai) return tuChoiSoTien('so_tien_den', a['so_tien_den']);
     final khoang = KhoangTien(tu: tu.so, den: den.so);
     if (!khoang.hopLe) return tuChoiKhoangNguoc(_tho(tu.so!), _tho(den.so!));
 
     // Tham số tên / từ khoá: giá trị giữ chỗ ("tat_ca") nghĩa là KHÔNG LỌC — cổng
     // D lần 1 đo được mô hình dùng nó thế, và tool từng từ chối vì không có danh
     // mục / ví nào tên ấy (bẫy 4.43).
-    final tuKhoa = thamSoTen(args['tu_khoa']);
+    final tuKhoa = thamSoTen(a['tu_khoa']);
     // Số tiền trong từ khoá: để nguyên thì tìm "500k" trong ghi chú ra 0 khoản —
     // một lượt THÀNH CÔNG, và câu "không có khoản nào" được phép hiện.
     if (tuKhoa != null && laSoTien(tuKhoa)) return tuChoiTuKhoaLaSoTien(tuKhoa);
@@ -134,16 +154,16 @@ class CongCuGiaoDich implements CongCu {
     final tieuChi = TieuChiTim(
       chieu: chieu,
       khoangTien: khoang.rong ? null : khoang,
-      tenDanhMuc: thamSoTen(args['danh_muc']),
-      tenVi: thamSoTen(args['vi']),
+      tenDanhMuc: thamSoTen(a['danh_muc']),
+      tenVi: thamSoTen(a['vi']),
       tuKhoa: tuKhoa ?? '',
       sapXep: sapXep,
     );
     final kq = timGiaoDich(
       trongKy: await giaoDich.watchKhoang(idaccount, ky.from, ky.to).first,
       lookup: await nganSach.lookupFor(idaccount),
-      viSong: await baoCao.watchVi(idaccount).first,
-      danhMucSong: await baoCao.watchDanhMuc(idaccount).first,
+      viSong: dsVi,
+      danhMucSong: dsDm,
       tieuChi: tieuChi,
       now: now,
       toiDa: kToiDaMucMoiGoi,

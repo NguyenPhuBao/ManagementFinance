@@ -25,6 +25,7 @@ class CongCuVi implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final vis = await vi.watchAll(idaccount).first;
     return hangVi(viChoGoiSoTu(vis));

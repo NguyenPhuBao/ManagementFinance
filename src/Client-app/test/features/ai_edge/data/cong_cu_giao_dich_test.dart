@@ -138,6 +138,27 @@ void main() {
     expect(giaoDich.khoangDaHoi, isEmpty);
   });
 
+  // Lần đo 9–11: tham số 13/20 — sáu câu hỏng ở chỗ ví dụ lời hệ thống hết tác
+  // dụng. Tool nhận CÂU HỎI và chỉnh args trước khi kiểm (chinh_tham_so.dart).
+  test('⭐ C15 lần 11: câu hỏi "chi cho di chuyen" chỉnh chieu chuyen_vi → khoan_chi, danh_muc Di chuyển, ky moi_luc', () async {
+    final kq = await cc.chay(
+      {'ky': 'hom_nay', 'chieu': 'chuyen_vi', 'sap_xep': 'moi_nhat'},
+      idaccount: 10,
+      now: now,
+      cauHoi: 'lan gan nhat toi chi cho di chuyen la ngay nao',
+    );
+    expect(kq.loi, isNull);
+    expect(kq.hang.single.trangThai, 'khoản chi · Di chuyển · Tiền mặt',
+        reason: 'mô hình đọc "di chuyển" thành chuyển ví — câu hỏi nói chi cho một danh mục có thật');
+    expect(kq.boLoc, containsAll(<String>['khoản chi', 'danh mục "Di chuyển"', 'mới nhất trước']));
+    expect(giaoDich.khoangDaHoi.single.$1.year, 1970, reason: 'câu không nêu kỳ → mọi thời gian');
+  });
+
+  test('không truyền cauHoi (mặc định rỗng) thì args giữ nguyên như trước', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'chieu': 'chuyen_vi'}, idaccount: 10, now: now);
+    expect(kq.hang.single.trangThai, 'chuyển ví · Tiền mặt → Tiết kiệm');
+  });
+
   test('⭐ ví "tiet kiem" khớp Tiết kiệm (không Tiết kiệm mua nhà), gồm khoản chuyển VÀO nó', () async {
     final kq = await cc.chay({'ky': 'thang_nay', 'vi': 'tiet kiem', 'chieu': 'chuyen_vi'}, idaccount: 10, now: now);
     expect(kq.hang.single.trangThai, 'chuyển ví · Tiền mặt → Tiết kiệm');

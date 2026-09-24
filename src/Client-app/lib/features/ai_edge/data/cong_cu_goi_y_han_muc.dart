@@ -44,6 +44,7 @@ class CongCuGoiYHanMuc implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     var danhMuc = await nganSach.getExpenseCategories(idaccount);
     String? tenDaKhop;

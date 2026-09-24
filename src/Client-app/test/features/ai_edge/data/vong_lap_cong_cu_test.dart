@@ -64,7 +64,7 @@ class _CongCuGia implements CongCu {
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
       ten: ten, moTa: 'giả', thamSo: const {'type': 'object', 'properties': <String, dynamic>{}});
   @override
-  Future<KetQuaCongCu> chay(Map<String, dynamic> args, {required int idaccount, required DateTime now}) async {
+  Future<KetQuaCongCu> chay(Map<String, dynamic> args, {required int idaccount, required DateTime now, String cauHoi = ''}) async {
     argsDaNhan.add(args);
     return ketQua;
   }
@@ -81,7 +81,7 @@ class _CongCuKichBan implements CongCu {
       ten: ten, moTa: 'giả', thamSo: const {'type': 'object', 'properties': <String, dynamic>{}});
   @override
   Future<KetQuaCongCu> chay(Map<String, dynamic> args,
-      {required int idaccount, required DateTime now}) async {
+      {required int idaccount, required DateTime now, String cauHoi = ''}) async {
     argsDaNhan.add(args);
     final i = argsDaNhan.length - 1;
     return kichBan[i < kichBan.length ? i : kichBan.length - 1];

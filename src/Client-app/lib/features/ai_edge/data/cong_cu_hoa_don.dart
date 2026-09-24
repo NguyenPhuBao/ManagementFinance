@@ -34,6 +34,7 @@ class CongCuHoaDon implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final bills = await hoaDon.watchBills(idaccount).first;
     return hangHoaDon(

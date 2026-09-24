@@ -27,6 +27,7 @@ class CongCuNganSach implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final tatCa = await nganSach.watchBudgets(idaccount, now: now).first;
     return hangNganSach(nganSachDangChay(tatCa, now), now: now);

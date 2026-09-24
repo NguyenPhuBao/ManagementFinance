@@ -28,6 +28,7 @@ class CongCuMucTieu implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final goals = await mucTieu.watchGoals(idaccount).first;
     return hangMucTieu(goals, now: now);

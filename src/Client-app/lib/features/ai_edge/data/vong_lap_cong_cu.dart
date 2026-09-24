@@ -165,7 +165,13 @@ Stream<SuKienGac> hoiBangCongCu(
         soLanGoi++;
         yield DangTraCuu(g.ten);
         final moc = dongHo.elapsedMilliseconds;
-        final kq = await boCongCu.chay(g.ten, g.args, idaccount: idaccount, now: now);
+        final kq = await boCongCu.chay(
+          g.ten,
+          g.args,
+          idaccount: idaccount,
+          now: now,
+          cauHoi: cauHoi,
+        );
         if (kq == null) {
           log('[SLM][tool] lượt $luot: gọi ${g.ten} — không có tool này');
           await phien.traKetQua(g.ten, {

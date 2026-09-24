@@ -63,10 +63,14 @@ abstract class CongCu {
   /// [args] do mô hình sinh — tool TỰ kiểm enum, giá trị lạ → `KetQuaCongCu.loi`,
   /// không đoán. [idaccount] và [now] do vòng lặp truyền từ màn: tool không tự
   /// đọc phiên đăng nhập (quy tắc 2 `CLAUDE.md`) và không tự đọc đồng hồ.
+  /// [cauHoi] là câu hỏi gốc của người dùng (2026-09-25, mục 9.28): tool nào đọc
+  /// được tham số thẳng từ câu hỏi bằng luật thì chỉnh args trước khi kiểm —
+  /// hôm nay chỉ `tim_giao_dich` (`chinh_tham_so.dart`); tool khác bỏ qua.
   Future<KetQuaCongCu> chay(
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   });
 }
 

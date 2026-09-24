@@ -57,10 +57,11 @@ class BoCongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     for (final c in cacCongCu) {
       if (c.khaiBao.ten == ten) {
-        return c.chay(args, idaccount: idaccount, now: now);
+        return c.chay(args, idaccount: idaccount, now: now, cauHoi: cauHoi);
       }
     }
     return null;
