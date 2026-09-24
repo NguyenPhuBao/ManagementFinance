@@ -151,9 +151,13 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   }
 
   // 2. Danh mục / ví nêu trong câu hỏi; chiều "chuyển ví" khi câu không chuyển tiền.
+  // ⚠️ Tên trùng với TỪ KHOÁ ghi chú mô hình đã điền thì không phải danh mục
+  // (C17 lần 13: "ghi chú hoa don" ↔ danh mục "Hóa đơn" → lọc thêm danh mục →
+  // 0 khoản).
+  final tuKhoaBo = _bo(_chuoi(a['tu_khoa']) ?? '');
   if (_chuoi(a['danh_muc']) == null) {
     final dm = _tenTrong(q, bangDm);
-    if (dm != null) {
+    if (dm != null && (tuKhoaBo.isEmpty || !tuKhoaBo.contains(_bo(dm)))) {
       a['danh_muc'] = dm;
       ghi.add('câu hỏi nêu danh mục → danh_muc=$dm');
     }

@@ -84,6 +84,20 @@ void main() {
       expect(r.containsKey('danh_muc'), isFalse);
     });
 
+    test('⭐ C17 lần 13: tên danh mục trùng TỪ KHOÁ ghi chú ("hoa don" ↔ danh mục Hóa đơn) thì KHÔNG điền danh_muc', () {
+      final r = chinhThamSoTimGiaoDich(
+        'tim cac giao dich co ghi chu hoa don',
+        {'ky': 'thang_nay', 'tu_khoa': 'hoa don'},
+        tenDanhMuc: [...danhMuc, 'Hóa đơn'],
+        tenVi: vi,
+      ).args;
+      expect(r.containsKey('danh_muc'), isFalse,
+          reason: 'Trên Realme luật 2 điền danh_muc=Hóa đơn cạnh tu_khoa "hoa don" → 0 khoản, '
+              'câu đúng của lần 9 thành mẫu câu lệch.');
+      expect(r['tu_khoa'], 'hoa don');
+      expect(r['ky'], 'moi_luc');
+    });
+
     test('danh_muc mô hình đã điền đúng thì không đè bằng tên khác trong câu', () {
       final r = chinh('cac khoan an uong va di chuyen', {
         'ky': 'thang_nay', 'danh_muc': 'an uong',
