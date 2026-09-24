@@ -1,4 +1,5 @@
-/// Adapter tool `tim_giao_dich`: kiểm và dịch tham số → `kyTuMa` →
+/// Adapter tool `tim_giao_dich`: kiểm và dịch tham số (`ky` **bắt buộc** — bước
+/// 2b) → khoảng đọc (`kyTuMa`, hoặc mọi thời gian cho `moi_luc`) →
 /// `watchKhoang` · `lookupFor` · `watchVi` / `watchDanhMuc` → `timGiaoDich`
 /// → `hangGiaoDich`. Mọi tham số kiểm TRƯỚC khi đọc dữ liệu — không đoán.
 ///
@@ -44,10 +45,12 @@ class CongCuGiaoDich implements CongCu {
           'properties': {
             'ky': {
               'type': 'string',
-              'enum': kMaKy.keys.toList(),
+              'enum': [...kMaKy.keys, kMaKyMoiLuc],
               'description': '${[
                 for (final e in kMaKy.entries) '${e.key} = ${e.value}',
-              ].join('; ')}. Mặc định thang_nay.',
+              ].join('; ')}; $kMaKyMoiLuc = $kChuKyMoiLuc. Câu nêu kỳ nào thì chọn '
+                  'đúng kỳ ấy; câu không nêu kỳ (lần gần nhất, lần cuối, gần đây, tìm '
+                  'theo ghi chú) thì chọn $kMaKyMoiLuc.',
             },
             'chieu': {
               'type': 'string',
@@ -67,6 +70,7 @@ class CongCuGiaoDich implements CongCu {
                   'trước — dùng khi hỏi lần gần nhất, gần đây.',
             },
           },
+          'required': ['ky'],
         },
       );
 
@@ -76,9 +80,9 @@ class CongCuGiaoDich implements CongCu {
     required int idaccount,
     required DateTime now,
   }) async {
-    final maKy = args['ky']?.toString() ?? 'thang_nay';
-    final ky = kyTuMa(maKy, now);
-    if (ky == null) return tuChoiGiaTri('ky', maKy, kMaKy.keys);
+    final maKy = args['ky']?.toString().trim() ?? '';
+    final ky = _kyCua(maKy, now);
+    if (ky == null) return tuChoiGiaTri('ky', maKy, [...kMaKy.keys, kMaKyMoiLuc]);
 
     final maChieu = args['chieu']?.toString() ?? 'tat_ca';
     final chieu = kChieuTim[maChieu];
@@ -119,8 +123,23 @@ class CongCuGiaoDich implements CongCu {
       now: now,
       toiDa: kToiDaMucMoiGoi,
     );
-    return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: kMaKy[maKy]!, now: now);
+    return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
   }
+}
+
+/// Mã kỳ → khoảng đọc + chữ kỳ. `null` = mã lạ hoặc thiếu (spec 2b mục 2.5:
+/// `ky` bắt buộc, không tự mặc định tháng này).
+({DateTime from, DateTime to, String chu})? _kyCua(String ma, DateTime now) {
+  if (ma == kMaKyMoiLuc) {
+    // Khoản ghi ngày tương lai vẫn bị `timGiaoDich` bỏ (spec bước 2 mục 1.2 hàng 11).
+    return (
+      from: DateTime(1970),
+      to: DateTime(now.year, now.month, now.day + 1),
+      chu: kChuKyMoiLuc,
+    );
+  }
+  final ky = kyTuMa(ma, now);
+  return ky == null ? null : (from: ky.from, to: ky.to, chu: kMaKy[ma]!);
 }
 
 /// Số đồng từ tham số của mô hình: số JSON, hoặc chuỗi toàn chữ số.

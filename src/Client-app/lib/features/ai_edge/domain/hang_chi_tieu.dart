@@ -14,8 +14,9 @@ import 'loi_tham_so.dart';
 /// đọc mọi chữ số là số, và số không có trong gói làm câu bị chặn.
 ///
 /// Tám mã từ bước 2 (2026-09-23) — thêm `hom_nay`, `hom_qua`, `tuan_truoc`.
-/// Bảng DUY NHẤT cho mọi tool nhận tham số kỳ, để hai tool không bao giờ hiểu
-/// cùng một chữ kỳ theo hai cách.
+/// Bảng DUY NHẤT của các mã kỳ CHUNG — mọi tool nhận tham số kỳ đọc nó, để hai
+/// tool không bao giờ hiểu cùng một chữ kỳ theo hai cách. `tim_giao_dich` nhận
+/// thêm đúng một mã riêng, [kMaKyMoiLuc] (bước 2b).
 const Map<String, String> kMaKy = {
   'hom_nay': 'hôm nay',
   'hom_qua': 'hôm qua',
@@ -26,6 +27,14 @@ const Map<String, String> kMaKy = {
   'quy_nay': 'quý này',
   'nam_nay': 'năm nay',
 };
+
+/// Mã kỳ RIÊNG của `tim_giao_dich` (bước 2b, spec mục 2.5): câu không nêu kỳ —
+/// "lần gần nhất", "lần cuối", "tìm theo ghi chú" — tìm trên mọi thời gian thay
+/// vì chỉ tháng này (sang tháng mới, câu ấy từng ra "chưa có" dù thực tế có).
+/// ⚠️ KHÔNG thêm vào [kMaKy]: `chi_tieu_theo_ky` không nhận mã này — `kyTuMa` trả
+/// `null` cho nó nên tool ấy từ chối như mọi mã lạ.
+const String kMaKyMoiLuc = 'moi_luc';
+const String kChuKyMoiLuc = 'mọi thời gian';
 
 /// `null` = mã lạ. `cacKyGanNhat(...).first` là kỳ chứa [now]. Hai mã ngày dựng
 /// bằng `Ky.tuyChon` trọn một ngày — `DateTime(y, m, d - 1)` tự lùi qua biên

@@ -5,6 +5,7 @@ library;
 
 import 'package:flowmoney/features/ai_edge/data/cong_cu_giao_dich.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/hang_chi_tieu.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
@@ -70,7 +71,7 @@ void main() {
     cc = CongCuGiaoDich(giaoDich: giaoDich, nganSach: _NganSach(), baoCao: _BaoCao());
   });
 
-  test('khai báo: tám tham số tuỳ chọn, enum đúng, mô tả có "Gọi khi" và ví dụ số đồng', () {
+  test('khai báo: tám tham số (ky bắt buộc — bước 2b), enum đúng, mô tả có "Gọi khi" và ví dụ số đồng', () {
     final k = cc.khaiBao;
     expect(k.ten, kTenCongCuGiaoDich);
     expect(k.moTa, contains('Gọi khi'));
@@ -81,31 +82,50 @@ void main() {
     expect(p['chieu']['enum'], ['khoan_chi', 'khoan_thu', 'chuyen_vi', 'tat_ca']);
     expect(p['sap_xep']['enum'], ['so_tien', 'moi_nhat']);
     expect(p['so_tien_tu']['type'], 'number');
-    expect(k.thamSo['required'], isNull);
+    expect(k.thamSo['required'], ['ky'],
+        reason: 'C4, C8 của cổng D lần 1: câu có nêu kỳ mà mô hình bỏ trống ky');
+    expect(p['ky']['enum'], [...kMaKy.keys, 'moi_luc']);
   });
 
-  test('mặc định: tháng này, tất cả chiều, xếp theo số tiền', () async {
+  test('⭐ thiếu ky → từ chối, KHÔNG tự mặc định tháng này (spec 2b mục 2.5)', () async {
     final kq = await cc.chay({}, idaccount: 10, now: now);
+    expect(kq.loi, contains('moi_luc'));
+    expect(kq.choNguoiDung, 'chưa hiểu khoảng thời gian trong câu hỏi');
+    expect(kq.thamSoGo, ['ky']);
+    expect(giaoDich.khoangDaHoi, isEmpty,
+        reason: 'C4: câu hỏi "tuần này" mà tìm tháng này — câu trả lời sai kỳ');
+  });
+
+  test('ky thang_nay: tất cả chiều, xếp theo số tiền', () async {
+    final kq = await cc.chay({'ky': 'thang_nay'}, idaccount: 10, now: now);
     expect(giaoDich.khoangDaHoi.single, (DateTime(2026, 9, 1), DateTime(2026, 10, 1)));
     expect(kq.chuThem, {'ky': 'tháng này', 'sap_xep': 'lớn nhất trước'});
     expect(kq.hang.map((h) => h.ten).toList(), ['Chuyển khoản', 'Cho vay']);
   });
 
+  test('⭐ moi_luc → đọc từ 1970 tới đầu ngày mai; chữ kỳ "mọi thời gian"', () async {
+    final kq = await cc.chay({'ky': 'moi_luc'}, idaccount: 10, now: now);
+    expect(giaoDich.khoangDaHoi.single, (DateTime(1970), DateTime(2026, 9, 24)),
+        reason: '"lần gần nhất" sang tháng mới từng chỉ tìm trong tháng này');
+    expect(kq.chuThem['ky'], 'mọi thời gian');
+    expect(kq.loi, isNull);
+  });
+
   test('⭐ "500k" từ chối kèm ví dụ, KHÔNG đọc dữ liệu', () async {
-    final kq = await cc.chay({'so_tien_tu': '500k'}, idaccount: 10, now: now);
+    final kq = await cc.chay({'ky': 'thang_nay', 'so_tien_tu': '500k'}, idaccount: 10, now: now);
     expect(kq.loi, contains('500000'));
     expect(giaoDich.khoangDaHoi, isEmpty);
   });
 
   test('chuỗi toàn chữ số được nhận; số âm từ chối', () async {
-    final kq = await cc.chay({'so_tien_tu': '500000', 'chieu': 'khoan_chi'}, idaccount: 10, now: now);
+    final kq = await cc.chay({'ky': 'thang_nay', 'so_tien_tu': '500000', 'chieu': 'khoan_chi'}, idaccount: 10, now: now);
     expect(kq.loi, isNull);
     expect(kq.hang.single.ten, 'Cho vay');
-    expect((await cc.chay({'so_tien_den': -1}, idaccount: 10, now: now)).loi, isNotNull);
+    expect((await cc.chay({'ky': 'thang_nay', 'so_tien_den': -1}, idaccount: 10, now: now)).loi, isNotNull);
   });
 
   test('so_tien_tu > so_tien_den từ chối, nêu hai số — không tự hoán đổi', () async {
-    final kq = await cc.chay({'so_tien_tu': 1000000, 'so_tien_den': 200000}, idaccount: 10, now: now);
+    final kq = await cc.chay({'ky': 'thang_nay', 'so_tien_tu': 1000000, 'so_tien_den': 200000}, idaccount: 10, now: now);
     expect(kq.loi, contains('1000000'));
     expect(kq.loi, contains('200000'));
     expect(giaoDich.khoangDaHoi, isEmpty);
@@ -113,25 +133,25 @@ void main() {
 
   test('enum lạ (ky, chieu, sap_xep) từ chối, liệt kê giá trị đúng', () async {
     expect((await cc.chay({'ky': 'hom_kia'}, idaccount: 10, now: now)).loi, contains('hom_qua'));
-    expect((await cc.chay({'chieu': 'chi'}, idaccount: 10, now: now)).loi, contains('khoan_chi'));
-    expect((await cc.chay({'sap_xep': 'cu_nhat'}, idaccount: 10, now: now)).loi, contains('moi_nhat'));
+    expect((await cc.chay({'ky': 'thang_nay', 'chieu': 'chi'}, idaccount: 10, now: now)).loi, contains('khoan_chi'));
+    expect((await cc.chay({'ky': 'thang_nay', 'sap_xep': 'cu_nhat'}, idaccount: 10, now: now)).loi, contains('moi_nhat'));
     expect(giaoDich.khoangDaHoi, isEmpty);
   });
 
   test('⭐ ví "tiet kiem" khớp Tiết kiệm (không Tiết kiệm mua nhà), gồm khoản chuyển VÀO nó', () async {
-    final kq = await cc.chay({'vi': 'tiet kiem', 'chieu': 'chuyen_vi'}, idaccount: 10, now: now);
+    final kq = await cc.chay({'ky': 'thang_nay', 'vi': 'tiet kiem', 'chieu': 'chuyen_vi'}, idaccount: 10, now: now);
     expect(kq.hang.single.trangThai, 'chuyển ví · Tiền mặt → Tiết kiệm');
   });
 
   test('tên ví sai → từ chối kèm tên thật (vào tenLienQuan)', () async {
-    final kq = await cc.chay({'vi': 'vi gia'}, idaccount: 10, now: now);
+    final kq = await cc.chay({'ky': 'thang_nay', 'vi': 'vi gia'}, idaccount: 10, now: now);
     expect(kq.loi, contains('Tiết kiệm mua nhà'));
     expect(kq.tenLienQuan, ['Tiền mặt', 'Tiết kiệm', 'Tiết kiệm mua nhà', 'vi gia']);
     expect(kq.choNguoiDung, 'không có ví nào tên "vi gia"');
   });
 
   test('tham số lạ bỏ qua', () async {
-    expect((await cc.chay({'la': true}, idaccount: 10, now: now)).loi, isNull);
+    expect((await cc.chay({'ky': 'thang_nay', 'la': true}, idaccount: 10, now: now)).loi, isNull);
   });
 
   test('⭐ giá trị giữ chỗ ở danh_muc / vi / tu_khoa → kết quả GIỐNG HỆT không truyền (bẫy 4.43)', () async {

@@ -7,6 +7,7 @@ import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/hang_chi_tieu.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
@@ -205,5 +206,19 @@ void main() {
     final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'hom_kia'}, idaccount: 10, now: now))!;
     expect(kq.loi, contains('hom_kia'));
     expect(phanTich.kyDaHoi, isNull, reason: 'không đoán kỳ rồi đi đọc dữ liệu của kỳ đoán');
+  });
+
+  test('⭐ chi_tieu_theo_ky giữ TÁM mã: moi_luc là mã riêng của tim_giao_dich — nhận thì từ chối, không đọc repository', () async {
+    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuChiTieu);
+    // ⚠️ Không so với `kMaKy.keys` — bản sai đưa `moi_luc` vào `kMaKy` đổi cả hai
+    // vế cùng lúc, phép so tự đúng (lượt thi công bước 2b đo được). Đòi kết quả
+    // độc lập: đúng tám mã, không có `moi_luc`.
+    final enumKy = ((khai.thamSo['properties'] as Map)['ky'] as Map)['enum'] as List;
+    expect(enumKy, hasLength(8));
+    expect(enumKy, isNot(contains(kMaKyMoiLuc)),
+        reason: 'khai moi_luc cho chi_tieu_theo_ky là mời mô hình gọi một mã sẽ bị từ chối');
+    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'moi_luc'}, idaccount: 10, now: now))!;
+    expect(kq.loi, isNotNull);
+    expect(phanTich.kyDaHoi, isNull);
   });
 }
