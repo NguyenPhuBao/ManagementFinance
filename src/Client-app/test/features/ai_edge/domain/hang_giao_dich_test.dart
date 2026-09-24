@@ -59,13 +59,75 @@ void main() {
     expect(tong(const TieuChiTim()).keys, ['Số khoản', 'Tổng chi', 'Tổng thu', 'Tổng chuyển']);
   });
 
-  test('khoảng tiền đã hiểu DỘI LẠI (Từ / Đến)', () {
+  test('⭐ khoảng tiền đã hiểu DỘI LẠI ở soLieuBoLoc, KHÔNG ở tongHop; json vẫn có Từ (bước 2c)', () {
     final r = hangGiaoDich(kq,
         tieuChi: const TieuChiTim(chieu: ChieuTim.chi, khoangTien: KhoangTien(tu: 500000)),
         chuKy: 'tháng này', now: now);
-    final t = {for (final s in r.tongHop) s.nhan: s.chuoi};
-    expect(t['Từ'], '500.000 đ');
-    expect(t.containsKey('Đến'), isFalse);
+    expect({for (final s in r.soLieuBoLoc) s.nhan: s.chuoi}, {'Từ': '500.000 đ'});
+    expect(r.tongHop.map((s) => s.nhan).toList(), ['Số khoản', 'Tổng chi'],
+        reason: 'còn ở tongHop thì mẫu câu in "Từ: 500.000 đ" thành một vế dữ liệu');
+    expect(r.json['Từ'], '500.000 đ', reason: 'JSON gửi mô hình không đổi');
+    expect(r.json.containsKey('Đến'), isFalse);
+  });
+
+  test('⭐ rongTheoBoLoc: đúng khi soKhop == 0 (bẫy 4.44), sai khi có khoản, không đặt ở lời từ chối', () {
+    const rong = KetQuaTimGiaoDich(dong: [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0);
+    expect(hangGiaoDich(rong, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).rongTheoBoLoc, isTrue,
+        reason: 'C9 cổng D lần 2: tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" trong khi có 2');
+    expect(hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).rongTheoBoLoc, isFalse);
+    const loi = KetQuaTimGiaoDich.loi(LoiKhopTen(
+        truong: TruongTen.vi, hoi: 'vi gia', nhieu: false, tenGoiY: ['Tiền mặt']));
+    expect(hangGiaoDich(loi, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).rongTheoBoLoc, isFalse);
+  });
+
+  test('⭐ boLoc: bảy điều kiện đúng thứ tự; tat_ca và so_tien không in; tên danh mục / ví là TÊN THẬT đã khớp', () {
+    final kqKhop = KetQuaTimGiaoDich(
+      dong: kq.dong, soKhop: 7, tongChi: 2031000, tongThu: 0, tongChuyen: 900000,
+      tenDanhMucKhop: 'Ăn uống', tenViKhop: 'Tiết kiệm',
+    );
+    final r = hangGiaoDich(kqKhop,
+        tieuChi: const TieuChiTim(
+          chieu: ChieuTim.chi,
+          khoangTien: KhoangTien(tu: 200000, den: 1000000),
+          tenDanhMuc: 'an_uong',
+          tenVi: 'tiet_kiem',
+          tuKhoa: 'hoa don',
+          sapXep: SapXepTim.moiNhat,
+        ),
+        chuKy: 'tháng này', now: now);
+    expect(r.boLoc, [
+      'khoản chi',
+      'danh mục "Ăn uống"',
+      'ví "Tiết kiệm"',
+      'ghi chú chứa "hoa don"',
+      'từ 200.000 đ',
+      'đến 1.000.000 đ',
+      'mới nhất trước',
+    ], reason: 'tên là tên THẬT đã khớp (không phải "an_uong" mô hình gõ); thứ tự cố định để hai lượt cùng bộ lọc cho cùng tiền tố');
+    // `kq` của tệp mang tenViKhop 'Tiền mặt' nên boLoc luôn có `ví "Tiền mặt"`;
+    // muốn thấy "không nêu gì" thì cần kết quả KHÔNG khớp tên nào.
+    final khongTen = KetQuaTimGiaoDich(dong: kq.dong, soKhop: 7, tongChi: 2031000, tongThu: 0, tongChuyen: 900000);
+    expect(hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).boLoc, ['ví "Tiền mặt"'],
+        reason: 'tat_ca và so_tien là mặc định — không nêu; tên ví đã khớp thì nêu');
+    expect(hangGiaoDich(khongTen, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now).boLoc, isEmpty);
+    expect(hangGiaoDich(khongTen, tieuChi: const TieuChiTim(chieu: ChieuTim.thu), chuKy: 'x', now: now).boLoc, ['khoản thu']);
+    expect(hangGiaoDich(khongTen, tieuChi: const TieuChiTim(chieu: ChieuTim.chuyen), chuKy: 'x', now: now).boLoc, ['chuyển ví']);
+  });
+
+  test('chuỗi tiền trong boLoc BẰNG chuoi của soLieuBoLoc — thẻ và kiemSo khớp được', () {
+    final r = hangGiaoDich(kq,
+        tieuChi: const TieuChiTim(khoangTien: KhoangTien(tu: 500000, den: 1234567)),
+        chuKy: 'tháng này', now: now);
+    expect(r.boLoc, ['ví "Tiền mặt"', 'từ ${r.soLieuBoLoc[0].chuoi}', 'đến ${r.soLieuBoLoc[1].chuoi}']);
+    expect(r.soLieuBoLoc[1].chuoi, '1.234.567 đ');
+  });
+
+  test('⭐ tu_khoa vào tenLienQuan (chữ số trong "T9" không bị đọc là số); rỗng thì không thêm gì', () {
+    final co = hangGiaoDich(kq, tieuChi: const TieuChiTim(tuKhoa: 'T9'), chuKy: 'tháng này', now: now);
+    expect(co.tenLienQuan, contains('T9'));
+    final khong = hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now);
+    expect(khong.tenLienQuan.toSet(), {'test1', 'Tiền mặt', 'Tiết kiệm'});
+    expect(khong.tenLienQuan, isNot(contains('')));
   });
 
   test('chữ kèm: kỳ + kiểu xếp, KHÔNG có chữ số', () {

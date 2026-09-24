@@ -5,6 +5,10 @@
 /// ⚠️ Tên hàng là ghi chú (luật tiêu đề dòng sổ), nên ghi chú hệ thống dài như
 /// "Tích lũy mục tiêu: MuaXe" là tên, và `kiemNhan` đòi câu nêu ĐỦ mọi âm tiết
 /// của nó. Mô hình rút gọn thì câu rơi về mẫu câu — an toàn, cố ý không nới.
+///
+/// Bước 2c: kết quả mang **bộ lọc dội lại** (`boLoc` — bảy điều kiện thứ tự
+/// cố định, tên là tên THẬT đã khớp; `soLieuBoLoc` — Từ/Đến rời `tongHop`) và
+/// cờ `rongTheoBoLoc` khi 0 khoản khớp (spec 2c mục 2.2, bẫy 4.44).
 library;
 
 import '../../transaction/domain/tim_giao_dich.dart';
@@ -45,6 +49,9 @@ KetQuaCongCu hangGiaoDich(
   final chieu = tieuChi.chieu;
   final tatCa = chieu == ChieuTim.tatCa;
   final kt = tieuChi.khoangTien;
+  final tu = kt?.tu == null ? null : soTien('Từ', kt!.tu!);
+  final den = kt?.den == null ? null : soTien('Đến', kt!.den!);
+  final tuKhoa = tieuChi.tuKhoa.trim();
   return KetQuaCongCu(
     hang: [
       for (final d in kq.dong)
@@ -64,9 +71,22 @@ KetQuaCongCu hangGiaoDich(
       if (tatCa || chieu == ChieuTim.thu) soTien('Tổng thu', kq.tongThu),
       if (tatCa || chieu == ChieuTim.chuyen)
         soTien('Tổng chuyển', kq.tongChuyen),
-      if (kt?.tu != null) soTien('Từ', kt!.tu!),
-      if (kt?.den != null) soTien('Đến', kt!.den!),
     ],
+    // Bộ lọc dội lại (bước 2c, spec mục 2.2): Từ/Đến rời tongHop để mẫu câu
+    // không in chúng thành vế dữ liệu; tiền tố nêu chúng cùng bộ lọc chữ.
+    soLieuBoLoc: [if (tu != null) tu, if (den != null) den],
+    boLoc: [
+      if (!tatCa) _chuChieu(chieu),
+      if (kq.tenDanhMucKhop != null) 'danh mục "${kq.tenDanhMucKhop}"',
+      if (kq.tenViKhop != null) 'ví "${kq.tenViKhop}"',
+      if (tuKhoa.isNotEmpty) 'ghi chú chứa "$tuKhoa"',
+      if (tu != null) 'từ ${tu.chuoi}',
+      if (den != null) 'đến ${den.chuoi}',
+      if (tieuChi.sapXep == SapXepTim.moiNhat) 'mới nhất trước',
+    ],
+    // 0 khoản với bộ lọc chữ tự do không phải câu trả lời (bẫy 4.44): C9 cổng D
+    // lần 2 — tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" trong khi có 2.
+    rongTheoBoLoc: kq.soKhop == 0,
     chuThem: {
       'ky': chuKy,
       'sap_xep': tieuChi.sapXep == SapXepTim.soTien
@@ -80,9 +100,19 @@ KetQuaCongCu hangGiaoDich(
         if (d.tenViDich != null) d.tenViDich!,
       ],
       ...kq.tenKhop,
+      // Tiền tố in `ghi chú chứa "T9"` — chữ số trong từ khoá là tên (bước 1c).
+      if (tuKhoa.isNotEmpty) tuKhoa,
     }.toList(),
   );
 }
+
+/// Chữ chiều cho tiền tố bộ lọc — cùng từ với `_trangThai`.
+String _chuChieu(ChieuTim c) => switch (c) {
+      ChieuTim.chi => 'khoản chi',
+      ChieuTim.thu => 'khoản thu',
+      ChieuTim.chuyen => 'chuyển ví',
+      ChieuTim.tatCa => '',
+    };
 
 String _trangThai(DongTimThay d) {
   final dm = d.tenDanhMuc ?? 'Chưa phân loại';
