@@ -269,7 +269,8 @@ Vế sau **đã làm đúng như đề nghị**; vế đầu sai từ 2026-09-22
 1. **2026-09-22 (P3):** màn chat nối mô hình Gemma 4 E2B trên máy — hỏi đáp tự do, chữ hiện dần theo
    câu, ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` trước khi hiện (`AI_EDGE_FEATURE.md` mục 9).
 2. **2026-09-23 (chặng 4b):** màn đi **bậc tool** — mô hình tự chọn một trong **bốn tool chỉ đọc**
-   (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
+   (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky` — đổi tên thành
+   `tong_ket_thu_chi_ky` ngày 2026-09-24 chiều), app chạy hàm
    domain có sẵn và trả hàng có tên; chưa tool nào chạy thì rơi về đường P3 (`AI_EDGE_FEATURE.md`
    mục 9.14). Vẫn **không** gọi API server nào: mọi thứ chạy trên máy.
    **2026-09-24 (bước 2):** thêm ba tool chỉ đọc — `danh_sach_muc_tieu` · `goi_y_han_muc` · `tim_giao_dich`

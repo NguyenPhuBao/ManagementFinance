@@ -618,7 +618,10 @@ lần 2 vẫn chưa đạt** cùng ngày (mục 9.18): năm câu SAI của lần
 `superpowers/specs/2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`): `khopTheoTen` bậc ba
 đọc `_` là dấu cách; lượt `tim_giao_dich` 0 khoản là báo cáo về bộ lọc — cổng hiện chữ đóng, mẫu câu nêu bộ lọc,
 nhánh L2c. 🛑 **Cổng D lần 3 vẫn chưa đạt nhưng SAI = 0** (mục 9.19): hai bẫy đóng, lời gọi tool y hệt lần 2
-(10/20 · 5/20) — đòn bẩy vẫn là đổi tên `chi_tieu_theo_ky`, chờ người dùng quyết; bẫy mới 4.46)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+(10/20 · 5/20) — đòn bẩy vẫn là đổi tên `chi_tieu_theo_ky`, chờ người dùng quyết; bẫy mới 4.46. ✅ **Đổi tên
+tool cùng chiều** (`61f66ba`): `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky`, mô tả giữ nguyên — 🛑 **cổng D lần 4 vẫn
+chưa đạt** (mục 9.20): tool 13/20 · 6/20 nhưng SAI 2 (bẫy 4.42 hết "chặn do may": *"một triệu"* viết bằng chữ), bẫy
+mới 4.47 (nhãn *Số khoản* ≠ chữ "giao dịch" của mô hình); bốn hướng kế tiếp chờ người dùng quyết)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
 nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4

@@ -15,6 +15,8 @@ tiền trong `tu_khoa` bị từ chối; mô tả tool mục 3.8 đã viết l�
 mục 3.8 ở hai chỗ: `KetQuaTimGiaoDich.tenKhop` nay là **getter** suy từ `tenDanhMucKhop` / `tenViKhop` (tên khớp có
 nhãn); và lượt `tim_giao_dich` thành công mà **0 khoản** không còn là câu trả lời — kết quả mang bộ lọc dội lại
 (`rongTheoBoLoc`, `boLoc`, `soLieuBoLoc`; Từ/Đến rời `tongHop`, JSON không đổi), app hiện mẫu câu nêu bộ lọc.
+**Đổi tên tool** 2026-09-24 chiều (`61f66ba`): `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky` — mọi chỗ spec này và
+spec 4b nhắc tên cũ là tên lúc viết; cổng D lần 4 (mục **9.20**) tool 13/20 · 6/20, SAI 2.
 
 > ⚠️ **Chỗ thi công KHÁC spec** (chi tiết: đầu tệp kế hoạch `…/plans/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md`):
 > (1) mục 3.10 dặn prompt ghi mẫu `12/09` — **không** ghi, vì ca test cấm mọi chữ số ngoài `60` trong prompt hệ

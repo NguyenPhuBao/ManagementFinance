@@ -19,6 +19,10 @@ liệu thật"* ở mục 2.2 nay có **ngoại lệ** — lượt `tim_giao_dic
 cổng hiện chữ (L2c), không bao giờ gỡ; (b) luật (a) mục 2.1 *"không có dấu `_`"* áp cả **giá trị mô hình gõ**:
 `khopTheoTen` bậc ba đọc `_` là dấu cách, `choNguoiDung` in tên đã đổi. Cổng D lần 3 vẫn 10/20 · 5/20 (lời gọi y
 hệt lần 2) — đòn bẩy hàng 10 vẫn chờ.
+✅ **Đòn bẩy hàng 10 ĐÃ DÙNG 2026-09-24 chiều** (`61f66ba`): `chi_tieu_theo_ky` → **`tong_ket_thu_chi_ky`**, mô tả
+giữ nguyên. Cổng D lần 4 (mục **9.20** `AI_EDGE_FEATURE.md`): tool 10 → **13/20**, tham số 5 → **6/20**, nhưng
+**SAI 2** (C7, C10 — bẫy 4.42 hết "chặn do may": mô hình viết *"một triệu"* bằng chữ). Mô tả tool của mục 2.6 vẫn
+đúng nguyên văn trừ tên. Việc kế tiếp chờ người dùng quyết (cuối mục 9.20).
 > ⚠️ **Chỗ thi công KHÁC spec, ngoài bảy chỗ của kế hoạch:** ca `bo_cong_cu_test` *"chi_tieu_theo_ky giữ TÁM
 > mã"* (mục 4) của kế hoạch so `enum` với chính `kMaKy.keys` nên không bắt được bản sai đưa `moi_luc` vào bảng
 > chung — ca nay đòi đúng 8 mã và không có `moi_luc`.

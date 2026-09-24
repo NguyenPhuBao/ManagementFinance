@@ -28,6 +28,8 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 > tự do), 0 khoản vẫn là đã tra cứu nhưng **đóng** cổng hiện chữ và không bao giờ gỡ — app hiện mẫu câu nêu bộ lọc
 > (**L2c**), vì mô hình dịch câu hỏi thành bộ lọc sai và "0 khoản" khi ấy trả lời một câu người dùng không đặt
 > (bẫy 4.44). Tool lọc bằng mã kỳ / trạng thái thì 0 hàng vẫn là dữ liệu thật như spec này viết.
+> ⚠️ **Tool `chi_tieu_theo_ky` đổi tên thành `tong_ket_thu_chi_ky`** 2026-09-24 chiều (`61f66ba`, mục **9.20**
+> `AI_EDGE_FEATURE.md`) — bốn tên tool của spec này là tên lúc viết; hằng Dart nay là `kTenCongCuTongKet`.
 > Vế *"tool trả 0 hàng vẫn là đã tra cứu"* giữ nguyên — ⚠️ nhưng cổng D lần 2 (mục **9.18**
 > `AI_EDGE_FEATURE.md`, bẫy **4.44**) cho thấy vế ấy chỉ đúng khi **bộ lọc khớp câu hỏi**.
 >

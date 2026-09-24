@@ -11,6 +11,8 @@ khớp."*), C11 khớp *Tiết kiệm* → 10 khoản đúng; **SAI = 0**, 0 s�
 Nhưng mô hình gọi tool / tham số **y hệt lần 2** ở cả 20 câu C (10/20 · 5/20) → dòng 3 đứng yên; nhóm B 2/4; ĐC3
 vẫn trượt tiêu chí. Theo mục 5 bước 5: đòn bẩy kế tiếp đổi tên `chi_tieu_theo_ky` — **chờ người dùng quyết**. Lộ
 bẫy mới **4.46** (mô hình đọc số dòng hiện thành số khoản — `kiemSo` chặn đúng, C11/C16 rơi mẫu câu).
+*(Sau spec này, cùng chiều: đổi tên tool `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky` (`61f66ba`), cổng D lần 4 —
+mục **9.20**; các ví dụ trong spec này vẫn dùng tên cũ vì đó là tên lúc đo lần 3.)*
 > ⚠️ **Chỗ thi công KHÁC spec, có chủ ý** (bốn chỗ ghi đầu kế hoạch): gói có danh sách `soLieuBoLoc` riêng thay vì
 > nhét vào `tongHop`; `GoiSoTraCuu.luotRong` là getter công khai (vòng lặp ghi log); ca đầu-cuối `vi: "tiet_kiem"` ở
 > task 1; thứ tự `cauNoiThem` ghi bằng danh sách loại xảy ra trước.
