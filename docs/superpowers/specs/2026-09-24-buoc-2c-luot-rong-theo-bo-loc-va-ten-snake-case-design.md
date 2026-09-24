@@ -1,8 +1,14 @@
 # Bước 2c — lượt rỗng theo bộ lọc không phải câu trả lời · tên `snake_case` (thiết kế)
 
-**Ngày:** 2026-09-24 · **Nhánh:** `TranQuangDat` @ `a66757f` · **Trạng thái:** 📝 chờ người dùng soát spec —
-thiết kế phần 1 (phạm vi + hai cơ chế) duyệt trong chat 2026-09-24, năm câu hỏi phần 2 chốt cùng ngày (mục 1.2).
-Kế hoạch: viết bằng `writing-plans` sau khi spec được duyệt, đặt ở `docs/superpowers/plans/` (gitignore).
+**Ngày:** 2026-09-24 · **Nhánh:** `TranQuangDat` @ `a66757f` · **Trạng thái:** ✅ **đã duyệt** 2026-09-24 —
+thiết kế phần 1 (phạm vi + hai cơ chế) duyệt trong chat, năm câu hỏi phần 2 chốt cùng ngày (mục 1.2), spec duyệt
+cùng ngày (`de7c6d5`). Kế hoạch 9 task: `docs/superpowers/plans/2026-09-24-buoc-2c-luot-rong-theo-bo-loc.md` (gitignore).
+✅ **Mã xong task 1–7 ngày 2026-09-24 trưa** (`1301de9` → `5b7b7f4`, thi công inline; nhật ký cuối tệp kế hoạch): 24
+bản sai đều bị bắt (một bản tương đương sống sót, ghi rõ); `flutter test` **3755/3755**, 3 skip; `flutter analyze` **26**,
+0 error. 🛑 **Cổng D lần 3 CHƯA ĐO** (task 8) — chờ người dùng quyết lúc đo; task 9 (tài liệu) làm sau buổi đo.
+> ⚠️ **Chỗ thi công KHÁC spec, có chủ ý** (bốn chỗ ghi đầu kế hoạch): gói có danh sách `soLieuBoLoc` riêng thay vì
+> nhét vào `tongHop`; `GoiSoTraCuu.luotRong` là getter công khai (vòng lặp ghi log); ca đầu-cuối `vi: "tiet_kiem"` ở
+> task 1; thứ tự `cauNoiThem` ghi bằng danh sách loại xảy ra trước.
 **Đầu vào:** cổng D lần đo 2 — mục **9.18** `docs/AI_EDGE_FEATURE.md`, bẫy **4.44**, **4.45**; spec bước 2b
 `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` (mục 2.2, 2.3 — cổng hiện chữ, L1b, L2b); spec 4b
 `2026-09-23-chang-4b-tool-calling-vong-lap-design.md` (mục 3.6 — chốt L1).
