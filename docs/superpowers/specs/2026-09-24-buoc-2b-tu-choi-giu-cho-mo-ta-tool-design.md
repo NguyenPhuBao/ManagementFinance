@@ -13,6 +13,12 @@ không phải tham số vị trí như mục 2.2; mười task thay vì chín).
 bẫy **4.45**) — luật (a) mục 2.1 *"không có dấu `_`"* không lường giá trị do mô hình gõ. Spike trần token (mục
 2.7): `tools_json` **5.431** ký tự, 0 vỡ trần. Theo mục 5 bước 7: đòn bẩy kế tiếp (mục 1.2 hàng 10 — đổi tên
 `chi_tieu_theo_ky`) **chờ người dùng quyết**.
+✅ **Bước 2c** (`2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`, mã xong `1301de9` →
+`5b7b7f4`, cổng D lần 3 mục **9.19**) đóng hai bẫy ấy và **sửa hai chỗ của spec này**: (a) vế *"0 hàng thật là dữ
+liệu thật"* ở mục 2.2 nay có **ngoại lệ** — lượt `tim_giao_dich` thành công mà 0 khoản là báo cáo về bộ lọc, đóng
+cổng hiện chữ (L2c), không bao giờ gỡ; (b) luật (a) mục 2.1 *"không có dấu `_`"* áp cả **giá trị mô hình gõ**:
+`khopTheoTen` bậc ba đọc `_` là dấu cách, `choNguoiDung` in tên đã đổi. Cổng D lần 3 vẫn 10/20 · 5/20 (lời gọi y
+hệt lần 2) — đòn bẩy hàng 10 vẫn chờ.
 > ⚠️ **Chỗ thi công KHÁC spec, ngoài bảy chỗ của kế hoạch:** ca `bo_cong_cu_test` *"chi_tieu_theo_ky giữ TÁM
 > mã"* (mục 4) của kế hoạch so `enum` với chính `kMaKy.keys` nên không bắt được bản sai đưa `moi_luc` vào bảng
 > chung — ca nay đòi đúng 8 mã và không có `moi_luc`.

@@ -614,7 +614,11 @@ thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); mã xong tas
 L2b · giá trị giữ chỗ = không lọc · `ky` của `tim_giao_dich` bắt buộc + `moi_luc` · mô tả tool mới), 🛑 **cổng D
 lần 2 vẫn chưa đạt** cùng ngày (mục 9.18): năm câu SAI của lần 1 hết SAI, nhóm A 8/8, nhưng nhóm C **tụt** còn
 10/20 tool · 4/20 tham số, và 1 câu SAI mới (bẫy 4.44 — tham số thừa làm hẹp bộ lọc); đòn bẩy kế tiếp (đổi tên
-`chi_tieu_theo_ky`) chờ người dùng quyết)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+`chi_tieu_theo_ky`) chờ người dùng quyết. ✅ **Bước 2c mã xong 2026-09-24 chiều** (`1301de9` → `5b7b7f4`; spec
+`superpowers/specs/2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`): `khopTheoTen` bậc ba
+đọc `_` là dấu cách; lượt `tim_giao_dich` 0 khoản là báo cáo về bộ lọc — cổng hiện chữ đóng, mẫu câu nêu bộ lọc,
+nhánh L2c. 🛑 **Cổng D lần 3 vẫn chưa đạt nhưng SAI = 0** (mục 9.19): hai bẫy đóng, lời gọi tool y hệt lần 2
+(10/20 · 5/20) — đòn bẩy vẫn là đổi tên `chi_tieu_theo_ky`, chờ người dùng quyết; bẫy mới 4.46)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
 kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
 nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4

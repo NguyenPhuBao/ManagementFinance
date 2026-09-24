@@ -23,6 +23,11 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 > không phải dữ liệu, nên nay **không** còn tính là đã tra cứu; mọi lời gọi bị từ chối thì hiện mẫu câu
 > trung thực (**L1b**), không rơi về bậc 1; còn lời từ chối chưa gỡ (gỡ theo tham số) thì chữ mô hình
 > không hiện (**L2b**). Cổng hiện chữ của vòng lặp nay là `choHienChuMoHinh`, không phải `daTraCuu`.
+> ⚠️ **Vế *"tool trả 0 hàng vẫn tính là đã chạy"* có NGOẠI LỆ từ bước 2c** (`da9b41b`, `f0d639d`, 2026-09-24 —
+> spec `2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`): với `tim_giao_dich` (lọc bằng chữ
+> tự do), 0 khoản vẫn là đã tra cứu nhưng **đóng** cổng hiện chữ và không bao giờ gỡ — app hiện mẫu câu nêu bộ lọc
+> (**L2c**), vì mô hình dịch câu hỏi thành bộ lọc sai và "0 khoản" khi ấy trả lời một câu người dùng không đặt
+> (bẫy 4.44). Tool lọc bằng mã kỳ / trạng thái thì 0 hàng vẫn là dữ liệu thật như spec này viết.
 > Vế *"tool trả 0 hàng vẫn là đã tra cứu"* giữ nguyên — ⚠️ nhưng cổng D lần 2 (mục **9.18**
 > `AI_EDGE_FEATURE.md`, bẫy **4.44**) cho thấy vế ấy chỉ đúng khi **bộ lọc khớp câu hỏi**.
 >

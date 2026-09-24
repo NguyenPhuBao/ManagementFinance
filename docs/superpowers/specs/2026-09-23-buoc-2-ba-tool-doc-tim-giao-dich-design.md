@@ -10,6 +10,11 @@ nhóm B 2/4 · nhóm C 13/20 tool · 5/20 tham số · 5 câu SAI (mục **9.17*
 của `tim_giao_dich` (mục 3.8) thành **bắt buộc** — thiếu thì từ chối, không mặc định tháng này — và thêm mã
 riêng `moi_luc` (mọi thời gian); `danh_muc` · `vi` · `tu_khoa` mang giá trị giữ chỗ nay nghĩa là không lọc, số
 tiền trong `tu_khoa` bị từ chối; mô tả tool mục 3.8 đã viết lại (spec 2b mục 2.6).
+**Vòng sửa hai:** spec bước 2c `2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md` — ✅ mã xong
+2026-09-24 (`1301de9` → `5b7b7f4`), 🛑 cổng D lần 3 chưa đạt nhưng bẫy 4.44 / 4.45 đóng (mục **9.19**). Nó đổi
+mục 3.8 ở hai chỗ: `KetQuaTimGiaoDich.tenKhop` nay là **getter** suy từ `tenDanhMucKhop` / `tenViKhop` (tên khớp có
+nhãn); và lượt `tim_giao_dich` thành công mà **0 khoản** không còn là câu trả lời — kết quả mang bộ lọc dội lại
+(`rongTheoBoLoc`, `boLoc`, `soLieuBoLoc`; Từ/Đến rời `tongHop`, JSON không đổi), app hiện mẫu câu nêu bộ lọc.
 
 > ⚠️ **Chỗ thi công KHÁC spec** (chi tiết: đầu tệp kế hoạch `…/plans/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md`):
 > (1) mục 3.10 dặn prompt ghi mẫu `12/09` — **không** ghi, vì ca test cấm mọi chữ số ngoài `60` trong prompt hệ

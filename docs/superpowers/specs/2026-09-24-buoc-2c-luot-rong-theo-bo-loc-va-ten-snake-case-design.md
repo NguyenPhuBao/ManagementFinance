@@ -5,7 +5,12 @@ thiết kế phần 1 (phạm vi + hai cơ chế) duyệt trong chat, năm câu 
 cùng ngày (`de7c6d5`). Kế hoạch 9 task: `docs/superpowers/plans/2026-09-24-buoc-2c-luot-rong-theo-bo-loc.md` (gitignore).
 ✅ **Mã xong task 1–7 ngày 2026-09-24 trưa** (`1301de9` → `5b7b7f4`, thi công inline; nhật ký cuối tệp kế hoạch): 24
 bản sai đều bị bắt (một bản tương đương sống sót, ghi rõ); `flutter test` **3755/3755**, 3 skip; `flutter analyze` **26**,
-0 error. 🛑 **Cổng D lần 3 CHƯA ĐO** (task 8) — chờ người dùng quyết lúc đo; task 9 (tài liệu) làm sau buổi đo.
+0 error. 🛑 **Cổng D lần 3 CHƯA ĐẠT — nhưng HAI BẪY ĐÓNG** (Realme 2026-09-24 13:35–14:06, mục **9.19**
+`docs/AI_EDGE_FEATURE.md`): C9 hết SAI (*"Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào
+khớp."*), C11 khớp *Tiết kiệm* → 10 khoản đúng; **SAI = 0**, 0 sập, 0 vỡ trần; ba tiêu chí thêm của mục 5 đều ✅.
+Nhưng mô hình gọi tool / tham số **y hệt lần 2** ở cả 20 câu C (10/20 · 5/20) → dòng 3 đứng yên; nhóm B 2/4; ĐC3
+vẫn trượt tiêu chí. Theo mục 5 bước 5: đòn bẩy kế tiếp đổi tên `chi_tieu_theo_ky` — **chờ người dùng quyết**. Lộ
+bẫy mới **4.46** (mô hình đọc số dòng hiện thành số khoản — `kiemSo` chặn đúng, C11/C16 rơi mẫu câu).
 > ⚠️ **Chỗ thi công KHÁC spec, có chủ ý** (bốn chỗ ghi đầu kế hoạch): gói có danh sách `soLieuBoLoc` riêng thay vì
 > nhét vào `tongHop`; `GoiSoTraCuu.luotRong` là getter công khai (vòng lặp ghi log); ca đầu-cuối `vi: "tiet_kiem"` ở
 > task 1; thứ tự `cauNoiThem` ghi bằng danh sách loại xảy ra trước.
