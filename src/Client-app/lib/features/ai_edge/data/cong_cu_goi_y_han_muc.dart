@@ -50,9 +50,11 @@ class CongCuGoiYHanMuc implements CongCu {
           danhMuc = [muc];
           tenDaKhop = muc.name;
         case KhopNhieu(:final ds):
-          return loiKhopNhieu('danh_muc', hoi, [for (final c in ds) c.name]);
+          return tuChoiKhopNhieu('danh_muc', hoi, [for (final c in ds) c.name],
+              loai: 'danh mục chi');
         case KhongKhop():
-          return loiKhongKhop('danh_muc', hoi, [for (final c in danhMuc) c.name]);
+          return tuChoiKhongKhop('danh_muc', hoi, [for (final c in danhMuc) c.name],
+              loai: 'danh mục chi');
       }
     }
 

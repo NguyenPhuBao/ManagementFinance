@@ -34,13 +34,13 @@ KetQuaCongCu hangGiaoDich(
 }) {
   final loi = kq.loi;
   if (loi != null) {
-    final truong = switch (loi.truong) {
-      TruongTen.danhMuc => 'danh_muc',
-      TruongTen.vi => 'vi',
+    final (thamSo, loai) = switch (loi.truong) {
+      TruongTen.danhMuc => ('danh_muc', 'danh mục'),
+      TruongTen.vi => ('vi', 'ví'),
     };
     return loi.nhieu
-        ? loiKhopNhieu(truong, loi.hoi, loi.tenGoiY)
-        : loiKhongKhop(truong, loi.hoi, loi.tenGoiY);
+        ? tuChoiKhopNhieu(thamSo, loi.hoi, loi.tenGoiY, loai: loai)
+        : tuChoiKhongKhop(thamSo, loi.hoi, loi.tenGoiY, loai: loai);
   }
   final chieu = tieuChi.chieu;
   final tatCa = chieu == ChieuTim.tatCa;

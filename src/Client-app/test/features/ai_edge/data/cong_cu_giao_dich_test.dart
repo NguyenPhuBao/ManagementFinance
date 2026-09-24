@@ -126,7 +126,8 @@ void main() {
   test('tên ví sai → từ chối kèm tên thật (vào tenLienQuan)', () async {
     final kq = await cc.chay({'vi': 'vi gia'}, idaccount: 10, now: now);
     expect(kq.loi, contains('Tiết kiệm mua nhà'));
-    expect(kq.tenLienQuan, ['Tiền mặt', 'Tiết kiệm', 'Tiết kiệm mua nhà']);
+    expect(kq.tenLienQuan, ['Tiền mặt', 'Tiết kiệm', 'Tiết kiệm mua nhà', 'vi gia']);
+    expect(kq.choNguoiDung, 'không có ví nào tên "vi gia"');
   });
 
   test('tham số lạ bỏ qua', () async {

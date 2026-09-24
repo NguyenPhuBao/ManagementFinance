@@ -85,7 +85,9 @@ void main() {
         truong: TruongTen.vi, hoi: 'vi gia', nhieu: false, tenGoiY: ['Tiền mặt', 'test']));
     final r = hangGiaoDich(loi, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now);
     expect(r.loi, 'vi "vi gia" không khớp tên nào. Chỉ có: Tiền mặt, test.');
-    expect(r.tenLienQuan, ['Tiền mặt', 'test']);
+    expect(r.choNguoiDung, 'không có ví nào tên "vi gia"');
+    expect(r.thamSoGo, ['vi']);
+    expect(r.tenLienQuan, ['Tiền mặt', 'test', 'vi gia']);
   });
 
   test('⭐ mẫu câu của gói tra cứu (có NGÀY) tự qua kiemSo và kiemNhan', () {

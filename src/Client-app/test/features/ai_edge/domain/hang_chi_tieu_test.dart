@@ -3,6 +3,7 @@
 library;
 
 import 'package:flowmoney/features/ai_edge/domain/hang_chi_tieu.dart';
+import 'package:flowmoney/features/ai_edge/domain/loi_tham_so.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
@@ -118,7 +119,9 @@ void main() {
   test('mã lạ → từ chối, không đoán kỳ', () {
     final kq = hangChiTieu(_tk(), ma: 'hom_kia');
     expect(kq.hang, isEmpty);
-    expect(kq.loi, loiMaKy('hom_kia'));
+    expect(kq.loi, loiGiaTri('ky', 'hom_kia', kMaKy.keys));
     expect(kq.loi, contains('thang_truoc'));
+    expect(kq.choNguoiDung, 'chưa hiểu khoảng thời gian trong câu hỏi');
+    expect(kq.thamSoGo, ['ky']);
   });
 }

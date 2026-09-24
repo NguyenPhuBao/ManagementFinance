@@ -8,6 +8,7 @@ import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'loi_tham_so.dart';
 
 /// Mã mô hình được chọn → chữ kèm cho mô hình. ⚠️ Chữ, không số: `trichSo`
 /// đọc mọi chữ số là số, và số không có trong gói làm câu bị chặn.
@@ -25,9 +26,6 @@ const Map<String, String> kMaKy = {
   'quy_nay': 'quý này',
   'nam_nay': 'năm nay',
 };
-
-String loiMaKy(String ma) =>
-    'ky "$ma" không hợp lệ. Chỉ nhận: ${kMaKy.keys.join(', ')}.';
 
 /// `null` = mã lạ. `cacKyGanNhat(...).first` là kỳ chứa [now]. Hai mã ngày dựng
 /// bằng `Ky.tuyChon` trọn một ngày — `DateTime(y, m, d - 1)` tự lùi qua biên
@@ -55,7 +53,7 @@ Ky? kyTuMa(String ma, DateTime now) {
 
 KetQuaCongCu hangChiTieu(ThongKeKy tk, {required String ma}) {
   final chuKy = kMaKy[ma];
-  if (chuKy == null) return KetQuaCongCu.loi(loiMaKy(ma));
+  if (chuKy == null) return tuChoiGiaTri('ky', ma, kMaKy.keys);
   // `tk.danhMuc` đã giảm dần và đã tra tên — chỉ chép (test quét 14).
   final hang = [
     for (final d in tk.danhMuc.take(kToiDaMucMoiGoi))

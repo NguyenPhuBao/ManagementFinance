@@ -77,30 +77,21 @@ class CongCuGiaoDich implements CongCu {
   }) async {
     final maKy = args['ky']?.toString() ?? 'thang_nay';
     final ky = kyTuMa(maKy, now);
-    if (ky == null) return KetQuaCongCu.loi(loiMaKy(maKy));
+    if (ky == null) return tuChoiGiaTri('ky', maKy, kMaKy.keys);
 
     final maChieu = args['chieu']?.toString() ?? 'tat_ca';
     final chieu = kChieuTim[maChieu];
-    if (chieu == null) {
-      return KetQuaCongCu.loi(loiGiaTri('chieu', maChieu, kChieuTim.keys));
-    }
+    if (chieu == null) return tuChoiGiaTri('chieu', maChieu, kChieuTim.keys);
     final maXep = args['sap_xep']?.toString() ?? 'so_tien';
     final sapXep = kSapXepTim[maXep];
-    if (sapXep == null) {
-      return KetQuaCongCu.loi(loiGiaTri('sap_xep', maXep, kSapXepTim.keys));
-    }
+    if (sapXep == null) return tuChoiGiaTri('sap_xep', maXep, kSapXepTim.keys);
 
-    final tu = _soDong('so_tien_tu', args['so_tien_tu']);
-    if (tu.loi != null) return KetQuaCongCu.loi(tu.loi!);
-    final den = _soDong('so_tien_den', args['so_tien_den']);
-    if (den.loi != null) return KetQuaCongCu.loi(den.loi!);
+    final tu = _soDong(args['so_tien_tu']);
+    if (tu.sai) return tuChoiSoTien('so_tien_tu', args['so_tien_tu']);
+    final den = _soDong(args['so_tien_den']);
+    if (den.sai) return tuChoiSoTien('so_tien_den', args['so_tien_den']);
     final khoang = KhoangTien(tu: tu.so, den: den.so);
-    if (!khoang.hopLe) {
-      return KetQuaCongCu.loi(
-        'so_tien_tu (${_tho(tu.so!)}) lớn hơn so_tien_den (${_tho(den.so!)}). '
-        'Gọi lại với khoảng đúng chiều.',
-      );
-    }
+    if (!khoang.hopLe) return tuChoiKhoangNguoc(_tho(tu.so!), _tho(den.so!));
 
     final tieuChi = TieuChiTim(
       chieu: chieu,
@@ -123,20 +114,19 @@ class CongCuGiaoDich implements CongCu {
   }
 }
 
-/// Số đồng từ tham số của mô hình. `(so: null, loi: null)` = không truyền.
-({double? so, String? loi}) _soDong(String ten, Object? v) {
+/// Số đồng từ tham số của mô hình: số JSON, hoặc chuỗi toàn chữ số.
+/// `(so: null, sai: false)` = không truyền; `sai` = có truyền mà không đọc được.
+({double? so, bool sai}) _soDong(Object? v) {
   if (v == null || (v is String && v.trim().isEmpty)) {
-    return (so: null, loi: null);
+    return (so: null, sai: false);
   }
   final so = switch (v) {
     num n => n.toDouble(),
     String s when RegExp(r'^\d+$').hasMatch(s.trim()) => double.parse(s.trim()),
     _ => null,
   };
-  if (so == null || so < 0) {
-    return (so: null, loi: '$ten "$v" phải là số đồng, ví dụ 500000.');
-  }
-  return (so: so, loi: null);
+  if (so == null || so < 0) return (so: null, sai: true);
+  return (so: so, sai: false);
 }
 
 /// Số đồng in thô cho lời từ chối — mô hình vừa gửi đúng dạng này.

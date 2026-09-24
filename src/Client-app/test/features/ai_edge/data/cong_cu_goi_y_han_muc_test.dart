@@ -87,7 +87,8 @@ void main() {
     final repo = _NganSach();
     final kq = await CongCuGoiYHanMuc(repo).chay({'danh_muc': 'xang xe'}, idaccount: 10, now: now);
     expect(kq.loi, contains('Ăn uống'));
-    expect(kq.tenLienQuan, ['Ăn uống', 'Di chuyển', 'Mới']);
+    expect(kq.tenLienQuan, ['Ăn uống', 'Di chuyển', 'Mới', 'xang xe']);
+    expect(kq.choNguoiDung, 'không có danh mục chi nào tên "xang xe"');
     expect(repo.daGoiY, isEmpty);
   });
 
@@ -97,7 +98,7 @@ void main() {
       makeCategory(id: 'b', name: 'Đá', idaccount: 10),
     ]);
     final kq = await CongCuGoiYHanMuc(repo).chay({'danh_muc': 'da'}, idaccount: 10, now: now);
-    expect(kq.tenLienQuan, ['Dá', 'Đá']);
+    expect(kq.tenLienQuan, ['Dá', 'Đá', 'da']);
     expect(kq.loi, contains('khớp nhiều'));
   });
 

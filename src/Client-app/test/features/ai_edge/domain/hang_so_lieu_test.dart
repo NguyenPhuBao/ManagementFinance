@@ -59,7 +59,8 @@ void main() {
   });
 
   test('từ chối tham số lạ: không hàng, không tổng hợp, chỉ lời nói vì sao', () {
-    const kq = KetQuaCongCu.loi('ky "hom_qua" không hợp lệ');
+    const kq = KetQuaCongCu.loi('ky "hom_qua" không hợp lệ',
+        choNguoiDung: 'chưa hiểu khoảng thời gian trong câu hỏi', thamSoGo: ['ky']);
     expect(kq.hang, isEmpty);
     expect(kq.tongHop, isEmpty);
     expect(kq.json, {'loi': 'ky "hom_qua" không hợp lệ'},
@@ -71,8 +72,24 @@ void main() {
     const kq = KetQuaCongCu(hang: [], tongHop: [], tenLienQuan: ['test1']);
     expect(kq.json.containsKey('tenLienQuan'), isFalse);
     expect(kq.json, isEmpty);
-    const tuChoi = KetQuaCongCu.loi('danh_muc "x" không khớp.', tenLienQuan: ['Ăn uống']);
+    const tuChoi = KetQuaCongCu.loi('danh_muc "x" không khớp.',
+        choNguoiDung: 'không có danh mục nào tên "x"', thamSoGo: ['danh_muc'], tenLienQuan: ['Ăn uống']);
     expect(tuChoi.tenLienQuan, ['Ăn uống']);
     expect(tuChoi.json, {'loi': 'danh_muc "x" không khớp.'});
+  });
+
+  test('⭐ câu cho người dùng và tham số gỡ KHÔNG vào json — mô hình chỉ thấy loi (bước 2b)', () {
+    const kq = KetQuaCongCu.loi('vi "x" không khớp tên nào.',
+        choNguoiDung: 'không có ví nào tên "x"', thamSoGo: ['vi']);
+    expect(kq.json, {'loi': 'vi "x" không khớp tên nào.'});
+    expect(kq.choNguoiDung, 'không có ví nào tên "x"');
+    expect(kq.thamSoGo, ['vi']);
+  });
+
+  test('kết quả THÀNH CÔNG không mang câu từ chối hay tham số gỡ', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: []);
+    expect(kq.loi, isNull);
+    expect(kq.choNguoiDung, isNull);
+    expect(kq.thamSoGo, isEmpty);
   });
 }

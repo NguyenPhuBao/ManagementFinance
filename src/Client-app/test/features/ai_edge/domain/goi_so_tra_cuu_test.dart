@@ -59,7 +59,8 @@ void main() {
 
   test('tool từ chối tham số cũng là đã chạy', () {
     final g = GoiSoTraCuu()
-      ..them('chi_tieu_theo_ky', const KetQuaCongCu.loi('ky lạ'));
+      ..them('chi_tieu_theo_ky', const KetQuaCongCu.loi('ky lạ',
+          choNguoiDung: 'chưa hiểu khoảng thời gian trong câu hỏi', thamSoGo: ['ky']));
     expect(g.daTraCuu, isTrue);
   });
 

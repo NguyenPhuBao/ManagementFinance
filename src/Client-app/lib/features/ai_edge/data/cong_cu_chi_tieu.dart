@@ -6,6 +6,7 @@ import '../../analytics/data/analytics_repository.dart';
 import '../domain/cong_cu.dart';
 import '../domain/hang_chi_tieu.dart';
 import '../domain/hang_so_lieu.dart';
+import '../domain/loi_tham_so.dart';
 
 class CongCuChiTieu implements CongCu {
   CongCuChiTieu(this.phanTich);
@@ -41,7 +42,7 @@ class CongCuChiTieu implements CongCu {
   }) async {
     final ma = args['ky']?.toString() ?? '';
     final ky = kyTuMa(ma, now);
-    if (ky == null) return KetQuaCongCu.loi(loiMaKy(ma));
+    if (ky == null) return tuChoiGiaTri('ky', ma, kMaKy.keys);
     final tk = await phanTich.watchKy(idaccount, ky: ky, now: now).first;
     return hangChiTieu(tk, ma: ma);
   }
