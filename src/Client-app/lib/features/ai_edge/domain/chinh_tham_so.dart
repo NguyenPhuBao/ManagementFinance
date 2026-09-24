@@ -155,9 +155,18 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   // (C17 lần 13: "ghi chú hoa don" ↔ danh mục "Hóa đơn" → lọc thêm danh mục →
   // 0 khoản).
   final tuKhoaBo = _bo(_chuoi(a['tu_khoa']) ?? '');
+  // Chữ đứng sau "ghi chú" trong CÂU HỎI là từ khoá ghi chú, không phải danh mục
+  // (C17 lần 14 trên OnePlus: mô hình bỏ trống tu_khoa nên vế trên không cứu).
+  final sauGhiChu = _sauGhiChu(q);
+  if (sauGhiChu != null && tuKhoaBo.isEmpty) {
+    a['tu_khoa'] = sauGhiChu;
+    ghi.add('câu hỏi "ghi chú …" → tu_khoa=$sauGhiChu');
+  }
   if (_chuoi(a['danh_muc']) == null) {
     final dm = _tenTrong(q, bangDm);
-    if (dm != null && (tuKhoaBo.isEmpty || !tuKhoaBo.contains(_bo(dm)))) {
+    if (dm != null &&
+        (tuKhoaBo.isEmpty || !tuKhoaBo.contains(_bo(dm))) &&
+        (sauGhiChu == null || !sauGhiChu.contains(_bo(dm)))) {
       a['danh_muc'] = dm;
       ghi.add('câu hỏi nêu danh mục → danh_muc=$dm');
     }
@@ -217,6 +226,19 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
 /// 12: khoản nạp mục tiêu là chuyển ví, bộ chỉnh đọc thành khoản chi). Bỏ khỏi
 /// câu trước khi dò động từ.
 final List<String> _cumKhongPhaiDongTu = 'muc tieu|tieu de|chi tiet'.split('|');
+
+final RegExp _mauGhiChu = RegExp(r'(?<![a-z0-9])ghi chu\s+(.+)$');
+final RegExp _duoiCauHoi =
+    RegExp(r'\s+(khong|nao|la gi|gi|la|thang|tuan|nam|quy|hom|trong|cua)(\s.*)?$');
+
+/// Chữ đứng sau "ghi chú" trong câu hỏi (đã bỏ dấu), cắt bỏ đuôi câu hỏi
+/// ("… hoa don khong" → "hoa don"); `null` khi câu không nói ghi chú.
+String? _sauGhiChu(String q) {
+  final m = _mauGhiChu.firstMatch(q);
+  if (m == null) return null;
+  final s = m.group(1)!.replaceFirst(_duoiCauHoi, '').trim();
+  return s.isEmpty ? null : s;
+}
 
 String? _chieuTheoDongTu(String q0) {
   var q = q0;

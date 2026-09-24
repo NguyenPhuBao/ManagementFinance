@@ -98,6 +98,19 @@ void main() {
       expect(r['ky'], 'moi_luc');
     });
 
+    test('⭐ C17 lần 14 (OnePlus): mô hình KHÔNG điền tu_khoa — tên đứng sau "ghi chú" trong câu hỏi vẫn không phải danh mục', () {
+      final r = chinhThamSoTimGiaoDich(
+        'tim cac giao dich co ghi chu hoa don',
+        {'ky': 'moi_luc'},
+        tenDanhMuc: [...danhMuc, 'Hóa đơn'],
+        tenVi: vi,
+      ).args;
+      expect(r.containsKey('danh_muc'), isFalse,
+          reason: 'vế "trùng tu_khoa" không cứu được khi tu_khoa trống; câu hỏi nói "ghi chú X" '
+              'thì X là chữ trong ghi chú');
+      expect(r['tu_khoa'], 'hoa don', reason: 'chữ sau "ghi chú" đi vào tu_khoa');
+    });
+
     test('danh_muc mô hình đã điền đúng thì không đè bằng tên khác trong câu', () {
       final r = chinh('cac khoan an uong va di chuyen', {
         'ky': 'thang_nay', 'danh_muc': 'an uong',
