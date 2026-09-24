@@ -333,6 +333,45 @@ void main() {
       );
     });
 
+    test('⭐ câu C12 lần 7: chữ "thu" nằm TRONG TÊN hàng không phải gán nhãn ngược', () {
+      // Hàng tim_giao_dich chiều chi: nhãn "Số tiền" + thay thế "Chi" + xung đột "Thu".
+      SoLieu hang(String ten, double v) => soTien('Số tiền', v,
+          ten: ten, nhanKhac: const ['Chi'], nhanXungDot: const ['Thu']);
+      final g = _Gia('tra_cuu', [
+        soTien('Tổng chi', 2141000),
+        hang('Cho vay', 800000),
+        hang('Tích lũy mục tiêu: MuaXe', 500000),
+        hang('Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04', 123000),
+      ]);
+      expect(
+        kiemNhan(
+          'Các khoản chi bao gồm: Cho vay (800.000 đ), Tích lũy mục tiêu: MuaXe (500.000 đ), '
+          'và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ).',
+          [g],
+        ),
+        isTrue,
+        reason: 'Nguyên văn câu 2 của C12 cổng D lần 7 — câu ĐÚNG bị chặn oan: "thu" '
+            'chỉ có trong tên hoá đơn, và "chi" của câu phải được nhận là nhãn của hàng.',
+      );
+    });
+
+    test('hàng tim_giao_dich: câu nêu ĐÚNG chiều không bao giờ bị coi là gán ngược, kể cả câu trộn thu và chi', () {
+      final g = _Gia('tra_cuu', [
+        soTien('Số tiền', 9000000,
+            ten: 'Lương', nhanKhac: const ['Thu'], nhanXungDot: const ['Chi']),
+        soTien('Số tiền', 800000,
+            ten: 'Cho vay', nhanKhac: const ['Chi'], nhanXungDot: const ['Thu']),
+      ]);
+      expect(
+        kiemNhan('Khoản thu: Lương 9.000.000 đ; khoản chi: Cho vay 800.000 đ.', [g]),
+        isTrue,
+      );
+      expect(kiemNhan('Các khoản thu: Cho vay 800.000 đ.', [g]), isFalse,
+          reason: 'khoản CHI bị gọi là thu — chặn');
+      expect(kiemNhan('Các khoản chi: Lương 9.000.000 đ.', [g]), isFalse,
+          reason: 'khoản THU bị gọi là chi — chặn');
+    });
+
     test('câu đúng A8 nêu tên VÀ có chữ "chi" thì qua', () {
       expect(
         kiemNhan(

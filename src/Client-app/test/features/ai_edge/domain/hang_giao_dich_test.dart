@@ -64,6 +64,12 @@ void main() {
     // Chỉ Số tiền mang xung đột; Ngày của hàng thì không.
     List<String> xd(int i) => r.hang[i].soLieu.firstWhere((s) => s.nhan == 'Số tiền').nhanXungDot;
     expect(xd(0), ['Thu'], reason: 'Cho vay là khoản CHI — câu "khoản thu: Cho vay 800.000" phải bị chặn');
+    // Nhãn thay thế theo chiều đi kèm (lần đo 7): câu nêu đúng chiều ("khoản chi") thì
+    // không bị coi là gán ngược dù nhãn chính "Số tiền" không có trong câu.
+    List<String> nk(int i) => r.hang[i].soLieu.firstWhere((s) => s.nhan == 'Số tiền').nhanKhac;
+    expect(nk(0), ['Chi']);
+    expect(nk(1), isEmpty);
+    expect(nk(3), ['Thu']);
     expect(xd(1), isEmpty, reason: 'khoản chuyển: cố ý không khai xung đột');
     expect(xd(3), ['Chi'], reason: 'Lương là khoản THU');
     expect(r.hang[0].soLieu.firstWhere((s) => s.nhan == 'Ngày').nhanXungDot, isEmpty);

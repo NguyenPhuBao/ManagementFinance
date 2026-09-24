@@ -61,7 +61,9 @@ KetQuaCongCu hangGiaoDich(
           canhBao: false,
           soLieu: [
             soTien('Số tiền', d.soTien,
-                ten: d.tieuDe, nhanXungDot: _xungDot(d.chieu)),
+                ten: d.tieuDe,
+                nhanKhac: _nhanChieu(d.chieu),
+                nhanXungDot: _nhanChieu(_nguoc(d.chieu))),
             soNgayThang('Ngày', d.ngay, ten: d.tieuDe, now: now),
           ],
         ),
@@ -110,13 +112,23 @@ KetQuaCongCu hangGiaoDich(
   );
 }
 
-/// Nhãn xung đột theo chiều của dòng (bẫy 4.42): khoản chi bị gọi là "khoản
-/// thu" (hay ngược lại) thì `kiemNhan` chặn. Khoản chuyển cố ý không khai —
+/// Nhãn CHIỀU của dòng (bẫy 4.42): nhãn chính "Số tiền" không bao giờ xuất
+/// hiện trong câu tự nhiên, nên chiều của dòng làm **nhãn thay thế** và chiều
+/// ngược làm **nhãn xung đột** — khoản chi bị gọi là "khoản thu" (hay ngược
+/// lại) thì `kiemNhan` chặn, còn câu nêu đúng chiều thì không bị coi là gán
+/// ngược dù có nhắc chiều kia ở chỗ khác (lần đo 7: câu đúng C12 bị chặn oan
+/// vì chỉ có xung đột mà không có nhãn chiều). Khoản chuyển cố ý không khai —
 /// người dùng vẫn gọi tiền chuyển đi là "chi". Chữ hoa vì test quét 14.
-List<String> _xungDot(ChieuTim c) => switch (c) {
-      ChieuTim.chi => const ['Thu'],
-      ChieuTim.thu => const ['Chi'],
+List<String> _nhanChieu(ChieuTim c) => switch (c) {
+      ChieuTim.chi => const ['Chi'],
+      ChieuTim.thu => const ['Thu'],
       ChieuTim.chuyen || ChieuTim.tatCa => const [],
+    };
+
+ChieuTim _nguoc(ChieuTim c) => switch (c) {
+      ChieuTim.chi => ChieuTim.thu,
+      ChieuTim.thu => ChieuTim.chi,
+      ChieuTim.chuyen || ChieuTim.tatCa => c,
     };
 
 /// Chữ chiều cho tiền tố bộ lọc — cùng từ với `_trangThai`.
