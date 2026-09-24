@@ -79,9 +79,10 @@ Set<String> amTietCua(String cau) => cau
 bool nhanKhopAmTiet(SoLieu s, Set<String> amTiet) => [s.nhan, ...s.nhanKhac]
     .any((n) => tuKhoaNhan(n).every(amTiet.contains));
 
-/// `true` khi câu (tập âm tiết [amTiet]) nêu đủ từ khoá của một nhãn xung đột
-/// của [s] mà **không** nêu từ khoá của nhãn chính hay nhãn thay thế — tức
-/// gán con số cho chỉ số ngược (bẫy 4.42). Mục không khai xung đột thì `false`.
+/// `true` khi câu (tập âm tiết [amTiet] — của câu **đã bỏ tên đối tượng**)
+/// nêu đủ từ khoá của một nhãn xung đột của [s] mà **không** nêu từ khoá của
+/// nhãn chính hay nhãn thay thế — tức gán con số cho chỉ số ngược (bẫy 4.42).
+/// Mục không khai xung đột thì `false`.
 bool ganNhanNguoc(SoLieu s, Set<String> amTiet) =>
     s.nhanXungDot.any((n) => tuKhoaNhan(n).every(amTiet.contains)) &&
     !nhanKhopAmTiet(s, amTiet);
@@ -90,6 +91,9 @@ bool ganNhanNguoc(SoLieu s, Set<String> amTiet) =>
 /// gói khớp nó. Câu không có số thì lọt — không có nhãn nào để gán sai.
 bool kiemNhan(String cau, List<GoiSo> goi) {
   final amTiet = amTietCua(cau);
+  // Âm tiết của câu ĐÃ BỎ TÊN đối tượng — chỉ để xét gán nhãn ngược: tên
+  // "Chi khác" không phải là câu nêu nhãn "Chi" (bẫy 4.42, lần đo 7).
+  final amTietKhongTen = amTietCua(boTenDoiTuong(cau, goi));
   // Trích số NGOÀI tên đối tượng (bước 1c) — cùng phép với bộ kiểm số; còn
   // vế "câu nêu tên" bên dưới vẫn đọc âm tiết của câu GỐC, nơi tên còn nguyên.
   for (final x in trichSoNgoaiTen(cau, goi)) {
@@ -105,7 +109,7 @@ bool kiemNhan(String cau, List<GoiSo> goi) {
           // `Tỉ lệ`), nên một câu chỉ nhắc nhãn không nói được nó đang nói
           // về cái nào. Và không được GÁN NHÃN NGƯỢC (bẫy 4.42).
           : tuKhoaNhan(s.ten!).every(amTiet.contains) &&
-              !ganNhanNguoc(s, amTiet),
+              !ganNhanNguoc(s, amTietKhongTen),
     );
     if (!coNhanDung) return false;
   }

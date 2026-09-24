@@ -305,6 +305,34 @@ void main() {
       );
     });
 
+    test('⭐ câu C10 lần 7 (2026-09-24 tối) — chữ "chi" nằm TRONG TÊN "Chi khác" không tính là nêu nhãn', () {
+      // Trên máy câu bị tách theo câu; câu thứ hai không có "tổng chi" nào, chỉ
+      // có tên danh mục "Chi khác". Xét nhãn trên câu ĐÃ BỎ TÊN đối tượng (cùng
+      // khuôn trichSoNgoaiTen của bước 1c), nếu không tên ấy mở cửa cho câu SAI.
+      final coChiKhac = _Gia('tra_cuu', [
+        soTien('Tổng thu', 15135000),
+        soTien('Chi', 800000, ten: 'Cho vay', nhanXungDot: const ['Thu']),
+        soTien('Chi', 500000, ten: 'Chưa phân loại', nhanXungDot: const ['Thu']),
+        soTien('Chi', 355000, ten: 'Di chuyển', nhanXungDot: const ['Thu']),
+        soTien('Chi', 301000, ten: 'Chi khác', nhanXungDot: const ['Thu']),
+      ]);
+      expect(
+        kiemNhan(
+          'Các khoản thu bao gồm: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), '
+          'Di chuyển (355.000 đ), và Chi khác (301.000 đ).',
+          [coChiKhac],
+        ),
+        isFalse,
+        reason: 'Nguyên văn câu 2 của C10 cổng D lần 7: hiện ra trên Realme dù '
+            'bản đầu của nhãn xung đột đã có — vì "Chi khác" mang âm tiết "chi".',
+      );
+      expect(
+        kiemNhan('Các khoản chi: Cho vay (800.000 đ), Chi khác (301.000 đ).', [coChiKhac]),
+        isTrue,
+        reason: 'chữ "chi" ngoài tên vẫn là nêu nhãn',
+      );
+    });
+
     test('câu đúng A8 nêu tên VÀ có chữ "chi" thì qua', () {
       expect(
         kiemNhan(

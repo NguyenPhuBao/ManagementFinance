@@ -230,22 +230,33 @@ final RegExp _motChuHoacSo = RegExp(r'^[\p{L}\p{N}]$', unicode: true);
 ///
 /// Tên là dữ liệu của gói, không do mô hình sinh, nên phép bỏ này không cho
 /// mô hình cách nào giấu một con số bịa.
-List<SoTrich> trichSoNgoaiTen(String cau, List<GoiSo> goi) {
+List<SoTrich> trichSoNgoaiTen(String cau, List<GoiSo> goi) =>
+    trichSo(boTenDoiTuong(cau, goi, chiTenCoChuSo: true));
+
+/// [cau] đã chuẩn hoá (chữ thường, NFC, gom khoảng trắng — không đổi chữ số,
+/// dấu chấm, phẩy, trừ hay phần trăm) và **bỏ** mọi tên đối tượng của [goi]
+/// đứng trọn từ, thay bằng một khoảng trắng. Tên phải có chữ cái; với
+/// [chiTenCoChuSo] chỉ bỏ tên **có chữ số** (đủ cho phép trích số — bỏ nhiều
+/// hơn là vô ích), còn `kiemNhan` bỏ **mọi** tên để xét nhãn (bẫy 4.42, lần
+/// đo 7): tên *"Chi khác"* mang âm tiết "chi", và đọc nó là "câu có nêu nhãn
+/// Chi" thì câu *"Các khoản thu bao gồm: … Chi khác (301.000 đ)"* lọt.
+String boTenDoiTuong(
+  String cau,
+  List<GoiSo> goi, {
+  bool chiTenCoChuSo = false,
+}) {
   final ten = <String>{
     for (final g in goi)
       for (final t in g.tenDoiTuong)
-        if (_coChuSo.hasMatch(t) && _coChuCai.hasMatch(t))
+        if (_coChuCai.hasMatch(t) && (!chiTenCoChuSo || _coChuSo.hasMatch(t)))
           normalizeCategoryName(t),
   }.toList()
     ..sort((a, b) => b.length.compareTo(a.length));
-  if (ten.isEmpty) return trichSo(cau);
-  // Chuẩn hoá cả câu chỉ để TRÍCH SỐ: chữ thường, NFC và gom khoảng trắng
-  // không đổi chữ số nào, cũng không đổi dấu chấm, phẩy, trừ hay phần trăm.
   var con = normalizeCategoryName(cau);
   for (final t in ten) {
     con = _boTenTron(con, t);
   }
-  return trichSo(con);
+  return con;
 }
 
 /// Thay mọi lần [ten] đứng trọn từ trong [cau] bằng một khoảng trắng — khoảng
