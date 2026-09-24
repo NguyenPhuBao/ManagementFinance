@@ -164,7 +164,7 @@ lib/features/ai_edge/
   data/     (bước 2c) vong_lap_cong_cu.dart: nhãn L2c / L2b+L2c, log nêu lý do cổng đóng, nối cauNoiThem
   domain/   (đổi tên tool, 2026-09-24 chiều — mục 9.20) cong_cu.dart: kTenCongCuTongKet = 'tong_ket_thu_chi_ky' (tên cũ chi_tieu_theo_ky; hằng cũ kTenCongCuChiTieu bỏ), chỉ báo "Đang tổng kết thu chi…" · cong_cu_chi_tieu.dart / hang_chi_tieu.dart giữ tên tệp (nội dung vẫn là chi tiêu theo kỳ) · bo_cong_cu_test: kTranToolsJsonDaDo 5437
   domain/   (đổi nhãn đếm, 2026-09-24 chiều muộn — mục 9.21) hang_giao_dich.dart: soDem('Số giao dịch', soKhop) thay 'Số khoản' (bẫy 4.47 — chỉ đổi chỗ, gốc ở kiemNhan)
-  domain/   (nhãn có từ đồng nghĩa, 2026-09-24 chiều muộn — mục 9.22, chưa đo) goi_so.dart: SoLieu.nhanKhac (mặc định rỗng), soTien / soDem nhận nhanKhac · kiem_nhan.dart: nhanKhopAmTiet — MỘT phép cho kiemNhan lẫn theCuaCau · the_cua_cau.dart: _cauNhacToi gọi nó · hang_giao_dich.dart: soDem('Số giao dịch', …, nhanKhac: ['Số khoản'])
+  domain/   (nhãn có từ đồng nghĩa, 2026-09-24 chiều muộn — mục 9.22; đo lần 6 tối cùng ngày, mục 9.23: bẫy 4.47 đóng) goi_so.dart: SoLieu.nhanKhac (mặc định rỗng), soTien / soDem nhận nhanKhac · kiem_nhan.dart: nhanKhopAmTiet — MỘT phép cho kiemNhan lẫn theCuaCau · the_cua_cau.dart: _cauNhacToi gọi nó · hang_giao_dich.dart: soDem('Số giao dịch', …, nhanKhac: ['Số khoản'])
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -226,7 +226,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.44 | ⭐ **Tham số THỪA làm HẸP bộ lọc → lượt THÀNH CÔNG 0 hàng → mẫu câu "Số khoản: 0" SAI** — cổng D lần 2 C9, 2026-09-24 | *"liệt kê các khoản chi từ 200k đến 1 triệu tháng này"* → `tim_giao_dich {ky: thang_nay, so_tien_den: 1000000, tu_khoa: "chi"}` — thiếu `so_tien_tu`, thiếu `chieu`, và **chữ chiều tiền nhét vào `tu_khoa`**. Không ghi chú nào chứa "chi" nên tool trả **0 hàng — một lượt THÀNH CÔNG**; câu mô hình (*"Không có giao dịch chi tiêu nào…"*) bị `kiemSo` chặn nhờ "200k", rồi **mẫu câu L2 của app** nói *"Tháng này — Số khoản: 0; Tổng chi: 0 đ; …; Đến: 1.000.000 đ"* — có **2** khoản (và 18 khoản chi ≤ 1 triệu). Cùng họ 4.40 nhưng **qua được luật của bước 2b**: luật ấy chỉ xét lượt bị **từ chối**; *"0 hàng thật là dữ liệu thật"* chỉ đúng khi **bộ lọc khớp câu hỏi**, và không lớp nào biết bộ lọc có khớp không. `laSoTien` không bắt vì "chi" không phải số tiền. Ca sinh đôi C15: *"lần gần nhất chi cho di chuyển"* → `chieu: chuyen_vi` (đọc "di chuyển" thành chuyển ví) → mẫu câu liệt kê khoản chuyển. ✅ **Sửa ở bước 2c** (`2a9b80b`, `da9b41b`, `f0d639d`, 2026-09-24): với tool lọc bằng chữ tự do, 0 khoản là **báo cáo về bộ lọc** chứ không phải câu trả lời — `hangGiaoDich` đặt cờ `rongTheoBoLoc` + dội lại bộ lọc (`boLoc`), `GoiSoTraCuu` đóng cổng hiện chữ và **không bao giờ gỡ**, mẫu câu chỉ nêu bộ lọc (nhánh **L2c**). Đo lại (cổng D lần 3, mục **9.19**): C9 → *"Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào khớp."* — người đọc thấy bộ lọc lệch ở đâu, **SAI = 0**; C15 tiền tố lộ *"chuyển ví"*. Giá đã chấp nhận: C3 đúng cũng thành mẫu câu | `hang_giao_dich_test` *"⭐ rongTheoBoLoc…"*; `goi_so_tra_cuu_test` nhóm *"lượt RỖNG THEO BỘ LỌC"*; `vong_lap_cong_cu_test` *"⭐ L2c…"* |
 | 4.45 | **E2B viết tên theo kiểu `snake_case`** — cổng D lần 2 C11 | `vi: "tiet_kiem"` — `khopTheoTen` không đổi `_` thành dấu cách nên **không khớp** ví *Tiết kiệm* → từ chối → L1b (đúng luật, không SAI). Hai hệ quả: câu hỏi đúng ý thành *"chưa tra được"*; và câu cho người dùng hiện **`"tiet_kiem"`** — luật (a) *"không có dấu `_`"* của spec 2b chỉ nghĩ tới **mã tham số**, không nghĩ tới **giá trị** mô hình gõ (ca *"ba luật"* chỉ thử tên không có `_`). Mô hình chưa gọi lại lần nào sau lời từ chối (0/2), dù chỉ dẫn hệ thống nay dặn *"gọi lại ngay"*. ✅ **Sửa ở bước 2c** (`1301de9`): `khopTheoTen` thêm **bậc ba** — đổi `_` thành dấu cách ở cả hai vế rồi so bỏ dấu, chỉ chạy khi hai bậc đầu trượt; câu người dùng của lời từ chối in tên gõ với `_` đổi thành dấu cách. Đo lại (mục 9.19): C11 `vi: "tiet_kiem"` khớp *Tiết kiệm* → 10 khoản, 2.501.000 đ đúng đáp án (mẫu câu có ích — chữ mô hình bị chặn vì bẫy 4.46) | `khop_ten_test` *"⭐ bậc ba…"*, *"⭐ bậc 2 THẮNG bậc 3"*; `loi_tham_so_test` *"⭐ tên gõ kiểu snake_case"*; `cong_cu_giao_dich_test` *"⭐ ví "tiet_kiem""* |
 | 4.46 | **E2B đọc SỐ DÒNG HIỆN (4 = `kToiDaMucMoiGoi`) thành số khoản** — cổng D lần 3 C11, C16, 2026-09-24 | tool trả 4 hàng + `Số khoản: 10` (C11) / `36` (C16); mô hình viết *"bạn đã có **4** giao dịch chuyển tiền sang ví Tiết kiệm"* và *"Dưới đây là **4** giao dịch chi tiêu gần nhất"* — `kiemSo` chặn vì 4 không có trong gói, câu rơi về mẫu câu (L2). Chặn **đúng** (câu sai thật), nhưng là lý do C11 không hiện chữ mô hình dù tool và tham số đều đúng. Bẫy 10 của spec bước 2 (`soKhop ≠ dong.length`) đã lo phía app, chưa lo phía mô hình. ⚠️ **Chưa sửa**, chưa ai chọn hướng (ứng viên: chữ kèm *"hiện 4 trong 10"* trong JSON — nhưng `chuThem` cấm chữ số). Lần 4 tái phát ở C11, C12 | *(đo máy thật — mục 9.19, 9.20)* |
-| 4.47 | **Nhãn `Số khoản` đòi chữ "khoản" mà mô hình nói "giao dịch"** — cổng D lần 4 C5, C17, 2026-09-24 | `kiemNhan` đòi câu nêu từ khoá của nhãn mà con số khớp; `hangGiaoDich` đặt nhãn *Số khoản* cho `soKhop`, mô hình viết *"bạn đã có 6 giao dịch"* / *"Có 5 giao dịch có ghi chú…"* — số đúng, nhãn không có chữ "khoản" → chặn, câu đúng rơi mẫu câu. Lần 3 C17 lọt chỉ vì câu dài hơn tình cờ chứa chữ "khoản" ở phần sau. ⚠️ **Đổi nhãn thành *"Số giao dịch"* (`a68a842`) chỉ ĐỔI CHỖ bẫy** — lần đo 5 (mục 9.21): C5, C17 hiện được nhưng C8 *"Có 2 khoản thu…"* lại bị chặn. Gốc là `kiemNhan` đòi từ khoá của **một** nhãn trong khi mô hình dùng "khoản" / "giao dịch" thay nhau; cần nhãn có **từ đồng nghĩa**. ✅ **Sửa gốc ở `235d11f`** (mục 9.22): `SoLieu.nhanKhac` + `nhanKhopAmTiet` dùng chung cho `kiemNhan` và `theCuaCau`; nhãn chính *Số giao dịch*, thay thế *Số khoản*. 🛑 **Chưa đo máy thật** (cổng D lần 6, phiên sau) | `kiem_nhan_test` nhóm *"nhãn có TỪ ĐỒNG NGHĨA"*; `the_cua_cau_test` *"⭐ thẻ nhận ra mục qua nhãn THAY THẾ"*; `hang_giao_dich_test` *"⭐ nhãn đếm là "Số giao dịch""*; *(đo máy thật — mục 9.20, 9.21)* |
+| 4.47 | **Nhãn `Số khoản` đòi chữ "khoản" mà mô hình nói "giao dịch"** — cổng D lần 4 C5, C17, 2026-09-24 | `kiemNhan` đòi câu nêu từ khoá của nhãn mà con số khớp; `hangGiaoDich` đặt nhãn *Số khoản* cho `soKhop`, mô hình viết *"bạn đã có 6 giao dịch"* / *"Có 5 giao dịch có ghi chú…"* — số đúng, nhãn không có chữ "khoản" → chặn, câu đúng rơi mẫu câu. Lần 3 C17 lọt chỉ vì câu dài hơn tình cờ chứa chữ "khoản" ở phần sau. ⚠️ **Đổi nhãn thành *"Số giao dịch"* (`a68a842`) chỉ ĐỔI CHỖ bẫy** — lần đo 5 (mục 9.21): C5, C17 hiện được nhưng C8 *"Có 2 khoản thu…"* lại bị chặn. Gốc là `kiemNhan` đòi từ khoá của **một** nhãn trong khi mô hình dùng "khoản" / "giao dịch" thay nhau; cần nhãn có **từ đồng nghĩa**. ✅ **Sửa gốc ở `235d11f`** (mục 9.22): `SoLieu.nhanKhac` + `nhanKhopAmTiet` dùng chung cho `kiemNhan` và `theCuaCau`; nhãn chính *Số giao dịch*, thay thế *Số khoản*. ✅ **ĐÓNG — đo cổng D lần 6 tối 2026-09-24** (mục 9.23): C5, C8, C17 cùng hiện chữ trong một lượt, năm câu còn bị chặn không câu nào vì "khoản"/"giao dịch"; 33/34 câu y hệt lần 5, chỉ C8 đổi | `kiem_nhan_test` nhóm *"nhãn có TỪ ĐỒNG NGHĨA"*; `the_cua_cau_test` *"⭐ thẻ nhận ra mục qua nhãn THAY THẾ"*; `hang_giao_dich_test` *"⭐ nhãn đếm là "Số giao dịch""*; *(đo máy thật — mục 9.20, 9.21, 9.23)* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -1499,7 +1499,7 @@ nhãn *Số giao dịch* (đúng chữ tool `tim_giao_dich` và câu hỏi ngư�
 chữ / lớp chắn mệnh đề (4.42 — hai SAI C7, C10 đứng yên ba lần); (c) dừng đo, mở bước 3. *(Người dùng chọn (a) —
 mục 9.22.)*
 
-### 9.22 Nhãn có từ đồng nghĩa — `SoLieu.nhanKhac` (2026-09-24 chiều muộn) — ✅ mã xong, 🛑 CHƯA ĐO (cổng D lần 6 để phiên sau)
+### 9.22 Nhãn có từ đồng nghĩa — `SoLieu.nhanKhac` (2026-09-24 chiều muộn) — ✅ mã xong, ✅ đã đo tối cùng ngày (cổng D lần 6 — mục 9.23: bẫy 4.47 đóng, cổng vẫn chưa đạt)
 
 Bounded, thiết kế duyệt trong chat (`235d11f`): `SoLieu` thêm **`nhanKhac`** (danh sách nhãn thay thế, mặc định
 rỗng — 27 chỗ dựng `SoLieu` không đổi); `soTien` / `soDem` nhận tham số cùng tên. **`nhanKhopAmTiet(s, amTiet)`**
@@ -1512,10 +1512,96 @@ thay thế và in nhãn chính, trong khi gói hoá đơn đứng trước cùng
 **lật** (*"7 khoản"* nay qua). Một bản sai (`nhanKhopAmTiet` bỏ `nhanKhac`) làm đỏ đúng 3 ca ở 3 tệp. `ai_edge` +
 `ai_chat` **598** ca.
 
-**Dự đoán cho lần đo 6** (chưa đo — người dùng dặn *"làm tới phần build và cài, còn chạy 34 câu thì dừng lại để phiên
-sau"*): lời gọi tool y hệt lần 4–5 (nhãn không vào khai báo); C8 hiện chữ trở lại, C5/C17 giữ; nội dung đúng nhóm C
-kỳ vọng **9/20**; SAI vẫn **2** (C7, C10 — 4.42 chưa chạm). Nếu lần 6 ra đúng thế thì đòn bẩy còn lại cho cổng D là
-**4.42** (số viết bằng chữ / mệnh đề) và **mô tả tool cho câu có điều kiện**.
+**Dự đoán cho lần đo 6** (viết khi chưa đo — người dùng dặn *"làm tới phần build và cài, còn chạy 34 câu thì dừng lại để
+phiên sau"*): lời gọi tool y hệt lần 4–5 (nhãn không vào khai báo); C8 hiện chữ trở lại, C5/C17 giữ; nội dung đúng
+nhóm C kỳ vọng **9/20**; SAI vẫn **2** (C7, C10 — 4.42 chưa chạm). Nếu lần 6 ra đúng thế thì đòn bẩy còn lại cho cổng
+D là **4.42** (số viết bằng chữ / mệnh đề) và **mô tả tool cho câu có điều kiện**. *(Kết quả ở mục 9.23: đúng ở mọi
+vế trừ con số **9/20** — đó là lỗi đếm, C8 vốn đã nằm trong 8 câu đúng của lần 5 dưới dạng mẫu câu.)*
+
+### 9.23 Cổng D lần đo 6 (2026-09-24 tối) — 🛑 VẪN CHƯA ĐẠT, ✅ bẫy 4.47 ĐÓNG, 33/34 câu y hệt lần 5
+
+Realme, APK `235d11f` (release, cài 16:41), 21:54–22:19, **34 câu, 26 phút, 0 sập, 0 vỡ trần** (`tools_json` 5437 ở
+cả 34 phiên). Đáp án như lần 3 — cùng ngày, dữ liệu máy không đổi; bằng chứng không phải giả định: **33/34 câu trả lời
+hiện ra trùng từng ký tự với lần 5** (so bản ghi `uiautomator` theo từng câu hỏi), kể cả các mẫu câu in số.
+**Lời gọi tool và tham số y hệt lần 5 ở cả 34 câu** — ba lần liền (4, 5, 6) mô hình lặp lại chính nó khi khai báo
+tool không đổi, đúng như 9.19 đã thấy.
+
+| Dòng | Lần 5 | **Lần 6** | |
+|---|---|---|---|
+| 1. Nhóm A | 8/8 | **8/8** | ✅ |
+| 2. Nhóm B | 2/4 | **2/4** | ✗ |
+| 3. Nhóm C | 13 · 6 | **13/20 · 6/20** (y hệt) | ✗ |
+| 4. SAI · sập | 2 | **2** (C7, C10 y hệt) · 0 | ✗ |
+| 5. Trần | 0 | **0** | ✅ |
+
+**Câu duy nhất đổi — C8**, và đổi đúng hướng: chữ mô hình *"Có 2 khoản thu từ 5.000.000 đ trở lên trong năm nay: Lương
+(9.000.000 đ ngày 04/09) và Lương (5.000.000 đ ngày 04/09)."* **hiện** (lần 5 bị `kiemNhan` chặn vì nhãn *Số giao
+dịch* mà câu nói *"khoản thu"*), thẻ *"Số giao dịch 2"* đứng đầu — thẻ nhận mục qua nhãn thay thế và in nhãn chính,
+đúng ca `the_cua_cau_test`. Đáp án: 2 khoản, Lương 9.000.000 + 5.000.000 ngày 04/09 → ✅. Log tool: dòng C8 là dòng
+**duy nhất** khác giữa `tool_congD5.txt` và `tool_congD6.txt` (hết `chặn [...]`, `1g/1c`).
+
+**Bảng 34 câu** (câu hỏi gõ không dấu; câu trả lời **nguyên văn** hiện trên màn, thẻ số liệu bỏ; chấm theo câu hiện ra):
+
+| # | Câu hỏi | Câu trả lời hiện ra | Chấm |
+|---|---|---|---|
+| A13 | Hoa don nao qua han? | Có 2 hóa đơn quá hạn: Kiem với số tiền 45.000 đ và di h0c với số tiền 10.000 đ. Tổng cộng còn phải trả 155.000 đ. | ✅ |
+| A15 | Vi nao dang am? | Ví test đang âm với số dư là -100.000 đ. | ✅ |
+| A8 | Thang nay toi chi nhieu nhat vao danh muc nao? | Trong tháng này, tổng chi là 2.141.000 đ. Các danh mục chi lớn nhất là: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ). | ✅ (tên đúng đứng đầu, liệt kê 4) |
+| A3 | Ngan sach nao sap het? | Danh sách ngân sách sắp hết là: Giáo dục (Còn: 7 ngày, Còn lại: 5.000 đ). | ✅ |
+| A2 | Con bao nhieu tien ngan sach thang nay? | Tổng còn lại của các ngân sách là 1.340.000 đ. | ✅ |
+| A9 | Thang truoc toi chi bao nhieu? | Tháng trước bạn chi tổng cộng 0 đ. | ✅ |
+| ĐC1 | Lai suat tiet kiem cua toi la bao nhieu? | Tổng thu của bạn trong năm nay là 15.135.000 đ và tổng chi là 2.141.000 đ. | không bịa ✓ — LỆCH (không nói "không có") |
+| ĐC2 | Thang nay toi chi bao nhieu? | Tổng chi trong tháng này là 2.141.000 đ. | ✅ |
+| B1 | khi nao toi dat muc tieu muaxe | Bạn có hai mục tiêu đang theo đuổi: "MuaXe" và "MuaDT". | LỆCH |
+| B2 | moi thang toi can de danh bao nhieu cho muaxe | Chưa tra được số liệu cho câu này: không có danh mục chi nào tên "muaxe". Bạn thử hỏi lại cụ thể hơn. | L1b mẫu câu trung thực (vẫn gọi `goi_y_han_muc`) |
+| B3 | thang sau toi nen dat ngan sach bao nhieu | Dựa trên dữ liệu gần nhất, bạn có thể xem xét đặt ngân sách cho các danh mục sau: Di chuyển (490.000 đ), Mua sắm (90.000 đ), Giáo dục (70.000 đ), và Ăn uống (70.000 đ). | ✅ |
+| B4 | ngan sach an uong nen dat bao nhieu | Dựa trên dữ liệu gần nhất, mức chi trung bình mỗi tháng cho danh mục "Ăn uống" là 70.000 đ. | ✅ (câu 2 *"Hạn mức hiện tại là 500.000 đ"* bị `kiemNhan` chặn — không nêu tên Ăn uống) |
+| B1c | hoa don di h0c con phai tra bao nhieu | Kiem đã quá hạn: Số tiền 45.000 đ; di h0c đã quá hạn: Số tiền 10.000 đ; Netflix chưa trả: Số tiền 100.000 đ; Còn phải trả: 155.000 đ; Quá hạn: 2; Chưa trả: 3. | L2 mẫu câu có ích, nêu di h0c (chữ *"Hoa hồng cần trả là 155.000 đ"* bị chặn) — "câu 1c hiện" vẫn ✗ |
+| C1 | thang nay toi tieu gi tren 500k | Tổng chi trong tháng này là 2.141.000 đ. | LỆCH (đáp án 2 khoản; gọi tổng kết) |
+| C2 | hom qua toi da chi nhung gi | Hôm qua, khoản chi — không có giao dịch nào khớp. | L2c mẫu câu nêu bộ lọc, khớp — ✅ (đáp án 0) |
+| C3 | hom nay toi co giao dich nao khong | Hôm nay — không có giao dịch nào khớp. | L2c khớp — ✅ (0) |
+| C4 | tuan nay co khoan chi nao duoi 100 nghin khong | Tuần này, khoản chi, đến 100.000 đ — không có giao dịch nào khớp. | L2c khớp — ✅ (0) |
+| C5 | tuan truoc toi da tieu nhung khoan nao | Trong tuần trước, bạn đã có 6 giao dịch. Tổng chi là 1.096.000 đ và tổng thu là 510.000 đ. | LỆCH (tổng chi đúng; không liệt kê khoản, đếm cả thu — thiếu `chieu`) |
+| C6 | thang truoc toi co khoan chi nao tren 1 trieu khong | Tháng trước, từ 1.000.000 đ — không có giao dịch nào khớp. | L2c thiếu chiều, kết quả vẫn đúng — ✅ (0) |
+| C7 | cac khoan chi hon nua trieu trong quy nay | Tổng chi trong quý này là 2.141.000 đ. Các khoản chi có giá trị hơn một triệu là: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ). | **SAI** (4.42 — *"hơn một triệu"* viết bằng chữ, bốn danh mục đều dưới một triệu; đáp án 2 khoản > 500k) |
+| C8 | nam nay toi co khoan thu nao tu 5 trieu tro len khong | Có 2 khoản thu từ 5.000.000 đ trở lên trong năm nay: Lương (9.000.000 đ ngày 04/09) và Lương (5.000.000 đ ngày 04/09). | ✅ chữ mô hình (lần 5 mẫu câu) |
+| C9 | liet ke cac khoan chi tu 200k den 1 trieu thang nay | Chưa tra được số liệu cho câu này: chưa hiểu số tiền trong câu hỏi. Bạn thử hỏi lại cụ thể hơn. | L1b mẫu câu trung thực (`tu_khoa: 200000` bị từ chối; đáp án 2 khoản) |
+| C10 | thang nay toi nhan duoc nhung khoan thu nao | Trong tháng này, tổng thu là 15.135.000 đ. Các khoản thu bao gồm: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ). | **SAI** (4.42 — gán danh mục CHI làm "khoản thu"; đáp án 8 khoản thu) |
+| C11 | thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao | Tháng này, chuyển ví, ví "Tiết kiệm" — Tích lũy mục tiêu: MuaXe … 900.000 đ, 05/09; … MuaDT 700.000 đ, 05/09; Rút từ mục tiêu: MuaDT 300.000 đ, 05/09; … MuaXe 100.000 đ, 08/09; Số giao dịch: 10; Tổng chuyển: 2.501.000 đ. | L2 mẫu câu có ích — ✅ (10 khoản, 2.501.000; chữ *"4 giao dịch"* bị chặn — 4.46) |
+| C12 | liet ke cac khoan an uong thang nay | Tổng chi trong tháng này là 2.141.000 đ. Các khoản chi bao gồm: Cho vay (800.000 đ), Tích lũy mục tiêu: MuaXe (500.000 đ), Di chuyển (180.000 đ), và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ). | LỆCH (không Ăn uống; đáp án 1 khoản 50.000; thiếu `danh_muc`) |
+| C13 | vi tien mat thang nay chi nhung gi | Tổng chi trong tháng này là 2.141.000 đ, bao gồm các khoản: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ). | LỆCH (mọi ví; đáp án 13 khoản, 2.031.000) |
+| C14 | thang nay toi chi gi cho mua sam tu vi tien mat | Tổng chi của bạn trong tháng này là 2.141.000 đ. | LỆCH (đáp án Mua sắm 60.000) |
+| C15 | lan gan nhat toi chi cho di chuyen la ngay nao | Mọi thời gian, chuyển ví, mới nhất trước — Tích lũy mục tiêu: MuaXe … 100.000 đ, 08/09; … 100.000 đ, 08/09; … 1.000 đ, 07/09; … 100.000 đ, 07/09; Số giao dịch: 10; Tổng chuyển: 2.501.000 đ. | mẫu câu lệch (sai chiều; đáp án 20/09 · 50.000; tiền tố lộ "chuyển ví") |
+| C16 | 5 khoan chi gan day nhat cua toi | Mọi thời gian, mới nhất trước — Di chuyển khoản chi … 50.000 đ, 20/09; Cho vay khoản thu … 500.000 đ, 19/09; Cho vay khoản chi … 800.000 đ, 19/09; Thưởng khoản thu … 10.000 đ, 19/09; Số giao dịch: 36; Tổng chi: 2.141.000 đ; Tổng thu: 15.135.000 đ; Tổng chuyển: 2.501.000 đ. | mẫu câu lệch (thiếu chiều, lẫn khoản thu; chữ *"Danh sách 5 giao dịch"* bị chặn — "5" của câu hỏi) |
+| C17 | tim cac giao dich co ghi chu hoa don | Có 5 giao dịch có ghi chú "hoa don". Tổng chi là 311.000 đ. | ✅ |
+| C18 | khoan chi lon nhat thang nay la gi | Khoản chi lớn nhất trong tháng này là "Cho vay" với số tiền là 800.000 đ. | ✅ (trùng do may — gọi tổng kết) |
+| C19 | cac khoan chi cho giao duc tu vi test | Mọi thời gian, khoản chi, ghi chú chứa "giao duc tu vi test" — không có giao dịch nào khớp. | L2c mẫu câu nêu bộ lọc, lệch (cả cụm câu hỏi nhét vào `tu_khoa`; đáp án 2 khoản 45.000) |
+| C20 | lan cuoi toi nap tien cho muc tieu muaxe la ngay nao | Dựa trên thông tin, mục tiêu "MuaXe" còn 581 ngày. | LỆCH (đáp án 08/09; gọi `danh_sach_muc_tieu`) |
+| ĐC3 | cac khoan chi cho danh muc abc thang nay | Không có dữ liệu chi tiết cho danh mục "abc" trong kỳ tháng này. Tổng chi cho tháng này là 2.141.000 đ. | trượt tiêu chí (chữ mô hình hiện), nội dung đúng — như lần 2–5 |
+
+Tool đúng **13/20** · tham số đúng **6/20** (y hệt lần 4, 5). Nội dung đúng **8/20**: ✅ chữ mô hình **3** (C8 C17
+C18 — lần 5: 2) + mẫu câu đúng **5** (C2 C3 C4 C6 C11 — lần 5: 6). **SAI 2** (C7, C10) · LỆCH 6 (C1 C5 C12 C13 C14
+C20) · mẫu câu lệch 3 (C15 C16 C19) · L2c 5 · L2 **4** (B1c C11 C15 C16 — lần 5: 5, C8 rời) · L1b 2 (B2 C9).
+
+**Chặn còn lại — năm câu, KHÔNG câu nào vì "khoản" / "giao dịch":** B4 câu 2 và B1c, C15 trượt `kiemNhan` vì
+**không nêu tên** đối tượng (luật "mục có tên đòi câu nêu tên" — 4a); C11 là 4.46 (số dòng hiện); C16 là *"5"* của câu
+hỏi, gói không có. → ✅ **Bẫy 4.47 ĐÓNG**: C5, C8, C17 cùng hiện chữ trong **một** lượt đo — lần 4 chặn C5/C17,
+lần 5 chặn C8, nay không câu đúng nào rơi mẫu câu vì mô hình chọn chữ nào cho con số đếm.
+
+**Đối chiếu dự đoán 9.22:** tool y hệt ✅ · C8 hiện ✅ · C5/C17 giữ ✅ · SAI 2 ✅ · *"nội dung đúng 9/20"* ✗ — **đếm
+sai lúc dự đoán**: C8 ở lần 5 đã được tính trong 8 (mẫu câu có ích, đúng), nên lên bậc chữ mô hình **không** cộng
+thêm; con số đúng là 8/20 với thành phần đổi (chữ 3 · mẫu câu 5). Bài học cũ: *đừng cộng dồn, hãy đếm lại*.
+
+**Đọc kết quả.** Lát nhãn đồng nghĩa làm đúng việc của nó và **chỉ** việc của nó. Cổng D đứng yên ở dòng 3 và 4 vì
+hai thứ lát này không chạm: (1) **4.42** — C7 *"hơn một triệu"* viết bằng **chữ**, C10 gán danh mục chi làm *"khoản
+thu"*: số thật, tên thật, mệnh đề sai, ba lớp chắn không có gì để bắt; (2) **sáu câu có điều kiện** (C1 C7 C10 C13
+C14 C18, cộng ĐC3) vẫn về `tong_ket_thu_chi_ky` dù mô tả đã dặn — và vì khai báo tool không đổi từ lần 4, mô hình
+điền y hệt ba lần. Đo thêm lần nữa với cùng khai báo là vô ích.
+
+**Việc tiếp theo — chờ người dùng quyết** (ba hướng còn lại của 9.20, (a) đã làm): (b) bắt số viết bằng chữ ở
+`kiemSo` (*"một triệu"*, *"nửa triệu"*) và/hoặc lớp chắn mệnh đề — đóng 4.42, đưa SAI về 0; (c) sửa mô tả /
+ví dụ của `tong_ket_thu_chi_ky` và `tim_giao_dich` cho câu có điều kiện — dòng 3; (d) dừng đo, mở bước 3 (đổi
+bất biến ④, cần spec). *(Ghi ở đây khi người dùng chốt.)*
 
 ---
 
