@@ -113,6 +113,29 @@ KetQuaCongCu _kiem() => KetQuaCongCu(
 
 const goiHoaDon = GoiCongCu(kTenCongCuHoaDon, {'trang_thai': 'qua_han'});
 
+/// Lượt `tim_giao_dich` THÀNH CÔNG mà 0 khoản — C9 cổng D lần 2 (bước 2c).
+KetQuaCongCu _timRong() => KetQuaCongCu(
+      hang: const [],
+      tongHop: [soDem('Số khoản', 0), soTien('Tổng chi', 0)],
+      soLieuBoLoc: [soTien('Đến', 1000000)],
+      boLoc: const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
+      rongTheoBoLoc: true,
+      chuThem: const {'ky': 'tháng này'},
+    );
+
+KetQuaCongCu _timCoHang() => KetQuaCongCu(
+      hang: [
+        HangSoLieu(ten: 'Cho vay', trangThai: 'khoản chi · test1 · Tiền mặt', canhBao: false,
+            soLieu: [soTien('Số tiền', 800000, ten: 'Cho vay')]),
+      ],
+      tongHop: [soDem('Số khoản', 1), soTien('Tổng chi', 800000)],
+      boLoc: const ['khoản chi'],
+      chuThem: const {'ky': 'tháng này'},
+      tenLienQuan: const ['test1', 'Tiền mặt'],
+    );
+
+const goiTimChi = GoiCongCu(kTenCongCuGiaoDich, {'ky': 'thang_nay', 'tu_khoa': 'chi', 'so_tien_den': 1000000});
+
 void main() {
   final now = DateTime(2026, 9, 23);
   late _CongCuGia tool;
@@ -320,6 +343,79 @@ void main() {
     expect(cau, goi.mauCau().cau,
         reason: 'câu mô hình có tên thật, số thật mà mệnh đề sai (bẫy 4.42) — không được hiện');
     expect(cau, contains('không có danh mục nào tên "abc"'));
+  });
+
+  test('⭐ L2c: tim_giao_dich thành công mà 0 khoản + mô hình viết chữ → chữ KHÔNG hiện, mẫu câu nêu bộ lọc, không KhongTraCuu (bẫy 4.44)', () async {
+    final giaoDich = _CongCuGia(kTenCongCuGiaoDich, _timRong());
+    bo = BoCongCu([giaoDich]);
+    final (sk, goi, _, _) = await chay([
+      [goiTimChi],
+      [const Chu('Không có giao dịch chi tiêu nào từ 200k đến 1 triệu trong tháng này.')],
+    ]);
+    expect(goi.daTraCuu, isTrue);
+    final cau = sk.whereType<CauQua>().single.cau;
+    expect(cau, goi.mauCau().cau);
+    expect(cau, 'Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào khớp.',
+        reason: 'C9 cổng D lần 2: mẫu câu L2 nói "Số khoản: 0" trong khi có 2 khoản — người đọc phải thấy bộ lọc đã hẹp ở đâu');
+    expect(sk.whereType<KhongTraCuu>(), isEmpty);
+    expect(log.any((l) => l.contains('(L2c)')), isTrue);
+    expect(log.any((l) => l.contains('lượt rỗng theo bộ lọc')), isTrue, reason: 'log bỏ chữ phải nêu lý do');
+  });
+
+  test('đã có câu hiện rồi mới gặp lượt rỗng → giữ câu cũ, nối cauNoiThem (L2c)', () async {
+    final giaoDich = _CongCuGia(kTenCongCuGiaoDich, _timRong());
+    bo = BoCongCu([tool, giaoDich]);
+    final (sk, _, _, _) = await chay([
+      [goiHoaDon],
+      [const Chu('Kiem đã quá hạn 45.000 đ. '), goiTimChi],
+      [const Chu('Không có khoản chi nào như vậy.')],
+    ]);
+    expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
+      'Kiem đã quá hạn 45.000 đ.',
+      'Không có giao dịch nào khớp: tháng này, ghi chú chứa "chi", đến 1.000.000 đ.',
+    ]);
+  });
+
+  test('⭐ rỗng rồi gọi lại rộng hơn có hàng → chữ vẫn KHÔNG hiện; mẫu câu hai nhóm', () async {
+    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_timRong(), _timCoHang()]);
+    bo = BoCongCu([giaoDich]);
+    final (sk, goi, _, _) = await chay([
+      [goiTimChi],
+      [const GoiCongCu(kTenCongCuGiaoDich, {'ky': 'thang_nay', 'chieu': 'khoan_chi'})],
+      [const Chu('Các khoản chi từ 200k đến 1 triệu: Cho vay 800.000 đ.')],
+    ]);
+    final cau = sk.whereType<CauQua>().single.cau;
+    expect(cau, goi.mauCau().cau, reason: 'câu có tên thật, số thật mà mệnh đề sai — cùng họ bẫy 4.42');
+    expect(cau, contains('không có giao dịch nào khớp'));
+    expect(cau, contains('Tháng này, khoản chi — Cho vay'));
+  });
+
+  test('cả lời từ chối lẫn lượt rỗng → một lần nối theo thứ tự xảy ra, log (L2b+L2c)', () async {
+    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('abc'), _timRong()]);
+    bo = BoCongCu([tool, giaoDich]);
+    final (sk, _, _, _) = await chay([
+      [goiHoaDon],
+      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [goiTimChi],
+      [const Chu('Không có gì cả.')],
+    ]);
+    expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
+      'Kiem đã quá hạn 45.000 đ.',
+      'Chưa tra được phần còn lại: không có danh mục nào tên "abc". '
+          'Không có giao dịch nào khớp: tháng này, ghi chú chứa "chi", đến 1.000.000 đ.',
+    ]);
+    expect(log.any((l) => l.contains('(L2b+L2c)')), isTrue);
+  });
+
+  test('tool KHÁC trả 0 hàng (không cờ) → chữ mô hình hiện như cũ (spec 2c mục 1.2 hàng 6)', () async {
+    tool = _CongCuGia(kTenCongCuHoaDon, const KetQuaCongCu(hang: [], tongHop: []));
+    bo = BoCongCu([tool]);
+    final (sk, _, _, _) = await chay([
+      [goiHoaDon],
+      [const Chu('Không có hoá đơn nào quá hạn.')],
+    ]);
+    expect(sk.last, const CauQua('Không có hoá đơn nào quá hạn.'),
+        reason: '0 hoá đơn quá hạn là sự thật — chỉ tim_giao_dich mới đóng cổng');
   });
 
   test('trả lời rỗng sau tool → mẫu câu (L2)', () async {
