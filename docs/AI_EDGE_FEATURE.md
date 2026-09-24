@@ -166,6 +166,7 @@ lib/features/ai_edge/
   domain/   (đổi nhãn đếm, 2026-09-24 chiều muộn — mục 9.21) hang_giao_dich.dart: soDem('Số giao dịch', soKhop) thay 'Số khoản' (bẫy 4.47 — chỉ đổi chỗ, gốc ở kiemNhan)
   domain/   (nhãn có từ đồng nghĩa, 2026-09-24 chiều muộn — mục 9.22; đo lần 6 tối cùng ngày, mục 9.23: bẫy 4.47 đóng) goi_so.dart: SoLieu.nhanKhac (mặc định rỗng), soTien / soDem nhận nhanKhac · kiem_nhan.dart: nhanKhopAmTiet — MỘT phép cho kiemNhan lẫn theCuaCau · the_cua_cau.dart: _cauNhacToi gọi nó · hang_giao_dich.dart: soDem('Số giao dịch', …, nhanKhac: ['Số khoản'])
   domain/   (đóng bẫy 4.42, 2026-09-24 đêm — mục 9.24, ba commit) kiem_so.dart: trichSo đọc số viết bằng chữ (_soChu · _donViChu · _mauSoChu · _giaTriSoChu), boTenDoiTuong tách từ trichSoNgoaiTen (kiemNhan dùng với MỌI tên) · goi_so.dart: SoLieu.nhanXungDot, soTien nhận nó · kiem_nhan.dart: ganNhanNguoc (xét trên câu đã bỏ tên) · hang_chi_tieu.dart, goi_so_phan_tich.dart: Chi ↔ ['Thu'] · hang_giao_dich.dart: _nhanChieu / _nguoc — chiều dòng là nhãn thay thế, chiều ngược là xung đột
+  domain/ + data/ (định tuyến tool, 2026-09-25 rạng sáng — mục 9.25) slm_prompt.dart: kPromptHeThongCongCu có VÍ DỤ ĐỊNH TUYẾN (không chữ số, tên tool từ hằng; lật "không few-shot" của 4b §3.7) · bo_cong_cu.dart: tim_giao_dich ĐẦU, tổng kết ngay sau · cong_cu_chi_tieu.dart / cong_cu_giao_dich.dart: mô tả thu hẹp ("CHỈ khi … KHÔNG có điều kiện" / "Gọi khi câu hỏi có BẤT KỲ điều kiện nào") · bo_cong_cu_test: kTranToolsJsonDaDo 5491
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -1707,7 +1708,103 @@ thứ bắt được là bản ghi máy thật. (3) Cổng D **đứng yên ở 
 
 **Việc tiếp theo — chờ người dùng quyết** (hai hướng còn lại của 9.20): (c) sửa mô tả / ví dụ của
 `tong_ket_thu_chi_ky` và `tim_giao_dich` cho sáu câu có điều kiện (C1 C7 C10 C13 C14 C18 + ĐC3) — dòng 3, cần spike
-Realme vì `tools_json` dài hơn trần đã đo; (d) dừng đo, mở bước 3 (đổi bất biến ④, cần spec).
+Realme vì `tools_json` dài hơn trần đã đo; (d) dừng đo, mở bước 3 (đổi bất biến ④, cần spec). *(Người dùng chọn (c) —
+mục 9.25.)*
+
+### 9.25 Định tuyến tool — ví dụ trong lời hệ thống · thứ tự · mô tả thu hẹp (2026-09-25 rạng sáng) — ✅ tool 18/20, ĐC3 đạt, 🛑 tham số 9/20, B 2/4
+
+Người dùng chọn hướng (c) sau lần đo 8. Bounded, thiết kế duyệt trong chat, `5ee1a37`. Ba tín hiệu đổi trong **một**
+bản (cố ý không tách, vì mỗi lần đo là 30 phút và cả ba đều là "phía prompt", đảo được bằng một commit):
+
+1. **Ví dụ định tuyến trong `kPromptHeThongCongCu`** — lật quyết định *"không few-shot ở bậc tool, mô tả tool là thứ
+   duy nhất dẫn E2B"* của spec 4b §3.4/§3.7: đó là **giả định chưa từng đo**, và lần 4–8 sáu câu có điều kiện gọi tổng
+   kết **bốn lần liền** dù mô tả chéo (2b) đã dặn. Ví dụ là *câu hỏi kiểu nào → tool nào, tham số nào* (sáu kiểu câu
+   hỏng + hai kiểu đúng của tổng kết), **không chữ số** (ca canh giữ; ngưỡng viết bằng chữ), tên tool lấy từ hằng nên
+   đổi tên là test đỏ. Lời hệ thống 618 → **1.318** ký tự.
+2. **Thứ tự tool**: `tim_giao_dich` lên **đầu** `BoCongCu.macDinh`, tổng kết ngay sau — trước đó nó đứng **cuối** với
+   chín tham số, còn tool một tham số đứng trước.
+3. **Mô tả thu hẹp**: tổng kết *"Gọi khi CHỈ hỏi tổng tiền của một kỳ … và câu KHÔNG có điều kiện …"*; `tim_giao_dich`
+   mở đầu bằng *"Gọi khi câu hỏi có BẤT KỲ điều kiện nào"*. `tools_json` 5437 → **5491**.
+
+Spike Realme S1–S3 (bẫy 4.39): 3 · 2 · 2 lời gọi, **0** `FAILED_PRECONDITION` → `kTranToolsJsonDaDo` 5491. Test **+2**
+ca (`slm_prompt_test` ví dụ định tuyến; `bo_cong_cu_test` mô tả thu hẹp; ca thứ tự viết lại), `flutter test`
+**3785/3785**, `analyze` 26, `ai_edge` + `ai_chat` **55 / 621**. ⚠️ **Build song song với `flutter test` thất bại ở
+Gradle lần nữa** khi thử lại cách cũ ở bước 4.42 — từ nay build **một mình**, đọc mã thoát của chính `flutter build`,
+so SHA-1 trước khi cài.
+
+**Lần đo 9** (Realme, APK `5ee1a37`, 00:43–01:11, 28 phút, 0 sập, 0 vỡ trần; đáp án như lần 3 — ngày 25/09 hôm qua/hôm
+nay đều 0 giao dịch, A3 "còn 6 ngày"). **15/34 câu đổi lời gọi tool** (bốn lần trước: 0), **26/34 câu đổi câu trả lời**.
+⚠️ Giữa buổi, người dùng yêu cầu rút thời gian chờ: `hoi.sh` nay coi *"lượt sinh cuối (0 lời gọi) đã qua và log đứng
+yên 9 s"* là xong thay vì đợi hết 240 s khi câu sau bị chặn (B4 là câu cuối còn 240 s), nghỉ chụp 4 → 2 s. Và từ lần
+10, **chỉ hỏi lại các câu chưa đạt**; chạy trọn 34 câu chỉ khi những câu ấy đã đạt (người dùng chốt).
+
+| Dòng | Lần 8 | **Lần 9** | |
+|---|---|---|---|
+| 1. Nhóm A | 8/8 | **8/8** (ĐC1 rơi mẫu câu, vẫn không bịa) | ✅ |
+| 2. Nhóm B | 2/4 | **2/4** — B1c **hiện chữ và đúng** lần đầu, nhưng B3 mất | ✗ |
+| 3. Nhóm C | 13 · 6 | **18/20 tool ✅ · 9/20 tham số ✗** | ✗ (nửa) |
+| 4. SAI · ĐC3 | 0 · ✗ | **0** · **ĐC3 ✅ lần đầu** (tool từ chối "không có danh mục abc" → L1b) | ✅ |
+| 5. Trần | 0 | **0** | ✅ |
+
+**Bảng 34 câu lần 9** (câu trả lời nguyên văn trên màn, thẻ số liệu bỏ; mẫu câu dài rút "…"):
+
+| # | Câu hỏi | Câu trả lời hiện ra | Chấm |
+|---|---|---|---|
+| A13 | Hoa don nao qua han? | Có 2 hóa đơn đã quá hạn: Kiem (45.000 đ) và di h0c (10.000 đ). Tổng cộng còn phải trả 155.000 đ. | ✅ |
+| A15 | Vi nao dang am? | Ví test đang âm với số dư là -100.000 đ. | ✅ |
+| A8 | Thang nay toi chi nhieu nhat vao danh muc nao? | Tháng này, tổng chi lớn nhất là "Cho vay" với số tiền là 800.000 đ. | ✅ |
+| A3 | Ngan sach nao sap het? | Ngân sách "Giáo dục" còn 6 ngày. | ✅ |
+| A2 | Con bao nhieu tien ngan sach thang nay? | Tổng số tiền còn lại của các ngân sách là 1.340.000 đ. | ✅ |
+| A9 | Thang truoc toi chi bao nhieu? | Tháng trước bạn chi tổng cộng 0 đ. | ✅ |
+| ĐC1 | Lai suat tiet kiem cua toi la bao nhieu? | Tháng này — Cho vay: Chi 800.000 đ; … Tổng chi: 2.141.000 đ; Tổng thu: 15.135.000 đ. (mẫu câu — chữ mô hình *"tỷ suất tiết kiệm…"* bị chặn) | không bịa ✓ — LỆCH |
+| ĐC2 | Thang nay toi chi bao nhieu? | Tháng này bạn chi tổng cộng 2.141.000 đ. | ✅ |
+| B1 | khi nao toi dat muc tieu muaxe | Bạn có thể đặt mục tiêu "MuaXe" hoặc "MuaDT". | LỆCH |
+| B2 | moi thang toi can de danh bao nhieu cho muaxe | Chưa tra được số liệu cho câu này: không có danh mục chi nào tên "muaxe". Bạn thử hỏi lại cụ thể hơn. | L1b mẫu câu trung thực |
+| B3 | thang sau toi nen dat ngan sach bao nhieu | Dựa trên dữ liệu gần nhất, bạn có thể xem xét các hạn mức sau: Di chuyển (450.000 đ), Mua sắm (850.000 đ), Giáo dục (50.000 đ) và Ăn uống (500.000 đ). | **LỆCH** (đọc *Hạn mức hiện tại* làm gợi ý, bỏ *Chi trung bình mỗi tháng*; lần 8 ✅) |
+| B4 | ngan sach an uong nen dat bao nhieu | Dựa trên dữ liệu gần đây, mức chi trung bình của bạn cho danh mục "Ăn uống" là 70.000 đ. | ✅ |
+| B1c | hoa don di h0c con phai tra bao nhieu | Hoa don "di h0c" còn phải trả 10.000 đ. | ✅ **chữ mô hình, lần đầu** |
+| C1 | thang nay toi tieu gi tren 500k | Trong tháng này, bạn đã chi tổng cộng 1.300.000 đ từ 500.000 đ trở lên. Các giao dịch chi tiêu bao gồm: Cho vay với số tiền 800.000 đ. | ✅ (tổng đúng; thiếu khoản MuaXe 500.000; `tim_giao_dich` thiếu `chieu`) |
+| C2 | hom qua toi da chi nhung gi | Hôm qua, khoản chi — không có giao dịch nào khớp. | ✅ (0) |
+| C3 | hom nay toi co giao dich nao khong | Hôm nay — không có giao dịch nào khớp. | ✅ (0) |
+| C4 | tuan nay co khoan chi nao duoi 100 nghin khong | Tuần này, khoản chi, đến 100.000 đ — không có giao dịch nào khớp. | ✅ (0) |
+| C5 | tuan truoc toi da tieu nhung khoan nao | Trong tuần trước, bạn đã có 6 giao dịch. Tổng chi là 1.096.000 đ và tổng thu là 510.000 đ. Các khoản chi bao gồm: Cho vay (800.000 đ), Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ) và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ). | ✅ (thiếu Di chuyển 50.000; thiếu `chieu`) |
+| C6 | thang truoc toi co khoan chi nao tren 1 trieu khong | Tháng trước, từ 1.000.000 đ — không có giao dịch nào khớp. | ✅ (0) |
+| C7 | cac khoan chi hon nua trieu trong quy nay | Trong quý này, có 2 khoản thu với tổng số tiền là 14.000.000 đ. | LỆCH (`tim_giao_dich` nhưng "nửa triệu" → `so_tien_tu` 1.000.000 và thiếu `chieu` → trả về hai khoản thu; câu thật, không phải câu hỏi) |
+| C8 | nam nay toi co khoan thu nao tu 5 trieu tro len khong | Nam nay bạn có 2 khoản thu từ 5.000.000 đ trở lên: Lương (9.000.000 đ ngày 04/09) và Lương (5.000.000 đ ngày 04/09). | ✅ |
+| C9 | liet ke cac khoan chi tu 200k den 1 trieu thang nay | Tháng này, khoản chi, đến 1.000.000 đ — Cho vay … 800.000 đ, 19/09; … Số giao dịch: 18; Tổng chi: 2.141.000 đ. | mẫu câu lệch (`tim_giao_dich` có `so_tien_den`, thiếu `so_tien_tu`, `danh_muc: tất cả`; mô hình trả lời rỗng → L2) |
+| C10 | thang nay toi nhan duoc nhung khoan thu nao | Tháng này bạn nhận được các khoản thu sau: Lương 9.000.000 đ (04/09), Lương 5.000.000 đ (04/09), Cho vay 500.000 đ (19/09), Tích lũy nhận từ Tiền mặt: MuaXe 500.000 đ (05/09). Tổng thu là 15.135.000 đ. | ✅ **lần đầu** (`tim_giao_dich {chieu: khoan_thu}`) |
+| C11 | thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao | Tháng này, chuyển ví, ví "Tiết kiệm" — … Số giao dịch: 10; Tổng chuyển: 2.501.000 đ. | ✅ mẫu câu (chữ "4 giao dịch" chặn, 4.46) |
+| C12 | liet ke cac khoan an uong thang nay | Tháng này, khoản chi, ghi chú chứa "an uong" — không có giao dịch nào khớp. | mẫu câu lệch (tool ✓; tên danh mục vào `tu_khoa` — họ 4.43) |
+| C13 | vi tien mat thang nay chi nhung gi | Tổng chi của bạn trong tháng này là 2.141.000 đ. Các khoản chi bao gồm: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ). | LỆCH (vẫn tổng kết) |
+| C14 | thang nay toi chi gi cho mua sam tu vi tien mat | Tháng này, khoản chi, ghi chú chứa "mua sam tu vi tien mat" — không có giao dịch nào khớp. | mẫu câu lệch (tool ✓; cả cụm vào `tu_khoa` — 4.43) |
+| C15 | lan gan nhat toi chi cho di chuyen la ngay nao | Hôm nay, khoản chi, mới nhất trước — không có giao dịch nào khớp. | mẫu câu lệch (tool ✓; `ky: hom_nay` thay `moi_luc`, thiếu `danh_muc`) |
+| C16 | 5 khoan chi gan day nhat cua toi | Các khoản chi gần nhất của bạn là: Di chuyển 50.000 đ ngày 20/09, Cho vay 800.000 đ ngày 19/09, Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 123.000 đ ngày 19/09, và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 123.000 đ ngày 19/09. | ✅ (4 khoản chi gần nhất — trần 4 hàng; tham số ✓✓, lần 8 thiếu `chieu`) |
+| C17 | tim cac giao dich co ghi chu hoa don | Có 5 giao dịch có ghi chú "hoa don" với tổng chi là 311.000 đ. | ✅ |
+| C18 | khoan chi lon nhat thang nay la gi | Khoản chi lớn nhất tháng này là 800.000 đ từ giao dịch "Cho vay" vào ngày 19/09. | ✅ (`tim_giao_dich {sap_xep: so_tien}` — lần trước trùng do may) |
+| C19 | cac khoan chi cho giao duc tu vi test | Tháng này, khoản chi, ghi chú chứa "giao duc tu vi test" — không có giao dịch nào khớp. | mẫu câu lệch (4.43) |
+| C20 | lan cuoi toi nap tien cho muc tieu muaxe la ngay nao | Dựa trên thông tin mục tiêu, mục tiêu "MuaXe" còn thiếu 899.000 đ và cần tích thêm 17 ngày. | LỆCH (vẫn `danh_sach_muc_tieu`) |
+| ĐC3 | cac khoan chi cho danh muc abc thang nay | Chưa tra được số liệu cho câu này: không có danh mục nào tên "abc". Bạn thử hỏi lại cụ thể hơn. | ✅ **ĐẠT tiêu chí lần đầu** (L1b) |
+
+Tool đúng **18/20** (✗ C13 tổng kết, C20 `danh_sach_muc_tieu`) · tham số đúng **9/20** (C2 C3 C4 C8 C10 C11 C16 C17 C18)
+· nội dung đúng **12/20** (✅ chữ 7: C1 C5 C8 C10 C16 C17 C18; mẫu câu đúng 5: C2 C3 C4 C6 C11) · **SAI 0** · LỆCH 3
+(C7 C13 C20) · mẫu câu lệch 5 (C9 C12 C14 C15 C19) · L2c 8 · L2 3 · L1b 2.
+
+**Đọc kết quả.** (1) Ba tín hiệu lật được thứ bốn lần đo không lật: tool 13 → 18, nội dung đúng 8 → 12, ĐC3 đạt,
+B1c hiện — và **không** câu SAI mới. (2) Chỗ nghẽn chuyển sang **tham số**, ba họ lỗi rõ ràng: (a) **thiếu `chieu`**
+(C1 C5 C6 — kết quả vẫn đúng vì tổng chi/thu tách riêng, nhưng hàng lẫn khoản thu, C7 vì thế trả về khoản thu); (b)
+**tên danh mục / ví nhét vào `tu_khoa`** (C12 C14 C19 — họ 4.43, nay lộ rõ vì tool đã đúng); (c) ngưỡng và kỳ: *"nửa
+triệu"* → 1.000.000 (C7), thiếu `so_tien_tu` khi có *"từ … đến"* (C9), `hom_nay` cho *"lần gần nhất"* (C15). (3) Tác dụng
+phụ **B3**: gói gợi ý hạn mức mang cả *Hạn mức hiện tại* lẫn *Chi trung bình mỗi tháng*, mô hình đọc hạn mức đang có
+làm "gợi ý" — số thật, nhãn thật, câu nêu tên, chắn không bắt (cùng họ 4.42, mệnh đề sai ý câu hỏi). (4) Bài học đo:
+thay đổi phía prompt **có** tác dụng mạnh trên E2B khi nó là *ví dụ* chứ không phải *mô tả*; sau khi tool đúng, tham
+số hỏng theo cách khác trước — đo lại là bắt buộc, đoán từ lần trước là sai.
+
+**Việc tiếp theo — chờ người dùng quyết** (từ lần 10 chỉ hỏi lại câu chưa đạt: B1 B3 C7 C9 C12 C13 C14 C15 C19 C20,
+cộng C1 C5 C6 thiếu `chieu`): (e) ví dụ định tuyến **cho tham số** — thêm vào lời hệ thống mẫu *"danh mục X" → danh_muc,
+"ví Y" → vi, "lần gần nhất" → moi_luc, "từ … đến …" → cả hai ngưỡng, luôn điền chieu khi câu nói chi/thu* — cùng đòn bẩy
+vừa chứng minh, cần spike vì lời hệ thống dài thêm; (f) chắn 4.43 ở tầng mã — `tu_khoa` chứa tên danh mục/ví có thật
+thì tool tự chuyển sang `danh_muc`/`vi` (tất định, không đụng mô hình); (g) B3 — gói gợi ý hạn mức bỏ *Hạn mức hiện
+tại* khỏi hàng hoặc đổi nhãn để không đọc nhầm; (h) mở bước 3.
 
 ---
 

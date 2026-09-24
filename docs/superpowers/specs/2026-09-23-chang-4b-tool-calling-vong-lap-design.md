@@ -224,7 +224,9 @@ Message.text(text: cauHoi, isUser: true))`; `sinhLuot()` bọc `generateChatResp
 ### 3.4 Bốn tool
 
 Tên tool là ASCII `snake_case` (định danh cho mô hình); **mô tả tiếng Việt nêu thẳng câu hỏi kiểu
-nào thì gọi** — đó là thứ duy nhất dẫn E2B chọn đúng (không có few-shot ở bậc tool). Mỗi tool trả
+nào thì gọi** — đó là thứ duy nhất dẫn E2B chọn đúng (không có few-shot ở bậc tool). *(⚠️ Lật ngày 2026-09-25: câu
+này là giả định chưa đo — cổng D lần 4–8 sáu câu có điều kiện gọi sai tool bốn lần liền dù mô tả chéo đã dặn, và
+**ví dụ định tuyến** trong lời hệ thống mới là thứ lật được: tool 13 → 18/20 — mục 9.25 `AI_EDGE_FEATURE.md`.)* Mỗi tool trả
 **tối đa `kToiDaMucMoiGoi` = 4 hàng**, xếp theo thứ tự đáng chú ý (quá hạn trước · âm trước · tỉ lệ
 cao trước · chi nhiều trước) — mô hình đọc từ trên xuống.
 
@@ -322,7 +324,8 @@ nó về đúng ca "đã có dữ liệu thật trước mắt mô hình".
 Chỉ dẫn đi bằng `systemInstruction` native (tham số `createChat` đã có), ngắn: vai trợ lý tài chính;
 *chưa tra cứu thì gọi công cụ*; *chỉ dùng tên và số do công cụ trả về, chép nguyên chuỗi*; *không
 có thì nói rõ là không có*; *trả lời tiếng Việt, dưới 60 từ*. Tin người dùng = câu hỏi trần. **Không
-few-shot** ở bậc tool. Bậc 1 (nhánh lùi) giữ nguyên `promptHoiDap`.
+few-shot** ở bậc tool *(⚠️ lật 2026-09-25 — `kPromptHeThongCongCu` nay có ví dụ định tuyến, không chữ số; mục 9.25
+`AI_EDGE_FEATURE.md`)*. Bậc 1 (nhánh lùi) giữ nguyên `promptHoiDap`.
 
 **Token — đo trước, nới sau.** Ước lượng (chưa đo): bốn khai báo tool ~400–600 token (runtime dựng
 từ `tools_json`), mỗi hàng ~30–40, trả lời ≤ 300 (`tranToken`). Dưới trần 2048 **trên giấy**. Task 1
