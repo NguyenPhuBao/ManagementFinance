@@ -164,4 +164,15 @@ const String kPromptHeThongCongCu =
     '$kTenCongCuGiaoDich với vi và danh_muc là tên nêu trong câu. "khoản chi lớn nhất '
     'tháng này là gì" → $kTenCongCuGiaoDich với chieu=khoan_chi, sap_xep=so_tien. '
     '"tháng này tôi chi bao nhiêu", "tháng này chi nhiều nhất vào danh mục nào" → '
-    '$kTenCongCuTongKet.';
+    '$kTenCongCuTongKet. '
+    // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
+    // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
+    'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '
+    'thì chieu=khoan_thu; nói chuyển thì chieu=chuyen_vi — luôn điền chieu khi câu '
+    'nói rõ. Tên danh mục trong câu điền vào danh_muc, tên ví điền vào vi, không đưa '
+    'vào tu_khoa; tu_khoa chỉ dành cho chữ trong ghi chú như tên hoá đơn, tên mục '
+    'tiêu. Câu "từ một số tiền đến một số tiền" thì điền cả so_tien_tu lẫn so_tien_den; '
+    '"nửa triệu" là năm trăm nghìn đồng, "một triệu" là một triệu đồng. Câu "lần gần '
+    'nhất", "lần cuối", "gần đây" thì ky=moi_luc và sap_xep=moi_nhat, không dùng hom_nay; '
+    '"lần cuối nạp tiền cho mục tiêu" thì $kTenCongCuGiaoDich với ky=moi_luc và tu_khoa '
+    'là tên mục tiêu.';

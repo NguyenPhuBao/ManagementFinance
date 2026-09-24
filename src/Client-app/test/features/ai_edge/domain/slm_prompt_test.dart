@@ -252,5 +252,22 @@ void main() {
           lessThan(kPromptHeThongCongCu.indexOf(kTenCongCuTongKet)),
           reason: 'ví dụ về tool liệt kê đứng trước — mô hình đọc từ trên xuống');
     });
+    // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
+    // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"
+    // → một triệu, C9 thiếu sàn, C15 hom_nay cho "lần gần nhất").
+    test('⭐ ví dụ ĐIỀN THAM SỐ (lần đo 10): chiều, tên vào đúng ô, hai ngưỡng, kỳ moi_luc', () {
+      expect(kPromptHeThongCongCu, contains('Điền tham số'));
+      for (final tu in [
+        'chieu=khoan_chi', 'chieu=khoan_thu', 'chuyen_vi',
+        'danh_muc', 'không', 'tu_khoa',
+        'so_tien_tu', 'so_tien_den', 'nửa triệu', 'năm trăm nghìn',
+        'moi_luc', 'sap_xep=moi_nhat', 'hom_nay',
+      ]) {
+        expect(kPromptHeThongCongCu, contains(tu), reason: tu);
+      }
+      expect(kPromptHeThongCongCu.indexOf('Điền tham số'),
+          greaterThan(kPromptHeThongCongCu.indexOf('Ví dụ chọn công cụ')),
+          reason: 'chọn tool trước, điền tham số sau');
+    });
   });
 }
