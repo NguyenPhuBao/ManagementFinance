@@ -26,8 +26,8 @@ giá trị người dùng**.
 |---|---|---|---|
 | 1a | Thẻ thu/chi tháng ở Trang chủ đi qua `khoanVaoThongKe` | ✅ **xong 2026-09-23 tối** — `thuChiThangCua` đi qua `tongThuChi` + `Ky.thang`; 7 ca ở `home/thu_chi_thang_test.dart`; nghiệm thu máy ảo: Trang chủ, khối Nhận xét, trang Phân tích cùng 15.135.000 | Người dùng chốt **LOẠI** khoản điều chỉnh số dư và khoản "Số dư ban đầu" — con số của trang Phân tích là con số đúng. Trước 4b, hai số lệch (15.145.000 / 15.135.000) nằm ở hai trang; từ 4b trợ lý AI (tool `chi_tieu_theo_ky`) nói một số, Trang chủ nói số kia. Sửa **một chỗ**: `thuChiThangCua` — thẻ và khối Nhận xét Trang chủ đổi theo |
 | 1b | Canary cho phiên có tool (bẫy 4.33 `AI_EDGE_FEATURE.md`) | ✅ **xong 2026-09-23 tối** — mục 9.15 `AI_EDGE_FEATURE.md`; 24 ca; nghiệm thu máy ảo ba cách chết (`kill -11` → hỏng · `force-stop` / `kill -9` → chỉ xoá dấu). ⚠️ Thi công lệch kế hoạch một chỗ: dấu bao khoảng trước sự kiện đầu của **mỗi** lượt sinh, không chỉ lượt đầu — có lý do thoát rồi thì cửa sổ dài hơn không còn gây báo nhầm, mà bắt được cả cú sập ở lượt sau | Người dùng chốt **lối B** (2026-09-23): canary **cộng** lý do thoát lần trước của Android (`ApplicationExitInfo`, API 30+) — chỉ tắt bậc tool khi lần thoát đầu tiên sau khi đặt dấu là **sập native**; bị giết / buộc dừng / thiếu RAM thì chỉ xoá dấu. Lý do: chép nguyên khuôn GPU thì Realme (giết app khi vuốt khỏi Recents) mất bậc tool vĩnh viễn chỉ vì một lần vuốt giữa lúc trả lời. Android 10 trở xuống: tắt khi dấu sót **hai lần liền** (lối C). Kèm: dấu chỉ bao **khoảng trước sự kiện đầu tiên** của lượt sinh; dấu "hỏng" ghi **phiên bản app** và tự xoá khi app lên bản mới. Khi bậc tool bị tắt: màn đi thẳng bậc 1, im lặng |
-| 1c | **Tên đối tượng có chữ số không qua được lớp chắn** (bẫy 4.38 `AI_EDGE_FEATURE.md`) — **thêm vào thứ tự 2026-09-23 tối**, lộ ra khi soát trước bước 2 | ✅ **xong 2026-09-23 tối** — `trichSoNgoaiTen` (bỏ tên của gói khỏi câu trước khi trích số: tên có chữ cái, khớp trọn từ, không phân biệt hoa thường, tên dài trước), một phép tách âm tiết giữ chữ số cho cả tên lẫn câu, `GoiSo.tenDoiTuong` + ba override; 18 ca, 11 bản sai có chủ ý đều bị bắt; mục **9.16** | Đo trên tài khoản 10: **5/9** hoá đơn, **1/16** danh mục có chữ số trong tên — câu đúng nêu tên chúng bị cả `kiemSo` lẫn `kiemNhan` chặn. Người dùng chọn **sửa trước** bước 2 (tool tìm giao dịch sẽ đưa ghi chú *"Thanh toán hóa đơn: <tên có số>"* vào hàng). ⚠️ **Chưa đo trên máy thật** — thêm một câu về hoá đơn có chữ số trong tên vào bộ câu hồi quy của buổi đo bước 2 |
-| 2 | Hai tool đọc còn lại của đơn đặt hàng cổng B + **tool tìm giao dịch** (nửa sau mục 2.1 tệp này) + **phép đo 20 câu lệnh** | 📝 **spec viết xong 2026-09-23 tối muộn** (`2e90486`) — `specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`; thiết kế ba phần người dùng đã duyệt trong chat. ✅ **Spec đã duyệt** ở phiên sau — kể cả ba chỗ thêm lúc viết (spec mục 1.2 hàng 11–13): bỏ giao dịch ghi ngày tương lai · giữ `maxTokens` 4.096 khi RAM đỉnh tăng ≤ 0,5 GB · tách `tieuDeGiaoDich` khỏi `buildTransactionRowContent` (**4** chỗ gọi, không phải 5 như bản nháp). 🚧 **Đang thi công** theo kế hoạch `2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md` (9 task) — task 1–8 xong (mã Dart, `BoCongCu` **bảy** tool; nghiệm thu máy ảo; spike Realme → `maxTokens` **4096**, RAM vượt ngưỡng 0,5 GB — người dùng duyệt). 🛑 **Cổng D CHƯA ĐẠT** — lần đo 1 (Realme, 2026-09-24): nhóm A **7/8 — tụt** · nhóm B 2/4 · nhóm C **13/20 tool · 5/20 tham số** (đúng theo nội dung 4/20) · **5 câu SAI** · 0 sập (mục **9.17** `AI_EDGE_FEATURE.md`). Theo spec 5.5: chỉnh mô tả tool/tham số rồi đo lại nhóm C; **bước 3 chưa mở**. Hướng sửa **đã chốt 2026-09-24** (*sửa lỗi mã trước, rồi chỉnh mô tả*) — ✅ **bước 2b** — spec `specs/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` đã duyệt, kế hoạch 10 task `plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md`, chưa dòng mã nào: lời từ chối không còn tính là đã tra cứu (bẫy 4.40), giá trị giữ chỗ và số tiền trong `tu_khoa` (4.43), `ky` bắt buộc + `moi_luc`, chỉnh mô tả tool, rồi đo lại **đủ** cổng D; ca A3 của bẫy 4.42 nằm ngoài spec ấy | hai tool: dự báo mục tiêu — dựng thành *danh sách mục tiêu có tên*, cùng hình dạng bốn tool đã có (bài học 4a) — và gợi ý hạn mức (`suggestAmount`). Phép đo chọn-đúng-hàm là **căn cứ để mở chiều ghi** |
+| 1c | **Tên đối tượng có chữ số không qua được lớp chắn** (bẫy 4.38 `AI_EDGE_FEATURE.md`) — **thêm vào thứ tự 2026-09-23 tối**, lộ ra khi soát trước bước 2 | ✅ **xong 2026-09-23 tối** — `trichSoNgoaiTen` (bỏ tên của gói khỏi câu trước khi trích số: tên có chữ cái, khớp trọn từ, không phân biệt hoa thường, tên dài trước), một phép tách âm tiết giữ chữ số cho cả tên lẫn câu, `GoiSo.tenDoiTuong` + ba override; 18 ca, 11 bản sai có chủ ý đều bị bắt; mục **9.16** | Đo trên tài khoản 10: **5/9** hoá đơn, **1/16** danh mục có chữ số trong tên — câu đúng nêu tên chúng bị cả `kiemSo` lẫn `kiemNhan` chặn. Người dùng chọn **sửa trước** bước 2 (tool tìm giao dịch sẽ đưa ghi chú *"Thanh toán hóa đơn: <tên có số>"* vào hàng). ✅ **Đo Realme 2026-09-24** ở buổi đo cổng D (mục 9.16): câu A13 nêu tên `di h0c` và câu hiện — trước 1c câu ấy rơi về mẫu câu; câu đo riêng của 1c lệch câu hỏi (trả tổng còn phải trả, không nêu tên) — không phải lớp chắn chặn |
+| 2 | Hai tool đọc còn lại của đơn đặt hàng cổng B + **tool tìm giao dịch** (nửa sau mục 2.1 tệp này) + **phép đo 20 câu lệnh** | 📝 **spec viết xong 2026-09-23 tối muộn** (`2e90486`) — `specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`; thiết kế ba phần người dùng đã duyệt trong chat. ✅ **Spec đã duyệt** ở phiên sau — kể cả ba chỗ thêm lúc viết (spec mục 1.2 hàng 11–13): bỏ giao dịch ghi ngày tương lai · giữ `maxTokens` 4.096 khi RAM đỉnh tăng ≤ 0,5 GB · tách `tieuDeGiaoDich` khỏi `buildTransactionRowContent` (**4** chỗ gọi, không phải 5 như bản nháp). ✅ **Thi công xong** kế hoạch `2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich.md` (9 task) — task 9 là buổi đo cổng D; task 1–8 (mã Dart, `BoCongCu` **bảy** tool; nghiệm thu máy ảo; spike Realme → `maxTokens` **4096**, RAM vượt ngưỡng 0,5 GB — người dùng duyệt). 🛑 **Cổng D CHƯA ĐẠT** — lần đo 1 (Realme, 2026-09-24): nhóm A **7/8 — tụt** · nhóm B 2/4 · nhóm C **13/20 tool · 5/20 tham số** (đúng theo nội dung 4/20) · **5 câu SAI** · 0 sập (mục **9.17** `AI_EDGE_FEATURE.md`). Theo spec 5.5: chỉnh mô tả tool/tham số rồi đo lại nhóm C; **bước 3 chưa mở**. Hướng sửa **đã chốt 2026-09-24** (*sửa lỗi mã trước, rồi chỉnh mô tả*) — ✅ **bước 2b** — spec `specs/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md` đã duyệt, kế hoạch 10 task `plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md`, chưa dòng mã nào: lời từ chối không còn tính là đã tra cứu (bẫy 4.40), giá trị giữ chỗ và số tiền trong `tu_khoa` (4.43), `ky` bắt buộc + `moi_luc`, chỉnh mô tả tool, rồi đo lại **đủ** cổng D; ca A3 của bẫy 4.42 nằm ngoài spec ấy | hai tool: dự báo mục tiêu — dựng thành *danh sách mục tiêu có tên*, cùng hình dạng bốn tool đã có (bài học 4a) — và gợi ý hạn mức (`suggestAmount`). Phép đo chọn-đúng-hàm là **căn cứ để mở chiều ghi** |
 | 3 | **Nhập giao dịch bằng câu** (gõ) — mục 2.2, ghi **tầng 3** | ⬜ | cần brainstorm + spec + Stitch. Bản luật chạy trước, mô hình chỉ cho câu lạ; form điền sẵn dựng từ **tham số**; chốt bảng quy đổi *k / củ / lít…* với người dùng trước khi viết mã |
 | 4 | **Tạo hoá đơn · mục tiêu · ngân sách bằng lệnh** — mục 2.3, ghi **tầng 2** | ⬜ | cần brainstorm + spec; một hộp thoại có số, một lệnh một bước |
 | 5 | **Gắn danh mục hàng loạt** — mục 3.1, ghi **tầng 1** | ⬜ | cần brainstorm + spec; đo lại tỉ lệ vì 15/39 là số của 2026-09-20 |
@@ -39,7 +39,10 @@ phải nằm trong spec và được người dùng duyệt. Tầng 4 (bật t�
 **xoá** vẫn **không có hàm nào** (mục 10.5 `AI_EDGE_FEATURE.md`).
 
 **Chờ người dùng gọi tên — không tự làm:** rút ngắn câu chào ~23 s trên Realme và dạy trợ lý nói
-"không có dữ liệu" (cả hai đổi hành vi L1, cần thiết kế); bảy việc UX hoãn (mục cuối tệp).
+"không có dữ liệu" (cả hai đổi hành vi L1, cần thiết kế); bảy việc UX hoãn (mục cuối tệp); bốn việc
+cổng D lần 1 lộ ra mà spec bước 2b **cố ý không làm** (mục 3 của spec ấy, thêm 2026-09-24): câu A3
+xếp cả bốn ngân sách vào "sắp hết" · mẫu câu L2 của `tim_giao_dich` khó đọc, lặp tên danh mục · vượt
+trần thì màn báo "Mô hình trên máy không chạy được" dù tool đã chạy · OnePlus 13R chưa đo ở 4096.
 
 ---
 
@@ -536,6 +539,9 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 > 🛑 **NÚT THẮT — cả chặng 2 đứng SAU P3, dù tệp này xếp nó trước** (ghi
 > 2026-09-21, sau khi nửa đầu 2.1 xong).
 >
+> ✅ *(Hết từ 2026-09-22: P3 xong, và nửa sau 2.1 thành **bước 2** của thứ tự mới ở đầu tệp — mã
+> xong, cổng D lần 1 chưa đạt 2026-09-24. Khối này giữ làm lịch sử.)*
+>
 > Thứ tự trong tệp này gợi ý chặng 2 và chặng 4 (P3 — cài mô hình) độc lập nhau.
 > **Không.** Nửa sau của 2.1 đòi *"20 câu lệnh mẫu → đếm bao nhiêu lần chọn đúng
 > hàm"*, mà phép đo ấy **cần một mô hình thật mới đo được**; 2.2 và 2.3 cũng vậy,
@@ -553,7 +559,7 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 >
 > Đừng lặng lẽ bắt đầu nửa sau 2.1 rồi phát hiện không nghiệm thu được.
 
-## 2.1 ⭐ Tìm kiếm bằng câu — *"tháng trước tôi tiêu gì trên 500k"* — ⚠️ NỬA ĐẦU XONG 2026-09-21
+## 2.1 ⭐ Tìm kiếm bằng câu — *"tháng trước tôi tiêu gì trên 500k"* — ✅ NỬA ĐẦU XONG 2026-09-21 · 🛑 NỬA SAU MÃ XONG, CỔNG D CHƯA ĐẠT 2026-09-24
 
 **Vì sao đây là việc đầu của hạ tầng C, không phải nhập bằng câu:**
 
@@ -581,7 +587,14 @@ TransactionTypeFilter type;  String? walletId;  String? categoryId;  String quer
 KhoangTien? khoangTien;   // ← mới; khoảng NGÀY không nằm ở đây mà là nguồn dữ liệu
 ```
 
-### ⬜ Nửa sau — bộ hàm cho function calling (chưa làm)
+### 🛑 Nửa sau — tool `tim_giao_dich` (mã xong ở bước 2, cổng D chưa đạt)
+
+> ✅ **Làm ở bước 2 của thứ tự mới** (spec `specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`,
+> 2026-09-23 → 24): tool `tim_giao_dich` + hàm thuần `timGiaoDich` (`transaction/domain/`, đi qua
+> `applyTransactionFilter`); phép đo 20 câu lệnh là **nhóm C của cổng D**. Lần đo 1 trên Realme:
+> **13/20** câu chọn đúng tool · **5/20** đúng tham số · đúng theo nội dung câu hiện ra **4/20** — mục
+> **9.17** `AI_EDGE_FEATURE.md`. Vòng sửa: **bước 2b** (spec `2026-09-24-buoc-2b-…`, đã duyệt, chưa thi
+> công). Các đoạn dưới giữ làm lịch sử — chúng là bản viết khi nửa sau **chưa làm**.
 
 > ⚠️ **Hạ tầng tool ĐÃ CÓ từ lát 4b (2026-09-23)** — `CongCu` / `KhaiBaoCongCu` / `BoCongCu`, vòng
 > lặp `hoiBangCongCu` (trần 3 lời gọi, thang lùi L1–L4), `GoiSoTraCuu`; thêm một tool là **một
@@ -735,6 +748,8 @@ dễ gây ấn tượng khi trình bày.
 
 **Không còn quyết định nào chờ người dùng.** Mọi việc trong tệp này làm được ngay khi
 tới lượt, trừ bốn việc UX ghi rõ "cần người dùng chốt trước" ở mục việc ngoài mảng AI.
+*(Câu trên đúng ngày 2026-09-21. Từ 2026-09-23 lại có việc chờ người dùng gọi tên — danh sách hiện
+hành ở cuối mục **THỨ TỰ … chốt lại 2026-09-23** đầu tệp.)*
 
 # Ba chỗ cố ý KHÔNG có trong danh sách
 

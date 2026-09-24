@@ -344,6 +344,10 @@ Tham số **lạ** (không khai báo) thì bỏ qua, không từ chối. Tool t�
 
 ## 5. Ra cổng D — đo trên máy thật
 
+> ⚠️ *"Cổng D"* ở đây **không** phải cổng RAG client của chặng 5 trong lộ trình
+> `…/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md` — chặng ấy đã bỏ; hai cổng trùng chữ cái, khác hẳn
+> nhau (ghi chú thêm 2026-09-24).
+
 ### 5.1 Điều kiện
 
 APK **release**, tài khoản 10, **Realme RMX2205 bắt buộc** (CPU, máy yếu hơn — ngưỡng chấm trên máy này);

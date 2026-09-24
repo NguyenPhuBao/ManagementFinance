@@ -637,8 +637,9 @@ số, nên tên có dấu gạch (`Điện/Nước`) cũng khớp được. Bẫ
 
 **Test:** 18 ca ở 7 tệp đã có; 11 bản sai có chủ ý, bản nào cũng bị bắt. Ba lớp giả `implements
 GoiSo` trong test đổi sang `extends` vì `GoiSo` thêm getter. Trọn bộ **3603/3603** (3 skip), analyze
-**26**. Schema, payload, `pubspec` không đổi. ⚠️ **Chưa đo trên máy thật** (không cắm điện thoại) —
-đo ở buổi đo bước 2, thêm một câu về hoá đơn có chữ số vào bộ hồi quy.
+**26**. Schema, payload, `pubspec` không đổi. ✅ **Đo Realme 2026-09-24** ở buổi đo cổng D (mục 9.16
+`AI_EDGE_FEATURE.md`): câu A13 nêu tên `di h0c` và câu **hiện** — trước 1c câu ấy rơi về mẫu câu; câu đo
+riêng của 1c lệch câu hỏi (trả tổng còn phải trả, không nêu tên) — không phải lớp chắn chặn.
 
 ### ✅ Bước 1b — canary cho phiên có tool, lối B (2026-09-23 tối)
 

@@ -2,7 +2,9 @@
 
 **Ngày:** 2026-09-24 · **Nhánh:** `TranQuangDat` @ `7308b85` · **Trạng thái:** ✅ **đã duyệt** 2026-09-24 — thiết
 kế bốn phần và bốn câu hỏi duyệt trong chat (mục 1.2), spec duyệt cùng ngày. Kế hoạch 10 task:
-`docs/superpowers/plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md` (gitignore) — **chưa dòng mã nào**.
+`docs/superpowers/plans/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool.md` (gitignore) — **chưa dòng mã nào**;
+kế hoạch lệch spec **bảy** chỗ có chủ ý, ghi kèm lý do ở đầu tệp kế hoạch (đáng nhớ nhất: `them(…)` nhận `args`
+bằng tham số có tên mặc định rỗng, không phải tham số vị trí như mục 2.2; mười task thay vì chín).
 **Đầu vào:** cổng D lần đo 1 — mục **9.17** `docs/AI_EDGE_FEATURE.md`, bẫy **4.40**, **4.42**, **4.43**; spec bước 2
 `2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md` (mục 3.8, 3.9, 5); spec 4b
 `2026-09-23-chang-4b-tool-calling-vong-lap-design.md` (mục 3.6 — chốt L1).
