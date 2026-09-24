@@ -13,8 +13,14 @@
 /// 4b): lời từ chối nói "câu hỏi gửi tool bị hỏng", không nói "không có gì" — và
 /// cổng D lần 1 đo được E2B đọc nó thành "không có dữ liệu" (bẫy 4.40).
 ///
+/// ⚠️ Bước 2c (bẫy 4.44): vế "0 hàng thật là dữ liệu thật" đúng cho tool lọc
+/// bằng mã, SAI cho tool lọc bằng chữ tự do — `tim_giao_dich {tu_khoa: "chi"}`
+/// trả 0 khoản là sự thật về ghi chú chứa "chi", câu hỏi người dùng không đặt.
+/// Lượt như thế (`rongTheoBoLoc`) vẫn là đã tra cứu (không rơi bậc 1) nhưng
+/// ĐÓNG cổng hiện chữ, KHÔNG BAO GIỜ gỡ, và mẫu câu chỉ nêu bộ lọc.
+///
 /// ⚠️ [choHienChuMoHinh] là cổng hiện chữ của vòng lặp: có lượt thành công VÀ
-/// không còn lời từ chối chưa gỡ. Lời từ chối được gỡ THEO THAM SỐ (spec 2b mục
+/// không còn lời từ chối chưa gỡ VÀ không có lượt rỗng theo bộ lọc. Lời từ chối được gỡ THEO THAM SỐ (spec 2b mục
 /// 1.2 hàng 4): một lượt thành công SAU đó của CÙNG tool phải điền một trong
 /// `thamSoGo` của nó. Gọi lại bằng cách BỎ tham số vẫn là chưa gỡ — nếu không,
 /// mô hình bỏ bộ lọc sai, nhận kết quả rộng hơn, rồi nói như thể trả lời câu
@@ -57,13 +63,25 @@ class GoiSoTraCuu extends GoiSo {
   /// Lời từ chối CHƯA gỡ, theo thứ tự xảy ra.
   final List<({String ten, KetQuaCongCu kq})> _tuChoi = [];
 
+  /// Số liệu dội lại của bộ lọc (Từ / Đến) của mọi lượt — nằm trong [soLieu]
+  /// cho `kiemSo` và thẻ, không in thành vế (bước 2c).
+  final List<SoLieu> soLieuBoLoc = [];
+
+  /// Lượt THÀNH CÔNG mà rỗng theo bộ lọc (`tim_giao_dich`, bẫy 4.44) — không
+  /// bao giờ gỡ: lượt rộng hơn sau đó trả lời một câu hỏi khác (ca "abc").
+  final List<KetQuaCongCu> _luotRong = [];
+
+  /// Loại câu "phải nói thêm" theo thứ tự lần đầu xảy ra — cho [cauNoiThem].
+  final List<_NoiThem> _thuTuNoiThem = [];
+
   @override
   String get man => 'tra_cuu';
 
   /// Tổng hợp TRƯỚC hàng: `chuoiTheoNhan` lấy mục đầu của mỗi nhãn, và mục tổng
   /// hợp không tên là thứ mẫu câu tra theo nhãn.
   @override
-  List<SoLieu> get soLieu => [...tongHop, for (final h in hang) ...h.soLieu];
+  List<SoLieu> get soLieu =>
+      [...tongHop, ...soLieuBoLoc, for (final h in hang) ...h.soLieu];
 
   /// Có ít nhất một lượt THÀNH CÔNG (kể cả 0 hàng).
   bool get daTraCuu => tenCongCuDaChay.isNotEmpty;
@@ -75,13 +93,42 @@ class GoiSoTraCuu extends GoiSo {
   List<({String ten, KetQuaCongCu kq})> get tuChoiChuaGo =>
       List.unmodifiable(_tuChoi);
 
-  /// Cổng hiện chữ của vòng lặp (spec 2b mục 2.3).
-  bool get choHienChuMoHinh => daTraCuu && _tuChoi.isEmpty;
+  List<KetQuaCongCu> get luotRong => List.unmodifiable(_luotRong);
+
+  /// Cổng hiện chữ của vòng lặp (spec 2b mục 2.3; 2c mục 2.3): có lượt thành
+  /// công, không còn lời từ chối chưa gỡ, và không có lượt rỗng theo bộ lọc.
+  bool get choHienChuMoHinh =>
+      daTraCuu && _tuChoi.isEmpty && _luotRong.isEmpty;
 
   /// Câu trung thực về phần chưa tra được — `null` khi không còn lời từ chối
   /// chưa gỡ. L2b nối nó sau các câu đã hiện.
   String? get cauChuaTraDuoc =>
       _tuChoi.isEmpty ? null : 'Chưa tra được phần còn lại: ${_lyDo()}.';
+
+  /// Câu về các lượt rỗng theo bộ lọc — `null` khi không có. Tiền tố viết
+  /// thường chữ đầu, bỏ trùng, nối bằng `; `. L2c nối nó sau các câu đã hiện.
+  String? get cauLuotRong {
+    if (_luotRong.isEmpty) return null;
+    final tienTo = {
+      for (final kq in _luotRong) _tienTo(_kyCua(kq), kq.boLoc),
+    }..remove('');
+    return tienTo.isEmpty
+        ? 'Không có giao dịch nào khớp.'
+        : 'Không có giao dịch nào khớp: ${tienTo.join('; ')}.';
+  }
+
+  /// Mọi câu phải nói thêm sau các câu đã hiện — lượt rỗng và lời từ chối chưa
+  /// gỡ, câu của loại xảy ra TRƯỚC đứng trước. `null` khi không có gì.
+  String? get cauNoiThem {
+    final cau = [
+      for (final loai in _thuTuNoiThem)
+        switch (loai) {
+          _NoiThem.rong => cauLuotRong,
+          _NoiThem.tuChoi => cauChuaTraDuoc,
+        },
+    ].whereType<String>().toList();
+    return cau.isEmpty ? null : cau.join(' ');
+  }
 
   /// Gọi cho tool THẬT đã chạy — tool bịa tên không tới đây (vòng lặp trả lời
   /// mô hình bằng `{"loi": …}` mà không `them`). [args] là tham số của chính lời
@@ -95,12 +142,22 @@ class GoiSoTraCuu extends GoiSo {
     tenLienQuan.addAll(kq.tenLienQuan);
     if (kq.loi != null) {
       _tuChoi.add((ten: tenCongCu, kq: kq));
+      if (!_thuTuNoiThem.contains(_NoiThem.tuChoi)) {
+        _thuTuNoiThem.add(_NoiThem.tuChoi);
+      }
       return;
     }
     tenCongCuDaChay.add(tenCongCu);
     hang.addAll(kq.hang);
     tongHop.addAll(kq.tongHop);
+    soLieuBoLoc.addAll(kq.soLieuBoLoc);
     _luot.add(kq);
+    if (kq.rongTheoBoLoc) {
+      _luotRong.add(kq);
+      if (!_thuTuNoiThem.contains(_NoiThem.rong)) {
+        _thuTuNoiThem.add(_NoiThem.rong);
+      }
+    }
     _tuChoi.removeWhere((r) =>
         r.ten == tenCongCu &&
         r.kq.thamSoGo.any((p) => thamSoTen(args[p]) != null));
@@ -144,12 +201,14 @@ class GoiSoTraCuu extends GoiSo {
         muc: MucNhanXet.binhThuong,
       );
     }
-    // Gom lượt theo NỘI DUNG (hàng + tổng, bỏ chữ kỳ): hai kỳ cho cùng số liệu
-    // là một nhóm hai nhãn, không phải hai lần kể lại.
+    // Gom lượt theo NỘI DUNG (hàng + tổng, bỏ chữ kỳ) VÀ bộ lọc: hai kỳ cho
+    // cùng số liệu là một nhóm hai nhãn, không phải hai lần kể lại; nhưng khác
+    // bộ lọc thì khác nhóm dù trùng kết quả (bước 2c).
     final nhom = <String, ({List<String> ky, KetQuaCongCu kq})>{};
     for (final kq in _luot) {
       if (kq.hang.isEmpty && kq.tongHop.isEmpty) continue;
-      final noiDung = jsonEncode(Map.of(kq.json)..remove('ky'));
+      final noiDung =
+          '${jsonEncode(Map.of(kq.json)..remove('ky'))}|${kq.boLoc.join('|')}';
       final n = nhom.putIfAbsent(noiDung, () => (ky: <String>[], kq: kq));
       final ky = kq.chuThem['ky'];
       if (ky != null && !n.ky.contains(ky)) n.ky.add(ky);
@@ -166,19 +225,35 @@ class GoiSoTraCuu extends GoiSo {
     );
   }
 
-  /// Một câu cho một nhóm: chữ kỳ (nếu có) rồi các vế. Tên trước số, một hàng
-  /// một vế — đúng thứ 4a đo được là mô hình cần đọc.
+  /// Một câu cho một nhóm: tiền tố (kỳ + bộ lọc) rồi các vế; nhóm rỗng theo bộ
+  /// lọc chỉ có tiền tố và câu "không có giao dịch nào khớp" (bước 2c). Vế
+  /// gồm hàng và tổng hợp — KHÔNG gồm `soLieuBoLoc` (tiền tố đã nêu). Tên
+  /// trước số, một hàng một vế — đúng thứ 4a đo được là mô hình cần đọc.
   static String _cauCuaNhom(List<String> ky, KetQuaCongCu kq) {
+    final tienTo = _hoaDau(_tienTo(ky, kq.boLoc));
+    if (kq.rongTheoBoLoc) {
+      return tienTo.isEmpty
+          ? 'Không có giao dịch nào khớp.'
+          : '$tienTo — không có giao dịch nào khớp.';
+    }
     final ve = [
       for (final h in kq.hang)
         '${h.ten}${h.trangThai == null ? '' : ' ${h.trangThai}'}: '
             '${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}',
       for (final s in kq.tongHop) '${s.nhan}: ${s.chuoi}',
     ];
-    final nhanKy = ky.join(', ');
-    final tienTo = nhanKy.isEmpty
-        ? ''
-        : '${nhanKy[0].toUpperCase()}${nhanKy.substring(1)} — ';
-    return '$tienTo${ve.join('; ')}.';
+    return '${tienTo.isEmpty ? '' : '$tienTo — '}${ve.join('; ')}.';
   }
+
+  static List<String> _kyCua(KetQuaCongCu kq) =>
+      [if (kq.chuThem['ky'] != null) kq.chuThem['ky']!];
+
+  /// Tiền tố viết thường: kỳ rồi từng điều kiện lọc, nối bằng `, `.
+  static String _tienTo(List<String> ky, List<String> boLoc) =>
+      [...ky, ...boLoc].join(', ');
+
+  static String _hoaDau(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 }
+
+enum _NoiThem { rong, tuChoi }

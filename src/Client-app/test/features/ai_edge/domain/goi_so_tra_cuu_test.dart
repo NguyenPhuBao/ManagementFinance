@@ -8,6 +8,7 @@ import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/loi_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
@@ -24,6 +25,39 @@ KetQuaCongCu _hoaDonQuaHan() => KetQuaCongCu(
         ),
       ],
       tongHop: [soTien('Còn phải trả', 155000), soDem('Quá hạn', 1)],
+    );
+
+/// Lượt `tim_giao_dich` THÀNH CÔNG mà 0 khoản — C9 cổng D lần 2 (bước 2c).
+KetQuaCongCu _timRong({
+  String ky = 'tháng này',
+  List<String> boLoc = const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
+  List<String> tenLienQuan = const [],
+}) =>
+    KetQuaCongCu(
+      hang: const [],
+      tongHop: [soDem('Số khoản', 0), soTien('Tổng chi', 0)],
+      soLieuBoLoc: [soTien('Đến', 1000000)],
+      boLoc: boLoc,
+      rongTheoBoLoc: true,
+      chuThem: {'ky': ky},
+      tenLienQuan: tenLienQuan,
+    );
+
+KetQuaCongCu _timCoHang({List<String> boLoc = const ['khoản chi', 'từ 500.000 đ']}) =>
+    KetQuaCongCu(
+      hang: [
+        HangSoLieu(
+          ten: 'Cho vay',
+          trangThai: 'khoản chi · test1 · Tiền mặt',
+          canhBao: false,
+          soLieu: [soTien('Số tiền', 800000, ten: 'Cho vay')],
+        ),
+      ],
+      tongHop: [soDem('Số khoản', 1), soTien('Tổng chi', 800000)],
+      soLieuBoLoc: [soTien('Từ', 500000)],
+      boLoc: boLoc,
+      chuThem: const {'ky': 'tháng này'},
+      tenLienQuan: const ['test1', 'Tiền mặt'],
     );
 
 void main() {
@@ -176,6 +210,111 @@ void main() {
         ..them('tim_giao_dich', tuKhoaLaSoTien)
         ..them('tim_giao_dich', thanhCong, args: const {'so_tien_tu': 500000});
       expect(g.tuChoiChuaGo, isEmpty);
+    });
+  });
+
+  group('lượt RỖNG THEO BỘ LỌC — bẫy 4.44 (bước 2c)', () {
+    test('⭐ vẫn là đã tra cứu (không rơi bậc 1) nhưng cổng hiện chữ ĐÓNG', () {
+      final g = GoiSoTraCuu()..them('tim_giao_dich', _timRong());
+      expect(g.daTraCuu, isTrue);
+      expect(g.thieuDuLieu, isFalse);
+      expect(g.choHienChuMoHinh, isFalse,
+          reason: 'C9: 0 khoản với tu_khoa "chi" là sự thật về ghi chú chứa "chi", không phải câu trả lời');
+      expect(g.luotRong, hasLength(1));
+      expect(g.tuChoiChuaGo, isEmpty);
+    });
+
+    test('⭐ KHÔNG gỡ được — kể cả cùng tool điền thêm tham số rồi có hàng (mục 1.2 hàng 5)', () {
+      final g = GoiSoTraCuu()
+        ..them('tim_giao_dich', _timRong(), args: const {'ky': 'thang_nay', 'tu_khoa': 'chi'})
+        ..them('tim_giao_dich', _timCoHang(), args: const {'ky': 'thang_nay', 'chieu': 'khoan_chi'});
+      expect(g.choHienChuMoHinh, isFalse, reason: 'lượt rộng hơn trả lời một câu hỏi khác — ca "abc"');
+      expect(g.luotRong, hasLength(1));
+    });
+
+    test('tool KHÁC trả 0 hàng không có cờ → cổng vẫn mở (mục 1.2 hàng 6)', () {
+      final g = GoiSoTraCuu()
+        ..them('chi_tieu_theo_ky', KetQuaCongCu(hang: const [], tongHop: [soTien('Tổng chi', 0)]));
+      expect(g.choHienChuMoHinh, isTrue);
+      expect(g.luotRong, isEmpty);
+    });
+
+    test('cauLuotRong: tiền tố viết thường, bỏ trùng, nối "; ", null khi không có', () {
+      expect(GoiSoTraCuu().cauLuotRong, isNull);
+      expect((GoiSoTraCuu()..them('t', _timCoHang())).cauLuotRong, isNull);
+      final mot = GoiSoTraCuu()..them('t', _timRong())..them('t', _timRong());
+      expect(mot.cauLuotRong,
+          'Không có giao dịch nào khớp: tháng này, ghi chú chứa "chi", đến 1.000.000 đ.');
+      final hai = GoiSoTraCuu()..them('t', _timRong())..them('t', _timRong(ky: 'tháng trước'));
+      expect(hai.cauLuotRong,
+          'Không có giao dịch nào khớp: tháng này, ghi chú chứa "chi", đến 1.000.000 đ; '
+          'tháng trước, ghi chú chứa "chi", đến 1.000.000 đ.');
+    });
+
+    test('⭐ cauNoiThem: chỉ rỗng · chỉ từ chối · cả hai theo THỨ TỰ XẢY RA', () {
+      final tuChoi = tuChoiKhongKhop('danh_muc', 'abc', const ['Ăn uống'], loai: 'danh mục');
+      final chiRong = GoiSoTraCuu()..them('t', _timRong());
+      expect(chiRong.cauNoiThem, chiRong.cauLuotRong);
+      final chiTuChoi = GoiSoTraCuu()..them('t', _hoaDonQuaHan())..them('t', tuChoi);
+      expect(chiTuChoi.cauNoiThem, chiTuChoi.cauChuaTraDuoc);
+      final rongTruoc = GoiSoTraCuu()..them('t', _timRong())..them('t', tuChoi);
+      expect(rongTruoc.cauNoiThem, '${rongTruoc.cauLuotRong} ${rongTruoc.cauChuaTraDuoc}');
+      final tuChoiTruoc = GoiSoTraCuu()..them('t', tuChoi)..them('t', _timRong());
+      expect(tuChoiTruoc.cauNoiThem, '${tuChoiTruoc.cauChuaTraDuoc} ${tuChoiTruoc.cauLuotRong}');
+      expect(GoiSoTraCuu().cauNoiThem, isNull);
+      expect((GoiSoTraCuu()..them('t', _timCoHang())).cauNoiThem, isNull);
+    });
+
+    test('⭐ mauCau nhóm rỗng: tiền tố + "không có giao dịch nào khớp." — KHÔNG "Số khoản: 0"', () {
+      final g = GoiSoTraCuu()..them('tim_giao_dich', _timRong());
+      final nx = g.mauCau();
+      expect(nx.cau, 'Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không có giao dịch nào khớp.',
+          reason: 'câu SAI C9: "Tháng này — Số khoản: 0; Tổng chi: 0 đ; …; Đến: 1.000.000 đ." trong khi có 2 khoản');
+      expect(nx.cau, isNot(contains('Số khoản')));
+      expect(kiemSo(nx.cau, g), isTrue, reason: 'câu rơi về phải tự qua bộ kiểm số');
+      expect(nx.muc, MucNhanXet.binhThuong);
+    });
+
+    test('⭐ nhóm thường: tiền tố có bộ lọc; KHÔNG in vế Từ: / Đến:', () {
+      final g = GoiSoTraCuu()..them('tim_giao_dich', _timCoHang());
+      final cau = g.mauCau().cau;
+      expect(cau,
+          'Tháng này, khoản chi, từ 500.000 đ — Cho vay khoản chi · test1 · Tiền mặt: '
+          'Số tiền 800.000 đ; Số khoản: 1; Tổng chi: 800.000 đ.');
+      expect(cau, isNot(contains('Từ:')));
+      expect(kiemSo(cau, g), isTrue);
+      expect(kiemNhan(cau, [g]), isTrue);
+    });
+
+    test('hai lượt trùng kết quả nhưng KHÁC bộ lọc → hai nhóm, hai tiền tố', () {
+      final g = GoiSoTraCuu()
+        ..them('t', _timCoHang())
+        ..them('t', _timCoHang(boLoc: const ['ví "Tiền mặt"']));
+      final cau = g.mauCau().cau;
+      expect(cau, contains('Tháng này, khoản chi, từ 500.000 đ — '));
+      expect(cau, contains('Tháng này, ví "Tiền mặt" — '));
+      expect('Cho vay'.allMatches(cau).length, 2);
+    });
+
+    test('⭐ soLieuBoLoc của mọi lượt nằm trong gói — mô hình nhắc lại khoảng tiền qua kiemSo', () {
+      final g = GoiSoTraCuu()..them('t', _timCoHang());
+      expect(g.soLieu.map((s) => s.nhan), contains('Từ'));
+      expect(kiemSo('Cho vay 800.000 đ, từ 500.000 đ trở lên.', g), isTrue);
+      final khong = GoiSoTraCuu()..them('t', _timCoHang(boLoc: const []));
+      expect(kiemSo('Cho vay 800.000 đ, từ 500.000 đ trở lên.', khong), isTrue,
+          reason: 'số nằm ở soLieuBoLoc chứ không ở boLoc — boLoc rỗng không đổi gì');
+    });
+
+    test('tiền tố có tu_khoa chứa chữ số ("T9") tự qua kiemSo nhờ tenLienQuan; thiếu thì bị chặn', () {
+      final co = GoiSoTraCuu()
+        ..them('t', _timRong(boLoc: const ['ghi chú chứa "T9"'], tenLienQuan: const ['T9']));
+      final cau = co.mauCau().cau;
+      expect(cau, 'Tháng này, ghi chú chứa "T9" — không có giao dịch nào khớp.');
+      expect(kiemSo(cau, co), isTrue);
+      final thieu = GoiSoTraCuu()..them('t', _timRong(boLoc: const ['ghi chú chứa "T9"']));
+      expect(kiemSo(thieu.mauCau().cau, thieu), isFalse,
+          reason: 'đối chứng: không có tenLienQuan thì "9" bị đọc là số bịa — ca canh Task 4 đưa tu_khoa vào');
+      expect(theCuaCau(cau, [co]), isEmpty);
     });
   });
 
