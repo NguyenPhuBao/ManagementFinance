@@ -1,7 +1,7 @@
 /// Vòng lặp tool — trần, thang lùi L1–L4, huỷ. Mọi ca chạy trên `PhienCongCuGia`
 /// (kịch bản theo lượt) và một tool giả; hai bất biến mới của spec 4b:
 /// (1) tool đã chạy thì mọi số trong câu hiện ra đều có trong hàng;
-/// (2) chưa tool nào chạy thì KHÔNG câu nào của mô hình được hiện.
+/// (2) chưa lượt tool nào THÀNH CÔNG, hoặc còn lời từ chối chưa gỡ, thì KHÔNG câu nào của mô hình được hiện (bước 2b).
 library;
 
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
@@ -15,6 +15,7 @@ import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/loi_tham_so.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RuntimeGia implements SlmRuntime {
@@ -68,6 +69,27 @@ class _CongCuGia implements CongCu {
     return ketQua;
   }
 }
+
+/// Tool trả lần lượt từng kết quả của [kichBan]; hết kịch bản thì lặp kết quả cuối.
+class _CongCuKichBan implements CongCu {
+  _CongCuKichBan(this.ten, this.kichBan);
+  final String ten;
+  final List<KetQuaCongCu> kichBan;
+  final List<Map<String, dynamic>> argsDaNhan = [];
+  @override
+  KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
+      ten: ten, moTa: 'giả', thamSo: const {'type': 'object', 'properties': <String, dynamic>{}});
+  @override
+  Future<KetQuaCongCu> chay(Map<String, dynamic> args,
+      {required int idaccount, required DateTime now}) async {
+    argsDaNhan.add(args);
+    final i = argsDaNhan.length - 1;
+    return kichBan[i < kichBan.length ? i : kichBan.length - 1];
+  }
+}
+
+KetQuaCongCu _tuChoiDanhMuc(String hoi) =>
+    tuChoiKhongKhop('danh_muc', hoi, const ['Ăn uống'], loai: 'danh mục');
 
 /// Phiên ném ngay lượt đầu — L4.
 class _PhienNem implements PhienCongCu {
@@ -207,6 +229,97 @@ void main() {
     expect(phien.ketQuaDaNhan.single.$2['loi'], contains(kTenCongCuHoaDon));
     expect(goi.daTraCuu, isFalse);
     expect(sk, [const DangTraCuu('bay_gio_may_gio'), const DangTraCuu(null), const KhongTraCuu()]);
+  });
+
+  test('⭐ L1b: mọi lời gọi bị TỪ CHỐI → chữ mô hình KHÔNG hiện, mẫu câu trung thực, không rơi về bậc 1 (bẫy 4.40)', () async {
+    tool = _CongCuGia(kTenCongCuHoaDon,
+        tuChoiGiaTri('trang_thai', 'sap_toi', const ['qua_han', 'chua_tra']));
+    bo = BoCongCu([tool]);
+    final (sk, goi, _, _) = await chay([
+      [const GoiCongCu(kTenCongCuHoaDon, {'trang_thai': 'sap_toi'})],
+      [const Chu('Mình không có dữ liệu cho trạng thái đó.')],
+    ]);
+    expect(goi.daTraCuu, isFalse);
+    expect(sk, [
+      const DangTraCuu(kTenCongCuHoaDon),
+      const DangTraCuu(null),
+      const CauQua('Chưa tra được số liệu cho câu này: chưa hiểu trạng thái hoá đơn. '
+          'Bạn thử hỏi lại cụ thể hơn.'),
+    ], reason: 'Bản trước coi lượt bị từ chối là ĐÃ tra cứu nên câu "không có dữ liệu" '
+        'được hiện — đúng kiểu C11, C12 của cổng D lần 1: không số nên lọt ba lớp chắn. '
+        'Và KHÔNG phát KhongTraCuu: bậc 1 không có hàng giao dịch nào để trả lời.');
+    expect(log.any((l) => l.contains('L1b')), isTrue);
+  });
+
+  test('L3 khi mọi lời gọi đều bị từ chối → mẫu câu trung thực, không "Không tìm thấy dữ liệu"', () async {
+    tool = _CongCuGia(kTenCongCuHoaDon, tuChoiGiaTri('trang_thai', 'x', const ['qua_han']));
+    bo = BoCongCu([tool]);
+    final (sk, _, _, _) = await chay([
+      [goiHoaDon], [goiHoaDon], [goiHoaDon], [goiHoaDon],
+    ]);
+    final cau = (sk.last as CauQua).cau;
+    expect(cau, startsWith('Chưa tra được số liệu cho câu này'));
+    expect(cau, isNot(contains('Không tìm thấy')),
+        reason: 'câu SAI C8 của cổng D lần 1 sinh ra từ mẫu câu của app ở nhánh này');
+  });
+
+  test('⭐ L2b: có lượt thành công + lời từ chối chưa gỡ → chữ mô hình KHÔNG hiện; dữ liệu + câu chưa tra được', () async {
+    final tuChoi = _CongCuGia(kTenCongCuGiaoDich, _tuChoiDanhMuc('abc'));
+    bo = BoCongCu([tool, tuChoi]);
+    final (sk, goi, _, _) = await chay([
+      [goiHoaDon, const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [const Chu('Kiem đã quá hạn 45.000 đ. Không có khoản chi nào cho abc.')],
+    ]);
+    final cauQua = sk.whereType<CauQua>().toList();
+    expect(cauQua, hasLength(1),
+        reason: 'không câu nào của mô hình được hiện — kể cả câu đúng về Kiem');
+    expect(cauQua.single.cau, goi.mauCau().cau);
+    expect(cauQua.single.cau, contains('Kiem'));
+    expect(cauQua.single.cau,
+        endsWith('Chưa tra được phần còn lại: không có danh mục nào tên "abc".'));
+    expect(log.any((l) => l.contains('L2b')), isTrue);
+  });
+
+  test('câu đã hiện rồi mới bị từ chối → GIỮ câu cũ, nối câu chưa tra được (L2b)', () async {
+    final tuChoi = _CongCuGia(kTenCongCuGiaoDich, _tuChoiDanhMuc('abc'));
+    bo = BoCongCu([tool, tuChoi]);
+    final (sk, _, _, _) = await chay([
+      [goiHoaDon],
+      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [const Chu('Không có khoản chi nào cho abc.')],
+    ]);
+    expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
+      'Kiem đã quá hạn 45.000 đ.',
+      'Chưa tra được phần còn lại: không có danh mục nào tên "abc".',
+    ]);
+  });
+
+  test('⭐ gọi lại ĐIỀN đúng tham số bị từ chối → đã gỡ, chữ viết sau đó được hiện', () async {
+    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('an uong x'), _kiem()]);
+    bo = BoCongCu([giaoDich]);
+    final (sk, goi, _, _) = await chay([
+      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'an uong x'})],
+      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'Ăn uống'})],
+      [const Chu('Kiem đã quá hạn 45.000 đ.')],
+    ]);
+    expect(goi.tuChoiChuaGo, isEmpty);
+    expect(sk.last, const CauQua('Kiem đã quá hạn 45.000 đ.'));
+    expect(giaoDich.argsDaNhan.last, {'danh_muc': 'Ăn uống'});
+  });
+
+  test('⭐ gọi lại BỎ tham số bị từ chối → vẫn chưa gỡ: chữ mô hình không hiện (ca "abc")', () async {
+    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('abc'), _kiem()]);
+    bo = BoCongCu([giaoDich]);
+    final (sk, goi, _, _) = await chay([
+      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [const GoiCongCu(kTenCongCuGiaoDich, {})],
+      [const Chu('Các khoản chi cho danh mục abc: Kiem 45.000 đ.')],
+    ]);
+    expect(goi.tuChoiChuaGo, hasLength(1));
+    final cau = sk.whereType<CauQua>().single.cau;
+    expect(cau, goi.mauCau().cau,
+        reason: 'câu mô hình có tên thật, số thật mà mệnh đề sai (bẫy 4.42) — không được hiện');
+    expect(cau, contains('không có danh mục nào tên "abc"'));
   });
 
   test('trả lời rỗng sau tool → mẫu câu (L2)', () async {
