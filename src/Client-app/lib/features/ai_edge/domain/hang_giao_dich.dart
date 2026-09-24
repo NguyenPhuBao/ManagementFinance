@@ -66,10 +66,10 @@ KetQuaCongCu hangGiaoDich(
         ),
     ],
     tongHop: [
-      // "Số giao dịch", không "Số khoản": `kiemNhan` đòi câu nêu từ khoá của
-      // nhãn, và mô hình nói "6 giao dịch" — nhãn cũ chặn câu đúng (bẫy 4.47,
-      // cổng D lần 4, 2026-09-24).
-      soDem('Số giao dịch', kq.soKhop),
+      // Nhãn chính "Số giao dịch" + nhãn thay thế "Số khoản" (bẫy 4.47): mô
+      // hình nói "6 giao dịch" (C5) lẫn "2 khoản thu" (C8) cho cùng con số —
+      // một nhãn duy nhất chặn một trong hai câu đúng (cổng D lần 4 và 5).
+      soDem('Số giao dịch', kq.soKhop, nhanKhac: const ['Số khoản']),
       if (tatCa || chieu == ChieuTim.chi) soTien('Tổng chi', kq.tongChi),
       if (tatCa || chieu == ChieuTim.thu) soTien('Tổng thu', kq.tongThu),
       if (tatCa || chieu == ChieuTim.chuyen)

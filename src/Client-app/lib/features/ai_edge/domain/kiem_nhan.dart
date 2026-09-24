@@ -63,6 +63,13 @@ Set<String> amTietCua(String cau) => cau
     .where((t) => t.isNotEmpty)
     .toSet();
 
+/// `true` khi [amTiet] (của một câu) chứa đủ từ khoá của nhãn chính **hoặc**
+/// của một nhãn thay thế của [s] (`SoLieu.nhanKhac`, bẫy 4.47). MỘT phép cho
+/// `kiemNhan` lẫn `theCuaCau` — thẻ và bộ kiểm không được nói hai chuyện khác
+/// nhau về cùng một câu.
+bool nhanKhopAmTiet(SoLieu s, Set<String> amTiet) => [s.nhan, ...s.nhanKhac]
+    .any((n) => tuKhoaNhan(n).every(amTiet.contains));
+
 /// `true` khi mọi số trong [cau] đứng cùng câu với đủ từ khoá của một nhãn
 /// gói khớp nó. Câu không có số thì lọt — không có nhãn nào để gán sai.
 bool kiemNhan(String cau, List<GoiSo> goi) {
@@ -74,8 +81,9 @@ bool kiemNhan(String cau, List<GoiSo> goi) {
     if (nhans.isEmpty) return false;
     final coNhanDung = nhans.any(
       (s) => s.ten == null
-          // Không thuộc đối tượng nào → nhãn là tất cả những gì có.
-          ? tuKhoaNhan(s.nhan).every(amTiet.contains)
+          // Không thuộc đối tượng nào → nhãn (chính hoặc thay thế) là tất cả
+          // những gì có.
+          ? nhanKhopAmTiet(s, amTiet)
           // Thuộc một đối tượng → câu phải NÊU TÊN đối tượng ấy. Nhãn đúng
           // thôi chưa đủ: gói mang nhiều mục cùng nhãn (bốn ngân sách cùng
           // `Tỉ lệ`), nên một câu chỉ nhắc nhãn không nói được nó đang nói

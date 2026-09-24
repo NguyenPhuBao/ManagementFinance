@@ -77,8 +77,10 @@ void main() {
     expect(kiemNhan('Trong tháng này bạn có 7 giao dịch.', [goi]), isTrue,
         reason: 'cổng D lần 4 C5/C17: nhãn cũ "Số khoản" đòi chữ "khoản" mà mô hình nói "giao dịch" — '
             'hai câu đúng rơi mẫu câu');
-    expect(kiemNhan('Trong tháng này bạn có 7 khoản.', [goi]), isFalse,
-        reason: 'đối chứng: chữ "khoản" không còn là từ khoá của nhãn');
+    expect(goi.tongHop.first.nhanKhac, ['Số khoản'],
+        reason: 'cổng D lần 5: nhãn "Số giao dịch" một mình lại chặn "Có 2 khoản thu…" (C8)');
+    expect(kiemNhan('Trong tháng này bạn có 7 khoản.', [goi]), isTrue,
+        reason: 'mô hình dùng "khoản" và "giao dịch" thay nhau — cả hai phải qua');
   });
 
   test('⭐ rongTheoBoLoc: đúng khi soKhop == 0 (bẫy 4.44), sai khi có khoản, không đặt ở lời từ chối', () {

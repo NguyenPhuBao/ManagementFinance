@@ -251,6 +251,34 @@ void main() {
     });
   });
 
+  group('nhãn có TỪ ĐỒNG NGHĨA — bẫy 4.47 (cổng D lần 4–5, 2026-09-24)', () {
+    // Đúng tổng hợp của tim_giao_dich cho câu C8: nhãn chính "Số giao dịch",
+    // mô hình khi thì nói "khoản", khi thì nói "giao dịch".
+    final giaoDich = _Gia('tra_cuu', [
+      soDem('Số giao dịch', 2, nhanKhac: const ['Số khoản']),
+      soTien('Tổng thu', 14000000),
+    ]);
+
+    test('⭐ câu dùng nhãn THAY THẾ ("2 khoản thu") qua', () {
+      expect(kiemNhan('Có 2 khoản thu trong năm nay.', [giaoDich]), isTrue,
+          reason: 'C8 lần 5: nhãn "Số giao dịch" chặn câu đúng "Có 2 khoản thu…"; '
+              'nhãn cũ "Số khoản" thì chặn "6 giao dịch" (C5 lần 4) — cần cả hai');
+    });
+
+    test('câu dùng nhãn CHÍNH ("2 giao dịch") vẫn qua', () {
+      expect(kiemNhan('Bạn có 2 giao dịch.', [giaoDich]), isTrue);
+    });
+
+    test('đối chứng: không có nhãn thay thế thì "2 khoản" bị chặn', () {
+      final khong = _Gia('tra_cuu', [soDem('Số giao dịch', 2)]);
+      expect(kiemNhan('Có 2 khoản.', [khong]), isFalse);
+    });
+
+    test('nhãn thay thế KHÔNG mở cửa cho chữ khác ("2 hoá đơn")', () {
+      expect(kiemNhan('Có 2 hoá đơn.', [giaoDich]), isFalse);
+    });
+  });
+
   test('mục NGÀY của một hàng mang tên → câu nêu ngày phải nêu tên (bước 2)', () {
     final g = _Gia('tra_cuu', [
       soNgayThang('Ngày', DateTime(2026, 9, 4), ten: 'Ăn uống', now: DateTime(2026, 9, 23)),

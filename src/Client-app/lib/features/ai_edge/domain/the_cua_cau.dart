@@ -42,7 +42,7 @@ String _nhanDayDu(SoLieu s) =>
 /// khác nhau về cùng một câu.
 bool _cauNhacToi(String cau, SoLieu s) {
   final amTiet = amTietCua(cau);
-  if (tuKhoaNhan(s.nhan).every(amTiet.contains)) return true;
+  if (nhanKhopAmTiet(s, amTiet)) return true;
   return s.ten != null && tuKhoaNhan(s.ten!).every(amTiet.contains);
 }
 
