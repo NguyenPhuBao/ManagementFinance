@@ -157,7 +157,7 @@ void main() {
 
   test('bảy khai báo: bốn tool 4b rồi ba tool bước 2, mô tả tiếng Việt nói khi nào gọi', () {
     expect(bo.khaiBao.map((k) => k.ten).toList(), [
-      kTenCongCuNganSach, kTenCongCuHoaDon, kTenCongCuVi, kTenCongCuChiTieu,
+      kTenCongCuNganSach, kTenCongCuHoaDon, kTenCongCuVi, kTenCongCuTongKet,
       kTenCongCuMucTieu, kTenCongCuGoiYHanMuc, kTenCongCuGiaoDich,
     ]);
     for (final k in bo.khaiBao) {
@@ -169,20 +169,29 @@ void main() {
 
   test('⭐ tool cạnh tranh chỉ đường cho nhau (cổng D lần 1: 7/20 câu gọi nhầm tool)', () {
     String moTa(String ten) => bo.khaiBao.firstWhere((k) => k.ten == ten).moTa;
-    expect(moTa(kTenCongCuChiTieu), contains(kTenCongCuGiaoDich),
-        reason: 'C1, C7, C10, C13, C14, C18 gọi chi_tieu_theo_ky cho câu hỏi từng khoản');
-    expect(moTa(kTenCongCuGiaoDich), contains(kTenCongCuChiTieu));
+    expect(moTa(kTenCongCuTongKet), contains(kTenCongCuGiaoDich),
+        reason: 'C1, C7, C10, C13, C14, C18 gọi tong_ket_thu_chi_ky cho câu hỏi từng khoản');
+    expect(moTa(kTenCongCuGiaoDich), contains(kTenCongCuTongKet));
     expect(moTa(kTenCongCuMucTieu), contains(kTenCongCuGiaoDich),
         reason: 'C20: hỏi lần nạp gần nhất mà gọi danh_sach_muc_tieu');
     expect(moTa(kTenCongCuGoiYHanMuc), contains(kTenCongCuMucTieu),
         reason: 'B2: hỏi để dành cho mục tiêu mà gọi goi_y_han_muc');
   });
 
+  test('⭐ tool tổng kết mang tên nói rõ "tổng", không còn "chi_tieu" (đòn bẩy spec 2b mục 1.2 hàng 10, 2026-09-24)', () {
+    expect(kTenCongCuTongKet, 'tong_ket_thu_chi_ky');
+    expect(bo.khaiBao.map((k) => k.ten), contains('tong_ket_thu_chi_ky'));
+    expect(bo.khaiBao.map((k) => k.ten).any((t) => t.contains('chi_tieu')), isFalse,
+        reason: 'cổng D lần 2 và 3: 9 câu "tiêu gì / chi những gì" đều gọi tool có chữ "chi_tieu" trong tên');
+    expect(cauDangTraCuu(kTenCongCuTongKet), 'Đang tổng kết thu chi…');
+  });
+
   // Bẫy 4.39: `maxTokens` 4096 là trần TỔNG — khai báo tool, kết quả tool và câu
   // trả lời cùng chia. Số dưới là độ dài đã chạy qua các phiên dài nhất trên
-  // Realme (spike bước 2b, task 8). Dài hơn → đo lại S1 / S2 / S3 trên máy rồi
-  // mới nâng số này.
-  const kTranToolsJsonDaDo = 5431;
+  // Realme (spike bước 2b, task 8: 5431; đo lại 2026-09-24 14:33 sau khi đổi tên
+  // tool `tong_ket_thu_chi_ky`: 5437, S1 3 lời gọi · S2 2 · S3 2, 0
+  // FAILED_PRECONDITION). Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
+  const kTranToolsJsonDaDo = 5437;
   test('⭐ tools_json của bảy tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
@@ -219,28 +228,28 @@ void main() {
   });
 
   test('chi tiêu: mã kỳ → đúng Ky cho watchKy; chữ kỳ về cho mô hình', () async {
-    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'thang_truoc'}, idaccount: 10, now: now))!;
+    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'thang_truoc'}, idaccount: 10, now: now))!;
     expect(phanTich.kyDaHoi!.from, DateTime(2026, 8, 1));
     expect(kq.chuThem, {'ky': 'tháng trước'});
     expect(kq.hang.single.ten, 'Ăn uống');
   });
 
   test('chi tiêu: mã lạ → từ chối mà KHÔNG hỏi repository', () async {
-    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'hom_kia'}, idaccount: 10, now: now))!;
+    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'hom_kia'}, idaccount: 10, now: now))!;
     expect(kq.loi, contains('hom_kia'));
     expect(phanTich.kyDaHoi, isNull, reason: 'không đoán kỳ rồi đi đọc dữ liệu của kỳ đoán');
   });
 
-  test('⭐ chi_tieu_theo_ky giữ TÁM mã: moi_luc là mã riêng của tim_giao_dich — nhận thì từ chối, không đọc repository', () async {
-    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuChiTieu);
+  test('⭐ tong_ket_thu_chi_ky giữ TÁM mã: moi_luc là mã riêng của tim_giao_dich — nhận thì từ chối, không đọc repository', () async {
+    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuTongKet);
     // ⚠️ Không so với `kMaKy.keys` — bản sai đưa `moi_luc` vào `kMaKy` đổi cả hai
     // vế cùng lúc, phép so tự đúng (lượt thi công bước 2b đo được). Đòi kết quả
     // độc lập: đúng tám mã, không có `moi_luc`.
     final enumKy = ((khai.thamSo['properties'] as Map)['ky'] as Map)['enum'] as List;
     expect(enumKy, hasLength(8));
     expect(enumKy, isNot(contains(kMaKyMoiLuc)),
-        reason: 'khai moi_luc cho chi_tieu_theo_ky là mời mô hình gọi một mã sẽ bị từ chối');
-    final kq = (await bo.chay(kTenCongCuChiTieu, {'ky': 'moi_luc'}, idaccount: 10, now: now))!;
+        reason: 'khai moi_luc cho tong_ket_thu_chi_ky là mời mô hình gọi một mã sẽ bị từ chối');
+    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'moi_luc'}, idaccount: 10, now: now))!;
     expect(kq.loi, isNotNull);
     expect(phanTich.kyDaHoi, isNull);
   });

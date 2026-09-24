@@ -95,14 +95,14 @@ void main() {
 
   test('⭐ lượt bị TỪ CHỐI không phải đã tra cứu (bẫy 4.40 — lật một vế chốt L1 của spec 4b)', () {
     final g = GoiSoTraCuu()
-      ..them('chi_tieu_theo_ky', tuChoiGiaTri('ky', 'hom_kia', const ['thang_nay']));
+      ..them('tong_ket_thu_chi_ky', tuChoiGiaTri('ky', 'hom_kia', const ['thang_nay']));
     expect(g.daTraCuu, isFalse,
         reason: 'Lời từ chối nói "câu hỏi gửi tool bị hỏng", không nói "không có gì". '
             'Cổng D lần 1: tính nó là đã tra cứu thì câu "không có dữ liệu" của '
             'mô hình được hiện — C11, C12 SAI mà không chứa số nào.');
     expect(g.thieuDuLieu, isTrue);
     expect(g.tenCongCuDaChay, isEmpty);
-    expect(g.tuChoiChuaGo.single.ten, 'chi_tieu_theo_ky');
+    expect(g.tuChoiChuaGo.single.ten, 'tong_ket_thu_chi_ky');
     expect(g.choHienChuMoHinh, isFalse);
   });
 
@@ -191,7 +191,7 @@ void main() {
     test('tool KHÁC thành công → CHƯA gỡ', () {
       final g = GoiSoTraCuu()
         ..them('tim_giao_dich', tuChoi)
-        ..them('chi_tieu_theo_ky', thanhCong, args: const {'danh_muc': 'Ăn uống'});
+        ..them('tong_ket_thu_chi_ky', thanhCong, args: const {'danh_muc': 'Ăn uống'});
       expect(g.tuChoiChuaGo, hasLength(1));
     });
 
@@ -234,7 +234,7 @@ void main() {
 
     test('tool KHÁC trả 0 hàng không có cờ → cổng vẫn mở (mục 1.2 hàng 6)', () {
       final g = GoiSoTraCuu()
-        ..them('chi_tieu_theo_ky', KetQuaCongCu(hang: const [], tongHop: [soTien('Tổng chi', 0)]));
+        ..them('tong_ket_thu_chi_ky', KetQuaCongCu(hang: const [], tongHop: [soTien('Tổng chi', 0)]));
       expect(g.choHienChuMoHinh, isTrue);
       expect(g.luotRong, isEmpty);
     });
@@ -419,9 +419,9 @@ void main() {
     test('⭐ mỗi nhóm nêu KỲ; lượt trùng nội dung gộp nhãn kỳ, không lặp hàng', () {
       // Đúng chuỗi lời gọi OnePlus đo được cho câu ĐC1 rồi chạm trần (L3).
       final g = GoiSoTraCuu()
-        ..them('chi_tieu_theo_ky', chiTieu('tháng này', coDuLieu: true))
-        ..them('chi_tieu_theo_ky', chiTieu('năm nay', coDuLieu: true))
-        ..them('chi_tieu_theo_ky', chiTieu('tháng trước', coDuLieu: false));
+        ..them('tong_ket_thu_chi_ky', chiTieu('tháng này', coDuLieu: true))
+        ..them('tong_ket_thu_chi_ky', chiTieu('năm nay', coDuLieu: true))
+        ..them('tong_ket_thu_chi_ky', chiTieu('tháng trước', coDuLieu: false));
       final cau = g.mauCau().cau;
       expect(
         cau,

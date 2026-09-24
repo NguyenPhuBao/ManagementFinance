@@ -31,7 +31,7 @@
 ///
 /// ⚠️ Mẫu câu viết **theo từng lượt gọi**, không phải một danh sách phẳng —
 /// bẫy **4.35**, OnePlus bắt được ở chặng 4b (2026-09-23): E2B gọi
-/// `chi_tieu_theo_ky` cho *tháng này*, *năm nay*, *tháng trước* rồi chạm trần
+/// `chi_tieu_theo_ky` (nay `tong_ket_thu_chi_ky`) cho *tháng này*, *năm nay*, *tháng trước* rồi chạm trần
 /// (L3), và bản phẳng in cả bộ hàng hai lần cùng *"Tổng chi: 2.141.000 đ …
 /// Tổng chi: 0 đ"* — không số nào bịa, nhưng không nói số nào của kỳ nào nên
 /// câu tự mâu thuẫn trước mắt người đọc. Nay mỗi nhóm mở đầu bằng **chữ kỳ**

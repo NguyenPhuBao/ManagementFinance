@@ -15,7 +15,10 @@ import 'hang_so_lieu.dart';
 const String kTenCongCuNganSach = 'danh_sach_ngan_sach';
 const String kTenCongCuHoaDon = 'danh_sach_hoa_don';
 const String kTenCongCuVi = 'danh_sach_vi';
-const String kTenCongCuChiTieu = 'chi_tieu_theo_ky';
+/// Tên cũ `chi_tieu_theo_ky` tới 2026-09-24: ba lần đo cổng D, 9 câu "tiêu gì /
+/// chi những gì" đều bám vào chữ `chi_tieu` trong tên (đòn bẩy spec 2b mục 1.2
+/// hàng 10). Tên mới nói rõ TỔNG và nêu cả thu lẫn chi — đúng thứ tool trả.
+const String kTenCongCuTongKet = 'tong_ket_thu_chi_ky';
 const String kTenCongCuMucTieu = 'danh_sach_muc_tieu';
 const String kTenCongCuGoiYHanMuc = 'goi_y_han_muc';
 const String kTenCongCuGiaoDich = 'tim_giao_dich';
@@ -73,7 +76,7 @@ String cauDangTraCuu(String tenCongCu) => switch (tenCongCu) {
       kTenCongCuNganSach => 'Đang tra cứu ngân sách…',
       kTenCongCuHoaDon => 'Đang tra cứu hoá đơn…',
       kTenCongCuVi => 'Đang tra cứu ví…',
-      kTenCongCuChiTieu => 'Đang tra cứu chi tiêu…',
+      kTenCongCuTongKet => 'Đang tổng kết thu chi…',
       kTenCongCuMucTieu => 'Đang tra cứu mục tiêu…',
       kTenCongCuGoiYHanMuc => 'Đang tính gợi ý hạn mức…',
       kTenCongCuGiaoDich => 'Đang tìm giao dịch…',

@@ -40,7 +40,7 @@ class CongCuGiaoDich implements CongCu {
             'thu nào, khoản lớn nhất, khoản trên hay dưới một số tiền, chi từ ví nào, chi '
             'cho danh mục nào, chuyển tiền sang ví nào, lần gần nhất hay lần cuối là khi '
             'nào, tìm theo ghi chú. Chỉ hỏi tổng chi, tổng thu của một kỳ thì dùng '
-            'chi_tieu_theo_ky.',
+            'tong_ket_thu_chi_ky.',
         thamSo: {
           'type': 'object',
           'properties': {

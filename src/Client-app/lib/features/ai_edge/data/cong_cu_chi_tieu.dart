@@ -1,4 +1,5 @@
-/// Adapter tool `chi_tieu_theo_ky`: mã kỳ → `Ky` → `watchKy` → `hangChiTieu`.
+/// Adapter tool `tong_ket_thu_chi_ky` (tên cũ `chi_tieu_theo_ky` tới 2026-09-24):
+/// mã kỳ → `Ky` → `watchKy` → `hangChiTieu`.
 /// Mã lạ thì từ chối TRƯỚC khi đọc dữ liệu — không đoán kỳ.
 library;
 
@@ -14,7 +15,7 @@ class CongCuChiTieu implements CongCu {
 
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
-        ten: kTenCongCuChiTieu,
+        ten: kTenCongCuTongKet,
         moTa: 'Tổng chi, tổng thu và tổng chi theo từng DANH MỤC (có tên) của một kỳ — '
             'chỉ có TỔNG, không liệt kê từng khoản. Gọi khi hỏi tiêu bao nhiêu trong một '
             'kỳ, hoặc danh mục nào chi nhiều nhất. Hỏi tiêu gì, những khoản nào, khoản thu '

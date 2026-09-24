@@ -1,4 +1,4 @@
-/// Tool `chi_tieu_theo_ky`: tham số là MÃ KỲ chữ (E2B sinh ngày ISO là rủi ro),
+/// Tool `tong_ket_thu_chi_ky`: tham số là MÃ KỲ chữ (E2B sinh ngày ISO là rủi ro),
 /// hàng theo TÊN danh mục từ `ThongKeKy.danhMuc`, kỳ ghi bằng chữ không số.
 library;
 
