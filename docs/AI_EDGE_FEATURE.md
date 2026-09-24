@@ -1973,10 +1973,22 @@ dùng về tính tổng quát là đúng**: ví dụ định tuyến và các da
 kiện cần. Phép kiểm thật là **bộ câu hỏi mới** (mục thứ tự việc dưới). (4) Mô hình **không tất định giữa hai máy** và
 giữa hai lời hệ thống: C18/ĐC3 đổi tool hai lần mà không ai chạm — mọi con số cổng D phải ghi kèm máy và commit.
 
+⚠️ **Cập nhật cuối phiên (2026-09-25 rạng sáng):** người dùng cho biết **đã hỏi nhiều câu trong phạm vi app mà trợ lý
+không trả lời được** — tức bộ 34 câu là trần của thứ đã thiết kế, không phải của thứ người dùng hỏi — và hỏi có nên cho
+mô hình **đọc thẳng SQLite** thay vì nhiều tầng. Trả lời: không cho E2B sinh SQL tự do (không tính được, lược đồ nhiều
+luật ngầm — `amount` luôn dương, chiều ở `type`, `khoanVaoThongKe`, xoá mềm, kỳ ISO — nên sai sẽ **im lặng** vì số trả
+về là thật), nhưng phải lấp **lỗ hổng phủ**: phân loại từng câu hỏng của người dùng theo ba nguyên nhân (không có tool
+mang dữ liệu · định tuyến/tham số trượt · lớp chắn chặn oan), cân nhắc **một tool truy vấn tổng quát có hàng rào** (đối
+tượng + bộ lọc + phép gộp, mã dựng trên hàm domain), và **đo thật** bằng spike *E2B sinh SQL* trên chính bộ câu hỏi ấy.
+Người dùng chốt: *"ok hãy thử làm như vậy ở phiên sau"*. Thứ tự dưới đã sửa theo.
+
 **Thứ tự việc cho phiên sau** (người dùng dặn dừng ở đây và lên thứ tự):
 1. **Một mốc sạch**: chạy trọn 34 câu trên **OnePlus** với bản cuối (`9de2d82`) — `congD13.sh` đổi sang `hoi_op.sh`;
    ~15 phút trên GPU. Nếu tụt ở C18/ĐC3 thì ghi là dao động của mô hình, không sửa mã theo nó.
-2. **Bộ câu hỏi mới** (người dùng yêu cầu; kiểm tổng quát, không sửa mã theo nó trước khi báo): ~20 câu — cùng kiểu nhưng
+2. **Bộ câu hỏi THẬT của người dùng** (họ gửi nguyên văn — thay cho ~20 câu tôi định soạn; **không sửa mã theo nó trước
+   khi báo**): chấm từng câu theo **ba nguyên nhân** (không có tool mang dữ liệu · định tuyến/tham số trượt · chắn oan),
+   rồi **spike E2B sinh SQL** cho đúng bộ ấy — chạy trên bản sao CSDL, so đáp án — có số mới chọn giữa *tool tổng quát có
+   hàng rào* và *mô hình đọc SQL*. Nếu người dùng chưa gửi, tạm dùng ~20 câu tự soạn: cùng kiểu nhưng
    khác chữ, kiểu chưa có (so sánh hai kỳ, đếm ví/hoá đơn, hỏi một ví/hoá đơn cụ thể, ngưỡng chữ dạng khác), vài câu
    ngoài phạm vi. Đáp án tính từ `that.db` (scratchpad phiên `c06df7ca…`) **+ khoản chuyển 100.000 đ ngày 25/09**, hoặc
    chép CSDL mới từ máy ảo (bản release trên máy thật không `run-as` được). Chấm theo màn, bảng ba cột.
