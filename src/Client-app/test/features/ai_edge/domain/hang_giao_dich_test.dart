@@ -33,7 +33,7 @@ void main() {
     tongChi: 2031000,
     tongThu: 0,
     tongChuyen: 900000,
-    tenKhop: const ['Tiền mặt'],
+    tenViKhop: 'Tiền mặt',
   );
   Map<String, String> so(HangSoLieu h) => {for (final s in h.soLieu) s.nhan: s.chuoi};
 

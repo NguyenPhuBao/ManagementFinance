@@ -124,7 +124,20 @@ void main() {
   test('⭐ ví khớp CẢ ví đích của khoản chuyển; "tiet kiem" không khớp "Tiết kiệm mua nhà"', () {
     final kq = tim(const TieuChiTim(chieu: ChieuTim.chuyen, tenVi: 'tiet kiem'));
     expect(kq.dong.map((d) => d.tenViDich).toList(), ['Tiết kiệm']);
+    expect(kq.tenViKhop, 'Tiết kiệm');
+    expect(kq.tenDanhMucKhop, isNull);
     expect(kq.tenKhop, ['Tiết kiệm']);
+  });
+
+  test('tên đã khớp có NHÃN (bước 2c): danh mục và ví tách nhau, tenKhop suy ra theo thứ tự danh mục → ví', () {
+    final dm = tim(const TieuChiTim(tenDanhMuc: 'an uong'));
+    expect(dm.tenDanhMucKhop, 'Ăn uống');
+    expect(dm.tenViKhop, isNull,
+        reason: 'tenKhop cũ gộp hai tên không nhãn — chỉ khớp một thì không biết là tên gì');
+    final caHai = tim(const TieuChiTim(tenDanhMuc: 'an uong', tenVi: 'tien mat'));
+    expect(caHai.tenKhop, ['Ăn uống', 'Tiền mặt']);
+    expect(tim(const TieuChiTim()).tenKhop, isEmpty);
+    expect(tim(const TieuChiTim(tenVi: 'vi gia')).tenViKhop, isNull, reason: 'lời từ chối không mang tên khớp');
   });
 
   test('danh mục theo tên; tên danh mục ĐÃ XOÁ MỀM vẫn tra được cho dòng', () {

@@ -96,7 +96,8 @@ class KetQuaTimGiaoDich {
     required this.tongChi,
     required this.tongThu,
     required this.tongChuyen,
-    this.tenKhop = const [],
+    this.tenDanhMucKhop,
+    this.tenViKhop,
   }) : loi = null;
 
   const KetQuaTimGiaoDich.loi(LoiKhopTen this.loi)
@@ -105,7 +106,8 @@ class KetQuaTimGiaoDich {
         tongChi = 0,
         tongThu = 0,
         tongChuyen = 0,
-        tenKhop = const [];
+        tenDanhMucKhop = null,
+        tenViKhop = null;
 
   /// Tối đa `toiDa` dòng, đã xếp.
   final List<DongTimThay> dong;
@@ -116,8 +118,16 @@ class KetQuaTimGiaoDich {
   final double tongThu;
   final double tongChuyen;
 
-  /// Tên thật đã khớp tham số (danh mục, ví).
-  final List<String> tenKhop;
+  /// Tên thật của danh mục / ví đã khớp tham số — `null` khi không lọc theo
+  /// trường ấy. Có nhãn (bước 2c) để tiền tố mẫu câu in đúng "danh mục X, ví Y".
+  final String? tenDanhMucKhop;
+  final String? tenViKhop;
+
+  /// Cả hai tên khớp, bỏ null — giữ cho chỗ đọc cũ.
+  List<String> get tenKhop => [
+        if (tenDanhMucKhop != null) tenDanhMucKhop!,
+        if (tenViKhop != null) tenViKhop!,
+      ];
   final LoiKhopTen? loi;
 }
 
@@ -187,7 +197,8 @@ KetQuaTimGiaoDich timGiaoDich({
     tongChi: tong.expense,
     tongThu: tong.income,
     tongChuyen: tongChuyen,
-    tenKhop: [if (dm != null) dm.ten, if (vi != null) vi.ten],
+    tenDanhMucKhop: dm?.ten,
+    tenViKhop: vi?.ten,
   );
 }
 
