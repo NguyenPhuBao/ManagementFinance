@@ -594,7 +594,25 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-24)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-25)
+
+### 🔀 Gộp `main` @ `c47e6e2` (2026-09-25) — bảng 10 chức năng AI của NPBao
+
+Commit gộp `4f37653`, không xung đột, chỉ 5 tệp tài liệu backend (`Project.md` §8.5 + §11.42, `docs/AI/LogicBusinessAI.md`,
+`AI_ARCHITECTURE_DIAGRAM.md` mới, `Classify.md` §1.3, `ORC.md`). Client soát bằng mã và gửi đơn
+`superpowers/backend/CAN-LAM/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` — người dùng chốt: chatbot backend **vẫn làm**,
+còn mâu thuẫn với F1 (kết quả function-calling, ảnh OCR **không che**, tầng 3 đều gửi dữ liệu cá nhân sang Gemini)
+**để backend quyết**. Ba kết luận phía client, **không đổi mã**:
+
+- **Phân loại T2 (Jaccard của `nlp.matcher.js`) KHÔNG đưa lên client.** Đo với bộ từ khoá thật của tài khoản 10: ở 11 ghi
+  chú mà T1 im, T2 đoán thêm 3 và **sai 2** — *"đi chợ" → Cho vay* ("chợ" bỏ dấu thành "cho"), *"tiền nước" → Nhà cửa*.
+  CSDL thật chỉ có **1** ghi chú do người dùng tự gõ nên không đo được quy mô lớn. T1 vốn đã chạy ở
+  `CategorySuggestionEngine`.
+- **OCR và khử trùng lặp chưa làm được ngay**: `.env` dev không có `GEMINI_API_KEY` (endpoint luôn 500
+  `CONFIG_MISSING`), chưa có màn Stitch, và chống quét trùng cần mở `provider`/`bank_tran_id` qua đồng bộ — trái quy tắc
+  4 hiện hành. Dedup không có nguồn dữ liệu nào khác (SMS không đọc, ngân hàng đã bỏ).
+- **Sức khoẻ tài chính (chức năng 7)**: client đề nghị backend tự tính từ PostgreSQL; nếu giữ lối *client đóng gói* thì
+  cần schema từng trường trước, và 50/30/20 cần nhãn thiết yếu/mong muốn mà cả hai đầu chưa có.
 
 ### 📋 Thứ tự làm việc mới sau cổng C (người dùng duyệt 2026-09-23 tối)
 
