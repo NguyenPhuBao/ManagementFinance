@@ -8,6 +8,51 @@ xếp lịch.
 
 ---
 
+## Tệp cần đọc
+
+Mọi đường dẫn tính từ gốc repo, đã kiểm tồn tại ngày 2026-09-25. Số dòng là của bản `c47e6e2`.
+
+**Tài liệu backend phải sửa:**
+
+| Tệp | Chỗ | Mục của đơn |
+|---|---|---|
+| `docs/AI/LogicBusinessAI.md` | bảng 10 chức năng (dòng 30–39), §3.3, §3.4, §4 | 1, 2, 3, 4, 5 |
+| `docs/AI/AI_ARCHITECTURE_DIAGRAM.md` | dòng 22, 30, 43, 60, 67, 80, 92, 94 | 6 |
+| `Project.md` | §8.5 (dòng 1608–1617), §11.42 (dòng 2728–2729) | 1, 2, 3, 4 |
+| `docs/AI/Classify.md` §1.3, `docs/AI/ORC.md` | ô trạng thái chức năng 1–3 | 4 |
+| `docs/AI/AI_Edge-SLM.md/Client-app.md` | luật F1, **chỉ khi** chọn lối A | 1.3 |
+
+**Mã client làm bằng chứng (chỉ đọc):**
+
+| Tệp | Chứng minh điều gì | Mục |
+|---|---|---|
+| `src/Client-app/lib/core/di/injection_container.dart` (~dòng 549) | lối B: `BoDienGiai` không đăng ký, khối Nhận xét dùng mẫu câu | 2 |
+| `src/Client-app/lib/features/ai_edge/data/bo_cong_cu.dart` | bảy tool chỉ đọc của Trợ lý AI trên máy | 1.1, 3 |
+| `src/Client-app/lib/features/ai_edge/domain/canary_gpu.dart` | lùi từ GPU về CPU khi sập native | 2 |
+| `src/Client-app/pubspec.yaml` | `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0 (LiteRT-LM) | 2 |
+| `src/Client-app/lib/features/ai_edge/domain/tai_phan_bo.dart` (dòng 7–9) | luật C1–C7 có thật; Essentiality = 0,5; không có Welford | 3 |
+| `src/Client-app/lib/features/category/data/services/category_suggestion_engine.dart` | tầng 1 phân loại đã chạy ở client | 4.1 |
+| `src/Client-app/lib/features/budget/domain/cua_so_nhin_lai.dart` | cửa sổ cuộn thay "trượt 3 tháng" | 5 |
+| `src/Client-app/lib/features/analytics/domain/dong_tien_tu_do.dart` (`thuNhapCua`), `khoan_vao_thong_ke.dart` | thu nhập ≠ tổng `type = 'thu'`; các khoản bị loại khỏi thống kê | 5 |
+
+**Tài liệu client làm bối cảnh:** `docs/AI_EDGE_FEATURE.md` mục 10.3 (vì sao không huấn luyện mô hình) ·
+`docs/AI_AGENT_ARCHITECTURE.md` mục 10.1 (hai mâu thuẫn F1).
+
+**Mã backend liên quan tới mục 7** (lỗi phụ, backend tự xếp lịch):
+
+| Tệp | Lỗi |
+|---|---|
+| `src/Backend/modules/ai/ai.controller.js` | route cũ `POST /api/ai/classify` luôn 500 |
+| `src/Backend/modules/ai/features/classify/classify.service.js` | `category_id = 'unclassified'` |
+| `src/Backend/modules/ai/features/classify/pipeline/nlp.matcher.js` | T2 đoán sai kiểu "chợ/cho" |
+| `src/Backend/modules/ai/features/classify/pipeline/llm.classifier.js`, `src/Backend/modules/ai/config.js` | `OPENAI_API_KEY` đọc mà không dùng; `defaultProvider:'openai'` |
+| `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js` | ảnh gửi Gemini không che |
+| `src/Backend/modules/ai/features/dedup/dedup.repository.js` | báo trùng giả khi ghi chú rỗng; so phân biệt hoa thường |
+| `src/Backend/workers/bank.worker.js` | khoản chi lưu dạng âm, dedup so số dương |
+| `src/Backend/utils/masking.util.js` | phạm vi của bộ che PII (chỉ văn bản) |
+
+---
+
 ## 0. Tóm tắt
 
 Phần lớn bảng 10 chức năng **khớp** với client: nguyên tắc giữ `GEMINI_API_KEY` ở backend, che PII trước khi gửi

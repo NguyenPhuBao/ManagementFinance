@@ -7,6 +7,34 @@ viết spec.
 
 ---
 
+## Tệp cần đọc
+
+Mọi đường dẫn tính từ gốc repo, đã kiểm tồn tại ngày 2026-09-25.
+
+**Tài liệu backend để trả lời mục 4:**
+
+| Tệp | Chỗ | Câu hỏi |
+|---|---|---|
+| `Project.md` | B12 và §8.4 (lý do chính sách dừng Module Bank) | 1 |
+| `Project.md` | dòng ~1000 (*"Tạo giao dịch từ SMS — Mobile"*), dòng 2253 (giao dịch từ `SMS` khởi tạo `Pending`) | 1, 2 |
+| `docs/AI/Classify.md` | §4.1–4.3, mẫu tin BIDV, MB Bank, Techcombank | 3 |
+| `docs/Rule_Project/Data_Security.md` | Nghị định 13/2023 | 4 |
+| `docs/AI/LogicBusinessAI.md` | chức năng 3 (khử trùng lặp) | 5 |
+| `src/Backend/prisma/schema.prisma` | CHECK của cột `transaction.Provider`, **chỉ khi** câu 2 trả lời "mở `provider`" | 2 |
+
+**Mã client làm bằng chứng (chỉ đọc):**
+
+| Tệp | Chứng minh điều gì |
+|---|---|
+| `src/Client-app/test/core/sync/sync_payload_contract_test.dart` | payload giao dịch 13 trường, không có `provider` / `bank_tran_id` |
+| `src/Client-app/lib/core/database/tables/notification_table.dart` | trung tâm thông báo là bảng cục bộ, không đồng bộ |
+| `src/Client-app/lib/features/category/data/services/category_suggestion_engine.dart` | bộ gợi ý danh mục tầng 1 mà form sẽ dùng |
+
+**Đơn liên quan:** `docs/superpowers/backend/CAN-LAM/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` mục 4.1 (vì sao client
+không gọi `/api/ai/classify/*`) và mục 4.3 (chức năng 3).
+
+---
+
 ## 0. Tóm tắt
 
 Người dùng muốn một tính năng mới:
