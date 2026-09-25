@@ -25,12 +25,13 @@ Chức năng **AI Phân Loại Giao Dịch (AI Transaction Classification)** tro
 | **Khả năng hiểu từ ngữ** | Phụ thuộc vào tập dữ liệu huấn luyện. Khó đoán từ mới lạ nếu chưa có trong dataset. | **Cực kỳ thông minh**, hiểu được tiếng lóng, tên viết tắt, tiếng Việt không dấu và ngữ cảnh phức tạp. |
 | **Tính độc lập & Ổn định** | Chạy 100% trên hạ tầng nội bộ, không phụ thuộc bên thứ 3, không lo hết hạn API Key. | Phụ thuộc vào trạng thái server ngoài và kết nối mạng. |
 
-### 1.3. Lựa chọn thiết kế hệ thống: Mô Hình Lai (Hybrid 3 Tầng)
-Dự án áp dụng **Mô hình Lai (Hybrid Architecture)** để tối ưu hóa đồng thời cả 3 yếu tố: **Tốc độ**, **Chi phí (0đ cho phần lớn giao dịch)** và **Độ chính xác cao**:
-* **Tại Client-app (Chế độ Offline):** Chạy thuật toán **Keyword & Rule Matcher cục bộ trên SQLite** $\rightarrow$ Hoạt động 100% không cần mạng, không cần API Key, tốc độ $< 5ms$.
-* **Tại Backend (Chế độ Online):**
-  * **Tầng 1 (Keyword Matcher)** & **Tầng 2 (Local Machine Learning Model)**: Nhúng trực tiếp trong mã nguồn Node.js để giải quyết $80\%$ các giao dịch quen thuộc một cách tức thì ($5 - 15ms$) mà không tiêu tốn hạn ngạch API.
-  * **Tầng 3 (Cloud LLM API Key - Google Gemini Flash)**: Chỉ kích hoạt khi Tầng 1 và Tầng 2 không đạt độ tin cậy ($\text{Confidence} < 0.60$) hoặc gặp các hóa đơn viết tắt, tiếng lóng phức tạp.
+### 1.3. Lựa chọn thiết kế hệ thống: Phân Tầng Giữa Client-app & Backend (PO chốt 2026-09-23)
+Dự án áp dụng kiến trúc phân tầng kết hợp nhằm tối đa hóa tốc độ trải nghiệm người dùng (UX) và bảo mật tuyệt đối API Key:
+* **Tại Client-app (Ưu tiên số 1):** Xử lý trực tiếp **Tầng 1 (Keyword Matcher)** và **Tầng 2 (Token Overlap / NLP Heuristics)** trên Drift SQLite v24. Giải quyết $> 80\%$ các giao dịch một cách tức thì ($< 10ms$), hoạt động 100% offline, không tốn tài nguyên mạng và không gọi API bên ngoài.
+* **Tại Backend (Hỗ trợ tầng sâu):** Giữ duy nhất **Tầng 3 (Cloud LLM - Google Gemini Flash Reasoning)** để quản lý API Key tập trung, không đưa key lên mobile. Client-app chỉ gửi yêu cầu lên Backend khi Tầng 1 và Tầng 2 cục bộ không đạt độ tin cậy ($\text{Confidence} < 0.60$).
+* **Chốt chặn an toàn tại Backend trước khi gọi LLM:**
+  - Lọc PII và dữ liệu nhạy cảm qua `maskTransactionDescription` (`masking.util.js`).
+  - Thi hành **Strict Grounding**: từ chối tuyệt đối `category_id` ảo giác không thuộc danh mục của user.
 
 ### 1.4. Kiến Trúc Phân Loại 2 Cấp Độ: Loại Giao Dịch (`Type`) & Danh Mục (`Category`)
 Để đảm bảo không làm sai lệch dòng tiền và phân tách rõ ràng trách nhiệm với Module Receipt OCR, Module AI Classify đảm nhiệm **2 Cấp Độ Phân Loại Tuần Tự**:
