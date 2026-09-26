@@ -3,21 +3,32 @@ const { prisma } = require('../config/db');
 const logger = require('./logger');
 
 /**
- * Tính số milliseconds từ thời điểm hiện tại tới 00:00:00 múi giờ Việt Nam (UTC+7) tiếp theo.
+ * Tính số milliseconds từ thời điểm hiện tại tới 00:00:00 múi giờ Việt Nam (Asia/Ho_Chi_Minh, UTC+7) tiếp theo.
+ * Chuẩn hóa độc lập 100% với múi giờ của server (Cloud / Render / Linux / Docker).
  */
 function getMsUntilNextMidnightVietnam() {
   const now = new Date();
-  // Chuyển sang thời gian UTC
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  // Chuyển sang giờ Việt Nam (UTC+7)
-  const vnTime = new Date(utc + (3600000 * 7));
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false,
+  });
 
-  // Tính 00:00:00 tiếp theo của ngày mai tại VN
-  const nextMidnightVn = new Date(vnTime);
-  nextMidnightVn.setHours(24, 0, 0, 0);
+  const parts = formatter.formatToParts(now);
+  const p = {};
+  for (const part of parts) {
+    p[part.type] = part.value;
+  }
 
-  const diffMs = nextMidnightVn.getTime() - vnTime.getTime();
-  return diffMs;
+  // Mốc 00:00:00 ngày hôm nay tại Việt Nam
+  const todayMidnightVn = new Date(`${p.year}-${p.month}-${p.day}T00:00:00+07:00`);
+  // Mốc 00:00:00 ngày tiếp theo tại Việt Nam (cộng đúng 24h = 86,400,000 ms)
+  const nextMidnightVn = new Date(todayMidnightVn.getTime() + 24 * 60 * 60 * 1000);
+
+  const diffMs = nextMidnightVn.getTime() - now.getTime();
+  return Math.max(0, diffMs);
 }
 
 let timerHandle = null;

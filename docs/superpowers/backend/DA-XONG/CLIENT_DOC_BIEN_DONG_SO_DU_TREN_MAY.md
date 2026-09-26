@@ -115,7 +115,28 @@ Mỗi câu có sẵn **mặc định của client**. Backend không trả lời 
 
 ---
 
-## 5. Nghiệm thu phía backend
+## 5. Phản hồi chính thức từ Backend (Đã phê duyệt 2026-09-26)
 
-Không có gì để chạy. Xin trả lời mục 4 (ghi thẳng vào tệp này hoặc vào `README.md` của `CAN-LAM/`). Khi client xong
-tính năng, client sẽ báo lại cùng bảng đo trên máy thật (tỉ lệ tin đọc đúng theo từng ngân hàng).
+Đội ngũ Backend và PO đã xem xét chi tiết toàn bộ đề xuất và đưa ra phản hồi chính thức cho 5 câu hỏi tại Mục 4:
+
+1. **Về chính sách dừng Module Bank (Câu 1):**  
+   ✅ **ĐỒNG Ý VỚI CLIENT (Không áp dụng lệnh cấm).**  
+   Lý do Module Bank bị dừng là vì rủi ro pháp lý khi lưu trữ thông tin ngân hàng và gọi qua API trung gian (Open Banking, webhook bên thứ 3). Đề xuất của Client đọc thông báo ngay trên máy (`NotificationListenerService`), không kết nối ngân hàng, không gửi dữ liệu ra Internet và do người dùng tự bấm "Lưu" hoàn toàn an toàn và tuân thủ đúng định hướng "Nhập liệu qua SMS / Manual" tại `Project.md` §8.4.
+2. **Về cột `provider` và luồng đồng bộ (Câu 2):**  
+   ✅ **ĐỒNG Ý GIỮ NGUYÊN `provider = 'Manual'`.**  
+   Không cần mở `provider` hay `bank_tran_id` qua sync payload, không đổi schema PostgreSQL. Giao dịch sau khi người dùng xác nhận lưu từ form được ghi nhận chuẩn xác là `'Manual'`.
+3. **Về khuôn mẫu tin nhắn `Classify.md` §4 (Câu 3):**  
+   ✅ **ĐỒNG THUẬN.**  
+   Client lấy bộ quy chuẩn ở `Classify.md` §4 làm baseline suite. Với Vietcombank và các ngân hàng khác, Client chủ động thu thập mẫu thực tế trên thiết bị để bổ sung regex.
+4. **Về tuân thủ Nghị định 13/2023/NĐ-CP (Câu 4):**  
+   ✅ **BẮT BUỘC MÀN HÌNH MINH BẠCH & XIN ĐỒNG THUẬN (CONSENT SCREEN).**  
+   Theo `Data_Security.md`, app bắt buộc hiển thị màn hình giải thích rõ ràng trước khi dẫn người dùng tới Cài đặt quyền truy cập thông báo của Android (nêu rõ: mục đích đọc, danh sách trắng các app ngân hàng, cam kết lọc bỏ tin OTP, lưu cục bộ và không gửi ra ngoài).
+5. **Về Chức năng 3 trong bảng 10 chức năng AI (Câu 5):**  
+   ✅ **XÁC NHẬN CHÍNH THỨC.**  
+   Cơ chế gộp trùng SMS/thông báo app và cảnh báo trùng lặp tại chỗ của Client chính là hiện thân thực tế của Chức năng 3 (Deduplication) phía Client. Khi Client hoàn thành và nghiệm thu, Backend sẽ cập nhật ngay trạng thái Chức năng 3 thành 🟢 Đã hoàn thành (Client-app).
+
+---
+
+## 6. Kết luận & Nghiệm thu
+Đề xuất của Client-app được **PHÊ DUYỆT TOÀN DIỆN**. Client-app có thể bắt tay viết spec và tiến hành triển khai theo đúng thiết kế đã nêu.
+Tệp này đã hoàn thành vai trò giải đáp và được di chuyển sang `docs/superpowers/backend/DA-XONG/`.

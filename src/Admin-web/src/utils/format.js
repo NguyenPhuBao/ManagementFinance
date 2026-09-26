@@ -1,9 +1,14 @@
-﻿import dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/vi';
 
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 dayjs.locale('vi');
+dayjs.tz.setDefault('Asia/Ho_Chi_Minh');
 
 // Format currency (VND)
 export const formatCurrency = (amount) => {
@@ -21,20 +26,23 @@ export const formatNumber = (num) => {
   return new Intl.NumberFormat('vi-VN').format(num);
 };
 
-// Format date
+// Format date (Asia/Ho_Chi_Minh)
 export const formatDate = (date, format = 'DD/MM/YYYY') => {
-  return dayjs(date).format(format);
+  if (!date) return '';
+  return dayjs(date).tz('Asia/Ho_Chi_Minh').format(format);
 };
 
-// Format date time
+// Format date time (Asia/Ho_Chi_Minh)
 export const formatDateTime = (date) => {
-  return dayjs(date).format('DD/MM/YYYY HH:mm');
+  if (!date) return '';
+  return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm');
 };
 
-// Format relative time (e.g. "2 giờ trước")
+// Format relative time (e.g. "2 giờ trước") theo mốc giờ Việt Nam
 export const formatRelativeTime = (date) => {
-  const d = dayjs(date);
-  const now = dayjs();
+  if (!date) return '';
+  const d = dayjs(date).tz('Asia/Ho_Chi_Minh');
+  const now = dayjs().tz('Asia/Ho_Chi_Minh');
   if (now.diff(d, 'hour') < 24) {
     return d.fromNow();
   }

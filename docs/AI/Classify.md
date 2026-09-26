@@ -27,8 +27,8 @@ Chức năng **AI Phân Loại Giao Dịch (AI Transaction Classification)** tro
 
 ### 1.3. Lựa chọn thiết kế hệ thống: Phân Tầng Giữa Client-app & Backend (PO chốt 2026-09-23)
 Dự án áp dụng kiến trúc phân tầng kết hợp nhằm tối đa hóa tốc độ trải nghiệm người dùng (UX) và bảo mật tuyệt đối API Key:
-* **Tại Client-app (Ưu tiên số 1):** Xử lý trực tiếp **Tầng 1 (Keyword Matcher)** và **Tầng 2 (Token Overlap / NLP Heuristics)** trên Drift SQLite v24. Giải quyết $> 80\%$ các giao dịch một cách tức thì ($< 10ms$), hoạt động 100% offline, không tốn tài nguyên mạng và không gọi API bên ngoài.
-* **Tại Backend (Hỗ trợ tầng sâu):** Giữ duy nhất **Tầng 3 (Cloud LLM - Google Gemini Flash Reasoning)** để quản lý API Key tập trung, không đưa key lên mobile. Client-app chỉ gửi yêu cầu lên Backend khi Tầng 1 và Tầng 2 cục bộ không đạt độ tin cậy ($\text{Confidence} < 0.60$).
+* **Tại Client-app:** Xử lý trực tiếp **Tầng 1 (Keyword Matcher)** qua `CategorySuggestionEngine` trên Drift SQLite v24, phản hồi tức thì (< 10ms) 100% offline. Tầng 2 (Token Overlap / Jaccard) không đưa lên client vì đo đạc thực tế tỷ lệ đoán sai cao (2/3 ca đoán sai như "chợ" thành "cho vay").
+* **Tại Backend (Hỗ trợ tầng sâu):** Giữ **Tầng 3 (Cloud LLM - Google Gemini Flash Reasoning)** để quản lý API Key tập trung, không đưa key lên mobile. Backend đồng thời bảo lưu mã nguồn T1 & T2 làm baseline đối chuẩn. Hiện tại Client-app chưa gọi T3 Backend.
 * **Chốt chặn an toàn tại Backend trước khi gọi LLM:**
   - Lọc PII và dữ liệu nhạy cảm qua `maskTransactionDescription` (`masking.util.js`).
   - Thi hành **Strict Grounding**: từ chối tuyệt đối `category_id` ảo giác không thuộc danh mục của user.

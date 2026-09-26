@@ -76,7 +76,7 @@ Nguyên tắc xuyên suốt: **số liệu luôn đến từ Tầng 1-2 (determi
 ```
 Transaction = {
   id, amount, category_id, timestamp,
-  is_recurring_hint (nếu người dùng đã gắn nhãn "định kỳ"),
+  is_recurring_hint (suy trực tiếp từ bảng Bills và lịch trích tự động của Goals),
   merchant/note (optional, dùng để clustering nếu category chưa gán)
 }
 ```
@@ -199,7 +199,7 @@ if Σ new_budget[j] > total_allowed:
         new_budget[j] -= cut[j]
 ```
 
-> ⚠️ `saving_goal_ratio` **chưa tồn tại** ở client (đo 2026-09-13): mục tiêu tiết kiệm là **số tiền đích kèm hạn** (`Goals.targetDate`, `autoDepositAmount`), và một tài khoản có nhiều mục tiêu song song. Trước khi D3/D5 chạy được, phải chốt một trong hai: (a) thêm một thiết lập "tỷ lệ tiết kiệm mục tiêu" ở cấp tài khoản, hoặc (b) suy `saving_goal_ratio` cho tháng hiện tại từ tổng số tiền các mục tiêu **còn hạn** cần tích luỹ trong tháng chia cho `income`. Phương án (b) không cần schema mới.
+> ⚠️ `saving_goal_ratio`: Phương án (b) đã được chốt (xem D3); client chưa thi công — chưa có hàm nào suy `saving_goal_ratio` từ `Goals` tính tới 2026-09-22. Mục tiêu tiết kiệm là **số tiền đích kèm hạn** (`Goals.targetDate`, `autoDepositAmount`), và một tài khoản có nhiều mục tiêu song song. Phương án (b) suy `saving_goal_ratio` cho tháng hiện tại từ tổng số tiền các mục tiêu **còn hạn** cần tích luỹ trong tháng chia cho `income` mà không cần schema mới.
 
 #### 2.5. Conflict Handling — học từ chỉnh tay của người dùng
 
@@ -287,7 +287,7 @@ Khuyến nghị: MediaPipe LLM Inference qua `flutter_gemma` + `flutter_gemma_li
 3. **V3**: Conflict handling (mục 2.5) đưa vào, essentiality trở nên thực sự cá nhân hóa theo thời gian sử dụng.
 4. **V4** (tùy chọn): Nâng Tầng 2 từ greedy algorithm lên linear programming thực sự nếu cần độ chính xác tối ưu toàn cục cao hơn.
 
-> 💡 *Tận dụng giao diện có sẵn:* Màn hình chat `lib/features/ai_chat/presentation/pages/ai_chat_page.dart` (436 dòng) đã tồn tại sẵn trên client và chưa nối API nào. Tầng 3 nên tích hợp trực tiếp vào màn hình này thay vì dựng mới.
+> 💡 *Tận dụng giao diện có sẵn:* Tầng 3 được tích hợp vào màn chat có sẵn `lib/features/ai_chat/presentation/pages/ai_chat_page.dart` (không dựng màn mới): hỏi đáp tự do trên máy, mô hình chọn tool chỉ đọc để lấy dữ liệu theo tên, mọi con số kiểm với dữ liệu trước khi hiện. Không gọi API server nào.
 
 ---
 
@@ -298,6 +298,8 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 ---
 
 ### 🧹 NHÓM A: Quy Tắc Phân Loại, Làm Sạch & Nhận Diện Bản Chất Giao Dịch
+
+> ⚠️ **Lưu ý triển khai Tầng 1 (tính tới 2026-09-22):** Tầng 1 chưa thi công trên client. `nguongChiLon` mặc định bằng 0, nghĩa là **tắt** (`NotificationPrefs`, cùng khuôn `nguongSoDuThap`). Với người dùng chưa đặt ngưỡng, A1 và A2 **không lọc giao dịch nào** (coi `nguongChiLon == 0` là không áp A1/A2, chứ không phải mọi khoản đều vượt ngưỡng 0).
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Giải Thuật Thực Hiện | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
@@ -315,7 +317,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Công Thức Chuẩn Hóa | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
 | **B1** | **Ngưỡng Dữ Liệu Tối Thiểu (Cold-start Guard)** | Cold-start không phải công tắc bật/tắt: Dưới 2 tháng dùng prior theo nhóm danh mục; luật thống kê **hoãn** tới khi có $\ge 6$ tháng dữ liệu, trình diễn đồ án bằng dữ liệu mô phỏng có ghi rõ. | Tránh việc đưa ra cảnh báo và đề xuất sai lệch khi mẫu dữ liệu chưa đủ độ tin cậy thống kê. |
-| **B2** | **Bộ Lọc Thâm Hụt Kép (Dual Deficit Threshold)** | Cảnh báo thâm hụt danh mục chỉ kích hoạt khi thỏa mãn đồng thời 2 điều kiện: $\frac{\text{deficit}[i]}{\text{budget\_limit}[i]} \ge 10\%$ và $\text{deficit}[i] \ge 50.000đ$. Thi hành trực tiếp trong **bộ luật thông báo hiện hành (`notification_rules.dart`)**, không dựng thêm bộ cảnh báo thứ hai. | Triệt tiêu hoàn toàn các cảnh báo spam khi người dùng chỉ vượt ngân sách vài nghìn hoặc vài chục nghìn đồng không đáng kể. |
+| **B2** | **Bộ Lọc Thâm Hụt Kép (Dual Deficit Threshold)** | Cảnh báo thâm hụt danh mục kích hoạt theo ngưỡng kép: Thi hành ở `features/ai_edge/domain/tai_phan_bo.dart` (`kNguongThamHutTiLe`, `kNguongThamHutTuyetDoi`) — **định nghĩa duy nhất**. Bộ luật thông báo `notification_rules.dart` **nhận** kế hoạch đã dựng từ `taiPhanBoCua` chứ không tự tính lại, để trang Ngân sách và thông báo không bao giờ nói hai con số khác nhau. Ngưỡng được neo theo thu nhập (xem G1). | Triệt tiêu hoàn toàn các cảnh báo spam khi người dùng chỉ vượt ngân sách vài nghìn hoặc vài chục nghìn đồng không đáng kể. |
 | **B3** | **Cửa Sổ Giảm Tải Cảnh Báo (Cooldown Window)** | Cửa sổ 48 giờ thay bằng **khóa chống trùng theo kỳ ngân sách** đã có sẵn của bảng `AppNotifications`. | Tránh gây phiền hà, làm người dùng mệt mỏi khi nhận thông báo liên tục trong ngày. |
 | **B4** *(Góc khuất 1)* | **Khóa Dự Phóng Đầu Tháng (Early-Month Spike Lock)** | Trong **5 ngày đầu tiên của tháng** (`days_elapsed < 5`), hệ thống **CẤM HOÀN TOÀN** việc áp dụng công thức nhân tỷ lệ tuyến tính (`current_spend * days_in_month / days_elapsed`) để cảnh báo thâm hụt. | Khắc phục triệt để lỗi chia cho số nhỏ (Small Sample Trap): Người dùng đóng tiền nhà 5 triệu vào ngày mùng 2 sẽ không bị hệ thống tính thành 75 triệu/tháng. |
 | **B5** *(Góc khuất 1)* | **Công Thức Dự Phóng (Projection Engine)** | Quy tắc tính `projected_spend`: Nếu `days_elapsed >= 5`: $\text{projected\_spend} = \text{current\_spend} \times \frac{\text{days\_in\_month}}{\text{days\_elapsed}}$. Nếu `days_elapsed < 5`: $\text{projected\_spend} = \text{current\_spend} + \text{mức chi mỗi tháng} \times \frac{\text{days\_in\_month} - \text{days\_elapsed}}{\text{days\_in\_month}}$, trong đó mức chi mượn từ `BudgetRepository.suggestAmount` (cửa sổ cuộn $\le 90$ ngày); nếu chưa có lịch sử thì **chỉ cảnh báo khi đã vượt thật**. *(Lưu ý: Không dùng cửa sổ 3 tháng lịch cố định vì dễ bị rỗng trên dữ liệu thật).* | Phản ánh chính xác tốc độ chi tiêu thực tế, dung hòa giữa lịch sử quá khứ và diễn biến thực tế đầu tháng. |
@@ -341,11 +343,11 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Quy Chuẩn Áp Dụng | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **D1** | **Xử Lý Thu Nhập (Income Calculation)** | Giá trị `income` đưa vào Tầng 2 để tính toán là **trung bình ba tháng liền trước của thu nhập** theo đúng định nghĩa duy nhất của client (`thuNhapCua`: tổng thu trừ tiền đi vay, thu nợ và các khoản vay/nợ tiền vào; định nghĩa tại `features/analytics/domain/dong_tien_tu_do.dart`). Không lưu vào bảng riêng; tính toán trực tiếp tại chỗ. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản, không bịa thêm bảng thừa. |
+| **D1** | **Xử Lý Thu Nhập (Income Calculation)** | Giá trị `income` đưa vào Tầng 2 là **thu nhập quy về mức mỗi tháng, suy từ một cửa sổ nhìn lại cuộn theo ngày** — `[max(now − 90 ngày, giao dịch đầu tiên của tài khoản), now)`, quy về tháng bằng `tổng / số ngày × 30`; dưới 14 ngày dữ liệu thì **không trả số nào** và bên gọi im hẳn. Định nghĩa duy nhất ở `features/budget/domain/cua_so_nhin_lai.dart`. Luật thu nhập theo `thuNhapCua` (`features/analytics/domain/dong_tien_tu_do.dart`): tổng thu trừ tiền đi vay, thu nợ và khoản vay/nợ tiền vào. Không lưu vào bảng riêng; tính tại chỗ.<br>⚠️ **Không dùng "ba tháng lịch liền trước"** — cùng lý do đã ghi ở B5: trên dữ liệu thật con số ấy rỗng, và một hàm đúng từng dòng mà đầu vào rỗng thì vẫn vô dụng, im lặng. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản, không bịa thêm bảng thừa. |
 | **D2** | **Chế Độ Thận Trọng Tức Thì (Precautionary Mode)** | *(Hoãn — giai đoạn sau đồ án)*: Đòi hỏi dữ liệu thu nhập 3 tháng ổn định để phát hiện sụt giảm $> 30\%$. | Dành cho giai đoạn người dùng đã có lịch sử tài chính dài hạn. |
 | **D3** | **Bất Khả Xâm Phạm Mục Tiêu Tiết Kiệm (Goal Sovereign)** | Tỷ lệ mục tiêu tiết kiệm (`saving_goal_ratio`) được suy trực tiếp từ các mục tiêu còn hạn trong bảng `Goals`. AI **tuyệt đối không sửa số tiền đích hay thời hạn của mục tiêu**. | Mục tiêu tiết kiệm là quyết định tài chính cá nhân mang tính chiến lược, AI không được phép áp đặt. |
 | **D4** | **Cảnh Báo Thâm Hụt Cấu Trúc Dài Hạn** | *(Hoãn — giai đoạn sau đồ án)*: Cần theo dõi liên tục trạng thái `at_risk` trong 3 tháng liên tiếp. | Khi dữ liệu thực tế ban đầu còn mỏng, quy tắc này chưa kích hoạt. |
-| **D5** | **Ràng Buộc Trần Ngân Sách Tuyệt Đối** | Tổng ngân sách sau khi điều phối lại bắt buộc thỏa mãn: $\sum \text{new\_budget}[j] \le \text{income} \times (1 - \text{saving\_goal\_ratio})$. Nếu vi phạm, phần vượt (`excess`) sẽ bị trừ dần vào các danh mục có `essentiality < 0.5`. | Đảm bảo nguyên tắc kế toán vàng: Không bao giờ chi vượt quá khả năng thu nhập trừ đi khoản tiết kiệm bắt buộc. |
+| **D5** | **Ràng Buộc Trần Ngân Sách Tuyệt Đối** | Tổng ngân sách sau khi điều phối lại bắt buộc thỏa mãn: $\sum \text{new\_budget}[j] \le \text{income} \times (1 - \text{saving\_goal\_ratio})$. *(Không áp cho bước tái phân bổ: bước ấy giữ tổng hạn mức không đổi — cắt X thì cộng X — nên trần không thể bị vi phạm. D5 dành cho bước đặt hạn mức mới, chưa thi công).* Nếu vi phạm, phần vượt (`excess`) sẽ bị trừ dần vào các danh mục có `essentiality < 0.5`. | Đảm bảo nguyên tắc kế toán vàng: Không bao giờ chi vượt quá khả năng thu nhập trừ đi khoản tiết kiệm bắt buộc. |
 
 ---
 
@@ -367,7 +369,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 |:---:|---|---|---|
 | **F1** | **Bảo Mật Cục Bộ (Edge Privacy)** | Gói số đặc trưng (Tầng 1), kế hoạch tái phân bổ (Tầng 2) và bảng phản hồi cục bộ **không rời khỏi thiết bị** và không gửi tới bất kỳ API phân tích nào của bên thứ ba. Giao dịch thô vẫn đồng bộ với backend của chính hệ thống theo kiến trúc offline-first. | Căn cứ: Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân. |
 | **F2** | **Ranh Giới Mã Hóa (Encryption Boundaries)** | Ghi chú giao dịch nằm **dạng thô** trong SQLite của client và đi qua `/sync/push` / `/sync/pull` cũng ở dạng thô (`sync_engine.dart:1222`, `:562`); client **không** mã hoá và **không** giải mã trường này. Việc mã hoá AES-256 theo `Data_Security.md` là lớp **at-rest phía server**, không thay đổi gì trên máy người dùng. Vì vậy quyền riêng tư của Tầng 1–2 dựa hoàn toàn vào F1 (dữ liệu không rời thiết bị) và F3 (SLM không có mạng), chứ không dựa vào mã hoá. Nếu sau này cần mã hoá dữ liệu cục bộ, đó là một hạng mục riêng chưa có trong lộ trình. | Minh bạch ranh giới bảo mật: Tránh giả định sai về lớp mã hoá cục bộ trên client. |
-| **F3** | **Cô Lập Mạng Cho SLM On-Device (Zero Network Access)** | Thư viện suy luận mô hình SLM (MediaPipe / llama.cpp) được cấu hình chạy ở chế độ Offline 100%, không cấp quyền mở Socket hay HTTP Request ra Internet. Nếu trong tương lai có tùy chọn fallback sang Cloud LLM cho các câu hỏi phức tạp, bắt buộc phải có màn hình xin phép đồng ý rõ ràng (Consent Dialog) từ người dùng. | Triệt tiêu hoàn toàn nguy cơ lộ lọt dữ liệu thói quen chi tiêu cá nhân qua các truy vấn AI. |
+| **F3** | **Cô Lập Mạng Cho SLM On-Device (Zero Network Access)** | Thư viện suy luận SLM không thực hiện bất kỳ lời gọi mạng nào — nó nạp mô hình từ tệp cục bộ đã tải sẵn. Bảo đảm bằng ba lớp: (1) phép đo trên máy thật khi cắt mạng — vẫn trả lời, 0 request đi ra; (2) test quét cấm mọi tệp trừ một tệp runtime duy nhất được import gói suy luận; (3) không có URL nào trong đường gọi mô hình. ⚠️ Không mô tả đây là "không cấp quyền mạng": quyền `INTERNET` là của cả ứng dụng và **bắt buộc phải có** cho đồng bộ offline-first. | Triệt tiêu hoàn toàn nguy cơ lộ lọt dữ liệu thói quen chi tiêu cá nhân qua các truy vấn AI. |
 
 ---
 
@@ -377,7 +379,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Định Dạng Hiển Thị | Trải Nghiệm Người Dùng (UX) |
 |:---:|---|---|---|
-| **G1** *(Góc khuất 4)* | **Làm Tròn Số Tiền Thực Tế Đến 10.000đ** | Mọi con số đề xuất điều chuyển hoặc cắt giảm ngân sách hiển thị cho người dùng **bắt buộc phải làm tròn đến bội số của 10.000đ** (hoặc 50.000đ) theo quy tắc làm tròn chuẩn: $\text{round}(x / 10000) \times 10000$.<br>*(Ví dụ: Tính toán nội bộ ra 437.582đ $\rightarrow$ Hiển thị đề xuất là **440.000đ**).* | Loại bỏ cảm giác "máy móc, gượng ép" khi người dùng nhìn thấy những con số lẻ vụn vặt; giúp người dùng dễ nhớ và dễ thực thi. |
+| **G1** *(Góc khuất 4)* | **Làm Tròn Số Tiền Thực Tế Theo Bước Neo Thu Nhập** | Mọi con số đề xuất điều chuyển hoặc cắt giảm ngân sách làm tròn đến bội số của bước `buocLamTron = max(0,2 % thu nhập mỗi tháng, 10.000đ)`, quy về họ $1 \cdot 2 \cdot 2,5 \cdot 5 \times 10^k$. Mức 10.000đ là **sàn**, áp cho tài khoản chưa có thu nhập hoặc thu nhập thấp.<br>*(Ví dụ: Tính toán nội bộ ra 437.582đ $\rightarrow$ Hiển thị đề xuất là **440.000đ**).* | Loại bỏ cảm giác "máy móc, gượng ép" khi người dùng nhìn thấy những con số lẻ vụn vặt; giúp người dùng dễ nhớ và dễ thực thi. |
 | **G2** | **Làm Tròn Tỷ Lệ Phần Trăm (Percentage Rounding)** | Mọi tỷ lệ phần trăm (tỷ trọng chi tiêu, mức độ thâm hụt, tỷ lệ cắt giảm) hiển thị trên giao diện đều được làm tròn chính xác **1 chữ số thập phân** (Ví dụ: `15.4%`, `25.0%`). | Giữ giao diện gọn gàng, tinh tế, tránh hiển thị chuỗi số thập phân dài ngoằng gây rối mắt. |
 | **G3** | **Bảng Dữ Liệu Đi Kèm Minh Bạch (Grounding Data Card)** | Mọi câu khuyến nghị hay lời thoại do SLM sinh ra bắt buộc phải được hiển thị kèm theo một **Thẻ Dữ Liệu Đối Soát (Data Card / Summary Table)** hiển thị các con số thô: Số ngân sách hiện tại, số dự kiến vượt, số tiền đề xuất điều chuyển. Người dùng không bao giờ chỉ đọc văn bản suông mà luôn nhìn thấy bằng chứng số liệu rõ ràng. | Tăng độ tin cậy tuyệt đối (Credibility), giúp người dùng dễ dàng thẩm định tính đúng đắn của đề xuất trước khi bấm duyệt. |
 
@@ -389,9 +391,9 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Giải Pháp Kiến Trúc | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **H1** | **Cách Ly Tiến Trình Nền (Background Isolate Separation)** | Toàn bộ các tác vụ tính toán Tầng 1 (Full recompute), Tầng 2 (Tối ưu hóa phân bổ) và Tầng 3 (Chạy suy luận SLM + Regex Validator) **BẮT BUỘC PHẢI CHẠY TRONG DART ISOLATE / `compute()`**. Tuyệt đối không chạy trên Main UI Thread. | Đảm bảo giao diện người dùng trên Flutter luôn duy trì mượt mà 60 FPS / 120 FPS, không bị giật lag hay đơ màn hình khi AI đang suy luận. |
-| **H2** | **Quản Lý Mức Pin & Nhiệt Độ (Thermal & Battery Throttling)** | Nếu pin thiết bị $< 15\%$ hoặc hệ điều hành báo trạng thái thiết bị quá nhiệt (Thermal Throttling):<br>• Tạm hoãn việc khởi chạy mô hình SLM Tầng 3.<br>• Tự động chuyển sang sử dụng bộ sinh câu mẫu **Template String** ở Tầng 3. | Bảo vệ phần cứng điện thoại, tiết kiệm pin tối đa và phòng ngừa ứng dụng bị hệ điều hành tắt ngang. |
-| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Với các thiết bị có **RAM khả dụng < 4.0 GB**, thiết bị không phải kiến trúc `arm64-v8a`, hoặc khi thư viện suy luận SLM gặp lỗi runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy bình thường, Tầng 3 tự động chuyển sang bộ sinh câu mẫu **Template String Engine** mà không gây crash app hay báo lỗi kỹ thuật. | Đảm bảo app chạy ổn định trên mọi dòng máy từ yếu đến mạnh. |
+| **H1** | **Cách Ly Tiến Trình Nền (Background Isolate Separation)** | Tầng 3 chạy ở thread native của thư viện suy luận (platform channel), nên không cần Dart Isolate. Tầng 1–2 là hàm thuần trên main isolate: chúng đọc vài trăm hàng và chưa đo được độ giật nào. Nếu về sau tầng 1 phải quét toàn bộ lịch sử nhiều năm thì chuyển sang `compute()`, và đó là lúc quy tắc này có hiệu lực. | Tối ưu hóa tài nguyên, không lạm dụng Dart isolate khi chưa có nhu cầu tính toán nặng. |
+| **H2** | **Quản Lý Mức Pin & Nhiệt Độ (Thermal & Battery Throttling)** | *(Hoãn — chưa có mã)*: Nếu pin thiết bị $< 15\%$ hoặc hệ điều hành báo trạng thái thiết bị quá nhiệt (Thermal Throttling):<br>• Tạm hoãn việc khởi chạy mô hình SLM Tầng 3.<br>• Tự động chuyển sang sử dụng bộ sinh câu mẫu **Template String** ở Tầng 3. | Bảo vệ phần cứng điện thoại, tiết kiệm pin tối đa và phòng ngừa ứng dụng bị hệ điều hành tắt ngang. |
+| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Khi thiết bị không phải kiến trúc `arm64-v8a`, chưa tải mô hình, hoặc thư viện suy luận SLM gặp lỗi runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy bình thường, Tầng 3 tự động chuyển sang bộ sinh câu mẫu **Template String Engine** mà không gây crash app hay báo lỗi kỹ thuật. **Không dùng ngưỡng RAM làm điều kiện** (xem §3.4): nạp GPU có thể sập ở tầng native — nơi `try/catch` của Dart không với tới — nên điều kiện thật là một **dấu canary** (`canary_gpu.dart`) ghi trước khi nạp và xoá sau khi nạp xong; dấu còn sót ở lần mở sau nghĩa là lượt trước đã sập, và máy ấy chuyển sang CPU. | Đảm bảo app chạy ổn định trên mọi dòng máy từ yếu đến mạnh. |
 | **H4** | **Cấu Trúc Bảng Dữ Liệu SQLite Cục Bộ Của Edge AI** | Thiết lập **01 bảng SQLite nội bộ duy nhất** `ai_rebalancing_feedbacks` trên Client-app để lưu trữ nhật ký phản hồi phục vụ học ngầm (không đồng bộ lên Backend). Tính toán đặc trưng trực tiếp tại chỗ từ các hàng giao dịch thay vì dựng bảng cache; điều tiết tần suất cảnh báo tận dụng bảng `AppNotifications` sẵn có. | Tối ưu hóa bộ nhớ và tốc độ, không lưu cache thừa thãi. |
 
 ---

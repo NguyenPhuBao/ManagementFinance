@@ -1605,16 +1605,16 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 
 | STT | Tên Chức Năng | Nơi Triển Khai | Trách Nhiệm Kỹ Thuật & Cơ Chế Phối Hợp | Trạng Thái |
 |:---:|---|:---:|---|:---:|
-| **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Xử lý Tầng 1 (Keyword) và Tầng 2 (NLP / Token overlap) chạy cục bộ trên SQLite v24 để phản hồi tức thì.<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash). Mobile chỉ gọi lên khi T1, T2 không đủ tự tin, có lọc PII Masking. | 🟡 **Đang làm** |
-| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, tiền xử lý, giao diện chỉnh sửa & xác nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 2.0 Flash Multimodal để bóc tách ảnh phức tạp bằng API Key tập trung. | 🟡 **Đang làm** |
-| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (100%) | Đẩy HOÀN TOÀN sang Client-app. Xử lý đối soát cục bộ trên SQLite v24 (theo `bank_tran_id`, thời gian, số tiền, nội dung). | 🟡 **Đang làm** |
-| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (100%) | Thuần AI tại Backend: **Function-Calling** truy vấn số liệu cá nhân có cấu trúc (qua JWT token) + **RAG** cho kiến thức tài chính chung/tĩnh. Tuyệt đối không index dữ liệu người dùng lên vector DB. | 🔴 **Chưa hoàn thành**<br>*(Làm tại Backend đợt này)* |
+| **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v24. T2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning), có lọc PII Masking. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 có ở Backend, Client chưa gọi |
+| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 2.0 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
+| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (khi có OCR) | Khử trùng lặp trên client chỉ cần khi và nếu client làm OCR (chống quét 2 lần 1 hóa đơn). Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ. | ⬜ **Chưa làm tại Client**<br>*(Sẽ đặc tả cùng spec OCR Client sau này)* |
+| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Function-Calling + RAG kiến thức chung + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 7 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này theo `ChatbotAI.md`)* |
 | **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (gốc)<br>+<br>**Client-app** (thống kê) | Xây dựng gốc tại Backend (chấm điểm sức khỏe tài chính, phân bổ 50/30/20, tư vấn tài chính). Client-app đóng gói dữ liệu thống kê gửi về định kỳ để đánh giá. | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này)* |
+| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20. Client-app gọi API hiển thị. | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này)* |
 | **8** | **Phát Hiện Chi Tiêu Bất Thường** *(Anomaly Detection)* | **Client-app** (100%) | Chạy 100% tại Client-app. Phát hiện chi tiêu đột biến qua ngưỡng người dùng đặt `nguongChiLon` và bộ luật `notification_rules.dart`. | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Chức năng mới: Hệ chuyên gia tính Essentiality, lựa chọn nguồn bù Donor C1–C7, thuật toán Welford O(1), chạy 100% offline. | 🟡 **Đang làm** *(Client-app)* |
-| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình SLM cục bộ (**Gemma 4 E2B**, 2.41GB qua LiteRT) chạy trực tiếp trên GPU máy để học hỏi thói quen và diễn giải cho mục 6 và 9. | 🟡 **Đang làm** *(Client-app)* |
+| **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v24 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành** *(Client-app)* |
+| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi 7 tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app** *(7 tool chỉ đọc offline)* |
 
 #### 8.5.2. Nguyên tắc phân chia kiến trúc giữa Client-app & Backend
 - **Đưa các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) lên Client-app:** Tốc độ phản hồi tức thì ($< 15\text{ms}$), không phụ thuộc mạng, bảo vệ quyền riêng tư 100% offline (F1 & Nghị định 13/2023/NĐ-CP), tối đa hóa trải nghiệm người dùng (UX).
@@ -2697,7 +2697,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 ### 11.41. Chuẩn Hóa Thuật Ngữ Edge AI, Kiến Trúc Cloud AI & Bảo Mật Dữ Liệu Phân Tầng (2026-09-22)
 - **Thống nhất tên gọi Edge AI:**
   - Đồng bộ thuật ngữ chuẩn ngành **Edge AI** (thay vì "AI Edge") trên toàn bộ hệ thống tài liệu.
-  - Làm rõ phân định kỹ thuật: Tầng 1 (Feature engineering) và Tầng 2 (Rule-engine) là **hệ chuyên gia toán học & thống kê tất định**; Tầng 3 (On-device SLM chạy mô hình ngôn ngữ Gemma 4 E2B qua LiteRT/MediaPipe) mới là **Edge AI**.
+  - Làm rõ phân định kỹ thuật: Tầng 1 (Feature engineering) và Tầng 2 (Rule-engine) là **hệ chuyên gia toán học & thống kê tất định**; Tầng 3 (On-device SLM chạy mô hình ngôn ngữ Gemma 4 E2B qua LiteRT-LM) mới là **Edge AI**.
 - **Giải quyết Mâu thuẫn ① (Quyền riêng tư dữ liệu tài chính & Server RAG):**
   - Chốt vững cam kết **F1** và tuân thủ tuyệt đối Nghị định 13/2023/NĐ-CP: Toàn bộ dữ liệu tài chính người dùng (`Transaction`, `Wallet`, `Bill`, `Goal`, `Budget`) **TUYỆT ĐỐI KHÔNG index lên Vector DB phía server**.
   - Pipeline RAG phía Backend chỉ áp dụng duy nhất cho **Kiến thức tài chính chung/tĩnh** (mẹo tiết kiệm, quy tắc 50/30/20, thuế TNCN).
@@ -2717,19 +2717,79 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Toàn bộ các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) có tốc độ xử lý nhanh được đưa lên **Client-app (Mobile)** nhằm giảm triệt để độ trễ mạng, chạy offline mượt mà, bảo vệ dữ liệu cá nhân theo cam kết F1 và tối đa hóa trải nghiệm người dùng (UX).
   - Backend đóng vai trò AI Gateway giữ bí mật `GEMINI_API_KEY` (không đưa lên mobile) và chỉ đảm nhận các chức năng thuần AI và gọi Cloud LLM.
 - **Bảng phân định phạm vi & trạng thái 10 chức năng AI:**
-  1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword) & T2 (NLP/Token overlap) trên SQLite; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟡 *Đang làm*.
-  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app xử lý giao diện/chụp ảnh/xác nhận; Backend giữ tầng sâu nhất gọi Gemini 2.0 Flash Multimodal $\rightarrow$ 🟡 *Đang làm*.
-  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Đẩy hoàn toàn sang Client-app đối soát cục bộ trên SQLite v24 $\rightarrow$ 🟡 *Đang làm (chuyển giao sang mobile)*.
-  4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Thuần AI xây dựng tại Backend trong đợt này (Function-calling truy vấn số liệu có cấu trúc + RAG kiến thức tĩnh) $\rightarrow$ 🔴 *Chưa hoàn thành (trọng tâm đợt này)*.
+  1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
+  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 2.0 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
+  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Đẩy sang Client-app khi có OCR; Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ $\rightarrow$ ⬜ *Chưa làm tại Client*.
+  4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Xây dựng tại Backend là gốc (chấm điểm, phân tích 50/30/20, lời khuyên); Client-app đóng gói dữ liệu thống kê gửi về định kỳ $\rightarrow$ 🔴 *Chưa hoàn thành (xây dựng đợt này)*.
+  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán chỉ số FHS thang điểm 100, quy tắc 50/30/20, quỹ khẩn cấp từ PostgreSQL, cấp qua API `GET /api/ai/chatbot/financial-health` và nhúng thẳng vào Snapshot của Chatbot) $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   8. **Phát hiện chi tiêu bất thường (Spending Anomaly Detection):** Đẩy qua Client-app (ngưỡng `nguongChiLon` & `notification_rules.dart`) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7, Welford O(1)) $\rightarrow$ 🟡 *Đang làm*.
-  10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị để học hỏi và diễn giải ngôn ngữ cho mục 6 và 9 $\rightarrow$ 🟡 *Đang làm*.
+  9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7 trên SQLite) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
+  10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị phục vụ màn Trợ lý AI (offline, 7 tool chỉ đọc trên SQLite) $\rightarrow$ 🟢 *Đang chạy tại Client-app*.
 - **Nguyên tắc bảo tồn 100% mã nguồn Backend làm cơ sở đối chiếu:**
   - Các chức năng được chuyển giao hoặc đưa lên Client-app (như T1 Keyword Matcher, T2 NLP Matcher, Bộ khử trùng Deduplication Engine `dedup.service.js`...) **HIỆN TẠI VẪN ĐƯỢC GIỮ LẠI NGUYÊN VẸN TRONG BACKEND**, làm cơ sở chuẩn hóa (ground truth baseline) cho đội ngũ Client-app đối soát, kế thừa và xây dựng tiếp.
   - **QUY TẮC CỐT LÕI: TUYỆT ĐỐI KHÔNG TỰ Ý XÓA BỎ BẤT KỲ MÃ NGUỒN HAY TÀI LIỆU NÀO ĐÃ LÀM TẠI BACKEND.**
+
+### 11.43. Triển Khai Hoàn Thiện Chức Năng Chatbot AI (AI Financial Copilot) & Sức Khỏe Tài Chính FHS Tại Backend & Admin-Web (2026-09-26)
+- **Tài liệu nguồn sự thật:** [`docs/AI/ChatbotAI.md`](docs/AI/ChatbotAI.md), [`docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md`](docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md).
+- **1. Triển khai Backend Core (Kiến trúc Zero Database Migration - An toàn tuyệt đối 100% CSDL):**
+  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-2.5-flash'`).
+  - **Dual-Phase Privacy Shield (`pii.masker.js`):** Tự động phát hiện và che giấu toàn diện thông tin cá nhân PII (số điện thoại `[SĐT]`, số tài khoản ngân hàng `[STK]`, số thẻ thanh toán quốc tế `[SỐ_THẺ]` theo thuật toán Luhn, email `[EMAIL]`). Toàn bộ số liệu tài chính trong Snapshot và Tools trước khi gửi lên Cloud LLM đều được làm mờ (anonymize) và che giấu ghi chú giao dịch.
+  - **Snapshot Engine & Đánh giá Sức khỏe Tài chính FHS (`financial.snapshot.service.js`):**
+    + Triển khai theo Lối A (Backend tự tính toán từ PostgreSQL hiện có không cần di chuyển dữ liệu).
+    + Công thức thu nhập thực tế chuẩn `thuNhapCua`: Tự động loại trừ các giao dịch vay nợ, thu nợ, chuyển ví nội bộ để tránh tính ảo thu nhập.
+    + Cơ cấu ngân sách 50/30/20 (Thiết yếu - Linh hoạt - Tích lũy) tính toán trực tiếp từ chi tiêu thực tế.
+    + Chỉ số Quỹ khẩn cấp (`emergencyFundMonths`) và Tỷ lệ nợ trên thu nhập (`debtToIncomeRatio`).
+    + Chấm điểm FHS tổng thể thang điểm 100 và phân hạng (Tốt, Cần cải thiện, Nguy cơ).
+  - **On-Demand Tools Executor (`financial.tools.js` & `tools.executor.js`):**
+    + 4 công cụ đào sâu theo chuẩn Function Calling: `get_category_transactions`, `compare_spending_periods`, `get_bill_details`, `get_goal_simulation`.
+    + 100% câu truy vấn Prisma được scoped nghiêm ngặt theo `idaccount` từ JWT token xác thực (chống rò rỉ chéo dữ liệu đa người dùng).
+  - **Hybrid Static RAG (`hybrid.search.js` & `rag/data/`):**
+    + Nạp 3 bộ cẩm nang tài chính tĩnh: `thue_tncn_2026.json` (biểu thuế lũy tiến từng phần Luật Thuế TNCN mới 2026), `quy_tac_50_30_20.json` (hoạch định ngân sách Elizabeth Warren), `quan_ly_no_an_toan.json` (phương pháp Tuyết lăn Snowball & Tuyết lở Avalanche).
+    + Thuật toán Phrase Matching + RRF chấm điểm từ khóa, chỉ nạp tri thức liên quan trực tiếp vào ngữ cảnh gợi ý, loại bỏ tạp âm.
+  - **Trình Điều Phối Hội Thoại & Luồng SSE Streaming (`chatbot.service.js`, `chatbot.controller.js`):**
+    + Hỗ trợ giao thức `text/event-stream` truyền tải thời gian thực các sự kiện: `event: meta` (FHS, trích dẫn RAG), `event: delta` (từng đoạn văn bản sinh ra), `event: done` và `event: error`.
+    + Vòng lặp Function Calling linh hoạt (tự động phát hiện khi Gemini yêu cầu gọi tool và gửi lại tool output để suy luận tiếp).
+    + Cơ chế Graceful Fallback (`_streamFallbackResponse`): Phân tích số liệu tài chính cục bộ tự động khi đường truyền Gemini API gặp sự cố hoặc hết hạn mức, người dùng luôn nhận được câu trả lời tài chính thực tế.
+    + Bắt gọn sự kiện ngắt kết nối `req.on('close')` để hủy tác vụ Gemini tức thì, tiết kiệm tài nguyên.
+  - **Định tuyến & Giới hạn tải (`chatbot.routes.js`):**
+    + Gắn tại `/api/ai/chatbot` với 2 endpoint: `POST /chat/stream` (Rate limit 15 req/phút/user) và `GET /financial-health` (lấy ngay chỉ số FHS).
+- **2. Triển khai Frontend Admin-web (Trợ lý Copilot AI & Kiểm thử trực quan):**
+  - **API Client SSE Stream (`src/Admin-web/src/api/chatbot.api.js`):** Sử dụng `ReadableStream.getReader()` và `TextDecoder` đọc và bóc tách các event `meta`, `delta`, `done` mượt mà.
+  - **Giao diện người dùng Copilot (`src/Admin-web/src/pages/ai/`):**
+    + `FinancialHealthCard.jsx`: Thẻ trực quan hóa điểm FHS thang 100, thanh 3 màu phân bổ 50/30/20, số tháng quỹ khẩn cấp và tỷ lệ nợ.
+    + `ChatMessageBubble.jsx`: Hiển thị tin nhắn Markdown đẹp mắt, avatar phân định, hiệu ứng typing stream và khối trích dẫn nguồn căn cứ pháp lý/cẩm nang RAG.
+    + `PromptSuggestionChips.jsx`: 4 chip câu hỏi mẫu thông minh theo nghiệp vụ tài chính.
+    + `AICopilotPage.jsx`: Màn hình Chatbot Copilot hoàn chỉnh kèm bảng Metadata Inspector hỗ trợ Admin/Tester kiểm tra chi tiết raw snapshot, RAG matching và log hệ thống.
+  - **Routing & Navigation:** Thêm route `/ai-copilot` và icon `smart_toy` ("Trợ lý AI Copilot") trên thanh điều hướng chính (`Sidebar.jsx`).
+- **3. Kiểm thử tự động (TDD Suite):**
+  - Bộ kiểm thử Backend tại `src/Backend/tests/`: **19/19 tests PASS 100%** (`financial.snapshot.test.js`, `chatbot.tools.test.js`, `chatbot.rag.test.js`, `chatbot.api.test.js`).
+  - Frontend Admin-web Build: `rtk npm run build` **thành công 100% (0 errors, 142 modules transformed)**.
+
+### 11.41. Chuẩn Hóa Toàn Diện Múi Giờ Việt Nam (Asia/Ho_Chi_Minh — GMT+7) Toàn Hệ Thống Backend & Admin-web (2026-09-26)
+- **1. Yêu cầu & Bối cảnh phát sinh:**
+  - Loại bỏ hoàn toàn sự phụ thuộc vào múi giờ UTC của hạ tầng máy chủ Cloud (Render, Linux, Docker) và múi giờ cục bộ của trình duyệt người quản trị.
+  - Khắc phục triệt để lỗi biểu đồ Dashboard hiển thị lệch 7 tiếng (~10:00 thay vì 17:47) và bảo đảm toàn bộ chu trình lập lịch, reset đếm ngược 30 ngày, thanh lọc dữ liệu định kỳ, bộ lọc báo cáo hoạt động chính xác 100% theo ngày lịch Việt Nam.
+- **2. Triển khai Kỹ thuật Backend:**
+  - `src/Backend/index.js` & `.env.example`: Thiết lập `process.env.TZ = process.env.TZ || 'Asia/Ho_Chi_Minh'` tại dòng đầu tiên và bổ sung `TZ=Asia/Ho_Chi_Minh` vào biến môi trường mẫu.
+  - `src/Backend/core/scheduler.service.js`:
+    + Viết lại `getMsUntilNextMidnightVietnam()` bằng `Intl.DateTimeFormat` múi giờ `Asia/Ho_Chi_Minh` để tính toán khoảng cách ms đến mốc 00:00:00 ngày tiếp theo tại Việt Nam, độc lập với múi giờ vật lý của máy chủ.
+    + Chu trình bảo trì hàng ngày (`runDailyMaintenanceRoutine`): Kích hoạt đúng 00:00:00 giờ Việt Nam để thực thi giảm đếm ngược 30 ngày tài khoản chờ xóa (`runDailyCountdownTask`), kích hoạt xóa mềm & ẩn danh hóa PII khi về 0 (`processFullSoftDelete`), thanh lọc mã OTP quá 24h (`runDailyOtpPurgeTask`), thanh lọc Refresh Token hết hạn/thu hồi quá 30 ngày (`runDailyRefreshTokenPurgeTask`).
+  - `src/Backend/modules/admin/admin.service.js`:
+    + Hàm `getVnTimeParts`: Bóc tách ngày giờ chuẩn Việt Nam bằng `Intl.DateTimeFormat`.
+    + Toàn bộ gom nhóm biểu đồ đăng nhập (`getLoginStats`), lưu lượng request (`getRequestStats`) dùng `getVnTimeParts(log.time_req)` để phân bổ vào đúng bucket giờ/ngày/tháng.
+    + Toàn bộ bộ lọc `resolveFilterContext` (`today`, `7days`, `1month`, `1year`, `customDate`, `customMonth`, `customYear`) tạo mốc ISO tường minh kèm offset `+07:00`.
+  - Kiểm thử hồi quy (`src/Backend/tests/unit/admin.stats.timezone.test.js`): Giả lập môi trường `TZ=UTC` kiểm chứng log 17:47 GMT+7 (10:47 UTC) rơi chính xác vào bucket 17:00 và phân bổ ngày chính xác 100%. Bộ kiểm thử Backend đạt **22/22 tests PASS (100%)**.
+- **3. Triển khai Kỹ thuật Admin-web (Frontend):**
+  - `src/Admin-web/src/utils/format.js`: Tích hợp plugin `utc` và `timezone` cho thư viện `dayjs`, thiết lập mặc định `dayjs.tz.setDefault('Asia/Ho_Chi_Minh')`. Cập nhật `formatDate`, `formatDateTime`, `formatRelativeTime` luôn định dạng theo giờ Việt Nam.
+  - `src/Admin-web/src/pages/dashboard/DashboardPage.jsx`:
+    + Hàm `getVnDateParts` và `formatActivityTime`: Định dạng sự kiện và so sánh `isToday` theo giờ Việt Nam.
+    + Khởi tạo state toàn cục (`customFilter`, `viewYear`, `viewMonth`, `isFutureDate`, `isFutureMonth`, `isFutureYear`) bám sát ngày lịch hiện tại tại Việt Nam.
+    + Real-time Socket `audit_activity`: Tìm đúng bucket giờ Việt Nam `hourKey` để cộng dồn lưu lượng thời gian thực.
+  - `src/Admin-web/src/components/common/UserDetailModal.jsx` & `AICopilotPage.jsx`: Hiển thị ngày tạo, ngày xóa và timestamp tin nhắn theo múi giờ `Asia/Ho_Chi_Minh`.
+  - Frontend Build: `rtk npm run build` thành công **100% (0 errors)**.
+
 
 
 
