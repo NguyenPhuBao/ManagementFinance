@@ -1,3 +1,9 @@
+> 🔎 **Client soát 2026-09-26.** Backend đóng ở `422debf`: ba lệnh ở mục 8 ra **0** dòng; chức năng 7 chốt **lối A**
+> (backend tự tính FHS). Hai chỗ chưa trọn, chuyển sang `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`: mục 1.3 (F1) không
+> thành một quyết định có ngày (đơn mới mục 4); và câu client đề nghị ở mục 4.3 dưới đây — *"chỉ khi có OCR … SMS đã
+> bỏ"* — **sai ngay khi** backend duyệt đơn `CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` cùng ngày. Đó là **lỗi của client**
+> (đơn mới mục 1).
+
 **Ngày:** 2026-09-25 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat` @ `4f37653` (đã gộp `main` @ `c47e6e2`)
 **Tệp được soát:** `docs/AI/LogicBusinessAI.md`, `docs/AI/AI_ARCHITECTURE_DIAGRAM.md`, `Project.md` §8.5 + §11.42,
 `docs/AI/Classify.md` §1.3, `docs/AI/ORC.md` (NPBao, commit `c47e6e2` ngày 2026-09-23). Các tệp này do backend quản

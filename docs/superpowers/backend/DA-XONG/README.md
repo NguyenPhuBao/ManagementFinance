@@ -9,8 +9,9 @@ và 4 client soát lại cùng ngày.
 > đây chứ không ở chỗ nào khác.
 >
 > Điều duy nhất đã hết là **việc phải làm**. Việc còn lại nằm ở
-> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 1** của
-> chính README ấy (từ 2026-09-11; trước đó là mục 2). Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
+> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 0** của
+> chính README ấy (từ 2026-09-13; từ 2026-09-11 là mục 1, trước đó là mục 2). ⚠️ README ấy do backend quản và
+> **không** ghi đơn client vừa đặt, nên muốn chắc thì `ls` thư mục. Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
 > 2026-09-08 mà không ai thấy (soát lại 2026-09-10); đừng chép con số sang đây.
 
 ---

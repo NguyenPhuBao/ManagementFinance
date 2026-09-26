@@ -20,18 +20,25 @@ import '../../budget/domain/budget_history.dart';
 import '../../analytics/domain/du_bao_dong_tien.dart' show buocTron;
 import '../../budget/domain/budget_pace.dart';
 
-/// B2: thâm hụt phải ≥ 10 % hạn mức **và** ≥ 50.000 đ.
+/// B2: thâm hụt phải ≥ 10 % hạn mức **và** ≥ [nguongThamHutTuyetDoi].
+///
+/// [kNguongThamHutTuyetDoi] là **sàn** của vế tuyệt đối, không phải ngưỡng dùng
+/// thẳng: từ 2026-09-21 vế ấy neo theo thu nhập qua [_neo]. Cũng là sàn của C5
+/// ([nguongCoNghia]).
 const double kNguongThamHutTiLe = 0.10;
 const double kNguongThamHutTuyetDoi = 50000;
 
-/// C4: nguồn bù phải còn ít nhất chừng này sau dự phóng.
+/// C4: **sàn** của dư địa tối thiểu mà nguồn bù phải còn sau dự phóng — ngưỡng
+/// thật là [duDiaToiThieu], neo theo thu nhập từ 2026-09-21.
 const double kDuDiaToiThieu = 100000;
 
 /// C3: cắt tối đa 25 % dư địa; 15 % nếu đã bị cắt hai kỳ liền trước.
 const double kTranCat = 0.25;
 const double kTranCatDaBiCat = 0.15;
 
-/// G1: mọi số tiền đề xuất làm tròn tới bội của 10.000.
+/// G1: **sàn** của bước làm tròn số tiền đề xuất — bước thật là [buocLamTron],
+/// neo theo thu nhập từ 2026-09-21. Hằng này chỉ còn là bước của tài khoản chưa
+/// có thu nhập hoặc thu nhập thấp.
 const int kBuocLamTron = 10000;
 
 /// B4: dưới chừng này ngày thì không nhân tỉ lệ tuyến tính.

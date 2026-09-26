@@ -244,6 +244,13 @@ Client **không** viết kế hoạch cho phần này.
 ✅ **NPBao đã chốt lối ① ngày 2026-09-22** — mục "Quyết định đã có" ở trên đã cập nhật theo.
 Không còn gì phải chờ ở mâu thuẫn ①.
 
+✅ **Backend dựng chặng 6 ngày 2026-09-26** (gộp `main` @ `422debf`), nhưng **khác** hình dung ở trên: RAG nằm **bên
+trong** chatbot trực tuyến `modules/ai/features/chatbot/` — 3 tệp JSON tĩnh (thuế TNCN, 50/30/20, quản lý nợ), so khớp
+cụm từ + RRF, **không** embedding, **không** endpoint riêng. Chatbot ấy còn tự tính điểm sức khoẻ tài chính từ PostgreSQL
+và gửi snapshot gộp + kết quả tool (số tiền từng giao dịch, ghi chú sau che PII) sang Gemini — tức câu hỏi F1 quay lại ở
+dạng mới (mục 10.1 `AI_AGENT_ARCHITECTURE.md`). Client **chưa gọi**; việc nối vào màn Trợ lý AI
+(`docs/AI/ChatbotAI_Moblie.md`) chờ người dùng quyết. Chỗ tài liệu ấy lệch mã: `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`.
+
 ---
 
 ## Sổ cái tuyên bố — câu nào đúng từ cổng nào
@@ -254,8 +261,8 @@ Không còn gì phải chờ ở mâu thuẫn ①.
 | "Có guardrail chống diễn giải sai" | chặng 1 | Task 1 xanh + P3 nối |
 | "Dùng Edge AI / SLM on-device" | **cổng A** | arm64 đã tải mô hình; máy ảo luôn rơi về mẫu |
 | "Là AI Agent" | ✅ **cổng C — đạt 2026-09-23** | bốn tool **chỉ đọc**, trần 3 lời gọi; arm64 đã tải mô hình (máy ảo rơi về mẫu) |
-| "Có áp dụng RAG" | ~~cổng D (client)~~ — chặng 5 đã bỏ; nay chỉ còn chặng 6 (server) | theo M4 · ⚠️ *"cổng D"* của bước 2 là cổng khác, **không** làm câu này đúng |
-| "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | chặng 6 chốt (A) | NPBao |
+| "Có áp dụng RAG" | ✅ **phía server từ 2026-09-26** — RAG tĩnh trong chatbot trực tuyến (so khớp cụm từ, **không** vector); ~~cổng D (client)~~ — chặng 5 đã bỏ | theo M4 · nói kèm "không vector" cho trung thực · ⚠️ *"cổng D"* của bước 2 là cổng khác, **không** làm câu này đúng |
+| "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | ⚠️ **sai từ 2026-09-26** — chatbot trực tuyến của backend đọc số của người dùng trên PostgreSQL rồi gửi phần gộp và kết quả tool sang Gemini. Câu đúng hôm nay: *"trợ lý trên máy dùng số của bạn trong máy, không gửi đi đâu; trợ lý trực tuyến (backend) dùng số đã đồng bộ và gửi sang Google"* | NPBao — mục 4 `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` |
 
 ## Lịch dự kiến
 

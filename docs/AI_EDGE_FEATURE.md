@@ -60,8 +60,9 @@ kế hoạch `…/plans/2026-09-23-chang-4b-tool-calling-vong-lap.md` (9 task, g
 banner đính chính ngày 19). **Đặc tả gốc** do backend viết: `docs/AI/AI_Edge-SLM.md/Client-app.md`
 (chỉ đọc; chỗ sai xin sửa qua `docs/superpowers/backend/CAN-LAM/`). ⚠️ Vòng **một** của việc soát ấy
 — `AI_EDGE_SLM_SUA_TAI_LIEU.md` và `EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` — backend **đóng ở
-`b147fee` ngày 2026-09-22** và client đã chuyển sang `DA-XONG/`; đơn đang mở là vòng **hai**,
-`CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` (11 chỗ, **12** từ lượt bổ sung 2026-09-23 — mục 3.6, màn chat bị tả "chưa nối API nào"; trong đó **bốn cặp tài liệu tự nói ngược chính
+`b147fee` ngày 2026-09-22** và client đã chuyển sang `DA-XONG/`; vòng **hai**,
+`DA-XONG/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`, backend **đóng ở `422debf` ngày 2026-09-26** và client soát đủ 12 chỗ
+(bốn lệnh nghiệm thu ra 0 dòng) — (11 chỗ, **12** từ lượt bổ sung 2026-09-23 — mục 3.6, màn chat bị tả "chưa nối API nào"; trong đó **bốn cặp tài liệu tự nói ngược chính
 nó** do chính lượt sửa ấy sinh ra). 🛑 Một trong số đó — **D1**, cửa sổ thu nhập — **sai vì lỗi của
 client**: đơn vòng một nộp ngày 19/09 đề nghị *"ba tháng liền trước"*, mã đổi sang `cuaSoNhinLai`
 ngày 21/09, backend thi hành ngày 22/09 đúng câu đã nộp. **Một đơn xin nằm trong hàng đợi cũng lạc
@@ -1982,17 +1983,20 @@ mang dữ liệu · định tuyến/tham số trượt · lớp chắn chặn oa
 tượng + bộ lọc + phép gộp, mã dựng trên hàm domain), và **đo thật** bằng spike *E2B sinh SQL* trên chính bộ câu hỏi ấy.
 Người dùng chốt: *"ok hãy thử làm như vậy ở phiên sau"*. Thứ tự dưới đã sửa theo.
 
-**Thứ tự việc cho phiên sau** (người dùng dặn dừng ở đây và lên thứ tự):
-1. **Một mốc sạch**: chạy trọn 34 câu trên **OnePlus** với bản cuối (`9de2d82`) — `congD13.sh` đổi sang `hoi_op.sh`;
-   ~15 phút trên GPU. Nếu tụt ở C18/ĐC3 thì ghi là dao động của mô hình, không sửa mã theo nó.
-2. **Bộ câu hỏi THẬT của người dùng** (họ gửi nguyên văn — thay cho ~20 câu tôi định soạn; **không sửa mã theo nó trước
+**Thứ tự việc cho phiên sau** (người dùng dặn dừng ở đây và lên thứ tự; ⚠️ **sửa 2026-09-26**: bản đầu đặt *"mốc sạch
+một máy"* ở vị trí 1, trong khi câu người dùng chốt cuối phiên — *"ok hãy thử làm như vậy ở phiên sau"* — là cho bộ câu hỏi
+thật và spike SQL; mốc sạch nay đứng thứ 3, **không ưu tiên hơn** 1–2, đúng như bản bàn giao của phiên ấy):
+1. **Bộ câu hỏi THẬT của người dùng** (họ gửi nguyên văn — thay cho ~20 câu tôi định soạn; **không sửa mã theo nó trước
    khi báo**): chấm từng câu theo **ba nguyên nhân** (không có tool mang dữ liệu · định tuyến/tham số trượt · chắn oan),
    rồi **spike E2B sinh SQL** cho đúng bộ ấy — chạy trên bản sao CSDL, so đáp án — có số mới chọn giữa *tool tổng quát có
    hàng rào* và *mô hình đọc SQL*. Nếu người dùng chưa gửi, tạm dùng ~20 câu tự soạn: cùng kiểu nhưng
    khác chữ, kiểu chưa có (so sánh hai kỳ, đếm ví/hoá đơn, hỏi một ví/hoá đơn cụ thể, ngưỡng chữ dạng khác), vài câu
    ngoài phạm vi. Đáp án tính từ `that.db` (scratchpad phiên `c06df7ca…`) **+ khoản chuyển 100.000 đ ngày 25/09**, hoặc
    chép CSDL mới từ máy ảo (bản release trên máy thật không `run-as` được). Chấm theo màn, bảng ba cột.
-3. Tuỳ kết quả 2: nếu tụt nhiều ở câu khác chữ → viết lại danh sách từ / ví dụ theo **luật chung**, không theo câu.
+2. Tuỳ kết quả 1: nếu tụt nhiều ở câu khác chữ → viết lại danh sách từ / ví dụ theo **luật chung**, không theo câu; và
+   chọn hướng lấp lỗ hổng phủ — *tool truy vấn tổng quát có hàng rào* hay *mô hình đọc SQL* — **bằng số của spike**.
+3. **Một mốc sạch**: chạy trọn 34 câu trên **OnePlus** với bản cuối (`9de2d82`) — `congD13.sh` đổi sang `hoi_op.sh`;
+   ~15 phút trên GPU. Nếu tụt ở C18/ĐC3 thì ghi là dao động của mô hình, không sửa mã theo nó. Chỉ để có số tham chiếu.
 4. Việc còn mở đã biết: **C13** (*"ví X chi những gì"* → tổng kết — chọn tool, cần chắn ở vòng lặp hoặc mô tả); **B3 dao
    động** (gói gợi ý hạn mức mang cả *Hạn mức hiện tại* — hướng (g)); bẫy ứng viên **số đếm ghép thành tiền** (*"18.000.000"*
    — `kiemSo` bắt được, ghi bẫy khi tái phát); B2 (*"để dành cho mục tiêu"* vẫn gọi `goi_y_han_muc`).

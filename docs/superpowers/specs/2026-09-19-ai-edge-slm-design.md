@@ -317,7 +317,8 @@ mạng vẫn trả lời, không request nào đi ra (điều kiện 6–8, 16).
 
 - **Mới**: `docs/AI_EDGE_FEATURE.md` (client) — quyết định kèm lý do, bảng đo, bẫy; viết khung
   ngay đầu P2 và cập nhật theo từng task.
-- **Mới**: `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md` — xin backend sửa 5 chỗ
+- **Mới**: `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md` *(đóng ở `b147fee` 2026-09-22, nay ở
+  `DA-XONG/`)* — xin backend sửa 5 chỗ
   (mục 4 bản đánh giá) và viết lại 39 luật theo bảng mục 11 (22 giữ / 13 sửa / 4 hoãn), cộng đính
   chính mô hình (Gemma 3 4B → Gemma 4). Không xin đổi mã, không xin schema.
 - **Sửa**: banner đính chính đầu `AI_EDGE_SLM_DANH_GIA_AP_DUNG.md` (đã làm 2026-09-19); mục 14

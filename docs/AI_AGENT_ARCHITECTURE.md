@@ -271,7 +271,7 @@ rồi để mô hình viết một câu. Mô hình **không quyết định gì,
 
 ---
 
-## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; bước 2 thêm ba, mã xong, 🛑 cổng D chưa đạt 2026-09-24; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
+## 5. Vòng 3 — agent (✅ thi công ở lát 4b, 2026-09-23 — bốn tool; bước 2 thêm ba, ✅ cổng D đạt 2026-09-25 — gộp Realme + OnePlus, mục 9.28 `AI_EDGE_FEATURE.md`; 5.1–5.4 là bản đề xuất ban đầu, giữ làm lịch sử)
 
 ### 5.1 Mười tool
 
@@ -349,7 +349,10 @@ và **3/5** — **không đạt cả hai**.
 #### 🛑 Quyết định M4: KHÔNG làm RAG phía client ở dạng hiện tại
 
 Chuyển kiến thức chung sang **backend RAG** (chặng 6); client gọi một endpoint. Câu *"hệ thống có
-áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. Lý do bằng số:
+áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. *(✅ Backend dựng ngày 2026-09-26, **bên trong** chatbot
+trực tuyến `modules/ai/features/chatbot/rag/`: 3 tệp JSON tĩnh — thuế TNCN, 50/30/20, quản lý nợ — so khớp cụm từ + RRF,
+**không** embedding, **không** endpoint riêng. Muốn dùng thì phải đi qua chatbot trực tuyến, tức kèm snapshot tài chính
+sang Gemini — xem 10.1. Client chưa gọi.)* Lý do bằng số:
 
 1. **Mô hình duy nhất tải tự do là English-only.** Gecko cho **3/5** trên câu hỏi tiếng Việt; hai
    câu hỏng là hai câu cần hiểu ngữ nghĩa tiếng Việt tinh hơn (*"Nên trả nợ trước hay đầu tư
@@ -753,7 +756,19 @@ cần sửa đi qua `docs/superpowers/backend/CAN-LAM/`.
 | Cross-Encoder Reranker | ⚠️ **không áp** — không có danh sách ứng viên để xếp lại |
 | Ragas benchmark | ⬜ đáng cân nhắc cho vòng 3, chưa có |
 
-### 10.1 🛑 Hai mâu thuẫn nhóm phải chốt
+### 10.1 Hai mâu thuẫn — ① đã chốt 2026-09-22, rồi quay lại ở dạng mới 2026-09-26
+
+> ✅ **① đã chốt ngày 2026-09-22** (`Standard_RAG.md` §6, đóng ở `b147fee`): dữ liệu tài chính của người dùng **không**
+> index lên server; số liệu cá nhân đi bằng gói số hoặc function-calling. Hai đoạn dưới là **ảnh chụp 2026-09-21**,
+> giữ để biết vì sao có quyết định ấy — mục 12 của chính tài liệu này đã ghi "NPBao đã chốt lối ①".
+>
+> ⚠️ **Nhưng từ 2026-09-26 câu hỏi F1 quay lại ở dạng mới.** Chatbot trực tuyến của backend (`422debf`) không index gì,
+> đúng lối ①, nhưng đưa **snapshot tài chính gộp** vào prompt và, khi Gemini gọi tool `get_category_transactions`, gửi
+> **số tiền từng giao dịch** cùng **ghi chú sau `maskPII`** (chỉ che dãy số và email) sang Google. *"Không index"* không có
+> nghĩa là *"không rời hạ tầng của nhóm"*. Client hỏi ở `DA-XONG/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` §1.3; backend
+> không trả lời trực tiếp mà dựng "Privacy Shield". Đơn `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` mục 4 xin ghi quyết
+> định ấy kèm ngày. Người dùng chốt **để backend tự quyết**; client chỉ nêu. ② vẫn đúng như dưới: `.env` dev tới
+> 2026-09-26 vẫn không có `GEMINI_API_KEY`, nên tầng 3 và chatbot trực tuyến chưa từng chạy đường Gemini trên máy này.
 
 **① Dữ liệu cá nhân có được rời thiết bị không?**
 Ma trận §6 xếp *Financial Chatbot* cần truy xuất *"toàn bộ dữ liệu tài chính của
@@ -799,7 +814,8 @@ khi canary bắt được cú sập native trên Mali).
 ### 11.1 Câu trung thực nếu được hỏi "đã làm tới đâu"
 
 *(Cập nhật 2026-09-23 sau cổng C — viết lại lần hai; bản 2026-09-22 nói phần agent "**chưa có**",
-đúng tới trưa 23/09; bản trước nữa nói mô hình "**chưa cắm vào app**".)*
+đúng tới trưa 23/09; bản trước nữa nói mô hình "**chưa cắm vào app**". Sửa thêm 2026-09-26: cổng D **đạt** —
+bản 2026-09-24 ghi "chưa đạt sau ba lần đo" — và RAG phía backend nay đã có.)*
 
 > Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
 > 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
@@ -808,9 +824,9 @@ khi canary bắt được cú sập native trên Mali).
 > (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
 > một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** (ngân sách · hoá đơn ·
 > ví · chi tiêu theo kỳ — bốn của lát 4b, đã đo cổng C; mục tiêu · gợi ý hạn mức · tìm giao dịch
-> — bước 2, cổng D **chưa đạt** sau ba lần đo: lời từ chối của tool thôi bị đọc thành "không có dữ liệu"
-> (bước 2b), lượt tìm giao dịch 0 khoản thôi thành câu trả lời mà thành báo cáo về bộ lọc (bước 2c, SAI = 0),
-> nhưng mô hình vẫn hay chọn sai tool và điền thừa tham số), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
+> — bước 2, cổng D **đạt 2026-09-25** trên bộ 34 câu, gộp hai máy: lời từ chối của tool thôi bị đọc thành "không có
+> dữ liệu" (bước 2b), lượt tìm giao dịch 0 khoản thành báo cáo về bộ lọc (bước 2c), ví dụ định tuyến trong lời hệ thống
+> và **bộ chỉnh tham số theo câu hỏi** sửa phần mô hình điền sai — mục 9.28 `AI_EDGE_FEATURE.md`), app chạy hàm domain có sẵn và trả về từng hàng có tên, mô hình viết câu
 > từ đúng những hàng ấy — trần 3 lời gọi, không tool nào ghi dữ liệu. Đo trên hai máy thật: bốn
 > câu hỏi *"cái nào"* từng hỏng nay trả lời **bằng tên** (Realme 4/4, OnePlus 3/4), 0 câu bịa số.
 
@@ -819,11 +835,16 @@ tool **chỉ đọc** (chiều ghi vẫn qua tay người dùng, bất biến �
 mô hình **không nói "không có"** mà chọn tool gần nghĩa nhất (mục 5.6, *"Đo lại sau chặng 4b"*).
 *"Edge AI"* đúng từ khi mô hình chạy on-device; *"RAG"* thì **cố ý không làm ở client** (mục
 **5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
-người dùng.
+người dùng. *(Backend dựng nó ngày 2026-09-26, bên trong chatbot trực tuyến; chatbot ấy **có** dùng số của người dùng
+— snapshot gộp và kết quả tool gửi sang Gemini — xem 10.1.)*
+
+⚠️ Cổng D đạt trên **34 câu do chính nhóm soạn**, và ví dụ định tuyến cùng các danh sách từ được tinh chỉnh trên đúng
+bộ ấy — nên nó là điều kiện **cần**. Người dùng cho biết đã hỏi nhiều câu trong phạm vi app mà trợ lý không trả lời
+được; phép kiểm kế tiếp là bộ câu hỏi thật ấy (thứ tự việc cuối mục 9.28 `AI_EDGE_FEATURE.md`).
 
 ---
 
-## 12. Lộ trình — bốn bước, theo đúng thứ tự phụ thuộc *(tiêu đề từng ghi "ba bước" — lỗi thời từ khi chặng 4 tách làm 4a và 4b)*
+## 12. Lộ trình — năm bước, theo đúng thứ tự phụ thuộc *(tiêu đề từng ghi "ba bước" — lỗi thời từ khi chặng 4 tách làm 4a và 4b; rồi "bốn bước" — thiếu bước 5 cho tới 2026-09-26)*
 
 1. ✅ **P3 XONG 2026-09-22** (trọn 10 task) — mô hình đã cắm và chạy trong app thật trên hai
    máy; ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` bắt được câu sai trên máy thật.
@@ -849,6 +870,12 @@ người dùng.
    kết quả) — `HangSoLieu`, tích luỹ vào `GoiSoTraCuu extends GoiSo`. Bất biến ② *"mọi tool trả
    `List<SoLieu>`"* (mục 5.2, 6) vẫn đúng: `SoLieu` đi **theo hàng** chứ không rời, và ba lớp chắn
    nhận `[goiTraCuu]` y như sáu gói cũ.
+5. ✅ **Ba tool đọc thêm + chỉnh tham số — CỔNG D ĐẠT 2026-09-25** (gộp Realme lần 13 + OnePlus lần 14, 34 câu,
+   SAI 0). Bảy tool chỉ đọc (`danh_sach_muc_tieu` · `goi_y_han_muc` · `tim_giao_dich` thêm vào bốn tool của 4b); lượt bị
+   từ chối hiện mẫu câu trung thực (2b); lượt tìm 0 khoản thành báo cáo về bộ lọc (2c); ví dụ định tuyến và điền tham
+   số trong lời hệ thống; lớp chắn thứ tư `kiemTen`; `chinhThamSoTimGiaoDich` lấy **câu hỏi** làm nguồn sự thật cho tham
+   số. Mục **9.17–9.28** `AI_EDGE_FEATURE.md`. ⚠️ Chưa có mốc sạch một máy với bản cuối, và 34 câu là bộ nhóm tự soạn —
+   phép kiểm kế tiếp là **bộ câu hỏi thật** của người dùng (cuối mục 9.28).
 
 *(Bản cũ của bước 3 ghi ba câu 12, 14, 20 "không cần tool nào, sửa ở prompt và nhãn, nên làm
 trước khi dựng tool". Vế "làm trước" đã làm — đó là lát 4a. Vế "không cần tool nào" thì **chỉ
@@ -920,5 +947,5 @@ là tầng dữ liệu (bốn hàm dựng hàng + bốn adapter).
 | Tính năng, bẫy, bảng đo P1 | `docs/AI_EDGE_FEATURE.md` — mục **8** (đo), **10** (mảng này thực chất là gì), **11** (bản đồ năng lực) |
 | Kế hoạch cắm mô hình | `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md` |
 | Đặc tả gốc (backend quản) | `docs/AI/AI_Edge-SLM.md/Client-app.md` · `docs/AI/Standard_RAG.md` |
-| Chỗ sai của đặc tả gốc | Vòng **hai** (đang mở): `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`. Vòng **một** đã đóng ở `b147fee` (2026-09-22): `DA-XONG/AI_EDGE_SLM_SUA_TAI_LIEU.md` và `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` |
+| Chỗ sai của đặc tả gốc | Vòng **hai** đóng ở `422debf` (2026-09-26, client soát đủ 12 chỗ): `DA-XONG/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`. Chỗ sai mới xin qua một đơn mới trong `CAN-LAM/`. Vòng **một** đã đóng ở `b147fee` (2026-09-22): `DA-XONG/AI_EDGE_SLM_SUA_TAI_LIEU.md` và `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` |
 | Việc còn mở của cả dự án | `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` |
