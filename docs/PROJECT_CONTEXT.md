@@ -599,34 +599,49 @@ src/Backend/
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
 Bốn commit NPBao cùng ngày, không xung đột, **không đụng `src/Client-app`**. Bốn đơn của client chuyển sang
-`DA-XONG/` (nay 42 tệp + mục lục), `CAN-LAM/` chỉ còn `README.md`:
+`DA-XONG/` (nay 42 tệp + mục lục, đếm 2026-09-26). Client soát từng đơn bằng mã và đặt **một đơn mới**,
+`superpowers/backend/CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` — nên `CAN-LAM/` lại có **một** tệp xin (README của backend
+vẫn ghi 0, vì client không sửa tệp ấy):
 
-- **Đơn 10 chức năng AI**: sửa đủ chữ (ba lệnh `grep` nghiệm thu ra 0 dòng — kiểm lại 2026-09-26); chức năng 7 **chốt lối
-  A** (backend tự tính FHS; client chỉ gọi `GET /api/ai/chatbot/snapshot`). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini)
-  không được trả lời trực tiếp**: backend thi công *Privacy Shield* — snapshot gộp theo danh mục, `maskPII` che
-  SĐT/STK/thẻ/email trong tên danh mục, ghi chú, tên hoá đơn — và coi thế là đủ. Đọc mã
-  (`financial.snapshot.service.js`, `tools.executor.js`): tool `get_category_transactions` vẫn gửi **từng giao dịch** (số
-  tiền, tên danh mục, ghi chú đã che) cho Gemini; ghi chú lấy thẳng cột mã hoá at-rest **không giải mã** nên thứ gửi đi
-  là bản mã; `debtToIncomeRatio` là **hằng 0,1**; 50/30/20 xếp bằng **danh sách từ khoá tên danh mục** (cùng bẫy
-  "đá/da" của `removeVietnameseTones`). Không ảnh hưởng client hôm nay vì client chưa gọi.
+- **Đơn vòng hai `AI_EDGE_SLM_SOAT_SAU_B147FEE.md`**: ✅ **đủ 12 chỗ** — bốn lệnh nghiệm thu ra 0 dòng, B5 và D1 nói cùng một
+  cửa sổ cuộn, câu G1 mới khớp `buocLamTron` của `tai_phan_bo.dart`.
+- **Đơn 10 chức năng AI**: sửa đủ chữ (ba lệnh `grep` nghiệm thu ra 0 dòng); chức năng 7 **chốt lối A** (backend tự tính FHS;
+  client chỉ gọi `GET /api/ai/chatbot/snapshot`). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini) không được trả lời trực
+  tiếp**: backend dựng *Privacy Shield* — snapshot gộp theo danh mục, `maskPII` che dãy số và email — và coi thế là đủ.
+  Đọc mã: tool `get_category_transactions` vẫn gửi **từng giao dịch** (số tiền không làm tròn, tên danh mục, ghi chú sau
+  `maskPII`) cho Gemini. Module chatbot **không gọi hàm giải mã nào**, nên ghi chú nằm trong CSDL ở dạng nào thì đi ra ở
+  dạng ấy; máy dev không đặt `DATA_ENCRYPTION_KEY` *(câu ở đây hôm qua ghi "thứ gửi đi là bản mã" — chưa đo, và sai trên
+  máy dev)*. `debtToIncomeRatio` là **hằng 0,1**; 50/30/20 xếp bằng **danh sách từ khoá tên danh mục**.
 - **Đơn biến động số dư trên máy**: **duyệt toàn diện** 5/5 theo mặc định client, cộng một điều bắt buộc — **màn giải
   thích + xin đồng ý** trước khi dẫn tới Cài đặt quyền thông báo. Thiết kế dừng ở Phần 1 (kiến trúc) chưa duyệt.
-- **Mới, chờ người dùng quyết**: `docs/AI/ChatbotAI_Moblie.md` giao client dựng **chế độ trực tuyến** cho màn Trợ lý
-  AI (SSE `POST /api/ai/chatbot/chat/stream`, thẻ FHS, bảng cục bộ `LocalChatMessages`, nút đổi Online/Offline, 6 tiêu
-  chí AC-MOB). Client **chưa nhận**: người dùng chọn AI trên máy để dùng được khi mất mạng, và chế độ này gửi số liệu
-  sang Google. ⚠️ `@google/generative-ai` **chưa có trong `node_modules`** của backend dev trên máy này — `npm run dev`
-  sẽ vỡ ở `require` cho tới khi backend `npm install` (việc của backend, client không chạy).
+- **Đơn bỏ liên kết ngân hàng**: ⚠️ đóng bằng *"PO giữ nguyên mã nguồn và tài liệu làm baseline"* — năm chỗ tài liệu tả
+  client có liên kết ngân hàng **vẫn nguyên** (`Project.md:992`, `docs/progress/Client-app.md`, `Rule_project.md`,
+  `docs/progress/Backend.md`, `docs/Bank/Client-app.md`); đơn mới mục 8 xin xác nhận là cố ý. Đọc năm tệp ấy như ảnh chụp.
+- **Mới, chờ người dùng quyết**: `docs/AI/ChatbotAI_Moblie.md` giao client dựng **chế độ trực tuyến** cho màn Trợ lý AI
+  (SSE `POST /api/ai/chatbot/chat/stream`, thẻ FHS, bảng cục bộ `LocalChatMessages`, nút đổi Online/Offline, 6 tiêu chí
+  AC-MOB). Client **chưa nhận**: người dùng chọn AI trên máy để dùng được khi mất mạng, và chế độ này gửi số liệu sang
+  Google. ⚠️ Hợp đồng API trong tệp ấy **lệch mã** ở `meta`, `done`, mã lỗi 503 và giới hạn `history` — đơn mới mục 3.
+- 🛑 **Lỗi mã backend đo được 2026-09-26** (đơn mới mục 7; không chặn client vì client chưa gọi): khoản chi lưu **âm** trên
+  PostgreSQL (truy vấn đọc: **23/23** hàng `Chi` âm, **6/6** hàng `Thu` dương) mà mã FHS cộng như số dương — quỹ khẩn cấp
+  luôn **0**, 50/30/20 **âm**, top danh mục chi đảo, `compare_spending_periods` báo chi **giảm** khi chi tăng; test backend
+  xanh vì fixture dựng khoản chi bằng số dương. Nhánh fallback phát **cùng một đoạn văn** cho mọi câu hỏi, dưới dạng
+  `delta` bình thường, và **bịa số** khi số thật bằng 0 (`|| 70`, `|| 1.5`). Trang Copilot của Admin-web đọc
+  `delta.content` trong khi server gửi `delta.text`, và gọi `GET /ai/chatbot/financial-health` — route không tồn tại.
+- ⚠️ **Backend dev KHÔNG KHỞI ĐỘNG sau lượt gộp này** cho tới khi chạy `npm install` trong `src/Backend`:
+  `chatbot.service.js:6` `require('@google/generative-ai')` nằm trên chuỗi nạp `api/index.js` → `ai.routes.js:9`, mà
+  `require.resolve` trả `MODULE_NOT_FOUND` trên máy này. Đo đồng bộ với backend dev thì phải cài trước; đụng
+  `src/Backend` nên **client không tự chạy** — cần người dùng cho phép đích danh.
 - Múi giờ: backend đặt `process.env.TZ = 'Asia/Ho_Chi_Minh'` ở `index.js`, `.env.example` thêm `TZ`; Admin-web
   `dayjs.tz.setDefault`. Client không đổi gì — client vốn gửi `updated_at` ISO UTC.
-- ⚠️ `Project.md` có **hai** mục `### 11.41` (mục múi giờ đánh số trùng), §11.43 gọi endpoint `GET /financial-health`
-  trong khi mã là `GET /snapshot`; `LogicBusinessAI.md` ghi chức năng 4/7 "đang xây dựng" còn `Project.md` §11.42 ghi
-  "đã hoàn thành" — cùng commit. Tài liệu backend quản, client không sửa.
+- ⚠️ Tài liệu backend tự lệch trong cùng commit (đơn mới mục 2, 3, 6): `Project.md` có **hai** mục `### 11.41`; chức năng
+  4 và 7 mang **bốn** trạng thái ở bốn chỗ; tên endpoint FHS là `/financial-health` ở `ChatbotAI.md` + `Project.md` §11.43
+  nhưng `/snapshot` ở mã. Tài liệu backend quản, client không sửa.
 
 ### 🔀 Gộp `main` @ `c47e6e2` (2026-09-25) — bảng 10 chức năng AI của NPBao
 
 Commit gộp `4f37653`, không xung đột, chỉ 5 tệp tài liệu backend (`Project.md` §8.5 + §11.42, `docs/AI/LogicBusinessAI.md`,
 `AI_ARCHITECTURE_DIAGRAM.md` mới, `Classify.md` §1.3, `ORC.md`). Client soát bằng mã và gửi đơn
-`superpowers/backend/CAN-LAM/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` — người dùng chốt: chatbot backend **vẫn làm**,
+`superpowers/backend/DA-XONG/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` (đóng ở `422debf`) — người dùng chốt: chatbot backend **vẫn làm**,
 còn mâu thuẫn với F1 (kết quả function-calling, ảnh OCR **không che**, tầng 3 đều gửi dữ liệu cá nhân sang Gemini)
 **để backend quyết**. Ba kết luận phía client, **không đổi mã**:
 
@@ -636,7 +651,8 @@ còn mâu thuẫn với F1 (kết quả function-calling, ảnh OCR **không che
   `CategorySuggestionEngine`.
 - **OCR và khử trùng lặp chưa làm được ngay**: `.env` dev không có `GEMINI_API_KEY` (endpoint luôn 500
   `CONFIG_MISSING`), chưa có màn Stitch, và chống quét trùng cần mở `provider`/`bank_tran_id` qua đồng bộ — trái quy tắc
-  4 hiện hành. Dedup không có nguồn dữ liệu nào khác (SMS không đọc, ngân hàng đã bỏ).
+  4 hiện hành. Dedup không có nguồn dữ liệu nào khác (SMS không đọc, ngân hàng đã bỏ). *(Ảnh chụp 2026-09-25 — cùng ngày
+  đơn biến động số dư được viết, và backend duyệt nó là phần client của chức năng 3; xem khối trên.)*
 - **Sức khoẻ tài chính (chức năng 7)**: client đề nghị backend tự tính từ PostgreSQL; nếu giữ lối *client đóng gói* thì
   cần schema từng trường trước, và 50/30/20 cần nhãn thiết yếu/mong muốn mà cả hai đầu chưa có.
 
@@ -1271,17 +1287,18 @@ phải *sự cố*. ⚠️ `CAN-LAM/` khi ấy có **ba** tệp xin, đừng tin
 2026-09-22 tối muộn: backend đóng **cả hai** tệp AI ở `b147fee` — tệp này và
 `AI_EDGE_SLM_SUA_TAI_LIEU.md` — client kiểm lại bằng máy rồi chuyển sang `DA-XONG/`. Hai việc của
 tệp này đo được là xong thật: `grep "AI Edge"` trong `docs/AI/` ra **0** dòng, và `Standard_RAG.md`
-§6 đã chốt lối ① — số liệu cá nhân đi bằng function-calling, không index lên vector DB server. Nay
-`CAN-LAM/` có **hai** tệp: `CLIENT_BO_LIEN_KET_NGAN_HANG.md` và đơn vòng **hai**
-`AI_EDGE_SLM_SOAT_SAU_B147FEE.md` — **`ls` lại, đừng chép con số này**.)*
+§6 đã chốt lối ① — số liệu cá nhân đi bằng function-calling, không index lên vector DB server. Tối
+22/09 `CAN-LAM/` có **hai** tệp: `CLIENT_BO_LIEN_KET_NGAN_HANG.md` và đơn vòng **hai**
+`AI_EDGE_SLM_SOAT_SAU_B147FEE.md` — **`ls` lại, đừng chép con số này**. Cả hai đã đóng ở `422debf` ngày 2026-09-26.)*
 
 **Task 6 — spike RAG on-device, đo trên máy thật.** Bảng đo đầy đủ ở mục **5.5**
 `AI_AGENT_ARCHITECTURE.md`. Ẩn số 1 **đạt**: `flutter_gemma_rag_sqlite` **1.3.2** tương thích
 `flutter_gemma` 1.8.3, và KNN chạy **trong SQLite** qua `sqlite-vec` chứ không brute-force Dart.
 Ẩn số 2 **chặn**, và đó là câu trả lời:
 
-🛑 **M4 = KHÔNG làm RAG phía client.** Kiến thức chung chuyển sang **backend RAG** (chặng 6);
-client gọi một endpoint, và câu *"có áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. Ba con số
+🛑 **M4 = KHÔNG làm RAG phía client.** Kiến thức chung chuyển sang **backend RAG** (chặng 6;
+✅ backend dựng 2026-09-26 **bên trong** chatbot trực tuyến — 3 tệp JSON tĩnh, so khớp cụm từ + RRF, không embedding,
+không có endpoint riêng); client gọi một endpoint, và câu *"có áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. Ba con số
 quyết định: mô hình embedding **tải tự do duy nhất là Gecko 110M English-only** → top-3 đúng
 **3/5** trên câu hỏi tiếng Việt; **mọi** bản EmbeddingGemma đa ngữ trả **401** (gated), kể cả
 `litert-community/embeddinggemma-300m`; truy vấn **251 ms** và index **253 ms/đoạn**, trên ngưỡng
@@ -2751,7 +2768,8 @@ Sankey) cũng bỏ.
 - **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** để xin dư nợ gốc
   / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ. *(Chữ "đang
   rỗng" đứng ở đây tới 2026-09-22 là ảnh chụp của 2026-09-16 và đã sai từ
-  2026-09-18; thư mục ấy nay có **hai** tệp xin. Lời dặn thì vẫn nguyên: đừng
+  2026-09-18; thư mục ấy có **hai** tệp xin tới 2026-09-22, rỗng sau gộp `422debf`, rồi lại có **một**
+  — `CHATBOT_AI_SOAT_SAU_422DEBF.md` — cùng ngày 2026-09-26. Lời dặn thì vẫn nguyên: đừng
   mở lại hàng đợi **cho việc này**.)*
 - Kế hoạch `docs/superpowers/plans/2026-09-15-con-lai-mang-phan-tich.md` và
   `2026-09-15-ke-hoach.md` (cả hai gitignore) nay **không còn hạng mục nào**.

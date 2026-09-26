@@ -175,7 +175,8 @@ ký DI. Trường `tb3ThangTheoNganSach` cũng đổi thành **`mucThangTheoNgan
 `docs/AI_EDGE_FEATURE.md` (3 chỗ: dòng ~81, ~466, ~481) và
 `docs/NOTIFICATION_FEATURE.md` (~986). ⚠️ `docs/AI/AI_Edge-SLM.md/Client-app.md`
 là **tài liệu do backend quản** — chỗ sai của nó đi qua
-`CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md`, **không sửa thẳng**.
+`CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md` *(nay ở `DA-XONG/`; D1 đã sửa theo cửa sổ cuộn ở vòng hai, đóng 2026-09-26)*,
+**không sửa thẳng**.
 
 ### 3.6 Thẻ "Chưa đặt ngân sách"
 

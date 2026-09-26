@@ -5,6 +5,12 @@ trong hàng đợi `CAN-LAM/`. Tài liệu này tồn tại để hai phía (cli
 thảo luận trên **cùng một bộ số đo** trước khi chốt phương án cho phần AI. Mọi con số bên dưới đều đo bằng mã ngày 2026-09-17 trên nhánh `TranQuangDat` @
 `d1fc05d` (đã gộp `main` @ `fcc20b5`), không chép từ tài liệu nào.
 
+> ⚠️ **CẬP NHẬT 2026-09-26:** Pipeline C (trợ lý) **đã có mã** ở backend — `modules/ai/features/chatbot/` (gộp
+> `main` @ `422debf`): SSE `POST /api/ai/chatbot/chat/stream`, `GET /api/ai/chatbot/snapshot` (điểm FHS, lối A),
+> function-calling bốn tool trên PostgreSQL, "RAG" tĩnh 3 tệp JSON so khớp cụm từ — **không** vector, **không**
+> ChromaDB. Mọi hàng "Pipeline C" / "Chatbot" trong các bảng dưới là **ảnh chụp 2026-09-17**. Đối chiếu mã ấy với
+> tài liệu của nó: `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`.
+>
 > ⚠️ **CẬP NHẬT 2026-09-21:** Vì lý do chính sách (bảo mật dữ liệu ngân hàng và phạm vi đồ án), **Module Bank được tạm dừng hoàn toàn**. Hệ thống không xóa bỏ chức năng/mã nguồn đã làm, nhưng trong phạm vi xây dựng sắp tới sẽ không còn Module Bank. Nhánh SePay Webhook / Bank Worker đóng băng; luồng nhận diện và phân loại tập trung vào Receipt OCR và Nhập tay / SMS.
 
 Sơ đồ được đối chiếu là **"KIẾN TRÚC AI PHÂN TẦNG HYBRID (Nền tảng Quản trị
@@ -295,8 +301,9 @@ Zod từ đầu), **3.3 Chroma trước C**; khối 2 và A-client độc lập.
 > không phải ≈ 550 MB; (3) **không dùng ngưỡng RAM** làm điều kiện rơi bậc — phép
 > đo P1 cho thấy RAM đỉnh phụ thuộc backend suy luận (GPU ~0,96 GB, CPU 1,7–3,3 GB)
 > chứ không phụ thuộc cỡ mô hình, nên bậc thang thật là canary GPU + `try/catch`;
-> (4) **Tầng 1 chưa thi công** — `saving_goal_ratio` vẫn chưa chốt nguồn (đơn vòng
-> hai `CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` §1.2). Trạng thái thật ở mục **9**
+> (4) **Tầng 1 chưa thi công** — `saving_goal_ratio` đã chốt nguồn theo phương án (b) (suy từ
+> các mục tiêu còn hạn; đơn vòng hai `DA-XONG/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` §1.2, backend đóng ở
+> `422debf` ngày 2026-09-26) nhưng client **chưa có hàm nào** suy nó. Trạng thái thật ở mục **9**
 > `docs/AI_EDGE_FEATURE.md`.
 
 | Việc | Chi tiết | Vướng |

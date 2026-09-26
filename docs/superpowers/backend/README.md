@@ -10,7 +10,7 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 
 | Bạn cần gì | Mở cái này |
 |---|---|
-| **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Đếm theo **mục 2** của chính tệp ấy, đừng đếm ở đây: bảng này từng ghi "bốn" trong khi mục 2 đã có sáu |
+| **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Đếm theo **mục 0** của chính tệp ấy (từ 2026-09-13; trước đó là mục 2), hoặc `ls` thư mục — README ấy do backend quản nên **không** ghi đơn client vừa đặt. Đừng đếm ở đây: bảng này từng ghi "bốn" trong khi README đã có sáu |
 | Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — **38** tài liệu đã đóng (đếm bằng máy 2026-09-22, sau khi hai tệp Edge AI đóng ở `b147fee`; mốc **31** là của 2026-09-11 và dòng này từng ghi "16" trước khi backend chuyển mười lăm tệp sang — **đừng cộng dồn, hãy đếm lại**), kèm ghi chú *đóng bằng cách nào* |
 | Client-app còn nợ gì | `docs/CLIENT_APP_KNOWN_GAPS.md` |
 | Bức tranh toàn cục | Mục 14 `docs/PROJECT_CONTEXT.md` |

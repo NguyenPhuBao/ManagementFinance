@@ -1,3 +1,8 @@
+> ✅ **Client soát 2026-09-26 — đóng đủ.** Backend sửa ở `422debf`. Bốn lệnh ở mục 6 ra **0** dòng; phép kiểm chéo
+> B5 ⟷ D1 nói cùng một cửa sổ cuộn; §1.2 chốt phương án (b); §1.3 `is_recurring_hint` suy từ `Bills`/`Goals`; B2 trỏ
+> `tai_phan_bo.dart`; D5 ghi rõ không áp cho tái phân bổ; H1 tả đúng, H2 đánh dấu *(Hoãn)*; câu cảnh báo
+> `nguongChiLon == 0` đã thêm ở đầu nhóm A; G1 khớp `buocLamTron` của mã client. Không còn việc.
+
 **Ngày:** 2026-09-22 (tối muộn) · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat` @ `1db8b5c`
 **Tệp xin sửa:** `docs/AI/AI_Edge-SLM.md/Client-app.md` (NPBao, bản `b147fee` ngày 2026-09-22) —
 tệp do backend quản nên client **không tự sửa**, kể cả một dòng.

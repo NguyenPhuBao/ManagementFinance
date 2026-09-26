@@ -1,5 +1,10 @@
 # Đề xuất: đọc tin biến động số dư NGAY TRÊN MÁY để điền sẵn form giao dịch — xin backend xem có phù hợp
 
+> ✅ **Client soát 2026-09-26.** Backend **duyệt toàn diện** ở `422debf` (mục 5 bên dưới), theo đúng mặc định của
+> client, cộng một điều bắt buộc: màn giải thích + xin đồng ý trước khi dẫn tới Cài đặt quyền truy cập thông báo. Dòng
+> *"Trạng thái phía client"* ngay dưới là ảnh chụp 2026-09-25: nay thiết kế dừng ở Phần 1 (kiến trúc), chờ người dùng
+> duyệt tiếp; chưa có spec, chưa có mã.
+
 **Ngày:** 2026-09-25 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** xin ý kiến trước khi thiết kế xong. **Không xin đổi mã backend, không migration, không trường đồng bộ mới.**
 **Trạng thái phía client:** đang thiết kế (brainstorming); **chưa viết mã**. Client sẽ chờ ý kiến ở mục 4 trước khi
@@ -30,7 +35,7 @@ Mọi đường dẫn tính từ gốc repo, đã kiểm tồn tại ngày 2026-
 | `src/Client-app/lib/core/database/tables/notification_table.dart` | trung tâm thông báo là bảng cục bộ, không đồng bộ |
 | `src/Client-app/lib/features/category/data/services/category_suggestion_engine.dart` | bộ gợi ý danh mục tầng 1 mà form sẽ dùng |
 
-**Đơn liên quan:** `docs/superpowers/backend/CAN-LAM/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` mục 4.1 (vì sao client
+**Đơn liên quan:** `docs/superpowers/backend/DA-XONG/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` *(đóng 2026-09-26)* mục 4.1 (vì sao client
 không gọi `/api/ai/classify/*`) và mục 4.3 (chức năng 3).
 
 ---

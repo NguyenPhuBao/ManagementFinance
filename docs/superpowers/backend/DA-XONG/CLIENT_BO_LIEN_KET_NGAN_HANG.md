@@ -1,5 +1,11 @@
 # Client đã bỏ liên kết ngân hàng — bốn tài liệu của backend nay mô tả sai phía client
 
+> ⚠️ **Client soát 2026-09-26.** Backend đóng ở `422debf` bằng quyết định *"PO duyệt giữ nguyên mã nguồn và tài liệu
+> làm baseline"* (`CAN-LAM/README.md` mục 1, `DA-XONG/README.md` mục 4). Đo cùng ngày: **cả năm chỗ tài liệu ở mục 3
+> vẫn nguyên** — `Project.md:992` còn giao *"Liên kết ngân hàng — Backend + Mobile"*, bốn tệp còn lại không có commit
+> nào sau ngày nộp đơn. Đơn `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` mục 8 xin xác nhận đó là cố ý. Tới khi có xác
+> nhận, đọc năm chỗ ấy như **ảnh chụp trước 2026-09-18**.
+
 **Ngày:** 2026-09-18 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** báo tài liệu lệch. **Không xin đổi mã backend.**
 
