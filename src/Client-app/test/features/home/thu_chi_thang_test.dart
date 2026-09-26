@@ -5,7 +5,7 @@
 /// `khoanVaoThongKe` cố ý loại khỏi mọi thống kê. Đo trên dữ liệu thật: Trang
 /// chủ nói thu **15.145.000 đ**, trang Phân tích nói **15.135.000 đ**. Từ lát
 /// 4b chỗ lệch ấy lộ ngay trên một màn: trợ lý AI trả lời bằng tool
-/// `chi_tieu_theo_ky` (đọc `tongThuChi`), nên nó nói một số còn thẻ ngay trên
+/// `tong_ket_thu_chi_ky` (đọc `tongThuChi`), nên nó nói một số còn thẻ ngay trên
 /// Trang chủ nói số kia. Người dùng chốt con số của Phân tích là con số đúng.
 library;
 
@@ -133,7 +133,7 @@ void main() {
       expect(trangChu.chi, 2191000);
       expect((trangChu.thu, trangChu.chi), (phanTich.thu, phanTich.chi),
           reason: 'Cam kết của trợ lý AI là nói CÙNG số với màn hình. Tool '
-              'chi_tieu_theo_ky đọc tongThuChi, thẻ Trang chủ đọc '
+              'tong_ket_thu_chi_ky đọc tongThuChi, thẻ Trang chủ đọc '
               'thuChiThangCua — trên cùng dữ liệu, hai hàm phải cho một đáp án.');
     });
   });

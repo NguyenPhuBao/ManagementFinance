@@ -400,5 +400,23 @@ void main() {
       expect(find.textContaining('chưa chắc'), findsOneWidget);
       expect(find.textContaining('85,4'), findsNothing);
     });
+
+    testWidgets('bước 2: ba tool mới có dòng chỉ báo riêng trên màn', (t) async {
+      final c = StreamController<SuKienGac>();
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, onHoi: (_) => c.stream)));
+      await hoi(t);
+      for (final (ten, chu) in [
+        ('danh_sach_muc_tieu', 'Đang tra cứu mục tiêu…'),
+        ('goi_y_han_muc', 'Đang tính gợi ý hạn mức…'),
+        ('tim_giao_dich', 'Đang tìm giao dịch…'),
+      ]) {
+        c.add(DangTraCuu(ten));
+        await t.pump();
+        expect(find.text(chu), findsOneWidget, reason: ten);
+      }
+      c.add(const CauQua('Xong.'));
+      await c.close();
+      await t.pumpAndSettle();
+    });
   });
 }

@@ -1,6 +1,7 @@
 // test/features/ai_edge/domain/slm_prompt_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/ai_edge/domain/slm_prompt.dart';
+import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
@@ -215,6 +216,12 @@ void main() {
       expect(kPromptHeThongCongCu, contains('TRƯỚC'));
       expect(kPromptHeThongCongCu, contains('chép nguyên'));
     });
+    test('bước 2: nêu mục tiêu, gợi ý hạn mức, giao dịch; dặn chép nguyên NGÀY tháng', () {
+      expect(kPromptHeThongCongCu, contains('mục tiêu'));
+      expect(kPromptHeThongCongCu, contains('gợi ý hạn mức'));
+      expect(kPromptHeThongCongCu, contains('từng giao dịch'));
+      expect(kPromptHeThongCongCu, contains('ngày tháng'));
+    });
     test('không mang con số nào ngoài giới hạn độ dài', () {
       final so = RegExp(r'\d+')
           .allMatches(kPromptHeThongCongCu)
@@ -223,6 +230,44 @@ void main() {
       expect(so, ['60'],
           reason: 'Một số khác trong chỉ dẫn hệ thống là một số mô hình có thể '
               'chép vào câu — mà nó không có trong gói nào.');
+    });
+    test('bước 2b: dặn gọi lại khi công cụ trả "loi" (cổng D lần 1: không lượt nào gọi lại)', () {
+      expect(kPromptHeThongCongCu, contains('"loi"'));
+      expect(kPromptHeThongCongCu, contains('gọi lại ngay'));
+    });
+    // Cổng D lần 4–8: sáu câu có ĐIỀU KIỆN (số tiền, khoản thu, ví, danh mục, khoản
+    // lớn nhất) gọi tổng kết bốn lần liền dù mô tả chéo (2b) đã dặn — "không
+    // few-shot ở bậc tool" (spec 4b §3.7) là giả định chưa từng đo. Ví dụ định
+    // tuyến: câu hỏi kiểu nào → tool nào, tham số nào; KHÔNG chữ số.
+    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9): nêu cả hai tool cạnh tranh và các kiểu câu có điều kiện', () {
+      expect(kPromptHeThongCongCu, contains('Ví dụ'));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuGiaoDich));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuTongKet));
+      for (final dieuKien in ['số tiền', 'khoản thu', 'ví', 'danh mục', 'lớn nhất']) {
+        expect(kPromptHeThongCongCu, contains(dieuKien), reason: dieuKien);
+      }
+      expect(kPromptHeThongCongCu, contains('chieu'));
+      expect(kPromptHeThongCongCu, contains('so_tien_tu'));
+      expect(kPromptHeThongCongCu.indexOf(kTenCongCuGiaoDich),
+          lessThan(kPromptHeThongCongCu.indexOf(kTenCongCuTongKet)),
+          reason: 'ví dụ về tool liệt kê đứng trước — mô hình đọc từ trên xuống');
+    });
+    // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
+    // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"
+    // → một triệu, C9 thiếu sàn, C15 hom_nay cho "lần gần nhất").
+    test('⭐ ví dụ ĐIỀN THAM SỐ (lần đo 10): chiều, tên vào đúng ô, hai ngưỡng, kỳ moi_luc', () {
+      expect(kPromptHeThongCongCu, contains('Điền tham số'));
+      for (final tu in [
+        'chieu=khoan_chi', 'chieu=khoan_thu', 'chuyen_vi',
+        'danh_muc', 'không', 'tu_khoa',
+        'so_tien_tu', 'so_tien_den', 'nửa triệu', 'năm trăm nghìn',
+        'moi_luc', 'sap_xep=moi_nhat', 'hom_nay',
+      ]) {
+        expect(kPromptHeThongCongCu, contains(tu), reason: tu);
+      }
+      expect(kPromptHeThongCongCu.indexOf('Điền tham số'),
+          greaterThan(kPromptHeThongCongCu.indexOf('Ví dụ chọn công cụ')),
+          reason: 'chọn tool trước, điền tham số sau');
     });
   });
 }

@@ -269,9 +269,19 @@ Vế sau **đã làm đúng như đề nghị**; vế đầu sai từ 2026-09-22
 1. **2026-09-22 (P3):** màn chat nối mô hình Gemma 4 E2B trên máy — hỏi đáp tự do, chữ hiện dần theo
    câu, ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` trước khi hiện (`AI_EDGE_FEATURE.md` mục 9).
 2. **2026-09-23 (chặng 4b):** màn đi **bậc tool** — mô hình tự chọn một trong **bốn tool chỉ đọc**
-   (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky`), app chạy hàm
+   (`danh_sach_ngan_sach` · `danh_sach_hoa_don` · `danh_sach_vi` · `chi_tieu_theo_ky` — đổi tên thành
+   `tong_ket_thu_chi_ky` ngày 2026-09-24 chiều), app chạy hàm
    domain có sẵn và trả hàng có tên; chưa tool nào chạy thì rơi về đường P3 (`AI_EDGE_FEATURE.md`
    mục 9.14). Vẫn **không** gọi API server nào: mọi thứ chạy trên máy.
+   **2026-09-24 (bước 2):** thêm ba tool chỉ đọc — `danh_sach_muc_tieu` · `goi_y_han_muc` · `tim_giao_dich`
+   — nên bậc tool nay có **bảy** tool; vẫn không tool nào ghi và không gọi API server nào
+   (`AI_EDGE_FEATURE.md` mục 9.17).
+   **2026-09-24 (bước 2b):** câu *"chưa tool nào chạy thì rơi về đường P3"* nay có thêm một nhánh — mô hình
+   **có** gọi tool mà **mọi** lời gọi bị tool từ chối (tham số sai) thì màn hiện một **mẫu câu trung thực** nêu
+   lý do (*"Chưa tra được số liệu cho câu này: …"*), **không** rơi về đường P3 (`AI_EDGE_FEATURE.md` mục 9.18).
+   **2026-09-24 (bước 2c):** thêm một nhánh nữa — tool tìm giao dịch chạy được nhưng **0 khoản** khớp bộ lọc
+   mô hình đã điền thì màn hiện **mẫu câu nêu bộ lọc** (*"Tháng này, ghi chú chứa "chi", đến 1.000.000 đ — không
+   có giao dịch nào khớp."*), không hiện chữ của mô hình và cũng không rơi về đường P3 (mục 9.19).
 3. Con số "436 dòng" là của bản tĩnh cũ; tệp nay dài hơn nhiều (`wc -l` trước khi trích).
 
 **Câu thay thế:** *"Tầng 3 được tích hợp vào màn chat có sẵn `lib/features/ai_chat/presentation/pages/

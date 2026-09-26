@@ -7,8 +7,6 @@
 /// phát triển.
 library;
 
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
@@ -107,7 +105,16 @@ class SlmRuntimeThat implements SlmRuntime {
         // — lỗi **cứng**, câu trả lời rỗng, không phải chỉ chậm đi. Cắt bớt
         // dữ liệu để vừa trần cũ là cắt đúng thứ lát 4a thêm vào, nên trần
         // được nới thay vì gói bị xén.
-        maxTokens: 2048,
+        //
+        // 2048 → 4096 ở bước 2 (2026-09-23): bảy khai báo tool (`tools_json`
+        // 4.393 ký tự) cộng một phiên hai lời gọi (mục tiêu + chi tiêu) vượt
+        // trần 2048 trên Realme — lỗi lần này là `FAILED_PRECONDITION: Prefill
+        // input length exceeds available state entries`, **khác chuỗi** với
+        // bẫy 4.29 nhưng cùng một bệnh. Giá đo được trên Realme (CPU): RAM đỉnh
+        // `TOTAL PSS` 2,04 → 2,78 GB (+0,71 GiB) và swap của app 0 → 1,17 GB —
+        // **vượt** ngưỡng ≤ 0,5 GB của spec bước 2 mục 3.10; người dùng duyệt
+        // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
+        maxTokens: 4096,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
       );
     } finally {
@@ -189,20 +196,10 @@ class SlmRuntimeThat implements SlmRuntime {
       for (final k in congCu)
         Tool(name: k.ten, description: k.moTa, parameters: k.thamSo),
     ];
-    // Đo cho bẫy 4.29: khai báo tool do runtime native dựng từ tools_json cũng
-    // chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. Chuỗi này cùng nội dung
-    // với thứ gói gửi xuống SDK (`SdkResponseParser.serializeToolsForSdk`).
-    final doDaiToolsJson = jsonEncode([
-      for (final k in congCu)
-        {
-          'type': 'function',
-          'function': {
-            'name': k.ten,
-            'description': k.moTa,
-            'parameters': k.thamSo,
-          },
-        },
-    ]).length;
+    // Đo cho bẫy 4.29 / 4.39: khai báo tool do runtime native dựng từ tools_json
+    // cũng chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. `toolsJsonCua` là định
+    // nghĩa duy nhất của chuỗi ấy — test chặn độ dài ở `bo_cong_cu_test` đo cùng nó.
+    final doDaiToolsJson = toolsJsonCua(congCu).length;
 
     final dongHo = Stopwatch()..start();
     // Gemma 4 trên LiteRT-LM: tools đi bằng tools_json lúc tạo hội thoại; prompt

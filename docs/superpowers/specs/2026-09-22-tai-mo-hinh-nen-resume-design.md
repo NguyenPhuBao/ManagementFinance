@@ -1,6 +1,8 @@
 # Tải mô hình chạy nền + resume — thiết kế
 
-**Ngày:** 2026-09-22 · **Trạng thái:** đã duyệt, **chưa thi công**
+**Ngày:** 2026-09-22 · **Trạng thái:** đã duyệt · ✅ **thi công xong 2026-09-22 tối muộn** (7 task, từ `018a1d5`;
+nghiệm thu Realme RMX2205 — mục **9.10** `docs/AI_EDGE_FEATURE.md`). *(Dòng này ghi "chưa thi công" tới 2026-09-24 —
+sửa ở lượt soát tài liệu của bước 2b.)*
 **Mảng:** AI Edge-SLM (P3 đã xong 10/10 task) · **Người yêu cầu:** người dùng, trong lượt nghiệm thu Task 9
 
 ---

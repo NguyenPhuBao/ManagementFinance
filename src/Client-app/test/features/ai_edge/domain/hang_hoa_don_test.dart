@@ -117,6 +117,8 @@ void main() {
     expect(kq.tongHop, isEmpty);
     expect(kq.loi, contains('sap_toi'));
     expect(kq.loi, contains('qua_han'), reason: 'nói mô hình còn được chọn gì');
+    expect(kq.choNguoiDung, 'chưa hiểu trạng thái hoá đơn');
+    expect(kq.thamSoGo, ['trang_thai']);
   });
 
   test('chuTrangThaiHoaDon phủ đủ năm trạng thái hiển thị', () {

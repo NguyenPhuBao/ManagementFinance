@@ -1,4 +1,5 @@
-/// Adapter tool `chi_tieu_theo_ky`: mã kỳ → `Ky` → `watchKy` → `hangChiTieu`.
+/// Adapter tool `tong_ket_thu_chi_ky` (tên cũ `chi_tieu_theo_ky` tới 2026-09-24):
+/// mã kỳ → `Ky` → `watchKy` → `hangChiTieu`.
 /// Mã lạ thì từ chối TRƯỚC khi đọc dữ liệu — không đoán kỳ.
 library;
 
@@ -6,6 +7,7 @@ import '../../analytics/data/analytics_repository.dart';
 import '../domain/cong_cu.dart';
 import '../domain/hang_chi_tieu.dart';
 import '../domain/hang_so_lieu.dart';
+import '../domain/loi_tham_so.dart';
 
 class CongCuChiTieu implements CongCu {
   CongCuChiTieu(this.phanTich);
@@ -13,10 +15,14 @@ class CongCuChiTieu implements CongCu {
 
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
-        ten: kTenCongCuChiTieu,
-        moTa: 'Tổng chi, tổng thu và chi theo từng DANH MỤC (có tên) của một kỳ: tuần '
-            'này, tháng này, tháng trước, quý này, năm nay. Gọi khi hỏi tiêu bao nhiêu '
-            'trong một kỳ, hoặc chi nhiều nhất vào danh mục nào.',
+        ten: kTenCongCuTongKet,
+        // Lần đo 9: thu hẹp — "CHỈ khi … KHÔNG có điều kiện" (cổng D lần 4–8: sáu
+        // câu có điều kiện gọi tool này bốn lần liền).
+        moTa: 'Tổng chi, tổng thu và tổng chi theo từng DANH MỤC (có tên) của một kỳ — '
+            'chỉ có TỔNG, không liệt kê từng khoản. Gọi khi CHỈ hỏi tổng tiền của một kỳ '
+            '(tiêu bao nhiêu) hoặc danh mục nào chi nhiều nhất, và câu KHÔNG có điều kiện '
+            'số tiền, ví, danh mục cụ thể hay hỏi khoản thu. Mọi câu có điều kiện, hỏi '
+            'tiêu gì, những khoản nào, khoản lớn nhất thì dùng tim_giao_dich.',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -37,10 +43,11 @@ class CongCuChiTieu implements CongCu {
     Map<String, dynamic> args, {
     required int idaccount,
     required DateTime now,
+    String cauHoi = '',
   }) async {
     final ma = args['ky']?.toString() ?? '';
     final ky = kyTuMa(ma, now);
-    if (ky == null) return KetQuaCongCu.loi(loiMaKy(ma));
+    if (ky == null) return tuChoiGiaTri('ky', ma, kMaKy.keys);
     final tk = await phanTich.watchKy(idaccount, ky: ky, now: now).first;
     return hangChiTieu(tk, ma: ma);
   }

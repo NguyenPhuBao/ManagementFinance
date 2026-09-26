@@ -4,7 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
-import '../../data/models/transaction_type_label.dart';
+import '../../domain/tieu_de_giao_dich.dart';
 import '../../domain/transaction_lookup.dart';
 
 /// Những gì một dòng trong sổ giao dịch hiển thị, đã tính xong.
@@ -43,7 +43,7 @@ TransactionRowContent buildTransactionRowContent(
     // tiền nằm ở "nguồn → đích" — đó là thứ người dùng cần biết.
     final dest = tx.walletTransfer;
     return TransactionRowContent(
-      title: note.isNotEmpty ? note : transactionTypeLabel(tx.type),
+      title: tieuDeGiaoDich(loai: tx.type, ghiChu: tx.note, tenDanhMuc: null),
       subtitle: dest == null ? wallet : '$wallet → ${lookup.walletName(dest)}',
       icon: Icons.swap_horiz,
       colour: AppColors.primary,
@@ -57,7 +57,7 @@ TransactionRowContent buildTransactionRowContent(
   final category = lookup.category(tx.categoryId);
   final categoryName = category?.name;
   return TransactionRowContent(
-    title: note.isNotEmpty ? note : (categoryName ?? transactionTypeLabel(tx.type)),
+    title: tieuDeGiaoDich(loai: tx.type, ghiChu: tx.note, tenDanhMuc: categoryName),
     // Danh mục chỉ xuống dòng phụ khi tiêu đề đã bị ghi chú chiếm; không thì
     // nó đang ở tiêu đề rồi, lặp lại là thừa.
     subtitle: note.isNotEmpty && categoryName != null

@@ -250,4 +250,185 @@ void main() {
       );
     });
   });
+
+  group('nhãn có TỪ ĐỒNG NGHĨA — bẫy 4.47 (cổng D lần 4–5, 2026-09-24)', () {
+    // Đúng tổng hợp của tim_giao_dich cho câu C8: nhãn chính "Số giao dịch",
+    // mô hình khi thì nói "khoản", khi thì nói "giao dịch".
+    final giaoDich = _Gia('tra_cuu', [
+      soDem('Số giao dịch', 2, nhanKhac: const ['Số khoản']),
+      soTien('Tổng thu', 14000000),
+    ]);
+
+    test('⭐ câu dùng nhãn THAY THẾ ("2 khoản thu") qua', () {
+      expect(kiemNhan('Có 2 khoản thu trong năm nay.', [giaoDich]), isTrue,
+          reason: 'C8 lần 5: nhãn "Số giao dịch" chặn câu đúng "Có 2 khoản thu…"; '
+              'nhãn cũ "Số khoản" thì chặn "6 giao dịch" (C5 lần 4) — cần cả hai');
+    });
+
+    test('câu dùng nhãn CHÍNH ("2 giao dịch") vẫn qua', () {
+      expect(kiemNhan('Bạn có 2 giao dịch.', [giaoDich]), isTrue);
+    });
+
+    test('đối chứng: không có nhãn thay thế thì "2 khoản" bị chặn', () {
+      final khong = _Gia('tra_cuu', [soDem('Số giao dịch', 2)]);
+      expect(kiemNhan('Có 2 khoản.', [khong]), isFalse);
+    });
+
+    test('nhãn thay thế KHÔNG mở cửa cho chữ khác ("2 hoá đơn")', () {
+      expect(kiemNhan('Có 2 hoá đơn.', [giaoDich]), isFalse);
+    });
+  });
+
+  // Cổng D lần 4–6 (mục 9.20–9.23), câu C10 "tháng này tôi nhận được những khoản
+  // thu nào": mô hình gọi tổng kết rồi viết "Các khoản thu bao gồm: Cho vay
+  // (800.000 đ)…" — 800.000 là CHI của Cho vay. Mục có tên chỉ bị đòi nêu tên
+  // (phép nới 4a), nên số thật + tên thật gán vào nhãn NGƯỢC vẫn lọt.
+  group('nhãn XUNG ĐỘT của mục có tên — bẫy 4.42 (cổng D C10, 2026-09-24)', () {
+    // Đúng gói tổng kết của C10: hàng danh mục nhãn "Chi", xung đột với "Thu".
+    final tongKet = _Gia('tra_cuu', [
+      soTien('Tổng chi', 2141000),
+      soTien('Tổng thu', 15135000),
+      soTien('Chi', 800000, ten: 'Cho vay', nhanXungDot: const ['Thu']),
+      soTien('Chi', 500000, ten: 'Chưa phân loại', nhanXungDot: const ['Thu']),
+    ]);
+
+    test('⭐ câu C10 đo trên Realme 2026-09-24 bị chặn: gán số CHI của Cho vay làm "khoản thu"', () {
+      expect(
+        kiemNhan(
+          'Trong tháng này, tổng thu là 15.135.000 đ. Các khoản thu bao gồm: '
+          'Cho vay (800.000 đ), Chưa phân loại (500.000 đ).',
+          [tongKet],
+        ),
+        isFalse,
+        reason: 'Nguyên văn C10 lần 4, 5, 6: câu có "thu" (nhãn xung đột) mà '
+            'không có "chi" (nhãn của con số) — mệnh đề sai dù số và tên thật.',
+      );
+    });
+
+    test('⭐ câu C10 lần 7 (2026-09-24 tối) — chữ "chi" nằm TRONG TÊN "Chi khác" không tính là nêu nhãn', () {
+      // Trên máy câu bị tách theo câu; câu thứ hai không có "tổng chi" nào, chỉ
+      // có tên danh mục "Chi khác". Xét nhãn trên câu ĐÃ BỎ TÊN đối tượng (cùng
+      // khuôn trichSoNgoaiTen của bước 1c), nếu không tên ấy mở cửa cho câu SAI.
+      final coChiKhac = _Gia('tra_cuu', [
+        soTien('Tổng thu', 15135000),
+        soTien('Chi', 800000, ten: 'Cho vay', nhanXungDot: const ['Thu']),
+        soTien('Chi', 500000, ten: 'Chưa phân loại', nhanXungDot: const ['Thu']),
+        soTien('Chi', 355000, ten: 'Di chuyển', nhanXungDot: const ['Thu']),
+        soTien('Chi', 301000, ten: 'Chi khác', nhanXungDot: const ['Thu']),
+      ]);
+      expect(
+        kiemNhan(
+          'Các khoản thu bao gồm: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), '
+          'Di chuyển (355.000 đ), và Chi khác (301.000 đ).',
+          [coChiKhac],
+        ),
+        isFalse,
+        reason: 'Nguyên văn câu 2 của C10 cổng D lần 7: hiện ra trên Realme dù '
+            'bản đầu của nhãn xung đột đã có — vì "Chi khác" mang âm tiết "chi".',
+      );
+      expect(
+        kiemNhan('Các khoản chi: Cho vay (800.000 đ), Chi khác (301.000 đ).', [coChiKhac]),
+        isTrue,
+        reason: 'chữ "chi" ngoài tên vẫn là nêu nhãn',
+      );
+    });
+
+    test('⭐ câu C12 lần 7: chữ "thu" nằm TRONG TÊN hàng không phải gán nhãn ngược', () {
+      // Hàng tim_giao_dich chiều chi: nhãn "Số tiền" + thay thế "Chi" + xung đột "Thu".
+      SoLieu hang(String ten, double v) => soTien('Số tiền', v,
+          ten: ten, nhanKhac: const ['Chi'], nhanXungDot: const ['Thu']);
+      final g = _Gia('tra_cuu', [
+        soTien('Tổng chi', 2141000),
+        hang('Cho vay', 800000),
+        hang('Tích lũy mục tiêu: MuaXe', 500000),
+        hang('Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04', 123000),
+      ]);
+      expect(
+        kiemNhan(
+          'Các khoản chi bao gồm: Cho vay (800.000 đ), Tích lũy mục tiêu: MuaXe (500.000 đ), '
+          'và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ).',
+          [g],
+        ),
+        isTrue,
+        reason: 'Nguyên văn câu 2 của C12 cổng D lần 7 — câu ĐÚNG bị chặn oan: "thu" '
+            'chỉ có trong tên hoá đơn, và "chi" của câu phải được nhận là nhãn của hàng.',
+      );
+    });
+
+    test('hàng tim_giao_dich: câu nêu ĐÚNG chiều không bao giờ bị coi là gán ngược, kể cả câu trộn thu và chi', () {
+      final g = _Gia('tra_cuu', [
+        soTien('Số tiền', 9000000,
+            ten: 'Lương', nhanKhac: const ['Thu'], nhanXungDot: const ['Chi']),
+        soTien('Số tiền', 800000,
+            ten: 'Cho vay', nhanKhac: const ['Chi'], nhanXungDot: const ['Thu']),
+      ]);
+      expect(
+        kiemNhan('Khoản thu: Lương 9.000.000 đ; khoản chi: Cho vay 800.000 đ.', [g]),
+        isTrue,
+      );
+      expect(kiemNhan('Các khoản thu: Cho vay 800.000 đ.', [g]), isFalse,
+          reason: 'khoản CHI bị gọi là thu — chặn');
+      expect(kiemNhan('Các khoản chi: Lương 9.000.000 đ.', [g]), isFalse,
+          reason: 'khoản THU bị gọi là chi — chặn');
+    });
+
+    test('câu đúng A8 nêu tên VÀ có chữ "chi" thì qua', () {
+      expect(
+        kiemNhan(
+          'Trong tháng này, tổng chi là 2.141.000 đ. Các danh mục chi lớn nhất '
+          'là: Cho vay (800.000 đ), Chưa phân loại (500.000 đ).',
+          [tongKet],
+        ),
+        isTrue,
+      );
+    });
+
+    test('câu chỉ nêu TÊN, không nhắc nhãn nào, vẫn qua — phép nới 4a nguyên vẹn', () {
+      expect(kiemNhan('Cho vay: 800.000 đ.', [tongKet]), isTrue,
+          reason: 'xung đột chỉ chặn khi câu GÁN nhãn ngược, không đòi nhãn chính');
+    });
+
+    test('câu có cả hai nhãn (chi lẫn thu) thì qua — lớp chắn từ vựng không định vị', () {
+      expect(
+        kiemNhan(
+          'Tổng thu 15.135.000 đ; khoản chi lớn nhất là Cho vay 800.000 đ.',
+          [tongKet],
+        ),
+        isTrue,
+      );
+    });
+
+    test('nhãn THAY THẾ cũng đủ để không bị coi là gán ngược', () {
+      final g = _Gia('tra_cuu', [
+        soTien('Chi', 800000,
+            ten: 'Cho vay', nhanKhac: const ['Tiêu'], nhanXungDot: const ['Thu']),
+        soTien('Tổng thu', 1),
+      ]);
+      expect(kiemNhan('Khoản thu 1 đ; đã tiêu cho Cho vay 800.000 đ.', [g]), isTrue);
+    });
+
+    test('đối chứng: không khai xung đột thì câu C10 vẫn lọt (đúng luật 4a cũ)', () {
+      final khong = _Gia('tra_cuu', [
+        soTien('Tổng thu', 15135000),
+        soTien('Chi', 800000, ten: 'Cho vay'),
+      ]);
+      expect(
+        kiemNhan('Tổng thu 15.135.000 đ. Các khoản thu: Cho vay (800.000 đ).', [khong]),
+        isTrue,
+      );
+    });
+
+    test('mục KHÔNG tên không đổi: vẫn phải nêu đúng nhãn', () {
+      expect(kiemNhan('Tổng thu là 2.141.000 đ.', [tongKet]), isFalse);
+    });
+  });
+
+  test('mục NGÀY của một hàng mang tên → câu nêu ngày phải nêu tên (bước 2)', () {
+    final g = _Gia('tra_cuu', [
+      soNgayThang('Ngày', DateTime(2026, 9, 4), ten: 'Ăn uống', now: DateTime(2026, 9, 23)),
+    ]);
+    expect(kiemNhan('Ăn uống ngày 04/09.', [g]), isTrue);
+    expect(kiemNhan('Có một khoản ngày 04/09.', [g]), isFalse,
+        reason: 'luật 4a không đổi: mục có tên đòi câu nêu tên');
+  });
 }

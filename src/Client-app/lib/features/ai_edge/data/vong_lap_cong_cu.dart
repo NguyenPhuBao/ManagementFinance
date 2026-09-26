@@ -1,14 +1,26 @@
 // ignore_for_file: avoid_print
-/// Vòng lặp tool của màn Trợ lý AI (chặng 4b, spec mục 3.6).
+/// Vòng lặp tool của màn Trợ lý AI (chặng 4b, spec mục 3.6; bước 2b, 2c).
 ///
 /// Điều khiển một [PhienCongCu]: lượt nào mô hình gọi tool thì chạy tool, trả
-/// JSON về phiên và TÍCH LUỸ hàng vào [GoiSoTraCuu]; lượt không gọi tool là câu
-/// trả lời. Chữ chỉ đi qua `gacTheoCau` **từ khi đã có hàng** — trước đó không
-/// câu nào được hiện (chốt L1: `kiemSo` mù với câu bịa tên không có số).
+/// JSON về phiên và TÍCH LUỸ kết quả vào [GoiSoTraCuu]; lượt không gọi tool là
+/// câu trả lời. Chữ chỉ đi qua `gacTheoCau` khi CỔNG mở — `goi.choHienChuMoHinh`:
+/// đã có lượt THÀNH CÔNG, không còn lời từ chối chưa gỡ, và không có lượt rỗng
+/// theo bộ lọc. Cổng đóng thì chữ bị bỏ, chỉ ghi log (chốt L1: `kiemSo` mù với
+/// câu bịa tên không có số; bước 2b: mô hình đọc lời từ chối thành "không có dữ
+/// liệu" — bẫy 4.40; bước 2c: `tim_giao_dich` 0 khoản với bộ lọc lệch câu hỏi
+/// không phải câu trả lời — bẫy 4.44).
 ///
-/// Thang lùi: L1 chưa tool nào chạy → [KhongTraCuu] (màn rơi về bậc 1) · L2 tool
-/// đã chạy mà chưa câu nào qua kiểm → `mauCau()` của gói tích luỹ · L3 vượt trần
-/// lời gọi → `mauCau()` · L4 runtime ném → lỗi lan lên màn (câu "không chạy được").
+/// Thang lùi khi mô hình ngừng gọi tool: L1 chưa gọi tool nào → [KhongTraCuu]
+/// (màn rơi về bậc 1) · **L1b** mọi lời gọi bị từ chối → mẫu câu trung thực của
+/// gói (KHÔNG rơi về bậc 1: sáu gói không có hàng giao dịch nào, và người dùng
+/// đọc "không có số liệu" thành "không có giao dịch") · L2 tool đã chạy mà chưa
+/// câu nào qua kiểm → `mauCau()` · **L2b** còn lời từ chối chưa gỡ → `mauCau()`
+/// (dữ liệu + câu chưa tra được), hoặc chỉ câu chưa tra được nếu đã có câu hiện
+/// · **L2c** có lượt `tim_giao_dich` rỗng theo bộ lọc (bước 2c, bẫy 4.44) →
+/// `mauCau()` nêu bộ lọc, hoặc chỉ câu về lượt rỗng nếu đã có câu hiện; cả hai
+/// lý do → `(L2b+L2c)`, câu nối theo thứ tự xảy ra (`goi.cauNoiThem`) · L3 vượt
+/// trần lời gọi → `mauCau()` · L4 runtime ném → lỗi lan lên màn (câu "không
+/// chạy được").
 /// Riêng `BacCongCuDaTat` (máy từng sập native ở phiên có tool — canary 1b,
 /// `domain/canary_cong_cu.dart`) đi đường L1 chứ không L4: bậc 1 vẫn chạy được.
 ///
@@ -83,7 +95,7 @@ Stream<SuKienGac> hoiBangCongCu(
         }
       }();
 
-      if (goi.daTraCuu) {
+      if (goi.choHienChuMoHinh) {
         await for (final sk in gacTheoCau(
           chu.stream,
           kiem: (c) => kiemCauTraLoi(c, [goi]),
@@ -94,13 +106,13 @@ Stream<SuKienGac> hoiBangCongCu(
           yield sk;
         }
       } else {
-        // Chưa tool nào chạy: chữ (nếu có) KHÔNG được hiện — chỉ đếm để log.
+        // Cổng đóng: chữ (nếu có) KHÔNG được hiện — chỉ đếm để log.
         var boQua = 0;
         await for (final t in chu.stream) {
           boQua += t.length;
         }
         if (boQua > 0) {
-          log('[SLM][tool] lượt $luot: bỏ $boQua ký tự chữ trước khi có tool nào chạy');
+          log('[SLM][tool] lượt $luot: bỏ $boQua ký tự chữ ${_viSaoDong(goi)}');
         }
       }
       await docXong;
@@ -117,8 +129,22 @@ Stream<SuKienGac> hoiBangCongCu(
 
       if (loiGoi.isEmpty) {
         if (!goi.daTraCuu) {
-          log('[SLM][tool] lượt $luot: không gọi tool → bậc 1 (L1) @${dongHo.elapsedMilliseconds} ms');
-          yield const KhongTraCuu();
+          if (goi.tuChoiChuaGo.isEmpty) {
+            log('[SLM][tool] lượt $luot: không gọi tool → bậc 1 (L1) @${dongHo.elapsedMilliseconds} ms');
+            yield const KhongTraCuu();
+            return;
+          }
+          log('[SLM][tool] lượt $luot: mọi lời gọi bị từ chối (${_tenTuChoi(goi)}) '
+              '→ mẫu câu trung thực (L1b)');
+          yield CauQua(goi.mauCau().cau);
+          return;
+        }
+        if (!goi.choHienChuMoHinh) {
+          final nhan = _nhanLui(goi);
+          log('[SLM][tool] lượt $luot: ${_viSaoDong(goi)} → '
+              '${soCauQua == 0 ? 'mẫu câu' : 'nối câu phải nói thêm'} ($nhan)');
+          yield CauQua(soCauQua == 0 ? goi.mauCau().cau : goi.cauNoiThem!);
+          log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: $soLanGoi lời gọi, $soCauQua câu');
           return;
         }
         if (soCauQua == 0) {
@@ -139,7 +165,13 @@ Stream<SuKienGac> hoiBangCongCu(
         soLanGoi++;
         yield DangTraCuu(g.ten);
         final moc = dongHo.elapsedMilliseconds;
-        final kq = await boCongCu.chay(g.ten, g.args, idaccount: idaccount, now: now);
+        final kq = await boCongCu.chay(
+          g.ten,
+          g.args,
+          idaccount: idaccount,
+          now: now,
+          cauHoi: cauHoi,
+        );
         if (kq == null) {
           log('[SLM][tool] lượt $luot: gọi ${g.ten} — không có tool này');
           await phien.traKetQua(g.ten, {
@@ -147,7 +179,7 @@ Stream<SuKienGac> hoiBangCongCu(
           });
           continue;
         }
-        goi.them(g.ten, kq);
+        goi.them(g.ten, kq, args: g.args);
         log('[SLM][tool] lượt $luot: gọi ${g.ten} ${g.args} → ${kq.hang.length} hàng'
             '${kq.loi == null ? '' : ', từ chối: ${kq.loi}'}, ${dongHo.elapsedMilliseconds - moc} ms');
         await phien.traKetQua(g.ten, kq.json);
@@ -158,4 +190,26 @@ Stream<SuKienGac> hoiBangCongCu(
   } finally {
     await phien.dong();
   }
+}
+
+/// Tên các tool còn lời từ chối chưa gỡ — cho log.
+String _tenTuChoi(GoiSoTraCuu goi) =>
+    {for (final r in goi.tuChoiChuaGo) r.ten}.join(', ');
+
+/// Vì sao cổng hiện chữ đóng — cho log; gọi khi cổng đã đóng.
+String _viSaoDong(GoiSoTraCuu goi) {
+  if (!goi.daTraCuu) return 'trước khi có lượt tool thành công';
+  return [
+    if (goi.tuChoiChuaGo.isNotEmpty)
+      'còn lời từ chối chưa gỡ (${_tenTuChoi(goi)})',
+    if (goi.luotRong.isNotEmpty) 'có lượt rỗng theo bộ lọc',
+  ].join(' và ');
+}
+
+/// Nhãn thang lùi khi cổng đóng sau lượt thành công: L2b (lời từ chối), L2c
+/// (lượt rỗng theo bộ lọc — bước 2c), L2b+L2c (cả hai). `hoi.sh` dừng theo nhãn.
+String _nhanLui(GoiSoTraCuu goi) {
+  final coTuChoi = goi.tuChoiChuaGo.isNotEmpty;
+  final coRong = goi.luotRong.isNotEmpty;
+  return coTuChoi && coRong ? 'L2b+L2c' : (coRong ? 'L2c' : 'L2b');
 }

@@ -11,7 +11,7 @@ import '../../analytics/domain/thong_ke_thang.dart';
 /// sẽ lệch nhau im lặng.
 ///
 /// Từ 2026-09-23 nó **đi qua `tongThuChi`** của trang Phân tích — cùng hàm mà
-/// tool `chi_tieu_theo_ky` của trợ lý AI đọc — và cắt tháng bằng `Ky.thang`,
+/// tool `tong_ket_thu_chi_ky` của trợ lý AI đọc — và cắt tháng bằng `Ky.thang`,
 /// cùng biên `[from, to)` với tháng của trang ấy. Trước đó nó cộng **thô**
 /// theo `type`, nên đếm cả khoản điều chỉnh số dư lẫn khoản "Số dư ban đầu":
 /// Trang chủ nói thu 15.145.000 đ trong khi trang Phân tích và trợ lý nói

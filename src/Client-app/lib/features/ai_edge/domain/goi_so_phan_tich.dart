@@ -71,7 +71,8 @@ class GoiSoPhanTich extends GoiSo {
     // chép — không sắp lại, không cộng trừ (test quét thứ 14).
     final theoDanhMuc = <SoLieu>[
       for (final d in tk.danhMuc.take(kToiDaMucMoiGoi))
-        soTien('Chi', d.soTien, ten: d.ten),
+        // Cùng khuôn hàng của tool tổng kết: xung đột "Thu" (bẫy 4.42).
+        soTien('Chi', d.soTien, ten: d.ten, nhanXungDot: const ['Thu']),
     ];
 
     return GoiSoPhanTich._(
