@@ -50,7 +50,7 @@ const AICopilotPage = () => {
     setErrorMessage(null);
     setInputValue('');
 
-    const now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
     const userMsgId = `user_${Date.now()}`;
     const botMsgId = `bot_${Date.now()}`;
 

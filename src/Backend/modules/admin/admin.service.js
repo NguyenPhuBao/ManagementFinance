@@ -372,17 +372,14 @@ const adminService = {
     buckets.forEach((b) => bucketMap.set(b.key, b));
 
     for (const log of logs) {
-      const d = new Date(log.time_req);
+      const vnParts = getVnTimeParts(log.time_req);
       let key;
       if (format === 'hour') {
-        key = d.getHours().toString().padStart(2, '0');
+        key = vnParts.hour;
       } else if (format === 'month') {
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        key = `${d.getFullYear()}-${month}`;
+        key = `${vnParts.year}-${vnParts.month}`;
       } else {
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        key = `${d.getFullYear()}-${month}-${day}`;
+        key = `${vnParts.year}-${vnParts.month}-${vnParts.day}`;
       }
 
       if (bucketMap.has(key)) {
@@ -416,17 +413,14 @@ const adminService = {
     buckets.forEach((b) => bucketMap.set(b.key, b));
 
     for (const log of logs) {
-      const d = new Date(log.time_req);
+      const vnParts = getVnTimeParts(log.time_req);
       let key;
       if (format === 'hour') {
-        key = d.getHours().toString().padStart(2, '0');
+        key = vnParts.hour;
       } else if (format === 'month') {
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        key = `${d.getFullYear()}-${month}`;
+        key = `${vnParts.year}-${vnParts.month}`;
       } else {
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        key = `${d.getFullYear()}-${month}-${day}`;
+        key = `${vnParts.year}-${vnParts.month}-${vnParts.day}`;
       }
 
       if (bucketMap.has(key)) {

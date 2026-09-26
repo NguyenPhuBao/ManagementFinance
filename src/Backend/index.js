@@ -1,3 +1,5 @@
+// Thiết lập múi giờ chuẩn Việt Nam (GMT+7) cho toàn bộ Node.js runtime trên Cloud Server
+process.env.TZ = process.env.TZ || 'Asia/Ho_Chi_Minh';
 require('dotenv').config();
 const http = require('http');
 const app = require('./app');
