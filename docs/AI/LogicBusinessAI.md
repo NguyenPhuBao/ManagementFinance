@@ -27,16 +27,16 @@ Ban đầu, dự án dự kiến xây dựng phần lớn các chức năng AI t
 
 | STT | Tên Chức Năng | Nơi Triển Khai | Bản Chất Kỹ Thuật & Cơ Chế Phối Hợp | Trạng Thái |
 |:---:|---|:---:|---|:---:|
-| **1** | **Tự Động Phân Loại Giao Dịch**<br>*(Transaction Auto Classification)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Xử lý Tầng 1 (Keyword) và Tầng 2 (NLP / Token overlap / Heuristics) chạy cục bộ trên Drift SQLite v24 để phản hồi tức thì.<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Reasoning). Mobile app chỉ gọi lên Backend khi gặp ca khó (T1, T2 không đủ tự tin), kèm bộ lọc PII Masking. | 🟡 **Đang làm**<br>*(Backend đã có T3 + Masking; Client-app đang hoàn thiện T1/T2)* |
-| **2** | **Quét Hóa Đơn & Biên Lai**<br>*(Smart Receipt OCR)* | **Client-app** (chính)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, tiền xử lý, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Multimodal LLM (Gemini 2.0 Flash) để bóc tách các hóa đơn/biên lai chụp lên. Mobile gửi ảnh lên Backend để xử lý. | 🟡 **Đang làm**<br>*(Backend đã có OCR Service; Client-app đang hoàn thiện giao diện & gọi API)* |
-| **3** | **Khử Trùng Lặp Giao Dịch**<br>*(Transaction Deduplication Engine)* | **Client-app** (100%) | Đẩy HOÀN TOÀN sang Client-app. Xử lý đối soát cục bộ trên Drift SQLite (khử trùng theo `bank_tran_id`, mốc thời gian, số tiền, nội dung). *(Backend đã làm trước đó, nay chuyển giao 100% về mobile).* | 🟡 **Đang làm**<br>*(Đang chuyển giao hoàn toàn về mobile)* |
-| **4** | **Trợ Lý Tài Chính Thông Minh**<br>*(AI Financial Copilot / Chatbot)* | **Backend** (100%) | Xây dựng thuần AI tại Backend trong đợt này. Kết hợp **Function-Calling** (truy vấn an toàn số liệu cá nhân có cấu trúc qua JWT `idaccount`) + **RAG** (truy xuất tri thức tài chính tĩnh). Không index dữ liệu người dùng lên vector DB. | 🔴 **Chưa hoàn thành**<br>*(Trọng tâm phát triển Backend đợt này)* |
-| **5** | **Dự Báo Chi Tiêu & Dòng Tiền**<br>*(Cashflow Forecasting)* | **Client-app** (100%) | Đẩy hoàn toàn sang Client-app. Thuật toán dự báo dòng tiền 30 ngày chạy trực tiếp trên máy (`du_bao_dong_tien.dart`), tích hợp dữ liệu hóa đơn (`Bills`) và mục tiêu (`Goals`). | 🟢 **Đã hoàn thành**<br>*(Đã kiểm tra mã nguồn Client-app: Đã hoàn tất)* |
+| **1** | **Tự Động Phân Loại Giao Dịch**<br>*(Transaction Auto Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword Matcher qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v24 để phản hồi tức thì. Tầng 2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning). Mobile app chỉ gọi lên Backend khi gặp ca khó, kèm bộ lọc PII Masking. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 có ở Backend, Client chưa gọi |
+| **2** | **Quét Hóa Đơn & Biên Lai**<br>*(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Multimodal LLM (Gemini 2.0 Flash) để bóc tách các hóa đơn/biên lai chụp lên qua endpoint `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
+| **3** | **Khử Trùng Lặp Giao Dịch**<br>*(Transaction Deduplication Engine)* | **Client-app** (khi có OCR) | Khử trùng lặp trên client chỉ cần khi và nếu client làm OCR (chống quét 2 lần 1 hóa đơn). Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ. | ⬜ **Chưa làm tại Client**<br>*(Sẽ đặc tả cùng spec OCR Client sau này)* |
+| **4** | **Trợ Lý Tài Chính Thông Minh**<br>*(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến theo chuẩn [`docs/AI/ChatbotAI.md`](ChatbotAI.md) (Dual-Phase Reasoning with Privacy Shield: Anonymized Snapshot + On-demand Tools + RAG tri thức tĩnh). Không lưu dữ liệu cá nhân vào Vector DB.<br>• **Client-app:** Đã có Trợ lý AI chạy trên máy (Gemma 4 E2B + 7 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟡 **Đang xây dựng tại Backend** theo `ChatbotAI.md`<br>*(Client-app đã có trợ lý offline)* |
+| **5** | **Dự Báo Chi Tiêu & Dòng Tiền**<br>*(Cashflow Forecasting)* | **Client-app** (100%) | Đẩy hoàn toàn sang Client-app. Thuật toán dự báo dòng tiền 30 ngày chạy trực tiếp trên máy (`du_bao_dong_tien.dart`), tích hợp dữ liệu hóa đơn (`Bills`) và mục tiêu (`Goals`). | 🟢 **Đã hoàn thành**<br>*(Mã nguồn Client-app đã hoàn tất)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh**<br>*(Smart Budget Recommendation)* | **Client-app** (100%) | Đẩy hoàn toàn sang Client-app. Tính toán tại chỗ qua hàm `BudgetRepository.suggestAmount` với cửa sổ cuộn linh hoạt $\le 90$ ngày dựa trên lịch sử chi tiêu thực tế. | 🟢 **Đã hoàn thành**<br>*(Đã làm tại Client-app)* |
-| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên**<br>*(Financial Health Score & Insights)* | **Backend** (gốc)<br>+<br>**Client-app** (thống kê) | Xây dựng tại Backend là gốc (chấm điểm sức khỏe tài chính, phân bổ 50/30/20, đưa ra khuyến nghị chuyên sâu). Client-app chịu trách nhiệm đóng gói dữ liệu thống kê tổng hợp gửi về định kỳ để Backend đánh giá. | 🔴 **Chưa hoàn thành**<br>*(Backend chuẩn bị xây dựng, Client-app sẽ đóng gói số liệu gửi lên)* |
-| **8** | **Phát Hiện Chi Tiêu Bất Thường**<br>*(Spending Anomaly Detection)* | **Client-app** (100%) | Đẩy hoàn toàn sang Client-app. Phát hiện chi tiêu đột biến thông qua ngưỡng cấu hình người dùng đặt `nguongChiLon` (khoản chi lớn) kết hợp bộ luật cảnh báo tại chỗ (`notification_rules.dart`). | 🟢 **Đã hoàn thành**<br>*(Đã kiểm tra mã nguồn Client-app: Đã hoàn tất)* |
-| **9** | **Đề Xuất Điều Chỉnh Ngân Sách**<br>*(Budget Rebalancing)* | **Client-app** (100%) | Chức năng mới: Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, thuật toán Welford O(1), chạy 100% offline trên SQLite v24. | 🟡 **Đang làm**<br>*(Đang xây dựng tại Client-app)* |
-| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình SLM cục bộ (**Gemma 4 E2B**, 2.41GB qua LiteRT/MediaPipe) chạy trên chip thiết bị (GPU/arm64-v8a) để học hỏi thói quen và diễn giải tự nhiên cho "Gợi ý thiết lập ngân sách" và "Đề xuất điều chỉnh ngân sách". | 🟡 **Đang làm**<br>*(Đang tích hợp tại Client-app)* |
+| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên**<br>*(Financial Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20. Client-app chỉ gọi API hiển thị hoặc tích hợp trong Chatbot AI, không bắt client đóng gói gửi định kỳ. | 🟡 **Đang xây dựng tại Backend** theo `ChatbotAI.md` |
+| **8** | **Phát Hiện Chi Tiêu Bất Thường**<br>*(Spending Anomaly Detection)* | **Client-app** (100%) | Đẩy hoàn toàn sang Client-app. Phát hiện chi tiêu đột biến thông qua ngưỡng cấu hình người dùng đặt `nguongChiLon` (khoản chi lớn) kết hợp bộ luật cảnh báo tại chỗ (`notification_rules.dart`). | 🟢 **Đã hoàn thành**<br>*(Mã nguồn Client-app đã hoàn tất)* |
+| **9** | **Đề Xuất Điều Chỉnh Ngân Sách**<br>*(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v24 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành (Client-app)**<br>*(P2 trọn 17 task, thông báo budgetRebalance)* |
+| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app**<br>*(7 tools chỉ đọc offline, không gửi dữ liệu ra mạng)* |
 
 ---
 
@@ -56,25 +56,25 @@ Ban đầu, dự án dự kiến xây dựng phần lớn các chức năng AI t
 - **Đầu ra:** Trích xuất chi tiết từng mặt hàng (`items`), tổng tiền (`total_amount`), thuế, ngày giờ, đơn vị bán (`merchant`), và tự động sửa sai tổng tiền (self-healing).
 
 ### 3.3. Trợ Lý Tài Chính Thông Minh (AI Financial Copilot / Chatbot) — *Xây dựng đợt này*
-- **Vị trí:** `src/Backend/modules/ai/features/assistant/` (Đang khởi tạo).
-- **Bản chất:** Chatbot thuần AI được xây dựng tập trung tại Backend:
-  - **Truy vấn dữ liệu cá nhân qua Function-Calling:** Không nhúng dữ liệu tài chính vào Vector DB (tuân thủ F1 & Nghị định 13/2023/NĐ-CP). Chatbot gọi các hàm domain đã định sẵn (`getExpenseReport`, `getCashflowSummary`, `getUpcomingBills`) bằng `idaccount` từ JWT token.
+- **Vị trí:** [`src/Backend/modules/ai/features/chatbot/`](../../src/Backend/modules/ai/features/chatbot/) (Chuẩn kiến trúc: [`docs/AI/ChatbotAI.md`](ChatbotAI.md)).
+- **Bản chất:** Chatbot trực tuyến áp dụng kiến trúc **Dual-Phase Reasoning with Privacy Shield**:
+  - **Tấm khiên riêng tư (Privacy Shield):** Dữ liệu tài chính cá nhân được tổng hợp thành bản chụp sức khỏe tài chính vĩ mô ẩn danh (*Anonymized Financial Health Snapshot*) trước khi đưa vào ngữ cảnh của LLM. Tuyệt đối không lưu dữ liệu cá nhân vào Vector DB (tuân thủ F1 & Nghị định 13/2023/NĐ-CP).
   - **Standard RAG cho tri thức tài chính tĩnh:** Lập chỉ mục tài liệu kiến thức tài chính chung (thuế TNCN, quy tắc tiết kiệm 50/30/20, mẹo quản lý nợ).
 
 ### 3.4. Đánh Giá Sức Khỏe Tài Chính & Đưa Ra Lời Khuyên (Financial Health Score & Insights)
-- **Vị trí:** `src/Backend/modules/ai/features/advisory/` (Đang khởi tạo).
+- **Vị trí:** Tích hợp trong Module Chatbot AI & Advisory Backend.
 - **Vai trò:** 
-  - Backend là trung tâm phân tích: tính điểm sức khỏe tài chính toàn diện (thang điểm 100), đánh giá cơ cấu chi tiêu 50/30/20, phát hiện rủi ro thâm hụt dài hạn.
-  - **Cơ chế phối hợp:** Client-app đóng gói định kỳ gói số liệu tổng hợp (tổng thu, tổng chi theo nhóm, tỷ lệ tiết kiệm trượt 3 tháng) gửi về Backend. Backend dùng LLM reasoning sinh ra báo cáo nhận xét và lời khuyên mang tính cá nhân hóa sâu.
+  - Backend là trung tâm phân tích: tự động tính điểm sức khỏe tài chính toàn diện (thang điểm 100), đánh giá cơ cấu chi tiêu 50/30/20 từ CSDL PostgreSQL sẵn có (scoped `idaccount`).
+  - **Cơ chế:** Chốt Lối A (Backend tự tính). Client-app gọi API lấy kết quả hiển thị hoặc nhận lời khuyên thông qua Chatbot AI.
 
 ---
 
 ## 4. CHI TIẾT 6 CHỨC NĂNG ĐƯỢC XÂY DỰNG TẠI CLIENT-APP (MOBILE)
 
-1. **Phân Loại Giao Dịch Tầng 1 & Tầng 2:**
-   - Xử lý cục bộ trên SQLite v24 (`CategoryKeywords`, so khớp từ khóa và token overlap). Phản hồi ngay tức thì khi người dùng gõ ghi chú giao dịch.
+1. **Phân Loại Giao Dịch Tầng 1:**
+   - Xử lý cục bộ trên SQLite v24 (`CategoryKeywords`, so khớp từ khóa qua `CategorySuggestionEngine`). Phản hồi ngay tức thì khi người dùng gõ ghi chú giao dịch.
 2. **Khử Trùng Lặp Giao Dịch (Deduplication):**
-   - Chạy 100% trên thiết bị khi nhận dữ liệu từ SMS hoặc nhập hóa đơn, so khớp trực tiếp với bảng `Transactions` trong SQLite cục bộ.
+   - Phía Client chỉ cần khi triển khai tính năng OCR. Kênh liên kết ngân hàng và SMS server đã dừng.
 3. **Dự Báo Chi Tiêu & Dòng Tiền 30 Ngày:**
    - Đã triển khai tại `features/analytics/domain/du_bao_dong_tien.dart`. Tính toán dòng tiền dự kiến 30 ngày dựa vào các hóa đơn sắp đến hạn (`Bills`) và mục tiêu tích lũy (`Goals`).
 4. **Gợi Ý Thiết Lập Ngân Sách Thông Minh:**
@@ -82,8 +82,8 @@ Ban đầu, dự án dự kiến xây dựng phần lớn các chức năng AI t
 5. **Phát Hiện Chi Tiêu Bất Thường:**
    - Đã triển khai thông qua cơ chế cảnh báo khoản chi lớn (`nguongChiLon`) do người dùng cài đặt, phát thông báo tức thời qua `notification_rules.dart`.
 6. **Đề Xuất Điều Chỉnh Ngân Sách & On-Device Edge AI:**
-   - Thuật toán cân đối thâm hụt (tìm donor cắt giảm ngân sách C1–C7) chạy 100% offline.
-   - Mô hình **Gemma 4 E2B** trên máy nhận gói số tóm tắt để diễn giải tự nhiên, hoàn toàn không đẩy dữ liệu ra Internet.
+   - Thuật toán cân đối thâm hụt (tìm donor cắt giảm ngân sách C1–C7) chạy 100% offline (`tai_phan_bo.dart`).
+   - Mô hình **Gemma 4 E2B** trên máy phục vụ màn Trợ lý AI (gọi 7 tool chỉ đọc trên SQLite cục bộ), hoạt động khi mất mạng, không gửi dữ liệu ra Internet. Các khối nhận xét dùng mẫu câu.
 
 ---
 

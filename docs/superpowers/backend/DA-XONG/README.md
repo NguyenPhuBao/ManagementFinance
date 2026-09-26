@@ -84,9 +84,20 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 | [AI_EDGE_SLM_SUA_TAI_LIEU.md](./AI_EDGE_SLM_SUA_TAI_LIEU.md) | Năm chỗ sai đặc tả Edge AI (F1 bỏ "100 %" và PCI-DSS, D1 thu nhập theo `thuNhapCua`, bỏ bảng `local_category_features`, schema v21 → v24, iOS 18 → iOS 26) cộng đính chính runtime và mô hình (Gemma 4 E2B cho mọi máy, `flutter_gemma` + `flutter_gemma_litertlm`) và 39 luật A–H sau điều chỉnh. Đóng ở `b147fee` ngày 2026-09-22; client chạy lại lệnh nghiệm thu của chính tệp này — **0 dòng**. ⚠️ Bản sửa ấy sinh ra bốn cặp tự mâu thuẫn mới, và **câu D1 client đưa vào đơn này đã lạc hậu hai ngày sau khi nộp** — vòng hai ở [`../CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`](../CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md). |
 | [EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md](./EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md) | Thống nhất tên gọi **Edge AI** (thứ tự cũ "AI Edge" nay còn **0** chỗ trong `docs/AI/`) và chốt hai mâu thuẫn: ① dữ liệu tài chính người dùng **không** index lên vector DB server — số liệu cá nhân đi bằng function-calling (`Standard_RAG.md` §6 đã sửa); ② giữ Cloud AI ở tầng 3 phân loại, thêm `maskTransactionDescription` lọc dữ liệu nhạy cảm trước khi gửi prompt. Đóng ở `b147fee` ngày 2026-09-22, client kiểm lại cả hai bằng máy. |
 
+## 4. Đóng trong đợt backend 2026-09-26 (Hoàn thành 100% 4 tài liệu mới từ CAN-LAM)
+
+Bốn tài liệu này đã được giải quyết trọn vẹn, vượt qua các đợt kiểm thử đối soát và chuyển từ `CAN-LAM/` sang `DA-XONG/`:
+
+| Tài liệu | Đóng bằng cách nào |
+|---|---|
+| [CLIENT_BO_LIEN_KET_NGAN_HANG.md](./CLIENT_BO_LIEN_KET_NGAN_HANG.md) | PO duyệt phương án giữ 100% mã nguồn làm nền tảng chuẩn hóa (ground truth) cho Client đối soát, không xóa mã backend. |
+| [AI_EDGE_SLM_SOAT_SAU_B147FEE.md](./AI_EDGE_SLM_SOAT_SAU_B147FEE.md) | Sửa sạch 12 điểm tự mâu thuẫn trong tài liệu `AI_Edge-SLM.md/Client-app.md`: khử mâu thuẫn RAM vs Canary GPU H3, chốt saving_goal_ratio, sửa nguồn is_recurring_hint, sửa cửa sổ thu nhập D1 sang cửa sổ cuộn `[max(now-90d, firstTx), now)`, sửa B2, D5, F3, G1, H1, H2, màn chat, và cảnh báo `nguongChiLon == 0`. Test 4 lệnh grep ra 0 dòng. |
+| [AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md](./AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md) | Chuẩn hóa bảng 10 chức năng AI ở `LogicBusinessAI.md`, `Project.md` §8.5 & §11.42, `AI_ARCHITECTURE_DIAGRAM.md` v2.2 (4 dịch vụ, sửa nhãn payload), `Classify.md` §1.3, `ORC.md`. Chốt Lối A cho Chức năng 7 (Backend tự tính). Test 3 lệnh grep ra 0 dòng. |
+| [CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md](./CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md) | Phản hồi chính thức 5 câu hỏi của Client: đồng thuận không vi phạm chính sách dừng module bank, giữ nguyên `provider = 'Manual'`, đồng ý regex baseline, bắt buộc Consent Screen theo NĐ 13/2023, xác nhận gộp trùng SMS/thông báo app là hiện thân Chức năng 3 phía Client. |
+
 ---
 
-## 4. Hai chỗ dễ đọc nhầm
+## 5. Hai chỗ dễ đọc nhầm
 
 - **"Đã xong" nói về phía backend, không phải phía client.** Ví dụ đang mở (đo
   2026-09-11): server đã có `transaction.Idbill` và bốn cột hoá đơn
