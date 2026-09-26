@@ -594,7 +594,33 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-25)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-26)
+
+### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
+
+Bốn commit NPBao cùng ngày, không xung đột, **không đụng `src/Client-app`**. Bốn đơn của client chuyển sang
+`DA-XONG/` (nay 42 tệp + mục lục), `CAN-LAM/` chỉ còn `README.md`:
+
+- **Đơn 10 chức năng AI**: sửa đủ chữ (ba lệnh `grep` nghiệm thu ra 0 dòng — kiểm lại 2026-09-26); chức năng 7 **chốt lối
+  A** (backend tự tính FHS; client chỉ gọi `GET /api/ai/chatbot/snapshot`). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini)
+  không được trả lời trực tiếp**: backend thi công *Privacy Shield* — snapshot gộp theo danh mục, `maskPII` che
+  SĐT/STK/thẻ/email trong tên danh mục, ghi chú, tên hoá đơn — và coi thế là đủ. Đọc mã
+  (`financial.snapshot.service.js`, `tools.executor.js`): tool `get_category_transactions` vẫn gửi **từng giao dịch** (số
+  tiền, tên danh mục, ghi chú đã che) cho Gemini; ghi chú lấy thẳng cột mã hoá at-rest **không giải mã** nên thứ gửi đi
+  là bản mã; `debtToIncomeRatio` là **hằng 0,1**; 50/30/20 xếp bằng **danh sách từ khoá tên danh mục** (cùng bẫy
+  "đá/da" của `removeVietnameseTones`). Không ảnh hưởng client hôm nay vì client chưa gọi.
+- **Đơn biến động số dư trên máy**: **duyệt toàn diện** 5/5 theo mặc định client, cộng một điều bắt buộc — **màn giải
+  thích + xin đồng ý** trước khi dẫn tới Cài đặt quyền thông báo. Thiết kế dừng ở Phần 1 (kiến trúc) chưa duyệt.
+- **Mới, chờ người dùng quyết**: `docs/AI/ChatbotAI_Moblie.md` giao client dựng **chế độ trực tuyến** cho màn Trợ lý
+  AI (SSE `POST /api/ai/chatbot/chat/stream`, thẻ FHS, bảng cục bộ `LocalChatMessages`, nút đổi Online/Offline, 6 tiêu
+  chí AC-MOB). Client **chưa nhận**: người dùng chọn AI trên máy để dùng được khi mất mạng, và chế độ này gửi số liệu
+  sang Google. ⚠️ `@google/generative-ai` **chưa có trong `node_modules`** của backend dev trên máy này — `npm run dev`
+  sẽ vỡ ở `require` cho tới khi backend `npm install` (việc của backend, client không chạy).
+- Múi giờ: backend đặt `process.env.TZ = 'Asia/Ho_Chi_Minh'` ở `index.js`, `.env.example` thêm `TZ`; Admin-web
+  `dayjs.tz.setDefault`. Client không đổi gì — client vốn gửi `updated_at` ISO UTC.
+- ⚠️ `Project.md` có **hai** mục `### 11.41` (mục múi giờ đánh số trùng), §11.43 gọi endpoint `GET /financial-health`
+  trong khi mã là `GET /snapshot`; `LogicBusinessAI.md` ghi chức năng 4/7 "đang xây dựng" còn `Project.md` §11.42 ghi
+  "đã hoàn thành" — cùng commit. Tài liệu backend quản, client không sửa.
 
 ### 🔀 Gộp `main` @ `c47e6e2` (2026-09-25) — bảng 10 chức năng AI của NPBao
 
