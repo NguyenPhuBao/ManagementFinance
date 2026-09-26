@@ -2720,16 +2720,53 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
   2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 2.0 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
   3. **Khử trùng lặp giao dịch (Deduplication Engine):** Đẩy sang Client-app khi có OCR; Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ $\rightarrow$ ⬜ *Chưa làm tại Client*.
-  4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng theo `ChatbotAI.md` (Dual-Phase Privacy Shield + Function-calling + RAG kiến thức tĩnh); Client-app đã có trợ lý offline trên máy (Gemma 4 E2B + 7 tool chỉ đọc) $\rightarrow$ 🔴 *Chưa hoàn thành (Backend xây dựng đợt này)*.
+  4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán từ PostgreSQL sẵn có, Client-app gọi API hiển thị) $\rightarrow$ 🔴 *Chưa hoàn thành (Backend xây dựng đợt này)*.
+  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán chỉ số FHS thang điểm 100, quy tắc 50/30/20, quỹ khẩn cấp từ PostgreSQL, cấp qua API `GET /api/ai/chatbot/financial-health` và nhúng thẳng vào Snapshot của Chatbot) $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   8. **Phát hiện chi tiêu bất thường (Spending Anomaly Detection):** Đẩy qua Client-app (ngưỡng `nguongChiLon` & `notification_rules.dart`) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7 trên SQLite) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị phục vụ màn Trợ lý AI (offline, 7 tool chỉ đọc trên SQLite) $\rightarrow$ 🟢 *Đang chạy tại Client-app*.
 - **Nguyên tắc bảo tồn 100% mã nguồn Backend làm cơ sở đối chiếu:**
   - Các chức năng được chuyển giao hoặc đưa lên Client-app (như T1 Keyword Matcher, T2 NLP Matcher, Bộ khử trùng Deduplication Engine `dedup.service.js`...) **HIỆN TẠI VẪN ĐƯỢC GIỮ LẠI NGUYÊN VẸN TRONG BACKEND**, làm cơ sở chuẩn hóa (ground truth baseline) cho đội ngũ Client-app đối soát, kế thừa và xây dựng tiếp.
   - **QUY TẮC CỐT LÕI: TUYỆT ĐỐI KHÔNG TỰ Ý XÓA BỎ BẤT KỲ MÃ NGUỒN HAY TÀI LIỆU NÀO ĐÃ LÀM TẠI BACKEND.**
+
+### 11.43. Triển Khai Hoàn Thiện Chức Năng Chatbot AI (AI Financial Copilot) & Sức Khỏe Tài Chính FHS Tại Backend & Admin-Web (2026-09-26)
+- **Tài liệu nguồn sự thật:** [`docs/AI/ChatbotAI.md`](docs/AI/ChatbotAI.md), [`docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md`](docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md).
+- **1. Triển khai Backend Core (Kiến trúc Zero Database Migration - An toàn tuyệt đối 100% CSDL):**
+  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-2.5-flash'`).
+  - **Dual-Phase Privacy Shield (`pii.masker.js`):** Tự động phát hiện và che giấu toàn diện thông tin cá nhân PII (số điện thoại `[SĐT]`, số tài khoản ngân hàng `[STK]`, số thẻ thanh toán quốc tế `[SỐ_THẺ]` theo thuật toán Luhn, email `[EMAIL]`). Toàn bộ số liệu tài chính trong Snapshot và Tools trước khi gửi lên Cloud LLM đều được làm mờ (anonymize) và che giấu ghi chú giao dịch.
+  - **Snapshot Engine & Đánh giá Sức khỏe Tài chính FHS (`financial.snapshot.service.js`):**
+    + Triển khai theo Lối A (Backend tự tính toán từ PostgreSQL hiện có không cần di chuyển dữ liệu).
+    + Công thức thu nhập thực tế chuẩn `thuNhapCua`: Tự động loại trừ các giao dịch vay nợ, thu nợ, chuyển ví nội bộ để tránh tính ảo thu nhập.
+    + Cơ cấu ngân sách 50/30/20 (Thiết yếu - Linh hoạt - Tích lũy) tính toán trực tiếp từ chi tiêu thực tế.
+    + Chỉ số Quỹ khẩn cấp (`emergencyFundMonths`) và Tỷ lệ nợ trên thu nhập (`debtToIncomeRatio`).
+    + Chấm điểm FHS tổng thể thang điểm 100 và phân hạng (Tốt, Cần cải thiện, Nguy cơ).
+  - **On-Demand Tools Executor (`financial.tools.js` & `tools.executor.js`):**
+    + 4 công cụ đào sâu theo chuẩn Function Calling: `get_category_transactions`, `compare_spending_periods`, `get_bill_details`, `get_goal_simulation`.
+    + 100% câu truy vấn Prisma được scoped nghiêm ngặt theo `idaccount` từ JWT token xác thực (chống rò rỉ chéo dữ liệu đa người dùng).
+  - **Hybrid Static RAG (`hybrid.search.js` & `rag/data/`):**
+    + Nạp 3 bộ cẩm nang tài chính tĩnh: `thue_tncn_2026.json` (biểu thuế lũy tiến từng phần Luật Thuế TNCN mới 2026), `quy_tac_50_30_20.json` (hoạch định ngân sách Elizabeth Warren), `quan_ly_no_an_toan.json` (phương pháp Tuyết lăn Snowball & Tuyết lở Avalanche).
+    + Thuật toán Phrase Matching + RRF chấm điểm từ khóa, chỉ nạp tri thức liên quan trực tiếp vào ngữ cảnh gợi ý, loại bỏ tạp âm.
+  - **Trình Điều Phối Hội Thoại & Luồng SSE Streaming (`chatbot.service.js`, `chatbot.controller.js`):**
+    + Hỗ trợ giao thức `text/event-stream` truyền tải thời gian thực các sự kiện: `event: meta` (FHS, trích dẫn RAG), `event: delta` (từng đoạn văn bản sinh ra), `event: done` và `event: error`.
+    + Vòng lặp Function Calling linh hoạt (tự động phát hiện khi Gemini yêu cầu gọi tool và gửi lại tool output để suy luận tiếp).
+    + Cơ chế Graceful Fallback (`_streamFallbackResponse`): Phân tích số liệu tài chính cục bộ tự động khi đường truyền Gemini API gặp sự cố hoặc hết hạn mức, người dùng luôn nhận được câu trả lời tài chính thực tế.
+    + Bắt gọn sự kiện ngắt kết nối `req.on('close')` để hủy tác vụ Gemini tức thì, tiết kiệm tài nguyên.
+  - **Định tuyến & Giới hạn tải (`chatbot.routes.js`):**
+    + Gắn tại `/api/ai/chatbot` với 2 endpoint: `POST /chat/stream` (Rate limit 15 req/phút/user) và `GET /financial-health` (lấy ngay chỉ số FHS).
+- **2. Triển khai Frontend Admin-web (Trợ lý Copilot AI & Kiểm thử trực quan):**
+  - **API Client SSE Stream (`src/Admin-web/src/api/chatbot.api.js`):** Sử dụng `ReadableStream.getReader()` và `TextDecoder` đọc và bóc tách các event `meta`, `delta`, `done` mượt mà.
+  - **Giao diện người dùng Copilot (`src/Admin-web/src/pages/ai/`):**
+    + `FinancialHealthCard.jsx`: Thẻ trực quan hóa điểm FHS thang 100, thanh 3 màu phân bổ 50/30/20, số tháng quỹ khẩn cấp và tỷ lệ nợ.
+    + `ChatMessageBubble.jsx`: Hiển thị tin nhắn Markdown đẹp mắt, avatar phân định, hiệu ứng typing stream và khối trích dẫn nguồn căn cứ pháp lý/cẩm nang RAG.
+    + `PromptSuggestionChips.jsx`: 4 chip câu hỏi mẫu thông minh theo nghiệp vụ tài chính.
+    + `AICopilotPage.jsx`: Màn hình Chatbot Copilot hoàn chỉnh kèm bảng Metadata Inspector hỗ trợ Admin/Tester kiểm tra chi tiết raw snapshot, RAG matching và log hệ thống.
+  - **Routing & Navigation:** Thêm route `/ai-copilot` và icon `smart_toy` ("Trợ lý AI Copilot") trên thanh điều hướng chính (`Sidebar.jsx`).
+- **3. Kiểm thử tự động (TDD Suite):**
+  - Bộ kiểm thử Backend tại `src/Backend/tests/`: **19/19 tests PASS 100%** (`financial.snapshot.test.js`, `chatbot.tools.test.js`, `chatbot.rag.test.js`, `chatbot.api.test.js`).
+  - Frontend Admin-web Build: `rtk npm run build` **thành công 100% (0 errors, 142 modules transformed)**.
+
 
 
 

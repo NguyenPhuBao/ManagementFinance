@@ -4,6 +4,7 @@ import { useAuthContext } from '../../store/auth.context';
 
 const NAV_ITEMS = [
   { key: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { key: '/ai-copilot', icon: 'smart_toy', label: 'Trợ lý AI Copilot' },
   { key: '/users', icon: 'group', label: 'User Management' },
   { key: '/categories', icon: 'category', label: 'Category Management' },
 ];
