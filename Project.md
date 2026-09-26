@@ -2767,6 +2767,29 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Bộ kiểm thử Backend tại `src/Backend/tests/`: **19/19 tests PASS 100%** (`financial.snapshot.test.js`, `chatbot.tools.test.js`, `chatbot.rag.test.js`, `chatbot.api.test.js`).
   - Frontend Admin-web Build: `rtk npm run build` **thành công 100% (0 errors, 142 modules transformed)**.
 
+### 11.41. Chuẩn Hóa Toàn Diện Múi Giờ Việt Nam (Asia/Ho_Chi_Minh — GMT+7) Toàn Hệ Thống Backend & Admin-web (2026-09-26)
+- **1. Yêu cầu & Bối cảnh phát sinh:**
+  - Loại bỏ hoàn toàn sự phụ thuộc vào múi giờ UTC của hạ tầng máy chủ Cloud (Render, Linux, Docker) và múi giờ cục bộ của trình duyệt người quản trị.
+  - Khắc phục triệt để lỗi biểu đồ Dashboard hiển thị lệch 7 tiếng (~10:00 thay vì 17:47) và bảo đảm toàn bộ chu trình lập lịch, reset đếm ngược 30 ngày, thanh lọc dữ liệu định kỳ, bộ lọc báo cáo hoạt động chính xác 100% theo ngày lịch Việt Nam.
+- **2. Triển khai Kỹ thuật Backend:**
+  - `src/Backend/index.js` & `.env.example`: Thiết lập `process.env.TZ = process.env.TZ || 'Asia/Ho_Chi_Minh'` tại dòng đầu tiên và bổ sung `TZ=Asia/Ho_Chi_Minh` vào biến môi trường mẫu.
+  - `src/Backend/core/scheduler.service.js`:
+    + Viết lại `getMsUntilNextMidnightVietnam()` bằng `Intl.DateTimeFormat` múi giờ `Asia/Ho_Chi_Minh` để tính toán khoảng cách ms đến mốc 00:00:00 ngày tiếp theo tại Việt Nam, độc lập với múi giờ vật lý của máy chủ.
+    + Chu trình bảo trì hàng ngày (`runDailyMaintenanceRoutine`): Kích hoạt đúng 00:00:00 giờ Việt Nam để thực thi giảm đếm ngược 30 ngày tài khoản chờ xóa (`runDailyCountdownTask`), kích hoạt xóa mềm & ẩn danh hóa PII khi về 0 (`processFullSoftDelete`), thanh lọc mã OTP quá 24h (`runDailyOtpPurgeTask`), thanh lọc Refresh Token hết hạn/thu hồi quá 30 ngày (`runDailyRefreshTokenPurgeTask`).
+  - `src/Backend/modules/admin/admin.service.js`:
+    + Hàm `getVnTimeParts`: Bóc tách ngày giờ chuẩn Việt Nam bằng `Intl.DateTimeFormat`.
+    + Toàn bộ gom nhóm biểu đồ đăng nhập (`getLoginStats`), lưu lượng request (`getRequestStats`) dùng `getVnTimeParts(log.time_req)` để phân bổ vào đúng bucket giờ/ngày/tháng.
+    + Toàn bộ bộ lọc `resolveFilterContext` (`today`, `7days`, `1month`, `1year`, `customDate`, `customMonth`, `customYear`) tạo mốc ISO tường minh kèm offset `+07:00`.
+  - Kiểm thử hồi quy (`src/Backend/tests/unit/admin.stats.timezone.test.js`): Giả lập môi trường `TZ=UTC` kiểm chứng log 17:47 GMT+7 (10:47 UTC) rơi chính xác vào bucket 17:00 và phân bổ ngày chính xác 100%. Bộ kiểm thử Backend đạt **22/22 tests PASS (100%)**.
+- **3. Triển khai Kỹ thuật Admin-web (Frontend):**
+  - `src/Admin-web/src/utils/format.js`: Tích hợp plugin `utc` và `timezone` cho thư viện `dayjs`, thiết lập mặc định `dayjs.tz.setDefault('Asia/Ho_Chi_Minh')`. Cập nhật `formatDate`, `formatDateTime`, `formatRelativeTime` luôn định dạng theo giờ Việt Nam.
+  - `src/Admin-web/src/pages/dashboard/DashboardPage.jsx`:
+    + Hàm `getVnDateParts` và `formatActivityTime`: Định dạng sự kiện và so sánh `isToday` theo giờ Việt Nam.
+    + Khởi tạo state toàn cục (`customFilter`, `viewYear`, `viewMonth`, `isFutureDate`, `isFutureMonth`, `isFutureYear`) bám sát ngày lịch hiện tại tại Việt Nam.
+    + Real-time Socket `audit_activity`: Tìm đúng bucket giờ Việt Nam `hourKey` để cộng dồn lưu lượng thời gian thực.
+  - `src/Admin-web/src/components/common/UserDetailModal.jsx` & `AICopilotPage.jsx`: Hiển thị ngày tạo, ngày xóa và timestamp tin nhắn theo múi giờ `Asia/Ho_Chi_Minh`.
+  - Frontend Build: `rtk npm run build` thành công **100% (0 errors)**.
+
 
 
 

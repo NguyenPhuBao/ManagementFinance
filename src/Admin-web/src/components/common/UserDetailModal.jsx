@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import adminApi from '../../api/admin.api';
 import { USER_STATUS_LABELS } from '../../utils/constants';
+import { formatDateTime } from '../../utils/format';
 
 const UserDetailModal = ({ userId, onClose }) => {
   const [user, setUser] = useState(null);
@@ -98,10 +99,10 @@ const UserDetailModal = ({ userId, onClose }) => {
                   {user.delete_at && (
                     <RowItem 
                       label={user.status?.toLowerCase() === 'pendingdelete' ? 'Dự kiến xóa' : 'Thời điểm xóa'} 
-                      value={new Date(user.delete_at).toLocaleString('vi-VN')} 
+                      value={formatDateTime(user.delete_at)} 
                     />
                   )}
-                  <RowItem label="Ngày tạo" value={user.created_at ? new Date(user.created_at).toLocaleString('vi-VN') : '—'} isLast />
+                  <RowItem label="Ngày tạo" value={user.created_at ? formatDateTime(user.created_at) : '—'} isLast />
                 </div>
               </div>
             </div>

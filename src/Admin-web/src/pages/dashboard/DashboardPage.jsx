@@ -66,29 +66,47 @@ const getStatusBadge = (status) => {
   );
 };
 
+const getVnDateParts = (dateInput) => {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(d);
+  const p = {};
+  for (const part of parts) {
+    p[part.type] = part.value;
+  }
+  if (p.hour === '24') p.hour = '00';
+  return p;
+};
+
 const formatActivityTime = (item) => {
   if (!item) return 'Vừa xong';
   const rawTime = item.time_req || item.timeReq;
   if (!rawTime) return item.time || 'Vừa xong';
 
-  const date = new Date(rawTime);
-  if (isNaN(date.getTime())) return item.time || 'Vừa xong';
+  const vnParts = getVnDateParts(rawTime);
+  if (!vnParts) return item.time || 'Vừa xong';
 
-  const now = new Date();
+  const vnNow = getVnDateParts(new Date());
   const isToday =
-    date.getDate() === now.getDate() &&
-    date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear();
-
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
+    vnParts.year === vnNow.year &&
+    vnParts.month === vnNow.month &&
+    vnParts.day === vnNow.day;
 
   if (isToday) {
-    return `${hours}:${minutes}`;
+    return `${vnParts.hour}:${vnParts.minute}`;
   }
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  return `${hours}:${minutes} ${day}/${month}`;
+  return `${vnParts.hour}:${vnParts.minute} ${vnParts.day}/${vnParts.month}`;
 };
 
 const InteractiveLineChart = ({
@@ -329,38 +347,47 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 const DashboardPage = () => {
   const socket = useSocket();
   const [loading, setLoading] = useState(true);
-  const now = new Date();
+  const vnNow = getVnDateParts(new Date()) || {
+    year: String(new Date().getFullYear()),
+    month: String(new Date().getMonth() + 1).padStart(2, '0'),
+    day: String(new Date().getDate()).padStart(2, '0'),
+  };
+  const nowYear = parseInt(vnNow.year, 10);
+  const nowMonth = parseInt(vnNow.month, 10);
+  const nowDay = parseInt(vnNow.day, 10);
 
   // 1. Global Filter State: 'today' (Mặc định) | '7days' | '1month' | '1year' | 'custom'
   const [timeFilter, setTimeFilter] = useState('today');
   const [customFilter, setCustomFilter] = useState({
     mode: 'day', // 'day' | 'month' | 'year'
-    date: `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`,
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-    label: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
+    date: `${vnNow.year}-${vnNow.month}-${vnNow.day}`,
+    month: nowMonth,
+    year: nowYear,
+    label: `${vnNow.day}/${vnNow.month}/${vnNow.year}`,
   });
 
   // Date Picker Modal View State
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerTab, setPickerTab] = useState('day'); // 'day' | 'month' | 'year'
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
+  const [viewYear, setViewYear] = useState(nowYear);
+  const [viewMonth, setViewMonth] = useState(nowMonth);
 
   const MONTH_NAMES = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
                        'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
   const isFutureDate = (d, m, y) => {
-    const target = new Date(y, m - 1, d, 23, 59, 59);
-    return target.getTime() > now.getTime();
+    if (y > nowYear) return true;
+    if (y === nowYear && m > nowMonth) return true;
+    if (y === nowYear && m === nowMonth && d > nowDay) return true;
+    return false;
   };
 
   const isFutureMonth = (m, y) => {
-    return y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1);
+    return y > nowYear || (y === nowYear && m > nowMonth);
   };
 
   const isFutureYear = (y) => {
-    return y > now.getFullYear();
+    return y > nowYear;
   };
 
   // 2. Data State
@@ -542,12 +569,30 @@ const DashboardPage = () => {
         return currentPage;
       });
 
+      // Xác định đúng bucket index theo giờ Việt Nam thay vì luôn cộng vào phần tử cuối (23:00)
+      const findTargetBucketIdx = (timeline, format, timeReq) => {
+        if (!timeline || timeline.length === 0) return -1;
+        const d = timeReq ? new Date(timeReq) : new Date();
+        if (format === 'hour' || timeline.length === 24) {
+          const hourKey = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            hour: '2-digit',
+            hour12: false,
+          }).format(d);
+          const idx = timeline.findIndex((b) => b.key === hourKey);
+          return idx !== -1 ? idx : timeline.length - 1;
+        }
+        return timeline.length - 1;
+      };
+
       // Cập nhật real-time vào biểu đồ lưu lượng request
       setRequestStats((prev) => {
         if (!prev.timeline || prev.timeline.length === 0) return prev;
         const updated = [...prev.timeline];
-        const lastIdx = updated.length - 1;
-        updated[lastIdx] = { ...updated[lastIdx], count: updated[lastIdx].count + 1 };
+        const targetIdx = findTargetBucketIdx(updated, prev.format, data.time_req);
+        if (targetIdx !== -1) {
+          updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
+        }
         const counts = updated.map(u => u.count);
         const total = counts.reduce((a, b) => a + b, 0);
         const max = Math.max(...counts);
@@ -564,8 +609,10 @@ const DashboardPage = () => {
         setLoginStats((prev) => {
           if (!prev.timeline || prev.timeline.length === 0) return prev;
           const updated = [...prev.timeline];
-          const lastIdx = updated.length - 1;
-          updated[lastIdx] = { ...updated[lastIdx], count: updated[lastIdx].count + 1 };
+          const targetIdx = findTargetBucketIdx(updated, prev.format, data.time_req);
+          if (targetIdx !== -1) {
+            updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
+          }
           const counts = updated.map(u => u.count);
           const total = counts.reduce((a, b) => a + b, 0);
           const max = Math.max(...counts);
