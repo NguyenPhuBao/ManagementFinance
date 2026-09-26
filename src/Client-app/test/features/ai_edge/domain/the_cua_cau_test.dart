@@ -65,6 +65,14 @@ void main() {
         ['Tổng chi 2.141.000 đ']);
   });
 
+  test('⭐ thẻ nhận ra mục qua nhãn THAY THẾ, in nhãn CHÍNH (bẫy 4.47)', () {
+    final giaoDich = _Gia('tra_cuu', [soDem('Số giao dịch', 2, nhanKhac: const ['Số khoản'])]);
+    final hoaDon2 = _Gia('hoa_don', [soDem('Quá hạn', 2)]);
+    expect(theCuaCau('Có 2 khoản thu.', [hoaDon2, giaoDich]), ['Số giao dịch 2'],
+        reason: 'cùng giá trị 2 ở gói hoá đơn đứng TRƯỚC — không có nhãn thay thế '
+            'thì thẻ rơi về "Quá hạn 2" (bẫy 4.27), nói về một đại lượng khác hẳn câu');
+  });
+
   test('câu không có số thì không thẻ', () {
     expect(theCuaCau('Bạn đang chi tiêu đúng nhịp.', [phanTich]), isEmpty);
   });

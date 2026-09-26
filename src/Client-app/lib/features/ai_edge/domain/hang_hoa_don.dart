@@ -9,6 +9,7 @@ import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'loi_tham_so.dart';
 
 const List<String> kTrangThaiHoaDon = ['qua_han', 'chua_tra', 'da_tra', 'tat_ca'];
 const String kTrangThaiHoaDonMacDinh = 'chua_tra';
@@ -27,9 +28,7 @@ KetQuaCongCu hangHoaDon(
   String trangThai = kTrangThaiHoaDonMacDinh,
 }) {
   if (!kTrangThaiHoaDon.contains(trangThai)) {
-    return KetQuaCongCu.loi(
-      'trang_thai "$trangThai" không hợp lệ. Chỉ nhận: ${kTrangThaiHoaDon.join(', ')}.',
-    );
+    return tuChoiGiaTri('trang_thai', trangThai, kTrangThaiHoaDon);
   }
   final tom = summarizeBills(bills, now);
 

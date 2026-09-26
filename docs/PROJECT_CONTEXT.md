@@ -594,7 +594,25 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-25)
+
+### 🔀 Gộp `main` @ `c47e6e2` (2026-09-25) — bảng 10 chức năng AI của NPBao
+
+Commit gộp `4f37653`, không xung đột, chỉ 5 tệp tài liệu backend (`Project.md` §8.5 + §11.42, `docs/AI/LogicBusinessAI.md`,
+`AI_ARCHITECTURE_DIAGRAM.md` mới, `Classify.md` §1.3, `ORC.md`). Client soát bằng mã và gửi đơn
+`superpowers/backend/CAN-LAM/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` — người dùng chốt: chatbot backend **vẫn làm**,
+còn mâu thuẫn với F1 (kết quả function-calling, ảnh OCR **không che**, tầng 3 đều gửi dữ liệu cá nhân sang Gemini)
+**để backend quyết**. Ba kết luận phía client, **không đổi mã**:
+
+- **Phân loại T2 (Jaccard của `nlp.matcher.js`) KHÔNG đưa lên client.** Đo với bộ từ khoá thật của tài khoản 10: ở 11 ghi
+  chú mà T1 im, T2 đoán thêm 3 và **sai 2** — *"đi chợ" → Cho vay* ("chợ" bỏ dấu thành "cho"), *"tiền nước" → Nhà cửa*.
+  CSDL thật chỉ có **1** ghi chú do người dùng tự gõ nên không đo được quy mô lớn. T1 vốn đã chạy ở
+  `CategorySuggestionEngine`.
+- **OCR và khử trùng lặp chưa làm được ngay**: `.env` dev không có `GEMINI_API_KEY` (endpoint luôn 500
+  `CONFIG_MISSING`), chưa có màn Stitch, và chống quét trùng cần mở `provider`/`bank_tran_id` qua đồng bộ — trái quy tắc
+  4 hiện hành. Dedup không có nguồn dữ liệu nào khác (SMS không đọc, ngân hàng đã bỏ).
+- **Sức khoẻ tài chính (chức năng 7)**: client đề nghị backend tự tính từ PostgreSQL; nếu giữ lối *client đóng gói* thì
+  cần schema từng trường trước, và 50/30/20 cần nhãn thiết yếu/mong muốn mà cả hai đầu chưa có.
 
 ### 📋 Thứ tự làm việc mới sau cổng C (người dùng duyệt 2026-09-23 tối)
 
@@ -603,9 +621,31 @@ bỏ, chặng 6 là việc backend), nên người dùng duyệt một thứ t�
 trước, thêm tính năng sau* và *ưu tiên giá trị người dùng*: **1a** ✅ số thu/chi Trang chủ ·
 **1b** ✅ canary cho phiên có tool · **1c** ✅ tên đối tượng có chữ số qua được lớp chắn *(thêm vào
 thứ tự tối muộn cùng ngày — lượt soát trước bước 2 đo ra nó là lỗi đang chạy)* · **2** hai tool đọc còn lại của đơn đặt hàng cổng B + tool tìm
-giao dịch + phép đo 20 câu lệnh · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
+giao dịch + phép đo 20 câu lệnh *(✅ spec đã duyệt —
+`superpowers/specs/2026-09-23-buoc-2-ba-tool-doc-tim-giao-dich-design.md`, viết tối muộn 2026-09-23, ba chỗ
+thêm lúc viết duyệt ở phiên sau (mục 1.2 hàng 11–13); mã xong task 1–8 của kế hoạch 9 task,
+`BoCongCu` **bảy** tool; spike Realme đo bảy khai báo vượt trần 2048 nên `maxTokens` nay **4096** (RAM đỉnh
++0,71 GiB, vượt ngưỡng 0,5 GB — người dùng duyệt); 🛑 **cổng D chưa đạt** lần đo 1 ngày 2026-09-24 — nhóm C
+13/20 tool · 5/20 tham số, nhóm A tụt (7/8), 5 câu SAI (mục 9.17 `AI_EDGE_FEATURE.md`); hướng sửa đã chốt 2026-09-24 — spec bước 2b
+`superpowers/specs/2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md`, đã duyệt, kế hoạch 10 task —
+✅ **mã xong 2026-09-24** (`5357209` → `e0e4a98`: lượt bị từ chối thôi là đã tra cứu → mẫu câu trung thực L1b /
+L2b · giá trị giữ chỗ = không lọc · `ky` của `tim_giao_dich` bắt buộc + `moi_luc` · mô tả tool mới), 🛑 **cổng D
+lần 2 vẫn chưa đạt** cùng ngày (mục 9.18): năm câu SAI của lần 1 hết SAI, nhóm A 8/8, nhưng nhóm C **tụt** còn
+10/20 tool · 4/20 tham số, và 1 câu SAI mới (bẫy 4.44 — tham số thừa làm hẹp bộ lọc); đòn bẩy kế tiếp (đổi tên
+`chi_tieu_theo_ky`) chờ người dùng quyết. ✅ **Bước 2c mã xong 2026-09-24 chiều** (`1301de9` → `5b7b7f4`; spec
+`superpowers/specs/2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`): `khopTheoTen` bậc ba
+đọc `_` là dấu cách; lượt `tim_giao_dich` 0 khoản là báo cáo về bộ lọc — cổng hiện chữ đóng, mẫu câu nêu bộ lọc,
+nhánh L2c. 🛑 **Cổng D lần 3 vẫn chưa đạt nhưng SAI = 0** (mục 9.19): hai bẫy đóng, lời gọi tool y hệt lần 2
+(10/20 · 5/20) — đòn bẩy vẫn là đổi tên `chi_tieu_theo_ky`, chờ người dùng quyết; bẫy mới 4.46. ✅ **Đổi tên
+tool cùng chiều** (`61f66ba`): `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky`, mô tả giữ nguyên — 🛑 **cổng D lần 4 vẫn
+chưa đạt** (mục 9.20): tool 13/20 · 6/20 nhưng SAI 2 (bẫy 4.42 hết "chặn do may": *"một triệu"* viết bằng chữ), bẫy
+mới 4.47 (nhãn *Số khoản* ≠ chữ "giao dịch" của mô hình). Đổi nhãn đếm thành *Số giao dịch* (`a68a842`) — cổng D
+lần 5 (mục 9.21) y hệt lần 4: bẫy 4.47 chỉ đổi chỗ (C5, C17 hiện, C8 lại bị chặn), gốc là `kiemNhan` cần nhãn có
+từ đồng nghĩa — ✅ **mã xong** (`235d11f`, mục 9.22: `SoLieu.nhanKhac`, `nhanKhopAmTiet` dùng chung cho `kiemNhan`
+và `theCuaCau`) — ✅ **đo lần 6 tối cùng ngày** (mục 9.23): bẫy 4.47 **đóng**, 33/34 câu y hệt lần 5, chỉ C8 lên bậc chữ mô hình; 🛑 cổng D **vẫn chưa đạt** — 13/20 · 6/20, nội dung đúng 8/20, SAI 2 (4.42); người dùng chọn 4.42 — ✅ **đóng trọn ba commit** (`b43d5ae` số viết bằng chữ + `SoLieu.nhanXungDot`; `6ca112f` xét trên câu đã bỏ tên; `986307c` nhãn chiều cho hàng `tim_giao_dich`), lần đo 7 lộ hai lỗi thật (*Chi khác* · *Kiem thu hoa don*), lần đo 8 (rạng sáng 25/09, mục 9.24) **SAI = 0**, 31/34 câu y hệt lần 6, tool y hệt bốn lần liền; 🛑 cổng D vẫn chưa đạt dòng 2–3 — người dùng chọn mô tả tool → ✅ **lát định tuyến** (`5ee1a37`, mục 9.25: ví dụ định tuyến trong lời hệ thống — lật "không few-shot" của 4b, `tim_giao_dich` lên đầu, mô tả thu hẹp), lần đo 9 (rạng sáng 25/09): tool **18/20** ✅, nội dung đúng 12/20, SAI 0, ĐC3 đạt lần đầu, nhưng tham số **9/20** ✗ (thiếu `chieu` · tên danh mục/ví vào `tu_khoa` · ngưỡng/kỳ) và B3 tụt; người dùng chọn ví dụ điền tham số → ✅ (`8a4782b`, mục 9.26), lần đo 10 chỉ 13 câu chưa đạt: gộp **B 3/4 ✅ lần đầu**, tool 19/20, tham số 13/20, nội dung 13/20, nhưng **SAI 1 — bẫy mới 4.48** (B1 nêu tên bịa "mua nhà", câu không số lọt ba lớp chắn); người dùng chọn lớp chắn tên → ✅ `kiemTen` (`ec13fdf`, mục 9.27) — lần đo 11 (8 câu) B1 bị bắt, **SAI 0**, gộp A 8/8 · B 3/4 · tool 19/20 · tham số 13/20; người dùng chọn chắn ở tầng mã → ✅ **bộ chỉnh tham số theo câu hỏi** (`chinh_tham_so.dart`, bốn commit tới `9de2d82`, mục 9.28): tham số 13 → 19/20, **cổng D ĐẠT cả năm dòng** gộp lần 13 (Realme, 34 câu) + lần 14 (OnePlus, 3 câu), SAI 0; ⚠️ chưa có mốc sạch một máy với bản cuối, ba lỗi của bộ chỉnh lộ qua ba lần đo, dữ liệu đổi trong đêm 25/09; **việc kế tiếp**: mốc sạch trên OnePlus rồi **bộ câu hỏi mới** để kiểm tổng quát — thứ tự ở cuối mục 9.28)* · **3** nhập giao dịch bằng câu · **4** tạo hoá đơn · mục tiêu ·
 ngân sách bằng lệnh · **5** gắn danh mục hàng loạt · **6** giọng nói, chụp hoá đơn. Bảng đầy đủ
-kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (gitignore). ⚠️ Bước 3–4
+kèm lý do ở **đầu** `superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` (thư mục `plans/` bị gitignore
+nhưng tệp này **được theo dõi** từ `bdf0f81` — câu cũ ở đây ghi "(gitignore)"). ⚠️ Bước 3–4
 là **chiều ghi** và **đổi bất biến ④** của `AI_AGENT_ARCHITECTURE.md` (*"không tool nào ghi"* →
 *"không tool nào ghi thẳng — chỉ trả đề xuất để người dùng duyệt"*): cần brainstorm, spec, màn
 Stitch và người dùng duyệt trước khi viết mã.
@@ -629,8 +669,9 @@ số, nên tên có dấu gạch (`Điện/Nước`) cũng khớp được. Bẫ
 
 **Test:** 18 ca ở 7 tệp đã có; 11 bản sai có chủ ý, bản nào cũng bị bắt. Ba lớp giả `implements
 GoiSo` trong test đổi sang `extends` vì `GoiSo` thêm getter. Trọn bộ **3603/3603** (3 skip), analyze
-**26**. Schema, payload, `pubspec` không đổi. ⚠️ **Chưa đo trên máy thật** (không cắm điện thoại) —
-đo ở buổi đo bước 2, thêm một câu về hoá đơn có chữ số vào bộ hồi quy.
+**26**. Schema, payload, `pubspec` không đổi. ✅ **Đo Realme 2026-09-24** ở buổi đo cổng D (mục 9.16
+`AI_EDGE_FEATURE.md`): câu A13 nêu tên `di h0c` và câu **hiện** — trước 1c câu ấy rơi về mẫu câu; câu đo
+riêng của 1c lệch câu hỏi (trả tổng còn phải trả, không nêu tên) — không phải lớp chắn chặn.
 
 ### ✅ Bước 1b — canary cho phiên có tool, lối B (2026-09-23 tối)
 

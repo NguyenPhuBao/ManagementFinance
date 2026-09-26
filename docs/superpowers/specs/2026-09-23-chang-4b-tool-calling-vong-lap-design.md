@@ -17,6 +17,22 @@ kết quả lát 4a (*"Đo lại sau chặng 4a"* ở cuối mục ấy, và m�
 > có thể là markdown. Và mục **3.6** đoán sai một điều: *"trước khi có hàng, chữ bị bỏ"* đúng, nhưng
 > giá của L1 trên Realme là **~23 s** cho một câu chào (vứt câu mô hình rồi sinh lại ở bậc 1).
 >
+> ⚠️ **Vế *"hay từ chối tham số"* của chốt L1 (mục 3.3 `daTraCuu`, mục 3.6) ĐÃ BỊ LẬT ở bước 2b**
+> (`1d21b24`, `eeac28f`, 2026-09-24) — spec `2026-09-24-buoc-2b-tu-choi-giu-cho-mo-ta-tool-design.md`.
+> Cổng D lần 1 đo được E2B đọc lời từ chối thành *"không có dữ liệu"* (bẫy **4.40**): lượt bị từ chối
+> không phải dữ liệu, nên nay **không** còn tính là đã tra cứu; mọi lời gọi bị từ chối thì hiện mẫu câu
+> trung thực (**L1b**), không rơi về bậc 1; còn lời từ chối chưa gỡ (gỡ theo tham số) thì chữ mô hình
+> không hiện (**L2b**). Cổng hiện chữ của vòng lặp nay là `choHienChuMoHinh`, không phải `daTraCuu`.
+> ⚠️ **Vế *"tool trả 0 hàng vẫn tính là đã chạy"* có NGOẠI LỆ từ bước 2c** (`da9b41b`, `f0d639d`, 2026-09-24 —
+> spec `2026-09-24-buoc-2c-luot-rong-theo-bo-loc-va-ten-snake-case-design.md`): với `tim_giao_dich` (lọc bằng chữ
+> tự do), 0 khoản vẫn là đã tra cứu nhưng **đóng** cổng hiện chữ và không bao giờ gỡ — app hiện mẫu câu nêu bộ lọc
+> (**L2c**), vì mô hình dịch câu hỏi thành bộ lọc sai và "0 khoản" khi ấy trả lời một câu người dùng không đặt
+> (bẫy 4.44). Tool lọc bằng mã kỳ / trạng thái thì 0 hàng vẫn là dữ liệu thật như spec này viết.
+> ⚠️ **Tool `chi_tieu_theo_ky` đổi tên thành `tong_ket_thu_chi_ky`** 2026-09-24 chiều (`61f66ba`, mục **9.20**
+> `AI_EDGE_FEATURE.md`) — bốn tên tool của spec này là tên lúc viết; hằng Dart nay là `kTenCongCuTongKet`.
+> Vế *"tool trả 0 hàng vẫn là đã tra cứu"* giữ nguyên — ⚠️ nhưng cổng D lần 2 (mục **9.18**
+> `AI_EDGE_FEATURE.md`, bẫy **4.44**) cho thấy vế ấy chỉ đúng khi **bộ lọc khớp câu hỏi**.
+>
 > *(Banner giữa ngày, giữ làm lịch sử:)* Task 1–4 (`0c9ca1e` → `87ef4f3`) và 5a (`21389ea`, hàng
 > hoá đơn) khi ấy chưa nối vào màn nào. Với gói cũ, engine **sập native** ở mọi phiên có
 > tool trên **cả hai máy** — Realme 3/3 (`SIGSEGV`), OnePlus 13R 2/2 (`SIGBUS`) — trong
@@ -208,7 +224,9 @@ Message.text(text: cauHoi, isUser: true))`; `sinhLuot()` bọc `generateChatResp
 ### 3.4 Bốn tool
 
 Tên tool là ASCII `snake_case` (định danh cho mô hình); **mô tả tiếng Việt nêu thẳng câu hỏi kiểu
-nào thì gọi** — đó là thứ duy nhất dẫn E2B chọn đúng (không có few-shot ở bậc tool). Mỗi tool trả
+nào thì gọi** — đó là thứ duy nhất dẫn E2B chọn đúng (không có few-shot ở bậc tool). *(⚠️ Lật ngày 2026-09-25: câu
+này là giả định chưa đo — cổng D lần 4–8 sáu câu có điều kiện gọi sai tool bốn lần liền dù mô tả chéo đã dặn, và
+**ví dụ định tuyến** trong lời hệ thống mới là thứ lật được: tool 13 → 18/20 — mục 9.25 `AI_EDGE_FEATURE.md`.)* Mỗi tool trả
 **tối đa `kToiDaMucMoiGoi` = 4 hàng**, xếp theo thứ tự đáng chú ý (quá hạn trước · âm trước · tỉ lệ
 cao trước · chi nhiều trước) — mô hình đọc từ trên xuống.
 
@@ -306,7 +324,8 @@ nó về đúng ca "đã có dữ liệu thật trước mắt mô hình".
 Chỉ dẫn đi bằng `systemInstruction` native (tham số `createChat` đã có), ngắn: vai trợ lý tài chính;
 *chưa tra cứu thì gọi công cụ*; *chỉ dùng tên và số do công cụ trả về, chép nguyên chuỗi*; *không
 có thì nói rõ là không có*; *trả lời tiếng Việt, dưới 60 từ*. Tin người dùng = câu hỏi trần. **Không
-few-shot** ở bậc tool. Bậc 1 (nhánh lùi) giữ nguyên `promptHoiDap`.
+few-shot** ở bậc tool *(⚠️ lật 2026-09-25 — `kPromptHeThongCongCu` nay có ví dụ định tuyến, không chữ số; mục 9.25
+`AI_EDGE_FEATURE.md`)*. Bậc 1 (nhánh lùi) giữ nguyên `promptHoiDap`.
 
 **Token — đo trước, nới sau.** Ước lượng (chưa đo): bốn khai báo tool ~400–600 token (runtime dựng
 từ `tools_json`), mỗi hàng ~30–40, trả lời ≤ 300 (`tranToken`). Dưới trần 2048 **trên giấy**. Task 1

@@ -59,11 +59,68 @@ void main() {
   });
 
   test('từ chối tham số lạ: không hàng, không tổng hợp, chỉ lời nói vì sao', () {
-    const kq = KetQuaCongCu.loi('ky "hom_qua" không hợp lệ');
+    const kq = KetQuaCongCu.loi('ky "hom_qua" không hợp lệ',
+        choNguoiDung: 'chưa hiểu khoảng thời gian trong câu hỏi', thamSoGo: ['ky']);
     expect(kq.hang, isEmpty);
     expect(kq.tongHop, isEmpty);
     expect(kq.json, {'loi': 'ky "hom_qua" không hợp lệ'},
         reason: 'Không có khoá "hang" rỗng: mô hình đọc `{}` rỗng là "không có '
             'gì" trong khi thật ra là "tham số sai" — hai câu trả lời khác nhau.');
+  });
+
+  test('tenLienQuan KHÔNG vào json — tên đã có trong trang_thai / loi (bước 2)', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: [], tenLienQuan: ['test1']);
+    expect(kq.json.containsKey('tenLienQuan'), isFalse);
+    expect(kq.json, isEmpty);
+    const tuChoi = KetQuaCongCu.loi('danh_muc "x" không khớp.',
+        choNguoiDung: 'không có danh mục nào tên "x"', thamSoGo: ['danh_muc'], tenLienQuan: ['Ăn uống']);
+    expect(tuChoi.tenLienQuan, ['Ăn uống']);
+    expect(tuChoi.json, {'loi': 'danh_muc "x" không khớp.'});
+  });
+
+  test('⭐ câu cho người dùng và tham số gỡ KHÔNG vào json — mô hình chỉ thấy loi (bước 2b)', () {
+    const kq = KetQuaCongCu.loi('vi "x" không khớp tên nào.',
+        choNguoiDung: 'không có ví nào tên "x"', thamSoGo: ['vi']);
+    expect(kq.json, {'loi': 'vi "x" không khớp tên nào.'});
+    expect(kq.choNguoiDung, 'không có ví nào tên "x"');
+    expect(kq.thamSoGo, ['vi']);
+  });
+
+  test('⭐ bộ lọc dội lại (bước 2c): soLieuBoLoc vào json y như tongHop; boLoc và rongTheoBoLoc KHÔNG vào', () {
+    final kq = KetQuaCongCu(
+      hang: const [],
+      tongHop: [soDem('Số giao dịch', 0)],
+      soLieuBoLoc: [soTien('Đến', 1000000)],
+      boLoc: const ['ghi chú chứa "chi"', 'đến 1.000.000 đ'],
+      rongTheoBoLoc: true,
+      chuThem: const {'ky': 'tháng này'},
+    );
+    expect(
+      kq.json,
+      {'Số giao dịch': '0', 'Đến': '1.000.000 đ', 'ky': 'tháng này'},
+      reason: 'JSON gửi mô hình KHÔNG đổi so với khi Từ/Đến còn ở tongHop — mô hình vẫn '
+          'thấy khoảng đã hiểu; boLoc chứa chữ số nên không được lọt vào JSON',
+    );
+    expect(kq.rongTheoBoLoc, isTrue);
+    expect(kq.boLoc, hasLength(2));
+  });
+
+  test('mặc định không rỗng theo bộ lọc, không bộ lọc; lời từ chối cũng vậy', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: []);
+    expect(kq.rongTheoBoLoc, isFalse);
+    expect(kq.boLoc, isEmpty);
+    expect(kq.soLieuBoLoc, isEmpty);
+    const tc = KetQuaCongCu.loi('x', choNguoiDung: 'y', thamSoGo: ['ky']);
+    expect(tc.rongTheoBoLoc, isFalse);
+    expect(tc.boLoc, isEmpty);
+    expect(tc.soLieuBoLoc, isEmpty);
+    expect(tc.json, {'loi': 'x'});
+  });
+
+  test('kết quả THÀNH CÔNG không mang câu từ chối hay tham số gỡ', () {
+    const kq = KetQuaCongCu(hang: [], tongHop: []);
+    expect(kq.loi, isNull);
+    expect(kq.choNguoiDung, isNull);
+    expect(kq.thamSoGo, isEmpty);
   });
 }

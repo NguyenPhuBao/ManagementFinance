@@ -84,4 +84,20 @@ void main() {
       );
     });
   });
+
+  group('soNgayThang (bước 2)', () {
+    final now = DateTime(2026, 9, 23);
+
+    test('cùng năm với now: dd/MM, loại ngayThang, soTho yyyyMMdd, mang tên', () {
+      final s = soNgayThang('Ngày', DateTime(2026, 9, 5), ten: 'Ăn uống', now: now);
+      expect(s.chuoi, '05/09');
+      expect(s.loai, LoaiSo.ngayThang);
+      expect(s.soTho, 20260905);
+      expect(s.ten, 'Ăn uống');
+    });
+
+    test('khác năm của now: thêm /yyyy — thiếu năm là sai nghĩa', () {
+      expect(soNgayThang('Ngày', DateTime(2025, 12, 28), now: now).chuoi, '28/12/2025');
+    });
+  });
 }

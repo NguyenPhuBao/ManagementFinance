@@ -195,6 +195,16 @@ void main() {
               'DỊCH, không phải tên danh mục.');
     });
 
+    test('mục Chi theo danh mục khai xung đột "Thu" (bẫy 4.42) — cùng khuôn hàng tool tổng kết', () {
+      final g = GoiSoPhanTich.tu(_tk(danhMuc: [dm('Ăn uống', 800000)]));
+      final chi = g.soLieu.where((s) => s.nhan == 'Chi').toList();
+      expect(chi, isNotEmpty);
+      expect(chi.map((s) => s.nhanXungDot).toSet(), {
+        ['Thu']
+      });
+      expect(g.soLieu.where((s) => s.ten == null).every((s) => s.nhanXungDot.isEmpty), isTrue);
+    });
+
     test('danh mục chi nhiều nhất đứng đầu', () {
       final g = GoiSoPhanTich.tu(_tk(danhMuc: [
         dm('Ăn uống', 800000),

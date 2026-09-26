@@ -13,6 +13,11 @@
 > *"Chặng 2"* ở đây là **P3**, ở tệp kia là **function calling**; *"chặng 4"* ở đây là
 > **tool-calling**, ở tệp kia là **P3**. Bảng đối chiếu đầy đủ nằm ở đầu tệp kia.
 >
+> ⚠️ **Tên CỔNG cũng trùng** (ghi 2026-09-24): *"cổng D"* ở tệp này là cổng **RAG client của chặng
+> 5** — chặng ấy đã bỏ, nên cổng ấy không còn. Từ 2026-09-23, *"cổng D"* ở mọi tài liệu khác (spec
+> bước 2, mục **9.17** `docs/AI_EDGE_FEATURE.md`, `CLAUDE.md`) là **phép đo 20 câu lệnh của bước 2** —
+> một cổng khác hẳn. Đạt cổng D của bước 2 **không** làm câu *"có áp dụng RAG"* thành đúng.
+>
 > **Trạng thái 2026-09-23 (chiều):** chặng 1 ✅ · chặng 2 ✅ (P3 xong 10/10 task) · chặng 3 ✅ ·
 > chặng 4 ✅ (**cổng C đạt**, xem 4b bên dưới) · chặng 5 🛑 bỏ · → phía client **đã đi hết lộ
 > trình này**; việc tiếp theo theo mục *"THỨ TỰ … chốt lại 2026-09-23"* ở đầu
@@ -208,7 +213,7 @@ client thích hơn vì corpus cập nhật được mà không phải phát hàn
 Phần dưới **giữ nguyên làm hồ sơ thiết kế** — đọc nếu có ngày quyết định ấy được mở lại (chẳng
 hạn khi có mô hình embedding đa ngữ **không gated** ở định dạng LiteRT).
 
-## ~~Chặng 5~~ — RAG client: `traCuuKienThuc` (cổng D)
+## ~~Chặng 5~~ — RAG client: `traCuuKienThuc` (cổng D — ⚠️ không phải cổng D của bước 2, xem bẫy tên ở đầu tệp)
 
 **Kế hoạch chi tiết: VIẾT SAU SPIKE** (chặng 1 Task 6) — vì tên/dung lượng mô hình embedding, và
 API thật của `flutter_gemma_rag_sqlite`, chỉ biết sau khi đo.
@@ -249,7 +254,7 @@ Không còn gì phải chờ ở mâu thuẫn ①.
 | "Có guardrail chống diễn giải sai" | chặng 1 | Task 1 xanh + P3 nối |
 | "Dùng Edge AI / SLM on-device" | **cổng A** | arm64 đã tải mô hình; máy ảo luôn rơi về mẫu |
 | "Là AI Agent" | ✅ **cổng C — đạt 2026-09-23** | bốn tool **chỉ đọc**, trần 3 lời gọi; arm64 đã tải mô hình (máy ảo rơi về mẫu) |
-| "Có áp dụng RAG" | **cổng D** (client) hoặc chặng 6 (server) | theo M4 |
+| "Có áp dụng RAG" | ~~cổng D (client)~~ — chặng 5 đã bỏ; nay chỉ còn chặng 6 (server) | theo M4 · ⚠️ *"cổng D"* của bước 2 là cổng khác, **không** làm câu này đúng |
 | "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | chặng 6 chốt (A) | NPBao |
 
 ## Lịch dự kiến
@@ -262,7 +267,7 @@ Không còn gì phải chờ ở mâu thuẫn ①.
 | 27/09 sáng | Chặng 3 → **cổng B** |
 | 27/09 chiều | Viết kế hoạch chặng 4 (và chặng 5 nếu M4 = có) |
 | 28–29/09 | Chặng 4 → **cổng C** |
-| 30/09–01/10 | Chặng 5 → **cổng D** |
+| 30/09–01/10 | ~~Chặng 5 → cổng D~~ (chặng 5 đã bỏ) |
 
 ⚠️ Lịch giả định máy thật nối được ngay. Kiểm `adb devices` **ngày 22/09**, không phải 23.
 

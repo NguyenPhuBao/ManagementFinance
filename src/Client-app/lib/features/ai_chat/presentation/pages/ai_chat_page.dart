@@ -21,9 +21,10 @@
 /// đã kiểm) và dừng; chưa câu nào thì hiện câu lùi "chưa chắc".
 ///
 /// **Bậc tool** (chặng 4b, 2026-09-23): câu hỏi đi qua `hoiBangCongCu` — mô hình
-/// chọn một trong bốn tool đọc, hàng trả về tích luỹ vào `GoiSoTraCuu`, câu cuối
-/// kiểm trên chính gói ấy. Mô hình không gọi tool nào (`KhongTraCuu`) thì màn rơi
-/// về bậc 1 — đường sáu gói dựng sẵn ở `_luongBac1` — im lặng.
+/// chọn một trong các tool đọc của `BoCongCu` (bốn từ chặng 4b, bảy từ bước 2),
+/// hàng trả về tích luỹ vào `GoiSoTraCuu`, câu cuối kiểm trên chính gói ấy. Mô
+/// hình không gọi tool nào (`KhongTraCuu`) thì màn rơi về bậc 1 — đường sáu gói
+/// dựng sẵn ở `_luongBac1` — im lặng.
 library;
 
 import 'package:flutter/material.dart';

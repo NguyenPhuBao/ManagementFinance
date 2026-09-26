@@ -92,6 +92,22 @@ void main() {
       );
     });
 
+    test('⭐ lớp thứ tư kiemTen đã NỐI: câu không số nêu tên bịa bị chặn (bẫy 4.48, B1 lần 10)', () {
+      final mucTieu = _Gia('tra_cuu', [
+        soTien('Còn thiếu', 899000, ten: 'MuaXe'),
+        soTien('Còn thiếu', 4000000, ten: 'MuaDT'),
+      ], MucNhanXet.binhThuong);
+      expect(
+        kiemCauTraLoi('Bạn có thể đặt mục tiêu mua xe hoặc mua nhà.', [mucTieu]),
+        isFalse,
+        reason: 'Ba lớp cũ cho qua (không số, không nhãn, giọng thường) — chỉ kiemTen bắt',
+      );
+      expect(
+        kiemCauTraLoi('Bạn có hai mục tiêu "MuaXe" và "MuaDT".', [mucTieu]),
+        isTrue,
+      );
+    });
+
     test('phủ định trong ba từ đảo nghĩa cụm — luật của kiemGiong giữ nguyên',
         () {
       expect(
