@@ -1,9 +1,10 @@
-﻿import LoginPage from '../pages/auth/LoginPage';
+import LoginPage from '../pages/auth/LoginPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import CategoryPage from '../pages/categories/CategoryPage';
 import UserListPage from '../pages/users/UserListPage';
 import UserDetailPage from '../pages/users/UserDetailPage';
+import AICopilotPage from '../pages/ai/AICopilotPage';
 
 const routes = [
   // Public routes
@@ -21,6 +22,10 @@ const routes = [
   {
     path: '/dashboard',
     element: <DashboardPage />,
+  },
+  {
+    path: '/ai-copilot',
+    element: <AICopilotPage />,
   },
   {
     path: '/categories',
