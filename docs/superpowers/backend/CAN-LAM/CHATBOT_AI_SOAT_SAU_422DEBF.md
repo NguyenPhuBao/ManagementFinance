@@ -22,6 +22,17 @@ sửa, nên xin `grep` theo cụm chữ.
 | `docs/AI/ChatbotAI_Moblie.md` | dòng 40, 45–64, 194 | 3 |
 | `docs/AI/AI_ARCHITECTURE_DIAGRAM.md` | dòng 87, 98 | 5 |
 | `docs/superpowers/backend/DA-XONG/README.md` | dòng 84 | 6 |
+| `docs/Deploy/CloudDeploy.md` | chỗ nói `npm install` (đề nghị ghi thêm một câu) | 7.6 |
+
+**Tài liệu backend để trả lời mục 8** (năm chỗ đơn `DA-XONG/CLIENT_BO_LIEN_KET_NGAN_HANG.md` từng xin sửa):
+
+| Tệp | Chỗ |
+|---|---|
+| `Project.md` | dòng 992 (bảng A3), 1074–1075 (bảng B12) |
+| `docs/progress/Client-app.md` | mục 3 *"Module Bank & Quy Trình Duyệt Giao Dịch Ngân Hàng"* và mười ba dòng lẻ (liệt kê ở mục 3.1 của đơn cũ) |
+| `docs/Rule_Project/Rule_project.md` | dòng 342–344, 483–492, 666 |
+| `docs/progress/Backend.md` | dòng 60, 75 |
+| `docs/Bank/Client-app.md` | cả tệp (đơn cũ đề nghị một banner) |
 
 **Mã backend làm bằng chứng (chỉ đọc):**
 
