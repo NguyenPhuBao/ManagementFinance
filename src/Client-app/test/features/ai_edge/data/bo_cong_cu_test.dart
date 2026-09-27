@@ -148,10 +148,10 @@ void main() {
   // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
   // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
   // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
-  // ⚠️ 2026-09-27 sau tool truy vấn + chon ngân sách: 5633 ký tự — vượt 5491, ca
-  // tạm skip theo Task 9 của kế hoạch cho tới khi spike Realme (Task 10) đặt lại số.
-  const kTranToolsJsonDaDo = 5491;
-  test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', skip: 'đo lại Realme — Task 10 (5633 > 5491)', () {
+  // Đo lại 2026-09-27 sau tool truy vấn + chon ngân sách (Realme, 6 tool, lời hệ
+  // thống 2293 ký tự, câu C7 → truy_van_giao_dich đúng tham số, 0 FAILED_PRECONDITION): 5633.
+  const kTranToolsJsonDaDo = 5633;
+  test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
