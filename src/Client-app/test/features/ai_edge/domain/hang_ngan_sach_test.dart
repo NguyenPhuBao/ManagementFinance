@@ -90,6 +90,50 @@ void main() {
     expect(kq.loi, isNull);
   });
 
+  group('chon (spec tool truy vấn mục 4, E18)', () {
+    final bon = [
+      _ns(id: 'gd', ten: 'Giáo dục', amount: 50000, spent: 45000),
+      _ns(id: 'dc', ten: 'Di chuyển', amount: 450000, spent: 355000),
+      _ns(id: 'au', ten: 'Ăn uống', amount: 500000, spent: 50000),
+      _ns(id: 'ms', ten: 'Mua sắm', amount: 850000, spent: 60000),
+    ];
+    test('⭐ duoi_nua → chỉ hàng < 50 %, căng hơn trước; Số ngân sách khớp = 2, Số ngân sách = 4', () {
+      final kq = hangNganSach(bon, now: now, chon: 'duoi_nua');
+      expect(kq.hang.map((h) => h.ten).toList(), ['Ăn uống', 'Mua sắm'],
+          reason: 'E18 lần đo 15: mô hình liệt kê Giáo dục 90 % cho câu "chưa dùng đến một nửa"');
+      expect(kq.json['Số ngân sách khớp'], '2');
+      expect(kq.json['Số ngân sách'], '4');
+      expect(kq.boLoc, ['đã dùng dưới một nửa']);
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+    test('tren_nua → ≥ 50 %', () {
+      expect(hangNganSach(bon, now: now, chon: 'tren_nua').hang.map((h) => h.ten).toList(),
+          ['Giáo dục', 'Di chuyển']);
+    });
+    test('nhieu_nhat / it_nhat → một hàng', () {
+      expect(hangNganSach(bon, now: now, chon: 'nhieu_nhat').hang.single.ten, 'Giáo dục');
+      expect(hangNganSach(bon, now: now, chon: 'it_nhat').hang.single.ten, 'Mua sắm');
+    });
+    test('lọc ra 0 hàng → rongTheoBoLoc, tổng hợp vẫn có (Tổng còn lại của MỌI ngân sách)', () {
+      final kq = hangNganSach([bon.first], now: now, chon: 'duoi_nua');
+      expect(kq.hang, isEmpty);
+      expect(kq.rongTheoBoLoc, isTrue);
+      expect(kq.json['Tổng còn lại'], '5.000 đ');
+      expect(kq.json['Số ngân sách khớp'], '0');
+    });
+    test('không chon → như cũ, không có Số ngân sách khớp, không boLoc', () {
+      final kq = hangNganSach(bon, now: now);
+      expect(kq.json.containsKey('Số ngân sách khớp'), isFalse);
+      expect(kq.boLoc, isEmpty);
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+    test('chon lạ → từ chối kèm bốn giá trị, không hàng nào', () {
+      final kq = hangNganSach(bon, now: now, chon: 'x');
+      expect(kq.loi, contains('duoi_nua'));
+      expect(kq.hang, isEmpty);
+    });
+  });
+
   test('chuNhipNganSach phủ ba nhịp', () {
     expect(chuNhipNganSach(BudgetPaceStatus.fast), 'tiêu nhanh');
     expect(chuNhipNganSach(BudgetPaceStatus.onTrack), 'đúng nhịp');

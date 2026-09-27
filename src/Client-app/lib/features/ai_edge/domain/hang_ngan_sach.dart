@@ -3,12 +3,20 @@
 /// `remaining`, `rawPercentSpent`, `isOverBudget` là getter của `BudgetEntity`;
 /// nhịp từ `budgetPaceOf`. "Tổng còn lại" cộng `remaining` của mọi ngân sách
 /// đang chạy — đúng phép thẻ tổng trang Ngân sách đang hiện (câu 2 bảng 5.6).
+///
+/// [chon] (spec tool truy vấn 2026-09-27, mục 4 — E18): lọc hoặc chọn theo tỉ
+/// lệ đã dùng — `duoi_nua` / `tren_nua` giữ mọi hàng thoả, `nhieu_nhat` /
+/// `it_nhat` giữ một hàng. Tổng hợp vẫn cộng MỌI ngân sách đang chạy; "Số ngân
+/// sách khớp" chỉ có khi lọc, và 0 khớp là `rongTheoBoLoc` (không phải "không
+/// có ngân sách").
 library;
 
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_pace.dart';
+import 'chon.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'loi_tham_so.dart';
 
 String chuNhipNganSach(BudgetPaceStatus s) => switch (s) {
       BudgetPaceStatus.fast => 'tiêu nhanh',
@@ -16,10 +24,26 @@ String chuNhipNganSach(BudgetPaceStatus s) => switch (s) {
       BudgetPaceStatus.slow => 'tiêu chậm',
     };
 
-KetQuaCongCu hangNganSach(List<BudgetView> dangChay, {required DateTime now}) {
+KetQuaCongCu hangNganSach(
+  List<BudgetView> dangChay, {
+  required DateTime now,
+  String? chon,
+}) {
+  if (chon != null && !kChon.contains(chon)) {
+    return tuChoiGiaTri('chon', chon, kChon);
+  }
   // Căng nhất trước — thứ tự đáng chú ý, không phải thứ tự CSDL.
   final sap = [...dangChay]..sort(
       (x, y) => y.budget.rawPercentSpent.compareTo(x.budget.rawPercentSpent));
+  // Ngưỡng "một nửa" là 0,5 của rawPercentSpent — đúng phép trang Ngân sách,
+  // không làm tròn trước khi so.
+  final khop = switch (chon) {
+    'nhieu_nhat' => sap.take(1).toList(),
+    'it_nhat' => sap.isEmpty ? <BudgetView>[] : [sap.last],
+    'duoi_nua' => [for (final v in sap) if (v.budget.rawPercentSpent < 0.5) v],
+    'tren_nua' => [for (final v in sap) if (v.budget.rawPercentSpent >= 0.5) v],
+    _ => sap,
+  };
 
   var tongConLai = 0.0;
   for (final v in dangChay) {
@@ -27,7 +51,7 @@ KetQuaCongCu hangNganSach(List<BudgetView> dangChay, {required DateTime now}) {
   }
 
   final hang = <HangSoLieu>[];
-  for (final v in sap.take(kToiDaMucMoiGoi)) {
+  for (final v in khop.take(kToiDaMucMoiGoi)) {
     final b = v.budget;
     final nhip = budgetPaceOf(b, now);
     final ten = v.displayName;
@@ -51,6 +75,9 @@ KetQuaCongCu hangNganSach(List<BudgetView> dangChay, {required DateTime now}) {
     tongHop: [
       soTien('Tổng còn lại', tongConLai),
       soDem('Số ngân sách', dangChay.length),
+      if (chon != null) soDem('Số ngân sách khớp', khop.length),
     ],
+    boLoc: [if (chon != null) kChuChon[chon]!],
+    rongTheoBoLoc: chon != null && khop.isEmpty,
   );
 }

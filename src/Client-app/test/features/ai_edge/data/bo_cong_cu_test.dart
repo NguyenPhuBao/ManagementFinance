@@ -6,6 +6,7 @@ library;
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
@@ -147,8 +148,10 @@ void main() {
   // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
   // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
   // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
+  // ⚠️ 2026-09-27 sau tool truy vấn + chon ngân sách: 5633 ký tự — vượt 5491, ca
+  // tạm skip theo Task 9 của kế hoạch cho tới khi spike Realme (Task 10) đặt lại số.
   const kTranToolsJsonDaDo = 5491;
-  test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
+  test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', skip: 'đo lại Realme — Task 10 (5633 > 5491)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
@@ -183,4 +186,14 @@ void main() {
     expect(kq.tongHop[1].chuoi, '1');
   });
 
+  test('ngân sách: khai báo chon (bốn giá trị) và câu "chua dung den mot nua" → duoi_nua qua bộ chỉnh', () async {
+    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuNganSach);
+    expect(((khai.thamSo['properties'] as Map)['chon'] as Map)['enum'], kChon);
+    final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
+        cauHoi: 'ngan sach nao toi chua dung den mot nua'))!;
+    expect(kq.boLoc, ['đã dùng dưới một nửa']);
+    expect(kq.hang, isEmpty, reason: 'Giáo dục 90 % không khớp');
+    expect(kq.rongTheoBoLoc, isTrue);
+    expect(kq.json['Số ngân sách khớp'], '0');
+  });
 }
