@@ -347,10 +347,11 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 const DashboardPage = () => {
   const socket = useSocket();
   const [loading, setLoading] = useState(true);
-  const vnNow = getVnDateParts(new Date()) || {
-    year: String(new Date().getFullYear()),
-    month: String(new Date().getMonth() + 1).padStart(2, '0'),
-    day: String(new Date().getDate()).padStart(2, '0'),
+  const now = new Date();
+  const vnNow = getVnDateParts(now) || {
+    year: String(now.getFullYear()),
+    month: String(now.getMonth() + 1).padStart(2, '0'),
+    day: String(now.getDate()).padStart(2, '0'),
   };
   const nowYear = parseInt(vnNow.year, 10);
   const nowMonth = parseInt(vnNow.month, 10);
@@ -696,7 +697,7 @@ const DashboardPage = () => {
   const endItem = Math.min(currPage * activityPagination.limit, activityPagination.total);
 
   // Filter Button Label
-  const customButtonLabel = timeFilter === 'custom' ? customFilter.label : `${MONTH_NAMES[now.getMonth()]}/${now.getFullYear()}`;
+  const customButtonLabel = timeFilter === 'custom' ? customFilter.label : `${MONTH_NAMES[nowMonth - 1]}/${nowYear}`;
 
   return (
     <>
@@ -851,7 +852,7 @@ const DashboardPage = () => {
                             {Array.from({ length: daysInViewMonth }).map((_, i) => {
                               const day = i + 1;
                               const isSelected = timeFilter === 'custom' && customFilter.mode === 'day' && customFilter.date === `${viewYear}-${viewMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                              const isToday = day === now.getDate() && viewMonth === (now.getMonth() + 1) && viewYear === now.getFullYear();
+                              const isToday = day === nowDay && viewMonth === nowMonth && viewYear === nowYear;
                               const disabled = isFutureDate(day, viewMonth, viewYear);
 
                               return (
@@ -888,10 +889,10 @@ const DashboardPage = () => {
                             <span className="font-semibold text-on-surface text-[14px]">Năm {viewYear}</span>
                             <button
                               onClick={() => {
-                                if (viewYear < now.getFullYear()) setViewYear(v => v + 1);
+                                if (viewYear < nowYear) setViewYear(v => v + 1);
                               }}
-                              disabled={viewYear >= now.getFullYear()}
-                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${viewYear >= now.getFullYear() ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
+                              disabled={viewYear >= nowYear}
+                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${viewYear >= nowYear ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
                             >
                               <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                             </button>
@@ -928,7 +929,7 @@ const DashboardPage = () => {
                             Chọn năm cần thống kê
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                            {[now.getFullYear() - 4, now.getFullYear() - 3, now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear()].map((year) => {
+                            {[nowYear - 4, nowYear - 3, nowYear - 2, nowYear - 1, nowYear].map((year) => {
                               const isSelected = timeFilter === 'custom' && customFilter.mode === 'year' && customFilter.year === year;
                               return (
                                 <button
