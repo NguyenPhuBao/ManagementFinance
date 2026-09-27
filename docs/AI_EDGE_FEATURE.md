@@ -2072,6 +2072,61 @@ tổng kết (thêm hàng *"ít nhất"*, hoặc nâng trần cho tool này — 
 trong `chinh_tham_so` (E15) và câu ngoài phạm vi (E22) — cân nhắc thêm từ khoá vào `chuDeBiChan`; (4) các việc còn mở
 ở cuối 9.28.
 
+### 9.30 Spike "E2B tự viết SQL" trên 12 câu của 9.29 (Realme, 2026-09-27) — 0 đúng hẳn · 2 đúng do may · 10 sai, trong đó 6 sai IM LẶNG
+
+**Câu hỏi spike trả lời.** 9.28 đặt hai hướng lấp lỗ hổng phủ: *tool truy vấn tổng quát có hàng rào* hay *cho mô hình đọc
+thẳng SQLite*; người dùng chốt đo trước khi chọn. Máy tính không có runtime nào chạy được Gemma (không ollama, không
+`llama_cpp`, không GPU) nên spike chạy **trên chính app**, cùng mô hình, cùng máy, cùng bản lượng tử hoá với đường tool.
+
+**Cách dựng** (người dùng chốt ba điều: giữ trong repo sau cờ build · prompt có lược đồ + luật ngầm + hai ví dụ · đo 7 câu
+chưa đạt + 5 câu đạt tiêu biểu): `lib/features/ai_chat/spike/spike_sql.dart`, chỉ sống khi build
+`--dart-define=SPIKE_SQL=true` (hằng `kSpikeSql`, bản thường loại cả nhánh lúc biên dịch); câu bắt đầu `sql:` trong chat
+đi thẳng — không chặn chủ đề, không bậc tool, không lớp chắn — vào `SlmRuntime.sinh(prompt)`; chữ trả về qua hàng rào
+chỉ-đọc `trichSelect` (bỏ rào markdown, lấy từ `SELECT`, từ chối câu thứ hai sau `;` và mọi từ khoá ghi / `PRAGMA` /
+`pragma_`, ép `LIMIT 20`), rồi `AppDatabase.customSelect` và hiện nguyên hàng. Prompt ~2.500 ký tự: sáu bảng với đúng tên cột
+Drift, luật `amount` luôn dương / chiều ở `type` / bỏ điều chỉnh số dư / epoch giây, **mốc kỳ tính sẵn** (hôm nay, tuần,
+tháng, tháng trước, quý, năm), hai ví dụ (tổng chi tháng này, số dư một ví). 6 ca đơn vị ở `test/features/ai_chat/spike_sql_test.dart`.
+APK `14bb5668…`, 15:58–16:07, mỗi câu **10–21 s** (nhanh hơn đường tool 27–37 s vì chỉ một lượt sinh, không có lượt tool).
+
+| # | Câu | SQL mô hình viết (rút gọn) | Kết quả | Chấm |
+|---|---|---|---|---|
+| S3 | Danh mục ít tiêu nhất | `SELECT T1.name, SUM(T1.amount) FROM transactions T1 JOIN categories … JOIN wallets …` | **lỗi SQL** `no such column: T1.name` | ✗ |
+| S5 | Chi giải trí từ đầu năm | `SUM(amount) … type='chi' AND date ∈ năm nay` JOIN categories, **không lọc tên** | 1.641.000 | ✗ **im lặng** (thiếu vế Giải trí; JOIN còn rụng 500.000 chưa phân loại) |
+| S6 | Những lần nạp MuaDT | `JOIN goals g ON t.wallet_id = g.idaccount AND t.category_id = g.category_id …` | **lỗi SQL** `no such column: g.category_id` | ✗ |
+| S8 | Netflix khi nào đến hạn | `bills … name LIKE '%Nètlix%' AND due_date ∈ hôm nay` (không SELECT `due_date`) | 0 hàng | ✗ (Telex đổi *Netflix* → *Nètlix*, bẫy 4.41; lọc nhầm hôm nay) |
+| S15 | Cho vay bao nhiêu, thu về bao nhiêu | `SUM(amount) AS tong_thu_va_chi … type='thu'` tháng này, **không lọc Cho vay, không vế chi** | 15.135.000 | ✗ **im lặng**, tệ hơn tool (tool ít nhất đúng vế 500.000) |
+| S18 | Ngân sách chưa dùng đến nửa | không đụng `budgets`; cộng chi theo danh mục, `T1.name` | **lỗi SQL** | ✗ |
+| S22 | Giá vàng hôm nay | `SUM(amount) … type='chi' AND date = 1790442000` (đúng **một giây** đầu ngày) | `null` | ✗ lạc đề như đường tool, không bịa số |
+| S1 | Tổng thu nhập tháng này | `SUM … type='thu' AND date ∈ NĂM NAY` | 15.135.000 | ◐ **đúng do may** — năm nay chỉ có tháng 9 |
+| S4 | Khoản chi không quá 30 nghìn | `SUM … amount > 30000` — **đảo ngưỡng**, trả SUM thay vì liệt kê | 1.561.000 | ✗ **im lặng** (đường tool đúng qua mẫu câu L2) |
+| S9 | Bao nhiêu hoá đơn chưa trả | `COUNT(*) FROM bills JOIN wallets … pay_status IN ('Pending','Overdue')` | 4 | ◐ đếm cả kỳ 12/2026; tool nói 3 kỳ này — cả hai bênh được |
+| S13 | Tháng này chi nhiều hơn hay ít hơn tháng trước | `SUM … date ∈ HÔM NAY` — một kỳ, sai kỳ | `null` | ✗ (đường tool đúng bằng hai lời gọi) |
+| S16 | Khoản thu lớn nhất năm | `SELECT T1.name, SUM(T1.amount) …` | **lỗi SQL** `T1.name` | ✗ (đường tool đúng) |
+
+**Đọc kết quả.**
+1. **Đường tool thắng tuyệt đối trên chính 12 câu này:** tool 5 ✅ · 7 lệch; SQL **0 ✅ hẳn**, 2 đúng do may, và **bốn trong năm
+   câu tool đang đúng thì SQL làm hỏng** (S4, S13, S16 sai; S1 may). Không câu nào SQL đúng mà tool sai.
+2. **Sáu câu trả về số thật mà sai câu hỏi — im lặng** (S5, S15, S4, S13, S22, S8): đúng cái bẫy 9.28 cảnh báo — con
+   số ra từ CSDL là thật nên không lớp chắn nào bắt được, và người dùng không có cách nào biết `1.561.000` là tổng các
+   khoản **trên** 30 nghìn chứ không phải **dưới**. Bốn câu lỗi SQL thì **an toàn** vì SQLite từ chối trước khi có số.
+3. **Một lỗi lặp bốn lần:** `T1.name` — mô hình tin `transactions` có cột tên (nó muốn tên danh mục nhưng lấy từ bảng
+   giao dịch), dù lược đồ trong prompt ghi rõ từng cột. Cộng `g.category_id` bịa. E2B **không giữ được lược đồ sáu bảng
+   trong đầu** ở 2.500 ký tự prompt.
+4. **Mốc kỳ đã tính sẵn mà vẫn chọn nhầm:** S1 lấy năm thay vì tháng, S13/S22 lấy hôm nay, S8 lọc hoá đơn hôm nay — chọn
+   kỳ bằng SQL không tốt hơn chọn kỳ bằng tham số `ky` của tool (nơi bộ chỉnh theo câu hỏi còn sửa được).
+5. Luật ngầm được nhắc trong prompt thì mô hình **có** chép theo (bỏ điều chỉnh số dư, `idaccount`, `is_deleted` xuất hiện
+   ở 11/12 câu) — tức prompt không phải chỗ hỏng; chỗ hỏng là ánh xạ câu hỏi → cấu trúc truy vấn.
+
+**Quyết định rút ra (đề nghị, chờ người dùng chốt):** **KHÔNG cho E2B sinh SQL**, kể cả dạng có hàng rào — hàng rào chỉ-đọc
+chặn được ghi và lỗi cú pháp, không chặn được *câu đúng cú pháp trả lời sai câu hỏi*, mà đó là 6/12. Lấp lỗ hổng phủ bằng
+**tool truy vấn tổng quát có hàng rào** (đối tượng + bộ lọc + phép gộp, mã dựng truy vấn trên hàm domain, mô hình chỉ
+điền tham số như bảy tool hiện có) — và trước đó sửa hai lỗi (a) của 9.29 vì chúng rẻ. Đường spike **giữ trong repo sau
+cờ build** để đo lại khi đổi mô hình; bản thường không mang nó.
+
+⚠️ **Bẫy đo:** `Netflix` gõ qua `adb input text` trên bàn phím Telex của Realme thành `Nètlix` (chữ *ef* → *è*) — cùng họ
+`muaxxe`/`tesst` (4.41); ở lượt tool E8 không lộ vì tool liệt kê cả danh sách và mô hình tự chọn đúng tên, ở spike thì
+`LIKE '%Nètlix%'` ra 0 hàng. Tên có *f* sau nguyên âm phải gõ gấp đôi (`Netfflix`) hoặc chọn tên khác.
+
 ---
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)

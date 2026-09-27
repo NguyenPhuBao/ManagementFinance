@@ -637,7 +637,10 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   mở việc đầu*: ✅ **đo bộ câu hỏi MỚI 22 câu trên Realme** (mục **9.29** `AI_EDGE_FEATURE.md`; tự soạn, hoàn toàn khác bộ
   cũ vì app không lưu lịch sử chat): **15 ✅ · 3 ◐ · 4 ✗ · bịa 0**; hai lỗi tool (trần 4 hàng tổng kết, hoá đơn thiếu ngày
   đến hạn), ba lỗi định tuyến/tham số, chắn oan 0. `npm install`, build release từ HEAD (`006cb1b6…`) và cài lên Realme
-  cùng lượt — bản trên máy trước đó là của lần 13. Kế: spike E2B sinh SQL trên 22 câu ấy.
+  cùng lượt — bản trên máy trước đó là của lần 13. Rồi ✅ **spike E2B sinh SQL** (mục **9.30**) trên 12 câu: **0 đúng
+  hẳn · 2 do may · 10 sai, 6 sai im lặng**; đường đo giữ trong repo sau `--dart-define=SPIKE_SQL=true`
+  (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Đề nghị không cho mô hình đọc SQL, lấp lỗ hổng
+  phủ bằng tool truy vấn tổng quát có hàng rào — chờ người dùng chốt.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
