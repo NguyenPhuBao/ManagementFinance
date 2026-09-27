@@ -54,7 +54,7 @@ Tuân thủ tuyệt đối **Nghị định 13/2023/NĐ-CP** và nguyên tắc *
 
 ### 2.2. Giải Pháp 1: Autonomous Reasoning Agent (Pure ReAct Pattern)
 - **Cơ chế hoạt động:**
-  - Bỏ hoàn toàn Router. Câu hỏi mở của người dùng được gửi thẳng tới Gemini 2.0 Flash.
+  - Bỏ hoàn toàn Router. Câu hỏi mở của người dùng được gửi thẳng tới Google Gemini 3.8 Flash.
   - LLM sử dụng vòng lặp **ReAct (Reasoning + Acting)**: Tự suy nghĩ (*Thought*) $\rightarrow$ Tự quyết định gọi Tool (*Action*) $\rightarrow$ Backend query CSDL nội bộ và trả về kết quả đã ẩn danh (*Observation*) $\rightarrow$ LLM tiếp tục suy luận cho đến khi hoàn tất câu trả lời.
 - **Ưu điểm:**
   - AI hoàn toàn tự do tiếp nhận mọi câu hỏi bất kỳ như ChatGPT Web.
@@ -110,13 +110,13 @@ flowchart TD
         Auth["JWT Authenticate<br/>Trích xuất idaccount"]
         RateLimit["Redis Token-Bucket Limiter<br/>Giới hạn 15 req/phút / user"]
         SnapshotEngine["Financial Health Aggregator<br/>Tính sẵn tỷ lệ 50/30/20, Top chi tiêu, Điểm FHS"]
-        PIIMasker["PII Masking & Anonymizer<br/>Khử toàn bộ tên riêng, STK, SĐT, làm tròn số"]
+        PIIMasker["PII Masking & Anonymizer<br/>Che STK, SĐT, email, CCCD, OTP, số thẻ (Luhn), họ tên người dùng; số tiền giao dịch gửi chính xác"]
     end
 
     %% TẦNG 3: SUY LUẬN & TƯ VẤN CHIẾN LƯỢC
-    subgraph REASONING ["3. REASONING & ADVICE CORE (GEMINI 2.5 FLASH)"]
+    subgraph REASONING ["3. REASONING & ADVICE CORE (GEMINI 3.8 FLASH)"]
         Context["Context Assembler<br/>System Prompt CFP + Anonymized Snapshot + Knowledge"]
-        LLM["Google Gemini 2.5 Flash<br/>Deep Reasoning · Strict Grounding · Temp 0.1"]
+        LLM["Google Gemini 3.8 Flash<br/>Deep Reasoning · Strict Grounding · Temp 0.1"]
     end
 
     %% TẦNG 4: ĐÀO SÂU CHI TIẾT & TRI THỨC TĨNH
@@ -186,7 +186,7 @@ flowchart TD
   "liquidityAndObligations": {
     "emergencyFundMonths": 2.1,
     "upcomingBillsIn7DaysCount": 2,
-    "hasHighInterestDebt": true,
+    "debtToIncomeRatio": 0.12,
     "activeSavingsGoalsCount": 1
   }
 }
@@ -196,6 +196,12 @@ flowchart TD
 > - Không chứa: Số tài khoản ngân hàng, họ tên, số điện thoại, địa chỉ, tên cửa hàng cụ thể.
 > - Số tiền cụ thể được quy đổi thành **tỷ lệ % phân bổ**, **xu hướng tăng/giảm** và **thời lượng quỹ dự phòng (số tháng)**.
 > - Đủ $100\%$ dữ kiện chất lượng cao để AI suy luận: *"Ăn uống đang chiếm tới 34% và tăng 15%, trong khi quỹ khẩn cấp mới chỉ đủ 2.1 tháng chi tiêu, bạn nên ưu tiên..."*.
+
+> **Quy tắc phân loại danh mục 50/30/20 chuẩn hóa trong Snapshot:**
+> - **Needs (Thiết yếu - 50%):** Các danh mục phục vụ sinh hoạt bắt buộc gồm: `Ăn uống`, `Thuê nhà/Nhà cửa`, `Tiện ích`, `Đi lại/Di chuyển/Giao thông/Xăng`, `Hóa đơn`, `Y tế/Thuốc`, `Học phí/Giáo dục`, `Chợ/Siêu thị`, `Điện/Nước/Internet`.
+> - **Savings & Debt (Tiết kiệm & Nghĩa vụ Nợ - 20%):** Các danh mục: `Tiết kiệm`, `Đầu tư`, `Tích lũy`, `Trả nợ`, `Bảo hiểm`, `Gửi tiết kiệm`, `Đi vay/Cho vay/Vay/Nợ`.
+> - **Wants (Lối sống & Chi tiêu mong muốn - 30%):** Bao gồm `Mua sắm`, `Giải trí` và **toàn bộ các danh mục chi tiêu còn lại** (ví dụ: *Chi khác, Cà phê, Du lịch,...*). Đảm bảo mọi đồng chi tiêu thực tế đều được ghi nhận, không bị loại bỏ hay làm suy giảm tổng chi tiêu.
+> - **Mẫu số phân bổ:** Ưu tiên tính trên Tổng thu nhập thực tế trong kỳ (nếu $> 0$). Nếu người dùng chưa phát sinh thu nhập, mẫu số sẽ là Tổng chi tiêu thực tế ($Needs + Wants + Savings$), đảm bảo tổng các thành phần luôn đạt $100\%$.
 
 ---
 
@@ -258,7 +264,7 @@ Khi số lượng lớn người dùng cùng chat với AI, hệ thống áp d�
                     (Chặn spam 429)                 (Cache hit FHS)
                            │                               │
                            ▼                               ▼
-                 [Connection Pool Pg] ──▶ [Gemini 2.5 Flash + Circuit Breaker]
+                 [Connection Pool Pg] ──▶ [Gemini 3.8 Flash + Circuit Breaker]
 ```
 
 1. **Redis Token-Bucket Rate Limiter (15 req/phút):**
@@ -274,7 +280,7 @@ Khi số lượng lớn người dùng cùng chat với AI, hệ thống áp d�
 ## 6. TỐI ƯU HÓA TỐC ĐỘ PHẢN HỒI (LOW LATENCY — TTFT < 800MS)
 
 1. **Giao thức Server-Sent Events (SSE Streaming):**
-   - Endpoint `POST /api/ai/chatbot/chat/stream` đẩy từng token từ Gemini 2.0 Flash về Client ngay khi vừa sinh ra.
+   - Endpoint `POST /api/ai/chatbot/chat/stream` đẩy từng token từ Google Gemini 3.8 Flash về Client ngay khi vừa sinh ra.
    - Thời gian xuất hiện ký tự đầu tiên (**Time To First Token - TTFT**) đạt mức **$< 800\text{ms}$**.
 2. **Xử lý ngắt kết nối (Client Disconnect Handler):**
    - Lắng nghe sự kiện `req.on('close')`: Khi người dùng tắt app hoặc bấm "Dừng", Backend lập tức ngắt stream của Gemini để tiết kiệm token và giải phóng RAM máy chủ.
@@ -408,7 +414,7 @@ src/Admin-web/
    - Đã xây dựng `pii.masker.js` và `financial.snapshot.service.js` theo quy trình TDD Red $\rightarrow$ Green.
    - Đã xây dựng 4 công cụ On-demand trong `financial.tools.js` và `tools.executor.js`.
    - Đã xây dựng Hybrid Static RAG `hybrid.search.js` và 3 bộ cẩm nang chuẩn hóa.
-   - Đã xây dựng `chatbot.service.js` với Gemini 2.5 Flash, function-calling loop và graceful fallback stream.
+   - Đã xây dựng `chatbot.service.js` với Google Gemini 3.8 Flash, function-calling loop và graceful fallback stream.
    - Đã xây dựng `chatbot.controller.js`, `chatbot.routes.js` và rate limiting.
 3. **Phase 3: Systematic Debug & Client Disconnect Handling (✅ Đã hoàn tất):**
    - Bắt sự kiện `req.on('close')` hủy stream của Gemini sạch sẽ khi người dùng ngắt kết nối.
@@ -433,7 +439,7 @@ src/Admin-web/
 | **Snapshot Engine** | `src/Backend/modules/ai/features/chatbot/snapshot/financial.snapshot.service.js` | Giải quyết triệt để **Chức năng 7 (Lối A)**; tính thu nhập chuẩn `thuNhapCua`, phân bổ 50/30/20, quỹ khẩn cấp, điểm FHS thang 100. |
 | **On-Demand Tools** | `src/Backend/modules/ai/features/chatbot/tools/financial.tools.js`<br>`tools.executor.js` | 4 công cụ đào sâu Function Calling scoped `idaccount` từ JWT token. |
 | **Hybrid Static RAG** | `src/Backend/modules/ai/features/chatbot/rag/hybrid.search.js`<br>`src/Backend/modules/ai/features/chatbot/rag/data/*.json` | Nạp 3 cẩm nang (Thuế TNCN 2026, 50/30/20, Quản lý nợ an toàn); tìm kiếm Phrase Matching + RRF. |
-| **Gemini Orchestrator** | `src/Backend/modules/ai/features/chatbot/chatbot.service.js` | Tích hợp Gemini 2.5 Flash, SSE Stream, vòng lặp Tool Calling, Fallback Stream tự động khi API lỗi. |
+| **Gemini Orchestrator** | `src/Backend/modules/ai/features/chatbot/chatbot.service.js` | Tích hợp Google Gemini 3.8 Flash, SSE Stream, vòng lặp Tool Calling, Fallback Stream tự động khi API lỗi. |
 | **Controller & Routes** | `src/Backend/modules/ai/features/chatbot/chatbot.controller.js`<br>`chatbot.routes.js` | Header SSE `text/event-stream`, Rate limiter 15 req/phút/user, bắt `req.on('close')`. |
 | **Admin API Client** | `src/Admin-web/src/api/chatbot.api.js` | Đọc SSE stream theo chunks, parse events `meta`, `delta`, `done`, `error`. |
 | **Admin UI Copilot** | `src/Admin-web/src/pages/ai/FinancialHealthCard.jsx`<br>`ChatMessageBubble.jsx`<br>`PromptSuggestionChips.jsx`<br>`AICopilotPage.jsx` | Thẻ FHS trực quan, bong bóng chat Markdown + typing animation, chip gợi ý nhanh, Debug Drawer kiểm tra Snapshot và tool logs. |

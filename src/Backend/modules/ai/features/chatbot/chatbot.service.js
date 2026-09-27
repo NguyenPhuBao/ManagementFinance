@@ -1,9 +1,10 @@
 /**
  * Chatbot Service — Nhạc trưởng điều phối Trợ lý Tài chính AI
- * Tích hợp Dual-Phase Reasoning with Privacy Shield, Gemini 2.0 Flash, Tools & RAG
+ * Tích hợp Dual-Phase Reasoning with Privacy Shield, Google Gemini 3.8 Flash, Tools & RAG
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { prisma } = require('../../../../config/db');
 const FinancialSnapshotService = require('./snapshot/financial.snapshot.service');
 const ToolsExecutor = require('./tools/tools.executor');
 const { financialToolsDeclarations } = require('./tools/financial.tools');
@@ -94,10 +95,24 @@ class ChatbotService {
       // Bắn metadata sớm về cho Client hiển thị UI (TTFT < 100ms)
       if (typeof onMeta === 'function') {
         onMeta({
-          snapshotLoaded: true,
-          healthScore: snapshot.financialHealthScore,
-          snapshot,
+          snapshotLoaded: !!snapshot,
+          healthScore: snapshot ? snapshot.financialHealthScore : null,
+          snapshot: snapshot || null,
         });
+      }
+
+      // Lấy tên người dùng (nếu có) để khử PII chính xác
+      let userName = '';
+      try {
+        if (idaccount) {
+          const user = await prisma.user.findFirst({
+            where: { idaccount },
+            select: { fullname: true },
+          });
+          userName = user?.fullname || '';
+        }
+      } catch (err) {
+        logger.debug('[ChatbotService] Không thể lấy thông tin user để mask PII:', err?.message);
       }
 
       // BƯỚC 2: Truy vấn Tri thức Tĩnh RAG (Chuẩn Standard_RAG.md)
@@ -138,7 +153,7 @@ class ChatbotService {
             if (item.text && (item.role === 'user' || item.role === 'model')) {
               formattedHistory.push({
                 role: item.role,
-                parts: [{ text: this.piiMasker.maskPII(item.text) }],
+                parts: [{ text: this.piiMasker.maskPII(item.text, { userName }) }],
               });
             }
           }
@@ -149,7 +164,7 @@ class ChatbotService {
         });
 
         // Gửi prompt người dùng (đã che PII)
-        const safeUserMessage = this.piiMasker.maskPII(message);
+        const safeUserMessage = this.piiMasker.maskPII(message, { userName });
         const resultStream = await chatSession.sendMessageStream(safeUserMessage);
 
         // Xử lý stream
@@ -165,7 +180,7 @@ class ChatbotService {
           if (functionCalls && functionCalls.length > 0) {
             for (const call of functionCalls) {
               logger.info(`[Chatbot Function Call] Gemini kích hoạt tool: ${call.name}`);
-              const toolResult = await this.toolsExecutor.executeTool(call.name, call.args, idaccount);
+              const toolResult = await this.toolsExecutor.executeTool(call.name, call.args, idaccount, { userName });
 
               // Bắn kết quả tool ngược lại cho session để Gemini tiếp tục suy luận
               const nextStream = await chatSession.sendMessageStream([

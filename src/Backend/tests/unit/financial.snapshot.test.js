@@ -100,6 +100,46 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
     const days90 = service.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTx180Days);
     assert.strictEqual(days90, 90);
   });
+
+  it('6. Tính tỷ lệ Nợ trên Thu nhập (Debt-to-Income Ratio) từ các khoản chi trả nợ thực tế', () => {
+    const expenses = [
+      { amount: -5000000, category: { namecategory: 'Ăn uống' } },
+      { amount: -3000000, category: { namecategory: 'Trả nợ ngân hàng' } },
+      { amount: -2000000, category: { namecategory: 'Trả góp xe' } },
+    ];
+    const totalIncome = 25000000;
+
+    const dti = service.calculateDebtToIncomeRatio(expenses, totalIncome);
+    // (3tr + 2tr) / 25tr = 0.20
+    assert.strictEqual(dti, 0.20);
+
+    // Khi không có khoản chi nợ nào
+    const noDebtExpenses = [{ amount: -5000000, category: { namecategory: 'Ăn uống' } }];
+    assert.strictEqual(service.calculateDebtToIncomeRatio(noDebtExpenses, totalIncome), 0);
+
+    // Khi thu nhập bằng 0
+    assert.strictEqual(service.calculateDebtToIncomeRatio(expenses, 0), 0);
+  });
+
+  it('7. Phân bổ 50/30/20 nhận diện danh mục Di chuyển là Needs và xếp danh mục không khớp vào Wants', () => {
+    const expenses = [
+      { amount: -5000000, category: { namecategory: 'Ăn uống' } },   // Needs (5tr)
+      { amount: -3000000, category: { namecategory: 'Di chuyển' } }, // Needs (3tr)
+      { amount: -2000000, category: { namecategory: 'Chi khác' } },  // Wants (2tr)
+    ];
+
+    // Trường hợp 1: Không có thu nhập (mẫu số = tổng chi 10tr)
+    const alloc = service.calculate50_30_20(expenses, 0);
+    assert.strictEqual(alloc.needs_percent, 80); // (5tr + 3tr) / 10tr = 80%
+    assert.strictEqual(alloc.wants_percent, 20); // 2tr / 10tr = 20%
+    assert.strictEqual(alloc.savings_percent, 0);
+    assert.strictEqual(alloc.needs_percent + alloc.wants_percent + alloc.savings_percent, 100);
+
+    // Trường hợp 2: Có thu nhập 20 triệu
+    const allocWithIncome = service.calculate50_30_20(expenses, 20000000);
+    assert.strictEqual(allocWithIncome.needs_percent, 40); // 8tr / 20tr = 40%
+    assert.strictEqual(allocWithIncome.wants_percent, 10); // 2tr / 20tr = 10%
+  });
 });
 
 describe('PIIMasker — Che Giấu Thông Tin Cá Nhân & Làm Mờ Dữ Liệu', () => {
