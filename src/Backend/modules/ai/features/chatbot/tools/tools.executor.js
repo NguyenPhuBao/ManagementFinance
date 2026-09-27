@@ -69,16 +69,17 @@ class ToolsExecutor {
   /**
    * Lọc và làm mờ danh sách giao dịch
    * @param {Array<object>} txList 
+   * @param {string} [userName]
    * @returns {Array<object>}
    */
-  sanitizeTransactionList(txList) {
+  sanitizeTransactionList(txList, userName) {
     if (!Array.isArray(txList)) return [];
 
     return txList.map(tx => ({
       id: tx.idtran,
       amount: Math.abs(Number(tx.amount || 0)),
       category: tx.category?.name_category || tx.category?.namecategory || 'Khác',
-      note: this.piiMasker.maskPII(tx.note || ''),
+      note: this.piiMasker.maskPII(tx.note || '', { userName }),
       date: tx.date_transaction || tx.date,
     }));
   }
@@ -90,13 +91,13 @@ class ToolsExecutor {
    * @param {number} idaccount 
    * @returns {Promise<object>}
    */
-  async executeTool(name, args = {}, idaccount) {
+  async executeTool(name, args = {}, idaccount, options = {}) {
     logger.info(`[Chatbot Tool Exec] Name: ${name}, idaccount: ${idaccount}`);
 
     try {
       switch (name) {
         case 'get_category_transactions':
-          return await this.getCategoryTransactions(args, idaccount);
+          return await this.getCategoryTransactions(args, idaccount, options.userName);
         case 'compare_spending_periods':
           return await this.compareSpendingPeriods(args, idaccount);
         case 'get_bill_details':
@@ -115,7 +116,7 @@ class ToolsExecutor {
   /**
    * Lấy danh sách giao dịch theo danh mục
    */
-  async getCategoryTransactions({ categoryName, limit = 5, sortBy = 'amount_desc' }, idaccount) {
+  async getCategoryTransactions({ categoryName, limit = 5, sortBy = 'amount_desc' }, idaccount, userName) {
     const take = Math.min(Math.max(1, Number(limit) || 5), 10);
     const orderBy = sortBy === 'date_desc' 
       ? { date_transaction: 'desc' } 
@@ -143,7 +144,7 @@ class ToolsExecutor {
     return {
       category: categoryName,
       count: transactions.length,
-      transactions: this.sanitizeTransactionList(transactions),
+      transactions: this.sanitizeTransactionList(transactions, userName),
     };
   }
 

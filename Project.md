@@ -2741,7 +2741,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     + Triển khai theo Lối A (Backend tự tính toán từ PostgreSQL hiện có không cần di chuyển dữ liệu).
     + Công thức thu nhập thực tế chuẩn `thuNhapCua`: Tự động loại trừ các giao dịch vay nợ, thu nợ, chuyển ví nội bộ để tránh tính ảo thu nhập.
     + Cơ cấu ngân sách 50/30/20 (Thiết yếu - Linh hoạt - Tích lũy) tính toán trực tiếp từ chi tiêu thực tế.
-    + Chỉ số Quỹ khẩn cấp (`emergencyFundMonths`) và Tỷ lệ nợ trên thu nhập (`debtToIncomeRatio`).
+    + Chỉ số Quỹ khẩn cấp (`emergencyFundMonths`) và Tỷ lệ nợ trên thu nhập (`debtToIncomeRatio` tính từ chi trả nợ trên thu nhập thực tế trong cửa sổ nhìn lại).
     + Chấm điểm FHS tổng thể thang điểm 100 và phân hạng (Tốt, Cần cải thiện, Nguy cơ).
   - **On-Demand Tools Executor (`financial.tools.js` & `tools.executor.js`):**
     + 4 công cụ đào sâu theo chuẩn Function Calling: `get_category_transactions`, `compare_spending_periods`, `get_bill_details`, `get_goal_simulation`.
@@ -2755,7 +2755,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     + Cơ chế Graceful Fallback (`_streamFallbackResponse`): Phân tích số liệu tài chính cục bộ tự động khi đường truyền Gemini API gặp sự cố hoặc hết hạn mức, người dùng luôn nhận được câu trả lời tài chính thực tế.
     + Bắt gọn sự kiện ngắt kết nối `req.on('close')` để hủy tác vụ Gemini tức thì, tiết kiệm tài nguyên.
   - **Định tuyến & Giới hạn tải (`chatbot.routes.js`):**
-    + Gắn tại `/api/ai/chatbot` với 2 endpoint: `POST /chat/stream` (Rate limit 15 req/phút/user) và `GET /financial-health` (lấy ngay chỉ số FHS).
+    + Gắn tại `/api/ai/chatbot` với 4 endpoint: `POST /chat/stream` (SSE streaming + Redis Token-Bucket Limiter 15 req/phút), `GET /snapshot` (lấy FHS Snapshot với Redis Cache 120s, alias `/financial-health`), `POST /chat` (JSON fallback), và `POST /reset` (Làm mới phiên hội thoại).
 - **2. Triển khai Frontend Admin-web (Trợ lý Copilot AI & Kiểm thử trực quan):**
   - **API Client SSE Stream (`src/Admin-web/src/api/chatbot.api.js`):** Sử dụng `ReadableStream.getReader()` và `TextDecoder` đọc và bóc tách các event `meta`, `delta`, `done` mượt mà.
   - **Giao diện người dùng Copilot (`src/Admin-web/src/pages/ai/`):**
@@ -2790,6 +2790,18 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     + Real-time Socket `audit_activity`: Tìm đúng bucket giờ Việt Nam `hourKey` để cộng dồn lưu lượng thời gian thực.
   - `src/Admin-web/src/components/common/UserDetailModal.jsx` & `AICopilotPage.jsx`: Hiển thị ngày tạo, ngày xóa và timestamp tin nhắn theo múi giờ `Asia/Ho_Chi_Minh`.
   - Frontend Build: `rtk npm run build` thành công **100% (0 errors)**.
+
+### 11.45. Khử Lệch & Chuẩn Hóa Hoàn Toàn Chatbot AI Theo Rà Soát Client-app (2026-09-27)
+- **1. Thống nhất Mô Hình AI:** Chuyển đổi và đồng bộ mô hình AI Chatbot trên toàn bộ mã nguồn (`chatbot.service.js`, `AICopilotPage.jsx`) và tài liệu kiến trúc sang `gemini-3.8-flash` (đọc linh hoạt qua `process.env.GEMINI_MODEL`), loại bỏ triệt để nhầm lẫn giữa Gemini 2.0 / 2.5.
+- **2. Tính Toán Nợ Thực Tế:** Xóa bỏ hoàn toàn hằng số nợ giả lập `debtToIncomeRatio: 0.1` và cờ giả định `hasHighInterestDebt: false`. Hàm `calculateDebtToIncomeRatio` tính toán chính xác từ các giao dịch chi trả nợ, vay, lãi suất thực tế trong CSDL chia cho tổng thu nhập.
+- **3. Cam Kết Sơ Đồ PII & Ngữ Cảnh Tên Người Dùng:** Điều chỉnh ô sơ đồ trong `ChatbotAI.md` phản ánh đúng thuật toán (bảo tồn số tiền giao dịch chính xác, không tự ý làm tròn số hay khử tên người khác không trong context). Bổ sung truy vấn `fullname` từ `prisma.user` theo `idaccount` và nạp vào `maskPII(text, { userName })` cùng `toolsExecutor.executeTool` để che mờ `[TÊN_NGƯỜI_DÙNG]`.
+- **4. Đồng Bộ Endpoint:** Cập nhật tài liệu khớp thực tế 4 endpoint của chatbot (`POST /chat/stream`, `GET /snapshot`, `POST /chat`, `POST /reset`).
+- **5. Chuẩn Hóa Luồng Fallback & Done Event:** Bổ sung cấu trúc `event: done` trong `ChatbotAI_Moblie.md` cho cả nhánh thành công và nhánh Fallback mang cờ `fallback: true` kèm lý do minh bạch; hướng dẫn Client không lưu tin nhắn lỗi hệ thống vào `LocalChatMessages`.
+- **6. Loại Bỏ Số Liệu Giả Lập Trong Snapshot:** Xóa bỏ snapshot giả lập `healthScore: 65`, 50/30/20 và 1.5 tháng quỹ khẩn cấp trong khối catch của `generateSnapshot`. Khi lỗi CSDL, trả về `null` minh bạch; tầng controller trả về HTTP 503 Service Unavailable.
+- **7. Tinh Chỉnh Thuật Toán Snapshot:**
+  - Lọc ngân sách còn hiệu lực tại thời điểm snapshot (`start <= now` và `end IS NULL OR end >= now`), khử trùng lặp cảnh báo (mỗi danh mục tối đa 1 cảnh báo).
+  - Bổ sung từ khóa danh mục thiết yếu (`di chuyển`, `giao thông`, `xăng`, `giáo dục`) và nghĩa vụ nợ (`vay`, `nợ`, `đi vay`, `cho vay`). Mọi danh mục còn lại mặc định xếp vào `wantsAmount` (thay vì bị loại bỏ làm hụt 78% chi tiêu).
+- **8. Nghiệm thu:** Vượt qua 100% các câu lệnh kiểm tra nghiêm ngặt (6 lệnh `grep` ra 0 dòng sai lệch, 39/39 unit tests PASS 100%, Admin-web build thành công 100%). Chuyển tài liệu `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` sang `DA-XONG/`.
 
 
 

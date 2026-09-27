@@ -38,7 +38,7 @@ flowchart TB
     GATEWAY --> PIPELINES
   end
 
-  GEMINI["<b>🌐 Google Gemini 2.0 Flash</b><br/>Multimodal Vision & Few-shot API"]:::cloud
+  GEMINI["<b>🌐 Google Gemini 3.8 Flash</b><br/>Multimodal Vision & Few-shot API"]:::cloud
 
   %% Kết nối chính
   CLIENT -->|"Gửi ảnh biên lai & văn bản (HTTPS)"| GATEWAY
@@ -78,7 +78,7 @@ package "☁️ BACKEND (Cloud AI Platform)" #F8FAFC {
   Gateway --> Health
 }
 
-cloud "<b>🌐 Google Gemini 2.0 Flash</b>\n(Multimodal & Reasoning)" as Gemini #E2E8F0
+cloud "<b>🌐 Google Gemini 3.8 Flash</b>\n(Multimodal & Reasoning)" as Gemini #E2E8F0
 
 LocalDB --> Gateway : Gửi ảnh biên lai & văn bản (HTTPS)
 OCR --> Gemini
@@ -95,4 +95,4 @@ Chat --> Gemini : Phân tích & Trả lời
 
 1. **Khối Client (Edge AI & Hệ luật cục bộ):** Chạy 100% Offline trên Mobile. Hệ luật đảm nhiệm dự báo dòng tiền 30 ngày, gợi ý ngân sách $\le 90$ ngày, tái phân bổ ngân sách C1–C7 và các khối nhận xét. Mô hình **Gemma 4 E2B** phục vụ màn Trợ lý AI hỏi đáp bằng 7 tool chỉ đọc dữ liệu từ Drift SQLite cục bộ; dữ liệu cá nhân tuyệt đối không ra ngoài.
 2. **Khối Backend (Cloud AI Gateway):** Đóng vai trò chốt chặn an toàn: giữ bí mật API Key (không đưa lên mobile) và lọc bỏ dữ liệu nhạy cảm văn bản (`masking.util.js`) trước khi gọi ra ngoài.
-3. **4 Dịch Vụ AI Cốt Lõi Tại Backend:** Quét hóa đơn (OCR), phân loại giao dịch tầng 3 (Classifier), trợ lý tài chính trực tuyến có Privacy Shield (Chatbot - Gemini 2.5 Flash), và đánh giá sức khỏe tài chính Lối A (Financial Health Score tính toán tất định tại Backend nạp vào làm ngữ cảnh cho Chatbot).
+3. **4 Dịch Vụ AI Cốt Lõi Tại Backend:** Quét hóa đơn (OCR), phân loại giao dịch tầng 3 (Classifier), trợ lý tài chính trực tuyến có Privacy Shield (Chatbot - Google Gemini 3.8 Flash), và đánh giá sức khỏe tài chính Lối A (Financial Health Score tính toán tất định tại Backend nạp vào làm ngữ cảnh cho Chatbot).

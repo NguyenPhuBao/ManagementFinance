@@ -123,7 +123,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 > [!TIP]
 > **Lưu ý Cài đặt Phụ thuộc Mới (AI Chatbot & Resilience):**  
 > Khi clone hoặc kéo mã nguồn mới nhất từ Git, lập trình viên môi trường cục bộ cũng như Render cần đảm bảo chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói phụ thuộc mới:
-> - `@google/generative-ai`: SDK Google Gemini 2.5 Flash
+> - `@google/generative-ai`: SDK Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường GEMINI_MODEL)
 > - `ioredis`: Kết nối Redis phục vụ Rate Limiter Token-Bucket & Snapshot Cache
 > - `express-rate-limit`: Bảo vệ các route API cơ bản
 
@@ -323,7 +323,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 ### 6.4. Nâng Cấp Hạn Ngạch Google Gemini API Sang Gói Pay-As-You-Go
 - **Hiện trạng Development:** Dùng API Key miễn phí (Google AI Studio Free Tier) bị chặn cứng ở trần **$15\text{ RPM}$**, chỉ cho phép tối đa $2 - 3\text{ người chat cùng 1 lúc}$.
-- **Nâng cấp Production:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-2.0-flash`:
+- **Nâng cấp Production:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.8-flash`:
   - **$2.000\text{ RPM}$ (Requests Per Minute)** và **$4.000.000\text{ TPM}$ (Tokens Per Minute)**.
   - Đảm bảo phục vụ mượt mà từ **$30 - 50\text{ người dùng chat đồng thời}$** cùng một thời điểm.
 

@@ -69,10 +69,13 @@ class ChatbotController {
 
     try {
       const snapshot = await this.chatbotService.getSnapshot(idaccount);
+      if (!snapshot) {
+        return ResponseHandler.error(res, 'Không thể lấy dữ liệu phân tích tài chính lúc này', 503);
+      }
       return ResponseHandler.success(res, snapshot, 'Lấy bản chụp sức khỏe tài chính thành công');
     } catch (error) {
       logger.error('[Chatbot Controller] Lỗi lấy snapshot:', error);
-      return ResponseHandler.error(res, 'Không thể lấy thông tin sức khỏe tài chính', 500);
+      return ResponseHandler.error(res, 'Không thể lấy dữ liệu phân tích tài chính lúc này', 503);
     }
   };
 

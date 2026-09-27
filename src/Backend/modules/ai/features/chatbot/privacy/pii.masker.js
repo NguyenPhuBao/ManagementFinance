@@ -50,7 +50,7 @@ class PIIMasker {
       liquidityAndObligations: {
         emergencyFundMonths: Number(Number(rawSnapshot.emergencyFundMonths || 0).toFixed(1)),
         upcomingBillsIn7DaysCount: rawSnapshot.upcomingBillsIn7DaysCount || 0,
-        hasHighInterestDebt: Boolean(rawSnapshot.hasHighInterestDebt),
+        debtToIncomeRatio: Number(Number(rawSnapshot.debtToIncomeRatio || 0).toFixed(2)),
         activeSavingsGoalsCount: rawSnapshot.activeSavingsGoalsCount || 0,
       },
     };
