@@ -219,7 +219,7 @@ void main() {
 
   test('boLocTimGiaoDich / soLieuBoLocTimGiaoDich là MỘT nguồn cho cả hàng lẻ và hàng nhóm', () {
     const tc = TieuChiTim(chieu: ChieuTim.chi, tuKhoa: 'hoa don');
-    final kq = KetQuaTimGiaoDich(dong: const [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0, tenDanhMucKhop: 'Giải trí');
+    const kq = KetQuaTimGiaoDich(dong: [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0, tenDanhMucKhop: 'Giải trí');
     expect(boLocTimGiaoDich(kq, tc), ['khoản chi', 'danh mục "Giải trí"', 'ghi chú chứa "hoa don"']);
     expect(soLieuBoLocTimGiaoDich(tc), isEmpty);
   });

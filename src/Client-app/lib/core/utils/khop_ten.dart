@@ -1,5 +1,5 @@
 /// Khớp một TÊN do mô hình gõ (tham số `danh_muc`, `vi` của tool — bước 2) với
-/// danh sách tên thật. Dùng chung cho `goi_y_han_muc` và `tim_giao_dich`.
+/// danh sách tên thật. Dùng chung cho `goi_y_han_muc` và `truy_van_giao_dich`.
 ///
 /// Bỏ dấu ở đây là **đúng chỗ** của `removeVietnameseTones` (tìm kiếm — đoán
 /// sai chỉ tốn một lần hỏi lại), khác quy tắc trùng tên danh mục (quy tắc 7

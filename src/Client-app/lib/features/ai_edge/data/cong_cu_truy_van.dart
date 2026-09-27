@@ -1,29 +1,39 @@
-/// Adapter tool `tim_giao_dich`: kiểm và dịch tham số (`ky` **bắt buộc** — bước
-/// 2b) → khoảng đọc (`kyTuMa`, hoặc mọi thời gian cho `moi_luc`) →
-/// `watchKhoang` · `lookupFor` · `watchVi` / `watchDanhMuc` → `timGiaoDich`
-/// → `hangGiaoDich`. Mọi tham số kiểm TRƯỚC khi đọc dữ liệu — không đoán.
+/// Adapter tool `truy_van_giao_dich` — thay `tim_giao_dich` + `tong_ket_thu_chi_ky`
+/// từ 2026-09-27 (spec `2026-09-27-tool-truy-van-giao-dich-design.md`). Luồng:
+/// bộ chỉnh tham số theo câu hỏi → kiểm MỌI tham số (`ky` bắt buộc — bước 2b)
+/// → `timGiaoDich` (trần lớn khi gộp / chọn) → `hangGiaoDich` hoặc
+/// `hangNhomGiaoDich`. Không đọc dữ liệu trước khi tham số qua kiểm — không đoán.
 ///
 /// Tiền là **số đồng**: số JSON, hoặc chuỗi toàn chữ số. "500k" / "nửa triệu"
-/// bị từ chối kèm ví dụ — quy đổi là việc của mô hình, và phép đo cổng D chấm
-/// đúng việc ấy (spec mục 1.2 hàng 9). Bảng quy đổi "k / củ" để bước 3.
+/// bị từ chối kèm ví dụ — quy đổi là việc của mô hình (và của bộ chỉnh, luật 4).
 library;
 
 import '../../analytics/data/bao_cao_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
+import '../../transaction/domain/gop_giao_dich.dart';
 import '../../transaction/domain/khoang_tien.dart';
 import '../../transaction/domain/tim_giao_dich.dart';
 import '../domain/chinh_tham_so.dart';
+import '../domain/chon.dart';
 import '../domain/cong_cu.dart';
 import '../domain/goi_so.dart';
-import '../domain/hang_chi_tieu.dart';
 import '../domain/hang_giao_dich.dart';
+import '../domain/hang_nhom_giao_dich.dart';
 import '../domain/hang_so_lieu.dart';
 import '../domain/loi_tham_so.dart';
+import '../domain/ma_ky.dart';
 import '../domain/tham_so_mo_hinh.dart';
 
-class CongCuGiaoDich implements CongCu {
-  CongCuGiaoDich({
+/// Mã tham số `gop`: liệt kê, hay mỗi hàng một danh mục / ví.
+const List<String> kGop = ['khong', 'danh_muc', 'vi'];
+
+/// "Trần lớn": lấy trọn tập khớp để gộp / chọn — cắt ở tầng hàng, không ở tầng
+/// tìm (`timGiaoDich` chỉ cắt `dong`, tổng vẫn đếm trọn tập).
+const int _kKhongTran = 1 << 20;
+
+class CongCuTruyVan implements CongCu {
+  CongCuTruyVan({
     required this.giaoDich,
     required this.nganSach,
     required this.baoCao,
@@ -32,21 +42,21 @@ class CongCuGiaoDich implements CongCu {
 
   /// Log khi bộ chỉnh tham số đổi gì đó — `print`, không `debugPrint` (bẫy 4.31).
   final void Function(String) log;
-
   final TransactionRepository giaoDich;
   final BudgetRepository nganSach;
   final BaoCaoRepository baoCao;
 
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
-        ten: kTenCongCuGiaoDich,
-        // Lần đo 9: "Gọi khi" lên câu đầu — mô hình đọc câu đầu trước.
-        moTa: 'Gọi khi câu hỏi có BẤT KỲ điều kiện nào — số tiền (trên, dưới, từ … đến), '
-            'ví, danh mục, khoản thu, ghi chú, lần gần nhất — hoặc hỏi đã tiêu gì, chi gì, '
-            'những khoản nào, khoản lớn nhất, chuyển tiền sang ví nào. Liệt kê TỪNG giao '
-            'dịch (ghi chú, số tiền, ngày, danh mục, ví) kèm tổng của mọi khoản khớp. Chỉ '
-            'hỏi tổng chi, tổng thu của một kỳ mà không có điều kiện nào thì dùng '
-            'tong_ket_thu_chi_ky.',
+        ten: kTenCongCuTruyVan,
+        // Câu "Gọi …" lên đầu — mô hình đọc câu đầu trước (lần đo 9).
+        moTa: 'Gọi cho MỌI câu về giao dịch, chi tiêu, thu nhập: tổng một kỳ, tiêu gì, '
+            'những khoản nào, khoản lớn nhất, danh mục hay ví nào chi nhiều hay ít nhất, có '
+            'điều kiện hay không. Liệt kê từng giao dịch (ghi chú, số tiền, ngày, danh mục, '
+            'ví) kèm tổng, hoặc gộp theo danh mục / ví khi câu hỏi nói về danh mục hay ví nói '
+            'chung. gop: khong = từng giao dịch; danh_muc / vi = mỗi hàng một danh mục / ví '
+            'với tổng chi, tổng thu, số giao dịch. chon: nhieu_nhat / it_nhat = chỉ trả hàng '
+            'lớn nhất / nhỏ nhất.',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -99,6 +109,19 @@ class CongCuGiaoDich implements CongCu {
                   'nhất; moi_nhat: mới nhất trước, dùng khi hỏi lần gần nhất, lần cuối, gần '
                   'đây.',
             },
+            'gop': {
+              'type': 'string',
+              'enum': kGop,
+              'description': 'khong: liệt kê từng giao dịch (mặc định); danh_muc: mỗi hàng '
+                  'một danh mục — dùng khi hỏi danh mục nào, theo danh mục; vi: mỗi hàng '
+                  'một ví — dùng khi hỏi ví nào, theo ví.',
+            },
+            'chon': {
+              'type': 'string',
+              'enum': kChonGiaoDich,
+              'description': 'nhieu_nhat: chỉ hàng ${kChuChon['nhieu_nhat']}; it_nhat: chỉ '
+                  'hàng ${kChuChon['it_nhat']}. Bỏ trống khi câu không hỏi nhất.',
+            },
           },
           'required': ['ky'],
         },
@@ -143,6 +166,16 @@ class CongCuGiaoDich implements CongCu {
     final khoang = KhoangTien(tu: tu.so, den: den.so);
     if (!khoang.hopLe) return tuChoiKhoangNguoc(_tho(tu.so!), _tho(den.so!));
 
+    // Hai tham số mới: giá trị trống = mặc định; giá trị lạ → từ chối như mọi enum.
+    final maGop = a['gop']?.toString().trim();
+    final gop = (maGop == null || maGop.isEmpty) ? 'khong' : maGop;
+    if (!kGop.contains(gop)) return tuChoiGiaTri('gop', gop, kGop);
+    final maChon = a['chon']?.toString().trim();
+    final chon = (maChon == null || maChon.isEmpty) ? null : maChon;
+    if (chon != null && !kChonGiaoDich.contains(chon)) {
+      return tuChoiGiaTri('chon', chon, kChonGiaoDich);
+    }
+
     // Tham số tên / từ khoá: giá trị giữ chỗ ("tat_ca") nghĩa là KHÔNG LỌC — cổng
     // D lần 1 đo được mô hình dùng nó thế, và tool từng từ chối vì không có danh
     // mục / ví nào tên ấy (bẫy 4.43).
@@ -159,6 +192,7 @@ class CongCuGiaoDich implements CongCu {
       tuKhoa: tuKhoa ?? '',
       sapXep: sapXep,
     );
+    final canTron = gop != 'khong' || chon != null;
     final kq = timGiaoDich(
       trongKy: await giaoDich.watchKhoang(idaccount, ky.from, ky.to).first,
       lookup: await nganSach.lookupFor(idaccount),
@@ -166,9 +200,39 @@ class CongCuGiaoDich implements CongCu {
       danhMucSong: dsDm,
       tieuChi: tieuChi,
       now: now,
-      toiDa: kToiDaMucMoiGoi,
+      toiDa: canTron ? _kKhongTran : kToiDaMucMoiGoi,
     );
-    return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
+    if (kq.loi != null) {
+      return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
+    }
+    if (gop != 'khong') {
+      return hangNhomGiaoDich(
+        kq,
+        tieuChi: tieuChi,
+        theo: gop == 'danh_muc' ? NhomTheo.danhMuc : NhomTheo.vi,
+        chuKy: ky.chu,
+        chon: chon,
+      );
+    }
+    if (chon == null) {
+      return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
+    }
+    // gop=khong + chon: chọn theo TIỀN dù dòng đang xếp theo ngày; tổng hợp vẫn
+    // là của trọn tập (`soKhop`, `tongChi`, …), chỉ `dong` còn một.
+    final theoTien = [...kq.dong]..sort((x, y) => y.soTien.compareTo(x.soTien));
+    final mot = theoTien.isEmpty
+        ? const <DongTimThay>[]
+        : [chon == 'nhieu_nhat' ? theoTien.first : theoTien.last];
+    final cat = KetQuaTimGiaoDich(
+      dong: mot,
+      soKhop: kq.soKhop,
+      tongChi: kq.tongChi,
+      tongThu: kq.tongThu,
+      tongChuyen: kq.tongChuyen,
+      tenDanhMucKhop: kq.tenDanhMucKhop,
+      tenViKhop: kq.tenViKhop,
+    );
+    return hangGiaoDich(cat, tieuChi: tieuChi, chuKy: ky.chu, now: now, chon: chon);
   }
 }
 

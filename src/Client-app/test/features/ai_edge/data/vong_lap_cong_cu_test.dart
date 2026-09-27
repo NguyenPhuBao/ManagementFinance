@@ -134,7 +134,7 @@ KetQuaCongCu _timCoHang() => KetQuaCongCu(
       tenLienQuan: const ['test1', 'Tiền mặt'],
     );
 
-const goiTimChi = GoiCongCu(kTenCongCuGiaoDich, {'ky': 'thang_nay', 'tu_khoa': 'chi', 'so_tien_den': 1000000});
+const goiTimChi = GoiCongCu(kTenCongCuTruyVan, {'ky': 'thang_nay', 'tu_khoa': 'chi', 'so_tien_den': 1000000});
 
 void main() {
   final now = DateTime(2026, 9, 23);
@@ -287,10 +287,10 @@ void main() {
   });
 
   test('⭐ L2b: có lượt thành công + lời từ chối chưa gỡ → chữ mô hình KHÔNG hiện; dữ liệu + câu chưa tra được', () async {
-    final tuChoi = _CongCuGia(kTenCongCuGiaoDich, _tuChoiDanhMuc('abc'));
+    final tuChoi = _CongCuGia(kTenCongCuTruyVan, _tuChoiDanhMuc('abc'));
     bo = BoCongCu([tool, tuChoi]);
     final (sk, goi, _, _) = await chay([
-      [goiHoaDon, const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [goiHoaDon, const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'abc'})],
       [const Chu('Kiem đã quá hạn 45.000 đ. Không có khoản chi nào cho abc.')],
     ]);
     final cauQua = sk.whereType<CauQua>().toList();
@@ -304,11 +304,11 @@ void main() {
   });
 
   test('câu đã hiện rồi mới bị từ chối → GIỮ câu cũ, nối câu chưa tra được (L2b)', () async {
-    final tuChoi = _CongCuGia(kTenCongCuGiaoDich, _tuChoiDanhMuc('abc'));
+    final tuChoi = _CongCuGia(kTenCongCuTruyVan, _tuChoiDanhMuc('abc'));
     bo = BoCongCu([tool, tuChoi]);
     final (sk, _, _, _) = await chay([
       [goiHoaDon],
-      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'abc'})],
       [const Chu('Không có khoản chi nào cho abc.')],
     ]);
     expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
@@ -318,11 +318,11 @@ void main() {
   });
 
   test('⭐ gọi lại ĐIỀN đúng tham số bị từ chối → đã gỡ, chữ viết sau đó được hiện', () async {
-    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('an uong x'), _kiem()]);
+    final giaoDich = _CongCuKichBan(kTenCongCuTruyVan, [_tuChoiDanhMuc('an uong x'), _kiem()]);
     bo = BoCongCu([giaoDich]);
     final (sk, goi, _, _) = await chay([
-      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'an uong x'})],
-      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'Ăn uống'})],
+      [const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'an uong x'})],
+      [const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'Ăn uống'})],
       [const Chu('Kiem đã quá hạn 45.000 đ.')],
     ]);
     expect(goi.tuChoiChuaGo, isEmpty);
@@ -331,11 +331,11 @@ void main() {
   });
 
   test('⭐ gọi lại BỎ tham số bị từ chối → vẫn chưa gỡ: chữ mô hình không hiện (ca "abc")', () async {
-    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('abc'), _kiem()]);
+    final giaoDich = _CongCuKichBan(kTenCongCuTruyVan, [_tuChoiDanhMuc('abc'), _kiem()]);
     bo = BoCongCu([giaoDich]);
     final (sk, goi, _, _) = await chay([
-      [const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
-      [const GoiCongCu(kTenCongCuGiaoDich, {})],
+      [const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'abc'})],
+      [const GoiCongCu(kTenCongCuTruyVan, {})],
       [const Chu('Các khoản chi cho danh mục abc: Kiem 45.000 đ.')],
     ]);
     expect(goi.tuChoiChuaGo, hasLength(1));
@@ -346,7 +346,7 @@ void main() {
   });
 
   test('⭐ L2c: tim_giao_dich thành công mà 0 khoản + mô hình viết chữ → chữ KHÔNG hiện, mẫu câu nêu bộ lọc, không KhongTraCuu (bẫy 4.44)', () async {
-    final giaoDich = _CongCuGia(kTenCongCuGiaoDich, _timRong());
+    final giaoDich = _CongCuGia(kTenCongCuTruyVan, _timRong());
     bo = BoCongCu([giaoDich]);
     final (sk, goi, _, _) = await chay([
       [goiTimChi],
@@ -363,7 +363,7 @@ void main() {
   });
 
   test('đã có câu hiện rồi mới gặp lượt rỗng → giữ câu cũ, nối cauNoiThem (L2c)', () async {
-    final giaoDich = _CongCuGia(kTenCongCuGiaoDich, _timRong());
+    final giaoDich = _CongCuGia(kTenCongCuTruyVan, _timRong());
     bo = BoCongCu([tool, giaoDich]);
     final (sk, _, _, _) = await chay([
       [goiHoaDon],
@@ -377,11 +377,11 @@ void main() {
   });
 
   test('⭐ rỗng rồi gọi lại rộng hơn có hàng → chữ vẫn KHÔNG hiện; mẫu câu hai nhóm', () async {
-    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_timRong(), _timCoHang()]);
+    final giaoDich = _CongCuKichBan(kTenCongCuTruyVan, [_timRong(), _timCoHang()]);
     bo = BoCongCu([giaoDich]);
     final (sk, goi, _, _) = await chay([
       [goiTimChi],
-      [const GoiCongCu(kTenCongCuGiaoDich, {'ky': 'thang_nay', 'chieu': 'khoan_chi'})],
+      [const GoiCongCu(kTenCongCuTruyVan, {'ky': 'thang_nay', 'chieu': 'khoan_chi'})],
       [const Chu('Các khoản chi từ 200k đến 1 triệu: Cho vay 800.000 đ.')],
     ]);
     final cau = sk.whereType<CauQua>().single.cau;
@@ -391,11 +391,11 @@ void main() {
   });
 
   test('cả lời từ chối lẫn lượt rỗng → một lần nối theo thứ tự xảy ra, log (L2b+L2c)', () async {
-    final giaoDich = _CongCuKichBan(kTenCongCuGiaoDich, [_tuChoiDanhMuc('abc'), _timRong()]);
+    final giaoDich = _CongCuKichBan(kTenCongCuTruyVan, [_tuChoiDanhMuc('abc'), _timRong()]);
     bo = BoCongCu([tool, giaoDich]);
     final (sk, _, _, _) = await chay([
       [goiHoaDon],
-      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuGiaoDich, {'danh_muc': 'abc'})],
+      [const Chu('Kiem đã quá hạn 45.000 đ. '), const GoiCongCu(kTenCongCuTruyVan, {'danh_muc': 'abc'})],
       [goiTimChi],
       [const Chu('Không có gì cả.')],
     ]);

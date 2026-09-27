@@ -239,18 +239,14 @@ void main() {
     // lớn nhất) gọi tổng kết bốn lần liền dù mô tả chéo (2b) đã dặn — "không
     // few-shot ở bậc tool" (spec 4b §3.7) là giả định chưa từng đo. Ví dụ định
     // tuyến: câu hỏi kiểu nào → tool nào, tham số nào; KHÔNG chữ số.
-    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9): nêu cả hai tool cạnh tranh và các kiểu câu có điều kiện', () {
+    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9; từ 2026-09-27 một tool giao dịch): các kiểu câu có điều kiện', () {
       expect(kPromptHeThongCongCu, contains('Ví dụ'));
-      expect(kPromptHeThongCongCu, contains(kTenCongCuGiaoDich));
-      expect(kPromptHeThongCongCu, contains(kTenCongCuTongKet));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuTruyVan));
       for (final dieuKien in ['số tiền', 'khoản thu', 'ví', 'danh mục', 'lớn nhất']) {
         expect(kPromptHeThongCongCu, contains(dieuKien), reason: dieuKien);
       }
       expect(kPromptHeThongCongCu, contains('chieu'));
       expect(kPromptHeThongCongCu, contains('so_tien_tu'));
-      expect(kPromptHeThongCongCu.indexOf(kTenCongCuGiaoDich),
-          lessThan(kPromptHeThongCongCu.indexOf(kTenCongCuTongKet)),
-          reason: 'ví dụ về tool liệt kê đứng trước — mô hình đọc từ trên xuống');
     });
     // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
     // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"

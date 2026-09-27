@@ -31,7 +31,7 @@ void main() {
       kTenCongCuNganSach,
       kTenCongCuHoaDon,
       kTenCongCuVi,
-      kTenCongCuTongKet,
+      kTenCongCuTruyVan,
     ]) {
       expect(RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(t), isTrue, reason: t);
     }
@@ -45,10 +45,9 @@ void main() {
     expect(cauDangTraCuu(kTenCongCuHoaDon), 'Đang tra cứu hoá đơn…');
     expect(cauDangTraCuu(kTenCongCuVi), 'Đang tra cứu ví…');
     expect(cauDangTraCuu(kTenCongCuNganSach), 'Đang tra cứu ngân sách…');
-    expect(cauDangTraCuu(kTenCongCuTongKet), 'Đang tổng kết thu chi…');
     expect(cauDangTraCuu(kTenCongCuMucTieu), 'Đang tra cứu mục tiêu…');
     expect(cauDangTraCuu(kTenCongCuGoiYHanMuc), 'Đang tính gợi ý hạn mức…');
-    expect(cauDangTraCuu(kTenCongCuGiaoDich), 'Đang tìm giao dịch…');
+    expect(cauDangTraCuu(kTenCongCuTruyVan), 'Đang tra cứu giao dịch…');
     expect(cauDangTraCuu('bay_gio_may_gio'), 'Đang tra cứu…',
         reason: 'mô hình bịa tên tool thì dòng chỉ báo không được vỡ');
   });

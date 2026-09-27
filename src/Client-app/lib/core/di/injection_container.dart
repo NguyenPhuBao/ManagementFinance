@@ -536,7 +536,6 @@ Future<void> setupDependencies() async {
   // lazy như `NguonGoiSo` — chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
   sl.registerLazySingleton<BoCongCu>(
     () => BoCongCu.macDinh(
-      phanTich: sl<AnalyticsRepository>(),
       nganSach: sl<BudgetRepository>(),
       vi: sl<WalletRepository>(),
       hoaDon: sl<BillRepository>(),
