@@ -6,6 +6,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const FinancialSnapshotService = require('../../modules/ai/features/chatbot/snapshot/financial.snapshot.service');
 const PIIMasker = require('../../modules/ai/features/chatbot/privacy/pii.masker');
+const ToolsExecutor = require('../../modules/ai/features/chatbot/tools/tools.executor');
 
 describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Chính', () => {
   const service = new FinancialSnapshotService();
@@ -38,6 +39,22 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
     assert.strictEqual(allocation.savings_percent, 16); // 4tr / 25tr = 16%
   });
 
+  it('2b. Phân bổ cơ cấu 50/30/20 khi khoản chi lưu số ÂM trong CSDL PostgreSQL', () => {
+    // Trong PostgreSQL, giao dịch Chi lưu số âm (ví dụ: -10tr, -5tr)
+    const negativeExpenses = [
+      { amount: -10000000, category: { namecategory: 'Thuê nhà' } }, // Needs
+      { amount: -5000000, category: { namecategory: 'Ăn uống' } },   // Needs
+      { amount: -6000000, category: { namecategory: 'Mua sắm' } },   // Wants
+      { amount: -4000000, category: { namecategory: 'Tiết kiệm' } }, // Savings
+    ];
+
+    const allocation = service.calculate50_30_20(negativeExpenses, 25000000);
+    // Tỷ lệ % phải là số dương chuẩn xác
+    assert.strictEqual(allocation.needs_percent, 60);
+    assert.strictEqual(allocation.wants_percent, 24);
+    assert.strictEqual(allocation.savings_percent, 16);
+  });
+
   it('3. Tính số tháng Quỹ khẩn cấp (Emergency Fund Months)', () => {
     const wallets = [
       { balance: 30000000, include_in_total: true },
@@ -62,6 +79,26 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
     assert.ok(score >= 0 && score <= 100, 'FHS phải nằm trong khoảng 0-100');
     assert.strictEqual(typeof score, 'number');
     assert.ok(score >= 60 && score <= 85, `Điểm FHS hợp lý, thực tế: ${score}`);
+  });
+
+  it('5. Tính toán mẫu số ngày động (Dynamic Days Span) theo ngày giao dịch đầu tiên', () => {
+    const now = new Date('2026-09-27T08:00:00Z');
+    const ninetyDaysAgo = new Date('2026-06-29T08:00:00Z');
+
+    // Trường hợp 1: Tài khoản mới 20 ngày tuổi (giao dịch đầu tiên cách 20 ngày)
+    const firstTx20Days = new Date('2026-09-07T08:00:00Z');
+    const days20 = service.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTx20Days);
+    assert.strictEqual(days20, 20);
+
+    // Trường hợp 2: Tài khoản rất mới (7 ngày tuổi) -> tối thiểu 14 ngày
+    const firstTx7Days = new Date('2026-09-20T08:00:00Z');
+    const days14 = service.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTx7Days);
+    assert.strictEqual(days14, 14);
+
+    // Trường hợp 3: Tài khoản lâu năm (> 90 ngày) -> tối đa 90 ngày
+    const firstTx180Days = new Date('2026-03-01T08:00:00Z');
+    const days90 = service.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTx180Days);
+    assert.strictEqual(days90, 90);
   });
 });
 
@@ -96,4 +133,52 @@ describe('PIIMasker — Che Giấu Thông Tin Cá Nhân & Làm Mờ Dữ Liệu'
     assert.strictEqual(sanitized.financialHealthScore, 75);
     assert.strictEqual(sanitized.liquidityAndObligations.emergencyFundMonths, 2.1);
   });
+
+  it('3. Che số điện thoại có dấu cách hoặc dấu gạch ngang (VD: 0912 345 678, 0987-654-321)', () => {
+    const text = 'Liên hệ anh Ba qua số 0912 345 678 hoặc hotline 0987-654-321 nha';
+    const masked = masker.maskPII(text);
+    assert.ok(!masked.includes('0912 345 678'), 'Không được lộ số điện thoại có khoảng trắng');
+    assert.ok(!masked.includes('0987-654-321'), 'Không được lộ số điện thoại có gạch ngang');
+    assert.ok(masked.includes('[SĐT]'));
+  });
+
+  it('4. Che số CMND/CCCD (12 chữ số) và mã OTP/CVV', () => {
+    const text = 'Số CCCD của tôi là 079201004567, mã OTP xác thực là 839201, vui lòng không chia sẻ';
+    const masked = masker.maskPII(text);
+    assert.ok(!masked.includes('079201004567'), 'Không được lộ CCCD 12 số');
+    assert.ok(!masked.includes('839201'), 'Không được lộ mã OTP');
+    assert.ok(masked.includes('[CCCD]') || masked.includes('[STK]') || masked.includes('[MÃ_BẢO_MẬT]'));
+  });
+
+  it('5. Che họ tên người dùng khi cung cấp userName trong ngữ cảnh', () => {
+    const text = 'Khoản tiền thưởng dự án gửi cho Nguyễn Phú Bảo tháng này';
+    const masked = masker.maskPII(text, { userName: 'Nguyễn Phú Bảo' });
+    assert.ok(!masked.includes('Nguyễn Phú Bảo'), 'Không được lộ tên đầy đủ người dùng');
+    assert.ok(masked.includes('[TÊN_NGƯỜI_DÙNG]'));
+  });
 });
+
+describe('ToolsExecutor — Công Cụ Truy Vấn Tài Chính Bổ Sung', () => {
+  const tools = new ToolsExecutor();
+
+  it('1. So sánh chi tiêu 2 kỳ với số âm CSDL PostgreSQL', () => {
+    // Kỳ 1: -5,000,000, Kỳ 2: -4,000,000 (chi tiêu tăng 1,000,000)
+    const result = tools.calculatePeriodDifference(-5000000, -4000000);
+    assert.strictEqual(result.period1Amount, 5000000);
+    assert.strictEqual(result.period2Amount, 4000000);
+    assert.strictEqual(result.difference, 1000000);
+    assert.strictEqual(result.trend, 'increased');
+    assert.strictEqual(result.percentageChange, '+25%');
+  });
+
+  it('2. So sánh chi tiêu khi chi tiêu giảm với số âm CSDL', () => {
+    // Kỳ 1: -3,000,000, Kỳ 2: -4,000,000 (chi tiêu giảm 1,000,000)
+    const result = tools.calculatePeriodDifference(-3000000, -4000000);
+    assert.strictEqual(result.period1Amount, 3000000);
+    assert.strictEqual(result.period2Amount, 4000000);
+    assert.strictEqual(result.difference, -1000000);
+    assert.strictEqual(result.trend, 'decreased');
+    assert.strictEqual(result.percentageChange, '-25%');
+  });
+});
+

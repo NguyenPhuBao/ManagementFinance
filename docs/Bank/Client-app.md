@@ -1,5 +1,12 @@
 # Đặc Tả Kỹ Thuật Module Client-app — Khai Báo Tài Khoản Ngân Hàng & Nhận Giao Dịch Realtime (SePay Cá Nhân)
 
+> [!WARNING]
+> **THÔNG BÁO TẠM DỪNG MODULE BANK DO LÝ DO CHÍNH SÁCH (PO chốt 2026-09-21):**  
+> Xuất phát từ lý do chính sách (quy định bảo mật tài khoản ngân hàng, hạn chế giấy phép kết nối bên thứ 3 và tuân thủ Nghị định 13/2023/NĐ-CP), Module Bank (liên kết ngân hàng tự động SePay/Casso) **TẠM DỪNG HOÀN TOÀN**.  
+> - **Mã nguồn đã xây dựng:** Giữ nguyên trạng tại Backend làm nền tảng đối soát chuẩn mực, tuyệt đối không xóa.  
+> - **Phạm vi sắp tới:** Không nằm trong phạm vi phát triển, kiểm thử hay đánh giá nghiệm thu của Client-app.  
+> - **Luồng thay thế:** Ứng dụng tập trung vào Module OCR (quét hóa đơn/biên lai chuyển khoản) và ghi nhận từ SMS trên máy / nhập tay.
+
 Tài liệu này quy định chi tiết toàn bộ các hạng mục công việc, kiến trúc mã nguồn, màn hình giao diện (UI/UX), quy chuẩn dữ liệu và các lưu ý vận hành trên nền tảng **Flutter (Client-app)** để hoàn thiện chức năng **Khai Báo Tài Khoản Ngân Hàng** và **Nhận Giao Dịch Biến Động Số Dư Thời Gian Thực** thông qua hệ thống **SePay Cá Nhân (`my.sepay.vn`)**.
 
 ---

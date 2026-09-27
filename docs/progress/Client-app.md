@@ -59,7 +59,11 @@ Client-app cần cập nhật cấu trúc các bảng SQLite cục bộ trên th
 
 ---
 
-## 3. Module Bank & Quy Trình Duyệt Giao Dịch Ngân Hàng (Bank Inbox UI)
+## 3. Module Bank & Quy Trình Duyệt Giao Dịch Ngân Hàng (Bank Inbox UI) ⏸️ [TẠM DỪNG DO CHÍNH SÁCH]
+
+> [!WARNING]
+> **THÔNG BÁO TẠM DỪNG DO LÝ DO CHÍNH SÁCH (PO chốt 2026-09-21):**  
+> Xuất phát từ lý do chính sách bảo mật dữ liệu ngân hàng và tuân thủ Nghị định 13/2023/NĐ-CP, Module Bank (liên kết ngân hàng Casso/SePay và Pending Inbox) **TẠM DỪNG HOÀN TOÀN**. Client-app **không cần triển khai** mục 3 này trong phạm vi hiện tại.
 
 Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng:
 

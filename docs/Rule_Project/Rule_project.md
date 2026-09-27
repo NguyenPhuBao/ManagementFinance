@@ -341,7 +341,7 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * `'Saving'`: Tài khoản/sổ tiết kiệm.
 * Loại thứ tư, `'Banking'`, **do hệ thống tạo** qua luồng liên kết ngân hàng
   (SePay) và không nằm trong ô chọn: ràng buộc `chk_wallet_banking_link` đòi nó
-  đi kèm `Id_bank_casso`.
+  đi kèm `Id_bank_casso` *(Lưu ý: Luồng liên kết ngân hàng hiện tạm dừng do lý do chính sách)*.
 * Định nghĩa duy nhất phía client: `lib/features/wallet/domain/wallet_type.dart`.
 * Ví điện tử (MoMo, ZaloPay…) nay khai bằng `'Bank'`; thẻ tín dụng chưa có loại
   riêng — xem **G27** `docs/CLIENT_APP_KNOWN_GAPS.md`.
@@ -480,7 +480,11 @@ Bộ máy chống trùng lặp giao dịch (Deduplication Engine) vận hành th
 
 ---
 
-## 🏦 8. QUY TẮC TÍCH HỢP NGÂN HÀNG (BANK INTEGRATION - SEPAY)
+## 🏦 8. QUY TẮC TÍCH HỢP NGÂN HÀNG (BANK INTEGRATION - SEPAY) ⏸️ [TẠM DỪNG DO CHÍNH SÁCH]
+
+> [!WARNING]
+> **THÔNG BÁO TẠM DỪNG DO LÝ DO CHÍNH SÁCH (PO chốt 2026-09-21):**  
+> Xuất phát từ lý do chính sách bảo mật dữ liệu ngân hàng và tuân thủ Nghị định 13/2023/NĐ-CP, Module Bank (liên kết ngân hàng SePay cá nhân) **TẠM DỪNG HOÀN TOÀN**. Toàn bộ quy tắc dưới đây được bảo lưu nguyên trạng làm cơ sở tài liệu, nhưng không nằm trong phạm vi phát triển/kiểm thử hiện tại.
 
 ### 8.1. Mô hình SePay Tài Khoản Cá Nhân
 * Hệ thống sử dụng SePay gói **Cá nhân** (Personal Account), không dùng mô hình Bank Hub Doanh nghiệp.
@@ -663,7 +667,7 @@ Tất cả các thành phần hệ thống (`src/Backend`, `src/Admin-web`, `src
 ### 12.2. Nguyên tắc vàng — Tối thiểu hóa dữ liệu (Data Minimization)
 * Chỉ thu thập dữ liệu thực sự cần thiết cho tính năng tài chính cốt lõi khi có sự đồng ý của người dùng. Nếu không có dữ liệu đó mà hệ thống vẫn chạy bình thường $\rightarrow$ **tuyệt đối không thu thập**.
 * **Danh mục TUYỆT ĐỐI KHÔNG thu thập / không lưu trữ:**
-  1. Tên đăng nhập (username) và mật khẩu (password) Internet Banking của người dùng (Module Bank dùng mô hình SePay Cá Nhân an toàn, người dùng chỉ khai báo STK và tên ngân hàng, không lưu credentials).
+  1. Tên đăng nhập (username) và mật khẩu (password) Internet Banking của người dùng (Module Bank dùng mô hình SePay Cá Nhân an toàn, không lưu credentials; hiện Module Bank đã tạm dừng hoàn toàn do lý do chính sách).
   2. Số thẻ tín dụng đầy đủ kèm mã bảo mật CVV/CVC.
   3. Dữ liệu vị trí GPS liên tục.
   4. Danh bạ điện thoại, tin nhắn SMS cá nhân ngoài các tin nhắn biến động số dư ngân hàng được người dùng cấp quyền đọc cục bộ.

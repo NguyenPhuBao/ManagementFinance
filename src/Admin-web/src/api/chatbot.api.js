@@ -86,8 +86,9 @@ export async function streamChatResponse({
         } else if (eventType === 'delta') {
           try {
             const deltaData = JSON.parse(dataStr);
-            if (onDelta && deltaData.content) {
-              onDelta(deltaData.content);
+            const chunkText = deltaData.text !== undefined ? deltaData.text : deltaData.content;
+            if (onDelta && chunkText !== undefined) {
+              onDelta(chunkText);
             }
           } catch (e) {
             // Trường hợp data thô
@@ -125,7 +126,7 @@ export async function streamChatResponse({
  */
 export async function getFinancialHealth() {
   const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  const response = await fetch(`${baseURL}/ai/chatbot/financial-health`, {
+  const response = await fetch(`${baseURL}/ai/chatbot/snapshot`, {
     method: 'GET',
     headers: {
       Authorization: token ? `Bearer ${token}` : '',

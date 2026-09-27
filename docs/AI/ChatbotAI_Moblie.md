@@ -37,31 +37,31 @@ Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh h
     ]
   }
   ```
-  *(Lưu ý: Chỉ gửi tối đa 6–10 tin nhắn gần nhất trong `history` để tối ưu token)*.
+  *(Lưu ý: Backend xử lý tối đa 6 tin nhắn gần nhất trong `history` để tối ưu token)*.
 
 - **Response Format (Server-Sent Events):**
   Backend trả về luồng `text/event-stream` gồm các sự kiện tuần tự:
   ```http
   event: meta
-  data: {"snapshotLoaded": true, "healthScore": 72, "topExpense": "Ăn uống"}
+  data: {"snapshotLoaded": true, "healthScore": 72, "snapshot": {"period": "Tháng 09/2026", "financialHealthScore": 72, "topExpense": "Ăn uống"}}
 
   event: delta
-  data: {"text": "Chào "}
+  data: {"text": "Chào ", "content": "Chào "}
 
   event: delta
-  data: {"text": "bạn! Dựa trên bức tranh "}
+  data: {"text": "bạn! Dựa trên bức tranh ", "content": "bạn! Dựa trên bức tranh "}
 
   event: delta
-  data: {"text": "tài chính tháng này, danh mục Ăn uống đang chiếm tới 34%..."}
+  data: {"text": "tài chính tháng này, danh mục Ăn uống đang chiếm tới 34%...", "content": "tài chính tháng này, danh mục Ăn uống đang chiếm tới 34%..."}
 
   event: done
-  data: {"status": "completed", "responseTimeMs": 720}
+  data: {"responseTimeMs": 720}
   ```
 
-- **Mã lỗi thường gặp:**
+- **Mã lỗi & Cơ chế dự phòng thường gặp:**
   - `401 Unauthorized`: Token hết hạn $\rightarrow$ Chạy luồng Refresh Token.
-  - `429 Too Many Requests`: Vượt hạn mức 15 req/phút $\rightarrow$ Hiện thông báo: *"Bạn đang thao tác quá nhanh, vui lòng chờ ít giây"*.
-  - `503 Service Unavailable`: Circuit breaker đang mở / Gemini lỗi $\rightarrow$ Gợi ý người dùng chuyển sang Trợ lý Offline trên máy.
+  - `429 Too Many Requests`: Vượt hạn mức 15 req/phút $\rightarrow$ Hiện thông báo: *"Bạn đang gửi yêu cầu quá nhanh (giới hạn 15 tin nhắn/phút), vui lòng thử lại sau giây lát"*.
+  - `Circuit Breaker & Fallback Notice`: Khi Gemini API lỗi hoặc Circuit Breaker mở, Backend gửi trực tiếp thông báo hệ thống minh bạch (tuyệt đối không bịa số liệu giả), đồng thời Client-app có thể gợi ý chuyển sang Trợ lý AI Offline (`Gemma 4 E2B`).
 
 ### 2.2. API Lấy Bản Chụp Sức Khỏe Tài Chính (Financial Health Snapshot)
 
@@ -191,7 +191,7 @@ Future<void> sendChatMessageStream({
 
 ## 5. LƯU TRỮ LỊCH SỬ CHAT CỤC BỘ (DRIFT SQLITE)
 
-- **Bảng CSDL cục bộ:** Tạo bảng `LocalChatMessages` trên Drift SQLite v24 (chỉ lưu trên máy, không đồng bộ lên server để bảo vệ quyền riêng tư):
+- **Bảng CSDL cục bộ:** Tạo bảng `LocalChatMessages` trên Drift SQLite (chỉ lưu trên máy, không đồng bộ lên server để bảo vệ quyền riêng tư):
   - `id`: Int / UUID.
   - `role`: 'user' | 'model'.
   - `message`: String.

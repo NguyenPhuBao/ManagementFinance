@@ -70,7 +70,7 @@ Chức năng **Receipt OCR (F013)** trong Module AI đóng vai trò là **Tầng
 
 > ⚠️ **CẬP NHẬT PHÂN CHIA TRÁCH NHIỆM & TRẠNG THÁI (PO chốt 2026-09-23):**
 > 1. **Chức năng OCR phía Client-app:** Thuộc lộ trình bước 6 (hiện tại Client-app chưa triển khai giao diện/màn hình OCR). Backend đã sẵn sàng endpoint `POST /api/ai/ocr/parse` dùng Gemini 2.0 Flash Multimodal để quản lý tập trung `GEMINI_API_KEY`.
-> 2. **Khử trùng lặp (Deduplication Engine):** Phía Client-app chỉ cần triển khai khi làm OCR (tránh quét trùng 1 biên lai). Backend giữ mã `dedup.service.js` phục vụ đối soát nội bộ cho OCR.
+> 2. **Khử trùng lặp (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (SMS & thông báo app ngân hàng) và chống quét trùng biên lai khi làm OCR; Backend giữ mã `dedup.service.js` phục vụ đối soát nội bộ cho OCR.
 > 3. **Module Bank & SMS Server:** Kênh liên kết ngân hàng (SePay / BankSync) và SMS server tạm dừng hoàn toàn vì lý do chính sách.
 
 ---

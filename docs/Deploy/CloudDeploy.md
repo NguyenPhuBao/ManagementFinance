@@ -119,6 +119,14 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    - **Build Command:** `npm install`
    - **Start Command:** `npm start` *(hoặc `node index.js` — **không dùng** `npm run dev`)*.
    - **Auto-Deploy:** `Yes` (Kích hoạt tự động triển khai mỗi khi push code lên GitHub).
+
+> [!TIP]
+> **Lưu ý Cài đặt Phụ thuộc Mới (AI Chatbot & Resilience):**  
+> Khi clone hoặc kéo mã nguồn mới nhất từ Git, lập trình viên môi trường cục bộ cũng như Render cần đảm bảo chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói phụ thuộc mới:
+> - `@google/generative-ai`: SDK Google Gemini 2.5 Flash
+> - `ioredis`: Kết nối Redis phục vụ Rate Limiter Token-Bucket & Snapshot Cache
+> - `express-rate-limit`: Bảo vệ các route API cơ bản
+
 3. **Khai Báo Biến Môi Trường (Environment):**
    Vào tab **Environment** của Web Service trên Render, thêm các biến sau:
 
