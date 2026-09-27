@@ -247,6 +247,18 @@ void main() {
       }
       expect(kPromptHeThongCongCu, contains('chieu'));
       expect(kPromptHeThongCongCu, contains('so_tien_tu'));
+      // Tool truy vấn (2026-09-27): gộp, chọn, hai chiều, và chon ngân sách.
+      for (final vd in [
+        'gop=danh_muc',
+        'chon=nhieu_nhat',
+        'chon=it_nhat',
+        'chieu=tat_ca',
+        '$kTenCongCuNganSach với chon=duoi_nua',
+      ]) {
+        expect(kPromptHeThongCongCu, contains(vd), reason: vd);
+      }
+      expect(kPromptHeThongCongCu, isNot(contains('tong_ket_thu_chi_ky')));
+      expect(kPromptHeThongCongCu, isNot(contains('tim_giao_dich')));
     });
     // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
     // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"

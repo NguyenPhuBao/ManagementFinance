@@ -163,8 +163,12 @@ const String kPromptHeThongCongCu =
     'gì cho một danh mục từ một ví", "các khoản chi cho một danh mục" → '
     '$kTenCongCuTruyVan với vi và danh_muc là tên nêu trong câu. "khoản chi lớn nhất '
     'tháng này là gì" → $kTenCongCuTruyVan với chieu=khoan_chi, sap_xep=so_tien. '
-    '"tháng này tôi chi bao nhiêu", "tháng này chi nhiều nhất vào danh mục nào" → '
-    '$kTenCongCuTruyVan; câu "chi nhiều nhất vào danh mục nào" thêm gop=danh_muc, chon=nhieu_nhat. '
+    '"tháng này tôi chi bao nhiêu" → '
+    '$kTenCongCuTruyVan với ky. "tháng này chi nhiều nhất vào danh mục nào" → '
+    '$kTenCongCuTruyVan với gop=danh_muc, chon=nhieu_nhat. "danh mục nào tôi ít tiêu '
+    'nhất" → gop=danh_muc, chon=it_nhat. "tôi đã cho vay bao nhiêu và thu về bao nhiêu" '
+    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. "ngân sách nào chưa dùng đến nửa" '
+    '→ $kTenCongCuNganSach với chon=duoi_nua. '
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '
