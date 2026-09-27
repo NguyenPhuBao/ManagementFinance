@@ -614,6 +614,9 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   `Rule_project.md`, `progress/Backend.md:74`, đầu `docs/Bank/Client-app.md`).
 - ✅ **`npm install` đã chạy trong `src/Backend`** theo cho phép đích danh của người dùng (chỉ thiếu
   `@google/generative-ai`; `ioredis`, `express-rate-limit` đã có). `chatbot.service.js` nạp được. Redis **không** bắt buộc.
+  Bốn tệp test đơn vị của chatbot (`tests/unit/`) chạy **25/25** xanh — ⚠️ chúng viết bằng **`node:test`** (`npm test` =
+  `node --test`); gọi bằng `jest` thì cả bốn báo *"must contain at least one test"*, và hook `rtk` nuốt sạch output của
+  jest — phải `rtk proxy` hoặc ghi ra tệp.
 - **Đo thật** `generateSnapshot(10, {bypassCache: true})` sau sửa: FHS **57**, quỹ khẩn cấp **12,9 tháng**, top danh mục
   giảm dần (Di chuyển 42 % · Chi khác 36 % · Mua sắm 7 %) — trước `eceb6c9` các số này là 0 / âm / đảo; truy vấn 7.1
   chạy lại vẫn 23/23 `Chi` âm, 6/6 `Thu` dương. Cùng phép đo lộ **hai lỗi mới**: `overBudgetAlerts` không lọc ngân sách
