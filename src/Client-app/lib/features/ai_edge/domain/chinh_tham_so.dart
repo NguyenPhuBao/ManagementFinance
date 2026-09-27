@@ -20,7 +20,12 @@
 ///    … trở lên* → `so_tien_tu`; *dưới / không quá / đến / tới* → `so_tien_den`).
 /// 5. **Sắp xếp và kỳ**: *lần gần nhất / lần cuối / gần đây / mới nhất* →
 ///    `sap_xep=moi_nhat`; câu không có chữ kỳ nào → `ky=moi_luc`.
-/// 6. **Không đụng** giá trị mà câu hỏi không nói tới.
+/// 6. **Không đụng** giá trị mà câu hỏi không nói tới — TRỪ `chon` (luật 10):
+///    cổng E lần 1 (9.32) đo được mô hình điền `chon: nhieu_nhat` cho *"liệt kê
+///    các khoản chi…"* (C9) và *"5 khoản chi gần đây nhất"* (C16) nên chỉ còn
+///    một hàng; câu không có *"…nhất"* thì `chon` không có bằng chứng → gỡ.
+///    Cùng luật cho `chinhThamSoNganSach` (E10 `duoi_nua` thừa) và
+///    `chinhThamSoMucTieu`.
 ///
 /// So trên chữ **bỏ dấu** — đúng chỗ của `removeVietnameseTones` (đọc tham số,
 /// như `khop_ten.dart`), không phải quy tắc trùng tên. ⚠️ Từ khoá chiều tiền
@@ -60,8 +65,10 @@ final List<String> _tuChuyenTien =
     'chuyen tien|chuyen sang|chuyen khoan|chuyen vi|chuyen qua|chuyen den|chuyen vao'
         .split('|');
 final List<String> _tuMoiNhat = 'lan gan nhat|lan cuoi|gan day|moi nhat|gan nhat'.split('|');
+/// Chữ kỳ — có cả *"đầu năm / đầu tháng / đầu tuần"* (E5 cổng E: *"kể từ đầu
+/// năm"* từng bị đọc là không nêu kỳ → `moi_luc`).
 final List<String> _tuKy =
-    'hom nay|hom qua|tuan nay|tuan truoc|thang nay|thang truoc|quy nay|nam nay|tuan|thang|quy'
+    'hom nay|hom qua|tuan nay|tuan truoc|thang nay|thang truoc|quy nay|nam nay|dau nam|dau thang|dau tuan|tuan|thang|quy'
         .split('|');
 final List<String> _tuTu = 'tren|hon|tu|it nhat|toi thieu|lon hon'.split('|');
 final List<String> _tuDen = 'duoi|khong qua|den|toi|toi da|nho hon|thap hon|it hon'.split('|');
@@ -232,6 +239,11 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['chon'] = chon;
     ghi.add('câu hỏi "… nhất" → chon=$chon');
   }
+  // 10. Câu không có "… nhất" mà mô hình vẫn điền chon → gỡ (C9, C16 cổng E).
+  if (chon == null && _chuoi(a['chon']) != null) {
+    a.remove('chon');
+    ghi.add('câu hỏi không có "… nhất" → bỏ chon');
+  }
   // 8. Gộp: danh mục / ví nói chung, KHÔNG nêu tên (E5 nêu tên → lọc, không gộp).
   if (_chuoi(a['danh_muc']) == null &&
       _tuGopDanhMuc.any((t) => _co(q, t)) &&
@@ -302,6 +314,42 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
   if (chon != null && a['chon'] != chon) {
     a['chon'] = chon;
     ghi.add('câu hỏi về tỉ lệ đã dùng → chon=$chon');
+  }
+  // Luật 10: không chữ nào về tỉ lệ / nhất mà mô hình điền chon → gỡ (E10 cổng E).
+  if (chon == null && _chuoi(a['chon']) != null) {
+    a.remove('chon');
+    ghi.add('câu hỏi không nói tỉ lệ / nhất → bỏ chon');
+  }
+  return KetQuaChinhThamSo(a, ghi);
+}
+
+/// Bộ chỉnh của `danh_sach_muc_tieu` (cổng E lần 1, E11): trạng thái nêu trong
+/// câu → `chon`; không nêu → gỡ `chon` mô hình điền thừa (luật 10).
+final List<String> _tuMucTieuCham = 'cham ke hoach|cham tien do|bi cham|dang cham|cham|tre|khong kip'.split('|');
+final List<String> _tuMucTieuQuaHan = 'qua han|tre han|het han'.split('|');
+final List<String> _tuMucTieuDung = 'dung ke hoach|dung tien do|dung nhip|dang on'.split('|');
+
+KetQuaChinhThamSo chinhThamSoMucTieu(String cauHoi, Map<String, dynamic> args) {
+  final a = Map<String, dynamic>.from(args);
+  final ghi = <String>[];
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
+  String? chon;
+  // Quá hạn xét trước: "trễ hạn" chứa "trễ".
+  if (_tuMucTieuQuaHan.any((t) => _co(q, t))) {
+    chon = 'qua_han';
+  } else if (_tuMucTieuCham.any((t) => _co(q, t))) {
+    chon = 'cham_ke_hoach';
+  } else if (_tuMucTieuDung.any((t) => _co(q, t))) {
+    chon = 'dung_ke_hoach';
+  }
+  if (chon != null && a['chon'] != chon) {
+    a['chon'] = chon;
+    ghi.add('câu hỏi nêu trạng thái mục tiêu → chon=$chon');
+  }
+  if (chon == null && _chuoi(a['chon']) != null) {
+    a.remove('chon');
+    ghi.add('câu hỏi không nêu trạng thái → bỏ chon');
   }
   return KetQuaChinhThamSo(a, ghi);
 }

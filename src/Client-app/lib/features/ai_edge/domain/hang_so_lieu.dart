@@ -81,6 +81,12 @@ class KetQuaCongCu {
   /// gỡ. Chỉ `hangGiaoDich` đặt. **Không** vào [json].
   final bool rongTheoBoLoc;
 
+  /// Danh từ cho câu "không có … nào khớp" khi [rongTheoBoLoc]: hàng giao dịch
+  /// là *giao dịch* (mặc định), tool ngân sách / mục tiêu đặt *ngân sách* /
+  /// *mục tiêu* — cổng E lần 1 (9.32) mẫu câu rỗng của ngân sách từng nói
+  /// "không có giao dịch nào khớp". **Không** vào [json].
+  final String doiTuongRong;
+
   /// Chữ từng điều kiện lọc đã dùng, theo thứ tự cố định (spec 2c mục 2.2), cho
   /// mẫu câu. Được chứa chữ số (khoảng tiền) vì **không** vào [json] — khác
   /// [chuThem]; mỗi con số ở đây phải bằng đúng `chuoi` của một mục
@@ -100,6 +106,7 @@ class KetQuaCongCu {
     this.rongTheoBoLoc = false,
     this.boLoc = const [],
     this.soLieuBoLoc = const [],
+    this.doiTuongRong = 'giao dịch',
   })  : loi = null,
         choNguoiDung = null,
         thamSoGo = const [];
@@ -117,6 +124,7 @@ class KetQuaCongCu {
         rongTheoBoLoc = false,
         boLoc = const [],
         soLieuBoLoc = const [],
+        doiTuongRong = 'giao dịch',
         loi = vi;
 
   Map<String, dynamic> get json => {

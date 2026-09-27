@@ -148,9 +148,10 @@ void main() {
   // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
   // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
   // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
-  // Đo lại 2026-09-27 sau tool truy vấn + chon ngân sách (Realme, 6 tool, lời hệ
-  // thống 2293 ký tự, câu C7 → truy_van_giao_dich đúng tham số, 0 FAILED_PRECONDITION): 5633.
-  const kTranToolsJsonDaDo = 5633;
+  // Đo lại 2026-09-27 tối muộn sau `chon` của tool mục tiêu (Realme, 6 tool, lời hệ
+  // thống 2293 ký tự, câu E11 → danh_sach_muc_tieu {chon: cham_ke_hoach}, 0
+  // FAILED_PRECONDITION): 5938. Mốc 5633 là cùng ngày, trước `chon` mục tiêu.
+  const kTranToolsJsonDaDo = 5938;
   test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),

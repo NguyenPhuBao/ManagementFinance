@@ -3,6 +3,7 @@
 /// `budgetPaceOf` chứ không ghi cứng (nếp của gói ngân sách).
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_ngan_sach.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
@@ -120,6 +121,10 @@ void main() {
       expect(kq.rongTheoBoLoc, isTrue);
       expect(kq.json['Tổng còn lại'], '5.000 đ');
       expect(kq.json['Số ngân sách khớp'], '0');
+      expect(kq.doiTuongRong, 'ngân sách');
+      expect((GoiSoTraCuu()..them('danh_sach_ngan_sach', kq)).mauCau().cau,
+          'Đã dùng dưới một nửa — không có ngân sách nào khớp.',
+          reason: 'mẫu câu rỗng từng nói "không có giao dịch nào khớp" cho ngân sách');
     });
     test('không chon → như cũ, không có Số ngân sách khớp, không boLoc', () {
       final kq = hangNganSach(bon, now: now);

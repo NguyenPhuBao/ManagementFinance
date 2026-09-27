@@ -79,5 +79,6 @@ KetQuaCongCu hangNganSach(
     ],
     boLoc: [if (chon != null) kChuChon[chon]!],
     rongTheoBoLoc: chon != null && khop.isEmpty,
+    doiTuongRong: 'ngân sách',
   );
 }

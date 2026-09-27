@@ -233,8 +233,8 @@ class GoiSoTraCuu extends GoiSo {
     final tienTo = _hoaDau(_tienTo(ky, kq.boLoc));
     if (kq.rongTheoBoLoc) {
       return tienTo.isEmpty
-          ? 'Không có giao dịch nào khớp.'
-          : '$tienTo — không có giao dịch nào khớp.';
+          ? 'Không có ${kq.doiTuongRong} nào khớp.'
+          : '$tienTo — không có ${kq.doiTuongRong} nào khớp.';
     }
     final ve = [
       for (final h in kq.hang)

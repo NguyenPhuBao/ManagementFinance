@@ -201,6 +201,11 @@ void main() {
       expect(chinh('tuan truoc toi da tieu nhung khoan nao', {'ky': 'tuan_truoc'})['ky'], 'tuan_truoc');
       expect(chinh('hom qua toi da chi nhung gi', {'ky': 'hom_qua'})['ky'], 'hom_qua');
     });
+    test('⭐ E5 cổng E: "ke tu dau nam" LÀ chữ kỳ — ky nam_nay của mô hình giữ, không đổi moi_luc', () {
+      expect(chinh('ke tu dau nam toi da chi cho giai tri tong cong bao nhieu', {'ky': 'nam_nay'})['ky'], 'nam_nay',
+          reason: 'cổng E lần 1: bộ chỉnh ghi "câu hỏi không nêu kỳ → ky=moi_luc" cho câu này');
+      expect(chinh('tu dau thang toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'thang_nay');
+    });
   });
 
   test('6. ghi chú nêu từng luật đã áp; không luật nào áp thì rỗng', () {
@@ -246,6 +251,25 @@ void main() {
     test('phản ví dụ: câu không có "nhất" thì không đặt chon', () {
       expect(chinh('thang nay toi chi bao nhieu', {'ky': 'thang_nay'}).containsKey('chon'), isFalse);
     });
+    test('⭐ luật 10 — C9, C16 cổng E: mô hình điền chon mà câu không có "… nhất" → GỠ', () {
+      final c9 = chinh('liet ke cac khoan chi tu 200k den 1 trieu thang nay',
+          {'ky': 'thang_nay', 'chieu': 'khoan_chi', 'so_tien_den': 1000000, 'chon': 'nhieu_nhat'});
+      expect(c9.containsKey('chon'), isFalse,
+          reason: 'C9: chon thừa làm "liệt kê" còn một hàng — tụt so lần 13');
+      expect(c9['so_tien_tu'], 200000);
+      final c16 = chinh('5 khoan chi gan day nhat cua toi', {'ky': 'moi_luc', 'chieu': 'khoan_chi', 'chon': 'nhieu_nhat'});
+      expect(c16.containsKey('chon'), isFalse, reason: 'C16: "gần đây nhất" là sắp xếp, không phải chọn');
+      expect(c16['sap_xep'], 'moi_nhat');
+    });
+    test('luật 10 KHÔNG gỡ khi câu có "… nhất" thật (C18, E16)', () {
+      expect(chinh('khoan chi lon nhat thang nay la gi', {'ky': 'thang_nay', 'chon': 'nhieu_nhat'})['chon'], 'nhieu_nhat');
+      expect(chinh('khoan thu lon nhat nam nay la gi', {'ky': 'nam_nay', 'chon': 'nhieu_nhat'})['chon'], 'nhieu_nhat');
+    });
+    test('"it nhat 200k" là ngưỡng: chon mô hình điền cũng bị gỡ', () {
+      final r = chinh('cac khoan chi it nhat 200k thang nay', {'ky': 'thang_nay', 'chon': 'it_nhat'});
+      expect(r.containsKey('chon'), isFalse);
+      expect(r['so_tien_tu'], 200000);
+    });
   });
 
   group('8. gộp: danh mục / ví nói chung (không nêu tên)', () {
@@ -283,7 +307,22 @@ void main() {
       expect(chinhThamSoNganSach('ngan sach nao da qua nua', {}).args['chon'], 'tren_nua');
       expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'nhieu_nhat');
       expect(chinhThamSoNganSach('ngan sach nao it dung nhat', {}).args['chon'], 'it_nhat');
-      expect(chinhThamSoNganSach('con bao nhieu tien ngan sach', {'chon': 'duoi_nua'}).args['chon'], 'duoi_nua');
+      expect(chinhThamSoNganSach('con bao nhieu tien ngan sach', {'chon': 'duoi_nua'}).args.containsKey('chon'), isFalse,
+          reason: 'luật 10 (E10 cổng E): mô hình điền duoi_nua cho "ngân sách ăn uống còn lại bao nhiêu" — không bằng chứng → gỡ');
+    });
+  });
+
+  group('chinhThamSoMucTieu (E11 cổng E)', () {
+    test('⭐ "muc tieu nao dang cham ke hoach" → cham_ke_hoach; "qua han" → qua_han; "dung ke hoach" → dung_ke_hoach', () {
+      expect(chinhThamSoMucTieu('muc tieu nao dang cham ke hoach', {}).args['chon'], 'cham_ke_hoach');
+      expect(chinhThamSoMucTieu('Mục tiêu nào đang chậm kế hoạch?', {}).args['chon'], 'cham_ke_hoach');
+      expect(chinhThamSoMucTieu('muc tieu nao bi tre', {}).args['chon'], 'cham_ke_hoach');
+      expect(chinhThamSoMucTieu('muc tieu nao da qua han', {'chon': 'cham_ke_hoach'}).args['chon'], 'qua_han');
+      expect(chinhThamSoMucTieu('muc tieu nao dang dung ke hoach', {}).args['chon'], 'dung_ke_hoach');
+    });
+    test('không nêu trạng thái → gỡ chon mô hình điền; câu rỗng → không đụng', () {
+      expect(chinhThamSoMucTieu('khi nao toi dat muc tieu muaxe', {'chon': 'cham_ke_hoach'}).args.containsKey('chon'), isFalse);
+      expect(chinhThamSoMucTieu('', {'chon': 'cham_ke_hoach'}).args['chon'], 'cham_ke_hoach');
     });
   });
 }

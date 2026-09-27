@@ -100,6 +100,45 @@ void main() {
         {'Đang theo đuổi': '5', 'Đã hoàn thành': '1'});
   });
 
+  group('chon theo trạng thái (E11 cổng E lần 1)', () {
+    // MuaXe 1.101.000 / 2.000.000 → đúng kế hoạch; Cham 100.000 → chậm; Han hết hạn 20/09.
+    final ba = [
+      _mt(id: 'xe', ten: 'MuaXe'),
+      _mt(id: 'cham', ten: 'Cham', current: 100000),
+      _mt(id: 'han', ten: 'Han', den: DateTime(2026, 9, 20)),
+    ];
+    test('⭐ cham_ke_hoach → chỉ hàng chậm; Số mục tiêu khớp; boLoc; Đang theo đuổi vẫn đếm cả ba', () {
+      expect(_mt(id: 'cham', current: 100000).isBehindSchedule(now), isTrue, reason: 'fixture phải chậm thật');
+      final kq = hangMucTieu(ba, now: now, chon: 'cham_ke_hoach');
+      expect(kq.hang.map((h) => h.ten).toList(), ['Cham']);
+      expect(kq.hang.single.trangThai, 'chậm kế hoạch');
+      expect(kq.json['Số mục tiêu khớp'], '1');
+      expect(kq.json['Đang theo đuổi'], '3');
+      expect(kq.boLoc, ['chậm kế hoạch']);
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+    test('qua_han thắng chậm; dung_ke_hoach', () {
+      expect(hangMucTieu(ba, now: now, chon: 'qua_han').hang.single.ten, 'Han');
+      expect(hangMucTieu(ba, now: now, chon: 'dung_ke_hoach').hang.single.ten, 'MuaXe');
+    });
+    test('⭐ E11: cả hai đúng kế hoạch mà hỏi chậm → 0 hàng, rongTheoBoLoc, mẫu câu "không có mục tiêu nào khớp"', () {
+      final kq = hangMucTieu([_mt(id: 'a', ten: 'MuaXe'), _mt(id: 'b', ten: 'MuaDT', current: 1900000)],
+          now: now, chon: 'cham_ke_hoach');
+      expect(kq.hang, isEmpty);
+      expect(kq.rongTheoBoLoc, isTrue);
+      expect(kq.doiTuongRong, 'mục tiêu');
+      final cau = (GoiSoTraCuu()..them('danh_sach_muc_tieu', kq)).mauCau().cau;
+      expect(cau, 'Chậm kế hoạch — không có mục tiêu nào khớp.',
+          reason: 'cổng E lần 1: mô hình chỉ MuaXe dù không mục tiêu nào chậm; mẫu câu phải nói KHÔNG CÓ');
+    });
+    test('không chon → như cũ: không Số mục tiêu khớp, không boLoc; chon lạ → từ chối', () {
+      final kq = hangMucTieu(ba, now: now);
+      expect(kq.json.containsKey('Số mục tiêu khớp'), isFalse);
+      expect(kq.boLoc, isEmpty);
+      expect(hangMucTieu(ba, now: now, chon: 'x').loi, contains('cham_ke_hoach'));
+    });
+  });
+
   test('mẫu câu của gói tra cứu chứa hàng này tự qua kiemSo và kiemNhan', () {
     final goi = GoiSoTraCuu()..them('danh_sach_muc_tieu', hangMucTieu([_mt()], now: now));
     final cau = goi.mauCau().cau;
