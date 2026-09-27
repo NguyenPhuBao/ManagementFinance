@@ -2003,6 +2003,75 @@ thật và spike SQL; mốc sạch nay đứng thứ 3, **không ưu tiên hơn*
 5. **Bước 3** (nhập giao dịch bằng câu) — đổi bất biến ④, cần spec và người dùng duyệt.
 6. Khi có bản cuối, đo lại một lần trên **Realme** để ghi chênh lệch CPU/GPU.
 
+### 9.29 Bộ câu hỏi MỚI 22 câu, hoàn toàn khác bộ cổng D — lần đo 15 (Realme, 2026-09-27) — 15 ✅ · 3 ◐ · 4 ✗ · bịa 0
+
+**Vì sao có lần đo này.** Cổng D đạt trên 34 câu mà mọi ví dụ định tuyến và danh sách từ đều tinh chỉnh trên đúng 34 câu
+ấy (9.28). Người dùng không gửi được câu hỏi thật đã hỏi (app không lưu lịch sử chat), nên họ chốt: *tự soạn bộ mới, nhưng
+phải hoàn toàn khác bộ cũ*. Bộ E1–E22 gồm ba nhóm: **N1** (12 câu) cùng kiểu bộ cũ nhưng khác chữ — tổng thu, kỳ nêu bằng
+"tháng 9", danh mục *ít* nhất, ngưỡng "không quá", "kể từ đầu năm", một ví / một hoá đơn / một ngân sách cụ thể, đếm hoá
+đơn, đếm ví, mục tiêu chậm; **N2** (8 câu) kiểu chưa có — so sánh hai kỳ, tổng tài sản, cho vay hai chiều, khoản thu lớn
+nhất, tuần rỗng, ngân sách dưới nửa, khoản chi lớn nhất quý, chi trung bình mỗi tháng; **N3** (2 câu) ngoài phạm vi —
+ngày hôm nay, giá vàng. Đáp án tính từ bản sao `that.db` (25/09) rồi **đối chiếu màn Ví và Mục tiêu trên máy** vì máy đã
+đổi (Tiết kiệm 3.101.000, Tiền mặt 10.003.000, MuaDT 500.000/3.000.000) — bản release không `run-as` được.
+
+**Máy và bản.** Realme RMX2205, CPU, APK release `006cb1b6…` build từ HEAD `38e328d` (mã Dart = `9de2d82`; bản trên máy
+trước đó `04b0949d…` là của lần 13, **cũ hơn hai bản sửa cuối** — đã so SHA-1 trước khi cài). 15:05–15:28, 0 sập,
+mỗi câu 27–37 s (bậc 1: 81 s). Chữ gõ không dấu. Bộ đo: `congE.sh` + `hoi.sh` (đã vá, xem bẫy dưới) ở scratchpad phiên
+`1bb20ada…`; bản ghi = 22 ảnh chụp từng câu (lịch sử chat mất, xem bẫy).
+
+| # | Câu (gõ không dấu) | Tool · tham số | Câu hiện ra (nguyên văn) | Chấm |
+|---|---|---|---|---|
+| E1 | Tổng thu nhập tháng này của tôi là bao nhiêu? | tổng kết thang_nay | *Tổng thu nhập tháng này của bạn là 15.135.000 đ.* | ✅ |
+| E2 | Tháng 9 tôi đã tiêu hết bao nhiêu tiền? | tổng kết thang_nay | *Tổng chi trong tháng này là 2.141.000 đ.* | ✅ "tháng 9" → tháng này |
+| E3 | Danh mục nào tôi ít tiêu nhất trong tháng? | tổng kết thang_nay (4 hàng) | *Tổng chi… 2.141.000 đ. Các danh mục chi tiêu là: Cho vay (800.000 đ), Chưa phân loại (500.000 đ), Di chuyển (355.000 đ), và Chi khác (301.000 đ).* | ✗ **(a)** trần `kToiDaMucMoiGoi` = 4 cắt mất Giải trí 30.000 |
+| E4 | Có khoản chi nào không quá 30 nghìn trong tháng này không? | tìm GD khoan_chi so_tien_den 30000 | mẫu câu L2: 4 hàng + *Số giao dịch: 6; Tổng chi: 80.000 đ* | ✅ `kiemSo` chặn đúng câu "Có 4 khoản" (thật 6) |
+| E5 | Kể từ đầu năm tôi đã chi cho giải trí tổng cộng bao nhiêu? | tổng kết nam_nay | *Tổng chi của bạn trong năm nay là 2.141.000 đ.* | ✗ **(b)** chọn nhầm tool; số đúng, câu sai (đáp án 30.000) |
+| E6 | Những lần tôi nạp tiền vào mục tiêu MuaDT | tìm GD moi_luc tu_khoa MuaDT (3 hàng) | *Tôi tìm thấy 3 giao dịch liên quan đến mục tiêu "MuaDT".* | ◐ đúng số đếm, không kể nạp/rút |
+| E7 | Ví Tiết kiệm hiện có bao nhiêu tiền? | danh sách ví | *Số dư của ví "Tiết kiệm" là 3.101.000 đ.* | ✅ (máy) |
+| E8 | Hoá đơn Netflix khi nào đến hạn? | danh sách hoá đơn chua_tra | *Netflix sắp đến hạn.* | ✗ **(a)** `hangHoaDon` không mang ngày đến hạn (28/09) |
+| E9 | Tôi có bao nhiêu hoá đơn chưa trả? | danh sách hoá đơn chua_tra | *Có 3 hóa đơn chưa trả, với tổng cộng còn phải trả là 155.000 đ.* | ✅ |
+| E10 | Ngân sách ăn uống còn lại bao nhiêu? | danh sách ngân sách | *Tổng còn lại của ngân sách Ăn uống là 450.000 đ.* | ✅ |
+| E11 | Mục tiêu nào đang chậm kế hoạch? | danh sách mục tiêu | *Mục tiêu "MuaDT" đang chậm kế hoạch với tiến độ 16,7% và còn thiếu 2.500.000 đ.* | ✅ theo `isBehindSchedule` |
+| E12 | Tôi có mấy ví tất cả? | danh sách ví | *Có 4 ví. Các ví là: test (đang âm với số dư -100.000 đ), tiết kiệm mua nhà (bình thường với số dư 0 đ), Tiết kiệm (… 3.101.000 đ), và Tiền mặt (… 10.003.000 đ).* | ✅ |
+| E13 | Tháng này tôi chi nhiều hơn hay ít hơn tháng trước? | tổng kết thang_nay **rồi** thang_truoc | *Tháng này bạn chi 2.141.000 đ, trong khi tháng trước bạn chi 0 đ.* | ✅ hai lời gọi, so sánh ngầm |
+| E14 | Tổng tài sản của tôi là bao nhiêu? | danh sách ví | *Tổng tài sản của bạn là 13.004.000 đ.* | ✅ |
+| E15 | Tôi đã cho vay bao nhiêu và thu về được bao nhiêu? | tìm GD (bộ chỉnh: danh_muc=Cho vay, ky=moi_luc) chieu=khoan_thu | *Tôi có 1 khoản thu là "Cho vay" với số tiền là 500.000 đ.* | ◐ **(b)** chiều: thiếu 800.000 đã cho vay |
+| E16 | Khoản thu lớn nhất năm nay là gì? | tìm GD nam_nay khoan_thu so_tien | *Khoản thu lớn nhất năm nay là Lương với số tiền 9.000.000 đ.* | ✅ |
+| E17 | Tuần này tôi có tiêu gì không? | tổng kết tuan_nay (0 hàng) | *Tuần này bạn không có chi tiêu nào.* | ✅ |
+| E18 | Ngân sách nào tôi chưa dùng đến một nửa? | danh sách ngân sách | *Dựa trên thông tin, các ngân sách của bạn còn lại: Giáo dục còn 5.000 đ, Di chuyển còn 95.000 đ, Ăn uống còn 450.000 đ, và Mua sắm còn 790.000 đ.* | ✗ có đủ dữ liệu mà không lọc (đáp án Mua sắm 7 %, Ăn uống 10 %) |
+| E19 | Trong quý này khoản chi nào lớn nhất? | tổng kết quy_nay | *Khoản chi lớn nhất trong quý này là Cho vay với số tiền 800.000 đ.* | ✅ **do may**: tổng theo danh mục trùng khoản duy nhất |
+| E20 | Tôi chi cho di chuyển trung bình mỗi tháng bao nhiêu? | gợi ý hạn mức Di chuyển | *…mức chi trung bình của bạn cho danh mục "Di chuyển" là 430.000 đồng mỗi tháng.* | ✅ (355.000 / 25 ngày × 30, tròn 10.000) |
+| E21 | Hôm nay là ngày bao nhiêu? | không tool → bậc 1 → "Số liệu:" trượt → mẫu câu | *Mình chưa chắc về con số cho câu này, nên không trả lời để khỏi nói sai.* | ✅ không bịa; **81 s** |
+| E22 | Giá vàng hôm nay bao nhiêu? | tìm GD hom_nay khoan_chi (0 hàng) → L2c | *Hôm nay, khoản chi — không có giao dịch nào khớp.* | ◐ không bịa nhưng lạc đề; `chuDeBiChan` không bắt |
+
+**Đọc theo ba nguyên nhân (thứ tự việc 9.28 mục 1):**
+- **(a) Tool không mang dữ liệu — 2 câu, sửa được ở tầng mã:** trần **4 hàng** của `tong_ket_thu_chi_ky` bỏ mất danh
+  mục nhỏ (E3 — câu "ít nhất" không thể trả lời từ top 4); hàng hoá đơn **không có ngày đến hạn** (E8 — mô hình chỉ nói
+  "sắp đến hạn" vì đó là toàn bộ điều nó biết).
+- **(b) Định tuyến / tham số — 3 câu:** E5 chọn tổng kết thay vì tìm theo danh mục (cùng họ C13 của 9.28); E15 bộ chỉnh
+  đọc được "Cho vay" và `moi_luc` nhưng **không lật `chieu`** khi câu hỏi hai chiều; E22 câu ngoài phạm vi bị ép vào tool.
+- **(c) Chắn oan — 0.** Lớp chắn chỉ chặn một câu, và câu ấy sai thật (E4).
+- **Ngoài ba nhóm — mô hình có đủ dữ liệu mà không suy luận:** E18 (lọc "< 50 %"), E6 (không kể chi tiết ba hàng).
+  Đây là trần của E2B, không phải của tool; mẫu câu L2 sẽ đúng hơn mô hình ở loại câu này.
+
+**Kết luận.** Câu khác chữ và kiểu mới **không tụt** so với bộ cũ: 15/22 đúng ngay lần đầu, gồm so sánh hai kỳ (hai lời
+gọi), đếm ví, một ví / một ngân sách cụ thể, tuần rỗng, hai câu ngoài phạm vi không bịa. Bốn câu lệch chia đều cho *thiếu
+dữ liệu trong tool* và *mô hình chọn/điền sai* — nên spike SQL (bước 2 của 9.28) vẫn có lý do: nó trả lời câu "nếu mô
+hình tự viết truy vấn thì E3, E5, E8, E15, E18 có đúng không, và bao nhiêu câu **đang đúng** sẽ hỏng".
+
+⚠️ **Bẫy đo mới, vấp thật lần này (đã vá `hoi.sh`):** câu rơi **bậc 1** (E21) mất hơn 60 s vì mô hình sinh dần cả
+prompt 2.290 ký tự, còn `hoi.sh` thoát sau 36 s theo luật "log đứng yên 9 s"; câu kế tiếp chạm ô nhập **đang khoá** ("Đang
+nghĩ…") nên bàn phím không mở, phím Back dùng để đóng bàn phím **pop luôn màn chat**, cú chạm "Gửi" rơi vào tab Cá nhân
+(ảnh `d_E22_go.png` là Trang chủ) — E22 chưa hề được hỏi, E21 bị huỷ giữa chừng, và **lịch sử chat trong bộ nhớ mất**, nên
+`ban_ghi.py` thu về tab Cá nhân. Luật mới trong `hoi.sh`: thấy *"bậc 1 (L1)"* thì chỉ dừng ở *"sinh dần xong"*. Hai câu
+hỏi lại (E21b, E22b) ở lượt sau cùng bản, cùng máy.
+
+**Thứ tự việc sau lần đo 15:** (1) **spike E2B sinh SQL** trên đúng 22 câu này, chạy trên bản sao CSDL, so với bảng trên —
+người dùng chốt *ghi tài liệu, commit, rồi spike*; (2) hai lỗi (a) — ngày đến hạn vào `hangHoaDon`, và trần 4 hàng của
+tổng kết (thêm hàng *"ít nhất"*, hoặc nâng trần cho tool này — cần đo lại độ dài prompt, bẫy 4.29); (3) `chieu` hai chiều
+trong `chinh_tham_so` (E15) và câu ngoài phạm vi (E22) — cân nhắc thêm từ khoá vào `chuDeBiChan`; (4) các việc còn mở
+ở cuối 9.28.
+
 ---
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)

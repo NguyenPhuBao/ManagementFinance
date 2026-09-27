@@ -633,7 +633,11 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   (kèm phạm vi `maskPII` mới), `AI_ARCHITECTURE_REVIEW.md`, `PROGRESS-BACKEND.md`, hai đơn `DA-XONG/` (đơn bỏ liên kết
   ngân hàng ghi backend đã sửa năm chỗ), hai plan 2026-09-21. Mã client **không đổi**; `flutter test` **3824/3824** (3
   skip), `flutter analyze` **26** — mức nền. Người dùng dặn *"soát file xong thì dừng"* — ba việc còn lại của bàn giao
-  (bộ câu hỏi thật + spike SQL · tính năng biến động số dư · chế độ trực tuyến) **chưa mở**.
+  (bộ câu hỏi thật + spike SQL · tính năng biến động số dư · chế độ trực tuyến) **chưa mở** — *rồi cùng chiều người dùng
+  mở việc đầu*: ✅ **đo bộ câu hỏi MỚI 22 câu trên Realme** (mục **9.29** `AI_EDGE_FEATURE.md`; tự soạn, hoàn toàn khác bộ
+  cũ vì app không lưu lịch sử chat): **15 ✅ · 3 ◐ · 4 ✗ · bịa 0**; hai lỗi tool (trần 4 hàng tổng kết, hoá đơn thiếu ngày
+  đến hạn), ba lỗi định tuyến/tham số, chắn oan 0. `npm install`, build release từ HEAD (`006cb1b6…`) và cài lên Realme
+  cùng lượt — bản trên máy trước đó là của lần 13. Kế: spike E2B sinh SQL trên 22 câu ấy.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
