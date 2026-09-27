@@ -20,4 +20,7 @@ router.get('/financial-health', authenticate, chatbotController.handleGetSnapsho
 // 3. Endpoint Chat Non-Streaming (Dự phòng cho client đơn giản)
 router.post('/chat', authenticate, redisTokenBucketLimiter, validateChatRequest, chatbotController.handleChatNonStream);
 
+// 4. Endpoint Làm mới hội thoại AI
+router.post('/reset', authenticate, chatbotController.handleResetConversation);
+
 module.exports = router;

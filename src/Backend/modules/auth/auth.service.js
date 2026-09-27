@@ -731,6 +731,7 @@ const authService = {
     if (p.includes('/bank/webhook')) return 'Webhook biến động số dư';
     if (p.includes('/bank/connect') || p.includes('/bank/link')) return 'Liên kết tài khoản ngân hàng';
 
+    if (p.includes('/ai/chatbot/reset') || p.includes('/ai/chat/reset')) return 'Làm mới hội thoại AI';
     if (p.includes('/ai/chat')) return 'Hỏi đáp trợ lý tài chính AI';
     if (p.includes('/ai/classify')) return 'Phân loại giao dịch AI';
 
