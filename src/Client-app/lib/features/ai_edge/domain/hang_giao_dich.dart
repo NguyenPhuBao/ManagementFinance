@@ -30,11 +30,50 @@ const Map<String, SapXepTim> kSapXepTim = {
   'moi_nhat': SapXepTim.moiNhat,
 };
 
+/// Trạng thái của phép chọn ở `gop = khong` (spec tool truy vấn, mục 2.2).
+const String kTrangThaiKhoanLonNhat = 'khoản lớn nhất';
+const String kTrangThaiKhoanNhoNhat = 'khoản nhỏ nhất';
+
+/// Chữ trạng thái của phép chọn — `null` khi không chọn; chuỗi lạ → `null`
+/// (tool đã kiểm enum trước khi tới đây).
+String? chuChonKhoan(String? chon) => switch (chon) {
+      'nhieu_nhat' => kTrangThaiKhoanLonNhat,
+      'it_nhat' => kTrangThaiKhoanNhoNhat,
+      _ => null,
+    };
+
+/// Bảy điều kiện chữ của bộ lọc — MỘT nguồn cho hàng lẻ (`hangGiaoDich`) và hàng
+/// nhóm (`hangNhomGiaoDich`), spec 2c mục 2.2. Thứ tự cố định.
+List<String> boLocTimGiaoDich(KetQuaTimGiaoDich kq, TieuChiTim tieuChi) {
+  final chieu = tieuChi.chieu;
+  final kt = tieuChi.khoangTien;
+  final tuKhoa = tieuChi.tuKhoa.trim();
+  return [
+    if (chieu != ChieuTim.tatCa) _chuChieu(chieu),
+    if (kq.tenDanhMucKhop != null) 'danh mục "${kq.tenDanhMucKhop}"',
+    if (kq.tenViKhop != null) 'ví "${kq.tenViKhop}"',
+    if (tuKhoa.isNotEmpty) 'ghi chú chứa "$tuKhoa"',
+    if (kt?.tu != null) 'từ ${soTien('Từ', kt!.tu!).chuoi}',
+    if (kt?.den != null) 'đến ${soTien('Đến', kt!.den!).chuoi}',
+    if (tieuChi.sapXep == SapXepTim.moiNhat) 'mới nhất trước',
+  ];
+}
+
+/// Từ / Đến rời `tongHop` (bước 2c) — cùng nguồn cho hai loại hàng.
+List<SoLieu> soLieuBoLocTimGiaoDich(TieuChiTim tieuChi) {
+  final kt = tieuChi.khoangTien;
+  return [
+    if (kt?.tu != null) soTien('Từ', kt!.tu!),
+    if (kt?.den != null) soTien('Đến', kt!.den!),
+  ];
+}
+
 KetQuaCongCu hangGiaoDich(
   KetQuaTimGiaoDich kq, {
   required TieuChiTim tieuChi,
   required String chuKy,
   required DateTime now,
+  String? chon,
 }) {
   final loi = kq.loi;
   if (loi != null) {
@@ -48,16 +87,14 @@ KetQuaCongCu hangGiaoDich(
   }
   final chieu = tieuChi.chieu;
   final tatCa = chieu == ChieuTim.tatCa;
-  final kt = tieuChi.khoangTien;
-  final tu = kt?.tu == null ? null : soTien('Từ', kt!.tu!);
-  final den = kt?.den == null ? null : soTien('Đến', kt!.den!);
   final tuKhoa = tieuChi.tuKhoa.trim();
+  final chuChon = chuChonKhoan(chon);
   return KetQuaCongCu(
     hang: [
       for (final d in kq.dong)
         HangSoLieu(
           ten: d.tieuDe,
-          trangThai: _trangThai(d),
+          trangThai: chuChon == null ? _trangThai(d) : '$chuChon · ${_trangThai(d)}',
           canhBao: false,
           soLieu: [
             soTien('Số tiền', d.soTien,
@@ -80,16 +117,8 @@ KetQuaCongCu hangGiaoDich(
     ],
     // Bộ lọc dội lại (bước 2c, spec mục 2.2): Từ/Đến rời tongHop để mẫu câu
     // không in chúng thành vế dữ liệu; tiền tố nêu chúng cùng bộ lọc chữ.
-    soLieuBoLoc: [if (tu != null) tu, if (den != null) den],
-    boLoc: [
-      if (!tatCa) _chuChieu(chieu),
-      if (kq.tenDanhMucKhop != null) 'danh mục "${kq.tenDanhMucKhop}"',
-      if (kq.tenViKhop != null) 'ví "${kq.tenViKhop}"',
-      if (tuKhoa.isNotEmpty) 'ghi chú chứa "$tuKhoa"',
-      if (tu != null) 'từ ${tu.chuoi}',
-      if (den != null) 'đến ${den.chuoi}',
-      if (tieuChi.sapXep == SapXepTim.moiNhat) 'mới nhất trước',
-    ],
+    soLieuBoLoc: soLieuBoLocTimGiaoDich(tieuChi),
+    boLoc: [...boLocTimGiaoDich(kq, tieuChi), if (chuChon != null) chuChon],
     // 0 khoản với bộ lọc chữ tự do không phải câu trả lời (bẫy 4.44): C9 cổng D
     // lần 2 — tu_khoa "chi" → 0 khoản → mẫu câu "Số khoản: 0" (nhãn khi ấy) trong khi có 2.
     rongTheoBoLoc: kq.soKhop == 0,

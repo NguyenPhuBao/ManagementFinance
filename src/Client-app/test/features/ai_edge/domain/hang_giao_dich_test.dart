@@ -202,4 +202,25 @@ void main() {
     expect(kiemSo(cau, goi), isTrue, reason: cau);
     expect(kiemNhan(cau, [goi]), isTrue, reason: cau);
   });
+  test('⭐ chon: hàng (đã cắt còn một) mang trạng thái "khoản lớn nhất / nhỏ nhất" và boLoc nêu phép chọn', () {
+    final now = DateTime(2026, 9, 23);
+    final kq = KetQuaTimGiaoDich(
+      dong: [DongTimThay(tieuDe: 'Cho vay', tenDanhMuc: 'Cho vay', tenVi: 'Tiền mặt', tenViDich: null,
+          soTien: 800000, chieu: ChieuTim.chi, ngay: DateTime(2026, 9, 19))],
+      soKhop: 9, tongChi: 2141000, tongThu: 0, tongChuyen: 0,
+    );
+    final lon = hangGiaoDich(kq, tieuChi: const TieuChiTim(chieu: ChieuTim.chi), chuKy: 'tháng này', now: now, chon: 'nhieu_nhat');
+    expect(lon.hang.single.trangThai, 'khoản lớn nhất · khoản chi · Cho vay · Tiền mặt');
+    expect(lon.boLoc, contains('khoản lớn nhất'));
+    expect(lon.json['Số giao dịch'], '9', reason: 'đếm trên trọn tập, không trên hàng hiện');
+    final nho = hangGiaoDich(kq, tieuChi: const TieuChiTim(chieu: ChieuTim.chi), chuKy: 'tháng này', now: now, chon: 'it_nhat');
+    expect(nho.hang.single.trangThai, startsWith('khoản nhỏ nhất'));
+  });
+
+  test('boLocTimGiaoDich / soLieuBoLocTimGiaoDich là MỘT nguồn cho cả hàng lẻ và hàng nhóm', () {
+    const tc = TieuChiTim(chieu: ChieuTim.chi, tuKhoa: 'hoa don');
+    final kq = KetQuaTimGiaoDich(dong: const [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0, tenDanhMucKhop: 'Giải trí');
+    expect(boLocTimGiaoDich(kq, tc), ['khoản chi', 'danh mục "Giải trí"', 'ghi chú chứa "hoa don"']);
+    expect(soLieuBoLocTimGiaoDich(tc), isEmpty);
+  });
 }
