@@ -2735,7 +2735,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 ### 11.43. Triển Khai Hoàn Thiện Chức Năng Chatbot AI (AI Financial Copilot) & Sức Khỏe Tài Chính FHS Tại Backend & Admin-Web (2026-09-26)
 - **Tài liệu nguồn sự thật:** [`docs/AI/ChatbotAI.md`](docs/AI/ChatbotAI.md), [`docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md`](docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md).
 - **1. Triển khai Backend Core (Kiến trúc Zero Database Migration - An toàn tuyệt đối 100% CSDL):**
-  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-2.5-flash'`).
+  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-3.8-flash'`).
   - **Dual-Phase Privacy Shield (`pii.masker.js`):** Tự động phát hiện và che giấu toàn diện thông tin cá nhân PII (số điện thoại `[SĐT]`, số tài khoản ngân hàng `[STK]`, số thẻ thanh toán quốc tế `[SỐ_THẺ]` theo thuật toán Luhn, email `[EMAIL]`). Toàn bộ số liệu tài chính trong Snapshot và Tools trước khi gửi lên Cloud LLM đều được làm mờ (anonymize) và che giấu ghi chú giao dịch.
   - **Snapshot Engine & Đánh giá Sức khỏe Tài chính FHS (`financial.snapshot.service.js`):**
     + Triển khai theo Lối A (Backend tự tính toán từ PostgreSQL hiện có không cần di chuyển dữ liệu).

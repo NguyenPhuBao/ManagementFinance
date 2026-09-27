@@ -119,7 +119,7 @@ class ChatbotService {
 
       // BƯỚC 5: Gọi Google Gemini qua Circuit Breaker với Streaming & Function Calling
       await geminiCircuitBreaker.execute(async () => {
-        const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+        const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: modelName,
