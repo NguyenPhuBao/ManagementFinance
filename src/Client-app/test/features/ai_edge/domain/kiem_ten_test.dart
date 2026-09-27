@@ -51,6 +51,19 @@ void main() {
     );
   });
 
+  test('⭐ bẫy 4.50 (2026-09-27, câu người dùng tự hỏi): "danh mục đã đặt ngân sách bao gồm: …" qua', () {
+    final nganSach = _Gia('tra_cuu', [
+      soTien('Còn lại', 5000, ten: 'Giáo dục'),
+      soTien('Còn lại', 95000, ten: 'Di chuyển'),
+      soTien('Còn lại', 450000, ten: 'Ăn uống'),
+      soTien('Còn lại', 790000, ten: 'Mua sắm'),
+    ]);
+    expect(kiemTen('Các danh mục đã đặt ngân sách bao gồm: Giáo dục, Di chuyển, Ăn uống, Mua sắm.', [nganSach]), isTrue,
+        reason: 'bị chặn thật: cụm sau "ngân sách" là "bao gồm" — từ chức năng, không phải tên');
+    expect(kiemTen('Ngân sách bao nhiêu thì đủ?', [nganSach]), isTrue);
+    expect(kiemTen('Tổng cộng bốn ngân sách các danh mục hiện tại.', [nganSach]), isTrue);
+  });
+
   test('tên bịa đứng một mình cũng bị chặn', () {
     expect(kiemTen('Mục tiêu Du lịch của bạn đang chậm.', [mucTieu]), isFalse);
     expect(kiemTen('Ví Ngân hàng đang âm.', [tongKet]), isFalse);

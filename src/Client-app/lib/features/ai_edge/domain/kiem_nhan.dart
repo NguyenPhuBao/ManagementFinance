@@ -29,6 +29,13 @@
 /// vẫn qua — phép nới 4a nguyên vẹn; câu nhắc cả hai nhãn cũng qua, vì phép
 /// lọc từ vựng không định vị được chữ nào đứng cạnh con số nào.
 ///
+/// Từ **bẫy 4.49** (cổng E lần 1, 2026-09-27), phép gán ngược xét theo **vế
+/// chứa con số** — tách ở *và / hoặc / nhưng / ;* — chứ không cả câu: E15 *"Tôi
+/// đã cho vay 800.000 đ và thu về 500.000 đ"* đúng từng số mà bị chặn vì chữ
+/// "thu" của vế sau. **Không** tách ở dấu hai chấm hay dấu phẩy: C10 *"Các
+/// khoản thu bao gồm: Cho vay (800.000 đ)"* phải vẫn bị chặn. Vế "câu nêu tên"
+/// vẫn đọc cả câu.
+///
 /// Giới hạn cố ý: đây là phép lọc từ vựng như `kiemGiong`, không hiểu nghĩa.
 /// Câu đúng nhưng diễn đạt xa nhãn (*"bạn tiêu 2.141.000 đ"* không có chữ
 /// *chi*) bị chặn — sai theo chiều **an toàn**, và few-shot của prompt hỏi
@@ -87,31 +94,41 @@ bool ganNhanNguoc(SoLieu s, Set<String> amTiet) =>
     s.nhanXungDot.any((n) => tuKhoaNhan(n).every(amTiet.contains)) &&
     !nhanKhopAmTiet(s, amTiet);
 
+/// Ranh giới VẾ cho phép gán ngược (bẫy 4.49): liên từ đứng giữa hai khoảng
+/// trắng, hoặc dấu chấm phẩy. Không có dấu hai chấm, dấu phẩy.
+final RegExp _ranhVe = RegExp(r'\s(?:và|hoặc|nhưng)\s|;', unicode: true);
+
+/// Các vế của [cau] theo [_ranhVe] — công khai để test canh đúng ranh giới.
+List<String> cacVeCua(String cau) => cau.split(_ranhVe);
+
 /// `true` khi mọi số trong [cau] đứng cùng câu với đủ từ khoá của một nhãn
 /// gói khớp nó. Câu không có số thì lọt — không có nhãn nào để gán sai.
 bool kiemNhan(String cau, List<GoiSo> goi) {
   final amTiet = amTietCua(cau);
-  // Âm tiết của câu ĐÃ BỎ TÊN đối tượng — chỉ để xét gán nhãn ngược: tên
-  // "Chi khác" không phải là câu nêu nhãn "Chi" (bẫy 4.42, lần đo 7).
-  final amTietKhongTen = amTietCua(boTenDoiTuong(cau, goi));
-  // Trích số NGOÀI tên đối tượng (bước 1c) — cùng phép với bộ kiểm số; còn
-  // vế "câu nêu tên" bên dưới vẫn đọc âm tiết của câu GỐC, nơi tên còn nguyên.
-  for (final x in trichSoNgoaiTen(cau, goi)) {
-    final nhans = soLieuKhop(x, goi);
-    if (nhans.isEmpty) return false;
-    final coNhanDung = nhans.any(
-      (s) => s.ten == null
-          // Không thuộc đối tượng nào → nhãn (chính hoặc thay thế) là tất cả
-          // những gì có.
-          ? nhanKhopAmTiet(s, amTiet)
-          // Thuộc một đối tượng → câu phải NÊU TÊN đối tượng ấy. Nhãn đúng
-          // thôi chưa đủ: gói mang nhiều mục cùng nhãn (bốn ngân sách cùng
-          // `Tỉ lệ`), nên một câu chỉ nhắc nhãn không nói được nó đang nói
-          // về cái nào. Và không được GÁN NHÃN NGƯỢC (bẫy 4.42).
-          : tuKhoaNhan(s.ten!).every(amTiet.contains) &&
-              !ganNhanNguoc(s, amTietKhongTen),
-    );
-    if (!coNhanDung) return false;
+  for (final ve in cacVeCua(cau)) {
+    // Âm tiết của VẾ ĐÃ BỎ TÊN đối tượng — chỉ để xét gán nhãn ngược: tên
+    // "Chi khác" không phải là câu nêu nhãn "Chi" (bẫy 4.42, lần đo 7); và
+    // chỉ trong vế chứa con số (bẫy 4.49).
+    final amTietKhongTen = amTietCua(boTenDoiTuong(ve, goi));
+    // Trích số NGOÀI tên đối tượng (bước 1c) — cùng phép với bộ kiểm số; còn
+    // vế "câu nêu tên" bên dưới vẫn đọc âm tiết của câu GỐC, nơi tên còn nguyên.
+    for (final x in trichSoNgoaiTen(ve, goi)) {
+      final nhans = soLieuKhop(x, goi);
+      if (nhans.isEmpty) return false;
+      final coNhanDung = nhans.any(
+        (s) => s.ten == null
+            // Không thuộc đối tượng nào → nhãn (chính hoặc thay thế) là tất cả
+            // những gì có.
+            ? nhanKhopAmTiet(s, amTiet)
+            // Thuộc một đối tượng → câu phải NÊU TÊN đối tượng ấy. Nhãn đúng
+            // thôi chưa đủ: gói mang nhiều mục cùng nhãn (bốn ngân sách cùng
+            // `Tỉ lệ`), nên một câu chỉ nhắc nhãn không nói được nó đang nói
+            // về cái nào. Và không được GÁN NHÃN NGƯỢC (bẫy 4.42).
+            : tuKhoaNhan(s.ten!).every(amTiet.contains) &&
+                !ganNhanNguoc(s, amTietKhongTen),
+      );
+      if (!coNhanDung) return false;
+    }
   }
   return true;
 }

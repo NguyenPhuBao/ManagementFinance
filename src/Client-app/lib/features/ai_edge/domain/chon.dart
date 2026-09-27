@@ -5,7 +5,10 @@
 /// hàm domain; mô hình chỉ điền mã.
 library;
 
-const List<String> kChon = ['nhieu_nhat', 'it_nhat', 'duoi_nua', 'tren_nua'];
+/// `chua_dat` (2026-09-27, spec chắn oan + chưa đặt): danh mục CHI đang tiêu
+/// mà chưa có ngân sách — tool ngân sách đi đường `hangChuaDatNganSach`, không
+/// qua `hangNganSach`.
+const List<String> kChon = ['nhieu_nhat', 'it_nhat', 'duoi_nua', 'tren_nua', 'chua_dat'];
 const List<String> kChonGiaoDich = ['nhieu_nhat', 'it_nhat'];
 
 /// Chữ kèm cho mô hình — không chữ số (số ở đây không có trong gói và làm câu
@@ -15,4 +18,5 @@ const Map<String, String> kChuChon = {
   'it_nhat': 'nhỏ nhất, ít nhất, thấp nhất',
   'duoi_nua': 'đã dùng dưới một nửa',
   'tren_nua': 'đã dùng từ một nửa trở lên',
+  'chua_dat': 'chưa đặt ngân sách',
 };

@@ -3,10 +3,12 @@
 /// không tự đọc phiên (idaccount do vòng lặp truyền).
 library;
 
+import '../../budget/data/de_xuat_nguon.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../domain/chinh_tham_so.dart';
 import '../domain/chon.dart';
 import '../domain/cong_cu.dart';
+import '../domain/goi_so.dart';
 import '../domain/hang_ngan_sach.dart';
 import '../domain/hang_so_lieu.dart';
 import 'nguon_goi_so.dart';
@@ -25,7 +27,8 @@ class CongCuNganSach implements CongCu {
             'hạn mức, tỉ lệ đã dùng, còn lại và số ngày còn lại; cộng tổng còn lại '
             'của mọi ngân sách. Gọi khi hỏi ngân sách nào sắp hết hoặc vượt, còn bao '
             'nhiêu tiền ngân sách, đã dùng bao nhiêu phần trăm. chon: lọc hoặc chọn '
-            'theo tỉ lệ đã dùng — hỏi ngân sách nào dưới nửa, sắp hết, ít dùng nhất.',
+            'theo tỉ lệ đã dùng — hỏi ngân sách nào dưới nửa, sắp hết, ít dùng nhất; '
+            'chua_dat = danh mục đang chi mà CHƯA có ngân sách.',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -53,8 +56,14 @@ class CongCuNganSach implements CongCu {
     }
     final chon = chinh.args['chon']?.toString().trim();
     final tatCa = await nganSach.watchBudgets(idaccount, now: now).first;
+    final dangChay = nganSachDangChay(tatCa, now);
+    if (chon == 'chua_dat') {
+      // Danh mục chưa có ngân sách — cùng nguồn với thẻ "Chưa đặt ngân sách".
+      final goi = await deXuatTuKho(nganSach, idaccount, dangChay, toiDa: kToiDaMucMoiGoi);
+      return hangChuaDatNganSach(goi, soNganSach: dangChay.length);
+    }
     return hangNganSach(
-      nganSachDangChay(tatCa, now),
+      dangChay,
       now: now,
       chon: (chon == null || chon.isEmpty) ? null : chon,
     );

@@ -13,6 +13,7 @@ library;
 
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_pace.dart';
+import '../../budget/domain/de_xuat_ngan_sach.dart';
 import 'chon.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
@@ -31,6 +32,11 @@ KetQuaCongCu hangNganSach(
 }) {
   if (chon != null && !kChon.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChon);
+  }
+  // `chua_dat` không phải phép lọc trên ngân sách đang chạy — tool phải rẽ sang
+  // `hangChuaDatNganSach` TRƯỚC khi tới đây; tới đây là lỗi lập trình.
+  if (chon == 'chua_dat') {
+    throw ArgumentError.value(chon, 'chon', 'đi đường hangChuaDatNganSach');
   }
   // Căng nhất trước — thứ tự đáng chú ý, không phải thứ tự CSDL.
   final sap = [...dangChay]..sort(
@@ -80,5 +86,34 @@ KetQuaCongCu hangNganSach(
     boLoc: [if (chon != null) kChuChon[chon]!],
     rongTheoBoLoc: chon != null && khop.isEmpty,
     doiTuongRong: 'ngân sách',
+  );
+}
+
+/// `chon=chua_dat` (spec 2026-09-27 chắn oan + chưa đặt): danh mục CHI đang tiêu
+/// mà chưa có ngân sách — chính `chonDeXuat` của thẻ *Chưa đặt ngân sách*, mỗi
+/// hàng một danh mục với *Chi trung bình mỗi tháng* (= `suggestAmount`).
+/// [goi] `null` (tài khoản quá trẻ / không ứng viên) hay rỗng → `rongTheoBoLoc`;
+/// [soNganSach] là số ngân sách đang chạy, để mô hình không đọc "0 danh mục
+/// chưa đặt" thành "không có ngân sách". Câu người dùng tự hỏi 2026-09-27 từng
+/// nhận *"Không có danh mục nào chưa đặt ngân sách"* — sai, vì không tool nào có.
+KetQuaCongCu hangChuaDatNganSach(GoiDeXuat? goi, {required int soNganSach}) {
+  final ds = goi?.ds ?? const <DeXuatNganSach>[];
+  return KetQuaCongCu(
+    hang: [
+      for (final d in ds.take(kToiDaMucMoiGoi))
+        HangSoLieu(
+          ten: d.tenDanhMuc,
+          trangThai: kChuChon['chua_dat'],
+          canhBao: false,
+          soLieu: [soTien('Chi trung bình mỗi tháng', d.mucThang, ten: d.tenDanhMuc)],
+        ),
+    ],
+    tongHop: [
+      soDem('Số ngân sách', soNganSach),
+      soDem('Số danh mục chưa đặt', goi?.soUngVien ?? 0),
+    ],
+    boLoc: [kChuChon['chua_dat']!],
+    rongTheoBoLoc: ds.isEmpty,
+    doiTuongRong: 'danh mục',
   );
 }

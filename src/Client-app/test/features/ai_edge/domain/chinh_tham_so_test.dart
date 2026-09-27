@@ -312,6 +312,15 @@ void main() {
     });
   });
 
+  test('⭐ chinhThamSoNganSach: "chua dat / chua co / khong co ngan sach" → chua_dat, xét trước tỉ lệ', () {
+    expect(chinhThamSoNganSach('cac danh muc chua dat ngan sach', {}).args['chon'], 'chua_dat');
+    expect(chinhThamSoNganSach('các danh mục chưa đặt ngân sách', {'chon': 'duoi_nua'}).args['chon'], 'chua_dat');
+    expect(chinhThamSoNganSach('danh muc nao chua co ngan sach', {}).args['chon'], 'chua_dat');
+    expect(chinhThamSoNganSach('danh muc nao khong co ngan sach', {}).args['chon'], 'chua_dat');
+    expect(chinhThamSoNganSach('cac danh muc da dat ngan sach', {}).args.containsKey('chon'), isFalse,
+        reason: '"đã đặt" là câu hỏi chung — liệt kê mọi ngân sách');
+  });
+
   group('chinhThamSoMucTieu (E11 cổng E)', () {
     test('⭐ "muc tieu nao dang cham ke hoach" → cham_ke_hoach; "qua han" → qua_han; "dung ke hoach" → dung_ke_hoach', () {
       expect(chinhThamSoMucTieu('muc tieu nao dang cham ke hoach', {}).args['chon'], 'cham_ke_hoach');

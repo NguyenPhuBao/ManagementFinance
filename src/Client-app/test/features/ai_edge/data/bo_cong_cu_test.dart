@@ -18,6 +18,8 @@ import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../category/presentation/category_test_fakes.dart';
+
 
 
 BudgetView _ns(String id, String ten,
@@ -33,6 +35,18 @@ BudgetView _ns(String id, String ten,
 }
 
 class _NganSach implements BudgetRepository {
+  // Cho chon=chua_dat: hai danh mục chi chưa có ngân sách (Cho vay, Giải trí) + Giáo dục đã có.
+  @override
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async => 25;
+  @override
+  Future<List<Category>> getExpenseCategories(int idaccount) async => [
+        makeCategory(id: 'c-gd', name: 'Giáo dục'),
+        makeCategory(id: 'c-cv', name: 'Cho vay'),
+        makeCategory(id: 'c-gt', name: 'Giải trí'),
+      ];
+  @override
+  Future<double?> suggestAmount(int idaccount, String categoryId, {DateTime? now}) async =>
+      const {'c-cv': 960000.0, 'c-gt': 40000.0, 'c-gd': 60000.0}[categoryId];
   @override
   Stream<List<BudgetView>> watchBudgets(int idaccount, {DateTime? now}) => Stream.value([
         _ns('gd', 'Giáo dục', amount: 50000, spent: 45000),
@@ -148,10 +162,10 @@ void main() {
   // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
   // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
   // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
-  // Đo lại 2026-09-27 tối muộn sau `chon` của tool mục tiêu (Realme, 6 tool, lời hệ
-  // thống 2293 ký tự, câu E11 → danh_sach_muc_tieu {chon: cham_ke_hoach}, 0
-  // FAILED_PRECONDITION): 5938. Mốc 5633 là cùng ngày, trước `chon` mục tiêu.
-  const kTranToolsJsonDaDo = 5938;
+  // Đo lại 2026-09-27 đêm sau `chon=chua_dat` của tool ngân sách (Realme, 6 tool, lời
+  // hệ thống 2293 ký tự, ba câu E15 / chưa đặt / đã đặt, 0 FAILED_PRECONDITION): 6031.
+  // Mốc 5938 là cùng tối sau `chon` mục tiêu; 5633 trước đó.
+  const kTranToolsJsonDaDo = 6031;
   test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
@@ -185,6 +199,15 @@ void main() {
     final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now))!;
     expect(kq.hang.map((h) => h.ten).toList(), ['Giáo dục']);
     expect(kq.tongHop[1].chuoi, '1');
+  });
+
+  test('⭐ ngân sách chon=chua_dat (câu người dùng 2026-09-27): hàng Cho vay, Giải trí — không phải "không có"', () async {
+    final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
+        cauHoi: 'cac danh muc chua dat ngan sach'))!;
+    expect(kq.hang.map((h) => h.ten).toList(), ['Cho vay', 'Giải trí']);
+    expect(kq.json['Số danh mục chưa đặt'], '2');
+    expect(kq.json['Số ngân sách'], '1', reason: 'chỉ Giáo dục đang chạy');
+    expect(kq.boLoc, ['chưa đặt ngân sách']);
   });
 
   test('ngân sách: khai báo chon (bốn giá trị) và câu "chua dung den mot nua" → duoi_nua qua bộ chỉnh', () async {

@@ -98,6 +98,7 @@ void main() {
           _dx('c-y-te', 'Y tế', 280000),
         ],
         soNgayCuaSo: 20,
+        soUngVien: 3,
       ),
     );
 
@@ -120,7 +121,7 @@ void main() {
       (tester) async {
     await _dung(
       tester,
-      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 20),
+      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 20, soUngVien: 1),
     );
 
     expect(find.text('Suy từ 20 ngày gần nhất'), findsOneWidget,
@@ -130,7 +131,7 @@ void main() {
   testWidgets('cửa sổ đủ 90 ngày thì KHÔNG có dòng phụ ấy', (tester) async {
     await _dung(
       tester,
-      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 90),
+      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 90, soUngVien: 1),
     );
 
     expect(find.textContaining('Suy từ'), findsNothing,
@@ -142,7 +143,7 @@ void main() {
   testWidgets('thẻ đứng TRÊN tiêu đề "Danh mục chi tiêu"', (tester) async {
     await _dung(
       tester,
-      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 20),
+      goi: GoiDeXuat(ds: [_dx('c1', 'Giải trí', 450000)], soNgayCuaSo: 20, soUngVien: 1),
     );
 
     final the = tester.getRect(find.text('CHƯA ĐẶT NGÂN SÁCH')).top;

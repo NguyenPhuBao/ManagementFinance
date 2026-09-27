@@ -3,8 +3,10 @@
 /// `budgetPaceOf` chứ không ghi cứng (nếp của gói ngân sách).
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_ngan_sach.dart';
+import 'package:flowmoney/features/budget/domain/de_xuat_ngan_sach.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -136,6 +138,45 @@ void main() {
       final kq = hangNganSach(bon, now: now, chon: 'x');
       expect(kq.loi, contains('duoi_nua'));
       expect(kq.hang, isEmpty);
+    });
+  });
+
+  group('hangChuaDatNganSach — chon=chua_dat (spec 2026-09-27 chắn oan + chưa đặt)', () {
+    const goi = GoiDeXuat(
+      ds: [
+        DeXuatNganSach(categoryId: 'cv', tenDanhMuc: 'Cho vay', mucThang: 960000),
+        DeXuatNganSach(categoryId: 'gt', tenDanhMuc: 'Giải trí', mucThang: 40000),
+      ],
+      soNgayCuaSo: 25,
+      soUngVien: 2,
+    );
+    test('⭐ câu người dùng hỏi: hàng theo TÊN danh mục chưa có ngân sách, số là chi trung bình tháng', () {
+      final kq = hangChuaDatNganSach(goi, soNganSach: 4);
+      expect(kq.hang.map((h) => h.ten).toList(), ['Cho vay', 'Giải trí']);
+      expect(kq.hang.first.trangThai, 'chưa đặt ngân sách');
+      expect(kq.hang.first.soLieu.single.nhan, 'Chi trung bình mỗi tháng');
+      expect(kq.hang.first.soLieu.single.chuoi, '960.000 đ');
+      expect(kq.hang.first.soLieu.single.ten, 'Cho vay', reason: 'kiemNhan đòi câu nêu tên');
+      expect(kq.json['Số ngân sách'], '4');
+      expect(kq.json['Số danh mục chưa đặt'], '2');
+      expect(kq.boLoc, ['chưa đặt ngân sách']);
+      expect(kq.rongTheoBoLoc, isFalse);
+      expect(kq.loi, isNull);
+    });
+    test('null (tài khoản quá trẻ) hay 0 ứng viên → rongTheoBoLoc, mẫu câu nói "danh mục"', () {
+      for (final g in [null, const GoiDeXuat(ds: [], soNgayCuaSo: 20, soUngVien: 0)]) {
+        final kq = hangChuaDatNganSach(g, soNganSach: 4);
+        expect(kq.hang, isEmpty);
+        expect(kq.rongTheoBoLoc, isTrue);
+        expect(kq.json['Số danh mục chưa đặt'], '0');
+        expect((GoiSoTraCuu()..them('danh_sach_ngan_sach', kq)).mauCau().cau,
+            'Chưa đặt ngân sách — không có danh mục nào khớp.');
+      }
+    });
+    test('kChon có chua_dat; hangNganSach KHÔNG nhận mã ấy (đường riêng)', () {
+      expect(kChon, contains('chua_dat'));
+      expect(kChuChon['chua_dat'], 'chưa đặt ngân sách');
+      expect(() => hangNganSach(const [], now: now, chon: 'chua_dat'), throwsArgumentError);
     });
   });
 

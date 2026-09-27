@@ -38,10 +38,14 @@ const List<String> kTuLoai = [
 /// câu tiếng Việt (*"danh mục chi lớn nhất"*), không phải phép so chiều tiền —
 /// viết thành một chuỗi tách lúc chạy vì test quét thứ 14 cấm hai chuỗi ấy
 /// đứng riêng trong `ai_edge/`. "dụ" và "như" vì *"ví dụ"*, *"ví như"*.
+/// Nhóm cuối thêm 2026-09-27 (bẫy 4.50): chữ không bao giờ là tên mà hay đứng
+/// ngay sau từ loại — *"ngân sách bao gồm"*, *"ngân sách bao nhiêu"*, *"danh mục
+/// các…"* — câu người dùng tự hỏi bị chặn vì cụm "bao gồm" không khớp tên nào.
 const String _tuChucNangTho =
     'và hoặc là với của cho có đang đã còn sắp nào này ấy sau khác lớn nhỏ '
     'nhiều ít cụ gần hết chi thu đây trên dưới trong theo mới cũ đó sẽ cần nên '
-    'thì mà để từ dụ như tiếp chưa không vẫn đều cũng';
+    'thì mà để từ dụ như tiếp chưa không vẫn đều cũng '
+    'bao gồm nhiêu tổng cộng đặt tên các những được hiện tại thế trước';
 final Set<String> kTuChucNang = _tuChucNangTho.split(' ').toSet();
 
 final RegExp _dauCau = RegExp(r'[.,;:!?()\[\]"“”]');

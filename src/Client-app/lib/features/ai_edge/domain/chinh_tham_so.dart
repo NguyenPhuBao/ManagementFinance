@@ -295,6 +295,9 @@ final List<String> _tuDuoiNua =
 final List<String> _tuTrenNua = 'qua nua|hon nua|tren nua'.split('|');
 final List<String> _tuNganSachCang = 'sap het|cang nhat|dung nhieu nhat|vuot'.split('|');
 final List<String> _tuNganSachRong = 'it dung nhat|con nhieu nhat|dung it nhat'.split('|');
+/// "chưa đặt / chưa có / không có ngân sách" → `chua_dat` (câu người dùng 2026-09-27).
+final List<String> _tuChuaDat =
+    'chua dat ngan sach|chua co ngan sach|khong co ngan sach|chua dat|chua co han muc'.split('|');
 
 KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) {
   final a = Map<String, dynamic>.from(args);
@@ -302,7 +305,9 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
   final q = _bo(cauHoi);
   if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
   String? chon;
-  if (_tuDuoiNua.any((t) => _co(q, t))) {
+  if (_tuChuaDat.any((t) => _co(q, t))) {
+    chon = 'chua_dat';
+  } else if (_tuDuoiNua.any((t) => _co(q, t))) {
     chon = 'duoi_nua';
   } else if (_tuTrenNua.any((t) => _co(q, t))) {
     chon = 'tren_nua';
