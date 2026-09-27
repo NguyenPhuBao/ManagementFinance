@@ -55,13 +55,19 @@ KetQuaCongCu hangHoaDon(
       if (chon(b)) b,
   ]..sort((x, y) => x.dueDate.compareTo(y.dueDate));
 
+  // Ngày đến hạn thêm 2026-09-27 (lần đo 15, câu E8): thiếu nó, "Netflix khi nào
+  // đến hạn?" chỉ nhận được "sắp đến hạn" — mô hình không thể nói ngày nó không
+  // có. `soNgayThang` để `kiemSo` bóc ngày/tháng và câu nêu "28/09" qua được chắn.
   final hang = [
     for (final b in chonRa.take(kToiDaMucMoiGoi))
       HangSoLieu(
         ten: b.name,
         trangThai: chuTrangThaiHoaDon(billDisplayStatusOf(b, now)),
         canhBao: billDisplayStatusOf(b, now) == BillDisplayStatus.overdue,
-        soLieu: [soTien('Số tiền', b.amount, ten: b.name)],
+        soLieu: [
+          soTien('Số tiền', b.amount, ten: b.name),
+          soNgayThang('Đến hạn', b.dueDate, ten: b.name, now: now),
+        ],
       ),
   ];
   return KetQuaCongCu(

@@ -2127,6 +2127,39 @@ cờ build** để đo lại khi đổi mô hình; bản thường không mang n
 `muaxxe`/`tesst` (4.41); ở lượt tool E8 không lộ vì tool liệt kê cả danh sách và mô hình tự chọn đúng tên, ở spike thì
 `LIKE '%Nètlix%'` ra 0 hàng. Tên có *f* sau nguyên âm phải gõ gấp đôi (`Netfflix`) hoặc chọn tên khác.
 
+### 9.31 Sửa hai lỗi (a) của 9.29 — E8 đóng, E3 chuyển sang lỗi mô hình (Realme, 2026-09-27 chiều)
+
+Người dùng chốt sau spike: *không SQL; sửa hai lỗi (a) trước, rồi spec tool truy vấn tổng quát*. Hai chỗ sửa, TDD, không đổi
+khai báo tool (`tools_json` không đổi), không đổi schema hay payload:
+
+- **`hangHoaDon`** (`hang_hoa_don.dart`): mỗi hàng thêm `soNgayThang('Đến hạn', b.dueDate, ten: b.name)` cạnh *Số tiền* —
+  JSON cho mô hình `{ten, trang_thai, Số tiền, Đến hạn: '28/09'}`, mẫu câu L2 in *"Netflix sắp đến hạn: Số tiền 100.000 đ,
+  Đến hạn 28/09"*. `LoaiSo.ngayThang` để `kiemSo` bóc ngày/tháng — câu nêu "28/09" qua được chắn (bước 2 đã mở đường này cho
+  hàng giao dịch).
+- **`hangChiTieu`** (`hang_chi_tieu.dart`): vẫn trần `kToiDaMucMoiGoi` = 4 hàng, nhưng khi nhiều hơn 4 danh mục thì hàng
+  cuối là danh mục **ÍT NHẤT** thay vì hàng thứ tư giảm dần; hàng đầu mang trạng thái `chi nhiều nhất`, hàng cuối `chi ít
+  nhất` (một danh mục thì không so sánh); tổng hợp thêm `Số danh mục` để mô hình biết còn danh mục không hiện. Hai hằng
+  `kTrangThaiChiNhieuNhat` / `kTrangThaiChiItNhat`. ⚠️ Chuỗi trạng thái chứa chữ *chi* nhưng không phải `'chi'` trần — test quét
+  14 chỉ cấm đúng chuỗi có dấu nháy hai đầu.
+
+**Đo lại** (APK `bbe68308…` = HEAD, bản thường không cờ spike; 16:23–16:25; Netflix gõ `Netfflix` để qua Telex):
+
+| # | Câu | Tool | Câu hiện ra | Chấm |
+|---|---|---|---|---|
+| F8 | Hoá đơn Netflix khi nào đến hạn | danh sách hoá đơn chua_tra | *Hoa don Netflix sẽ đến hạn vào ngày 28/09.* + thẻ *Netflix · Đến hạn 28/09* | ✅ **E8 đóng** |
+| F3 | Danh mục nào ít tiêu nhất | tổng kết thang_nay — hàng cuối nay là *Giải trí · chi ít nhất · Chi 30.000 đ* | *Danh mục "Cho vay" là khoản chi nhiều nhất trong tháng này với số tiền là 800.000 đ.* | ✗ **hết lỗi (a)**, thành lỗi mô hình: có cả hai đầu được gắn nhãn mà chọn đầu "nhiều nhất" cho câu hỏi "ít nhất" |
+| F18 | Ngân sách chưa dùng đến nửa | danh sách ngân sách | y hệt lần 15 (liệt kê cả bốn) | ✗ không đổi (không sửa gì cho nó) |
+
+**Đọc.** E3 và E18 nay cùng một loại: dữ liệu đủ và có nhãn, mô hình vẫn không làm phép chọn/lọc mà câu hỏi đòi. Đó là
+việc của lớp *trước* mô hình — hoặc tool nhận thêm tham số `chon: it_nhat | nhieu_nhat` / `loc: duoi_nua` để hàm domain trả
+đúng một hàng (cùng lối bảy tool hiện có: mô hình chỉ điền tham số), hoặc bộ chỉnh tham số theo câu hỏi đọc *"ít nhất"* /
+*"chưa đến một nửa"* từ câu và tự lọc hàng trước khi đưa cho mô hình. Cả hai đều là hình dạng của **tool truy vấn tổng
+quát** mà người dùng đã chốt làm bước kế — nên không vá riêng ở đây.
+
+**Thứ tự việc sau 9.31:** (1) **spec tool truy vấn tổng quát có hàng rào** — đối tượng + bộ lọc + phép gộp + **phép chọn**
+(ít nhất / nhiều nhất / dưới ngưỡng), mã dựng trên hàm domain, mô hình chỉ điền tham số; đưa E3, E5, E15, E18 vào bộ đo
+nghiệm thu; (2) E15 `chieu` hai chiều và E22 câu ngoài phạm vi (`chuDeBiChan`); (3) việc còn mở ở cuối 9.28.
+
 ---
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)

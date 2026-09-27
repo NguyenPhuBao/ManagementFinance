@@ -5,6 +5,7 @@ library;
 
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
 import 'package:flowmoney/features/bill/domain/bill_status.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,11 +63,30 @@ void main() {
     expect(h.ten, 'Kiem');
     expect(h.trangThai, 'đã quá hạn');
     expect(h.canhBao, isTrue);
-    expect(h.soLieu.single.nhan, 'Số tiền');
-    expect(h.soLieu.single.chuoi, '45.000 đ');
-    expect(h.soLieu.single.ten, 'Kiem',
-        reason: 'kiemNhan đòi câu nêu tên: SoLieu của hàng phải mang tên hàng');
-    expect(h.json, {'ten': 'Kiem', 'trang_thai': 'đã quá hạn', 'Số tiền': '45.000 đ'});
+    expect(h.soLieu.map((s) => s.nhan).toList(), ['Số tiền', 'Đến hạn']);
+    expect(h.soLieu.first.chuoi, '45.000 đ');
+    for (final s in h.soLieu) {
+      expect(s.ten, 'Kiem',
+          reason: 'kiemNhan đòi câu nêu tên: mọi SoLieu của hàng phải mang tên hàng');
+    }
+    expect(h.json, {
+      'ten': 'Kiem',
+      'trang_thai': 'đã quá hạn',
+      'Số tiền': '45.000 đ',
+      'Đến hạn': '01/09',
+    });
+  });
+
+  test('⭐ hàng mang NGÀY ĐẾN HẠN dd/MM (lần đo 15 câu E8: "Netflix khi nào đến hạn?" '
+      'chỉ được "sắp đến hạn" vì hàng không có ngày)', () {
+    final kq = hangHoaDon([dien, kiem], now: now);
+    final tienDien = kq.hang.firstWhere((h) => h.ten == 'Tiền điện');
+    final denHan = tienDien.soLieu.firstWhere((s) => s.nhan == 'Đến hạn');
+    expect(denHan.chuoi, '20/09');
+    expect(denHan.loai, LoaiSo.ngayThang,
+        reason: 'kiemSo bóc ngày/tháng từ soTho của loại này — câu "đến hạn 20/09" '
+            'phải qua được lớp chắn');
+    expect(denHan.ten, 'Tiền điện');
   });
 
   test('tổng hợp khớp summarizeBills: Còn phải trả, Quá hạn, Chưa trả', () {

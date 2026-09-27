@@ -639,8 +639,9 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   đến hạn), ba lỗi định tuyến/tham số, chắn oan 0. `npm install`, build release từ HEAD (`006cb1b6…`) và cài lên Realme
   cùng lượt — bản trên máy trước đó là của lần 13. Rồi ✅ **spike E2B sinh SQL** (mục **9.30**) trên 12 câu: **0 đúng
   hẳn · 2 do may · 10 sai, 6 sai im lặng**; đường đo giữ trong repo sau `--dart-define=SPIKE_SQL=true`
-  (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Đề nghị không cho mô hình đọc SQL, lấp lỗ hổng
-  phủ bằng tool truy vấn tổng quát có hàng rào — chờ người dùng chốt.
+  (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Người dùng chốt: không SQL, sửa hai lỗi (a) trước
+  → ✅ **mục 9.31**: hàng hoá đơn mang *Đến hạn* (E8 ✅), tổng kết trả danh mục ít nhất + nhãn hai đầu + *Số danh mục*
+  (E3 hết lỗi tool, còn lỗi mô hình chọn sai đầu). Kế: spec **tool truy vấn tổng quát có hàng rào** (có tham số *chọn*).
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

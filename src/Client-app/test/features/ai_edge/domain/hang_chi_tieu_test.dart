@@ -96,15 +96,37 @@ void main() {
     });
   });
 
-  test('⭐ hàng theo danh mục có TÊN, thứ tự như tk.danhMuc, trần kToiDaMucMoiGoi', () {
+  test('⭐ hàng theo danh mục có TÊN: top (trần − 1) + danh mục ÍT NHẤT, kèm trạng thái '
+      'nhiều nhất / ít nhất và Số danh mục (lần đo 15 câu E3: trần 4 hàng cắt mất '
+      'danh mục nhỏ nên "ít tiêu nhất" không trả lời được)', () {
     final kq = hangChiTieu(
       _tk(danhMuc: [_dm('Cho vay', 800000), _dm('Ăn uống', 600000), _dm('Di chuyển', 355000), _dm('Mua sắm', 60000), _dm('Giáo dục', 45000)]),
       ma: 'thang_nay',
     );
-    expect(kq.hang.map((h) => h.ten).toList(), ['Cho vay', 'Ăn uống', 'Di chuyển', 'Mua sắm']);
-    expect(kq.hang.first.json, {'ten': 'Cho vay', 'Chi': '800.000 đ'});
-    expect(kq.hang.first.trangThai, isNull);
+    expect(kq.hang.map((h) => h.ten).toList(), ['Cho vay', 'Ăn uống', 'Di chuyển', 'Giáo dục'],
+        reason: 'vẫn đúng trần 4 hàng, nhưng hàng cuối là danh mục nhỏ nhất chứ không '
+            'phải hàng thứ tư theo thứ tự giảm dần');
+    expect(kq.hang.first.json, {'ten': 'Cho vay', 'trang_thai': 'chi nhiều nhất', 'Chi': '800.000 đ'});
+    expect(kq.hang.last.json, {'ten': 'Giáo dục', 'trang_thai': 'chi ít nhất', 'Chi': '45.000 đ'});
+    expect(kq.hang[1].trangThai, isNull);
     expect(kq.hang.first.canhBao, isFalse);
+    expect(kq.tongHop.map((s) => '${s.nhan}=${s.chuoi}'), contains('Số danh mục=5'),
+        reason: 'mô hình phải biết còn danh mục không hiện trong bốn hàng');
+  });
+
+  test('≤ trần danh mục: đủ hàng theo thứ tự giảm dần; hai đầu mang trạng thái, một '
+      'danh mục thì không so sánh gì', () {
+    final hai = hangChiTieu(_tk(danhMuc: [_dm('Ăn uống', 600000), _dm('Giáo dục', 45000)]), ma: 'thang_nay');
+    expect(hai.hang.map((h) => h.ten).toList(), ['Ăn uống', 'Giáo dục']);
+    expect(hai.hang.map((h) => h.trangThai).toList(), ['chi nhiều nhất', 'chi ít nhất']);
+    expect(hai.tongHop.map((s) => '${s.nhan}=${s.chuoi}'), contains('Số danh mục=2'));
+
+    final mot = hangChiTieu(_tk(danhMuc: [_dm('Ăn uống', 600000)]), ma: 'thang_nay');
+    expect(mot.hang.single.trangThai, isNull);
+
+    final khong = hangChiTieu(_tk(), ma: 'thang_nay');
+    expect(khong.hang, isEmpty);
+    expect(khong.tongHop.map((s) => '${s.nhan}=${s.chuoi}'), contains('Số danh mục=0'));
   });
 
   test('⭐ hàng danh mục nhãn "Chi" khai xung đột "Thu" — câu C10 gán chi thành thu bị chặn (bẫy 4.42)', () {
@@ -122,7 +144,7 @@ void main() {
   test('tổng hợp Tổng chi / Tổng thu + kỳ bằng CHỮ, không số', () {
     final kq = hangChiTieu(_tk(), ma: 'thang_truoc');
     expect(kq.tongHop.map((s) => '${s.nhan}=${s.chuoi}').toList(),
-        ['Tổng chi=2.141.000 đ', 'Tổng thu=15.135.000 đ']);
+        ['Tổng chi=2.141.000 đ', 'Tổng thu=15.135.000 đ', 'Số danh mục=0']);
     expect(kq.chuThem, {'ky': 'tháng trước'});
     expect(RegExp(r'\d').hasMatch(kq.json['ky'] as String), isFalse,
         reason: 'số trong chữ kèm không có trong gói → câu chép nó bị chặn');

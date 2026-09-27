@@ -61,20 +61,39 @@ Ky? kyTuMa(String ma, DateTime now) {
   };
 }
 
+/// Trạng thái hai đầu của danh sách danh mục — chữ để mô hình đọc, không phải
+/// để suy luận (lần đo 15, 2026-09-27, câu E3 "danh mục nào ít tiêu nhất"):
+/// trần bốn hàng cắt mất danh mục nhỏ, và có đủ dữ liệu E2B cũng không tự lọc
+/// (E18 cùng lượt). Nên hàng cuối là danh mục ÍT NHẤT chứ không phải hàng thứ
+/// tư theo thứ tự giảm dần, và hai đầu mang nhãn.
+const String kTrangThaiChiNhieuNhat = 'chi nhiều nhất';
+const String kTrangThaiChiItNhat = 'chi ít nhất';
+
 KetQuaCongCu hangChiTieu(ThongKeKy tk, {required String ma}) {
   final chuKy = kMaKy[ma];
   if (chuKy == null) return tuChoiGiaTri('ky', ma, kMaKy.keys);
   // `tk.danhMuc` đã giảm dần và đã tra tên — chỉ chép (test quét 14).
+  final ds = tk.danhMuc;
+  final chon = ds.length <= kToiDaMucMoiGoi
+      ? ds
+      : [...ds.take(kToiDaMucMoiGoi - 1), ds.last];
+  String? trangThai(int i) {
+    if (ds.length < 2) return null;
+    if (i == 0) return kTrangThaiChiNhieuNhat;
+    if (i == chon.length - 1) return kTrangThaiChiItNhat;
+    return null;
+  }
+
   final hang = [
-    for (final d in tk.danhMuc.take(kToiDaMucMoiGoi))
+    for (var i = 0; i < chon.length; i++)
       HangSoLieu(
-        ten: d.ten,
-        trangThai: null,
+        ten: chon[i].ten,
+        trangThai: trangThai(i),
         canhBao: false,
         // Xung đột "Thu" (bẫy 4.42): C10 cổng D gán số Chi của Cho vay làm
         // "khoản thu". Chữ hoa — test quét 14 chỉ cấm chuỗi chiều tiền thường.
         soLieu: [
-          soTien('Chi', d.soTien, ten: d.ten, nhanXungDot: const ['Thu']),
+          soTien('Chi', chon[i].soTien, ten: chon[i].ten, nhanXungDot: const ['Thu']),
         ],
       ),
   ];
@@ -83,6 +102,8 @@ KetQuaCongCu hangChiTieu(ThongKeKy tk, {required String ma}) {
     tongHop: [
       soTien('Tổng chi', tk.tong.chi),
       soTien('Tổng thu', tk.tong.thu),
+      // Mô hình phải biết còn danh mục không hiện trong bốn hàng.
+      soDem('Số danh mục', ds.length),
     ],
     chuThem: {'ky': chuKy},
   );
