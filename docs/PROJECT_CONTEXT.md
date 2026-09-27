@@ -642,6 +642,14 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Người dùng chốt: không SQL, sửa hai lỗi (a) trước
   → ✅ **mục 9.31**: hàng hoá đơn mang *Đến hạn* (E8 ✅), tổng kết trả danh mục ít nhất + nhãn hai đầu + *Số danh mục*
   (E3 hết lỗi tool, còn lỗi mô hình chọn sai đầu). Kế: spec **tool truy vấn tổng quát có hàng rào** (có tham số *chọn*).
+- ✅ **Tool truy vấn giao dịch — mã xong cùng ngày, 🛑 cổng E chưa đo** (mục **9.32** `AI_EDGE_FEATURE.md`; spec
+  `specs/2026-09-27-tool-truy-van-giao-dich-design.md` đã duyệt; kế hoạch 10 task thi công inline, Task 1–9, một commit mỗi
+  task `60037b5` → `960addb`): `truy_van_giao_dich` **thay** cả `tim_giao_dich` lẫn `tong_ket_thu_chi_ky` — 8 tham số cũ +
+  `gop` (khong · danh_muc · vi) + `chon` (nhieu_nhat · it_nhat); `gopGiaoDich` ở `transaction/domain`, `hangNhomGiaoDich`;
+  `chon` bốn mã cho `danh_sach_ngan_sach`; ba luật mới của bộ chỉnh tham số (chọn · gộp · hai chiều) + `chinhThamSoNganSach`;
+  `BoCongCu` **sáu** tool; ví dụ định tuyến viết lại. Người dùng hỏi giữa chừng có nên chuyển sang SQL agent / thư viện
+  nhúng — trả lời **không** bằng số đo 9.30, họ chốt giữ thiết kế tool. ⚠️ `tools_json` **5.633 > 5.491**, ca trần tạm
+  `skip` tới spike Realme (Task 10). Không đổi schema, payload, `pubspec`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

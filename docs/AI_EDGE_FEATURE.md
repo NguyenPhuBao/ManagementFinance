@@ -2162,6 +2162,43 @@ nghiệm thu; (2) E15 `chieu` hai chiều và E22 câu ngoài phạm vi (`chuDeB
 
 ---
 
+### 9.32 Tool truy vấn giao dịch tổng quát `truy_van_giao_dich` — MÃ XONG 2026-09-27, 🛑 cổng E CHƯA ĐO
+
+Spec `docs/superpowers/specs/2026-09-27-tool-truy-van-giao-dich-design.md` (đã duyệt, `804ceaa`), kế hoạch 10 task
+`docs/superpowers/plans/2026-09-27-tool-truy-van-giao-dich.md` (gitignore), thi công inline Task 1–9 cùng ngày, một commit
+mỗi task (`60037b5` → `960addb` + commit docs này). Người dùng chốt trong brainstorm: **một tool phẳng** lộ cả `gop` lẫn
+`chon` (lối A), **thay** cả `tim_giao_dich` lẫn `tong_ket_thu_chi_ky`, gộp luôn `chon` cho `danh_sach_ngan_sach`, và giữ
+kiến trúc tool thay vì chuyển sang SQL agent hay thư viện nhúng (trả lời bằng số đo 9.30).
+
+**Đã đổi gì (đối chiếu mã, 2026-09-27):**
+
+| Tệp | Việc |
+|---|---|
+| `ai_edge/domain/chon.dart` (mới) | `kChon` bốn mã · `kChonGiaoDich` hai mã · `kChuChon` chữ cho mẫu câu / mô tả |
+| `ai_edge/domain/ma_ky.dart` (mới) | `kMaKy`, `kMaKyMoiLuc`, `kyTuMa` — tách khỏi `hang_chi_tieu.dart` trước khi xoá tệp ấy |
+| `transaction/domain/gop_giao_dich.dart` (mới) | `gopGiaoDich(dong, theo, chieu)` → `NhomGiaoDich{ten, chi, thu, chuyen, soKhoan}` xếp giảm dần theo chiều; `kTenChuaPhanLoai` |
+| `ai_edge/domain/hang_nhom_giao_dich.dart` (mới) | `hangNhomGiaoDich` — hàng nhóm theo danh mục / ví, trần (4−1)+ít nhất, `chon` → một hàng, `Số danh mục` / `Số ví`, `boLoc` "gộp theo …" + "chọn …", `rongTheoBoLoc` |
+| `ai_edge/domain/hang_giao_dich.dart` | `hangGiaoDich(chon:)` — trạng thái *"khoản lớn nhất · …"*; `boLocTimGiaoDich` / `soLieuBoLocTimGiaoDich` là **một** nguồn cho hàng lẻ và hàng nhóm |
+| `ai_edge/domain/chinh_tham_so.dart` | luật **7** chọn (`_mauChon`: *nhiều/lớn/cao … nhất* → `nhieu_nhat`; *ít/nhỏ/thấp … nhất* → `it_nhat` trừ khi theo sau là số tiền — *"ít nhất 200k"* vẫn là ngưỡng), **8** gộp (*danh mục nào / theo danh mục* → `gop=danh_muc` **chỉ khi** không nêu tên danh mục; *ví nào* → `gop=vi`), **9** hai chiều (*cho vay … thu về* → `chieu=tat_ca`); `chinhThamSoNganSach` (*chưa dùng đến một nửa* → `duoi_nua` · *quá nửa* → `tren_nua` · *sắp hết / căng nhất* → `nhieu_nhat` · *ít dùng nhất* → `it_nhat`) |
+| `ai_edge/data/cong_cu_truy_van.dart` (mới) | `CongCuTruyVan` — 8 tham số cũ + `gop` + `chon`, `ky` bắt buộc; gộp / chọn đọc **trọn tập** (`_kKhongTran`) rồi cắt ở tầng hàng; `gop=khong`+`chon` chọn theo tiền dù `sap_xep=moi_nhat` |
+| `ai_edge/data/cong_cu_ngan_sach.dart`, `domain/hang_ngan_sach.dart` | tham số `chon` (bốn mã); `hangNganSach(chon:)` lọc theo `rawPercentSpent` (< 0,5 / ≥ 0,5) hoặc chọn một đầu; `Số ngân sách khớp` chỉ khi lọc; 0 khớp = `rongTheoBoLoc` |
+| `ai_edge/data/bo_cong_cu.dart` | **sáu** tool, `truy_van_giao_dich` đứng đầu; bỏ `AnalyticsRepository` khỏi DI của bộ tool |
+| `ai_edge/domain/cong_cu.dart` | `kTenCongCuTruyVan`; xoá `kTenCongCuTongKet`, `kTenCongCuGiaoDich`; chỉ báo *"Đang tra cứu giao dịch…"* |
+| `ai_edge/domain/slm_prompt.dart` | ví dụ định tuyến viết lại cho một tool: *chi nhiều nhất vào danh mục nào* → `gop=danh_muc, chon=nhieu_nhat`; *ít tiêu nhất* → `chon=it_nhat`; *cho vay … thu về* → `chieu=tat_ca`; *ngân sách chưa dùng đến nửa* → `danh_sach_ngan_sach` với `chon=duoi_nua`. Lời hệ thống **2.293** ký tự (đếm bằng test tạm) |
+| xoá | `cong_cu_giao_dich.dart`, `cong_cu_chi_tieu.dart`, `hang_chi_tieu.dart` và test của chúng (19 ca của `cong_cu_giao_dich_test` chép nguyên sang `cong_cu_truy_van_test`) |
+
+Không đổi schema, payload, `pubspec`; test quét 14 (không `'chi'`/`'thu'` trần trong `ai_edge/`) và 16 vẫn xanh.
+
+⚠️ **`tools_json` nay 5.633 ký tự — vượt trần đã đo 5.491** (`kTranToolsJsonDaDo`), ca canh tạm `skip` theo Task 9 của kế
+hoạch; Task 10 spike trên Realme (câu C7, đọc dòng *"mở phiên … tools_json N"*, không `FAILED_PRECONDITION`) rồi mới đặt lại
+hằng. Chưa đo thì **chưa biết** bản này chạy được trên máy — đừng đọc "mã xong" thành "đã chạy".
+
+**Chờ Task 10 — cổng E** (spec mục 7): 34 câu cổng D **không tụt** (cột "tool đúng" ánh xạ sang tool mới với `gop`/`chon`) +
+22 câu 9.29 **≥ 19 đúng**, bốn câu đích **E3 · E5 · E15 · E18 phải đúng**, bịa 0. Bảng ba cột theo màn, chấm câu chưa đạt
+theo ba nguyên nhân; chưa đạt thì chỉ đo lại câu chưa đạt sau mỗi vòng sửa.
+
+---
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
