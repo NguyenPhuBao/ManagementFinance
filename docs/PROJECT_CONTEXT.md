@@ -654,8 +654,9 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   ĐC3 ✅ (bằng lần 13 về tổng số, nhưng **C13 lên, C9 và C16 tụt** — mô hình điền thừa `chon` cho câu liệt kê); 22 câu mới
   **18 ✅ · 2 ◐ · 2 ✗ · bịa 0** (cần ≥ 19) — **bốn câu đích E3 · E5 · E15 · E18 đều đúng**, tụt E13 (một lời gọi thay vì hai
   kỳ), E11 (không nói "không có"); lần đầu có ca **chắn oan** trên máy thật (E15, bẫy 4.49, mẫu câu cứu). Hai câu người dùng tự hỏi sau buổi đo lộ thêm **bẫy 4.50** (`kiemTen` chặn oan *"danh mục đã đặt ngân sách bao gồm…"*) và một
-  tool thiếu (*"danh mục chưa đặt ngân sách"* → mô hình nói SAI "không có"). Người dùng dặn *"xong phần này thì dừng"* — bảy
-  hướng sửa ở cuối mục 9.32, **chưa sửa gì**. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
+  tool thiếu (*"danh mục chưa đặt ngân sách"* → mô hình nói SAI "không có"). Rồi người dùng chọn ba việc; ✅ **vòng sửa 1** xong cùng tối (luật 10 gỡ `chon` thừa · chữ kỳ "đầu năm" · `chon` cho
+  tool mục tiêu · `doiTuongRong`; `tools_json` 5.938): đo lại E11 ✅ C9 ✅ E5 ✅ C16 ◐ → 22 câu mới **19 ✅**, dòng ≥ 19 đạt;
+  chưa chạy lại trọn 56. Còn 4.49 · 4.50 · tool "chưa đặt ngân sách" (chờ duyệt thiết kế) và E13. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
   script `nohup`, hai bản đo chồng nhau làm bật khỏi màn chat — kiểm/diệt bằng PowerShell `Get-CimInstance Win32_Process`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN

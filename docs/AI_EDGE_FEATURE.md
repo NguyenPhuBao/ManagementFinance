@@ -2278,6 +2278,28 @@ cụm ở *"đã / chưa / bao gồm"* hoặc chỉ xét cụm có chữ hoa / k
 `chon` mới cho *"danh mục chưa đặt ngân sách"* — dữ liệu đã có ở `chonDeXuat`. Theo quy ước 2026-09-25: vòng sau chỉ đo
 lại câu chưa đạt.
 
+#### Vòng sửa 1 sau cổng E (2026-09-27 tối muộn) — (a) (b) (e) xong, đo lại bốn câu
+
+Người dùng chọn ba việc: *vá ba lỗi tầng mã · spec ngắn hai ca chắn oan · tool "chưa đặt ngân sách"*. Việc đầu làm ngay
+(TDD, một commit): **luật 10** của bộ chỉnh — câu không có *"…nhất"* mà mô hình vẫn điền `chon` thì **gỡ** (lật một phần luật
+6 *"không đụng giá trị câu không nói tới"*: `chon` là tham số có sẵn nên mô hình điền bừa, cùng họ `tu_khoa: "chi"` 4.44;
+áp cho cả `chinhThamSoNganSach`, và ca cũ *"còn bao nhiêu tiền ngân sách" giữ `duoi_nua`* đổi kỳ vọng theo); *"đầu năm /
+đầu tháng / đầu tuần"* vào chữ kỳ; **`chon` cho `danh_sach_muc_tieu`** (`cham_ke_hoach · qua_han · dung_ke_hoach`, cùng khuôn
+ngân sách, `chinhThamSoMucTieu` đọc *chậm / trễ / quá hạn / đúng kế hoạch*), và **`KetQuaCongCu.doiTuongRong`** — mẫu câu
+rỗng theo bộ lọc nói đúng danh từ (*"không có mục tiêu nào khớp"*; trước đó ngân sách 0 khớp cũng in *"không có giao dịch
+nào khớp"*). `tools_json` 5.633 → **5.938**, đo Realme 0 `FAILED_PRECONDITION`, hằng đặt lại.
+
+| # | Tool · tham số sau bộ chỉnh | Câu hiện ra | Chấm |
+|---|---|---|---|
+| E11 | mục tiêu `chon=cham_ke_hoach` → 0 hàng | *Chậm kế hoạch — không có mục tiêu nào khớp.* | ✅ (✗ → ✅) |
+| C9 | truy_van: bộ chỉnh gỡ `chon`, thêm `so_tien_tu=200000` → 2 hàng | *Các khoản chi từ 200.000 đ đến 1.000.000 đ trong tháng này có 2 giao dịch: Cho vay (800.000 đ vào 19/09) và Tích lũy mục tiêu: MuaXe (500.000 đ vào 05/09).* | ✅ (✗ → ✅) |
+| C16 | truy_van: gỡ `chon`, `sap_xep=moi_nhat` → 4 hàng | *Khoản chi gần đây nhất của bạn là: 123.000 đ vào ngày 19/09 cho "Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04".* | ◐ tool đủ 4 hàng, mô hình kể **một** (✗ → ◐); thẻ gắn *Cho vay · Ngày 19/09* cho ngày trùng — họ 4.34 |
+| E5 | truy_van `ky=nam_nay` giữ, `danh_muc` "giai tri tong cong" → Giải trí | *Trong năm nay, bạn đã chi 30.000 đ cho giai trí tổng công.* | ✅ (`ky` không còn bị đổi) |
+
+Gộp với lần 1: 22 câu mới **19 ✅ · 2 ◐ · 1 ✗** (E13 còn) — **dòng ≥ 19 đạt**; cổng D nội dung **19/20** (C9 lên, C16 ◐).
+Chưa chạy lại trọn 56 câu với bản này (quy ước 2026-09-25: chỉ đo lại câu chưa đạt). Việc còn: (c) E13, (d) 4.49, (f) 4.50,
+(g) tool "chưa đặt ngân sách" — hai việc sau người dùng đã chọn làm, chờ duyệt thiết kế.
+
 ---
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
