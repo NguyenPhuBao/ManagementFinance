@@ -656,7 +656,9 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   kỳ), E11 (không nói "không có"); lần đầu có ca **chắn oan** trên máy thật (E15, bẫy 4.49, mẫu câu cứu). Hai câu người dùng tự hỏi sau buổi đo lộ thêm **bẫy 4.50** (`kiemTen` chặn oan *"danh mục đã đặt ngân sách bao gồm…"*) và một
   tool thiếu (*"danh mục chưa đặt ngân sách"* → mô hình nói SAI "không có"). Rồi người dùng chọn ba việc; ✅ **vòng sửa 1** xong cùng tối (luật 10 gỡ `chon` thừa · chữ kỳ "đầu năm" · `chon` cho
   tool mục tiêu · `doiTuongRong`; `tools_json` 5.938): đo lại E11 ✅ C9 ✅ E5 ✅ C16 ◐ → 22 câu mới **19 ✅**, dòng ≥ 19 đạt;
-  chưa chạy lại trọn 56. ✅ **Vòng sửa 2** cùng đêm (spec `2026-09-27-chan-oan-4-49-4-50-va-chon-chua-dat-design.md`, `211b3f8`): **4.49** gán nhãn ngược xét theo vế, **4.50** từ chức năng `kiemTen`, **`chon=chua_dat`** cho tool ngân sách qua `deXuatTuKho` (một nguồn với thẻ Chưa đặt ngân sách); đo lại E15 · "chưa đặt" · "đã đặt" đều ✅; `tools_json` 6.031; `flutter test` 3888/3888, analyze 26. Còn E13 và chưa chạy lại trọn 56 câu. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
+  chưa chạy lại trọn 56. ✅ **Vòng sửa 2** cùng đêm (spec `2026-09-27-chan-oan-4-49-4-50-va-chon-chua-dat-design.md`, `211b3f8`): **4.49** gán nhãn ngược xét theo vế, **4.50** từ chức năng `kiemTen`, **`chon=chua_dat`** cho tool ngân sách qua `deXuatTuKho` (một nguồn với thẻ Chưa đặt ngân sách); đo lại E15 · "chưa đặt" · "đã đặt" đều ✅; `tools_json` 6.031; `flutter test` 3888/3888, analyze 26. Còn E13 và chưa chạy lại trọn 56 câu. 📝 **Rà toàn diện tool còn thiếu** cùng đêm: 13 loại câu
+  chưa trả lời được → spec `2026-09-27-mo-rong-tool-tro-ly-ai-bon-nhom-design.md` (người dùng duyệt bốn phần, lối gộp) + kế hoạch
+  12 task / ba lát (gitignore) — **chưa thi công**; bàn giao ở `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-27-sau-cong-e.md`. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
   script `nohup`, hai bản đo chồng nhau làm bật khỏi màn chat — kiểm/diệt bằng PowerShell `Get-CimInstance Win32_Process`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
