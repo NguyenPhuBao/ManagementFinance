@@ -9,7 +9,9 @@ thảo luận trên **cùng một bộ số đo** trước khi chốt phương �
 > `main` @ `422debf`): SSE `POST /api/ai/chatbot/chat/stream`, `GET /api/ai/chatbot/snapshot` (điểm FHS, lối A),
 > function-calling bốn tool trên PostgreSQL, "RAG" tĩnh 3 tệp JSON so khớp cụm từ — **không** vector, **không**
 > ChromaDB. Mọi hàng "Pipeline C" / "Chatbot" trong các bảng dưới là **ảnh chụp 2026-09-17**. Đối chiếu mã ấy với
-> tài liệu của nó: `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`.
+> tài liệu của nó: `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md` (backend đóng ở `eceb6c9` 2026-09-27 — `Math.abs` cho chi âm,
+> Redis token-bucket, circuit breaker, snapshot cache, fallback thôi bịa số; năm chỗ còn lệch ở
+> `CAN-LAM/CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`).
 >
 > ⚠️ **CẬP NHẬT 2026-09-21:** Vì lý do chính sách (bảo mật dữ liệu ngân hàng và phạm vi đồ án), **Module Bank được tạm dừng hoàn toàn**. Hệ thống không xóa bỏ chức năng/mã nguồn đã làm, nhưng trong phạm vi xây dựng sắp tới sẽ không còn Module Bank. Nhánh SePay Webhook / Bank Worker đóng băng; luồng nhận diện và phân loại tập trung vào Receipt OCR và Nhập tay / SMS.
 

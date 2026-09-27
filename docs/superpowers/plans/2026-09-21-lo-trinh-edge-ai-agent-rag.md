@@ -249,7 +249,7 @@ trong** chatbot trực tuyến `modules/ai/features/chatbot/` — 3 tệp JSON t
 cụm từ + RRF, **không** embedding, **không** endpoint riêng. Chatbot ấy còn tự tính điểm sức khoẻ tài chính từ PostgreSQL
 và gửi snapshot gộp + kết quả tool (số tiền từng giao dịch, ghi chú sau che PII) sang Gemini — tức câu hỏi F1 quay lại ở
 dạng mới (mục 10.1 `AI_AGENT_ARCHITECTURE.md`). Client **chưa gọi**; việc nối vào màn Trợ lý AI
-(`docs/AI/ChatbotAI_Moblie.md`) chờ người dùng quyết. Chỗ tài liệu ấy lệch mã: `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`.
+(`docs/AI/ChatbotAI_Moblie.md`) chờ người dùng quyết. Hợp đồng API trong tệp ấy **đã khớp mã** từ `eceb6c9` (2026-09-27): đơn soát ở `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md`, chỗ còn lệch — kể cả `done.fallback` chưa tả — ở `CAN-LAM/CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`.
 
 ---
 
@@ -262,7 +262,7 @@ dạng mới (mục 10.1 `AI_AGENT_ARCHITECTURE.md`). Client **chưa gọi**; vi
 | "Dùng Edge AI / SLM on-device" | **cổng A** | arm64 đã tải mô hình; máy ảo luôn rơi về mẫu |
 | "Là AI Agent" | ✅ **cổng C — đạt 2026-09-23** | bốn tool **chỉ đọc**, trần 3 lời gọi; arm64 đã tải mô hình (máy ảo rơi về mẫu) |
 | "Có áp dụng RAG" | ✅ **phía server từ 2026-09-26** — RAG tĩnh trong chatbot trực tuyến (so khớp cụm từ, **không** vector); ~~cổng D (client)~~ — chặng 5 đã bỏ | theo M4 · nói kèm "không vector" cho trung thực · ⚠️ *"cổng D"* của bước 2 là cổng khác, **không** làm câu này đúng |
-| "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | ⚠️ **sai từ 2026-09-26** — chatbot trực tuyến của backend đọc số của người dùng trên PostgreSQL rồi gửi phần gộp và kết quả tool sang Gemini. Câu đúng hôm nay: *"trợ lý trên máy dùng số của bạn trong máy, không gửi đi đâu; trợ lý trực tuyến (backend) dùng số đã đồng bộ và gửi sang Google"* | NPBao — mục 4 `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` |
+| "Hệ thống chia theo loại dữ liệu: server biết tiền nói chung, máy biết tiền của bạn" | ⚠️ **sai từ 2026-09-26** — chatbot trực tuyến của backend đọc số của người dùng trên PostgreSQL rồi gửi phần gộp và kết quả tool sang Gemini. Câu đúng hôm nay: *"trợ lý trên máy dùng số của bạn trong máy, không gửi đi đâu; trợ lý trực tuyến (backend) dùng số đã đồng bộ và gửi sang Google"* | NPBao — mục 4 `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md` (đóng 2026-09-27; tool vẫn gửi từng giao dịch, chỉ thêm che PII rộng hơn) |
 
 ## Lịch dự kiến
 

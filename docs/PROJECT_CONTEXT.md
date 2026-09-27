@@ -596,12 +596,48 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-26)
 
+### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
+
+Ba commit NPBao ngày 2026-09-27 (`eceb6c9`, `c5526f8`, `69a5f91`), **không đụng `src/Client-app`**; nhánh `TranQuangDat`
+là tổ tiên của `main` nên gộp là fast-forward. Backend đóng đơn `CHATBOT_AI_SOAT_SAU_422DEBF.md` ở `eceb6c9` và chuyển
+sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soát bằng mã cùng ngày — dòng "client soát" ở đầu đơn:
+
+- **8/9 mục xong.** Lệnh nghiệm thu mục 1 và 5 ra 0 dòng; mục 2 bốn chỗ cùng 🟢; mục 3 backend chọn lối *cả hai* —
+  `delta` mang cả `text` lẫn `content`, `GET /snapshot` thêm alias `/financial-health`, nhận `history` lẫn
+  `conversationHistory` — và sửa `ChatbotAI.md` + `ChatbotAI_Moblie.md` theo; mục 4 **Redis token-bucket** (Lua, rơi về
+  bộ nhớ khi Redis chưa `ready`), **circuit breaker** (5 lỗi / 60 s → OPEN 30 s → HALF-OPEN) và **snapshot cache**
+  (`cache:snapshot:{id}`, TTL 120 s) nay có thật; mục 6 đủ; 7.1 `Math.abs` ở tổng chi, top danh mục, 50/30/20, so hai kỳ
+  và tool, test thêm ca số âm; 7.2 mẫu số động theo giao dịch đầu tiên (⚠️ kẹp sàn **14 ngày** thay vì trả `null` như
+  `cuaSoNhinLai`); 7.3 fallback thành thông báo minh bạch, `done` mang `{fallback: true, reason}` (vẫn phát dạng `delta`
+  thường); 7.5 Admin-web đọc `text ?? content`, gọi `/snapshot`; 7.6 `CloudDeploy.md` và `Project.md` ghi `npm install`;
+  mục 8 backend chọn **sửa** — banner ⏸️ ở cả năm tệp (`Project.md:993, 1075`, mục 3 `progress/Client-app.md`, §8
+  `Rule_project.md`, `progress/Backend.md:74`, đầu `docs/Bank/Client-app.md`).
+- ✅ **`npm install` đã chạy trong `src/Backend`** theo cho phép đích danh của người dùng (chỉ thiếu
+  `@google/generative-ai`; `ioredis`, `express-rate-limit` đã có). `chatbot.service.js` nạp được. Redis **không** bắt buộc.
+- **Đo thật** `generateSnapshot(10, {bypassCache: true})` sau sửa: FHS **57**, quỹ khẩn cấp **12,9 tháng**, top danh mục
+  giảm dần (Di chuyển 42 % · Chi khác 36 % · Mua sắm 7 %) — trước `eceb6c9` các số này là 0 / âm / đảo; truy vấn 7.1
+  chạy lại vẫn 23/23 `Chi` âm, 6/6 `Thu` dương. Cùng phép đo lộ **hai lỗi mới**: `overBudgetAlerts` không lọc ngân sách
+  hết hạn nên *"Di chuyển"* báo **hai** dòng (143 % và 570 %); 50/30/20 xếp bằng từ khoá tên danh mục nên *"Di chuyển"*
+  và *"Chi khác"* rơi ngoài cả ba nhóm — cơ cấu ra `0 % / 6 % / 0 %` trong khi hai danh mục ấy chiếm 78 % chi.
+- **Chưa xong / mới lệch → đơn mới `CAN-LAM/CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`** (người dùng chọn viết đơn): tên mô hình
+  Gemini của chatbot mang **ba** phiên bản (2.0 / 2.5 / 3.8 — `69a5f91` chỉ đổi hai chỗ; client không kiểm được
+  `gemini-3.8-flash` có tồn tại); 7.4 hằng nợ chưa sửa (`debtToIncomeRatio: 0.1`, `hasHighInterestDebt: false`) mà
+  `Project.md:2744` vẫn kể là chỉ số; `ChatbotAI.md:113` vẫn hứa "khử toàn bộ tên riêng, làm tròn số" (tool gửi số chính
+  xác; che tên cần `userName` mà năm chỗ gọi `maskPII` không truyền); `Project.md:2758` vẫn "2 endpoint" với
+  `GET /financial-health`; `ChatbotAI_Moblie.md` chưa tả `done.fallback`; nhánh lỗi `generateSnapshot` vẫn trả FHS **65**
+  + quỹ **1,5 tháng** cứng; và hai lỗi đo được ở trên.
+- Tài liệu client sửa theo: hàng backend `CLAUDE.md`; đường dẫn `CAN-LAM/` → `DA-XONG/` ở `AI_AGENT_ARCHITECTURE.md`
+  (kèm phạm vi `maskPII` mới), `AI_ARCHITECTURE_REVIEW.md`, `PROGRESS-BACKEND.md`, hai đơn `DA-XONG/` (đơn bỏ liên kết
+  ngân hàng ghi backend đã sửa năm chỗ), hai plan 2026-09-21. Mã client **không đổi**; `flutter test` **3824/3824** (3
+  skip), `flutter analyze` **26** — mức nền. Người dùng dặn *"soát file xong thì dừng"* — ba việc còn lại của bàn giao
+  (bộ câu hỏi thật + spike SQL · tính năng biến động số dư · chế độ trực tuyến) **chưa mở**.
+
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
 Bốn commit NPBao cùng ngày, không xung đột, **không đụng `src/Client-app`**. Bốn đơn của client chuyển sang
 `DA-XONG/` (nay 42 tệp + mục lục, đếm 2026-09-26). Client soát từng đơn bằng mã và đặt **một đơn mới**,
 `superpowers/backend/CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` — nên `CAN-LAM/` lại có **một** tệp xin (README của backend
-vẫn ghi 0, vì client không sửa tệp ấy):
+vẫn ghi 0, vì client không sửa tệp ấy) *(đóng ở `eceb6c9` ngày hôm sau, khối trên)*:
 
 - **Đơn vòng hai `AI_EDGE_SLM_SOAT_SAU_B147FEE.md`**: ✅ **đủ 12 chỗ** — bốn lệnh nghiệm thu ra 0 dòng, B5 và D1 nói cùng một
   cửa sổ cuộn, câu G1 mới khớp `buocLamTron` của `tai_phan_bo.dart`.

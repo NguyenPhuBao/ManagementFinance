@@ -35,7 +35,7 @@ người sau tự đối chiếu thay vì tin bảng này.
 > **Việc backend còn lại KHÔNG nằm ở tài liệu này.** Cửa vào duy nhất là
 > [`CAN-LAM/README.md`](./CAN-LAM/README.md) — việc còn phải làm ở **mục 0** của
 > README ấy (từ 2026-09-13), hoặc `ls` thư mục vì README do backend quản và không ghi đơn client vừa đặt. Ngày
-> 2026-09-26 thư mục có **một** tài liệu, `CHATBOT_AI_SOAT_SAU_422DEBF.md`; cả 25 mục đánh số của README đã đóng, tệp của chúng ở `DA-XONG/`.
+> 2026-09-27 thư mục có **một** tài liệu, `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` (đơn `CHATBOT_AI_SOAT_SAU_422DEBF.md` đặt 2026-09-26 đã đóng ở `eceb6c9` cùng ngày 27, nay ở `DA-XONG/`); cả 25 mục đánh số của README đã đóng, tệp của chúng ở `DA-XONG/`.
 > *(Ảnh chụp 2026-09-11: hai tài liệu, mục 17 và 18, sau gộp `main` @ `cc65f4f`.)* Dòng này từng ghi "tám", "mười một" rồi "mười lăm", và đã lạc
 > hậu qua nhiều lần đổi mà không ai sửa — đừng chép con số, đếm ở README ấy.
 > ⚠️ Hai hồi quy của mục 17 chạm vào hạng mục đã xong ở bảng dưới: **A** làm

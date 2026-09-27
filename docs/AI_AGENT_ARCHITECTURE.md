@@ -764,10 +764,12 @@ cần sửa đi qua `docs/superpowers/backend/CAN-LAM/`.
 >
 > ⚠️ **Nhưng từ 2026-09-26 câu hỏi F1 quay lại ở dạng mới.** Chatbot trực tuyến của backend (`422debf`) không index gì,
 > đúng lối ①, nhưng đưa **snapshot tài chính gộp** vào prompt và, khi Gemini gọi tool `get_category_transactions`, gửi
-> **số tiền từng giao dịch** cùng **ghi chú sau `maskPII`** (chỉ che dãy số và email) sang Google. *"Không index"* không có
+> **số tiền từng giao dịch** cùng **ghi chú sau `maskPII`** (tới `422debf` chỉ che dãy số và email; từ `eceb6c9`
+> 2026-09-27 che thêm OTP, CCCD, STK 9–19 số, và họ tên **chỉ khi** chỗ gọi truyền `userName` — chatbot không truyền) sang Google. *"Không index"* không có
 > nghĩa là *"không rời hạ tầng của nhóm"*. Client hỏi ở `DA-XONG/AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md` §1.3; backend
-> không trả lời trực tiếp mà dựng "Privacy Shield". Đơn `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md` mục 4 xin ghi quyết
-> định ấy kèm ngày. Người dùng chốt **để backend tự quyết**; client chỉ nêu. ② vẫn đúng như dưới: `.env` dev tới
+> không trả lời trực tiếp mà dựng "Privacy Shield". Đơn `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md` mục 4 xin ghi quyết
+> định ấy kèm ngày → `eceb6c9` ghi ở §1 `ChatbotAI.md`: *"nguyên tắc F1, PO chốt ngày 2026-09-23"*, và tả đúng rằng
+> số tiền + ghi chú sau che PII được gửi khi Gemini gọi tool. Người dùng chốt **để backend tự quyết**; client chỉ nêu. ② vẫn đúng như dưới: `.env` dev tới
 > 2026-09-26 vẫn không có `GEMINI_API_KEY`, nên tầng 3 và chatbot trực tuyến chưa từng chạy đường Gemini trên máy này.
 
 **① Dữ liệu cá nhân có được rời thiết bị không?**
