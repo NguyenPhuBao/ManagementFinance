@@ -7,13 +7,15 @@ const { maskTransactionDescription } = require('../../../../../utils/masking.uti
 
 class PIIMasker {
   /**
-   * Che giấu PII trong chuỗi văn bản (STK, SĐT, Email, Số thẻ)
+   * Che giấu PII trong chuỗi văn bản (STK, SĐT, Email, Số thẻ, CCCD, OTP, Họ tên)
    * @param {string} text 
+   * @param {object} [options]
+   * @param {string} [options.userName]
    * @returns {string}
    */
-  maskPII(text) {
+  maskPII(text, options = {}) {
     if (!text || typeof text !== 'string') return '';
-    return maskTransactionDescription(text);
+    return maskTransactionDescription(text, options);
   }
 
   /**

@@ -115,25 +115,67 @@ function maskAddress(address) {
 const { filterSensitiveNote } = require('./content-filter.util');
 
 /**
+ * Thoát các ký tự đặc biệt trong biểu thức chính quy
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Che bớt PII và dữ liệu nhạy cảm trong mô tả giao dịch trước khi gửi sang Cloud LLM
  * Tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
- * 1. Lọc thẻ tín dụng (Luhn check), CVV, mật khẩu qua filterSensitiveNote
- * 2. Che email
- * 3. Che số điện thoại
- * 4. Che số tài khoản ngân hàng (dãy 9-16 chữ số)
+ * 1. Tự động giải mã nếu là ciphertext AES
+ * 2. Lọc thẻ tín dụng (Luhn check), CVV, mật khẩu qua filterSensitiveNote
+ * 3. Che OTP / mã xác thực
+ * 4. Che email
+ * 5. Che số điện thoại (VN format, kể cả có dấu cách, dấu chấm, dấu gạch nối)
+ * 6. Che số CCCD/CMND (9 hoặc 12 chữ số) & Số tài khoản ngân hàng (9-19 số)
+ * 7. Che họ tên người dùng nếu có cung cấp userName trong ngữ cảnh
  * @param {string} text 
+ * @param {object} [options]
+ * @param {string} [options.userName]
  * @returns {string}
  */
-function maskTransactionDescription(text) {
+function maskTransactionDescription(text, options = {}) {
   if (!text || typeof text !== 'string') return '';
+
+  let raw = text;
+  // Tự động giải mã nếu text ở dạng chuỗi mã hóa hex AES (chứa dấu hai chấm iv:authTag:content)
+  if (raw.includes(':') && raw.length > 32) {
+    try {
+      const decrypted = decrypt(raw);
+      if (decrypted && decrypted !== raw) {
+        raw = decrypted;
+      }
+    } catch (_) {
+      // Giữ nguyên chuỗi nếu không phải ciphertext
+    }
+  }
+
   // 1. Loại bỏ số thẻ tín dụng (Luhn check), CVV, mật khẩu
-  let safe = filterSensitiveNote(text);
-  // 2. Che email
-  safe = safe.replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL]');
-  // 3. Che số điện thoại (VN format)
-  safe = safe.replace(/(?:\+84|0)[1-9][0-9]{8,9}\b/g, '[SĐT]');
-  // 4. Che số tài khoản ngân hàng (dãy số 9-16 chữ số)
-  safe = safe.replace(/\b\d{9,16}\b/g, '[STK]');
+  let safe = filterSensitiveNote(raw);
+
+  // 2. Che mã OTP / mã xác thực
+  safe = safe.replace(/(?:mã\s+otp|otp|mã\s+xác\s+thực|mã\s+xác\s+minh)(?:\s+(?:xác\s+thực|xác\s+minh))?(?:\s*[:=]\s*|\s+là\s+|\s+)(\d{4,8})\b/gi, 'OTP: [MÃ_BẢO_MẬT]');
+
+  // 3. Che email
+  safe = safe.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]');
+
+  // 4. Che số điện thoại (kể cả có dấu cách, dấu gạch ngang, dấu chấm)
+  safe = safe.replace(/(?:\+84|0)(?:[\s.-]?[1-9])(?:[\s.-]?\d){8,9}\b/g, '[SĐT]');
+
+  // 5. Che số CCCD (12 chữ số) và CMND (9 chữ số)
+  safe = safe.replace(/\b\d{12}\b/g, '[CCCD]');
+
+  // 6. Che số tài khoản ngân hàng (dãy số 9-19 chữ số liên tục)
+  safe = safe.replace(/\b\d{9,19}\b/g, '[STK]');
+
+  // 7. Che họ tên người dùng nếu được cung cấp
+  if (options && options.userName && typeof options.userName === 'string' && options.userName.trim().length >= 2) {
+    const escapedName = escapeRegExp(options.userName.trim());
+    safe = safe.replace(new RegExp(escapedName, 'gi'), '[TÊN_NGƯỜI_DÙNG]');
+  }
+
   return safe;
 }
 

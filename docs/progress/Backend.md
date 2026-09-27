@@ -71,7 +71,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ## 4. Module Notification (Thông Báo Realtime Độc Lập)
 
-* Tách biệt hoàn toàn khỏi Module Bank, lắng nghe sự kiện `bank_transaction.pending` qua EventBus.
+* Tách biệt hoàn toàn khỏi Module Bank, lắng nghe sự kiện qua EventBus *(Lưu ý: Module Bank tạm dừng do chính sách, kênh sự kiện bank_transaction.pending hiện không phát sinh trong luồng hoạt động thông thường)*.
 * Tích hợp **Socket.io Engine**:
   * Client kết nối socket và emit `join_account` kèm `idaccount` để gia nhập phòng riêng `account_${idaccount}`.
   * Backend tự động bắn sự kiện realtime **`bank_transaction.incoming`** và **`notification.new`** trực tiếp xuống điện thoại ngay khi Webhook ngân hàng về.

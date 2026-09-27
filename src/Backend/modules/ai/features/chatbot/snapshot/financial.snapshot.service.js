@@ -5,12 +5,31 @@
  */
 
 const { prisma } = require('../../../../../config/db');
+const { redis } = require('../../../../../config/redis');
 const PIIMasker = require('../privacy/pii.masker');
 const logger = require('../../../../../core/logger');
+
+const SNAPSHOT_CACHE_TTL_SECONDS = 120; // TTL 120s (2 phút)
 
 class FinancialSnapshotService {
   constructor() {
     this.piiMasker = new PIIMasker();
+  }
+
+  /**
+   * Xóa bộ nhớ đệm Snapshot khi có phát sinh giao dịch mới
+   * @param {number} idaccount 
+   */
+  async invalidateSnapshotCache(idaccount) {
+    if (!idaccount) return;
+    try {
+      if (redis && redis.status === 'ready') {
+        await redis.del(`cache:snapshot:${idaccount}`);
+        logger.info(`[SnapshotCache] INVALIDATED for idaccount ${idaccount}`);
+      }
+    } catch (err) {
+      logger.warn(`[SnapshotCache] Failed to invalidate cache: ${err.message}`);
+    }
   }
 
   /**
@@ -70,7 +89,7 @@ class FinancialSnapshotService {
     let wantsAmount = 0;
 
     for (const item of expenses) {
-      const amount = Number(item.amount || 0);
+      const amount = Math.abs(Number(item.amount || 0));
       const catName = (item.category?.name_category || item.category?.namecategory || '').toLowerCase();
 
       if (savingsKeywords.some(kw => catName.includes(kw))) {
@@ -92,6 +111,23 @@ class FinancialSnapshotService {
       wants_percent: Math.round((wantsAmount / baseAmount) * 100),
       savings_percent: Math.round((savingsAmount / baseAmount) * 100),
     };
+  }
+
+  /**
+   * Tính toán mẫu số ngày động (Dynamic Days Span) theo ngày giao dịch sớm nhất
+   * [max(now - 90d, firstTxDate), now), tối thiểu 14 ngày, tối đa 90 ngày
+   * @param {Date} now
+   * @param {Date} ninetyDaysAgo
+   * @param {Date} firstTxDate
+   * @returns {number}
+   */
+  calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTxDate) {
+    const effectiveStart = firstTxDate
+      ? new Date(Math.max(ninetyDaysAgo.getTime(), new Date(firstTxDate).getTime()))
+      : ninetyDaysAgo;
+    const diffMs = now.getTime() - effectiveStart.getTime();
+    const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    return Math.min(90, Math.max(14, days));
   }
 
   /**
@@ -154,10 +190,28 @@ class FinancialSnapshotService {
 
   /**
    * Sinh Bản chụp Sức khỏe Tài chính Ẩn danh hoàn chỉnh từ CSDL PostgreSQL (Scoped idaccount)
+   * Có lưu đệm Redis TTL 120s
    * @param {number} idaccount 
+   * @param {object} options
+   * @param {boolean} options.bypassCache
    * @returns {Promise<object>}
    */
-  async generateSnapshot(idaccount) {
+  async generateSnapshot(idaccount, { bypassCache = false } = {}) {
+    const cacheKey = `cache:snapshot:${idaccount}`;
+
+    // 1. Kiểm tra Cache Redis nếu không bypass
+    if (!bypassCache && redis && redis.status === 'ready') {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          logger.info(`[SnapshotCache] HIT for idaccount ${idaccount}`);
+          return JSON.parse(cached);
+        }
+      } catch (err) {
+        logger.warn(`[SnapshotCache] Error reading cache: ${err.message}`);
+      }
+    }
+
     try {
       const now = new Date();
       const ninetyDaysAgo = new Date();
@@ -212,10 +266,16 @@ class FinancialSnapshotService {
       // Phân tách chi tiêu
       const expenses = transactions.filter(t => t.type !== 'Transfer' && t.category?.classify === 'Chi');
       const totalIncome = this.calculateValidIncome(transactions);
-      const totalExpense = expenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const totalExpense = expenses.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
 
-      // Chi tiêu trung bình tháng (90 ngày ~ 3 tháng)
-      const daysSpan = Math.max(14, (now - ninetyDaysAgo) / (1000 * 60 * 60 * 24));
+      // Chi tiêu trung bình tháng theo mẫu số động (Dynamic Days Span)
+      const oldestTx = await prisma.transaction.findFirst({
+        where: { idaccount, deleted_at: null },
+        orderBy: { date_transaction: 'asc' },
+        select: { date_transaction: true },
+      });
+      const firstTxDate = oldestTx?.date_transaction ? new Date(oldestTx.date_transaction) : ninetyDaysAgo;
+      const daysSpan = this.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTxDate);
       const avgMonthlyExpense = totalExpense > 0 ? (totalExpense / daysSpan) * 30 : 0;
 
       // Phân bổ 50/30/20
@@ -228,7 +288,7 @@ class FinancialSnapshotService {
       const categoryMap = {};
       for (const exp of expenses) {
         const catName = exp.category?.name_category || exp.category?.namecategory || 'Khác';
-        categoryMap[catName] = (categoryMap[catName] || 0) + Number(exp.amount || 0);
+        categoryMap[catName] = (categoryMap[catName] || 0) + Math.abs(Number(exp.amount || 0));
       }
       const topExpenseCategories = Object.entries(categoryMap)
         .sort((a, b) => b[1] - a[1])
@@ -275,7 +335,19 @@ class FinancialSnapshotService {
       };
 
       // Ẩn danh hóa 100% trước khi trả về
-      return this.piiMasker.anonymizeSnapshot(rawSnapshot);
+      const sanitizedSnapshot = this.piiMasker.anonymizeSnapshot(rawSnapshot);
+
+      // Lưu Cache Redis với TTL 120s
+      if (redis && redis.status === 'ready') {
+        try {
+          await redis.set(cacheKey, JSON.stringify(sanitizedSnapshot), 'EX', SNAPSHOT_CACHE_TTL_SECONDS);
+          logger.info(`[SnapshotCache] SET for idaccount ${idaccount} TTL ${SNAPSHOT_CACHE_TTL_SECONDS}s`);
+        } catch (err) {
+          logger.warn(`[SnapshotCache] Error setting cache: ${err.message}`);
+        }
+      }
+
+      return sanitizedSnapshot;
     } catch (error) {
       logger.error('Error generating financial snapshot:', error);
       // Graceful Fallback an toàn

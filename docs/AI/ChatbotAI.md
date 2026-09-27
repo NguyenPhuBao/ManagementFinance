@@ -1,9 +1,9 @@
 # THIẾT KẾ KIẾN TRÚC & TÀI LIỆU HOÀN THÀNH CHỨC NĂNG CHATBOT AI (FINANCIAL COPILOT) — BACKEND & ADMIN-WEB
 
 > **Tài liệu đặc tả kiến trúc kỹ thuật & Báo cáo hoàn thành thi công**  
-> **Ngày lập:** 2026-09-25 · **Hoàn thành triển khai & Nghiệm thu:** 2026-09-26 · **Phiên bản:** 2.1.0 (🟢 Đã triển khai xong Backend & Admin-web)  
+> **Ngày lập:** 2026-09-25 · **Hoàn thành triển khai & Nghiệm thu:** 2026-09-26 (Cập nhật 2026-09-27) · **Phiên bản:** 2.2.0 (🟢 Đã triển khai xong Backend & Admin-web)  
 > **Vai trò đảm nhiệm:** Kỹ sư Fullstack Cao Cấp + AI Engineer + Senior BA  
-> **Căn cứ nguồn sự thật:** [`docs/AI/Standard_RAG.md`](./Standard_RAG.md), [`docs/Rule_Project/Data_Security.md`](../Rule_Project/Data_Security.md), [`docs/AI/LogicBusinessAI.md`](./LogicBusinessAI.md), [`Project.md`](../../Project.md), [`docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md`](../superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md).
+> **Căn cứ nguồn sự thật:** [`docs/AI/Standard_RAG.md`](./Standard_RAG.md), [`docs/Rule_Project/Data_Security.md`](../Rule_Project/Data_Security.md), [`docs/AI/LogicBusinessAI.md`](./LogicBusinessAI.md), [`Project.md`](../../Project.md), [`docs/superpowers/plans/2026-09-27-backend-ai-fixes.md`](../superpowers/plans/2026-09-27-backend-ai-fixes.md).
 
 ---
 
@@ -19,10 +19,10 @@
   - Quản trị viên / Người dùng trên Admin Web.
 
 ### 1.2. Phân Định Ranh Giới Dữ Liệu & Ràng Buộc Pháp Lý Bắt Buộc
-Tuân thủ tuyệt đối **Nghị định 13/2023/NĐ-CP** và nguyên tắc **F1** (`Data_Security.md`):
+Tuân thủ tuyệt đối **Nghị định 13/2023/NĐ-CP** và nguyên tắc **F1** (`Data_Security.md`, PO chốt ngày 2026-09-23):
 - **TUYỆT ĐỐI KHÔNG index dữ liệu cá nhân của người dùng vào Vector Database.** Không nhúng lịch sử giao dịch, số dư, ghi chú ví của User vào các bảng embedding tập trung trên server.
-- **Nguyên tắc "Tấm Khiên Riêng Tư" (Privacy Shield):** AI bên ngoài (Google Gemini) **không thể và không được phép** nhìn thấy dữ liệu định danh cá nhân (PII) thô (họ tên, số tài khoản, số điện thoại, tên tiệm cụ thể, nội dung chuyển khoản nhạy cảm).
-- **Tổng hợp & Ẩn danh hóa 100% trước khi đưa vào AI:** Dữ liệu tài chính cá nhân được Backend xử lý, gom nhóm theo danh mục, tính toán tỷ lệ % và ẩn danh hóa (Anonymized & Aggregated) trước khi đưa vào ngữ cảnh suy luận của LLM.
+- **Nguyên tắc "Tấm Khiên Riêng Tư" (Privacy Shield & Quyết định F1):** AI bên ngoài (Google Gemini) **không thể và không được phép** nhìn thấy dữ liệu định danh cá nhân (PII) thô (họ tên, số tài khoản, số điện thoại, số thẻ, số CCCD, OTP/CVV, email). Mọi chuỗi văn bản và ghi chú giao dịch đều được chạy qua bộ lọc PII Masking toàn diện (`masking.util.js` & `pii.masker.js`), tự động giải mã AES nếu cần trước khi làm mờ.
+- **Tổng hợp & Ẩn danh hóa 100% trước khi đưa vào AI:** Dữ liệu tài chính cá nhân được Backend xử lý, gom nhóm theo danh mục, tính toán tỷ lệ % và ẩn danh hóa (Anonymized & Aggregated Snapshot) trước khi đưa vào ngữ cảnh suy luận của LLM. Khi Gemini gọi công cụ On-demand (ví dụ xem chi tiết danh mục), số tiền và ghi chú giao dịch đã được làm mờ PII mới được cung cấp.
 - **Dữ liệu lập chỉ mục Vector Database (RAG):** **CHỈ LƯU TRỮ TRI THỨC TÀI CHÍNH TĨNH / CHUNG** (Luật thuế TNCN, mẹo tiết kiệm, kiến thức đầu tư cơ bản, quy tắc tài chính).
 
 ---
@@ -114,9 +114,9 @@ flowchart TD
     end
 
     %% TẦNG 3: SUY LUẬN & TƯ VẤN CHIẾN LƯỢC
-    subgraph REASONING ["3. REASONING & ADVICE CORE (GEMINI 2.0 FLASH)"]
+    subgraph REASONING ["3. REASONING & ADVICE CORE (GEMINI 2.5 FLASH)"]
         Context["Context Assembler<br/>System Prompt CFP + Anonymized Snapshot + Knowledge"]
-        LLM["Google Gemini 2.0 Flash<br/>Deep Reasoning · Strict Grounding · Temp 0.1"]
+        LLM["Google Gemini 2.5 Flash<br/>Deep Reasoning · Strict Grounding · Temp 0.1"]
     end
 
     %% TẦNG 4: ĐÀO SÂU CHI TIẾT & TRI THỨC TĨNH
@@ -253,23 +253,21 @@ Tri thức tài chính chung/tĩnh (Luật thuế TNCN, mẹo chi tiêu, biểu 
 Khi số lượng lớn người dùng cùng chat với AI, hệ thống áp dụng các tầng phòng thủ:
 
 ```
-[User Request] ──▶ [Redis Rate Limiter] ──▶ [Redis Semantic Cache (<20ms)]
+[User Request] ──▶ [Redis Token-Bucket Limiter] ──▶ [Snapshot Cache (TTL 120s)]
                            │                               │
-                    (Chặn spam 429)                 (Cache hit 40-50%)
+                    (Chặn spam 429)                 (Cache hit FHS)
                            │                               │
                            ▼                               ▼
-                 [Connection Pool Pg] ──▶ [Gemini Timeout 15s + Circuit Breaker]
+                 [Connection Pool Pg] ──▶ [Gemini 2.5 Flash + Circuit Breaker]
 ```
 
-1. **Redis Token-Bucket Rate Limiter:**
-   - 15 request / phút / user; tối đa 100 request / ngày. Toàn hệ thống kiểm soát $60\text{ RPM}$ tới Gemini API.
-2. **Bộ nhớ đệm thông minh 2 lớp (Multi-layer Cache):**
-   - **Semantic Cache trên Redis (TTL 1h):** Các câu hỏi tri thức chung có độ tương đồng ngữ nghĩa $\ge 0.95$ sẽ được trả về ngay trong $< 20\text{ms}$, không gọi Gemini.
-   - **Snapshot Cache (TTL 120s):** Bản tóm tắt sức khỏe tài chính được cache 2 phút trên Redis trong suốt phiên trò chuyện, tránh query CSDL liên tục.
-3. **Quản lý tài nguyên & Chống sập (Fault Tolerance):**
+1. **Redis Token-Bucket Rate Limiter (15 req/phút):**
+   - 15 request / phút / idaccount. Triển khai bằng Redis Hash & Lua script nguyên tử, hỗ trợ cơ chế In-Memory Token Bucket Graceful Fallback nếu Redis ngoại tuyến.
+2. **Bộ nhớ đệm Snapshot Cache (Redis TTL 120s):**
+   - Bản chụp sức khỏe tài chính vĩ mô được lưu đệm 120 giây (2 phút) trên Redis theo key `cache:snapshot:{idaccount}` nhằm giảm tải 80% truy vấn tính toán nặng tới PostgreSQL trong suốt phiên đàm thoại. Tự động xóa đệm (`invalidateSnapshotCache`) khi phát sinh giao dịch mới.
+3. **Quản lý tài nguyên & Bộ ngắt mạch (Circuit Breaker):**
    - Connection Pool PostgreSQL `max: 20`, giải phóng ngay sau câu lệnh SELECT.
-   - Timeout Gemini API: $15\text{s}$; Timeout DB Query: $3\text{s}$.
-   - **Circuit Breaker:** Khi lỗi 5 lần liên tiếp trong 1 phút, tự động chuyển sang OPEN trong 30 giây và trả về Graceful Fallback thân thiện.
+   - **Gemini Circuit Breaker:** Khi phát hiện 5 lỗi liên tiếp trong 60 giây, mạch tự động chuyển sang trạng thái OPEN trong 30 giây, ngắt các request tiếp theo và chuyển sang thông báo Fallback minh bạch, chống cascade failure cho toàn hệ thống.
 
 ---
 
@@ -290,13 +288,17 @@ Khi số lượng lớn người dùng cùng chat với AI, hệ thống áp d�
 ```
 src/Backend/modules/ai/features/chatbot/
 ├── chatbot.controller.js          # Tiếp nhận HTTP request, thiết lập text/event-stream, bắt req.on('close')
-├── chatbot.routes.js              # Định tuyến router: POST /chat/stream, GET /financial-health (Rate limit 15 req/m)
+├── chatbot.routes.js              # Định tuyến router: POST /chat/stream, GET /snapshot (alias /financial-health), POST /chat
 ├── chatbot.service.js             # Nhạc trưởng điều phối: Snapshot -> Context -> Gemini -> Tools -> Fallback
-├── chatbot.validation.js          # Joi schema kiểm tra message (1-2000 ký tự) và conversationHistory
+├── chatbot.validation.js          # Middleware kiểm tra message (1-2000 ký tự) và history/conversationHistory
+├── rate-limiter/
+│   └── redis-token-bucket.js      # Redis Token-Bucket Limiter 15 req/phút (kèm Graceful In-memory Fallback)
+├── resilience/
+│   └── circuit-breaker.js         # Bộ ngắt mạch Circuit Breaker cho Gemini LLM (5 lỗi -> OPEN 30s)
 ├── snapshot/
-│   └── financial.snapshot.service.js # Tính toán thu nhập chuẩn thuNhapCua, cơ cấu 50/30/20, quỹ khẩn cấp, điểm FHS (0-100)
+│   └── financial.snapshot.service.js # Tính toán thu nhập chuẩn, 50/30/20, quỹ khẩn cấp, điểm FHS (Redis cache TTL 120s)
 ├── privacy/
-│   └── pii.masker.js              # Che giấu số tài khoản, số điện thoại, thẻ tín dụng (Luhn) và làm mờ snapshot
+│   └── pii.masker.js              # Che giấu số tài khoản, số điện thoại, thẻ tín dụng (Luhn), CCCD, OTP, Họ tên và làm mờ snapshot
 ├── rag/
 │   ├── data/
 │   │   ├── thue_tncn_2026.json    # Biểu thuế TNCN lũy tiến từng phần 7 bậc và mức giảm trừ gia cảnh hiện hành
@@ -305,7 +307,7 @@ src/Backend/modules/ai/features/chatbot/
 │   └── hybrid.search.js           # Phrase Matching + Reciprocal Rank Fusion (RRF k=60) tìm kiếm tri thức tĩnh
 ├── tools/
 │   ├── financial.tools.js         # Khai báo JSON Schema 4 Tools đào sâu theo chuẩn Gemini SDK
-│   └── tools.executor.js          # Thực thi query Prisma an toàn scoped idaccount
+│   └── tools.executor.js          # Thực thi query Prisma an toàn scoped idaccount (chuẩn hóa Math.abs số âm)
 └── prompts/
     └── advisor.system.prompt.js   # System Prompt CFP, CoT, Strict Grounding và định dạng trích dẫn nguồn
 ```
@@ -315,7 +317,7 @@ src/Backend/modules/ai/features/chatbot/
 ```
 src/Admin-web/
 ├── src/api/
-│   └── chatbot.api.js             # Client tiêu thụ luồng SSE stream bằng fetch ReadableStream và lấy FHS
+│   └── chatbot.api.js             # Client tiêu thụ luồng SSE stream bằng fetch ReadableStream và lấy Snapshot
 ├── src/pages/ai/
 │   ├── FinancialHealthCard.jsx    # Thẻ hiển thị điểm FHS, phân hạng màu, thanh 3 màu 50/30/20, quỹ khẩn cấp
 │   ├── ChatMessageBubble.jsx      # Bong bóng tin nhắn hỗ trợ Markdown, badge trích dẫn RAG, typing cursor
@@ -329,17 +331,18 @@ src/Admin-web/
 
 #### 1. `POST /api/ai/chatbot/chat/stream` (SSE Streaming)
 - **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`, `Content-Type: application/json`
-- **Rate Limit:** 15 requests / phút / user
+- **Rate Limit:** 15 requests / phút / idaccount (Redis Token-Bucket Limiter)
 - **Request Body:**
   ```json
   {
     "message": "Tháng này tôi tiêu nhiều nhất vào khoản nào?",
-    "conversationHistory": [
-      { "role": "user", "content": "Chào bạn" },
-      { "role": "model", "content": "Xin chào! Tôi có thể hỗ trợ gì cho kế hoạch tài chính của bạn hôm nay?" }
+    "history": [
+      { "role": "user", "text": "Chào bạn" },
+      { "role": "model", "text": "Xin chào! Tôi có thể hỗ trợ gì cho kế hoạch tài chính của bạn hôm nay?" }
     ]
   }
   ```
+  *(Hỗ trợ cả trường `conversationHistory`, server giữ 6 tin nhắn gần nhất)*.
 - **Response Format (Server-Sent Events — `text/event-stream`):**
   ```http
   HTTP/1.1 200 OK
@@ -349,40 +352,50 @@ src/Admin-web/
   X-Accel-Buffering: no
 
   event: meta
-  data: {"fhs":{"score":75,"classification":"Tốt","metrics":{"ratio50_30_20":{"needs":52,"wants":28,"savings":20},"emergencyFundMonths":4.2,"debtToIncomeRatio":12}},"ragSnippets":[{"title":"Quy Tắc Phân Bổ Ngân Sách 50/30/20"}]}
+  data: {"snapshotLoaded":true,"healthScore":75,"snapshot":{"period":"Tháng 9/2026","financialHealthScore":75,"budgetAllocation":{"needs_essential":"50%","wants_lifestyle":"30%","savings_debt":"20%"},"spendingInsights":{"topExpenseCategories":[{"category":"Ăn uống","percentage":35,"trendVsLastMonth":"0%"}],"overBudgetAlerts":[]},"liquidityAndObligations":{"emergencyFundMonths":2.1,"upcomingBillsIn7DaysCount":0,"hasHighInterestDebt":false,"activeSavingsGoalsCount":1}}}
 
   event: delta
-  data: {"content":"Chào bạn, "}
+  data: {"text":"Chào bạn, ","content":"Chào bạn, "}
 
   event: delta
-  data: {"content":"dựa trên phân tích số liệu tài chính tháng này, "}
+  data: {"text":"dựa trên phân tích số liệu tài chính tháng này, ","content":"dựa trên phân tích số liệu tài chính tháng này, "}
 
   event: delta
-  data: {"content":"khoản chi lớn nhất của bạn là **Ăn uống**..."}
+  data: {"text":"khoản chi lớn nhất của bạn là **Ăn uống**...","content":"khoản chi lớn nhất của bạn là **Ăn uống**..."}
 
   event: done
-  data: {}
+  data: {"responseTimeMs":720}
   ```
 
-#### 2. `GET /api/ai/chatbot/financial-health`
+#### 2. `GET /api/ai/chatbot/snapshot` (Alias: `GET /api/ai/chatbot/financial-health`)
 - **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`
-- **Mục đích:** Trả về bản chụp sức khỏe tài chính FHS và phân bổ 50/30/20 cho Dashboard hoặc Card hiển thị nhanh mà không cần bắt đầu hội thoại.
+- **Mục đích:** Trả về bản chụp sức khỏe tài chính FHS và phân bổ 50/30/20 đã được ẩn danh hóa cho Dashboard hoặc Card hiển thị nhanh mà không cần bắt đầu hội thoại (có lưu đệm Redis TTL 120s).
 - **Response JSON:**
   ```json
   {
     "success": true,
     "data": {
-      "fhs": {
-        "score": 75,
-        "classification": "Tốt",
-        "metrics": {
-          "ratio50_30_20": { "needs": 52, "wants": 28, "savings": 20 },
-          "emergencyFundMonths": 4.2,
-          "debtToIncomeRatio": 12
-        }
+      "period": "Tháng 9/2026",
+      "financialHealthScore": 75,
+      "budgetAllocation": {
+        "needs_essential": "50%",
+        "wants_lifestyle": "30%",
+        "savings_debt": "20%"
       },
-      "timestamp": "2026-09-26T17:15:00.000Z"
-    }
+      "spendingInsights": {
+        "topExpenseCategories": [
+          { "category": "Ăn uống", "percentage": 35, "trendVsLastMonth": "0%" }
+        ],
+        "overBudgetAlerts": []
+      },
+      "liquidityAndObligations": {
+        "emergencyFundMonths": 2.1,
+        "upcomingBillsIn7DaysCount": 0,
+        "hasHighInterestDebt": false,
+        "activeSavingsGoalsCount": 1
+      }
+    },
+    "message": "Lấy bản chụp sức khỏe tài chính thành công"
   }
   ```
 

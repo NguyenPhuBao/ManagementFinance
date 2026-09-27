@@ -46,18 +46,20 @@ class ToolsExecutor {
    * @returns {object}
    */
   calculatePeriodDifference(period1Expenses, period2Expenses) {
-    const diff = period1Expenses - period2Expenses;
+    const p1 = Math.abs(Number(period1Expenses || 0));
+    const p2 = Math.abs(Number(period2Expenses || 0));
+    const diff = p1 - p2;
     let percentStr = '0%';
-    if (period2Expenses > 0) {
-      const pct = Math.round((diff / period2Expenses) * 100);
+    if (p2 > 0) {
+      const pct = Math.round((diff / p2) * 100);
       percentStr = pct > 0 ? `+${pct}%` : `${pct}%`;
-    } else if (period1Expenses > 0) {
+    } else if (p1 > 0) {
       percentStr = '+100%';
     }
 
     return {
-      period1Amount: period1Expenses,
-      period2Amount: period2Expenses,
+      period1Amount: p1,
+      period2Amount: p2,
       difference: diff,
       percentageChange: percentStr,
       trend: diff > 0 ? 'increased' : (diff < 0 ? 'decreased' : 'stable'),
@@ -74,7 +76,7 @@ class ToolsExecutor {
 
     return txList.map(tx => ({
       id: tx.idtran,
-      amount: Number(tx.amount || 0),
+      amount: Math.abs(Number(tx.amount || 0)),
       category: tx.category?.name_category || tx.category?.namecategory || 'Khác',
       note: this.piiMasker.maskPII(tx.note || ''),
       date: tx.date_transaction || tx.date,
@@ -186,8 +188,8 @@ class ToolsExecutor {
       select: { amount: true },
     });
 
-    const sumP1 = txP1.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-    const sumP2 = txP2.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const sumP1 = txP1.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
+    const sumP2 = txP2.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
 
     return this.calculatePeriodDifference(sumP1, sumP2);
   }

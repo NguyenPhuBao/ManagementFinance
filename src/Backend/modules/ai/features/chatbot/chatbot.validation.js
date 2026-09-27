@@ -3,7 +3,11 @@
  */
 
 function validateChatRequest(req, res, next) {
-  const { message, history } = req.body || {};
+  const message = req.body?.message;
+  const history = req.body?.history || req.body?.conversationHistory;
+  if (history) {
+    req.body.history = history;
+  }
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({
@@ -22,7 +26,7 @@ function validateChatRequest(req, res, next) {
   if (history && !Array.isArray(history)) {
     return res.status(400).json({
       success: false,
-      message: 'Lịch sử hội thoại (history) phải là một mảng',
+      message: 'Lịch sử hội thoại (history/conversationHistory) phải là một mảng',
     });
   }
 

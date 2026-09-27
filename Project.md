@@ -116,7 +116,8 @@ ModuleName/
 
 > **Lưu ý**: SMS parsing chạy **offline trên Mobile** (không qua backend). Sync xử lý **đồng bộ qua REST API** (`/api/sync/push`), không cần queue.
 
-- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ
+- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (Gemini 2.5 Flash).
+> **Lưu ý cài đặt Backend**: Khi kéo mã nguồn mới nhất từ Git, cần chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói: `@google/generative-ai`, `ioredis`, `express-rate-limit`.
 
 #### 3.2.4 Database — PostgreSQL (PersonFinance)
 
@@ -989,7 +990,7 @@ Real-time Socket.IO:
 | 1 | Quản lý ví ảo (Thêm, xóa, sửa) | Mobile | User |
 | 2 | Thiết lập ví ảo mặc định | Mobile | User |
 | 3 | Kích hoạt / vô hiệu hóa ví | Mobile | User |
-| 4 | Liên kết ngân hàng | Backend + Mobile | User |
+| 4 | Liên kết ngân hàng | Backend + Mobile | User | *(⏸️ Tạm dừng hoàn toàn do lý do chính sách)* |
 
 #### A4. Transaction Management
 | STT | Chức năng | Location | Actor |
@@ -1607,11 +1608,11 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 |:---:|---|:---:|---|:---:|
 | **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v24. T2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning), có lọc PII Masking. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 có ở Backend, Client chưa gọi |
 | **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 2.0 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
-| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (khi có OCR) | Khử trùng lặp trên client chỉ cần khi và nếu client làm OCR (chống quét 2 lần 1 hóa đơn). Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ. | ⬜ **Chưa làm tại Client**<br>*(Sẽ đặc tả cùng spec OCR Client sau này)* |
-| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Function-Calling + RAG kiến thức chung + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 7 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này theo `ChatbotAI.md`)* |
+| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (trên máy)<br>+<br>**Backend** (OCR) | • **Client-app:** Gộp trùng tin biến động số dư đọc trên máy — SMS và thông báo app ngân hàng qua `NotificationListenerService` — và nhắc khi sổ đã có khoản cùng số tiền trong ngày. Chống quét trùng biên lai sẽ đặc tả cùng spec OCR phía client. Kênh liên kết ngân hàng và SMS server vẫn dừng.<br>• **Backend:** Giữ mã `dedup.service.js` phục vụ OCR nội bộ. | ⬜ **Chưa làm tại Client**<br>*(Đang thiết kế tính năng đọc biến động số dư trên máy)*<br>• Backend đã có cho OCR |
+| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Gemini 2.5 Flash + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 7 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
 | **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20. Client-app gọi API hiển thị. | 🔴 **Chưa hoàn thành**<br>*(Backend xây dựng đợt này)* |
+| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20, lưu đệm Redis TTL 120s. Cung cấp qua API `GET /api/ai/chatbot/snapshot`. | 🟢 **Đã hoàn thành (Backend + Admin-web)** |
 | **8** | **Phát Hiện Chi Tiêu Bất Thường** *(Anomaly Detection)* | **Client-app** (100%) | Chạy 100% tại Client-app. Phát hiện chi tiêu đột biến qua ngưỡng người dùng đặt `nguongChiLon` và bộ luật `notification_rules.dart`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v24 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi 7 tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app** *(7 tool chỉ đọc offline)* |
@@ -2681,7 +2682,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - *Nhóm A (Làm sạch & Nhận diện):* A1 (ngưỡng chi lớn `nguongChiLon` người dùng đặt), A2 (không thêm cột `is_one_time`), A3 (hoàn tiền `type = 'thu'`), A4 (chặn uncategorized), A5 (hoãn sang giai đoạn sau), A6 (chi cố định lấy từ `Bills` và auto-deposit của `Goals`).
   - *Nhóm B (Cảnh báo & Dự phóng):* B1 (cold-start dùng prior nhóm, luật thống kê hoãn tới khi $\ge 6$ tháng dữ liệu), B2 (ngưỡng kép $\ge 10\%$ và $\ge 50.000đ$, thi hành trong `notification_rules.dart`), B3 (khóa chống trùng theo kỳ ngân sách của `AppNotifications`), B4-B5 (dự phóng theo cửa sổ cuộn $\le 90$ ngày mượn `suggestAmount`), B6 (tối đa 1 đề xuất/tuần qua khóa `budgetRebalance:<tuần ISO>`).
   - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$), C5 (ngưỡng điều chuyển có ý nghĩa), C6 (khi chưa có thống kê, essentiality $= 0.5$ cho mọi danh mục nên xếp hạng quy về dư địa), C7 (xử lý cạn kiệt nguồn bù `insufficient_slack`).
-  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập theo `thuNhapCua()`, TB 3 tháng liền trước, tính tại chỗ), D2 & D4 (hoãn sang giai đoạn sau), D3 (suy từ `Goals` còn hạn; AI không sửa số tiền đích hay hạn mục tiêu), D5 (ràng buộc trần ngân sách tuyệt đối).
+  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập theo `thuNhapCua()`, tính tại chỗ theo cửa sổ cuộn ngày linh hoạt `cuaSoNhinLai` `[max(now - 90 ngày, giao dịch đầu tiên), now)` theo `AI_Edge-SLM.md/Client-app.md`), D2 & D4 (hoãn sang giai đoạn sau), D3 (suy từ `Goals` còn hạn; AI không sửa số tiền đích hay hạn mục tiêu), D5 (ràng buộc trần ngân sách tuyệt đối).
   - *Nhóm E (Tương tác & Phản hồi):* E1 (trạng thái pending bắt buộc), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (hoãn sang giai đoạn sau), E5 (phân biệt trực quan resolved vs insufficient slack).
   - *Nhóm F (Bảo mật on-device):* F1 (gói số đặc trưng, kế hoạch tái phân bổ và bảng phản hồi không rời khỏi máy; giao dịch thô đồng bộ với backend theo kiến trúc offline-first; căn cứ Nghị định 13/2023/NĐ-CP), F2 (ranh giới mã hóa), F3 (cô lập mạng zero network access cho SLM on-device).
   - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
@@ -2719,7 +2720,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Bảng phân định phạm vi & trạng thái 10 chức năng AI:**
   1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
   2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 2.0 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
-  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Đẩy sang Client-app khi có OCR; Kênh ngân hàng và SMS đã dừng/bỏ. Backend giữ mã dedup phục vụ OCR nội bộ $\rightarrow$ ⬜ *Chưa làm tại Client*.
+  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (SMS & thông báo app ngân hàng qua `NotificationListenerService`) và nhắc khi sổ đã có khoản cùng số tiền trong ngày; chống quét trùng biên lai đi kèm spec OCR phía Client. Kênh ngân hàng và SMS server vẫn dừng. Backend giữ `dedup.service.js` phục vụ OCR nội bộ $\rightarrow$ ⬜ *Chưa làm tại Client (đang thiết kế tính năng đọc biến động số dư trên máy)* • Backend đã có cho OCR.
   4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
@@ -2767,7 +2768,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Bộ kiểm thử Backend tại `src/Backend/tests/`: **19/19 tests PASS 100%** (`financial.snapshot.test.js`, `chatbot.tools.test.js`, `chatbot.rag.test.js`, `chatbot.api.test.js`).
   - Frontend Admin-web Build: `rtk npm run build` **thành công 100% (0 errors, 142 modules transformed)**.
 
-### 11.41. Chuẩn Hóa Toàn Diện Múi Giờ Việt Nam (Asia/Ho_Chi_Minh — GMT+7) Toàn Hệ Thống Backend & Admin-web (2026-09-26)
+### 11.44. Chuẩn Hóa Toàn Diện Múi Giờ Việt Nam (Asia/Ho_Chi_Minh — GMT+7) Toàn Hệ Thống Backend & Admin-web (2026-09-26)
 - **1. Yêu cầu & Bối cảnh phát sinh:**
   - Loại bỏ hoàn toàn sự phụ thuộc vào múi giờ UTC của hạ tầng máy chủ Cloud (Render, Linux, Docker) và múi giờ cục bộ của trình duyệt người quản trị.
   - Khắc phục triệt để lỗi biểu đồ Dashboard hiển thị lệch 7 tiếng (~10:00 thay vì 17:47) và bảo đảm toàn bộ chu trình lập lịch, reset đếm ngược 30 ngày, thanh lọc dữ liệu định kỳ, bộ lọc báo cáo hoạt động chính xác 100% theo ngày lịch Việt Nam.

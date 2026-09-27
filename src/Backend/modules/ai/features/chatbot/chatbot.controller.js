@@ -46,7 +46,7 @@ class ChatbotController {
           res.write(`event: meta\ndata: ${JSON.stringify(metaData)}\n\n`);
         },
         onChunk: (textChunk) => {
-          res.write(`event: delta\ndata: ${JSON.stringify({ text: textChunk })}\n\n`);
+          res.write(`event: delta\ndata: ${JSON.stringify({ text: textChunk, content: textChunk })}\n\n`);
         },
         onDone: (doneData) => {
           res.write(`event: done\ndata: ${JSON.stringify(doneData || { status: 'completed' })}\n\n`);
@@ -96,6 +96,8 @@ class ChatbotController {
         onDone: () => {
           return ResponseHandler.success(res, {
             reply: fullReply,
+            text: fullReply,
+            content: fullReply,
             snapshot: snapshotInfo,
             conversationId,
           }, 'Phản hồi thành công');
