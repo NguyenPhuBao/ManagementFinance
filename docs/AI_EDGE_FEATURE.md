@@ -2162,7 +2162,7 @@ nghiệm thu; (2) E15 `chieu` hai chiều và E22 câu ngoài phạm vi (`chuDeB
 
 ---
 
-### 9.32 Tool truy vấn giao dịch tổng quát `truy_van_giao_dich` — MÃ XONG 2026-09-27, 🛑 cổng E CHƯA ĐO
+### 9.32 Tool truy vấn giao dịch tổng quát `truy_van_giao_dich` — mã xong 2026-09-27, 🛑 cổng E lần 1 CHƯA ĐẠT (thiếu 1 câu), bốn câu đích ✅
 
 Spec `docs/superpowers/specs/2026-09-27-tool-truy-van-giao-dich-design.md` (đã duyệt, `804ceaa`), kế hoạch 10 task
 `docs/superpowers/plans/2026-09-27-tool-truy-van-giao-dich.md` (gitignore), thi công inline Task 1–9 cùng ngày, một commit
@@ -2189,13 +2189,94 @@ kiến trúc tool thay vì chuyển sang SQL agent hay thư viện nhúng (trả
 
 Không đổi schema, payload, `pubspec`; test quét 14 (không `'chi'`/`'thu'` trần trong `ai_edge/`) và 16 vẫn xanh.
 
-⚠️ **`tools_json` nay 5.633 ký tự — vượt trần đã đo 5.491** (`kTranToolsJsonDaDo`), ca canh tạm `skip` theo Task 9 của kế
-hoạch; Task 10 spike trên Realme (câu C7, đọc dòng *"mở phiên … tools_json N"*, không `FAILED_PRECONDITION`) rồi mới đặt lại
-hằng. Chưa đo thì **chưa biết** bản này chạy được trên máy — đừng đọc "mã xong" thành "đã chạy".
+✅ **`tools_json` 5.633 ký tự — đo lại trên Realme (Task 10 Step 2, câu C7, 0 `FAILED_PRECONDITION`)**, hằng
+`kTranToolsJsonDaDo` = 5633 (`e7add53`), ca canh bỏ `skip`. Lời hệ thống 2.293 ký tự.
 
-**Chờ Task 10 — cổng E** (spec mục 7): 34 câu cổng D **không tụt** (cột "tool đúng" ánh xạ sang tool mới với `gop`/`chon`) +
-22 câu 9.29 **≥ 19 đúng**, bốn câu đích **E3 · E5 · E15 · E18 phải đúng**, bịa 0. Bảng ba cột theo màn, chấm câu chưa đạt
-theo ba nguyên nhân; chưa đạt thì chỉ đo lại câu chưa đạt sau mỗi vòng sửa.
+#### Cổng E lần 1 — 56 câu trên Realme (2026-09-27, 19:06–19:50) — 🛑 CHƯA ĐẠT, thiếu đúng một câu; bốn câu đích ĐỀU ĐÚNG
+
+**Máy và bản.** Realme RMX2205, CPU, APK release `8b4112ba…` (HEAD `960addb` + docs; SHA-1 so hai bên trước khi đo). 34 câu
+cổng D 26 phút, 56 câu 44 phút, mỗi câu 30–51 s (E21 bậc 1: 93 s), **0 sập**. Bộ đo `congE_all.sh` (= `congD13.sh` +
+`congE.sh`) + `hoi.sh` + `ban_ghi.py` ở scratchpad phiên `1bb20ada…`; bản ghi nguyên văn `ban_ghi_E_all.txt` (113 mục, lịch sử
+chat còn nguyên), bảng tool `lan3_tool.txt`, 56 ảnh `d_*.png`. Chấm theo **câu hiện trên màn**, đối chiếu thẻ số liệu.
+
+⚠️ **Bẫy đo mới, vấp thật hai lần trong buổi:** script chạy bằng `nohup … &` trong công cụ Bash thì **`ps -ef` của Git Bash
+không thấy nó** và `kill` theo `ps` không giết được — lần chạy đầu tưởng đã dừng vẫn gõ tiếp, lần hai khởi động chồng lên, hai
+bản cùng gõ vào một ô nhập, cú Back khi ô đang khoá **pop mất màn chat** (người dùng báo *"màn hình đang ở trang chủ"*). Kiểm
+và diệt bằng PowerShell: `Get-CimInstance Win32_Process | Where CommandLine -match 'congE_all'` + `Stop-Process`; trước khi
+chạy phải thấy **đúng một** tiến trình. Công cụ Bash nền có trần 10 phút nên buổi đo 44 phút phải tách rời; `setsid` không
+có trên Git Bash.
+
+**34 câu cổng D** (so lần 13 — cùng máy, `714ca1b`):
+
+| Dòng | Lần 13 | **Cổng E lần 1** | |
+|---|---|---|---|
+| Nhóm A | 8/8 | **8/8** | A9 nay rơi L2c *"Tháng trước, khoản chi — không có giao dịch nào khớp"* (đúng, tháng 8 rỗng) thay vì "0 đ"; DC1 nói thẳng *"không có thông tin về lãi suất"* |
+| Nhóm B | 3/4 | **3/4** | B1 mẫu câu *còn 578 ngày*; B2 vẫn ✗ (L1b "muaxe" không phải danh mục); B3, B4, B1c hiện chữ |
+| Nhóm C — tool | 18/20 | **20/20** | **C13 lần đầu đúng**: `vi: tien mat` → *"ví Tiền mặt đã chi tổng cộng 2.031.000 đ"* (lần 13 về tổng kết 2.141.000) |
+| Nhóm C — tham số | 17/20 | **18/20** | ✗ C9, C16 — mô hình điền **thừa `chon: nhieu_nhat`** cho câu *"liệt kê…"*, *"5 khoản chi gần đây nhất"* |
+| Nhóm C — nội dung | 18/20 | **18/20** | ✗ C9 (*"Khoản chi lớn nhất trong khoảng 200.000–1.000.000 đ là Cho vay 800.000"* — đúng số, thiếu ba khoản), ✗ C16 (một khoản thay vì năm) |
+| SAI · ĐC3 | 0 · ✗ | **0 · ✅** | ĐC3 L1b *"không có danh mục nào tên abc"* |
+
+Tổng số **bằng** lần 13 nhưng theo từng câu là **2 tụt / 1 lên** — dòng *"không tụt"* của cổng E **chưa đạt hẳn**, và cả hai
+câu tụt **cùng một nguyên nhân**: tham số `chon` mới là chỗ mô hình điền thừa (C9, C16, và E10 `duoi_nua` vô hại) — bộ chỉnh
+chỉ **thêm** `chon` khi câu có *"…nhất"*, chưa **gỡ** khi câu không có.
+
+**22 câu 9.29** — **18 ✅ · 2 ◐ · 2 ✗ · bịa 0** (cần ≥ 19; lần 15: 15 ✅ · 3 ◐ · 4 ✗):
+
+| # | Câu | Tool · tham số | Câu hiện ra (nguyên văn) | Chấm |
+|---|---|---|---|---|
+| E1 | Tổng thu nhập tháng này | truy_van thang_nay khoan_thu | *Tổng thu nhập tháng này của bạn là 15.135.000 đ.* | ✅ |
+| E2 | Tháng 9 tiêu hết bao nhiêu | truy_van thang_nay khoan_chi | *Tháng này bạn đã chi tổng cộng 2.141.000 đ.* | ✅ |
+| E3 | Danh mục nào ít tiêu nhất | truy_van + bộ chỉnh `gop=danh_muc`, `chon=it_nhat` → 1 hàng | *Danh mục ít tiêu nhất trong tháng này là Giải trí với tổng chi là 30.000 đ.* | ✅ **đích** (lần 15 ✗) |
+| E4 | Khoản chi không quá 30 nghìn | truy_van so_tien_den 30000 | mẫu câu L2: 4 hàng + *Số giao dịch: 6; Tổng chi: 80.000 đ* (chữ "4 khoản" bị chặn đúng) | ✅ |
+| E5 | Kể từ đầu năm chi cho giải trí | truy_van nam_nay + bộ chỉnh `danh_muc=Giải trí` (⚠️ và đổi `ky` → `moi_luc`) | *Tổng chi cho giải trí trong năm nay là 30.000 đ.* | ✅ **đích** (lần 15 ✗) |
+| E6 | Những lần nạp tiền vào MuaDT | truy_van moi_luc tu_khoa MuaDT | *3 giao dịch… 700.000 đ (Tích lũy mục tiêu: MuaDT), 300.000 đ (Rút từ mục tiêu: MuaDT), và 100.000 đ (Tích lũy…)* | ✅ nay kể nạp / rút (lần 15 ◐) |
+| E7 | Ví Tiết kiệm có bao nhiêu | danh sách ví | *Số ví "Tiết kiệm" có số dư là 3.101.000 đ.* | ✅ |
+| E8 | Netflix khi nào đến hạn | danh sách hoá đơn chua_tra | *Hoa don Netflix sẽ đến hạn vào ngày 28/09.* | ✅ |
+| E9 | Bao nhiêu hoá đơn chưa trả | danh sách hoá đơn chua_tra | *3 hóa đơn chưa trả, tổng cộng còn phải trả là 155.000 đ.* | ✅ |
+| E10 | Ngân sách ăn uống còn lại | danh sách ngân sách (`chon: duoi_nua` thừa, vô hại) | *Ngan sách ăn uống còn lại là 450.000 đ.* | ✅ |
+| E11 | Mục tiêu nào chậm kế hoạch | danh sách mục tiêu (cả hai *đúng kế hoạch*) | *Danh mục "MuaXe" đang có tiến độ 55,0% và còn thiếu 899.000 đ.* | ✗ đáp án là "không có"; mô hình né chữ "chậm" mà vẫn chỉ MuaXe (lần 15 ✅ vì khi ấy MuaDT chậm thật) |
+| E12 | Mấy ví tất cả | danh sách ví | *Có 4 ví: test (đang âm với số dư -100.000 đ), tiết kiệm mua nhà (… 0 đ), Tiết kiệm (… 3.101.000 đ), và Tiền mặt (… 10.003.000 đ).* | ✅ |
+| E13 | Chi nhiều hơn hay ít hơn tháng trước | truy_van thang_nay **một** lời gọi | *Tháng này bạn chi tổng cộng 2.141.000 đ. Tôi không có dữ liệu chi tiêu của tháng trước để so sánh.* | ✗ **tụt** (lần 15 gọi hai kỳ) — trung thực nhưng không trả lời |
+| E14 | Tổng tài sản | danh sách ví | *Tổng tài sản của bạn là 13.004.000 đ.* | ✅ |
+| E15 | Cho vay bao nhiêu và thu về bao nhiêu | truy_van `chieu=tat_ca` + bộ chỉnh `danh_muc=Cho vay` → 2 hàng | mẫu câu L2: *Cho vay khoản chi · 800.000 đ, 19/09; Cho vay khoản thu · 500.000 đ, 19/09; Tổng chi 800.000 đ; Tổng thu 500.000 đ* | ✅ **đích** (lần 15 ◐) — ⚠️ nhưng câu ĐÚNG của mô hình *"Tôi đã cho vay 800.000 đ và thu về 500.000 đ."* bị **chặn oan** (c), xem bẫy 4.49 |
+| E16 | Khoản thu lớn nhất năm nay | truy_van nam_nay khoan_thu `chon=nhieu_nhat` | *Khoản thu lớn nhất năm nay là Lương với số tiền là 9.000.000 đ.* | ✅ |
+| E17 | Tuần này có tiêu gì không | truy_van tuan_nay khoan_chi → 0 hàng | *Tuần này, khoản chi — không có giao dịch nào khớp.* | ✅ |
+| E18 | Ngân sách nào chưa dùng đến nửa | danh sách ngân sách `chon=duoi_nua` → 2 hàng | *Ngan sách "Ăn uống" còn 450.000 đ và "Mua sắm" còn 790.000 đ.* | ✅ **đích** (lần 15 ✗) |
+| E19 | Quý này khoản chi nào lớn nhất | truy_van **thang_nay** khoan_chi `chon=nhieu_nhat` | *Khoản chi lớn nhất tháng này là Cho vay với số tiền 800.000 đ.* | ◐ số đúng do quý = tháng 9; câu nói "tháng này", `ky` sai |
+| E20 | Chi cho di chuyển trung bình mỗi tháng | gợi ý hạn mức Di chuyển | *…mức chi trung bình của bạn cho danh mục "Di chuyển" là 430.000 đ/tháng, và hạn mức hiện tại là 450.000 đ.* | ✅ |
+| E21 | Hôm nay là ngày bao nhiêu | không tool → bậc 1 → chặn | *Mình chưa chắc về con số cho câu này, nên không trả lời để khỏi nói sai.* | ✅ không bịa; 93 s |
+| E22 | Giá vàng hôm nay | truy_van hom_nay khoan_chi → L2c | *Hôm nay, khoản chi — không có giao dịch nào khớp.* | ◐ lạc đề, không bịa (như lần 15) |
+
+**Đọc.** (1) Tool truy vấn làm đúng việc nó sinh ra để làm: **bốn câu đích E3 · E5 · E15 · E18 đều đúng**, C13 đúng lần đầu,
+tool 20/20 ở nhóm C. (2) Giá của hai tham số mới là **mô hình điền thừa `chon`** ở câu liệt kê (C9, C16 tụt; E10 vô hại) —
+đây là lỗi cùng họ với `tu_khoa: "chi"` (4.44): tham số có sẵn thì mô hình điền. Bộ chỉnh đã có `_mauChon` để nhận
+*"…nhất"*; việc còn thiếu là **gỡ `chon` khi câu không có mẫu ấy** (luật 10, hàm domain, có test từ hai câu này). (3) E13
+**tụt** vì mô hình chỉ gọi một kỳ — lần 15 hai lời gọi tổng kết; cần ví dụ định tuyến *"so với tháng trước → gọi hai lần"*.
+(4) E11 là loại *"mô hình không nói không có"* (điểm 4 cổng A) — số thật nên lọt chắn. (5) Lần đầu có một ca **(c) chắn
+oan** trên máy thật: E15, bẫy **4.49** — hàng giao dịch có nhãn chính *Số tiền* và nhãn thay thế theo chiều (*khoản chi* /
+*khoản thu*, 9.24); câu *"cho vay 800.000 đ và thu về 500.000 đ"* nêu đủ **tên** và số, nhưng số 800.000 không đi kèm "số
+tiền" lẫn "chi" nên `kiemNhan` chặn. Mẫu câu L2 cứu được nội dung, nhưng đó là câu tự nhiên nhất người dùng muốn đọc. (6)
+Bộ chỉnh có một lỗi nhỏ: *"kể từ đầu năm"* không nằm trong danh sách chữ kỳ nên bị đọc là *"không nêu kỳ"* → `moi_luc` (E5,
+kết quả không đổi vì dữ liệu chỉ có 2026).
+
+**Hai câu người dùng tự hỏi trên máy ngay sau buổi đo (19:52–19:57, có dấu, gõ tay):**
+
+| Câu | Tool | Câu hiện ra | Chấm |
+|---|---|---|---|
+| *các danh mục chưa đặt ngân sách* | `goi_y_han_muc {}` → 4 hàng (toàn danh mục **đã** có ngân sách) | *Không có danh mục nào chưa đặt ngân sách được hiển thị.* | ✗ **SAI** — Cho vay, Giải trí… đang chi mà chưa có ngân sách; **(a)** không tool nào trả "danh mục chưa đặt ngân sách" dù app đã có phép ấy (`chonDeXuat` / thẻ *Chưa đặt ngân sách*, `budget/domain/de_xuat_ngan_sach.dart`); câu không số nên bốn lớp chắn im |
+| *các danh mục đã đặt ngân sách* | `danh_sach_ngan_sach {}` → 4 hàng | mẫu câu L2 liệt kê bốn ngân sách kèm nhịp, tỉ lệ, còn lại | ✅ nội dung — nhưng câu ĐÚNG của mô hình *"Các danh mục đã đặt ngân sách bao gồm: Giáo dục, Di chuyển, Ăn uống, Mua sắm."* bị **chặn oan** (c): đo bằng test tạm — `kiemSo` ✓ `kiemNhan` ✓ **`kiemTen` ✗**, vì cụm sau *"danh mục"* là *"đã đặt ngân sách bao gồm"* và nó không khớp tên nào — bẫy **4.50** |
+
+Hai câu tự nhiên của người dùng lộ **hai** loại lỗi bộ 56 câu không có: một tool thiếu (a) và một ca chắn oan thứ hai
+trong cùng buổi (c) — cả hai đều ở câu **không số**, đúng vùng mù mà cổng D/E không đo.
+
+**Hướng kế tiếp — chờ người dùng quyết, chưa sửa gì theo lần đo này:** (a) luật 10 bộ chỉnh: gỡ `chon` khi câu không có
+*"…nhất"* (đóng C9, C16); (b) thêm *"đầu năm / đầu tháng / đầu tuần"* vào chữ kỳ; (c) E13 — ví dụ định tuyến hai lời gọi;
+(d) bẫy 4.49 — cho `kiemNhan` nhận tên đối tượng làm đủ khi số đứng cạnh tên (đổi luật ở tầng chắn, cần spec ngắn); (e)
+E11 — mẫu câu "không có mục tiêu nào chậm" khi tool trả toàn *đúng kế hoạch* (lớp mã); (f) bẫy 4.50 — `kiemTen` phải dừng
+cụm ở *"đã / chưa / bao gồm"* hoặc chỉ xét cụm có chữ hoa / khớp một phần tên (spec ngắn, cùng với 4.49); (g) tool hoặc
+`chon` mới cho *"danh mục chưa đặt ngân sách"* — dữ liệu đã có ở `chonDeXuat`. Theo quy ước 2026-09-25: vòng sau chỉ đo
+lại câu chưa đạt.
 
 ---
 

@@ -648,8 +648,15 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   `gop` (khong · danh_muc · vi) + `chon` (nhieu_nhat · it_nhat); `gopGiaoDich` ở `transaction/domain`, `hangNhomGiaoDich`;
   `chon` bốn mã cho `danh_sach_ngan_sach`; ba luật mới của bộ chỉnh tham số (chọn · gộp · hai chiều) + `chinhThamSoNganSach`;
   `BoCongCu` **sáu** tool; ví dụ định tuyến viết lại. Người dùng hỏi giữa chừng có nên chuyển sang SQL agent / thư viện
-  nhúng — trả lời **không** bằng số đo 9.30, họ chốt giữ thiết kế tool. ⚠️ `tools_json` **5.633 > 5.491**, ca trần tạm
-  `skip` tới spike Realme (Task 10). Không đổi schema, payload, `pubspec`.
+  nhúng — trả lời **không** bằng số đo 9.30, họ chốt giữ thiết kế tool. `tools_json` **5.633** đo lại trên Realme, hằng
+  trần đặt lại (`e7add53`). Không đổi schema, payload, `pubspec`. 🛑 **Cổng E lần 1 (Task 10, Realme 19:06–19:50, 0 sập)
+  CHƯA ĐẠT thiếu đúng một câu**: 34 câu cổng D — A 8/8 · B 3/4 · C tool **20/20** · tham số 18/20 · nội dung 18/20 · SAI 0 ·
+  ĐC3 ✅ (bằng lần 13 về tổng số, nhưng **C13 lên, C9 và C16 tụt** — mô hình điền thừa `chon` cho câu liệt kê); 22 câu mới
+  **18 ✅ · 2 ◐ · 2 ✗ · bịa 0** (cần ≥ 19) — **bốn câu đích E3 · E5 · E15 · E18 đều đúng**, tụt E13 (một lời gọi thay vì hai
+  kỳ), E11 (không nói "không có"); lần đầu có ca **chắn oan** trên máy thật (E15, bẫy 4.49, mẫu câu cứu). Hai câu người dùng tự hỏi sau buổi đo lộ thêm **bẫy 4.50** (`kiemTen` chặn oan *"danh mục đã đặt ngân sách bao gồm…"*) và một
+  tool thiếu (*"danh mục chưa đặt ngân sách"* → mô hình nói SAI "không có"). Người dùng dặn *"xong phần này thì dừng"* — bảy
+  hướng sửa ở cuối mục 9.32, **chưa sửa gì**. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
+  script `nohup`, hai bản đo chồng nhau làm bật khỏi màn chat — kiểm/diệt bằng PowerShell `Get-CimInstance Win32_Process`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
