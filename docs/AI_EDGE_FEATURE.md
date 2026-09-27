@@ -2300,6 +2300,35 @@ Gộp với lần 1: 22 câu mới **19 ✅ · 2 ◐ · 1 ✗** (E13 còn) — *
 Chưa chạy lại trọn 56 câu với bản này (quy ước 2026-09-25: chỉ đo lại câu chưa đạt). Việc còn: (c) E13, (d) 4.49, (f) 4.50,
 (g) tool "chưa đặt ngân sách" — hai việc sau người dùng đã chọn làm, chờ duyệt thiết kế.
 
+#### Vòng sửa 2 (2026-09-27 đêm) — bẫy 4.49 và 4.50 ĐÓNG, `chon=chua_dat`; đo lại ba câu ✅
+
+Spec `docs/superpowers/specs/2026-09-27-chan-oan-4-49-4-50-va-chon-chua-dat-design.md` (người dùng duyệt ba lối), commit
+`211b3f8`. Trước khi thiết kế, cả hai ca chắn oan **đo bằng test tạm** trên đúng gói của tool: E15 chỉ `kiemNhan` ✗ (hàng
+800.000 mang `nhanXungDot: ['Thu']`, luật 4.42 xét **cả câu** nên chữ "thu" của vế 500.000 làm 800.000 thành "gán ngược");
+câu *"…ngân sách bao gồm: …"* chỉ `kiemTen` ✗ (cụm *"bao gồm"* không phải tên).
+
+- **4.49** — `kiemNhan.ganNhanNguoc` xét theo **vế chứa con số** (`cacVeCua`: tách ở *và / hoặc / nhưng / ;*; **không** tách ở
+  dấu hai chấm hay phẩy để C10 vẫn bị chặn); vế "câu nêu tên" vẫn đọc cả câu. ⚠️ Ca thử *"Bạn thu về 800.000 đ từ Cho vay
+  và chi 500.000 đ"* **xanh sai** ở bản đầu: chữ "chi" của vế sau làm mục *Tổng chi* (không tên) cứu con số — câu thử phải
+  không có "chi" ở vế kia (*"và nhận 500.000 đ"*).
+- **4.50** — `kTuChucNang` thêm *bao · gồm · nhiêu · tổng · cộng · đặt · tên · các · những · được · hiện · tại · thế · trước*;
+  B1 4.48 vẫn bị chặn.
+- **`chon=chua_dat`** — mã thứ năm của `kChon`; tool ngân sách rẽ sang `hangChuaDatNganSach(GoiDeXuat?, soNganSach:)`
+  (hàng = danh mục chi chưa có ngân sách, số *Chi trung bình mỗi tháng*; tổng hợp *Số ngân sách* + *Số danh mục chưa đặt*;
+  `doiTuongRong` *"danh mục"*); nguồn là `deXuatTuKho` (`budget/data/de_xuat_nguon.dart`, tách từ `BudgetCubit._deXuat` —
+  **một** nguồn với thẻ *Chưa đặt ngân sách*); `chonDeXuat(toiDa:)`, `GoiDeXuat.soUngVien`; `hangNganSach` **ném**
+  `ArgumentError` nếu nhận `chua_dat` (đường riêng). `chinhThamSoNganSach` đọc *"chưa đặt / chưa có / không có ngân sách"*
+  trước các luật tỉ lệ. `tools_json` 5.938 → **6.031**, đo Realme 0 `FAILED_PRECONDITION`.
+
+| # | Tool · tham số | Câu hiện ra | Chấm |
+|---|---|---|---|
+| E15 | truy_van `chieu=tat_ca` + bộ chỉnh `danh_muc=Cho vay` | *Tôi đã cho vay 800.000 đ và thu về 500.000 đ.* (chữ mô hình, thẻ *Cho vay · Số tiền 800.000 đ*, *Tổng thu 500.000 đ*) | ✅ **4.49 đóng** — câu từng bị chặn nay hiện |
+| U1 *các danh mục chưa đặt ngân sách* | ngân sách `chon=chua_dat` → 1 hàng | *Có 1 danh mục chưa đặt ngân sách: Giải trí.* | ✅ (lần trước SAI "không có"); Cho vay không có mặt vì `getExpenseCategories` chỉ trả danh mục **chi** — cùng luật với thẻ |
+| U2 *các danh mục đã đặt ngân sách* | ngân sách (mô hình điền `duoi_nua`, luật 10 gỡ) → 4 hàng | *Có 4 danh sách ngân sách đang chạy. Các danh sách có trạng thái "tiêu chậm" bao gồm: Di chuyển, Ăn uống và Mua sắm.* | ✅ **4.50 đóng** — chữ mô hình hiện (từ "danh sách" thay "danh mục" là giọng mô hình, nội dung đúng: Giáo dục *đúng nhịp*) |
+
+`flutter test` **3888/3888**, 3 skip (5 phút 08 giây song song `flutter analyze`); `analyze` 26. Việc còn của cổng E: (c) E13
+so hai kỳ (một lời gọi) — chưa làm; chưa chạy lại trọn 56 câu với bản cuối `d97236c2…`.
+
 ---
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
