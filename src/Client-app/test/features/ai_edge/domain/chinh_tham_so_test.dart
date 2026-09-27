@@ -227,4 +227,63 @@ void main() {
     expect(r.ghiChu, isEmpty);
     expect(r.args, {'ky': 'thang_nay', 'chieu': 'chuyen_vi'});
   });
+  group('7. chọn: nhiều nhất / ít nhất (E3 lần đo 15)', () {
+    test('⭐ E3 "danh muc nao toi it tieu nhat trong thang" → chon it_nhat, gop danh_muc', () {
+      final r = chinh('danh muc nao toi it tieu nhat trong thang', {'ky': 'thang_nay'});
+      expect(r['chon'], 'it_nhat');
+      expect(r['gop'], 'danh_muc');
+    });
+    test('"chi nhieu nhat vao danh muc nao" → nhieu_nhat + gop danh_muc; ghi đè giá trị mô hình', () {
+      final r = chinh('thang nay toi chi nhieu nhat vao danh muc nao', {'ky': 'thang_nay', 'chon': 'it_nhat'});
+      expect(r['chon'], 'nhieu_nhat');
+      expect(r['gop'], 'danh_muc');
+    });
+    test('⚠️ "it nhat" đứng trước số tiền là NGƯỠNG (luật 4), không phải chọn', () {
+      final r = chinh('cac khoan chi it nhat 200k thang nay', {'ky': 'thang_nay'});
+      expect(r['so_tien_tu'], 200000);
+      expect(r.containsKey('chon'), isFalse);
+    });
+    test('phản ví dụ: câu không có "nhất" thì không đặt chon', () {
+      expect(chinh('thang nay toi chi bao nhieu', {'ky': 'thang_nay'}).containsKey('chon'), isFalse);
+    });
+  });
+
+  group('8. gộp: danh mục / ví nói chung (không nêu tên)', () {
+    test('"theo danh muc" / "vi nao" → gop', () {
+      expect(chinh('thang nay chi theo danh muc the nao', {'ky': 'thang_nay'})['gop'], 'danh_muc');
+      expect(chinh('vi nao thang nay chi nhieu nhat', {'ky': 'thang_nay'})['gop'], 'vi');
+    });
+    test('⭐ E5: nêu TÊN danh mục → danh_muc điền, gop KHÔNG đặt', () {
+      final r = chinhThamSoTimGiaoDich(
+        'ke tu dau nam toi da chi cho giai tri tong cong bao nhieu', {'ky': 'nam_nay'},
+        tenDanhMuc: [...danhMuc, 'Giải trí'], tenVi: vi,
+      ).args;
+      expect(r['danh_muc'], 'Giải trí');
+      expect(r.containsKey('gop'), isFalse);
+    });
+    test('phản ví dụ: "tieu bao nhieu" một mình không đặt gop', () {
+      expect(chinh('thang nay toi tieu bao nhieu', {'ky': 'thang_nay'}).containsKey('gop'), isFalse);
+    });
+  });
+
+  group('9. hai chiều: câu có cả từ chi lẫn từ thu → tat_ca (E15)', () {
+    test('⭐ E15 "cho vay bao nhieu va thu ve duoc bao nhieu" → chieu tat_ca, danh_muc Cho vay', () {
+      final r = chinh('toi da cho vay bao nhieu va thu ve duoc bao nhieu', {'ky': 'thang_nay', 'chieu': 'khoan_thu'});
+      expect(r['chieu'], 'tat_ca');
+      expect(r['danh_muc'], 'Cho vay');
+    });
+    test('phản ví dụ: chỉ một chiều thì giữ nguyên chiều mô hình', () {
+      expect(chinh('thang nay toi nhan duoc nhung khoan thu nao', {'ky': 'thang_nay', 'chieu': 'khoan_thu'})['chieu'], 'khoan_thu');
+    });
+  });
+
+  group('chinhThamSoNganSach', () {
+    test('⭐ E18 "chua dung den mot nua" → duoi_nua; "qua nua" → tren_nua; "sap het" → nhieu_nhat; không từ khoá → giữ', () {
+      expect(chinhThamSoNganSach('ngan sach nao toi chua dung den mot nua', {}).args['chon'], 'duoi_nua');
+      expect(chinhThamSoNganSach('ngan sach nao da qua nua', {}).args['chon'], 'tren_nua');
+      expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'nhieu_nhat');
+      expect(chinhThamSoNganSach('ngan sach nao it dung nhat', {}).args['chon'], 'it_nhat');
+      expect(chinhThamSoNganSach('con bao nhieu tien ngan sach', {'chon': 'duoi_nua'}).args['chon'], 'duoi_nua');
+    });
+  });
 }

@@ -47,8 +47,15 @@ RegExp _tronTu(String tu) => RegExp('(?<![a-z0-9])${RegExp.escape(tu)}(?![a-z0-9
 bool _co(String chuoi, String tu) => _tronTu(_bo(tu)).hasMatch(chuoi);
 
 /// Từ khoá theo nhóm — một chuỗi, tách lúc chạy (xem docstring đầu tệp).
-final List<String> _tuChi = 'khoan chi|chi tieu|tieu|chi|mua'.split('|');
-final List<String> _tuThu = 'khoan thu|nhan duoc|luong|thu nhap|thu'.split('|');
+final List<String> _tuChi = 'khoan chi|chi tieu|cho vay|tieu|chi|mua'.split('|');
+final List<String> _tuThu = 'khoan thu|nhan duoc|thu ve|luong|thu nhap|thu'.split('|');
+// Luật 7–9 (spec tool truy vấn 2026-09-27, mục 3): chọn · gộp · hai chiều.
+/// "nhiều nhất", "ít nhất" — và dạng có MỘT từ chen giữa: "ít tiêu nhất", "chi
+/// nhiều nhất" (E3 lần đo 15 viết "ít tiêu nhất"; từ khoá `it nhat` trần không khớp).
+final RegExp _mauChon = RegExp(
+    r'(?<![a-z0-9])(nhieu|lon|cao|it|nho|thap)(?:\s+(?!nhat)[a-z]+)?\s+nhat(?![a-z0-9])');
+final List<String> _tuGopDanhMuc = 'danh muc nao|theo danh muc|vao danh muc nao|danh muc gi'.split('|');
+final List<String> _tuGopVi = 'vi nao|theo vi'.split('|');
 final List<String> _tuChuyenTien =
     'chuyen tien|chuyen sang|chuyen khoan|chuyen vi|chuyen qua|chuyen den|chuyen vao'
         .split('|');
@@ -218,7 +225,84 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['ky'] = 'moi_luc';
     ghi.add('câu hỏi không nêu kỳ → ky=moi_luc');
   }
+  // 7. Chọn (E3 lần đo 15). ⚠️ "ít nhất" đứng trước một số tiền là NGƯỠNG — luật
+  //    4 đã ăn nó; ở đây chỉ nhận "ít nhất" KHÔNG theo sau bởi số.
+  final chon = _chonTrongCau(q);
+  if (chon != null && a['chon'] != chon) {
+    a['chon'] = chon;
+    ghi.add('câu hỏi "… nhất" → chon=$chon');
+  }
+  // 8. Gộp: danh mục / ví nói chung, KHÔNG nêu tên (E5 nêu tên → lọc, không gộp).
+  if (_chuoi(a['danh_muc']) == null &&
+      _tuGopDanhMuc.any((t) => _co(q, t)) &&
+      a['gop'] != 'danh_muc') {
+    a['gop'] = 'danh_muc';
+    ghi.add('câu hỏi "danh mục nào / theo danh mục" → gop=danh_muc');
+  } else if (_chuoi(a['vi']) == null &&
+      _tuGopVi.any((t) => _co(q, t)) &&
+      a['gop'] != 'vi') {
+    a['gop'] = 'vi';
+    ghi.add('câu hỏi "ví nào / theo ví" → gop=vi');
+  }
+  // 9. Hai chiều trong một câu (E15) → tat_ca.
+  if (_coCaHaiChieu(q) && a['chieu'] != 'tat_ca') {
+    a['chieu'] = 'tat_ca';
+    ghi.add('câu hỏi nói cả chi lẫn thu → chieu=tat_ca');
+  }
+  return KetQuaChinhThamSo(a, ghi);
+}
 
+/// Phép chọn trong câu: "nhiều / lớn / cao … nhất" → `nhieu_nhat` (thắng khi câu
+/// có cả hai); "ít / nhỏ / thấp … nhất" → `it_nhat`, TRỪ khi ngay sau là một số
+/// tiền — *"ít nhất 200k"* là ngưỡng của luật 4, không phải chọn.
+String? _chonTrongCau(String q) {
+  final mauSo = RegExp('^(?:${_mauSoDonVi.pattern}|${_mauSoChu.pattern})');
+  String? kq;
+  for (final m in _mauChon.allMatches(q)) {
+    final dau = m.group(1)!;
+    if (dau == 'nhieu' || dau == 'lon' || dau == 'cao') return 'nhieu_nhat';
+    final sau = q.substring(m.end).trimLeft();
+    if (mauSo.hasMatch(sau)) continue;
+    kq ??= 'it_nhat';
+  }
+  return kq;
+}
+
+bool _coCaHaiChieu(String q0) {
+  var q = q0;
+  for (final c in _cumKhongPhaiDongTu) {
+    q = q.replaceAll(_tronTu(c), ' ');
+  }
+  return _tuThu.any((t) => _co(q, t)) && _tuChi.any((t) => _co(q, t));
+}
+
+/// Bộ chỉnh của `danh_sach_ngan_sach` (spec tool truy vấn mục 4): cùng khuôn,
+/// một luật — chữ về tỉ lệ đã dùng trong câu → `chon`.
+final List<String> _tuDuoiNua =
+    'chua dung den mot nua|duoi nua|chua den nua|duoi mot nua|chua toi nua'.split('|');
+final List<String> _tuTrenNua = 'qua nua|hon nua|tren nua'.split('|');
+final List<String> _tuNganSachCang = 'sap het|cang nhat|dung nhieu nhat|vuot'.split('|');
+final List<String> _tuNganSachRong = 'it dung nhat|con nhieu nhat|dung it nhat'.split('|');
+
+KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) {
+  final a = Map<String, dynamic>.from(args);
+  final ghi = <String>[];
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
+  String? chon;
+  if (_tuDuoiNua.any((t) => _co(q, t))) {
+    chon = 'duoi_nua';
+  } else if (_tuTrenNua.any((t) => _co(q, t))) {
+    chon = 'tren_nua';
+  } else if (_tuNganSachCang.any((t) => _co(q, t))) {
+    chon = 'nhieu_nhat';
+  } else if (_tuNganSachRong.any((t) => _co(q, t))) {
+    chon = 'it_nhat';
+  }
+  if (chon != null && a['chon'] != chon) {
+    a['chon'] = chon;
+    ghi.add('câu hỏi về tỉ lệ đã dùng → chon=$chon');
+  }
   return KetQuaChinhThamSo(a, ghi);
 }
 
