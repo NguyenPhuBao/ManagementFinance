@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FinancialHealthCard from './FinancialHealthCard';
 import ChatMessageBubble from './ChatMessageBubble';
 import PromptSuggestionChips from './PromptSuggestionChips';
-import { streamChatResponse, getFinancialHealth } from '../../api/chatbot.api';
+import { streamChatResponse, getFinancialHealth, resetChatConversation } from '../../api/chatbot.api';
 
 const AICopilotPage = () => {
   const [messages, setMessages] = useState([]);
@@ -132,10 +132,15 @@ const AICopilotPage = () => {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     if (isStreaming) handleStopStream();
     setMessages([]);
     setErrorMessage(null);
+    try {
+      await resetChatConversation();
+    } catch (e) {
+      // Ignore
+    }
   };
 
   const handleKeyDown = (e) => {

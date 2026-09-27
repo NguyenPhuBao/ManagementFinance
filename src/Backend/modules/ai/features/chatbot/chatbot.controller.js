@@ -32,6 +32,7 @@ class ChatbotController {
     // Lắng nghe sự kiện ngắt kết nối từ Client (tắt tab hoặc hủy stream)
     req.on('close', () => {
       logger.info(`[SSE Controller] Client idaccount: ${idaccount} đã ngắt kết nối stream.`);
+      req.auditReason = 'Người dùng dừng phản hồi hoặc đổi khung chat mới';
       abortController.abort();
     });
 
@@ -107,6 +108,13 @@ class ChatbotController {
       logger.error('[Chatbot Controller] Lỗi chat non-stream:', error);
       return ResponseHandler.error(res, 'Lỗi khi xử lý phản hồi từ AI', 500);
     }
+  };
+
+  /**
+   * Endpoint Làm mới hội thoại AI: POST /api/ai/chatbot/reset
+   */
+  handleResetConversation = async (req, res) => {
+    return ResponseHandler.success(res, { reset: true }, 'Làm mới hội thoại AI thành công');
   };
 }
 
