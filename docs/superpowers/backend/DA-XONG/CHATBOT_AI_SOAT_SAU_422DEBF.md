@@ -1,5 +1,18 @@
 # Soát sau gộp `422debf`: tài liệu chatbot AI và bảng 10 chức năng còn lệch mã ở chín chỗ
 
+> ✅ **Client soát 2026-09-27.** Backend đóng ở `eceb6c9` (client gộp về `8bbdd97`, fast-forward). **8/9 mục xong**:
+> mục 1 và 5 lệnh nghiệm thu ra **0** dòng; mục 2 bốn chỗ cùng 🟢; mục 3 backend chọn lối *cả hai* — `delta` mang cả
+> `text` lẫn `content`, `/snapshot` thêm alias `/financial-health`, nhận `history` lẫn `conversationHistory` — và sửa
+> hai tài liệu theo; mục 4 Redis token-bucket, circuit breaker, snapshot cache **nay có thật** (client đọc cả ba tệp
+> mới), "Semantic Cache" bỏ; mục 6 đủ ba chỗ; 7.1 `Math.abs` ở tổng chi, top danh mục, 50/30/20, so hai kỳ và tool,
+> test thêm ca số âm (truy vấn 7.1 chạy lại 2026-09-27 vẫn 23/23 `Chi` âm); 7.2 mẫu số động theo giao dịch đầu tiên
+> (kẹp sàn 14 ngày thay vì `null`); 7.3 fallback thành thông báo minh bạch, `done` mang `{fallback, reason}`; 7.5
+> Admin-web đọc `text ?? content`, gọi `/snapshot`; 7.6 `CloudDeploy.md` + `Project.md` ghi `npm install`; mục 8 backend
+> chọn **sửa** — banner ⏸️ ở cả năm tệp. Đo thật sau `npm install` (người dùng cho phép đích danh):
+> `generateSnapshot(10)` ra FHS 57, quỹ khẩn cấp 12,9 tháng, top danh mục giảm dần — trước sửa các số này là 0 / âm /
+> đảo. **Chưa xong**: 7.4 hằng nợ, nhánh lỗi `generateSnapshot` vẫn trả FHS 65 cứng; cộng chỗ lệch mới (tên mô hình
+> ba phiên bản, ngân sách hết hạn vẫn báo, 50/30/20 bỏ sót danh mục) — chuyển sang `CAN-LAM/CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`.
+
 **Ngày:** 2026-09-26 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat` @ `610353f` (đã gộp `main` @ `422debf`)
 **Loại:** chủ yếu **sửa chữ** trong tài liệu backend quản; mục 7 báo **lỗi mã** để backend tự xếp lịch; mục 8 xin **một
 xác nhận**. Client không sửa tệp nào của backend, kể cả một dòng.

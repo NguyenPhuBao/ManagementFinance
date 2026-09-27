@@ -39,7 +39,7 @@ giá trị người dùng**.
 phải nằm trong spec và được người dùng duyệt. Tầng 4 (bật tự trả / trích tự động) và mọi thao tác
 **xoá** vẫn **không có hàm nào** (mục 10.5 `AI_EDGE_FEATURE.md`).
 
-**Chờ người dùng gọi tên — không tự làm:** **chế độ trực tuyến cho màn Trợ lý AI** theo `docs/AI/ChatbotAI_Moblie.md` (backend giao 2026-09-26; gửi số tiền từng giao dịch + ghi chú sau che PII sang Google, và hợp đồng API trong tệp ấy lệch mã — `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`); rút ngắn câu chào ~23 s trên Realme và dạy trợ lý nói
+**Chờ người dùng gọi tên — không tự làm:** **chế độ trực tuyến cho màn Trợ lý AI** theo `docs/AI/ChatbotAI_Moblie.md` (backend giao 2026-09-26; gửi số tiền từng giao dịch + ghi chú sau che PII sang Google, hợp đồng API trong tệp ấy **đã khớp mã** từ `eceb6c9` 2026-09-27 — `delta` mang cả `text` lẫn `content`, `/snapshot` + alias `/financial-health`; đơn soát nay ở `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md`, năm chỗ còn lệch ở `CAN-LAM/CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`); rút ngắn câu chào ~23 s trên Realme và dạy trợ lý nói
 "không có dữ liệu" (cả hai đổi hành vi L1, cần thiết kế); bảy việc UX hoãn (mục cuối tệp); bốn việc
 cổng D lần 1 lộ ra mà spec bước 2b **cố ý không làm** (mục 3 của spec ấy, thêm 2026-09-24): câu A3
 xếp cả bốn ngân sách vào "sắp hết" · mẫu câu L2 của `tim_giao_dich` khó đọc, lặp tên danh mục · vượt

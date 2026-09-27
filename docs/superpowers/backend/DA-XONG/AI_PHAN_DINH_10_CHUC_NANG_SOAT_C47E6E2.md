@@ -1,5 +1,5 @@
 > 🔎 **Client soát 2026-09-26.** Backend đóng ở `422debf`: ba lệnh ở mục 8 ra **0** dòng; chức năng 7 chốt **lối A**
-> (backend tự tính FHS). Hai chỗ chưa trọn, chuyển sang `CAN-LAM/CHATBOT_AI_SOAT_SAU_422DEBF.md`: mục 1.3 (F1) không
+> (backend tự tính FHS). Hai chỗ chưa trọn, chuyển sang `DA-XONG/CHATBOT_AI_SOAT_SAU_422DEBF.md` (backend đóng 2026-09-27): mục 1.3 (F1) không
 > thành một quyết định có ngày (đơn mới mục 4); và câu client đề nghị ở mục 4.3 dưới đây — *"chỉ khi có OCR … SMS đã
 > bỏ"* — **sai ngay khi** backend duyệt đơn `CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` cùng ngày. Đó là **lỗi của client**
 > (đơn mới mục 1).
