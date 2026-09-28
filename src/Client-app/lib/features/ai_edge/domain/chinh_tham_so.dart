@@ -49,6 +49,7 @@ library;
 
 import '../../../core/category/category_name.dart';
 import 'cong_cu.dart';
+import 'hang_muc_tieu.dart';
 import 'hang_tong_quan.dart';
 import 'ma_ky.dart';
 
@@ -345,6 +346,17 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     ghi.add('câu hỏi không nêu kỳ → ky=moi_luc');
   }
 
+  // 15. H3 cổng F lần 2 (E19): kỳ tương đối NÊU TRONG CÂU ("quý này") thắng ky của
+  // mô hình — cùng lý lẽ luật 4: câu hỏi là nguồn sự thật. Chỉ các mã "… này":
+  // câu nêu chúng thì không còn cách đọc nào khác.
+  if (kyTuDo == null && soSanh == null && !tuongLai) {
+    final neu = _kyGocNeu(q);
+    if (neu != null && a['ky'] != neu) {
+      a['ky'] = neu;
+      ghi.add('câu hỏi nêu kỳ → ky=$neu');
+    }
+  }
+
   // 12b. So sánh hai kỳ (E13): kỳ gốc là kỳ đang nói, kỳ so sánh đi so_voi.
   if (soSanh != null) {
     if (a['so_voi'] != soSanh.ma) {
@@ -539,6 +551,33 @@ final List<RegExp> _mauDanhMuc = [
   RegExp(r'(?<![a-z0-9])(?:liet ke|ke ten|danh sach)(?: cac| nhung)? danh muc(?![a-z0-9])'),
 ];
 
+/// H2 cổng F lần 2 (B2): *"mỗi tháng tôi cần để dành bao nhiêu cho MuaXe"* — mô
+/// hình gọi `goi_y_han_muc` với danh_muc = tên mục tiêu rồi bị từ chối. Chữ
+/// *"cần"* là bắt buộc: *"tôi để dành được bao nhiêu phần trăm"* (F7) là tổng quan.
+final RegExp _mauCanTich = RegExp(
+    r'(?<![a-z0-9])can (?:phai )?(?:de danh|tich luy|tich|tiet kiem|nap)(?![a-z0-9])');
+
+/// Nhóm số của `danh_sach_muc_tieu` mà câu hỏi nhắm tới; `null` = câu chung,
+/// hoặc câu về TRÍCH (đường riêng: `cauHoiVeTrich` + `ket_qua`).
+String? nhomMucTieuTheoCauHoi(String cauHoi) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty || _tuVeTrich.any((t) => _co(q, t))) return null;
+  if (_mauCanTich.hasMatch(q) || (_co(q, 'muc tieu') && _co(q, 'moi') && _co(q, 'bao nhieu'))) {
+    return kNhomMucTieuMoiKy;
+  }
+  if (_co(q, 'khi nao') || _co(q, 'bao gio') || _co(q, 'bao lau')) {
+    return kNhomMucTieuKhiNao;
+  }
+  return null;
+}
+
+/// Câu LIỆT KÊ giao dịch: *"những lần …"*, *"<số> khoản / giao dịch …"*. ⚠️
+/// *"bao nhiêu khoản"* là câu ĐẾM, *"những gì"* mô hình đã kể tốt (C13, F2).
+final RegExp _mauLietKe = RegExp(
+    r'(?<![a-z0-9])(?:(?:nhung|cac) lan|\d+ (?:khoan|giao dich))(?![a-z0-9])');
+
+bool cauHoiLietKe(String cauHoi) => _mauLietKe.hasMatch(_bo(cauHoi));
+
 String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
@@ -547,6 +586,7 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_co(q, 'ngan sach') && _tuCanDoi.any((t) => _co(q, t))) return kTenCongCuNganSach;
   if (_co(q, 'ngan sach')) return null;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
+  if (_mauCanTich.hasMatch(q)) return kTenCongCuMucTieu;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
   if (_mauSoDuVi.any((m) => m.hasMatch(q))) return kTenCongCuVi;
   if (_co(q, 'muc tieu')) return null;

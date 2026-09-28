@@ -270,14 +270,16 @@ void main() {
     expect(kq.boLoc, ['chưa đặt ngân sách']);
   });
 
-  test('⭐ ngân sách chon=can_doi (F15): nguồn tái phân bổ nhận ĐÚNG ngân sách đang chạy; không thâm hụt → rỗng theo bộ lọc', () async {
+  test('⭐ ngân sách chon=can_doi (F15): nguồn tái phân bổ nhận ĐÚNG ngân sách đang chạy; không thâm hụt → kết luận nói thẳng', () async {
     final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
         cauHoi: 'nen chuyen bot ngan sach nao sang ngan sach nao'))!;
     expect(taiPhanBo.daHoi, [['Giáo dục']], reason: 'ngân sách "Cũ" đã hết hạn phải bị lọc trước');
-    expect(kq.boLoc, ['cần cân đối']);
-    expect(kq.rongTheoBoLoc, isTrue, reason: 'Giáo dục 45.000 / 50.000 chưa thâm hụt đủ ngưỡng');
+    // H3 cổng F lần 2: không kế hoạch là một CÂU TRẢ LỜI, không phải lượt rỗng theo bộ lọc.
+    expect(kq.rongTheoBoLoc, isFalse);
+    expect(kq.chiMauCau, isTrue);
+    expect(kq.chuThem['ket_qua'], 'không ngân sách nào cần cân đối',
+        reason: 'Giáo dục 45.000 / 50.000 chưa thâm hụt đủ ngưỡng');
     expect(kq.json['Số ngân sách'], '1');
-    expect(kq.chuThem['ghi_chu'], contains('trang Ngân sách'));
   });
 
   test('ngân sách: khai báo chon (bốn giá trị) và câu "chua dung den mot nua" → duoi_nua qua bộ chỉnh', () async {

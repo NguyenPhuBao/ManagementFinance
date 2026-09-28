@@ -132,7 +132,10 @@ KetQuaCongCu hangChuaDatNganSach(GoiDeXuat? goi, {required int soNganSach}) {
 /// — **cùng** kế hoạch với thẻ *Đề xuất cân đối* và thông báo `budgetRebalance`
 /// (nguồn `keHoachTaiPhanBoTu`), tool chỉ chép số. Hàng đầu là ngân sách thâm
 /// hụt lớn nhất, các hàng sau là nguồn bù theo thứ tự của kế hoạch.
-/// [kh] `null` = không ngân sách nào thâm hụt đủ ngưỡng → `rongTheoBoLoc`.
+/// [kh] `null` = không ngân sách nào thâm hụt đủ ngưỡng → kết luận *"không ngân
+/// sách nào cần cân đối"*, chỉ mẫu câu (H3 cổng F lần 2, F15: bản trước là
+/// `rongTheoBoLoc`, in *"Cần cân đối — không có ngân sách nào khớp"* — đọc như
+/// một lỗi tìm kiếm trong khi đó là câu trả lời).
 /// Tool không áp dụng gì (bất biến ④): `ghi_chu` nói áp dụng ở trang Ngân sách.
 KetQuaCongCu hangCanDoiNganSach(KeHoachTaiPhanBo? kh, {required int soNganSach}) {
   final hang = <HangSoLieu>[];
@@ -171,11 +174,15 @@ KetQuaCongCu hangCanDoiNganSach(KeHoachTaiPhanBo? kh, {required int soNganSach})
       if (thieuNguon) soTien('Còn thiếu sau khi bù', kh!.soThieu),
     ],
     chuThem: {
-      if (kh != null) 'ket_qua': thieuNguon ? 'thiếu nguồn bù' : 'đủ nguồn bù',
-      'ghi_chu': 'chỉ là gợi ý, áp dụng ở trang Ngân sách',
+      'ket_qua': kh == null
+          ? 'không ngân sách nào cần cân đối'
+          : thieuNguon
+              ? 'thiếu nguồn bù'
+              : 'đủ nguồn bù',
+      if (kh != null) 'ghi_chu': 'chỉ là gợi ý, áp dụng ở trang Ngân sách',
     },
-    boLoc: [kChuChon['can_doi']!],
-    rongTheoBoLoc: kh == null,
+    boLoc: [if (kh != null) kChuChon['can_doi']!],
     doiTuongRong: 'ngân sách',
+    chiMauCau: kh == null,
   );
 }

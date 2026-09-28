@@ -7,6 +7,7 @@ library;
 
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/hang_muc_tieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -713,6 +714,60 @@ void main() {
     test('phản ví dụ: câu ngân sách khác vẫn không định tuyến', () {
       for (final cau in ['ngan sach nao sap het', 'ngan sach an uong con tieu duoc bao nhieu', 'thang sau toi nen dat ngan sach bao nhieu']) {
         expect(congCuTheoCauHoi(cau), isNull, reason: cau);
+      }
+    });
+  });
+
+  group('21. vòng sửa H1–H3 (cổng F lần 2)', () {
+    test('⭐ H3 E19: kỳ tương đối NÊU TRONG CÂU thắng ky của mô hình', () {
+      expect(chinh('Trong quy nay khoan chi nao lon nhat?', {'ky': 'thang_nay'})['ky'], 'quy_nay');
+      expect(chinh('nam nay toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'nam_nay');
+      expect(chinh('hom nay toi co giao dich nao khong', {'ky': 'tuan_nay'})['ky'], 'hom_nay');
+    });
+    test('⚠️ câu so sánh, kỳ cụ thể, kỳ tương lai KHÔNG bị luật này đè', () {
+      expect(chinh('thang nay chi nhieu hon hay it hon thang truoc', {'ky': 'thang_nay'})['so_voi'], 'ky_truoc');
+      expect(chinh('thang 8 nam nay toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'tuy_chon');
+      expect(chinh('thang truoc toi chi bao nhieu', {'ky': 'thang_truoc'})['ky'], 'thang_truoc',
+          reason: 'câu không có chữ "… này" thì giữ kỳ của mô hình');
+    });
+    test('⭐ H1: nhóm số của tool mục tiêu theo câu hỏi', () {
+      expect(nhomMucTieuTheoCauHoi('khi nao toi dat muc tieu muaxe'), kNhomMucTieuKhiNao);
+      expect(nhomMucTieuTheoCauHoi('Bao giờ tôi đạt mục tiêu MuaXe?'), kNhomMucTieuKhiNao);
+      expect(nhomMucTieuTheoCauHoi('moi thang toi can de danh bao nhieu cho muaxe'), kNhomMucTieuMoiKy);
+      expect(nhomMucTieuTheoCauHoi('muc tieu muaxe can tich moi tuan bao nhieu'), kNhomMucTieuMoiKy);
+      expect(nhomMucTieuTheoCauHoi('Muc tieu nao dang cham ke hoach?'), isNull);
+      expect(nhomMucTieuTheoCauHoi('ky trich tiep theo cua MuaDT la khi nao'), isNull,
+          reason: 'câu về TRÍCH có đường riêng (ket_qua) — "khi nao" ở đây hỏi kỳ trích, không hỏi ngày đạt');
+      expect(nhomMucTieuTheoCauHoi(''), isNull);
+    });
+    test('⭐ H2 B2: "cần để dành / cần tích bao nhiêu" → tool mục tiêu', () {
+      for (final c in [
+        'moi thang toi can de danh bao nhieu cho muaxe',
+        'Mỗi tháng tôi cần để dành bao nhiêu cho MuaXe?',
+        'toi can tich bao nhieu moi thang',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuMucTieu, reason: c);
+      }
+      expect(congCuTheoCauHoi('toi de danh duoc bao nhieu phan tram'), kTenCongCuTongQuan,
+          reason: 'F7: không có chữ "cần" — câu về tỉ lệ tiết kiệm');
+    });
+    test('⭐ H1: câu LIỆT KÊ — "những lần", "<số> khoản" → mẫu câu', () {
+      for (final c in [
+        'Nhung lan toi nap tien vao muc tieu MuaDT',
+        'thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao',
+        '5 khoan chi gan day nhat cua toi',
+        '3 giao dich moi nhat',
+      ]) {
+        expect(cauHoiLietKe(c), isTrue, reason: c);
+      }
+      for (final c in [
+        'thang nay toi chi bao nhieu',
+        'lan gan nhat toi chi cho di chuyen la ngay nao',
+        'tu 1/9 den 15/9 toi chi nhung gi',
+        'toi co bao nhieu khoan chi tren 500k',
+        '',
+      ]) {
+        expect(cauHoiLietKe(c), isFalse, reason: c);
       }
     });
   });

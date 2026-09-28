@@ -251,13 +251,20 @@ void main() {
       expect(r.json['Còn thiếu sau khi bù'], '600.000 đ');
     });
 
-    test('⭐ không kế hoạch (null) → rỗng theo bộ lọc, mẫu câu "Cần cân đối — không có ngân sách nào khớp."', () {
+    // H3 cổng F lần 2 (F15): câu cũ "Cần cân đối — không có ngân sách nào khớp." đọc như
+    // lỗi tìm kiếm. Không có kế hoạch là một CÂU TRẢ LỜI: không ngân sách nào cần cân đối.
+    test('⭐ không kế hoạch (null) → kết luận nói thẳng, chỉ mẫu câu', () {
       final r = hangCanDoiNganSach(null, soNganSach: 2);
       expect(r.hang, isEmpty);
-      expect(r.rongTheoBoLoc, isTrue);
+      expect(r.rongTheoBoLoc, isFalse);
+      expect(r.chiMauCau, isTrue);
       expect(r.json['Số ngân sách cần bù'], '0');
-      final cau = (GoiSoTraCuu()..them('danh_sach_ngan_sach', r)).mauCau().cau;
-      expect(cau, 'Cần cân đối — không có ngân sách nào khớp.');
+      expect(r.chuThem['ket_qua'], 'không ngân sách nào cần cân đối');
+      final g = GoiSoTraCuu()..them('danh_sach_ngan_sach', r);
+      final cau = g.mauCau().cau;
+      expect(cau, contains('không ngân sách nào cần cân đối'));
+      expect(cau, isNot(contains('khớp')));
+      expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
     });
 
     test('hangNganSach từ chối can_doi bằng ArgumentError — tool phải rẽ trước', () {

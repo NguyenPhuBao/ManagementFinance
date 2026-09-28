@@ -283,8 +283,12 @@ class CongCuTruyVan implements CongCu {
     }
     // Gắn kỳ tự do và phép so sánh vào kết quả đã dựng — một chỗ cho cả ba
     // nhánh (hàng lẻ, hàng nhóm, hàng đã chọn).
+    // H1 cổng F lần 2 (C11, C16, E6): câu LIỆT KÊ — mô hình đếm ("tìm thấy 3 giao
+    // dịch") hoặc kể một hàng thay vì kể đủ; mẫu câu in từng hàng kèm chiều và ngày.
+    final lietKe = gop == 'khong' && chon == null && cauHoiLietKe(cauHoi);
+    if (lietKe) log('[SLM][tool] câu hỏi liệt kê → mẫu câu');
     KetQuaCongCu hoanTat(KetQuaCongCu r) {
-      var x = r;
+      var x = lietKe ? r.boSung(chiMauCauThem: true) : r;
       if (tuyChon) {
         x = ganKyTuyChon(
           x,

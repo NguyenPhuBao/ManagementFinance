@@ -146,6 +146,7 @@ class KetQuaCongCu {
     List<SoLieu> tongHopThem = const [],
     Map<String, String> chuThemMoi = const {},
     List<String> tenLienQuanThem = const [],
+    bool chiMauCauThem = false,
   }) {
     if (loi != null) return this;
     return KetQuaCongCu(
@@ -157,7 +158,7 @@ class KetQuaCongCu {
       boLoc: [...boLocDau, ...boLoc, ...boLocCuoi],
       soLieuBoLoc: [...soLieuBoLoc, ...soLieuBoLocThem],
       doiTuongRong: doiTuongRong,
-      chiMauCau: chiMauCau,
+      chiMauCau: chiMauCau || chiMauCauThem,
     );
   }
 

@@ -67,6 +67,9 @@ class CongCuMucTieu implements CongCu {
     // G4 cổng F (F14): câu nêu tên một mục tiêu → chỉ mục tiêu ấy.
     final ten = tenNeuTrongCau(cauHoi, [for (final g in goals) g.name], tuLoai: 'mục tiêu');
     if (ten != null) log('[SLM][tool] câu hỏi nêu mục tiêu → chỉ "$ten"');
+    // H1 cổng F lần 2: câu hỏi một số đích → hàng chỉ mang nhóm số ấy, chỉ mẫu câu.
+    final nhom = nhomMucTieuTheoCauHoi(cauHoi);
+    if (nhom != null) log('[SLM][tool] câu hỏi về "$nhom" → chỉ nhóm số ấy, mẫu câu');
     Map<String, ViNguon>? viNguon;
     if (noiTrich && goals.any((g) => g.autoDepositEnabled)) {
       final ds = await vi.watchAll(idaccount).first;
@@ -84,6 +87,7 @@ class CongCuMucTieu implements CongCu {
       viNguon: viNguon,
       noiTrich: noiTrich,
       ten: ten,
+      nhomSo: nhom,
     );
   }
 }

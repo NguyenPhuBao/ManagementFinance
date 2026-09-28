@@ -52,6 +52,10 @@ void main() {
       'thoi tiet ngay mai the nao',
       'Kết quả xổ số hôm nay',
       'gia xang hom nay',
+      // H2 cổng F lần 2 (DC1): app không lưu lãi suất ở đâu — mô hình từng gọi tool mục
+      // tiêu rồi kể tiến độ MuaXe / MuaDT cho câu này.
+      'Lai suat tiet kiem cua toi la bao nhieu?',
+      'Lãi suất tiết kiệm của tôi là bao nhiêu?',
     ]) {
       test('chặn: "$c"', () => expect(chuDeBiChan(c), isTrue));
     }

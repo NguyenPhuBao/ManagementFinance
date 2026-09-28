@@ -53,6 +53,13 @@ const Map<String, String> kChuChonMucTieu = {
   'vi_khong_du': 'ví không đủ để trích',
 };
 
+/// Nhóm số theo CÂU HỎI (H1 cổng F lần 2): hàng chỉ mang số của câu đang hỏi và
+/// lượt là `chiMauCau`. Realme 2026-09-28: hàng đủ mười số thì mô hình đáp B1
+/// *"khi nào đạt"* bằng *"Bạn có thể đặt mục tiêu MuaXe khi…"* — không số nào
+/// sai nên sáu lớp chắn im. Mã do `nhomMucTieuTheoCauHoi` đọc từ câu hỏi.
+const String kNhomMucTieuKhiNao = 'khi_nao';
+const String kNhomMucTieuMoiKy = 'moi_ky';
+
 /// Ví nguồn của trích tự động — ví CÒN SỐNG (chưa xoá mềm); [trangThai] là khoá
 /// `WalletStatus` thô, để `viNguonChoTrich` tự đọc như bộ trích.
 typedef ViNguon = ({String ten, double soDu, String trangThai});
@@ -86,6 +93,7 @@ KetQuaCongCu hangMucTieu(
   Map<String, ViNguon>? viNguon,
   bool noiTrich = true,
   String? ten,
+  String? nhomSo,
 }) {
   if (chon != null && !kChonMucTieu.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChonMucTieu);
@@ -130,7 +138,7 @@ KetQuaCongCu hangMucTieu(
   return KetQuaCongCu(
     hang: [
       for (final g in khop.take(kToiDaMucMoiGoi))
-        _hang(g, now, vn, hienTrich: hienTrich),
+        _hang(g, now, vn, hienTrich: hienTrich, nhomSo: nhomSo),
     ],
     tongHop: [
       soDem('Đang theo đuổi', nhom.dangTheoDuoi.length),
@@ -151,6 +159,9 @@ KetQuaCongCu hangMucTieu(
     boLoc: [if (chon != null) kChuChonMucTieu[chon]!],
     rongTheoBoLoc: chon != null && khop.isEmpty,
     doiTuongRong: 'mục tiêu',
+    // Câu trả lời nằm ở MỘT số đích (nhóm) hay ở chữ kết luận (không bật trích):
+    // mẫu câu nói đúng thứ ấy, chữ mô hình thì không đáng tin (B1, F14 lần 2).
+    chiMauCau: khop.isNotEmpty && (nhomSo != null || khongBatTrich),
   );
 }
 
@@ -166,6 +177,7 @@ HangSoLieu _hang(
   DateTime now,
   Map<String, ViNguon>? viNguon, {
   required bool hienTrich,
+  String? nhomSo,
 }) {
   final ten = g.name;
   final ngay = g.daysLeft(now);
@@ -199,25 +211,29 @@ HangSoLieu _hang(
         trich == _Trich.khongDu ||
         trich == _Trich.khongChay,
     soLieu: [
-      soPhanTram('Tiến độ', g.progress * 100, ten: ten),
-      soTien('Đã tích', g.currentAmount, ten: ten),
-      soTien('Mục tiêu', g.targetAmount, ten: ten),
+      if (nhomSo == null) ...[
+        soPhanTram('Tiến độ', g.progress * 100, ten: ten),
+        soTien('Đã tích', g.currentAmount, ten: ten),
+        soTien('Mục tiêu', g.targetAmount, ten: ten),
+      ],
       soTien('Còn thiếu', g.remainingAmount, ten: ten),
       // Quá hạn thì "còn -3 ngày" không ai đọc; trạng thái đã nói thay.
-      if (!quaHan) soNgay('Còn', ngay, ten: ten),
-      if (duBao != null)
+      if (!quaHan && nhomSo != kNhomMucTieuMoiKy) soNgay('Còn', ngay, ten: ten),
+      if (duBao != null && nhomSo != kNhomMucTieuMoiKy)
         soNgay(
           'Theo nhịp hiện tại cần thêm',
           duBao.difference(now).inDays,
           ten: ten,
         ),
-      if (canTich != null) soTien('Cần tích mỗi $ky', canTich, ten: ten),
-      if (dangTich != null) soTien('Đang tích mỗi $ky', dangTich, ten: ten),
-      if (kyTrich != null)
+      if (canTich != null && nhomSo != kNhomMucTieuKhiNao)
+        soTien('Cần tích mỗi $ky', canTich, ten: ten),
+      if (dangTich != null && nhomSo != kNhomMucTieuKhiNao)
+        soTien('Đang tích mỗi $ky', dangTich, ten: ten),
+      if (kyTrich != null && nhomSo == null)
         soNgayThang('Kỳ trích tiếp', kyTrich, ten: ten, now: now),
-      if (hienTrich && g.autoDepositEnabled)
+      if (hienTrich && g.autoDepositEnabled && nhomSo == null)
         soTien('Trích mỗi $ky', g.autoDepositAmount!, ten: ten),
-      if (trich == _Trich.khongDu)
+      if (trich == _Trich.khongDu && nhomSo == null)
         soTien('Số dư ví nguồn', vi!.soDu, ten: ten),
     ],
   );

@@ -329,6 +329,48 @@ void main() {
     });
   });
 
+  group('H1 cổng F lần 2 — nhóm số theo câu hỏi, chỉ mẫu câu', () {
+    final hai = [_mt(), _mt(id: 'g2', ten: 'MuaDT', target: 3000000, current: 500000)];
+
+    test('⭐ B1 "khi nào đạt": chỉ Còn thiếu · Còn · cần thêm, và chiMauCau', () {
+      final r = hangMucTieu(hai, now: now, noiTrich: false, ten: 'MuaXe', nhomSo: kNhomMucTieuKhiNao);
+      expect(_so(r.hang.single).keys.toList(), ['Còn thiếu', 'Còn', 'Theo nhịp hiện tại cần thêm']);
+      expect(r.chiMauCau, isTrue,
+          reason: 'Realme 2026-09-28: mô hình có hàng đúng mà viết "Bạn có thể đặt mục tiêu MuaXe khi…" — '
+              'không số nào sai nên sáu lớp chắn im');
+      final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
+      final cau = g.mauCau().cau;
+      expect(cau, contains('cần thêm'));
+      expect(cau, isNot(contains('Tiến độ')));
+      expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
+    });
+
+    test('⭐ B2 "mỗi tháng cần để dành": chỉ Còn thiếu · Cần tích · Đang tích', () {
+      final r = hangMucTieu(hai, now: now, noiTrich: false, ten: 'MuaXe', nhomSo: kNhomMucTieuMoiKy);
+      expect(_so(r.hang.single).keys.toList(),
+          ['Còn thiếu', 'Cần tích mỗi tháng', 'Đang tích mỗi tháng']);
+      expect(r.chiMauCau, isTrue);
+      final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
+      expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+    });
+
+    test('⭐ F14: hỏi trích của mục tiêu KHÔNG bật trích → chiMauCau, mẫu câu nói thẳng', () {
+      final r = hangMucTieu(hai, now: now, viNguon: const {}, ten: 'MuaDT');
+      expect(r.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
+      expect(r.chiMauCau, isTrue,
+          reason: 'Realme 2026-09-28: mô hình bỏ qua ket_qua, đáp "cần thêm 115 ngày"');
+      final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
+      expect(g.mauCau().cau, contains('MuaDT không bật trích tự động'));
+      expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+    });
+
+    test('⚠️ không nhóm, không hỏi trích → đủ số và chữ mô hình vẫn được hiện', () {
+      final r = hangMucTieu(hai, now: now, noiTrich: false);
+      expect(r.chiMauCau, isFalse);
+      expect(_so(r.hang.first).containsKey('Tiến độ'), isTrue);
+    });
+  });
+
   test('mẫu câu của gói tra cứu chứa hàng này tự qua kiemSo và kiemNhan', () {
     final goi = GoiSoTraCuu()..them('danh_sach_muc_tieu', hangMucTieu([_mt()], now: now));
     final cau = goi.mauCau().cau;

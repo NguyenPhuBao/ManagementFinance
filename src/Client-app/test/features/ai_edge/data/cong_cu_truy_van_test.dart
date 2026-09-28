@@ -517,4 +517,20 @@ void main() {
     expect(kq.hang.map((h) => h.ten).toList(), ['Tích lũy mục tiêu: MuaXe'],
         reason: 'cổng F: mô hình bỏ tu_khoa, mẫu câu kể giao dịch mới nhất BẤT KỲ (Netflix)');
   });
+
+  test('⭐ H1 cổng F lần 2 — câu LIỆT KÊ ("những lần", "5 khoản") → chỉ mẫu câu; câu thường thì không', () async {
+    final gd = _GiaoDich(theoKhoang: (from, to) => [
+          TransactionEntity(
+            id: 'nap', walletId: 'w-cash', idaccount: 10, walletTransfer: 'w-save', amount: 100000,
+            type: 'transfer', note: 'Tích lũy mục tiêu: MuaDT', date: DateTime(2026, 9, 8), updatedAt: DateTime(2026, 9, 8),
+          ),
+        ]);
+    hoi(String cau) =>
+        CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao(), mucTieu: _MucTieu(), log: (_) {})
+            .chay({'ky': 'moi_luc'}, idaccount: 10, now: now, cauHoi: cau);
+    expect((await hoi('Nhung lan toi nap tien vao muc tieu MuaDT')).chiMauCau, isTrue,
+        reason: 'Realme 2026-09-28 (E6): mô hình chỉ đếm "tìm thấy 3 giao dịch", không kể');
+    expect((await hoi('5 khoan chi gan day nhat cua toi')).chiMauCau, isTrue);
+    expect((await hoi('thang nay toi chi bao nhieu')).chiMauCau, isFalse);
+  });
 }
