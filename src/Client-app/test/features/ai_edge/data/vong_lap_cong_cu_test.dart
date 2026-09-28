@@ -162,6 +162,96 @@ void main() {
     return (sk, goi, phien, rt);
   }
 
+  group('định tuyến theo CÂU HỎI ở tầng mã (mục 9.33: tool dự báo 0/3)', () {
+    KetQuaCongCu duBao() => KetQuaCongCu(
+          hang: const [],
+          tongHop: [soTien('Số dư hiện tại', 300000), soTien('Còn tiêu được', 150000)],
+          chuThem: const {'tinh_trang': 'đủ trả mọi cam kết'},
+        );
+    late _CongCuGia toolDuBao;
+
+    Future<(List<SuKienGac>, GoiSoTraCuu, PhienCongCuGia)> hoi(
+        String cauHoi, List<List<SuKienLuot>> kichBan) async {
+      toolDuBao = _CongCuGia(kTenCongCuDuBao, duBao());
+      final phien = PhienCongCuGia(kichBan);
+      final goi = GoiSoTraCuu();
+      final sk = await hoiBangCongCu(
+        cauHoi,
+        runtime: _RuntimeGia(phien),
+        boCongCu: BoCongCu([tool, toolDuBao]),
+        goi: goi, idaccount: 10, now: now, log: log.add,
+      ).toList();
+      return (sk, goi, phien);
+    }
+
+    test('⭐ L6: mô hình gọi tool hoá đơn cho "trả hết hoá đơn thì còn bao nhiêu" → chạy tool DỰ BÁO', () async {
+      final (sk, goi, phien) = await hoi('tra het hoa don thi con bao nhieu', [
+        [goiHoaDon],
+        [const Chu('Bạn còn tiêu được 150.000 đ.')],
+      ]);
+      expect(tool.argsDaNhan, isEmpty, reason: 'tool mô hình chọn KHÔNG chạy');
+      expect(toolDuBao.argsDaNhan, [<String, dynamic>{}], reason: 'tool dự báo không tham số');
+      expect(goi.tenCongCuDaChay, [kTenCongCuDuBao]);
+      expect(phien.ketQuaDaNhan.single.$1, kTenCongCuHoaDon,
+          reason: 'phiên chờ kết quả của ĐÚNG lời gọi nó đã phát');
+      expect(phien.ketQuaDaNhan.single.$2['Còn tiêu được'], '150.000 đ');
+      expect(sk.first, const DangTraCuu(kTenCongCuDuBao), reason: 'dòng chỉ báo nói tool THẬT chạy');
+      expect(sk.last, const CauQua('Bạn còn tiêu được 150.000 đ.'));
+      expect(log.any((l) => l.contains('định tuyến')), isTrue);
+    });
+
+    test('mô hình gọi đúng tool dự báo → chạy bình thường, không log định tuyến', () async {
+      final (_, goi, _) = await hoi('tra het hoa don thi con bao nhieu', [
+        [const GoiCongCu(kTenCongCuDuBao, {})],
+        [const Chu('Bạn còn tiêu được 150.000 đ.')],
+      ]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuDuBao]);
+      expect(log.any((l) => l.contains('định tuyến')), isFalse);
+    });
+
+    test('chỉ đổi lời gọi ĐẦU: tool dự báo đã chạy thì lời gọi sau chạy đúng tool mô hình chọn', () async {
+      final (_, goi, _) = await hoi('tra het hoa don thi con bao nhieu', [
+        [goiHoaDon],
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn 45.000 đ.')],
+      ]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuDuBao, kTenCongCuHoaDon]);
+    });
+
+    test('⭐ mô hình KHÔNG gọi tool nào mà câu hỏi có đích → tự chạy tool ấy, hiện MẪU CÂU, không rơi bậc 1', () async {
+      final (sk, goi, _) = await hoi('toi con tieu duoc bao nhieu', [
+        [const Chu('Bạn còn nhiều tiền.')],
+      ]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuDuBao]);
+      expect(sk.whereType<KhongTraCuu>(), isEmpty);
+      expect(sk.last, CauQua(goi.mauCau().cau));
+      expect((sk.last as CauQua).cau, contains('150.000 đ'));
+      expect(sk.whereType<CauQua>().any((c) => c.cau.contains('nhiều tiền')), isFalse,
+          reason: 'chữ viết trước khi có dữ liệu không bao giờ hiện (chốt L1)');
+    });
+
+    test('câu hỏi không có đích → y như cũ', () async {
+      final (_, goi, _) = await hoi('Hoa don nao qua han?', [
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn 45.000 đ.')],
+      ]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuHoaDon]);
+      expect(toolDuBao.argsDaNhan, isEmpty);
+    });
+
+    test('bộ tool không có tool đích (test cũ, bộ một tool) → không đổi gì', () async {
+      final phien = PhienCongCuGia([
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn 45.000 đ.')],
+      ]);
+      final goi = GoiSoTraCuu();
+      await hoiBangCongCu('tra het hoa don thi con bao nhieu',
+          runtime: _RuntimeGia(phien), boCongCu: bo, goi: goi, idaccount: 10, now: now,
+          log: log.add).toList();
+      expect(goi.tenCongCuDaChay, [kTenCongCuHoaDon]);
+    });
+  });
+
   test('⭐ gọi tool → hàng vào gói, JSON về phiên, câu cuối kiểm trên gói và hiện', () async {
     final (sk, goi, phien, rt) = await chay([
       [goiHoaDon],

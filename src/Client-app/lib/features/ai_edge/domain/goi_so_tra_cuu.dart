@@ -243,8 +243,23 @@ class GoiSoTraCuu extends GoiSo {
             '${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}',
       for (final s in kq.tongHop) '${s.nhan}: ${s.chuoi}',
     ];
-    return '${tienTo.isEmpty ? '' : '$tienTo — '}${ve.join('; ')}.';
+    final ketLuan = _ketLuan(kq);
+    return '${tienTo.isEmpty ? '' : '$tienTo — '}${ve.join('; ')}'
+        '${ketLuan.isEmpty ? '' : ' — $ketLuan'}.';
   }
+
+  /// Chữ KẾT LUẬN tool đã rút sẵn (hướng so sánh, tình trạng dự báo) — mẫu câu
+  /// nói ra, vì các con số một mình không trả lời câu *"nhiều hơn hay ít hơn"*,
+  /// *"có đủ không"* (mục 9.33, L1: mẫu câu in *"Tổng chi tháng trước: 0 đ"* mà
+  /// không nói *"không có dữ liệu tháng trước"*). Chỉ khoá kết luận — `ky`,
+  /// `sap_xep` là chữ của bộ lọc, tiền tố đã nêu.
+  static String _ketLuan(KetQuaCongCu kq) => [
+        for (final e in kq.chuThem.entries)
+          if (e.key.startsWith('so_sanh_') ||
+              e.key == 'tinh_trang' ||
+              e.key == 'ket_qua')
+            e.value,
+      ].join(', ');
 
   static List<String> _kyCua(KetQuaCongCu kq) =>
       [if (_chuKyInDuoc(kq) != null) _chuKyInDuoc(kq)!];

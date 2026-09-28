@@ -41,6 +41,7 @@
 library;
 
 import '../../../core/category/category_name.dart';
+import 'cong_cu.dart';
 import 'ma_ky.dart';
 
 class KetQuaChinhThamSo {
@@ -263,8 +264,16 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['sap_xep'] = 'moi_nhat';
     ghi.add('câu hỏi "gần nhất / lần cuối" → sap_xep=moi_nhat');
   }
+  // 14. Kỳ CHƯA TỚI (L7 mục 9.33): "30 ngày tới" từng bị đọc là không nêu kỳ →
+  // moi_luc → tool liệt kê khoản đã qua. Sổ giao dịch chỉ có quá khứ: tool từ chối.
+  final tuongLai = kyTuDo == null && soSanh == null && _laKyTuongLai(cauHoi, q);
+  if (tuongLai) {
+    a['ky'] = kMaKyTuongLai;
+    ghi.add('câu hỏi nêu kỳ chưa tới → ky=$kMaKyTuongLai');
+  }
   if (kyTuDo == null &&
       soSanh == null &&
+      !tuongLai &&
       !_tuKy.any((t) => _co(q, t)) &&
       a['ky'] != 'moi_luc') {
     a['ky'] = 'moi_luc';
@@ -323,6 +332,56 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     chuKy: kyTuDo?.chu,
     tenKy: kyTuDo?.ten ?? const [],
   );
+}
+
+/// Kỳ chưa tới, đọc trên câu CÓ DẤU khi câu có dấu: bỏ dấu thì *"tới"* và
+/// *"tôi"* thành một chữ (*"tháng này tôi chi"*).
+final RegExp _mauTuongLaiCoDau = RegExp(
+  r'(?<![\p{L}\p{N}])(?:\d+\s+(?:ngày|tuần|tháng|năm)\s+(?:tới|sắp tới|nữa)'
+  r'|(?:ngày|tuần|tháng|quý|năm)\s+(?:sau|tới|sắp tới)'
+  r'|sắp tới|ngày mai)(?![\p{L}\p{N}])',
+  unicode: true,
+);
+
+/// Bản KHÔNG DẤU (câu gõ không dấu): *"toi"* chỉ được đọc là *"tới"* khi đứng
+/// sau một con số + đơn vị, hoặc khi ngay sau nó là *"toi / phai / can / se"* hay
+/// hết câu — *"thang toi chi"* để yên.
+final RegExp _mauTuongLaiKhongDau = RegExp(
+  r'(?<![a-z0-9])(?:\d+ (?:ngay|tuan|thang|nam) (?:toi|sap toi|nua)'
+  r'|(?:ngay|tuan|thang|quy|nam) sau'
+  r'|(?:tuan|thang|quy|nam) toi(?= toi| phai| can| se|$)'
+  r'|sap toi|ngay mai)(?![a-z0-9])',
+);
+
+final RegExp _coDau = RegExp(r'[^\x00-\x7F]');
+
+bool _laKyTuongLai(String cauHoiGoc, String q) => _coDau.hasMatch(cauHoiGoc)
+    ? _mauTuongLaiCoDau.hasMatch(normalizeCategoryName(cauHoiGoc))
+    : _mauTuongLaiKhongDau.hasMatch(q);
+
+/// ĐỊNH TUYẾN theo câu hỏi (mục 9.33 `AI_EDGE_FEATURE.md`): tên tool mà câu hỏi
+/// đòi, hoặc `null` khi câu hỏi không nói rõ — khi ấy tool mô hình chọn được
+/// giữ nguyên. Mở rộng nguyên tắc *"câu hỏi là nguồn sự thật"* từ THAM SỐ sang
+/// TÊN TOOL: lượt đo lát 1 mô hình không gọi `du_bao_dong_tien` lần nào (0/3) dù
+/// lời hệ thống có ví dụ — nó chọn tool mang đúng chữ của câu (*ví*, *hoá đơn*).
+///
+/// ⚠️ Mỗi cụm là một dương tính giả tiềm tàng, nên danh sách NGẮN và có phản ví
+/// dụ trong test: câu nhắc *ngân sách* hay *mục tiêu … còn thiếu* không phải câu
+/// dự báo (*"ngân sách ăn uống còn tiêu được bao nhiêu"* thuộc tool ngân sách).
+final List<RegExp> _mauDuBao = [
+  RegExp(r'(?<![a-z0-9])con (?:duoc )?tieu duoc(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:co )?du (?:tien )?(?:de )?(?:tra|trich|thanh toan)(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:tra|thanh toan) (?:het|xong)\b.*\bcon(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])\d+ (?:ngay|tuan|thang) (?:toi|sap toi|nua)\b.*\b(?:phai|can|se) (?:tra|chi|dong)(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])sap (?:toi )?(?:toi )?(?:phai|can) (?:tra|chi|dong)(?![a-z0-9])'),
+];
+
+String? congCuTheoCauHoi(String cauHoi) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return null;
+  if (_co(q, 'ngan sach')) return null;
+  if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
+  return null;
 }
 
 String _ddmmyyyy(DateTime d) =>

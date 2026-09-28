@@ -179,6 +179,7 @@ class CongCuTruyVan implements CongCu {
     }
     final a = chinh.args;
     final maKy = a['ky']?.toString().trim() ?? '';
+    if (maKy == kMaKyTuongLai) return tuChoiKyTuongLai();
     final tuyChon = maKy == kMaKyTuyChon;
     if (tuyChon && khoangTuThamSo(a['tu_ngay'], a['den_ngay']) == null) {
       return tuChoiKhoangNgay(a['tu_ngay'], a['den_ngay']);

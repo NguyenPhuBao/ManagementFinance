@@ -475,4 +475,13 @@ void main() {
       expect(kq.json.containsKey('Tổng chi tháng trước'), isFalse);
     });
   });
+
+  test('⭐ kỳ tương lai → TỪ CHỐI, không đọc dữ liệu, không liệt kê khoản đã qua (L7 mục 9.33)', () async {
+    final kq = await cc.chay({'ky': 'thang_nay'},
+        idaccount: 10, now: now, cauHoi: 'thang sau toi chi bao nhieu');
+    expect(kq.loi, contains('du_bao_dong_tien'));
+    expect(kq.choNguoiDung, 'kỳ trong câu hỏi chưa tới nên chưa có giao dịch');
+    expect(kq.thamSoGo, ['ky']);
+    expect(giaoDich.khoangDaHoi, isEmpty);
+  });
 }

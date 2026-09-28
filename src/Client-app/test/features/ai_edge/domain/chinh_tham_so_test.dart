@@ -403,4 +403,54 @@ void main() {
       expect(r['ky'], 'thang_truoc');
     });
   });
+
+  group('13. định tuyến theo câu hỏi — congCuTheoCauHoi (mục 9.33, L5–L7)', () {
+    test('⭐ ba câu đích của lát 1 → du_bao_dong_tien', () {
+      for (final cau in [
+        'tien trong vi co du tra hoa don khong',
+        'tra het hoa don thi con bao nhieu',
+        '30 ngay toi toi phai chi gi',
+        'Tiền trong ví có đủ trả hoá đơn không?',
+        'Trả hết hoá đơn thì còn bao nhiêu?',
+        'toi con tieu duoc bao nhieu',
+        'sap toi toi phai tra nhung gi',
+        'vi co du tien trich cho muc tieu khong',
+      ]) {
+        expect(congCuTheoCauHoi(cau), 'du_bao_dong_tien', reason: cau);
+      }
+    });
+    test('⚠️ phản ví dụ: câu về quá khứ, về ngân sách, về hoá đơn nói chung KHÔNG bị đổi tool', () {
+      for (final cau in [
+        'thang nay toi chi bao nhieu',
+        'hoa don nao qua han',
+        'vi nao dang am',
+        'ngan sach an uong con tieu duoc bao nhieu',
+        'toi da tra hoa don nao',
+        '30 ngay qua toi chi gi',
+        'muc tieu muaxe con thieu bao nhieu',
+        '',
+      ]) {
+        expect(congCuTheoCauHoi(cau), isNull, reason: cau);
+      }
+    });
+  });
+
+  group('14. kỳ TƯƠNG LAI không phải "không nêu kỳ" (L7)', () {
+    test('⭐ "30 ngay toi", "thang sau", "tuần tới" → ky=ky_tuong_lai, KHÔNG moi_luc', () {
+      for (final cau in [
+        '30 ngay toi toi chi gi',
+        'thang sau toi chi bao nhieu',
+        'Tuần tới tôi chi những gì',
+        '2 tuan nua toi chi gi',
+      ]) {
+        expect(chinh(cau, {'ky': 'thang_nay'})['ky'], 'ky_tuong_lai', reason: cau);
+      }
+    });
+    test('⚠️ "toi" bỏ dấu là TÔI: "thang nay toi chi", "thang 8 toi chi" không phải tương lai', () {
+      expect(chinh('thang nay toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'thang_nay');
+      expect(chinh('thang 8 toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'tuy_chon');
+      expect(chinh('Tháng này tôi chi bao nhiêu', {'ky': 'thang_nay'})['ky'], 'thang_nay');
+      expect(chinh('lan gan nhat toi chi an uong', {'ky': 'thang_nay'})['ky'], 'moi_luc');
+    });
+  });
 }

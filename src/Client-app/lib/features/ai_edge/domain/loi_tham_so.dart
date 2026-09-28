@@ -59,6 +59,16 @@ KetQuaCongCu tuChoiKhoangNgay(Object? tu, Object? den) => KetQuaCongCu.loi(
       thamSoGo: const ['tu_ngay', 'den_ngay'],
     );
 
+/// Câu hỏi nêu một kỳ CHƯA TỚI (mục 9.33, L7): sổ giao dịch chỉ có quá khứ.
+/// Trước đó bộ chỉnh đọc *"30 ngày tới"* là "không nêu kỳ" và tool liệt kê khoản
+/// đã qua — trả lời một câu hỏi khác.
+KetQuaCongCu tuChoiKyTuongLai() => const KetQuaCongCu.loi(
+      'Kỳ trong câu hỏi chưa tới nên chưa có giao dịch. Hỏi khoản sắp phải trả thì '
+      'gọi du_bao_dong_tien.',
+      choNguoiDung: 'kỳ trong câu hỏi chưa tới nên chưa có giao dịch',
+      thamSoGo: ['ky'],
+    );
+
 /// `so_voi` đi với `ky=moi_luc`: mọi thời gian không có kỳ trước để so.
 KetQuaCongCu tuChoiSoSanhThieuKy() => const KetQuaCongCu.loi(
       'so_voi cần ky là một kỳ cụ thể (thang_nay, tuan_nay, tuy_chon…), không '

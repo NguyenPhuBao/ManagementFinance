@@ -58,6 +58,12 @@ Ky? kyTuMa(String ma, DateTime now) {
   };
 }
 
+/// Mã kỳ bộ chỉnh tham số đặt khi câu hỏi nêu một kỳ CHƯA TỚI (*"30 ngày tới"*,
+/// *"tháng sau"*) — mục 9.33 `AI_EDGE_FEATURE.md`, câu L7. KHÔNG khai cho mô
+/// hình và không nằm trong [kMaKy]: tool giao dịch từ chối nó, vì sổ giao dịch
+/// chỉ có quá khứ; câu về khoản sắp phải trả thuộc `du_bao_dong_tien`.
+const String kMaKyTuongLai = 'ky_tuong_lai';
+
 /// Mã kỳ của KHOẢNG NÊU CỤ THỂ (spec mở rộng tool 2026-09-27 §3.1): hai mốc đi
 /// ở `tu_ngay` / `den_ngay`. ⚠️ KHÔNG thêm vào [kMaKy] — `kyTuMa` không dựng
 /// được nó từ mỗi cái mã, và chữ kỳ của nó mang chữ số nên đi `boLoc`.
