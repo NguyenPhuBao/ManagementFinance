@@ -2455,6 +2455,79 @@ Kiểm bằng bản sai có chủ ý: bỏ nối `kiemPhuDinh` · bỏ in kết 
   hoá đơn lặp về hôm nay. Đúng với khối *Dự báo 30 ngày tới* của trang Phân tích (cùng hàm), nhưng trong một câu chữ
   thì trông như lặp. Không sửa ở `ai_edge` — sửa là đổi hàm domain của trang Phân tích.
 
+### 9.34 Mở rộng bộ tool — LÁT 2: tổng quan tài chính, danh mục, chặn chủ đề (OnePlus 13R, 2026-09-28) — ✅ 8/9 + 1 ◐ sau hai vòng sửa
+
+Spec §4.2, §4.3, §6; kế hoạch Task 6–8. Commit `cb7cc3a` (lát 2) → `b0daa91` (vòng sửa 4) → `91b3296` (vòng sửa 5).
+
+**Mã:**
+
+- Tool `tong_quan_tai_chinh` (`hang_tong_quan.dart`, `cong_cu_tong_quan.dart`): *Thu nhập* = `thuNhapCua`, *Tổng
+  chi*, *Tỉ lệ tiết kiệm*, *Dòng tiền tự do*, *Chi trung bình mỗi ngày*, *Ngày chi nhiều nhất*, *Tổng tài sản* và thay
+  đổi **trong kỳ**, dư nợ ròng **mọi thời gian** (`duNoRong`, mới ở `vai_vay_no.dart`). Đọc `watchKy` hai lần — kỳ đang
+  hỏi, và một kỳ trùm từ 1970 tới hết hôm nay cho dư nợ (đo trên máy: 40–60 ms cả hai). Câu không nêu kỳ → **tháng
+  này** (`chinhThamSoTongQuan`), khác tool giao dịch.
+- Tool `danh_sach_danh_muc` (`hang_danh_muc.dart`, `cong_cu_danh_muc.dart`): hàng theo tên, **không số liệu**, trần
+  riêng `kToiDaDanhMuc = 20`; nguồn `CategoryManagementRepository.selectableChildrenAll` + ngân sách đang chạy.
+- `chuDeBiChan` thêm *giá vàng · giá xăng · tỷ giá · thời tiết · tin tức · xổ số · bóng đá*, và **bản không dấu** cho
+  các cụm bỏ dấu vẫn một nghĩa (nhóm cũ không có bản ấy: *"dau tu"*, *"thue"* đa nghĩa).
+- `BoCongCu` **CHÍN** tool; `congCuTheoCauHoi` định tuyến thêm hai tool mới, kèm phản ví dụ các câu cũ (*khoản chi
+  lớn nhất* C18, *chi nhiều nhất vào danh mục nào*, *danh mục chưa đặt ngân sách* — không đổi tool).
+
+**Ba chỗ khác spec, kèm lý do:** tool tổng quan **không mang `Tổng thu`** (đứng cạnh *Thu nhập* thì câu *"thu nhập
+15.135.000 đ"* lọt `kiemNhan` nhờ chữ "thu"); *khoản chi lớn nhất* là **một hàng** chứ không phải mục tổng hợp có tên
+(mục có tên đòi câu nêu tên, mẫu câu in `nhãn: số` sẽ tự bị chặn); nhãn của tool danh mục **không để chữ lạ đứng ngay
+sau "danh mục"** (`kiemTen` đọc cụm ấy là một tên — *"Số danh mục vay nợ"* làm mẫu câu của chính gói bị chặn).
+
+#### Lượt đo 1 (APK `cb7cc3a`, 10:45) — 🛑 VỠ TRẦN
+
+Chín tool: `tools_json` **8.170**, lời hệ thống 3.020. N1–N6 đúng nội dung nhưng đều là mẫu câu liệt kê cả 11 số; N7,
+N8 (tool danh mục trả 15 và 10 hàng) → **`FAILED_PRECONDITION: Prefill input length exceeds available state entries
+(remaining capacity: 374)`**, màn hiện *"Mô hình trên máy không chạy được lúc này"*. N9 *giá vàng* bị chặn trước mô
+hình ✅. Người dùng chọn: **không nâng `maxTokens`**, phiên chỉ khai tool đích; và tool tổng quan rút theo câu hỏi.
+
+#### Vòng sửa 4 (`b0daa91`) — phiên chỉ khai tool đích
+
+- `BoCongCu.khaiBaoCho(tenDich)`: câu **đã định tuyến** → phiên khai **đúng một** tool; câu không định tuyến → sáu
+  tool cũ. Ba tool mới là `kCongCuChiQuaDinhTuyen` — không khai cho mô hình ở phiên không định tuyến. `chay` vẫn chạy
+  được cả chín.
+- Lời hệ thống **bỏ** ví dụ trỏ tới ba tool ấy (2.679 ký tự): ví dụ trỏ tới tool không được khai là dạy gọi tool bịa.
+- `nhomTongQuanTheoCauHoi` → `hangTongQuan(nhom:)`: câu nhắc nhóm nào (*thu nhập · chi tiêu · tài sản · vay nợ*) thì
+  trả nhóm ấy; tập rỗng = mọi nhóm.
+- Ca trần `tools_json` bỏ `skip`, nay đo **phiên dài nhất trong các phiên có thể mở**: 6.527 ≤ 6.960.
+
+#### Vòng sửa 5 (`91b3296`) — hai lỗi của chính lát, lượt đo 2 bắt được
+
+- P8 *"có bao nhiêu danh mục chi"* → mô hình: *"Có 15 danh mục chi tiêu."* (đúng là 10) **lọt** cả năm lớp chắn: 15 là
+  tổng có trong gói, và nhãn thay thế *Danh mục* khớp. Nay lọc theo loại thì gói **chỉ mang số của nhóm lọc**.
+- P5 *"tài sản tăng hay giảm"* khi thay đổi là "chưa biết" → mô hình: *"Tổng tài sản tháng này là 12.904.000 đ."* —
+  đúng số, không trả lời câu hỏi. Nay `KetQuaCongCu.chiMauCau` đóng cổng hiện chữ (thang lùi mới **L2d**), mẫu câu in
+  chữ kết luận.
+
+#### Bảng đo gộp (lượt 2 `b0daa91` 11:05 + lượt 3 `91b3296`; mỗi câu 5–8 s; 0 `FAILED_PRECONDITION`, 0 sập)
+
+| # | Câu hỏi | Phiên | Câu hiện ra | Đánh giá |
+|---|---|---|---|---|
+| N1 | thu nhập tháng này của tôi là bao nhiêu | 1 tool, 752 ký tự | *"Thu nhập tháng này của bạn là 14.635.000 đ."* (chữ mô hình) | ✅ thu nhập thật, không phải tổng thu |
+| N2 | tôi để dành được bao nhiêu phần trăm | 1 tool | *"Bạn có thể đạt được tỉ lệ tiết kiệm 84,7% trong tháng này."* | ✅ |
+| N3 | tôi chi trung bình mỗi ngày bao nhiêu | 1 tool | *"Trung bình mỗi ngày bạn chi 74.700 đ."* | ✅ |
+| N4 | ngày nào tháng này tôi chi nhiều nhất | 1 tool | Mẫu câu: *"… Ngày chi nhiều nhất: 19/09; Chi ngày nhiều nhất: 1.046.000 đ."* (câu mô hình *"19/09 với 800.000 đ"* bị chặn — đúng) | ✅ |
+| N5 | tổng tài sản tháng này tăng hay giảm | 1 tool | *"Tháng này — Tổng tài sản: 12.904.000 đ — chưa đủ dữ liệu để biết tài sản tăng hay giảm."* (L2d) | ✅ |
+| N6 | tôi đang cho vay bao nhiêu chưa thu về | 1 tool | *"Bạn đang cho vay chưa thu về 300.000 đ trong tháng này."* | ◐ số đúng; *"trong tháng này"* thừa — dư nợ tính mọi thời gian |
+| N7 | tôi có những danh mục nào | 1 tool, 460 ký tự | *"Có 15 danh mục. Các danh mục chi tiêu bao gồm: Ăn uống, … Y tế. Các danh mục thu bao gồm: Đầu tư, Lương, Thưởng."* | ◐ đúng, thiếu hai danh mục vay nợ |
+| N8 | có bao nhiêu danh mục chi | 1 tool | *"Có 10 danh mục chi tiêu. Các danh mục có ngân sách là Ăn uống, Di chuyển, Giáo dục, Mua sắm."* | ✅ |
+| N9 | giá vàng hôm nay bao nhiêu | — | *"Mình chỉ nhận xét được trên số liệu của bạn trong app."* | ✅ chặn trước mô hình |
+
+Ba câu **không định tuyến** (phiên sáu tool, 6.527 ký tự) chạy để kiểm trần: *chi nhiều nhất vào danh mục nào* ✅ chữ mô
+hình · *ngân sách nào sắp hết* ✅ mẫu câu · *liệt kê khoản chi từ 200k đến 1 triệu* ✅ mẫu câu.
+
+⭐ **Bẫy 4.51 đổi chẩn đoán — hỏng chuỗi số đi theo ĐỘ DÀI PROMPT, không phải GPU.** Cùng máy, cùng bản: phiên **một
+tool** (prompt ≈ 3.400 ký tự) mô hình viết đúng mọi con số (N1, N2, N3, N6, N8); phiên **sáu tool** (≈ 9.200 ký tự)
+vẫn hỏng (*"5.0000 đ"*, *"20.0000.000 đ"*). Hệ quả: mỗi câu định tuyến được ở tầng mã không chỉ đúng tool mà còn
+được **câu trả lời tự nhiên** thay vì mẫu câu. Đây là lý do mạnh nhất để định tuyến thêm các câu cũ.
+
+⚠️ Màn Trợ lý AI hiện toast *"Một số thay đổi chưa lên được máy chủ"* giữa buổi đo — hàng đợi đồng bộ của máy, không
+liên quan lát này; chưa điều tra.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

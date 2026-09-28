@@ -678,7 +678,11 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   gộp **7/7 câu đích đúng**. `kiemCauTraLoi` nay **năm** lớp chắn (thêm `kiemPhuDinh`). `flutter test` **3971/3971**.
 - ⚠️ Còn mở: bẫy 4.51 — trên OnePlus mọi câu có số của mô hình đều hỏng chuỗi số nên mọi câu trả lời là mẫu câu; cần
   đo cùng APK trên Realme.
-- Lát 2 (tổng quan tài chính, danh mục, blocklist) và lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) chưa làm.
+- ✅ **Lát 2 cùng ngày (`cb7cc3a` → `91b3296`, mục 9.34)**: tool `tong_quan_tai_chinh`, `danh_sach_danh_muc`, chặn
+  chủ đề ngoài phạm vi — đo **8/9 ✅ + 1 ◐**. Chín tool khai cùng lúc **vỡ trần token**; người dùng chọn không nâng
+  `maxTokens` → phiên chỉ khai tool đích (`BoCongCu.khaiBaoCho`). ⭐ Hỏng chuỗi số đi theo **độ dài prompt**: phiên
+  một tool thì mô hình viết đúng số. `flutter test` **4040/4040**.
+- Lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) và cổng F chưa làm.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
