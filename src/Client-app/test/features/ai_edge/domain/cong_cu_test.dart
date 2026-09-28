@@ -48,6 +48,7 @@ void main() {
     expect(cauDangTraCuu(kTenCongCuMucTieu), 'Đang tra cứu mục tiêu…');
     expect(cauDangTraCuu(kTenCongCuGoiYHanMuc), 'Đang tính gợi ý hạn mức…');
     expect(cauDangTraCuu(kTenCongCuTruyVan), 'Đang tra cứu giao dịch…');
+    expect(cauDangTraCuu(kTenCongCuDuBao), 'Đang dự báo dòng tiền…');
     expect(cauDangTraCuu('bay_gio_may_gio'), 'Đang tra cứu…',
         reason: 'mô hình bịa tên tool thì dòng chỉ báo không được vỡ');
   });

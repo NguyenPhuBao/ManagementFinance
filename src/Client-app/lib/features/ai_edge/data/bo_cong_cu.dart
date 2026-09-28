@@ -3,6 +3,7 @@
 /// kèm danh sách tên thật, không `them` vào gói.
 library;
 
+import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/data/bao_cao_repository.dart';
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
@@ -11,6 +12,7 @@ import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../domain/cong_cu.dart';
 import '../domain/hang_so_lieu.dart';
+import 'cong_cu_du_bao.dart';
 import 'cong_cu_goi_y_han_muc.dart';
 import 'cong_cu_hoa_don.dart';
 import 'cong_cu_muc_tieu.dart';
@@ -27,7 +29,8 @@ class BoCongCu {
   /// 4b còn lại và hai tool bước 2. Trước đó
   /// (bốn tool 4b rồi ba tool bước 2) `tim_giao_dich` đứng cuối với chín tham số,
   /// và sáu câu có điều kiện đều rơi vào tool một tham số đứng trước nó — bốn lần
-  /// đo liền (5–8).
+  /// đo liền (5–8). Tool của spec mở rộng (2026-09-27) nối vào CUỐI — thứ tự sáu
+  /// tool đã đo không đổi.
   factory BoCongCu.macDinh({
     required BudgetRepository nganSach,
     required WalletRepository vi,
@@ -35,6 +38,7 @@ class BoCongCu {
     required GoalRepository mucTieu,
     required TransactionRepository giaoDich,
     required BaoCaoRepository baoCao,
+    required AnalyticsRepository phanTich,
   }) =>
       BoCongCu([
         CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
@@ -43,6 +47,7 @@ class BoCongCu {
         CongCuVi(vi),
         CongCuMucTieu(mucTieu),
         CongCuGoiYHanMuc(nganSach),
+        CongCuDuBao(phanTich),
       ]);
 
   List<KhaiBaoCongCu> get khaiBao => [for (final c in cacCongCu) c.khaiBao];

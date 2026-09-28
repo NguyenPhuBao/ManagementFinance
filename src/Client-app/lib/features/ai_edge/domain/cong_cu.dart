@@ -18,6 +18,10 @@ const String kTenCongCuVi = 'danh_sach_vi';
 const String kTenCongCuMucTieu = 'danh_sach_muc_tieu';
 const String kTenCongCuGoiYHanMuc = 'goi_y_han_muc';
 
+/// Lát 1 của spec mở rộng tool (2026-09-27 §4.1): con số ĐÃ TRỪ cam kết — câu
+/// 16–17 chặng 3 đòi phép trừ mà mô hình không được làm.
+const String kTenCongCuDuBao = 'du_bao_dong_tien';
+
 /// Thay `tim_giao_dich` + `tong_ket_thu_chi_ky` từ 2026-09-27 (spec tool truy vấn
 /// tổng quát): hai tool trên cùng một sổ giao dịch là chỗ mô hình chọn nhầm
 /// nhiều nhất (E5, C13, sáu câu có điều kiện ở lần đo 4–8). Lịch sử tên:
@@ -85,5 +89,6 @@ String cauDangTraCuu(String tenCongCu) => switch (tenCongCu) {
       kTenCongCuMucTieu => 'Đang tra cứu mục tiêu…',
       kTenCongCuGoiYHanMuc => 'Đang tính gợi ý hạn mức…',
       kTenCongCuTruyVan => 'Đang tra cứu giao dịch…',
+      kTenCongCuDuBao => 'Đang dự báo dòng tiền…',
       _ => 'Đang tra cứu…',
     };

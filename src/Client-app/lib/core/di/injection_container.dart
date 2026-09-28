@@ -532,8 +532,9 @@ Future<void> setupDependencies() async {
     ),
   );
 
-  // Bộ tool của bậc tool: bảy tool ĐỌC (bốn của chặng 4b + ba của bước 2),
-  // lazy như `NguonGoiSo` — chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
+  // Bộ tool của bậc tool — mọi tool đều ĐỌC, không tool ghi (bất biến ④). Lazy
+  // như `NguonGoiSo`: chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Danh sách tool và
+  // thứ tự của chúng nằm ở `BoCongCu.macDinh`, không chép lại ở đây.
   sl.registerLazySingleton<BoCongCu>(
     () => BoCongCu.macDinh(
       nganSach: sl<BudgetRepository>(),
@@ -542,6 +543,7 @@ Future<void> setupDependencies() async {
       mucTieu: sl<GoalRepository>(),
       giaoDich: sl<TransactionRepository>(),
       baoCao: sl<BaoCaoRepository>(),
+      phanTich: sl<AnalyticsRepository>(),
     ),
   );
 

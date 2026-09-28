@@ -8,6 +8,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -96,6 +97,11 @@ class _BaoCao implements BaoCaoRepository {
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
 
+class _PhanTich implements AnalyticsRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
@@ -121,15 +127,17 @@ void main() {
       mucTieu: _MucTieu(),
       giaoDich: _GiaoDich(),
       baoCao: _BaoCao(),
+      phanTich: _PhanTich(),
     );
   });
 
-  test('⭐ sáu khai báo: truy_van_giao_dich đứng ĐẦU (thay hai tool giao dịch, 2026-09-27); mô tả nói khi nào gọi', () {
+  test('⭐ bảy khai báo: truy_van_giao_dich đứng ĐẦU, tool mới nối vào CUỐI; mô tả nói khi nào gọi', () {
     // Trước lần đo 9 tim_giao_dich đứng CUỐI (bốn tool 4b rồi ba tool bước 2) và
     // mô hình chọn tool có một tham số đứng trước nó cho sáu câu có điều kiện.
     expect(bo.khaiBao.map((k) => k.ten).toList(), [
       kTenCongCuTruyVan, kTenCongCuNganSach, kTenCongCuHoaDon,
       kTenCongCuVi, kTenCongCuMucTieu, kTenCongCuGoiYHanMuc,
+      kTenCongCuDuBao,
     ]);
     for (final k in bo.khaiBao) {
       expect(k.moTa, anyOf(contains('Gọi khi'), contains('Gọi cho MỌI câu')), reason: k.ten);
@@ -166,7 +174,7 @@ void main() {
   // hệ thống 2293 ký tự, ba câu E15 / chưa đặt / đã đặt, 0 FAILED_PRECONDITION): 6031.
   // Mốc 5938 là cùng tối sau `chon` mục tiêu; 5633 trước đó.
   const kTranToolsJsonDaDo = 6031;
-  test('⭐ tools_json của sáu tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
+  test('⭐ tools_json của cả bộ tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
