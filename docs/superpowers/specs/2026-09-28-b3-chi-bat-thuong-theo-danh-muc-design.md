@@ -92,7 +92,9 @@ schema, không thêm trường đồng bộ.
 
 ## 7. Kiểm thử
 
-- **`chi_bat_thuong` (hàm thuần):** sáu tháng *Ăn uống* quanh 900.000 và tháng xét 2.400.000 → bất thường; 1.100.000 → không;
+- **`chi_bat_thuong` (hàm thuần):** sáu tháng *Ăn uống* quanh 900.000 (MAD 20.000) và tháng xét 2.400.000 → bất thường;
+  990.000 → không (z ≈ 3,0); ⚠️ **1.100.000 → CÓ** (z ≈ 6,7): lịch sử càng đều thì một mức lệch nhỏ càng lạ — tính chất
+  của MAD, đã tính tay lúc viết kế hoạch, không phải lỗi. Vế tiền (`> nguong`) là thứ chặn các danh mục nhỏ;
   3 tháng lịch sử → im; lịch sử có tháng 0 đồng → tháng ấy không tính mẫu; **MAD = 0** (bốn tháng đúng 500.000) và tháng
   xét 800.000 với ngưỡng 50.000 → bất thường (nhánh meanAd = 0 → z = +∞); cùng dữ liệu, ngưỡng 400.000 → không (vế tiền
   chặn); khoản chuyển / điều chỉnh / vay-nợ không vào chuỗi; tháng đang chạy dùng số tới `now`; xem **tháng đã qua** thì
