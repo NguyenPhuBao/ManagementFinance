@@ -1,6 +1,6 @@
 # G5 cổng F — chắn mệnh đề sai: số tổng gán cho đối tượng, chữ kỳ lệch kỳ của số
 
-**Ngày:** 2026-09-28. **Trạng thái:** chờ người dùng duyệt bản viết. Người dùng đã chọn **lối A** (hai luật từ vựng)
+**Ngày:** 2026-09-28. **Trạng thái:** ✅ người dùng **duyệt bản viết** cùng ngày. Người dùng đã chọn **lối A** (hai luật từ vựng)
 trong chat, sau khi chọn sửa cả năm gốc G1–G5 của cổng F lần 1 (mục 9.36 `docs/AI_EDGE_FEATURE.md`). G1–G4 đã sửa ở
 mã (`7ce43e1`, `631437f`, `34339a6`); spec này chỉ phủ **G5**.
 
@@ -91,8 +91,10 @@ Khai báo tool, `tools_json` (6.980), lời hệ thống, mẫu câu, schema, pa
 
 ## 5. Kiểm thử
 
-- **(a)** trong `kiem_nhan_test`: sáu câu bảng mục 2 (chặn / qua đúng như bảng), dựng trên gói thật (`hangNhomGiaoDich`
-  cho E3, `hangNganSach` cho họ E10, `hangHoaDon` cho hai câu hoá đơn).
+- **(a)** trong `kiem_nhan_test`: sáu câu bảng mục 2 (chặn / qua đúng như bảng) trên gói giả mang **đúng nhãn** của
+  gói thật (hàng nhóm giao dịch, ngân sách, hoá đơn); cộng một ca E3 trên gói **thật** (`hangNhomGiaoDich`, qua
+  `kiemCauTraLoi`) — câu SAI của cổng F bị chặn, câu ĐÚNG của 27/09 (*"… Giải trí với tổng chi là 30.000 đ"*, số của
+  chính nó) vẫn qua.
 - **(b)** tệp mới `kiem_ky_test`: sáu câu bảng mục 3; `kyCua` của `GoiSoTrangChu`, `GoiSoPhanTich` (có và không có
   `chuKy`), `GoiSoTraCuu` (lượt tháng này, lượt có so sánh, lượt mọi thời gian); chữ kỳ không dấu (*"nam nay"*) đọc
   được; *"tháng 9"* không phải chữ kỳ tương đối.
