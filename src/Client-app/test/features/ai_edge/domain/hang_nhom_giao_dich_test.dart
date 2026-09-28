@@ -3,7 +3,9 @@
 /// hợp đếm trên trọn tập. Không tính gì ngoài `gopGiaoDich`.
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_nhom_giao_dich.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/transaction/domain/gop_giao_dich.dart';
 import 'package:flowmoney/features/transaction/domain/tim_giao_dich.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,5 +112,16 @@ void main() {
     final kq = hangNhomGiaoDich(nam, tieuChi: tc, theo: NhomTheo.danhMuc, chuKy: 'tháng này', chon: 'tat_ca');
     expect(kq.loi, contains('nhieu_nhat'));
     expect(kq.hang, isEmpty);
+  });
+
+  test('⭐ G5 (a) E3 trên gói thật: tổng chi gán cho danh mục ít nhất → chặn; số của chính nó → qua', () {
+    final g = GoiSoTraCuu()
+      ..them('truy_van_giao_dich',
+          hangNhomGiaoDich(nam, tieuChi: tc, theo: NhomTheo.danhMuc, chuKy: 'tháng này', chon: 'it_nhat'));
+    // Câu SAI của cổng F (số tổng) và câu ĐÚNG của 27/09 — cùng chữ "tổng chi", khác con số.
+    expect(kiemCauTraLoi('Danh mục ít tiêu nhất trong tháng này là Giải trí với tổng chi là 1.845.000 đ.', [g]),
+        isFalse);
+    expect(kiemCauTraLoi('Danh mục ít tiêu nhất trong tháng này là Giải trí với tổng chi là 30.000 đ.', [g]),
+        isTrue);
   });
 }
