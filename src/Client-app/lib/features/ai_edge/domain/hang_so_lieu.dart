@@ -87,6 +87,13 @@ class KetQuaCongCu {
   /// "không có giao dịch nào khớp". **Không** vào [json].
   final String doiTuongRong;
 
+  /// Lượt THÀNH CÔNG mà câu trả lời đúng nằm ở CHỮ KẾT LUẬN chứ không ở con số
+  /// (mục 9.34, P5): hỏi *"tài sản tăng hay giảm"* khi thay đổi là "chưa biết" —
+  /// mô hình nêu tổng tài sản và bỏ qua chữ *"chưa đủ dữ liệu"*, một câu đúng số
+  /// mà không trả lời câu hỏi. Cờ này đóng cổng hiện chữ: vòng lặp hiện mẫu câu,
+  /// thứ luôn in chữ kết luận. **Không** vào [json].
+  final bool chiMauCau;
+
   /// Chữ từng điều kiện lọc đã dùng, theo thứ tự cố định (spec 2c mục 2.2), cho
   /// mẫu câu. Được chứa chữ số (khoảng tiền) vì **không** vào [json] — khác
   /// [chuThem]; mỗi con số ở đây phải bằng đúng `chuoi` của một mục
@@ -107,6 +114,7 @@ class KetQuaCongCu {
     this.boLoc = const [],
     this.soLieuBoLoc = const [],
     this.doiTuongRong = 'giao dịch',
+    this.chiMauCau = false,
   })  : loi = null,
         choNguoiDung = null,
         thamSoGo = const [];
@@ -125,6 +133,7 @@ class KetQuaCongCu {
         boLoc = const [],
         soLieuBoLoc = const [],
         doiTuongRong = 'giao dịch',
+        chiMauCau = false,
         loi = vi;
 
   /// Bản sao có THÊM: bộ lọc (đầu / cuối), số liệu bộ lọc, tổng hợp, chữ kèm,
@@ -148,6 +157,7 @@ class KetQuaCongCu {
       boLoc: [...boLocDau, ...boLoc, ...boLocCuoi],
       soLieuBoLoc: [...soLieuBoLoc, ...soLieuBoLocThem],
       doiTuongRong: doiTuongRong,
+      chiMauCau: chiMauCau,
     );
   }
 

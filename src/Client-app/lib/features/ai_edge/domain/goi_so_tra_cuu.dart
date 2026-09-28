@@ -72,6 +72,9 @@ class GoiSoTraCuu extends GoiSo {
   /// bao giờ gỡ: lượt rộng hơn sau đó trả lời một câu hỏi khác (ca "abc").
   final List<KetQuaCongCu> _luotRong = [];
 
+  /// Có lượt đòi MẪU CÂU (`KetQuaCongCu.chiMauCau`) — không bao giờ gỡ.
+  bool coLuotChiMauCau = false;
+
   /// Loại câu "phải nói thêm" theo thứ tự lần đầu xảy ra — cho [cauNoiThem].
   final List<_NoiThem> _thuTuNoiThem = [];
 
@@ -99,7 +102,7 @@ class GoiSoTraCuu extends GoiSo {
   /// Cổng hiện chữ của vòng lặp (spec 2b mục 2.3; 2c mục 2.3): có lượt thành
   /// công, không còn lời từ chối chưa gỡ, và không có lượt rỗng theo bộ lọc.
   bool get choHienChuMoHinh =>
-      daTraCuu && _tuChoi.isEmpty && _luotRong.isEmpty;
+      daTraCuu && _tuChoi.isEmpty && _luotRong.isEmpty && !coLuotChiMauCau;
 
   /// Câu trung thực về phần chưa tra được — `null` khi không còn lời từ chối
   /// chưa gỡ. L2b nối nó sau các câu đã hiện.
@@ -153,6 +156,7 @@ class GoiSoTraCuu extends GoiSo {
     tongHop.addAll(kq.tongHop);
     soLieuBoLoc.addAll(kq.soLieuBoLoc);
     _luot.add(kq);
+    if (kq.chiMauCau) coLuotChiMauCau = true;
     if (kq.rongTheoBoLoc) {
       _luotRong.add(kq);
       if (!_thuTuNoiThem.contains(_NoiThem.rong)) {

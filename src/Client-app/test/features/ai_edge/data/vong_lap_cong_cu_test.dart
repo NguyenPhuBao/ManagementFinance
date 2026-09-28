@@ -268,6 +268,27 @@ void main() {
     });
   });
 
+  test('⭐ L2d: tool đòi MẪU CÂU → chữ mô hình (dù đúng số) KHÔNG hiện, mẫu câu in chữ kết luận', () async {
+    tool = _CongCuGia(
+      kTenCongCuHoaDon,
+      KetQuaCongCu(
+        hang: const [],
+        tongHop: [soTien('Tổng tài sản', 12904000)],
+        chuThem: const {'ket_qua': 'chưa đủ dữ liệu để biết tài sản tăng hay giảm'},
+        chiMauCau: true,
+      ),
+    );
+    bo = BoCongCu([tool]);
+    final (sk, goi, _, _) = await chay([
+      [goiHoaDon],
+      [const Chu('Tổng tài sản tháng này là 12.904.000 đ.')],
+    ]);
+    expect(sk.whereType<CauQua>().single.cau,
+        'Tổng tài sản: 12.904.000 đ — chưa đủ dữ liệu để biết tài sản tăng hay giảm.');
+    expect(goi.daTraCuu, isTrue);
+    expect(log.any((l) => l.contains('L2d')), isTrue);
+  });
+
   test('⭐ gọi tool → hàng vào gói, JSON về phiên, câu cuối kiểm trên gói và hiện', () async {
     final (sk, goi, phien, rt) = await chay([
       [goiHoaDon],

@@ -71,17 +71,29 @@ KetQuaCongCu hangDanhMuc(
     // ⚠️ Nhãn KHÔNG để chữ loại đứng ngay sau "danh mục": `kiemTen` đọc cụm sau
     // từ loại là một TÊN, và "Số danh mục vay nợ" làm mẫu câu của chính gói bị
     // chặn vì không có danh mục nào tên "vay nợ". Dạng ấy chỉ là nhãn thay thế.
-    tongHop: [
-      soDem('Tổng số danh mục', danhMuc.length,
-          nhanKhac: const ['Số danh mục', 'Danh mục']),
-      soDem('Nhóm chi', dem(0), nhanKhac: const ['Danh mục chi']),
-      soDem('Nhóm thu', dem(1), nhanKhac: const ['Danh mục thu']),
-      soDem('Nhóm vay nợ', dem(2), nhanKhac: const ['Danh mục vay nợ']),
-      soDem('Đã có ngân sách',
-          danhMuc.where((c) => coNganSach.contains(c.id)).length,
-          nhanKhac: const ['Có ngân sách', 'Đã đặt ngân sách']),
-    ],
-    boLoc: [if (loc != null) 'danh mục ${_chuLoai(loc)}'],
+    //
+    // ⚠️ Khi LỌC theo loại, gói CHỈ mang số của nhóm ấy (mục 9.34, P8): hỏi "bao
+    // nhiêu danh mục chi" mà gói có cả tổng 15 thì câu *"Có 15 danh mục chi"* lọt
+    // — 15 là số thật, và nhãn của nó cũng chứa "danh mục".
+    tongHop: loc != null
+        ? [
+            soDem('Số danh mục', chon.length, nhanKhac: const ['Danh mục']),
+            soDem('Đã có ngân sách',
+                chon.where((c) => coNganSach.contains(c.id)).length,
+                nhanKhac: const ['Có ngân sách', 'Đã đặt ngân sách']),
+          ]
+        : [
+            soDem('Tổng số danh mục', danhMuc.length,
+                nhanKhac: const ['Số danh mục', 'Danh mục']),
+            soDem('Nhóm chi', dem(0), nhanKhac: const ['Danh mục chi']),
+            soDem('Nhóm thu', dem(1), nhanKhac: const ['Danh mục thu']),
+            soDem('Nhóm vay nợ', dem(2), nhanKhac: const ['Danh mục vay nợ']),
+            soDem('Đã có ngân sách',
+                danhMuc.where((c) => coNganSach.contains(c.id)).length,
+                nhanKhac: const ['Có ngân sách', 'Đã đặt ngân sách']),
+          ],
+    // "nhóm …", không "danh mục …": `kiemTen` đọc cụm sau "danh mục" là một TÊN.
+    boLoc: [if (loc != null) 'nhóm ${_chuLoai(loc)}'],
     // Hàng không có số liệu nên tên không nằm trên `SoLieu` nào — đưa vào tên
     // liên quan để `kiemTen` và bộ kiểm số nhận ra chúng.
     // "vay nợ" để câu "một danh mục vay nợ" của mô hình không bị `kiemTen` coi

@@ -140,5 +140,7 @@ KetQuaCongCu hangTongQuan(
     tenLienQuan: [
       if (lonNhat != null) ...[lonNhat.tenDanhMuc, lonNhat.tenVi],
     ],
+    // Câu trả lời cho "tăng hay giảm" lúc này là CHỮ, không phải con số.
+    chiMauCau: ketQua.contains(kChuTaiSanChuaBiet),
   );
 }

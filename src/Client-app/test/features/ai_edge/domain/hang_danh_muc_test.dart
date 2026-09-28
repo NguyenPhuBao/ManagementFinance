@@ -32,15 +32,34 @@ void main() {
     expect(r.hang.every((h) => h.soLieu.isEmpty && !h.canhBao), isTrue);
   });
 
-  test('tổng hợp đếm TRỌN tập, kể cả khi lọc', () {
-    final r = hangDanhMuc(ds, coNganSach: coNganSach, loai: 'khoan_thu');
-    expect(r.hang.map((h) => h.ten).toList(), ['Lương']);
+  test('không lọc: tổng và ba nhóm', () {
+    final r = hangDanhMuc(ds, coNganSach: coNganSach);
     expect(r.json['Tổng số danh mục'], '6');
     expect(r.json['Nhóm chi'], '4');
     expect(r.json['Nhóm thu'], '1');
     expect(r.json['Nhóm vay nợ'], '1');
     expect(r.json['Đã có ngân sách'], '2');
-    expect(r.boLoc, ['danh mục khoản thu']);
+  });
+
+  test('⭐ P8: LỌC theo loại → gói chỉ mang số của nhóm ấy; "Có 6 danh mục chi" bị chặn', () {
+    final r = hangDanhMuc(ds, coNganSach: coNganSach, loai: 'khoan_chi');
+    expect(r.hang, hasLength(4));
+    expect(r.json['Số danh mục'], '4');
+    expect(r.json['Đã có ngân sách'], '2');
+    expect(r.json.containsKey('Tổng số danh mục'), isFalse,
+        reason: 'OnePlus 2026-09-28: "Có 15 danh mục chi tiêu" lọt vì 15 (tổng) có trong gói');
+    expect(r.boLoc, ['nhóm khoản chi']);
+    final g = GoiSoTraCuu()..them('danh_sach_danh_muc', r);
+    expect(kiemCauTraLoi('Có 6 danh mục chi tiêu.', [g]), isFalse);
+    expect(kiemCauTraLoi('Có 4 danh mục chi tiêu.', [g]), isTrue);
+    expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+  });
+
+  test('lọc khoản thu: một hàng, đếm một', () {
+    final r = hangDanhMuc(ds, coNganSach: coNganSach, loai: 'khoan_thu');
+    expect(r.hang.map((h) => h.ten).toList(), ['Lương']);
+    expect(r.json['Số danh mục'], '1');
+    expect(r.json['Đã có ngân sách'], '0');
   });
 
   test('loai lạ → từ chối, liệt kê giá trị đúng', () {
@@ -53,6 +72,7 @@ void main() {
     final r = hangDanhMuc(nhieu, coNganSach: const {});
     expect(r.hang, hasLength(kToiDaDanhMuc));
     expect(r.json['Tổng số danh mục'], '25');
+    expect(r.hang.first.ten, 'Muc 01');
   });
 
   group('qua các lớp chắn', () {

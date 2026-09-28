@@ -245,7 +245,10 @@ void main() {
       final r = theo({NhomTongQuan.taiSan}, dauTien: DateTime(2026, 9, 2));
       expect(r.tongHop.map((s) => s.nhan).toList(), ['Tổng tài sản']);
       expect(r.chuThem['ket_qua'], 'chưa đủ dữ liệu để biết tài sản tăng hay giảm');
+      expect(r.chiMauCau, isTrue,
+          reason: 'OnePlus 2026-09-28 P5: mô hình nêu tổng tài sản, bỏ qua chữ "chưa đủ dữ liệu"');
       final g = GoiSoTraCuu()..them('tong_quan_tai_chinh', r);
+      expect(g.choHienChuMoHinh, isFalse);
       expect(g.mauCau().cau,
           'Tháng này — Tổng tài sản: 12.904.000 đ — chưa đủ dữ liệu để biết tài sản tăng hay giảm.');
     });
@@ -254,6 +257,12 @@ void main() {
       final r = theo(const {}, dauTien: DateTime(2026, 9, 2));
       expect(r.chuThem.containsKey('ket_qua'), isFalse);
       expect(r.tongHop.length, greaterThan(8));
+    });
+
+    test('tài sản BIẾT thay đổi → không đòi mẫu câu', () {
+      final r = theo({NhomTongQuan.taiSan});
+      expect(r.chiMauCau, isFalse);
+      expect(r.chuThem['ket_qua'], 'tài sản tăng');
     });
 
     test('hai nhóm cùng lúc', () {

@@ -161,7 +161,9 @@ Stream<SuKienGac> hoiBangCongCu(
           final nhan = _nhanLui(goi);
           log('[SLM][tool] lượt $luot: ${_viSaoDong(goi)} → '
               '${soCauQua == 0 ? 'mẫu câu' : 'nối câu phải nói thêm'} ($nhan)');
-          yield CauQua(soCauQua == 0 ? goi.mauCau().cau : goi.cauNoiThem!);
+          yield CauQua(
+            soCauQua == 0 ? goi.mauCau().cau : (goi.cauNoiThem ?? goi.mauCau().cau),
+          );
           log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: $soLanGoi lời gọi, $soCauQua câu');
           return;
         }
@@ -232,6 +234,7 @@ String _viSaoDong(GoiSoTraCuu goi) {
     if (goi.tuChoiChuaGo.isNotEmpty)
       'còn lời từ chối chưa gỡ (${_tenTuChoi(goi)})',
     if (goi.luotRong.isNotEmpty) 'có lượt rỗng theo bộ lọc',
+    if (goi.coLuotChiMauCau) 'tool đòi mẫu câu',
   ].join(' và ');
 }
 
@@ -240,5 +243,6 @@ String _viSaoDong(GoiSoTraCuu goi) {
 String _nhanLui(GoiSoTraCuu goi) {
   final coTuChoi = goi.tuChoiChuaGo.isNotEmpty;
   final coRong = goi.luotRong.isNotEmpty;
+  if (!coTuChoi && !coRong) return 'L2d';
   return coTuChoi && coRong ? 'L2b+L2c' : (coRong ? 'L2c' : 'L2b');
 }
