@@ -230,4 +230,14 @@ void main() {
               '"Quá hạn: 0" ở gói hoá đơn.');
     });
   });
+
+  test('G5 (b): kyCua — chuKy "tháng này" gắn cho số của kỳ; Cam kết không kỳ; không chuKy thì không xét', () {
+    final g = GoiSoPhanTich.tu(_tk(), chuKy: 'tháng này');
+    final tongChi = g.soLieu.firstWhere((s) => s.nhan == 'Tổng chi');
+    expect(g.kyCua(tongChi), {'tháng này'});
+    final soKyTruoc = g.soLieu.firstWhere((s) => s.nhan == 'So kỳ trước');
+    expect(g.kyCua(soKyTruoc), {'tháng này', 'tháng trước'});
+    final khong = GoiSoPhanTich.tu(_tk());
+    expect(khong.kyCua(khong.soLieu.first), isNull);
+  });
 }

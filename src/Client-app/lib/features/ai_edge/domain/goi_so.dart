@@ -195,4 +195,8 @@ abstract class GoiSo {
         for (final s in soLieu)
           if (s.ten != null) s.ten!,
       ];
+
+  /// Kỳ của con số [s] — chữ kỳ tương đối (*tháng này*); `null` = không biết,
+  /// hay số HIỆN TẠI (số dư): `kiemKy` không xét (G5 (b) cổng F). Mặc định `null`.
+  Set<String>? kyCua(SoLieu s) => null;
 }

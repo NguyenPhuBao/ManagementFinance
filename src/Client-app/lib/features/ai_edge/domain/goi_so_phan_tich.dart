@@ -46,9 +46,19 @@ class GoiSoPhanTich extends GoiSo {
     required this.soCamKet,
     required this.khoanChiLonNhat,
     required this.soLieu,
-  });
+    this.chuKy,
+    List<SoLieu> theoKy = const [],
+    SoLieu? soKyTruocMuc,
+  })  : _theoKy = theoKy,
+        _soKyTruoc = soKyTruocMuc;
 
-  factory GoiSoPhanTich.tu(ThongKeKy tk) {
+  /// Chữ kỳ của gói (*tháng này*) — chỉ `NguonGoiSo` của trợ lý truyền; khối
+  /// Nhận xét trang Phân tích dựng gói cho MỌI kỳ đang xem nên không truyền.
+  final String? chuKy;
+  final List<SoLieu> _theoKy;
+  final SoLieu? _soKyTruoc;
+
+  factory GoiSoPhanTich.tu(ThongKeKy tk, {String? chuKy}) {
     final pt = phanTramSoVoi(tk.tong.chi, tk.tongTruoc.chi);
     // Đúng biểu thức của `_TheConLai` (analytics_page.dart): chuỗi vay/nợ rỗng
     // thì bỏ qua chứ không coi như không có vay/nợ.
@@ -75,7 +85,28 @@ class GoiSoPhanTich extends GoiSo {
         soTien('Chi', d.soTien, ten: d.ten, nhanXungDot: const ['Thu']),
     ];
 
+    final tongChiS = soTien('Tổng chi', tk.tong.chi);
+    final tongThuS = soTien('Tổng thu', tk.tong.thu);
+    final soKyTruocS = pt == null ? null : soPhanTram('So kỳ trước', pt.abs());
+    // Tỉ lệ ÂM (chi vượt thu nhập) đổi nhãn và lấy trị tuyệt đối: câu
+    // "để dành -720,0%" không ai hiểu, còn "chi vượt thu nhập 720,0%" thì có.
+    final deDanhS = deDanh == null
+        ? null
+        : deDanh >= 0
+            ? soPhanTram('Để dành', deDanh)
+            : soPhanTram('Vượt thu nhập', -deDanh);
+    final lonNhatS = lonNhat == null ? null : soTien('Khoản lớn nhất', lonNhat);
     return GoiSoPhanTich._(
+      chuKy: chuKy,
+      // Số CỦA KỲ; cam kết là 30 ngày tới — không vào đây (G5 (b) cổng F).
+      theoKy: [
+        tongChiS,
+        tongThuS,
+        if (deDanhS != null) deDanhS,
+        if (lonNhatS != null) lonNhatS,
+        ...theoDanhMuc,
+      ],
+      soKyTruocMuc: soKyTruocS,
       tongChi: tk.tong.chi,
       tongThu: tk.tong.thu,
       soKyTruoc: pt,
@@ -84,20 +115,15 @@ class GoiSoPhanTich extends GoiSo {
       soCamKet: coCamKet ? duBao.camKet.length : 0,
       khoanChiLonNhat: lonNhat,
       soLieu: [
-        soTien('Tổng chi', tk.tong.chi),
-        soTien('Tổng thu', tk.tong.thu),
-        if (pt != null) soPhanTram('So kỳ trước', pt.abs()),
-        // Tỉ lệ ÂM (chi vượt thu nhập) đổi nhãn và lấy trị tuyệt đối: câu
-        // "để dành -720,0%" không ai hiểu, còn "chi vượt thu nhập 720,0%" thì có.
-        if (deDanh != null)
-          deDanh >= 0
-              ? soPhanTram('Để dành', deDanh)
-              : soPhanTram('Vượt thu nhập', -deDanh),
+        tongChiS,
+        tongThuS,
+        if (soKyTruocS != null) soKyTruocS,
+        if (deDanhS != null) deDanhS,
         if (coCamKet) ...[
           soTien('Cam kết', duBao.tongCamKet),
           soDem('Số cam kết', duBao.camKet.length),
         ],
-        if (lonNhat != null) soTien('Khoản lớn nhất', lonNhat),
+        if (lonNhatS != null) lonNhatS,
         // Đặt CUỐI: mẫu câu tra mục theo nhãn, các mục tổng hợp phải gặp trước.
         ...theoDanhMuc,
       ],
@@ -106,6 +132,16 @@ class GoiSoPhanTich extends GoiSo {
 
   @override
   bool get thieuDuLieu => tongChi == 0 && tongThu == 0;
+
+  /// G5 (b) cổng F: số của kỳ → {chuKy}; so kỳ trước → cả kỳ trước; cam kết
+  /// 30 ngày tới → `null`. Không [chuKy] → không xét.
+  @override
+  Set<String>? kyCua(SoLieu s) {
+    final k = chuKy;
+    if (k == null) return null;
+    if (identical(s, _soKyTruoc)) return {k, if (k == 'tháng này') 'tháng trước'};
+    return _theoKy.contains(s) ? {k} : null;
+  }
 
   @override
   NhanXet mauCau() {

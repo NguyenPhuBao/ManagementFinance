@@ -43,6 +43,7 @@ import 'dart:convert';
 
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'kiem_ky.dart';
 import 'ma_ky.dart';
 import 'nhan_xet.dart';
 import 'tham_so_mo_hinh.dart';
@@ -86,6 +87,25 @@ class GoiSoTraCuu extends GoiSo {
   @override
   List<SoLieu> get soLieu =>
       [...tongHop, ...soLieuBoLoc, for (final h in hang) ...h.soLieu];
+
+  /// G5 (b) cổng F: kỳ theo LƯỢT chứa [s] — khoá `ky` nếu là chữ kỳ tương đối,
+  /// cộng chữ kỳ trong các khoá `so_sanh_*` (E13 *"so với tháng trước"*). Mọi
+  /// thời gian, kỳ tự do, kỳ tới → `null` (không xét).
+  @override
+  Set<String>? kyCua(SoLieu s) {
+    for (final kq in _luot) {
+      final cua = [...kq.tongHop, ...kq.soLieuBoLoc, for (final h in kq.hang) ...h.soLieu];
+      if (!cua.contains(s)) continue;
+      final ky = kq.chuThem['ky'];
+      if (ky == null || !laChuKyTuongDoi(ky)) return null;
+      return {
+        ky,
+        for (final e in kq.chuThem.entries)
+          if (e.key.startsWith('so_sanh_')) ...chuKyTrong(e.value),
+      };
+    }
+    return null;
+  }
 
   /// Có ít nhất một lượt THÀNH CÔNG (kể cả 0 hàng).
   bool get daTraCuu => tenCongCuDaChay.isNotEmpty;

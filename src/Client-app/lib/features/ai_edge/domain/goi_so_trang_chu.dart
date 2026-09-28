@@ -34,7 +34,11 @@ class GoiSoTrangChu extends GoiSo {
     required this.tenNganSach,
     required this.phanTramNganSach,
     required this.soLieu,
-  });
+    required List<SoLieu> theoKy,
+  }) : _theoKy = theoKy;
+
+  /// Thu / chi / còn lại — số THÁNG NÀY (thẻ `TheSoLieuThang`), cho `kyCua`.
+  final List<SoLieu> _theoKy;
 
   factory GoiSoTrangChu.tu({
     required double thu,
@@ -46,6 +50,11 @@ class GoiSoTrangChu extends GoiSo {
     final v = pickHomeBudget(nganSach, now);
     final pt = v == null ? null : v.budget.rawPercentSpent * 100;
     final chenh = thu - chi;
+    final thuS = soTien('Thu', thu);
+    final chiS = soTien('Chi', chi);
+    // Trị tuyệt đối: câu tự nói "còn lại" hay "chi vượt thu", và số 0
+    // không mang dấu (cùng luật `formatCoDau`).
+    final chenhS = soTien(chenh >= 0 ? 'Còn lại' : 'Chi vượt thu', chenh.abs());
     return GoiSoTrangChu._(
       thu: thu,
       chi: chi,
@@ -53,19 +62,23 @@ class GoiSoTrangChu extends GoiSo {
       tenNganSach: v?.displayName,
       phanTramNganSach: pt,
       soLieu: [
-        soTien('Thu', thu),
-        soTien('Chi', chi),
-        // Trị tuyệt đối: câu tự nói "còn lại" hay "chi vượt thu", và số 0
-        // không mang dấu (cùng luật `formatCoDau`).
-        soTien(chenh >= 0 ? 'Còn lại' : 'Chi vượt thu', chenh.abs()),
+        thuS,
+        chiS,
+        chenhS,
         soTien('Tổng số dư', tongSoDu),
         if (pt != null) soPhanTram('Ngân sách căng nhất', pt),
       ],
+      theoKy: [thuS, chiS, chenhS],
     );
   }
 
   @override
   bool get thieuDuLieu => thu == 0 && chi == 0;
+
+  /// G5 (b) cổng F: thu / chi / còn lại là số tháng này; tổng số dư và ngân
+  /// sách căng nhất là số hiện tại — không kỳ.
+  @override
+  Set<String>? kyCua(SoLieu s) => _theoKy.contains(s) ? const {'tháng này'} : null;
 
   /// Tên ngân sách căng nhất có trong mẫu câu mà mục "Ngân sách căng nhất" không
   /// mang tên — xem `GoiSo.tenDoiTuong`.
