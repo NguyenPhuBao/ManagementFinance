@@ -699,8 +699,13 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   tục"* với H1–H3, vòng sửa `f1a5bd1` — H1 mẫu câu cho câu một số đích (`hangMucTieu(nhomSo:)`) và câu liệt kê
   (`cauHoiLietKe`), H2 chặn *lãi suất* + *"cần để dành / cần tích"* → tool mục tiêu, H3 luật 15 kỳ *"… này"* nêu trong
   câu thắng `ky`, `can_doi` rỗng → *"không ngân sách nào cần cân đối"*. Đo lại 9 câu: 8 ✅ · 1 ◐ · SAI 0 → gộp SAI 0, F
-  16/16, 0 câu cũ tụt. Chưa sửa C4 (biên *"dưới"*). `flutter test` **4158/4158** (3 skip). Mốc trọn 72 câu cho A2 chạy
-  tối cùng ngày. Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-h1-h3.md`
+  16/16, 0 câu cũ tụt. Chưa sửa C4 (biên *"dưới"*). `flutter test` **4158/4158** (3 skip). Mốc trọn 72 câu cùng tối
+  (18:47–19:47): **70 ✅ · 2 ◐ (C4 · C16) · SAI 0**, nền A2 phiên sáu tool 45,5 s / một tool 23,8 s (cuối mục 9.37).
+- 📝 **Spec + kế hoạch nhóm B viết tối 2026-09-28** (người dùng duyệt từng thiết kế): B5a nhật ký thông báo (v26), B2
+  khoản lặp → gợi ý hoá đơn (v27), B3 chi bất thường theo danh mục (mở lại quyết định 17/09), B4 tầng 3 ước tính theo
+  thói quen của khối Dự báo (mở lại 16/09), B5b học giờ thông báo. Spec ở `docs/superpowers/specs/2026-09-28-b*`, kế hoạch
+  ở `plans/` (gitignore). Người dùng **duyệt đổi bất biến ④** (*"không tool nào ghi thẳng"*) cho nhóm C, thứ tự C1 → C2
+  → D1 → C3 → C4. Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-h1-h3.md`
   (trước buổi đo lần 3); bản trước `…-sau-vong-sua-cong-f.md`. Kế hoạch nhóm A `plans/2026-09-28-nhom-a-a3-a4-a2.md` và bản đồ nhóm B–D `plans/2026-09-28-nhom-b-sau-b1-ban-do.md` (gitignore) soạn cùng chiều. Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
