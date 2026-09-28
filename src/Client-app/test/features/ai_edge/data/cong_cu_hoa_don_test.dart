@@ -98,4 +98,20 @@ void main() {
         .chay({'ky': 'thang_nay'}, idaccount: 10, now: now);
     expect(kq.loi, contains('ky_nay'));
   });
+
+  test('⭐ G3 cổng F — E8 đầu-cuối: "Hoa don Netflix khi nao den han?" → chỉ Netflix, mô hình điền gì cũng thế', () async {
+    final log = <String>[];
+    final kq = await CongCuHoaDon(_HoaDon(), log: log.add).chay({'ky': 'ky_nay', 'trang_thai': 'qua_han'},
+        idaccount: 10, now: now, cauHoi: 'Hoa don Netflix khi nao den han?');
+    expect(kq.hang.map((h) => h.ten).toList(), ['Netflix']);
+    expect(log.any((l) => l.contains('Netflix')), isTrue);
+  });
+
+  test('⭐ G3 cổng F — F12 đầu-cuối: "hoa don nao tu tra" → chỉ hoá đơn tự trả, mọi kỳ', () async {
+    final kq = await CongCuHoaDon(_HoaDon(), log: (_) {}).chay({'ky': 'ky_toi'}, idaccount: 10, now: now,
+        cauHoi: 'hoa don nao tu tra');
+    expect(kq.hang.map((h) => h.ten).toList(), ['Netflix']);
+    expect(kq.boLoc, ['tự trả']);
+    expect(kq.chuThem['ky'], 'mọi kỳ');
+  });
 }

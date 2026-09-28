@@ -54,12 +54,17 @@ class CongCuHoaDon implements CongCu {
       log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
     }
     final bills = await hoaDon.watchBills(idaccount).first;
+    // G3 cổng F (E8): câu nêu tên một hoá đơn → tập của riêng nó, mọi trạng thái.
+    final ten = tenNeuTrongCau(cauHoi, [for (final b in bills) b.name], tuLoai: 'hoá đơn');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu hoá đơn → chỉ "$ten", mọi trạng thái');
     return hangHoaDon(
       bills,
       now: now,
       trangThai:
           chinh.args['trang_thai']?.toString() ?? kTrangThaiHoaDonMacDinh,
       ky: chinh.args['ky']?.toString() ?? kKyHoaDonMacDinh,
+      ten: ten,
+      tuTra: chinh.args['tu_tra'] == true,
     );
   }
 }

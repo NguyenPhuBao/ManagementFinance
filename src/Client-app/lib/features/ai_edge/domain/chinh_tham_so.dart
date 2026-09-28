@@ -745,6 +745,11 @@ KetQuaChinhThamSo chinhThamSoHoaDon(String cauHoi, Map<String, dynamic> args) {
   } else if (_mauHoaDonMoiKy.hasMatch(q)) {
     ky = 'tat_ca';
   }
+  // G3 cổng F (F12): "hoá đơn nào tự trả" → `tu_tra` (không khai cho mô hình);
+  // kỳ không nêu → mọi kỳ: kỳ tự trả sắp tới thường đã sang tháng sau. Cổng F
+  // đo được mô hình tự dò ba lần ba kỳ rồi trả lời "2 hoá đơn quá hạn".
+  final tuTra = _mauTuTra.hasMatch(q);
+  if (tuTra && ky == null) ky = 'tat_ca';
   if (ky != null && a['ky'] != ky) {
     a['ky'] = ky;
     ghi.add('câu hỏi nêu kỳ hoá đơn → ky=$ky');
@@ -753,8 +758,20 @@ KetQuaChinhThamSo chinhThamSoHoaDon(String cauHoi, Map<String, dynamic> args) {
     a.remove('ky');
     ghi.add('câu hỏi không nêu kỳ hoá đơn → bỏ ky');
   }
+  if (tuTra && a['tu_tra'] != true) {
+    a['tu_tra'] = true;
+    ghi.add('câu hỏi về hoá đơn tự trả → tu_tra');
+  } else if (!tuTra && a.containsKey('tu_tra')) {
+    a.remove('tu_tra');
+    ghi.add('câu hỏi không nói tự trả → bỏ tu_tra');
+  }
   return KetQuaChinhThamSo(a, ghi);
 }
+
+/// "tự trả / tự động trả / tự động thanh toán" — ⚠️ *"phải tự trả"* là trả TAY.
+final RegExp _mauTuTra = RegExp(
+  r'(?<![a-z0-9])(?<!phai )(?:tu tra|tu dong tra|tu dong thanh toan|thanh toan tu dong|tra tu dong)(?![a-z0-9])',
+);
 
 /// Bộ chỉnh của `danh_sach_muc_tieu` (cổng E lần 1, E11): trạng thái nêu trong
 /// câu → `chon`; không nêu → gỡ `chon` mô hình điền thừa (luật 10).

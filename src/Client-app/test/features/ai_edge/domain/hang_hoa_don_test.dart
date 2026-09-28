@@ -302,4 +302,63 @@ void main() {
       expect(kiemCauTraLoi('Chi phí cố định mỗi tháng của bạn là 500.000 đ.', [g]), isFalse);
     });
   });
+
+  group('G3 cổng F — hoá đơn nêu tên (E8) và hoá đơn tự trả (F12)', () {
+    // Dữ liệu 28/09 của cổng F: Netflix tự trả đã trả sáng nay (kỳ 28/09) và đã
+    // sinh kỳ sau; Kiem, di h0c quá hạn; Netflix tháng 8 đã trả từ lâu.
+    final hom = DateTime(2026, 9, 28, 10);
+    final netCu = _bill(id: 'n0', ten: 'Netflix', dueDate: DateTime(2026, 8, 28), tuTra: true,
+        isPaid: true, payStatus: 'Payed');
+    final netNay = _bill(id: 'n1', ten: 'Netflix', dueDate: DateTime(2026, 9, 28), tuTra: true,
+        isPaid: true, payStatus: 'Payed', sinhTu: 'n0');
+    final netSau = _bill(id: 'n2', ten: 'Netflix', dueDate: DateTime(2026, 10, 5), tuTra: true, sinhTu: 'n1');
+    final kiemQh = _bill(id: 'k', ten: 'Kiem', amount: 45000, dueDate: DateTime(2026, 9, 18));
+    final hoc = _bill(id: 'h', ten: 'di h0c', amount: 10000, dueDate: DateTime(2026, 9, 23));
+    final tatCa = [netCu, netNay, netSau, kiemQh, hoc];
+
+    test('⭐ E8: nêu tên → hàng của ĐÚNG hoá đơn ấy, mọi trạng thái, kỳ này + kỳ tới; tổng của riêng nó', () {
+      final kq = hangHoaDon(tatCa, now: hom, ten: 'Netflix');
+      expect(kq.hang.map((h) => h.ten).toSet(), {'Netflix'});
+      expect(kq.hang.map((h) => h.json['Đến hạn']).toList(), ['28/09', '05/10'],
+          reason: 'kỳ đã trả tháng 8 không phải câu trả lời "khi nào đến hạn"');
+      expect(kq.hang.first.trangThai, 'đã trả');
+      expect(kq.json['Quá hạn'], '0',
+          reason: 'SAI E8: "Netflix có 2 hoá đơn đang quá hạn" — Quá hạn 2 là của Kiem và di h0c');
+      expect(kq.json.containsKey('Cố định mỗi tháng'), isFalse, reason: 'số của mọi hoá đơn');
+      final g = GoiSoTraCuu()..them('danh_sach_hoa_don', kq);
+      expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+      expect(kiemCauTraLoi('Hoá đơn Netflix có 2 hoá đơn đang quá hạn.', [g]), isFalse);
+      expect(kiemCauTraLoi('Hoá đơn Netflix kỳ tới đến hạn ngày 05/10.', [g]), isTrue);
+    });
+
+    test('E8: tên không có hàng nào mở hay gần → vẫn trả hàng MỚI NHẤT của nó, không "không có hoá đơn nào"', () {
+      final kq = hangHoaDon([netCu, kiemQh], now: hom, ten: 'Netflix');
+      expect(kq.hang.single.json['Đến hạn'], '28/08');
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+
+    test('B1c không tụt: "hoá đơn di h0c còn phải trả bao nhiêu" — Còn phải trả CHỈ kỳ thật, không cộng kỳ dự kiến', () {
+      final kq = hangHoaDon(tatCa, now: hom, ten: 'di h0c');
+      expect(kq.hang.single.ten, 'di h0c');
+      expect(kq.json['Còn phải trả'], '10.000 đ');
+      expect(kq.json['Quá hạn'], '1');
+    });
+
+    test('⭐ F12: tuTra → chỉ hoá đơn tự trả còn phải trả; boLoc "tự trả"; tổng trên cùng tập', () {
+      final kq = hangHoaDon(tatCa, now: hom, ky: 'tat_ca', tuTra: true);
+      expect(kq.hang.map((h) => h.ten).toList(), ['Netflix']);
+      expect(kq.hang.single.trangThai, endsWith('tự trả'));
+      expect(kq.boLoc, ['tự trả']);
+      expect(kq.json['Quá hạn'], '0');
+      expect(kq.json.containsKey('Cố định mỗi tháng'), isFalse);
+      final g = GoiSoTraCuu()..them('danh_sach_hoa_don', kq);
+      expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+    });
+
+    test('F12: không hoá đơn tự trả nào → rỗng theo bộ lọc, mẫu câu nói KHÔNG CÓ', () {
+      final g = GoiSoTraCuu()
+        ..them('danh_sach_hoa_don', hangHoaDon([kiemQh, hoc], now: hom, ky: 'tat_ca', tuTra: true));
+      expect(g.mauCau().cau, 'Mọi kỳ, tự trả — không có hoá đơn nào khớp.');
+    });
+  });
 }

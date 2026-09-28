@@ -365,10 +365,17 @@ void main() {
           {'trang_thai': 'qua_han'});
       expect(chinhThamSoHoaDon('', {'ky': 'ky_toi'}).args['ky'], 'ky_toi');
     });
-    test('F12 "hoa don nao tu tra" không đổi tham số — số đã có trong tổng hợp', () {
+    test('⭐ G3 cổng F — F12 "hoa don nao tu tra" → tu_tra, kỳ không nêu → tat_ca (không để mô hình dò ba kỳ)', () {
+      // Trước 2026-09-28 ca này đòi KHÔNG đổi tham số ("số đã có trong tổng hợp").
+      // Cổng F: mô hình gọi ba lần với ba ky rồi trả lời "2 hoá đơn quá hạn".
       final r = chinhThamSoHoaDon('hoa don nao tu tra', {});
-      expect(r.args, isEmpty);
-      expect(r.ghiChu, isEmpty);
+      expect(r.args, {'tu_tra': true, 'ky': 'tat_ca'});
+      expect(chinhThamSoHoaDon('Hoá đơn nào tự động thanh toán?', {}).args['tu_tra'], isTrue);
+      expect(chinhThamSoHoaDon('Tháng tới hoá đơn nào tự trả?', {}).args, {'tu_tra': true, 'ky': 'ky_toi'});
+    });
+    test('phản ví dụ F12: "phải tự trả" là trả TAY; câu không nói tự trả mà có tu_tra → gỡ', () {
+      expect(chinhThamSoHoaDon('hoa don nao toi phai tu tra', {}).args.containsKey('tu_tra'), isFalse);
+      expect(chinhThamSoHoaDon('hoa don nao qua han', {'tu_tra': true}).args.containsKey('tu_tra'), isFalse);
     });
   });
 

@@ -15,6 +15,11 @@
 ///
 /// *Cố định mỗi tháng* luôn là của KỲ NÀY (hoá đơn lặp chu kỳ tháng, kể cả đã
 /// trả), không theo [ky]: nó trả lời "mỗi tháng tôi gánh bao nhiêu".
+///
+/// Vòng sửa cổng F (G3, mục 9.36): [ten] — hoá đơn câu hỏi nêu (`tenNeuTrongCau`)
+/// → tập riêng của nó (`_tapTheoTen`), bỏ qua [ky] và [trangThai]; [tuTra] — câu
+/// hỏi *"hoá đơn nào tự trả"* → chỉ hoá đơn bật tự trả. Hai phép lọc ấy đổi TẬP,
+/// nên tổng hợp đi theo và bỏ *Cố định mỗi tháng* (số của mọi hoá đơn).
 library;
 
 import '../../../core/bill/bill_recurrence.dart';
@@ -41,6 +46,7 @@ const Map<String, String> kChuKyHoaDon = {
 
 const String kChuDuKien = 'dự kiến';
 const String kHauToTuTra = ' · tự trả';
+const String kChuTuTra = 'tự trả';
 
 String chuTrangThaiHoaDon(BillDisplayStatus s) => switch (s) {
       BillDisplayStatus.paid => 'đã trả',
@@ -76,11 +82,30 @@ List<_Muc> _tapKyToi(List<Bill> bills, DateTime dauKyToi, DateTime dauKySauNua) 
   ];
 }
 
+/// G3 cổng F (E8): hàng của hoá đơn TÊN [ten] mà câu hỏi nêu — mọi hàng CÒN
+/// PHẢI TRẢ, cộng hàng mọi trạng thái hạn trong tháng này hay tháng tới (kỳ vừa
+/// trả sáng nay là câu trả lời của "khi nào đến hạn"). Không kỳ DỰ KIẾN: "còn phải
+/// trả bao nhiêu" (B1c) chỉ cộng kỳ thật. Không hàng nào như thế → hàng MỚI NHẤT
+/// của nó, không để mẫu câu nói "không có hoá đơn nào" về một hoá đơn có thật.
+List<Bill> _tapTheoTen(List<Bill> bills, String ten, DateTime now) {
+  final dauThang = DateTime(now.year, now.month, 1);
+  final dauKySauNua = DateTime(now.year, now.month + 2, 1);
+  final cua = [for (final b in bills) if (b.name == ten) b];
+  final gan = [
+    for (final b in cua)
+      if (conPhaiTra(b) || (!b.dueDate.isBefore(dauThang) && b.dueDate.isBefore(dauKySauNua))) b,
+  ];
+  if (gan.isNotEmpty || cua.isEmpty) return gan;
+  return [cua.reduce((x, y) => y.dueDate.isAfter(x.dueDate) ? y : x)];
+}
+
 KetQuaCongCu hangHoaDon(
   List<Bill> bills, {
   required DateTime now,
   String trangThai = kTrangThaiHoaDonMacDinh,
   String ky = kKyHoaDonMacDinh,
+  String? ten,
+  bool tuTra = false,
 }) {
   if (!kTrangThaiHoaDon.contains(trangThai)) {
     return tuChoiGiaTri('trang_thai', trangThai, kTrangThaiHoaDon);
@@ -98,34 +123,47 @@ KetQuaCongCu hangHoaDon(
 
   // Tập của [ky] và MỐC đưa cho `summarizeBills` — hàm ấy chặn ở cuối tháng
   // của mốc, nên mốc phải nằm trong tháng của hạn xa nhất trong tập.
-  final List<_Muc> tap;
+  List<_Muc> tap;
   final DateTime mocTom;
-  switch (ky) {
-    case 'ky_toi':
-      tap = _tapKyToi(bills, cuoiKy, DateTime(now.year, now.month + 2, 1));
-      mocTom = cuoiKy;
-    case 'tat_ca':
-      tap = [for (final b in bills) (b: b, duKien: false)];
-      var xa = now;
-      for (final b in bills) {
-        if (b.dueDate.isAfter(xa)) xa = b.dueDate;
-      }
-      mocTom = xa;
-    default:
-      tap = [for (final b in kyNay) (b: b, duKien: false)];
-      mocTom = now;
+  if (ten != null) {
+    tap = [for (final b in _tapTheoTen(bills, ten, now)) (b: b, duKien: false)];
+    var xa = now;
+    for (final m in tap) {
+      if (m.b.dueDate.isAfter(xa)) xa = m.b.dueDate;
+    }
+    mocTom = xa;
+  } else {
+    switch (ky) {
+      case 'ky_toi':
+        tap = _tapKyToi(bills, cuoiKy, DateTime(now.year, now.month + 2, 1));
+        mocTom = cuoiKy;
+      case 'tat_ca':
+        tap = [for (final b in bills) (b: b, duKien: false)];
+        var xa = now;
+        for (final b in bills) {
+          if (b.dueDate.isAfter(xa)) xa = b.dueDate;
+        }
+        mocTom = xa;
+      default:
+        tap = [for (final b in kyNay) (b: b, duKien: false)];
+        mocTom = now;
+    }
   }
+  // G3 cổng F (F12): câu hỏi "hoá đơn nào tự trả" → chỉ hoá đơn bật tự trả; hàng
+  // VÀ tổng tính trên cùng tập đã lọc.
+  if (tuTra) tap = [for (final m in tap) if (m.b.autoPayEnabled) m];
   final tom = summarizeBills([for (final m in tap) m.b], mocTom);
 
   BillDisplayStatus trangThaiCua(_Muc m) => billDisplayStatusOf(m.b, now);
   var quaHan = 0;
-  var tuTra = 0;
+  var soTuTra = 0;
   for (final m in tap) {
     if (trangThaiCua(m) == BillDisplayStatus.overdue) quaHan++;
-    if (m.b.autoPayEnabled && conPhaiTra(m.b)) tuTra++;
+    if (m.b.autoPayEnabled && conPhaiTra(m.b)) soTuTra++;
   }
 
-  bool chon(_Muc m) => switch (trangThai) {
+  // Hoá đơn nêu tên: mọi trạng thái — "khi nào đến hạn" hỏi cả kỳ đã trả.
+  bool chon(_Muc m) => ten != null || switch (trangThai) {
         'qua_han' => trangThaiCua(m) == BillDisplayStatus.overdue,
         'chua_tra' => conPhaiTra(m.b),
         'da_tra' => daCoKhoanChi(m.b),
@@ -160,20 +198,24 @@ KetQuaCongCu hangHoaDon(
         ],
       ),
   ];
-  final chuKy = kChuKyHoaDon[ky];
+  // Tập theo tên không phải tập của [ky] — không in chữ kỳ mô hình đã chọn.
+  final chuKy = ten == null ? kChuKyHoaDon[ky] : null;
   return KetQuaCongCu(
     hang: hang,
     tongHop: [
       soTien('Còn phải trả', tom.unpaidAmount),
       soDem('Quá hạn', quaHan),
       soDem('Chưa trả', tom.unpaidCount),
-      soDem('Tự trả', tuTra),
-      soTien('Cố định mỗi tháng', coDinh.paidAmount + coDinh.unpaidAmount),
+      soDem('Tự trả', soTuTra),
+      // Số của MỌI hoá đơn — không thuộc tập đã lọc theo tên / tự trả.
+      if (ten == null && !tuTra)
+        soTien('Cố định mỗi tháng', coDinh.paidAmount + coDinh.unpaidAmount),
     ],
     chuThem: {if (chuKy != null) 'ky': chuKy},
     // Kỳ do câu hỏi chọn mà không hàng nào khớp là báo cáo về bộ lọc — mẫu câu
     // "Kỳ tới — không có hoá đơn nào khớp", không để mô hình tự diễn giải.
-    rongTheoBoLoc: chuKy != null && hang.isEmpty,
+    boLoc: [if (tuTra) kChuTuTra],
+    rongTheoBoLoc: (chuKy != null || tuTra) && hang.isEmpty,
     doiTuongRong: 'hoá đơn',
   );
 }
