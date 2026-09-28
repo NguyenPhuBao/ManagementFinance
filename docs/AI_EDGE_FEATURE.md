@@ -2614,6 +2614,8 @@ bỏ vế *"Gọi khi … ví có đủ tiền trích"* (câu ấy đã định 
   (*Chuyển*, *Dư địa*) theo đúng thứ tự của kế hoạch; tổng hợp *Số ngân sách cần bù*, *Tổng chuyển*, *Còn thiếu sau
   khi bù*; `ket_qua` *đủ / thiếu nguồn bù*; `ghi_chu` *"chỉ là gợi ý, áp dụng ở trang Ngân sách"* — tool **không** áp
   dụng gì (bất biến ④). Không kế hoạch → `rongTheoBoLoc`, mẫu câu *"Cần cân đối — không có ngân sách nào khớp."*
+  *(Đổi ở vòng H1–H3 `f1a5bd1`, mục 9.37: không kế hoạch nay là `ket_qua` "không ngân sách nào cần cân đối" +
+  `chiMauCau`, thôi `rongTheoBoLoc`.)*
 - ⭐ **Một phép ghép `keHoachTaiPhanBoTu`** (`budget/data/tai_phan_bo_nguon.dart`): `nap` → `taiPhanBoCua` cho **ba**
   nơi — thẻ *Đề xuất cân đối* (`BudgetCubit`), thông báo `budgetRebalance` (DI) và tool. Hai nơi đầu trước đó mỗi nơi
   chép tay sáu tham số; tool chép nữa là ba bản của *"kế hoạch nào đang đúng"*.
@@ -2738,7 +2740,7 @@ F11 ✅ · F12 ✗ · F13 ✅ · F14 ◐ · F15 ✗.
 Theo quy ước 2026-09-25: vòng sửa sau **chỉ đo lại câu chưa đạt** (20 câu ✗ / ◐ + SAI); chạy lại trọn 72 câu chỉ khi
 những câu ấy đạt. → Vòng sửa ở mục **9.37**.
 
-### 9.37 Vòng sửa cổng F (A1) — G1–G5, đo lại 19 câu (Realme, 2026-09-28 15:13–15:32): SAI 3 → 0, F 14/16, còn 4 câu cũ tụt
+### 9.37 Vòng sửa cổng F (A1) — G1–G5, đo lại 19 câu (Realme, 2026-09-28 15:13–15:32): SAI 3 → 0, F 14/16, còn 4 câu cũ tụt → vòng H1–H3, cổng F lần 3 (18:34–18:40): ✅ ĐẠT
 
 Người dùng chọn **cả năm gốc** của 9.36; G5 qua spec `docs/superpowers/specs/2026-09-28-g5-chan-menh-de-sai-design.md`
 (lối A, đã duyệt) và kế hoạch 3 task `…/plans/2026-09-28-g5-chan-menh-de-sai.md` (gitignore), thi công inline, TDD, mỗi
@@ -2809,8 +2811,56 @@ ba gốc mới:
 | **H2** Câu ngoài phạm vi vẫn vào tool | DC1 · B2 | *lãi suất* không có trong app; *"cần để dành bao nhiêu cho <mục tiêu>"* → tool mục tiêu (`Cần tích mỗi tháng`) |
 | **H3** Bộ chỉnh / biên còn thiếu | C4 · E19 · F15 | biên *"dưới"* phải loại trừ; *"quý này"* chưa thắng `ky` của mô hình; mẫu câu rỗng của `can_doi` |
 
-Theo quy ước cổng F: báo hướng sửa **trước** khi sửa — chờ người dùng chọn. ⭐ Số đo phụ: phiên một tool lượt sinh
-đầu ~17 s (F14, F15) so với ~42 s ở phiên sáu tool — nền của A2 (kế hoạch `plans/2026-09-28-nhom-a-a3-a4-a2.md`).
+Theo quy ước cổng F: báo hướng sửa **trước** khi sửa — người dùng đáp *"sửa tiếp tục"* (khối dưới). ⭐ Số đo phụ: phiên
+một tool lượt sinh đầu ~17 s (F14, F15) so với ~42 s ở phiên sáu tool — nền của A2 (kế hoạch
+`plans/2026-09-28-nhom-a-a3-a4-a2.md`).
+
+#### Vòng sửa H1–H3 (`f1a5bd1`) + cổng F lần 3 — ✅ ĐẠT (Realme, 2026-09-28 18:34–18:40)
+
+| Gốc | Câu | Sửa | Tệp |
+|---|---|---|---|
+| **H1** | B1 · B2 · F14 | `nhomMucTieuTheoCauHoi` đọc câu hỏi ra **một nhóm số** — `khi_nao` (*khi nào / bao giờ / bao lâu*) hoặc `moi_ky` (*cần để dành / cần tích*, hoặc *mục tiêu … mỗi … bao nhiêu*); `hangMucTieu(nhomSo:)` chỉ in số của nhóm ấy (khi_nao: Còn thiếu, Còn N ngày, cần thêm N ngày; moi_ky: Còn thiếu, Cần / Đang tích mỗi kỳ) và lượt là `chiMauCau` (L2d). Hỏi trích của mục tiêu **không bật trích** cũng `chiMauCau` — câu trả lời nằm ở chữ kết luận. ⚠️ Tham số tên `nhomSo`, không `nhom` — hàm đã có biến `nhom = chiaMucTieu(goals)` | `chinh_tham_so.dart`, `hang_muc_tieu.dart`, `cong_cu_muc_tieu.dart` |
+| **H1** | C11 · C16 · E6 | `cauHoiLietKe` (*"những / các lần"*, *"<số> khoản / giao dịch"*; ⚠️ *"bao nhiêu khoản"* là câu **đếm**, *"những gì"* mô hình đã kể tốt) → `KetQuaCongCu.boSung(chiMauCauThem: true)` khi không gộp, không chọn | `chinh_tham_so.dart`, `cong_cu_truy_van.dart`, `hang_so_lieu.dart` |
+| **H2** | DC1 | `'lãi suất'` / `'lai suat'` vào chủ đề chặn — app không lưu lãi suất ở đâu | `chu_de_chan.dart` |
+| **H2** | B2 | `_mauCanTich` (*"cần [phải] để dành / tích luỹ / tích / tiết kiệm / nạp"*) định tuyến → `danh_sach_muc_tieu`, phiên một tool. Chữ *"cần"* bắt buộc: *"tôi để dành được bao nhiêu phần trăm"* (F7) là tổng quan | `chinh_tham_so.dart` |
+| **H3** | E19 | Luật **15** bộ chỉnh: kỳ *"… này"* nêu trong câu thắng `ky` của mô hình (cùng lý lẽ luật 4 — câu hỏi là nguồn sự thật); không áp khi đã có kỳ tự do, so sánh, hay kỳ tương lai | `chinh_tham_so.dart` |
+| **H3** | F15 | `hangCanDoiNganSach(null)` → `ket_qua` *"không ngân sách nào cần cân đối"*, `chiMauCau`, **thôi** `rongTheoBoLoc` — bản trước in *"Cần cân đối — không có ngân sách nào khớp"*, đọc như một lỗi tìm kiếm trong khi đó là câu trả lời | `hang_ngan_sach.dart` |
+
+**Chưa sửa: C4** (*"dưới 100 nghìn"* — biên `so_tien_den` bao gồm): phải đổi `KhoangTien` của mảng giao dịch, chờ
+người dùng quyết. TDD, bản sai có chủ ý cho `chiMauCau` mục tiêu và luật kỳ; hai ca cũ **viết lại** vì mã hoá chính hành
+vi F15 vừa đổi (`hang_ngan_sach_test`, `bo_cong_cu_test`). `flutter test` **4158/4158** (3 skip, +12 ca, 2 phút 32 giây),
+`flutter analyze` 26. `tools_json`, lời hệ thống, schema, payload không đổi.
+
+**Đo lại 9 câu — cổng F lần 3.** Realme RMX2205, CPU, APK release `46b3bdec…` = `f1a5bd1` (SHA-1 so hai bên), 6 phút
+13 giây, 0 sập, 0 `FAILED_PRECONDITION`, `tools_json` phiên sáu tool 6.980. Bản ghi nguyên văn `ban_ghi.py` (19 mục) —
+Assistive Touch vẫn bật (Realme từ chối `settings put secure` qua adb: `WRITE_SECURE_SETTINGS`, cài đặt **không đổi**) mà
+lần này `uiautomator dump` vẫn chạy.
+
+| # | Câu hỏi | Câu trả lời hiện ra (nguyên văn, bỏ thẻ số liệu) | Đánh giá |
+|---|---|---|---|
+| DC1 | Lai suat tiet kiem cua toi la bao nhieu? | Mình chỉ nhận xét được trên số liệu của bạn trong app. | ✅ **hết tụt** — chặn trước mô hình |
+| B1 | khi nao toi dat muc tieu muaxe | MuaXe đúng kế hoạch: Còn thiếu 899.000 đ, Còn 577 ngày, Theo nhịp hiện tại cần thêm 19 ngày; Đang theo đuổi: 2; Đã hoàn thành: 0. | ✅ **hết tụt** — có *cần thêm 19 ngày* (L2d); hai số cuối thừa |
+| B2 | moi thang toi can de danh bao nhieu cho muaxe | MuaXe đúng kế hoạch: Còn thiếu 899.000 đ, Cần tích mỗi tháng 46.742 đ, Đang tích mỗi tháng 1.436.087 đ; Đang theo đuổi: 2; Đã hoàn thành: 0. | ✅ **lên** — phiên một tool, 19 s |
+| C11 | thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao | Tháng này, chuyển ví, ví "Tiết kiệm" — Tích lũy mục tiêu: MuaXe chuyển ví · Tiền mặt → Tiết kiệm: Số tiền 900.000 đ, Ngày 05/09; Tích lũy mục tiêu: MuaDT … Tiền mặt → Tiết kiệm: 700.000 đ, 05/09; Rút từ mục tiêu: MuaDT … Tiền mặt → Tiết kiệm: 300.000 đ, 05/09; Tích lũy mục tiêu: MuaDT … Tiết kiệm → Tiền mặt: 100.000 đ, 25/09; Số giao dịch: 11; Tổng chuyển: 2.601.000 đ. | ✅ **hết tụt** — thôi gộp hai chiều thành "vào", mỗi hàng ghi chiều. ⚠️ 4/11 hàng (trần gói), có một lần chuyển **ra**, *Tổng chuyển* cộng hai chiều |
+| C16 | 5 khoan chi gan day nhat cua toi | Mọi thời gian, khoản chi, mới nhất trước — Thanh toán hóa đơn: Netflix … 100.000 đ, 28/09; Di chuyển … 50.000 đ, 20/09; Cho vay … 800.000 đ, 19/09; Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 … 123.000 đ, 19/09; Số giao dịch: 19; Tổng chi: 2.241.000 đ. | ◐ **lên** (lần 2: một khoản, sai khoản) — đúng thứ tự, **4/5** vì `kToiDaMucMoiGoi = 4` |
+| E6 | Nhung lan toi nap tien vao muc tieu MuaDT | Mọi thời gian, ghi chú chứa "MuaDT" — Tích lũy mục tiêu: MuaDT … 700.000 đ, 05/09; Rút từ mục tiêu: MuaDT … 300.000 đ, 05/09; Tích lũy mục tiêu: MuaDT … 100.000 đ, 25/09; Số giao dịch: 3; Tổng chi: 0 đ; Tổng thu: 0 đ; Tổng chuyển: 1.100.000 đ. | ✅ **hết tụt** — kể từng lần. ⚠️ có một lần *rút*; *Tổng chi / thu 0 đ* thừa |
+| E19 | Trong quy nay khoan chi nao lon nhat? | Khoản chi lớn nhất trong quý này là Cho vay với số tiền 800.000 đ. | ✅ **lên** — luật 15 `ky=quy_nay`, chữ mô hình |
+| F14 | ky trich tiep theo cua MuaDT la khi nao | MuaDT đúng kế hoạch: Tiến độ 16,7%, Đã tích 500.000 đ, …, Đang tích mỗi tháng 652.174 đ; Đang theo đuổi: 2; Đã hoàn thành: 0 — MuaDT không bật trích tự động. | ✅ **lên** — câu trả lời ở cuối một dòng dài |
+| F15 | nen chuyen bot ngan sach nao sang ngan sach nao | Số ngân sách: 4; Số ngân sách cần bù: 0 — không ngân sách nào cần cân đối. | ✅ **lên** — khớp trang Ngân sách (không có thẻ *Đề xuất cân đối*, đối chiếu bằng mắt cùng lúc) |
+
+**Kết quả 9 câu: 8 ✅ · 1 ◐ · 0 ✗ · SAI 0.** Gộp với lần 1–2:
+
+| Dòng của cổng F | Lần 1 | Lần 2 | Lần 3 | Đạt? |
+|---|---|---|---|---|
+| SAI | 3 | 0 | **0** | ✅ |
+| F1–F16 ≥ 13 | 12 | 14 | **16** | ✅ |
+| 56 câu cũ không tụt so với 27/09 | 11 tụt | 4 tụt | **0 tụt** | ✅ |
+
+✅ **Cổng F ĐẠT** — lần đầu. Còn ◐ có từ trước, không tính tụt: C4 (biên *"dưới"*), C16 (trần 4 hàng). Ba chỗ mẫu câu còn
+thô, ghi lại cho vòng sau, **chưa** chọn hướng: dòng mục tiêu in thừa *Đang theo đuổi / Đã hoàn thành* ở câu một số đích;
+câu liệt kê theo ví lẫn cả chiều ngược (C11) và câu *"nạp"* lẫn lần *rút* (E6); câu *"N khoản"* bị trần 4. Số đo phụ: lượt
+sinh đầu phiên sáu tool 31,6–36,7 s, phiên một tool 13,5–13,9 s. Theo handoff, cổng đạt thì chạy **trọn 72 câu** một lần
+làm mốc cho A2 — khối dưới.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

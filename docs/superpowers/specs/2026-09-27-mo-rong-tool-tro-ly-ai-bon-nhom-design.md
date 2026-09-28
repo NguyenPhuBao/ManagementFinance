@@ -169,7 +169,9 @@ vay/nợ), cộng `soLieuNhanhCua`, `tongTaiSanCua`/`thayDoiTaiSan`, `chuoiVayNo
   hụt* = `thamHut`, *Dự phóng* = `duPhong`); các hàng sau = nguồn bù (`dong[i].nguon.displayName`, trạng thái *"giảm bớt"*,
   *Chuyển* = `soTien`, *Dư địa* = `duDia`); tổng hợp *Số ngân sách cần bù* (1 hay 0), *Còn thiếu sau khi bù* (`soThieu`,
   chỉ khi `thieuNguonBu`); `chuThem['ket_qua']` = *"đủ nguồn bù"* / *"thiếu nguồn bù"*. `null` → `rongTheoBoLoc`, `doiTuongRong`
-  *"ngân sách"*, mẫu câu *"Cần cân đối — không có ngân sách nào khớp"*.
+  *"ngân sách"*, mẫu câu *"Cần cân đối — không có ngân sách nào khớp"*. ⚠️ *Đổi 2026-09-28 (`f1a5bd1`, mục 9.37
+  `AI_EDGE_FEATURE.md`, câu F15 cổng F): `null` nay là `ket_qua` "không ngân sách nào cần cân đối" + `chiMauCau`,
+  **thôi** `rongTheoBoLoc` — mẫu câu cũ đọc như một lỗi tìm kiếm.*
 - `chinhThamSoNganSach`: *"cân đối / chuyển bớt / bù / dồn ngân sách / lấy từ ngân sách nào"* → `can_doi`, xét trước tỉ lệ.
 - ⚠️ Tool **không** áp dụng kế hoạch (bất biến ④); mô tả nói *"chỉ gợi ý, áp dụng ở trang Ngân sách"*.
 
