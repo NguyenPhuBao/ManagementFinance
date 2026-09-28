@@ -2331,6 +2331,86 @@ so hai kỳ (một lời gọi) — chưa làm; chưa chạy lại trọn 56 câ
 
 ---
 
+### 9.33 Mở rộng bộ tool — LÁT 1: kỳ tự do, so hai kỳ, dự báo dòng tiền (OnePlus 13R, 2026-09-28) — 🛑 4/7, tool dự báo 0/3
+
+Spec `docs/superpowers/specs/2026-09-27-mo-rong-tool-tro-ly-ai-bon-nhom-design.md` §3 và §4.1; kế hoạch
+`docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai.md` Task 1–5. Commit `06b5cfb` → `fc00bb9`.
+
+**Mã:**
+
+- `kyTuCauHoi` (`ma_ky.dart`) đọc kỳ nêu cụ thể từ câu hỏi đã bỏ dấu: *tháng 8 · tháng 8/2025 · quý 2 · năm ngoái ·
+  tuần 35 · từ 1/9 đến 15/9 · 3 tháng gần nhất*. Lùi N tháng **kẹp** về ngày cuối tháng ngắn; ngày không tồn tại và
+  mốc ngược trả `null`. Trả thêm `ten` — các cách gọi kỳ ấy.
+- Bộ chỉnh luật **11** (kỳ tự do → `ky=tuy_chon` + `tu_ngay` / `den_ngay`, thắng luật 5) và **12** (`so_voi`; `ky` là kỳ
+  GỐC). Cụm so sánh bị bỏ khỏi câu trước khi đọc kỳ; *"3 tháng gần nhất"* không kích `sap_xep=moi_nhat`; `so_voi` mô
+  hình điền thừa bị gỡ. `chinhThamSoTimGiaoDich` nay nhận `now`.
+- `truy_van_giao_dich`: `ky=tuy_chon` (hai mốc `dd/mm/yyyy`, `den_ngay` bao gồm; hỏng thì `tuChoiKhoangNgay`) và
+  `so_voi` (`ky_truoc` · `cung_ky_nam_truoc`). `ganKyTuyChon` và `themSoSanh` (`hang_giao_dich.dart`) gắn vào kết quả
+  đã dựng qua `KetQuaCongCu.boSung` — một chỗ cho hàng lẻ, hàng nhóm, hàng đã chọn.
+- Tool mới `du_bao_dong_tien` (`hang_du_bao.dart`, `cong_cu_du_bao.dart`), không tham số, đọc `ThongKeKy.duBao`.
+  `BoCongCu` nay **BẢY** tool, tool mới nối vào cuối.
+- `khoangCungKyNamTruoc` (`pham_vi_ky.dart`) và `chenhLechSoVoi` (`thong_ke_thang.dart`) — lớp AI nhận số đã trừ sẵn.
+
+**Bảy chỗ khác spec / kế hoạch, kèm lý do:**
+
+1. Kỳ so sánh đọc bằng `timGiaoDich` với **cùng bộ lọc**, không phải `tongThuChi`: *"ăn uống tháng này so với tháng
+   trước"* phải so ăn uống với ăn uống, và hai vế phải cùng một định nghĩa của *Tổng chi*.
+2. *Chênh lệch* và *Tỉ lệ đổi* in **số dương**, hướng đi bằng chữ (`chuThem`, nhãn thay thế *Chi nhiều hơn / Chi ít
+   hơn*): mô hình nói *"ít hơn 500.000 đ"*, số âm trong gói không khớp số dương của câu.
+3. Khoá chữ là `so_sanh_chi` / `so_sanh_thu`, không phải một khoá `so_sanh`: câu hai chiều cần hai hướng.
+4. Tên kỳ (*"tháng 8"*, *"3 tháng gần nhất"*) vào `tenLienQuan`; hai mốc là số liệu NGÀY của bộ lọc (*Từ ngày*, *Đến
+   ngày*, nhãn thay thế *Từ* / *Đến*). Thiếu chúng thì mọi câu nêu tháng bị `kiemSo` chặn vì chữ số của tên kỳ.
+5. Chữ kỳ giữ chỗ *"khoảng đã chọn"* ở `chuThem['ky']` **không** in ở tiền tố mẫu câu (`_chuKyInDuoc`) — chữ thật có
+   số đứng đầu `boLoc`.
+6. Nhãn dự báo **không mang chữ số**: *Tổng cam kết* thay *Cam kết 30 ngày tới*; tầm nhìn đi bằng tên liên quan
+   (`kTenTamNhinDuBao`). Thiếu tiền thì in số dương dưới nhãn *Thiếu sau cam kết*.
+7. Không cần `kyNenSoSanh` mới: `lui`, `cungKyNamTruoc`, `khoangKyTruoc` đã đủ; chỉ thêm bản khoảng của cùng kỳ năm
+   trước cho trọn tháng (tháng 2 nhuận).
+
+**Spike trần:** `tools_json` **6.960** ký tự, lời hệ thống **2.742**, 7 tool, 0 `FAILED_PRECONDITION`, 0 sập →
+`kTranToolsJsonDaDo = 6960`. ⚠️ Đo trên **OnePlus 13R (GPU)**, không phải Realme: người dùng chốt 2026-09-28 *"có máy
+nào thì test máy đó"*. Bảy câu đều một lời gọi — phiên **ba lời gọi** chưa đo ở độ dài này.
+
+**Đo bảy câu đích** (APK `aed24f8`, SHA-1 `d5e21471…` khớp hai bên, tài khoản 10, 09:48–09:50, nạp mô hình 4,3 s,
+mỗi câu 5–9 s):
+
+| # | Câu hỏi (gõ không dấu) | Tool · tham số sau bộ chỉnh | Câu hiện ra (rút gọn) | Đánh giá |
+|---|---|---|---|---|
+| L1 | tháng này tôi chi nhiều hơn hay ít hơn tháng trước (E13) | `truy_van` `thang_nay`, `so_voi=ky_truoc`, `khoan_chi` | Mẫu câu: *"Tháng này, khoản chi, so với tháng trước — … Tổng chi: 2.241.000 đ; Tổng chi tháng trước: 0 đ."* | ◐ số đúng (dữ liệu bắt đầu 02/09), nhưng mẫu câu **không nói** *"không có dữ liệu tháng trước"* — chữ ấy chỉ nằm ở `chuThem` |
+| L2 | tháng 8 tôi chi bao nhiêu | `truy_van` `tuy_chon` 01/08–31/08 (mô hình điền `thang_nay`, bộ chỉnh đè) | *"Tháng 8/2026, khoản chi — không có giao dịch nào khớp."* | ✅ |
+| L3 | từ 1/9 đến 15/9 tôi chi những gì | `truy_van` `tuy_chon` 01/09–15/09 (mô hình điền `01/9` – `5/9/9`, bộ chỉnh đè) | Mẫu câu: bốn khoản, *Số giao dịch: 14; Tổng chi: 1.045.000 đ* | ✅ (mẫu câu) |
+| L4 | 3 tháng gần nhất tôi chi bao nhiêu | `truy_van` `tuy_chon` 28/06–28/09 | Mẫu câu: *"3 tháng gần nhất, khoản chi — … Tổng chi: 2.241.000 đ."* | ✅ (mẫu câu) |
+| L5 | tiền trong ví có đủ trả hoá đơn không (câu 16) | `danh_sach_vi` — **sai tool** | *"Không có dữ liệu về ví nào được cung cấp."* | ✗ **SAI**: tool trả 4 hàng mà câu nói không có; câu không số nên bốn lớp chắn im |
+| L6 | trả hết hoá đơn thì còn bao nhiêu (câu 17) | `danh_sach_hoa_don` `tat_ca` — **sai tool** | Mẫu câu liệt kê hoá đơn, *Còn phải trả: 55.000 đ* | ✗ lệch câu hỏi |
+| L7 | 30 ngày tới tôi phải chi gì | `truy_van` `moi_luc` — **sai tool**; bộ chỉnh đọc câu là "không nêu kỳ" | Mẫu câu liệt kê khoản chi ĐÃ qua | ✗ lệch câu hỏi |
+
+**Tổng: 3 ✅ · 1 ◐ · 3 ✗, bịa số 0, SAI 1.** Phần 1 của spec (kỳ tự do, so kỳ) **chạy**; tool `du_bao_dong_tien` **không
+được gọi lần nào** — nguyên nhân (b), định tuyến. Ví dụ định tuyến trong lời hệ thống không đủ kéo mô hình khỏi ba
+tool mang đúng chữ của câu hỏi (*ví*, *hoá đơn*, *chi*).
+
+**Ba điều lượt đo lộ ra:**
+
+- ⚠️ **Bẫy 4.51 — E2B trên GPU của OnePlus viết HỎNG chuỗi số**: *"2.2414.000 đ"* (gói: 2.241.000), *"10.04500 đ"*
+  (1.045.000), *"2.24.00 đồng"*, *"55000 đ"*. Bốn trên năm câu có số của mô hình bị `kiemSo` chặn và rơi về mẫu câu —
+  lớp chắn làm đúng việc, nhưng trên máy này hầu như không câu có số nào của mô hình tới được người dùng. Chưa biết
+  Realme (CPU) với bản này có thế không — lần đo 14 trên OnePlus (9.28) không ghi hiện tượng ấy.
+- ⚠️ **Bẫy 4.52 — câu phủ định không số sau một lượt CÓ hàng** (L5): mô hình nói *"không có dữ liệu"* khi tool vừa
+  trả 4 hàng. Cùng họ 4.40 (đọc lời từ chối thành "không có dữ liệu") nhưng ở lượt **thành công**; `kiemTen` không
+  bắt vì câu không nêu tên nào.
+- Bộ chỉnh đọc *"30 ngày tới"* là câu không nêu kỳ → `moi_luc` (L7). Kỳ TƯƠNG LAI không thuộc tool giao dịch.
+
+**Hướng sửa — chờ người dùng quyết, chưa sửa gì:**
+
+- (a) **Định tuyến theo câu hỏi ở tầng mã**: câu có *"còn tiêu được / đủ trả / trả hết … còn / N ngày tới phải chi,
+  phải trả / sắp tới phải"* thì vòng lặp đổi lời gọi sang `du_bao_dong_tien` — mở rộng nguyên tắc *"câu hỏi là nguồn
+  sự thật"* từ tham số sang **tên tool**. Chắc nhất, nhưng là luật từ vựng mới (mỗi luật là một dương tính giả mới).
+- (b) Mô tả chéo: `danh_sach_vi` và `danh_sach_hoa_don` chỉ đường sang `du_bao_dong_tien` cho câu *"đủ trả"*, *"còn
+  bao nhiêu"*; đưa tool dự báo lên vị trí thứ hai. Rẻ, nhưng `tools_json` dài thêm và lần đo 9 cho thấy mô tả chéo một
+  mình không đủ.
+- (c) Lớp chắn cho 4.52: gói có hàng mà câu không số chứa *"không có dữ liệu / không có … nào"* → chặn, rơi mẫu câu.
+- (d) Mẫu câu in chữ so sánh của `chuThem` (*"không có dữ liệu tháng trước"*, *"chi nhiều hơn tháng trước"*) — L1.
+- (e) Đo lại L1–L7 trên Realme khi có máy, để biết 4.51 là của GPU hay của bản này.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

@@ -661,6 +661,22 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   12 task / ba lát (gitignore) — **chưa thi công**; bàn giao ở `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-27-sau-cong-e.md`. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
   script `nohup`, hai bản đo chồng nhau làm bật khỏi màn chat — kiểm/diệt bằng PowerShell `Get-CimInstance Win32_Process`.
 
+### 🛑 Trợ lý AI — lát 1 mở rộng bộ tool (2026-09-28): mã xong, đo 4/7 trên OnePlus
+
+Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai.md` Task 1–5 (commit `06b5cfb` →
+`fc00bb9`, chưa push). Chi tiết, bảng đo ba cột và năm hướng sửa: mục **9.33** `docs/AI_EDGE_FEATURE.md`.
+
+- ✅ **Kỳ tự do và so hai kỳ chạy**: *tháng 8 · từ 1/9 đến 15/9 · 3 tháng gần nhất* đều ra đúng khoảng (bộ chỉnh luật
+  11 đè tham số của mô hình); E13 *"nhiều hơn hay ít hơn tháng trước"* ra `so_voi=ky_truoc`.
+- 🛑 **Tool `du_bao_dong_tien` không được gọi lần nào** ở ba câu đích (câu 16–17 chặng 3 và *"30 ngày tới phải chi
+  gì"*) — mô hình chọn tool ví, tool hoá đơn, tool giao dịch. Một câu **SAI** (*"Không có dữ liệu về ví nào"* sau
+  lượt trả 4 hàng).
+- `BoCongCu` **bảy** tool; `tools_json` **6.960**; `flutter test` **3949/3949**, `flutter analyze` **26**.
+- ⚠️ Đo trên **OnePlus 13R**, không phải Realme — người dùng chốt *"có máy nào thì test máy đó"*. E2B trên GPU máy
+  này viết hỏng chuỗi số ở 4/5 câu có số (bẫy 4.51), nên hầu hết câu rơi về mẫu câu.
+- **Chờ người dùng quyết hướng sửa** trước khi sửa định tuyến; lát 2 (tổng quan tài chính, danh mục, blocklist) và
+  lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) chưa làm.
+
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
 Bốn commit NPBao cùng ngày, không xung đột, **không đụng `src/Client-app`**. Bốn đơn của client chuyển sang
