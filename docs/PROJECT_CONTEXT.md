@@ -694,7 +694,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - 🛑 **Cổng F lần 1 CHƯA ĐẠT** (Realme, mục 9.36 `AI_EDGE_FEATURE.md`): 11 câu cũ tụt, F 12/16, SAI 3; người dùng chọn
   **cả năm gốc** G1–G5 ngày 2026-09-28 chiều — ✅ **mã xong cùng chiều, chưa đo** (mục 9.37, `7ce43e1` → `eeaadc4`;
   G5 qua spec `2026-09-28-g5-chan-menh-de-sai-design.md`: lớp chắn thứ sáu `kiemKy` + số tổng gán cho đối tượng trong
-  `kiemNhan`). Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`. Bàn giao cũ ở
+  `kiemNhan`). Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-cong-f.md` (APK `84ac2013…` đã build, chưa đo). Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
