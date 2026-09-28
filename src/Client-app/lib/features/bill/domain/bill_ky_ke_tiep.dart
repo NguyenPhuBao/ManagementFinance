@@ -17,6 +17,8 @@
 ///   Xem `core/bill/bill_recurrence.dart`.
 library;
 
+import 'package:drift/drift.dart' show Value;
+
 import '../../../core/bill/bill_recurrence.dart';
 import '../../../core/database/app_database.dart';
 import 'bill_an_han.dart';
@@ -66,4 +68,39 @@ KyKeTiep kyKeTiepCua(Bill current) {
     hanTra: hanTraTu(ketThuc, anHan),
     anchorDay: goc,
   );
+}
+
+/// Trần số kỳ chiếu cho MỖI hoá đơn. Chu kỳ tuần trong 30 ngày là ≤ 5 kỳ; 12
+/// là dư. Vượt trần thì dừng im lặng.
+const int kTranKyChieu = 12;
+
+/// Các kỳ TƯƠNG LAI của [b] có hạn trả không sau [denHetNgay] (biên đóng, so
+/// theo ngày) — chỉ tính, không sinh hàng. Hai nơi dùng: dự báo 30 ngày và tool
+/// `danh_sach_hoa_don` (kỳ tới); tách ra 2026-09-28 để tool không chép vòng lặp.
+///
+/// Mỗi vòng dựng lại một `Bill` từ kỳ vừa chiếu để `anchorDay` đi theo chuỗi —
+/// cộng dồn từ kỳ trước là "ngày 31" tụt về 28 vĩnh viễn. Hoá đơn không lặp →
+/// rỗng. ⚠️ Người gọi tự lo việc [b] có phải HÀNG CUỐI CHUỖI không (hàng đã
+/// sinh kỳ sau thì kỳ sau là hàng thật, chiếu nữa là đếm đôi).
+List<KyKeTiep> cacKyChieuCua(Bill b, {required DateTime denHetNgay}) {
+  final ra = <KyKeTiep>[];
+  if (!b.isRecurrence) return ra;
+  final cuoi = DateTime(denHetNgay.year, denHetNgay.month, denHetNgay.day);
+  var hienTai = b;
+  for (var n = 0; n < kTranKyChieu; n++) {
+    final ky = kyKeTiepCua(hienTai);
+    // Chu kỳ lạ: `nextBillDueDate` trả nguyên mốc → hạn không tiến → dừng,
+    // không lặp vô hạn.
+    if (!ky.hanTra.isAfter(hienTai.dueDate)) break;
+    final han = DateTime(ky.hanTra.year, ky.hanTra.month, ky.hanTra.day);
+    if (han.isAfter(cuoi)) break;
+    ra.add(ky);
+    hienTai = hienTai.copyWith(
+      startDate: Value(ky.batDau),
+      periodEnd: Value(ky.ketThuc),
+      dueDate: ky.hanTra,
+      anchorDay: Value(ky.anchorDay),
+    );
+  }
+  return ra;
 }

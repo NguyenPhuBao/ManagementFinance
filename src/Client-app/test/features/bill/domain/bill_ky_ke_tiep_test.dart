@@ -117,4 +117,51 @@ void main() {
     expect(ky.ketThuc, DateTime(2026, 9, 14));
     expect(ky.hanTra, DateTime(2026, 9, 16), reason: 'ân hạn 2 ngày giữ nguyên');
   });
+  group('cacKyChieuCua — các kỳ TƯƠNG LAI chiếu từ một hàng (dự báo + tool hoá đơn dùng chung)', () {
+    test('hoá đơn tháng ngày 31: chiếu tới hết 31/12 → 31/10, 30/11, 31/12 — ngày gốc không tụt', () {
+      final ds = cacKyChieuCua(
+        _hoaDon(dueDate: DateTime(2026, 9, 30), anchorDay: 31),
+        denHetNgay: DateTime(2026, 12, 31),
+      );
+      expect(ds.map((k) => k.hanTra).toList(),
+          [DateTime(2026, 10, 31), DateTime(2026, 11, 30), DateTime(2026, 12, 31)],
+          reason: 'Cộng dồn từ kỳ trước là nhịp 31 tụt về 30 vĩnh viễn sau tháng 11.');
+    });
+
+    test('biên ĐÓNG: kỳ rơi đúng ngày cuối vẫn tính, kỳ sau ngày cuối thì không', () {
+      final b = _hoaDon(dueDate: DateTime(2026, 9, 20), anchorDay: 20);
+      expect(cacKyChieuCua(b, denHetNgay: DateTime(2026, 10, 20, 23)), hasLength(1));
+      expect(cacKyChieuCua(b, denHetNgay: DateTime(2026, 10, 19)), isEmpty);
+    });
+
+    test('năm nhuận: gốc 29, hạn 29/01/2028 → 29/02/2028; năm thường → 28/02', () {
+      expect(
+          cacKyChieuCua(_hoaDon(dueDate: DateTime(2028, 1, 29), anchorDay: 29),
+                  denHetNgay: DateTime(2028, 2, 29))
+              .single
+              .hanTra,
+          DateTime(2028, 2, 29));
+      expect(
+          cacKyChieuCua(_hoaDon(dueDate: DateTime(2027, 1, 29), anchorDay: 29),
+                  denHetNgay: DateTime(2027, 2, 28))
+              .single
+              .hanTra,
+          DateTime(2027, 2, 28));
+    });
+
+    test('chu kỳ lạ (hạn không tiến) → rỗng, không lặp vô hạn', () {
+      expect(
+          cacKyChieuCua(_hoaDon(dueDate: DateTime(2026, 9, 20), chuKy: 'Lạ'),
+              denHetNgay: DateTime(2027, 9, 20)),
+          isEmpty);
+    });
+
+    test('trần kTranKyChieu kỳ', () {
+      final ds = cacKyChieuCua(
+        _hoaDon(dueDate: DateTime(2026, 9, 20), anchorDay: 20),
+        denHetNgay: DateTime(2030, 1, 1),
+      );
+      expect(ds, hasLength(kTranKyChieu));
+    });
+  });
 }
