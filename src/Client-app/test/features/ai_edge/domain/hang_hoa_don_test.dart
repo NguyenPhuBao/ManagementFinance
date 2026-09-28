@@ -6,7 +6,9 @@ library;
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/bill/domain/bill_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,6 +19,10 @@ Bill _bill({
   bool isPaid = false,
   String payStatus = 'Pending',
   String ten = 'Tiền điện',
+  bool tuTra = false,
+  bool lap = true,
+  String chuKy = kBillCycleMonth,
+  String? sinhTu,
 }) =>
     Bill(
       id: id,
@@ -29,10 +35,11 @@ Bill _bill({
       dueDate: dueDate,
       payStatus: payStatus,
       isPaid: isPaid,
-      autoPayEnabled: false,
+      autoPayEnabled: tuTra,
       timeNotification: '3',
-      isRecurrence: true,
-      timeRecurrence: kBillCycleMonth,
+      isRecurrence: lap,
+      timeRecurrence: chuKy,
+      generatedFromBillId: sinhTu,
       recurrence: 'monthly',
       icon: 'receipt',
       colour: '#4CAF50',
@@ -96,6 +103,8 @@ void main() {
       'Còn phải trả=155.000 đ',
       'Quá hạn=1',
       'Chưa trả=2',
+      'Tự trả=0',
+      'Cố định mỗi tháng=355.000 đ',
     ]);
     expect(kq.tongHop.first.soTho, tom.unpaidAmount);
   });
@@ -147,5 +156,150 @@ void main() {
     expect(chuTrangThaiHoaDon(BillDisplayStatus.pending), 'chưa trả');
     expect(chuTrangThaiHoaDon(BillDisplayStatus.paid), 'đã trả');
     expect(chuTrangThaiHoaDon(BillDisplayStatus.skipped), 'bỏ qua');
+  });
+  group('ky — kỳ tới, mọi kỳ (spec mở rộng tool §5.1)', () {
+    test('⭐ ky_toi: hàng THẬT của tháng tới + kỳ DỰ KIẾN chiếu từ hàng chưa trả cuối chuỗi', () {
+      final kq = hangHoaDon([dien, kiem, daTra, kySau], now: now, ky: 'ky_toi');
+      expect(kq.hang.map((h) => '${h.ten}|${h.trangThai}|${h.json['Đến hạn']}').toList(), [
+        'Kiem|dự kiến|01/10',
+        'Nước|chưa trả|05/10',
+        'Tiền điện|dự kiến|20/10',
+      ], reason: 'ngày dự kiến phải là đúng kyKeTiepCua — cùng luật payBill sinh hàng thật');
+      expect(kq.hang.any((h) => h.canhBao), isFalse);
+      expect(kq.json['Còn phải trả'], '225.000 đ');
+      expect(kq.json['Chưa trả'], '3');
+      expect(kq.json['Quá hạn'], '0');
+      expect(kq.chuThem['ky'], 'kỳ tới');
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+
+    test('⭐ hàng ĐÃ SINH kỳ sau thì không chiếu nữa — không đếm đôi', () {
+      final a = _bill(id: 'a', ten: 'Net', dueDate: DateTime(2026, 9, 10));
+      final b = _bill(id: 'b', ten: 'Net', dueDate: DateTime(2026, 10, 10), sinhTu: 'a');
+      final kq = hangHoaDon([a, b], now: now, ky: 'ky_toi');
+      expect(kq.hang, hasLength(1));
+      expect(kq.hang.single.trangThai, 'chưa trả');
+      expect(kq.json['Chưa trả'], '1');
+    });
+
+    test('ky_toi: hoá đơn KHÔNG lặp và hoá đơn đã trả không sinh kỳ dự kiến; kỳ này không lọt', () {
+      final motLan = _bill(id: 'm', ten: 'Sửa xe', dueDate: DateTime(2026, 9, 12), lap: false);
+      final kq = hangHoaDon([motLan, daTra], now: now, ky: 'ky_toi');
+      expect(kq.hang, isEmpty);
+      expect(kq.rongTheoBoLoc, isTrue);
+      expect(kq.doiTuongRong, 'hoá đơn');
+      // Bộ lọc mặc định chua_tra che mất hàng chiếu từ hoá đơn đã trả (bản sai 3
+      // vẫn xanh) — phải hỏi MỌI trạng thái mới thấy.
+      final moi = hangHoaDon([motLan, daTra], now: now, ky: 'ky_toi', trangThai: 'tat_ca');
+      expect(moi.hang, isEmpty,
+          reason: 'trả tiền là sinh luôn hàng kỳ sau; chiếu từ hàng đã trả là đếm đôi');
+    });
+
+    test('⭐ nợ cũ từ tháng 8: kỳ chiếu rơi vào THÁNG NÀY không phải kỳ tới — chỉ kỳ 01/10 được tính', () {
+      final cu = _bill(id: 'c', ten: 'Nợ cũ', amount: 30000, dueDate: DateTime(2026, 8, 1));
+      final kq = hangHoaDon([cu], now: now, ky: 'ky_toi');
+      expect(kq.hang.map((h) => h.json['Đến hạn']).toList(), ['01/10'],
+          reason: 'kỳ 01/09 cũng là kỳ chiếu nhưng thuộc tháng này');
+      expect(kq.json['Còn phải trả'], '30.000 đ');
+    });
+
+    test('ky_toi qua biên năm: now tháng 12 → tháng 1 năm sau', () {
+      final n = DateTime(2026, 12, 20);
+      final b = _bill(id: 't', ten: 'Net', dueDate: DateTime(2026, 12, 31));
+      final kq = hangHoaDon([b], now: n, ky: 'ky_toi');
+      expect(kq.hang.single.json['Đến hạn'], '31/01/2027',
+          reason: 'hạn sang NĂM KHÁC thì soNgayThang in kèm năm');
+    });
+
+    test('ky_toi, tháng 2 năm nhuận: hạn 31/01/2028 → dự kiến 29/02', () {
+      final b = _bill(id: 't', ten: 'Net', dueDate: DateTime(2028, 1, 31));
+      final kq = hangHoaDon([b], now: DateTime(2028, 1, 15), ky: 'ky_toi');
+      expect(kq.hang.single.json['Đến hạn'], '29/02');
+    });
+
+    test('ky_toi, hoá đơn tuần: mọi kỳ dự kiến rơi trong tháng tới, trần 4 hàng, đếm đủ', () {
+      final tuan = _bill(id: 'w', ten: 'Gửi xe', dueDate: DateTime(2026, 9, 28), chuKy: kBillCycleWeek);
+      final kq = hangHoaDon([tuan], now: now, ky: 'ky_toi');
+      expect(kq.hang.map((h) => h.json['Đến hạn']).toList(), ['05/10', '12/10', '19/10', '26/10']);
+      expect(kq.json['Chưa trả'], '4');
+    });
+
+    test('tat_ca: mọi hoá đơn chưa đóng BẤT KỂ tháng — đúng tab Cần thanh toán; tổng trên cùng tập', () {
+      final kq = hangHoaDon([dien, kiem, daTra, kySau], now: now, ky: 'tat_ca');
+      expect(kq.hang.map((h) => h.ten).toList(), ['Kiem', 'Tiền điện', 'Nước']);
+      expect(kq.json['Còn phải trả'], '225.000 đ');
+      expect(kq.json['Chưa trả'], '3');
+      expect(kq.json['Quá hạn'], '1');
+      expect(kq.chuThem['ky'], 'mọi kỳ');
+    });
+
+    test('ky_nay (mặc định) không đổi: không chữ kỳ, không rongTheoBoLoc', () {
+      final kq = hangHoaDon([kySau], now: now);
+      expect(kq.hang, isEmpty);
+      expect(kq.chuThem.containsKey('ky'), isFalse);
+      expect(kq.rongTheoBoLoc, isFalse);
+    });
+
+    test('ky lạ → từ chối', () {
+      final kq = hangHoaDon([kiem], now: now, ky: 'nam_sau');
+      expect(kq.loi, contains('ky_toi'));
+      expect(kq.thamSoGo, ['ky']);
+    });
+  });
+
+  group('tự trả và cố định mỗi tháng', () {
+    final net = _bill(id: 'n', ten: 'Netflix', amount: 260000, dueDate: DateTime(2026, 9, 28), tuTra: true);
+    final netDaTra = _bill(
+        id: 'n0', ten: 'Spotify', amount: 59000, dueDate: DateTime(2026, 9, 2),
+        tuTra: true, isPaid: true, payStatus: 'Payed');
+    final tuan = _bill(id: 'w', ten: 'Gửi xe', amount: 20000, dueDate: DateTime(2026, 9, 9), chuKy: kBillCycleWeek);
+    final motLan = _bill(id: 'm', ten: 'Sửa xe', amount: 300000, dueDate: DateTime(2026, 9, 12), lap: false);
+    final boQua = _bill(id: 's', ten: 'Gym', amount: 500000, dueDate: DateTime(2026, 9, 5), payStatus: 'Skipped');
+
+    test('⭐ hậu tố " · tự trả" chỉ trên hàng CÒN PHẢI TRẢ có bật tự trả; đếm Tự trả cùng luật', () {
+      final kq = hangHoaDon([net, netDaTra, kiem], now: now, trangThai: 'tat_ca');
+      expect({for (final h in kq.hang) h.ten: h.trangThai}, {
+        'Kiem': 'đã quá hạn',
+        'Spotify': 'đã trả',
+        'Netflix': 'chưa trả · tự trả',
+      });
+      expect(kq.json['Tự trả'], '1');
+    });
+
+    test('⭐ Cố định mỗi tháng = hoá đơn LẶP THÁNG của kỳ này, kể cả đã trả; bỏ tuần, một lần, bỏ qua', () {
+      final kq = hangHoaDon([net, netDaTra, tuan, motLan, boQua, kySau], now: now);
+      expect(kq.json['Cố định mỗi tháng'], '319.000 đ');
+    });
+
+    test('kỳ dự kiến của hoá đơn tự trả cũng mang hậu tố', () {
+      final kq = hangHoaDon([net], now: now, ky: 'ky_toi');
+      expect(kq.hang.single.trangThai, 'dự kiến · tự trả');
+      expect(kq.json['Tự trả'], '1');
+    });
+  });
+
+  group('mẫu câu tự qua năm lớp chắn', () {
+    final net = _bill(id: 'n', ten: 'Netflix', amount: 260000, dueDate: DateTime(2026, 9, 28), tuTra: true);
+    for (final ky in kKyHoaDon) {
+      test('ky=$ky', () {
+        final g = GoiSoTraCuu()
+          ..them('danh_sach_hoa_don', hangHoaDon([dien, kiem, daTra, kySau, net], now: now, ky: ky));
+        final cau = g.mauCau().cau;
+        expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
+      });
+    }
+    test('ky_toi rỗng: "Kỳ tới — không có hoá đơn nào khớp."', () {
+      final g = GoiSoTraCuu()..them('danh_sach_hoa_don', hangHoaDon([daTra], now: now, ky: 'ky_toi'));
+      expect(g.mauCau().cau, 'Kỳ tới — không có hoá đơn nào khớp.');
+      expect(g.choHienChuMoHinh, isFalse);
+    });
+    test('câu tự nhiên của mô hình qua được: tháng tới, tự trả, cố định', () {
+      final g = GoiSoTraCuu()
+        ..them('danh_sach_hoa_don', hangHoaDon([dien, kiem, net], now: now, ky: 'ky_toi'));
+      expect(kiemCauTraLoi('Tháng tới bạn dự kiến phải trả Netflix 260.000 đ, đến hạn 28/10.', [g]), isTrue);
+      expect(kiemCauTraLoi('Có 1 hoá đơn tự trả là Netflix.', [g]), isTrue);
+      expect(kiemCauTraLoi('Chi phí cố định mỗi tháng của bạn là 415.000 đ.', [g]), isTrue);
+      expect(kiemCauTraLoi('Chi phí cố định mỗi tháng của bạn là 500.000 đ.', [g]), isFalse);
+    });
   });
 }

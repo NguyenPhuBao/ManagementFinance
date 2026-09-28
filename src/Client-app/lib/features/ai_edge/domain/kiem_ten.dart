@@ -41,11 +41,14 @@ const List<String> kTuLoai = [
 /// Nhóm cuối thêm 2026-09-27 (bẫy 4.50): chữ không bao giờ là tên mà hay đứng
 /// ngay sau từ loại — *"ngân sách bao gồm"*, *"ngân sách bao nhiêu"*, *"danh mục
 /// các…"* — câu người dùng tự hỏi bị chặn vì cụm "bao gồm" không khớp tên nào.
+/// *tự · dự · cố* thêm 2026-09-28 (lát 3): *"hoá đơn tự trả"*, *"hoá đơn dự
+/// kiến"*, *"hoá đơn cố định"* là chữ của chính tool hoá đơn, không phải tên.
 const String _tuChucNangTho =
     'và hoặc là với của cho có đang đã còn sắp nào này ấy sau khác lớn nhỏ '
     'nhiều ít cụ gần hết chi thu đây trên dưới trong theo mới cũ đó sẽ cần nên '
     'thì mà để từ dụ như tiếp chưa không vẫn đều cũng '
-    'bao gồm nhiêu tổng cộng đặt tên các những được hiện tại thế trước';
+    'bao gồm nhiêu tổng cộng đặt tên các những được hiện tại thế trước '
+    'tự dự cố';
 final Set<String> kTuChucNang = _tuChucNangTho.split(' ').toSet();
 
 final RegExp _dauCau = RegExp(r'[.,;:!?()\[\]"“”]');

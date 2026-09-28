@@ -585,6 +585,50 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
   return KetQuaChinhThamSo(a, ghi);
 }
 
+/// Bộ chỉnh của `danh_sach_hoa_don` (lát 3, spec mở rộng tool §5.1): kỳ nêu
+/// trong câu → `ky`; không nêu → gỡ `ky` mô hình điền (luật 10). Câu về *tự
+/// trả* / *cố định mỗi tháng* không đổi tham số — số đã nằm trong tổng hợp.
+///
+/// ⚠️ Cùng bẫy với `_laKyTuongLai`: bỏ dấu thì *"tới"* và *"tôi"* là một chữ,
+/// nên câu có dấu đọc trên bản CÓ DẤU; câu gõ không dấu thì *"thang toi"* chỉ
+/// là *tháng tới* khi theo sau là *toi / phai / can / se / co* hay hết câu.
+final RegExp _mauHoaDonKyToiCoDau = RegExp(
+  r'(?<![\p{L}\p{N}])(?:tháng|kỳ|kì)\s+(?:tới|sau|sắp tới|kế tiếp)(?![\p{L}\p{N}])',
+  unicode: true,
+);
+final RegExp _mauHoaDonKyToiKhongDau = RegExp(
+  r'(?<![a-z0-9])(?:(?:thang|ky) (?:sau|sap toi|ke tiep)'
+  r'|(?:thang|ky) toi(?= toi| phai| can| se| co|$))(?![a-z0-9])',
+);
+final RegExp _mauHoaDonMoiKy = RegExp(
+  r'(?<![a-z0-9])(?:tat ca|toan bo|moi)(?: cac| nhung)? hoa don(?![a-z0-9])',
+);
+
+KetQuaChinhThamSo chinhThamSoHoaDon(String cauHoi, Map<String, dynamic> args) {
+  final a = Map<String, dynamic>.from(args);
+  final ghi = <String>[];
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
+  String? ky;
+  final kyToi = _coDau.hasMatch(cauHoi)
+      ? _mauHoaDonKyToiCoDau.hasMatch(normalizeCategoryName(cauHoi))
+      : _mauHoaDonKyToiKhongDau.hasMatch(q);
+  if (kyToi) {
+    ky = 'ky_toi';
+  } else if (_mauHoaDonMoiKy.hasMatch(q)) {
+    ky = 'tat_ca';
+  }
+  if (ky != null && a['ky'] != ky) {
+    a['ky'] = ky;
+    ghi.add('câu hỏi nêu kỳ hoá đơn → ky=$ky');
+  }
+  if (ky == null && _chuoi(a['ky']) != null) {
+    a.remove('ky');
+    ghi.add('câu hỏi không nêu kỳ hoá đơn → bỏ ky');
+  }
+  return KetQuaChinhThamSo(a, ghi);
+}
+
 /// Bộ chỉnh của `danh_sach_muc_tieu` (cổng E lần 1, E11): trạng thái nêu trong
 /// câu → `chon`; không nêu → gỡ `chon` mô hình điền thừa (luật 10).
 final List<String> _tuMucTieuCham = 'cham ke hoach|cham tien do|bi cham|dang cham|cham|tre|khong kip'.split('|');

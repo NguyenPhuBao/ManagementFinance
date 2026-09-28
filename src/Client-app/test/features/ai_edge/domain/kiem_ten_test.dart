@@ -64,6 +64,18 @@ void main() {
     expect(kiemTen('Tổng cộng bốn ngân sách các danh mục hiện tại.', [nganSach]), isTrue);
   });
 
+  test('⭐ lát 3 (2026-09-28): "hoá đơn tự trả / dự kiến / cố định" là chữ của tool hoá đơn, không phải tên', () {
+    expect(kiemTen('Có 1 hoá đơn tự trả là Kiem thu hoa don.', [tongKet]), isTrue,
+        reason: 'bị chặn thật ở ca đơn vị của hangHoaDon: cụm sau "hoá đơn" là "tự trả"');
+    expect(kiemTen('Tháng tới có hai hoá đơn dự kiến.', [tongKet]), isTrue);
+    expect(kiemTen('Các hoá đơn cố định mỗi tháng.', [tongKet]), isTrue);
+    expect(kiemTen('Hoá đơn tự trả là Internet.', [tongKet]), isTrue,
+        reason: 'giới hạn cố ý: sau "là" không còn là cụm tên của từ loại — sai theo chiều an toàn '
+            'đã có từ trước, không do lát này');
+    expect(kiemTen('Hoá đơn Internet tự trả.', [tongKet]), isFalse,
+        reason: 'tên bịa đứng TRƯỚC chữ chức năng vẫn bị chặn');
+  });
+
   test('tên bịa đứng một mình cũng bị chặn', () {
     expect(kiemTen('Mục tiêu Du lịch của bạn đang chậm.', [mucTieu]), isFalse);
     expect(kiemTen('Ví Ngân hàng đang âm.', [tongKet]), isFalse);

@@ -323,6 +323,37 @@ void main() {
         reason: '"đã đặt" là câu hỏi chung — liệt kê mọi ngân sách');
   });
 
+  group('chinhThamSoHoaDon (lát 3, spec mở rộng §5.1)', () {
+    test('⭐ F11 "thang toi toi phai tra hoa don nao" → ky_toi; có dấu và không dấu', () {
+      expect(chinhThamSoHoaDon('thang toi toi phai tra hoa don nao', {}).args['ky'], 'ky_toi');
+      expect(chinhThamSoHoaDon('Tháng tới tôi phải trả hoá đơn nào?', {}).args['ky'], 'ky_toi');
+      expect(chinhThamSoHoaDon('hoa don thang sau', {'ky': 'ky_nay'}).args['ky'], 'ky_toi');
+      expect(chinhThamSoHoaDon('Hoá đơn kỳ tới gồm những gì?', {}).args['ky'], 'ky_toi');
+      expect(chinhThamSoHoaDon('hoa don nao den han thang toi', {}).args['ky'], 'ky_toi');
+    });
+    test('⚠️ "thang nay toi…" / "thang toi da tra…": chữ "toi" là TÔI, không phải kỳ tới', () {
+      expect(chinhThamSoHoaDon('thang nay toi con phai tra hoa don nao', {}).args.containsKey('ky'), isFalse);
+      expect(chinhThamSoHoaDon('Tháng này tôi còn phải trả hoá đơn nào?', {}).args.containsKey('ky'), isFalse);
+      expect(chinhThamSoHoaDon('trong thang toi da tra hoa don nao', {}).args.containsKey('ky'), isFalse,
+          reason: '"thang toi da" — sau "toi" không phải toi/phai/can/se/co/hết câu');
+    });
+    test('"tat ca / moi / toan bo hoa don" → tat_ca', () {
+      expect(chinhThamSoHoaDon('liet ke tat ca hoa don chua tra', {}).args['ky'], 'tat_ca');
+      expect(chinhThamSoHoaDon('Tất cả các hoá đơn của tôi', {}).args['ky'], 'tat_ca');
+      expect(chinhThamSoHoaDon('toan bo hoa don', {}).args['ky'], 'tat_ca');
+    });
+    test('luật 10: câu không nêu kỳ mà mô hình điền ky → gỡ; câu rỗng → không đụng', () {
+      expect(chinhThamSoHoaDon('hoa don nao qua han', {'ky': 'ky_toi', 'trang_thai': 'qua_han'}).args,
+          {'trang_thai': 'qua_han'});
+      expect(chinhThamSoHoaDon('', {'ky': 'ky_toi'}).args['ky'], 'ky_toi');
+    });
+    test('F12 "hoa don nao tu tra" không đổi tham số — số đã có trong tổng hợp', () {
+      final r = chinhThamSoHoaDon('hoa don nao tu tra', {});
+      expect(r.args, isEmpty);
+      expect(r.ghiChu, isEmpty);
+    });
+  });
+
   group('chinhThamSoMucTieu (E11 cổng E)', () {
     test('⭐ "muc tieu nao dang cham ke hoach" → cham_ke_hoach; "qua han" → qua_han; "dung ke hoach" → dung_ke_hoach', () {
       expect(chinhThamSoMucTieu('muc tieu nao dang cham ke hoach', {}).args['chon'], 'cham_ke_hoach');
