@@ -199,7 +199,10 @@ void main() {
   // không phải Realme — người dùng chốt "có máy nào thì đo máy đó"; bảy câu, mỗi câu
   // một lời gọi, 0 FAILED_PRECONDITION. Trần `maxTokens` 4096 là hằng của client nên
   // không đổi theo máy, nhưng phiên dài nhất (ba lời gọi) CHƯA được đo ở độ dài này.
-  const kTranToolsJsonDaDo = 6960;
+  // Đo lại 2026-09-28 chiều sau lát 3 (hoá đơn `ky`, mục tiêu trích tự động, ngân sách `can_doi`):
+  // 6980 trên REALME (CPU) ở buổi cổng F — 72 câu, 25 phiên sáu tool, có phiên BA lời gọi (F12),
+  // 0 FAILED_PRECONDITION.
+  const kTranToolsJsonDaDo = 6980;
   group('khaiBaoCho — thứ MÔ HÌNH nhìn thấy (mục 9.34: khai cả chín tool là vỡ trần)', () {
     test('⭐ câu không định tuyến được → sáu tool cũ, KHÔNG có ba tool chỉ đi qua định tuyến', () {
       expect(bo.khaiBaoCho(null).map((k) => k.ten).toList(), [
@@ -228,8 +231,7 @@ void main() {
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
             'dài nhất (S1 / S2 / S3, không được có FAILED_PRECONDITION) rồi mới nâng.');
-  }, skip: 'lát 3 (2026-09-28): 6.980 > 6.960 sau `chon=can_doi` — đo lại trên Realme '
-      'rồi đặt kTranToolsJsonDaDo, bỏ skip');
+  });
 
   test('tên lạ → null (mô hình bịa tên)', () async {
     expect(await bo.chay('bay_gio_may_gio', {}, idaccount: 10, now: now), isNull);
