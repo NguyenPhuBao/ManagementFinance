@@ -2626,6 +2626,116 @@ bỏ vế *"Gọi khi … ví có đủ tiền trích"* (câu ấy đã định 
 
 **Việc kế**: cổng F trên Realme (56 câu cũ + F1–F16) — mục **9.36**.
 
+### 9.36 Cổng F lần 1 — Realme, 2026-09-28 (12:46–13:54) — 🛑 CHƯA ĐẠT: 11 câu cũ tụt, F 12/16, 3 câu SAI
+
+**Máy và bản.** Realme RMX2205, CPU (GPU máy này từng sập), APK release `ee506751…` = HEAD `0fc30b4` (lát 3 Task 9–11 +
+docs; SHA-1 so hai bên trước khi đo). 72 câu: 56 câu cổng E (`congE_all.sh`, E22 chờ 20 s vì bị chặn trước mô hình) + 16 câu
+F1–F16 (`congF.sh`), ~55 s/câu, **0 sập**, **0 `FAILED_PRECONDITION`**, `tools_json` phiên sáu tool **6.980** ở cả 25 phiên
+kể cả phiên **ba lời gọi** (F12) → `kTranToolsJsonDaDo` = 6980, bỏ `skip` (`270b005`). Bộ đo ở scratchpad phiên
+`2054cb9d…`: `hoi.sh` (thêm `TOIDA` — trần chờ tuỳ chỉnh), `congE_all.sh`, `congF.sh`, `cai_va_vao.sh` (bản Realme),
+`bang_tool.py`, `ghep_cham.py`, `bang_F.py`; bản ghi nguyên văn `ban_ghi_F.txt` (147 mục).
+
+⚠️ **Hai bẫy đo mới.** (1) Máy bật dịch vụ trợ năng bên thứ ba **Assistive Touch** (`com.easytouch`, quả cầu nổi) thì
+`uiautomator dump` trả *"null root node"* — người dùng tắt giúp. (2) Dump thất bại mà `ban_ghi.py` vẫn `cat` được
+**`ui.xml` của buổi trước** → bản ghi in câu trả lời của 27/09, im lặng. Nay script xoá tệp trước khi dump và dừng khi
+dump hỏng. Dự phòng khi không dump được: `cuon_chup.py` (cuộn, chụp, ghép 3 màn / ảnh để đọc bằng mắt).
+
+⚠️ **Dữ liệu đổi so với 27/09**: hoá đơn Netflix (tự trả) được trả sáng 28/09 → tổng chi tháng 2.141.000 → **2.241.000**,
+Giải trí +100.000, tổng tài sản 13.004.000 → 12.904.000, *"tuần trước"* nay là 21–27/09 (không có khoản chi). Đáp án chấm
+theo dữ liệu hôm nay.
+
+**Kết quả gộp.** 56 câu cũ **41 ✅ · 6 ◐ · 9 ✗** — **11 câu tụt** so với 27/09 (DC1 · B1 · C11 · C13 · C20 · E3 · E6 · E7
+· E8 · E10 · E21), lên E13 · E22. F1–F16 **12 ✅ · 1 ◐ · 3 ✗** (cần ≥ 13). **SAI 3** (E3 · E8 · E21 — cần 0). Câu đích lát 3:
+F11 ✅ · F12 ✗ · F13 ✅ · F14 ◐ · F15 ✗.
+
+| # | Câu hỏi | Câu trả lời hiện ra (nguyên văn, bỏ thẻ số liệu) | Đánh giá |
+|---|---|---|---|
+| A13 | Hoa don nao qua han? | Hoa don Kiem và di h0c đã quá hạn. | ✅ |
+| A15 | Vi nao dang am? | Ví test đang âm với số dư là -100.000 đ. | ✅ |
+| A8 | Thang nay toi chi nhieu nhat vao danh muc nao? | Tháng này bạn chi nhiều nhất vào danh mục Cho vay với số tiền 800.000 đ. | ✅ |
+| A3 | Ngan sach nao sap het? | Ngan sách Giáo dục còn 3 ngày. | ✅ |
+| A2 | Con bao nhieu tien ngan sach thang nay? | Tổng số tiền còn lại của các ngân sách là 1.340.000 đ. | ✅ |
+| A9 | Thang truoc toi chi bao nhieu? | Tháng trước, khoản chi — không có giao dịch nào khớp. | ✅ tháng 8 rỗng |
+| DC1 | Lai suat tiet kiem cua toi la bao nhieu? | Dựa trên dữ liệu, bạn đang theo đuổi 2 mục tiêu: "MuaXe" và "MuaDT". MuaXe: Đã tích 1.101.000 đ, còn thiếu 899.000 đ, cần tích 46.742 đ/tháng. MuaDT: Đã tích 500.000 đ, còn thiếu 2.500.000 đ, cần tích 219.298 đ/tháng. Tình trạn… | ◐ không bịa lãi suất nhưng lạc đề — **tụt** (27/9 nói thẳng không có thông tin) |
+| DC2 | Thang nay toi chi bao nhieu? | Tháng này bạn đã chi tổng cộng 2.241.000 đ. Các khoản chi bao gồm: Cho vay 800.000 đ, Tích lũy mục tiêu: MuaXe 500.000 đ, Di chuyển 180.000 đ và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 123.000 đ. | ✅ (gồm Netflix tự trả sáng nay) |
+| B1 | khi nao toi dat muc tieu muaxxe | Dựa trên thông tin, bạn nên xem xét việc đặt ngân sách cho mục tiêu "MuaXe" vì ví nguồn của bạn hiện đang không đủ để trích. | ✗ không trả lời "khi nào" — **tụt** (27/9 mẫu câu có "cần thêm 18 ngày"); chữ trích tự động mới kéo mô hình đi |
+| B2 | moi thang toi can de danh bao nhieu cho muaxxe | Chưa tra được số liệu cho câu này: không có danh mục chi nào tên "muaxe". Bạn thử hỏi lại cụ thể hơn. | ✗ như 27/9 (L1b) |
+| B3 | thang sau toi nen dat ngan sach bao nhieu | Dựa trên dữ liệu gần đây, bạn có thể xem xét đặt ngân sách cho các danh mục sau: Di chuyển (430.000 đ), Giải trí (160.000 đ), Mua sắm (80.000 đ), và Giáo dục (60.000 đ). | ✅ |
+| B4 | ngan sach an uong nen dat bao nhieu | Dựa trên dữ liệu gần nhất, mức chi trung bình của danh mục "Ăn uống" là 60.000 đ/tháng, và hạn mức hiện tại là 500.000 đ. | ✅ |
+| B1c | hoa don di h0c con phai tra bao nhieu | Hoa don "di h0c" còn phải trả 10.000 đ và đã quá hạn. | ✅ |
+| C1 | thang nay toi tieu gi tren 500k | Tháng này bạn đã chi tổng cộng 1.300.000 đ, bao gồm các khoản chi từ 500.000 đ. Các giao dịch chi tiêu là: Cho vay với 800.000 đ vào ngày 19/09 và Tích lũy mục tiêu: MuaXe với 500.000 đ vào ngày 05/09. | ✅ |
+| C2 | hom qua toi da chi nhung gi | Hôm qua, khoản chi — không có giao dịch nào khớp. | ✅ |
+| C3 | hom nay toi co giao dich nao khong | Hôm nay bạn có 1 giao dịch chi tiêu là: Thanh toán hóa đơn: Netflix với số tiền 100.000 đ. | ✅ (Netflix sáng nay) |
+| C4 | tuan nay co khoan chi nao duoi 100 nghin khong | Có một khoản chi là "Thanh toán hóa đơn: Netflix" với số tiền là 100.000 đ trong tuần này. | ◐ 100.000 không "dưới" 100 nghìn — biên `so_tien_den` bao gồm (có từ trước) |
+| C5 | tuan truoc toi da tieu nhung khoan nao | Tuần trước, khoản chi — không có giao dịch nào khớp. | ✅ (21–27/09 không có khoản chi) |
+| C6 | thang truoc toi co khoan chi nao tren 1 trieu khong | Tháng trước, khoản chi, từ 1.000.000 đ — không có giao dịch nào khớp. | ✅ |
+| C7 | cac khoan chi hon nua trieu trong quy nay | Trong quý này, có 2 khoản chi hơn 500.000 đồng: "Cho vay" với 800.000 đ và "Tích lũy mục tiêu: MuaXe" với 500.000 đ. | ✅ |
+| C8 | nam nay toi co khoan thu nao tu 5 trieu tro len khong | Nam nay bạn có 2 khoản thu là Lương với tổng cộng 14.000.000 đ. | ✅ |
+| C9 | liet ke cac khoan chi tu 200k den 1 trieu thang nay | Trong tháng này, có 2 khoản chi từ 200.000 đ đến 1.000.000 đ: | ✅ |
+| C10 | thang nay toi nhan duoc nhung khoan thu nao | Tháng này bạn nhận được các khoản thu sau: Lương 9.000.000 đ (04/09), Lương 5.000.000 đ (04/09), Cho vay 500.000 đ (19/09), Tích lũy nhận từ Tiền mặt: MuaXe 500.000 đ (05/09). Tổng thu là 15.135.000 đ. | ✅ |
+| C11 | thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao | Trong tháng này, bạn đã thực hiện 11 giao dịch chuyển tiền vào ví Tiết kiệm. Các giao dịch bao gồm: 900.000 đ (Tích lũy mục tiêu: MuaXe), 700.000 đ (Tích lũy mục tiêu: MuaDT), 300.000 đ (Rút từ mục tiêu: MuaDT), và 100.000 đ (T… | ◐ gộp cả chuyển RA khỏi ví Tiết kiệm thành "vào" — tụt nhẹ (27/9 mẫu câu nêu đúng chiều) |
+| C12 | liet ke cac khoan an uong thang nay | Trong tháng này, bạn đã chi 50.000 đ cho mục Ăn uống. | ✅ |
+| C13 | vi tien mat thang nay chi nhung gi | Chưa tra được số liệu cho câu này: không có danh mục nào tên "vi tien". Bạn thử hỏi lại cụ thể hơn. | ✗ **tụt** — mô hình điền `danh_muc: "vi tien"`, bộ chỉnh điền đúng ví nhưng không gỡ mảnh rác |
+| C14 | thang nay toi chi gi cho mua sam tu vi tien mat | Tháng này bạn chi 60.000 đ cho mua sắm. | ✅ |
+| C15 | lan gan nhat toi chi cho di chuyen la ngay nao | Lần gần nhất bạn chi cho di chuyển là ngày 20/09 với số tiền 50.000 đ. | ✅ |
+| C16 | 5 khoan chi gan day nhat cua toi | Khoản chi gần đây nhất của bạn là: Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 với số tiền là 123.000 đ vào ngày 19/09. | ◐ một khoản thay vì năm (như 27/9) |
+| C17 | tim cac giao dich co ghi chu hoa don | Có 6 giao dịch có ghi chú "hoa don". Tổng chi là 411.000 đ. | ✅ |
+| C18 | khoan chi lon nhat thang nay la gi | Khoản chi lớn nhất tháng này là Cho vay với số tiền 800.000 đ. | ✅ |
+| C19 | cac khoan chi cho giao duc tu vi tesst | Tôi tìm thấy 2 khoản chi cho "test" và "Giáo dục" với tổng số tiền là 45.000 đ. | ✅ (cách nói lủng củng như 27/9) |
+| C20 | lan cuoi toi nap tien cho muc tieu muaxxe la ngay nao | Mọi thời gian, mới nhất trước — Thanh toán hóa đơn: Netflix khoản chi · Giải trí · Tiền mặt: Số tiền 100.000 đ, Ngày 28/09; Tích lũy mục tiêu: MuaDT chuyển ví · Tiết kiệm → Tiền mặt: Số tiền 100.000 đ, Ngày 25/09; Di chuyển kho… | ✗ **tụt** — mô hình bỏ `tu_khoa: muaxe`, mẫu câu liệt kê giao dịch mới nhất bất kỳ |
+| DC3 | cac khoan chi cho danh muc abc thang nay | Chưa tra được số liệu cho câu này: không có danh mục nào tên "abc". Bạn thử hỏi lại cụ thể hơn. | ✅ |
+| E1 | Tong thu nhap thang nay cua toi la bao nhieu? | Tổng thu nhập tháng này của bạn là 14.635.000 đ. | ✅ thu nhập thật (lát 2), không còn tổng thu |
+| E2 | Thang 9 toi da tieu het bao nhieu tien? | Trong tháng 9, tổng chi của bạn là 2.241.000 đ. | ✅ đọc đúng "tháng 9" |
+| E3 | Danh muc nao toi it tieu nhat trong thang? | Danh mục ít tiêu nhất trong tháng này là Giáo dục với tổng chi là 2.241.000 đ. | ✗ **SAI** — gán tổng chi 2.241.000 cho Giáo dục (số tổng hợp không tên đi qua `kiemNhan`) |
+| E4 | Co khoan chi nao khong qua 30 nghin trong thang nay khong? | Tháng này, khoản chi, đến 30.000 đ — Giải trí khoản chi · Giải trí · Tiền mặt: Số tiền 20.000 đ, Ngày 04/09; Di chuyển khoản chi · Di chuyển · Tiền mặt: Số tiền 20.000 đ, Ngày 03/09; Thanh toán hóa đơn: di h0c khoản chi · Giải … | ✅ (L2) |
+| E5 | Ke tu dau nam toi da chi cho giai tri tong cong bao nhieu? | Tổng chi cho giải trí trong năm nay là 130.000 đ. | ✅ (Giải trí nay 130.000) |
+| E6 | Nhung lan toi nap tien vao muc tieu MuaDT | Tôi tìm thấy 3 giao dịch liên quan đến mục tiêu "MuaDT". | ◐ chỉ đếm 3, không kể (27/9 kể từng lần) |
+| E7 | Vi Tiet kiem hien co bao nhieu tien? | MuaXe đúng kế hoạch · ví test không đủ để trích: Tiến độ 55,0%, Đã tích 1.101.000 đ, Mục tiêu 2.000.000 đ, Còn thiếu 899.000 đ, Còn 577 ngày, Theo nhịp hiện tại cần thêm 19 ngày, Cần tích mỗi tháng 46.742 đ, Đang tích mỗi tháng… | ✗ **tụt** — mô hình chọn `danh_sach_muc_tieu` cho câu hỏi số dư ví Tiết kiệm |
+| E8 | Hoa don Netfflix khi nao den han? | Hoa don Netflix có 2 hóa đơn đang quá hạn. Hóa đơn "Kiem" đến hạn ngày 18/09 và hóa đơn "di h0c" đến hạn ngày 23/09. | ✗ **SAI** — "Netflix có 2 hoá đơn quá hạn"; Netflix đã tự trả sáng nay nên không còn trong tập *chưa trả*, mô hình gán Kiem/di h0c cho Netflix |
+| E9 | Toi co bao nhieu hoa don chua tra? | Có 2 hóa đơn chưa trả và còn phải trả 55.000 đ. | ✅ (Netflix đã trả) |
+| E10 | Ngan sach an uong con lai bao nhieu? | Tổng số tiền còn lại của các ngân sách là 1.340.000 đ. | ✗ trả tổng mọi ngân sách thay vì Ăn uống — tụt từ vòng sửa 1 (luật 10 gỡ `duoi_nua` vốn cứu câu này do may) |
+| E11 | Muc tieu nao dang cham ke hoach? | Chậm kế hoạch — không có mục tiêu nào khớp. | ✅ |
+| E12 | Toi co may vi tat ca? | Có 4 ví. | ✅ |
+| E13 | Thang nay toi chi nhieu hon hay it hon thang truoc? | Tháng này bạn chi 2.241.000 đ, trong khi tháng trước bạn chi 0 đ. | ✅ **lên** — so hai kỳ |
+| E14 | Tong tai san cua toi la bao nhieu? | Tổng tài sản của bạn là 12.904.000 đ. | ✅ |
+| E15 | Toi da cho vay bao nhieu va thu ve duoc bao nhieu? | Tôi đã cho vay 800.000 đ và thu về 500.000 đ. | ✅ chữ mô hình |
+| E16 | Khoan thu lon nhat nam nay la gi? | Khoản thu lớn nhất năm nay là Lương với số tiền 9.000.000 đ vào ngày 04/09. | ✅ |
+| E17 | Tuan nay toi co tieu gi khong? | Tuần này bạn đã chi 100.000 đ cho Thanh toán hóa đơn: Netflix. | ✅ |
+| E18 | Ngan sach nao toi chua dung den mot nua? | Ngan sách "Ăn uống" còn 450.000 đ và "Mua sắm" còn 790.000 đ. | ✅ |
+| E19 | Trong quy nay khoan chi nao lon nhat? | Khoản chi lớn nhất tháng này là Cho vay với số tiền 800.000 đ. | ◐ "tháng này" thay "quý này" (như 27/9) |
+| E20 | Toi chi cho di chuyen trung binh moi thang bao nhieu? | Trung bình mỗi tháng bạn chi cho di chuyển là 410.000 đ, và hạn mức hiện tại là 450.000 đ. | ✅ |
+| E21 | Hom nay la ngay bao nhieu? | Thu hôm nay là 15.135.000 đ, Chi hôm nay là 2.241.000 đ, còn lại là 12.894.000 đ. | ✗ **SAI** — bậc 1 gán số THÁNG thành "hôm nay" (27/9 từ chối đúng) |
+| E22 | Gia vang hom nay bao nhieu? | Mình chỉ nhận xét được trên số liệu của bạn trong app. | ✅ **lên** — chặn trước mô hình |
+| F1 | thang 8 toi chi bao nhieu | Tháng 8/2026, khoản chi — không có giao dịch nào khớp. | ✅ |
+| F2 | tu 1/9 den 15/9 toi chi nhung gi | Từ 1/9 đến 15/9/2026, khoản chi, ghi chú chứa "chi", từ 1 đ, đến 15 đ — không có giao dịch nào khớp. | ✗ mô hình điền `so_tien_tu 1, so_tien_den 15, tu_khoa "chi"`; bộ chỉnh đọc đúng kỳ nhưng không gỡ ba tham số rác |
+| F3 | thang nay chi nhieu hon hay it hon thang truoc | Tháng này bạn chi 2.241.000 đ, trong khi tháng trước bạn chi 0 đ. | ✅ |
+| F4 | tien trong vi co du tra hoa don khong | Ví của bạn đang thiếu tiền cho cam kết. | ✅ (ví test thiếu cho di h0c) |
+| F5 | tra het hoa don thi con bao nhieu | Hiện tại, bạn còn tiêu được 12.174.000 đ. | ✅ |
+| F6 | thu nhap thang nay cua toi la bao nhieu | Thu nhập tháng này của bạn là 14.635.000 đ. | ✅ |
+| F7 | toi de danh duoc bao nhieu phan tram | Dòng tiền tự do tháng này là 14.635.000 đ, tỉ lệ tiết kiệm là 84,7%. | ✅ (dòng tiền tự do theo định nghĩa app = thu nhập − trả nợ) |
+| F8 | ngay nao thang nay toi chi nhieu nhat | Tháng này — Cho vay khoản chi lớn nhất · Cho vay · Tiền mặt: Số tiền 800.000 đ, Ngày 19/09; Tổng chi: 2.241.000 đ; Chi trung bình mỗi ngày: 74.700 đ; Ngày chi nhiều nhất: 19/09; Chi ngày nhiều nhất: 1.046.000 đ. | ✅ (L2 có "Ngày chi nhiều nhất: 19/09") |
+| F9 | toi dang cho vay bao nhieu chua thu ve | Đang cho vay chưa thu về: 300.000 đ. | ✅ 800.000 − 500.000 |
+| F10 | toi co nhung danh muc nao | Có 15 danh mục. Các danh mục chi tiêu bao gồm: Ăn uống, Di chuyển, Giải trí, Giáo dục, Hóa đơn, Mua sắm, Nhà cửa, Test, Test1, Y tế. Các danh mục thu nhập bao gồm: Đầu tư, Lương, Thưởng. Các danh mục vay nợ bao gồm: Cho vay, Đi… | ✅ |
+| F11 | thang toi toi phai tra hoa don nao | Tháng tới bạn cần trả các hóa đơn sau: Kiem (45.000 đ, dự kiến đến hạn 02/10), Netflix (100.000 đ, chưa trả · tự trả đến hạn 05/10), di h0c (10.000 đ, dự kiến đến hạn 07/10), Kiem (45.000 đ, dự kiến đến hạn 09/10). Tổng cộng cò… | ✅ kỳ tới + dự kiến + tự trả |
+| F12 | hoa don nao tu tra | Có 2 hóa đơn đang quá hạn: Kiem (45.000 đ) và di h0c (10.000 đ). | ✗ ba lời gọi `ky` khác nhau, không lọc tự trả; trả lời "2 hoá đơn quá hạn" (đúng nhưng không phải câu hỏi) — đáp án là Netflix |
+| F13 | vi co du tien trich cho muc tieu khong | Có, ví nguồn không đủ tiền để trích cho mục tiêu "MuaXe". | ✅ nội dung đúng (MuaXe, ví test âm) — "Có," mở đầu lủng củng |
+| F14 | ky trich tiep theo cua MuaDT la khi nao | MuaXe đúng kế hoạch · ví test không đủ để trích: Tiến độ 55,0%, Đã tích 1.101.000 đ, Mục tiêu 2.000.000 đ, Còn thiếu 899.000 đ, Còn 577 ngày, Theo nhịp hiện tại cần thêm 19 ngày, Cần tích mỗi tháng 46.742 đ, Đang tích mỗi tháng… | ◐ mẫu câu L2 đủ số nhưng không nói thẳng "MuaDT không bật trích tự động" |
+| F15 | nen chuyen bot ngan sach nao sang ngan sach nao | Dựa trên dữ liệu, bạn có thể xem xét chuyển ngân sách từ "Giải trí" sang "Di chuyển" vì "Giải trí" chưa có ngân sách và "Di chuyển" có mức chi trung bình mỗi tháng là 410.000 đ. | ✗ mô hình gọi `goi_y_han_muc` (câu có "ngân sách" nên không định tuyến) — lời khuyên chuyển từ Giải trí (chưa có ngân sách) vô nghĩa |
+| F16 | gia vang hom nay bao nhieu | Mình chỉ nhận xét được trên số liệu của bạn trong app. | ✅ chặn trước mô hình |
+
+**Nguyên nhân, gom theo gốc** (người dùng chưa chọn hướng — bản bàn giao 2026-09-28 sau cổng F):
+
+| Gốc | Câu | Hướng sửa đề xuất |
+|---|---|---|
+| **G1** Thông tin trích tự động (Task 10) làm nhiễu câu hỏi mục tiêu chung và kéo câu hỏi ví sang tool mục tiêu | B1 · DC1 · E7 | Hậu tố / `ket_qua` / đếm trích **chỉ khi câu hỏi nói về trích / ví nguồn** (cờ từ bộ chỉnh); định tuyến *"ví X còn / có bao nhiêu"* → `danh_sach_vi` |
+| **G2** Bộ chỉnh tham số còn bốn lỗ | C13 · C20 · E10 · F2 | Gỡ mảnh tên ví rác trong `danh_muc` khi câu đã nêu ví; tên **mục tiêu** trong câu → `tu_khoa`; tên danh mục → **lọc hàng** tool ngân sách; gỡ `so_tien_*` khi câu không có số tiền (số của kỳ *1/9, 15/9* không phải tiền) và gỡ `tu_khoa` là từ chiều (*"chi"*, *"thu"*) |
+| **G3** Hoá đơn: câu nêu tên / hỏi tự trả | E8 · F12 | Câu nêu **tên hoá đơn có thật** → trả hàng của đúng hoá đơn ấy ở mọi trạng thái, kỳ này + kỳ tới; *"tự trả"* → lọc hoá đơn tự trả (bộ chỉnh), không để mô hình tự dò ba kỳ |
+| **G4** Định tuyến / mẫu câu còn thiếu | F15 · F14 | Câu *chuyển bớt / cân đối ngân sách* → `danh_sach_ngan_sach` phiên một tool; mục tiêu nêu tên mà **không bật trích** → `ket_qua` nói thẳng |
+| **G5** Lớp chắn mù mệnh đề sai (SAI ×3) | E3 · E21 · E8 | Cần spec ngắn ở tầng chắn: (a) số **tổng hợp không tên** đứng cạnh **tên đối tượng** trong một vế thì phải có nhãn tổng hợp (*tổng*) — chặn *"Giáo dục với tổng chi 2.241.000"*; (b) **chữ kỳ** trong câu (*hôm nay*) khác kỳ của gói (*tháng này*) → chặn (E21 ở bậc 1); (c) E8 — sau G3 thì tập hàng có Netflix nên câu sai tự hết, xét lại sau |
+
+Theo quy ước 2026-09-25: vòng sửa sau **chỉ đo lại câu chưa đạt** (20 câu ✗ / ◐ + SAI); chạy lại trọn 72 câu chỉ khi
+những câu ấy đạt.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

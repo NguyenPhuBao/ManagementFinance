@@ -691,7 +691,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `viNguonChoTrich`). **Chưa đo máy.**
 - 🚧 **Task 11 cùng ngày (`c51fb81`)**: `danh_sach_ngan_sach chon=can_doi` — cùng kế hoạch với thẻ *Đề xuất cân
   đối* qua hàm ghép mới `keHoachTaiPhanBoTu`. `flutter test` **4101/4101** (4 skip).
-- Cổng F (Realme, 56 câu cũ + F1–F16) — kết quả ở mục 9.36 `AI_EDGE_FEATURE.md`. Bàn giao cũ ở
+- 🛑 **Cổng F lần 1 CHƯA ĐẠT** (Realme, mục 9.36 `AI_EDGE_FEATURE.md`): 11 câu cũ tụt, F 12/16, SAI 3; hướng sửa G1–G5
+  chờ người dùng chọn. Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`. Bàn giao cũ ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
