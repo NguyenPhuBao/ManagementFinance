@@ -173,16 +173,18 @@ void main() {
   // Đo lại 2026-09-27 đêm sau `chon=chua_dat` của tool ngân sách (Realme, 6 tool, lời
   // hệ thống 2293 ký tự, ba câu E15 / chưa đặt / đã đặt, 0 FAILED_PRECONDITION): 6031.
   // Mốc 5938 là cùng tối sau `chon` mục tiêu; 5633 trước đó.
-  const kTranToolsJsonDaDo = 6031;
+  // Đo lại 2026-09-28 sau lát 1 mở rộng tool (tu_ngay / den_ngay / so_voi + tool
+  // du_bao_dong_tien): 6960, lời hệ thống 2742 ký tự. ⚠️ Đo trên ONEPLUS 13R (GPU),
+  // không phải Realme — người dùng chốt "có máy nào thì đo máy đó"; bảy câu, mỗi câu
+  // một lời gọi, 0 FAILED_PRECONDITION. Trần `maxTokens` 4096 là hằng của client nên
+  // không đổi theo máy, nhưng phiên dài nhất (ba lời gọi) CHƯA được đo ở độ dài này.
+  const kTranToolsJsonDaDo = 6960;
   test('⭐ tools_json của cả bộ tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
     final n = toolsJsonCua(bo.khaiBao).length;
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
             'dài nhất (S1 / S2 / S3, không được có FAILED_PRECONDITION) rồi mới nâng.');
-  },
-      // TẠM BỎ QUA 2026-09-28: lát 1 mở rộng tool (tu_ngay / den_ngay / so_voi) đưa
-      // tools_json lên 6527. Bỏ `skip` sau spike Realme cuối lát 1 (Task 5).
-      skip: 'đo lại Realme — lát 1 mở rộng tool');
+  });
 
   test('tên lạ → null (mô hình bịa tên)', () async {
     expect(await bo.chay('bay_gio_may_gio', {}, idaccount: 10, now: now), isNull);
