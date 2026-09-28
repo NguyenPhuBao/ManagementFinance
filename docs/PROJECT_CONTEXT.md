@@ -1764,7 +1764,7 @@ của bộ lọc. Còn lại nửa sau — bộ hàm cho function calling và ph
 8 Gen 3**, arm64-v8a, RAM 10,95 GB, Android 16). Bảng đo đầy đủ — bốn tổ hợp
 mô hình × backend, 52 câu sinh ra, RAM đỉnh, nhiệt — ở **mục 8**
 `docs/AI_EDGE_FEATURE.md`. Mã spike nằm **ngoài repo** (`D:/flowmoney-spike`),
-không commit, đúng như spec yêu cầu.
+không commit, đúng như spec yêu cầu — ⚠️ thư mục ấy **đã xoá 2026-09-28** (giải phóng ổ D, người dùng yêu cầu).
 
 **Kết quả lật bản thiết kế, và người dùng đã chốt:** dùng **Gemma 4 E2B cho MỌI
 máy**, bỏ hẳn E4B. Bậc thang mới: arm64 + GPU → E2B/GPU · GPU hỏng → E2B/CPU ·

@@ -408,7 +408,8 @@ này thu 15.145.000 đ, chi 2.091.000 đ, còn lại 13.054.000 đ. Ngân sách 
 RAM **10,95 GB** (`MemTotal` 11.483.184 kB), Android **16** / SDK 36, trống 110 GB.
 Pin 31–34 %, **đang sạc**; nhiệt CPU nghỉ ~35 °C.
 
-**Cách đo:** app spike riêng (`D:/flowmoney-spike`, **mã vứt đi, không commit**),
+**Cách đo:** app spike riêng (`D:/flowmoney-spike`, **mã vứt đi, không commit** — ⚠️ **đã xoá 2026-09-28** cùng bốn
+tệp mô hình ở `D:/flowmoney-models` để giải phóng ổ D, theo yêu cầu người dùng; bảng số đo bên dưới là thứ duy nhất còn lại),
 `flutter_gemma 1.8.3` + `flutter_gemma_litertlm 1.7.0`, `maxTokens: 1024`,
 `temperature: 0.2`. Prompt = prompt hệ thống **nguyên văn** mục 3.2 đặc tả gốc + **hai** ví
 dụ few-shot + gói số dạng `Nhãn: chuỗi`. Ba gói số là số **thật** của tài khoản 10 (đúng
