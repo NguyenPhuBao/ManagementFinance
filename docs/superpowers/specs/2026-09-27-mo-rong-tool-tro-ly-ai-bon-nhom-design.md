@@ -159,6 +159,10 @@ vay/nợ), cộng `soLieuNhanhCua`, `tongTaiSanCua`/`thayDoiTaiSan`, `chuoiVayNo
 
 ### 5.3 `danh_sach_ngan_sach`: `chon=can_doi` — kế hoạch tái phân bổ
 
+> ✅ **Thi công 2026-09-28** (mục 9.35 `AI_EDGE_FEATURE.md`). Thêm so với chữ bên dưới: hàng thâm hụt mang cả *Hạn mức*;
+> *Tổng chuyển*; `ghi_chu` "chỉ là gợi ý"; và phép ghép `nap → taiPhanBoCua` nay là **một** hàm `keHoachTaiPhanBoTu` dùng
+> chung với thẻ cân đối và thông báo.
+
 - Nguồn `TaiPhanBoNguon.nap(idaccount, dangChay, now)` (đã có trong DI: `sl<TaiPhanBoNguon>()`) → `taiPhanBoCua(...)` —
   **cùng kế hoạch** với thẻ *Đề xuất cân đối* và thông báo `budgetRebalance` (bộ luật nhận kế hoạch, không tự tính).
 - `hangCanDoiNganSach(KeHoachTaiPhanBo?)`: hàng đầu = ngân sách thiếu (`thieu.displayName`, trạng thái *"thâm hụt"*, *Thâm

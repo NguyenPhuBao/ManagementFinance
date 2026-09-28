@@ -2528,7 +2528,7 @@ vẫn hỏng (*"5.0000 đ"*, *"20.0000.000 đ"*). Hệ quả: mỗi câu định
 ⚠️ Màn Trợ lý AI hiện toast *"Một số thay đổi chưa lên được máy chủ"* giữa buổi đo — hàng đợi đồng bộ của máy, không
 liên quan lát này; chưa điều tra.
 
-### 9.35 Mở rộng bộ tool — LÁT 3, Task 9–10: hoá đơn kỳ tới, tự trả, cố định mỗi tháng; mục tiêu trích tự động (2026-09-28) — 🚧 mã xong, CHƯA đo máy
+### 9.35 Mở rộng bộ tool — LÁT 3, Task 9–11: hoá đơn kỳ tới, tự trả, cố định mỗi tháng; mục tiêu trích tự động; cân đối ngân sách (2026-09-28) — mã xong
 
 Commit `0712290` (tách hàm) và `fc8afaf` (tool). Task 10 (mục tiêu), Task 11 (cân đối ngân sách) và cổng F **chưa
 làm** — người dùng dặn dừng sau phần này. `flutter test` **4074/4074** (3 skip), `flutter analyze` **26**.
@@ -2607,8 +2607,24 @@ biết gì về trích).
 *"Mục tiêu Mua 2 xe"*. `tools_json` phiên sáu tool: mô tả tool mục tiêu dài thêm làm ca trần đỏ (6.997 > 6.960) —
 bỏ vế *"Gọi khi … ví có đủ tiền trích"* (câu ấy đã định tuyến sang phiên một tool) là về dưới trần, **không** nâng hằng.
 
-**Việc kế của lát 3**: Task 11 (`danh_sach_ngan_sach chon=can_doi`), rồi build release + spike `tools_json` + đo
-câu đích F11–F15 trên máy, rồi cổng F.
+**Task 11 — cùng ngày** (commit `c51fb81`): `danh_sach_ngan_sach chon=can_doi` → `hangCanDoiNganSach(KeHoachTaiPhanBo?)`.
+
+- Hàng đầu là ngân sách **thâm hụt** lớn nhất (*Thâm hụt*, *Dự phóng*, *Hạn mức*), các hàng sau là nguồn *"giảm bớt"*
+  (*Chuyển*, *Dư địa*) theo đúng thứ tự của kế hoạch; tổng hợp *Số ngân sách cần bù*, *Tổng chuyển*, *Còn thiếu sau
+  khi bù*; `ket_qua` *đủ / thiếu nguồn bù*; `ghi_chu` *"chỉ là gợi ý, áp dụng ở trang Ngân sách"* — tool **không** áp
+  dụng gì (bất biến ④). Không kế hoạch → `rongTheoBoLoc`, mẫu câu *"Cần cân đối — không có ngân sách nào khớp."*
+- ⭐ **Một phép ghép `keHoachTaiPhanBoTu`** (`budget/data/tai_phan_bo_nguon.dart`): `nap` → `taiPhanBoCua` cho **ba**
+  nơi — thẻ *Đề xuất cân đối* (`BudgetCubit`), thông báo `budgetRebalance` (DI) và tool. Hai nơi đầu trước đó mỗi nơi
+  chép tay sáu tham số; tool chép nữa là ba bản của *"kế hoạch nào đang đúng"*.
+- `chinhThamSoNganSach`: câu hỏi **chuyển tiền giữa ngân sách** (*cân đối, chuyển bớt, bù cho/từ, lấy từ ngân sách…*)
+  → `can_doi`, xét **trước** mọi mã tỉ lệ (*"ngân sách nào sắp hết thì bù từ đâu"* có cả *"sắp hết"*).
+- ⚠️ Không định tuyến F15 sang phiên một tool: câu có chữ *"ngân sách"* nên `congCuTheoCauHoi` trả `null` như mọi câu
+  ngân sách; mô hình chọn tool ngân sách, bộ chỉnh điền `can_doi`.
+- `tools_json` phiên sáu tool: **6.980** (> 6.960 đã đo) — ca trần tạm `skip`, đo trên Realme ở buổi cổng F.
+
+11 bản sai có chủ ý đều đỏ. `flutter test` **4101/4101** (4 skip — thêm ca trần tạm skip), `flutter analyze` **26**.
+
+**Việc kế**: cổng F trên Realme (56 câu cũ + F1–F16) — mục **9.36**.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

@@ -933,7 +933,9 @@ trang Ngân sách: cùng một kế hoạch, hai cách gặp người dùng.
 Bộ luật chỉ **nhận** `KeHoachTaiPhanBo` đã dựng; nó không biết gì về thâm hụt,
 dư địa, cờ Cố định hay ngưỡng. Chỗ nối (`injection_container.dart`) gọi đúng
 `TaiPhanBoNguon` + `taiPhanBoCua` mà `BudgetCubit` gọi — **một định nghĩa duy
-nhất** cho một luật 39 điều.
+nhất** cho một luật 39 điều. Từ 2026-09-28 phép ghép ấy là **một hàm**,
+`keHoachTaiPhanBoTu` (`budget/data/tai_phan_bo_nguon.dart`), vì nó có nơi gọi thứ
+ba: tool ngân sách của Trợ lý AI (`chon=can_doi`). Đừng chép lại sáu tham số.
 
 Hỏng nếu làm khác: thông báo nói *"Ăn uống dự kiến vượt"* trong khi thẻ trên
 trang nói về *"Mua sắm"*, cả hai đều trông hợp lý và không gì báo lỗi.

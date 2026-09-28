@@ -689,7 +689,9 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   không đủ / không chạy được; câu về trích cho mục tiêu định tuyến sang tool mục tiêu (người dùng chốt). ⚠️ Lộ ra
   và sửa **bộ trích tự động rút tiền từ ví nguồn đã xoá mềm** (bẫy 4.8 `GOAL_FEATURE.md`, luật nay là một hàm
   `viNguonChoTrich`). **Chưa đo máy.**
-- Task 11 (cân đối ngân sách) và cổng F chưa làm. Bàn giao ở
+- 🚧 **Task 11 cùng ngày (`c51fb81`)**: `danh_sach_ngan_sach chon=can_doi` — cùng kế hoạch với thẻ *Đề xuất cân
+  đối* qua hàm ghép mới `keHoachTaiPhanBoTu`. `flutter test` **4101/4101** (4 skip).
+- Cổng F (Realme, 56 câu cũ + F1–F16) — kết quả ở mục 9.36 `AI_EDGE_FEATURE.md`. Bàn giao cũ ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
@@ -1864,6 +1866,8 @@ tất định; P3 (mô hình trên máy) chờ P1 spike.
 4. **Một kế hoạch, một định nghĩa.** Thẻ trên trang và thông báo cùng gọi
    `TaiPhanBoNguon` + `taiPhanBoCua`; bộ luật thông báo **nhận** kế hoạch chứ
    không tự tính. Hai phép tính là hai ngân sách khác nhau trên cùng màn hình.
+   *(Từ 2026-09-28 phép ghép ấy là một hàm `keHoachTaiPhanBoTu`, nơi gọi thứ ba là
+   tool ngân sách của Trợ lý AI.)*
 
 **Mấy cái bẫy đắt nhất của P2** (đầy đủ ở mục 4 `AI_EDGE_FEATURE.md`):
 
