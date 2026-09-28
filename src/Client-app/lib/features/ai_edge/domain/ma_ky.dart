@@ -71,9 +71,17 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
 /// "N tháng/tuần/ngày gần nhất" đóng ở đầu ngày mai — không nuốt giao dịch ghi
 /// ngày tương lai, cùng lý do `cuaSoNhinLai`.
 ///
+/// `ten` là các CÁCH GỌI kỳ ấy (*"tháng 8"*, *"tháng 8/2026"*) — tool đưa vào
+/// `tenLienQuan` để bộ kiểm số không đọc chữ số trong tên kỳ là số bịa (cùng
+/// lý lẽ bước 1c: tên là dữ liệu của tool, không do mô hình sinh). Khoảng hai
+/// mốc ngày thì rỗng: hai mốc đã là số liệu NGÀY của gói.
+///
 /// `null` = câu không nêu kỳ cụ thể, HOẶC mốc không hợp lệ (31/6, mốc ngược,
 /// tháng 13) — người gọi không điền gì, không tự cuộn sang ngày khác.
-({DateTime from, DateTime to, String chu})? kyTuCauHoi(String q, DateTime now) {
+({DateTime from, DateTime to, String chu, List<String> ten})? kyTuCauHoi(
+  String q,
+  DateTime now,
+) {
   final ngayMai = DateTime(now.year, now.month, now.day + 1);
 
   // 1. "tu [ngay] d/m[/y] den|toi [ngay] d/m[/y]"
@@ -92,6 +100,7 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
       from: tu,
       to: DateTime(den.year, den.month, den.day + 1),
       chu: chuKhoangNgay(tu, den),
+      ten: const [],
     );
   }
 
@@ -107,7 +116,15 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
       _ => DateTime(now.year, now.month, now.day - n),
     };
     final chuDv = switch (dv) { 'thang' => 'tháng', 'tuan' => 'tuần', _ => 'ngày' };
-    return (from: from, to: ngayMai, chu: '$n $chuDv gần nhất');
+    return (
+      from: from,
+      to: ngayMai,
+      chu: '$n $chuDv gần nhất',
+      ten: [
+        for (final duoi in const ['gần nhất', 'qua', 'gần đây', 'vừa qua'])
+          '$n $chuDv $duoi',
+      ],
+    );
   }
 
   // 3. "thang m[/y | nam y]" — "thang nay/truoc" không có chữ số nên không khớp.
@@ -119,7 +136,12 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
     final namNeu = int.tryParse(mThang.group(2) ?? mThang.group(3) ?? '');
     final y = namNeu ?? (m > now.month ? now.year - 1 : now.year);
     final ky = Ky.thang(y, m);
-    return (from: ky.from, to: ky.to, chu: 'tháng $m/$y');
+    return (
+      from: ky.from,
+      to: ky.to,
+      chu: 'tháng $m/$y',
+      ten: _tenKy('tháng', '$m', y, haiChuSo: true),
+    );
   }
 
   // 4. "quy q[/y | nam y]"
@@ -128,7 +150,12 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
   if (mQuy != null) {
     final y = int.tryParse(mQuy.group(2) ?? mQuy.group(3) ?? '') ?? now.year;
     final ky = Ky.quy(y, int.parse(mQuy.group(1)!));
-    return (from: ky.from, to: ky.to, chu: 'quý ${mQuy.group(1)}/$y');
+    return (
+      from: ky.from,
+      to: ky.to,
+      chu: 'quý ${mQuy.group(1)}/$y',
+      ten: _tenKy('quý', mQuy.group(1)!, y),
+    );
   }
 
   // 5. "tuan w" — tuần ISO của năm nay.
@@ -139,18 +166,33 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
     // 4/1 luôn thuộc tuần ISO 1; cộng theo NGÀY LỊCH chứ không theo Duration.
     final moc = DateTime(now.year, 1, 4);
     final b = bienTuan(DateTime(moc.year, moc.month, moc.day + 7 * (w - 1)));
-    return (from: b.from, to: b.to, chu: 'tuần $w/${now.year}');
+    return (
+      from: b.from,
+      to: b.to,
+      chu: 'tuần $w/${now.year}',
+      ten: _tenKy('tuần', '$w', now.year),
+    );
   }
 
   // 6. "nam ngoai" | "nam y"
   if (RegExp(r'(?<![a-z])nam ngoai(?![a-z])').hasMatch(q)) {
     final ky = Ky.nam(now.year - 1);
-    return (from: ky.from, to: ky.to, chu: 'năm ${now.year - 1}');
+    return (
+      from: ky.from,
+      to: ky.to,
+      chu: 'năm ${now.year - 1}',
+      ten: ['năm ${now.year - 1}'],
+    );
   }
   final mNam = RegExp(r'(?<![a-z/])nam (\d{4})(?![\d/])').firstMatch(q);
   if (mNam != null) {
     final ky = Ky.nam(int.parse(mNam.group(1)!));
-    return (from: ky.from, to: ky.to, chu: 'năm ${mNam.group(1)}');
+    return (
+      from: ky.from,
+      to: ky.to,
+      chu: 'năm ${mNam.group(1)}',
+      ten: ['năm ${mNam.group(1)}'],
+    );
   }
   return null;
 }
@@ -161,6 +203,38 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
 final RegExp mauKyLuiGanNhat = RegExp(
   r'(?<!\d)(\d{1,3}) (thang|tuan|ngay) (?:gan nhat|qua|gan day|vua qua)',
 );
+
+/// Các cách gọi một kỳ đánh số: "tháng 8", "tháng 08", "tháng 8/2026",
+/// "tháng 8 năm 2026".
+List<String> _tenKy(String donVi, String so, int nam, {bool haiChuSo = false}) => [
+      '$donVi $so',
+      if (haiChuSo && so.length == 1) '$donVi 0$so',
+      '$donVi $so/$nam',
+      if (haiChuSo && so.length == 1) '$donVi 0$so/$nam',
+      '$donVi $so năm $nam',
+    ];
+
+final RegExp _mauNgayThamSo = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+
+/// Hai tham số `tu_ngay` / `den_ngay` (`dd/mm/yyyy`, [den] BAO GỒM) → biên
+/// `[from, to)`. `null` khi thiếu, sai dạng, ngày không tồn tại, hoặc mốc
+/// ngược — tool từ chối, không tự cuộn và không tự hoán đổi.
+({DateTime from, DateTime to})? khoangTuThamSo(Object? tu, Object? den) {
+  DateTime? doc(Object? v) {
+    final m = _mauNgayThamSo.firstMatch(v?.toString().trim() ?? '');
+    if (m == null) return null;
+    return ngayHopLe(
+      int.parse(m.group(3)!),
+      int.parse(m.group(2)!),
+      int.parse(m.group(1)!),
+    );
+  }
+
+  final a = doc(tu);
+  final b = doc(den);
+  if (a == null || b == null || b.isBefore(a)) return null;
+  return (from: a, to: DateTime(b.year, b.month, b.day + 1));
+}
 
 /// Chữ của một khoảng hai mốc, [den] BAO GỒM — một định nghĩa cho bộ chỉnh lẫn tool.
 String chuKhoangNgay(DateTime tu, DateTime den) =>

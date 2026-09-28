@@ -11,6 +11,7 @@
 /// cờ `rongTheoBoLoc` khi 0 khoản khớp (spec 2c mục 2.2, bẫy 4.44).
 library;
 
+import '../../analytics/domain/thong_ke_thang.dart';
 import '../../transaction/domain/tim_giao_dich.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
@@ -138,6 +139,91 @@ KetQuaCongCu hangGiaoDich(
       // Tiền tố in `ghi chú chứa "T9"` — chữ số trong từ khoá là tên (bước 1c).
       if (tuKhoa.isNotEmpty) tuKhoa,
     }.toList(),
+  );
+}
+
+/// Tổng của KỲ ĐEM RA SO (spec mở rộng tool §3.2) — cùng bộ lọc với kỳ gốc.
+/// [chuKy] KHÔNG chữ số (*"tháng trước"*, *"cùng kỳ năm trước"*): nó vào nhãn
+/// và vào `chuThem`.
+class SoSanhKy {
+  final String chuKy;
+  final double chi;
+  final double thu;
+  const SoSanhKy({required this.chuKy, required this.chi, required this.thu});
+}
+
+/// Gắn phép so hai kỳ vào một kết quả đã dựng (hàng lẻ, hàng nhóm hay hàng đã
+/// chọn): tổng kỳ so sánh, chênh lệch, tỉ lệ đổi — theo chiều đã hỏi.
+///
+/// ⚠️ Chênh lệch và tỉ lệ in số DƯƠNG, hướng đi bằng CHỮ (`chuThem`, nhãn thay
+/// thế): mô hình nói *"ít hơn 500.000 đ"*, và một số âm trong gói không khớp
+/// con số dương của câu ấy. Nền bằng 0 thì không có tỉ lệ lẫn chênh lệch —
+/// *"tăng 100%"* là số bịa (cùng luật `phanTramSoVoi`).
+///
+/// Lượt bị từ chối, lượt rỗng theo bộ lọc và chiều chuyển ví: trả NGUYÊN [kq].
+KetQuaCongCu themSoSanh(
+  KetQuaCongCu kq, {
+  required SoSanhKy soSanh,
+  required ChieuTim chieu,
+  required double tongChi,
+  required double tongThu,
+}) {
+  if (kq.loi != null || kq.rongTheoBoLoc || chieu == ChieuTim.chuyen) return kq;
+  final tatCa = chieu == ChieuTim.tatCa;
+  final tongHop = <SoLieu>[];
+  final chu = <String, String>{};
+  void them(String nhan, double nay, double nen) {
+    final thuong = nhan.toLowerCase();
+    tongHop.add(soTien('Tổng $thuong ${soSanh.chuKy}', nen));
+    if (nen == 0) {
+      chu['so_sanh_$thuong'] = 'không có dữ liệu ${soSanh.chuKy}';
+      return;
+    }
+    final lech = chenhLechSoVoi(nay, nen);
+    final (huong, nhanKhac) = lech > 0
+        ? ('nhiều hơn', ['$nhan nhiều hơn', '$nhan tăng', '$nhan hơn'])
+        : lech < 0
+            ? ('ít hơn', ['$nhan ít hơn', '$nhan giảm', '$nhan kém'])
+            : ('bằng', ['$nhan bằng']);
+    tongHop.add(soTien('Chênh lệch $thuong', lech.abs(), nhanKhac: nhanKhac));
+    final tiLe = phanTramSoVoi(nay, nen);
+    if (tiLe != null) {
+      tongHop.add(
+        soPhanTram('Tỉ lệ đổi $thuong', tiLe.abs(), nhanKhac: nhanKhac),
+      );
+    }
+    chu['so_sanh_$thuong'] = '$thuong $huong ${soSanh.chuKy}';
+  }
+
+  if (tatCa || chieu == ChieuTim.chi) them('Chi', tongChi, soSanh.chi);
+  if (tatCa || chieu == ChieuTim.thu) them('Thu', tongThu, soSanh.thu);
+  return kq.boSung(
+    tongHopThem: tongHop,
+    chuThemMoi: chu,
+    boLocCuoi: ['so với ${soSanh.chuKy}'],
+  );
+}
+
+/// Gắn KỲ TỰ DO vào một kết quả đã dựng với chữ kỳ giữ chỗ (spec mở rộng tool
+/// §3.1): chữ kỳ có số đứng ĐẦU `boLoc`, hai mốc thành số liệu NGÀY của bộ lọc
+/// (câu nêu *"từ 01/08 đến 31/08"* qua được bộ kiểm), các cách gọi kỳ vào tên
+/// liên quan (câu nêu *"tháng 8"* không bị đọc là số 8 bịa). [to] là biên MỞ.
+KetQuaCongCu ganKyTuyChon(
+  KetQuaCongCu kq, {
+  required DateTime from,
+  required DateTime to,
+  required String chu,
+  required List<String> ten,
+  required DateTime now,
+}) {
+  final den = DateTime(to.year, to.month, to.day - 1);
+  return kq.boSung(
+    boLocDau: [chu],
+    soLieuBoLocThem: [
+      soNgayThang('Từ ngày', from, now: now, nhanKhac: const ['Từ']),
+      soNgayThang('Đến ngày', den, now: now, nhanKhac: const ['Đến', 'Tới']),
+    ],
+    tenLienQuanThem: ten,
   );
 }
 

@@ -223,4 +223,71 @@ void main() {
     expect(boLocTimGiaoDich(kq, tc), ['khoản chi', 'danh mục "Giải trí"', 'ghi chú chứa "hoa don"']);
     expect(soLieuBoLocTimGiaoDich(tc), isEmpty);
   });
+
+  group('themSoSanh + kỳ tự do — câu tự nhiên qua bốn lớp chắn', () {
+    final goc = hangGiaoDich(kq, tieuChi: const TieuChiTim(chieu: ChieuTim.chi), chuKy: 'tháng này', now: now);
+    final coSoSanh = themSoSanh(
+      goc,
+      soSanh: const SoSanhKy(chuKy: 'tháng trước', chi: 1531000, thu: 0),
+      chieu: ChieuTim.chi,
+      tongChi: 2031000,
+      tongThu: 0,
+    );
+
+    test('⭐ câu "chi 2.031.000 đ, nhiều hơn tháng trước 500.000 đ" qua kiemSo + kiemNhan', () {
+      final g = GoiSoTraCuu()..them('truy_van_giao_dich', coSoSanh);
+      const cau = 'Tháng này bạn chi 2.031.000 đ, nhiều hơn tháng trước 500.000 đ.';
+      expect(kiemSo(cau, g), isTrue);
+      expect(kiemNhan(cau, [g]), isTrue);
+      expect(kiemSo('Tháng trước bạn chi 1.531.000 đ.', g), isTrue);
+      expect(kiemNhan('Tháng trước bạn chi 1.531.000 đ.', [g]), isTrue);
+    });
+
+    test('⚠️ số bịa vẫn bị chặn: chênh lệch 600.000 không có trong gói', () {
+      final g = GoiSoTraCuu()..them('truy_van_giao_dich', coSoSanh);
+      expect(kiemSo('Bạn chi nhiều hơn tháng trước 600.000 đ.', g), isFalse);
+    });
+
+    test('mẫu câu của gói tự qua kiemSo + kiemNhan, và nêu "so với tháng trước"', () {
+      final g = GoiSoTraCuu()..them('truy_van_giao_dich', coSoSanh);
+      final cau = g.mauCau().cau;
+      expect(cau, contains('so với tháng trước'));
+      expect(cau, contains('Tổng chi tháng trước: 1.531.000 đ'));
+      expect(kiemSo(cau, g), isTrue, reason: cau);
+      expect(kiemNhan(cau, [g]), isTrue, reason: cau);
+    });
+
+    test('lượt bị từ chối / rỗng theo bộ lọc: themSoSanh trả NGUYÊN kết quả', () {
+      final rong = hangGiaoDich(
+        const KetQuaTimGiaoDich(dong: [], soKhop: 0, tongChi: 0, tongThu: 0, tongChuyen: 0),
+        tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now,
+      );
+      final r = themSoSanh(rong,
+          soSanh: const SoSanhKy(chuKy: 'tháng trước', chi: 1, thu: 1),
+          chieu: ChieuTim.tatCa, tongChi: 0, tongThu: 0);
+      expect(identical(r, rong), isTrue);
+    });
+
+    test('⭐ kỳ tự do: mẫu câu mở đầu bằng chữ kỳ có số, KHÔNG in "khoảng đã chọn", tự qua bộ kiểm', () {
+      final r = ganKyTuyChon(
+        hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'khoảng đã chọn', now: now),
+        from: DateTime(2026, 8, 1),
+        to: DateTime(2026, 9, 1),
+        chu: 'tháng 8/2026',
+        ten: const ['tháng 8', 'tháng 8/2026'],
+        now: now,
+      );
+      final g = GoiSoTraCuu()..them('truy_van_giao_dich', r);
+      final cau = g.mauCau().cau;
+      expect(cau, startsWith('Tháng 8/2026'));
+      expect(cau, isNot(contains('hoảng đã chọn')));
+      expect(kiemSo(cau, g), isTrue, reason: cau);
+      expect(kiemNhan(cau, [g]), isTrue, reason: cau);
+      // Câu của mô hình nêu "tháng 8" hay hai mốc ngày đều qua.
+      expect(kiemSo('Tháng 8 bạn chi tổng cộng 2.031.000 đ.', g), isTrue);
+      expect(kiemNhan('Từ 01/08 đến 31/08 tổng chi là 2.031.000 đ.', [g]), isTrue);
+      expect(kiemSo('Tháng 6 bạn chi tổng cộng 2.031.000 đ.', g), isFalse,
+          reason: '"tháng 6" không phải tên kỳ của gói — chữ số 6 là số bịa');
+    });
+  });
 }

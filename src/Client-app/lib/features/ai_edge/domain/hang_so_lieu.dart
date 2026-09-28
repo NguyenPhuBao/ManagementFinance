@@ -127,6 +127,30 @@ class KetQuaCongCu {
         doiTuongRong = 'giao dịch',
         loi = vi;
 
+  /// Bản sao có THÊM: bộ lọc (đầu / cuối), số liệu bộ lọc, tổng hợp, chữ kèm,
+  /// tên liên quan; [chuThemMoi] ghi đè khoá trùng. Chỉ cho lượt THÀNH CÔNG —
+  /// lời từ chối trả nguyên chính nó.
+  KetQuaCongCu boSung({
+    List<String> boLocDau = const [],
+    List<String> boLocCuoi = const [],
+    List<SoLieu> soLieuBoLocThem = const [],
+    List<SoLieu> tongHopThem = const [],
+    Map<String, String> chuThemMoi = const {},
+    List<String> tenLienQuanThem = const [],
+  }) {
+    if (loi != null) return this;
+    return KetQuaCongCu(
+      hang: hang,
+      tongHop: [...tongHop, ...tongHopThem],
+      chuThem: {...chuThem, ...chuThemMoi},
+      tenLienQuan: [...tenLienQuan, ...tenLienQuanThem],
+      rongTheoBoLoc: rongTheoBoLoc,
+      boLoc: [...boLocDau, ...boLoc, ...boLocCuoi],
+      soLieuBoLoc: [...soLieuBoLoc, ...soLieuBoLocThem],
+      doiTuongRong: doiTuongRong,
+    );
+  }
+
   Map<String, dynamic> get json => {
         if (hang.isNotEmpty) 'hang': [for (final h in hang) h.json],
         for (final s in tongHop) s.nhan: s.chuoi,

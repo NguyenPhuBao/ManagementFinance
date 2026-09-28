@@ -48,7 +48,18 @@ class KetQuaChinhThamSo {
 
   /// Mỗi luật đã áp một dòng — in ra log `[SLM][tool] chỉnh tham số`.
   final List<String> ghiChu;
-  const KetQuaChinhThamSo(this.args, this.ghiChu);
+
+  /// Chữ kỳ CÓ SỐ (*"tháng 8/2026"*, *"3 tháng gần nhất"*) và các cách gọi kỳ
+  /// ấy — chỉ có khi luật 11 đọc được kỳ cụ thể từ câu hỏi và đã điền
+  /// `ky=tuy_chon`. Tool đưa chữ vào `boLoc`, tên vào `tenLienQuan`.
+  final String? chuKy;
+  final List<String> tenKy;
+  const KetQuaChinhThamSo(
+    this.args,
+    this.ghiChu, {
+    this.chuKy,
+    this.tenKy = const [],
+  });
 }
 
 /// Bỏ dấu + chuẩn hoá (chữ thường, gom khoảng trắng); `_` đọc là dấu cách.
@@ -306,7 +317,12 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['chieu'] = 'tat_ca';
     ghi.add('câu hỏi nói cả chi lẫn thu → chieu=tat_ca');
   }
-  return KetQuaChinhThamSo(a, ghi);
+  return KetQuaChinhThamSo(
+    a,
+    ghi,
+    chuKy: kyTuDo?.chu,
+    tenKy: kyTuDo?.ten ?? const [],
+  );
 }
 
 String _ddmmyyyy(DateTime d) =>

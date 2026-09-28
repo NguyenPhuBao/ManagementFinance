@@ -94,12 +94,19 @@ SoLieu soTien(
     );
 
 /// G2: một chữ số thập phân, phẩy thập phân. [phanTram] ở thang 0–100.
-SoLieu soPhanTram(String nhan, double phanTram, {String? ten}) => SoLieu(
+SoLieu soPhanTram(
+  String nhan,
+  double phanTram, {
+  String? ten,
+  List<String> nhanKhac = const [],
+}) =>
+    SoLieu(
       nhan: nhan,
       ten: ten,
       soTho: phanTram,
       chuoi: '${phanTram.toStringAsFixed(1).replaceAll('.', ',')}%',
       loai: LoaiSo.phanTram,
+      nhanKhac: nhanKhac,
     );
 
 SoLieu soNgay(String nhan, int ngay, {String? ten}) => SoLieu(
@@ -129,6 +136,7 @@ SoLieu soNgayThang(
   DateTime ngay, {
   String? ten,
   required DateTime now,
+  List<String> nhanKhac = const [],
 }) {
   String hai(int x) => x.toString().padLeft(2, '0');
   final ngayThang = '${hai(ngay.day)}/${hai(ngay.month)}';
@@ -138,6 +146,7 @@ SoLieu soNgayThang(
     soTho: (ngay.year * 10000 + ngay.month * 100 + ngay.day).toDouble(),
     chuoi: ngay.year == now.year ? ngayThang : '$ngayThang/${ngay.year}',
     loai: LoaiSo.ngayThang,
+    nhanKhac: nhanKhac,
   );
 }
 

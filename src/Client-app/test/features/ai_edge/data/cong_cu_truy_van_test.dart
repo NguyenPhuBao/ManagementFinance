@@ -17,11 +17,17 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 class _GiaoDich implements TransactionRepository {
+  _GiaoDich({this.theoKhoang});
+
+  /// Trả danh sách riêng cho một khoảng; `null` = danh sách mặc định.
+  final List<TransactionEntity>? Function(DateTime from, DateTime to)? theoKhoang;
   final khoangDaHoi = <(DateTime, DateTime)>[];
 
   @override
   Stream<List<TransactionEntity>> watchKhoang(int idaccount, DateTime from, DateTime to) {
     khoangDaHoi.add((from, to));
+    final rieng = theoKhoang?.call(from, to);
+    if (rieng != null) return Stream.value(rieng);
     return Stream.value([
       TransactionEntity(
         id: 'cho', walletId: 'w-cash', idaccount: 10, categoryId: 'c-cv', amount: 800000,
@@ -103,8 +109,10 @@ void main() {
     final p = k.thamSo['properties'] as Map;
     expect((p['so_tien_tu'] as Map)['description'], contains('500000'));
     expect(p.keys.toSet(), {
-      'ky', 'so_tien_tu', 'so_tien_den', 'chieu', 'danh_muc', 'vi', 'tu_khoa', 'sap_xep', 'gop', 'chon',
+      'ky', 'tu_ngay', 'den_ngay', 'so_voi',
+      'so_tien_tu', 'so_tien_den', 'chieu', 'danh_muc', 'vi', 'tu_khoa', 'sap_xep', 'gop', 'chon',
     });
+    expect(p['so_voi']['enum'], ['ky_truoc', 'cung_ky_nam_truoc']);
     expect(p['chieu']['enum'], ['khoan_chi', 'khoan_thu', 'chuyen_vi', 'tat_ca']);
     expect(p['sap_xep']['enum'], ['so_tien', 'moi_nhat']);
     expect(p['gop']['enum'], ['khong', 'danh_muc', 'vi']);
@@ -112,7 +120,7 @@ void main() {
     expect(p['so_tien_tu']['type'], 'number');
     expect(k.thamSo['required'], ['ky'],
         reason: 'C4, C8 của cổng D lần 1: câu có nêu kỳ mà mô hình bỏ trống ky');
-    expect(p['ky']['enum'], [...kMaKy.keys, 'moi_luc']);
+    expect(p['ky']['enum'], [...kMaKy.keys, 'moi_luc', 'tuy_chon']);
   });
 
   test('⭐ thiếu ky → từ chối, KHÔNG tự mặc định tháng này (spec 2b mục 2.5)', () async {
@@ -313,5 +321,158 @@ void main() {
     expect(kq.loi, isNull);
     expect(kq.boLoc, ['danh mục "Cho vay"'], reason: 'chiều đã lật sang tat_ca nên không còn "khoản thu"');
     expect(kq.hang.single.ten, 'Cho vay');
+  });
+
+  group('kỳ tự do — ky=tuy_chon (spec mở rộng tool §3.1)', () {
+    test('⭐ tu_ngay/den_ngay: đọc [1/9, 16/9) — den_ngay BAO GỒM; boLoc mở đầu bằng chữ kỳ; chuThem KHÔNG số', () async {
+      final kq = await cc.chay(
+        {'ky': 'tuy_chon', 'tu_ngay': '01/09/2026', 'den_ngay': '15/09/2026'},
+        idaccount: 10, now: now,
+      );
+      expect(kq.loi, isNull);
+      expect(giaoDich.khoangDaHoi.single, (DateTime(2026, 9, 1), DateTime(2026, 9, 16)));
+      expect(kq.boLoc.first, 'từ 1/9 đến 15/9/2026');
+      expect(kq.chuThem['ky'], 'khoảng đã chọn');
+      expect(RegExp(r'\d').hasMatch(kq.chuThem.values.join()), isFalse);
+      expect(kq.json['Từ ngày'], '01/09');
+      expect(kq.json['Đến ngày'], '15/09');
+    });
+
+    test('⭐ câu hỏi "thang 8": bộ chỉnh điền hai mốc, boLoc nói "tháng 8/2026", tên kỳ vào tenLienQuan', () async {
+      final kq = await cc.chay(
+        {'ky': 'thang_nay', 'chieu': 'khoan_chi'},
+        idaccount: 10, now: now, cauHoi: 'thang 8 toi chi bao nhieu',
+      );
+      expect(giaoDich.khoangDaHoi.single, (DateTime(2026, 8, 1), DateTime(2026, 9, 1)));
+      expect(kq.boLoc.first, 'tháng 8/2026');
+      expect(kq.tenLienQuan, containsAll(<String>['tháng 8', 'tháng 8/2026']),
+          reason: 'mô hình nói "tháng 8" — chữ số 8 là TÊN kỳ, không phải số bịa');
+    });
+
+    test('thiếu mốc / mốc ngược / ngày không tồn tại / sai dạng → từ chối, KHÔNG đọc dữ liệu', () async {
+      for (final args in [
+        {'ky': 'tuy_chon'},
+        {'ky': 'tuy_chon', 'tu_ngay': '01/09/2026'},
+        {'ky': 'tuy_chon', 'tu_ngay': '15/09/2026', 'den_ngay': '01/09/2026'},
+        {'ky': 'tuy_chon', 'tu_ngay': '31/06/2026', 'den_ngay': '05/07/2026'},
+        {'ky': 'tuy_chon', 'tu_ngay': '2026-09-01', 'den_ngay': '2026-09-15'},
+      ]) {
+        final kq = await cc.chay(args, idaccount: 10, now: now);
+        expect(kq.loi, contains('dd/mm/yyyy'), reason: '$args');
+        expect(kq.choNguoiDung, 'chưa hiểu khoảng ngày trong câu hỏi');
+        expect(kq.thamSoGo, containsAll(<String>['tu_ngay', 'den_ngay']));
+      }
+      expect(giaoDich.khoangDaHoi, isEmpty);
+    });
+
+    test('tháng 2 năm nhuận: 29/02/2028 hợp lệ, 29/02/2026 bị từ chối', () async {
+      expect((await cc.chay({'ky': 'tuy_chon', 'tu_ngay': '01/02/2028', 'den_ngay': '29/02/2028'},
+          idaccount: 10, now: now)).loi, isNull);
+      expect(giaoDich.khoangDaHoi.single, (DateTime(2028, 2, 1), DateTime(2028, 3, 1)));
+      expect((await cc.chay({'ky': 'tuy_chon', 'tu_ngay': '01/02/2026', 'den_ngay': '29/02/2026'},
+          idaccount: 10, now: now)).loi, isNotNull);
+    });
+  });
+
+  group('so_voi — so hai kỳ (E13, spec mở rộng tool §3.2)', () {
+    List<TransactionEntity> motKhoanChi(double soTien, DateTime ngay) => [
+          TransactionEntity(
+            id: 'x-$soTien', walletId: 'w-cash', idaccount: 10, categoryId: 'c-au', amount: soTien,
+            type: 'chi', note: 'Cơm', date: ngay, updatedAt: ngay,
+          ),
+        ];
+
+    test('⭐ E13 ky_truoc: đọc HAI khoảng, cùng bộ lọc; tổng kỳ so sánh, chênh lệch, tỉ lệ; chữ hướng', () async {
+      final gd = _GiaoDich(theoKhoang: (from, to) => from == DateTime(2026, 8, 1)
+          ? motKhoanChi(600000, DateTime(2026, 8, 10))
+          : null);
+      final tool = CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao());
+      final kq = await tool.chay(
+        {'ky': 'thang_nay', 'chieu': 'khoan_chi', 'so_voi': 'ky_truoc'},
+        idaccount: 10, now: now,
+      );
+      expect(gd.khoangDaHoi, [
+        (DateTime(2026, 9, 1), DateTime(2026, 10, 1)),
+        (DateTime(2026, 8, 1), DateTime(2026, 9, 1)),
+      ]);
+      // Kỳ này: 800.000 + 50.000 + 30.000 + 20.000 = 900.000; kỳ trước 600.000.
+      expect(kq.json['Tổng chi'], '900.000 đ');
+      expect(kq.json['Tổng chi tháng trước'], '600.000 đ');
+      expect(kq.json['Chênh lệch chi'], '300.000 đ');
+      expect(kq.json['Tỉ lệ đổi chi'], '50,0%');
+      expect(kq.chuThem['so_sanh_chi'], 'chi nhiều hơn tháng trước');
+      expect(kq.boLoc.last, 'so với tháng trước');
+      expect(kq.json.containsKey('Tổng thu tháng trước'), isFalse, reason: 'chỉ hỏi khoản chi');
+      expect(RegExp(r'\d').hasMatch(kq.chuThem.values.join()), isFalse);
+    });
+
+    test('chi ÍT hơn: chênh lệch và tỉ lệ in số DƯƠNG, hướng đi bằng chữ', () async {
+      final gd = _GiaoDich(theoKhoang: (from, to) => from == DateTime(2026, 8, 1)
+          ? motKhoanChi(1800000, DateTime(2026, 8, 10))
+          : null);
+      final kq = await CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao()).chay(
+        {'ky': 'thang_nay', 'chieu': 'khoan_chi', 'so_voi': 'ky_truoc'},
+        idaccount: 10, now: now,
+      );
+      expect(kq.json['Chênh lệch chi'], '900.000 đ');
+      expect(kq.json['Tỉ lệ đổi chi'], '50,0%');
+      expect(kq.chuThem['so_sanh_chi'], 'chi ít hơn tháng trước');
+    });
+
+    test('⚠️ nền 0 → KHÔNG tỉ lệ, KHÔNG chênh lệch; chữ nói không có dữ liệu kỳ so sánh', () async {
+      final gd = _GiaoDich(theoKhoang: (from, to) => from == DateTime(2026, 8, 1) ? [] : null);
+      final kq = await CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao()).chay(
+        {'ky': 'thang_nay', 'chieu': 'khoan_chi', 'so_voi': 'ky_truoc'},
+        idaccount: 10, now: now,
+      );
+      expect(kq.json['Tổng chi tháng trước'], '0 đ');
+      expect(kq.json.containsKey('Tỉ lệ đổi chi'), isFalse, reason: '"tăng 100%" là số bịa');
+      expect(kq.json.containsKey('Chênh lệch chi'), isFalse);
+      expect(kq.chuThem['so_sanh_chi'], 'không có dữ liệu tháng trước');
+    });
+
+    test('cung_ky_nam_truoc: tháng này ↔ tháng 9 năm trước; tuần lùi 52 kỳ', () async {
+      await cc.chay({'ky': 'thang_nay', 'so_voi': 'cung_ky_nam_truoc'}, idaccount: 10, now: now);
+      expect(giaoDich.khoangDaHoi[1], (DateTime(2025, 9, 1), DateTime(2025, 10, 1)));
+      final gd = _GiaoDich();
+      final kq = await CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao())
+          .chay({'ky': 'tuan_nay', 'so_voi': 'cung_ky_nam_truoc'}, idaccount: 10, now: now);
+      expect(gd.khoangDaHoi[0].$1.difference(gd.khoangDaHoi[1].$1).inDays, 364);
+      expect(kq.boLoc.last, 'so với cùng kỳ năm trước');
+      expect(kq.json.keys, containsAll(<String>['Tổng chi cùng kỳ năm trước', 'Tổng thu cùng kỳ năm trước']));
+    });
+
+    test('kỳ gốc tuy_chon trọn THÁNG: kỳ trước lùi theo tháng, không trừ số ngày', () async {
+      await cc.chay(
+        {'ky': 'tuy_chon', 'tu_ngay': '01/03/2026', 'den_ngay': '31/03/2026', 'so_voi': 'ky_truoc'},
+        idaccount: 10, now: now,
+      );
+      expect(giaoDich.khoangDaHoi[1], (DateTime(2026, 2, 1), DateTime(2026, 3, 1)));
+    });
+
+    test('kỳ gốc tuy_chon trọn tháng 2 NHUẬN, cùng kỳ năm trước là trọn tháng 2 năm thường', () async {
+      await cc.chay(
+        {'ky': 'tuy_chon', 'tu_ngay': '01/02/2028', 'den_ngay': '29/02/2028', 'so_voi': 'cung_ky_nam_truoc'},
+        idaccount: 10, now: now,
+      );
+      expect(giaoDich.khoangDaHoi[1], (DateTime(2027, 2, 1), DateTime(2027, 3, 1)));
+    });
+
+    test('so_voi lạ → từ chối; so_voi với moi_luc → từ chối; cả hai KHÔNG đọc dữ liệu', () async {
+      final la = await cc.chay({'ky': 'thang_nay', 'so_voi': 'nam_kia'}, idaccount: 10, now: now);
+      expect(la.loi, contains('ky_truoc'));
+      final moiLuc = await cc.chay({'ky': 'moi_luc', 'so_voi': 'ky_truoc'}, idaccount: 10, now: now);
+      expect(moiLuc.loi, isNotNull);
+      expect(moiLuc.thamSoGo, ['ky']);
+      expect(giaoDich.khoangDaHoi, isEmpty);
+    });
+
+    test('kỳ này 0 khoản khớp → vẫn là lượt rỗng theo bộ lọc, không gắn số so sánh', () async {
+      final gd = _GiaoDich(theoKhoang: (from, to) => from == DateTime(2026, 9, 1) ? [] : null);
+      final kq = await CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao())
+          .chay({'ky': 'thang_nay', 'so_voi': 'ky_truoc'}, idaccount: 10, now: now);
+      expect(kq.rongTheoBoLoc, isTrue);
+      expect(kq.json.containsKey('Tổng chi tháng trước'), isFalse);
+    });
   });
 }

@@ -118,6 +118,11 @@ TongThuChi tongThuChi(
 ///
 /// [truoc] bằng 0 thì trả `null` chứ không phải vô cực hay 100%: cả hai đều là
 /// số bịa, và người dùng đọc "tăng 100%" sẽ tưởng tháng trước có một nửa.
+/// Chênh lệch tuyệt đối của kỳ này so với kỳ nền — dương là **nhiều hơn**. Đi
+/// cặp với [phanTramSoVoi]; tách thành hàm để lớp AI nhận con số đã trừ sẵn
+/// thay vì tự trừ (bất biến "lớp AI không tính").
+double chenhLechSoVoi(double nay, double truoc) => nay - truoc;
+
 double? phanTramSoVoi(double nay, double truoc) {
   if (truoc == 0) return null;
   return (nay - truoc) / truoc * 100;

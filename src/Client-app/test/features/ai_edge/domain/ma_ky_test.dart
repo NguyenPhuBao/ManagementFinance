@@ -117,4 +117,28 @@ void main() {
       expect((k.from, k.to), (DateTime(2024, 2, 1), DateTime(2024, 3, 1)));
     });
   });
+
+  group('tên gọi của kỳ và khoangTuThamSo', () {
+    final now = DateTime(2026, 9, 27, 10);
+    test('kyTuCauHoi mang TÊN kỳ cho bộ kiểm: tháng / quý / năm / tuần / N kỳ gần nhất', () {
+      expect(kyTuCauHoi('thang 8 toi chi gi', now)!.ten, containsAll(<String>['tháng 8', 'tháng 8/2026']));
+      expect(kyTuCauHoi('quy 2', now)!.ten, contains('quý 2'));
+      expect(kyTuCauHoi('nam ngoai', now)!.ten, contains('năm 2025'));
+      expect(kyTuCauHoi('tuan 35', now)!.ten, contains('tuần 35'));
+      expect(kyTuCauHoi('3 thang gan nhat', now)!.ten, containsAll(<String>['3 tháng gần nhất', '3 tháng qua']));
+      expect(kyTuCauHoi('tu 1/9 den 15/9', now)!.ten, isEmpty,
+          reason: 'hai mốc ngày đã là số liệu ngày của gói, không cần tên');
+    });
+    test('khoangTuThamSo: dd/mm/yyyy, den BAO GỒM; sai dạng / không tồn tại / ngược → null', () {
+      expect(khoangTuThamSo('01/09/2026', '15/09/2026'), (from: DateTime(2026, 9, 1), to: DateTime(2026, 9, 16)));
+      expect(khoangTuThamSo('1/9/2026', '1/9/2026'), (from: DateTime(2026, 9, 1), to: DateTime(2026, 9, 2)));
+      expect(khoangTuThamSo('31/12/2026', '01/01/2027')!.to, DateTime(2027, 1, 2));
+      for (final (tu, den) in <(String?, String?)>[
+        (null, '15/09/2026'), ('01/09/2026', null), ('', ''), ('2026-09-01', '2026-09-15'),
+        ('31/06/2026', '05/07/2026'), ('15/09/2026', '01/09/2026'), ('01/09', '15/09'), ('29/02/2026', '01/03/2026'),
+      ]) {
+        expect(khoangTuThamSo(tu, den), isNull, reason: '$tu – $den');
+      }
+    });
+  });
 }

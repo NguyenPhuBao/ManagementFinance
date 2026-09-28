@@ -9,6 +9,7 @@
 library;
 
 import '../../analytics/data/bao_cao_repository.dart';
+import '../../analytics/domain/pham_vi_ky.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../transaction/domain/gop_giao_dich.dart';
@@ -27,6 +28,18 @@ import '../domain/tham_so_mo_hinh.dart';
 
 /// Mã tham số `gop`: liệt kê, hay mỗi hàng một danh mục / ví.
 const List<String> kGop = ['khong', 'danh_muc', 'vi'];
+
+/// Mã tham số `so_voi` → chữ kỳ so sánh mặc định (spec mở rộng tool §3.2).
+const List<String> kSoVoi = ['ky_truoc', 'cung_ky_nam_truoc'];
+
+/// Chữ của KỲ LIỀN TRƯỚC theo mã kỳ gốc — chữ, không số (vào nhãn và `chuThem`).
+const Map<String, String> _chuKyTruoc = {
+  'hom_nay': 'hôm qua',
+  'tuan_nay': 'tuần trước',
+  'thang_nay': 'tháng trước',
+  'quy_nay': 'quý trước',
+  'nam_nay': 'năm trước',
+};
 
 /// "Trần lớn": lấy trọn tập khớp để gộp / chọn — cắt ở tầng hàng, không ở tầng
 /// tìm (`timGiaoDich` chỉ cắt `dong`, tổng vẫn đếm trọn tập).
@@ -62,12 +75,28 @@ class CongCuTruyVan implements CongCu {
           'properties': {
             'ky': {
               'type': 'string',
-              'enum': [...kMaKy.keys, kMaKyMoiLuc],
+              'enum': [...kMaKy.keys, kMaKyMoiLuc, kMaKyTuyChon],
               'description': '${[
                 for (final e in kMaKy.entries) '${e.key} = ${e.value}',
-              ].join('; ')}; $kMaKyMoiLuc = $kChuKyMoiLuc. Câu nêu kỳ nào thì chọn '
-                  'đúng kỳ ấy; câu không nêu kỳ (lần gần nhất, lần cuối, gần đây, tìm '
-                  'theo ghi chú) thì chọn $kMaKyMoiLuc.',
+              ].join('; ')}; $kMaKyMoiLuc = $kChuKyMoiLuc; $kMaKyTuyChon = tháng, quý, '
+                  'năm cụ thể hay hai mốc ngày, điền tu_ngay và den_ngay. Câu nêu kỳ '
+                  'nào thì chọn đúng kỳ ấy; câu không nêu kỳ (lần gần nhất, lần cuối, '
+                  'gần đây, tìm theo ghi chú) thì chọn $kMaKyMoiLuc.',
+            },
+            'tu_ngay': {
+              'type': 'string',
+              'description': 'dd/mm/yyyy, chỉ khi ky=$kMaKyTuyChon.',
+            },
+            'den_ngay': {
+              'type': 'string',
+              'description': 'dd/mm/yyyy, tính cả ngày này; chỉ khi ky=$kMaKyTuyChon.',
+            },
+            'so_voi': {
+              'type': 'string',
+              'enum': kSoVoi,
+              'description': 'ky_truoc: so với kỳ liền trước; cung_ky_nam_truoc: so với '
+                  'cùng kỳ năm trước. Dùng khi hỏi nhiều hơn hay ít hơn, so với tháng '
+                  'trước. ky là kỳ đang hỏi.',
             },
             'chieu': {
               'type': 'string',
@@ -150,8 +179,22 @@ class CongCuTruyVan implements CongCu {
     }
     final a = chinh.args;
     final maKy = a['ky']?.toString().trim() ?? '';
-    final ky = _kyCua(maKy, now);
-    if (ky == null) return tuChoiGiaTri('ky', maKy, [...kMaKy.keys, kMaKyMoiLuc]);
+    final tuyChon = maKy == kMaKyTuyChon;
+    if (tuyChon && khoangTuThamSo(a['tu_ngay'], a['den_ngay']) == null) {
+      return tuChoiKhoangNgay(a['tu_ngay'], a['den_ngay']);
+    }
+    final ky = tuyChon
+        ? _kyTuyChon(khoangTuThamSo(a['tu_ngay'], a['den_ngay'])!)
+        : _kyCua(maKy, now);
+    if (ky == null) {
+      return tuChoiGiaTri('ky', maKy, [...kMaKy.keys, kMaKyMoiLuc, kMaKyTuyChon]);
+    }
+    final maSoVoi = a['so_voi']?.toString().trim();
+    final soVoi = (maSoVoi == null || maSoVoi.isEmpty) ? null : maSoVoi;
+    if (soVoi != null && !kSoVoi.contains(soVoi)) {
+      return tuChoiGiaTri('so_voi', soVoi, kSoVoi);
+    }
+    if (soVoi != null && maKy == kMaKyMoiLuc) return tuChoiSoSanhThieuKy();
 
     final maChieu = a['chieu']?.toString() ?? 'tat_ca';
     final chieu = kChieuTim[maChieu];
@@ -194,9 +237,10 @@ class CongCuTruyVan implements CongCu {
       sapXep: sapXep,
     );
     final canTron = gop != 'khong' || chon != null;
+    final lookup = await nganSach.lookupFor(idaccount);
     final kq = timGiaoDich(
       trongKy: await giaoDich.watchKhoang(idaccount, ky.from, ky.to).first,
-      lookup: await nganSach.lookupFor(idaccount),
+      lookup: lookup,
       viSong: dsVi,
       danhMucSong: dsDm,
       tieuChi: tieuChi,
@@ -206,17 +250,66 @@ class CongCuTruyVan implements CongCu {
     if (kq.loi != null) {
       return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
     }
+
+    // Kỳ đem ra so: CÙNG bộ lọc, chỉ đổi khoảng — "ăn uống tháng này so với
+    // tháng trước" so ăn uống với ăn uống. Không đọc khi kỳ này rỗng.
+    SoSanhKy? soSanh;
+    if (soVoi != null && kq.soKhop > 0 && chieu != ChieuTim.chuyen) {
+      final nen = _khoangNen(soVoi, maKy, ky.from, ky.to, now);
+      final kqNen = timGiaoDich(
+        trongKy: await giaoDich.watchKhoang(idaccount, nen.from, nen.to).first,
+        lookup: lookup,
+        viSong: dsVi,
+        danhMucSong: dsDm,
+        tieuChi: tieuChi,
+        now: now,
+        toiDa: 1,
+      );
+      soSanh = SoSanhKy(
+        chuKy: soVoi == 'ky_truoc'
+            ? (_chuKyTruoc[maKy] ?? 'kỳ trước')
+            : 'cùng kỳ năm trước',
+        chi: kqNen.tongChi,
+        thu: kqNen.tongThu,
+      );
+    }
+    // Gắn kỳ tự do và phép so sánh vào kết quả đã dựng — một chỗ cho cả ba
+    // nhánh (hàng lẻ, hàng nhóm, hàng đã chọn).
+    KetQuaCongCu hoanTat(KetQuaCongCu r) {
+      var x = r;
+      if (tuyChon) {
+        x = ganKyTuyChon(
+          x,
+          from: ky.from,
+          to: ky.to,
+          chu: chinh.chuKy ?? _chuKhoang(ky.from, ky.to),
+          ten: chinh.tenKy,
+          now: now,
+        );
+      }
+      if (soSanh != null) {
+        x = themSoSanh(
+          x,
+          soSanh: soSanh,
+          chieu: chieu,
+          tongChi: kq.tongChi,
+          tongThu: kq.tongThu,
+        );
+      }
+      return x;
+    }
+
     if (gop != 'khong') {
-      return hangNhomGiaoDich(
+      return hoanTat(hangNhomGiaoDich(
         kq,
         tieuChi: tieuChi,
         theo: gop == 'danh_muc' ? NhomTheo.danhMuc : NhomTheo.vi,
         chuKy: ky.chu,
         chon: chon,
-      );
+      ));
     }
     if (chon == null) {
-      return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
+      return hoanTat(hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now));
     }
     // gop=khong + chon: chọn theo TIỀN dù dòng đang xếp theo ngày; tổng hợp vẫn
     // là của trọn tập (`soKhop`, `tongChi`, …), chỉ `dong` còn một.
@@ -233,8 +326,41 @@ class CongCuTruyVan implements CongCu {
       tenDanhMucKhop: kq.tenDanhMucKhop,
       tenViKhop: kq.tenViKhop,
     );
-    return hangGiaoDich(cat, tieuChi: tieuChi, chuKy: ky.chu, now: now, chon: chon);
+    return hoanTat(
+      hangGiaoDich(cat, tieuChi: tieuChi, chuKy: ky.chu, now: now, chon: chon),
+    );
   }
+}
+
+({DateTime from, DateTime to, String chu}) _kyTuyChon(
+  ({DateTime from, DateTime to}) k,
+) =>
+    (from: k.from, to: k.to, chu: kChuKyTuyChon);
+
+/// Chữ của khoảng khi bộ chỉnh không đọc được kỳ từ câu hỏi (mô hình tự điền
+/// hai mốc): `[from, to)` → "từ d/m đến d/m/yyyy", mốc cuối BAO GỒM.
+String _chuKhoang(DateTime from, DateTime to) =>
+    chuKhoangNgay(from, DateTime(to.year, to.month, to.day - 1));
+
+/// Khoảng của kỳ đem ra so. Mã kỳ chuẩn lùi bằng đúng phép của trang Phân tích
+/// (`lui`, `cungKyNamTruoc` — tuần lùi 52 kỳ); khoảng tự do dùng bản khoảng
+/// (`khoangKyTruoc`, `khoangCungKyNamTruoc` — trọn tháng thì lùi theo lịch).
+({DateTime from, DateTime to}) _khoangNen(
+  String soVoi,
+  String maKy,
+  DateTime from,
+  DateTime to,
+  DateTime now,
+) {
+  final truoc = soVoi == 'ky_truoc';
+  final ky = kyTuMa(maKy, now);
+  if (ky != null) {
+    final k = truoc ? lui(ky, 1) : cungKyNamTruoc(ky);
+    return (from: k.from, to: k.to);
+  }
+  return truoc
+      ? khoangKyTruoc(from: from, to: to)
+      : khoangCungKyNamTruoc(from: from, to: to);
 }
 
 /// Mã kỳ → khoảng đọc + chữ kỳ. `null` = mã lạ hoặc thiếu (spec 2b mục 2.5:

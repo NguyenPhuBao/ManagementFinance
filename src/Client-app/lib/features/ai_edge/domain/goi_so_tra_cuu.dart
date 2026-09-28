@@ -43,6 +43,7 @@ import 'dart:convert';
 
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'ma_ky.dart';
 import 'nhan_xet.dart';
 import 'tham_so_mo_hinh.dart';
 
@@ -210,7 +211,7 @@ class GoiSoTraCuu extends GoiSo {
       final noiDung =
           '${jsonEncode(Map.of(kq.json)..remove('ky'))}|${kq.boLoc.join('|')}';
       final n = nhom.putIfAbsent(noiDung, () => (ky: <String>[], kq: kq));
-      final ky = kq.chuThem['ky'];
+      final ky = _chuKyInDuoc(kq);
       if (ky != null && !n.ky.contains(ky)) n.ky.add(ky);
     }
     final cau = [
@@ -246,7 +247,15 @@ class GoiSoTraCuu extends GoiSo {
   }
 
   static List<String> _kyCua(KetQuaCongCu kq) =>
-      [if (kq.chuThem['ky'] != null) kq.chuThem['ky']!];
+      [if (_chuKyInDuoc(kq) != null) _chuKyInDuoc(kq)!];
+
+  /// Chữ kỳ cho tiền tố mẫu câu. Kỳ tự do (`tuy_chon`) mang chữ giữ chỗ không
+  /// số ở `chuThem` — chữ THẬT của nó (có số) đứng đầu `boLoc`, nên tiền tố
+  /// không in chữ giữ chỗ.
+  static String? _chuKyInDuoc(KetQuaCongCu kq) {
+    final ky = kq.chuThem['ky'];
+    return ky == kChuKyTuyChon ? null : ky;
+  }
 
   /// Tiền tố viết thường: kỳ rồi từng điều kiện lọc, nối bằng `, `.
   static String _tienTo(List<String> ky, List<String> boLoc) =>
