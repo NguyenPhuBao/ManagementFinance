@@ -453,4 +453,45 @@ void main() {
       expect(chinh('lan gan nhat toi chi an uong', {'ky': 'thang_nay'})['ky'], 'moi_luc');
     });
   });
+
+  group('15. định tuyến lát 2 — tổng quan tài chính và danh mục', () {
+    test('⭐ câu về thu nhập, tiết kiệm, trung bình ngày, tài sản, dư nợ → tong_quan_tai_chinh', () {
+      for (final cau in [
+        'thu nhap thang nay cua toi la bao nhieu',
+        'toi de danh duoc bao nhieu phan tram',
+        'ty le tiet kiem cua toi',
+        'toi chi trung binh moi ngay bao nhieu',
+        'ngay nao thang nay toi chi nhieu nhat',
+        'tong tai san thang nay tang hay giam',
+        'toi dang cho vay bao nhieu chua thu ve',
+        'toi con no bao nhieu',
+        'Thu nhập tháng này của tôi là bao nhiêu?',
+      ]) {
+        expect(congCuTheoCauHoi(cau), 'tong_quan_tai_chinh', reason: cau);
+      }
+    });
+    test('⭐ câu liệt kê / đếm danh mục → danh_sach_danh_muc', () {
+      for (final cau in [
+        'toi co nhung danh muc nao',
+        'co bao nhieu danh muc chi',
+        'liet ke cac danh muc cua toi',
+      ]) {
+        expect(congCuTheoCauHoi(cau), 'danh_sach_danh_muc', reason: cau);
+      }
+    });
+    test('⚠️ phản ví dụ — câu CŨ đang đúng không bị đổi tool', () {
+      for (final cau in [
+        'khoan chi lon nhat thang nay la gi',
+        'thang nay chi nhieu nhat vao danh muc nao',
+        'danh muc nao toi it tieu nhat',
+        'cac danh muc chua dat ngan sach',
+        'toi da cho vay bao nhieu va thu ve bao nhieu',
+        'tong tai san cua toi la bao nhieu',
+        'toi nen de danh bao nhieu moi thang cho muc tieu muaxe',
+        'thang nay toi nhan duoc nhung khoan thu nao',
+      ]) {
+        expect(congCuTheoCauHoi(cau), isNull, reason: cau);
+      }
+    });
+  });
 }

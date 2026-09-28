@@ -177,6 +177,10 @@ const String kPromptHeThongCongCu =
     'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "còn tiêu '
     'được bao nhiêu", "tiền có đủ trả hoá đơn không", "trả hết hoá đơn thì còn bao '
     'nhiêu", "sắp tới phải chi gì" → $kTenCongCuDuBao. '
+    '"thu nhập của tôi bao nhiêu", "tôi để dành được bao nhiêu phần trăm", "ngày nào '
+    'tôi chi nhiều nhất", "tôi đang cho vay bao nhiêu" → $kTenCongCuTongQuan. "tôi có '
+    'những danh mục nào" → $kTenCongCuDanhMuc; "danh mục nào chưa đặt ngân sách" → '
+    '$kTenCongCuNganSach với chon=chua_dat. '
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '

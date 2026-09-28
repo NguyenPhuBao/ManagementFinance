@@ -7,16 +7,19 @@ import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/data/bao_cao_repository.dart';
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../category/data/repositories/category_management_repository.dart';
 import '../../goal/data/repositories/goal_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../domain/cong_cu.dart';
 import '../domain/hang_so_lieu.dart';
+import 'cong_cu_danh_muc.dart';
 import 'cong_cu_du_bao.dart';
 import 'cong_cu_goi_y_han_muc.dart';
 import 'cong_cu_hoa_don.dart';
 import 'cong_cu_muc_tieu.dart';
 import 'cong_cu_ngan_sach.dart';
+import 'cong_cu_tong_quan.dart';
 import 'cong_cu_truy_van.dart';
 import 'cong_cu_vi.dart';
 
@@ -39,6 +42,7 @@ class BoCongCu {
     required TransactionRepository giaoDich,
     required BaoCaoRepository baoCao,
     required AnalyticsRepository phanTich,
+    required CategoryManagementRepository danhMuc,
   }) =>
       BoCongCu([
         CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
@@ -48,6 +52,8 @@ class BoCongCu {
         CongCuMucTieu(mucTieu),
         CongCuGoiYHanMuc(nganSach),
         CongCuDuBao(phanTich),
+        CongCuTongQuan(phanTich),
+        CongCuDanhMuc(danhMuc: danhMuc, nganSach: nganSach),
       ]);
 
   List<KhaiBaoCongCu> get khaiBao => [for (final c in cacCongCu) c.khaiBao];

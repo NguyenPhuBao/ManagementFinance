@@ -359,6 +359,68 @@ bool _laKyTuongLai(String cauHoiGoc, String q) => _coDau.hasMatch(cauHoiGoc)
     ? _mauTuongLaiCoDau.hasMatch(normalizeCategoryName(cauHoiGoc))
     : _mauTuongLaiKhongDau.hasMatch(q);
 
+/// Bộ chỉnh của `tong_quan_tai_chinh`: kỳ nêu cụ thể → `tuy_chon` (luật 11);
+/// câu không nêu kỳ nào → **tháng này** — KHÁC tool giao dịch (`moi_luc`), vì
+/// "thu nhập mọi thời gian" không phải câu người dùng hỏi.
+KetQuaChinhThamSo chinhThamSoTongQuan(
+  String cauHoi,
+  Map<String, dynamic> args, {
+  required DateTime now,
+}) {
+  final a = Map<String, dynamic>.from(args);
+  final ghi = <String>[];
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
+  final kyTuDo = kyTuCauHoi(q, now);
+  if (kyTuDo != null) {
+    a['ky'] = kMaKyTuyChon;
+    a['tu_ngay'] = _ddmmyyyy(kyTuDo.from);
+    a['den_ngay'] = _ddmmyyyy(kyTuDo.to.subtract(const Duration(hours: 12)));
+    ghi.add('câu hỏi nêu kỳ cụ thể → ky=$kMaKyTuyChon ${a['tu_ngay']}–${a['den_ngay']}');
+    return KetQuaChinhThamSo(a, ghi, chuKy: kyTuDo.chu, tenKy: kyTuDo.ten);
+  }
+  final neu = _kyGocNeu(q) ??
+      [
+        for (final ma in kMaKy.keys)
+          if (_co(q, ma)) ma,
+      ].firstOrNull;
+  final dich = neu ?? 'thang_nay';
+  if (a['ky'] != dich && (neu != null || !kMaKy.containsKey(a['ky']))) {
+    a['ky'] = dich;
+    ghi.add(neu != null ? 'câu hỏi nêu kỳ → ky=$dich' : 'câu hỏi không nêu kỳ → ky=$dich');
+  } else if (neu == null && a['ky'] != 'thang_nay') {
+    a['ky'] = 'thang_nay';
+    ghi.add('câu hỏi không nêu kỳ → ky=thang_nay');
+  }
+  return KetQuaChinhThamSo(a, ghi);
+}
+
+/// Bộ chỉnh của `danh_sach_danh_muc`: loại nêu trong câu → `loai`; không nêu →
+/// gỡ `loai` mô hình điền (luật 10 — câu "tôi có những danh mục nào" là mọi loại).
+KetQuaChinhThamSo chinhThamSoDanhMuc(String cauHoi, Map<String, dynamic> args) {
+  final a = Map<String, dynamic>.from(args);
+  final ghi = <String>[];
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
+  String? loai;
+  if (RegExp(r'danh muc (?:khoan )?(?:vay|no)(?![a-z0-9])').hasMatch(q)) {
+    loai = 'vay_no';
+  } else if (RegExp(r'danh muc (?:khoan )?(?:thu)(?![a-z0-9])').hasMatch(q)) {
+    loai = 'khoan_thu';
+  } else if (RegExp(r'danh muc (?:khoan )?(?:chi)(?![a-z0-9])').hasMatch(q)) {
+    loai = 'khoan_chi';
+  }
+  if (loai != null && a['loai'] != loai) {
+    a['loai'] = loai;
+    ghi.add('câu hỏi nêu loại danh mục → loai=$loai');
+  }
+  if (loai == null && _chuoi(a['loai']) != null) {
+    a.remove('loai');
+    ghi.add('câu hỏi không nêu loại danh mục → bỏ loai');
+  }
+  return KetQuaChinhThamSo(a, ghi);
+}
+
 /// ĐỊNH TUYẾN theo câu hỏi (mục 9.33 `AI_EDGE_FEATURE.md`): tên tool mà câu hỏi
 /// đòi, hoặc `null` khi câu hỏi không nói rõ — khi ấy tool mô hình chọn được
 /// giữ nguyên. Mở rộng nguyên tắc *"câu hỏi là nguồn sự thật"* từ THAM SỐ sang
@@ -376,11 +438,38 @@ final List<RegExp> _mauDuBao = [
   RegExp(r'(?<![a-z0-9])sap (?:toi )?(?:toi )?(?:phai|can) (?:tra|chi|dong)(?![a-z0-9])'),
 ];
 
+/// Lát 2: câu về thu nhập, tiết kiệm, dòng tiền tự do, trung bình ngày, ngày chi
+/// nhiều nhất, tài sản tăng/giảm, dư nợ. ⚠️ *"khoản chi lớn nhất"* KHÔNG ở đây —
+/// tool giao dịch đã trả lời nó (C18), và đổi tool là làm tụt câu cũ.
+final List<RegExp> _mauTongQuan = [
+  RegExp(r'(?<![a-z0-9])thu nhap(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:de danh|tiet kiem) (?:duoc )?(?:bao nhieu )?(?:phan tram|%)'),
+  RegExp(r'(?<![a-z0-9])t[iy] le (?:tiet kiem|de danh)(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])dong tien tu do(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])trung binh (?:moi|mot|1) ngay(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])ngay nao\b.*\b(?:chi|tieu) nhieu nhat(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:tong )?tai san\b.*\b(?:tang|giam|thay doi)(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:dang cho vay|cho vay\b.*\bchua thu|chua thu ve|dang no|con no)(?![a-z0-9])'),
+];
+
+/// Lát 2: câu LIỆT KÊ hay ĐẾM danh mục. Câu xếp hạng danh mục theo tiền (*"danh
+/// mục nào chi nhiều nhất"*) thuộc tool giao dịch — bị loại bằng chữ "nhất".
+final List<RegExp> _mauDanhMuc = [
+  RegExp(r'(?<![a-z0-9])(?:nhung|cac) danh muc (?:nao|gi)(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:bao nhieu|may) danh muc(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])(?:liet ke|ke ten|danh sach)(?: cac| nhung)? danh muc(?![a-z0-9])'),
+];
+
 String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
   if (_co(q, 'ngan sach')) return null;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
+  if (_co(q, 'muc tieu')) return null;
+  if (_mauDanhMuc.any((m) => m.hasMatch(q)) && !_co(q, 'nhat')) {
+    return kTenCongCuDanhMuc;
+  }
+  if (_mauTongQuan.any((m) => m.hasMatch(q))) return kTenCongCuTongQuan;
   return null;
 }
 

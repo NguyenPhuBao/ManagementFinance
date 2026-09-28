@@ -274,6 +274,12 @@ void main() {
         'còn tiêu được bao nhiêu',
         'có đủ trả hoá đơn không',
         kTenCongCuDuBao,
+        // Lát 2.
+        kTenCongCuTongQuan,
+        kTenCongCuDanhMuc,
+        'thu nhập của tôi bao nhiêu',
+        'tôi có những danh mục nào',
+        '$kTenCongCuNganSach với chon=chua_dat',
       ]) {
         expect(kPromptHeThongCongCu, contains(vd), reason: vd);
       }

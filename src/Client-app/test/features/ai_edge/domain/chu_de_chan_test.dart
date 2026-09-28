@@ -43,4 +43,25 @@ void main() {
   });
 
   test('câu rỗng thì không chặn', () => expect(chuDeBiChan('  '), isFalse));
+
+  group('lát 2 spec mở rộng tool: chủ đề ngoài phạm vi (E22)', () {
+    for (final c in [
+      'Giá vàng hôm nay bao nhiêu?',
+      'gia vang hom nay bao nhieu',
+      'Tỷ giá đô la hôm nay',
+      'thoi tiet ngay mai the nao',
+      'Kết quả xổ số hôm nay',
+      'gia xang hom nay',
+    ]) {
+      test('chặn: "$c"', () => expect(chuDeBiChan(c), isTrue));
+    }
+    for (final c in [
+      'hom nay ngay bao nhieu',
+      'gia ve xe buyt toi da tra bao nhieu',
+      'toi chi bao nhieu cho xang xe',
+      'Tháng này tôi mua vàng hết bao nhiêu',
+    ]) {
+      test('lọt: "$c"', () => expect(chuDeBiChan(c), isFalse));
+    }
+  });
 }

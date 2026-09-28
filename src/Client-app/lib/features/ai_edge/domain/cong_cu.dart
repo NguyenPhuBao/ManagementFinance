@@ -22,6 +22,11 @@ const String kTenCongCuGoiYHanMuc = 'goi_y_han_muc';
 /// 16–17 chặng 3 đòi phép trừ mà mô hình không được làm.
 const String kTenCongCuDuBao = 'du_bao_dong_tien';
 
+/// Lát 2 (§4.2, §4.3): thu nhập THẬT, tiết kiệm, thống kê nhanh, tài sản, dư nợ;
+/// và danh sách danh mục — thứ trước đó không tool nào liệt kê.
+const String kTenCongCuTongQuan = 'tong_quan_tai_chinh';
+const String kTenCongCuDanhMuc = 'danh_sach_danh_muc';
+
 /// Thay `tim_giao_dich` + `tong_ket_thu_chi_ky` từ 2026-09-27 (spec tool truy vấn
 /// tổng quát): hai tool trên cùng một sổ giao dịch là chỗ mô hình chọn nhầm
 /// nhiều nhất (E5, C13, sáu câu có điều kiện ở lần đo 4–8). Lịch sử tên:
@@ -90,5 +95,7 @@ String cauDangTraCuu(String tenCongCu) => switch (tenCongCu) {
       kTenCongCuGoiYHanMuc => 'Đang tính gợi ý hạn mức…',
       kTenCongCuTruyVan => 'Đang tra cứu giao dịch…',
       kTenCongCuDuBao => 'Đang dự báo dòng tiền…',
+      kTenCongCuTongQuan => 'Đang tổng hợp tài chính…',
+      kTenCongCuDanhMuc => 'Đang tra cứu danh mục…',
       _ => 'Đang tra cứu…',
     };

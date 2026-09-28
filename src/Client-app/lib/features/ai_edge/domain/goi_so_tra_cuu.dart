@@ -239,8 +239,9 @@ class GoiSoTraCuu extends GoiSo {
     }
     final ve = [
       for (final h in kq.hang)
-        '${h.ten}${h.trangThai == null ? '' : ' ${h.trangThai}'}: '
-            '${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}',
+        // Hàng KHÔNG số liệu (danh mục) chỉ có tên + trạng thái, không dấu hai chấm.
+        '${h.ten}${h.trangThai == null ? '' : ' ${h.trangThai}'}'
+            '${h.soLieu.isEmpty ? '' : ': ${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}'}',
       for (final s in kq.tongHop) '${s.nhan}: ${s.chuoi}',
     ];
     final ketLuan = _ketLuan(kq);

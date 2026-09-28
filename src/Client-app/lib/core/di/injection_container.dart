@@ -544,6 +544,7 @@ Future<void> setupDependencies() async {
       giaoDich: sl<TransactionRepository>(),
       baoCao: sl<BaoCaoRepository>(),
       phanTich: sl<AnalyticsRepository>(),
+      danhMuc: sl<CategoryManagementRepository>(),
     ),
   );
 
