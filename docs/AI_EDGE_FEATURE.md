@@ -2528,7 +2528,7 @@ vẫn hỏng (*"5.0000 đ"*, *"20.0000.000 đ"*). Hệ quả: mỗi câu định
 ⚠️ Màn Trợ lý AI hiện toast *"Một số thay đổi chưa lên được máy chủ"* giữa buổi đo — hàng đợi đồng bộ của máy, không
 liên quan lát này; chưa điều tra.
 
-### 9.35 Mở rộng bộ tool — LÁT 3, Task 9: hoá đơn kỳ tới, tự trả, cố định mỗi tháng (2026-09-28) — 🚧 mã xong, CHƯA đo máy
+### 9.35 Mở rộng bộ tool — LÁT 3, Task 9–10: hoá đơn kỳ tới, tự trả, cố định mỗi tháng; mục tiêu trích tự động (2026-09-28) — 🚧 mã xong, CHƯA đo máy
 
 Commit `0712290` (tách hàm) và `fc8afaf` (tool). Task 10 (mục tiêu), Task 11 (cân đối ngân sách) và cổng F **chưa
 làm** — người dùng dặn dừng sau phần này. `flutter test` **4074/4074** (3 skip), `flutter analyze` **26**.
@@ -2572,12 +2572,43 @@ chặn vì cụm sau *"hoá đơn"* là *"tự trả"*. `kTuChucNang` thêm *t�
 - ⚠️ Hàng hoá đơn người dùng **tự tạo tay** cho kỳ sau vẫn bị đếm đôi với kỳ dự kiến (khử trùng chỉ dựa
   `generatedFromBillId`) — cùng giới hạn cố ý của dự báo 30 ngày.
 
-**Việc kế của lát 3** (đã đọc mã, chưa viết): Task 10 — `kyKeTiep(mocNeo: timeCycleTakeMoney, lanChayGanNhat:
-autoDepositLastRun, chuKy: cycleTakeMoney, now)`, `quyetDinhTrich`; ⚠️ câu *"ví có đủ tiền trích cho mục tiêu
-không"* hiện được `congCuTheoCauHoi` định tuyến sang `du_bao_dong_tien` (mẫu *"đủ tiền … trích"* xét trước chữ
-*"mục tiêu"*) — phải quyết giữ hay đổi trước khi viết; nhãn mới không được bắt đầu bằng chữ *"Ví"* (`kiemTen` đọc
-chữ sau nó là tên). `wallet_picker_sources_test` **không** cần sửa: nó quét `walletDao.*`, adapter đọc qua
-`WalletRepository` như `CongCuVi`.
+**Task 10 — cùng ngày, sau khi người dùng nói "tiếp tục"** (commit `9212318` sửa lỗi, `820f20f` tool). Người dùng
+chốt định tuyến: câu về **trích cho mục tiêu** (F13 *"ví có đủ tiền trích cho mục tiêu không"*, F14 *"kỳ trích tiếp
+theo của MuaDT"*) đi `danh_sach_muc_tieu`, **đảo** quyết định lát 1 (khi ấy F13 → dự báo vì tool mục tiêu chưa
+biết gì về trích).
+
+- Hàng mục tiêu bật trích tự động mang *Kỳ trích tiếp* (`kyKeTiep`) và *Trích mỗi <kỳ>*. Adapter đọc ví (`watchAll`,
+  bảng tra — chỉ khi có mục tiêu bật trích) rồi kết luận **đúng như bộ trích**: ba ca không chạy qua
+  `viNguonChoTrich` (không hứa kỳ tiếp — hậu tố *" · trích tự động không chạy được"*), đủ / thiếu qua
+  `quyetDinhTrich` (kẹp ở phần còn thiếu — so số dư với số CÀI là sai; có ca test canh).
+- ⚠️ Khác spec §5.2: *"ví … không đủ để trích"* là **hậu tố** trạng thái, không thay trạng thái — mục tiêu vừa chậm
+  vừa thiếu tiền phải khớp cả `chon=cham_ke_hoach` lẫn `chon=vi_khong_du` (lọc theo CỜ, không theo mã trạng thái).
+- ⚠️ Khác kế hoạch: nhãn đếm là *Không đủ tiền trích*, không phải *Ví thiếu để trích* — `kiemTen` đọc chữ sau *"ví"*
+  là tên, nên nhãn của kế hoạch làm chính mẫu câu bị chặn. Đếm và `ket_qua` chỉ có khi câu hỏi chung hoặc hỏi đúng
+  về trích (hỏi *"mục tiêu nào chậm"* mà mẫu câu nói chuyện ví là tiếng ồn).
+- Định tuyến `_laCauTrichMucTieu` xét **trước** tool dự báo; câu nhắc *hoá đơn* (gộp hai loại cam kết) và câu về
+  **lịch sử** trích (*đã trích, lần gần nhất*) giữ đường cũ. `chinhThamSoMucTieu` đọc *ví không đủ / thiếu tiền
+  trích* → `vi_khong_du`; *"có đủ … không"* là câu hỏi chung, không lọc.
+
+**Hai lỗi thật lượt này bắt được, cả hai có từ trước:**
+
+1. 🛑 **Bộ trích tự động rút tiền từ ví nguồn ĐÃ XOÁ MỀM** (sửa `9212318`, bẫy **4.8** `GOAL_FEATURE.md`).
+   `WalletDao.getById` trả cả hàng đã xoá mềm; bộ trích chỉ kiểm `null`. Ví xoá qua đồng bộ (máy khác, Admin-web)
+   không đi qua chốt "số dư phải bằng 0" của màn Quản lý ví, nên còn tiền thì bị rút đủ kỳ — test tái hiện đỏ với
+   `trichDu`. Lộ ra vì test quét 14 cấm `walletId` trong `ai_edge/`, buộc luật *"ví nguồn cho bộ trích chạy
+   không"* thành **một** hàm `viNguonChoTrich` — và khi đem bộ trích ra gọi nó thì thấy bộ trích thiếu vế xoá mềm
+   mà dự báo 30 ngày có.
+2. **Mẫu câu của tool mục tiêu bị chính `kiemTen` chặn** — nhãn *"Mục tiêu 2.000.000 đ"*: cụm sau từ loại là
+   *"2000000 đ"*, không khớp tên nào. Ca test cũ của hàm chỉ kiểm `kiemSo` + `kiemNhan` nên mù; câu tự nhiên
+   *"MuaXe đã tích 1.101.000 đ trên mục tiêu 2.000.000 đ"* bị chắn oan. Nay cụm **mở đầu** bằng chữ số là giá trị;
+   chữ số **giữa** cụm vẫn thuộc tên (có ca *"Mục tiêu Mua 2 xe"* canh). *nguồn* vào từ chức năng (*"ví nguồn"*).
+
+**Bản sai có chủ ý**: 18 bản, cả 18 đỏ — một bản ban đầu **vẫn xanh** (cắt cụm ở chữ số bất kỳ) cho tới khi thêm ca
+*"Mục tiêu Mua 2 xe"*. `tools_json` phiên sáu tool: mô tả tool mục tiêu dài thêm làm ca trần đỏ (6.997 > 6.960) —
+bỏ vế *"Gọi khi … ví có đủ tiền trích"* (câu ấy đã định tuyến sang phiên một tool) là về dưới trần, **không** nâng hằng.
+
+**Việc kế của lát 3**: Task 11 (`danh_sach_ngan_sach chon=can_doi`), rồi build release + spike `tools_json` + đo
+câu đích F11–F15 trên máy, rồi cổng F.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

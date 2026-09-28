@@ -685,7 +685,11 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - 🚧 **Lát 3 Task 9 cùng ngày (`0712290`, `fc8afaf`, mục 9.35)**: `danh_sach_hoa_don` nhận `ky` (kỳ tới kể cả kỳ dự
   kiến, mọi kỳ), hậu tố *tự trả*, *Cố định mỗi tháng*; vòng chiếu kỳ tách thành `cacKyChieuCua` dùng chung với dự
   báo 30 ngày. **Chưa đo máy.** `flutter test` **4074/4074**.
-- Task 10 (mục tiêu), Task 11 (cân đối ngân sách) và cổng F chưa làm. Bàn giao ở
+- 🚧 **Task 10 cùng ngày (`9212318`, `820f20f`)**: `danh_sach_muc_tieu` mang kỳ trích tiếp, trích mỗi kỳ, ví nguồn
+  không đủ / không chạy được; câu về trích cho mục tiêu định tuyến sang tool mục tiêu (người dùng chốt). ⚠️ Lộ ra
+  và sửa **bộ trích tự động rút tiền từ ví nguồn đã xoá mềm** (bẫy 4.8 `GOAL_FEATURE.md`, luật nay là một hàm
+  `viNguonChoTrich`). **Chưa đo máy.**
+- Task 11 (cân đối ngân sách) và cổng F chưa làm. Bàn giao ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN

@@ -145,6 +145,11 @@ vay/nợ), cộng `soLieuNhanhCua`, `tongTaiSanCua`/`thayDoiTaiSan`, `chuoiVayNo
 
 ### 5.2 `danh_sach_muc_tieu`: kỳ trích tiếp, ví không đủ
 
+> ✅ **Thi công 2026-09-28** (mục 9.35 `AI_EDGE_FEATURE.md`). ⚠️ Khác chữ bên dưới: *"ví không đủ để trích"* là **hậu
+> tố** trạng thái (không thay) để mục tiêu vừa chậm vừa thiếu tiền khớp cả hai `chon`; tool nhận tên + số dư +
+> trạng thái ví nguồn (không chỉ số dư) để nói được *"trích tự động không chạy được"*; nhãn đếm là *Không đủ tiền
+> trích*. Câu về trích cho mục tiêu được **định tuyến** sang tool này (người dùng chốt).
+
 - Hàng có `autoDepositAmount > 0` mang thêm *Kỳ trích tiếp* (`kyKeTiep(mocNeo, lanChayGanNhat, chuKy, now)`, `soNgayThang`;
   `null` → bỏ) và *Trích mỗi kỳ* (`autoDepositAmount`); `quyetDinhTrich(soTienCai, conThieu, soDuViNguon)` = `viKhongDu` → trạng
   thái *"ví không đủ để trích"* (thay *"đúng kế hoạch"*; `canhBao: true`). Tổng hợp *Ví thiếu để trích* (đếm).
