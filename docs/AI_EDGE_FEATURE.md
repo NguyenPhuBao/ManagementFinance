@@ -2738,7 +2738,7 @@ F11 ✅ · F12 ✗ · F13 ✅ · F14 ◐ · F15 ✗.
 Theo quy ước 2026-09-25: vòng sửa sau **chỉ đo lại câu chưa đạt** (20 câu ✗ / ◐ + SAI); chạy lại trọn 72 câu chỉ khi
 những câu ấy đạt. → Vòng sửa ở mục **9.37**.
 
-### 9.37 Vòng sửa cổng F (A1) — G1–G5 mã xong 2026-09-28 chiều, 🚧 CHƯA ĐO
+### 9.37 Vòng sửa cổng F (A1) — G1–G5, đo lại 19 câu (Realme, 2026-09-28 15:13–15:32): SAI 3 → 0, F 14/16, còn 4 câu cũ tụt
 
 Người dùng chọn **cả năm gốc** của 9.36; G5 qua spec `docs/superpowers/specs/2026-09-28-g5-chan-menh-de-sai-design.md`
 (lối A, đã duyệt) và kế hoạch 3 task `…/plans/2026-09-28-g5-chan-menh-de-sai.md` (gitignore), thi công inline, TDD, mỗi
@@ -2757,8 +2757,60 @@ luật chặn thử bằng bản sai có chủ ý.
 schema, payload **không đổi**. Không ca test cũ nào phải sửa kỳ vọng ngoài hai ca ghi
 ở G2 / G3 (chúng mã hoá chính quyết định cũ người dùng vừa đảo) và bốn tên ca *"mẫu câu tự qua năm lớp chắn"* → *sáu*.
 
-**Việc kế:** build APK release, đo lại 20 câu chưa đạt + ba câu SAI trên máy đang cắm, bảng ba cột; E8 xét lại sau khi
-đo (G3 đã đổi tập hàng).
+#### Đo lại 19 câu chưa đạt — cổng F lần 2
+
+**Máy và bản.** Realme RMX2205, CPU, APK release `84ac2013…` = mã `eeaadc4` (SHA-1 so hai bên trước khi đo). 19 câu
+✗ / ◐ của lần 1 (`congF_lai.sh`, scratchpad phiên `dc986884…`), 18 phút 40 giây, **0 sập**, **0
+`FAILED_PRECONDITION`**, `tools_json` phiên sáu tool 6.980. Bản ghi nguyên văn bằng `ban_ghi.py` (39 mục). Câu gõ không
+dấu; Telex đổi `muaxxe` → `muaxe`, `Netfflix` → `Netflix` trên màn.
+
+⚠️ **Đáp án không đối chiếu được với SQLite**: bản release không `run-as` được, và Realme **chưa đồng bộ** với
+PostgreSQL dev (logcat: `10 failed, transport failed` — máy thật không tới được `10.0.2.2`). Ba con số
+(C13 2.131.000 · E7 3.101.000 · F2 1.045.000) là số tool trả, khớp hình dạng dữ liệu của lần 1 nhưng **chưa có phép
+kiểm độc lập**.
+
+| # | Câu hỏi | Câu trả lời hiện ra (nguyên văn, bỏ thẻ số liệu) | Đánh giá |
+|---|---|---|---|
+| DC1 | Lai suat tiet kiem cua toi la bao nhieu? | MuaXe đúng kế hoạch: Tiến độ 55,0%, Đã tích 1.101.000 đ, … MuaDT đúng kế hoạch: … Đang theo đuổi: 2; Đã hoàn thành: 0. | ◐ chữ trích đã hết (G1) nhưng vẫn lạc đề — mô hình vẫn gọi tool mục tiêu, câu của nó bị `kiemSo` chặn → mẫu câu L2. **Vẫn tụt** so với 27/09 |
+| B1 | khi nao toi dat muc tieu muaxe | Bạn có thể đặt mục tiêu "MuaXe" khi bạn muốn đạt được mục tiêu 2.000.000 đ. | ✗ tool đúng, hàng đúng (chỉ MuaXe, có *cần thêm 19 ngày*), nhưng mô hình đọc *đạt* thành *đặt* (câu gõ không dấu) và viết câu vô nghĩa; không số nào sai nên sáu lớp chắn im. **Vẫn tụt** |
+| B2 | moi thang toi can de danh bao nhieu cho muaxe | Chưa tra được số liệu cho câu này: không có danh mục chi nào tên "muaxe". … | ✗ như lần 1 (L1b) — ngoài G1–G5 |
+| C4 | tuan nay co khoan chi nao duoi 100 nghin khong | Có một khoản chi là "Thanh toán hóa đơn: Netflix" với số tiền là 100.000 đ trong tuần này. | ◐ như lần 1 — biên `so_tien_den` bao gồm; ngoài G1–G5 |
+| C11 | thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao | Trong tháng này, bạn đã thực hiện 11 giao dịch chuyển tiền vào ví Tiết kiệm. Các giao dịch bao gồm: 900.000 đ (Tích lũy mục tiêu: MuaXe), 700.000 đ (…MuaDT), 300.000 đ (Rút từ mục tiêu: MuaDT), và 100.000 đ (…). | ◐ y hệt lần 1 — gộp cả chuyển RA thành "vào". **Vẫn tụt** |
+| C13 | vi tien mat thang nay chi nhung gi | Trong tháng này, ví tiền đã chi 2.131.000 đ với các giao dịch sau: Cho vay (800.000 đ), Tích lũy mục tiêu: MuaXe (500.000 đ), Di chuyển (180.000 đ), và Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 (123.000 đ). | ✅ **lên** (G2 2c) — *"ví tiền"* thiếu chữ *mặt* |
+| C16 | 5 khoan chi gan day nhat cua toi | Khoản chi gần đây nhất của bạn là: Thanh toán hóa đơn: Kiem thu hoa don 2026-09-04 với số tiền là 123.000 đ vào ngày 19/09. | ◐ như lần 1 — một khoản thay vì năm; ⚠️ khoản chi gần nhất theo C3 lần 1 là Netflix 28/09, mô hình chọn hàng khác; thẻ số liệu hiện *Cho vay · Ngày 19/09* (trùng giá trị ngày) |
+| C20 | lan cuoi toi nap tien cho muc tieu muaxe la ngay nao | Mọi thời gian, ghi chú chứa "MuaXe", mới nhất trước — Tích lũy mục tiêu: MuaXe chuyển ví · Tiền mặt → Tiết kiệm: Số tiền 100.000 đ, Ngày 08/09; … Số giao dịch: 10; … | ✅ **lên** (G2 2b) — mẫu câu L2, hàng đầu là lần nạp mới nhất 08/09 |
+| E3 | Danh muc nao toi it tieu nhat trong thang? | Tháng này, khoản chi, gộp theo danh mục, chọn ít nhất — Giáo dục chi ít nhất: Chi 45.000 đ, Số giao dịch 2; Tổng chi: 2.241.000 đ; … | ✅ **hết SAI** — mô hình viết lại đúng câu sai của lần 1 (*"Giáo dục với tổng chi là 2.241.000 đ"*), G5 (a) chặn → mẫu câu L2 |
+| E6 | Nhung lan toi nap tien vao muc tieu MuaDT | Tôi tìm thấy 3 giao dịch liên quan đến mục tiêu "MuaDT". | ◐ y hệt lần 1. **Vẫn tụt** |
+| E7 | Vi Tiet kiem hien co bao nhieu tien? | Tiết kiệm có số dư là 3.101.000 đ. | ✅ **lên** (G1 định tuyến → `danh_sach_vi`, phiên một tool, 21 s) |
+| E8 | Hoa don Netflix khi nao den han? | Hoa don Netflix có hai hóa đơn: một hóa đơn đã trả ngày 28/09 và một hóa đơn chưa trả (tự trả) ngày 05/10. | ✅ **hết SAI** (G3) |
+| E10 | Ngan sach an uong con lai bao nhieu? | Ngân sách Ăn uống còn lại là 450.000 đ và còn 3 ngày. | ✅ **lên** (G2) |
+| E19 | Trong quy nay khoan chi nao lon nhat? | Khoản chi lớn nhất tháng này là Cho vay với số tiền 800.000 đ. | ◐ như lần 1 — mô hình điền `ky: thang_nay`; ngoài G1–G5 |
+| E21 | Hom nay la ngay bao nhieu? | Mình chưa chắc về con số cho câu này, nên không trả lời để khỏi nói sai. | ✅ **hết SAI** — bậc 1 viết lại đúng câu sai của lần 1, G5 (b) `kiemKy` chặn |
+| F2 | tu 1/9 den 15/9 toi chi nhung gi | Trong khoảng từ 01/09 đến 15/09, bạn đã chi tổng cộng 1.045.000 đ. Các giao dịch bao gồm: Tích lũy mục tiêu: MuaXe (500.000 đ), Di chuyển (180.000 đ), Mua sắm (60.000 đ), và Ăn uống (50.000 đ). | ✅ **lên** (G2 2a + 4b) |
+| F12 | hoa don nao tu tra | Hoa đơn Netflix có số tiền 100.000 đ, trạng thái chưa trả và tự trả, đến hạn ngày 05/10. | ✅ **lên** (G3) |
+| F14 | ky trich tiep theo cua MuaDT la khi nao | Theo nhịp tích lũy hiện tại, mục tiêu MuaDT cần thêm 115 ngày để đạt được. | ✗ **tụt từ ◐** — hàng đã chỉ còn MuaDT (G4) nhưng mô hình bỏ qua `ket_qua` *"không bật trích tự động"*, chọn một số thật khác; câu đúng số, lệch câu hỏi, sáu lớp chắn im |
+| F15 | nen chuyen bot ngan sach nao sang ngan sach nao | Cần cân đối — không có ngân sách nào khớp. | ◐ đúng tool (`can_doi`, phiên một tool, 24 s), kế hoạch rỗng → L2c; câu khó hiểu — nên là *"không ngân sách nào cần cân đối"*. ⚠️ Chưa đối chiếu với thẻ *Đề xuất cân đối* trên trang Ngân sách |
+
+**Kết quả 19 câu: 9 ✅ · 7 ◐ · 3 ✗ · SAI 0.** Gộp với lần 1 (các câu đã ✅ không đo lại):
+
+| Dòng của cổng F | Lần 1 | Lần 2 | Đạt? |
+|---|---|---|---|
+| SAI | 3 (E3 · E8 · E21) | **0** | ✅ |
+| F1–F16 ≥ 13 | 12 | **14** (F2, F12 lên; F14 ✗, F15 ◐) | ✅ |
+| 56 câu cũ không tụt so với 27/09 | 11 tụt | **4 tụt** (DC1 · B1 · C11 · E6) | ✗ |
+
+🛑 **Cổng F vẫn CHƯA ĐẠT** — còn một dòng. Bảy câu lên đều do bộ chỉnh / định tuyến ở tầng mã; ba câu SAI hết vì lớp
+chắn bắt **đúng câu sai cũ** (E3, E21: mô hình viết lại y hệt) hoặc tập hàng đã đúng (E8). Mười câu còn lại gom thành
+ba gốc mới:
+
+| Gốc | Câu | Nhận xét |
+|---|---|---|
+| **H1** Mô hình có hàng đúng mà viết câu lệch, không số sai nên lớp chắn im | B1 · F14 · C16 · E6 · C11 | B1 và F14 có sẵn câu trả lời trong gói (*cần thêm 19 ngày*, *không bật trích tự động*); hướng: `chiMauCau` (L2d) cho lượt mà câu trả lời nằm ở chữ kết luận / một số đích |
+| **H2** Câu ngoài phạm vi vẫn vào tool | DC1 · B2 | *lãi suất* không có trong app; *"cần để dành bao nhiêu cho <mục tiêu>"* → tool mục tiêu (`Cần tích mỗi tháng`) |
+| **H3** Bộ chỉnh / biên còn thiếu | C4 · E19 · F15 | biên *"dưới"* phải loại trừ; *"quý này"* chưa thắng `ky` của mô hình; mẫu câu rỗng của `can_doi` |
+
+Theo quy ước cổng F: báo hướng sửa **trước** khi sửa — chờ người dùng chọn. ⭐ Số đo phụ: phiên một tool lượt sinh
+đầu ~17 s (F14, F15) so với ~42 s ở phiên sáu tool — nền của A2 (kế hoạch `plans/2026-09-28-nhom-a-a3-a4-a2.md`).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

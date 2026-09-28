@@ -692,9 +692,9 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - 🚧 **Task 11 cùng ngày (`c51fb81`)**: `danh_sach_ngan_sach chon=can_doi` — cùng kế hoạch với thẻ *Đề xuất cân
   đối* qua hàm ghép mới `keHoachTaiPhanBoTu`. `flutter test` **4101/4101** (4 skip).
 - 🛑 **Cổng F lần 1 CHƯA ĐẠT** (Realme, mục 9.36 `AI_EDGE_FEATURE.md`): 11 câu cũ tụt, F 12/16, SAI 3; người dùng chọn
-  **cả năm gốc** G1–G5 ngày 2026-09-28 chiều — ✅ **mã xong cùng chiều, chưa đo** (mục 9.37, `7ce43e1` → `eeaadc4`;
+  **cả năm gốc** G1–G5 ngày 2026-09-28 chiều — ✅ mã xong cùng chiều, 🛑 **đo lại 19 câu cùng chiều (Realme 15:13–15:32, APK `84ac2013…`): 9 ✅ · 7 ◐ · 3 ✗ — SAI 3 → 0, F 14/16, nhưng còn 4 câu cũ tụt (DC1 · B1 · C11 · E6) nên cổng F CHƯA ĐẠT**; ba gốc mới H1–H3 ở cuối mục 9.37, chờ người dùng chọn hướng (mục 9.37, `7ce43e1` → `eeaadc4`;
   G5 qua spec `2026-09-28-g5-chan-menh-de-sai-design.md`: lớp chắn thứ sáu `kiemKy` + số tổng gán cho đối tượng trong
-  `kiemNhan`). Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-cong-f.md` (APK `84ac2013…` đã build, chưa đo). Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
+  `kiemNhan`). Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-cong-f.md` (viết trước buổi đo lại). Kế hoạch nhóm A `plans/2026-09-28-nhom-a-a3-a4-a2.md` và bản đồ nhóm B–D `plans/2026-09-28-nhom-b-sau-b1-ban-do.md` (gitignore) soạn cùng chiều. Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
