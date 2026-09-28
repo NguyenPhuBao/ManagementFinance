@@ -92,7 +92,7 @@ Ngưỡng là hằng có tên và docstring nêu lý do (`kToiThieuMauTong = 10`
   bảng chọn rồi lưu → `khac`. Thẻ bị huỷ vì đổi ghi chú / đổi đoạn → **không** ghi (không phải phán xét của người dùng).
 - **Dùng vào:** (1) đo tỉ lệ gợi ý đúng thật; (2) **thôi gợi ý** một cặp *(amTietChinh, goiYCategoryId)* nguồn `hoc` đã có
   **2** hàng `bo_qua` → `tatCap` của `doan`.
-- ⚠️ **Thêm lúc viết spec, chưa có trong bản trình trong chat — chờ người dùng quyết:** cặp đã thôi gợi ý **mở lại** khi
+- **Mở lại** (thêm lúc viết spec, **người dùng duyệt** 2026-09-28): cặp đã thôi gợi ý **mở lại** khi
   người dùng tự lưu **3** giao dịch mới cùng âm tiết cho đúng danh mục đó (bằng chứng mới thắng lời từ chối cũ), đếm trên
   giao dịch có `date` sau hàng `bo_qua` cuối. Không có luật này thì một lần bỏ qua lúc mới dùng app khoá cặp ấy **vĩnh
   viễn**, kể cả khi thói quen đã rõ.
