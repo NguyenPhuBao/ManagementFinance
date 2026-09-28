@@ -76,9 +76,9 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
 ({DateTime from, DateTime to, String chu})? kyTuCauHoi(String q, DateTime now) {
   final ngayMai = DateTime(now.year, now.month, now.day + 1);
 
-  // 1. "tu d/m[/y] den|toi d/m[/y]"
+  // 1. "tu [ngay] d/m[/y] den|toi [ngay] d/m[/y]"
   final mKhoang = RegExp(
-    r'tu (\d{1,2})/(\d{1,2})(?:/(\d{4}))? (?:den|toi) (\d{1,2})/(\d{1,2})(?:/(\d{4}))?',
+    r'tu (?:ngay )?(\d{1,2})/(\d{1,2})(?:/(\d{4}))? (?:den|toi) (?:het )?(?:ngay )?(\d{1,2})/(\d{1,2})(?:/(\d{4}))?',
   ).firstMatch(q);
   if (mKhoang != null) {
     final y2 = int.tryParse(mKhoang.group(6) ?? '') ??
@@ -96,9 +96,7 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
   }
 
   // 2. "N thang|tuan|ngay gan nhat|qua|gan day|vua qua"
-  final mLui = RegExp(
-    r'(?<!\d)(\d{1,3}) (thang|tuan|ngay) (?:gan nhat|qua|gan day|vua qua)',
-  ).firstMatch(q);
+  final mLui = mauKyLuiGanNhat.firstMatch(q);
   if (mLui != null) {
     final n = int.parse(mLui.group(1)!);
     if (n < 1) return null;
@@ -156,6 +154,13 @@ const String kChuKyTuyChon = 'khoảng đã chọn';
   }
   return null;
 }
+
+/// "N tháng / tuần / ngày gần nhất" — công khai vì bộ chỉnh tham số phải bỏ cụm
+/// này khỏi câu trước khi dò "gần nhất / gần đây" của luật sắp xếp: *"3 tháng
+/// gần nhất"* là KỲ, không phải *"lần gần nhất"*.
+final RegExp mauKyLuiGanNhat = RegExp(
+  r'(?<!\d)(\d{1,3}) (thang|tuan|ngay) (?:gan nhat|qua|gan day|vua qua)',
+);
 
 /// Chữ của một khoảng hai mốc, [den] BAO GỒM — một định nghĩa cho bộ chỉnh lẫn tool.
 String chuKhoangNgay(DateTime tu, DateTime den) =>

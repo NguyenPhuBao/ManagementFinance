@@ -20,6 +20,13 @@
 ///    … trở lên* → `so_tien_tu`; *dưới / không quá / đến / tới* → `so_tien_den`).
 /// 5. **Sắp xếp và kỳ**: *lần gần nhất / lần cuối / gần đây / mới nhất* →
 ///    `sap_xep=moi_nhat`; câu không có chữ kỳ nào → `ky=moi_luc`.
+/// 11. **Kỳ nêu cụ thể** (spec mở rộng tool 2026-09-27 §3.1): *tháng 8, quý 2,
+///    từ 1/9 đến 15/9, 3 tháng gần nhất, năm ngoái* → `ky=tuy_chon` + `tu_ngay`
+///    / `den_ngay`; thắng luật 5.
+/// 12. **So sánh hai kỳ** (E13): *so với / hơn tháng trước* → `so_voi=ky_truoc`;
+///    *cùng kỳ năm trước / năm ngoái* → `cung_ky_nam_truoc`. `ky` là kỳ GỐC —
+///    kỳ đang nói — chứ không phải kỳ đem ra so; câu không so sánh mà mô hình
+///    điền `so_voi` → gỡ (cùng lý lẽ luật 10).
 /// 6. **Không đụng** giá trị mà câu hỏi không nói tới — TRỪ `chon` (luật 10):
 ///    cổng E lần 1 (9.32) đo được mô hình điền `chon: nhieu_nhat` cho *"liệt kê
 ///    các khoản chi…"* (C9) và *"5 khoản chi gần đây nhất"* (C16) nên chỉ còn
@@ -34,6 +41,7 @@
 library;
 
 import '../../../core/category/category_name.dart';
+import 'ma_ky.dart';
 
 class KetQuaChinhThamSo {
   final Map<String, dynamic> args;
@@ -122,6 +130,7 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   Map<String, dynamic> args, {
   required List<String> tenDanhMuc,
   required List<String> tenVi,
+  required DateTime now,
 }) {
   final a = Map<String, dynamic>.from(args);
   final ghi = <String>[];
@@ -223,14 +232,50 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     ghi.add('câu hỏi có ngưỡng trên → so_tien_den=${nguong.den}');
   }
 
-  // 5. Sắp xếp và kỳ.
-  if (_tuMoiNhat.any((t) => _co(q, t)) && a['sap_xep'] != 'moi_nhat') {
+  // 12a. Câu so sánh hai kỳ? Cụm so sánh ("so với năm ngoái") bị bỏ khỏi câu
+  // trước khi đọc kỳ tự do: nó nêu kỳ ĐEM RA SO, không phải kỳ đang hỏi.
+  final soSanh = _soSanhTrongCau(q);
+  final qKy = soSanh == null ? q : q.replaceAll(soSanh.mau, ' ');
+
+  // 11. Kỳ nêu cụ thể trong câu (tháng 8, quý 2, từ 1/9 đến 15/9, 3 tháng gần nhất).
+  final kyTuDo = kyTuCauHoi(qKy, now);
+  if (kyTuDo != null) {
+    a['ky'] = kMaKyTuyChon;
+    a['tu_ngay'] = _ddmmyyyy(kyTuDo.from);
+    a['den_ngay'] = _ddmmyyyy(kyTuDo.to.subtract(const Duration(hours: 12)));
+    ghi.add('câu hỏi nêu kỳ cụ thể → ky=$kMaKyTuyChon ${a['tu_ngay']}–${a['den_ngay']}');
+  }
+
+  // 5. Sắp xếp và kỳ. "3 tháng gần nhất" là kỳ, không phải "lần gần nhất".
+  final qXep = q.replaceAll(mauKyLuiGanNhat, ' ');
+  if (_tuMoiNhat.any((t) => _co(qXep, t)) && a['sap_xep'] != 'moi_nhat') {
     a['sap_xep'] = 'moi_nhat';
     ghi.add('câu hỏi "gần nhất / lần cuối" → sap_xep=moi_nhat');
   }
-  if (!_tuKy.any((t) => _co(q, t)) && a['ky'] != 'moi_luc') {
+  if (kyTuDo == null &&
+      soSanh == null &&
+      !_tuKy.any((t) => _co(q, t)) &&
+      a['ky'] != 'moi_luc') {
     a['ky'] = 'moi_luc';
     ghi.add('câu hỏi không nêu kỳ → ky=moi_luc');
+  }
+
+  // 12b. So sánh hai kỳ (E13): kỳ gốc là kỳ đang nói, kỳ so sánh đi so_voi.
+  if (soSanh != null) {
+    if (a['so_voi'] != soSanh.ma) {
+      a['so_voi'] = soSanh.ma;
+      ghi.add('câu hỏi so sánh → so_voi=${soSanh.ma}');
+    }
+    if (kyTuDo == null) {
+      final goc = _kyGocNeu(qKy) ?? soSanh.kyGocNgam;
+      if (a['ky'] != goc) {
+        a['ky'] = goc;
+        ghi.add('kỳ gốc của phép so sánh → ky=$goc');
+      }
+    }
+  } else if (_chuoi(a['so_voi']) != null) {
+    a.remove('so_voi');
+    ghi.add('câu hỏi không so sánh hai kỳ → bỏ so_voi');
   }
   // 7. Chọn (E3 lần đo 15). ⚠️ "ít nhất" đứng trước một số tiền là NGƯỠNG — luật
   //    4 đã ăn nó; ở đây chỉ nhận "ít nhất" KHÔNG theo sau bởi số.
@@ -262,6 +307,39 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     ghi.add('câu hỏi nói cả chi lẫn thu → chieu=tat_ca');
   }
   return KetQuaChinhThamSo(a, ghi);
+}
+
+String _ddmmyyyy(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+/// "so với / hơn / bằng <đơn vị> trước" — kỳ liền trước; đơn vị của cụm cũng là
+/// kỳ gốc NGẦM khi câu không nêu kỳ gốc ("hơn tuần trước" → tuần này).
+final RegExp _mauSoVoiKyTruoc = RegExp(
+    r'(?<![a-z0-9])(?:so voi|so sanh voi|hon|bang)\s+(thang|tuan|quy|nam|ky) truoc(?![a-z0-9])');
+final RegExp _mauSoVoiNamTruoc = RegExp(
+    r'(?<![a-z0-9])(?:(?:so voi |so sanh voi |hon |bang )?cung ky (?:cua )?nam (?:truoc|ngoai)|(?:so voi|so sanh voi|hon|bang) nam ngoai)(?![a-z0-9])');
+
+({String ma, RegExp mau, String kyGocNgam})? _soSanhTrongCau(String q) {
+  if (_mauSoVoiNamTruoc.hasMatch(q)) {
+    return (ma: 'cung_ky_nam_truoc', mau: _mauSoVoiNamTruoc, kyGocNgam: 'thang_nay');
+  }
+  final m = _mauSoVoiKyTruoc.firstMatch(q);
+  if (m == null) return null;
+  final goc = switch (m.group(1)) {
+    'tuan' => 'tuan_nay',
+    'quy' => 'quy_nay',
+    'nam' => 'nam_nay',
+    _ => 'thang_nay',
+  };
+  return (ma: 'ky_truoc', mau: _mauSoVoiKyTruoc, kyGocNgam: goc);
+}
+
+/// Kỳ gốc NÊU RÕ trong câu so sánh ("thang nay … thang truoc" → thang_nay).
+String? _kyGocNeu(String q) {
+  for (final ma in ['hom_nay', 'tuan_nay', 'thang_nay', 'quy_nay', 'nam_nay']) {
+    if (_co(q, ma)) return ma;
+  }
+  return null;
 }
 
 /// Phép chọn trong câu: "nhiều / lớn / cao … nhất" → `nhieu_nhat` (thắng khi câu

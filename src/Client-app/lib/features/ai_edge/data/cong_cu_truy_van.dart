@@ -143,6 +143,7 @@ class CongCuTruyVan implements CongCu {
       args,
       tenDanhMuc: [for (final d in dsDm) d.ten],
       tenVi: [for (final v in dsVi) v.ten],
+      now: now,
     );
     if (chinh.ghiChu.isNotEmpty) {
       log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');

@@ -11,9 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const danhMuc = ['Ăn uống', 'Di chuyển', 'Mua sắm', 'Giáo dục', 'Cho vay', 'Chi khác', 'test1'];
   const vi = ['Tiền mặt', 'Tiết kiệm', 'test'];
+  final now = DateTime(2026, 9, 27, 10);
 
   Map<String, dynamic> chinh(String cauHoi, Map<String, dynamic> args) =>
-      chinhThamSoTimGiaoDich(cauHoi, args, tenDanhMuc: danhMuc, tenVi: vi).args;
+      chinhThamSoTimGiaoDich(cauHoi, args, tenDanhMuc: danhMuc, tenVi: vi, now: now).args;
 
   group('1. tách hai tên trong một ô (C14, C19)', () {
     test('⭐ C14: "mua sam tu vi tien mat" trong danh_muc → danh_muc Mua sắm, vi Tiền mặt', () {
@@ -89,7 +90,7 @@ void main() {
         'tim cac giao dich co ghi chu hoa don',
         {'ky': 'thang_nay', 'tu_khoa': 'hoa don'},
         tenDanhMuc: [...danhMuc, 'Hóa đơn'],
-        tenVi: vi,
+        tenVi: vi, now: now,
       ).args;
       expect(r.containsKey('danh_muc'), isFalse,
           reason: 'Trên Realme luật 2 điền danh_muc=Hóa đơn cạnh tu_khoa "hoa don" → 0 khoản, '
@@ -103,7 +104,7 @@ void main() {
         'tim cac giao dich co ghi chu hoa don',
         {'ky': 'moi_luc'},
         tenDanhMuc: [...danhMuc, 'Hóa đơn'],
-        tenVi: vi,
+        tenVi: vi, now: now,
       ).args;
       expect(r.containsKey('danh_muc'), isFalse,
           reason: 'vế "trùng tu_khoa" không cứu được khi tu_khoa trống; câu hỏi nói "ghi chú X" '
@@ -213,14 +214,14 @@ void main() {
       'cac khoan chi hon nua trieu trong quy nay',
       {'ky': 'quy_nay', 'so_tien_tu': 1000000},
       tenDanhMuc: danhMuc,
-      tenVi: vi,
+      tenVi: vi, now: now,
     );
     expect(co.ghiChu, isNotEmpty);
     final khong = chinhThamSoTimGiaoDich(
       'hom qua toi da chi nhung gi',
       {'ky': 'hom_qua', 'chieu': 'khoan_chi'},
       tenDanhMuc: danhMuc,
-      tenVi: vi,
+      tenVi: vi, now: now,
     );
     expect(khong.ghiChu, isEmpty);
     expect(khong.args, {'ky': 'hom_qua', 'chieu': 'khoan_chi'});
@@ -228,7 +229,7 @@ void main() {
 
   test('câu hỏi rỗng → không chỉnh gì, kể cả ky (tool gọi không kèm cauHoi giữ hành vi cũ)', () {
     final r = chinhThamSoTimGiaoDich('', {'ky': 'thang_nay', 'chieu': 'chuyen_vi'},
-        tenDanhMuc: danhMuc, tenVi: vi);
+        tenDanhMuc: danhMuc, tenVi: vi, now: now);
     expect(r.ghiChu, isEmpty);
     expect(r.args, {'ky': 'thang_nay', 'chieu': 'chuyen_vi'});
   });
@@ -280,7 +281,7 @@ void main() {
     test('⭐ E5: nêu TÊN danh mục → danh_muc điền, gop KHÔNG đặt', () {
       final r = chinhThamSoTimGiaoDich(
         'ke tu dau nam toi da chi cho giai tri tong cong bao nhieu', {'ky': 'nam_nay'},
-        tenDanhMuc: [...danhMuc, 'Giải trí'], tenVi: vi,
+        tenDanhMuc: [...danhMuc, 'Giải trí'], tenVi: vi, now: now,
       ).args;
       expect(r['danh_muc'], 'Giải trí');
       expect(r.containsKey('gop'), isFalse);
@@ -332,6 +333,74 @@ void main() {
     test('không nêu trạng thái → gỡ chon mô hình điền; câu rỗng → không đụng', () {
       expect(chinhThamSoMucTieu('khi nao toi dat muc tieu muaxe', {'chon': 'cham_ke_hoach'}).args.containsKey('chon'), isFalse);
       expect(chinhThamSoMucTieu('', {'chon': 'cham_ke_hoach'}).args['chon'], 'cham_ke_hoach');
+    });
+  });
+
+  group('11. kỳ tự do từ câu hỏi (spec mở rộng tool §3.1)', () {
+    test('⭐ "thang 8" → ky=tuy_chon, tu_ngay 01/08/2026, den_ngay 31/08/2026; đè thang_nay của mô hình', () {
+      final r = chinh('thang 8 toi chi bao nhieu', {'ky': 'thang_nay', 'chieu': 'khoan_chi'});
+      expect(r['ky'], 'tuy_chon');
+      expect(r['tu_ngay'], '01/08/2026');
+      expect(r['den_ngay'], '31/08/2026');
+    });
+    test('"tu 1/9 den 15/9" và "tu ngay 1/9 den ngay 15/9" → den_ngay 15/09/2026 (bao gồm)', () {
+      final r = chinh('cac khoan chi tu 1/9 den 15/9', {'ky': 'moi_luc'});
+      expect((r['tu_ngay'], r['den_ngay']), ('01/09/2026', '15/09/2026'));
+      final r2 = chinh('cac khoan chi tu ngay 1/9 den ngay 15/9', {'ky': 'moi_luc'});
+      expect((r2['ky'], r2['tu_ngay'], r2['den_ngay']), ('tuy_chon', '01/09/2026', '15/09/2026'));
+    });
+    test('kỳ tự do THẮNG luật 5 (không đổi thành moi_luc) — kể cả câu không có chữ "tháng/tuần/quý"', () {
+      expect(chinh('3 thang gan nhat toi chi gi', {'ky': 'moi_luc'})['ky'], 'tuy_chon');
+      expect(chinh('nam ngoai toi chi bao nhieu', {'ky': 'nam_nay'})['ky'], 'tuy_chon');
+      expect(chinh('30 ngay qua toi chi gi', {'ky': 'thang_nay'})['ky'], 'tuy_chon');
+      expect(chinh('thang nay toi chi bao nhieu', {'ky': 'thang_nay'})['ky'], 'thang_nay');
+    });
+    test('⚠️ "3 thang gan nhat" KHÔNG phải "lần gần nhất": không đặt sap_xep=moi_nhat', () {
+      expect(chinh('3 thang gan nhat toi chi gi', {'ky': 'moi_luc'}).containsKey('sap_xep'), isFalse);
+      expect(chinh('lan gan nhat toi chi an uong', {'ky': 'thang_nay'})['sap_xep'], 'moi_nhat');
+    });
+    test('⚠️ năm của kỳ KHÔNG phải ngưỡng tiền: "tu nam 2025", "den thang 8/2025"', () {
+      final r = chinh('cac khoan chi tu 1/9/2026 den 15/9/2026', {'ky': 'moi_luc'});
+      expect(r.containsKey('so_tien_tu'), isFalse);
+      expect(r.containsKey('so_tien_den'), isFalse);
+    });
+    test('mốc không hợp lệ → không điền, không ép tuy_chon (tool sẽ từ chối nếu mô hình tự điền)', () {
+      final r = chinh('tu 31/6 den 5/7 toi chi gi', {'ky': 'thang_nay'});
+      expect(r.containsKey('tu_ngay'), isFalse);
+      expect(r['ky'], isNot('tuy_chon'));
+    });
+  });
+
+  group('12. so_voi (E13)', () {
+    test('⭐ E13 "chi nhieu hon hay it hon thang truoc" → so_voi=ky_truoc, ky ép về thang_nay', () {
+      final r = chinh('thang nay toi chi nhieu hon hay it hon thang truoc',
+          {'ky': 'thang_truoc', 'chieu': 'khoan_chi'});
+      expect(r['so_voi'], 'ky_truoc');
+      expect(r['ky'], 'thang_nay');
+    });
+    test('không nêu kỳ gốc: đơn vị của kỳ so sánh quyết định ("hon tuan truoc" → tuan_nay)', () {
+      final r = chinh('toi chi nhieu hon tuan truoc khong', {'ky': 'tuan_truoc'});
+      expect((r['so_voi'], r['ky']), ('ky_truoc', 'tuan_nay'));
+    });
+    test('"so voi cung ky nam ngoai" → cung_ky_nam_truoc, ky GỐC giữ thang_nay (không thành năm ngoái)', () {
+      final r = chinh('thang nay chi so voi cung ky nam ngoai', {'ky': 'thang_nay'});
+      expect((r['so_voi'], r['ky']), ('cung_ky_nam_truoc', 'thang_nay'));
+      expect(r.containsKey('tu_ngay'), isFalse,
+          reason: '"nam ngoai" ở đây là kỳ SO SÁNH, không phải kỳ đang hỏi');
+      expect(chinh('tuan nay so voi tuan truoc', {'ky': 'tuan_nay'})['so_voi'], 'ky_truoc');
+    });
+    test('kỳ gốc là kỳ tự do: "thang 8 chi nhieu hon thang truoc khong" giữ tuy_chon tháng 8', () {
+      final r = chinh('thang 8 chi nhieu hon thang truoc khong', {'ky': 'thang_nay'});
+      expect((r['so_voi'], r['ky'], r['tu_ngay']), ('ky_truoc', 'tuy_chon', '01/08/2026'));
+    });
+    test('so sánh mà không nêu kỳ nào → kỳ gốc thang_nay, không phải moi_luc', () {
+      expect(chinh('toi chi nhieu hon cung ky nam ngoai khong', {'ky': 'moi_luc'})['ky'], 'thang_nay');
+    });
+    test('phản ví dụ: "thang truoc toi chi bao nhieu" KHÔNG phải so sánh; so_voi mô hình điền thừa bị gỡ', () {
+      expect(chinh('thang truoc toi chi bao nhieu', {'ky': 'thang_truoc'}).containsKey('so_voi'), isFalse);
+      final r = chinh('thang truoc toi chi bao nhieu', {'ky': 'thang_truoc', 'so_voi': 'ky_truoc'});
+      expect(r.containsKey('so_voi'), isFalse);
+      expect(r['ky'], 'thang_truoc');
     });
   });
 }
