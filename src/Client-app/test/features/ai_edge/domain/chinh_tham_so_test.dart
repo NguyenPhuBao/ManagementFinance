@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -362,6 +363,15 @@ void main() {
       expect(chinhThamSoMucTieu('muc tieu nao da qua han', {'chon': 'cham_ke_hoach'}).args['chon'], 'qua_han');
       expect(chinhThamSoMucTieu('muc tieu nao dang dung ke hoach', {}).args['chon'], 'dung_ke_hoach');
     });
+    test('⭐ lát 3: "vi khong du / thieu tien trich" → vi_khong_du, xét TRƯỚC quá hạn / chậm', () {
+      expect(chinhThamSoMucTieu('muc tieu nao vi khong du tien trich', {}).args['chon'], 'vi_khong_du');
+      expect(chinhThamSoMucTieu('Mục tiêu nào đang thiếu tiền trích?', {}).args['chon'], 'vi_khong_du');
+      expect(chinhThamSoMucTieu('muc tieu nao khong du de trich bi cham', {}).args['chon'], 'vi_khong_du');
+    });
+    test('⚠️ F13 "vi co du tien trich cho muc tieu khong" là câu hỏi CHUNG — không chon', () {
+      expect(chinhThamSoMucTieu('vi co du tien trich cho muc tieu khong', {'chon': 'vi_khong_du'}).args.containsKey('chon'),
+          isFalse, reason: '"co du … khong" hỏi có hay không — phải thấy cả mục tiêu đủ lẫn thiếu');
+    });
     test('không nêu trạng thái → gỡ chon mô hình điền; câu rỗng → không đụng', () {
       expect(chinhThamSoMucTieu('khi nao toi dat muc tieu muaxe', {'chon': 'cham_ke_hoach'}).args.containsKey('chon'), isFalse);
       expect(chinhThamSoMucTieu('', {'chon': 'cham_ke_hoach'}).args['chon'], 'cham_ke_hoach');
@@ -446,9 +456,29 @@ void main() {
         'Trả hết hoá đơn thì còn bao nhiêu?',
         'toi con tieu duoc bao nhieu',
         'sap toi toi phai tra nhung gi',
-        'vi co du tien trich cho muc tieu khong',
+        'tien trong vi co du tra hoa don va trich muc tieu khong',
+        '30 ngay toi toi phai tra va trich bao nhieu',
       ]) {
         expect(congCuTheoCauHoi(cau), 'du_bao_dong_tien', reason: cau);
+      }
+    });
+    test('⭐ lát 3 (người dùng chốt 2026-09-28): câu về TRÍCH cho mục tiêu → danh_sach_muc_tieu', () {
+      for (final cau in [
+        'vi co du tien trich cho muc tieu khong',
+        'Ví có đủ tiền trích cho mục tiêu không?',
+        'ky trich tiep theo cua MuaDT la khi nao',
+        'moi thang tu dong trich bao nhieu cho muaxe',
+        'muc tieu nao vi khong du tien trich',
+      ]) {
+        expect(congCuTheoCauHoi(cau), kTenCongCuMucTieu, reason: cau);
+      }
+    });
+    test('⚠️ câu về LỊCH SỬ trích → giữ đường cũ (tool giao dịch có lịch sử nạp, tool mục tiêu thì không)', () {
+      for (final cau in [
+        'lan trich gan nhat cho muaxe la khi nao',
+        'thang nay da trich bao nhieu cho muc tieu',
+      ]) {
+        expect(congCuTheoCauHoi(cau), isNot(kTenCongCuMucTieu), reason: cau);
       }
     });
     test('⚠️ phản ví dụ: câu về quá khứ, về ngân sách, về hoá đơn nói chung KHÔNG bị đổi tool', () {

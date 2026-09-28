@@ -49,7 +49,7 @@ class BoCongCu {
         CongCuNganSach(nganSach),
         CongCuHoaDon(hoaDon),
         CongCuVi(vi),
-        CongCuMucTieu(mucTieu),
+        CongCuMucTieu(mucTieu, vi: vi),
         CongCuGoiYHanMuc(nganSach),
         CongCuDuBao(phanTich),
         CongCuTongQuan(phanTich),

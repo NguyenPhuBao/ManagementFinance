@@ -42,19 +42,21 @@ const List<String> kTuLoai = [
 /// ngay sau từ loại — *"ngân sách bao gồm"*, *"ngân sách bao nhiêu"*, *"danh mục
 /// các…"* — câu người dùng tự hỏi bị chặn vì cụm "bao gồm" không khớp tên nào.
 /// *tự · dự · cố* thêm 2026-09-28 (lát 3): *"hoá đơn tự trả"*, *"hoá đơn dự
-/// kiến"*, *"hoá đơn cố định"* là chữ của chính tool hoá đơn, không phải tên.
+/// kiến"*, *"hoá đơn cố định"* là chữ của chính tool hoá đơn, không phải tên;
+/// *nguồn* vì *"ví nguồn"* của tool mục tiêu (Task 10).
 const String _tuChucNangTho =
     'và hoặc là với của cho có đang đã còn sắp nào này ấy sau khác lớn nhỏ '
     'nhiều ít cụ gần hết chi thu đây trên dưới trong theo mới cũ đó sẽ cần nên '
     'thì mà để từ dụ như tiếp chưa không vẫn đều cũng '
     'bao gồm nhiêu tổng cộng đặt tên các những được hiện tại thế trước '
-    'tự dự cố';
+    'tự dự cố nguồn';
 final Set<String> kTuChucNang = _tuChucNangTho.split(' ').toSet();
 
 final RegExp _dauCau = RegExp(r'[.,;:!?()\[\]"“”]');
 final RegExp _dauNgoac = RegExp(r'^["“”\x27]+|["“”\x27]+$');
 final RegExp _ketCau = RegExp(r'[.;!?]');
 final RegExp _khoangTrang = RegExp(r'\s+');
+final RegExp _moDauSo = RegExp(r'^\p{N}', unicode: true);
 
 String _chuan(String s) =>
     normalizeCategoryName(s).replaceAll(_khoangTrang, '');
@@ -120,6 +122,10 @@ List<String> _cacCum(String sau) {
       if (loi != 'và' && loi != 'hoặc') break;
       continue;
     }
+    // Cụm MỞ ĐẦU bằng chữ số là giá trị (*"mục tiêu 2.000.000 đ"* — nhãn của
+    // chính tool mục tiêu, lát 3 Task 10), không phải tên. Chữ số GIỮA cụm vẫn
+    // thuộc tên (*"Kiem thu hoa don 2026-09-04"*, *"Tiền nhà T9"*).
+    if (tu.isEmpty && _moDauSo.hasMatch(loi)) break;
     // Dấu câu mở đầu ("(800.000") kết thúc cụm; dấu kết câu ở cuối ("MuaXe.")
     // nhận chữ rồi kết thúc; dấu phẩy ở cuối nhận chữ rồi nối cụm kế.
     if (_dauCau.hasMatch(t[0])) {

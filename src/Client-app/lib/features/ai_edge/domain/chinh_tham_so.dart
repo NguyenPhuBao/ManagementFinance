@@ -479,6 +479,7 @@ String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
   if (_co(q, 'ngan sach')) return null;
+  if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
   if (_co(q, 'muc tieu')) return null;
   if (_mauDanhMuc.any((m) => m.hasMatch(q)) && !_co(q, 'nhat')) {
@@ -487,6 +488,22 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_mauTongQuan.any((m) => m.hasMatch(q))) return kTenCongCuTongQuan;
   return null;
 }
+
+/// Lát 3 (người dùng chốt 2026-09-28): câu về TRÍCH TỰ ĐỘNG cho mục tiêu — ví
+/// có đủ trích không, kỳ trích tiếp, trích mỗi tháng — đi tool mục tiêu, thứ
+/// nay mang lịch trích và kết luận ví nguồn; xét TRƯỚC tool dự báo (cụm *"đủ
+/// tiền trích"* của nó từng bắt F13). Câu nhắc cả hoá đơn → dự báo (gộp hai loại
+/// cam kết). Câu về LỊCH SỬ trích → đường cũ: tool mục tiêu không có lịch sử nạp.
+final List<String> _tuTrichMucTieu =
+    'ky trich|trich tiep|trich moi|trich tu dong|tu dong trich'.split('|');
+final List<String> _tuLichSuTrich =
+    'da trich|vua trich|gan nhat|lan cuoi|gan day'.split('|');
+
+bool _laCauTrichMucTieu(String q) =>
+    _co(q, 'trich') &&
+    !_co(q, 'hoa don') &&
+    !_tuLichSuTrich.any((t) => _co(q, t)) &&
+    (_co(q, 'muc tieu') || _tuTrichMucTieu.any((t) => _co(q, t)));
 
 String _ddmmyyyy(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -634,6 +651,10 @@ KetQuaChinhThamSo chinhThamSoHoaDon(String cauHoi, Map<String, dynamic> args) {
 final List<String> _tuMucTieuCham = 'cham ke hoach|cham tien do|bi cham|dang cham|cham|tre|khong kip'.split('|');
 final List<String> _tuMucTieuQuaHan = 'qua han|tre han|het han'.split('|');
 final List<String> _tuMucTieuDung = 'dung ke hoach|dung tien do|dung nhip|dang on'.split('|');
+/// Lát 3 Task 10. ⚠️ *"có đủ … không"* (F13) là câu hỏi CHUNG, không phải lọc.
+final List<String> _tuMucTieuViKhongDu =
+    'vi khong du|khong du tien trich|khong du de trich|khong du tien de trich|thieu tien trich|thieu tien de trich'
+        .split('|');
 
 KetQuaChinhThamSo chinhThamSoMucTieu(String cauHoi, Map<String, dynamic> args) {
   final a = Map<String, dynamic>.from(args);
@@ -641,8 +662,11 @@ KetQuaChinhThamSo chinhThamSoMucTieu(String cauHoi, Map<String, dynamic> args) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
   String? chon;
-  // Quá hạn xét trước: "trễ hạn" chứa "trễ".
-  if (_tuMucTieuQuaHan.any((t) => _co(q, t))) {
+  // Ví không đủ xét trước tiên — cờ của trích tự động, câu có thể nhắc thêm
+  // "chậm". Quá hạn trước chậm: "trễ hạn" chứa "trễ".
+  if (_tuMucTieuViKhongDu.any((t) => _co(q, t))) {
+    chon = 'vi_khong_du';
+  } else if (_tuMucTieuQuaHan.any((t) => _co(q, t))) {
     chon = 'qua_han';
   } else if (_tuMucTieuCham.any((t) => _co(q, t))) {
     chon = 'cham_ke_hoach';

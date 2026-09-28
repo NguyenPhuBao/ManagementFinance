@@ -76,6 +76,25 @@ void main() {
         reason: 'tên bịa đứng TRƯỚC chữ chức năng vẫn bị chặn');
   });
 
+  test('lát 3 Task 10: "ví nguồn" là chữ của tool mục tiêu, không phải tên ví', () {
+    expect(kiemTen('Ví nguồn của MuaXe chỉ còn ít tiền.', [mucTieu]), isTrue);
+    expect(kiemTen('Có ví nguồn không đủ tiền để trích.', [mucTieu]), isTrue);
+  });
+
+  test('⭐ Task 10 lộ ra (có từ trước): cụm MỞ ĐẦU bằng chữ số là giá trị, không phải tên', () {
+    expect(kiemTen('MuaXe đã tích 1.101.000 đ trên mục tiêu 2.000.000 đ.', [mucTieu]), isTrue,
+        reason: 'mẫu câu "…, Mục tiêu 2.000.000 đ, …" của chính tool mục tiêu từng bị chặn: '
+            'cụm sau "mục tiêu" là "2000000 đ"');
+    expect(kiemTen('Ví 500.000 đ là ví lớn nhất.', [tongKet]), isTrue);
+    expect(kiemTen('Hoá đơn Kiem thu hoa don 2026-09-04 đã thanh toán.', [tongKet]), isTrue,
+        reason: 'chữ số GIỮA tên vẫn thuộc tên');
+    expect(kiemTen('Mục tiêu Du lịch 2027 đang chậm.', [mucTieu]), isFalse,
+        reason: 'tên bịa có chữ số ở cuối vẫn bị chặn');
+    expect(kiemTen('Mục tiêu Mua 2 xe đang chậm.', [mucTieu]), isFalse,
+        reason: 'chữ số GIỮA cụm không được cắt cụm: cắt ở "2" thì cụm còn "mua" — '
+            'chứa trong "muaxe", tên bịa lọt');
+  });
+
   test('tên bịa đứng một mình cũng bị chặn', () {
     expect(kiemTen('Mục tiêu Du lịch của bạn đang chậm.', [mucTieu]), isFalse);
     expect(kiemTen('Ví Ngân hàng đang âm.', [tongKet]), isFalse);
