@@ -12,6 +12,18 @@
 
 ---
 
+# ⭐⭐ LỘ TRÌNH SAU CỔNG F — người dùng chốt 2026-09-28 (mới nhất, thay mọi thứ tự bên dưới)
+
+**A1 → A2 · A3 · A4 → B1 → B5a → B2 → B3 → B4 → B5b.** Chi tiết và lý do ở mục 7 spec
+`specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`. Nhóm A (sau cổng F, sửa mã có sẵn — mỗi việc trình thiết kế
+ngắn trong chat): A1 vòng sửa theo kết quả cổng F (mục 9.36 `AI_EDGE_FEATURE.md`) · A2 định tuyến câu cũ về phiên một
+tool · A3 tool dự báo in hai hàng quá hạn trùng · A4 toast "Một số thay đổi chưa lên được máy chủ". Nhóm B (máy học cục
+bộ, theo dữ liệu sẵn có): **B1 gợi ý danh mục học từ ghi chú — spec đã duyệt, kế hoạch 7 task
+`plans/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu.md`** · B5a ghi phản ứng với thông báo · B2 khoản lặp → gợi ý hoá đơn ·
+B3 chi bất thường · B4 dự báo chi kỳ tới · B5b học giờ thông báo (mỗi dự án con nhóm B một vòng brainstorm → spec → kế hoạch).
+
+---
+
 # ⭐ THỨ TỰ THỰC HIỆN — chốt lại 2026-09-23, sau cổng C
 
 Người dùng duyệt thứ tự này chiều 2026-09-23 (*"ok vậy thì theo thứ tự bạn đề xuất"*), khi lộ
