@@ -59,9 +59,13 @@ class CongCuMucTieu implements CongCu {
       log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
     }
     final chon = chinh.args['chon']?.toString().trim();
+    // G1 cổng F: chữ trích chỉ khi câu hỏi nói về trích (không có câu hỏi thì
+    // không có bằng chứng để bỏ gì — giữ đủ).
+    final noiTrich = cauHoi.trim().isEmpty || cauHoiVeTrich(cauHoi) || chon == 'vi_khong_du';
+    if (!noiTrich) log('[SLM][tool] câu hỏi không nói về trích tự động → bỏ chữ trích');
     final goals = await mucTieu.watchGoals(idaccount).first;
     Map<String, ViNguon>? viNguon;
-    if (goals.any((g) => g.autoDepositEnabled)) {
+    if (noiTrich && goals.any((g) => g.autoDepositEnabled)) {
       final ds = await vi.watchAll(idaccount).first;
       viNguon = {
         for (final w in ds)
@@ -75,6 +79,7 @@ class CongCuMucTieu implements CongCu {
       now: now,
       chon: (chon == null || chon.isEmpty) ? null : chon,
       viNguon: viNguon,
+      noiTrich: noiTrich,
     );
   }
 }

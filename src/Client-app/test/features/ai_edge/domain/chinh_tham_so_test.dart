@@ -176,9 +176,12 @@ void main() {
       expect(chinh('khoản chi hơn một triệu rưỡi', {'ky': 'thang_nay'})['so_tien_tu'], 1500000);
     });
 
-    test('câu hỏi không có số tiền thì giữ nguyên ngưỡng của mô hình', () {
+    test('câu hỏi không có số tiền thì GỠ ngưỡng của mô hình (G2 cổng F — đảo luật 6 cũ cho so_tien_*)', () {
+      // Trước 2026-09-28 ca này đòi GIỮ 300000 (luật 6 "không đụng thứ câu hỏi
+      // không nói tới"). F2 cổng F đo được mặt trái: "từ 1/9 đến 15/9" → mô hình
+      // điền từ 1 đ đến 15 đ, lượt rỗng. Người dùng chọn gỡ (G2).
       final r = chinh('khoan chi lon nhat thang nay la gi', {'ky': 'thang_nay', 'so_tien_tu': 300000});
-      expect(r['so_tien_tu'], 300000);
+      expect(r.containsKey('so_tien_tu'), isFalse);
     });
 
     test('số đứng riêng không kèm đơn vị hay chữ ngưỡng thì không phải ngưỡng ("5 khoan chi")', () {
@@ -568,6 +571,124 @@ void main() {
       ]) {
         expect(congCuTheoCauHoi(cau), isNull, reason: cau);
       }
+    });
+  });
+
+  group('17. G1 cổng F — trích tự động chỉ khi câu hỏi nói về trích; câu số dư ví → tool ví', () {
+    test('⭐ cauHoiVeTrich: câu về trích / ví nguồn → true', () {
+      for (final cau in [
+        'vi co du tien trich cho muc tieu khong',
+        'ky trich tiep theo cua MuaDT la khi nao',
+        'Kỳ trích tiếp theo của MuaDT là khi nào?',
+        'muc tieu nao vi khong du tien trich',
+        'vi nguon cua muaxe con bao nhieu',
+        'moi thang tu dong trich bao nhieu cho muaxe',
+      ]) {
+        expect(cauHoiVeTrich(cau), isTrue, reason: cau);
+      }
+    });
+    test('⭐ B1, DC1, B2: câu mục tiêu chung → false (chữ trích là tiếng ồn, kéo mô hình đi)', () {
+      for (final cau in [
+        'khi nao toi dat muc tieu muaxe',
+        'Lai suat tiet kiem cua toi la bao nhieu?',
+        'moi thang toi can de danh bao nhieu cho muaxe',
+        'muc tieu nao dang cham ke hoach',
+        '',
+      ]) {
+        expect(cauHoiVeTrich(cau), isFalse, reason: cau);
+      }
+    });
+    test('⭐ E7 "Vi Tiet kiem hien co bao nhieu tien?" và họ số dư ví → danh_sach_vi', () {
+      for (final cau in [
+        'Vi Tiet kiem hien co bao nhieu tien?',
+        'Ví Tiết kiệm hiện có bao nhiêu tiền?',
+        'vi tien mat con bao nhieu',
+        'so du cac vi cua toi',
+        'so du vi test la bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(cau), kTenCongCuVi, reason: cau);
+      }
+    });
+    test('⚠️ phản ví dụ — câu ví khác KHÔNG đổi sang tool ví, hay giữ tool đích cũ', () {
+      expect(congCuTheoCauHoi('vi tien mat co bao nhieu giao dich thang nay'), isNull,
+          reason: '"bao nhiêu giao dịch" là câu giao dịch');
+      expect(congCuTheoCauHoi('vi tien mat thang nay chi nhung gi'), isNull);
+      expect(congCuTheoCauHoi('thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao'), isNull);
+      expect(congCuTheoCauHoi('toi co may vi tat ca'), isNull);
+      expect(congCuTheoCauHoi('tien trong vi co du tra hoa don khong'), 'du_bao_dong_tien');
+      expect(congCuTheoCauHoi('vi co du tien trich cho muc tieu khong'), kTenCongCuMucTieu);
+    });
+  });
+
+  group('18. G2 cổng F — bốn lỗ của bộ chỉnh (C13, C20, F2)', () {
+    test('⭐ C13: mảnh tên ví "vi tien" lọt vào danh_muc — câu đã nêu ví → gỡ mảnh ấy', () {
+      final r = chinh('vi tien mat thang nay chi nhung gi',
+          {'ky': 'thang_nay', 'chieu': 'khoan_chi', 'danh_muc': 'vi tien'});
+      expect(r['vi'], 'Tiền mặt');
+      expect(r.containsKey('danh_muc'), isFalse, reason: 'tool từng từ chối "không có danh mục nào tên vi tien" (L1b)');
+      final r2 = chinh('vi tien mat thang nay chi nhung gi', {'ky': 'thang_nay', 'tu_khoa': 'tien'});
+      expect(r2.containsKey('tu_khoa'), isFalse, reason: 'mảnh "tien" ở tu_khoa cũng thế');
+    });
+    test('phản ví dụ C13: tên lạ KHÔNG phải mảnh của ví đã nêu thì để nguyên cho tool từ chối (DC3)', () {
+      expect(chinh('cac khoan chi cho danh muc abc tu vi tien mat', {'ky': 'thang_nay', 'danh_muc': 'abc'})['danh_muc'],
+          'abc');
+    });
+
+    Map<String, dynamic> chinhMt(String cau, Map<String, dynamic> args) => chinhThamSoTimGiaoDich(cau, args,
+            tenDanhMuc: danhMuc, tenVi: vi, now: now, tenMucTieu: const ['MuaXe', 'MuaDT'])
+        .args;
+    test('⭐ C20: câu nêu "mục tiêu <tên>" mà mô hình bỏ trống tu_khoa → tu_khoa = tên mục tiêu', () {
+      final r = chinhMt('lan cuoi toi nap tien cho muc tieu muaxe la ngay nao',
+          {'ky': 'moi_luc', 'sap_xep': 'moi_nhat', 'chon': 'nhieu_nhat'});
+      expect(r['tu_khoa'], 'MuaXe');
+      expect(r.containsKey('chon'), isFalse);
+      expect(r['sap_xep'], 'moi_nhat');
+    });
+    test('E6: tu_khoa mô hình đã đúng tên thì không đụng; câu không có chữ "mục tiêu" thì không đoán', () {
+      expect(chinhMt('Nhung lan toi nap tien vao muc tieu MuaDT', {'ky': 'moi_luc', 'tu_khoa': 'MuaDT'})['tu_khoa'],
+          'MuaDT');
+      expect(chinhMt('thang nay toi chi bao nhieu', {'ky': 'thang_nay'}).containsKey('tu_khoa'), isFalse);
+    });
+
+    test('⭐ F2: câu KHÔNG có số tiền nào → gỡ so_tien_* mô hình điền (số của kỳ 1/9, 15/9 không phải tiền)', () {
+      final r = chinh('tu 1/9 den 15/9 toi chi nhung gi',
+          {'ky': 'tuy_chon', 'so_tien_tu': 1, 'so_tien_den': 15, 'tu_khoa': 'chi'});
+      expect(r.containsKey('so_tien_tu'), isFalse);
+      expect(r.containsKey('so_tien_den'), isFalse);
+      expect(r.containsKey('tu_khoa'), isFalse, reason: '"chi" là chữ CHIỀU, luật 3 đã đọc thành chieu=khoan_chi');
+      expect((r['ky'], r['tu_ngay'], r['den_ngay'], r['chieu']),
+          ('tuy_chon', '01/09/2026', '15/09/2026', 'khoan_chi'));
+    });
+    test('phản ví dụ F2: câu CÓ số tiền giữ ngưỡng; tu_khoa "chi" đến từ "ghi chú chi" thì giữ', () {
+      expect(chinh('khoan chi lon nhat thang nay', {'ky': 'thang_nay', 'so_tien_tu': 1000000}).containsKey('so_tien_tu'),
+          isFalse, reason: 'không có số trong câu — không bằng chứng');
+      expect(chinh('khoan 500000 hom qua la gi', {'ky': 'hom_qua', 'so_tien_tu': 500000})['so_tien_tu'], 500000);
+      expect(chinh('cac khoan chi hon nua trieu trong quy nay', {'ky': 'quy_nay'})['so_tien_tu'], 500000);
+      expect(chinh('tim giao dich co ghi chu chi', {'ky': 'moi_luc'})['tu_khoa'], 'chi');
+      expect(chinh('toi da cho vay nhung ai', {'ky': 'moi_luc', 'tu_khoa': 'cho vay'})['tu_khoa'], 'cho vay',
+          reason: 'trùng tên danh mục thật — không phải chữ chiều trần');
+    });
+  });
+
+  group('19. tenNeuTrongCau — tên đối tượng có thật câu hỏi nêu (G2 E10, G3 E8, G4 F14)', () {
+    test('⭐ nêu tên → tên gốc; không nêu → null', () {
+      expect(tenNeuTrongCau('Ngan sach an uong con lai bao nhieu?', ['Giáo dục', 'Ăn uống'], tuLoai: 'ngân sách'),
+          'Ăn uống');
+      expect(tenNeuTrongCau('Hoa don Netflix khi nao den han?', ['Kiem', 'Netflix', 'di h0c'], tuLoai: 'hoá đơn'),
+          'Netflix');
+      expect(tenNeuTrongCau('hoa don di h0c con phai tra bao nhieu', ['Kiem', 'Netflix', 'di h0c'], tuLoai: 'hoá đơn'),
+          'di h0c');
+      expect(tenNeuTrongCau('ky trich tiep theo cua MuaDT la khi nao', ['MuaXe', 'MuaDT'], tuLoai: 'mục tiêu'), 'MuaDT');
+      expect(tenNeuTrongCau('hoa don nao qua han', ['Kiem', 'Netflix'], tuLoai: 'hoá đơn'), isNull);
+      expect(tenNeuTrongCau('', ['Kiem'], tuLoai: 'hoá đơn'), isNull);
+    });
+    test('⚠️ tên NGẮN chỉ nhận khi đứng ngay sau từ loại: hoá đơn "Kiem" nằm trong "tiết kiệm"', () {
+      expect(tenNeuTrongCau('vi tiet kiem co du tra hoa don khong', ['Kiem'], tuLoai: 'hoá đơn'), isNull);
+      expect(tenNeuTrongCau('hoa don kiem con bao nhieu', ['Kiem'], tuLoai: 'hoá đơn'), 'Kiem');
+    });
+    test('tên dài thắng tên là tiền tố của nó', () {
+      expect(tenNeuTrongCau('hoa don tien nha t9 den han chua', ['Tiền nhà', 'Tiền nhà T9'], tuLoai: 'hoá đơn'),
+          'Tiền nhà T9');
     });
   });
 

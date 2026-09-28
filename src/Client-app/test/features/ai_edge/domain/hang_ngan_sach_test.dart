@@ -59,6 +59,19 @@ void main() {
     expect(h.canhBao, isFalse);
   });
 
+  test('⭐ G2 cổng F (E10): câu nêu tên ngân sách → chỉ hàng ấy, BỎ "Tổng còn lại" của mọi ngân sách', () {
+    final giaoDuc = _ns(id: 'gd', ten: 'Giáo dục', amount: 50000, spent: 45000);
+    final anUong = _ns(id: 'au', ten: 'Ăn uống', amount: 500000, spent: 50000);
+    final kq = hangNganSach([anUong, giaoDuc], now: now, ten: 'Ăn uống');
+    expect(kq.hang.map((h) => h.ten).toList(), ['Ăn uống']);
+    expect(kq.json.containsKey('Tổng còn lại'), isFalse,
+        reason: 'E10 cổng F: mô hình trả "tổng còn lại 1.340.000" cho câu hỏi ngân sách ăn uống');
+    expect(kq.json['Số ngân sách'], '2');
+    final g = GoiSoTraCuu()..them('danh_sach_ngan_sach', kq);
+    expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+    expect(kiemCauTraLoi('Ngân sách Ăn uống còn lại 450.000 đ.', [g]), isTrue);
+  });
+
   test('vượt hạn mức: trạng thái "vượt hạn mức", cờ cảnh báo, KHÔNG có Còn lại', () {
     final kq = hangNganSach([_ns(amount: 3000000, spent: 3400000)], now: now);
     final h = kq.hang.single;

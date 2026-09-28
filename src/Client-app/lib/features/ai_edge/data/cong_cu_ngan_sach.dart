@@ -72,10 +72,14 @@ class CongCuNganSach implements CongCu {
       final kh = await keHoachTaiPhanBoTu(taiPhanBo, idaccount, dangChay, now);
       return hangCanDoiNganSach(kh, soNganSach: dangChay.length);
     }
+    // G2 cổng F (E10): câu nêu tên một ngân sách đang chạy → chỉ hàng ấy.
+    final ten = tenNeuTrongCau(cauHoi, [for (final v in dangChay) v.displayName], tuLoai: 'ngân sách');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu ngân sách → chỉ "$ten"');
     return hangNganSach(
       dangChay,
       now: now,
       chon: (chon == null || chon.isEmpty) ? null : chon,
+      ten: ten,
     );
   }
 }

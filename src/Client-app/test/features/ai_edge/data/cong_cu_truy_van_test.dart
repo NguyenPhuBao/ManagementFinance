@@ -9,6 +9,8 @@ import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/ma_ky.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
@@ -86,6 +88,19 @@ class _BaoCao implements BaoCaoRepository {
         LuaChonLoc(id: 'c-cv', ten: 'Cho vay'),
         LuaChonLoc(id: 'c-au', ten: 'Ăn uống'),
         LuaChonLoc(id: 'c-gt', ten: 'Giải trí'),
+      ]);
+
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
+class _MucTieu implements GoalRepository {
+  @override
+  Stream<List<GoalEntity>> watchGoals(int idaccount) => Stream.value([
+        GoalEntity(
+          id: 'g1', idaccount: idaccount, name: 'MuaXe', targetAmount: 2000000, currentAmount: 1101000,
+          targetDate: DateTime(2027, 3, 1), updatedAt: DateTime(2026, 9, 5),
+        ),
       ]);
 
   @override
@@ -483,5 +498,23 @@ void main() {
     expect(kq.choNguoiDung, 'kỳ trong câu hỏi chưa tới nên chưa có giao dịch');
     expect(kq.thamSoGo, ['ky']);
     expect(giaoDich.khoangDaHoi, isEmpty);
+  });
+
+  test('⭐ G2 cổng F — C20 đầu-cuối: "lần cuối nạp cho mục tiêu muaxe" → lọc ghi chú theo TÊN MỤC TIÊU', () async {
+    final gd = _GiaoDich(theoKhoang: (from, to) => [
+          TransactionEntity(
+            id: 'nap', walletId: 'w-cash', idaccount: 10, walletTransfer: 'w-save', amount: 100000,
+            type: 'transfer', note: 'Tích lũy mục tiêu: MuaXe', date: DateTime(2026, 9, 8), updatedAt: DateTime(2026, 9, 8),
+          ),
+          TransactionEntity(
+            id: 'nf', walletId: 'w-cash', idaccount: 10, categoryId: 'c-gt', amount: 100000,
+            type: 'chi', note: 'Netflix', date: DateTime(2026, 9, 20), updatedAt: DateTime(2026, 9, 20),
+          ),
+        ]);
+    final kq = await CongCuTruyVan(giaoDich: gd, nganSach: _NganSach(), baoCao: _BaoCao(), mucTieu: _MucTieu(), log: (_) {})
+        .chay({'ky': 'moi_luc', 'sap_xep': 'moi_nhat'},
+            idaccount: 10, now: now, cauHoi: 'lan cuoi toi nap tien cho muc tieu muaxe la ngay nao');
+    expect(kq.hang.map((h) => h.ten).toList(), ['Tích lũy mục tiêu: MuaXe'],
+        reason: 'cổng F: mô hình bỏ tu_khoa, mẫu câu kể giao dịch mới nhất BẤT KỲ (Netflix)');
   });
 }

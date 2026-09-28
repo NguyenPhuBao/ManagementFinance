@@ -112,6 +112,17 @@ void main() {
     expect(kq.boLoc, isEmpty, reason: '"có đủ … không" là câu hỏi chung, không lọc');
   });
 
+  test('⭐ G1 cổng F — B1, DC1: câu không nói trích → không chữ trích, KHÔNG đọc ví', () async {
+    for (final cau in ['khi nao toi dat muc tieu muaxe', 'Lai suat tiet kiem cua toi la bao nhieu?']) {
+      final vi = _Vi(20000);
+      final kq = await CongCuMucTieu(_MucTieu(trich: true), vi: vi, log: (_) {})
+          .chay({}, idaccount: 10, now: now, cauHoi: cau);
+      expect(vi.daHoi, isEmpty, reason: cau);
+      expect(kq.hang.single.trangThai, 'đúng kế hoạch', reason: cau);
+      expect(kq.chuThem.containsKey('ket_qua'), isFalse, reason: cau);
+    }
+  });
+
   test('ví nguồn lưu trữ / đã xoá → trích không chạy được (khớp GoalAutoDepositRunner)', () async {
     for (final vi in [_Vi(900000, status: 'inactive'), _Vi(900000, daXoa: true)]) {
       final kq = await CongCuMucTieu(_MucTieu(trich: true), vi: vi, log: (_) {})

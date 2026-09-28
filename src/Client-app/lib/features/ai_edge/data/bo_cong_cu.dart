@@ -47,7 +47,7 @@ class BoCongCu {
     required TaiPhanBoNguon taiPhanBo,
   }) =>
       BoCongCu([
-        CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
+        CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao, mucTieu: mucTieu),
         CongCuNganSach(nganSach, taiPhanBo: taiPhanBo),
         CongCuHoaDon(hoaDon),
         CongCuVi(vi),

@@ -11,6 +11,7 @@ library;
 import '../../analytics/data/bao_cao_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../goal/data/repositories/goal_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../transaction/domain/gop_giao_dich.dart';
 import '../../transaction/domain/khoang_tien.dart';
@@ -50,6 +51,7 @@ class CongCuTruyVan implements CongCu {
     required this.giaoDich,
     required this.nganSach,
     required this.baoCao,
+    this.mucTieu,
     this.log = print,
   });
 
@@ -58,6 +60,9 @@ class CongCuTruyVan implements CongCu {
   final TransactionRepository giaoDich;
   final BudgetRepository nganSach;
   final BaoCaoRepository baoCao;
+
+  /// Tên mục tiêu cho bộ chỉnh (G2 cổng F, C20) — `null` thì bỏ luật ấy.
+  final GoalRepository? mucTieu;
 
   @override
   KhaiBaoCongCu get khaiBao => KhaiBaoCongCu(
@@ -167,12 +172,14 @@ class CongCuTruyVan implements CongCu {
     // tham số của mô hình chỉ là gợi ý. Chạy TRƯỚC mọi phép kiểm.
     final dsVi = await baoCao.watchVi(idaccount).first;
     final dsDm = await baoCao.watchDanhMuc(idaccount).first;
+    final goals = mucTieu == null ? null : await mucTieu!.watchGoals(idaccount).first;
     final chinh = chinhThamSoTimGiaoDich(
       cauHoi,
       args,
       tenDanhMuc: [for (final d in dsDm) d.ten],
       tenVi: [for (final v in dsVi) v.ten],
       now: now,
+      tenMucTieu: [for (final g in goals ?? const []) g.name],
     );
     if (chinh.ghiChu.isNotEmpty) {
       log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');

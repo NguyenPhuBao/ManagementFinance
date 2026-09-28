@@ -9,6 +9,9 @@
 /// `it_nhat` giữ một hàng. Tổng hợp vẫn cộng MỌI ngân sách đang chạy; "Số ngân
 /// sách khớp" chỉ có khi lọc, và 0 khớp là `rongTheoBoLoc` (không phải "không
 /// có ngân sách").
+///
+/// [ten] (G2 cổng F, E10): tên ngân sách câu hỏi nêu (`tenNeuTrongCau` — tên
+/// lấy từ chính [dangChay]) → chỉ hàng ấy, và BỎ "Tổng còn lại" của mọi ngân sách.
 library;
 
 import '../../budget/data/models/budget_entity.dart';
@@ -30,6 +33,7 @@ KetQuaCongCu hangNganSach(
   List<BudgetView> dangChay, {
   required DateTime now,
   String? chon,
+  String? ten,
 }) {
   if (chon != null && !kChon.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChon);
@@ -40,8 +44,10 @@ KetQuaCongCu hangNganSach(
   if (chon == 'chua_dat' || chon == 'can_doi') {
     throw ArgumentError.value(chon, 'chon', 'đi đường riêng của mã này');
   }
+  // G2 cổng F (E10): câu nêu tên một ngân sách → chỉ ngân sách ấy.
+  final nguon = ten == null ? dangChay : [for (final v in dangChay) if (v.displayName == ten) v];
   // Căng nhất trước — thứ tự đáng chú ý, không phải thứ tự CSDL.
-  final sap = [...dangChay]..sort(
+  final sap = [...nguon]..sort(
       (x, y) => y.budget.rawPercentSpent.compareTo(x.budget.rawPercentSpent));
   // Ngưỡng "một nửa" là 0,5 của rawPercentSpent — đúng phép trang Ngân sách,
   // không làm tròn trước khi so.
@@ -81,7 +87,9 @@ KetQuaCongCu hangNganSach(
   return KetQuaCongCu(
     hang: hang,
     tongHop: [
-      soTien('Tổng còn lại', tongConLai),
+      // Hỏi một ngân sách có tên mà gói mang tổng của MỌI ngân sách thì mô hình
+      // đọc tổng ấy (E10: "tổng còn lại 1.340.000" cho câu hỏi ngân sách ăn uống).
+      if (ten == null) soTien('Tổng còn lại', tongConLai),
       soDem('Số ngân sách', dangChay.length),
       if (chon != null) soDem('Số ngân sách khớp', khop.length),
     ],

@@ -79,13 +79,18 @@ KetQuaCongCu hangMucTieu(
   required DateTime now,
   String? chon,
   Map<String, ViNguon>? viNguon,
+  bool noiTrich = true,
 }) {
   if (chon != null && !kChonMucTieu.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChonMucTieu);
   }
+  // G1 cổng F: câu hỏi không nói về trích → không một chữ trích nào — như thể
+  // không biết ví nguồn, và không in lịch trích. `vi_khong_du` là câu về trích.
+  final hienTrich = noiTrich || chon == 'vi_khong_du';
+  final vn = hienTrich ? viNguon : null;
   final nhom = chiaMucTieu(goals);
   bool khopChon(GoalEntity g) => chon == 'vi_khong_du'
-      ? _trichCua(g, viNguon) == _Trich.khongDu
+      ? _trichCua(g, vn) == _Trich.khongDu
       : _maTrangThai(g, now) == chon;
   final khop = chon == null
       ? nhom.dangTheoDuoi
@@ -95,9 +100,9 @@ KetQuaCongCu hangMucTieu(
   // "mục tiêu nào chậm" mà mẫu câu nói chuyện ví là tiếng ồn.
   final trich = [
     for (final g in nhom.dangTheoDuoi)
-      if (_trichCua(g, viNguon) case final t?) t,
+      if (_trichCua(g, vn) case final t?) t,
   ];
-  final noiTrich = trich.isNotEmpty && (chon == null || chon == 'vi_khong_du');
+  final ketLuanTrich = trich.isNotEmpty && (chon == null || chon == 'vi_khong_du');
   final khongDu = trich.where((t) => t == _Trich.khongDu).length;
   final ketQua = khongDu > 0
       ? 'có ví nguồn không đủ tiền để trích'
@@ -106,19 +111,22 @@ KetQuaCongCu hangMucTieu(
           : 'ví nguồn đủ tiền cho kỳ trích tới';
 
   return KetQuaCongCu(
-    hang: [for (final g in khop.take(kToiDaMucMoiGoi)) _hang(g, now, viNguon)],
+    hang: [
+      for (final g in khop.take(kToiDaMucMoiGoi))
+        _hang(g, now, vn, hienTrich: hienTrich),
+    ],
     tongHop: [
       soDem('Đang theo đuổi', nhom.dangTheoDuoi.length),
       soDem('Đã hoàn thành', nhom.daHoanThanh.length),
       if (chon != null) soDem('Số mục tiêu khớp', khop.length),
       // Nhãn KHÔNG mở đầu bằng "Ví": `kiemTen` đọc chữ sau "ví" là tên ví, và
       // "Ví thiếu để trích: 1" của kế hoạch làm chính mẫu câu bị chặn.
-      if (noiTrich) soDem('Không đủ tiền trích', khongDu),
+      if (ketLuanTrich) soDem('Không đủ tiền trích', khongDu),
     ],
-    chuThem: {if (noiTrich) 'ket_qua': ketQua},
+    chuThem: {if (ketLuanTrich) 'ket_qua': ketQua},
     tenLienQuan: [
       for (final g in nhom.dangTheoDuoi)
-        if (_viNguonCua(g, viNguon) case final vi?) vi.ten,
+        if (_viNguonCua(g, vn) case final vi?) vi.ten,
     ],
     boLoc: [if (chon != null) kChuChonMucTieu[chon]!],
     rongTheoBoLoc: chon != null && khop.isEmpty,
@@ -133,7 +141,12 @@ String _maTrangThai(GoalEntity g, DateTime now) => g.daysLeft(now) < 0
         ? 'cham_ke_hoach'
         : 'dung_ke_hoach';
 
-HangSoLieu _hang(GoalEntity g, DateTime now, Map<String, ViNguon>? viNguon) {
+HangSoLieu _hang(
+  GoalEntity g,
+  DateTime now,
+  Map<String, ViNguon>? viNguon, {
+  required bool hienTrich,
+}) {
   final ten = g.name;
   final ngay = g.daysLeft(now);
   final quaHan = ngay < 0;
@@ -144,7 +157,7 @@ HangSoLieu _hang(GoalEntity g, DateTime now, Map<String, ViNguon>? viNguon) {
   final dangTich = tocDoThucTe(g, now);
   final trich = _trichCua(g, viNguon);
   final vi = _viNguonCua(g, viNguon);
-  final kyTrich = g.autoDepositEnabled && trich != _Trich.khongChay
+  final kyTrich = hienTrich && g.autoDepositEnabled && trich != _Trich.khongChay
       ? kyKeTiep(
           mocNeo: g.timeCycleTakeMoney,
           lanChayGanNhat: g.autoDepositLastRun,
@@ -182,7 +195,7 @@ HangSoLieu _hang(GoalEntity g, DateTime now, Map<String, ViNguon>? viNguon) {
       if (dangTich != null) soTien('Đang tích mỗi $ky', dangTich, ten: ten),
       if (kyTrich != null)
         soNgayThang('Kỳ trích tiếp', kyTrich, ten: ten, now: now),
-      if (g.autoDepositEnabled)
+      if (hienTrich && g.autoDepositEnabled)
         soTien('Trích mỗi $ky', g.autoDepositAmount!, ten: ten),
       if (trich == _Trich.khongDu)
         soTien('Số dư ví nguồn', vi!.soDu, ten: ten),

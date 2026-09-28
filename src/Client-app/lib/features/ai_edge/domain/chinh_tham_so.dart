@@ -32,7 +32,14 @@
 ///    các khoản chi…"* (C9) và *"5 khoản chi gần đây nhất"* (C16) nên chỉ còn
 ///    một hàng; câu không có *"…nhất"* thì `chon` không có bằng chứng → gỡ.
 ///    Cùng luật cho `chinhThamSoNganSach` (E10 `duoi_nua` thừa) và
-///    `chinhThamSoMucTieu`.
+///    `chinhThamSoMucTieu`. Từ vòng sửa cổng F (2026-09-28, G2) cũng TRỪ
+///    `so_tien_*` khi câu không có số tiền nào (luật 4b — F2).
+///
+/// Vòng sửa cổng F (G2, mục 9.36): **2a** `tu_khoa` chỉ là chữ chiều (*"chi"*)
+/// → gỡ; **2b** câu nêu *"mục tiêu <tên>"* → `tu_khoa` = tên (C20); **2c** mảnh
+/// của cụm ví (*"vi tien"*) lọt vào `danh_muc` / `tu_khoa` → gỡ (C13); **4b**
+/// câu không có số tiền → gỡ `so_tien_*` (F2). Cùng lượt: `tenNeuTrongCau` —
+/// tên đối tượng câu hỏi nêu, cho tool ngân sách / hoá đơn / mục tiêu.
 ///
 /// So trên chữ **bỏ dấu** — đúng chỗ của `removeVietnameseTones` (đọc tham số,
 /// như `khop_ten.dart`), không phải quy tắc trùng tên. ⚠️ Từ khoá chiều tiền
@@ -144,6 +151,7 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   required List<String> tenDanhMuc,
   required List<String> tenVi,
   required DateTime now,
+  List<String> tenMucTieu = const [],
 }) {
   final a = Map<String, dynamic>.from(args);
   final ghi = <String>[];
@@ -186,14 +194,44 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     ghi.add('$o "$v" → ${[if (dm != null) 'danh_muc=$dm', if (wallet != null) 'vi=$wallet'].join(', ')}');
   }
 
+  // Chữ đứng sau "ghi chú" trong CÂU HỎI là từ khoá ghi chú, không phải danh mục
+  // (C17 lần 14 trên OnePlus: mô hình bỏ trống tu_khoa nên vế trên không cứu).
+  final sauGhiChu = _sauGhiChu(q);
+
+  // 2a. G2 cổng F (F2): tu_khoa chỉ là chữ CHIỀU ("chi", "khoản thu") — luật 3
+  // đọc chiều từ câu rồi; tìm "chi" trong ghi chú ra 0 khoản. Trừ khi chữ ấy
+  // đứng sau "ghi chú", hay trùng tên danh mục / ví thật ("Cho vay").
+  final tkChieu = _chuoi(a['tu_khoa']);
+  if (tkChieu != null &&
+      _khop(tkChieu, bangCa) == null &&
+      _bo(tkChieu) != sauGhiChu &&
+      [..._tuChi, ..._tuThu].contains(_bo(tkChieu))) {
+    a.remove('tu_khoa');
+    ghi.add('tu_khoa "$tkChieu" chỉ là chữ chiều → bỏ');
+  }
+
+  // 2b. G2 cổng F (C20): câu nêu "mục tiêu <tên>" → tu_khoa là tên ấy — ghi chú
+  // nạp / rút mục tiêu mang tên mục tiêu ("Tích lũy mục tiêu: MuaXe"). Tên ấy
+  // lọt vào danh_muc thì gỡ: không danh mục nào mang tên mục tiêu.
+  if (_co(q, 'muc tieu')) {
+    final mt = tenNeuTrongCau(cauHoi, tenMucTieu, tuLoai: 'muc tieu');
+    if (mt != null) {
+      if (!_bo(_chuoi(a['tu_khoa']) ?? '').contains(_bo(mt))) {
+        a['tu_khoa'] = mt;
+        ghi.add('câu hỏi nêu mục tiêu → tu_khoa=$mt');
+      }
+      if (_bo(_chuoi(a['danh_muc']) ?? '') == _bo(mt)) {
+        a.remove('danh_muc');
+        ghi.add('danh_muc "$mt" là tên mục tiêu → bỏ');
+      }
+    }
+  }
+
   // 2. Danh mục / ví nêu trong câu hỏi; chiều "chuyển ví" khi câu không chuyển tiền.
   // ⚠️ Tên trùng với TỪ KHOÁ ghi chú mô hình đã điền thì không phải danh mục
   // (C17 lần 13: "ghi chú hoa don" ↔ danh mục "Hóa đơn" → lọc thêm danh mục →
   // 0 khoản).
   final tuKhoaBo = _bo(_chuoi(a['tu_khoa']) ?? '');
-  // Chữ đứng sau "ghi chú" trong CÂU HỎI là từ khoá ghi chú, không phải danh mục
-  // (C17 lần 14 trên OnePlus: mô hình bỏ trống tu_khoa nên vế trên không cứu).
-  final sauGhiChu = _sauGhiChu(q);
   if (sauGhiChu != null && tuKhoaBo.isEmpty) {
     a['tu_khoa'] = sauGhiChu;
     ghi.add('câu hỏi "ghi chú …" → tu_khoa=$sauGhiChu');
@@ -212,6 +250,22 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     if (w != null && _bo(w) != _bo(_chuoi(a['danh_muc']) ?? '')) {
       a['vi'] = w;
       ghi.add('câu hỏi nêu ví → vi=$w');
+    }
+  }
+  // 2c. G2 cổng F (C13): MẢNH của cụm ví trong câu ("vi tien" của "ví tiền
+  // mặt") lọt vào danh_muc / tu_khoa, ô ví đã có tên thật → gỡ mảnh. Tên lạ
+  // không phải mảnh ví ("abc", DC3) thì để tool từ chối như cũ.
+  final viThat = _khop(_chuoi(a['vi']), bangVi);
+  if (viThat != null) {
+    final cumVi = 'vi ${_bo(viThat)}';
+    for (final o in ['danh_muc', 'tu_khoa']) {
+      final v = _chuoi(a[o]);
+      if (v == null || _khop(v, bangCa) != null) continue;
+      if (o == 'tu_khoa' && _bo(v) == sauGhiChu) continue;
+      if (_tronTu(_bo(v)).hasMatch(cumVi)) {
+        a.remove(o);
+        ghi.add('$o "$v" là mảnh của ví $viThat → bỏ');
+      }
     }
   }
   final coChuyenTien = _tuChuyenTien.any((t) => _co(q, t));
@@ -243,6 +297,16 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   if (nguong.den != null && a['so_tien_den'] != nguong.den) {
     a['so_tien_den'] = nguong.den;
     ghi.add('câu hỏi có ngưỡng trên → so_tien_den=${nguong.den}');
+  }
+  // 4b. G2 cổng F (F2): câu không có SỐ TIỀN nào → ngưỡng của mô hình không có
+  // bằng chứng (lý lẽ luật 10): "từ 1/9 đến 15/9" từng thành "từ 1 đ đến 15 đ".
+  if (!_coSoTien(q)) {
+    for (final o in ['so_tien_tu', 'so_tien_den']) {
+      if (a.containsKey(o)) {
+        a.remove(o);
+        ghi.add('câu hỏi không nêu số tiền → bỏ $o');
+      }
+    }
   }
 
   // 12a. Câu so sánh hai kỳ? Cụm so sánh ("so với năm ngoái") bị bỏ khỏi câu
@@ -481,6 +545,7 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_co(q, 'ngan sach')) return null;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
+  if (_mauSoDuVi.any((m) => m.hasMatch(q))) return kTenCongCuVi;
   if (_co(q, 'muc tieu')) return null;
   if (_mauDanhMuc.any((m) => m.hasMatch(q)) && !_co(q, 'nhat')) {
     return kTenCongCuDanhMuc;
@@ -504,6 +569,43 @@ bool _laCauTrichMucTieu(String q) =>
     !_co(q, 'hoa don') &&
     !_tuLichSuTrich.any((t) => _co(q, t)) &&
     (_co(q, 'muc tieu') || _tuTrichMucTieu.any((t) => _co(q, t)));
+
+/// G1 cổng F (mục 9.36): câu hỏi có NÓI VỀ trích tự động / ví nguồn không. Tool
+/// mục tiêu chỉ mang chữ trích (hậu tố ví, kỳ trích tiếp, kết luận ví nguồn) khi
+/// có — B1 *"khi nào đạt MuaXe"* từng nhận *"đặt ngân sách vì ví nguồn không
+/// đủ"*, DC1 *"lãi suất tiết kiệm"* nhận kết luận ví nguồn: chữ thật mà lạc đề.
+final List<String> _tuVeTrich = 'trich|vi nguon|tu dong'.split('|');
+
+/// Tên đối tượng CÓ THẬT mà câu hỏi nêu — ngân sách, hoá đơn, mục tiêu (vòng
+/// sửa cổng F: E10, E8, F14, C20). Khớp trọn từ trên chữ bỏ dấu, tên dài
+/// trước. ⚠️ Tên NGẮN (dưới [_kDaiTenTuDo] ký tự bỏ dấu) chỉ nhận khi đứng ngay
+/// sau [tuLoai]: hoá đơn *"Kiem"* nằm trong *"tiết kiệm"*.
+const int _kDaiTenTuDo = 5;
+
+String? tenNeuTrongCau(String cauHoi, Iterable<String> ten, {required String tuLoai}) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return null;
+  final loai = _bo(tuLoai);
+  for (final (b, goc) in _bangTen(ten.toSet().toList())) {
+    final mau = b.length >= _kDaiTenTuDo ? b : '$loai $b';
+    if (_tronTu(mau).hasMatch(q)) return goc;
+  }
+  return null;
+}
+
+bool cauHoiVeTrich(String cauHoi) {
+  final q = _bo(cauHoi);
+  return q.isNotEmpty && _tuVeTrich.any((t) => _co(q, t));
+}
+
+/// G1 cổng F (E7): câu hỏi SỐ DƯ ví → `danh_sach_vi`. Mô hình từng chọn tool
+/// mục tiêu cho *"Ví Tiết kiệm hiện có bao nhiêu tiền"* (chữ "tiết kiệm").
+/// ⚠️ *"bao nhiêu giao dịch / khoản / lần"* là câu giao dịch — bị loại.
+final List<RegExp> _mauSoDuVi = [
+  RegExp(r'(?<![a-z0-9])vi\b.*\b(?:con|co|hien co|hien con|dang co)\s+(?:bao nhieu|may)'
+      r'(?!\s+(?:giao dich|khoan|lan|danh muc|hoa don|muc tieu|ngan sach))(?![a-z0-9])'),
+  RegExp(r'(?<![a-z0-9])so du(?: cua)?(?: cac| nhung)? vi(?![a-z0-9])'),
+];
 
 String _ddmmyyyy(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -757,6 +859,21 @@ String? _chieuTheoDongTu(String q0) {
     }
   }
   return (tu: tu, den: den);
+}
+
+/// Câu có SỐ TIỀN không: số kèm đơn vị (*500k, 1 triệu*), số chữ (*nửa triệu*),
+/// hay số trần từ bốn chữ số. ⚠️ Ngày (*1/9*, *15/9/2026*) và năm (*năm 2026*)
+/// không phải tiền — cùng cách đọc với luật 4.
+bool _coSoTien(String q) {
+  if (_mauSoChu.hasMatch(q)) return true;
+  for (final m in _mauSoDonVi.allMatches(q)) {
+    if (m.group(2) != null) return true;
+    if (m.start > 0 && q[m.start - 1] == '/') continue;
+    if (m.end < q.length && q[m.end] == '/') continue;
+    if (RegExp(r'(?<![a-z0-9])nam\s*$').hasMatch(q.substring(0, m.start))) continue;
+    if (m.group(1)!.replaceAll(RegExp(r'[.,]'), '').length >= 4) return true;
+  }
+  return false;
 }
 
 /// [cum] đứng cuối [chuoi] (là từ cuối, hay hai từ cuối).

@@ -265,6 +265,21 @@ void main() {
       expect(kq.chuThem.containsKey('ket_qua'), isFalse);
     });
 
+    test('⭐ G1 cổng F: noiTrich=false → KHÔNG một chữ trích nào (B1 "khi nào đạt" bị kéo sang ví nguồn)', () {
+      final kq = hangMucTieu([tr()], now: now, viNguon: {'w-tm': vi(20000)}, noiTrich: false);
+      final h = kq.hang.single;
+      expect(h.trangThai, 'đúng kế hoạch', reason: 'không hậu tố ví');
+      expect(h.canhBao, isFalse, reason: 'cảnh báo chỉ vì ví thiếu là chuyện trích');
+      for (final nhan in ['Kỳ trích tiếp', 'Trích mỗi tháng', 'Số dư ví nguồn']) {
+        expect(_so(h).containsKey(nhan), isFalse, reason: nhan);
+      }
+      expect(kq.json.containsKey('Không đủ tiền trích'), isFalse);
+      expect(kq.chuThem, isEmpty, reason: 'ket_qua "có ví nguồn không đủ…" là câu DC1 lạc đề');
+      expect(kq.tenLienQuan, isEmpty);
+      expect(_so(h).containsKey('Theo nhịp hiện tại cần thêm'), isTrue,
+          reason: 'số trả lời "khi nào đạt" vẫn còn');
+    });
+
     test('⭐ mẫu câu tự qua năm lớp chắn — đủ, thiếu, không chạy', () {
       for (final bang in [
         {'w-tm': vi(500000)},
