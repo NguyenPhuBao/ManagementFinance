@@ -130,6 +130,10 @@ vay/nợ), cộng `soLieuNhanhCua`, `tongTaiSanCua`/`thayDoiTaiSan`, `chuoiVayNo
 
 ### 5.1 `danh_sach_hoa_don`: `ky` (`ky_nay` mặc định · `ky_toi` · `tat_ca`), tự trả, cố định mỗi tháng
 
+> ✅ **Thi công 2026-09-28** (mục 9.35 `AI_EDGE_FEATURE.md`). ⚠️ Khác chữ bên dưới ở hai chỗ: kỳ *dự kiến* chiếu từ hàng
+> **còn phải trả** ở cuối chuỗi (trả tiền là sinh luôn hàng kỳ sau, nên hàng đã trả không còn gì để chiếu), và chữ kỳ đi
+> `chuThem['ky']` thay vì `boLoc`.
+
 - `ky_toi`: hoá đơn có `dueDate` trong tháng dương lịch kế tiếp **cộng** kỳ kế tiếp **dự kiến** của hoá đơn lặp đã trả kỳ này
   (`kyKeTiepCua(bill)` — không sinh hàng, chỉ tính; trạng thái *"dự kiến"*). `tat_ca`: mọi hoá đơn chưa đóng bất kể tháng
   (đúng tab *Cần thanh toán* — mục 12 `AI_EDGE_FEATURE.md` ghi thẻ tổng và tab đếm hai tập khác nhau; tool **nói rõ** bằng

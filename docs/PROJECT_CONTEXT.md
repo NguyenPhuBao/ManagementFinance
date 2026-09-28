@@ -682,7 +682,10 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   chủ đề ngoài phạm vi — đo **8/9 ✅ + 1 ◐**. Chín tool khai cùng lúc **vỡ trần token**; người dùng chọn không nâng
   `maxTokens` → phiên chỉ khai tool đích (`BoCongCu.khaiBaoCho`). ⭐ Hỏng chuỗi số đi theo **độ dài prompt**: phiên
   một tool thì mô hình viết đúng số. `flutter test` **4040/4040**.
-- Lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) và cổng F chưa làm. Bàn giao ở
+- 🚧 **Lát 3 Task 9 cùng ngày (`0712290`, `fc8afaf`, mục 9.35)**: `danh_sach_hoa_don` nhận `ky` (kỳ tới kể cả kỳ dự
+  kiến, mọi kỳ), hậu tố *tự trả*, *Cố định mỗi tháng*; vòng chiếu kỳ tách thành `cacKyChieuCua` dùng chung với dự
+  báo 30 ngày. **Chưa đo máy.** `flutter test` **4074/4074**.
+- Task 10 (mục tiêu), Task 11 (cân đối ngân sách) và cổng F chưa làm. Bàn giao ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN

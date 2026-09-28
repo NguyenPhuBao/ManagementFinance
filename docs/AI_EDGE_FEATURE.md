@@ -2528,6 +2528,57 @@ vẫn hỏng (*"5.0000 đ"*, *"20.0000.000 đ"*). Hệ quả: mỗi câu định
 ⚠️ Màn Trợ lý AI hiện toast *"Một số thay đổi chưa lên được máy chủ"* giữa buổi đo — hàng đợi đồng bộ của máy, không
 liên quan lát này; chưa điều tra.
 
+### 9.35 Mở rộng bộ tool — LÁT 3, Task 9: hoá đơn kỳ tới, tự trả, cố định mỗi tháng (2026-09-28) — 🚧 mã xong, CHƯA đo máy
+
+Commit `0712290` (tách hàm) và `fc8afaf` (tool). Task 10 (mục tiêu), Task 11 (cân đối ngân sách) và cổng F **chưa
+làm** — người dùng dặn dừng sau phần này. `flutter test` **4074/4074** (3 skip), `flutter analyze` **26**.
+
+**Đã làm**
+
+- `danh_sach_hoa_don` nhận `ky`: `ky_nay` (mặc định — kết quả của câu hỏi cũ giữ nguyên từng ký tự) · `ky_toi` ·
+  `tat_ca`. Hàng, số đếm và tổng tiền luôn tính trên **cùng một tập**; tổng vẫn do `summarizeBills` cộng, tool chỉ
+  đổi tập và mốc đưa vào.
+- `ky_toi` = hàng thật có hạn trong tháng dương lịch kế tiếp **cộng** kỳ *dự kiến* chiếu từ hàng còn phải trả ở cuối
+  chuỗi. Vòng chiếu nay là hàm thuần **`cacKyChieuCua`** (`bill/domain/bill_ky_ke_tiep.dart`), dự báo 30 ngày gọi lại
+  nó — một định nghĩa, tool không chép vòng lặp.
+- Hậu tố *" · tự trả"* trên hàng và số đếm *Tự trả* chỉ tính hàng **còn phải trả**; *Cố định mỗi tháng* là hoá đơn
+  lặp chu kỳ tháng của **kỳ này**, kể cả đã trả, không theo `ky`.
+- `chinhThamSoHoaDon`: kỳ đọc từ câu hỏi; mô hình điền `ky` thừa thì gỡ (luật 10). Câu về tự trả / cố định không
+  đổi tham số.
+- Chữ kỳ (*"kỳ tới"*, *"mọi kỳ"*) đi `chuThem['ky']` — mô hình đọc được và mẫu câu in làm tiền tố. Kỳ do câu hỏi
+  chọn mà 0 hàng là `rongTheoBoLoc` → *"Kỳ tới — không có hoá đơn nào khớp."*
+
+**Chỗ khác spec / kế hoạch, kèm lý do**
+
+| Spec / kế hoạch viết | Đã làm | Vì sao |
+|---|---|---|
+| §5.1: kỳ dự kiến chiếu từ hoá đơn lặp **đã trả** kỳ này | Chiếu từ hàng **còn phải trả** ở cuối chuỗi | `payBill` sinh luôn hàng kỳ sau khi trả, nên hàng đã trả không còn gì để chiếu — chiếu từ nó là đếm đôi. Đây cũng là luật của dự báo 30 ngày |
+| `boLoc` nêu kỳ | `chuThem['ky']` | `boLoc` không vào JSON gửi mô hình; chữ kỳ không có số nên đi `chuThem` được |
+| Thêm ví dụ định tuyến vào lời hệ thống | Không thêm | Prompt dài làm mô hình viết hỏng chuỗi số (bẫy 4.51); kỳ do bộ chỉnh đọc từ câu hỏi |
+
+**Bẫy mới — chắn oan bắt được ngay ở ca đơn vị**: câu tự nhiên *"Có 1 hoá đơn tự trả là Netflix."* bị `kiemTen`
+chặn vì cụm sau *"hoá đơn"* là *"tự trả"*. `kTuChucNang` thêm *tự · dự · cố* (*"hoá đơn tự trả / dự kiến / cố
+định"*). Cùng họ bẫy 4.50.
+
+**Bản sai có chủ ý**: 17 bản, 16 đỏ, 1 **tương đương** (bỏ bộ lọc kỳ này trước khi tính *Cố định mỗi tháng* —
+`summarizeBills` tự chặn cuối tháng). Một bản ban đầu **vẫn xanh**: chiếu cả hàng đã trả — bộ lọc mặc định
+`chua_tra` che mất hàng thừa; ca test nay hỏi thêm `trang_thai=tat_ca`.
+
+**Chưa biết**
+
+- `tools_json` của phiên sáu tool dài thêm (tham số `ky` + mô tả); ca trần 6.960 vẫn xanh nhưng **chưa spike trên máy**.
+- Câu đích F11 (*tháng tới phải trả hoá đơn nào*), F12 (*hoá đơn nào tự trả*) chưa đo — mô hình có chọn đúng tool
+  hoá đơn cho F11 hay không là chưa biết; nếu không thì định tuyến ở tầng mã như lát 1–2.
+- ⚠️ Hàng hoá đơn người dùng **tự tạo tay** cho kỳ sau vẫn bị đếm đôi với kỳ dự kiến (khử trùng chỉ dựa
+  `generatedFromBillId`) — cùng giới hạn cố ý của dự báo 30 ngày.
+
+**Việc kế của lát 3** (đã đọc mã, chưa viết): Task 10 — `kyKeTiep(mocNeo: timeCycleTakeMoney, lanChayGanNhat:
+autoDepositLastRun, chuKy: cycleTakeMoney, now)`, `quyetDinhTrich`; ⚠️ câu *"ví có đủ tiền trích cho mục tiêu
+không"* hiện được `congCuTheoCauHoi` định tuyến sang `du_bao_dong_tien` (mẫu *"đủ tiền … trích"* xét trước chữ
+*"mục tiêu"*) — phải quyết giữ hay đổi trước khi viết; nhãn mới không được bắt đầu bằng chữ *"Ví"* (`kiemTen` đọc
+chữ sau nó là tên). `wallet_picker_sources_test` **không** cần sửa: nó quét `walletDao.*`, adapter đọc qua
+`WalletRepository` như `CongCuVi`.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
