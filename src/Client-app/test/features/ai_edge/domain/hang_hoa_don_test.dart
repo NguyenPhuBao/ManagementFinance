@@ -278,7 +278,7 @@ void main() {
     });
   });
 
-  group('mẫu câu tự qua năm lớp chắn', () {
+  group('mẫu câu tự qua sáu lớp chắn', () {
     final net = _bill(id: 'n', ten: 'Netflix', amount: 260000, dueDate: DateTime(2026, 9, 28), tuTra: true);
     for (final ky in kKyHoaDon) {
       test('ky=$ky', () {

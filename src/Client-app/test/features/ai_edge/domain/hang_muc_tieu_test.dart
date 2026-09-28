@@ -305,7 +305,7 @@ void main() {
       expect(khongTrich.chuThem, isEmpty, reason: 'B1 "khi nào đạt MuaDT" — không nói trích');
     });
 
-    test('⭐ mẫu câu tự qua năm lớp chắn — đủ, thiếu, không chạy', () {
+    test('⭐ mẫu câu tự qua sáu lớp chắn — đủ, thiếu, không chạy', () {
       for (final bang in [
         {'w-tm': vi(500000)},
         {'w-tm': vi(20000)},

@@ -264,7 +264,7 @@ void main() {
       expect(() => hangNganSach([anUong], now: n21, chon: 'can_doi'), throwsArgumentError);
     });
 
-    test('⭐ mẫu câu tự qua năm lớp chắn; câu tự nhiên đúng qua, số chuyển bịa bị chặn', () {
+    test('⭐ mẫu câu tự qua sáu lớp chắn; câu tự nhiên đúng qua, số chuyển bịa bị chặn', () {
       for (final k in [kh([anUong, giaiTri, muaSam]), kh([anUong, giaiTri, muaSam], coDinh: {'c-ms'})]) {
         final g = GoiSoTraCuu()..them('danh_sach_ngan_sach', hangCanDoiNganSach(k, soNganSach: 3));
         expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);

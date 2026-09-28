@@ -122,8 +122,8 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 ```
 
 **Ba vòng, một hợp đồng — và hợp đồng ấy là `GoiSo`.** Vòng 2 trên màn Trợ lý AI nhận sáu gói
-dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; ba lớp chắn và thẻ số liệu
-chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
+dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; các lớp chắn (`kiemCauTraLoi` — **sáu** lớp
+từ 2026-09-28) và thẻ số liệu chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
 đồng là `BoDienGiai` và "vòng 2 và vòng 3 đều là bản thi công của nó" — sai từ lối B, khi màn
 Trợ lý AI tự dựng đường sinh câu và `BoDienGiai` không được đăng ký; vòng 3 là `hoiBangCongCu`.)*
 
@@ -822,9 +822,10 @@ bản 2026-09-24 ghi "chưa đạt sau ba lần đo" — và RAG phía backend n
 > Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
 > 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
 > thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
-> mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
-> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
-> một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** (ngân sách · hoá đơn ·
+> mạng, chữ hiện dần theo từng câu, và mọi câu trả lời đều qua **sáu** lớp chắn (`kiemSo`, `kiemNhan`,
+> `kiemGiong`, `kiemTen`, `kiemPhuDinh`, `kiemKy` — đếm 2026-09-28) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
+> một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** *(đếm 2026-09-25; từ 2026-09-28 là **chín** —
+> mục 9.32–9.35 `AI_EDGE_FEATURE.md`)* (ngân sách · hoá đơn ·
 > ví · chi tiêu theo kỳ — bốn của lát 4b, đã đo cổng C; mục tiêu · gợi ý hạn mức · tìm giao dịch
 > — bước 2, cổng D **đạt 2026-09-25** trên bộ 34 câu, gộp hai máy: lời từ chối của tool thôi bị đọc thành "không có
 > dữ liệu" (bước 2b), lượt tìm giao dịch 0 khoản thành báo cáo về bộ lọc (bước 2c), ví dụ định tuyến trong lời hệ thống

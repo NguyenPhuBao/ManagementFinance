@@ -146,7 +146,7 @@ khi tới lượt; nhóm B mỗi dự án con một vòng brainstorm → spec �
 
 | # | Việc | Ghi chú |
 |---|---|---|
-| A1 | Vòng sửa theo kết quả cổng F | Đã chấm (mục 9.36 `AI_EDGE_FEATURE.md`: năm gốc G1–G5); người dùng chọn **cả năm** 2026-09-28 chiều, G5 viết spec trước |
+| A1 | Vòng sửa theo kết quả cổng F | Đã chấm (mục 9.36 `AI_EDGE_FEATURE.md`: năm gốc G1–G5); người dùng chọn **cả năm** 2026-09-28 chiều, G5 viết spec trước; ✅ mã xong cùng chiều (mục 9.37), chưa đo |
 | A2 | Định tuyến câu cũ về phiên một tool | Chữa hỏng chuỗi số (bẫy 4.51); so với mốc cổng F |
 | A3 | Tool dự báo in hai hàng quá hạn trùng | Gộp ở tool, không đụng `duBaoCua` của trang Phân tích |
 | A4 | Toast *"Một số thay đổi chưa lên được máy chủ"* | Điều tra hàng đợi đồng bộ |

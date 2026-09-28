@@ -171,6 +171,7 @@ lib/features/ai_edge/
   domain/   (ví dụ điền tham số, 2026-09-25 rạng sáng — mục 9.26) slm_prompt.dart: kPromptHeThongCongCu nối đoạn "Điền tham số" (chiều · tên vào đúng ô · hai ngưỡng · ky moi_luc; không chữ số)
   domain/   (lớp chắn thứ tư, 2026-09-25 rạng sáng — mục 9.27, bẫy 4.48) kiem_ten.dart: kiemTen — tên bịa trong câu KHÔNG số (từ loại → cụm tên → khớp tenDoiTuong bỏ khoảng trắng, chứa nhau; "không" trước thì bỏ qua; từ chức năng là MỘT chuỗi tách lúc chạy vì test quét 14) · kiem_cau_tra_loi.dart: vế thứ tư
   domain/ + data/ (bộ chỉnh tham số theo câu hỏi, 2026-09-25 rạng sáng — mục 9.28) chinh_tham_so.dart: chinhThamSoTimGiaoDich — sáu luật, bỏ dấu, từ khoá chuỗi tách lúc chạy; cong_cu.dart: CongCu.chay nhận cauHoi (bảy tool, BoCongCu, vòng lặp); cong_cu_giao_dich.dart: áp bộ chỉnh TRƯỚC mọi phép kiểm, log "chỉnh tham số theo câu hỏi", trường log
+  domain/   (vòng sửa cổng F, 2026-09-28 — mục 9.37) kiem_ky.dart: kiemKy — lớp chắn thứ SÁU (chữ kỳ lệch kỳ của số) · goi_so.dart: GoiSo.kyCua · kiem_nhan.dart: số tổng gán cho đối tượng · chinh_tham_so.dart: cauHoiVeTrich, tenNeuTrongCau, luật 2a/2b/2c/4b, tu_tra
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -2735,7 +2736,29 @@ F11 ✅ · F12 ✗ · F13 ✅ · F14 ◐ · F15 ✗.
 | **G5** Lớp chắn mù mệnh đề sai (SAI ×3) | E3 · E21 · E8 | Cần spec ngắn ở tầng chắn: (a) số **tổng hợp không tên** đứng cạnh **tên đối tượng** trong một vế thì phải có nhãn tổng hợp (*tổng*) — chặn *"Giáo dục với tổng chi 2.241.000"*; (b) **chữ kỳ** trong câu (*hôm nay*) khác kỳ của gói (*tháng này*) → chặn (E21 ở bậc 1); (c) E8 — sau G3 thì tập hàng có Netflix nên câu sai tự hết, xét lại sau |
 
 Theo quy ước 2026-09-25: vòng sửa sau **chỉ đo lại câu chưa đạt** (20 câu ✗ / ◐ + SAI); chạy lại trọn 72 câu chỉ khi
-những câu ấy đạt.
+những câu ấy đạt. → Vòng sửa ở mục **9.37**.
+
+### 9.37 Vòng sửa cổng F (A1) — G1–G5 mã xong 2026-09-28 chiều, 🚧 CHƯA ĐO
+
+Người dùng chọn **cả năm gốc** của 9.36; G5 qua spec `docs/superpowers/specs/2026-09-28-g5-chan-menh-de-sai-design.md`
+(lối A, đã duyệt) và kế hoạch 3 task `…/plans/2026-09-28-g5-chan-menh-de-sai.md` (gitignore), thi công inline, TDD, mỗi
+luật chặn thử bằng bản sai có chủ ý.
+
+| Gốc | Câu | Sửa | Commit |
+|---|---|---|---|
+| **G1** | B1 · DC1 · E7 | Tool mục tiêu chỉ mang chữ trích (hậu tố ví, kỳ trích tiếp, trích mỗi kỳ, kết luận ví nguồn) khi câu hỏi nói về trích (`cauHoiVeTrich`: *trích · ví nguồn · tự động*); không đọc ví khi không cần. Câu số dư ví (*"ví X hiện có / còn bao nhiêu"*, *"số dư ví"*) định tuyến → `danh_sach_vi` — trừ *"bao nhiêu giao dịch / khoản / lần"* | `7ce43e1` |
+| **G2** | C13 · C20 · E10 · F2 | Bộ chỉnh: **2a** `tu_khoa` chỉ là chữ chiều → gỡ; **2b** *"mục tiêu <tên>"* → `tu_khoa` = tên (tool giao dịch đọc tên mục tiêu); **2c** mảnh cụm ví (*"vi tien"*) trong `danh_muc` / `tu_khoa` → gỡ; **4b** câu không có số tiền → gỡ `so_tien_*` (⚠️ **đảo luật 6** cho `so_tien_*`: ca test cũ *"giữ nguyên ngưỡng của mô hình"* viết lại). Ngân sách nêu tên → chỉ hàng ấy, **bỏ "Tổng còn lại"** (E10). `tenNeuTrongCau` — tên đối tượng câu hỏi nêu; tên **ngắn** (< 5 ký tự bỏ dấu) chỉ nhận ngay sau từ loại, vì hoá đơn *"Kiem"* nằm trong *"tiết kiệm"* | `7ce43e1` |
+| **G3** | E8 · F12 | Hoá đơn nêu tên → tập riêng của nó: mọi hàng còn phải trả + mọi hàng hạn tháng này / tháng tới, mọi trạng thái, **không kỳ dự kiến** (B1c *"còn phải trả"* không được cộng kỳ chiếu), không hàng nào thì hàng mới nhất; tổng hợp trên tập ấy, bỏ *Cố định mỗi tháng*. *"tự trả / tự động thanh toán"* → bộ chỉnh đặt `tu_tra` (+ `ky=tat_ca` khi không nêu kỳ) — *"phải tự trả"* là trả tay; ca test cũ *"F12 không đổi tham số"* viết lại | `631437f` |
+| **G4** | F15 · F14 | Câu *chuyển bớt / cân đối / bù ngân sách* → `danh_sach_ngan_sach`, phiên một tool (bộ chỉnh đặt `can_doi`). Mục tiêu nêu tên → chỉ mục tiêu ấy (đếm / kết luận trích cũng chỉ trên nó); hỏi trích của mục tiêu không bật trích → `ket_qua` *"<tên> không bật trích tự động"* — log cổng F cho thấy mô hình đã viết kỳ trích **06/10 của MuaXe** cho MuaDT, `kiemSo` chặn do may | `34339a6` |
+| **G5 (a)** | E3 | `kiemNhan`, theo vế: số **tiền** chỉ khớp mục tổng không tên + vế nêu tên đối tượng có mục **cùng họ nhãn** (`Chi` ⊆ `Tổng chi`) + vế không có số nào của đối tượng → chặn. Câu đúng 27/09 *"Giải trí với tổng chi là 30.000 đ"* (số của chính nó) vẫn qua | `38e079b` |
+| **G5 (b)** | E21 | Lớp chắn **thứ sáu** `kiemKy` (`kiem_ky.dart`): vế có chữ kỳ tương đối mà mọi mục khớp số có kỳ đã biết và không kỳ nào trùng → chặn. Kỳ từ `GoiSo.kyCua` (mặc định `null` = không xét): Trang chủ thu / chi / còn lại = tháng này (tổng số dư là số hiện tại); Phân tích khi `NguonGoiSo` truyền `chuKy`; tra cứu theo lượt | `eeaadc4` |
+
+`flutter test` **4146/4146** (3 skip, +44 ca), `flutter analyze` 26 (mức nền). `tools_json`, lời hệ thống, mẫu câu,
+schema, payload **không đổi**. Không ca test cũ nào phải sửa kỳ vọng ngoài hai ca ghi
+ở G2 / G3 (chúng mã hoá chính quyết định cũ người dùng vừa đảo) và bốn tên ca *"mẫu câu tự qua năm lớp chắn"* → *sáu*.
+
+**Việc kế:** build APK release, đo lại 20 câu chưa đạt + ba câu SAI trên máy đang cắm, bảng ba cột; E8 xét lại sau khi
+đo (G3 đã đổi tập hàng).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

@@ -92,7 +92,7 @@ void main() {
       expect(kiemCauTraLoi('Bạn có 6 danh mục, trong đó 4 danh mục chi.', [g]), isTrue);
     });
 
-    test('⭐ mẫu câu của gói tự qua năm lớp chắn; hàng không số liệu KHÔNG in dấu hai chấm trơ', () {
+    test('⭐ mẫu câu của gói tự qua sáu lớp chắn; hàng không số liệu KHÔNG in dấu hai chấm trơ', () {
       final cau = g.mauCau().cau;
       expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
       expect(cau, startsWith('Ăn uống khoản chi · có ngân sách; Di chuyển'));
