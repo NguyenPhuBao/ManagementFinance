@@ -29,13 +29,23 @@ GoalEntity _muaXe(int idaccount, {bool trich = false}) => GoalEntity(
     );
 
 class _MucTieu implements GoalRepository {
-  _MucTieu({this.trich = false});
+  _MucTieu({this.trich = false, this.coMuaDT = false});
   final bool trich;
+
+  /// Thêm mục tiêu MuaDT KHÔNG bật trích (F14 cổng F).
+  final bool coMuaDT;
   final daHoi = <int>[];
   @override
   Stream<List<GoalEntity>> watchGoals(int idaccount) {
     daHoi.add(idaccount);
-    return Stream.value([_muaXe(idaccount, trich: trich)]);
+    return Stream.value([
+      _muaXe(idaccount, trich: trich),
+      if (coMuaDT)
+        GoalEntity(
+          id: 'g2', idaccount: idaccount, name: 'MuaDT', targetAmount: 3000000, currentAmount: 500000,
+          startDate: DateTime(2026, 9, 5), targetDate: DateTime(2027, 9, 5), updatedAt: DateTime(2026, 9, 5),
+        ),
+    ]);
   }
 
   @override
@@ -121,6 +131,13 @@ void main() {
       expect(kq.hang.single.trangThai, 'đúng kế hoạch', reason: cau);
       expect(kq.chuThem.containsKey('ket_qua'), isFalse, reason: cau);
     }
+  });
+
+  test('⭐ G4 cổng F — F14 đầu-cuối: "ky trich tiep theo cua MuaDT" → chỉ MuaDT, nói thẳng không bật trích', () async {
+    final kq = await CongCuMucTieu(_MucTieu(trich: true, coMuaDT: true), vi: _Vi(20000), log: (_) {})
+        .chay({'chon': 'dung_ke_hoach'}, idaccount: 10, now: now, cauHoi: 'ky trich tiep theo cua MuaDT la khi nao');
+    expect(kq.hang.map((h) => h.ten).toList(), ['MuaDT']);
+    expect(kq.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
   });
 
   test('ví nguồn lưu trữ / đã xoá → trích không chạy được (khớp GoalAutoDepositRunner)', () async {

@@ -20,6 +20,11 @@
 /// ⚠️ Khác spec: *"ví không đủ để trích"* là HẬU TỐ của trạng thái (như
 /// *" · tự trả"* của hoá đơn), không thay trạng thái — mục tiêu vừa chậm vừa
 /// thiếu tiền phải khớp cả `chon=cham_ke_hoach` lẫn `chon=vi_khong_du`.
+///
+/// Vòng sửa cổng F (mục 9.36): **G1** [noiTrich] `false` (câu hỏi không nói về
+/// trích — `cauHoiVeTrich`) → không một chữ trích nào; **G4** [ten] — mục tiêu
+/// câu hỏi nêu (`tenNeuTrongCau`) → chỉ mục tiêu ấy, và hỏi trích của mục tiêu
+/// không bật trích thì kết luận *"<tên> không bật trích tự động"*.
 library;
 
 import '../../goal/data/models/goal_entity.dart';
@@ -80,6 +85,7 @@ KetQuaCongCu hangMucTieu(
   String? chon,
   Map<String, ViNguon>? viNguon,
   bool noiTrich = true,
+  String? ten,
 }) {
   if (chon != null && !kChonMucTieu.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChonMucTieu);
@@ -89,17 +95,21 @@ KetQuaCongCu hangMucTieu(
   final hienTrich = noiTrich || chon == 'vi_khong_du';
   final vn = hienTrich ? viNguon : null;
   final nhom = chiaMucTieu(goals);
+  // G4 cổng F (F14): câu nêu tên một mục tiêu → chỉ mục tiêu ấy (kể cả đã xong),
+  // và mọi phép đếm / kết luận trích cũng chỉ trên nó — hàng MuaXe đứng cạnh
+  // từng cho mô hình gán kỳ trích của MuaXe cho MuaDT.
+  final phamVi = ten == null
+      ? nhom.dangTheoDuoi
+      : [for (final g in [...nhom.dangTheoDuoi, ...nhom.daHoanThanh]) if (g.name == ten) g];
   bool khopChon(GoalEntity g) => chon == 'vi_khong_du'
       ? _trichCua(g, vn) == _Trich.khongDu
       : _maTrangThai(g, now) == chon;
-  final khop = chon == null
-      ? nhom.dangTheoDuoi
-      : [for (final g in nhom.dangTheoDuoi) if (khopChon(g)) g];
+  final khop = chon == null ? phamVi : [for (final g in phamVi) if (khopChon(g)) g];
 
   // Đếm và kết luận trích chỉ khi câu hỏi chung hoặc hỏi đúng về trích — hỏi
   // "mục tiêu nào chậm" mà mẫu câu nói chuyện ví là tiếng ồn.
   final trich = [
-    for (final g in nhom.dangTheoDuoi)
+    for (final g in phamVi)
       if (_trichCua(g, vn) case final t?) t,
   ];
   final ketLuanTrich = trich.isNotEmpty && (chon == null || chon == 'vi_khong_du');
@@ -109,6 +119,13 @@ KetQuaCongCu hangMucTieu(
       : trich.contains(_Trich.khongChay)
           ? 'có trích tự động không chạy được'
           : 'ví nguồn đủ tiền cho kỳ trích tới';
+  // Hỏi về trích của một mục tiêu KHÔNG bật trích: nói thẳng, đừng để mẫu câu
+  // kể đủ số mà không trả lời (F14 lần 1: ◐).
+  final khongBatTrich = hienTrich &&
+      noiTrich &&
+      ten != null &&
+      phamVi.isNotEmpty &&
+      phamVi.every((g) => !g.autoDepositEnabled);
 
   return KetQuaCongCu(
     hang: [
@@ -123,9 +140,12 @@ KetQuaCongCu hangMucTieu(
       // "Ví thiếu để trích: 1" của kế hoạch làm chính mẫu câu bị chặn.
       if (ketLuanTrich) soDem('Không đủ tiền trích', khongDu),
     ],
-    chuThem: {if (ketLuanTrich) 'ket_qua': ketQua},
+    chuThem: {
+      if (ketLuanTrich) 'ket_qua': ketQua,
+      if (khongBatTrich) 'ket_qua': '$ten không bật trích tự động',
+    },
     tenLienQuan: [
-      for (final g in nhom.dangTheoDuoi)
+      for (final g in phamVi)
         if (_viNguonCua(g, vn) case final vi?) vi.ten,
     ],
     boLoc: [if (chon != null) kChuChonMucTieu[chon]!],

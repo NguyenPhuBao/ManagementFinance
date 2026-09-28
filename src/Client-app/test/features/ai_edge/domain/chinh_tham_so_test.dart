@@ -699,6 +699,24 @@ void main() {
     });
   });
 
+  group('20. G4 cổng F — câu cân đối ngân sách → tool ngân sách (F15)', () {
+    test('⭐ "chuyển bớt / cân đối / bù ngân sách" → danh_sach_ngan_sach (phiên một tool)', () {
+      for (final cau in [
+        'nen chuyen bot ngan sach nao sang ngan sach nao',
+        'Nên chuyển bớt ngân sách nào sang ngân sách nào?',
+        'can doi ngan sach giup toi',
+        'lay tu ngan sach nao de bu cho an uong',
+      ]) {
+        expect(congCuTheoCauHoi(cau), kTenCongCuNganSach, reason: cau);
+      }
+    });
+    test('phản ví dụ: câu ngân sách khác vẫn không định tuyến', () {
+      for (final cau in ['ngan sach nao sap het', 'ngan sach an uong con tieu duoc bao nhieu', 'thang sau toi nen dat ngan sach bao nhieu']) {
+        expect(congCuTheoCauHoi(cau), isNull, reason: cau);
+      }
+    });
+  });
+
   group('16. nhomTongQuanTheoCauHoi', () {
     test('mỗi câu đích của lát 2 → đúng nhóm', () {
       expect(nhomTongQuanTheoCauHoi('thu nhap thang nay cua toi la bao nhieu'), {NhomTongQuan.thuNhap});

@@ -542,6 +542,9 @@ final List<RegExp> _mauDanhMuc = [
 String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
+  // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
+  // một tool (bộ chỉnh đặt chon=can_doi). Sáu tool thì mô hình chọn goi_y_han_muc.
+  if (_co(q, 'ngan sach') && _tuCanDoi.any((t) => _co(q, t))) return kTenCongCuNganSach;
   if (_co(q, 'ngan sach')) return null;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;

@@ -64,6 +64,9 @@ class CongCuMucTieu implements CongCu {
     final noiTrich = cauHoi.trim().isEmpty || cauHoiVeTrich(cauHoi) || chon == 'vi_khong_du';
     if (!noiTrich) log('[SLM][tool] câu hỏi không nói về trích tự động → bỏ chữ trích');
     final goals = await mucTieu.watchGoals(idaccount).first;
+    // G4 cổng F (F14): câu nêu tên một mục tiêu → chỉ mục tiêu ấy.
+    final ten = tenNeuTrongCau(cauHoi, [for (final g in goals) g.name], tuLoai: 'mục tiêu');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu mục tiêu → chỉ "$ten"');
     Map<String, ViNguon>? viNguon;
     if (noiTrich && goals.any((g) => g.autoDepositEnabled)) {
       final ds = await vi.watchAll(idaccount).first;
@@ -80,6 +83,7 @@ class CongCuMucTieu implements CongCu {
       chon: (chon == null || chon.isEmpty) ? null : chon,
       viNguon: viNguon,
       noiTrich: noiTrich,
+      ten: ten,
     );
   }
 }

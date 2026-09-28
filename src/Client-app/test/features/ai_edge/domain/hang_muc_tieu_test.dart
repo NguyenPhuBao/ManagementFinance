@@ -280,6 +280,31 @@ void main() {
           reason: 'số trả lời "khi nào đạt" vẫn còn');
     });
 
+    test('⭐ G4 cổng F (F14): nêu tên mục tiêu → chỉ mục tiêu ấy; không bật trích → kết luận nói THẲNG', () {
+      final muaDT = _mt(id: 'dt', ten: 'MuaDT', current: 500000);
+      final kq = hangMucTieu([tr(), muaDT], now: now, viNguon: {'w-tm': vi(20000)}, ten: 'MuaDT');
+      expect(kq.hang.map((h) => h.ten).toList(), ['MuaDT']);
+      expect(kq.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
+      expect(kq.json.containsKey('Không đủ tiền trích'), isFalse,
+          reason: 'đếm ví thiếu là của MuaXe — không thuộc câu hỏi về MuaDT');
+      final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', kq);
+      expect(kiemCauTraLoi('Kỳ trích tiếp theo cho mục tiêu MuaDT là ngày 15/10.', [g]), isFalse,
+          reason: 'cổng F: mô hình viết đúng câu này với ngày trích của MuaXe — kiemSo từng chặn do may');
+      expect(kiemCauTraLoi('Mục tiêu MuaDT không bật trích tự động.', [g]), isTrue);
+      expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+      expect(g.mauCau().cau, contains('MuaDT không bật trích tự động'));
+    });
+
+    test('G4: nêu tên mục tiêu CÓ trích → hàng của nó kèm trích; câu không nói trích → không kết luận', () {
+      final muaDT = _mt(id: 'dt', ten: 'MuaDT', current: 500000);
+      final kq = hangMucTieu([tr(), muaDT], now: now, viNguon: {'w-tm': vi(20000)}, ten: 'MuaXe');
+      expect(kq.hang.single.ten, 'MuaXe');
+      expect(kq.chuThem['ket_qua'], 'có ví nguồn không đủ tiền để trích');
+      final khongTrich = hangMucTieu([tr(), muaDT], now: now, ten: 'MuaDT', noiTrich: false);
+      expect(khongTrich.hang.single.ten, 'MuaDT');
+      expect(khongTrich.chuThem, isEmpty, reason: 'B1 "khi nào đạt MuaDT" — không nói trích');
+    });
+
     test('⭐ mẫu câu tự qua năm lớp chắn — đủ, thiếu, không chạy', () {
       for (final bang in [
         {'w-tm': vi(500000)},
