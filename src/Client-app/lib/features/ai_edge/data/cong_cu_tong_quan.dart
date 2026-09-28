@@ -91,6 +91,7 @@ class CongCuTongQuan implements CongCu {
       vayNoMoiLuc: moiLuc.chuoiVayNo.isEmpty ? null : moiLuc.chuoiVayNo.last,
       now: now,
       chuKy: maKy == kMaKyTuyChon ? kChuKyTuyChon : kMaKy[maKy]!,
+      nhom: nhomTongQuanTheoCauHoi(cauHoi),
     );
     if (maKy != kMaKyTuyChon) return kq;
     return ganKyTuyChon(

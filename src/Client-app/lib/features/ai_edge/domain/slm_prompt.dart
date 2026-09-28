@@ -174,13 +174,11 @@ const String kPromptHeThongCongCu =
     '"một tháng, quý, năm cụ thể tôi chi bao nhiêu", "từ ngày này đến ngày kia tôi '
     'chi những gì" → $kTenCongCuTruyVan với ky=tuy_chon, tu_ngay và den_ngay. "tháng '
     'này chi nhiều hơn hay ít hơn tháng trước" → $kTenCongCuTruyVan với ky=thang_nay, '
-    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "còn tiêu '
-    'được bao nhiêu", "tiền có đủ trả hoá đơn không", "trả hết hoá đơn thì còn bao '
-    'nhiêu", "sắp tới phải chi gì" → $kTenCongCuDuBao. '
-    '"thu nhập của tôi bao nhiêu", "tôi để dành được bao nhiêu phần trăm", "ngày nào '
-    'tôi chi nhiều nhất", "tôi đang cho vay bao nhiêu" → $kTenCongCuTongQuan. "tôi có '
-    'những danh mục nào" → $kTenCongCuDanhMuc; "danh mục nào chưa đặt ngân sách" → '
-    '$kTenCongCuNganSach với chon=chua_dat. '
+    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "danh '
+    'mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. '
+    // ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
+    // phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
+    // không được khai là dạy mô hình gọi tool bịa.
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '

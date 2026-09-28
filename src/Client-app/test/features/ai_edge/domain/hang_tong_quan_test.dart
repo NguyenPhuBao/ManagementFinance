@@ -6,6 +6,7 @@ library;
 
 import 'package:flowmoney/core/category/category_classify.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
+import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
@@ -211,6 +212,54 @@ void main() {
 
     test('⚠️ tổng thu đội lốt thu nhập bị chặn: 15.135.000 không có trong gói', () {
       expect(kiemSo('Thu nhập tháng này là 15.135.000 đ.', g), isFalse);
+    });
+  });
+
+  group('rút theo CÂU HỎI — nhom (mục 9.34: mẫu câu từng liệt kê cả 11 số)', () {
+    KetQuaCongCu theo(Set<NhomTongQuan> nhom, {DateTime? dauTien}) => hangTongQuan(
+          _tk(giaoDichDauTien: dauTien),
+          vayNoMoiLuc: moiLuc(), now: now, chuKy: 'tháng này', nhom: nhom,
+        );
+
+    test('⭐ thu nhập: Thu nhập, Tổng chi, Tỉ lệ, Dòng tiền tự do — không tài sản, không dư nợ, không hàng', () {
+      final r = theo({NhomTongQuan.thuNhap});
+      expect(r.tongHop.map((s) => s.nhan).toList(),
+          ['Thu nhập', 'Tổng chi', 'Tỉ lệ tiết kiệm', 'Dòng tiền tự do']);
+      expect(r.hang, isEmpty);
+      expect(r.chuThem.containsKey('vay_no'), isFalse);
+    });
+
+    test('chi tiêu: Tổng chi, trung bình ngày, ngày chi nhiều nhất + hàng khoản lớn nhất', () {
+      final r = theo({NhomTongQuan.chiTieu});
+      expect(r.tongHop.map((s) => s.nhan).toList(),
+          ['Tổng chi', 'Chi trung bình mỗi ngày', 'Ngày chi nhiều nhất', 'Chi ngày nhiều nhất']);
+      expect(r.hang.single.ten, 'Cho vay');
+    });
+
+    test('vay nợ: chỉ hai con số dư nợ', () {
+      final r = theo({NhomTongQuan.vayNo});
+      expect(r.tongHop.map((s) => s.nhan).toList(), ['Đang cho vay chưa thu về', 'Đang nợ']);
+    });
+
+    test('⭐ N5: hỏi đích danh tài sản mà thay đổi CHƯA BIẾT → chữ kết luận nói ra', () {
+      final r = theo({NhomTongQuan.taiSan}, dauTien: DateTime(2026, 9, 2));
+      expect(r.tongHop.map((s) => s.nhan).toList(), ['Tổng tài sản']);
+      expect(r.chuThem['ket_qua'], 'chưa đủ dữ liệu để biết tài sản tăng hay giảm');
+      final g = GoiSoTraCuu()..them('tong_quan_tai_chinh', r);
+      expect(g.mauCau().cau,
+          'Tháng này — Tổng tài sản: 12.904.000 đ — chưa đủ dữ liệu để biết tài sản tăng hay giảm.');
+    });
+
+    test('câu hỏi chung chung (tập rỗng) KHÔNG in câu "chưa đủ dữ liệu" — không ai hỏi', () {
+      final r = theo(const {}, dauTien: DateTime(2026, 9, 2));
+      expect(r.chuThem.containsKey('ket_qua'), isFalse);
+      expect(r.tongHop.length, greaterThan(8));
+    });
+
+    test('hai nhóm cùng lúc', () {
+      final r = theo({NhomTongQuan.thuNhap, NhomTongQuan.taiSan});
+      expect(r.tongHop.map((s) => s.nhan), containsAll(<String>['Thu nhập', 'Tổng tài sản', 'Tài sản tăng']));
+      expect(r.tongHop.map((s) => s.nhan), isNot(contains('Đang nợ')));
     });
   });
 }

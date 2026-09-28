@@ -42,6 +42,7 @@ library;
 
 import '../../../core/category/category_name.dart';
 import 'cong_cu.dart';
+import 'hang_tong_quan.dart';
 import 'ma_ky.dart';
 
 class KetQuaChinhThamSo {
@@ -393,6 +394,20 @@ KetQuaChinhThamSo chinhThamSoTongQuan(
     ghi.add('câu hỏi không nêu kỳ → ky=thang_nay');
   }
   return KetQuaChinhThamSo(a, ghi);
+}
+
+/// Nhóm số của `tong_quan_tai_chinh` mà câu hỏi nhắc tới; RỖNG = câu hỏi chung
+/// chung (hoặc không có câu hỏi) → tool trả mọi nhóm.
+Set<NhomTongQuan> nhomTongQuanTheoCauHoi(String cauHoi) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return const {};
+  bool co(String mau) => RegExp('(?<![a-z0-9])(?:$mau)(?![a-z0-9])').hasMatch(q);
+  return {
+    if (co('thu nhap|de danh|tiet kiem|dong tien tu do')) NhomTongQuan.thuNhap,
+    if (co('trung binh|ngay nao|nhieu nhat|lon nhat')) NhomTongQuan.chiTieu,
+    if (co('tai san')) NhomTongQuan.taiSan,
+    if (co('cho vay|chua thu|dang no|con no|vay no')) NhomTongQuan.vayNo,
+  };
 }
 
 /// Bộ chỉnh của `danh_sach_danh_muc`: loại nêu trong câu → `loai`; không nêu →

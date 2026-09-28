@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -492,6 +493,22 @@ void main() {
       ]) {
         expect(congCuTheoCauHoi(cau), isNull, reason: cau);
       }
+    });
+  });
+
+  group('16. nhomTongQuanTheoCauHoi', () {
+    test('mỗi câu đích của lát 2 → đúng nhóm', () {
+      expect(nhomTongQuanTheoCauHoi('thu nhap thang nay cua toi la bao nhieu'), {NhomTongQuan.thuNhap});
+      expect(nhomTongQuanTheoCauHoi('toi de danh duoc bao nhieu phan tram'), {NhomTongQuan.thuNhap});
+      expect(nhomTongQuanTheoCauHoi('toi chi trung binh moi ngay bao nhieu'), {NhomTongQuan.chiTieu});
+      expect(nhomTongQuanTheoCauHoi('ngay nao thang nay toi chi nhieu nhat'), {NhomTongQuan.chiTieu});
+      expect(nhomTongQuanTheoCauHoi('tong tai san thang nay tang hay giam'), {NhomTongQuan.taiSan});
+      expect(nhomTongQuanTheoCauHoi('toi dang cho vay bao nhieu chua thu ve'), {NhomTongQuan.vayNo});
+      expect(nhomTongQuanTheoCauHoi('Tôi còn nợ bao nhiêu?'), {NhomTongQuan.vayNo});
+    });
+    test('câu chung chung hoặc rỗng → tập rỗng (tool trả mọi nhóm)', () {
+      expect(nhomTongQuanTheoCauHoi('tinh hinh tai chinh cua toi the nao'), isEmpty);
+      expect(nhomTongQuanTheoCauHoi(''), isEmpty);
     });
   });
 }

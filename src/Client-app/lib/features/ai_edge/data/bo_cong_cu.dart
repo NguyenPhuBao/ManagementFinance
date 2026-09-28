@@ -58,6 +58,27 @@ class BoCongCu {
 
   List<KhaiBaoCongCu> get khaiBao => [for (final c in cacCongCu) c.khaiBao];
 
+  /// Khai báo gửi cho MÔ HÌNH ở một phiên. Câu hỏi đã định tuyến được
+  /// ([tenDich] có và bộ tool có nó) → chỉ MỘT tool ấy: prompt ngắn hẳn, và mô
+  /// hình không còn gì để chọn nhầm. Không thì mọi tool TRỪ nhóm chỉ đi qua
+  /// định tuyến (`kCongCuChiQuaDinhTuyen`).
+  ///
+  /// ⚠️ [chay] vẫn chạy được MỌI tool của bộ — phép thu hẹp chỉ áp cho thứ mô
+  /// hình nhìn thấy.
+  List<KhaiBaoCongCu> khaiBaoCho(String? tenDich) {
+    if (tenDich != null) {
+      final mot = [
+        for (final c in cacCongCu)
+          if (c.khaiBao.ten == tenDich) c.khaiBao,
+      ];
+      if (mot.isNotEmpty) return mot;
+    }
+    return [
+      for (final c in cacCongCu)
+        if (!kCongCuChiQuaDinhTuyen.contains(c.khaiBao.ten)) c.khaiBao,
+    ];
+  }
+
   List<String> get tenCacCongCu => [for (final c in cacCongCu) c.khaiBao.ten];
 
   Future<KetQuaCongCu?> chay(

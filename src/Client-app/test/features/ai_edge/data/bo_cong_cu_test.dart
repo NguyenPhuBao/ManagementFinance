@@ -186,14 +186,35 @@ void main() {
   // một lời gọi, 0 FAILED_PRECONDITION. Trần `maxTokens` 4096 là hằng của client nên
   // không đổi theo máy, nhưng phiên dài nhất (ba lời gọi) CHƯA được đo ở độ dài này.
   const kTranToolsJsonDaDo = 6960;
-  test('⭐ tools_json của cả bộ tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
-    final n = toolsJsonCua(bo.khaiBao).length;
+  group('khaiBaoCho — thứ MÔ HÌNH nhìn thấy (mục 9.34: khai cả chín tool là vỡ trần)', () {
+    test('⭐ câu không định tuyến được → sáu tool cũ, KHÔNG có ba tool chỉ đi qua định tuyến', () {
+      expect(bo.khaiBaoCho(null).map((k) => k.ten).toList(), [
+        kTenCongCuTruyVan, kTenCongCuNganSach, kTenCongCuHoaDon,
+        kTenCongCuVi, kTenCongCuMucTieu, kTenCongCuGoiYHanMuc,
+      ]);
+    });
+    test('⭐ câu đã định tuyến → đúng MỘT tool đích', () {
+      for (final ten in kCongCuChiQuaDinhTuyen) {
+        expect(bo.khaiBaoCho(ten).map((k) => k.ten).toList(), [ten]);
+      }
+    });
+    test('tên đích không có trong bộ → như không định tuyến', () {
+      expect(bo.khaiBaoCho('khong_co'), hasLength(6));
+    });
+    test('chay vẫn tìm được MỌI tool — phép thu hẹp chỉ áp cho khai báo', () {
+      expect(bo.tenCacCongCu, hasLength(9));
+    });
+  });
+
+  test('⭐ tools_json của phiên DÀI NHẤT không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
+    final n = [
+      toolsJsonCua(bo.khaiBaoCho(null)).length,
+      for (final ten in kCongCuChiQuaDinhTuyen) toolsJsonCua(bo.khaiBaoCho(ten)).length,
+    ].reduce((a, b) => a > b ? a : b);
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
             'dài nhất (S1 / S2 / S3, không được có FAILED_PRECONDITION) rồi mới nâng.');
-  },
-      // TẠM BỎ QUA 2026-09-28: lát 2 thêm hai tool. Bỏ `skip` sau spike trên máy.
-      skip: 'đo lại trên máy — lát 2 mở rộng tool');
+  });
 
   test('tên lạ → null (mô hình bịa tên)', () async {
     expect(await bo.chay('bay_gio_may_gio', {}, idaccount: 10, now: now), isNull);

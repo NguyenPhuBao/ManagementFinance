@@ -23,6 +23,11 @@ import 'goi_so.dart';
 import 'hang_so_lieu.dart';
 
 const String kChuVayNoMoiLuc = 'vay nợ tính mọi thời gian';
+const String kChuTaiSanChuaBiet = 'chưa đủ dữ liệu để biết tài sản tăng hay giảm';
+
+/// Nhóm số của tool — câu hỏi nhắc nhóm nào thì tool trả nhóm ấy (mục 9.34:
+/// mẫu câu từng liệt kê cả 11 số cho câu chỉ hỏi một). Tập RỖNG = mọi nhóm.
+enum NhomTongQuan { thuNhap, chiTieu, taiSan, vayNo }
 
 /// [vayNoMoiLuc]: điểm vay/nợ gộp MỌI THỜI GIAN (không theo kỳ của [tk]);
 /// `null` thì bỏ hai con số dư nợ.
@@ -31,7 +36,9 @@ KetQuaCongCu hangTongQuan(
   required DiemVayNo? vayNoMoiLuc,
   required DateTime now,
   required String chuKy,
+  Set<NhomTongQuan> nhom = const {},
 }) {
+  bool co(NhomTongQuan n) => nhom.isEmpty || nhom.contains(n);
   // Điểm cuối của chuỗi vay/nợ là kỳ đang xem; chuỗi rỗng = kỳ không có vay/nợ.
   final vayNo = tk.chuoiVayNo.isEmpty
       ? DiemVayNo(ky: tk.ky)
@@ -49,16 +56,27 @@ KetQuaCongCu hangTongQuan(
           tk.taiSan.sublist(tk.taiSan.length - 2),
           giaoDichDauTien: tk.giaoDichDauTien,
         );
-  final duNo = vayNoMoiLuc == null ? null : duNoRong(vayNoMoiLuc);
+  final duNo = vayNoMoiLuc == null || !co(NhomTongQuan.vayNo)
+      ? null
+      : duNoRong(vayNoMoiLuc);
   final sl = tk.soLieu;
-  final lonNhat = sl.khoanChiLonNhat;
+  final lonNhat = co(NhomTongQuan.chiTieu) ? sl.khoanChiLonNhat : null;
+  final coThuNhap = co(NhomTongQuan.thuNhap);
+  final coChiTieu = co(NhomTongQuan.chiTieu);
+  final coTaiSan = co(NhomTongQuan.taiSan);
 
   final ketQua = <String>[
-    if (tyLe != null && tyLe < 0) 'chi vượt thu nhập',
-    if (doiTaiSan != null)
+    if (coThuNhap && tyLe != null && tyLe < 0) 'chi vượt thu nhập',
+    if (coTaiSan && doiTaiSan != null)
       doiTaiSan > 0
           ? 'tài sản tăng'
           : (doiTaiSan < 0 ? 'tài sản giảm' : 'tài sản không đổi'),
+    // Hỏi ĐÍCH DANH về tài sản mà thay đổi là "chưa biết" thì nói ra — im lặng
+    // là để người hỏi "tăng hay giảm" nhận về một con số không trả lời gì (N5).
+    if (nhom.contains(NhomTongQuan.taiSan) &&
+        doiTaiSan == null &&
+        tk.taiSan.isNotEmpty)
+      kChuTaiSanChuaBiet,
   ];
 
   return KetQuaCongCu(
@@ -75,30 +93,33 @@ KetQuaCongCu hangTongQuan(
         ),
     ],
     tongHop: [
-      soTien('Thu nhập', thuNhap, nhanKhac: const ['Thu nhập thật']),
-      soTien('Tổng chi', tk.tong.chi, nhanKhac: const ['Đã chi', 'Chi']),
-      if (tyLe != null && tyLe >= 0)
+      if (coThuNhap)
+        soTien('Thu nhập', thuNhap, nhanKhac: const ['Thu nhập thật']),
+      if (coThuNhap || coChiTieu)
+        soTien('Tổng chi', tk.tong.chi, nhanKhac: const ['Đã chi', 'Chi']),
+      if (coThuNhap && tyLe != null && tyLe >= 0)
         soPhanTram('Tỉ lệ tiết kiệm', tyLe * 100,
             nhanKhac: const ['Để dành', 'Tiết kiệm']),
-      if (tyLe != null && tyLe < 0)
+      if (coThuNhap && tyLe != null && tyLe < 0)
         soPhanTram('Chi vượt thu nhập', (tyLe * 100).abs(),
             nhanKhac: const ['Vượt thu nhập']),
-      if (tuDo != null)
+      if (coThuNhap && tuDo != null)
         if (tuDo >= 0)
           soTien('Dòng tiền tự do', tuDo)
         else
           soTien('Dòng tiền tự do âm', tuDo.abs(),
               nhanKhac: const ['Dòng tiền tự do thiếu']),
-      soTien('Chi trung bình mỗi ngày', sl.chiMoiNgay,
-          nhanKhac: const ['Chi mỗi ngày', 'Trung bình mỗi ngày']),
-      if (sl.ngayChiNhieuNhat != null) ...[
+      if (coChiTieu)
+        soTien('Chi trung bình mỗi ngày', sl.chiMoiNgay,
+            nhanKhac: const ['Chi mỗi ngày', 'Trung bình mỗi ngày']),
+      if (coChiTieu && sl.ngayChiNhieuNhat != null) ...[
         soNgayThang('Ngày chi nhiều nhất', sl.ngayChiNhieuNhat!, now: now),
         soTien('Chi ngày nhiều nhất', sl.chiNgayNhieuNhat,
             nhanKhac: const ['Ngày chi nhiều nhất']),
       ],
-      if (tk.taiSan.isNotEmpty)
+      if (coTaiSan && tk.taiSan.isNotEmpty)
         soTien('Tổng tài sản', tk.taiSan.last.tong, nhanKhac: const ['Tài sản']),
-      if (doiTaiSan != null)
+      if (coTaiSan && doiTaiSan != null)
         if (doiTaiSan >= 0)
           soTien('Tài sản tăng', doiTaiSan,
               nhanKhac: const ['Tài sản thay đổi', 'Tăng'])

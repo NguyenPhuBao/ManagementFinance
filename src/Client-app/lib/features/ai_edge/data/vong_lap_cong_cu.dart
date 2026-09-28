@@ -56,12 +56,17 @@ Stream<SuKienGac> hoiBangCongCu(
   void Function(String) log = print,
 }) async* {
   final dongHo = Stopwatch()..start();
+  // Định tuyến theo CÂU HỎI (mục 9.33): tool mà câu hỏi đòi, nếu bộ tool có nó.
+  // Có đích thì phiên chỉ khai MỘT tool ấy (mục 9.34: khai cả bộ là vỡ trần).
+  final dich = congCuTheoCauHoi(cauHoi);
+  final tenDich =
+      dich != null && boCongCu.tenCacCongCu.contains(dich) ? dich : null;
   final PhienCongCu phien;
   try {
     phien = await runtime.moPhien(
       heThong: heThong,
       cauHoi: cauHoi,
-      congCu: boCongCu.khaiBao,
+      congCu: boCongCu.khaiBaoCho(tenDich),
     );
   } on BacCongCuDaTat {
     // Máy này từng sập native ở phiên có tool (canary 1b). Bậc 1 không mở
@@ -72,10 +77,6 @@ Stream<SuKienGac> hoiBangCongCu(
   }
   var soLanGoi = 0;
   var soCauQua = 0;
-  // Định tuyến theo CÂU HỎI (mục 9.33): tool mà câu hỏi đòi, nếu bộ tool có nó.
-  final dich = congCuTheoCauHoi(cauHoi);
-  final tenDich =
-      dich != null && boCongCu.tenCacCongCu.contains(dich) ? dich : null;
   try {
     for (var luot = 1;; luot++) {
       final loiGoi = <GoiCongCu>[];

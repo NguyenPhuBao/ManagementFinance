@@ -33,6 +33,17 @@ const String kTenCongCuDanhMuc = 'danh_sach_danh_muc';
 /// `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky` (2026-09-24) → gộp vào đây.
 const String kTenCongCuTruyVan = 'truy_van_giao_dich';
 
+/// Tool CHỈ ĐI QUA ĐỊNH TUYẾN (`congCuTheoCauHoi`): không khai cho mô hình ở
+/// phiên của câu hỏi không định tuyến được. Hai lý do đo được trên OnePlus
+/// 2026-09-28 (mục 9.33–9.34 `AI_EDGE_FEATURE.md`): mô hình gần như không tự
+/// chọn chúng (tool dự báo 0/3), và khai cả chín tool đưa `tools_json` lên
+/// 8.170 ký tự — tool danh mục trả 15 hàng là VỠ TRẦN `FAILED_PRECONDITION`.
+const Set<String> kCongCuChiQuaDinhTuyen = {
+  kTenCongCuDuBao,
+  kTenCongCuTongQuan,
+  kTenCongCuDanhMuc,
+};
+
 /// Trần số LỜI GỌI tool trong một câu hỏi. Gọi song song đếm từng lời; tool bịa
 /// tên cũng tốn một suất, để vòng lặp không quay vô hạn.
 const int kTranGoiCongCu = 3;

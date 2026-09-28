@@ -200,6 +200,22 @@ void main() {
       expect(log.any((l) => l.contains('định tuyến')), isTrue);
     });
 
+    test('⭐ câu đã định tuyến: phiên chỉ khai MỘT tool đích; câu không định tuyến: không khai tool chỉ-qua-định-tuyến', () async {
+      Future<List<String>> khaiBaoCua(String cauHoi) async {
+        toolDuBao = _CongCuGia(kTenCongCuDuBao, duBao());
+        final rt = _RuntimeGia(PhienCongCuGia([
+          [const Chu('x')],
+        ]));
+        await hoiBangCongCu(cauHoi,
+            runtime: rt, boCongCu: BoCongCu([tool, toolDuBao]), goi: GoiSoTraCuu(),
+            idaccount: 10, now: now, log: log.add).toList();
+        return [for (final k in rt.khaiBaoDaNhan!) k.ten];
+      }
+
+      expect(await khaiBaoCua('tra het hoa don thi con bao nhieu'), [kTenCongCuDuBao]);
+      expect(await khaiBaoCua('Hoa don nao qua han?'), [kTenCongCuHoaDon]);
+    });
+
     test('mô hình gọi đúng tool dự báo → chạy bình thường, không log định tuyến', () async {
       final (_, goi, _) = await hoi('tra het hoa don thi con bao nhieu', [
         [const GoiCongCu(kTenCongCuDuBao, {})],
