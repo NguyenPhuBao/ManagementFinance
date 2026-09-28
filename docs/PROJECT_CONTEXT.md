@@ -674,8 +674,11 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - `BoCongCu` **bảy** tool; `tools_json` **6.960**; `flutter test` **3949/3949**, `flutter analyze` **26**.
 - ⚠️ Đo trên **OnePlus 13R**, không phải Realme — người dùng chốt *"có máy nào thì test máy đó"*. E2B trên GPU máy
   này viết hỏng chuỗi số ở 4/5 câu có số (bẫy 4.51), nên hầu hết câu rơi về mẫu câu.
-- **Chờ người dùng quyết hướng sửa** trước khi sửa định tuyến; lát 2 (tổng quan tài chính, danh mục, blocklist) và
-  lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) chưa làm.
+- ✅ **Vòng sửa 3 cùng ngày (`c0467a9`)** — người dùng chọn định tuyến ở tầng mã + ba việc kèm: đo lại **6/6**, lát 1
+  gộp **7/7 câu đích đúng**. `kiemCauTraLoi` nay **năm** lớp chắn (thêm `kiemPhuDinh`). `flutter test` **3971/3971**.
+- ⚠️ Còn mở: bẫy 4.51 — trên OnePlus mọi câu có số của mô hình đều hỏng chuỗi số nên mọi câu trả lời là mẫu câu; cần
+  đo cùng APK trên Realme.
+- Lát 2 (tổng quan tài chính, danh mục, blocklist) và lát 3 (hoá đơn, mục tiêu, cân đối ngân sách) chưa làm.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

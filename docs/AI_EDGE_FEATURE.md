@@ -2411,6 +2411,50 @@ tool mang đúng chữ của câu hỏi (*ví*, *hoá đơn*, *chi*).
 - (d) Mẫu câu in chữ so sánh của `chuThem` (*"không có dữ liệu tháng trước"*, *"chi nhiều hơn tháng trước"*) — L1.
 - (e) Đo lại L1–L7 trên Realme khi có máy, để biết 4.51 là của GPU hay của bản này.
 
+#### Vòng sửa 3 (2026-09-28, `c0467a9`) — người dùng chọn (a) + (c) + (d) + kỳ tương lai; đo lại 6/6 ✅
+
+- **(a) Định tuyến theo câu hỏi** — `congCuTheoCauHoi` (`chinh_tham_so.dart`): năm mẫu cho `du_bao_dong_tien` (*còn
+  tiêu được · đủ trả / đủ trích · trả hết … còn · N ngày tới phải chi / trả · sắp tới phải trả*); câu nhắc *ngân sách*
+  thì không đổi. Vòng lặp (`vong_lap_cong_cu.dart`) đổi **lời gọi đầu** sang tool đích, **không** mang tham số của
+  mô hình sang, trả kết quả về phiên dưới **tên lời gọi mô hình đã phát**; tool đích đã chạy thì thôi đổi. Mô hình
+  không gọi tool nào mà câu hỏi có đích → vòng lặp tự chạy tool đích và hiện **mẫu câu** (không rơi bậc 1).
+- **Kỳ tương lai** — bộ chỉnh luật **14**: *"30 ngày tới · tháng sau · tuần tới"* → `ky=ky_tuong_lai`
+  (`kMaKyTuongLai`, không khai cho mô hình); tool giao dịch trả `tuChoiKyTuongLai`. ⚠️ Đọc trên câu **có dấu** khi câu
+  có dấu: bỏ dấu thì *"tới"* và *"tôi"* là một chữ — bản không dấu chỉ nhận *"thang toi"* khi theo sau là *toi / phai
+  / can / se* hoặc hết câu.
+- **(c) `kiemPhuDinh`** — lớp chắn thứ **năm** (`kiem_phu_dinh.dart`, nối vào `kiemCauTraLoi`): gói tra cứu có hàng
+  mà câu **không số** phủ định **dữ liệu** thì chặn. Cố ý hẹp: *"không có hoá đơn nào quá hạn"* qua; câu có số qua;
+  gói bậc 1 không xét (cổng A điểm 4).
+- **(d) Mẫu câu nói chữ kết luận** — `GoiSoTraCuu._ketLuan`: khoá `so_sanh_*`, `tinh_trang`, `ket_qua` của `chuThem`
+  in sau các số, ngăn bằng ` — `.
+
+Kiểm bằng bản sai có chủ ý: bỏ nối `kiemPhuDinh` · bỏ in kết luận · bỏ đổi tool · bỏ phản ví dụ *ngân sách* — cả bốn
+đều làm đúng ca đỏ. `flutter test` **3971/3971** (3 skip), `analyze` 26.
+
+**Đo lại** (OnePlus 13R, APK `c0467a9`, SHA-1 `4bb41a3b…` khớp, 10:20–10:22; `tools_json` 6.960, 0
+`FAILED_PRECONDITION`) — chỉ câu chưa đạt + hai câu canh:
+
+| # | Câu hỏi | Tool thật chạy | Câu hiện ra (rút gọn) | Đánh giá |
+|---|---|---|---|---|
+| L1 | tháng này chi nhiều hơn hay ít hơn tháng trước | `truy_van` `so_voi=ky_truoc` | Mẫu câu: *"… Tổng chi: 2.241.000 đ; Tổng chi tháng trước: 0 đ — không có dữ liệu tháng trước."* | ✅ |
+| L5 | tiền trong ví có đủ trả hoá đơn không | `danh_sach_vi` → **`du_bao_dong_tien`** | Mẫu câu: *"test ví không đủ: Thiếu 260.000 đ, Ngày 28/09; … Số dư hiện tại: 12.904.000 đ; Tổng cam kết: 730.000 đ; Còn tiêu được: 12.174.000 đ; … Ví thiếu: 1 — thiếu tiền cho cam kết."* | ✅ |
+| L6 | trả hết hoá đơn thì còn bao nhiêu | `danh_sach_hoa_don` → **`du_bao_dong_tien`** | cùng mẫu câu, *Còn tiêu được: 12.174.000 đ* | ✅ |
+| L7 | 30 ngày tới tôi phải chi gì | `truy_van` → **`du_bao_dong_tien`** | cùng mẫu câu, bốn cam kết gần nhất, *Số cam kết: 17* | ✅ |
+| canh | hoá đơn nào quá hạn | `danh_sach_hoa_don` (không đổi) | Mẫu câu: *Kiem đã quá hạn 45.000 đ, 18/09; di h0c đã quá hạn 10.000 đ, 23/09* | ✅ |
+| canh | tháng sau tôi chi bao nhiêu | `truy_van` bị từ chối (kỳ tương lai) | *"Chưa tra được số liệu cho câu này: kỳ trong câu hỏi chưa tới nên chưa có giao dịch. Bạn thử hỏi lại cụ thể hơn."* | ✅ trung thực |
+
+**Gộp lát 1: 7/7 câu đích đúng, bịa 0, SAI 0.**
+
+⚠️ **Hai điều còn mở, chưa sửa:**
+
+- **Bẫy 4.51 nặng hơn đã tưởng**: ở lượt đo này **6/6** câu của mô hình có số đều hỏng chuỗi số (*"2.74000 đ"*,
+  *"450000 đ"*, *"1010000 đ"* cho 10.000 đ) — trên OnePlus hiện **không câu có số nào của mô hình tới được người
+  dùng**, mọi câu trả lời là mẫu câu. Nội dung vẫn đúng nhờ lớp chắn, nhưng câu dài và khô. Chưa biết nguyên nhân (GPU
+  của máy này, hay prompt dài hơn sau lát 1) — phải đo cùng APK trên Realme (CPU) mới tách được.
+- Mẫu câu dự báo in **hai hàng *Kiem* quá hạn cùng 45.000 đ, cùng ngày 28/09**: `duBaoCua` dồn mọi kỳ quá hạn của một
+  hoá đơn lặp về hôm nay. Đúng với khối *Dự báo 30 ngày tới* của trang Phân tích (cùng hàm), nhưng trong một câu chữ
+  thì trông như lặp. Không sửa ở `ai_edge` — sửa là đổi hàm domain của trang Phân tích.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
