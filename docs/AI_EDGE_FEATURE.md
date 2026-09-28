@@ -2723,7 +2723,8 @@ F11 ✅ · F12 ✗ · F13 ✅ · F14 ◐ · F15 ✗.
 | F15 | nen chuyen bot ngan sach nao sang ngan sach nao | Dựa trên dữ liệu, bạn có thể xem xét chuyển ngân sách từ "Giải trí" sang "Di chuyển" vì "Giải trí" chưa có ngân sách và "Di chuyển" có mức chi trung bình mỗi tháng là 410.000 đ. | ✗ mô hình gọi `goi_y_han_muc` (câu có "ngân sách" nên không định tuyến) — lời khuyên chuyển từ Giải trí (chưa có ngân sách) vô nghĩa |
 | F16 | gia vang hom nay bao nhieu | Mình chỉ nhận xét được trên số liệu của bạn trong app. | ✅ chặn trước mô hình |
 
-**Nguyên nhân, gom theo gốc** (người dùng chưa chọn hướng — bản bàn giao 2026-09-28 sau cổng F):
+**Nguyên nhân, gom theo gốc** — ✅ **người dùng chọn cả năm gốc 2026-09-28 chiều**: G1–G4 sửa thẳng ở mã, G5
+đổi tầng chắn nên viết spec ngắn trình duyệt trước khi viết mã:
 
 | Gốc | Câu | Hướng sửa đề xuất |
 |---|---|---|
