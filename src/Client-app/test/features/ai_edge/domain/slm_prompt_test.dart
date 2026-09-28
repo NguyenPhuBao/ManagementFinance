@@ -260,6 +260,27 @@ void main() {
       expect(kPromptHeThongCongCu, isNot(contains('tong_ket_thu_chi_ky')));
       expect(kPromptHeThongCongCu, isNot(contains('tim_giao_dich')));
     });
+    // Lát 1 spec mở rộng tool (2026-09-27): kỳ tự do, so hai kỳ (E13), dự báo
+    // (câu 16–17 chặng 3). ⚠️ Ví dụ KHÔNG nêu "tháng 8" — chữ số trong lời hệ
+    // thống là số mô hình có thể chép (ca "không mang con số nào" ngay trên).
+    test('⭐ ví dụ lát 1: ky=tuy_chon, so_voi=ky_truoc, du_bao_dong_tien', () {
+      for (final vd in [
+        'ky=tuy_chon',
+        'tu_ngay',
+        'den_ngay',
+        'so_voi=ky_truoc',
+        'so_voi=cung_ky_nam_truoc',
+        'nhiều hơn hay ít hơn tháng trước',
+        'còn tiêu được bao nhiêu',
+        'có đủ trả hoá đơn không',
+        kTenCongCuDuBao,
+      ]) {
+        expect(kPromptHeThongCongCu, contains(vd), reason: vd);
+      }
+      expect(kPromptHeThongCongCu.indexOf(kTenCongCuDuBao),
+          lessThan(kPromptHeThongCongCu.indexOf('Điền tham số')),
+          reason: 'ví dụ chọn tool đứng trong khối chọn tool');
+    });
     // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
     // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"
     // → một triệu, C9 thiếu sàn, C15 hom_nay cho "lần gần nhất").
