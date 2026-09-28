@@ -31,7 +31,6 @@ import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
-import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
@@ -436,15 +435,8 @@ Future<void> setupDependencies() async {
             if (!v.budget.isExpired(now)) v,
         ];
         if (dangChay.isEmpty) return null;
-        final d = await sl<TaiPhanBoNguon>().nap(idaccount, dangChay, now);
-        return taiPhanBoCua(
-          dangChay: dangChay,
-          now: now,
-          coDinh: d.coDinh,
-          thuNhapMoiThang: d.thuNhapMoiThang,
-          mucThangTheoNganSach: d.mucThangTheoNganSach,
-          phanHoi: d.phanHoi,
-        );
+        return keHoachTaiPhanBoTu(
+            sl<TaiPhanBoNguon>(), idaccount, dangChay, now);
       },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
@@ -545,6 +537,7 @@ Future<void> setupDependencies() async {
       baoCao: sl<BaoCaoRepository>(),
       phanTich: sl<AnalyticsRepository>(),
       danhMuc: sl<CategoryManagementRepository>(),
+      taiPhanBo: sl<TaiPhanBoNguon>(),
     ),
   );
 

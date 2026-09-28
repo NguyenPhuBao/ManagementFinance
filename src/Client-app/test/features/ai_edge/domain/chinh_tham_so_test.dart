@@ -324,6 +324,20 @@ void main() {
         reason: '"đã đặt" là câu hỏi chung — liệt kê mọi ngân sách');
   });
 
+  test('⭐ lát 3 Task 11: F15 "nen chuyen bot ngan sach nao sang ngan sach nao" → can_doi, xét TRƯỚC tỉ lệ', () {
+    for (final cau in [
+      'nen chuyen bot ngan sach nao sang ngan sach nao',
+      'Nên chuyển bớt ngân sách nào sang ngân sách nào?',
+      'can doi ngan sach giup toi',
+      'lay tu ngan sach nao de bu cho an uong',
+      'ngan sach nao sap het thi nen bu tu dau',
+    ]) {
+      expect(chinhThamSoNganSach(cau, {'chon': 'nhieu_nhat'}).args['chon'], 'can_doi', reason: cau);
+    }
+    expect(chinhThamSoNganSach('ngan sach nao sap het', {}).args['chon'], 'nhieu_nhat',
+        reason: 'phản ví dụ: hỏi tỉ lệ, không hỏi chuyển');
+  });
+
   group('chinhThamSoHoaDon (lát 3, spec mở rộng §5.1)', () {
     test('⭐ F11 "thang toi toi phai tra hoa don nao" → ky_toi; có dấu và không dấu', () {
       expect(chinhThamSoHoaDon('thang toi toi phai tra hoa don nao', {}).args['ky'], 'ky_toi');

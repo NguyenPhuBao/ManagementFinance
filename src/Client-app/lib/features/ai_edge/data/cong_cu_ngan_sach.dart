@@ -5,6 +5,7 @@ library;
 
 import '../../budget/data/de_xuat_nguon.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../budget/data/tai_phan_bo_nguon.dart';
 import '../domain/chinh_tham_so.dart';
 import '../domain/chon.dart';
 import '../domain/cong_cu.dart';
@@ -14,8 +15,12 @@ import '../domain/hang_so_lieu.dart';
 import 'nguon_goi_so.dart';
 
 class CongCuNganSach implements CongCu {
-  CongCuNganSach(this.nganSach, {this.log = print});
+  CongCuNganSach(this.nganSach, {required this.taiPhanBo, this.log = print});
   final BudgetRepository nganSach;
+
+  /// Nguồn của kế hoạch tái phân bổ (`chon=can_doi`) — cùng nguồn với thẻ *Đề
+  /// xuất cân đối*, qua `keHoachTaiPhanBoTu`.
+  final TaiPhanBoNguon taiPhanBo;
 
   /// Log khi bộ chỉnh tham số đổi gì đó — `print`, không `debugPrint` (bẫy 4.31).
   final void Function(String) log;
@@ -61,6 +66,11 @@ class CongCuNganSach implements CongCu {
       // Danh mục chưa có ngân sách — cùng nguồn với thẻ "Chưa đặt ngân sách".
       final goi = await deXuatTuKho(nganSach, idaccount, dangChay, toiDa: kToiDaMucMoiGoi);
       return hangChuaDatNganSach(goi, soNganSach: dangChay.length);
+    }
+    if (chon == 'can_doi') {
+      // Tool KHÔNG áp dụng kế hoạch (bất biến ④) — áp dụng ở trang Ngân sách.
+      final kh = await keHoachTaiPhanBoTu(taiPhanBo, idaccount, dangChay, now);
+      return hangCanDoiNganSach(kh, soNganSach: dangChay.length);
     }
     return hangNganSach(
       dangChay,

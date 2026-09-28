@@ -59,6 +59,27 @@ abstract class TaiPhanBoNguon {
   );
 }
 
+/// `nap` rồi `taiPhanBoCua` — phép ghép DUY NHẤT (2026-09-28) cho ba nơi phải nói
+/// về **cùng một** kế hoạch: thẻ *Đề xuất cân đối* (`BudgetCubit`), thông báo
+/// `budgetRebalance` và tool ngân sách của Trợ lý AI. Trước đó hai nơi đầu mỗi
+/// nơi chép tay sáu tham số; nơi thứ ba chép nữa là ba bản.
+Future<KeHoachTaiPhanBo?> keHoachTaiPhanBoTu(
+  TaiPhanBoNguon nguon,
+  int idaccount,
+  List<BudgetView> dangChay,
+  DateTime now,
+) async {
+  final d = await nguon.nap(idaccount, dangChay, now);
+  return taiPhanBoCua(
+    dangChay: dangChay,
+    now: now,
+    coDinh: d.coDinh,
+    thuNhapMoiThang: d.thuNhapMoiThang,
+    mucThangTheoNganSach: d.mucThangTheoNganSach,
+    phanHoi: d.phanHoi,
+  );
+}
+
 class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
   final AppDatabase db;
   final BudgetRepository budgets;

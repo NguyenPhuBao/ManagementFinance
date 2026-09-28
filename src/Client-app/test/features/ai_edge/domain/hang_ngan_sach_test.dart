@@ -6,6 +6,8 @@ library;
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_ngan_sach.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
+import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/domain/de_xuat_ngan_sach.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
@@ -184,5 +186,80 @@ void main() {
     expect(chuNhipNganSach(BudgetPaceStatus.fast), 'tiêu nhanh');
     expect(chuNhipNganSach(BudgetPaceStatus.onTrack), 'đúng nhịp');
     expect(chuNhipNganSach(BudgetPaceStatus.slow), 'tiêu chậm');
+  });
+
+  group('chon=can_doi — kế hoạch tái phân bổ (lát 3 Task 11, spec §5.3)', () {
+    // Cùng fixture `tai_phan_bo_test`: now 21/09, đã qua 20/30 ngày → dự phóng = spent × 1,5.
+    final n21 = DateTime(2026, 9, 21);
+    BudgetView dp(String id, String ten, {required double amount, required double duPhong}) =>
+        _ns(id: id, ten: ten, amount: amount, spent: duPhong * 20 / 30);
+    final anUong = dp('an', 'Ăn uống', amount: 3000000, duPhong: 3600000); // hụt 600k
+    final giaiTri = dp('gt', 'Giải trí', amount: 2000000, duPhong: 800000); // dư 1,2M
+    final muaSam = dp('ms', 'Mua sắm', amount: 3000000, duPhong: 1000000); // dư 2M
+    KeHoachTaiPhanBo? kh(List<BudgetView> ds, {Set<String> coDinh = const {}}) => taiPhanBoCua(
+        dangChay: ds, now: n21, coDinh: coDinh, thuNhapMoiThang: 0, mucThangTheoNganSach: const {}, phanHoi: const []);
+
+    test('⭐ đủ nguồn bù: hàng đầu là ngân sách THÂM HỤT, rồi từng nguồn "giảm bớt"; số là của taiPhanBoCua', () {
+      final r = hangCanDoiNganSach(kh([anUong, giaiTri, muaSam]), soNganSach: 3);
+      expect(r.hang.map((h) => '${h.ten}|${h.trangThai}|${h.canhBao}').toList(), [
+        'Ăn uống|thâm hụt|true',
+        'Mua sắm|giảm bớt|false',
+        'Giải trí|giảm bớt|false',
+      ]);
+      expect(r.hang[0].json, {
+        'ten': 'Ăn uống', 'trang_thai': 'thâm hụt',
+        'Thâm hụt': '600.000 đ', 'Dự phóng': '3.600.000 đ', 'Hạn mức': '3.000.000 đ',
+      });
+      expect(r.hang[1].json, {
+        'ten': 'Mua sắm', 'trang_thai': 'giảm bớt', 'Chuyển': '500.000 đ', 'Dư địa': '2.000.000 đ',
+      });
+      expect(r.json['Số ngân sách'], '3');
+      expect(r.json['Số ngân sách cần bù'], '1');
+      expect(r.json['Tổng chuyển'], '600.000 đ');
+      expect(r.json.containsKey('Còn thiếu sau khi bù'), isFalse);
+      expect(r.chuThem['ket_qua'], 'đủ nguồn bù');
+      expect(r.chuThem['ghi_chu'], isNot(matches(RegExp(r'\d'))));
+      expect(r.boLoc, ['cần cân đối']);
+      expect(r.rongTheoBoLoc, isFalse);
+    });
+
+    test('thiếu nguồn bù: Còn thiếu sau khi bù = soThieu; kết luận thiếu', () {
+      final k = kh([anUong, giaiTri, muaSam], coDinh: {'c-ms'})!;
+      final r = hangCanDoiNganSach(k, soNganSach: 3);
+      expect(r.hang.map((h) => h.ten).toList(), ['Ăn uống', 'Giải trí']);
+      expect(r.json['Còn thiếu sau khi bù'], '300.000 đ');
+      expect(r.chuThem['ket_qua'], 'thiếu nguồn bù');
+    });
+
+    test('không nguồn nào có dư địa: chỉ hàng thâm hụt, Tổng chuyển bỏ, thiếu nguyên phần hụt', () {
+      final r = hangCanDoiNganSach(kh([anUong]), soNganSach: 1);
+      expect(r.hang.single.ten, 'Ăn uống');
+      expect(r.json.containsKey('Tổng chuyển'), isFalse);
+      expect(r.json['Còn thiếu sau khi bù'], '600.000 đ');
+    });
+
+    test('⭐ không kế hoạch (null) → rỗng theo bộ lọc, mẫu câu "Cần cân đối — không có ngân sách nào khớp."', () {
+      final r = hangCanDoiNganSach(null, soNganSach: 2);
+      expect(r.hang, isEmpty);
+      expect(r.rongTheoBoLoc, isTrue);
+      expect(r.json['Số ngân sách cần bù'], '0');
+      final cau = (GoiSoTraCuu()..them('danh_sach_ngan_sach', r)).mauCau().cau;
+      expect(cau, 'Cần cân đối — không có ngân sách nào khớp.');
+    });
+
+    test('hangNganSach từ chối can_doi bằng ArgumentError — tool phải rẽ trước', () {
+      expect(() => hangNganSach([anUong], now: n21, chon: 'can_doi'), throwsArgumentError);
+    });
+
+    test('⭐ mẫu câu tự qua năm lớp chắn; câu tự nhiên đúng qua, số chuyển bịa bị chặn', () {
+      for (final k in [kh([anUong, giaiTri, muaSam]), kh([anUong, giaiTri, muaSam], coDinh: {'c-ms'})]) {
+        final g = GoiSoTraCuu()..them('danh_sach_ngan_sach', hangCanDoiNganSach(k, soNganSach: 3));
+        expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+      }
+      final g = GoiSoTraCuu()
+        ..them('danh_sach_ngan_sach', hangCanDoiNganSach(kh([anUong, giaiTri, muaSam]), soNganSach: 3));
+      expect(kiemCauTraLoi('Ăn uống dự kiến vượt 600.000 đ, bạn có thể chuyển 500.000 đ từ Mua sắm và 100.000 đ từ Giải trí.', [g]), isTrue);
+      expect(kiemCauTraLoi('Bạn có thể chuyển 400.000 đ từ Mua sắm sang Ăn uống.', [g]), isFalse);
+    });
   });
 }

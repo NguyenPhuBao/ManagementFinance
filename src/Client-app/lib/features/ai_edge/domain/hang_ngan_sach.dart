@@ -18,6 +18,7 @@ import 'chon.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
 import 'loi_tham_so.dart';
+import 'tai_phan_bo.dart';
 
 String chuNhipNganSach(BudgetPaceStatus s) => switch (s) {
       BudgetPaceStatus.fast => 'tiêu nhanh',
@@ -33,10 +34,11 @@ KetQuaCongCu hangNganSach(
   if (chon != null && !kChon.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChon);
   }
-  // `chua_dat` không phải phép lọc trên ngân sách đang chạy — tool phải rẽ sang
-  // `hangChuaDatNganSach` TRƯỚC khi tới đây; tới đây là lỗi lập trình.
-  if (chon == 'chua_dat') {
-    throw ArgumentError.value(chon, 'chon', 'đi đường hangChuaDatNganSach');
+  // `chua_dat` / `can_doi` không phải phép lọc trên ngân sách đang chạy — tool
+  // phải rẽ sang `hangChuaDatNganSach` / `hangCanDoiNganSach` TRƯỚC khi tới đây;
+  // tới đây là lỗi lập trình.
+  if (chon == 'chua_dat' || chon == 'can_doi') {
+    throw ArgumentError.value(chon, 'chon', 'đi đường riêng của mã này');
   }
   // Căng nhất trước — thứ tự đáng chú ý, không phải thứ tự CSDL.
   final sap = [...dangChay]..sort(
@@ -115,5 +117,57 @@ KetQuaCongCu hangChuaDatNganSach(GoiDeXuat? goi, {required int soNganSach}) {
     boLoc: [kChuChon['chua_dat']!],
     rongTheoBoLoc: ds.isEmpty,
     doiTuongRong: 'danh mục',
+  );
+}
+
+/// `chon=can_doi` (lát 3 Task 11, spec mở rộng tool §5.3): kế hoạch tái phân bổ
+/// — **cùng** kế hoạch với thẻ *Đề xuất cân đối* và thông báo `budgetRebalance`
+/// (nguồn `keHoachTaiPhanBoTu`), tool chỉ chép số. Hàng đầu là ngân sách thâm
+/// hụt lớn nhất, các hàng sau là nguồn bù theo thứ tự của kế hoạch.
+/// [kh] `null` = không ngân sách nào thâm hụt đủ ngưỡng → `rongTheoBoLoc`.
+/// Tool không áp dụng gì (bất biến ④): `ghi_chu` nói áp dụng ở trang Ngân sách.
+KetQuaCongCu hangCanDoiNganSach(KeHoachTaiPhanBo? kh, {required int soNganSach}) {
+  final hang = <HangSoLieu>[];
+  if (kh != null) {
+    final ten = kh.thieu.displayName;
+    hang.add(HangSoLieu(
+      ten: ten,
+      trangThai: 'thâm hụt',
+      canhBao: true,
+      soLieu: [
+        soTien('Thâm hụt', kh.thamHut, ten: ten),
+        soTien('Dự phóng', kh.duPhong, ten: ten),
+        soTien('Hạn mức', kh.thieu.budget.amount, ten: ten),
+      ],
+    ));
+    for (final d in kh.dong.take(kToiDaMucMoiGoi - 1)) {
+      final tenNguon = d.nguon.displayName;
+      hang.add(HangSoLieu(
+        ten: tenNguon,
+        trangThai: 'giảm bớt',
+        canhBao: false,
+        soLieu: [
+          soTien('Chuyển', d.soTien, ten: tenNguon),
+          soTien('Dư địa', d.duDia, ten: tenNguon),
+        ],
+      ));
+    }
+  }
+  final thieuNguon = kh?.trangThai == TrangThaiKeHoach.thieuNguonBu;
+  return KetQuaCongCu(
+    hang: hang,
+    tongHop: [
+      soDem('Số ngân sách', soNganSach),
+      soDem('Số ngân sách cần bù', kh == null ? 0 : 1),
+      if (kh != null && kh.dong.isNotEmpty) soTien('Tổng chuyển', kh.tongCat),
+      if (thieuNguon) soTien('Còn thiếu sau khi bù', kh!.soThieu),
+    ],
+    chuThem: {
+      if (kh != null) 'ket_qua': thieuNguon ? 'thiếu nguồn bù' : 'đủ nguồn bù',
+      'ghi_chu': 'chỉ là gợi ý, áp dụng ở trang Ngân sách',
+    },
+    boLoc: [kChuChon['can_doi']!],
+    rongTheoBoLoc: kh == null,
+    doiTuongRong: 'ngân sách',
   );
 }

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/budget_entity.dart';
-import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../data/de_xuat_nguon.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../data/tai_phan_bo_nguon.dart';
@@ -104,15 +103,7 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
     try {
       final now = clock();
-      final d = await nguon.nap(idaccount, loaded.active, now);
-      final kh = taiPhanBoCua(
-        dangChay: loaded.active,
-        now: now,
-        coDinh: d.coDinh,
-        thuNhapMoiThang: d.thuNhapMoiThang,
-        mucThangTheoNganSach: d.mucThangTheoNganSach,
-        phanHoi: d.phanHoi,
-      );
+      final kh = await keHoachTaiPhanBoTu(nguon, idaccount, loaded.active, now);
       if (n != _lan || isClosed) return;
       emit(BudgetLoaded(
         active: loaded.active,

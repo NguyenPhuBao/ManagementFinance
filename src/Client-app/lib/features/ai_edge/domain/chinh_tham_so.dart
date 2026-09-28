@@ -569,6 +569,12 @@ final List<String> _tuDuoiNua =
 final List<String> _tuTrenNua = 'qua nua|hon nua|tren nua'.split('|');
 final List<String> _tuNganSachCang = 'sap het|cang nhat|dung nhieu nhat|vuot'.split('|');
 final List<String> _tuNganSachRong = 'it dung nhat|con nhieu nhat|dung it nhat'.split('|');
+/// Lát 3 Task 11: hỏi CHUYỂN tiền giữa các ngân sách → `can_doi`, xét trước mọi
+/// mã khác (F15 *"nên chuyển bớt ngân sách nào sang ngân sách nào"* không có chữ
+/// tỉ lệ nào nhưng *"ngân sách nào sắp hết thì bù từ đâu"* có *"sắp hết"*).
+final List<String> _tuCanDoi =
+    'can doi|chuyen bot|lay tu ngan sach|de bu|bu cho|bu tu|bu vao|bu dap|don ngan sach|tai phan bo'
+        .split('|');
 /// "chưa đặt / chưa có / không có ngân sách" → `chua_dat` (câu người dùng 2026-09-27).
 final List<String> _tuChuaDat =
     'chua dat ngan sach|chua co ngan sach|khong co ngan sach|chua dat|chua co han muc'.split('|');
@@ -579,7 +585,9 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
   final q = _bo(cauHoi);
   if (q.isEmpty) return KetQuaChinhThamSo(a, ghi);
   String? chon;
-  if (_tuChuaDat.any((t) => _co(q, t))) {
+  if (_tuCanDoi.any((t) => _co(q, t))) {
+    chon = 'can_doi';
+  } else if (_tuChuaDat.any((t) => _co(q, t))) {
     chon = 'chua_dat';
   } else if (_tuDuoiNua.any((t) => _co(q, t))) {
     chon = 'duoi_nua';

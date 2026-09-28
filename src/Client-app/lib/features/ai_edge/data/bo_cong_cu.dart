@@ -7,6 +7,7 @@ import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/data/bao_cao_repository.dart';
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../budget/data/tai_phan_bo_nguon.dart';
 import '../../category/data/repositories/category_management_repository.dart';
 import '../../goal/data/repositories/goal_repository.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
@@ -43,10 +44,11 @@ class BoCongCu {
     required BaoCaoRepository baoCao,
     required AnalyticsRepository phanTich,
     required CategoryManagementRepository danhMuc,
+    required TaiPhanBoNguon taiPhanBo,
   }) =>
       BoCongCu([
         CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao),
-        CongCuNganSach(nganSach),
+        CongCuNganSach(nganSach, taiPhanBo: taiPhanBo),
         CongCuHoaDon(hoaDon),
         CongCuVi(vi),
         CongCuMucTieu(mucTieu, vi: vi),
