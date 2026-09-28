@@ -261,6 +261,21 @@ void main() {
       expect(await giaoDichThat(db, 1), isEmpty);
     });
 
+    test('⭐ ví nguồn ĐÃ XOÁ MỀM mà còn số dư thì dừng, không rút tiền (lát 3 Task 10 lộ ra)', () async {
+      await themMucTieu();
+      // Xoá qua DAO — đúng đường của nhánh kéo về khi ví bị xoá ở máy khác /
+      // Admin-web, vốn không đi qua chốt "số dư phải bằng 0" của màn Quản lý ví.
+      await db.walletDao.softDelete('w_nguon');
+
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
+
+      expect(events.single.loai, LoaiTrich.khongChayDuoc,
+          reason: 'getById trả cả hàng đã xoá mềm; bản trước chỉ kiểm null nên '
+              'ví đã xoá vẫn bị rút tiền.');
+      expect(await giaoDichThat(db, 1), isEmpty);
+      expect((await db.walletDao.getById('w_nguon'))!.balance, 5000000.0);
+    });
+
     test('ví nguồn ĐÃ LƯU TRỮ thì dừng, không rút tiền', () async {
       await themMucTieu();
       await db.walletDao.setStatus('w_nguon', luuTru: true);

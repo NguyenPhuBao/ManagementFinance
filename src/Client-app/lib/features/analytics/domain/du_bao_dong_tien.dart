@@ -339,12 +339,13 @@ List<CamKet> _camKetMucTieu(
     }
     final nguonId = g.autoDepositWalletId!;
     final nguon = viTheoId[nguonId];
-    // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả; ví lưu trữ thì
-    // người dùng đã cất đi. Cả hai đều là ca `khongChayDuoc` của bộ trích.
+    // Ba ca `khongChayDuoc` của bộ trích — một định nghĩa, `viNguonChoTrich`.
     if (nguon == null ||
-        nguon.isDeleted ||
-        nguonId == g.walletId ||
-        !WalletStatus.laHoatDong(nguon.status)) {
+        !viNguonChoTrich(
+          g,
+          viNguonConSong: !nguon.isDeleted,
+          trangThaiViNguon: nguon.status,
+        )) {
       continue;
     }
 
