@@ -115,10 +115,11 @@ void main() {
     expect(hang.anchorDay, 20, reason: 'Cột v18 không được đụng tới.');
   });
 
-  test('schemaVersion là 24', () {
+  test('schemaVersion là 25', () {
     // Tệp này canh bước v20→v21, nhưng con số ở đây là **phiên bản hiện tại**
     // của lược đồ — nó tăng theo mỗi migration mới. v22 thêm ngày 2026-09-14
-    // cho G28 (lưu trữ ví qua đồng bộ), không đụng cột nào của `bills`.
-    expect(db.schemaVersion, 24);
+    // cho G28 (lưu trữ ví qua đồng bộ), không đụng cột nào của `bills`; v25
+    // (2026-09-29, B1) thêm bảng phản hồi thẻ gợi ý danh mục, cũng không đụng.
+    expect(db.schemaVersion, 25);
   });
 }

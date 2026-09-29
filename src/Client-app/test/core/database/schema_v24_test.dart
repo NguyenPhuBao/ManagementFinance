@@ -26,7 +26,9 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema là v24', () => expect(db.schemaVersion, 24));
+  // Con số là phiên bản HIỆN TẠI của lược đồ — tăng theo mỗi migration mới. v25 (2026-09-29, B1) thêm bảng phản hồi
+  // thẻ gợi ý danh mục, không đụng hai thứ của v24 mà tệp này canh.
+  test('schema hiện tại là v25 (v24 còn nguyên)', () => expect(db.schemaVersion, 25));
 
   test('categories có cột ai_co_dinh, mặc định false', () async {
     final cols = await db.customSelect("PRAGMA table_info('categories')").get();

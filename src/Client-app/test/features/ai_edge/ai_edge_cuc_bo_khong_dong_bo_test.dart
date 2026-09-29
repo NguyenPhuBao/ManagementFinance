@@ -1,5 +1,7 @@
-/// Test quét thứ MƯỜI LĂM: hai thứ của schema v24 — cột `categories.ai_co_dinh`
-/// và bảng `ai_rebalancing_feedbacks` — KHÔNG được lọt vào đường đồng bộ.
+/// Test quét thứ MƯỜI LĂM: các thứ cục bộ của schema v24–v25 — cột
+/// `categories.ai_co_dinh`, bảng `ai_rebalancing_feedbacks` (v24) và bảng
+/// `goi_y_danh_muc_phan_hois` (v25, B1 — phản hồi thẻ gợi ý danh mục) — KHÔNG được
+/// lọt vào đường đồng bộ.
 ///
 /// ## Canh chừng điều gì
 ///
@@ -28,6 +30,10 @@ void main() {
     'AiRebalancingFeedback',
     'ai_rebalancing_feedbacks',
     'aiRebalancingFeedbacks',
+    'GoiYDanhMucPhanHoi',
+    'goi_y_danh_muc_phan_hois',
+    'goiYDanhMucPhanHois',
+    'goiYPhanHoiDao',
   ];
 
   const duongDongBo = [
@@ -36,7 +42,7 @@ void main() {
     'lib/core/sync/sync_models.dart',
   ];
 
-  test('ba tệp của đường đồng bộ không nhắc tới hai thứ cục bộ v24', () {
+  test('ba tệp của đường đồng bộ không nhắc tới các thứ cục bộ v24–v25', () {
     final loi = <String>[];
     for (final p in duongDongBo) {
       final f = File(p);
@@ -49,7 +55,7 @@ void main() {
       }
     }
     expect(loi, isEmpty,
-        reason: 'Cột/bảng cục bộ v24 lọt vào đường đồng bộ:\n${loi.join('\n')}');
+        reason: 'Cột/bảng cục bộ v24–v25 lọt vào đường đồng bộ:\n${loi.join('\n')}');
   });
 
   test('hợp đồng payload không có khoá ai_co_dinh', () {

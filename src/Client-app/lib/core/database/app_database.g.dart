@@ -7714,14 +7714,14 @@ class AppNotification extends DataClass implements Insertable<AppNotification> {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   final int idaccount;
 
-  /// Giá trị `.name` của `NotificationKind` — **16 loại**, xem enum ấy để có
-  /// danh sách chính xác thay vì tin vào chú thích này:
+  /// Giá trị `.name` của `NotificationKind`.
   ///
-  /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
-  /// | `billAutoPaid` | `billAutoPayFailed` | `goalCompleted` |
-  /// `goalCycleReady` | `goalBehind` | `goalMilestone` | `goalAutoDeposited` |
-  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative` |
-  /// `walletLowBalance` | `weeklySummary`
+  /// ⚠️ **Danh sách đầy đủ nằm ở chính enum ấy, không ở đây.** Chú thích này
+  /// từng chép cả danh sách kèm một con số ("16 loại"), và cả hai đã trôi — tới
+  /// 2026-09-20 nó thiếu hẳn `billPaidOnOtherDevice`, `largeExpense` và
+  /// `budgetRebalance` mà không gì báo. Một bản chép tay của một enum luôn lạc
+  /// hậu, nên đừng dựng lại nó: cột này lưu `‹một giá trị bất kỳ của
+  /// NotificationKind›.name`, và đó là toàn bộ hợp đồng.
   final String kind;
 
   /// Khoá chống trùng — **trái tim của bảng này**.
@@ -8818,6 +8818,459 @@ class AiRebalancingFeedbacksCompanion
   }
 }
 
+class $GoiYDanhMucPhanHoisTable extends GoiYDanhMucPhanHois
+    with TableInfo<$GoiYDanhMucPhanHoisTable, GoiYDanhMucPhanHoi> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GoiYDanhMucPhanHoisTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _nguonMeta = const VerificationMeta('nguon');
+  @override
+  late final GeneratedColumn<String> nguon = GeneratedColumn<String>(
+      'nguon', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amTietChinhMeta =
+      const VerificationMeta('amTietChinh');
+  @override
+  late final GeneratedColumn<String> amTietChinh = GeneratedColumn<String>(
+      'am_tiet_chinh', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _goiYCategoryIdMeta =
+      const VerificationMeta('goiYCategoryId');
+  @override
+  late final GeneratedColumn<String> goiYCategoryId = GeneratedColumn<String>(
+      'goi_y_category_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ketQuaMeta = const VerificationMeta('ketQua');
+  @override
+  late final GeneratedColumn<String> ketQua = GeneratedColumn<String>(
+      'ket_qua', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _chonCategoryIdMeta =
+      const VerificationMeta('chonCategoryId');
+  @override
+  late final GeneratedColumn<String> chonCategoryId = GeneratedColumn<String>(
+      'chon_category_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idaccount,
+        createdAt,
+        nguon,
+        amTietChinh,
+        goiYCategoryId,
+        ketQua,
+        chonCategoryId
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'goi_y_danh_muc_phan_hois';
+  @override
+  VerificationContext validateIntegrity(Insertable<GoiYDanhMucPhanHoi> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('nguon')) {
+      context.handle(
+          _nguonMeta, nguon.isAcceptableOrUnknown(data['nguon']!, _nguonMeta));
+    } else if (isInserting) {
+      context.missing(_nguonMeta);
+    }
+    if (data.containsKey('am_tiet_chinh')) {
+      context.handle(
+          _amTietChinhMeta,
+          amTietChinh.isAcceptableOrUnknown(
+              data['am_tiet_chinh']!, _amTietChinhMeta));
+    } else if (isInserting) {
+      context.missing(_amTietChinhMeta);
+    }
+    if (data.containsKey('goi_y_category_id')) {
+      context.handle(
+          _goiYCategoryIdMeta,
+          goiYCategoryId.isAcceptableOrUnknown(
+              data['goi_y_category_id']!, _goiYCategoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_goiYCategoryIdMeta);
+    }
+    if (data.containsKey('ket_qua')) {
+      context.handle(_ketQuaMeta,
+          ketQua.isAcceptableOrUnknown(data['ket_qua']!, _ketQuaMeta));
+    } else if (isInserting) {
+      context.missing(_ketQuaMeta);
+    }
+    if (data.containsKey('chon_category_id')) {
+      context.handle(
+          _chonCategoryIdMeta,
+          chonCategoryId.isAcceptableOrUnknown(
+              data['chon_category_id']!, _chonCategoryIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  GoiYDanhMucPhanHoi map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GoiYDanhMucPhanHoi(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      nguon: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}nguon'])!,
+      amTietChinh: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}am_tiet_chinh'])!,
+      goiYCategoryId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}goi_y_category_id'])!,
+      ketQua: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ket_qua'])!,
+      chonCategoryId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}chon_category_id']),
+    );
+  }
+
+  @override
+  $GoiYDanhMucPhanHoisTable createAlias(String alias) {
+    return $GoiYDanhMucPhanHoisTable(attachedDatabase, alias);
+  }
+}
+
+class GoiYDanhMucPhanHoi extends DataClass
+    implements Insertable<GoiYDanhMucPhanHoi> {
+  final String id;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này (quy tắc 2).
+  final int idaccount;
+
+  /// Lúc người dùng phân xử — luật mở lại đếm giao dịch có ngày SAU mốc này.
+  final DateTime createdAt;
+
+  /// `hoc` | `tu_khoa`.
+  final String nguon;
+
+  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`), hoặc từ khoá khớp (nguồn `tu_khoa`).
+  final String amTietChinh;
+  final String goiYCategoryId;
+
+  /// `chon` | `bo_qua` | `khac`.
+  final String ketQua;
+
+  /// Danh mục cuối cùng lưu cùng giao dịch; `null` khi bỏ qua mà không lưu.
+  final String? chonCategoryId;
+  const GoiYDanhMucPhanHoi(
+      {required this.id,
+      required this.idaccount,
+      required this.createdAt,
+      required this.nguon,
+      required this.amTietChinh,
+      required this.goiYCategoryId,
+      required this.ketQua,
+      this.chonCategoryId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['nguon'] = Variable<String>(nguon);
+    map['am_tiet_chinh'] = Variable<String>(amTietChinh);
+    map['goi_y_category_id'] = Variable<String>(goiYCategoryId);
+    map['ket_qua'] = Variable<String>(ketQua);
+    if (!nullToAbsent || chonCategoryId != null) {
+      map['chon_category_id'] = Variable<String>(chonCategoryId);
+    }
+    return map;
+  }
+
+  GoiYDanhMucPhanHoisCompanion toCompanion(bool nullToAbsent) {
+    return GoiYDanhMucPhanHoisCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      createdAt: Value(createdAt),
+      nguon: Value(nguon),
+      amTietChinh: Value(amTietChinh),
+      goiYCategoryId: Value(goiYCategoryId),
+      ketQua: Value(ketQua),
+      chonCategoryId: chonCategoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chonCategoryId),
+    );
+  }
+
+  factory GoiYDanhMucPhanHoi.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GoiYDanhMucPhanHoi(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      nguon: serializer.fromJson<String>(json['nguon']),
+      amTietChinh: serializer.fromJson<String>(json['amTietChinh']),
+      goiYCategoryId: serializer.fromJson<String>(json['goiYCategoryId']),
+      ketQua: serializer.fromJson<String>(json['ketQua']),
+      chonCategoryId: serializer.fromJson<String?>(json['chonCategoryId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'nguon': serializer.toJson<String>(nguon),
+      'amTietChinh': serializer.toJson<String>(amTietChinh),
+      'goiYCategoryId': serializer.toJson<String>(goiYCategoryId),
+      'ketQua': serializer.toJson<String>(ketQua),
+      'chonCategoryId': serializer.toJson<String?>(chonCategoryId),
+    };
+  }
+
+  GoiYDanhMucPhanHoi copyWith(
+          {String? id,
+          int? idaccount,
+          DateTime? createdAt,
+          String? nguon,
+          String? amTietChinh,
+          String? goiYCategoryId,
+          String? ketQua,
+          Value<String?> chonCategoryId = const Value.absent()}) =>
+      GoiYDanhMucPhanHoi(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        createdAt: createdAt ?? this.createdAt,
+        nguon: nguon ?? this.nguon,
+        amTietChinh: amTietChinh ?? this.amTietChinh,
+        goiYCategoryId: goiYCategoryId ?? this.goiYCategoryId,
+        ketQua: ketQua ?? this.ketQua,
+        chonCategoryId:
+            chonCategoryId.present ? chonCategoryId.value : this.chonCategoryId,
+      );
+  GoiYDanhMucPhanHoi copyWithCompanion(GoiYDanhMucPhanHoisCompanion data) {
+    return GoiYDanhMucPhanHoi(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      nguon: data.nguon.present ? data.nguon.value : this.nguon,
+      amTietChinh:
+          data.amTietChinh.present ? data.amTietChinh.value : this.amTietChinh,
+      goiYCategoryId: data.goiYCategoryId.present
+          ? data.goiYCategoryId.value
+          : this.goiYCategoryId,
+      ketQua: data.ketQua.present ? data.ketQua.value : this.ketQua,
+      chonCategoryId: data.chonCategoryId.present
+          ? data.chonCategoryId.value
+          : this.chonCategoryId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoiYDanhMucPhanHoi(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('nguon: $nguon, ')
+          ..write('amTietChinh: $amTietChinh, ')
+          ..write('goiYCategoryId: $goiYCategoryId, ')
+          ..write('ketQua: $ketQua, ')
+          ..write('chonCategoryId: $chonCategoryId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, idaccount, createdAt, nguon, amTietChinh,
+      goiYCategoryId, ketQua, chonCategoryId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GoiYDanhMucPhanHoi &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.createdAt == this.createdAt &&
+          other.nguon == this.nguon &&
+          other.amTietChinh == this.amTietChinh &&
+          other.goiYCategoryId == this.goiYCategoryId &&
+          other.ketQua == this.ketQua &&
+          other.chonCategoryId == this.chonCategoryId);
+}
+
+class GoiYDanhMucPhanHoisCompanion extends UpdateCompanion<GoiYDanhMucPhanHoi> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<DateTime> createdAt;
+  final Value<String> nguon;
+  final Value<String> amTietChinh;
+  final Value<String> goiYCategoryId;
+  final Value<String> ketQua;
+  final Value<String?> chonCategoryId;
+  final Value<int> rowid;
+  const GoiYDanhMucPhanHoisCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.nguon = const Value.absent(),
+    this.amTietChinh = const Value.absent(),
+    this.goiYCategoryId = const Value.absent(),
+    this.ketQua = const Value.absent(),
+    this.chonCategoryId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  GoiYDanhMucPhanHoisCompanion.insert({
+    required String id,
+    required int idaccount,
+    required DateTime createdAt,
+    required String nguon,
+    required String amTietChinh,
+    required String goiYCategoryId,
+    required String ketQua,
+    this.chonCategoryId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        createdAt = Value(createdAt),
+        nguon = Value(nguon),
+        amTietChinh = Value(amTietChinh),
+        goiYCategoryId = Value(goiYCategoryId),
+        ketQua = Value(ketQua);
+  static Insertable<GoiYDanhMucPhanHoi> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<DateTime>? createdAt,
+    Expression<String>? nguon,
+    Expression<String>? amTietChinh,
+    Expression<String>? goiYCategoryId,
+    Expression<String>? ketQua,
+    Expression<String>? chonCategoryId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (nguon != null) 'nguon': nguon,
+      if (amTietChinh != null) 'am_tiet_chinh': amTietChinh,
+      if (goiYCategoryId != null) 'goi_y_category_id': goiYCategoryId,
+      if (ketQua != null) 'ket_qua': ketQua,
+      if (chonCategoryId != null) 'chon_category_id': chonCategoryId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  GoiYDanhMucPhanHoisCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<DateTime>? createdAt,
+      Value<String>? nguon,
+      Value<String>? amTietChinh,
+      Value<String>? goiYCategoryId,
+      Value<String>? ketQua,
+      Value<String?>? chonCategoryId,
+      Value<int>? rowid}) {
+    return GoiYDanhMucPhanHoisCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      createdAt: createdAt ?? this.createdAt,
+      nguon: nguon ?? this.nguon,
+      amTietChinh: amTietChinh ?? this.amTietChinh,
+      goiYCategoryId: goiYCategoryId ?? this.goiYCategoryId,
+      ketQua: ketQua ?? this.ketQua,
+      chonCategoryId: chonCategoryId ?? this.chonCategoryId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (nguon.present) {
+      map['nguon'] = Variable<String>(nguon.value);
+    }
+    if (amTietChinh.present) {
+      map['am_tiet_chinh'] = Variable<String>(amTietChinh.value);
+    }
+    if (goiYCategoryId.present) {
+      map['goi_y_category_id'] = Variable<String>(goiYCategoryId.value);
+    }
+    if (ketQua.present) {
+      map['ket_qua'] = Variable<String>(ketQua.value);
+    }
+    if (chonCategoryId.present) {
+      map['chon_category_id'] = Variable<String>(chonCategoryId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GoiYDanhMucPhanHoisCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('nguon: $nguon, ')
+          ..write('amTietChinh: $amTietChinh, ')
+          ..write('goiYCategoryId: $goiYCategoryId, ')
+          ..write('ketQua: $ketQua, ')
+          ..write('chonCategoryId: $chonCategoryId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8835,6 +9288,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AppNotificationsTable(this);
   late final $AiRebalancingFeedbacksTable aiRebalancingFeedbacks =
       $AiRebalancingFeedbacksTable(this);
+  late final $GoiYDanhMucPhanHoisTable goiYDanhMucPhanHois =
+      $GoiYDanhMucPhanHoisTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -8847,6 +9302,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final NotificationDao notificationDao =
       NotificationDao(this as AppDatabase);
   late final AiFeedbackDao aiFeedbackDao = AiFeedbackDao(this as AppDatabase);
+  late final GoiYPhanHoiDao goiYPhanHoiDao =
+      GoiYPhanHoiDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8862,6 +9319,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         goals,
         appNotifications,
         aiRebalancingFeedbacks,
+        goiYDanhMucPhanHois,
         idxAppnotifFeed
       ];
 }
@@ -12719,6 +13177,233 @@ typedef $$AiRebalancingFeedbacksTableProcessedTableManager
         ),
         AiRebalancingFeedback,
         PrefetchHooks Function()>;
+typedef $$GoiYDanhMucPhanHoisTableCreateCompanionBuilder
+    = GoiYDanhMucPhanHoisCompanion Function({
+  required String id,
+  required int idaccount,
+  required DateTime createdAt,
+  required String nguon,
+  required String amTietChinh,
+  required String goiYCategoryId,
+  required String ketQua,
+  Value<String?> chonCategoryId,
+  Value<int> rowid,
+});
+typedef $$GoiYDanhMucPhanHoisTableUpdateCompanionBuilder
+    = GoiYDanhMucPhanHoisCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<DateTime> createdAt,
+  Value<String> nguon,
+  Value<String> amTietChinh,
+  Value<String> goiYCategoryId,
+  Value<String> ketQua,
+  Value<String?> chonCategoryId,
+  Value<int> rowid,
+});
+
+class $$GoiYDanhMucPhanHoisTableFilterComposer
+    extends Composer<_$AppDatabase, $GoiYDanhMucPhanHoisTable> {
+  $$GoiYDanhMucPhanHoisTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get nguon => $composableBuilder(
+      column: $table.nguon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get amTietChinh => $composableBuilder(
+      column: $table.amTietChinh, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get goiYCategoryId => $composableBuilder(
+      column: $table.goiYCategoryId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ketQua => $composableBuilder(
+      column: $table.ketQua, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get chonCategoryId => $composableBuilder(
+      column: $table.chonCategoryId,
+      builder: (column) => ColumnFilters(column));
+}
+
+class $$GoiYDanhMucPhanHoisTableOrderingComposer
+    extends Composer<_$AppDatabase, $GoiYDanhMucPhanHoisTable> {
+  $$GoiYDanhMucPhanHoisTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get nguon => $composableBuilder(
+      column: $table.nguon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get amTietChinh => $composableBuilder(
+      column: $table.amTietChinh, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get goiYCategoryId => $composableBuilder(
+      column: $table.goiYCategoryId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ketQua => $composableBuilder(
+      column: $table.ketQua, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get chonCategoryId => $composableBuilder(
+      column: $table.chonCategoryId,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$GoiYDanhMucPhanHoisTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GoiYDanhMucPhanHoisTable> {
+  $$GoiYDanhMucPhanHoisTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get nguon =>
+      $composableBuilder(column: $table.nguon, builder: (column) => column);
+
+  GeneratedColumn<String> get amTietChinh => $composableBuilder(
+      column: $table.amTietChinh, builder: (column) => column);
+
+  GeneratedColumn<String> get goiYCategoryId => $composableBuilder(
+      column: $table.goiYCategoryId, builder: (column) => column);
+
+  GeneratedColumn<String> get ketQua =>
+      $composableBuilder(column: $table.ketQua, builder: (column) => column);
+
+  GeneratedColumn<String> get chonCategoryId => $composableBuilder(
+      column: $table.chonCategoryId, builder: (column) => column);
+}
+
+class $$GoiYDanhMucPhanHoisTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $GoiYDanhMucPhanHoisTable,
+    GoiYDanhMucPhanHoi,
+    $$GoiYDanhMucPhanHoisTableFilterComposer,
+    $$GoiYDanhMucPhanHoisTableOrderingComposer,
+    $$GoiYDanhMucPhanHoisTableAnnotationComposer,
+    $$GoiYDanhMucPhanHoisTableCreateCompanionBuilder,
+    $$GoiYDanhMucPhanHoisTableUpdateCompanionBuilder,
+    (
+      GoiYDanhMucPhanHoi,
+      BaseReferences<_$AppDatabase, $GoiYDanhMucPhanHoisTable,
+          GoiYDanhMucPhanHoi>
+    ),
+    GoiYDanhMucPhanHoi,
+    PrefetchHooks Function()> {
+  $$GoiYDanhMucPhanHoisTableTableManager(
+      _$AppDatabase db, $GoiYDanhMucPhanHoisTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GoiYDanhMucPhanHoisTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GoiYDanhMucPhanHoisTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GoiYDanhMucPhanHoisTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String> nguon = const Value.absent(),
+            Value<String> amTietChinh = const Value.absent(),
+            Value<String> goiYCategoryId = const Value.absent(),
+            Value<String> ketQua = const Value.absent(),
+            Value<String?> chonCategoryId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoiYDanhMucPhanHoisCompanion(
+            id: id,
+            idaccount: idaccount,
+            createdAt: createdAt,
+            nguon: nguon,
+            amTietChinh: amTietChinh,
+            goiYCategoryId: goiYCategoryId,
+            ketQua: ketQua,
+            chonCategoryId: chonCategoryId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required DateTime createdAt,
+            required String nguon,
+            required String amTietChinh,
+            required String goiYCategoryId,
+            required String ketQua,
+            Value<String?> chonCategoryId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              GoiYDanhMucPhanHoisCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            createdAt: createdAt,
+            nguon: nguon,
+            amTietChinh: amTietChinh,
+            goiYCategoryId: goiYCategoryId,
+            ketQua: ketQua,
+            chonCategoryId: chonCategoryId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$GoiYDanhMucPhanHoisTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $GoiYDanhMucPhanHoisTable,
+    GoiYDanhMucPhanHoi,
+    $$GoiYDanhMucPhanHoisTableFilterComposer,
+    $$GoiYDanhMucPhanHoisTableOrderingComposer,
+    $$GoiYDanhMucPhanHoisTableAnnotationComposer,
+    $$GoiYDanhMucPhanHoisTableCreateCompanionBuilder,
+    $$GoiYDanhMucPhanHoisTableUpdateCompanionBuilder,
+    (
+      GoiYDanhMucPhanHoi,
+      BaseReferences<_$AppDatabase, $GoiYDanhMucPhanHoisTable,
+          GoiYDanhMucPhanHoi>
+    ),
+    GoiYDanhMucPhanHoi,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12745,4 +13430,6 @@ class $AppDatabaseManager {
   $$AiRebalancingFeedbacksTableTableManager get aiRebalancingFeedbacks =>
       $$AiRebalancingFeedbacksTableTableManager(
           _db, _db.aiRebalancingFeedbacks);
+  $$GoiYDanhMucPhanHoisTableTableManager get goiYDanhMucPhanHois =>
+      $$GoiYDanhMucPhanHoisTableTableManager(_db, _db.goiYDanhMucPhanHois);
 }
