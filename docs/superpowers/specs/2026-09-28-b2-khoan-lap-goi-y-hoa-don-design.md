@@ -103,6 +103,11 @@ Tệp `core/database/tables/goi_y_hoa_don_phan_hoi_table.dart`, theo khuôn `ai_
   ca test ở khổ màn thấp.
 - ⚠️ **Thiết kế trên Stitch trước** (khối mới trên màn đã có), theo khuôn màn *Chưa đặt ngân sách* `eb872aa9…`. Timeout
   của Stitch không phải thất bại; hỏi người dùng nhìn giúp.
+  ✅ **Màn `e8b460b4a12f4e96a4a40e2fa078cc32`** *"Hoá đơn - Thẻ Có vẻ là khoản lặp - FlowMoney"* (2026-09-29; lượt gọi
+  trả về timeout, màn có mặt vài phút sau; **người dùng xác nhận** cùng ngày). Thêm một dòng mô tả dưới tiêu đề mà mục
+  này chưa ghi: *"Bạn ghi tay những khoản này đều đặn — tạo hoá đơn để được nhắc hạn"*; hai dòng cách nhau một vạch
+  mảnh; nút **Tạo** là viên thuốc đen, **Bỏ qua** là nút chữ xám. Màn mang `deviceType: DESKTOP` dù lượt gọi truyền
+  `MOBILE` — thân trang vẫn là một cột điện thoại.
 
 ## 5. Tạo hoá đơn điền sẵn
 
