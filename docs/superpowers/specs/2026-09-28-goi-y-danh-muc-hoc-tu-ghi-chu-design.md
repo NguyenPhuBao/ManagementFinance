@@ -1,7 +1,17 @@
 # B1 — Gợi ý danh mục học từ ghi chú (Naive Bayes cục bộ) — thiết kế
 
-> 🚧 **Tiến độ 2026-09-29 (tạm dừng giữa Task 7 theo lời người dùng):** Task 1–6 **xong mã** (`bf7a076` → `8bee5d7`) +
-> một bản sửa `4ef4a5b`. Chỗ lệch khỏi thiết kế / kế hoạch, ghi lại cho lần sau:
+> ✅ **XONG trọn 7 task 2026-09-29** — nghiệm thu trên **Realme** (bản release): thẻ học *"Bạn thường ghi “grab” cho Di
+> chuyển (5/5 lần)."*, *Bỏ qua* hai lần → lần ba thẻ học thôi hiện, bảng phản hồi đúng ba hàng (2 `bo_qua` + 1 `khac`,
+> đọc bằng bản debug cài đè cùng khoá ký rồi trả lại release). Lượt ấy lộ thêm: (7) 🐞 **công cụ đo Task 6 sai** — ứng
+> viên từ khoá gồm cả hàng mặc định toàn cục nên hoà giả, từ khoá báo *"phủ 0 %"*; sửa `9f407e6`, số đúng trên Realme:
+> học phủ 91,7 % đúng 100 %, từ khoá phủ 50 % đúng **0 %** (12 mẫu, 11 là mẫu thử). (8) ⚠️ **Từ khoá mặc định `grab` →
+> Ăn uống** (seed backend) gợi ý sai mọi ghi chú *grab …*; B1 sửa được khi có lịch sử, nhưng bỏ qua thẻ học hai lần thì
+> màn rơi về đúng từ khoá sai ấy — hai câu hỏi **chờ người dùng**, mục 5d `docs/CATEGORY_RATIONALE.md` (quyết định,
+> phương án loại, số đo).
+>
+> *(Ảnh chụp trước đó cùng ngày, giữ vì nó ghi chỗ lệch khỏi kế hoạch:)* 🚧 **Tiến độ 2026-09-29 (tạm dừng giữa Task 7
+> theo lời người dùng):** Task 1–6 **xong mã** (`bf7a076` → `8bee5d7`) + một bản sửa `4ef4a5b`. Chỗ lệch khỏi thiết kế /
+> kế hoạch, ghi lại cho lần sau:
 > (1) **Hai tinh chỉnh của kế hoạch đã làm** — xác suất tính trên MỌI danh mục, `hopLe` chỉ lọc ứng viên, kèm chốt
 > *bằng chứng*; câu lý do in **cụm** âm tiết (*"cà phê"*, *"trà sữa"*). (2) Hằng tiền tố nạp mục tiêu cũ đã công khai sẵn
 > là `kGhiChuNapMucTieuCu` (`transaction_owner.dart`), không phải sửa tệp ấy. (3) `CategorySuggestion` mang nguồn + lý do
@@ -146,6 +156,11 @@ mẫu ấy. Báo:
 
 CSDL chép từ **máy ảo bản debug** (bản release trên Realme không `run-as` được). Khi app đã chạy thật một thời gian, bảng
 phản hồi cho thêm **tỉ lệ chấp nhận thật** (`chon` / tổng).
+
+> ✅ *2026-09-29:* **máy thật cũng đọc được** — bản release ký bằng khoá **debug** (`android/app/build.gradle.kts`), nên
+> `adb install -r app-debug.apk` đè lên giữ nguyên dữ liệu (và tệp mô hình 2,4 GB), `run-as` chạy, xong thì cài lại bản
+> release. ⚠️ Đọc tệp chép ra bằng `sqlite3` của Python thì lúc đóng nó **gộp WAL vào tệp chính và xoá `-wal`** — chốt
+> chặn *"thiếu -wal"* của công cụ đo khi ấy báo nhầm; dữ liệu đã đủ trong tệp chính, tạo một `-wal` rỗng là chạy được.
 
 ## 6. Xử lý lỗi và giới hạn cố ý
 

@@ -719,6 +719,14 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn**. Người dùng
   dặn sau vòng đo này **dừng nhóm A, chuyển sang phần kế** (B1). `flutter test` **4254/4254** (3 skip), analyze 26. Bàn
   giao sau nhóm A: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
+- ✅ **B1 xong trọn 7 task 2026-09-29 trưa** — nghiệm thu trên **Realme** bản release: thẻ học hiện đúng câu lý do,
+  *Bỏ qua* hai lần → lần ba thẻ học thôi hiện, bảng phản hồi đúng ba hàng (đọc bằng bản debug cài đè cùng khoá ký, rồi
+  trả lại release). Lượt ấy bắt **lỗi của chính công cụ đo Task 6** (ứng viên từ khoá gồm hàng mặc định toàn cục → hoà
+  giả, "phủ 0 %"; sửa `9f407e6`) và một **từ khoá mặc định gây nhầm** `grab` → Ăn uống (seed backend) — hai câu hỏi
+  **chờ người dùng**, mục **5d** `docs/CATEGORY_RATIONALE.md`. ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
+  29/09, ví Tiền mặt (**6** *grab …* → Di chuyển · **5** *ca phe …* → Ăn uống; tổng chi tháng 9 **2.241.000 → 2.351.000**,
+  Trang chủ tổng số dư 12.794.000) — **đáp án mọi bộ câu AI đo
+  trên Realme phải tính lại**. `flutter test` **4301/4301** (4 skip), analyze 26. *(Ảnh chụp trước đó cùng ngày:)*
 - 🚧 **B1 — gợi ý danh mục học từ ghi chú: Task 1–6 xong mã 2026-09-29, Task 7 (nghiệm thu + tài liệu) dở — người dùng
   cho tạm dừng** (banner đầu spec `specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`; `bf7a076` → `8bee5d7`,
   sửa `4ef4a5b`): Naive Bayes nhị phân hoá ở `category/domain/phan_loai_ghi_chu.dart`, bảng cục bộ **schema v25**
