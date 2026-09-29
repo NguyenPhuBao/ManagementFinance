@@ -257,4 +257,66 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ví đích (Đến ví)'), findsOneWidget);
   });
+
+  // ── G58 (2026-09-29): bàn phím HỆ THỐNG mở — lúc gõ ghi chú ────────────────
+  // Realme RMX2205: 360 dp × 800 dp, thanh trạng thái 40 dp, bàn phím hệ thống
+  // ~303 dp (908 px / 3,0 đo trên ảnh chụp). Thân còn ~400 dp mà thanh chọn +
+  // con số + 16 phím cao cố định vượt quá: thẻ form bị ép về 0 (ô ghi chú đang
+  // gõ biến mất) và hàng phím cuối tràn 9,7 px. Khổ 411 × 914 không có bàn phím
+  // hệ thống thì không lộ — bốn ca trên đều mù.
+  void khoRealmeCoBanPhim(WidgetTester tester, {double banPhim = 303}) {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(top: 40);
+    tester.view.viewInsets = FakeViewPadding(bottom: banPhim);
+    addTearDown(tester.view.reset);
+  }
+
+  testWidgets(
+      'G58 — bàn phím hệ thống mở: không tràn, bàn phím số ẩn, ô ghi chú nằm '
+      'trên bàn phím hệ thống', (tester) async {
+    khoRealmeCoBanPhim(tester);
+    await tester.pumpWidget(app(
+      categoryRepository: categories(),
+      transactionRepository: FakeTransactionRepository(),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull,
+        reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+    expect(find.text('000'), findsNothing,
+        reason: 'đang gõ chữ thì 16 phím số không có việc gì — giữ chúng là '
+            'lấy mất chỗ của chính ô đang gõ (người dùng chọn ẩn)');
+    expect(find.byIcon(Icons.check), findsNothing);
+
+    final ghiChu = find.byType(TextField);
+    await tester.ensureVisible(ghiChu);
+    await tester.pumpAndSettle();
+    final o = tester.getRect(ghiChu);
+    expect(o.height, greaterThan(0));
+    expect(o.bottom, lessThanOrEqualTo(800 - 303 + 0.5),
+        reason: 'ô ghi chú phải nằm TRÊN bàn phím hệ thống — người dùng thấy '
+            'chữ mình đang gõ');
+    // Con số vẫn ở trên: gõ ghi chú không làm mất số tiền vừa nhập.
+    expect(find.text('0 đ'), findsOneWidget);
+  });
+
+  testWidgets('G58 — đóng bàn phím hệ thống thì bàn phím số và ✓ hiện lại',
+      (tester) async {
+    khoRealmeCoBanPhim(tester);
+    await tester.pumpWidget(app(
+      categoryRepository: categories(),
+      transactionRepository: FakeTransactionRepository(),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('000'), findsNothing);
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+
+    expect(find.text('000'), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsOneWidget,
+        reason: '✓ là nút lưu duy nhất — ẩn luôn là không lưu được giao dịch');
+    expect(tester.takeException(), isNull);
+  });
 }

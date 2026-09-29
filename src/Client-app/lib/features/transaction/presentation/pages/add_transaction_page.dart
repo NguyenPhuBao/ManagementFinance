@@ -951,14 +951,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     child: _buildFormCard(context),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: _buildNumericKeyboard(
-                    context,
-                    isSubmitting: state is TransactionLoadedState &&
-                        state.isSubmitting,
+                // G58 (2026-09-29): bàn phím HỆ THỐNG mở — người dùng đang gõ
+                // ghi chú — thì không dựng 16 phím số. Ở 360 dp, thân còn ~400
+                // dp; giữ 16 phím (~240 dp) là ép thẻ form về 0, tức ô đang gõ
+                // biến mất, và hàng phím cuối tràn. Đóng bàn phím hệ thống thì
+                // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
+                // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
+                if (MediaQuery.viewInsetsOf(context).bottom == 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: _buildNumericKeyboard(
+                      context,
+                      isSubmitting: state is TransactionLoadedState &&
+                          state.isSubmitting,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
