@@ -926,7 +926,9 @@ hiện hai dòng, *Gui xe* trước (cùng 3 lần, gần hơn); **Tạo** ở *
 danh mục Nhà cửa → lưu → hoá đơn `anchor_day` 5 và hàng `da_tao`, dòng biến mất;
 **Bỏ qua** *Gui xe* → hàng `bo_qua`, cả thẻ biến mất; hàng tab ghim dưới app bar
 khi cuộn. Lượt ấy bắt lỗi dòng phụ bị cắt (đã sửa) và một lỗi **có từ trước** —
-số tiền trên thẻ hoá đơn bị cắt ở 360 dp (**G51**, `CLIENT_APP_KNOWN_GAPS.md`).
+số tiền trên thẻ hoá đơn bị cắt ở 360 dp (**G51**, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ đóng cùng ngày: `Flexible(số
+tiền)` và `Spacer` cùng `flex: 1` từng chia đôi chỗ trống; nay [số tiền · bút · thùng rác] nằm trong một `Expanded`
+(ca canh `bill_page_so_tien_test.dart`).
 
 **Giới hạn nói trước:** tài khoản thật (giao dịch đầu 02/09/2026) sẽ **im** với
 khoản lặp tháng tới khoảng tháng 11/2026 — đúng hành vi; người không ghi chú
@@ -1150,6 +1152,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/data/de_xuat_hoa_don_nguon_test.dart` | *(B2)* Nguồn đọc đúng tài khoản, cửa sổ 120 ngày; `boQua` / `daTao` ghi hàng; `bangDanhMuc` gồm danh mục mặc định toàn cục (G41); lỗi → `null` |
 | `test/features/bill/presentation/the_khoan_lap_test.dart` | *(B2)* Thẻ ẩn không chiếm chỗ; chu kỳ là một `Text` **riêng**; Bỏ qua / Tạo gọi đúng khoá, `da_tao` chỉ khi form trả `true`; 360 × 640 không tràn — dựng bằng `AppTheme.lightTheme` (bẫy 4.11) |
 | `test/features/bill/presentation/pages/bill_page_khoan_lap_test.dart` | *(B2)* Thẻ đứng giữa Nhận xét và hàng tab; 360 × 640 có / không hoá đơn không tràn (bố cục cũ tràn 219 / 44 px); cuộn hết phần đầu → hàng tab ghim dưới app bar, hoá đơn đầu **không** khuất dưới nó |
+| `test/features/bill/presentation/pages/bill_page_so_tien_test.dart` | *(G51)* Số tiền trên thẻ không bị cắt khi còn chỗ (đo ở 500 / 600 vì font test rộng gấp đôi); bút đứng cách **chữ** số tiền 12 px (đo bề rộng chữ, không đo hộp); nút sát mép phải; số 13 chữ số ở 411 vẫn ellipsis, không tràn |
 | `test/core/database/schema_v27_test.dart` | *(B2)* Bảng phản hồi v27 không cột đồng bộ; đọc theo tài khoản; hai hàm purge; migration v26 → v27 giữ nhật ký thông báo |
 | `test/core/sync/sync_push_result_truoc_pull_test.dart` | *(ngoài thư mục bill)* `SyncEngine` phát kết quả đẩy **TRƯỚC** bước Pull — nếu không, phép hoàn tiền cộng vào số dư đã bị server đè lên |
 
