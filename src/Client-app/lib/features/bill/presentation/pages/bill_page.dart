@@ -23,13 +23,20 @@ import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart'
 import '../../../../core/category/category_visuals.dart';
 import '../widgets/bill_actions.dart';
 import '../widgets/bill_status_visuals.dart';
+import '../widgets/the_khoan_lap.dart';
+import '../../data/de_xuat_hoa_don_nguon.dart';
 
 class BillPage extends StatefulWidget {
   /// Thời điểm dùng để xếp trạng thái từng hoá đơn. Tiêm được để test không
   /// phụ thuộc ngày chạy — cùng lối với `BudgetTabsView`.
   final DateTime? now;
 
-  const BillPage({super.key, this.now});
+  /// Nguồn của thẻ "Có vẻ là khoản lặp" (B2). `null` thì lấy từ DI nếu đã
+  /// đăng ký, không thì trang không dựng thẻ — test trang cũ không phải dựng
+  /// thêm gì.
+  final DeXuatHoaDonNguon? deXuatNguon;
+
+  const BillPage({super.key, this.now, this.deXuatNguon});
 
   @override
   State<BillPage> createState() => _BillPageState();
@@ -94,6 +101,9 @@ class _BillPageState extends State<BillPage> {
 
     final dateFormatter = DateFormat('dd/MM/yyyy');
     final now = widget.now ?? DateTime.now();
+    final idKhoanLap = currentAccountIdOrNull(context);
+    final nguonKhoanLap = widget.deXuatNguon ??
+        (sl.isRegistered<DeXuatHoaDonNguon>() ? sl<DeXuatHoaDonNguon>() : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -157,65 +167,97 @@ class _BillPageState extends State<BillPage> {
               length: 2,
               child: Stack(
                 children: [
-                  Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                        child: _buildSummaryCard(
-                          totalAmountStr: CurrencyFormatter.format(
-                              state.summary.unpaidAmount),
-                          unpaidCount: state.summary.unpaidCount,
-                          progress: state.summary.progress,
-                        ),
-                      ),
-                      // Khối Nhận xét (Edge-SLM, chặng 1.3) — màn Stitch
-                      // `179dbd70…`: đứng GIỮA thẻ tổng quan và hàng tab, vì
-                      // nó nói về **cả kỳ**, đúng phạm vi thẻ ngay trên nó.
-                      // Đặt dưới hàng tab là nó rơi vào một trong hai danh
-                      // sách và trông như nhận xét riêng của tab ấy.
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: KhoiNhanXet(
-                          goi: GoiSoHoaDon.tu(state.bills, now: now),
-                        ),
-                      ),
-                      TabBar(
-                        labelColor: AppColors.primary,
-                        unselectedLabelColor: AppColors.textSecondary,
-                        indicatorColor: AppColors.primary,
-                        tabs: [
-                          Tab(
-                              text:
-                                  'Cần thanh toán (${sections.chuaDong.length})'),
-                          // "Lịch sử" chứ không phải "Đã thanh toán": từ
-                          // 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
-                          // chưa hề được trả đồng nào.
-                          Tab(text: 'Lịch sử (${sections.daDong.length})'),
-                        ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
+                  // ⚠️ CẢ TRANG CUỘN, hàng tab ghim (B2, người dùng chốt
+                  // 2026-09-29). Trước đây phần trên hàng tab là một `Column`
+                  // cố định và danh sách nằm trong `Expanded`, nên mỗi khối
+                  // thêm vào đầu trang lấy bớt chiều cao của danh sách: khối
+                  // Nhận xét từng làm trạng thái rỗng tràn 73 px, thẻ khoản
+                  // lặp ba dòng làm cả trang tràn 219 px ở 360 × 640.
+                  NestedScrollView(
+                    headerSliverBuilder: (ctx, _) => [
+                      SliverToBoxAdapter(
+                        child: Column(
                           children: [
-                            _danhSach(
-                              context,
-                              sections.chuaDong,
-                              now: now,
-                              dateFormatter: dateFormatter,
-                              khiTrong: 'Không còn hoá đơn nào phải trả.',
-                              payments: state.payments,
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                              child: _buildSummaryCard(
+                                totalAmountStr: CurrencyFormatter.format(
+                                    state.summary.unpaidAmount),
+                                unpaidCount: state.summary.unpaidCount,
+                                progress: state.summary.progress,
+                              ),
                             ),
-                            _danhSach(
-                              context,
-                              sections.daDong,
-                              now: now,
-                              dateFormatter: dateFormatter,
-                              khiTrong: 'Chưa có kỳ nào đã đóng.',
-                              payments: state.payments,
+                            // Khối Nhận xét (Edge-SLM, chặng 1.3) — màn Stitch
+                            // `179dbd70…`: đứng GIỮA thẻ tổng quan và hàng
+                            // tab, vì nó nói về **cả kỳ**, đúng phạm vi thẻ
+                            // ngay trên nó. Đặt dưới hàng tab là nó rơi vào
+                            // một trong hai danh sách và trông như nhận xét
+                            // riêng của tab ấy.
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              child: KhoiNhanXet(
+                                goi: GoiSoHoaDon.tu(state.bills, now: now),
+                              ),
                             ),
+                            // Gợi ý tạo hoá đơn từ khoản lặp (B2) — màn Stitch
+                            // `e8b460b4…`, giữa khối Nhận xét và hàng tab. Tự
+                            // ẩn khi không có gì để gợi ý: luật ẩn ở
+                            // `chonDeXuatHoaDon`.
+                            if (idKhoanLap != null && nguonKhoanLap != null)
+                              TheKhoanLap(
+                                  idaccount: idKhoanLap, nguon: nguonKhoanLap),
                           ],
                         ),
                       ),
+                      // Absorber ở đây + injector ở từng tab: hàng tab GHIM
+                      // vẫn vẽ đè lên đầu vùng thân — thiếu cặp này là hoá đơn
+                      // đầu danh sách nằm khuất dưới hàng tab.
+                      SliverOverlapAbsorber(
+                        handle:
+                            NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
+                        sliver: SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _HangTabGhim(
+                            TabBar(
+                              labelColor: AppColors.primary,
+                              unselectedLabelColor: AppColors.textSecondary,
+                              indicatorColor: AppColors.primary,
+                              tabs: [
+                                Tab(
+                                    text:
+                                        'Cần thanh toán (${sections.chuaDong.length})'),
+                                // "Lịch sử" chứ không phải "Đã thanh toán":
+                                // từ 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
+                                // chưa hề được trả đồng nào.
+                                Tab(text: 'Lịch sử (${sections.daDong.length})'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
+                    body: TabBarView(
+                      children: [
+                        _danhSach(
+                          context,
+                          sections.chuaDong,
+                          now: now,
+                          dateFormatter: dateFormatter,
+                          khiTrong: 'Không còn hoá đơn nào phải trả.',
+                          payments: state.payments,
+                        ),
+                        _danhSach(
+                          context,
+                          sections.daDong,
+                          now: now,
+                          dateFormatter: dateFormatter,
+                          khiTrong: 'Chưa có kỳ nào đã đóng.',
+                          payments: state.payments,
+                        ),
+                      ],
+                    ),
                   ),
                   Positioned(
                     bottom: 24,
@@ -243,91 +285,115 @@ class _BillPageState extends State<BillPage> {
     required String khiTrong,
     required Map<String, Transaction> payments,
   }) {
-    if (bills.isEmpty) {
-      // ⚠️ Cuộn được, dù nội dung ngắn: khối này nằm trong `Expanded` nên
-      // chiều cao của nó là **phần còn lại của màn**, không phải chiều cao tự
-      // nhiên. Bản trước là `Padding` + `Column` trần và tràn 73 px ngay khi
-      // khối Nhận xét (chặng 1.3) lấy bớt chỗ ở khổ màn thấp. Máy cao thì
-      // không thấy gì đổi.
-      return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
-          child: Column(
-            children: [
-              Text(
-                khiTrong,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
+    // Mỗi tab là một `CustomScrollView` mở đầu bằng `SliverOverlapInjector` —
+    // cặp với absorber quanh hàng tab ghim (xem `build`). `Builder` để lấy một
+    // context NẰM DƯỚI `NestedScrollView`, nơi tra được handle. `PageStorageKey`
+    // giữ vị trí cuộn riêng từng tab khi đổi qua lại.
+    return Builder(
+      builder: (ctx) => CustomScrollView(
+        key: PageStorageKey<String>(khiTrong),
+        slivers: [
+          SliverOverlapInjector(
+            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
+          ),
+          if (bills.isEmpty)
+            // Trạng thái rỗng cuộn cùng cả trang — chặng 1.3 từng tràn 73 px
+            // khi nó còn là `Column` trần trong `Expanded`.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                child: Column(
+                  children: [
+                    Text(
+                      khiTrong,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDecorativeIllustration(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              _buildDecorativeIllustration(),
-            ],
-          ),
-        ),
-      );
-    }
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => _dongHoaDon(context, bills[i],
+                      now: now, dateFormatter: dateFormatter, payments: payments),
+                  childCount: bills.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: bills.length,
-      itemBuilder: (_, i) {
-        final bill = bills[i];
-        // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
-        // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
-        // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
-        final status = billDisplayStatusOf(bill, now);
-        final danhMuc = _lookup.category(bill.categoryId);
-        // Khoản chi của lần trả — chỉ có với khoản ghi từ v16 trên máy này.
-        // Không có thì KHÔNG đoán ngày trả; chỉ ghi hạn như cũ.
-        final khoanChi = payments[bill.id];
+  /// Một dòng hoá đơn của danh sách.
+  Widget _dongHoaDon(
+    BuildContext context,
+    Bill bill, {
+    required DateTime now,
+    required DateFormat dateFormatter,
+    required Map<String, Transaction> payments,
+  }) {
+    // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
+    // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
+    // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
+    final status = billDisplayStatusOf(bill, now);
+    final danhMuc = _lookup.category(bill.categoryId);
+    // Khoản chi của lần trả — chỉ có với khoản ghi từ v16 trên máy này.
+    // Không có thì KHÔNG đoán ngày trả; chỉ ghi hạn như cũ.
+    final khoanChi = payments[bill.id];
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildBillItem(
-            context: context,
-            bill: bill,
-            title: bill.name,
-            // Hai dòng chứ không nối bằng " • ": cạnh nhãn "ĐÃ THANH TOÁN" ở
-            // 411dp chỉ còn chỗ cho ~18 ký tự, một dòng bị cắt thành "Hạn
-            // 06/09/2026 • T…" (thấy trên máy ảo 06/09).
-            subtitle: khoanChi == null
-                ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
-                : 'Hạn ${dateFormatter.format(bill.dueDate)}\n'
-                    'Trả ${dateFormatter.format(khoanChi.date)}',
-            // Dòng đã trả mở khoản chi; dòng chưa trả mở trang chi tiết (mang
-            // theo hàng đang giữ để trang vẽ ngay, rồi tự đọc lại CSDL).
-            onTap: khoanChi != null
-                ? () => _moKhoanChi(context, khoanChi)
-                : () => context.push('/bills/${bill.id}', extra: bill),
-            // Ba trạng thái khác nhau, đừng gộp: chưa gán danh mục bao giờ /
-            // đã gán nhưng hàng ấy bị xoá mềm (đợt gộp danh mục 05/09 để lại
-            // đúng tình trạng này) / có danh mục thật.
-            meta: [
-              bill.categoryId == null
-                  ? 'Chưa có danh mục'
-                  : (danhMuc?.name ?? 'Danh mục đã xoá'),
-              _lookup.walletName(bill.walletId),
-              // Dấu hiệu duy nhất trên danh sách cho biết hoá đơn nào app sẽ
-              // tự trừ tiền — không có nó thì phải mở từng hoá đơn.
-              if (bill.autoPayEnabled) 'Tự trả',
-            ].join(' • '),
-            icon: categoryIconFor(danhMuc?.icon),
-            iconColor:
-                categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
-            amount: CurrencyFormatter.format(bill.amount),
-            status: nhanTrangThaiHoaDon(status),
-            statusColor: mauChuTrangThaiHoaDon(status),
-            statusBg: mauNenTrangThaiHoaDon(status),
-            accentColor: mauVachTrangThaiHoaDon(status),
-            isPaid: status == BillDisplayStatus.paid,
-            // Kỳ bỏ qua là nhánh THỨ BA: không phải đã trả (không có
-            // khoản chi để hoàn), cũng không phải còn nợ (payBill từ
-            // chối nó). Bày nút Thanh toán cho nó là dẫn người dùng
-            // thẳng tới một thông báo lỗi.
-            daBoQua: status == BillDisplayStatus.skipped,
-          ),
-        );
-      },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _buildBillItem(
+        context: context,
+        bill: bill,
+        title: bill.name,
+        // Hai dòng chứ không nối bằng " • ": cạnh nhãn "ĐÃ THANH TOÁN" ở
+        // 411dp chỉ còn chỗ cho ~18 ký tự, một dòng bị cắt thành "Hạn
+        // 06/09/2026 • T…" (thấy trên máy ảo 06/09).
+        subtitle: khoanChi == null
+            ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
+            : 'Hạn ${dateFormatter.format(bill.dueDate)}\n'
+                'Trả ${dateFormatter.format(khoanChi.date)}',
+        // Dòng đã trả mở khoản chi; dòng chưa trả mở trang chi tiết (mang
+        // theo hàng đang giữ để trang vẽ ngay, rồi tự đọc lại CSDL).
+        onTap: khoanChi != null
+            ? () => _moKhoanChi(context, khoanChi)
+            : () => context.push('/bills/${bill.id}', extra: bill),
+        // Ba trạng thái khác nhau, đừng gộp: chưa gán danh mục bao giờ /
+        // đã gán nhưng hàng ấy bị xoá mềm (đợt gộp danh mục 05/09 để lại
+        // đúng tình trạng này) / có danh mục thật.
+        meta: [
+          bill.categoryId == null
+              ? 'Chưa có danh mục'
+              : (danhMuc?.name ?? 'Danh mục đã xoá'),
+          _lookup.walletName(bill.walletId),
+          // Dấu hiệu duy nhất trên danh sách cho biết hoá đơn nào app sẽ
+          // tự trừ tiền — không có nó thì phải mở từng hoá đơn.
+          if (bill.autoPayEnabled) 'Tự trả',
+        ].join(' • '),
+        icon: categoryIconFor(danhMuc?.icon),
+        iconColor:
+            categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
+        amount: CurrencyFormatter.format(bill.amount),
+        status: nhanTrangThaiHoaDon(status),
+        statusColor: mauChuTrangThaiHoaDon(status),
+        statusBg: mauNenTrangThaiHoaDon(status),
+        accentColor: mauVachTrangThaiHoaDon(status),
+        isPaid: status == BillDisplayStatus.paid,
+        // Kỳ bỏ qua là nhánh THỨ BA: không phải đã trả (không có
+        // khoản chi để hoàn), cũng không phải còn nợ (payBill từ
+        // chối nó). Bày nút Thanh toán cho nó là dẫn người dùng
+        // thẳng tới một thông báo lỗi.
+        daBoQua: status == BillDisplayStatus.skipped,
+      ),
     );
   }
 
@@ -686,4 +752,26 @@ class _BillPageState extends State<BillPage> {
       ),
     );
   }
+}
+
+/// Hàng tab ghim ở đầu màn khi cả trang cuộn (B2). Nền đặc cùng màu nền trang —
+/// danh sách cuộn luồn dưới nó, nền trong suốt là chữ hai lớp đè nhau.
+class _HangTabGhim extends SliverPersistentHeaderDelegate {
+  _HangTabGhim(this.tabBar);
+
+  final TabBar tabBar;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
+      ColoredBox(color: AppColors.background, child: tabBar);
+
+  // Nhãn tab mang số đếm — đổi sau mỗi lần danh sách đổi.
+  @override
+  bool shouldRebuild(_HangTabGhim oldDelegate) => oldDelegate.tabBar != tabBar;
 }

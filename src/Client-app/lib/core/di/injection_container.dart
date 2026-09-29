@@ -61,6 +61,7 @@ import '../../features/bill/data/repositories/bill_repository.dart';
 import '../../features/bill/data/services/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
+import '../../features/bill/data/de_xuat_hoa_don_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
@@ -231,6 +232,11 @@ Future<void> setupDependencies() async {
   );
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
+  );
+  // Thẻ "Có vẻ là khoản lặp" trên trang Hoá đơn (B2) — trang tự lấy nguồn này
+  // khi đã đăng ký, không thì không dựng thẻ.
+  sl.registerLazySingleton<DeXuatHoaDonNguon>(
+    () => DeXuatHoaDonNguon(db: sl<AppDatabase>()),
   );
 
   // ── 9. Features — Category management (local-only) ───────────────────────
