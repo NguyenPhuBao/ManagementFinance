@@ -20,4 +20,14 @@ class GoiYHoaDonDao extends DatabaseAccessor<AppDatabase> with _$GoiYHoaDonDaoMi
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .get();
   }
+
+  /// Bản `watch` của [getAll] — nguồn thứ tám của trang Phân tích (B4): tầng 3
+  /// khối Dự báo bỏ các nhóm lặp đã thành hoá đơn, và người dùng có thể bấm
+  /// *Tạo* trong khi trang ấy còn sống ở nhánh khác của shell.
+  Stream<List<GoiYHoaDonPhanHoi>> watchAll(int idaccount) {
+    return (select(goiYHoaDonPhanHois)
+          ..where((t) => t.idaccount.equals(idaccount))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .watch();
+  }
 }

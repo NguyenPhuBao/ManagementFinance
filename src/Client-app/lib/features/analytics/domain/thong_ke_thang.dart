@@ -45,9 +45,11 @@ class KhoanThuChi {
   /// khoản vẫn được đếm nhưng không bị xếp bừa vào một vai.
   final String? tenDanhMuc;
 
-  /// B4: khoản gắn **hoá đơn** hoặc **mục tiêu** — lịch sử của nó đã nằm ở
-  /// tầng 1 khối Dự báo (hoá đơn, trích tự động), nên ước tính chi tuỳ ý phải
-  /// bỏ nó ra. Mặc định `false`: mọi chỗ dựng cũ không đổi.
+  /// B4: khoản thuộc một **cam kết** — gắn hoá đơn hay mục tiêu, trả hoá đơn
+  /// dạng cũ (tiền tố ghi chú), hoặc khoản nhập tay của một nhóm lặp đã thành
+  /// hoá đơn (B2). Cam kết ấy đã nằm ở tầng 1 khối Dự báo, nên ước tính chi tuỳ
+  /// ý phải bỏ nó ra. Luật ở `AnalyticsRepositoryImpl.dungKhoan`. Chỉ tầng 3
+  /// đọc cờ này. Mặc định `false`: mọi chỗ dựng cũ không đổi.
   final bool laKhoanCamKet;
 
   const KhoanThuChi({

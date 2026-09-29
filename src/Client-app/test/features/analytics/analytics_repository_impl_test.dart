@@ -8,6 +8,8 @@
 /// vẽ, chỉ là vẽ số khác.
 library;
 
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +75,7 @@ void main() {
     String vi = 'w1',
     String? billId,
     String? goalId,
+    String? ghiChu,
   }) {
     return db.transactionDao.insert(TransactionsCompanion.insert(
       id: id,
@@ -85,6 +88,7 @@ void main() {
       updatedAt: now,
       billId: Value(billId),
       goalId: Value(goalId),
+      note: ghiChu == null ? const Value.absent() : Value(ghiChu),
     ));
   }
 
@@ -943,11 +947,48 @@ void main() {
       await giaoDich(id: 'tron', ngay: DateTime(2026, 9, 5), soTien: 300000);
       final txs = await db.select(db.transactions).get();
       final cats = await db.select(db.categories).get();
-      final khoan = AnalyticsRepositoryImpl.dungKhoan(txs, cats);
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(txs, cats, now: now);
       final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
       expect(theoTien, {100000.0: true, 200000.0: true, 300000.0: false},
           reason: 'lịch sử trả hoá đơn / nạp mục tiêu đã nằm ở tầng 1 khối Dự báo — '
               'ước tính chi tuỳ ý phải bỏ nó ra (spec B4 §2)');
+    });
+
+    test('⚠️ khoản trả hoá đơn DẠNG CŨ (tiền tố ghi chú, không bill_id) là khoản cam kết',
+        () async {
+      // Hàng ghi trước 2026-09-12 — cột nối `billId` chưa đi qua đồng bộ, nên
+      // mối nối duy nhất còn lại là tiền tố `kGhiChuTraHoaDon`.
+      await giaoDich(id: 'cu', ngay: DateTime(2026, 9, 3), soTien: 45000,
+          ghiChu: 'Thanh toán hóa đơn: Kiem');
+      await giaoDich(id: 'giua', ngay: DateTime(2026, 9, 4), soTien: 70000,
+          ghiChu: 'Ghi nhớ Thanh toán hóa đơn: Kiem');
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(
+          await db.select(db.transactions).get(),
+          await db.select(db.categories).get(),
+          now: now);
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {45000.0: true, 70000.0: false},
+          reason: 'chỉ tiền tố ở ĐẦU ghi chú là dấu hiệu trả hoá đơn');
+    });
+
+    test('⚠️ khoản thuộc nhóm lặp ĐÃ TẠO hoá đơn (khoá da_tao của B2) là khoản cam kết',
+        () async {
+      await giaoDich(id: 'nha8', ngay: DateTime(2026, 8, 5), soTien: 3000000,
+          danhMuc: 'c_nha', ghiChu: 'Tien nha T8');
+      await giaoDich(id: 'nhaKhac', ngay: DateTime(2026, 8, 6), soTien: 3100000,
+          danhMuc: 'c_an', ghiChu: 'Tien nha T8');
+      await giaoDich(id: 'khac', ngay: DateTime(2026, 8, 7), soTien: 3200000,
+          danhMuc: 'c_nha', ghiChu: 'Sua may giat');
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(
+          await db.select(db.transactions).get(),
+          await db.select(db.categories).get(),
+          now: now,
+          khoaLapDaTao: {'tien nha|c_nha'});
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {3000000.0: true, 3100000.0: false, 3200000.0: false},
+          reason: 'khoá nhóm = ghi chú chuẩn hoá + danh mục (khoaNhomCua): cùng '
+              'ghi chú khác danh mục, hay cùng danh mục khác ghi chú, đều không '
+              'phải khoản lặp đã thành hoá đơn');
     });
   });
 
@@ -975,6 +1016,74 @@ void main() {
       await giaoDich(id: 'hd', ngay: DateTime(2026, 8, 5), soTien: 5000000, billId: 'b1');
       final u = (await lanDau()).uocTinhChiTuyY!;
       expect((u.thap, u.cao), (860000.0, 860000.0));
+    });
+
+    /// Ba kỳ tiền nhà nhập tay (06/7, 05/8, 02/9) — mỗi kỳ đẩy một tuần lên
+    /// 3.200.000; sáu tuần còn lại 200.000 → p75 rơi đúng vào tuần tiền nhà.
+    Future<void> tienNha() async {
+      for (final (i, d) in [DateTime(2026, 7, 6), DateTime(2026, 8, 5), DateTime(2026, 9, 2)]
+          .indexed) {
+        await giaoDich(id: 'nha$i', ngay: d, soTien: 3000000,
+            danhMuc: 'c_nha', ghiChu: 'Tien nha T${d.month}');
+      }
+    }
+
+    Future<void> daTao(String khoa, {int idaccount = 1}) =>
+        db.goiYHoaDonDao.ghi(GoiYHoaDonPhanHoisCompanion.insert(
+          id: 'ph_$khoa$idaccount',
+          idaccount: idaccount,
+          khoaNhom: khoa,
+          ketQua: 'da_tao',
+          createdAt: now,
+        ));
+
+    test('⚠️ khoản lặp đã thành hoá đơn (B2 da_tao) không vào khoảng — tầng 1 đã tính',
+        () async {
+      await duLieu();
+      await tienNha();
+      expect((await lanDau()).uocTinhChiTuyY!.cao, 13710000,
+          reason: 'tiền đề: chưa có da_tao thì tiền nhà nằm trong p75 '
+              '(3.200.000 × 30/7 ≈ 13.714.286 → 13.710.000)');
+
+      await daTao('tien nha|c_nha', idaccount: 2);
+      expect((await lanDau()).uocTinhChiTuyY!.cao, 13710000,
+          reason: 'phản hồi của TÀI KHOẢN KHÁC không được tính (quy tắc 2)');
+
+      await daTao('tien nha|c_nha');
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: 'hoá đơn "Tien nha" 30 ngày tới đã ở tầng 1 — lịch sử nhập tay '
+              'của chính nó còn ở tầng 3 là đếm đôi');
+    });
+
+    test('bấm Tạo khi trang đang mở thì khoảng tính lại — nguồn khoá là stream',
+        () async {
+      await duLieu();
+      await tienNha();
+      final cao = <double?>[];
+      final xong = Completer<void>();
+      final sub = repo
+          .watchKy(1, ky: Ky.thang(2026, 9), now: now)
+          .listen((tk) async {
+        cao.add(tk.uocTinhChiTuyY?.cao);
+        if (cao.length == 1) await daTao('tien nha|c_nha');
+        if (cao.length == 2 && !xong.isCompleted) xong.complete();
+      });
+      await xong.future.timeout(const Duration(seconds: 5));
+      await sub.cancel();
+      expect(cao, [13710000, 860000]);
+    });
+
+    test('⚠️ trả hoá đơn DẠNG CŨ (tiền tố, không bill_id) không vào khoảng', () async {
+      await duLieu();
+      for (final (i, d) in [DateTime(2026, 7, 6), DateTime(2026, 8, 5), DateTime(2026, 9, 2)]
+          .indexed) {
+        await giaoDich(id: 'cu$i', ngay: d, soTien: 5000000,
+            danhMuc: 'c_khac', ghiChu: 'Thanh toán hóa đơn: Kiem');
+      }
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: 'bản thiếu luật tiền tố cho cao = 5.200.000 × 30/7 → 22.290.000');
     });
 
     test('⚠️ ngân sách TỔNG đang chạy → null (tầng 2 phủ mọi khoản chi)', () async {
