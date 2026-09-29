@@ -59,7 +59,11 @@ Một khoản là *chi tuỳ ý* khi đủ cả bốn điều:
   `du_bao_dong_tien.dart:166–168`), `A = goc − cao`, `B = goc − thap`. Đọc getter có sẵn, không tính lại ở widget. Tiền qua `CurrencyFormatter`; A/B **được phép âm** (cùng luật khối Dự báo: không kẹp). Chữ màu phụ và cỡ nhỏ
   hơn, để không tranh với hai con số chính.
 - Biểu đồ bậc thang **không đổi**.
-- ⚠️ Khối có thêm một dòng → **cập nhật màn Stitch trước** (khối Dự báo, màn của mục 3.27).
+- ⚠️ Khối có thêm một dòng → **cập nhật màn Stitch trước** (khối Dự báo, màn của mục 3.27). ✅ **Màn mới
+  `7aa215e9bfee4ec58b15a012ced7e210`** *"Thống kê - Dự báo 30 ngày tới + ước tính theo thói quen"* (2026-09-29; lượt
+  gọi trả **timeout**, màn hiện sau, người dùng xác nhận): dòng mới đứng **ngay dưới** hàng *"Nếu tiêu đúng ngân sách"*,
+  đệm trên 4 px, chữ **12 px thường, xám `#767873`**, không biểu tượng, không hộp; phần còn lại y hệt màn cũ
+  `73258777…`.
 - Tool `du_bao_dong_tien` của Trợ lý AI **không** đổi (trần `tools_json`). Khối Nhận xét trang Phân tích **không** đổi.
 
 ## 5. Giới hạn nói trước

@@ -798,6 +798,13 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   release `a28ffea7…`: chấm T4/T9 tròn đủ; Tuần 38 thẻ *Số dư còn lại* *"Chi gấp 265 lần thu nhập"*, khối Nhận xét
   *"Kỳ này chi 2.646.000 đ; chi gấp 265 lần thu nhập…"*; trang Hoá đơn có **+** trên thanh tiêu đề, chạm mở *"Thêm Hóa
   Đơn Định Kỳ"*. `flutter test` **4479/4479** (4 skip), analyze 26.
+- 🚧 **B4 — tầng 3 "ước tính theo thói quen" của khối Dự báo — ĐANG LÀM, Task 1–4/6 xong 2026-09-29 tối** (người dùng
+  xác nhận lại việc mở quyết định 16/09; spec `specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md`, kế hoạch gitignore cùng
+  tên ở `plans/`, nhật ký thi công cuối tệp). `KhoanThuChi.laKhoanCamKet` + `AnalyticsRepositoryImpl.dungKhoan`
+  (`3b72ad4`) · hàm thuần `uocTinhChiTuyY` (`fe169e0`) · `ThongKeKy.uocTinhChiTuyY` (`897bdb4`) — ⚠️ lệch kế hoạch có
+  chủ ý: phép chọn ngân sách tách thành **`nganSachDangChay`** dùng chung với tầng 2 · màn Stitch
+  `7aa215e9bfee4ec58b15a012ced7e210` (người dùng xác nhận). **Chưa làm:** Task 5 (dòng mới trong `_BaConSoDuBao`),
+  Task 6 (cả bộ test, Realme, tài liệu). Người dùng dặn dừng, bàn giao.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
