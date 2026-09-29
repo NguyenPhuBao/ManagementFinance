@@ -25,7 +25,10 @@ B3 chi bất thường · B4 dự báo chi kỳ tới · B5b học giờ thông 
 **Tiến độ 2026-09-29:** A1 ✅ (cổng F lần 3). **A2 · A3 · A4 ✅ mã xong + đo Realme** (mục 9.38 `AI_EDGE_FEATURE.md`,
 `109aeb4` → `d27b3e3`): 18 câu đổi đường 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s. 🛑 **Còn mở: F12 tụt** (tham số thừa
 `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó) — hướng sửa chờ người dùng. Người dùng dặn dừng nhóm A sau vòng đo ấy,
-**chuyển sang B1**.
+**chuyển sang B1**. ✅ **B1 xong trọn 7 task cùng trưa** (nghiệm thu Realme; mục 5d `docs/CATEGORY_RATIONALE.md`):
+dữ liệu thật gần như không có ghi chú tự gõ nên gợi ý học thường im; lỗi công cụ đo sửa `9f407e6`; 🛑 **hai câu hỏi chờ
+người dùng** — từ khoá mặc định `grab` → Ăn uống (seed backend), và thôi gợi ý học có chặn luôn từ khoá không. Kế:
+hỏi F12 → **B5a**.
 
 ---
 
