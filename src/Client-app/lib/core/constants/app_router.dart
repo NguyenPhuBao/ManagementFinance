@@ -36,6 +36,7 @@ import '../di/injection_container.dart';
 import '../database/app_database.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
+import '../../features/bill/domain/dien_san_hoa_don.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
 import '../../features/bill/presentation/pages/bill_detail_page.dart';
@@ -307,9 +308,11 @@ class AppRouter {
           ),
           GoRoute(
             path: '/bills/add',
-            builder: (_, __) => BlocProvider<BillBloc>(
+            // Query điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — hỏng thì bỏ
+            // đúng trường ấy, không có thì form trống như cũ.
+            builder: (_, s) => BlocProvider<BillBloc>(
               create: (_) => sl<BillBloc>(),
-              child: const BillAddPage(),
+              child: BillAddPage(dienSan: dienSanTuQuery(s.uri.queryParameters)),
             ),
           ),
           GoRoute(
