@@ -56,7 +56,13 @@ ghi chú. C1 cho mô hình ấy chạy trên các giao dịch **đã có**.
 - Thanh đáy: **Áp dụng {số dòng đang tick}**. Không dòng nào tick thì nút tắt.
 - Áp dụng xong: `pop` về Sổ giao dịch, kèm toast *"Đã gắn danh mục cho {N} giao dịch"* (nếu dự án có toast chung thì dùng
   nó, tối giản theo nếp thông báo tạm thời).
-- ⚠️ Giao diện mới (thẻ + màn) → **Stitch trước**.
+- ⚠️ Giao diện mới (thẻ + màn) → **Stitch trước**. ✅ Người dùng duyệt ba màn ngày 2026-09-29: thẻ trên Sổ giao dịch
+  `a829606a98794c60804c820f8f063ee1`, màn *Gắn danh mục nhanh* `5023f0818909440badd2e1aecfeed6ca` (dòng có dự đoán ở
+  trên, nhóm *"CHƯA ĐOÁN ĐƯỢC"* ở dưới, chip nét đứt *"+ Chọn danh mục"*), bảng chọn danh mục lọc theo chiều
+  `45c91102174a4b56bbd15754bb9284af` (nhóm *KHOẢN CHI* / *KHOẢN THU* + *VAY / NỢ*, dấu check ở dòng đang chọn). Hai lượt
+  sau trả `timeout` mà màn vẫn được tạo. Stitch tự thêm nút quay lại / tìm kiếm trên AppBar Sổ giao dịch và nhãn *"Chưa
+  gán danh mục"* trong danh sách — **không** dựng (ngoài phạm vi); và nó cắt dòng chính của thẻ ở 390 px, nên bản
+  Flutter cho dòng ấy xuống hai dòng.
 
 ## 5. Áp dụng và phản hồi
 

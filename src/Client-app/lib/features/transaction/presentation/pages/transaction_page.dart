@@ -11,6 +11,7 @@ import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../category/domain/gan_hang_loat.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
 import '../../domain/transaction_lookup.dart';
@@ -19,6 +20,7 @@ import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
 import '../widgets/transaction_detail_sheet.dart';
 import '../widgets/transaction_filter_bar.dart';
+import '../widgets/the_chua_gan_danh_muc.dart';
 import '../widgets/transaction_list_row.dart';
 import 'add_transaction_page.dart';
 
@@ -35,10 +37,15 @@ class TransactionPage extends StatefulWidget {
   /// là người dùng tưởng ví trống.
   final String? initialWalletId;
 
+  /// Số giao dịch chưa có danh mục của tài khoản, dạng **stream** — nuôi thẻ lối vào C1. `null` → đếm bằng
+  /// `demChuaGan` trên `transactionDao.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
+  final Stream<int> Function(int idaccount)? nguonChuaGan;
+
   const TransactionPage({
     super.key,
     this.idaccount,
     this.initialWalletId,
+    this.nguonChuaGan,
   });
 
   @override
@@ -67,6 +74,9 @@ class _TransactionPageState extends State<TransactionPage> {
   int? _lookupAccount;
   Stream<List<Wallet>>? _wallets;
   Stream<List<Category>>? _categories;
+
+  /// Số khoản chưa có danh mục (C1) — cùng nếp tạo MỘT lần mỗi tài khoản như hai stream tra tên.
+  Stream<int>? _chuaGan;
 
   @override
   void initState() {
@@ -114,6 +124,8 @@ class _TransactionPageState extends State<TransactionPage> {
     final db = sl<AppDatabase>();
     _wallets = db.walletDao.watchAll(idaccount);
     _categories = db.categoryDao.watchAll(idaccount);
+    _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
+        db.transactionDao.watchAll(idaccount).map(demChuaGan);
   }
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
@@ -253,6 +265,7 @@ class _TransactionPageState extends State<TransactionPage> {
                                       totalIncome: summary.income,
                                       totalExpense: summary.expense,
                                     ),
+                                    _buildTheChuaGan(),
                                     const SizedBox(height: 12),
                                     Expanded(
                                       child: txs.isEmpty
@@ -331,6 +344,22 @@ class _TransactionPageState extends State<TransactionPage> {
           );
         },
       ),
+    );
+  }
+
+  /// Thẻ lối vào C1 — chỉ dựng khi còn khoản chưa có danh mục. Không cần nạp lại sau `pop`: nguồn là stream của sổ,
+  /// nên lần áp dụng ở màn duyệt tự làm con số đổi.
+  Widget _buildTheChuaGan() {
+    return StreamBuilder<int>(
+      stream: _chuaGan,
+      builder: (context, snap) {
+        final n = snap.data ?? 0;
+        if (n <= 0) return const SizedBox.shrink();
+        return TheChuaGanDanhMuc(
+          soGiaoDich: n,
+          onGanNhanh: () => context.push('/transactions/gan-danh-muc'),
+        );
+      },
     );
   }
 
