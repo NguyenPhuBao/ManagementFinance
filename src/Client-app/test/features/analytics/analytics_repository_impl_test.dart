@@ -71,6 +71,8 @@ void main() {
     String? danhMuc = 'c_an',
     int idaccount = 1,
     String vi = 'w1',
+    String? billId,
+    String? goalId,
   }) {
     return db.transactionDao.insert(TransactionsCompanion.insert(
       id: id,
@@ -81,6 +83,8 @@ void main() {
       type: loai,
       date: ngay,
       updatedAt: now,
+      billId: Value(billId),
+      goalId: Value(goalId),
     ));
   }
 
@@ -932,6 +936,21 @@ void main() {
     });
   });
   // ── B3 — chi bất thường theo danh mục (2026-09-29) ─────────────────────────
+  group('KhoanThuChi.laKhoanCamKet (B4)', () {
+    test('khoản gắn hoá đơn hoặc mục tiêu là khoản cam kết; khoản trơn thì không', () async {
+      await giaoDich(id: 'hd', ngay: DateTime(2026, 9, 3), soTien: 100000, billId: 'b1');
+      await giaoDich(id: 'mt', ngay: DateTime(2026, 9, 4), soTien: 200000, goalId: 'g1');
+      await giaoDich(id: 'tron', ngay: DateTime(2026, 9, 5), soTien: 300000);
+      final txs = await db.select(db.transactions).get();
+      final cats = await db.select(db.categories).get();
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(txs, cats);
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {100000.0: true, 200000.0: true, 300000.0: false},
+          reason: 'lịch sử trả hoá đơn / nạp mục tiêu đã nằm ở tầng 1 khối Dự báo — '
+              'ước tính chi tuỳ ý phải bỏ nó ra (spec B4 §2)');
+    });
+  });
+
   group('chiBatThuong (B3)', () {
     /// Năm tháng Ăn uống 4–8/2026 quanh 900.000 và tháng 9 vượt hẳn.
     Future<void> duLieu({String danhMuc = 'c_an'}) async {

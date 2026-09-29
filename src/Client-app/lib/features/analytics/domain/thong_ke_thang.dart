@@ -45,6 +45,11 @@ class KhoanThuChi {
   /// khoản vẫn được đếm nhưng không bị xếp bừa vào một vai.
   final String? tenDanhMuc;
 
+  /// B4: khoản gắn **hoá đơn** hoặc **mục tiêu** — lịch sử của nó đã nằm ở
+  /// tầng 1 khối Dự báo (hoá đơn, trích tự động), nên ước tính chi tuỳ ý phải
+  /// bỏ nó ra. Mặc định `false`: mọi chỗ dựng cũ không đổi.
+  final bool laKhoanCamKet;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
@@ -53,6 +58,7 @@ class KhoanThuChi {
     this.ghiChu,
     this.classify,
     this.tenDanhMuc,
+    this.laKhoanCamKet = false,
   });
 }
 

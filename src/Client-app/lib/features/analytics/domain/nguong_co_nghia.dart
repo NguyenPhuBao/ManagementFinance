@@ -35,3 +35,8 @@ double neoTheoThuNhap(double thuNhapMoiThang, double tiLe, double san) {
 /// C5 (tái phân bổ) và B3 (chi bất thường): `max(1 % thu nhập, 50.000)`.
 double nguongCoNghia(double thuNhapMoiThang) =>
     neoTheoThuNhap(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
+
+/// Làm tròn [x] về bội gần nhất của [buoc]. Dời từ `tai_phan_bo.dart` (B4,
+/// 2026-09-29) để ước tính chi tuỳ ý của khối Dự báo dùng chung, không đổi
+/// hành vi — `tai_phan_bo.dart` xuất lại tên này.
+double lamTronBuoc(double x, double buoc) => (x / buoc).round() * buoc;

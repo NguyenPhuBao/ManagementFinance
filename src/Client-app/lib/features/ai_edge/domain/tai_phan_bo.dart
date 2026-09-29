@@ -24,7 +24,7 @@ import '../../analytics/domain/nguong_co_nghia.dart';
 // `nguongCoNghia` và hằng sàn dời về `analytics/domain` (B3, 2026-09-29) — xuất
 // lại để mọi chỗ đang import tệp này không phải đổi.
 export '../../analytics/domain/nguong_co_nghia.dart'
-    show nguongCoNghia, kNguongThamHutTuyetDoi;
+    show nguongCoNghia, kNguongThamHutTuyetDoi, lamTronBuoc;
 
 /// B2: thâm hụt phải ≥ 10 % hạn mức **và** ≥ [nguongThamHutTuyetDoi].
 ///
@@ -48,8 +48,6 @@ const int kBuocLamTron = 10000;
 
 /// B4: dưới chừng này ngày thì không nhân tỉ lệ tuyến tính.
 const int kNgayKhoaDuPhong = 5;
-
-double lamTronBuoc(double x, double buoc) => (x / buoc).round() * buoc;
 
 /// B2 vế tuyệt đối, neo theo thu nhập: `max(1 % thu nhập, 50.000)`.
 ///

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
@@ -160,20 +162,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return controller.stream;
   }
 
-  ThongKeKy _dung({
-    required Ky ky,
-    required DateTime now,
-    required DateTime fromTruoc,
-    required DateTime toTruoc,
-    required DateTime mocNganSach,
-    required List<Transaction> txs,
-    required List<Category> cats,
-    required List<BudgetView> nganSach,
-    required List<Wallet> vi,
-    required List<Bill> hoaDon,
-    required List<Goal> mucTieu,
-    required List<BudgetView> nganSachHomNay,
-  }) {
+  /// Hàng Drift → khoản thuần của tầng thống kê. Tách khỏi `_dung` (B4) để
+  /// test được trực tiếp: `laKhoanCamKet` là thứ im lặng nếu sai.
+  @visibleForTesting
+  static List<KhoanThuChi> dungKhoan(
+      List<Transaction> txs, List<Category> cats) {
     // `amount` lưu dương ở client (nhánh pull gọi `.abs()`), cộng thẳng —
     // cùng luật với `BudgetLocalDataSourceImpl.sumExpenses`.
     //
@@ -181,10 +174,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // cũ trỏ vào danh mục đã xoá vẫn tra được `classify`. Thiếu bảng tra này
     // thì mọi khoản Trả nợ rơi về lát "chi" và vòng tròn nói sai tỷ trọng.
     final classifyTheoId = {for (final c in cats) c.id: c.classify};
-    // Bảng tra TÊN, dựng cạnh bảng tra `classify` vì `khoan` cần cả hai và nó
-    // được dựng trước `danhMucTheoId` ở dưới.
     final tenTheoId = {for (final c in cats) c.id: c.name};
-    final khoan = [
+    return [
       for (final t in txs)
         KhoanThuChi(
           ngay: t.date,
@@ -200,8 +191,29 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           // *cho vay · thu nợ · đi vay · trả nợ* không có chỗ nào lưu.
           tenDanhMuc:
               t.categoryId == null ? null : tenTheoId[t.categoryId],
+          // B4: lịch sử trả hoá đơn / nạp mục tiêu đã ở tầng 1 khối Dự báo.
+          laKhoanCamKet: t.billId != null || t.goalId != null,
         ),
     ];
+  }
+
+  ThongKeKy _dung({
+    required Ky ky,
+    required DateTime now,
+    required DateTime fromTruoc,
+    required DateTime toTruoc,
+    required DateTime mocNganSach,
+    required List<Transaction> txs,
+    required List<Category> cats,
+    required List<BudgetView> nganSach,
+    required List<Wallet> vi,
+    required List<Bill> hoaDon,
+    required List<Goal> mucTieu,
+    required List<BudgetView> nganSachHomNay,
+  }) {
+    // Bảng tra TÊN cho dòng chi bất thường (B3) ở cuối hàm.
+    final tenTheoId = {for (final c in cats) c.id: c.name};
+    final khoan = dungKhoan(txs, cats);
 
     final from = ky.from;
     final to = ky.to;
