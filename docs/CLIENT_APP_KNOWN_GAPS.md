@@ -1569,6 +1569,13 @@ theo, vì fixture của tệp ấy chép đúng nửa chi dạng cũ của dữ 
 tương lai"* thêm một **đối chứng** (`now` sau 10/11 thì khoản hẹn hiện ra) để vẫn
 đòi kết quả chứ không chỉ đòi vắng mặt.
 
+**Nghiệm thu Realme** (release `b807e711…`, cùng chiều, gồm cả G49 hai vế): ba màn
+nói **cùng một bộ số** tháng 9 — Trang chủ *Thu nhập 14.635.000 · Chi tiêu 1.851.000
+· Thu net +12.784.000*; Sổ giao dịch *+14.635.000 · −1.851.000 · +12.784.000*; Phân
+tích *Tổng thu +14.635.000 · Tổng chi −1.851.000*, khối Dòng tiền *thay đổi
++12.784.000*, khối Nhận xét *"Kỳ này chi 1.851.000 đ"*. Tìm *"dieu chinh"* ở Sổ: tiêu
+đề ngày 10/09 **0 đ**, hàng điều chỉnh +10.000 đ vẫn hiện.
+
 ⚠️ Hệ quả: đáp án các câu chi tiêu / thu nhập của bộ câu Trợ lý AI đo trên tài
 khoản 10 đổi theo (người dùng dặn bỏ qua phần chat AI ở lượt này — chưa tính lại).
 
