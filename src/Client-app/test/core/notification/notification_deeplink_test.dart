@@ -348,15 +348,15 @@ void main() {
     // B5b (2026-09-29): học giờ và nhóm bị lờ đọc NHÓM từ khoá trong nhật ký B5a
     // — nhật ký chỉ mang khoá, không mang loại. Cùng phép canh "đủ mọi loại":
     // thêm loại mới mà quên xếp tiền tố của nó vào nhóm thì ca này đỏ.
-    test('mọi loại: nhomTuKhoa(khoá) == nhomCua(loại) — B5b', () {
+    test('mọi loại: loaiTuKhoa(khoá) == loại, nhomTuKhoa theo nhomCua — B5b', () {
       for (final c in tatCaUngVien()) {
-        expect(nhomTuKhoa(c.dedupeKey), nhomCua(c.kind),
-            reason: '${c.kind.name}: khoá "${c.dedupeKey}" phải về đúng nhóm có '
-                'công tắc của loại ấy, nếu không đề xuất "tắt nhóm bị lờ" đếm '
-                'thông báo vào nhầm nhóm');
+        expect(loaiTuKhoa(c.dedupeKey), c.kind,
+            reason: '${c.kind.name}: khoá "${c.dedupeKey}" phải suy ra đúng loại — '
+                'B5b đọc nhóm (học giờ, nhóm bị lờ) và luonBao (bỏ thông báo '
+                'công tắc không tắt được) từ đây');
+        expect(nhomTuKhoa(c.dedupeKey), nhomCua(c.kind));
       }
-      expect(nhomTuKhoa('billConflict:bill-1'),
-          nhomCua(NotificationKind.billPaidOnOtherDevice),
+      expect(loaiTuKhoa('billConflict:bill-1'), NotificationKind.billPaidOnOtherDevice,
           reason: 'loại ngoài bộ quét — canh riêng như deeplink của nó');
     });
 
