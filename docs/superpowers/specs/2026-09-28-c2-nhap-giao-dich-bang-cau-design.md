@@ -6,6 +6,34 @@ tiền: *k / nghìn / ngàn*, *tr / triệu / củ*, *lít / xị (= 100.000)*, 
 nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. Tầng hậu quả 3. Thứ tự nhóm C: C1 → **C2** → D1 → C3 → C4.
 **Phụ thuộc B1** (đoán danh mục). **Không đổi schema.**
 
+> **Soát với mã B1 + C1 đã thi công (2026-09-29, trước Task 1).** Sáu chỗ đổi so với bản trên; ba chỗ đầu người dùng
+> chọn bằng câu hỏi chọn cùng ngày, ba chỗ sau là nếp sẵn của dự án:
+> 1. **Bộ đọc số bằng chữ đầy đủ, một định nghĩa cho ba nơi (§2.6).** Đo bằng test tạm: bộ đọc của `kiem_so` trả **rỗng**
+>    cho *"năm mươi nghìn"*, *"hai mươi lăm nghìn"*, *"nam muoi nghin"* (không có hàng chục *mươi*); và có một **bản thứ
+>    hai** ở `chinh_tham_so.dart` (chữ bỏ dấu, cho ngưỡng tiền câu hỏi) cũng không đọc hàng chục — *"dưới năm mươi
+>    nghìn"* ra **không ngưỡng nào** trong khi *"dưới 50k"* ra 50.000. Nên T1 không "dời không đổi hành vi" mà dựng **một**
+>    bộ đọc đầy đủ ở `core/utils/so_bang_chu.dart` (hàng chục *mươi*, *mốt / tư / lăm / nhăm*, *linh / lẻ*; có dấu và
+>    không dấu), và **cả** `kiem_so` lẫn `chinh_tham_so` gọi lại nó. Hệ quả cố ý: `kiemSo` chặt hơn (số chữ hàng chục nay
+>    được kiểm), Trợ lý AI đọc được ngưỡng viết bằng chữ. Mọi ca test cũ của hai tệp ấy phải xanh không sửa kỳ vọng.
+> 2. **Lọc chiều của B1 theo nếp màn (§2.5).** Màn Thêm giao dịch cho B1 đoán trên **cả ba** phân loại (đoạn Chi/Thu chỉ
+>    là lối vào, danh mục kéo đoạn theo — `_loadSuggestion`). Nên chỉ lọc `hopLeTheoChieu` khi câu **nói rõ** chiều
+>    (`loai != null`); câu không nói thì B1 chọn trên mọi danh mục chọn được, như thẻ gợi ý. Không còn tham số
+>    `loaiHienTai` cho phép lọc.
+> 3. **Danh mục điền từ B1 ghi phản hồi như thẻ gợi ý.** Lưu với đúng danh mục đoán → `chon`; đổi → `khac`. Nên
+>    `KetQuaDocCau` mang cả `DoanDanhMuc? doan` (cần `cumBoDau` cho `CategorySuggestion`), và màn đặt `_choPhanXu` sau khi
+>    điền.
+> 4. **Tìm tên trong câu (§2.4, §2.5):** `khopTheoTen` so **trọn chuỗi**, không tìm tên nằm giữa câu. Hàm tìm tên trong câu
+>    là `tenNeuTrongCau` (`ai_edge/domain/chinh_tham_so.dart`: khớp trọn từ trên chữ bỏ dấu, tên dài trước, tên ngắn
+>    dưới 5 ký tự chỉ nhận ngay sau từ loại) — dời ra `core/utils/khop_ten.dart`, `ai_edge` gọi lại. Ví dùng từ loại
+>    *"ví"*; danh mục dùng *"danh mục"* (tên danh mục ngắn như *"Học"* chỉ đọc được khi câu viết *"danh mục học"*; còn
+>    lại rơi về B1).
+> 5. **`kyTuCauHoi` không đọc *"hôm qua"* (§2.3):** nó đọc kỳ nêu cụ thể (tháng 8, quý 2, từ … đến …); *"hôm qua"* đi qua
+>    mã kỳ `hom_qua` → `kyTuMa`. Nên `kyTuCauHoi` **không đổi** (nhánh ⚠️ của kế hoạch T2). Thứ dùng chung là `ngayHopLe`
+>    (kiểm ngày tồn tại trên lịch) — dời ra `core/utils/ngay_trong_cau.dart`, `ma_ky.dart` gọi lại.
+> 6. **Đổi chiều trên màn đi qua `_chonHuong` (§3),** không gán thẳng `_huong`: `_chonHuong` bỏ danh mục thuộc chiều kia,
+>    gán thẳng là để danh mục chi đứng dưới đoạn Thu. Test bố cục có thêm ca **bàn phím hệ thống đang mở** (G58: 16 phím
+>    ẩn khi `viewInsets.bottom > 0`, mà ô Nhập nhanh là ô chữ). Nghiệm thu trên **Realme** (máy thật đang cắm), không máy ảo.
+
 ## 1. Vì sao
 
 Ghi một khoản chi hôm nay tốn: chọn loại, gõ tiền trên bàn phím tự vẽ, chọn danh mục, chọn ví, đổi ngày, gõ ghi chú, tức
@@ -19,7 +47,8 @@ số**. Ô nào luật không đọc được thì để nguyên.
 
 `KetQuaDocCau docCauGiaoDich(String cau, {required DateTime now, required List<Wallet> vi, required List<Category> chonDuoc, BoPhanLoaiGhiChu? mo, Set<(String, String)> tatCap = const {}})`
 
-`KetQuaDocCau { double? soTien; String? loai; DateTime? ngay; String? walletId; String? categoryId; String? lyDoDanhMuc; String ghiChu; List<String> canhBao; }`
+`KetQuaDocCau { double? soTien; String? loai; DateTime? ngay; String? walletId; String? categoryId; DoanDanhMuc? doan; String? lyDoDanhMuc; String ghiChu; List<String> canhBao; }`
+— `doan` khác `null` khi danh mục đến từ B1 (banner mục 3).
 Mọi trường `null` nghĩa là *không đọc được*, và form **giữ nguyên** ô ấy.
 
 ### 2.1 Số tiền
@@ -57,31 +86,38 @@ Tách câu thành các **cụm tiền** theo thứ tự xuất hiện, ưu tiên
   → ngày ấy của **năm hiện tại** (không hợp lệ thì bỏ; nếu rơi vào tương lai quá 7 ngày thì lùi một năm).
 - Không nêu → `null` (form giữ ngày của nó). Giờ trong ngày giữ như form (chỉ đổi phần ngày).
 - **Một định nghĩa:** phép đọc ngày tách thành `DateTime? ngayTrongCau(String cau, DateTime now)` ở
-  `core/utils/ngay_trong_cau.dart`. `kyTuCauHoi` (`ai_edge/domain/ma_ky.dart`) **gọi lại** hàm ấy cho các chữ một ngày
-  (*hôm nay / hôm qua / hôm kia*), để app không có hai định nghĩa của *"hôm qua"*.
+  `core/utils/ngay_trong_cau.dart`, cùng `ngayHopLe` (dời từ `ai_edge/domain/ma_ky.dart`, tệp ấy gọi lại).
+  ⚠️ `kyTuCauHoi` **không** gọi `ngayTrongCau`: nó chỉ đọc kỳ nêu cụ thể, còn *"hôm qua"* của Trợ lý AI đi qua mã kỳ
+  `hom_qua` → `kyTuMa` (banner mục 5) — hai phép không trùng định nghĩa.
 
 ### 2.4 Ví
 
-- Tên ví nêu trong câu → `khopTheoTen` (`core/utils/khop_ten.dart`) trên các ví **đang hoạt động** (`getActive`, bộ chọn
-  ví, không phải `getAll`: test quét `wallet_picker_sources_test` sẽ đòi phân loại chỗ gọi). Khớp đúng một → ví ấy.
+- Tên ví nêu trong câu → `tenNeuTrongCau(cau, tenVi, tuLoai: 'ví')` (`core/utils/khop_ten.dart`, banner mục 4) trên các
+  ví **đang hoạt động** (danh sách `_wallets` màn đã nạp bằng `getActive`, bộ chọn ví — không thêm chỗ đọc ví mới). Tên
+  khớp đúng một ví → ví ấy.
 - *"tiền mặt"* / *"tien mat"* mà không khớp tên nào → ví loại `cash` nếu có **đúng một**.
 - Không đọc được → `null`.
 
 ### 2.5 Danh mục
 
-- Tên danh mục nêu trong câu (`khopTheoTen` trên `chonDuoc`, lọc theo chiều tiền như C1 `hopLeTheoChieu`) → danh mục ấy,
-  `lyDoDanhMuc = null`.
+- Tên danh mục nêu trong câu (`tenNeuTrongCau(cau, tên, tuLoai: 'danh mục')` trên tập hợp lệ) → danh mục ấy,
+  `lyDoDanhMuc = null`, `doan = null`.
 - Không nêu → `mo?.doan(ghiChu, hopLe: …, tatCap: tatCap)` của B1 trên **ghi chú đã rút** (§2.7). Có kết quả thì kèm
-  `cauLyDoHoc`.
-- Chiều tiền dùng cho bộ lọc: `loai` đọc được ở 2.2, không có thì loại đang chọn trên form (tham số `loaiHienTai` truyền
-  vào hàm).
+  `doan` và `cauLyDoHoc`.
+- Tập hợp lệ (banner mục 2): `loai` đọc được ở 2.2 thì `hopLeTheoChieu(loai, chonDuoc)` của C1; không đọc được thì **mọi**
+  danh mục chọn được (không nhóm, chưa xoá) — cùng nếp thẻ gợi ý của màn, danh mục kéo đoạn Chi/Thu theo.
 
 ### 2.6 Bộ đọc số bằng chữ — dời ra `core/utils/so_bang_chu.dart`
 
-`_mauSoChu`, `_giaTriSoChu`, `_soChu`, `_donViChu` hôm nay là phần riêng tư của `ai_edge/domain/kiem_so.dart`. Mảng
-`transaction` không được import `ai_edge`. Dời thành `List<({int batDau, int ketThuc, double giaTri})> timSoBangChu(String cau)`
-ở `core/utils/so_bang_chu.dart`, và `kiem_so.dart` gọi lại. **Không đổi hành vi** của `kiemSo`: toàn bộ test của nó xanh
-nguyên, kể cả các ca bẫy 4.42 (*"một triệu"*, lượng từ mơ hồ, *"500 nghìn"* giữ cách đọc cũ).
+Hai bộ đọc riêng tư đang sống: `ai_edge/domain/kiem_so.dart` (chữ có dấu, kiểm câu trả lời) và
+`ai_edge/domain/chinh_tham_so.dart` (chữ bỏ dấu, ngưỡng tiền câu hỏi). Cả hai **không** đọc hàng chục (banner mục 1).
+Thay bằng **một** `List<({int batDau, int ketThuc, double giaTri})> timSoBangChu(String cau)` ở
+`core/utils/so_bang_chu.dart`: đọc trên chữ đã bỏ dấu (nhận cả hai kiểu gõ), vị trí trả về theo câu gốc (câu NFC — bỏ dấu
+giữ độ dài), `giaTri` là `NaN` cho lượng từ mơ hồ (*vài, mấy, dăm*). Hàng chục: *mười* (10) · *X mươi* (X·10) · sau
+*mươi*: *mốt* (1), *tư* (4), *lăm / nhăm* (5) · *linh / lẻ* (0 chục) — *"hai mươi lăm nghìn"* = 25.000, *"một trăm linh
+năm nghìn"* = 105.000. Từ số vẫn phải có **đơn vị** ngay sau cụm (*"năm nay"*, *"một khoản"* không phải số).
+`kiem_so.dart` và `chinh_tham_so.dart` gọi lại; mọi test cũ của hai tệp xanh **không sửa kỳ vọng** (gồm các ca bẫy
+4.42: *"một triệu"*, lượng từ mơ hồ, *"500 nghìn"* giữ cách đọc cũ — chữ số kèm đơn vị chữ không thuộc bộ đọc này).
 
 ### 2.7 Ghi chú
 
