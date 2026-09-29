@@ -22,6 +22,11 @@ bộ, theo dữ liệu sẵn có): **B1 gợi ý danh mục học từ ghi chú 
 `plans/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu.md`** · B5a ghi phản ứng với thông báo · B2 khoản lặp → gợi ý hoá đơn ·
 B3 chi bất thường · B4 dự báo chi kỳ tới · B5b học giờ thông báo (mỗi dự án con nhóm B một vòng brainstorm → spec → kế hoạch).
 
+**Tiến độ 2026-09-29:** A1 ✅ (cổng F lần 3). **A2 · A3 · A4 ✅ mã xong + đo Realme** (mục 9.38 `AI_EDGE_FEATURE.md`,
+`109aeb4` → `d27b3e3`): 18 câu đổi đường 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s. 🛑 **Còn mở: F12 tụt** (tham số thừa
+`trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó) — hướng sửa chờ người dùng. Người dùng dặn dừng nhóm A sau vòng đo ấy,
+**chuyển sang B1**.
+
 ---
 
 # ⭐ THỨ TỰ THỰC HIỆN — chốt lại 2026-09-23, sau cổng C

@@ -2528,7 +2528,8 @@ vẫn hỏng (*"5.0000 đ"*, *"20.0000.000 đ"*). Hệ quả: mỗi câu định
 được **câu trả lời tự nhiên** thay vì mẫu câu. Đây là lý do mạnh nhất để định tuyến thêm các câu cũ.
 
 ⚠️ Màn Trợ lý AI hiện toast *"Một số thay đổi chưa lên được máy chủ"* giữa buổi đo — hàng đợi đồng bộ của máy, không
-liên quan lát này; chưa điều tra.
+liên quan lát này; chưa điều tra. *(Đã điều tra và sửa: A4, mục 9.38 — batch không tới nơi bị báo bằng câu của
+"thay đổi bị từ chối".)*
 
 ### 9.35 Mở rộng bộ tool — LÁT 3, Task 9–11: hoá đơn kỳ tới, tự trả, cố định mỗi tháng; mục tiêu trích tự động; cân đối ngân sách (2026-09-28) — mã xong
 
@@ -2957,6 +2958,85 @@ nguồn cho bảng `kBang72Cau` của kế hoạch A2 Task 4.
 **Ba chỗ còn thô, chưa chọn hướng:** trần 4 hàng làm câu liệt kê hụt (C16 hiện 4/5) và làm con số tổng đọc nhầm thành
 tổng các hàng đang hiện (F11); C9 cụt ở dấu hai chấm (có từ lần 1); mẫu câu mục tiêu in thừa *Đang theo đuổi / Đã hoàn
 thành* ở câu một số đích (B1, B2).
+
+### 9.38 Nhóm A sau cổng F — A3 · A4 · A2 (2026-09-29) — mã xong, đo Realme: 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s; ⚠️ F12 tụt, cổng ra CHƯA trọn
+
+Kế hoạch `plans/2026-09-28-nhom-a-a3-a4-a2.md` (gitignore, 6 task, thi công inline). Quyết định người dùng chốt
+28/09: A3 in *tổng + mỗi kỳ*, A4 chỉ sửa toast (không nối Realme với backend), thứ tự A3 → A4 → A2.
+
+| Việc | Mã | Commit |
+|---|---|---|
+| **A3** — tool dự báo in hai hàng quá hạn trùng | Hàm thuần `gopCamKetQuaHan` + `CamKetGop` (`analytics/domain/du_bao_dong_tien.dart`) gộp kỳ **quá hạn** cùng (tên, loại, ví); kỳ tương lai **không** gộp. `hangDuBao` chép: hàng gộp mang *Tổng quá hạn* (thay thế *Số tiền*, *Phải trả*), *Mỗi kỳ* (chỉ khi mọi kỳ bằng nhau), *Số kỳ quá hạn*. `Số cam kết` vẫn đếm trọn tập; `duBaoCua` và trang Phân tích **không đổi** | `109aeb4`, `1578e80` |
+| **A4** — toast *"Một số thay đổi chưa lên được máy chủ"* ở mọi chu kỳ | `_khiDayXong` thôi hiện khi `SyncResult.transportFailed` — cả batch không tới nơi không phải "thay đổi bị từ chối"; server nhận rồi từ chối thì vẫn hiện | `75e486b` |
+| **A2** — năm họ câu cũ về phiên một tool | `congCuTheoCauHoi` thêm năm vị từ `_laCauGoiYHanMuc` · `_laCauNganSach` · `_laCauVi` · `_laCauMucTieu` · `_laCauHoaDon`, mỗi họ một danh sách **LOẠI** (câu giao dịch nhắc tên loại ở lại phiên sáu tool). Bảng `kBang72Cau` (`dinh_tuyen_72_cau_test.dart`) ghim tool đích của cả 72 câu cổng F | `37dc121`, `d27b3e3` |
+
+⚠️ **Hai lỗi có từ lát 1 mà A3 lộ ra** (sửa cùng `1578e80`): mẫu câu của **chính** tool dự báo trượt `kiemTen` ở mọi
+lượt — trạng thái *"hoá đơn · quá hạn"* (`kiemTen` đọc *"· quá hạn"* là tên hoá đơn) và nhãn *"Ví thiếu: 0"* (đọc
+*"thiếu"* là tên ví). Nhóm ca cũ `qua các lớp chắn` chỉ gọi `kiemSo` + `kiemNhan` nên không đỏ. Nay *"hoá đơn đã quá
+hạn"* (cùng chữ tool hoá đơn) và *Số ví không đủ tiền* (cùng khuôn nhãn tool mục tiêu, *Ví thiếu* giữ làm nhãn thay
+thế); ca ấy nay gọi đủ sáu lớp. Lúc chạy mẫu câu hiện thẳng không qua lớp chắn, nên trên màn không vỡ gì — lỗi là chữ
+của **mô hình** nêu *"ví thiếu"* bị chắn oan.
+
+⚠️ **Bốn chỗ kế hoạch lệch mã, ghi ở đây cho lần sau:** (1) ba ca phản ví dụ cũ (nhóm 15, 17, 20 của
+`chinh_tham_so_test`) mã hoá chính quyết định A2 đảo — *tổng tài sản*, *mấy ví*, ba câu ngân sách — viết lại, giữ vế còn
+canh được; (2) khung `chay()` của `vong_lap_cong_cu_test` dùng câu mẫu *"Hoa don nao qua han?"* cho các ca **không**
+định tuyến (L1, L1b, tool bịa tên) — A2 định tuyến chính câu ấy nên ba ca rơi nhánh định tuyến; đổi sang *"Hoa don nao toi
+da tra?"* kèm ca tiền đề `congCuTheoCauHoi(...) == null`; (3) bản sai của danh sách loại **ví** không làm ca nào đỏ — câu
+kế hoạch chọn để canh không khớp vế dương nào; thêm *"tháng này tôi chi nhiều nhất từ ví nào"*, *"ví nào có nhiều giao
+dịch nhất"*; (4) thêm vế loại *"thu nhập / thu / lương"* cho *"trung bình mỗi tháng"* của họ gợi ý hạn mức (câu thu nhập
+là tổng quan). Nhóm ca mới đánh số **22** (số 16 đã có). `flutter test` **4254/4254** (3 skip, +96 ca), `flutter
+analyze` 26. `tools_json` phiên sáu tool, lời hệ thống, schema, payload **không đổi**.
+
+#### Đo trên Realme (2026-09-29 09:35–09:57)
+
+Realme RMX2205, CPU, APK release `9a80ec46…` = `d27b3e3` (SHA-1 so hai bên), `congA2.sh` scratchpad phiên
+`6e13f96d…`: 18 câu đổi đường + F4, F5 (A3), 11 phút, **0 sập**, **0 `FAILED_PRECONDITION`**, 20/20 phiên **một**
+tool. ⚠️ **`uiautomator dump` hỏng suốt buổi** (*"null root node"*, 6/6 lần — Assistive Touch; lần trước chạy được) →
+bản ghi bằng `cuon_chup.py` (cuộn + chụp, 31 màn) rồi đọc bằng mắt.
+
+| # | Câu hỏi | Câu trả lời hiện ra (nguyên văn, bỏ thẻ số liệu) | Đánh giá |
+|---|---|---|---|
+| A13 | Hoa don nao qua han? | Hoa don Kiem và di h0c đã quá hạn. Tổng cộng còn phải trả 55.000 đ. | ✅ |
+| A15 | Vi nao dang am? | Ví "test" đang âm với số dư là -100.000 đ. | ✅ |
+| A3 | Ngan sach nao sap het? | Ngan sách Giáo dục còn 2 ngày và còn lại 5.000 đ. | ✅ |
+| A2 | Con bao nhieu tien ngan sach thang nay? | Tổng số tiền còn lại của các ngân sách là 1.340.000 đ. | ✅ |
+| B1 | khi nao toi dat muc tieu muaxe | MuaXe đúng kế hoạch: Còn thiếu 899.000 đ, Còn 576 ngày, Theo nhịp hiện tại cần thêm 20 ngày; Đang theo đuổi: 2; Đã hoàn thành: 0. | ✅ (L2d như mốc 72) |
+| B3 | thang sau toi nen dat ngan sach bao nhieu | Dựa trên dữ liệu gần nhất, bạn có thể xem xét đặt ngân sách cho các danh mục sau: Di chuyển (410.000 đ), Giải trí (150.000 đ), Mua sắm (70.000 đ), và Giáo dục (60.000 đ). | ✅ |
+| B4 | ngan sach an uong nen dat bao nhieu | Dựa trên dữ liệu gần nhất, mức chi trung bình của bạn cho danh mục "Ăn uống" là 60.000 đ/tháng. | ✅ — câu thứ hai *"Bạn có thể xem xét đặt ngân sách phù hợp."* bị chặn |
+| B1c | hoa don di h0c con phai tra bao nhieu | di h0c đã trả: Số tiền 10.000 đ, Đến hạn 16/09; di h0c đã quá hạn: Số tiền 10.000 đ, Đến hạn 23/09; Còn phải trả: 10.000 đ; Quá hạn: 1; Chưa trả: 1; Tự trả: 0. | ✅ nội dung — mẫu câu L2: mô hình viết *"Hoa hồng phải trả là 10.000 đ."*, bị chặn (mốc 72: câu tự nhiên) |
+| E8 | Hoa don Netflix khi nao den han? | Hoa don Netflix có hai hóa đơn: một hóa đơn đã trả với ngày đến hạn là 28/09 và một hóa đơn chưa trả, tự trả với ngày đến hạn là 05/10. | ✅ |
+| E9 | Toi co bao nhieu hoa don chua tra? | Có 2 hóa đơn chưa trả. Số tiền còn phải trả là 55.000 đ. | ✅ |
+| E10 | Ngan sach an uong con lai bao nhieu? | Ngân sách Ăn uống còn lại là 450.000 đ. | ✅ |
+| E11 | Muc tieu nao dang cham ke hoach? | Chậm kế hoạch — không có mục tiêu nào khớp. | ✅ (như mốc 72) |
+| E12 | Toi co may vi tat ca? | Bạn có 4 ví. Các ví là: test (đang âm với số dư -100.000 đ), tiết kiệm mua nhà (bình thường với số dư 0 đ), Tiết kiệm (bình thường với số dư 3.101.000 đ), và Tiền mặt (bình thường với số dư 9.903.000 đ). | ✅ đủ hơn mốc 72 (*"Có 4 ví."*); bốn số dư cộng ra đúng tổng tài sản E14 |
+| E14 | Tong tai san cua toi la bao nhieu? | Tổng tài sản của bạn là 12.904.000 đ. | ✅ |
+| E18 | Ngan sach nao toi chua dung den mot nua? | Ngan sách "Ăn uống" còn 450.000 đ và "Mua sắm" còn 790.000 đ. | ✅ |
+| E20 | Toi chi cho di chuyen trung binh moi thang bao nhieu? | Trung bình mỗi tháng bạn chi cho di chuyển là 410.000 đ. | ✅ — câu thứ hai *"Hạn mức hiện tại của bạn là 450.000 đ."* bị chặn (mốc 72 vế ấy hiện, chấm ✅; log không nói lớp nào chặn) |
+| F11 | thang toi toi phai tra hoa don nao | Trong kỳ tới, bạn còn phải trả tổng cộng 665.000 đ. Các hóa đơn cụ thể bao gồm: Kiem (45.000 đ, dự kiến đến hạn 02/10), Netflix (100.000 đ, chưa trả · tự trả đến hạn 05/10), di h0c (10.000 đ, dự kiến đến hạn 07/10), và Kiem (45.000 đ, dự kiến đến hạn 09/10). | ✅ ⚠️ như mốc 72 — 665.000 là tổng mọi hoá đơn kỳ tới, danh sách 4 hàng (trần) |
+| F12 | hoa don nao tu tra | Hoa đơn Netflix đã được trả. Hiện tại còn phải trả 100.000 đ. | ◐ **TỤT** (mốc 72 ✅ *"…chưa trả và tự trả, đến hạn 05/10"*) — xem dưới |
+| F4 | tien trong vi co du tra hoa don khong | Ví trong ví đang thiếu tiền cho cam kết. Số dư hiện tại là 12.904.000 đ, tổng cam kết là 730.000 đ. | ✅ (*"Ví trong ví"* lủng củng, không nêu tên ví thiếu) |
+| F5 | tra het hoa don thi con bao nhieu | Hiện tại, bạn còn tiêu được 12.174.000 đ. | ✅ — câu thứ hai *"Có 1 khoản thiếu tiền cho cam kết là 730.000 đ."* (tổng cam kết gán nhãn *thiếu*) bị chặn |
+| A3x | 30 ngay toi toi phai tra nhung khoan nao | Dựa trên thông tin, bạn cần lưu ý các khoản sau: Khoản "di h0c" ngày 30/09 với số tiền 10.000 đ. Khoản "Kiem" với tổng quá hạn 90.000 đ. | ✅ **A3 trên máy** — thẻ *Kiem · Tổng quá hạn 90.000 đ*: hai kỳ 45.000 một hàng. ⚠️ *di h0c* ở tool dự báo mang ngày 30/09, trong khi tool hoá đơn nói kỳ 23/09 *quá hạn* — chưa đối chiếu (có thể là ân hạn `periodEnd`) |
+
+**Kết quả 18 câu đổi đường: 17 ✅ · 1 ◐ · 0 ✗ · SAI 0**; F4, F5, A3x ✅. **Thời gian chờ 18 câu: trung bình 43,7 s →
+24,0 s** (tổng 786 → 432 s; từng câu ở `toolA2.tsv`), mỗi câu sang **đúng** tool mô hình tự chọn ở mốc 72 câu. Ba câu
+(B4, E20, F5) nay có câu thứ hai bị chặn mà câu đầu vẫn hiện; B1c rơi mẫu câu (đúng nội dung).
+
+**A4 trên máy ✅.** Realme không tới được backend dev: logcat 09:44:29.174 `Push complete: SyncResult(0/10 succeeded, 0
+conflicts, 10 failed, transport failed)`; bộ canh `canh_a4.sh` chụp màn 2,2 s sau (toast tự ẩn sau 4 s) — đáy màn
+**không** có toast (`a4_1a.png`).
+
+🛑 **Cổng ra của nhóm A CHƯA trọn — F12 tụt.** Nguyên nhân đọc từ log: ở phiên **một** tool mô hình tự điền
+`trang_thai: da_tra` (phiên sáu tool thì không). Bộ chỉnh `chinhThamSoHoaDon` **thêm** `tu_tra` + `ky=tat_ca` nhưng
+**giữ** `trang_thai` của mô hình, nên tool lọc *"tự trả **và** đã trả"* → một hàng: kỳ Netflix 28/09 đã trả. Câu của mô
+hình đúng với dữ liệu tool trả, nhưng bộ lọc hẹp vì tham số thừa — **họ bẫy 4.44**. Hướng sửa đề xuất, **chưa làm, chờ
+người dùng chọn**: câu tự trả không nêu trạng thái trả (*đã trả · chưa trả · quá hạn*) thì bộ chỉnh **gỡ** `trang_thai`
+(cùng khuôn luật 10 gỡ `chon` thừa), ca test từ đúng câu F12, rồi đo lại F12.
+
+Đi kèm A2, **đổi hành vi** cho câu đã định tuyến mà mọi lời gọi bị từ chối: vòng lặp chạy lại tool đích với `{}` + câu
+hỏi (nhánh *"không gọi tool, định tuyến theo câu hỏi"*) thay vì L1b — có sẵn từ lát 1, nay áp cho thêm 18 câu. Và
+`goi_y_han_muc` **không** tự đọc tên danh mục từ câu hỏi: nếu mô hình ở phiên một tool không gọi tool thì B4/E20 nhận
+gợi ý mọi danh mục (buổi đo này không xảy ra).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

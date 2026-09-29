@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-26)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-29)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -705,9 +705,20 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   khoản lặp → gợi ý hoá đơn (v27), B3 chi bất thường theo danh mục (mở lại quyết định 17/09), B4 tầng 3 ước tính theo
   thói quen của khối Dự báo (mở lại 16/09), B5b học giờ thông báo. Spec ở `docs/superpowers/specs/2026-09-28-b*`, kế hoạch
   ở `plans/` (gitignore). Người dùng **duyệt đổi bất biến ④** (*"không tool nào ghi thẳng"*) cho nhóm C, thứ tự C1 → C2
-  → D1 → C3 → C4. Bàn giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-h1-h3.md`
+  → D1 → C3 → C4. *(Bàn giao ghi ở dòng dưới là ảnh chụp 28/09 — bàn giao mới nhất ở mục nhóm A ngay sau.)* Bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-h1-h3.md`
   (trước buổi đo lần 3); bản trước `…-sau-vong-sua-cong-f.md`. Kế hoạch nhóm A `plans/2026-09-28-nhom-a-a3-a4-a2.md` và bản đồ nhóm B–D `plans/2026-09-28-nhom-b-sau-b1-ban-do.md` (gitignore) soạn cùng chiều. Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
+- ✅ **Nhóm A sau cổng F — A3 · A4 · A2 mã xong 2026-09-29** (mục **9.38** `AI_EDGE_FEATURE.md`, `109aeb4` → `d27b3e3`):
+  **A3** tool dự báo gộp kỳ quá hạn cùng hoá đơn một hàng (`gopCamKetQuaHan` ở `analytics/domain`, nhãn *Tổng quá hạn* ·
+  *Mỗi kỳ* · *Số kỳ quá hạn*; `duBaoCua` và trang Phân tích không đổi) — kèm hai lỗi có từ lát 1 làm mẫu câu của chính
+  tool trượt `kiemTen` (*"hoá đơn · quá hạn"*, nhãn *"Ví thiếu"*); **A4** toast đồng bộ im khi `transportFailed`;
+  **A2** năm họ câu cũ (hoá đơn · ví · ngân sách · gợi ý hạn mức · mục tiêu) sang phiên một tool, bảng
+  `kBang72Cau` ghim tool đích của 72 câu. Đo Realme 09:35–09:57: 18 câu đổi đường **17 ✅ · 1 ◐ · SAI 0**, chờ TB **43,7
+  → 24,0 s**; A3 thấy trên máy (*Kiem · Tổng quá hạn 90.000 đ*); A4 ✅ (không toast 2,2 s sau `transport failed`).
+  🛑 **Cổng ra chưa trọn: F12 tụt** — phiên một tool mô hình điền thừa `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó (họ
+  bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn**. Người dùng
+  dặn sau vòng đo này **dừng nhóm A, chuyển sang phần kế** (B1). `flutter test` **4254/4254** (3 skip), analyze 26. Bàn
+  giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
