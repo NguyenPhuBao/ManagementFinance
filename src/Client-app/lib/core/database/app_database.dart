@@ -9,6 +9,7 @@ import 'tables/notification_table.dart';
 import 'tables/ai_feedback_table.dart';
 import 'tables/goi_y_phan_hoi_table.dart';
 import 'tables/notification_event_table.dart';
+import 'tables/goi_y_hoa_don_phan_hoi_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
@@ -17,6 +18,7 @@ import 'daos/notification_dao.dart';
 import 'daos/ai_feedback_dao.dart';
 import 'daos/goi_y_phan_hoi_dao.dart';
 import 'daos/notification_event_dao.dart';
+import 'daos/goi_y_hoa_don_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -49,6 +51,7 @@ part 'app_database.g.dart';
     AiRebalancingFeedbacks,
     GoiYDanhMucPhanHois,
     AppNotificationEvents,
+    GoiYHoaDonPhanHois,
   ],
   daos: [
     WalletDao,
@@ -61,6 +64,7 @@ part 'app_database.g.dart';
     AiFeedbackDao,
     GoiYPhanHoiDao,
     NotificationEventDao,
+    GoiYHoaDonDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -68,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration {
@@ -494,6 +498,11 @@ class AppDatabase extends _$AppDatabase {
           // cũ: trước bản này không có phản ứng nào được ghi.
           await m.createTable(appNotificationEvents);
         }
+        if (from < 27) {
+          // B2 (spec 2026-09-28): phản hồi thẻ gợi ý hoá đơn từ khoản lặp — CỤC
+          // BỘ, không đi qua đồng bộ (test quét thứ 15 canh).
+          await m.createTable(goiYHoaDonPhanHois);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -583,11 +592,15 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(appNotificationEvents)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Phản hồi thẻ gợi ý hoá đơn từ khoản lặp (v27, B2) — cùng lý lẽ.
+      removed += await (delete(goiYHoaDonPhanHois)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
   }
 
-  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười một bảng mà
+  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười ba bảng mà
   /// [purgeDataForOtherAccounts] đụng tới, cùng thứ tự con → cha.
   ///
   /// Dùng khi server nói tài khoản này **đã bị xoá**: bên kia đã ẩn danh hoá
@@ -642,6 +655,9 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
       removed += await (delete(appNotificationEvents)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(goiYHoaDonPhanHois)
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });

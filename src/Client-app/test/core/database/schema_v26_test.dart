@@ -29,7 +29,8 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema là v26', () => expect(db.schemaVersion, 26));
+  // Con số là phiên bản HIỆN TẠI — v27 (2026-09-29, B2) thêm bảng phản hồi gợi ý hoá đơn, không đụng bảng của v26.
+  test('schema từ v26 trở lên', () => expect(db.schemaVersion, greaterThanOrEqualTo(26)));
 
   test('bảng app_notification_events có đủ cột và KHÔNG có cột đồng bộ', () async {
     final cols = await db.customSelect("PRAGMA table_info('app_notification_events')").get();
