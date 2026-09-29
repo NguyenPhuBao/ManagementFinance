@@ -378,6 +378,31 @@ void main() {
       expect(chinhThamSoHoaDon('hoa don nao toi phai tu tra', {}).args.containsKey('tu_tra'), isFalse);
       expect(chinhThamSoHoaDon('hoa don nao qua han', {'tu_tra': true}).args.containsKey('tu_tra'), isFalse);
     });
+    test('⭐ F12 tụt (mục 9.38): câu tự trả KHÔNG nêu trạng thái trả mà mô hình điền trang_thai → gỡ', () {
+      // Đo Realme 2026-09-29, phiên một tool: mô hình tự điền `trang_thai: da_tra`, bộ chỉnh giữ nó, tool lọc
+      // "tự trả VÀ đã trả" → chỉ kỳ Netflix 28/09 đã trả; câu trả lời "Netflix đã được trả" trong khi kỳ 05/10 còn
+      // phải trả (họ bẫy 4.44). Gỡ thì tool dùng mặc định `chua_tra` — đúng tập của câu ✅ ở mốc 72 câu.
+      final r = chinhThamSoHoaDon('hoa don nao tu tra', {'trang_thai': 'da_tra'});
+      expect(r.args, {'tu_tra': true, 'ky': 'tat_ca'},
+          reason: 'trang_thai của mô hình không có chỗ bám trong câu hỏi — phải gỡ');
+      expect(r.ghiChu, contains(contains('trang_thai')), reason: 'lượt gỡ phải lên log như mọi luật khác');
+      expect(chinhThamSoHoaDon('Hoá đơn nào tự động thanh toán?', {'trang_thai': 'qua_han'}).args
+          .containsKey('trang_thai'), isFalse);
+    });
+    test('phản ví dụ: câu tự trả NÊU trạng thái trả → giữ trang_thai; câu không về tự trả → không đụng', () {
+      expect(chinhThamSoHoaDon('hoa don tu tra nao chua tra', {'trang_thai': 'chua_tra'}).args['trang_thai'],
+          'chua_tra');
+      expect(chinhThamSoHoaDon('Hoá đơn tự trả nào đã trả rồi?', {'trang_thai': 'da_tra'}).args['trang_thai'],
+          'da_tra');
+      expect(chinhThamSoHoaDon('hoa don tu tra nao qua han', {'trang_thai': 'qua_han'}).args['trang_thai'],
+          'qua_han');
+      expect(chinhThamSoHoaDon('hoa don tu tra nao da thanh toan', {'trang_thai': 'da_tra'}).args['trang_thai'],
+          'da_tra');
+      expect(chinhThamSoHoaDon('hoa don nao da tra', {'trang_thai': 'da_tra'}).args['trang_thai'], 'da_tra',
+          reason: 'luật chỉ áp cho câu TỰ TRẢ — câu hoá đơn thường giữ nguyên hành vi cũ');
+      expect(chinhThamSoHoaDon('hoa don nao sap den han', {'trang_thai': 'chua_tra'}).args['trang_thai'],
+          'chua_tra', reason: 'câu hoá đơn thường KHÔNG nêu trạng thái vẫn giữ — bản sai bỏ vế tuTra phải đỏ ở đây');
+    });
   });
 
   group('chinhThamSoMucTieu (E11 cổng E)', () {

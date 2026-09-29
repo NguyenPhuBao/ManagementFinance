@@ -26,9 +26,9 @@ B3 chi bất thường · B4 dự báo chi kỳ tới · B5b học giờ thông 
 `109aeb4` → `d27b3e3`): 18 câu đổi đường 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s. 🛑 **Còn mở: F12 tụt** (tham số thừa
 `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó) — hướng sửa chờ người dùng. Người dùng dặn dừng nhóm A sau vòng đo ấy,
 **chuyển sang B1**. ✅ **B1 xong trọn 7 task cùng trưa** (nghiệm thu Realme; mục 5d `docs/CATEGORY_RATIONALE.md`):
-dữ liệu thật gần như không có ghi chú tự gõ nên gợi ý học thường im; lỗi công cụ đo sửa `9f407e6`; 🛑 **hai câu hỏi chờ
-người dùng** — từ khoá mặc định `grab` → Ăn uống (seed backend), và thôi gợi ý học có chặn luôn từ khoá không. Kế:
-hỏi F12 → **B5a**.
+dữ liệu thật gần như không có ghi chú tự gõ nên gợi ý học thường im; lỗi công cụ đo sửa `9f407e6`. Người dùng chốt
+cùng trưa: **F12 sửa** (✅ đo lại Realme, cổng ra nhóm A trọn — cuối mục 9.38) · **viết đơn xin backend** đổi seed
+`grab` · **giữ** luật Bỏ qua như spec · điều tra lệch thu nhập Sổ giao dịch → ✅ **G49** đóng. Kế: **B5a**.
 
 ---
 

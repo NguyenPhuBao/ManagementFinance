@@ -716,7 +716,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `kBang72Cau` ghim tool đích của 72 câu. Đo Realme 09:35–09:57: 18 câu đổi đường **17 ✅ · 1 ◐ · SAI 0**, chờ TB **43,7
   → 24,0 s**; A3 thấy trên máy (*Kiem · Tổng quá hạn 90.000 đ*); A4 ✅ (không toast 2,2 s sau `transport failed`).
   🛑 **Cổng ra chưa trọn: F12 tụt** — phiên một tool mô hình điền thừa `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó (họ
-  bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn**. Người dùng
+  bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn** — ✅ **người
+  dùng chọn, sửa và đo lại Realme trưa 2026-09-29** (cuối mục 9.38 `AI_EDGE_FEATURE.md`): cổng ra nhóm A **trọn**. Người dùng
   dặn sau vòng đo này **dừng nhóm A, chuyển sang phần kế** (B1). `flutter test` **4254/4254** (3 skip), analyze 26. Bàn
   giao sau nhóm A: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
 - ✅ **B1 xong trọn 7 task 2026-09-29 trưa** — nghiệm thu trên **Realme** bản release: thẻ học hiện đúng câu lý do,

@@ -3,12 +3,14 @@
 /// hàm mới lỡ gọi thêm sẽ ném.
 library;
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_cu_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Bill _bill(String ten, DateTime dueDate, {bool tuTra = false}) => Bill(
@@ -114,4 +116,31 @@ void main() {
     expect(kq.boLoc, ['tự trả']);
     expect(kq.chuThem['ky'], 'mọi kỳ');
   });
+
+  test('⭐ F12 tụt (mục 9.38) đầu-cuối: mô hình điền thừa trang_thai=da_tra → bộ chỉnh gỡ, trả kỳ CÒN PHẢI TRẢ',
+      () async {
+    // Đúng tình huống đo trên Realme 2026-09-29: kỳ Netflix 28/09 đã trả (đã sinh kỳ 05/10), phiên một tool điền
+    // `trang_thai: da_tra`. Trước bản sửa tool lọc "tự trả VÀ đã trả" → chỉ kỳ 28/09, câu "Netflix đã được trả".
+    final log = <String>[];
+    final kq = await CongCuHoaDon(_HoaDonKyDaTra(), log: log.add)
+        .chay({'trang_thai': 'da_tra'}, idaccount: 10, now: now, cauHoi: 'hoa don nao tu tra');
+    expect(kq.hang, hasLength(1), reason: 'một hoá đơn tự trả còn phải trả: kỳ Netflix 05/10');
+    expect(kq.hang.single.trangThai, startsWith('chưa trả'),
+        reason: 'kỳ đã trả 28/09 là câu trả lời SAI cho "hoá đơn nào tự trả"');
+    expect(log.any((l) => l.contains('trang_thai')), isTrue, reason: 'lượt gỡ phải lên log');
+  });
+}
+
+class _HoaDonKyDaTra implements BillRepository {
+  @override
+  Stream<List<Bill>> watchBills(int idaccount) => Stream.value([
+        _bill('Kiem', DateTime(2026, 9, 1)),
+        _bill('Netflix', DateTime(2026, 9, 28), tuTra: true)
+            .copyWith(id: 'netflix-28-09', payStatus: kBillPayed, isPaid: true),
+        _bill('Netflix', DateTime(2026, 10, 5), tuTra: true)
+            .copyWith(id: 'netflix-05-10', generatedFromBillId: const Value('netflix-28-09')),
+      ]);
+
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }

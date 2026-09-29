@@ -3033,6 +3033,24 @@ hình đúng với dữ liệu tool trả, nhưng bộ lọc hẹp vì tham số
 người dùng chọn**: câu tự trả không nêu trạng thái trả (*đã trả · chưa trả · quá hạn*) thì bộ chỉnh **gỡ** `trang_thai`
 (cùng khuôn luật 10 gỡ `chon` thừa), ca test từ đúng câu F12, rồi đo lại F12.
 
+✅ **F12 SỬA XONG trưa 2026-09-29 — cổng ra nhóm A TRỌN** (người dùng chọn đúng hướng đề xuất). `chinhThamSoHoaDon`:
+câu tự trả mà **không** nêu trạng thái trả (`_mauTrangThaiTra`: *đã trả · chưa trả · còn phải trả · quá hạn · trễ
+hạn · đã/chưa thanh toán*) thì gỡ `trang_thai` mô hình điền → tool dùng mặc định `chua_tra`. Chỉ áp cho câu **tự
+trả**; câu hoá đơn thường giữ hành vi cũ. Ca test: hai ca ở `chinh_tham_so_test` (gỡ / phản ví dụ, **hai bản sai có
+chủ ý** — bỏ vế `tuTra`, bỏ vế nêu trạng thái — đều đỏ; ca *"hoa don nao sap den han"* thêm vì bản sai bỏ `tuTra`
+lọt qua bộ phản ví dụ đầu) và một ca đầu-cuối ở `cong_cu_hoa_don_test` dựng **đúng** tình huống máy (kỳ 28/09 đã
+trả, kỳ 05/10 còn phải trả) — trên mã cũ ca ấy ra đúng chữ `'đã trả'` như câu sai đo được. **Đo lại trên Realme**
+(release `47aef33b…`, 12:13): mô hình **lại** điền `{trang_thai: da_tra}`, log *"câu hỏi tự trả không nêu trạng thái
+trả → bỏ trang_thai"*, tool trả **1 hàng** — câu mô hình tự viết *"Hoa hồng đã trả: 100.000 đ."* bị lớp chắn chặn,
+màn hiện mẫu câu (L2):
+
+| Câu | Câu trả lời hiện ra (nguyên văn) | Đánh giá |
+|---|---|---|
+| F12 | *Mọi kỳ, tự trả — Netflix chưa trả · tự trả: Số tiền 100.000 đ, Đến hạn 05/10; Còn phải trả: 100.000 đ; Quá hạn: 0; Chưa trả: 1; Tự trả: 1.* | ✅ nội dung (mẫu câu; mốc 72 câu là chữ mô hình). Chờ 35,3 s |
+
+⚠️ Dữ liệu Realme từ trưa 29/09 có thêm **11 giao dịch thử** của lượt nghiệm thu B1 (chi tháng 9 2.241.000 →
+2.351.000) — không đụng hoá đơn nên đáp án F12 không đổi, nhưng đáp án các câu chi tiêu phải tính lại.
+
 Đi kèm A2, **đổi hành vi** cho câu đã định tuyến mà mọi lời gọi bị từ chối: vòng lặp chạy lại tool đích với `{}` + câu
 hỏi (nhánh *"không gọi tool, định tuyến theo câu hỏi"*) thay vì L1b — có sẵn từ lát 1, nay áp cho thêm 18 câu. Và
 `goi_y_han_muc` **không** tự đọc tên danh mục từ câu hỏi: nếu mô hình ở phiên một tool không gọi tool thì B4/E20 nhận

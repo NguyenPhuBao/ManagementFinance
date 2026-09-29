@@ -848,8 +848,21 @@ KetQuaChinhThamSo chinhThamSoHoaDon(String cauHoi, Map<String, dynamic> args) {
     a.remove('tu_tra');
     ghi.add('câu hỏi không nói tự trả → bỏ tu_tra');
   }
+  // F12 tụt (mục 9.38, luật 10 — họ bẫy 4.44): câu tự trả KHÔNG nêu trạng thái trả mà mô hình điền `trang_thai` →
+  // gỡ, tool dùng mặc định `chua_tra`. Đo Realme 2026-09-29: phiên một tool điền `da_tra`, tool lọc "tự trả VÀ đã
+  // trả" → một kỳ đã trả, câu trả lời "Netflix đã được trả" trong khi kỳ sau còn phải trả. Chỉ áp cho câu tự trả:
+  // câu hoá đơn thường giữ hành vi cũ.
+  if (tuTra && !_mauTrangThaiTra.hasMatch(q) && _chuoi(a['trang_thai']) != null) {
+    a.remove('trang_thai');
+    ghi.add('câu hỏi tự trả không nêu trạng thái trả → bỏ trang_thai');
+  }
   return KetQuaChinhThamSo(a, ghi);
 }
+
+/// Câu hỏi NÊU trạng thái trả của hoá đơn — khi ấy `trang_thai` của mô hình có chỗ bám, giữ nguyên.
+final RegExp _mauTrangThaiTra = RegExp(
+  r'(?<![a-z0-9])(?:da tra|chua tra|con phai tra|qua han|tre han|da thanh toan|chua thanh toan)(?![a-z0-9])',
+);
 
 /// "tự trả / tự động trả / tự động thanh toán" — ⚠️ *"phải tự trả"* là trả TAY.
 final RegExp _mauTuTra = RegExp(
