@@ -14,6 +14,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 // `show` chứ không import trần: `package:flutter/widgets.dart` kéo theo
 // `Category` của foundation, trùng tên với data class Drift cùng tên mà
 // `app_database.dart` phơi ra.
@@ -24,6 +25,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
+import 'package:flowmoney/core/notification/hang_cho_su_kien.dart';
+import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
@@ -161,6 +164,7 @@ void main() {
     void Function()? onNapChiLon,
     KeHoachTaiPhanBo? keHoach,
     void Function()? onNapKeHoach,
+    NhapHangCho? nhapHangCho,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -185,6 +189,7 @@ void main() {
         return keHoach;
       },
       resyncLich: onResyncLich,
+      nhapHangCho: nhapHangCho,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
     );
@@ -249,6 +254,28 @@ void main() {
   group('vòng đời', () {
     /// Chờ cho micro-task của listener chạy xong.
     Future<void> nhipTho() => Future<void>.delayed(Duration.zero);
+
+    test('B5a: start() nhập tệp hàng chờ — cú Hoãn thành đúng một hàng `hoan` của tài khoản đăng nhập',
+        () async {
+      final tam = await Directory.systemTemp.createTemp('scanner_hang_cho_');
+      addTearDown(() => tam.delete(recursive: true));
+      await File('${tam.path}/$kTepHangCho')
+          .writeAsString(dongHangCho(dedupeKey: 'billDue:hd1:2026-09-17:3', luc: DateTime(2026, 9, 16, 21)));
+      final scanner = dungScanner(
+        nhapHangCho: NhapHangCho(
+          thuMuc: () async => tam,
+          nhatKy: NhatKyThongBao(dao: db.notificationEventDao, idaccountPhien: () => null),
+          thuocTaiKhoan: (id, k) async => id == accountId && k == 'billDue:hd1:2026-09-17:3',
+        ),
+      );
+      await scanner.start(accountId);
+
+      final r = await db.notificationEventDao.getAll(accountId);
+      expect(r.map((e) => '${e.suKien}:${e.dedupeKey}'), ['hoan:billDue:hd1:2026-09-17:3'],
+          reason: 'trên Android MỌI cú Hoãn đi qua tệp hàng chờ (spike 2026-09-29) — không nhập ở start là mất hết');
+      expect(File('${tam.path}/$kTepHangCho').existsSync(), isFalse);
+      await scanner.stop();
+    });
 
     test('start() quét ngay, không chờ sự kiện đồng bộ nào', () async {
       final scanner = dungScanner();

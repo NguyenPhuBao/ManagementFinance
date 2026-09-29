@@ -106,6 +106,17 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
     return [for (final r in rows) r.dedupeKey];
   }
 
+  /// Tài khoản có hàng nào mang khoá này không (kể cả hàng đã xoá mềm) — bộ
+  /// nhập hàng chờ B5a dùng để biết một cú Hoãn thuộc về ai.
+  Future<bool> coDedupeKey(int idaccount, String dedupeKey) async {
+    final r = await (select(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) & t.dedupeKey.equals(dedupeKey))
+          ..limit(1))
+        .getSingleOrNull();
+    return r != null;
+  }
+
   Future<void> markAllRead(int idaccount) async {
     await (update(appNotifications)
           ..where((t) =>

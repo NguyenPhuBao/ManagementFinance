@@ -71,6 +71,7 @@ import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
+import '../notification/hang_cho_su_kien.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
@@ -473,6 +474,16 @@ Future<void> setupDependencies() async {
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
       resyncLich: (idaccount) =>
           sl<ReminderScheduler>().resync(idaccount),
+      // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ (isolate nền không có CSDL).
+      // Một dòng thuộc tài khoản khi khoá khớp một `dat_lich` HOẶC một thông báo
+      // của chính tài khoản ấy — không khớp thì bỏ, không đoán (quy tắc 2).
+      nhapHangCho: NhapHangCho(
+        thuMuc: getApplicationDocumentsDirectory,
+        nhatKy: sl<NhatKyThongBao>(),
+        thuocTaiKhoan: (id, k) async =>
+            await sl<AppDatabase>().notificationEventDao.coDatLich(id, k) ||
+            await sl<AppDatabase>().notificationDao.coDedupeKey(id, k),
+      ),
     ),
   );
 

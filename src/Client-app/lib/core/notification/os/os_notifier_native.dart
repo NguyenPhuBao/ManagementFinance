@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../cham_hdh.dart';
+import '../hang_cho_su_kien.dart';
 import '../notification_actions.dart';
 import 'os_notifier.dart';
 import 'os_scheduled_id.dart';
@@ -508,7 +511,25 @@ void khiChamNutLucAppDong(NotificationResponse response) {
   // này trả lời đúng câu ấy trong `adb logcat`.
   debugPrint('[Hoãn] isolate nền nhận "$payload", dời tới ${lich.when}');
 
+  unawaited(_ghiHangCho(payload));
   unawaited(_datLichHoanTuIsolateNen(lich));
+}
+
+/// Nhật ký B5a: isolate nền không có CSDL, nên nối một dòng vào tệp hàng chờ;
+/// `NhapHangCho` đưa vào bảng khi app mở lại. Nuốt MỌI lỗi — cùng lý do
+/// `_datLichHoanTuIsolateNen`. Spike Realme 2026-09-29 (spec B5a mục 5) đã xác
+/// nhận `path_provider` chạy ở đây, và nút Hoãn tới đây KỂ CẢ khi app còn sống.
+Future<void> _ghiHangCho(String payload) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    await File('${dir.path}/$kTepHangCho').writeAsString(
+      '${dongHangCho(dedupeKey: payload, luc: DateTime.now())}\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+  } catch (_) {
+    // Bỏ qua có chủ ý.
+  }
 }
 
 /// Nuốt **mọi** lỗi: không có ai để báo, và một ngoại lệ chưa bắt trong isolate

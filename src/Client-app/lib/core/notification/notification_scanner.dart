@@ -20,6 +20,7 @@ import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
+import 'hang_cho_su_kien.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
@@ -155,6 +156,10 @@ class NotificationScanner {
   /// không liên quan tới thứ đang được canh.
   final Future<void> Function(int idaccount)? resyncLich;
 
+  /// Nhật ký B5a — cú *Hoãn* nằm trong tệp hàng chờ (isolate nền không có CSDL);
+  /// nhập MỘT lần mỗi [start]. `null` thì bỏ qua (test không cần tệp).
+  final NhapHangCho? nhapHangCho;
+
   final Stream<SyncStatus> syncStatus;
 
   /// Sự kiện vòng đời app. Bỏ trống thì chỉ còn hai mốc kích hoạt kia.
@@ -216,6 +221,7 @@ class NotificationScanner {
     this.badgeUpdater,
     this.prefsStore,
     this.resyncLich,
+    this.nhapHangCho,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -236,6 +242,14 @@ class NotificationScanner {
     // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
     try {
       await dao.purgeOlderThan(clock().subtract(giuThongBao));
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+
+    // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ. Nhập TRƯỚC lượt quét đầu;
+    // nuốt lỗi như mọi bước dọn dẹp ở đây.
+    try {
+      await nhapHangCho?.nhap(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
