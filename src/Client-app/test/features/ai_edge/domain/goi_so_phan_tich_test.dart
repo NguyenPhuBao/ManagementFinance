@@ -5,10 +5,13 @@ library;
 
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_phan_tich.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
+import 'package:flowmoney/features/analytics/domain/chi_bat_thuong.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
@@ -26,6 +29,7 @@ ThongKeKy _tk({
   List<DongGiaoDich> topChi = const [],
   DuBaoDongTien? duBao,
   List<DongDanhMuc> danhMuc = const [],
+  List<DongChiBatThuong>? chiBatThuong,
 }) {
   final ky = Ky.thang(2026, 9);
   final chuoi = chuoiTheoKy(const [], ky: ky);
@@ -55,6 +59,7 @@ ThongKeKy _tk({
         tongTaiSanCua(const [], const [], ky: ky, now: DateTime(2026, 9, 8)),
     giaoDichDauTien: null,
     chuoiVayNo: chuoiVayNo ?? [for (final d in chuoi) DiemVayNo(ky: d.ky)],
+    chiBatThuong: chiBatThuong,
   );
 }
 
@@ -239,5 +244,98 @@ void main() {
     expect(g.kyCua(soKyTruoc), {'tháng này', 'tháng trước'});
     final khong = GoiSoPhanTich.tu(_tk());
     expect(khong.kyCua(khong.soLieu.first), isNull);
+  });
+  // ── B3 — chi bất thường theo danh mục (2026-09-29) ─────────────────────────
+  group('chi bất thường (B3)', () {
+    DongChiBatThuong bt(String ten, double chi, double thuongLe) => (
+          d: ChiBatThuong(
+              categoryId: 'c-$ten', chi: chi, thuongLe: thuongLe, soThangMau: 6),
+          ten: ten,
+        );
+    DongDanhMuc dmB3(String ten, double soTien) => DongDanhMuc(
+          categoryId: 'c-$ten',
+          ten: ten,
+          icon: null,
+          mauHex: null,
+          soTien: soTien,
+          tiLeTongChi: 0,
+        );
+    final motDong = [bt('Ăn uống', 2400000, 900000)];
+    final danhMuc = [dmB3('Ăn uống', 2400000), dmB3('Di chuyển', 355000)];
+
+    test('một dòng → câu nêu tên + hai số, mức cảnh báo', () {
+      final n = GoiSoPhanTich.tu(_tk(chiBatThuong: motDong, danhMuc: danhMuc)).mauCau();
+      expect(
+          n.cau,
+          contains('Riêng Ăn uống kỳ này đã chi 2.400.000 đ, '
+              'cao hơn hẳn mức thường lệ 900.000 đ.'));
+      expect(n.muc, MucNhanXet.canhBao,
+          reason: 'thu > chi nhưng có danh mục lạ — khối phải báo, không nói "bình thường"');
+    });
+
+    test('hai dòng → thêm câu "Thêm 1 danh mục khác cũng cao bất thường."', () {
+      final n = GoiSoPhanTich.tu(_tk(
+        chiBatThuong: [bt('Mua sắm', 4000000, 1000000), bt('Ăn uống', 2400000, 900000)],
+        danhMuc: danhMuc,
+      )).mauCau();
+      expect(n.cau, contains('Riêng Mua sắm kỳ này đã chi 4.000.000 đ'),
+          reason: 'dòng ĐẦU (phần vượt lớn nhất) là dòng được kể tên');
+      expect(n.cau, contains('Thêm 1 danh mục khác cũng cao bất thường.'));
+    });
+
+    test('⭐ mẫu câu tự qua SÁU lớp chắn — có và không có chữ kỳ "tháng này"', () {
+      for (final chuKy in [null, 'tháng này']) {
+        for (final ds in [
+          motDong,
+          [bt('Mua sắm', 4000000, 1000000), bt('Ăn uống', 2400000, 900000)],
+        ]) {
+          final g = GoiSoPhanTich.tu(_tk(chiBatThuong: ds, danhMuc: danhMuc), chuKy: chuKy);
+          final cau = g.mauCau().cau;
+          expect(kiemCauTraLoi(cau, [g]), isTrue, reason: '$chuKy | $cau');
+        }
+      }
+    });
+
+    test('câu gán NGƯỢC số chi bất thường thành khoản "thu" bị kiemNhan chặn (bẫy 4.42)', () {
+      // Y tế KHÔNG nằm trong top danh mục (tk.danhMuc) nên không mục nào khác
+      // mang 700.000 để "cứu" câu — chỉ mục Chi bất thường quyết.
+      final g = GoiSoPhanTich.tu(_tk(
+        chiBatThuong: [bt('Y tế', 700000, 200000)],
+        danhMuc: [for (var i = 0; i < 4; i++) dmB3('DM $i', 3000000.0 - i * 100000)],
+      ));
+      // Gán ngược = câu có từ khoá nhãn xung đột ("thu") mà KHÔNG đủ từ khoá của
+      // chính nhãn ("chi bất thường") — xem `ganNhanNguoc`.
+      expect(kiemNhan('Riêng Y tế kỳ này thu 700.000 đ.', [g]), isFalse,
+          reason: 'thiếu xung đột "Thu" thì câu nói Y tế là khoản THU 700.000 đ vẫn lọt — '
+              'số thật, tên thật, mệnh đề sai');
+      expect(kiemNhan('Riêng Y tế kỳ này đã chi 700.000 đ, cao hơn hẳn mức thường lệ 200.000 đ.', [g]),
+          isTrue);
+    });
+
+    test('null hoặc rỗng → câu và số liệu Y HỆT trước B3', () {
+      final goc = GoiSoPhanTich.tu(_tk(danhMuc: danhMuc));
+      for (final g in [
+        GoiSoPhanTich.tu(_tk(danhMuc: danhMuc, chiBatThuong: const [])),
+        GoiSoPhanTich.tu(_tk(danhMuc: danhMuc)),
+      ]) {
+        expect(g.mauCau().cau, goc.mauCau().cau);
+        expect(g.mauCau().muc, goc.mauCau().muc);
+        expect(g.soLieu.map((s) => s.nhan), goc.soLieu.map((s) => s.nhan));
+      }
+    });
+
+    test('kyCua: Chi bất thường thuộc kỳ; Thường lệ và số danh mục khác không thuộc kỳ nào', () {
+      final g = GoiSoPhanTich.tu(
+          _tk(
+            chiBatThuong: [bt('Mua sắm', 4000000, 1000000), bt('Ăn uống', 2400000, 900000)],
+            danhMuc: danhMuc,
+          ),
+          chuKy: 'tháng này');
+      SoLieu m(String nhan) => g.soLieu.firstWhere((s) => s.nhan == nhan);
+      expect(g.kyCua(m('Chi bất thường')), {'tháng này'});
+      expect(g.kyCua(m('Thường lệ')), isNull,
+          reason: 'trung vị các tháng TRƯỚC — gán "tháng này" là kiemKy chặn câu đúng');
+      expect(g.kyCua(m('Số danh mục khác bất thường')), isNull);
+    });
   });
 }

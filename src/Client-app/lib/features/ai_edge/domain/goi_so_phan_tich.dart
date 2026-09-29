@@ -34,6 +34,10 @@ class GoiSoPhanTich extends GoiSo {
 
   final double? khoanChiLonNhat;
 
+  /// B3: tên danh mục chi bất thường đứng ĐẦU (phần vượt lớn nhất); `null` khi
+  /// không có — hoặc kỳ không phải Tháng (repository không xét).
+  final String? tenBatThuong;
+
   @override
   final List<SoLieu> soLieu;
 
@@ -46,6 +50,7 @@ class GoiSoPhanTich extends GoiSo {
     required this.soCamKet,
     required this.khoanChiLonNhat,
     required this.soLieu,
+    this.tenBatThuong,
     this.chuKy,
     List<SoLieu> theoKy = const [],
     SoLieu? soKyTruocMuc,
@@ -96,14 +101,33 @@ class GoiSoPhanTich extends GoiSo {
             ? soPhanTram('Để dành', deDanh)
             : soPhanTram('Vượt thu nhập', -deDanh);
     final lonNhatS = lonNhat == null ? null : soTien('Khoản lớn nhất', lonNhat);
+
+    // B3: chi bất thường theo danh mục — repository đã tính (trung vị + MAD ở
+    // `analytics/domain/chi_bat_thuong.dart`); lớp này chỉ CHÉP số của dòng
+    // đầu, không tính gì (test quét 14). Nhãn chứa chữ "chi" nên khai cùng
+    // xung đột "Thu" với mục Chi theo danh mục (bẫy 4.42).
+    final bt = tk.chiBatThuong ?? const [];
+    final dau = bt.isEmpty ? null : bt.first;
+    final chiBtS = dau == null
+        ? null
+        : soTien('Chi bất thường', dau.d.chi,
+            ten: dau.ten, nhanXungDot: const ['Thu']);
+    final thuongLeS =
+        dau == null ? null : soTien('Thường lệ', dau.d.thuongLe, ten: dau.ten);
+    final soBtS =
+        bt.length > 1 ? soDem('Số danh mục khác bất thường', bt.length - 1) : null;
     return GoiSoPhanTich._(
       chuKy: chuKy,
+      tenBatThuong: dau?.ten,
       // Số CỦA KỲ; cam kết là 30 ngày tới — không vào đây (G5 (b) cổng F).
       theoKy: [
         tongChiS,
         tongThuS,
         if (deDanhS != null) deDanhS,
         if (lonNhatS != null) lonNhatS,
+        // B3: số của THÁNG đang xét. "Thường lệ" (trung vị các tháng TRƯỚC) và
+        // số danh mục khác không thuộc kỳ nào — gán kỳ là `kiemKy` chặn câu đúng.
+        if (chiBtS != null) chiBtS,
         ...theoDanhMuc,
       ],
       soKyTruocMuc: soKyTruocS,
@@ -124,6 +148,9 @@ class GoiSoPhanTich extends GoiSo {
           soDem('Số cam kết', duBao.camKet.length),
         ],
         if (lonNhatS != null) lonNhatS,
+        if (chiBtS != null) chiBtS,
+        if (thuongLeS != null) thuongLeS,
+        if (soBtS != null) soBtS,
         // Đặt CUỐI: mẫu câu tra mục theo nhãn, các mục tổng hợp phải gặp trước.
         ...theoDanhMuc,
       ],
@@ -173,10 +200,23 @@ class GoiSoPhanTich extends GoiSo {
     if (khoanChiLonNhat != null) {
       b.write(' Khoản chi lớn nhất ${s['Khoản lớn nhất']}.');
     }
+    // B3. Nói "kỳ này", KHÔNG nêu tên tháng: chữ số của nhãn kỳ không nằm
+    // trong gói và bộ kiểm số sẽ chặn chính câu mẫu (cùng lý do câu mở đầu).
+    final tenBt = tenBatThuong;
+    if (tenBt != null) {
+      b.write(' Riêng $tenBt kỳ này đã chi ${s['Chi bất thường']}, '
+          'cao hơn hẳn mức thường lệ ${s['Thường lệ']}.');
+      final khac = s['Số danh mục khác bất thường'];
+      if (khac != null) {
+        b.write(' Thêm $khac danh mục khác cũng cao bất thường.');
+      }
+    }
     return NhanXet(
       cau: b.toString(),
       theSoLieu: soLieu,
-      muc: tongChi > tongThu ? MucNhanXet.canhBao : MucNhanXet.binhThuong,
+      muc: tongChi > tongThu || tenBt != null
+          ? MucNhanXet.canhBao
+          : MucNhanXet.binhThuong,
     );
   }
 }
