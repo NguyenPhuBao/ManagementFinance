@@ -27,6 +27,7 @@ import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/domain/tong_tai_san.dart';
+import 'package:flowmoney/features/analytics/domain/uoc_tinh_chi_tuy_y.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -112,6 +113,7 @@ ThongKeKy _tk({
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
   DuBaoDongTien? duBao,
+  UocTinhChiTuyY? uocTinhChiTuyY,
   Map<DateTime, NgayChiTieu> lich = const {},
   List<DiemTaiSan>? taiSan,
   DateTime? giaoDichDauTien,
@@ -149,6 +151,7 @@ ThongKeKy _tk({
       lichChiTieu: lich,
       dongTien: dongTien,
       duBao: duBao,
+      uocTinhChiTuyY: uocTinhChiTuyY,
       // Mặc định là sáu điểm phẳng — đúng cấu trúc thật, để MỌI ca của trang
       // đi qua nhánh có khối tài sản thay vì nhánh "chưa có chuỗi"; đó là cách
       // các ca cũ bắt được tràn bố cục do khối mới gây ra.
@@ -2111,6 +2114,92 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
     });
+
+    // ── B4: tầng 3 "ước tính theo thói quen" (2026-09-29) ──────────────────
+    // Một dòng chữ phụ dưới hai con số, theo màn Stitch `7aa215e9…`. "Còn
+    // khoảng" trừ từ `conTieuDuocTheoNganSach` — tầng 3 đứng SAU hai tầng đầu,
+    // nên phần nó bớt đi là phần còn lại sau cam kết và ngân sách.
+
+    const uoc8Tuan = UocTinhChiTuyY(thap: 1290000, cao: 2140000, soTuan: 8);
+
+    testWidgets(
+        '⭐ có ước tính: một dòng đủ bốn số — chi thêm thấp – cao, còn '
+        '(gốc − cao) – (gốc − thấp)', (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000),
+              uocTinhChiTuyY: uoc8Tuan));
+
+      // Gốc = 7.130.000 − 1.200.000 = 5.930.000 (ca đầu nhóm).
+      // 5.930.000 − 2.140.000 = 3.790.000 · 5.930.000 − 1.290.000 = 4.640.000
+      expect(
+          find.text('Nếu tiêu như thói quen (8 tuần gần nhất): chi thêm khoảng '
+              '1.290.000 đ – 2.140.000 đ, còn khoảng 3.790.000 đ – 4.640.000 đ.'),
+          findsOneWidget,
+          reason: 'Hai số "còn khoảng" đảo thứ tự so với "chi thêm": tiêu nhiều '
+              'nhất (cao) thì còn ít nhất.');
+      // Hai con số cũ KHÔNG đổi — tầng 3 không được mượn chỗ của chúng.
+      expect(find.text('7.130.000 đ'), findsOneWidget);
+      expect(find.text('5.930.000 đ'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ ước tính null thì IM HẲN — khối y hệt bản trước B4',
+        (tester) async {
+      await moCaoVaPhat(
+          tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
+
+      expect(find.textContaining('Nếu tiêu như thói quen'), findsNothing,
+          reason: '`null` = chưa đủ tuần hoặc có ngân sách tổng — không được '
+              'in một khoảng 0 – 0 thay cho "chưa biết".');
+      expect(find.text('Còn tiêu được'), findsOneWidget);
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsOneWidget);
+      expect(find.text('7.130.000 đ'), findsOneWidget);
+    });
+
+    testWidgets(
+        'không có ngân sách: dòng vẫn hiện, gốc là "Còn tiêu được"; số âm mang '
+        'dấu trừ, không kẹp về 0', (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(soDu: 1000000),
+              uocTinhChiTuyY:
+                  const UocTinhChiTuyY(thap: 800000, cao: 1500000, soTuan: 5)));
+
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsNothing);
+      // 1.000.000 − 1.500.000 = −500.000 · 1.000.000 − 800.000 = 200.000
+      expect(
+          find.text('Nếu tiêu như thói quen (5 tuần gần nhất): chi thêm khoảng '
+              '800.000 đ – 1.500.000 đ, còn khoảng -500.000 đ – 200.000 đ.'),
+          findsOneWidget,
+          reason: 'Luật của khối Dự báo: con số được phép âm — kẹp về 0 là '
+              'giấu đúng điều người dùng cần biết.');
+    });
+
+    for (final rong in [411.0, 360.0]) {
+      testWidgets('dòng ước tính với số rất lớn không tràn ở ${rong.toInt()}dp',
+          (tester) async {
+        tester.view.physicalSize = Size(rong, 4000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await moTrang(tester);
+        await phat(
+            tester,
+            _tk(
+                duBao: _duBao(
+                    soDu: 1234567890,
+                    camKet: sauCamKet,
+                    nganSachConLai: 987654321),
+                uocTinhChiTuyY: const UocTinhChiTuyY(
+                    thap: 987654320, cao: 1234567890, soTuan: 12)));
+
+        expect(find.textContaining('Nếu tiêu như thói quen (12 tuần gần nhất)'),
+            findsOneWidget);
+        expect(tester.takeException(), isNull,
+            reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+      });
+    }
   });
 
   group('Tổng tài sản theo thời gian (#5)', () {

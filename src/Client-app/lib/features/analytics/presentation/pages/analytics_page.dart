@@ -28,6 +28,7 @@ import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thac_nuoc.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../../domain/tong_tai_san.dart';
+import '../../domain/uoc_tinh_chi_tuy_y.dart';
 import '../bloc/analytics_cubit.dart';
 import '../widgets/chon_pham_vi_sheet.dart';
 
@@ -125,7 +126,10 @@ class _NoiDung extends StatelessWidget {
             // biết 30 ngày tới có gì phải trả.
             if (thongKe.duBao != null) ...[
               const SizedBox(height: 24),
-              _KhoiDuBao(duBao: thongKe.duBao),
+              _KhoiDuBao(
+                duBao: thongKe.duBao,
+                uocTinh: thongKe.uocTinhChiTuyY,
+              ),
             ],
           ];
         }
@@ -149,7 +153,10 @@ class _NoiDung extends StatelessWidget {
           // còn lại" của kỳ — hiện tại rồi tới tương lai, mắt đọc liền mạch.
           // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
           if (thongKe.duBao != null) ...[
-            _KhoiDuBao(duBao: thongKe.duBao),
+            _KhoiDuBao(
+              duBao: thongKe.duBao,
+              uocTinh: thongKe.uocTinhChiTuyY,
+            ),
             const SizedBox(height: 24),
           ],
           _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
@@ -1470,7 +1477,12 @@ class _KhoiDongTienTuDo extends StatelessWidget {
 /// cả khối"; lớp thứ nhất là `if` ở `_than`. Cùng cách thác nước.
 class _KhoiDuBao extends StatefulWidget {
   final DuBaoDongTien? duBao;
-  const _KhoiDuBao({required this.duBao});
+
+  /// Tầng 3 (B4) — `null` là **im hẳn**. `required` dù nullable: khối được
+  /// dựng ở HAI chỗ (kỳ rỗng và kỳ thường), quên truyền ở một chỗ là dòng ước
+  /// tính biến mất đúng ở nhánh ấy, im lặng.
+  final UocTinhChiTuyY? uocTinh;
+  const _KhoiDuBao({required this.duBao, required this.uocTinh});
 
   @override
   State<_KhoiDuBao> createState() => _KhoiDuBaoState();
@@ -1514,7 +1526,7 @@ class _KhoiDuBaoState extends State<_KhoiDuBao> {
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
-          _BaConSoDuBao(d: d),
+          _BaConSoDuBao(d: d, uocTinh: widget.uocTinh),
           for (final v in d.viThieu) ...[
             const SizedBox(height: 12),
             _DongViThieu(v: v),
@@ -1548,7 +1560,8 @@ class _KhoiDuBaoState extends State<_KhoiDuBao> {
 
 class _BaConSoDuBao extends StatelessWidget {
   final DuBaoDongTien d;
-  const _BaConSoDuBao({required this.d});
+  final UocTinhChiTuyY? uocTinh;
+  const _BaConSoDuBao({required this.d, required this.uocTinh});
 
   @override
   Widget build(BuildContext context) {
@@ -1585,6 +1598,26 @@ class _BaConSoDuBao extends StatelessWidget {
           _DongSo(
             nhan: 'Nếu tiêu đúng ngân sách',
             giaTri: _dong(d.conTieuDuocTheoNganSach),
+          ),
+        ],
+        if (uocTinh case final u?) ...[
+          const SizedBox(height: 4),
+          // B4 tầng 3 — một dòng chữ PHỤ, không phải con số chính: đây là ước
+          // tính, không được mượn độ tin của hai con số trên nó (quyết định
+          // 16/09, spec B4 §1). Màn Stitch `7aa215e9…`: 12 px thường, xám,
+          // không biểu tượng, không hộp.
+          //
+          // "Còn khoảng" trừ từ `conTieuDuocTheoNganSach` — tầng 3 chỉ tính
+          // phần chưa tầng nào tính, nên nó đứng SAU cam kết và ngân sách;
+          // không có ngân sách thì số ấy bằng `conTieuDuoc`. Hai số được phép
+          // âm và KHÔNG kẹp — cùng luật với "Còn tiêu được".
+          Text(
+            'Nếu tiêu như thói quen (${u.soTuan} tuần gần nhất): chi thêm '
+            'khoảng ${_dong(u.thap)} – ${_dong(u.cao)}, còn khoảng '
+            '${_dong(d.conTieuDuocTheoNganSach - u.cao)} – '
+            '${_dong(d.conTieuDuocTheoNganSach - u.thap)}.',
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ],
