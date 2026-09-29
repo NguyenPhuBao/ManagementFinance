@@ -1,12 +1,13 @@
 /// C2 — đọc MỘT câu tiếng Việt thành các ô của form Thêm giao dịch (spec
-/// `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2). Hàm thuần, **chỉ luật**: nhanh, chạy trên mọi máy, và **không
-/// bao giờ bịa số** — ô nào không đọc chắc được thì `null`, form giữ nguyên ô ấy.
+/// `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2). Hàm thuần, **luật** — tự nó không gọi mô hình (ô của AI được
+/// truyền vào, xem dưới): nhanh, chạy trên mọi máy, và **không bao giờ bịa số** — ô nào không đọc chắc được thì `null`,
+/// form giữ nguyên ô ấy.
 ///
 /// Bất biến ④ của nhóm C: đây chỉ là điền sẵn. Người dùng xem lại rồi bấm **Lưu** mới ghi.
 ///
 /// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → ví (§2.4) → loại (§2.2, trên câu đã bỏ các đoạn ấy, để *"thứ
-/// 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu, không
-/// có thì B1 đoán trên ghi chú đã rút).
+/// 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu → B1
+/// khi chắc → từ khoá của danh mục → danh mục AI chọn, tất cả trên ghi chú đã rút của luật).
 ///
 /// **Đọc bằng AI (§2.8, 2026-09-30):** khi có [KetQuaAi] — các ô thô mô hình trên máy trả về — mỗi ô của AI phải QUA
 /// KIỂM của luật mới được dùng, trượt thì giữ ô của luật. AI đề xuất, luật kiểm: AI được chọn cách đọc, không được đưa

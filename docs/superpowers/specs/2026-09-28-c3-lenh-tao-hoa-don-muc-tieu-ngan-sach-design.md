@@ -6,6 +6,19 @@ lý AI** · **chỉ luật** (không mô hình) · làm cho **cả ba**: hoá đ
 D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `khopTheoTen`) và **B2** (`/bills/add` nhận query điền sẵn).
 **Không đổi schema.**
 
+> ⚠️ **Soát với mã C2 đã thi công (2026-09-30, phiên soát tài liệu — spec này viết 28/09, trước C2).** Tên thật của bộ đọc
+> C2: ngày **`timNgayTrongCau`** (`core/utils/ngay_trong_cau.dart`, trả `({ngay, batDau, ketThuc})`); số chữ
+> **`timSoBangChu`** (`core/utils/so_bang_chu.dart`, có vị trí); **tên nêu trong câu** là `timTenTrongCau` /
+> `tenNeuTrongCau` (`core/utils/khop_ten.dart`) — **`khopTheoTen` so TRỌN chuỗi**, chỉ dùng cho tên đã tách sẵn (tham số
+> tool), không tìm được tên nằm giữa câu. ⚠️ **Bộ chọn số tiền của C2 (`_chonSoTien`, bốn cách nói + ưu tiên có đơn vị) là
+> RIÊNG TƯ** trong `transaction/domain/doc_cau_giao_dich.dart`: C3 muốn *"cùng bộ đọc"* (§2.1) và *"vị trí trả về"* thì phải
+> mở nó ra thành hàm công khai (một định nghĩa — đừng chép), việc của C3. `ai_edge/` import được `transaction/domain/`
+> (test quét 14 `ai_edge_khong_tinh_test.dart` cấm **chuỗi** trong dòng mã, không cấm import) — nhưng ⚠️ chín chuỗi nó cấm
+> gồm cả **`walletId`** (cùng `'thu'`, `'chi'`, `'transfer'`, `transactionDao`, `db.transactions`, `.type ==`, `amount <`,
+> `amount >`): trường `LenhTaoHoaDon.walletId` của §2 đặt ở `ai_edge/domain/lenh_tao.dart` sẽ làm test ấy đỏ — đổi tên
+> trường hoặc đặt tệp ngoài `ai_edge/` (như C2 đặt `DocCauBangAi` ở `transaction/data/`). Soát lại lần nữa trước Task 1 —
+> C2 còn quyết định *"ĐỔI LẦN HAI"* chưa thi công (không đụng bộ đọc, chỉ đổi lúc nào gọi AI).
+
 ## 1. Vì sao
 
 Tạo một hoá đơn định kỳ hôm nay cần mở drawer → Hoá đơn → nút thêm → điền năm sáu ô. Người dùng đã quen nói với Trợ lý AI.

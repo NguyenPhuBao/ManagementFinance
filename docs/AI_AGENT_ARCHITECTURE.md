@@ -35,7 +35,7 @@ dưới đây, phần lớn có trước, cộng lại chỉ còn đúng một h
 | 1 | Dữ liệu giao dịch **không rời thiết bị** | F1 đặc tả Edge-SLM + Nghị định 13/2023/NĐ-CP | pháp lý — cứng nhất |
 | 2 | Backend là **vùng chỉ đọc** với nhóm client | Quy tắc 1 `CLAUDE.md` | tổ chức |
 | 3 | **Gemma 4 E2B cho mọi máy**, bỏ hẳn E4B | người dùng chốt 2026-09-20 sau phép đo P1 | đo được |
-| 4 | **Lối B** — mô hình phục vụ **một chỗ**: màn Trợ lý AI. Sáu khối Nhận xét giữ mẫu câu | người dùng chốt 2026-09-20 | sản phẩm |
+| 4 | **Lối B** — mô hình phục vụ **một chỗ**: màn Trợ lý AI. Sáu khối Nhận xét giữ mẫu câu. ⚠️ **Từ 2026-09-30 thêm chỗ thứ hai**: ô *Nhập nhanh* màn Thêm giao dịch (C2, mục 4.3) | người dùng chốt 2026-09-20; mở rộng 2026-09-30 | sản phẩm |
 | 5 | **Lớp AI không tính** — mọi số từ hàm domain đã có | test quét `lib/` thứ **14** | kiến trúc |
 | 6 | `kiemSo` là lớp chắn **duy nhất**, **không nới** vì mô hình lớn hơn | spec Edge-SLM mục 4.4 | kiến trúc |
 | 7 | Dữ liệu AI là **cục bộ**, không vào `SyncEntityType` | test quét `lib/` thứ **15** | kiến trúc |
@@ -101,6 +101,7 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 │                                                                      │
 │   ↳ chặn THEO CÂU: đủ một câu mới kiểm, trượt thì huỷ sinh          │
 │   ↳ CHỈ màn Trợ lý AI (lối B — BoDienGiai KHÔNG đăng ký vào DI)     │
+│     + từ 30/09 ô Nhập nhanh (C2 — một tool, luật kiểm từng ô)       │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌─ VÒNG 3 — AGENT ──────────── ✅ LÁT 4b XONG 23/09, CỔNG C ĐẠT ─────┐
@@ -261,6 +262,14 @@ vào DI**, nên `KhoiNhanXet` luôn rơi về `const MauCau()`.
 
 ⚠️ Đảo sang lối A là **một commit** (bỏ dấu chú thích khối đăng ký). Đừng làm nếu
 người dùng chưa đổi ý.
+
+⚠️ **Mở sang chỗ thứ hai ngày 2026-09-30 (C2)** — không phải lối A: khối Nhận xét **vẫn** mẫu câu, `BoDienGiai` vẫn
+không đăng ký. Người dùng chọn cho ô *Nhập nhanh* màn Thêm giao dịch dùng mô hình đọc câu (*"hôm qua ăn phở 45k tiền
+mặt"*): `DocCauBangAi` mở phiên **một tool** `dien_giao_dich`, rồi **luật kiểm từng ô** mô hình điền (số tiền phải là
+một cách đọc của số trong câu, ví chỉ khi câu nhắc ví…), và form chỉ điền sẵn — người dùng bấm ✓ mới lưu (bất biến ④,
+tầng 3). Mục 9.41 `AI_EDGE_FEATURE.md`. Lý lẽ khác lý lẽ của khối Nhận xét: ở đây mô hình **đọc câu tự do** (thứ luật
+đọc sót — *"ba chục"*, *"một triệu hai"*), đúng chỗ nó hơn mẫu câu. 🔁 Sau khi đo (~18 s mỗi câu trên Realme CPU) người
+dùng quyết **luật trước, AI là lớp cuối cho mọi ô** — chưa thi công.
 
 ### 4.4 ⚠️ Vòng 2 KHÔNG phải agent
 
@@ -707,7 +716,9 @@ thuần — và chính nhờ thế mà luật D5 bỏ được.
 ✅ **Nhóm C (người dùng duyệt 2026-09-28): bất biến ④ nay là *"không tool nào ghi THẲNG"*** — AI được
 điền sẵn form hay danh sách đề xuất, người dùng bấm mới ghi; tầng 4 và mọi thao tác xoá vẫn cấm. Việc
 đầu tiên theo khuôn này là **C1 — gắn danh mục hàng loạt** (2026-09-29): mô hình B1 tick sẵn, người
-dùng duyệt cả lô rồi bấm *Áp dụng* (mục 5e `CATEGORY_RATIONALE.md`, 9.40 `AI_EDGE_FEATURE.md`).
+dùng duyệt cả lô rồi bấm *Áp dụng* (mục 5e `CATEGORY_RATIONALE.md`, 9.40 `AI_EDGE_FEATURE.md`). Việc thứ hai là **C2
+— ô Nhập nhanh** (2026-09-30, **tầng 3**): mô hình / luật điền sẵn form Thêm giao dịch, người dùng xem rồi bấm ✓ (mục 4.3,
+9.41 `AI_EDGE_FEATURE.md`). Chín tool của Trợ lý AI vẫn **chỉ đọc**.
 
 ---
 

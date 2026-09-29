@@ -5,6 +5,11 @@
 > **AI đọc mọi câu** (§2.8, người dùng chọn 30/09) · **bước từ khoá** trong thứ tự danh mục (§2.5, người dùng đề xuất và
 > chốt 30/09: tên → B1 khi chắc → từ khoá → AI). ⚠️ Phần **"đề xuất thêm từ khoá từ thói quen"** (người dùng lặp một chữ
 > với một danh mục mà chưa khai từ khoá) là **việc riêng ngay sau C2, trước D1** — người dùng chốt, chưa có spec.
+> 🔁 **Sau lượt đo người dùng đã quyết ĐỔI LẦN HAI — CHƯA THI CÔNG** (banner cuối trong khối banner; mã hôm nay vẫn chạy
+> *"AI đọc mọi câu"*). Ba câu hỏi chặn việc thi công ở **§8 câu 1, 2, 9**.
+> 📝 **Soát thân spec với mã 2026-09-30 (phiên soát tài liệu sau C2):** chữ ký §2, tên hàm §2.3–2.6, lớp kiểm §2.8 (không
+> có hàm `hopNhatAi` — kiểm nằm trong `docCauGiaoDich(ai:)`; `cachDocSoTien` không có `n × 1.000.000`) và tình trạng Stitch
+> §3 đã sửa theo mã `ea12588`. Chỗ sửa ghi *"(soát 30/09)"*.
 
 **Ngày:** 2026-09-28 (tối). **Người dùng duyệt** bản thiết kế trong chat cùng ngày, với các lựa chọn: ô **"Nhập nhanh" ở
 màn Thêm giao dịch** (không ở màn Trợ lý AI) · **chỉ luật**, không mô hình · **một câu một khoản** · nhận cả bốn cách nói
@@ -66,8 +71,11 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 > nên thay đổi các hoạt động của chức năng này không"*; được trình bày số đo (lượt AI **~18 s**, gấp đôi mức 7–10 s báo lúc
 > chọn; luật một mình đã đọc đủ số tiền 8/10 câu; AI sai **cả hai** câu có ngày cần đọc và tự điền ví mặc định 9/10 câu —
 > đều bị lớp kiểm chặn, tức AI không thêm được gì ở hai ô ấy) rồi chọn bằng câu hỏi chọn:
-> 1. **Luật trước, AI chỉ khi luật bó tay** — thay *"AI đọc mọi câu"*. Luật điền tức thì; chỉ gọi Gemma khi luật **không
->    đọc được số tiền** (mà câu có số — `cachDocSoTien` khác rỗng) hoặc **chưa đoán được danh mục** sau tên → B1 → từ khoá.
+> 1. **Luật trước, AI chỉ khi các lớp trước bó tay** — thay *"AI đọc mọi câu"*. Luật điền tức thì; chỉ gọi Gemma khi còn
+>    **ô câu có nhắc mà luật / B1 / từ khoá không đọc được** — tập ô ấy theo mục 2 dưới đây, định nghĩa từng ô ở **§8 câu
+>    9** (chưa chốt). *(Bản ghi đầu tối 30/09 nêu điều kiện gọi là *"luật không đọc được số tiền mà câu có số, hoặc chưa
+>    đoán được danh mục"* — viết khi mục 2 còn là *"AI chỉ số tiền + danh mục"*; mục 2 đã thay cùng tối nên điều kiện ấy
+>    không còn đủ. Sửa ở lượt soát 30/09.)*
 > 2. ~~**AI chỉ đọc số tiền + danh mục**~~ — **thay cùng tối** bằng câu trả lời tự do của người dùng khi được hỏi riêng về
 >    ngày: *"tôi muốn AI sẽ thực hiện những phần kia nếu như các lớp trước không thực hiện được"*. Nguyên tắc chốt: **AI là
 >    lớp cuối cho MỌI ô** (số tiền, ngày, ví, thu/chi, danh mục) — ô nào luật / B1 / từ khoá đọc được thì **lớp trước
@@ -91,10 +99,12 @@ số**. Ô nào luật không đọc được thì để nguyên.
 
 ## 2. Hàm thuần — `lib/features/transaction/domain/doc_cau_giao_dich.dart`
 
-`KetQuaDocCau docCauGiaoDich(String cau, {required DateTime now, required List<Wallet> vi, required List<Category> chonDuoc, BoPhanLoaiGhiChu? mo, Set<(String, String)> tatCap = const {}})`
+`KetQuaDocCau docCauGiaoDich(String cau, {required DateTime now, required List<Wallet> vi, required List<Category> chonDuoc, BoPhanLoaiGhiChu? mo, Set<(String, String)> tatCap = const {}, KetQuaAi? ai, Map<String, List<String>> tuKhoa = const {}})`
 
-`KetQuaDocCau { double? soTien; String? loai; DateTime? ngay; String? walletId; String? categoryId; DoanDanhMuc? doan; String? lyDoDanhMuc; String ghiChu; List<String> canhBao; }`
-— `doan` khác `null` khi danh mục đến từ B1 (banner mục 3).
+`KetQuaDocCau { double? soTien; String? loai; DateTime? ngay; String? walletId; String? categoryId; DoanDanhMuc? doan; String? lyDoDanhMuc; CategorySuggestion? goiY; String ghiChu; List<String> canhBao; bool quaAi; }`
+— `doan` khác `null` khi danh mục đến từ B1 (banner mục 3); `goiY` khác `null` khi danh mục đến từ B1 **hoặc từ khoá**
+(màn ghi phản hồi đúng nguồn); `ai` là ô thô của mô hình (§2.8), `tuKhoa` là từ khoá theo `categoryId` (bước từ khoá
+§2.5); `quaAi` cho dòng nguồn. *(Chữ ký soát 30/09 — bản duyệt thiếu `ai`, `tuKhoa`, `goiY`, `quaAi`.)*
 Mọi trường `null` nghĩa là *không đọc được*, và form **giữ nguyên** ô ấy.
 
 ### 2.1 Số tiền
@@ -120,6 +130,8 @@ Tách câu thành các **cụm tiền** theo thứ tự xuất hiện, ưu tiên
 
 ### 2.2 Loại (chi / thu)
 
+- ⚠️ *(soát 30/09)* Dòng dưới là bản duyệt — **mã khớp từng từ có phân biệt dấu**, danh sách thật ở banner mục 7 (bỏ dấu
+  cả câu thì *"bạn"* = *"bán"*).
 - Câu chứa từ thu (so trọn âm tiết trên chữ bỏ dấu): *nhận, được, lương, thưởng, thu, bán, hoàn tiền, hoàn, lãi* →
   `'thu'`. Không có → `null` (form **giữ** loại đang chọn; mặc định của form là chi).
 - ⚠️ *"thu"* trong *"thu nợ"* thuộc vay/nợ: câu có *nợ / vay* thì **không** đặt loại (để người dùng chọn), vì chiều tiền
@@ -131,23 +143,28 @@ Tách câu thành các **cụm tiền** theo thứ tự xuất hiện, ưu tiên
   `thứ 2` … `thứ 7`, `chủ nhật` / `cn` → ngày gần nhất **trong quá khứ hoặc hôm nay** có thứ ấy; `5/9`, `05/09`, `ngày 5/9`
   → ngày ấy của **năm hiện tại** (không hợp lệ thì bỏ; nếu rơi vào tương lai quá 7 ngày thì lùi một năm).
 - Không nêu → `null` (form giữ ngày của nó). Giờ trong ngày giữ như form (chỉ đổi phần ngày).
-- **Một định nghĩa:** phép đọc ngày tách thành `DateTime? ngayTrongCau(String cau, DateTime now)` ở
-  `core/utils/ngay_trong_cau.dart`, cùng `ngayHopLe` (dời từ `ai_edge/domain/ma_ky.dart`, tệp ấy gọi lại).
-  ⚠️ `kyTuCauHoi` **không** gọi `ngayTrongCau`: nó chỉ đọc kỳ nêu cụ thể, còn *"hôm qua"* của Trợ lý AI đi qua mã kỳ
+- **Một định nghĩa:** phép đọc ngày tách thành `NgayTrongCau? timNgayTrongCau(String cau, DateTime now)` ở
+  `core/utils/ngay_trong_cau.dart` — trả record `({DateTime ngay, int batDau, int ketThuc})`, vị trí trong câu NFC để ghi
+  chú bỏ đúng đoạn — cùng `ngayHopLe` (dời từ `ai_edge/domain/ma_ky.dart`, tệp ấy gọi lại). Mã còn đọc *thứ hai … thứ
+  bảy* bằng chữ, *dd/mm/yyyy* (banner mục 9) và *"thứ X tuần trước / tuần này"*. *(Tên soát 30/09 — bản duyệt gọi
+  `ngayTrongCau` trả `DateTime?`.)*
+  ⚠️ `kyTuCauHoi` **không** gọi `timNgayTrongCau`: nó chỉ đọc kỳ nêu cụ thể, còn *"hôm qua"* của Trợ lý AI đi qua mã kỳ
   `hom_qua` → `kyTuMa` (banner mục 5) — hai phép không trùng định nghĩa.
 
 ### 2.4 Ví
 
-- Tên ví nêu trong câu → `tenNeuTrongCau(cau, tenVi, tuLoai: 'ví')` (`core/utils/khop_ten.dart`, banner mục 4) trên các
-  ví **đang hoạt động** (danh sách `_wallets` màn đã nạp bằng `getActive`, bộ chọn ví — không thêm chỗ đọc ví mới). Tên
-  khớp đúng một ví → ví ấy.
+- Tên ví nêu trong câu → `timTenTrongCau(cau, tenVi, tuLoai: 'ví')` (`core/utils/khop_ten.dart`, banner mục 4 — bản trả
+  kèm vị trí để ghi chú bỏ đúng đoạn; `tenNeuTrongCau` là bản chỉ trả tên, Trợ lý AI dùng) trên các ví **đang hoạt động**
+  (danh sách `_wallets` màn đã nạp bằng `getActive`, bộ chọn ví — không thêm chỗ đọc ví mới). Tên khớp đúng một ví (so
+  `normalizeCategoryName`) → ví ấy. *(Tên soát 30/09.)*
 - *"tiền mặt"* / *"tien mat"* mà không khớp tên nào → ví loại `cash` nếu có **đúng một**.
 - Không đọc được → `null`.
 
 ### 2.5 Danh mục
 
-- Tên danh mục nêu trong câu (`tenNeuTrongCau(cau, tên, tuLoai: 'danh mục')` trên tập hợp lệ) → danh mục ấy,
-  `lyDoDanhMuc = null`, `doan = null`.
+- Tên danh mục nêu trong câu (`timTenTrongCau(<câu đã bỏ đoạn tiền / ngày / ví>, tên, tuLoai: 'danh mục')` trên tập hợp
+  lệ — bỏ đoạn ví để *"45k ví Tiết kiệm"* không thành danh mục *Tiết kiệm*) → danh mục ấy, `lyDoDanhMuc = null`, `doan =
+  null`. *(Soát 30/09.)*
 - Không nêu → `mo?.doan(ghiChu, hopLe: …, tatCap: tatCap)` của B1 trên **ghi chú đã rút** (§2.7). Có kết quả thì kèm
   `doan` và `cauLyDoHoc`.
 - Tập hợp lệ (banner mục 2): `loai` đọc được ở 2.2 thì `hopLeTheoChieu(loai, chonDuoc)` của C1; không đọc được thì **mọi**
@@ -161,9 +178,11 @@ Tách câu thành các **cụm tiền** theo thứ tự xuất hiện, ưu tiên
 
 Hai bộ đọc riêng tư đang sống: `ai_edge/domain/kiem_so.dart` (chữ có dấu, kiểm câu trả lời) và
 `ai_edge/domain/chinh_tham_so.dart` (chữ bỏ dấu, ngưỡng tiền câu hỏi). Cả hai **không** đọc hàng chục (banner mục 1).
-Thay bằng **một** `List<({int batDau, int ketThuc, double giaTri})> timSoBangChu(String cau)` ở
-`core/utils/so_bang_chu.dart`: đọc trên chữ đã bỏ dấu (nhận cả hai kiểu gõ), vị trí trả về theo câu gốc (câu NFC — bỏ dấu
-giữ độ dài), `giaTri` là `NaN` cho lượng từ mơ hồ (*vài, mấy, dăm*). Hàng chục: *mười* (10) · *X mươi* (X·10) · sau
+Thay bằng **một** `List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true})` ở
+`core/utils/so_bang_chu.dart` (`CumSoChu` = `({int batDau, int ketThuc, double giaTri})`): mỗi từ khớp dạng **có dấu**
+hoặc dạng **không dấu hoàn toàn** (không bỏ dấu cả câu — *"một tí"* không phải một tỉ), vị trí trả về theo chính câu
+truyền vào, `giaTri` là `NaN` cho lượng từ mơ hồ (*vài, mấy, dăm*). `batBuocDonVi: false` chỉ dùng cho lưới kiểm AI
+(`cachDocSoTien` — *"ba chục"* không đơn vị). *(Chữ ký soát 30/09.)* Hàng chục: *mười* (10) · *X mươi* (X·10) · sau
 *mươi*: *mốt* (1), *tư* (4), *lăm / nhăm* (5) · *linh / lẻ* (0 chục) — *"hai mươi lăm nghìn"* = 25.000, *"một trăm linh
 năm nghìn"* = 105.000. Từ số vẫn phải có **đơn vị** ngay sau cụm (*"năm nay"*, *"một khoản"* không phải số).
 `kiem_so.dart` và `chinh_tham_so.dart` gọi lại; mọi test cũ của hai tệp xanh **không sửa kỳ vọng** (gồm các ca bẫy
@@ -188,29 +207,38 @@ tool mô hình viết đúng mọi số). Tham số: `so_tien` (số đồng, 0 
 đúng tên có thật (cộng chuỗi rỗng), `ghi_chu`. Lời gọi đầu tiên là kết quả; phiên đóng ngay, không trả kết quả tool về.
 Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `'thu'`/`'chi'` — test quét 14).
 
-**Luật kiểm từng ô** (hàm thuần `hopNhatAi`, `transaction/domain/`) — trượt thì dùng ô của luật:
-- **Số tiền:** phải thuộc `cachDocSoTien(cau)` — tập mọi cách đọc hợp lệ của các con số có trong câu: mọi cụm luật thấy
-  (kể cả cụm luật không chọn), số trần `n` → `n`, `n × 1.000`, `n × 1.000.000`, số chữ không đơn vị (*"ba chục"* → 30,
-  30.000), *"X triệu Y"* / *"X tr Y"* → X,Y triệu. AI được **chọn cách đọc**, không thể đưa ra chữ số không có trong câu.
-  Cùng trần 13 chữ số.
+**Luật kiểm từng ô** — nằm **trong** `docCauGiaoDich(cau, …, ai: KetQuaAi)` (`transaction/domain/doc_cau_giao_dich.dart`;
+`KetQuaAi.tuThamSo` đọc tham số lời gọi tool, rỗng / `0` / `khong_ro` → `null`). *(Soát 30/09: bản thiết kế đặt tên một
+hàm riêng `hopNhatAi` — mã không có hàm ấy.)* Trượt thì dùng ô của luật:
+- **Số tiền:** phải thuộc `cachDocSoTien(cau, now:)` — tập mọi cách đọc hợp lệ (≥ 1.000 đ, dưới 13 chữ số) của các con số
+  có trong câu: mọi cụm luật thấy (kể cả cụm luật không chọn — *lít / xị*, số thứ hai), số trần `n` → `n`, và `n × 1.000`
+  khi `10 ≤ n < 1.000` (*"ăn phở 45"*; số một chữ số là số lượng — *"2 ly"*), số chữ không đơn vị có hàng chục → × 1.000
+  (*"ba chục"* → 30.000), *"X triệu Y"* / *"X tr Y"* / *"một triệu hai"* → X,Y triệu, *"2k5"* → 2.500. AI được **chọn cách
+  đọc**, không thể đưa ra chữ số không có trong câu. ⚠️ Mã hôm nay: số AI qua kiểm thì **thắng** số luật (và xoá cảnh báo số
+  tiền của luật, trừ *"nhiều số tiền"*) — ĐỔI LẦN HAI đảo điều này. *(Soát 30/09: bản thiết kế ghi `n × 1.000.000` và
+  *"ba chục"* → 30 — mã không nhận cả hai.)*
 - **Ngày:** luật đọc được ngày (chữ không hai nghĩa: *hôm qua*, *5/9*, *thứ 2*) thì **luật thắng**. Luật không đọc được
   thì dùng ngày AI khi: hợp lệ trên lịch, không quá hôm nay + 7 ngày, không cũ hơn 366 ngày, **và** câu có chữ chỉ thời
-  gian (*tuần, tháng, hôm, trước, qua, đầu, cuối, sáng, trưa, chiều, tối, đêm, thứ, chủ nhật*); câu không có chữ nào thì
-  AI không được đổi ngày. AI trả **đúng hôm nay** thì coi là *không biết ngày* (đo Realme 2026-09-30: *"đầu tháng"* → hôm
+  gian (`_coChuThoiGian` — khớp **từng từ, phân biệt dấu** như từ chỉ thu: có dấu *tuần, tháng, hôm, trước, qua, đầu,
+  cuối, sáng, trưa, chiều, tối, đêm, thứ, nay, ngày, mai, kia, ngoái, nhật*; không dấu chỉ *tuan, thang, hom, truoc, trua,
+  chieu, ngay, kia* — vì *"tôi"* bỏ dấu là *"toi"* = tối, *"quà"* là *"qua"*); câu không có chữ nào thì AI không được đổi
+  ngày. *(Danh sách soát 30/09.)* AI trả **đúng hôm nay** thì coi là *không biết ngày* (đo Realme 2026-09-30: *"đầu tháng"* → hôm
   nay) — form vốn là hôm nay, nhận nó chỉ làm dòng tóm tắt nói *"Hôm nay"*.
 - **Loại:** `chi` / `thu` của AI được dùng; câu có *nợ / vay* → `null` như luật.
 - **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động **và câu phải nhắc ví** — chữ chỉ ví / cách trả (*ví, thẻ,
   quẹt, ck, chuyển khoản, atm*) hoặc viết tắt tên ví (*"techcom"*). Đo Realme 2026-09-30: 9/10 câu mô hình trả ví mặc định
   dù câu không nói — điền nó là bịa một ô và khoá luật *ví hay dùng*.
 - **Danh mục:** thứ tự (1) tên nêu trong câu (luật) → (2) **B1 khi nó chắc** (người dùng chốt: thói quen riêng thắng hiểu
-  biết chung) → (3) danh mục AI chọn, phải trùng một danh mục chọn được và hợp chiều → (4) không có.
+  biết chung) → (3) **từ khoá của danh mục** (thêm sau lượt đo, `ea12588`, §2.5) → (4) danh mục AI chọn, phải trùng một
+  danh mục chọn được (`khopTheoTen`) và hợp chiều → (5) không có. *(Bước 3 soát 30/09.)*
 - **Ghi chú:** mọi âm tiết (bỏ dấu) trong ghi chú AI phải có trong **ghi chú luật** (câu đã bỏ tiền, ngày, ví) — AI được
   bớt chữ, không được thêm chữ; rỗng hoặc trượt thì ghi chú luật.
 
 **Nạp trước:** chạm vào ô Nhập nhanh → nạp mô hình ngầm (một `Future` dùng chung, bấm Điền lúc đang nạp thì chờ nó).
 
-**Trên màn:** lúc chờ, nút thành *"Đang đọc…"* kèm **Huỷ** (huỷ → kết quả luật, `SlmRuntime.huy`). Dòng tóm tắt thêm nguồn:
-*"Đọc bằng AI"* hay *"Đọc bằng luật"*. Vẫn chỉ điền sẵn; ✓ mới lưu.
+**Trên màn:** lúc chờ, nút **Điền** mờ đi và dưới ô hiện dòng *"Đang đọc bằng AI…"* kèm **Huỷ** (huỷ → điền ngay bằng
+luật, mô hình thôi giải mã qua `DocCauBangAi.huy`). Dòng tóm tắt thêm nguồn: *"Đọc bằng AI"* hay *"Đọc bằng luật"*. Vẫn
+chỉ điền sẵn; ✓ mới lưu. Quá **45 s** (`kThoiHanDocAi`, tính từ lúc mở phiên) → luật. *(Soát 30/09.)*
 
 ## 3. Giao diện — màn Thêm giao dịch
 
@@ -226,7 +254,10 @@ Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `
 - **Stitch (T5, 2026-09-30):** màn `8afdfe113cc84874b2009aa80fe755fd` *"Thêm giao dịch - Nhập nhanh bằng câu"* — thẻ
   *NHẬP NHANH* ở **đầu vùng cuộn** (trên thẻ form; ô cố định trên cùng thì ở 360 × 640 thẻ form còn chưa tới 70 dp), nút
   **Điền nằm trong khung ô**, tia sét đỏ cam, dòng *"Đã điền: …"* xanh có dấu tích, câu lý do B1 in nghiêng. Hai trạng
-  thái của §2.8 (*"Đang đọc bằng AI…"* + Huỷ; nhãn nguồn *"Đọc bằng AI"*) gửi tạo cùng ngày — lời gọi trả *timeout*, chờ.
+  thái của §2.8 (*"Đang đọc bằng AI…"* + Huỷ; nhãn nguồn *"Đọc bằng AI"*) gửi tạo cùng ngày — lời gọi trả *timeout*.
+  Kết quả (kiểm `list_screens` 2026-09-30, phiên soát tài liệu): màn **`63e981f5b66c4e599572c02e14134a6f`** *"Thêm giao
+  dịch - Nhập nhanh - Đang đọc bằng AI"* **có**; màn *"… - Đã điền bằng AI"* **vẫn chưa** (dự án 83 màn) — đừng gọi lại.
+  Cả ba màn **chưa được người dùng duyệt** (§8 câu 5).
 - ⚠️ Giao diện mới → **Stitch trước**. ⚠️ Màn Thêm giao dịch có bẫy bố cục đã biết (số 13 chữ số ngắt dòng, `FittedBox`)
   và bàn phím tự vẽ. Ô mới không được đẩy bàn phím ra khỏi màn ở khổ 360 × 640.
 
@@ -254,12 +285,12 @@ Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `
   thu không được chọn cho khoản chi.
 - **Ghi chú:** các ví dụ ở §2.7.
 - **`so_bang_chu` (phép dời):** toàn bộ test `kiem_so_test` xanh không sửa kỳ vọng.
-- **`ngayTrongCau` + `kyTuCauHoi`:** test `ma_ky_test` và `chinh_tham_so_test` xanh không sửa kỳ vọng.
+- **`timNgayTrongCau` + `kyTuCauHoi`:** test `ma_ky_test` và `chinh_tham_so_test` xanh không sửa kỳ vọng.
 - **Widget màn Thêm giao dịch:** gõ câu → bấm *Điền* → các ô đúng, dòng tóm tắt đúng; ô không đọc được giữ giá trị cũ;
   màn **sửa** giao dịch không có ô; khổ 360 × 640 không tràn; bấm *Lưu* ra đúng giao dịch (khuôn `so_tien_thap_phan_test`
   dựng `GoRouter` thật vì lưu xong trang `pop`).
-- **Máy ảo:** mười câu thật kiểu người dùng hay gõ, đếm số ô điền đúng. Đây là phép đo, không phải cổng; ghi bảng vào tài
-  liệu.
+- **Máy thật** (Realme — banner mục 6; bản duyệt ghi *máy ảo*, mà máy ảo không chạy được mô hình): mười câu thật kiểu
+  người dùng hay gõ, đếm số ô điền đúng. Đây là phép đo, không phải cổng; bảng ở mục 9.41 `AI_EDGE_FEATURE.md`.
 
 ## 7. Tài liệu đi kèm
 
@@ -282,7 +313,8 @@ banner *"ĐỔI LẦN HAI"* — hỏi trước khi viết mã (câu 2 và 9 nên
 4. **Ngày kiểu *"đầu tháng / tuần trước / cuối tháng trước"*** — khi AI thôi đọc ngày, có thêm vào luật không (*"đầu tháng"*
    mơ hồ)?
 5. **Stitch chưa được duyệt**: `8afdfe113cc84874b2009aa80fe755fd` (màn chính), `63e981f5b66c4e599572c02e14134a6f` (đang đọc
-   bằng AI), màn *"… - Đã điền bằng AI"* (gọi tạo, timeout, chưa xuất hiện). Câu 1 có thể cần trạng thái mới → Stitch trước.
+   bằng AI), màn *"… - Đã điền bằng AI"* (gọi tạo, timeout, chưa xuất hiện — kiểm lại 2026-09-30 phiên soát tài liệu: vẫn
+   chưa). Câu 1 có thể cần trạng thái mới → Stitch trước.
 6. **Ô Ghi chú màn này có khung viền theme** (có từ trước C2; Stitch không khung) — sửa không?
 7. **Đề xuất thêm từ khoá từ thói quen** (việc riêng ngay sau C2, người dùng chốt): hiện ở đâu, ngưỡng lặp, **chuyển** từ
    khoá khi chữ đang thuộc danh mục khác (*grab* ở Ăn uống), bỏ qua / thôi đề xuất, từ khoá có đi qua đồng bộ không.

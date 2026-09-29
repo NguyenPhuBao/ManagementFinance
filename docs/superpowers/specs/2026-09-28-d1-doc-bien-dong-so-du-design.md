@@ -16,6 +16,15 @@ Bất biến ④ nhóm C: *"không tool nào ghi thẳng"*. Tính năng này **k
 C3 → C4. **Phụ thuộc C2** (đường điền sẵn form). **Chỉ Android.** Không đổi schema, không trường đồng bộ mới, `provider`
 giữ `'Manual'`.
 
+> ⚠️ **Soát với mã C2 đã thi công (2026-09-30, phiên soát tài liệu — spec này viết 28/09, trước C2).** Đường điền của C2
+> tên thật là **`_apDungKetQua(cau, chonDuoc, tuKhoa, {KetQuaAi? ai})`** ở `AddTransactionPage` — **không có**
+> `_dienTuKetQua`. Hàm ấy nhận **câu** rồi tự gọi `docCauGiaoDich`, **không** nhận một `KetQuaDocCau` dựng sẵn; nên §3.3
+> (*"truyền `KetQuaDocCau` vào `AddTransactionPage`"*) đòi **tách** phần áp của nó (từ `kq` trở đi: `_chonHuong`, gõ số
+> tiền qua `themPhimSoTien`, ngày giữ giờ, ví + `_nguoiDungDaChonVi`, `_chonDanhMuc`, ghi chú, `_choPhanXu`, dòng tóm tắt)
+> thành một hàm nhận `KetQuaDocCau` — việc của D1, không phải của C2. Danh mục của C2 nay là **tên → B1 khi chắc → từ khoá
+> → AI** (không chỉ B1), và C2 còn một quyết định **chưa thi công** (*luật trước, AI là lớp cuối cho mọi ô* — banner "ĐỔI
+> LẦN HAI" spec C2) — soát lại đường điền khi mở D1.
+
 ## 1. Luồng tổng
 
 ```
@@ -93,11 +102,12 @@ thêm đầu vào cho `tatCaUngVien()` ở `notification_deeplink_test.dart` (đ
 ### 3.3 Form điền sẵn
 
 - `/transactions/add` đọc query và truyền `KetQuaDocCau` (kiểu của C2) vào `AddTransactionPage`, rồi đi **đúng** đường
-  điền của C2 (`_dienTuKetQua`). Số tiền, chiều, ngày (giữ giờ trong tin), ghi chú = nội dung.
+  điền của C2 (tên viết lúc thiết kế là `_dienTuKetQua`; mã C2 là `_apDungKetQua`, nhận câu — phải tách, banner đầu
+  spec). Số tiền, chiều, ngày (giữ giờ trong tin), ghi chú = nội dung.
 - **Ví chọn sẵn:** bảng cục bộ *"nguồn + đuôi tài khoản → walletId"* lưu bằng `flutter_secure_storage`, khoá theo tài
   khoản (`bien_dong_vi:<idaccount>`), cùng khuôn `SecureStorageNotificationPrefsStore`. Ghi ở lần **Lưu** đầu tiên của mỗi
   cặp; lần sau chọn sẵn. Ví đã lưu trữ / đã xoá thì bỏ qua (dùng `getActive`).
-- **Danh mục:** bộ đoán của B1 trên ghi chú (qua C2).
+- **Danh mục:** bộ đoán của B1 trên ghi chú (qua C2 — mã C2 nay đi tên → B1 → từ khoá → AI, banner đầu spec).
 - **Nhắc trùng:** sổ đã có khoản cùng số tiền, cùng chiều, cùng ngày → dòng *"Có thể bạn đã ghi khoản này"*. Người dùng
   tự quyết, không chặn.
 - **Lưu** → giao dịch đi đường nhập tay (`provider = 'Manual'`, payload 13 trường), rồi xoá hàng loại 20 tương ứng.

@@ -367,6 +367,28 @@ Người dùng chốt ngày 2026-09-29, hai quyết định:
   học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
   gốc (seed), không bằng một luật chặn thứ hai ở màn.
 
+### Nơi dùng thứ ba — ô Nhập nhanh (C2, 2026-09-30) — và một rủi ro học sai
+
+Sau thẻ gợi ý và C1, B1 có nơi dùng thứ ba: ô **Nhập nhanh** màn Thêm giao dịch (spec
+`2026-09-28-c2-nhap-giao-dich-bang-cau-design.md`, mục 9.41 `AI_EDGE_FEATURE.md`). Danh
+mục đoán theo **tên nêu trong câu → B1 khi chắc → từ khoá → mô hình Gemma** — cùng thứ
+tự thẻ gợi ý (B1 trước từ khoá), khớp từ khoá bằng chính `CategorySuggestionEngine`; câu
+nói rõ chiều thì chỉ danh mục hợp chiều (`hopLeTheoChieu` của C1). Danh mục đến từ B1
+**hoặc từ khoá** thì màn đặt `_choPhanXu` như thẻ gợi ý, nên lúc lưu vẫn ghi phản hồi
+`chon` / `khac` đúng nguồn. Không đổi mã danh mục, không đổi schema.
+
+Bước **từ khoá** thêm sau lượt đo Realme (*"đổ xăng"*, *"grab"* bị mô hình xếp Ăn uống).
+Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ khoá từ thói quen** (một chữ lặp
+với một danh mục mà chưa khai từ khoá → mời thêm; chữ đang là từ khoá danh mục khác —
+*grab* ở Ăn uống — thì mời **chuyển**). Chưa có spec.
+
+⚠️ **Vòng lặp học sai — câu hỏi mở, chưa chốt** (§8 câu 8 spec C2). B1 học lại từ sổ
+mỗi lần mở màn, gồm cả giao dịch nhập qua Nhập nhanh. Danh mục mô hình đoán sai mà người
+dùng lưu luôn không sửa (*"xăng" → Ăn uống*) thành mẫu của B1; vì B1 đứng **trước** mô
+hình, lần sau B1 nói lại đúng cái sai ấy và nó bị **khoá lại**. Giao dịch hôm nay không
+lưu nguồn danh mục, nên muốn loại mẫu *"do AI điền, chưa xác nhận"* khỏi phép học thì phải
+có chỗ đánh dấu nguồn trước.
+
 ---
 
 ## 5e. Thay đổi 8 — gắn danh mục hàng loạt (C1, 2026-09-29)

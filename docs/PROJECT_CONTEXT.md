@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-29)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-30)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -856,8 +856,16 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `core/utils`: `so_bang_chu` (một bộ đọc số chữ cho cả `kiem_so` lẫn `chinh_tham_so` — hai bộ cũ **mù hàng chục**),
   `ngay_trong_cau` (+ `ngayHopLe`; đọc cả *"thứ X tuần trước"*), `tenNeuTrongCau` / `timTenTrongCau`. Đo 10 câu: số tiền
   10/10, danh mục 7/2/1 — bước từ khoá thêm sau lượt đo, **chưa đo lại**. `flutter test` **4773/4773** (4 skip), analyze
-  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói
-  quen** — việc riêng ngay sau C2, trước D1, chưa có spec.
+  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). 🔁 **Sau lượt đo người dùng quyết ĐỔI LẦN HAI — CHƯA THI
+  CÔNG**: *luật trước, AI chỉ khi các lớp trước bó tay* + **AI là lớp cuối cho MỌI ô** (ô nào luật / B1 / từ khoá đọc được
+  thì lớp trước thắng, kể cả số tiền — hôm nay số AI qua kiểm thắng số luật; ô câu có nhắc mà lớp trước không đọc được thì
+  AI lấp qua lưới kiểm; không còn ô thiếu thì không gọi Gemma). Lý do: ~18 s mỗi câu, luật một mình đủ số tiền 8/10, AI sai
+  cả hai câu có ngày. Ba câu chặn thi công ở §8 spec (câu 1, 2, 9). ⚠️ Việc kế (người dùng chốt): **(1)** thi công đổi lần
+  hai sau khi chốt ba câu ấy, đo lại Realme; **(2)** **đề xuất thêm từ khoá từ thói quen** — việc riêng, trước D1, chưa có
+  spec; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
+  và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
+  D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
+  `ai_edge/`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
@@ -1968,7 +1976,7 @@ hoạch bất cứ việc AI nào:
   (không phải học máy), SLM là **bộ sinh câu**. Kèm lý lẽ vì sao **không huấn
   luyện mô hình để cá nhân hoá** (trọng số không phải nơi chứa hiểu biết về
   người dùng; gói **không có API huấn luyện**), **mười tiêu chí cho AI chạy
-  trên client** (hiện đạt 9/10), và **bốn tầng hậu quả của chiều ghi** — tầng 4
+  trên client** (hiện đạt 9/10 — *ô thiếu, xác nhận chiều ghi, có từ nhóm C 2026-09-29/30*), và **bốn tầng hậu quả của chiều ghi** — tầng 4
   (`auto_pay`, trích tự động) thì **AI không chạm**.
 - **Mục 11** là **bản đồ khảo sát toàn hệ thống**, đếm bằng máy: 13 mảng · 43
   route · 10 bảng Drift · **66 hàm domain thuần mà AI mới dùng 4 gói số** *(con số của

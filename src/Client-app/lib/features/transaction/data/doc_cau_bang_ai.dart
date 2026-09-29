@@ -24,7 +24,8 @@ import '../domain/doc_cau_giao_dich.dart';
 
 const String kTenCongCuDienGiaoDich = 'dien_giao_dich';
 
-/// Quá chừng này (tính từ lúc mở phiên, không tính nạp mô hình) thì bỏ AI, dùng luật. Realme CPU đo 7–10 s một câu.
+/// Quá chừng này (tính từ lúc mở phiên, không tính nạp mô hình) thì bỏ AI, dùng luật. Đo Realme CPU 2026-09-30: lượt sinh
+/// 12–17 s, cả lượt ~18 s (mục 9.41 `AI_EDGE_FEATURE.md`).
 const Duration kThoiHanDocAi = Duration(seconds: 45);
 
 const List<String> _tenThu = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật'];
