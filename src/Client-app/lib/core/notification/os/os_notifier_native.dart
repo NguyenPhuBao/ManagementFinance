@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../cham_hdh.dart';
 import '../notification_actions.dart';
 import 'os_notifier.dart';
 import 'os_scheduled_id.dart';
@@ -66,16 +67,16 @@ class LocalOsNotifier implements OsNotifier {
   bool _daKhoiTao = false;
 
   /// Broadcast: `NotificationTapRouter` có thể huỷ rồi nghe lại.
-  final StreamController<String> _cham = StreamController<String>.broadcast();
+  final StreamController<ChamHdh> _cham = StreamController<ChamHdh>.broadcast();
 
   @override
   bool get isSupported => true;
 
   @override
-  Stream<String> get payloadDaCham => _cham.stream;
+  Stream<ChamHdh> get chamTho => _cham.stream;
 
   @override
-  Future<String?> payloadKhoiDong() async {
+  Future<ChamHdh?> chamKhoiDong() async {
     // Cả `init()` cũng nằm trong try: hàm này chạy trên đường khởi động app,
     // và một trục trặc của nền tảng ở đó không được phép làm app không mở lên.
     try {
@@ -87,11 +88,11 @@ class LocalOsNotifier implements OsNotifier {
       final payload = phanHoi?.payload;
       if (payload == null || payload.isEmpty) return null;
 
-      // ⚠️ PHẢI tính tới `actionId`. Đây là đường DUY NHẤT khi nút "Trả ngay"
-      // được bấm lúc app đã đóng hẳn — tức ca chính của một lịch đặt trước.
-      // Bỏ qua nó thì nút mở đúng danh sách hoá đơn thay vì hoá đơn ấy, và
-      // không có gì báo là đã đi sai chỗ.
-      return khoaSauChamNut(actionId: phanHoi?.actionId, payload: payload);
+      // `actionId` đi kèm payload tới router — router mới là chỗ dịch
+      // (`khoaSauChamNut`). Đây là đường DUY NHẤT khi nút "Trả ngay" được bấm
+      // lúc app đã đóng hẳn; đánh rơi `actionId` là nút mở danh sách hoá đơn
+      // thay vì đúng hoá đơn ấy, im lặng (vấp 2026-09-07).
+      return ChamHdh(payload, phanHoi?.actionId);
     } catch (_) {
       return null;
     }
@@ -108,21 +109,15 @@ class LocalOsNotifier implements OsNotifier {
     // rỗng ra cho nơi nhận tự lọc.
     if (payload == null || payload.isEmpty) return;
 
-    // Nút "Hoãn" **không phát gì ra `_cham`**: cả điểm của nó là xong việc mà
-    // không mở màn nào. Phát ra là app bật lên đúng lúc người dùng vừa nói
-    // "để lát nữa".
+    // Phát dạng THÔ — kể cả *Hoãn*: nhật ký B5a cần biết mọi cú bấm. Router là
+    // chỗ duy nhất dịch sang route (`khoaSauChamNut`) và nó bỏ qua *Hoãn*, nên
+    // phát ra không làm app bật lên đúng lúc người dùng vừa nói "để lát nữa".
+    if (!_cham.isClosed) _cham.add(ChamHdh(payload, response.actionId));
+
+    // *Hoãn* xong việc ngay tại đây — đặt lại lịch, không mở màn nào.
     if (response.actionId == hanhDongHoan) {
       unawaited(_datLichHoan(payload));
-      return;
     }
-
-    // Nút "Trả ngay" đi qua ĐÚNG đường của một cú chạm, chỉ đổi khoá thành một
-    // khoá trỏ vào chính hoá đơn ấy. Nhờ vậy `payloadDaCham` vẫn là
-    // `Stream<String>` và `NotificationTapRouter` không phải biết nút là gì.
-    // Cùng một hàm với `payloadKhoiDong()` — hai đường vào của một cú bấm
-    // không được phép quyết định khác nhau.
-    if (_cham.isClosed) return;
-    _cham.add(khoaSauChamNut(actionId: response.actionId, payload: payload));
   }
 
   /// Đặt lại lịch sau một lần "Hoãn", khi app **đang sống**.

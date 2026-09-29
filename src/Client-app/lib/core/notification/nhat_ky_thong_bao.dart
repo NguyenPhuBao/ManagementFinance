@@ -11,19 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../database/daos/notification_event_dao.dart';
 
-/// Chín mã sự kiện. Chữ thô vì là giá trị lưu trong SQLite — đổi một chữ là
-/// dữ liệu cũ đọc không ra, im lặng. Thêm mã mới thì được, đổi mã cũ thì không.
-abstract final class SuKienThongBao {
-  static const moTrongApp = 'mo_trong_app';
-  static const gatBo = 'gat_bo';
-  static const khoiPhuc = 'khoi_phuc';
-  static const docTatCa = 'doc_tat_ca';
-  static const chamHdh = 'cham_hdh';
-  static const nutTraNgay = 'nut_tra_ngay';
-  static const hoan = 'hoan';
-  static const datLich = 'dat_lich';
-  static const huyLich = 'huy_lich';
-}
+export 'su_kien_thong_bao.dart';
 
 class NhatKyThongBao {
   NhatKyThongBao({

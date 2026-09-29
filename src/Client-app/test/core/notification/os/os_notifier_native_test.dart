@@ -19,6 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:flowmoney/core/notification/cham_hdh.dart';
+import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/os/os_notifier_native.dart';
 
 void main() {
@@ -56,17 +58,18 @@ void main() {
   /// Đi qua đúng đường thật (`didReceiveNotificationResponse` trên cùng kênh)
   /// chứ không gọi thẳng callback: cái đáng canh là plugin có được khai báo
   /// kèm handler hay không, và chỉ đường này mới trả lời được câu đó.
-  Future<void> guiCuCham(String? payload) {
+  Future<void> guiCuCham(String? payload, {String? actionId}) {
     return TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .handlePlatformMessage(
       kenh.name,
       kenh.codec.encodeMethodCall(
         MethodCall('didReceiveNotificationResponse', <String, Object?>{
           'notificationId': 503122046,
-          'actionId': null,
+          'actionId': actionId,
           'input': null,
           'payload': payload,
-          'notificationResponseType': 0,
+          // 1 = selectedNotificationAction (bấm nút), 0 = chạm thân thông báo.
+          'notificationResponseType': actionId == null ? 0 : 1,
         }),
       ),
       (_) {},
@@ -388,14 +391,14 @@ void main() {
   });
 
   group('cú chạm vào thông báo', () {
-    test('phát payload ra stream khi app đang sống', () async {
+    test('phát cú chạm THÔ ra stream khi app đang sống', () async {
       final os = LocalOsNotifier();
       await os.init();
 
-      final nhan = os.payloadDaCham.first;
+      final nhan = os.chamTho.first;
       await guiCuCham('billDue:hd1:2026-09-17:3');
 
-      expect(await nhan, 'billDue:hd1:2026-09-17:3',
+      expect(await nhan, const ChamHdh('billDue:hd1:2026-09-17:3'),
           reason: 'Payload là đường DUY NHẤT để app biết người dùng vừa bấm '
               'vào thông báo nào. Nuốt nó đi thì cú chạm chỉ mở app ra trang '
               'chủ và người dùng phải tự đi tìm lại thứ vừa hiện trên màn hình '
@@ -406,19 +409,19 @@ void main() {
       final os = LocalOsNotifier();
       await os.init();
 
-      await os.payloadDaCham.listen((_) {}).cancel();
+      await os.chamTho.listen((_) {}).cancel();
 
-      final nhan = os.payloadDaCham.first;
+      final nhan = os.chamTho.first;
       await guiCuCham('billDue:hd1:2026-09-17:3');
 
-      expect(await nhan, 'billDue:hd1:2026-09-17:3');
+      expect(await nhan, const ChamHdh('billDue:hd1:2026-09-17:3'));
     });
 
     test('cú chạm không mang payload thì không phát gì', () async {
       final os = LocalOsNotifier();
       await os.init();
-      final daNhan = <String>[];
-      os.payloadDaCham.listen(daNhan.add);
+      final daNhan = <ChamHdh>[];
+      os.chamTho.listen(daNhan.add);
 
       await guiCuCham(null);
       await Future<void>.delayed(Duration.zero);
@@ -427,6 +430,19 @@ void main() {
           reason: 'Không có payload thì không suy ra được màn nào. Phát chuỗi '
               'rỗng ra là ép nơi nhận tự lọc, và sớm muộn sẽ có chỗ quên lọc '
               'rồi điều hướng về một route vô nghĩa.');
+    });
+
+    test('B5a: nút Hoãn khi app sống CÓ phát ChamHdh(…, hanhDongHoan) — nhật ký cần biết', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+
+      final nhan = os.chamTho.first;
+      await guiCuCham('billDue:hd1:2026-09-17:3', actionId: hanhDongHoan);
+
+      expect(await nhan, const ChamHdh('billDue:hd1:2026-09-17:3', hanhDongHoan),
+          reason: 'Router bỏ qua Hoãn khi điều hướng (không mở màn nào), nhưng nhật ký B5a vẫn phải ghi nó — '
+              'nên LocalOsNotifier phát MỌI cú bấm dạng thô. ⚠️ Trên Android thật nút Hoãn đi thẳng vào '
+              'isolate nền kể cả khi app sống (spike 2026-09-29), nên đường này chủ yếu là của iOS.');
     });
   });
 
@@ -445,18 +461,39 @@ void main() {
 
       final os = LocalOsNotifier();
 
-      expect(await os.payloadKhoiDong(), 'goalAuto:mt1:2026-09-15T08:00',
+      expect(await os.chamKhoiDong(), const ChamHdh('goalAuto:mt1:2026-09-15T08:00'),
           reason: 'Đây là ca CHÍNH của lịch đặt trước: nó nổ khi app đã đóng '
               'hẳn. Lúc ấy `onDidReceiveNotificationResponse` có thể chưa kịp '
               'gắn, nên đường duy nhất còn lại là hỏi nền tảng xem app được mở '
               'bởi thông báo nào.');
     });
 
+    test('Trả ngay lúc app đóng hẳn: trả ChamHdh THÔ kèm actionId — router mới là chỗ dịch sang billOpen', () async {
+      chiTietKhoiDong = <Object?, Object?>{
+        'notificationLaunchedApp': true,
+        'notificationResponse': <Object?, Object?>{
+          'notificationId': 503122046,
+          'actionId': hanhDongTraNgay,
+          'input': null,
+          'payload': 'billDue:hd1:2026-09-17:3',
+          'notificationResponseType': 1,
+        },
+      };
+
+      final os = LocalOsNotifier();
+
+      expect(await os.chamKhoiDong(), const ChamHdh('billDue:hd1:2026-09-17:3', hanhDongTraNgay),
+          reason: 'Trước B5a hàm này tự gọi khoaSauChamNut và trả "billOpen:…". Phép dịch nay nằm ở '
+              'NotificationTapRouter và được canh bằng ca "Trả ngay ở CẢ HAI đường" của '
+              'notification_tap_router_test — không mất lưới an toàn nào, chỉ dời chỗ. Đánh rơi actionId ở '
+              'đây vẫn là lỗi 2026-09-07: nút mở danh sách hoá đơn thay vì đúng hoá đơn.');
+    });
+
     test('app mở bình thường thì trả null', () async {
       chiTietKhoiDong = null;
       final os = LocalOsNotifier();
 
-      expect(await os.payloadKhoiDong(), isNull);
+      expect(await os.chamKhoiDong(), isNull);
     });
 
     test('mở từ thông báo nhưng không có payload thì trả null', () async {
@@ -473,7 +510,7 @@ void main() {
 
       final os = LocalOsNotifier();
 
-      expect(await os.payloadKhoiDong(), isNull);
+      expect(await os.chamKhoiDong(), isNull);
     });
 
     test('nền tảng ném thì trả null chứ không làm chết khởi động', () async {
@@ -484,7 +521,7 @@ void main() {
 
       final os = LocalOsNotifier();
 
-      expect(await os.payloadKhoiDong(), isNull,
+      expect(await os.chamKhoiDong(), isNull,
           reason: 'Hàm này chạy trên đường khởi động app. Để một trục trặc của '
               'nền tảng nổi lên ở đó là app không mở được — hỏng nặng hơn hẳn '
               'so với việc bỏ lỡ một cú điều hướng.');

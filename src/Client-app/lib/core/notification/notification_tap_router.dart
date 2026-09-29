@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'cham_hdh.dart';
+import 'notification_actions.dart';
 import 'notification_deeplink.dart';
 import 'os/os_notifier.dart';
 
@@ -17,17 +19,21 @@ import 'os/os_notifier.dart';
 ///
 /// 1. **Cold start.** Lịch nhắc hoá đơn nổ khi app đã đóng hẳn — ca *chính*
 ///    của lịch đặt trước, không phải ca phụ. Payload khi ấy chỉ lấy được qua
-///    [OsNotifier.payloadKhoiDong].
+///    [OsNotifier.chamKhoiDong].
 /// 2. **Điều hướng hai lần.** Trên Android cùng một cú chạm có thể vừa nằm
 ///    trong chi tiết khởi động vừa được đẩy lên qua callback.
 /// 3. **Chưa đăng nhập.** Token hết hạn sau vài ngày app đóng là chuyện
 ///    thường; điều hướng lúc ấy chỉ bị guard của router đá về `/login`.
+/// 4. **Nhật ký B5a.** [ghiCham] được gọi đúng một lần cho mỗi cú chạm, sau
+///    khi khử trùng và khi đã có phiên — cùng một chỗ với điều hướng
+///    ([_thucHien]), nên hai đường vào của một cú bấm không thể lệch nhau.
 class NotificationTapRouter {
   NotificationTapRouter({
     required this.osNotifier,
     required this.dieuHuong,
     required this.dangDangNhap,
     required this.phienDoi,
+    this.ghiCham,
   });
 
   final OsNotifier osNotifier;
@@ -47,20 +53,24 @@ class NotificationTapRouter {
   /// Phát mỗi khi phiên đăng nhập đổi trạng thái.
   final Stream<void> phienDoi;
 
-  StreamSubscription<String>? _subCham;
+  /// Nhật ký B5a; chỉ gọi khi đã có phiên, mỗi cú chạm một lần.
+  final void Function(ChamHdh)? ghiCham;
+
+  StreamSubscription<ChamHdh>? _subCham;
   StreamSubscription<void>? _subPhien;
 
-  /// Route đang chờ một phiên đăng nhập.
+  /// Cú chạm đang chờ một phiên đăng nhập — giữ **cú chạm** chứ không giữ route,
+  /// để ghi được nhật ký sau khi đăng nhập.
   ///
   /// Chỉ giữ **cái mới nhất**, không xếp hàng: xả cả hàng đợi sau khi đăng
   /// nhập là app tự nhảy qua mấy màn liên tiếp, còn người dùng thì chỉ đang
   /// chờ đúng thứ họ vừa bấm.
-  String? _choDoi;
+  ChamHdh? _choDoi;
 
   /// Payload đã xử lý ở đường khởi động, giữ lại để **bỏ qua đúng một lần** nếu
   /// nền tảng đẩy tiếp chính nó qua callback. Nhớ mãi thì thông báo ấy chết
   /// vĩnh viễn trong cả phiên chạy.
-  String? _boQuaMotLan;
+  ChamHdh? _boQuaMotLan;
 
   Future<void> start() async {
     await _subCham?.cancel();
@@ -70,7 +80,7 @@ class NotificationTapRouter {
     // thì một cú chạm đẩy lên trong lúc đang `await` sẽ được xử lý xong xuôi
     // rồi chi tiết khởi động lại xử lý nó lần nữa — và `_boQuaMotLan` chưa kịp
     // được đặt để chặn.
-    final khoiDong = await osNotifier.payloadKhoiDong();
+    final khoiDong = await osNotifier.chamKhoiDong();
     if (khoiDong != null) {
       // Xử lý TRƯỚC rồi mới dựng cờ chặn: đặt cờ trước thì `_xuLy` khớp ngay
       // với chính cú chạm này và bỏ qua nó — đúng cái nó sinh ra để bảo vệ.
@@ -78,7 +88,7 @@ class NotificationTapRouter {
       _boQuaMotLan = khoiDong;
     }
 
-    _subCham = osNotifier.payloadDaCham.listen(_xuLy);
+    _subCham = osNotifier.chamTho.listen(_xuLy);
     _subPhien = phienDoi.listen((_) => _xaChoDoi());
   }
 
@@ -91,27 +101,34 @@ class NotificationTapRouter {
     _boQuaMotLan = null;
   }
 
-  void _xuLy(String payload) {
-    if (payload == _boQuaMotLan) {
+  void _xuLy(ChamHdh c) {
+    if (c == _boQuaMotLan) {
       _boQuaMotLan = null;
       return;
     }
-
-    final route = deeplinkTuDedupeKey(payload);
     if (!dangDangNhap()) {
-      _choDoi = route;
+      _choDoi = c;
       return;
     }
-    dieuHuong(route);
+    _thucHien(c);
+  }
+
+  /// Ghi nhật ký rồi điều hướng — MỘT chỗ, nên hai đường vào không lệch nhau.
+  void _thucHien(ChamHdh c) {
+    ghiCham?.call(c);
+    // Hoãn xong việc ngay trong LocalOsNotifier và không mở màn nào.
+    if (c.actionId == hanhDongHoan) return;
+    dieuHuong(deeplinkTuDedupeKey(
+        khoaSauChamNut(actionId: c.actionId, payload: c.payload)));
   }
 
   void _xaChoDoi() {
-    final route = _choDoi;
-    if (route == null) return;
+    final c = _choDoi;
+    if (c == null) return;
     // Vẫn chưa đăng nhập thì GIỮ tiếp — sự kiện này có thể là một bước trung
     // gian của luồng đăng nhập chứ không phải kết quả cuối.
     if (!dangDangNhap()) return;
     _choDoi = null;
-    dieuHuong(route);
+    _thucHien(c);
   }
 }

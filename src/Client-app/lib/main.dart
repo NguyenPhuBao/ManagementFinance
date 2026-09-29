@@ -15,6 +15,7 @@ import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
 import 'core/auth/current_account.dart';
+import 'core/notification/cham_hdh.dart';
 import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';
 import 'core/notification/notification_tap_router.dart';
@@ -147,6 +148,10 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
           thuocThanhTab(route) ? _router.go(route) : _router.push(route),
       dangDangNhap: () => widget.authBloc.state is AuthSuccess,
       phienDoi: widget.authBloc.stream,
+      // Nhật ký B5a: router gọi hook này đúng một lần mỗi cú chạm, sau khi khử
+      // trùng và khi đã có phiên — nên NhatKyThongBao tự đọc tài khoản phiên.
+      ghiCham: (c) =>
+          unawaited(sl<NhatKyThongBao>().ghi(c.payload, suKienTuCham(c))),
     );
     // Nuốt lỗi: một cú chạm không dịch được không được phép chặn khởi động.
     unawaited(_chamThongBao.start().catchError((_) {}));
