@@ -119,7 +119,7 @@ void main() {
   }
 
   Future<void> goGhiChu(WidgetTester tester, String ghiChu) async {
-    await tester.enterText(find.byType(TextField), ghiChu);
+    await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), ghiChu);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
   }

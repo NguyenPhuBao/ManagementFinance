@@ -295,6 +295,8 @@ void main() {
 
     // Neo bằng biểu tượng của hàng "Ví thanh toán": ở chế độ Giao dịch chỉ
     // hàng ấy dùng nó.
+    // C2: thẻ Nhập nhanh ở đầu vùng cuộn đẩy hàng Ví xuống.
+    await tester.ensureVisible(find.byIcon(Icons.account_balance_wallet_outlined));
     await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await tester.pumpAndSettle();
     expect(find.byType(BottomSheet), findsOneWidget);
@@ -322,7 +324,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'Nhận lương tháng 9');
+    await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), 'Nhận lương tháng 9');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
@@ -372,7 +374,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField), 'Cà phê chiều');
+      await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), 'Cà phê chiều');
       await luu(tester);
 
       expect(transactions.added, isEmpty,

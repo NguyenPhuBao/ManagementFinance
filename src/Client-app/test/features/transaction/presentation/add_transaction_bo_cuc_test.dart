@@ -289,7 +289,7 @@ void main() {
             'lấy mất chỗ của chính ô đang gõ (người dùng chọn ẩn)');
     expect(find.byIcon(Icons.check), findsNothing);
 
-    final ghiChu = find.byType(TextField);
+    final ghiChu = find.byKey(const Key('ghi-chu-giao-dich'));
     await tester.ensureVisible(ghiChu);
     await tester.pumpAndSettle();
     final o = tester.getRect(ghiChu);
