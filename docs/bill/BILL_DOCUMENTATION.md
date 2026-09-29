@@ -895,7 +895,11 @@ thẻ, luật ẩn không nằm ở widget.
 khi có **≥ 3 giao dịch mới** của nhóm sau lần bỏ qua **cuối** (cùng luật B1);
 `da_tao` ẩn **vĩnh viễn** — cần vì người dùng có thể đổi tên trong form, khi ấy
 phép so tên không bắt được nữa. Không cột đồng bộ; test quét 15 canh; hai hàm dọn
-tài khoản xoá cả bảng này.
+tài khoản xoá cả bảng này. ⚠️ *(2026-09-29, B4)* Bảng có **người đọc thứ hai**: tầng
+3 khối Dự báo trang Phân tích (`AnalyticsRepositoryImpl`, qua
+`GoiYHoaDonDao.watchAll`) coi mọi giao dịch có `khoaNhomCua` nằm trong tập `da_tao` là
+**lịch sử của một hoá đơn** và bỏ khỏi ước tính chi tuỳ ý — đổi nghĩa `da_tao` hay
+đổi khoá nhóm là đổi cả con số ấy (mục 3.27 `ANALYTICS_FEATURE.md`).
 
 **Điền sẵn — `bill/domain/dien_san_hoa_don.dart`.** `queryTuKhoanLap` / 
 `dienSanTuQuery` dịch qua lại `KhoanLap` ↔ query `name · amount · cycle · anchor ·

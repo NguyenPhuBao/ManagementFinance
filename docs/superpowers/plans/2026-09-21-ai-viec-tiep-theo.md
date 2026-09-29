@@ -40,8 +40,11 @@ tài khoản 10 nay 5.001.000); mở rồi đóng **G51** (số tiền thẻ ho�
 thu Realme đạt; mở **G53** (nhãn trục thác nước in đè khi số dư âm) — ✅ **đóng tối cùng ngày** (`daiTrucCot`, Realme
 đạt) theo người dùng chọn *sửa trước B4*; cùng tối *Dòng tiền tự do* chuyển sang `daiTrucCot` và **G54** (nhãn trục
 hoành thác nước dính ở 360 dp → xoay −35° theo Stitch) mở và đóng; rồi G55–G57 (chấm mép biểu đồ, "gấp N lần thu
-nhập", nút + trang Hoá đơn). 🚧 **B4 Task 1–4/6 xong** (mã tầng thuần + repository + màn Stitch `7aa215e9…`); còn Task 5
-(dòng chữ trong khối Dự báo) và Task 6.
+nhập", nút + trang Hoá đơn). ✅ **B4 xong trọn 6 task tối 2026-09-29** (tiểu mục cuối 3.27 `docs/ANALYTICS_FEATURE.md`):
+dòng *"Nếu tiêu như thói quen (N tuần gần nhất)…"* trong khối Dự báo; tính tay trên SQLite Realme lộ tầng 3 đếm lại khoản
+lặp đã thành hoá đơn (B2 `da_tao`) và trả hoá đơn dạng cũ — người dùng chọn chặn cả hai; nghiệm thu Realme đúng từng số.
+Giữa lượt ấy người dùng thấy **G58** (màn Thêm giao dịch tràn, che ô ghi chú khi bàn phím hệ thống mở ở 360 dp) — mở và
+đóng cùng tối. Kế tiếp theo lộ trình 28/09: **B5b**.
 
 ---
 

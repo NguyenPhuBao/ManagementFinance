@@ -1,5 +1,10 @@
 # B4 — Khối Dự báo: tầng 3 *"ước tính theo thói quen"* — thiết kế
 
+> ✅ **Thi công xong 2026-09-29 tối** (6 task, nghiệm thu Realme — mục 3.27 `ANALYTICS_FEATURE.md`). ⚠️ **Hai chỗ bản này
+> chưa lường, thêm lúc thi công** (người dùng chọn): §2 điều 2 nay có **ba** dấu hiệu cam kết chứ không một (khoản lặp đã
+> thành hoá đơn qua B2 · trả hoá đơn dạng cũ), và §4 *"không stream mới"* **không còn đúng** — `watchKy` có nguồn thứ tám.
+> Phép chọn ngân sách là `nganSachDangChay` chứ không `!isExpired` (nhật ký kế hoạch, Task 3).
+
 **Ngày:** 2026-09-28 (tối). **Người dùng mở lại quyết định 16/09** (*dự báo 30 ngày chỉ chiếu thứ đã biết chắc*) và
 duyệt bản thiết kế trong chat cùng ngày, với các lựa chọn: khoảng **thấp – cao theo tuần** · **hiện ngay** (không công
 tắc) · **không** vẽ lên biểu đồ · **không** dự báo thu nhập · hiện cả dòng *"còn khoảng A – B"*. Vị trí trong lộ trình
@@ -28,6 +33,10 @@ Một khoản là *chi tuỳ ý* khi đủ cả bốn điều:
    `t.billId != null || t.goalId != null`. Thiếu vế này thì lịch sử trả hoá đơn nằm trong ước tính, trong khi hoá đơn
    30 ngày tới đã ở tầng 1. Đo 2026-09-28: khoản *"Tích lũy mục tiêu: MuaXe 500.000 đ"* có lúc là **chi**, không phải
    chuyển ví.
+   ⚠️ *(Thêm 2026-09-29 lúc thi công — tính tay từ SQLite Realme.)* Hai loại khoản nữa cũng là lịch sử của một cam kết mà
+   không mang `billId`: **khoản nhập tay của một khoản lặp đã thành hoá đơn qua B2** (khoá `khoaNhomCua` nằm trong tập
+   `da_tao` của `GoiYHoaDonPhanHois` — *"Tien nha T8/T9"* → hoá đơn *Tien nha*) và **hàng trả hoá đơn ghi trước
+   2026-09-12** (tiền tố `kGhiChuTraHoaDon` ở đầu ghi chú, cùng cách G50). Cả hai nay đặt `laKhoanCamKet`.
 3. Danh mục **không** có ngân sách đang chạy (ngân sách chưa hết hạn, `categoryId` khác null, trong `nganSachHomNay`).
    Những danh mục ấy đã ở tầng 2.
 4. ⚠️ Nếu đang có **ngân sách tổng** (`categoryId == null`, chưa hết hạn) thì tầng 3 **im hẳn** (`null`): tầng 2 đã phủ
@@ -51,8 +60,9 @@ Một khoản là *chi tuỳ ý* khi đủ cả bốn điều:
 
 ## 4. Nguồn và hiện
 
-- `ThongKeKy.uocTinhChiTuyY` (tuỳ chọn, mặc định `null`), tính trong `_dung` từ `khoan` và `nganSachHomNay` sẵn có. Không
-  stream mới, không đọc CSDL lần nữa. Không phụ thuộc kỳ đang xem (cùng lý lẽ tầng 2 tra ngân sách tại `now`).
+- `ThongKeKy.uocTinhChiTuyY` (tuỳ chọn, mặc định `null`), tính trong `_dung` từ `khoan` và `nganSachHomNay` sẵn có. ~~Không
+  stream mới~~ — *(2026-09-29)* thêm **một** nguồn: `GoiYHoaDonDao.watchAll` cho tập `da_tao` (§2 điều 2); vẫn không đọc
+  CSDL lần nữa trong `_dung`. Không phụ thuộc kỳ đang xem (cùng lý lẽ tầng 2 tra ngân sách tại `now`).
 - **Khối Dự báo** (`analytics_page.dart`), ngay dưới dòng *"nếu tiêu đúng ngân sách"*, một dòng mới:
   *"Nếu tiêu như thói quen ({soTuan} tuần gần nhất): chi thêm khoảng {thap} – {cao}, còn khoảng {A} – {B}."*, với
   `goc = duBao.conTieuDuocTheoNganSach` (bằng `conTieuDuoc` khi `!coNganSach`, vì `nganSachConLai` = 0 —
@@ -73,6 +83,10 @@ Một khoản là *chi tuỳ ý* khi đủ cả bốn điều:
 - Ước tính **không biết** kế hoạch sắp tới của người dùng (một chuyến du lịch). Nhãn *"nếu tiêu như thói quen"* nói đúng
   điều ấy.
 - Không dự báo thu nhập (người dùng chốt).
+- *(2026-09-29)* Hoá đơn tạo **tay** từ đầu (không qua thẻ gợi ý B2) thì lịch sử nhập tay trước đó của nó **vẫn** vào tầng
+  3 — không có khoá nào nối hai bên, và nối bằng tên là lối đã bị loại. Ngược lại `da_tao` là vĩnh viễn: xoá hoá đơn sau đó
+  thì khoản cũ vẫn bị bỏ (ước tính thấp hơn, không đếm đôi).
+- *(2026-09-29)* `thap = 0` là ca thường với người chi tuỳ ý thưa (dưới ~1/4 số tuần): dòng nói *"0 đ – X"*.
 
 ## 6. Kiểm thử
 

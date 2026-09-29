@@ -798,13 +798,26 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   release `a28ffea7…`: chấm T4/T9 tròn đủ; Tuần 38 thẻ *Số dư còn lại* *"Chi gấp 265 lần thu nhập"*, khối Nhận xét
   *"Kỳ này chi 2.646.000 đ; chi gấp 265 lần thu nhập…"*; trang Hoá đơn có **+** trên thanh tiêu đề, chạm mở *"Thêm Hóa
   Đơn Định Kỳ"*. `flutter test` **4479/4479** (4 skip), analyze 26.
-- 🚧 **B4 — tầng 3 "ước tính theo thói quen" của khối Dự báo — ĐANG LÀM, Task 1–4/6 xong 2026-09-29 tối** (người dùng
-  xác nhận lại việc mở quyết định 16/09; spec `specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md`, kế hoạch gitignore cùng
-  tên ở `plans/`, nhật ký thi công cuối tệp). `KhoanThuChi.laKhoanCamKet` + `AnalyticsRepositoryImpl.dungKhoan`
-  (`3b72ad4`) · hàm thuần `uocTinhChiTuyY` (`fe169e0`) · `ThongKeKy.uocTinhChiTuyY` (`897bdb4`) — ⚠️ lệch kế hoạch có
-  chủ ý: phép chọn ngân sách tách thành **`nganSachDangChay`** dùng chung với tầng 2 · màn Stitch
-  `7aa215e9bfee4ec58b15a012ced7e210` (người dùng xác nhận). **Chưa làm:** Task 5 (dòng mới trong `_BaConSoDuBao`),
-  Task 6 (cả bộ test, Realme, tài liệu). Người dùng dặn dừng, bàn giao.
+- ✅ **B4 — tầng 3 "ước tính theo thói quen" của khối Dự báo — XONG trọn 6 task 2026-09-29 tối** (người dùng xác nhận
+  lại việc mở quyết định 16/09; spec `specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md`, kế hoạch gitignore cùng tên ở
+  `plans/`, nhật ký thi công cuối tệp; mục **3.27** `ANALYTICS_FEATURE.md`). `KhoanThuChi.laKhoanCamKet` +
+  `AnalyticsRepositoryImpl.dungKhoan` (`3b72ad4`) · hàm thuần `uocTinhChiTuyY` (`fe169e0`) · `ThongKeKy.uocTinhChiTuyY`
+  (`897bdb4`) — ⚠️ lệch kế hoạch có chủ ý: phép chọn ngân sách tách thành **`nganSachDangChay`** dùng chung với tầng 2 ·
+  màn Stitch `7aa215e9…` · dòng chữ phụ trong `_BaConSoDuBao` (`a5b76db`; `_KhoiDuBao.uocTinh` **`required`** vì khối dựng ở
+  hai chỗ). ⚠️ **Tính tay từ SQLite Realme lộ hai loại khoản spec không lường, tầng 3 đếm lại thứ tầng 1 đã có** — người
+  dùng chọn sửa cả hai (`c4c715f`): (a) khoản nhập tay của một **khoản lặp đã thành hoá đơn** qua B2 (*"Tien nha T8/T9"*
+  3.000.000 → hoá đơn *Tien nha* hạn 05/10) không mang `billId` → nay khoá `khoaNhomCua` nằm trong tập **`da_tao`** của
+  bảng phản hồi B2 là cam kết; nguồn **thứ tám** của `watchKy` là `GoiYHoaDonDao.watchAll` (stream, không đọc một lần);
+  (b) **hàng trả hoá đơn trước 12/09** (không `billId`) → tiền tố `kGhiChuTraHoaDon`, cùng cách G50. Nghiệm thu Realme
+  bản debug: dữ liệu thật → dòng **im** (p75 = 0, khớp tính tay); nhập ba khoản *Giải trí* thử (người dùng duyệt, **giữ**:
+  *Xem phim* 200.000 ngày 15/07, *Di choi* 300.000 ngày 19/08, *Xem ca nhac* 250.000 ngày 16/09) → *"Nếu tiêu như thói quen
+  (12 tuần gần nhất): chi thêm khoảng 0 đ – 280.000 đ, còn khoảng -7.911.000 đ – -7.631.000 đ."* — **đúng từng số tính
+  tay**. ⚠️ Tài khoản 10 trên Realme nay: chi tháng 9 **6.751.000**, tổng số dư ví **−3.106.000** — đáp án bộ câu AI phải
+  tính lại. Ca *"ngân sách tổng → im"* chỉ kiểm bằng test repository: giao diện không tạo được ngân sách tổng.
+- ✅ **G58 mở và đóng cùng tối** (người dùng thấy giữa lượt nghiệm thu B4, báo *"đang có lỗi pixel trên màn hình"*): màn
+  **Thêm giao dịch**, bàn phím hệ thống mở (gõ ghi chú) ở 360 dp → hàng phím cuối tràn 9,7 px **và** ô ghi chú đang gõ bị
+  ép về 0. Có từ nhóm C UX (`2263f9b`, 19/09). Người dùng chọn **ẩn 16 phím số khi `viewInsets.bottom > 0`** (`76cc309`).
+  Chi tiết `CLIENT_APP_KNOWN_GAPS.md`. `flutter test` **4508/4508** (4 skip), analyze 26.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
@@ -3033,7 +3046,7 @@ có luật chạy thật: hoá đơn lặp, trích tự động, ngân sách.
 Đi kèm một lượt **tách hàm thuần**: phép tính ngày của kỳ kế tiếp hoá đơn rời
 `BillRepositoryImpl._nextPeriodOf` thành **`kyKeTiepCua(Bill)`** ở
 `bill/domain/bill_ky_ke_tiep.dart`, và `_nextPeriodOf` gọi lại nó — dự báo chiếu
-kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy** nguồn.
+kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy** nguồn *(tám từ 2026-09-29 — phản hồi B2 cho tầng 3, B4)*.
 
 **Nghiệm thu máy ảo lật hai thứ mà 2633 ca test đều mù**, cả hai về trục biểu
 đồ: trục từ 0 làm đường nằm phẳng (cam kết chỉ bằng 2,8% số dư), và bước lẻ làm
@@ -3220,7 +3233,7 @@ khoản chi**, thứ tự khối chép đúng trang Xuất báo cáo. Chi tiết
 **Một định nghĩa, hai nơi dùng:** bốn phép tính vốn nằm inline trong
 `dungBaoCao`, nay là hàm thuần ở `bao_cao_xuat.dart`. 44 ca test của trang Báo
 cáo vẫn xanh **không sửa dòng nào** — bằng chứng lượt tách không đổi hành vi.
-Repository Phân tích nhận **nguồn thứ tư là ví** (⚠️ đúng tại 2026-09-15; từ 2026-09-16 là **bảy** nguồn — xem khối dự báo dòng tiền ở đầu mục này).
+Repository Phân tích nhận **nguồn thứ tư là ví** (⚠️ đúng tại 2026-09-15; từ 2026-09-16 là **bảy** nguồn — xem khối dự báo dòng tiền ở đầu mục này; **tám** từ 2026-09-29, B4).
 
 ⚠️ Hai điều đáng nhớ: khối dòng tiền **luôn** kèm câu "Suy ngược từ số dư hiện
 tại của các ví" (app không lưu lịch sử số dư — mục 3.16), và `dongTienCua` phải
