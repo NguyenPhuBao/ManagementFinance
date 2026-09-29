@@ -6,6 +6,12 @@ Nhóm C đổi **bất biến ④** thành *"không tool nào ghi **thẳng**"*:
 duyệt đích danh cùng buổi; tầng hậu quả 4 và thao tác xoá vẫn cấm. Thứ tự nhóm C: **C1** → C2 → D1 → C3 → C4.
 **Phụ thuộc B1** (mô hình học từ ghi chú, bảng phản hồi v25). **Không đổi schema.**
 
+> **Soát với mã B1 đã thi công (2026-09-29, trước Task 1).** Ba chỗ đổi so với bản trên: (1) thẻ §3 đọc **stream**
+> `transactionDao.watchAll` qua `demChuaGan`, không nạp một lần — nên nó tự đổi sau lần áp dụng, lần pull đồng bộ và lần
+> thêm giao dịch; (2) route §4 là route **con** `gan-danh-muc` của `/transactions`, đặt lên navigator gốc
+> (`parentNavigatorKey`), cùng khuôn `/analytics/export`; (3) ô danh mục §4 mở một **bảng chọn riêng** chỉ gồm danh mục
+> hợp lệ theo chiều, vì trang *Chọn danh mục* có sẵn mở đủ ba tab và không lọc được theo chiều tiền.
+
 ## 1. Vì sao
 
 Sổ có những giao dịch không danh mục: kéo về từ server (17 hàng trống danh mục đo 2026-09-10), hoặc người dùng lưu vội.
