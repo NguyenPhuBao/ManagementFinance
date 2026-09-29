@@ -260,3 +260,23 @@ Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `
 Tài liệu tính năng giao dịch (hoặc mục mới trong `PROJECT_CONTEXT.md` mục 14): bảng quy đổi §2.1, luật ưu tiên *lít*,
 giới hạn §5. `AI_EDGE_FEATURE.md`: `so_bang_chu` và `ngay_trong_cau` dời ra `core/utils`. `CLAUDE.md` hàng *Đụng vào ô nhập
 TIỀN* (một câu: ô Nhập nhanh đi qua cùng đường bàn phím tự vẽ).
+
+## 8. Câu hỏi mở cho buổi thảo luận tiếp (ghi 2026-09-30 tối)
+
+Số đo đứng sau từng câu: mục **9.41** `docs/AI_EDGE_FEATURE.md` (Realme, 10 câu). Hai câu đầu **chặn** việc thi công banner
+*"ĐỔI LẦN HAI"* — hỏi trước khi viết mã.
+
+1. **Điền ngay rồi AI bổ sung ô thiếu, hay chờ AI rồi điền một lần?** Điền ngay: thấy kết quả luật tức thì, AI về chỉ điền
+   ô còn trống và bỏ qua ô người dùng đã sửa trong lúc chờ (phức tạp hơn). Chờ: đơn giản, nhưng câu cần AI vẫn chờ ~18 s.
+2. **"Chưa đoán được danh mục" có đủ để gọi AI không?** Ghi chú mới (B1 và từ khoá chưa biết) sẽ rơi vào đây thường xuyên
+   → AI chạy gần như mọi câu mới, mất lợi ích tốc độ. Lựa chọn: gọi AI như thường · chỉ gọi khi thiếu số tiền · gọi qua
+   nút *"Hỏi AI danh mục"*. Đo: AI đoán danh mục 5 lần → 3 đúng, 2 sai.
+3. **AI thiên về "Ăn uống"?** Hai câu sai (*đổ xăng*, *grab*) đều ra Ăn uống — nghi giá trị đầu / phổ biến của enum. Chưa đo;
+   thử đảo thứ tự enum hoặc thêm mô tả danh mục.
+4. **Ngày kiểu *"đầu tháng / tuần trước / cuối tháng trước"*** — khi AI thôi đọc ngày, có thêm vào luật không (*"đầu tháng"*
+   mơ hồ)?
+5. **Stitch chưa được duyệt**: `8afdfe113cc84874b2009aa80fe755fd` (màn chính), `63e981f5b66c4e599572c02e14134a6f` (đang đọc
+   bằng AI), màn *"… - Đã điền bằng AI"* (gọi tạo, timeout, chưa xuất hiện). Câu 1 có thể cần trạng thái mới → Stitch trước.
+6. **Ô Ghi chú màn này có khung viền theme** (có từ trước C2; Stitch không khung) — sửa không?
+7. **Đề xuất thêm từ khoá từ thói quen** (việc riêng ngay sau C2, người dùng chốt): hiện ở đâu, ngưỡng lặp, **chuyển** từ
+   khoá khi chữ đang thuộc danh mục khác (*grab* ở Ăn uống), bỏ qua / thôi đề xuất, từ khoá có đi qua đồng bộ không.
