@@ -89,7 +89,8 @@ class _ThanBangChon extends StatelessWidget {
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
-          const Divider(height: 1),
+          // Màu nêu rõ: `Divider` mặc định lấy màu theme, trên máy thật ra một vạch ĐEN đậm — Stitch vẽ xám nhạt.
+          const Divider(height: 1, color: AppColors.outlineVariant),
           Flexible(
             child: ListView(
               shrinkWrap: true,
