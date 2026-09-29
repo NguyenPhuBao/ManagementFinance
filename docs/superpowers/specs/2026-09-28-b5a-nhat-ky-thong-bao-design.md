@@ -112,6 +112,18 @@ khi app đang sống thì không phát gì. Nhật ký cần payload **gốc** v
   là **task đầu** của kế hoạch, làm dạng spike trên Realme: thử bằng một bản build ghi một dòng, bấm *Hoãn* lúc app
   đóng, rồi kiểm tệp (bản debug `run-as` được). Không được thì dừng lại hỏi người dùng. Lối dự phòng là dựng đường dẫn
   `app_flutter` từ `Platform`, nhưng phải được duyệt trước.
+- ✅ **Spike 2026-09-29 (Realme RMX2205, Android 13, bản debug): `path_provider` CHẠY trong isolate nền**, tệp ở
+  `/data/user/0/com.flowmoney.flowmoney/app_flutter/`. Log: `[Hoãn] isolate nền nhận "billDue:…:2026-10-06:7"` rồi
+  `[SPIKE] isolate nền ghi …/app_flutter/spike_hang_cho.jsonl OK`; tệp có đúng một dòng JSON. Thông báo thử sinh bằng
+  một hoá đơn *Hàng tuần* hạn 7 ngày tới, nhắc trước 7 ngày — vòng quét bắn ngay, có đủ hai nút.
+  ⚠️ **Phát hiện đổi giả định của mục 4:** cú bấm *Hoãn* tới **isolate nền** (`ActionBroadcastReceiver`) **kể cả khi
+  tiến trình app còn sống** (app ở nền sau phím Home, cùng pid) — nhánh *Hoãn* trong `_khiChamVaoThongBao` của isolate
+  chính **không** chạy trên Android. Nên trên Android **mọi** hàng `hoan` đi qua tệp hàng chờ, không riêng lúc app đóng;
+  tệp chỉ được nhập ở `NotificationScanner.start`, nên hàng có thể vào bảng muộn tới lần khởi động sau — không sai, vì
+  mỗi dòng mang mốc `t` của chính cú bấm. Chưa đo ca app đang **mở trên màn** rồi kéo khay bấm *Hoãn*.
+  ⚠️ Không "đóng app" được bằng `am force-stop` hay vuốt khỏi Recents trên Realme: cả hai **force-stop**, mà force-stop
+  huỷ luôn thông báo và `PendingIntent` của nút. `am kill` không giết tiến trình còn là *previous process*, và
+  `run-as … kill` bị SELinux chặn trên Android 13 (`Permission denied`) — khác máy ảo API 36.
 
 ## 6. Thông báo tới máy lúc nào
 
