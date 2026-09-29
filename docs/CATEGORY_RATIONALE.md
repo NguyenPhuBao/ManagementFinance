@@ -344,17 +344,27 @@ thẻ trên máy vẫn gợi ý. Nay ứng viên đi đúng đường của màn
   — nút *Chọn danh mục này* trần trong `Row`, bẫy 4.11 `ANALYTICS_FEATURE.md`; sửa
   `4ef4a5b`, có ca dựng bằng `AppTheme.lightTheme`.
 
-### Một từ khoá mặc định gây nhầm — chưa quyết
+### Một từ khoá mặc định gây nhầm — đã xin backend sửa seed
 
 Seed backend (`src/Backend/prisma/seed.js:14–15`) gắn từ khoá `grab` cho **Ăn uống**
 (ý là GrabFood) và `grabcar` cho **Di chuyển**. Bộ từ khoá khớp khi ghi chú
 **chứa** từ khoá, nên mọi ghi chú *"grab …"* — cách gõ thường gặp cho một cuốc xe —
-được gợi ý **Ăn uống**; trên Realme bộ từ khoá đúng **0/6** ghi chú *grab*. B1 đi
-trước nên sửa được điều ấy khi người dùng đã có lịch sử. Nhưng sau khi họ bấm *Bỏ
-qua* thẻ học hai lần, màn rơi về từ khoá và lại gợi ý Ăn uống — ngược với mọi lần
-họ đã tự chốt Di chuyển. Hai câu hỏi **chờ người dùng**, hôm nay chưa đổi gì: có xin
-backend sửa seed không (dữ liệu do backend quản), và thôi gợi ý một cặp học có nên
-chặn luôn gợi ý từ khoá cho cùng ghi chú không.
+được gợi ý **Ăn uống**; trên Realme bộ từ khoá đúng **0/6** ghi chú *grab*. Tầng 1
+phân loại của backend (`keyword.matcher.js`) cùng khớp chuỗi con nên cũng xếp nhầm,
+trái với chính dữ liệu huấn luyện của nó (`training-data.csv:11`: *"grab di lam"* →
+Di chuyển). B1 đi trước nên sửa được điều ấy khi người dùng đã có lịch sử. Nhưng
+sau khi họ bấm *Bỏ qua* thẻ học hai lần, màn rơi về từ khoá và lại gợi ý Ăn uống —
+ngược với mọi lần họ đã tự chốt Di chuyển.
+
+Người dùng chốt ngày 2026-09-29, hai quyết định:
+
+- **Xin backend sửa seed** — đơn `docs/superpowers/backend/CAN-LAM/SEED_TU_KHOA_GRAB.md`
+  (`grab` sang Di chuyển, `grabfood` cho Ăn uống). ⚠️ Chỉ tài khoản / máy **mới** nhận
+  bộ mới: client gieo từ khoá kéo về chỉ khi danh mục chưa có từ khoá nào
+  (`_gieoTuKhoaKhiTrong`), cố ý để thao tác xoá từ khoá của người dùng không hồi sinh.
+- **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
+  học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
+  gốc (seed), không bằng một luật chặn thứ hai ở màn.
 
 ---
 
