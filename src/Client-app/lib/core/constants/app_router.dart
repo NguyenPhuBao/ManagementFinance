@@ -16,6 +16,7 @@ import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
+import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
@@ -169,6 +170,18 @@ class AppRouter {
                   builder: (_, state) => TransactionPage(
                     initialWalletId: state.uri.queryParameters['wallet'],
                   ),
+                  routes: [
+                    // C1 — màn Gắn danh mục nhanh. Lên navigator GỐC (che thanh tab), cùng khuôn
+                    // `/analytics/export`; `push` từ thẻ trên chính tab này. `idaccount` null thì trang tự
+                    // từ chối — không rơi về tài khoản admin (quy tắc 2).
+                    GoRoute(
+                      path: 'gan-danh-muc',
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (ctx, __) => GanDanhMucPage(
+                        idaccount: currentAccountIdOrNull(ctx),
+                      ),
+                    ),
+                  ],
                 ),
               ]),
               StatefulShellBranch(routes: [

@@ -193,4 +193,35 @@ void main() {
       }
     });
   });
+
+  group('phanHoiGan', () {
+    const doan = DoanDanhMuc(categoryId: 'c-dc', xacSuat: 0.9, cumBoDau: 'grab', soLanCung: 6, soLanTong: 7);
+
+    test('giữ đúng dự đoán → chon', () {
+      final p = phanHoiGan(DongGanDanhMuc(giaoDich: _gd('grab'), doan: doan, lyDo: 'x'), 'c-dc');
+      expect(p?.ketQua, kKetQuaGoiYChon);
+      expect(p?.chonCategoryId, 'c-dc');
+    });
+
+    test('đổi sang danh mục khác → khac, mang danh mục cuối', () {
+      final p = phanHoiGan(DongGanDanhMuc(giaoDich: _gd('grab'), doan: doan, lyDo: 'x'), 'c-an');
+      expect(p?.ketQua, kKetQuaGoiYKhac);
+      expect(p?.chonCategoryId, 'c-an');
+    });
+
+    test('dòng không có dự đoán → không ghi gì', () {
+      expect(phanHoiGan(DongGanDanhMuc(giaoDich: _gd('xyz')), 'c-an'), isNull,
+          reason: 'không có dự đoán thì không có gì để phán xét — ghi vào là bịa một lần "khac"');
+    });
+  });
+
+  test('cauKetQuaGan: tối giản, không nêu số, phân biệt xong với còn kẹt', () {
+    expect(cauKetQuaGan(thanhCong: 3, loi: 0), 'Đã gắn danh mục');
+    expect(cauKetQuaGan(thanhCong: 2, loi: 1), 'Đã gắn danh mục — có giao dịch chưa lưu được');
+    expect(cauKetQuaGan(thanhCong: 0, loi: 2), 'Chưa lưu được danh mục — thử lại sau');
+    expect(cauKetQuaGan(thanhCong: 0, loi: 0), isNull);
+    for (final c in [cauKetQuaGan(thanhCong: 3, loi: 0), cauKetQuaGan(thanhCong: 2, loi: 1)]) {
+      expect(RegExp(r'\d').hasMatch(c!), isFalse, reason: 'thông báo tạm thời không kèm số liệu');
+    }
+  });
 }

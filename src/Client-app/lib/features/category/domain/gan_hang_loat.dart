@@ -80,3 +80,25 @@ List<DongGanDanhMuc> dungDanhSachGan({
   khong.sort((a, b) => b.giaoDich.date.compareTo(a.giaoDich.date));
   return [...coDoan, ...khong];
 }
+
+/// Phản hồi ghi vào bảng B1 cho một dòng ĐANG TICK được áp dụng với danh mục [categoryIdCuoi] (spec §5).
+///
+/// `null` = không ghi: dòng không có dự đoán thì không có gì để phán xét. Dòng bỏ tick không bao giờ tới đây — bỏ tick
+/// là *"chưa muốn sửa dòng này"*, không phải *"dự đoán sai"*. Cùng nghĩa với màn Thêm giao dịch: giữ dự đoán là
+/// `chon`, đổi sang danh mục khác là `khac`; cả hai mang danh mục cuối cùng.
+({String ketQua, String chonCategoryId})? phanHoiGan(DongGanDanhMuc dong, String categoryIdCuoi) {
+  final d = dong.doan;
+  if (d == null) return null;
+  return (
+    ketQua: d.categoryId == categoryIdCuoi ? kKetQuaGoiYChon : kKetQuaGoiYKhac,
+    chonCategoryId: categoryIdCuoi,
+  );
+}
+
+/// Câu toast sau lượt áp dụng — tối giản, KHÔNG nêu số (nếp thông báo tạm thời của dự án: nói đủ ý, phân biệt *xong*
+/// với *còn kẹt*; con số còn lại đã hiện ngay trên thẻ Sổ giao dịch khi quay về). `null` = không có gì để nói.
+String? cauKetQuaGan({required int thanhCong, required int loi}) {
+  if (loi == 0) return thanhCong == 0 ? null : 'Đã gắn danh mục';
+  if (thanhCong == 0) return 'Chưa lưu được danh mục — thử lại sau';
+  return 'Đã gắn danh mục — có giao dịch chưa lưu được';
+}
