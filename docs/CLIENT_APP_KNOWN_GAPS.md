@@ -1527,6 +1527,14 @@ AI không đổi: nó vốn lọc `khoanVaoThongKe` trước khi gọi hàm này
 loại thật** vẫn vào; và ca ⭐ *Sổ giao dịch = Trang chủ* so thẳng với `tongThuChi`
 trên cùng một sổ. Cả hai đỏ trên mã cũ (11.310.000 thay vì 9.300.000).
 
+**Vế thứ hai, cùng ngày (người dùng chọn):** nghiệm thu trên Realme lộ **tiêu đề nhóm
+ngày** vẫn tự cộng thô (`transaction_page.dart`, vòng thứ **tư**) — ngày 10/09 chỉ có
+khoản điều chỉnh mà tiêu đề hiện *"+10.000 đ"*, cạnh thẻ tổng không cộng nó. Nay tiêu
+đề gọi `summarizeTransactions(dayTxs).net`. Ca canh:
+`test/features/transaction/presentation/so_giao_dich_tong_ngay_test.dart` — một ngày
+chi 55.000 · thu 20.000 · điều chỉnh +10.000, đòi tiêu đề **−35.000 đ** (cùng cột Thu
+net của thẻ) và hàng điều chỉnh vẫn hiện; mã cũ ra −25.000 đ.
+
 ⚠️ **Quan sát ngoài phạm vi, chưa quyết:** cùng tháng ấy có khoản thu 500.000 đ
 *"Tích lũy nhận từ Tiền mặt: MuaXe"* — nạp mục tiêu **dạng cũ**, tức tiền đổi chỗ
 giữa hai ví — mà **mọi** màn đều tính là thu nhập (`khoanVaoThongKe` không nhận ra

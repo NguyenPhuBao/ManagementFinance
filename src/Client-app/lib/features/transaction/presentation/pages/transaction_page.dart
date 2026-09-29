@@ -521,12 +521,10 @@ class _TransactionPageState extends State<TransactionPage> {
         final dateObj = DateTime.parse(dateStr);
         final formattedDateHeader = DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(dateObj);
 
-        // Day net balance calculation
-        double dayNet = 0;
-        for (final t in dayTxs) {
-          if (t.type == 'thu') dayNet += t.amount;
-          if (t.type == 'chi') dayNet -= t.amount;
-        }
+        // Tổng của nhóm ngày: CÙNG hàm với thẻ tổng (`khoanVaoThongKe` — bỏ khoản điều chỉnh số dư / mở sổ). Vòng cộng
+        // thô theo `type` từng nằm ở đây: trên Realme một ngày chỉ có khoản điều chỉnh hiện "+10.000 đ" trong khi thẻ
+        // tổng không cộng nó (2026-09-29, sau G49).
+        final dayNet = summarizeTransactions(dayTxs).net;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
