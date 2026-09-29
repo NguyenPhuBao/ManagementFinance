@@ -172,4 +172,31 @@ void main() {
       expect(cauLyDoTuKhoa('cafe'), 'Khớp với “cafe” trong ghi chú.');
     });
   });
+
+  group('tatCapTu — thôi gợi ý sau 2 lần bỏ qua, mở lại sau 3 mẫu mới', () {
+    PhanHoiGoiY bq(String cum, String c, int ngay, {String nguon = 'hoc', String kq = 'bo_qua'}) => PhanHoiGoiY(
+        nguon: nguon, amTietChinh: cum, goiYCategoryId: c, ketQua: kq, createdAt: DateTime(2026, 9, ngay));
+    test('⭐ 2 lần bo_qua nguồn học → chặn; 1 lần → chưa', () {
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], muoiMau), {('grab', 'dc')});
+      expect(tatCapTu([bq('grab', 'dc', 10)], muoiMau), isEmpty);
+    });
+    test('nguồn từ khoá và kết quả chon / khac không tính', () {
+      expect(tatCapTu([bq('grab', 'dc', 10, nguon: 'tu_khoa'), bq('grab', 'dc', 11, nguon: 'tu_khoa')], muoiMau), isEmpty);
+      expect(tatCapTu([bq('grab', 'dc', 10, kq: 'chon'), bq('grab', 'dc', 11, kq: 'khac')], muoiMau), isEmpty);
+    });
+    test('⭐ mở lại khi có 3 mẫu MỚI (ngày sau lần bo_qua cuối) chứa cụm cho đúng danh mục', () {
+      final moi = [m('dc', 'grab tối', 12), m('dc', 'grab đón con', 13), m('dc', 'grab', 14)];
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], [...muoiMau, ...moi]), isEmpty);
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], [...muoiMau, ...moi.take(2)]), {('grab', 'dc')},
+          reason: 'hai mẫu mới chưa đủ');
+    });
+    test('mẫu mới cho danh mục KHÁC không mở lại: ba lần "grab food" cho Ăn uống không phải bằng chứng cho Di chuyển', () {
+      final khac = [m('au', 'grab food', 12), m('au', 'grab food trưa', 13), m('au', 'grab food tối', 14)];
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], [...muoiMau, ...khac]), {('grab', 'dc')});
+    });
+    test('mẫu cũ (trước lần bo_qua cuối) không tính vào mở lại', () {
+      final cu = [m('dc', 'grab a', 5), m('dc', 'grab b', 6), m('dc', 'grab c', 7)];
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], [...muoiMau, ...cu]), {('grab', 'dc')});
+    });
+  });
 }

@@ -218,3 +218,50 @@ String cauLyDoHoc(DoanDanhMuc d, {required String ghiChuGoc, required String ten
 
 /// Câu lý do của nguồn TỪ KHOÁ — giữ nguyên câu thẻ gợi ý in từ trước B1.
 String cauLyDoTuKhoa(String tuKhoa) => 'Khớp với “$tuKhoa” trong ghi chú.';
+
+/// Hai lần bấm *Bỏ qua* cùng một cặp (cụm, danh mục) của nguồn học → thôi gợi ý cặp ấy.
+const int kSoLanBoQuaThoiGoiY = 2;
+
+/// Ba giao dịch MỚI người dùng tự lưu cùng cụm cho đúng danh mục ấy → mở lại (spec 3.3, người dùng duyệt).
+const int kSoMauMoLai = 3;
+
+/// Một hàng phản hồi thẻ gợi ý, đọc từ bảng cục bộ `GoiYDanhMucPhanHois` — dạng thuần để luật thử được.
+class PhanHoiGoiY {
+  /// `hoc` | `tu_khoa`.
+  final String nguon;
+  final String amTietChinh;
+  final String goiYCategoryId;
+
+  /// `chon` | `bo_qua` | `khac`.
+  final String ketQua;
+  final DateTime createdAt;
+  const PhanHoiGoiY({
+    required this.nguon,
+    required this.amTietChinh,
+    required this.goiYCategoryId,
+    required this.ketQua,
+    required this.createdAt,
+  });
+}
+
+/// Cặp (cụm bỏ dấu, danh mục) đang bị thôi gợi ý. Mở lại khi người dùng tự lưu [kSoMauMoLai] giao dịch có ngày SAU
+/// lần bỏ qua cuối, chứa đủ cụm, cho đúng danh mục ấy — bằng chứng mới thắng lời từ chối cũ (spec 3.3). Không có
+/// luật mở lại thì một lần bỏ qua lúc mới dùng app khoá cặp ấy VĨNH VIỄN, kể cả khi thói quen đã rõ.
+Set<(String, String)> tatCapTu(List<PhanHoiGoiY> phanHoi, List<MauGhiChu> mau) {
+  final boQua = <(String, String), List<DateTime>>{};
+  for (final p in phanHoi) {
+    if (p.nguon != 'hoc' || p.ketQua != 'bo_qua') continue;
+    boQua.putIfAbsent((p.amTietChinh, p.goiYCategoryId), () => []).add(p.createdAt);
+  }
+  final ra = <(String, String)>{};
+  for (final e in boQua.entries) {
+    if (e.value.length < kSoLanBoQuaThoiGoiY) continue;
+    final cuoi = e.value.reduce((a, b) => a.isAfter(b) ? a : b);
+    final cum = e.key.$1.split(' ');
+    final moi = mau
+        .where((x) => x.categoryId == e.key.$2 && x.ngay.isAfter(cuoi) && _chuaLienTiep(x.amTiet, cum))
+        .length;
+    if (moi < kSoMauMoLai) ra.add(e.key);
+  }
+  return ra;
+}
