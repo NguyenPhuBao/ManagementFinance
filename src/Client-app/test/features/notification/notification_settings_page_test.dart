@@ -497,6 +497,63 @@ void main() {
     });
   });
 
+  // ── G59 (2026-09-29): đổi giờ / thứ phải DỜI lịch đang chờ ─────────────────
+  group('đặt lại lịch khi đổi mốc (G59)', () {
+    Future<List<int>> moVaDem(WidgetTester tester) async {
+      // Khổ máy ảo 411 × 914: ở khung mặc định 800 × 600, bảng chọn thứ (7 dòng)
+      // tràn vì bottom sheet chỉ cao 9/16 màn — lỗi bố cục có sẵn, ghi riêng.
+      tester.view.physicalSize = const Size(411, 914);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final goi = <int>[];
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationSettingsPage(
+          idaccount: accountId,
+          store: store,
+          osNotifier: os,
+          datLaiLich: (id) async => goi.add(id),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      return goi;
+    }
+
+    testWidgets('đổi THỨ tổng kết → đặt lại lịch đúng một lần, đúng tài khoản',
+        (tester) async {
+      await store.write(accountId, const NotificationPrefs(tongKetTuanBat: true));
+      final goi = await moVaDem(tester);
+
+      final f = find.byKey(NotificationSettingsPage.khoaThuTongKet);
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Thứ Bảy'));
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).thuTongKet, DateTime.saturday);
+      expect(goi, [accountId],
+          reason: 'khoá lịch tổng kết là của TUẦN, không chứa thứ — không đặt lại '
+              'thì lịch đang chờ vẫn nổ vào thứ cũ');
+    });
+
+    testWidgets('gạt công tắc nhóm (không đổi mốc) → KHÔNG đặt lại lịch',
+        (tester) async {
+      final goi = await moVaDem(tester);
+      final f = find.byKey(
+          NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.budget));
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nhomTat, contains(NotificationGroup.budget));
+      expect(goi, isEmpty,
+          reason: 'đặt lại chỉ dành cho đổi giờ / thứ; phần còn lại theo lượt '
+              'quét thường, luỹ đẳng');
+    });
+  });
+
   group('chưa đăng nhập', () {
     testWidgets('không hiện công tắc và không ghi gì', (tester) async {
       await moTrang(tester, idaccount: null);

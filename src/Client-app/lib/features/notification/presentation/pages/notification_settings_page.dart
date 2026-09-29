@@ -5,6 +5,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
+import '../../../../core/notification/reminder_scheduler.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 
@@ -22,6 +23,7 @@ class NotificationSettingsPage extends StatefulWidget {
     this.idaccount,
     this.store,
     this.osNotifier,
+    this.datLaiLich,
   });
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
@@ -35,6 +37,11 @@ class NotificationSettingsPage extends StatefulWidget {
 
   final NotificationPrefsStore? store;
   final OsNotifier? osNotifier;
+
+  /// Đặt lại lịch đang chờ sau khi người dùng đổi một **mốc** (giờ nhắc hoá
+  /// đơn, giờ nhắc ghi chép, giờ hay thứ tổng kết) — G59. Mặc định
+  /// `ReminderScheduler.resync(id, datLai: true)`; tiêm được cho test.
+  final Future<void> Function(int idaccount)? datLaiLich;
 
   static const Key khoaCongTacOs = Key('notification_settings_os');
 
@@ -117,9 +124,35 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     // Mặc định về 1 là ghi tuỳ chọn vào hồ sơ tài khoản admin thật.
     if (id == null) return;
 
+    final cu = _prefs;
     setState(() => _prefs = moi);
     await _store.write(id, moi);
+    // G59: khoá lịch không chứa giờ, nên lượt quét thường giữ lịch đang chờ ở
+    // mốc cũ. Chỉ đặt lại khi một MỐC đổi — gạt công tắc thì lượt quét thường
+    // lo, luỹ đẳng. Nuốt lỗi: tuỳ chọn đã lưu, lượt quét sau vẫn còn.
+    if (_doiMocLich(cu, moi)) {
+      try {
+        await (widget.datLaiLich ?? _datLaiMacDinh)(id);
+      } catch (e) {
+        debugPrint('[CaiDatThongBao] đặt lại lịch hỏng: $e');
+      }
+    }
   }
+
+  static Future<void> _datLaiMacDinh(int id) async {
+    if (!sl.isRegistered<ReminderScheduler>()) return;
+    await sl<ReminderScheduler>().resync(id, datLai: true);
+  }
+
+  /// Bảy trường quyết định MỐC nổ của một lịch đặt trước.
+  static bool _doiMocLich(NotificationPrefs a, NotificationPrefs b) =>
+      a.gioNhac != b.gioNhac ||
+      a.phutNhac != b.phutNhac ||
+      a.gioNhacGhiChep != b.gioNhacGhiChep ||
+      a.phutNhacGhiChep != b.phutNhacGhiChep ||
+      a.thuTongKet != b.thuTongKet ||
+      a.gioTongKet != b.gioTongKet ||
+      a.phutTongKet != b.phutTongKet;
 
   /// Bật công tắc tổng là chỗ **duy nhất** trong app xin quyền thông báo.
   ///
