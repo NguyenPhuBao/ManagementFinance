@@ -24,6 +24,8 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
 import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/core/notification/nhom_tu_khoa.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
@@ -341,6 +343,21 @@ void main() {
                 '— nên nó phải được canh, nếu không hai nơi sẽ lệch nhau âm '
                 'thầm và cú chạm đưa người dùng tới sai màn.');
       }
+    });
+
+    // B5b (2026-09-29): học giờ và nhóm bị lờ đọc NHÓM từ khoá trong nhật ký B5a
+    // — nhật ký chỉ mang khoá, không mang loại. Cùng phép canh "đủ mọi loại":
+    // thêm loại mới mà quên xếp tiền tố của nó vào nhóm thì ca này đỏ.
+    test('mọi loại: nhomTuKhoa(khoá) == nhomCua(loại) — B5b', () {
+      for (final c in tatCaUngVien()) {
+        expect(nhomTuKhoa(c.dedupeKey), nhomCua(c.kind),
+            reason: '${c.kind.name}: khoá "${c.dedupeKey}" phải về đúng nhóm có '
+                'công tắc của loại ấy, nếu không đề xuất "tắt nhóm bị lờ" đếm '
+                'thông báo vào nhầm nhóm');
+      }
+      expect(nhomTuKhoa('billConflict:bill-1'),
+          nhomCua(NotificationKind.billPaidOnOtherDevice),
+          reason: 'loại ngoài bộ quét — canh riêng như deeplink của nó');
     });
 
     test('khoá lạ hoặc rỗng rơi về trung tâm thông báo', () {
