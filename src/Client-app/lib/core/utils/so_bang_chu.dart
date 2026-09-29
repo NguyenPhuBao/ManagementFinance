@@ -92,7 +92,11 @@ _Tu? _nghiaCua(String tu) {
 }
 
 /// Mọi cụm số chữ trong [cau], theo thứ tự câu.
-List<CumSoChu> timSoBangChu(String cau) {
+///
+/// [batBuocDonVi] `false` (chỉ lớp kiểm số tiền của ô Nhập nhanh đọc bằng AI dùng, C2 §2.8) nhận thêm cụm KHÔNG có đơn vị
+/// nhưng có hàng chục: *"ba chục"* = 30, *"hai mươi lăm"* = 25 — người nói tiền hay bỏ chữ *nghìn*. Chữ số đứng một mình
+/// (*"một"*, *"năm"*) vẫn không phải cụm: đó là *"một khoản"*, *"năm nay"*.
+List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
   final tu = [
     for (final m in _tu.allMatches(cau)) (batDau: m.start, ketThuc: m.end, nghia: _nghiaCua(m.group(0)!)),
   ];
@@ -104,7 +108,7 @@ List<CumSoChu> timSoBangChu(String cau) {
       i++;
       continue;
     }
-    final cum = _docTu(cau, tu, i);
+    final cum = _docTu(cau, tu, i, batBuocDonVi: batBuocDonVi);
     if (cum == null) {
       i++;
       continue;
@@ -126,8 +130,9 @@ List<CumSoChu> timSoBangChu(String cau) {
 (int, double)? _docTu(
   String cau,
   List<({int batDau, int ketThuc, _Tu? nghia})> tu,
-  int i,
-) {
+  int i, {
+  required bool batBuocDonVi,
+}) {
   var tong = 0.0; // phần đã chốt bằng nghìn / triệu / tỷ
   var phan = 0.0; // phần dưới một nghìn đang dựng
   double? cho; // chữ số đang chờ đơn vị
@@ -153,6 +158,7 @@ List<CumSoChu> timSoBangChu(String cau) {
           choDonVi = false;
           canDonVi = false;
           coDonVi = true;
+          if (!batBuocDonVi) tot = (j, tong + phan);
         } else if (loai == _Loai.soSauChuc || cho != null || coDonVi || coChuc) {
           return tot;
         } else {
@@ -164,11 +170,13 @@ List<CumSoChu> timSoBangChu(String cau) {
         cho = null;
         coChuc = true;
         choDonVi = true;
+        if (!batBuocDonVi) tot = (j, tong + phan);
       case _Loai.muoi:
         if (cho != null || coChuc) return tot;
         phan += 10;
         coChuc = true;
         choDonVi = true;
+        if (!batBuocDonVi) tot = (j, tong + phan);
       case _Loai.linh:
         // Chỉ sau trăm ("một trăm linh năm") hoặc sau nghìn / triệu: "tiền lẻ năm nghìn" không nuốt chữ "lẻ".
         if (cho != null || coChuc || (phan == 0 && truoc != _Loai.bac)) return tot;

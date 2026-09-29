@@ -106,6 +106,28 @@ void main() {
     });
   });
 
+  group('batBuocDonVi: false — cụm có hàng chục mà thiếu đơn vị (lớp kiểm AI, C2 §2.8)', () {
+    double? khong(String cau) {
+      final c = timSoBangChu(cau, batBuocDonVi: false);
+      return c.isEmpty ? null : c.single.giaTri;
+    }
+
+    test('"ba chục", "hai mươi lăm", "mười lăm" là số', () {
+      expect(khong('cà phê mất ba chục'), 30);
+      expect(khong('hết hai mươi lăm'), 25);
+      expect(khong('mười lăm'), 15);
+    });
+    test('có đơn vị thì vẫn đọc trọn cụm', () {
+      expect(khong('hai mươi lăm nghìn'), 25000);
+    });
+    test('chữ số đứng một mình vẫn KHÔNG phải số: "một khoản", "năm nay"', () {
+      expect(timSoBangChu('mua một ly trong năm nay', batBuocDonVi: false), isEmpty);
+    });
+    test('mặc định không đổi: "ba chục" thiếu đơn vị không phải cụm', () {
+      expect(timSoBangChu('cà phê mất ba chục'), isEmpty);
+    });
+  });
+
   group('ranh giới cụm', () {
     test('"hai triệu năm nay" → chỉ "hai triệu"; "năm" là năm lịch', () {
       final c = timSoBangChu('chi hai triệu năm nay').single;

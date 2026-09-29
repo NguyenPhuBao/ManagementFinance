@@ -258,6 +258,146 @@ void main() {
     });
   });
 
+  group('cauDaDien — dòng tóm tắt dưới ô (§3)', () {
+    test('đủ các ô, theo thứ tự tiền · loại · ngày · ví · danh mục', () {
+      final kq = doc('hôm qua nhận lương 9tr');
+      expect(cauDaDien(kq, tenVi: 'Tiền mặt', tenDanhMuc: 'Lương', now: now),
+          'Đã điền: 9.000.000 đ · Thu nhập · Hôm qua · Tiền mặt · Lương');
+    });
+    test('chỉ nêu ô đã đổi; ngày xa thì dd/mm, khác năm thì kèm năm', () {
+      expect(cauDaDien(doc('45k'), now: now), 'Đã điền: 45.000 đ');
+      expect(cauDaDien(doc('5/9 mua sách'), now: now), 'Đã điền: 05/09');
+      expect(cauDaDien(doc('5/9/2025 mua sách'), now: now), 'Đã điền: 05/09/2025');
+      expect(cauDaDien(doc('hôm nay 45k'), now: now), 'Đã điền: 45.000 đ · Hôm nay');
+    });
+    test('không đọc được gì → câu mời điền tay', () {
+      expect(cauDaDien(doc('xin chào'), now: now), kCauChuaDocDuoc);
+    });
+  });
+
+  group('§2.8 cachDocSoTien — mọi cách đọc hợp lệ của số trong câu', () {
+    Set<double> doc(String c) => cachDocSoTien(c, now: now);
+
+    test('tiếng lóng: "ba chục" = 30.000; "năm chục" = 50.000', () {
+      expect(doc('cà phê mất ba chục'), contains(30000));
+      expect(doc('đổ xăng năm chục'), contains(50000));
+    });
+    test('"một triệu hai" = 1.200.000, "2 triệu 5" = 2.500.000, "2k5" = 2.500', () {
+      expect(doc('tiền điện một triệu hai'), contains(1200000));
+      expect(doc('tiền nhà 2 triệu 5'), contains(2500000));
+      expect(doc('gửi xe 2k5'), contains(2500));
+    });
+    test('số trần 10–999 → × 1.000; một chữ số là số lượng', () {
+      expect(doc('ăn phở 45'), contains(45000));
+      expect(doc('mua 2 ly trà sữa'), isEmpty, reason: '"2 ly" không bao giờ thành 2.000 đ');
+    });
+    test('cụm luật không chọn vẫn là cách đọc hợp lệ (lít, số thứ hai)', () {
+      expect(doc('đổ 2 lít xăng 50k'), containsAll([200000, 50000]));
+    });
+    test('ngày, số điện thoại, năm không phải số tiền', () {
+      expect(doc('ngày 5/9 nạp 0912345678 năm 2026'), isEmpty);
+    });
+  });
+
+  group('§2.8 hợp nhất AI — AI đề xuất, luật kiểm', () {
+    final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
+    final chinh = makeWallet(id: 'w-cash', name: 'Tiền mặt');
+    final anUong = makeCategory(id: 'c-an', name: 'Ăn uống');
+    final diChuyen = makeCategory(id: 'c-dc', name: 'Di chuyển');
+    final luong = makeCategory(id: 'c-luong', name: 'Lương', classify: 'thu');
+    final chonDuoc = [anUong, diChuyen, luong];
+    KetQuaDocCau docAi(String cau, KetQuaAi ai, {BoPhanLoaiGhiChu? mo}) =>
+        docCauGiaoDich(cau, now: now, vi: [tcb, chinh], chonDuoc: chonDuoc, mo: mo, ai: ai);
+
+    test('KetQuaAi.tuThamSo: số dạng chuỗi, rỗng / 0 / khong_ro → null', () {
+      final a = KetQuaAi.tuThamSo({'so_tien': '30000', 'loai': 'khong_ro', 'vi': '', 'ghi_chu': ' cà phê '});
+      expect(a.soTien, 30000);
+      expect(a.loai, isNull);
+      expect(a.vi, isNull);
+      expect(a.ghiChu, 'cà phê');
+      expect(KetQuaAi.tuThamSo({'so_tien': 0}).soTien, isNull);
+    });
+
+    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "ba chục"', () {
+      final r = docAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000));
+      expect(r.soTien, 30000);
+      expect(r.quaAi, isTrue);
+    });
+
+    test('⭐ số tiền AI KHÔNG có trong câu → bỏ, giữ số của luật (không bao giờ bịa số)', () {
+      expect(docAi('ăn phở 45k', const KetQuaAi(soTien: 450000)).soTien, 45000);
+      expect(docAi('mua 2 ly trà sữa', const KetQuaAi(soTien: 2000)).soTien, isNull);
+    });
+
+    test('"một triệu hai": luật không điền (mơ hồ), AI chọn 1.200.000 → dùng, bỏ cảnh báo số chữ', () {
+      final luat = docCauGiaoDich('tiền điện một triệu hai', now: now, vi: const [], chonDuoc: const []);
+      expect(luat.soTien, isNull, reason: 'tiền đề');
+      final r = docAi('tiền điện một triệu hai', const KetQuaAi(soTien: 1200000));
+      expect(r.soTien, 1200000);
+      expect(r.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)));
+    });
+
+    test('loại: AI "chi" / "thu" được dùng; câu có nợ / vay → null như luật', () {
+      expect(docAi('tiền mẹ gửi 2tr', const KetQuaAi(loai: 'thu')).loai, 'thu');
+      expect(docAi('thu nợ anh Nam 500k', const KetQuaAi(loai: 'thu')).loai, isNull);
+    });
+
+    test('ngày: luật đọc chắc thì LUẬT THẮNG; luật không đọc được thì ngày AI khi qua kiểm', () {
+      expect(docAi('hôm qua ăn phở 45k', const KetQuaAi(ngay: '20/09/2026')).ngay, DateTime(2026, 9, 29));
+      expect(docAi('thứ sáu tuần trước ăn lẩu 300k', const KetQuaAi(ngay: '18/09/2026')).ngay,
+          DateTime(2026, 9, 25),
+          reason: 'luật đọc được "thứ sáu tuần trước" = 25/9 — AI tính lệch một tuần thì bị bỏ');
+      expect(docAi('đầu tháng đóng học phí 2tr', const KetQuaAi(ngay: '01/09/2026')).ngay, DateTime(2026, 9, 1),
+          reason: 'luật không đọc "đầu tháng" — AI lấp chỗ ấy');
+    });
+
+    test('ngày AI bị chặn: câu không có chữ thời gian, tương lai quá 7 ngày, quá 366 ngày, không có trên lịch', () {
+      expect(docAi('ăn phở 45k', const KetQuaAi(ngay: '20/09/2026')).ngay, isNull,
+          reason: 'câu không nói thời gian — AI không được đổi ngày');
+      expect(docAi('tôi ăn phở 45k', const KetQuaAi(ngay: '20/09/2026')).ngay, isNull,
+          reason: '"tôi" bỏ dấu là "toi" (= tối) — không phải chữ thời gian');
+      expect(docAi('tuần sau đóng học 2tr', const KetQuaAi(ngay: '15/10/2026')).ngay, isNull);
+      expect(docAi('tháng trước ăn 45k', const KetQuaAi(ngay: '01/09/2025')).ngay, isNull);
+      expect(docAi('tháng trước ăn 45k', const KetQuaAi(ngay: '31/02/2026')).ngay, isNull);
+    });
+
+    test('ví: tên ví nêu trong câu → luật thắng; luật không thấy → tên AI phải có thật', () {
+      expect(docAi('45k ví Techcombank', const KetQuaAi(vi: 'Tiền mặt')).walletId, 'w-tcb');
+      expect(docAi('quẹt thẻ techcom 45k', const KetQuaAi(vi: 'Techcombank')).walletId, 'w-tcb');
+      expect(docAi('quẹt thẻ 45k', const KetQuaAi(vi: 'Vietcombank')).walletId, isNull, reason: 'không có ví ấy');
+    });
+
+    test('ghi chú: AI được BỚT chữ, không được THÊM chữ', () {
+      expect(docAi('hôm qua ăn phở với bạn 45k', const KetQuaAi(ghiChu: 'ăn phở')).ghiChu, 'ăn phở');
+      expect(docAi('hôm qua ăn phở 45k', const KetQuaAi(ghiChu: 'ăn phở bò Hà Nội')).ghiChu, 'ăn phở',
+          reason: '"bò Hà Nội" không có trong câu');
+    });
+
+    test('danh mục: tên trong câu → B1 khi chắc → AI (hợp chiều) → không', () {
+      final mo = BoPhanLoaiGhiChu.hoc([
+        for (var i = 0; i < 6; i++)
+          MauGhiChu(categoryId: 'c-dc', amTiet: amTietCua('grab'), ngay: DateTime(2026, 8, 1 + i)),
+        for (var i = 0; i < 6; i++)
+          MauGhiChu(categoryId: 'c-an', amTiet: amTietCua('pho bo'), ngay: DateTime(2026, 8, 1 + i)),
+      ]);
+      expect(docAi('45k ăn uống', const KetQuaAi(danhMuc: 'Di chuyển'), mo: mo).categoryId, 'c-an',
+          reason: 'tên nêu trong câu');
+      final b1 = docAi('grab 50k', const KetQuaAi(danhMuc: 'Ăn uống'), mo: mo);
+      expect(b1.categoryId, 'c-dc', reason: 'B1 thắng khi nó chắc — người dùng chốt');
+      expect(b1.doan, isNotNull);
+      final ai = docAi('bún chả 45k', const KetQuaAi(danhMuc: 'Ăn uống'), mo: mo);
+      expect(ai.categoryId, 'c-an', reason: 'B1 im (chưa thấy "bún chả") → danh mục AI');
+      expect(ai.doan, isNull, reason: 'không phải B1 — không ghi phản hồi B1');
+      expect(docAi('bún chả 45k', const KetQuaAi(danhMuc: 'Ăn vặt')).categoryId, isNull, reason: 'không có thật');
+      expect(docAi('bún chả 45k', const KetQuaAi(loai: 'thu', danhMuc: 'Ăn uống')).categoryId, isNull,
+          reason: 'AI nói thu mà chọn danh mục chi — không hợp chiều');
+    });
+
+    test('không có KetQuaAi → quaAi false (đường luật)', () {
+      expect(doc('ăn phở 45k').quaAi, isFalse);
+    });
+  });
+
   group('không đọc được gì', () {
     test('câu không có ô nào đọc được → khongDocDuocGi, ghi chú là cả câu', () {
       final r = doc('xin chào');

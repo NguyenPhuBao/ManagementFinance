@@ -7,12 +7,17 @@
 /// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → ví (§2.4) → loại (§2.2, trên câu đã bỏ các đoạn ấy, để *"thứ
 /// 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu, không
 /// có thì B1 đoán trên ghi chú đã rút).
+///
+/// **Đọc bằng AI (§2.8, 2026-09-30):** khi có [KetQuaAi] — các ô thô mô hình trên máy trả về — mỗi ô của AI phải QUA
+/// KIỂM của luật mới được dùng, trượt thì giữ ô của luật. AI đề xuất, luật kiểm: AI được chọn cách đọc, không được đưa
+/// ra một chữ số, một cái tên, hay một chữ ghi chú không có trong câu / trên máy.
 library;
 
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
@@ -23,8 +28,8 @@ import '../../category/domain/phan_loai_ghi_chu.dart';
 class KetQuaDocCau {
   final double? soTien;
 
-  /// `'thu'` hoặc `null` (form giữ chiều đang chọn). Không bao giờ `'chi'`: chi là mặc định của form, và câu không có
-  /// từ chỉ thu thì không chứng minh được gì.
+  /// `'thu'`, `'chi'` hoặc `null` (form giữ chiều đang chọn). Luật chỉ trả `'thu'` — chi là mặc định của form, câu không
+  /// có từ chỉ thu thì không chứng minh được gì; `'chi'` chỉ đến từ AI (§2.8).
   final String? loai;
 
   /// Đầu ngày. Form chỉ đổi phần ngày, giữ giờ.
@@ -42,6 +47,9 @@ class KetQuaDocCau {
   final String ghiChu;
   final List<String> canhBao;
 
+  /// Kết quả có đi qua mô hình (§2.8) — màn ghi nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*.
+  final bool quaAi;
+
   const KetQuaDocCau({
     this.soTien,
     this.loai,
@@ -52,10 +60,79 @@ class KetQuaDocCau {
     this.lyDoDanhMuc,
     required this.ghiChu,
     this.canhBao = const [],
+    this.quaAi = false,
   });
 
   bool get khongDocDuocGi =>
       soTien == null && loai == null && ngay == null && walletId == null && categoryId == null;
+}
+
+const String kCauChuaDocDuoc = 'Mình chưa đọc được câu này — bạn điền tay nhé.';
+
+/// Dòng tóm tắt dưới ô Nhập nhanh (§3): *"Đã điền: 45.000 đ · Hôm qua · Tiền mặt · Ăn uống"*. Chỉ nêu những ô ĐÃ đổi;
+/// [tenVi] / [tenDanhMuc] là tên của ví / danh mục mà màn thực sự đặt (màn có thể bỏ danh mục khi đang ở đoạn Chuyển
+/// khoản). Không đọc được gì → [kCauChuaDocDuoc].
+String cauDaDien(
+  KetQuaDocCau kq, {
+  String? tenVi,
+  String? tenDanhMuc,
+  required DateTime now,
+}) {
+  if (kq.khongDocDuocGi) return kCauChuaDocDuoc;
+  final ngay = kq.ngay;
+  String? chuNgay;
+  if (ngay != null) {
+    final lui = DateTime(now.year, now.month, now.day).difference(DateTime(ngay.year, ngay.month, ngay.day)).inDays;
+    chuNgay = switch (lui) {
+      0 => 'Hôm nay',
+      1 => 'Hôm qua',
+      2 => 'Hôm kia',
+      _ => '${ngay.day.toString().padLeft(2, '0')}/${ngay.month.toString().padLeft(2, '0')}'
+          '${ngay.year == now.year ? '' : '/${ngay.year}'}',
+    };
+  }
+  final phan = [
+    if (kq.soTien != null) CurrencyFormatter.format(kq.soTien!),
+    if (kq.loai == 'thu') 'Thu nhập',
+    if (chuNgay != null) chuNgay,
+    if (tenVi != null) tenVi,
+    if (tenDanhMuc != null) tenDanhMuc,
+  ];
+  return phan.isEmpty ? kCauChuaDocDuoc : 'Đã điền: ${phan.join(' · ')}';
+}
+
+/// Các ô THÔ mô hình trả về qua tool `dien_giao_dich` (§2.8) — chưa kiểm gì. `null` = mô hình để trống.
+class KetQuaAi {
+  final double? soTien;
+  final String? loai;
+  final String? ngay;
+  final String? vi;
+  final String? danhMuc;
+  final String? ghiChu;
+  const KetQuaAi({this.soTien, this.loai, this.ngay, this.vi, this.danhMuc, this.ghiChu});
+
+  /// Từ tham số lời gọi tool. Lỏng tay với kiểu (số có thể đến dạng chuỗi); rỗng, `0`, `khong_ro` → `null`.
+  factory KetQuaAi.tuThamSo(Map<String, dynamic> a) {
+    String? chuoi(Object? v) {
+      final t = v?.toString().trim() ?? '';
+      return t.isEmpty ? null : t;
+    }
+
+    final tien = switch (a['so_tien']) {
+      final num n => n.toDouble(),
+      final String t => double.tryParse(t.replaceAll(RegExp(r'[^\d.]'), '')),
+      _ => null,
+    };
+    final loai = chuoi(a['loai']);
+    return KetQuaAi(
+      soTien: tien == null || tien <= 0 ? null : tien,
+      loai: const {'chi', 'thu'}.contains(loai) ? loai : null,
+      ngay: chuoi(a['ngay']),
+      vi: chuoi(a['vi']),
+      danhMuc: chuoi(a['danh_muc']),
+      ghiChu: chuoi(a['ghi_chu']),
+    );
+  }
 }
 
 const String kCanhBaoNhieuSoTien = 'Câu có nhiều số tiền — mình chỉ điền khoản đầu.';
@@ -81,7 +158,7 @@ final RegExp _mauSoTran = RegExp(
 );
 
 final RegExp _truocLaNam = RegExp(r'(?<![a-z])nam\s*$');
-final RegExp _sauLaChuSoChu = RegExp(r'^\s+(?:mot|hai|ba|bon|tu|nam|sau|bay|tam|chin)(?![a-z])');
+final RegExp _sauLaChuSoChu = RegExp(r'^\s+(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin)(?![a-z])');
 final RegExp _sauLaDonViTien = RegExp(r'^\s*(?:dong|vnd|d)(?!\p{L})', unicode: true);
 final RegExp _tuCuoi = RegExp(r'([\p{L}\p{M}]+)\s+$', unicode: true);
 final RegExp _tu = RegExp(r'[\p{L}\p{M}]+', unicode: true);
@@ -109,6 +186,7 @@ KetQuaDocCau docCauGiaoDich(
   required List<Category> chonDuoc,
   BoPhanLoaiGhiChu? mo,
   Set<(String, String)> tatCap = const {},
+  KetQuaAi? ai,
 }) {
   final s = unorm.nfc(cau);
   final thuong = s.toLowerCase();
@@ -156,8 +234,30 @@ KetQuaDocCau docCauGiaoDich(
     }
   }
 
-  final loai = _loaiCua(_boKhoang(thuong, daDung));
-  final ghiChu = _ghiChuTu(s, daDung);
+  var loai = _loaiCua(_boKhoang(thuong, daDung));
+  var ghiChu = _ghiChuTu(s, daDung);
+  var ngay = ng?.ngay;
+
+  // §2.8 — ô của AI qua kiểm của luật. Luật đọc chắc (ngày, ví nêu tên) thì luật thắng: chữ ấy không hai nghĩa.
+  if (ai != null) {
+    final st = ai.soTien;
+    if (st != null && st < 1e13 && cachDocSoTien(cau, now: now).any((v) => (v - st).abs() <= 0.5)) {
+      soTien = st.roundToDouble();
+      canhBao.removeWhere((c) => c != kCanhBaoNhieuSoTien);
+    }
+    if (ai.loai != null && !_coVayNo(thuong)) loai = ai.loai;
+    ngay ??= _ngayAiHopLe(ai.ngay, thuong, now);
+    if (walletId == null && ai.vi != null) {
+      final k = khopTheoTen(ai.vi!, dsVi, (w) => w.name);
+      if (k is KhopMot<Wallet>) walletId = k.muc.id;
+    }
+    final gc = ai.ghiChu;
+    if (gc != null) {
+      final cho = amTietCua(ghiChu).toSet();
+      final cua = amTietCua(gc);
+      if (cua.isNotEmpty && cua.every(cho.contains)) ghiChu = gc;
+    }
+  }
 
   // Danh mục (§2.5): câu nói rõ chiều thì chỉ danh mục hợp chiều (C1 `hopLeTheoChieu`); không nói thì mọi danh mục chọn
   // được — cùng nếp thẻ gợi ý của màn Thêm giao dịch, nơi danh mục kéo đoạn Chi/Thu theo.
@@ -173,27 +273,136 @@ KetQuaDocCau docCauGiaoDich(
   if (tenDm != null) {
     final trung = _cungTen(dsHopLe, tenDm.ten, (c) => c.name);
     if (trung.length == 1) categoryId = trung.single.id;
-  } else if (mo != null) {
-    final d = mo.doan(ghiChu, hopLe: hopLe, tatCap: tatCap);
+  } else {
+    // B1 thắng khi nó chắc (người dùng chốt 2026-09-30): thói quen riêng trước hiểu biết chung của mô hình.
+    final d = mo?.doan(ghiChu, hopLe: hopLe, tatCap: tatCap);
     if (d != null) {
       categoryId = d.categoryId;
       doan = d;
       final ten = dsHopLe.firstWhere((c) => c.id == d.categoryId).name;
       lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChu, tenDanhMuc: ten);
+    } else if (ai?.danhMuc != null) {
+      final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
+      if (k is KhopMot<Category>) categoryId = k.muc.id;
     }
   }
 
   return KetQuaDocCau(
     soTien: soTien,
     loai: loai,
-    ngay: ng?.ngay,
+    ngay: ngay,
     walletId: walletId,
     categoryId: categoryId,
     doan: doan,
     lyDoDanhMuc: lyDo,
     ghiChu: ghiChu,
     canhBao: canhBao,
+    quaAi: ai != null,
   );
+}
+
+/// Mọi CÁCH ĐỌC hợp lệ (≥ 1.000 đ, dưới 13 chữ số) của các con số có trong [cau] — lưới kiểm số tiền của AI (§2.8). AI
+/// được CHỌN một cách đọc; số nào không nằm đây là số AI tự đặt ra, bị bỏ.
+///
+/// Gồm: mọi cụm luật thấy, kể cả cụm luật không chọn (lít / xị, số thứ hai); số trần `n` → `n`, và `n × 1.000` khi
+/// `10 ≤ n < 1.000` (*"ăn phở 45"*; số một chữ số là số lượng: *"2 ly"*); số chữ không đơn vị có hàng chục → × 1.000
+/// (*"ba chục"* = 30.000); *"X triệu Y"* / *"X tr Y"* / *"một triệu hai"* → X,Y triệu; *"2k5"* → 2.500.
+Set<double> cachDocSoTien(String cau, {required DateTime now}) {
+  final s = unorm.nfc(cau);
+  final b = removeVietnameseTones(s.toLowerCase());
+  if (b.length != s.length) return const {};
+  final ng = timNgayTrongCau(s, now);
+  bool trungNgay(int bd, int kt) => ng != null && bd < ng.ketThuc && kt > ng.batDau;
+  final kq = <double>{};
+  final daPhu = <_Khoang>[];
+
+  for (final m in _mauSoDonVi.allMatches(b)) {
+    if (trungNgay(m.start, m.end)) continue;
+    final dv = m.group(2)!;
+    final le = m.group(3);
+    var gt = double.parse(m.group(1)!.replaceAll(',', '.')) * _giaTriDonVi[dv]!;
+    if (le != null) {
+      if (dv == 'tr') {
+        gt += int.parse(le) * const [0, 100000, 10000, 1000][le.length];
+      } else if (dv == 'k' && le.length == 1) {
+        gt += int.parse(le) * 100;
+      } else {
+        continue;
+      }
+    }
+    kq.add(gt);
+    daPhu.add((batDau: m.start, ketThuc: m.end));
+  }
+
+  for (final m in _mauTrieuLe.allMatches(b)) {
+    if (trungNgay(m.start, m.end)) continue;
+    kq.add(int.parse(m.group(1)!) * 1e6 + int.parse(m.group(2)!) * 1e5);
+    daPhu.add((batDau: m.start, ketThuc: m.end));
+  }
+
+  for (final m in _mauSoTran.allMatches(b)) {
+    if (trungNgay(m.start, m.end) || daPhu.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
+    final chuSo = m.group(1)!.replaceAll(RegExp(r'[.,]'), '');
+    if (chuSo.length >= 2 && chuSo.startsWith('0')) continue;
+    if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue;
+    final n = double.parse(chuSo);
+    kq.add(n);
+    if (n >= 10 && n < 1000) kq.add(n * 1000);
+  }
+
+  for (final c in timSoBangChu(s)) {
+    if (c.giaTri.isNaN || trungNgay(c.batDau, c.ketThuc)) continue;
+    kq.add(c.giaTri);
+    final sau = _sauLaChuSoChu.firstMatch(b.substring(c.ketThuc));
+    final bac = _bacCuoi.firstMatch(b.substring(c.batDau, c.ketThuc))?.group(1);
+    if (sau != null && bac != null) {
+      kq.add(c.giaTri + _chuSoChu[sau.group(1)]! * _giaTriBac[bac]! / 10);
+    }
+  }
+  for (final c in timSoBangChu(s, batBuocDonVi: false)) {
+    if (c.giaTri.isNaN || trungNgay(c.batDau, c.ketThuc)) continue;
+    kq.add(c.giaTri);
+    if (c.giaTri >= 10 && c.giaTri < 1000) kq.add(c.giaTri * 1000);
+  }
+  return {for (final v in kq) if (v >= 1000 && v < 1e13) v};
+}
+
+/// *"2 triệu 5"*, *"2 tr 5"*, *"2 củ 5"* — một chữ số lẻ tách bằng dấu cách, không kèm đơn vị riêng.
+final RegExp _mauTrieuLe = RegExp(
+  r'(?<![\p{L}\p{N}.,/])(\d+)\s*(?:trieu|tr|cu)\s+(\d)(?![\p{L}\p{N}.,/])(?!\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi)(?![a-z]))',
+  unicode: true,
+);
+final RegExp _bacCuoi = RegExp(r'(nghin|ngan|trieu|ty|ti)\s*$');
+const Map<String, double> _giaTriBac = {'nghin': 1e3, 'ngan': 1e3, 'trieu': 1e6, 'ty': 1e9, 'ti': 1e9};
+const Map<String, int> _chuSoChu = {
+  'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'tu': 4, 'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, //
+};
+
+/// Chữ chỉ THỜI GIAN — câu không có chữ nào thì AI không được đổi ngày (§2.8). Khớp từng từ, phân biệt dấu như từ chỉ
+/// thu: *"tôi"* bỏ dấu là *"toi"* (= tối), *"quà"* là *"qua"*.
+const Set<String> _thoiGianCoDau = {
+  'tuần', 'tháng', 'hôm', 'trước', 'qua', 'đầu', 'cuối', 'sáng', 'trưa', 'chiều', 'tối', 'đêm', 'thứ', 'nay', //
+  'ngày', 'mai', 'kia', 'ngoái', 'nhật',
+};
+const Set<String> _thoiGianKhongDau = {'tuan', 'thang', 'hom', 'truoc', 'trua', 'chieu', 'ngay', 'kia'};
+
+bool _coChuThoiGian(String thuong) => _tu.allMatches(thuong).any((m) {
+      final t = unorm.nfc(m.group(0)!);
+      return _chiAscii.hasMatch(t) ? _thoiGianKhongDau.contains(t) : _thoiGianCoDau.contains(t);
+    });
+
+final RegExp _mauNgayAi = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+
+/// Ngày AI trả về (`dd/mm/yyyy`) khi qua kiểm (§2.8): có thật trên lịch, trong `[hôm nay − 366, hôm nay + 7]`, và câu có
+/// chữ chỉ thời gian. Không qua → `null` (form giữ ngày của nó).
+DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
+  final m = _mauNgayAi.firstMatch(chu?.trim() ?? '');
+  if (m == null || !_coChuThoiGian(thuong)) return null;
+  final x = ngayHopLe(int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
+  if (x == null) return null;
+  final homNay = DateTime(now.year, now.month, now.day);
+  final lech = x.difference(homNay).inDays;
+  return lech > 7 || lech < -366 ? null : x;
 }
 
 final RegExp _mauTienMat = RegExp(r'(?<![a-z0-9])tien\s+mat(?![a-z0-9])');
@@ -316,10 +525,12 @@ const Set<String> _sauNhanKhongPhaiThu = {'hàng', 'đồ', 'đơn', 'gói', 'ha
 /// không đặt loại — vô hại).
 const Set<String> _vayNo = {'no', 'vay'};
 
+bool _coVayNo(String thuong) =>
+    _tu.allMatches(thuong).any((m) => _vayNo.contains(removeVietnameseTones(unorm.nfc(m.group(0)!))));
+
 String? _loaiCua(String thuong) {
   final tu = [for (final m in _tu.allMatches(thuong)) unorm.nfc(m.group(0)!)];
-  final bo = [for (final t in tu) removeVietnameseTones(t)];
-  if (bo.any(_vayNo.contains)) return null;
+  if (_coVayNo(thuong)) return null;
   for (var i = 0; i < tu.length; i++) {
     final t = tu[i];
     final ascii = _chiAscii.hasMatch(t);

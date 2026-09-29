@@ -63,6 +63,22 @@ void main() {
       expect(ngay('thu 2tr'), isNull);
       expect(ngay('thu nam 500k'), isNull, reason: '"thu (của anh) Nam" — tên người');
     });
+    test('⭐ "thứ X tuần trước" là ngày của tuần TRƯỚC, không phải thứ X gần nhất', () {
+      // Thứ Bảy 3/10: thứ Sáu gần nhất là 2/10 (tuần này) — "tuần trước" là 25/9.
+      final thuBay = DateTime(2026, 10, 3, 9);
+      expect(ngay('thứ sáu tuần trước ăn lẩu', thuBay), DateTime(2026, 9, 25));
+      expect(ngay('thu 6 tuan truoc', thuBay), DateTime(2026, 9, 25));
+      expect(ngay('chủ nhật tuần trước', thuBay), DateTime(2026, 9, 27));
+      expect(ngay('thứ 2 tuần trước'), DateTime(2026, 9, 21));
+      final k = timNgayTrongCau('thứ sáu tuần trước ăn lẩu', thuBay)!;
+      expect('thứ sáu tuần trước ăn lẩu'.substring(k.batDau, k.ketThuc), 'thứ sáu tuần trước',
+          reason: 'ghi chú phải bỏ cả cụm "tuần trước"');
+    });
+
+    test('"thứ X tuần này" là ngày của tuần này', () {
+      expect(ngay('thứ 2 tuần này'), DateTime(2026, 9, 28));
+    });
+
     test('có dấu "thứ" thì chữ số sau là thứ, kể cả khi có số tiền phía sau', () {
       expect(ngay('thứ 2 đổ xăng 50k'), DateTime(2026, 9, 28));
     });

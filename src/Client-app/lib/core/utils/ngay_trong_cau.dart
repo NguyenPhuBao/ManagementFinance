@@ -3,7 +3,9 @@
 ///
 /// Ba dạng, chữ đứng **đầu câu** thắng khi có nhiều:
 /// - *hôm nay · sáng / trưa / chiều / tối nay* → hôm nay; *hôm qua* → hôm qua; *hôm kia* → hai ngày trước.
-/// - *thứ 2 … thứ 7*, *thứ hai … thứ bảy*, *chủ nhật / cn* → ngày gần nhất **đã qua hoặc hôm nay** có thứ ấy.
+/// - *thứ 2 … thứ 7*, *thứ hai … thứ bảy*, *chủ nhật / cn* → ngày gần nhất **đã qua hoặc hôm nay** có thứ ấy; kèm *"tuần
+///   trước"* / *"tuần này"* thì là ngày ấy của tuần (thứ Hai → Chủ nhật) được nêu. *"thứ sáu tuần trước"* đọc vào thứ
+///   Bảy không phải hôm qua.
 /// - *dd/mm* (có thể kèm *ngày* đứng trước, hoặc */yyyy* sau) → ngày ấy của năm hiện tại; không tồn tại thì bỏ; rơi vào
 ///   tương lai quá 7 ngày thì lùi một năm (gõ *30/12* hôm 3/1 là 30/12 năm ngoái).
 ///
@@ -69,11 +71,11 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
     final laSo = RegExp(r'^\d$').hasMatch(tu);
     if (!coDau && (!laSo || _sauLaDonViTien.hasMatch(s.substring(m.end)))) continue;
     final thu = laSo ? int.parse(tu) - 1 : _thuChu[tu]!;
-    ungVien.add((ngay: _ganNhat(homNay, thu), batDau: m.start, ketThuc: m.end));
+    ungVien.add(_theoTuan(s, homNay, thu, m.start, m.end));
   }
 
   for (final m in _mauChuNhat.allMatches(s)) {
-    ungVien.add((ngay: _ganNhat(homNay, DateTime.sunday), batDau: m.start, ketThuc: m.end));
+    ungVien.add(_theoTuan(s, homNay, DateTime.sunday, m.start, m.end));
   }
 
   for (final m in _mauNgay.allMatches(s)) {
@@ -91,6 +93,22 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
   if (ungVien.isEmpty) return null;
   ungVien.sort((a, b) => a.batDau.compareTo(b.batDau));
   return ungVien.first;
+}
+
+final RegExp _mauTuan = RegExp(r'^\s+tuan\s+(truoc|nay)(?![a-z0-9])');
+
+/// Thứ [thu] đọc được ở `[bd, kt)`; ngay sau là *"tuần trước"* / *"tuần này"* thì là ngày ấy của tuần được nêu (tuần
+/// bắt đầu thứ Hai) và đoạn nuốt luôn cụm ấy, không thì ngày gần nhất đã qua hoặc hôm nay.
+NgayTrongCau _theoTuan(String s, DateTime homNay, int thu, int bd, int kt) {
+  final m = _mauTuan.firstMatch(s.substring(kt));
+  if (m == null) return (ngay: _ganNhat(homNay, thu), batDau: bd, ketThuc: kt);
+  final thuHai = DateTime(homNay.year, homNay.month, homNay.day - (homNay.weekday - 1));
+  final lui = m.group(1) == 'truoc' ? 7 : 0;
+  return (
+    ngay: DateTime(thuHai.year, thuHai.month, thuHai.day - lui + thu - 1),
+    batDau: bd,
+    ketThuc: kt + m.end,
+  );
 }
 
 /// Ngày gần nhất đã qua hoặc hôm nay có [thu] (`DateTime.weekday`).
