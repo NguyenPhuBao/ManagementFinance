@@ -54,6 +54,7 @@ import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
 import '../../features/bill/data/datasources/bill_local_datasource.dart';
@@ -559,6 +560,16 @@ Future<void> setupDependencies() async {
   );
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
+
+  // Ô Nhập nhanh của màn Thêm giao dịch đọc câu bằng mô hình (C2 §2.8, người dùng chọn "AI đọc mọi câu" 2026-09-30) —
+  // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
+  sl.registerLazySingleton<DocCauBangAi>(
+    () => DocCauBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
 
   // Nguồn sáu gói số cho BẬC 1 của màn Trợ lý AI — nhánh lùi L1 khi mô hình
   // không gọi tool nào. Sáu khối Nhận xét đều lấy gói từ trang của chúng; màn
