@@ -551,50 +551,62 @@ class _BillPageState extends State<BillPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // `Flexible` + ellipsis: số tiền lớn (hoặc cỡ chữ hệ
-                          // thống to) đẩy nút "Thanh toán" ra ngoài mép thẻ.
-                          // `BillStatusHeader` đã được vá cùng lỗi này từ trước,
-                          // hàng dưới thì chưa ai để ý.
-                          Flexible(
-                            child: Text(
-                              amount,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: isPaid
-                                    ? AppColors.textSecondary
-                                    : AppColors.primary,
-                              ),
+                          // ⚠️ G51 (2026-09-29): số tiền + bút + thùng rác nằm
+                          // trong MỘT `Expanded`, số tiền là `Flexible` DUY NHẤT
+                          // của hàng con. Bản trước đặt `Flexible(số tiền)` và
+                          // `Spacer()` cùng hàng, cả hai `flex: 1`, nên chúng
+                          // CHIA ĐÔI chỗ trống — số tiền bị trần ở một nửa dù
+                          // Spacer co được về 0, và ở 360 dp mọi thẻ in
+                          // "10.0…". Vẫn ellipsis: số tiền lớn (hoặc cỡ chữ hệ
+                          // thống to) không được đẩy nút "Thanh toán" ra ngoài
+                          // mép thẻ.
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    amount,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isPaid
+                                          ? AppColors.textSecondary
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                InkWell(
+                                  onTap: () => context.push(
+                                      '/bills/${bill.id}/edit',
+                                      extra: bill),
+                                  child: Icon(
+                                    Icons.edit,
+                                    size: 16,
+                                    color: isPaid
+                                        ? AppColors.textSecondary
+                                            .withValues(alpha: 0.5)
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                InkWell(
+                                  onTap: () => hoiXoaHoaDon(context, bill.id),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 16,
+                                    color: isPaid
+                                        ? const Color(0xFFF1453B)
+                                            .withValues(alpha: 0.5)
+                                        : const Color(0xFFF1453B),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          InkWell(
-                            onTap: () => context.push('/bills/${bill.id}/edit',
-                                extra: bill),
-                            child: Icon(
-                              Icons.edit,
-                              size: 16,
-                              color: isPaid
-                                  ? AppColors.textSecondary
-                                      .withValues(alpha: 0.5)
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          InkWell(
-                            onTap: () => hoiXoaHoaDon(context, bill.id),
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                              color: isPaid
-                                  ? const Color(0xFFF1453B)
-                                      .withValues(alpha: 0.5)
-                                  : const Color(0xFFF1453B),
-                            ),
-                          ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           if (isPaid)
                             TextButton.icon(
                               key: ValueKey('bill-undo-${bill.id}'),
