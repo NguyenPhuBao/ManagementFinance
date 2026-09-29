@@ -9,6 +9,7 @@ import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/vong_lap_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
@@ -113,6 +114,12 @@ KetQuaCongCu _kiem() => KetQuaCongCu(
 
 const goiHoaDon = GoiCongCu(kTenCongCuHoaDon, {'trang_thai': 'qua_han'});
 
+/// Câu mẫu của khung `chay` — phải KHÔNG định tuyến: các ca dùng khung này kiểm
+/// cơ chế vòng lặp khi mô hình tự chọn tool (L1, L1b, tool bịa tên). Câu cũ
+/// *"Hoa don nao qua han?"* nay đi phiên một tool (A2, 2026-09-29) nên ba ca ấy
+/// rơi vào nhánh định tuyến; *"đã trả"* nằm trong danh sách loại của họ hoá đơn.
+const _cauKhongDinhTuyen = 'Hoa don nao toi da tra?';
+
 /// Lượt `tim_giao_dich` THÀNH CÔNG mà 0 khoản — C9 cổng D lần 2 (bước 2c).
 KetQuaCongCu _timRong() => KetQuaCongCu(
       hang: const [],
@@ -155,12 +162,16 @@ void main() {
     final rt = _RuntimeGia(phien);
     final goi = GoiSoTraCuu();
     final sk = await hoiBangCongCu(
-      'Hoa don nao qua han?',
+      _cauKhongDinhTuyen,
       runtime: rt, boCongCu: bo, goi: goi, idaccount: 10, now: now,
       tranGoi: tranGoi, log: log.add,
     ).toList();
     return (sk, goi, phien, rt);
   }
+
+  test('tiền đề: câu mẫu của khung KHÔNG định tuyến — luật định tuyến giành nó thì ca L1/L1b mất nghĩa', () {
+    expect(congCuTheoCauHoi(_cauKhongDinhTuyen), isNull);
+  });
 
   group('định tuyến theo CÂU HỎI ở tầng mã (mục 9.33: tool dự báo 0/3)', () {
     KetQuaCongCu duBao() => KetQuaCongCu(
@@ -213,7 +224,7 @@ void main() {
       }
 
       expect(await khaiBaoCua('tra het hoa don thi con bao nhieu'), [kTenCongCuDuBao]);
-      expect(await khaiBaoCua('Hoa don nao qua han?'), [kTenCongCuHoaDon]);
+      expect(await khaiBaoCua(_cauKhongDinhTuyen), [kTenCongCuHoaDon]);
     });
 
     test('mô hình gọi đúng tool dự báo → chạy bình thường, không log định tuyến', () async {
@@ -247,7 +258,7 @@ void main() {
     });
 
     test('câu hỏi không có đích → y như cũ', () async {
-      final (_, goi, _) = await hoi('Hoa don nao qua han?', [
+      final (_, goi, _) = await hoi(_cauKhongDinhTuyen, [
         [goiHoaDon],
         [const Chu('Kiem đã quá hạn 45.000 đ.')],
       ]);
@@ -309,7 +320,7 @@ void main() {
     expect(goi.daTraCuu, isTrue);
     expect(goi.hang.single.ten, 'Kiem');
     expect(rt.khaiBaoDaNhan!.single.ten, kTenCongCuHoaDon);
-    expect(rt.cauHoiDaNhan, 'Hoa don nao qua han?');
+    expect(rt.cauHoiDaNhan, _cauKhongDinhTuyen);
     expect(rt.heThongDaNhan, isNotEmpty);
     expect(phien.daDong, isTrue);
     expect(log.any((l) => l.contains('gọi $kTenCongCuHoaDon')), isTrue);

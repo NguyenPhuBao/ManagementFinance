@@ -506,15 +506,13 @@ void main() {
         expect(congCuTheoCauHoi(cau), isNot(kTenCongCuMucTieu), reason: cau);
       }
     });
-    test('⚠️ phản ví dụ: câu về quá khứ, về ngân sách, về hoá đơn nói chung KHÔNG bị đổi tool', () {
+    test('⚠️ phản ví dụ: câu về quá khứ KHÔNG bị đổi tool', () {
+      // A2 (2026-09-29): bốn câu về hoá đơn / ví / ngân sách / mục tiêu nay có
+      // tool đích — nhóm 22.
       for (final cau in [
         'thang nay toi chi bao nhieu',
-        'hoa don nao qua han',
-        'vi nao dang am',
-        'ngan sach an uong con tieu duoc bao nhieu',
         'toi da tra hoa don nao',
         '30 ngay qua toi chi gi',
-        'muc tieu muaxe con thieu bao nhieu',
         '',
       ]) {
         expect(congCuTheoCauHoi(cau), isNull, reason: cau);
@@ -573,7 +571,7 @@ void main() {
         'danh muc nao toi it tieu nhat',
         'cac danh muc chua dat ngan sach',
         'toi da cho vay bao nhieu va thu ve bao nhieu',
-        'tong tai san cua toi la bao nhieu',
+        // A2 (2026-09-29): "tổng tài sản của tôi là bao nhiêu" nay → tool ví (nhóm 22).
         'toi nen de danh bao nhieu moi thang cho muc tieu muaxe',
         'thang nay toi nhan duoc nhung khoan thu nao',
       ]) {
@@ -622,7 +620,7 @@ void main() {
           reason: '"bao nhiêu giao dịch" là câu giao dịch');
       expect(congCuTheoCauHoi('vi tien mat thang nay chi nhung gi'), isNull);
       expect(congCuTheoCauHoi('thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao'), isNull);
-      expect(congCuTheoCauHoi('toi co may vi tat ca'), isNull);
+      // A2 (2026-09-29): "tôi có mấy ví" nay → tool ví (nhóm 22).
       expect(congCuTheoCauHoi('tien trong vi co du tra hoa don khong'), 'du_bao_dong_tien');
       expect(congCuTheoCauHoi('vi co du tien trich cho muc tieu khong'), kTenCongCuMucTieu);
     });
@@ -711,9 +709,14 @@ void main() {
         expect(congCuTheoCauHoi(cau), kTenCongCuNganSach, reason: cau);
       }
     });
-    test('phản ví dụ: câu ngân sách khác vẫn không định tuyến', () {
-      for (final cau in ['ngan sach nao sap het', 'ngan sach an uong con tieu duoc bao nhieu', 'thang sau toi nen dat ngan sach bao nhieu']) {
-        expect(congCuTheoCauHoi(cau), isNull, reason: cau);
+    test('phản ví dụ: câu ngân sách khác không đi luật cân đối', () {
+      // A2 (2026-09-29): ba câu này từng phải trả `null`; nay chúng CÓ tool đích
+      // (nhóm 22). Vế còn canh được: luật cân đối không giành câu "nên đặt", và
+      // hai câu kia vào tool ngân sách mà không mang chon=can_doi.
+      expect(congCuTheoCauHoi('thang sau toi nen dat ngan sach bao nhieu'), kTenCongCuGoiYHanMuc);
+      for (final cau in ['ngan sach nao sap het', 'ngan sach an uong con tieu duoc bao nhieu']) {
+        expect(congCuTheoCauHoi(cau), kTenCongCuNganSach, reason: cau);
+        expect(chinhThamSoNganSach(cau, const {}).args['chon'], isNot('can_doi'), reason: cau);
       }
     });
   });
@@ -785,6 +788,81 @@ void main() {
     test('câu chung chung hoặc rỗng → tập rỗng (tool trả mọi nhóm)', () {
       expect(nhomTongQuanTheoCauHoi('tinh hinh tai chinh cua toi the nao'), isEmpty);
       expect(nhomTongQuanTheoCauHoi(''), isEmpty);
+    });
+  });
+
+  group('22. A2 — năm họ câu cũ về phiên một tool', () {
+    void dich(String tool, List<String> cau) {
+      for (final c in cau) {
+        expect(congCuTheoCauHoi(c), tool, reason: c);
+      }
+    }
+
+    test('⭐ hoá đơn', () => dich(kTenCongCuHoaDon, [
+          'Hoa don nao qua han?',
+          'hoa don di h0c con phai tra bao nhieu',
+          'Hoa don Netflix khi nao den han?',
+          'Toi co bao nhieu hoa don chua tra?',
+          'thang toi toi phai tra hoa don nao',
+          'hoa don nao tu tra',
+          'Hoá đơn nào quá hạn?',
+        ]));
+    test('⭐ ví', () => dich(kTenCongCuVi, [
+          'Vi nao dang am?',
+          'Toi co may vi tat ca?',
+          'Tong tai san cua toi la bao nhieu?',
+        ]));
+    test('⭐ ngân sách', () => dich(kTenCongCuNganSach, [
+          'Ngan sach nao sap het?',
+          'Con bao nhieu tien ngan sach thang nay?',
+          'Ngan sach an uong con lai bao nhieu?',
+          'Ngan sach nao toi chua dung den mot nua?',
+          'ngan sach an uong con tieu duoc bao nhieu',
+        ]));
+    test('⭐ gợi ý hạn mức', () => dich(kTenCongCuGoiYHanMuc, [
+          'thang sau toi nen dat ngan sach bao nhieu',
+          'ngan sach an uong nen dat bao nhieu',
+          'Toi chi cho di chuyen trung binh moi thang bao nhieu?',
+        ]));
+    test('⭐ mục tiêu', () => dich(kTenCongCuMucTieu, [
+          'khi nao toi dat muc tieu muaxe',
+          'Muc tieu nao dang cham ke hoach?',
+          'muc tieu muaxe con thieu bao nhieu',
+        ]));
+
+    test('⚠️ phản ví dụ — câu về GIAO DỊCH có nhắc tên loại vẫn ở phiên sáu tool', () {
+      for (final c in [
+        'tim cac giao dich co ghi chu hoa don',
+        'toi da tra hoa don nao',
+        'vi tien mat thang nay chi nhung gi',
+        // Hai câu dưới khớp vế dương "ví nào" — chỉ danh sách LOẠI của họ ví
+        // giữ chúng ở tool giao dịch (gộp theo ví).
+        'thang nay toi chi nhieu nhat tu vi nao',
+        'vi nao co nhieu giao dich nhat',
+        'cac khoan chi cho giao duc tu vi test',
+        'thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao',
+        'lan cuoi toi nap tien cho muc tieu muaxe la ngay nao',
+        'Nhung lan toi nap tien vao muc tieu MuaDT',
+        'thang nay toi chi bao nhieu',
+        '5 khoan chi gan day nhat cua toi',
+      ]) {
+        expect(congCuTheoCauHoi(c), isNull, reason: c);
+      }
+    });
+
+    test('⚠️ "trung bình mỗi tháng" của THU NHẬP là câu tổng quan, không phải gợi ý hạn mức', () {
+      expect(congCuTheoCauHoi('thu nhap trung binh moi thang cua toi la bao nhieu'), kTenCongCuTongQuan,
+          reason: 'goi_y_han_muc trả mức CHI theo danh mục — hỏi thu nhập mà nhận số chi là sai đối tượng');
+    });
+
+    test('⚠️ luật cũ không bị luật mới giành: cân đối, trích, dự báo, tổng quan, số dư ví', () {
+      expect(congCuTheoCauHoi('nen chuyen bot ngan sach nao sang ngan sach nao'), kTenCongCuNganSach);
+      expect(congCuTheoCauHoi('ky trich tiep theo cua MuaDT la khi nao'), kTenCongCuMucTieu);
+      expect(congCuTheoCauHoi('moi thang toi can de danh bao nhieu cho muaxe'), kTenCongCuMucTieu);
+      expect(congCuTheoCauHoi('tien trong vi co du tra hoa don khong'), kTenCongCuDuBao);
+      expect(congCuTheoCauHoi('tra het hoa don thi con bao nhieu'), kTenCongCuDuBao);
+      expect(congCuTheoCauHoi('Tong tai san cua toi tang hay giam'), kTenCongCuTongQuan);
+      expect(congCuTheoCauHoi('Vi Tiet kiem hien co bao nhieu tien?'), kTenCongCuVi);
     });
   });
 }

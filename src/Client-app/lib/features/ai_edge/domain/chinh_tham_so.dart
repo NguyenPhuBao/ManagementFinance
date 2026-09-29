@@ -578,18 +578,58 @@ final RegExp _mauLietKe = RegExp(
 
 bool cauHoiLietKe(String cauHoi) => _mauLietKe.hasMatch(_bo(cauHoi));
 
+/// A2 (2026-09-29): năm họ câu cũ về phiên MỘT tool. Số đo cổng F lần 1 trên
+/// Realme: lượt sinh đầu 41,1 s ở phiên sáu tool, 15,6 s ở phiên một tool — và
+/// ở mốc 72 câu mô hình đã tự chọn đúng tool đích này cho cả 18 câu của năm họ.
+/// ⚠️ Mỗi họ có danh sách LOẠI: câu về giao dịch nhắc tên loại (*"ghi chú hoá
+/// đơn"*, *"ví tiền mặt chi những gì"*, *"lần cuối nạp tiền cho mục tiêu"*) phải
+/// ở lại tool giao dịch. Bỏ dấu nên `dat` là cả *đạt* lẫn *đặt*, `con` cả *còn*
+/// lẫn *con* — chấp nhận, vì mỗi họ đã đòi thêm từ loại.
+bool _coMot(String q, String ds) => ds.split('|').any((t) => _co(q, t));
+
+/// ⚠️ *"thu nhập trung bình mỗi tháng"* là câu tổng quan: `goi_y_han_muc` trả
+/// mức CHI theo danh mục.
+bool _laCauGoiYHanMuc(String q) =>
+    (_co(q, 'ngan sach') && _co(q, 'nen dat')) ||
+    (_co(q, 'trung binh moi thang') && !_coMot(q, 'thu nhap|thu|luong'));
+
+bool _laCauNganSach(String q) =>
+    _co(q, 'ngan sach') &&
+    !_co(q, 'nen dat') &&
+    _coMot(q, 'nao|con|sap het|bao nhieu|chua dung|vuot');
+
+bool _laCauMucTieu(String q) =>
+    _co(q, 'muc tieu') &&
+    !_coMot(q, 'nap|rut|lan cuoi|gan nhat|giao dich|khoan') &&
+    _coMot(q, 'nao|khi nao|bao gio|cham|con thieu|tien do|dat');
+
+bool _laCauHoaDon(String q) =>
+    _co(q, 'hoa don') &&
+    !_coMot(q, 'ghi chu|giao dich|khoan chi|da tra|thanh toan hoa don') &&
+    _coMot(q, 'nao|bao nhieu|may|qua han|chua tra|den han|con phai tra|tu tra|thang toi|sap toi');
+
+bool _laCauVi(String q) =>
+    !_coMot(q, 'chi|thu|giao dich|khoan|chuyen') &&
+    (_coMot(q, 'vi nao|may vi|bao nhieu vi') ||
+        (_co(q, 'tong tai san') && !_coMot(q, 'tang|giam|thay doi')));
+
 String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
   // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
   // một tool (bộ chỉnh đặt chon=can_doi). Sáu tool thì mô hình chọn goi_y_han_muc.
   if (_co(q, 'ngan sach') && _tuCanDoi.any((t) => _co(q, t))) return kTenCongCuNganSach;
+  if (_laCauGoiYHanMuc(q)) return kTenCongCuGoiYHanMuc;
+  if (_laCauNganSach(q)) return kTenCongCuNganSach;
   if (_co(q, 'ngan sach')) return null;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauCanTich.hasMatch(q)) return kTenCongCuMucTieu;
   if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
   if (_mauSoDuVi.any((m) => m.hasMatch(q))) return kTenCongCuVi;
+  if (_laCauVi(q)) return kTenCongCuVi;
+  if (_laCauMucTieu(q)) return kTenCongCuMucTieu;
   if (_co(q, 'muc tieu')) return null;
+  if (_laCauHoaDon(q)) return kTenCongCuHoaDon;
   if (_mauDanhMuc.any((m) => m.hasMatch(q)) && !_co(q, 'nhat')) {
     return kTenCongCuDanhMuc;
   }
