@@ -599,12 +599,17 @@ class _TheConLai extends StatelessWidget {
     // tiền đi vay và thu nợ — chứ không phải `tong.thu`; phép tính ở tầng thuần
     // và dùng chung với khối "Dòng tiền tự do". Chuỗi rỗng thì bỏ qua: không có
     // gì để suy ra phần vay/nợ của kỳ, và đoán bừa là bịa một con số.
-    final double? tyLe = tk.chuoiVayNo.isEmpty
+    final double? thuNhap = tk.chuoiVayNo.isEmpty
         ? null
-        : tyLeTietKiem(
-            thuNhap: thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last),
-            chi: tk.tong.chi,
-          );
+        : thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last);
+    final double? tyLe = thuNhap == null
+        ? null
+        : tyLeTietKiem(thuNhap: thuNhap, chi: tk.tong.chi);
+    // G56: chi từ 2 lần thu nhập trở lên thì nói "gấp N lần" — "Để dành
+    // -26360% thu nhập" (tuần thu nhập gần 0, Realme) đúng mà không đọc được.
+    final gapLan = thuNhap == null
+        ? null
+        : soLanChiGapThuNhap(thuNhap: thuNhap, chi: tk.tong.chi);
     // Số ÂM hiện là số âm, không kẹp về 0: người dùng mở trang này chính là
     // để biết tháng này đã âm.
     final chu = conLai < 0 ? '-${_dong(-conLai)}' : _dong(conLai);
@@ -645,7 +650,9 @@ class _TheConLai extends StatelessWidget {
           if (tyLe != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Để dành ${(tyLe * 100).round()}% thu nhập',
+              gapLan != null
+                  ? 'Chi gấp ${chuoiSoLan(gapLan)} lần thu nhập'
+                  : 'Để dành ${(tyLe * 100).round()}% thu nhập',
               style: TextStyle(
                 fontSize: 12,
                 color: tyLe < 0 ? const Color(0xFFFFB3AE) : Colors.white70,
@@ -895,7 +902,10 @@ class _KhoiXuHuong extends StatelessWidget {
                 // fl_chart là `FlClipData.none()` và đường tràn khỏi thẻ
                 // (bẫy 4.17 `ANALYTICS_FEATURE.md`, chỉ lộ trên máy thật).
                 // Đường danh mục có dải hẹp hơn nên dễ vấp hơn bản hai đường.
-                clipData: const FlClipData.all(),
+                // Chỉ cắt TRÊN/DƯỚI (G55): cắt trái/phải là mất nửa chấm của
+                // kỳ đầu và kỳ cuối, mà trục ngang không thể thoát khung vì
+                // `minX`/`maxX` là đúng chỉ số đầu/cuối.
+                clipData: const FlClipData.vertical(),
                 lineBarsData: theoThuChi
                     ? [
                         _duong(
@@ -1378,8 +1388,9 @@ class _KhoiDongTienTuDo extends StatelessWidget {
                   ),
                 ),
                 // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
-                // fl_chart là `FlClipData.none()` (bẫy 4.17).
-                clipData: const FlClipData.all(),
+                // fl_chart là `FlClipData.none()` (bẫy 4.17). Chỉ cắt
+                // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
+                clipData: const FlClipData.vertical(),
                 lineBarsData: [
                   LineChartBarData(
                     spots: [
@@ -3884,8 +3895,9 @@ class _BieuDoTaiSan extends StatelessWidget {
             ],
           ),
         ),
-        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17).
-        clipData: const FlClipData.all(),
+        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17). Chỉ cắt
+        // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
+        clipData: const FlClipData.vertical(),
         lineBarsData: [
           LineChartBarData(
             spots: [

@@ -134,7 +134,12 @@ class GoalProgressChart extends StatelessWidget {
                 // Tầng thuần đã kẹp ở 0 (`_khongAm`) nên đây là lớp thứ hai:
                 // một hình dáng dữ liệu chưa lường tới cũng không thể vẽ ra
                 // ngoài khung nữa.
-                clipData: const FlClipData.all(),
+                //
+                // Chỉ cắt TRÊN/DƯỚI (G55, 2026-09-29): chấm của khoản đầu và
+                // điểm cuối nằm đúng `minX`/`maxX`, cắt trái/phải là mất nửa
+                // chấm. Trục ngang không thoát khung được: dải X là đúng mốc
+                // đầu/cuối của chuỗi.
+                clipData: const FlClipData.vertical(),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,

@@ -115,12 +115,30 @@ void main() {
     expect(nx.cau, isNot(contains('để dành')));
   });
 
-  test('chi vượt thu → mức cảnh báo, vế "chi vượt thu nhập" với trị tuyệt đối',
+  test('chi vượt thu DƯỚI 2 lần → cảnh báo, "chi vượt thu nhập" phần trăm dương',
       () {
-    final nx = GoiSoPhanTich.tu(_tk(thu: 1000000, chi: 8200000)).mauCau();
+    final nx = GoiSoPhanTich.tu(_tk(thu: 10000000, chi: 13000000)).mauCau();
     expect(nx.muc, MucNhanXet.canhBao);
-    expect(nx.cau, contains('chi vượt thu nhập 720,0%'));
-    expect(nx.cau, isNot(contains('-720')));
+    expect(nx.cau, contains('chi vượt thu nhập 30,0%'));
+    expect(nx.cau, isNot(contains('-30')));
+  });
+
+  test('⚠️ chi từ 2 lần thu nhập → "chi gấp N lần thu nhập", không in phần trăm (G56)',
+      () {
+    // Bản cũ in "chi vượt thu nhập 720,0%"; tuần thu nhập gần 0 trên Realme
+    // ra "26360,0%" — đúng mà không đọc được. Người dùng chốt ngưỡng 2 lần.
+    for (final (thu, chi, chuoi) in [
+      (1000000.0, 8200000.0, 'chi gấp 8,2 lần thu nhập'),
+      (20000.0, 5292000.0, 'chi gấp 265 lần thu nhập'),
+    ]) {
+      final g = GoiSoPhanTich.tu(_tk(thu: thu, chi: chi));
+      final nx = g.mauCau();
+      expect(nx.muc, MucNhanXet.canhBao);
+      expect(nx.cau, contains(chuoi));
+      expect(nx.cau, isNot(contains('vượt thu nhập')));
+      expect(kiemCauTraLoi(nx.cau, [g]), isTrue,
+          reason: 'mẫu câu của chính gói phải qua sáu lớp chắn: ${nx.cau}');
+    }
   });
 
   test('giảm so kỳ trước → chữ "giảm" và phần trăm dương', () {

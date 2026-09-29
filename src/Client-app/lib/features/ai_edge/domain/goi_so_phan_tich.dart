@@ -27,6 +27,11 @@ class GoiSoPhanTich extends GoiSo {
   /// chuỗi vay/nợ.
   final double? deDanh;
 
+  /// G56: chi gấp bao nhiêu lần thu nhập — chỉ có khi ≥ 2 lần
+  /// (`soLanChiGapThuNhap`, đã làm tròn như sẽ in); khi ấy câu nói *"chi gấp N
+  /// lần thu nhập"* thay cho phần trăm vượt.
+  final double? gapLan;
+
   /// Tổng cam kết 30 ngày tới và số cam kết; `null` khi không có dự báo hoặc
   /// không có cam kết nào.
   final double? tongCamKet;
@@ -46,6 +51,7 @@ class GoiSoPhanTich extends GoiSo {
     required this.tongThu,
     required this.soKyTruoc,
     required this.deDanh,
+    this.gapLan,
     required this.tongCamKet,
     required this.soCamKet,
     required this.khoanChiLonNhat,
@@ -67,13 +73,18 @@ class GoiSoPhanTich extends GoiSo {
     final pt = phanTramSoVoi(tk.tong.chi, tk.tongTruoc.chi);
     // Đúng biểu thức của `_TheConLai` (analytics_page.dart): chuỗi vay/nợ rỗng
     // thì bỏ qua chứ không coi như không có vay/nợ.
-    final double? tyLe = tk.chuoiVayNo.isEmpty
+    final double? thuNhap = tk.chuoiVayNo.isEmpty
         ? null
-        : tyLeTietKiem(
-            thuNhap: thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last),
-            chi: tk.tong.chi,
-          );
+        : thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last);
+    final double? tyLe = thuNhap == null
+        ? null
+        : tyLeTietKiem(thuNhap: thuNhap, chi: tk.tong.chi);
     final deDanh = tyLe == null ? null : tyLe * 100;
+    // G56: từ 2 lần thu nhập trở lên nói "gấp N lần" — cùng hàm với thẻ Số dư
+    // còn lại và tool tổng quan.
+    final gapLan = thuNhap == null
+        ? null
+        : soLanChiGapThuNhap(thuNhap: thuNhap, chi: tk.tong.chi);
     final duBao = tk.duBao;
     final coCamKet = duBao != null && duBao.camKet.isNotEmpty;
     final lonNhat = tk.topChi.isEmpty ? null : tk.topChi.first.soTien;
@@ -94,12 +105,16 @@ class GoiSoPhanTich extends GoiSo {
     final tongThuS = soTien('Tổng thu', tk.tong.thu);
     final soKyTruocS = pt == null ? null : soPhanTram('So kỳ trước', pt.abs());
     // Tỉ lệ ÂM (chi vượt thu nhập) đổi nhãn và lấy trị tuyệt đối: câu
-    // "để dành -720,0%" không ai hiểu, còn "chi vượt thu nhập 720,0%" thì có.
+    // "để dành -30,0%" không ai hiểu, còn "chi vượt thu nhập 30,0%" thì có. Từ
+    // 2 lần thu nhập (G56) phần trăm cũng hết đọc được ("26360,0%") nên con số
+    // là "gấp N lần".
     final deDanhS = deDanh == null
         ? null
         : deDanh >= 0
             ? soPhanTram('Để dành', deDanh)
-            : soPhanTram('Vượt thu nhập', -deDanh);
+            : gapLan != null
+                ? soLan('Gấp thu nhập', gapLan)
+                : soPhanTram('Vượt thu nhập', -deDanh);
     final lonNhatS = lonNhat == null ? null : soTien('Khoản lớn nhất', lonNhat);
 
     // B3: chi bất thường theo danh mục — repository đã tính (trung vị + MAD ở
@@ -135,6 +150,7 @@ class GoiSoPhanTich extends GoiSo {
       tongThu: tk.tong.thu,
       soKyTruoc: pt,
       deDanh: deDanh,
+      gapLan: gapLan,
       tongCamKet: coCamKet ? duBao.tongCamKet : null,
       soCamKet: coCamKet ? duBao.camKet.length : 0,
       khoanChiLonNhat: lonNhat,
@@ -190,7 +206,9 @@ class GoiSoPhanTich extends GoiSo {
     if (dd != null) {
       b.write(dd >= 0
           ? '; để dành ${s['Để dành']} thu nhập'
-          : '; chi vượt thu nhập ${s['Vượt thu nhập']}');
+          : gapLan != null
+              ? '; chi gấp ${s['Gấp thu nhập']} lần thu nhập'
+              : '; chi vượt thu nhập ${s['Vượt thu nhập']}');
     }
     b.write('.');
     if (tongCamKet != null) {

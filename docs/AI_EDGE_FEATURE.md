@@ -3058,6 +3058,18 @@ hỏi (nhánh *"không gọi tool, định tuyến theo câu hỏi"*) thay vì L
 `goi_y_han_muc` **không** tự đọc tên danh mục từ câu hỏi: nếu mô hình ở phiên một tool không gọi tool thì B4/E20 nhận
 gợi ý mọi danh mục (buổi đo này không xảy ra).
 
+### 9.39 G56 — loại số `LoaiSo.soLan`: *"chi gấp N lần thu nhập"* (2026-09-29 tối)
+
+Tuần có thu nhập gần 0 cho khối Nhận xét trang Phân tích *"chi vượt thu nhập 26360,0%"*. Người dùng chốt: từ **2 lần**
+thu nhập trở lên nói *"chi gấp N lần thu nhập"*, dưới đó giữ phần trăm. Số N đến từ **hàm domain**
+`soLanChiGapThuNhap` (`analytics/domain/dong_tien_tu_do.dart`, test quét 14 — lớp AI không tính), **đã làm tròn như sẽ
+in** (một chữ số lẻ dưới 10, số nguyên từ 10). Gói số mang nó bằng `soLan('Gấp thu nhập', n)` — loại số mới
+**`LoaiSo.soLan`**: `kiemSo` khớp với dung sai 0,05 và **không** khớp phần trăm (*"265%"* ≠ *"265 lần"*). Hai nơi dùng:
+`GoiSoPhanTich` (mẫu câu *"; chi gấp {N} lần thu nhập"*, qua sáu lớp chắn — có ca canh) và `hangTongQuan` (mục *Gấp thu
+nhập* thay *Chi vượt thu nhập*; chữ kết luận *"chi vượt thu nhập"* giữ nguyên). `tools_json` **không đổi** (chỉ đổi
+nhãn kết quả, không đổi khai báo). Chưa đo lại bộ câu AI trên máy — câu hỏi có số lần ấy hiếm; chi tiết ở G56
+`CLIENT_APP_KNOWN_GAPS.md`.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

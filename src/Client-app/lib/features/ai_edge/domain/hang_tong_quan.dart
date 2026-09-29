@@ -45,6 +45,9 @@ KetQuaCongCu hangTongQuan(
       : tk.chuoiVayNo.last;
   final thuNhap = thuNhapCua(tong: tk.tong, vayNo: vayNo);
   final tyLe = tyLeTietKiem(thuNhap: thuNhap, chi: tk.tong.chi);
+  // G56: từ 2 lần thu nhập trở lên, con số là "gấp N lần" thay cho phần trăm
+  // vượt — cùng hàm với khối Nhận xét và thẻ Số dư còn lại.
+  final gapLan = soLanChiGapThuNhap(thuNhap: thuNhap, chi: tk.tong.chi);
   final tuDo = tk.chuoi.isNotEmpty && tk.chuoi.length == tk.chuoiVayNo.length
       ? dongTienTuDo(tk.chuoi, tk.chuoiVayNo).last.tuDo
       : null;
@@ -101,8 +104,10 @@ KetQuaCongCu hangTongQuan(
         soPhanTram('Tỉ lệ tiết kiệm', tyLe * 100,
             nhanKhac: const ['Để dành', 'Tiết kiệm']),
       if (coThuNhap && tyLe != null && tyLe < 0)
-        soPhanTram('Chi vượt thu nhập', (tyLe * 100).abs(),
-            nhanKhac: const ['Vượt thu nhập']),
+        gapLan != null
+            ? soLan('Gấp thu nhập', gapLan)
+            : soPhanTram('Chi vượt thu nhập', (tyLe * 100).abs(),
+                nhanKhac: const ['Vượt thu nhập']),
       if (coThuNhap && tuDo != null)
         if (tuDo >= 0)
           soTien('Dòng tiền tự do', tuDo)

@@ -788,8 +788,16 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `đáy × 1,15` là cùng cơ chế G53 ở dạng **tiềm ẩn** (widget test dựng tự do −100.000: *"-115K"* đè *"0"*); Realme trục
   nay *15M · 10M · 5M · 0*. (2) **G54 mở và đóng**: nhãn trục hoành thác nước nay **xoay −35°, một dòng** theo màn Stitch
   `52450ac5…` (bản A8 #10 lệch Stitch không ghi lý do), đầu phải neo tâm cột, cắt ở 72 dp; Realme bản release
-  `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ. Ghi lại, **không sửa**: chấm kỳ đầu (T4) của hai
-  biểu đồ đường bị cắt nửa ở mép trái vì `FlClipData.all()` cắt cả chiều ngang — có từ trước.
+  `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ.
+- ✅ **Rồi ba chỗ nhỏ có từ trước, người dùng chọn sửa trước B4** (hỏi bằng câu chọn, mỗi chỗ một lối): **G55** — chấm kỳ
+  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (giữ phòng thủ bẫy 4.17 cho
+  trục dọc — chấm giá trị 0 ở đáy khối Xu hướng vẫn cắt nửa, cố ý); **G56** — *"chi vượt thu nhập 26360,0%"* → từ 2 lần
+  thu nhập nói *"chi gấp N lần thu nhập"*, một hàm `soLanChiGapThuNhap` cho thẻ Số dư còn lại, khối Nhận xét và tool
+  tổng quan, loại số mới `LoaiSo.soLan` cho `kiemSo`; **G57** — nút rộng *"Tạo hóa đơn lặp lại mới"* đè hàng tab ở 360 dp
+  → nút **+** ở thanh tiêu đề theo màn Stitch `e8b460b4…`. Chi tiết ở `CLIENT_APP_KNOWN_GAPS.md`. Nghiệm thu Realme bản
+  release `a28ffea7…`: chấm T4/T9 tròn đủ; Tuần 38 thẻ *Số dư còn lại* *"Chi gấp 265 lần thu nhập"*, khối Nhận xét
+  *"Kỳ này chi 2.646.000 đ; chi gấp 265 lần thu nhập…"*; trang Hoá đơn có **+** trên thanh tiêu đề, chạm mở *"Thêm Hóa
+  Đơn Định Kỳ"*. `flutter test` **4479/4479** (4 skip), analyze 26.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

@@ -11,6 +11,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -120,7 +121,7 @@ void main() {
   });
 
   Future<void> moTrang(WidgetTester tester, List<Bill> bills, List<KhoanLap>? ds,
-      {Size khoMan = const Size(411, 2400)}) async {
+      {Size khoMan = const Size(411, 2400), bool coRouter = false}) async {
     tester.view.physicalSize = khoMan;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -135,10 +136,26 @@ void main() {
         BlocProvider<AuthBloc>.value(value: auth),
         BlocProvider<BillBloc>.value(value: bloc),
       ],
-      child: MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: BillPage(now: now, deXuatNguon: _NguonGia(ds)),
-      ),
+      child: coRouter
+          // GoRouter THẬT: nút thêm gọi `context.push('/bills/add')`, thứ ném
+          // lỗi dưới `MaterialApp(home:)` trần.
+          ? MaterialApp.router(
+              theme: AppTheme.lightTheme,
+              routerConfig: GoRouter(initialLocation: '/bills', routes: [
+                GoRoute(
+                    path: '/bills',
+                    builder: (_, __) =>
+                        BillPage(now: now, deXuatNguon: _NguonGia(ds))),
+                GoRoute(
+                    path: '/bills/add',
+                    builder: (_, __) =>
+                        const Scaffold(body: Text('TRANG TẠO HOÁ ĐƠN'))),
+              ]),
+            )
+          : MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: BillPage(now: now, deXuatNguon: _NguonGia(ds)),
+            ),
     ));
     bloc.add(LoadBillsEvent(idaccount: 10));
     await tester.pumpAndSettle();
@@ -180,6 +197,35 @@ void main() {
     expect(tab.top, closeTo(appBar.bottom, 1), reason: 'hàng tab phải ghim ngay dưới app bar');
     expect(dau.top, greaterThanOrEqualTo(tab.bottom),
         reason: 'thiếu SliverOverlapInjector thì hoá đơn đầu nằm khuất dưới hàng tab ghim');
+  });
+
+  group('G57 — nút tạo hoá đơn ở thanh tiêu đề (màn Stitch e8b460b4)', () {
+    testWidgets('⚠️ 360 × 640 có thẻ khoản lặp: KHÔNG còn nút rộng đè lên hàng tab',
+        (tester) async {
+      // Nút rộng cố định ở đáy (`Positioned` bottom 24) nằm đúng trên hàng tab
+      // khi phần đầu trang cao — thấy trên Realme 360 dp. Màn Stitch B2 đặt nút
+      // thêm ở góc phải thanh tiêu đề.
+      await moTrang(tester, [_bill('a', DateTime(2026, 9, 25))], baDong,
+          khoMan: const Size(360, 640));
+      expect(find.widgetWithText(ElevatedButton, 'Tạo hóa đơn lặp lại mới'),
+          findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byTooltip('Tạo hóa đơn lặp lại mới'),
+        ),
+        findsOneWidget,
+        reason: 'lối tạo hoá đơn phải còn — chỉ đổi chỗ, không mất',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('chạm nút + ở thanh tiêu đề mở trang tạo hoá đơn', (tester) async {
+      await moTrang(tester, [_bill('a', DateTime(2026, 9, 25))], null, coRouter: true);
+      await tester.tap(find.byTooltip('Tạo hóa đơn lặp lại mới'));
+      await tester.pumpAndSettle();
+      expect(find.text('TRANG TẠO HOÁ ĐƠN'), findsOneWidget);
+    });
   });
 
   for (final coHoaDon in [true, false]) {

@@ -14,10 +14,11 @@
 library;
 
 import '../../../core/utils/currency_formatter.dart';
+import '../../analytics/domain/dong_tien_tu_do.dart' show chuoiSoLan;
 import 'dau_van.dart';
 import 'nhan_xet.dart';
 
-enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang }
+enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang, soLan }
 
 /// Trần số mục mà **một** gói được nhồi vào prompt cho mỗi loại danh sách.
 ///
@@ -106,6 +107,20 @@ SoLieu soPhanTram(
       soTho: phanTram,
       chuoi: '${phanTram.toStringAsFixed(1).replaceAll('.', ',')}%',
       loai: LoaiSo.phanTram,
+      nhanKhac: nhanKhac,
+    );
+
+/// G56: *"gấp N lần"*. [lan] là số **đã làm tròn đúng như sẽ in** — lấy thẳng
+/// từ `soLanChiGapThuNhap`, không làm tròn lại ở đây (hai phép làm tròn là hai
+/// con số lệch nhau dưới mắt `kiemSo`). Chuỗi đi qua `chuoiSoLan`, cùng hàm với
+/// thẻ *Số dư còn lại*.
+SoLieu soLan(String nhan, double lan, {String? ten, List<String> nhanKhac = const []}) =>
+    SoLieu(
+      nhan: nhan,
+      ten: ten,
+      soTho: lan,
+      chuoi: chuoiSoLan(lan),
+      loai: LoaiSo.soLan,
       nhanKhac: nhanKhac,
     );
 

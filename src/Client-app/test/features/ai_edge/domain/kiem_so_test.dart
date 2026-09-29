@@ -255,6 +255,30 @@ void main() {
     });
   });
 
+  group('số lần — LoaiSo.soLan (G56)', () {
+    test('chuỗi in theo chuoiSoLan: số nguyên từ 10, một chữ số lẻ dưới 10', () {
+      expect(soLan('Gấp thu nhập', 265).chuoi, '265');
+      expect(soLan('Gấp thu nhập', 8.2).chuoi, '8,2');
+    });
+
+    test('câu nêu đúng số lần lọt; số lần bịa bị chặn', () {
+      final g = _Gia([soLan('Gấp thu nhập', 265)]);
+      expect(kiemSo('Kỳ này chi gấp 265 lần thu nhập.', g), isTrue);
+      expect(kiemSo('Kỳ này chi gấp 300 lần thu nhập.', g), isFalse);
+      final le = _Gia([soLan('Gấp thu nhập', 8.2)]);
+      expect(kiemSo('Chi gấp 8,2 lần thu nhập.', le), isTrue);
+      expect(kiemSo('Chi gấp 8 lần thu nhập.', le), isFalse,
+          reason: 'bỏ chữ số lẻ là một số khác — cùng dung sai 0,05 như phần trăm');
+    });
+
+    test('⚠️ "265%" KHÔNG khớp mục số lần', () {
+      final g = _Gia([soLan('Gấp thu nhập', 265)]);
+      expect(kiemSo('Chi vượt thu nhập 265%.', g), isFalse,
+          reason: 'phần trăm và số lần là hai đại lượng — khớp là để mô hình '
+              'đổi đơn vị mà không lớp nào hay');
+    });
+  });
+
   group('ngày tháng — LoaiSo.ngayThang (bước 2)', () {
     final now = DateTime(2026, 9, 23);
     _Gia coNgay() => _Gia([

@@ -176,6 +176,20 @@ void main() {
     expect(r.chuThem['ket_qua'], contains('chi vượt thu nhập'));
   });
 
+  test('⚠️ chi từ 2 lần thu nhập → "Gấp thu nhập" số lần, không phần trăm vượt (G56)', () {
+    // Thu nhập 1.000.000 − 500.000 thu nợ = 500.000; chi 4.100.000 → gấp 8,2 lần.
+    final r = hangTongQuan(
+      _tk(tong: const TongThuChi(thu: 1000000, chi: 4100000), thuNo: 500000),
+      vayNoMoiLuc: null, now: now, chuKy: 'tháng này',
+    );
+    expect(r.json['Gấp thu nhập'], '8,2');
+    expect(r.json.containsKey('Chi vượt thu nhập'), isFalse,
+        reason: 'cùng một đại lượng không được mang hai nhãn — "720,0%" chính '
+            'là thứ G56 bỏ đi');
+    expect(r.chuThem['ket_qua'], contains('chi vượt thu nhập'),
+        reason: 'chữ kết luận vẫn nói chiều; chỉ con số đổi đơn vị');
+  });
+
   test('kỳ không có khoản chi nào → không hàng, không ngày chi nhiều nhất', () {
     final r = hangTongQuan(_tk(coSoLieu: false), vayNoMoiLuc: null, now: now, chuKy: 'tháng này');
     expect(r.hang, isEmpty);

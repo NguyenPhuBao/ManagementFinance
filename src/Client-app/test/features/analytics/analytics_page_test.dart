@@ -260,6 +260,30 @@ void _nhanTrucTungKhongChong(
       reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
 }
 
+/// Mọi `LineChart` có vẽ CHẤM chỉ được cắt trên/dưới, không cắt trái/phải (G55).
+///
+/// `FlClipData.all()` cắt đúng theo mép vùng vẽ, nên chấm của kỳ đầu và kỳ cuối
+/// — nằm đúng `minX`/`maxX` — mất một nửa (Realme 2026-09-29, chấm T4). Trục
+/// ngang không thể thoát khỏi khung vì `minX`/`maxX` là đúng chỉ số đầu/cuối;
+/// trục dọc giữ lớp phòng thủ của bẫy 4.17 (người dùng chọn). Trả số biểu đồ có
+/// chấm đã kiểm, để nơi gọi đòi đủ số — không thì một bản sai giấu hết chấm
+/// cũng xanh.
+int kiemCatKhungBieuDoCoCham(WidgetTester tester) {
+  var soCoCham = 0;
+  for (final e in find.byType(LineChart).evaluate()) {
+    final data = (e.widget as LineChart).data;
+    if (!data.lineBarsData.any((b) => b.dotData.show)) continue;
+    soCoCham++;
+    final c = data.clipData;
+    expect((c.left, c.right), (false, false),
+        reason: 'Cắt trái/phải là mất nửa chấm của kỳ đầu và kỳ cuối (G55).');
+    expect((c.top, c.bottom), (true, true),
+        reason: 'Trục dọc giữ phòng thủ của bẫy 4.17: điểm ngoài dải vẫn được '
+            'VẼ nếu không cắt, và từng tràn khỏi thẻ (2026-09-09).');
+  }
+  return soCoCham;
+}
+
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
 /// ba thì trang hiện đủ ba chip.
 const _baLat = [
@@ -312,6 +336,19 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  testWidgets('⚠️ biểu đồ đường có chấm không cắt mép trái/phải (G55)',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 6000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(kiemCatKhungBieuDoCoCham(tester), 3,
+        reason: 'Xu hướng, Dòng tiền tự do, Tổng tài sản — ba biểu đồ đường có '
+            'chấm của trang (Dự báo không vẽ chấm).');
+  });
 
   testWidgets('header không vẽ icon menu chết', (tester) async {
     await moTrang(tester);
@@ -1787,6 +1824,19 @@ void main() {
           reason: '(20tr − 5tr vay − 10tr chi) / 15tr. Dùng nguyên tong.thu sẽ '
               'ra 50% — tháng đi vay lại trông tiết kiệm hơn thật.');
       expect(find.text('Để dành 50% thu nhập'), findsNothing);
+    });
+
+    testWidgets('⚠️ chi từ 2 lần thu nhập → "Chi gấp N lần thu nhập" (G56)',
+        (tester) async {
+      await moTrang(tester);
+      // Thu nhập 20.000, chi 5.292.000 — tuần gần như không thu nhập trên
+      // Realme; bản cũ in "Để dành -26360% thu nhập".
+      await phat(tester, _tk(thu: 20000, chi: 5292000));
+
+      expect(find.text('Chi gấp 265 lần thu nhập'), findsOneWidget);
+      expect(find.textContaining('Để dành'), findsNothing,
+          reason: 'một đại lượng, một cách nói — phần trăm âm năm chữ số là '
+              'thứ G56 bỏ đi');
     });
 
     testWidgets('chi vượt thu nhập thì tỉ lệ ÂM, không kẹp về 0',

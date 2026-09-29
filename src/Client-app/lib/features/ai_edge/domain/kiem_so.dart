@@ -200,6 +200,9 @@ bool _khop(SoTrich x, SoLieu s) {
     // Một chữ số thập phân (G2) → sai số làm tròn tối đa 0,05.
     LoaiSo.phanTram => x.laPhanTram && lech <= 0.05,
     LoaiSo.soNgay || LoaiSo.soDem => !x.laPhanTram && lech == 0,
+    // G56: "gấp N lần" — một chữ số lẻ dưới 10 lần, cùng dung sai phần trăm;
+    // "265%" không phải "265 lần".
+    LoaiSo.soLan => !x.laPhanTram && lech <= 0.05,
     // Ngày và tháng phải trùng; năm chỉ so khi câu có ghi năm.
     LoaiSo.ngayThang => _cungNgay(x, s.soTho.round()),
   };

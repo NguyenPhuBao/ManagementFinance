@@ -123,6 +123,17 @@ class _BillPageState extends State<BillPage> {
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
+        // G57 (2026-09-29): nút tạo hoá đơn ở GÓC PHẢI thanh tiêu đề, đúng màn
+        // Stitch `e8b460b4…`. Nút rộng cố định ở đáy cũ đè lên nội dung cuộn,
+        // và khi phần đầu trang cao (thẻ tổng + Nhận xét + thẻ khoản lặp) thì
+        // đè đúng hàng tab ở 360 dp — thấy trên Realme.
+        actions: [
+          IconButton(
+            tooltip: 'Tạo hóa đơn lặp lại mới',
+            icon: const Icon(Icons.add, color: AppColors.primary),
+            onPressed: () => context.push('/bills/add'),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
@@ -165,8 +176,7 @@ class _BillPageState extends State<BillPage> {
 
             return DefaultTabController(
               length: 2,
-              child: Stack(
-                children: [
+              child:
                   // ⚠️ CẢ TRANG CUỘN, hàng tab ghim (B2, người dùng chốt
                   // 2026-09-29). Trước đây phần trên hàng tab là một `Column`
                   // cố định và danh sách nằm trong `Expanded`, nên mỗi khối
@@ -259,14 +269,6 @@ class _BillPageState extends State<BillPage> {
                       ],
                     ),
                   ),
-                  Positioned(
-                    bottom: 24,
-                    left: 16,
-                    right: 16,
-                    child: _buildAddButton(context),
-                  ),
-                ],
-              ),
             );
           }
 
@@ -318,7 +320,8 @@ class _BillPageState extends State<BillPage> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              // Đáy 24: không còn nút cố định nào đè lên cuối danh sách (G57).
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => _dongHoaDon(context, bills[i],
@@ -739,29 +742,6 @@ class _BillPageState extends State<BillPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAddButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () => context.push('/bills/add'),
-      icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text(
-        'Tạo hóa đơn lặp lại mới',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF1A1A19),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        elevation: 0,
-      ),
     );
   }
 }

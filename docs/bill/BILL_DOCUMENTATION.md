@@ -1,7 +1,7 @@
 # Chức năng Hoá đơn & Dịch vụ (Bill)
 
 > **Dự án:** FlowMoney (ManagementFinance)
-> **Cập nhật:** 2026-09-29 (mục **6.9** mới — **gợi ý tạo hoá đơn từ khoản lặp**, B2, schema **v27**; trang Hoá đơn nay **cả trang cuộn, hàng tab ghim** — bẫy 4 ở 7c; `/bills/add` nhận query điền sẵn, form `pop(true)` khi đã gửi) · trước đó 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
+> **Cập nhật:** 2026-09-29 tối (**G57** — nút tạo hoá đơn lên thanh tiêu đề theo Stitch, mục **6.9**) · trước đó 2026-09-29 (mục **6.9** mới — **gợi ý tạo hoá đơn từ khoản lặp**, B2, schema **v27**; trang Hoá đơn nay **cả trang cuộn, hàng tab ghim** — bẫy 4 ở 7c; `/bills/add` nhận query điền sẵn, form `pop(true)` khi đã gửi) · trước đó 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
 > ở 6.6, bảng "còn mở", mục 9) · bản trước 2026-09-11 · schema Drift toàn
 > dự án nay là **v27** (2026-09-29; v27 là bảng phản hồi gợi ý hoá đơn của B2,
 > v22–v26 không đụng bảng `Bills`; câu cũ ở đây ghi **v21** — mốc của
@@ -917,6 +917,11 @@ test không thấy).
 dùng chốt). Trước đây phần trên hàng tab là `Column` cố định còn danh sách nằm
 trong `Expanded`; đo trước khi đổi, thẻ ba dòng làm trang **tràn 219 px** (có hoá
 đơn) / **44 px** (rỗng) ở 360 × 640. Xem bẫy **4** ở mục 7c.
+
+🔄 **2026-09-29 tối (G57):** nút rộng cố định *"Tạo hóa đơn lặp lại mới"* ở đáy trang
+(`Positioned` trong `Stack`, đè lên vùng cuộn) nằm đúng trên hàng tab ở 360 dp khi có
+thẻ này. Nay nút tạo là **+** ở góc phải **thanh tiêu đề** — đúng màn Stitch trên,
+vốn không có nút đáy; đệm đáy danh sách 100 → 24 dp.
 
 **Nghiệm thu Realme 2026-09-29** (tài khoản 10, bản debug, người dùng duyệt nhập
 và **giữ** dữ liệu thử): ba khoản *"Tien nha T7/T8/T9"* 3.000.000 đ (5/7, 5/8,
