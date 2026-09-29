@@ -729,7 +729,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   (cổng ra nhóm A trọn). ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
   29/09, ví Tiền mặt (**6** *grab …* → Di chuyển · **5** *ca phe …* → Ăn uống; tổng chi tháng 9 **2.241.000 → 2.351.000**,
   Trang chủ tổng số dư 12.794.000) — **đáp án mọi bộ câu AI đo
-  trên Realme phải tính lại**. `flutter test` **4301/4301** (4 skip), analyze 26. *(Ảnh chụp trước đó cùng ngày:)*
+  trên Realme phải tính lại**. `flutter test` **4306/4306** (4 skip) sau G49 + F12 (**4301** sau B1), analyze 26. *(Ảnh chụp trước đó cùng ngày:)*
 - 🚧 **B1 — gợi ý danh mục học từ ghi chú: Task 1–6 xong mã 2026-09-29, Task 7 (nghiệm thu + tài liệu) dở — người dùng
   cho tạm dừng** (banner đầu spec `specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`; `bf7a076` → `8bee5d7`,
   sửa `4ef4a5b`): Naive Bayes nhị phân hoá ở `category/domain/phan_loai_ghi_chu.dart`, bảng cục bộ **schema v25**
