@@ -9271,6 +9271,362 @@ class GoiYDanhMucPhanHoisCompanion extends UpdateCompanion<GoiYDanhMucPhanHoi> {
   }
 }
 
+class $AppNotificationEventsTable extends AppNotificationEvents
+    with TableInfo<$AppNotificationEventsTable, AppNotificationEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppNotificationEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _dedupeKeyMeta =
+      const VerificationMeta('dedupeKey');
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+      'dedupe_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _suKienMeta = const VerificationMeta('suKien');
+  @override
+  late final GeneratedColumn<String> suKien = GeneratedColumn<String>(
+      'su_kien', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _lucMeta = const VerificationMeta('luc');
+  @override
+  late final GeneratedColumn<DateTime> luc = GeneratedColumn<DateTime>(
+      'luc', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _osIdMeta = const VerificationMeta('osId');
+  @override
+  late final GeneratedColumn<int> osId = GeneratedColumn<int>(
+      'os_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, idaccount, dedupeKey, suKien, luc, osId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_notification_events';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AppNotificationEvent> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(_dedupeKeyMeta,
+          dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta));
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('su_kien')) {
+      context.handle(_suKienMeta,
+          suKien.isAcceptableOrUnknown(data['su_kien']!, _suKienMeta));
+    } else if (isInserting) {
+      context.missing(_suKienMeta);
+    }
+    if (data.containsKey('luc')) {
+      context.handle(
+          _lucMeta, luc.isAcceptableOrUnknown(data['luc']!, _lucMeta));
+    } else if (isInserting) {
+      context.missing(_lucMeta);
+    }
+    if (data.containsKey('os_id')) {
+      context.handle(
+          _osIdMeta, osId.isAcceptableOrUnknown(data['os_id']!, _osIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppNotificationEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppNotificationEvent(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      dedupeKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}dedupe_key'])!,
+      suKien: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}su_kien'])!,
+      luc: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}luc'])!,
+      osId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}os_id']),
+    );
+  }
+
+  @override
+  $AppNotificationEventsTable createAlias(String alias) {
+    return $AppNotificationEventsTable(attachedDatabase, alias);
+  }
+}
+
+class AppNotificationEvent extends DataClass
+    implements Insertable<AppNotificationEvent> {
+  final String id;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này.
+  final int idaccount;
+
+  /// Đúng chuỗi payload đã giao cho hệ điều hành.
+  final String dedupeKey;
+
+  /// Một trong chín mã của `SuKienThongBao`.
+  final String suKien;
+
+  /// Lúc xảy ra. Riêng `dat_lich`: **mốc hẹn nổ**, không phải lúc đặt.
+  final DateTime luc;
+
+  /// `osScheduledId(dedupeKey)` — chỉ `dat_lich` / `huy_lich`, để `huy_lich`
+  /// tra ngược khoá từ id (lời gọi `cancel` chỉ có id).
+  final int? osId;
+  const AppNotificationEvent(
+      {required this.id,
+      required this.idaccount,
+      required this.dedupeKey,
+      required this.suKien,
+      required this.luc,
+      this.osId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['su_kien'] = Variable<String>(suKien);
+    map['luc'] = Variable<DateTime>(luc);
+    if (!nullToAbsent || osId != null) {
+      map['os_id'] = Variable<int>(osId);
+    }
+    return map;
+  }
+
+  AppNotificationEventsCompanion toCompanion(bool nullToAbsent) {
+    return AppNotificationEventsCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      dedupeKey: Value(dedupeKey),
+      suKien: Value(suKien),
+      luc: Value(luc),
+      osId: osId == null && nullToAbsent ? const Value.absent() : Value(osId),
+    );
+  }
+
+  factory AppNotificationEvent.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppNotificationEvent(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      suKien: serializer.fromJson<String>(json['suKien']),
+      luc: serializer.fromJson<DateTime>(json['luc']),
+      osId: serializer.fromJson<int?>(json['osId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'suKien': serializer.toJson<String>(suKien),
+      'luc': serializer.toJson<DateTime>(luc),
+      'osId': serializer.toJson<int?>(osId),
+    };
+  }
+
+  AppNotificationEvent copyWith(
+          {String? id,
+          int? idaccount,
+          String? dedupeKey,
+          String? suKien,
+          DateTime? luc,
+          Value<int?> osId = const Value.absent()}) =>
+      AppNotificationEvent(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        dedupeKey: dedupeKey ?? this.dedupeKey,
+        suKien: suKien ?? this.suKien,
+        luc: luc ?? this.luc,
+        osId: osId.present ? osId.value : this.osId,
+      );
+  AppNotificationEvent copyWithCompanion(AppNotificationEventsCompanion data) {
+    return AppNotificationEvent(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      suKien: data.suKien.present ? data.suKien.value : this.suKien,
+      luc: data.luc.present ? data.luc.value : this.luc,
+      osId: data.osId.present ? data.osId.value : this.osId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotificationEvent(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('suKien: $suKien, ')
+          ..write('luc: $luc, ')
+          ..write('osId: $osId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, idaccount, dedupeKey, suKien, luc, osId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppNotificationEvent &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.dedupeKey == this.dedupeKey &&
+          other.suKien == this.suKien &&
+          other.luc == this.luc &&
+          other.osId == this.osId);
+}
+
+class AppNotificationEventsCompanion
+    extends UpdateCompanion<AppNotificationEvent> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> dedupeKey;
+  final Value<String> suKien;
+  final Value<DateTime> luc;
+  final Value<int?> osId;
+  final Value<int> rowid;
+  const AppNotificationEventsCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.suKien = const Value.absent(),
+    this.luc = const Value.absent(),
+    this.osId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppNotificationEventsCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String dedupeKey,
+    required String suKien,
+    required DateTime luc,
+    this.osId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        dedupeKey = Value(dedupeKey),
+        suKien = Value(suKien),
+        luc = Value(luc);
+  static Insertable<AppNotificationEvent> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? dedupeKey,
+    Expression<String>? suKien,
+    Expression<DateTime>? luc,
+    Expression<int>? osId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (suKien != null) 'su_kien': suKien,
+      if (luc != null) 'luc': luc,
+      if (osId != null) 'os_id': osId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppNotificationEventsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? dedupeKey,
+      Value<String>? suKien,
+      Value<DateTime>? luc,
+      Value<int?>? osId,
+      Value<int>? rowid}) {
+    return AppNotificationEventsCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      suKien: suKien ?? this.suKien,
+      luc: luc ?? this.luc,
+      osId: osId ?? this.osId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (suKien.present) {
+      map['su_kien'] = Variable<String>(suKien.value);
+    }
+    if (luc.present) {
+      map['luc'] = Variable<DateTime>(luc.value);
+    }
+    if (osId.present) {
+      map['os_id'] = Variable<int>(osId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotificationEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('suKien: $suKien, ')
+          ..write('luc: $luc, ')
+          ..write('osId: $osId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -9290,6 +9646,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AiRebalancingFeedbacksTable(this);
   late final $GoiYDanhMucPhanHoisTable goiYDanhMucPhanHois =
       $GoiYDanhMucPhanHoisTable(this);
+  late final $AppNotificationEventsTable appNotificationEvents =
+      $AppNotificationEventsTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -9304,6 +9662,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final AiFeedbackDao aiFeedbackDao = AiFeedbackDao(this as AppDatabase);
   late final GoiYPhanHoiDao goiYPhanHoiDao =
       GoiYPhanHoiDao(this as AppDatabase);
+  late final NotificationEventDao notificationEventDao =
+      NotificationEventDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9320,6 +9680,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         appNotifications,
         aiRebalancingFeedbacks,
         goiYDanhMucPhanHois,
+        appNotificationEvents,
         idxAppnotifFeed
       ];
 }
@@ -13404,6 +13765,201 @@ typedef $$GoiYDanhMucPhanHoisTableProcessedTableManager = ProcessedTableManager<
     ),
     GoiYDanhMucPhanHoi,
     PrefetchHooks Function()>;
+typedef $$AppNotificationEventsTableCreateCompanionBuilder
+    = AppNotificationEventsCompanion Function({
+  required String id,
+  required int idaccount,
+  required String dedupeKey,
+  required String suKien,
+  required DateTime luc,
+  Value<int?> osId,
+  Value<int> rowid,
+});
+typedef $$AppNotificationEventsTableUpdateCompanionBuilder
+    = AppNotificationEventsCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> dedupeKey,
+  Value<String> suKien,
+  Value<DateTime> luc,
+  Value<int?> osId,
+  Value<int> rowid,
+});
+
+class $$AppNotificationEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppNotificationEventsTable> {
+  $$AppNotificationEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get suKien => $composableBuilder(
+      column: $table.suKien, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get luc => $composableBuilder(
+      column: $table.luc, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get osId => $composableBuilder(
+      column: $table.osId, builder: (column) => ColumnFilters(column));
+}
+
+class $$AppNotificationEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppNotificationEventsTable> {
+  $$AppNotificationEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get suKien => $composableBuilder(
+      column: $table.suKien, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get luc => $composableBuilder(
+      column: $table.luc, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get osId => $composableBuilder(
+      column: $table.osId, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AppNotificationEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppNotificationEventsTable> {
+  $$AppNotificationEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get suKien =>
+      $composableBuilder(column: $table.suKien, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get luc =>
+      $composableBuilder(column: $table.luc, builder: (column) => column);
+
+  GeneratedColumn<int> get osId =>
+      $composableBuilder(column: $table.osId, builder: (column) => column);
+}
+
+class $$AppNotificationEventsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppNotificationEventsTable,
+    AppNotificationEvent,
+    $$AppNotificationEventsTableFilterComposer,
+    $$AppNotificationEventsTableOrderingComposer,
+    $$AppNotificationEventsTableAnnotationComposer,
+    $$AppNotificationEventsTableCreateCompanionBuilder,
+    $$AppNotificationEventsTableUpdateCompanionBuilder,
+    (
+      AppNotificationEvent,
+      BaseReferences<_$AppDatabase, $AppNotificationEventsTable,
+          AppNotificationEvent>
+    ),
+    AppNotificationEvent,
+    PrefetchHooks Function()> {
+  $$AppNotificationEventsTableTableManager(
+      _$AppDatabase db, $AppNotificationEventsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppNotificationEventsTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppNotificationEventsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppNotificationEventsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> dedupeKey = const Value.absent(),
+            Value<String> suKien = const Value.absent(),
+            Value<DateTime> luc = const Value.absent(),
+            Value<int?> osId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationEventsCompanion(
+            id: id,
+            idaccount: idaccount,
+            dedupeKey: dedupeKey,
+            suKien: suKien,
+            luc: luc,
+            osId: osId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String dedupeKey,
+            required String suKien,
+            required DateTime luc,
+            Value<int?> osId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationEventsCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            dedupeKey: dedupeKey,
+            suKien: suKien,
+            luc: luc,
+            osId: osId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AppNotificationEventsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $AppNotificationEventsTable,
+        AppNotificationEvent,
+        $$AppNotificationEventsTableFilterComposer,
+        $$AppNotificationEventsTableOrderingComposer,
+        $$AppNotificationEventsTableAnnotationComposer,
+        $$AppNotificationEventsTableCreateCompanionBuilder,
+        $$AppNotificationEventsTableUpdateCompanionBuilder,
+        (
+          AppNotificationEvent,
+          BaseReferences<_$AppDatabase, $AppNotificationEventsTable,
+              AppNotificationEvent>
+        ),
+        AppNotificationEvent,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13432,4 +13988,6 @@ class $AppDatabaseManager {
           _db, _db.aiRebalancingFeedbacks);
   $$GoiYDanhMucPhanHoisTableTableManager get goiYDanhMucPhanHois =>
       $$GoiYDanhMucPhanHoisTableTableManager(_db, _db.goiYDanhMucPhanHois);
+  $$AppNotificationEventsTableTableManager get appNotificationEvents =>
+      $$AppNotificationEventsTableTableManager(_db, _db.appNotificationEvents);
 }

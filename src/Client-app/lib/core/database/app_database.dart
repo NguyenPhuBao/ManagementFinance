@@ -8,6 +8,7 @@ import 'tables/other_tables.dart';
 import 'tables/notification_table.dart';
 import 'tables/ai_feedback_table.dart';
 import 'tables/goi_y_phan_hoi_table.dart';
+import 'tables/notification_event_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
@@ -15,6 +16,7 @@ import 'daos/other_daos.dart';
 import 'daos/notification_dao.dart';
 import 'daos/ai_feedback_dao.dart';
 import 'daos/goi_y_phan_hoi_dao.dart';
+import 'daos/notification_event_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -46,6 +48,7 @@ part 'app_database.g.dart';
     AppNotifications,
     AiRebalancingFeedbacks,
     GoiYDanhMucPhanHois,
+    AppNotificationEvents,
   ],
   daos: [
     WalletDao,
@@ -57,6 +60,7 @@ part 'app_database.g.dart';
     NotificationDao,
     AiFeedbackDao,
     GoiYPhanHoiDao,
+    NotificationEventDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -64,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration {
@@ -484,6 +488,12 @@ class AppDatabase extends _$AppDatabase {
           // B1 (spec 2026-09-28): phản hồi thẻ gợi ý danh mục — CỤC BỘ, không đi qua đồng bộ (test quét 15 canh).
           await m.createTable(goiYDanhMucPhanHois);
         }
+        if (from < 26) {
+          // B5a (spec 2026-09-28): nhật ký thông báo — CỤC BỘ, chỉ thêm hàng,
+          // không đi qua đồng bộ (test quét thứ 15 canh). Không điền dữ liệu
+          // cũ: trước bản này không có phản ứng nào được ghi.
+          await m.createTable(appNotificationEvents);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -569,6 +579,10 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(goiYDanhMucPhanHois)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Nhật ký thông báo (v26, B5a) — cục bộ, cùng lý lẽ với thông báo.
+      removed += await (delete(appNotificationEvents)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
   }
@@ -625,6 +639,9 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
       removed += await (delete(goiYDanhMucPhanHois)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(appNotificationEvents)
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });

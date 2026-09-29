@@ -27,8 +27,8 @@ void main() {
   tearDown(() => db.close());
 
   // Con số là phiên bản HIỆN TẠI của lược đồ — tăng theo mỗi migration mới. v25 (2026-09-29, B1) thêm bảng phản hồi
-  // thẻ gợi ý danh mục, không đụng hai thứ của v24 mà tệp này canh.
-  test('schema hiện tại là v25 (v24 còn nguyên)', () => expect(db.schemaVersion, 25));
+  // thẻ gợi ý danh mục, v26 (2026-09-29, B5a) thêm bảng nhật ký thông báo — không đụng hai thứ của v24 mà tệp này canh.
+  test('schema hiện tại là v26 (v24 còn nguyên)', () => expect(db.schemaVersion, 26));
 
   test('categories có cột ai_co_dinh, mặc định false', () async {
     final cols = await db.customSelect("PRAGMA table_info('categories')").get();

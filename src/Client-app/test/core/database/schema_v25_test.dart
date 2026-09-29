@@ -22,7 +22,8 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema là v25', () => expect(db.schemaVersion, 25));
+  test('schema từ v25 trở lên', () => expect(db.schemaVersion, greaterThanOrEqualTo(25),
+      reason: 'ca này canh BẢNG của v25, không canh số phiên bản — v26 (B5a) thêm bảng nhật ký thông báo'));
 
   test('bảng goi_y_danh_muc_phan_hois đủ tám cột và KHÔNG có cột đồng bộ', () async {
     final cols = await db.customSelect("PRAGMA table_info('goi_y_danh_muc_phan_hois')").get();
