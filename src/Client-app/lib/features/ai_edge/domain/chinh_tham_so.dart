@@ -45,9 +45,16 @@
 /// như `khop_ten.dart`), không phải quy tắc trùng tên. ⚠️ Từ khoá chiều tiền
 /// giữ dạng **chuỗi tách lúc chạy**: test quét 14 cấm `'chi'` / `'thu'` đứng
 /// riêng trong `ai_edge/` — ở đây chúng là chữ của câu hỏi.
+///
+/// Số viết bằng chữ đọc qua `timSoBangChu` (`core/utils/so_bang_chu.dart`, C2
+/// task 1, 2026-09-29) — một định nghĩa với ô Nhập nhanh và bộ kiểm số. Bộ đọc
+/// riêng trước đó mù hàng chục: *"dưới năm mươi nghìn"* không thành ngưỡng nào.
+/// Lượng từ mơ hồ (*"vài trăm nghìn"*, `NaN`) bị bỏ qua như trước — bộ cũ không
+/// có chúng.
 library;
 
 import '../../../core/category/category_name.dart';
+import '../../../core/utils/so_bang_chu.dart';
 import 'cong_cu.dart';
 import 'hang_muc_tieu.dart';
 import 'hang_tong_quan.dart';
@@ -102,18 +109,17 @@ final List<String> _tuKy =
 final List<String> _tuTu = 'tren|hon|tu|it nhat|toi thieu|lon hon'.split('|');
 final List<String> _tuDen = 'duoi|khong qua|den|toi|toi da|nho hon|thap hon|it hon'.split('|');
 
-const Map<String, double> _soChu = {
-  'nua': 0.5, 'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'nam': 5, 'sau': 6,
-  'bay': 7, 'tam': 8, 'chin': 9, 'muoi': 10,
-};
 const Map<String, double> _donVi = {
   'k': 1000, 'nghin': 1000, 'ngan': 1000, 'tr': 1000000, 'trieu': 1000000,
   'ty': 1000000000, 'ti': 1000000000, 'tram': 100,
 };
 
-final RegExp _mauSoChu = RegExp(
-  '(?<![a-z0-9])(?:${_soChu.keys.join('|')})(?:\\s+(?:tram|nghin|ngan|trieu|ty|ti))+(?:\\s+ruoi)?(?![a-z0-9])',
-);
+/// Cụm số chữ có giá trị xác định trong [q] (câu đã bỏ dấu).
+List<CumSoChu> _cumSoChu(String q) => [
+      for (final c in timSoBangChu(q))
+        if (!c.giaTri.isNaN) c,
+    ];
+
 final RegExp _mauSoDonVi = RegExp(
   r'(?<![a-z0-9.,])(\d+(?:[.,]\d+)*)\s*(k|nghin|ngan|tr|trieu|ty|ti)?(?![a-z0-9])',
 );
@@ -727,13 +733,13 @@ String? _kyGocNeu(String q) {
 /// có cả hai); "ít / nhỏ / thấp … nhất" → `it_nhat`, TRỪ khi ngay sau là một số
 /// tiền — *"ít nhất 200k"* là ngưỡng của luật 4, không phải chọn.
 String? _chonTrongCau(String q) {
-  final mauSo = RegExp('^(?:${_mauSoDonVi.pattern}|${_mauSoChu.pattern})');
+  final mauSo = RegExp('^(?:${_mauSoDonVi.pattern})');
   String? kq;
   for (final m in _mauChon.allMatches(q)) {
     final dau = m.group(1)!;
     if (dau == 'nhieu' || dau == 'lon' || dau == 'cao') return 'nhieu_nhat';
     final sau = q.substring(m.end).trimLeft();
-    if (mauSo.hasMatch(sau)) continue;
+    if (mauSo.hasMatch(sau) || _cumSoChu(sau).any((c) => c.batDau == 0)) continue;
     kq ??= 'it_nhat';
   }
   return kq;
@@ -957,8 +963,8 @@ String? _chieuTheoDongTu(String q0) {
     }
     khoang.add((m.start, m.end, gia));
   }
-  for (final m in _mauSoChu.allMatches(q)) {
-    khoang.add((m.start, m.end, _giaTriSoChu(m.group(0)!)));
+  for (final c in _cumSoChu(q)) {
+    khoang.add((c.batDau, c.ketThuc, c.giaTri));
   }
   for (final (bd, kt, gia) in khoang) {
     final truoc = q.substring(0, bd).trim().split(RegExp(r'\s+'));
@@ -978,7 +984,7 @@ String? _chieuTheoDongTu(String q0) {
 /// hay số trần từ bốn chữ số. ⚠️ Ngày (*1/9*, *15/9/2026*) và năm (*năm 2026*)
 /// không phải tiền — cùng cách đọc với luật 4.
 bool _coSoTien(String q) {
-  if (_mauSoChu.hasMatch(q)) return true;
+  if (_cumSoChu(q).isNotEmpty) return true;
   for (final m in _mauSoDonVi.allMatches(q)) {
     if (m.group(2) != null) return true;
     if (m.start > 0 && q[m.start - 1] == '/') continue;
@@ -993,20 +999,3 @@ bool _coSoTien(String q) {
 bool _cuoi(String chuoi, String cum) =>
     RegExp('(?<![a-z0-9])${RegExp.escape(cum)}\$').hasMatch(chuoi);
 
-double _giaTriSoChu(String cum) {
-  var tong = 0.0;
-  var nhom = double.nan;
-  var boi = 1.0;
-  for (final tu in cum.split(RegExp(r'\s+'))) {
-    if (_soChu.containsKey(tu)) {
-      if (!nhom.isNaN) tong += nhom * boi;
-      nhom = _soChu[tu]!;
-      boi = 1.0;
-    } else if (_donVi.containsKey(tu)) {
-      boi *= _donVi[tu]!;
-    } else if (tu == 'ruoi') {
-      nhom += 0.5;
-    }
-  }
-  return tong + (nhom.isNaN ? 0 : nhom * boi);
-}

@@ -25,9 +25,15 @@
 /// (*"500 nghìn"*, *"2 triệu"*, *"500k"*) **cố ý** giữ nguyên cách đọc cũ (500,
 /// 2): đọc thành 500.000 là mở cửa cho câu *"trên 500k là … (500.000 đ)"* của
 /// lần đo 2 lọt — người dùng chốt 2026-09-24.
+///
+/// Bộ đọc số chữ là `timSoBangChu` (`core/utils/so_bang_chu.dart`, C2 task 1,
+/// 2026-09-29) — một định nghĩa với ô Nhập nhanh và bộ chỉnh tham số. Trước đó
+/// tệp này có bộ đọc riêng, mù hàng chục: *"năm mươi nghìn"* không phải số, nên
+/// câu viết số ấy lọt mà không bị kiểm.
 library;
 
 import '../../../core/category/category_name.dart';
+import '../../../core/utils/so_bang_chu.dart';
 import 'goi_so.dart';
 
 class SoTrich {
@@ -52,72 +58,6 @@ class SoTrich {
 /// bên. `12/09/26` không khớp (năm hai chữ số) và đi tiếp như ba con số.
 final RegExp _mauNgay =
     RegExp(r'(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}))?(?![\d/])');
-
-/// Từ số bằng chữ → giá trị; lượng từ mơ hồ → `NaN` (không khớp gì, tức bị
-/// chặn). *"không"* cố ý vắng: "không có" không phải số 0.
-const Map<String, double> _soChu = {
-  'nửa': 0.5,
-  'một': 1,
-  'hai': 2,
-  'ba': 3,
-  'bốn': 4,
-  'năm': 5,
-  'sáu': 6,
-  'bảy': 7,
-  'tám': 8,
-  'chín': 9,
-  'mười': 10,
-  'vài': double.nan,
-  'mấy': double.nan,
-  'dăm': double.nan,
-};
-
-const Map<String, double> _donViChu = {
-  'trăm': 100,
-  'nghìn': 1000,
-  'ngàn': 1000,
-  'triệu': 1000000,
-  'tỷ': 1000000000,
-  'tỉ': 1000000000,
-};
-
-/// Một NHÓM: từ số + một hay nhiều đơn vị (nhân nhau: *"hai trăm nghìn"*),
-/// tuỳ chọn *"rưỡi"*. Nhiều nhóm liền nhau cộng lại (*"một triệu hai trăm
-/// nghìn"*). Từ số phải có đơn vị ngay sau — *"một khoản"*, *"năm nay"* không
-/// phải số; đơn vị đứng một mình (*"hàng triệu"*) cũng không. Hai đầu phải là
-/// ranh giới từ, không phân biệt hoa thường.
-final RegExp _mauSoChu = () {
-  final so = _soChu.keys.join('|');
-  final dv = _donViChu.keys.join('|');
-  final nhom = '(?:$so)(?:\\s+(?:$dv))+(?:\\s+rưỡi)?';
-  return RegExp(
-    '(?<![\\p{L}\\p{N}])$nhom(?:\\s+$nhom)*(?![\\p{L}\\p{N}])',
-    unicode: true,
-    caseSensitive: false,
-  );
-}();
-
-final RegExp _khoangTrang = RegExp(r'\s+');
-
-/// Giá trị của một cụm khớp [_mauSoChu]. `NaN` lan qua phép cộng nên một
-/// nhóm mơ hồ làm cả cụm mơ hồ.
-double _giaTriSoChu(String cum) {
-  var tong = 0.0;
-  var nhom = double.nan;
-  var boi = 1.0;
-  for (final tu in cum.toLowerCase().split(_khoangTrang)) {
-    if (_soChu.containsKey(tu)) {
-      if (!nhom.isNaN || boi != 1.0) tong += nhom * boi;
-      nhom = _soChu[tu]!;
-      boi = 1.0;
-    } else if (_donViChu.containsKey(tu)) {
-      boi *= _donViChu[tu]!;
-    } else if (tu == 'rưỡi') {
-      nhom += 0.5;
-    }
-  }
-  return tong + nhom * boi;
-}
 
 /// Nhóm 1: dấu âm (`-` hoặc `−`); nhóm 2: phần nguyên có chấm nghìn
 /// (`2.100.000`) hoặc số trần; nhóm 3: phần thập phân sau **phẩy**; nhóm 4: hậu
@@ -162,15 +102,12 @@ List<SoTrich> trichSo(String cau) {
   final sauNgay = conLai.toString();
   final sauChu = StringBuffer();
   daChep = 0;
-  for (final m in _mauSoChu.allMatches(sauNgay)) {
-    theoViTri.add((
-      m.start,
-      SoTrich(_giaTriSoChu(m.group(0)!), laPhanTram: false),
-    ));
+  for (final c in timSoBangChu(sauNgay)) {
+    theoViTri.add((c.batDau, SoTrich(c.giaTri, laPhanTram: false)));
     sauChu
-      ..write(sauNgay.substring(daChep, m.start))
-      ..write(' ' * (m.end - m.start));
-    daChep = m.end;
+      ..write(sauNgay.substring(daChep, c.batDau))
+      ..write(' ' * (c.ketThuc - c.batDau));
+    daChep = c.ketThuc;
   }
   sauChu.write(sauNgay.substring(daChep));
   for (final m in _mau.allMatches(sauChu.toString())) {

@@ -253,6 +253,13 @@ void main() {
       final s = trichSo('hơn một triệu ở 2 khoản');
       expect(s.map((x) => x.giaTri).toList(), [1000000, 2]);
     });
+
+    test('⭐ số chữ HÀNG CHỤC là con số (C2 task 1, 2026-09-29): bịa thì bị chặn, đúng thì qua', () {
+      final g = _Gia([soTien('Tổng chi', 50000)]);
+      expect(kiemSo('Tổng chi là năm mươi nghìn đồng.', g), isTrue);
+      expect(kiemSo('Tổng chi là hai mươi lăm nghìn đồng.', g), isFalse,
+          reason: 'bộ đọc cũ mù "mươi" — câu này từng lọt mà không bị kiểm');
+    });
   });
 
   group('số lần — LoaiSo.soLan (G56)', () {

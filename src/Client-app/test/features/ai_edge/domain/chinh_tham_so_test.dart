@@ -177,6 +177,13 @@ void main() {
       expect(chinh('khoản chi hơn một triệu rưỡi', {'ky': 'thang_nay'})['so_tien_tu'], 1500000);
     });
 
+    test('⭐ ngưỡng viết bằng chữ HÀNG CHỤC (C2 task 1, 2026-09-29 — đo trước lượt ấy: không ngưỡng nào)', () {
+      expect(chinh('các khoản chi dưới năm mươi nghìn tháng này', {'ky': 'thang_nay'})['so_tien_den'], 50000);
+      expect(chinh('cac khoan chi tren hai muoi lam nghin', {'ky': 'thang_nay'})['so_tien_tu'], 25000);
+      expect(chinh('khoản chi trên vài trăm nghìn', {'ky': 'thang_nay'})['so_tien_tu'], isNull,
+          reason: 'lượng từ mơ hồ không thành ngưỡng — như bộ đọc cũ');
+    });
+
     test('câu hỏi không có số tiền thì GỠ ngưỡng của mô hình (G2 cổng F — đảo luật 6 cũ cho so_tien_*)', () {
       // Trước 2026-09-28 ca này đòi GIỮ 300000 (luật 6 "không đụng thứ câu hỏi
       // không nói tới"). F2 cổng F đo được mặt trái: "từ 1/9 đến 15/9" → mô hình
