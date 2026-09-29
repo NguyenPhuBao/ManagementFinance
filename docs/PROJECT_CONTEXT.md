@@ -718,7 +718,17 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   🛑 **Cổng ra chưa trọn: F12 tụt** — phiên một tool mô hình điền thừa `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó (họ
   bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn**. Người dùng
   dặn sau vòng đo này **dừng nhóm A, chuyển sang phần kế** (B1). `flutter test` **4254/4254** (3 skip), analyze 26. Bàn
-  giao mới nhất `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
+  giao sau nhóm A: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
+- 🚧 **B1 — gợi ý danh mục học từ ghi chú: Task 1–6 xong mã 2026-09-29, Task 7 (nghiệm thu + tài liệu) dở — người dùng
+  cho tạm dừng** (banner đầu spec `specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`; `bf7a076` → `8bee5d7`,
+  sửa `4ef4a5b`): Naive Bayes nhị phân hoá ở `category/domain/phan_loai_ghi_chu.dart`, bảng cục bộ **schema v25**
+  `GoiYDanhMucPhanHois` (test quét 15 canh), màn Thêm giao dịch đi mô hình trước rồi từ khoá, ghi phản hồi và thôi gợi
+  ý cặp bị bỏ qua hai lần. ⭐ **Đo leave-one-out: dữ liệu thật chưa đủ để học** — ≤ 3 ghi chú tự gõ mỗi tài khoản (máy ảo
+  và PostgreSQL dev, chỉ đọc), ngưỡng là 10. 🐞 Nghiệm thu trên máy lộ **lỗi có từ trước**: thẻ gợi ý (cả nguồn từ khoá)
+  vỡ bố cục với theme thật — bẫy 4.11, đã sửa. ⚠️ Người dùng dặn: **có máy thật cắm thì nghiệm thu trên máy thật**, máy
+  ảo chỉ khi không có. ⚠️ Realme: người dùng duyệt nhập ~10 giao dịch thử và **giữ lại** (đáp án các bộ câu AI phải tính
+  lại); phiên dừng khi mới nhập dở và **Assistive Touch trên Realme đọc ra đang tắt** — xem bàn giao
+  `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-b1-tam-dung.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

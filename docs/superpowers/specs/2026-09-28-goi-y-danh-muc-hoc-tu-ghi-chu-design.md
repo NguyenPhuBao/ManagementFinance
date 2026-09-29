@@ -1,5 +1,21 @@
 # B1 — Gợi ý danh mục học từ ghi chú (Naive Bayes cục bộ) — thiết kế
 
+> 🚧 **Tiến độ 2026-09-29 (tạm dừng giữa Task 7 theo lời người dùng):** Task 1–6 **xong mã** (`bf7a076` → `8bee5d7`) +
+> một bản sửa `4ef4a5b`. Chỗ lệch khỏi thiết kế / kế hoạch, ghi lại cho lần sau:
+> (1) **Hai tinh chỉnh của kế hoạch đã làm** — xác suất tính trên MỌI danh mục, `hopLe` chỉ lọc ứng viên, kèm chốt
+> *bằng chứng*; câu lý do in **cụm** âm tiết (*"cà phê"*, *"trà sữa"*). (2) Hằng tiền tố nạp mục tiêu cũ đã công khai sẵn
+> là `kGhiChuNapMucTieuCu` (`transaction_owner.dart`), không phải sửa tệp ấy. (3) `CategorySuggestion` mang nguồn + lý do
+> với **mặc định nguồn từ khoá**, nên `CategorySuggestionEngine` không phải sửa. (4) Thêm ca test migration v24 → v25
+> (mục 4 đòi, kế hoạch thiếu). (5) ⭐ **Phép đo leave-one-out trên dữ liệu thật cho độ phủ 0 %**: máy ảo tài khoản 10 có
+> 39 giao dịch nhưng chỉ **1** ghi chú người dùng tự gõ; PostgreSQL dev (chỉ đọc) — tài khoản nhiều nhất có **3**. Tiền
+> đề mục 1 *"có dữ liệu học ngay hôm nay"* **không đúng** với dữ liệu hiện có: người dùng thử gần như không gõ ghi chú,
+> còn ghi chú máy sinh (thanh toán hoá đơn, tích luỹ mục tiêu) bị loại đúng. Gợi ý học vì thế im và rơi về từ khoá —
+> sai theo chiều an toàn. (6) 🐞 **Nghiệm thu trên máy lộ lỗi có từ trước B1**: thẻ gợi ý (cả nguồn từ khoá) vỡ bố cục
+> với theme thật — nút *Chọn danh mục này* trần trong `Row` (bẫy 4.11); đã sửa `4ef4a5b`, có ca dựng bằng
+> `AppTheme.lightTheme`. **Còn lại:** nghiệm thu thẻ học trên Realme (người dùng duyệt nhập ~10 giao dịch thử và GIỮ
+> lại; phiên 29/09 dừng khi mới nhập dở — xem bàn giao `flowmoney-handoff-2026-09-29-b1-tam-dung.md`), rồi tài liệu
+> `CATEGORY_RATIONALE.md` (Task 7 Step 3).
+
 **Ngày:** 2026-09-28. **Người dùng duyệt** ba phần thiết kế trong chat (brainstorm, cùng buổi đo cổng F trên Realme).
 Đây là dự án con **đầu tiên** của mảng máy học — lộ trình đầy đủ ở mục 7.
 
