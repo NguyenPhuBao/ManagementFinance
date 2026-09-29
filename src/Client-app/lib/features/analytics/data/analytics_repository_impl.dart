@@ -3,16 +3,20 @@ import 'dart:async';
 import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../budget/domain/cua_so_nhin_lai.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../goal/data/models/goal_entity.dart';
 import '../domain/bao_cao_xuat.dart';
+import '../domain/chi_bat_thuong.dart';
 import '../domain/du_bao_dong_tien.dart';
 import '../domain/khoan_vao_thong_ke.dart';
 import '../domain/lich_chi_tieu.dart';
+import '../domain/nguong_co_nghia.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
+import '../domain/thu_nhap_moi_thang.dart';
 import '../domain/tong_tai_san.dart';
 import 'analytics_repository.dart';
 
@@ -416,8 +420,27 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       }
     }
 
+    // ── B3: chi bất thường theo danh mục (2026-09-29) ─────────────────────
+    // Chỉ khi kỳ là MỘT tháng dương lịch (cùng lý do `gapNganSach`): B3 so cả
+    // tháng với các tháng trước, tuần / quý / năm không có nghĩa ấy. Dựng từ
+    // `khoan` — TOÀN BỘ giao dịch — không đọc CSDL lần nữa: stream này phát
+    // lại sau mọi chu kỳ đồng bộ. Ngưỡng dùng CÙNG phép neo với luật tái phân
+    // bổ; mốc cửa sổ là `giaoDichDauTien` của `txs` (đã lọc xoá mềm — bẫy 3 của
+    // cửa sổ nhìn lại).
+    List<DongChiBatThuong>? batThuong;
+    if (ky.donVi == DonViKy.thang) {
+      final cuaSo = cuaSoNhinLai(now, giaoDichDauTien);
+      final nguong =
+          nguongCoNghia(cuaSo == null ? 0 : thuNhapMoiThangTu(khoan, cuaSo));
+      batThuong = [
+        for (final d in chiBatThuong(khoan, thang: ky.from, now: now, nguong: nguong))
+          (d: d, ten: tenTheoId[d.categoryId] ?? 'Danh mục đã xoá'),
+      ];
+    }
+
     return ThongKeKy(
       ky: ky,
+      chiBatThuong: batThuong,
       taiSan: taiSan,
       giaoDichDauTien: giaoDichDauTien,
       duBao: duBao,

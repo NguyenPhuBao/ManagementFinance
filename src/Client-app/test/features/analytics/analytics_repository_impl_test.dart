@@ -931,4 +931,69 @@ void main() {
       expect(tk.giaoDichDauTien, isNull);
     });
   });
+  // ── B3 — chi bất thường theo danh mục (2026-09-29) ─────────────────────────
+  group('chiBatThuong (B3)', () {
+    /// Năm tháng Ăn uống 4–8/2026 quanh 900.000 và tháng 9 vượt hẳn.
+    Future<void> duLieu({String danhMuc = 'c_an'}) async {
+      final ls = [(4, 850000.0), (5, 900000.0), (6, 950000.0), (7, 880000.0), (8, 920000.0)];
+      for (final (m, v) in ls) {
+        await giaoDich(id: 'b3_$danhMuc$m', ngay: DateTime(2026, m, 10), soTien: v, danhMuc: danhMuc);
+      }
+      await giaoDich(id: 'b3_${danhMuc}9', ngay: DateTime(2026, 9, 5), soTien: 2400000, danhMuc: danhMuc);
+    }
+
+    test('đơn vị Tháng → một dòng có đúng tên, số của tháng và thường lệ', () async {
+      await duLieu();
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isNotNull);
+      expect(tk.chiBatThuong, hasLength(1));
+      final d = tk.chiBatThuong!.single;
+      expect(d.ten, 'Ăn uống');
+      expect(d.d.categoryId, 'c_an');
+      expect(d.d.chi, 2400000);
+      expect(d.d.thuongLe, 900000);
+      expect(d.d.soThangMau, 5);
+    });
+
+    test('đơn vị Tuần → null (B3 chỉ xét tháng)', () async {
+      await duLieu();
+      final tk = await lanDauKy(Ky.tuan(now));
+      expect(tk.chiBatThuong, isNull,
+          reason: 'null = không xét; rỗng = đã xét, không có gì lạ — hai nghĩa khác nhau');
+    });
+
+    test('đã xét, không có gì lạ → danh sách RỖNG, không phải null', () async {
+      await giaoDich(id: 'x1', ngay: DateTime(2026, 9, 5), soTien: 100000);
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isNotNull);
+      expect(tk.chiBatThuong, isEmpty);
+    });
+
+    test('danh mục MẶC ĐỊNH toàn cục (idaccount = 0) vẫn có tên (G41)', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_md',
+        idaccount: 0,
+        name: 'Mua sắm',
+        classify: 'chi',
+        isDefault: const Value(true),
+        updatedAt: now,
+      ));
+      await duLieu(danhMuc: 'c_md');
+      final tk = await lanDau();
+      expect(tk.chiBatThuong!.single.ten, 'Mua sắm');
+    });
+
+    test('ngưỡng neo theo thu nhập: thu nhập cao thì phần vượt nhỏ không đủ', () async {
+      // Lương 300.000.000 mỗi tháng trong cửa sổ → ngưỡng = 1 % = 3.000.000 >
+      // phần vượt 1.500.000 → im. Không có thu nhập thì ngưỡng là sàn 50.000.
+      await duLieu();
+      for (final m in [7, 8, 9]) {
+        await giaoDich(
+            id: 'luong$m', ngay: DateTime(2026, m, 1), soTien: 300000000, loai: 'thu', danhMuc: null);
+      }
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isEmpty,
+          reason: 'cùng phép neo max(1 % thu nhập, 50.000) với luật tái phân bổ');
+    });
+  });
 }
