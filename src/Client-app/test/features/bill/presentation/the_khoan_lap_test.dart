@@ -109,9 +109,13 @@ void main() {
     }
     expect(find.text('Tạo'), findsNWidgets(3));
     expect(find.text('Bỏ qua'), findsNWidgets(3));
-    expect(find.text('khoảng ${CurrencyFormatter.format(3000000)} mỗi tháng · 3 lần'), findsOneWidget);
-    expect(find.text('khoảng ${CurrencyFormatter.format(50000)} mỗi tuần · 4 lần'), findsOneWidget,
-        reason: 'chu kỳ tuần phải nói "mỗi tuần" — nói "mỗi tháng" là sai số tiền gấp bốn');
+    expect(find.text('khoảng ${CurrencyFormatter.format(3000000)}'), findsOneWidget);
+    expect(find.text('mỗi tháng · 3 lần'), findsNWidgets(2));
+    expect(find.text('khoảng ${CurrencyFormatter.format(50000)}'), findsOneWidget);
+    expect(find.text('mỗi tuần · 4 lần'), findsOneWidget,
+        reason: 'chu kỳ tuần phải nói "mỗi tuần" — nói "mỗi tháng" là sai số tiền gấp bốn. '
+            'Chu kỳ là một Text RIÊNG: gộp chung một dòng với số tiền thì ở 360 dp '
+            'nó bị cắt mất (đo Realme 2026-09-29)');
     expect(tester.takeException(), isNull);
   });
 

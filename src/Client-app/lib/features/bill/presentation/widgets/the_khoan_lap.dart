@@ -204,10 +204,20 @@ class _Dong extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
+              // HAI dòng, không một: ở 360 dp hai nút Tạo + Bỏ qua chiếm gần nửa
+              // bề ngang, và một dòng "khoảng 50.000 đ mỗi tuần · 3 lần" bị cắt
+              // thành "khoảng 50.000 đ mỗi…" — mất đúng chu kỳ (đo Realme
+              // 2026-09-29; font test rộng gấp đôi nên widget test không thấy).
               Text(
                 // "khoảng": mức suy ra từ lần gần nhất, không phải mức người
                 // dùng đặt.
-                'khoảng ${CurrencyFormatter.format(khoan.soTien)} $ky · ${khoan.soLan} lần',
+                'khoảng ${CurrencyFormatter.format(khoan.soTien)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              Text(
+                '$ky · ${khoan.soLan} lần',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
