@@ -30,7 +30,9 @@ dữ liệu thật gần như không có ghi chú tự gõ nên gợi ý học t
 cùng trưa: **F12 sửa** (✅ đo lại Realme, cổng ra nhóm A trọn — cuối mục 9.38) · **viết đơn xin backend** đổi seed
 `grab` · **giữ** luật Bỏ qua như spec · điều tra lệch thu nhập Sổ giao dịch → ✅ **G49** đóng (thẻ tổng + tiêu đề ngày)
 · cặp nạp mục tiêu dạng cũ → ✅ **G50** đóng (chi tháng 9 tài khoản 10 nay 1.851.000). Người dùng dặn bỏ qua phần chat
-AI (chưa tính lại đáp án bộ câu). Kế: **B5a**.
+AI (chưa tính lại đáp án bộ câu). ✅ **B5a xong trọn 7 task chiều 2026-09-29** (mục 5h `docs/NOTIFICATION_FEATURE.md`;
+schema v26 `AppNotificationEvents`, chỉ ghi): spike Realme — *Hoãn* vào isolate nền kể cả khi app sống, nên mọi `hoan`
+trên Android đi qua tệp hàng chờ; nghiệm thu Realme 7/8 ca (ca *app đóng hẳn* không dựng được). Kế: **B2**.
 
 ---
 

@@ -1,5 +1,11 @@
 # B5a — Nhật ký thông báo: ghi phản ứng của người dùng và lúc thông báo tới máy — thiết kế
 
+> ✅ **Thi công xong 2026-09-29** (`fc8c7b5` → `771a9cc`, tài liệu ở mục **5h** `docs/NOTIFICATION_FEATURE.md`). Hai chỗ
+> hệ thống thật khác bản thiết kế này: (1) spike mục 5 lật giả định mục 4 — trên Android nút *Hoãn* vào **isolate nền kể
+> cả khi app còn sống**, nên mọi hàng `hoan` đi qua tệp hàng chờ; (2) nghiệm thu Realme đo thêm một giới hạn mà mục 7
+> chưa ghi — xem gạch đầu dòng cuối mục 7. Cách đăng ký DI khác mục 3 (nguồn phiên gắn ở `main.dart` qua
+> `datNguonPhien`, vì `AuthBloc` là factory) — nhật ký thi công cuối kế hoạch.
+
 **Ngày:** 2026-09-28 (tối), soạn trong lúc đo mốc 72 câu sau cổng F. **Người dùng duyệt** bản thiết kế trong chat cùng
 ngày, với bốn lựa chọn: **bảng riêng** · giữ **180 ngày** · nút *Hoãn* lúc app đóng ghi qua **tệp hàng chờ** · **ghi
 luôn** mốc thông báo tới máy (cột `osDeliveredAt` chưa từng được ghi). Vị trí trong lộ trình 28/09: B1 → **B5a** → B2 →
@@ -155,6 +161,9 @@ khi app đang sống thì không phát gì. Nhật ký cần payload **gốc** v
 - Quyền thông báo bị tắt **sau** khi lịch đã đặt: `dat_lich` vẫn nằm đó, nên B5b sẽ đọc thành *"đã tới máy"*. Quyền được
   bật **sau** khi lịch đã đặt thì lịch vẫn nổ, nhưng không có `dat_lich`, vì `resync` không đặt lại id đang chờ.
 - iOS chưa được đo. Dự án đo trên Android; tệp hàng chờ dùng `path_provider` nên về nguyên tắc chạy được trên cả hai.
+- *(Đo được lúc nghiệm thu Realme 2026-09-29.)* Lịch hoãn không có `dat_lich` (mục 6), nên trả hoặc xoá hoá đơn trước lúc
+  lịch hoãn nổ thì `resync` huỷ lịch ấy **không kèm `huy_lich`**. Vô hại với B5b: §2.4 spec B5b chỉ đếm `osDeliveredAt`
+  và `dat_lich` là tới máy, khử trùng theo `dedupeKey` lấy mốc sớm nhất, và `hoan` không bao giờ đếm là tới máy.
 
 ## 8. Kiểm thử
 

@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -439,15 +439,21 @@ import plugin. Lý do kép: bẫy 7.7, và handler chạy trong isolate nền n�
 `flutter test` không dựng được ngữ cảnh. `os_notifier_native.dart` chỉ còn là
 lớp vỏ gọi plugin.
 
-**"Trả ngay" không nới `payloadDaCham`.** Nó đổi khoá thành `billOpen:<billId>`
-rồi đi tiếp qua đúng đường cũ, vì `deeplinkTuDedupeKey()` là nơi **duy nhất**
-suy route từ khoá. Nhờ vậy stream vẫn là `Stream<String>` và
-`NotificationTapRouter` không phải biết nút là gì.
+**"Trả ngay" đổi khoá thành `billOpen:<billId>`** (`khoaSauChamNut()`) rồi đi
+tiếp qua đúng đường cũ, vì `deeplinkTuDedupeKey()` là nơi **duy nhất** suy
+route từ khoá. ⚠️ *Từ B5a (2026-09-29, mục 5h)* phép đổi khoá ấy nằm ở
+`NotificationTapRouter._thucHien` chứ không ở `OsNotifier`: notifier phát cú
+chạm **thô** (`Stream<ChamHdh> chamTho`, mang cả `actionId`) để nhật ký biết
+nút nào được bấm. Trước B5a stream là `Stream<String> payloadDaCham` đã đổi
+khoá sẵn — tên cũ, còn gặp trong tài liệu viết trước ngày ấy.
 
-**"Hoãn" chạy hoàn toàn trong isolate nền** và **không** phát gì ra
-`payloadDaCham` — cả điểm của nó là xong việc mà không mở màn nào. Nó dời lịch
-đúng 24 giờ kể từ lúc **bấm** (một khoảng tuyệt đối, nên không cần múi giờ —
-`tz.local` trong isolate nền rơi về UTC, bẫy 7.3) và **giữ nguyên khoá**.
+**"Hoãn" không mở màn nào** — cả điểm của nó là xong việc ngay khay thông báo.
+Nó dời lịch đúng 24 giờ kể từ lúc **bấm** (một khoảng tuyệt đối, nên không cần
+múi giờ — `tz.local` trong isolate nền rơi về UTC, bẫy 7.3) và **giữ nguyên
+khoá**. ⚠️ Spike Realme 2026-09-29 (mục 5h) đo được rằng trên Android cú bấm
+*Hoãn* tới **isolate nền** (`khiChamNutLucAppDong`) **kể cả khi app còn sống**;
+nhánh *Hoãn* ở isolate chính (`_khiChamVaoThongBao`) vẫn phát cú chạm thô ra
+`chamTho` rồi dời lịch, và router bỏ qua nó khi điều hướng.
 
 #### Ba thứ đã hỏng trên máy thật mà `flutter test` không thấy
 
@@ -473,9 +479,10 @@ lịch thừa khác, phép dọn dẹp của resync không được nới lỏng
 **3. "Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm nút có **hai**
 đường vào, và bản đầu chỉ xử lý một: app đang sống thì qua
 `onDidReceiveNotificationResponse`, còn app đã đóng thì nền tảng mở app rồi
-`payloadKhoiDong()` hỏi `getNotificationAppLaunchDetails()` — chỗ ấy đọc
-`payload` mà bỏ qua `actionId`. Nay cả hai đường gọi chung
-`khoaSauChamNut()`.
+`payloadKhoiDong()` *(nay `chamKhoiDong()`, đổi ở B5a 2026-09-29)* hỏi
+`getNotificationAppLaunchDetails()` — chỗ ấy đọc `payload` mà bỏ qua
+`actionId`. Nay cả hai đường mang `actionId` tới router, và router gọi
+`khoaSauChamNut()` ở **một** chỗ.
 
 > **Bằng chứng đã đo** (2026-09-07, `emulator-5554`, đồng hồ máy ảo 22:28):
 > `am kill` rồi `pidof` trống → bấm "Hoãn" → `logcat` có
@@ -626,7 +633,7 @@ màn hình khoá. Hạ tầng đã có sẵn (`payload = dedupeKey`, và `thuocT
 ```
 lib/core/notification/notification_tap_router.dart   # nơi DUY NHẤT điều hướng
 lib/core/notification/notification_deeplink.dart     # + deeplinkTuDedupeKey()
-lib/core/notification/os/os_notifier.dart            # + payloadDaCham, payloadKhoiDong
+lib/core/notification/os/os_notifier.dart            # + payloadDaCham, payloadKhoiDong (tên cũ — B5a đổi thành chamTho, chamKhoiDong)
 ```
 
 **`deeplinkTuDedupeKey()` là một bản SAO của `NotificationCandidate.deeplink`,
@@ -646,8 +653,10 @@ chứ không đi qua `NotificationScanner` — nhưng nó **vẫn bắn ra hệ 
 vẫn cần nhánh suy route cho tiền tố `billConflict:`. Chính test này bắt được chỗ
 thiếu ấy ngày 2026-09-13.
 
-**Hai đường vào, một lối ra.** `payloadDaCham` (app đang sống) và
-`payloadKhoiDong()` (app mở lên *vì* cú chạm) cùng đổ vào `NotificationTapRouter`.
+**Hai đường vào, một lối ra.** `chamTho` (app đang sống) và `chamKhoiDong()`
+(app mở lên *vì* cú chạm) cùng đổ vào `NotificationTapRouter` — tên cũ là
+`payloadDaCham` / `payloadKhoiDong()`, đổi ở B5a 2026-09-29 khi hai đường này
+thôi đổi khoá sẵn mà phát `ChamHdh(payload, actionId)` thô (mục 5h).
 
 ⚠️ **Trên Android một cú chạm có thể đến bằng CẢ HAI đường.** `start()` vì thế
 đọc chi tiết khởi động **trước** khi nghe stream, rồi nhớ payload ấy để bỏ qua
@@ -1005,6 +1014,129 @@ kiến vượt" là trạng thái **tại lúc quét**, không có mốc nào kh
 bắn một loạt đề xuất của quá khứ.
 
 **Không đổi schema**, không thêm trường đồng bộ.
+
+---
+
+## 5h. Nhật ký thông báo — B5a (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-28-b5a-nhat-ky-thong-bao-design.md` (đã
+duyệt); kế hoạch 7 task `…/plans/2026-09-28-b5a-nhat-ky-thong-bao.md`
+(gitignore). Bảng **chỉ ghi** — không màn nào đọc nó. Người đọc là **B5b**
+(học giờ gửi, đề xuất tắt nhóm bị lờ — spec `2026-09-28-b5b-hoc-gio-thong-bao-design.md`),
+chưa làm.
+
+### Bảng và cửa ghi
+
+- **`AppNotificationEvents`** (schema **v26**, `notification_event_table.dart`):
+  `id · idaccount · dedupeKey · suKien · luc · osId?`, chỉ thêm, không sửa.
+  **Cục bộ** như `AppNotifications` (quy tắc 9 `CLAUDE.md`): không vào
+  `SyncEntityType`, test quét thứ 15 cấm bốn tên của nó lọt vào đường đồng bộ.
+  Hai hàm dọn khi đổi tài khoản xoá cả bảng này; `NotificationScanner.start`
+  dọn hàng cũ hơn **180 ngày** (`giuSuKien`).
+- **`NhatKyThongBao`** (`core/notification/nhat_ky_thong_bao.dart`) là **cửa
+  ghi duy nhất** và **không bao giờ ném**: một lỗi CSDL chỉ thành một dòng
+  `[NhatKy] ghi … hỏng`, vì chín chỗ gọi đều là đường người dùng đang thao tác.
+  Mã tài khoản lấy từ tham số, không có thì từ nguồn phiên; `null` hay `≤ 0` là
+  **bỏ hàng**, không đoán (quy tắc 2).
+  ⚠️ DI đăng ký nó với nguồn phiên `() => null` rồi `main.dart` gắn nguồn thật
+  bằng `datNguonPhien(() => idaccountTuTrangThai(authBloc.state))` — vì
+  `AuthBloc` là **factory** trong DI: `sl<AuthBloc>()` trả một bloc **mới, chưa
+  đăng nhập**, và đọc phiên từ đó là mọi hàng bị bỏ, im lặng.
+- **Chín mã** ở `su_kien_thong_bao.dart` — tệp **Dart thuần**, để
+  `os_notifier.dart` dùng được mà không kéo drift theo (bẫy 7.7):
+
+| Mã | Khi nào | Ai ghi |
+|---|---|---|
+| `mo_trong_app` | chạm một dòng ở trung tâm thông báo | `NotificationCenterPage` |
+| `gat_bo` | vuốt xoá một dòng | `_xoaCoHoanTac`, sau `dao.dismiss` |
+| `khoi_phuc` | bấm *Hoàn tác* của cú vuốt | SnackBar của trang ấy |
+| `doc_tat_ca` | bấm *Đọc tất cả* — **một hàng mỗi khoá** | trang ấy, khoá đọc **trước** `markAllRead` |
+| `cham_hdh` | chạm thân thông báo hệ điều hành | `NotificationTapRouter.ghiCham` |
+| `nut_tra_ngay` | nút *Trả ngay* | như trên |
+| `hoan` | nút *Hoãn 1 ngày* | Android: tệp hàng chờ → `NhapHangCho`; nhánh isolate chính: router |
+| `dat_lich` | sau mỗi `zonedSchedule` của `resync`, **chỉ khi quyền bật**; `luc` = **mốc hẹn nổ**, `osId` = id lịch | `ReminderScheduler` |
+| `huy_lich` | trước `cancel(id)` khi `dat_lich` gần nhất của id còn ở tương lai; và ở `NotificationScanner.stop()` **trước** `cancelAll()` cho mọi `dat_lich` tương lai | `ReminderScheduler`, `NotificationScanner` |
+
+Cùng lượt, cột **`AppNotifications.osDeliveredAt`** (có từ v13 mà **chưa từng
+được ghi**) nay được `_banRaHeDieuHanh` ghi khi quyền đang bật — hỏi
+`daCoQuyen()` **một** lần mỗi mẻ.
+
+### ⚠️ Bốn chốt, phá cái nào cũng hỏng im lặng
+
+1. **Router là chỗ khử trùng DUY NHẤT.** `OsNotifier` phát cú chạm **thô**
+   (`ChamHdh(payload, actionId)`, `cham_hdh.dart`) ở cả hai đường — `chamTho`
+   và `chamKhoiDong()` — và `NotificationTapRouter._thucHien` gọi `ghiCham`
+   **sau** phép bỏ qua một lần của chính nó. Ghi ở tầng notifier là một cú
+   chạm Android đi bằng cả hai đường thành **hai** hàng. Router cũng bỏ qua
+   *Hoãn* khi điều hướng (ghi, không mở màn nào).
+2. **`doc_tat_ca` đọc khoá TRƯỚC `markAllRead`**, qua `khoaChuaDoc` — hàm ấy
+   **loại hàng đã gạt bỏ**, khác tập của `markAllRead`. Hàng đã gạt không còn
+   trên màn, ghi nó là dạy B5b một phản ứng không có thật.
+3. **`dat_lich` chỉ khi quyền bật.** Lịch đặt lúc quyền tắt không bao giờ hiện;
+   ghi nó là B5b đọc thành *"đã tới máy"*.
+4. **Chạm lúc chưa đăng nhập được GHI SAU khi đăng nhập**, cùng lúc router xả
+   cú chạm đang giữ — ghi ngay lúc chạm thì chưa có phiên nên hàng bị bỏ. Giá
+   phải trả: `luc` của hàng ấy là **lúc ghi**, không phải lúc chạm; và router
+   chỉ giữ cú chạm **mới nhất** (mục 5b), nên hai cú chạm trước khi đăng nhập
+   chỉ để lại một hàng.
+
+### Tệp hàng chờ — đường của mọi `hoan` trên Android
+
+Nút *Hoãn* chạy trong isolate nền của plugin: không DI, không CSDL, không phiên.
+`khiChamNutLucAppDong` nối một dòng `{"k": dedupeKey, "t": <ISO lúc bấm>}` vào
+**`app_flutter/su_kien_thong_bao_cho.jsonl`** (`hang_cho_su_kien.dart`);
+`NotificationScanner.start` gọi `NhapHangCho.nhap` — **đổi tên** tệp sang
+`.dang_nhap` trước khi đọc (một cú *Hoãn* đúng lúc ấy vào tệp mới thay vì bị xoá
+theo), nhận dòng khi khoá khớp một `dat_lich` **hoặc** một hàng
+`AppNotifications` của chính tài khoản ấy (không khớp — người khác đăng nhập
+giữa chừng — thì bỏ), ghi `hoan` với **mốc của chính cú bấm**, rồi xoá tệp.
+
+⚠️ **Spike Realme 2026-09-29** (Task 1, bản build tạm, người dùng bấm): trên
+Android cú bấm *Hoãn* tới **isolate nền kể cả khi tiến trình app còn sống** (app
+ở nền, cùng pid), và `path_provider` chạy được ở đó. Nên **mọi** hàng `hoan` trên
+Android đi qua tệp này, và chỉ vào bảng ở lần `start` **kế tiếp** — không trong
+cùng phiên.
+
+### Nghiệm thu máy thật (Realme RMX2205, 2026-09-29, bản debug v26, tài khoản 10)
+
+Bốn hoá đơn thử `B5a Mot · Hai · Ba · Bon` (hằng tuần, 10.000 đ) tạo qua giao
+diện rồi xoá qua giao diện sau khi đo; người dùng bấm trên khay, tôi đọc CSDL.
+
+| Ca | Kết quả |
+|---|---|
+| chạm một dòng ở trung tâm thông báo | ✅ một `mo_trong_app` |
+| chạm thân thông báo hệ điều hành | ✅ **đúng một** `cham_hdh` |
+| nút *Trả ngay* | ✅ `nut_tra_ngay`, mở đúng trang chi tiết hoá đơn |
+| nút *Hoãn*, rồi vuốt app khỏi Recents, rồi mở lại | ✅ `hoan` mang mốc **lúc bấm**, tệp hàng chờ đã xoá |
+| `osDeliveredAt` của ba thông báo vừa bắn | ✅ đủ ba |
+| hoá đơn nhắc trước 1 ngày | ✅ `dat_lich` mốc 05/10 08:00, `osId` khớp danh sách lịch của plugin |
+| xoá hoá đơn ấy | ✅ `huy_lich` cùng khoá + `osId`, lịch rời danh sách plugin — **~2,5 phút** sau lúc xoá (xem giới hạn cuối) |
+| app đóng **hẳn** rồi bấm *Hoãn* | ⬜ **không đo được** — trên Realme force-stop / vuốt khỏi Recents huỷ luôn thông báo trên khay |
+
+### Giới hạn nói trước
+
+- Vuốt bỏ thông báo khỏi **khay hệ điều hành** không ghi được — plugin không
+  báo sự kiện ấy.
+- Quyền tắt **sau** khi đặt lịch: `dat_lich` vẫn nằm đó. Quyền bật sau: lịch vẫn
+  nổ mà không có `dat_lich` (resync không đặt lại id đang chờ).
+- **Lịch hoãn không có `dat_lich`** (spec §6: hàng `hoan` đã mang đủ thông tin),
+  nên trả / xoá hoá đơn trước lúc nó nổ lại thì lịch bị huỷ **không kèm
+  `huy_lich`** — đo trên Realme với *B5a Ba*. Vô hại cho B5b: §2.4 spec ấy chỉ
+  đếm `osDeliveredAt` và `dat_lich` là *"tới máy"*, khử trùng theo `dedupeKey`
+  lấy mốc **sớm nhất**; `hoan` không bao giờ đếm là tới máy.
+- `dat_lich` / `huy_lich` đi theo lượt `resync` của vòng quét, mà vòng quét chỉ
+  chạy khi đồng bộ về trạng thái kết thúc (mục 4.5) — lúc backend không tới
+  được, đồng bộ giãn cách và nhật ký chậm theo vài phút.
+- Chưa đo: ca app đang **mở trên màn** rồi kéo khay bấm *Hoãn*; iOS.
+
+### Đổi tên API
+
+`OsNotifier.payloadDaCham` (`Stream<String>`, đã đổi khoá sẵn) →
+**`chamTho`** (`Stream<ChamHdh>`, thô); `payloadKhoiDong()` → **`chamKhoiDong()`**
+(`Future<ChamHdh?>`). Tài liệu viết trước 2026-09-29 dùng tên cũ — đó là tên lúc
+viết.
+
+**Không thêm trường đồng bộ.**
 
 ---
 

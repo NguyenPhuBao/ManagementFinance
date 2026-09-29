@@ -741,6 +741,17 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   ảo chỉ khi không có. ⚠️ Realme: người dùng duyệt nhập ~10 giao dịch thử và **giữ lại** (đáp án các bộ câu AI phải tính
   lại); phiên dừng khi mới nhập dở và **Assistive Touch trên Realme đọc ra đang tắt** — xem bàn giao
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-b1-tam-dung.md`.
+- ✅ **B5a — nhật ký thông báo xong trọn 7 task 2026-09-29 chiều** (mục **5h** `docs/NOTIFICATION_FEATURE.md`; spec
+  `specs/2026-09-28-b5a-nhat-ky-thong-bao-design.md`; `bf3f74b` spike → `fc8c7b5` … `771a9cc`): bảng cục bộ **schema v26**
+  `AppNotificationEvents`, **chỉ ghi** (B5b mới đọc), chín mã, cửa ghi duy nhất `NhatKyThongBao`; `osDeliveredAt` nay được
+  ghi. ⚠️ **API chạm đổi tên** `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong` (cú chạm **thô**, router là chỗ
+  khử trùng duy nhất). ⭐ **Spike Realme (Task 1)**: nút *Hoãn* vào **isolate nền kể cả khi app còn sống** → mọi `hoan` trên
+  Android đi qua tệp hàng chờ, vào bảng ở lần `start` kế tiếp. Nghiệm thu Realme bản debug: `mo_trong_app` · `cham_hdh`
+  (đúng một hàng) · `nut_tra_ngay` · `hoan` (mốc lúc bấm) · `osDeliveredAt` · `dat_lich` · `huy_lich` ✅; ca *app đóng hẳn*
+  **không dựng được** (Realme huỷ thông báo khi force-stop). Lượt ấy thấy một giới hạn spec chưa ghi: **lịch hoãn không có
+  `dat_lich` nên huỷ nó không có `huy_lich`** — vô hại với B5b (§2.4 spec ấy không đếm `hoan` là tới máy), ghi ở giới hạn
+  mục 5h. Bốn hoá đơn thử `B5a Mot · Hai · Ba · Bon` đã **xoá mềm** qua giao diện; Realme trả về bản **release** (SHA-1
+  `1671b313…`). `flutter test` **4353/4353** (4 skip), analyze 26. Kế là **B2**.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
@@ -3417,7 +3428,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Ba lỗi chỉ máy thật mới thấy, cả ba đều im lặng** — đây là ví dụ mạnh nhất từ trước tới nay cho quy tắc "đụng giao diện/điều hướng thì phải chạy máy ảo":
   > 1. **Thiếu `ActionBroadcastReceiver` trong `AndroidManifest.xml`.** Nút hiện đúng, `dumpsys notification` báo `actions=2` với `PendingIntent` đúng kiểu, nhưng không tiến trình nào nhận. Plugin **không tự khai báo** receiver này. Nay có `android_manifest_receivers_test.dart` canh **cả ba** receiver — vùng mà `flutter test`, `flutter analyze` và `flutter build apk` đều không nhìn thấy. Xem bẫy **7.11**.
   > 2. **`resync()` huỷ mất lịch vừa hoãn.** Lý lẽ "cùng khoá nên sống sót" **sai**: nhánh bỏ qua ấy chỉ chạy cho lịch resync *muốn*, mà hoá đơn chỉ được muốn khi mốc nhắc còn ở tương lai — trong khi chỉ hoãn được **sau khi** thông báo đã nổ. Sửa bằng tập `khongHuy` trong `resync()`.
-  > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()`.
+  > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` *(tên cũ — B5a 2026-09-29 đổi thành `chamKhoiDong()`)* đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()` *(từ B5a: gọi ở router, `NotificationTapRouter._thucHien`)*.
 - **Thông báo: badge số trên icon app** (2026-09-08, **schema không đổi**). `BadgeUpdater` nghe `watchUnreadCount` rồi đẩy sang `OsNotifier.datBadge()`; `NotificationScanner` **sở hữu** vòng đời của nó (`auth_bloc` đã có bốn chỗ start/stop, một lối song song là bốn chỗ nữa phải nhớ). Hai method mới trên interface: `activeIds()` và `datBadge()`. ⚠️ **Huỷ CHỌN LỌC, tuyệt đối không dọn sạch khay**: chỉ huỷ id suy từ `dedupeKey` của hàng đã đọc/đã xoá mềm, vì lịch hoá đơn nổ lúc app đóng và nhắc ghi chép hằng ngày **nằm trên khay mà bảng không biết** — số chưa đọc bằng 0 KHÔNG có nghĩa là khay phải trống. Và **không bao giờ `cancelAll()`**: nó cuốn theo cả lịch đang chờ trong AlarmManager. Lý do đầy đủ ở **mục 4.9 `docs/NOTIFICATION_FEATURE.md`**. 11 test mới.
   > ⚠️ **Đo trên máy thật đã sửa lại chính lời hứa ban đầu:** con số **gần như không bao giờ hiện trên Android** — nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt khi nhóm chỉ còn một thông báo con**, và một là số lượng thường gặp nhất. Khay trống thì `datBadge(6)` chạy trót lọt mà không hiện gì cả. Nên trên Android badge thực chất là **chấm**, suy từ *thông báo đang trên khay* chứ không từ số chưa đọc; con số chỉ có nghĩa cho iOS và cho launcher nào vẽ được. Phần người dùng thấy vẫn đúng: **đọc hết trong app thì chấm tắt**.
   > **Bằng chứng** (`emulator-5554`, Pixel Launcher): tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0` và **icon có chấm**; bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`, `dumpsys notification` còn **0** record của app, **chấm tắt**.
