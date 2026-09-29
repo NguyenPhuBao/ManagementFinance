@@ -280,3 +280,11 @@ Số đo đứng sau từng câu: mục **9.41** `docs/AI_EDGE_FEATURE.md` (Real
 6. **Ô Ghi chú màn này có khung viền theme** (có từ trước C2; Stitch không khung) — sửa không?
 7. **Đề xuất thêm từ khoá từ thói quen** (việc riêng ngay sau C2, người dùng chốt): hiện ở đâu, ngưỡng lặp, **chuyển** từ
    khoá khi chữ đang thuộc danh mục khác (*grab* ở Ăn uống), bỏ qua / thôi đề xuất, từ khoá có đi qua đồng bộ không.
+8. **"Dùng lâu dài thì AI có học không?"** (người dùng hỏi 2026-09-30 tối). Gemma **không** học — trọng số cố định, gói
+   không có API huấn luyện (mục 10 `AI_EDGE_FEATURE.md`). Thứ học theo thời gian là các lớp quanh nó: **B1** học lại từ sổ
+   mỗi lần mở màn (mọi giao dịch có ghi chú + danh mục, kể cả nhập qua Nhập nhanh) và từ phản hồi `chon`/`khac`/`bo_qua`
+   (`tatCap`); **ví hay dùng** theo danh mục học từ lịch sử; **từ khoá** sẽ học qua việc đề xuất (câu 7). Vì B1 đứng trước
+   AI, dùng càng lâu thì AI càng ít phải đoán danh mục. ⚠️ **Vòng lặp học sai**: danh mục AI đoán sai mà người dùng lưu luôn
+   không sửa thì B1 học đúng cái sai ấy (*"xăng" → Ăn uống*), rồi vì B1 thắng AI nên cái sai bị **khoá lại**. Cần bàn: có
+   loại giao dịch có danh mục do AI điền (chưa được người dùng xác nhận) khỏi mẫu học của B1 không, hay nhắc người dùng kiểm
+   danh mục khi nguồn là AI. Số tiền và ngày là luật cố định — không học, và không cần học; cách nói lạ thì phải sửa luật.
