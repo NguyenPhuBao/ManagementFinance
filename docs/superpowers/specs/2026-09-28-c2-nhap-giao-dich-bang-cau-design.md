@@ -68,8 +68,14 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 > đều bị lớp kiểm chặn, tức AI không thêm được gì ở hai ô ấy) rồi chọn bằng câu hỏi chọn:
 > 1. **Luật trước, AI chỉ khi luật bó tay** — thay *"AI đọc mọi câu"*. Luật điền tức thì; chỉ gọi Gemma khi luật **không
 >    đọc được số tiền** (mà câu có số — `cachDocSoTien` khác rỗng) hoặc **chưa đoán được danh mục** sau tên → B1 → từ khoá.
-> 2. **AI chỉ đọc số tiền + danh mục** — bỏ `loai`, `ngay`, `vi`, `ghi_chu` khỏi tool `dien_giao_dich` (prompt ngắn hơn);
->    ngày, ví, loại, ghi chú hoàn toàn do luật. Lớp kiểm số tiền / danh mục §2.8 giữ nguyên.
+> 2. ~~**AI chỉ đọc số tiền + danh mục**~~ — **thay cùng tối** bằng câu trả lời tự do của người dùng khi được hỏi riêng về
+>    ngày: *"tôi muốn AI sẽ thực hiện những phần kia nếu như các lớp trước không thực hiện được"*. Nguyên tắc chốt: **AI là
+>    lớp cuối cho MỌI ô** (số tiền, ngày, ví, thu/chi, danh mục) — ô nào luật / B1 / từ khoá đọc được thì **lớp trước
+>    thắng**; ô nào câu **có nhắc** mà các lớp trước không đọc được thì AI lấp, **qua lớp kiểm §2.8 như cũ**; không còn ô
+>    thiếu thì **không gọi AI**. Người dùng được cho xem số đo trước khi trả lời: AI sai cả 2 câu có ngày cần đọc, và lớp
+>    kiểm không bắt được một ngày sai mà hợp lệ. ⚠️ Khác bản đang chạy ở **số tiền**: hôm nay AI thắng luật khi số của AI là
+>    một cách đọc hợp lệ; theo nguyên tắc mới luật đọc được số tiền thì luật thắng.
+> "Có nhắc mà không đọc được" từng ô là **câu hỏi mở số 9** (§8) — phải chốt trước khi viết mã.
 > Chưa chốt (hỏi đầu phiên sau): luật điền **ngay** rồi AI bổ sung ô thiếu khi về (và bỏ qua ô người dùng đã sửa trong lúc
 > chờ), hay chờ AI rồi điền một lần; và *"chưa đoán được danh mục"* xảy ra thường (ghi chú mới) — có gọi AI cho riêng danh
 > mục không, hay chỉ khi thiếu số tiền.
@@ -263,8 +269,8 @@ TIỀN* (một câu: ô Nhập nhanh đi qua cùng đường bàn phím tự v�
 
 ## 8. Câu hỏi mở cho buổi thảo luận tiếp (ghi 2026-09-30 tối)
 
-Số đo đứng sau từng câu: mục **9.41** `docs/AI_EDGE_FEATURE.md` (Realme, 10 câu). Hai câu đầu **chặn** việc thi công banner
-*"ĐỔI LẦN HAI"* — hỏi trước khi viết mã.
+Số đo đứng sau từng câu: mục **9.41** `docs/AI_EDGE_FEATURE.md` (Realme, 10 câu). Câu **1, 2 và 9** **chặn** việc thi công
+banner *"ĐỔI LẦN HAI"* — hỏi trước khi viết mã (câu 2 và 9 nên chốt cùng nhau: cùng là "khi nào gọi AI").
 
 1. **Điền ngay rồi AI bổ sung ô thiếu, hay chờ AI rồi điền một lần?** Điền ngay: thấy kết quả luật tức thì, AI về chỉ điền
    ô còn trống và bỏ qua ô người dùng đã sửa trong lúc chờ (phức tạp hơn). Chờ: đơn giản, nhưng câu cần AI vẫn chờ ~18 s.
@@ -288,3 +294,9 @@ Số đo đứng sau từng câu: mục **9.41** `docs/AI_EDGE_FEATURE.md` (Real
    không sửa thì B1 học đúng cái sai ấy (*"xăng" → Ăn uống*), rồi vì B1 thắng AI nên cái sai bị **khoá lại**. Cần bàn: có
    loại giao dịch có danh mục do AI điền (chưa được người dùng xác nhận) khỏi mẫu học của B1 không, hay nhắc người dùng kiểm
    danh mục khi nguồn là AI. Số tiền và ngày là luật cố định — không học, và không cần học; cách nói lạ thì phải sửa luật.
+9. **"Câu có nhắc mà các lớp trước không đọc được" — định nghĩa từng ô** (chặn việc thi công, sinh ra từ nguyên tắc *"AI là
+   lớp cuối cho mọi ô"*). Đề xuất để bàn: **số tiền** — luật `null` mà `cachDocSoTien(cau)` khác rỗng (câu có số / số chữ);
+   **ngày** — luật `null` mà câu có chữ thời gian (`_coChuThoiGian`); **ví** — luật `null` mà câu có chữ nhắc ví
+   (`_cauNhacVi`); **thu/chi** — luật `null` (khó biết câu có "nhắc" không: có gọi AI chỉ vì thiếu thu/chi?); **danh mục** —
+   tên / B1 / từ khoá đều im (trùng câu 2). Câu nào **không** có ô nào thiếu thì không gọi AI. Kèm: ghi chú — khi AI lấp số
+   tiền, ghi chú luật còn chữ của số ấy (*"mất ba chục"*); dùng ghi chú AI (chỉ bớt chữ) cho ca ấy?
