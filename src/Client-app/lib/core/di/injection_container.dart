@@ -72,6 +72,7 @@ import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
+import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
@@ -343,6 +344,16 @@ Future<void> setupDependencies() async {
   // checkpoint đồng bộ — cùng mẫu `SecureStorageSyncCheckpointStore`.
   sl.registerLazySingleton<NotificationPrefsStore>(
     () => const SecureStorageNotificationPrefsStore(FlutterSecureStorage()),
+  );
+
+  // Đề xuất giờ nhắc / tắt nhóm bị lờ (B5b) — đọc nhật ký B5a, chỉ đề xuất.
+  sl.registerLazySingleton<DeXuatThongBaoNguon>(
+    () => DeXuatThongBaoNguon(
+      db: sl<AppDatabase>(),
+      store: sl<NotificationPrefsStore>(),
+      os: sl<OsNotifier>(),
+      nhatKy: sl<NhatKyThongBao>(),
+    ),
   );
 
   // Lịch nhắc đặt trước với hệ điều hành — cách DUY NHẤT để thông báo nổ khi
