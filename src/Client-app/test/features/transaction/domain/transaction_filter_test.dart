@@ -1,4 +1,7 @@
+import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/wallet/domain/dieu_chinh_so_du.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import 'package:flowmoney/features/transaction/domain/khoang_tien.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_filter.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,6 +119,41 @@ void main() {
     expect(s.income, 9000000);
     expect(s.expense, 100000);
     expect(s.net, 8900000);
+  });
+
+  group('summarize đi qua khoanVaoThongKe — CÙNG định nghĩa với Trang chủ / Phân tích', () {
+    // Đo trên Realme 2026-09-29: thẻ tổng Sổ giao dịch nói Thu nhập 15.145.000 đ, Trang chủ 15.135.000 đ — lệch
+    // đúng khoản "Điều chỉnh số dư" +10.000 đ ngày 10/09. Bước 1a (2026-09-23) đưa Trang chủ qua `tongThuChi`
+    // nhưng để lại vòng cộng thô ở đây; người dùng chốt con số của Phân tích là con số đúng.
+    final soCai = [
+      tx('luong', type: 'thu', categoryId: 'c-salary', amount: 9000000),
+      tx('an', categoryId: 'c-food', amount: 55000),
+      tx('dc-thu', type: 'thu', note: '$tienToDieuChinh: khớp số dư thật', amount: 10000),
+      tx('dc-chi', note: '$tienToDieuChinh: khớp số dư thật', amount: 7000),
+      tx('mo-so', type: 'thu', note: tienToMoSo, amount: 2000000),
+      tx('chua-dm', type: 'thu', note: 'Tiền thưởng', amount: 300000),
+    ];
+
+    test('khoản điều chỉnh số dư và khoản mở sổ KHÔNG vào thẻ tổng; khoản chưa phân loại thật VẪN vào', () {
+      final s = summarizeTransactions(soCai);
+      expect(s.income, 9300000,
+          reason: 'lương 9.000.000 + thưởng chưa phân loại 300.000; bỏ điều chỉnh +10.000 và mở sổ 2.000.000');
+      expect(s.expense, 55000, reason: 'ăn 55.000; bỏ điều chỉnh −7.000');
+    });
+
+    test('⭐ Sổ giao dịch = Trang chủ trên cùng một sổ (một định nghĩa, không phải hai vòng cộng)', () {
+      final s = summarizeTransactions(soCai);
+      final t = tongThuChi(
+        [
+          for (final e in soCai)
+            KhoanThuChi(ngay: e.date, soTien: e.amount, loai: e.type, categoryId: e.categoryId, ghiChu: e.note),
+        ],
+        from: DateTime(2026, 9),
+        to: DateTime(2026, 10),
+      );
+      expect(s.income, t.thu, reason: 'thẻ tổng Sổ giao dịch lệch Trang chủ = hai định nghĩa của "thu nhập"');
+      expect(s.expense, t.chi);
+    });
   });
 
   test('copyWith với clear để bỏ một điều kiện', () {
