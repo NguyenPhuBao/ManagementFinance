@@ -645,3 +645,43 @@ List<DiemDuBao> chuoiDuBao({
           );
         }(),
     ];
+
+/// Một nhóm cam kết sau khi gộp các kỳ QUÁ HẠN của cùng một đối tượng.
+class CamKetGop {
+  final CamKet dau;
+  final int soKy;
+  final double tong;
+
+  /// `null` khi các kỳ trong nhóm khác số tiền — không có "mỗi kỳ" nào đúng.
+  final double? moiKy;
+
+  const CamKetGop({required this.dau, required this.soKy, required this.tong, required this.moiKy});
+}
+
+/// Gộp các kỳ QUÁ HẠN của cùng (tên, loại, ví) thành một nhóm — cho chỗ đọc
+/// thành CÂU CHỮ (tool dự báo của Trợ lý AI). `duBaoCua` dồn mọi kỳ quá hạn về
+/// hôm nay nên chúng trùng cả tên lẫn ngày; khối Dự báo của trang Phân tích vẫn
+/// hiện mỗi kỳ một dòng và KHÔNG đi qua hàm này.
+///
+/// ⚠️ Kỳ chưa quá hạn không gộp: mỗi kỳ tương lai có ngày đến hạn riêng.
+List<CamKetGop> gopCamKetQuaHan(List<CamKet> camKet) {
+  final nhom = <String, List<CamKet>>{};
+  final thuTu = <String>[];
+  for (var i = 0; i < camKet.length; i++) {
+    final c = camKet[i];
+    final khoa = c.quaHan ? 'qh|${c.loai.name}|${c.walletId}|${c.ten}' : 'rieng|$i';
+    if (!nhom.containsKey(khoa)) thuTu.add(khoa);
+    (nhom[khoa] ??= []).add(c);
+  }
+  return [
+    for (final k in thuTu)
+      CamKetGop(
+        dau: nhom[k]!.first,
+        soKy: nhom[k]!.length,
+        tong: nhom[k]!.fold(0, (s, c) => s + c.soTien),
+        moiKy: nhom[k]!.every((c) => c.soTien == nhom[k]!.first.soTien)
+            ? nhom[k]!.first.soTien
+            : null,
+      ),
+  ];
+}

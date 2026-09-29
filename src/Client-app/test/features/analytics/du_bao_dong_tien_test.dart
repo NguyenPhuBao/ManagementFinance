@@ -932,4 +932,79 @@ void main() {
       expect(ds[30].theoNganSach, 70);
     });
   });
+
+  group('gopCamKetQuaHan — A3: kỳ quá hạn của cùng hoá đơn gộp một nhóm', () {
+    CamKet ck(String ten, DateTime ngay, double tien,
+            {bool quaHan = false, String vi = 'w1', LoaiCamKet loai = LoaiCamKet.hoaDon}) =>
+        CamKet(
+          ngay: ngay, ten: ten, loai: loai, walletId: vi, tenVi: 'Tiền mặt', soTien: tien,
+          categoryId: null, quaHan: quaHan, laKyChieu: false, tacDongTong: -tien,
+        );
+    final homNay = DateTime(2026, 9, 28);
+
+    test('⭐ hai kỳ Kiem quá hạn → MỘT nhóm, 2 kỳ, tổng 90.000, mỗi kỳ 45.000', () {
+      final r = gopCamKetQuaHan([
+        ck('Kiem', homNay, 45000, quaHan: true),
+        ck('Kiem', homNay, 45000, quaHan: true),
+        ck('Netflix', DateTime(2026, 10, 5), 100000),
+      ]);
+      expect(r.map((g) => g.dau.ten).toList(), ['Kiem', 'Netflix']);
+      expect(r[0].soKy, 2);
+      expect(r[0].tong, 90000);
+      expect(r[0].moiKy, 45000);
+      expect(r[1].soKy, 1);
+      expect(r[1].tong, 100000);
+    });
+
+    test('⚠️ kỳ CHƯA quá hạn cùng tên KHÔNG bị gộp — mỗi kỳ tương lai một ngày riêng', () {
+      final r = gopCamKetQuaHan([
+        ck('Kiem', DateTime(2026, 10, 2), 45000),
+        ck('Kiem', DateTime(2026, 10, 9), 45000),
+      ]);
+      expect(r.length, 2, reason: 'gộp kỳ tương lai là mất ngày đến hạn của kỳ sau');
+      expect(r.every((g) => g.soKy == 1), isTrue);
+    });
+
+    test('⚠️ cùng tên KHÁC ví, hoặc khác loại → hai nhóm', () {
+      expect(
+        gopCamKetQuaHan([
+          ck('Kiem', homNay, 45000, quaHan: true, vi: 'w1'),
+          ck('Kiem', homNay, 45000, quaHan: true, vi: 'w2'),
+        ]).length,
+        2,
+        reason: 'hai hoá đơn trùng tên ở hai ví là hai đối tượng',
+      );
+      expect(
+        gopCamKetQuaHan([
+          ck('Kiem', homNay, 45000, quaHan: true),
+          ck('Kiem', homNay, 45000, quaHan: true, loai: LoaiCamKet.trichTuDong),
+        ]).length,
+        2,
+        reason: 'hoá đơn và khoản trích trùng tên là hai đối tượng',
+      );
+    });
+
+    test('các kỳ khác số tiền → moiKy null, tổng vẫn đúng', () {
+      final g = gopCamKetQuaHan([
+        ck('Kiem', homNay, 45000, quaHan: true),
+        ck('Kiem', homNay, 50000, quaHan: true),
+      ]).single;
+      expect(g.tong, 95000);
+      expect(g.moiKy, isNull, reason: 'in "mỗi kỳ 45.000" khi kỳ sau là 50.000 là nói sai');
+    });
+
+    test('giữ THỨ TỰ của danh sách vào; Σ tong bằng Σ soTien (không mất đồng nào)', () {
+      final vao = [
+        ck('A', homNay, 10000, quaHan: true),
+        ck('B', homNay, 20000, quaHan: true),
+        ck('A', homNay, 10000, quaHan: true),
+        ck('C', DateTime(2026, 10, 1), 5000),
+      ];
+      final r = gopCamKetQuaHan(vao);
+      expect(r.map((g) => g.dau.ten).toList(), ['A', 'B', 'C']);
+      expect(r.fold<double>(0, (s, g) => s + g.tong), vao.fold<double>(0, (s, c) => s + c.soTien));
+    });
+
+    test('danh sách rỗng → rỗng', () => expect(gopCamKetQuaHan(const []), isEmpty));
+  });
 }
