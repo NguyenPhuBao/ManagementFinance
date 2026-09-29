@@ -1,5 +1,11 @@
 # B3 — Chi bất thường theo danh mục — thiết kế
 
+> ✅ **Thi công xong 2026-09-29** (`9c68762` → `a4aeca2`; tài liệu ở mục **3.35** `docs/ANALYTICS_FEATURE.md`; nghiệm thu trên
+> **Realme** thay vì máy ảo — người dùng chọn, và duyệt **giữ** dữ liệu thử). Hai chỗ hệ thống thật khác bản thiết kế
+> này: (1) mục 5 ghi nhãn `soDem('Số danh mục bất thường', n)` nhưng câu nói *"Thêm {n − 1} …"* — thi công theo kế hoạch:
+> nhãn **`Số danh mục khác bất thường`** mang **n − 1**; (2) nhãn *Chi bất thường* khai **xung đột "Thu"** (bẫy 4.42) — mẫu
+> câu không cần nó để qua sáu lớp chắn, nó chặn câu **mô hình** gán ngược số ấy thành khoản thu.
+
 **Ngày:** 2026-09-28 (tối). **Người dùng mở lại quyết định 17/09** (*"bất thường" là ngưỡng người dùng đặt, không dùng
 thống kê*) và duyệt bản thiết kế trong chat cùng ngày, với các lựa chọn: **trung vị + MAD** · ngưỡng **z hiệu chỉnh
 > 3,5** · tháng đang chạy **chỉ khi đã vượt thật** · **giữ riêng** với *Khoản chi lớn* · **không** thêm tool cho Trợ lý AI.

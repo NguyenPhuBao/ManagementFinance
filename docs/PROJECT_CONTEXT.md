@@ -766,6 +766,18 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   đơn bị cắt ở 360 dp, có từ trước (`77521f2`, nghiệm thu lại trên Realme: *10.000 đ · 3.000.000 đ · 100.000 đ* hiện đủ). ⚠️ Tài khoản 10 trên Realme nay: chi tháng 9 **5.001.000**, thu **14.635.000**, tổng
   số dư ví **3.644.000** (đọc Trang chủ) — **đáp án bộ câu AI phải tính lại**. Realme về bản **release** `4dd6aa52…`.
   `flutter test` **4427/4427** (4 skip; 4423 sau B2, +4 ca G51), analyze 26. Kế là **B3**.
+- ✅ **B3 — chi bất thường theo danh mục xong trọn 5 task 2026-09-29 tối** (mục **3.35** `docs/ANALYTICS_FEATURE.md`; spec
+  `specs/2026-09-28-b3-chi-bat-thuong-theo-danh-muc-design.md`; `9c68762` → `a4aeca2`): người dùng **mở lại quyết định
+  17/09** cho câu hỏi khác (*Khoản chi lớn* giữ nguyên). Hàm thuần `chiBatThuong` (trung vị + MAD, ≤ 12 tháng đã đóng có
+  phát sinh, cần ≥ 4, `z > 3,5` **và** phần vượt > `nguongCoNghia`); `nguongCoNghia` và thu nhập mỗi tháng **dời về
+  `analytics/domain`**, không đổi hành vi (31 ca mức nền giữ nguyên). `ThongKeKy.chiBatThuong` chỉ khi đơn vị Tháng (`null`
+  = không xét, rỗng = đã xét); khối Nhận xét trang Phân tích thêm câu *"Riêng {tên} kỳ này đã chi …, cao hơn hẳn mức thường
+  lệ …"*, qua sáu lớp chắn. Nghiệm thu **Realme** (người dùng duyệt nhập và **giữ**: năm khoản *Ăn uống* 10/4–10/8 quanh
+  900.000 + 1.500.000 ngày 20/9): T9 có câu *"…đã chi 1.600.000 đ, cao hơn hẳn mức thường lệ 900.000 đ"*, viền cảnh báo; T8
+  và Tuần 38 không có. Lượt ấy **mở G53** (nhãn trục thác nước in đè khi số dư âm, có từ trước, chưa sửa). ⚠️ Tài khoản 10
+  trên Realme nay: chi tháng 9 **6.501.000**, thu **14.635.000**, tổng số dư ví **−2.356.000** (số dư cuối kỳ trên khối
+  Dòng tiền) — **đáp án bộ câu AI phải tính lại**. Realme bản **release** `4e9b7f66…`. `flutter test` **4455/4455** (4
+  skip), analyze 26. Người dùng dặn **dừng sau B3, bàn giao cho phiên sau** — kế là **B4**.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

@@ -823,6 +823,11 @@ Loại thông báo **thứ 18** *(đếm theo `enum NotificationKind`, đo bằn
 (`ANALYTICS_FEATURE.md` mục 3.25) — thứ Rocket Money gọi là *cảnh báo bất
 thường*.
 
+> **B3 (2026-09-29) trả lời câu KHÁC, không thay luật này.** *Chi bất thường theo danh mục* (`ANALYTICS_FEATURE.md` mục
+> **3.35**) hỏi *"tháng này cả danh mục X có lạ so với chính tôi không"* — trung vị + MAD trên ≥ 4 tháng có phát sinh, chỉ
+> hiện ở khối Nhận xét trang Phân tích, **không** phát thông báo. Người dùng mở lại quyết định 17/09 cho câu hỏi ấy;
+> ngưỡng tay của loại thông báo này giữ nguyên.
+
 ### ⚠️ "Bất thường" ở đây là NGƯỠNG, không phải thống kê
 
 Rocket Money và Copilot so một khoản với **mức thường** của danh mục ấy. Người
