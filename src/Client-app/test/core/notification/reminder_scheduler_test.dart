@@ -23,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
@@ -38,6 +39,9 @@ class OsGia implements OsNotifier {
   final List<int> daHuy = [];
   int soLanDat = 0;
 
+  /// Quyền thông báo đang bật không (B5a: chỉ ghi `dat_lich` khi bật).
+  bool quyen = true;
+
   @override
   bool get isSupported => true;
   @override
@@ -46,7 +50,7 @@ class OsGia implements OsNotifier {
   Future<bool> requestPermission() async => true;
 
   @override
-  Future<bool> daCoQuyen() async => true;
+  Future<bool> daCoQuyen() async => quyen;
   @override
   Future<void> show({
     required int id,
@@ -828,6 +832,61 @@ void main() {
       expect(os.lich, isEmpty,
           reason: 'Lịch đã đặt nằm trong AlarmManager và không tự biến mất khi '
               'người dùng gạt công tắc.');
+    });
+  });
+
+  group('nhật ký B5a', () {
+    late NhatKyThongBao nhatKy;
+    setUp(() => nhatKy = NhatKyThongBao(dao: db.notificationEventDao, idaccountPhien: () => null, clock: () => now));
+
+    ReminderScheduler dungCoNhatKy(List<Bill> bills) => ReminderScheduler(
+          osNotifier: os,
+          loadBills: (id, at) async => bills,
+          prefsStore: prefs,
+          clock: () => now,
+          nhatKy: nhatKy,
+          eventDao: db.notificationEventDao,
+        );
+
+    Bill hd() => hoaDon(denHan: DateTime(2026, 9, 20));
+    final khoa = billDueDedupeKey(billId: 'hd1', dueDate: DateTime(2026, 9, 20), leadDays: 3);
+
+    Future<List<AppNotificationEvent>> suKien(String ma) async => [
+          for (final e in await db.notificationEventDao.getAll(accountId))
+            if (e.suKien == ma) e,
+        ];
+
+    test('đặt một lịch lúc quyền bật → đúng MỘT dat_lich, luc = mốc nhắc, osId = osScheduledId(khoá)', () async {
+      await dungCoNhatKy([hd()]).resync(accountId);
+      final dat = await suKien(SuKienThongBao.datLich);
+      expect(dat, hasLength(1));
+      expect(dat.single.dedupeKey, khoa);
+      expect(dat.single.osId, osScheduledId(khoa));
+      expect(dat.single.luc, os.lich[osScheduledId(khoa)]!.when,
+          reason: 'luc của dat_lich là MỐC HẸN NỔ, không phải lúc đặt — B5b suy "đã tới máy lúc T" từ nó');
+    });
+
+    test('resync lần hai (id đã chờ) KHÔNG thêm dat_lich — resync luỹ đẳng', () async {
+      await dungCoNhatKy([hd()]).resync(accountId);
+      await dungCoNhatKy([hd()]).resync(accountId);
+      expect(await suKien(SuKienThongBao.datLich), hasLength(1));
+    });
+
+    test('hoá đơn trả xong, lịch còn chờ → cancel và đúng MỘT huy_lich cùng khoá', () async {
+      await dungCoNhatKy([hd()]).resync(accountId);
+      await dungCoNhatKy(const []).resync(accountId);
+      expect(os.daHuy, [osScheduledId(khoa)]);
+      final huy = await suKien(SuKienThongBao.huyLich);
+      expect(huy.map((e) => '${e.dedupeKey}#${e.osId}'), ['$khoa#${osScheduledId(khoa)}'],
+          reason: 'cancel chỉ có id — khoá tra ngược từ dat_lich trước đó');
+    });
+
+    test('quyền TẮT → vẫn đặt lịch (hành vi cũ) nhưng KHÔNG ghi dat_lich', () async {
+      os.quyen = false;
+      await dungCoNhatKy([hd()]).resync(accountId);
+      expect(os.lich, hasLength(1));
+      expect(await suKien(SuKienThongBao.datLich), isEmpty,
+          reason: 'lịch đặt lúc quyền tắt không bao giờ hiện — ghi dat_lich là dạy B5b một lần "tới máy" không có thật');
     });
   });
 }

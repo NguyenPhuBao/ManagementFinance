@@ -28,6 +28,7 @@ import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/notification/hang_cho_su_kien.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/database/daos/notification_event_dao.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
@@ -52,6 +53,13 @@ class OsNotifierGia implements OsNotifier {
   /// người dùng đã từ chối quyền thông báo.
   bool nemKhiBan = false;
 
+  /// Quyền thông báo đang bật không (B5a: chỉ ghi `osDeliveredAt` khi bật).
+  bool quyen = true;
+
+  /// Chạy NGAY TRONG `cancelAll`, trước khi đếm — để ca B5a kiểm được `huy_lich`
+  /// đã nằm trong bảng TRƯỚC khi lịch bị cuốn đi.
+  Future<void> Function()? truocHuyHet;
+
   @override
   bool get isSupported => true;
 
@@ -62,7 +70,7 @@ class OsNotifierGia implements OsNotifier {
   Future<bool> requestPermission() async => true;
 
   @override
-  Future<bool> daCoQuyen() async => true;
+  Future<bool> daCoQuyen() async => quyen;
 
   @override
   Future<void> show({
@@ -106,7 +114,10 @@ class OsNotifierGia implements OsNotifier {
   Future<void> cancel(int id) async => daHuy.add(id);
 
   @override
-  Future<void> cancelAll() async => soLanHuyHet++;
+  Future<void> cancelAll() async {
+    await truocHuyHet?.call();
+    soLanHuyHet++;
+  }
 }
 
 void main() {
@@ -165,6 +176,8 @@ void main() {
     KeHoachTaiPhanBo? keHoach,
     void Function()? onNapKeHoach,
     NhapHangCho? nhapHangCho,
+    NhatKyThongBao? nhatKy,
+    NotificationEventDao? eventDao,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -190,6 +203,8 @@ void main() {
       },
       resyncLich: onResyncLich,
       nhapHangCho: nhapHangCho,
+      nhatKy: nhatKy,
+      eventDao: eventDao,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
     );
@@ -1079,6 +1094,64 @@ void main() {
       await scanner.scan(accountId);
 
       expect(soLan, 0);
+    });
+  });
+
+  group('nhật ký B5a', () {
+    late NhatKyThongBao nhatKy;
+    setUp(() => nhatKy = NhatKyThongBao(dao: db.notificationEventDao, idaccountPhien: () => null, clock: () => now));
+
+    NotificationScanner dungCoNhatKy(OsNotifierGia os) =>
+        dungScanner(osNotifier: os, nhatKy: nhatKy, eventDao: db.notificationEventDao);
+
+    test('bắn ngay lúc quyền BẬT → hàng mới có osDeliveredAt = clock của scanner', () async {
+      final os = OsNotifierGia();
+      expect(await dungCoNhatKy(os).scan(accountId), 1);
+      final hang = (await db.notificationDao.getAll(accountId)).single;
+      expect(hang.osDeliveredAt, now, reason: 'cột có từ v13 mà chưa từng được ghi — B5b cần biết thông báo đã tới máy');
+    });
+
+    test('quyền TẮT → osDeliveredAt vẫn null', () async {
+      final os = OsNotifierGia()..quyen = false;
+      await dungCoNhatKy(os).scan(accountId);
+      expect((await db.notificationDao.getAll(accountId)).single.osDeliveredAt, isNull,
+          reason: 'Android 13 nhận show im lặng khi quyền tắt — ghi mốc là nói dối');
+    });
+
+    test('start() dọn nhật ký cũ hơn 180 ngày, giữ hàng 179 ngày', () async {
+      await nhatKy.ghi('cu', SuKienThongBao.moTrongApp, idaccount: accountId, luc: now.subtract(const Duration(days: 181)));
+      await nhatKy.ghi('moi', SuKienThongBao.moTrongApp, idaccount: accountId, luc: now.subtract(const Duration(days: 179)));
+      final scanner = dungCoNhatKy(OsNotifierGia());
+      await scanner.start(accountId);
+      expect((await db.notificationEventDao.getAll(accountId)).map((e) => e.dedupeKey), ['moi'],
+          reason: 'giuSuKien = 180 ngày — lâu hơn thông báo (90) vì B5b học trên nhiều quý');
+      await scanner.stop();
+    });
+
+    test('stop() ghi huy_lich cho lịch TƯƠNG LAI (không cho lịch đã qua), TRƯỚC cancelAll', () async {
+      await nhatKy.ghi('billDue:toi:2026-09-20:3', SuKienThongBao.datLich,
+          idaccount: accountId, luc: now.add(const Duration(days: 2)), osId: 11);
+      await nhatKy.ghi('billDue:qua:2026-09-10:3', SuKienThongBao.datLich,
+          idaccount: accountId, luc: now.subtract(const Duration(days: 1)), osId: 12);
+      final os = OsNotifierGia();
+      var huyLucCancelAll = -1;
+      os.truocHuyHet = () async {
+        huyLucCancelAll = [
+          for (final e in await db.notificationEventDao.getAll(accountId))
+            if (e.suKien == SuKienThongBao.huyLich) e,
+        ].length;
+      };
+      final scanner = dungCoNhatKy(os);
+      await scanner.start(accountId);
+      await scanner.stop();
+
+      final huy = [
+        for (final e in await db.notificationEventDao.getAll(accountId))
+          if (e.suKien == SuKienThongBao.huyLich) e,
+      ];
+      expect(huy.map((e) => '${e.dedupeKey}#${e.osId}'), ['billDue:toi:2026-09-20:3#11'],
+          reason: 'không ghi thì lần đăng nhập lại B5b đọc lịch đã bị huỷ thành "đã tới máy"');
+      expect(huyLucCancelAll, 1, reason: 'huy_lich phải nằm trong bảng TRƯỚC khi cancelAll cuốn lịch đi');
     });
   });
 }

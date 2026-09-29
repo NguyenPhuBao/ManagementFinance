@@ -365,6 +365,9 @@ Future<void> setupDependencies() async {
       loadLastTransactionAt: (idaccount) =>
           sl<AppDatabase>().transactionDao.getLastTransactionDate(idaccount),
       prefsStore: sl<NotificationPrefsStore>(),
+      // Nhật ký B5a: `dat_lich` / `huy_lich` — B5b suy "đã tới máy" từ chúng.
+      nhatKy: sl<NhatKyThongBao>(),
+      eventDao: sl<AppDatabase>().notificationEventDao,
     ),
   );
 
@@ -484,6 +487,9 @@ Future<void> setupDependencies() async {
             await sl<AppDatabase>().notificationEventDao.coDatLich(id, k) ||
             await sl<AppDatabase>().notificationDao.coDedupeKey(id, k),
       ),
+      // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
+      nhatKy: sl<NhatKyThongBao>(),
+      eventDao: sl<AppDatabase>().notificationEventDao,
     ),
   );
 

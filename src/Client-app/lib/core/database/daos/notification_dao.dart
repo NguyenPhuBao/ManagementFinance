@@ -106,6 +106,15 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
     return [for (final r in rows) r.dedupeKey];
   }
 
+  /// Ghi mốc đã giao thông báo cho hệ điều hành (lúc quyền đang bật). B5a: cột
+  /// này có từ v13 mà chưa từng được ghi.
+  Future<void> danhDauDaBan(int idaccount, String dedupeKey, DateTime luc) async {
+    await (update(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) & t.dedupeKey.equals(dedupeKey)))
+        .write(AppNotificationsCompanion(osDeliveredAt: Value(luc)));
+  }
+
   /// Tài khoản có hàng nào mang khoá này không (kể cả hàng đã xoá mềm) — bộ
   /// nhập hàng chờ B5a dùng để biết một cú Hoãn thuộc về ai.
   Future<bool> coDedupeKey(int idaccount, String dedupeKey) async {

@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 
 import '../database/app_database.dart';
 import '../database/daos/notification_dao.dart';
+import '../database/daos/notification_event_dao.dart';
 import '../sync/sync_models.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/budget/data/models/budget_entity.dart';
@@ -21,6 +22,7 @@ import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
+import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
@@ -160,6 +162,16 @@ class NotificationScanner {
   /// nhập MỘT lần mỗi [start]. `null` thì bỏ qua (test không cần tệp).
   final NhapHangCho? nhapHangCho;
 
+  /// Nhật ký B5a: `huy_lich` lúc [stop] cho lịch còn chờ. `null` thì bỏ qua.
+  final NhatKyThongBao? nhatKy;
+
+  /// Nhật ký B5a: tra `dat_lich` còn chờ lúc [stop], và dọn hàng cũ ở [start].
+  final NotificationEventDao? eventDao;
+
+  /// Nhật ký B5a sống lâu hơn thông báo ([giuThongBao]) vì B5b học trên nhiều
+  /// quý — lịch sử phản ứng phải sống lâu hơn chính thông báo.
+  static const Duration giuSuKien = Duration(days: 180);
+
   final Stream<SyncStatus> syncStatus;
 
   /// Sự kiện vòng đời app. Bỏ trống thì chỉ còn hai mốc kích hoạt kia.
@@ -222,6 +234,8 @@ class NotificationScanner {
     this.prefsStore,
     this.resyncLich,
     this.nhapHangCho,
+    this.nhatKy,
+    this.eventDao,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -242,6 +256,7 @@ class NotificationScanner {
     // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
     try {
       await dao.purgeOlderThan(clock().subtract(giuThongBao));
+      await eventDao?.purgeOlderThan(clock().subtract(giuSuKien));
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
@@ -316,6 +331,7 @@ class NotificationScanner {
     _sub = null;
     await _subVongDoi?.cancel();
     _subVongDoi = null;
+    final id = _idaccount;
     _idaccount = null;
     // TRƯỚC `cancelAll()`: updater còn sống mà khay vừa bị dọn sạch thì lượt
     // đẩy cuối cùng sẽ dựng lại đúng bản tóm tắt vừa gỡ đi — và nó mang tên
@@ -323,6 +339,17 @@ class NotificationScanner {
     try {
       await badgeUpdater?.stop();
     } catch (_) {}
+    // Nhật ký B5a: lịch còn chờ sắp bị cancelAll cuốn đi. Không ghi huy_lich thì
+    // lần đăng nhập lại B5b đọc chúng thành "đã tới máy". TRƯỚC cancelAll.
+    if (id != null) {
+      try {
+        final con = await eventDao?.datLichSau(id, clock()) ?? const [];
+        for (final l in con) {
+          await nhatKy?.ghi(l.dedupeKey, SuKienThongBao.huyLich,
+              idaccount: id, osId: l.osId);
+        }
+      } catch (_) {}
+    }
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
       await osNotifier?.cancelAll();
@@ -461,7 +488,9 @@ class NotificationScanner {
       // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài. Giờ im lặng
       // cũng chặn đúng ở đây, cùng một ngữ nghĩa — người dùng ngủ dậy mở app
       // vẫn phải thấy đủ những gì đã xảy ra đêm qua.
-      if (prefs.osBat && !prefs.dangImLang(at)) await _banRaHeDieuHanh(moi);
+      if (prefs.osBat && !prefs.dangImLang(at)) {
+        await _banRaHeDieuHanh(moi, idaccount);
+      }
       await _dongBoLich(idaccount);
 
       _ghiNhat(idaccount, moi.length);
@@ -500,9 +529,19 @@ class NotificationScanner {
   /// chuyện thường, và để lỗi đó nổi lên là mất luôn trung tâm thông báo trong
   /// app — tức là mất phần vẫn còn dùng được. Nuốt riêng từng cái để một thông
   /// báo hỏng không chặn những cái sau.
-  Future<void> _banRaHeDieuHanh(List<AppNotificationsCompanion> moi) async {
+  Future<void> _banRaHeDieuHanh(
+    List<AppNotificationsCompanion> moi,
+    int idaccount,
+  ) async {
     final os = osNotifier;
     if (os == null || moi.isEmpty) return;
+
+    // Nhật ký B5a: chỉ ghi `osDeliveredAt` khi quyền đang bật — Android 13+ nhận
+    // `show` im lặng mà không hiện gì khi quyền tắt. Hỏi MỘT lần cho cả lô.
+    var coQuyen = false;
+    try {
+      coQuyen = await os.daCoQuyen();
+    } catch (_) {}
 
     for (final e in moi) {
       try {
@@ -512,6 +551,9 @@ class NotificationScanner {
           body: e.body.value,
           payload: e.dedupeKey.value,
         );
+        if (coQuyen) {
+          await dao.danhDauDaBan(idaccount, e.dedupeKey.value, clock());
+        }
       } catch (_) {
         // Bỏ qua có chủ ý — xem chú thích trên.
       }
