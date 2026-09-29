@@ -90,6 +90,22 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
         .write(AppNotificationsCompanion(readAt: Value(DateTime.now())));
   }
 
+  /// Khoá của mọi hàng chưa đọc **đang hiện** (chưa gạt bỏ) — nhật ký B5a ghi một
+  /// `doc_tat_ca` cho mỗi khoá khi người dùng bấm "Đọc tất cả".
+  ///
+  /// ⚠️ Không đúng bằng tập của [markAllRead]: hàm ấy đánh dấu cả hàng đã gạt bỏ
+  /// mà chưa đọc. Hàng đã gạt không còn trên màn, nên cú bấm không phải phản ứng
+  /// với nó — ghi nó vào nhật ký là dạy B5b một phản ứng không có thật.
+  Future<List<String>> khoaChuaDoc(int idaccount) async {
+    final rows = await (select(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.readAt.isNull() &
+              t.dismissedAt.isNull()))
+        .get();
+    return [for (final r in rows) r.dedupeKey];
+  }
+
   Future<void> markAllRead(int idaccount) async {
     await (update(appNotifications)
           ..where((t) =>

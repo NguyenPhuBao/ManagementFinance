@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/notification_dao.dart';
+import '../../../../core/notification/nhat_ky_thong_bao.dart';
 import '../../../../core/notification/notification_deeplink.dart';
 import '../../../../core/notification/notification_rules.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
@@ -15,7 +18,7 @@ import '../../../../shared/theme/app_colors.dart';
 /// Thiết kế Stitch chưa vẽ màn này (chỉ có panel rút gọn trên Home), nên bố cục
 /// bám hệ màu và kiểu thẻ đang dùng thật trong `AppColors`.
 class NotificationCenterPage extends StatefulWidget {
-  const NotificationCenterPage({super.key, this.idaccount, this.dao});
+  const NotificationCenterPage({super.key, this.idaccount, this.dao, this.nhatKy});
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
   ///
@@ -33,6 +36,10 @@ class NotificationCenterPage extends StatefulWidget {
   /// Bỏ trống thì lấy từ chỗ dựng phụ thuộc. Ở đây `??` là an toàn: một DAO
   /// không bao giờ mang nghĩa "cố ý để trống".
   final NotificationDao? dao;
+
+  /// Nhật ký thông báo (B5a) — tiêm cho test; mặc định `sl<NhatKyThongBao>()`.
+  /// Chưa đăng ký thì trang vẫn chạy, chỉ không ghi nhật ký.
+  final NhatKyThongBao? nhatKy;
 
   @override
   State<NotificationCenterPage> createState() =>
@@ -63,6 +70,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   Widget build(BuildContext context) {
     final idaccount = widget.idaccount;
     final dao = widget.dao ?? sl<AppDatabase>().notificationDao;
+    final nhatKy = widget.nhatKy ??
+        (sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -89,8 +98,18 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               builder: (context, snapshot) {
                 final chuaDoc = snapshot.data ?? 0;
                 return TextButton(
-                  onPressed:
-                      chuaDoc == 0 ? null : () => dao.markAllRead(idaccount),
+                  onPressed: chuaDoc == 0
+                      ? null
+                      : () async {
+                          // Đọc khoá TRƯỚC khi đánh dấu: sau `markAllRead` thì
+                          // tập "chưa đọc" đã rỗng. Một `doc_tat_ca` mỗi khoá.
+                          final khoa = await dao.khoaChuaDoc(idaccount);
+                          await dao.markAllRead(idaccount);
+                          if (nhatKy != null) {
+                            unawaited(nhatKy.ghiNhieu(khoa, SuKienThongBao.docTatCa,
+                                idaccount: idaccount));
+                          }
+                        },
                   child: Text(
                     'Đọc tất cả',
                     style: TextStyle(
@@ -110,13 +129,13 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           : Column(
               children: [
                 _HangChip(dangChon: _loc, onChon: _doiLoc),
-                Expanded(child: _danhSach(dao, idaccount)),
+                Expanded(child: _danhSach(dao, idaccount, nhatKy)),
               ],
             ),
     );
   }
 
-  Widget _danhSach(NotificationDao dao, int idaccount) {
+  Widget _danhSach(NotificationDao dao, int idaccount, NhatKyThongBao? nhatKy) {
     return StreamBuilder<List<AppNotification>>(
       stream: dao.watchFeed(
         idaccount,
@@ -159,6 +178,10 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               item: items[i],
               onTap: () {
                 dao.markRead(items[i].id);
+                if (nhatKy != null) {
+                  unawaited(nhatKy.ghi(items[i].dedupeKey,
+                      SuKienThongBao.moTrongApp, idaccount: idaccount));
+                }
                 final route = items[i].deeplink;
                 if (route == null) return;
                 // `go` chứ không `push` cho route thuộc thanh tab: push
@@ -172,7 +195,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                 }
               },
               onLongPress: () => _doiTrangThaiDoc(context, dao, items[i]),
-              onDismiss: () => _xoaCoHoanTac(context, dao, items[i]),
+              onDismiss: () =>
+                  _xoaCoHoanTac(context, dao, items[i], nhatKy, idaccount),
             );
           },
         );
@@ -343,9 +367,14 @@ Future<void> _xoaCoHoanTac(
   BuildContext context,
   NotificationDao dao,
   AppNotification item,
+  NhatKyThongBao? nhatKy,
+  int idaccount,
 ) async {
   final thanh = ScaffoldMessenger.of(context);
   await dao.dismiss(item.id);
+  if (nhatKy != null) {
+    unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.gatBo, idaccount: idaccount));
+  }
 
   // Nội dung chung chung và tự ẩn sau vài giây: dải tạm thời là để báo việc
   // vừa xảy ra, không phải để đọc lại chi tiết.
@@ -356,7 +385,12 @@ Future<void> _xoaCoHoanTac(
       duration: const Duration(seconds: 4),
       action: SnackBarAction(
         label: 'Hoàn tác',
-        onPressed: () => dao.khoiPhuc(item.id),
+        onPressed: () {
+          dao.khoiPhuc(item.id);
+          if (nhatKy != null) {
+            unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
+          }
+        },
       ),
     ),
   );

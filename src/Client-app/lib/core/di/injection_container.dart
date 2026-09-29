@@ -71,6 +71,7 @@ import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
+import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -319,6 +320,17 @@ Future<void> setupDependencies() async {
   );
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
+
+  // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
+  // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
+  // `sl<AuthBloc>()` ở đây là một bloc MỚI luôn chưa đăng nhập — đọc nó là nhật
+  // ký không bao giờ ghi được gì, im lặng.
+  sl.registerLazySingleton<NhatKyThongBao>(
+    () => NhatKyThongBao(
+      dao: sl<AppDatabase>().notificationEventDao,
+      idaccountPhien: () => null,
+    ),
+  );
 
   // Tuỳ chọn thông báo. Dùng chung `FlutterSecureStorage` với token và
   // checkpoint đồng bộ — cùng mẫu `SecureStorageSyncCheckpointStore`.

@@ -89,4 +89,15 @@ void main() {
     expect(await _readIdWith(tester, AuthSuccess(user: _user('0'))), isNull);
     expect(await _readIdWith(tester, AuthSuccess(user: _user('-3'))), isNull);
   });
+
+  test('idaccountTuTrangThai — CÙNG phép với currentAccountIdOrNull, cho nơi không có BuildContext (B5a)', () {
+    // Nhật ký thông báo nối nguồn phiên ở `main.dart`, ngoài cây widget. Một phép tách thứ hai chép tay là hai
+    // định nghĩa của "tài khoản đang đăng nhập" — đúng thứ G4 đã phải dọn.
+    expect(idaccountTuTrangThai(AuthSuccess(user: _user('10'))), 10);
+    expect(idaccountTuTrangThai(AuthInitial()), isNull);
+    expect(idaccountTuTrangThai(const AuthUnauthenticated()), isNull);
+    expect(idaccountTuTrangThai(AuthSuccess(user: _user('khong-phai-so'))), isNull);
+    expect(idaccountTuTrangThai(AuthSuccess(user: _user('0'))), isNull);
+    expect(idaccountTuTrangThai(AuthSuccess(user: _user('-3'))), isNull);
+  });
 }

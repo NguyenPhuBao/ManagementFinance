@@ -14,6 +14,8 @@ import 'core/constants/app_localization.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
+import 'core/auth/current_account.dart';
+import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';
 import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
@@ -65,6 +67,10 @@ void main() async {
 
   // Tạo AuthBloc một lần trước khi runApp để có thể truyền vào GoRouter
   final authBloc = sl<AuthBloc>();
+  // Nhật ký thông báo (B5a) đọc tài khoản từ ĐÚNG bloc của app — xem chú thích
+  // đăng ký `NhatKyThongBao` ở `injection_container.dart`.
+  sl<NhatKyThongBao>()
+      .datNguonPhien(() => idaccountTuTrangThai(authBloc.state));
 
   // Restore auth state từ token đã lưu → GoRouter redirect guard hoạt động đúng ngay từ đầu
   if (hasToken) {
