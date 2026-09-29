@@ -9399,7 +9399,7 @@ class AppNotificationEvent extends DataClass
   /// Đúng chuỗi payload đã giao cho hệ điều hành.
   final String dedupeKey;
 
-  /// Một trong chín mã của `SuKienThongBao`.
+  /// Một trong mười mã của `SuKienThongBao` (B5b thêm `bo_qua_de_xuat`).
   final String suKien;
 
   /// Lúc xảy ra. Riêng `dat_lich`: **mốc hẹn nổ**, không phải lúc đặt.

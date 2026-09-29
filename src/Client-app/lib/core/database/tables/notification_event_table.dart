@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 ///
 /// Mỗi hàng là một sự kiện quanh một thông báo: người dùng phản ứng (mở, gạt,
 /// hoãn…) hoặc app đặt / huỷ một lịch với hệ điều hành. B5a chỉ ghi; B5b mới đọc
-/// để học giờ nhắc. Chín mã ở `SuKienThongBao` (`nhat_ky_thong_bao.dart`).
+/// để học giờ nhắc. Mười mã ở `SuKienThongBao` (`su_kien_thong_bao.dart`).
 ///
 /// ## Vì sao không có cột đồng bộ
 ///
@@ -27,7 +27,7 @@ class AppNotificationEvents extends Table {
   /// Đúng chuỗi payload đã giao cho hệ điều hành.
   TextColumn get dedupeKey => text()();
 
-  /// Một trong chín mã của `SuKienThongBao`.
+  /// Một trong mười mã của `SuKienThongBao` (B5b thêm `bo_qua_de_xuat`).
   TextColumn get suKien => text()();
 
   /// Lúc xảy ra. Riêng `dat_lich`: **mốc hẹn nổ**, không phải lúc đặt.

@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -1047,7 +1047,7 @@ chưa làm.
   bằng `datNguonPhien(() => idaccountTuTrangThai(authBloc.state))` — vì
   `AuthBloc` là **factory** trong DI: `sl<AuthBloc>()` trả một bloc **mới, chưa
   đăng nhập**, và đọc phiên từ đó là mọi hàng bị bỏ, im lặng.
-- **Chín mã** ở `su_kien_thong_bao.dart` — tệp **Dart thuần**, để
+- **Chín mã** *(mười từ B5b — `bo_qua_de_xuat`, mục 5i)* ở `su_kien_thong_bao.dart` — tệp **Dart thuần**, để
   `os_notifier.dart` dùng được mà không kéo drift theo (bẫy 7.7):
 
 | Mã | Khi nào | Ai ghi |
@@ -1128,7 +1128,9 @@ diện rồi xoá qua giao diện sau khi đo; người dùng bấm trên khay, 
   nên trả / xoá hoá đơn trước lúc nó nổ lại thì lịch bị huỷ **không kèm
   `huy_lich`** — đo trên Realme với *B5a Ba*. Vô hại cho B5b: §2.4 spec ấy chỉ
   đếm `osDeliveredAt` và `dat_lich` là *"tới máy"*, khử trùng theo `dedupeKey`
-  lấy mốc **sớm nhất**; `hoan` không bao giờ đếm là tới máy.
+  lấy mốc **sớm nhất**; `hoan` không bao giờ đếm là tới máy. ⚠️ *(B5b, 2026-09-29)*
+  Nhưng `huy_lich.luc` là lúc **huỷ**, sớm hơn `dat_lich.luc` (giờ nổ), nên B5b
+  đếm **theo khoá** (`dat_lich` đã qua > `huy_lich`) — mục 5i.
 - `dat_lich` / `huy_lich` đi theo lượt `resync` của vòng quét, mà vòng quét chỉ
   chạy khi đồng bộ về trạng thái kết thúc (mục 4.5) — lúc backend không tới
   được, đồng bộ giãn cách và nhật ký chậm theo vài phút.
@@ -1142,6 +1144,98 @@ diện rồi xoá qua giao diện sau khi đo; người dùng bấm trên khay, 
 viết.
 
 **Không thêm trường đồng bộ.**
+
+---
+
+## 5i. Học giờ và đề xuất — B5b (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-28-b5b-hoc-gio-thong-bao-design.md` (banner
+đầu tệp ghi các chỗ chốt lúc thi công); kế hoạch 7 task
+`…/plans/2026-09-28-b5b-hoc-gio-thong-bao.md` (gitignore). **Chỉ đề xuất** — không
+gì tự đổi tuỳ chọn hay tự tắt nhóm (tầng hậu quả 2). Không đổi schema, không thêm
+trường đồng bộ, không thông báo mới.
+
+### Bốn loại đề xuất, một hàm thuần
+
+`core/notification/hoc_gio_thong_bao.dart` — `deXuatThongBao(nhatKy, thongBao,
+mocGhiGiaoDich, prefs, coQuyen, now)` → `List<DeXuatThongBao>`:
+
+| Loại | Mẫu | Khi nào đề xuất |
+|---|---|---|
+| `gioHoaDon` | phản ứng tích cực (`cham_hdh` · `nut_tra_ngay` · `mo_trong_app`) của nhóm Hoá đơn | ≥ 20 mẫu, ô 30 phút đông nhất ≥ 35 %, lệch giờ đặt ≥ 60 phút **tính vòng 24 giờ** (23:30 và 00:00 cách 30 phút) |
+| `gioTongKet` | phản ứng của nhóm Tổng kết | cùng luật cho giờ; **thứ** theo cùng khuôn (7 ô) — một đề xuất gộp, `gio` hoặc `thu` có thể `null` khi phần ấy đã đúng |
+| `gioGhiChep` | mốc **ghi** giao dịch (`mocGhiGiaoDichTu`: `updatedAt` của khoản chưa xoá, **cùng ngày lịch** với `date` — bảng không có `createdAt`) | cùng luật |
+| `tatNhom` | lượt **tới máy** của nhóm | ≥ 20 lượt đã hết cửa theo dõi 48 giờ, và **10 lượt gần nhất** không có phản ứng tích cực cùng khoá trong 48 giờ |
+
+Cửa sổ học 180 ngày; hai ô bằng nhau → ô gần giờ đang đặt. Nhóm của một khoá suy
+qua **`loaiTuKhoa`** (`nhom_tu_khoa.dart`, tiền tố → `NotificationKind`) rồi
+`nhomCua` — bản sao của tiền tố bộ luật, canh bằng `tatCaUngVien()` ở
+`notification_deeplink_test`.
+
+### ⚠️ Bốn chỗ spec gốc chưa lường, chốt lúc thi công
+
+1. **"Tới máy" của lịch đặt trước đếm THEO KHOÁ** (người dùng chọn): khoá K tới máy
+   ⇔ số `dat_lich` đã qua của K **lớn hơn** số `huy_lich` của K; mốc = `dat_lich`
+   đã qua sớm nhất. Vì `dat_lich.luc` là giờ **NỔ** còn `huy_lich.luc` là lúc
+   **HUỶ** (luôn sớm hơn) — luật spec *"`huy_lich` SAU `dat_lich`"* so theo `luc`
+   thì không bao giờ khớp, và hoá đơn trả trước giờ nhắc bị tính là *"tới máy mà
+   bị lờ"*. Đếm theo khoá đúng hoàn toàn cho câu *có tới máy không*; chỉ mốc là
+   gần đúng trong ca hiếm *đổi giờ khi lịch đang chờ*.
+2. **Loại luôn báo** (`luonBao`: tự trả, trích tự động, trả trên máy khác) **không**
+   đếm vào nhóm bị lờ — công tắc nhóm không tắt được chúng.
+3. **Chỉ đề xuất giờ cho lời nhắc đang bật** (công tắc tổng · nhóm · `nhacGhiChepBat`
+   · `tongKetTuanBat`); công tắc tổng tắt thì không đề xuất gì. Quyền hệ điều hành
+   tắt → không đề xuất tắt nhóm (giờ vẫn đề xuất).
+4. **Chỉ xét lượt đã hết cửa 48 giờ** — lượt mới hơn chưa biết người dùng có mở.
+
+### Bỏ qua — mã sự kiện thứ mười
+
+*Bỏ qua* / *Giữ* ghi `bo_qua_de_xuat` (`SuKienThongBao.boQuaDeXuat`) vào **chính
+bảng B5a** qua `NhatKyThongBao`, `dedupeKey = DeXuatThongBao.khoa`
+(`deXuat:gioHoaDon` · `deXuat:gioTongKet` · `deXuat:gioGhiChep` ·
+`deXuat:tatNhom:<nhóm>` — tổng kết tuần gộp thứ + giờ trong **một** khoá). Im 30
+ngày. *Áp dụng* không ghi gì: tuỳ chọn đã đổi nên luật tự thôi đề xuất.
+
+### Nguồn và hai chỗ hiện
+
+- `DeXuatThongBaoNguon` (`de_xuat_thong_bao_nguon.dart`, DI cạnh `NhatKyThongBao`)
+  đọc một lần: nhật ký, `AppNotifications`, giao dịch 180 ngày, tuỳ chọn, quyền
+  (chỉ **hỏi**). Nuốt lỗi → rỗng.
+- **Trang Cài đặt thông báo** (màn Stitch `065eccd853504825b3148db4adaf5569`): dòng
+  chữ phụ xám **ngay dưới hàng nó nói tới**, lùi lề 60 dp cho thẳng chữ của hàng,
+  nút viền *"Đổi sang …"* / *"Tắt nhóm"* và nút chữ *"Bỏ qua"* / *"Giữ"*. Áp dụng
+  đi qua `_ghi` / `_doiNhom` — đường lưu duy nhất, **kéo theo đặt lại lịch (G59)**.
+- **Trung tâm thông báo** (màn Stitch `65dab65688594043ad53997cfd3547f3`): thẻ *"Có
+  N gợi ý chỉnh thông báo"* **trên** feed và ngoài nó (vẫn hiện khi feed rỗng hay
+  đang lọc), cùng khung thẻ thông báo nhưng không dải chưa đọc, không giờ, không
+  badge; bấm → `push('/settings/notifications')`, **quay về thì nạp lại**.
+
+### G59 — đổi giờ nhắc không dời lịch đang chờ (lộ khi soát kế hoạch, sửa trước)
+
+Khoá lịch không chứa giờ (hoá đơn theo kỳ, ghi chép theo ngày, tổng kết theo tuần)
+nên cùng khoá = cùng `osScheduledId`, và `resync` thấy *"id đã chờ, vẫn được
+muốn"* thì bỏ qua — đổi giờ ở trang Cài đặt **không dời gì** tới 30 ngày. Nay
+`resync(datLai: true)` huỷ rồi đặt lại lịch vừa chờ vừa được muốn (lịch Hoãn không
+đụng); trang gọi nó trong `_ghi` khi một trong **bảy** trường mốc đổi. Lượt quét
+thường **không** truyền — giữ luỹ đẳng. `CLIENT_APP_KNOWN_GAPS.md` G59.
+
+### Nghiệm thu máy thật (Realme RMX2205, 2026-09-29, bản debug, tài khoản 10)
+
+Người dùng duyệt **bơm thử rồi xoá**: 25 hàng `cham_hdh` 20:0x (id `b5b-thu-*`)
+chèn vào bảng nhật ký qua CSDL chép về (app dừng; gộp WAL; đẩy lại một tệp).
+
+| Ca | Kết quả |
+|---|---|
+| trung tâm thông báo | ✅ *"Có 1 gợi ý chỉnh thông báo / Giờ nhắc"* trên feed, đúng màn Stitch |
+| chạm thẻ | ✅ mở Cài đặt; dòng *"Bạn hay mở nhắc hoá đơn lúc khoảng 20:00."* dưới ô 08:00, trên *Nhắc trước* |
+| *Đổi sang 20:00* | ✅ ô thành 20:00; `dumpsys alarm`: hai lịch nhắc hoá đơn 02/10 **08:00 → 20:00** (G59); tổng kết thứ Hai 05/10 và kỳ trích 06/10 giữ 08:00 — đúng, chúng không theo giờ nhắc hoá đơn |
+| quay về trung tâm | ✅ thẻ biến mất (nạp lại) |
+| đặt lại 08:00 bằng bộ chọn giờ | ✅ hai lịch về 08:00 (đường tay của G59) |
+| mở lại Cài đặt → *Bỏ qua* → mở lại | ✅ dòng im; một hàng `bo_qua_de_xuat` |
+| dọn | ✅ xoá 26 hàng thử, `integrity_check` ok, 67 giao dịch nguyên |
+
+Dữ liệu thật trên máy khi ấy: B5b **im** — nhật ký B5a mới ghi từ sáng cùng ngày,
+dưới cửa 20 mẫu. Giới hạn nói trước của spec §5 (im 3–6 tháng) giữ nguyên.
 
 ---
 

@@ -1,5 +1,13 @@
 # B5b — Học giờ và tần suất thông báo — thiết kế
 
+> ✅ **Thi công xong 2026-09-29 tối** (7 task + G59, nghiệm thu Realme — mục **5i** `NOTIFICATION_FEATURE.md`). ⚠️ **Chỗ
+> bản này lệch mã, chốt lúc thi công:** (1) §2.4 *"`huy_lich` sau nó"* **sai** — `huy_lich.luc` là lúc huỷ, sớm hơn
+> `dat_lich.luc` (giờ nổ); nay **đếm theo khoá** (`dat_lich` đã qua > `huy_lich`), người dùng chọn. (2) Loại **luôn báo**
+> không đếm vào nhóm bị lờ. (3) Chỉ đề xuất giờ cho lời nhắc **đang bật**; chỉ xét lượt **đã hết cửa 48 giờ**. (4) Tổng
+> kết tuần gộp thứ + giờ trong **một** khoá `deXuat:gioTongKet` (không có `thuTongKet` riêng). (5) §3 *"`resync` như khi
+> người dùng tự đổi"* giả định một đường **không tồn tại**: đổi giờ khi ấy **không** dời lịch đang chờ — **G59**, sửa
+> trước B5b bằng `resync(datLai: true)`. (6) `DeXuatThongBaoNguon` nhận thêm `nhatKy` (cửa ghi duy nhất).
+
 **Ngày:** 2026-09-28 (tối). **Người dùng duyệt** bản thiết kế trong chat cùng ngày, với các lựa chọn: **chỉ đề xuất**
 (không tự đổi) · áp cho **giờ nhắc hoá đơn, giờ tổng kết tuần, giờ nhắc ghi chép, đề xuất tắt nhóm bị lờ** · hiện ở
 **cả hai**: trang Cài đặt thông báo và thẻ trong trung tâm thông báo · cửa dữ liệu **≥ 20**. Các con số 35 % · ô 30 phút ·
@@ -52,6 +60,8 @@ xử lý riêng ở 2.3.
   - hàng `AppNotifications` có `osDeliveredAt != null`, mốc = `osDeliveredAt`;
   - **hoặc** một `dat_lich` có `luc < now` mà **không** có `huy_lich` cùng `dedupeKey` sau nó, mốc = `luc`.
   - Khử trùng theo `dedupeKey`, lấy mốc sớm nhất.
+  - ⚠️ *(2026-09-29)* Vế `dat_lich` / `huy_lich` nay **đếm theo khoá**: K tới máy ⇔ số `dat_lich` đã qua > số `huy_lich`
+    của K; mốc = `dat_lich` đã qua sớm nhất. Loại `luonBao` không đếm; chỉ lượt đã qua `now − 48 giờ`.
 - Nhóm có **≥ 20** thông báo tới máy trong 180 ngày, **và** **10** cái gần nhất đều **không** có phản ứng tích cực nào
   trong **48 giờ** sau mốc → đề xuất tắt nhóm.
 - Nhóm đang tắt thì không xét.
@@ -68,6 +78,8 @@ không cần ghi: tuỳ chọn đã đổi nên luật tự thôi đề xuất.
 
 ## 3. Hiện
 
+- ✅ *(2026-09-29)* Màn Stitch: Cài đặt `065eccd853504825b3148db4adaf5569`, trung tâm `65dab65688594043ad53997cfd3547f3`
+  (người dùng duyệt). Thẻ ở trung tâm **nạp lại khi quay về** từ Cài đặt.
 - **Trang Cài đặt thông báo:**
   - Dưới ô giờ liên quan: một dòng *"Bạn hay mở nhắc hoá đơn lúc khoảng 20:00."* với hai nút **Đổi sang 20:00** và **Bỏ
     qua**. Tổng kết tuần gộp thứ + giờ trong một dòng. Nhắc ghi chép dùng *"Bạn hay ghi giao dịch lúc khoảng …"*.

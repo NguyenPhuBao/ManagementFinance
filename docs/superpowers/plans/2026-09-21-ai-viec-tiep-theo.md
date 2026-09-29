@@ -44,7 +44,9 @@ nhập", nút + trang Hoá đơn). ✅ **B4 xong trọn 6 task tối 2026-09-29*
 dòng *"Nếu tiêu như thói quen (N tuần gần nhất)…"* trong khối Dự báo; tính tay trên SQLite Realme lộ tầng 3 đếm lại khoản
 lặp đã thành hoá đơn (B2 `da_tao`) và trả hoá đơn dạng cũ — người dùng chọn chặn cả hai; nghiệm thu Realme đúng từng số.
 Giữa lượt ấy người dùng thấy **G58** (màn Thêm giao dịch tràn, che ô ghi chú khi bàn phím hệ thống mở ở 360 dp) — mở và
-đóng cùng tối. Kế tiếp theo lộ trình 28/09: **B5b**.
+đóng cùng tối. ✅ **B5b xong cùng tối** (mục 5i `docs/NOTIFICATION_FEATURE.md`): đề xuất giờ nhắc / tắt nhóm bị lờ từ
+nhật ký B5a, chỉ đề xuất; soát kế hoạch lộ **G59** (đổi giờ nhắc không dời lịch đang chờ — sửa trước) và **G60** (bảng
+chọn thứ tổng kết tràn ở màn thấp — mở). **Nhóm B xong trọn.** Kế tiếp theo lộ trình 28/09: **C1**.
 
 ---
 

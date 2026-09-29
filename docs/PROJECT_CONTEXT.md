@@ -743,7 +743,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-b1-tam-dung.md`.
 - ✅ **B5a — nhật ký thông báo xong trọn 7 task 2026-09-29 chiều** (mục **5h** `docs/NOTIFICATION_FEATURE.md`; spec
   `specs/2026-09-28-b5a-nhat-ky-thong-bao-design.md`; `bf3f74b` spike → `fc8c7b5` … `771a9cc`): bảng cục bộ **schema v26**
-  `AppNotificationEvents`, **chỉ ghi** (B5b mới đọc), chín mã, cửa ghi duy nhất `NhatKyThongBao`; `osDeliveredAt` nay được
+  `AppNotificationEvents`, **chỉ ghi** (B5b mới đọc), chín mã *(mười từ B5b)*, cửa ghi duy nhất `NhatKyThongBao`; `osDeliveredAt` nay được
   ghi. ⚠️ **API chạm đổi tên** `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong` (cú chạm **thô**, router là chỗ
   khử trùng duy nhất). ⭐ **Spike Realme (Task 1)**: nút *Hoãn* vào **isolate nền kể cả khi app còn sống** → mọi `hoan` trên
   Android đi qua tệp hàng chờ, vào bảng ở lần `start` kế tiếp. Nghiệm thu Realme bản debug: `mo_trong_app` · `cham_hdh`
@@ -818,6 +818,20 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   **Thêm giao dịch**, bàn phím hệ thống mở (gõ ghi chú) ở 360 dp → hàng phím cuối tràn 9,7 px **và** ô ghi chú đang gõ bị
   ép về 0. Có từ nhóm C UX (`2263f9b`, 19/09). Người dùng chọn **ẩn 16 phím số khi `viewInsets.bottom > 0`** (`76cc309`).
   Chi tiết `CLIENT_APP_KNOWN_GAPS.md`. `flutter test` **4508/4508** (4 skip), analyze 26.
+- ✅ **B5b — học giờ và đề xuất thông báo — XONG trọn 7 task 2026-09-29 tối** (spec `specs/2026-09-28-b5b-…`, banner
+  đầu tệp; mục **5i** `NOTIFICATION_FEATURE.md`). Chỉ đề xuất: giờ nhắc hoá đơn, giờ + thứ tổng kết, giờ ghi chép, tắt
+  nhóm bị lờ — hàm thuần `deXuatThongBao` (`2011f49`), `loaiTuKhoa` (`90c7cac`, `5e2f1cb`), `DeXuatThongBaoNguon`
+  (`88f5d27`), dòng gợi ý ở trang Cài đặt (`ead9e7e`, Stitch `065eccd8…`), thẻ *"Có N gợi ý"* ở trung tâm (`9eeb696`,
+  Stitch `65dab656…`) — hai màn người dùng duyệt. ⚠️ **Soát kế hoạch với mã lộ ba chỗ spec sai**, người dùng chốt: "tới
+  máy" của lịch đặt trước **đếm theo khoá** (`huy_lich.luc` là lúc huỷ, luôn sớm hơn giờ nổ trong `dat_lich.luc`); loại
+  `luonBao` không đếm vào nhóm bị lờ; và **G59** — đổi giờ nhắc **không dời** lịch đang chờ (khoá không chứa giờ → cùng
+  id → `resync` bỏ qua), sửa **trước** B5b (`c9c6e38`, `resync(datLai: true)`). Nghiệm thu Realme bản debug (người dùng
+  duyệt **bơm thử rồi xoá** 25 hàng `cham_hdh` 20:0x): thẻ → Cài đặt → dòng gợi ý dưới ô 08:00 → *Đổi sang 20:00* →
+  `dumpsys alarm` hai lịch hoá đơn 02/10 **08:00 → 20:00**; quay về thẻ mất; đặt lại 08:00 bằng bộ chọn giờ → lịch về
+  08:00; *Bỏ qua* → im khi mở lại; dọn 26 hàng thử, `integrity_check` ok. Realme trả về bản **release** `76924bc2…`.
+  🔓 **G60 mở** (lộ khi viết ca G59, chưa sửa, chờ người dùng): bảng chọn thứ tổng kết tràn ở màn cao dưới ~700 dp.
+  `flutter test` **4571/4571** (4 skip), analyze 26. **Nhóm B xong trọn** (B1 → B5a → B2 → B3 → B4 → B5b); kế theo lộ
+  trình 28/09: **C1**.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
