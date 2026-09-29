@@ -1,5 +1,11 @@
 # C2 — Nhập giao dịch bằng câu (ô "Nhập nhanh" ở màn Thêm giao dịch) — thiết kế
 
+> ✅ **MÃ XONG + ĐO REALME 2026-09-30** (commit `fd76114` → `ea12588`; số đo ở mục **9.41** `docs/AI_EDGE_FEATURE.md`).
+> Hình dạng cuối khác bản duyệt 28/09 ở ba lượt đổi, mỗi lượt có banner bên dưới: soát với mã trước Task 1 (sáu chỗ) ·
+> **AI đọc mọi câu** (§2.8, người dùng chọn 30/09) · **bước từ khoá** trong thứ tự danh mục (§2.5, người dùng đề xuất và
+> chốt 30/09: tên → B1 khi chắc → từ khoá → AI). ⚠️ Phần **"đề xuất thêm từ khoá từ thói quen"** (người dùng lặp một chữ
+> với một danh mục mà chưa khai từ khoá) là **việc riêng ngay sau C2, trước D1** — người dùng chốt, chưa có spec.
+
 **Ngày:** 2026-09-28 (tối). **Người dùng duyệt** bản thiết kế trong chat cùng ngày, với các lựa chọn: ô **"Nhập nhanh" ở
 màn Thêm giao dịch** (không ở màn Trợ lý AI) · **chỉ luật**, không mô hình · **một câu một khoản** · nhận cả bốn cách nói
 tiền: *k / nghìn / ngàn*, *tr / triệu / củ*, *lít / xị (= 100.000)*, và *số viết bằng chữ*. Bất biến ④ nhóm C: *"không tool
@@ -128,6 +134,10 @@ Tách câu thành các **cụm tiền** theo thứ tự xuất hiện, ưu tiên
   `doan` và `cauLyDoHoc`.
 - Tập hợp lệ (banner mục 2): `loai` đọc được ở 2.2 thì `hopLeTheoChieu(loai, chonDuoc)` của C1; không đọc được thì **mọi**
   danh mục chọn được (không nhóm, chưa xoá) — cùng nếp thẻ gợi ý của màn, danh mục kéo đoạn Chi/Thu theo.
+- **Bước từ khoá (2026-09-30, người dùng đề xuất sau khi đo Realme: *"đổ xăng"*, *"grab"* bị AI xếp Ăn uống):** thứ tự đầy
+  đủ là **tên nêu trong câu → B1 khi chắc → từ khoá của danh mục → AI** — cùng thứ tự thẻ gợi ý trên màn (B1 trước từ
+  khoá). Khớp bằng chính `CategorySuggestionEngine` (so có dấu trước, bỏ dấu sau, hoà thì không đoán), chỉ trên danh mục
+  hợp chiều, trên ghi chú của luật. `KetQuaDocCau.goiY` mang gợi ý (B1 hoặc từ khoá) để lúc lưu ghi phản hồi đúng nguồn.
 
 ### 2.6 Bộ đọc số bằng chữ — dời ra `core/utils/so_bang_chu.dart`
 
@@ -168,9 +178,12 @@ Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `
 - **Ngày:** luật đọc được ngày (chữ không hai nghĩa: *hôm qua*, *5/9*, *thứ 2*) thì **luật thắng**. Luật không đọc được
   thì dùng ngày AI khi: hợp lệ trên lịch, không quá hôm nay + 7 ngày, không cũ hơn 366 ngày, **và** câu có chữ chỉ thời
   gian (*tuần, tháng, hôm, trước, qua, đầu, cuối, sáng, trưa, chiều, tối, đêm, thứ, chủ nhật*); câu không có chữ nào thì
-  AI không được đổi ngày.
+  AI không được đổi ngày. AI trả **đúng hôm nay** thì coi là *không biết ngày* (đo Realme 2026-09-30: *"đầu tháng"* → hôm
+  nay) — form vốn là hôm nay, nhận nó chỉ làm dòng tóm tắt nói *"Hôm nay"*.
 - **Loại:** `chi` / `thu` của AI được dùng; câu có *nợ / vay* → `null` như luật.
-- **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động; không thì luật.
+- **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động **và câu phải nhắc ví** — chữ chỉ ví / cách trả (*ví, thẻ,
+  quẹt, ck, chuyển khoản, atm*) hoặc viết tắt tên ví (*"techcom"*). Đo Realme 2026-09-30: 9/10 câu mô hình trả ví mặc định
+  dù câu không nói — điền nó là bịa một ô và khoá luật *ví hay dùng*.
 - **Danh mục:** thứ tự (1) tên nêu trong câu (luật) → (2) **B1 khi nó chắc** (người dùng chốt: thói quen riêng thắng hiểu
   biết chung) → (3) danh mục AI chọn, phải trùng một danh mục chọn được và hợp chiều → (4) không có.
 - **Ghi chú:** mọi âm tiết (bỏ dấu) trong ghi chú AI phải có trong **ghi chú luật** (câu đã bỏ tiền, ngày, ví) — AI được
@@ -192,6 +205,10 @@ Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `
   cảnh báo nếu có, và câu lý do danh mục nếu đến từ B1. Không đọc được gì → *"Mình chưa đọc được câu này — bạn điền tay
   nhé."*
 - Người dùng xem lại rồi bấm **Lưu** như thường. **Không** tự lưu.
+- **Stitch (T5, 2026-09-30):** màn `8afdfe113cc84874b2009aa80fe755fd` *"Thêm giao dịch - Nhập nhanh bằng câu"* — thẻ
+  *NHẬP NHANH* ở **đầu vùng cuộn** (trên thẻ form; ô cố định trên cùng thì ở 360 × 640 thẻ form còn chưa tới 70 dp), nút
+  **Điền nằm trong khung ô**, tia sét đỏ cam, dòng *"Đã điền: …"* xanh có dấu tích, câu lý do B1 in nghiêng. Hai trạng
+  thái của §2.8 (*"Đang đọc bằng AI…"* + Huỷ; nhãn nguồn *"Đọc bằng AI"*) gửi tạo cùng ngày — lời gọi trả *timeout*, chờ.
 - ⚠️ Giao diện mới → **Stitch trước**. ⚠️ Màn Thêm giao dịch có bẫy bố cục đã biết (số 13 chữ số ngắt dòng, `FittedBox`)
   và bàn phím tự vẽ. Ô mới không được đẩy bàn phím ra khỏi màn ở khổ 360 × 640.
 

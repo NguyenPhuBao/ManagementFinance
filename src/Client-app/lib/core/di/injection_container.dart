@@ -613,7 +613,8 @@ Future<void> setupDependencies() async {
   // Vì sao: P1 đo được câu mô hình ở khối Nhận xét **gần bằng mẫu câu** — khác
   // nhau ở giọng văn, không ở thông tin, và mẫu câu còn gọn hơn. Cái giá là
   // 2,3 s mỗi khối cộng 2,41 GB tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**,
-  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8), nơi tự dựng
+  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8) — ⚠️ từ 2026-09-30 thêm ô Nhập nhanh
+  // (`DocCauBangAi`, C2, người dùng chọn "AI đọc mọi câu"), nơi tự dựng
   // đường sinh câu của mình từ `sl<SlmRuntime>()` và `sl<MoHinhTaiVe>()`.
   //
   // ⚠️ Màn ấy **KHÔNG** đi qua `SlmDienGiai`, và **không** qua `SlmCache` —

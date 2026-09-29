@@ -846,6 +846,18 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   ⚠️ Ba khoản *grab* thử **không** được đoán vì B1 đang thôi gợi ý cặp (*grab*, Di chuyển) — đúng thiết kế. Lần đẩy lên
   server **chưa đo** (Realme không tới backend). `flutter test` **4616/4616** (4 skip), analyze 26; Realme bản release
   `d79b9b34…`. Kế theo lộ trình: **C2**.
+- ✅ **C2 — ô Nhập nhanh (nhập giao dịch bằng câu), mã xong + đo Realme 2026-09-30** (spec
+  `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md`, mục **9.41** `AI_EDGE_FEATURE.md`). Thẻ *NHẬP NHANH* ở đầu vùng cuộn màn
+  Thêm giao dịch (Stitch `8afdfe11…`, trạng thái đọc AI `63e981f5…`): gõ câu → **Điền** → form điền sẵn, ✓ mới lưu. Luật ở
+  `transaction/domain/doc_cau_giao_dich.dart` (số tiền bốn cách nói, loại khớp **từng từ có phân biệt dấu**, ngày, ví, ghi
+  chú, danh mục **tên → B1 khi chắc → từ khoá → AI**); ⭐ người dùng chọn **"AI đọc mọi câu"** — máy có mô hình và công tắc
+  bật thì `DocCauBangAi` (`transaction/data/`) hỏi Gemma một tool `dien_giao_dich`, rồi **luật kiểm từng ô**
+  (`cachDocSoTien`: AI chọn cách đọc, không được đưa ra chữ số không có trong câu). **Lối B mở sang chỗ thứ hai.** Dời ra
+  `core/utils`: `so_bang_chu` (một bộ đọc số chữ cho cả `kiem_so` lẫn `chinh_tham_so` — hai bộ cũ **mù hàng chục**),
+  `ngay_trong_cau` (+ `ngayHopLe`; đọc cả *"thứ X tuần trước"*), `tenNeuTrongCau` / `timTenTrongCau`. Đo 10 câu: số tiền
+  10/10, danh mục 7/2/1 — bước từ khoá thêm sau lượt đo, **chưa đo lại**. `flutter test` **4773/4773** (4 skip), analyze
+  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói
+  quen** — việc riêng ngay sau C2, trước D1, chưa có spec.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

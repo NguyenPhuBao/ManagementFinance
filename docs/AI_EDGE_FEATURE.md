@@ -121,7 +121,7 @@ hậu theo mã** — đổi mã vùng nào thì `grep` vùng ấy trong cả `CA
 | Chỉ tải tệp `‹model›.litertlm` chuẩn, **không** dùng biến thể `-gpu.litertlm` | bản `-gpu` **không nạp được** trên engine FFI Android dù tệp nguyên vẹn, và lỗi nó ném (*"Model may be invalid"*) dẫn người đọc đi sai hướng. Mục **8.2** | 2026-09-20 |
 | P3 bắt máy không chạy được bằng **`try/catch` quanh `getActiveModel`**, không tự đọc ABI | gói tự nêu tên ABI trong thông báo lỗi; và lỗi ném ở bước **nạp** chứ không ở `install()`. Mục **8.3** | 2026-09-20 |
 | Thêm **`flutter_gemma_litertlm`** cạnh `flutter_gemma` | core **không kèm engine nào**; thiếu nó thì `getActiveModel()` ném lỗi "add the engine package" | 2026-09-20 |
-| **Lối B cho P3**: mô hình phục vụ **một chỗ duy nhất** — màn Trợ lý AI; **mọi** khối Nhận xét **giữ mẫu câu** (bốn khối lúc chốt, **sáu** từ 2026-09-21) | P1 đo: câu mô hình ở khối Nhận xét **gần bằng** mẫu câu (khác giọng văn, không khác thông tin — mẫu câu còn gọn hơn), mà giá là **2,3 s mỗi khối + 2,41 GB** tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**. Thi hành bằng cách **không đăng ký `BoDienGiai`** vào DI — đảo ngược bằng một commit | 2026-09-21 |
+| **Lối B cho P3**: mô hình phục vụ **một chỗ duy nhất** — màn Trợ lý AI; **mọi** khối Nhận xét **giữ mẫu câu** (bốn khối lúc chốt, **sáu** từ 2026-09-21). ⚠️ **2026-09-30 mở thêm ô Nhập nhanh** (C2, mục 9.41, người dùng chọn "AI đọc mọi câu"); khối Nhận xét vẫn mẫu câu | P1 đo: câu mô hình ở khối Nhận xét **gần bằng** mẫu câu (khác giọng văn, không khác thông tin — mẫu câu còn gọn hơn), mà giá là **2,3 s mỗi khối + 2,41 GB** tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**. Thi hành bằng cách **không đăng ký `BoDienGiai`** vào DI — đảo ngược bằng một commit | 2026-09-21 |
 | **Streaming CHẶN THEO CÂU** (`gacTheoCau`): token vào bộ đệm, đủ một câu thì `kiemCauTraLoi` rồi mới hiện; trượt thì `stopGeneration()` và không hiện. Đã có câu hiện rồi mới trượt → **giữ** các câu ấy và dừng; chưa câu nào → câu lùi "chưa chắc" | Bộ kiểm chỉ có nghĩa trên câu đầy đủ; hiện từng token là để người đọc thấy con số **trước khi** nó bị chặn — ngược lý lẽ của `_kKhongChacChan` (không nói lại câu mô hình vừa viết). Ba lối khác bị loại: hiện token rồi thay (chữ nhảy, đã lộ số sai), giữ khối (bỏ điểm 2 cổng A), chỉ báo có nhịp (không phải streaming). Câu đã qua kiểm là câu đúng — thay nó bằng câu lùi là vứt một câu đúng vì một câu sau nó | 2026-09-22 |
 | **`kiemNhan` — lớp chắn thứ ba**: mỗi số trong câu phải đứng cùng câu với **mọi âm tiết có nghĩa** của ít nhất một nhãn gói khớp nó (bỏ *tổng · số · đã · so · với · là*); so theo **âm tiết**, không theo chuỗi con | Mục 9.5: mô hình bịa **tên** của số thật, `kiemSo` mù. Từ khoá suy **từ nhãn lúc chạy** — test quét 14 cấm chuỗi chiều tiền trong `ai_edge/`, và danh sách chép tay lệch ngay khi ai đổi nhãn. "chiều" chứa "chi" nên `contains` là để nhãn lọt nhờ một từ khác. Sai theo chiều **an toàn**: câu đúng nhưng diễn đạt xa nhãn bị chặn — few-shot dạy chép nhãn nên hiếm | 2026-09-22 |
 | `kiemGiong` **nối vào đường hỏi đáp** qua `kiemCauTraLoi`, mức tổng hợp = có gói cảnh báo thì cả câu không được trấn an | Điểm 5 cổng A ghi "chưa đo" nhưng thật ra **chưa nối** — `_hoiThat` chỉ gọi `kiemSoNhieuGoi`. Người hỏi về ví mà đọc "yên tâm" khi ngân sách đã 90 % là sai theo chiều nguy hiểm, nên mức tổng hợp lấy phía cảnh báo | 2026-09-22 |
@@ -3079,6 +3079,54 @@ danh mục nhanh* (từ thẻ trên Sổ giao dịch) chạy mô hình **B1** tr
 người dùng bấm *Áp dụng* — mỗi dòng qua `TransactionRepository.updateTransaction`. Chín tool của Trợ lý AI vẫn **chỉ
 đọc**. Chi tiết, bẫy và nghiệm thu Realme: mục **5e** `docs/CATEGORY_RATIONALE.md`. Kế tiếp theo lộ trình: **C2** (nhập
 giao dịch bằng câu — tầng 3, form điền sẵn).
+
+### 9.41 C2 — ô Nhập nhanh: AI ĐỌC MỌI CÂU, luật kiểm (2026-09-30) — lối B mở sang chỗ thứ hai
+
+Spec `docs/superpowers/specs/2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2.8. Ô *Nhập nhanh* ở đầu vùng cuộn màn Thêm
+giao dịch: gõ *"hôm qua ăn phở 45k tiền mặt"*, bấm **Điền** → form được điền sẵn, người dùng bấm ✓ mới lưu (bất biến ④
+nhóm C). Spec duyệt 28/09 là **chỉ luật**; sau khi T1–T4 xong, người dùng hỏi *"dùng AI cho nhập nhanh được không"*, được
+trình bày giá (7–10 s mỗi câu trên Realme CPU, +~27 s nạp lần đầu, cần mô hình 2,41 GB, mở **lối B** — mô hình từ
+2026-09-21 chỉ phục vụ màn Trợ lý AI) rồi chọn **"AI đọc mọi câu"**, kèm ba điểm: AI đọc cả ngày · **B1 thắng khi nó chắc**
+· nạp mô hình khi ô có focus.
+
+**Hình dạng:** `DocCauBangAi` (`transaction/data/doc_cau_bang_ai.dart` — không ở `ai_edge/` vì schema mang chữ
+`'thu'`/`'chi'`, test quét 14) mở phiên **một tool** `dien_giao_dich` (prompt ngắn — bẫy 4.51: phiên một tool viết đúng
+số), tên ví / danh mục là **enum**, lấy lời gọi đầu rồi đóng phiên; mọi hỏng hóc (chưa sẵn sàng, nạp lỗi, canary 1b, không
+gọi tool, quá 45 s, Huỷ) trả `null` → luật. Kết quả THÔ đi vào `docCauGiaoDich(ai: …)` — **AI đề xuất, luật kiểm**: số tiền
+phải thuộc `cachDocSoTien(cau)` (mọi cách đọc hợp lệ của số có trong câu — AI được chọn *"ba chục"* = 30.000, không được
+đưa ra chữ số không có); ngày luật đọc chắc thì luật thắng, AI chỉ lấp chỗ luật không đọc (*"đầu tháng"*) và chỉ khi câu có
+chữ thời gian; ví / danh mục phải có thật và hợp chiều; ghi chú chỉ được **bớt** chữ; danh mục: tên trong câu → B1 → AI.
+Máy không có mô hình hoặc công tắc tắt: chỉ luật, không chờ gì. Dòng tóm tắt ghi nguồn *"Đọc bằng AI / luật"*.
+
+**Hai bộ đọc số chữ của `ai_edge` gộp làm một** (`core/utils/so_bang_chu.dart`, C2 T1): cả `kiem_so` lẫn `chinh_tham_so`
+mù hàng chục — đo 2026-09-29: *"năm mươi nghìn"* ra rỗng, nên câu trả lời viết số ấy lọt mà không bị kiểm, và *"dưới năm
+mươi nghìn"* không thành ngưỡng. Nay một bộ đọc cả hai chỗ; mọi test cũ của `ai_edge` xanh không sửa kỳ vọng.
+`tenNeuTrongCau` dời ra `core/utils/khop_ten.dart` (C2 T4), `ngayHopLe` ra `core/utils/ngay_trong_cau.dart` (C2 T2).
+
+**Đo Realme 2026-09-30** (tài khoản 10, CPU, bản release `8c3d40a3…`; gõ bằng Telex qua `adb` để câu có dấu thật; chấm theo
+giá trị **hiện trên form**; lượt 1 chạy trên `ec753beb…` lộ hai lỗ của lớp kiểm — sửa ở `050c334` rồi đo lại trọn 10 câu):
+
+| # | Câu | Hiện trên form | Chấm |
+|---|---|---|---|
+| 0 | hôm qua ăn phở 45k tiền mặt | 45.000 · Hôm qua · Tiền mặt · Ăn uống (B1) | ✅ |
+| 1 | cà phê với Nam mất ba chục | **30.000** · Ăn uống (B1) · không tự điền ví | ✅ luật một mình: không số |
+| 2 | nhận lương 9tr | 9.000.000 · Thu nhập · Lương | ✅ |
+| 3 | tiền điện tháng này một triệu hai | **1.200.000** · Hóa đơn | ✅ luật một mình: không số |
+| 4 | đổ xăng 50k | 50.000 · **Ăn uống** | ❌ danh mục (AI) |
+| 5 | grab 35k | 35.000 · **Ăn uống** | ❌ danh mục (AI; B1 đang thôi gợi ý cặp grab) |
+| 6 | thứ sáu tuần trước ăn lẩu 300k | 300.000 · **25/09** · Ăn uống | ✅ AI nói 28/09 — luật thắng |
+| 7 | đầu tháng đóng học phí 2tr | 2.000.000 · Giáo dục · ngày không đổi | ◐ AI không hiểu "đầu tháng" |
+| 8 | mua 2 ly trà sữa 60k | 60.000 · Ăn uống | ✅ |
+| 9 | bán đồ cũ được 500 nghìn | 500.000 · Thu nhập · danh mục trống | ✅ AI đọc **50.000** và chọn Mua sắm cho khoản thu — cả hai bị chặn |
+
+Số tiền **10/10** (luật một mình 8/10). Danh mục 7 đúng · 2 sai · 1 trống. Thời gian: lượt sinh **12,2–17,2 s**, cả lượt
+khoảng **18 s** (đã nạp; nạp ngầm khi ô có focus) — **chậm hơn** mức 7–10 s báo cho người dùng lúc chọn. Lớp kiểm chặn đúng
+ba lỗi của mô hình (ngày lệch tuần, số lệch 10 lần, danh mục sai chiều). **Hai lỗ của lớp kiểm lộ ở lượt 1, đã sửa:** mô
+hình trả ví mặc định cho 9/10 câu không nhắc ví (nay ví AI chỉ nhận khi câu nhắc ví / cách trả / viết tắt tên ví), và trả
+*"hôm nay"* khi không biết ngày (nay coi là không biết). Cùng lượt máy thật lộ **ô trắng có viền lồng trong khung** ô Nhập
+nhanh — theme app đặt nền + viền cho mọi ô nhập; widget test mù vì chỉ `find`, nay có ca đọc `InputDecorator` đã gộp theme.
+Hai câu sai danh mục dẫn tới **bước từ khoá** (người dùng đề xuất, `ea12588`: tên → B1 → từ khoá → AI) — **chưa đo lại
+trên máy**. ⚠️ Cả hai câu sai đều ra **Ăn uống**; nghi mô hình thiên về giá trị đầu / phổ biến của enum — chưa đo.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
