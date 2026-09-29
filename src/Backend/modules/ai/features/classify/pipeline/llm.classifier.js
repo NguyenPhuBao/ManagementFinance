@@ -1,5 +1,5 @@
 /**
- * F012 — Transaction Classifier — Tier 3: Few-Shot LLM Reasoning (Gemini Flash / OpenAI)
+ * F012 — Transaction Classifier — Tier 3: Few-Shot LLM Reasoning (Google Gemini 3.8 Flash)
  * 
  * Chuẩn RAG (Standard_RAG.md):
  * - Temperature: 0.1 (Strict Factuality / Anti-Hallucination)
@@ -14,7 +14,6 @@ const { maskTransactionDescription } = require('../../../../../utils/masking.uti
 class LLMClassifier {
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY || null;
-    this.openaiApiKey = process.env.OPENAI_API_KEY || null;
   }
 
   /**
@@ -113,7 +112,8 @@ Trả về JSON Schema:
 
     try {
       // 3. Gọi Google Gemini REST API
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const payload = {
         contents: [
           {

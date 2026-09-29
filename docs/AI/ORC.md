@@ -69,7 +69,7 @@ Chức năng **Receipt OCR (F013)** trong Module AI đóng vai trò là **Tầng
 
 
 > ⚠️ **CẬP NHẬT PHÂN CHIA TRÁCH NHIỆM & TRẠNG THÁI (PO chốt 2026-09-23):**
-> 1. **Chức năng OCR phía Client-app:** Thuộc lộ trình bước 6 (hiện tại Client-app chưa triển khai giao diện/màn hình OCR). Backend đã sẵn sàng endpoint `POST /api/ai/ocr/parse` dùng Gemini 2.0 Flash Multimodal để quản lý tập trung `GEMINI_API_KEY`.
+> 1. **Chức năng OCR phía Client-app:** Thuộc lộ trình bước 6 (hiện tại Client-app chưa triển khai giao diện/màn hình OCR). Backend đã sẵn sàng endpoint `POST /api/ai/ocr/parse` dùng Gemini 3.8 Flash Multimodal (đọc linh hoạt qua `process.env.GEMINI_MODEL`) để quản lý tập trung `GEMINI_API_KEY`.
 > 2. **Khử trùng lặp (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (SMS & thông báo app ngân hàng) và chống quét trùng biên lai khi làm OCR; Backend giữ mã `dedup.service.js` phục vụ đối soát nội bộ cho OCR.
 > 3. **Module Bank & SMS Server:** Kênh liên kết ngân hàng (SePay / BankSync) và SMS server tạm dừng hoàn toàn vì lý do chính sách.
 
@@ -450,7 +450,7 @@ Bảng `Transaction` trong CSDL PostgreSQL (Supabase) lưu trữ các trường 
 
 ### 7.1. Luồng 1: Có Kết Nối Internet (Online Pipeline — Backend Xử Lý)
 1. **Client-app:** Người dùng chụp ảnh hóa đơn/biên lai $\rightarrow$ Chuyển Base64 $\rightarrow$ Gửi lên Backend qua `POST /api/ai/ocr/parse`.
-2. **Backend Vision & Extraction:** Gemini 2.0 Flash Multimodal Vision đọc ảnh, bóc tách cấu trúc 2 tầng: Từng món hàng con (`items`) và Giao dịch tổng hóa đơn (`total_amount`). Kích hoạt thuật toán Self-healing nếu thiếu tiền/ngày.
+2. **Backend Vision & Extraction:** Gemini 3.8 Flash Multimodal Vision (đọc linh hoạt qua `process.env.GEMINI_MODEL`) đọc ảnh, bóc tách cấu trúc 2 tầng: Từng món hàng con (`items`) và Giao dịch tổng hóa đơn (`total_amount`). Kích hoạt thuật toán Self-healing nếu thiếu tiền/ngày.
 3. **Backend Deduplication (Khử trùng CSDL):** Kiểm tra đối soát trực tiếp trên CSDL qua 3 cấp độ (Strict mã đơn/tiền tố `_grp_`, Fuzzy Invoice, Transfer/SMS).
    - *Nếu trùng:* Ném HTTP **`409 Conflict`**, phát sự kiện `ocr.duplicate` và **ngừng ngay lập tức, bỏ qua hoàn toàn Classify AI**.
    - *Nếu chưa trùng:* Cho phép chuyển tiếp sang Classify AI.
@@ -474,7 +474,7 @@ Bảng `Transaction` trong CSDL PostgreSQL (Supabase) lưu trữ các trường 
 
 > [!TIP]
 > **Khác biệt cốt lõi giữa Online và Offline:**
-> - **Online (Backend):** Sử dụng Multimodal LLM (Gemini 2.0 Flash) có trí tuệ nhân tạo sâu, hiểu ngữ cảnh phức tạp, tự sửa lỗi hóa đơn (Self-healing), độ chính xác rất cao.
+> - **Online (Backend):** Sử dụng Multimodal LLM (Gemini 3.8 Flash, đọc linh hoạt qua `process.env.GEMINI_MODEL`) có trí tuệ nhân tạo sâu, hiểu ngữ cảnh phức tạp, tự sửa lỗi hóa đơn (Self-healing), độ chính xác rất cao.
 > - **Offline (Client):** Sử dụng OCR ký tự trên máy + Keyword Matcher đơn giản, do đó kết quả bóc tách có thể thô hơn. Giao diện Client cần hỗ trợ người dùng chỉnh sửa tay linh hoạt trước khi lưu.
 
 ---

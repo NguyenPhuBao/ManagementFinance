@@ -15,8 +15,9 @@ module.exports = {
     tesseractPSM: 3, // Fully automatic page segmentation
   },
   llm: {
-    defaultProvider: 'openai',
-    maxTokens: { advice: 300, budget: 300, chatbot: 500 },
-    temperature: { advice: 0.7, budget: 0.5, chatbot: 0.8 },
+    defaultProvider: 'gemini',
+    defaultModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    maxTokens: { classify: 512, ocr: 2048, chatbot: 1024 },
+    temperature: { classify: 0.1, ocr: 0.1, chatbot: 0.1 },
   },
 };

@@ -1,14 +1,50 @@
 const eventBus = require('../../core/event-bus');
-const { emitBankTransaction, emitOcrCompleted, emitOcrDuplicate, emitSyncCompleted } = require('../../core/socket');
+const defaultSocket = require('../../core/socket');
 const logger = require('../../core/logger');
 
+let currentStore = null;
+let currentSocket = defaultSocket;
+let isInitialized = false;
 
 const notificationService = {
+  /**
+   * Thiết lập store tùy biến (dùng cho test hoặc DI)
+   */
+  setStore(store) {
+    currentStore = store;
+  },
+
+  /**
+   * Thiết lập socket module tùy biến
+   */
+  setSocket(socketModule) {
+    currentSocket = socketModule || defaultSocket;
+  },
+
+  /**
+   * Lấy NotificationStore hiện hành
+   */
+  getStore() {
+    if (!currentStore) {
+      const { defaultNotificationStore } = require('./notification.store');
+      currentStore = defaultNotificationStore;
+    }
+    return currentStore;
+  },
+
+  getSocket() {
+    return currentSocket || defaultSocket;
+  },
+
   /**
    * Khởi tạo các listener lắng nghe sự kiện từ EventBus
    * Tách biệt hoàn toàn xử lý thông báo khỏi Module Bank & Module OCR
    */
   async initNotificationListeners() {
+    if (isInitialized) {
+      return;
+    }
+
     try {
       if (eventBus && typeof eventBus.subscribe === 'function') {
         // 1. Lắng nghe sự kiện biến động số dư ngân hàng
@@ -18,9 +54,8 @@ const notificationService = {
             idaccount: data.idaccount,
             amount: data.amount,
           });
-          
-          // Phát thông báo Realtime Socket.io tới Client-app
-          emitBankTransaction(data.idaccount, {
+
+          const payload = {
             idtran: data.idtran,
             amount: data.amount,
             bankName: data.bankName,
@@ -31,7 +66,19 @@ const notificationService = {
             message: `Bạn vừa có giao dịch ${data.amount > 0 ? '+' : ''}${data.amount}đ từ ${data.bankName || 'ngân hàng'}. Nhấn để duyệt và chọn danh mục.`,
             type: 'BankTransactionPending',
             createdAt: new Date().toISOString(),
-          });
+          };
+
+          const store = this.getStore();
+          if (store && typeof store.addNotification === 'function') {
+            await store.addNotification(data.idaccount, {
+              title: payload.title,
+              message: payload.message,
+              type: payload.type,
+              metadata: data,
+            });
+          }
+
+          this.getSocket().emitBankTransaction(data.idaccount, payload);
         });
 
         // 2. Lắng nghe sự kiện bóc tách và phân loại OCR hoàn tất
@@ -42,16 +89,29 @@ const notificationService = {
             detected_type: data.detected_type,
           });
 
-          // Phát thông báo Realtime Socket.io tới Client-app
-          emitOcrCompleted(data.idaccount, {
-            title: data.detected_type === 'Transfer'
-              ? 'Biên lai chuyển tiền đã được bóc tách'
-              : 'Hóa đơn đã được bóc tách thành công',
-            message: data.detected_type === 'Transfer'
-              ? `Biên lai chuyển tiền ${Number(data.amount || 0).toLocaleString('vi-VN')}đ đã sẵn sàng để xác nhận.`
-              : `Hóa đơn ${data.merchant_name || ''} (${Number(data.total_amount || 0).toLocaleString('vi-VN')}đ) đã được bóc tách và phân loại.`,
+          const title = data.detected_type === 'Transfer'
+            ? 'Biên lai chuyển tiền đã được bóc tách'
+            : 'Hóa đơn đã được bóc tách thành công';
+
+          const message = data.detected_type === 'Transfer'
+            ? `Biên lai chuyển tiền ${Number(data.amount || 0).toLocaleString('vi-VN')}đ đã sẵn sàng để xác nhận.`
+            : `Hóa đơn ${data.merchant_name || ''} (${Number(data.total_amount || 0).toLocaleString('vi-VN')}đ) đã được bóc tách và phân loại.`;
+
+          const store = this.getStore();
+          if (store && typeof store.addNotification === 'function') {
+            await store.addNotification(data.idaccount, {
+              title,
+              message,
+              type: 'OcrCompleted',
+              metadata: data,
+            });
+          }
+
+          this.getSocket().emitOcrCompleted(data.idaccount, {
+            title,
+            message,
             type: 'OcrCompleted',
-            data: data,
+            data,
             createdAt: new Date().toISOString(),
           });
         });
@@ -65,12 +125,24 @@ const notificationService = {
             reason: data.reason,
           });
 
-          // Phát thông báo Realtime Socket.io tới Client-app
-          emitOcrDuplicate(data.idaccount, {
-            title: 'Giao dịch đã tồn tại',
-            message: 'Hình ảnh này trùng khớp với giao dịch đã được ghi nhận trên hệ thống trước đó.',
+          const title = 'Giao dịch đã tồn tại';
+          const message = 'Hình ảnh này trùng khớp với giao dịch đã được ghi nhận trên hệ thống trước đó.';
+
+          const store = this.getStore();
+          if (store && typeof store.addNotification === 'function') {
+            await store.addNotification(data.idaccount, {
+              title,
+              message,
+              type: 'OcrDuplicate',
+              metadata: data,
+            });
+          }
+
+          this.getSocket().emitOcrDuplicate(data.idaccount, {
+            title,
+            message,
             type: 'OcrDuplicate',
-            data: data,
+            data,
             createdAt: new Date().toISOString(),
           });
         });
@@ -82,15 +154,57 @@ const notificationService = {
             summary: data.summary,
           });
 
-          // Phát sự kiện Realtime Socket.io sync.completed tới room của user
-          emitSyncCompleted(data.idaccount, {
+          this.getSocket().emitSyncCompleted(data.idaccount, {
             summary: data.summary,
             timestamp: data.timestamp || new Date().toISOString(),
           });
         });
 
-        logger.info('[Notification Module] Notification event listeners initialized successfully');
+        // 5. Lắng nghe cảnh báo quá tải hệ thống (Load Shedding)
+        await eventBus.subscribe('system.overload', async (data) => {
+          logger.warn('[Notification Module] Received system.overload event', data);
+          await this.sendAdminAlert({
+            title: data.title || 'Cảnh báo quá tải hệ thống',
+            message: data.message || '',
+            level: data.level || 'CRITICAL',
+            category: data.category || 'LOAD_SHEDDING',
+            metadata: data.metadata || {},
+          });
+        });
 
+        // 6. Lắng nghe cảnh báo bảo mật hệ thống
+        await eventBus.subscribe('security.alert', async (data) => {
+          logger.warn('[Notification Module] Received security.alert event', data);
+          await this.sendAdminAlert({
+            title: data.title || 'Cảnh báo bảo mật',
+            message: data.message || '',
+            level: data.level || 'WARNING',
+            category: 'SECURITY',
+            metadata: data.metadata || {},
+          });
+        });
+
+        // 7. Lắng nghe thông báo đếm ngược ngừng hoạt động tài khoản
+        await eventBus.subscribe('account.countdown', async (data) => {
+          logger.info('[Notification Module] Received account.countdown event', data);
+          const store = this.getStore();
+          if (store && typeof store.addNotification === 'function') {
+            await store.addNotification(data.idaccount, {
+              title: data.title || 'Cảnh báo ngừng hoạt động tài khoản',
+              message: data.message || `Tài khoản sẽ bị ngừng hoạt động sau ${data.daysRemaining || 0} ngày.`,
+              type: 'AccountCountdown',
+              metadata: data,
+            });
+          }
+
+          const io = typeof this.getSocket().getIO === 'function' ? this.getSocket().getIO() : null;
+          if (io) {
+            io.to(`account_${data.idaccount}`).emit('account.countdown', data);
+          }
+        });
+
+        isInitialized = true;
+        logger.info('[Notification Module] Notification event listeners initialized successfully');
       }
     } catch (error) {
       logger.error('[Notification Module] Failed to initialize listeners', { error: error.message });
@@ -98,10 +212,73 @@ const notificationService = {
   },
 
   /**
-   * Phát thông báo thủ công tới 1 user
+   * Phát thông báo Broadcast toàn hệ thống
+   */
+  async broadcast(payload = {}) {
+    const store = this.getStore();
+    const alertData = {
+      title: payload.title || 'Thông báo hệ thống',
+      message: payload.message || '',
+      level: payload.level || 'INFO',
+      category: 'BROADCAST',
+      metadata: payload.metadata || {},
+    };
+
+    let saved = null;
+    if (store && typeof store.addAdminNotification === 'function') {
+      saved = await store.addAdminNotification(alertData);
+    }
+
+    const broadcastPayload = saved || {
+      ...alertData,
+      id: require('crypto').randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.getSocket().emitSystemBroadcast(broadcastPayload);
+    return broadcastPayload;
+  },
+
+  /**
+   * Gửi thông báo trực tiếp cho một tài khoản cụ thể
+   */
+  async sendDirectNotification(idaccount, notification) {
+    const store = this.getStore();
+    let saved = null;
+    if (store && typeof store.addNotification === 'function') {
+      saved = await store.addNotification(idaccount, notification);
+    }
+
+    const io = typeof this.getSocket().getIO === 'function' ? this.getSocket().getIO() : null;
+    if (io) {
+      io.to(`account_${idaccount}`).emit('user.notification', saved || notification);
+    }
+    return saved || notification;
+  },
+
+  /**
+   * Gửi cảnh báo hệ thống cho Admin
+   */
+  async sendAdminAlert(alertData) {
+    const store = this.getStore();
+    let saved = null;
+    if (store && typeof store.addAdminNotification === 'function') {
+      saved = await store.addAdminNotification(alertData);
+    }
+    const finalAlert = saved || {
+      ...alertData,
+      id: require('crypto').randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    this.getSocket().emitAdminNotification(finalAlert);
+    return finalAlert;
+  },
+
+  /**
+   * Backward-compatibility wrapper
    */
   async notifyUser(idaccount, notification) {
-    emitBankTransaction(idaccount, notification);
+    return this.sendDirectNotification(idaccount, notification);
   },
 };
 
