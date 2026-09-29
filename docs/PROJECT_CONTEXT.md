@@ -833,6 +833,19 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   dưới ~700 dp — nay `isScrollControlled` + thân cuộn được; Realme bản release `351d062e…`.
   `flutter test` **4571/4571** (4 skip), analyze 26. **Nhóm B xong trọn** (B1 → B5a → B2 → B3 → B4 → B5b); kế theo lộ
   trình 28/09: **C1**.
+- ✅ **C1 — gắn danh mục hàng loạt, xong 2026-09-29 tối** — việc **đầu tiên của nhóm C** (bất biến ④ *"không tool nào
+  ghi thẳng"*; mục **5e** `CATEGORY_RATIONALE.md`, **9.40** `AI_EDGE_FEATURE.md`). Hàm thuần `category/domain/gan_hang_loat.dart`
+  (`xetGan` — **một** định nghĩa của khoản cần gắn, qua `laGhiChuMay` của B1 · `demChuaGan` · `hopLeTheoChieu` ·
+  `dungDanhSachGan` · `phanHoiGan` · `cauKetQuaGan`), nguồn `category/data/gan_danh_muc_nguon.dart` (học B1 từ sổ + `tatCap`;
+  ⚠️ `apDungGan` **đọc lại hàng tươi** trước `updateTransaction` — ghi từ ảnh chụp là đè lần sửa vừa kéo về), màn
+  `GanDanhMucPage` ở route **con** `/transactions/gan-danh-muc` trên navigator gốc, thẻ *"Có N giao dịch chưa có danh
+  mục"* trên Sổ giao dịch đọc **stream** `watchAll`. Ba màn Stitch người dùng duyệt (`a829606a…`, `5023f081…`, bảng chọn
+  lọc theo chiều `45c91102…`). Soát kế hoạch với mã trước Task 1 lộ năm chỗ lệch (banner đầu spec). Realme tài khoản 10:
+  **`demChuaGan = 0`** trên dữ liệu thật — 16 hàng trống danh mục đều do máy sinh; nghiệm thu bằng 4 khoản thử (người
+  dùng duyệt **nhập rồi xoá**, đã xoá) — thẻ 4 → 1, *Chưa phân loại* 255.000 → 120.000 đ, đúng 2 hàng phản hồi `chon`.
+  ⚠️ Ba khoản *grab* thử **không** được đoán vì B1 đang thôi gợi ý cặp (*grab*, Di chuyển) — đúng thiết kế. Lần đẩy lên
+  server **chưa đo** (Realme không tới backend). `flutter test` **4616/4616** (4 skip), analyze 26; Realme bản release
+  `d79b9b34…`. Kế theo lộ trình: **C2**.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

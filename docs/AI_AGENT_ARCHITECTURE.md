@@ -704,6 +704,11 @@ dòng cắt-bù; người dùng tick; `hanMucMoi()` dựng danh sách `updateBud
 **tách khỏi widget** để tính chất *"tổng hạn mức không đổi"* kiểm được bằng test
 thuần — và chính nhờ thế mà luật D5 bỏ được.
 
+✅ **Nhóm C (người dùng duyệt 2026-09-28): bất biến ④ nay là *"không tool nào ghi THẲNG"*** — AI được
+điền sẵn form hay danh sách đề xuất, người dùng bấm mới ghi; tầng 4 và mọi thao tác xoá vẫn cấm. Việc
+đầu tiên theo khuôn này là **C1 — gắn danh mục hàng loạt** (2026-09-29): mô hình B1 tick sẵn, người
+dùng duyệt cả lô rồi bấm *Áp dụng* (mục 5e `CATEGORY_RATIONALE.md`, 9.40 `AI_EDGE_FEATURE.md`).
+
 ---
 
 ## 9. Ba thứ kiến trúc này cố ý KHÔNG làm

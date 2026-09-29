@@ -3070,6 +3070,16 @@ nhập* thay *Chi vượt thu nhập*; chữ kết luận *"chi vượt thu nh�
 nhãn kết quả, không đổi khai báo). Chưa đo lại bộ câu AI trên máy — câu hỏi có số lần ấy hiếm; chi tiết ở G56
 `CLIENT_APP_KNOWN_GAPS.md`.
 
+### 9.40 Nhóm C bắt đầu — C1 gắn danh mục hàng loạt (2026-09-29 tối)
+
+Việc **đầu tiên** của nhóm C, nhóm mà người dùng duyệt đích danh (2026-09-28) đổi bất biến ④ thành *"không tool nào
+ghi **thẳng**"*: AI **điền sẵn**, người dùng bấm mới ghi; tầng hậu quả 4 và mọi thao tác xoá vẫn cấm. C1 thuộc **tầng 1**
+của mục 10.5 (sửa phân loại — duyệt cả lô). Nó **không phải tool** của Trợ lý AI và không có mô hình riêng: màn *Gắn
+danh mục nhanh* (từ thẻ trên Sổ giao dịch) chạy mô hình **B1** trên giao dịch đã có, **tick sẵn** dự đoán, và chỉ ghi khi
+người dùng bấm *Áp dụng* — mỗi dòng qua `TransactionRepository.updateTransaction`. Chín tool của Trợ lý AI vẫn **chỉ
+đọc**. Chi tiết, bẫy và nghiệm thu Realme: mục **5e** `docs/CATEGORY_RATIONALE.md`. Kế tiếp theo lộ trình: **C2** (nhập
+giao dịch bằng câu — tầng 3, form điền sẵn).
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

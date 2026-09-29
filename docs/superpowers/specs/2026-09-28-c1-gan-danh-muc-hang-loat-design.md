@@ -1,5 +1,12 @@
 # C1 — Gắn danh mục hàng loạt cho giao dịch chưa phân loại — thiết kế
 
+> ✅ **XONG 2026-09-29 tối** — năm task, commit `5c08796` → `af9c728` (+ sửa màu đường kẻ bảng chọn). Nghiệm thu Realme
+> và số đo: mục **5e** `docs/CATEGORY_RATIONALE.md`. Hai chỗ bản thi công **khác** thân spec: (1) toast §4 **không nêu số**
+> (*"Đã gắn danh mục"* / *"… — có giao dịch chưa lưu được"* / *"Chưa lưu được danh mục — thử lại sau"*) — theo nếp thông
+> báo tạm thời tối giản của người dùng; con số còn lại hiện ngay trên thẻ khi quay về; (2) `apDungGan` **đọc lại hàng
+> tươi** trước khi ghi và từ chối hàng đã có danh mục / đã xoá từ lúc mở màn — spec §5 chưa nói. Trên dữ liệu thật
+> Realme `demChuaGan = 0` (mọi hàng trống đều do máy sinh), nên §7 "máy ảo" được thay bằng khoản thử người dùng duyệt.
+
 **Ngày:** 2026-09-28 (tối). **Người dùng duyệt** bản thiết kế trong chat cùng ngày, với các lựa chọn: lối vào là **thẻ trên
 trang Sổ giao dịch** · **tick sẵn** dòng đoán được · chỉ xét **khoản chưa có danh mục** · **có** ghi phản hồi vào bảng B1.
 Nhóm C đổi **bất biến ④** thành *"không tool nào ghi **thẳng**"*: AI điền sẵn, người dùng xác nhận mới ghi. Người dùng

@@ -6,7 +6,7 @@
 > **bằng chứng đo được**, và **những phương án đã cân nhắc rồi loại bỏ** — đó là
 > phần dễ mất nhất khi người khác đọc lại đoạn mã sau này.
 
-**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`; G24 đóng cùng ngày), 2026-09-29 (thay đổi 7 — gợi ý danh mục học từ ghi chú, mục 5d)
+**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`; G24 đóng cùng ngày), 2026-09-29 (thay đổi 7 — gợi ý danh mục học từ ghi chú, mục 5d), 2026-09-29 tối (thay đổi 8 — gắn danh mục hàng loạt C1, mục 5e)
 
 ---
 
@@ -23,8 +23,9 @@ Sáu thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Bản sao riêng của bộ mặc định cho từng tài khoản; hàng toàn cục lui về làm khuôn (2026-09-07) | Hàng mặc định dùng chung nên người dùng không sửa, đổi tên hay xoá được; bảng phụ `CategoryGroupMemberships` tồn tại chỉ vì thế (G10) |
 | Tên danh mục dừng ở 200 code point (2026-09-10) | `NameCategory` là `varchar(200)`; tên dài hơn vỡ `P2000`, rơi xuống `DB_ERROR`, và bị gửi lại ở mọi chu kỳ đồng bộ (G31). ✅ 2026-09-11: backend nay trả `CONSTRAINT_VIOLATION` nên hết gửi lại mãi, nhưng bản ghi kẹt vĩnh viễn — giới hạn ô nhập vẫn cần |
 | *(thay đổi 7, 2026-09-29 — **tính năng**, không phải sửa lỗi)* Gợi ý danh mục **học từ ghi chú** (Naive Bayes cục bộ), đi trước bộ từ khoá; bảng phản hồi cục bộ v25 | Bộ từ khoá **không học** — từ khoá phải có người gõ vào — và **không ghi** việc người dùng bấm *Chọn* hay *Bỏ qua*. Nghiệm thu còn lộ một từ khoá mặc định **gây nhầm** (`grab` → Ăn uống, seed backend) mà B1 sửa được — mục 5d |
+| *(thay đổi 8, 2026-09-29 — **tính năng**)* **Gắn danh mục hàng loạt** (C1): thẻ trên Sổ giao dịch → màn duyệt, mô hình B1 tick sẵn, người dùng bấm *Áp dụng* mới ghi | Khoản trống danh mục (kéo từ server / bản cũ) nằm ở lát *Chưa phân loại*, nên donut, ngân sách theo danh mục và B3 mù với chúng. Trên Realme thật `demChuaGan = 0` — mọi hàng trống đều do máy sinh — mục 5e |
 
-Hàng cuối là **ngoại lệ** của câu mở đầu: B1 là việc người dùng chọn làm (dự án con đầu tiên của mảng máy học), không do lỗi nào ép. Nó đứng trong tài liệu này vì vẫn cần đúng thứ tài liệu này giữ: quyết định, phương án đã loại, và con số đo được.
+Hai hàng cuối là **ngoại lệ** của câu mở đầu: B1 (dự án con đầu tiên của mảng máy học) và C1 (việc đầu tiên của nhóm C, dựa trên B1) là việc người dùng chọn làm, không do lỗi nào ép. Chúng đứng trong tài liệu này vì vẫn cần đúng thứ tài liệu này giữ: quyết định, phương án đã loại, và con số đo được.
 
 Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
@@ -365,6 +366,84 @@ Người dùng chốt ngày 2026-09-29, hai quyết định:
 - **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
   học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
   gốc (seed), không bằng một luật chặn thứ hai ở màn.
+
+---
+
+## 5e. Thay đổi 8 — gắn danh mục hàng loạt (C1, 2026-09-29)
+
+**Không phải sửa lỗi** — việc đầu tiên của **nhóm C**: nhóm mà người dùng duyệt đổi bất biến ④
+thành *"không tool nào ghi **thẳng**"* (2026-09-28) — AI điền sẵn, người dùng bấm mới ghi. Thiết
+kế: `docs/superpowers/specs/2026-09-28-c1-gan-danh-muc-hang-loat-design.md`. Không đổi schema,
+không thêm trường đồng bộ.
+
+### Nó làm gì
+
+Thẻ *"Có N giao dịch chưa có danh mục"* trên Sổ giao dịch (dưới thẻ tổng, Stitch `a829606a…`)
+mở màn *Gắn danh mục nhanh* (route con `/transactions/gan-danh-muc`, navigator gốc, Stitch
+`5023f081…`). Mô hình **B1** — không phải mô hình riêng — đoán danh mục cho từng khoản, **tick
+sẵn** dòng đoán được kèm câu lý do của B1; dòng không đoán được nằm ở nhóm *"CHƯA ĐOÁN ĐƯỢC"* với
+chip nét đứt *"+ Chọn danh mục"*. Bấm *Áp dụng N* mới ghi, từng dòng qua
+`TransactionRepository.updateTransaction`.
+
+### Chỗ dễ làm hỏng nhất
+
+- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`category/domain/gan_hang_loat.dart`):
+  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay` của
+  B1). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
+  số khác. Khoản điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn cố ý không có danh mục.
+- **Lọc theo chiều tiền** — `hopLeTheoChieu`: khoản chi chỉ nhận danh mục `chi` / `vay_no`,
+  khoản thu chỉ `thu` / `vay_no`. B1 học trên **cả ba** phân loại, nên thiếu bộ lọc là gắn được
+  *"Lương"* cho một khoản chi (bản sai bỏ lọc làm ca ⭐ đỏ). Bảng chọn danh mục của màn là
+  **bảng riêng** lọc bằng đúng hàm ấy — trang *Chọn danh mục* có sẵn mở đủ ba tab.
+- **Ghi từ hàng TƯƠI** — `apDungGan` đọc lại hàng trước khi ghi: `updateTransaction` ghi đủ mọi
+  cột của entity, nên ghi từ ảnh chụp lúc mở màn là đè mất một lần sửa vừa kéo về từ máy khác,
+  rồi mốc `updatedAt` mới làm bản cũ ấy **thắng** trên server. Hàng đã có danh mục / đã xoá từ lúc
+  mở màn thì từ chối (tính là "chưa lưu được").
+- **Tôn trọng luật thôi gợi ý của B1** (`tatCap`) — và chính điều này làm lượt nghiệm thu bất
+  ngờ: trên Realme cả ba khoản *"grab …"* thử **không** được đoán, vì lượt nghiệm thu B1 đã bấm
+  *Bỏ qua* cặp (*grab*, Di chuyển) hai lần. Đúng thiết kế.
+- **Phản hồi** vào bảng B1 (`nguon = hoc`) **chỉ** cho dòng có dự đoán **đang tick**: giữ dự
+  đoán → `chon`, đổi → `khac`. Dòng bỏ tick không ghi — bỏ tick là *"chưa muốn sửa dòng này"*,
+  không phải *"dự đoán sai"*.
+- **Thẻ đọc stream** (`transactionDao.watchAll` → `demChuaGan`), toàn sổ, không theo kỳ: tự đổi
+  sau lần áp dụng, lần pull và lần thêm giao dịch — không cần nạp lại sau `pop`.
+- **Toast không nêu số** (*"Đã gắn danh mục"*, *"… — có giao dịch chưa lưu được"*): spec §4 viết
+  kèm số N, nhưng nếp thông báo tạm thời của dự án là tối giản, và con số còn lại đã hiện trên thẻ
+  ngay khi quay về.
+
+### Đo trên dữ liệu thật
+
+| CSDL (2026-09-29) | Giao dịch sống | Mẫu học B1 | `demChuaGan` |
+|---|---|---|---|
+| Realme, tài khoản 10 | 66 | 26 | **0** |
+
+16 hàng trống danh mục của tài khoản ấy **đều do máy sinh** (15 nạp/rút mục tiêu, 1 điều chỉnh
+số dư) và bị loại đúng — thẻ **không hiện** trên dữ liệu thật. Giao diện bắt buộc chọn danh mục
+khi lưu, nên khoản trống danh mục chỉ đến từ server hoặc bản app cũ; giá trị của C1 nằm ở những
+tài khoản ấy (17 hàng như thế trên PostgreSQL, đo 2026-09-10).
+
+### Nghiệm thu trên máy thật (Realme RMX2205, 2026-09-29)
+
+Người dùng duyệt **nhập 4 khoản chi thử qua giao diện rồi xoá**. Sau khi nhập, CSDL trên máy
+được sửa **chỉ** `category_id = NULL` (giả lập khoản trống kéo từ server) và đổi ghi chú hai
+khoản để có dòng đoán được: *gui xe may*, *ca phe sua da*, *grab ra ga*, *mua do linh tinh*.
+
+- Thẻ *"Có 4 giao dịch chưa có danh mục"*, dòng chính xuống hai dòng ở 360 dp, không tràn.
+- Màn: *gui xe may* → Di chuyển (*"…“gui xe” … (3/3 lần)"*) và *ca phe sua da* → Ăn uống
+  (*"…(4/4 lần)"*) tick sẵn; *grab ra ga* (thôi gợi ý) và *mua do linh tinh* ở *CHƯA ĐOÁN ĐƯỢC*;
+  *Áp dụng 2*. Chọn Di chuyển cho *grab ra ga* qua bảng chọn (chỉ danh mục chi + *Cho vay*, *Đi
+  vay*) → tự tick, *Áp dụng 3*.
+- Áp dụng → quay về, toast *"Đã gắn danh mục"*, thẻ *"Có 1 …"*, tổng chi không đổi. Trang Phân
+  tích: *Chưa phân loại* **255.000 → 120.000 đ**, Ăn uống +38.000, Di chuyển +97.000.
+- CSDL: ba hàng có danh mục, `pending`, `updated_at` mới; bảng phản hồi thêm **đúng 2** hàng
+  `chon` (cụm *gui xe*, *ca phe*), **không** hàng nào cho *grab ra ga*.
+- Mở lại với một dòng còn lại: câu *"Chưa đoán được danh mục nào…"*, không tiêu đề nhóm, *Áp dụng
+  0* tắt.
+- Dọn: xoá 4 khoản qua giao diện (tổng chi về −6.741.000 đ, thẻ biến mất), xoá 2 hàng phản hồi
+  thử. Realme **không tới được backend** nên lần đẩy lên server chưa đo. Máy về bản release
+  `d79b9b34…`.
+- Một chỗ thô chỉ máy thật thấy: đường kẻ dưới tiêu đề bảng chọn là vạch **đen đậm** (`Divider`
+  lấy màu theme) — sửa cùng ngày sang xám nhạt như Stitch.
 
 ---
 
