@@ -24,6 +24,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,14 +52,21 @@ void main() {
         if (m.isNotEmpty) cap.add((t.note, m.single));
       }
 
-      // Cả hàng mặc định toàn cục (`idaccount = 0`): giao dịch cũ có thể trỏ tới chúng (G41, quy tắc 8 `CLAUDE.md`).
-      final danhMuc = [
+      // Bảng TRA TÊN giữ cả hàng mặc định toàn cục (`idaccount = 0`): giao dịch cũ có thể trỏ tới chúng (G41, quy
+      // tắc 8 `CLAUDE.md`). Chỉ để in tên — KHÔNG dùng làm ứng viên.
+      final ten = {
         for (final c in await db.select(db.categories).get())
-          if (!c.isDeleted && !c.isGroup && (c.idaccount == idaccount || (c.isDefault && c.idaccount == 0))) c,
-      ];
-      final ten = {for (final c in danhMuc) c.id: c.name};
+          if (c.idaccount == idaccount || (c.isDefault && c.idaccount == 0)) c.id: c.name,
+      };
+      // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (`_loadSuggestion`): `selectableChildrenAll` + `loadAllKeywords`.
+      // ⚠️ Bản đầu (`8bee5d7`) lấy ứng viên từ bảng tra tên ở trên, tức CẢ hàng toàn cục — mà hàng toàn cục mang
+      // cùng từ khoá với bản sao của tài khoản (seed: Ăn uống ↔ `grab`), nên hai danh mục cùng khớp một từ khoá cùng độ
+      // dài → bộ từ khoá coi là HOÀ và im. Đo trên Realme 2026-09-29: từ khoá "phủ 0 %" trong khi thẻ trên máy vẫn gợi ý
+      // Ăn uống cho "grab" — phép so nghiêng về B1, im lặng.
+      final repo = CategoryManagementRepositoryImpl(db: db);
+      final danhMuc = await repo.selectableChildrenAll(accountId: idaccount);
       final hopLe = {for (final c in danhMuc) c.id};
-      final tuKhoa = await db.categoryDao.getAllKeywords(idaccount);
+      final tuKhoa = await repo.loadAllKeywords(accountId: idaccount);
       final ungVien = [
         for (final c in danhMuc)
           for (final k in tuKhoa[c.id] ?? const <String>[]) CategoryKeywordCandidate(category: c, keyword: k),
