@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
+import '../../../../core/notification/hoc_gio_thong_bao.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
@@ -24,6 +26,8 @@ class NotificationSettingsPage extends StatefulWidget {
     this.store,
     this.osNotifier,
     this.datLaiLich,
+    this.taiDeXuat,
+    this.boQuaDeXuat,
   });
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
@@ -42,6 +46,14 @@ class NotificationSettingsPage extends StatefulWidget {
   /// đơn, giờ nhắc ghi chép, giờ hay thứ tổng kết) — G59. Mặc định
   /// `ReminderScheduler.resync(id, datLai: true)`; tiêm được cho test.
   final Future<void> Function(int idaccount)? datLaiLich;
+
+  /// Đề xuất giờ nhắc / tắt nhóm (B5b) — nạp MỘT lần lúc mở trang. Mặc định
+  /// `DeXuatThongBaoNguon.tai`; tiêm được cho test.
+  final Future<List<DeXuatThongBao>> Function(int idaccount)? taiDeXuat;
+
+  /// *Bỏ qua* / *Giữ* một đề xuất — im 30 ngày. Mặc định
+  /// `DeXuatThongBaoNguon.boQua`.
+  final Future<void> Function(int idaccount, DeXuatThongBao d)? boQuaDeXuat;
 
   static const Key khoaCongTacOs = Key('notification_settings_os');
 
@@ -84,6 +96,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   /// nói dối, và họ sẽ không bao giờ đi tìm lý do vì sao chẳng nhận được gì.
   bool _coQuyenOs = true;
 
+  /// Đề xuất B5b còn hiện. Áp dụng hay bỏ qua thì gỡ khỏi đây ngay — không
+  /// nạp lại (đề xuất là ảnh chụp lúc mở trang).
+  List<DeXuatThongBao> _deXuat = const [];
+
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
 
@@ -108,14 +124,120 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     // trong cả vòng đời cài đặt, tiêu phí nó lúc mở trang là mất vĩnh viễn.
     // Chỉ hỏi khi người dùng đã bật — tắt rồi thì câu trả lời không đổi gì.
     final coQuyen = p.osBat ? await _os.daCoQuyen() : true;
+    final deXuat = await _taiDeXuat(id);
 
     if (!mounted) return;
     setState(() {
       _idaccount = id;
       _prefs = p;
       _coQuyenOs = coQuyen;
+      _deXuat = deXuat;
       _dangNap = false;
     });
+  }
+
+  /// Nuốt lỗi: đề xuất là phần phụ, một trục trặc không được làm vỡ trang.
+  Future<List<DeXuatThongBao>> _taiDeXuat(int id) async {
+    try {
+      final tai = widget.taiDeXuat ??
+          (sl.isRegistered<DeXuatThongBaoNguon>()
+              ? sl<DeXuatThongBaoNguon>().tai
+              : null);
+      return tai == null ? const [] : await tai(id);
+    } catch (e) {
+      debugPrint('[CaiDatThongBao] nạp đề xuất hỏng: $e');
+      return const [];
+    }
+  }
+
+  DeXuatThongBao? _goiY(LoaiDeXuat loai, [NotificationGroup? nhom]) {
+    for (final d in _deXuat) {
+      if (d.loai == loai && d.nhom == nhom) return d;
+    }
+    return null;
+  }
+
+  void _goBo(DeXuatThongBao d) =>
+      setState(() => _deXuat = [for (final x in _deXuat) if (x != d) x]);
+
+  /// Áp dụng đi qua đường lưu DUY NHẤT của trang (`_ghi` / `_doiNhom`), nên đổi
+  /// giờ kéo theo đặt lại lịch đang chờ (G59) như khi người dùng tự chọn.
+  Future<void> _apDung(DeXuatThongBao d) async {
+    _goBo(d);
+    final g = d.gio;
+    switch (d.loai) {
+      case LoaiDeXuat.gioHoaDon:
+        await _ghi(_prefs.copyWith(gioNhac: g!.gio, phutNhac: g.phut));
+      case LoaiDeXuat.gioGhiChep:
+        await _ghi(
+            _prefs.copyWith(gioNhacGhiChep: g!.gio, phutNhacGhiChep: g.phut));
+      case LoaiDeXuat.gioTongKet:
+        await _ghi(_prefs.copyWith(
+          thuTongKet: d.thu ?? _prefs.thuTongKet,
+          gioTongKet: g?.gio ?? _prefs.gioTongKet,
+          phutTongKet: g?.phut ?? _prefs.phutTongKet,
+        ));
+      case LoaiDeXuat.tatNhom:
+        await _doiNhom(d.nhom!, false);
+    }
+  }
+
+  Future<void> _boQua(DeXuatThongBao d) async {
+    final id = _idaccount;
+    _goBo(d);
+    if (id == null) return;
+    try {
+      final boQua = widget.boQuaDeXuat ??
+          (sl.isRegistered<DeXuatThongBaoNguon>()
+              ? sl<DeXuatThongBaoNguon>().boQua
+              : null);
+      await boQua?.call(id, d);
+    } catch (e) {
+      debugPrint('[CaiDatThongBao] ghi bỏ qua hỏng: $e');
+    }
+  }
+
+  /// Dòng gợi ý dưới một hàng — `null` khi không có đề xuất loại ấy.
+  Widget? _dongGoiY(LoaiDeXuat loai, [NotificationGroup? nhom]) {
+    final d = _goiY(loai, nhom);
+    if (d == null) return null;
+    String hhmm(({int gio, int phut}) g) =>
+        '${g.gio.toString().padLeft(2, '0')}:${g.phut.toString().padLeft(2, '0')}';
+    final g = d.gio;
+    final thu = d.thu == null ? null : _tenThuThuong(d.thu!);
+    final (cau, nhanApDung, nhanBoQua) = switch (loai) {
+      LoaiDeXuat.gioHoaDon => (
+          'Bạn hay mở nhắc hoá đơn lúc khoảng ${hhmm(g!)}.',
+          'Đổi sang ${hhmm(g)}',
+          'Bỏ qua',
+        ),
+      LoaiDeXuat.gioGhiChep => (
+          'Bạn hay ghi giao dịch lúc khoảng ${hhmm(g!)}.',
+          'Đổi sang ${hhmm(g)}',
+          'Bỏ qua',
+        ),
+      LoaiDeXuat.gioTongKet => (
+          g == null
+              ? 'Bạn hay mở tổng kết tuần vào $thu.'
+              : thu == null
+                  ? 'Bạn hay mở tổng kết tuần lúc khoảng ${hhmm(g)}.'
+                  : 'Bạn hay mở tổng kết tuần vào khoảng $thu ${hhmm(g)}.',
+          'Đổi sang ${[if (thu != null) thu, if (g != null) hhmm(g)].join(' ')}',
+          'Bỏ qua',
+        ),
+      LoaiDeXuat.tatNhom => (
+          '$kSoLienTiep thông báo gần nhất của nhóm này chưa được mở.',
+          'Tắt nhóm',
+          'Giữ',
+        ),
+    };
+    return _DongGoiY(
+      cau: cau,
+      nhanApDung: nhanApDung,
+      nhanBoQua: nhanBoQua,
+      apDung: () => _apDung(d),
+      boQua: () => _boQua(d),
+    );
   }
 
   Future<void> _ghi(NotificationPrefs moi) async {
@@ -361,6 +483,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               giaTri: _prefs.batNhom(nhom),
                               onChanged: (v) => _doiNhom(nhom, v),
                             ),
+                            if (_dongGoiY(LoaiDeXuat.tatNhom, nhom)
+                                case final w?)
+                              w,
                           ],
                           // Bốn loại báo "tiền vừa rời ví" cố ý bỏ qua công
                           // tắc nhóm — xem `luonBao()`. Im lặng về ngoại lệ ấy
@@ -389,6 +514,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             ),
                             onTap: _chonGio,
                           ),
+                          if (_dongGoiY(LoaiDeXuat.gioHoaDon) case final w?) w,
                           const Divider(
                               height: 1, color: AppColors.outlineVariant),
                           _hangSoNgay(),
@@ -439,6 +565,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               ),
                               onTap: _chonGioGhiChep,
                             ),
+                            if (_dongGoiY(LoaiDeXuat.gioGhiChep) case final w?)
+                              w,
                           ],
                           const _GhiChu(
                             'Lời nhắc này chỉ hiện ngoài màn hình, không lưu '
@@ -498,6 +626,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               ),
                               onTap: _chonGioTongKet,
                             ),
+                            if (_dongGoiY(LoaiDeXuat.gioTongKet) case final w?)
+                              w,
                           ],
                         ],
                       ),
@@ -826,6 +956,80 @@ IconData _iconNhom(NotificationGroup nhom) {
 
 /// Dòng chú thích cuối thẻ. Chữ nhỏ, màu phụ — nó giải thích một ngoại lệ chứ
 /// không phải một hàng điều khiển.
+/// Dòng gợi ý B5b — màn Stitch `065eccd8…`: chữ phụ xám 12 px thẳng lề với
+/// chữ của hàng bên trên (20 + biểu tượng 24 + 16), rồi nút viền *áp dụng* và
+/// nút chữ xám *bỏ qua*. Không hộp màu, không biểu tượng — không tranh với hàng
+/// cài đặt. `Wrap` để nút dài (*Đổi sang chủ nhật 21:30*) xuống dòng ở 360 dp.
+class _DongGoiY extends StatelessWidget {
+  const _DongGoiY({
+    required this.cau,
+    required this.nhanApDung,
+    required this.nhanBoQua,
+    required this.apDung,
+    required this.boQua,
+  });
+
+  final String cau;
+  final String nhanApDung;
+  final String nhanBoQua;
+  final VoidCallback apDung;
+  final VoidCallback boQua;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(60, 0, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            cau,
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton(
+                onPressed: apDung,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(nhanApDung, style: const TextStyle(fontSize: 13)),
+              ),
+              TextButton(
+                onPressed: boQua,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(nhanBoQua, style: const TextStyle(fontSize: 13)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tên thứ giữa câu: chữ thường ở đầu (*"thứ Bảy"*, *"chủ nhật"*).
+String _tenThuThuong(int thu) {
+  final t = _tenThu(thu);
+  return t[0].toLowerCase() + t.substring(1);
+}
+
 class _GhiChu extends StatelessWidget {
   const _GhiChu(this.noiDung);
 
