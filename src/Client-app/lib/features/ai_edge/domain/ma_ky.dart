@@ -6,9 +6,14 @@
 /// Tham số là MÃ KỲ chữ: E2B sinh `"2026-08-01"` là rủi ro, `thang_truoc` thì
 /// không. Kỳ dựng bằng đúng phép của bộ chọn kỳ trang Phân tích (`cacKyGanNhat`,
 /// `lui`) — không tự tính quý.
+///
+/// `ngayHopLe` ở `core/utils/ngay_trong_cau.dart` (dời 2026-09-29, C2 task 2 —
+/// một định nghĩa với ô Nhập nhanh). ⚠️ Chữ *"hôm qua"* của Trợ lý AI đi qua mã
+/// `hom_qua` → [kyTuMa], không qua `timNgayTrongCau`: hai phép không trùng nhau.
 library;
 
 import '../../../core/notification/tuan_iso.dart';
+import '../../../core/utils/ngay_trong_cau.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 
 /// Mã mô hình được chọn → chữ kèm cho mô hình. ⚠️ Chữ, không số: `trichSo`
@@ -245,14 +250,6 @@ final RegExp _mauNgayThamSo = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
 /// Chữ của một khoảng hai mốc, [den] BAO GỒM — một định nghĩa cho bộ chỉnh lẫn tool.
 String chuKhoangNgay(DateTime tu, DateTime den) =>
     'từ ${tu.day}/${tu.month} đến ${den.day}/${den.month}/${den.year}';
-
-/// `null` khi ngày không tồn tại trên lịch — `DateTime(2026, 6, 31)` tự cuộn
-/// sang 1/7, nên phải so lại tháng và ngày.
-DateTime? ngayHopLe(int y, int m, int d) {
-  if (m < 1 || m > 12 || d < 1) return null;
-  final x = DateTime(y, m, d);
-  return (x.month == m && x.day == d) ? x : null;
-}
 
 /// Lùi [n] tháng, KẸP ngày về ngày cuối của tháng đích (31/3 lùi một tháng là
 /// 28/2 hay 29/2, không phải 3/3).
