@@ -951,6 +951,103 @@ void main() {
     });
   });
 
+  group('ThongKeKy.uocTinhChiTuyY (B4)', () {
+    /// Khoản mở sổ 1/7 (tuần 29/6 bị cửa sổ cắt ngang — bỏ), rồi 200.000 Ăn
+    /// uống mỗi thứ Tư 8/7 → 2/9: chín tuần đóng trước tuần của `now` (7/9).
+    Future<void> duLieu() async {
+      await giaoDich(id: 'mo', ngay: DateTime(2026, 7, 1), soTien: 200000);
+      for (var i = 0; i < 9; i++) {
+        await giaoDich(id: 'w$i', ngay: DateTime(2026, 7, 8 + 7 * i), soTien: 200000);
+      }
+    }
+
+    test('chín tuần đóng → khoảng tính tay 860.000 – 860.000', () async {
+      await duLieu();
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull);
+      expect(u!.soTuan, 9);
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: '200.000 × 30/7 ≈ 857.143 → làm tròn 10.000');
+    });
+
+    test('⚠️ khoản gắn HOÁ ĐƠN không đổi khoảng — tầng 1 đã tính', () async {
+      await duLieu();
+      await giaoDich(id: 'hd', ngay: DateTime(2026, 8, 5), soTien: 5000000, billId: 'b1');
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0));
+    });
+
+    test('⚠️ ngân sách TỔNG đang chạy → null (tầng 2 phủ mọi khoản chi)', () async {
+      await duLieu();
+      // Chèn thẳng hàng Drift: `addBudget` từ chối danh mục null (giao diện
+      // không tạo được ngân sách tổng) — nó chỉ đến từ đồng bộ.
+      await db.into(db.budgets).insert(BudgetsCompanion.insert(
+            id: 'tong',
+            idaccount: 1,
+            amount: 5000000,
+            startDate: DateTime(2026, 9, 1),
+            recurrence: const Value(true),
+            timeRecurrence: const Value('Month'),
+            updatedAt: now,
+          ));
+      expect((await lanDau()).uocTinhChiTuyY, isNull);
+    });
+
+    test('danh mục có ngân sách đang chạy bị loại — hết chi tuỳ ý thì null', () async {
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      expect((await lanDau()).uocTinhChiTuyY, isNull,
+          reason: 'mọi khoản chi đều thuộc Ăn uống, đã ở tầng 2');
+    });
+
+    test('⚠️ ngân sách ĐÃ HẾT HẠN không loại danh mục — cùng phép chọn với tầng 2',
+        () async {
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 8, 1),
+        endDate: DateTime(2026, 8, 31),
+        recurrence: false,
+        timeRecurrence: 'Month',
+      );
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull,
+          reason: 'tầng 2 bỏ ngân sách hết hạn; tầng 3 cũng loại danh mục ấy thì '
+              'Ăn uống rơi vào khe giữa hai tầng — không tầng nào tính');
+      expect(u!.cao, 860000);
+    });
+
+    test('⚠️ ngân sách CHƯA BẮT ĐẦU không loại danh mục — tầng 2 cũng chưa tính nó',
+        () async {
+      // Chỗ `!isExpired` đơn thuần (bản kế hoạch) khác phép chọn của tầng 2: một
+      // ngân sách bắt đầu 1/10 chưa hết hạn, nhưng kỳ của nó chưa chứa `now`.
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 10, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull,
+          reason: 'tầng 2 không tính ngân sách chưa bắt đầu — tầng 3 loại Ăn uống '
+              'là để nó rơi vào khe, không tầng nào tính');
+    });
+  });
+
   group('chiBatThuong (B3)', () {
     /// Năm tháng Ăn uống 4–8/2026 quanh 900.000 và tháng 9 vượt hẳn.
     Future<void> duLieu({String danhMuc = 'c_an'}) async {

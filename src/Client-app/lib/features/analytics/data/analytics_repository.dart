@@ -7,6 +7,7 @@ import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import '../domain/tong_tai_san.dart';
+import '../domain/uoc_tinh_chi_tuy_y.dart';
 
 /// Một danh mục chi bất thường (B3) kèm tên đã tra qua bảng tra tên dùng chung.
 typedef DongChiBatThuong = ({ChiBatThuong d, String ten});
@@ -181,6 +182,12 @@ class ThongKeKy {
   /// có gì lạ** — hai nghĩa khác nhau, đừng `?? const []` ở nơi phân biệt chúng.
   final List<DongChiBatThuong>? chiBatThuong;
 
+  /// Tầng 3 khối Dự báo (B4, 2026-09-29): khoảng chi tuỳ ý 30 ngày tới theo
+  /// thói quen. `null` = **im** (tài khoản quá trẻ, chưa đủ 4 tuần đóng, có
+  /// ngân sách tổng, hoặc không có chi tuỳ ý) — dòng không hiện. Như [duBao],
+  /// nó tính tại `now`, không theo kỳ đang xem.
+  final UocTinhChiTuyY? uocTinhChiTuyY;
+
   const ThongKeKy({
     required this.ky,
     required this.tong,
@@ -207,6 +214,7 @@ class ThongKeKy {
     this.taiSan = const [],
     this.giaoDichDauTien,
     this.chiBatThuong,
+    this.uocTinhChiTuyY,
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

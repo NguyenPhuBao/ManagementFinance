@@ -409,6 +409,22 @@ List<CamKet> _camKetMucTieu(
 
 // ── Ngân sách ─────────────────────────────────────────────────────────────
 
+/// Ngân sách **đang chạy** tại [now]: chưa xoá, chưa hết hạn, và kỳ hiện tại
+/// **chứa** [now] — phép chọn **duy nhất** của tầng 2 khối Dự báo.
+///
+/// Công khai từ 2026-09-29 (B4): tầng 3 (ước tính chi tuỳ ý) loại đúng những
+/// danh mục có ngân sách trong tập này, và im khi tập có ngân sách tổng. Hai
+/// phép chọn lệch nhau là có danh mục rơi vào khe giữa hai tầng (không tầng nào
+/// tính) hoặc bị đếm đôi — im lặng.
+List<BudgetEntity> nganSachDangChay(List<BudgetView> nganSach, DateTime now) => [
+      for (final v in nganSach)
+        if (!v.budget.isDeleted &&
+            !v.budget.isExpired(now) &&
+            !now.isBefore(v.budget.currentPeriod(now).from) &&
+            now.isBefore(v.budget.currentPeriod(now).to))
+          v.budget,
+    ];
+
 /// Tầng 2: phần còn lại của ngân sách KỲ HIỆN TẠI, quy về tiêu đều.
 ///
 /// - Chỉ ngân sách chưa hết hạn và kỳ hiện tại **chứa** [now].
@@ -430,14 +446,7 @@ double _nganSachConLai(
 }) {
   final sauCuoi = DateTime(cuoi.year, cuoi.month, cuoi.day + 1);
 
-  final dangChay = <BudgetEntity>[];
-  for (final v in nganSach) {
-    final b = v.budget;
-    if (b.isDeleted || b.isExpired(now)) continue;
-    final ky = b.currentPeriod(now);
-    if (now.isBefore(ky.from) || !now.isBefore(ky.to)) continue;
-    dangChay.add(b);
-  }
+  final dangChay = nganSachDangChay(nganSach, now);
   final tong = [
     for (final b in dangChay)
       if (b.categoryId == null) b

@@ -20,6 +20,7 @@ import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import '../domain/thu_nhap_moi_thang.dart';
 import '../domain/tong_tai_san.dart';
+import '../domain/uoc_tinh_chi_tuy_y.dart';
 import 'analytics_repository.dart';
 
 /// Gộp **bảy** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
@@ -439,9 +440,10 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // lại sau mọi chu kỳ đồng bộ. Ngưỡng dùng CÙNG phép neo với luật tái phân
     // bổ; mốc cửa sổ là `giaoDichDauTien` của `txs` (đã lọc xoá mềm — bẫy 3 của
     // cửa sổ nhìn lại).
+    // Cửa sổ nhìn lại dùng chung cho B3 (chỉ khi Tháng) và B4 (mọi đơn vị).
+    final cuaSo = cuaSoNhinLai(now, giaoDichDauTien);
     List<DongChiBatThuong>? batThuong;
     if (ky.donVi == DonViKy.thang) {
-      final cuaSo = cuaSoNhinLai(now, giaoDichDauTien);
       final nguong =
           nguongCoNghia(cuaSo == null ? 0 : thuNhapMoiThangTu(khoan, cuaSo));
       batThuong = [
@@ -450,9 +452,26 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       ];
     }
 
+    // ── B4: tầng 3 khối Dự báo — chi tuỳ ý theo thói quen (2026-09-29) ────
+    // Tra ngân sách tại `now` như tầng 2 (`nganSachHomNay`) và bằng CHÍNH phép
+    // chọn của tầng 2 (`nganSachDangChay`): lệch là danh mục rơi vào khe giữa
+    // hai tầng hoặc bị đếm đôi. Không theo kỳ đang xem.
+    final dangChay = nganSachDangChay(nganSachHomNay, now);
+    final uocTinh = uocTinhChiTuyY(
+      khoan,
+      now: now,
+      cuaSo: cuaSo,
+      danhMucCoNganSach: {
+        for (final b in dangChay)
+          if (b.categoryId != null) b.categoryId!,
+      },
+      coNganSachTong: dangChay.any((b) => b.categoryId == null),
+    );
+
     return ThongKeKy(
       ky: ky,
       chiBatThuong: batThuong,
+      uocTinhChiTuyY: uocTinh,
       taiSan: taiSan,
       giaoDichDauTien: giaoDichDauTien,
       duBao: duBao,
