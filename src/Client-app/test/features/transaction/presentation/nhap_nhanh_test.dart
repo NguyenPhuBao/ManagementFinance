@@ -100,12 +100,13 @@ void main() {
   final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt').copyWith(isDefault: false);
   final tcb = makeWallet(id: 'tcb', name: 'Techcombank').copyWith(type: 'bank');
 
-  FakeCategoryRepository categories() {
+  FakeCategoryRepository categories({Map<String, List<String>> keywords = const {}}) {
     CategoryTree cay(List<Category> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     return FakeCategoryRepository(
       trees: {'chi': cay([anUong, diChuyen]), 'thu': cay([luong]), 'vay_no': cay(const [])},
       selectable: [anUong, diChuyen, luong],
+      keywords: keywords,
     );
   }
 
@@ -124,6 +125,7 @@ void main() {
     GoiYPhanHoiStore? phanHoiGoiY,
     ThemeData? theme,
     DocCauBangAi? docAi,
+    Map<String, List<String>> keywords = const {},
   }) {
     final bloc = TransactionBloc(transactionRepository: repo ?? FakeTransactionRepository());
     final router = GoRouter(
@@ -137,7 +139,7 @@ void main() {
               path: 'add',
               builder: (_, __) => AddTransactionPage(
                 transactionBloc: bloc,
-                categoryRepository: categories(),
+                categoryRepository: categories(keywords: keywords),
                 wallets: [tienMat, tcb],
                 idaccount: 1,
                 initial: initial,
@@ -279,6 +281,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.hang.single, (goiY: 'move', ketQua: kKetQuaGoiYChon, chon: 'move'),
         reason: 'người dùng chốt: danh mục điền từ B1 ghi phản hồi như thẻ gợi ý');
+  });
+
+  testWidgets('danh mục từ TỪ KHOÁ (người dùng chốt 2026-09-30): điền, hiện câu lý do, lưu thì ghi phản hồi "chon"',
+      (tester) async {
+    final store = _StoreGia();
+    await tester.pumpWidget(app(phanHoiGoiY: store, keywords: {'move': ['xăng']}));
+    await tester.pumpAndSettle();
+
+    await dien(tester, 'đổ xăng 50k');
+
+    expect(find.text('Di chuyển'), findsOneWidget);
+    expect(find.text('Khớp với “xăng” trong ghi chú.'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    expect(store.hang.single, (goiY: 'move', ketQua: kKetQuaGoiYChon, chon: 'move'));
   });
 
   testWidgets('màn SỬA giao dịch không có ô Nhập nhanh', (tester) async {

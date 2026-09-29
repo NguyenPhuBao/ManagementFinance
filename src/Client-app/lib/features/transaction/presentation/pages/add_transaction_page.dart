@@ -465,22 +465,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// - ví đọc từ câu đặt [_nguoiDungDaChonVi] — luật ví hay dùng theo danh mục không được đè lựa chọn trong câu;
   /// - danh mục qua [_chonDanhMuc] (chiều vay/nợ, đoạn Chi/Thu, xoá thẻ gợi ý);
   /// - ghi chú đặt SAU danh mục: [_onNoteChanged] thấy đã có danh mục thì không hẹn gợi ý;
-  /// - danh mục đến từ B1 thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
+  /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
   Future<void> _dienTuCau() async {
     final cau = _nhapNhanhController.text.trim();
     if (cau.isEmpty || _dangDien) return;
     _dangDien = true;
     final luot = ++_luotDien;
     FocusScope.of(context).unfocus();
-    final id = _accountId();
-    var chonDuoc = const <Category>[];
-    if (id != null) {
-      try {
-        chonDuoc = await _categoryRepository.selectableChildrenAll(accountId: id);
-      } catch (e) {
-        debugPrint('[NhapNhanh] đọc danh mục lỗi: $e');
-      }
-    }
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
     // C2 §2.8 — "AI đọc mọi câu": máy dùng được AI thì hỏi mô hình trước, rồi luật kiểm từng ô của nó.
     KetQuaAi? ai;
     final docAi = _docAi;
@@ -498,7 +490,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (!mounted || luot != _luotDien) return;
     _dangDien = false;
     if (_dangDocAi) setState(() => _dangDocAi = false);
-    _apDungKetQua(cau, chonDuoc, ai: ai);
+    _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
+  }
+
+  /// Danh mục chọn được + từ khoá của chúng (bước từ khoá của C2, người dùng chốt 2026-09-30). Lỗi đọc thì rỗng — ô
+  /// Nhập nhanh vẫn điền được mọi ô khác.
+  Future<(List<Category>, Map<String, List<String>>)> _napDanhMucVaTuKhoa() async {
+    final id = _accountId();
+    if (id == null) return (const <Category>[], const <String, List<String>>{});
+    try {
+      return (
+        await _categoryRepository.selectableChildrenAll(accountId: id),
+        await _categoryRepository.loadAllKeywords(accountId: id),
+      );
+    } catch (e) {
+      debugPrint('[NhapNhanh] đọc danh mục / từ khoá lỗi: $e');
+      return (const <Category>[], const <String, List<String>>{});
+    }
   }
 
   /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
@@ -506,25 +514,28 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _luotDien++;
     unawaited(_docAi?.huy());
     final cau = _nhapNhanhController.text.trim();
-    final id = _accountId();
-    var chonDuoc = const <Category>[];
-    if (id != null) {
-      try {
-        chonDuoc = await _categoryRepository.selectableChildrenAll(accountId: id);
-      } catch (_) {}
-    }
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
     if (!mounted) return;
     setState(() {
       _dangDien = false;
       _dangDocAi = false;
     });
-    if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc);
+    if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
   }
 
   /// Điền những ô đọc được vào form (xem [_dienTuCau]).
-  void _apDungKetQua(String cau, List<Category> chonDuoc, {KetQuaAi? ai}) {
+  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) {
     final now = DateTime.now();
-    final kq = docCauGiaoDich(cau, now: now, vi: _wallets, chonDuoc: chonDuoc, mo: _boPhanLoai, tatCap: _tatCap, ai: ai);
+    final kq = docCauGiaoDich(
+      cau,
+      now: now,
+      vi: _wallets,
+      chonDuoc: chonDuoc,
+      mo: _boPhanLoai,
+      tatCap: _tatCap,
+      ai: ai,
+      tuKhoa: tuKhoa,
+    );
     if (kq.khongDocDuocGi) {
       setState(() => _ketQuaDien =
           (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null));
@@ -564,21 +575,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
     // Rỗng = câu chỉ có số / ngày / ví: ghi chú người dùng đã gõ giữ nguyên.
     if (kq.ghiChu.isNotEmpty) _noteController.text = kq.ghiChu;
-    final doan = kq.doan;
+    final goiY = danhMuc != null ? kq.goiY : null;
     final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
     setState(() {
-      if (doan != null && danhMuc != null && lyDo != null) {
-        _choPhanXu = (
-          goiY: CategorySuggestion(
-            category: danhMuc,
-            matchedKeyword: doan.cumBoDau,
-            nguon: kNguonGoiYHoc,
-            amTietChinh: doan.cumBoDau,
-            lyDo: lyDo,
-          ),
-          ghiChu: _noteController.text.trim(),
-        );
-      }
+      if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: _noteController.text.trim());
       _ketQuaDien = (
         tomTat: cauDaDien(kq, tenVi: vi?.name, tenDanhMuc: danhMuc?.name, now: now),
         docDuoc: true,

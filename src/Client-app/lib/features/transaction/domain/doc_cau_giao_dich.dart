@@ -21,6 +21,8 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
+import '../../category/data/models/category_suggestion.dart';
+import '../../category/data/services/category_suggestion_engine.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 
@@ -40,8 +42,12 @@ class KetQuaDocCau {
   /// Khác `null` khi danh mục đến từ B1 — màn dùng nó để ghi phản hồi `chon` / `khac` lúc lưu, như thẻ gợi ý.
   final DoanDanhMuc? doan;
 
-  /// `cauLyDoHoc(...)` khi danh mục đến từ B1.
+  /// Câu lý do khi danh mục đến từ B1 (`cauLyDoHoc`) hoặc từ từ khoá (`cauLyDoTuKhoa`).
   final String? lyDoDanhMuc;
+
+  /// Gợi ý đứng sau danh mục khi nó đến từ B1 **hoặc từ khoá** — màn đặt làm `_choPhanXu` để lúc lưu ghi phản hồi
+  /// `chon` / `khac` đúng nguồn, như thẻ gợi ý. `null` khi danh mục đến từ tên trong câu hoặc từ AI.
+  final CategorySuggestion? goiY;
 
   /// Câu gốc (dựng sẵn — NFC) bỏ các đoạn đã dùng, gom khoảng trắng.
   final String ghiChu;
@@ -58,6 +64,7 @@ class KetQuaDocCau {
     this.categoryId,
     this.doan,
     this.lyDoDanhMuc,
+    this.goiY,
     required this.ghiChu,
     this.canhBao = const [],
     this.quaAi = false,
@@ -187,6 +194,7 @@ KetQuaDocCau docCauGiaoDich(
   BoPhanLoaiGhiChu? mo,
   Set<(String, String)> tatCap = const {},
   KetQuaAi? ai,
+  Map<String, List<String>> tuKhoa = const {},
 }) {
   final s = unorm.nfc(cau);
   final thuong = s.toLowerCase();
@@ -236,6 +244,8 @@ KetQuaDocCau docCauGiaoDich(
 
   var loai = _loaiCua(_boKhoang(thuong, daDung));
   var ghiChu = _ghiChuTu(s, daDung);
+  // Đoán danh mục trên ghi chú của LUẬT (câu đã bỏ tiền, ngày, ví) — ghi chú AI có thể đã bớt chữ.
+  final ghiChuLuat = ghiChu;
   var ngay = ng?.ngay;
 
   // §2.8 — ô của AI qua kiểm của luật. Luật đọc chắc (ngày, ví nêu tên) thì luật thắng: chữ ấy không hai nghĩa.
@@ -268,19 +278,41 @@ KetQuaDocCau docCauGiaoDich(
   String? categoryId;
   DoanDanhMuc? doan;
   String? lyDo;
+  CategorySuggestion? goiY;
   // Tìm trên câu đã bỏ đoạn ví: "45k ví Tiết kiệm" không được đọc thành danh mục "Tiết kiệm".
   final tenDm = timTenTrongCau(_boKhoang(s, daDung), [for (final c in dsHopLe) c.name], tuLoai: 'danh mục');
   if (tenDm != null) {
     final trung = _cungTen(dsHopLe, tenDm.ten, (c) => c.name);
     if (trung.length == 1) categoryId = trung.single.id;
   } else {
-    // B1 thắng khi nó chắc (người dùng chốt 2026-09-30): thói quen riêng trước hiểu biết chung của mô hình.
-    final d = mo?.doan(ghiChu, hopLe: hopLe, tatCap: tatCap);
+    // Thứ tự (người dùng chốt 2026-09-30): B1 khi nó chắc → từ khoá của danh mục → AI. Cùng thứ tự thẻ gợi ý trên màn
+    // (B1 trước từ khoá): thói quen riêng, rồi điều người dùng tự khai báo, rồi mới tới hiểu biết chung của mô hình.
+    final d = mo?.doan(ghiChuLuat, hopLe: hopLe, tatCap: tatCap);
+    final tk = d != null
+        ? null
+        : const CategorySuggestionEngine().suggest(
+            rawText: ghiChuLuat,
+            candidates: [
+              for (final c in dsHopLe)
+                for (final k in tuKhoa[c.id] ?? const <String>[]) CategoryKeywordCandidate(category: c, keyword: k),
+            ],
+          );
     if (d != null) {
       categoryId = d.categoryId;
       doan = d;
       final ten = dsHopLe.firstWhere((c) => c.id == d.categoryId).name;
-      lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChu, tenDanhMuc: ten);
+      lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChuLuat, tenDanhMuc: ten);
+      goiY = CategorySuggestion(
+        category: dsHopLe.firstWhere((c) => c.id == d.categoryId),
+        matchedKeyword: d.cumBoDau,
+        nguon: kNguonGoiYHoc,
+        amTietChinh: d.cumBoDau,
+        lyDo: lyDo,
+      );
+    } else if (tk != null) {
+      categoryId = tk.categoryId;
+      lyDo = tk.lyDo;
+      goiY = tk;
     } else if (ai?.danhMuc != null) {
       final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
       if (k is KhopMot<Category>) categoryId = k.muc.id;
@@ -295,6 +327,7 @@ KetQuaDocCau docCauGiaoDich(
     categoryId: categoryId,
     doan: doan,
     lyDoDanhMuc: lyDo,
+    goiY: goiY,
     ghiChu: ghiChu,
     canhBao: canhBao,
     quaAi: ai != null,

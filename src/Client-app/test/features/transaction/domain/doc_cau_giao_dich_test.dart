@@ -406,6 +406,39 @@ void main() {
           reason: 'AI nói thu mà chọn danh mục chi — không hợp chiều');
     });
 
+    group('bước TỪ KHOÁ (người dùng chốt 2026-09-30): tên → B1 → từ khoá → AI', () {
+      final moGrab = BoPhanLoaiGhiChu.hoc([
+        for (var i = 0; i < 6; i++)
+          MauGhiChu(categoryId: 'c-dc', amTiet: amTietCua('grab'), ngay: DateTime(2026, 8, 1 + i)),
+        for (var i = 0; i < 6; i++)
+          MauGhiChu(categoryId: 'c-an', amTiet: amTietCua('pho bo'), ngay: DateTime(2026, 8, 1 + i)),
+      ]);
+      KetQuaDocCau docTk(String cau, Map<String, List<String>> tuKhoa, {KetQuaAi? ai, BoPhanLoaiGhiChu? mo}) =>
+          docCauGiaoDich(cau, now: now, vi: [tcb, chinh], chonDuoc: chonDuoc, mo: mo, ai: ai, tuKhoa: tuKhoa);
+
+      test('⭐ từ khoá khớp → danh mục ấy, kèm câu lý do và gợi ý nguồn "từ khoá" (Realme: "đổ xăng" từng ra Ăn uống)', () {
+        final r = docTk('đổ xăng 50k', {'c-dc': ['xăng']}, ai: const KetQuaAi(danhMuc: 'Ăn uống'));
+        expect(r.categoryId, 'c-dc', reason: 'từ khoá đứng TRƯỚC AI');
+        expect(r.lyDoDanhMuc, 'Khớp với “xăng” trong ghi chú.');
+        expect(r.goiY?.nguon, kNguonGoiYTuKhoa);
+        expect(r.doan, isNull, reason: 'không phải B1');
+      });
+
+      test('B1 chắc thì B1 THẮNG từ khoá (cùng thứ tự thẻ gợi ý trên màn)', () {
+        final r = docTk('grab 50k', {'c-an': ['grab']}, mo: moGrab);
+        expect(r.categoryId, 'c-dc');
+        expect(r.goiY?.nguon, kNguonGoiYHoc);
+      });
+
+      test('từ khoá cũng phải hợp chiều: câu nói THU thì từ khoá của danh mục chi không được chọn', () {
+        expect(docTk('được cho 500k tiền xăng', {'c-dc': ['xăng']}).categoryId, isNull);
+      });
+
+      test('không từ khoá nào khớp → rơi về AI', () {
+        expect(docTk('bún chả 45k', {'c-dc': ['xăng']}, ai: const KetQuaAi(danhMuc: 'Ăn uống')).categoryId, 'c-an');
+      });
+    });
+
     test('không có KetQuaAi → quaAi false (đường luật)', () {
       expect(doc('ăn phở 45k').quaAi, isFalse);
     });
