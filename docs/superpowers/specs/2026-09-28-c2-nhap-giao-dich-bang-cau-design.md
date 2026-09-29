@@ -33,6 +33,21 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 > 6. **Đổi chiều trên màn đi qua `_chonHuong` (§3),** không gán thẳng `_huong`: `_chonHuong` bỏ danh mục thuộc chiều kia,
 >    gán thẳng là để danh mục chi đứng dưới đoạn Thu. Test bố cục có thêm ca **bàn phím hệ thống đang mở** (G58: 16 phím
 >    ẩn khi `viewInsets.bottom > 0`, mà ô Nhập nhanh là ô chữ). Nghiệm thu trên **Realme** (máy thật đang cắm), không máy ảo.
+>
+> **Tự chốt lúc thi công T2–T3 (2026-09-29), vì bản trên sai trên câu thường gặp:**
+> 7. **Từ chỉ thu (§2.2) khớp theo từng từ, phân biệt dấu** — không bỏ dấu cả câu: *"bạn"* bỏ dấu thành *"ban"* (= *bán*),
+>    *"lại"* thành *"lai"* (= *lãi*), *"bình thường"* chứa *"thuong"* (= *thưởng*), nên *"ăn với bạn 200k"* từng thành khoản
+>    thu. Từ có dấu: *lương, thưởng, thu, bán, lãi, nhận*; từ không dấu chỉ *luong, thu, nhan*; cụm hai từ: *được cho /
+>    tặng / biếu / trả / hoàn*, *hoàn tiền / trả*, *lì xì*, *tiền thưởng* (và dạng không dấu). *"được"* một mình và *"hoàn"*
+>    một mình **bỏ** (*"mua được áo"*, *"hoàn thành"*); *nhận hàng / đồ / đơn / gói* không phải thu.
+> 8. **Số tiền (§2.1) — thêm:** *đ / đồng / vnd* sau số thuộc cụm (ghi chú bỏ luôn); số trần bắt đầu bằng `0` (số điện thoại,
+>    mã) và số ngay sau *"năm"* (*năm 2026*) không phải tiền; phần lẻ dính sau `tr` chỉ với `tr` (*"2k5"* không đọc); số chữ
+>    có chữ số đứng ngay sau (*"một triệu hai"* — 1.200.000 hay 1.000.000?) và lượng từ mơ hồ (*"mấy trăm nghìn"*) → **không
+>    điền** + cảnh báo *"Số tiền viết bằng chữ chưa rõ — bạn nhập tay nhé."*
+> 9. **Ngày (§2.3) — thêm:** *thứ hai … thứ bảy* bằng chữ và *dd/mm/yyyy*. *"thu"* không dấu còn là động từ *thu* tiền,
+>    nên chỉ *"thứ"* có dấu nhận dạng chữ; *"thu 5"* không dấu nhận khi không có đơn vị tiền ngay sau.
+> 10. **Ghi chú (§2.7) — thêm:** bỏ *hết / mất / tốn* đứng ngay trước số tiền (*"ăn phở hết 45k"* → *"ăn phở"*); *mất* không
+>     dấu (*mat*) cố ý không bỏ — đó còn là *mặt* của *"tiền mặt"*.
 
 ## 1. Vì sao
 
