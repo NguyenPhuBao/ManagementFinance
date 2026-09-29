@@ -32,7 +32,10 @@ cùng trưa: **F12 sửa** (✅ đo lại Realme, cổng ra nhóm A trọn — c
 · cặp nạp mục tiêu dạng cũ → ✅ **G50** đóng (chi tháng 9 tài khoản 10 nay 1.851.000). Người dùng dặn bỏ qua phần chat
 AI (chưa tính lại đáp án bộ câu). ✅ **B5a xong trọn 7 task chiều 2026-09-29** (mục 5h `docs/NOTIFICATION_FEATURE.md`;
 schema v26 `AppNotificationEvents`, chỉ ghi): spike Realme — *Hoãn* vào isolate nền kể cả khi app sống, nên mọi `hoan`
-trên Android đi qua tệp hàng chờ; nghiệm thu Realme 7/8 ca (ca *app đóng hẳn* không dựng được). Kế: **B2**.
+trên Android đi qua tệp hàng chờ; nghiệm thu Realme 7/8 ca (ca *app đóng hẳn* không dựng được). ✅ **B2 xong trọn 7
+task chiều muộn 2026-09-29** (mục 6.9 `docs/bill/BILL_DOCUMENTATION.md`; schema v27): thẻ "Có vẻ là khoản lặp" trên
+trang Hoá đơn, trang nay cả trang cuộn với hàng tab ghim; nghiệm thu Realme đạt, dữ liệu thử người dùng giữ (chi tháng 9
+tài khoản 10 nay 5.001.000); mở **G51** (số tiền thẻ hoá đơn cụt ở 360 dp, có từ trước, chưa sửa). Kế: **B3**.
 
 ---
 

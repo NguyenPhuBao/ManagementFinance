@@ -752,6 +752,20 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `dat_lich` nên huỷ nó không có `huy_lich`** — vô hại với B5b (§2.4 spec ấy không đếm `hoan` là tới máy), ghi ở giới hạn
   mục 5h. Bốn hoá đơn thử `B5a Mot · Hai · Ba · Bon` đã **xoá mềm** qua giao diện; Realme trả về bản **release** (SHA-1
   `1671b313…`). `flutter test` **4353/4353** (4 skip), analyze 26. Kế là **B2**.
+- ✅ **B2 — gợi ý tạo hoá đơn từ khoản lặp xong trọn 7 task 2026-09-29 chiều muộn** (mục **6.9**
+  `docs/bill/BILL_DOCUMENTATION.md`; spec `specs/2026-09-28-b2-khoan-lap-goi-y-hoa-don-design.md`; `36dad9d` → `da8ace2`):
+  hàm thuần `timKhoanLap` / `khoaNhomCua` (`transaction/domain/khoan_lap.dart`) + `chonDeXuatHoaDon`, bảng cục bộ
+  **schema v27** `GoiYHoaDonPhanHois` (`bo_qua` mở lại sau 3 khoản mới, `da_tao` ẩn vĩnh viễn), `/bills/add` nhận query
+  điền sẵn và form `pop(true)`, thẻ `TheKhoanLap` trên trang Hoá đơn (màn Stitch `e8b460b4…`, người dùng xác nhận).
+  ⚠️ **Trang Hoá đơn nay cả trang cuộn, hàng tab ghim** (`NestedScrollView`, người dùng chốt) — đo trước: thẻ ba dòng
+  làm `Column` + `Expanded` cũ tràn **219 px** ở 360 × 640. Nghiệm thu **Realme** (người dùng duyệt nhập và **giữ** dữ
+  liệu thử: ba *"Tien nha T7/T8/T9"* 3.000.000 đ ngày 5/7–5/9 + ba *"Gui xe"* 50.000 đ 15/9–29/9, và hoá đơn *Tien nha*
+  tạo từ thẻ): thẻ hai dòng đúng thứ tự, **Tạo** điền đủ tên / tiền / *Hàng tháng* / bắt đầu 05/09 / kỳ đầu 05/10 / ví /
+  danh mục → hoá đơn `anchor_day` 5 + hàng `da_tao`; **Bỏ qua** → `bo_qua`, thẻ biến mất; tab ghim khi cuộn. Lượt ấy bắt
+  **dòng phụ bị cắt mất chu kỳ ở 360 dp** (sửa `da8ace2`: tách hai dòng) và **mở G51** — số tiền trên thẻ hoá đơn bị cắt
+  ở 360 dp, có từ trước, chưa sửa. ⚠️ Tài khoản 10 trên Realme nay: chi tháng 9 **5.001.000**, thu **14.635.000**, tổng
+  số dư ví **3.644.000** (đọc Trang chủ) — **đáp án bộ câu AI phải tính lại**. Realme về bản **release** `7e8afaf2…`.
+  `flutter test` **4423/4423** (4 skip), analyze 26. Kế là **B3**.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

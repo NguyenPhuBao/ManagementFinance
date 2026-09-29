@@ -1,5 +1,12 @@
 # B2 — Khoản chi lặp → gợi ý tạo hoá đơn — thiết kế
 
+> ✅ **Thi công xong 2026-09-29** (`36dad9d` → `da8ace2`; tài liệu ở mục **6.9** `docs/bill/BILL_DOCUMENTATION.md`;
+> nghiệm thu Realme đạt). Bốn chỗ hệ thống thật khác bản thiết kế này: (1) **trang Hoá đơn đổi sang cả trang cuộn, hàng
+> tab ghim** (`NestedScrollView`, người dùng chốt) — mục 4 chỉ dặn "có ca test ở khổ màn thấp", đo được thẻ ba dòng làm
+> bố cục cũ tràn 219 px ở 360 × 640; (2) dòng phụ của thẻ là **hai dòng** (*"khoảng … đ"* / *"mỗi tháng · 3 lần"*), không
+> một dòng như mục 4 — một dòng bị cắt mất chu kỳ ở 360 dp; (3) nguồn có thêm `bangDanhMuc` (qua `getBangTraTen`) cho
+> biểu tượng danh mục, vì `KhoanLap` chỉ mang `categoryId`; (4) thẻ có một dòng mô tả dưới tiêu đề (theo màn Stitch).
+
 **Ngày:** 2026-09-28 (tối). **Người dùng duyệt** bản thiết kế trong chat cùng ngày, với các lựa chọn: ngưỡng **3 lần** ·
 thẻ **chỉ ở trang Hoá đơn** · **không** phát thông báo · *Bỏ qua* **mở lại sau 3 lần mới** (cùng luật B1) · chu kỳ
 **tháng + tuần** · khoản **không ghi chú thì bỏ qua**. Vị trí trong lộ trình 28/09: B1 → B5a → **B2** → B3 → B4 → B5b.
