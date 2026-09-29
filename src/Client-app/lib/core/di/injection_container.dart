@@ -65,6 +65,7 @@ import '../../features/category/data/repositories/category_management_repository
 import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
@@ -239,6 +240,10 @@ Future<void> setupDependencies() async {
   );
   sl.registerLazySingleton<CategorySuggestionEngine>(
     () => const CategorySuggestionEngine(),
+  );
+  // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
+  sl.registerLazySingleton<GoiYPhanHoiStore>(
+    () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
   );
 
   // ── 10. Features — Budget ─────────────────────────────────────────────────

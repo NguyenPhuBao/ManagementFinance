@@ -17,6 +17,7 @@ import '../widgets/so_tien_lon.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
@@ -63,6 +64,10 @@ class AddTransactionPage extends StatefulWidget {
   /// dựng CSDL, đúng khuôn [viHayDung].
   final BoPhanLoaiGhiChu? boPhanLoai;
 
+  /// Nơi ghi phản hồi thẻ gợi ý (B1). `null` → `sl<GoiYPhanHoiStore>()` nếu đã đăng ký; ca test tiêm bản trong bộ
+  /// nhớ. Không có store nào thì trang vẫn gợi ý, chỉ không ghi và không thôi gợi ý.
+  final GoiYPhanHoiStore? phanHoiGoiY;
+
   final CategorySuggestionEngine suggestionEngine;
   final TransactionBloc? transactionBloc;
 
@@ -92,6 +97,7 @@ class AddTransactionPage extends StatefulWidget {
     this.huongBanDau,
     this.viHayDung,
     this.boPhanLoai,
+    this.phanHoiGoiY,
   });
 
   @override
@@ -118,6 +124,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Mô hình học từ ghi chú; `null` khi chưa nạp xong hoặc học lỗi — khi ấy thẻ gợi ý rơi về bảng từ khoá.
   BoPhanLoaiGhiChu? _boPhanLoai;
+
+  /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
+  Set<(String, String)> _tatCap = const {};
+
+  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện.
+  ///
+  /// ⚠️ Tách khỏi [_suggestion]: [_chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH
+  /// LÀ phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
+  ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
+
+  GoiYPhanHoiStore? get _phanHoiStore =>
+      widget.phanHoiGoiY ?? (sl.isRegistered<GoiYPhanHoiStore>() ? sl<GoiYPhanHoiStore>() : null);
 
   /// Người dùng đã tự tay đặt ví nguồn trong lượt này chưa.
   ///
@@ -176,7 +194,31 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
     _noteController.addListener(_onNoteChanged);
     _loadWallets();
-    _loadViHayDung();
+    _loadViHayDung().then((_) => _napTatCap());
+  }
+
+  /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
+  Future<void> _napTatCap() async {
+    final bo = _boPhanLoai;
+    final store = _phanHoiStore;
+    final id = _accountId();
+    if (bo == null || store == null || id == null) return;
+    try {
+      final tat = tatCapTu(await store.doc(id), bo.mau);
+      if (mounted) setState(() => _tatCap = tat);
+    } catch (e) {
+      debugPrint('[GoiYDanhMuc] đọc phản hồi lỗi: $e');
+    }
+  }
+
+  /// Ghi một phản hồi. `unawaited` + `catchError`: phản hồi hỏng KHÔNG được chặn việc chọn hay lưu giao dịch.
+  void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
+    final store = _phanHoiStore;
+    final id = _accountId();
+    if (store == null || id == null) return;
+    unawaited(store
+        .ghi(idaccount: id, goiY: goiY, ketQua: ketQua, chonCategoryId: chon)
+        .catchError((Object e) => debugPrint('[GoiYDanhMuc] ghi phản hồi lỗi: $e')));
   }
 
   /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
@@ -370,6 +412,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       _huong = huong;
       _suggestion = null;
+      _choPhanXu = null;
       final cat = _selectedCategory;
       if (huong == 'transfer' || cat == null) return;
       if (isDebtClassify(cat.classify)) {
@@ -393,6 +436,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _onNoteChanged() {
     _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
+    // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
+    if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
     if (note.isEmpty || _isTransfer || _selectedCategory != null) {
       if (_suggestion != null && mounted) {
         setState(() => _suggestion = null);
@@ -426,6 +471,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final doan = _boPhanLoai?.doan(
       note,
       hopLe: {for (final c in categories) c.id},
+      tatCap: _tatCap,
     );
     CategorySuggestion? suggestion;
     if (doan != null) {
@@ -464,7 +510,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _noteController.text.trim() != note) {
       return;
     }
-    setState(() => _suggestion = suggestion);
+    setState(() {
+      _suggestion = suggestion;
+      if (suggestion != null) _choPhanXu = (goiY: suggestion, ghiChu: note);
+    });
   }
 
   void _showWalletPickerBottomSheet(BuildContext context,
@@ -745,6 +794,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (editing != null) {
       bloc.add(UpdateTransactionEvent(before: editing, after: tx));
       return;
+    }
+    // B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+    final choPhanXu = _choPhanXu;
+    final daChon = _selectedCategory;
+    if (choPhanXu != null && daChon != null && !_isTransfer) {
+      _ghiPhanHoi(
+        choPhanXu.goiY,
+        daChon.id == choPhanXu.goiY.categoryId ? kKetQuaGoiYChon : kKetQuaGoiYKhac,
+        chon: daChon.id,
+      );
+      _choPhanXu = null;
     }
     bloc.add(AddTransactionEvent(
       transaction: tx,
@@ -1207,12 +1267,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             Row(
               children: [
                 TextButton(
-                  onPressed: () => setState(() => _suggestion = null),
+                  onPressed: () {
+                    _ghiPhanHoi(suggestion, kKetQuaGoiYBoQua);
+                    setState(() {
+                      _suggestion = null;
+                      _choPhanXu = null;
+                    });
+                  },
                   child: const Text('Bỏ qua'),
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: () => _chonDanhMuc(suggestion.category),
+                  onPressed: () {
+                    _ghiPhanHoi(suggestion, kKetQuaGoiYChon, chon: suggestion.categoryId);
+                    _choPhanXu = null;
+                    _chonDanhMuc(suggestion.category);
+                  },
                   child: const Text('Chọn danh mục này'),
                 ),
               ],

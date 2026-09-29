@@ -125,6 +125,9 @@ class BoPhanLoaiGhiChu {
 
   int get soMau => _mau.length;
 
+  /// Mẫu đã học — luật mở lại gợi ý (`tatCapTu`) đếm mẫu MỚI trên chính danh sách này.
+  List<MauGhiChu> get mau => List.unmodifiable(_mau);
+
   /// `null` = chưa đủ để nói (spec 3.1): sổ mỏng, không âm tiết nào đã gặp, danh mục đầu ít mẫu, hậu nghiệm thấp,
   /// hoà ở đỉnh, danh mục đoán không có bằng chứng nào trong ghi chú, hoặc cặp (cụm, danh mục) đang bị thôi gợi ý.
   DoanDanhMuc? doan(String ghiChu, {required Set<String> hopLe, Set<(String, String)> tatCap = const {}}) {
