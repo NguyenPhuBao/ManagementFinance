@@ -62,6 +62,18 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 > nó chắc**, **nạp mô hình khi chạm vào ô**. Thiết kế ở **§2.8**; luật §2.1–2.7 ở lại làm hai việc: đường chạy khi máy
 > không có mô hình, và **lưới kiểm** từng ô của AI. §4 *"Không mô hình"* hết hiệu lực.
 
+> **🔁 ĐỔI LẦN HAI 2026-09-30 tối — CHƯA THI CÔNG, việc đầu tiên của phiên sau.** Sau khi đo Realme, người dùng hỏi *"có
+> nên thay đổi các hoạt động của chức năng này không"*; được trình bày số đo (lượt AI **~18 s**, gấp đôi mức 7–10 s báo lúc
+> chọn; luật một mình đã đọc đủ số tiền 8/10 câu; AI sai **cả hai** câu có ngày cần đọc và tự điền ví mặc định 9/10 câu —
+> đều bị lớp kiểm chặn, tức AI không thêm được gì ở hai ô ấy) rồi chọn bằng câu hỏi chọn:
+> 1. **Luật trước, AI chỉ khi luật bó tay** — thay *"AI đọc mọi câu"*. Luật điền tức thì; chỉ gọi Gemma khi luật **không
+>    đọc được số tiền** (mà câu có số — `cachDocSoTien` khác rỗng) hoặc **chưa đoán được danh mục** sau tên → B1 → từ khoá.
+> 2. **AI chỉ đọc số tiền + danh mục** — bỏ `loai`, `ngay`, `vi`, `ghi_chu` khỏi tool `dien_giao_dich` (prompt ngắn hơn);
+>    ngày, ví, loại, ghi chú hoàn toàn do luật. Lớp kiểm số tiền / danh mục §2.8 giữ nguyên.
+> Chưa chốt (hỏi đầu phiên sau): luật điền **ngay** rồi AI bổ sung ô thiếu khi về (và bỏ qua ô người dùng đã sửa trong lúc
+> chờ), hay chờ AI rồi điền một lần; và *"chưa đoán được danh mục"* xảy ra thường (ghi chú mới) — có gọi AI cho riêng danh
+> mục không, hay chỉ khi thiếu số tiền.
+
 ## 1. Vì sao
 
 Ghi một khoản chi hôm nay tốn: chọn loại, gõ tiền trên bàn phím tự vẽ, chọn danh mục, chọn ví, đổi ngày, gõ ghi chú, tức
