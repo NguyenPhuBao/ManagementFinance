@@ -155,6 +155,12 @@ class _AppToastState extends State<AppToast> {
     // trường hợp này, nhưng toast tự chống thêm một lớp.
     if (r.succeeded == 0 && r.failed == 0) return;
 
+    // Cả batch không tới nơi (mất mạng, timeout, 5xx): không thay đổi nào bị TỪ
+    // CHỐI — chúng chưa được gửi. Câu "chưa lên được máy chủ" ở đây là báo sai
+    // loại lỗi, và vì giãn cách luỹ tiến thử lại mãi nên nó hiện ở mọi chu kỳ
+    // (A4, 2026-09-28: máy thật không tới được backend dev).
+    if (r.transportFailed) return;
+
     if (r.failed > 0) {
       _hien(
         const _NoiDungToast(

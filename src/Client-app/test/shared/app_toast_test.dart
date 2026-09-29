@@ -6,7 +6,8 @@
 ///    được lưu trên máy. Không có câu đó, người dùng sẽ ngừng nhập liệu vì sợ
 ///    mất, mà đó chính là thứ kiến trúc offline-first sinh ra để tránh.
 /// 2. **Đã kết nối lại.**
-/// 3. **Đã đồng bộ xong** — hoặc còn thay đổi chưa lên được.
+/// 3. **Đã đồng bộ xong** — hoặc còn thay đổi chưa lên được (chỉ khi server đã
+///    nhận và từ chối; cả batch không tới nơi thì im — A4, 2026-09-28).
 ///
 /// **Cả ba đều tự ẩn sau vài giây**, kể cả toast mất kết nối. Bản đầu giữ dải
 /// mất kết nối cho tới khi có mạng, với lập luận "trạng thái kéo dài thì phải
@@ -453,5 +454,26 @@ void main() {
     await nhip(tester);
 
     expect(find.textContaining('Không có kết nối'), findsOneWidget);
+  });
+
+  group('A4 — cả batch không tới nơi KHÔNG phải "thay đổi bị từ chối"', () {
+    const cau = 'Một số thay đổi chưa lên được máy chủ';
+
+    testWidgets('⭐ transportFailed → không toast nào', (tester) async {
+      await dung(tester);
+      dayLen.add(const SyncResult(totalOps: 10, succeeded: 0, failed: 10, transportFailed: true));
+      await nhip(tester);
+      expect(find.text(cau), findsNothing,
+          reason: 'máy thật không tới được backend thì câu này hiện lại ở MỌI chu kỳ (Realme 2026-09-28: '
+              '10 failed, transport failed) — mất kết nối đã có toast riêng của ConnectionEvent');
+      expect(find.text('Đã đồng bộ xong'), findsNothing);
+    });
+
+    testWidgets('⚠️ server NHẬN rồi từ chối (transportFailed = false) → vẫn hiện', (tester) async {
+      await dung(tester);
+      dayLen.add(const SyncResult(totalOps: 3, succeeded: 2, failed: 1));
+      await nhip(tester);
+      expect(find.text(cau), findsOneWidget);
+    });
   });
 }
