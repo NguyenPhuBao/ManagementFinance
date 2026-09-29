@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/notification_dao.dart';
+import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
+import '../../../../core/notification/hoc_gio_thong_bao.dart';
 import '../../../../core/notification/nhat_ky_thong_bao.dart';
 import '../../../../core/notification/notification_deeplink.dart';
 import '../../../../core/notification/notification_rules.dart';
@@ -18,7 +20,16 @@ import '../../../../shared/theme/app_colors.dart';
 /// Thiết kế Stitch chưa vẽ màn này (chỉ có panel rút gọn trên Home), nên bố cục
 /// bám hệ màu và kiểu thẻ đang dùng thật trong `AppColors`.
 class NotificationCenterPage extends StatefulWidget {
-  const NotificationCenterPage({super.key, this.idaccount, this.dao, this.nhatKy});
+  const NotificationCenterPage({
+    super.key,
+    this.idaccount,
+    this.dao,
+    this.nhatKy,
+    this.taiDeXuat,
+  });
+
+  /// Route trang Cài đặt thông báo — đích của thẻ gợi ý B5b.
+  static const String routeCaiDat = '/settings/notifications';
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
   ///
@@ -41,6 +52,10 @@ class NotificationCenterPage extends StatefulWidget {
   /// Chưa đăng ký thì trang vẫn chạy, chỉ không ghi nhật ký.
   final NhatKyThongBao? nhatKy;
 
+  /// Đề xuất chỉnh thông báo (B5b) — nạp MỘT lần lúc mở trang và lúc quay về
+  /// từ trang Cài đặt. Mặc định `DeXuatThongBaoNguon.tai`; tiêm được cho test.
+  final Future<List<DeXuatThongBao>> Function(int idaccount)? taiDeXuat;
+
   @override
   State<NotificationCenterPage> createState() =>
       _NotificationCenterPageState();
@@ -56,6 +71,45 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
 
   int _gioiHan = _buocTrang;
   _Loc _loc = _Loc.tatCa;
+
+  /// Đề xuất B5b — ảnh chụp, không nghe stream (spec B5b §3).
+  List<DeXuatThongBao> _deXuat = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _napDeXuat();
+  }
+
+  /// Nuốt lỗi: thẻ gợi ý là phần phụ, trục trặc ở đây không được làm vỡ feed.
+  Future<void> _napDeXuat() async {
+    final id = widget.idaccount;
+    if (id == null) return;
+    List<DeXuatThongBao> r = const [];
+    try {
+      final tai = widget.taiDeXuat ??
+          (sl.isRegistered<DeXuatThongBaoNguon>()
+              ? sl<DeXuatThongBaoNguon>().tai
+              : null);
+      if (tai != null) r = await tai(id);
+    } catch (e) {
+      debugPrint('[TrungTamThongBao] nạp đề xuất hỏng: $e');
+    }
+    if (mounted) setState(() => _deXuat = r);
+  }
+
+  /// Mở trang Cài đặt rồi nạp lại khi quay về: áp dụng hay bỏ qua ở bên kia
+  /// làm đề xuất biến mất, không nạp lại là thẻ nói về thứ đã xử lý.
+  Future<void> _moCaiDat() async {
+    const route = NotificationCenterPage.routeCaiDat;
+    // Cùng luật với cú chạm thông báo: route thuộc thanh tab thì `go` (bẫy 7.8).
+    if (thuocThanhTab(route)) {
+      context.go(route);
+      return;
+    }
+    await context.push(route);
+    await _napDeXuat();
+  }
 
   void _doiLoc(_Loc moi) {
     setState(() {
@@ -129,6 +183,13 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           : Column(
               children: [
                 _HangChip(dangChon: _loc, onChon: _doiLoc),
+                // Thẻ gợi ý B5b đứng TRÊN feed và ngoài nó: không phải một
+                // thông báo, và vẫn hiện khi feed rỗng hay đang lọc.
+                if (_deXuat.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _TheGoiY(deXuat: _deXuat, onTap: _moCaiDat),
+                  ),
                 Expanded(child: _danhSach(dao, idaccount, nhatKy)),
               ],
             ),
@@ -201,6 +262,80 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
           },
         );
       },
+    );
+  }
+}
+
+/// Thẻ *"Có N gợi ý chỉnh thông báo"* — màn Stitch `65dab656…`. Cùng khung
+/// với thẻ thông báo (viền nhạt, bo 12, vòng biểu tượng 36) nhưng **không** có
+/// dải màu chưa đọc, không giờ, không badge — nó là lối vào trang Cài đặt.
+class _TheGoiY extends StatelessWidget {
+  const _TheGoiY({required this.deXuat, required this.onTap});
+
+  final List<DeXuatThongBao> deXuat;
+  final VoidCallback onTap;
+
+  /// Phụ đề nói đúng loại gợi ý đang có: giờ nhắc, nhóm ít khi mở, hay cả hai.
+  String get _phuDe {
+    final coGio = deXuat.any((d) => d.loai != LoaiDeXuat.tatNhom);
+    final coNhom = deXuat.any((d) => d.loai == LoaiDeXuat.tatNhom);
+    if (coGio && coNhom) return 'Giờ nhắc và nhóm ít khi mở';
+    return coGio ? 'Giờ nhắc' : 'Nhóm ít khi mở';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE0E0DB)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.tune,
+                    size: 18, color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Có ${deXuat.length} gợi ý chỉnh thông báo',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _phuDe,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.outline),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
