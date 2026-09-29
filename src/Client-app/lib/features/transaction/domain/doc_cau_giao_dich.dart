@@ -4,16 +4,19 @@
 ///
 /// Bất biến ④ của nhóm C: đây chỉ là điền sẵn. Người dùng xem lại rồi bấm **Lưu** mới ghi.
 ///
-/// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → loại (§2.2, trên câu đã bỏ đoạn ngày và số tiền, để *"thứ 2"*
-/// không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng).
+/// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → ví (§2.4) → loại (§2.2, trên câu đã bỏ các đoạn ấy, để *"thứ
+/// 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu, không
+/// có thì B1 đoán trên ghi chú đã rút).
 library;
 
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
+import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 
 /// Kết quả đọc. Mọi trường `null` nghĩa là *không đọc được* — form **giữ nguyên** ô ấy.
@@ -134,15 +137,83 @@ KetQuaDocCau docCauGiaoDich(
     }
   }
 
+  // Ví (§2.4): tên ví nêu trong câu; không có thì "tiền mặt" → ví tiền mặt duy nhất.
+  final dsVi = [for (final w in vi) if (!w.isDeleted) w];
+  String? walletId;
+  final tenVi = timTenTrongCau(s, [for (final w in dsVi) w.name], tuLoai: 'ví');
+  if (tenVi != null) {
+    final trung = _cungTen(dsVi, tenVi.ten, (w) => w.name);
+    if (trung.length == 1) {
+      walletId = trung.single.id;
+      daDung.add(_moRongTruocVi(thuong, tenVi.batDau, tenVi.ketThuc));
+    }
+  } else {
+    final m = _mauTienMat.firstMatch(b);
+    final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
+    if (m != null && tienMat.length == 1) {
+      walletId = tienMat.single.id;
+      daDung.add(_moRongTruocVi(thuong, m.start, m.end));
+    }
+  }
+
   final loai = _loaiCua(_boKhoang(thuong, daDung));
+  final ghiChu = _ghiChuTu(s, daDung);
+
+  // Danh mục (§2.5): câu nói rõ chiều thì chỉ danh mục hợp chiều (C1 `hopLeTheoChieu`); không nói thì mọi danh mục chọn
+  // được — cùng nếp thẻ gợi ý của màn Thêm giao dịch, nơi danh mục kéo đoạn Chi/Thu theo.
+  final hopLe = loai != null
+      ? hopLeTheoChieu(loai, chonDuoc)
+      : {for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.id};
+  final dsHopLe = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];
+  String? categoryId;
+  DoanDanhMuc? doan;
+  String? lyDo;
+  // Tìm trên câu đã bỏ đoạn ví: "45k ví Tiết kiệm" không được đọc thành danh mục "Tiết kiệm".
+  final tenDm = timTenTrongCau(_boKhoang(s, daDung), [for (final c in dsHopLe) c.name], tuLoai: 'danh mục');
+  if (tenDm != null) {
+    final trung = _cungTen(dsHopLe, tenDm.ten, (c) => c.name);
+    if (trung.length == 1) categoryId = trung.single.id;
+  } else if (mo != null) {
+    final d = mo.doan(ghiChu, hopLe: hopLe, tatCap: tatCap);
+    if (d != null) {
+      categoryId = d.categoryId;
+      doan = d;
+      final ten = dsHopLe.firstWhere((c) => c.id == d.categoryId).name;
+      lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChu, tenDanhMuc: ten);
+    }
+  }
 
   return KetQuaDocCau(
     soTien: soTien,
     loai: loai,
     ngay: ng?.ngay,
-    ghiChu: _ghiChuTu(s, daDung),
+    walletId: walletId,
+    categoryId: categoryId,
+    doan: doan,
+    lyDoDanhMuc: lyDo,
+    ghiChu: ghiChu,
     canhBao: canhBao,
   );
+}
+
+final RegExp _mauTienMat = RegExp(r'(?<![a-z0-9])tien\s+mat(?![a-z0-9])');
+
+/// Chữ đứng trước tên ví mà ghi chú bỏ luôn: *ví*, *bằng*, *bằng ví* (§2.7).
+const Set<String> _tuTruocVi = {'ví', 'vi', 'bằng', 'bang'};
+
+_Khoang _moRongTruocVi(String thuong, int batDau, int ketThuc) {
+  var bd = batDau;
+  for (var i = 0; i < 2; i++) {
+    final truoc = _tuCuoi.firstMatch(thuong.substring(0, bd));
+    if (truoc == null || !_tuTruocVi.contains(truoc.group(1))) break;
+    bd = truoc.start;
+  }
+  return (batDau: bd, ketThuc: ketThuc);
+}
+
+List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {
+  final k = normalizeCategoryName(ten);
+  return [for (final x in ds) if (normalizeCategoryName(tenCua(x)) == k) x];
 }
 
 /// Cụm số tiền được chọn (§2.1), hoặc `null`. Hạng ưu tiên: *k / nghìn / tr / củ*, số chữ, số trần ≥ 1.000 trước; *lít /

@@ -54,6 +54,7 @@
 library;
 
 import '../../../core/category/category_name.dart';
+import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/so_bang_chu.dart';
 import 'cong_cu.dart';
 import 'hang_muc_tieu.dart';
@@ -664,23 +665,6 @@ bool _laCauTrichMucTieu(String q) =>
 /// có — B1 *"khi nào đạt MuaXe"* từng nhận *"đặt ngân sách vì ví nguồn không
 /// đủ"*, DC1 *"lãi suất tiết kiệm"* nhận kết luận ví nguồn: chữ thật mà lạc đề.
 final List<String> _tuVeTrich = 'trich|vi nguon|tu dong'.split('|');
-
-/// Tên đối tượng CÓ THẬT mà câu hỏi nêu — ngân sách, hoá đơn, mục tiêu (vòng
-/// sửa cổng F: E10, E8, F14, C20). Khớp trọn từ trên chữ bỏ dấu, tên dài
-/// trước. ⚠️ Tên NGẮN (dưới [_kDaiTenTuDo] ký tự bỏ dấu) chỉ nhận khi đứng ngay
-/// sau [tuLoai]: hoá đơn *"Kiem"* nằm trong *"tiết kiệm"*.
-const int _kDaiTenTuDo = 5;
-
-String? tenNeuTrongCau(String cauHoi, Iterable<String> ten, {required String tuLoai}) {
-  final q = _bo(cauHoi);
-  if (q.isEmpty) return null;
-  final loai = _bo(tuLoai);
-  for (final (b, goc) in _bangTen(ten.toSet().toList())) {
-    final mau = b.length >= _kDaiTenTuDo ? b : '$loai $b';
-    if (_tronTu(mau).hasMatch(q)) return goc;
-  }
-  return null;
-}
 
 bool cauHoiVeTrich(String cauHoi) {
   final q = _bo(cauHoi);

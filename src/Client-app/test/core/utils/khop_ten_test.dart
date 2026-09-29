@@ -72,4 +72,32 @@ void main() {
         reason: 'thiếu chốt rỗng thì "" khớp đúng tên rỗng — tool nhận một tham '
             'số trống như một lựa chọn');
   });
+
+  // Dời từ chinh_tham_so.dart (C2 task 4, 2026-09-29) — các ca hành vi của tenNeuTrongCau vẫn nằm ở
+  // chinh_tham_so_test nhóm 19; ở đây là phần MỚI: vị trí trong câu, cho ô Nhập nhanh bỏ đúng đoạn ấy khỏi ghi chú.
+  group('timTenTrongCau — tên có thật nằm trong câu, kèm vị trí', () {
+    test('vị trí trỏ đúng đoạn tên trong câu gốc (có dấu, chữ hoa)', () {
+      const cau = 'Ăn trưa 45k ví Techcombank nhé';
+      final k = timTenTrongCau(cau, ['Techcombank', 'Tiền mặt'], tuLoai: 'ví')!;
+      expect(k.ten, 'Techcombank');
+      expect(cau.substring(k.batDau, k.ketThuc), 'Techcombank');
+    });
+
+    test('câu chưa gom khoảng trắng vẫn khớp tên nhiều từ', () {
+      const cau = '45k   tiền    mặt';
+      final k = timTenTrongCau(cau, ['Tiền mặt'], tuLoai: 'ví')!;
+      expect(cau.substring(k.batDau, k.ketThuc), 'tiền    mặt');
+    });
+
+    test('tên ngắn: đoạn gồm cả từ loại đứng trước', () {
+      const cau = '45k ví MB';
+      final k = timTenTrongCau(cau, ['MB'], tuLoai: 'ví')!;
+      expect(cau.substring(k.batDau, k.ketThuc), 'ví MB');
+      expect(timTenTrongCau('45k MB', ['MB'], tuLoai: 'ví'), isNull);
+    });
+
+    test('không khớp giữa từ khác: "Kiem" trong "tiết kiệm"', () {
+      expect(timTenTrongCau('ví tiết kiệm', ['Kiem'], tuLoai: 'hoá đơn'), isNull);
+    });
+  });
 }
