@@ -7,6 +7,7 @@ library;
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_du_bao.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
+import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
@@ -63,7 +64,7 @@ void main() {
     expect(r.json['Tổng cam kết'], '150.000 đ');
     expect(r.json['Còn tiêu được'], '150.000 đ');
     expect(r.json['Số cam kết'], '2');
-    expect(r.json['Ví thiếu'], '0');
+    expect(r.json['Số ví không đủ tiền'], '0');
     expect(r.chuThem['tinh_trang'], 'đủ trả mọi cam kết');
     expect(r.json.containsKey('Nếu tiêu đúng ngân sách còn'), isFalse,
         reason: 'không có ngân sách thì vế tầng hai là tiếng ồn');
@@ -83,8 +84,19 @@ void main() {
       _db(camKet: [_ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true)]),
       now: now,
     );
-    expect(r.hang.single.trangThai, 'hoá đơn · quá hạn');
+    expect(r.hang.single.trangThai, 'hoá đơn đã quá hạn');
     expect(r.hang.single.canhBao, isTrue);
+  });
+
+  test('⚠️ một hàng quá hạn: mẫu câu tự qua sáu lớp chắn (chữ trạng thái không bị đọc làm tên)', () {
+    final g = GoiSoTraCuu()
+      ..them(
+        'du_bao_dong_tien',
+        hangDuBao(_db(camKet: [_ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true)]), now: now),
+      );
+    final cau = g.mauCau().cau;
+    expect(kiemCauTraLoi(cau, [g]), isTrue,
+        reason: 'trạng thái "hoá đơn · quá hạn" làm kiemTen đọc "· quá hạn" là tên hoá đơn: $cau');
   });
 
   test('có ngân sách: thêm con số "nếu tiêu đúng ngân sách"', () {
@@ -102,7 +114,7 @@ void main() {
     expect(r.json['Thiếu sau cam kết'], '50.000 đ',
         reason: 'mô hình nói "thiếu 50.000 đ" — số âm trong gói không khớp số dương của câu');
     expect(r.json.containsKey('Còn tiêu được'), isFalse);
-    expect(r.json['Ví thiếu'], '1');
+    expect(r.json['Số ví không đủ tiền'], '1');
     expect(r.chuThem['tinh_trang'], 'thiếu tiền cho cam kết');
     expect(r.hang.first.ten, 'Tiền mặt', reason: 'ví thiếu đứng ĐẦU — mô hình đọc từ trên xuống');
     expect(r.hang.first.trangThai, 'ví không đủ');
@@ -150,10 +162,13 @@ void main() {
     final g = GoiSoTraCuu()
       ..them('du_bao_dong_tien', hangDuBao(_db(camKet: haiCamKet), now: now));
 
-    test('⭐ mẫu câu của gói tự qua kiemSo + kiemNhan', () {
+    test('⭐ mẫu câu của gói tự qua sáu lớp chắn', () {
       final cau = g.mauCau().cau;
       expect(kiemSo(cau, g), isTrue, reason: cau);
       expect(kiemNhan(cau, [g]), isTrue, reason: cau);
+      // Ca này từng chỉ gọi hai lớp đầu, nên nhãn "Ví thiếu" (kiemTen đọc
+      // "thiếu" là tên ví) làm mẫu câu trượt từ lát 1 mà không ca nào đỏ.
+      expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
     });
 
     test('⭐ câu 17 chặng 3: "trả hết cam kết thì còn 150.000 đ" qua', () {
@@ -171,6 +186,69 @@ void main() {
     test('số bịa vẫn bị chặn; "45 ngày tới" không phải tầm nhìn của gói', () {
       expect(kiemSo('Bạn còn tiêu được 200.000 đ.', g), isFalse);
       expect(kiemSo('Trong 45 ngày tới bạn còn 150.000 đ.', g), isFalse);
+    });
+  });
+
+  group('A3 — kỳ quá hạn trùng gộp một hàng', () {
+    final haiKy = [
+      _ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true),
+      _ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true),
+      _ck('Netflix', DateTime(2026, 10, 5), 100000),
+    ];
+
+    test('⭐ hai kỳ Kiem → MỘT hàng: Tổng quá hạn 90.000, Mỗi kỳ 45.000, Số kỳ quá hạn 2', () {
+      final r = hangDuBao(_db(camKet: haiKy), now: now);
+      expect(r.hang.map((h) => h.ten).toList(), ['Kiem', 'Netflix']);
+      expect(so(r.hang[0]), {
+        'Tổng quá hạn': '90.000 đ',
+        'Mỗi kỳ': '45.000 đ',
+        'Số kỳ quá hạn': '2',
+        'Ngày': '23/09',
+      });
+      expect(r.hang[0].trangThai, 'hoá đơn đã quá hạn');
+      expect(so(r.hang[1]), {'Số tiền': '100.000 đ', 'Ngày': '05/10'});
+    });
+
+    test('Số cam kết và Tổng cam kết vẫn của TRỌN tập — khớp trang Phân tích', () {
+      final r = hangDuBao(_db(camKet: haiKy), now: now);
+      expect(r.json['Số cam kết'], '3');
+      expect(r.json['Tổng cam kết'], '190.000 đ');
+    });
+
+    test('các kỳ khác số tiền → không có Mỗi kỳ', () {
+      final r = hangDuBao(
+        _db(camKet: [
+          _ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true),
+          _ck('Kiem', DateTime(2026, 9, 23), 50000, quaHan: true),
+        ]),
+        now: now,
+      );
+      expect(so(r.hang.single).containsKey('Mỗi kỳ'), isFalse);
+      expect(so(r.hang.single)['Tổng quá hạn'], '95.000 đ');
+    });
+
+    test('⭐ mẫu câu của gói tự qua sáu lớp chắn; câu tự nhiên nêu tổng và mỗi kỳ đều qua', () {
+      final g = GoiSoTraCuu()..them('du_bao_dong_tien', hangDuBao(_db(camKet: haiKy), now: now));
+      final cau = g.mauCau().cau;
+      expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
+      expect('Kiem'.allMatches(cau).length, 1, reason: 'tên chỉ in MỘT lần — đó là cả mục đích của A3: $cau');
+      expect(kiemCauTraLoi('Hoá đơn Kiem quá hạn 2 kỳ, tổng 90.000 đ, mỗi kỳ 45.000 đ.', [g]), isTrue);
+      // Không dấu phẩy: `kiemTen` đọc cụm sau dấu phẩy ngay sau "hoá đơn X" là
+      // một tên nữa — luật có sẵn, ngoài phạm vi A3. Ca này canh nhãn thay thế.
+      expect(kiemCauTraLoi('Hoá đơn Kiem quá hạn phải trả 90.000 đ.', [g]), isTrue,
+          reason: 'nhãn thay thế "Phải trả"');
+    });
+
+    test('trần bốn hàng tính trên hàng ĐÃ GỘP', () {
+      final r = hangDuBao(
+        _db(soDu: 9000000, camKet: [
+          _ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true),
+          _ck('Kiem', DateTime(2026, 9, 23), 45000, quaHan: true),
+          for (var i = 1; i <= 3; i++) _ck('HD$i', DateTime(2026, 9, 23 + i), 10000),
+        ]),
+        now: now,
+      );
+      expect(r.hang.map((h) => h.ten).toList(), ['Kiem', 'HD1', 'HD2', 'HD3']);
     });
   });
 }

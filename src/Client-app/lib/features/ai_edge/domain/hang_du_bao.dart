@@ -33,7 +33,11 @@ String _chuLoai(CamKet c) {
     LoaiCamKet.hoaDon => 'hoá đơn',
     LoaiCamKet.trichTuDong => 'trích tự động',
   };
-  return c.quaHan ? '$loai · quá hạn' : loai;
+  // "đã" chứ không "·": mẫu câu in "Kiem hoá đơn đã quá hạn: …", và `kiemTen` đọc
+  // chữ ngay sau từ loại "hoá đơn" làm tên — "· quá hạn" không khớp tên nào
+  // nên mẫu câu của chính gói bị chặn (lộ ra ở A3, 2026-09-29). Cùng chữ với
+  // trạng thái quá hạn của tool hoá đơn.
+  return c.quaHan ? '$loai đã quá hạn' : loai;
 }
 
 /// [db] `null` = tài khoản chưa có ví sống nào (`duBaoCua` trả `null`) — một
@@ -61,14 +65,23 @@ KetQuaCongCu hangDuBao(DuBaoDongTien? db, {required DateTime now}) {
         ],
       ),
     // `camKet` đã xếp theo ngày rồi theo tên — gần nhất trước.
-    for (final c in db.camKet)
+    // A3: kỳ quá hạn của cùng hoá đơn gộp MỘT hàng — `duBaoCua` dồn chúng về
+    // hôm nay nên in từng kỳ là in cùng tên, cùng ngày hai lần. Phép cộng là
+    // của `gopCamKetQuaHan` (analytics) — ở đây chỉ chép.
+    for (final g in gopCamKetQuaHan(db.camKet))
       HangSoLieu(
-        ten: c.ten,
-        trangThai: _chuLoai(c),
-        canhBao: c.quaHan,
+        ten: g.dau.ten,
+        trangThai: _chuLoai(g.dau),
+        canhBao: g.dau.quaHan,
         soLieu: [
-          soTien('Số tiền', c.soTien, ten: c.ten),
-          soNgayThang('Ngày', c.ngay, ten: c.ten, now: now),
+          if (g.soKy > 1) ...[
+            soTien('Tổng quá hạn', g.tong,
+                ten: g.dau.ten, nhanKhac: const ['Số tiền', 'Phải trả']),
+            if (g.moiKy != null) soTien('Mỗi kỳ', g.moiKy!, ten: g.dau.ten),
+            soDem('Số kỳ quá hạn', g.soKy, ten: g.dau.ten, nhanKhac: const ['Số kỳ']),
+          ] else
+            soTien('Số tiền', g.tong, ten: g.dau.ten),
+          soNgayThang('Ngày', g.dau.ngay, ten: g.dau.ten, now: now),
         ],
       ),
   ].take(kToiDaMucMoiGoi).toList();
@@ -93,7 +106,10 @@ KetQuaCongCu hangDuBao(DuBaoDongTien? db, {required DateTime now}) {
           soTien('Nếu tiêu đúng ngân sách thiếu', theoNganSach.abs(),
               nhanKhac: const ['Theo ngân sách thiếu', 'Ngân sách thiếu']),
       soDem('Số cam kết', db.camKet.length),
-      soDem('Ví thiếu', db.viThieu.length),
+      // Nhãn KHÔNG mở đầu bằng "Ví" (cùng khuôn `hang_muc_tieu.dart`): `kiemTen`
+      // đọc chữ sau "ví" là tên ví, và "Ví thiếu: 0" làm mẫu câu của chính gói
+      // bị chặn ở MỌI lượt từ khi tool ra đời (lộ ra ở A3, 2026-09-29).
+      soDem('Số ví không đủ tiền', db.viThieu.length, nhanKhac: const ['Ví thiếu']),
     ],
     chuThem: {
       'tinh_trang': conTieuDuoc >= 0 && db.viThieu.isEmpty
