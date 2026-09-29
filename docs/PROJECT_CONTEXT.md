@@ -778,6 +778,12 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   trên Realme nay: chi tháng 9 **6.501.000**, thu **14.635.000**, tổng số dư ví **−2.356.000** (số dư cuối kỳ trên khối
   Dòng tiền) — **đáp án bộ câu AI phải tính lại**. Realme bản **release** `4e9b7f66…`. `flutter test` **4455/4455** (4
   skip), analyze 26. Người dùng dặn **dừng sau B3, bàn giao cho phiên sau** — kế là **B4**.
+- ✅ **G53 đóng 2026-09-29 tối** (người dùng chọn *sửa trước B4*): hàm thuần **`daiTrucCot`** (`du_bao_dong_tien.dart`,
+  cạnh `daiTrucDuBao`) — sàn **và** trần là bội của bước tròn, trục chứa 0, 3–5 khoảng; thác nước dùng nó thay cho
+  `minY = lo` + bước `(dải × 1,12)/3`. Widget test dựng đúng số Realme **đỏ trên mã cũ** với đúng *"5.9M"* / *"5.5M"*;
+  Realme bản release `79c2cbb1…` in *5M · 0 · −5M · −10M · −15M*. Bẫy **4.21** vế bốn. Cùng ảnh lộ chỗ **khác, có từ
+  trước**: nhãn **trục hoành** thác nước dính nhau ở 360 dp (*"Di chuyển"* / *"Chưa phân l…"*). Commit `.gitignore`
+  (`.widget_preview/`) riêng theo người dùng.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

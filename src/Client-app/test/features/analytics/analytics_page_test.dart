@@ -1613,6 +1613,57 @@ void main() {
           reason: 'Chín cột trên 411dp là chỗ chật nhất của trang; Flutter báo '
               'tràn qua reportError chứ không ném ra chỗ gọi.');
     });
+
+    testWidgets('⚠️ số dư đầu kỳ ÂM: nhãn trục tung không chồng lên nhau (G53)',
+        (tester) async {
+      // Số thật đọc trên Realme 2026-09-29, tài khoản 10, tháng 9: ví Tiền mặt
+      // âm nên đầu kỳ −10.490.000; −10.490.000 + 14.635.000 − 6.501.000 =
+      // −2.356.000 (phép cân của `thacNuocCua`).
+      await moCaoVaPhat(
+        tester,
+        _tk(
+          thu: 14635000,
+          chi: 6501000,
+          dongTien: const DongTien(dauKy: -10490000, cuoiKy: -2356000),
+          danhMuc: [
+            _dm('c1', 'Ăn uống', 5020000, 0.77),
+            _dm('c2', 'Nhà cửa', 1000000, 0.15),
+            _dm('c3', 'Di chuyển', 481000, 0.08),
+          ],
+        ),
+      );
+
+      final khoi = find
+          .ancestor(of: find.text('Tiền đi đâu'), matching: find.byType(Column))
+          .first;
+      final bieuDo =
+          find.descendant(of: khoi, matching: find.byType(BarChart));
+      expect(bieuDo, findsOneWidget);
+      // Nhãn trục tung là chuỗi `rutGon`; nhãn trục hoành là tên nhóm chi.
+      final laNhanTruc = RegExp(r'^-?\d+(\.\d)?[KMB]?$');
+      final nhan = [
+        for (final e in find
+            .descendant(of: bieuDo, matching: find.byType(Text))
+            .evaluate())
+          if (laNhanTruc.hasMatch((e.widget as Text).data ?? ''))
+            (
+              chu: (e.widget as Text).data!,
+              hop: tester.getRect(find.byWidget(e.widget)),
+            ),
+      ]..sort((a, b) => a.hop.top.compareTo(b.hop.top));
+
+      expect(nhan.length, greaterThanOrEqualTo(3));
+      for (var i = 1; i < nhan.length; i++) {
+        expect(nhan[i].hop.top, greaterThanOrEqualTo(nhan[i - 1].hop.bottom),
+            reason: '"${nhan[i - 1].chu}" và "${nhan[i].chu}" in đè lên nhau. '
+                'fl_chart vẽ nhãn ở hai biên CỘNG các bội của `interval` tính '
+                'từ 0 (bẫy 4.18): biên dưới âm và lẻ làm biên trên lệch khỏi '
+                'mọi bội — thấy thật trên Realme, "5.9M" chồng "5.5M".');
+      }
+      expect({for (final n in nhan) n.chu}.length, nhan.length,
+          reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Tỉ lệ tiết kiệm', () {

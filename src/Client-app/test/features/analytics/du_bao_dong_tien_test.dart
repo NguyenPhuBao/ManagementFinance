@@ -933,6 +933,89 @@ void main() {
     });
   });
 
+  group('daiTrucCot — trục biểu đồ cột (G53)', () {
+    /// Mọi mốc fl_chart sẽ vẽ nhãn: hai biên cộng các bội của `buoc` tính từ 0
+    /// nằm giữa hai biên (bẫy 4.18).
+    List<double> mocVe(({double san, double tran, double buoc}) d) => [
+          d.san,
+          for (var k = (d.san / d.buoc).floor() + 1; k * d.buoc < d.tran; k++)
+            k * d.buoc,
+          d.tran,
+        ];
+
+    test('⭐ số thật Realme: đầu kỳ −10.490.000, đỉnh 4.145.000 → −15M … 5M, bước 5M',
+        () {
+      // Tài khoản 10 tháng 9, 2026-09-29: −10.490.000 + 14.635.000 = 4.145.000.
+      // Bản cũ đặt `minY = lo` và bước (dải × 1,12)/3 = 5.463.700 → biên trên
+      // 5.9M đứng sát mốc 5.5M, hai nhãn in đè.
+      final d = daiTrucCot(-10490000, 4145000);
+      expect((d.san, d.tran, d.buoc), (-15000000.0, 5000000.0, 5000000.0));
+    });
+
+    test('⚠️ sàn và trần là BỘI của bước — mọi mốc cách đều, không cặp nào sát nhau',
+        () {
+      for (final (lo, hi) in [
+        (-10490000.0, 4145000.0),
+        (-2356000.0, 0.0),
+        (-50000.0, 13590000.0),
+        (-13590000.0, 50000.0),
+        (-333333.0, 777777.0),
+        (-1.0, 43000.0),
+        (0.0, 14635000.0),
+        (-987654321.0, 123456789.0),
+      ]) {
+        final d = daiTrucCot(lo, hi);
+        expect(d.san % d.buoc, 0, reason: 'sàn ($lo, $hi)');
+        expect(d.tran % d.buoc, 0, reason: 'trần ($lo, $hi)');
+        final moc = mocVe(d);
+        for (var i = 1; i < moc.length; i++) {
+          expect(moc[i] - moc[i - 1], d.buoc,
+              reason: 'Mốc lệch khỏi bội là hai nhãn sát nhau — G53 ($lo, $hi).');
+        }
+        expect({for (final m in moc) rutGon(m)}.length, moc.length,
+            reason: 'nhãn đôi một khác nhau ($lo, $hi) — họ G39');
+      }
+    });
+
+    test('bọc trọn dữ liệu VÀ luôn chứa 0 — luật "cột → trục từ 0" giữ nguyên', () {
+      for (final (lo, hi) in [
+        (-10490000.0, 4145000.0),
+        (0.0, 14635000.0),
+        (-2356000.0, 0.0),
+        (-50000.0, 13590000.0),
+      ]) {
+        final d = daiTrucCot(lo, hi);
+        expect(d.san, lessThanOrEqualTo(lo));
+        expect(d.tran, greaterThanOrEqualTo(hi));
+        expect(d.san, lessThanOrEqualTo(0));
+        expect(d.tran, greaterThanOrEqualTo(0));
+      }
+      expect(daiTrucCot(0, 14635000).san, 0,
+          reason: 'Số dư không âm thì trục bắt đầu đúng ở 0 — người dùng chốt '
+              '2026-09-15: cột so độ cao, bóp trục là vẽ sai sự thật.');
+    });
+
+    test('từ 3 đến 5 khoảng — không để nửa khung trống', () {
+      for (final (lo, hi) in [
+        (-10490000.0, 4145000.0),
+        (0.0, 14635000.0),
+        (-333333.0, 777777.0),
+        (-1.0, 43000.0),
+        (-987654321.0, 123456789.0),
+      ]) {
+        final d = daiTrucCot(lo, hi);
+        final soKhoang = ((d.tran - d.san) / d.buoc).round();
+        expect(soKhoang, inInclusiveRange(3, 5), reason: '($lo, $hi)');
+      }
+    });
+
+    test('dải rỗng (mọi bậc bằng 0) vẫn ra dải hợp lệ, không chia 0', () {
+      final d = daiTrucCot(0, 0);
+      expect(d.buoc, greaterThan(0));
+      expect(d.tran, greaterThan(d.san));
+    });
+  });
+
   group('gopCamKetQuaHan — A3: kỳ quá hạn của cùng hoá đơn gộp một nhóm', () {
     CamKet ck(String ten, DateTime ngay, double tien,
             {bool quaHan = false, String vi = 'w1', LoaiCamKet loai = LoaiCamKet.hoaDon}) =>

@@ -591,6 +591,44 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
   return (san: san, buoc: buoc);
 }
 
+/// Sàn, trần và bước trục tung cho biểu đồ **cột** — dải luôn chứa 0 (G53).
+///
+/// Khác [daiTrucDuBao] ở hai chỗ, cả hai đều cố ý:
+///
+/// - **Trục chứa 0.** Cột thì mắt so độ cao, nên trục không co khỏi 0 (người
+///   dùng chốt 2026-09-15 ở thác nước; bẫy 4.21 *"cột → từ 0"*). Số dư không
+///   âm thì sàn đúng bằng 0.
+/// - **Số khoảng thay đổi, 3 tới 5**, thay vì cố định 3. Dải vắt qua 0 thì cả
+///   hai đầu đều bị làm tròn ra ngoài; ép đúng 3 khoảng là phải nới bước lên
+///   gấp đôi — với số dư đầu kỳ −10.490.000 và đỉnh 4.145.000, ba khoảng cho
+///   trục −20M … 10M, dữ liệu chỉ còn nửa khung.
+///
+/// ⚠️ **Vì sao sàn và trần phải là BỘI của bước:** fl_chart vẽ nhãn ở hai biên
+/// **cộng** các bội của `interval` tính từ 0 (bẫy 4.18). Bản cũ của thác nước
+/// đặt `minY` bằng đáy thật (âm, lẻ) và bước `(dải × 1,12) / 3`, nên khi số dư
+/// đầu kỳ âm thì biên trên 5,9M đứng sát mốc 5,5M — hai nhãn in đè, thấy trên
+/// Realme 2026-09-29. Mọi mốc là bội thì chúng cách đều đúng một bước.
+({double san, double tran, double buoc}) daiTrucCot(double lo, double hi) {
+  final day = lo < 0 ? lo : 0.0;
+  final dinh = hi > 0 ? hi : 0.0;
+  final dai = dinh - day;
+  if (dai <= 0) return (san: 0, tran: 1, buoc: 1);
+
+  // Bước khởi điểm cho chừng năm khoảng; hai đầu làm tròn ra ngoài có thể đẩy
+  // lên sáu, bảy — nới sang số tròn kế tiếp cho tới khi còn ≤ 5. `× 1,1` rồi
+  // `buocTron` là đúng một nấc của họ 1 · 2 · 2,5 · 5. Trần 30 vòng: vòng lặp
+  // không trần trong hàm widget gọi là cách treo app không để lại log.
+  var buoc = buocTron(dai / 5);
+  var san = (day / buoc).floorToDouble() * buoc;
+  var tran = (dinh / buoc).ceilToDouble() * buoc;
+  for (var i = 0; i < 30 && (tran - san) / buoc > 5.5; i++) {
+    buoc = buocTron(buoc * 1.1);
+    san = (day / buoc).floorToDouble() * buoc;
+    tran = (dinh / buoc).ceilToDouble() * buoc;
+  }
+  return (san: san, tran: tran, buoc: buoc);
+}
+
 /// Số "tròn" nhỏ nhất **không nhỏ hơn** [x], lấy trong họ 1 · 2 · 2,5 · 5
 /// nhân luỹ thừa của 10.
 ///

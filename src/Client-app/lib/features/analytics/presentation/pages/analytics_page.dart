@@ -2162,11 +2162,10 @@ class _KhoiThacNuoc extends StatelessWidget {
       lo = math.min(lo, math.min(b.tu, b.den));
       hi = math.max(hi, math.max(b.tu, b.den));
     }
-    // Cùng cách chống nhãn trục tung in đè của G39 (bẫy 4.18): tính `buocTruc`
-    // trước rồi đặt trần bằng bội của nó.
-    final dai = hi - lo;
-    final buocTruc = (dai <= 0 ? 1.0 : dai * 1.12) / 3;
-    final maxY = lo + buocTruc * 3;
+    // Sàn và trần là BỘI của bước tròn — phép và lý lẽ ở `daiTrucCot`. Bản cũ
+    // đặt `minY = lo`: số dư đầu kỳ âm thì biên trên lệch mọi mốc và hai nhãn
+    // in đè (G53).
+    final (san: minY, tran: maxY, buoc: buocTruc) = daiTrucCot(lo, hi);
 
     return Container(
       width: double.infinity,
@@ -2192,7 +2191,7 @@ class _KhoiThacNuoc extends StatelessWidget {
             child: BarChart(
               BarChartData(
                 maxY: maxY,
-                minY: lo,
+                minY: minY,
                 alignment: BarChartAlignment.spaceAround,
                 // ⚠️ `BarChartData` **không có** `clipData` — bẫy 4.17 nói về
                 // `LineChartData`. Ở đây chống tràn bằng cách khác: `minY`/
