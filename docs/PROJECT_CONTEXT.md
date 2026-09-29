@@ -784,6 +784,12 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   Realme bản release `79c2cbb1…` in *5M · 0 · −5M · −10M · −15M*. Bẫy **4.21** vế bốn. Cùng ảnh lộ chỗ **khác, có từ
   trước**: nhãn **trục hoành** thác nước dính nhau ở 360 dp (*"Di chuyển"* / *"Chưa phân l…"*). Commit `.gitignore`
   (`.widget_preview/`) riêng theo người dùng.
+- ✅ **Cùng tối, hai việc người dùng chọn làm trước B4:** (1) khối *Dòng tiền tự do* chuyển sang `daiTrucCot` — sàn cũ
+  `đáy × 1,15` là cùng cơ chế G53 ở dạng **tiềm ẩn** (widget test dựng tự do −100.000: *"-115K"* đè *"0"*); Realme trục
+  nay *15M · 10M · 5M · 0*. (2) **G54 mở và đóng**: nhãn trục hoành thác nước nay **xoay −35°, một dòng** theo màn Stitch
+  `52450ac5…` (bản A8 #10 lệch Stitch không ghi lý do), đầu phải neo tâm cột, cắt ở 72 dp; Realme bản release
+  `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ. Ghi lại, **không sửa**: chấm kỳ đầu (T4) của hai
+  biểu đồ đường bị cắt nửa ở mép trái vì `FlClipData.all()` cắt cả chiều ngang — có từ trước.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

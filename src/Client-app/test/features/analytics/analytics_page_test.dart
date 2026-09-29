@@ -8,6 +8,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -217,6 +218,46 @@ DuBaoDongTien _duBao({
       nganSachConLai: nganSachConLai,
     ),
   );
+}
+
+/// Nhãn trục tung của biểu đồ trong khối có tiêu đề [tieuDe] không được chồng
+/// lên nhau, và đôi một khác chuỗi (G53).
+///
+/// fl_chart dựng nhãn trục bằng widget `Text`, nên lấy được **hộp** thật của
+/// từng nhãn — lỗi in đè tái hiện được ngay trong `flutter test`. Nhãn trục tung
+/// nhận ra bằng dạng chuỗi `rutGon`; nhãn trục hoành (tên nhóm, tên kỳ) không
+/// khớp dạng ấy.
+void _nhanTrucTungKhongChong(
+  WidgetTester tester,
+  String tieuDe,
+  Type loaiBieuDo, {
+  required String boiCanh,
+}) {
+  final khoi = find
+      .ancestor(of: find.text(tieuDe), matching: find.byType(Column))
+      .first;
+  final bieuDo = find.descendant(of: khoi, matching: find.byType(loaiBieuDo));
+  expect(bieuDo, findsOneWidget);
+  final laNhanTruc = RegExp(r'^-?\d+(\.\d)?[KMB]?$');
+  final nhan = [
+    for (final e
+        in find.descendant(of: bieuDo, matching: find.byType(Text)).evaluate())
+      if (laNhanTruc.hasMatch((e.widget as Text).data ?? ''))
+        (
+          chu: (e.widget as Text).data!,
+          hop: tester.getRect(find.byWidget(e.widget)),
+        ),
+  ]..sort((a, b) => a.hop.top.compareTo(b.hop.top));
+
+  expect(nhan.length, greaterThanOrEqualTo(3));
+  for (var i = 1; i < nhan.length; i++) {
+    expect(nhan[i].hop.top, greaterThanOrEqualTo(nhan[i - 1].hop.bottom),
+        reason: '"${nhan[i - 1].chu}" và "${nhan[i].chu}" in đè lên nhau. '
+            'fl_chart vẽ nhãn ở hai biên CỘNG các bội của `interval` tính từ 0 '
+            '(bẫy 4.18). $boiCanh');
+  }
+  expect({for (final n in nhan) n.chu}.length, nhan.length,
+      reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
 }
 
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
@@ -1633,35 +1674,81 @@ void main() {
         ),
       );
 
-      final khoi = find
-          .ancestor(of: find.text('Tiền đi đâu'), matching: find.byType(Column))
-          .first;
-      final bieuDo =
-          find.descendant(of: khoi, matching: find.byType(BarChart));
-      expect(bieuDo, findsOneWidget);
-      // Nhãn trục tung là chuỗi `rutGon`; nhãn trục hoành là tên nhóm chi.
-      final laNhanTruc = RegExp(r'^-?\d+(\.\d)?[KMB]?$');
-      final nhan = [
-        for (final e in find
-            .descendant(of: bieuDo, matching: find.byType(Text))
-            .evaluate())
-          if (laNhanTruc.hasMatch((e.widget as Text).data ?? ''))
-            (
-              chu: (e.widget as Text).data!,
-              hop: tester.getRect(find.byWidget(e.widget)),
-            ),
-      ]..sort((a, b) => a.hop.top.compareTo(b.hop.top));
+      _nhanTrucTungKhongChong(tester, 'Tiền đi đâu', BarChart,
+          boiCanh: 'Biên dưới âm và lẻ làm biên trên lệch khỏi mọi bội — thấy '
+              'thật trên Realme, "5.9M" chồng "5.5M".');
+      expect(tester.takeException(), isNull);
+    });
 
-      expect(nhan.length, greaterThanOrEqualTo(3));
-      for (var i = 1; i < nhan.length; i++) {
-        expect(nhan[i].hop.top, greaterThanOrEqualTo(nhan[i - 1].hop.bottom),
-            reason: '"${nhan[i - 1].chu}" và "${nhan[i].chu}" in đè lên nhau. '
-                'fl_chart vẽ nhãn ở hai biên CỘNG các bội của `interval` tính '
-                'từ 0 (bẫy 4.18): biên dưới âm và lẻ làm biên trên lệch khỏi '
-                'mọi bội — thấy thật trên Realme, "5.9M" chồng "5.5M".');
+    testWidgets(
+        '⚠️ 360dp: nhãn trục hoành MỘT dòng, xoay −35° như Stitch, không chồng nhau (G54)',
+        (tester) async {
+      // Realme 360dp: chín cột mỗi cột chỉ còn ~27dp mà ô nhãn cũ rộng 32dp hai
+      // dòng — "Di chuyển" dính "Chưa phân l…" thành "chuyểnphân l…".
+      tester.view.physicalSize = const Size(360, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, tkThacNuoc());
+
+      final bieuDo = find.descendant(
+        of: find
+            .ancestor(of: find.text('Tiền đi đâu'), matching: find.byType(Column))
+            .first,
+        matching: find.byType(BarChart),
+      );
+      const tenCot = {
+        'Đầu kỳ', '+Thu', 'Chưa phân loại', 'Di chuyển', 'Mua sắm', //
+        'Danh mục đã xoá', 'Ăn uống', 'Khác', 'Cuối kỳ',
+      };
+      final nhan = [
+        for (final e
+            in find.descendant(of: bieuDo, matching: find.byType(Text)).evaluate())
+          if (tenCot.contains((e.widget as Text).data)) e,
+      ];
+      expect(nhan.length, 9, reason: 'đủ chín nhãn trục hoành');
+
+      double gocCua(Element e) {
+        Transform? t;
+        e.visitAncestorElements((a) {
+          if (a.widget is BarChart) return false;
+          if (a.widget is Transform) {
+            t = a.widget as Transform;
+            return false;
+          }
+          return true;
+        });
+        final m = t?.transform.storage;
+        return m == null ? 0 : math.atan2(m[1], m[0]);
       }
-      expect({for (final n in nhan) n.chu}.length, nhan.length,
-          reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
+
+      // Điểm NEO của mỗi nhãn là góc trên-phải sau khi xoay (đầu chữ neo ở tâm
+      // cột). Đo tâm chữ thì sai: chữ dài ngắn khác nhau nên tâm lệch nhau.
+      final neo = [
+        for (final e in nhan)
+          () {
+            final hop = tester.renderObject<RenderBox>(find.byWidget(e.widget));
+            return hop.localToGlobal(Offset(hop.size.width, 0));
+          }(),
+      ]..sort((a, b) => a.dx.compareTo(b.dx));
+      var buocCot = double.infinity;
+      for (var i = 1; i < neo.length; i++) {
+        buocCot = math.min(buocCot, neo[i].dx - neo[i - 1].dx);
+        expect(neo[i].dy, closeTo(neo[0].dy, 0.5),
+            reason: 'mọi nhãn neo trên cùng một đường ngay dưới trục');
+      }
+      for (final e in nhan) {
+        final t = e.widget as Text;
+        expect(t.maxLines, 1, reason: '"${t.data}" phải một dòng như màn Stitch');
+        final goc = gocCua(e);
+        expect(goc, closeTo(-35 * math.pi / 180, 1e-6),
+            reason: '"${t.data}" phải xoay −35° (Stitch 52450ac5…)');
+        final cao = tester.getSize(find.byWidget(t)).height;
+        expect(buocCot * math.sin(goc).abs(), greaterThanOrEqualTo(cao),
+            reason: 'Hai nhãn song song lệch nhau $buocCot theo phương ngang '
+                'thì cách nhau ${buocCot * math.sin(goc).abs()} theo phương '
+                'vuông góc — nhỏ hơn chiều cao chữ ($cao) là chồng lên nhau.');
+      }
       expect(tester.takeException(), isNull);
     });
   });
@@ -1816,6 +1903,35 @@ void main() {
 
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+
+    testWidgets('⚠️ kỳ âm NHỎ: nhãn sàn không đè nhãn 0 (cùng cơ chế G53)',
+        (tester) async {
+      // Năm tháng thu 5.000.000, tháng cuối thu 0 mà trả nợ 100.000 → tự do
+      // −100.000. Bản cũ đặt sàn = đáy × 1,15 = −115.000 (không phải bội của
+      // bước 1.955.000), nên "-115K" đứng cách mốc "0" chừng ba điểm ảnh.
+      final cs = chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
+      final cuoi = cs.length - 1;
+      await moCaoVaPhat(
+        tester,
+        _tk(
+          chuoi: [
+            for (var i = 0; i < cs.length; i++)
+              DiemThoiGian(
+                ky: cs[i].ky,
+                tong: TongThuChi(thu: i == cuoi ? 0 : 5000000, chi: 0),
+              ),
+          ],
+          chuoiVayNo: [
+            for (var i = 0; i < cs.length; i++)
+              DiemVayNo(ky: cs[i].ky, traNo: i == cuoi ? 100000 : 0),
+          ],
+        ),
+      );
+
+      _nhanTrucTungKhongChong(tester, 'Dòng tiền tự do 6 tháng', LineChart,
+          boiCanh: 'Sàn âm lẻ (đáy × 1,15) đứng sát mốc 0.');
+      expect(tester.takeException(), isNull);
     });
   });
 

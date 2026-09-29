@@ -38,7 +38,8 @@ trang Hoá đơn, trang nay cả trang cuộn với hàng tab ghim; nghiệm thu
 tài khoản 10 nay 5.001.000); mở rồi đóng **G51** (số tiền thẻ hoá đơn cụt ở 360 dp, có từ trước — sửa `77521f2`, nghiệm thu Realme). ✅ **B3 xong tối
 2026-09-29** (mục 3.35 `docs/ANALYTICS_FEATURE.md`): chi bất thường theo danh mục ở khối Nhận xét trang Phân tích, nghiệm
 thu Realme đạt; mở **G53** (nhãn trục thác nước in đè khi số dư âm) — ✅ **đóng tối cùng ngày** (`daiTrucCot`, Realme
-đạt) theo người dùng chọn *sửa trước B4*. Kế: **B4**.
+đạt) theo người dùng chọn *sửa trước B4*; cùng tối *Dòng tiền tự do* chuyển sang `daiTrucCot` và **G54** (nhãn trục
+hoành thác nước dính ở 360 dp → xoay −35° theo Stitch) mở và đóng. Kế: **B4**.
 
 ---
 

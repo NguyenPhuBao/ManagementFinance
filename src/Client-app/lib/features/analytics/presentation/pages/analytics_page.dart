@@ -1210,16 +1210,15 @@ class _KhoiDongTienTuDo extends StatelessWidget {
       if (d.tuDo < day) day = d.tuDo;
     }
     final coAm = day < 0;
-    // Sáu kỳ phẳng bằng 0 thì `dinh` lẫn `day` đều bằng 0 và mọi phép chia
-    // thang đo sau đây sẽ hỏng — đặt trần 1.
-    final tran = dinh > 0 ? dinh * 1.15 : (coAm ? 0.0 : 1.0);
-    final san = coAm ? day * 1.15 : 0.0;
-    final buoc = (tran - san) / 3;
-    // ⚠️ Trần phải là ĐÚNG `san + 3 * buoc`, không phải con số đã đem chia:
-    // fl_chart vẽ nhãn cho cả mốc theo `interval` lẫn biên, và sai số dấu phẩy
-    // động đủ để `rutGon` trả hai chuỗi khác nhau cho cùng một vị trí — hai
-    // nhãn in đè khít lên nhau (G39, bẫy 4.18 `ANALYTICS_FEATURE.md`).
-    final maxY = san + buoc * 3;
+    // Sàn và trần là BỘI của bước tròn — phép ở `daiTrucCot` (đường có vạch 0
+    // nên trục chứa 0 là đúng; sáu kỳ phẳng bằng 0 thì hàm tự trả dải 0 … 1).
+    // ⚠️ Bản cũ đặt sàn = đáy × 1,15: kỳ âm NHỎ (trả nợ vượt thu nhập một
+    // chút) cho sàn âm lẻ, và fl_chart vẽ nhãn ở biên CỘNG các bội của
+    // `interval` tính từ 0 — "-115K" in đè "0" (cùng cơ chế G53, bẫy 4.18).
+    // Nới ×1,05 trước khi làm tròn để chấm ở cực trị không nằm đúng mép khung,
+    // nơi `FlClipData.all()` cắt mất nửa chấm.
+    final (san: san, tran: maxY, buoc: buoc) =
+        daiTrucCot(day * 1.05, dinh * 1.05);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -2123,6 +2122,16 @@ class _KhoiThacNuoc extends StatelessWidget {
   static const int _soNhom = 5;
   static const double _rongCot = 15;
 
+  /// Nhãn trục hoành xoay −35° (G54): chữ dài hơn chừng này thì cắt "…".
+  /// 72dp đủ cho "Chưa phân loại" ở cỡ 9 (64dp cắt còn "Chưa phân l…" trên
+  /// Realme).
+  static const double _rongNhanTrucHoanh = 72;
+
+  /// Chiều cao dành cho nhãn nghiêng: `72 × sin 35° + cao dòng × cos 35°`
+  /// cộng đệm trên 6dp. Vùng vẽ giữ nguyên vì khung biểu đồ cao thêm đúng
+  /// phần chênh so với 40dp cũ.
+  static const double _caoNhanTrucHoanh = 58;
+
   @override
   Widget build(BuildContext context) {
     final dt = tk.dongTien;
@@ -2187,7 +2196,8 @@ class _KhoiThacNuoc extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 200,
+            // 200 cũ cộng phần nhãn nghiêng cao hơn nhãn thẳng (58 − 40).
+            height: 218,
             child: BarChart(
               BarChartData(
                 maxY: maxY,
@@ -2238,31 +2248,51 @@ class _KhoiThacNuoc extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 1,
-                      reservedSize: 40,
+                      reservedSize: _caoNhanTrucHoanh,
                       getTitlesWidget: (v, meta) {
                         final i = v.round();
                         if (i < 0 || i >= buoc.length) {
                           return const SizedBox.shrink();
                         }
-                        // ⚠️ Chín cột trên 411dp: vùng vẽ ngang còn chừng
-                        // 325dp sau khi trừ trục tung và đệm thẻ, tức mỗi cột
-                        // được ~36dp. Ô nhãn **phải hẹp hơn** con số ấy, nếu
-                        // không hai nhãn cạnh nhau dính thành một chuỗi không
-                        // đọc được ("ChưaDi chuyểnMua sắDanh mục…") — thấy
-                        // trên máy ảo, và `flutter test` không bắt được vì
-                        // `find.text` so `data` chứ không so thứ vẽ ra
-                        // (bẫy 4.4). Cùng họ G39.
+                        // Nhãn XOAY −35°, một dòng — đúng màn Stitch
+                        // `52450ac5…` (G54). Ô thẳng đứng 32dp hai dòng cũ
+                        // vừa ở 411dp (~36dp mỗi cột) nhưng dính nhau ở 360dp
+                        // (~27dp): "chuyểnphân l…" trên Realme. Nhãn nghiêng
+                        // thì hai nhãn cạnh nhau cách nhau `bước cột × sin 35°`
+                        // theo phương vuông góc (~15dp ở 360dp) — rộng hơn
+                        // chiều cao chữ, nên cột hẹp mấy cũng không chồng.
+                        //
+                        // ⚠️ ĐẦU PHẢI của chữ neo đúng tâm cột rồi xoay quanh
+                        // góc trên-phải (như `text-anchor="end"` của Stitch):
+                        // xoay quanh tâm thì nửa phải của nhãn dài chồi lên
+                        // vùng cột. Ô rộng 0 đặt ở tâm cột, `OverflowBox`
+                        // canh phải cho chữ tràn sang trái.
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: SizedBox(
-                            width: 32,
-                            child: Text(
-                              buoc[i].nhan,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 8, color: AppColors.textSecondary),
+                            width: 0,
+                            height: _caoNhanTrucHoanh - 6,
+                            child: OverflowBox(
+                              alignment: Alignment.topRight,
+                              minWidth: 0,
+                              maxWidth: _rongNhanTrucHoanh,
+                              // Chữ cao đúng một dòng — không nhận chiều cao
+                              // chặt của ô cha.
+                              minHeight: 0,
+                              child: Transform.rotate(
+                                angle: -35 * math.pi / 180,
+                                alignment: Alignment.topRight,
+                                child: Text(
+                                  buoc[i].nhan,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );
