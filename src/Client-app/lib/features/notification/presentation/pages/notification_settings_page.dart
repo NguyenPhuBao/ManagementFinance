@@ -355,26 +355,35 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   /// Chọn thứ trong tuần. Bảy dòng trong một bảng chọn thay vì bảy chip: chúng
   /// không vừa một hàng ở 411dp, và một `Wrap` hai hàng đọc như hai nhóm.
+  ///
+  /// G60 (2026-09-29): bảy dòng cao ~392 dp mà bottom sheet mặc định chỉ được
+  /// 9/16 màn — máy cao dưới ~700 dp tràn và *Chủ nhật* không chạm được.
+  /// `isScrollControlled` cho bảng cao theo nội dung; thân vẫn cuộn được cho màn
+  /// còn thấp hơn nữa (xoay ngang).
   Future<void> _chonThuTongKet() async {
     final chon = await showModalBottomSheet<int>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var thu = DateTime.monday; thu <= DateTime.sunday; thu++)
-              ListTile(
-                title: Text(_tenThu(thu)),
-                trailing: thu == _prefs.thuTongKet
-                    ? const Icon(Icons.check, color: AppColors.income)
-                    : null,
-                onTap: () => Navigator.pop(ctx, thu),
-              ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var thu = DateTime.monday; thu <= DateTime.sunday; thu++)
+                ListTile(
+                  title: Text(_tenThu(thu)),
+                  trailing: thu == _prefs.thuTongKet
+                      ? const Icon(Icons.check, color: AppColors.income)
+                      : null,
+                  onTap: () => Navigator.pop(ctx, thu),
+                ),
+            ],
+          ),
         ),
       ),
     );

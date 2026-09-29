@@ -500,8 +500,8 @@ void main() {
   // ── G59 (2026-09-29): đổi giờ / thứ phải DỜI lịch đang chờ ─────────────────
   group('đặt lại lịch khi đổi mốc (G59)', () {
     Future<List<int>> moVaDem(WidgetTester tester) async {
-      // Khổ máy ảo 411 × 914: ở khung mặc định 800 × 600, bảng chọn thứ (7 dòng)
-      // tràn vì bottom sheet chỉ cao 9/16 màn — lỗi bố cục có sẵn, ghi riêng.
+      // Khổ máy ảo 411 × 914. Khi viết ca này, bảng chọn thứ tràn ở khung mặc
+      // định 800 × 600 — G60, nay đã sửa và có nhóm ca riêng bên dưới.
       tester.view.physicalSize = const Size(411, 914);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -552,6 +552,38 @@ void main() {
           reason: 'đặt lại chỉ dành cho đổi giờ / thứ; phần còn lại theo lượt '
               'quét thường, luỹ đẳng');
     });
+  });
+
+  // ── G60 (2026-09-29): bảng chọn thứ tổng kết tràn ở màn thấp ──────────────
+  // Bảy dòng ~392 dp, mà bottom sheet mặc định chỉ cao 9/16 màn — máy cao dưới
+  // ~700 dp tràn, dòng cuối (Chủ nhật) không chạm được. Realme (800 dp) mù.
+  group('bảng chọn thứ ở màn thấp (G60)', () {
+    for (final kho in const [Size(360, 640), Size(800, 600)]) {
+      testWidgets('${kho.width.toInt()}×${kho.height.toInt()}: không tràn, chọn được Chủ nhật',
+          (tester) async {
+        tester.view.physicalSize = kho;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await store.write(accountId, const NotificationPrefs(tongKetTuanBat: true));
+        await moTrang(tester);
+
+        final f = find.byKey(NotificationSettingsPage.khoaThuTongKet);
+        await tester.ensureVisible(f);
+        await tester.pumpAndSettle();
+        await tester.tap(f);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull,
+            reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi');
+
+        await tester.ensureVisible(find.text('Chủ nhật'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Chủ nhật'));
+        await tester.pumpAndSettle();
+        expect((await store.read(accountId)).thuTongKet, DateTime.sunday,
+            reason: 'dòng cuối phải chạm được — bị cắt dưới mép bảng là thứ ấy '
+                'không bao giờ chọn được');
+      });
+    }
   });
 
   group('chưa đăng nhập', () {
