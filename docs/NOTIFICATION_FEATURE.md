@@ -1210,6 +1210,11 @@ ngày. *Áp dụng* không ghi gì: tuỳ chọn đã đổi nên luật tự th
   đang lọc), cùng khung thẻ thông báo nhưng không dải chưa đọc, không giờ, không
   badge; bấm → `push('/settings/notifications')`, **quay về thì nạp lại**.
 
+### G60 — bảng chọn thứ tổng kết tràn ở màn thấp (lộ khi viết ca G59, sửa cùng tối)
+
+Bảy dòng ~392 dp trong một bottom sheet mặc định (chỉ cao 9/16 màn): máy cao dưới ~700 dp tràn và *Chủ nhật* không chạm
+được. Nay `isScrollControlled` + thân cuộn được. `CLIENT_APP_KNOWN_GAPS.md` G60.
+
 ### G59 — đổi giờ nhắc không dời lịch đang chờ (lộ khi soát kế hoạch, sửa trước)
 
 Khoá lịch không chứa giờ (hoá đơn theo kỳ, ghi chép theo ngày, tổng kết theo tuần)

@@ -829,7 +829,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   duyệt **bơm thử rồi xoá** 25 hàng `cham_hdh` 20:0x): thẻ → Cài đặt → dòng gợi ý dưới ô 08:00 → *Đổi sang 20:00* →
   `dumpsys alarm` hai lịch hoá đơn 02/10 **08:00 → 20:00**; quay về thẻ mất; đặt lại 08:00 bằng bộ chọn giờ → lịch về
   08:00; *Bỏ qua* → im khi mở lại; dọn 26 hàng thử, `integrity_check` ok. Realme trả về bản **release** `76924bc2…`.
-  🔓 **G60 mở** (lộ khi viết ca G59, chưa sửa, chờ người dùng): bảng chọn thứ tổng kết tràn ở màn cao dưới ~700 dp.
+  ✅ **G60 mở rồi đóng** (lộ khi viết ca G59; người dùng chọn sửa, `d57cb09`): bảng chọn thứ tổng kết tràn ở màn cao
+  dưới ~700 dp — nay `isScrollControlled` + thân cuộn được; Realme bản release `351d062e…`.
   `flutter test` **4571/4571** (4 skip), analyze 26. **Nhóm B xong trọn** (B1 → B5a → B2 → B3 → B4 → B5b); kế theo lộ
   trình 28/09: **C1**.
 
