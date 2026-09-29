@@ -3049,7 +3049,9 @@ màn hiện mẫu câu (L2):
 | F12 | *Mọi kỳ, tự trả — Netflix chưa trả · tự trả: Số tiền 100.000 đ, Đến hạn 05/10; Còn phải trả: 100.000 đ; Quá hạn: 0; Chưa trả: 1; Tự trả: 1.* | ✅ nội dung (mẫu câu; mốc 72 câu là chữ mô hình). Chờ 35,3 s |
 
 ⚠️ Dữ liệu Realme từ trưa 29/09 có thêm **11 giao dịch thử** của lượt nghiệm thu B1 (chi tháng 9 2.241.000 →
-2.351.000) — không đụng hoá đơn nên đáp án F12 không đổi, nhưng đáp án các câu chi tiêu phải tính lại.
+2.351.000), rồi **G50** (cùng chiều) thôi đếm cặp nạp mục tiêu dạng cũ 05/09 là thu và chi → chi tháng 9 **1.851.000**,
+thu **14.635.000** trên mọi màn kể cả tool của trợ lý — không đụng hoá đơn nên đáp án F12 không đổi, nhưng đáp án các
+câu chi tiêu / thu nhập phải tính lại.
 
 Đi kèm A2, **đổi hành vi** cho câu đã định tuyến mà mọi lời gọi bị từ chối: vòng lặp chạy lại tool đích với `{}` + câu
 hỏi (nhánh *"không gọi tool, định tuyến theo câu hỏi"*) thay vì L1b — có sẵn từ lát 1, nay áp cho thêm 18 câu. Và

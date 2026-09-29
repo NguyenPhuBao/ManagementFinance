@@ -725,10 +725,11 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   trả lại release). Lượt ấy bắt **lỗi của chính công cụ đo Task 6** (ứng viên từ khoá gồm hàng mặc định toàn cục → hoà
   giả, "phủ 0 %"; sửa `9f407e6`) và một **từ khoá mặc định gây nhầm** `grab` → Ăn uống (seed backend) — hai câu hỏi
   người dùng chốt cùng trưa: **xin backend sửa seed** (`CAN-LAM/SEED_TU_KHOA_GRAB.md`) và **giữ luật Bỏ qua như spec**,
-  mục **5d** `docs/CATEGORY_RATIONALE.md`. Lượt ấy còn **đóng G49** (thẻ tổng Sổ giao dịch lệch Trang chủ) và **F12**
-  (cổng ra nhóm A trọn). ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
+  mục **5d** `docs/CATEGORY_RATIONALE.md`. Lượt ấy còn **đóng G49** (thẻ tổng và tiêu đề ngày Sổ giao dịch lệch Trang
+  chủ), **G50** (cặp nạp mục tiêu dạng cũ bị tính là thu **và** chi — chi tháng 9 tài khoản 10 nay **1.851.000**, thu
+  **14.635.000**) và **F12** (cổng ra nhóm A trọn). ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
   29/09, ví Tiền mặt (**6** *grab …* → Di chuyển · **5** *ca phe …* → Ăn uống; tổng chi tháng 9 **2.241.000 → 2.351.000**,
-  Trang chủ tổng số dư 12.794.000) — **đáp án mọi bộ câu AI đo
+  rồi **1.851.000** sau G50; Trang chủ tổng số dư 12.794.000) — **đáp án mọi bộ câu AI đo
   trên Realme phải tính lại**. `flutter test` **4306/4306** (4 skip) sau G49 + F12 (**4301** sau B1), analyze 26. *(Ảnh chụp trước đó cùng ngày:)*
 - 🚧 **B1 — gợi ý danh mục học từ ghi chú: Task 1–6 xong mã 2026-09-29, Task 7 (nghiệm thu + tài liệu) dở — người dùng
   cho tạm dừng** (banner đầu spec `specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`; `bf7a076` → `8bee5d7`,

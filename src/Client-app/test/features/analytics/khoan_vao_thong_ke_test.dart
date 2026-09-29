@@ -13,6 +13,8 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/domain/khoan_vao_thong_ke.dart';
+import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
@@ -80,6 +82,22 @@ void main() {
         reason: 'Nó là phép MỞ SỔ, không phải thu nhập. Đếm nó là mỗi ví người '
             'dùng tạo ra lại làm thu nhập tháng ấy tăng vọt — cùng lý do đã '
             'loại khoản điều chỉnh số dư.');
+  });
+
+  test('⭐ CẶP nạp mục tiêu DẠNG CŨ (trước 2026-09-05) không vào thống kê — cả nửa thu lẫn nửa chi', () {
+    // Đo 2026-09-29 (Realme + PostgreSQL dev, tài khoản 10): bản app cũ ghi mỗi lần nạp thành HAI hàng thường —
+    // thu 500.000 "Tích lũy nhận từ Tiền mặt: MuaXe" + chi 500.000 "Tích lũy mục tiêu: MuaXe", không danh mục.
+    // Mọi màn đếm cả hai: chi tháng 9 2.351.000 thay vì 1.851.000. Tiền đổi chỗ, cùng lý do đã loại khoản chuyển.
+    expect(khoanVaoThongKe(loai: 'thu', categoryId: null, ghiChu: '${kGhiChuNapMucTieuCu}Tiền mặt: MuaXe'), isFalse,
+        reason: 'nửa THU của cặp dạng cũ — tiền vào ví tích luỹ, không phải thu nhập');
+    expect(khoanVaoThongKe(loai: 'chi', categoryId: null, ghiChu: '${kGhiChuNapMucTieu}MuaXe'), isFalse,
+        reason: 'nửa CHI của cặp dạng cũ — tiền rời ví nguồn sang ví tích luỹ, không phải chi tiêu');
+  });
+
+  test('ghi chú trùng khuôn nạp mục tiêu nhưng CÓ danh mục thì vẫn được tính (cặp dấu hiệu, như khoản điều chỉnh)', () {
+    expect(khoanVaoThongKe(loai: 'chi', categoryId: 'c-mua-sam', ghiChu: '${kGhiChuNapMucTieu}MuaXe'), isTrue,
+        reason: 'app không bao giờ ghi khoản nạp có danh mục — hàng có danh mục là người dùng tự gõ, giấu nó là giấu chi thật');
+    expect(khoanVaoThongKe(loai: 'thu', categoryId: 'c-thuong', ghiChu: '${kGhiChuNapMucTieuCu}sếp'), isTrue);
   });
 
   test('khoản thu THẬT vẫn vào thống kê', () {

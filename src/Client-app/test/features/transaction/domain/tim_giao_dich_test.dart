@@ -84,14 +84,16 @@ void main() {
   test('⭐ tổng trên MỌI khoản khớp, không chỉ các dòng hiện (bẫy 10)', () {
     final kq = tim(const TieuChiTim(chieu: ChieuTim.chi), toiDa: 2);
     expect(kq.dong.length, 2);
-    expect(kq.soKhop, 5);
-    expect(kq.tongChi, 50000 + 50000 + 800000 + 123000 + 500000);
+    // `mx` là NỬA CHI của cặp nạp mục tiêu dạng cũ — `khoanVaoThongKe` loại từ 2026-09-29 (tiền đổi chỗ).
+    expect(kq.soKhop, 4, reason: 'an1 · dc1 · cho · hd1 — không có nửa chi dạng cũ mx');
+    expect(kq.tongChi, 50000 + 50000 + 800000 + 123000);
   });
 
   test('xếp theo số tiền (mặc định): lớn trước; tiêu đề theo luật dòng sổ', () {
     final kq = tim(const TieuChiTim(chieu: ChieuTim.chi));
     expect(kq.dong.map((d) => d.tieuDe).toList(),
-        ['Cho vay', 'Tích lũy mục tiêu: MuaXe', 'Thanh toán hóa đơn: Điện', 'Di chuyển']);
+        ['Cho vay', 'Thanh toán hóa đơn: Điện', 'Di chuyển', 'Ăn uống'],
+        reason: 'nửa chi dạng cũ "Tích lũy mục tiêu: MuaXe" không còn là khoản chi (2026-09-29)');
   });
 
   test('xếp mới nhất trước', () {
@@ -107,7 +109,19 @@ void main() {
 
   test('⭐ bỏ khoản ghi ngày TƯƠNG LAI (bẫy 3) — "lần cuối" không trả 10/11', () {
     final kq = tim(const TieuChiTim(tuKhoa: 'muaxe', sapXep: SapXepTim.moiNhat));
-    expect(kq.dong.map((d) => d.ngay).toList(), [DateTime(2026, 9, 5)]);
+    expect(kq.dong, isEmpty,
+        reason: 'hàng "muaxe" còn lại là khoản hẹn 10/11 (tương lai) — nửa chi dạng cũ 05/09 đã bị loại (2026-09-29)');
+    // ĐỐI CHỨNG: cùng tiêu chí, `now` sau 10/11 thì khoản hẹn hiện ra — chỉ NGÀY loại nó, không phải bộ lọc khác.
+    final sau = timGiaoDich(
+      trongKy: so,
+      lookup: lookup,
+      viSong: viSong,
+      danhMucSong: dmSong,
+      tieuChi: const TieuChiTim(tuKhoa: 'muaxe', sapXep: SapXepTim.moiNhat),
+      now: DateTime(2026, 11, 11),
+      toiDa: 4,
+    );
+    expect(sau.dong.map((d) => d.ngay).toList(), [DateTime(2026, 11, 10)]);
   });
 
   test('khoản chuyển chỉ có khi hỏi chuyển ví hoặc tất cả', () {
@@ -118,7 +132,7 @@ void main() {
     expect(ck.tongChuyen, 1000000);
     expect(ck.dong.first.tenViDich, 'Tiết kiệm');
     expect(ck.dong.first.tieuDe, 'Chuyển khoản');
-    expect(tim(const TieuChiTim()).soKhop, 5 + 1 + 2);
+    expect(tim(const TieuChiTim()).soKhop, 4 + 1 + 2, reason: '4 chi thật (không nửa chi dạng cũ) + lương + 2 chuyển');
   });
 
   test('⭐ ví khớp CẢ ví đích của khoản chuyển; "tiet kiem" không khớp "Tiết kiệm mua nhà"', () {
@@ -150,7 +164,8 @@ void main() {
   test('khoảng tiền qua KhoangTien.chua', () {
     final kq = tim(const TieuChiTim(
         chieu: ChieuTim.chi, khoangTien: KhoangTien(tu: 200000, den: 1000000)));
-    expect(kq.dong.map((d) => d.soTien).toList(), [800000, 500000]);
+    expect(kq.dong.map((d) => d.soTien).toList(), [800000],
+        reason: '500.000 là nửa chi dạng cũ mx — không còn là khoản chi (2026-09-29)');
   });
 
   test('từ khoá không dấu, không phân biệt hoa thường', () {
