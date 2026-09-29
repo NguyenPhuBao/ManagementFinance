@@ -249,7 +249,7 @@ KetQuaDocCau docCauGiaoDich(
     ngay ??= _ngayAiHopLe(ai.ngay, thuong, now);
     if (walletId == null && ai.vi != null) {
       final k = khopTheoTen(ai.vi!, dsVi, (w) => w.name);
-      if (k is KhopMot<Wallet>) walletId = k.muc.id;
+      if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc.name)) walletId = k.muc.id;
     }
     final gc = ai.ghiChu;
     if (gc != null) {
@@ -402,8 +402,26 @@ DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
   if (x == null) return null;
   final homNay = DateTime(now.year, now.month, now.day);
   final lech = x.difference(homNay).inDays;
-  return lech > 7 || lech < -366 ? null : x;
+  // Hôm nay = AI không biết ngày (Realme 2026-09-30: *"đầu tháng"* → hôm nay). Form mặc định đã là hôm nay; nhận nó chỉ
+  // làm dòng tóm tắt tuyên bố *"Hôm nay"* — điều câu không nói.
+  return lech > 7 || lech < -366 || lech == 0 ? null : x;
 }
+
+/// Câu có NHẮC ví không (§2.8) — AI không được tự điền ví câu không nói tới (Realme 2026-09-30: 9/10 câu mô hình trả ví
+/// mặc định). Nhắc = một chữ chỉ ví / cách trả (*ví, thẻ, quẹt, ck, chuyển khoản, atm*), hoặc một chữ ≥ 4 ký tự là
+/// **viết tắt** (tiền tố thật sự ngắn hơn) của một từ trong tên ví (*"techcom"* → *Techcombank*). Trùng nguyên một từ
+/// thường (*"tiền"* của *Tiền mặt*) không tính — tên ví nêu trọn thì luật đã bắt trước.
+bool _cauNhacVi(String thuong, String tenVi) {
+  final tu = [for (final m in _tu.allMatches(thuong)) removeVietnameseTones(unorm.nfc(m.group(0)!))];
+  for (var i = 0; i < tu.length; i++) {
+    if (_chuNhacVi.contains(tu[i])) return true;
+    if (i + 1 < tu.length && '${tu[i]} ${tu[i + 1]}' == 'chuyen khoan') return true;
+  }
+  final tuVi = removeVietnameseTones(normalizeCategoryName(tenVi)).split(' ');
+  return tu.any((t) => t.length >= 4 && tuVi.any((w) => w.length > t.length && w.startsWith(t)));
+}
+
+const Set<String> _chuNhacVi = {'vi', 'the', 'quet', 'ck', 'atm'};
 
 final RegExp _mauTienMat = RegExp(r'(?<![a-z0-9])tien\s+mat(?![a-z0-9])');
 

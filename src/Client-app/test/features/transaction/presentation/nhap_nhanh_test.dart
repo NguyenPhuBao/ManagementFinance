@@ -400,6 +400,19 @@ void main() {
       expect(find.text('000'), findsOneWidget);
     });
 
+    testWidgets('⚠️ theme thật: ô trong khung KHÔNG có nền và viền riêng (máy thật hiện một ô trắng có viền)', (tester) async {
+      await tester.pumpWidget(app(theme: AppTheme.lightTheme));
+      await tester.pumpAndSettle();
+      // InputDecorator nhận decoration ĐÃ gộp theme — chỗ lộ `enabledBorder` / `filled` của theme app.
+      final d = tester
+          .widget<InputDecorator>(
+              find.descendant(of: find.byKey(const Key('nhap-nhanh-o')), matching: find.byType(InputDecorator)))
+          .decoration;
+      expect(d.filled, isFalse);
+      expect(d.enabledBorder, InputBorder.none);
+      expect(d.focusedBorder, InputBorder.none);
+    });
+
     testWidgets('bàn phím HỆ THỐNG mở (đang gõ câu, G58): không tràn, ô Nhập nhanh nằm trên bàn phím', (tester) async {
       kho(tester, banPhim: 260);
       await tester.pumpWidget(app(theme: AppTheme.lightTheme));

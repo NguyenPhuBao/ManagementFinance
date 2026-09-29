@@ -367,6 +367,19 @@ void main() {
       expect(docAi('quẹt thẻ 45k', const KetQuaAi(vi: 'Vietcombank')).walletId, isNull, reason: 'không có ví ấy');
     });
 
+    test('⚠️ ví: câu KHÔNG nhắc ví thì AI không được tự điền ví (Realme 2026-09-30: 9/10 câu AI trả "Tiền mặt")', () {
+      expect(docAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, vi: 'Tiền mặt')).walletId, isNull);
+      expect(docAi('45k techcom', const KetQuaAi(vi: 'Techcombank')).walletId, 'w-tcb',
+          reason: 'viết tắt tên ví là có nhắc ví');
+      expect(docAi('tiền điện 45k', const KetQuaAi(vi: 'Tiền mặt')).walletId, isNull,
+          reason: '"tiền" là chữ thường gặp, không phải nhắc ví Tiền mặt');
+    });
+
+    test('ngày: AI trả HÔM NAY khi luật không đọc được = AI không biết ngày → không tuyên bố gì', () {
+      expect(docAi('đầu tháng đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, isNull,
+          reason: 'Realme 2026-09-30: AI trả hôm nay cho "đầu tháng" — dòng tóm tắt nói "Hôm nay" là sai');
+    });
+
     test('ghi chú: AI được BỚT chữ, không được THÊM chữ', () {
       expect(docAi('hôm qua ăn phở với bạn 45k', const KetQuaAi(ghiChu: 'ăn phở')).ghiChu, 'ăn phở');
       expect(docAi('hôm qua ăn phở 45k', const KetQuaAi(ghiChu: 'ăn phở bò Hà Nội')).ghiChu, 'ăn phở',

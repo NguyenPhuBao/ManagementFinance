@@ -1481,9 +1481,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _dienTuCau(),
                     style: const TextStyle(fontSize: 15, color: AppColors.primary),
+                    // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
+                    // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
+                    // trong khung xám (nghiệm thu Realme 2026-09-30).
                     decoration: const InputDecoration(
                       isDense: true,
+                      filled: false,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                       hintText: 'VD: hôm qua ăn phở 45k tiền mặt',
                       hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: EdgeInsets.symmetric(vertical: 14),
