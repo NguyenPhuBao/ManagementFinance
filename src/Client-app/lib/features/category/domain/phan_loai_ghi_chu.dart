@@ -219,6 +219,15 @@ String cauLyDoHoc(DoanDanhMuc d, {required String ghiChuGoc, required String ten
 /// Câu lý do của nguồn TỪ KHOÁ — giữ nguyên câu thẻ gợi ý in từ trước B1.
 String cauLyDoTuKhoa(String tuKhoa) => 'Khớp với “$tuKhoa” trong ghi chú.';
 
+/// Nguồn của một gợi ý danh mục — cũng là giá trị cột `nguon` của bảng phản hồi.
+const String kNguonGoiYHoc = 'hoc';
+const String kNguonGoiYTuKhoa = 'tu_khoa';
+
+/// Kết quả phân xử một gợi ý — giá trị cột `ket_qua` của bảng phản hồi.
+const String kKetQuaGoiYChon = 'chon';
+const String kKetQuaGoiYBoQua = 'bo_qua';
+const String kKetQuaGoiYKhac = 'khac';
+
 /// Hai lần bấm *Bỏ qua* cùng một cặp (cụm, danh mục) của nguồn học → thôi gợi ý cặp ấy.
 const int kSoLanBoQuaThoiGoiY = 2;
 
@@ -250,7 +259,7 @@ class PhanHoiGoiY {
 Set<(String, String)> tatCapTu(List<PhanHoiGoiY> phanHoi, List<MauGhiChu> mau) {
   final boQua = <(String, String), List<DateTime>>{};
   for (final p in phanHoi) {
-    if (p.nguon != 'hoc' || p.ketQua != 'bo_qua') continue;
+    if (p.nguon != kNguonGoiYHoc || p.ketQua != kKetQuaGoiYBoQua) continue;
     boQua.putIfAbsent((p.amTietChinh, p.goiYCategoryId), () => []).add(p.createdAt);
   }
   final ra = <(String, String)>{};

@@ -20,6 +20,7 @@ import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
+import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -56,6 +57,12 @@ class AddTransactionPage extends StatefulWidget {
   /// đúng khuôn [wallets].
   final Map<String, String>? viHayDung;
 
+  /// Mô hình gợi ý danh mục học từ ghi chú (B1, `category/domain/phan_loai_ghi_chu.dart`).
+  ///
+  /// `null` → trang tự học từ SQLite trong CÙNG lượt đọc sổ của [viHayDung]. Ca test tiêm thẳng mô hình để khỏi
+  /// dựng CSDL, đúng khuôn [viHayDung].
+  final BoPhanLoaiGhiChu? boPhanLoai;
+
   final CategorySuggestionEngine suggestionEngine;
   final TransactionBloc? transactionBloc;
 
@@ -84,6 +91,7 @@ class AddTransactionPage extends StatefulWidget {
     this.budgetLookup,
     this.huongBanDau,
     this.viHayDung,
+    this.boPhanLoai,
   });
 
   @override
@@ -107,6 +115,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   List<Wallet> _wallets = [];
   /// Bảng ví hay dùng, rỗng khi chưa đủ căn cứ hoặc chưa nạp xong.
   Map<String, String> _viHayDung = const {};
+
+  /// Mô hình học từ ghi chú; `null` khi chưa nạp xong hoặc học lỗi — khi ấy thẻ gợi ý rơi về bảng từ khoá.
+  BoPhanLoaiGhiChu? _boPhanLoai;
 
   /// Người dùng đã tự tay đặt ví nguồn trong lượt này chưa.
   ///
@@ -316,7 +327,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   ///
   /// Một lượt đọc lúc mở trang, rồi [_chonDanhMuc] chỉ tra bảng — nó chạy trong
   /// `setState` nên không chờ được `await`.
+  ///
+  /// Cùng lượt đọc ấy học luôn mô hình gợi ý danh mục (B1) — MỘT lần đọc sổ cho hai bảng.
   Future<void> _loadViHayDung() async {
+    // Đặt TRƯỚC mọi nhánh thoát sớm: ca test tiêm mô hình cùng lúc tiêm `wallets`.
+    if (widget.boPhanLoai != null) _boPhanLoai = widget.boPhanLoai;
     final tiem = widget.viHayDung;
     if (tiem != null) {
       _viHayDung = tiem;
@@ -330,7 +345,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
     ]));
-    if (mounted) setState(() => _viHayDung = bang);
+    BoPhanLoaiGhiChu? bo = widget.boPhanLoai;
+    if (bo == null) {
+      try {
+        bo = BoPhanLoaiGhiChu.hoc(mauHocTu([
+          for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+        ]));
+      } catch (e) {
+        // Học lỗi → rơi về bảng từ khoá, không toast (spec B1 mục 6).
+        debugPrint('[GoiYDanhMuc] học mô hình lỗi: $e');
+        bo = null;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _viHayDung = bang;
+        _boPhanLoai = bo;
+      });
+    }
   }
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
@@ -388,24 +420,43 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final categories = await _categoryRepository.selectableChildrenAll(
       accountId: accountId,
     );
-    // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
-    // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
-    // với mỗi lần ghi chú thay đổi.
-    final keywordsByCategory = await _categoryRepository.loadAllKeywords(
-      accountId: accountId,
+    // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
+    // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
+    // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" bên dưới.
+    final doan = _boPhanLoai?.doan(
+      note,
+      hopLe: {for (final c in categories) c.id},
     );
-    final candidates = <CategoryKeywordCandidate>[];
-    for (final category in categories) {
-      for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
-        candidates.add(
-          CategoryKeywordCandidate(category: category, keyword: keyword),
-        );
+    CategorySuggestion? suggestion;
+    if (doan != null) {
+      final cat = categories.firstWhere((c) => c.id == doan.categoryId);
+      suggestion = CategorySuggestion(
+        category: cat,
+        matchedKeyword: doan.cumBoDau,
+        nguon: kNguonGoiYHoc,
+        amTietChinh: doan.cumBoDau,
+        lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
+      );
+    } else {
+      // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
+      // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
+      // với mỗi lần ghi chú thay đổi.
+      final keywordsByCategory = await _categoryRepository.loadAllKeywords(
+        accountId: accountId,
+      );
+      final candidates = <CategoryKeywordCandidate>[];
+      for (final category in categories) {
+        for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
+          candidates.add(
+            CategoryKeywordCandidate(category: category, keyword: keyword),
+          );
+        }
       }
+      suggestion = widget.suggestionEngine.suggest(
+        rawText: note,
+        candidates: candidates,
+      );
     }
-    final suggestion = widget.suggestionEngine.suggest(
-      rawText: note,
-      candidates: candidates,
-    );
     if (!mounted ||
         _huong != requestedHuong ||
         _isTransfer ||
@@ -1147,8 +1198,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
+            // Lý do theo NGUỒN: học → "Bạn thường ghi “grab” cho Di chuyển (6/7 lần)."; từ khoá → câu cũ.
             Text(
-              'Khớp với “${suggestion.matchedKeyword}” trong ghi chú.',
+              suggestion.lyDo,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
