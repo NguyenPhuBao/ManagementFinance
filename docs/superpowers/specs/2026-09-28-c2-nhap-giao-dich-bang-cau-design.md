@@ -49,6 +49,13 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 > 10. **Ghi chú (§2.7) — thêm:** bỏ *hết / mất / tốn* đứng ngay trước số tiền (*"ăn phở hết 45k"* → *"ăn phở"*); *mất* không
 >     dấu (*mat*) cố ý không bỏ — đó còn là *mặt* của *"tiền mặt"*.
 
+> **🔁 ĐỔI HƯỚNG 2026-09-30 — AI ĐỌC MỌI CÂU (người dùng chọn bằng câu hỏi chọn, sau khi T1–T4 đã xong).** Bản trên chốt
+> *"chỉ luật, không mô hình"*; người dùng hỏi *"dùng AI cho nhập nhanh được không"*, được trình bày giá (7–10 s mỗi câu
+> trên Realme CPU, +~27 s nạp lần đầu; cần tải 2,41 GB và bật công tắc; mở **lối B** sang chỗ thứ hai), rồi chọn **"AI
+> đọc mọi câu"** thay cho *"luật trước, AI khi luật bó tay"*. Ba điểm chốt cùng lượt: **AI đọc cả ngày**, **B1 thắng khi
+> nó chắc**, **nạp mô hình khi chạm vào ô**. Thiết kế ở **§2.8**; luật §2.1–2.7 ở lại làm hai việc: đường chạy khi máy
+> không có mô hình, và **lưới kiểm** từng ô của AI. §4 *"Không mô hình"* hết hiệu lực.
+
 ## 1. Vì sao
 
 Ghi một khoản chi hôm nay tốn: chọn loại, gõ tiền trên bàn phím tự vẽ, chọn danh mục, chọn ví, đổi ngày, gõ ghi chú, tức
@@ -141,6 +148,39 @@ gom khoảng trắng, bỏ dấu câu thừa ở hai đầu, **giữ nguyên** d
 phở"*. Tên danh mục nêu trong câu **giữ lại** trong ghi chú (*"45k ăn uống với bạn"* → *"ăn uống với bạn"*), vì đó thường
 là nội dung người dùng muốn nhớ.
 
+### 2.8 Đọc bằng AI (2026-09-30) — AI đề xuất, luật kiểm
+
+**Khi nào:** máy có mô hình (`MoHinhTaiVe.daCo()`) **và** công tắc AI bật (`CongTacAi.doc()`) — cùng hai điều kiện của
+màn Trợ lý AI. Không có thì chỉ luật (§2.1–2.7). Máy từng sập native ở phiên có tool (`BacCongCuDaTat`), mô hình không
+nạp được, lượt sinh lỗi hay quá thời gian → dùng kết quả luật, không báo lỗi to.
+
+**Gọi mô hình:** một phiên `SlmRuntime.moPhien` với **đúng một** tool `dien_giao_dich` — prompt ngắn (bẫy 4.51: phiên một
+tool mô hình viết đúng mọi số). Tham số: `so_tien` (số đồng, 0 = câu không nói), `loai` (`chi` · `thu` · `khong_ro`),
+`ngay` (`dd/mm/yyyy` hoặc rỗng — lời hệ thống cho biết hôm nay là ngày nào, thứ mấy), `vi` và `danh_muc` là **enum** gồm
+đúng tên có thật (cộng chuỗi rỗng), `ghi_chu`. Lời gọi đầu tiên là kết quả; phiên đóng ngay, không trả kết quả tool về.
+Mã ở `transaction/data/doc_cau_bang_ai.dart` (tầng `ai_edge/` cấm chữ `'thu'`/`'chi'` — test quét 14).
+
+**Luật kiểm từng ô** (hàm thuần `hopNhatAi`, `transaction/domain/`) — trượt thì dùng ô của luật:
+- **Số tiền:** phải thuộc `cachDocSoTien(cau)` — tập mọi cách đọc hợp lệ của các con số có trong câu: mọi cụm luật thấy
+  (kể cả cụm luật không chọn), số trần `n` → `n`, `n × 1.000`, `n × 1.000.000`, số chữ không đơn vị (*"ba chục"* → 30,
+  30.000), *"X triệu Y"* / *"X tr Y"* → X,Y triệu. AI được **chọn cách đọc**, không thể đưa ra chữ số không có trong câu.
+  Cùng trần 13 chữ số.
+- **Ngày:** luật đọc được ngày (chữ không hai nghĩa: *hôm qua*, *5/9*, *thứ 2*) thì **luật thắng**. Luật không đọc được
+  thì dùng ngày AI khi: hợp lệ trên lịch, không quá hôm nay + 7 ngày, không cũ hơn 366 ngày, **và** câu có chữ chỉ thời
+  gian (*tuần, tháng, hôm, trước, qua, đầu, cuối, sáng, trưa, chiều, tối, đêm, thứ, chủ nhật*); câu không có chữ nào thì
+  AI không được đổi ngày.
+- **Loại:** `chi` / `thu` của AI được dùng; câu có *nợ / vay* → `null` như luật.
+- **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động; không thì luật.
+- **Danh mục:** thứ tự (1) tên nêu trong câu (luật) → (2) **B1 khi nó chắc** (người dùng chốt: thói quen riêng thắng hiểu
+  biết chung) → (3) danh mục AI chọn, phải trùng một danh mục chọn được và hợp chiều → (4) không có.
+- **Ghi chú:** mọi âm tiết (bỏ dấu) trong ghi chú AI phải có trong **ghi chú luật** (câu đã bỏ tiền, ngày, ví) — AI được
+  bớt chữ, không được thêm chữ; rỗng hoặc trượt thì ghi chú luật.
+
+**Nạp trước:** chạm vào ô Nhập nhanh → nạp mô hình ngầm (một `Future` dùng chung, bấm Điền lúc đang nạp thì chờ nó).
+
+**Trên màn:** lúc chờ, nút thành *"Đang đọc…"* kèm **Huỷ** (huỷ → kết quả luật, `SlmRuntime.huy`). Dòng tóm tắt thêm nguồn:
+*"Đọc bằng AI"* hay *"Đọc bằng luật"*. Vẫn chỉ điền sẵn; ✓ mới lưu.
+
 ## 3. Giao diện — màn Thêm giao dịch
 
 - Ô **"Nhập nhanh"** ở **đầu** màn, **chỉ ở đường tạo mới** (màn sửa giao dịch không có). Gợi ý: *"VD: hôm qua ăn phở 45k
@@ -157,7 +197,7 @@ là nội dung người dùng muốn nhớ.
 
 ## 4. Không làm
 
-Không mô hình. Không tách nhiều khoản. Không ở màn Trợ lý AI. Không tự lưu. Không đổi schema.
+~~Không mô hình~~ (đổi 2026-09-30, §2.8). Không tách nhiều khoản. Không ở màn Trợ lý AI. Không tự lưu. Không đổi schema.
 
 ## 5. Giới hạn nói trước
 
