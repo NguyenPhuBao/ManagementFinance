@@ -35,6 +35,7 @@ npm-debug.log*
 .codegraph/
 copilot-instructions.md
 .claude/
+.agents.rar
 
 # AI-generated design (Stitch)
 stitch/

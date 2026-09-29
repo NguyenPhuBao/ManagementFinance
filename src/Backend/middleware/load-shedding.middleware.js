@@ -1,0 +1,80 @@
+/**
+ * Load Shedding Middleware
+ * Cắt tải thông minh khi hệ thống quá tải (Event Loop lag > 100ms)
+ * Thông báo minh bạch cho người dùng, tuyệt đối không âm thầm ngắt kết nối
+ * Ưu tiên đặc quyền cho Admin-web luôn thông suốt
+ */
+
+const { defaultEventLoopMonitor } = require('../core/resilience/event-loop-monitor');
+const logger = require('../core/logger');
+
+let lastOverloadAlert = 0;
+
+function createLoadSheddingMiddleware(options = {}) {
+
+  const monitor = options.monitor || defaultEventLoopMonitor;
+  const retryAfterSeconds = options.retryAfterSeconds || 5;
+
+  return function loadSheddingMiddleware(req, res, next) {
+    // 1. Kiểm tra nếu request thuộc về Admin-web hoặc Health Check (Bypass hoàn toàn)
+    const isHealthCheck = (req.path && req.path.startsWith('/health')) ||
+      (req.originalUrl && req.originalUrl.startsWith('/health'));
+
+    const isAdmin = req.isAdmin === true || 
+      (req.path && req.path.startsWith('/api/admin')) ||
+      (req.originalUrl && req.originalUrl.startsWith('/api/admin'));
+
+    if (isAdmin || isHealthCheck) {
+      return next();
+    }
+
+    // 2. Kiểm tra tình trạng Event Loop
+    if (monitor.isOverloaded()) {
+      const lag = typeof monitor.getLag === 'function' ? monitor.getLag() : 100;
+      logger.warn('[RESILIENCE] Kích hoạt Load Shedding — Từ chối client để giải tỏa CPU', {
+        lagMs: lag,
+        path: req.originalUrl || req.path,
+        method: req.method,
+      });
+
+      if (typeof res.setHeader === 'function') {
+        res.setHeader('Retry-After', String(retryAfterSeconds));
+      }
+
+      // Phát cảnh báo hệ thống tới Admin (throttled tối đa 1 cảnh báo mỗi 30s)
+      const now = Date.now();
+      if (now - lastOverloadAlert > 30000) {
+        lastOverloadAlert = now;
+        try {
+          const eventBus = require('../core/event-bus');
+          eventBus.publish('system.overload', {
+            title: 'Cảnh báo quá tải hệ thống (Load Shedding)',
+            message: `Event Loop Lag đạt ${lag}ms, kích hoạt cơ chế cắt tải bảo vệ hệ thống.`,
+            level: 'CRITICAL',
+            category: 'LOAD_SHEDDING',
+            metadata: { lagMs: lag, path: req.originalUrl || req.path },
+          });
+        } catch (_) {}
+      }
+
+
+      return res.status(503).json({
+        success: false,
+        statusCode: 503,
+        code: 'SERVER_OVERLOADED',
+        message: 'Hệ thống đang xử lý lượng truy cập lớn. Vui lòng thử lại sau ít giây!',
+        retryAfter: retryAfterSeconds,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    next();
+  };
+}
+
+const defaultLoadShedding = createLoadSheddingMiddleware();
+
+module.exports = {
+  createLoadSheddingMiddleware,
+  defaultLoadShedding,
+};

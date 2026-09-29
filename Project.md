@@ -78,6 +78,8 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Event-Driven** | Các module kết nối lỏng lẻo qua event bus (Redis Pub/Sub + BullMQ). Tác vụ nặng (AI, OCR, thông báo) đẩy vào queue xử lý bất đồng bộ → API phản hồi nhanh. |
 | **Offline-First** | Client-app (Flutter) lưu dữ liệu cục bộ SQLite, cho phép CRUD ngay cả khi không có mạng. Khi có kết nối → đồng bộ hai chiều với backend qua conflict resolution. |
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
+| **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
+| **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -350,6 +352,26 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 > | PATCH | `/api/auth/profile/confirm-email-change` | JWT | Xác nhận OTP → cập nhật email |
 >
 > Xem tài liệu đầy đủ: `docs/superpowers/specs/2026-08-17-auth-backend-implementation-guide.md`
+
+#### 3.2.6 Module Notification Hub & Giám Sát Cảnh Báo Hệ Thống (🆕 2026-09-29)
+
+- **Hub điều phối thông báo đa kênh**:
+  - **Lưu trữ nhẹ tự dọn dẹp (`NotificationStore`)**: Dùng Redis List kết hợp In-Memory fallback, cắt tỉa tối đa 50 thông báo gần nhất/tài khoản và Admin, TTL 30 ngày, hoàn toàn không can thiệp schema PostgreSQL (`Zero Schema Conflict`).
+  - **Kênh Realtime User (Socket.io)**: Room cá nhân `account_${idaccount}` (bảo mật qua JWT): `account.countdown`, `system.broadcast`, `user.notification`, `ocr.completed`, `ocr.duplicate`, `sync.completed`.
+  - **Kênh Realtime Admin (Socket.io)**: Room `admin_room` (chỉ Admin): `admin.notification` với 3 cấp độ cảnh báo (`CRITICAL`, `WARNING`, `INFO`). Tích hợp cảnh báo quá tải Event Loop Lag và cắt tải (Load Shedding Debounce 30s).
+  - **Kênh Email Bất Đồng Bộ (BullMQ)**: Worker `notification.worker.js` xử lý hàng đợi `send-notification` với exponential backoff.
+- **REST Endpoints**:
+  - `GET /api/notifications` — Lấy danh sách thông báo người dùng (phân trang, lọc `unreadOnly`)
+  - `GET /api/notifications/unread-count` — Đếm số thông báo người dùng chưa đọc
+  - `PATCH /api/notifications/:id/read` — Đánh dấu thông báo đã đọc
+  - `POST /api/notifications/read-all` — Đánh dấu tất cả thông báo đã đọc
+  - `GET /api/notifications/admin/alerts` — Lấy cảnh báo hệ thống cho Admin-web
+  - `PATCH /api/notifications/admin/alerts/:id/read` — Đánh dấu cảnh báo Admin đã đọc
+  - `POST /api/notifications/admin/broadcast` — Admin phát thông báo toàn hệ thống
+- **Tài liệu chi tiết**:
+  - Backend: [`docs/Notification/Notification_Backend.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Notification/Notification_Backend.md)
+  - Admin-web: [`docs/Notification/Notification_Admin-web.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Notification/Notification_Admin-web.md)
+  - Client-app: [`docs/Notification/Notification_Client-app.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Notification/Notification_Client-app.md)
 
 ### 3.3 Kiến Trúc Client-app (Offline-first, Flutter)
 
@@ -1055,11 +1077,21 @@ Real-time Socket.IO:
 | 7 | AI đề xuất quy tắc phân bổ dòng tiền (Budget + Goal) | Backend | User |
 
 #### B10. Notification
-> Phát sinh dần trong quá trình làm & ghi nhận sau.
+> Hệ thống thông báo đa kênh (Realtime Socket.io, In-App Notification Store, Email qua BullMQ Background Queue).
 
 | STT | Chức năng | Location | Actor |
 |-----|-----------|----------|-------|
-| … | … | Backend + Mobile | User + Admin |
+| 1 | Lắng nghe sự kiện bóc tách hóa đơn OCR hoàn tất (`ocr.completed`) & trùng lặp (`ocr.duplicate`) | Backend + Mobile | User |
+| 2 | Nhận thông báo giao dịch ngân hàng mới (`bank_transaction.pending`) | Backend + Mobile | User |
+| 3 | Nhận tín hiệu hoàn tất đồng bộ dữ liệu (`sync.completed`) | Backend + Mobile | User |
+| 4 | Cảnh báo đếm ngược ngừng hoạt động tài khoản chờ xóa (`account.countdown`) | Backend + Mobile | User |
+| 5 | Cảnh báo quá tải hệ thống (`system.overload` / Load Shedding) & DB Bulkhead | Backend + Admin | Admin |
+| 6 | Cảnh báo bảo mật hệ thống (`security.alert`) | Backend + Admin | Admin |
+| 7 | Phát thông báo toàn hệ thống Broadcast (`system.broadcast`) | Backend + Admin | Admin |
+| 8 | REST API thông báo: Lấy danh sách, đếm chưa đọc, đánh dấu đã đọc (`/api/notifications`) | Backend | User + Admin |
+| 9 | Chuông thông báo Realtime trên Header Admin-web (Badge đếm số cảnh báo & Dropdown chi tiết) | Admin-web | Admin |
+| 10 | Hàng đợi BullMQ `send-notification`: Gửi email cảnh báo bảo mật bất đồng bộ qua Nodemailer | Backend | User |
+
 
 #### B11. Sync
 | STT | Chức năng | Location | Actor |
@@ -2802,6 +2834,49 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Lọc ngân sách còn hiệu lực tại thời điểm snapshot (`start <= now` và `end IS NULL OR end >= now`), khử trùng lặp cảnh báo (mỗi danh mục tối đa 1 cảnh báo).
   - Bổ sung từ khóa danh mục thiết yếu (`di chuyển`, `giao thông`, `xăng`, `giáo dục`) và nghĩa vụ nợ (`vay`, `nợ`, `đi vay`, `cho vay`). Mọi danh mục còn lại mặc định xếp vào `wantsAmount` (thay vì bị loại bỏ làm hụt 78% chi tiêu).
 - **8. Nghiệm thu:** Vượt qua 100% các câu lệnh kiểm tra nghiêm ngặt (6 lệnh `grep` ra 0 dòng sai lệch, 39/39 unit tests PASS 100%, Admin-web build thành công 100%). Chuyển tài liệu `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` sang `DA-XONG/`.
+
+### 11.46. Dọn Dẹp Thư Mục Tồn Dư & Đồng Bộ Hóa Chuẩn Mô Hình AI Cho Classify & OCR (2026-09-28)
+- **1. Dọn dẹp cấu trúc thư mục:** Xóa bỏ hoàn toàn 4 thư mục rỗng tàn dư của giai đoạn đầu (`advice`, `behavior`, `budget`, `forecast` trong `src/Backend/modules/ai/features/`), phản ánh chuẩn xác hiện trạng cây thư mục chỉ chứa 4 module AI cốt lõi: `classify`, `ocr`, `dedup`, `chatbot`.
+- **2. Đồng bộ mô hình Google Gemini 3.8 Flash:**
+  - Đồng bộ REST URL trong `llm.classifier.js` (Phân loại giao dịch Tầng 3) và `vision.extractor.js` (Bóc tách hóa đơn OCR) sang đọc linh hoạt từ `process.env.GEMINI_MODEL || 'gemini-3.8-flash'`.
+  - Cập nhật tài liệu kỹ thuật [`docs/AI/LogicBusinessAI.md`](docs/AI/LogicBusinessAI.md) và [`docs/AI/ORC.md`](docs/AI/ORC.md) khớp chuẩn mô hình.
+- **3. Thanh lọc cấu hình tàn dư OpenAI:**
+  - Trong `src/Backend/modules/ai/config.js`: Thay `defaultProvider: 'openai'` thành `gemini`, gán model mặc định `gemini-3.8-flash`, dọn dẹp các token key cũ của advice/budget.
+  - Trong `llm.classifier.js`: Bỏ trường `this.openaiApiKey` và các chú thích thừa.
+- **4. Bảo toàn ranh giới Client-app:** Giữ nguyên 100% mã nguồn `src/Client-app/` và đảm bảo toàn vẹn các API contract.
+
+### 11.47. Triển Khai Hoàn Thiện Module Notification Toàn Diện (Backend & Admin-web) (2026-09-29)
+- **1. Tầng Lưu Trữ & Bộ Đệm (Notification Store):**
+  - Triển khai `src/Backend/modules/notification/notification.store.js` hỗ trợ song song Redis List (`notifications:account:{idaccount}`, `notifications:admin`) và In-Memory fallback khi không có Redis.
+  - Tự động cắt tỉa giới hạn 50 thông báo gần nhất cho mỗi tài khoản và Admin, thời gian sống (TTL) 30 ngày. Không can thiệp schema PostgreSQL và không đụng vào SQLite của Client-app.
+- **2. Tầng Realtime & EventBus (Socket.io + Service):**
+  - Mở rộng `src/Backend/core/socket.js` với `emitAdminNotification` (gửi tới room `admin_room`) và `emitSystemBroadcast` (gửi toàn bộ client kết nối).
+  - Hoàn thiện `src/Backend/modules/notification/notification.service.js` tự động lưu Store và phát Socket.io khi tiếp nhận các sự kiện: `ocr.completed`, `ocr.duplicate`, `bank_transaction.pending`, `sync.completed`, `system.overload`, `security.alert`, `account.countdown`.
+  - Cung cấp các method `broadcast`, `sendDirectNotification`, `sendAdminAlert`.
+- **3. Tầng Giao Diện Lập Trình (REST API & Validation):**
+  - `src/Backend/modules/notification/notification.validation.js`: Validate tham số phân trang (`page`, `limit`) và nội dung broadcast (`title`, `message`, `level`).
+  - `src/Backend/modules/notification/notification.controller.js`: Xử lý 7 endpoints chuẩn hóa với `ResponseHandler`.
+  - `src/Backend/api/notification.routes.js`:
+    - `GET /api/notifications`: Xem danh sách thông báo (phân trang, lọc chưa đọc).
+    - `GET /api/notifications/unread-count`: Đếm thông báo chưa đọc.
+    - `PATCH /api/notifications/:id/read`: Đánh dấu 1 thông báo đã đọc.
+    - `POST /api/notifications/read-all`: Đánh dấu tất cả thông báo đã đọc.
+    - `GET /api/notifications/admin`: Admin xem danh sách cảnh báo hệ thống.
+    - `PATCH /api/notifications/admin/:id/read`: Admin đánh dấu cảnh báo đã đọc.
+    - `POST /api/notifications/broadcast`: Admin phát thông báo tới toàn hệ thống.
+- **4. Tầng Xử Lý Tác Vụ Nền (BullMQ Worker):**
+  - `src/Backend/modules/notification/notification.jobs.js`: Helper đưa job `send-email` và `send-socket` vào queue `send-notification`.
+  - `src/Backend/workers/notification.worker.js`: Worker xử lý gửi email cảnh báo bảo mật bất đồng bộ qua `emailService.sendSecurityAlert`.
+  - Tích hợp nạp worker trong `src/Backend/index.js` khi Redis khả dụng.
+- **5. Frontend Admin-web Header Integration:**
+  - `src/Admin-web/src/api/notification.api.js`: Gọi API cảnh báo admin và broadcast.
+  - `src/Admin-web/src/components/layout/Header.jsx`: Nâng cấp chuông thông báo hiển thị badge đếm số cảnh báo chưa đọc thời gian thực qua Socket.io `admin.notification`, dropdown hiển thị danh sách cảnh báo phân cấp màu sắc (CRITICAL, WARNING, INFO) và đánh dấu đã đọc.
+  - Admin-web build: `rtk npm run build` thành công **100% (0 errors)**.
+- **6. Kiểm Thử Khép Kín (TDD 100% PASS):**
+  - Toàn bộ 4 test suites mới (`notification.store.test.js`, `notification.service.test.js`, `notification.controller.test.js`, `notification.worker.test.js`) đạt 100% pass.
+  - Toàn bộ hệ thống Backend đạt **87/87 tests PASS 100% (25 test suites)**.
+
+
 
 
 

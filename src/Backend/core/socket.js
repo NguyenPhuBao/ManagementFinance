@@ -214,6 +214,40 @@ function emitSyncCompleted(idaccount, data) {
   }
 }
 
+/**
+ * Phát cảnh báo hệ thống tới các Admin đang trực tuyến (admin_room)
+ * @param {Object} notificationData 
+ */
+function emitAdminNotification(notificationData) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit admin notification before Socket.io initialized');
+    return;
+  }
+  try {
+    io.to('admin_room').emit('admin.notification', notificationData);
+    logger.info('[Socket] Emitted admin.notification to admin_room', { title: notificationData.title });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin notification', { error: error.message });
+  }
+}
+
+/**
+ * Phát thông báo Broadcast toàn hệ thống tới tất cả các client đang kết nối
+ * @param {Object} broadcastData 
+ */
+function emitSystemBroadcast(broadcastData) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit system broadcast before Socket.io initialized');
+    return;
+  }
+  try {
+    io.emit('system.broadcast', broadcastData);
+    logger.info('[Socket] Emitted system.broadcast to all connected clients', { title: broadcastData.title });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit system broadcast', { error: error.message });
+  }
+}
+
 module.exports = {
   initSocket,
   getIO,
@@ -223,6 +257,9 @@ module.exports = {
   emitOcrDuplicate,
   emitForceLogout,
   emitSyncCompleted,
+  emitAdminNotification,
+  emitSystemBroadcast,
 };
+
 
 
