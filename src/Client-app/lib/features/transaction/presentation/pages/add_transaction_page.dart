@@ -1277,7 +1277,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   child: const Text('Bỏ qua'),
                 ),
                 const Spacer(),
+                // ⚠️ `minimumSize` hữu hạn BẮT BUỘC: theme của app ép mọi ElevatedButton rộng vô hạn, nút trần trong
+                // `Row` làm trắng cả vùng form mà không một dòng log nào (bẫy 4.11). Lỗi có từ trước B1 — nghiệm thu
+                // máy ảo 2026-09-29 mới lộ, vì mọi widget test cũ dựng MaterialApp trần.
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
                   onPressed: () {
                     _ghiPhanHoi(suggestion, kKetQuaGoiYChon, chon: suggestion.categoryId);
                     _choPhanXu = null;

@@ -13,6 +13,7 @@ import 'package:flowmoney/features/transaction/data/models/transaction_entity.da
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/choose_category_page.dart';
+import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -79,6 +80,7 @@ void main() {
     Map<String, List<String>> keywords = const {},
     EditTransactionArgs? initial,
     GoiYPhanHoiStore? phanHoiGoiY,
+    ThemeData? theme,
   }) {
     final bloc = TransactionBloc(transactionRepository: FakeTransactionRepository());
     final router = GoRouter(
@@ -113,7 +115,7 @@ void main() {
         ),
       ],
     );
-    return MaterialApp.router(routerConfig: router);
+    return MaterialApp.router(theme: theme, routerConfig: router);
   }
 
   Future<void> goGhiChu(WidgetTester tester, String ghiChu) async {
@@ -121,6 +123,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('⭐ thẻ gợi ý dựng bằng THEME THẬT không tràn bố cục (bẫy 4.11)', (tester) async {
+    // Theme của app ép mọi ElevatedButton rộng vô hạn (`app_theme.dart`); nút trần trong `Row` của thẻ làm trắng cả
+    // vùng form mà không một dòng log nào. Nghiệm thu máy ảo 2026-09-29 bắt được (B1 Task 7) — lỗi có từ trước B1, thẻ
+    // từ khoá cũng vỡ y hệt, và mọi ca khác của tệp này dựng MaterialApp trần nên mù.
+    await tester.pumpWidget(app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMau), theme: AppTheme.lightTheme));
+    await tester.pumpAndSettle();
+
+    await goGhiChu(tester, 'grab tối');
+    expect(tester.takeException(), isNull);
+    expect(find.text('Bạn thường ghi “grab” cho Di chuyển (4/4 lần).'), findsOneWidget);
+    expect(find.text('Chọn danh mục này'), findsOneWidget);
+  });
 
   testWidgets('⭐ gợi ý HỌC hiện kèm câu lý do theo nguồn học', (tester) async {
     await tester.pumpWidget(app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMau)));
