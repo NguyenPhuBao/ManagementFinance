@@ -377,12 +377,20 @@ nói rõ chiều thì chỉ danh mục hợp chiều (`hopLeTheoChieu` của C1)
 **hoặc từ khoá** thì màn đặt `_choPhanXu` như thẻ gợi ý, nên lúc lưu vẫn ghi phản hồi
 `chon` / `khac` đúng nguồn. Không đổi mã danh mục, không đổi schema.
 
+Từ *đổi lần hai* (2026-09-30, `05c6ce2`): mô hình **chỉ được gọi khi câu còn ô số tiền /
+ngày / ví mà luật không đọc được** — **danh mục trống không tự gọi mô hình** (người dùng
+chốt: ghi chú mới xảy ra thường, gọi vì nó là gọi gần như mọi câu ~18 s). Nên bước 4 (mô
+hình) chỉ chạy khi mô hình đã được gọi vì ô khác; câu đủ ô mà tên / B1 / từ khoá đều im
+thì danh mục **để trống** cho người dùng chọn. Câu chuyển giữa hai ví (§2.9 spec C2) không
+có danh mục.
+
 Bước **từ khoá** thêm sau lượt đo Realme (*"đổ xăng"*, *"grab"* bị mô hình xếp Ăn uống).
 Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ khoá từ thói quen** (một chữ lặp
 với một danh mục mà chưa khai từ khoá → mời thêm; chữ đang là từ khoá danh mục khác —
 *grab* ở Ăn uống — thì mời **chuyển**). Chưa có spec.
 
-⚠️ **Vòng lặp học sai — câu hỏi mở, chưa chốt** (§8 câu 8 spec C2). B1 học lại từ sổ
+⚠️ **Vòng lặp học sai — người dùng chọn chưa làm gì thêm, theo dõi sau đo** (§8 câu 8
+spec C2, 2026-09-30): với luật gọi mô hình mới, ca mô hình điền danh mục hiếm hơn hẳn. B1 học lại từ sổ
 mỗi lần mở màn, gồm cả giao dịch nhập qua Nhập nhanh. Danh mục mô hình đoán sai mà người
 dùng lưu luôn không sửa (*"xăng" → Ăn uống*) thành mẫu của B1; vì B1 đứng **trước** mô
 hình, lần sau B1 nói lại đúng cái sai ấy và nó bị **khoá lại**. Giao dịch hôm nay không

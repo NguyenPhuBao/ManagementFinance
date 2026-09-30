@@ -269,7 +269,9 @@ mặt"*): `DocCauBangAi` mở phiên **một tool** `dien_giao_dich`, rồi **lu
 một cách đọc của số trong câu, ví chỉ khi câu nhắc ví…), và form chỉ điền sẵn — người dùng bấm ✓ mới lưu (bất biến ④,
 tầng 3). Mục 9.41 `AI_EDGE_FEATURE.md`. Lý lẽ khác lý lẽ của khối Nhận xét: ở đây mô hình **đọc câu tự do** (thứ luật
 đọc sót — *"ba chục"*, *"một triệu hai"*), đúng chỗ nó hơn mẫu câu. 🔁 Sau khi đo (~18 s mỗi câu trên Realme CPU) người
-dùng quyết **luật trước, AI là lớp cuối cho mọi ô** — chưa thi công.
+dùng quyết **luật trước, AI là lớp cuối cho mọi ô** — ✅ **thi công cùng ngày** (`b0c9f9b` → `05c6ce2`): mô hình chỉ được
+gọi khi câu còn ô **số tiền / ngày / ví** mà luật không đọc được (`KetQuaDocCau.oThieu`), và chỉ **lấp** ô luật để trống;
+câu luật đọc đủ thì điền ngay, không chạm mô hình.
 
 ### 4.4 ⚠️ Vòng 2 KHÔNG phải agent
 

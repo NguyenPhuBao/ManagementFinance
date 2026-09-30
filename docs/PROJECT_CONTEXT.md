@@ -856,13 +856,21 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `core/utils`: `so_bang_chu` (một bộ đọc số chữ cho cả `kiem_so` lẫn `chinh_tham_so` — hai bộ cũ **mù hàng chục**),
   `ngay_trong_cau` (+ `ngayHopLe`; đọc cả *"thứ X tuần trước"*), `tenNeuTrongCau` / `timTenTrongCau`. Đo 10 câu: số tiền
   10/10, danh mục 7/2/1 — bước từ khoá thêm sau lượt đo, **chưa đo lại**. `flutter test` **4773/4773** (4 skip), analyze
-  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). 🔁 **Sau lượt đo người dùng quyết ĐỔI LẦN HAI — CHƯA THI
-  CÔNG**: *luật trước, AI chỉ khi các lớp trước bó tay* + **AI là lớp cuối cho MỌI ô** (ô nào luật / B1 / từ khoá đọc được
-  thì lớp trước thắng, kể cả số tiền — hôm nay số AI qua kiểm thắng số luật; ô câu có nhắc mà lớp trước không đọc được thì
-  AI lấp qua lưới kiểm; không còn ô thiếu thì không gọi Gemma). Lý do: ~18 s mỗi câu, luật một mình đủ số tiền 8/10, AI sai
-  cả hai câu có ngày. Ba câu chặn thi công ở §8 spec (câu 1, 2, 9). ⚠️ Việc kế (người dùng chốt): **(1)** thi công đổi lần
-  hai sau khi chốt ba câu ấy, đo lại Realme; **(2)** **đề xuất thêm từ khoá từ thói quen** — việc riêng, trước D1, chưa có
-  spec; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
+  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). 🔁 Sau lượt đo người dùng quyết **ĐỔI LẦN HAI**: *luật
+  trước, AI chỉ khi các lớp trước bó tay* + **AI là lớp cuối cho MỌI ô**. Lý do: ~18 s mỗi câu, luật một mình đủ số tiền
+  8/10, AI sai cả hai câu có ngày.
+- ✅ **C2 đổi lần hai + chuyển ví + luật ngày — thi công và đo Realme 2026-09-30** (`b0c9f9b` → `05c6ce2`; spec C2 banner
+  *ĐỔI LẦN HAI*, §2.3, §2.8, **§2.9**, §8; cuối mục 9.41 `AI_EDGE_FEATURE.md`). Người dùng chốt bằng câu hỏi chọn: ô
+  **thiếu** gọi AI chỉ là **số tiền · ngày · ví** (`KetQuaDocCau.oThieu`) — danh mục / thu-chi trống không gọi; **chờ AI
+  rồi điền một lần**; AI chỉ **lấp** ô luật để trống (luật thắng cả số tiền); luật mới *đầu tháng (này / trước)*, *cuối
+  tháng trước*, cụm chỉ kỳ không phải ngày thiếu. Giữa phiên người dùng báo câu **chuyển giữa hai ví** bị điền thành khoản
+  chi → §2.9 (ví đích sau *sang · vào · đến · tới*, *qua* khi có *chuyển*; ví nguồn sau *từ*; tool `chuyen_vi` + `vi_den`;
+  `timCacTenTrongCau` ở `core/utils/khop_ten.dart`). Tôi siết *câu có nhắc ngày* từ chữ lẻ sang **cụm** (`cauNhacNgay`,
+  `core/utils/ngay_trong_cau.dart`). Đo 14 câu (bản `be5b4f9c…`): gọi AI **4/14**, số tiền 14/14, chuyển ví ✅, câu không
+  gọi AI điền tức thì. ⚠️ **Hai chỗ lộ ra, chưa sửa, chờ người dùng**: *"quẹt thẻ ăn phở 45k"* nhận ví **Tiền mặt** do AI
+  chọn (lớp kiểm ví nhận mọi ví khi câu có chữ *thẻ / quẹt / ck*); *"cuối tháng"* gọi AI 14 s mà không thêm gì.
+  `flutter test` **4814/4814** (4 skip), analyze 26. ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen** —
+  việc riêng, trước D1, chưa có spec; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
   và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
   D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
   `ai_edge/`.
