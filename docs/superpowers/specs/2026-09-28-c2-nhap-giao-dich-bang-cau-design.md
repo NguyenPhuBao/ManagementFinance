@@ -6,7 +6,8 @@
 > chốt 30/09: tên → B1 khi chắc → từ khoá → AI). ⚠️ Phần **"đề xuất thêm từ khoá từ thói quen"** (người dùng lặp một chữ
 > với một danh mục mà chưa khai từ khoá) là **việc riêng ngay sau C2, trước D1** — người dùng chốt, chưa có spec.
 > ✅ **ĐỔI LẦN HAI THI CÔNG 2026-09-30** (commit `b0c9f9b` → `05c6ce2`; banner cuối trong khối banner): **luật trước,
-> AI chỉ khi còn ô thiếu** (`KetQuaDocCau.oThieu` — số tiền · ngày · ví), AI chỉ **lấp** ô luật để trống. Cùng lượt:
+> AI chỉ khi còn ô thiếu** (`KetQuaDocCau.oThieu` — số tiền · ngày · ví · danh mục · ghi chú; hai ô cuối thêm sau lượt đo 3, xem
+> cuối banner *ĐỔI LẦN HAI*), AI chỉ **lấp** ô luật để trống. Cùng lượt:
 > **§2.9 chuyển ví** (người dùng báo giữa phiên: câu *"chuyển 500k từ tiền mặt sang tiết kiệm"* bị điền thành khoản chi)
 > và luật ngày mới ở **§2.3**. Câu **§8** nào đã chốt thì ghi ngay tại câu ấy. **Đo Realme lượt 3** (14 câu, cuối mục
 > 9.41): gọi AI 4/14, số tiền 14/14, chuyển ví ✅; 🛑 hai chỗ lộ ra chờ người dùng — *"quẹt thẻ …"* nhận ví Tiền mặt AI
@@ -89,9 +90,14 @@ nào ghi thẳng"*, tức form điền sẵn và người dùng bấm **Lưu**. 
 >    một cách đọc hợp lệ; theo nguyên tắc mới luật đọc được số tiền thì luật thắng.
 > "Có nhắc mà không đọc được" từng ô là **câu hỏi mở số 9** (§8) — phải chốt trước khi viết mã.
 > ~~Chưa chốt (hỏi đầu phiên sau)~~ — ✅ **người dùng chốt 2026-09-30 bằng câu hỏi chọn** (§8 câu 1, 2, 9):
-> - **Ô thiếu = số tiền · ngày · ví** (luật để trống mà câu có nhắc — định nghĩa từng ô ở `OThieu`,
->   `doc_cau_giao_dich.dart`). **Danh mục trống và thu/chi trống KHÔNG gọi AI** (ghi chú mới xảy ra thường — gọi vì
->   chúng là gọi gần như mọi câu); nhưng khi AI đã được gọi vì ô khác thì **nhận** chiều và danh mục của nó, qua kiểm.
+> - ~~**Ô thiếu = số tiền · ngày · ví** … **Danh mục trống và thu/chi trống KHÔNG gọi AI**~~ (lượt chọn đầu — tôi gắn
+>   *Recommended* cho phương án thu hẹp nguyên tắc của người dùng). ✅ **Sửa sau lượt đo 3** (câu *"mua 2 ly trà sữa 60k"*
+>   trống danh mục), người dùng: *"tôi muốn chỗ nào không điền được thì sẽ cho AI vào để điền mà"* và *"cả ghi chú nữa nếu
+>   các lớp trước ko được thì AI sẽ điền"* → ô thiếu = **số tiền · ngày · ví · danh mục · ghi chú** (`OThieu`, `doc_cau_giao_dich.dart`):
+>   danh mục khi tên / B1 / từ khoá đều im mà ghi chú còn chữ (không phải chuyển ví); ghi chú khi nó còn sót một số đọc
+>   được thành tiền mà luật không dùng (*"mất ba chục"*, *"grab 50k"*) — AI vẫn chỉ được **bớt** chữ, ghi chú trống thì
+>   không gọi (người dùng chọn, `cbf87a7`). **Thu/chi không** là ô thiếu (form luôn có chiều); AI đã được gọi thì nhận
+>   chiều của nó qua kiểm.
 > - **Chờ AI rồi điền một lần** — như bản trước (*"Đang đọc bằng AI…"* + Huỷ), chỉ khác là câu không thiếu gì thì điền
 >   ngay không chờ. Không cần trạng thái Stitch mới.
 > - **Ghi chú khi AI lấp số tiền:** ghi chú AI được dùng nếu chỉ **bớt** chữ (luật §2.8 như cũ).
@@ -224,8 +230,10 @@ là nội dung người dùng muốn nhớ.
 **Khi nào:** máy có mô hình (`MoHinhTaiVe.daCo()`) **và** công tắc AI bật (`CongTacAi.doc()`) — cùng hai điều kiện của
 màn Trợ lý AI — **và** (ĐỔI LẦN HAI, `05c6ce2`) lượt luật một mình còn **ô thiếu**: `KetQuaDocCau.oThieu` khác rỗng — số
 tiền (luật để trống mà `cachDocSoTien(cau)` khác rỗng), ngày (luật để trống mà `cauNhacNgay`), ví (luật để trống mà phần
-câu **chưa dùng** còn chữ chỉ ví hoặc viết tắt tên ví — chữ *ví* của *"sang ví Tiết kiệm"* thuộc ví đích). Thu/chi và danh
-mục không phải ô thiếu. Không thoả thì chỉ luật (§2.1–2.7, §2.9), điền ngay. Máy từng sập native ở phiên có tool
+câu **chưa dùng** nhắc một ví có thật — *ví* trần, *thẻ / quẹt / ck / chuyển khoản / atm* chỉ khi có ví ngân hàng, viết
+tắt tên ví; chữ *ví* của *"sang ví Tiết kiệm"* thuộc ví đích), danh mục (tên / B1 / từ khoá im mà ghi chú còn chữ, không
+phải chuyển ví), ghi chú (còn sót số đọc được thành tiền — `cachDocSoTien(ghiChu)` khác rỗng). Thu/chi không phải ô
+thiếu. Không thoả thì chỉ luật (§2.1–2.7, §2.9), điền ngay. Máy từng sập native ở phiên có tool
 (`BacCongCuDaTat`), mô hình không nạp được, lượt sinh lỗi hay quá thời gian → dùng kết quả luật, không báo lỗi to.
 
 **Gọi mô hình:** một phiên `SlmRuntime.moPhien` với **đúng một** tool `dien_giao_dich` — prompt ngắn (bẫy 4.51: phiên một
@@ -254,9 +262,11 @@ hàm riêng `hopNhatAi` — mã không có hàm ấy.)* Trượt thì dùng ô c
   Realme 2026-09-30: *"đầu tháng"* → hôm nay) — form vốn là hôm nay, nhận nó chỉ làm dòng tóm tắt nói *"Hôm nay"*.
 - **Loại:** chỉ khi luật **để trống** (ĐỔI LẦN HAI: luật nói *thu* thì AI nói *chi* không đè); `chi` / `thu` của AI được
   dùng; `chuyen_vi` → §2.9; câu có *nợ / vay* → `null` như luật.
-- **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động **và câu phải nhắc ví** — chữ chỉ ví / cách trả (*ví, thẻ,
-  quẹt, ck, chuyển khoản, atm*) hoặc viết tắt tên ví (*"techcom"*). Đo Realme 2026-09-30: 9/10 câu mô hình trả ví mặc định
-  dù câu không nói — điền nó là bịa một ô và khoá luật *ví hay dùng*.
+- **Ví:** tên AI chọn phải trùng đúng một ví đang hoạt động **và câu phải nhắc ví ấy** (`_cauNhacVi(thuong, Wallet)`) —
+  chữ *ví* trần (mọi ví); *thẻ, quẹt, ck, chuyển khoản, atm* **chỉ với ví ngân hàng** (`bank` / `banking` — thêm sau lượt
+  đo 3: *"quẹt thẻ ăn phở 45k"* nhận ví Tiền mặt AI chọn); hoặc viết tắt tên ví (*"techcom"*). ⚠️ So **từng từ có dấu**:
+  bỏ dấu thì *"vì"* là *vi*, *"thế"* là *the* — *"vì đói nên ăn phở"* từng là câu nhắc ví và gọi AI oan. Đo Realme
+  2026-09-30: 9/10 câu mô hình trả ví mặc định dù câu không nói — điền nó là bịa một ô và khoá luật *ví hay dùng*.
 - **Danh mục:** thứ tự (1) tên nêu trong câu (luật) → (2) **B1 khi nó chắc** (người dùng chốt: thói quen riêng thắng hiểu
   biết chung) → (3) **từ khoá của danh mục** (thêm sau lượt đo, `ea12588`, §2.5) → (4) danh mục AI chọn, phải trùng một
   danh mục chọn được (`khopTheoTen`) và hợp chiều → (5) không có. *(Bước 3 soát 30/09.)*
@@ -371,8 +381,8 @@ câu; câu 5, 6, 7 còn mở.
 1. ✅ **Chờ AI rồi điền một lần** (người dùng chọn; tôi nghiêng về *điền ngay* — họ chọn phương án đơn giản, không cần
    trạng thái Stitch mới). **Điền ngay rồi AI bổ sung ô thiếu, hay chờ AI rồi điền một lần?** Điền ngay: thấy kết quả luật tức thì, AI về chỉ điền
    ô còn trống và bỏ qua ô người dùng đã sửa trong lúc chờ (phức tạp hơn). Chờ: đơn giản, nhưng câu cần AI vẫn chờ ~18 s.
-2. ✅ **Không** — ô kích hoạt gọi AI chỉ là số tiền · ngày · ví; danh mục trống để thẻ gợi ý / người dùng chọn, nhưng
-   khi AI đã được gọi vì ô khác thì nhận danh mục của nó (qua kiểm). **"Chưa đoán được danh mục" có đủ để gọi AI không?** Ghi chú mới (B1 và từ khoá chưa biết) sẽ rơi vào đây thường xuyên
+2. ✅ ~~**Không**~~ → **CÓ** (người dùng sửa sau lượt đo 3: *"chỗ nào không điền được thì sẽ cho AI vào để điền mà"*):
+   danh mục trống, ghi chú còn chữ để đoán, không phải chuyển ví → gọi AI. **"Chưa đoán được danh mục" có đủ để gọi AI không?** Ghi chú mới (B1 và từ khoá chưa biết) sẽ rơi vào đây thường xuyên
    → AI chạy gần như mọi câu mới, mất lợi ích tốc độ. Lựa chọn: gọi AI như thường · chỉ gọi khi thiếu số tiền · gọi qua
    nút *"Hỏi AI danh mục"*. Đo: AI đoán danh mục 5 lần → 3 đúng, 2 sai.
 3. ⏸ **Chưa sửa — đo lại sau đổi lần hai rồi quyết** (người dùng chọn): với bước từ khoá và luật gọi AI mới, câu *đổ
@@ -399,7 +409,7 @@ câu; câu 5, 6, 7 còn mở.
    không sửa thì B1 học đúng cái sai ấy (*"xăng" → Ăn uống*), rồi vì B1 thắng AI nên cái sai bị **khoá lại**. Cần bàn: có
    loại giao dịch có danh mục do AI điền (chưa được người dùng xác nhận) khỏi mẫu học của B1 không, hay nhắc người dùng kiểm
    danh mục khi nguồn là AI. Số tiền và ngày là luật cố định — không học, và không cần học; cách nói lạ thì phải sửa luật.
-9. ✅ **Chốt theo đề xuất** (người dùng chọn, `b0c9f9b`): số tiền · ngày · ví là ô thiếu; thu/chi **không** (nhưng nhận
+9. ✅ **Chốt** (`b0c9f9b`, sửa `ed397be` + `cbf87a7` sau lượt đo 3): số tiền · ngày · ví · danh mục · ghi chú là ô thiếu; thu/chi **không** (nhưng nhận
    `loai` của AI khi AI đã được gọi); ghi chú khi AI lấp số tiền = ghi chú AI nếu chỉ bớt chữ. ⚠️ *Ngày* thi công bằng
    **`cauNhacNgay`** (cụm hai chữ) thay `_coChuThoiGian` (chữ lẻ) — xem banner *ĐỔI LẦN HAI*. **"Câu có nhắc mà các lớp
    trước không đọc được" — định nghĩa từng ô** (chặn việc thi công, sinh ra từ nguyên tắc *"AI là

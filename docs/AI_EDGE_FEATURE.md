@@ -21,7 +21,7 @@ mở rộng bộ tool ba lát — **chín** tool, câu đã định tuyến khai
 nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến năm họ câu — `kBang72Cau`) (**9.38**) · G56 `LoaiSo.soLan`
 (**9.39**) · nhóm B (B1 gợi ý danh mục học từ ghi chú, B5a/B5b, B2, B3, B4 — mục của từng mảng, hàng tương ứng `CLAUDE.md`)
 · nhóm C: **C1** gắn danh mục hàng loạt (**9.40**), **C2** ô Nhập nhanh — *"AI đọc mọi câu"*, **lối B mở sang chỗ thứ hai**
-(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI chỉ khi còn ô số tiền / ngày / ví thiếu*) + **chuyển ví**.
+(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**.
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -3159,8 +3159,8 @@ thành mẫu của B1, và vì B1 đứng trước AI nên cái sai bị khoá l
 timeout) **vẫn chưa xuất hiện** ở lượt kiểm cuối ngày 30/09 — đừng gọi lại.
 
 ✅ **ĐỔI LẦN HAI THI CÔNG + CHUYỂN VÍ + LUẬT NGÀY (2026-09-30, `b0c9f9b` → `05c6ce2`).** Người dùng chốt bằng câu hỏi chọn
-(spec §8): ô **thiếu** kích hoạt AI chỉ là **số tiền · ngày · ví** (`KetQuaDocCau.oThieu`), danh mục / thu-chi trống **không**
-gọi AI; **chờ AI rồi điền một lần**; AI chỉ **lấp** ô luật để trống (luật thắng cả số tiền); thêm luật *đầu tháng (này /
+(spec §8): ô **thiếu** kích hoạt AI là **số tiền · ngày · ví** (`KetQuaDocCau.oThieu`) — lượt đầu danh mục trống **không**
+gọi AI, sửa sau lượt đo 3 (cuối mục); **chờ AI rồi điền một lần**; AI chỉ **lấp** ô luật để trống (luật thắng cả số tiền); thêm luật *đầu tháng (này /
 trước)*, *cuối tháng trước*; cụm chỉ kỳ không phải ngày thiếu. Giữa phiên người dùng báo **câu chuyển giữa hai ví** bị điền
 thành khoản chi (luật lấy tên ví dài nhất làm ví nguồn) → **§2.9 spec**: luật ví đích sau *sang · vào · đến · tới* (*qua*
 khi có *chuyển*), ví nguồn sau *từ*; tool thêm `chuyen_vi` + `vi_den`. ⚠️ Lúc thi công tôi siết *"câu có chữ thời gian"* từ
@@ -3201,6 +3201,27 @@ Gọi AI **4/14** câu (lượt 2: mọi câu); số tiền **14/14**; chuyển 
   nay* là *không biết*; form vốn là hôm nay nên kết quả không sai, chỉ tốn 14 s không thêm gì. Dòng nguồn vẫn *"Đọc bằng
   AI"* vì AI **xác nhận chiều chi** (luật không đặt chiều cho câu không có từ chỉ thu) — một lần "lấp" không đổi gì trên
   form.
+
+✅ **Sửa sau lượt đo 3 (2026-09-30, `ed397be` + `cbf87a7`), người dùng chốt:** (1) *thẻ / quẹt / ck / chuyển khoản / atm*
+chỉ nhận ví **ngân hàng**, và tài khoản không có ví ngân hàng thì câu ấy không phải ví thiếu; kèm so **từng từ có dấu**
+(*"vì"* ≠ *ví*, *"thế"* ≠ *thẻ*); (2) dòng nguồn *"Đọc bằng AI"* chỉ khi AI **làm đổi** một ô (`chieuDangChon`,
+`viDangChon`); (3) người dùng thấy *"mua 2 ly trà sữa 60k"* trống danh mục và sửa lại quyết định: *"tôi muốn chỗ nào không
+điền được thì sẽ cho AI vào để điền mà"* → **danh mục trống là ô thiếu**; rồi *"cả ghi chú nữa"* → **ghi chú còn sót số
+tiền luật không dùng là ô thiếu** (AI vẫn chỉ được bớt chữ; ghi chú trống không gọi). ⚠️ Lượt chọn đầu là lỗi của tôi: tôi
+gắn *Recommended* cho phương án thu hẹp nguyên tắc *"AI là lớp cuối cho mọi ô"* người dùng đã chốt.
+
+**Đo lại lượt 4** (bản `474a61cb…`, chỉ các câu bị ảnh hưởng + một câu ghi chú mới):
+
+| Câu | Gọi AI vì | Thời gian | Hiện trên form | Chấm |
+|---|---|---|---|---|
+| mua 2 ly trà sữa 60k | danh mục | 23,9 s (20,4) | 60.000 · **Ăn uống** (AI) | ✅ |
+| bán đồ cũ được 500 nghìn | danh mục | 18,7 s (16,5) | 500.000 · Thu nhập · danh mục trống; ghi chú AI bớt *"được"* | ◐ AI chọn *Mua sắm* (chi) cho khoản thu — chặn |
+| cuối tháng đóng tiền nhà 3tr | ngày | 17,5 s (14,4) | 3.000.000 · Nhà cửa (B1) · nguồn **Đọc bằng luật** | ✅ nguồn đúng; vẫn tốn 14 s |
+| vé tháng 200k | danh mục | 17,5 s (13,5) | 200.000 · **Giải trí** (AI) | ◐ *vé tháng* thường là vé xe (Di chuyển) |
+| quẹt thẻ ăn phở 45k | — | 4,4 s | 45.000 · Ăn uống (B1), ví giữ nguyên | ✅ hết nhận ví Tiền mặt |
+| ăn sáng 30k, grab 50k | ghi chú | 17,4 s (14,4) | 30.000 · Ăn uống (từ khoá *grab*), ghi chú vẫn *"ăn sáng, grab 50k"* | ◐ AI **cộng** 80.000 (luật giữ 30.000) và trả ghi chú còn nguyên số — lớp kiểm chặn cả hai |
+
+Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm giữ đúng: không số nào bị đổi, không chữ nào bị thêm.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

@@ -377,12 +377,13 @@ nói rõ chiều thì chỉ danh mục hợp chiều (`hopLeTheoChieu` của C1)
 **hoặc từ khoá** thì màn đặt `_choPhanXu` như thẻ gợi ý, nên lúc lưu vẫn ghi phản hồi
 `chon` / `khac` đúng nguồn. Không đổi mã danh mục, không đổi schema.
 
-Từ *đổi lần hai* (2026-09-30, `05c6ce2`): mô hình **chỉ được gọi khi câu còn ô số tiền /
-ngày / ví mà luật không đọc được** — **danh mục trống không tự gọi mô hình** (người dùng
-chốt: ghi chú mới xảy ra thường, gọi vì nó là gọi gần như mọi câu ~18 s). Nên bước 4 (mô
-hình) chỉ chạy khi mô hình đã được gọi vì ô khác; câu đủ ô mà tên / B1 / từ khoá đều im
-thì danh mục **để trống** cho người dùng chọn. Câu chuyển giữa hai ví (§2.9 spec C2) không
-có danh mục.
+Từ *đổi lần hai* (2026-09-30): mô hình **chỉ được gọi khi câu còn ô luật không điền
+được**. Lượt thi công đầu (`05c6ce2`) để danh mục trống **không** gọi mô hình; người dùng
+thấy *"mua 2 ly trà sữa 60k"* trống danh mục và sửa lại (`ed397be`): *"tôi muốn chỗ nào
+không điền được thì sẽ cho AI vào để điền mà"* — nay tên / B1 / từ khoá đều im mà ghi chú
+còn chữ thì **gọi mô hình** cho danh mục (~18 s). Dùng càng lâu, B1 và từ khoá (việc *đề
+xuất thêm từ khoá*) càng lấp trước, ca phải chờ càng ít. Câu chuyển giữa hai ví (§2.9 spec
+C2) không có danh mục.
 
 Bước **từ khoá** thêm sau lượt đo Realme (*"đổ xăng"*, *"grab"* bị mô hình xếp Ăn uống).
 Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ khoá từ thói quen** (một chữ lặp

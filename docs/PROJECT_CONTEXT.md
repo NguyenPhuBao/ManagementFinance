@@ -861,15 +861,17 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   8/10, AI sai cả hai câu có ngày.
 - ✅ **C2 đổi lần hai + chuyển ví + luật ngày — thi công và đo Realme 2026-09-30** (`b0c9f9b` → `05c6ce2`; spec C2 banner
   *ĐỔI LẦN HAI*, §2.3, §2.8, **§2.9**, §8; cuối mục 9.41 `AI_EDGE_FEATURE.md`). Người dùng chốt bằng câu hỏi chọn: ô
-  **thiếu** gọi AI chỉ là **số tiền · ngày · ví** (`KetQuaDocCau.oThieu`) — danh mục / thu-chi trống không gọi; **chờ AI
+  **thiếu** gọi AI là **số tiền · ngày · ví · danh mục · ghi chú** (`KetQuaDocCau.oThieu`; hai ô cuối sửa sau lượt đo 3 — *"chỗ nào
+  không điền được thì sẽ cho AI vào để điền mà"*; ghi chú = còn sót số tiền, AI chỉ bớt chữ); thu/chi không; **chờ AI
   rồi điền một lần**; AI chỉ **lấp** ô luật để trống (luật thắng cả số tiền); luật mới *đầu tháng (này / trước)*, *cuối
   tháng trước*, cụm chỉ kỳ không phải ngày thiếu. Giữa phiên người dùng báo câu **chuyển giữa hai ví** bị điền thành khoản
   chi → §2.9 (ví đích sau *sang · vào · đến · tới*, *qua* khi có *chuyển*; ví nguồn sau *từ*; tool `chuyen_vi` + `vi_den`;
   `timCacTenTrongCau` ở `core/utils/khop_ten.dart`). Tôi siết *câu có nhắc ngày* từ chữ lẻ sang **cụm** (`cauNhacNgay`,
   `core/utils/ngay_trong_cau.dart`). Đo 14 câu (bản `be5b4f9c…`): gọi AI **4/14**, số tiền 14/14, chuyển ví ✅, câu không
-  gọi AI điền tức thì. ⚠️ **Hai chỗ lộ ra, chưa sửa, chờ người dùng**: *"quẹt thẻ ăn phở 45k"* nhận ví **Tiền mặt** do AI
-  chọn (lớp kiểm ví nhận mọi ví khi câu có chữ *thẻ / quẹt / ck*); *"cuối tháng"* gọi AI 14 s mà không thêm gì.
-  `flutter test` **4814/4814** (4 skip), analyze 26. ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen** —
+  gọi AI điền tức thì. Hai chỗ lượt đo lộ ra **đã sửa** (`ed397be`): *thẻ / quẹt / ck* chỉ nhận ví ngân hàng (*"quẹt thẻ
+  ăn phở 45k"* từng nhận ví Tiền mặt), so chữ ví **có dấu** (*"vì"* ≠ *ví*); dòng nguồn *"Đọc bằng AI"* chỉ khi AI đổi
+  một ô. Đo lượt 4 (bản `474a61cb…`, cuối 9.41): trà sữa → Ăn uống qua AI; *"ăn sáng 30k, grab 50k"* AI không dọn được
+  ghi chú (lớp kiểm chặn đúng). `flutter test` **4822/4822** (4 skip), analyze 26. ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen** —
   việc riêng, trước D1, chưa có spec; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
   và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
   D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
