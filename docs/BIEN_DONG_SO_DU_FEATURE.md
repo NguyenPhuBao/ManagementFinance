@@ -3,7 +3,7 @@
 > **Trạng thái 2026-09-30 tối:** ✅ **xong mã + nghiệm thu hai máy thật** — OnePlus 13R (debug rồi release) và **Realme
 > RMX2205** (debug, mục 5b: tin **MB Bank** cả hai chiều qua đường thật, bản sửa chip `802dcd2` đạt). Lượt Realme lộ **bốn
 > lỗi**, đã sửa cùng tối (`104a1da` gộp nhầm hai lần chuyển · `3456b69` tóm tắt nhóm rỗng · `bf17877` "sắp cạn" ví mới ·
-> `31302d0` gợi ý chạy nền); 🚧 bản sửa gộp nhầm và "sắp cạn" ví mới **chưa đo lại trên máy**. Spec
+> `31302d0` gợi ý chạy nền) và **đo lại đạt cả bốn** trên Realme. Spec
 > `docs/superpowers/specs/2026-09-28-d1-doc-bien-dong-so-du-design.md`; kế hoạch (gitignore)
 > `docs/superpowers/plans/2026-09-28-d1-doc-bien-dong-so-du.md` — nhật ký từng task ở khối *Soát với mã 2026-09-30*.
 > Backend duyệt ở `docs/superpowers/backend/DA-XONG/CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` (bắt buộc màn xin đồng ý);
@@ -138,9 +138,9 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
 | Tin **MB −10.000 đ** (app ở nền) | ⚠️ trễ ~84 giây vì Hans → gợi ý chạy nền (`31302d0`); lần hai (app không bị băng) bắt ngay |
 | Chạm tóm tắt | ✅ mở thẳng trung tâm lọc *Biến động* |
 | Lần hai cùng cặp MB · 262 | ✅ chọn sẵn *Ví MB Bank* |
-| Hai lần −10.000 đ cách 4 phút | ❌ gộp làm một → sửa `104a1da`; 🚧 chưa đo lại |
+| Hai lần −10.000 đ cách 4 phút | ❌ gộp làm một → sửa `104a1da`; ✅ đo lại: năm lần chuyển thử (20:02–20:20) ra **năm** hàng, kể cả **hai khoản +10.000 đ cùng phút 20:03** (khoá mang vân tay) |
 | Bản tóm tắt nhóm rỗng | ❌ *"Nhắc tài chính"* trống → sửa `3456b69`; ✅ đo lại: `badge=40, khay=0`, không đăng |
-| Tạo ví 0 đ | ❌ báo ngay *"sắp cạn"* → sửa `bf17877`; 🚧 chưa đo lại |
+| Tạo ví 0 đ | ❌ báo ngay *"sắp cạn"* → sửa `bf17877`; ✅ đo lại: *Ví MoMo* 0 đ (chưa giao dịch) không có hàng *"sắp cạn"* |
 | Hàng gợi ý pin | ✅ hiện đúng Stitch ở 360 dp, *Mở cài đặt* mở *Thông tin ứng dụng*; máy đã cho chạy nền → ẩn |
 
 ## 6. Việc sau D1 (người dùng chốt 2026-09-30)
