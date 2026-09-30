@@ -10,6 +10,12 @@ const logger = require('../core/logger');
 
 let lastOverloadAlert = 0;
 
+// --- Load Shedding Counter (reset mỗi 24h) ---
+let _shedCount = 0;
+const _shedResetTimer = setInterval(() => { _shedCount = 0; }, 24 * 60 * 60 * 1000);
+if (_shedResetTimer.unref) _shedResetTimer.unref();
+function getLoadSheddingCount() { return _shedCount; }
+
 function createLoadSheddingMiddleware(options = {}) {
 
   const monitor = options.monitor || defaultEventLoopMonitor;
@@ -58,6 +64,7 @@ function createLoadSheddingMiddleware(options = {}) {
       }
 
 
+      _shedCount++;
       return res.status(503).json({
         success: false,
         statusCode: 503,
@@ -77,4 +84,5 @@ const defaultLoadShedding = createLoadSheddingMiddleware();
 module.exports = {
   createLoadSheddingMiddleware,
   defaultLoadShedding,
+  getLoadSheddingCount,
 };

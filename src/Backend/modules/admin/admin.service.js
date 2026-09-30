@@ -1,4 +1,8 @@
 const adminRepository = require('./admin.repository');
+const os = require('os');
+const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
+const { defaultDbBulkhead } = require('../../core/resilience/db-bulkhead');
+const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
 const { maskEmail, maskPhone, maskAddress } = require('../../utils/masking.util');
 const { validateReasonInactive } = require('../../utils/content-filter.util');
 
@@ -443,6 +447,47 @@ const adminService = {
         avg,
       },
       timeline: buckets.map(({ key, label, count }) => ({ key, label, count })),
+    };
+  },
+
+  async getSystemHealth() {
+    const cpus = os.cpus();
+    const cpuPercent = cpus.reduce((acc, cpu) => {
+      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+      return acc + Math.round(((total - cpu.times.idle) / total) * 100);
+    }, 0) / cpus.length;
+
+    const totalMem = os.totalmem();
+    const usedMem = totalMem - os.freemem();
+    const dbStats = defaultDbBulkhead.getStats();
+    const maintStatus = defaultMaintenanceManager.getStatus();
+    const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
+
+    return {
+      cpu: { cores: cpus.length, percent: Math.round(cpuPercent) },
+      ram: {
+        usedMb: Math.round(usedMem / 1024 / 1024),
+        totalMb: Math.round(totalMem / 1024 / 1024),
+        percent: Math.round((usedMem / totalMem) * 100),
+      },
+      eventLoop: {
+        lagMs: defaultEventLoopMonitor.getLag(),
+        overloaded: defaultEventLoopMonitor.isOverloaded(),
+      },
+      dbPool: {
+        clientActive: dbStats.activeClientConnections,
+        clientLimit: dbStats.clientLimit,
+        adminActive: dbStats.activeAdminConnections,
+        maxConnections: dbStats.maxConnections,
+      },
+      maintenance: {
+        active: maintStatus.active,
+        reason: maintStatus.reason,
+        activatedBy: maintStatus.activatedBy,
+        activatedAt: maintStatus.activatedAt,
+      },
+      loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
+      timestamp: new Date().toISOString(),
     };
   },
 };
