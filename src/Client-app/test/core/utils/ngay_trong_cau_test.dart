@@ -130,6 +130,93 @@ void main() {
     });
   });
 
+  // Người dùng chốt 2026-09-30 (spec C2 §8 câu 4): thêm luật cho cụm RÕ NGHĨA để bớt phải nhờ AI (AI sai cả 2 câu ngày đã
+  // đo trên Realme); cụm mơ hồ để AI lấp.
+  group('đầu tháng · đầu tháng trước · cuối tháng trước', () {
+    test('"đầu tháng" (cả "đầu tháng này", cả không dấu) = ngày 1 tháng này; hôm nay là ngày 1 thì là hôm nay', () {
+      expect(ngay('đầu tháng đóng học phí 2tr'), DateTime(2026, 9, 1));
+      expect(ngay('đầu tháng này'), DateTime(2026, 9, 1));
+      expect(ngay('dau thang dong hoc'), DateTime(2026, 9, 1));
+      expect(ngay('đầu tháng', DateTime(2026, 10, 1)), DateTime(2026, 10, 1));
+    });
+    test('"đầu tháng trước" = ngày 1 tháng trước — qua biên năm', () {
+      expect(ngay('đầu tháng trước'), DateTime(2026, 8, 1));
+      expect(ngay('đầu tháng trước', DateTime(2027, 1, 15)), DateTime(2026, 12, 1));
+      expect(ngay('đầu tháng trước 2tr'), DateTime(2026, 8, 1),
+          reason: 'số tiền sau "trước" không được làm regex lùi về "đầu tháng" (= tháng NÀY)');
+    });
+    test('"cuối tháng trước" = ngày cuối tháng trước — tháng 30 ngày, tháng 2 năm thường / nhuận, biên năm', () {
+      expect(ngay('cuối tháng trước'), DateTime(2026, 8, 31));
+      expect(ngay('cuối tháng trước', DateTime(2026, 10, 5)), DateTime(2026, 9, 30));
+      expect(ngay('cuối tháng trước', DateTime(2027, 3, 10)), DateTime(2027, 2, 28));
+      expect(ngay('cuối tháng trước', DateTime(2028, 3, 10)), DateTime(2028, 2, 29), reason: '2028 nhuận');
+      expect(ngay('cuoi thang truoc', DateTime(2027, 1, 2)), DateTime(2026, 12, 31));
+    });
+    test('⚠️ mơ hồ → không đọc: "đầu tháng sau / tới", "đầu tháng 10", "cuối tháng", "cuối tháng này", "tuần trước" trơn', () {
+      for (final c in [
+        'đầu tháng sau đóng học',
+        'đầu tháng tới',
+        'đầu tháng 10',
+        'cuối tháng đóng học',
+        'cuối tháng này',
+        'tuần trước ăn lẩu',
+      ]) {
+        expect(ngay(c), isNull, reason: c);
+      }
+    });
+    test('vị trí trỏ trọn cụm', () {
+      const cau = 'đóng học phí đầu tháng trước 2tr';
+      final k = timNgayTrongCau(cau, now)!;
+      expect(cau.substring(k.batDau, k.ketThuc), 'đầu tháng trước');
+    });
+  });
+
+  // C2, người dùng chốt 2026-09-30: màn chỉ gọi AI cho ngày khi câu CÓ NHẮC một ngày mà luật không đọc được. Nhắc =
+  // một CỤM chỉ thời điểm đã qua; chữ lẻ (*tháng, đầu, thứ, trước*) thường mang nghĩa khác và gọi AI oan ~18 s.
+  group('cauNhacNgay — câu có nhắc một thời điểm', () {
+    test('⭐ có nhắc: cụm chỉ thời điểm đã qua, có dấu hay không dấu', () {
+      for (final c in [
+        'tối qua ăn lẩu 300k',
+        'hôm trước đi chợ 200k',
+        'bữa trước ăn phở',
+        'tháng trước đóng học 2tr',
+        'tuần rồi đi chơi 500k',
+        'năm ngoái mua xe',
+        'cuối tháng đóng tiền nhà',
+        'đầu tuần đổ xăng 50k',
+        'mấy ngày trước mua áo',
+        'ngày 15 đóng học phí',
+        'mùng 5 đi chùa 100k',
+        'hom truoc an lau',
+        'thang truoc dong hoc',
+        'dau thang dong hoc',
+      ]) {
+        expect(cauNhacNgay(c), isTrue, reason: c);
+      }
+    });
+    test('⭐ KHÔNG nhắc: chữ thời gian lẻ mang nghĩa khác, cụm chỉ KỲ, cụm tương lai', () {
+      for (final c in [
+        'vé tháng 2tr',
+        'lương tháng 9tr',
+        'đầu tư chứng khoán 5tr',
+        'mua mấy thứ lặt vặt 200k',
+        'trả trước 500k',
+        'tiền điện tháng này 450k',
+        'tiền điện tháng 9 450k',
+        'học phí năm nay 2tr',
+        'tuần này đi chợ',
+        'tuần sau đóng học 2tr',
+        'tháng sau đóng học',
+        'tôi ăn phở 45k',
+        'trả ngay 5k',
+        'đem qua cho mẹ 200k',
+        'ăn phở 45k',
+      ]) {
+        expect(cauNhacNgay(c), isFalse, reason: c);
+      }
+    });
+  });
+
   group('ngayHopLe — dời từ ma_ky.dart', () {
     test('ngày tồn tại / không tồn tại', () {
       expect(ngayHopLe(2026, 2, 28), DateTime(2026, 2, 28));

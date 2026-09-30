@@ -53,6 +53,14 @@ final RegExp _mauChuNhat = RegExp(r'(?<![a-z0-9])(?:chu nhat|cn)(?![a-z0-9])');
 final RegExp _sauLaDonViTien = RegExp(r'^\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi|tram)(?![a-z])');
 final RegExp _mauNgay = RegExp(r'(?:(?<![a-z0-9])ngay\s+)?(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}))?(?![\d/])');
 
+/// *đầu tháng* / *đầu tháng này* → ngày 1 tháng này; *đầu tháng trước* → ngày 1 tháng trước (người dùng chốt 2026-09-30,
+/// spec C2 §8 câu 4). Mơ hồ thì không đọc: *đầu tháng sau / tới / nữa*, *đầu tháng 10*.
+/// ⚠️ Phép chặn số chỉ áp khi *tháng* đứng trần: đặt chung sau nhánh *trước* thì *"đầu tháng trước 2tr"* bị chặn vì số
+/// tiền, regex lùi về *"đầu tháng"* và đọc thành ngày 1 tháng NÀY.
+final RegExp _mauDauThang = RegExp(
+    r'(?<![a-z0-9])dau\s+thang(?:\s+(nay|truoc)(?![a-z0-9])|(?![a-z0-9])(?!\s+(?:sau|toi|nua|\d)))');
+final RegExp _mauCuoiThangTruoc = RegExp(r'(?<![a-z0-9])cuoi\s+thang\s+truoc(?![a-z0-9])');
+
 NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
   final goc = unorm.nfc(cau).toLowerCase();
   final s = removeVietnameseTones(goc);
@@ -78,6 +86,16 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
     ungVien.add(_theoTuan(s, homNay, DateTime.sunday, m.start, m.end));
   }
 
+  for (final m in _mauDauThang.allMatches(s)) {
+    final lui = m.group(1) == 'truoc' ? 1 : 0;
+    ungVien.add((ngay: DateTime(now.year, now.month - lui, 1), batDau: m.start, ketThuc: m.end));
+  }
+
+  for (final m in _mauCuoiThangTruoc.allMatches(s)) {
+    // Ngày 0 của tháng này = ngày cuối tháng trước (tháng 30 / 31 ngày, tháng 2 thường / nhuận, biên năm).
+    ungVien.add((ngay: DateTime(now.year, now.month, 0), batDau: m.start, ketThuc: m.end));
+  }
+
   for (final m in _mauNgay.allMatches(s)) {
     final d = int.parse(m.group(1)!);
     final mo = int.parse(m.group(2)!);
@@ -94,6 +112,53 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
   ungVien.sort((a, b) => a.batDau.compareTo(b.batDau));
   return ungVien.first;
 }
+
+/// Câu có NHẮC một thời điểm đã qua không (C2, người dùng chốt 2026-09-30): ô Nhập nhanh chỉ nhờ AI đọc ngày khi câu có
+/// nhắc mà [timNgayTrongCau] không đọc được, và chỉ nhận ngày của AI khi câu có nhắc.
+///
+/// Nhắc = một **cụm**: *hôm / bữa + trước · qua · kia · nọ*, *sáng · trưa · chiều · tối · đêm + qua · hôm · trước*, *tuần
+/// · tháng · năm + trước · rồi · qua · ngoái · kia*, *đầu · giữa · cuối + tuần · tháng · năm*, *ngày + trước · rồi · kia*,
+/// *ngày / mùng / mồng + số*. ⚠️ Chữ lẻ không đủ: *vé tháng*, *lương tháng*, *đầu tư*, *mua mấy thứ*, *trả trước* mang
+/// nghĩa khác — xét chữ lẻ là gọi AI oan ~18 s mỗi câu. Cụm chỉ KỲ (*tháng này, tháng 9, năm nay*) và cụm tương lai
+/// (*tuần sau, tháng tới*) không phải nhắc: ngày giao dịch không đổi.
+///
+/// Chữ gõ không dấu chỉ nhận dạng không lẫn được (*hom, tuan, thang, trua, chieu*; *dau · giua · cuoi* chỉ trước *tuan ·
+/// thang*): *toi* còn là *tôi*, *dem* là *đem*, *nam* là tên *Nam*.
+bool cauNhacNgay(String cau) {
+  final goc = unorm.nfc(cau).toLowerCase();
+  final tu = [for (final m in _tuChu.allMatches(goc)) m.group(0)!];
+  for (var i = 0; i + 1 < tu.length; i++) {
+    final a = tu[i];
+    final b = tu[i + 1];
+    final bb = removeVietnameseTones(b);
+    if ((_hom.contains(a) && _sauHom.contains(bb)) ||
+        (_buoi.contains(a) && _sauBuoi.contains(bb)) ||
+        (_ky.contains(a) && _sauKyDaQua.contains(bb)) ||
+        (_moc.contains(a) && _kyMoc.contains(b)) ||
+        (a == 'ngày' && _sauNgay.contains(bb))) {
+      return true;
+    }
+  }
+  final s = removeVietnameseTones(goc);
+  if (s.length != goc.length) return false;
+  for (final m in _mauNgaySo.allMatches(s)) {
+    if (_sauLaDonViTien.hasMatch(s.substring(m.end))) continue; // "trả ngay 5k"
+    if (m.group(1) == 'ngay' || goc.startsWith('mùng', m.start) || goc.startsWith('mồng', m.start)) return true;
+  }
+  return false;
+}
+
+final RegExp _tuChu = RegExp(r'[\p{L}\p{M}]+', unicode: true);
+const Set<String> _hom = {'hôm', 'hom', 'bữa'};
+const Set<String> _sauHom = {'truoc', 'qua', 'kia', 'no', 'bua'};
+const Set<String> _buoi = {'sáng', 'trưa', 'chiều', 'tối', 'đêm', 'trua', 'chieu'};
+const Set<String> _sauBuoi = {'qua', 'hom', 'truoc'};
+const Set<String> _ky = {'tuần', 'tháng', 'năm', 'tuan', 'thang'};
+const Set<String> _sauKyDaQua = {'truoc', 'roi', 'qua', 'ngoai', 'kia'};
+const Set<String> _moc = {'đầu', 'giữa', 'cuối', 'dau', 'giua', 'cuoi'};
+const Set<String> _kyMoc = {'tuần', 'tháng', 'năm', 'tuan', 'thang'};
+const Set<String> _sauNgay = {'truoc', 'roi', 'kia'};
+final RegExp _mauNgaySo = RegExp(r'(?<![a-z0-9])(ngay|mung|mong)\s+\d{1,2}(?![\d/.,])');
 
 final RegExp _mauTuan = RegExp(r'^\s+tuan\s+(truoc|nay)(?![a-z0-9])');
 

@@ -177,6 +177,10 @@ final RegExp _mauSoTran = RegExp(
 );
 
 final RegExp _truocLaNam = RegExp(r'(?<![a-z])nam\s*$');
+
+/// Số ≤ 31 đứng ngay sau *tháng / ngày / mùng / mồng* là mốc lịch, không phải tiền: *"tiền điện tháng 10"* không có
+/// cách đọc 10.000 — không thì AI chọn nó và lớp kiểm cho qua.
+final RegExp _truocLaMocLich = RegExp(r'(?<![a-z])(?:thang|ngay|mung|mong)\s*$');
 final RegExp _sauLaChuSoChu = RegExp(r'^\s+(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin)(?![a-z])');
 final RegExp _sauLaDonViTien = RegExp(r'^\s*(?:dong|vnd|d)(?!\p{L})', unicode: true);
 final RegExp _tuCuoi = RegExp(r'([\p{L}\p{M}]+)\s+$', unicode: true);
@@ -352,7 +356,7 @@ KetQuaDocCau docCauGiaoDich(
   // Ô câu CÓ NHẮC mà (sau khi AI lấp, nếu có) vẫn chưa đọc được — màn chỉ gọi mô hình khi tập này khác rỗng.
   final oThieu = {
     if (soTien == null && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
-    if (ngay == null && _coChuThoiGian(thuong)) OThieu.ngay,
+    if (ngay == null && cauNhacNgay(thuong)) OThieu.ngay,
     if (walletId == null && dsVi.isNotEmpty && (_nhacViChung(thuong) || dsVi.any((w) => _vietTatTenVi(thuong, w.name))))
       OThieu.vi,
   };
@@ -418,6 +422,7 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
     if (chuSo.length >= 2 && chuSo.startsWith('0')) continue;
     if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue;
     final n = double.parse(chuSo);
+    if (n <= 31 && _truocLaMocLich.hasMatch(b.substring(0, m.start))) continue; // "tháng 10", "ngày 15"
     kq.add(n);
     if (n >= 10 && n < 1000) kq.add(n * 1000);
   }
@@ -433,6 +438,7 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
   }
   for (final c in timSoBangChu(s, batBuocDonVi: false)) {
     if (c.giaTri.isNaN || trungNgay(c.batDau, c.ketThuc)) continue;
+    if (c.giaTri <= 31 && _truocLaMocLich.hasMatch(b.substring(0, c.batDau))) continue; // "tháng mười"
     kq.add(c.giaTri);
     if (c.giaTri >= 10 && c.giaTri < 1000) kq.add(c.giaTri * 1000);
   }
@@ -450,26 +456,14 @@ const Map<String, int> _chuSoChu = {
   'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'tu': 4, 'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, //
 };
 
-/// Chữ chỉ THỜI GIAN — câu không có chữ nào thì AI không được đổi ngày (§2.8). Khớp từng từ, phân biệt dấu như từ chỉ
-/// thu: *"tôi"* bỏ dấu là *"toi"* (= tối), *"quà"* là *"qua"*.
-const Set<String> _thoiGianCoDau = {
-  'tuần', 'tháng', 'hôm', 'trước', 'qua', 'đầu', 'cuối', 'sáng', 'trưa', 'chiều', 'tối', 'đêm', 'thứ', 'nay', //
-  'ngày', 'mai', 'kia', 'ngoái', 'nhật',
-};
-const Set<String> _thoiGianKhongDau = {'tuan', 'thang', 'hom', 'truoc', 'trua', 'chieu', 'ngay', 'kia'};
-
-bool _coChuThoiGian(String thuong) => _tu.allMatches(thuong).any((m) {
-      final t = unorm.nfc(m.group(0)!);
-      return _chiAscii.hasMatch(t) ? _thoiGianKhongDau.contains(t) : _thoiGianCoDau.contains(t);
-    });
-
 final RegExp _mauNgayAi = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
 
-/// Ngày AI trả về (`dd/mm/yyyy`) khi qua kiểm (§2.8): có thật trên lịch, trong `[hôm nay − 366, hôm nay + 7]`, và câu có
-/// chữ chỉ thời gian. Không qua → `null` (form giữ ngày của nó).
+/// Ngày AI trả về (`dd/mm/yyyy`) khi qua kiểm (§2.8): có thật trên lịch, trong `[hôm nay − 366, hôm nay + 7]`, và câu
+/// NHẮC một thời điểm ([cauNhacNgay] — cùng phép màn dùng để quyết có hỏi AI không; chữ lẻ *"tháng"* của *"vé tháng"*
+/// không tính). Không qua → `null` (form giữ ngày của nó).
 DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
   final m = _mauNgayAi.firstMatch(chu?.trim() ?? '');
-  if (m == null || !_coChuThoiGian(thuong)) return null;
+  if (m == null || !cauNhacNgay(thuong)) return null;
   final x = ngayHopLe(int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
   if (x == null) return null;
   final homNay = DateTime(now.year, now.month, now.day);

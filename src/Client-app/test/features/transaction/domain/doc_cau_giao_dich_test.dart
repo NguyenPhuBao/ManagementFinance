@@ -347,8 +347,8 @@ void main() {
       expect(docAi('thứ sáu tuần trước ăn lẩu 300k', const KetQuaAi(ngay: '18/09/2026')).ngay,
           DateTime(2026, 9, 25),
           reason: 'luật đọc được "thứ sáu tuần trước" = 25/9 — AI tính lệch một tuần thì bị bỏ');
-      expect(docAi('đầu tháng đóng học phí 2tr', const KetQuaAi(ngay: '01/09/2026')).ngay, DateTime(2026, 9, 1),
-          reason: 'luật không đọc "đầu tháng" — AI lấp chỗ ấy');
+      expect(docAi('tháng trước ăn lẩu 300k', const KetQuaAi(ngay: '12/08/2026')).ngay, DateTime(2026, 8, 12),
+          reason: 'luật không đọc "tháng trước" (không biết ngày nào) — AI lấp chỗ ấy');
     });
 
     test('ngày AI bị chặn: câu không có chữ thời gian, tương lai quá 7 ngày, quá 366 ngày, không có trên lịch', () {
@@ -376,8 +376,9 @@ void main() {
     });
 
     test('ngày: AI trả HÔM NAY khi luật không đọc được = AI không biết ngày → không tuyên bố gì', () {
-      expect(docAi('đầu tháng đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, isNull,
-          reason: 'Realme 2026-09-30: AI trả hôm nay cho "đầu tháng" — dòng tóm tắt nói "Hôm nay" là sai');
+      expect(docAi('cuối tháng đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, isNull,
+          reason: 'Realme 2026-09-30: AI trả hôm nay cho "đầu tháng" (nay luật đọc được) — dòng tóm tắt nói "Hôm nay" '
+              'là sai; "cuối tháng" vẫn mơ hồ nên vẫn là ca của lớp kiểm này');
     });
 
     test('ghi chú: AI được BỚT chữ, không được THÊM chữ', () {
@@ -500,6 +501,38 @@ void main() {
     test('ghi chú khi AI lấp số tiền: ghi chú AI được dùng nếu chỉ BỚT chữ (người dùng chốt §8 câu 9)', () {
       expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).ghiChu,
           'cà phê với Nam');
+    });
+
+    test('ngày: "đầu tháng" luật đọc được → không thiếu; AI tính lệch thì luật thắng (§8 câu 4)', () {
+      expect(luat('đầu tháng đóng học phí 2tr').oThieu, isEmpty);
+      expect(voiAi('đầu tháng đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, DateTime(2026, 9, 1),
+          reason: 'Realme 2026-09-30: AI trả hôm nay cho "đầu tháng"');
+    });
+
+    test('⭐ ngày: chữ thời gian lẻ mang nghĩa khác và cụm chỉ KỲ không phải ngày thiếu — không gọi AI oan ~18 s', () {
+      for (final c in [
+        'vé tháng 2tr',
+        'lương tháng 9tr',
+        'đầu tư chứng khoán 5tr',
+        'mua mấy thứ lặt vặt 200k',
+        'tiền điện tháng này 450k',
+        'tiền điện tháng 9 450k',
+        'học phí năm nay 2tr',
+      ]) {
+        expect(luat(c).oThieu, isEmpty, reason: c);
+      }
+      expect(luat('cuối tháng này đóng học 2tr').oThieu, {OThieu.ngay}, reason: '"cuối tháng" là cụm mơ hồ → AI lấp');
+    });
+
+    test('ngày: câu chỉ nêu KỲ thì AI không được đổi ngày ("tiền điện tháng 9" không thành 01/09)', () {
+      expect(voiAi('tiền điện tháng 9 450k', const KetQuaAi(ngay: '01/09/2026')).ngay, isNull);
+    });
+
+    test('⚠️ số của mốc lịch không phải tiền: "tháng 10", "ngày 15", "tháng mười" không đọc thành 10.000 / 15.000', () {
+      for (final c in ['tiền điện tháng 10', 'đóng học ngày 15', 'tiền điện tháng mười']) {
+        expect(cachDocSoTien(c, now: now), isEmpty, reason: c);
+        expect(luat(c).oThieu, isNot(contains(OThieu.soTien)), reason: c);
+      }
     });
 
     test('quaAi = AI THẬT SỰ lấp ít nhất một ô (dòng nguồn); AI bị chặn hết → "Đọc bằng luật"', () {
