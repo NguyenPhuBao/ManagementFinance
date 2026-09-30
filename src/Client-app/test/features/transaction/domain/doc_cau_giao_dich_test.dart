@@ -477,8 +477,24 @@ void main() {
       expect(luat('tiền điện 45k').oThieu, isEmpty);
     });
 
-    test('thu/chi và danh mục KHÔNG phải ô thiếu — câu không từ chỉ thu, không danh mục vẫn không gọi AI', () {
-      expect(luat('bún chả 45k').oThieu, isEmpty);
+    test('thu/chi KHÔNG phải ô thiếu — câu không có từ chỉ thu vẫn không gọi AI', () {
+      expect(luat('bún chả 45k').oThieu, isEmpty, reason: 'nhóm này không có danh mục nào — chỉ xét chiều');
+    });
+
+    // ĐỔI QUYẾT ĐỊNH lần nữa (người dùng 2026-09-30, sau lượt đo 3 thấy "mua 2 ly trà sữa 60k" trống danh mục): "tôi muốn
+    // chỗ nào không điền được thì sẽ cho AI vào để điền mà" — danh mục trống cũng là ô thiếu.
+    test('⭐ danh mục trống (câu còn chữ để đoán) là ô thiếu; AI lấp qua kiểm', () {
+      final an = makeCategory(id: 'c-an', name: 'Ăn uống');
+      KetQuaDocCau dm(String cau, {KetQuaAi? ai}) =>
+          docCauGiaoDich(cau, now: now, vi: [tcb, chinh], chonDuoc: [an], ai: ai);
+      expect(dm('mua 2 ly trà sữa 60k').oThieu, {OThieu.danhMuc});
+      expect(dm('45k ăn uống').oThieu, isEmpty, reason: 'tên danh mục trong câu');
+      expect(dm('45k').oThieu, isEmpty, reason: 'không còn chữ nào để đoán danh mục');
+      expect(dm('chuyển 500k từ tiền mặt sang Techcombank').oThieu, isEmpty, reason: 'chuyển ví không có danh mục');
+      final r = dm('mua 2 ly trà sữa 60k', ai: const KetQuaAi(danhMuc: 'Ăn uống'));
+      expect(r.categoryId, 'c-an');
+      expect(r.oThieu, isEmpty);
+      expect(r.quaAi, isTrue);
     });
 
     test('⭐ ĐỔI QUYẾT ĐỊNH: luật đọc được số tiền thì LUẬT THẮNG, kể cả khi số AI là một cách đọc hợp lệ', () {
@@ -533,6 +549,42 @@ void main() {
         expect(cachDocSoTien(c, now: now), isEmpty, reason: c);
         expect(luat(c).oThieu, isNot(contains(OThieu.soTien)), reason: c);
       }
+    });
+
+    // Realme 2026-09-30 lượt 3: "quẹt thẻ ăn phở 45k" nhận ví Tiền mặt do AI chọn — lớp kiểm coi mọi chữ chỉ ví là "câu
+    // nhắc ví" rồi nhận BẤT KỲ ví nào. Người dùng chốt: chữ chỉ thẻ / ngân hàng chỉ nhận ví ngân hàng.
+    test('⭐ thẻ / quẹt / ck / chuyển khoản / atm chỉ nhận ví NGÂN HÀNG; chữ "ví" trần nhận mọi ví', () {
+      expect(voiAi('quẹt thẻ ăn phở 45k', const KetQuaAi(vi: 'Tiền mặt')).walletId, isNull);
+      expect(voiAi('quẹt thẻ ăn phở 45k', const KetQuaAi(vi: 'Techcombank')).walletId, 'w-tcb');
+      expect(voiAi('ck 45k tiền nhà', const KetQuaAi(vi: 'Tiền mặt')).walletId, isNull);
+      expect(voiAi('trả bằng ví 45k', const KetQuaAi(vi: 'Tiền mặt')).walletId, 'w-cash');
+    });
+
+    test('tài khoản KHÔNG có ví ngân hàng: "quẹt thẻ" không phải ví thiếu — điền ngay, không gọi AI', () {
+      KetQuaDocCau chiTienMat(String cau) => docCauGiaoDich(cau, now: now, vi: [chinh], chonDuoc: const []);
+      expect(chiTienMat('quẹt thẻ ăn phở 45k').oThieu, isEmpty);
+      expect(chiTienMat('trả bằng ví 45k').oThieu, {OThieu.vi}, reason: '"ví" trần vẫn nhắc ví');
+    });
+
+    test('⚠️ so từng từ CÓ DẤU: "vì" không phải "ví", "thế" không phải "thẻ" — không gọi AI oan', () {
+      expect(luat('vì đói nên ăn phở 45k').oThieu, isEmpty);
+      expect(luat('như thế là hết 45k').oThieu, isEmpty);
+      expect(luat('quet the an pho 45k').oThieu, {OThieu.vi}, reason: 'gõ không dấu vẫn nhận');
+    });
+
+    // Người dùng chốt 2026-09-30: dòng nguồn chỉ nói "Đọc bằng AI" khi AI làm ĐỔI một ô trên form (Realme lượt 3: câu
+    // "cuối tháng" hiện "Đọc bằng AI" chỉ vì AI xác nhận chiều chi — mặc định của form).
+    test('⭐ quaAi: AI xác nhận chiều / ví ĐANG CHỌN trên form không phải đổi ô', () {
+      final r = voiAi('cuối tháng đóng tiền nhà 3tr', const KetQuaAi(loai: 'chi', ngay: '30/09/2026'));
+      expect(r.loai, 'chi');
+      expect(r.quaAi, isFalse, reason: 'form mặc định đã ở Chi tiêu');
+      final thu = docCauGiaoDich('cuối tháng đóng tiền nhà 3tr',
+          now: now, vi: [tcb, chinh], chonDuoc: const [], chieuDangChon: 'thu', ai: const KetQuaAi(loai: 'chi'));
+      expect(thu.quaAi, isTrue, reason: 'form đang ở Thu nhập — AI kéo về Chi tiêu là đổi ô');
+      final vi = docCauGiaoDich('trả bằng ví 45k',
+          now: now, vi: [tcb, chinh], chonDuoc: const [], viDangChon: 'w-cash', ai: const KetQuaAi(vi: 'Tiền mặt'));
+      expect(vi.walletId, 'w-cash');
+      expect(vi.quaAi, isFalse, reason: 'ví AI chọn chính là ví đang chọn');
     });
 
     test('quaAi = AI THẬT SỰ lấp ít nhất một ô (dòng nguồn); AI bị chặn hết → "Đọc bằng luật"', () {

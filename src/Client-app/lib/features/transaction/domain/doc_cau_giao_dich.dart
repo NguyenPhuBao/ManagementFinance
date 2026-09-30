@@ -31,9 +31,11 @@ import '../../category/domain/phan_loai_ghi_chu.dart';
 
 /// Ô CÂU CÓ NHẮC mà luật (và AI, nếu đã hỏi) không đọc được — người dùng chốt 2026-09-30 (§8 câu 2, 9 spec): màn chỉ gọi
 /// mô hình khi còn ô như thế. *Số tiền*: câu có số / số chữ đọc được thành tiền (`cachDocSoTien` khác rỗng). *Ngày*: câu
-/// có chữ thời gian. *Ví*: câu có chữ chỉ ví (*ví, thẻ, quẹt, ck, chuyển khoản, atm*) hoặc viết tắt tên một ví. Thu/chi
-/// và danh mục KHÔNG ở đây: câu nào cũng có thể thiếu chúng, gọi AI vì chúng là gọi gần như mọi câu (~18 s mỗi câu).
-enum OThieu { soTien, ngay, vi }
+/// nhắc một thời điểm (`cauNhacNgay`). *Ví*: phần câu chưa dùng nhắc một ví có thật (`_cauNhacVi` — *ví* trần; *thẻ, quẹt,
+/// ck, chuyển khoản, atm* chỉ khi có ví ngân hàng; viết tắt tên ví). *Danh mục*: tên / B1 / từ khoá đều im mà ghi chú còn
+/// chữ (người dùng sửa lại sau lượt đo 3: *"chỗ nào không điền được thì cho AI điền"*; khoản chuyển ví không có danh mục).
+/// Thu/chi KHÔNG ở đây: form luôn có một chiều, câu không có từ chỉ thu thì chi là đúng gần như mọi lần.
+enum OThieu { soTien, ngay, vi, danhMuc }
 
 /// Kết quả đọc. Mọi trường `null` nghĩa là *không đọc được* — form **giữ nguyên** ô ấy.
 class KetQuaDocCau {
@@ -63,8 +65,9 @@ class KetQuaDocCau {
   final String ghiChu;
   final List<String> canhBao;
 
-  /// AI THẬT SỰ lấp ít nhất một ô (kể cả ghi chú) — màn ghi nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*. AI được hỏi mà
-  /// mọi ô của nó bị lớp kiểm chặn thì vẫn là *"Đọc bằng luật"*.
+  /// AI THẬT SỰ làm ĐỔI ít nhất một ô (kể cả ghi chú) — màn ghi nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*. AI được hỏi
+  /// mà mọi ô của nó bị lớp kiểm chặn, hoặc nó chỉ xác nhận chiều / ví form ĐANG chọn (`chieuDangChon`, `viDangChon`), thì
+  /// vẫn là *"Đọc bằng luật"* (người dùng chốt 2026-09-30 sau lượt đo 3).
   final bool quaAi;
 
   /// Ô câu có nhắc mà vẫn chưa đọc được, tính SAU khi AI lấp (xem [OThieu]). Đường luật một mình: khác rỗng thì màn hỏi AI.
@@ -223,6 +226,8 @@ KetQuaDocCau docCauGiaoDich(
   Set<(String, String)> tatCap = const {},
   KetQuaAi? ai,
   Map<String, List<String>> tuKhoa = const {},
+  String chieuDangChon = 'chi',
+  String? viDangChon,
 }) {
   final s = unorm.nfc(cau);
   final thuong = s.toLowerCase();
@@ -302,9 +307,9 @@ KetQuaDocCau docCauGiaoDich(
     }
     if (walletId == null && ai.vi != null) {
       final k = khopTheoTen(ai.vi!, dsVi, (w) => w.name);
-      if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc.name)) {
+      if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc)) {
         walletId = k.muc.id;
-        aiLap = true;
+        if (k.muc.id != viDangChon) aiLap = true;
       }
     }
     if (loai == null && !_coVayNo(thuong)) {
@@ -320,7 +325,7 @@ KetQuaDocCau docCauGiaoDich(
         }
       } else if (ai.loai != null) {
         loai = ai.loai;
-        aiLap = true;
+        if (ai.loai != chieuDangChon) aiLap = true;
       }
     }
     final gc = ai.ghiChu;
@@ -395,7 +400,9 @@ KetQuaDocCau docCauGiaoDich(
     if (soTien == null && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
     if (ngay == null && cauNhacNgay(thuong)) OThieu.ngay,
     // Xét trên câu đã bỏ các đoạn đã dùng: chữ "ví" của "sang ví Tiết kiệm" thuộc ví đích, không nhắc ví nguồn.
-    if (walletId == null && dsVi.isNotEmpty && _cauConNhacVi(_boKhoang(thuong, daDung), dsVi)) OThieu.vi,
+    if (walletId == null && dsVi.any((w) => _cauNhacVi(_boKhoang(thuong, daDung), w))) OThieu.vi,
+    // Người dùng 2026-09-30: "chỗ nào không điền được thì cho AI điền" — kể cả danh mục, khi còn chữ để đoán.
+    if (categoryId == null && dsHopLe.isNotEmpty && ghiChuLuat.isNotEmpty) OThieu.danhMuc,
   };
 
   return KetQuaDocCau(
@@ -511,31 +518,36 @@ DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
   return lech > 7 || lech < -366 || lech == 0 ? null : x;
 }
 
-/// Câu có NHẮC ví không (§2.8) — AI không được tự điền ví câu không nói tới (Realme 2026-09-30: 9/10 câu mô hình trả ví
-/// mặc định). Nhắc = một chữ chỉ ví / cách trả (*ví, thẻ, quẹt, ck, chuyển khoản, atm*), hoặc một chữ ≥ 4 ký tự là
-/// **viết tắt** (tiền tố thật sự ngắn hơn) của một từ trong tên ví (*"techcom"* → *Techcombank*). Trùng nguyên một từ
-/// thường (*"tiền"* của *Tiền mặt*) không tính — tên ví nêu trọn thì luật đã bắt trước.
-bool _cauNhacVi(String thuong, String tenVi) => _nhacViChung(thuong) || _vietTatTenVi(thuong, tenVi);
-
-List<String> _tuBoDau(String thuong) =>
-    [for (final m in _tu.allMatches(thuong)) removeVietnameseTones(unorm.nfc(m.group(0)!))];
-
-/// Chữ chỉ ví / cách trả chung, không gắn ví nào.
-bool _nhacViChung(String thuong) {
-  final tu = _tuBoDau(thuong);
+/// Câu có NHẮC ví [w] không (§2.8) — AI không được tự điền ví câu không nói tới (Realme 2026-09-30: 9/10 câu mô hình trả
+/// ví mặc định). Nhắc = chữ *ví* trần (mọi ví); chữ chỉ thẻ / ngân hàng — *thẻ, quẹt, ck, chuyển khoản, atm* — chỉ với ví
+/// NGÂN HÀNG (người dùng chốt sau lượt đo 3: *"quẹt thẻ ăn phở"* nhận ví Tiền mặt); hoặc một chữ ≥ 4 ký tự là **viết tắt**
+/// (tiền tố thật sự ngắn hơn) của một từ trong tên [w] (*"techcom"* → *Techcombank*). Trùng nguyên một từ thường
+/// (*"tiền"* của *Tiền mặt*) không tính — tên ví nêu trọn thì luật đã bắt trước.
+///
+/// ⚠️ Khớp TỪNG TỪ CÓ DẤU, như từ chỉ thu: bỏ dấu thì *"vì"* thành *vi*, *"thế"* thành *the* — *"vì đói nên ăn phở"* từng
+/// là "câu nhắc ví" và, từ đổi lần hai, gọi AI oan ~18 s. Gõ không dấu (*vi, the, quet*) vẫn nhận.
+bool _cauNhacVi(String thuong, Wallet w) {
+  final tu = [for (final m in _tu.allMatches(thuong)) unorm.nfc(m.group(0)!)];
+  final nganHang = w.type == 'bank' || w.type == 'banking';
   for (var i = 0; i < tu.length; i++) {
-    if (_chuNhacVi.contains(tu[i])) return true;
-    if (i + 1 < tu.length && '${tu[i]} ${tu[i + 1]}' == 'chuyen khoan') return true;
+    if (_chuVi.contains(tu[i])) return true;
+    if (nganHang && _chuNganHang.contains(tu[i])) return true;
+    if (nganHang && i + 1 < tu.length && _chuyenKhoan.contains('${tu[i]} ${tu[i + 1]}')) return true;
   }
-  return false;
+  return _vietTatTenVi(thuong, w.name);
 }
 
 bool _vietTatTenVi(String thuong, String tenVi) {
   final tuVi = removeVietnameseTones(normalizeCategoryName(tenVi)).split(' ');
-  return _tuBoDau(thuong).any((t) => t.length >= 4 && tuVi.any((w) => w.length > t.length && w.startsWith(t)));
+  return _tu
+      .allMatches(thuong)
+      .map((m) => removeVietnameseTones(unorm.nfc(m.group(0)!)))
+      .any((t) => t.length >= 4 && tuVi.any((x) => x.length > t.length && x.startsWith(t)));
 }
 
-const Set<String> _chuNhacVi = {'vi', 'the', 'quet', 'ck', 'atm'};
+const Set<String> _chuVi = {'ví', 'vi'};
+const Set<String> _chuNganHang = {'thẻ', 'the', 'quẹt', 'quet', 'ck', 'atm'};
+const Set<String> _chuyenKhoan = {'chuyển khoản', 'chuyen khoan'};
 
 final RegExp _mauTienMat = RegExp(r'(?<![a-z0-9])tien\s+mat(?![a-z0-9])');
 
@@ -552,8 +564,6 @@ _Khoang _moRongTruocVi(String thuong, int batDau, int ketThuc) {
   return (batDau: bd, ketThuc: ketThuc);
 }
 
-bool _cauConNhacVi(String thuong, List<Wallet> dsVi) =>
-    _nhacViChung(thuong) || dsVi.any((w) => _vietTatTenVi(thuong, w.name));
 
 typedef _ViNhac = ({Wallet vi, int batDau, int ketThuc});
 

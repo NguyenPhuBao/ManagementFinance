@@ -413,7 +413,7 @@ void main() {
       await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: runtime)));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'hôm qua ăn phở 45k tiền mặt');
+      await dien(tester, 'hôm qua 45k ăn uống tiền mặt');
 
       expect(runtime.soPhien, 0, reason: 'không còn ô thiếu — gọi mô hình là bắt người dùng chờ ~18 s vô ích');
       expect(find.text('45.000 đ'), findsOneWidget);
@@ -432,6 +432,21 @@ void main() {
 
       expect(runtime.soPhien, 1);
       expect(find.text('30.000 đ'), findsOneWidget);
+    });
+
+    testWidgets('⭐ danh mục trống → hỏi AI, AI điền danh mục (người dùng: "chỗ nào không điền được thì cho AI điền")',
+        (tester) async {
+      final runtime = _RuntimeGia(() => PhienCongCuGia([
+            [const GoiCongCu(kTenCongCuDienGiaoDich, {'so_tien': 60000, 'loai': 'chi', 'danh_muc': 'Ăn uống'})],
+          ]));
+      await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: runtime)));
+      await tester.pumpAndSettle();
+
+      await dien(tester, 'mua 2 ly trà sữa 60k');
+
+      expect(runtime.soPhien, 1);
+      expect(tomTat(tester), 'Đã điền: 60.000 đ · Ăn uống');
+      expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng AI');
     });
 
     testWidgets('đang đọc → "Đang đọc bằng AI…" + Huỷ; Huỷ thì điền NGAY bằng luật', (tester) async {
