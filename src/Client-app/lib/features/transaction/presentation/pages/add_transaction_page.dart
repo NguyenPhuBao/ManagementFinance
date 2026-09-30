@@ -146,6 +146,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   String _huong = 'chi';
   String _amountString = "0";
 
+  /// Bàn phím số 16 phím có đang mở không (2026-09-30, việc sau D1). Màn mở đã có số tiền (sửa · biến động số dư)
+  /// hoặc ô Nhập nhanh vừa điền số tiền thì ẨN — việc còn lại là soát thẻ form, và ở 360 dp 16 phím chiếm nửa dưới
+  /// màn (đo Realme). Chạm khối số tiền để đảo. ⚠️ Cờ này chưa phải "phím có trên màn": bàn phím HỆ THỐNG mở cũng
+  /// giấu chúng (G58) — hỏi [_coBanPhimSo].
+  late bool _hienBanPhimSo;
+
   List<Wallet> _wallets = [];
   /// Bảng ví hay dùng, rỗng khi chưa đủ căn cứ hoặc chưa nạp xong.
   Map<String, String> _viHayDung = const {};
@@ -269,6 +275,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     } else if (const {'chi', 'thu', 'transfer'}.contains(widget.huongBanDau)) {
       _huong = widget.huongBanDau!;
     }
+    // D1 điền số tiền SAU (chờ ví + mô hình) — quyết từ tin ngay lúc mở, kẻo 16 phím chớp lên rồi tắt.
+    _hienBanPhimSo = _amountString == '0' && _bienDong?.soTien == null;
     _noteController.addListener(_onNoteChanged);
     _nhapNhanhFocus.addListener(() {
       if (_nhapNhanhFocus.hasFocus) unawaited(_docAi?.chuanBi());
@@ -716,6 +724,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           a = themPhimSoTien(a, c);
         }
         _amountString = a;
+        _hienBanPhimSo = false;
       }
       final ngay = kq.ngay;
       if (ngay != null) {
@@ -1341,6 +1350,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         }
       },
       builder: (context, state) {
+        final isSubmitting = state is TransactionLoadedState && state.isSubmitting;
+        final coBanPhimSo = _coBanPhimSo(context);
+        // MỘT luật cho nút lưu: 16 phím (mang phím ✓) không trên màn thì ✓ ở thanh tiêu đề — cả khi ẩn theo cờ lẫn
+        // khi bàn phím hệ thống đang mở (G58; trước 2026-09-30 lúc gõ ghi chú là không có nút lưu nào).
+        final luuTieuDe = coBanPhimSo
+            ? null
+            : IconButton(
+                key: const Key('luu-thanh-tieu-de'),
+                tooltip: 'Lưu giao dịch',
+                icon: const Icon(Icons.check, color: AppColors.primary),
+                onPressed: isSubmitting ? null : () => _saveTransaction(context),
+              );
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
@@ -1361,7 +1382,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ),
             actions: [
-              if (_bienDong != null)
+              if (_bienDong != null) ...[
                 // D1 (Stitch `52d9d2ef…`): bỏ qua hàng biến động — xoá nó, không tạo giao dịch.
                 TextButton(
                   onPressed: _boQuaBienDong,
@@ -1369,13 +1390,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     'Bỏ qua',
                     style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w600),
                   ),
-                )
-              else
+                ),
+                if (luuTieuDe != null) luuTieuDe,
+              ] else ...[
+                if (luuTieuDe != null) luuTieuDe,
                 IconButton(
                   tooltip: 'Thêm tuỳ chọn',
                   icon: const Icon(Icons.more_vert, color: AppColors.primary),
                   onPressed: () {},
                 ),
+              ],
             ],
           ),
           // Thanh chọn và con số CỐ ĐỊNH ở trên, bàn phím NEO ĐÁY, chỉ thẻ form
@@ -1420,14 +1444,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 // biến mất, và hàng phím cuối tràn. Đóng bàn phím hệ thống thì
                 // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
                 // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
-                if (MediaQuery.viewInsetsOf(context).bottom == 0)
+                // Từ 2026-09-30 còn ẩn khi màn đã có số tiền ([_hienBanPhimSo]); ✓ khi ấy ở thanh tiêu đề.
+                if (coBanPhimSo)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    child: _buildNumericKeyboard(
-                      context,
-                      isSubmitting: state is TransactionLoadedState &&
-                          state.isSubmitting,
-                    ),
+                    child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
                   ),
               ],
             ),
@@ -1497,8 +1518,27 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
+  /// 16 phím có trên màn không: cờ [_hienBanPhimSo] **và** bàn phím hệ thống đang đóng (G58).
+  bool _coBanPhimSo(BuildContext context) => _hienBanPhimSo && MediaQuery.viewInsetsOf(context).bottom == 0;
+
+  /// Chạm khối số tiền. Bàn phím hệ thống đang mở (gõ ghi chú) thì 16 phím bị G58 giấu dù cờ bật — đảo cờ lúc ấy
+  /// là tắt phím đi mà người dùng không thấy gì đổi; nên đóng bàn phím hệ thống và MỞ 16 phím.
+  void _chamSoTien() {
+    final banPhimHeThong = MediaQuery.viewInsetsOf(context).bottom > 0;
+    if (banPhimHeThong) FocusScope.of(context).unfocus();
+    setState(() => _hienBanPhimSo = banPhimHeThong || !_hienBanPhimSo);
+  }
+
   Widget _buildAmountDisplay() {
-    return Column(
+    final coPhepToan = coPhepToanDangCho(_amountString);
+    // Gợi ý chỉ khi 16 phím ẩn THEO CỜ (Stitch `b52c0651…` — "Bàn phím ẩn khi đã có số tiền"); biểu thức gõ dở thì dòng
+    // `= tổng` quan trọng hơn — đó là chỗ duy nhất tổng hiện ra trước khi lưu.
+    final goiYCham = !_hienBanPhimSo && !coPhepToan;
+    return GestureDetector(
+      key: const Key('so-tien-cham'),
+      behavior: HitTestBehavior.opaque,
+      onTap: _chamSoTien,
+      child: Column(
       children: [
         // ⚠️ Không dựng `Text` trần ở đây. Ở cỡ 48 trên 411dp, con số dài nhất
         // mà bàn phím cho gõ (`9.999.999.999.999đ`) NGẮT THÀNH HAI DÒNG và đẩy
@@ -1510,18 +1550,32 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         // một nhịp. Dòng này là chỗ DUY NHẤT tổng hiện ra được trước khi giao
         // dịch được ghi — thiếu nó là người dùng bấm lưu một con số chưa từng
         // nhìn thấy. Toán tử lẻ ở cuối thì chưa có gì để rút gọn, giữ nhãn cũ.
-        Text(
-          coPhepToanDangCho(_amountString)
-              ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(_amountString))}'
-              : 'VNĐ - VIỆT NAM ĐỒNG',
-          style: const TextStyle(
-            fontSize: 12,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w600,
-            color: AppColors.outline,
+        if (goiYCham)
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.edit_outlined, size: 14, color: AppColors.outline),
+              SizedBox(width: 4),
+              Text(
+                'Chạm để sửa số tiền',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.outline),
+              ),
+            ],
+          )
+        else
+          Text(
+            coPhepToan
+                ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(_amountString))}'
+                : 'VNĐ - VIỆT NAM ĐỒNG',
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w600,
+              color: AppColors.outline,
+            ),
           ),
-        ),
       ],
+      ),
     );
   }
 
@@ -2222,6 +2276,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     ];
 
     return GridView.builder(
+      key: const Key('ban-phim-so'),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 16,

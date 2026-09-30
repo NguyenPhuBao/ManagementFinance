@@ -287,7 +287,10 @@ void main() {
     expect(find.text('000'), findsNothing,
         reason: 'đang gõ chữ thì 16 phím số không có việc gì — giữ chúng là '
             'lấy mất chỗ của chính ô đang gõ (người dùng chọn ẩn)');
-    expect(find.byIcon(Icons.check), findsNothing);
+    // Từ 2026-09-30: 16 phím (mang phím ✓) không trên màn thì ✓ ở thanh tiêu đề — trước đó lúc gõ ghi chú không
+    // có nút lưu nào (`ban_phim_so_an_test.dart`).
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    expect(find.byKey(const Key('luu-thanh-tieu-de')), findsOneWidget);
 
     final ghiChu = find.byKey(const Key('ghi-chu-giao-dich'));
     await tester.ensureVisible(ghiChu);

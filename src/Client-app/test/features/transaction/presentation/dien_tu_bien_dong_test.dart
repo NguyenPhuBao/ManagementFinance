@@ -192,6 +192,18 @@ void main() {
     expect(find.text('Có thể bạn đã ghi khoản này'), findsNothing);
   });
 
+  testWidgets('bàn phím số ẨN (tin đã có số tiền); thanh tiêu đề: Bỏ qua · ✓', (tester) async {
+    await store.ghi(1, kNguonMb, '7777', 'mb'); // có ví chọn sẵn — lưu được ngay
+    await mo(tester);
+    expect(find.byKey(const Key('ban-phim-so')), findsNothing,
+        reason: 'Realme 360 dp: 16 phím chiếm nửa dưới màn khi thứ cần soát là ví / danh mục (nghiệm thu D1)');
+    expect(find.text('Bỏ qua'), findsOneWidget);
+    expect(find.byKey(const Key('luu-thanh-tieu-de')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('luu-thanh-tieu-de')));
+    await tester.pumpAndSettle();
+    expect(repo.added, hasLength(1));
+  });
+
   testWidgets('không tràn ở 360 × 640 với dải nguồn + dòng nhắc', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
