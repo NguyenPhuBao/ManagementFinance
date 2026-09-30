@@ -9,12 +9,14 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../../core/di/injection_container.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_cau_giao_dich.dart';
+import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../data/doc_cau_bang_ai.dart';
 import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/so_tien_lon.dart';
@@ -108,6 +110,10 @@ class AddTransactionPage extends StatefulWidget {
   /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionDao.getAll`.
   final Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo;
 
+  /// Các hàng biến động đang chờ của tài khoản — căn cứ luật cặp của gợi ý Chuyển khoản (spec 2026-09-30). `null` →
+  /// `NotificationDao.getAll`.
+  final Future<List<DienSanBienDong>> Function(int idaccount)? hangBienDongCho;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -126,6 +132,7 @@ class AddTransactionPage extends StatefulWidget {
     this.viTheoNguon,
     this.xoaBienDong,
     this.khoanTrongSo,
+    this.hangBienDongCho,
   });
 
   @override
@@ -236,6 +243,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// D1: khoản trong sổ cùng tiền + chiều + ngày với tin — dòng *"Có thể bạn đã ghi khoản này"*.
   List<KhoanSo> _trungTrongSo = const [];
 
+  /// Gợi ý Chuyển khoản đang hiện (thẻ) và ví đoán cho hai phía; `null` = không gợi ý (spec gợi ý chuyển khoản §4).
+  GoiYChuyenKhoan? _goiYChuyen;
+  ({String? tu, String? den, bool daNhoTu, bool daNhoDen})? _viGoiY;
+
+  /// Gợi ý người dùng ĐÃ áp — Lưu ở đoạn Chuyển khoản thì xoá cả hàng cặp và nhớ ví hai phía (§5).
+  GoiYChuyenKhoan? _goiYDaApDung;
+
   ViTheoNguonStore? get _viTheoNguon =>
       widget.viTheoNguon ?? (sl.isRegistered<ViTheoNguonStore>() ? sl<ViTheoNguonStore>() : null);
 
@@ -319,6 +333,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       if (t != null) _selectedDate = t;
     });
     if (id == null) return;
+    unawaited(_tinhGoiYChuyen(d, id));
     try {
       final so = await (widget.khoanTrongSo ?? _khoanTrongSoMacDinh)(id);
       final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
@@ -326,6 +341,71 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     } catch (e) {
       debugPrint('[BienDong] đọc sổ để nhắc trùng lỗi: $e');
     }
+  }
+
+  /// Gợi ý Chuyển khoản (spec 2026-09-30 §2–3): luật cặp trên các hàng đang chờ, rồi luật nội dung tin. Ví phía nguồn
+  /// của tin theo luật D1 (chỉ ví đã nhớ); phía kia: đã nhớ → ví duy nhất trùng tên nguồn → trống. Lỗi → không gợi ý.
+  Future<void> _tinhGoiYChuyen(DienSanBienDong d, int id) async {
+    try {
+      final cho = await (widget.hangBienDongCho ?? _hangChoMacDinh)(id);
+      final gy = goiYChuyenKhoan(d, cho);
+      if (gy == null) return;
+      Future<String?> nho(String nguon, String? duoi) async {
+        final v = await _viTheoNguon?.doc(id, nguon, duoi);
+        return v != null && _wallets.any((w) => w.id == v) ? v : null;
+      }
+
+      final nhoTu = await nho(gy.nguonTu, gy.duoiTu);
+      final nhoDen = await nho(gy.nguonDen, gy.duoiDen);
+      if (!mounted) return;
+      final ds = [for (final w in _wallets) (id: w.id, ten: w.name)];
+      String? doan(String nguon, String? daNho) => daNho ?? (nguon == d.nguon ? null : viTheoTenNguon(nguon, ds));
+      setState(() {
+        _goiYChuyen = gy;
+        _viGoiY = (
+          tu: doan(gy.nguonTu, nhoTu),
+          den: doan(gy.nguonDen, nhoDen),
+          daNhoTu: nhoTu != null,
+          daNhoDen: nhoDen != null,
+        );
+      });
+    } catch (e) {
+      debugPrint('[BienDong] gợi ý chuyển khoản lỗi: $e');
+    }
+  }
+
+  static Future<List<DienSanBienDong>> _hangChoMacDinh(int id) async {
+    final ds = <DienSanBienDong>[];
+    for (final n in await sl<AppDatabase>().notificationDao.getAll(id)) {
+      final link = n.deeplink;
+      if (n.kind != kKindBienDongSoDu || n.dismissedAt != null || link == null) continue;
+      final h = dienSanBienDongTuQuery(Uri.tryParse(link)?.queryParameters ?? const {});
+      if (h != null) ds.add(h);
+    }
+    return ds;
+  }
+
+  /// Bấm *Ghi là chuyển khoản*: đổi đoạn qua ĐÚNG [_chonHuong], điền hai ví; ô không đoán được để TRỐNG — ví mặc định
+  /// ở đây là để bảng nguồn → ví học nhầm (D1 §3.3). Không lưu (bất biến ④ nhóm C).
+  void _apGoiYChuyen() {
+    final gy = _goiYChuyen;
+    final v = _viGoiY;
+    if (gy == null || v == null) return;
+    _chonHuong('transfer');
+    Wallet? tim(String? id) {
+      for (final w in _wallets) {
+        if (w.id == id) return w;
+      }
+      return null;
+    }
+
+    setState(() {
+      _selectedWallet = tim(v.tu);
+      _destinationWallet = tim(v.den);
+      _nguoiDungDaChonVi = true;
+      _goiYDaApDung = gy;
+      _goiYChuyen = null;
+    });
   }
 
   static Future<List<KhoanSo>> _khoanTrongSoMacDinh(int id) async => [
@@ -338,18 +418,40 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// gọi: màn có thể đã `pop`. Không bao giờ ném.
   Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
     final store = _viTheoNguon;
-    final xoa = widget.xoaBienDong ??
-        (sl.isRegistered<AppDatabase>() ? sl<AppDatabase>().notificationDao.xoaCung : null);
     try {
       if (nhoVi && viDaLuu != null) await store?.ghi(id, d.nguon, d.duoi, viDaLuu);
     } catch (e) {
       debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
     }
+    await _xoaHangBienDong(id, d.khoa);
+  }
+
+  /// Xoá cứng một hàng loại 20 theo `dedupeKey` (ngoại lệ có chủ ý — spec D1 §3.3). Không bao giờ ném.
+  Future<void> _xoaHangBienDong(int id, String khoa) async {
+    final xoa = widget.xoaBienDong ??
+        (sl.isRegistered<AppDatabase>() ? sl<AppDatabase>().notificationDao.xoaCung : null);
     try {
-      await xoa?.call(id, d.khoa);
+      await xoa?.call(id, khoa);
     } catch (e) {
       debugPrint('[BienDong] xoá hàng biến động lỗi: $e');
     }
+  }
+
+  /// Lưu sau khi áp gợi ý Chuyển khoản (spec §5): nhớ ví cho CẢ HAI nguồn — mỗi phía theo phía của nó. ⚠️ Không theo
+  /// `_selectedWallet`: tin THU ghi thành chuyển khoản thì ví của nguồn tin là ví ĐÍCH, nhớ ví nguồn là mọi tin sau của
+  /// nguồn ấy chọn sẵn sai ví, im lặng. Rồi xoá hàng đang mở và hàng cặp (còn chờ là người dùng ghi đôi). Không ném.
+  Future<void> _dongChuyenKhoan(DienSanBienDong d, GoiYChuyenKhoan gy, int id,
+      {String? viTu, String? viDen, required bool daNhoTu, required bool daNhoDen}) async {
+    final store = _viTheoNguon;
+    try {
+      if (!daNhoTu && viTu != null) await store?.ghi(id, gy.nguonTu, gy.duoiTu, viTu);
+      if (!daNhoDen && viDen != null) await store?.ghi(id, gy.nguonDen, gy.duoiDen, viDen);
+    } catch (e) {
+      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
+    }
+    await _xoaHangBienDong(id, d.khoa);
+    final cap = gy.khoaCap;
+    if (cap != null) await _xoaHangBienDong(id, cap);
   }
 
   Future<void> _boQuaBienDong() async {
@@ -1338,7 +1440,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             final d = _bienDong;
             final id = _accountId();
             if (d != null && id != null) {
-              unawaited(_dongBienDong(d, id, viDaLuu: _selectedWallet?.id, nhoVi: !_viNguonDaNho));
+              final gy = _goiYDaApDung;
+              final v = _viGoiY;
+              if (gy != null && v != null && _isTransfer) {
+                unawaited(_dongChuyenKhoan(d, gy, id,
+                    viTu: _selectedWallet?.id,
+                    viDen: _destinationWallet?.id,
+                    daNhoTu: v.daNhoTu,
+                    daNhoDen: v.daNhoDen));
+              } else {
+                unawaited(_dongBienDong(d, id, viDaLuu: _selectedWallet?.id, nhoVi: !_viNguonDaNho));
+              }
             }
             context.pop(true);
           } else if (state.actionSuccess == false &&
@@ -1429,6 +1541,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         if (_bienDong case final d?) ...[
                           _buildDaiNguon(d),
                           const SizedBox(height: 12),
+                          if (_goiYChuyen case final gy? when !_isTransfer) ...[
+                            _buildGoiYChuyen(gy),
+                            const SizedBox(height: 12),
+                          ],
                         ] else if (!_isEditing) ...[
                           _buildNhapNhanh(),
                           const SizedBox(height: 12),
@@ -1781,6 +1897,56 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 dongNguonBienDong(d),
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
+            ),
+          ],
+        ),
+      );
+
+  /// Thẻ gợi ý Chuyển khoản (spec 2026-09-30 §4, Stitch *"Thêm giao dịch - Gợi ý chuyển khoản từ biến động"*).
+  Widget _buildGoiYChuyen(GoiYChuyenKhoan gy) => Container(
+        key: const Key('the-goi-y-chuyen-khoan'),
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+              child: const Icon(Icons.swap_horiz, size: 20, color: AppColors.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Có vẻ là chuyển khoản',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Từ ${gy.nguonTu} sang ${gy.nguonDen}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              key: const Key('goi-y-chuyen-khoan'),
+              onPressed: _apGoiYChuyen,
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+              ),
+              child: const Text('Ghi là chuyển khoản', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
