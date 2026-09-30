@@ -13,8 +13,10 @@ import '../../../../core/di/injection_container.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
+import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_cau_giao_dich.dart';
 import '../../data/doc_cau_bang_ai.dart';
+import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/so_tien_lon.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
@@ -92,6 +94,20 @@ class AddTransactionPage extends StatefulWidget {
   /// thì chỉ luật. Widget test tiêm bản dựng trên runtime giả.
   final DocCauBangAi? docAi;
 
+  /// D1 — mở từ một hàng biến động số dư (`/add?…&khoa=bienDong:…`, spec D1 §3.3, Stitch `52d9d2ef…`): form điền
+  /// sẵn tiền / chiều / ngày giờ / ghi chú / danh mục, ví theo nguồn + đuôi TK; không ô Nhập nhanh; thanh tiêu đề có
+  /// **Bỏ qua**; Lưu hoặc Bỏ qua thì xoá cứng hàng ấy. `null` = mở thường. Bị bỏ qua ở chế độ sửa.
+  final DienSanBienDong? bienDong;
+
+  /// Bảng *"nguồn + đuôi TK → ví"* (D1). `null` → `sl<ViTheoNguonStore>()` nếu đã đăng ký.
+  final ViTheoNguonStore? viTheoNguon;
+
+  /// Xoá cứng hàng loại 20 theo `dedupeKey` (D1). `null` → `NotificationDao.xoaCung`.
+  final Future<void> Function(int idaccount, String khoa)? xoaBienDong;
+
+  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionDao.getAll`.
+  final Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -106,6 +122,10 @@ class AddTransactionPage extends StatefulWidget {
     this.boPhanLoai,
     this.phanHoiGoiY,
     this.docAi,
+    this.bienDong,
+    this.viTheoNguon,
+    this.xoaBienDong,
+    this.khoanTrongSo,
   });
 
   @override
@@ -200,6 +220,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Ô Nhập nhanh có focus → nạp mô hình ngầm (người dùng chốt 2026-09-30).
   final FocusNode _nhapNhanhFocus = FocusNode();
 
+  /// D1: form đang mở từ một hàng biến động số dư (đường tạo mới).
+  DienSanBienDong? get _bienDong => _isEditing ? null : widget.bienDong;
+
+  /// D1: bảng nguồn → ví đã có một ví HOẠT ĐỘNG cho cặp nguồn + đuôi này — khi ấy Lưu không ghi đè (spec §3.3: ghi ở
+  /// lần Lưu đầu của mỗi cặp).
+  bool _viNguonDaNho = false;
+
+  /// D1: khoản trong sổ cùng tiền + chiều + ngày với tin — dòng *"Có thể bạn đã ghi khoản này"*.
+  List<KhoanSo> _trungTrongSo = const [];
+
+  ViTheoNguonStore? get _viTheoNguon =>
+      widget.viTheoNguon ?? (sl.isRegistered<ViTheoNguonStore>() ? sl<ViTheoNguonStore>() : null);
+
   DocCauBangAi? get _docAi =>
       widget.docAi ?? (sl.isRegistered<DocCauBangAi>() ? sl<DocCauBangAi>() : null);
 
@@ -240,9 +273,82 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _nhapNhanhFocus.addListener(() {
       if (_nhapNhanhFocus.hasFocus) unawaited(_docAi?.chuanBi());
     });
-    _loadWallets();
+    final napVi = _loadWallets();
     // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
-    _loadViHayDung().then((_) => _napTatCap()).then((_) => _tinhDeXuat());
+    final napHoc = _loadViHayDung().then((_) => _napTatCap());
+    unawaited(napHoc.then((_) => _tinhDeXuat()));
+    // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
+    if (_bienDong != null) unawaited(Future.wait([napVi, napHoc]).then((_) => _dienTuBienDong()));
+  }
+
+  /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([_dienKetQua]). Không lưu.
+  Future<void> _dienTuBienDong() async {
+    final d = _bienDong;
+    final id = _accountId();
+    if (d == null || !mounted) return;
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    String? viId;
+    if (id != null) {
+      try {
+        final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi);
+        // Chỉ ví HOẠT ĐỘNG (`_wallets` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
+        if (nho != null && _wallets.any((w) => w.id == nho)) viId = nho;
+      } catch (e) {
+        debugPrint('[BienDong] đọc ví theo nguồn lỗi: $e');
+      }
+    }
+    if (!mounted) return;
+    _viNguonDaNho = viId != null;
+    final kq = ketQuaTuBienDong(d,
+        chonDuoc: chonDuoc, mo: _boPhanLoai, tatCap: _tatCap, tuKhoa: tuKhoa, walletId: viId);
+    _dienKetQua(kq, chonDuoc: chonDuoc);
+    setState(() {
+      // Lần đầu của cặp nguồn + đuôi: ví TRỐNG, không phải ví mặc định — để ví mặc định là để bảng nguồn → ví học nhầm
+      // nó ở lần Lưu đầu, rồi chọn sẵn sai mãi.
+      if (viId == null) _selectedWallet = null;
+      // `_dienKetQua` chỉ đổi phần ngày; giờ trong tin là giờ giao dịch (spec §3.3).
+      final t = d.thoiGian;
+      if (t != null) _selectedDate = t;
+    });
+    if (id == null) return;
+    try {
+      final so = await (widget.khoanTrongSo ?? _khoanTrongSoMacDinh)(id);
+      final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
+      if (mounted) setState(() => _trungTrongSo = trung);
+    } catch (e) {
+      debugPrint('[BienDong] đọc sổ để nhắc trùng lỗi: $e');
+    }
+  }
+
+  static Future<List<KhoanSo>> _khoanTrongSoMacDinh(int id) async => [
+        for (final t in await sl<AppDatabase>().transactionDao.getAll(id))
+          (id: t.id, soTien: t.amount, loai: t.type, ngay: t.date, ghiChu: t.note),
+      ];
+
+  /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
+  /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
+  /// gọi: màn có thể đã `pop`. Không bao giờ ném.
+  Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
+    final store = _viTheoNguon;
+    final xoa = widget.xoaBienDong ??
+        (sl.isRegistered<AppDatabase>() ? sl<AppDatabase>().notificationDao.xoaCung : null);
+    try {
+      if (nhoVi && viDaLuu != null) await store?.ghi(id, d.nguon, d.duoi, viDaLuu);
+    } catch (e) {
+      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
+    }
+    try {
+      await xoa?.call(id, d.khoa);
+    } catch (e) {
+      debugPrint('[BienDong] xoá hàng biến động lỗi: $e');
+    }
+  }
+
+  Future<void> _boQuaBienDong() async {
+    final d = _bienDong;
+    final id = _accountId();
+    if (d != null && id != null) await _dongBienDong(d, id);
+    if (mounted) context.pop();
   }
 
   /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
@@ -1203,6 +1309,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         : 'Thêm giao dịch thành công!')),
               ),
             );
+            final d = _bienDong;
+            final id = _accountId();
+            if (d != null && id != null) {
+              unawaited(_dongBienDong(d, id, viDaLuu: _selectedWallet?.id, nhoVi: !_viNguonDaNho));
+            }
             context.pop(true);
           } else if (state.actionSuccess == false &&
               state.errorMessage != null) {
@@ -1233,11 +1344,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ),
             actions: [
-              IconButton(
-                tooltip: 'Thêm tuỳ chọn',
-                icon: const Icon(Icons.more_vert, color: AppColors.primary),
-                onPressed: () {},
-              ),
+              if (_bienDong != null)
+                // D1 (Stitch `52d9d2ef…`): bỏ qua hàng biến động — xoá nó, không tạo giao dịch.
+                TextButton(
+                  onPressed: _boQuaBienDong,
+                  child: const Text(
+                    'Bỏ qua',
+                    style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                )
+              else
+                IconButton(
+                  tooltip: 'Thêm tuỳ chọn',
+                  icon: const Icon(Icons.more_vert, color: AppColors.primary),
+                  onPressed: () {},
+                ),
             ],
           ),
           // Thanh chọn và con số CỐ ĐỊNH ở trên, bàn phím NEO ĐÁY, chỉ thẻ form
@@ -1263,7 +1384,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     // nữa là thẻ form còn chưa tới 70 dp. Chỉ ở đường tạo mới (spec §3).
                     child: Column(
                       children: [
-                        if (!_isEditing) ...[
+                        // D1: form đã điền từ tin — không có ô Nhập nhanh (đường điền thứ hai), thay bằng dải nguồn.
+                        if (_bienDong case final d?) ...[
+                          _buildDaiNguon(d),
+                          const SizedBox(height: 12),
+                        ] else if (!_isEditing) ...[
                           _buildNhapNhanh(),
                           const SizedBox(height: 12),
                         ],
@@ -1429,6 +1554,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               onTap: () =>
                   _showWalletPickerBottomSheet(context, isDestination: false),
             ),
+            if (_bienDong != null && _trungTrongSo.isNotEmpty) _buildNhacTrung(context),
             Divider(
                 height: 1,
                 indent: 64,
@@ -1555,7 +1681,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             icon: Icons.calendar_today,
             label: 'Ngày',
             valueWidget: Text(
-              DateFormat('dd/MM/yyyy').format(_selectedDate),
+              // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
+              DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_selectedDate),
               style: const TextStyle(fontSize: 16, color: AppColors.primary),
             ),
             trailingIcon: Icons.calendar_month,
@@ -1565,6 +1692,96 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
     );
   }
+
+  /// D1 — dải nguồn (Stitch `52d9d2ef…`): *"Từ thông báo MB Bank · TK ••7777 · 02/09 12:01"*.
+  Widget _buildDaiNguon(DienSanBienDong d) => Container(
+        key: const Key('bien-dong-dai-nguon'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance, size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                dongNguonBienDong(d),
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  /// D1 — *"Có thể bạn đã ghi khoản này"* (spec §3.3): chỉ NHẮC, không chặn lưu. **Xem** liệt kê các khoản khớp.
+  Widget _buildNhacTrung(BuildContext context) {
+    final d = _bienDong!;
+    final chieu = d.chieu == 'thu' ? 'thu' : 'chi';
+    return Container(
+      key: const Key('bien-dong-nhac-trung'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_rounded, size: 20, color: AppColors.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Có thể bạn đã ghi khoản này',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyFormatter.format(d.soTien!)} $chieu hôm '
+                  '${DateFormat('dd/MM').format(d.thoiGian!)} đã có trong sổ',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          TextButton(onPressed: () => _xemKhoanTrung(context), child: const Text('Xem')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _xemKhoanTrung(BuildContext context) => showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Khoản đã có trong sổ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+                const SizedBox(height: 8),
+                for (final k in _trungTrongSo)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(k.ghiChu.isEmpty ? '(không ghi chú)' : k.ghiChu),
+                    subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(k.ngay)),
+                    trailing: Text(CurrencyFormatter.formatCoDau(k.soTien, thu: k.loai == 'thu')),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
   /// do khi danh mục đến từ B1.

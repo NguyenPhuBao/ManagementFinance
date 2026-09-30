@@ -10,6 +10,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/database/daos/notification_dao.dart';
+import 'package:flowmoney/core/notification/notification_rules.dart';
 
 void main() {
   late AppDatabase db;
@@ -270,6 +272,29 @@ void main() {
               'người đăng nhập trước hiện trên máy người sau.');
       expect((await db.notificationDao.getAll(accountId)).length, 1,
           reason: 'Và không được xoá nhầm của người đang đăng nhập.');
+    });
+  });
+  group('D1 — xoaCung hàng biến động số dư', () {
+    test('hằng loại của DAO khớp enum (DAO không import tầng thông báo)', () {
+      expect(kKindBienDongSoDu, NotificationKind.bienDongSoDu.name);
+    });
+
+    test('⭐ xoá CỨNG đúng hàng loại 20 của đúng tài khoản; loại khác cùng khoá, tài khoản khác giữ nguyên', () async {
+      await db.notificationDao.insertIfAbsent(mau(id: 'bd', kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'khac', idaccount: 9, kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      // Khoá trùng với một loại khác — không có thật, nhưng hàm không được tin vào khoá một mình.
+      await db.notificationDao.insertIfAbsent(mau(id: 'loaiKhac', kind: 'billDueSoon', dedupeKey: 'bienDong:M2'));
+
+      expect(await db.notificationDao.xoaCung(accountId, 'bienDong:M1'), 1);
+      expect(await db.notificationDao.xoaCung(accountId, 'bienDong:M2'), 0,
+          reason: 'ngoại lệ xoá cứng chỉ dành cho loại 20 — mọi loại khác xoá MỀM để giữ khoá chặn trùng');
+
+      final con = [
+        ...await db.notificationDao.getAll(accountId),
+        ...await db.notificationDao.getAll(9),
+      ].map((h) => h.id).toSet();
+      expect(con, {'khac', 'loaiKhac'},
+          reason: 'tin đã xử lý không còn lý do giữ nội dung ngân hàng (spec D1 §3.3) — xoá mềm là giữ nguyên nội dung');
     });
   });
 }

@@ -35,6 +35,7 @@ import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
+import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
@@ -348,6 +349,12 @@ Future<void> setupDependencies() async {
   // checkpoint đồng bộ — cùng mẫu `SecureStorageSyncCheckpointStore`.
   sl.registerLazySingleton<NotificationPrefsStore>(
     () => const SecureStorageNotificationPrefsStore(FlutterSecureStorage()),
+  );
+
+  // D1: ví chọn sẵn cho form điền từ tin biến động số dư — bảng nguồn + đuôi TK → ví,
+  // cục bộ theo tài khoản, cùng khuôn kho tuỳ chọn thông báo.
+  sl.registerLazySingleton<ViTheoNguonStore>(
+    () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
   );
 
   // Đề xuất giờ nhắc / tắt nhóm bị lờ (B5b) — đọc nhật ký B5a, chỉ đề xuất.

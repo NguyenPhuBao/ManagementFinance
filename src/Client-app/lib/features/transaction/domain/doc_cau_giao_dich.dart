@@ -349,50 +349,25 @@ KetQuaDocCau docCauGiaoDich(
           ? hopLeTheoChieu(loai, chonDuoc)
           : {for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.id};
   final dsHopLe = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];
-  String? categoryId;
-  DoanDanhMuc? doan;
-  String? lyDo;
-  CategorySuggestion? goiY;
-  // Tìm trên câu đã bỏ đoạn ví: "45k ví Tiết kiệm" không được đọc thành danh mục "Tiết kiệm".
-  final tenDm = timTenTrongCau(_boKhoang(s, daDung), [for (final c in dsHopLe) c.name], tuLoai: 'danh mục');
-  if (tenDm != null) {
-    final trung = _cungTen(dsHopLe, tenDm.ten, (c) => c.name);
-    if (trung.length == 1) categoryId = trung.single.id;
-  } else {
-    // Thứ tự (người dùng chốt 2026-09-30): B1 khi nó chắc → từ khoá của danh mục → AI. Cùng thứ tự thẻ gợi ý trên màn
-    // (B1 trước từ khoá): thói quen riêng, rồi điều người dùng tự khai báo, rồi mới tới hiểu biết chung của mô hình.
-    final d = mo?.doan(ghiChuLuat, hopLe: hopLe, tatCap: tatCap);
-    final tk = d != null
-        ? null
-        : const CategorySuggestionEngine().suggest(
-            rawText: ghiChuLuat,
-            candidates: [
-              for (final c in dsHopLe)
-                for (final k in tuKhoa[c.id] ?? const <String>[]) CategoryKeywordCandidate(category: c, keyword: k),
-            ],
-          );
-    if (d != null) {
-      categoryId = d.categoryId;
-      doan = d;
-      final ten = dsHopLe.firstWhere((c) => c.id == d.categoryId).name;
-      lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChuLuat, tenDanhMuc: ten);
-      goiY = CategorySuggestion(
-        category: dsHopLe.firstWhere((c) => c.id == d.categoryId),
-        matchedKeyword: d.cumBoDau,
-        nguon: kNguonGoiYHoc,
-        amTietChinh: d.cumBoDau,
-        lyDo: lyDo,
-      );
-    } else if (tk != null) {
-      categoryId = tk.categoryId;
-      lyDo = tk.lyDo;
-      goiY = tk;
-    } else if (ai?.danhMuc != null) {
-      final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
-      if (k is KhopMot<Category>) {
-        categoryId = k.muc.id;
-        aiLap = true;
-      }
+  // Tìm tên trên câu đã bỏ đoạn ví: "45k ví Tiết kiệm" không được đọc thành danh mục "Tiết kiệm".
+  final dm = doanDanhMucTuGhiChu(
+    cauTimTen: _boKhoang(s, daDung),
+    ghiChu: ghiChuLuat,
+    chonDuoc: dsHopLe,
+    mo: mo,
+    tatCap: tatCap,
+    tuKhoa: tuKhoa,
+  );
+  var categoryId = dm.categoryId;
+  final doan = dm.doan;
+  final lyDo = dm.lyDo;
+  final goiY = dm.goiY;
+  // AI là bước cuối, chỉ khi câu không nêu tên danh mục nào và B1 / từ khoá đều im.
+  if (!dm.thayTen && categoryId == null && ai?.danhMuc != null) {
+    final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
+    if (k is KhopMot<Category>) {
+      categoryId = k.muc.id;
+      aiLap = true;
     }
   }
 
@@ -424,6 +399,64 @@ KetQuaDocCau docCauGiaoDich(
     canhBao: canhBao,
     quaAi: aiLap,
   );
+}
+
+/// Danh mục đoán từ ghi chú — bước danh mục của [docCauGiaoDich] không kể AI (§2.5, người dùng chốt 2026-09-30):
+/// **tên** danh mục nêu trong [cauTimTen] → **B1** ([mo]) khi nó chắc → **từ khoá** của danh mục. [chonDuoc] là các
+/// danh mục ĐÃ lọc hợp chiều. Tách ra (D1, 2026-09-30) để form điền sẵn từ tin biến động số dư đoán danh mục trên nội
+/// dung tin bằng ĐÚNG luật này — cho nội dung tin đi qua cả [docCauGiaoDich] là đọc số tài khoản / ngày trong tin
+/// thành số tiền / ngày.
+///
+/// `thayTen`: câu có nêu một tên danh mục (kể cả khi nhiều danh mục trùng tên nên không chọn được) — khi ấy người gọi
+/// không hỏi thêm AI.
+({String? categoryId, DoanDanhMuc? doan, String? lyDo, CategorySuggestion? goiY, bool thayTen}) doanDanhMucTuGhiChu({
+  required String cauTimTen,
+  required String ghiChu,
+  required List<Category> chonDuoc,
+  BoPhanLoaiGhiChu? mo,
+  Set<(String, String)> tatCap = const {},
+  Map<String, List<String>> tuKhoa = const {},
+}) {
+  final tenDm = timTenTrongCau(cauTimTen, [for (final c in chonDuoc) c.name], tuLoai: 'danh mục');
+  if (tenDm != null) {
+    final trung = _cungTen(chonDuoc, tenDm.ten, (c) => c.name);
+    return (
+      categoryId: trung.length == 1 ? trung.single.id : null,
+      doan: null,
+      lyDo: null,
+      goiY: null,
+      thayTen: true,
+    );
+  }
+  // Thứ tự (người dùng chốt 2026-09-30): B1 khi nó chắc → từ khoá của danh mục → AI. Cùng thứ tự thẻ gợi ý trên màn
+  // (B1 trước từ khoá): thói quen riêng, rồi điều người dùng tự khai báo, rồi mới tới hiểu biết chung của mô hình.
+  final hopLe = {for (final c in chonDuoc) c.id};
+  final d = mo?.doan(ghiChu, hopLe: hopLe, tatCap: tatCap);
+  if (d != null) {
+    final c = chonDuoc.firstWhere((c) => c.id == d.categoryId);
+    final lyDo = cauLyDoHoc(d, ghiChuGoc: ghiChu, tenDanhMuc: c.name);
+    return (
+      categoryId: d.categoryId,
+      doan: d,
+      lyDo: lyDo,
+      goiY: CategorySuggestion(
+        category: c,
+        matchedKeyword: d.cumBoDau,
+        nguon: kNguonGoiYHoc,
+        amTietChinh: d.cumBoDau,
+        lyDo: lyDo,
+      ),
+      thayTen: false,
+    );
+  }
+  final tk = const CategorySuggestionEngine().suggest(
+    rawText: ghiChu,
+    candidates: [
+      for (final c in chonDuoc)
+        for (final k in tuKhoa[c.id] ?? const <String>[]) CategoryKeywordCandidate(category: c, keyword: k),
+    ],
+  );
+  return (categoryId: tk?.categoryId, doan: null, lyDo: tk?.lyDo, goiY: tk, thayTen: false);
 }
 
 /// Mọi CÁCH ĐỌC hợp lệ (≥ 1.000 đ, dưới 13 chữ số) của các con số có trong [cau] — lưới kiểm số tiền của AI (§2.8). AI

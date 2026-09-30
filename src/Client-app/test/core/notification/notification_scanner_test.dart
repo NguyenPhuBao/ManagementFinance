@@ -333,9 +333,11 @@ void main() {
       await tep.writeAsString(dongMb('M2'));
       soLanNap = 0;
       vongDoi.add(AppLifecycleState.resumed);
-      // Hai nhịp: nhập (đọc tệp, ghi CSDL) rồi mới quét.
-      await nhipTho();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Nhập (đổi tên, đọc tệp THẬT, ghi CSDL) rồi mới quét. Chờ tới khi đạt thay vì một nhịp cố định: I/O tệp thật
+      // có độ trễ theo tải máy — nhịp 50 ms cũ đỏ khi cả bộ test chạy song song (2026-09-30).
+      for (var i = 0; i < 100 && (soLanNap == 0 || tep.existsSync()); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
 
       expect((await hangBienDong()).map((h) => h.subjectId).toSet(), {'M1', 'M2'},
           reason: 'quãng app nằm nền là lúc tin ngân hàng tới — resumed không nhập là dòng chờ tới lần mở app sau');

@@ -176,4 +176,24 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
           ..where((t) => t.kind.equals(kind) & t.createdAt.isSmallerThanValue(cutoff)))
         .go();
   }
+
+  /// Xoá **CỨNG** một hàng biến động số dư (D1) khi người dùng *Lưu* hoặc *Bỏ qua* nó trên form.
+  ///
+  /// ⚠️ **Ngoại lệ có chủ ý** của nếp *"dismiss mềm để giữ khoá chặn trùng"* (spec D1 §3.3): hàng loại
+  /// 20 mang nội dung tin ngân hàng, tin đã xử lý thì không còn lý do giữ nó (Nghị định 13, tối thiểu
+  /// hoá). Chống trùng về sau dựa vào phép gộp 5 phút của `NhapBienDong`, đủ vì nguồn chỉ bắn lại ngay.
+  /// Chỉ xoá hàng mang đúng loại [kKindBienDongSoDu] — mọi loại khác vẫn phải xoá mềm, nên hàm không
+  /// tin vào khoá một mình. Trả số hàng đã xoá.
+  Future<int> xoaCung(int idaccount, String dedupeKey) {
+    return (delete(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.dedupeKey.equals(dedupeKey) &
+              t.kind.equals(kKindBienDongSoDu)))
+        .go();
+  }
 }
+
+/// `NotificationKind.bienDongSoDu.name` — chép thành chuỗi vì tầng CSDL không phụ thuộc tầng thông
+/// báo (xem [NotificationDao.watchFeed]); `notification_dao_test.dart` canh hai bên bằng nhau.
+const String kKindBienDongSoDu = 'bienDongSoDu';

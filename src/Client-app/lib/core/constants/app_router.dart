@@ -14,6 +14,7 @@ import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
+import '../../features/transaction/domain/dien_san_bien_dong.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
 import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
@@ -219,6 +220,9 @@ class AppRouter {
               // `extra` là `String` 'chi' | 'thu' | 'transfer' → chiều đặt
               // sẵn cho ba nút tắt ở Trang chủ (UX 2026-09-19, C4).
               huongBanDau: state.extra is String ? state.extra as String : null,
+              // D1: `?…&khoa=bienDong:…` — mở từ một hàng biến động số dư (deeplink của
+              // `NhapBienDong`). Query không phải của nó → `null`, form mở như thường.
+              bienDong: dienSanBienDongTuQuery(state.uri.queryParameters),
             ),
             routes: [
               GoRoute(
