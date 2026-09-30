@@ -5,6 +5,7 @@ import CategoryPage from '../pages/categories/CategoryPage';
 import UserListPage from '../pages/users/UserListPage';
 import UserDetailPage from '../pages/users/UserDetailPage';
 import AICopilotPage from '../pages/ai/AICopilotPage';
+import AuditLogPage from '../pages/system/AuditLogPage';
 
 const routes = [
   // Public routes
@@ -38,6 +39,10 @@ const routes = [
   {
     path: '/users/:id',
     element: <UserDetailPage />,
+  },
+  {
+    path: '/audit-logs',
+    element: <AuditLogPage />,
   },
 ];
 

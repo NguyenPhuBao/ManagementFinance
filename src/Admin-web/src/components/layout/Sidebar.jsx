@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: '/ai-copilot', icon: 'smart_toy', label: 'Trợ lý AI Copilot' },
   { key: '/users', icon: 'group', label: 'User Management' },
   { key: '/categories', icon: 'category', label: 'Category Management' },
+  { key: '/audit-logs', icon: 'fact_check', label: 'Audit Log' },
 ];
 
 const Sidebar = ({ collapsed }) => {
