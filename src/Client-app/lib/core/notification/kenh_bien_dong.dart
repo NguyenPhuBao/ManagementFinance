@@ -18,6 +18,16 @@ abstract class KenhBienDong {
   /// Mở màn Cài đặt "Truy cập thông báo" của Android — app không tự cấp được.
   Future<void> moCaiDat();
 
+  /// Mở **trang thông tin ứng dụng** — nơi ColorOS đặt "Mức sử dụng pin → Cho phép hoạt động dưới nền" (MIUI và
+  /// hãng khác có mục tương tự). Không dùng hộp thoại xin miễn tối ưu pin: nó đòi quyền
+  /// `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, thứ Google Play giới hạn.
+  Future<void> moCaiDatPin();
+
+  /// App có được **miễn tối ưu pin** không (`PowerManager.isIgnoringBatteryOptimizations`). Đo đối chứng Realme
+  /// 2026-09-30: công tắc "Cho phép hoạt động dưới nền" của ColorOS CHÍNH là trạng thái này (tắt → rời danh sách
+  /// miễn), tắt thì Hans đóng băng app ~12 giây sau khi về nền, bật thì không. Không biết → `false` (hiện gợi ý).
+  Future<bool> duocChayNen();
+
   /// Lần mở app này có đến từ cú chạm thông báo tóm tắt không. Đọc là **tiêu**:
   /// hỏi lần hai trả `false`.
   Future<bool> moTuThongBao();
@@ -50,6 +60,24 @@ class KenhBienDongAndroid implements KenhBienDong {
       await _kenh.invokeMethod<void>('moCaiDat');
     } catch (_) {
       // Bỏ qua có chủ ý.
+    }
+  }
+
+  @override
+  Future<void> moCaiDatPin() async {
+    try {
+      await _kenh.invokeMethod<void>('moCaiDatPin');
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
+
+  @override
+  Future<bool> duocChayNen() async {
+    try {
+      return await _kenh.invokeMethod<bool>('duocChayNen') ?? false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -90,6 +118,10 @@ class KenhBienDongTrong implements KenhBienDong {
   Future<bool> coQuyen() async => false;
   @override
   Future<void> moCaiDat() async {}
+  @override
+  Future<void> moCaiDatPin() async {}
+  @override
+  Future<bool> duocChayNen() async => true;
   @override
   Future<bool> moTuThongBao() async => false;
   @override

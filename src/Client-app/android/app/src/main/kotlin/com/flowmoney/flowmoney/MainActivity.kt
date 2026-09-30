@@ -4,8 +4,10 @@ import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -73,6 +75,21 @@ class MainActivity : FlutterActivity() {
                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                             ket.success(null)
+                        }
+                        "moCaiDatPin" -> {
+                            // Trang thông tin ứng dụng — ColorOS đặt "Mức sử dụng pin → Cho phép hoạt động dưới nền"
+                            // ở đây (MIUI tương tự). Không dùng hộp thoại xin miễn tối ưu pin: cần quyền mà Play giới hạn.
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            ket.success(null)
+                        }
+                        "duocChayNen" -> {
+                            // Đo đối chứng Realme 2026-09-30: công tắc "Cho phép hoạt động dưới nền" của ColorOS CHÍNH là
+                            // trạng thái này; tắt thì Hans đóng băng app ~12 giây sau khi về nền.
+                            val pm = getSystemService(POWER_SERVICE) as PowerManager
+                            ket.success(pm.isIgnoringBatteryOptimizations(packageName))
                         }
                         "moTuThongBao" -> {
                             val v = moTuTomTat
