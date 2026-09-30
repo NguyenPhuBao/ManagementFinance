@@ -22,6 +22,7 @@ import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
+import 'nhap_bien_dong.dart';
 import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
@@ -162,6 +163,15 @@ class NotificationScanner {
   /// nhập MỘT lần mỗi [start]. `null` thì bỏ qua (test không cần tệp).
   final NhapHangCho? nhapHangCho;
 
+  /// D1 — tin biến động số dư nằm trong tệp hàng chờ do dịch vụ Kotlin ghi; nhập
+  /// ở mỗi [start] **và** mỗi lần app quay lại từ nền (trước lượt quét — người
+  /// dùng vừa chạm thông báo tóm tắt là đang chờ thấy dòng ấy). `null` thì bỏ qua.
+  final NhapBienDong? nhapBienDong;
+
+  /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
+  /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
+  static const Duration giuBienDong = Duration(days: 30);
+
   /// Nhật ký B5a: `huy_lich` lúc [stop] cho lịch còn chờ. `null` thì bỏ qua.
   final NhatKyThongBao? nhatKy;
 
@@ -234,6 +244,7 @@ class NotificationScanner {
     this.prefsStore,
     this.resyncLich,
     this.nhapHangCho,
+    this.nhapBienDong,
     this.nhatKy,
     this.eventDao,
     DateTime Function()? clock,
@@ -256,6 +267,8 @@ class NotificationScanner {
     // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
     try {
       await dao.purgeOlderThan(clock().subtract(giuThongBao));
+      await dao.purgeKindOlderThan(
+          NotificationKind.bienDongSoDu.name, clock().subtract(giuBienDong));
       await eventDao?.purgeOlderThan(clock().subtract(giuSuKien));
     } catch (_) {
       // Bỏ qua có chủ ý.
@@ -268,6 +281,7 @@ class NotificationScanner {
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
+    await _nhapBienDong(idaccount);
 
     // Trước khi nghe: badge phải đúng ngay từ lúc mở app, không chờ lượt quét
     // đầu. Người dùng đọc hết rồi đóng app thì lần mở sau chấm phải đã tắt.
@@ -297,7 +311,7 @@ class NotificationScanner {
       if (s != AppLifecycleState.resumed) return;
       final id = _idaccount;
       if (id == null) return;
-      unawaited(scan(id).catchError((_) => 0));
+      unawaited(_nhapBienDong(id).then((_) => scan(id)).catchError((_) => 0));
     });
 
     // Quét NGAY, không chờ sự kiện đồng bộ nào.
@@ -315,6 +329,17 @@ class NotificationScanner {
       await scan(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// D1: nhập tệp hàng chờ biến động số dư. `NhapBienDong.nhap` không bao giờ
+  /// ném, nhưng đường này nằm trên lối đăng nhập và lối quay lại từ nền — nuốt
+  /// lỗi như mọi bước phụ ở đây.
+  Future<void> _nhapBienDong(int idaccount) async {
+    try {
+      await nhapBienDong?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
     }
   }
 

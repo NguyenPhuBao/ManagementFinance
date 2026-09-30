@@ -14,6 +14,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 // `show` chứ không import trần: `package:flutter/widgets.dart` kéo theo
 // `Category` của foundation, trùng tên với data class Drift cùng tên mà
@@ -26,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/notification/hang_cho_su_kien.dart';
+import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/database/daos/notification_event_dao.dart';
@@ -37,6 +39,7 @@ import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
+import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 
@@ -176,6 +179,7 @@ void main() {
     KeHoachTaiPhanBo? keHoach,
     void Function()? onNapKeHoach,
     NhapHangCho? nhapHangCho,
+    NhapBienDong? nhapBienDong,
     NhatKyThongBao? nhatKy,
     NotificationEventDao? eventDao,
   }) {
@@ -203,6 +207,7 @@ void main() {
       },
       resyncLich: onResyncLich,
       nhapHangCho: nhapHangCho,
+      nhapBienDong: nhapBienDong,
       nhatKy: nhatKy,
       eventDao: eventDao,
       clock: () => now,
@@ -289,6 +294,71 @@ void main() {
       expect(r.map((e) => '${e.suKien}:${e.dedupeKey}'), ['hoan:billDue:hd1:2026-09-17:3'],
           reason: 'trên Android MỌI cú Hoãn đi qua tệp hàng chờ (spike 2026-09-29) — không nhập ở start là mất hết');
       expect(File('${tam.path}/$kTepHangCho').existsSync(), isFalse);
+      await scanner.stop();
+    });
+
+    /// D1: một dòng hàng chờ MB Bank hợp lệ (mẫu 2 `Classify.md` §4.3).
+    String dongMb(String ma) => jsonEncode({
+          'goi': 'goi.mb',
+          'tieuDe': 'Thông báo biến động số dư',
+          'noiDung': 'TK 25xxx999|GD: +1,200,000VND 02/09/26 15:33 |SD: 1,200,007VND|ND: Chuyen tien Ma GD $ma',
+          'luc': DateTime(2026, 9, 2, 15, 34).millisecondsSinceEpoch,
+          'khoa': ma,
+        });
+
+    NhapBienDong nhapBienDongTam(Directory tam) => NhapBienDong(
+          thuMuc: () async => tam,
+          dao: db.notificationDao,
+          nguonCuaGoi: (g) => g == 'goi.mb' ? kNguonMb : null,
+          batBienDong: (_) async => true,
+        );
+
+    Future<List<AppNotification>> hangBienDong() async => [
+          for (final h in await db.notificationDao.getAll(accountId))
+            if (h.kind == NotificationKind.bienDongSoDu.name) h,
+        ];
+
+    test('D1: start() nhập tệp hàng chờ biến động → hàng loại 20; app quay lại từ nền cũng nhập', () async {
+      final tam = await Directory.systemTemp.createTemp('scanner_bien_dong_');
+      addTearDown(() => tam.delete(recursive: true));
+      final tep = File('${tam.path}/$kTepBienDongCho');
+      await tep.writeAsString(dongMb('M1'));
+      final scanner = dungScanner(nhapBienDong: nhapBienDongTam(tam));
+      await scanner.start(accountId);
+
+      expect((await hangBienDong()).map((h) => h.subjectId), ['M1'],
+          reason: 'người dùng chạm thông báo tóm tắt rồi mở app — dòng phải có ngay ở start, không chờ resumed');
+      expect(tep.existsSync(), isFalse);
+
+      await tep.writeAsString(dongMb('M2'));
+      soLanNap = 0;
+      vongDoi.add(AppLifecycleState.resumed);
+      // Hai nhịp: nhập (đọc tệp, ghi CSDL) rồi mới quét.
+      await nhipTho();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect((await hangBienDong()).map((h) => h.subjectId).toSet(), {'M1', 'M2'},
+          reason: 'quãng app nằm nền là lúc tin ngân hàng tới — resumed không nhập là dòng chờ tới lần mở app sau');
+      expect(soLanNap, 1, reason: 'vẫn quét sau khi nhập');
+      await scanner.stop();
+    });
+
+    test('D1: start() dọn hàng loại 20 cũ hơn 30 ngày, giữ hàng loại khác cùng tuổi (mốc 90)', () async {
+      final cu = now.subtract(const Duration(days: 31));
+      await db.notificationDao.insertAllIfAbsent([
+        AppNotificationsCompanion.insert(
+            id: 'bd-cu', idaccount: accountId, kind: NotificationKind.bienDongSoDu.name, dedupeKey: 'bienDong:cu',
+            title: 't', body: 'b', severity: 'info', createdAt: cu),
+        AppNotificationsCompanion.insert(
+            id: 'hd-cu', idaccount: accountId, kind: NotificationKind.billDueSoon.name, dedupeKey: 'billDue:cu',
+            title: 't', body: 'b', severity: 'info', createdAt: cu),
+      ]);
+      final scanner = dungScanner(bills: const [], budgets: const []);
+      await scanner.start(accountId);
+
+      final conLai = (await db.notificationDao.getAll(accountId)).map((h) => h.id).toSet();
+      expect(conLai.contains('bd-cu'), isFalse, reason: 'nội dung tin ngân hàng không được sống quá 30 ngày (spec D1 §3.3)');
+      expect(conLai.contains('hd-cu'), isTrue, reason: 'mốc 90 ngày của loại thường không đổi');
       await scanner.stop();
     });
 

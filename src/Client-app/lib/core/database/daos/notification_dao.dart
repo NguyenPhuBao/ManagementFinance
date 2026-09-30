@@ -167,4 +167,13 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
           ..where((t) => t.createdAt.isSmallerThanValue(cutoff)))
         .go();
   }
+
+  /// Dọn riêng MỘT loại theo mốc ngắn hơn [purgeOlderThan] — hàng biến động số dư
+  /// (D1) mang nội dung tin ngân hàng nên chỉ giữ 30 ngày (spec D1 §3.3), trong
+  /// khi mọi loại khác giữ 90.
+  Future<int> purgeKindOlderThan(String kind, DateTime cutoff) {
+    return (delete(appNotifications)
+          ..where((t) => t.kind.equals(kind) & t.createdAt.isSmallerThanValue(cutoff)))
+        .go();
+  }
 }
