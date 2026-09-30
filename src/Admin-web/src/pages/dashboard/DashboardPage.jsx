@@ -3,6 +3,7 @@ import useSocket from '../../hooks/useSocket';
 import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
+import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -1104,8 +1105,9 @@ const DashboardPage = () => {
           </div>
       </div>
 
-      {/* 3. Biểu đồ 2: Lưu lượng Request (1 Hàng riêng, Full-width) */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+      {/* 3. Giám sát hệ thống: Lưu lượng Request + Server Health Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
               <div>
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
@@ -1159,6 +1161,11 @@ const DashboardPage = () => {
                   </p>
               </div>
           </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <ServerHealthPanel />
+        </div>
       </div>
     </div>
     </>
