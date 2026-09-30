@@ -307,6 +307,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   Future<void> _doiNhom(NotificationGroup nhom, bool bat) async {
+    // Biến động số dư (D1): cờ riêng, mặc định tắt — không đi qua tập nhóm tắt
+    // (xem `NotificationPrefs.docBienDong`).
+    if (nhom == NotificationGroup.bienDong) {
+      await _ghi(_prefs.copyWith(docBienDong: bat));
+      return;
+    }
     final tat = {..._prefs.nhomTat};
     if (bat) {
       tat.remove(nhom);
@@ -930,6 +936,8 @@ String _tenNhom(NotificationGroup nhom) {
       return 'Hệ thống';
     case NotificationGroup.summary:
       return 'Tổng kết';
+    case NotificationGroup.bienDong:
+      return 'Biến động số dư';
   }
 }
 
@@ -945,6 +953,8 @@ String _moTaNhom(NotificationGroup nhom) {
       return 'Đồng bộ hỏng và cảnh báo số dư ví.';
     case NotificationGroup.summary:
       return 'Nhìn lại tuần vừa qua.';
+    case NotificationGroup.bienDong:
+      return 'Đọc thông báo ngân hàng / ví điện tử trên máy để điền sẵn giao dịch.';
   }
 }
 
@@ -960,6 +970,8 @@ IconData _iconNhom(NotificationGroup nhom) {
       return Icons.sync_problem_outlined;
     case NotificationGroup.summary:
       return Icons.calendar_view_week_outlined;
+    case NotificationGroup.bienDong:
+      return Icons.account_balance_outlined;
   }
 }
 

@@ -56,6 +56,16 @@ enum NotificationKind {
   /// người dùng tiêu thêm, nên một khoá bám vào con số nào đó sẽ đẻ thông báo
   /// mới sau mỗi giao dịch.
   budgetRebalance,
+
+  /// Một tin biến động số dư đọc từ thông báo ngân hàng / ví điện tử trên máy
+  /// (D1, 2026-09-30) — chờ người dùng chạm để mở form Thêm giao dịch điền sẵn.
+  ///
+  /// Không do bộ luật sinh: `NhapBienDong` ghi từ tệp hàng chờ của dịch vụ đọc
+  /// thông báo (Kotlin). Hàng loại này **không bắn ra hệ điều hành** từ Dart
+  /// (scanner chỉ bắn hàng chính nó chèn) — nội dung mang số tiền, còn thứ hiện
+  /// ngoài màn khoá chỉ là thông báo tóm tắt không số do Kotlin bắn. Bị **xoá
+  /// cứng** khi người dùng Lưu / Bỏ qua (ngoại lệ có chủ ý, spec D1 §3.3).
+  bienDongSoDu,
 }
 
 enum NotificationSeverity { info, warning, critical }

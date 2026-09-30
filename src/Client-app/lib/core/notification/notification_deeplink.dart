@@ -172,6 +172,14 @@ String deeplinkTuDedupeKey(String key) {
     case 'ghiChep':
       return '/add';
 
+    // Biến động số dư (D1). Khoá `bienDong:<mã GD hoặc băm>` cố ý KHÔNG mang
+    // số tiền / ngày (tin ngân hàng không được nằm trong khoá), nên từ khoá
+    // không dựng nổi `/add?…` — deeplink đầy đủ nằm ở cột `deeplink` của hàng.
+    // Hàng loại này không bắn ra hệ điều hành từ Dart, nên nhánh này chỉ gặp
+    // lịch của một bản app lạ; trung tâm là chỗ luôn mở được.
+    case 'bienDong':
+      return routeThongBao;
+
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.
     default:
       return routeThongBao;

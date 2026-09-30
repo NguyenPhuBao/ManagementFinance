@@ -5,7 +5,18 @@ import '../notification_rules.dart';
 /// Nhóm chứ không phải từng `NotificationKind`: tám công tắc là quá nhiều để
 /// người dùng hiểu, và hai loại trong cùng nhóm luôn được bật/tắt cùng nhau
 /// trong thực tế (ai tắt "sắp đến hạn" thì cũng không muốn "quá hạn").
-enum NotificationGroup { bill, budget, goal, system, summary }
+enum NotificationGroup {
+  bill,
+  budget,
+  goal,
+  system,
+  summary,
+
+  /// Biến động số dư đọc từ thông báo ngân hàng (D1). Nhóm RIÊNG vì công tắc
+  /// của nó **là công tắc tính năng** — tắt là dịch vụ Kotlin thôi đọc — và vì
+  /// nó mặc định TẮT (cờ [NotificationPrefs.docBienDong]), khác mọi nhóm kia.
+  bienDong,
+}
 
 /// Loại thông báo thuộc nhóm nào.
 ///
@@ -54,6 +65,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
     // chọn từ đầu.
     case NotificationKind.weeklySummary:
       return NotificationGroup.summary;
+    case NotificationKind.bienDongSoDu:
+      return NotificationGroup.bienDong;
   }
 }
 
@@ -116,6 +129,9 @@ bool luonBao(NotificationKind kind) {
     // mời người dùng quay lại xem. Đúng loại thông báo mà người ta phải tắt
     // được, nếu không họ sẽ tắt công tắc tổng và mất mọi thứ.
     case NotificationKind.weeklySummary:
+    // Tin ngân hàng chờ ghi: không phải tiền rời ví lúc vắng mặt, và là thứ
+    // người dùng phải tắt được — công tắc nhóm của nó chính là công tắc tính năng.
+    case NotificationKind.bienDongSoDu:
       return false;
   }
 }
@@ -147,6 +163,7 @@ class NotificationPrefs {
     this.thuTongKet = _thuTongKetMacDinh,
     this.gioTongKet = _gioTongKetMacDinh,
     this.phutTongKet = _phutTongKetMacDinh,
+    this.docBienDong = false,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -263,6 +280,17 @@ class NotificationPrefs {
   final int gioTongKet;
   final int phutTongKet;
 
+  /// Đọc thông báo biến động số dư của ngân hàng / ví điện tử trên máy (D1,
+  /// 2026-09-30) — công tắc TÍNH NĂNG, không chỉ là công tắc thông báo: bật thì
+  /// dịch vụ Kotlin đọc, tắt thì thôi.
+  ///
+  /// **Cờ riêng, mặc định TẮT** (người dùng chốt) thay vì đưa nhóm `bienDong`
+  /// vào [nhomTat]: kho lưu nhóm bị TẮT nên mọi nhóm mới tự BẬT với bản ghi cũ —
+  /// đúng với thông báo thường, sai với một tính năng đọc thông báo ngân hàng
+  /// đứng sau màn xin đồng ý bắt buộc (backend, Nghị định 13). [batNhom] cho
+  /// nhóm `bienDong` đọc cờ này, không đọc [nhomTat].
+  final bool docBienDong;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
 
@@ -307,7 +335,8 @@ class NotificationPrefs {
 
   static const NotificationPrefs macDinh = NotificationPrefs();
 
-  bool batNhom(NotificationGroup nhom) => !nhomTat.contains(nhom);
+  bool batNhom(NotificationGroup nhom) =>
+      nhom == NotificationGroup.bienDong ? docBienDong : !nhomTat.contains(nhom);
 
   /// Loại thông báo này có được sinh không.
   bool chapNhan(NotificationKind kind) =>
@@ -357,6 +386,7 @@ class NotificationPrefs {
     int? thuTongKet,
     int? gioTongKet,
     int? phutTongKet,
+    bool? docBienDong,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -376,6 +406,7 @@ class NotificationPrefs {
       thuTongKet: thuTongKet ?? this.thuTongKet,
       gioTongKet: gioTongKet ?? this.gioTongKet,
       phutTongKet: phutTongKet ?? this.phutTongKet,
+      docBienDong: docBienDong ?? this.docBienDong,
     );
   }
 
@@ -397,6 +428,7 @@ class NotificationPrefs {
         'thuTongKet': thuTongKet,
         'gioTongKet': gioTongKet,
         'phutTongKet': phutTongKet,
+        'docBienDong': docBienDong,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -437,6 +469,8 @@ class NotificationPrefs {
       thuTongKet: _docSo(json['thuTongKet'], 1, 7, _thuTongKetMacDinh),
       gioTongKet: _docSo(json['gioTongKet'], 0, 23, _gioTongKetMacDinh),
       phutTongKet: _docSo(json['phutTongKet'], 0, 59, _phutTongKetMacDinh),
+      docBienDong:
+          json['docBienDong'] is bool ? json['docBienDong']! as bool : false,
     );
   }
 
@@ -473,6 +507,7 @@ class NotificationPrefs {
       other.nhacGhiChepBat == nhacGhiChepBat &&
       other.gioNhacGhiChep == gioNhacGhiChep &&
       other.phutNhacGhiChep == phutNhacGhiChep &&
+      other.docBienDong == docBienDong &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -490,6 +525,7 @@ class NotificationPrefs {
         nhacGhiChepBat,
         gioNhacGhiChep,
         phutNhacGhiChep,
+        docBienDong,
         Object.hashAllUnordered(nhomTat),
       );
 

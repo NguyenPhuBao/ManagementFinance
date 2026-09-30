@@ -235,6 +235,29 @@ void main() {
               'người dùng tưởng đã tắt rồi vẫn bị làm phiền.');
     });
 
+    testWidgets('⭐ D1: công tắc nhóm Biến động số dư ghi cờ docBienDong, không đụng nhomTat',
+        (tester) async {
+      await moTrang(tester);
+      final khoa = NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.bienDong);
+      await tester.ensureVisible(find.byKey(khoa));
+      expect(tester.widget<Switch>(find.byKey(khoa)).value, isFalse,
+          reason: 'mặc định tắt — tính năng đứng sau màn xin đồng ý');
+      expect(find.text('Biến động số dư'), findsOneWidget);
+
+      await tester.tap(find.byKey(khoa));
+      await tester.pumpAndSettle();
+
+      final daLuu = await store.read(accountId);
+      expect(daLuu.docBienDong, isTrue);
+      expect(daLuu.nhomTat, isEmpty,
+          reason: 'công tắc này là CỜ riêng (người dùng chốt 2026-09-30), '
+              'không đi qua tập nhóm tắt');
+
+      await tester.tap(find.byKey(khoa));
+      await tester.pumpAndSettle();
+      expect((await store.read(accountId)).docBienDong, isFalse);
+    });
+
     testWidgets('hiện giờ nhắc và số ngày nhắc đã lưu', (tester) async {
       await store.write(
         accountId,

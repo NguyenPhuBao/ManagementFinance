@@ -307,6 +307,10 @@ void main() {
       // nhất biết được server vừa từ chối khoản trả nào. Deeplink của nó được
       // canh riêng ở ca ngay dưới.
       NotificationKind.billPaidOnOtherDevice,
+      // D1 (2026-09-30): `NhapBienDong` ghi từ tệp hàng chờ của dịch vụ đọc
+      // thông báo ngân hàng, không phải từ bộ luật. Khoá và deeplink của nó
+      // được canh riêng ở ca "D1" bên dưới.
+      NotificationKind.bienDongSoDu,
     };
 
     test('đầu vào của phép canh phủ đủ mọi loại thông báo bộ quét sinh ra', () {
@@ -328,6 +332,17 @@ void main() {
       expect(deeplinkTuDedupeKey('billConflict:bill-1'), '/bills',
           reason: 'Khoá do BillPaymentConflictResolver sinh phải mở danh sách '
               'hoá đơn, giống mọi thông báo hoá đơn khác.');
+    });
+
+    test('D1: khoá bienDong → loại bienDongSoDu, nhóm bienDong, deeplink là trung tâm', () {
+      expect(loaiTuKhoa('bienDong:abc'), NotificationKind.bienDongSoDu);
+      expect(nhomTuKhoa('bienDong:abc'), NotificationGroup.bienDong);
+      // Khoá không mang số tiền / ngày (tin ngân hàng không được nằm trong khoá),
+      // nên từ khoá không dựng nổi `/add?…`; và hàng loại 20 KHÔNG bắn ra hệ điều
+      // hành từ Dart (chỉ Kotlin bắn một thông báo tóm tắt, đi kênh riêng) — cú
+      // chạm cấp hệ điều hành với khoá này chỉ có ở lịch của bản app lạ, rơi về
+      // trung tâm là đủ.
+      expect(deeplinkTuDedupeKey('bienDong:abc'), routeThongBao);
     });
 
     test('mọi loại: suy từ khoá ra ĐÚNG deeplink mà bộ luật đã đặt', () {

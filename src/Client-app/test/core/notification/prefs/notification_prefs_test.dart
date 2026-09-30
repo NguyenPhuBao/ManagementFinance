@@ -19,18 +19,25 @@ import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 
 void main() {
   mainTongKetTuan();
+  mainBienDong();
   group('mặc định', () {
     test('bật hết mọi nhóm và bật cả thông báo hệ điều hành', () {
       const p = NotificationPrefs.macDinh;
 
       expect(p.osBat, isTrue);
       for (final nhom in NotificationGroup.values) {
+        // Ngoại lệ DUY NHẤT: nhóm Biến động số dư (D1) — xem `mainBienDong`.
+        if (nhom == NotificationGroup.bienDong) continue;
         expect(p.batNhom(nhom), isTrue,
             reason: 'Nhóm ${nhom.name} phải bật sẵn. Mặc định tắt là tính năng '
                 'lặng lẽ chết với mọi người đã cài app trước bản này, và không '
                 'ai báo lỗi vì "không có thông báo" trông y hệt "không có gì '
                 'đáng báo".');
       }
+      expect(p.batNhom(NotificationGroup.bienDong), isFalse,
+          reason: 'Nhóm Biến động số dư là công tắc TÍNH NĂNG đọc thông báo '
+              'ngân hàng, đứng sau một màn xin đồng ý bắt buộc (backend, Nghị '
+              'định 13) — bật sẵn là bỏ qua màn ấy.');
     });
 
     test('giờ nhắc là 08:00 và nhắc trước 3 ngày', () {
@@ -581,6 +588,65 @@ void mainTongKetTuan() {
           DateTime.sunday);
       expect(p.copyWith(gioTongKet: 21).gioTongKet, 21);
       expect(p.copyWith(phutTongKet: 45).phutTongKet, 45);
+    });
+  });
+}
+
+/// D1 (2026-09-30) — cờ `docBienDong`: công tắc tính năng *đọc biến động số dư*.
+///
+/// Người dùng chốt: cờ RIÊNG thay vì đưa nhóm vào `nhomTat`, vì kho lưu nhóm bị
+/// TẮT nên mọi nhóm mới tự bật với bản ghi cũ — đúng với thông báo thường, sai
+/// với một tính năng đứng sau màn xin đồng ý bắt buộc.
+void mainBienDong() {
+  group('D1 — cờ docBienDong (nhóm Biến động số dư)', () {
+    test('⭐ mặc định TẮT, kể cả với bản ghi cũ không có khoá', () {
+      expect(NotificationPrefs.macDinh.docBienDong, isFalse);
+      expect(NotificationPrefs.fromJson({'osBat': true}).docBienDong, isFalse,
+          reason: 'Bản ghi lưu trước D1 không có khoá này; đọc thành BẬT là tự '
+              'bật một tính năng đọc thông báo ngân hàng mà người dùng chưa '
+              'từng đồng ý.');
+    });
+
+    test('đi một vòng JSON và copyWith', () {
+      const p = NotificationPrefs(docBienDong: true);
+      expect(NotificationPrefs.fromJson(p.toJson()).docBienDong, isTrue);
+      expect(p.copyWith(docBienDong: false).docBienDong, isFalse);
+      expect(p.copyWith(gioNhac: 9).docBienDong, isTrue,
+          reason: 'copyWith không đụng tới thì giữ nguyên');
+    });
+
+    test('⭐ batNhom(bienDong) đọc CỜ, không đọc nhomTat', () {
+      const bat = NotificationPrefs(
+          docBienDong: true, nhomTat: {NotificationGroup.bienDong});
+      expect(bat.batNhom(NotificationGroup.bienDong), isTrue,
+          reason: 'nhomTat có chứa bienDong (bản ghi sửa tay / bản cũ) cũng '
+              'không tắt được cờ — một công tắc, một nguồn sự thật.');
+      const tat = NotificationPrefs(docBienDong: false);
+      expect(tat.batNhom(NotificationGroup.bienDong), isFalse);
+      expect(tat.batNhom(NotificationGroup.bill), isTrue,
+          reason: 'các nhóm khác vẫn theo nhomTat như cũ');
+    });
+
+    test('hai bản chỉ khác docBienDong thì KHÔNG bằng nhau (canh == và hashCode)', () {
+      const bat = NotificationPrefs(docBienDong: true);
+      const tat = NotificationPrefs(docBienDong: false);
+      expect(bat == tat, isFalse,
+          reason: 'quên đưa trường mới vào == là hai bản khác cờ so ra bằng — '
+              'trang Cài đặt bỏ qua một lần ghi vì "không đổi gì"');
+      expect(bat.hashCode == tat.hashCode, isFalse);
+    });
+
+    test('loại bienDongSoDu thuộc nhóm bienDong, chịu công tắc, không luonBao', () {
+      expect(nhomCua(NotificationKind.bienDongSoDu), NotificationGroup.bienDong);
+      expect(luonBao(NotificationKind.bienDongSoDu), isFalse,
+          reason: 'không phải tiền rời ví lúc vắng mặt — người dùng phải tắt '
+              'được, nếu không họ tắt công tắc tổng');
+      expect(
+          const NotificationPrefs(docBienDong: true)
+              .chapNhan(NotificationKind.bienDongSoDu),
+          isTrue);
+      expect(NotificationPrefs.macDinh.chapNhan(NotificationKind.bienDongSoDu),
+          isFalse);
     });
   });
 }
