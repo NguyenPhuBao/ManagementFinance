@@ -164,6 +164,7 @@ class NotificationPrefs {
     this.gioTongKet = _gioTongKetMacDinh,
     this.phutTongKet = _phutTongKetMacDinh,
     this.docBienDong = false,
+    this.dongYBienDong = false,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -291,6 +292,11 @@ class NotificationPrefs {
   /// nhóm `bienDong` đọc cờ này, không đọc [nhomTat].
   final bool docBienDong;
 
+  /// Người dùng đã bấm *Đồng ý* ở màn xin đồng ý đọc biến động số dư (D1 Task 6; backend bắt
+  /// buộc theo Nghị định 13). Tách khỏi [docBienDong]: tắt tính năng KHÔNG xoá lần đồng ý, nên
+  /// bật lại không hỏi lần nữa. Mặc định CHƯA — bản ghi không có khoá là chưa từng thấy màn ấy.
+  final bool dongYBienDong;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
 
@@ -387,6 +393,7 @@ class NotificationPrefs {
     int? gioTongKet,
     int? phutTongKet,
     bool? docBienDong,
+    bool? dongYBienDong,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -407,6 +414,7 @@ class NotificationPrefs {
       gioTongKet: gioTongKet ?? this.gioTongKet,
       phutTongKet: phutTongKet ?? this.phutTongKet,
       docBienDong: docBienDong ?? this.docBienDong,
+      dongYBienDong: dongYBienDong ?? this.dongYBienDong,
     );
   }
 
@@ -429,6 +437,7 @@ class NotificationPrefs {
         'gioTongKet': gioTongKet,
         'phutTongKet': phutTongKet,
         'docBienDong': docBienDong,
+        'dongYBienDong': dongYBienDong,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -471,6 +480,8 @@ class NotificationPrefs {
       phutTongKet: _docSo(json['phutTongKet'], 0, 59, _phutTongKetMacDinh),
       docBienDong:
           json['docBienDong'] is bool ? json['docBienDong']! as bool : false,
+      dongYBienDong:
+          json['dongYBienDong'] is bool ? json['dongYBienDong']! as bool : false,
     );
   }
 
@@ -508,6 +519,7 @@ class NotificationPrefs {
       other.gioNhacGhiChep == gioNhacGhiChep &&
       other.phutNhacGhiChep == phutNhacGhiChep &&
       other.docBienDong == docBienDong &&
+      other.dongYBienDong == dongYBienDong &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -526,6 +538,7 @@ class NotificationPrefs {
         gioNhacGhiChep,
         phutNhacGhiChep,
         docBienDong,
+        dongYBienDong,
         Object.hashAllUnordered(nhomTat),
       );
 

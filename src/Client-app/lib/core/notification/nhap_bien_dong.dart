@@ -118,6 +118,7 @@ class NhapBienDong {
     required this.nguonCuaGoi,
     required this.batBienDong,
     this.huyTomTat,
+    this.datBat,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -137,8 +138,27 @@ class NhapBienDong {
 
   /// Gỡ thông báo tóm tắt của Kotlin (kênh `flowmoney/bien_dong`). `null` thì bỏ qua.
   final Future<void> Function()? huyTomTat;
+
+  /// Ghi cờ bật của dịch vụ Kotlin (`KenhBienDong.datBat`). `null` thì bỏ qua.
+  ///
+  /// ⚠️ Cờ Kotlin gắn **máy** còn [batBienDong] gắn **tài khoản**: tài khoản A bật rồi đăng xuất,
+  /// tài khoản B chưa từng đồng ý đăng nhập — không có bước này thì dịch vụ vẫn đọc và vẫn bắn
+  /// thông báo tóm tắt cho B. Nên mỗi lượt [nhap] (đăng nhập + mỗi lần quay lại từ nền) ghi lại cờ
+  /// theo tài khoản đang đăng nhập, và [tatDocMay] tắt nó lúc đăng xuất.
+  final Future<void> Function(bool bat)? datBat;
   final DateTime Function() clock;
   final String Function() idGenerator;
+
+  /// Tắt dịch vụ Kotlin — gọi khi đăng xuất (`NotificationScanner.stop`). Không bao giờ ném.
+  Future<void> tatDocMay() => _datBat(false);
+
+  Future<void> _datBat(bool bat) async {
+    try {
+      await datBat?.call(bat);
+    } catch (_) {
+      // Bỏ qua có chủ ý: lượt nhập / đăng xuất không được hỏng vì kênh native.
+    }
+  }
 
   /// Trả số hàng đã ghi. Không bao giờ ném.
   ///
@@ -146,6 +166,9 @@ class NhapBienDong {
   /// vào tài khoản **đang đăng nhập** (spec §6) — khác `NhapHangCho` của B5a, nơi khoá đã mang chủ.
   Future<int> nhap(int idaccount) async {
     try {
+      // Đọc cờ và ghi sang Kotlin TRƯỚC khi xét tệp: "chưa có tệp" là ca thường nhất.
+      final bat = await batBienDong(idaccount);
+      await _datBat(bat);
       final dir = await thuMuc();
       final goc = File('${dir.path}/$kTepBienDongCho');
       if (!goc.existsSync()) return 0;
@@ -153,7 +176,7 @@ class NhapBienDong {
       final dangNhap = await goc.rename('${goc.path}.dang_nhap');
       var soHang = 0;
       try {
-        if (await batBienDong(idaccount)) {
+        if (bat) {
           soHang = await _ghi(idaccount, await dangNhap.readAsLines());
         }
       } finally {

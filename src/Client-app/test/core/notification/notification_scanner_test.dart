@@ -343,6 +343,27 @@ void main() {
       await scanner.stop();
     });
 
+    test('D1 Task 6: start() bật cờ Kotlin theo tài khoản, stop() (đăng xuất) tắt nó', () async {
+      final tam = await Directory.systemTemp.createTemp('scanner_bien_dong_');
+      addTearDown(() => tam.delete(recursive: true));
+      final goi = <bool>[];
+      final scanner = dungScanner(
+        nhapBienDong: NhapBienDong(
+          thuMuc: () async => tam,
+          dao: db.notificationDao,
+          nguonCuaGoi: (_) => null,
+          batBienDong: (_) async => true,
+          datBat: (b) async => goi.add(b),
+        ),
+      );
+      await scanner.start(accountId);
+      expect(goi, [true]);
+      await scanner.stop();
+      expect(goi.last, isFalse,
+          reason: 'cờ Kotlin gắn máy: sau đăng xuất không còn tài khoản nào đã đồng ý, dịch vụ phải thôi '
+              'đọc và thôi bắn thông báo tóm tắt');
+    });
+
     test('D1: start() dọn hàng loại 20 cũ hơn 30 ngày, giữ hàng loại khác cùng tuổi (mốc 90)', () async {
       final cu = now.subtract(const Duration(days: 31));
       await db.notificationDao.insertAllIfAbsent([

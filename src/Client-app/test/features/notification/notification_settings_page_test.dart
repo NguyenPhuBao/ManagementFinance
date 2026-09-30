@@ -235,8 +235,11 @@ void main() {
               'người dùng tưởng đã tắt rồi vẫn bị làm phiền.');
     });
 
+    // Bật LẦN ĐẦU đi qua màn xin đồng ý — `dong_y_bien_dong_test.dart`. Ca này dựng sẵn lần đồng
+    // ý để canh riêng đường ghi cờ.
     testWidgets('⭐ D1: công tắc nhóm Biến động số dư ghi cờ docBienDong, không đụng nhomTat',
         (tester) async {
+      await store.write(accountId, const NotificationPrefs(dongYBienDong: true));
       await moTrang(tester);
       final khoa = NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.bienDong);
       await tester.ensureVisible(find.byKey(khoa));

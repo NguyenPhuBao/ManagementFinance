@@ -627,6 +627,19 @@ void mainBienDong() {
           reason: 'các nhóm khác vẫn theo nhomTat như cũ');
     });
 
+    test('⭐ Task 6: cờ dongYBienDong — mặc định CHƯA, đi một vòng JSON, tách khỏi docBienDong', () {
+      expect(NotificationPrefs.macDinh.dongYBienDong, isFalse);
+      expect(NotificationPrefs.fromJson({'docBienDong': true}).dongYBienDong, isFalse,
+          reason: 'bản ghi không có khoá = chưa từng thấy màn xin đồng ý (backend bắt buộc) — '
+              'đọc thành ĐÃ là bỏ qua màn ấy');
+      const p = NotificationPrefs(dongYBienDong: true);
+      expect(NotificationPrefs.fromJson(p.toJson()).dongYBienDong, isTrue);
+      expect(p.copyWith(docBienDong: false).dongYBienDong, isTrue,
+          reason: 'tắt tính năng KHÔNG xoá lần đồng ý — bật lại không hỏi lần nữa');
+      expect(p == const NotificationPrefs(), isFalse);
+      expect(p.hashCode == const NotificationPrefs().hashCode, isFalse);
+    });
+
     test('hai bản chỉ khác docBienDong thì KHÔNG bằng nhau (canh == và hashCode)', () {
       const bat = NotificationPrefs(docBienDong: true);
       const tat = NotificationPrefs(docBienDong: false);

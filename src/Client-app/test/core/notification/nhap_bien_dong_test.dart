@@ -103,6 +103,7 @@ void main() {
     late AppDatabase db;
     late int soLanHuyTomTat;
     late bool bat;
+    late List<bool> datBatGoi;
     late NhapBienDong nhap;
 
     setUp(() async {
@@ -110,12 +111,14 @@ void main() {
       db = AppDatabase.forTesting(NativeDatabase.memory());
       soLanHuyTomTat = 0;
       bat = true;
+      datBatGoi = [];
       nhap = NhapBienDong(
         thuMuc: () async => tam,
         dao: db.notificationDao,
         nguonCuaGoi: _nguonGia,
         batBienDong: (_) async => bat,
         huyTomTat: () async => soLanHuyTomTat++,
+        datBat: (b) async => datBatGoi.add(b),
         clock: () => DateTime(2026, 9, 2, 16),
       );
     });
@@ -132,6 +135,22 @@ void main() {
     test('không có tệp → 0, không ném, không gọi huỷ tóm tắt', () async {
       expect(await nhap.nhap(7), 0);
       expect(soLanHuyTomTat, 0);
+    });
+
+    test('⭐ Task 6: mỗi lượt nhập ghi cờ Kotlin theo cờ của tài khoản ĐANG đăng nhập — kể cả khi chưa có tệp',
+        () async {
+      await nhap.nhap(7);
+      bat = false;
+      await nhap.nhap(8);
+      expect(datBatGoi, [true, false],
+          reason: 'cờ Kotlin gắn MÁY, docBienDong gắn TÀI KHOẢN: A bật rồi đăng xuất, B (chưa từng đồng ý) '
+              'đăng nhập thì dịch vụ phải thôi đọc — nếu không B nhận thông báo tóm tắt cho tính năng '
+              'B chưa đồng ý; và "chưa có tệp" là ca THƯỜNG nhất nên không được thoát trước bước này');
+    });
+
+    test('Task 6: tatDocMay() tắt cờ Kotlin (đăng xuất — không ai đăng nhập thì không ai đồng ý)', () async {
+      await nhap.tatDocMay();
+      expect(datBatGoi, [false]);
     });
 
     test('⭐ một tin MB Bank → một hàng loại 20 đúng title / body / deeplink / subjectId, tệp bị xoá, tóm tắt bị huỷ',

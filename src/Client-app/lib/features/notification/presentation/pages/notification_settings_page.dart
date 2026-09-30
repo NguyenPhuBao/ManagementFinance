@@ -4,18 +4,24 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
 import '../../../../core/notification/hoc_gio_thong_bao.dart';
+import '../../../../core/notification/kenh_bien_dong.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
 import '../../../../core/notification/reminder_scheduler.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../transaction/domain/doc_tin_bien_dong.dart';
+import 'dong_y_bien_dong_page.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
 ///
-/// Thiết kế Stitch **chưa vẽ màn này**; bố cục bám đúng kiểu thẻ đang dùng ở
-/// `settings_page.dart` (thẻ trắng bo 12, tiêu đề mục chữ hoa, mỗi hàng là
-/// icon + nhãn + control, ngăn nhau bằng `Divider`).
+/// Bố cục bám kiểu thẻ đang dùng ở `settings_page.dart` (thẻ trắng bo 12, tiêu
+/// đề mục chữ hoa, mỗi hàng là icon + nhãn + control, ngăn nhau bằng
+/// `Divider`) — trang dựng khi Stitch chưa vẽ màn này. Màn Stitch
+/// `d42ce712…` (2026-09-30, D1) vẽ lại cả trang; bản thi công **chỉ** lấy từ
+/// đó thẻ *Tự động hoá giao dịch* (công tắc Biến động số dư + dòng quyền), các
+/// thẻ khác giữ bố cục cũ.
 ///
 /// Trang **không có nút Lưu**: mỗi thay đổi ghi thẳng xuống kho. Trang cài đặt
 /// kiểu này không ai đi tìm nút lưu — họ gạt công tắc rồi bấm quay lại.
@@ -28,6 +34,7 @@ class NotificationSettingsPage extends StatefulWidget {
     this.datLaiLich,
     this.taiDeXuat,
     this.boQuaDeXuat,
+    this.kenhBienDong,
   });
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
@@ -55,6 +62,10 @@ class NotificationSettingsPage extends StatefulWidget {
   /// `DeXuatThongBaoNguon.boQua`.
   final Future<void> Function(int idaccount, DeXuatThongBao d)? boQuaDeXuat;
 
+  /// Kênh tới tầng Kotlin của D1 (đọc biến động số dư). Mặc định `sl<KenhBienDong>()`; tiêm được
+  /// cho test.
+  final KenhBienDong? kenhBienDong;
+
   static const Key khoaCongTacOs = Key('notification_settings_os');
 
   static const Key khoaCongTacImLang = Key('notification_settings_im_lang');
@@ -67,13 +78,11 @@ class NotificationSettingsPage extends StatefulWidget {
   static const Key khoaNguongChiLon =
       Key('notification_settings_nguong_chi_lon');
 
-  static const Key khoaCongTacGhiChep =
-      Key('notification_settings_ghi_chep');
+  static const Key khoaCongTacGhiChep = Key('notification_settings_ghi_chep');
 
   static const Key khoaGioGhiChep = Key('notification_settings_gio_ghi_chep');
 
-  static const Key khoaCongTacTongKet =
-      Key('notification_settings_tong_ket');
+  static const Key khoaCongTacTongKet = Key('notification_settings_tong_ket');
   static const Key khoaThuTongKet = Key('notification_settings_thu_tong_ket');
   static const Key khoaGioTongKet = Key('notification_settings_gio_tong_ket');
 
@@ -82,7 +91,8 @@ class NotificationSettingsPage extends StatefulWidget {
       _NotificationSettingsPageState();
 }
 
-class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+class _NotificationSettingsPageState extends State<NotificationSettingsPage>
+    with WidgetsBindingObserver {
   NotificationPrefs _prefs = NotificationPrefs.macDinh;
   bool _dangNap = true;
   int? _idaccount;
@@ -100,15 +110,43 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   /// nạp lại (đề xuất là ảnh chụp lúc mở trang).
   List<DeXuatThongBao> _deXuat = const [];
 
+  /// D1: quyền *Truy cập thông báo* của Android — sự thật của máy, tách khỏi cờ
+  /// `docBienDong` (ý muốn). Đọc lại mỗi lần app quay về từ nền: người dùng cấp quyền ở Cài đặt hệ
+  /// thống rồi quay lại, dòng trạng thái phải đổi theo ngay.
+  bool _coQuyenBienDong = false;
+
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
 
   OsNotifier get _os => widget.osNotifier ?? sl<OsNotifier>();
 
+  KenhBienDong get _kenh =>
+      widget.kenhBienDong ??
+      (sl.isRegistered<KenhBienDong>()
+          ? sl<KenhBienDong>()
+          : const KenhBienDongTrong());
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _nap();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _docQuyenBienDong();
+  }
+
+  Future<void> _docQuyenBienDong() async {
+    final co = await _kenh.coQuyen();
+    if (mounted) setState(() => _coQuyenBienDong = co);
   }
 
   Future<void> _nap() async {
@@ -125,12 +163,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     // Chỉ hỏi khi người dùng đã bật — tắt rồi thì câu trả lời không đổi gì.
     final coQuyen = p.osBat ? await _os.daCoQuyen() : true;
     final deXuat = await _taiDeXuat(id);
+    final coQuyenBienDong = await _kenh.coQuyen();
 
     if (!mounted) return;
     setState(() {
       _idaccount = id;
       _prefs = p;
       _coQuyenOs = coQuyen;
+      _coQuyenBienDong = coQuyenBienDong;
       _deXuat = deXuat;
       _dangNap = false;
     });
@@ -157,8 +197,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return null;
   }
 
-  void _goBo(DeXuatThongBao d) =>
-      setState(() => _deXuat = [for (final x in _deXuat) if (x != d) x]);
+  void _goBo(DeXuatThongBao d) => setState(() => _deXuat = [
+        for (final x in _deXuat)
+          if (x != d) x
+      ]);
 
   /// Áp dụng đi qua đường lưu DUY NHẤT của trang (`_ghi` / `_doiNhom`), nên đổi
   /// giờ kéo theo đặt lại lịch đang chờ (G59) như khi người dùng tự chọn.
@@ -222,7 +264,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               : thu == null
                   ? 'Bạn hay mở tổng kết tuần lúc khoảng ${hhmm(g)}.'
                   : 'Bạn hay mở tổng kết tuần vào khoảng $thu ${hhmm(g)}.',
-          'Đổi sang ${[if (thu != null) thu, if (g != null) hhmm(g)].join(' ')}',
+          'Đổi sang ${[
+            if (thu != null) thu,
+            if (g != null) hhmm(g)
+          ].join(' ')}',
           'Bỏ qua',
         ),
       LoaiDeXuat.tatNhom => (
@@ -310,7 +355,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     // Biến động số dư (D1): cờ riêng, mặc định tắt — không đi qua tập nhóm tắt
     // (xem `NotificationPrefs.docBienDong`).
     if (nhom == NotificationGroup.bienDong) {
-      await _ghi(_prefs.copyWith(docBienDong: bat));
+      await _doiBienDong(bat);
       return;
     }
     final tat = {..._prefs.nhomTat};
@@ -320,6 +365,34 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       tat.add(nhom);
     }
     await _ghi(_prefs.copyWith(nhomTat: tat));
+  }
+
+  /// D1 Task 6 — công tắc *Biến động số dư*. Bật lần đầu phải qua màn xin đồng ý (backend bắt buộc,
+  /// Nghị định 13): chỉ *Đồng ý* mới bật dịch vụ Kotlin (`datBat(true)`); *Không, cảm ơn* hay Back
+  /// thì cờ vẫn tắt và không gì được bật. Đã đồng ý một lần thì bật lại không hỏi nữa. Tắt thì
+  /// `datBat(false)` — quyền hệ thống app không tự thu hồi được, nên có dòng nhắc chỗ thu hồi.
+  Future<void> _doiBienDong(bool bat) async {
+    if (_idaccount == null) return;
+    if (!bat) {
+      await _ghi(_prefs.copyWith(docBienDong: false));
+      await _kenh.datBat(false);
+      return;
+    }
+    if (!_prefs.dongYBienDong) {
+      final dongY = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const DongYBienDongPage()),
+      );
+      if (dongY != true || !mounted) return;
+      await _ghi(_prefs.copyWith(docBienDong: true, dongYBienDong: true));
+      await _kenh.datBat(true);
+      // "Đồng ý và mở Cài đặt": app không tự cấp được quyền. Máy đã có quyền (tài khoản khác từng
+      // bật) thì mở Cài đặt là một bước thừa.
+      if (!await _kenh.coQuyen()) await _kenh.moCaiDat();
+    } else {
+      await _ghi(_prefs.copyWith(docBienDong: true));
+      await _kenh.datBat(true);
+    }
+    await _docQuyenBienDong();
   }
 
   Future<void> _chonGio() async {
@@ -335,8 +408,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   Future<void> _chonGioGhiChep() async {
     final chon = await showTimePicker(
       context: context,
-      initialTime:
-          TimeOfDay(hour: _prefs.gioNhacGhiChep, minute: _prefs.phutNhacGhiChep),
+      initialTime: TimeOfDay(
+          hour: _prefs.gioNhacGhiChep, minute: _prefs.phutNhacGhiChep),
     );
     if (chon == null) return;
     await _ghi(_prefs.copyWith(
@@ -485,23 +558,27 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       _the(
                         tieuDe: 'LOẠI THÔNG BÁO',
                         children: [
-                          for (final nhom in NotificationGroup.values) ...[
-                            if (nhom != NotificationGroup.values.first)
-                              const Divider(
-                                  height: 1, color: AppColors.outlineVariant),
-                            _hangCongTac(
-                              khoa: NotificationSettingsPage.khoaCongTacNhom(
-                                  nhom),
-                              icon: _iconNhom(nhom),
-                              nhan: _tenNhom(nhom),
-                              phu: _moTaNhom(nhom),
-                              giaTri: _prefs.batNhom(nhom),
-                              onChanged: (v) => _doiNhom(nhom, v),
-                            ),
-                            if (_dongGoiY(LoaiDeXuat.tatNhom, nhom)
-                                case final w?)
-                              w,
-                          ],
+                          // Biến động số dư có thẻ riêng bên dưới (Stitch `d42ce712…`): nó là
+                          // công tắc TÍNH NĂNG đứng sau màn xin đồng ý, không phải một loại
+                          // thông báo thường.
+                          for (final nhom in NotificationGroup.values)
+                            if (nhom != NotificationGroup.bienDong) ...[
+                              if (nhom != NotificationGroup.values.first)
+                                const Divider(
+                                    height: 1, color: AppColors.outlineVariant),
+                              _hangCongTac(
+                                khoa: NotificationSettingsPage.khoaCongTacNhom(
+                                    nhom),
+                                icon: _iconNhom(nhom),
+                                nhan: _tenNhom(nhom),
+                                phu: _moTaNhom(nhom),
+                                giaTri: _prefs.batNhom(nhom),
+                                onChanged: (v) => _doiNhom(nhom, v),
+                              ),
+                              if (_dongGoiY(LoaiDeXuat.tatNhom, nhom)
+                                  case final w?)
+                                w,
+                            ],
                           // Bốn loại báo "tiền vừa rời ví" cố ý bỏ qua công
                           // tắc nhóm — xem `luonBao()`. Im lặng về ngoại lệ ấy
                           // là để người dùng gạt tắt rồi tin rằng mình đã tắt.
@@ -511,6 +588,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      _theBienDong(),
                       const SizedBox(height: 24),
                       _the(
                         tieuDe: 'NHẮC HOÁ ĐƠN',
@@ -550,8 +629,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         tieuDe: 'NHẮC GHI CHÉP',
                         children: [
                           _hangCongTac(
-                            khoa:
-                                NotificationSettingsPage.khoaCongTacGhiChep,
+                            khoa: NotificationSettingsPage.khoaCongTacGhiChep,
                             icon: Icons.edit_calendar_outlined,
                             nhan: 'Nhắc ghi chép hằng ngày',
                             phu: 'Nhắc vào cuối ngày nếu hôm đó bạn chưa ghi '
@@ -594,8 +672,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         tieuDe: 'TỔNG KẾT TUẦN',
                         children: [
                           _hangCongTac(
-                            khoa:
-                                NotificationSettingsPage.khoaCongTacTongKet,
+                            khoa: NotificationSettingsPage.khoaCongTacTongKet,
                             icon: Icons.calendar_view_week_outlined,
                             nhan: 'Tổng kết tuần',
                             phu: 'Mỗi tuần một lời mời nhìn lại bạn đã tiêu '
@@ -652,8 +729,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
   }
 
-  String get _gioHienThi =>
-      '${_prefs.gioNhac.toString().padLeft(2, '0')}:'
+  String get _gioHienThi => '${_prefs.gioNhac.toString().padLeft(2, '0')}:'
       '${_prefs.phutNhac.toString().padLeft(2, '0')}';
 
   String get _gioTongKetHienThi =>
@@ -664,7 +740,192 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       '${_prefs.gioNhacGhiChep.toString().padLeft(2, '0')}:'
       '${_prefs.phutNhacGhiChep.toString().padLeft(2, '0')}';
 
-  Widget _the({required String tieuDe, required List<Widget> children}) {
+  /// D1 — thẻ *Tự động hoá giao dịch* (Stitch `d42ce712…`): công tắc *Biến động số dư* và, khi
+  /// bật, một dòng trạng thái quyền nói sự thật của máy. Công tắc giữ khoá
+  /// `khoaCongTacNhom(bienDong)` như mọi nhóm.
+  Widget _theBienDong() {
+    final bat = _prefs.docBienDong;
+    return _the(
+      tieuDe: 'TỰ ĐỘNG HOÁ GIAO DỊCH',
+      nhanMoi: true,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 12, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.auto_awesome,
+                                size: 18,
+                                color: AppColors.onSecondaryContainer),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                _tenNhom(NotificationGroup.bienDong),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _moTaNhom(NotificationGroup.bienDong),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    key: NotificationSettingsPage.khoaCongTacNhom(
+                        NotificationGroup.bienDong),
+                    value: bat,
+                    onChanged: _doiBienDong,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: const Color(0xFF006E1C),
+                  ),
+                ],
+              ),
+              if (bat) ...[
+                const SizedBox(height: 14),
+                _dongQuyenBienDong(),
+              ] else if (_coQuyenBienDong) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  kNhacThuHoiQuyen,
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Hai biến thể của Stitch: *Chưa cấp quyền — Mở Cài đặt* và *Đã cấp quyền — đang đọc N
+  /// nguồn*. N và tên nguồn suy từ [nguonDangDoc] (người dùng chốt: không hứa nguồn chưa đo).
+  Widget _dongQuyenBienDong() {
+    final co = _coQuyenBienDong;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: co
+                  ? AppColors.secondaryContainer
+                  : AppColors.warning.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              co ? Icons.check_circle : Icons.warning_rounded,
+              size: 18,
+              color: co ? AppColors.onSecondaryContainer : AppColors.warning,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: co
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Đã cấp quyền — đang đọc ${nguonDangDoc.length} nguồn',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        nguonDangDoc.join(', '),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  )
+                : const Text(
+                    'Chưa cấp quyền truy cập thông báo',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 8),
+          if (co)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle,
+                      size: 6, color: AppColors.onSecondaryContainer),
+                  SizedBox(width: 4),
+                  Text(
+                    'Hoạt động',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            // `TextButton` chứ không `ElevatedButton`: theme của app ép mọi ElevatedButton rộng vô
+            // hạn (bẫy 4.11 `ANALYTICS_FEATURE.md`) — trong `Row` là trắng cả trang.
+            TextButton(
+              onPressed: _kenh.moCaiDat,
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Mở Cài đặt',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _the({
+    required String tieuDe,
+    required List<Widget> children,
+    bool nhanMoi = false,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -684,14 +945,37 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: Text(
-              tieuDe,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.5,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tieuDe,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                if (nhanMoi)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Mới',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           ...children,
@@ -827,9 +1111,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         key: NotificationSettingsPage.khoaNguongChiLon,
         // Giá trị lạ rơi về `null` kèm `hint` thay vì ném giữa `build` — cùng
         // lý do với ô ngưỡng số dư.
-        value: luaChon.contains(_prefs.nguongChiLon)
-            ? _prefs.nguongChiLon
-            : null,
+        value:
+            luaChon.contains(_prefs.nguongChiLon) ? _prefs.nguongChiLon : null,
         hint: Text(CurrencyFormatter.format(_prefs.nguongChiLon)),
         underline: const SizedBox.shrink(),
         items: [
@@ -904,8 +1187,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               children: [
                 Text(
                   nhan,
-                  style: const TextStyle(
-                      fontSize: 16, color: AppColors.primary),
+                  style:
+                      const TextStyle(fontSize: 16, color: AppColors.primary),
                 ),
                 const SizedBox(height: 2),
                 Text(

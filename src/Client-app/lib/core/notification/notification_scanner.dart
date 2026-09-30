@@ -375,6 +375,11 @@ class NotificationScanner {
         }
       } catch (_) {}
     }
+    // D1: cờ đọc biến động phía Kotlin gắn MÁY — không còn ai đăng nhập thì
+    // không còn ai đã đồng ý, dịch vụ phải thôi đọc và thôi bắn tóm tắt.
+    try {
+      await nhapBienDong?.tatDocMay();
+    } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
       await osNotifier?.cancelAll();

@@ -124,9 +124,15 @@ thêm đầu vào cho `tatCaUngVien()` ở `notification_deeplink_test.dart` (đ
 
 ### 3.4 Nhóm thông báo và công tắc
 
+> **Stitch (người dùng xác nhận 2026-09-30):** màn đồng ý `bed4d292bff6449cb2847af7eb95faf1` · Cài đặt thông báo
+> `d42ce71266ca485c883ca7f9ed855f29` (thẻ *Tự động hoá giao dịch · Mới*) · Sổ giao dịch `e59155ff5c0d4fd399e6fb8109b939d8` ·
+> Thêm giao dịch điền sẵn `52d9d2ef0a67456f9c1317bbf33cd994`. Bốn lượt gửi đều trả timeout; màn hiện ra sau đó.
+
 - Loại 20 thuộc một **nhóm mới** `bienDong` (chip lọc mới ở trung tâm thông báo; test *"mỗi nhóm có đúng một chip"* sẽ đòi
   điều ấy). Công tắc nhóm **chính là** công tắc tính năng: tắt thì Kotlin thôi đọc (qua kênh).
-- **Màn xin đồng ý** (bắt buộc): bật công tắc lần đầu → màn nêu (1) mục đích, (2) **danh sách trắng đủ bảy nguồn**, (3) lọc
+- **Màn xin đồng ý** (bắt buộc): bật công tắc lần đầu → màn nêu (1) mục đích, (2) **danh sách trắng** — ⚠️ *(sửa 2026-09-30, người dùng chốt)*: đúng các nguồn
+  dịch vụ **đang đọc** (`nguonDangDoc`, suy từ `kNguonTheoGoi`), không phải cả bảy: lúc thi công mới đo được 3 gói (MB Bank,
+  MoMo, ZaloPay) và hứa đọc nguồn chưa đo là lời hứa sai; đo thêm gói nào thì màn tự thêm, (3) lọc
   bỏ OTP trước khi lưu, (4) chỉ lưu trên máy, xoá khi xử lý xong hoặc sau 30 ngày, (5) không gửi ra ngoài, không liên kết
   ngân hàng → nút **Đồng ý và mở Cài đặt** (`moCaiDat()`) / **Không, cảm ơn**. Quay lại app thì đọc `coQuyen()` để hiện
   trạng thái đúng.

@@ -526,6 +526,7 @@ Future<void> setupDependencies() async {
         batBienDong: (id) async =>
             (await sl<NotificationPrefsStore>().read(id)).docBienDong,
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
+        datBat: (bat) => sl<KenhBienDong>().datBat(bat),
       ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),

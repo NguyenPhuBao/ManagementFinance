@@ -48,6 +48,12 @@ const Map<String, String> kNguonTheoGoi = {
 /// `null` = gói không trong danh sách trắng.
 String? nguonCuaGoi(String goi) => kNguonTheoGoi[goi];
 
+/// Các nguồn app **thật sự** đọc lúc này — suy từ [kNguonTheoGoi], không trùng, giữ thứ tự khai.
+/// Màn xin đồng ý và dòng trạng thái ở Cài đặt thông báo liệt kê **đúng** danh sách này (người
+/// dùng chốt 2026-09-30): không hứa những nguồn trong [kNguonBienDong] mà dịch vụ chưa đọc gói nào.
+/// Đo thêm một gói → thêm vào [kNguonTheoGoi] (và `DANH_SACH_TRANG` Kotlin) là hai màn tự đổi.
+List<String> get nguonDangDoc => [...{...kNguonTheoGoi.values}];
+
 class TinBienDong {
   /// Luôn DƯƠNG; chiều ở [chieu] — cùng quy ước với `transactions.amount` của client.
   final double soTien;

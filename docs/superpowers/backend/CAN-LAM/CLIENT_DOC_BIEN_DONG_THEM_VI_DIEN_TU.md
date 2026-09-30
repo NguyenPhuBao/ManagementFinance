@@ -40,8 +40,11 @@ Mọi cam kết backend đã duyệt ở đơn gốc giữ nguyên cho cả hai 
   *Bỏ qua*, tối đa 30 ngày. Không gửi đi đâu.
 - **Không tự tạo giao dịch.** Người dùng bấm *Lưu* trên form; giao dịch đi đồng bộ như nhập tay, `provider = 'Manual'`,
   payload 13 trường.
-- **Màn xin đồng ý** (backend bắt buộc, mục 5 câu 4 đơn gốc) liệt kê **đủ bảy nguồn** trước khi dẫn người dùng tới Cài
-  đặt quyền truy cập thông báo (spec Phần 2 mục 3.4).
+- **Màn xin đồng ý** (backend bắt buộc, mục 5 câu 4 đơn gốc) liệt kê danh sách trắng trước khi dẫn người dùng tới Cài đặt
+  quyền truy cập thông báo (spec Phần 2 mục 3.4). ⚠️ *Cập nhật 2026-09-30:* câu gốc ghi *"đủ bảy nguồn"*; PO phía client
+  chốt màn chỉ liệt kê những nguồn app **đang thật sự đọc** — danh sách trắng chỉ gồm gói đã đo trên máy thật (lúc viết:
+  MB Bank, MoMo, ZaloPay; Vietcombank, Techcombank, BIDV, Tin nhắn chưa có mẫu). Hứa đọc một nguồn chưa đọc được là sai với
+  chính yêu cầu *"nêu rõ danh sách trắng"* của câu 4. Đo thêm gói nào thì màn tự thêm nguồn ấy.
 
 ## 3. Câu hỏi cho backend
 
@@ -53,4 +56,5 @@ Mọi cam kết backend đã duyệt ở đơn gốc giữ nguyên cho cả hai 
 ## 4. Kiểm lại phía client
 
 Khi D1 xong, client sẽ: (a) `grep -n "MoMo\|ZaloPay" src/Client-app/android/app/src/main/kotlin -r` ra đúng hằng danh sách
-trắng; (b) màn xin đồng ý có đủ bảy tên (widget test); (c) báo lại trong một đơn soát như các lần trước.
+trắng; (b) màn xin đồng ý liệt kê đúng danh sách trắng đang đọc (widget test
+`dong_y_bien_dong_test.dart`); (c) báo lại trong một đơn soát như các lần trước.
