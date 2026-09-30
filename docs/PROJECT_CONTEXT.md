@@ -924,6 +924,12 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hàm thuần `transaction/domain/goi_y_chuyen_khoan.dart`; thẻ trên form biến động, Lưu nhớ ví **theo phía** và xoá cả
   hàng cặp. Chi tiết mục 6 `BIEN_DONG_SO_DU_FEATURE.md`. Không đổi schema, không đổi payload. `flutter test`
   **5025/5025** (4 skip), analyze 26.
+- ✅ **C3 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI (2026-09-30 đêm)** — chỉ luật, không mô hình;
+  thẻ *"Mình hiểu là: …"* + nút mở form điền sẵn, người dùng bấm Lưu. Soát lần hai trước Task 1 (banner spec): mở
+  `chonSoTienTrongCau` (một định nghĩa với C2), trường `idVi` / `idDanhMuc` (test quét 14), import `kBang72Cau`, bỏ
+  `cycle` ngân sách, và **ô nhập mở cả khi chưa có mô hình** (người dùng chốt). `/goals/add` nhận query. Realme: ba
+  lệnh → thẻ < 1 s, ba form đúng; câu hỏi gần giống lệnh đi vòng tool như cũ. Mục **9.42** `AI_EDGE_FEATURE.md`.
+  `flutter test` **5088/5088** (4 skip), analyze 26.
 
 ### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
 

@@ -3227,6 +3227,35 @@ Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm g
 tiêu đề, dưới số tiền là *"Chạm để sửa số tiền"* — việc còn lại là soát thẻ form, không gõ số (người dùng chốt; mục 6
 `BIEN_DONG_SO_DU_FEATURE.md`). Câu không đọc ra số tiền thì bàn phím giữ nguyên.
 
+### 9.42 C3 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI (2026-09-30) — chỉ luật, không mô hình
+
+Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-design.md` (banner *soát lần hai*).
+*"tạo hoá đơn gym 300k ngày 5 hằng tháng"* → thẻ *"Mình hiểu là: Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, ngày 5"*
++ nút **Mở form tạo hoá đơn** → `/bills/add?…` điền sẵn; người dùng bấm Lưu (bất biến ④ nhóm C).
+
+- **Thứ tự:** `_hoi` gọi `loaiLenhTao` **trước** chặn chủ đề, định tuyến và mở phiên — lệnh không mở phiên mô hình.
+  Nhận lệnh = động từ *tạo · thêm · đặt · lập* ở **đầu** câu (sau tiền tố lịch sự), danh từ ngay sau (chữ đệm là danh
+  sách **trắng** — *"đặt lịch nhắc hoá đơn"* không phải lệnh), không từ hỏi (*bao nhiêu · nào · nên · không · là gì · ở
+  đâu · sao · ?*). ⚠️ Lưới **72 câu cổng F** (`kBang72Cau`) xanh cả trên bản sai bỏ vế từ hỏi — không câu nào mở bằng
+  động từ tạo; nó canh việc **mở rộng** danh sách về sau. Vế từ hỏi do chính các câu hỏi gần giống lệnh canh.
+- **Đọc ô** (`lenhTaoTheoCauHoi`, `ai_edge/domain/lenh_tao.dart`): số tiền qua **`chonSoTienTrongCau`** — bộ chọn của ô
+  Nhập nhanh C2 mở ra công khai (một định nghĩa); tên = đoạn sau danh từ tới dấu hiệu đầu tiên; ví / danh mục qua
+  `timTenTrongCau`; hạn mục tiêu *trước/đến tháng M [năm Y/sau]* → cuối tháng (tháng đã qua → năm sau; tháng 2 năm
+  nhuận), *trong N tháng* kẹp cuối tháng, *đến dd/mm/yyyy*. Trường ví / danh mục tên **`idVi` / `idDanhMuc`** — test
+  quét 14 cấm chuỗi `walletId` trong `ai_edge/`. Danh mục **chi** lọc ở `ai_chat/data/nguon_lenh_tao.dart` (ngoài lớp
+  AI — phép so chiều tiền). Đơn vị *tỷ* **chưa** đọc được (bộ đọc C2 không có).
+- ⚠️ **Tầng 4:** *"tự trả / tự động thanh toán / trích tự động"* chỉ bật `nhacTuTra` — thẻ nói *"Tự trả phải bật trong
+  form"*, query **không** mang tham số nào bật tự trả.
+- **Ô nhập mở cả khi chưa có mô hình** (người dùng chốt 2026-09-30): câu là lệnh → thẻ; câu khác → câu cố định
+  `cauKhoaHoiDap`. Chip gợi ý **vẫn khoá** (chúng là câu hỏi).
+- `/budget/rules` không nhận chu kỳ → query ngân sách chỉ `category` + `amount`. Form mục tiêu nhận query mới
+  (`dienSanMucTieuTuQuery`, mục 3.28 `GOAL_FEATURE.md`).
+- **Đo Realme 2026-09-30 22:23–22:26** (bản debug, có mô hình, không Lưu gì): ba lệnh (hoá đơn · mục tiêu · ngân sách
+  gõ không dấu) → thẻ **< 1 s**, log `[SLM] lệnh tạo … → form`, không phiên mô hình; ba form điền đúng; quay về giữ lịch
+  sử chat. Câu *"nen dat ngan sach an uong bao nhieu"* → vòng tool như cũ (1 lời gọi, 33 s). Chưa đo trên máy: nhánh
+  *chưa có mô hình* (widget test phủ).
+- Stitch: màn *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"* gửi 2026-09-30 (timeout) — chưa hiện lúc thi công.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

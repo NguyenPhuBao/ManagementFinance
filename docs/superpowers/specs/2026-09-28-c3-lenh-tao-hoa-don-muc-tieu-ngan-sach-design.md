@@ -19,6 +19,9 @@ D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `k
 > trường hoặc đặt tệp ngoài `ai_edge/` (như C2 đặt `DocCauBangAi` ở `transaction/data/`). Soát lại lần nữa trước Task 1 —
 > C2 còn quyết định *"ĐỔI LẦN HAI"* chưa thi công (không đụng bộ đọc, chỉ đổi lúc nào gọi AI).
 
+> ✅ **THI CÔNG XONG 2026-09-30 đêm** (`51d6a3c` → `89f2112`), nghiệm thu Realme: ba lệnh → thẻ < 1 s, ba form đúng;
+> câu hỏi gần giống lệnh đi vòng tool như cũ — mục **9.42** `AI_EDGE_FEATURE.md`. Stitch thẻ lệnh gửi (timeout), chưa hiện.
+>
 > ✅ **Soát lần hai trước Task 1 (2026-09-30 đêm)** — sau C2 đổi lần hai, D1, gợi ý chuyển khoản:
 > (1) mở `_chonSoTien` thành hàm công khai trong `doc_cau_giao_dich.dart` (một định nghĩa); (2) trường ví / danh mục của
 > lệnh tên **`idVi` / `idDanhMuc`** (test quét 14 cấm chuỗi `walletId` trong `ai_edge/`), khoá query vẫn `wallet` /
