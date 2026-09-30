@@ -935,8 +935,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   void _showWalletPickerBottomSheet(BuildContext context,
       {required bool isDestination}) {
+    // `isScrollControlled` + danh sách ví trong `Flexible` / `SingleChildScrollView`: bảng cao theo số ví và CUỘN khi
+    // nhiều ví hơn chỗ trống. Bản cũ là `Column` không cuộn trong trần 9/16 màn — đo trên OnePlus 13R (2026-09-30,
+    // nghiệm thu D1) tài khoản 5 ví tràn 13 px, ví cuối bị sọc vàng đè và không chạm được. Cùng họ G60.
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -951,12 +956,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isDestination ? 'Chọn ví đích' : 'Chọn ví thanh toán',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  // `Expanded`: tiêu đề trần trong `Row` tràn khi cỡ chữ hệ thống lớn.
+                  Expanded(
+                    child: Text(
+                      isDestination ? 'Chọn ví đích' : 'Chọn ví thanh toán',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -975,6 +983,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       style: TextStyle(color: AppColors.textSecondary)),
                 )
               else
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                 ..._wallets.map((wallet) {
                   final isSelected = isDestination
                       ? _destinationWallet?.id == wallet.id
@@ -1057,6 +1070,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                   );
                 }),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         );
