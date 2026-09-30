@@ -38,12 +38,14 @@ class BienDongListenerService : NotificationListenerService() {
          * khớp TỪNG CẶP với `kNguonTheoGoi` ở `doc_tin_bien_dong.dart` —
          * `bien_dong_noi_day_test.dart` đọc chính tệp này để so.
          *
-         * ⚠️ RỖNG cho tới khi đo tên gói thật trên máy (Task 1 D1) — spec §2 cấm
-         * đoán, kể cả với gói "ai cũng biết": app Tin nhắn của Realme / OnePlus /
-         * Samsung / Google mỗi hãng một gói. Rỗng nghĩa là dịch vụ **không cất
-         * gì**, an toàn.
+         * ⚠️ CHỈ gói đã ĐO trên máy thật (Task 1 D1) — spec §2 cấm đoán, kể cả với
+         * gói "ai cũng biết": app Tin nhắn của Realme / OnePlus / Samsung / Google
+         * mỗi hãng một gói. `com.mbmobile` đo trên OnePlus 13R 2026-09-30 (tin
+         * biến động thật, khuôn MB đọc trọn). Vietcombank, Techcombank, BIDV,
+         * Tin nhắn, MoMo, ZaloPay: chưa có dòng nào → chưa vào.
          */
         val DANH_SACH_TRANG: Map<String, String> = mapOf(
+            "com.mbmobile" to "MB Bank",
         )
 
         const val TEP_HANG_CHO = "bien_dong_cho.jsonl"

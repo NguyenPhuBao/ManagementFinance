@@ -34,9 +34,10 @@ const List<String> kNguonBienDong = [
 
 /// Tên gói Android → tên nguồn. Phải khớp TỪNG CẶP với `DANH_SACH_TRANG` ở
 /// `BienDongListenerService.kt` (Kotlin lọc theo gói, Dart dịch gói → nguồn để chọn khuôn) —
-/// `bien_dong_noi_day_test.dart` đọc tệp Kotlin để so. ⚠️ **Rỗng cho tới khi đo tên gói thật trên
-/// máy (Task 1 D1)** — spec §2 cấm đoán; rỗng nghĩa là không tin nào được nhận, an toàn.
-const Map<String, String> kNguonTheoGoi = {};
+/// `bien_dong_noi_day_test.dart` đọc tệp Kotlin để so. ⚠️ **Chỉ gói đã ĐO trên máy thật** (Task 1
+/// D1; spec §2 cấm đoán): `com.mbmobile` đo trên OnePlus 13R 2026-09-30 — tin biến động thật, khuôn MB
+/// đọc trọn (số tiền, chiều, giờ trong tin, đuôi TK, nội dung). Sáu nguồn còn lại chưa có dòng nào.
+const Map<String, String> kNguonTheoGoi = {'com.mbmobile': kNguonMb};
 
 /// `null` = gói không trong danh sách trắng.
 String? nguonCuaGoi(String goi) => kNguonTheoGoi[goi];
