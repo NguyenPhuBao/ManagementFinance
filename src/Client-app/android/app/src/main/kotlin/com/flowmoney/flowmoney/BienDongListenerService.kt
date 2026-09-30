@@ -91,8 +91,9 @@ class BienDongListenerService : NotificationListenerService() {
 
     /**
      * Chế độ thu mẫu (Task 1 D1): bản **debug** in `gói | tiêu đề | nội dung` của
-     * MỌI thông báo ra logcat tag `BienDongThu`, để người dùng tự chép mẫu tin
-     * ngân hàng (che số tài khoản, tên, mã GD) và tên gói thật. Bản release không
+     * MỌI thông báo ra logcat tag `BienDongThu` — nội dung đã qua [che] (chữ số →
+     * 9, từ ngoài danh sách cấu trúc → …), đủ để lấy tên gói thật và hình dạng tin
+     * khi viết khuôn cho nguồn mới. Bản release không
      * bao giờ vào nhánh này — `FLAG_DEBUGGABLE` do hệ thống đặt theo bản build,
      * không phải cờ mã có thể bật nhầm.
      */
@@ -134,10 +135,30 @@ class BienDongListenerService : NotificationListenerService() {
 
     private fun thuMau(sbn: StatusBarNotification) {
         val e = sbn.notification.extras
-        val tieuDe = e.getCharSequence(Notification.EXTRA_TITLE)
-        val noiDung = e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT)
-        Log.d(TAG_THU, "${sbn.packageName} | $tieuDe | $noiDung")
+        val tieuDe = e.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val noiDung = (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT))
+            ?.toString() ?: ""
+        Log.d(TAG_THU, "${sbn.packageName} | ${che(tieuDe)} | ${che(noiDung)}")
     }
+
+    /**
+     * Hình dạng đã che của một tin — người dùng chốt 2026-09-30 vì `progress/Client-app.md` §13.6 (backend) cấm ghi số
+     * dư / số tài khoản ra Logcat KỂ CẢ lúc phát triển: mọi chữ số → `9`, mọi từ ngoài [TU_CAU_TRUC] → `…`. Đủ để viết
+     * khuôn cho một nguồn mới (vị trí dấu ±, đơn vị, dấu phân cách, nhãn GD/SD/ND) mà không lộ số dư, số TK, tên người,
+     * nội dung chuyển khoản.
+     */
+    private fun che(s: String): String =
+        Regex("\\p{L}+").replace(s.replace(Regex("\\d"), "9")) { m ->
+            if (m.value.lowercase() in TU_CAU_TRUC) m.value else "…"
+        }
+
+    /** Từ khoá CẤU TRÚC của tin biến động (nhãn, đơn vị, động từ chiều tiền) — giữ nguyên khi che. */
+    private val TU_CAU_TRUC = setOf(
+        "tk", "gd", "sd", "nd", "vnd", "ma", "mã", "so", "số", "du", "dư", "tai", "tài", "khoan", "khoản",
+        "thanh", "toan", "toán", "nhan", "nhận", "chuyen", "chuyển", "tien", "tiền", "tu", "từ", "qua",
+        "ngay", "ngày", "gio", "giờ", "noi", "nội", "dung", "giao", "dich", "dịch", "bien", "biến", "dong", "động",
+        "thoi", "thời", "gian", "phat", "phát", "sinh", "ghi", "no", "nợ", "co", "có", "vi", "ví", "đ",
+    )
 
     /**
      * MỘT thông báo id cố định, nội dung không số tiền, không tên người gửi —

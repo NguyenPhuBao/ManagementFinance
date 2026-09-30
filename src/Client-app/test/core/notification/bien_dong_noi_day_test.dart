@@ -89,6 +89,13 @@ void main() {
     expect(dongLog, hasLength(1),
         reason: 'đúng MỘT chỗ log, là dòng thu mẫu; bản release không được in nội dung tin ra logcat');
     expect(dongLog.single, contains('TAG_THU'));
+    // Người dùng chốt 2026-09-30: `progress/Client-app.md` §13.6 (backend) cấm ghi số dư / số TK ra Logcat KỂ CẢ lúc
+    // phát triển — dòng thu mẫu chỉ in HÌNH DẠNG đã che.
+    expect(dongLog.single, isNot(anyOf(contains(r'$tieuDe'), contains(r'$noiDung'))),
+        reason: 'in thẳng nội dung là lộ số dư, số TK, tên người vào logcat của bản debug');
+    expect(dongLog.single, contains('che('));
+    expect(kt, contains(r'Regex("\\d")'), reason: 'mọi chữ số thành 9');
+    expect(kt, contains('TU_CAU_TRUC'), reason: 'từ ngoài danh sách từ khoá cấu trúc thành …');
   });
 
   test('DI: scanner nhận NhapBienDong nối kênh Android thật', () {
