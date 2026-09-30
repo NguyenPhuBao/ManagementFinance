@@ -871,12 +871,21 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   gọi AI điền tức thì. Hai chỗ lượt đo lộ ra **đã sửa** (`ed397be`): *thẻ / quẹt / ck* chỉ nhận ví ngân hàng (*"quẹt thẻ
   ăn phở 45k"* từng nhận ví Tiền mặt), so chữ ví **có dấu** (*"vì"* ≠ *ví*); dòng nguồn *"Đọc bằng AI"* chỉ khi AI đổi
   một ô. Đo lượt 4 (bản `474a61cb…`, cuối 9.41): trà sữa → Ăn uống qua AI; *"ăn sáng 30k, grab 50k"* AI không dọn được
-  ghi chú (lớp kiểm chặn đúng). `flutter test` **4822/4822** (4 skip), analyze 26. ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen** —
-  ✅ spec đã duyệt cuối phiên (`specs/2026-09-30-de-xuat-them-tu-khoa-design.md`, `7cffb1b`; Stitch đã gửi tạo, timeout),
-  **chưa thi công**; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
+  ghi chú (lớp kiểm chặn đúng). `flutter test` **4822/4822** (4 skip), analyze 26. Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen**
+  — ✅ thi công cùng ngày (khối kế tiếp); rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
   và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
   D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
   `ai_edge/`.
+- ✅ **Đề xuất thêm từ khoá từ thói quen — thi công 2026-09-30** (`e913f21` → `b2c57de`; spec
+  `specs/2026-09-30-de-xuat-them-tu-khoa-design.md`, màn Stitch `8ca1338e…` người dùng duyệt; mục **5f**
+  `CATEGORY_RATIONALE.md`). Màn Thêm giao dịch: form có danh mục + ghi chú lặp một cụm với danh mục ấy ≥ 3 lần, ≥ 60 %
+  (ngưỡng B1, tính cả lần đang nhập) → dòng *"Thêm ‘x’ làm từ khoá của Y?"* dưới hàng Danh mục; cụm là từ khoá của đúng
+  một danh mục khác → *"… — chuyển sang Y?"*. Bấm là ghi ngay (Chuyển bỏ ở danh mục cũ **trước**), dòng *"Đã thêm …"* tự ẩn
+  sau 2 giây (người dùng chốt khi duyệt Stitch); ✕ ghi `bo_qua` nguồn **`de_xuat_tu_khoa`**, tập tắt riêng qua
+  `tatCapTu(…, nguon:)`. Hàm thuần `category/domain/de_xuat_tu_khoa.dart`. ⚠️ Kèm sửa **lỗ hổng có sẵn**:
+  `saveKeywords` không đánh dấu danh mục `pending` nên từ khoá sửa ở trang *Từ khoá của tôi* không lên server — nay có
+  `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
+  không máy nào cắm lúc thi công.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

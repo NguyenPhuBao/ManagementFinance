@@ -388,7 +388,7 @@ C2) không có danh mục.
 Bước **từ khoá** thêm sau lượt đo Realme (*"đổ xăng"*, *"grab"* bị mô hình xếp Ăn uống).
 Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ khoá từ thói quen** (một chữ lặp
 với một danh mục mà chưa khai từ khoá → mời thêm; chữ đang là từ khoá danh mục khác —
-*grab* ở Ăn uống — thì mời **chuyển**). Chưa có spec.
+*grab* ở Ăn uống — thì mời **chuyển**). ✅ Thi công 2026-09-30 — mục **5f**.
 
 ⚠️ **Vòng lặp học sai — người dùng chọn chưa làm gì thêm, theo dõi sau đo** (§8 câu 8
 spec C2, 2026-09-30): với luật gọi mô hình mới, ca mô hình điền danh mục hiếm hơn hẳn. B1 học lại từ sổ
@@ -475,6 +475,72 @@ khoản để có dòng đoán được: *gui xe may*, *ca phe sua da*, *grab ra
   `d79b9b34…`.
 - Một chỗ thô chỉ máy thật thấy: đường kẻ dưới tiêu đề bảng chọn là vạch **đen đậm** (`Divider`
   lấy màu theme) — sửa cùng ngày sang xám nhạt như Stitch.
+
+---
+
+## 5f. Thay đổi 9 — đề xuất thêm từ khoá từ thói quen (2026-09-30)
+
+**Không phải sửa lỗi** — nhưng kéo theo sửa **một** lỗ hổng có sẵn (bên dưới). Người dùng đề xuất
+sau lượt đo C2: *"khi người dùng không nhập từ khoá vào danh mục nhưng họ thường lặp đi lặp lại từ
+khoá đó với 1 danh mục cụ thể thì sẽ đề xuất thêm từ khoá vào danh mục đó"*. Thiết kế:
+`docs/superpowers/specs/2026-09-30-de-xuat-them-tu-khoa-design.md`; màn Stitch `8ca1338e…`. Không
+đổi schema, không thêm trường đồng bộ.
+
+### Vì sao
+
+Từ khoá là lớp **rẻ nhất, tất định nhất** của thứ tự đoán danh mục (*tên → B1 → từ khoá → AI*):
+không cần 10 mẫu như B1, không cần ~18 s như AI, và người dùng đọc hiểu được vì sao. Nhưng bộ từ
+khoá **không học** — phải có người gõ vào trang *Từ khoá của tôi*, và hầu như không ai gõ. Đề xuất
+biến thói quen ghi chú thành từ khoá **khi người dùng đồng ý** (bất biến ④ nhóm C: bấm mới ghi).
+
+### Nó làm gì
+
+Ở màn Thêm giao dịch (tạo mới **và** sửa), khi form có danh mục — bất kể nguồn — và ghi chú có một
+cụm đi với danh mục ấy **≥ 3 lần, ≥ 60 %** (đúng ngưỡng B1, tính cả lần đang nhập), một dòng hiện
+ngay dưới hàng Danh mục: *"Thêm ‘trà sữa’ làm từ khoá của Ăn uống? [Thêm] [✕]"*. Cụm đang là từ
+khoá của **đúng một** danh mục khác → *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?
+[Chuyển] [✕]"* (lối sửa trên máy cho từ khoá seed `grab` sai). Bấm là **ghi ngay**; dòng thành
+*"Đã thêm …"* rồi **tự ẩn sau 2 giây** (người dùng chốt khi duyệt màn Stitch). ✕ ghi `bo_qua` và ẩn
+cả lượt; lưu giao dịch mà không bấm gì thì **không** ghi gì.
+
+### Chỗ dễ làm hỏng nhất
+
+- **Một định nghĩa "thường ghi"** — hàm thuần `deXuatTuKhoa` (`category/domain/de_xuat_tu_khoa.dart`)
+  dùng `kToiThieuMauDanhMuc` / `kNguongXacSuat` của B1 và mẫu `mauHocTu` của B1 (ghi chú máy sinh
+  không đếm). Hàm **tự cộng lần đang nhập**; người gọi truyền mẫu **đã trừ** giao dịch đang sửa
+  (`_mauDeXuat` của màn), nếu không đường sửa đếm một giao dịch hai lần.
+- **Chọn cụm dài nhất TRƯỚC, rồi mới áp luật chặn** (đã phủ bởi từ khoá của danh mục · cặp đang tắt
+  · xung đột ≥ 2). Áp trong vòng lặp là ✕ *"trà sữa"* xong nhận ngay đề xuất *"trà"* — bản sai ấy
+  có ca test đỏ.
+- **"Đã phủ" so CHUỖI CON bỏ dấu**, đúng như bộ so `CategorySuggestionEngine`: ghi chú đã chứa một
+  từ khoá của danh mục → im (bộ so đã bắt được); cụm nằm trong một từ khoá đã có → im (bản rộng
+  hơn). Cũng vì bộ so khớp chuỗi con mà cụm **dưới 3 chữ cái** và cụm **chỉ gồm chữ chung**
+  (`kChuChung`: *ăn, mua, đi, tiền…*) không bao giờ được đề xuất — *"ăn"* khớp cả *"căn hộ"*.
+- **Đoạn có chữ số cắt dãy** (*"trà sữa 40k"* → *"trà sữa"*). Ca test đầu dùng mẫu *"35k"* khác số
+  nên **xanh cả trên bản bỏ phép cắt** — ca đúng dùng mẫu cùng *"40k"*.
+- **Luật tắt / mở là `tatCapTu`**, thêm tham số `nguon`; nguồn `de_xuat_tu_khoa` có tập tắt
+  **riêng** — ✕ đề xuất không tắt thẻ gợi ý B1 của cùng cặp, và ngược lại.
+- **Chuyển bỏ ở danh mục cũ TRƯỚC** rồi mới thêm vào danh mục mới: có một khoảnh khắc cụm thuộc hai
+  danh mục thì bộ so coi là **hoà** và thôi đoán.
+- **Nút `ElevatedButton` có `minimumSize` hữu hạn** (bẫy 4.11) — ca theme thật 360 × 640 canh.
+
+### Lỗ hổng có sẵn đã sửa: `saveKeywords` không đẩy lên server
+
+Từ khoá lên server **trong payload danh mục** (khoá `keyword`), không có thực thể riêng. Nhưng
+`CategoryManagementRepository.saveKeywords` **không** đánh dấu danh mục `pending` và **không**
+`scheduleSync()` — nên sửa từ khoá ở trang *Từ khoá của tôi* chỉ lên server khi danh mục bị sửa vì
+lý do khác; đổi máy là mất. Nay nó đánh dấu danh mục riêng của tài khoản `pending` + `updatedAt`
+mới (LWW) và gọi `scheduleSync()`; hàng mặc định toàn cục không đánh dấu (không bao giờ đẩy).
+
+⚠️ **Giới hạn, không sửa ở đây:** danh sách từ khoá **rỗng** thì client không gửi khoá `keyword`,
+và nhánh kéo về `_gieoTuKhoaKhiTrong` gieo lại từ khoá server khi danh mục trên máy không còn từ
+khoá nào — nên **Chuyển** làm danh mục cũ rỗng thì từ khoá cũ **quay lại sau lượt pull kế**. Với
+`grab` không xảy ra (Ăn uống còn từ khoá khác).
+
+### Nghiệm thu trên máy thật
+
+🚧 **Chưa đo** — không máy nào cắm lúc thi công (2026-09-30). Kịch bản ở spec §6 và Task 5 của kế
+hoạch `docs/superpowers/plans/2026-09-30-de-xuat-them-tu-khoa.md`.
 
 ---
 

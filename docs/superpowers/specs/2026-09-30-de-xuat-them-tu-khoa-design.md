@@ -5,6 +5,13 @@ xung đột, bỏ qua) rồi duyệt toàn bản. Việc riêng **ngay sau C2, t
 Bất biến ④ nhóm C: **chỉ đề xuất, bấm mới ghi**. Tầng hậu quả 2 (sửa dữ liệu cấu hình, đảo được trong trang Từ khoá).
 **Không đổi schema. Không thêm trường đồng bộ** — từ khoá vốn đi trong payload danh mục.
 
+> ✅ **THI CÔNG 2026-09-30** (`e913f21` → `b2c57de`, kế hoạch `plans/2026-09-30-de-xuat-them-tu-khoa.md`, mục **5f**
+> `CATEGORY_RATIONALE.md`). Hai chỗ bản thi công khác chữ §5, hành vi §2 giữ nguyên: (1) **hàm thuần tự cộng lần đang
+> nhập** vào mẫu (nó đã có ghi chú + danh mục) — người gọi chỉ truyền mẫu đã trừ giao dịch đang sửa; (2) các luật chặn
+> (đã phủ · `tatCap` · xung đột ≥ 2) áp **sau** khi chọn cụm dài nhất — áp trước là ✕ *"trà sữa"* rồi nhận ngay *"trà"*;
+> và thêm một luật phủ: **ghi chú đã chứa một từ khoá của danh mục ấy** (so chuỗi con bỏ dấu, như bộ so) → không đề xuất,
+> cụm nằm trong một từ khoá đã có → không đề xuất. 🚧 Nghiệm thu Realme (§6) **chưa làm** — không máy nào cắm.
+
 ## 1. Vì sao
 
 Bộ từ khoá của danh mục **không học** — từ khoá phải có người gõ vào trang *Từ khoá của tôi*, và trên dữ liệu thật hầu như

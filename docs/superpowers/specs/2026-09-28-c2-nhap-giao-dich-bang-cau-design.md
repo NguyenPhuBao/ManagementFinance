@@ -4,7 +4,8 @@
 > Hình dạng cuối khác bản duyệt 28/09 ở ba lượt đổi, mỗi lượt có banner bên dưới: soát với mã trước Task 1 (sáu chỗ) ·
 > **AI đọc mọi câu** (§2.8, người dùng chọn 30/09) · **bước từ khoá** trong thứ tự danh mục (§2.5, người dùng đề xuất và
 > chốt 30/09: tên → B1 khi chắc → từ khoá → AI). ⚠️ Phần **"đề xuất thêm từ khoá từ thói quen"** (người dùng lặp một chữ
-> với một danh mục mà chưa khai từ khoá) là **việc riêng ngay sau C2, trước D1** — người dùng chốt, chưa có spec.
+> với một danh mục mà chưa khai từ khoá) là **việc riêng ngay sau C2, trước D1** — ✅ spec riêng
+> `2026-09-30-de-xuat-them-tu-khoa-design.md`, thi công 2026-09-30 (mục 5f `CATEGORY_RATIONALE.md`).
 > ✅ **ĐỔI LẦN HAI THI CÔNG 2026-09-30** (commit `b0c9f9b` → `05c6ce2`; banner cuối trong khối banner): **luật trước,
 > AI chỉ khi còn ô thiếu** (`KetQuaDocCau.oThieu` — số tiền · ngày · ví · danh mục · ghi chú; hai ô cuối thêm sau lượt đo 3, xem
 > cuối banner *ĐỔI LẦN HAI*), AI chỉ **lấp** ô luật để trống. Cùng lượt:
@@ -397,7 +398,8 @@ câu; câu 5, 6, 7 còn mở.
    chưa; kiểm lại đầu phiên thi công đổi lần hai: vẫn chưa, 83 màn). Câu 1 có thể cần trạng thái mới → Stitch trước —
    ✅ không cần nữa: người dùng chọn *chờ AI rồi điền một lần*.
 6. **Ô Ghi chú màn này có khung viền theme** (có từ trước C2; Stitch không khung) — sửa không?
-7. **Đề xuất thêm từ khoá từ thói quen** (việc riêng ngay sau C2, người dùng chốt): hiện ở đâu, ngưỡng lặp, **chuyển** từ
+7. ✅ **Đề xuất thêm từ khoá từ thói quen** — trả lời ở spec riêng `2026-09-30-de-xuat-them-tu-khoa-design.md`, thi công
+   2026-09-30. Câu hỏi gốc: hiện ở đâu, ngưỡng lặp, **chuyển** từ
    khoá khi chữ đang thuộc danh mục khác (*grab* ở Ăn uống), bỏ qua / thôi đề xuất, từ khoá có đi qua đồng bộ không.
 8. ⏸ **Vòng lặp học sai: chưa làm gì thêm, theo dõi sau đo** (người dùng chọn) — với luật mới AI chỉ điền danh mục khi
    đã được gọi vì ô khác, nên ca ấy hiếm hơn; dòng nguồn *"Đọc bằng AI"* + câu lý do danh mục đã hiện. Mở lại nếu đo thấy
