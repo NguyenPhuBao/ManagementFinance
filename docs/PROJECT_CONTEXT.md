@@ -906,6 +906,18 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   **Việc sau D1, người dùng chốt:** bàn phím số ẩn khi màn đã có số tiền (Stitch trước) · gợi ý Chuyển khoản cho cặp trừ
   + cộng · chia sẻ biên lai ví điện tử (MoMo / ZaloPay không bắn tin khi chuyển đi; gộp C4). `flutter test`
   **4963/4963** (4 skip), analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu bốn trường Tổng kết tuần.
+- ✅ **D1 nghiệm thu trên Realme RMX2205 (2026-09-30 tối)** — MB Bank cả hai chiều, chip `802dcd2` đạt; lộ **bốn lỗi**,
+  sửa + đo lại đạt (bảng mục **5b** `BIEN_DONG_SO_DU_FEATURE.md`): hai lần chuyển cùng tiền ≤ 5 phút bị gộp → vân tay
+  số dư sau GD `104a1da` · tóm tắt nhóm của badge rỗng khi không con `3456b69` · *"Số dư ví sắp cạn"* cho ví mới 0 đ và
+  treo sau khi ví hồi `bf17877` · Hans đóng băng app ở nền → hàng gợi ý pin trong thẻ D1 `31302d0`. `flutter test`
+  **4988/4988** (4 skip).
+- ✅ **Bàn phím số ẩn khi màn Thêm giao dịch đã có số tiền (2026-09-30 tối, việc sau D1 số 1)** — Stitch `b52c0651…`,
+  nghiệm thu Realme 360 dp (màn 0 đ · Nhập nhanh điền · chạm hiện / ẩn · chạm lúc bàn phím hệ thống mở · form biến
+  động *Bỏ qua · ✓*). Cờ `_hienBanPhimSo` tắt khi mở với số tiền (sửa · biến động có `soTien`) hoặc khi Nhập nhanh điền
+  được số tiền; chạm khối số tiền để đảo. **Một luật cho nút lưu:** 16 phím không trên màn (theo cờ, hoặc bàn phím hệ
+  thống mở — G58) thì ✓ ở thanh tiêu đề — trước đó lúc gõ ghi chú **không có nút lưu nào**. Chi tiết mục 6
+  `BIEN_DONG_SO_DU_FEATURE.md`; ca test `ban_phim_so_an_test.dart`. Không đổi schema, không đổi payload. `flutter test`
+  **4997/4997** (4 skip), analyze 26.
 
 ### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
 

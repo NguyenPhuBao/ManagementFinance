@@ -145,8 +145,13 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
 
 ## 6. Việc sau D1 (người dùng chốt 2026-09-30)
 
-1. **Bàn phím số ẩn khi màn Thêm giao dịch mở với số tiền đã có** (từ biến động / Nhập nhanh / sửa) — chạm số tiền mới
-   hiện; màn trống giữ như nay; nút Lưu ✓ ra thanh tiêu đề khi bàn phím ẩn. Vẽ Stitch trước.
+1. ✅ **Bàn phím số ẩn khi màn Thêm giao dịch mở với số tiền đã có** (xong 2026-09-30 tối, Stitch `b52c0651…`, nghiệm
+   thu Realme). Cờ `_hienBanPhimSo` của `add_transaction_page.dart`: tắt khi mở với số tiền (sửa · biến động có
+   `soTien`) hoặc khi ô Nhập nhanh điền được số tiền; chạm khối số tiền để đảo — bàn phím **hệ thống** đang mở thì
+   chạm là đóng nó và **mở** 16 phím (đảo cờ lúc ấy là tắt phím mà không thấy gì đổi). **Một luật cho nút lưu:** 16 phím
+   không trên màn — theo cờ **hoặc** vì bàn phím hệ thống mở (G58) — thì ✓ ở thanh tiêu đề (*Bỏ qua · ✓* ở form biến
+   động); trước đó lúc gõ ghi chú không có nút lưu nào. Ẩn theo cờ thì dưới số tiền là *"Chạm để sửa số tiền"* (biểu
+   thức gõ dở thì dòng `= tổng` thắng). Ca test: `ban_phim_so_an_test.dart`.
 2. **Cặp chi + thu cùng tiền, ≤ 5 phút, hai nguồn khác** → gợi ý mở form *Chuyển khoản* điền sẵn ví nguồn / đích.
 3. **Chia sẻ biên lai** ví điện tử vào FlowMoney → đọc chữ trên máy → điền sẵn (gộp C4).
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).

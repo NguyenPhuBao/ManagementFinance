@@ -3223,6 +3223,10 @@ gắn *Recommended* cho phương án thu hẹp nguyên tắc *"AI là lớp cu�
 
 Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm giữ đúng: không số nào bị đổi, không chữ nào bị thêm.
 
+**Sau đó (2026-09-30 tối, việc sau D1):** ô Nhập nhanh điền được **số tiền** thì bàn phím số 16 phím **ẩn**, ✓ lên thanh
+tiêu đề, dưới số tiền là *"Chạm để sửa số tiền"* — việc còn lại là soát thẻ form, không gõ số (người dùng chốt; mục 6
+`BIEN_DONG_SO_DU_FEATURE.md`). Câu không đọc ra số tiền thì bàn phím giữ nguyên.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
