@@ -885,7 +885,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `tatCapTu(…, nguon:)`. Hàm thuần `category/domain/de_xuat_tu_khoa.dart`. ⚠️ Kèm sửa **lỗ hổng có sẵn**:
   `saveKeywords` không đánh dấu danh mục `pending` nên từ khoá sửa ở trang *Từ khoá của tôi* không lên server — nay có
   `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
-  không máy nào cắm lúc thi công.
+  không máy nào cắm lúc thi công. Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
+  nhỏ định tuyến · C học trên máy từng người), thứ tự A → B → C, làm **sau C4** — cuối mục 10.3 `AI_EDGE_FEATURE.md`.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

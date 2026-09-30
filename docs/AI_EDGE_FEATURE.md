@@ -3281,9 +3281,22 @@ tin, lại có nguy cơ quên khả năng tiếng Việt chung. Bơm gói số v
 100%, tức thì, và **kiểm được** bằng `kiemSo`.
 
 Ba rào cản nữa: **pháp lý** (huấn luyện tập trung = gửi dữ liệu đi = phạm F1); **kỹ
-thuật** (`flutter_gemma` nạp được trọng số LoRA có sẵn qua `loraPath` nhưng **không có
-API huấn luyện nào** — quét cả `lib/` của gói ngày 2026-09-20); **quy mô** (fine-tune
-per-user = mỗi người một lượt GPU và một file trọng số).
+thuật** (`flutter_gemma` **không có API huấn luyện nào** — quét cả `lib/` của gói ngày
+2026-09-20; và ⚠️ **cũng không nạp được LoRA trên đường app đang chạy**: API `withLora` /
+`loraPath` có ở `flutter_gemma`, nhưng engine `.litertlm` ném lỗi ngay khi nhận `loraPath` —
+`flutter_gemma_litertlm` 1.8.0, `ffi_inference_model.dart:84-88`, *"LoRA weights are not supported
+on the .litertlm FFI path … Track upstream LiteRT-LM C API support"*, đọc 2026-09-30. Câu cũ ở đây
+ghi *"nạp được trọng số LoRA qua `loraPath`"* — đúng với tầng API, sai với engine); **quy mô**
+(fine-tune per-user = mỗi người một lượt GPU và một file trọng số).
+
+📋 **Người dùng chốt 2026-09-30 — ba dự án huấn luyện, làm SAU C4** (thứ tự **A → B → C**, mục
+đích: trợ lý trả lời tốt hơn · hiểu từng người dùng · thử tinh chỉnh chính Gemma):
+**A** spike tra cứu — xuất Gemma 4 E2B đã tinh chỉnh (LoRA gộp vào trọng số) ra `.litertlm` mà
+engine nạp được không, giấy phép Gemma, chi phí; output là một câu trả lời, không phải mã.
+**B** mô hình nhỏ định tuyến câu hỏi → tool, huấn luyện ngoài app, đo trên bộ câu **khác** bộ
+huấn luyện — lý do: phiên sáu tool chờ TB 45,5 s, phiên một tool 23,8 s (mốc 72 câu, 9.37).
+**C** học trên máy của từng người, mở rộng khuôn B1. Mỗi dự án một spec riêng, brainstorm lại
+khi tới lượt.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
