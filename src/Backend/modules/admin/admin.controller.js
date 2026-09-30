@@ -183,6 +183,16 @@ const adminController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  async getAuditLogs(req, res) {
+    try {
+      const result = await adminService.getAuditLogs(req.query);
+      return ResponseHandler.success(res, result, 'Nhật ký hoạt động hệ thống');
+    } catch (error) {
+      logger.error('getAuditLogs failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
 };
 
 module.exports = adminController;

@@ -490,6 +490,13 @@ const adminService = {
       timestamp: new Date().toISOString(),
     };
   },
+
+  async getAuditLogs(params = {}) {
+    const limit = Math.min(parseInt(params.limit, 10) || 50, 200);
+    const page = Math.max(parseInt(params.page, 10) || 1, 1);
+    const result = await adminRepository.queryAuditLogs({ ...params, limit, page });
+    return { ...result, page, limit };
+  },
 };
 
 function resolveFilterContext(params) {
