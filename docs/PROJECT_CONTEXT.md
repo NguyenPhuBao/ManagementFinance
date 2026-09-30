@@ -940,7 +940,8 @@ Ba commit NPBao (`e2621da`, `e497695`, `8c677ab`), **không xung đột**, **kh�
   - Broadcast nằm ở kho admin, nên `GET` của người dùng không trả nó.
   - Kho người dùng giữ `BankTransactionPending` kèm `accountNumber`.
   - Người dùng chốt **chỉ nhận số đếm trên chuông**. Phần còn lại trái quy tắc 9 (bảng cục bộ) và cam kết payload hộp
-    đen, **chưa nhận**.
+    đen, **chưa nhận**. ✅ Số đếm trên chuông **làm xong 2026-09-30 đêm** (`554eeac`, Stitch `ec9eda7c…`, Realme
+    hiện 42 = SQLite) — mục 4.9 `NOTIFICATION_FEATURE.md`.
 - **Đơn chatbot** `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` đóng, sang `DA-XONG/`: sáu lệnh nghiệm thu đạt, 7/8 mục đúng.
   Còn **hai lỗi mã FHS**, đã xin sửa:
   - DTI gần như luôn 0 — `financial.snapshot.service.js:298` lọc `classify === 'Chi'` trong khi Vay/nợ là `'Vay/no'`;

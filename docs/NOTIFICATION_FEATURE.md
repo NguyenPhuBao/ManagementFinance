@@ -513,6 +513,8 @@ lịch thừa khác, phép dọn dẹp của resync không được nới lỏng
 
 ### 4.9 Badge số trên icon app (2026-09-08)
 
+> **Chuông trong app** (khác badge trên icon app) hiện **số** chưa đọc từ 2026-09-30 thay chấm đỏ — 0 ẩn, 1–99 đúng số, > 99 `99+` (`nhanSoChuaDoc`, `shared/widgets/notification_bell.dart`; Stitch `ec9eda7c…`). Đây là việc **duy nhất** client nhận từ `docs/Notification/Notification_Client-app.md` (§3.5 A). Cùng luồng `watchUnreadCount` với badge dưới đây; nghiệm thu Realme hiện 42, khớp SQLite.
+
 Badge mang **số chưa đọc trong app** — đúng con số `watchUnreadCount` mà chuông
 trên Home đang hiện. Không có phép đếm thứ hai: hai phép đếm sẽ trôi khỏi nhau
 và không ai phát hiện, vì badge sai **không ném lỗi, không ghi log**.
@@ -1723,7 +1725,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/database/notification_schema_v13_test.dart` | Migration v12→v13 giữ nguyên dữ liệu cũ, không đẩy bản ghi nào vào hàng đợi |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái; `markOverdue` không ghi đè lần hai |
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
-| `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
+| `test/shared/widgets/notification_bell_test.dart` | **Số** chưa đọc (từ 2026-09-30, thay chấm đỏ): 0 ẩn · 1–99 · `99+` (`nhanSoChuaDoc`); `99+` không làm nút rộng quá 48; bám dòng dữ liệu; nhãn trình đọc màn hình |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
 | `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười chín** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
