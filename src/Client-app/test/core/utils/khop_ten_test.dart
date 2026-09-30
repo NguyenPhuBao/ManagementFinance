@@ -100,4 +100,25 @@ void main() {
       expect(timTenTrongCau('ví tiết kiệm', ['Kiem'], tuLoai: 'hoá đơn'), isNull);
     });
   });
+
+  // C2 chuyển ví (người dùng báo 2026-09-30): câu chuyển nêu HAI ví — cần mọi tên, theo thứ tự trong câu.
+  group('timCacTenTrongCau — MỌI tên có thật trong câu, theo vị trí', () {
+    test('hai tên → cả hai, theo thứ tự trong câu (không theo độ dài), kèm vị trí', () {
+      const cau = 'chuyển 500k từ Tiền mặt sang Tiết kiệm';
+      final r = timCacTenTrongCau(cau, ['Tiết kiệm', 'Tiền mặt', 'tiết kiệm mua nhà'], tuLoai: 'ví');
+      expect([for (final t in r) t.ten], ['Tiền mặt', 'Tiết kiệm']);
+      expect(cau.substring(r[1].batDau, r[1].ketThuc), 'Tiết kiệm');
+    });
+
+    test('tên dài thắng tên ngắn nằm trong nó — không đếm hai lần', () {
+      final r = timCacTenTrongCau('chuyển sang tiết kiệm mua nhà', ['Tiết kiệm', 'tiết kiệm mua nhà'], tuLoai: 'ví');
+      expect([for (final t in r) t.ten], ['tiết kiệm mua nhà']);
+    });
+
+    test('không tên nào → rỗng; tên ngắn chỉ nhận ngay sau từ loại', () {
+      expect(timCacTenTrongCau('ăn phở 45k', ['Tiết kiệm'], tuLoai: 'ví'), isEmpty);
+      expect(timCacTenTrongCau('45k MB', ['MB'], tuLoai: 'ví'), isEmpty);
+      expect(timCacTenTrongCau('45k ví MB', ['MB'], tuLoai: 'ví').single.ten, 'MB');
+    });
+  });
 }

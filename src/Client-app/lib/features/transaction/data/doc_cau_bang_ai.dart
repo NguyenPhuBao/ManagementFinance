@@ -48,8 +48,9 @@ KhaiBaoCongCu khaiBaoDienGiaoDich({required List<String> tenVi, required List<St
           'so_tien': {'type': 'integer', 'description': 'Số tiền bằng đồng; 0 nếu câu không nói.'},
           'loai': {
             'type': 'string',
-            'enum': ['chi', 'thu', 'khong_ro'],
-            'description': 'thu = tiền vào (lương, thưởng, bán, được cho); chi = tiền ra; khong_ro nếu không rõ.',
+            'enum': ['chi', 'thu', 'chuyen_vi', 'khong_ro'],
+            'description': 'thu = tiền vào (lương, thưởng, bán, được cho); chi = tiền ra; chuyen_vi = chuyển tiền giữa '
+                'hai ví của chính người dùng; khong_ro nếu không rõ.',
           },
           'ngay': {
             'type': 'string',
@@ -58,7 +59,12 @@ KhaiBaoCongCu khaiBaoDienGiaoDich({required List<String> tenVi, required List<St
           'vi': {
             'type': 'string',
             'enum': [...tenVi, ''],
-            'description': 'Ví câu nói tới; rỗng nếu không nói.',
+            'description': 'Ví trả tiền (ví nguồn khi chuyen_vi) câu nói tới; rỗng nếu không nói.',
+          },
+          'vi_den': {
+            'type': 'string',
+            'enum': [...tenVi, ''],
+            'description': 'Ví nhận tiền khi chuyen_vi; rỗng nếu không phải chuyển ví.',
           },
           'danh_muc': {
             'type': 'string',
@@ -70,7 +76,7 @@ KhaiBaoCongCu khaiBaoDienGiaoDich({required List<String> tenVi, required List<St
             'description': 'Phần mô tả còn lại của câu, bỏ số tiền, ngày và ví. Không thêm chữ.',
           },
         },
-        'required': ['so_tien', 'loai', 'ngay', 'vi', 'danh_muc', 'ghi_chu'],
+        'required': ['so_tien', 'loai', 'ngay', 'vi', 'vi_den', 'danh_muc', 'ghi_chu'],
       },
     );
 

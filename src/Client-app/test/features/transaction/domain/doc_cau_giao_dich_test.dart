@@ -543,6 +543,131 @@ void main() {
     });
   });
 
+  // Người dùng báo 2026-09-30: câu chuyển giữa hai ví của mình bị đọc sai — "chuyển 500k từ tiền mặt sang tiết kiệm"
+  // thành khoản CHI từ ví Tiết kiệm (luật lấy tên ví DÀI NHẤT làm ví nguồn, không ai đọc chữ "chuyển"). §2.9 spec.
+  group('§2.9 chuyển ví', () {
+    // Như tài khoản 10 trên Realme: hai ví tiền mặt, hai ví tiết kiệm có tên lồng nhau.
+    final tienMat = makeWallet(id: 'w-tm', name: 'Tiền mặt');
+    final test_ = makeWallet(id: 'w-test', name: 'test');
+    final tietKiem = makeWallet(id: 'w-tk', name: 'Tiết kiệm').copyWith(type: 'saving');
+    final muaNha = makeWallet(id: 'w-mn', name: 'tiết kiệm mua nhà').copyWith(type: 'saving');
+    final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
+    final an = makeCategory(id: 'c-an', name: 'Ăn uống');
+    final vi = [tienMat, test_, tietKiem, muaNha, tcb];
+    KetQuaDocCau cv(String cau, {KetQuaAi? ai, List<Wallet>? dsVi}) =>
+        docCauGiaoDich(cau, now: now, vi: dsVi ?? vi, chonDuoc: [an], ai: ai);
+
+    test('⭐ "chuyển 500k từ tiền mặt sang tiết kiệm" → chuyển ví Tiền mặt → Tiết kiệm, không danh mục, ghi chú rỗng', () {
+      final r = cv('chuyển 500k từ tiền mặt sang tiết kiệm');
+      expect(r.loai, 'transfer');
+      expect(r.soTien, 500000);
+      expect(r.walletId, 'w-tm', reason: 'trước đây: ví Tiết kiệm (tên dài nhất) làm ví NGUỒN của một khoản chi');
+      expect(r.walletToId, 'w-tk');
+      expect(r.categoryId, isNull);
+      expect(r.ghiChu, '');
+      expect(r.oThieu, isEmpty);
+    });
+
+    test('chỉ nêu ví đích → nguồn null (form giữ ví đang chọn); tên dài thắng; phần còn lại là ghi chú', () {
+      final r = cv('chuyển 2tr sang tiết kiệm mua nhà để mua xe');
+      expect(r.loai, 'transfer');
+      expect(r.walletToId, 'w-mn');
+      expect(r.walletId, isNull);
+      expect(r.ghiChu, 'để mua xe');
+    });
+
+    test('giới từ đích: vào / tới / đến, kể cả có chữ "ví"; không cần chữ "chuyển"', () {
+      final nap = cv('nạp 100k vào Techcombank');
+      expect(nap.loai, 'transfer');
+      expect(nap.walletToId, 'w-tcb');
+      expect(nap.ghiChu, 'nạp');
+      expect(cv('chuyển 1tr tới ví Techcombank').walletToId, 'w-tcb');
+      expect(cv('chuyển 1tr đến Techcombank').walletToId, 'w-tcb');
+    });
+
+    test('"chuyển … X qua Y": "qua" là đích khi có chữ "chuyển"; ví kia là nguồn', () {
+      final r = cv('chuyển 500k tiền mặt qua tiết kiệm');
+      expect(r.loai, 'transfer');
+      expect(r.walletId, 'w-tm');
+      expect(r.walletToId, 'w-tk');
+      expect(r.ghiChu, '');
+    });
+
+    test('"chuyển" + đúng hai ví, không giới từ → trước là nguồn, sau là đích', () {
+      final r = cv('chuyển tiền mặt tiết kiệm 500k');
+      expect(r.walletId, 'w-tm');
+      expect(r.walletToId, 'w-tk');
+    });
+
+    test('"tiền mặt" không phải tên ví nào → ví tiền mặt duy nhất làm nguồn', () {
+      final chinh = makeWallet(id: 'w-chinh', name: 'Ví chính');
+      final r = cv('chuyển 500k từ tiền mặt sang Techcombank', dsVi: [chinh, tcb]);
+      expect(r.walletId, 'w-chinh');
+      expect(r.walletToId, 'w-tcb');
+    });
+
+    test('⚠️ KHÔNG phải chuyển ví: không có ví đích — "chuyển khoản cho mẹ", "trả qua Techcombank", "ck qua Techcombank"', () {
+      final ck = cv('chuyển khoản 500k cho mẹ');
+      expect(ck.loai, isNull);
+      expect(ck.walletToId, isNull);
+      final qua = cv('trả tiền điện qua Techcombank 500k');
+      expect(qua.loai, isNull);
+      expect(qua.walletId, 'w-tcb', reason: '"qua" không kèm "chuyển" = trả BẰNG ví ấy');
+      expect(qua.walletToId, isNull);
+      final ckQua = cv('chuyển khoản qua Techcombank 500k cho mẹ');
+      expect(ckQua.loai, isNull, reason: '"chuyển khoản qua X" = trả bằng X, không phải chuyển sang X');
+      expect(ckQua.walletId, 'w-tcb');
+    });
+
+    test('nguồn trùng đích → bỏ nguồn (form giữ ví đang chọn)', () {
+      final r = cv('chuyển 500k từ tiết kiệm sang tiết kiệm');
+      expect(r.walletToId, 'w-tk');
+      expect(r.walletId, isNull);
+    });
+
+    test('chữ "ví" của ví đích không làm ví nguồn thành ô thiếu', () {
+      expect(cv('chuyển 500k sang ví tiết kiệm').oThieu, isEmpty);
+    });
+
+    test('dòng tóm tắt: "Chuyển ví" + nguồn → đích; chỉ có đích thì "sang …"', () {
+      final r = cv('chuyển 500k từ tiền mặt sang tiết kiệm');
+      expect(cauDaDien(r, tenVi: 'Tiền mặt', tenViDen: 'Tiết kiệm', now: now),
+          'Đã điền: 500.000 đ · Chuyển ví · Tiền mặt → Tiết kiệm');
+      expect(cauDaDien(cv('chuyển 2tr sang tiết kiệm'), tenViDen: 'Tiết kiệm', now: now),
+          'Đã điền: 2.000.000 đ · Chuyển ví · sang Tiết kiệm');
+    });
+
+    group('AI (chỉ khi luật không đọc được chiều)', () {
+      test('KetQuaAi.tuThamSo: "chuyen_vi" → transfer, vi_den → viDen', () {
+        final a = KetQuaAi.tuThamSo({'loai': 'chuyen_vi', 'vi_den': 'Tiết kiệm'});
+        expect(a.loai, 'transfer');
+        expect(a.viDen, 'Tiết kiệm');
+      });
+
+      test('AI nói chuyển tới ví câu có nhắc (viết tắt) → chuyển ví; danh mục AI bị bỏ', () {
+        final r = cv('chuyển ba chục qua techcom',
+            ai: const KetQuaAi(soTien: 30000, loai: 'transfer', viDen: 'Techcombank', danhMuc: 'Ăn uống'));
+        expect(r.loai, 'transfer');
+        expect(r.walletToId, 'w-tcb');
+        expect(r.soTien, 30000);
+        expect(r.categoryId, isNull);
+        expect(r.quaAi, isTrue);
+      });
+
+      test('⚠️ AI nói chuyển tới ví câu KHÔNG nhắc → bỏ; luật đọc được chiều → luật thắng; đích trùng nguồn → bỏ', () {
+        final khongNhac = cv('cà phê mất ba chục', ai: const KetQuaAi(loai: 'transfer', viDen: 'Tiết kiệm'));
+        expect(khongNhac.loai, isNull);
+        expect(khongNhac.walletToId, isNull);
+        expect(cv('nhận lương 9tr', ai: const KetQuaAi(loai: 'transfer', viDen: 'Tiết kiệm')).loai, 'thu');
+        final trung = cv('quẹt thẻ techcom 45k',
+            ai: const KetQuaAi(vi: 'Techcombank', loai: 'transfer', viDen: 'Techcombank'));
+        expect(trung.walletId, 'w-tcb');
+        expect(trung.loai, isNull);
+        expect(trung.walletToId, isNull);
+      });
+    });
+  });
+
   group('không đọc được gì', () {
     test('câu không có ô nào đọc được → khongDocDuocGi, ghi chú là cả câu', () {
       final r = doc('xin chào');

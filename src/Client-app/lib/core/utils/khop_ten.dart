@@ -81,6 +81,33 @@ typedef TenTrongCau = ({String ten, int batDau, int ketThuc});
 /// Khớp trọn từ trên chữ bỏ dấu, tên dài trước. ⚠️ Tên ngắn (dưới [_kDaiTenTuDo] ký tự bỏ dấu) chỉ nhận khi đứng ngay
 /// sau [tuLoai]. `null` khi không tên nào khớp.
 TenTrongCau? timTenTrongCau(String cau, Iterable<String> ten, {required String tuLoai}) {
+  final c = _chuanBiTimTen(cau, ten, tuLoai);
+  if (c == null) return null;
+  for (final (mau, goc) in c.mau) {
+    final m = mau.firstMatch(c.q);
+    if (m != null) return (ten: goc, batDau: m.start, ketThuc: m.end);
+  }
+  return null;
+}
+
+/// Như [timTenTrongCau] nhưng trả MỌI tên có thật mà [cau] nêu, theo VỊ TRÍ trong câu — C2 chuyển ví: câu nêu hai ví
+/// (*"chuyển 500k từ tiền mặt sang tiết kiệm"*). Tên dài xét trước và giữ chỗ: *"tiết kiệm mua nhà"* không đếm thêm
+/// *"Tiết kiệm"* nằm trong nó.
+List<TenTrongCau> timCacTenTrongCau(String cau, Iterable<String> ten, {required String tuLoai}) {
+  final c = _chuanBiTimTen(cau, ten, tuLoai);
+  if (c == null) return const [];
+  final kq = <TenTrongCau>[];
+  for (final (mau, goc) in c.mau) {
+    for (final m in mau.allMatches(c.q)) {
+      if (kq.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
+      kq.add((ten: goc, batDau: m.start, ketThuc: m.end));
+    }
+  }
+  return kq..sort((a, b) => a.batDau.compareTo(b.batDau));
+}
+
+/// Câu bỏ dấu + mẫu của từng tên (tên dài trước). `null` khi bỏ dấu làm lệch độ dài (ký tự lạ — vị trí không tin được).
+({String q, List<(RegExp, String)> mau})? _chuanBiTimTen(String cau, Iterable<String> ten, String tuLoai) {
   final thuong = unorm.nfc(cau).toLowerCase().replaceAll('_', ' ');
   final q = removeVietnameseTones(thuong);
   // Bỏ dấu giữ độ dài với chữ tiếng Việt dựng sẵn; ký tự lạ làm lệch thì vị trí không tin được.
@@ -90,12 +117,16 @@ TenTrongCau? timTenTrongCau(String cau, Iterable<String> ten, {required String t
     for (final t in ten.toSet())
       if (_boDau(t).isNotEmpty) (_boDau(t), t),
   ]..sort((a, b) => b.$1.length.compareTo(a.$1.length));
-  for (final (b, goc) in bang) {
-    final mau = b.length >= _kDaiTenTuDo ? _mauCum(b) : '$loai\\s+${_mauCum(b)}';
-    final m = RegExp('(?<![a-z0-9])$mau(?![a-z0-9])').firstMatch(q);
-    if (m != null) return (ten: goc, batDau: m.start, ketThuc: m.end);
-  }
-  return null;
+  return (
+    q: q,
+    mau: [
+      for (final (b, goc) in bang)
+        (
+          RegExp('(?<![a-z0-9])${b.length >= _kDaiTenTuDo ? _mauCum(b) : '$loai\\s+${_mauCum(b)}'}(?![a-z0-9])'),
+          goc,
+        ),
+    ],
+  );
 }
 
 String? tenNeuTrongCau(String cau, Iterable<String> ten, {required String tuLoai}) =>

@@ -5,13 +5,15 @@
 ///
 /// Bất biến ④ của nhóm C: đây chỉ là điền sẵn. Người dùng xem lại rồi bấm **Lưu** mới ghi.
 ///
-/// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → ví (§2.4) → loại (§2.2, trên câu đã bỏ các đoạn ấy, để *"thứ
-/// 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu → B1
-/// khi chắc → từ khoá của danh mục → danh mục AI chọn, tất cả trên ghi chú đã rút của luật).
+/// Thứ tự: ngày (`timNgayTrongCau`) → số tiền (§2.1) → chuyển ví (§2.9: ví đích sau *sang / vào / đến / tới*…) hoặc ví
+/// (§2.4) → loại (§2.2, trên câu đã bỏ các đoạn ấy, để *"thứ 2"* không đọc thành *"thu"*) → ghi chú (§2.7: câu gốc bỏ
+/// các đoạn đã dùng) → danh mục (§2.5: tên nêu trong câu → B1 khi chắc → từ khoá của danh mục → danh mục AI chọn, tất
+/// cả trên ghi chú đã rút của luật; chuyển ví không có danh mục).
 ///
-/// **Đọc bằng AI (§2.8, 2026-09-30):** khi có [KetQuaAi] — các ô thô mô hình trên máy trả về — mỗi ô của AI phải QUA
-/// KIỂM của luật mới được dùng, trượt thì giữ ô của luật. AI đề xuất, luật kiểm: AI được chọn cách đọc, không được đưa
-/// ra một chữ số, một cái tên, hay một chữ ghi chú không có trong câu / trên máy.
+/// **Đọc bằng AI (§2.8):** khi có [KetQuaAi] — các ô thô mô hình trên máy trả về — mỗi ô của AI phải QUA KIỂM của luật
+/// mới được dùng. AI đề xuất, luật kiểm: AI được chọn cách đọc, không được đưa ra một chữ số, một cái tên, hay một chữ
+/// ghi chú không có trong câu / trên máy. Người dùng chốt 2026-09-30 (*đổi lần hai*): luật trước — AI chỉ LẤP ô luật để
+/// trống, và màn chỉ hỏi AI khi còn ô câu có nhắc mà luật không đọc được ([KetQuaDocCau.oThieu]).
 library;
 
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
@@ -44,6 +46,7 @@ class KetQuaDocCau {
   /// Đầu ngày. Form chỉ đổi phần ngày, giữ giờ.
   final DateTime? ngay;
   final String? walletId;
+  final String? walletToId;
   final String? categoryId;
 
   /// Khác `null` khi danh mục đến từ B1 — màn dùng nó để ghi phản hồi `chon` / `khac` lúc lưu, như thẻ gợi ý.
@@ -73,6 +76,7 @@ class KetQuaDocCau {
     this.loai,
     this.ngay,
     this.walletId,
+    this.walletToId,
     this.categoryId,
     this.doan,
     this.lyDoDanhMuc,
@@ -83,17 +87,19 @@ class KetQuaDocCau {
   });
 
   bool get khongDocDuocGi =>
-      soTien == null && loai == null && ngay == null && walletId == null && categoryId == null;
+      soTien == null && loai == null && ngay == null && walletId == null && walletToId == null && categoryId == null;
 }
 
 const String kCauChuaDocDuoc = 'Mình chưa đọc được câu này — bạn điền tay nhé.';
 
 /// Dòng tóm tắt dưới ô Nhập nhanh (§3): *"Đã điền: 45.000 đ · Hôm qua · Tiền mặt · Ăn uống"*. Chỉ nêu những ô ĐÃ đổi;
 /// [tenVi] / [tenDanhMuc] là tên của ví / danh mục mà màn thực sự đặt (màn có thể bỏ danh mục khi đang ở đoạn Chuyển
-/// khoản). Không đọc được gì → [kCauChuaDocDuoc].
+/// khoản). Chuyển ví (§2.9): *"… · Chuyển ví · Tiền mặt → Tiết kiệm"*, chỉ có ví đích thì *"sang Tiết kiệm"*. Không đọc
+/// được gì → [kCauChuaDocDuoc].
 String cauDaDien(
   KetQuaDocCau kq, {
   String? tenVi,
+  String? tenViDen,
   String? tenDanhMuc,
   required DateTime now,
 }) {
@@ -113,8 +119,12 @@ String cauDaDien(
   final phan = [
     if (kq.soTien != null) CurrencyFormatter.format(kq.soTien!),
     if (kq.loai == 'thu') 'Thu nhập',
+    if (kq.loai == 'transfer') 'Chuyển ví',
     if (chuNgay != null) chuNgay,
-    if (tenVi != null) tenVi,
+    if (tenViDen != null)
+      tenVi != null ? '$tenVi → $tenViDen' : 'sang $tenViDen'
+    else if (tenVi != null)
+      tenVi,
     if (tenDanhMuc != null) tenDanhMuc,
   ];
   return phan.isEmpty ? kCauChuaDocDuoc : 'Đã điền: ${phan.join(' · ')}';
@@ -126,9 +136,10 @@ class KetQuaAi {
   final String? loai;
   final String? ngay;
   final String? vi;
+  final String? viDen;
   final String? danhMuc;
   final String? ghiChu;
-  const KetQuaAi({this.soTien, this.loai, this.ngay, this.vi, this.danhMuc, this.ghiChu});
+  const KetQuaAi({this.soTien, this.loai, this.ngay, this.vi, this.viDen, this.danhMuc, this.ghiChu});
 
   /// Từ tham số lời gọi tool. Lỏng tay với kiểu (số có thể đến dạng chuỗi); rỗng, `0`, `khong_ro` → `null`.
   factory KetQuaAi.tuThamSo(Map<String, dynamic> a) {
@@ -145,9 +156,10 @@ class KetQuaAi {
     final loai = chuoi(a['loai']);
     return KetQuaAi(
       soTien: tien == null || tien <= 0 ? null : tien,
-      loai: const {'chi', 'thu'}.contains(loai) ? loai : null,
+      loai: switch (loai) { 'chi' || 'thu' => loai, 'chuyen_vi' => 'transfer', _ => null },
       ngay: chuoi(a['ngay']),
       vi: chuoi(a['vi']),
+      viDen: chuoi(a['vi_den']),
       danhMuc: chuoi(a['danh_muc']),
       ghiChu: chuoi(a['ghi_chu']),
     );
@@ -239,26 +251,36 @@ KetQuaDocCau docCauGiaoDich(
     }
   }
 
-  // Ví (§2.4): tên ví nêu trong câu; không có thì "tiền mặt" → ví tiền mặt duy nhất.
+  // Chuyển ví (§2.9, người dùng báo 2026-09-30) trước — câu chuyển nêu HAI ví, luật một ví bên dưới lấy nhầm ví đích.
   final dsVi = [for (final w in vi) if (!w.isDeleted) w];
+  final nhac = _viNhacTrongCau(s, b, dsVi, daDung);
   String? walletId;
-  final tenVi = timTenTrongCau(s, [for (final w in dsVi) w.name], tuLoai: 'ví');
-  if (tenVi != null) {
-    final trung = _cungTen(dsVi, tenVi.ten, (w) => w.name);
-    if (trung.length == 1) {
-      walletId = trung.single.id;
-      daDung.add(_moRongTruocVi(thuong, tenVi.batDau, tenVi.ketThuc));
-    }
+  String? walletToId;
+  final chuyen = _docChuyenVi(thuong, nhac);
+  if (chuyen != null) {
+    walletId = chuyen.nguon?.id;
+    walletToId = chuyen.dich.id;
+    daDung.addAll(chuyen.khoang);
   } else {
-    final m = _mauTienMat.firstMatch(b);
-    final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
-    if (m != null && tienMat.length == 1) {
-      walletId = tienMat.single.id;
-      daDung.add(_moRongTruocVi(thuong, m.start, m.end));
+    // Ví (§2.4): tên ví nêu trong câu; không có thì "tiền mặt" → ví tiền mặt duy nhất.
+    final tenVi = timTenTrongCau(s, [for (final w in dsVi) w.name], tuLoai: 'ví');
+    if (tenVi != null) {
+      final trung = _cungTen(dsVi, tenVi.ten, (w) => w.name);
+      if (trung.length == 1) {
+        walletId = trung.single.id;
+        daDung.add(_moRongTruocVi(thuong, tenVi.batDau, tenVi.ketThuc));
+      }
+    } else {
+      final m = _mauTienMat.firstMatch(b);
+      final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
+      if (m != null && tienMat.length == 1) {
+        walletId = tienMat.single.id;
+        daDung.add(_moRongTruocVi(thuong, m.start, m.end));
+      }
     }
   }
 
-  var loai = _loaiCua(_boKhoang(thuong, daDung));
+  var loai = chuyen != null ? 'transfer' : _loaiCua(_boKhoang(thuong, daDung));
   var ghiChu = _ghiChuTu(s, daDung);
   // Đoán danh mục trên ghi chú của LUẬT (câu đã bỏ tiền, ngày, ví) — ghi chú AI có thể đã bớt chữ.
   final ghiChuLuat = ghiChu;
@@ -274,10 +296,6 @@ KetQuaDocCau docCauGiaoDich(
       canhBao.removeWhere((c) => c != kCanhBaoNhieuSoTien);
       aiLap = true;
     }
-    if (loai == null && ai.loai != null && !_coVayNo(thuong)) {
-      loai = ai.loai;
-      aiLap = true;
-    }
     if (ngay == null) {
       ngay = _ngayAiHopLe(ai.ngay, thuong, now);
       if (ngay != null) aiLap = true;
@@ -286,6 +304,22 @@ KetQuaDocCau docCauGiaoDich(
       final k = khopTheoTen(ai.vi!, dsVi, (w) => w.name);
       if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc.name)) {
         walletId = k.muc.id;
+        aiLap = true;
+      }
+    }
+    if (loai == null && !_coVayNo(thuong)) {
+      if (ai.loai == 'transfer') {
+        // Ví đích phải là ví câu NÊU (tên hoặc viết tắt) — chữ "ví" / "thẻ" trần không đủ — và khác ví nguồn.
+        final k = ai.viDen == null ? null : khopTheoTen(ai.viDen!, dsVi, (w) => w.name);
+        if (k is KhopMot<Wallet> &&
+            k.muc.id != walletId &&
+            (nhac.any((x) => x.vi.id == k.muc.id) || _vietTatTenVi(thuong, k.muc.name))) {
+          loai = 'transfer';
+          walletToId = k.muc.id;
+          aiLap = true;
+        }
+      } else if (ai.loai != null) {
+        loai = ai.loai;
         aiLap = true;
       }
     }
@@ -302,9 +336,12 @@ KetQuaDocCau docCauGiaoDich(
 
   // Danh mục (§2.5): câu nói rõ chiều thì chỉ danh mục hợp chiều (C1 `hopLeTheoChieu`); không nói thì mọi danh mục chọn
   // được — cùng nếp thẻ gợi ý của màn Thêm giao dịch, nơi danh mục kéo đoạn Chi/Thu theo.
-  final hopLe = loai != null
-      ? hopLeTheoChieu(loai, chonDuoc)
-      : {for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.id};
+  // Chuyển ví không có danh mục (màn bỏ ô ấy ở đoạn Chuyển khoản) — tập hợp lệ rỗng làm cả bốn bước dưới im.
+  final hopLe = loai == 'transfer'
+      ? <String>{}
+      : loai != null
+          ? hopLeTheoChieu(loai, chonDuoc)
+          : {for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.id};
   final dsHopLe = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];
   String? categoryId;
   DoanDanhMuc? doan;
@@ -357,8 +394,8 @@ KetQuaDocCau docCauGiaoDich(
   final oThieu = {
     if (soTien == null && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
     if (ngay == null && cauNhacNgay(thuong)) OThieu.ngay,
-    if (walletId == null && dsVi.isNotEmpty && (_nhacViChung(thuong) || dsVi.any((w) => _vietTatTenVi(thuong, w.name))))
-      OThieu.vi,
+    // Xét trên câu đã bỏ các đoạn đã dùng: chữ "ví" của "sang ví Tiết kiệm" thuộc ví đích, không nhắc ví nguồn.
+    if (walletId == null && dsVi.isNotEmpty && _cauConNhacVi(_boKhoang(thuong, daDung), dsVi)) OThieu.vi,
   };
 
   return KetQuaDocCau(
@@ -367,6 +404,7 @@ KetQuaDocCau docCauGiaoDich(
     loai: loai,
     ngay: ngay,
     walletId: walletId,
+    walletToId: walletToId,
     categoryId: categoryId,
     doan: doan,
     lyDoDanhMuc: lyDo,
@@ -512,6 +550,93 @@ _Khoang _moRongTruocVi(String thuong, int batDau, int ketThuc) {
     bd = truoc.start;
   }
   return (batDau: bd, ketThuc: ketThuc);
+}
+
+bool _cauConNhacVi(String thuong, List<Wallet> dsVi) =>
+    _nhacViChung(thuong) || dsVi.any((w) => _vietTatTenVi(thuong, w.name));
+
+typedef _ViNhac = ({Wallet vi, int batDau, int ketThuc});
+
+/// Mọi ví câu NÊU, theo vị trí: tên ví (trùng đúng một ví), và *"tiền mặt"* → ví tiền mặt duy nhất khi không ví nào tên
+/// như thế. Trên câu đã bỏ đoạn tiền / ngày.
+List<_ViNhac> _viNhacTrongCau(String s, String b, List<Wallet> dsVi, List<_Khoang> daDung) {
+  final kq = <_ViNhac>[];
+  for (final t in timCacTenTrongCau(_boKhoang(s, daDung), [for (final w in dsVi) w.name], tuLoai: 'ví')) {
+    final trung = _cungTen(dsVi, t.ten, (w) => w.name);
+    if (trung.length == 1) kq.add((vi: trung.single, batDau: t.batDau, ketThuc: t.ketThuc));
+  }
+  final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
+  if (tienMat.length == 1) {
+    for (final m in _mauTienMat.allMatches(b)) {
+      if (kq.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
+      kq.add((vi: tienMat.single, batDau: m.start, ketThuc: m.end));
+    }
+  }
+  return kq..sort((x, y) => x.batDau.compareTo(y.batDau));
+}
+
+/// Chữ đứng ngay trước ví ở [bd] mà làm nó thành ví ĐÍCH / ví NGUỒN của một khoản chuyển (§2.9).
+const Set<String> _gioiTuDich = {'sang', 'vào', 'vao', 'đến', 'den', 'tới'};
+const Set<String> _gioiTuNguon = {'từ', 'tu'};
+
+/// Chuyển giữa hai ví của người dùng (§2.9). Ví ĐÍCH = ví nêu ngay sau *sang · vào · đến · tới* (bỏ qua một chữ *ví*),
+/// hoặc sau *qua* khi câu có động từ *chuyển* — *"trả qua Techcombank"*, *"chuyển khoản qua Techcombank"* là trả BẰNG
+/// ví ấy. Không có giới từ thì *chuyển* + đúng hai ví khác nhau: trước là nguồn, sau là đích. Ví NGUỒN = ví sau *từ*,
+/// không có thì ví còn lại khi chỉ còn đúng một; trùng ví đích thì bỏ (form giữ ví đang chọn). Không có ví đích →
+/// không phải chuyển ví (*"chuyển khoản 500k cho mẹ"* vẫn là khoản chi).
+({Wallet? nguon, Wallet dich, List<_Khoang> khoang})? _docChuyenVi(String thuong, List<_ViNhac> nhac) {
+  if (nhac.isEmpty) return null;
+  final dongTu = _dongTuChuyen(thuong);
+  _ViNhac? dich;
+  _Khoang? kDich;
+  _ViNhac? tu;
+  _Khoang? kTu;
+  for (final x in nhac) {
+    final t = _chuTruoc(thuong, x.batDau);
+    if (t == null) continue;
+    if (dich == null && (_gioiTuDich.contains(t.chu) || (dongTu != null && t.chu == 'qua'))) {
+      dich = x;
+      kDich = (batDau: t.batDau, ketThuc: x.ketThuc);
+    } else if (tu == null && _gioiTuNguon.contains(t.chu)) {
+      tu = x;
+      kTu = (batDau: t.batDau, ketThuc: x.ketThuc);
+    }
+  }
+  _Khoang khoangCua(_ViNhac x) => identical(x, tu) ? kTu! : _moRongTruocVi(thuong, x.batDau, x.ketThuc);
+
+  if (dich == null) {
+    if (dongTu == null || nhac.length != 2 || nhac[0].vi.id == nhac[1].vi.id) return null;
+    return (nguon: nhac[0].vi, dich: nhac[1].vi, khoang: [khoangCua(nhac[0]), khoangCua(nhac[1]), dongTu]);
+  }
+  final d = dich;
+  final nguonNhac = tu ?? (nhac.length == 2 ? nhac.firstWhere((x) => !identical(x, d)) : null);
+  return (
+    nguon: nguonNhac == null || nguonNhac.vi.id == d.vi.id ? null : nguonNhac.vi,
+    dich: d.vi,
+    khoang: [kDich!, if (nguonNhac != null) khoangCua(nguonNhac), if (dongTu != null) dongTu],
+  );
+}
+
+/// Động từ *chuyển* (kèm *tiền* ngay sau) — không tính *chuyển khoản* (đó là CÁCH trả tiền). Đoạn trả về để ghi chú bỏ.
+_Khoang? _dongTuChuyen(String thuong) {
+  final tu = _tu.allMatches(thuong).toList();
+  for (var i = 0; i < tu.length; i++) {
+    if (removeVietnameseTones(unorm.nfc(tu[i].group(0)!)) != 'chuyen') continue;
+    final ke = i + 1 < tu.length ? removeVietnameseTones(unorm.nfc(tu[i + 1].group(0)!)) : null;
+    if (ke == 'khoan') continue;
+    final kt = ke == 'tien' ? tu[i + 1].end : tu[i].end;
+    return (batDau: tu[i].start, ketThuc: kt);
+  }
+  return null;
+}
+
+/// Chữ ngay trước [bd], bỏ qua một chữ *ví* (*"sang ví Tiết kiệm"*).
+({String chu, int batDau})? _chuTruoc(String thuong, int bd) {
+  var m = _tuCuoi.firstMatch(thuong.substring(0, bd));
+  if (m != null && const {'ví', 'vi'}.contains(m.group(1))) {
+    m = _tuCuoi.firstMatch(thuong.substring(0, m.start)) ?? m;
+  }
+  return m == null ? null : (chu: m.group(1)!, batDau: m.start);
 }
 
 List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {

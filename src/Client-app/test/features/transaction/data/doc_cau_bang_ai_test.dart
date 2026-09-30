@@ -161,12 +161,14 @@ void main() {
     expect(phien.daDong, isTrue);
   });
 
-  test('schema: vi và danh_muc là ENUM tên có thật (cộng chuỗi rỗng); loai chỉ ba giá trị', () {
+  test('schema: vi, vi_den và danh_muc là ENUM tên có thật (cộng chuỗi rỗng); loai có chuyen_vi (§2.9)', () {
     final k = khaiBaoDienGiaoDich(tenVi: const ['Tiền mặt', 'MB'], tenDanhMuc: const ['Ăn uống']);
     final p = k.thamSo['properties'] as Map<String, dynamic>;
     expect((p['vi'] as Map)['enum'], ['Tiền mặt', 'MB', '']);
+    expect((p['vi_den'] as Map)['enum'], ['Tiền mặt', 'MB', '']);
     expect((p['danh_muc'] as Map)['enum'], ['Ăn uống', '']);
-    expect((p['loai'] as Map)['enum'], ['chi', 'thu', 'khong_ro']);
+    expect((p['loai'] as Map)['enum'], ['chi', 'thu', 'chuyen_vi', 'khong_ro']);
+    expect(k.thamSo['required'], contains('vi_den'));
     // Trần maxTokens là trần TỔNG (bẫy 4.39): 30 danh mục + 5 ví vẫn phải gọn.
     final lon = khaiBaoDienGiaoDich(
       tenVi: [for (var i = 0; i < 5; i++) 'Ví số $i'],
