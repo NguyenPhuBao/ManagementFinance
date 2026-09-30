@@ -48,10 +48,15 @@ App ngân hàng / Tin nhắn / ví điện tử hiện thông báo
   `flutter analyze` **và** `flutter build apk` (bẫy 7.11 `NOTIFICATION_FEATURE.md`), nên nghiệm thu trên máy thật là bắt
   buộc.
 - **Danh sách trắng** là một hằng tên gói. Gói thật của từng app (kể cả app Tin nhắn của Realme / OnePlus / Samsung /
-  Google) phải **đo trên máy** ở Task 1, không đoán.
+  Google) phải **đo trên máy** ở Task 1, không đoán. ✅ Đo trên **OnePlus 13R** 2026-09-30 bằng tin biến động thật:
+  `com.mbmobile` (MB Bank), `com.mservice.momotransfer` (MoMo), `vn.com.vng.zalopay` (ZaloPay). Vietcombank,
+  Techcombank, BIDV (máy không cài) và Tin nhắn (chưa có tin) **chưa vào**.
 - **Bộ lọc thô** (không trích số): bỏ tin chứa *OTP* / *mã xác thực* / *ma xac thuc* (không phân biệt hoa thường); giữ
-  tin có `[+-]\s?\d[\d.,]*`. Đây là bộ **lọc**; mọi phép **đọc** ở Dart, nên chỉ có một định nghĩa của *"số tiền trong
-  tin"*.
+  tin có **số tiền**: `[+-]\s?(vnd\s?)?\d[\d.,]*` **hoặc** `\d[\d.,]*\s?(đ|₫|vnd)`. Đây là bộ **lọc**; mọi phép **đọc** ở
+  Dart, nên chỉ có một định nghĩa của *"số tiền trong tin"*. ⚠️ **Đổi 2026-09-30, người dùng chốt:** bản đầu chỉ giữ
+  `[+-]\s?\d…` — nhưng tin **MoMo / ZaloPay không có dấu ±** (*"Nhận 15.000đ qua chuyển khoản"*, *"Số tiền 20.000 ₫ …"*;
+  chiều nằm ở động từ *"Nhận"*), nên cả hai ví bị bỏ trước khi ghi đĩa; và **Techcombank** viết `+ VND 208,080` (chữ
+  `VND` chen giữa dấu và số) nên cũng bị bỏ — ca test nối dây bắt được.
 - **Cất:** mỗi tin một dòng `{"goi","tieuDe","noiDung","luc","khoa"}` (`khoa` = `StatusBarNotification.key`) nối vào
   `context.filesDir/bien_dong_cho.jsonl`. Dart đọc qua `getApplicationSupportDirectory()` (Android trả đúng `files/`).
   Kiểm cặp đường dẫn này ở Task 1.

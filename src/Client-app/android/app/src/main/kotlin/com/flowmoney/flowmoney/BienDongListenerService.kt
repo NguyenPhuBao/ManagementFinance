@@ -40,12 +40,14 @@ class BienDongListenerService : NotificationListenerService() {
          *
          * ⚠️ CHỈ gói đã ĐO trên máy thật (Task 1 D1) — spec §2 cấm đoán, kể cả với
          * gói "ai cũng biết": app Tin nhắn của Realme / OnePlus / Samsung / Google
-         * mỗi hãng một gói. `com.mbmobile` đo trên OnePlus 13R 2026-09-30 (tin
-         * biến động thật, khuôn MB đọc trọn). Vietcombank, Techcombank, BIDV,
-         * Tin nhắn, MoMo, ZaloPay: chưa có dòng nào → chưa vào.
+         * mỗi hãng một gói. Ba gói dưới đo trên OnePlus 13R 2026-09-30 bằng tin
+         * biến động thật. Vietcombank, Techcombank, BIDV, Tin nhắn: chưa có dòng
+         * nào → chưa vào.
          */
         val DANH_SACH_TRANG: Map<String, String> = mapOf(
             "com.mbmobile" to "MB Bank",
+            "com.mservice.momotransfer" to "MoMo",
+            "vn.com.vng.zalopay" to "ZaloPay",
         )
 
         const val TEP_HANG_CHO = "bien_dong_cho.jsonl"
@@ -65,8 +67,15 @@ class BienDongListenerService : NotificationListenerService() {
         /** Cùng chuỗi với `_otp` của `doc_tin_bien_dong.dart` — lớp lọc thứ nhất, trước khi ghi đĩa. */
         private val OTP = Regex("otp|mã xác thực|ma xac thuc", RegexOption.IGNORE_CASE)
 
-        /** Chỉ là bộ LỌC ("có một số kèm dấu"), không trích gì. */
-        private val CO_SO_TIEN = Regex("[+-]\\s?\\d[\\d.,]*")
+        /**
+         * Chỉ là bộ LỌC ("tin có mang một số tiền"), không trích gì: số kèm dấu ±
+         * (tin ngân hàng) HOẶC số kèm đơn vị đ / ₫ / VND — tin MoMo, ZaloPay KHÔNG
+         * có dấu ± (đo 2026-09-30); lọc chỉ theo ± là bỏ mọi tin của hai ví. Và
+         * `VND` được chen giữa dấu và số: Techcombank viết `+ VND 208,080`
+         * (`Classify.md` §4.3 mẫu 5) — bản đầu đòi chữ số ngay sau dấu nên bỏ
+         * mọi tin Techcombank, `bien_dong_noi_day_test` bắt được.
+         */
+        private val CO_SO_TIEN = Regex("[+-]\\s?(vnd\\s?)?\\d[\\d.,]*|\\d[\\d.,]*\\s?(đ|₫|vnd)", RegexOption.IGNORE_CASE)
 
         fun bat(context: Context): Boolean =
             context.getSharedPreferences(TEN_PREFS, Context.MODE_PRIVATE).getBoolean(KHOA_BAT, false)

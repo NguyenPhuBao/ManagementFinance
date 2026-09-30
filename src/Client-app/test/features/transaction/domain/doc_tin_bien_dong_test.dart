@@ -86,6 +86,39 @@ void main() {
     });
   });
 
+  // Hình dạng đo trên OnePlus 13R 2026-09-30 (tin thật, đã che chữ số và từ riêng); tên người, lời nhắn, số
+  // tiền dưới đây là TỔNG HỢP. ⚠️ Tin ví KHÔNG có dấu ± — chiều nằm ở động từ "Nhận".
+  group('ZaloPay', () {
+    test('⭐ "Nhận tiền qua mã …" · "Nhận 15.000đ qua chuyển khoản" → thu 15.000, giờ thông báo', () {
+      final t = doc(kNguonZalopay, 'Nhận tiền qua mã QR', 'Nhận 15.000đ qua chuyển khoản')!;
+      expect((t.soTien, t.chieu, t.nguon), (15000.0, 'thu', kNguonZalopay));
+      expect(t.thoiGian, _luc, reason: 'tin không mang giờ');
+      expect(t.noiDung, 'Nhận tiền qua mã QR');
+      expect((t.duoiTaiKhoan, t.maGiaoDich), (null, null));
+    });
+    test('không có "Nhận" (chưa có mẫu tiền ra) → null, không đoán chiều', () {
+      expect(doc(kNguonZalopay, 'Thanh toán', 'Thanh toán 15.000đ thành công'), isNull);
+      expect(doc(kNguonZalopay, 'Ưu đãi', 'Giảm 20.000đ cho đơn đầu'), isNull);
+    });
+  });
+
+  group('MoMo', () {
+    test('⭐ "Nhận chuyển khoản từ …" · "Số tiền 20.000 ₫ … Lời nhắn: "…"" → thu, nội dung là lời nhắn', () {
+      final t = doc(kNguonMomo, 'Nhận chuyển khoản từ NGUYEN VAN A',
+          'Số tiền 20.000 ₫ đã được chuyển vào Tài. Lời nhắn: "tra tien an trua".')!;
+      expect((t.soTien, t.chieu, t.nguon), (20000.0, 'thu', kNguonMomo));
+      expect(t.noiDung, 'tra tien an trua');
+      expect(t.thoiGian, _luc);
+    });
+    test('không lời nhắn → nội dung là tiêu đề', () {
+      final t = doc(kNguonMomo, 'Nhận chuyển khoản từ NGUYEN VAN A', 'Số tiền 20.000 ₫ đã được chuyển vào Tài.')!;
+      expect(t.noiDung, 'Nhận chuyển khoản từ NGUYEN VAN A');
+    });
+    test('không có "Nhận" (chưa có mẫu tiền ra) → null', () {
+      expect(doc(kNguonMomo, 'Thanh toán thành công', 'Số tiền 20.000 ₫'), isNull);
+    });
+  });
+
   group('không đọc', () {
     test('OTP / mã xác thực → null dù có số kèm dấu (Kotlin đã lọc, đây là lớp thứ hai)', () {
       expect(doc(kNguonMb, 'MB Bank', 'Ma OTP cua ban la 482913. Khong chia se. GD: -1,000VND'), isNull);
@@ -99,7 +132,7 @@ void main() {
               'tin quảng cáo thành một khoản chi 100.000 đ chờ ghi (bản sai bỏ dấu phải đỏ ở đây)');
     });
     test('nguồn chưa có khuôn (Vietcombank, MoMo, ZaloPay, SMS) → null, không ném', () {
-      for (final n in [kNguonVcb, kNguonMomo, kNguonZalopay, kNguonSms, 'App lạ']) {
+      for (final n in [kNguonVcb, kNguonSms, 'App lạ']) {
         expect(doc(n, 'x', 'GD: -1,000VND 02/09/26 15:33'), isNull, reason: n);
       }
     });

@@ -66,6 +66,21 @@ void main() {
     expect(kt, contains('FLAG_ACTIVITY_SINGLE_TOP'));
   });
 
+  test('⭐ bộ lọc thô giữ cả tin KHÔNG dấu ± nhưng có số kèm đơn vị (đ / ₫ / VND) — tin MoMo, ZaloPay', () {
+    // Đo OnePlus 13R 2026-09-30: "Nhận 15.000đ qua chuyển khoản", "Số tiền 20.000 ₫ …" — không dấu ±. Bộ lọc chỉ
+    // đòi ± (spec gốc) bỏ MỌI tin của hai ví trước khi ghi đĩa, im lặng (người dùng chốt nới, cùng ngày).
+    final kt = _doc('${_kt}BienDongListenerService.kt');
+    final loc = RegExp(r'CO_SO_TIEN = Regex\(\s*"([^"]+)"').firstMatch(kt)?.group(1);
+    expect(loc, isNotNull);
+    final re = RegExp(loc!.replaceAll(r'\\', r'\'), caseSensitive: false);
+    for (final tin in ['Nhận 15.000đ qua chuyển khoản', 'Số tiền 20.000 ₫', 'GD: -45,000VND', '+ VND 208,080']) {
+      expect(re.hasMatch(tin), isTrue, reason: tin);
+    }
+    for (final tin in ['Bạn có 3 tin nhắn mới', 'Cuộc họp lúc 14:00', 'Mã phòng 482913']) {
+      expect(re.hasMatch(tin), isFalse, reason: 'tin không mang số tiền không được ghi đĩa: $tin');
+    }
+  });
+
   test('service: KHÔNG log nội dung tin ngoài chế độ thu mẫu, và thu mẫu chỉ ở bản debug', () {
     final kt = _doc('${_kt}BienDongListenerService.kt');
     expect(kt, contains('FLAG_DEBUGGABLE'),

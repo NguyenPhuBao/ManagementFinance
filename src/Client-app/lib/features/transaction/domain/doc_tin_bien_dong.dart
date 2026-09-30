@@ -3,8 +3,9 @@
 ///
 /// **Một khuôn cho mỗi nguồn**, chọn theo [docTinBienDong]'s `nguon` (tên hiển thị — Kotlin dịch tên
 /// gói sang tên này bằng đúng bảng danh sách trắng, Task 3 D1). Khuôn BIDV / MB Bank / Techcombank
-/// dựng từ **năm tin thật** ở `docs/AI/Classify.md` §4.3 (backend duyệt làm baseline). Vietcombank,
-/// MoMo, ZaloPay, SMS **chưa có mẫu** → chưa có khuôn: trả `null`, không đoán (kế hoạch D1 Task 1).
+/// dựng từ **năm tin thật** ở `docs/AI/Classify.md` §4.3 (backend duyệt làm baseline); MoMo / ZaloPay từ
+/// **hình dạng** tin thật đo trên OnePlus 13R 2026-09-30 (đã che — chỉ có chiều tiền VÀO). Vietcombank và
+/// SMS **chưa có mẫu** → chưa có khuôn: trả `null`, không đoán (kế hoạch D1 Task 1).
 ///
 /// Đây là nơi DUY NHẤT định nghĩa *"số tiền trong tin"*: Kotlin chỉ **lọc thô** (có `± chữ số`, không
 /// OTP) chứ không trích gì. Tin không khớp khuôn → `null`, im — báo sai tệ hơn không báo.
@@ -35,9 +36,14 @@ const List<String> kNguonBienDong = [
 /// Tên gói Android → tên nguồn. Phải khớp TỪNG CẶP với `DANH_SACH_TRANG` ở
 /// `BienDongListenerService.kt` (Kotlin lọc theo gói, Dart dịch gói → nguồn để chọn khuôn) —
 /// `bien_dong_noi_day_test.dart` đọc tệp Kotlin để so. ⚠️ **Chỉ gói đã ĐO trên máy thật** (Task 1
-/// D1; spec §2 cấm đoán): `com.mbmobile` đo trên OnePlus 13R 2026-09-30 — tin biến động thật, khuôn MB
-/// đọc trọn (số tiền, chiều, giờ trong tin, đuôi TK, nội dung). Sáu nguồn còn lại chưa có dòng nào.
-const Map<String, String> kNguonTheoGoi = {'com.mbmobile': kNguonMb};
+/// D1; spec §2 cấm đoán), đo trên OnePlus 13R 2026-09-30 bằng tin biến động thật: `com.mbmobile` (khuôn MB
+/// đọc trọn), `com.mservice.momotransfer`, `vn.com.vng.zalopay`. Vietcombank, Techcombank, BIDV, Tin nhắn
+/// chưa có dòng nào.
+const Map<String, String> kNguonTheoGoi = {
+  'com.mbmobile': kNguonMb,
+  'com.mservice.momotransfer': kNguonMomo,
+  'vn.com.vng.zalopay': kNguonZalopay,
+};
 
 /// `null` = gói không trong danh sách trắng.
 String? nguonCuaGoi(String goi) => kNguonTheoGoi[goi];
@@ -94,6 +100,8 @@ TinBienDong? docTinBienDong({
       kNguonBidv => _docBidv(chu, luc),
       kNguonMb => _docMb(chu, luc),
       kNguonTcb => _docTcb(chu, luc),
+      kNguonMomo => _docMomo(tieuDe, chu, luc),
+      kNguonZalopay => _docZalopay(tieuDe, chu, luc),
       _ => null,
     };
   } catch (_) {
@@ -185,5 +193,40 @@ TinBienDong? _docTcb(String chu, DateTime luc) {
     nguon: kNguonTcb,
     duoiTaiKhoan: _duoi(RegExp(r'Tài khoản:\s*(\d+)').firstMatch(chu)?.group(1)),
     maGiaoDich: nd == null ? null : RegExp(r'\s(\d{9,})$').firstMatch(nd)?.group(1),
+  );
+}
+
+/// Tin ví điện tử KHÔNG mang dấu ± (đo 2026-09-30) — chiều nằm ở động từ. Chỉ có mẫu tiền **vào**
+/// (*"Nhận …"*), nên chỉ đọc chiều ấy; tin không mở đầu bằng *"Nhận"* → `null`, không đoán chiều ra.
+final RegExp _nhan = RegExp(r'^\s*Nhận');
+
+/// MoMo — tiêu đề `Nhận chuyển khoản từ <tên>`, nội dung `Số tiền 20.000 ₫ … Lời nhắn: "…"`.
+TinBienDong? _docMomo(String tieuDe, String chu, DateTime luc) {
+  if (!_nhan.hasMatch(unorm.nfc(tieuDe))) return null;
+  final m = RegExp(r'Số tiền\s*([\d.,]+)\s*₫').firstMatch(chu);
+  final tien = m == null ? null : _tien(m.group(1)!);
+  if (tien == null) return null;
+  final loi = RegExp(r'Lời nhắn:\s*"([^"]*)"').firstMatch(chu)?.group(1)?.trim();
+  return TinBienDong(
+    soTien: tien,
+    chieu: 'thu',
+    thoiGian: luc,
+    noiDung: (loi == null || loi.isEmpty) ? unorm.nfc(tieuDe).trim() : loi,
+    nguon: kNguonMomo,
+  );
+}
+
+/// ZaloPay — tiêu đề `Nhận tiền qua mã …`, nội dung `Nhận 15.000đ qua chuyển khoản`.
+TinBienDong? _docZalopay(String tieuDe, String chu, DateTime luc) {
+  if (!_nhan.hasMatch(unorm.nfc(tieuDe))) return null;
+  final m = RegExp(r'Nhận\s+([\d.,]+)\s*đ').firstMatch(chu);
+  final tien = m == null ? null : _tien(m.group(1)!);
+  if (tien == null) return null;
+  return TinBienDong(
+    soTien: tien,
+    chieu: 'thu',
+    thoiGian: luc,
+    noiDung: unorm.nfc(tieuDe).trim(),
+    nguon: kNguonZalopay,
   );
 }

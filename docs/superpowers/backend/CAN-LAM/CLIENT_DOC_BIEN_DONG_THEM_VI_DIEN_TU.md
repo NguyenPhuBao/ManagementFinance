@@ -31,7 +31,11 @@ Mọi cam kết backend đã duyệt ở đơn gốc giữ nguyên cho cả hai 
 
 - Cùng **một** cơ chế: `NotificationListenerService` đọc thông báo **đã hiện trên máy**. Không API, không liên kết tài
   khoản ví, không đăng nhập ví.
-- Lọc bỏ tin OTP / mã xác thực **trước khi** ghi đĩa; chỉ giữ tin có mẫu số tiền kèm dấu ±.
+- Lọc bỏ tin OTP / mã xác thực **trước khi** ghi đĩa; chỉ giữ tin có mẫu **số tiền**. ⚠️ *Cập nhật 2026-09-30:* câu gốc
+  ghi *"số tiền kèm dấu ±"*, nhưng đo trên máy thật thì tin MoMo / ZaloPay **không có dấu ±** (*"Nhận 15.000đ qua chuyển
+  khoản"*, *"Số tiền 20.000 ₫ …"* — chiều nằm ở chữ *"Nhận"*), và Techcombank viết `+ VND 208,080`. Bộ lọc nay giữ tin
+  có số kèm dấu ± **hoặc** số kèm đơn vị đ / ₫ / VND. Vẫn chỉ là bộ **lọc** (không trích gì), vẫn bỏ OTP trước — không
+  đổi cam kết nào khác. Tên gói đã đo trên OnePlus 13R: `com.mservice.momotransfer`, `vn.com.vng.zalopay`.
 - Tin thô **xoá ngay** khi app đọc xong; phần đã đọc (số tiền, chiều, thời gian, nội dung) xoá khi người dùng *Lưu* /
   *Bỏ qua*, tối đa 30 ngày. Không gửi đi đâu.
 - **Không tự tạo giao dịch.** Người dùng bấm *Lưu* trên form; giao dịch đi đồng bộ như nhập tay, `provider = 'Manual'`,
