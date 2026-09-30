@@ -198,5 +198,20 @@ void main() {
       final cu = [m('dc', 'grab a', 5), m('dc', 'grab b', 6), m('dc', 'grab c', 7)];
       expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], [...muoiMau, ...cu]), {('grab', 'dc')});
     });
+    test('⭐ nguồn đề xuất từ khoá có tập tắt RIÊNG — không lẫn với nguồn học', () {
+      final bqDx = [
+        bq('tra sua', 'au', 10, nguon: kNguonDeXuatTuKhoa),
+        bq('tra sua', 'au', 11, nguon: kNguonDeXuatTuKhoa),
+      ];
+      expect(tatCapTu(bqDx, muoiMau, nguon: kNguonDeXuatTuKhoa), {('tra sua', 'au')});
+      expect(tatCapTu(bqDx, muoiMau), isEmpty, reason: 'mặc định vẫn là nguồn học — hai chỗ gọi cũ không đổi');
+      expect(tatCapTu([bq('grab', 'dc', 10), bq('grab', 'dc', 11)], muoiMau, nguon: kNguonDeXuatTuKhoa), isEmpty,
+          reason: '✕ thẻ gợi ý B1 không tắt đề xuất từ khoá của cùng cặp');
+    });
+  });
+
+  test('tuGocCua giữ chữ gõ, tách ở mọi ký tự không phải chữ / số', () {
+    expect(tuGocCua('Trà sữa, 40k!'), ['Trà', 'sữa', '40k']);
+    expect(tuGocCua('  '), isEmpty);
   });
 }

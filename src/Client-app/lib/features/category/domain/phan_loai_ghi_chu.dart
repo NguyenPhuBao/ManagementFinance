@@ -46,6 +46,9 @@ List<String> amTietCua(String ghiChu) => removeVietnameseTones(normalizeCategory
     .where((t) => t.isNotEmpty && !_toanSo.hasMatch(t))
     .toList();
 
+/// Các đoạn chữ / số của ghi chú, GIỮ CHỮ GÕ (có dấu, hoa thường) — để in lại cụm bỏ dấu đúng như người dùng viết.
+List<String> tuGocCua(String ghiChu) => ghiChu.split(_ngoaiChu).where((t) => t.isNotEmpty).toList();
+
 /// Ghi chú do MÁY gắn chứ không phải người dùng gõ — học chúng là dạy mô hình rằng *"thanh toán hóa đơn"* là một
 /// danh mục. Gom mọi nhận dạng ĐÃ CÓ, không viết lại chuỗi nào.
 bool laGhiChuMay({required String loai, required String? categoryId, required String? ghiChu}) {
@@ -161,7 +164,7 @@ class BoPhanLoaiGhiChu {
   /// CHỪNG NÀO số ghi chú của c chứa cụm còn bằng số của âm tiết chính — *"cà phê"* chứ không *"phê"*.
   ({String cum, int cung, int tong}) _cumLyDo(List<String> q, String c) {
     int demCum(List<String> cum, {String? chi}) => _mau
-        .where((x) => (chi == null || x.categoryId == chi) && _chuaLienTiep(x.amTiet, cum))
+        .where((x) => (chi == null || x.categoryId == chi) && chuaLienTiep(x.amTiet, cum))
         .length;
     var bd = -1;
     var tot = -1.0;
@@ -188,8 +191,8 @@ class BoPhanLoaiGhiChu {
   }
 }
 
-/// [a] chứa [cum] như một đoạn LIỀN NHAU — dùng chung cho cụm lý do và luật mở lại gợi ý.
-bool _chuaLienTiep(List<String> a, List<String> cum) {
+/// [a] chứa [cum] như một đoạn LIỀN NHAU — dùng chung cho cụm lý do, luật mở lại gợi ý, và đề xuất từ khoá.
+bool chuaLienTiep(List<String> a, List<String> cum) {
   for (var i = 0; i + cum.length <= a.length; i++) {
     var khop = true;
     for (var j = 0; j < cum.length; j++) {
@@ -206,7 +209,7 @@ bool _chuaLienTiep(List<String> a, List<String> cum) {
 /// ⚠️ In DẠNG NGƯỜI DÙNG ĐÃ GÕ: tìm đoạn âm tiết có dấu trong [ghiChuGoc] khớp cụm bỏ dấu — in *"ca phe"* khi họ gõ
 /// *"cà phê"* trông như máy lỗi.
 String cauLyDoHoc(DoanDanhMuc d, {required String ghiChuGoc, required String tenDanhMuc}) {
-  final goc = ghiChuGoc.split(_ngoaiChu).where((t) => t.isNotEmpty).toList();
+  final goc = tuGocCua(ghiChuGoc);
   final bo = [for (final t in goc) removeVietnameseTones(normalizeCategoryName(t))];
   final cum = d.cumBoDau.split(' ');
   var hien = d.cumBoDau;
@@ -225,6 +228,9 @@ String cauLyDoTuKhoa(String tuKhoa) => 'Khớp với “$tuKhoa” trong ghi ch�
 /// Nguồn của một gợi ý danh mục — cũng là giá trị cột `nguon` của bảng phản hồi.
 const String kNguonGoiYHoc = 'hoc';
 const String kNguonGoiYTuKhoa = 'tu_khoa';
+
+/// Dòng *"Thêm ‘x’ làm từ khoá của Y?"* ở màn Thêm giao dịch (spec `2026-09-30-de-xuat-them-tu-khoa-design.md` §2.4).
+const String kNguonDeXuatTuKhoa = 'de_xuat_tu_khoa';
 
 /// Kết quả phân xử một gợi ý — giá trị cột `ket_qua` của bảng phản hồi.
 const String kKetQuaGoiYChon = 'chon';
@@ -259,10 +265,12 @@ class PhanHoiGoiY {
 /// Cặp (cụm bỏ dấu, danh mục) đang bị thôi gợi ý. Mở lại khi người dùng tự lưu [kSoMauMoLai] giao dịch có ngày SAU
 /// lần bỏ qua cuối, chứa đủ cụm, cho đúng danh mục ấy — bằng chứng mới thắng lời từ chối cũ (spec 3.3). Không có
 /// luật mở lại thì một lần bỏ qua lúc mới dùng app khoá cặp ấy VĨNH VIỄN, kể cả khi thói quen đã rõ.
-Set<(String, String)> tatCapTu(List<PhanHoiGoiY> phanHoi, List<MauGhiChu> mau) {
+///
+/// Mỗi [nguon] một tập tắt riêng — ✕ đề xuất từ khoá không tắt thẻ gợi ý B1 của cùng cặp, và ngược lại.
+Set<(String, String)> tatCapTu(List<PhanHoiGoiY> phanHoi, List<MauGhiChu> mau, {String nguon = kNguonGoiYHoc}) {
   final boQua = <(String, String), List<DateTime>>{};
   for (final p in phanHoi) {
-    if (p.nguon != kNguonGoiYHoc || p.ketQua != kKetQuaGoiYBoQua) continue;
+    if (p.nguon != nguon || p.ketQua != kKetQuaGoiYBoQua) continue;
     boQua.putIfAbsent((p.amTietChinh, p.goiYCategoryId), () => []).add(p.createdAt);
   }
   final ra = <(String, String)>{};
@@ -271,7 +279,7 @@ Set<(String, String)> tatCapTu(List<PhanHoiGoiY> phanHoi, List<MauGhiChu> mau) {
     final cuoi = e.value.reduce((a, b) => a.isAfter(b) ? a : b);
     final cum = e.key.$1.split(' ');
     final moi = mau
-        .where((x) => x.categoryId == e.key.$2 && x.ngay.isAfter(cuoi) && _chuaLienTiep(x.amTiet, cum))
+        .where((x) => x.categoryId == e.key.$2 && x.ngay.isAfter(cuoi) && chuaLienTiep(x.amTiet, cum))
         .length;
     if (moi < kSoMauMoLai) ra.add(e.key);
   }

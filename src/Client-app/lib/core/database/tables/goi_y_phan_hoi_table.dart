@@ -26,10 +26,11 @@ class GoiYDanhMucPhanHois extends Table {
   /// Lúc người dùng phân xử — luật mở lại đếm giao dịch có ngày SAU mốc này.
   DateTimeColumn get createdAt => dateTime()();
 
-  /// `hoc` | `tu_khoa`.
+  /// `hoc` | `tu_khoa` | `de_xuat_tu_khoa`.
   TextColumn get nguon => text()();
 
-  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`), hoặc từ khoá khớp (nguồn `tu_khoa`).
+  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`, và cụm được đề xuất làm từ khoá — nguồn `de_xuat_tu_khoa`), hoặc từ khoá khớp
+  /// (nguồn `tu_khoa`).
   TextColumn get amTietChinh => text()();
 
   TextColumn get goiYCategoryId => text()();
