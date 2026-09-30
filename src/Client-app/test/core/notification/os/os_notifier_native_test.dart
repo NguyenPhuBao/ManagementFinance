@@ -33,9 +33,13 @@ void main() {
   /// khởi động bình thường, không phải do người dùng chạm vào thông báo.
   Map<Object?, Object?>? chiTietKhoiDong;
 
+  /// Thứ nền tảng trả về cho `getActiveNotifications` — các thông báo ĐANG trên khay.
+  List<Map<Object?, Object?>> khay = [];
+
   setUp(() {
     daGoi = [];
     chiTietKhoiDong = null;
+    khay = [];
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     // Trên máy thật, bản cài đặt theo nền tảng được gắn vào lúc plugin tự đăng
     // ký. Trong test không có bước đó, nên phải gắn tay — nếu không
@@ -48,6 +52,7 @@ void main() {
       if (call.method == 'getNotificationAppLaunchDetails') {
         return chiTietKhoiDong;
       }
+      if (call.method == 'getActiveNotifications') return khay;
       // `initialize` và `requestNotificationsPermission` đều trả bool.
       return true;
     });
@@ -358,6 +363,46 @@ void main() {
               'tóm tắt. Đăng thêm một cái ở đây là một thông báo TRỐNG nằm '
               'trên màn hình khoá của người dùng iOS, và nó sẽ không bao giờ '
               'lộ ra trong bất cứ lần kiểm nào chạy trên Android.');
+    });
+
+    // Đo Realme RMX2205 2026-09-30: bản tóm tắt KHÔNG có con vẫn hiện thành một thông báo RỖNG "Nhắc tài
+    // chính", chạm vào không dẫn đi đâu (OnePlus thì giấu nó — mục badge NOTIFICATION_FEATURE.md đo trên
+    // OnePlus). D1 làm nó nổ sau MỌI tin ngân hàng: hàng loại 20 tăng số chưa đọc mà không có con trên khay.
+    Map<Object?, Object?> tbKhay(int id, {String? nhom}) =>
+        {'id': id, 'groupKey': nhom, 'channelId': 'x', 'title': 't', 'body': 'b', 'payload': null, 'tag': null};
+
+    test('⭐ datBadge(n > 0) mà nhóm KHÔNG còn con trên khay → không đăng tóm tắt, gỡ tóm tắt cũ', () async {
+      // Chỉ có tóm tắt cũ và thông báo tóm tắt D1 của Kotlin (không thuộc nhóm).
+      khay = [tbKhay(LocalOsNotifier.idTomTat, nhom: LocalOsNotifier.khoaNhom), tbKhay(20260930)];
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.datBadge(3);
+
+      expect(daGoi.where((c) => c.method == 'show'), isEmpty,
+          reason: 'không con thì bản tóm tắt là một thông báo trống trên Realme');
+      final huy = daGoi.where((c) => c.method == 'cancel').map((c) => (c.arguments as Map)['id']).toList();
+      expect(huy, [LocalOsNotifier.idTomTat], reason: 'tóm tắt cũ còn treo cũng phải gỡ; KHÔNG đụng thông báo D1');
+    });
+
+    test('⭐ datBadge(n > 0) khi nhóm còn con → cập nhật tóm tắt mang con số', () async {
+      khay = [tbKhay(7, nhom: LocalOsNotifier.khoaNhom)];
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.datBadge(3);
+
+      final show = daGoi.where((c) => c.method == 'show').single;
+      expect((show.arguments as Map)['id'], LocalOsNotifier.idTomTat);
+      expect(androidCua(show)['number'], 3);
+      expect(daGoi.where((c) => c.method == 'cancel'), isEmpty);
+    });
+
+    test('datBadge(0) khi nhóm còn con → giữ tóm tắt (gỡ là các con bung rời)', () async {
+      khay = [tbKhay(LocalOsNotifier.idTomTat, nhom: LocalOsNotifier.khoaNhom), tbKhay(7, nhom: LocalOsNotifier.khoaNhom)];
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.datBadge(0);
+
+      expect(daGoi.where((c) => c.method == 'cancel' || c.method == 'show'), isEmpty);
     });
 
     test('id của bản tóm tắt là số ÂM nên không thể đụng id thật', () {
