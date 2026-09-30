@@ -1,4 +1,4 @@
-﻿const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
 const logger = require('../core/logger');
 
@@ -9,12 +9,15 @@ const prisma = new PrismaClient({
     : ['error'],
 });
 
-// Native pg Pool (for raw queries, health checks)
+const { defaultDbBulkhead } = require('../core/resilience/db-bulkhead');
+
+// Native pg Pool (for raw queries, health checks) - Tối ưu cho Supabase Free Tier
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,
+  max: parseInt(process.env.PG_POOL_MAX || '10', 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  statement_timeout: 10000, // Tự hủy câu query treo quá 10s nhằm giải phóng kết nối về pool
 });
 
 pool.on('error', (err) => {
@@ -37,4 +40,4 @@ async function verifyConnection() {
   }
 }
 
-module.exports = { prisma, pool, verifyConnection };
+module.exports = { prisma, pool, verifyConnection, defaultDbBulkhead };

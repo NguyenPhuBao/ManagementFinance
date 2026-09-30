@@ -141,7 +141,27 @@ export async function getFinancialHealth() {
   return result.data;
 }
 
+/**
+ * Làm mới hội thoại AI (Reset conversation session)
+ */
+export async function resetChatConversation() {
+  const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  try {
+    const response = await fetch(`${baseURL}/ai/chatbot/reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+    });
+    return response.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
 export default {
   streamChatResponse,
   getFinancialHealth,
+  resetChatConversation,
 };

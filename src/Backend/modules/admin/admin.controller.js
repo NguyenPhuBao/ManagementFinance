@@ -160,6 +160,19 @@ const adminController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  getMaintenanceStatus(req, res) {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Trạng thái bảo trì hệ thống');
+  },
+
+  setMaintenanceStatus(req, res) {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    const { active, reason } = req.body || {};
+    const adminUser = req.user?.username || req.user?.id || 'admin';
+    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser);
+    return ResponseHandler.success(res, status, active ? 'Đã kích hoạt chế độ bảo trì' : 'Đã tắt chế độ bảo trì');
+  },
 };
 
 module.exports = adminController;

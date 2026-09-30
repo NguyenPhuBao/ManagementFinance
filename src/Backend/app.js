@@ -34,6 +34,28 @@ if (config.env === 'development') {
   app.use(morgan('dev'));
 }
 
+// ─── RESILIENCE & ADMIN PRIORITY PIPELINE ───────────────────────
+const { defaultAdminPriority } = require('./middleware/admin-priority.middleware');
+const { defaultMaintenance } = require('./middleware/maintenance.middleware');
+const { defaultLoadShedding } = require('./middleware/load-shedding.middleware');
+const { defaultRetryGuard } = require('./middleware/retry-guard.middleware');
+const { defaultRequestTimeout } = require('./middleware/request-timeout.middleware');
+
+// 1. Làn ưu tiên Admin-web (Fast-Lane Identification)
+app.use(defaultAdminPriority);
+
+// 2. Kiểm tra chế độ bảo trì khẩn cấp (Chặn client, giữ admin thông suốt)
+app.use(defaultMaintenance);
+
+// 3. Cắt tải thông minh khi CPU/Event Loop quá tải (Chỉ shed client, giữ admin)
+app.use(defaultLoadShedding);
+
+// 4. Chống vòng lặp gọi lại vô tận / bão request (Retry Storm Protection)
+app.use(defaultRetryGuard);
+
+// 5. Khống chế thời gian thực thi tối đa (30s timeout giải phóng socket treo)
+app.use(defaultRequestTimeout);
+
 // Rate limiting
 app.use('/api/', generalLimiter);
 
@@ -59,6 +81,27 @@ app.get('/health', async (req, res) => {
     });
   }
 });
+
+// Admin Health & Resilience Monitor (Cửa sổ tra cứu sức khỏe máy chủ siêu nhẹ)
+app.get('/health/admin', (req, res) => {
+  const { defaultEventLoopMonitor } = require('./core/resilience/event-loop-monitor');
+  const { defaultDbBulkhead } = require('./core/resilience/db-bulkhead');
+  const { defaultMaintenanceManager } = require('./core/resilience/maintenance.manager');
+
+  res.json({
+    success: true,
+    server: 'WealthCommand Backend',
+    eventLoopLagMs: defaultEventLoopMonitor.getLag(),
+    isOverloaded: defaultEventLoopMonitor.isOverloaded(),
+    dbBulkhead: defaultDbBulkhead.getStats(),
+    maintenance: defaultMaintenanceManager.getStatus(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// DB Bulkhead Quota Protection (Bảo vệ 80% client / 20% admin headroom)
+const { defaultDbBulkheadMiddleware } = require('./core/resilience/db-bulkhead');
+app.use('/api', defaultDbBulkheadMiddleware);
 
 // API routes
 app.use('/api', apiRoutes);

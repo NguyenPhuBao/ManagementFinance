@@ -11,7 +11,7 @@
 
 Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh hoạt:
 1. **Trợ lý AI Trên Máy (On-Device SLM - Đã có sẵn):** Chạy mô hình Gemma 4 E2B cục bộ qua LiteRT-LM + 7 tool chỉ đọc trên SQLite v24 (`lib/features/ai_chat/`). Hoạt động **100% Offline khi không có mạng**.
-2. **Trợ lý Tài chính Trực Tuyến (Cloud AI Copilot - Đợt này):** Kết nối lên Backend (`POST /api/ai/chatbot/chat/stream`), sử dụng mô hình Google Gemini 2.0 Flash có khả năng suy luận mở, RAG tri thức luật thuế/quy tắc 50/30/20 và Tấm khiên riêng tư (Privacy Shield). Hoạt động **khi có kết nối mạng Internet**.
+2. **Trợ lý Tài chính Trực Tuyến (Cloud AI Copilot - Đợt này):** Kết nối lên Backend (`POST /api/ai/chatbot/chat/stream`), sử dụng mô hình Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường `GEMINI_MODEL` tại Backend) có khả năng suy luận mở, RAG tri thức luật thuế/quy tắc 50/30/20 và Tấm khiên riêng tư (Privacy Shield). Hoạt động **khi có kết nối mạng Internet**.
 
 ---
 
@@ -57,6 +57,20 @@ Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh h
   event: done
   data: {"responseTimeMs": 720}
   ```
+
+  **Chi tiết cấu trúc sự kiện `event: done`:**
+  - **Nhánh bình thường (Thành công):**
+    ```http
+    event: done
+    data: {"responseTimeMs": 720}
+    ```
+    *Client lưu tin nhắn đầy đủ vào bảng lịch sử hội thoại cục bộ (`LocalChatMessages`).*
+  - **Nhánh Fallback (LLM gián đoạn / Circuit Breaker mở / Chưa có API Key):**
+    ```http
+    event: done
+    data: {"fallback": true, "reason": "Hệ thống AI đám mây tạm thời không phản hồi hoặc đang bảo trì."}
+    ```
+    *Hướng dẫn cho Client:* Khi nhận `done.fallback === true`, Client hiển thị banner/toast cảnh báo nhẹ cho người dùng và **không lưu** nội dung tin nhắn fallback này vào `LocalChatMessages` cục bộ (hoặc gán cờ `is_fallback: true`) để tránh làm ô nhiễm ngữ cảnh trò chuyện khi người dùng gửi lại yêu cầu.
 
 - **Mã lỗi & Cơ chế dự phòng thường gặp:**
   - `401 Unauthorized`: Token hết hạn $\rightarrow$ Chạy luồng Refresh Token.

@@ -467,7 +467,24 @@ const authService = {
 
     await this.revokeAllTokens(idaccount);
     logger.info("Password changed, all tokens revoked", { idaccount });
+
+    // Gửi email cảnh báo bảo mật bất đồng bộ
+    try {
+      const notificationJobs = require('../notification/notification.jobs');
+      if (account.email) {
+        notificationJobs.enqueueEmailNotification({
+          to: account.email,
+          type: 'PASSWORD_CHANGED',
+          payload: {
+            title: 'Mật khẩu tài khoản của bạn đã được thay đổi',
+            message: 'Mật khẩu đăng nhập vào ứng dụng WealthCommand vừa được thay đổi. Nếu bạn không thực hiện hành động này, hãy liên hệ hỗ trợ ngay.',
+            time: new Date().toLocaleString('vi-VN'),
+          },
+        }).catch(() => {});
+      }
+    } catch (_) {}
   },
+
 
   // ---------- FORGOT PASSWORD ----------
   async forgotPassword(email) {
@@ -535,6 +552,23 @@ const authService = {
     const { invalidateAccountCache } = require('../../middleware/auth');
     invalidateAccountCache(idaccount);
     logger.info("Account scheduled for deletion (30 days grace period, countdown: 30)", { idaccount });
+
+    // Gửi email cảnh báo bảo mật bất đồng bộ
+    try {
+      const notificationJobs = require('../notification/notification.jobs');
+      if (account.email) {
+        notificationJobs.enqueueEmailNotification({
+          to: account.email,
+          type: 'ACCOUNT_DELETION_SCHEDULED',
+          payload: {
+            title: 'Yêu cầu xóa tài khoản đã được tiếp nhận',
+            message: 'Tài khoản của bạn đã được đưa vào trạng thái chờ xóa với thời gian ân hạn 30 ngày. Bạn có thể đăng nhập bất cứ lúc nào trước khi hết hạn để hủy yêu cầu xóa.',
+            time: new Date().toLocaleString('vi-VN'),
+          },
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     return {
       idaccount,
       status: 'PendingDelete',
@@ -542,6 +576,7 @@ const authService = {
       scheduled_delete_at: updated.delete_at,
     };
   },
+
 
   // ---------- CANCEL DELETION ----------
   async cancelDeletion(idaccount) {
@@ -731,6 +766,7 @@ const authService = {
     if (p.includes('/bank/webhook')) return 'Webhook biến động số dư';
     if (p.includes('/bank/connect') || p.includes('/bank/link')) return 'Liên kết tài khoản ngân hàng';
 
+    if (p.includes('/ai/chatbot/reset') || p.includes('/ai/chat/reset')) return 'Làm mới hội thoại AI';
     if (p.includes('/ai/chat')) return 'Hỏi đáp trợ lý tài chính AI';
     if (p.includes('/ai/classify')) return 'Phân loại giao dịch AI';
 

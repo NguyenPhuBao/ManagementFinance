@@ -1,6 +1,6 @@
 /**
  * F013 — Receipt & Bank Transfer OCR — Vision Extractor
- * Sử dụng Google Gemini 2.0 Flash Multimodal REST API (inlineData Base64)
+ * Sử dụng Google Gemini 3.8 Flash Multimodal REST API (inlineData Base64)
  * Trích xuất dữ liệu có cấu trúc từ Hóa đơn (RECEIPT), Biên lai ngân hàng (BANK_TRANSFER) hoặc SMS Banking (SMS_BANKING).
  */
 
@@ -100,7 +100,8 @@ Schema JSON yêu cầu:
 }`;
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const payload = {
         contents: [
           {

@@ -76,12 +76,12 @@ class FinancialSnapshotService {
     }
 
     const needsKeywords = [
-      'ăn uống', 'thuê nhà', 'nhà cửa', 'tiện ích', 'đi lại', 'xăng', 'hóa đơn',
-      'y tế', 'thuốc', 'học phí', 'chợ', 'siêu thị', 'điện', 'nước', 'internet'
+      'ăn uống', 'thuê nhà', 'nhà cửa', 'tiện ích', 'đi lại', 'di chuyển', 'giao thông', 'xăng', 'hóa đơn',
+      'y tế', 'thuốc', 'học phí', 'giáo dục', 'chợ', 'siêu thị', 'điện', 'nước', 'internet'
     ];
 
     const savingsKeywords = [
-      'tiết kiệm', 'đầu tư', 'tích lũy', 'trả nợ', 'bảo hiểm', 'gửi tiết kiệm'
+      'tiết kiệm', 'đầu tư', 'tích lũy', 'trả nợ', 'bảo hiểm', 'gửi tiết kiệm', 'đi vay', 'cho vay', 'vay', 'nợ'
     ];
 
     let needsAmount = 0;
@@ -144,6 +144,29 @@ class FinancialSnapshotService {
       .reduce((sum, w) => sum + Number(w.balance || 0), 0);
 
     return Number((liquidBalance / avgMonthlyExpense).toFixed(1));
+  }
+
+  /**
+   * Tính Tỷ lệ Nợ trên Thu nhập (Debt-to-Income Ratio) từ chi tiêu thực tế
+   * @param {Array<object>} expenses 
+   * @param {number} totalIncome 
+   * @returns {number}
+   */
+  calculateDebtToIncomeRatio(expenses, totalIncome = 0) {
+    if (!Array.isArray(expenses) || expenses.length === 0 || totalIncome <= 0) {
+      return 0;
+    }
+
+    const debtKeywords = ['trả nợ', 'nợ', 'vay', 'lãi', 'tiền lãi', 'trả góp'];
+    const totalDebt = expenses.reduce((sum, item) => {
+      const catName = (item.category?.name_category || item.category?.namecategory || '').toLowerCase();
+      if (debtKeywords.some(kw => catName.includes(kw))) {
+        return sum + Math.abs(Number(item.amount || 0));
+      }
+      return sum;
+    }, 0);
+
+    return Math.min(1, Number((totalDebt / totalIncome).toFixed(2)));
   }
 
   /**
@@ -235,9 +258,17 @@ class FinancialSnapshotService {
         where: { idaccount, delete_at: null },
       });
 
-      // 3. Lấy ngân sách
+      // 3. Lấy ngân sách còn hiệu lực tại thời điểm hiện tại
       const budgets = await prisma.budget.findMany({
-        where: { idaccount, delete_at: null },
+        where: {
+          idaccount,
+          delete_at: null,
+          start: { lte: now },
+          OR: [
+            { end: null },
+            { end: { gte: now } },
+          ],
+        },
         include: { category: { select: { name_category: true } } },
       });
 
@@ -299,24 +330,28 @@ class FinancialSnapshotService {
           trendVsLastMonth: '0%',
         }));
 
-      // Cảnh báo ngân sách
+      // Cảnh báo ngân sách (chỉ tối đa 1 cảnh báo cho mỗi danh mục)
       const overBudgetAlerts = [];
+      const alertedCategories = new Set();
       for (const b of budgets) {
         const spent = Number(b.spent || 0);
         const total = Number(b.total_amount || 0);
-        if (total > 0 && spent >= total * 0.9) {
+        const catName = b.category?.name_category || b.category?.namecategory || 'Ngân sách chung';
+        if (total > 0 && spent >= total * 0.9 && !alertedCategories.has(catName)) {
+          alertedCategories.add(catName);
           const percent = Math.round((spent / total) * 100);
-          overBudgetAlerts.push(`${b.category?.name_category || b.category?.namecategory || 'Ngân sách'} đã chạm ${percent}% hạn mức`);
+          overBudgetAlerts.push(`${catName} đã chạm ${percent}% hạn mức`);
         }
       }
 
       // Điểm sức khỏe tài chính
       const savingsRatio = totalIncome > 0 ? (allocation.savings_percent / 100) : 0;
+      const debtRatio = this.calculateDebtToIncomeRatio(expenses, totalIncome);
       const budgetAdherence = overBudgetAlerts.length === 0 ? 0.95 : 0.70;
       const healthScore = this.calculateFinancialHealthScore({
         savingsRatio,
         emergencyFundMonths: emergencyMonths,
-        debtToIncomeRatio: 0.1,
+        debtToIncomeRatio: debtRatio,
         budgetAdherence,
       });
 
@@ -330,7 +365,7 @@ class FinancialSnapshotService {
         overBudgetAlerts,
         emergencyFundMonths: emergencyMonths,
         upcomingBillsIn7DaysCount: upcomingBills.length,
-        hasHighInterestDebt: false,
+        debtToIncomeRatio: debtRatio,
         activeSavingsGoalsCount: activeGoalsCount,
       };
 
@@ -349,16 +384,8 @@ class FinancialSnapshotService {
 
       return sanitizedSnapshot;
     } catch (error) {
-      logger.error('Error generating financial snapshot:', error);
-      // Graceful Fallback an toàn
-      return this.piiMasker.anonymizeSnapshot({
-        period: 'Tháng hiện tại',
-        healthScore: 65,
-        needs_percent: 50,
-        wants_percent: 30,
-        savings_percent: 20,
-        emergencyFundMonths: 1.5,
-      });
+      logger.error('[FinancialSnapshot] Không thể sinh snapshot thật do lỗi CSDL:', error);
+      return null;
     }
   }
 }

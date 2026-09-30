@@ -1,12 +1,11 @@
 /**
  * AI Module — Shared Controller
- * Router chung, phân phối request đến feature controller tương ứng.
+ * Phân phối request đến các module AI tương ứng:
  *
  * POST /api/ai/classify  → features/classify/classify.controller.js
- * POST /api/ai/ocr       → features/ocr/ocr.controller.js (future)
- * GET  /api/ai/advice    → features/advice/advice.controller.js (future)
- * GET  /api/ai/budget    → features/budget/budget.controller.js (future)
- * POST /api/ai/chatbot   → features/chatbot/chatbot.controller.js (future)
+ * POST /api/ai/ocr/*     → features/ocr/ocr.controller.js
+ * POST /api/ai/chatbot/* → features/chatbot/chatbot.controller.js
+ * GET  /api/ai/chatbot/snapshot → features/chatbot/snapshot/financial.snapshot.service.js
  */
 
 const classifyController = require('./features/classify/classify.controller');

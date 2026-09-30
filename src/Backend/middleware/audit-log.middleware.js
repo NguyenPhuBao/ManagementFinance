@@ -19,7 +19,9 @@ function auditLogMiddleware(req, res, next) {
     if (logged) return;
     logged = true;
 
-    if (isInterrupted || req.aborted || req.destroyed || (!res.writableEnded && !res.finished)) {
+    // Chỉ coi là ngắt quãng nếu phản hồi CHƯA hoàn thành (socket bị đóng khi chưa hoàn tất ghi response)
+    const isCompleted = Boolean(res.writableEnded || res.finished);
+    if (!isCompleted && (isInterrupted || req.aborted)) {
       req.auditStatus = 'Interrupted';
     }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FinancialHealthCard from './FinancialHealthCard';
 import ChatMessageBubble from './ChatMessageBubble';
 import PromptSuggestionChips from './PromptSuggestionChips';
-import { streamChatResponse, getFinancialHealth } from '../../api/chatbot.api';
+import { streamChatResponse, getFinancialHealth, resetChatConversation } from '../../api/chatbot.api';
 
 const AICopilotPage = () => {
   const [messages, setMessages] = useState([]);
@@ -132,10 +132,15 @@ const AICopilotPage = () => {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     if (isStreaming) handleStopStream();
     setMessages([]);
     setErrorMessage(null);
+    try {
+      await resetChatConversation();
+    } catch (e) {
+      // Ignore
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -158,7 +163,7 @@ const AICopilotPage = () => {
               <h2 className="font-bold text-gray-800 text-lg">AI Financial Copilot</h2>
               <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Gemini 2.5 Flash Online
+                Gemini 3.8 Flash Online
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">

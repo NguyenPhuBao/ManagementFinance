@@ -1,6 +1,11 @@
 // Thiết lập múi giờ chuẩn Việt Nam (GMT+7) cho toàn bộ Node.js runtime trên Cloud Server
 process.env.TZ = process.env.TZ || 'Asia/Ho_Chi_Minh';
 require('dotenv').config();
+const { setupProcessSafety } = require('./core/resilience/process-safety');
+
+// 0. Bẫy lỗi toàn cục chống sập dây chuyền (SPOF Trap: uncaughtException & unhandledRejection)
+setupProcessSafety();
+
 const http = require('http');
 const app = require('./app');
 const config = require('./config');
@@ -20,14 +25,17 @@ async function bootstrap() {
     const redisOk = await verifyRedisConnection();
     if (!redisOk) {
       logger.warn('Redis unavailable — running without cache/queues');
-    } else {
       // 2b. Start workers (BullMQ) — chỉ khi Redis available
       logger.info('Starting AI Worker...');
       require('./workers/ai.worker');
       
       logger.info('Starting Bank Worker...');
       require('./workers/bank.worker');
+
+      logger.info('Starting Notification Worker...');
+      require('./workers/notification.worker');
     }
+
 
     // 3. Create HTTP Server & Initialize Socket.io
     const httpServer = http.createServer(app);

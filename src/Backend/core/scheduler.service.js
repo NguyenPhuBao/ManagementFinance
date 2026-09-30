@@ -177,8 +177,21 @@ async function runDailyCountdownTask() {
         const { invalidateAccountCache } = require('../middleware/auth');
         invalidateAccountCache(acc.idaccount);
         logger.info(`Tài khoản ${acc.username} giảm countdown còn ${nextCountdown} ngày`, { idaccount: acc.idaccount, countdown: nextCountdown });
+
+        // Phát sự kiện thông báo thời gian thực & lưu NotificationStore
+        try {
+          const eventBus = require('./event-bus');
+          eventBus.publish('account.countdown', {
+            idaccount: acc.idaccount,
+            username: acc.username,
+            daysRemaining: nextCountdown,
+            title: 'Cảnh báo ngừng hoạt động tài khoản',
+            message: `Tài khoản của bạn đang trong thời gian chờ xóa. Còn ${nextCountdown} ngày trước khi tài khoản bị xóa vĩnh viễn.`,
+          });
+        } catch (_) {}
       }
     }
+
 
     logger.info('=== HOÀN TẤT DAILY COUNTDOWN TASK ===');
   } catch (error) {

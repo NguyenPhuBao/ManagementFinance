@@ -10,8 +10,10 @@ const generalLimiter = isRateLimitDisabled
       windowMs: config.rateLimit.windowMs || 15 * 60 * 1000,
       max: config.env === 'development' ? Math.max(config.rateLimit.max || 1000, 10000) : (config.rateLimit.max || 1000),
       standardHeaders: true,
-      legacyHeaders: false,
       skip: (req) => {
+        // 0. Miễn rate limit tuyệt đối cho Admin-web (Fast-Lane)
+        if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) return true;
+
         // 1. Luôn bỏ qua preflight OPTIONS của CORS (tránh nghẽn rate limit khi gọi từ Vercel)
         if (req.method === 'OPTIONS') return true;
 
@@ -38,8 +40,11 @@ const authLimiter = isRateLimitDisabled
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: config.env === 'development' ? 1000 : 50,
       standardHeaders: true,
-      legacyHeaders: false,
-      skip: (req) => req.method === 'OPTIONS',
+      skip: (req) => {
+        if (req.method === 'OPTIONS') return true;
+        if (req.isAdmin || (req.originalUrl && req.originalUrl.includes('/admin'))) return true;
+        return false;
+      },
       message: {
         success: false,
         message: 'Too many login attempts, please try again later.',
