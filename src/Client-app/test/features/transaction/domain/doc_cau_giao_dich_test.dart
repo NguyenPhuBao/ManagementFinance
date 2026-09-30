@@ -462,8 +462,9 @@ void main() {
     });
 
     test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
-      expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien});
-      expect(luat('tiền điện một triệu hai').oThieu, {OThieu.soTien});
+      expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien, OThieu.ghiChu},
+          reason: 'số chưa đọc được còn nằm trong ghi chú');
+      expect(luat('tiền điện một triệu hai').oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ngày thiếu: luật không đọc được mà câu có chữ thời gian; "tôi" không phải chữ thời gian', () {
@@ -475,6 +476,17 @@ void main() {
       expect(luat('quẹt thẻ ăn phở 45k').oThieu, {OThieu.vi});
       expect(luat('ăn phở 45k techcom').oThieu, {OThieu.vi});
       expect(luat('tiền điện 45k').oThieu, isEmpty);
+    });
+
+    // Người dùng 2026-09-30: "cả ghi chú nữa nếu các lớp trước ko được thì AI sẽ điền" — chọn: ghi chú còn sót số tiền
+    // luật không dùng là ô thiếu; AI vẫn chỉ được BỚT chữ; ghi chú trống thì không gọi AI (không có chữ để điền mà không bịa).
+    test('⭐ ghi chú còn sót số tiền luật không dùng là ô thiếu; AI dọn bằng cách bớt chữ', () {
+      expect(luat('ăn sáng 30k, grab 50k').oThieu, {OThieu.ghiChu});
+      final r = voiAi('ăn sáng 30k, grab 50k', const KetQuaAi(ghiChu: 'ăn sáng, grab'));
+      expect(r.ghiChu, 'ăn sáng, grab');
+      expect(r.oThieu, isEmpty);
+      expect(luat('45k tiền mặt').oThieu, isEmpty, reason: 'ghi chú trống — không gọi AI');
+      expect(luat('mua 2 ly trà sữa 60k').oThieu, isEmpty, reason: '"2 ly" là số lượng, không phải tiền');
     });
 
     test('thu/chi KHÔNG phải ô thiếu — câu không có từ chỉ thu vẫn không gọi AI', () {
@@ -510,8 +522,10 @@ void main() {
     });
 
     test('ô thiếu tính SAU khi AI lấp: lấp được thì hết thiếu, AI bị chặn thì vẫn thiếu', () {
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).oThieu, isEmpty);
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 300000)).oThieu, {OThieu.soTien});
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).oThieu, isEmpty);
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).oThieu, {OThieu.ghiChu},
+          reason: 'AI lấp số tiền mà không dọn ghi chú — "mất ba chục" vẫn nằm đó');
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 300000)).oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ghi chú khi AI lấp số tiền: ghi chú AI được dùng nếu chỉ BỚT chữ (người dùng chốt §8 câu 9)', () {

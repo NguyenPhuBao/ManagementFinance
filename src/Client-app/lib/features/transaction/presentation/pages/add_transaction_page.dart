@@ -535,6 +535,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         tatCap: _tatCap,
         ai: ai,
         tuKhoa: tuKhoa,
+        // Dòng nguồn "Đọc bằng AI" chỉ khi AI làm ĐỔI một ô — chiều / ví đang chọn không tính (người dùng chốt 2026-09-30).
+        chieuDangChon: _huong,
+        viDangChon: _selectedWallet?.id,
       );
 
   /// Điền những ô đọc được vào form (xem [_dienTuCau]).

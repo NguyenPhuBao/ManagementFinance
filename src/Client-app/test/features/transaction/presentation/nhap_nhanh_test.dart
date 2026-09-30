@@ -449,6 +449,18 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng AI');
     });
 
+    testWidgets('dòng nguồn: AI chỉ chọn lại đúng ví ĐANG chọn → "Đọc bằng luật" (người dùng chốt: chỉ khi AI đổi một ô)',
+        (tester) async {
+      await tester.pumpWidget(app(docAi: aiTraVe({'so_tien': 45000, 'loai': 'chi', 'vi': 'Techcombank'})));
+      await tester.pumpAndSettle();
+      expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'tiền đề: ví đang chọn');
+
+      await dien(tester, 'quẹt thẻ ăn phở 45k');
+
+      expect(find.text('Techcombank • 100.000 đ'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng luật');
+    });
+
     testWidgets('đang đọc → "Đang đọc bằng AI…" + Huỷ; Huỷ thì điền NGAY bằng luật', (tester) async {
       await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: _RuntimeGia(_PhienTreo.new))));
       await tester.pumpAndSettle();

@@ -34,8 +34,9 @@ import '../../category/domain/phan_loai_ghi_chu.dart';
 /// nhắc một thời điểm (`cauNhacNgay`). *Ví*: phần câu chưa dùng nhắc một ví có thật (`_cauNhacVi` — *ví* trần; *thẻ, quẹt,
 /// ck, chuyển khoản, atm* chỉ khi có ví ngân hàng; viết tắt tên ví). *Danh mục*: tên / B1 / từ khoá đều im mà ghi chú còn
 /// chữ (người dùng sửa lại sau lượt đo 3: *"chỗ nào không điền được thì cho AI điền"*; khoản chuyển ví không có danh mục).
-/// Thu/chi KHÔNG ở đây: form luôn có một chiều, câu không có từ chỉ thu thì chi là đúng gần như mọi lần.
-enum OThieu { soTien, ngay, vi, danhMuc }
+/// *Ghi chú*: ghi chú còn sót một số đọc được thành tiền mà luật không dùng (AI chỉ được bớt chữ). Thu/chi KHÔNG ở đây:
+/// form luôn có một chiều, câu không có từ chỉ thu thì chi là đúng gần như mọi lần.
+enum OThieu { soTien, ngay, vi, danhMuc, ghiChu }
 
 /// Kết quả đọc. Mọi trường `null` nghĩa là *không đọc được* — form **giữ nguyên** ô ấy.
 class KetQuaDocCau {
@@ -403,6 +404,9 @@ KetQuaDocCau docCauGiaoDich(
     if (walletId == null && dsVi.any((w) => _cauNhacVi(_boKhoang(thuong, daDung), w))) OThieu.vi,
     // Người dùng 2026-09-30: "chỗ nào không điền được thì cho AI điền" — kể cả danh mục, khi còn chữ để đoán.
     if (categoryId == null && dsHopLe.isNotEmpty && ghiChuLuat.isNotEmpty) OThieu.danhMuc,
+    // Người dùng 2026-09-30: ghi chú còn sót số tiền luật không dùng ("mất ba chục", "grab 50k") thì nhờ AI dọn — AI vẫn
+    // chỉ được BỚT chữ; ghi chú trống thì không (không có chữ để điền mà không bịa).
+    if (cachDocSoTien(ghiChu, now: now).isNotEmpty) OThieu.ghiChu,
   };
 
   return KetQuaDocCau(
