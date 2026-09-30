@@ -215,6 +215,25 @@ void main() {
       await dongTrang(tester);
     });
 
+    testWidgets('⭐ mở với nhomBanDau ở 360 dp → dải chip tự cuộn cho chip đang chọn NẰM TRONG màn', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationCenterPage(
+          idaccount: accountId,
+          dao: db.notificationDao,
+          nhomBanDau: NotificationGroup.bienDong,
+        ),
+      ));
+      await nhip(tester);
+      final chip = tester.getRect(find.widgetWithText(ChoiceChip, 'Biến động'));
+      expect(chip.left >= 0 && chip.right <= 360, isTrue,
+          reason: 'đo trên OnePlus 2026-09-30: chip Biến động (cuối dải) nằm ngoài mép phải — người dùng thấy '
+              '"Không có thông báo nào khớp bộ lọc" mà không biết đang lọc gì. Chip: $chip');
+      await dongTrang(tester);
+    });
+
     testWidgets('⭐ vuốt hàng loại 20 → xoá CỨNG; Hoàn tác chèn lại đúng hàng', (tester) async {
       await themBienDong();
       await tester.pumpWidget(MaterialApp(

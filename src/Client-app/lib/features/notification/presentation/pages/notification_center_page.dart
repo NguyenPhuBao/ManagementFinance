@@ -404,14 +404,37 @@ extension on _Loc {
 }
 
 /// Dải chip lọc, cuộn ngang.
-class _HangChip extends StatelessWidget {
+///
+/// Lần dựng ĐẦU tự cuộn tới chip đang chọn: mở với `nhomBanDau` (D1 — thẻ *Có N biến động chưa ghi*, cú chạm tóm tắt)
+/// chọn chip *Biến động* ở CUỐI dải, và ở 411 dp nó nằm ngoài mép phải — đo trên OnePlus 2026-09-30, người dùng thấy
+/// *"Không có thông báo nào khớp bộ lọc"* mà không biết đang lọc gì.
+class _HangChip extends StatefulWidget {
   final _Loc dangChon;
   final ValueChanged<_Loc> onChon;
 
   const _HangChip({required this.dangChon, required this.onChon});
 
   @override
+  State<_HangChip> createState() => _HangChipState();
+}
+
+class _HangChipState extends State<_HangChip> {
+  final GlobalKey _khoaDangChon = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.dangChon == _Loc.tatCa) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _khoaDangChon.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.5);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final dangChon = widget.dangChon;
+    final onChon = widget.onChon;
     // Cuộn ngang chứ không `Wrap`: bảy chip cần khoảng 630px còn điện thoại
     // thật rộng 411dp, nên `Wrap` xuống hàng thứ hai và ăn mất một thẻ thông
     // báo trên màn hình vốn đã chật. `SingleChildScrollView` cho `Row` bề rộng
@@ -425,6 +448,7 @@ class _HangChip extends StatelessWidget {
           children: [
             for (final loc in _Loc.values) ...[
               ChoiceChip(
+                key: loc == dangChon ? _khoaDangChon : null,
                 label: Text(loc.nhan),
                 selected: loc == dangChon,
                 onSelected: (_) => onChon(loc),
