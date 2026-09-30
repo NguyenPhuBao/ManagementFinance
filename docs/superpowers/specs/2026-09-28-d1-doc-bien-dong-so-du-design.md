@@ -1,5 +1,11 @@
 # D1 — Đọc biến động số dư trên máy để điền sẵn giao dịch — thiết kế (Phần 2)
 
+> ✅ **THI CÔNG XONG + NGHIỆM THU MÁY THẬT 2026-09-30** (OnePlus 13R, debug rồi release) — tài liệu bàn giao
+> `docs/BIEN_DONG_SO_DU_FEATURE.md`. Lệch với thiết kế dưới đây, đều do người dùng chốt lúc thi công: danh sách trắng chỉ
+> gồm gói **đã đo** (MB Bank, MoMo, ZaloPay — VCB / TCB / BIDV / SMS chưa có mẫu); màn đồng ý liệt kê **nguồn đang đọc**,
+> không đủ bảy (§3.4 đã sửa); bộ lọc thô nhận cả `số + đ/₫/VND` (tin ví điện tử không có dấu ±); lần đầu một cặp nguồn +
+> đuôi TK thì ví **trống**; route thật là **`/add`**; chế độ thu mẫu bản debug chỉ log hình dạng đã che.
+
 **Ngày:** 2026-09-28 (tối). **Phần 1** (kiến trúc) đã trình backend qua đơn
 `docs/superpowers/backend/DA-XONG/CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md`, và backend **duyệt toàn diện** 2026-09-26 kèm
 một điều **bắt buộc**: màn giải thích + xin đồng ý trước khi dẫn tới Cài đặt quyền truy cập thông báo (Nghị định 13/2023).

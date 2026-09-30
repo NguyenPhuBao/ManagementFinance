@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -73,9 +73,9 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-**Mười tám loại** trong bảng dưới, xếp vào **năm nhóm** công tắc.
+**Mười chín loại** trong bảng dưới, xếp vào **sáu nhóm** công tắc (đếm lại 2026-09-30, sau D1).
 
-⚠️ **`enum NotificationKind` có MƯỜI CHÍN giá trị, không phải mười tám** — đếm bằng máy 2026-09-20. Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 và *mười bảy* của 2026-09-17 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Đừng cộng dồn — hãy đếm lại. Cột cuối đánh dấu những loại
+⚠️ **`enum NotificationKind` có HAI MƯƠI giá trị, không phải mười chín** — đếm bằng máy 2026-09-30 (mốc *mười chín* enum / *mười tám* bảng là của 2026-09-20, trước D1). Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 và *mười bảy* của 2026-09-17 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Đừng cộng dồn — hãy đếm lại. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
@@ -98,6 +98,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | Số dư ví âm | `walletNegative` | |
 | | Số dư ví sắp cạn | `walletLowBalance` | |
 | Tổng kết | **Tổng kết tuần** | `weeklySummary` | |
+| **Biến động** | **Biến động số dư** (D1, 2026-09-30) — ⚠️ không do scanner sinh, `NhapBienDong` chèn từ hàng chờ của Kotlin; công tắc là cờ riêng `docBienDong` (mặc định TẮT), mục 5j | `bienDongSoDu` | |
 
 **`walletLowBalance`** (2026-09-07) và **`largeExpense`** (2026-09-17) là hai loại **tắt sẵn**, và cả hai tắt theo cùng một cách — bằng chính con số ngưỡng. Với `walletLowBalance`: nó chỉ sinh
 khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
@@ -256,6 +257,12 @@ bắn lại thông báo cũ.
 
 `dismissedAt`, không DELETE. Hàng chính là bản ghi khoá trùng — xoá hẳn thì
 lần quét sau sinh lại ngay, người dùng xoá mãi không hết.
+
+⚠️ **Ngoại lệ có chủ ý — loại 20 `bienDongSoDu` (D1, 2026-09-30) xoá CỨNG** khi người dùng *Lưu* / *Bỏ qua* trên form
+hoặc vuốt ở trung tâm (`NotificationDao.xoaCung`, chỉ xoá hàng mang đúng loại ấy). Hàng mang nội dung tin ngân hàng; tin
+đã xử lý thì không còn lý do giữ (Nghị định 13, tối thiểu hoá — spec D1 §3.3). Chống trùng về sau dựa vào phép gộp 5 phút
+của `NhapBienDong`, đủ vì nguồn chỉ bắn lại ngay. Vuốt nhầm vẫn *Hoàn tác* được: chèn lại đúng hàng đã chụp. Loại này còn
+có mốc dọn **30 ngày** riêng (`purgeKindOlderThan`) thay vì 90.
 
 Hệ quả: bảng chỉ lớn lên. `NotificationDao.purgeOlderThan(cutoff)` đã có
 nhưng **chưa ai gọi** — xem lát 6.
@@ -1243,6 +1250,24 @@ Dữ liệu thật trên máy khi ấy: B5b **im** — nhật ký B5a mới ghi 
 dưới cửa 20 mẫu. Giới hạn nói trước của spec §5 (im 3–6 tháng) giữ nguyên.
 
 ---
+
+## 5j. Biến động số dư — D1 (2026-09-30)
+
+Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi phần chạm vào hệ thống thông báo.
+
+- **Loại 20 `bienDongSoDu`, nhóm thứ sáu `bienDong`** (chip *Biến động*). Thêm một nhóm phải sửa **sáu** chỗ: hai `switch`
+  ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `_tenNhom` / `_moTaNhom` / `_iconNhom`
+  của trang Cài đặt · `loaiTuKhoa` (`nhom_tu_khoa.dart`) · nhánh `bienDong` của `deeplinkTuDedupeKey` · tập `ngoaiBoQuet`
+  của `notification_deeplink_test.dart` (loại 20 không do scanner sinh).
+- **Công tắc là CỜ RIÊNG `NotificationPrefs.docBienDong`, mặc định TẮT** — không đưa nhóm vào `nhomTat`: tập ấy là tập
+  *tắt*, nên nhóm mới tự BẬT với bản ghi cũ, sai với một tính năng đứng sau màn xin đồng ý bắt buộc. Kèm
+  **`dongYBienDong`**: tắt tính năng không xoá lần đồng ý. Trên trang Cài đặt nó là thẻ riêng *Tự động hoá giao dịch ·
+  Mới* (Stitch `d42ce712…`), không nằm trong *Loại thông báo*.
+- **Hàng loại 20 KHÔNG bắn ra hệ điều hành từ Dart** (scanner chỉ bắn hàng chính nó chèn) — thứ ngoài màn khoá là thông
+  báo tóm tắt *không số* do **Kotlin** bắn; cú chạm ấy không qua `NotificationTapRouter` mà qua `MoTuTomTatBienDong`.
+- **Trung tâm nhận `nhomBanDau`** (`/notifications?nhom=bienDong`) và dải chip tự cuộn tới chip đang chọn — chip
+  *Biến động* đứng cuối dải, ở 411 dp nằm ngoài mép phải (đo OnePlus 2026-09-30).
+- **Ngoại lệ xoá cứng** — mục 4.3.
 
 ## 6. Từng lát đã làm gì
 

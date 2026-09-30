@@ -887,18 +887,25 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
   không máy nào cắm lúc thi công. Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
   nhỏ định tuyến · C học trên máy từng người), thứ tự A → B → C, làm **sau C4** — cuối mục 10.3 `AI_EDGE_FEATURE.md`.
-- 🚧 **D1 — đọc biến động số dư trên máy, mở 2026-09-30** (`1d7ca56` → `6de7517`, 6 commit; spec
-  `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md`, kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md` với khối
-  *Soát với mã 2026-09-30* — bảy chỗ kế hoạch lệch mã). Không máy nào cắm → người dùng chọn làm phần không cần máy trước:
-  7a tách `_dienKetQua(KetQuaDocCau)` · 4a loại 20 + nhóm `bienDong` + cờ `docBienDong` mặc định tắt (cờ riêng, người
-  dùng chốt) · 2a `docTinBienDong` cho BIDV / MB / TCB từ 5 mẫu thật `Classify.md` §4.3 · 4b `NhapBienDong` + scanner ·
-  3 Kotlin `BienDongListenerService` + kênh + DI + test nối dây, `flutter build apk --debug` xanh. ✅ Task 1 đo trên
-  **OnePlus 13R** (`bd52959`, `ed9cec3`): danh sách trắng MB Bank · MoMo · ZaloPay; tin hai ví **không có dấu ±** nên bộ
-  lọc Kotlin nới thành `±số` hoặc `số + đ/₫/VND` (người dùng chốt) — và bắt lỗi có sẵn Techcombank `+ VND 208,080` bị bỏ. Bốn màn Stitch đã
-  gửi (3 của Task 5 + màn form mở từ biến động), đều timeout, chưa xuất hiện. Còn: Task 1 · 2b · 6 · 7b · 8 · 9 · 10.
-  `flutter test` **4899/4899** (4 skip, 3 phút 39 giây) sau `ed9cec3`; analyze 26. Bàn giao:
-  `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-30-d1-dang-do.md`. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu
-  bốn trường Tổng kết tuần.
+- ✅ **D1 — đọc biến động số dư trên máy, XONG + nghiệm thu máy thật 2026-09-30** (`1d7ca56` → `02f995f`; tài liệu
+  bàn giao **`docs/BIEN_DONG_SO_DU_FEATURE.md`**; spec `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md` có banner
+  lệch-thiết-kế; kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md`, gitignore). Kotlin `BienDongListenerService`
+  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N biến động chưa
+  ghi"* ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
+  **xoá cứng** hàng (ngoại lệ mục 4.3 `NOTIFICATION_FEATURE.md`). Màn xin đồng ý bắt buộc (Stitch `bed4d292…`) liệt kê
+  **nguồn đang đọc** (người dùng chốt, không bảy nguồn Stitch vẽ): danh sách trắng đo trên máy **MB Bank · MoMo ·
+  ZaloPay**. ⭐ Chốt đáng nhớ: cờ Kotlin gắn **máy**, `docBienDong` gắn **tài khoản** → mỗi lượt nhập ghi lại cờ theo tài
+  khoản đang đăng nhập, đăng xuất thì tắt · lần đầu một cặp nguồn + đuôi TK thì ví **trống** (không ví mặc định) · danh
+  mục đoán trên nội dung tin bằng `doanDanhMucTuGhiChu` (tách khỏi `docCauGiaoDich`) · chế độ thu mẫu bản debug chỉ log
+  **hình dạng đã che** (quy tắc §13.6 `progress/Client-app.md`, người dùng chốt). Nghiệm thu OnePlus 13R (debug rồi
+  release): đồng ý → cờ bật; tin MoMo → tóm tắt → Lưu (thu 10.000 đ, `Manual`) → hàng + tệp đã xoá; lần hai chọn sẵn ví
+  MoMo; Bỏ qua; tắt → không tóm tắt; logcat release 0 byte. ⚠️ Lộ **ba** lỗi lúc thi công / đo, đã sửa: Sổ giao dịch
+  tràn **89 px** khi hai thẻ lối vào cùng có (nay cuộn cùng danh sách) · bảng *Chọn ví* tràn 13 px khi 5 ví (`41dfc9c`,
+  có từ trước) · chip *Biến động* ngoài mép phải khi mở trung tâm lọc sẵn (`802dcd2`, **chưa cài lên máy**). Chưa đo: tin
+  MB qua đường thật. Đơn soát `CAN-LAM/D1_DOC_BIEN_DONG_XONG_SOAT.md` xin backend đổi ô chức năng 3 + bốn chỗ tài liệu.
+  **Việc sau D1, người dùng chốt:** bàn phím số ẩn khi màn đã có số tiền (Stitch trước) · gợi ý Chuyển khoản cho cặp trừ
+  + cộng · chia sẻ biên lai ví điện tử (MoMo / ZaloPay không bắn tin khi chuyển đi; gộp C4). `flutter test`
+  **4963/4963** (4 skip), analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu bốn trường Tổng kết tuần.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 

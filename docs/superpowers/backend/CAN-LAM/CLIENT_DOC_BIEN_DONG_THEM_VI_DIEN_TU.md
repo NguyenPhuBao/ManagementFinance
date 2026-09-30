@@ -25,6 +25,10 @@ giao dịch hằng ngày của họ đi qua hai ví này.
 Danh sách trắng vòng đầu nay là **bảy nguồn**: MB Bank · Vietcombank · Techcombank · BIDV · app Tin nhắn (SMS) · MoMo ·
 ZaloPay.
 
+> ⚠️ **Cập nhật 2026-09-30 — D1 đã xong:** danh sách trắng **thực tế** chỉ gồm gói đã đo trên máy thật — MB Bank, MoMo,
+> ZaloPay. Vietcombank, Techcombank, BIDV, Tin nhắn chưa có mẫu nên chưa đọc. Kết quả và bốn chỗ tài liệu cần cập nhật ở
+> đơn soát `CAN-LAM/D1_DOC_BIEN_DONG_XONG_SOAT.md`.
+
 ## 2. Những gì KHÔNG đổi
 
 Mọi cam kết backend đã duyệt ở đơn gốc giữ nguyên cho cả hai nguồn mới:
