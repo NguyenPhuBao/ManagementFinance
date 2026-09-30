@@ -27,6 +27,12 @@ import '../../category/data/services/category_suggestion_engine.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 
+/// Ô CÂU CÓ NHẮC mà luật (và AI, nếu đã hỏi) không đọc được — người dùng chốt 2026-09-30 (§8 câu 2, 9 spec): màn chỉ gọi
+/// mô hình khi còn ô như thế. *Số tiền*: câu có số / số chữ đọc được thành tiền (`cachDocSoTien` khác rỗng). *Ngày*: câu
+/// có chữ thời gian. *Ví*: câu có chữ chỉ ví (*ví, thẻ, quẹt, ck, chuyển khoản, atm*) hoặc viết tắt tên một ví. Thu/chi
+/// và danh mục KHÔNG ở đây: câu nào cũng có thể thiếu chúng, gọi AI vì chúng là gọi gần như mọi câu (~18 s mỗi câu).
+enum OThieu { soTien, ngay, vi }
+
 /// Kết quả đọc. Mọi trường `null` nghĩa là *không đọc được* — form **giữ nguyên** ô ấy.
 class KetQuaDocCau {
   final double? soTien;
@@ -54,10 +60,15 @@ class KetQuaDocCau {
   final String ghiChu;
   final List<String> canhBao;
 
-  /// Kết quả có đi qua mô hình (§2.8) — màn ghi nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*.
+  /// AI THẬT SỰ lấp ít nhất một ô (kể cả ghi chú) — màn ghi nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*. AI được hỏi mà
+  /// mọi ô của nó bị lớp kiểm chặn thì vẫn là *"Đọc bằng luật"*.
   final bool quaAi;
 
+  /// Ô câu có nhắc mà vẫn chưa đọc được, tính SAU khi AI lấp (xem [OThieu]). Đường luật một mình: khác rỗng thì màn hỏi AI.
+  final Set<OThieu> oThieu;
+
   const KetQuaDocCau({
+    this.oThieu = const {},
     this.soTien,
     this.loai,
     this.ngay,
@@ -249,24 +260,39 @@ KetQuaDocCau docCauGiaoDich(
   final ghiChuLuat = ghiChu;
   var ngay = ng?.ngay;
 
-  // §2.8 — ô của AI qua kiểm của luật. Luật đọc chắc (ngày, ví nêu tên) thì luật thắng: chữ ấy không hai nghĩa.
+  // §2.8 — ô của AI qua kiểm của luật. ĐỔI LẦN HAI (người dùng chốt 2026-09-30): luật trước — AI chỉ LẤP ô luật để
+  // trống, luật đọc được thì luật thắng (kể cả số tiền, kể cả khi số của AI là một cách đọc hợp lệ).
+  var aiLap = false;
   if (ai != null) {
     final st = ai.soTien;
-    if (st != null && st < 1e13 && cachDocSoTien(cau, now: now).any((v) => (v - st).abs() <= 0.5)) {
+    if (soTien == null && st != null && st < 1e13 && cachDocSoTien(cau, now: now).any((v) => (v - st).abs() <= 0.5)) {
       soTien = st.roundToDouble();
       canhBao.removeWhere((c) => c != kCanhBaoNhieuSoTien);
+      aiLap = true;
     }
-    if (ai.loai != null && !_coVayNo(thuong)) loai = ai.loai;
-    ngay ??= _ngayAiHopLe(ai.ngay, thuong, now);
+    if (loai == null && ai.loai != null && !_coVayNo(thuong)) {
+      loai = ai.loai;
+      aiLap = true;
+    }
+    if (ngay == null) {
+      ngay = _ngayAiHopLe(ai.ngay, thuong, now);
+      if (ngay != null) aiLap = true;
+    }
     if (walletId == null && ai.vi != null) {
       final k = khopTheoTen(ai.vi!, dsVi, (w) => w.name);
-      if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc.name)) walletId = k.muc.id;
+      if (k is KhopMot<Wallet> && _cauNhacVi(thuong, k.muc.name)) {
+        walletId = k.muc.id;
+        aiLap = true;
+      }
     }
     final gc = ai.ghiChu;
-    if (gc != null) {
+    if (gc != null && gc != ghiChu) {
       final cho = amTietCua(ghiChu).toSet();
       final cua = amTietCua(gc);
-      if (cua.isNotEmpty && cua.every(cho.contains)) ghiChu = gc;
+      if (cua.isNotEmpty && cua.every(cho.contains)) {
+        ghiChu = gc;
+        aiLap = true;
+      }
     }
   }
 
@@ -316,11 +342,23 @@ KetQuaDocCau docCauGiaoDich(
       goiY = tk;
     } else if (ai?.danhMuc != null) {
       final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
-      if (k is KhopMot<Category>) categoryId = k.muc.id;
+      if (k is KhopMot<Category>) {
+        categoryId = k.muc.id;
+        aiLap = true;
+      }
     }
   }
 
+  // Ô câu CÓ NHẮC mà (sau khi AI lấp, nếu có) vẫn chưa đọc được — màn chỉ gọi mô hình khi tập này khác rỗng.
+  final oThieu = {
+    if (soTien == null && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
+    if (ngay == null && _coChuThoiGian(thuong)) OThieu.ngay,
+    if (walletId == null && dsVi.isNotEmpty && (_nhacViChung(thuong) || dsVi.any((w) => _vietTatTenVi(thuong, w.name))))
+      OThieu.vi,
+  };
+
   return KetQuaDocCau(
+    oThieu: oThieu,
     soTien: soTien,
     loai: loai,
     ngay: ngay,
@@ -331,7 +369,7 @@ KetQuaDocCau docCauGiaoDich(
     goiY: goiY,
     ghiChu: ghiChu,
     canhBao: canhBao,
-    quaAi: ai != null,
+    quaAi: aiLap,
   );
 }
 
@@ -445,14 +483,24 @@ DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
 /// mặc định). Nhắc = một chữ chỉ ví / cách trả (*ví, thẻ, quẹt, ck, chuyển khoản, atm*), hoặc một chữ ≥ 4 ký tự là
 /// **viết tắt** (tiền tố thật sự ngắn hơn) của một từ trong tên ví (*"techcom"* → *Techcombank*). Trùng nguyên một từ
 /// thường (*"tiền"* của *Tiền mặt*) không tính — tên ví nêu trọn thì luật đã bắt trước.
-bool _cauNhacVi(String thuong, String tenVi) {
-  final tu = [for (final m in _tu.allMatches(thuong)) removeVietnameseTones(unorm.nfc(m.group(0)!))];
+bool _cauNhacVi(String thuong, String tenVi) => _nhacViChung(thuong) || _vietTatTenVi(thuong, tenVi);
+
+List<String> _tuBoDau(String thuong) =>
+    [for (final m in _tu.allMatches(thuong)) removeVietnameseTones(unorm.nfc(m.group(0)!))];
+
+/// Chữ chỉ ví / cách trả chung, không gắn ví nào.
+bool _nhacViChung(String thuong) {
+  final tu = _tuBoDau(thuong);
   for (var i = 0; i < tu.length; i++) {
     if (_chuNhacVi.contains(tu[i])) return true;
     if (i + 1 < tu.length && '${tu[i]} ${tu[i + 1]}' == 'chuyen khoan') return true;
   }
+  return false;
+}
+
+bool _vietTatTenVi(String thuong, String tenVi) {
   final tuVi = removeVietnameseTones(normalizeCategoryName(tenVi)).split(' ');
-  return tu.any((t) => t.length >= 4 && tuVi.any((w) => w.length > t.length && w.startsWith(t)));
+  return _tuBoDau(thuong).any((t) => t.length >= 4 && tuVi.any((w) => w.length > t.length && w.startsWith(t)));
 }
 
 const Set<String> _chuNhacVi = {'vi', 'the', 'quet', 'ck', 'atm'};

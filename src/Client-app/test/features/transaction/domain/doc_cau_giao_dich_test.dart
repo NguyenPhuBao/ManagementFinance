@@ -444,6 +444,72 @@ void main() {
     });
   });
 
+  // Người dùng chốt 2026-09-30 (banner "ĐỔI LẦN HAI" + §8 câu 2, 9 của spec): luật chạy trước; chỉ gọi mô hình khi còn
+  // ô CÂU CÓ NHẮC mà luật không đọc được — số tiền, ngày, ví. Thu/chi và danh mục không phải ô thiếu (gọi AI vì chúng là
+  // gọi gần như mọi câu, ~18 s mỗi câu trên Realme). AI chỉ LẤP ô luật để trống: luật đọc được thì luật thắng.
+  group('ĐỔI LẦN HAI — luật trước, AI chỉ lấp ô thiếu (oThieu)', () {
+    final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
+    final chinh = makeWallet(id: 'w-cash', name: 'Tiền mặt');
+    KetQuaDocCau luat(String cau) => docCauGiaoDich(cau, now: now, vi: [tcb, chinh], chonDuoc: const []);
+    KetQuaDocCau voiAi(String cau, KetQuaAi ai) =>
+        docCauGiaoDich(cau, now: now, vi: [tcb, chinh], chonDuoc: const [], ai: ai);
+
+    test('⭐ luật đọc đủ những gì câu nhắc → không ô nào thiếu, màn KHÔNG gọi mô hình', () {
+      for (final c in ['ăn phở 45k', 'hôm qua ăn phở 45k tiền mặt', '45k ví Techcombank', 'mua 2 ly trà sữa', 'xin chào']) {
+        expect(luat(c).oThieu, isEmpty, reason: c);
+      }
+    });
+
+    test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
+      expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien});
+      expect(luat('tiền điện một triệu hai').oThieu, {OThieu.soTien});
+    });
+
+    test('ngày thiếu: luật không đọc được mà câu có chữ thời gian; "tôi" không phải chữ thời gian', () {
+      expect(luat('cuối tháng đóng học phí 2tr').oThieu, {OThieu.ngay});
+      expect(luat('tôi ăn phở 45k').oThieu, isEmpty);
+    });
+
+    test('ví thiếu: luật không đọc được mà câu nhắc ví (thẻ, quẹt, viết tắt tên ví); "tiền" trần không tính', () {
+      expect(luat('quẹt thẻ ăn phở 45k').oThieu, {OThieu.vi});
+      expect(luat('ăn phở 45k techcom').oThieu, {OThieu.vi});
+      expect(luat('tiền điện 45k').oThieu, isEmpty);
+    });
+
+    test('thu/chi và danh mục KHÔNG phải ô thiếu — câu không từ chỉ thu, không danh mục vẫn không gọi AI', () {
+      expect(luat('bún chả 45k').oThieu, isEmpty);
+    });
+
+    test('⭐ ĐỔI QUYẾT ĐỊNH: luật đọc được số tiền thì LUẬT THẮNG, kể cả khi số AI là một cách đọc hợp lệ', () {
+      expect(voiAi('đổ 2 lít xăng 50k', const KetQuaAi(soTien: 200000)).soTien, 50000,
+          reason: '200.000 (2 lít) là cách đọc hợp lệ — bản "AI đọc mọi câu" để AI thắng');
+      final r = voiAi('ăn sáng 30k, grab 50k', const KetQuaAi(soTien: 50000));
+      expect(r.soTien, 30000);
+      expect(r.canhBao, contains(kCanhBaoNhieuSoTien), reason: 'AI không lấp thì cảnh báo của luật ở lại');
+    });
+
+    test('⭐ ĐỔI QUYẾT ĐỊNH: luật đọc được chiều THU thì AI nói "chi" không đè', () {
+      expect(voiAi('nhận lương 9tr', const KetQuaAi(loai: 'chi')).loai, 'thu');
+    });
+
+    test('ô thiếu tính SAU khi AI lấp: lấp được thì hết thiếu, AI bị chặn thì vẫn thiếu', () {
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).oThieu, isEmpty);
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 300000)).oThieu, {OThieu.soTien});
+    });
+
+    test('ghi chú khi AI lấp số tiền: ghi chú AI được dùng nếu chỉ BỚT chữ (người dùng chốt §8 câu 9)', () {
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).ghiChu,
+          'cà phê với Nam');
+    });
+
+    test('quaAi = AI THẬT SỰ lấp ít nhất một ô (dòng nguồn); AI bị chặn hết → "Đọc bằng luật"', () {
+      expect(voiAi('ăn phở 45k', const KetQuaAi(soTien: 450000)).quaAi, isFalse);
+      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).quaAi, isTrue);
+      expect(voiAi('hôm qua ăn phở với bạn 45k', const KetQuaAi(ghiChu: 'ăn phở')).quaAi, isTrue,
+          reason: 'ghi chú của AI được dùng');
+    });
+  });
+
   group('không đọc được gì', () {
     test('câu không có ô nào đọc được → khongDocDuocGi, ghi chú là cả câu', () {
       final r = doc('xin chào');
