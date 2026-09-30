@@ -282,4 +282,68 @@ const notificationService = {
   },
 };
 
+const os = require('os');
+const _cloudAlertDebounce = new Map();
+const CLOUD_ALERT_DEBOUNCE_MS = 30 * 60 * 1000; // 30 phút
+
+async function checkAndAlertCloudHealth() {
+  const now = Date.now();
+  const result = { ramAlert: false, errorRateAlert: false };
+
+  // Kiểm tra RAM
+  const totalMem = os.totalmem();
+  const usedMem = totalMem - os.freemem();
+  const ramPercent = Math.round((usedMem / totalMem) * 100);
+  if (ramPercent > 85) {
+    const last = _cloudAlertDebounce.get('ram') || 0;
+    if (now - last > CLOUD_ALERT_DEBOUNCE_MS) {
+      _cloudAlertDebounce.set('ram', now);
+      result.ramAlert = true;
+      await notificationService.sendAdminAlert({
+        type: 'RAM_CRITICAL',
+        level: 'CRITICAL',
+        title: '🔴 RAM Cloud Vượt Ngưỡng Nguy Hiểm',
+        message: `RAM đạt ${ramPercent}% (${Math.round(usedMem / 1024 / 1024)}MB / ${Math.round(totalMem / 1024 / 1024)}MB). Nguy cơ OOM crash!`,
+      });
+    }
+  }
+
+  // Kiểm tra Error Rate từ AuditLog 5 phút gần nhất
+  try {
+    const { prisma } = require('../../config/db');
+    const since = new Date(now - 5 * 60 * 1000);
+    const [total, failed] = await Promise.all([
+      prisma.auditlog.count({ where: { time_req: { gte: since } } }),
+      prisma.auditlog.count({
+        where: {
+          time_req: { gte: since },
+          req_status: { in: ['Fail', 'Rejected'] },
+        },
+      }),
+    ]);
+    if (total >= 10) {
+      const rate = Math.round((failed / total) * 100);
+      if (rate > 10) {
+        const last = _cloudAlertDebounce.get('errorRate') || 0;
+        if (now - last > CLOUD_ALERT_DEBOUNCE_MS) {
+          _cloudAlertDebounce.set('errorRate', now);
+          result.errorRateAlert = true;
+          await notificationService.sendAdminAlert({
+            type: 'HIGH_ERROR_RATE',
+            level: 'CRITICAL',
+            title: '🔴 Tỉ Lệ Lỗi Request Tăng Đột Biến',
+            message: `${failed}/${total} request thất bại (${rate}%) trong 5 phút qua. Cần kiểm tra ngay!`,
+          });
+        }
+      }
+    }
+  } catch (_) {
+    /* Không để lỗi query crash scheduler */
+  }
+
+  return result;
+}
+
+notificationService.checkAndAlertCloudHealth = checkAndAlertCloudHealth;
+
 module.exports = notificationService;
