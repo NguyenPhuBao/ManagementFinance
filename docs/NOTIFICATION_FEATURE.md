@@ -107,6 +107,16 @@ vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. M
 mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này, và bật sẵn là lặng
 lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
 
+✅ **Hai luật thêm 2026-09-30** (đo Realme: tạo *"Ví MB Bank"* 0 đ là bị báo ngay *"chỉ còn 0 đồng"*, rồi thông báo ấy
+treo trên khay sau khi ví đã có 10.000 đ; ví *"tiết kiệm mua nhà"* 0 đ bị báo **mỗi ngày** từ 22/09):
+- **Ví chưa từng dùng thì im** — `NotificationRuleInput.viDaDung` (tập ví có ít nhất một giao dịch còn sống, vai nguồn
+  **hoặc** đích — `TransactionDao.viDaDung`). ⚠️ Kiểu **nullable**: `null` = không biết → luật cũ; mặc định tập rỗng là
+  một nơi gọi quên truyền tắt cả tính năng, im lặng. Bộ quét chỉ hỏi CSDL khi ngưỡng > 0. Ví tạo với số dư đầu ≠ 0 có
+  khoản neo *"Số dư ban đầu"* nên **đã dùng**.
+- **Ví đã hồi thì tự gỡ** — `hangSapCanDaHoi`: hàng `walletLowBalance` chưa gỡ mà ví nay **trên** ngưỡng → bộ quét
+  `dismiss` ở **mọi** lượt (đứng trước nhánh thoát sớm "không có gì mới"), `BadgeUpdater` huỷ thông báo khỏi khay. Ngưỡng
+  0 hay ví không còn thì không đoán.
+
 ⚠️ ~~**Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.~~
 **Chốt này ĐÃ GỠ ngày 2026-09-09 — LOẠI ví không miễn trừ gì cả.**
 
@@ -525,7 +535,13 @@ nhất là một thông báo mang con số ấy, tắt hết phần hiển thị
 > `getActiveNotifications()` đếm 2 ngay sau khi bắn (con + tóm tắt), rồi
 > `dumpsys notification` chỉ còn 1 vài giây sau. Thêm nữa, khi khay **trống**
 > thì `datBadge(6)` chạy trót lọt nhưng chẳng hiện gì cả: không có thông báo con
-> thì bản tóm tắt cũng không được hiển thị.
+> thì bản tóm tắt cũng không được hiển thị. ⚠️ **Câu này chỉ đúng trên OnePlus** — đo
+> Realme RMX2205 2026-09-30: bản tóm tắt KHÔNG con vẫn hiện thành một thông báo **rỗng**
+> *"Nhắc tài chính"*, chạm vào không dẫn đi đâu; D1 làm nó nổ sau **mọi** tin ngân hàng
+> (hàng loại 20 tăng số chưa đọc mà không bao giờ có con trên khay). Từ `3456b69`
+> `datBadge` **đếm con theo `groupKey`** (tóm tắt D1 của Kotlin không thuộc nhóm): không
+> con → **gỡ** tóm tắt; còn con → số > 0 cập nhật, số 0 giữ. Đo lại trên Realme:
+> `badge=40, khay=0` → không đăng gì.
 >
 > **Hệ quả cần nhớ:** trên Android badge thực chất là **chấm**, và chấm suy từ
 > *thông báo đang trên khay*, không từ số chưa đọc. Nghĩa là còn 6 mục chưa đọc
@@ -1378,7 +1394,7 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 | `goalAutoDeposited` | `goalAuto:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Quét chạy sau mọi lần đồng bộ; thiếu đơn vị lặp là mỗi lần mở app thêm một "Đã trích" cho việc chỉ xảy ra một lần. Hai kỳ khác nhau vẫn phải ra hai thông báo — trích bù hai tháng là hai lần tiền rời ví |
 | `goalAutoDepositFailed` | `goalAutoFail:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Như trên |
 | `walletNegative` | `walletNeg:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví âm cho tới khi người dùng nạp tiền |
-| `walletLowBalance` | `walletLow:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví cạn cho tới khi người dùng nạp tiền — cùng lý lẽ (thêm 2026-09-07) |
+| `walletLowBalance` | `walletLow:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví cạn cho tới khi người dùng nạp tiền — cùng lý lẽ (thêm 2026-09-07). Từ 2026-09-30 hàng tự **gỡ** khi ví lên lại trên ngưỡng (`hangSapCanDaHoi`) |
 | `syncFailed` | `syncFailed:<yyyy-MM-dd>` | mỗi ngày | Mất mạng là hỏng ở **mọi** chu kỳ đồng bộ |
 
 `syncFailed` là **người tiêu thụ đầu tiên** của `SyncEngine.statusStream` cho

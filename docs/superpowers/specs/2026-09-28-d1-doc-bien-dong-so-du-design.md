@@ -164,7 +164,7 @@ Không tự tạo giao dịch. Không gửi tin ra ngoài máy. Không `READ_SMS
   dữ liệu thật.
 - **`docTinBienDong`:** mỗi nguồn ≥ 2 mẫu (một thu, một chi); mẫu `Classify.md` §4; tin OTP → không bao giờ tới đây (đã lọc
   ở Kotlin) nhưng hàm vẫn trả `null` nếu gặp; tin quảng cáo có số → `null`.
-- **Nhập hàng chờ:** gộp trùng theo mã; theo số tiền + chiều trong 5 phút; cách 6 phút → hai dòng; tệp hỏng một dòng →
+- **Nhập hàng chờ:** gộp trùng theo mã; theo số tiền + chiều trong 5 phút *(⚠️ 2026-09-30: trừ khi hai tin mang số dư sau GD khác nhau — đo Realme, hai lần chuyển thật cách 4 phút từng bị gộp; `BIEN_DONG_SO_DU_FEATURE.md` mục 3)*; cách 6 phút → hai dòng; tệp hỏng một dòng →
   các dòng khác vẫn nhập; tệp bị xoá sau khi nhập; tài khoản khác đăng nhập (hàng chờ gắn máy, không gắn tài khoản) →
   nhập vào tài khoản **đang đăng nhập** (tin hiện trên máy của người đang cầm máy).
 - **`NotificationKind` / nhóm:** hai `switch`, `tatCaUngVien()`, chip lọc.
