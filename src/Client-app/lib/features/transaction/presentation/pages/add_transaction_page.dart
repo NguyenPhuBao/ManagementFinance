@@ -473,10 +473,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final luot = ++_luotDien;
     FocusScope.of(context).unfocus();
     final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
-    // C2 §2.8 — "AI đọc mọi câu": máy dùng được AI thì hỏi mô hình trước, rồi luật kiểm từng ô của nó.
+    // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
+    // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
     KetQuaAi? ai;
     final docAi = _docAi;
-    if (docAi != null && mounted && await docAi.sanSang()) {
+    final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
+    if (conThieu && docAi != null && mounted && await docAi.sanSang()) {
       if (!mounted || luot != _luotDien) return;
       setState(() => _dangDocAi = true);
       ai = await docAi.doc(
@@ -523,19 +525,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
   }
 
+  KetQuaDocCau _docCau(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      docCauGiaoDich(
+        cau,
+        now: DateTime.now(),
+        vi: _wallets,
+        chonDuoc: chonDuoc,
+        mo: _boPhanLoai,
+        tatCap: _tatCap,
+        ai: ai,
+        tuKhoa: tuKhoa,
+      );
+
   /// Điền những ô đọc được vào form (xem [_dienTuCau]).
   void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) {
     final now = DateTime.now();
-    final kq = docCauGiaoDich(
-      cau,
-      now: now,
-      vi: _wallets,
-      chonDuoc: chonDuoc,
-      mo: _boPhanLoai,
-      tatCap: _tatCap,
-      ai: ai,
-      tuKhoa: tuKhoa,
-    );
+    final kq = _docCau(cau, chonDuoc, tuKhoa, ai: ai);
     if (kq.khongDocDuocGi) {
       setState(() => _ketQuaDien =
           (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null));
@@ -545,8 +550,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final loai = kq.loai;
     if (loai != null && loai != _huong) _chonHuong(loai);
     Wallet? vi;
+    Wallet? viDen;
     for (final w in _wallets) {
       if (w.id == kq.walletId) vi = w;
+      if (w.id == kq.walletToId) viDen = w;
     }
     setState(() {
       final soTien = kq.soTien;
@@ -565,6 +572,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedWallet = vi;
         _nguoiDungDaChonVi = true;
       }
+      // Chuyển ví (§2.9). Câu chỉ nêu ví đích mà ví nguồn đang chọn lại chính là nó → để trống ví nguồn cho người dùng
+      // chọn: chuyển vào chính nó là khoản vô nghĩa, và màn không chặn lúc lưu.
+      if (viDen != null) {
+        _destinationWallet = viDen;
+        if (vi == null && _selectedWallet?.id == viDen.id) _selectedWallet = null;
+      }
     });
     Category? danhMuc;
     if (!_isTransfer && kq.categoryId != null) {
@@ -580,7 +593,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: _noteController.text.trim());
       _ketQuaDien = (
-        tomTat: cauDaDien(kq, tenVi: vi?.name, tenDanhMuc: danhMuc?.name, now: now),
+        tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
         docDuoc: true,
         quaAi: kq.quaAi,
         canhBao: kq.canhBao,

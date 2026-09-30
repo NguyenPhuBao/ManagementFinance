@@ -50,6 +50,7 @@ class _RuntimeGia implements SlmRuntime {
   final PhienCongCu Function() taoPhien;
   bool _san = false;
   int soLanNap = 0;
+  int soPhien = 0;
   @override
   bool get dangSan => _san;
   @override
@@ -63,8 +64,11 @@ class _RuntimeGia implements SlmRuntime {
     required String heThong,
     required String cauHoi,
     required List<KhaiBaoCongCu> congCu,
-  }) async =>
-      taoPhien();
+  }) async {
+    soPhien++;
+    return taoPhien();
+  }
+
   @override
   Future<String> sinh(String prompt, {int tranToken = 0}) => throw UnimplementedError();
   @override
@@ -298,6 +302,39 @@ void main() {
     expect(store.hang.single, (goiY: 'move', ketQua: kKetQuaGoiYChon, chon: 'move'));
   });
 
+  // §2.9 — người dùng báo 2026-09-30: câu chuyển giữa hai ví bị điền thành khoản chi.
+  testWidgets('⭐ "chuyển 500k từ tiền mặt sang techcombank" → đoạn Chuyển khoản, nguồn Tiền mặt, đích Techcombank; lưu ra '
+      'khoản chuyển không danh mục', (tester) async {
+    final repo = FakeTransactionRepository();
+    await tester.pumpWidget(app(repo: repo));
+    await tester.pumpAndSettle();
+
+    await dien(tester, 'chuyển 500k từ tiền mặt sang techcombank');
+
+    expect(tomTat(tester), 'Đã điền: 500.000 đ · Chuyển ví · Tiền mặt → Techcombank');
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    final t = repo.added.single.transaction;
+    expect(t.type, 'transfer');
+    expect(t.amount, 500000);
+    expect(t.walletId, 'cash');
+    expect(t.walletTransfer, 'tcb');
+    expect(t.categoryId, isNull);
+  });
+
+  testWidgets('⚠️ câu chỉ nêu ví đích, mà ví nguồn đang chọn lại chính là nó → ví nguồn để trống (không chuyển vào chính '
+      'nó)', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'tiền đề: ví nguồn mặc định là Techcombank');
+
+    await dien(tester, 'chuyển 500k vào techcombank');
+
+    expect(tomTat(tester), 'Đã điền: 500.000 đ · Chuyển ví · sang Techcombank');
+    expect(find.text('Chọn ví'), findsOneWidget, reason: 'ví nguồn');
+    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'ví đích');
+  });
+
   testWidgets('màn SỬA giao dịch không có ô Nhập nhanh', (tester) async {
     final goc = TransactionEntity(
       id: 'tx',
@@ -346,31 +383,62 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng AI');
     });
 
-    testWidgets('⚠️ AI bịa số không có trong câu → bị bỏ, giữ số của luật', (tester) async {
+    // ĐỔI LẦN HAI (người dùng chốt 2026-09-30): ba ca dưới từng dùng câu "ăn phở 45k" — luật đọc đủ câu ấy nên nay nó
+    // KHÔNG tới AI. Câu thay có một ô thiếu để ca vẫn đi đường AI.
+    testWidgets('⚠️ AI bịa số không có trong câu → bị bỏ (không bao giờ bịa số)', (tester) async {
       await tester.pumpWidget(app(docAi: aiTraVe({'so_tien': 300000, 'loai': 'chi'})));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'ăn phở 45k');
+      await dien(tester, 'cà phê mất ba chục');
 
-      expect(find.text('45.000 đ'), findsOneWidget);
       expect(find.text('300.000 đ'), findsNothing);
+      expect(find.text('0 đ'), findsOneWidget);
     });
 
     testWidgets('máy chưa có mô hình / công tắc tắt → không chờ gì, đọc bằng luật', (tester) async {
       await tester.pumpWidget(app(docAi: aiTraVe({'so_tien': 30000}, sanSang: false)));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'ăn phở 45k');
+      await dien(tester, 'quẹt thẻ ăn phở 45k');
 
       expect(find.text('45.000 đ'), findsOneWidget);
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng luật');
+    });
+
+    testWidgets('⭐ luật đọc đủ những gì câu nhắc → KHÔNG mở phiên mô hình, điền ngay, nguồn "Đọc bằng luật"',
+        (tester) async {
+      final runtime = _RuntimeGia(() => PhienCongCuGia([
+            [const GoiCongCu(kTenCongCuDienGiaoDich, {'so_tien': 450000})],
+          ]));
+      await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: runtime)));
+      await tester.pumpAndSettle();
+
+      await dien(tester, 'hôm qua ăn phở 45k tiền mặt');
+
+      expect(runtime.soPhien, 0, reason: 'không còn ô thiếu — gọi mô hình là bắt người dùng chờ ~18 s vô ích');
+      expect(find.text('45.000 đ'), findsOneWidget);
+      expect(find.byKey(const Key('nhap-nhanh-dang-doc')), findsNothing);
+      expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng luật');
+    });
+
+    testWidgets('câu còn ô thiếu ("ba chục") → mở ĐÚNG một phiên mô hình', (tester) async {
+      final runtime = _RuntimeGia(() => PhienCongCuGia([
+            [const GoiCongCu(kTenCongCuDienGiaoDich, {'so_tien': 30000})],
+          ]));
+      await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: runtime)));
+      await tester.pumpAndSettle();
+
+      await dien(tester, 'cà phê mất ba chục');
+
+      expect(runtime.soPhien, 1);
+      expect(find.text('30.000 đ'), findsOneWidget);
     });
 
     testWidgets('đang đọc → "Đang đọc bằng AI…" + Huỷ; Huỷ thì điền NGAY bằng luật', (tester) async {
       await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: _RuntimeGia(_PhienTreo.new))));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn phở 45k');
+      await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'quẹt thẻ ăn phở 45k');
       await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
       // Vòng xoay chạy mãi — pumpAndSettle không bao giờ lặng.
       await tester.pump(const Duration(milliseconds: 100));
