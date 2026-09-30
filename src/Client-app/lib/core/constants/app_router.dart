@@ -23,6 +23,7 @@ import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
+import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
@@ -382,7 +383,10 @@ class AppRouter {
 
           // Goal
           GoRoute(path: '/goals', builder: (_, __) => const GoalPage()),
-          GoRoute(path: '/goals/add', builder: (_, __) => const GoalAddPage()),
+          GoRoute(
+              path: '/goals/add',
+              // `?name&target&deadline` = điền sẵn từ lệnh tạo ở màn Trợ lý AI (C3); hỏng thì bỏ đúng trường ấy.
+              builder: (_, s) => GoalAddPage(dienSan: dienSanMucTieuTuQuery(s.uri.queryParameters))),
           // Đặt TRƯỚC '/goals/:id' cho khớp với thứ tự của '/goals/add': đường
           // cụ thể đứng trước đường có tham số.
           GoRoute(

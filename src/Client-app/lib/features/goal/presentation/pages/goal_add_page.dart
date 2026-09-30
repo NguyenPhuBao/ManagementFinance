@@ -20,6 +20,7 @@ import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
+import '../../domain/dien_san_muc_tieu.dart';
 
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
 ///
@@ -31,10 +32,14 @@ import '../../../../core/utils/gioi_han_do_dai.dart';
 /// người dùng về nút đổi ví ở trang chi tiết, nơi đặt phép khoá sau khoản nạp
 /// đầu tiên. Nhân đôi luật khoá sang đây là tự chuốc hai luật lệch nhau.
 class GoalAddPage extends StatelessWidget {
-  const GoalAddPage({super.key, this.goalId});
+  const GoalAddPage({super.key, this.goalId, this.dienSan});
 
   /// `null` là tạo mới; khác `null` là sửa mục tiêu đó.
   final String? goalId;
+
+  /// Điền sẵn từ `/goals/add?name&target&deadline` (C3 — lệnh tạo ở màn Trợ lý AI). Chỉ dùng ở đường TẠO MỚI: sửa một
+  /// mục tiêu có sẵn không được bị query ghi đè.
+  final DienSanMucTieu? dienSan;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +54,7 @@ class GoalAddPage extends StatelessWidget {
           create: (_) => sl<WalletCubit>()..loadWallets(idaccount),
         ),
       ],
-      child: _GoalAddPageContent(goalId: goalId),
+      child: _GoalAddPageContent(goalId: goalId, dienSan: dienSan),
     );
   }
 }
@@ -69,9 +74,10 @@ const Map<String, String> kChuKyLapLai = {
 };
 
 class _GoalAddPageContent extends StatefulWidget {
-  const _GoalAddPageContent({this.goalId});
+  const _GoalAddPageContent({this.goalId, this.dienSan});
 
   final String? goalId;
+  final DienSanMucTieu? dienSan;
 
   @override
   State<_GoalAddPageContent> createState() => _GoalAddPageContentState();
@@ -144,6 +150,14 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     if (_isEdit) {
       _dangNapGoal = true;
       _napGoalDeSua();
+    } else if (widget.dienSan case final d?) {
+      // Cùng thứ tự với `_napGoalDeSua` (hạn trước số tiền). Ở đây chưa ô trích nào có số nên listener tính chéo không
+      // đổi hạn — bản sai gán tiền trước vẫn xanh (đo 2026-09-30); giữ thứ tự để hai đường điền đọc như nhau.
+      if (d.han case final han?) _targetDate = han;
+      if (d.ten case final ten?) _nameController.text = ten;
+      if (d.soTienDich case final tien?) {
+        _targetAmountController.text = CurrencyFormatter.formatSoThoi(tien).trim();
+      }
     }
   }
 
