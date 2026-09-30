@@ -872,7 +872,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   ăn phở 45k"* từng nhận ví Tiền mặt), so chữ ví **có dấu** (*"vì"* ≠ *ví*); dòng nguồn *"Đọc bằng AI"* chỉ khi AI đổi
   một ô. Đo lượt 4 (bản `474a61cb…`, cuối 9.41): trà sữa → Ăn uống qua AI; *"ăn sáng 30k, grab 50k"* AI không dọn được
   ghi chú (lớp kiểm chặn đúng). `flutter test` **4822/4822** (4 skip), analyze 26. ⚠️ Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen** —
-  việc riêng, trước D1, chưa có spec; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
+  ✅ spec đã duyệt cuối phiên (`specs/2026-09-30-de-xuat-them-tu-khoa-design.md`, `7cffb1b`; Stitch đã gửi tạo, timeout),
+  **chưa thi công**; rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
   và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
   D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
   `ai_edge/`.
