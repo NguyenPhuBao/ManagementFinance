@@ -35,6 +35,7 @@ import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
+import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
@@ -75,6 +76,8 @@ import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
 import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
+import '../notification/kenh_bien_dong.dart';
+import '../notification/nhap_bien_dong.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
@@ -393,6 +396,13 @@ Future<void> setupDependencies() async {
   // mỗi bản là một observer nữa gắn vào WidgetsBinding.
   sl.registerLazySingleton<AppLifecycleWatcher>(AppLifecycleWatcher.new);
 
+  // D1: kênh tới tầng Kotlin đọc biến động số dư — chỉ Android có; nơi khác là
+  // bản trống (không quyền, không làm gì) để mọi chỗ gọi khỏi rẽ nhánh nền tảng.
+  sl.registerLazySingleton<KenhBienDong>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhBienDongAndroid()
+          : const KenhBienDongTrong());
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -504,6 +514,18 @@ Future<void> setupDependencies() async {
         thuocTaiKhoan: (id, k) async =>
             await sl<AppDatabase>().notificationEventDao.coDatLich(id, k) ||
             await sl<AppDatabase>().notificationDao.coDedupeKey(id, k),
+      ),
+      // D1: tệp hàng chờ tin biến động do Kotlin ghi vào `filesDir` — chính là
+      // `getApplicationSupportDirectory()` (KHÔNG phải documents dir của B5a).
+      // Hàng chờ gắn máy, nhập vào tài khoản đang đăng nhập; công tắc là cờ
+      // `docBienDong` của tài khoản ấy.
+      nhapBienDong: NhapBienDong(
+        thuMuc: getApplicationSupportDirectory,
+        dao: sl<AppDatabase>().notificationDao,
+        nguonCuaGoi: nguonCuaGoi,
+        batBienDong: (id) async =>
+            (await sl<NotificationPrefsStore>().read(id)).docBienDong,
+        huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
       ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),
