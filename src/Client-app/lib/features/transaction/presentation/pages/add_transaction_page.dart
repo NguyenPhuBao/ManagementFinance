@@ -578,10 +578,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         viDangChon: _selectedWallet?.id,
       );
 
-  /// Điền những ô đọc được vào form (xem [_dienTuCau]).
-  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) {
+  /// Đọc câu rồi điền những ô đọc được vào form (xem [_dienTuCau]).
+  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      _dienKetQua(_docCau(cau, chonDuoc, tuKhoa, ai: ai), chonDuoc: chonDuoc);
+
+  /// Điền một [KetQuaDocCau] đã dựng sẵn vào form — phần ÁP, tách khỏi phần đọc câu (2026-09-30, mở D1): ô Nhập nhanh
+  /// đi qua [_apDungKetQua], còn form điền sẵn từ tin biến động số dư (D1) dựng `KetQuaDocCau` từ query rồi gọi thẳng
+  /// đây. Mỗi ô đi đúng đường người dùng vẫn đi (chiều qua [_chonHuong], số tiền qua `themPhimSoTien`, danh mục qua
+  /// [_chonDanhMuc]…) — xem [_dienTuCau].
+  void _dienKetQua(KetQuaDocCau kq, {required List<Category> chonDuoc}) {
     final now = DateTime.now();
-    final kq = _docCau(cau, chonDuoc, tuKhoa, ai: ai);
     if (kq.khongDocDuocGi) {
       setState(() => _ketQuaDien =
           (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null));
