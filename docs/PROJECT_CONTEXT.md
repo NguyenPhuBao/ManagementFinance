@@ -907,6 +907,33 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   + cộng · chia sẻ biên lai ví điện tử (MoMo / ZaloPay không bắn tin khi chuyển đi; gộp C4). `flutter test`
   **4963/4963** (4 skip), analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu bốn trường Tổng kết tuần.
 
+### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
+
+Ba commit NPBao (`e2621da`, `e497695`, `8c677ab`), **không xung đột**, **không đụng `src/Client-app`**. Soát bằng mã
+(hai agent đọc song song + kiểm lại từng dòng nêu trong đơn), kết quả ở đơn mới
+`superpowers/backend/CAN-LAM/SOAT_SAU_GOP_B350D40.md`:
+
+- **Tài liệu mới `docs/Notification/Notification_Client-app.md`** giao client nghe `account.countdown`,
+  `system.broadcast`, `user.notification`, gọi `/api/notifications/*`, lưu thông báo server vào `AppNotifications`
+  và đồng bộ trạng thái đã đọc.
+  - Cả ba payload **lệch mã** (`daysRemaining` chứ không `daysLeft`; `message` / `createdAt` chứ không `content` /
+    `broadcastAt`).
+  - `user.notification` **0 chỗ phát**.
+  - Broadcast nằm ở kho admin, nên `GET` của người dùng không trả nó.
+  - Kho người dùng giữ `BankTransactionPending` kèm `accountNumber`.
+  - Người dùng chốt **chỉ nhận số đếm trên chuông**. Phần còn lại trái quy tắc 9 (bảng cục bộ) và cam kết payload hộp
+    đen, **chưa nhận**.
+- **Đơn chatbot** `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` đóng, sang `DA-XONG/`: sáu lệnh nghiệm thu đạt, 7/8 mục đúng.
+  Còn **hai lỗi mã FHS**, đã xin sửa:
+  - DTI gần như luôn 0 — `financial.snapshot.service.js:298` lọc `classify === 'Chi'` trong khi Vay/nợ là `'Vay/no'`;
+    fixture test gán `'Thu'`.
+  - `trendVsLastMonth` hằng `'0%'` (:330).
+- **Chống quá tải** (`app.js`: bảo trì / cắt tải 503, retry guard 429 sau 4 POST giống hệt trong 10 s, timeout 30 s)
+  **không** chạm đồng bộ client: pull là GET, push mang `pushedAt`.
+- Tài liệu AI (`LogicBusinessAI.md`, `ORC.md`) chỉ đổi tên mô hình. Commit message *"shift layers 1-2 to Client-app"*
+  **không ứng với dòng diff nào**. Nhiều câu tả client cũ (SMS, v24, 7 tool, `Category.Keyword`, SyncQueue) — gom vào
+  mục 5 của đơn.
+
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
 Bốn commit NPBao cùng ngày, không xung đột, **không đụng `src/Client-app`**. Bốn đơn của client chuyển sang
