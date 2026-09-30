@@ -23,6 +23,7 @@ import '../../../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
+import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
@@ -135,6 +136,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
   Set<(String, String)> _tatCap = const {};
 
+  /// Cặp (cụm, danh mục) đang bị thôi ĐỀ XUẤT TỪ KHOÁ — tập riêng của nguồn `kNguonDeXuatTuKhoa` (spec 2026-09-30 §2.4).
+  Set<(String, String)> _tatCapTuKhoa = const {};
+
+  /// Cặp người dùng vừa ✕ trong lượt này — dòng ẩn tới khi rời màn.
+  final Set<(String, String)> _boQuaLuotNay = {};
+
+  /// Mẫu học trừ giao dịch đang sửa (đường sửa); `null` ở đường tạo mới → dùng `_boPhanLoai.mau`.
+  List<MauGhiChu>? _mauDeXuat;
+
+  /// Đề xuất thêm / chuyển từ khoá đang hiện dưới hàng Danh mục; `tenCu` khác `null` = đề xuất chuyển.
+  ({DeXuatTuKhoa dx, String tenDanhMuc, String? tenCu})? _deXuat;
+
+  /// "Đã thêm / Đã chuyển …" — tự ẩn sau 2 giây (người dùng chốt 2026-09-30, màn Stitch `8ca1338e…`).
+  String? _daThemTuKhoa;
+  Timer? _hoanDeXuat;
+  Timer? _anDaThem;
+
   /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện.
   ///
   /// ⚠️ Tách khỏi [_suggestion]: [_chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH
@@ -223,7 +241,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       if (_nhapNhanhFocus.hasFocus) unawaited(_docAi?.chuanBi());
     });
     _loadWallets();
-    _loadViHayDung().then((_) => _napTatCap());
+    // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
+    _loadViHayDung().then((_) => _napTatCap()).then((_) => _tinhDeXuat());
   }
 
   /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
@@ -233,8 +252,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final id = _accountId();
     if (bo == null || store == null || id == null) return;
     try {
-      final tat = tatCapTu(await store.doc(id), bo.mau);
-      if (mounted) setState(() => _tatCap = tat);
+      final phanHoi = await store.doc(id);
+      final tat = tatCapTu(phanHoi, bo.mau);
+      final tatTuKhoa = tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
+      if (mounted) {
+        setState(() {
+          _tatCap = tat;
+          _tatCapTuKhoa = tatTuKhoa;
+        });
+      }
     } catch (e) {
       debugPrint('[GoiYDanhMuc] đọc phản hồi lỗi: $e');
     }
@@ -281,6 +307,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   @override
   void dispose() {
     _hoanGoiY?.cancel();
+    _hoanDeXuat?.cancel();
+    _anDaThem?.cancel();
     _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
     _nhapNhanhController.dispose();
@@ -372,6 +400,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ? (_debtDirection ?? 'chi')
           : (category.classify == 'thu' ? 'thu' : 'chi');
     });
+    unawaited(_tinhDeXuat());
   }
 
   /// Đổi ví chọn sẵn sang ví người dùng **hay dùng** cho [category].
@@ -415,6 +444,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final userIdAccount = _accountId();
     if (userIdAccount == null) return;
     final txs = await sl<AppDatabase>().transactionDao.getAll(userIdAccount);
+    final dangSua = _editing?.id;
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
     ]));
@@ -434,6 +464,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       setState(() {
         _viHayDung = bang;
         _boPhanLoai = bo;
+        // Đường sửa: mẫu của CHÍNH giao dịch đang sửa phải ra khỏi phép đếm — hàm đề xuất cộng bản đang gõ vào.
+        _mauDeXuat = dangSua == null
+            ? null
+            : mauHocTu([
+                for (final t in txs)
+                  if (t.id != dangSua) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+              ]);
       });
     }
   }
@@ -454,6 +491,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedCategory = null;
       }
     });
+    unawaited(_tinhDeXuat());
   }
 
   /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
@@ -614,6 +652,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   static const Duration _doTreGoiY = Duration(milliseconds: 300);
 
   void _onNoteChanged() {
+    _henDeXuat();
     _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
     // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
@@ -631,6 +670,92 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       final hienTai = _noteController.text.trim();
       if (hienTai.isEmpty) return;
       _loadSuggestion(hienTai);
+    });
+  }
+
+  void _henDeXuat() {
+    _hoanDeXuat?.cancel();
+    _hoanDeXuat = Timer(_doTreGoiY, () => unawaited(_tinhDeXuat()));
+  }
+
+  /// Đề xuất thêm từ khoá (spec 2026-09-30) — tính lại khi ghi chú hoặc danh mục đổi. Mọi nguồn danh mục như nhau
+  /// (chọn tay, thẻ gợi ý, Nhập nhanh). Không phiên / không mẫu học → im.
+  Future<void> _tinhDeXuat() async {
+    final cat = _selectedCategory;
+    final ghiChu = _noteController.text.trim();
+    final mau = _mauDeXuat ?? _boPhanLoai?.mau;
+    if (cat == null || _isTransfer || ghiChu.isEmpty || mau == null || _accountId() == null) {
+      if (mounted && _deXuat != null) setState(() => _deXuat = null);
+      return;
+    }
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    if (!mounted || _selectedCategory?.id != cat.id || _isTransfer || _noteController.text.trim() != ghiChu) return;
+    final ten = {for (final c in chonDuoc) c.id: c.name};
+    final d = deXuatTuKhoa(
+      ghiChu: ghiChu,
+      categoryId: cat.id,
+      mau: mau,
+      // Chỉ danh mục còn sống: từ khoá của danh mục đã xoá không phải xung đột.
+      tuKhoa: {for (final e in tuKhoa.entries) if (ten.containsKey(e.key)) e.key: e.value},
+      tatCap: {..._tatCapTuKhoa, ..._boQuaLuotNay},
+    );
+    setState(() => _deXuat = d == null
+        ? null
+        : (dx: d, tenDanhMuc: cat.name, tenCu: d.tuDanhMuc == null ? null : ten[d.tuDanhMuc]));
+  }
+
+  CategorySuggestion _goiYCua(DeXuatTuKhoa d) => CategorySuggestion(
+        category: _selectedCategory!,
+        matchedKeyword: d.tuKhoa,
+        nguon: kNguonDeXuatTuKhoa,
+        amTietChinh: d.cumBoDau,
+      );
+
+  /// Thêm / Chuyển — GHI NGAY (spec §2.3). Chuyển bỏ ở danh mục cũ TRƯỚC: không có khoảnh khắc cụm thuộc hai danh mục
+  /// (bộ so coi hai danh mục khớp ngang nhau là hoà → thôi đoán).
+  Future<void> _chapNhanDeXuat() async {
+    final d = _deXuat;
+    final id = _accountId();
+    if (d == null || id == null || _selectedCategory == null) return;
+    final goiY = _goiYCua(d.dx);
+    setState(() => _deXuat = null);
+    try {
+      final tuKhoa = await _categoryRepository.loadAllKeywords(accountId: id);
+      final cu = d.dx.tuDanhMuc;
+      if (cu != null) {
+        await _categoryRepository.saveKeywords(
+          accountId: id,
+          categoryId: cu,
+          keywords: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
+        );
+      }
+      await _categoryRepository.saveKeywords(
+        accountId: id,
+        categoryId: d.dx.categoryId,
+        keywords: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
+      );
+    } catch (e) {
+      debugPrint('[DeXuatTuKhoa] ghi từ khoá lỗi: $e');
+      return;
+    }
+    _ghiPhanHoi(goiY, kKetQuaGoiYChon, chon: d.dx.categoryId);
+    if (!mounted) return;
+    setState(() => _daThemTuKhoa = d.tenCu == null
+        ? 'Đã thêm ‘${d.dx.tuKhoa}’ vào ${d.tenDanhMuc}'
+        : 'Đã chuyển ‘${d.dx.tuKhoa}’ sang ${d.tenDanhMuc}');
+    _anDaThem?.cancel();
+    _anDaThem = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _daThemTuKhoa = null);
+    });
+  }
+
+  void _boQuaDeXuat() {
+    final d = _deXuat;
+    if (d == null || _selectedCategory == null) return;
+    _ghiPhanHoi(_goiYCua(d.dx), kKetQuaGoiYBoQua);
+    setState(() {
+      _boQuaLuotNay.add((d.dx.cumBoDau, d.dx.categoryId));
+      _deXuat = null;
     });
   }
 
@@ -1331,6 +1456,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 if (selected != null) _chonDanhMuc(selected);
               },
             ),
+            if (_deXuat != null || _daThemTuKhoa != null) _buildDeXuatTuKhoa(),
             if (showDebtDirection) ...[
               Divider(
                   height: 1,
@@ -1617,6 +1743,70 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Dòng đề xuất thêm / chuyển từ khoá (spec 2026-09-30, màn Stitch `8ca1338e…`).
+  Widget _buildDeXuatTuKhoa() {
+    final daThem = _daThemTuKhoa;
+    final d = _deXuat;
+    const dam = TextStyle(fontWeight: FontWeight.w700);
+    return Container(
+      key: const Key('de-xuat-tu-khoa'),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(12)),
+      child: daThem != null || d == null
+          ? Row(children: [
+              const Icon(Icons.check_circle, color: AppColors.income, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(daThem ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                ),
+              ),
+            ])
+          : Row(children: [
+              Icon(d.tenCu == null ? Icons.add_circle : Icons.sync, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text.rich(
+                  d.tenCu == null
+                      ? TextSpan(children: [
+                          const TextSpan(text: 'Thêm '),
+                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
+                          const TextSpan(text: ' làm từ khoá của '),
+                          TextSpan(text: d.tenDanhMuc, style: dam),
+                          const TextSpan(text: '?'),
+                        ])
+                      : TextSpan(children: [
+                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
+                          const TextSpan(text: ' đang là từ khoá của '),
+                          TextSpan(text: d.tenCu, style: dam),
+                          const TextSpan(text: ' — chuyển sang '),
+                          TextSpan(text: d.tenDanhMuc, style: dam),
+                          const TextSpan(text: '?'),
+                        ]),
+                  style: const TextStyle(fontSize: 13, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // ⚠️ `minimumSize` hữu hạn BẮT BUỘC (bẫy 4.11): theme ép ElevatedButton rộng vô hạn.
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onPressed: _chapNhanDeXuat,
+                child: Text(d.tenCu == null ? 'Thêm' : 'Chuyển'),
+              ),
+              IconButton(
+                tooltip: 'Bỏ qua đề xuất',
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: _boQuaDeXuat,
+              ),
+            ]),
     );
   }
 
