@@ -19,6 +19,15 @@ D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `k
 > trường hoặc đặt tệp ngoài `ai_edge/` (như C2 đặt `DocCauBangAi` ở `transaction/data/`). Soát lại lần nữa trước Task 1 —
 > C2 còn quyết định *"ĐỔI LẦN HAI"* chưa thi công (không đụng bộ đọc, chỉ đổi lúc nào gọi AI).
 
+> ✅ **Soát lần hai trước Task 1 (2026-09-30 đêm)** — sau C2 đổi lần hai, D1, gợi ý chuyển khoản:
+> (1) mở `_chonSoTien` thành hàm công khai trong `doc_cau_giao_dich.dart` (một định nghĩa); (2) trường ví / danh mục của
+> lệnh tên **`idVi` / `idDanhMuc`** (test quét 14 cấm chuỗi `walletId` trong `ai_edge/`), khoá query vẫn `wallet` /
+> `category`; (3) lưới 72 câu import thẳng **`kBang72Cau`** (`test/features/ai_edge/domain/dinh_tuyen_72_cau_test.dart`);
+> (4) `/budget/rules` **không** nhận chu kỳ → bỏ `cycle` (đúng §4 "không nhận thì bỏ"); (5) ⚠️ **ô nhập màn Trợ lý bị khoá
+> khi chưa có mô hình** (`enabled: _coMoHinh`) — mâu thuẫn với "chạy trên máy không có mô hình" ở §1. **Người dùng chốt:
+> mở ô nhập** — câu là lệnh tạo thì chạy như thường; câu khác khi chưa có mô hình trả **một câu cố định** "cần tải mô
+> hình", băng nhắc tải vẫn hiện.
+
 ## 1. Vì sao
 
 Tạo một hoá đơn định kỳ hôm nay cần mở drawer → Hoá đơn → nút thêm → điền năm sáu ô. Người dùng đã quen nói với Trợ lý AI.
