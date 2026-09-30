@@ -887,6 +887,16 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
   không máy nào cắm lúc thi công. Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
   nhỏ định tuyến · C học trên máy từng người), thứ tự A → B → C, làm **sau C4** — cuối mục 10.3 `AI_EDGE_FEATURE.md`.
+- 🚧 **D1 — đọc biến động số dư trên máy, mở 2026-09-30** (`1d7ca56` → `6de7517`, 6 commit; spec
+  `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md`, kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md` với khối
+  *Soát với mã 2026-09-30* — bảy chỗ kế hoạch lệch mã). Không máy nào cắm → người dùng chọn làm phần không cần máy trước:
+  7a tách `_dienKetQua(KetQuaDocCau)` · 4a loại 20 + nhóm `bienDong` + cờ `docBienDong` mặc định tắt (cờ riêng, người
+  dùng chốt) · 2a `docTinBienDong` cho BIDV / MB / TCB từ 5 mẫu thật `Classify.md` §4.3 · 4b `NhapBienDong` + scanner ·
+  3 Kotlin `BienDongListenerService` + kênh + DI + test nối dây, `flutter build apk --debug` xanh. ⚠️ Danh sách trắng
+  **rỗng cả hai phía** tới Task 1 (đo tên gói trên Realme; bản debug có chế độ thu mẫu `BienDongThu`). Bốn màn Stitch đã
+  gửi (3 của Task 5 + màn form mở từ biến động), đều timeout, chưa xuất hiện. Còn: Task 1 · 2b · 6 · 7b · 8 · 9 · 10.
+  `flutter test` **4893/4893** (4 skip, 2 phút 47 giây) sau Task 3; analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu
+  bốn trường Tổng kết tuần.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
