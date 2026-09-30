@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { key: '/users', icon: 'group', label: 'User Management' },
   { key: '/categories', icon: 'category', label: 'Category Management' },
   { key: '/audit-logs', icon: 'fact_check', label: 'Audit Log' },
+  { key: '/broadcast', icon: 'campaign', label: 'Phát Thông Báo' },
 ];
 
 const Sidebar = ({ collapsed }) => {
