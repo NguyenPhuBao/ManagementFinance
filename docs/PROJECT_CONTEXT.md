@@ -892,10 +892,12 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   *Soát với mã 2026-09-30* — bảy chỗ kế hoạch lệch mã). Không máy nào cắm → người dùng chọn làm phần không cần máy trước:
   7a tách `_dienKetQua(KetQuaDocCau)` · 4a loại 20 + nhóm `bienDong` + cờ `docBienDong` mặc định tắt (cờ riêng, người
   dùng chốt) · 2a `docTinBienDong` cho BIDV / MB / TCB từ 5 mẫu thật `Classify.md` §4.3 · 4b `NhapBienDong` + scanner ·
-  3 Kotlin `BienDongListenerService` + kênh + DI + test nối dây, `flutter build apk --debug` xanh. ⚠️ Danh sách trắng
-  **rỗng cả hai phía** tới Task 1 (đo tên gói trên Realme; bản debug có chế độ thu mẫu `BienDongThu`). Bốn màn Stitch đã
+  3 Kotlin `BienDongListenerService` + kênh + DI + test nối dây, `flutter build apk --debug` xanh. ✅ Task 1 đo trên
+  **OnePlus 13R** (`bd52959`, `ed9cec3`): danh sách trắng MB Bank · MoMo · ZaloPay; tin hai ví **không có dấu ±** nên bộ
+  lọc Kotlin nới thành `±số` hoặc `số + đ/₫/VND` (người dùng chốt) — và bắt lỗi có sẵn Techcombank `+ VND 208,080` bị bỏ. Bốn màn Stitch đã
   gửi (3 của Task 5 + màn form mở từ biến động), đều timeout, chưa xuất hiện. Còn: Task 1 · 2b · 6 · 7b · 8 · 9 · 10.
-  `flutter test` **4893/4893** (4 skip, 2 phút 47 giây) sau Task 3; analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu
+  `flutter test` **4899/4899** (4 skip, 3 phút 39 giây) sau `ed9cec3`; analyze 26. Bàn giao:
+  `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-30-d1-dang-do.md`. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu
   bốn trường Tổng kết tuần.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
