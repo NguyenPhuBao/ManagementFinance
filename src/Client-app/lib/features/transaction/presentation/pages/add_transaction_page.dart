@@ -1911,32 +1911,38 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        child: Row(
+        // Nút ở hàng RIÊNG, căn phải: cùng hàng với chữ thì ở 360 dp cả hai dòng chữ ngắt đôi (đo Realme 2026-09-30).
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-              child: const Icon(Icons.swap_horiz, size: 20, color: AppColors.primary),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Có vẻ là chuyển khoản',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+                  child: const Icon(Icons.swap_horiz, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Có vẻ là chuyển khoản',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Từ ${gy.nguonTu} sang ${gy.nguonDen}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Từ ${gy.nguonTu} sang ${gy.nguonDen}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
+            const SizedBox(height: 6),
             OutlinedButton(
               key: const Key('goi-y-chuyen-khoan'),
               onPressed: _apGoiYChuyen,
