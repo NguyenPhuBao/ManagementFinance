@@ -691,6 +691,17 @@ List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {
   return [for (final x in ds) if (normalizeCategoryName(tenCua(x)) == k) x];
 }
 
+/// Số tiền của [cau] theo ĐÚNG bộ chọn của ô Nhập nhanh (§2.1) kèm vị trí `[batDau, ketThuc)` trong câu đã NFC — C3 (lệnh
+/// tạo ở màn Trợ lý AI) dùng lại, một định nghĩa. `null` khi không đọc được, số không dương, hoặc ≥ 13 chữ số.
+({int batDau, int ketThuc, double giaTri})? chonSoTienTrongCau(String cau, {required DateTime now}) {
+  final s = unorm.nfc(cau);
+  final b = removeVietnameseTones(s.toLowerCase());
+  if (b.length != s.length) return null;
+  final c = _chonSoTien(s, b, ngay: timNgayTrongCau(s, now), canhBao: <String>[]);
+  if (c == null || !(c.giaTri > 0) || c.giaTri >= 1e13) return null;
+  return (batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri.roundToDouble());
+}
+
 /// Cụm số tiền được chọn (§2.1), hoặc `null`. Hạng ưu tiên: *k / nghìn / tr / củ*, số chữ, số trần ≥ 1.000 trước; *lít /
 /// xị* sau (*"đổ 2 lít xăng 50k"* → 50.000). Còn ≥ 2 cụm cùng hạng → cụm đầu + cảnh báo.
 _CumTien? _chonSoTien(
