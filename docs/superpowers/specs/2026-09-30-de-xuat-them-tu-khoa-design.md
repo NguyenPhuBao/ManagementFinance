@@ -62,7 +62,9 @@ không *"tra sua"*) — trang Từ khoá đang lưu từ khoá có dấu và b�
 ### 2.3 Bấm Thêm / Chuyển
 
 **Ghi ngay** (tôi đặt, người dùng duyệt — không chờ ✓ lưu giao dịch): dòng đổi thành *"✓ Đã thêm ‘trà sữa’ vào Ăn uống"*
-(hoặc *"✓ Đã chuyển ‘grab’ sang Di chuyển"*), mờ đi, không nút. **Thêm** = `saveKeywords(categoryId, [...cũ, mới])`.
+(hoặc *"✓ Đã chuyển ‘grab’ sang Di chuyển"*), không nút, **tự ẩn sau 2 giây** (người dùng chốt 2026-09-30 khi duyệt
+màn Stitch `8ca1338e16704004b6c4ae4313e465c6` — bản đầu spec ghi *"mờ đi"*, giữ tại chỗ). Sau khi thêm, cụm đã là từ khoá
+nên dòng không hiện lại. **Thêm** = `saveKeywords(categoryId, [...cũ, mới])`.
 **Chuyển** = `saveKeywords(K, cũ − cụm)` rồi `saveKeywords(c, [...cũ, cụm])` — hai lời gọi, **bỏ ở danh mục cũ trước**
 để không có khoảnh khắc cụm thuộc hai danh mục (bộ so coi hai danh mục khớp ngang nhau là **hoà** → thôi đoán).
 Không toast: dòng tại chỗ đã là xác nhận (memory `thong-bao-toi-gian`).
@@ -125,7 +127,8 @@ xác nhận không hứa gì về máy khác.
   thì thêm `ghiTho` cho store, một chỗ). `_tatCap` cho đề xuất đọc riêng theo nguồn.
 - **Repository**: `saveKeywords` thêm `pending` + `scheduleSync()` (§3).
 - **Stitch**: dòng đề xuất + trạng thái "Đã thêm" + biến thể "chuyển" — **vẽ trước khi dựng** (memory `dua-man-moi-len-stitch`).
-  Màn nền: `8afdfe113cc84874b2009aa80fe755fd` (Thêm giao dịch có Nhập nhanh).
+  Màn nền: `8afdfe113cc84874b2009aa80fe755fd` (Thêm giao dịch có Nhập nhanh). ✅ Màn **`8ca1338e16704004b6c4ae4313e465c6`**
+  *"Thêm giao dịch - Đề xuất thêm từ khoá"* (dòng đề xuất · "Đã thêm" · biến thể "chuyển") — người dùng duyệt 2026-09-30.
 
 ## 6. Kiểm thử
 
