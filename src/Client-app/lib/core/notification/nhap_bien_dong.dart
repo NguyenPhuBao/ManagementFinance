@@ -62,14 +62,17 @@ DongBienDong? docDongBienDong(String dong) {
 
 /// Dấu hiệu để gộp trùng — rút từ một tin mới ([dauBienDong]) hoặc từ một hàng loại 20 đang có
 /// ([dauTuDeeplink]), để hai phía so bằng CÙNG một phép ([trungBienDong]).
-typedef DauBienDong = ({double soTien, String chieu, DateTime thoiGian, String? ma});
+typedef DauBienDong = ({double soTien, String chieu, DateTime thoiGian, String? ma, String? vanTay});
 
 DauBienDong dauBienDong(TinBienDong t) =>
-    (soTien: t.soTien, chieu: t.chieu, thoiGian: t.thoiGian, ma: t.maGiaoDich);
+    (soTien: t.soTien, chieu: t.chieu, thoiGian: t.thoiGian, ma: t.maGiaoDich, vanTay: t.vanTaySoDu);
 
-/// Cùng mã giao dịch → trùng. Không thì cùng số tiền + cùng chiều và cách nhau ≤ [kCuaSoGopTrung].
+/// Cùng mã giao dịch → trùng. Hai bên cùng mang vân tay số dư mà KHÁC nhau → không trùng: hai lần chuyển cùng
+/// tiền, cùng chiều cách vài phút là hai giao dịch thật, số dư sau là thứ duy nhất phân biệt chúng (đo Realme
+/// 2026-09-30 — khoản thứ hai từng bị gộp và MẤT). Còn lại: cùng số tiền + cùng chiều và cách ≤ [kCuaSoGopTrung].
 bool trungBienDong(DauBienDong a, DauBienDong b) {
   if (a.ma != null && b.ma != null) return a.ma == b.ma;
+  if (a.vanTay != null && b.vanTay != null && a.vanTay != b.vanTay) return false;
   return a.soTien == b.soTien &&
       a.chieu == b.chieu &&
       a.thoiGian.difference(b.thoiGian).abs() <= kCuaSoGopTrung;
@@ -77,11 +80,14 @@ bool trungBienDong(DauBienDong a, DauBienDong b) {
 
 String _phut(DateTime d) => d.toIso8601String().substring(0, 16);
 
-/// `bienDong:<mã GD>`, không mã thì `bienDong:<nguồn>|<tiền>|<chiều>|<phút>`. Cố ý **không** mang nội
-/// dung tin: khoá đi vào nhật ký B5a và payload thông báo, hai chỗ sống lâu hơn hàng.
+/// `bienDong:<mã GD>`, không mã thì `bienDong:<nguồn>|<tiền>|<chiều>|<phút>[|<vân tay số dư>]`. Cố ý **không**
+/// mang nội dung tin hay con số số dư: khoá đi vào nhật ký B5a và payload thông báo, hai chỗ sống lâu hơn hàng.
+/// Vân tay có mặt thì hai giao dịch CÙNG PHÚT khác số dư không trùng khoá — trùng khoá là `insertAllIfAbsent`
+/// bỏ hàng thứ hai, im lặng.
 String dedupeKeyBienDong(TinBienDong t) => t.maGiaoDich != null
     ? 'bienDong:${t.maGiaoDich}'
-    : 'bienDong:${t.nguon}|${t.soTien.toInt()}|${t.chieu}|${_phut(t.thoiGian)}';
+    : 'bienDong:${t.nguon}|${t.soTien.toInt()}|${t.chieu}|${_phut(t.thoiGian)}'
+        '${t.vanTaySoDu == null ? '' : '|${t.vanTaySoDu}'}';
 
 /// `/add?amount=…&huong=…&date=…&note=…&nguon=…&duoi=…&khoa=…` — route `/add` nằm ngoài shell, `push`
 /// được (như deeplink `ghiChep`). `khoa` = dedupeKey để form xoá hàng khi Lưu / Bỏ qua (Task 7).
@@ -94,6 +100,8 @@ String deeplinkBienDong(TinBienDong t, {required String dedupeKey}) => Uri(
         'note': t.noiDung,
         'nguon': t.nguon,
         if (t.duoiTaiKhoan != null) 'duoi': t.duoiTaiKhoan!,
+        // Vân tay số dư — chỉ để [dauTuDeeplink] so hàng ĐÃ CÓ với tin mới; form không đọc nó.
+        if (t.vanTaySoDu != null) 'vt': t.vanTaySoDu!,
         'khoa': dedupeKey,
       },
     ).toString();
@@ -108,7 +116,7 @@ DauBienDong? dauTuDeeplink(String deeplink, {required String? maGiaoDich}) {
   final chieu = q['huong'];
   final ngay = DateTime.tryParse(q['date'] ?? '');
   if (tien == null || chieu == null || ngay == null) return null;
-  return (soTien: tien, chieu: chieu, thoiGian: ngay, ma: maGiaoDich);
+  return (soTien: tien, chieu: chieu, thoiGian: ngay, ma: maGiaoDich, vanTay: q['vt']);
 }
 
 class NhapBienDong {
