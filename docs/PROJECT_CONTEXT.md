@@ -918,6 +918,12 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   thống mở — G58) thì ✓ ở thanh tiêu đề — trước đó lúc gõ ghi chú **không có nút lưu nào**. Chi tiết mục 6
   `BIEN_DONG_SO_DU_FEATURE.md`; ca test `ban_phim_so_an_test.dart`. Không đổi schema, không đổi payload. `flutter test`
   **4997/4997** (4 skip), analyze 26.
+- ✅ **Gợi ý Chuyển khoản từ biến động (2026-09-30 tối, việc sau D1 số 2)** — spec
+  `specs/2026-09-30-goi-y-chuyen-khoan-bien-dong-design.md`, Stitch `8ae63d90…` (bản thi công đặt nút ở hàng riêng —
+  lệch có chủ ý, ghi đầu spec). Luật **cặp + nội dung tin** vì MoMo không bắn tin khi chuyển với MB (đo 5 hàng thật);
+  hàm thuần `transaction/domain/goi_y_chuyen_khoan.dart`; thẻ trên form biến động, Lưu nhớ ví **theo phía** và xoá cả
+  hàng cặp. Chi tiết mục 6 `BIEN_DONG_SO_DU_FEATURE.md`. Không đổi schema, không đổi payload. `flutter test`
+  **5025/5025** (4 skip), analyze 26.
 
 ### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
 

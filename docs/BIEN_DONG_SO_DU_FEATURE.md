@@ -152,6 +152,15 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    không trên màn — theo cờ **hoặc** vì bàn phím hệ thống mở (G58) — thì ✓ ở thanh tiêu đề (*Bỏ qua · ✓* ở form biến
    động); trước đó lúc gõ ghi chú không có nút lưu nào. Ẩn theo cờ thì dưới số tiền là *"Chạm để sửa số tiền"* (biểu
    thức gõ dở thì dòng `= tổng` thắng). Ca test: `ban_phim_so_an_test.dart`.
-2. **Cặp chi + thu cùng tiền, ≤ 5 phút, hai nguồn khác** → gợi ý mở form *Chuyển khoản* điền sẵn ví nguồn / đích.
+2. ✅ **Gợi ý Chuyển khoản** (xong 2026-09-30 tối, spec `specs/2026-09-30-goi-y-chuyen-khoan-bien-dong-design.md`,
+   Stitch `8ae63d90…`, nghiệm thu Realme). ⚠️ Dữ liệu thật lật luật ban đầu: **MoMo không bắn tin nào** khi chuyển với MB
+   (cả hai chiều), nên luật *cặp* một mình 0 lần gợi ý — người dùng chốt **cặp + nội dung tin**. Hàm thuần
+   `transaction/domain/goi_y_chuyen_khoan.dart`: cặp (khác chiều, cùng tiền, ≤ 5 phút, nguồn khác; hai ứng viên cùng lệch
+   → im) rồi nội dung (tin nhắc **đúng một** nguồn khác — `MOMO149…` nhận, `mb` trần không). Thẻ *"Có vẻ là chuyển khoản ·
+   Từ MoMo sang MB Bank"* trên form biến động → bấm đổi sang Chuyển khoản, ví phía tin theo luật D1, phía kia đã nhớ →
+   ví duy nhất trùng tên nguồn → trống. Lưu: nhớ ví **theo phía** (tin thu thì ví của nguồn tin là ví ĐÍCH — nhớ
+   `_selectedWallet` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
+   chuyển **sang** MoMo không nhận ra (3/5 hàng thật được gợi ý). Ca test `goi_y_chuyen_khoan_test.dart`,
+   `goi_y_chuyen_khoan_form_test.dart`.
 3. **Chia sẻ biên lai** ví điện tử vào FlowMoney → đọc chữ trên máy → điền sẵn (gộp C4).
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).

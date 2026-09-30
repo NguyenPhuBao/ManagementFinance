@@ -1,8 +1,12 @@
 # Gợi ý Chuyển khoản từ biến động số dư — thiết kế
 
 **Ngày:** 2026-09-30 · **Trạng thái:** đã duyệt trong chat (người dùng chốt ba câu hỏi, rồi duyệt thiết kế) ·
-**Việc sau D1 số 2** (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6) · **Stitch:** màn *"Thêm giao dịch - Gợi ý chuyển khoản
-từ biến động"* (lượt tạo trả về timeout — mã màn ghi vào đây khi màn hiện ra).
+**Việc sau D1 số 2** (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6) · **Stitch:** `8ae63d90e5cc4db9b3e6294bf5f89c84` *"Thêm
+giao dịch - Gợi ý chuyển khoản từ biến động"* (lượt tạo trả về timeout, màn hiện sau ~20 phút).
+
+> ✅ **Thi công xong 2026-09-30** (`a87660d` · `4c3e935` · `6467367`), nghiệm thu Realme 360 dp. ⚠️ **Lệch Stitch có chủ
+> ý:** Stitch đặt nút *Ghi là chuyển khoản* cùng hàng với chữ và tiêu đề bị cắt (*"Có vẻ là chuyển kh…"*); trên Realme
+> bản cùng hàng ngắt đôi cả hai dòng chữ — bản thi công đặt nút ở **hàng riêng, căn phải**.
 
 ## 1. Vì sao
 
