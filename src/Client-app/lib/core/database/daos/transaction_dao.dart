@@ -156,6 +156,21 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return row.read(bien) ?? 0;
   }
 
+  /// Id các ví đã có ít nhất một giao dịch còn sống của [idaccount], theo **bất kỳ vai** nào: ví nguồn
+  /// (`walletId`) **hoặc** ví đích của khoản chuyển (`walletTransfer`) — cùng lý lẽ với
+  /// [demGiaoDichLienQuan]: ví chỉ nhận tiền chuyển vào vẫn là ví đã dùng.
+  ///
+  /// Đầu vào của luật "Số dư ví sắp cạn" (`NotificationRuleInput.viDaDung`): ví chưa từng dùng thì chưa
+  /// từng có tiền để cạn.
+  Future<Set<String>> viDaDung(int idaccount) async {
+    final rows = await (select(transactions)
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
+        .get();
+    return {
+      for (final t in rows) ...[t.walletId, if (t.walletTransfer != null) t.walletTransfer!],
+    };
+  }
+
   /// Lọc theo khoảng thời gian
   Future<List<Transaction>> getByDateRange(
     int idaccount,

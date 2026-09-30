@@ -445,6 +445,9 @@ Future<void> setupDependencies() async {
       ],
       loadWallets: (idaccount, now) =>
           sl<AppDatabase>().walletDao.getAll(idaccount),
+      // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
+      loadViDaDung: (idaccount) =>
+          sl<AppDatabase>().transactionDao.viDaDung(idaccount),
       // Tổng kết tuần chỉ cần biết tuần vừa khép CÓ giao dịch hay không —
       // không tổng, không gom danh mục. Câu chữ đã chốt không nêu số nào.
       loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()

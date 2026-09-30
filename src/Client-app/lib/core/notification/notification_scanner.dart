@@ -85,6 +85,9 @@ typedef GoalsLoader = Future<List<GoalEntity>> Function(
 typedef WalletsLoader = Future<List<Wallet>> Function(
     int idaccount, DateTime now);
 
+/// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).
+typedef ViDaDungLoader = Future<Set<String>> Function(int idaccount);
+
 /// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
 typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
 
@@ -106,6 +109,10 @@ class NotificationScanner {
   /// cần một phần của bộ luật không phải dựng cả chuỗi phụ thuộc.
   final GoalsLoader? loadGoals;
   final WalletsLoader? loadWallets;
+
+  /// Bỏ trống thì bộ luật nhận `viDaDung: null` = **không biết** → luật "sắp cạn" giữ cách cũ (báo theo số
+  /// dư, kể cả ví mới tạo 0 đ). Chỉ gọi khi ngưỡng số dư thấp > 0.
+  final ViDaDungLoader? loadViDaDung;
 
   /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
   /// `loadWallets`.
@@ -233,6 +240,7 @@ class NotificationScanner {
     this.runAutoPays,
     this.loadGoals,
     this.loadWallets,
+    this.loadViDaDung,
     this.loadWeekActivity,
     this.loadChiLon,
     this.loadKeHoach,
@@ -453,6 +461,13 @@ class NotificationScanner {
       // Cửa sổ đọc dùng lại **đúng** `cuaSoSuKien` mà `silenceBefore` dùng: đọc
       // rộng hơn là tốn công cho những hàng bộ luật chắc chắn lọc bỏ, còn đọc
       // hẹp hơn là bỏ sót đúng những khoản vẫn còn nằm trong cửa sổ ấy.
+      // Cùng kỷ luật "chỉ hỏi khi có thể dùng tới": ngưỡng mặc định 0 = tắt.
+      Set<String>? viDaDung;
+      final docViDaDung = loadViDaDung;
+      if (docViDaDung != null && prefs.nguongSoDuThap > 0) {
+        viDaDung = await docViDaDung(idaccount);
+      }
+
       var chiLon = const <KhoanChiLon>[];
       final docChi = loadChiLon;
       if (docChi != null && prefs.nguongChiLon > 0) {
@@ -488,6 +503,7 @@ class NotificationScanner {
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
+          viDaDung: viDaDung,
           tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
           chiLon: chiLon,
           nguongChiLon: prefs.nguongChiLon,
@@ -497,6 +513,15 @@ class NotificationScanner {
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
       ).where((c) => prefs.chapNhan(c.kind)).toList();
+
+      // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
+      // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
+      if (wallets.isNotEmpty) {
+        for (final id in hangSapCanDaHoi(await dao.getAll(idaccount), wallets, prefs.nguongSoDuThap)) {
+          await dao.dismiss(id);
+        }
+      }
+
       if (ungVien.isEmpty) {
         // Vẫn phải đồng bộ lịch: "không có gì mới để báo" và "lịch tương lai
         // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không

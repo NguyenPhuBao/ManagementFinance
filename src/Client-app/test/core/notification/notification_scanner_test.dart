@@ -182,6 +182,8 @@ void main() {
     NhapBienDong? nhapBienDong,
     NhatKyThongBao? nhatKy,
     NotificationEventDao? eventDao,
+    Set<String>? viDaDung,
+    void Function()? onNapViDaDung,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -193,6 +195,12 @@ void main() {
       loadBills: (id, at) async => bills,
       loadGoals: (id, at) async => goals,
       loadWallets: (id, at) async => wallets,
+      loadViDaDung: viDaDung == null
+          ? null
+          : (id) async {
+              onNapViDaDung?.call();
+              return viDaDung;
+            },
       syncStatus: syncStatus.stream,
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
@@ -835,6 +843,35 @@ void main() {
               'đúng kiểu hỏng mà số ngày nhắc hoá đơn đã vấp một lần.');
       expect((await db.notificationDao.getAll(accountId)).single.kind,
           'walletLowBalance');
+    });
+
+    test('⭐ ví mới tạo 0 đ (chưa giao dịch nào) → không báo sắp cạn; tập ví đã dùng tới được bộ luật', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nguongSoDuThap: 100000));
+      final moi = await dungScanner(
+        prefs: prefs,
+        budgets: const [],
+        wallets: [vi(soDu: 0)],
+        viDaDung: const {},
+      ).scan(accountId);
+      expect(moi, 0, reason: 'đo Realme 2026-09-30: tạo "Ví MB Bank" 0 đ là bị báo "chỉ còn 0 đồng" ngay');
+    });
+
+    test('ngưỡng 0 (tắt) → KHÔNG hỏi CSDL tập ví đã dùng', () async {
+      var soLan = 0;
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 0)], viDaDung: const {}, onNapViDaDung: () => soLan++)
+          .scan(accountId);
+      expect(soLan, 0, reason: 'mặc định là 0 — phần lớn bản cài không bao giờ cần truy vấn này');
+    });
+
+    test('⭐ hàng "sắp cạn" hôm nay bị GỠ khi ví đã lên trên ngưỡng (BadgeUpdater huỷ nó khỏi khay)', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nguongSoDuThap: 100000));
+      expect(await dungScanner(prefs: prefs, budgets: const [], wallets: [vi(soDu: 0)]).scan(accountId), 1);
+      await dungScanner(prefs: prefs, budgets: const [], wallets: [vi(soDu: 150000)]).scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletLowBalance');
+      expect(h.dismissedAt, isNotNull,
+          reason: 'đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" treo trên khay sau khi ví đã có 10.000 đ');
     });
 
     test('không đặt ngưỡng thì ví còn ít tiền vẫn im', () async {
