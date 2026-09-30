@@ -12,6 +12,7 @@ import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../../../core/bill/bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../transaction/domain/doc_cau_giao_dich.dart' show chonSoTienTrongCau;
@@ -106,6 +107,9 @@ LoaiLenhTao? loaiLenhTao(String cau) => _nhan(cau)?.loai;
 
 /// Một đối tượng chọn được (ví / danh mục) — record thay kiểu Drift để lớp AI không đụng bảng.
 typedef MucChon = ({String id, String ten});
+
+/// Ví HOẠT ĐỘNG và danh mục CHI chọn được — màn chat nạp một lần rồi truyền vào [lenhTaoTheoCauHoi].
+typedef NguonLenhTao = ({List<MucChon> vi, List<MucChon> danhMucChi});
 
 /// Lệnh đã đọc ô. Trường `null` = không đọc được — form để trống ô ấy. [query] chỉ mang khoá có giá trị; [duongDan] là
 /// route form điền sẵn. ⚠️ Tầng 4: không lớp nào mang tham số bật tự trả / trích tự động.
@@ -339,6 +343,58 @@ LenhTao? lenhTaoTheoCauHoi(
         idDanhMuc: _idCua(danhMucChi, dmNeu?.ten),
         tenDanhMuc: dmNeu?.ten,
         hanMuc: soTien,
+      );
+  }
+}
+
+const Map<String, String> _nhanChuKy = {
+  kBillCycleWeek: 'hằng tuần',
+  kBillCycleMonth: 'hằng tháng',
+  kBillCycleQuarter: 'hằng quý',
+  kBillCycleYear: 'hằng năm',
+};
+
+/// Nội dung thẻ lệnh ở màn chat (spec C3 §4): *"Mình hiểu là: {hanhDong} **{ten}** · {chiTiet…}"*, một dòng cho ô thiếu
+/// ([thieu] rỗng = đủ), dòng tầng 4 khi [nhacTuTra], và nhãn nút. Chỉ in ô đọc được; tiền qua `CurrencyFormatter`.
+({String hanhDong, String? ten, List<String> chiTiet, String thieu, bool nhacTuTra, String nut}) tomTatLenhTao(
+    LenhTao l) {
+  String thieu(List<String> o) => o.isEmpty ? '' : 'Chưa rõ ${o.join(', ')} — bạn điền trong form';
+  String tien(double? x) => CurrencyFormatter.format(x!);
+  switch (l) {
+    case LenhTaoHoaDon():
+      final chuKy = _nhanChuKy[l.chuKy] ?? 'hằng tháng';
+      return (
+        hanhDong: 'Tạo hoá đơn',
+        ten: l.ten,
+        chiTiet: [
+          if (l.soTien != null) tien(l.soTien),
+          l.ngayGoc == null ? chuKy : '$chuKy, ngày ${l.ngayGoc}',
+        ],
+        thieu: thieu([if (l.ten == null) 'tên', if (l.soTien == null) 'số tiền']),
+        nhacTuTra: l.nhacTuTra,
+        nut: 'Mở form tạo hoá đơn',
+      );
+    case LenhTaoMucTieu():
+      final h = l.han;
+      return (
+        hanhDong: 'Tạo mục tiêu',
+        ten: l.ten,
+        chiTiet: [
+          if (l.soTienDich != null) tien(l.soTienDich),
+          if (h != null) 'hạn ${_hai(h.day)}/${_hai(h.month)}/${h.year}',
+        ],
+        thieu: thieu([if (l.ten == null) 'tên', if (l.soTienDich == null) 'số tiền', if (h == null) 'hạn']),
+        nhacTuTra: false,
+        nut: 'Mở form tạo mục tiêu',
+      );
+    case LenhTaoNganSach():
+      return (
+        hanhDong: 'Đặt ngân sách',
+        ten: l.tenDanhMuc,
+        chiTiet: [if (l.hanMuc != null) tien(l.hanMuc)],
+        thieu: thieu([if (l.idDanhMuc == null) 'danh mục', if (l.hanMuc == null) 'hạn mức']),
+        nhacTuTra: false,
+        nut: 'Mở form đặt ngân sách',
       );
   }
 }

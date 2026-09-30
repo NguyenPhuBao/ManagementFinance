@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
+import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 void main() {
@@ -30,11 +31,13 @@ void main() {
     expect(find.textContaining('3.200.000'), findsNothing);
   });
 
-  testWidgets('chưa có mô hình: ô nhập BỊ KHOÁ và có lối tới Cài đặt AI',
+  testWidgets('chưa có mô hình: ô nhập MỞ (lệnh tạo C3 không cần mô hình), vẫn có lối tới Cài đặt AI',
       (t) async {
+    // Người dùng chốt 2026-09-30 (soát C3 lần hai): trước đó ô nhập khoá khi chưa có mô hình, nên lệnh tạo — chỉ luật —
+    // không gõ được trên đúng máy mà spec C3 §1 hứa nó chạy.
     await t.pumpWidget(boc(const AiChatPage(coMoHinh: false)));
     final o = t.widget<TextField>(find.byType(TextField));
-    expect(o.enabled, isFalse);
+    expect(o.enabled, isTrue);
     expect(find.textContaining('Cài đặt AI'), findsWidgets);
   });
 
@@ -143,8 +146,7 @@ void main() {
     await t.tap(find.text('Tiến độ mục tiêu'));
     await t.pumpAndSettle();
     expect(soLanGoi, 0,
-        reason: 'Ô nhập đã khoá thì chip cũng phải khoá — nếu không thì có một '
-            'đường vòng quanh chính cái khoá ấy.');
+        reason: 'Chip là câu HỎI (không phải lệnh tạo) — chưa có mô hình thì không có gì trả lời chúng.');
   });
 
   group('streaming CHẶN THEO CÂU (việc số 1, người dùng chốt 2026-09-22)', () {
@@ -417,6 +419,89 @@ void main() {
       c.add(const CauQua('Xong.'));
       await c.close();
       await t.pumpAndSettle();
+    });
+  });
+
+  group('C3 — lệnh tạo trả thẻ mở form, KHÔNG gọi mô hình', () {
+    Future<NguonLenhTao> nguon() async => (
+          vi: const [(id: 'cash', ten: 'Tiền mặt')],
+          danhMucChi: const [(id: 'food', ten: 'Ăn uống')],
+        );
+
+    Future<void> go(WidgetTester t, String cau) async {
+      await t.enterText(find.byType(TextField), cau);
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('⭐ có mô hình: câu lệnh → thẻ tóm tắt + nút, 0 lần gọi mô hình', (t) async {
+      var soLanGoi = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        onHoi: (_) {
+          soLanGoi++;
+          return Stream.value(const CauQua('không tới đây'));
+        },
+      )));
+      await go(t, 'tạo hoá đơn Netflix 100k ngày 5 hằng tháng');
+      expect(find.textContaining('Mình hiểu là'), findsOneWidget);
+      expect(find.textContaining('Netflix'), findsWidgets);
+      expect(find.textContaining('100.000 đ · hằng tháng, ngày 5'), findsOneWidget);
+      expect(find.text('Mở form tạo hoá đơn'), findsOneWidget);
+      expect(soLanGoi, 0, reason: 'lệnh chỉ luật — mở phiên mô hình là 15–40 s chờ vô ích');
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue, reason: 'lượt đã xong');
+    });
+
+    testWidgets('chưa có mô hình: câu lệnh VẪN ra thẻ', (t) async {
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: false, nguonLenhTao: nguon)));
+      await go(t, 'đặt ngân sách ăn uống 3 triệu');
+      expect(find.text('Mở form đặt ngân sách'), findsOneWidget);
+    });
+
+    testWidgets('chưa có mô hình: câu HỎI → câu cố định, 0 lần gọi mô hình', (t) async {
+      var soLanGoi = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        nguonLenhTao: nguon,
+        onHoi: (_) {
+          soLanGoi++;
+          return const Stream<SuKienGac>.empty();
+        },
+      )));
+      await go(t, 'tháng này tôi chi bao nhiêu');
+      expect(find.text(cauKhoaHoiDap(coTep: false)), findsWidgets);
+      expect(soLanGoi, 0);
+    });
+
+    testWidgets('lệnh nhắc tự trả → dòng "Tự trả phải bật trong form"', (t) async {
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon)));
+      await go(t, 'tạo hoá đơn Netflix 100k tự trả');
+      expect(find.text('Tự trả phải bật trong form'), findsOneWidget);
+    });
+
+    testWidgets('⭐ bấm nút → push đúng đường dẫn form điền sẵn, quay về giữ lịch sử', (t) async {
+      String? moi;
+      final router = GoRouter(routes: [
+        GoRoute(path: '/', builder: (_, __) => AiChatPage(coMoHinh: true, nguonLenhTao: nguon)),
+        GoRoute(
+          path: '/goals/add',
+          builder: (_, s) {
+            moi = s.uri.toString();
+            return const Scaffold(body: Text('form mục tiêu'));
+          },
+        ),
+      ]);
+      addTearDown(router.dispose);
+      await t.pumpWidget(MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router));
+      await t.pumpAndSettle();
+      await go(t, 'tạo mục tiêu mua xe 50 triệu');
+      await t.tap(find.text('Mở form tạo mục tiêu'));
+      await t.pumpAndSettle();
+      expect(moi, '/goals/add?name=mua+xe&target=50000000');
+      router.pop();
+      await t.pumpAndSettle();
+      expect(find.text('Mở form tạo mục tiêu'), findsOneWidget, reason: 'push, không go — lịch sử chat còn');
     });
   });
 }

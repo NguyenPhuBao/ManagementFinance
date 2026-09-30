@@ -157,4 +157,31 @@ void main() {
       });
     });
   });
+
+  group('tomTatLenhTao — nội dung thẻ', () {
+    test('⭐ hoá đơn đủ ô', () {
+      final t = tomTatLenhTao(const LenhTaoHoaDon(ten: 'Netflix', soTien: 100000, ngayGoc: 5));
+      // Record chứa List so theo danh tính — tách List ra so riêng.
+      expect((t.hanhDong, t.ten, t.thieu, t.nhacTuTra, t.nut), ('Tạo hoá đơn', 'Netflix', '', false, 'Mở form tạo hoá đơn'));
+      expect(t.chiTiet, ['100.000 đ', 'hằng tháng, ngày 5']);
+    });
+    test('ô thiếu gom một dòng; tầng 4 có dòng riêng', () {
+      final t = tomTatLenhTao(const LenhTaoHoaDon(chuKy: kBillCycleWeek, nhacTuTra: true));
+      expect(t.chiTiet, ['hằng tuần']);
+      expect(t.thieu, 'Chưa rõ tên, số tiền — bạn điền trong form');
+      expect(t.nhacTuTra, isTrue);
+    });
+    test('mục tiêu: hạn dd/MM/yyyy; thiếu hạn', () {
+      expect(tomTatLenhTao(LenhTaoMucTieu(ten: 'mua xe', soTienDich: 50000000, han: DateTime(2027, 6, 30))).chiTiet,
+          ['50.000.000 đ', 'hạn 30/06/2027']);
+      final t = tomTatLenhTao(const LenhTaoMucTieu(ten: 'quỹ', soTienDich: 20000000));
+      expect((t.hanhDong, t.thieu, t.nut), ('Tạo mục tiêu', 'Chưa rõ hạn — bạn điền trong form', 'Mở form tạo mục tiêu'));
+    });
+    test('ngân sách: tên là danh mục; không khớp → "Chưa rõ danh mục"', () {
+      final t = tomTatLenhTao(const LenhTaoNganSach(idDanhMuc: 'food', tenDanhMuc: 'Ăn uống', hanMuc: 3000000));
+      expect((t.hanhDong, t.ten, t.nut), ('Đặt ngân sách', 'Ăn uống', 'Mở form đặt ngân sách'));
+      expect(t.chiTiet, ['3.000.000 đ']);
+      expect(tomTatLenhTao(const LenhTaoNganSach(hanMuc: 1000000)).thieu, 'Chưa rõ danh mục — bạn điền trong form');
+    });
+  });
 }

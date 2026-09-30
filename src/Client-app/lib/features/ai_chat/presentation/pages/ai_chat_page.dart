@@ -47,8 +47,10 @@ import '../../../ai_edge/domain/gac_cau.dart';
 import '../../../ai_edge/domain/goi_so.dart';
 import '../../../ai_edge/domain/goi_so_tra_cuu.dart';
 import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
+import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../data/nguon_lenh_tao.dart';
 import '../../spike/spike_sql.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
@@ -111,8 +113,19 @@ const String kChuaSanSangPhien =
 class _TinNhan {
   const _TinNhan.cuaToi(this.cau)
       : cuaToi = true,
+        the = const [],
+        lenh = null;
+  const _TinNhan.cuaAi(this.cau, {this.the = const []})
+      : cuaToi = false,
+        lenh = null;
+
+  /// C3 — thẻ lệnh tạo (không phải câu mô hình): tóm tắt + nút mở form điền sẵn.
+  const _TinNhan.lenhTao(LenhTao this.lenh)
+      : cuaToi = false,
+        cau = '',
         the = const [];
-  const _TinNhan.cuaAi(this.cau, {this.the = const []}) : cuaToi = false;
+
+  final LenhTao? lenh;
 
   final bool cuaToi;
   final String cau;
@@ -131,6 +144,7 @@ class AiChatPage extends StatefulWidget {
     this.traLoiMau,
     this.theSoLieuMau,
     this.doTrangThai,
+    this.nguonLenhTao,
   });
 
   /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
@@ -154,6 +168,9 @@ class AiChatPage extends StatefulWidget {
 
   /// Khe tiêm cho test: đọc `(có tệp, công tắc đang bật)`. `null` = hỏi DI.
   final Future<(bool, bool)> Function()? doTrangThai;
+
+  /// Khe tiêm cho test: ví / danh mục chi cho lệnh tạo (C3). `null` = `napNguonLenhTao` qua DI.
+  final Future<NguonLenhTao> Function()? nguonLenhTao;
 
   @override
   State<AiChatPage> createState() => _AiChatPageState();
@@ -238,7 +255,8 @@ class _AiChatPageState extends State<AiChatPage> {
 
   Future<void> _hoi(String cauHoi) async {
     final c = cauHoi.trim();
-    if (c.isEmpty || !_coMoHinh || _dangHoi) return;
+    // Ô nhập mở cả khi chưa có mô hình (C3, người dùng chốt 2026-09-30): lệnh tạo chỉ luật.
+    if (c.isEmpty || _dangHoi) return;
 
     setState(() {
       _tinNhan.add(_TinNhan.cuaToi(c));
@@ -253,6 +271,23 @@ class _AiChatPageState extends State<AiChatPage> {
     // bị loại lúc biên dịch. Đi thẳng, không qua chặn chủ đề lẫn bậc tool.
     if (kSpikeSql && c.toLowerCase().startsWith(kTienToSpikeSql)) {
       await _spikeSql(c.substring(kTienToSpikeSql.length).trim());
+      return;
+    }
+
+    // C3 — lệnh tạo TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, mở phiên): chỉ luật, trả thẻ mở form điền sẵn.
+    if (loaiLenhTao(c) != null) {
+      final nguon = await _napNguonLenh();
+      final lenh = lenhTaoTheoCauHoi(c, now: DateTime.now(), vi: nguon.vi, danhMucChi: nguon.danhMucChi);
+      if (lenh != null) {
+        debugPrint('[SLM] lệnh tạo ${lenh.runtimeType} → form');
+        _themCuaAi(_TinNhan.lenhTao(lenh));
+        return;
+      }
+    }
+
+    // Không phải lệnh mà chưa có mô hình: câu cố định (băng nhắc tải vẫn ở đó).
+    if (!_coMoHinh) {
+      _themCuaAi(_TinNhan.cuaAi(cauKhoaHoiDap(coTep: _coTep)));
       return;
     }
 
@@ -312,6 +347,16 @@ class _AiChatPageState extends State<AiChatPage> {
       debugPrint('[SLM][spike] hỏng: $e\n$st');
       _themCuaAi(const _TinNhan.cuaAi(_kHong));
     }
+  }
+
+  /// Ví / danh mục cho lệnh tạo — nạp MỘT lần mỗi lần mở màn (không đọc lại mỗi câu). Chưa có phiên → rỗng.
+  Future<NguonLenhTao>? _nguonLenh;
+  Future<NguonLenhTao> _napNguonLenh() {
+    final tiem = widget.nguonLenhTao;
+    if (tiem != null) return _nguonLenh ??= tiem();
+    final id = currentAccountIdOrNull(context);
+    if (id == null || id <= 0) return Future.value((vi: const <MucChon>[], danhMucChi: const <MucChon>[]));
+    return _nguonLenh ??= napNguonLenhTao(id);
   }
 
   void _themCuaAi(_TinNhan t) {
@@ -456,6 +501,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       : _boCuaAi(_TinNhan.cuaAi(dangDen));
                 }
                 final t = _tinNhan[i];
+                if (t.lenh case final l?) return _theLenhTao(l);
                 return t.cuaToi ? _boCuaToi(t) : _boCuaAi(t);
               },
             ),
@@ -694,6 +740,76 @@ class _AiChatPageState extends State<AiChatPage> {
         ),
       );
 
+  /// C3 — thẻ lệnh tạo (Stitch *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"*): tóm tắt ô đọc được, dòng ô thiếu, dòng tầng 4,
+  /// nút mở form điền sẵn bằng `push` (route ngoài shell; quay về giữ lịch sử chat). Không lưu gì.
+  Widget _theLenhTao(LenhTao l) {
+    final t = tomTatLenhTao(l);
+    const phu = TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: const BoxDecoration(color: AppColors.primaryContainer, shape: BoxShape.circle),
+          child: const Icon(Icons.smart_toy, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            key: const Key('the-lenh-tao'),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.receipt_long, size: 16, color: AppColors.outline),
+                    SizedBox(width: 6),
+                    Text('Lệnh tạo · không cần mô hình', style: TextStyle(fontSize: 12, color: AppColors.outline)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    style: const TextStyle(fontSize: 16, color: AppColors.onSurface),
+                    children: [
+                      TextSpan(text: 'Mình hiểu là: ${t.hanhDong}'),
+                      if (t.ten != null)
+                        TextSpan(text: ' ${t.ten}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                      if (t.chiTiet.isNotEmpty) TextSpan(text: ' · ${t.chiTiet.join(' · ')}'),
+                    ],
+                  ),
+                ),
+                if (t.thieu.isNotEmpty) ...[const SizedBox(height: 6), Text(t.thieu, style: phu)],
+                if (t.nhacTuTra) ...[const SizedBox(height: 6), const Text('Tự trả phải bật trong form', style: phu)],
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => context.push(l.duongDan),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(t.nut),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _thanhNhap() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -709,7 +825,7 @@ class _AiChatPageState extends State<AiChatPage> {
             Expanded(
               child: TextField(
                 controller: _oNhap,
-                enabled: _coMoHinh && !_dangHoi,
+                enabled: !_dangHoi,
                 maxLines: 4,
                 minLines: 1,
                 textInputAction: TextInputAction.send,
@@ -717,9 +833,8 @@ class _AiChatPageState extends State<AiChatPage> {
                 style: const TextStyle(
                     fontSize: 16, color: AppColors.onSurface),
                 decoration: InputDecoration(
-                  hintText: _coMoHinh
-                      ? 'Hỏi về số liệu của bạn…'
-                      : (_coTep ? 'AI trên máy đang tắt' : 'Cần tải mô hình trước'),
+                  // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
+                  hintText: _coMoHinh ? 'Hỏi về số liệu của bạn…' : 'VD: tạo hoá đơn Netflix 100k',
                   hintStyle: const TextStyle(color: AppColors.outline),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -729,17 +844,13 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
             Container(
               decoration: BoxDecoration(
-                color: _coMoHinh && !_dangHoi
-                    ? AppColors.primary
-                    : AppColors.outline,
+                color: !_dangHoi ? AppColors.primary : AppColors.outline,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
                 tooltip: 'Gửi',
                 icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: _coMoHinh && !_dangHoi
-                    ? () => _hoi(_oNhap.text)
-                    : null,
+                onPressed: !_dangHoi ? () => _hoi(_oNhap.text) : null,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(10),
               ),
