@@ -18,6 +18,9 @@ import 'core/auth/current_account.dart';
 import 'core/notification/cham_hdh.dart';
 import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';
+import 'core/notification/app_lifecycle_watcher.dart';
+import 'core/notification/kenh_bien_dong.dart';
+import 'core/notification/mo_tu_tom_tat_bien_dong.dart';
 import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
@@ -133,6 +136,7 @@ class FlowMoneyApp extends StatefulWidget {
 class _FlowMoneyAppState extends State<FlowMoneyApp> {
   late final GoRouter _router;
   late final NotificationTapRouter _chamThongBao;
+  late final MoTuTomTatBienDong _moTomTat;
 
   @override
   void initState() {
@@ -155,11 +159,23 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
     );
     // Nuốt lỗi: một cú chạm không dịch được không được phép chặn khởi động.
     unawaited(_chamThongBao.start().catchError((_) {}));
+
+    // D1: thông báo tóm tắt "Có N biến động số dư mới" do Kotlin bắn — cú chạm
+    // không đi qua `NotificationTapRouter`. Đích ở ngoài shell nên `push`.
+    _moTomTat = MoTuTomTatBienDong(
+      kenh: sl<KenhBienDong>(),
+      dieuHuong: (route) => _router.push(route),
+      dangDangNhap: () => widget.authBloc.state is AuthSuccess,
+      phienDoi: widget.authBloc.stream,
+      vongDoi: sl<AppLifecycleWatcher>().stream,
+    );
+    unawaited(_moTomTat.start().catchError((_) {}));
   }
 
   @override
   void dispose() {
     unawaited(_chamThongBao.stop());
+    unawaited(_moTomTat.stop());
     super.dispose();
   }
 

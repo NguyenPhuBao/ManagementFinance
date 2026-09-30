@@ -275,6 +275,21 @@ void main() {
     });
   });
   group('D1 — xoaCung hàng biến động số dư', () {
+    test('⭐ watchDemBienDong đếm hàng loại 20 CHƯA gạt của đúng tài khoản, đổi theo khi xoá', () async {
+      final dem = db.notificationDao.watchDemBienDong(accountId);
+      expect(await dem.first, 0);
+      await db.notificationDao.insertIfAbsent(mau(id: 'a', kind: 'bienDongSoDu', dedupeKey: 'bienDong:A'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'b', kind: 'bienDongSoDu', dedupeKey: 'bienDong:B'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'c', kind: 'bienDongSoDu', dedupeKey: 'bienDong:C'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'khac', idaccount: 9, kind: 'bienDongSoDu', dedupeKey: 'bienDong:A'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'hd', dedupeKey: 'billDue:x'));
+      await db.notificationDao.dismiss('c');
+      expect(await db.notificationDao.watchDemBienDong(accountId).first, 2,
+          reason: 'loại khác, tài khoản khác, hàng đã gạt không tính');
+      await db.notificationDao.xoaCung(accountId, 'bienDong:A');
+      expect(await db.notificationDao.watchDemBienDong(accountId).first, 1);
+    });
+
     test('hằng loại của DAO khớp enum (DAO không import tầng thông báo)', () {
       expect(kKindBienDongSoDu, NotificationKind.bienDongSoDu.name);
     });

@@ -85,6 +85,18 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
     return q.map((r) => r.read(dem) ?? 0).watchSingle();
   }
 
+  /// D1 — số hàng biến động số dư CHƯA ghi (chưa gạt) của tài khoản: con số trên thẻ *"Có N biến động chưa ghi"* ở
+  /// Sổ giao dịch. Stream, nên Lưu / Bỏ qua (xoá cứng) tự làm con số đổi.
+  Stream<int> watchDemBienDong(int idaccount) {
+    final dem = appNotifications.id.count();
+    final q = selectOnly(appNotifications)
+      ..addColumns([dem])
+      ..where(appNotifications.idaccount.equals(idaccount) &
+          appNotifications.kind.equals(kKindBienDongSoDu) &
+          appNotifications.dismissedAt.isNull());
+    return q.map((r) => r.read(dem) ?? 0).watchSingle();
+  }
+
   Future<void> markRead(String id) async {
     await (update(appNotifications)..where((t) => t.id.equals(id)))
         .write(AppNotificationsCompanion(readAt: Value(DateTime.now())));

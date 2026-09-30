@@ -6,6 +6,7 @@
 /// cú vuốt nhầm làm thông báo biến mất khỏi giao diện vĩnh viễn.
 library;
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -180,6 +181,65 @@ void main() {
         reason: 'Và danh sách phải tự vẽ lại: nó nghe watchFeed, nên gỡ cờ '
             'trong CSDL là đủ để hàng quay lại mà không cần ai gọi setState.');
     await dongTrang(tester);
+  });
+
+  group('D1 — biến động số dư', () {
+    Future<void> themBienDong() => db.notificationDao.insertIfAbsent(
+          AppNotificationsCompanion.insert(
+            id: 'bd1',
+            idaccount: accountId,
+            kind: 'bienDongSoDu',
+            dedupeKey: 'bienDong:M1',
+            title: '-45.000 đ · MB Bank',
+            body: 'PHO 24',
+            severity: 'info',
+            deeplink: const Value('/add?amount=45000&khoa=bienDong%3AM1'),
+            createdAt: DateTime(2026, 9, 16, 10),
+          ),
+        );
+
+    testWidgets('⭐ mở với nhomBanDau = bienDong → chip Biến động chọn sẵn, chỉ hàng loại 20', (tester) async {
+      await themBienDong();
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationCenterPage(
+          idaccount: accountId,
+          dao: db.notificationDao,
+          nhomBanDau: NotificationGroup.bienDong,
+        ),
+      ));
+      await nhip(tester);
+      expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Biến động')).selected, isTrue,
+          reason: 'thẻ "Có N biến động chưa ghi" và cú chạm tóm tắt mở THẲNG danh sách cần ghi');
+      expect(find.text('-45.000 đ · MB Bank'), findsOneWidget);
+      expect(find.text('Số dư ví đang âm'), findsNothing);
+      await dongTrang(tester);
+    });
+
+    testWidgets('⭐ vuốt hàng loại 20 → xoá CỨNG; Hoàn tác chèn lại đúng hàng', (tester) async {
+      await themBienDong();
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationCenterPage(
+          idaccount: accountId,
+          dao: db.notificationDao,
+          nhomBanDau: NotificationGroup.bienDong,
+        ),
+      ));
+      await nhip(tester);
+      await tester.drag(find.text('-45.000 đ · MB Bank'), const Offset(-600, 0));
+      await nhip(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect((await db.notificationDao.getAll(accountId)).map((h) => h.id), ['n1'],
+          reason: 'vuốt = Bỏ qua (spec D1 §3.3): nội dung tin ngân hàng không được nằm lại dưới dạng hàng gạt mềm');
+      expect(find.text('Hoàn tác'), findsOneWidget, reason: 'vuốt nhầm là thao tác dễ lỡ tay nhất');
+
+      await tester.tap(find.text('Hoàn tác'));
+      await nhip(tester);
+      final lai = (await db.notificationDao.getAll(accountId)).firstWhere((h) => h.id == 'bd1');
+      expect((lai.dedupeKey, lai.deeplink, lai.dismissedAt), ('bienDong:M1', '/add?amount=45000&khoa=bienDong%3AM1', null));
+      expect(find.text('-45.000 đ · MB Bank'), findsOneWidget);
+      await dongTrang(tester);
+    });
   });
 
   testWidgets('chưa đăng nhập thì không đọc gì cả', (tester) async {

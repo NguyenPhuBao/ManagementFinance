@@ -26,7 +26,12 @@ class NotificationCenterPage extends StatefulWidget {
     this.dao,
     this.nhatKy,
     this.taiDeXuat,
+    this.nhomBanDau,
   });
+
+  /// D1 — chip nhóm chọn sẵn khi mở (`/notifications?nhom=bienDong` từ thẻ *"Có N biến động chưa ghi"* và cú chạm
+  /// thông báo tóm tắt). `null` = *Tất cả*.
+  final NotificationGroup? nhomBanDau;
 
   /// Route trang Cài đặt thông báo — đích của thẻ gợi ý B5b.
   static const String routeCaiDat = '/settings/notifications';
@@ -70,7 +75,10 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   static const int _buocTrang = 20;
 
   int _gioiHan = _buocTrang;
-  _Loc _loc = _Loc.tatCa;
+  late _Loc _loc = _Loc.values.firstWhere(
+    (l) => widget.nhomBanDau != null && l.nhom == widget.nhomBanDau,
+    orElse: () => _Loc.tatCa,
+  );
 
   /// Đề xuất B5b — ảnh chụp, không nghe stream (spec B5b §3).
   List<DeXuatThongBao> _deXuat = const [];
@@ -508,7 +516,14 @@ Future<void> _xoaCoHoanTac(
   int idaccount,
 ) async {
   final thanh = ScaffoldMessenger.of(context);
-  await dao.dismiss(item.id);
+  // D1: hàng biến động số dư — vuốt là *Bỏ qua*, xoá CỨNG (spec D1 §3.3: nội dung tin ngân hàng không nằm lại dưới
+  // dạng hàng gạt mềm). Hoàn tác chèn lại đúng hàng đã chụp, nên vuốt nhầm vẫn lấy lại được.
+  final laBienDong = item.kind == NotificationKind.bienDongSoDu.name;
+  if (laBienDong) {
+    await dao.xoaCung(item.idaccount, item.dedupeKey);
+  } else {
+    await dao.dismiss(item.id);
+  }
   if (nhatKy != null) {
     unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.gatBo, idaccount: idaccount));
   }
@@ -523,7 +538,11 @@ Future<void> _xoaCoHoanTac(
       action: SnackBarAction(
         label: 'Hoàn tác',
         onPressed: () {
-          dao.khoiPhuc(item.id);
+          if (laBienDong) {
+            dao.insertIfAbsent(item.toCompanion(true));
+          } else {
+            dao.khoiPhuc(item.id);
+          }
           if (nhatKy != null) {
             unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
           }

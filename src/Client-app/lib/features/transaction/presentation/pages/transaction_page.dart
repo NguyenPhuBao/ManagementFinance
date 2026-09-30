@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
@@ -41,11 +42,16 @@ class TransactionPage extends StatefulWidget {
   /// `demChuaGan` trên `transactionDao.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
   final Stream<int> Function(int idaccount)? nguonChuaGan;
 
+  /// D1 — số hàng biến động số dư chưa ghi, dạng **stream** — nuôi thẻ *"Có N biến động chưa ghi"*. `null` →
+  /// `NotificationDao.watchDemBienDong`. Ca test tiêm thẳng.
+  final Stream<int> Function(int idaccount)? nguonBienDong;
+
   const TransactionPage({
     super.key,
     this.idaccount,
     this.initialWalletId,
     this.nguonChuaGan,
+    this.nguonBienDong,
   });
 
   @override
@@ -77,6 +83,7 @@ class _TransactionPageState extends State<TransactionPage> {
 
   /// Số khoản chưa có danh mục (C1) — cùng nếp tạo MỘT lần mỗi tài khoản như hai stream tra tên.
   Stream<int>? _chuaGan;
+  Stream<int>? _bienDong;
 
   @override
   void initState() {
@@ -126,6 +133,8 @@ class _TransactionPageState extends State<TransactionPage> {
     _categories = db.categoryDao.watchAll(idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
         db.transactionDao.watchAll(idaccount).map(demChuaGan);
+    _bienDong = widget.nguonBienDong?.call(idaccount) ??
+        db.notificationDao.watchDemBienDong(idaccount);
   }
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
@@ -265,14 +274,33 @@ class _TransactionPageState extends State<TransactionPage> {
                                       totalIncome: summary.income,
                                       totalExpense: summary.expense,
                                     ),
-                                    _buildTheChuaGan(),
-                                    const SizedBox(height: 12),
+                                    // Hai thẻ lối vào (D1, C1) CUỘN CÙNG danh sách: để cố định thì hai thẻ
+                                    // cùng có làm phần đầu cao hơn chỗ trống — `Column` tràn 89 px ở
+                                    // 360 × 640 (D1 Task 8, 2026-09-30). Thanh lọc + thẻ tổng vẫn cố định.
                                     Expanded(
-                                      child: txs.isEmpty
-                                          ? _buildEmptyState(
-                                              filtered: _filter.isActive)
-                                          : _buildGroupedTransactionList(
-                                              txs, blocContext, lookup),
+                                      child: CustomScrollView(
+                                        slivers: [
+                                          SliverToBoxAdapter(
+                                            child: Column(
+                                              children: [
+                                                // D1 đứng TRÊN C1 (Stitch `e59155ff…`).
+                                                _buildTheBienDong(),
+                                                _buildTheChuaGan(),
+                                                const SizedBox(height: 12),
+                                              ],
+                                            ),
+                                          ),
+                                          if (txs.isEmpty)
+                                            SliverFillRemaining(
+                                              hasScrollBody: false,
+                                              child: _buildEmptyState(
+                                                  filtered: _filter.isActive),
+                                            )
+                                          else
+                                            _buildGroupedTransactionList(
+                                                txs, blocContext, lookup),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 );
@@ -344,6 +372,22 @@ class _TransactionPageState extends State<TransactionPage> {
           );
         },
       ),
+    );
+  }
+
+  /// Thẻ lối vào D1 — chỉ dựng khi còn hàng biến động chưa ghi. Nguồn là stream: Lưu / Bỏ qua (xoá cứng hàng) tự
+  /// làm con số đổi. **Xem** mở trung tâm thông báo lọc sẵn nhóm Biến động — route NGOÀI shell nên `push` được.
+  Widget _buildTheBienDong() {
+    return StreamBuilder<int>(
+      stream: _bienDong,
+      builder: (context, snap) {
+        final n = snap.data ?? 0;
+        if (n <= 0) return const SizedBox.shrink();
+        return TheBienDongChuaGhi(
+          soBienDong: n,
+          onXem: () => context.push(kRouteBienDongChuaGhi),
+        );
+      },
     );
   }
 
@@ -541,8 +585,10 @@ class _TransactionPageState extends State<TransactionPage> {
     }
 
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-    return ListView.builder(
+    // Sliver: nằm trong `CustomScrollView` cùng hai thẻ lối vào (xem chỗ gọi).
+    return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      sliver: SliverList.builder(
       itemCount: sortedDates.length,
       itemBuilder: (context, dateIndex) {
         final dateStr = sortedDates[dateIndex];
@@ -613,6 +659,7 @@ class _TransactionPageState extends State<TransactionPage> {
           ),
         );
       },
+      ),
     );
   }
 }

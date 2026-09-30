@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
+import '../notification/prefs/notification_prefs.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -362,8 +363,12 @@ class AppRouter {
             path: '/notifications',
             // Route đọc idaccount rồi truyền xuống; trang không hỏi AuthBloc —
             // cùng mẫu với NotificationSettingsPage ngay bên dưới.
-            builder: (ctx, __) => NotificationCenterPage(
+            builder: (ctx, state) => NotificationCenterPage(
               idaccount: currentAccountIdOrNull(ctx),
+              // D1: `?nhom=bienDong` (thẻ Sổ giao dịch, cú chạm tóm tắt). Tên lạ → không lọc.
+              nhomBanDau: NotificationGroup.values
+                  .where((n) => n.name == state.uri.queryParameters['nhom'])
+                  .firstOrNull,
             ),
           ),
           // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi
