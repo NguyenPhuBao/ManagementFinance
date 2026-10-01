@@ -37,7 +37,19 @@ const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
  *   → phản ánh đúng thực tế, khuyến khích admin giữ server ổn định
  */
 const UptimeWidget = ({ uptime }) => {
-  if (!uptime) return null;
+  if (!uptime) {
+    return (
+      <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant border border-outline-variant/40 flex items-center justify-between">
+        <span className="flex items-center gap-1 font-semibold text-on-surface">
+          <span className="material-symbols-outlined text-[14px] text-gray-400">timer</span>
+          Uptime Hệ thống
+        </span>
+        <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded font-medium">
+          Chờ cập nhật API
+        </span>
+      </div>
+    );
+  }
 
   const { uptimeFormatted, uptimePercent, startedAt, slaWindowDays } = uptime;
   const pct = uptimePercent ?? 0;

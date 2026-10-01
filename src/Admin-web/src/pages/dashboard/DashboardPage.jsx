@@ -332,8 +332,15 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
         <span className="material-symbols-outlined text-primary text-[24px]">{icon}</span>
       </div>
       {badge && (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${badgeColor === 'green' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
+        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+          badgeColor === 'green' ? 'bg-[#dcfce7] text-[#166534]' :
+          badgeColor === 'red' ? 'bg-[#fee2e2] text-[#991b1b]' :
+          badgeColor === 'amber' ? 'bg-[#fef3c7] text-[#92400e]' :
+          'bg-surface-container-high text-secondary'
+        }`}>
           {badgeColor === 'green' && <span className="material-symbols-outlined text-[14px]">trending_up</span>}
+          {badgeColor === 'red' && <span className="material-symbols-outlined text-[14px]">error</span>}
+          {badgeColor === 'amber' && <span className="material-symbols-outlined text-[14px]">info</span>}
           {badge}
         </span>
       )}
@@ -399,6 +406,7 @@ const DashboardPage = () => {
 
   // Uptime thực tế từ /admin/system/health
   const [uptimeData, setUptimeData] = useState(null);
+  const [uptimeStatus, setUptimeStatus] = useState('loading'); // 'loading' | 'success' | 'unsupported' | 'error'
 
   // Thống kê Biểu đồ (Ăn theo Global Filter)
   const [loginStats, setLoginStats] = useState({
@@ -460,18 +468,34 @@ const DashboardPage = () => {
 
   // Uptime — fetch ngay lúc mount và làm mới mỗi 30 giây
   useEffect(() => {
+    let isMounted = true;
     const fetchUptime = async () => {
       try {
         const res = await adminApi.getSystemHealth();
-        const data = res.data?.data || res.data;
-        if (data?.uptime) setUptimeData(data.uptime);
-      } catch {
-        // Giữ nguyên giá trị cũ nếu fetch lỗi
+        if (!isMounted) return;
+        const data = res?.data?.data || res?.data;
+        if (data?.uptime) {
+          setUptimeData(data.uptime);
+          setUptimeStatus('success');
+        } else if (data) {
+          // Backend phản hồi thành công nhưng chưa có trường uptime (chưa deploy backend mới)
+          setUptimeData(null);
+          setUptimeStatus('unsupported');
+        } else {
+          setUptimeStatus('error');
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('[Dashboard] Không thể tải thông tin uptime hệ thống:', err?.message || err);
+        setUptimeStatus((prev) => (prev === 'success' ? 'success' : 'error'));
       }
     };
     fetchUptime();
     const t = setInterval(fetchUptime, 30_000);
-    return () => clearInterval(t);
+    return () => {
+      isMounted = false;
+      clearInterval(t);
+    };
   }, []);
 
   // Fetch Dashboard Stats khi Global Filter thay đổi
@@ -710,6 +734,25 @@ const DashboardPage = () => {
   const growthSign = newUsers.growth >= 0 ? '+' : '';
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
+
+  // Uptime Card Display Values
+  let uptimeDisplayValue = '—';
+  let uptimeBadge = 'Đang tải...';
+  let uptimeBadgeColor = undefined;
+
+  if (uptimeStatus === 'success' && uptimeData) {
+    uptimeDisplayValue = `${uptimeData.uptimePercent.toFixed(3)}%`;
+    uptimeBadge = uptimeData.uptimeFormatted || 'Ổn định';
+    uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
+  } else if (uptimeStatus === 'unsupported') {
+    uptimeDisplayValue = 'Chưa đồng bộ';
+    uptimeBadge = 'Chờ cập nhật API';
+    uptimeBadgeColor = 'amber';
+  } else if (uptimeStatus === 'error') {
+    uptimeDisplayValue = '—';
+    uptimeBadge = 'Lỗi kết nối';
+    uptimeBadgeColor = 'red';
+  }
 
   // Pagination display values (Trang 1: 1 - 5 of 36 items)
   const currPage = activityPagination.page || 1;
@@ -988,9 +1031,9 @@ const DashboardPage = () => {
           <StatCard
             icon="timer"
             title="Uptime Hệ thống"
-            value={uptimeData ? `${uptimeData.uptimePercent.toFixed(3)}%` : '—'}
-            badge={uptimeData ? uptimeData.uptimeFormatted : 'Đang tải...'}
-            badgeColor={uptimeData && uptimeData.uptimePercent >= 99.5 ? 'green' : undefined}
+            value={uptimeDisplayValue}
+            badge={uptimeBadge}
+            badgeColor={uptimeBadgeColor}
           />
           <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
