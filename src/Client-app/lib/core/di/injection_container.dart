@@ -56,6 +56,7 @@ import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -598,6 +599,16 @@ Future<void> setupDependencies() async {
   // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
   sl.registerLazySingleton<DocCauBangAi>(
     () => DocCauBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+
+  // C3 §8 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI đọc bằng mô hình (người dùng chốt 2026-09-30):
+  // phiên RIÊNG ba tool. Cùng hai điều kiện sẵn sàng với ô Nhập nhanh.
+  sl.registerLazySingleton<DocLenhBangAi>(
+    () => DocLenhBangAi(
       runtime: sl<SlmRuntime>(),
       sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),
