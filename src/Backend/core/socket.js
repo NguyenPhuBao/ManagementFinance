@@ -70,7 +70,19 @@ function initSocket(httpServer) {
     if (idrole === 1) {
       socket.join('admin_room');
       logger.info(`[Socket] Admin client ${socket.id} joined room admin_room`);
+      socket.emit('joined_admin_room', {
+        status: 'joined',
+        room: 'admin_room',
+        time: new Date().toISOString(),
+      });
     }
+
+    // Ping-pong liveness cho Admin-web
+    socket.on('admin_ping', (ack) => {
+      if (typeof ack === 'function') {
+        ack({ pong: true, time: Date.now() });
+      }
+    });
 
     socket.on('disconnect', (reason) => {
       logger.info(`[Socket] Client disconnected: ${socket.id} (${reason})`);

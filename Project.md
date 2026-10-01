@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ 4 công cụ giám sát vận hành: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp; (2) Audit Log Viewer phân trang và đa bộ lọc; (3) System Broadcast UI phát realtime qua Socket.io; (4) Cloud Alert giám sát RAM > 85% & tỉ lệ lỗi > 10% tự động cảnh báo admin room. |
+| **Admin Operations Center** | Bộ 4 công cụ giám sát vận hành: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF (hoạt động 100% kể cả khi API đo tải hệ thống 404/lỗi); (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io; (3) System Broadcast UI phát realtime qua Socket.io; (4) Cloud Alert giám sát RAM > 85% & tỉ lệ lỗi > 10% tự động cảnh báo admin room. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
