@@ -10,7 +10,17 @@ Bất biến ④ nhóm C: **chỉ đề xuất, bấm mới ghi**. Tầng hậu 
 > nhập** vào mẫu (nó đã có ghi chú + danh mục) — người gọi chỉ truyền mẫu đã trừ giao dịch đang sửa; (2) các luật chặn
 > (đã phủ · `tatCap` · xung đột ≥ 2) áp **sau** khi chọn cụm dài nhất — áp trước là ✕ *"trà sữa"* rồi nhận ngay *"trà"*;
 > và thêm một luật phủ: **ghi chú đã chứa một từ khoá của danh mục ấy** (so chuỗi con bỏ dấu, như bộ so) → không đề xuất,
-> cụm nằm trong một từ khoá đã có → không đề xuất. 🚧 Nghiệm thu Realme (§6) **chưa làm** — không máy nào cắm.
+> cụm nằm trong một từ khoá đã có → không đề xuất.
+>
+> ✅ **NGHIỆM THU REALME 2026-10-01** (bảng ở mục 5f `CATEGORY_RATIONALE.md`): thêm · ✕ · Nhập nhanh đạt; ca *grab*
+> **hỏng trên dữ liệu thật** rồi sửa trong cùng lượt — luật *"cụm nằm trong một từ khoá đã có"* (chỗ (2) ngay trên) chặn
+> *grab* vì Di chuyển của mọi tài khoản seed cũ có `grabcar`; người dùng chọn: **luật ấy chỉ áp khi cụm không đang là từ
+> khoá của danh mục khác**. Phần đồng bộ PostgreSQL của §6 **không đo** (bản debug trên máy thật trỏ `10.0.2.2`).
+> ⚠️ Hai câu của spec này lệch thực tế, đo cùng lượt: §1 *"từ khoá phải có người gõ vào trang Từ khoá của tôi"* và dòng
+> đầu *"đảo được trong trang Từ khoá"* — trang ấy **không còn lối vào** (`watchTree` trả `defaultChildren: const []`
+> từ 2026-09-07, form sửa danh mục không có ô từ khoá) → **G61**. Và khoản thứ 4 *trà sữa* (§2.5) ra Ăn uống nhờ **B1**
+> (cùng ngưỡng, đứng trước từ khoá), không phải nhờ từ khoá vừa thêm; giá trị riêng của từ khoá lộ ở ca *grab*, nơi B1
+> đang thôi gợi ý.
 
 ## 1. Vì sao
 

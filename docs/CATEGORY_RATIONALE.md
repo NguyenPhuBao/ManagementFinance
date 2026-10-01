@@ -522,6 +522,11 @@ cả lượt; lưu giao dịch mà không bấm gì thì **không** ghi gì.
   từ khoá của danh mục → im (bộ so đã bắt được); cụm nằm trong một từ khoá đã có → im (bản rộng
   hơn). Cũng vì bộ so khớp chuỗi con mà cụm **dưới 3 chữ cái** và cụm **chỉ gồm chữ chung**
   (`kChuChung`: *ăn, mua, đi, tiền…*) không bao giờ được đề xuất — *"ăn"* khớp cả *"căn hộ"*.
+  ⚠️ Vế *"cụm nằm trong một từ khoá đã có"* **chỉ áp khi không xung đột** (sửa 2026-10-01, người
+  dùng chọn sau lượt đo Realme): seed cũ cho mọi tài khoản `grab` ở Ăn uống **và** `grabcar` ở Di
+  chuyển, nên *grab* ⊂ *grabcar* từng chặn đúng ca *chuyển* mà tính năng sinh ra để sửa — trong
+  khi *grabcar* không bắt được ghi chú *"grab đi làm"* (bộ so tìm từ khoá **trong** ghi chú). Ca
+  ⭐ *chuyển* cũ xanh vì fixture không có `grabcar`; ca mới dựng đúng bộ từ khoá của tài khoản thật.
 - **Đoạn có chữ số cắt dãy** (*"trà sữa 40k"* → *"trà sữa"*). Ca test đầu dùng mẫu *"35k"* khác số
   nên **xanh cả trên bản bỏ phép cắt** — ca đúng dùng mẫu cùng *"40k"*.
 - **Luật tắt / mở là `tatCapTu`**, thêm tham số `nguon`; nguồn `de_xuat_tu_khoa` có tập tắt
@@ -545,8 +550,42 @@ khoá nào — nên **Chuyển** làm danh mục cũ rỗng thì từ khoá cũ 
 
 ### Nghiệm thu trên máy thật
 
-🚧 **Chưa đo** — không máy nào cắm lúc thi công (2026-09-30). Kịch bản ở spec §6 và Task 5 của kế
-hoạch `docs/superpowers/plans/2026-09-30-de-xuat-them-tu-khoa.md`.
+✅ **Đo 2026-10-01 trên Realme RMX2205** (360 dp, tài khoản 10, bản **debug** để đọc được SQLite
+bằng `run-as`: `5ffc0123…` cho ca thêm và ✕, `259d273c…` sau bản sửa cho ca chuyển). Kịch bản ở
+spec §6. Phần *đồng bộ lên PostgreSQL* **không đo** — bản debug trên máy thật trỏ `10.0.2.2`.
+
+| Ca | Kỳ vọng | Thấy trên máy | |
+|---|---|---|---|
+| *trà sữa* + Ăn uống, lần 1 và 2 | chưa có dòng | không có dòng | ✅ |
+| Lần 3 | dòng *"Thêm ‘trà sữa’ làm từ khoá của Ăn uống?"* | hiện, hai dòng chữ + nút, không tràn | ✅ |
+| Bấm **Thêm** | ghi ngay | `category_keywords` có *trà sữa* (có dấu), Ăn uống thành `pending`, phản hồi `de_xuat_tu_khoa` / `chon` | ✅ |
+| Khoản 4, Nhập nhanh *"trà sữa 40k"* | Ăn uống, không gọi AI | *"Đã điền: 40.000 đ · Ăn uống"*, *"Đọc bằng luật"*, dưới 2,5 s | ✅ ⚠️ |
+| *gui xe* + Di chuyển → **✕** | ẩn cả lượt, ghi `bo_qua` | ẩn; gõ lại vẫn ẩn; phản hồi `de_xuat_tu_khoa` / `bo_qua` | ✅ |
+| *grab* + Di chuyển | dòng *chuyển* | **không có dòng nào** (bản `5ffc0123…`) → sửa → hiện *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?"* | ✗ → ✅ |
+| Bấm **Chuyển** | bỏ ở cũ, thêm ở mới | Ăn uống `an uong · food · trà sữa`; Di chuyển `di chuyen · grabcar · xang · grab`; phản hồi `chon` | ✅ |
+| Dòng xác nhận tự ẩn sau 2 s | thấy rồi mất | *"Đã chuyển ‘grab’ sang Di chuyển"* có ở khung 0,5 s → 2,1 s sau cú chạm, mất ở khung 2,5 s | ✅ |
+| Nhập nhanh *"grab 35k"* | Di chuyển | *"Đã điền: 35.000 đ · Di chuyển"*, *"Khớp với “grab” trong ghi chú."*, đọc bằng luật | ✅ |
+
+Ba điều lượt đo cho thấy mà bộ test không:
+
+- **Ca *chuyển* hỏng trên dữ liệu thật** vì `grabcar` — xem mục *Chỗ dễ làm hỏng nhất*. Sửa trong
+  cùng lượt, hai ca test mới (một đỏ trên mã cũ).
+- ⚠️ **Khoản 4 *trà sữa* ra Ăn uống là nhờ B1, không phải nhờ từ khoá vừa thêm**: dòng lý do là
+  *"Bạn thường ghi “trà sữa” cho Ăn uống (3/3 lần)"*. Đề xuất từ khoá và B1 dùng **chung** ngưỡng
+  3 lần / 60 % và B1 đứng trước từ khoá, nên ở chỗ B1 còn nói thì từ khoá học được không thêm gì.
+  Giá trị riêng của nó lộ ở ca *grab*: cặp (*grab*, Di chuyển) đang bị B1 **thôi gợi ý** (hai lần
+  bỏ qua ngày 29/09), nên trước lượt này *"grab 35k"* rơi xuống từ khoá seed và ra Ăn uống; sau
+  **Chuyển** nó ra Di chuyển bằng từ khoá.
+- **Dòng *"Đã thêm…"* chỉ sống 2 s** — một lệnh `screencap` gửi sau cú chạm là trễ (lần đo đầu
+  không bắt được). Phải cho vòng chụp chạy nền **trên máy** trước khi chạm.
+
+Dữ liệu sau lượt đo: ba khoản *trà sữa* 1.000 đ đã **xoá mềm qua giao diện**, ví Tiền mặt về
+−6.097.000 đ; từ khoá *trà sữa* (Ăn uống) và *grab* (Di chuyển) **giữ** (người dùng chọn).
+
+⚠️ Lượt đo còn lộ **G61** (`CLIENT_APP_KNOWN_GAPS.md`): người dùng **không còn chỗ nào để tự gõ
+từ khoá** — trang *Từ khóa của tôi* chỉ mở được từ mục *Danh mục mặc định*, mục ấy trống từ khi
+mỗi tài khoản dùng bản sao riêng (2026-09-07). Nên hôm nay đề xuất này là lối **duy nhất** thêm
+từ khoá trên máy, và câu *"đảo được trong trang Từ khoá"* của spec chưa đúng.
 
 ---
 

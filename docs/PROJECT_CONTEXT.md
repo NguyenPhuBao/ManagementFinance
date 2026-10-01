@@ -884,8 +884,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   sau 2 giây (người dùng chốt khi duyệt Stitch); ✕ ghi `bo_qua` nguồn **`de_xuat_tu_khoa`**, tập tắt riêng qua
   `tatCapTu(…, nguon:)`. Hàm thuần `category/domain/de_xuat_tu_khoa.dart`. ⚠️ Kèm sửa **lỗ hổng có sẵn**:
   `saveKeywords` không đánh dấu danh mục `pending` nên từ khoá sửa ở trang *Từ khoá của tôi* không lên server — nay có
-  `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
-  không máy nào cắm lúc thi công. Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
+  `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. ✅ Nghiệm thu Realme làm ngày
+  2026-10-01 — khối riêng bên dưới (lúc thi công không máy nào cắm). Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
   nhỏ định tuyến · C học trên máy từng người), thứ tự A → B → C, làm **sau C4** — cuối mục 10.3 `AI_EDGE_FEATURE.md`.
 - ✅ **D1 — đọc biến động số dư trên máy, XONG + nghiệm thu máy thật 2026-09-30** (`1d7ca56` → `02f995f`; tài liệu
   bàn giao **`docs/BIEN_DONG_SO_DU_FEATURE.md`**; spec `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md` có banner
@@ -942,6 +942,20 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   mô hình gọi nhầm tool (ngân sách ↔ hoá đơn ↔ tiết kiệm; nay luật `_loaiTheoDauHieu` giữ loại) · *"2 triệu mỗi
   tháng"* thành số tiền đích · tên dính chữ chu kỳ · Huỷ không phản hồi ~5 s. Thẻ sau 13–18 s (CPU), `tools_json`
   2.024 ký tự, 0 vỡ trần. `flutter test` **5156/5156** (4 skip), analyze 26. Chưa đo OnePlus. Kế: **C4**.
+- ✅ **Nghiệm thu Realme cho *đề xuất thêm từ khoá* (2026-10-01 chiều, Giai đoạn 0b)** — bảng ở mục **5f**
+  `CATEGORY_RATIONALE.md`. Thêm (*trà sữa* lần 3 → dòng → **Thêm** → SQLite có từ khoá + phản hồi `chon`), ✕ (*gui xe*,
+  ghi `bo_qua`, ẩn cả lượt), Nhập nhanh *"trà sữa 40k"* → Ăn uống bằng luật: **đạt**. Ca ***grab* hỏng trên dữ liệu
+  thật**: Di chuyển của mọi tài khoản seed cũ có `grabcar`, và luật *"cụm nằm trong một từ khoá đã có → im"* chặn
+  *grab* dù thói quen 7/7 — ca ⭐ *chuyển* xanh vì fixture không có `grabcar`. Người dùng chọn: luật ấy **chỉ áp khi
+  cụm không đang là từ khoá của danh mục khác**; hai ca test mới (một đỏ trên mã cũ), build lại (`259d273c…`), đo lại:
+  dòng *chuyển* hiện → **Chuyển** → *"Đã chuyển ‘grab’ sang Di chuyển"* thấy ở khung 0,5–2,1 s, mất ở 2,5 s → Nhập
+  nhanh *"grab 35k"* ra Di chuyển (*"Khớp với “grab” trong ghi chú."*). ⚠️ Khoản 4 *trà sữa* ra Ăn uống **nhờ B1**
+  (cùng ngưỡng, đứng trước từ khoá), không phải nhờ từ khoá vừa thêm — giá trị riêng của từ khoá chỉ lộ ở ca *grab*,
+  nơi B1 đang thôi gợi ý. Đồng bộ PostgreSQL **không đo** (bản debug máy thật trỏ `10.0.2.2`). Dọn: ba khoản thử xoá
+  mềm qua giao diện; hai từ khoá *trà sữa* / *grab* **giữ** (người dùng chọn). 🔴 Lượt đo **mở G61**: người dùng hỏi
+  và đúng — **không còn lối vào trang nhập từ khoá** (`watchTree` trả `defaultChildren: const []` từ 2026-09-07, form
+  sửa danh mục không vẽ `_KeywordsEditor`); chưa sửa, chờ chọn hướng. `flutter test` **5158/5158** (4 skip),
+  analyze 26. Schema, payload, `pubspec` không đổi.
 
 ### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
 
