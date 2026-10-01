@@ -956,13 +956,13 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   và đúng — **không còn lối vào trang nhập từ khoá** (`watchTree` trả `defaultChildren: const []` từ 2026-09-07, form
   sửa danh mục không vẽ `_KeywordsEditor`). `flutter test` **5158/5158** (4 skip), analyze 26. Schema, payload,
   `pubspec` không đổi.
-- 🟡 **G61 sửa ở mã (2026-10-01 chiều muộn), chờ nghiệm thu máy thật** — người dùng chọn *ô từ khoá trong form sửa
+- ✅ **G61 đóng (2026-10-01 chiều muộn) — form danh mục có ô từ khoá, nghiệm thu Realme** — người dùng chọn *ô từ khoá trong form sửa
   danh mục*. Màn Stitch *Sửa danh mục* (`a5a6ecb3…`) **vốn đã vẽ** khối từ khoá dưới thẻ Cố định; `_formBody` của
   `category_add_page.dart` (tạo mới + sửa) nay dựng khối *Từ khóa nhận diện* bằng `_KeywordsEditor` sẵn có, lưu qua
   `saveChild(keywords:)`. `_save` nhận luôn **chữ đang gõ dở** ở ô từ khoá (cả trang từ khoá riêng). Lệch Stitch có chủ
   ý: nhãn không ghi *"cho AI"*, chip *"+ Thêm"* là ô nhập. 6 ca ở tệp mới `category_form_tu_khoa_test.dart`, cả sáu đỏ
-  trên mã cũ. `flutter test` **5164/5164** (4 skip), analyze 26. 🚧 Bản debug `f04ed2ea…` đã build, **chưa cài** — Realme
-  bị rút khỏi máy tính. ⚠️ Giới hạn còn lại: gỡ **hết** từ khoá của một danh mục thì pull kế gieo lại bộ của server.
+  trên mã cũ. `flutter test` **5164/5164** (4 skip), analyze 26. Realme (bản debug `f04ed2ea…`): form sửa Ăn uống
+  hiện ba thẻ; gõ *bún bò* rồi Lưu khi chưa Enter → SQLite có; mở lại, gỡ, Lưu → về ba từ khoá cũ. ⚠️ Giới hạn còn lại: gỡ **hết** từ khoá của một danh mục thì pull kế gieo lại bộ của server.
 
 ### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
 
