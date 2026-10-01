@@ -963,6 +963,22 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   ý: nhãn không ghi *"cho AI"*, chip *"+ Thêm"* là ô nhập. 6 ca ở tệp mới `category_form_tu_khoa_test.dart`, cả sáu đỏ
   trên mã cũ. `flutter test` **5164/5164** (4 skip), analyze 26. Realme (bản debug `f04ed2ea…`): form sửa Ăn uống
   hiện ba thẻ; gõ *bún bò* rồi Lưu khi chưa Enter → SQLite có; mở lại, gỡ, Lưu → về ba từ khoá cũ. ⚠️ Giới hạn còn lại: gỡ **hết** từ khoá của một danh mục thì pull kế gieo lại bộ của server.
+- 🚧 **Spike C4 — giọng nói / chụp hoá đơn: màn đo dựng xong, CHƯA đo (2026-10-01 chiều muộn, `6e6fde9`)** — kế hoạch
+  `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore; có khối *soát với mã 2026-10-01* ở đầu). Người dùng
+  **cho phép thêm bốn gói** cho spike: `speech_to_text` 7.5.0 · `google_mlkit_text_recognition` 0.17.1 · `record` 7.1.1 ·
+  `image_picker` 1.2.3 — gói của lối thua sẽ gỡ sau khi chọn lối. Mã **bỏ đi**, sau cờ `--dart-define=SPIKE_C4=true`:
+  route `/spike-c4` và nút *Quét* ở Trang chủ chỉ mở khi có cờ; bản thường giữ SnackBar cũ. Màn
+  `ai_chat/spike/spike_c4_page.dart`: giọng nói lối A (`SpeechRecognizer`, công tắc *chỉ chạy trên máy*) / lối B (ghi WAV
+  16 kHz mono → Gemma), hoá đơn lối A (ML Kit Latin → luật `docHoaDonTuChu`) / lối B (ảnh → Gemma → JSON); mỗi lượt in
+  một dòng `[C4] <mã> | …` kèm thời gian và kết quả `docCauGiaoDich`. `SlmRuntimeThat.spikeDaPhuongThuc` nạp **lại** mô
+  hình với `supportImage` / `supportAudio` (tệp duy nhất được import gói — test quét 16); màn gọi `dong()` khi rời.
+  `RECORD_AUDIO` + `<queries>` `RecognitionService` **chỉ ở manifest debug**. `flutter test` **5176/5176** (4 skip, +12 ca
+  ở `ai_chat/spike_c4_test`), analyze 26. Realme (bản debug có cờ `95a61dfe…`): màn mở, nạp 6 ví / 15 danh mục; lối A
+  hoá đơn chạy trên một ảnh **dựng bằng máy** trong 963 ms nhưng trả **200.000** thay vì 191.862 — ML Kit tách nhãn
+  (*TỔNG CỘNG*) và số thành **hai cột**, nên luật theo dòng không ghép được và rơi về *số lớn nhất* (tiền khách đưa).
+  ⚠️ Phải ghép nhãn với số theo **toạ độ dòng** (`boundingBox`) trước khi đo, nếu không phép so A / B là so một bộ luật
+  hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
+  ảnh thật cần người dùng.
 
 ### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
 
