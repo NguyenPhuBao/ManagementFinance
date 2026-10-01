@@ -1,9 +1,13 @@
 package com.flowmoney.flowmoney
 
 import android.app.ActivityManager
+import android.content.ComponentName
 import android.content.ContentValues
+import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -24,13 +28,71 @@ import java.io.IOException
  * sập native của engine mô hình với việc app bị giết (Realme giết app khi vuốt
  * khỏi Recents, hệ điều hành giết khi thiếu RAM, người dùng bấm Buộc dừng).
  * Xem `lib/features/ai_edge/domain/canary_cong_cu.dart`.
+ *
+ * Kênh `flowmoney/bien_dong` — đọc biến động số dư trên máy (D1, 2026-09-30):
+ * `coQuyen` (Cài đặt "Truy cập thông báo" đã bật cho app chưa), `moCaiDat`,
+ * `moTuThongBao` (lần mở này có đến từ thông báo tóm tắt không — đọc là tiêu),
+ * `huyTomTat`, `datBat` (cờ bật/tắt của `BienDongListenerService`). Xem
+ * `lib/core/notification/kenh_bien_dong.dart`.
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
     private val kenhLyDoThoat = "flowmoney/ly_do_thoat"
+    private val kenhBienDong = "flowmoney/bien_dong"
+
+    /** Lần khởi động / lần `onNewIntent` gần nhất có mang extra của thông báo tóm tắt. */
+    private var moTuTomTat = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        docExtraTomTat(intent)
+    }
+
+    /** `launchMode="singleTop"`: chạm tóm tắt khi app đang chạy tới đây, không tới `onCreate`. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        docExtraTomTat(intent)
+    }
+
+    private fun docExtraTomTat(i: Intent?) {
+        if (i?.getBooleanExtra(BienDongListenerService.EXTRA_MO_TU_TOM_TAT, false) == true) moTuTomTat = true
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhBienDong)
+            .setMethodCallHandler { call, ket ->
+                try {
+                    when (call.method) {
+                        "coQuyen" -> ket.success(coQuyenDocThongBao())
+                        "moCaiDat" -> {
+                            startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            ket.success(null)
+                        }
+                        "moTuThongBao" -> {
+                            val v = moTuTomTat
+                            moTuTomTat = false
+                            ket.success(v)
+                        }
+                        "huyTomTat" -> {
+                            BienDongListenerService.huyTomTat(this)
+                            ket.success(null)
+                        }
+                        "datBat" -> {
+                            BienDongListenerService.datBat(this, call.argument<Boolean>("bat") ?: false)
+                            ket.success(null)
+                        }
+                        else -> ket.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    ket.error("loi_bien_dong", e.message, null)
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhLuuTep)
             .setMethodCallHandler { call, ket ->
@@ -64,6 +126,16 @@ class MainActivity : FlutterActivity() {
                     ket.error("loi_doc", e.message, null)
                 }
             }
+    }
+
+    /**
+     * App có nằm trong danh sách listener được phép đọc thông báo không — đọc
+     * `Settings.Secure` thay vì `NotificationManagerCompat` để không kéo thêm
+     * phụ thuộc androidx vào tầng native.
+     */
+    private fun coQuyenDocThongBao(): Boolean {
+        val ds = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
+        return ds.split(":").any { ComponentName.unflattenFromString(it)?.packageName == packageName }
     }
 
     /**

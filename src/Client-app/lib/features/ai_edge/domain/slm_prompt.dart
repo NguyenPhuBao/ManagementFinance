@@ -157,14 +157,28 @@ const String kPromptHeThongCongCu =
     'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. '
     'Ví dụ chọn công cụ: "tháng này tôi tiêu gì trên nửa triệu", "các khoản chi hơn '
     'một số tiền trong quý này", "liệt kê các khoản chi từ một số tiền đến một số '
-    'tiền" → $kTenCongCuGiaoDich với ky, chieu=khoan_chi, so_tien_tu hoặc so_tien_den '
+    'tiền" → $kTenCongCuTruyVan với ky, chieu=khoan_chi, so_tien_tu hoặc so_tien_den '
     'là số đồng của số tiền trong câu. "tháng này tôi nhận được những khoản thu nào" → '
-    '$kTenCongCuGiaoDich với chieu=khoan_thu. "ví nào đó tháng này chi những gì", "chi '
+    '$kTenCongCuTruyVan với chieu=khoan_thu. "ví nào đó tháng này chi những gì", "chi '
     'gì cho một danh mục từ một ví", "các khoản chi cho một danh mục" → '
-    '$kTenCongCuGiaoDich với vi và danh_muc là tên nêu trong câu. "khoản chi lớn nhất '
-    'tháng này là gì" → $kTenCongCuGiaoDich với chieu=khoan_chi, sap_xep=so_tien. '
-    '"tháng này tôi chi bao nhiêu", "tháng này chi nhiều nhất vào danh mục nào" → '
-    '$kTenCongCuTongKet. '
+    '$kTenCongCuTruyVan với vi và danh_muc là tên nêu trong câu. "khoản chi lớn nhất '
+    'tháng này là gì" → $kTenCongCuTruyVan với chieu=khoan_chi, sap_xep=so_tien. '
+    '"tháng này tôi chi bao nhiêu" → '
+    '$kTenCongCuTruyVan với ky. "tháng này chi nhiều nhất vào danh mục nào" → '
+    '$kTenCongCuTruyVan với gop=danh_muc, chon=nhieu_nhat. "danh mục nào tôi ít tiêu '
+    'nhất" → gop=danh_muc, chon=it_nhat. "tôi đã cho vay bao nhiêu và thu về bao nhiêu" '
+    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. "ngân sách nào chưa dùng đến nửa" '
+    '→ $kTenCongCuNganSach với chon=duoi_nua. '
+    // Lát 1 spec mở rộng tool (2026-09-27). Không nêu tháng bằng chữ số: số trong
+    // lời hệ thống là số mô hình có thể chép vào câu.
+    '"một tháng, quý, năm cụ thể tôi chi bao nhiêu", "từ ngày này đến ngày kia tôi '
+    'chi những gì" → $kTenCongCuTruyVan với ky=tuy_chon, tu_ngay và den_ngay. "tháng '
+    'này chi nhiều hơn hay ít hơn tháng trước" → $kTenCongCuTruyVan với ky=thang_nay, '
+    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "danh '
+    'mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. '
+    // ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
+    // phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
+    // không được khai là dạy mô hình gọi tool bịa.
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '
@@ -174,5 +188,5 @@ const String kPromptHeThongCongCu =
     'tiêu. Câu "từ một số tiền đến một số tiền" thì điền cả so_tien_tu lẫn so_tien_den; '
     '"nửa triệu" là năm trăm nghìn đồng, "một triệu" là một triệu đồng. Câu "lần gần '
     'nhất", "lần cuối", "gần đây" thì ky=moi_luc và sap_xep=moi_nhat, không dùng hom_nay; '
-    '"lần cuối nạp tiền cho mục tiêu" thì $kTenCongCuGiaoDich với ky=moi_luc và tu_khoa '
+    '"lần cuối nạp tiền cho mục tiêu" thì $kTenCongCuTruyVan với ky=moi_luc và tu_khoa '
     'là tên mục tiêu.';

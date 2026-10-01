@@ -19,14 +19,19 @@ import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_history.dart';
 import '../../analytics/domain/du_bao_dong_tien.dart' show buocTron;
 import '../../budget/domain/budget_pace.dart';
+import '../../analytics/domain/nguong_co_nghia.dart';
+
+// `nguongCoNghia` và hằng sàn dời về `analytics/domain` (B3, 2026-09-29) — xuất
+// lại để mọi chỗ đang import tệp này không phải đổi.
+export '../../analytics/domain/nguong_co_nghia.dart'
+    show nguongCoNghia, kNguongThamHutTuyetDoi, lamTronBuoc;
 
 /// B2: thâm hụt phải ≥ 10 % hạn mức **và** ≥ [nguongThamHutTuyetDoi].
 ///
-/// [kNguongThamHutTuyetDoi] là **sàn** của vế tuyệt đối, không phải ngưỡng dùng
-/// thẳng: từ 2026-09-21 vế ấy neo theo thu nhập qua [_neo]. Cũng là sàn của C5
-/// ([nguongCoNghia]).
+/// `kNguongThamHutTuyetDoi` (nay ở `analytics/domain/nguong_co_nghia.dart`) là
+/// **sàn** của vế tuyệt đối, không phải ngưỡng dùng thẳng: từ 2026-09-21 vế ấy
+/// neo theo thu nhập qua `neoTheoThuNhap`. Cũng là sàn của C5 ([nguongCoNghia]).
 const double kNguongThamHutTiLe = 0.10;
-const double kNguongThamHutTuyetDoi = 50000;
 
 /// C4: **sàn** của dư địa tối thiểu mà nguồn bù phải còn sau dự phóng — ngưỡng
 /// thật là [duDiaToiThieu], neo theo thu nhập từ 2026-09-21.
@@ -44,39 +49,13 @@ const int kBuocLamTron = 10000;
 /// B4: dưới chừng này ngày thì không nhân tỉ lệ tuyến tính.
 const int kNgayKhoaDuPhong = 5;
 
-double lamTronBuoc(double x, double buoc) => (x / buoc).round() * buoc;
-
-/// Phép neo một ngưỡng tuyệt đối vào thu nhập — **một định nghĩa duy nhất** cho
-/// cả bốn ngưỡng dưới đây.
-///
-/// `max(tiLe × thu nhập, san)`: hằng cũ thành **sàn**, nên tài khoản chưa có
-/// thu nhập (hoặc thu nhập thấp) giữ nguyên hành vi hôm nay, còn thu nhập cao
-/// thì mọi ngưỡng giãn ra cùng nhau.
-///
-/// ⚠️ [thuNhapMoiThang] là thu nhập **trung bình MỘT THÁNG**, không phải tổng
-/// cả cửa sổ: nguồn của nó quy về mức tháng bằng `tổng / số ngày × 30`. Đọc
-/// nhầm là mọi tỉ lệ dưới đây lệch hẳn một bậc, **im lặng**.
-///
-/// ⚠️ Cửa sổ ấy **cuộn theo ngày** (`cuaSoNhinLai`, tối đa 90 ngày, ngắn lại
-/// theo tuổi dữ liệu). Trước 2026-09-21 nó là ba tháng lịch liền trước, và con
-/// số ấy bằng **0** trên mọi dữ liệu thật — nên phép neo dưới đây luôn rơi về
-/// sàn, tức nó đúng về mã nhưng chưa từng có hiệu lực.
-double _neo(double thuNhapMoiThang, double tiLe, double san) {
-  final theoThuNhap = thuNhapMoiThang * tiLe;
-  return theoThuNhap > san ? theoThuNhap : san;
-}
-
-/// C5: `max(1 % thu nhập, 50.000)`.
-double nguongCoNghia(double thuNhapMoiThang) =>
-    _neo(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
-
 /// B2 vế tuyệt đối, neo theo thu nhập: `max(1 % thu nhập, 50.000)`.
 ///
 /// Cùng công thức với [nguongCoNghia] nhưng là **luật khác** (B2 lọc ngân sách
 /// thâm hụt, C5 lọc dòng cắt quá nhỏ) — giữ hai tên để đổi một cái không kéo
 /// theo cái kia.
 double nguongThamHutTuyetDoi(double thuNhapMoiThang) =>
-    _neo(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
+    neoTheoThuNhap(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
 
 /// C4 neo theo thu nhập: `max(2 % thu nhập, 100.000)`.
 ///
@@ -86,7 +65,7 @@ double nguongThamHutTuyetDoi(double thuNhapMoiThang) =>
 /// nới `kTranCat` hay hạ C5 sẽ làm nó sống lại — nhưng **đừng viết ca test hành
 /// vi cho nó**, ca ấy sẽ xanh vì lý do khác (ghi rõ ở tệp test).
 double duDiaToiThieu(double thuNhapMoiThang) =>
-    _neo(thuNhapMoiThang, 0.02, kDuDiaToiThieu);
+    neoTheoThuNhap(thuNhapMoiThang, 0.02, kDuDiaToiThieu);
 
 /// G1 neo theo thu nhập: `max(0,2 % thu nhập, 10.000)`, rồi **kéo lên họ
 /// 1·2·2,5·5**.
@@ -96,7 +75,7 @@ double duDiaToiThieu(double thuNhapMoiThang) =>
 /// dùng đọc**. Bỏ nó thì thu nhập 12 triệu cho bước 24.000 và màn hình đầy
 /// 24.000 / 48.000 / 72.000 — tròn về mặt số học, xấu về mặt người đọc.
 double buocLamTron(double thuNhapMoiThang) =>
-    buocTron(_neo(thuNhapMoiThang, 0.002, kBuocLamTron.toDouble()));
+    buocTron(neoTheoThuNhap(thuNhapMoiThang, 0.002, kBuocLamTron.toDouble()));
 
 /// Dự phóng chi cuối kỳ (B4 + B5). `null` khi kỳ rỗng hoặc dưới
 /// [kNgayKhoaDuPhong] ngày mà không có [mucThang] — khi ấy người gọi chỉ được

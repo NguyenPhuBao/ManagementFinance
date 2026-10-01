@@ -169,3 +169,19 @@ List<DiemVayNo> chuoiVayNo(
           );
         }(),
     ];
+
+/// Dư nợ RÒNG suy từ dòng tiền của một điểm vay/nợ: tiền đã cho vay mà chưa thu
+/// về, và tiền đã đi vay mà chưa trả. Kẹp về 0 — thu nợ nhiều hơn cho vay (khoản
+/// cho vay ghi từ trước khi dùng app) không phải "cho vay âm".
+///
+/// ⚠️ Đây là dư nợ theo DÒNG TIỀN ĐÃ GHI, không phải dư nợ gốc: app không có
+/// bảng khoản vay (mục 3.22 `ANALYTICS_FEATURE.md`). Khoản không đoán được vai
+/// (`khacRa`, `khacVao`) không tính vào bên nào — chọn bừa một bên là bịa số.
+({double choVayChuaThu, double dangNo}) duNoRong(DiemVayNo d) {
+  final choVay = d.choVay - d.thuNo;
+  final no = d.diVay - d.traNo;
+  return (
+    choVayChuaThu: choVay > 0 ? choVay : 0,
+    dangNo: no > 0 ? no : 0,
+  );
+}

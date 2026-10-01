@@ -1,5 +1,7 @@
 import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
+import '../database/daos/notification_event_dao.dart';
+import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'notification_scanner.dart' show BillsLoader, GoalsLoader;
 import 'os/os_notifier.dart';
@@ -30,6 +32,8 @@ class ReminderScheduler {
     this.loadGoals,
     this.loadLastTransactionAt,
     this.prefsStore,
+    this.nhatKy,
+    this.eventDao,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
 
@@ -51,6 +55,14 @@ class ReminderScheduler {
 
   /// Bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
   final NotificationPrefsStore? prefsStore;
+
+  /// Nhật ký B5a: `dat_lich` sau mỗi lịch đặt (khi quyền bật), `huy_lich` trước
+  /// mỗi lần huỷ lịch còn ở tương lai. Bỏ trống thì không ghi gì.
+  final NhatKyThongBao? nhatKy;
+
+  /// Nhật ký B5a: tra `dat_lich` gần nhất của một id để `huy_lich` biết khoá —
+  /// lời gọi `cancel` chỉ có id.
+  final NotificationEventDao? eventDao;
 
   final DateTime Function() clock;
 
@@ -85,7 +97,15 @@ class ReminderScheduler {
   /// **Luỹ đẳng.** Gọi sau mỗi lần ghi hoá đơn và sau mỗi lần pull — tức là rất
   /// nhiều lần. Chỉ đặt cái chưa có và chỉ huỷ cái không còn cần: huỷ-rồi-đặt-
   /// lại toàn bộ ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất.
-  Future<int> resync(int idaccount, {DateTime? now}) async {
+  ///
+  /// [datLai] (G59, 2026-09-29): huỷ rồi đặt lại **những lịch đang chờ mà vẫn
+  /// được muốn**. Cần vì khoá lịch không chứa giờ — cùng khoá là cùng id — nên
+  /// sau khi người dùng đổi giờ nhắc / giờ hay thứ tổng kết, lượt thường thấy
+  /// "id đã chờ" rồi bỏ qua, và lịch cũ nổ giờ cũ (tới 30 ngày nhắc hoá đơn).
+  /// Trang Cài đặt thông báo gọi nó ngay sau khi đổi một ô giờ / thứ; lượt quét
+  /// thường **không** truyền, giữ nguyên tính luỹ đẳng. Lịch hoãn không nằm
+  /// trong tập "muốn" nên không bị đụng.
+  Future<int> resync(int idaccount, {DateTime? now, bool datLai = false}) async {
     final at = now ?? clock();
     final prefs =
         await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
@@ -309,15 +329,37 @@ class ReminderScheduler {
 
     final dangCho = await osNotifier.pendingIds();
 
+    // Nhật ký B5a: hỏi quyền MỘT lần mỗi lượt — lịch đặt lúc quyền tắt không bao
+    // giờ hiện, ghi `dat_lich` cho nó là dạy B5b một lần "tới máy" không có thật.
+    var coQuyen = false;
+    if (nhatKy != null) {
+      try {
+        coQuyen = await osNotifier.daCoQuyen();
+      } catch (_) {}
+    }
+
+    // `datLai`: lịch vừa chờ vừa được muốn cũng đi qua nhánh huỷ, rồi được đặt
+    // lại ở vòng dưới với mốc mới. Vế `mongMuon` đứng TRƯỚC `khongHuy` vì một
+    // hoá đơn còn sống nằm trong cả hai tập.
     for (final id in dangCho) {
-      if (mongMuon.containsKey(id)) continue;
+      if (mongMuon.containsKey(id) && !datLai) continue;
       // Lịch đã hoãn của một hoá đơn còn sống — giữ nguyên cả mốc lẫn id.
-      if (khongHuy.contains(id)) continue;
+      if (!mongMuon.containsKey(id) && khongHuy.contains(id)) continue;
+      // Nhật ký B5a: `cancel` chỉ có id — khoá tra ngược từ `dat_lich` gần nhất.
+      // Chỉ ghi khi mốc còn ở tương lai (lịch đã nổ thì không phải bị huỷ).
+      // Nuốt lỗi: `resync` không được vỡ vì nhật ký.
+      try {
+        final l = await eventDao?.datLichGanNhat(idaccount, id);
+        if (l != null && l.luc.isAfter(at)) {
+          await nhatKy?.ghi(l.dedupeKey, SuKienThongBao.huyLich,
+              idaccount: idaccount, luc: at, osId: id);
+        }
+      } catch (_) {}
       await osNotifier.cancel(id);
     }
 
     for (final entry in mongMuon.entries) {
-      if (dangCho.contains(entry.key)) continue;
+      if (dangCho.contains(entry.key) && !datLai) continue;
       final l = entry.value;
       await osNotifier.zonedSchedule(
         id: l.id,
@@ -326,6 +368,10 @@ class ReminderScheduler {
         when: l.when,
         payload: l.khoa,
       );
+      if (coQuyen) {
+        await nhatKy?.ghi(l.khoa, SuKienThongBao.datLich,
+            idaccount: idaccount, luc: l.when, osId: l.id);
+      }
     }
 
     return mongMuon.length;

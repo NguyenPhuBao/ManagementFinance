@@ -24,6 +24,7 @@ const Map<String, String> _chuaHieu = {
   'chieu': 'chưa hiểu loại giao dịch',
   'sap_xep': 'chưa hiểu cách sắp xếp',
   'trang_thai': 'chưa hiểu trạng thái hoá đơn',
+  'so_voi': 'chưa hiểu kỳ cần so sánh',
 };
 
 const String _chuaHieuSoTien = 'chưa hiểu số tiền trong câu hỏi';
@@ -46,6 +47,34 @@ KetQuaCongCu tuChoiKhoangNguoc(String tu, String den) => KetQuaCongCu.loi(
       'so_tien_tu ($tu) lớn hơn so_tien_den ($den). Gọi lại với khoảng đúng chiều.',
       choNguoiDung: 'khoảng số tiền bị ngược',
       thamSoGo: const ['so_tien_tu', 'so_tien_den'],
+    );
+
+/// Hai mốc của `ky=tuy_chon` thiếu, sai dạng, không tồn tại trên lịch, hoặc
+/// ngược (spec mở rộng tool §3.1) — không tự cuộn 31/6 sang 1/7, không tự hoán
+/// đổi. ⚠️ Câu cho người dùng KHÔNG chép hai mốc: chúng là số của mô hình.
+KetQuaCongCu tuChoiKhoangNgay(Object? tu, Object? den) => KetQuaCongCu.loi(
+      'ky tuy_chon cần tu_ngay và den_ngay dạng dd/mm/yyyy, ngày có thật, tu_ngay '
+      'không sau den_ngay; nhận: "${tu ?? ''}" – "${den ?? ''}".',
+      choNguoiDung: 'chưa hiểu khoảng ngày trong câu hỏi',
+      thamSoGo: const ['tu_ngay', 'den_ngay'],
+    );
+
+/// Câu hỏi nêu một kỳ CHƯA TỚI (mục 9.33, L7): sổ giao dịch chỉ có quá khứ.
+/// Trước đó bộ chỉnh đọc *"30 ngày tới"* là "không nêu kỳ" và tool liệt kê khoản
+/// đã qua — trả lời một câu hỏi khác.
+KetQuaCongCu tuChoiKyTuongLai() => const KetQuaCongCu.loi(
+      'Kỳ trong câu hỏi chưa tới nên chưa có giao dịch. Hỏi khoản sắp phải trả thì '
+      'gọi du_bao_dong_tien.',
+      choNguoiDung: 'kỳ trong câu hỏi chưa tới nên chưa có giao dịch',
+      thamSoGo: ['ky'],
+    );
+
+/// `so_voi` đi với `ky=moi_luc`: mọi thời gian không có kỳ trước để so.
+KetQuaCongCu tuChoiSoSanhThieuKy() => const KetQuaCongCu.loi(
+      'so_voi cần ky là một kỳ cụ thể (thang_nay, tuan_nay, tuy_chon…), không '
+      'phải moi_luc.',
+      choNguoiDung: 'chưa hiểu kỳ cần so sánh',
+      thamSoGo: ['ky'],
     );
 
 /// Số tiền nằm nhầm trong `tu_khoa` (bước 2b, bẫy 4.43). Gỡ khi lượt sau điền

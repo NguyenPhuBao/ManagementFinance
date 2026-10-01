@@ -26,8 +26,6 @@
 /// dù tổng không đổi — đó là thứ [ViThieu] đo.
 library;
 
-import 'package:drift/drift.dart' show Value;
-
 import '../../../core/database/app_database.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
@@ -44,10 +42,11 @@ import 'thong_ke_thang.dart';
 /// lệch xa 30 là hai tầng nói hai khoảng khác nhau.
 const int kSoNgayDuBao = 30;
 
-/// Trần số kỳ chiếu cho MỖI hoá đơn / mục tiêu. Chu kỳ tuần trong 30 ngày là
-/// ≤ 5 kỳ; 12 là dư. Vượt trần thì dừng im lặng, cùng lối `_tranDoMoc` của
+/// Trần số kỳ chiếu cho MỖI mục tiêu (hoá đơn: `kTranKyChieu` của
+/// `bill_ky_ke_tiep.dart`, cùng con số). Chu kỳ tuần trong 30 ngày là ≤ 5 kỳ;
+/// 12 là dư. Vượt trần thì dừng im lặng, cùng lối `_tranDoMoc` của
 /// `goal_auto_deposit.dart`.
-const int _tranKyChieu = 12;
+const int _tranKyChieu = kTranKyChieu;
 
 enum LoaiCamKet { hoaDon, trichTuDong }
 
@@ -295,23 +294,11 @@ List<CamKet> _camKetHoaDon(
     ra.add(camKetTu(b.dueDate, laKyChieu: false));
     if (!b.isRecurrence || daSinhKySau.contains(b.id)) continue;
 
-    // Chiếu kỳ tương lai bằng ĐÚNG luật của payBill (`kyKeTiepCua`). Mỗi vòng
-    // dựng lại một Bill từ kỳ vừa chiếu để anchorDay đi theo chuỗi — cộng dồn
-    // từ kỳ trước là "ngày 31" tụt về 28 vĩnh viễn (bẫy 3).
-    var hienTai = b;
-    for (var n = 0; n < _tranKyChieu; n++) {
-      final ky = kyKeTiepCua(hienTai);
-      // Chu kỳ lạ: `nextBillDueDate` trả nguyên mốc → hạn không tiến → dừng,
-      // không lặp vô hạn.
-      if (!ky.hanTra.isAfter(hienTai.dueDate)) break;
-      if (_dauNgay(ky.hanTra).isAfter(cuoi)) break;
+    // Chiếu kỳ tương lai bằng ĐÚNG luật của payBill — vòng chiếu nằm ở
+    // `cacKyChieuCua` (dùng chung với tool hoá đơn của Trợ lý AI), nó giữ bẫy 3
+    // (anchorDay đi theo chuỗi) và chốt chu kỳ lạ.
+    for (final ky in cacKyChieuCua(b, denHetNgay: cuoi)) {
       ra.add(camKetTu(ky.hanTra, laKyChieu: true));
-      hienTai = hienTai.copyWith(
-        startDate: Value(ky.batDau),
-        periodEnd: Value(ky.ketThuc),
-        dueDate: ky.hanTra,
-        anchorDay: Value(ky.anchorDay),
-      );
     }
   }
   return ra;
@@ -352,12 +339,13 @@ List<CamKet> _camKetMucTieu(
     }
     final nguonId = g.autoDepositWalletId!;
     final nguon = viTheoId[nguonId];
-    // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả; ví lưu trữ thì
-    // người dùng đã cất đi. Cả hai đều là ca `khongChayDuoc` của bộ trích.
+    // Ba ca `khongChayDuoc` của bộ trích — một định nghĩa, `viNguonChoTrich`.
     if (nguon == null ||
-        nguon.isDeleted ||
-        nguonId == g.walletId ||
-        !WalletStatus.laHoatDong(nguon.status)) {
+        !viNguonChoTrich(
+          g,
+          viNguonConSong: !nguon.isDeleted,
+          trangThaiViNguon: nguon.status,
+        )) {
       continue;
     }
 
@@ -421,6 +409,22 @@ List<CamKet> _camKetMucTieu(
 
 // ── Ngân sách ─────────────────────────────────────────────────────────────
 
+/// Ngân sách **đang chạy** tại [now]: chưa xoá, chưa hết hạn, và kỳ hiện tại
+/// **chứa** [now] — phép chọn **duy nhất** của tầng 2 khối Dự báo.
+///
+/// Công khai từ 2026-09-29 (B4): tầng 3 (ước tính chi tuỳ ý) loại đúng những
+/// danh mục có ngân sách trong tập này, và im khi tập có ngân sách tổng. Hai
+/// phép chọn lệch nhau là có danh mục rơi vào khe giữa hai tầng (không tầng nào
+/// tính) hoặc bị đếm đôi — im lặng.
+List<BudgetEntity> nganSachDangChay(List<BudgetView> nganSach, DateTime now) => [
+      for (final v in nganSach)
+        if (!v.budget.isDeleted &&
+            !v.budget.isExpired(now) &&
+            !now.isBefore(v.budget.currentPeriod(now).from) &&
+            now.isBefore(v.budget.currentPeriod(now).to))
+          v.budget,
+    ];
+
 /// Tầng 2: phần còn lại của ngân sách KỲ HIỆN TẠI, quy về tiêu đều.
 ///
 /// - Chỉ ngân sách chưa hết hạn và kỳ hiện tại **chứa** [now].
@@ -442,14 +446,7 @@ double _nganSachConLai(
 }) {
   final sauCuoi = DateTime(cuoi.year, cuoi.month, cuoi.day + 1);
 
-  final dangChay = <BudgetEntity>[];
-  for (final v in nganSach) {
-    final b = v.budget;
-    if (b.isDeleted || b.isExpired(now)) continue;
-    final ky = b.currentPeriod(now);
-    if (now.isBefore(ky.from) || !now.isBefore(ky.to)) continue;
-    dangChay.add(b);
-  }
+  final dangChay = nganSachDangChay(nganSach, now);
   final tong = [
     for (final b in dangChay)
       if (b.categoryId == null) b
@@ -603,6 +600,44 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
   return (san: san, buoc: buoc);
 }
 
+/// Sàn, trần và bước trục tung cho biểu đồ **cột** — dải luôn chứa 0 (G53).
+///
+/// Khác [daiTrucDuBao] ở hai chỗ, cả hai đều cố ý:
+///
+/// - **Trục chứa 0.** Cột thì mắt so độ cao, nên trục không co khỏi 0 (người
+///   dùng chốt 2026-09-15 ở thác nước; bẫy 4.21 *"cột → từ 0"*). Số dư không
+///   âm thì sàn đúng bằng 0.
+/// - **Số khoảng thay đổi, 3 tới 5**, thay vì cố định 3. Dải vắt qua 0 thì cả
+///   hai đầu đều bị làm tròn ra ngoài; ép đúng 3 khoảng là phải nới bước lên
+///   gấp đôi — với số dư đầu kỳ −10.490.000 và đỉnh 4.145.000, ba khoảng cho
+///   trục −20M … 10M, dữ liệu chỉ còn nửa khung.
+///
+/// ⚠️ **Vì sao sàn và trần phải là BỘI của bước:** fl_chart vẽ nhãn ở hai biên
+/// **cộng** các bội của `interval` tính từ 0 (bẫy 4.18). Bản cũ của thác nước
+/// đặt `minY` bằng đáy thật (âm, lẻ) và bước `(dải × 1,12) / 3`, nên khi số dư
+/// đầu kỳ âm thì biên trên 5,9M đứng sát mốc 5,5M — hai nhãn in đè, thấy trên
+/// Realme 2026-09-29. Mọi mốc là bội thì chúng cách đều đúng một bước.
+({double san, double tran, double buoc}) daiTrucCot(double lo, double hi) {
+  final day = lo < 0 ? lo : 0.0;
+  final dinh = hi > 0 ? hi : 0.0;
+  final dai = dinh - day;
+  if (dai <= 0) return (san: 0, tran: 1, buoc: 1);
+
+  // Bước khởi điểm cho chừng năm khoảng; hai đầu làm tròn ra ngoài có thể đẩy
+  // lên sáu, bảy — nới sang số tròn kế tiếp cho tới khi còn ≤ 5. `× 1,1` rồi
+  // `buocTron` là đúng một nấc của họ 1 · 2 · 2,5 · 5. Trần 30 vòng: vòng lặp
+  // không trần trong hàm widget gọi là cách treo app không để lại log.
+  var buoc = buocTron(dai / 5);
+  var san = (day / buoc).floorToDouble() * buoc;
+  var tran = (dinh / buoc).ceilToDouble() * buoc;
+  for (var i = 0; i < 30 && (tran - san) / buoc > 5.5; i++) {
+    buoc = buocTron(buoc * 1.1);
+    san = (day / buoc).floorToDouble() * buoc;
+    tran = (dinh / buoc).ceilToDouble() * buoc;
+  }
+  return (san: san, tran: tran, buoc: buoc);
+}
+
 /// Số "tròn" nhỏ nhất **không nhỏ hơn** [x], lấy trong họ 1 · 2 · 2,5 · 5
 /// nhân luỹ thừa của 10.
 ///
@@ -657,3 +692,43 @@ List<DiemDuBao> chuoiDuBao({
           );
         }(),
     ];
+
+/// Một nhóm cam kết sau khi gộp các kỳ QUÁ HẠN của cùng một đối tượng.
+class CamKetGop {
+  final CamKet dau;
+  final int soKy;
+  final double tong;
+
+  /// `null` khi các kỳ trong nhóm khác số tiền — không có "mỗi kỳ" nào đúng.
+  final double? moiKy;
+
+  const CamKetGop({required this.dau, required this.soKy, required this.tong, required this.moiKy});
+}
+
+/// Gộp các kỳ QUÁ HẠN của cùng (tên, loại, ví) thành một nhóm — cho chỗ đọc
+/// thành CÂU CHỮ (tool dự báo của Trợ lý AI). `duBaoCua` dồn mọi kỳ quá hạn về
+/// hôm nay nên chúng trùng cả tên lẫn ngày; khối Dự báo của trang Phân tích vẫn
+/// hiện mỗi kỳ một dòng và KHÔNG đi qua hàm này.
+///
+/// ⚠️ Kỳ chưa quá hạn không gộp: mỗi kỳ tương lai có ngày đến hạn riêng.
+List<CamKetGop> gopCamKetQuaHan(List<CamKet> camKet) {
+  final nhom = <String, List<CamKet>>{};
+  final thuTu = <String>[];
+  for (var i = 0; i < camKet.length; i++) {
+    final c = camKet[i];
+    final khoa = c.quaHan ? 'qh|${c.loai.name}|${c.walletId}|${c.ten}' : 'rieng|$i';
+    if (!nhom.containsKey(khoa)) thuTu.add(khoa);
+    (nhom[khoa] ??= []).add(c);
+  }
+  return [
+    for (final k in thuTu)
+      CamKetGop(
+        dau: nhom[k]!.first,
+        soKy: nhom[k]!.length,
+        tong: nhom[k]!.fold(0, (s, c) => s + c.soTien),
+        moiKy: nhom[k]!.every((c) => c.soTien == nhom[k]!.first.soTien)
+            ? nhom[k]!.first.soTien
+            : null,
+      ),
+  ];
+}

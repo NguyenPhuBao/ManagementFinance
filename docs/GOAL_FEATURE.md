@@ -27,7 +27,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
-| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật |
+| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật. ⚠️ Từ 2026-09-29 (**G55**) biểu đồ này cắt **trên/dưới** (`FlClipData.vertical()`), không cắt trái/phải — `all()` cắt mất nửa chấm của khoản đầu và điểm cuối |
 
 ---
 
@@ -312,6 +312,7 @@ tốt: khoản trích tự động dùng **đúng tiền tố ghi chú** của k
 | Còn thiếu < số cài | Trích **đúng phần còn thiếu** | Nạp vượt bằng tay chỉ *cảnh báo* vì người dùng đang nhìn; ở đây họ vắng mặt |
 | Ví nguồn không đủ | **Bỏ kỳ**, giữ mốc, báo cảnh báo | Trích một phần làm một kỳ ra hai con số; giữ mốc thì kỳ ấy tự thử lại khi có tiền |
 | Bỏ app rất lâu | Trần **12 kỳ** mỗi lượt | Chu kỳ ngày, máy để lâu, là hàng nghìn kỳ — trích hết một lượt sẽ rút cạn ví ngay khi mở app. Phần dư không mất, nó ở lại lượt sau |
+| Ví nguồn không còn (kể cả **xoá mềm**) · trùng ví tích luỹ · lưu trữ | `khongChayDuoc`, không rút đồng nào | Một định nghĩa: `viNguonChoTrich` (2026-09-28, bẫy **4.8**) |
 
 ### 3.13 Mốc neo: người dùng chọn thời điểm cụ thể trong chu kỳ
 
@@ -1045,9 +1046,9 @@ chúc mừng người dùng vì đã bỏ dở.
 
 ---
 
-## 4. Bảy cái bẫy
+## 4. Tám cái bẫy
 
-> **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08.
+> **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08, 4.8 đóng 2026-09-28.
 > Cả hai được giữ lại: cái đầu vì bẫy bên dưới nó vẫn thật với mọi trang
 > **khác** đọc theo tài khoản, cái sau vì lý lẽ của bản sửa là thứ đáng đọc
 > trước khi ai đó viết một trang chi tiết mới.
@@ -1151,6 +1152,22 @@ Canh bằng `test/features/goal/presentation/pages/goal_page_cold_start_test.dar
 An toàn cho `addGoal` vì id là UUID mới. Nhưng gọi nó với id đã tồn tại sẽ **thay
 cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đúng ra dùng
 `upsertAll` → `insertAllOnConflictUpdate` (quy tắc 3).
+
+### 4.8 ~~Bộ trích tự động rút tiền từ ví nguồn **đã xoá mềm**~~ — ✅ ĐÃ SỬA 2026-09-28
+
+`WalletDao.getById` trả **cả hàng đã xoá mềm**, còn `GoalAutoDepositRunner` chỉ kiểm
+`viNguon == null` — dù chú thích của nó nói chính nhánh ấy lo ca "ví nguồn đã bị xoá".
+Màn Quản lý ví chỉ cho xoá ví số dư 0 và chưa có giao dịch, nên đường giao diện không
+chạm tới; nhưng ví bị xoá **qua đồng bộ** (máy khác, Admin-web) thì không đi qua chốt
+ấy, và còn tiền là bị rút đủ kỳ. Ca test `ví nguồn ĐÃ XOÁ MỀM mà còn số dư` đỏ với
+`LoaiTrich.trichDu` trước khi sửa.
+
+Luật *"ví nguồn có cho bộ trích chạy không"* — không còn (kể cả xoá mềm) · trùng ví
+tích luỹ · lưu trữ — nay là **một** hàm thuần `viNguonChoTrich` ở
+`goal_auto_deposit.dart`, ba nơi gọi: bộ trích, dự báo 30 ngày (vốn đã kiểm xoá mềm —
+hai bản chép tay lệch nhau đúng ở vế ấy) và tool mục tiêu của Trợ lý AI. Lỗi lộ ra khi
+viết nơi gọi thứ ba: test quét 14 cấm `walletId` trong `ai_edge/`, buộc luật phải về
+tầng domain. **Đừng viết lại vế nào của luật ở chỗ gọi.**
 
 ---
 

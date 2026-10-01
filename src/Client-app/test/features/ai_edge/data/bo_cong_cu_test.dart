@@ -6,61 +6,24 @@ library;
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/domain/hang_chi_tieu.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
-import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
-import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
-import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
-import 'package:flowmoney/features/analytics/domain/tong_tai_san.dart';
-import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-ThongKeKy _tk(Ky ky) {
-  final chuoi = chuoiTheoKy(const [], ky: ky);
-  return ThongKeKy(
-    ky: ky,
-    tong: const TongThuChi(thu: 9000000, chi: 1200000),
-    tongTruoc: const TongThuChi(thu: 0, chi: 0),
-    tongNamTruoc: const TongThuChi(thu: 0, chi: 0),
-    chiTheoDanhMuc: const [],
-    danhMuc: const [
-      DongDanhMuc(categoryId: 'c1', ten: 'Ăn uống', icon: null, mauHex: null, soTien: 800000, tiLeTongChi: 0),
-    ],
-    chuoi: chuoi,
-    latPhanLoai: const [],
-    danhMucTheoLat: const {},
-    chuoiDanhMuc: const {},
-    soLieu: const SoLieuNhanh(chiMoiNgay: 0, ngayChiNhieuNhat: null, chiNgayNhieuNhat: 0, khoanChiLonNhat: null),
-    theoVi: const [],
-    topChi: const [],
-    lichChiTieu: const {},
-    dongTien: null,
-    duBao: null,
-    taiSan: tongTaiSanCua(const [], const [], ky: ky, now: DateTime(2026, 9, 8)),
-    giaoDichDauTien: null,
-    chuoiVayNo: [for (final d in chuoi) DiemVayNo(ky: d.ky)],
-  );
-}
+import '../../category/presentation/category_test_fakes.dart';
 
-class _PhanTich implements AnalyticsRepository {
-  Ky? kyDaHoi;
-  @override
-  Stream<ThongKeKy> watchKy(int idaccount, {required Ky ky, DateTime? now}) {
-    kyDaHoi = ky;
-    return Stream.value(_tk(ky));
-  }
-  @override
-  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
-}
+
 
 BudgetView _ns(String id, String ten,
     {required double amount, required double spent, DateTime? start, bool lapLai = true}) {
@@ -75,6 +38,18 @@ BudgetView _ns(String id, String ten,
 }
 
 class _NganSach implements BudgetRepository {
+  // Cho chon=chua_dat: hai danh mục chi chưa có ngân sách (Cho vay, Giải trí) + Giáo dục đã có.
+  @override
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async => 25;
+  @override
+  Future<List<Category>> getExpenseCategories(int idaccount) async => [
+        makeCategory(id: 'c-gd', name: 'Giáo dục'),
+        makeCategory(id: 'c-cv', name: 'Cho vay'),
+        makeCategory(id: 'c-gt', name: 'Giải trí'),
+      ];
+  @override
+  Future<double?> suggestAmount(int idaccount, String categoryId, {DateTime? now}) async =>
+      const {'c-cv': 960000.0, 'c-gt': 40000.0, 'c-gd': 60000.0}[categoryId];
   @override
   Stream<List<BudgetView>> watchBudgets(int idaccount, {DateTime? now}) => Stream.value([
         _ns('gd', 'Giáo dục', amount: 50000, spent: 45000),
@@ -124,6 +99,26 @@ class _BaoCao implements BaoCaoRepository {
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
 
+class _PhanTich implements AnalyticsRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
+class _DanhMuc implements CategoryManagementRepository {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
+}
+
+/// Nguồn tái phân bổ giả: ghi lại `dangChay` đã hỏi, trả dữ liệu rỗng.
+class _TaiPhanBo implements TaiPhanBoNguon {
+  final daHoi = <List<String>>[];
+  @override
+  Future<DuLieuTaiPhanBo> nap(int idaccount, List<BudgetView> dangChay, DateTime now) async {
+    daHoi.add([for (final v in dangChay) v.displayName]);
+    return DuLieuTaiPhanBo.rong;
+  }
+}
+
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
@@ -137,33 +132,36 @@ class _HoaDon implements BillRepository {
 
 void main() {
   final now = DateTime(2026, 9, 22, 10);
-  late _PhanTich phanTich;
   late _HoaDon hoaDon;
+  late _TaiPhanBo taiPhanBo;
   late BoCongCu bo;
 
   setUp(() {
-    phanTich = _PhanTich();
     hoaDon = _HoaDon();
+    taiPhanBo = _TaiPhanBo();
     bo = BoCongCu.macDinh(
-      phanTich: phanTich,
       nganSach: _NganSach(),
       vi: _Vi(),
       hoaDon: hoaDon,
       mucTieu: _MucTieu(),
       giaoDich: _GiaoDich(),
       baoCao: _BaoCao(),
+      phanTich: _PhanTich(),
+      danhMuc: _DanhMuc(),
+      taiPhanBo: taiPhanBo,
     );
   });
 
-  test('⭐ bảy khai báo: tim_giao_dich đứng ĐẦU, tổng kết ngay sau (định tuyến, lần đo 9); mô tả nói khi nào gọi', () {
+  test('⭐ chín khai báo: truy_van_giao_dich đứng ĐẦU, tool mới nối vào CUỐI; mô tả nói khi nào gọi', () {
     // Trước lần đo 9 tim_giao_dich đứng CUỐI (bốn tool 4b rồi ba tool bước 2) và
     // mô hình chọn tool có một tham số đứng trước nó cho sáu câu có điều kiện.
     expect(bo.khaiBao.map((k) => k.ten).toList(), [
-      kTenCongCuGiaoDich, kTenCongCuTongKet, kTenCongCuNganSach, kTenCongCuHoaDon,
+      kTenCongCuTruyVan, kTenCongCuNganSach, kTenCongCuHoaDon,
       kTenCongCuVi, kTenCongCuMucTieu, kTenCongCuGoiYHanMuc,
+      kTenCongCuDuBao, kTenCongCuTongQuan, kTenCongCuDanhMuc,
     ]);
     for (final k in bo.khaiBao) {
-      expect(k.moTa, contains('Gọi khi'), reason: k.ten);
+      expect(k.moTa, anyOf(contains('Gọi khi'), contains('Gọi cho MỌI câu')), reason: k.ten);
       expect(k.thamSo['type'], 'object', reason: k.ten);
     }
     expect(bo.tenCacCongCu, bo.khaiBao.map((k) => k.ten).toList());
@@ -171,31 +169,20 @@ void main() {
 
   test('⭐ tool cạnh tranh chỉ đường cho nhau (cổng D lần 1: 7/20 câu gọi nhầm tool)', () {
     String moTa(String ten) => bo.khaiBao.firstWhere((k) => k.ten == ten).moTa;
-    expect(moTa(kTenCongCuTongKet), contains(kTenCongCuGiaoDich),
-        reason: 'C1, C7, C10, C13, C14, C18 gọi tong_ket_thu_chi_ky cho câu hỏi từng khoản');
-    expect(moTa(kTenCongCuGiaoDich), contains(kTenCongCuTongKet));
-    expect(moTa(kTenCongCuMucTieu), contains(kTenCongCuGiaoDich),
+    expect(moTa(kTenCongCuMucTieu), contains(kTenCongCuTruyVan),
         reason: 'C20: hỏi lần nạp gần nhất mà gọi danh_sach_muc_tieu');
     expect(moTa(kTenCongCuGoiYHanMuc), contains(kTenCongCuMucTieu),
         reason: 'B2: hỏi để dành cho mục tiêu mà gọi goi_y_han_muc');
   });
 
-  test('⭐ mô tả thu hẹp (lần đo 9): tổng kết CHỈ khi câu không có điều kiện; tim_giao_dich mở đầu bằng "Gọi khi"', () {
+  test('⭐ tool giao dịch mở đầu bằng "Gọi cho MỌI câu" — một tool cho cả liệt kê lẫn gộp (2026-09-27)', () {
     String moTa(String ten) => bo.khaiBao.firstWhere((k) => k.ten == ten).moTa;
-    expect(moTa(kTenCongCuTongKet), contains('KHÔNG có điều kiện'),
-        reason: 'C1 C7 C10 C13 C14 C18 gọi tổng kết bốn lần liền cho câu có điều kiện');
-    expect(moTa(kTenCongCuGiaoDich), startsWith('Gọi khi'),
+    expect(moTa(kTenCongCuTruyVan), startsWith('Gọi cho MỌI câu'),
         reason: 'câu đầu tiên của mô tả là thứ mô hình đọc trước');
-    expect(moTa(kTenCongCuGiaoDich), contains('BẤT KỲ điều kiện'));
+    expect(moTa(kTenCongCuTruyVan), contains('gop'));
+    expect(moTa(kTenCongCuTruyVan), contains('chon'));
   });
 
-  test('⭐ tool tổng kết mang tên nói rõ "tổng", không còn "chi_tieu" (đòn bẩy spec 2b mục 1.2 hàng 10, 2026-09-24)', () {
-    expect(kTenCongCuTongKet, 'tong_ket_thu_chi_ky');
-    expect(bo.khaiBao.map((k) => k.ten), contains('tong_ket_thu_chi_ky'));
-    expect(bo.khaiBao.map((k) => k.ten).any((t) => t.contains('chi_tieu')), isFalse,
-        reason: 'cổng D lần 2 và 3: 9 câu "tiêu gì / chi những gì" đều gọi tool có chữ "chi_tieu" trong tên');
-    expect(cauDangTraCuu(kTenCongCuTongKet), 'Đang tổng kết thu chi…');
-  });
 
   // Bẫy 4.39: `maxTokens` 4096 là trần TỔNG — khai báo tool, kết quả tool và câu
   // trả lời cùng chia. Số dưới là độ dài đã chạy qua các phiên dài nhất trên
@@ -204,9 +191,43 @@ void main() {
   // FAILED_PRECONDITION; đo lại 2026-09-25 00:40 sau lát định tuyến lần đo 9 — mô tả
   // thu hẹp + lời hệ thống 1.318 ký tự: 5491, S1 3 · S2 2 · S3 2, 0 FAILED_PRECONDITION).
   // Dài hơn → đo lại S1 / S2 / S3 trên máy rồi mới nâng số này.
-  const kTranToolsJsonDaDo = 5491;
-  test('⭐ tools_json của bảy tool không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
-    final n = toolsJsonCua(bo.khaiBao).length;
+  // Đo lại 2026-09-27 đêm sau `chon=chua_dat` của tool ngân sách (Realme, 6 tool, lời
+  // hệ thống 2293 ký tự, ba câu E15 / chưa đặt / đã đặt, 0 FAILED_PRECONDITION): 6031.
+  // Mốc 5938 là cùng tối sau `chon` mục tiêu; 5633 trước đó.
+  // Đo lại 2026-09-28 sau lát 1 mở rộng tool (tu_ngay / den_ngay / so_voi + tool
+  // du_bao_dong_tien): 6960, lời hệ thống 2742 ký tự. ⚠️ Đo trên ONEPLUS 13R (GPU),
+  // không phải Realme — người dùng chốt "có máy nào thì đo máy đó"; bảy câu, mỗi câu
+  // một lời gọi, 0 FAILED_PRECONDITION. Trần `maxTokens` 4096 là hằng của client nên
+  // không đổi theo máy, nhưng phiên dài nhất (ba lời gọi) CHƯA được đo ở độ dài này.
+  // Đo lại 2026-09-28 chiều sau lát 3 (hoá đơn `ky`, mục tiêu trích tự động, ngân sách `can_doi`):
+  // 6980 trên REALME (CPU) ở buổi cổng F — 72 câu, 25 phiên sáu tool, có phiên BA lời gọi (F12),
+  // 0 FAILED_PRECONDITION.
+  const kTranToolsJsonDaDo = 6980;
+  group('khaiBaoCho — thứ MÔ HÌNH nhìn thấy (mục 9.34: khai cả chín tool là vỡ trần)', () {
+    test('⭐ câu không định tuyến được → sáu tool cũ, KHÔNG có ba tool chỉ đi qua định tuyến', () {
+      expect(bo.khaiBaoCho(null).map((k) => k.ten).toList(), [
+        kTenCongCuTruyVan, kTenCongCuNganSach, kTenCongCuHoaDon,
+        kTenCongCuVi, kTenCongCuMucTieu, kTenCongCuGoiYHanMuc,
+      ]);
+    });
+    test('⭐ câu đã định tuyến → đúng MỘT tool đích', () {
+      for (final ten in kCongCuChiQuaDinhTuyen) {
+        expect(bo.khaiBaoCho(ten).map((k) => k.ten).toList(), [ten]);
+      }
+    });
+    test('tên đích không có trong bộ → như không định tuyến', () {
+      expect(bo.khaiBaoCho('khong_co'), hasLength(6));
+    });
+    test('chay vẫn tìm được MỌI tool — phép thu hẹp chỉ áp cho khai báo', () {
+      expect(bo.tenCacCongCu, hasLength(9));
+    });
+  });
+
+  test('⭐ tools_json của phiên DÀI NHẤT không dài hơn con số đã đo trên máy (bẫy 4.39)', () {
+    final n = [
+      toolsJsonCua(bo.khaiBaoCho(null)).length,
+      for (final ten in kCongCuChiQuaDinhTuyen) toolsJsonCua(bo.khaiBaoCho(ten)).length,
+    ].reduce((a, b) => a > b ? a : b);
     expect(n, lessThanOrEqualTo(kTranToolsJsonDaDo),
         reason: 'tools_json nay $n ký tự, vượt con số đã đo trên Realme. Đo lại phiên '
             'dài nhất (S1 / S2 / S3, không được có FAILED_PRECONDITION) rồi mới nâng.');
@@ -240,30 +261,35 @@ void main() {
     expect(kq.tongHop[1].chuoi, '1');
   });
 
-  test('chi tiêu: mã kỳ → đúng Ky cho watchKy; chữ kỳ về cho mô hình', () async {
-    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'thang_truoc'}, idaccount: 10, now: now))!;
-    expect(phanTich.kyDaHoi!.from, DateTime(2026, 8, 1));
-    expect(kq.chuThem, {'ky': 'tháng trước'});
-    expect(kq.hang.single.ten, 'Ăn uống');
+  test('⭐ ngân sách chon=chua_dat (câu người dùng 2026-09-27): hàng Cho vay, Giải trí — không phải "không có"', () async {
+    final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
+        cauHoi: 'cac danh muc chua dat ngan sach'))!;
+    expect(kq.hang.map((h) => h.ten).toList(), ['Cho vay', 'Giải trí']);
+    expect(kq.json['Số danh mục chưa đặt'], '2');
+    expect(kq.json['Số ngân sách'], '1', reason: 'chỉ Giáo dục đang chạy');
+    expect(kq.boLoc, ['chưa đặt ngân sách']);
   });
 
-  test('chi tiêu: mã lạ → từ chối mà KHÔNG hỏi repository', () async {
-    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'hom_kia'}, idaccount: 10, now: now))!;
-    expect(kq.loi, contains('hom_kia'));
-    expect(phanTich.kyDaHoi, isNull, reason: 'không đoán kỳ rồi đi đọc dữ liệu của kỳ đoán');
+  test('⭐ ngân sách chon=can_doi (F15): nguồn tái phân bổ nhận ĐÚNG ngân sách đang chạy; không thâm hụt → kết luận nói thẳng', () async {
+    final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
+        cauHoi: 'nen chuyen bot ngan sach nao sang ngan sach nao'))!;
+    expect(taiPhanBo.daHoi, [['Giáo dục']], reason: 'ngân sách "Cũ" đã hết hạn phải bị lọc trước');
+    // H3 cổng F lần 2: không kế hoạch là một CÂU TRẢ LỜI, không phải lượt rỗng theo bộ lọc.
+    expect(kq.rongTheoBoLoc, isFalse);
+    expect(kq.chiMauCau, isTrue);
+    expect(kq.chuThem['ket_qua'], 'không ngân sách nào cần cân đối',
+        reason: 'Giáo dục 45.000 / 50.000 chưa thâm hụt đủ ngưỡng');
+    expect(kq.json['Số ngân sách'], '1');
   });
 
-  test('⭐ tong_ket_thu_chi_ky giữ TÁM mã: moi_luc là mã riêng của tim_giao_dich — nhận thì từ chối, không đọc repository', () async {
-    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuTongKet);
-    // ⚠️ Không so với `kMaKy.keys` — bản sai đưa `moi_luc` vào `kMaKy` đổi cả hai
-    // vế cùng lúc, phép so tự đúng (lượt thi công bước 2b đo được). Đòi kết quả
-    // độc lập: đúng tám mã, không có `moi_luc`.
-    final enumKy = ((khai.thamSo['properties'] as Map)['ky'] as Map)['enum'] as List;
-    expect(enumKy, hasLength(8));
-    expect(enumKy, isNot(contains(kMaKyMoiLuc)),
-        reason: 'khai moi_luc cho tong_ket_thu_chi_ky là mời mô hình gọi một mã sẽ bị từ chối');
-    final kq = (await bo.chay(kTenCongCuTongKet, {'ky': 'moi_luc'}, idaccount: 10, now: now))!;
-    expect(kq.loi, isNotNull);
-    expect(phanTich.kyDaHoi, isNull);
+  test('ngân sách: khai báo chon (bốn giá trị) và câu "chua dung den mot nua" → duoi_nua qua bộ chỉnh', () async {
+    final khai = bo.khaiBao.firstWhere((k) => k.ten == kTenCongCuNganSach);
+    expect(((khai.thamSo['properties'] as Map)['chon'] as Map)['enum'], kChon);
+    final kq = (await bo.chay(kTenCongCuNganSach, {}, idaccount: 10, now: now,
+        cauHoi: 'ngan sach nao toi chua dung den mot nua'))!;
+    expect(kq.boLoc, ['đã dùng dưới một nửa']);
+    expect(kq.hang, isEmpty, reason: 'Giáo dục 90 % không khớp');
+    expect(kq.rongTheoBoLoc, isTrue);
+    expect(kq.json['Số ngân sách khớp'], '0');
   });
 }

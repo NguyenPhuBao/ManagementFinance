@@ -78,7 +78,8 @@ class FakeCategoryRepository implements CategoryManagementRepository {
       : _trees = trees ?? {'chi': tree ?? _emptyTree},
         _selectable = selectable,
         _selectableLoader = selectableLoader,
-        _keywords = keywords;
+        // Bản sao ĐỔI ĐƯỢC: saveKeywords ghi vào đây để lần đọc sau thấy từ khoá mới (đề xuất từ khoá, 2026-09-30).
+        _keywords = Map.of(keywords);
 
   static final _emptyTree = CategoryTree(
     groups: const [],
@@ -92,6 +93,9 @@ class FakeCategoryRepository implements CategoryManagementRepository {
       _selectableLoader;
   final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
+
+  /// MỌI lần `saveKeywords`, theo thứ tự — ca *Chuyển* từ khoá canh thứ tự bỏ-cũ-trước.
+  final List<(String, List<String>)> luotLuuTuKhoa = [];
   CategoryChildDraft? savedChild;
   CategoryGroupDraft? savedGroup;
 
@@ -135,6 +139,8 @@ class FakeCategoryRepository implements CategoryManagementRepository {
     required Iterable<String> keywords,
   }) async {
     savedKeywords = keywords.toList();
+    luotLuuTuKhoa.add((categoryId, keywords.toList()));
+    _keywords[categoryId] = keywords.toList();
   }
 
   @override

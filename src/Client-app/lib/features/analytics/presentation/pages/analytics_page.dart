@@ -28,6 +28,7 @@ import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thac_nuoc.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../../domain/tong_tai_san.dart';
+import '../../domain/uoc_tinh_chi_tuy_y.dart';
 import '../bloc/analytics_cubit.dart';
 import '../widgets/chon_pham_vi_sheet.dart';
 
@@ -125,7 +126,10 @@ class _NoiDung extends StatelessWidget {
             // biết 30 ngày tới có gì phải trả.
             if (thongKe.duBao != null) ...[
               const SizedBox(height: 24),
-              _KhoiDuBao(duBao: thongKe.duBao),
+              _KhoiDuBao(
+                duBao: thongKe.duBao,
+                uocTinh: thongKe.uocTinhChiTuyY,
+              ),
             ],
           ];
         }
@@ -149,7 +153,10 @@ class _NoiDung extends StatelessWidget {
           // còn lại" của kỳ — hiện tại rồi tới tương lai, mắt đọc liền mạch.
           // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
           if (thongKe.duBao != null) ...[
-            _KhoiDuBao(duBao: thongKe.duBao),
+            _KhoiDuBao(
+              duBao: thongKe.duBao,
+              uocTinh: thongKe.uocTinhChiTuyY,
+            ),
             const SizedBox(height: 24),
           ],
           _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
@@ -599,12 +606,17 @@ class _TheConLai extends StatelessWidget {
     // tiền đi vay và thu nợ — chứ không phải `tong.thu`; phép tính ở tầng thuần
     // và dùng chung với khối "Dòng tiền tự do". Chuỗi rỗng thì bỏ qua: không có
     // gì để suy ra phần vay/nợ của kỳ, và đoán bừa là bịa một con số.
-    final double? tyLe = tk.chuoiVayNo.isEmpty
+    final double? thuNhap = tk.chuoiVayNo.isEmpty
         ? null
-        : tyLeTietKiem(
-            thuNhap: thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last),
-            chi: tk.tong.chi,
-          );
+        : thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last);
+    final double? tyLe = thuNhap == null
+        ? null
+        : tyLeTietKiem(thuNhap: thuNhap, chi: tk.tong.chi);
+    // G56: chi từ 2 lần thu nhập trở lên thì nói "gấp N lần" — "Để dành
+    // -26360% thu nhập" (tuần thu nhập gần 0, Realme) đúng mà không đọc được.
+    final gapLan = thuNhap == null
+        ? null
+        : soLanChiGapThuNhap(thuNhap: thuNhap, chi: tk.tong.chi);
     // Số ÂM hiện là số âm, không kẹp về 0: người dùng mở trang này chính là
     // để biết tháng này đã âm.
     final chu = conLai < 0 ? '-${_dong(-conLai)}' : _dong(conLai);
@@ -645,7 +657,9 @@ class _TheConLai extends StatelessWidget {
           if (tyLe != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Để dành ${(tyLe * 100).round()}% thu nhập',
+              gapLan != null
+                  ? 'Chi gấp ${chuoiSoLan(gapLan)} lần thu nhập'
+                  : 'Để dành ${(tyLe * 100).round()}% thu nhập',
               style: TextStyle(
                 fontSize: 12,
                 color: tyLe < 0 ? const Color(0xFFFFB3AE) : Colors.white70,
@@ -895,7 +909,10 @@ class _KhoiXuHuong extends StatelessWidget {
                 // fl_chart là `FlClipData.none()` và đường tràn khỏi thẻ
                 // (bẫy 4.17 `ANALYTICS_FEATURE.md`, chỉ lộ trên máy thật).
                 // Đường danh mục có dải hẹp hơn nên dễ vấp hơn bản hai đường.
-                clipData: const FlClipData.all(),
+                // Chỉ cắt TRÊN/DƯỚI (G55): cắt trái/phải là mất nửa chấm của
+                // kỳ đầu và kỳ cuối, mà trục ngang không thể thoát khung vì
+                // `minX`/`maxX` là đúng chỉ số đầu/cuối.
+                clipData: const FlClipData.vertical(),
                 lineBarsData: theoThuChi
                     ? [
                         _duong(
@@ -1210,16 +1227,15 @@ class _KhoiDongTienTuDo extends StatelessWidget {
       if (d.tuDo < day) day = d.tuDo;
     }
     final coAm = day < 0;
-    // Sáu kỳ phẳng bằng 0 thì `dinh` lẫn `day` đều bằng 0 và mọi phép chia
-    // thang đo sau đây sẽ hỏng — đặt trần 1.
-    final tran = dinh > 0 ? dinh * 1.15 : (coAm ? 0.0 : 1.0);
-    final san = coAm ? day * 1.15 : 0.0;
-    final buoc = (tran - san) / 3;
-    // ⚠️ Trần phải là ĐÚNG `san + 3 * buoc`, không phải con số đã đem chia:
-    // fl_chart vẽ nhãn cho cả mốc theo `interval` lẫn biên, và sai số dấu phẩy
-    // động đủ để `rutGon` trả hai chuỗi khác nhau cho cùng một vị trí — hai
-    // nhãn in đè khít lên nhau (G39, bẫy 4.18 `ANALYTICS_FEATURE.md`).
-    final maxY = san + buoc * 3;
+    // Sàn và trần là BỘI của bước tròn — phép ở `daiTrucCot` (đường có vạch 0
+    // nên trục chứa 0 là đúng; sáu kỳ phẳng bằng 0 thì hàm tự trả dải 0 … 1).
+    // ⚠️ Bản cũ đặt sàn = đáy × 1,15: kỳ âm NHỎ (trả nợ vượt thu nhập một
+    // chút) cho sàn âm lẻ, và fl_chart vẽ nhãn ở biên CỘNG các bội của
+    // `interval` tính từ 0 — "-115K" in đè "0" (cùng cơ chế G53, bẫy 4.18).
+    // Nới ×1,05 trước khi làm tròn để chấm ở cực trị không nằm đúng mép khung,
+    // nơi `FlClipData.all()` cắt mất nửa chấm.
+    final (san: san, tran: maxY, buoc: buoc) =
+        daiTrucCot(day * 1.05, dinh * 1.05);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1379,8 +1395,9 @@ class _KhoiDongTienTuDo extends StatelessWidget {
                   ),
                 ),
                 // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
-                // fl_chart là `FlClipData.none()` (bẫy 4.17).
-                clipData: const FlClipData.all(),
+                // fl_chart là `FlClipData.none()` (bẫy 4.17). Chỉ cắt
+                // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
+                clipData: const FlClipData.vertical(),
                 lineBarsData: [
                   LineChartBarData(
                     spots: [
@@ -1460,7 +1477,12 @@ class _KhoiDongTienTuDo extends StatelessWidget {
 /// cả khối"; lớp thứ nhất là `if` ở `_than`. Cùng cách thác nước.
 class _KhoiDuBao extends StatefulWidget {
   final DuBaoDongTien? duBao;
-  const _KhoiDuBao({required this.duBao});
+
+  /// Tầng 3 (B4) — `null` là **im hẳn**. `required` dù nullable: khối được
+  /// dựng ở HAI chỗ (kỳ rỗng và kỳ thường), quên truyền ở một chỗ là dòng ước
+  /// tính biến mất đúng ở nhánh ấy, im lặng.
+  final UocTinhChiTuyY? uocTinh;
+  const _KhoiDuBao({required this.duBao, required this.uocTinh});
 
   @override
   State<_KhoiDuBao> createState() => _KhoiDuBaoState();
@@ -1504,7 +1526,7 @@ class _KhoiDuBaoState extends State<_KhoiDuBao> {
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
-          _BaConSoDuBao(d: d),
+          _BaConSoDuBao(d: d, uocTinh: widget.uocTinh),
           for (final v in d.viThieu) ...[
             const SizedBox(height: 12),
             _DongViThieu(v: v),
@@ -1538,7 +1560,8 @@ class _KhoiDuBaoState extends State<_KhoiDuBao> {
 
 class _BaConSoDuBao extends StatelessWidget {
   final DuBaoDongTien d;
-  const _BaConSoDuBao({required this.d});
+  final UocTinhChiTuyY? uocTinh;
+  const _BaConSoDuBao({required this.d, required this.uocTinh});
 
   @override
   Widget build(BuildContext context) {
@@ -1575,6 +1598,26 @@ class _BaConSoDuBao extends StatelessWidget {
           _DongSo(
             nhan: 'Nếu tiêu đúng ngân sách',
             giaTri: _dong(d.conTieuDuocTheoNganSach),
+          ),
+        ],
+        if (uocTinh case final u?) ...[
+          const SizedBox(height: 4),
+          // B4 tầng 3 — một dòng chữ PHỤ, không phải con số chính: đây là ước
+          // tính, không được mượn độ tin của hai con số trên nó (quyết định
+          // 16/09, spec B4 §1). Màn Stitch `7aa215e9…`: 12 px thường, xám,
+          // không biểu tượng, không hộp.
+          //
+          // "Còn khoảng" trừ từ `conTieuDuocTheoNganSach` — tầng 3 chỉ tính
+          // phần chưa tầng nào tính, nên nó đứng SAU cam kết và ngân sách;
+          // không có ngân sách thì số ấy bằng `conTieuDuoc`. Hai số được phép
+          // âm và KHÔNG kẹp — cùng luật với "Còn tiêu được".
+          Text(
+            'Nếu tiêu như thói quen (${u.soTuan} tuần gần nhất): chi thêm '
+            'khoảng ${_dong(u.thap)} – ${_dong(u.cao)}, còn khoảng '
+            '${_dong(d.conTieuDuocTheoNganSach - u.cao)} – '
+            '${_dong(d.conTieuDuocTheoNganSach - u.thap)}.',
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ],
@@ -2123,6 +2166,16 @@ class _KhoiThacNuoc extends StatelessWidget {
   static const int _soNhom = 5;
   static const double _rongCot = 15;
 
+  /// Nhãn trục hoành xoay −35° (G54): chữ dài hơn chừng này thì cắt "…".
+  /// 72dp đủ cho "Chưa phân loại" ở cỡ 9 (64dp cắt còn "Chưa phân l…" trên
+  /// Realme).
+  static const double _rongNhanTrucHoanh = 72;
+
+  /// Chiều cao dành cho nhãn nghiêng: `72 × sin 35° + cao dòng × cos 35°`
+  /// cộng đệm trên 6dp. Vùng vẽ giữ nguyên vì khung biểu đồ cao thêm đúng
+  /// phần chênh so với 40dp cũ.
+  static const double _caoNhanTrucHoanh = 58;
+
   @override
   Widget build(BuildContext context) {
     final dt = tk.dongTien;
@@ -2162,11 +2215,10 @@ class _KhoiThacNuoc extends StatelessWidget {
       lo = math.min(lo, math.min(b.tu, b.den));
       hi = math.max(hi, math.max(b.tu, b.den));
     }
-    // Cùng cách chống nhãn trục tung in đè của G39 (bẫy 4.18): tính `buocTruc`
-    // trước rồi đặt trần bằng bội của nó.
-    final dai = hi - lo;
-    final buocTruc = (dai <= 0 ? 1.0 : dai * 1.12) / 3;
-    final maxY = lo + buocTruc * 3;
+    // Sàn và trần là BỘI của bước tròn — phép và lý lẽ ở `daiTrucCot`. Bản cũ
+    // đặt `minY = lo`: số dư đầu kỳ âm thì biên trên lệch mọi mốc và hai nhãn
+    // in đè (G53).
+    final (san: minY, tran: maxY, buoc: buocTruc) = daiTrucCot(lo, hi);
 
     return Container(
       width: double.infinity,
@@ -2188,11 +2240,12 @@ class _KhoiThacNuoc extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 200,
+            // 200 cũ cộng phần nhãn nghiêng cao hơn nhãn thẳng (58 − 40).
+            height: 218,
             child: BarChart(
               BarChartData(
                 maxY: maxY,
-                minY: lo,
+                minY: minY,
                 alignment: BarChartAlignment.spaceAround,
                 // ⚠️ `BarChartData` **không có** `clipData` — bẫy 4.17 nói về
                 // `LineChartData`. Ở đây chống tràn bằng cách khác: `minY`/
@@ -2239,31 +2292,51 @@ class _KhoiThacNuoc extends StatelessWidget {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 1,
-                      reservedSize: 40,
+                      reservedSize: _caoNhanTrucHoanh,
                       getTitlesWidget: (v, meta) {
                         final i = v.round();
                         if (i < 0 || i >= buoc.length) {
                           return const SizedBox.shrink();
                         }
-                        // ⚠️ Chín cột trên 411dp: vùng vẽ ngang còn chừng
-                        // 325dp sau khi trừ trục tung và đệm thẻ, tức mỗi cột
-                        // được ~36dp. Ô nhãn **phải hẹp hơn** con số ấy, nếu
-                        // không hai nhãn cạnh nhau dính thành một chuỗi không
-                        // đọc được ("ChưaDi chuyểnMua sắDanh mục…") — thấy
-                        // trên máy ảo, và `flutter test` không bắt được vì
-                        // `find.text` so `data` chứ không so thứ vẽ ra
-                        // (bẫy 4.4). Cùng họ G39.
+                        // Nhãn XOAY −35°, một dòng — đúng màn Stitch
+                        // `52450ac5…` (G54). Ô thẳng đứng 32dp hai dòng cũ
+                        // vừa ở 411dp (~36dp mỗi cột) nhưng dính nhau ở 360dp
+                        // (~27dp): "chuyểnphân l…" trên Realme. Nhãn nghiêng
+                        // thì hai nhãn cạnh nhau cách nhau `bước cột × sin 35°`
+                        // theo phương vuông góc (~15dp ở 360dp) — rộng hơn
+                        // chiều cao chữ, nên cột hẹp mấy cũng không chồng.
+                        //
+                        // ⚠️ ĐẦU PHẢI của chữ neo đúng tâm cột rồi xoay quanh
+                        // góc trên-phải (như `text-anchor="end"` của Stitch):
+                        // xoay quanh tâm thì nửa phải của nhãn dài chồi lên
+                        // vùng cột. Ô rộng 0 đặt ở tâm cột, `OverflowBox`
+                        // canh phải cho chữ tràn sang trái.
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: SizedBox(
-                            width: 32,
-                            child: Text(
-                              buoc[i].nhan,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 8, color: AppColors.textSecondary),
+                            width: 0,
+                            height: _caoNhanTrucHoanh - 6,
+                            child: OverflowBox(
+                              alignment: Alignment.topRight,
+                              minWidth: 0,
+                              maxWidth: _rongNhanTrucHoanh,
+                              // Chữ cao đúng một dòng — không nhận chiều cao
+                              // chặt của ô cha.
+                              minHeight: 0,
+                              child: Transform.rotate(
+                                angle: -35 * math.pi / 180,
+                                alignment: Alignment.topRight,
+                                child: Text(
+                                  buoc[i].nhan,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -3855,8 +3928,9 @@ class _BieuDoTaiSan extends StatelessWidget {
             ],
           ),
         ),
-        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17).
-        clipData: const FlClipData.all(),
+        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17). Chỉ cắt
+        // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
+        clipData: const FlClipData.vertical(),
         lineBarsData: [
           LineChartBarData(
             spots: [

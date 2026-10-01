@@ -78,6 +78,38 @@ double thuNhapCua({
 double? tyLeTietKiem({required double thuNhap, required double chi}) =>
     thuNhap <= 0 ? null : (thuNhap - chi) / thuNhap;
 
+/// Từ chừng này lần thu nhập trở lên, chi vượt được nói bằng **"gấp N lần"**
+/// thay cho phần trăm (G56).
+const double kNguongGapLan = 2;
+
+/// Chi gấp bao nhiêu lần thu nhập — **đã làm tròn đúng như sẽ in**: dưới 10 lần
+/// một chữ số lẻ, từ 10 lần số nguyên. `null` khi thu nhập không dương (cùng
+/// luật [tyLeTietKiem]) hoặc chi chưa tới [kNguongGapLan] lần — khi ấy nơi gọi
+/// **giữ phần trăm** như cũ.
+///
+/// Vì sao (G56, Realme 2026-09-29): tuần có thu nhập 20.000 đ mà chi 5.292.000 đ
+/// cho *"chi vượt thu nhập 26360,0%"* — đúng mà không ai đọc được. Người dùng
+/// chốt: dưới 2 lần giữ phần trăm, từ 2 lần nói *"chi gấp 265 lần thu nhập"*.
+/// Một hàm cho ba chỗ — thẻ *Số dư còn lại*, khối Nhận xét trang Phân tích, tool
+/// tổng quan của Trợ lý AI — để ba chỗ không nói ba kiểu.
+///
+/// ⚠️ Số trả về là số **đã làm tròn**: gói số của Trợ lý AI mang đúng con số
+/// này, và `kiemSo` so câu của mô hình với nó — làm tròn ở chỗ khác là hai con
+/// số lệch nhau.
+double? soLanChiGapThuNhap({required double thuNhap, required double chi}) {
+  if (thuNhap <= 0 || chi < kNguongGapLan * thuNhap) return null;
+  final n = chi / thuNhap;
+  final motLe = (n * 10).round() / 10;
+  return motLe < 10 ? motLe : n.roundToDouble();
+}
+
+/// Chuỗi hiển thị của [soLanChiGapThuNhap]: phẩy thập phân, bỏ đuôi `,0`
+/// (*"gấp 2 lần"*, không *"gấp 2,0 lần"*), từ 10 là số nguyên.
+String chuoiSoLan(double n) {
+  if (n == n.roundToDouble()) return n.toInt().toString();
+  return n.toStringAsFixed(1).replaceAll('.', ',');
+}
+
 /// Ghép [chuoi] và [chuoiVayNo] **theo chỉ số**, giữ nguyên thứ tự cũ nhất
 /// trước của cả hai.
 ///

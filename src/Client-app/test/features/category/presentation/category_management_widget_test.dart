@@ -452,7 +452,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
+    await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), 'Thanh toán GrabFood');
     // Ô ghi chú có debounce 300ms (xem `_doTreGoiY`): phải chờ qua mốc đó thì
     // việc tra cứu gợi ý mới bắt đầu.
     await tester.pump(const Duration(milliseconds: 350));
@@ -495,7 +495,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
+    await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), 'Thanh toán GrabFood');
     // Chờ qua debounce để việc tra cứu THẬT SỰ bắt đầu — đó mới là tình huống
     // test này canh: một kết quả về muộn sau khi người dùng đã đổi loại giao dịch.
     await tester.pump(const Duration(milliseconds: 350));
@@ -539,7 +539,7 @@ void main() {
     // Mô phỏng người dùng gõ từng ký tự. `TextEditingController` phát tín hiệu
     // ở MỖI ký tự, nên trước bản vá này mỗi ký tự là một lượt đọc CSDL đầy đủ.
     for (final chu in ['T', 'Th', 'Tha', 'Than', 'Thanh']) {
-      await tester.enterText(find.byType(TextField), chu);
+      await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), chu);
       await tester.pump(const Duration(milliseconds: 40));
     }
     expect(

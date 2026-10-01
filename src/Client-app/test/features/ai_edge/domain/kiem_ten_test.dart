@@ -51,6 +51,50 @@ void main() {
     );
   });
 
+  test('⭐ bẫy 4.50 (2026-09-27, câu người dùng tự hỏi): "danh mục đã đặt ngân sách bao gồm: …" qua', () {
+    final nganSach = _Gia('tra_cuu', [
+      soTien('Còn lại', 5000, ten: 'Giáo dục'),
+      soTien('Còn lại', 95000, ten: 'Di chuyển'),
+      soTien('Còn lại', 450000, ten: 'Ăn uống'),
+      soTien('Còn lại', 790000, ten: 'Mua sắm'),
+    ]);
+    expect(kiemTen('Các danh mục đã đặt ngân sách bao gồm: Giáo dục, Di chuyển, Ăn uống, Mua sắm.', [nganSach]), isTrue,
+        reason: 'bị chặn thật: cụm sau "ngân sách" là "bao gồm" — từ chức năng, không phải tên');
+    expect(kiemTen('Ngân sách bao nhiêu thì đủ?', [nganSach]), isTrue);
+    expect(kiemTen('Tổng cộng bốn ngân sách các danh mục hiện tại.', [nganSach]), isTrue);
+  });
+
+  test('⭐ lát 3 (2026-09-28): "hoá đơn tự trả / dự kiến / cố định" là chữ của tool hoá đơn, không phải tên', () {
+    expect(kiemTen('Có 1 hoá đơn tự trả là Kiem thu hoa don.', [tongKet]), isTrue,
+        reason: 'bị chặn thật ở ca đơn vị của hangHoaDon: cụm sau "hoá đơn" là "tự trả"');
+    expect(kiemTen('Tháng tới có hai hoá đơn dự kiến.', [tongKet]), isTrue);
+    expect(kiemTen('Các hoá đơn cố định mỗi tháng.', [tongKet]), isTrue);
+    expect(kiemTen('Hoá đơn tự trả là Internet.', [tongKet]), isTrue,
+        reason: 'giới hạn cố ý: sau "là" không còn là cụm tên của từ loại — sai theo chiều an toàn '
+            'đã có từ trước, không do lát này');
+    expect(kiemTen('Hoá đơn Internet tự trả.', [tongKet]), isFalse,
+        reason: 'tên bịa đứng TRƯỚC chữ chức năng vẫn bị chặn');
+  });
+
+  test('lát 3 Task 10: "ví nguồn" là chữ của tool mục tiêu, không phải tên ví', () {
+    expect(kiemTen('Ví nguồn của MuaXe chỉ còn ít tiền.', [mucTieu]), isTrue);
+    expect(kiemTen('Có ví nguồn không đủ tiền để trích.', [mucTieu]), isTrue);
+  });
+
+  test('⭐ Task 10 lộ ra (có từ trước): cụm MỞ ĐẦU bằng chữ số là giá trị, không phải tên', () {
+    expect(kiemTen('MuaXe đã tích 1.101.000 đ trên mục tiêu 2.000.000 đ.', [mucTieu]), isTrue,
+        reason: 'mẫu câu "…, Mục tiêu 2.000.000 đ, …" của chính tool mục tiêu từng bị chặn: '
+            'cụm sau "mục tiêu" là "2000000 đ"');
+    expect(kiemTen('Ví 500.000 đ là ví lớn nhất.', [tongKet]), isTrue);
+    expect(kiemTen('Hoá đơn Kiem thu hoa don 2026-09-04 đã thanh toán.', [tongKet]), isTrue,
+        reason: 'chữ số GIỮA tên vẫn thuộc tên');
+    expect(kiemTen('Mục tiêu Du lịch 2027 đang chậm.', [mucTieu]), isFalse,
+        reason: 'tên bịa có chữ số ở cuối vẫn bị chặn');
+    expect(kiemTen('Mục tiêu Mua 2 xe đang chậm.', [mucTieu]), isFalse,
+        reason: 'chữ số GIỮA cụm không được cắt cụm: cắt ở "2" thì cụm còn "mua" — '
+            'chứa trong "muaxe", tên bịa lọt');
+  });
+
   test('tên bịa đứng một mình cũng bị chặn', () {
     expect(kiemTen('Mục tiêu Du lịch của bạn đang chậm.', [mucTieu]), isFalse);
     expect(kiemTen('Ví Ngân hàng đang âm.', [tongKet]), isFalse);

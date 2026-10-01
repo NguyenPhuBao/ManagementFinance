@@ -1,9 +1,11 @@
 # Chức năng Hoá đơn & Dịch vụ (Bill)
 
 > **Dự án:** FlowMoney (ManagementFinance)
-> **Cập nhật:** 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
+> **Cập nhật:** 2026-09-29 tối (**G57** — nút tạo hoá đơn lên thanh tiêu đề theo Stitch, mục **6.9**) · trước đó 2026-09-29 (mục **6.9** mới — **gợi ý tạo hoá đơn từ khoản lặp**, B2, schema **v27**; trang Hoá đơn nay **cả trang cuộn, hàng tab ghim** — bẫy 4 ở 7c; `/bills/add` nhận query điền sẵn, form `pop(true)` khi đã gửi) · trước đó 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
 > ở 6.6, bảng "còn mở", mục 9) · bản trước 2026-09-11 · schema Drift toàn
-> dự án nay là **v21** — ân hạn hoá đơn 2026-09-12 tối thêm cột
+> dự án nay là **v27** (2026-09-29; v27 là bảng phản hồi gợi ý hoá đơn của B2,
+> v22–v26 không đụng bảng `Bills`; câu cũ ở đây ghi **v21** — mốc của
+> 2026-09-12) — ân hạn hoá đơn 2026-09-12 tối thêm cột
 > `Bills.periodEnd` (mục 2b); bỏ qua kỳ **không đổi schema**
 > (v20 thu loại ví về ba, không đụng gì tới hoá đơn; cột `Bills.anchorDay` của
 > hoá đơn vào ở **v18**; v19 là cột `priority` của
@@ -860,6 +862,88 @@ chi hợp lệ nhưng số dư ví lại là con số của server, vốn **khô
 thay đổi số dư cục bộ thua một lần xung đột đều biến mất như vậy, không riêng hoá
 đơn. Xem `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
+### 6.9. Gợi ý tạo hoá đơn từ khoản lặp (B2) — 2026-09-29
+
+Spec `docs/superpowers/specs/2026-09-28-b2-khoan-lap-goi-y-hoa-don-design.md`
+(người dùng duyệt), màn Stitch `e8b460b4a12f4e96a4a40e2fa078cc32`. Người dùng ghi
+tay cùng một khoản chi mỗi tháng / tuần mà chưa có hoá đơn; trang Hoá đơn có thẻ
+**"Có vẻ là khoản lặp"** giữa khối Nhận xét và hàng tab. **Máy phát hiện, người
+dùng bấm xác nhận** (bất biến ④): **Tạo** mở form điền sẵn, lưu hay không là việc
+của họ. Không phát thông báo, không có trên Trang chủ (người dùng chốt).
+
+**Nhận diện — hàm thuần `transaction/domain/khoan_lap.dart`.** Khoá nhóm
+`khoaNhomCua(t)` = *(ghi chú chuẩn hoá, danh mục)*: bỏ dấu, chữ thường, bỏ từ có
+chữ số và chữ *tháng* / *t* đứng ngay trước nó — *"Tiền nhà T9"*, *"tiền nhà tháng
+10"*, *"Tien nha 11/2026"* về một nhóm `tien nha`. Bỏ dấu được phép vì đây là
+**gợi ý** (quy tắc 7 chỉ cấm cho luật trùng tên). Loại: đã xoá, không phải `chi`,
+không qua `khoanVaoThongKe`, có `billId` / `goalId`, ngày ở tương lai, ghi chú rỗng
+sau chuẩn hoá. `timKhoanLap` đọc cửa sổ **120 ngày**; một nhóm là khoản lặp khi có
+chuỗi **≥ 3** lần tính **lùi từ lần gần nhất**, mọi khoảng cách cùng một chu kỳ
+(tháng 25–34 ngày, xét trước; tuần 6–8 ngày), mọi số tiền lệch ≤ 10 % trung vị,
+lần gần nhất cách `now` ≤ 45 ngày (tháng) / 10 ngày (tuần). Dòng cùng ngày gộp
+làm một lần. **Ngày gốc** (tháng) = ngày của lần gần nhất; rơi đúng ngày cuối
+tháng thì lấy ngày lớn nhất của chuỗi (*31/1 → 28/2 → 31/3* ra 31) — `anchorDay`
+tự kẹp theo từng tháng (mục 5).
+
+**Chọn — hàm thuần `bill/domain/de_xuat_hoa_don.dart`.** `chonDeXuatHoaDon` loại
+nhóm trùng tên (cùng phép chuẩn hoá) với một hoá đơn **đang sống** (chưa xoá, và
+`conPhaiTra || isRecurrence`), và nhóm bị phản hồi ẩn; xếp `soLan` giảm dần rồi
+lần gần nhất mới nhất, lấy **3**; không còn gì thì **`null`** — trang không dựng
+thẻ, luật ẩn không nằm ở widget.
+
+**Phản hồi — bảng cục bộ `GoiYHoaDonPhanHois` (schema v27).** `bo_qua` ẩn nhóm tới
+khi có **≥ 3 giao dịch mới** của nhóm sau lần bỏ qua **cuối** (cùng luật B1);
+`da_tao` ẩn **vĩnh viễn** — cần vì người dùng có thể đổi tên trong form, khi ấy
+phép so tên không bắt được nữa. Không cột đồng bộ; test quét 15 canh; hai hàm dọn
+tài khoản xoá cả bảng này. ⚠️ *(2026-09-29, B4)* Bảng có **người đọc thứ hai**: tầng
+3 khối Dự báo trang Phân tích (`AnalyticsRepositoryImpl`, qua
+`GoiYHoaDonDao.watchAll`) coi mọi giao dịch có `khoaNhomCua` nằm trong tập `da_tao` là
+**lịch sử của một hoá đơn** và bỏ khỏi ước tính chi tuỳ ý — đổi nghĩa `da_tao` hay
+đổi khoá nhóm là đổi cả con số ấy (mục 3.27 `ANALYTICS_FEATURE.md`).
+
+**Điền sẵn — `bill/domain/dien_san_hoa_don.dart`.** `queryTuKhoanLap` / 
+`dienSanTuQuery` dịch qua lại `KhoanLap` ↔ query `name · amount · cycle · anchor ·
+start · category · wallet` của route `/bills/add`; giá trị hỏng thì bỏ đúng trường
+ấy. `BillAddPage({dienSan})` chỉ nhận ở đường **tạo mới**. ⚠️ **Ngày bắt đầu = lần
+gần nhất**, để kỳ đầu kết thúc đúng ở **lần lặp kế tiếp** — cộng thêm một chu kỳ
+là người dùng lỡ lần nhắc đầu tiên. Ô tiền điền **chữ thô** (ô ấy đọc bằng
+`double.tryParse`). Ví / danh mục điền sẵn chỉ thắng khi còn trong danh sách vừa
+nạp. Lưu thì **`pop(true)`**; thẻ chỉ ghi `da_tao` khi nhận đúng `true`.
+
+**Thẻ — `bill/presentation/widgets/the_khoan_lap.dart`**, tự nạp qua
+`DeXuatHoaDonNguon` (`bill/data/`, DI) — `BillBloc` cố ý không đổi. Biểu tượng /
+màu từ bảng tra `getBangTraTen` (giữ hàng mặc định toàn cục, G41). Dòng phụ **hai
+dòng**: *"khoảng 50.000 đ"* / *"mỗi tuần · 3 lần"* — một dòng thì ở 360 dp bị cắt
+mất chu kỳ vì hai nút Tạo + Bỏ qua (đo Realme; font test rộng gấp đôi nên widget
+test không thấy).
+
+⚠️ **Trang Hoá đơn nay CẢ TRANG CUỘN, hàng tab ghim** (`NestedScrollView`, người
+dùng chốt). Trước đây phần trên hàng tab là `Column` cố định còn danh sách nằm
+trong `Expanded`; đo trước khi đổi, thẻ ba dòng làm trang **tràn 219 px** (có hoá
+đơn) / **44 px** (rỗng) ở 360 × 640. Xem bẫy **4** ở mục 7c.
+
+🔄 **2026-09-29 tối (G57):** nút rộng cố định *"Tạo hóa đơn lặp lại mới"* ở đáy trang
+(`Positioned` trong `Stack`, đè lên vùng cuộn) nằm đúng trên hàng tab ở 360 dp khi có
+thẻ này. Nay nút tạo là **+** ở góc phải **thanh tiêu đề** — đúng màn Stitch trên,
+vốn không có nút đáy; đệm đáy danh sách 100 → 24 dp.
+
+**Nghiệm thu Realme 2026-09-29** (tài khoản 10, bản debug, người dùng duyệt nhập
+và **giữ** dữ liệu thử): ba khoản *"Tien nha T7/T8/T9"* 3.000.000 đ (5/7, 5/8,
+5/9, Nhà cửa) + ba khoản *"Gui xe"* 50.000 đ (15/9, 22/9, 29/9, Di chuyển). Thẻ
+hiện hai dòng, *Gui xe* trước (cùng 3 lần, gần hơn); **Tạo** ở *Tien nha* → form
+đủ tên, tiền, *Hàng tháng*, bắt đầu 05/09, kỳ đầu kết thúc 05/10, ví Tiền mặt,
+danh mục Nhà cửa → lưu → hoá đơn `anchor_day` 5 và hàng `da_tao`, dòng biến mất;
+**Bỏ qua** *Gui xe* → hàng `bo_qua`, cả thẻ biến mất; hàng tab ghim dưới app bar
+khi cuộn. Lượt ấy bắt lỗi dòng phụ bị cắt (đã sửa) và một lỗi **có từ trước** —
+số tiền trên thẻ hoá đơn bị cắt ở 360 dp (**G51**, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ đóng cùng ngày: `Flexible(số
+tiền)` và `Spacer` cùng `flex: 1` từng chia đôi chỗ trống; nay [số tiền · bút · thùng rác] nằm trong một `Expanded`
+(ca canh `bill_page_so_tien_test.dart`).
+
+**Giới hạn nói trước:** tài khoản thật (giao dịch đầu 02/09/2026) sẽ **im** với
+khoản lặp tháng tới khoảng tháng 11/2026 — đúng hành vi; người không ghi chú
+không bao giờ được gợi ý; hai khoản lặp khác nhau cùng ghi chú, cùng danh mục gộp
+làm một và thường phá luật số tiền nên im.
+
 ---
 
 ## 7. Hai thứ ĐỪNG khôi phục
@@ -955,7 +1039,9 @@ khi bản vá chạy trên máy ảo. **Mỗi chiều vẫn giữ điều kiện
 ghi khi khác) — bỏ điều kiện là vòng lặp đẩy vô tận; test "chạy hai lần liên
 tiếp" canh đúng điều đó. Hoá đơn đã trả không bị lôi về `Pending`.
 
-### Ba cái bẫy của `bill_page.dart`
+### Bốn cái bẫy của `bill_page.dart`
+
+*(Ba bẫy đầu có từ 06/09; bẫy 4 thêm 2026-09-29 cùng B2.)*
 
 1. **`BillError` và `BillOperationSuccess` là trạng thái THOÁNG QUA**, chỉ để
    bắn snackbar. `builder` dựng lại theo chúng là **trắng cả trang** (rơi
@@ -972,6 +1058,17 @@ tiếp" canh đúng điều đó. Hoá đơn đã trả không bị lôi về `P
    định (`idaccount = 0`) nhưng bỏ bớt hàng trùng tên, nên không dùng được làm
    bảng tra id → hàng một cách tổng quát. Ở đây chấp nhận được vì hoá đơn trỏ
    vào hàng còn sống; muốn tra đầy đủ thì `getNamesInUse` mới không khử.
+   *(Từ trước 2026-09-29 bảng tra của trang đã chuyển sang `getBangTraTen`.)*
+4. **Cả trang cuộn qua `NestedScrollView`, hàng tab ghim (2026-09-29, B2).**
+   Phần đầu (thẻ tổng quan, Nhận xét, thẻ khoản lặp) là một `SliverToBoxAdapter`;
+   hàng tab là `SliverPersistentHeader(pinned: true)` bọc trong
+   **`SliverOverlapAbsorber`**, và mỗi tab là `CustomScrollView` mở đầu bằng
+   **`SliverOverlapInjector`** (lấy handle qua một `Builder` nằm dưới
+   `NestedScrollView`). Thiếu cặp absorber / injector thì hàng tab ghim vẽ đè lên
+   hoá đơn đầu danh sách — có ca test đo vị trí sau khi cuộn hết phần đầu.
+   **Đừng quay về `Column` + `Expanded`**: mỗi khối thêm vào đầu trang lấy bớt
+   chiều cao của danh sách, và ở 360 × 640 thẻ khoản lặp ba dòng từng làm trang
+   tràn 219 px. Muốn thêm khối trên hàng tab thì thêm vào `SliverToBoxAdapter`.
 
 Thẻ hoá đơn có hai chỗ từng tràn ở 411dp trên hàng số tiền (`Flexible` +
 ellipsis cho số tiền, `FittedBox` cho nút Thanh toán). `BillStatusHeader` tách
@@ -999,7 +1096,7 @@ chip bị đẩy ra ngoài — Chrome 1280px không bao giờ thấy.
 | **Ngày trả trên tab, ngày trả tuỳ chọn, ghi chú lần trả, trang chi tiết** | ✅ Xong 2026-09-06 tối (mục 6.6) |
 | **Bỏ qua kỳ này (`Skipped`)** | ✅ **Xong 2026-09-12** (mục 6.7). Không đổi schema, không thêm trường đồng bộ. Đã kiểm đầu-cuối trên máy ảo + PostgreSQL |
 | **Dữ liệu: 2 hoá đơn tài khoản 10 trỏ danh mục đã xoá mềm** | ✅ Đã sửa 2026-09-06 **qua form Sửa trên máy ảo** (chọn lại "Chi khác" mặc định `dd9d7e15…`), để thay đổi đi đúng đường đồng bộ thay vì UPDATE thẳng PostgreSQL. Đã kiểm lại bằng truy vấn đọc: cả hai trỏ vào hàng `Is_default = true`, `Delete_at IS NULL` |
-| **Rủi ro chưa tái hiện** | Form `context.pop()` ngay sau `add(event)`; `BillBloc` là factory nên bị `close()` khi pop. Chưa dựng được kịch bản lỗi, nhưng là chỗ đáng nghi nếu có báo cáo "lưu xong mà không thấy gì" |
+| **Rủi ro chưa tái hiện** | Form `context.pop()` (từ 2026-09-29 là `pop(true)` ở form Thêm — B2, mục 6.9) ngay sau `add(event)`; `BillBloc` là factory nên bị `close()` khi pop. Chưa dựng được kịch bản lỗi, nhưng là chỗ đáng nghi nếu có báo cáo "lưu xong mà không thấy gì" |
 
 ---
 
@@ -1057,6 +1154,15 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/bill_payment_conflict_resolver_test.dart` | Resolver lọc đúng `entity` + `code`; hai bản ghi thoát hàng đợi (khoản chi `synced`, **hoá đơn thì KHÔNG**); hoá đơn phải ở trạng thái **đã trả**, không được về `Pending`; thông báo sinh đúng một lần và không nêu số tiền |
 | `test/features/bill/bill_conflict_go_dung_khoan_chi_test.dart` | Dựng `BillRepositoryImpl` **thật** vì fake không thấy được lỗi: gỡ **đúng** khoản mang `localId` bị từ chối bất kể thứ tự hàng, không hoàn tiền hai lần khi phát lại, hoàn vào **đúng ví**, và vẫn gỡ được khi pull đã kéo hoá đơn về `Pending` |
 | `test/features/bill/bill_conflict_resolver_wiring_test.dart` | Resolver được **bắt đầu nghe** chứ không chỉ được dựng; `pushResultStream` chịu được hai người nghe |
+| `test/features/transaction/domain/khoan_lap_test.dart` | *(B2)* Chuẩn hoá ghi chú (*"Tiền nhà T9"* · *"tháng 10"* · *"11/2026"* → một nhóm); ba lần tháng / tuần; khoảng cách phá chuỗi; lệch 11 % vs 9 %; 45 vs 46 ngày; bảy vế loại trừ kèm đối chứng; gộp cùng ngày; ví hay dùng + hoà; ngày gốc qua tháng 2 năm thường, năm nhuận, tháng 30 ngày |
+| `test/features/bill/domain/de_xuat_hoa_don_test.dart` | *(B2)* Loại nhóm trùng tên hoá đơn **đang sống** (đã xoá / trả hết không lặp thì không loại); `bo_qua` + 2 / + 3 khoản sau mốc; mốc là lần bỏ qua **cuối**; `da_tao` vĩnh viễn; trần 3 và thứ tự; rỗng → `null` |
+| `test/features/bill/domain/dien_san_hoa_don_test.dart` | *(B2)* Khứ hồi `queryTuKhoanLap` ↔ `dienSanTuQuery`; query hỏng → đúng trường ấy `null` |
+| `test/features/bill/presentation/pages/bill_add_route_dien_san_test.dart` | *(B2)* Query tới được form qua **`AppRouter.createRouter` thật** — route đọc nhầm chỗ thì mọi ca khác vẫn xanh |
+| `test/features/bill/data/de_xuat_hoa_don_nguon_test.dart` | *(B2)* Nguồn đọc đúng tài khoản, cửa sổ 120 ngày; `boQua` / `daTao` ghi hàng; `bangDanhMuc` gồm danh mục mặc định toàn cục (G41); lỗi → `null` |
+| `test/features/bill/presentation/the_khoan_lap_test.dart` | *(B2)* Thẻ ẩn không chiếm chỗ; chu kỳ là một `Text` **riêng**; Bỏ qua / Tạo gọi đúng khoá, `da_tao` chỉ khi form trả `true`; 360 × 640 không tràn — dựng bằng `AppTheme.lightTheme` (bẫy 4.11) |
+| `test/features/bill/presentation/pages/bill_page_khoan_lap_test.dart` | *(B2)* Thẻ đứng giữa Nhận xét và hàng tab; 360 × 640 có / không hoá đơn không tràn (bố cục cũ tràn 219 / 44 px); cuộn hết phần đầu → hàng tab ghim dưới app bar, hoá đơn đầu **không** khuất dưới nó |
+| `test/features/bill/presentation/pages/bill_page_so_tien_test.dart` | *(G51)* Số tiền trên thẻ không bị cắt khi còn chỗ (đo ở 500 / 600 vì font test rộng gấp đôi); bút đứng cách **chữ** số tiền 12 px (đo bề rộng chữ, không đo hộp); nút sát mép phải; số 13 chữ số ở 411 vẫn ellipsis, không tràn |
+| `test/core/database/schema_v27_test.dart` | *(B2)* Bảng phản hồi v27 không cột đồng bộ; đọc theo tài khoản; hai hàm purge; migration v26 → v27 giữ nhật ký thông báo |
 | `test/core/sync/sync_push_result_truoc_pull_test.dart` | *(ngoài thư mục bill)* `SyncEngine` phát kết quả đẩy **TRƯỚC** bước Pull — nếu không, phép hoàn tiền cộng vào số dư đã bị server đè lên |
 
 ✅ **Từ 2026-09-21 `test/` không còn bị `.gitignore` chặn** — tệp test mới hiện

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
+import '../notification/prefs/notification_prefs.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -14,8 +15,10 @@ import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
+import '../../features/transaction/domain/dien_san_bien_dong.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
+import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
@@ -36,6 +39,7 @@ import '../di/injection_container.dart';
 import '../database/app_database.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
+import '../../features/bill/domain/dien_san_hoa_don.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
 import '../../features/bill/presentation/pages/bill_detail_page.dart';
@@ -168,6 +172,18 @@ class AppRouter {
                   builder: (_, state) => TransactionPage(
                     initialWalletId: state.uri.queryParameters['wallet'],
                   ),
+                  routes: [
+                    // C1 — màn Gắn danh mục nhanh. Lên navigator GỐC (che thanh tab), cùng khuôn
+                    // `/analytics/export`; `push` từ thẻ trên chính tab này. `idaccount` null thì trang tự
+                    // từ chối — không rơi về tài khoản admin (quy tắc 2).
+                    GoRoute(
+                      path: 'gan-danh-muc',
+                      parentNavigatorKey: _rootNavigatorKey,
+                      builder: (ctx, __) => GanDanhMucPage(
+                        idaccount: currentAccountIdOrNull(ctx),
+                      ),
+                    ),
+                  ],
                 ),
               ]),
               StatefulShellBranch(routes: [
@@ -205,6 +221,9 @@ class AppRouter {
               // `extra` là `String` 'chi' | 'thu' | 'transfer' → chiều đặt
               // sẵn cho ba nút tắt ở Trang chủ (UX 2026-09-19, C4).
               huongBanDau: state.extra is String ? state.extra as String : null,
+              // D1: `?…&khoa=bienDong:…` — mở từ một hàng biến động số dư (deeplink của
+              // `NhapBienDong`). Query không phải của nó → `null`, form mở như thường.
+              bienDong: dienSanBienDongTuQuery(state.uri.queryParameters),
             ),
             routes: [
               GoRoute(
@@ -307,9 +326,11 @@ class AppRouter {
           ),
           GoRoute(
             path: '/bills/add',
-            builder: (_, __) => BlocProvider<BillBloc>(
+            // Query điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — hỏng thì bỏ
+            // đúng trường ấy, không có thì form trống như cũ.
+            builder: (_, s) => BlocProvider<BillBloc>(
               create: (_) => sl<BillBloc>(),
-              child: const BillAddPage(),
+              child: BillAddPage(dienSan: dienSanTuQuery(s.uri.queryParameters)),
             ),
           ),
           GoRoute(
@@ -342,8 +363,12 @@ class AppRouter {
             path: '/notifications',
             // Route đọc idaccount rồi truyền xuống; trang không hỏi AuthBloc —
             // cùng mẫu với NotificationSettingsPage ngay bên dưới.
-            builder: (ctx, __) => NotificationCenterPage(
+            builder: (ctx, state) => NotificationCenterPage(
               idaccount: currentAccountIdOrNull(ctx),
+              // D1: `?nhom=bienDong` (thẻ Sổ giao dịch, cú chạm tóm tắt). Tên lạ → không lọc.
+              nhomBanDau: NotificationGroup.values
+                  .where((n) => n.name == state.uri.queryParameters['nhom'])
+                  .firstOrNull,
             ),
           ),
           // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi

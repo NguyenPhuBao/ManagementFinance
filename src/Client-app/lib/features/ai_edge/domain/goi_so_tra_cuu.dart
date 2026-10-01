@@ -43,6 +43,8 @@ import 'dart:convert';
 
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'kiem_ky.dart';
+import 'ma_ky.dart';
 import 'nhan_xet.dart';
 import 'tham_so_mo_hinh.dart';
 
@@ -71,6 +73,9 @@ class GoiSoTraCuu extends GoiSo {
   /// bao giờ gỡ: lượt rộng hơn sau đó trả lời một câu hỏi khác (ca "abc").
   final List<KetQuaCongCu> _luotRong = [];
 
+  /// Có lượt đòi MẪU CÂU (`KetQuaCongCu.chiMauCau`) — không bao giờ gỡ.
+  bool coLuotChiMauCau = false;
+
   /// Loại câu "phải nói thêm" theo thứ tự lần đầu xảy ra — cho [cauNoiThem].
   final List<_NoiThem> _thuTuNoiThem = [];
 
@@ -82,6 +87,25 @@ class GoiSoTraCuu extends GoiSo {
   @override
   List<SoLieu> get soLieu =>
       [...tongHop, ...soLieuBoLoc, for (final h in hang) ...h.soLieu];
+
+  /// G5 (b) cổng F: kỳ theo LƯỢT chứa [s] — khoá `ky` nếu là chữ kỳ tương đối,
+  /// cộng chữ kỳ trong các khoá `so_sanh_*` (E13 *"so với tháng trước"*). Mọi
+  /// thời gian, kỳ tự do, kỳ tới → `null` (không xét).
+  @override
+  Set<String>? kyCua(SoLieu s) {
+    for (final kq in _luot) {
+      final cua = [...kq.tongHop, ...kq.soLieuBoLoc, for (final h in kq.hang) ...h.soLieu];
+      if (!cua.contains(s)) continue;
+      final ky = kq.chuThem['ky'];
+      if (ky == null || !laChuKyTuongDoi(ky)) return null;
+      return {
+        ky,
+        for (final e in kq.chuThem.entries)
+          if (e.key.startsWith('so_sanh_')) ...chuKyTrong(e.value),
+      };
+    }
+    return null;
+  }
 
   /// Có ít nhất một lượt THÀNH CÔNG (kể cả 0 hàng).
   bool get daTraCuu => tenCongCuDaChay.isNotEmpty;
@@ -98,7 +122,7 @@ class GoiSoTraCuu extends GoiSo {
   /// Cổng hiện chữ của vòng lặp (spec 2b mục 2.3; 2c mục 2.3): có lượt thành
   /// công, không còn lời từ chối chưa gỡ, và không có lượt rỗng theo bộ lọc.
   bool get choHienChuMoHinh =>
-      daTraCuu && _tuChoi.isEmpty && _luotRong.isEmpty;
+      daTraCuu && _tuChoi.isEmpty && _luotRong.isEmpty && !coLuotChiMauCau;
 
   /// Câu trung thực về phần chưa tra được — `null` khi không còn lời từ chối
   /// chưa gỡ. L2b nối nó sau các câu đã hiện.
@@ -152,6 +176,7 @@ class GoiSoTraCuu extends GoiSo {
     tongHop.addAll(kq.tongHop);
     soLieuBoLoc.addAll(kq.soLieuBoLoc);
     _luot.add(kq);
+    if (kq.chiMauCau) coLuotChiMauCau = true;
     if (kq.rongTheoBoLoc) {
       _luotRong.add(kq);
       if (!_thuTuNoiThem.contains(_NoiThem.rong)) {
@@ -210,7 +235,7 @@ class GoiSoTraCuu extends GoiSo {
       final noiDung =
           '${jsonEncode(Map.of(kq.json)..remove('ky'))}|${kq.boLoc.join('|')}';
       final n = nhom.putIfAbsent(noiDung, () => (ky: <String>[], kq: kq));
-      final ky = kq.chuThem['ky'];
+      final ky = _chuKyInDuoc(kq);
       if (ky != null && !n.ky.contains(ky)) n.ky.add(ky);
     }
     final cau = [
@@ -233,20 +258,44 @@ class GoiSoTraCuu extends GoiSo {
     final tienTo = _hoaDau(_tienTo(ky, kq.boLoc));
     if (kq.rongTheoBoLoc) {
       return tienTo.isEmpty
-          ? 'Không có giao dịch nào khớp.'
-          : '$tienTo — không có giao dịch nào khớp.';
+          ? 'Không có ${kq.doiTuongRong} nào khớp.'
+          : '$tienTo — không có ${kq.doiTuongRong} nào khớp.';
     }
     final ve = [
       for (final h in kq.hang)
-        '${h.ten}${h.trangThai == null ? '' : ' ${h.trangThai}'}: '
-            '${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}',
+        // Hàng KHÔNG số liệu (danh mục) chỉ có tên + trạng thái, không dấu hai chấm.
+        '${h.ten}${h.trangThai == null ? '' : ' ${h.trangThai}'}'
+            '${h.soLieu.isEmpty ? '' : ': ${h.soLieu.map((s) => '${s.nhan} ${s.chuoi}').join(', ')}'}',
       for (final s in kq.tongHop) '${s.nhan}: ${s.chuoi}',
     ];
-    return '${tienTo.isEmpty ? '' : '$tienTo — '}${ve.join('; ')}.';
+    final ketLuan = _ketLuan(kq);
+    return '${tienTo.isEmpty ? '' : '$tienTo — '}${ve.join('; ')}'
+        '${ketLuan.isEmpty ? '' : ' — $ketLuan'}.';
   }
 
+  /// Chữ KẾT LUẬN tool đã rút sẵn (hướng so sánh, tình trạng dự báo) — mẫu câu
+  /// nói ra, vì các con số một mình không trả lời câu *"nhiều hơn hay ít hơn"*,
+  /// *"có đủ không"* (mục 9.33, L1: mẫu câu in *"Tổng chi tháng trước: 0 đ"* mà
+  /// không nói *"không có dữ liệu tháng trước"*). Chỉ khoá kết luận — `ky`,
+  /// `sap_xep` là chữ của bộ lọc, tiền tố đã nêu.
+  static String _ketLuan(KetQuaCongCu kq) => [
+        for (final e in kq.chuThem.entries)
+          if (e.key.startsWith('so_sanh_') ||
+              e.key == 'tinh_trang' ||
+              e.key == 'ket_qua')
+            e.value,
+      ].join(', ');
+
   static List<String> _kyCua(KetQuaCongCu kq) =>
-      [if (kq.chuThem['ky'] != null) kq.chuThem['ky']!];
+      [if (_chuKyInDuoc(kq) != null) _chuKyInDuoc(kq)!];
+
+  /// Chữ kỳ cho tiền tố mẫu câu. Kỳ tự do (`tuy_chon`) mang chữ giữ chỗ không
+  /// số ở `chuThem` — chữ THẬT của nó (có số) đứng đầu `boLoc`, nên tiền tố
+  /// không in chữ giữ chỗ.
+  static String? _chuKyInDuoc(KetQuaCongCu kq) {
+    final ky = kq.chuThem['ky'];
+    return ky == kChuKyTuyChon ? null : ky;
+  }
 
   /// Tiền tố viết thường: kỳ rồi từng điều kiện lọc, nối bằng `, `.
   static String _tienTo(List<String> ky, List<String> boLoc) =>

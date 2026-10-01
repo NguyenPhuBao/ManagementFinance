@@ -10,6 +10,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/database/daos/notification_dao.dart';
+import 'package:flowmoney/core/notification/notification_rules.dart';
 
 void main() {
   late AppDatabase db;
@@ -270,6 +272,44 @@ void main() {
               'người đăng nhập trước hiện trên máy người sau.');
       expect((await db.notificationDao.getAll(accountId)).length, 1,
           reason: 'Và không được xoá nhầm của người đang đăng nhập.');
+    });
+  });
+  group('D1 — xoaCung hàng biến động số dư', () {
+    test('⭐ watchDemBienDong đếm hàng loại 20 CHƯA gạt của đúng tài khoản, đổi theo khi xoá', () async {
+      final dem = db.notificationDao.watchDemBienDong(accountId);
+      expect(await dem.first, 0);
+      await db.notificationDao.insertIfAbsent(mau(id: 'a', kind: 'bienDongSoDu', dedupeKey: 'bienDong:A'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'b', kind: 'bienDongSoDu', dedupeKey: 'bienDong:B'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'c', kind: 'bienDongSoDu', dedupeKey: 'bienDong:C'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'khac', idaccount: 9, kind: 'bienDongSoDu', dedupeKey: 'bienDong:A'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'hd', dedupeKey: 'billDue:x'));
+      await db.notificationDao.dismiss('c');
+      expect(await db.notificationDao.watchDemBienDong(accountId).first, 2,
+          reason: 'loại khác, tài khoản khác, hàng đã gạt không tính');
+      await db.notificationDao.xoaCung(accountId, 'bienDong:A');
+      expect(await db.notificationDao.watchDemBienDong(accountId).first, 1);
+    });
+
+    test('hằng loại của DAO khớp enum (DAO không import tầng thông báo)', () {
+      expect(kKindBienDongSoDu, NotificationKind.bienDongSoDu.name);
+    });
+
+    test('⭐ xoá CỨNG đúng hàng loại 20 của đúng tài khoản; loại khác cùng khoá, tài khoản khác giữ nguyên', () async {
+      await db.notificationDao.insertIfAbsent(mau(id: 'bd', kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'khac', idaccount: 9, kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      // Khoá trùng với một loại khác — không có thật, nhưng hàm không được tin vào khoá một mình.
+      await db.notificationDao.insertIfAbsent(mau(id: 'loaiKhac', kind: 'billDueSoon', dedupeKey: 'bienDong:M2'));
+
+      expect(await db.notificationDao.xoaCung(accountId, 'bienDong:M1'), 1);
+      expect(await db.notificationDao.xoaCung(accountId, 'bienDong:M2'), 0,
+          reason: 'ngoại lệ xoá cứng chỉ dành cho loại 20 — mọi loại khác xoá MỀM để giữ khoá chặn trùng');
+
+      final con = [
+        ...await db.notificationDao.getAll(accountId),
+        ...await db.notificationDao.getAll(9),
+      ].map((h) => h.id).toSet();
+      expect(con, {'khac', 'loaiKhac'},
+          reason: 'tin đã xử lý không còn lý do giữ nội dung ngân hàng (spec D1 §3.3) — xoá mềm là giữ nguyên nội dung');
     });
   });
 }

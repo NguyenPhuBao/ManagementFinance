@@ -8,6 +8,8 @@
 /// vẽ, chỉ là vẽ số khác.
 library;
 
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +73,9 @@ void main() {
     String? danhMuc = 'c_an',
     int idaccount = 1,
     String vi = 'w1',
+    String? billId,
+    String? goalId,
+    String? ghiChu,
   }) {
     return db.transactionDao.insert(TransactionsCompanion.insert(
       id: id,
@@ -81,6 +86,9 @@ void main() {
       type: loai,
       date: ngay,
       updatedAt: now,
+      billId: Value(billId),
+      goalId: Value(goalId),
+      note: ghiChu == null ? const Value.absent() : Value(ghiChu),
     ));
   }
 
@@ -929,6 +937,288 @@ void main() {
     test('giaoDichDauTien null khi chưa có giao dịch nào', () async {
       final tk = await lanDau();
       expect(tk.giaoDichDauTien, isNull);
+    });
+  });
+  // ── B3 — chi bất thường theo danh mục (2026-09-29) ─────────────────────────
+  group('KhoanThuChi.laKhoanCamKet (B4)', () {
+    test('khoản gắn hoá đơn hoặc mục tiêu là khoản cam kết; khoản trơn thì không', () async {
+      await giaoDich(id: 'hd', ngay: DateTime(2026, 9, 3), soTien: 100000, billId: 'b1');
+      await giaoDich(id: 'mt', ngay: DateTime(2026, 9, 4), soTien: 200000, goalId: 'g1');
+      await giaoDich(id: 'tron', ngay: DateTime(2026, 9, 5), soTien: 300000);
+      final txs = await db.select(db.transactions).get();
+      final cats = await db.select(db.categories).get();
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(txs, cats, now: now);
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {100000.0: true, 200000.0: true, 300000.0: false},
+          reason: 'lịch sử trả hoá đơn / nạp mục tiêu đã nằm ở tầng 1 khối Dự báo — '
+              'ước tính chi tuỳ ý phải bỏ nó ra (spec B4 §2)');
+    });
+
+    test('⚠️ khoản trả hoá đơn DẠNG CŨ (tiền tố ghi chú, không bill_id) là khoản cam kết',
+        () async {
+      // Hàng ghi trước 2026-09-12 — cột nối `billId` chưa đi qua đồng bộ, nên
+      // mối nối duy nhất còn lại là tiền tố `kGhiChuTraHoaDon`.
+      await giaoDich(id: 'cu', ngay: DateTime(2026, 9, 3), soTien: 45000,
+          ghiChu: 'Thanh toán hóa đơn: Kiem');
+      await giaoDich(id: 'giua', ngay: DateTime(2026, 9, 4), soTien: 70000,
+          ghiChu: 'Ghi nhớ Thanh toán hóa đơn: Kiem');
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(
+          await db.select(db.transactions).get(),
+          await db.select(db.categories).get(),
+          now: now);
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {45000.0: true, 70000.0: false},
+          reason: 'chỉ tiền tố ở ĐẦU ghi chú là dấu hiệu trả hoá đơn');
+    });
+
+    test('⚠️ khoản thuộc nhóm lặp ĐÃ TẠO hoá đơn (khoá da_tao của B2) là khoản cam kết',
+        () async {
+      await giaoDich(id: 'nha8', ngay: DateTime(2026, 8, 5), soTien: 3000000,
+          danhMuc: 'c_nha', ghiChu: 'Tien nha T8');
+      await giaoDich(id: 'nhaKhac', ngay: DateTime(2026, 8, 6), soTien: 3100000,
+          danhMuc: 'c_an', ghiChu: 'Tien nha T8');
+      await giaoDich(id: 'khac', ngay: DateTime(2026, 8, 7), soTien: 3200000,
+          danhMuc: 'c_nha', ghiChu: 'Sua may giat');
+      final khoan = AnalyticsRepositoryImpl.dungKhoan(
+          await db.select(db.transactions).get(),
+          await db.select(db.categories).get(),
+          now: now,
+          khoaLapDaTao: {'tien nha|c_nha'});
+      final theoTien = {for (final k in khoan) k.soTien: k.laKhoanCamKet};
+      expect(theoTien, {3000000.0: true, 3100000.0: false, 3200000.0: false},
+          reason: 'khoá nhóm = ghi chú chuẩn hoá + danh mục (khoaNhomCua): cùng '
+              'ghi chú khác danh mục, hay cùng danh mục khác ghi chú, đều không '
+              'phải khoản lặp đã thành hoá đơn');
+    });
+  });
+
+  group('ThongKeKy.uocTinhChiTuyY (B4)', () {
+    /// Khoản mở sổ 1/7 (tuần 29/6 bị cửa sổ cắt ngang — bỏ), rồi 200.000 Ăn
+    /// uống mỗi thứ Tư 8/7 → 2/9: chín tuần đóng trước tuần của `now` (7/9).
+    Future<void> duLieu() async {
+      await giaoDich(id: 'mo', ngay: DateTime(2026, 7, 1), soTien: 200000);
+      for (var i = 0; i < 9; i++) {
+        await giaoDich(id: 'w$i', ngay: DateTime(2026, 7, 8 + 7 * i), soTien: 200000);
+      }
+    }
+
+    test('chín tuần đóng → khoảng tính tay 860.000 – 860.000', () async {
+      await duLieu();
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull);
+      expect(u!.soTuan, 9);
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: '200.000 × 30/7 ≈ 857.143 → làm tròn 10.000');
+    });
+
+    test('⚠️ khoản gắn HOÁ ĐƠN không đổi khoảng — tầng 1 đã tính', () async {
+      await duLieu();
+      await giaoDich(id: 'hd', ngay: DateTime(2026, 8, 5), soTien: 5000000, billId: 'b1');
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0));
+    });
+
+    /// Ba kỳ tiền nhà nhập tay (06/7, 05/8, 02/9) — mỗi kỳ đẩy một tuần lên
+    /// 3.200.000; sáu tuần còn lại 200.000 → p75 rơi đúng vào tuần tiền nhà.
+    Future<void> tienNha() async {
+      for (final (i, d) in [DateTime(2026, 7, 6), DateTime(2026, 8, 5), DateTime(2026, 9, 2)]
+          .indexed) {
+        await giaoDich(id: 'nha$i', ngay: d, soTien: 3000000,
+            danhMuc: 'c_nha', ghiChu: 'Tien nha T${d.month}');
+      }
+    }
+
+    Future<void> daTao(String khoa, {int idaccount = 1}) =>
+        db.goiYHoaDonDao.ghi(GoiYHoaDonPhanHoisCompanion.insert(
+          id: 'ph_$khoa$idaccount',
+          idaccount: idaccount,
+          khoaNhom: khoa,
+          ketQua: 'da_tao',
+          createdAt: now,
+        ));
+
+    test('⚠️ khoản lặp đã thành hoá đơn (B2 da_tao) không vào khoảng — tầng 1 đã tính',
+        () async {
+      await duLieu();
+      await tienNha();
+      expect((await lanDau()).uocTinhChiTuyY!.cao, 13710000,
+          reason: 'tiền đề: chưa có da_tao thì tiền nhà nằm trong p75 '
+              '(3.200.000 × 30/7 ≈ 13.714.286 → 13.710.000)');
+
+      await daTao('tien nha|c_nha', idaccount: 2);
+      expect((await lanDau()).uocTinhChiTuyY!.cao, 13710000,
+          reason: 'phản hồi của TÀI KHOẢN KHÁC không được tính (quy tắc 2)');
+
+      await daTao('tien nha|c_nha');
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: 'hoá đơn "Tien nha" 30 ngày tới đã ở tầng 1 — lịch sử nhập tay '
+              'của chính nó còn ở tầng 3 là đếm đôi');
+    });
+
+    test('bấm Tạo khi trang đang mở thì khoảng tính lại — nguồn khoá là stream',
+        () async {
+      await duLieu();
+      await tienNha();
+      final cao = <double?>[];
+      final xong = Completer<void>();
+      final sub = repo
+          .watchKy(1, ky: Ky.thang(2026, 9), now: now)
+          .listen((tk) async {
+        cao.add(tk.uocTinhChiTuyY?.cao);
+        if (cao.length == 1) await daTao('tien nha|c_nha');
+        if (cao.length == 2 && !xong.isCompleted) xong.complete();
+      });
+      await xong.future.timeout(const Duration(seconds: 5));
+      await sub.cancel();
+      expect(cao, [13710000, 860000]);
+    });
+
+    test('⚠️ trả hoá đơn DẠNG CŨ (tiền tố, không bill_id) không vào khoảng', () async {
+      await duLieu();
+      for (final (i, d) in [DateTime(2026, 7, 6), DateTime(2026, 8, 5), DateTime(2026, 9, 2)]
+          .indexed) {
+        await giaoDich(id: 'cu$i', ngay: d, soTien: 5000000,
+            danhMuc: 'c_khac', ghiChu: 'Thanh toán hóa đơn: Kiem');
+      }
+      final u = (await lanDau()).uocTinhChiTuyY!;
+      expect((u.thap, u.cao), (860000.0, 860000.0),
+          reason: 'bản thiếu luật tiền tố cho cao = 5.200.000 × 30/7 → 22.290.000');
+    });
+
+    test('⚠️ ngân sách TỔNG đang chạy → null (tầng 2 phủ mọi khoản chi)', () async {
+      await duLieu();
+      // Chèn thẳng hàng Drift: `addBudget` từ chối danh mục null (giao diện
+      // không tạo được ngân sách tổng) — nó chỉ đến từ đồng bộ.
+      await db.into(db.budgets).insert(BudgetsCompanion.insert(
+            id: 'tong',
+            idaccount: 1,
+            amount: 5000000,
+            startDate: DateTime(2026, 9, 1),
+            recurrence: const Value(true),
+            timeRecurrence: const Value('Month'),
+            updatedAt: now,
+          ));
+      expect((await lanDau()).uocTinhChiTuyY, isNull);
+    });
+
+    test('danh mục có ngân sách đang chạy bị loại — hết chi tuỳ ý thì null', () async {
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      expect((await lanDau()).uocTinhChiTuyY, isNull,
+          reason: 'mọi khoản chi đều thuộc Ăn uống, đã ở tầng 2');
+    });
+
+    test('⚠️ ngân sách ĐÃ HẾT HẠN không loại danh mục — cùng phép chọn với tầng 2',
+        () async {
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 8, 1),
+        endDate: DateTime(2026, 8, 31),
+        recurrence: false,
+        timeRecurrence: 'Month',
+      );
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull,
+          reason: 'tầng 2 bỏ ngân sách hết hạn; tầng 3 cũng loại danh mục ấy thì '
+              'Ăn uống rơi vào khe giữa hai tầng — không tầng nào tính');
+      expect(u!.cao, 860000);
+    });
+
+    test('⚠️ ngân sách CHƯA BẮT ĐẦU không loại danh mục — tầng 2 cũng chưa tính nó',
+        () async {
+      // Chỗ `!isExpired` đơn thuần (bản kế hoạch) khác phép chọn của tầng 2: một
+      // ngân sách bắt đầu 1/10 chưa hết hạn, nhưng kỳ của nó chưa chứa `now`.
+      await duLieu();
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 10, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      final u = (await lanDau()).uocTinhChiTuyY;
+      expect(u, isNotNull,
+          reason: 'tầng 2 không tính ngân sách chưa bắt đầu — tầng 3 loại Ăn uống '
+              'là để nó rơi vào khe, không tầng nào tính');
+    });
+  });
+
+  group('chiBatThuong (B3)', () {
+    /// Năm tháng Ăn uống 4–8/2026 quanh 900.000 và tháng 9 vượt hẳn.
+    Future<void> duLieu({String danhMuc = 'c_an'}) async {
+      final ls = [(4, 850000.0), (5, 900000.0), (6, 950000.0), (7, 880000.0), (8, 920000.0)];
+      for (final (m, v) in ls) {
+        await giaoDich(id: 'b3_$danhMuc$m', ngay: DateTime(2026, m, 10), soTien: v, danhMuc: danhMuc);
+      }
+      await giaoDich(id: 'b3_${danhMuc}9', ngay: DateTime(2026, 9, 5), soTien: 2400000, danhMuc: danhMuc);
+    }
+
+    test('đơn vị Tháng → một dòng có đúng tên, số của tháng và thường lệ', () async {
+      await duLieu();
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isNotNull);
+      expect(tk.chiBatThuong, hasLength(1));
+      final d = tk.chiBatThuong!.single;
+      expect(d.ten, 'Ăn uống');
+      expect(d.d.categoryId, 'c_an');
+      expect(d.d.chi, 2400000);
+      expect(d.d.thuongLe, 900000);
+      expect(d.d.soThangMau, 5);
+    });
+
+    test('đơn vị Tuần → null (B3 chỉ xét tháng)', () async {
+      await duLieu();
+      final tk = await lanDauKy(Ky.tuan(now));
+      expect(tk.chiBatThuong, isNull,
+          reason: 'null = không xét; rỗng = đã xét, không có gì lạ — hai nghĩa khác nhau');
+    });
+
+    test('đã xét, không có gì lạ → danh sách RỖNG, không phải null', () async {
+      await giaoDich(id: 'x1', ngay: DateTime(2026, 9, 5), soTien: 100000);
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isNotNull);
+      expect(tk.chiBatThuong, isEmpty);
+    });
+
+    test('danh mục MẶC ĐỊNH toàn cục (idaccount = 0) vẫn có tên (G41)', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_md',
+        idaccount: 0,
+        name: 'Mua sắm',
+        classify: 'chi',
+        isDefault: const Value(true),
+        updatedAt: now,
+      ));
+      await duLieu(danhMuc: 'c_md');
+      final tk = await lanDau();
+      expect(tk.chiBatThuong!.single.ten, 'Mua sắm');
+    });
+
+    test('ngưỡng neo theo thu nhập: thu nhập cao thì phần vượt nhỏ không đủ', () async {
+      // Lương 300.000.000 mỗi tháng trong cửa sổ → ngưỡng = 1 % = 3.000.000 >
+      // phần vượt 1.500.000 → im. Không có thu nhập thì ngưỡng là sàn 50.000.
+      await duLieu();
+      for (final m in [7, 8, 9]) {
+        await giaoDich(
+            id: 'luong$m', ngay: DateTime(2026, m, 1), soTien: 300000000, loai: 'thu', danhMuc: null);
+      }
+      final tk = await lanDau();
+      expect(tk.chiBatThuong, isEmpty,
+          reason: 'cùng phép neo max(1 % thu nhập, 50.000) với luật tái phân bổ');
     });
   });
 }

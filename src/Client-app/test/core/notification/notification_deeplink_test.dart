@@ -24,6 +24,8 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
 import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/core/notification/nhom_tu_khoa.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
@@ -305,6 +307,10 @@ void main() {
       // nhất biết được server vừa từ chối khoản trả nào. Deeplink của nó được
       // canh riêng ở ca ngay dưới.
       NotificationKind.billPaidOnOtherDevice,
+      // D1 (2026-09-30): `NhapBienDong` ghi từ tệp hàng chờ của dịch vụ đọc
+      // thông báo ngân hàng, không phải từ bộ luật. Khoá và deeplink của nó
+      // được canh riêng ở ca "D1" bên dưới.
+      NotificationKind.bienDongSoDu,
     };
 
     test('đầu vào của phép canh phủ đủ mọi loại thông báo bộ quét sinh ra', () {
@@ -328,6 +334,17 @@ void main() {
               'hoá đơn, giống mọi thông báo hoá đơn khác.');
     });
 
+    test('D1: khoá bienDong → loại bienDongSoDu, nhóm bienDong, deeplink là trung tâm', () {
+      expect(loaiTuKhoa('bienDong:abc'), NotificationKind.bienDongSoDu);
+      expect(nhomTuKhoa('bienDong:abc'), NotificationGroup.bienDong);
+      // Khoá không mang số tiền / ngày (tin ngân hàng không được nằm trong khoá),
+      // nên từ khoá không dựng nổi `/add?…`; và hàng loại 20 KHÔNG bắn ra hệ điều
+      // hành từ Dart (chỉ Kotlin bắn một thông báo tóm tắt, đi kênh riêng) — cú
+      // chạm cấp hệ điều hành với khoá này chỉ có ở lịch của bản app lạ, rơi về
+      // trung tâm là đủ.
+      expect(deeplinkTuDedupeKey('bienDong:abc'), routeThongBao);
+    });
+
     test('mọi loại: suy từ khoá ra ĐÚNG deeplink mà bộ luật đã đặt', () {
       for (final c in tatCaUngVien()) {
         // `syncFailed` cố ý không có deeplink — không có màn nào để mở. Khi ấy
@@ -341,6 +358,21 @@ void main() {
                 '— nên nó phải được canh, nếu không hai nơi sẽ lệch nhau âm '
                 'thầm và cú chạm đưa người dùng tới sai màn.');
       }
+    });
+
+    // B5b (2026-09-29): học giờ và nhóm bị lờ đọc NHÓM từ khoá trong nhật ký B5a
+    // — nhật ký chỉ mang khoá, không mang loại. Cùng phép canh "đủ mọi loại":
+    // thêm loại mới mà quên xếp tiền tố của nó vào nhóm thì ca này đỏ.
+    test('mọi loại: loaiTuKhoa(khoá) == loại, nhomTuKhoa theo nhomCua — B5b', () {
+      for (final c in tatCaUngVien()) {
+        expect(loaiTuKhoa(c.dedupeKey), c.kind,
+            reason: '${c.kind.name}: khoá "${c.dedupeKey}" phải suy ra đúng loại — '
+                'B5b đọc nhóm (học giờ, nhóm bị lờ) và luonBao (bỏ thông báo '
+                'công tắc không tắt được) từ đây');
+        expect(nhomTuKhoa(c.dedupeKey), nhomCua(c.kind));
+      }
+      expect(loaiTuKhoa('billConflict:bill-1'), NotificationKind.billPaidOnOtherDevice,
+          reason: 'loại ngoài bộ quét — canh riêng như deeplink của nó');
     });
 
     test('khoá lạ hoặc rỗng rơi về trung tâm thông báo', () {

@@ -35,7 +35,7 @@ dưới đây, phần lớn có trước, cộng lại chỉ còn đúng một h
 | 1 | Dữ liệu giao dịch **không rời thiết bị** | F1 đặc tả Edge-SLM + Nghị định 13/2023/NĐ-CP | pháp lý — cứng nhất |
 | 2 | Backend là **vùng chỉ đọc** với nhóm client | Quy tắc 1 `CLAUDE.md` | tổ chức |
 | 3 | **Gemma 4 E2B cho mọi máy**, bỏ hẳn E4B | người dùng chốt 2026-09-20 sau phép đo P1 | đo được |
-| 4 | **Lối B** — mô hình phục vụ **một chỗ**: màn Trợ lý AI. Sáu khối Nhận xét giữ mẫu câu | người dùng chốt 2026-09-20 | sản phẩm |
+| 4 | **Lối B** — mô hình phục vụ **một chỗ**: màn Trợ lý AI. Sáu khối Nhận xét giữ mẫu câu. ⚠️ **Từ 2026-09-30 thêm chỗ thứ hai**: ô *Nhập nhanh* màn Thêm giao dịch (C2, mục 4.3) | người dùng chốt 2026-09-20; mở rộng 2026-09-30 | sản phẩm |
 | 5 | **Lớp AI không tính** — mọi số từ hàm domain đã có | test quét `lib/` thứ **14** | kiến trúc |
 | 6 | `kiemSo` là lớp chắn **duy nhất**, **không nới** vì mô hình lớn hơn | spec Edge-SLM mục 4.4 | kiến trúc |
 | 7 | Dữ liệu AI là **cục bộ**, không vào `SyncEntityType` | test quét `lib/` thứ **15** | kiến trúc |
@@ -101,6 +101,7 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 │                                                                      │
 │   ↳ chặn THEO CÂU: đủ một câu mới kiểm, trượt thì huỷ sinh          │
 │   ↳ CHỈ màn Trợ lý AI (lối B — BoDienGiai KHÔNG đăng ký vào DI)     │
+│     + từ 30/09 ô Nhập nhanh (C2 — một tool, luật kiểm từng ô)       │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌─ VÒNG 3 — AGENT ──────────── ✅ LÁT 4b XONG 23/09, CỔNG C ĐẠT ─────┐
@@ -122,8 +123,8 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 ```
 
 **Ba vòng, một hợp đồng — và hợp đồng ấy là `GoiSo`.** Vòng 2 trên màn Trợ lý AI nhận sáu gói
-dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; ba lớp chắn và thẻ số liệu
-chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
+dựng sẵn, vòng 3 nhận `GoiSoTraCuu extends GoiSo` tích luỹ từ tool; các lớp chắn (`kiemCauTraLoi` — **sáu** lớp
+từ 2026-09-28) và thẻ số liệu chạy nguyên trên cả hai. Vòng 1 không biết vòng nào đang chạy phía trên. *(Câu cũ ở đây nói hợp
 đồng là `BoDienGiai` và "vòng 2 và vòng 3 đều là bản thi công của nó" — sai từ lối B, khi màn
 Trợ lý AI tự dựng đường sinh câu và `BoDienGiai` không được đăng ký; vòng 3 là `hoiBangCongCu`.)*
 
@@ -261,6 +262,16 @@ vào DI**, nên `KhoiNhanXet` luôn rơi về `const MauCau()`.
 
 ⚠️ Đảo sang lối A là **một commit** (bỏ dấu chú thích khối đăng ký). Đừng làm nếu
 người dùng chưa đổi ý.
+
+⚠️ **Mở sang chỗ thứ hai ngày 2026-09-30 (C2)** — không phải lối A: khối Nhận xét **vẫn** mẫu câu, `BoDienGiai` vẫn
+không đăng ký. Người dùng chọn cho ô *Nhập nhanh* màn Thêm giao dịch dùng mô hình đọc câu (*"hôm qua ăn phở 45k tiền
+mặt"*): `DocCauBangAi` mở phiên **một tool** `dien_giao_dich`, rồi **luật kiểm từng ô** mô hình điền (số tiền phải là
+một cách đọc của số trong câu, ví chỉ khi câu nhắc ví…), và form chỉ điền sẵn — người dùng bấm ✓ mới lưu (bất biến ④,
+tầng 3). Mục 9.41 `AI_EDGE_FEATURE.md`. Lý lẽ khác lý lẽ của khối Nhận xét: ở đây mô hình **đọc câu tự do** (thứ luật
+đọc sót — *"ba chục"*, *"một triệu hai"*), đúng chỗ nó hơn mẫu câu. 🔁 Sau khi đo (~18 s mỗi câu trên Realme CPU) người
+dùng quyết **luật trước, AI là lớp cuối cho mọi ô** — ✅ **thi công cùng ngày** (`b0c9f9b` → `05c6ce2`): mô hình chỉ được
+gọi khi câu còn ô **số tiền / ngày / ví / danh mục / ghi chú** mà luật không điền được (`KetQuaDocCau.oThieu`), và chỉ **lấp** ô luật để trống;
+câu luật đọc đủ thì điền ngay, không chạm mô hình.
 
 ### 4.4 ⚠️ Vòng 2 KHÔNG phải agent
 
@@ -704,6 +715,13 @@ dòng cắt-bù; người dùng tick; `hanMucMoi()` dựng danh sách `updateBud
 **tách khỏi widget** để tính chất *"tổng hạn mức không đổi"* kiểm được bằng test
 thuần — và chính nhờ thế mà luật D5 bỏ được.
 
+✅ **Nhóm C (người dùng duyệt 2026-09-28): bất biến ④ nay là *"không tool nào ghi THẲNG"*** — AI được
+điền sẵn form hay danh sách đề xuất, người dùng bấm mới ghi; tầng 4 và mọi thao tác xoá vẫn cấm. Việc
+đầu tiên theo khuôn này là **C1 — gắn danh mục hàng loạt** (2026-09-29): mô hình B1 tick sẵn, người
+dùng duyệt cả lô rồi bấm *Áp dụng* (mục 5e `CATEGORY_RATIONALE.md`, 9.40 `AI_EDGE_FEATURE.md`). Việc thứ hai là **C2
+— ô Nhập nhanh** (2026-09-30, **tầng 3**): mô hình / luật điền sẵn form Thêm giao dịch, người dùng xem rồi bấm ✓ (mục 4.3,
+9.41 `AI_EDGE_FEATURE.md`). Chín tool của Trợ lý AI vẫn **chỉ đọc**.
+
 ---
 
 ## 9. Ba thứ kiến trúc này cố ý KHÔNG làm
@@ -800,7 +818,8 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 | **2** | Agent | ✅ **đang chạy** từ 2026-09-23 (lát 4b xong 9/9 task, **cổng C đạt** trên hai máy) — bảy tool **đọc** (bốn của 4b; ba của bước 2 — mã xong, 🛑 **cổng D chưa đạt** lần đo 1 ngày 2026-09-24: nhóm C 13/20 tool · 5/20 tham số, nhóm A tụt 7/8, 5 câu SAI — mục 9.17 `AI_EDGE_FEATURE.md`; vòng sửa **bước 2b** mã xong cùng ngày, 🛑 **lần đo 2 vẫn chưa đạt**: năm câu SAI hết SAI, nhóm A 8/8, nhưng nhóm C tụt còn 10/20 tool · 4/20 tham số và lộ 1 câu SAI mới — mục 9.18; vòng sửa **bước 2c** mã xong cùng ngày chiều, 🛑 **lần đo 3 vẫn chưa đạt** nhưng **SAI = 0**, hai bẫy 4.44 / 4.45 đóng, lời gọi tool y hệt lần 2 nên 10/20 · 5/20 — mục 9.19; đổi tên tool `chi_tieu_theo_ky` → `tong_ket_thu_chi_ky` cùng chiều, 🛑 **lần đo 4 vẫn chưa đạt**: tool 13/20 · 6/20 nhưng SAI 2 — bẫy 4.42 hết "chặn do may", mục 9.20; đổi nhãn đếm `Số giao dịch`, lần đo 5 y hệt lần 4 — bẫy 4.47 chỉ đổi chỗ, mục 9.21; nhãn có từ đồng nghĩa `SoLieu.nhanKhac` mã xong — mục 9.22; 🛑 **lần đo 6 vẫn chưa đạt** nhưng bẫy 4.47 đóng, 33/34 câu y hệt lần 5, tool y hệt ba lần liền, SAI 2 (4.42) — mục 9.23; bẫy 4.42 đóng trọn ba commit, **lần đo 8 SAI = 0** nhưng vẫn 13/20 · 6/20, tool y hệt bốn lần liền — mục 9.24; lát định tuyến — ví dụ trong lời hệ thống, lật "không few-shot" của 4b — **lần đo 9 tool 18/20, tham số 9/20**, ĐC3 đạt, SAI 0 — mục 9.25; ví dụ điền tham số, **lần đo 10** (13 câu, gộp) B 3/4, tool 19/20, tham số 13/20, SAI 1 — bẫy mới 4.48 tên bịa không số — mục 9.26; lớp chắn thứ tư `kiemTen` đóng 4.48, **lần đo 11 SAI 0**, còn tham số 13/20 — mục 9.27; bộ chỉnh tham số theo câu hỏi — `CongCu.chay` nhận `cauHoi` — **lần 12–14: tham số 19/20, CỔNG D ĐẠT cả năm dòng** gộp Realme + OnePlus, chưa có mốc sạch một máy — mục 9.28), vòng lặp trần 3 lời gọi, bậc 1 làm nhánh lùi; lượt mà mọi lời gọi bị tool từ chối thì hiện **mẫu câu trung thực** (L1b), không rơi về bậc 1 | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → **3 dòng, 1 tệp** (`slm_runtime.dart`: `Tool(` · `ToolChoice.auto`; embedding/cosine vẫn **0** — RAG client cố ý bỏ, mục 5.5); vòng lặp ở `ai_edge/data/vong_lap_cong_cu.dart`; đo máy thật mục **9.14** `AI_EDGE_FEATURE.md`. *(Ô này ghi "⬜ chưa có kế hoạch … → 0" cho tới 2026-09-23.)* |
 
 ✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
-**app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
+**app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")* *(Thư mục
+`D:/flowmoney-spike` và các tệp mô hình ở `D:/flowmoney-models` **đã xoá 2026-09-28** để giải phóng ổ D, người dùng yêu cầu.)*
 P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
 `flutter_gemma_litertlm: ^1.7.0` *(nâng lên 1.9.0 / 1.8.0 ngày 2026-09-23 — bản cũ sập native ở
 mọi phiên có tool, mục 9.13 `AI_EDGE_FEATURE.md`)*, `ai_edge` + `ai_chat` có **57** tệp test / **660** ca
@@ -822,9 +841,10 @@ bản 2026-09-24 ghi "chưa đạt sau ba lần đo" — và RAG phía backend n
 > Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
 > 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
 > thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
-> mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
-> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
-> một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** (ngân sách · hoá đơn ·
+> mạng, chữ hiện dần theo từng câu, và mọi câu trả lời đều qua **sáu** lớp chắn (`kiemSo`, `kiemNhan`,
+> `kiemGiong`, `kiemTen`, `kiemPhuDinh`, `kiemKy` — đếm 2026-09-28) đối chiếu với dữ liệu trước khi hiện. Màn Trợ lý AI là
+> một **agent tối thiểu**: mô hình tự chọn một trong **bảy tool chỉ đọc** *(đếm 2026-09-25; từ 2026-09-28 là **chín** —
+> mục 9.32–9.35 `AI_EDGE_FEATURE.md`)* (ngân sách · hoá đơn ·
 > ví · chi tiêu theo kỳ — bốn của lát 4b, đã đo cổng C; mục tiêu · gợi ý hạn mức · tìm giao dịch
 > — bước 2, cổng D **đạt 2026-09-25** trên bộ 34 câu, gộp hai máy: lời từ chối của tool thôi bị đọc thành "không có
 > dữ liệu" (bước 2b), lượt tìm giao dịch 0 khoản thành báo cáo về bộ lọc (bước 2c), ví dụ định tuyến trong lời hệ thống

@@ -11,6 +11,7 @@
 /// 800×600 của bộ test — tức test "411dp" chưa bao giờ chạy ở 411dp.
 library;
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -89,6 +90,19 @@ void main() {
           'chỗ gọi, nên một test chỉ pumpWidget + find vẫn xanh trong khi màn '
           'hình đầy sọc vàng. Phải hỏi takeException.',
     );
+  });
+
+  testWidgets('⚠️ chấm ngày đầu/cuối không bị cắt nửa — không cắt trái/phải (G55)',
+      (t) async {
+    await dung(t, goal: mt(batDau: DateTime(2026, 3, 1)), khoan: khoanMau);
+
+    final c = t.widget<LineChart>(find.byType(LineChart)).data.clipData;
+    expect((c.left, c.right), (false, false),
+        reason: 'Chấm của khoản đầu và điểm cuối nằm đúng minX/maxX — cắt '
+            'trái/phải là mất một nửa chấm (Realme 2026-09-29).');
+    expect((c.top, c.bottom), (true, true),
+        reason: 'Trục dọc giữ phòng thủ bẫy 4.17: điểm âm từng kéo đường tràn '
+            'khỏi thẻ ngay ở biểu đồ này (2026-09-09).');
   });
 
   testWidgets('chậm hơn kế hoạch thì chú thích nói rõ thiếu bao nhiêu tiền',

@@ -31,11 +31,12 @@ import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
-import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
+import '../../features/transaction/data/vi_theo_nguon_store.dart';
+import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
@@ -55,6 +56,7 @@ import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
 import '../../features/bill/data/datasources/bill_local_datasource.dart';
@@ -62,15 +64,22 @@ import '../../features/bill/data/repositories/bill_repository.dart';
 import '../../features/bill/data/services/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
+import '../../features/bill/data/de_xuat_hoa_don_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
+import '../notification/de_xuat_thong_bao_nguon.dart';
+import '../notification/hang_cho_su_kien.dart';
+import '../notification/kenh_bien_dong.dart';
+import '../notification/nhap_bien_dong.dart';
+import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -230,6 +239,11 @@ Future<void> setupDependencies() async {
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
   );
+  // Thẻ "Có vẻ là khoản lặp" trên trang Hoá đơn (B2) — trang tự lấy nguồn này
+  // khi đã đăng ký, không thì không dựng thẻ.
+  sl.registerLazySingleton<DeXuatHoaDonNguon>(
+    () => DeXuatHoaDonNguon(db: sl<AppDatabase>()),
+  );
 
   // ── 9. Features — Category management (local-only) ───────────────────────
   sl.registerLazySingleton<CategoryManagementRepository>(
@@ -240,6 +254,10 @@ Future<void> setupDependencies() async {
   );
   sl.registerLazySingleton<CategorySuggestionEngine>(
     () => const CategorySuggestionEngine(),
+  );
+  // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
+  sl.registerLazySingleton<GoiYPhanHoiStore>(
+    () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
   );
 
   // ── 10. Features — Budget ─────────────────────────────────────────────────
@@ -316,10 +334,37 @@ Future<void> setupDependencies() async {
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
+  // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
+  // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
+  // `sl<AuthBloc>()` ở đây là một bloc MỚI luôn chưa đăng nhập — đọc nó là nhật
+  // ký không bao giờ ghi được gì, im lặng.
+  sl.registerLazySingleton<NhatKyThongBao>(
+    () => NhatKyThongBao(
+      dao: sl<AppDatabase>().notificationEventDao,
+      idaccountPhien: () => null,
+    ),
+  );
+
   // Tuỳ chọn thông báo. Dùng chung `FlutterSecureStorage` với token và
   // checkpoint đồng bộ — cùng mẫu `SecureStorageSyncCheckpointStore`.
   sl.registerLazySingleton<NotificationPrefsStore>(
     () => const SecureStorageNotificationPrefsStore(FlutterSecureStorage()),
+  );
+
+  // D1: ví chọn sẵn cho form điền từ tin biến động số dư — bảng nguồn + đuôi TK → ví,
+  // cục bộ theo tài khoản, cùng khuôn kho tuỳ chọn thông báo.
+  sl.registerLazySingleton<ViTheoNguonStore>(
+    () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
+  );
+
+  // Đề xuất giờ nhắc / tắt nhóm bị lờ (B5b) — đọc nhật ký B5a, chỉ đề xuất.
+  sl.registerLazySingleton<DeXuatThongBaoNguon>(
+    () => DeXuatThongBaoNguon(
+      db: sl<AppDatabase>(),
+      store: sl<NotificationPrefsStore>(),
+      os: sl<OsNotifier>(),
+      nhatKy: sl<NhatKyThongBao>(),
+    ),
   );
 
   // Lịch nhắc đặt trước với hệ điều hành — cách DUY NHẤT để thông báo nổ khi
@@ -348,12 +393,22 @@ Future<void> setupDependencies() async {
       loadLastTransactionAt: (idaccount) =>
           sl<AppDatabase>().transactionDao.getLastTransactionDate(idaccount),
       prefsStore: sl<NotificationPrefsStore>(),
+      // Nhật ký B5a: `dat_lich` / `huy_lich` — B5b suy "đã tới máy" từ chúng.
+      nhatKy: sl<NhatKyThongBao>(),
+      eventDao: sl<AppDatabase>().notificationEventDao,
     ),
   );
 
   // Vòng đời app — mốc kích hoạt quét KHÔNG phụ thuộc mạng. Là singleton vì
   // mỗi bản là một observer nữa gắn vào WidgetsBinding.
   sl.registerLazySingleton<AppLifecycleWatcher>(AppLifecycleWatcher.new);
+
+  // D1: kênh tới tầng Kotlin đọc biến động số dư — chỉ Android có; nơi khác là
+  // bản trống (không quyền, không làm gì) để mọi chỗ gọi khỏi rẽ nhánh nền tảng.
+  sl.registerLazySingleton<KenhBienDong>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhBienDongAndroid()
+          : const KenhBienDongTrong());
 
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
@@ -436,15 +491,8 @@ Future<void> setupDependencies() async {
             if (!v.budget.isExpired(now)) v,
         ];
         if (dangChay.isEmpty) return null;
-        final d = await sl<TaiPhanBoNguon>().nap(idaccount, dangChay, now);
-        return taiPhanBoCua(
-          dangChay: dangChay,
-          now: now,
-          coDinh: d.coDinh,
-          thuNhapMoiThang: d.thuNhapMoiThang,
-          mucThangTheoNganSach: d.mucThangTheoNganSach,
-          phanHoi: d.phanHoi,
-        );
+        return keHoachTaiPhanBoTu(
+            sl<TaiPhanBoNguon>(), idaccount, dangChay, now);
       },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
@@ -464,6 +512,32 @@ Future<void> setupDependencies() async {
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
       resyncLich: (idaccount) =>
           sl<ReminderScheduler>().resync(idaccount),
+      // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ (isolate nền không có CSDL).
+      // Một dòng thuộc tài khoản khi khoá khớp một `dat_lich` HOẶC một thông báo
+      // của chính tài khoản ấy — không khớp thì bỏ, không đoán (quy tắc 2).
+      nhapHangCho: NhapHangCho(
+        thuMuc: getApplicationDocumentsDirectory,
+        nhatKy: sl<NhatKyThongBao>(),
+        thuocTaiKhoan: (id, k) async =>
+            await sl<AppDatabase>().notificationEventDao.coDatLich(id, k) ||
+            await sl<AppDatabase>().notificationDao.coDedupeKey(id, k),
+      ),
+      // D1: tệp hàng chờ tin biến động do Kotlin ghi vào `filesDir` — chính là
+      // `getApplicationSupportDirectory()` (KHÔNG phải documents dir của B5a).
+      // Hàng chờ gắn máy, nhập vào tài khoản đang đăng nhập; công tắc là cờ
+      // `docBienDong` của tài khoản ấy.
+      nhapBienDong: NhapBienDong(
+        thuMuc: getApplicationSupportDirectory,
+        dao: sl<AppDatabase>().notificationDao,
+        nguonCuaGoi: nguonCuaGoi,
+        batBienDong: (id) async =>
+            (await sl<NotificationPrefsStore>().read(id)).docBienDong,
+        huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
+        datBat: (bat) => sl<KenhBienDong>().datBat(bat),
+      ),
+      // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
+      nhatKy: sl<NhatKyThongBao>(),
+      eventDao: sl<AppDatabase>().notificationEventDao,
     ),
   );
 
@@ -517,6 +591,16 @@ Future<void> setupDependencies() async {
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
 
+  // Ô Nhập nhanh của màn Thêm giao dịch đọc câu bằng mô hình (C2 §2.8, người dùng chọn "AI đọc mọi câu" 2026-09-30) —
+  // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
+  sl.registerLazySingleton<DocCauBangAi>(
+    () => DocCauBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+
   // Nguồn sáu gói số cho BẬC 1 của màn Trợ lý AI — nhánh lùi L1 khi mô hình
   // không gọi tool nào. Sáu khối Nhận xét đều lấy gói từ trang của chúng; màn
   // Trợ lý AI không thuộc trang nào nên phải tự hỏi dữ liệu — qua lớp này, hoặc
@@ -532,17 +616,20 @@ Future<void> setupDependencies() async {
     ),
   );
 
-  // Bộ tool của bậc tool: bảy tool ĐỌC (bốn của chặng 4b + ba của bước 2),
-  // lazy như `NguonGoiSo` — chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Không tool ghi.
+  // Bộ tool của bậc tool — mọi tool đều ĐỌC, không tool ghi (bất biến ④). Lazy
+  // như `NguonGoiSo`: chỉ dựng khi màn Trợ lý AI hỏi lần đầu. Danh sách tool và
+  // thứ tự của chúng nằm ở `BoCongCu.macDinh`, không chép lại ở đây.
   sl.registerLazySingleton<BoCongCu>(
     () => BoCongCu.macDinh(
-      phanTich: sl<AnalyticsRepository>(),
       nganSach: sl<BudgetRepository>(),
       vi: sl<WalletRepository>(),
       hoaDon: sl<BillRepository>(),
       mucTieu: sl<GoalRepository>(),
       giaoDich: sl<TransactionRepository>(),
       baoCao: sl<BaoCaoRepository>(),
+      phanTich: sl<AnalyticsRepository>(),
+      danhMuc: sl<CategoryManagementRepository>(),
+      taiPhanBo: sl<TaiPhanBoNguon>(),
     ),
   );
 
@@ -556,7 +643,8 @@ Future<void> setupDependencies() async {
   // Vì sao: P1 đo được câu mô hình ở khối Nhận xét **gần bằng mẫu câu** — khác
   // nhau ở giọng văn, không ở thông tin, và mẫu câu còn gọn hơn. Cái giá là
   // 2,3 s mỗi khối cộng 2,41 GB tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**,
-  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8), nơi tự dựng
+  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8) — ⚠️ từ 2026-09-30 thêm ô Nhập nhanh
+  // (`DocCauBangAi`, C2, người dùng chọn "AI đọc mọi câu"), nơi tự dựng
   // đường sinh câu của mình từ `sl<SlmRuntime>()` và `sl<MoHinhTaiVe>()`.
   //
   // ⚠️ Màn ấy **KHÔNG** đi qua `SlmDienGiai`, và **không** qua `SlmCache` —

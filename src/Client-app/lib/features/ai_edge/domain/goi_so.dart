@@ -14,10 +14,11 @@
 library;
 
 import '../../../core/utils/currency_formatter.dart';
+import '../../analytics/domain/dong_tien_tu_do.dart' show chuoiSoLan;
 import 'dau_van.dart';
 import 'nhan_xet.dart';
 
-enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang }
+enum LoaiSo { tien, phanTram, soNgay, soDem, ngayThang, soLan }
 
 /// Trần số mục mà **một** gói được nhồi vào prompt cho mỗi loại danh sách.
 ///
@@ -94,12 +95,33 @@ SoLieu soTien(
     );
 
 /// G2: một chữ số thập phân, phẩy thập phân. [phanTram] ở thang 0–100.
-SoLieu soPhanTram(String nhan, double phanTram, {String? ten}) => SoLieu(
+SoLieu soPhanTram(
+  String nhan,
+  double phanTram, {
+  String? ten,
+  List<String> nhanKhac = const [],
+}) =>
+    SoLieu(
       nhan: nhan,
       ten: ten,
       soTho: phanTram,
       chuoi: '${phanTram.toStringAsFixed(1).replaceAll('.', ',')}%',
       loai: LoaiSo.phanTram,
+      nhanKhac: nhanKhac,
+    );
+
+/// G56: *"gấp N lần"*. [lan] là số **đã làm tròn đúng như sẽ in** — lấy thẳng
+/// từ `soLanChiGapThuNhap`, không làm tròn lại ở đây (hai phép làm tròn là hai
+/// con số lệch nhau dưới mắt `kiemSo`). Chuỗi đi qua `chuoiSoLan`, cùng hàm với
+/// thẻ *Số dư còn lại*.
+SoLieu soLan(String nhan, double lan, {String? ten, List<String> nhanKhac = const []}) =>
+    SoLieu(
+      nhan: nhan,
+      ten: ten,
+      soTho: lan,
+      chuoi: chuoiSoLan(lan),
+      loai: LoaiSo.soLan,
+      nhanKhac: nhanKhac,
     );
 
 SoLieu soNgay(String nhan, int ngay, {String? ten}) => SoLieu(
@@ -129,6 +151,7 @@ SoLieu soNgayThang(
   DateTime ngay, {
   String? ten,
   required DateTime now,
+  List<String> nhanKhac = const [],
 }) {
   String hai(int x) => x.toString().padLeft(2, '0');
   final ngayThang = '${hai(ngay.day)}/${hai(ngay.month)}';
@@ -138,6 +161,7 @@ SoLieu soNgayThang(
     soTho: (ngay.year * 10000 + ngay.month * 100 + ngay.day).toDouble(),
     chuoi: ngay.year == now.year ? ngayThang : '$ngayThang/${ngay.year}',
     loai: LoaiSo.ngayThang,
+    nhanKhac: nhanKhac,
   );
 }
 
@@ -186,4 +210,8 @@ abstract class GoiSo {
         for (final s in soLieu)
           if (s.ten != null) s.ten!,
       ];
+
+  /// Kỳ của con số [s] — chữ kỳ tương đối (*tháng này*); `null` = không biết,
+  /// hay số HIỆN TẠI (số dư): `kiemKy` không xét (G5 (b) cổng F). Mặc định `null`.
+  Set<String>? kyCua(SoLieu s) => null;
 }

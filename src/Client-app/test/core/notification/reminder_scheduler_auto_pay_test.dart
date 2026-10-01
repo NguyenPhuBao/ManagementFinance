@@ -9,6 +9,7 @@ library;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
@@ -48,10 +49,10 @@ class _OsGia implements OsNotifier {
 
   // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
   @override
-  Stream<String> get payloadDaCham => const Stream<String>.empty();
+  Stream<ChamHdh> get chamTho => const Stream<ChamHdh>.empty();
 
   @override
-  Future<String?> payloadKhoiDong() async => null;
+  Future<ChamHdh?> chamKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => lich.keys.toSet();

@@ -35,6 +35,21 @@ void main() {
         soNgayCuaSo: soNgay,
       );
 
+  test('toiDa cắt danh sách nhưng soUngVien đếm TRỌN (tool AI cần cả hai)', () {
+    final g = chon(muc: {'an': 500000, 'giaitri': 300000, 'yte': 900000, 'nhacua': 100000}, )!;
+    expect(g.ds.length, kToiDaDeXuat, reason: 'mặc định giữ trần 3 của thẻ');
+    expect(g.soUngVien, 4);
+    final rong = chonDeXuat(
+      danhMucChi: danhMuc,
+      daCoNganSach: const {},
+      mucThangTheoDanhMuc: const {'an': 500000, 'giaitri': 300000, 'yte': 900000, 'nhacua': 100000},
+      soNgayCuaSo: 20,
+      toiDa: 4,
+    )!;
+    expect(rong.ds.length, 4);
+    expect(rong.ds.first.categoryId, 'yte');
+  });
+
   test('bỏ danh mục ĐÃ có ngân sách đang chạy', () {
     final g = chon(daCo: {'yte'})!;
 

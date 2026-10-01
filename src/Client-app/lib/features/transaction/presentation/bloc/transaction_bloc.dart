@@ -4,6 +4,7 @@ import '../../../../core/sync/sync_engine.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../data/repositories/transaction_repository.dart';
+import '../../domain/transaction_filter.dart';
 import 'transaction_event.dart';
 import 'transaction_state.dart';
 
@@ -186,20 +187,14 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     Ky ky,
     Emitter<TransactionState> emit,
   ) {
-    double income = 0;
-    double expense = 0;
-    for (final t in giaoDich) {
-      if (t.type == 'thu') {
-        income += t.amount;
-      } else if (t.type == 'chi') {
-        expense += t.amount;
-      }
-    }
+    // Cùng hàm với thẻ tổng của trang — một định nghĩa (bỏ khoản điều chỉnh số dư và mở sổ). Vòng cộng thô theo
+    // `type` từng nằm ở đây, là bản thứ ba cạnh `summarizeTransactions` và Trang chủ.
+    final tong = summarizeTransactions(giaoDich);
 
     emit(TransactionLoadedState(
       giaoDich: giaoDich,
-      totalIncome: income,
-      totalExpense: expense,
+      totalIncome: tong.income,
+      totalExpense: tong.expense,
       ky: ky,
     ));
   }

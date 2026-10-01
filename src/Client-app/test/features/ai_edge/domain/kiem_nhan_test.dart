@@ -423,6 +423,34 @@ void main() {
     });
   });
 
+  group('gán nhãn ngược xét theo VẾ chứa con số — bẫy 4.49 (cổng E lần 1 E15, 2026-09-27)', () {
+    // Đúng hai hàng `hangGiaoDich` của E15 (nhãn chính "Số tiền", nhãn thay thế
+    // theo chiều, xung đột là chiều ngược) cộng tổng hợp.
+    final choVay = _Gia('tra_cuu', [
+      soTien('Tổng chi', 800000),
+      soTien('Tổng thu', 500000),
+      soTien('Số tiền', 800000, ten: 'Cho vay', nhanKhac: const ['Chi'], nhanXungDot: const ['Thu']),
+      soTien('Số tiền', 500000, ten: 'Cho vay', nhanKhac: const ['Thu'], nhanXungDot: const ['Chi']),
+    ]);
+    test('⭐ câu ĐÚNG E15 đo trên Realme qua: "thu" của vế sau không gán ngược số của vế trước', () {
+      expect(kiemNhan('Tôi đã cho vay 800.000 đ và thu về 500.000 đ.', [choVay]), isTrue,
+          reason: 'bị chặn thật 2026-09-27 — mẫu câu L2 phải cứu; câu tự nhiên nhất người dùng muốn đọc');
+    });
+    test('vế tách ở "hoặc", "nhưng", ";" — cùng luật', () {
+      expect(kiemNhan('Bạn đã chi 800.000 đ; thu về 500.000 đ.', [choVay]), isTrue);
+      expect(kiemNhan('Cho vay 800.000 đ nhưng chỉ thu về 500.000 đ.', [choVay]), isTrue);
+    });
+    test('⚠️ KHÔNG tách ở dấu hai chấm hay dấu phẩy — C10 (4.42) vẫn bị chặn', () {
+      expect(kiemNhan('Các khoản thu bao gồm: Cho vay (800.000 đ).', [choVay]), isFalse,
+          reason: 'tách ở ":" là mở lại 4.42');
+      expect(kiemNhan('Các khoản thu là 500.000 đ, Cho vay 800.000 đ.', [choVay]), isFalse);
+    });
+    test('gán ngược NGAY trong vế chứa số vẫn bị chặn', () {
+      expect(kiemNhan('Bạn thu về 800.000 đ từ Cho vay và nhận 500.000 đ.', [choVay]), isFalse,
+          reason: 'vế đầu gán 800.000 (Chi) làm thu; vế sau không có chữ "chi" để Tổng chi cứu');
+    });
+  });
+
   test('mục NGÀY của một hàng mang tên → câu nêu ngày phải nêu tên (bước 2)', () {
     final g = _Gia('tra_cuu', [
       soNgayThang('Ngày', DateTime(2026, 9, 4), ten: 'Ăn uống', now: DateTime(2026, 9, 23)),
@@ -430,5 +458,46 @@ void main() {
     expect(kiemNhan('Ăn uống ngày 04/09.', [g]), isTrue);
     expect(kiemNhan('Có một khoản ngày 04/09.', [g]), isFalse,
         reason: 'luật 4a không đổi: mục có tên đòi câu nêu tên');
+  });
+
+  group('G5 (a) cổng F — số tổng gán cho đối tượng (E3; họ E10)', () {
+    final e3 = _Gia('tra_cuu', [
+      soTien('Tổng chi', 2241000),
+      soTien('Chi', 10000, ten: 'Giáo dục', nhanXungDot: const ['Thu']),
+      soDem('Số giao dịch', 11),
+      soDem('Số giao dịch', 1, ten: 'Giáo dục'),
+    ]);
+    test('⭐ E3 nguyên văn: "Giáo dục với tổng chi là 2.241.000 đ" → CHẶN', () {
+      expect(kiemNhan('Danh mục ít tiêu nhất trong tháng này là Giáo dục với tổng chi là 2.241.000 đ.', [e3]),
+          isFalse);
+    });
+    test('qua: vế có số của Giáo dục; câu không nêu tên; số ĐẾM tổng cạnh tên', () {
+      expect(kiemNhan('Giáo dục chi 10.000 đ, trên tổng chi 2.241.000 đ.', [e3]), isTrue);
+      expect(kiemNhan('Tổng chi tháng này là 2.241.000 đ.', [e3]), isTrue);
+      expect(kiemNhan('Có 11 giao dịch, ít nhất là Giáo dục.', [e3]), isTrue,
+          reason: 'luật chỉ xét số TIỀN — số đếm tổng cạnh tên là câu liệt kê');
+    });
+    test('⭐ họ E10: "Ngân sách Ăn uống còn lại 1.340.000 đ" (Tổng còn lại) → CHẶN', () {
+      final ns = _Gia('tra_cuu', [
+        soTien('Tổng còn lại', 1340000),
+        soTien('Còn lại', 450000, ten: 'Ăn uống'),
+      ]);
+      expect(kiemNhan('Ngân sách Ăn uống còn lại 1.340.000 đ.', [ns]), isFalse);
+      expect(kiemNhan('Ngân sách Ăn uống còn lại 450.000 đ.', [ns]), isTrue);
+    });
+    test('qua: hoá đơn — nhãn hàng (Số tiền) không cùng họ với Còn phải trả; số khớp cả hàng Netflix', () {
+      final hd = _Gia('tra_cuu', [
+        soTien('Còn phải trả', 55000),
+        soDem('Chưa trả', 2),
+        soTien('Số tiền', 45000, ten: 'Kiem'),
+        soTien('Số tiền', 10000, ten: 'di h0c'),
+      ]);
+      expect(kiemNhan('Có 2 hoá đơn chưa trả, còn phải trả 55.000 đ: Kiem và di h0c.', [hd]), isTrue);
+      final nf = _Gia('tra_cuu', [
+        soTien('Còn phải trả', 100000),
+        soTien('Số tiền', 100000, ten: 'Netflix'),
+      ]);
+      expect(kiemNhan('Hoá đơn Netflix còn phải trả 100.000 đ.', [nf]), isTrue);
+    });
   });
 }

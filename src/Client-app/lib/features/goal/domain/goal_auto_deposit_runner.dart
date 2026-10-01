@@ -4,7 +4,6 @@ import '../../../core/database/app_database.dart';
 import '../data/models/goal_entity.dart';
 import '../data/repositories/goal_repository.dart';
 import 'goal_auto_deposit.dart';
-import '../../wallet/domain/wallet_status.dart';
 
 /// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
 ///
@@ -112,9 +111,14 @@ class GoalAutoDepositRunner {
     // im lặng khỏi một ví người dùng đã cất đi là cách hỏng tệ nhất ở đây —
     // họ không nhìn ví ấy nữa nên sẽ không thấy gì cả.
     final viNguon = await db.walletDao.getById(viNguonId);
+    // ⚠️ `getById` trả cả hàng ĐÃ XOÁ MỀM — kiểm `null` thôi là rút tiền từ ví
+    // đã xoá (ca test "ví nguồn ĐÃ XOÁ MỀM"). Luật ở `viNguonChoTrich`.
     if (viNguon == null ||
-        viNguonId == goal.walletId ||
-        !WalletStatus.laHoatDong(viNguon.status)) {
+        !viNguonChoTrich(
+          goal,
+          viNguonConSong: !viNguon.isDeleted,
+          trangThaiViNguon: viNguon.status,
+        )) {
       return [
         GoalAutoDepositEvent(
           goalId: goal.id,

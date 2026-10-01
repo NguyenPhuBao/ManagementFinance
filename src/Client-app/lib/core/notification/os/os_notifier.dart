@@ -1,3 +1,5 @@
+import '../cham_hdh.dart';
+
 /// Cửa duy nhất từ app ra hệ thống thông báo của hệ điều hành.
 ///
 /// ## Vì sao file này KHÔNG có conditional import
@@ -68,24 +70,33 @@ abstract class OsNotifier {
     String? payload,
   });
 
-  /// Payload của thông báo người dùng vừa **chạm vào**, khi app đang sống.
+  /// Cú chạm của người dùng khi app **đang sống**, dạng **thô** — payload gốc
+  /// (chính là `dedupeKey`) và mã nút, kể cả nút *Hoãn* (nó không mở màn nào,
+  /// nhưng nhật ký B5a cần biết). Phải là **broadcast**: nơi nhận có thể huỷ
+  /// rồi nghe lại.
   ///
-  /// Payload chính là `dedupeKey` — xem `deeplinkTuDedupeKey()`. Phải là
-  /// **broadcast**: nơi nhận có thể huỷ rồi nghe lại.
+  /// Router là nơi DUY NHẤT dịch cú chạm thành route (`khoaSauChamNut`) và khử
+  /// trùng giữa lối này với [chamKhoiDong]. Hai đường vào của một cú bấm không
+  /// được phép quyết định khác nhau (vấp 2026-09-07) — nay chúng đổ về cùng một
+  /// hàm nên không thể lệch.
   ///
   /// Cú chạm không mang payload thì **không phát gì**, thay vì phát chuỗi
   /// rỗng: không có payload nghĩa là không suy ra được màn nào, và phát ra là
   /// ép nơi nhận tự lọc.
-  Stream<String> get payloadDaCham;
-
-  /// Payload của thông báo đã **mở app từ trạng thái đóng hẳn**.
   ///
-  /// Đây là ca **chính** của lịch đặt trước: nó nổ khi app không còn chạy.
-  /// Lúc ấy [payloadDaCham] có thể chưa kịp có người nghe, nên đường duy nhất
-  /// còn lại là hỏi thẳng nền tảng. Trả `null` khi app mở bình thường.
+  /// ⚠️ Trên Android nút *Hoãn* đi thẳng vào isolate nền (`ActionBroadcast-
+  /// Receiver`) **kể cả khi app đang sống** — đo trên Realme 2026-09-29 (spec
+  /// B5a mục 5) — nên nó hầu như không tới được lối này; hàng `hoan` đi qua tệp
+  /// hàng chờ.
+  Stream<ChamHdh> get chamTho;
+
+  /// Cú chạm đã **mở app từ trạng thái đóng hẳn** — ca **chính** của lịch đặt
+  /// trước: nó nổ khi app không còn chạy, lúc ấy [chamTho] có thể chưa kịp có
+  /// người nghe, nên đường duy nhất còn lại là hỏi thẳng nền tảng. Trả `null`
+  /// khi app mở bình thường.
   ///
   /// **Không bao giờ ném** — nó chạy trên đường khởi động app.
-  Future<String?> payloadKhoiDong();
+  Future<ChamHdh?> chamKhoiDong();
 
   /// Id của các lịch **đang chờ** nổ.
   ///
@@ -166,10 +177,10 @@ class NoopOsNotifier implements OsNotifier {
   }) async {}
 
   @override
-  Stream<String> get payloadDaCham => const Stream<String>.empty();
+  Stream<ChamHdh> get chamTho => const Stream<ChamHdh>.empty();
 
   @override
-  Future<String?> payloadKhoiDong() async => null;
+  Future<ChamHdh?> chamKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => const {};

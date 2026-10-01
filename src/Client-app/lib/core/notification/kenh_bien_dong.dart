@@ -1,0 +1,99 @@
+/// D1 — kênh nói chuyện với tầng Kotlin của tính năng đọc biến động số dư
+/// (`MainActivity.kt`, kênh [kKenhBienDong]; dịch vụ `BienDongListenerService.kt`).
+///
+/// Cùng khuôn `nguon_ly_do_thoat.dart`: mọi lỗi thành giá trị "không biết" / bỏ
+/// qua chứ không ném — trên nền tảng không có kênh (web, test, iOS) thì
+/// `MissingPluginException` là chuyện bình thường, và không đường nào ở đây được
+/// phép chặn khởi động hay chặn lượt quét.
+library;
+
+import 'package:flutter/services.dart';
+
+const String kKenhBienDong = 'flowmoney/bien_dong';
+
+abstract class KenhBienDong {
+  /// Người dùng đã cấp quyền "Truy cập thông báo" cho app chưa (Cài đặt hệ thống).
+  Future<bool> coQuyen();
+
+  /// Mở màn Cài đặt "Truy cập thông báo" của Android — app không tự cấp được.
+  Future<void> moCaiDat();
+
+  /// Lần mở app này có đến từ cú chạm thông báo tóm tắt không. Đọc là **tiêu**:
+  /// hỏi lần hai trả `false`.
+  Future<bool> moTuThongBao();
+
+  /// Gỡ thông báo tóm tắt (sau khi đã nhập hàng chờ).
+  Future<void> huyTomTat();
+
+  /// Bật / tắt dịch vụ Kotlin (cờ `SharedPreferences` phía native). Tắt thì dịch
+  /// vụ thôi đọc dù quyền hệ thống vẫn còn.
+  Future<void> datBat(bool bat);
+}
+
+class KenhBienDongAndroid implements KenhBienDong {
+  const KenhBienDongAndroid();
+
+  static const MethodChannel _kenh = MethodChannel(kKenhBienDong);
+
+  @override
+  Future<bool> coQuyen() async {
+    try {
+      return await _kenh.invokeMethod<bool>('coQuyen') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> moCaiDat() async {
+    try {
+      await _kenh.invokeMethod<void>('moCaiDat');
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
+
+  @override
+  Future<bool> moTuThongBao() async {
+    try {
+      return await _kenh.invokeMethod<bool>('moTuThongBao') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> huyTomTat() async {
+    try {
+      await _kenh.invokeMethod<void>('huyTomTat');
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
+
+  @override
+  Future<void> datBat(bool bat) async {
+    try {
+      await _kenh.invokeMethod<void>('datBat', {'bat': bat});
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
+}
+
+/// Nền tảng không có tầng Kotlin (web, máy ảo không phải Android, test): không
+/// quyền, không mở gì, không làm gì.
+class KenhBienDongTrong implements KenhBienDong {
+  const KenhBienDongTrong();
+
+  @override
+  Future<bool> coQuyen() async => false;
+  @override
+  Future<void> moCaiDat() async {}
+  @override
+  Future<bool> moTuThongBao() async => false;
+  @override
+  Future<void> huyTomTat() async {}
+  @override
+  Future<void> datBat(bool bat) async {}
+}

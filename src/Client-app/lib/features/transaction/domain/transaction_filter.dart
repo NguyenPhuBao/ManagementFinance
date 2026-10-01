@@ -1,4 +1,5 @@
 import '../../../core/category/category_name.dart';
+import '../../analytics/domain/khoan_vao_thong_ke.dart';
 import '../data/models/transaction_entity.dart';
 import 'khoang_tien.dart';
 
@@ -97,12 +98,19 @@ class TransactionSummary {
   double get net => income - expense;
 }
 
-/// Tổng thu / chi của một danh sách; chuyển khoản không tính (không phải thu
-/// hay chi — cùng quy ước với bloc và trang chủ).
+/// Tổng thu / chi của một danh sách — thẻ tổng của Sổ giao dịch.
+///
+/// Hàng được tính theo **đúng một** luật `khoanVaoThongKe` — cùng luật với Trang chủ (`thuChiThangCua`), trang Phân
+/// tích và trợ lý AI (`tongThuChi`): bỏ khoản chuyển, khoản điều chỉnh số dư, khoản "Số dư ban đầu"; khoản chưa phân
+/// loại thật **vẫn** tính. Trước 2026-09-29 vòng này cộng **thô** theo `type`, nên thẻ tổng nói Thu nhập 15.145.000 đ
+/// trong khi Trang chủ nói 15.135.000 đ (lệch đúng một khoản điều chỉnh +10.000 đ, đo trên Realme) — bước 1a
+/// (2026-09-23) sửa Trang chủ mà để sót chỗ này. Hệ quả **cố ý**: hàng điều chỉnh vẫn hiện trong danh sách nhưng không
+/// cộng vào thẻ (người dùng chốt con số của Phân tích). ⚠️ Đừng viết lại vòng cộng theo `type` ở nơi khác.
 TransactionSummary summarizeTransactions(Iterable<TransactionEntity> list) {
   var income = 0.0;
   var expense = 0.0;
   for (final t in list) {
+    if (!khoanVaoThongKe(loai: t.type, categoryId: t.categoryId, ghiChu: t.note)) continue;
     if (t.type == 'thu') income += t.amount;
     if (t.type == 'chi') expense += t.amount;
   }

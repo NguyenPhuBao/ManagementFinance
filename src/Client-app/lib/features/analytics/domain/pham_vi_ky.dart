@@ -330,6 +330,35 @@ Ky cungKyNamTruoc(Ky ky) => switch (ky.donVi) {
         }(),
     };
 
+/// Cùng kỳ năm trước của một KHOẢNG `[from, to)` — bản khoảng của
+/// [cungKyNamTruoc], cho chỗ chỉ có hai mốc mà không có [Ky] (tool truy vấn của
+/// trợ lý AI với `ky=tuy_chon`, 2026-09-28).
+///
+/// Khoảng trùng khít một số **tháng dương lịch** thì lùi theo lịch — cùng lý lẽ
+/// với [khoangKyTruoc]: trọn tháng 2/2028 (29 ngày) giữ độ dài thì thành
+/// `01/02/2027–02/03/2027`, nuốt thêm một ngày của tháng 3. Khoảng khác thì gọi
+/// lại [cungKyNamTruoc] — giữ nguyên độ dài, một định nghĩa.
+({DateTime from, DateTime to}) khoangCungKyNamTruoc({
+  required DateTime from,
+  required DateTime to,
+}) {
+  final tronThang = from.day == 1 &&
+      to.day == 1 &&
+      from.hour == 0 &&
+      to.hour == 0 &&
+      from.minute == 0 &&
+      to.minute == 0 &&
+      to.isAfter(from);
+  if (tronThang) {
+    return (
+      from: DateTime(from.year - 1, from.month, 1),
+      to: DateTime(to.year - 1, to.month, 1),
+    );
+  }
+  final k = cungKyNamTruoc(Ky.tuyChon(from: from, to: to));
+  return (from: k.from, to: k.to);
+}
+
 /// Tên **cùng kỳ năm trước** cho câu "so với …" ở hai thẻ tổng.
 ///
 /// Khác [nhanKyTruoc], nhãn này **luôn mang số năm**: cả câu nói về năm ngoái,

@@ -151,4 +151,10 @@ void main() {
     final goiVi = goi.firstWhere((g) => g.man == 'vi');
     expect(goiVi.soLieu.map((s) => s.chuoi), contains('500.000 đ'));
   });
+
+  test('G5 (b): gói phân tích của trợ lý mang kỳ "tháng này"', () async {
+    final goi = await nguon.tatCa(10, now: DateTime(2026, 9, 22));
+    final pt = goi.first;
+    expect(pt.kyCua(pt.soLieu.first), {'tháng này'});
+  });
 }

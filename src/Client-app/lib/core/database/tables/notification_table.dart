@@ -73,7 +73,10 @@ class AppNotifications extends Table {
   /// Id đã cấp cho `flutter_local_notifications`, để huỷ lịch.
   IntColumn get osScheduledId => integer().nullable()();
 
-  /// Đã bắn ra hệ điều hành chưa. null = mới chỉ tồn tại trong app.
+  /// Lúc thông báo được giao cho hệ điều hành **khi quyền đang bật** (B5a, ghi ở
+  /// `NotificationScanner._banRaHeDieuHanh`). null = chưa bắn, hoặc bắn lúc quyền
+  /// tắt. Lịch đặt trước KHÔNG ghi ở đây — xem `dat_lich` của
+  /// `app_notification_events`. (Trước B5a cột này có từ v13 mà không nơi nào ghi.)
   DateTimeColumn get osDeliveredAt => dateTime().nullable()();
 
   @override
