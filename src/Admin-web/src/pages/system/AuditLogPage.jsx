@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
+import useSocket from '../../hooks/useSocket';
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -24,6 +25,9 @@ const AuditLogPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  const socket = useSocket();
+  const [socketConnected, setSocketConnected] = useState(false);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -54,6 +58,53 @@ const AuditLogPage = () => {
   useEffect(() => {
     setPage(1);
   }, [search, statusFilter, dateFrom, dateTo]);
+
+  // Lắng nghe Real-time Socket.io cho Audit Log Page
+  useEffect(() => {
+    if (!socket) {
+      setSocketConnected(false);
+      return;
+    }
+
+    setSocketConnected(socket.connected);
+
+    const onConnect = () => setSocketConnected(true);
+    const onDisconnect = () => setSocketConnected(false);
+
+    const handleRealtimeLog = (data) => {
+      // Chỉ tự chèn vào đầu bảng nếu đang ở Trang 1 và không có bộ lọc tìm kiếm
+      if (page === 1 && !search.trim() && !statusFilter && !dateFrom && !dateTo) {
+        const newLog = {
+          idlog: data.id || Date.now(),
+          idaccount: data.idaccount,
+          request: data.action || 'Yêu cầu hệ thống',
+          req_status: data.status || 'Pass',
+          reason: data.reason || null,
+          time_req: data.time_req || new Date().toISOString(),
+          time_res: data.time_res || new Date().toISOString(),
+          account: {
+            username: data.user || 'Người dùng',
+            User: { fullname: data.user || null },
+          },
+        };
+        setLogs((prev) => {
+          const filtered = prev.filter((item) => item.idlog !== newLog.idlog);
+          return [newLog, ...filtered].slice(0, pageSize);
+        });
+        setTotal((prev) => prev + 1);
+      }
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('audit_activity', handleRealtimeLog);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('audit_activity', handleRealtimeLog);
+    };
+  }, [socket, page, pageSize, search, statusFilter, dateFrom, dateTo]);
 
   const fmt = (dt) => {
     if (!dt) return '—';
@@ -90,6 +141,20 @@ const AuditLogPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {socketConnected ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#dcfce7] text-[#166534] font-label-md text-xs font-semibold border border-[#86efac]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+              </span>
+              Real-time
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title="Đang kết nối lại socket...">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              Đang kết nối...
+            </span>
+          )}
           <button
             onClick={handleResetFilters}
             className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface border border-outline-variant bg-white rounded-lg px-3 py-2 transition-colors cursor-pointer"

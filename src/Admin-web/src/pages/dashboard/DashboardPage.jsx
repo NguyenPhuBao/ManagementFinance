@@ -434,6 +434,7 @@ const DashboardPage = () => {
     totalPages: 1,
   });
   const [loadingActivities, setLoadingActivities] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
   const getPageNumbers = (curr, total) => {
@@ -577,7 +578,15 @@ const DashboardPage = () => {
 
   // Lắng nghe Real-time Socket.io qua useSocket hook
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      setSocketConnected(false);
+      return;
+    }
+
+    setSocketConnected(socket.connected);
+
+    const onConnect = () => setSocketConnected(true);
+    const onDisconnect = () => setSocketConnected(false);
 
     const handleAuditActivity = (data) => {
       const newActivity = {
@@ -671,9 +680,13 @@ const DashboardPage = () => {
       }
     };
 
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
 
     return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
     };
   }, [socket, activityLimit]);
@@ -1046,13 +1059,20 @@ const DashboardPage = () => {
                   Hoạt động gần đây
               </h2>
               <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                  {socketConnected ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
                       <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
                       Real-time
-                  </span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-label-md text-[11px] font-medium border border-amber-200" title="Đang kết nối lại socket...">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                      Đang kết nối...
+                    </span>
+                  )}
               </div>
           </div>
           

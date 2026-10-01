@@ -80,6 +80,9 @@ Khi hệ thống Backend gặp sự cố nghẽn mạng, quá tải request từ
     - `POST /api/admin/system/maintenance` (bật/tắt chế độ bảo trì).
     - `GET /api/admin/system/maintenance` (xem trạng thái hiện tại).
   - Cờ trạng thái `MAINTENANCE_MODE` được lưu trực tiếp trong bộ nhớ RAM / Redis / cờ file cục bộ (không phụ thuộc vào CSDL để đảm bảo hoạt động được ngay cả khi CSDL bị treo).
+- **Cơ chế tách biệt UI chống SPOF:**
+  - Trên giao diện Quản trị (`ServerHealthPanel.jsx`), khối công tắc bảo trì được gọi và hiển thị hoàn toàn độc lập với API đo tải tài nguyên `/api/admin/system/health`.
+  - Nếu API đo tải phần cứng bị lỗi, timeout hoặc 404, công tắc bảo trì khẩn cấp vẫn hoạt động 100% bình thường, không bao giờ bị khóa chết.
 - **Hành vi khi bật bảo trì:**
   - Mọi request từ Client-app ngay lập tức nhận phản hồi `503 Service Unavailable`:
     ```json
@@ -94,8 +97,10 @@ Khi hệ thống Backend gặp sự cố nghẽn mạng, quá tải request từ
 
 ---
 
-## 4. TRẠNG THÁI & BƯỚC TIẾP THEO
+## 4. TRẠNG THÁI & KẾT QUẢ TRIỂN KHAI
 
 - [x] Đã được PO phê duyệt Phương án 1 chính thức.
-- [ ] Lập Implementation Plan chi tiết theo quy trình chuẩn (TDD: Red $\rightarrow$ Green $\rightarrow$ Refactor).
-- [ ] Trình Implementation Plan cho PO/Người dùng kiểm duyệt trước khi viết code.
+- [x] Đã hoàn thành Backend Priority Lane, Maintenance Mode, Load Shedding và DB Bulkhead.
+- [x] Đã hoàn thành Admin-web Operations Center & Resilience Panel (chống SPOF).
+- [x] Đã đồng bộ Real-time Socket.io cho Audit Log và Dashboard Activity.
+- [x] Tất cả bộ test 98/98 unit tests pass hoàn toàn.

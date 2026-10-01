@@ -23,21 +23,36 @@ const useSocket = (serverUrl = defaultSocketUrl, options = {}) => {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       autoConnect: true,
-      reconnectionAttempts: 5,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000,
       auth: { token },
       ...options,
     });
 
     client.on('connect', () => {
-      console.log('[Socket] Connected:', client.id);
+      console.log('[Socket] Kết nối thành công:', client.id);
+    });
+
+    client.on('reconnect_attempt', () => {
+      // Cập nhật token mới nhất nếu có refresh
+      const freshToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+      if (freshToken) {
+        client.auth.token = freshToken;
+      }
+    });
+
+    client.on('joined_admin_room', (data) => {
+      console.log('[Socket] Đã xác thực đặc quyền Admin trong room admin_room:', data);
     });
 
     client.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
+      console.log('[Socket] Mất kết nối:', reason);
     });
 
     client.on('connect_error', (error) => {
-      console.error('[Socket] Connection Error:', error);
+      console.warn('[Socket] Lỗi kết nối Socket.io:', error.message);
     });
 
     setSocket(client);
