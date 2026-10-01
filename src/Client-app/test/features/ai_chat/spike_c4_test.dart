@@ -65,6 +65,62 @@ Tien thoi lai            8.138
     });
   });
 
+  group('ghepDongTheoHang — ML Kit trả chữ theo CỘT, luật đọc theo HÀNG', () {
+    // Hoá đơn hai cột như ảnh thử T01 trên Realme: khối nhãn (trái) rồi mới tới khối số (phải). Hàng cao 30, cách 44.
+    DongOcr nhan(String chu, int hang) => DongOcr(chu, trai: 40, tren: 100.0 + 44 * hang, phai: 300, duoi: 130.0 + 44 * hang);
+    DongOcr so(String chu, int hang, {double lech = 0}) =>
+        DongOcr(chu, trai: 500, tren: 100.0 + 44 * hang + lech, phai: 640, duoi: 130.0 + 44 * hang + lech);
+
+    final haiCot = [
+      nhan('CO.OPMART NGUYEN TRAI', 0),
+      nhan('Sau rieng Ri6', 1),
+      nhan('Nuoc suoi', 2),
+      nhan('TONG CONG', 3),
+      nhan('Tien khach dua', 4),
+      nhan('Tien thoi lai', 5),
+      so('152.000', 1),
+      so('39.862', 2),
+      so('191.862', 3),
+      so('200.000', 4),
+      so('8.138', 5),
+    ];
+
+    test('⭐ hoá đơn hai cột: ghép theo hàng rồi mới đọc → tổng 191.862, không phải tiền khách đưa', () {
+      expect(docHoaDonTuChu(haiCot.map((d) => d.chu).join('\n')).tong, 200000,
+          reason: 'tiền đề: nối theo thứ tự ML Kit trả về thì nhãn TONG CONG không có số cạnh nó — đúng lỗi đo trên Realme');
+      final ghep = ghepDongTheoHang(haiCot);
+      expect(ghep.split('\n'), contains('TONG CONG 191.862'));
+      expect(docHoaDonTuChu(ghep).tong, 191862);
+    });
+
+    test('trong một hàng: trái trước phải sau, bất kể thứ tự đầu vào', () {
+      expect(ghepDongTheoHang([so('90.000', 0), nhan('Tong thanh toan', 0)]), 'Tong thanh toan 90.000');
+    });
+
+    test('các hàng xếp từ trên xuống, bất kể thứ tự đầu vào', () {
+      expect(ghepDongTheoHang([nhan('Dong duoi', 2), nhan('Dong tren', 0), nhan('Dong giua', 1)]),
+          'Dong tren\nDong giua\nDong duoi');
+    });
+
+    test('số lệch vài điểm ảnh so với nhãn (ảnh hơi nghiêng) vẫn cùng hàng; hàng kế thì KHÔNG bị gộp', () {
+      final ghep = ghepDongTheoHang([nhan('TONG CONG', 0), nhan('Tien khach dua', 1), so('191.862', 0, lech: 9), so('200.000', 1, lech: 9)]);
+      expect(ghep, 'TONG CONG 191.862\nTien khach dua 200.000');
+    });
+
+    test('dòng tiêu đề chữ to không nuốt hàng ngay dưới nó, dù khung của nó trùm tới tâm dòng ấy', () {
+      // Khung tiêu đề 20–120 chứa tâm (111) của dòng dưới; tâm tiêu đề (70) thì KHÔNG nằm trong khung dòng dưới.
+      final ghep = ghepDongTheoHang([
+        const DongOcr('SIEU THI', trai: 40, tren: 20, phai: 600, duoi: 120),
+        const DongOcr('28/09/2026', trai: 400, tren: 96, phai: 600, duoi: 126),
+      ]);
+      expect(ghep, 'SIEU THI\n28/09/2026', reason: 'cùng hàng phải đúng ở CẢ HAI chiều — một chiều là chữ to nuốt chữ nhỏ');
+    });
+
+    test('không có dòng nào → chuỗi rỗng, không ném', () {
+      expect(ghepDongTheoHang(const []), '');
+    });
+  });
+
   group('docHoaDonTuJson — lối B', () {
     test('JSON trong rào ```json``` với số nguyên', () {
       final kq = docHoaDonTuJson('```json\n{"tong": 191862, "cua_hang": "Co.opmart", "ngay": "28/09/2026"}\n```')!;

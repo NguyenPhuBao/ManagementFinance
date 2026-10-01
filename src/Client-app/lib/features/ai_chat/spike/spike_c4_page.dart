@@ -242,9 +242,16 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
         try {
           final rt = await tr.processImage(InputImage.fromFilePath(p));
           final t = d.elapsedMilliseconds;
-          final dong = [for (final b in rt.blocks) for (final l in b.lines) l.text].join('\n');
-          final kq = docHoaDonTuChu(dong);
-          _ghi('CHỤP-A | $kq | $t ms | OCR ${dong.split('\n').length} dòng, ${dong.length} ký tự');
+          // ML Kit trả dòng theo CỘT — ghép theo khung thành HÀNG trước khi đưa cho luật.
+          final dong = [
+            for (final b in rt.blocks)
+              for (final l in b.lines)
+                DongOcr(l.text,
+                    trai: l.boundingBox.left, tren: l.boundingBox.top, phai: l.boundingBox.right, duoi: l.boundingBox.bottom),
+          ];
+          final hang = ghepDongTheoHang(dong);
+          final kq = docHoaDonTuChu(hang);
+          _ghi('CHỤP-A | $kq | $t ms | OCR ${dong.length} dòng → ${hang.split('\n').length} hàng, ${hang.length} ký tự');
         } finally {
           await tr.close();
         }

@@ -95,6 +95,40 @@ List<int> _tienTrenDong(String dong) => [
           if (docSoHoaDon(m.group(0)!) case final v? when v >= 1000 && v < 1000000000) v,
     ];
 
+/// Một dòng chữ OCR kèm khung của nó trên ảnh (điểm ảnh, gốc ở góc trên trái). Kiểu thuần — màn đo chép từ
+/// `TextLine.boundingBox` của ML Kit sang, để phép ghép hàng test được mà không cần gói ấy.
+class DongOcr {
+  final String chu;
+  final double trai, tren, phai, duoi;
+  const DongOcr(this.chu, {required this.trai, required this.tren, required this.phai, required this.duoi});
+}
+
+/// Ghép các dòng OCR CÙNG HÀNG thành một dòng chữ, hàng xếp từ trên xuống, trong hàng xếp từ trái sang.
+///
+/// ⚠️ ML Kit trả `blocks → lines` theo CỘT: hoá đơn hai cột ra cả khối nhãn rồi mới tới khối số, nên nối theo thứ tự
+/// trả về thì nhãn *TỔNG CỘNG* không có số nào cạnh nó (đo Realme 2026-10-01: ảnh thử ra tiền khách đưa).
+///
+/// Hai dòng cùng hàng ⇔ tâm dọc của MỖI dòng nằm trong khung dọc của dòng KIA. Đòi cả hai chiều để một dòng chữ to
+/// (tên cửa hàng) không nuốt dòng nhỏ sát dưới nó. Khung là khung thẳng trục — ảnh nghiêng nhiều thì hai đầu một hàng
+/// lệch quá nửa chiều cao chữ và phép này tách chúng ra; giới hạn của spike, đo bằng ảnh thật.
+String ghepDongTheoHang(List<DongOcr> dong) {
+  double tam(DongOcr d) => (d.tren + d.duoi) / 2;
+  bool cungHang(DongOcr a, DongOcr b) =>
+      tam(a) >= b.tren && tam(a) <= b.duoi && tam(b) >= a.tren && tam(b) <= a.duoi;
+
+  final hang = <List<DongOcr>>[];
+  for (final d in [...dong]..sort((a, b) => tam(a).compareTo(tam(b)))) {
+    // Xét MỌI hàng đã có, không chỉ hàng cuối: ảnh nghiêng thì đầu phải của hàng trên có thể thấp hơn đầu trái hàng dưới.
+    final h = hang.where((h) => h.any((x) => cungHang(x, d))).firstOrNull;
+    h == null ? hang.add([d]) : h.add(d);
+  }
+  double dinh(List<DongOcr> h) => h.map((d) => d.tren).reduce((a, b) => a < b ? a : b);
+  hang.sort((a, b) => dinh(a).compareTo(dinh(b)));
+  return [
+    for (final h in hang) ([...h]..sort((a, b) => a.trai.compareTo(b.trai))).map((d) => d.chu).join(' '),
+  ].join('\n');
+}
+
 /// Lối A chụp hoá đơn: chữ OCR (mỗi dòng một dòng) → tổng tiền + tên cửa hàng + ngày.
 ///
 /// Tổng: dòng mang nhãn tổng (ưu tiên theo [_nhanTong], hoà thì dòng SAU thắng — tổng cuối cùng nằm dưới), lấy số lớn
