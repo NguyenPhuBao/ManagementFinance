@@ -277,7 +277,6 @@ async function runDailyMaintenanceRoutine() {
   logger.info('=== HOÀN TẤT CHU TRÌNH BẢO TRÌ HÀNG NGÀY ===');
 }
 
-let timerHandle = null;
 let cloudHealthIntervalHandle = null;
 
 /**

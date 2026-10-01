@@ -748,7 +748,7 @@ const DashboardPage = () => {
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
 
-  // Uptime Card Display Values
+  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, không giả lập)
   let uptimeDisplayValue = '—';
   let uptimeBadge = 'Đang tải...';
   let uptimeBadgeColor = undefined;
@@ -758,8 +758,8 @@ const DashboardPage = () => {
     uptimeBadge = uptimeData.uptimeFormatted || 'Ổn định';
     uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
   } else if (uptimeStatus === 'unsupported') {
-    uptimeDisplayValue = 'Chưa đồng bộ';
-    uptimeBadge = 'Chờ cập nhật API';
+    uptimeDisplayValue = '—';
+    uptimeBadge = 'Chưa hỗ trợ API';
     uptimeBadgeColor = 'amber';
   } else if (uptimeStatus === 'error') {
     uptimeDisplayValue = '—';
