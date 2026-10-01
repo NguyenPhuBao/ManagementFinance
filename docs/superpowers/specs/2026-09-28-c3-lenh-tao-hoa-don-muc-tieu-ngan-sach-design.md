@@ -22,6 +22,16 @@ D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `k
 > 🔄 **ĐỔI LẦN HAI (người dùng duyệt 2026-09-30 đêm) — AI hiểu ý + điền ô, luật thành lưới kiểm và đường dự phòng: xem
 > §8.** Mọi câu "chỉ luật / không mô hình" ở §1–§7 là của bản đầu.
 >
+> 🚧 **§8 — MÃ XONG Task 1–4 ngày 2026-10-01** (`3442495` → `24226cf`), **chưa đo Realme** (Task 5). Mục **9.43**
+> `AI_EDGE_FEATURE.md`. **Bốn chỗ bản thi công khác §8**, đều có ca test + bản sai có chủ ý:
+> (1) §8.3 *ví*: tên enum của AI khớp một ví **chưa đủ** — còn phải **câu nhắc ví** (chữ *ví* trần / viết tắt tên
+> ví, `cauNhacViTheoTen` của C2); C2 đo Realme 9/10 câu mô hình tự điền ví mặc định.
+> (2) §8.3 *ngày gốc*: chữ số phải nằm **ngoài đoạn số tiền** (số 5 của *"5 triệu"*).
+> (3) §8.3 *hạn*: danh sách từ chỉ thời gian so **có dấu** khi câu có dấu (*tôi* ≠ *tới*, *cưới* ≠ *cuối*); bộ
+> không dấu không có `toi`; thêm *tuần · quý*.
+> (4) §8.4 *Huỷ*: lượt **dừng** (câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*), **không** về vòng hỏi đáp —
+> **chờ người dùng xác nhận**.
+>
 > ✅ **THI CÔNG XONG 2026-09-30 đêm** (`51d6a3c` → `89f2112`), nghiệm thu Realme: ba lệnh → thẻ < 1 s, ba form đúng;
 > câu hỏi gần giống lệnh đi vòng tool như cũ — mục **9.42** `AI_EDGE_FEATURE.md`. Stitch thẻ lệnh gửi (timeout), chưa hiện
 > lúc ấy; ✅ hiện ngày 2026-10-01: **`59454c61be704c2f882f8f625917951c`** — đối chiếu ở cuối §8.4.

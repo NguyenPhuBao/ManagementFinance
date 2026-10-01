@@ -3254,7 +3254,76 @@ Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-d
   gõ không dấu) → thẻ **< 1 s**, log `[SLM] lệnh tạo … → form`, không phiên mô hình; ba form điền đúng; quay về giữ lịch
   sử chat. Câu *"nen dat ngan sach an uong bao nhieu"* → vòng tool như cũ (1 lời gọi, 33 s). Chưa đo trên máy: nhánh
   *chưa có mô hình* (widget test phủ).
-- Stitch: màn *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"* gửi 2026-09-30 (timeout) — chưa hiện lúc thi công.
+- Stitch: màn *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"* gửi 2026-09-30 (timeout) — chưa hiện lúc thi công; ✅ hiện ngày
+  2026-10-01, id `59454c61be704c2f882f8f625917951c` (đối chiếu ở mục 9.43).
+
+> 🔄 **Từ 2026-10-01 bộ luật của mục này là ĐƯỜNG DỰ PHÒNG và LƯỚI KIỂM** — máy có mô hình thì AI đọc trước (mục 9.43).
+> Câu *"chỉ luật, không mô hình"*, *"lệnh không mở phiên mô hình"* và *"thẻ < 1 s"* ở trên chỉ còn đúng cho máy **chưa
+> có mô hình / tắt công tắc AI**.
+
+### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — 🚧 mã xong, CHƯA đo Realme
+
+Người dùng (2026-09-30 đêm): *"tôi muốn tạo bằng AI mới đúng thay vì chỉ lệnh như này"* — spec C3 **§8**, kế hoạch
+`plans/2026-09-30-c3-lenh-tao-bang-ai.md`. Commit `3442495` → `24226cf` (Task 1–4). Câu tự nhiên *"tôi muốn để dành 50
+triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; luật kiểm từng ô; thẻ mở form điền sẵn, người dùng bấm Lưu.
+
+- **Cổng rộng `coVeLenhTao`** (`lenh_tao.dart`, luật): `true` ⇔ câu theo mẫu 9.42, **hoặc** (không từ hỏi ∧ nhắc một
+  *đối tượng tạo được* — hoá đơn · mục tiêu · ngân sách · để dành · tiết kiệm · dành dụm · quỹ khẩn cấp · định kỳ ·
+  hằng/mỗi + tuần/tháng/quý/năm · một tháng ∧ (có *tín hiệu muốn tạo* — tạo · thêm · đặt · lập · muốn · nhắc · lên kế
+  hoạch — **hoặc** một số tiền đọc được)). ⚠️ Không có `quy` trần (*"quý này"* của câu hỏi cũng ra `quy`). Lưới **72 câu
+  cổng F** → `false` hết; **ở đây lưới ấy canh thật** (bản sai bỏ vế từ hỏi làm nó đỏ — khác cổng hẹp 9.42).
+- **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
+  `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
+  + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
+  token, mục 9.34). ⚠️ Tầng 4: không tool nào có tham số tự trả / trích tự động (ca test quét khoá tham số).
+  Vòng đời phiên (nạp một lần · lời gọi đầu tiên · quá hạn · huỷ · đóng) tách thành **`PhienMotLoiGoi`**
+  (`ai_edge/data/phien_mot_loi_goi.dart`) — `DocCauBangAi` của C2 nay **uỷ thác** sang nó (test C2 không đổi một dòng);
+  nó log `tools_json N ký tự` trước khi mở phiên.
+- **Lưới kiểm `lenhTaoTuAi`** (`lenh_tao.dart`) — kết quả mô hình **không bao giờ dùng thẳng**: luật đọc trước trên chính
+  câu (`_docTheoLuat`, tách từ `lenhTaoTheoCauHoi`), AI chỉ **lấp ô luật để trống**, mỗi ô một chốt:
+
+  | Ô | Nhận của AI khi |
+  |---|---|
+  | loại | câu **không** theo mẫu 9.42 (câu theo mẫu → loại của luật, AI không đổi được) |
+  | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5) |
+  | tên | là **đoạn con** của câu (bỏ dấu, chữ thường), không chứa chữ số; câu theo mẫu thì tên luật thắng |
+  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian |
+  | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
+  | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền** |
+  | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào) |
+  | ví | khớp đúng một ví **và câu nhắc ví** (chữ *ví* trần, hoặc viết tắt tên ví) |
+  | tầng 4 `nhacTuTra` | không bao giờ — chỉ luật |
+
+  `LenhTao.nguon` = `ai` khi **ít nhất một ô** do mô hình lấp, ngược lại `luat`.
+  ⚠️ **Ba chốt siết hơn bảng §8.3 của spec**, cả ba có ca test + bản sai có chủ ý:
+  (1) **ví** — C2 đo Realme 9/10 câu mô hình tự điền ví mặc định; phép "câu nhắc ví" là **`cauNhacViTheoTen`**, tách từ
+  `_cauNhacVi` của C2 (`doc_cau_giao_dich.dart`, một định nghĩa); (2) **ngày gốc** — số 5 của *"5 triệu"* không phải
+  ngày; (3) **chữ chỉ thời gian so CÓ DẤU khi câu có dấu** — bỏ dấu thì *"tôi"* = *toi* = *tới*, *"cưới"* = *cuoi* =
+  *cuối*: mọi câu có chủ ngữ thành "câu nói thời gian" và hạn mô hình bịa lọt lưới; bộ không dấu (cho người gõ không
+  dấu) vì thế không có `toi`.
+- **Màn chat** (`_hoi` → `_docLenhTao`): cổng **trước** chặn chủ đề / định tuyến.
+
+  | Tình huống | Hành vi |
+  |---|---|
+  | có mô hình, lọt cổng | chỉ báo *"Đang đọc lệnh bằng AI…"* + nút **Huỷ** → thẻ, dòng nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"* |
+  | có mô hình, AI trả `null` | câu theo mẫu → thẻ luật; câu khác → vòng hỏi đáp như cũ |
+  | bấm **Huỷ** | câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*, **không** đi vòng hỏi đáp |
+  | chưa có mô hình | câu theo mẫu → thẻ luật; câu khác → câu cố định `cauKhoaHoiDap`; **không** gọi AI |
+  | không lọt cổng | vòng hỏi đáp như cũ |
+
+  ⚠️ Dòng *Huỷ* **lệch spec §8.4 có chủ ý** (spec: về vòng hỏi đáp): vừa huỷ một lượt chờ mà bị đẩy vào lượt chờ 30 s
+  khác là ngược ý người bấm. Nút Huỷ **chỉ** có ở lượt đọc lệnh (`_dangDocLenh`), không ở lượt hỏi đáp thường.
+  Dòng nguồn nói thứ **đã xảy ra**: AI đọc mà không lấp ô nào (luật đã đủ) thì vẫn *"Đọc bằng luật"*.
+- **Thẻ theo Stitch `59454c61…`**: ô thiếu là hộp nền nhạt + `help_outline`; nút có mũi tên `arrow_forward`; biểu tượng
+  dòng đầu trong ô vuông nền nhạt 24 dp (`auto_awesome` khi AI, `rule` khi luật). **Lệch có chủ ý**: giữ avatar + bong
+  bóng bo lệch như mọi tin của trợ lý (Stitch vẽ thẻ rộng hết hàng, không avatar); chữ ô thiếu giữ *"bạn điền trong
+  form"* (Stitch: *"bạn chọn"* — ô thiếu có thể là số tiền). Màn Stitch vẽ bản luật: **chưa có** dòng chỉ báo lẫn dòng
+  nguồn.
+- **Giá (chưa đo — ước theo C2):** thẻ sau ~15–20 s trên Realme CPU thay vì < 1 s; câu lọt cổng mà mô hình không gọi
+  tool tốn thêm một lượt chờ rồi mới về vòng hỏi đáp.
+- `flutter test` **5146/5146** (5 skip — ca thứ năm là trần `tools_json` ba tool, chờ số đo Realme), analyze 26.
+- 🚧 **Chưa làm:** Task 5 — đo Realme (10 câu + 3 câu hỏi gần giống + 1 lần Huỷ; `tools_json` thật; đặt
+  `kTranToolsJsonLenhDaDo`, bỏ `skip`). APK debug `5aefd14a…` **đã cài** lên Realme 2026-10-01 14:23.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
