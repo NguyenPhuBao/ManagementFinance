@@ -359,10 +359,14 @@ ngược với mọi lần họ đã tự chốt Di chuyển.
 
 Người dùng chốt ngày 2026-09-29, hai quyết định:
 
-- **Xin backend sửa seed** — đơn `docs/superpowers/backend/CAN-LAM/SEED_TU_KHOA_GRAB.md`
+- **Xin backend sửa seed** — đơn `docs/superpowers/backend/DA-XONG/SEED_TU_KHOA_GRAB.md`
   (`grab` sang Di chuyển, `grabfood` cho Ăn uống). ⚠️ Chỉ tài khoản / máy **mới** nhận
   bộ mới: client gieo từ khoá kéo về chỉ khi danh mục chưa có từ khoá nào
   (`_gieoTuKhoaKhiTrong`), cố ý để thao tác xoá từ khoá của người dùng không hồi sinh.
+  ✅ **Backend sửa ở `main` @ `a7c03b7`** (gộp 2026-10-01, `71234eb`): `prisma/seed.js` và
+  `database/14_fix_grab_keyword_category.sql`, chỉ hai hàng `Is_default`. Đo cùng ngày:
+  CSDL dev của máy này **chưa áp** tệp 14 (hai hàng còn bộ cũ) — tài khoản mới tạo trên
+  dev vẫn nhận `grab` → Ăn uống cho tới khi tệp được áp.
 - **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
   học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
   gốc (seed), không bằng một luật chặn thứ hai ở màn.

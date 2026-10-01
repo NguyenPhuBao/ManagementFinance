@@ -14,7 +14,7 @@ một điều **bắt buộc**: màn giải thích + xin đồng ý trước khi
 - **App đóng:** Kotlin bắn **một thông báo chung, không số tiền**.
 - **Danh sách trắng:** **MB Bank, Vietcombank, Techcombank, BIDV, app Tin nhắn (SMS), MoMo, ZaloPay**. Hai ví điện tử
   **vượt** bản backend đã duyệt, nên có đơn báo
-  `docs/superpowers/backend/CAN-LAM/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`.
+  `docs/superpowers/backend/DA-XONG/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`.
 - **Tin chưa ghi hiện ở:** **trung tâm thông báo + thẻ ở Sổ giao dịch**.
 - **Tin thô:** **xoá ngay khi nhập**; phần đã đọc xoá khi **Lưu / Bỏ qua**, tối đa **30 ngày**.
 

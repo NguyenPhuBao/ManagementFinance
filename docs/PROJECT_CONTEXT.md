@@ -724,7 +724,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   *Bỏ qua* hai lần → lần ba thẻ học thôi hiện, bảng phản hồi đúng ba hàng (đọc bằng bản debug cài đè cùng khoá ký, rồi
   trả lại release). Lượt ấy bắt **lỗi của chính công cụ đo Task 6** (ứng viên từ khoá gồm hàng mặc định toàn cục → hoà
   giả, "phủ 0 %"; sửa `9f407e6`) và một **từ khoá mặc định gây nhầm** `grab` → Ăn uống (seed backend) — hai câu hỏi
-  người dùng chốt cùng trưa: **xin backend sửa seed** (`CAN-LAM/SEED_TU_KHOA_GRAB.md`) và **giữ luật Bỏ qua như spec**,
+  người dùng chốt cùng trưa: **xin backend sửa seed** (`DA-XONG/SEED_TU_KHOA_GRAB.md`) và **giữ luật Bỏ qua như spec**,
   mục **5d** `docs/CATEGORY_RATIONALE.md`. Lượt ấy còn **đóng G49** (thẻ tổng và tiêu đề ngày Sổ giao dịch lệch Trang
   chủ), **G50** (cặp nạp mục tiêu dạng cũ bị tính là thu **và** chi — chi tháng 9 tài khoản 10 nay **1.851.000**, thu
   **14.635.000**) và **F12** (cổng ra nhóm A trọn). ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
@@ -902,7 +902,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   MoMo; Bỏ qua; tắt → không tóm tắt; logcat release 0 byte. ⚠️ Lộ **ba** lỗi lúc thi công / đo, đã sửa: Sổ giao dịch
   tràn **89 px** khi hai thẻ lối vào cùng có (nay cuộn cùng danh sách) · bảng *Chọn ví* tràn 13 px khi 5 ví (`41dfc9c`,
   có từ trước) · chip *Biến động* ngoài mép phải khi mở trung tâm lọc sẵn (`802dcd2`, **chưa cài lên máy**). Chưa đo: tin
-  MB qua đường thật. Đơn soát `CAN-LAM/D1_DOC_BIEN_DONG_XONG_SOAT.md` xin backend đổi ô chức năng 3 + bốn chỗ tài liệu.
+  MB qua đường thật. Đơn soát `DA-XONG/D1_DOC_BIEN_DONG_XONG_SOAT.md` xin backend đổi ô chức năng 3 + bốn chỗ tài liệu.
   **Việc sau D1, người dùng chốt:** bàn phím số ẩn khi màn đã có số tiền (Stitch trước) · gợi ý Chuyển khoản cho cặp trừ
   + cộng · chia sẻ biên lai ví điện tử (MoMo / ZaloPay không bắn tin khi chuyển đi; gộp C4). `flutter test`
   **4963/4963** (4 skip), analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu bốn trường Tổng kết tuần.
@@ -931,11 +931,40 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   lệnh → thẻ < 1 s, ba form đúng; câu hỏi gần giống lệnh đi vòng tool như cũ. Mục **9.42** `AI_EDGE_FEATURE.md`.
   `flutter test` **5088/5088** (4 skip), analyze 26.
 
+### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
+
+Chín commit, **không xung đột**, **không đụng `src/Client-app`** (27 tệp: Backend 14, Admin-web 8, tài liệu 5).
+`CAN-LAM/README.md` báo mục 27–30 *"hoàn tất 100%"* nhưng **không chuyển tệp nào**. Client soát bằng mã tại HEAD và
+truy vấn chỉ đọc trên CSDL dev, chuyển cả bốn đơn sang `DA-XONG/` (mục **4b** mục lục; nay **48** tệp, đếm bằng máy),
+và đặt **một** đơn mới `superpowers/backend/CAN-LAM/SOAT_SAU_GOP_A7C03B7.md`:
+
+- **Seed `grab`** ✅ — `seed.js` + `database/14_fix_grab_keyword_category.sql` (chỉ hai hàng `Is_default`).
+  ⚠️ Tệp 14 mở đầu bằng **BOM** (tệp 5–13 không có) — chạy qua gói `pg` phải bỏ ba byte đầu. CSDL dev **chưa áp**
+  (đo: hai hàng còn `an uong, food, grab` / `di chuyen, xang, grabcar`); chỉ áp khi người dùng cho phép đích danh.
+- **Tài liệu thông báo** — ba payload socket nay khớp mã; `user.notification` ghi rõ chưa có nguồn phát; kho người dùng
+  thôi lưu `BankTransactionPending`. Chưa sửa: *"5 nhóm / 19 loại"*, các hàm / route không tồn tại, lời hứa *"offline
+  dài ngày"*, và dòng *"chấm đỏ tĩnh"* — nay sai theo chiều ngược vì client **đã có số đếm**.
+- **FHS — bản sửa sinh hai lỗi mới**, đã xin sửa:
+  - `financial.snapshot.service.js:300-303` gom `Chi` + `Vay/no` **không xét chiều tiền**, rồi `Math.abs` + so tên:
+    tiền cho vay, tiền thu nợ về, tiền vay nhận về đều thành *trả nợ* (DTI) và *tiết kiệm* (50/30/20). Đo dev: cả
+    CSDL có 2 hàng `Vay/no` sống, tài khoản 10, `Cho vay` −800.000 và +500.000 → 1.300.000 "trả nợ" cho người không nợ
+    ai. Ca test 8 **khẳng định** hành vi sai. Luật đúng phía client: `analytics/domain/vai_vay_no.dart`.
+  - `trendVsLastMonth` trả `'+100%'` khi kỳ trước rỗng (:361-362). Mọi tài khoản dev 16–29 ngày tuổi → mọi danh mục
+    top 3 "+100%". Không ca test nào gọi phép tính này.
+- **Chức năng 3** ở `LogicBusinessAI.md` 🟢 (D1, không SMS, ba nguồn). `Project.md` :1645, :2757, `ORC.md:73` và
+  `docs/progress/Client-app.md` §5.2, §13.5 vẫn tả SMS / gọi API phân loại.
+- **Trung tâm vận hành Admin** (`/admin/system/health`, `/admin/audit-logs`, trang Broadcast, cảnh báo RAM / tỉ lệ lỗi
+  mỗi 5 phút) chỉ thêm route dưới `/admin` và bộ đếm ở middleware cắt tải — **không** chạm `/sync`, `/auth`, socket
+  client. Trang Broadcast nay phát `system.broadcast` thật; client không nghe (tên lạ bị bỏ qua) — đúng phần *chưa
+  nhận*.
+
+Client **không đổi mã**; chỉ sửa đường dẫn bốn đơn ở tài liệu và một chú thích (`doc_tin_bien_dong.dart`).
+
 ### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
 
 Ba commit NPBao (`e2621da`, `e497695`, `8c677ab`), **không xung đột**, **không đụng `src/Client-app`**. Soát bằng mã
 (hai agent đọc song song + kiểm lại từng dòng nêu trong đơn), kết quả ở đơn mới
-`superpowers/backend/CAN-LAM/SOAT_SAU_GOP_B350D40.md`:
+`superpowers/backend/DA-XONG/SOAT_SAU_GOP_B350D40.md`:
 
 - **Tài liệu mới `docs/Notification/Notification_Client-app.md`** giao client nghe `account.countdown`,
   `system.broadcast`, `user.notification`, gọi `/api/notifications/*`, lưu thông báo server vào `AppNotifications`

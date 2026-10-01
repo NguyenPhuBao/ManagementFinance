@@ -20,7 +20,7 @@ thứ tự đoán danh mục của Nhập nhanh (*tên → B1 → từ khoá →
 người dùng đọc hiểu được vì sao (*"Khớp với ‘xăng’ trong ghi chú"*). Người dùng đề xuất: *"khi người dùng không nhập từ
 khoá vào danh mục nhưng họ thường lặp đi lặp lại từ khoá đó với 1 danh mục cụ thể thì sẽ đề xuất thêm từ khoá vào danh mục
 đó"*. Và một lỗi cụ thể cần lối sửa trên máy: từ khoá **mặc định** `grab` nằm ở Ăn uống (seed backend, đơn
-`CAN-LAM/SEED_TU_KHOA_GRAB.md` chỉ sửa cho tài khoản **mới**) trong khi người dùng ghi *grab* cho Di chuyển — đo C2 lượt 3:
+`DA-XONG/SEED_TU_KHOA_GRAB.md` chỉ sửa cho tài khoản **mới**) trong khi người dùng ghi *grab* cho Di chuyển — đo C2 lượt 3:
 *"grab 35k"* → Ăn uống qua từ khoá.
 
 ## 2. Hành vi

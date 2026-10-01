@@ -3180,7 +3180,7 @@ ngoặc là lượt sinh của mô hình (log `[NhapNhanh][AI]`):
 | 2 | nhận lương 9tr | — | 4,4 s | 9.000.000 · Thu nhập · Lương | ✅ |
 | 3 | tiền điện tháng này một triệu hai | số tiền | 18,2 s (15,8) | 1.200.000 · Hóa đơn (AI) | ✅ |
 | 4 | đổ xăng 50k | — | 4,4 s | 50.000 · Di chuyển (từ khoá *xăng*) | ✅ lượt 2: Ăn uống |
-| 5 | grab 35k | — | 4,5 s | 35.000 · **Ăn uống** (từ khoá seed *grab*) | ❌ seed sai — đơn `CAN-LAM/SEED_TU_KHOA_GRAB.md` |
+| 5 | grab 35k | — | 4,5 s | 35.000 · **Ăn uống** (từ khoá seed *grab*) | ❌ seed sai — đơn `DA-XONG/SEED_TU_KHOA_GRAB.md` |
 | 6 | thứ sáu tuần trước ăn lẩu 300k | — | 4,3 s | 300.000 · 25/09 · Ăn uống | ✅ |
 | 7 | đầu tháng đóng học phí 2tr | — | 4,4 s | 2.000.000 · **01/09** · Giáo dục (từ khoá) | ✅ lượt 2: ngày không đổi |
 | 8 | mua 2 ly trà sữa 60k | — | 4,4 s | 60.000 · danh mục **trống** | ◐ cố ý — danh mục không gọi AI (lượt 2: AI điền Ăn uống) |

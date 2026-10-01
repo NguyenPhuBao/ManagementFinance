@@ -6,7 +6,7 @@
 > viên từ khoá gồm cả hàng mặc định toàn cục nên hoà giả, từ khoá báo *"phủ 0 %"*; sửa `9f407e6`, số đúng trên Realme:
 > học phủ 91,7 % đúng 100 %, từ khoá phủ 50 % đúng **0 %** (12 mẫu, 11 là mẫu thử). (8) ⚠️ **Từ khoá mặc định `grab` →
 > Ăn uống** (seed backend) gợi ý sai mọi ghi chú *grab …*; B1 sửa được khi có lịch sử, nhưng bỏ qua thẻ học hai lần thì
-> màn rơi về đúng từ khoá sai ấy — người dùng chốt cùng ngày: **xin backend sửa seed** (`CAN-LAM/SEED_TU_KHOA_GRAB.md`)
+> màn rơi về đúng từ khoá sai ấy — người dùng chốt cùng ngày: **xin backend sửa seed** (`DA-XONG/SEED_TU_KHOA_GRAB.md`)
 > và **giữ luật Bỏ qua như spec 3.3**; mục 5d `docs/CATEGORY_RATIONALE.md` (quyết định, phương án loại, số đo).
 >
 > *(Ảnh chụp trước đó cùng ngày, giữ vì nó ghi chỗ lệch khỏi kế hoạch:)* 🚧 **Tiến độ 2026-09-29 (tạm dừng giữa Task 7

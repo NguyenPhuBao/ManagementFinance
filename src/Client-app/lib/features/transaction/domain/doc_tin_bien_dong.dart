@@ -17,7 +17,7 @@ import 'package:crypto/crypto.dart';
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 /// Tên hiển thị của bảy nguồn trong danh sách trắng (spec §2; hai ví điện tử là quyết định của người
-/// dùng, đơn `CAN-LAM/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`). Màn xin đồng ý liệt kê **đúng** danh
+/// dùng, đơn `DA-XONG/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`). Màn xin đồng ý liệt kê **đúng** danh
 /// sách này, không chép tay.
 const String kNguonMb = 'MB Bank';
 const String kNguonVcb = 'Vietcombank';

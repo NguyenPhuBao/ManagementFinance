@@ -7,7 +7,7 @@
 > `docs/superpowers/specs/2026-09-28-d1-doc-bien-dong-so-du-design.md`; kế hoạch (gitignore)
 > `docs/superpowers/plans/2026-09-28-d1-doc-bien-dong-so-du.md` — nhật ký từng task ở khối *Soát với mã 2026-09-30*.
 > Backend duyệt ở `docs/superpowers/backend/DA-XONG/CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` (bắt buộc màn xin đồng ý);
-> hai ví điện tử báo ở `CAN-LAM/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`.
+> hai ví điện tử báo ở `DA-XONG/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`.
 
 ## 1. Tính năng làm gì
 
