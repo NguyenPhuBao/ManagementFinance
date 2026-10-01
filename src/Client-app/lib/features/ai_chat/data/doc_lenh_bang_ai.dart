@@ -66,7 +66,7 @@ List<KhaiBaoCongCu> khaiBaoLenhTao({required List<String> tenVi, required List<S
       ),
       const KhaiBaoCongCu(
         ten: kTenCongCuTaoMucTieu,
-        moTa: 'Tạo mục tiêu tiết kiệm / để dành một khoản.',
+        moTa: 'Tạo mục tiêu tiết kiệm / để dành tiền cho một việc, kể cả khi câu nói số tiền góp mỗi tháng.',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -79,8 +79,10 @@ List<KhaiBaoCongCu> khaiBaoLenhTao({required List<String> tenVi, required List<S
       ),
       KhaiBaoCongCu(
         ten: kTenCongCuDatNganSach,
-        // Đo Realme 2026-10-01: với mô tả ngắn, *"ăn uống tối đa 3 triệu một tháng"* bị gọi thành tao_hoa_don.
-        moTa: 'Đặt hạn mức chi TỐI ĐA cho một danh mục (vd "ăn uống tối đa 3 triệu một tháng").',
+        // ⚠️ Đo Realme 2026-10-01: mô tả ngắn thì *"ăn uống tối đa 3 triệu một tháng"* bị gọi thành tao_hoa_don; thêm
+        // ví dụ có chữ "một tháng" thì *"tiết kiệm 2 triệu mỗi tháng…"* lại bị gọi thành tool NÀY. Nên: nói rõ nghĩa,
+        // KHÔNG kèm ví dụ — và loại lệnh đã có luật `_loaiTheoDauHieu` giữ ở lưới kiểm.
+        moTa: 'Đặt hạn mức chi TỐI ĐA (giới hạn chi tiêu) cho một danh mục. Không dùng cho tiết kiệm / để dành.',
         thamSo: {
           'type': 'object',
           'properties': {

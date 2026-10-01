@@ -552,8 +552,16 @@ String? _tenAiHopLe(String? ten, String cau) {
     if (i == cuaCau.length) return null;
     i++;
   }
-  return ten.trim();
+  // Gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*): chu kỳ đã có ô riêng, để nguyên là thẻ in hai lần.
+  final gon = ten.replaceAll(_mauChuKyTrongTen, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  return gon.isEmpty ? null : gon;
 }
+
+final RegExp _mauChuKyTrongTen = RegExp(
+  r'(?<![\p{L}\p{N}])(?:hằng|hàng|mỗi|hang|moi)\s+(?:tuần|tháng|quý|năm|tuan|thang|quy|nam)(?![\p{L}\p{N}])',
+  unicode: true,
+  caseSensitive: false,
+);
 
 /// Câu tự nhiên có dấu hiệu NGÂN SÁCH — *hạn mức · giới hạn · tối đa* — thì loại là ngân sách, dù mô hình gọi tool
 /// nào (đo Realme 2026-10-01: *"ăn uống tối đa 3 triệu một tháng"* → mô hình gọi `tao_hoa_don`). ⚠️ *"tối đa"* bỏ dấu
@@ -571,7 +579,22 @@ bool _coDauHieuNganSach(String s) {
   return false;
 }
 
-final RegExp _mauTheoKySau = RegExp(r'^\s*(?:/\s*|(?:moi|hang|mot)\s+)(?:tuan|thang|quy|nam)(?![a-z0-9])');
+/// Loại mà chính CÂU nói ra (câu tự nhiên — câu theo mẫu §2 đã có loại của mẫu), `null` khi câu không có dấu hiệu nào
+/// và loại theo tool mô hình gọi. Dấu hiệu ngân sách xét TRƯỚC (*"hạn mức tiết kiệm 2 triệu"*). Dấu hiệu tiết kiệm —
+/// *tiết kiệm · để dành · dành dụm* — sinh ra từ lượt đo Realme 2026-10-01: *"tiết kiệm 2 triệu mỗi tháng cho chuyến du
+/// lịch"* → mô hình gọi `dat_ngan_sach {danh_muc: Di chuyển}`.
+LoaiLenhTao? _loaiTheoDauHieu(String s) {
+  if (_coDauHieuNganSach(s)) return LoaiLenhTao.nganSach;
+  final t = amTietKhongDau(s);
+  const tietKiem = [
+    ['tiet', 'kiem'],
+    ['de', 'danh'],
+    ['danh', 'dum'],
+  ];
+  return tietKiem.any((c) => _coCum(t, c)) ? LoaiLenhTao.mucTieu : null;
+}
+
+final RegExp _mauTheoKySau =RegExp(r'^\s*(?:/\s*|(?:moi|hang|mot)\s+)(?:tuan|thang|quy|nam)(?![a-z0-9])');
 final RegExp _mauTheoKyTruoc = RegExp(r'(?<![a-z0-9])(?:moi|hang)\s+(?:tuan|thang|quy|nam)\s+(?:[a-z]+\s+){0,3}$');
 
 /// Số tiền [tien] là mức góp THEO KỲ (*"2 triệu mỗi tháng"*, *"mỗi tháng để dành 2 triệu"*, *"500k/tháng"*), không phải
@@ -636,7 +659,7 @@ LenhTao lenhTaoTuAi(
 }) {
   final nhan = _nhan(cau);
   final s = unorm.nfc(cau);
-  final loai = nhan?.loai ?? (_coDauHieuNganSach(s) ? LoaiLenhTao.nganSach : ai.loai);
+  final loai = nhan?.loai ?? _loaiTheoDauHieu(s) ?? ai.loai;
   final b = removeVietnameseTones(s.toLowerCase());
   final lechDoDai = b.length != s.length;
   final luat = lechDoDai

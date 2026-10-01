@@ -442,6 +442,26 @@ void main() {
       expect(doc('mỗi tháng trả tiền nhà 3 triệu', ai(loai: LoaiLenhTao.hoaDon)), isA<LenhTaoHoaDon>(),
           reason: 'không dấu hiệu ngân sách → theo tool mô hình gọi');
     });
+    test('⚠️ câu có dấu hiệu TIẾT KIỆM (tiết kiệm / để dành / dành dụm) → mục tiêu, dù mô hình gọi tool khác', () {
+      // Realme 2026-10-01, câu 10 lượt hai: mô hình gọi dat_ngan_sach {danh_muc: Di chuyển, han_muc: 2000000} — thẻ
+      // "Đặt ngân sách Di chuyển · 2.000.000 đ" cho một câu nói về để dành tiền đi du lịch.
+      const dm = [(id: 'food', ten: 'Ăn uống'), (id: 'move', ten: 'Di chuyển')];
+      final l = lenhTaoTuAi(
+        'tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch',
+        ai(loai: LoaiLenhTao.nganSach, danhMuc: 'Di chuyển', soTien: 2000000),
+        now: now,
+        vi: vi,
+        danhMucChi: dm,
+      );
+      expect(l, isA<LenhTaoMucTieu>());
+      expect((l as LenhTaoMucTieu).soTienDich, isNull, reason: 'và 2 triệu mỗi tháng vẫn không phải số tiền đích');
+      expect(doc('toi muon de danh 50 trieu mua xe', ai(loai: LoaiLenhTao.hoaDon, ten: 'mua xe')), isA<LenhTaoMucTieu>());
+      expect(doc('dành dụm 30 triệu mua laptop', ai(loai: LoaiLenhTao.nganSach)), isA<LenhTaoMucTieu>());
+      expect(doc('hạn mức tiết kiệm 2 triệu', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoNganSach>(),
+          reason: 'dấu hiệu ngân sách xét TRƯỚC');
+      expect(doc('tạo hoá đơn gửi tiết kiệm 2 triệu', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoHoaDon>(),
+          reason: 'câu theo mẫu: loại của mẫu thắng');
+    });
     test('⚠️ mục tiêu: số tiền THEO KỲ ("2 triệu mỗi tháng") không phải số tiền ĐÍCH', () {
       // Realme 2026-10-01, câu 10: cả luật lẫn mô hình đều điền 2.000.000 làm đích — sai nghĩa câu, và form không có ô
       // "mỗi kỳ" điền được qua lệnh (trích tự động là tầng 4).
@@ -461,6 +481,12 @@ void main() {
       final l = doc('tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch', ai(ten: 'tiết kiệm du lịch')) as LenhTaoMucTieu;
       expect(l.ten, 'tiết kiệm du lịch', reason: 'mô hình gom chữ của chính câu — không chữ nào tự nghĩ ra');
       expect((doc('để dành 50 triệu mua xe', ai(ten: 'xe mua')) as LenhTaoMucTieu).ten, isNull, reason: 'sai thứ tự');
+      // Realme 2026-10-01, câu 9: mô hình đặt tên "tiền điện hàng tháng" — thẻ in "tiền điện hàng tháng · hằng tháng".
+      final hd = doc('nhắc tôi đóng tiền điện hằng tháng',
+          ai(loai: LoaiLenhTao.hoaDon, ten: 'tiền điện hàng tháng')) as LenhTaoHoaDon;
+      expect(hd.ten, 'tiền điện', reason: 'chữ chu kỳ không phải một phần của tên — chu kỳ đã có ô riêng');
+      expect((doc('nhac toi dong tien dien moi thang', ai(loai: LoaiLenhTao.hoaDon, ten: 'moi thang')) as LenhTaoHoaDon)
+          .ten, isNull, reason: 'gọt xong không còn gì → không có tên');
       expect((doc('để dành 50 triệu mua xe', ai(ten: 'mua xe hơi')) as LenhTaoMucTieu).ten, isNull,
           reason: '"hơi" không có trong câu');
     });

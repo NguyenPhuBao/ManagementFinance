@@ -173,14 +173,23 @@ void main() {
       }
     });
 
-    test('⭐ tools_json ba tool với 30 danh mục + 5 ví không dài hơn con số đã đo trên máy', () {
-      const kTranToolsJsonLenhDaDo = 0; // Task 5 đặt số đo Realme rồi bỏ skip
-      final n = toolsJsonCua(khaiBaoLenhTao(
+    test('⭐ tools_json ba tool không dài hơn con số đã đo trên máy', () {
+      // Đo Realme RMX2205 2026-10-01 (CPU, `maxTokens` 4096 — trần TỔNG, bẫy 4.39): phiên ba tool với ví / danh mục
+      // thật của tài khoản 10 là 2.024 ký tự, lời hệ thống 457 — 8 lượt, 0 `FAILED_PRECONDITION`. Phần CỐ ĐỊNH (enum
+      // rỗng) của bản đã đo:
+      const kNenToolsJsonLenhDaDo = 1759;
+      // Và phiên dài nhất đã chạy được trên cùng máy: sáu tool hỏi đáp (`kTranToolsJsonDaDo` ở `bo_cong_cu_test`),
+      // kèm lời hệ thống 2.679 ký tự — dài hơn lời hệ thống ở đây gần sáu lần.
+      const kPhienDaiNhatDaChay = 6980;
+      final nen = toolsJsonCua(khaiBaoLenhTao(tenVi: const [], tenDanhMuc: const [])).length;
+      expect(nen, lessThanOrEqualTo(kNenToolsJsonLenhDaDo),
+          reason: 'mô tả / tham số dài thêm ($nen ký tự) — đo lại phiên trên máy thật rồi mới nâng hằng');
+      final lon = toolsJsonCua(khaiBaoLenhTao(
         tenVi: [for (var i = 0; i < 5; i++) 'Ví số $i'],
         tenDanhMuc: [for (var i = 0; i < 30; i++) 'Danh mục dài số $i'],
       )).length;
-      expect(n, lessThanOrEqualTo(kTranToolsJsonLenhDaDo),
-          reason: 'tools_json $n ký tự — đo lại phiên trên Realme rồi mới nâng');
-    }, skip: 'chờ đo Realme (C3 AI task 5)');
+      expect(lon, lessThan(kPhienDaiNhatDaChay ~/ 2),
+          reason: 'tài khoản nhiều danh mục ($lon ký tự): tên danh mục nằm trong HAI enum — phải còn xa trần');
+    });
   });
 }
