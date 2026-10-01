@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** **2026-09-21** (mục **3.34** — **soát "khối nào chưa tự ẩn khi rỗng"**, bản rẻ tiền của *"AI chọn khối đáng xem"*: 15 loại khối (16 chỗ dựng — `_KhoiVayNo` dùng hai lần; đếm bằng máy 2026-09-21), đúng **MỘT** khối không có chốt nào — `_KhoiSoLieuNhanh`, mà cả **ba** chỉ số của nó đều nói về **chi**, nên kỳ chỉ có thu cho ra một thẻ gồm `0 đ` và hai dấu `—`. ⚠️ Ca ấy **đạt tới được** và **không** rơi vào nhánh `thongKe.rong` (nhánh ấy đòi `thu == 0` **và** `chi == 0`). Dựng được trạng thái ấy trên máy ảo thì **lỗi thứ hai cùng hiện ra**: thẻ *Tổng chi* nối dấu bằng tay nên in `-0 đ` — chỗ **thứ ba** của bẫy **4.13**. Và phép quét mà chính tài liệu vừa khuyên, khi **chạy thật**, ra **bốn** chỗ nữa cùng một khuôn `cond ? formatIncome : formatExpense` — nên luật nay đóng bằng máy: **test quét `lib/` thứ mười bốn** `dau_tien_mot_noi_test.dart`) · **2026-09-18** (mục **3.33** — **trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích**: nay xuất được theo **tuần** và **năm**, thứ bốn chip cứng cũ không làm được; `PhamViThoiGian` và `khoangCuaPhamVi` **bỏ hẳn**. Người dùng chốt **không** đưa khối nào của trang Phân tích vào tệp, sau khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra tệp, và **6/7** chỉ xuất CSV thuần dữ liệu. ⚠️ Kèm **`nhanRong`** — hàm nhãn **thứ hai** cho chỗ không chật, sinh ra từ một lỗi **chỉ máy ảo thấy**: nút hiện "Tuần 37" trần trong khi dòng vừa chạm nói "Tuần 37 (07/09 – 13/09)". Nó cũng thay một bản chép tay trong `ChonPhamViSheet`; mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** **2026-09-29** tối (mục **3.27** — **B4: tầng 3 "ước tính theo thói quen"** của khối Dự báo, một dòng chữ phụ dạng khoảng p25–p75 theo tuần; tính tay trên Realme lộ hai loại khoản tầng 3 đếm lại thứ tầng 1 đã có — khoản lặp đã thành hoá đơn qua B2 và trả hoá đơn dạng cũ — cả hai đã chặn; **đóng G53** — `daiTrucCot`, bẫy **4.21** vế bốn: biểu đồ cột vắt qua 0 phải có sàn và trần là bội của bước; khối *Dòng tiền tự do* cũng chuyển sang `daiTrucCot`; **đóng G54** — nhãn trục hoành thác nước xoay −35° theo Stitch, mục **3.23**; **đóng G55** — biểu đồ đường có chấm dùng `FlClipData.vertical()`, ngoại lệ của bẫy **4.17**; **đóng G56** — chi từ 2 lần thu nhập nói *"chi gấp N lần thu nhập"* thay cho phần trăm, mục **3.26**) · trước đó **2026-09-29** (mục **3.35** — **chi bất thường theo danh mục** (B3): trung vị + MAD, câu mới ở khối Nhận xét khi đơn vị là Tháng; `nguongCoNghia` và thu nhập mỗi tháng dời về `analytics/domain`; lộ **G53** — nhãn trục thác nước in đè khi số dư âm) · trước đó **2026-09-21** (mục **3.34** — **soát "khối nào chưa tự ẩn khi rỗng"**, bản rẻ tiền của *"AI chọn khối đáng xem"*: 15 loại khối (16 chỗ dựng — `_KhoiVayNo` dùng hai lần; đếm bằng máy 2026-09-21), đúng **MỘT** khối không có chốt nào — `_KhoiSoLieuNhanh`, mà cả **ba** chỉ số của nó đều nói về **chi**, nên kỳ chỉ có thu cho ra một thẻ gồm `0 đ` và hai dấu `—`. ⚠️ Ca ấy **đạt tới được** và **không** rơi vào nhánh `thongKe.rong` (nhánh ấy đòi `thu == 0` **và** `chi == 0`). Dựng được trạng thái ấy trên máy ảo thì **lỗi thứ hai cùng hiện ra**: thẻ *Tổng chi* nối dấu bằng tay nên in `-0 đ` — chỗ **thứ ba** của bẫy **4.13**. Và phép quét mà chính tài liệu vừa khuyên, khi **chạy thật**, ra **bốn** chỗ nữa cùng một khuôn `cond ? formatIncome : formatExpense` — nên luật nay đóng bằng máy: **test quét `lib/` thứ mười bốn** `dau_tien_mot_noi_test.dart`) · **2026-09-18** (mục **3.33** — **trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích**: nay xuất được theo **tuần** và **năm**, thứ bốn chip cứng cũ không làm được; `PhamViThoiGian` và `khoangCuaPhamVi` **bỏ hẳn**. Người dùng chốt **không** đưa khối nào của trang Phân tích vào tệp, sau khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra tệp, và **6/7** chỉ xuất CSV thuần dữ liệu. ⚠️ Kèm **`nhanRong`** — hàm nhãn **thứ hai** cho chỗ không chật, sinh ra từ một lỗi **chỉ máy ảo thấy**: nút hiện "Tuần 37" trần trong khi dòng vừa chạm nói "Tuần 37 (07/09 – 13/09)". Nó cũng thay một bản chép tay trong `ChonPhamViSheet`; mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -487,7 +487,8 @@ khác dropdown, không có mục nào tự nói lên trạng thái rỗng.
    xoá cả tập: xoá cả tập là người dùng mất luôn những đường còn hợp lệ.
 4. **`FlClipData` mặc định là `none()`** (bẫy **4.17**) — nhiều đường cùng lúc
    có dải hẹp hơn bản hai đường nên dễ tràn khỏi thẻ hơn. Đã đặt
-   `FlClipData.all()`.
+   `FlClipData.all()` — 🔄 từ 2026-09-29 là `FlClipData.vertical()` (G55: `all()`
+   cắt mất nửa chấm kỳ đầu/cuối; bẫy 4.17 ngoại lệ).
 
 #### Một lượt duyệt cho `chuoiTheoDanhMuc`
 
@@ -674,7 +675,7 @@ bảng danh mục và phép gom theo ngày — thứ trang này đã có hoặc 
 stream của trang phát lại sau **mọi** chu kỳ đồng bộ nền. Cùng lý lẽ với "một
 lượt duyệt" của `chuoiTheoDanhMuc`.
 
-**Repository nhận nguồn thứ tư: ví.** (⚠️ Con số ấy đúng **tại 2026-09-15**; từ 2026-09-16 `watchKy` gộp **bảy** nguồn — xem mục 3.27.) Ba trong bốn khối cần nó — "phân bổ theo
+**Repository nhận nguồn thứ tư: ví.** (⚠️ Con số ấy đúng **tại 2026-09-15**; từ 2026-09-16 `watchKy` gộp **bảy** nguồn — xem mục 3.27; từ 2026-09-29 là **tám** — nguồn thứ tám là phản hồi B2 cho tầng 3 khối Dự báo.) Ba trong bốn khối cần nó — "phân bổ theo
 ví" cần **tên** ví, "dòng tiền" cần **tổng số dư hiện tại**. Tổng ấy đi qua
 `viTinhVaoTong`, cùng luật với trang chủ, màn Quản lý ví và trang Báo cáo; `fold`
 trần trên mọi ví là bản chép tay đã sai **ba lần** (mục 3.16 và
@@ -900,6 +901,14 @@ cỡ chữ 8, hai dòng, ellipsis. ⚠️ `flutter test` **không bắt được
 `find.text` so `data` chứ không so thứ vẽ ra (bẫy 4.4) — cùng họ G39, và lại
 một lần nữa chỉ máy ảo mới nói được.
 
+🔄 **Thay 2026-09-29 (G54):** ô 32 dp ấy **vẫn dính ở 360 dp** — chín cột mỗi cột
+chỉ còn ~27 dp (đo trên Realme: *"chuyểnphân l…"*). Nay nhãn **xoay −35°, một
+dòng, cỡ 9**, đúng màn Stitch bên dưới (bản 2026-09-15 đã lệch khỏi Stitch mà
+không ghi lý do). Đầu **phải** của chữ neo tâm cột, xoay quanh góc trên-phải;
+chữ dài hơn 72 dp thì *"…"*; phần nhãn cao 58 dp, khung 218. Lần này
+`flutter test` **bắt được**: ca G54 đọc góc từ `Transform` và đo **điểm neo**
+thật của từng nhãn — chi tiết ở `CLIENT_APP_KNOWN_GAPS.md` G54.
+
 #### Màn Stitch
 
 **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi
@@ -983,7 +992,10 @@ dùng cần thấy nhất. Bốn thứ đi kèm để kỳ âm đọc được n
 
 - `minY` nhận số âm — thang đo dựng từ `san = day * 1.15`, trần `san + 3 * buoc`
   (đúng khuôn chống G39: trần phải là **đúng** ba lần bước, không phải con số đã
-  đem chia);
+  đem chia); 🔄 **thay 2026-09-29** bằng `daiTrucCot(day × 1,05, dinh × 1,05)`:
+  sàn âm lẻ đứng sát mốc 0 và *"-115K"* in đè *"0"* khi kỳ âm **nhỏ** — cùng cơ
+  chế G53, dựng lại được trong widget test, chưa thấy trên dữ liệu thật. Nay
+  sàn và trần đều là bội của bước tròn (bẫy 4.21 vế bốn);
 - **vạch 0 nét đứt** qua `extraLinesData`, chỉ vẽ khi dải có phần âm — khi mọi
   kỳ đều dương thì `san` đã bằng 0 và vạch trùng mép dưới;
 - **chấm của kỳ âm đổi sang màu chi** — đổi màu theo từng *điểm* thì chính xác;
@@ -1124,6 +1136,12 @@ A8 #8.
 nhập"*. Monarch đặt con số này ngay trên trang Cash Flow; FlowMoney đặt nó ngay
 dưới con số mà nó diễn giải.
 
+🔄 **2026-09-29 (G56):** chi từ **2 lần** thu nhập trở lên thì dòng ấy nói *"Chi gấp
+N lần thu nhập"* thay cho *"Để dành −26360% thu nhập"* (tuần thu nhập gần 0 trên
+Realme). N từ `soLanChiGapThuNhap` — một chữ số lẻ dưới 10, số nguyên từ 10 — và
+chính hàm ấy nuôi khối Nhận xét lẫn tool tổng quan của Trợ lý AI; dưới 2 lần giữ
+phần trăm như cũ (người dùng chốt).
+
 #### Mẫu số là THU NHẬP, không phải `tong.thu`
 
 Cùng cái bẫy của A8 #8, và lần này nó còn dễ vấp hơn vì công thức sách vở là
@@ -1172,6 +1190,10 @@ không thêm trường đồng bộ, không đụng repository.
 Khối đứng **ngay sau thẻ tổng**, và cũng hiện ở nhánh kỳ rỗng — nó không nói về
 kỳ đang xem. Màn Stitch: **`732587777370466098aa98d17bd0cbd4`** *"Thống kê - Dự
 báo 30 ngày tới"*.
+
+> ⚠️ **Từ 2026-09-29 (B4) khối có TẦNG 3** — *"ước tính theo thói quen"*, tiểu mục cuối của mục này. Người dùng **mở lại**
+> quyết định 16/09 (*không đoán chi tuỳ ý*) nhưng giữ nguyên hai con số và biểu đồ: tầng 3 chỉ là **một dòng chữ phụ**. Câu
+> *"cố ý không đoán"* bên dưới nay chỉ còn đúng cho **hai tầng đầu**.
 
 #### Trả lời câu gì — và cố ý KHÔNG trả lời câu gì
 
@@ -1227,7 +1249,7 @@ tiền rời ví là thật dù tổng không đổi — đó là thứ `ViThieu
 Đủ ở §6 spec. Bốn cái đáng nhớ nhất:
 
 1. ⚠️ **Nguồn ngân sách phải tra tại `now`, không phải tại mốc kỳ đang xem.**
-   `watchKy` nay có **bảy** nguồn, và nguồn thứ bảy là `watchBudgets(now: at)`
+   `watchKy` nay có **bảy** nguồn *(tám từ 2026-09-29 — tầng 3)*, và nguồn thứ bảy là `watchBudgets(now: at)`
    **riêng** cho dự báo. Mốc cũ (`mocNganSach`) lùi về giây cuối kỳ khi người
    dùng xem kỳ đã qua, nên dùng chung thì dự báo **đúng khi xem tháng này và
    sai khi xem tháng khác**. Bản sai cho ra đúng 2.200.000 thay vì 1.200.000.
@@ -1280,6 +1302,57 @@ Sửa bằng cách đưa vế `isDeleted` **vào chính `viTinhVaoTong`** (mặc
 chặn "bản chép tay thứ năm" của luật này, và đây đúng là bản thứ năm. Chi tiết:
 **G42** `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
+#### Tầng 3 — "ước tính theo thói quen" (B4, 2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md` (người dùng duyệt 28/09, xác nhận lại 29/09); kế
+hoạch 6 task `…/plans/2026-09-28-b4-uoc-tinh-chi-tuy-y.md` (gitignore). Lý do mở lại: người **không** đặt ngân sách thấy
+*"còn tiêu được 12 triệu"* trong khi mỗi tháng họ vẫn chi vài triệu ngoài hoá đơn. Cách không làm lại lỗi 16/09: tầng 3 là
+**một dòng chữ phụ** (12 px, xám, ngay dưới *"Nếu tiêu đúng ngân sách"* — màn Stitch `7aa215e9…`), là một **khoảng**
+kèm số tuần, và chỉ tính **phần chưa tầng nào tính**:
+
+> *"Nếu tiêu như thói quen (12 tuần gần nhất): chi thêm khoảng 0 đ – 280.000 đ, còn khoảng -7.911.000 đ – -7.631.000 đ."*
+
+- **Luật — hàm thuần `analytics/domain/uoc_tinh_chi_tuy_y.dart`.** Tuần ISO (`bienTuan`) **đã đóng**, nằm **trọn** trong
+  cửa sổ nhìn lại (`cuaSoNhinLai`, dùng chung với B3); cần ≥ 4 tuần; tuần không chi là **0** thật. `thap`/`cao` = p25/p75
+  của tổng tuần × 30/7, làm tròn 10.000 (`lamTronBuoc`, dời về `nguong_co_nghia.dart`). `cao == 0` → `null`. *"Còn
+  khoảng"* = `conTieuDuocTheoNganSach − cao` … `− thap`, **được phép âm**, không kẹp.
+- **Chi tuỳ ý** = nhóm *Chi* của donut **và** `khoanVaoThongKe`, **trừ** khoản cam kết (`KhoanThuChi.laKhoanCamKet`) và
+  danh mục có ngân sách đang chạy; có ngân sách **tổng** thì im. Ngân sách chọn bằng **`nganSachDangChay`**
+  (`du_bao_dong_tien.dart`) — CHÍNH phép tầng 2 dùng; lọc riêng (vd. chỉ `!isExpired`) là danh mục rơi vào khe hai tầng
+  (ngân sách chưa bắt đầu: tầng 2 không tính, một phép lọc khác lại loại nó khỏi tầng 3).
+- ⚠️ **"Khoản cam kết" có BA dấu hiệu** (`AnalyticsRepositoryImpl.dungKhoan`), hai cái sau thêm lúc nghiệm thu vì tính tay
+  từ SQLite Realme lộ tầng 3 **đếm lại thứ tầng 1 đã có** (người dùng chọn chặn cả hai):
+  1. `billId` / `goalId` — như spec.
+  2. Khoá nhóm `khoaNhomCua` nằm trong tập **`da_tao`** của bảng phản hồi B2 — khoản **nhập tay** của một khoản lặp mà
+     người dùng đã tạo thành hoá đơn (*"Tien nha T8/T9"* 3.000.000 → hoá đơn *Tien nha* hạn 05/10, đã ở tầng 1). Không
+     mang `billId`, nên thiếu vế này thì khi cửa sổ chứa đủ ba kỳ tiền nhà, p75 gánh thêm ~3,2 triệu. Nguồn là
+     `GoiYHoaDonDao.watchAll` — **nguồn thứ tám** của `watchKy`, stream chứ không đọc một lần, vì người dùng có thể bấm
+     *Tạo* khi trang còn sống ở nhánh khác của shell. `da_tao` là vĩnh viễn (cùng luật ẩn thẻ gợi ý B2): xoá hoá đơn sau
+     đó thì khoản cũ vẫn bị bỏ — ước tính thấp hơn, không đếm đôi. Hoá đơn tạo **tay** từ đầu thì không có khoá nào — giới
+     hạn đã biết.
+  3. Tiền tố `kGhiChuTraHoaDon` ở **đầu** ghi chú — hàng trả hoá đơn ghi trước 2026-09-12 (cột nối chưa đi qua đồng bộ;
+     Realme có ba hàng như thế trong cửa sổ). Cùng cách G50. **Chỉ tầng 3** đọc cờ này — thống kê chi không đổi.
+- **Nguồn:** `ThongKeKy.uocTinhChiTuyY`, tính trong `_dung` tại `now` (mọi đơn vị kỳ), không theo kỳ đang xem.
+  `_KhoiDuBao.uocTinh` là **`required`** dù nullable: khối dựng ở **hai** chỗ (kỳ rỗng và kỳ thường), quên một chỗ là dòng
+  biến mất đúng ở nhánh ấy, im lặng.
+- **Không đổi:** hai con số, biểu đồ bậc thang, tool `du_bao_dong_tien` của Trợ lý AI, khối Nhận xét. Không đổi schema.
+- ⚠️ **`thap = 0` là ca THƯỜNG**: người chi tuỳ ý thưa (dưới ~1/4 số tuần) có p25 = 0, nên dòng nói *"0 đ – X"*. Đúng
+  nghĩa — một phần tư số tuần họ không chi gì ngoài kế hoạch.
+
+**Test:** `uoc_tinh_chi_tuy_y_test` (10 ca; ca ⭐ ra đúng `1.290.000 – 2.140.000` lượt đầu), 12 ca (đếm bằng máy) ở
+`analytics_repository_impl_test` (ba dấu hiệu cam kết; ngân sách tổng / danh mục / hết hạn / chưa bắt đầu; phản hồi của tài
+khoản khác không tính; bấm *Tạo* khi đang xem thì phát lại), 5 ca ở `analytics_page_test` (bốn số đúng thứ tự · `null` im ·
+không ngân sách + số âm · 411 và 360 dp không tràn). Bản sai đã thử: bỏ tiền tố · bỏ `da_tao` · đọc khoá một lần · bỏ lọc tài
+khoản · in `0 – 0` khi `null` — đều đỏ.
+
+**Nghiệm thu Realme 2026-09-29** (bản debug để đọc SQLite; người dùng duyệt nhập và **giữ** ba khoản *Giải trí*: *Xem phim*
+200.000 ngày 15/07, *Di choi* 300.000 ngày 19/08, *Xem ca nhac* 250.000 ngày 16/09). Dữ liệu thật: 12 tuần đóng, bốn danh
+mục có ngân sách tháng bị loại, còn đúng một tuần 20.000 → p75 = 0 → dòng **im** (khớp tính tay). Sau ba khoản thử: tuần
+có chi 200k · 300k · 20k · 250k → p25 = 0, p75 = 65.000 → *"chi thêm khoảng 0 đ – 280.000 đ, còn khoảng -7.911.000 đ –
+-7.631.000 đ"* — **đúng từng số**. Ca *"ngân sách tổng → im"* chỉ kiểm được bằng test: giao diện không tạo được ngân sách
+tổng (nó chỉ đến qua đồng bộ). Giữa lượt ấy người dùng thấy **G58** (màn Thêm giao dịch tràn khi bàn phím hệ thống mở) —
+`CLIENT_APP_KNOWN_GAPS.md`.
+
 ### 3.28 So cùng kỳ năm trước — mục #2 của khảo sát lần hai
 
 **2026-09-16.** Hai thẻ tổng vốn chỉ so với **kỳ liền trước**. Nay có một hàng
@@ -1290,6 +1363,8 @@ ngay cạnh số của kỳ.
 Chip trái bật sẵn, tức **người dùng cũ mở trang lên không thấy gì đổi**.
 
 #### Không có nguồn dữ liệu thứ tám
+
+*(Đúng cho tính năng này. Từ 2026-09-29 `watchKy` **có** nguồn thứ tám — phản hồi B2 cho tầng 3 khối Dự báo, mục 3.27 — không liên quan tới so cùng kỳ năm trước.)*
 
 `watchKy` đã nạp **toàn bộ** giao dịch của tài khoản (`transactionDao.watchAll`)
 chứ không phải phần đã cắt theo kỳ — chuỗi xu hướng nhìn xa sáu kỳ nên nó buộc
@@ -2019,6 +2094,51 @@ tức khớp header trang Phân tích.
 là `khoangCuaPhamVi`. `Ky.thang` làm đúng việc ấy. Giữ lại vì ngoài phạm vi
 lượt này và vẫn có bốn ca test riêng — ứng viên dọn cho lần sau.
 
+### 3.35 Chi bất thường theo danh mục — B3 (2026-09-29)
+
+Spec `docs/superpowers/specs/2026-09-28-b3-chi-bat-thuong-theo-danh-muc-design.md` (người dùng duyệt); kế hoạch 5 task
+`…/plans/2026-09-28-b3-chi-bat-thuong.md` (gitignore). **Người dùng mở lại quyết định 17/09** (*"bất thường là ngưỡng người
+dùng đặt, không dùng thống kê"*) cho **một câu hỏi khác**: *Khoản chi lớn* (17/09, `NOTIFICATION_FEATURE.md` mục 5f) hỏi
+*"một khoản có quá lớn không"* bằng ngưỡng tay; B3 hỏi *"tháng này cả danh mục X có lạ so với chính tôi không"* — không
+ngưỡng tay nào làm được việc ấy cho mười mấy danh mục. *Khoản chi lớn* **không đổi gì**.
+
+**Luật — hàm thuần `analytics/domain/chi_bat_thuong.dart`.** Chuỗi chỉ gồm nhóm *Chi* của donut (`phanLoaiCua == 'chi'`)
+**và** khoản vào thống kê (`khoanVaoThongKe`); khoản không danh mục bỏ qua. Với mỗi danh mục có chi trong tháng xét (tính
+**tới `now`**, không dự phóng): lịch sử = tối đa **12 tháng lịch đã đóng** ngay trước nó, **chỉ tháng có phát sinh**, cần
+**≥ 4**; `m` = trung vị, `z = 0,6745 (x − m) / MAD`; MAD = 0 thì `z = (x − m) / (1,2533 × độ lệch tuyệt đối trung bình)`
+(Iglewicz–Hoaglin); cả hai bằng 0 thì `z = +∞`. **Bất thường ⇔ `z > 3,5` VÀ `x − m > ngưỡng`**, ngưỡng =
+`nguongCoNghia(thuNhapMoiThangTu(khoan, cuaSoNhinLai(now, giaoDichDauTien)))` = `max(1 % thu nhập mỗi tháng, 50.000)` —
+**cùng** phép neo với luật tái phân bổ. Hai hàm ấy **dời** về `analytics/domain/nguong_co_nghia.dart` và
+`thu_nhap_moi_thang.dart` (analytics không được import `ai_edge`); `tai_phan_bo.dart` import lại và `export` tên cũ, hai
+tệp test mức nền giữ đúng 31 ca không sửa kỳ vọng.
+
+- **Vì sao trung vị + MAD:** một tháng lạ trong lịch sử không kéo được mức thường lệ. ⚠️ Hệ quả **cố ý**: lịch sử càng đều
+  thì một mức lệch nhỏ càng lạ (lịch sử quanh 900.000, MAD 20.000 → tháng 1.100.000 có `z ≈ 6,7`). Vế tiền là thứ chặn
+  các danh mục nhỏ.
+- **Vì sao chỉ tháng có phát sinh:** danh mục chi thưa (du lịch) mà tính cả tháng 0 đồng thì trung vị 0 và mọi lần chi
+  đều thành bất thường.
+- **Nguồn:** `ThongKeKy.chiBatThuong` (`List<DongChiBatThuong>?`) — **`null` khi đơn vị không phải Tháng** (không xét),
+  **rỗng** = đã xét, không có gì lạ. Tính trong `AnalyticsRepositoryImpl._dung` trên chính `khoan` (toàn bộ giao dịch),
+  **không** đọc CSDL thêm (stream phát lại sau mọi chu kỳ đồng bộ); mốc cửa sổ là `giaoDichDauTien` của `txs` (đã lọc xoá
+  mềm); tên qua bảng tra dùng chung (có hàng mặc định toàn cục, G41), không tra được thì `'Danh mục đã xoá'`.
+- **Hiện:** `GoiSoPhanTich` nối *"Riêng {tên} kỳ này đã chi X, cao hơn hẳn mức thường lệ Y."* (+ *"Thêm N danh mục khác
+  cũng cao bất thường."* khi > 1 dòng), mức **cảnh báo**. Nói *"kỳ này"*, không nêu tên tháng (chữ số nhãn kỳ bị `kiemSo`
+  chặn). `kyCua`: chỉ *Chi bất thường* thuộc kỳ — *Thường lệ* là trung vị các tháng **trước**, gán kỳ là `kiemKy` chặn câu
+  đúng. Nhãn *Chi bất thường* khai xung đột *"Thu"* (bẫy 4.42). Bậc 1 của Trợ lý AI đọc cùng gói; **không** thêm tool.
+- **Không làm:** thông báo, đụng *Khoản chi lớn*, dự phóng tháng đang chạy, xét tuần / quý / năm / tuỳ chọn, đổi schema.
+- **Giới hạn:** tài khoản thật (giao dịch đầu 02/09/2026) **im tới khoảng tháng 1/2027** — đúng hành vi.
+
+**Test:** `analytics/domain/chi_bat_thuong_test` (14 ca; 9 bản sai đều đỏ — hai bản sai về **biên cửa sổ** từng xanh với bộ
+ca của kế hoạch, nay có ca *ngày cuối của tháng thứ 13 về trước* và *tháng sau tháng đang xem*),
+`analytics/domain/thu_nhap_moi_thang_test` (3), 5 ca ở `analytics_repository_impl_test`, 7 ca ở `goi_so_phan_tich_test`
+(ca ⭐ qua **sáu** lớp chắn; bản bỏ `nhanXungDot` từng xanh — ca *"Y tế … thu 700.000 đ"* đo nó qua `kiemNhan`).
+
+**Nghiệm thu Realme 2026-09-29** (người dùng duyệt nhập và **giữ** dữ liệu thử): năm khoản *Ăn uống* ngày 10 tháng 4–8
+(850.000 · 900.000 · 950.000 · 880.000 · 920.000) + 1.500.000 ngày 20/9 → **T9**: *"Riêng Ăn uống kỳ này đã chi 1.600.000 đ,
+cao hơn hẳn mức thường lệ 900.000 đ."*, viền cảnh báo; **T8**: không câu; **Tuần 38**: không câu. Lượt ấy lộ **G53** (có từ
+trước): nhãn trục tung thác nước *"Tiền đi đâu"* in đè khi số dư âm — `CLIENT_APP_KNOWN_GAPS.md`. ✅ **Đóng tối cùng
+ngày** bằng `daiTrucCot` — bẫy **4.21** vế bốn.
+
 
 ## 4. Bẫy
 
@@ -2168,6 +2288,16 @@ thư viện — kể cả test đã hỏi `takeException()` vẫn xanh.
 thứ hai chứ không thay được việc kẹp dữ liệu ở tầng thuần: cắt hình chỉ giấu
 điểm sai đi, còn tầng thuần mới quyết định điểm ấy **đáng lẽ là bao nhiêu**.
 
+🔄 **Ngoại lệ từ 2026-09-29 (G55):** biểu đồ đường **có vẽ chấm** dùng
+`FlClipData.vertical()` — cắt trên/dưới, **không** cắt trái/phải. `all()` cắt đúng
+mép vùng vẽ nên chấm của kỳ đầu và kỳ cuối (nằm đúng `minX`/`maxX`) mất một nửa —
+thấy trên Realme ở bốn biểu đồ (Xu hướng, Dòng tiền tự do, Tổng tài sản, Tiến độ
+mục tiêu). Trục ngang không thể thoát khung vì `minX`/`maxX` là đúng chỉ số đầu/cuối
+của chuỗi, nên bỏ cắt hai bên không mất lớp phòng thủ nào. Trục dọc **giữ** cắt
+(người dùng chọn): hệ quả cố ý là chấm giá trị 0 nằm trên đáy khung (`minY: 0`, khối
+Xu hướng) vẫn mất nửa dưới. Khối *Dự báo* không vẽ chấm nên giữ `all()`. Ca canh
+`kiemCatKhungBieuDoCoCham` quét mọi `LineChart` có chấm của trang.
+
 **4.18 `fl_chart` vẽ nhãn trục ở CẢ hai biên, cộng thêm các mốc theo
 `interval`.** Nên một mốc rơi gần biên sẽ in **đè** lên nhãn biên. Thấy cùng
 ngày ở mục tiêu "MuaDT": "08/27" và "09/27" chồng nhau thành một mớ không đọc
@@ -2292,6 +2422,23 @@ thật thay vì trừ hao.*
 Đi kèm: `belowBarData` thôi cắt ở mốc 0
 khi 0 **nằm ngoài** dải, nếu không nó tô đặc cả biểu đồ.
 
+*Thứ tư — biểu đồ CỘT vắt qua 0* (**G53**, Realme 2026-09-29, thác nước). Thác nước
+giữ luật *"cột → từ 0"* nhưng đặt `minY` bằng đáy thật và bước `(dải × 1,12) / 3`;
+khi số dư đầu kỳ **âm** thì đáy là một số lẻ âm, biên trên lệch khỏi mọi bội của
+`interval`, và *"5.9M"* in chồng *"5.5M"*. Cách chữa G39 (*"trần là bội của bước"*)
+chỉ đúng khi sàn bằng 0. Sửa bằng **`daiTrucCot`** (cạnh `daiTrucDuBao`): bước tròn
+của `buocTron`, **sàn và trần đều là bội của bước**, trục luôn chứa 0, **3 tới 5**
+khoảng. ⚠️ Không dùng lại `daiTrucDuBao` vì nó cố định ba khoảng — dải vắt qua 0 bị
+làm tròn ra ngoài ở cả hai đầu, và số liệu Realme ra trục −20M … 10M, dữ liệu còn nửa
+khung. Lần này lỗi **tái hiện được trong widget test** (lấy hộp của các `Text` nhãn
+trục và đòi chúng không chồng nhau) — nhưng chỉ vì biết trước dữ liệu gây lỗi; thứ
+bắt được nó vẫn là máy thật. Ranh giới để nhớ, bổ sung cho vế một: **mọi biểu đồ có
+`minY` khác 0 thì `minY` cũng phải là bội của `interval`**, không riêng `maxY`.
+Cùng lượt, khối *Dòng tiền tự do* (sàn = đáy × 1,15 — cùng cơ chế, tiềm ẩn) chuyển
+sang `daiTrucCot`; quét cả trang (đếm bằng máy 2026-09-29, sáu chỗ `minY:`) thì
+*Xu hướng* và `_KhoiVayNo` (dựng hai lần) đặt `minY: 0`, *Dự báo* và *Tổng tài
+sản* dùng `daiTrucDuBao` — không còn chỗ nào đặt `minY` lẻ.
+
 **4.22 Exception trong hàm `async` của một `onTap` không nổi lên đâu cả.**
 `showDateRangePicker` ném assertion khi `initialDateRange` thò ra ngoài
 `[firstDate, lastDate]`, và vì không ai `await` kèm `catch`, Flutter chỉ in ra
@@ -2381,7 +2528,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | Tệp | Canh gì |
 |---|---|
 | `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`, và từ 2026-09-15 — **số làm tròn ra 0 thì không mang dấu**, bẫy 4.20; số âm thật vẫn giữ dấu) — luật "12 kỳ gần nhất" chuyển sang `pham_vi_ky_test.dart` ngày 2026-09-15 |
-| `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật** và **kể cả hàng mặc định toàn cục `idaccount = 0`** (G41), "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm; và từ 2026-09-16 — **bảy** nguồn, `duBao` nối đúng hoá đơn/mục tiêu/ví, `null` khi không ví, và ⚠️ **xem tháng cũ thì dự báo vẫn tính từ hôm nay** (bẫy 1 mục 3.27) |
+| `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật** và **kể cả hàng mặc định toàn cục `idaccount = 0`** (G41), "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm; và từ 2026-09-16 — **bảy** nguồn (**tám** từ 2026-09-29: tầng 3 B4 — ba dấu hiệu cam kết, khoá `da_tao` của tài khoản khác không tính, bấm *Tạo* khi đang xem thì phát lại), `duBao` nối đúng hoá đơn/mục tiêu/ví, `null` khi không ví, và ⚠️ **xem tháng cũ thì dự báo vẫn tính từ hôm nay** (bẫy 1 mục 3.27) |
 | `tong_tai_san_test.dart` (2026-09-17) | Tầng thuần của **tổng tài sản theo thời gian** (mục 3.30): sáu điểm cũ nhất trước; điểm cuối **bằng đúng tổng ví tính vào tổng**; ⚠️ hàng ghi **ngày tương lai** đứng yên ở *mọi* điểm (kẹp mốc một mình không cứu được); suy ngược thu/chi, **được phép âm**, biên tại mốc là *sau* mốc; khoản chuyển giữa hai ví trong tổng triệt tiêu còn chuyển ra ví ngoài tổng **có** giảm, thiếu ví đích thì bỏ qua; ví loại khỏi tổng / lưu trữ / đã xoá đều không cộng; lùi sáu kỳ qua mốc năm, **tháng 2 năm nhuận**, sáu nhãn quý khác nhau; `thayDoiTaiSan` và `mocThieuDuLieu` trả `null` đúng lúc; `cumSoKy` là nguồn chung của tiêu đề và câu "trong …" |
 | `du_bao_dong_tien_test.dart` (2026-09-16) | Tầng thuần của **dự báo 30 ngày** (mục 3.27): `null` khi không ví; số dư qua `viTinhVaoTong` **bỏ cả ví đã xoá mềm**; hoá đơn `conPhaiTra` → cam kết, quá hạn **dồn về hôm nay và nằm ở điểm 0**, kỳ chiếu nối từ `periodEnd` giữ ân hạn và `anchorDay` (năm nhuận), chỉ chiếu từ **hàng cuối chuỗi**, chu kỳ lạ thì dừng; trích tự động kẹp ở phần còn thiếu và **luật chuyển ví** ba nhánh; ngân sách tổng đè danh mục, **khử đếm đôi** với hoá đơn cùng danh mục, quý còn 60 ngày tính nửa; ví thiếu theo từng ví với ngưỡng **nửa đồng**, bỏ ví lưu trữ; chuỗi **đúng 31 điểm**; và `daiTrucDuBao` — bước **tròn**, sàn bội của bước, nới dải cho tới khi **bốn nhãn khác nhau** (bẫy 4.21) |
 | `bill_ky_ke_tiep_test.dart` + `bill_ky_ke_tiep_goi_lai_test.dart` (2026-09-16) | `kyKeTiepCua` là **định nghĩa duy nhất** của kỳ kế tiếp: nối từ `periodEnd` chứ không hạn trả (ân hạn 15 ngày), `anchorDay` 31 qua tháng Hai **năm nhuận**, hàng cũ `periodEnd` NULL ra y hệt trước v21, chu kỳ tuần; và một ca chứng minh `_nextPeriodOf` **gọi lại** nó chứ không giữ bản chép |

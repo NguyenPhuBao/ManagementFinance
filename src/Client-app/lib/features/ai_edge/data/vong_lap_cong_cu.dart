@@ -34,6 +34,7 @@ library;
 import 'dart:async';
 
 import '../domain/canary_cong_cu.dart';
+import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
@@ -55,12 +56,17 @@ Stream<SuKienGac> hoiBangCongCu(
   void Function(String) log = print,
 }) async* {
   final dongHo = Stopwatch()..start();
+  // Định tuyến theo CÂU HỎI (mục 9.33): tool mà câu hỏi đòi, nếu bộ tool có nó.
+  // Có đích thì phiên chỉ khai MỘT tool ấy (mục 9.34: khai cả bộ là vỡ trần).
+  final dich = congCuTheoCauHoi(cauHoi);
+  final tenDich =
+      dich != null && boCongCu.tenCacCongCu.contains(dich) ? dich : null;
   final PhienCongCu phien;
   try {
     phien = await runtime.moPhien(
       heThong: heThong,
       cauHoi: cauHoi,
-      congCu: boCongCu.khaiBao,
+      congCu: boCongCu.khaiBaoCho(tenDich),
     );
   } on BacCongCuDaTat {
     // Máy này từng sập native ở phiên có tool (canary 1b). Bậc 1 không mở
@@ -128,6 +134,18 @@ Stream<SuKienGac> hoiBangCongCu(
       }
 
       if (loiGoi.isEmpty) {
+        if (!goi.daTraCuu && tenDich != null) {
+          // Mô hình không gọi tool nào mà câu hỏi có đích rõ: tự chạy tool ấy.
+          // Phiên không chờ kết quả nào nên không có lượt sinh kế — hiện mẫu câu.
+          log('[SLM][tool] lượt $luot: không gọi tool, định tuyến theo câu hỏi → $tenDich, mẫu câu');
+          yield DangTraCuu(tenDich);
+          final kq = await boCongCu.chay(tenDich, const {},
+              idaccount: idaccount, now: now, cauHoi: cauHoi);
+          goi.them(tenDich, kq!);
+          yield CauQua(goi.mauCau().cau);
+          log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: 0 lời gọi, 0 câu');
+          return;
+        }
         if (!goi.daTraCuu) {
           if (goi.tuChoiChuaGo.isEmpty) {
             log('[SLM][tool] lượt $luot: không gọi tool → bậc 1 (L1) @${dongHo.elapsedMilliseconds} ms');
@@ -143,7 +161,9 @@ Stream<SuKienGac> hoiBangCongCu(
           final nhan = _nhanLui(goi);
           log('[SLM][tool] lượt $luot: ${_viSaoDong(goi)} → '
               '${soCauQua == 0 ? 'mẫu câu' : 'nối câu phải nói thêm'} ($nhan)');
-          yield CauQua(soCauQua == 0 ? goi.mauCau().cau : goi.cauNoiThem!);
+          yield CauQua(
+            soCauQua == 0 ? goi.mauCau().cau : (goi.cauNoiThem ?? goi.mauCau().cau),
+          );
           log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: $soLanGoi lời gọi, $soCauQua câu');
           return;
         }
@@ -161,8 +181,19 @@ Stream<SuKienGac> hoiBangCongCu(
         return;
       }
 
-      for (final g in loiGoi) {
+      for (final g0 in loiGoi) {
         soLanGoi++;
+        // Câu hỏi đòi một tool khác tool mô hình chọn, và tool ấy CHƯA chạy →
+        // chạy tool của câu hỏi (không tham số của mô hình: chúng thuộc tool
+        // kia). Kết quả vẫn trả về phiên dưới tên lời gọi mô hình đã phát — phiên
+        // chờ đúng lời gọi ấy. Chỉ đổi một lần: tool đích đã chạy thì thôi.
+        final doi = tenDich != null &&
+            g0.ten != tenDich &&
+            !goi.tenCongCuDaChay.contains(tenDich);
+        final g = doi ? GoiCongCu(tenDich, const {}) : g0;
+        if (doi) {
+          log('[SLM][tool] lượt $luot: định tuyến theo câu hỏi: ${g0.ten} → $tenDich');
+        }
         yield DangTraCuu(g.ten);
         final moc = dongHo.elapsedMilliseconds;
         final kq = await boCongCu.chay(
@@ -174,7 +205,7 @@ Stream<SuKienGac> hoiBangCongCu(
         );
         if (kq == null) {
           log('[SLM][tool] lượt $luot: gọi ${g.ten} — không có tool này');
-          await phien.traKetQua(g.ten, {
+          await phien.traKetQua(g0.ten, {
             'loi': 'Không có công cụ tên ${g.ten}. Chỉ có: ${boCongCu.tenCacCongCu.join(', ')}.',
           });
           continue;
@@ -182,7 +213,7 @@ Stream<SuKienGac> hoiBangCongCu(
         goi.them(g.ten, kq, args: g.args);
         log('[SLM][tool] lượt $luot: gọi ${g.ten} ${g.args} → ${kq.hang.length} hàng'
             '${kq.loi == null ? '' : ', từ chối: ${kq.loi}'}, ${dongHo.elapsedMilliseconds - moc} ms');
-        await phien.traKetQua(g.ten, kq.json);
+        await phien.traKetQua(g0.ten, kq.json);
       }
       // Đã có hàng (hoặc lời từ chối) trước mắt mô hình — màn về "Đang nghĩ…".
       yield const DangTraCuu(null);
@@ -203,6 +234,7 @@ String _viSaoDong(GoiSoTraCuu goi) {
     if (goi.tuChoiChuaGo.isNotEmpty)
       'còn lời từ chối chưa gỡ (${_tenTuChoi(goi)})',
     if (goi.luotRong.isNotEmpty) 'có lượt rỗng theo bộ lọc',
+    if (goi.coLuotChiMauCau) 'tool đòi mẫu câu',
   ].join(' và ');
 }
 
@@ -211,5 +243,6 @@ String _viSaoDong(GoiSoTraCuu goi) {
 String _nhanLui(GoiSoTraCuu goi) {
   final coTuChoi = goi.tuChoiChuaGo.isNotEmpty;
   final coRong = goi.luotRong.isNotEmpty;
+  if (!coTuChoi && !coRong) return 'L2d';
   return coTuChoi && coRong ? 'L2b+L2c' : (coRong ? 'L2c' : 'L2b');
 }

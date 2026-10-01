@@ -84,6 +84,8 @@ void main() {
     await tester.pumpWidget(app(repo));
     await tester.pumpAndSettle();
 
+    // C2: thẻ Nhập nhanh ở đầu vùng cuộn đẩy hàng Danh mục xuống.
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ăn uống'));
@@ -105,6 +107,8 @@ void main() {
     await tester.pumpWidget(app(repo));
     await tester.pumpAndSettle();
 
+    // C2: thẻ Nhập nhanh ở đầu vùng cuộn đẩy hàng Danh mục xuống.
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ăn uống'));

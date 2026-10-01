@@ -45,6 +45,13 @@ class KhoanThuChi {
   /// khoản vẫn được đếm nhưng không bị xếp bừa vào một vai.
   final String? tenDanhMuc;
 
+  /// B4: khoản thuộc một **cam kết** — gắn hoá đơn hay mục tiêu, trả hoá đơn
+  /// dạng cũ (tiền tố ghi chú), hoặc khoản nhập tay của một nhóm lặp đã thành
+  /// hoá đơn (B2). Cam kết ấy đã nằm ở tầng 1 khối Dự báo, nên ước tính chi tuỳ
+  /// ý phải bỏ nó ra. Luật ở `AnalyticsRepositoryImpl.dungKhoan`. Chỉ tầng 3
+  /// đọc cờ này. Mặc định `false`: mọi chỗ dựng cũ không đổi.
+  final bool laKhoanCamKet;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
@@ -53,6 +60,7 @@ class KhoanThuChi {
     this.ghiChu,
     this.classify,
     this.tenDanhMuc,
+    this.laKhoanCamKet = false,
   });
 }
 
@@ -118,6 +126,11 @@ TongThuChi tongThuChi(
 ///
 /// [truoc] bằng 0 thì trả `null` chứ không phải vô cực hay 100%: cả hai đều là
 /// số bịa, và người dùng đọc "tăng 100%" sẽ tưởng tháng trước có một nửa.
+/// Chênh lệch tuyệt đối của kỳ này so với kỳ nền — dương là **nhiều hơn**. Đi
+/// cặp với [phanTramSoVoi]; tách thành hàm để lớp AI nhận con số đã trừ sẵn
+/// thay vì tự trừ (bất biến "lớp AI không tính").
+double chenhLechSoVoi(double nay, double truoc) => nay - truoc;
+
 double? phanTramSoVoi(double nay, double truoc) {
   if (truoc == 0) return null;
   return (nay - truoc) / truoc * 100;

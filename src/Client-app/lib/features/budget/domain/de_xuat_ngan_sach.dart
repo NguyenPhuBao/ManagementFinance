@@ -51,7 +51,14 @@ class GoiDeXuat {
   final List<DeXuatNganSach> ds;
   final int soNgayCuaSo;
 
-  const GoiDeXuat({required this.ds, required this.soNgayCuaSo});
+  /// Số ứng viên TRƯỚC khi cắt [ds] theo `toiDa` — tool AI đếm đủ trong khi
+  /// hàng hiện có trần riêng (2026-09-27).
+  final int soUngVien;
+  const GoiDeXuat({
+    required this.ds,
+    required this.soNgayCuaSo,
+    required this.soUngVien,
+  });
 }
 
 /// Trả `null` khi **không có gì để gợi ý** — chỗ gọi ẩn hẳn thẻ.
@@ -68,6 +75,7 @@ GoiDeXuat? chonDeXuat({
   required Set<String> daCoNganSach,
   required Map<String, double?> mucThangTheoDanhMuc,
   required int? soNgayCuaSo,
+  int toiDa = kToiDaDeXuat,
 }) {
   if (soNgayCuaSo == null) return null;
 
@@ -90,7 +98,8 @@ GoiDeXuat? chonDeXuat({
 
   ungVien.sort((a, b) => b.mucThang.compareTo(a.mucThang));
   return GoiDeXuat(
-    ds: ungVien.take(kToiDaDeXuat).toList(),
+    ds: ungVien.take(toiDa).toList(),
     soNgayCuaSo: soNgayCuaSo,
+    soUngVien: ungVien.length,
   );
 }

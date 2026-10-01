@@ -219,6 +219,41 @@ void main() {
     });
   });
 
+  group('soLanChiGapThuNhap — G56, "gấp N lần" khi chi ≥ 2× thu nhập', () {
+    test('⭐ số thật Realme: thu nhập 20.000, chi 5.292.000 → gấp 265 lần', () {
+      // Tuần có thu nhập gần 0: phần trăm cũ in "chi vượt thu nhập 26360,0%".
+      expect(soLanChiGapThuNhap(thuNhap: 20000, chi: 5292000), 265,
+          reason: '264,6 lần; từ 10 lần trở lên làm tròn số nguyên');
+    });
+
+    test('dưới 2 lần → null, nơi gọi GIỮ phần trăm như cũ', () {
+      expect(soLanChiGapThuNhap(thuNhap: 10000000, chi: 13000000), isNull,
+          reason: '"chi vượt thu nhập 30%" vẫn là câu dễ đọc nhất (người dùng chốt)');
+    });
+
+    test('đúng 2 lần là tính — ngưỡng đóng', () {
+      expect(soLanChiGapThuNhap(thuNhap: 1000000, chi: 2000000), 2);
+    });
+
+    test('dưới 10 lần giữ MỘT chữ số lẻ; làm tròn lên 10 thì in số nguyên', () {
+      expect(soLanChiGapThuNhap(thuNhap: 1000000, chi: 8200000), closeTo(8.2, 1e-9));
+      expect(soLanChiGapThuNhap(thuNhap: 1000000, chi: 9960000), 10,
+          reason: '9,96 làm tròn một chữ số lẻ ra 10,0 — từ đó là số nguyên');
+    });
+
+    test('thu nhập không dương → null, cùng luật tyLeTietKiem', () {
+      expect(soLanChiGapThuNhap(thuNhap: 0, chi: 5000000), isNull);
+      expect(soLanChiGapThuNhap(thuNhap: -2000000, chi: 5000000), isNull);
+    });
+
+    test('chuoiSoLan: phẩy thập phân, bỏ ",0", số nguyên từ 10', () {
+      expect(chuoiSoLan(265), '265');
+      expect(chuoiSoLan(8.2), '8,2');
+      expect(chuoiSoLan(2), '2');
+      expect(chuoiSoLan(10), '10');
+    });
+  });
+
   group('dongTienTuDo — chốt chặn ghép nhầm kỳ', () {
     test('hai chuỗi lệch độ dài thì NỔ', () {
       expect(

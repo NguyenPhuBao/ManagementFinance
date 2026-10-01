@@ -13,6 +13,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
+import '../../domain/dien_san_hoa_don.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../widgets/bill_grace_selector.dart';
@@ -20,7 +21,12 @@ import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class BillAddPage extends StatefulWidget {
-  const BillAddPage({super.key});
+  const BillAddPage({super.key, this.dienSan});
+
+  /// Giá trị điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — route `/bills/add`
+  /// đọc query qua `dienSanTuQuery`. `null` = form trống như cũ. Chỉ có ở đường
+  /// TẠO MỚI: form Sửa không nhận, kẻo đè lên hoá đơn đang có.
+  final DienSanHoaDon? dienSan;
 
   @override
   State<BillAddPage> createState() => _BillAddPageState();
@@ -55,6 +61,25 @@ class _BillAddPageState extends State<BillAddPage> {
   @override
   void initState() {
     super.initState();
+    final d = widget.dienSan;
+    if (d != null) {
+      if (d.ten != null) _nameController.text = d.ten!;
+      final tien = d.soTien;
+      // Ô tiền đọc chữ thô bằng `double.tryParse` (xem `_submit`) — điền đúng
+      // dạng ấy, không qua `CurrencyFormatter`.
+      if (tien != null) {
+        _amountController.text =
+            tien == tien.roundToDouble() ? tien.toInt().toString() : tien.toString();
+      }
+      // Ngày bắt đầu = lần gần nhất của khoản lặp: kỳ đầu kết thúc đúng ở lần
+      // lặp KẾ TIẾP. Cộng thêm một chu kỳ là người dùng lỡ lần nhắc đầu tiên.
+      _lich = BillSchedule(
+        startDate: d.batDau ?? DateTime.now(),
+        timeRecurrence: d.chuKy ?? kBillCycleMonth,
+        repeat: true,
+        anchorDay: d.ngayGoc,
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPickers();
     });
@@ -76,14 +101,20 @@ class _BillAddPageState extends State<BillAddPage> {
         ? <Category>[]
         : await db.categoryDao.getCategoryRows(accountId, 'chi');
     if (mounted) {
+      // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
+      // đã xoá hoặc đã lưu trữ thì rơi về lựa chọn mặc định như khi mở thường.
+      final viDien = widget.dienSan?.walletId;
+      final dmDien = widget.dienSan?.categoryId;
       setState(() {
         _wallets = wallets;
         if (wallets.isNotEmpty) {
-          _selectedWallet = wallets.first;
+          _selectedWallet = wallets.firstWhere((w) => w.id == viDien,
+              orElse: () => wallets.first);
         }
         _categories = categories;
         if (categories.isNotEmpty) {
-          _selectedCategory = categories.first;
+          _selectedCategory = categories.firstWhere((c) => c.id == dmDien,
+              orElse: () => categories.first);
         }
       });
     }
@@ -181,7 +212,10 @@ class _BillAddPageState extends State<BillAddPage> {
             ),
           ),
         );
-    context.pop();
+    // `true` = đã gửi `AddBillEvent` (ghi SQLite cục bộ nên đã gửi ≈ đã lưu).
+    // Thẻ khoản lặp (B2) chờ đúng giá trị này mới ghi `da_tao`; nút Quay lại
+    // vẫn `pop()` trần.
+    context.pop(true);
   }
 
   Future<void> _pickStartDate() async {

@@ -186,4 +186,20 @@ void main() {
       expect(ds[4].choVay, 0, reason: 'biên to MỞ — không đếm ở cả hai kỳ');
     });
   });
+
+  group('duNoRong — dư nợ ròng theo dòng tiền đã ghi', () {
+    final ky = Ky.thang(2026, 9);
+    test('cho vay trừ thu nợ, đi vay trừ trả nợ', () {
+      final d = duNoRong(DiemVayNo(ky: ky, choVay: 800000, thuNo: 500000, diVay: 2000000, traNo: 300000));
+      expect((d.choVayChuaThu, d.dangNo), (300000, 1700000));
+    });
+    test('⚠️ thu nợ NHIỀU hơn cho vay (khoản cho vay ghi trước khi dùng app) → 0, không âm', () {
+      final d = duNoRong(DiemVayNo(ky: ky, choVay: 100000, thuNo: 500000, diVay: 0, traNo: 200000));
+      expect((d.choVayChuaThu, d.dangNo), (0, 0));
+    });
+    test('khoản không đoán được vai không tính vào bên nào', () {
+      final d = duNoRong(DiemVayNo(ky: ky, khacRa: 900000, khacVao: 400000));
+      expect((d.choVayChuaThu, d.dangNo), (0, 0));
+    });
+  });
 }

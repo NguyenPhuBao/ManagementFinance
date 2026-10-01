@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/budget_entity.dart';
-import '../../../ai_edge/domain/tai_phan_bo.dart';
+import '../../data/de_xuat_nguon.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../data/tai_phan_bo_nguon.dart';
 import '../../domain/cua_so_nhin_lai.dart';
@@ -103,15 +103,7 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
     try {
       final now = clock();
-      final d = await nguon.nap(idaccount, loaded.active, now);
-      final kh = taiPhanBoCua(
-        dangChay: loaded.active,
-        now: now,
-        coDinh: d.coDinh,
-        thuNhapMoiThang: d.thuNhapMoiThang,
-        mucThangTheoNganSach: d.mucThangTheoNganSach,
-        phanHoi: d.phanHoi,
-      );
+      final kh = await keHoachTaiPhanBoTu(nguon, idaccount, loaded.active, now);
       if (n != _lan || isClosed) return;
       emit(BudgetLoaded(
         active: loaded.active,
@@ -137,33 +129,11 @@ class BudgetCubit extends Cubit<BudgetState> {
   ///
   /// Nuốt mọi lỗi: đây là một gợi ý phụ, không đáng để thay cả trang bằng
   /// `BudgetError`. Cùng lối với `suggestAmount` của form.
+  /// Phần đọc repository nằm ở `deXuatTuKho` (dùng chung với tool AI
+  /// `chon=chua_dat`, 2026-09-27); ở đây chỉ giữ nếp "hỏng thì im".
   Future<GoiDeXuat?> _deXuat(int idaccount, List<BudgetView> dangChay) async {
     try {
-      final soNgay = await repository.soNgayCuaSoNhinLai(idaccount);
-      if (soNgay == null) return null;
-
-      final daCo = {
-        for (final v in dangChay)
-          if (v.budget.categoryId case final id?) id,
-      };
-      // `getExpenseCategories` ĐÃ lọc `classify = 'chi'` — đừng lọc lần nữa.
-      final cats = await repository.getExpenseCategories(idaccount);
-
-      final muc = <String, double?>{};
-      for (final c in cats) {
-        if (daCo.contains(c.id)) continue;
-        muc[c.id] = await repository.suggestAmount(idaccount, c.id);
-      }
-
-      return chonDeXuat(
-        danhMucChi: [
-          for (final c in cats)
-            (id: c.id, ten: c.name, icon: c.icon, colour: c.colour),
-        ],
-        daCoNganSach: daCo,
-        mucThangTheoDanhMuc: muc,
-        soNgayCuaSo: soNgay,
-      );
+      return await deXuatTuKho(repository, idaccount, dangChay);
     } catch (_) {
       return null;
     }

@@ -239,18 +239,48 @@ void main() {
     // lớn nhất) gọi tổng kết bốn lần liền dù mô tả chéo (2b) đã dặn — "không
     // few-shot ở bậc tool" (spec 4b §3.7) là giả định chưa từng đo. Ví dụ định
     // tuyến: câu hỏi kiểu nào → tool nào, tham số nào; KHÔNG chữ số.
-    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9): nêu cả hai tool cạnh tranh và các kiểu câu có điều kiện', () {
+    test('⭐ ví dụ ĐỊNH TUYẾN (lần đo 9; từ 2026-09-27 một tool giao dịch): các kiểu câu có điều kiện', () {
       expect(kPromptHeThongCongCu, contains('Ví dụ'));
-      expect(kPromptHeThongCongCu, contains(kTenCongCuGiaoDich));
-      expect(kPromptHeThongCongCu, contains(kTenCongCuTongKet));
+      expect(kPromptHeThongCongCu, contains(kTenCongCuTruyVan));
       for (final dieuKien in ['số tiền', 'khoản thu', 'ví', 'danh mục', 'lớn nhất']) {
         expect(kPromptHeThongCongCu, contains(dieuKien), reason: dieuKien);
       }
       expect(kPromptHeThongCongCu, contains('chieu'));
       expect(kPromptHeThongCongCu, contains('so_tien_tu'));
-      expect(kPromptHeThongCongCu.indexOf(kTenCongCuGiaoDich),
-          lessThan(kPromptHeThongCongCu.indexOf(kTenCongCuTongKet)),
-          reason: 'ví dụ về tool liệt kê đứng trước — mô hình đọc từ trên xuống');
+      // Tool truy vấn (2026-09-27): gộp, chọn, hai chiều, và chon ngân sách.
+      for (final vd in [
+        'gop=danh_muc',
+        'chon=nhieu_nhat',
+        'chon=it_nhat',
+        'chieu=tat_ca',
+        '$kTenCongCuNganSach với chon=duoi_nua',
+      ]) {
+        expect(kPromptHeThongCongCu, contains(vd), reason: vd);
+      }
+      expect(kPromptHeThongCongCu, isNot(contains('tong_ket_thu_chi_ky')));
+      expect(kPromptHeThongCongCu, isNot(contains('tim_giao_dich')));
+    });
+    // Lát 1 spec mở rộng tool (2026-09-27): kỳ tự do, so hai kỳ (E13), dự báo
+    // (câu 16–17 chặng 3). ⚠️ Ví dụ KHÔNG nêu "tháng 8" — chữ số trong lời hệ
+    // thống là số mô hình có thể chép (ca "không mang con số nào" ngay trên).
+    test('⭐ ví dụ lát 1: ky=tuy_chon, so_voi=ky_truoc', () {
+      for (final vd in [
+        'ky=tuy_chon',
+        'tu_ngay',
+        'den_ngay',
+        'so_voi=ky_truoc',
+        'so_voi=cung_ky_nam_truoc',
+        'nhiều hơn hay ít hơn tháng trước',
+        '$kTenCongCuNganSach với chon=chua_dat',
+      ]) {
+        expect(kPromptHeThongCongCu, contains(vd), reason: vd);
+      }
+    });
+    test('⚠️ KHÔNG nhắc tên tool chỉ đi qua định tuyến — phiên không định tuyến không khai chúng', () {
+      for (final ten in kCongCuChiQuaDinhTuyen) {
+        expect(kPromptHeThongCongCu, isNot(contains(ten)),
+            reason: 'ví dụ trỏ tới tool không được khai là dạy mô hình gọi tool bịa');
+      }
     });
     // Lần đo 9: tool 18/20 nhưng tham số 9/20 — ba họ lỗi: thiếu chieu (C1 C5 C6),
     // tên danh mục / ví nhét vào tu_khoa (C12 C14 C19), ngưỡng và kỳ (C7 "nửa triệu"

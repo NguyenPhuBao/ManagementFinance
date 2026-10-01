@@ -518,4 +518,34 @@ void main() {
             'thật mang chữ số)');
     expect(kiemSo('Cà phê 35.000 đ, danh mục test1.', GoiSoTraCuu()), isFalse);
   });
+
+  group('mẫu câu nói CHỮ KẾT LUẬN của tool (L1 mục 9.33)', () {
+    KetQuaCongCu kq(Map<String, String> chu) => KetQuaCongCu(
+          hang: const [],
+          tongHop: [soTien('Tổng chi', 2241000), soTien('Tổng chi tháng trước', 0)],
+          boLoc: const ['khoản chi', 'so với tháng trước'],
+          chuThem: {'ky': 'tháng này', 'sap_xep': 'lớn nhất trước', ...chu},
+        );
+
+    test('⭐ so_sanh_*: "không có dữ liệu tháng trước" đứng cuối câu, sau các số', () {
+      final g = GoiSoTraCuu()
+        ..them('truy_van_giao_dich', kq({'so_sanh_chi': 'không có dữ liệu tháng trước'}));
+      final cau = g.mauCau().cau;
+      expect(cau, endsWith('Tổng chi tháng trước: 0 đ — không có dữ liệu tháng trước.'));
+      expect(kiemSo(cau, g), isTrue, reason: cau);
+      expect(kiemNhan(cau, [g]), isTrue, reason: cau);
+    });
+
+    test('tinh_trang của tool dự báo cũng được nói; hai chữ nối bằng dấu phẩy', () {
+      final g = GoiSoTraCuu()
+        ..them('x', kq({'so_sanh_chi': 'chi nhiều hơn tháng trước', 'tinh_trang': 'đủ trả mọi cam kết'}));
+      expect(g.mauCau().cau, contains('— chi nhiều hơn tháng trước, đủ trả mọi cam kết.'));
+    });
+
+    test('⚠️ chữ kèm KHÁC (ky, sap_xep) không bị in thành kết luận', () {
+      final g = GoiSoTraCuu()..them('x', kq(const {}));
+      expect(g.mauCau().cau, isNot(contains('lớn nhất trước')));
+      expect(g.mauCau().cau, endsWith('Tổng chi tháng trước: 0 đ.'));
+    });
+  });
 }

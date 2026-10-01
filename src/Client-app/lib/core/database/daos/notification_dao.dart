@@ -85,9 +85,57 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
     return q.map((r) => r.read(dem) ?? 0).watchSingle();
   }
 
+  /// D1 — số hàng biến động số dư CHƯA ghi (chưa gạt) của tài khoản: con số trên thẻ *"Có N biến động chưa ghi"* ở
+  /// Sổ giao dịch. Stream, nên Lưu / Bỏ qua (xoá cứng) tự làm con số đổi.
+  Stream<int> watchDemBienDong(int idaccount) {
+    final dem = appNotifications.id.count();
+    final q = selectOnly(appNotifications)
+      ..addColumns([dem])
+      ..where(appNotifications.idaccount.equals(idaccount) &
+          appNotifications.kind.equals(kKindBienDongSoDu) &
+          appNotifications.dismissedAt.isNull());
+    return q.map((r) => r.read(dem) ?? 0).watchSingle();
+  }
+
   Future<void> markRead(String id) async {
     await (update(appNotifications)..where((t) => t.id.equals(id)))
         .write(AppNotificationsCompanion(readAt: Value(DateTime.now())));
+  }
+
+  /// Khoá của mọi hàng chưa đọc **đang hiện** (chưa gạt bỏ) — nhật ký B5a ghi một
+  /// `doc_tat_ca` cho mỗi khoá khi người dùng bấm "Đọc tất cả".
+  ///
+  /// ⚠️ Không đúng bằng tập của [markAllRead]: hàm ấy đánh dấu cả hàng đã gạt bỏ
+  /// mà chưa đọc. Hàng đã gạt không còn trên màn, nên cú bấm không phải phản ứng
+  /// với nó — ghi nó vào nhật ký là dạy B5b một phản ứng không có thật.
+  Future<List<String>> khoaChuaDoc(int idaccount) async {
+    final rows = await (select(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.readAt.isNull() &
+              t.dismissedAt.isNull()))
+        .get();
+    return [for (final r in rows) r.dedupeKey];
+  }
+
+  /// Ghi mốc đã giao thông báo cho hệ điều hành (lúc quyền đang bật). B5a: cột
+  /// này có từ v13 mà chưa từng được ghi.
+  Future<void> danhDauDaBan(int idaccount, String dedupeKey, DateTime luc) async {
+    await (update(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) & t.dedupeKey.equals(dedupeKey)))
+        .write(AppNotificationsCompanion(osDeliveredAt: Value(luc)));
+  }
+
+  /// Tài khoản có hàng nào mang khoá này không (kể cả hàng đã xoá mềm) — bộ
+  /// nhập hàng chờ B5a dùng để biết một cú Hoãn thuộc về ai.
+  Future<bool> coDedupeKey(int idaccount, String dedupeKey) async {
+    final r = await (select(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) & t.dedupeKey.equals(dedupeKey))
+          ..limit(1))
+        .getSingleOrNull();
+    return r != null;
   }
 
   Future<void> markAllRead(int idaccount) async {
@@ -131,4 +179,33 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
           ..where((t) => t.createdAt.isSmallerThanValue(cutoff)))
         .go();
   }
+
+  /// Dọn riêng MỘT loại theo mốc ngắn hơn [purgeOlderThan] — hàng biến động số dư
+  /// (D1) mang nội dung tin ngân hàng nên chỉ giữ 30 ngày (spec D1 §3.3), trong
+  /// khi mọi loại khác giữ 90.
+  Future<int> purgeKindOlderThan(String kind, DateTime cutoff) {
+    return (delete(appNotifications)
+          ..where((t) => t.kind.equals(kind) & t.createdAt.isSmallerThanValue(cutoff)))
+        .go();
+  }
+
+  /// Xoá **CỨNG** một hàng biến động số dư (D1) khi người dùng *Lưu* hoặc *Bỏ qua* nó trên form.
+  ///
+  /// ⚠️ **Ngoại lệ có chủ ý** của nếp *"dismiss mềm để giữ khoá chặn trùng"* (spec D1 §3.3): hàng loại
+  /// 20 mang nội dung tin ngân hàng, tin đã xử lý thì không còn lý do giữ nó (Nghị định 13, tối thiểu
+  /// hoá). Chống trùng về sau dựa vào phép gộp 5 phút của `NhapBienDong`, đủ vì nguồn chỉ bắn lại ngay.
+  /// Chỉ xoá hàng mang đúng loại [kKindBienDongSoDu] — mọi loại khác vẫn phải xoá mềm, nên hàm không
+  /// tin vào khoá một mình. Trả số hàng đã xoá.
+  Future<int> xoaCung(int idaccount, String dedupeKey) {
+    return (delete(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.dedupeKey.equals(dedupeKey) &
+              t.kind.equals(kKindBienDongSoDu)))
+        .go();
+  }
 }
+
+/// `NotificationKind.bienDongSoDu.name` — chép thành chuỗi vì tầng CSDL không phụ thuộc tầng thông
+/// báo (xem [NotificationDao.watchFeed]); `notification_dao_test.dart` canh hai bên bằng nhau.
+const String kKindBienDongSoDu = 'bienDongSoDu';

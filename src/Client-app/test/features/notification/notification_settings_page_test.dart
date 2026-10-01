@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
@@ -63,10 +64,10 @@ class _OsGia implements OsNotifier {
 
   // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
   @override
-  Stream<String> get payloadDaCham => const Stream<String>.empty();
+  Stream<ChamHdh> get chamTho => const Stream<ChamHdh>.empty();
 
   @override
-  Future<String?> payloadKhoiDong() async => null;
+  Future<ChamHdh?> chamKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => const {};
@@ -232,6 +233,32 @@ void main() {
       expect(swBill.value, isTrue,
           reason: 'Trang hiện sai trạng thái tệ hơn là không có trang nào — '
               'người dùng tưởng đã tắt rồi vẫn bị làm phiền.');
+    });
+
+    // Bật LẦN ĐẦU đi qua màn xin đồng ý — `dong_y_bien_dong_test.dart`. Ca này dựng sẵn lần đồng
+    // ý để canh riêng đường ghi cờ.
+    testWidgets('⭐ D1: công tắc nhóm Biến động số dư ghi cờ docBienDong, không đụng nhomTat',
+        (tester) async {
+      await store.write(accountId, const NotificationPrefs(dongYBienDong: true));
+      await moTrang(tester);
+      final khoa = NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.bienDong);
+      await tester.ensureVisible(find.byKey(khoa));
+      expect(tester.widget<Switch>(find.byKey(khoa)).value, isFalse,
+          reason: 'mặc định tắt — tính năng đứng sau màn xin đồng ý');
+      expect(find.text('Biến động số dư'), findsOneWidget);
+
+      await tester.tap(find.byKey(khoa));
+      await tester.pumpAndSettle();
+
+      final daLuu = await store.read(accountId);
+      expect(daLuu.docBienDong, isTrue);
+      expect(daLuu.nhomTat, isEmpty,
+          reason: 'công tắc này là CỜ riêng (người dùng chốt 2026-09-30), '
+              'không đi qua tập nhóm tắt');
+
+      await tester.tap(find.byKey(khoa));
+      await tester.pumpAndSettle();
+      expect((await store.read(accountId)).docBienDong, isFalse);
     });
 
     testWidgets('hiện giờ nhắc và số ngày nhắc đã lưu', (tester) async {
@@ -494,6 +521,95 @@ void main() {
               'giờ hoá đơn ở đây là người dùng tưởng đã đặt xong buổi tối '
               'trong khi lời nhắc nổ lúc sáng sớm.');
     });
+  });
+
+  // ── G59 (2026-09-29): đổi giờ / thứ phải DỜI lịch đang chờ ─────────────────
+  group('đặt lại lịch khi đổi mốc (G59)', () {
+    Future<List<int>> moVaDem(WidgetTester tester) async {
+      // Khổ máy ảo 411 × 914. Khi viết ca này, bảng chọn thứ tràn ở khung mặc
+      // định 800 × 600 — G60, nay đã sửa và có nhóm ca riêng bên dưới.
+      tester.view.physicalSize = const Size(411, 914);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final goi = <int>[];
+      await tester.pumpWidget(MaterialApp(
+        home: NotificationSettingsPage(
+          idaccount: accountId,
+          store: store,
+          osNotifier: os,
+          datLaiLich: (id) async => goi.add(id),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      return goi;
+    }
+
+    testWidgets('đổi THỨ tổng kết → đặt lại lịch đúng một lần, đúng tài khoản',
+        (tester) async {
+      await store.write(accountId, const NotificationPrefs(tongKetTuanBat: true));
+      final goi = await moVaDem(tester);
+
+      final f = find.byKey(NotificationSettingsPage.khoaThuTongKet);
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Thứ Bảy'));
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).thuTongKet, DateTime.saturday);
+      expect(goi, [accountId],
+          reason: 'khoá lịch tổng kết là của TUẦN, không chứa thứ — không đặt lại '
+              'thì lịch đang chờ vẫn nổ vào thứ cũ');
+    });
+
+    testWidgets('gạt công tắc nhóm (không đổi mốc) → KHÔNG đặt lại lịch',
+        (tester) async {
+      final goi = await moVaDem(tester);
+      final f = find.byKey(
+          NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.budget));
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nhomTat, contains(NotificationGroup.budget));
+      expect(goi, isEmpty,
+          reason: 'đặt lại chỉ dành cho đổi giờ / thứ; phần còn lại theo lượt '
+              'quét thường, luỹ đẳng');
+    });
+  });
+
+  // ── G60 (2026-09-29): bảng chọn thứ tổng kết tràn ở màn thấp ──────────────
+  // Bảy dòng ~392 dp, mà bottom sheet mặc định chỉ cao 9/16 màn — máy cao dưới
+  // ~700 dp tràn, dòng cuối (Chủ nhật) không chạm được. Realme (800 dp) mù.
+  group('bảng chọn thứ ở màn thấp (G60)', () {
+    for (final kho in const [Size(360, 640), Size(800, 600)]) {
+      testWidgets('${kho.width.toInt()}×${kho.height.toInt()}: không tràn, chọn được Chủ nhật',
+          (tester) async {
+        tester.view.physicalSize = kho;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await store.write(accountId, const NotificationPrefs(tongKetTuanBat: true));
+        await moTrang(tester);
+
+        final f = find.byKey(NotificationSettingsPage.khoaThuTongKet);
+        await tester.ensureVisible(f);
+        await tester.pumpAndSettle();
+        await tester.tap(f);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull,
+            reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi');
+
+        await tester.ensureVisible(find.text('Chủ nhật'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Chủ nhật'));
+        await tester.pumpAndSettle();
+        expect((await store.read(accountId)).thuTongKet, DateTime.sunday,
+            reason: 'dòng cuối phải chạm được — bị cắt dưới mép bảng là thứ ấy '
+                'không bao giờ chọn được');
+      });
+    }
   });
 
   group('chưa đăng nhập', () {

@@ -54,6 +54,9 @@ void main() {
     'features/bill/presentation/pages/bill_detail_page.dart':
         'Cũng là bảng tra tên: trang chi tiết dựng `TransactionLookup` cho '
             'chuỗi kỳ và lịch sử trả.',
+    'features/category/data/gan_danh_muc_nguon.dart':
+        'Bảng tra TÊN ví cho dòng phụ "ngày · ví" của màn Gắn danh mục nhanh '
+            '(C1) — giao dịch cũ có thể nằm ở ví nay đã lưu trữ.',
     'features/budget/data/datasources/budget_local_data_source.dart':
         '`getWallets` chỉ nuôi `BudgetRepositoryImpl.lookupFor`, tức lại là '
             'một bảng tra tên chứ không phải bộ chọn ví.',

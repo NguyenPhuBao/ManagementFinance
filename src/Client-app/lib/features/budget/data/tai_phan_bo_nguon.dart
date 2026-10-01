@@ -9,10 +9,8 @@ library;
 
 import '../../../core/database/app_database.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
-import '../../analytics/domain/dong_tien_tu_do.dart';
-import '../../analytics/domain/pham_vi_ky.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
-import '../../analytics/domain/vai_vay_no.dart';
+import '../../analytics/domain/thu_nhap_moi_thang.dart';
 import '../data/models/budget_entity.dart';
 import '../domain/cua_so_nhin_lai.dart';
 import 'repositories/budget_repository.dart';
@@ -56,6 +54,27 @@ abstract class TaiPhanBoNguon {
     int idaccount,
     List<BudgetView> dangChay,
     DateTime now,
+  );
+}
+
+/// `nap` rồi `taiPhanBoCua` — phép ghép DUY NHẤT (2026-09-28) cho ba nơi phải nói
+/// về **cùng một** kế hoạch: thẻ *Đề xuất cân đối* (`BudgetCubit`), thông báo
+/// `budgetRebalance` và tool ngân sách của Trợ lý AI. Trước đó hai nơi đầu mỗi
+/// nơi chép tay sáu tham số; nơi thứ ba chép nữa là ba bản.
+Future<KeHoachTaiPhanBo?> keHoachTaiPhanBoTu(
+  TaiPhanBoNguon nguon,
+  int idaccount,
+  List<BudgetView> dangChay,
+  DateTime now,
+) async {
+  final d = await nguon.nap(idaccount, dangChay, now);
+  return taiPhanBoCua(
+    dangChay: dangChay,
+    now: now,
+    coDinh: d.coDinh,
+    thuNhapMoiThang: d.thuNhapMoiThang,
+    mucThangTheoNganSach: d.mucThangTheoNganSach,
+    phanHoi: d.phanHoi,
   );
 }
 
@@ -103,12 +122,10 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
     );
   }
 
-  /// Thu nhập trung bình **mỗi tháng**, suy từ [cuaSoNhinLai].
-  ///
-  /// Vẫn đi qua **đúng** `thuNhapCua` (tổng thu trừ tiền đi vay / thu nợ /
-  /// khoản vay-nợ tiền vào) — không phải `type = 'thu'` trần (bẫy A8 #8). Chép
-  /// khối dựng `KhoanThuChi` của `analytics_repository_impl.dart` (`_dung`,
-  /// khoản `khoan`).
+  /// Thu nhập trung bình **mỗi tháng**, suy từ [cuaSoNhinLai] — đọc CSDL, dựng
+  /// `KhoanThuChi` rồi gọi `thuNhapMoiThangTu` (định nghĩa duy nhất, đi qua
+  /// **đúng** `thuNhapCua`, bẫy A8 #8). Chép khối dựng `KhoanThuChi` của
+  /// `analytics_repository_impl.dart` (`_dung`, khoản `khoan`).
   ///
   /// ⚠️ Chỉ **cửa sổ** đổi, luật thu nhập giữ nguyên. Trước 2026-09-21 hàm này
   /// cắt ba tháng lịch liền trước và trả 0 trên mọi dữ liệu thật, nên phép neo
@@ -140,14 +157,8 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
           tenDanhMuc: t.categoryId == null ? null : tenTheoId[t.categoryId],
         ),
     ];
-    // MỘT kỳ đúng bằng cửa sổ, thay cho bốn kỳ tháng rồi `take(3)`.
-    // `chuoiVayNo` cần một `Ky`; `Ky.tuyChon` nhận đúng biên `[from, to)`.
-    final ky = Ky.tuyChon(from: cuaSo.from, to: cuaSo.to);
-    final vayNo = chuoiVayNo(khoan, ky: ky, soKy: 1);
-    if (vayNo.isEmpty) return 0;
-
-    final tong = tongThuChi(khoan, from: cuaSo.from, to: cuaSo.to);
-    final thuNhapCuaSo = thuNhapCua(tong: tong, vayNo: vayNo.first);
-    return thuNhapCuaSo / cuaSo.soNgay * kSoNgayMotThang;
+    // Phần thuần dời về `analytics/domain/thu_nhap_moi_thang.dart` (B3,
+    // 2026-09-29) — trang Phân tích dùng cùng một định nghĩa.
+    return thuNhapMoiThangTu(khoan, cuaSo);
   }
 }

@@ -56,9 +56,8 @@ bool coHanhDong(String dedupeKey) {
 ///
 /// Trả về một khoá `billOpen:<billId>` chứ không phải một route, để nó đi qua
 /// đúng đường cũ: `deeplinkTuDedupeKey()` là nơi duy nhất suy route từ khoá.
-/// Nhờ vậy không phải nới `payloadDaCham` từ `Stream<String>` thành một cặp
-/// (actionId, payload) — tức là không phải chạm vào `NotificationTapRouter` và
-/// bộ test của nó.
+/// Từ B5a (2026-09-29) nền tảng phát cú chạm **thô** (`ChamHdh`: payload +
+/// actionId) và `NotificationTapRouter` gọi [khoaSauChamNut] rồi mới suy route.
 ///
 /// `null` khi khoá không mang id: lịch có thể do bản app cũ đặt và vẫn nằm
 /// trong AlarmManager sau khi nâng cấp. Nơi gọi rơi về cú chạm thường thay vì
@@ -77,15 +76,16 @@ String? payloadTraNgay(String dedupeKey) {
 /// Có **hai** đường vào cho một cú bấm nút "Trả ngay", và chúng không đi qua
 /// nhau:
 ///
-/// * app đang sống → `onDidReceiveNotificationResponse`;
-/// * app đã đóng hẳn → nền tảng mở app, rồi `payloadKhoiDong()` hỏi
+/// * app đang sống → `onDidReceiveNotificationResponse` → `OsNotifier.chamTho`;
+/// * app đã đóng hẳn → nền tảng mở app, rồi `OsNotifier.chamKhoiDong()` hỏi
 ///   `getNotificationAppLaunchDetails()`.
 ///
 /// Bản đầu chỉ xử lý đường thứ nhất, và trên máy thật (2026-09-07) nút "Trả
 /// ngay" ở cold start mở đúng **danh sách** hoá đơn thay vì hoá đơn ấy — vì
 /// đường thứ hai đọc `payload` mà bỏ qua `actionId`. Không lỗi, không log: nó
 /// chỉ đi sai chỗ. Gom phép quyết định vào một hàm là để hai đường không thể
-/// lệch nhau nữa.
+/// lệch nhau nữa. Từ B5a hai đường còn đổ về **cùng một** chỗ gọi hàm này
+/// (`NotificationTapRouter._thucHien`), nên lệch nhau là bất khả về cấu trúc.
 ///
 /// [hanhDongHoan] **không** đi qua đây: nó xong việc ngay tại chỗ và không mở
 /// màn nào. Nhưng hàm vẫn trả về khoá gốc cho mọi mã lạ, vì lịch do một bản app

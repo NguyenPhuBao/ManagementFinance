@@ -16,8 +16,14 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 ///
 /// Nơi gọi phải tự quyết định làm gì với `null` — thường là không đọc/không ghi
 /// gì cả. Xem `docs/CLIENT_APP_KNOWN_GAPS.md` mục G4.
-int? currentAccountIdOrNull(BuildContext context) {
-  final authState = context.read<AuthBloc>().state;
+int? currentAccountIdOrNull(BuildContext context) =>
+    idaccountTuTrangThai(context.read<AuthBloc>().state);
+
+/// Cùng phép với [currentAccountIdOrNull], nhận thẳng trạng thái — cho nơi
+/// **không có** `BuildContext` (nhật ký thông báo B5a nối nguồn phiên ở
+/// `main.dart`). Một định nghĩa: chép tay phép tách thứ hai là hai nghĩa của
+/// "tài khoản đang đăng nhập", đúng thứ G4 đã phải dọn.
+int? idaccountTuTrangThai(AuthState authState) {
   if (authState is! AuthSuccess || authState.user == null) return null;
   final parsed = int.tryParse(authState.user!.id);
   if (parsed == null || parsed <= 0) return null;

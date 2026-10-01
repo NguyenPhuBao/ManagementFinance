@@ -68,6 +68,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- D1 (2026-09-30): dịch vụ đọc thông báo biến động số dư của ngân
+             hàng / ví điện tử NGAY TRÊN MÁY (không READ_SMS, không API ngân
+             hàng). Quyền do người dùng tự bật ở Cài đặt "Truy cập thông báo",
+             sau một màn xin đồng ý bắt buộc (backend, Nghị định 13). Thiếu
+             permission thì hệ thống không bind — im lặng; thiếu action thì
+             Cài đặt không liệt kê app. `bien_dong_noi_day_test.dart` canh. -->
+        <service
+            android:name=".BienDongListenerService"
+            android:exported="true"
+            android:label="FlowMoney — biến động số dư"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
         <!-- BA receiver của flutter_local_notifications. Thiếu cái nào cũng
              hỏng im lặng — không exception, không log, không một dòng trong
              logcat — nên `android_manifest_receivers_test.dart` canh cả ba.

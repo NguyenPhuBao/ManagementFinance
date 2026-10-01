@@ -348,12 +348,25 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       throw const CategoryValidationException(
           'Danh mục không tồn tại hoặc không thuộc tài khoản.');
     }
-    await db.categoryDao.replaceKeywords(
-      accountId: accountId,
-      categoryId: categoryId,
-      keywords: keywords,
-      now: DateTime.now(),
-    );
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await db.categoryDao.replaceKeywords(
+        accountId: accountId,
+        categoryId: categoryId,
+        keywords: keywords,
+        now: now,
+      );
+      // Từ khoá lên server TRONG payload danh mục (`sync_engine.dart`, khoá `keyword`), không có thực thể riêng — nên
+      // phải đánh dấu chính danh mục. Trước 2026-09-30 thiếu khối này: sửa từ khoá ở trang "Từ khoá của tôi" chỉ lên
+      // server khi danh mục bị sửa vì lý do khác (spec đề xuất từ khoá §3). Hàng mặc định toàn cục không bao giờ đẩy.
+      if (!category.isDefault) {
+        await (db.update(db.categories)..where((row) => row.id.equals(categoryId))).write(CategoriesCompanion(
+          syncStatus: const Value('pending'),
+          updatedAt: Value(now),
+        ));
+      }
+    });
+    syncEngine?.scheduleSync();
   }
 
   @override

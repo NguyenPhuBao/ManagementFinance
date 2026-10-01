@@ -14,7 +14,13 @@ import 'core/constants/app_localization.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
+import 'core/auth/current_account.dart';
+import 'core/notification/cham_hdh.dart';
+import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';
+import 'core/notification/app_lifecycle_watcher.dart';
+import 'core/notification/kenh_bien_dong.dart';
+import 'core/notification/mo_tu_tom_tat_bien_dong.dart';
 import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
@@ -65,6 +71,10 @@ void main() async {
 
   // Tạo AuthBloc một lần trước khi runApp để có thể truyền vào GoRouter
   final authBloc = sl<AuthBloc>();
+  // Nhật ký thông báo (B5a) đọc tài khoản từ ĐÚNG bloc của app — xem chú thích
+  // đăng ký `NhatKyThongBao` ở `injection_container.dart`.
+  sl<NhatKyThongBao>()
+      .datNguonPhien(() => idaccountTuTrangThai(authBloc.state));
 
   // Restore auth state từ token đã lưu → GoRouter redirect guard hoạt động đúng ngay từ đầu
   if (hasToken) {
@@ -126,6 +136,7 @@ class FlowMoneyApp extends StatefulWidget {
 class _FlowMoneyAppState extends State<FlowMoneyApp> {
   late final GoRouter _router;
   late final NotificationTapRouter _chamThongBao;
+  late final MoTuTomTatBienDong _moTomTat;
 
   @override
   void initState() {
@@ -141,14 +152,30 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
           thuocThanhTab(route) ? _router.go(route) : _router.push(route),
       dangDangNhap: () => widget.authBloc.state is AuthSuccess,
       phienDoi: widget.authBloc.stream,
+      // Nhật ký B5a: router gọi hook này đúng một lần mỗi cú chạm, sau khi khử
+      // trùng và khi đã có phiên — nên NhatKyThongBao tự đọc tài khoản phiên.
+      ghiCham: (c) =>
+          unawaited(sl<NhatKyThongBao>().ghi(c.payload, suKienTuCham(c))),
     );
     // Nuốt lỗi: một cú chạm không dịch được không được phép chặn khởi động.
     unawaited(_chamThongBao.start().catchError((_) {}));
+
+    // D1: thông báo tóm tắt "Có N biến động số dư mới" do Kotlin bắn — cú chạm
+    // không đi qua `NotificationTapRouter`. Đích ở ngoài shell nên `push`.
+    _moTomTat = MoTuTomTatBienDong(
+      kenh: sl<KenhBienDong>(),
+      dieuHuong: (route) => _router.push(route),
+      dangDangNhap: () => widget.authBloc.state is AuthSuccess,
+      phienDoi: widget.authBloc.stream,
+      vongDoi: sl<AppLifecycleWatcher>().stream,
+    );
+    unawaited(_moTomTat.start().catchError((_) {}));
   }
 
   @override
   void dispose() {
     unawaited(_chamThongBao.stop());
+    unawaited(_moTomTat.stop());
     super.dispose();
   }
 

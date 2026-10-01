@@ -5,7 +5,7 @@
 ///
 /// 1. **Cold start.** Lịch nhắc hoá đơn nổ khi app đã đóng hẳn — đó là ca
 ///    chính, không phải ca phụ. Payload khi ấy chỉ lấy được qua
-///    `payloadKhoiDong()`.
+///    `chamKhoiDong()`.
 /// 2. **Điều hướng hai lần.** Trên Android cùng một cú chạm có thể vừa nằm
 ///    trong chi tiết khởi động, vừa được đẩy lên qua callback. Không chặn thì
 ///    người dùng thấy màn hình nhảy hai lần.
@@ -18,22 +18,24 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/notification/cham_hdh.dart';
+import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_tap_router.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 
 /// Bản giả chỉ phơi ra hai thành viên mà bộ định tuyến cú chạm dùng tới.
 class _OsGia implements OsNotifier {
-  final StreamController<String> cham = StreamController<String>.broadcast();
+  final StreamController<ChamHdh> cham = StreamController<ChamHdh>.broadcast();
 
-  /// Thứ `payloadKhoiDong()` trả về — `null` = app mở bình thường. Đặt sau khi
+  /// Thứ `chamKhoiDong()` trả về — `null` = app mở bình thường. Đặt sau khi
   /// dựng, trước khi gọi `start()`.
-  String? payloadMoApp;
+  ChamHdh? chamMoApp;
 
   @override
-  Stream<String> get payloadDaCham => cham.stream;
+  Stream<ChamHdh> get chamTho => cham.stream;
 
   @override
-  Future<String?> payloadKhoiDong() async => payloadMoApp;
+  Future<ChamHdh?> chamKhoiDong() async => chamMoApp;
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -118,7 +120,7 @@ void main() {
       final router = dung();
       await router.start();
 
-      os.cham.add('billDue:hd1:2026-09-17:3');
+      os.cham.add(const ChamHdh('billDue:hd1:2026-09-17:3'));
       await nhipTho();
 
       expect(daDieuHuong, ['/bills'],
@@ -131,7 +133,7 @@ void main() {
       final router = dung();
       await router.start();
 
-      os.cham.add('goalAuto:mt-abc:2026-09-15T08:00');
+      os.cham.add(const ChamHdh('goalAuto:mt-abc:2026-09-15T08:00'));
       await nhipTho();
 
       expect(daDieuHuong, ['/goals/mt-abc'],
@@ -145,7 +147,7 @@ void main() {
       await router.start();
       await router.stop();
 
-      os.cham.add('billDue:hd1:2026-09-17:3');
+      os.cham.add(const ChamHdh('billDue:hd1:2026-09-17:3'));
       await nhipTho();
 
       expect(daDieuHuong, isEmpty);
@@ -154,7 +156,7 @@ void main() {
 
   group('mở app từ trạng thái đóng hẳn', () {
     test('payload khởi động cũng điều hướng', () async {
-      os.payloadMoApp = 'billOverdue:hd1:2026-09-10';
+      os.chamMoApp = const ChamHdh('billOverdue:hd1:2026-09-10');
 
       final router = dung();
       await router.start();
@@ -167,12 +169,12 @@ void main() {
     });
 
     test('cùng payload đến bằng cả hai đường chỉ điều hướng MỘT lần', () async {
-      os.payloadMoApp = 'billOverdue:hd1:2026-09-10';
+      os.chamMoApp = const ChamHdh('billOverdue:hd1:2026-09-10');
 
       final router = dung();
       await router.start();
       // Android có thể đẩy tiếp chính cú chạm ấy qua callback.
-      os.cham.add('billOverdue:hd1:2026-09-10');
+      os.cham.add(const ChamHdh('billOverdue:hd1:2026-09-10'));
       await nhipTho();
 
       expect(daDieuHuong, ['/bills'],
@@ -184,14 +186,14 @@ void main() {
     });
 
     test('lần chạm SAU với cùng payload vẫn điều hướng', () async {
-      os.payloadMoApp = 'billOverdue:hd1:2026-09-10';
+      os.chamMoApp = const ChamHdh('billOverdue:hd1:2026-09-10');
 
       final router = dung();
       await router.start();
-      os.cham.add('billOverdue:hd1:2026-09-10');
+      os.cham.add(const ChamHdh('billOverdue:hd1:2026-09-10'));
       await nhipTho();
       // Người dùng quay lại màn hình khoá và bấm lại chính thông báo ấy.
-      os.cham.add('billOverdue:hd1:2026-09-10');
+      os.cham.add(const ChamHdh('billOverdue:hd1:2026-09-10'));
       await nhipTho();
 
       expect(daDieuHuong, ['/bills', '/bills'],
@@ -213,7 +215,7 @@ void main() {
   group('chưa đăng nhập', () {
     test('giữ lại, đăng nhập xong mới điều hướng', () async {
       dangNhap = false;
-      os.payloadMoApp = 'billDue:hd1:2026-09-17:3';
+      os.chamMoApp = const ChamHdh('billDue:hd1:2026-09-17:3');
 
       final router = dung();
       await router.start();
@@ -239,7 +241,7 @@ void main() {
       final router = dung();
       await router.start();
 
-      os.cham.add('walletNeg:vi1:2026-09-15');
+      os.cham.add(const ChamHdh('walletNeg:vi1:2026-09-15'));
       await nhipTho();
       phienDoi.add(null);
       await nhipTho();
@@ -259,8 +261,8 @@ void main() {
       final router = dung();
       await router.start();
 
-      os.cham.add('billDue:hd1:2026-09-17:3');
-      os.cham.add('walletNeg:vi1:2026-09-15');
+      os.cham.add(const ChamHdh('billDue:hd1:2026-09-17:3'));
+      os.cham.add(const ChamHdh('walletNeg:vi1:2026-09-15'));
       await nhipTho();
 
       dangNhap = true;
@@ -272,6 +274,77 @@ void main() {
               'mấy màn liên tiếp. Người dùng chỉ đang chờ đúng cái họ bấm '
               'lần cuối.');
       await router.stop();
+    });
+  });
+
+  group('nhật ký B5a (hook ghiCham)', () {
+    late List<ChamHdh> ghi;
+    setUp(() => ghi = []);
+
+    NotificationTapRouter dungCoGhi() => NotificationTapRouter(
+          osNotifier: os,
+          dieuHuong: daDieuHuong.add,
+          dangDangNhap: () => dangNhap,
+          phienDoi: phienDoi.stream,
+          ghiCham: ghi.add,
+        );
+
+    test('một cú chạm vừa ở chi tiết khởi động vừa qua callback → ghiCham ĐÚNG MỘT lần', () async {
+      os.chamMoApp = const ChamHdh('billDue:b1:2026-10-01:1');
+      final r = dungCoGhi();
+      await r.start();
+      os.cham.add(const ChamHdh('billDue:b1:2026-10-01:1'));
+      await nhipTho();
+      expect(ghi, [const ChamHdh('billDue:b1:2026-10-01:1')],
+          reason: 'khử trùng nằm TRƯỚC hook — một cú chạm Android đi hai đường vẫn chỉ là một hàng nhật ký');
+      await r.stop();
+    });
+
+    test('Hoãn được ghi nhưng KHÔNG điều hướng', () async {
+      final r = dungCoGhi();
+      await r.start();
+      os.cham.add(const ChamHdh('billDue:b1:2026-10-01:1', hanhDongHoan));
+      await nhipTho();
+      expect(ghi.single.actionId, hanhDongHoan);
+      expect(daDieuHuong, isEmpty, reason: 'Hoãn là "để lát nữa" — mở app lúc ấy là trái ý');
+      await r.stop();
+    });
+
+    test('Trả ngay ở CẢ HAI đường → cùng một route billOpen', () async {
+      const cham = ChamHdh('billDue:b1:2026-10-01:1', hanhDongTraNgay);
+      os.chamMoApp = cham;
+      final r1 = dungCoGhi();
+      await r1.start();
+      await nhipTho();
+      await r1.stop();
+      final routeKhoiDong = [...daDieuHuong];
+
+      daDieuHuong.clear();
+      os.chamMoApp = null;
+      final r2 = dungCoGhi();
+      await r2.start();
+      os.cham.add(cham);
+      await nhipTho();
+      await r2.stop();
+
+      expect(routeKhoiDong, hasLength(1));
+      expect(daDieuHuong, routeKhoiDong,
+          reason: 'vấp 2026-09-07: đường khởi động bỏ qua actionId, mở danh sách thay vì đúng hoá đơn');
+    });
+
+    test('chạm lúc chưa đăng nhập → ghi SAU khi đăng nhập, cùng lúc điều hướng', () async {
+      dangNhap = false;
+      final r = dungCoGhi();
+      await r.start();
+      os.cham.add(const ChamHdh('walletNeg:vi1:2026-09-15'));
+      await nhipTho();
+      expect(ghi, isEmpty, reason: 'chưa có phiên thì không biết tài khoản — không đoán');
+      dangNhap = true;
+      phienDoi.add(null);
+      await nhipTho();
+      expect(ghi, hasLength(1));
+      expect(daDieuHuong, ['/wallets']);
+      await r.stop();
     });
   });
 }

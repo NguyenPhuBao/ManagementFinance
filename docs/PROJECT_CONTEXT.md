@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-26)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-30)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -633,7 +633,306 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   (kèm phạm vi `maskPII` mới), `AI_ARCHITECTURE_REVIEW.md`, `PROGRESS-BACKEND.md`, hai đơn `DA-XONG/` (đơn bỏ liên kết
   ngân hàng ghi backend đã sửa năm chỗ), hai plan 2026-09-21. Mã client **không đổi**; `flutter test` **3824/3824** (3
   skip), `flutter analyze` **26** — mức nền. Người dùng dặn *"soát file xong thì dừng"* — ba việc còn lại của bàn giao
-  (bộ câu hỏi thật + spike SQL · tính năng biến động số dư · chế độ trực tuyến) **chưa mở**.
+  (bộ câu hỏi thật + spike SQL · tính năng biến động số dư · chế độ trực tuyến) **chưa mở** — *rồi cùng chiều người dùng
+  mở việc đầu*: ✅ **đo bộ câu hỏi MỚI 22 câu trên Realme** (mục **9.29** `AI_EDGE_FEATURE.md`; tự soạn, hoàn toàn khác bộ
+  cũ vì app không lưu lịch sử chat): **15 ✅ · 3 ◐ · 4 ✗ · bịa 0**; hai lỗi tool (trần 4 hàng tổng kết, hoá đơn thiếu ngày
+  đến hạn), ba lỗi định tuyến/tham số, chắn oan 0. `npm install`, build release từ HEAD (`006cb1b6…`) và cài lên Realme
+  cùng lượt — bản trên máy trước đó là của lần 13. Rồi ✅ **spike E2B sinh SQL** (mục **9.30**) trên 12 câu: **0 đúng
+  hẳn · 2 do may · 10 sai, 6 sai im lặng**; đường đo giữ trong repo sau `--dart-define=SPIKE_SQL=true`
+  (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Người dùng chốt: không SQL, sửa hai lỗi (a) trước
+  → ✅ **mục 9.31**: hàng hoá đơn mang *Đến hạn* (E8 ✅), tổng kết trả danh mục ít nhất + nhãn hai đầu + *Số danh mục*
+  (E3 hết lỗi tool, còn lỗi mô hình chọn sai đầu). Kế: spec **tool truy vấn tổng quát có hàng rào** (có tham số *chọn*).
+- ✅ **Tool truy vấn giao dịch — mã xong cùng ngày, 🛑 cổng E chưa đo** (mục **9.32** `AI_EDGE_FEATURE.md`; spec
+  `specs/2026-09-27-tool-truy-van-giao-dich-design.md` đã duyệt; kế hoạch 10 task thi công inline, Task 1–9, một commit mỗi
+  task `60037b5` → `960addb`): `truy_van_giao_dich` **thay** cả `tim_giao_dich` lẫn `tong_ket_thu_chi_ky` — 8 tham số cũ +
+  `gop` (khong · danh_muc · vi) + `chon` (nhieu_nhat · it_nhat); `gopGiaoDich` ở `transaction/domain`, `hangNhomGiaoDich`;
+  `chon` bốn mã cho `danh_sach_ngan_sach`; ba luật mới của bộ chỉnh tham số (chọn · gộp · hai chiều) + `chinhThamSoNganSach`;
+  `BoCongCu` **sáu** tool; ví dụ định tuyến viết lại. Người dùng hỏi giữa chừng có nên chuyển sang SQL agent / thư viện
+  nhúng — trả lời **không** bằng số đo 9.30, họ chốt giữ thiết kế tool. `tools_json` **5.633** đo lại trên Realme, hằng
+  trần đặt lại (`e7add53`). Không đổi schema, payload, `pubspec`. 🛑 **Cổng E lần 1 (Task 10, Realme 19:06–19:50, 0 sập)
+  CHƯA ĐẠT thiếu đúng một câu**: 34 câu cổng D — A 8/8 · B 3/4 · C tool **20/20** · tham số 18/20 · nội dung 18/20 · SAI 0 ·
+  ĐC3 ✅ (bằng lần 13 về tổng số, nhưng **C13 lên, C9 và C16 tụt** — mô hình điền thừa `chon` cho câu liệt kê); 22 câu mới
+  **18 ✅ · 2 ◐ · 2 ✗ · bịa 0** (cần ≥ 19) — **bốn câu đích E3 · E5 · E15 · E18 đều đúng**, tụt E13 (một lời gọi thay vì hai
+  kỳ), E11 (không nói "không có"); lần đầu có ca **chắn oan** trên máy thật (E15, bẫy 4.49, mẫu câu cứu). Hai câu người dùng tự hỏi sau buổi đo lộ thêm **bẫy 4.50** (`kiemTen` chặn oan *"danh mục đã đặt ngân sách bao gồm…"*) và một
+  tool thiếu (*"danh mục chưa đặt ngân sách"* → mô hình nói SAI "không có"). Rồi người dùng chọn ba việc; ✅ **vòng sửa 1** xong cùng tối (luật 10 gỡ `chon` thừa · chữ kỳ "đầu năm" · `chon` cho
+  tool mục tiêu · `doiTuongRong`; `tools_json` 5.938): đo lại E11 ✅ C9 ✅ E5 ✅ C16 ◐ → 22 câu mới **19 ✅**, dòng ≥ 19 đạt;
+  chưa chạy lại trọn 56. ✅ **Vòng sửa 2** cùng đêm (spec `2026-09-27-chan-oan-4-49-4-50-va-chon-chua-dat-design.md`, `211b3f8`): **4.49** gán nhãn ngược xét theo vế, **4.50** từ chức năng `kiemTen`, **`chon=chua_dat`** cho tool ngân sách qua `deXuatTuKho` (một nguồn với thẻ Chưa đặt ngân sách); đo lại E15 · "chưa đặt" · "đã đặt" đều ✅; `tools_json` 6.031; `flutter test` 3888/3888, analyze 26. Còn E13 và chưa chạy lại trọn 56 câu. 📝 **Rà toàn diện tool còn thiếu** cùng đêm: 13 loại câu
+  chưa trả lời được → spec `2026-09-27-mo-rong-tool-tro-ly-ai-bon-nhom-design.md` (người dùng duyệt bốn phần, lối gộp) + kế hoạch
+  12 task / ba lát (gitignore) — **chưa thi công**; bàn giao ở `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-27-sau-cong-e.md`. ⚠️ Bẫy đo: `ps -ef` của Git Bash không thấy
+  script `nohup`, hai bản đo chồng nhau làm bật khỏi màn chat — kiểm/diệt bằng PowerShell `Get-CimInstance Win32_Process`.
+
+### 🛑 Trợ lý AI — lát 1 mở rộng bộ tool (2026-09-28): mã xong, đo 4/7 trên OnePlus
+
+Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai.md` Task 1–5 (commit `06b5cfb` →
+`fc00bb9`, chưa push). Chi tiết, bảng đo ba cột và năm hướng sửa: mục **9.33** `docs/AI_EDGE_FEATURE.md`.
+
+- ✅ **Kỳ tự do và so hai kỳ chạy**: *tháng 8 · từ 1/9 đến 15/9 · 3 tháng gần nhất* đều ra đúng khoảng (bộ chỉnh luật
+  11 đè tham số của mô hình); E13 *"nhiều hơn hay ít hơn tháng trước"* ra `so_voi=ky_truoc`.
+- 🛑 **Tool `du_bao_dong_tien` không được gọi lần nào** ở ba câu đích (câu 16–17 chặng 3 và *"30 ngày tới phải chi
+  gì"*) — mô hình chọn tool ví, tool hoá đơn, tool giao dịch. Một câu **SAI** (*"Không có dữ liệu về ví nào"* sau
+  lượt trả 4 hàng).
+- `BoCongCu` **bảy** tool; `tools_json` **6.960**; `flutter test` **3949/3949**, `flutter analyze` **26**.
+- ⚠️ Đo trên **OnePlus 13R**, không phải Realme — người dùng chốt *"có máy nào thì test máy đó"*. E2B trên GPU máy
+  này viết hỏng chuỗi số ở 4/5 câu có số (bẫy 4.51), nên hầu hết câu rơi về mẫu câu.
+- ✅ **Vòng sửa 3 cùng ngày (`c0467a9`)** — người dùng chọn định tuyến ở tầng mã + ba việc kèm: đo lại **6/6**, lát 1
+  gộp **7/7 câu đích đúng**. `kiemCauTraLoi` nay **năm** lớp chắn (thêm `kiemPhuDinh`). `flutter test` **3971/3971**.
+- ⚠️ Còn mở: bẫy 4.51 — trên OnePlus mọi câu có số của mô hình đều hỏng chuỗi số nên mọi câu trả lời là mẫu câu; cần
+  đo cùng APK trên Realme.
+- ✅ **Lát 2 cùng ngày (`cb7cc3a` → `91b3296`, mục 9.34)**: tool `tong_quan_tai_chinh`, `danh_sach_danh_muc`, chặn
+  chủ đề ngoài phạm vi — đo **8/9 ✅ + 1 ◐**. Chín tool khai cùng lúc **vỡ trần token**; người dùng chọn không nâng
+  `maxTokens` → phiên chỉ khai tool đích (`BoCongCu.khaiBaoCho`). ⭐ Hỏng chuỗi số đi theo **độ dài prompt**: phiên
+  một tool thì mô hình viết đúng số. `flutter test` **4040/4040**.
+- 🚧 **Lát 3 Task 9 cùng ngày (`0712290`, `fc8afaf`, mục 9.35)**: `danh_sach_hoa_don` nhận `ky` (kỳ tới kể cả kỳ dự
+  kiến, mọi kỳ), hậu tố *tự trả*, *Cố định mỗi tháng*; vòng chiếu kỳ tách thành `cacKyChieuCua` dùng chung với dự
+  báo 30 ngày. **Chưa đo máy.** `flutter test` **4074/4074**.
+- 🚧 **Task 10 cùng ngày (`9212318`, `820f20f`)**: `danh_sach_muc_tieu` mang kỳ trích tiếp, trích mỗi kỳ, ví nguồn
+  không đủ / không chạy được; câu về trích cho mục tiêu định tuyến sang tool mục tiêu (người dùng chốt). ⚠️ Lộ ra
+  và sửa **bộ trích tự động rút tiền từ ví nguồn đã xoá mềm** (bẫy 4.8 `GOAL_FEATURE.md`, luật nay là một hàm
+  `viNguonChoTrich`). **Chưa đo máy.**
+- 🚧 **Task 11 cùng ngày (`c51fb81`)**: `danh_sach_ngan_sach chon=can_doi` — cùng kế hoạch với thẻ *Đề xuất cân
+  đối* qua hàm ghép mới `keHoachTaiPhanBoTu`. `flutter test` **4101/4101** (4 skip).
+- 🛑 **Cổng F lần 1 CHƯA ĐẠT** (Realme, mục 9.36 `AI_EDGE_FEATURE.md`): 11 câu cũ tụt, F 12/16, SAI 3; người dùng chọn
+  **cả năm gốc** G1–G5 ngày 2026-09-28 chiều — ✅ mã xong cùng chiều, 🛑 **đo lại 19 câu cùng chiều (Realme 15:13–15:32, APK `84ac2013…`): 9 ✅ · 7 ◐ · 3 ✗ — SAI 3 → 0, F 14/16, nhưng còn 4 câu cũ tụt (DC1 · B1 · C11 · E6) nên cổng F CHƯA ĐẠT**; ba gốc mới H1–H3 ở cuối mục 9.37 (mục 9.37, `7ce43e1` → `eeaadc4`;
+  G5 qua spec `2026-09-28-g5-chan-menh-de-sai-design.md`: lớp chắn thứ sáu `kiemKy` + số tổng gán cho đối tượng trong
+  `kiemNhan`).
+- ✅ **Cổng F lần 3 ĐẠT** (Realme 2026-09-28 18:34–18:40, APK `46b3bdec…`, cuối mục 9.37): người dùng đáp *"sửa tiếp
+  tục"* với H1–H3, vòng sửa `f1a5bd1` — H1 mẫu câu cho câu một số đích (`hangMucTieu(nhomSo:)`) và câu liệt kê
+  (`cauHoiLietKe`), H2 chặn *lãi suất* + *"cần để dành / cần tích"* → tool mục tiêu, H3 luật 15 kỳ *"… này"* nêu trong
+  câu thắng `ky`, `can_doi` rỗng → *"không ngân sách nào cần cân đối"*. Đo lại 9 câu: 8 ✅ · 1 ◐ · SAI 0 → gộp SAI 0, F
+  16/16, 0 câu cũ tụt. Chưa sửa C4 (biên *"dưới"*). `flutter test` **4158/4158** (3 skip). Mốc trọn 72 câu cùng tối
+  (18:47–19:47): **70 ✅ · 2 ◐ (C4 · C16) · SAI 0**, nền A2 phiên sáu tool 45,5 s / một tool 23,8 s (cuối mục 9.37).
+- 📝 **Spec + kế hoạch nhóm B viết tối 2026-09-28** (người dùng duyệt từng thiết kế): B5a nhật ký thông báo (v26), B2
+  khoản lặp → gợi ý hoá đơn (v27), B3 chi bất thường theo danh mục (mở lại quyết định 17/09), B4 tầng 3 ước tính theo
+  thói quen của khối Dự báo (mở lại 16/09), B5b học giờ thông báo. Spec ở `docs/superpowers/specs/2026-09-28-b*`, kế hoạch
+  ở `plans/` (gitignore). Người dùng **duyệt đổi bất biến ④** (*"không tool nào ghi thẳng"*) cho nhóm C, thứ tự C1 → C2
+  → D1 → C3 → C4. *(Bàn giao ghi ở dòng dưới là ảnh chụp 28/09 — bàn giao mới nhất ở mục nhóm A ngay sau.)* Bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-vong-sua-h1-h3.md`
+  (trước buổi đo lần 3); bản trước `…-sau-vong-sua-cong-f.md`. Kế hoạch nhóm A `plans/2026-09-28-nhom-a-a3-a4-a2.md` và bản đồ nhóm B–D `plans/2026-09-28-nhom-b-sau-b1-ban-do.md` (gitignore) soạn cùng chiều. Bàn giao trước `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-cong-f.md`; cũ hơn ở
+  `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-28-sau-lat-2.md`.
+- ✅ **Nhóm A sau cổng F — A3 · A4 · A2 mã xong 2026-09-29** (mục **9.38** `AI_EDGE_FEATURE.md`, `109aeb4` → `d27b3e3`):
+  **A3** tool dự báo gộp kỳ quá hạn cùng hoá đơn một hàng (`gopCamKetQuaHan` ở `analytics/domain`, nhãn *Tổng quá hạn* ·
+  *Mỗi kỳ* · *Số kỳ quá hạn*; `duBaoCua` và trang Phân tích không đổi) — kèm hai lỗi có từ lát 1 làm mẫu câu của chính
+  tool trượt `kiemTen` (*"hoá đơn · quá hạn"*, nhãn *"Ví thiếu"*); **A4** toast đồng bộ im khi `transportFailed`;
+  **A2** năm họ câu cũ (hoá đơn · ví · ngân sách · gợi ý hạn mức · mục tiêu) sang phiên một tool, bảng
+  `kBang72Cau` ghim tool đích của 72 câu. Đo Realme 09:35–09:57: 18 câu đổi đường **17 ✅ · 1 ◐ · SAI 0**, chờ TB **43,7
+  → 24,0 s**; A3 thấy trên máy (*Kiem · Tổng quá hạn 90.000 đ*); A4 ✅ (không toast 2,2 s sau `transport failed`).
+  🛑 **Cổng ra chưa trọn: F12 tụt** — phiên một tool mô hình điền thừa `trang_thai: da_tra`, bộ chỉnh hoá đơn giữ nó (họ
+  bẫy 4.44); hướng sửa (gỡ `trang_thai` khi câu tự trả không nêu trạng thái trả) **chờ người dùng chọn** — ✅ **người
+  dùng chọn, sửa và đo lại Realme trưa 2026-09-29** (cuối mục 9.38 `AI_EDGE_FEATURE.md`): cổng ra nhóm A **trọn**. Người dùng
+  dặn sau vòng đo này **dừng nhóm A, chuyển sang phần kế** (B1). `flutter test` **4254/4254** (3 skip), analyze 26. Bàn
+  giao sau nhóm A: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-sau-nhom-a.md`.
+- ✅ **B1 xong trọn 7 task 2026-09-29 trưa** — nghiệm thu trên **Realme** bản release: thẻ học hiện đúng câu lý do,
+  *Bỏ qua* hai lần → lần ba thẻ học thôi hiện, bảng phản hồi đúng ba hàng (đọc bằng bản debug cài đè cùng khoá ký, rồi
+  trả lại release). Lượt ấy bắt **lỗi của chính công cụ đo Task 6** (ứng viên từ khoá gồm hàng mặc định toàn cục → hoà
+  giả, "phủ 0 %"; sửa `9f407e6`) và một **từ khoá mặc định gây nhầm** `grab` → Ăn uống (seed backend) — hai câu hỏi
+  người dùng chốt cùng trưa: **xin backend sửa seed** (`CAN-LAM/SEED_TU_KHOA_GRAB.md`) và **giữ luật Bỏ qua như spec**,
+  mục **5d** `docs/CATEGORY_RATIONALE.md`. Lượt ấy còn **đóng G49** (thẻ tổng và tiêu đề ngày Sổ giao dịch lệch Trang
+  chủ), **G50** (cặp nạp mục tiêu dạng cũ bị tính là thu **và** chi — chi tháng 9 tài khoản 10 nay **1.851.000**, thu
+  **14.635.000**) và **F12** (cổng ra nhóm A trọn). ⚠️ Realme nay mang **11** giao dịch thử 10.000 đ ngày
+  29/09, ví Tiền mặt (**6** *grab …* → Di chuyển · **5** *ca phe …* → Ăn uống; tổng chi tháng 9 **2.241.000 → 2.351.000**,
+  rồi **1.851.000** sau G50; Trang chủ tổng số dư 12.794.000) — **đáp án mọi bộ câu AI đo
+  trên Realme phải tính lại**. `flutter test` **4309/4309** (4 skip) sau G49 hai vế + G50 + F12 (**4301** sau B1), analyze 26. *(Ảnh chụp trước đó cùng ngày:)*
+- 🚧 **B1 — gợi ý danh mục học từ ghi chú: Task 1–6 xong mã 2026-09-29, Task 7 (nghiệm thu + tài liệu) dở — người dùng
+  cho tạm dừng** (banner đầu spec `specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`; `bf7a076` → `8bee5d7`,
+  sửa `4ef4a5b`): Naive Bayes nhị phân hoá ở `category/domain/phan_loai_ghi_chu.dart`, bảng cục bộ **schema v25**
+  `GoiYDanhMucPhanHois` (test quét 15 canh), màn Thêm giao dịch đi mô hình trước rồi từ khoá, ghi phản hồi và thôi gợi
+  ý cặp bị bỏ qua hai lần. ⭐ **Đo leave-one-out: dữ liệu thật chưa đủ để học** — ≤ 3 ghi chú tự gõ mỗi tài khoản (máy ảo
+  và PostgreSQL dev, chỉ đọc), ngưỡng là 10. 🐞 Nghiệm thu trên máy lộ **lỗi có từ trước**: thẻ gợi ý (cả nguồn từ khoá)
+  vỡ bố cục với theme thật — bẫy 4.11, đã sửa. ⚠️ Người dùng dặn: **có máy thật cắm thì nghiệm thu trên máy thật**, máy
+  ảo chỉ khi không có. ⚠️ Realme: người dùng duyệt nhập ~10 giao dịch thử và **giữ lại** (đáp án các bộ câu AI phải tính
+  lại); phiên dừng khi mới nhập dở và **Assistive Touch trên Realme đọc ra đang tắt** — xem bàn giao
+  `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-09-29-b1-tam-dung.md`.
+- ✅ **B5a — nhật ký thông báo xong trọn 7 task 2026-09-29 chiều** (mục **5h** `docs/NOTIFICATION_FEATURE.md`; spec
+  `specs/2026-09-28-b5a-nhat-ky-thong-bao-design.md`; `bf3f74b` spike → `fc8c7b5` … `771a9cc`): bảng cục bộ **schema v26**
+  `AppNotificationEvents`, **chỉ ghi** (B5b mới đọc), chín mã *(mười từ B5b)*, cửa ghi duy nhất `NhatKyThongBao`; `osDeliveredAt` nay được
+  ghi. ⚠️ **API chạm đổi tên** `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong` (cú chạm **thô**, router là chỗ
+  khử trùng duy nhất). ⭐ **Spike Realme (Task 1)**: nút *Hoãn* vào **isolate nền kể cả khi app còn sống** → mọi `hoan` trên
+  Android đi qua tệp hàng chờ, vào bảng ở lần `start` kế tiếp. Nghiệm thu Realme bản debug: `mo_trong_app` · `cham_hdh`
+  (đúng một hàng) · `nut_tra_ngay` · `hoan` (mốc lúc bấm) · `osDeliveredAt` · `dat_lich` · `huy_lich` ✅; ca *app đóng hẳn*
+  **không dựng được** (Realme huỷ thông báo khi force-stop). Lượt ấy thấy một giới hạn spec chưa ghi: **lịch hoãn không có
+  `dat_lich` nên huỷ nó không có `huy_lich`** — vô hại với B5b (§2.4 spec ấy không đếm `hoan` là tới máy), ghi ở giới hạn
+  mục 5h. Bốn hoá đơn thử `B5a Mot · Hai · Ba · Bon` đã **xoá mềm** qua giao diện; Realme trả về bản **release** (SHA-1
+  `1671b313…`). `flutter test` **4353/4353** (4 skip), analyze 26. Kế là **B2**.
+- ✅ **B2 — gợi ý tạo hoá đơn từ khoản lặp xong trọn 7 task 2026-09-29 chiều muộn** (mục **6.9**
+  `docs/bill/BILL_DOCUMENTATION.md`; spec `specs/2026-09-28-b2-khoan-lap-goi-y-hoa-don-design.md`; `36dad9d` → `da8ace2`):
+  hàm thuần `timKhoanLap` / `khoaNhomCua` (`transaction/domain/khoan_lap.dart`) + `chonDeXuatHoaDon`, bảng cục bộ
+  **schema v27** `GoiYHoaDonPhanHois` (`bo_qua` mở lại sau 3 khoản mới, `da_tao` ẩn vĩnh viễn), `/bills/add` nhận query
+  điền sẵn và form `pop(true)`, thẻ `TheKhoanLap` trên trang Hoá đơn (màn Stitch `e8b460b4…`, người dùng xác nhận).
+  ⚠️ **Trang Hoá đơn nay cả trang cuộn, hàng tab ghim** (`NestedScrollView`, người dùng chốt) — đo trước: thẻ ba dòng
+  làm `Column` + `Expanded` cũ tràn **219 px** ở 360 × 640. Nghiệm thu **Realme** (người dùng duyệt nhập và **giữ** dữ
+  liệu thử: ba *"Tien nha T7/T8/T9"* 3.000.000 đ ngày 5/7–5/9 + ba *"Gui xe"* 50.000 đ 15/9–29/9, và hoá đơn *Tien nha*
+  tạo từ thẻ): thẻ hai dòng đúng thứ tự, **Tạo** điền đủ tên / tiền / *Hàng tháng* / bắt đầu 05/09 / kỳ đầu 05/10 / ví /
+  danh mục → hoá đơn `anchor_day` 5 + hàng `da_tao`; **Bỏ qua** → `bo_qua`, thẻ biến mất; tab ghim khi cuộn. Lượt ấy bắt
+  **dòng phụ bị cắt mất chu kỳ ở 360 dp** (sửa `da8ace2`: tách hai dòng) và **mở rồi đóng G51** — số tiền trên thẻ hoá
+  đơn bị cắt ở 360 dp, có từ trước (`77521f2`, nghiệm thu lại trên Realme: *10.000 đ · 3.000.000 đ · 100.000 đ* hiện đủ). ⚠️ Tài khoản 10 trên Realme nay: chi tháng 9 **5.001.000**, thu **14.635.000**, tổng
+  số dư ví **3.644.000** (đọc Trang chủ) — **đáp án bộ câu AI phải tính lại**. Realme về bản **release** `4dd6aa52…`.
+  `flutter test` **4427/4427** (4 skip; 4423 sau B2, +4 ca G51), analyze 26. Kế là **B3**.
+- ✅ **B3 — chi bất thường theo danh mục xong trọn 5 task 2026-09-29 tối** (mục **3.35** `docs/ANALYTICS_FEATURE.md`; spec
+  `specs/2026-09-28-b3-chi-bat-thuong-theo-danh-muc-design.md`; `9c68762` → `a4aeca2`): người dùng **mở lại quyết định
+  17/09** cho câu hỏi khác (*Khoản chi lớn* giữ nguyên). Hàm thuần `chiBatThuong` (trung vị + MAD, ≤ 12 tháng đã đóng có
+  phát sinh, cần ≥ 4, `z > 3,5` **và** phần vượt > `nguongCoNghia`); `nguongCoNghia` và thu nhập mỗi tháng **dời về
+  `analytics/domain`**, không đổi hành vi (31 ca mức nền giữ nguyên). `ThongKeKy.chiBatThuong` chỉ khi đơn vị Tháng (`null`
+  = không xét, rỗng = đã xét); khối Nhận xét trang Phân tích thêm câu *"Riêng {tên} kỳ này đã chi …, cao hơn hẳn mức thường
+  lệ …"*, qua sáu lớp chắn. Nghiệm thu **Realme** (người dùng duyệt nhập và **giữ**: năm khoản *Ăn uống* 10/4–10/8 quanh
+  900.000 + 1.500.000 ngày 20/9): T9 có câu *"…đã chi 1.600.000 đ, cao hơn hẳn mức thường lệ 900.000 đ"*, viền cảnh báo; T8
+  và Tuần 38 không có. Lượt ấy **mở G53** (nhãn trục thác nước in đè khi số dư âm, có từ trước, chưa sửa). ⚠️ Tài khoản 10
+  trên Realme nay: chi tháng 9 **6.501.000**, thu **14.635.000**, tổng số dư ví **−2.356.000** (số dư cuối kỳ trên khối
+  Dòng tiền) — **đáp án bộ câu AI phải tính lại**. Realme bản **release** `4e9b7f66…`. `flutter test` **4455/4455** (4
+  skip), analyze 26. Người dùng dặn **dừng sau B3, bàn giao cho phiên sau** — kế là **B4**.
+- ✅ **G53 đóng 2026-09-29 tối** (người dùng chọn *sửa trước B4*): hàm thuần **`daiTrucCot`** (`du_bao_dong_tien.dart`,
+  cạnh `daiTrucDuBao`) — sàn **và** trần là bội của bước tròn, trục chứa 0, 3–5 khoảng; thác nước dùng nó thay cho
+  `minY = lo` + bước `(dải × 1,12)/3`. Widget test dựng đúng số Realme **đỏ trên mã cũ** với đúng *"5.9M"* / *"5.5M"*;
+  Realme bản release `79c2cbb1…` in *5M · 0 · −5M · −10M · −15M*. Bẫy **4.21** vế bốn. Cùng ảnh lộ chỗ **khác, có từ
+  trước**: nhãn **trục hoành** thác nước dính nhau ở 360 dp (*"Di chuyển"* / *"Chưa phân l…"*). Commit `.gitignore`
+  (`.widget_preview/`) riêng theo người dùng.
+- ✅ **Cùng tối, hai việc người dùng chọn làm trước B4:** (1) khối *Dòng tiền tự do* chuyển sang `daiTrucCot` — sàn cũ
+  `đáy × 1,15` là cùng cơ chế G53 ở dạng **tiềm ẩn** (widget test dựng tự do −100.000: *"-115K"* đè *"0"*); Realme trục
+  nay *15M · 10M · 5M · 0*. (2) **G54 mở và đóng**: nhãn trục hoành thác nước nay **xoay −35°, một dòng** theo màn Stitch
+  `52450ac5…` (bản A8 #10 lệch Stitch không ghi lý do), đầu phải neo tâm cột, cắt ở 72 dp; Realme bản release
+  `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ.
+- ✅ **Rồi ba chỗ nhỏ có từ trước, người dùng chọn sửa trước B4** (hỏi bằng câu chọn, mỗi chỗ một lối): **G55** — chấm kỳ
+  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (giữ phòng thủ bẫy 4.17 cho
+  trục dọc — chấm giá trị 0 ở đáy khối Xu hướng vẫn cắt nửa, cố ý); **G56** — *"chi vượt thu nhập 26360,0%"* → từ 2 lần
+  thu nhập nói *"chi gấp N lần thu nhập"*, một hàm `soLanChiGapThuNhap` cho thẻ Số dư còn lại, khối Nhận xét và tool
+  tổng quan, loại số mới `LoaiSo.soLan` cho `kiemSo`; **G57** — nút rộng *"Tạo hóa đơn lặp lại mới"* đè hàng tab ở 360 dp
+  → nút **+** ở thanh tiêu đề theo màn Stitch `e8b460b4…`. Chi tiết ở `CLIENT_APP_KNOWN_GAPS.md`. Nghiệm thu Realme bản
+  release `a28ffea7…`: chấm T4/T9 tròn đủ; Tuần 38 thẻ *Số dư còn lại* *"Chi gấp 265 lần thu nhập"*, khối Nhận xét
+  *"Kỳ này chi 2.646.000 đ; chi gấp 265 lần thu nhập…"*; trang Hoá đơn có **+** trên thanh tiêu đề, chạm mở *"Thêm Hóa
+  Đơn Định Kỳ"*. `flutter test` **4479/4479** (4 skip), analyze 26.
+- ✅ **B4 — tầng 3 "ước tính theo thói quen" của khối Dự báo — XONG trọn 6 task 2026-09-29 tối** (người dùng xác nhận
+  lại việc mở quyết định 16/09; spec `specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md`, kế hoạch gitignore cùng tên ở
+  `plans/`, nhật ký thi công cuối tệp; mục **3.27** `ANALYTICS_FEATURE.md`). `KhoanThuChi.laKhoanCamKet` +
+  `AnalyticsRepositoryImpl.dungKhoan` (`3b72ad4`) · hàm thuần `uocTinhChiTuyY` (`fe169e0`) · `ThongKeKy.uocTinhChiTuyY`
+  (`897bdb4`) — ⚠️ lệch kế hoạch có chủ ý: phép chọn ngân sách tách thành **`nganSachDangChay`** dùng chung với tầng 2 ·
+  màn Stitch `7aa215e9…` · dòng chữ phụ trong `_BaConSoDuBao` (`a5b76db`; `_KhoiDuBao.uocTinh` **`required`** vì khối dựng ở
+  hai chỗ). ⚠️ **Tính tay từ SQLite Realme lộ hai loại khoản spec không lường, tầng 3 đếm lại thứ tầng 1 đã có** — người
+  dùng chọn sửa cả hai (`c4c715f`): (a) khoản nhập tay của một **khoản lặp đã thành hoá đơn** qua B2 (*"Tien nha T8/T9"*
+  3.000.000 → hoá đơn *Tien nha* hạn 05/10) không mang `billId` → nay khoá `khoaNhomCua` nằm trong tập **`da_tao`** của
+  bảng phản hồi B2 là cam kết; nguồn **thứ tám** của `watchKy` là `GoiYHoaDonDao.watchAll` (stream, không đọc một lần);
+  (b) **hàng trả hoá đơn trước 12/09** (không `billId`) → tiền tố `kGhiChuTraHoaDon`, cùng cách G50. Nghiệm thu Realme
+  bản debug: dữ liệu thật → dòng **im** (p75 = 0, khớp tính tay); nhập ba khoản *Giải trí* thử (người dùng duyệt, **giữ**:
+  *Xem phim* 200.000 ngày 15/07, *Di choi* 300.000 ngày 19/08, *Xem ca nhac* 250.000 ngày 16/09) → *"Nếu tiêu như thói quen
+  (12 tuần gần nhất): chi thêm khoảng 0 đ – 280.000 đ, còn khoảng -7.911.000 đ – -7.631.000 đ."* — **đúng từng số tính
+  tay**. ⚠️ Tài khoản 10 trên Realme nay: chi tháng 9 **6.751.000**, tổng số dư ví **−3.106.000** — đáp án bộ câu AI phải
+  tính lại. Ca *"ngân sách tổng → im"* chỉ kiểm bằng test repository: giao diện không tạo được ngân sách tổng.
+- ✅ **G58 mở và đóng cùng tối** (người dùng thấy giữa lượt nghiệm thu B4, báo *"đang có lỗi pixel trên màn hình"*): màn
+  **Thêm giao dịch**, bàn phím hệ thống mở (gõ ghi chú) ở 360 dp → hàng phím cuối tràn 9,7 px **và** ô ghi chú đang gõ bị
+  ép về 0. Có từ nhóm C UX (`2263f9b`, 19/09). Người dùng chọn **ẩn 16 phím số khi `viewInsets.bottom > 0`** (`76cc309`).
+  Chi tiết `CLIENT_APP_KNOWN_GAPS.md`. `flutter test` **4508/4508** (4 skip), analyze 26.
+- ✅ **B5b — học giờ và đề xuất thông báo — XONG trọn 7 task 2026-09-29 tối** (spec `specs/2026-09-28-b5b-…`, banner
+  đầu tệp; mục **5i** `NOTIFICATION_FEATURE.md`). Chỉ đề xuất: giờ nhắc hoá đơn, giờ + thứ tổng kết, giờ ghi chép, tắt
+  nhóm bị lờ — hàm thuần `deXuatThongBao` (`2011f49`), `loaiTuKhoa` (`90c7cac`, `5e2f1cb`), `DeXuatThongBaoNguon`
+  (`88f5d27`), dòng gợi ý ở trang Cài đặt (`ead9e7e`, Stitch `065eccd8…`), thẻ *"Có N gợi ý"* ở trung tâm (`9eeb696`,
+  Stitch `65dab656…`) — hai màn người dùng duyệt. ⚠️ **Soát kế hoạch với mã lộ ba chỗ spec sai**, người dùng chốt: "tới
+  máy" của lịch đặt trước **đếm theo khoá** (`huy_lich.luc` là lúc huỷ, luôn sớm hơn giờ nổ trong `dat_lich.luc`); loại
+  `luonBao` không đếm vào nhóm bị lờ; và **G59** — đổi giờ nhắc **không dời** lịch đang chờ (khoá không chứa giờ → cùng
+  id → `resync` bỏ qua), sửa **trước** B5b (`c9c6e38`, `resync(datLai: true)`). Nghiệm thu Realme bản debug (người dùng
+  duyệt **bơm thử rồi xoá** 25 hàng `cham_hdh` 20:0x): thẻ → Cài đặt → dòng gợi ý dưới ô 08:00 → *Đổi sang 20:00* →
+  `dumpsys alarm` hai lịch hoá đơn 02/10 **08:00 → 20:00**; quay về thẻ mất; đặt lại 08:00 bằng bộ chọn giờ → lịch về
+  08:00; *Bỏ qua* → im khi mở lại; dọn 26 hàng thử, `integrity_check` ok. Realme trả về bản **release** `76924bc2…`.
+  ✅ **G60 mở rồi đóng** (lộ khi viết ca G59; người dùng chọn sửa, `d57cb09`): bảng chọn thứ tổng kết tràn ở màn cao
+  dưới ~700 dp — nay `isScrollControlled` + thân cuộn được; Realme bản release `351d062e…`.
+  `flutter test` **4571/4571** (4 skip), analyze 26. **Nhóm B xong trọn** (B1 → B5a → B2 → B3 → B4 → B5b); kế theo lộ
+  trình 28/09: **C1**.
+- ✅ **C1 — gắn danh mục hàng loạt, xong 2026-09-29 tối** — việc **đầu tiên của nhóm C** (bất biến ④ *"không tool nào
+  ghi thẳng"*; mục **5e** `CATEGORY_RATIONALE.md`, **9.40** `AI_EDGE_FEATURE.md`). Hàm thuần `category/domain/gan_hang_loat.dart`
+  (`xetGan` — **một** định nghĩa của khoản cần gắn, qua `laGhiChuMay` của B1 · `demChuaGan` · `hopLeTheoChieu` ·
+  `dungDanhSachGan` · `phanHoiGan` · `cauKetQuaGan`), nguồn `category/data/gan_danh_muc_nguon.dart` (học B1 từ sổ + `tatCap`;
+  ⚠️ `apDungGan` **đọc lại hàng tươi** trước `updateTransaction` — ghi từ ảnh chụp là đè lần sửa vừa kéo về), màn
+  `GanDanhMucPage` ở route **con** `/transactions/gan-danh-muc` trên navigator gốc, thẻ *"Có N giao dịch chưa có danh
+  mục"* trên Sổ giao dịch đọc **stream** `watchAll`. Ba màn Stitch người dùng duyệt (`a829606a…`, `5023f081…`, bảng chọn
+  lọc theo chiều `45c91102…`). Soát kế hoạch với mã trước Task 1 lộ năm chỗ lệch (banner đầu spec). Realme tài khoản 10:
+  **`demChuaGan = 0`** trên dữ liệu thật — 16 hàng trống danh mục đều do máy sinh; nghiệm thu bằng 4 khoản thử (người
+  dùng duyệt **nhập rồi xoá**, đã xoá) — thẻ 4 → 1, *Chưa phân loại* 255.000 → 120.000 đ, đúng 2 hàng phản hồi `chon`.
+  ⚠️ Ba khoản *grab* thử **không** được đoán vì B1 đang thôi gợi ý cặp (*grab*, Di chuyển) — đúng thiết kế. Lần đẩy lên
+  server **chưa đo** (Realme không tới backend). `flutter test` **4616/4616** (4 skip), analyze 26; Realme bản release
+  `d79b9b34…`. Kế theo lộ trình: **C2**.
+- ✅ **C2 — ô Nhập nhanh (nhập giao dịch bằng câu), mã xong + đo Realme 2026-09-30** (spec
+  `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md`, mục **9.41** `AI_EDGE_FEATURE.md`). Thẻ *NHẬP NHANH* ở đầu vùng cuộn màn
+  Thêm giao dịch (Stitch `8afdfe11…`, trạng thái đọc AI `63e981f5…`): gõ câu → **Điền** → form điền sẵn, ✓ mới lưu. Luật ở
+  `transaction/domain/doc_cau_giao_dich.dart` (số tiền bốn cách nói, loại khớp **từng từ có phân biệt dấu**, ngày, ví, ghi
+  chú, danh mục **tên → B1 khi chắc → từ khoá → AI**); ⭐ người dùng chọn **"AI đọc mọi câu"** — máy có mô hình và công tắc
+  bật thì `DocCauBangAi` (`transaction/data/`) hỏi Gemma một tool `dien_giao_dich`, rồi **luật kiểm từng ô**
+  (`cachDocSoTien`: AI chọn cách đọc, không được đưa ra chữ số không có trong câu). **Lối B mở sang chỗ thứ hai.** Dời ra
+  `core/utils`: `so_bang_chu` (một bộ đọc số chữ cho cả `kiem_so` lẫn `chinh_tham_so` — hai bộ cũ **mù hàng chục**),
+  `ngay_trong_cau` (+ `ngayHopLe`; đọc cả *"thứ X tuần trước"*), `tenNeuTrongCau` / `timTenTrongCau`. Đo 10 câu: số tiền
+  10/10, danh mục 7/2/1 — bước từ khoá thêm sau lượt đo, **chưa đo lại**. `flutter test` **4773/4773** (4 skip), analyze
+  26; Realme bản release `8c3d40a3…` (chưa có bước từ khoá). 🔁 Sau lượt đo người dùng quyết **ĐỔI LẦN HAI**: *luật
+  trước, AI chỉ khi các lớp trước bó tay* + **AI là lớp cuối cho MỌI ô**. Lý do: ~18 s mỗi câu, luật một mình đủ số tiền
+  8/10, AI sai cả hai câu có ngày.
+- ✅ **C2 đổi lần hai + chuyển ví + luật ngày — thi công và đo Realme 2026-09-30** (`b0c9f9b` → `05c6ce2`; spec C2 banner
+  *ĐỔI LẦN HAI*, §2.3, §2.8, **§2.9**, §8; cuối mục 9.41 `AI_EDGE_FEATURE.md`). Người dùng chốt bằng câu hỏi chọn: ô
+  **thiếu** gọi AI là **số tiền · ngày · ví · danh mục · ghi chú** (`KetQuaDocCau.oThieu`; hai ô cuối sửa sau lượt đo 3 — *"chỗ nào
+  không điền được thì sẽ cho AI vào để điền mà"*; ghi chú = còn sót số tiền, AI chỉ bớt chữ); thu/chi không; **chờ AI
+  rồi điền một lần**; AI chỉ **lấp** ô luật để trống (luật thắng cả số tiền); luật mới *đầu tháng (này / trước)*, *cuối
+  tháng trước*, cụm chỉ kỳ không phải ngày thiếu. Giữa phiên người dùng báo câu **chuyển giữa hai ví** bị điền thành khoản
+  chi → §2.9 (ví đích sau *sang · vào · đến · tới*, *qua* khi có *chuyển*; ví nguồn sau *từ*; tool `chuyen_vi` + `vi_den`;
+  `timCacTenTrongCau` ở `core/utils/khop_ten.dart`). Tôi siết *câu có nhắc ngày* từ chữ lẻ sang **cụm** (`cauNhacNgay`,
+  `core/utils/ngay_trong_cau.dart`). Đo 14 câu (bản `be5b4f9c…`): gọi AI **4/14**, số tiền 14/14, chuyển ví ✅, câu không
+  gọi AI điền tức thì. Hai chỗ lượt đo lộ ra **đã sửa** (`ed397be`): *thẻ / quẹt / ck* chỉ nhận ví ngân hàng (*"quẹt thẻ
+  ăn phở 45k"* từng nhận ví Tiền mặt), so chữ ví **có dấu** (*"vì"* ≠ *ví*); dòng nguồn *"Đọc bằng AI"* chỉ khi AI đổi
+  một ô. Đo lượt 4 (bản `474a61cb…`, cuối 9.41): trà sữa → Ăn uống qua AI; *"ăn sáng 30k, grab 50k"* AI không dọn được
+  ghi chú (lớp kiểm chặn đúng). `flutter test` **4822/4822** (4 skip), analyze 26. Việc kế (người dùng chốt): **đề xuất thêm từ khoá từ thói quen**
+  — ✅ thi công cùng ngày (khối kế tiếp); rồi D1 → C3 → C4. Lượt soát tài liệu cuối ngày 30/09 sửa tên hàm C2 trong spec C2 và ghi chú **spec / kế hoạch D1
+  và C3** (viết 28/09, trước C2): D1 gọi một `_dienTuKetQua` không tồn tại (đường điền thật `_apDungKetQua` nhận **câu**,
+  D1 phải tách), C3 cần mở bộ chọn số tiền riêng tư `_chonSoTien` và vấp test quét 14 với trường `walletId` nếu đặt ở
+  `ai_edge/`.
+- ✅ **Đề xuất thêm từ khoá từ thói quen — thi công 2026-09-30** (`e913f21` → `b2c57de`; spec
+  `specs/2026-09-30-de-xuat-them-tu-khoa-design.md`, màn Stitch `8ca1338e…` người dùng duyệt; mục **5f**
+  `CATEGORY_RATIONALE.md`). Màn Thêm giao dịch: form có danh mục + ghi chú lặp một cụm với danh mục ấy ≥ 3 lần, ≥ 60 %
+  (ngưỡng B1, tính cả lần đang nhập) → dòng *"Thêm ‘x’ làm từ khoá của Y?"* dưới hàng Danh mục; cụm là từ khoá của đúng
+  một danh mục khác → *"… — chuyển sang Y?"*. Bấm là ghi ngay (Chuyển bỏ ở danh mục cũ **trước**), dòng *"Đã thêm …"* tự ẩn
+  sau 2 giây (người dùng chốt khi duyệt Stitch); ✕ ghi `bo_qua` nguồn **`de_xuat_tu_khoa`**, tập tắt riêng qua
+  `tatCapTu(…, nguon:)`. Hàm thuần `category/domain/de_xuat_tu_khoa.dart`. ⚠️ Kèm sửa **lỗ hổng có sẵn**:
+  `saveKeywords` không đánh dấu danh mục `pending` nên từ khoá sửa ở trang *Từ khoá của tôi* không lên server — nay có
+  `pending` + `scheduleSync()`. `flutter test` **4852/4852** (4 skip), analyze 26. 🚧 **Nghiệm thu Realme chưa làm** —
+  không máy nào cắm lúc thi công. Cùng ngày người dùng chốt **ba dự án huấn luyện** (A spike tinh chỉnh Gemma · B mô hình
+  nhỏ định tuyến · C học trên máy từng người), thứ tự A → B → C, làm **sau C4** — cuối mục 10.3 `AI_EDGE_FEATURE.md`.
+- ✅ **D1 — đọc biến động số dư trên máy, XONG + nghiệm thu máy thật 2026-09-30** (`1d7ca56` → `02f995f`; tài liệu
+  bàn giao **`docs/BIEN_DONG_SO_DU_FEATURE.md`**; spec `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md` có banner
+  lệch-thiết-kế; kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md`, gitignore). Kotlin `BienDongListenerService`
+  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N biến động chưa
+  ghi"* ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
+  **xoá cứng** hàng (ngoại lệ mục 4.3 `NOTIFICATION_FEATURE.md`). Màn xin đồng ý bắt buộc (Stitch `bed4d292…`) liệt kê
+  **nguồn đang đọc** (người dùng chốt, không bảy nguồn Stitch vẽ): danh sách trắng đo trên máy **MB Bank · MoMo ·
+  ZaloPay**. ⭐ Chốt đáng nhớ: cờ Kotlin gắn **máy**, `docBienDong` gắn **tài khoản** → mỗi lượt nhập ghi lại cờ theo tài
+  khoản đang đăng nhập, đăng xuất thì tắt · lần đầu một cặp nguồn + đuôi TK thì ví **trống** (không ví mặc định) · danh
+  mục đoán trên nội dung tin bằng `doanDanhMucTuGhiChu` (tách khỏi `docCauGiaoDich`) · chế độ thu mẫu bản debug chỉ log
+  **hình dạng đã che** (quy tắc §13.6 `progress/Client-app.md`, người dùng chốt). Nghiệm thu OnePlus 13R (debug rồi
+  release): đồng ý → cờ bật; tin MoMo → tóm tắt → Lưu (thu 10.000 đ, `Manual`) → hàng + tệp đã xoá; lần hai chọn sẵn ví
+  MoMo; Bỏ qua; tắt → không tóm tắt; logcat release 0 byte. ⚠️ Lộ **ba** lỗi lúc thi công / đo, đã sửa: Sổ giao dịch
+  tràn **89 px** khi hai thẻ lối vào cùng có (nay cuộn cùng danh sách) · bảng *Chọn ví* tràn 13 px khi 5 ví (`41dfc9c`,
+  có từ trước) · chip *Biến động* ngoài mép phải khi mở trung tâm lọc sẵn (`802dcd2`, **chưa cài lên máy**). Chưa đo: tin
+  MB qua đường thật. Đơn soát `CAN-LAM/D1_DOC_BIEN_DONG_XONG_SOAT.md` xin backend đổi ô chức năng 3 + bốn chỗ tài liệu.
+  **Việc sau D1, người dùng chốt:** bàn phím số ẩn khi màn đã có số tiền (Stitch trước) · gợi ý Chuyển khoản cho cặp trừ
+  + cộng · chia sẻ biên lai ví điện tử (MoMo / ZaloPay không bắn tin khi chuyển đi; gộp C4). `flutter test`
+  **4963/4963** (4 skip), analyze 26. Ngoài phạm vi, chưa sửa: `NotificationPrefs.==` thiếu bốn trường Tổng kết tuần.
+
+### 🔀 Gộp `main` @ `47c9bde` (2026-09-30 tối, commit gộp `b350d40`) — thông báo phía server, chống quá tải, đóng đơn chatbot
+
+Ba commit NPBao (`e2621da`, `e497695`, `8c677ab`), **không xung đột**, **không đụng `src/Client-app`**. Soát bằng mã
+(hai agent đọc song song + kiểm lại từng dòng nêu trong đơn), kết quả ở đơn mới
+`superpowers/backend/CAN-LAM/SOAT_SAU_GOP_B350D40.md`:
+
+- **Tài liệu mới `docs/Notification/Notification_Client-app.md`** giao client nghe `account.countdown`,
+  `system.broadcast`, `user.notification`, gọi `/api/notifications/*`, lưu thông báo server vào `AppNotifications`
+  và đồng bộ trạng thái đã đọc.
+  - Cả ba payload **lệch mã** (`daysRemaining` chứ không `daysLeft`; `message` / `createdAt` chứ không `content` /
+    `broadcastAt`).
+  - `user.notification` **0 chỗ phát**.
+  - Broadcast nằm ở kho admin, nên `GET` của người dùng không trả nó.
+  - Kho người dùng giữ `BankTransactionPending` kèm `accountNumber`.
+  - Người dùng chốt **chỉ nhận số đếm trên chuông**. Phần còn lại trái quy tắc 9 (bảng cục bộ) và cam kết payload hộp
+    đen, **chưa nhận**.
+- **Đơn chatbot** `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md` đóng, sang `DA-XONG/`: sáu lệnh nghiệm thu đạt, 7/8 mục đúng.
+  Còn **hai lỗi mã FHS**, đã xin sửa:
+  - DTI gần như luôn 0 — `financial.snapshot.service.js:298` lọc `classify === 'Chi'` trong khi Vay/nợ là `'Vay/no'`;
+    fixture test gán `'Thu'`.
+  - `trendVsLastMonth` hằng `'0%'` (:330).
+- **Chống quá tải** (`app.js`: bảo trì / cắt tải 503, retry guard 429 sau 4 POST giống hệt trong 10 s, timeout 30 s)
+  **không** chạm đồng bộ client: pull là GET, push mang `pushedAt`.
+- Tài liệu AI (`LogicBusinessAI.md`, `ORC.md`) chỉ đổi tên mô hình. Commit message *"shift layers 1-2 to Client-app"*
+  **không ứng với dòng diff nào**. Nhiều câu tả client cũ (SMS, v24, 7 tool, `Category.Keyword`, SyncQueue) — gom vào
+  mục 5 của đơn.
 
 ### 🔀 Gộp `main` @ `422debf` (2026-09-26, commit gộp `bd17a57`) — backend trả lời bốn đơn, chatbot trực tuyến, múi giờ VN
 
@@ -1690,7 +1989,7 @@ của bộ lọc. Còn lại nửa sau — bộ hàm cho function calling và ph
 8 Gen 3**, arm64-v8a, RAM 10,95 GB, Android 16). Bảng đo đầy đủ — bốn tổ hợp
 mô hình × backend, 52 câu sinh ra, RAM đỉnh, nhiệt — ở **mục 8**
 `docs/AI_EDGE_FEATURE.md`. Mã spike nằm **ngoài repo** (`D:/flowmoney-spike`),
-không commit, đúng như spec yêu cầu.
+không commit, đúng như spec yêu cầu — ⚠️ thư mục ấy **đã xoá 2026-09-28** (giải phóng ổ D, người dùng yêu cầu).
 
 **Kết quả lật bản thiết kế, và người dùng đã chốt:** dùng **Gemma 4 E2B cho MỌI
 máy**, bỏ hẳn E4B. Bậc thang mới: arm64 + GPU → E2B/GPU · GPU hỏng → E2B/CPU ·
@@ -1744,7 +2043,7 @@ hoạch bất cứ việc AI nào:
   (không phải học máy), SLM là **bộ sinh câu**. Kèm lý lẽ vì sao **không huấn
   luyện mô hình để cá nhân hoá** (trọng số không phải nơi chứa hiểu biết về
   người dùng; gói **không có API huấn luyện**), **mười tiêu chí cho AI chạy
-  trên client** (hiện đạt 9/10), và **bốn tầng hậu quả của chiều ghi** — tầng 4
+  trên client** (hiện đạt 9/10 — *ô thiếu, xác nhận chiều ghi, có từ nhóm C 2026-09-29/30*), và **bốn tầng hậu quả của chiều ghi** — tầng 4
   (`auto_pay`, trích tự động) thì **AI không chạm**.
 - **Mục 11** là **bản đồ khảo sát toàn hệ thống**, đếm bằng máy: 13 mảng · 43
   route · 10 bảng Drift · **66 hàm domain thuần mà AI mới dùng 4 gói số** *(con số của
@@ -1807,6 +2106,8 @@ tất định; P3 (mô hình trên máy) chờ P1 spike.
 4. **Một kế hoạch, một định nghĩa.** Thẻ trên trang và thông báo cùng gọi
    `TaiPhanBoNguon` + `taiPhanBoCua`; bộ luật thông báo **nhận** kế hoạch chứ
    không tự tính. Hai phép tính là hai ngân sách khác nhau trên cùng màn hình.
+   *(Từ 2026-09-28 phép ghép ấy là một hàm `keHoachTaiPhanBoTu`, nơi gọi thứ ba là
+   tool ngân sách của Trợ lý AI.)*
 
 **Mấy cái bẫy đắt nhất của P2** (đầy đủ ở mục 4 `AI_EDGE_FEATURE.md`):
 
@@ -2860,7 +3161,7 @@ có luật chạy thật: hoá đơn lặp, trích tự động, ngân sách.
 Đi kèm một lượt **tách hàm thuần**: phép tính ngày của kỳ kế tiếp hoá đơn rời
 `BillRepositoryImpl._nextPeriodOf` thành **`kyKeTiepCua(Bill)`** ở
 `bill/domain/bill_ky_ke_tiep.dart`, và `_nextPeriodOf` gọi lại nó — dự báo chiếu
-kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy** nguồn.
+kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy** nguồn *(tám từ 2026-09-29 — phản hồi B2 cho tầng 3, B4)*.
 
 **Nghiệm thu máy ảo lật hai thứ mà 2633 ca test đều mù**, cả hai về trục biểu
 đồ: trục từ 0 làm đường nằm phẳng (cam kết chỉ bằng 2,8% số dư), và bước lẻ làm
@@ -3047,7 +3348,7 @@ khoản chi**, thứ tự khối chép đúng trang Xuất báo cáo. Chi tiết
 **Một định nghĩa, hai nơi dùng:** bốn phép tính vốn nằm inline trong
 `dungBaoCao`, nay là hàm thuần ở `bao_cao_xuat.dart`. 44 ca test của trang Báo
 cáo vẫn xanh **không sửa dòng nào** — bằng chứng lượt tách không đổi hành vi.
-Repository Phân tích nhận **nguồn thứ tư là ví** (⚠️ đúng tại 2026-09-15; từ 2026-09-16 là **bảy** nguồn — xem khối dự báo dòng tiền ở đầu mục này).
+Repository Phân tích nhận **nguồn thứ tư là ví** (⚠️ đúng tại 2026-09-15; từ 2026-09-16 là **bảy** nguồn — xem khối dự báo dòng tiền ở đầu mục này; **tám** từ 2026-09-29, B4).
 
 ⚠️ Hai điều đáng nhớ: khối dòng tiền **luôn** kèm câu "Suy ngược từ số dư hiện
 tại của các ví" (app không lưu lịch sử số dư — mục 3.16), và `dongTienCua` phải
@@ -3308,7 +3609,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Ba lỗi chỉ máy thật mới thấy, cả ba đều im lặng** — đây là ví dụ mạnh nhất từ trước tới nay cho quy tắc "đụng giao diện/điều hướng thì phải chạy máy ảo":
   > 1. **Thiếu `ActionBroadcastReceiver` trong `AndroidManifest.xml`.** Nút hiện đúng, `dumpsys notification` báo `actions=2` với `PendingIntent` đúng kiểu, nhưng không tiến trình nào nhận. Plugin **không tự khai báo** receiver này. Nay có `android_manifest_receivers_test.dart` canh **cả ba** receiver — vùng mà `flutter test`, `flutter analyze` và `flutter build apk` đều không nhìn thấy. Xem bẫy **7.11**.
   > 2. **`resync()` huỷ mất lịch vừa hoãn.** Lý lẽ "cùng khoá nên sống sót" **sai**: nhánh bỏ qua ấy chỉ chạy cho lịch resync *muốn*, mà hoá đơn chỉ được muốn khi mốc nhắc còn ở tương lai — trong khi chỉ hoãn được **sau khi** thông báo đã nổ. Sửa bằng tập `khongHuy` trong `resync()`.
-  > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()`.
+  > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` *(tên cũ — B5a 2026-09-29 đổi thành `chamKhoiDong()`)* đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()` *(từ B5a: gọi ở router, `NotificationTapRouter._thucHien`)*.
 - **Thông báo: badge số trên icon app** (2026-09-08, **schema không đổi**). `BadgeUpdater` nghe `watchUnreadCount` rồi đẩy sang `OsNotifier.datBadge()`; `NotificationScanner` **sở hữu** vòng đời của nó (`auth_bloc` đã có bốn chỗ start/stop, một lối song song là bốn chỗ nữa phải nhớ). Hai method mới trên interface: `activeIds()` và `datBadge()`. ⚠️ **Huỷ CHỌN LỌC, tuyệt đối không dọn sạch khay**: chỉ huỷ id suy từ `dedupeKey` của hàng đã đọc/đã xoá mềm, vì lịch hoá đơn nổ lúc app đóng và nhắc ghi chép hằng ngày **nằm trên khay mà bảng không biết** — số chưa đọc bằng 0 KHÔNG có nghĩa là khay phải trống. Và **không bao giờ `cancelAll()`**: nó cuốn theo cả lịch đang chờ trong AlarmManager. Lý do đầy đủ ở **mục 4.9 `docs/NOTIFICATION_FEATURE.md`**. 11 test mới.
   > ⚠️ **Đo trên máy thật đã sửa lại chính lời hứa ban đầu:** con số **gần như không bao giờ hiện trên Android** — nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt khi nhóm chỉ còn một thông báo con**, và một là số lượng thường gặp nhất. Khay trống thì `datBadge(6)` chạy trót lọt mà không hiện gì cả. Nên trên Android badge thực chất là **chấm**, suy từ *thông báo đang trên khay* chứ không từ số chưa đọc; con số chỉ có nghĩa cho iOS và cho launcher nào vẽ được. Phần người dùng thấy vẫn đúng: **đọc hết trong app thì chấm tắt**.
   > **Bằng chứng** (`emulator-5554`, Pixel Launcher): tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0` và **icon có chấm**; bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`, `dumpsys notification` còn **0** record của app, **chấm tắt**.

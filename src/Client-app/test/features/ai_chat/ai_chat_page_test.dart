@@ -408,7 +408,7 @@ void main() {
       for (final (ten, chu) in [
         ('danh_sach_muc_tieu', 'Đang tra cứu mục tiêu…'),
         ('goi_y_han_muc', 'Đang tính gợi ý hạn mức…'),
-        ('tim_giao_dich', 'Đang tìm giao dịch…'),
+        ('truy_van_giao_dich', 'Đang tra cứu giao dịch…'),
       ]) {
         c.add(DangTraCuu(ten));
         await t.pump();

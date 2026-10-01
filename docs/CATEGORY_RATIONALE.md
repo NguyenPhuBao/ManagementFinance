@@ -6,7 +6,7 @@
 > **bằng chứng đo được**, và **những phương án đã cân nhắc rồi loại bỏ** — đó là
 > phần dễ mất nhất khi người khác đọc lại đoạn mã sau này.
 
-**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`; G24 đóng cùng ngày)
+**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`; G24 đóng cùng ngày), 2026-09-29 (thay đổi 7 — gợi ý danh mục học từ ghi chú, mục 5d), 2026-09-29 tối (thay đổi 8 — gắn danh mục hàng loạt C1, mục 5e)
 
 ---
 
@@ -22,6 +22,10 @@ Sáu thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
 | Bản sao riêng của bộ mặc định cho từng tài khoản; hàng toàn cục lui về làm khuôn (2026-09-07) | Hàng mặc định dùng chung nên người dùng không sửa, đổi tên hay xoá được; bảng phụ `CategoryGroupMemberships` tồn tại chỉ vì thế (G10) |
 | Tên danh mục dừng ở 200 code point (2026-09-10) | `NameCategory` là `varchar(200)`; tên dài hơn vỡ `P2000`, rơi xuống `DB_ERROR`, và bị gửi lại ở mọi chu kỳ đồng bộ (G31). ✅ 2026-09-11: backend nay trả `CONSTRAINT_VIOLATION` nên hết gửi lại mãi, nhưng bản ghi kẹt vĩnh viễn — giới hạn ô nhập vẫn cần |
+| *(thay đổi 7, 2026-09-29 — **tính năng**, không phải sửa lỗi)* Gợi ý danh mục **học từ ghi chú** (Naive Bayes cục bộ), đi trước bộ từ khoá; bảng phản hồi cục bộ v25 | Bộ từ khoá **không học** — từ khoá phải có người gõ vào — và **không ghi** việc người dùng bấm *Chọn* hay *Bỏ qua*. Nghiệm thu còn lộ một từ khoá mặc định **gây nhầm** (`grab` → Ăn uống, seed backend) mà B1 sửa được — mục 5d |
+| *(thay đổi 8, 2026-09-29 — **tính năng**)* **Gắn danh mục hàng loạt** (C1): thẻ trên Sổ giao dịch → màn duyệt, mô hình B1 tick sẵn, người dùng bấm *Áp dụng* mới ghi | Khoản trống danh mục (kéo từ server / bản cũ) nằm ở lát *Chưa phân loại*, nên donut, ngân sách theo danh mục và B3 mù với chúng. Trên Realme thật `demChuaGan = 0` — mọi hàng trống đều do máy sinh — mục 5e |
+
+Hai hàng cuối là **ngoại lệ** của câu mở đầu: B1 (dự án con đầu tiên của mảng máy học) và C1 (việc đầu tiên của nhóm C, dựa trên B1) là việc người dùng chọn làm, không do lỗi nào ép. Chúng đứng trong tài liệu này vì vẫn cần đúng thứ tài liệu này giữ: quyết định, phương án đã loại, và con số đo được.
 
 Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
@@ -257,6 +261,289 @@ phần thuộc danh mục.
 
 ---
 
+## 5d. Thay đổi 7 — gợi ý danh mục học từ ghi chú (B1, 2026-09-29)
+
+**Không phải sửa lỗi** — mục này ghi quyết định và số đo của một tính năng. Thiết
+kế đầy đủ: `docs/superpowers/specs/2026-09-28-goi-y-danh-muc-hoc-tu-ghi-chu-design.md`.
+
+### Vì sao làm, và vì sao làm trước
+
+Thẻ *"Gợi ý danh mục"* của màn Thêm giao dịch khớp **bảng từ khoá**
+(`CategorySuggestionEngine`). Bảng ấy **không học** — từ khoá phải có người gõ
+vào — và **không ghi** việc người dùng bấm *Chọn* hay *Bỏ qua*. Trong năm hướng
+máy học người dùng muốn làm, đây là hướng duy nhất **tưởng như** có sẵn dữ liệu
+học: mỗi giao dịch đã lưu có ghi chú + danh mục người dùng tự chốt là một mẫu có
+nhãn. Tiền đề ấy **sai với dữ liệu hiện có** — xem số đo bên dưới.
+
+### Ba quyết định người dùng chốt (2026-09-28)
+
+| Câu hỏi | Chốt |
+|---|---|
+| Đoán được thì làm gì | **Gợi ý trên thẻ sẵn có**, người dùng vẫn bấm *Chọn* / *Bỏ qua* — **không** tự chọn sẵn |
+| Ghi phản hồi không | **Có** — bảng cục bộ `GoiYDanhMucPhanHois`, schema **v25**, không đồng bộ (test quét 15 canh) |
+| Thuật toán | **Naive Bayes đa thức nhị phân hoá** trên âm tiết bỏ dấu, làm trơn Laplace; học lại mỗi lần mở màn |
+
+Mô hình đi **trước** bảng từ khoá; trả `null` (sổ mỏng, ghi chú lạ, hậu nghiệm dưới
+0,6, hoà, cặp đang bị thôi gợi ý) thì rơi về bảng từ khoá như cũ. Dòng lý do đổi
+theo nguồn: *"Bạn thường ghi “grab” cho Di chuyển (5/5 lần)."* với nguồn học. Hàm
+thuần nằm ở `category/domain/phan_loai_ghi_chu.dart`, **không** ở `ai_edge/`: nó
+đọc sổ giao dịch, thứ test quét 14 cấm trong `ai_edge/`.
+
+### Chỗ dễ làm hỏng nhất
+
+- **Ghi chú do máy sinh phải bị loại** (`laGhiChuMay`: khoản điều chỉnh số dư, mở
+  sổ, nạp/rút mục tiêu kể cả tiền tố cũ, trả hoá đơn). Học chúng là dạy mô hình
+  rằng *"thanh toán hóa đơn"* là một danh mục.
+- **Xác suất tính trên MỌI danh mục đã học, `hopLe` chỉ lọc ứng viên**, kèm chốt
+  *bằng chứng* (danh mục đoán phải có ít nhất một âm tiết của ghi chú). Chuẩn hoá
+  chỉ trên danh mục chọn được thì danh mục vừa xoá đẩy danh mục còn lại lên 100 %
+  cho một ghi chú không hề liên quan.
+- **Bỏ dấu chỉ dùng ở đây**, không bao giờ cho quy tắc trùng tên (quy tắc 7
+  `CLAUDE.md`): đoán sai chỉ tốn một cú chạm.
+- **Thôi gợi ý có luật mở lại**: hai lần *Bỏ qua* cùng cặp (cụm, danh mục) thì
+  thôi; ba giao dịch mới người dùng tự lưu cho đúng cặp ấy thì mở lại. Không có
+  vế sau thì một lần bỏ qua lúc mới dùng app khoá cặp ấy vĩnh viễn.
+
+### Số đo leave-one-out
+
+Công cụ `test/tool/do_goi_y_danh_muc_test.dart` (chạy tay): với mỗi mẫu, học trên
+mọi mẫu còn lại rồi đoán nó; **độ phủ** = phần trăm mẫu được gợi ý, **độ đúng** =
+trong số được gợi ý, phần trăm trúng.
+
+| CSDL (2026-09-29) | Mẫu | Học: phủ · đúng | Từ khoá: phủ · đúng |
+|---|---|---|---|
+| Máy ảo, tài khoản 10 (39 giao dịch) | **1** | 0 % · — | chưa ghi |
+| PostgreSQL dev, mọi tài khoản (chỉ đọc) | **≤ 3** mỗi tài khoản | dưới ngưỡng 10 mẫu — im | — |
+| Realme, tài khoản 10, **sau** nghiệm thu | 12 (**11 mẫu thử** + 1 ghi chú thật) | 91,7 % · 100 % | 50 % · **0 %** |
+
+⭐ **Kết luận thật nằm ở hai hàng đầu: dữ liệu hiện có gần như không có ghi chú
+người dùng tự gõ.** Giá trị của B1 phụ thuộc hẳn vào thói quen gõ ghi chú; không có
+thói quen ấy thì B1 im và rơi về từ khoá — sai theo chiều an toàn. Hàng Realme do
+chính lượt nghiệm thu gõ theo khuôn cố định (*grab …* → Di chuyển, *ca phe …* → Ăn
+uống), nên nó **minh hoạ cơ chế**, không đo thói quen thật.
+
+⚠️ **Công cụ đo từng sai** (sửa `9f407e6`): bản đầu lấy ứng viên từ khoá từ bảng
+tra tên, tức **cả hàng mặc định toàn cục** — mà hàng toàn cục mang cùng từ khoá với
+bản sao của tài khoản, nên hai danh mục cùng khớp một từ khoá cùng độ dài và bộ từ
+khoá coi là **hoà**, im lặng. Bản ấy báo từ khoá *"phủ 0 %"* trên Realme trong khi
+thẻ trên máy vẫn gợi ý. Nay ứng viên đi đúng đường của màn (`selectableChildrenAll`
++ `loadAllKeywords`). Chưa tài liệu nào từng ghi con số từ khoá của bản cũ.
+
+### Nghiệm thu trên máy thật (Realme RMX2205, bản release, 2026-09-29)
+
+- Gõ *"grab"*, chưa chọn danh mục → thẻ học *"Bạn thường ghi “grab” cho Di chuyển
+  (5/5 lần)."*; *"ca phe"* → Ăn uống (5/5); hai ghi chú lạ → không thẻ nào. Bố cục
+  không vỡ.
+- *Bỏ qua* lần một, mở lại màn → thẻ học vẫn hiện; *Bỏ qua* lần hai, mở lại màn →
+  thẻ học **thôi** hiện.
+- Bảng phản hồi có **đúng ba hàng** khớp ba thao tác: hai `bo_qua` nguồn `hoc` (cụm
+  *grab*, Di chuyển) và một `khac` nguồn `tu_khoa` (gợi ý Ăn uống, người dùng chọn Di
+  chuyển). Đọc bằng cách cài **bản debug đè lên** — bản release ký bằng khoá debug
+  (`build.gradle.kts`) nên `adb install -r` giữ nguyên dữ liệu và `run-as` chạy được
+  — rồi cài lại bản release.
+- Lỗi **có từ trước B1** lộ ra: thẻ gợi ý (cả nguồn từ khoá) vỡ bố cục với theme thật
+  — nút *Chọn danh mục này* trần trong `Row`, bẫy 4.11 `ANALYTICS_FEATURE.md`; sửa
+  `4ef4a5b`, có ca dựng bằng `AppTheme.lightTheme`.
+
+### Một từ khoá mặc định gây nhầm — đã xin backend sửa seed
+
+Seed backend (`src/Backend/prisma/seed.js:14–15`) gắn từ khoá `grab` cho **Ăn uống**
+(ý là GrabFood) và `grabcar` cho **Di chuyển**. Bộ từ khoá khớp khi ghi chú
+**chứa** từ khoá, nên mọi ghi chú *"grab …"* — cách gõ thường gặp cho một cuốc xe —
+được gợi ý **Ăn uống**; trên Realme bộ từ khoá đúng **0/6** ghi chú *grab*. Tầng 1
+phân loại của backend (`keyword.matcher.js`) cùng khớp chuỗi con nên cũng xếp nhầm,
+trái với chính dữ liệu huấn luyện của nó (`training-data.csv:11`: *"grab di lam"* →
+Di chuyển). B1 đi trước nên sửa được điều ấy khi người dùng đã có lịch sử. Nhưng
+sau khi họ bấm *Bỏ qua* thẻ học hai lần, màn rơi về từ khoá và lại gợi ý Ăn uống —
+ngược với mọi lần họ đã tự chốt Di chuyển.
+
+Người dùng chốt ngày 2026-09-29, hai quyết định:
+
+- **Xin backend sửa seed** — đơn `docs/superpowers/backend/CAN-LAM/SEED_TU_KHOA_GRAB.md`
+  (`grab` sang Di chuyển, `grabfood` cho Ăn uống). ⚠️ Chỉ tài khoản / máy **mới** nhận
+  bộ mới: client gieo từ khoá kéo về chỉ khi danh mục chưa có từ khoá nào
+  (`_gieoTuKhoaKhiTrong`), cố ý để thao tác xoá từ khoá của người dùng không hồi sinh.
+- **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
+  học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
+  gốc (seed), không bằng một luật chặn thứ hai ở màn.
+
+### Nơi dùng thứ ba — ô Nhập nhanh (C2, 2026-09-30) — và một rủi ro học sai
+
+Sau thẻ gợi ý và C1, B1 có nơi dùng thứ ba: ô **Nhập nhanh** màn Thêm giao dịch (spec
+`2026-09-28-c2-nhap-giao-dich-bang-cau-design.md`, mục 9.41 `AI_EDGE_FEATURE.md`). Danh
+mục đoán theo **tên nêu trong câu → B1 khi chắc → từ khoá → mô hình Gemma** — cùng thứ
+tự thẻ gợi ý (B1 trước từ khoá), khớp từ khoá bằng chính `CategorySuggestionEngine`; câu
+nói rõ chiều thì chỉ danh mục hợp chiều (`hopLeTheoChieu` của C1). Danh mục đến từ B1
+**hoặc từ khoá** thì màn đặt `_choPhanXu` như thẻ gợi ý, nên lúc lưu vẫn ghi phản hồi
+`chon` / `khac` đúng nguồn. Không đổi mã danh mục, không đổi schema.
+
+Từ *đổi lần hai* (2026-09-30): mô hình **chỉ được gọi khi câu còn ô luật không điền
+được**. Lượt thi công đầu (`05c6ce2`) để danh mục trống **không** gọi mô hình; người dùng
+thấy *"mua 2 ly trà sữa 60k"* trống danh mục và sửa lại (`ed397be`): *"tôi muốn chỗ nào
+không điền được thì sẽ cho AI vào để điền mà"* — nay tên / B1 / từ khoá đều im mà ghi chú
+còn chữ thì **gọi mô hình** cho danh mục (~18 s). Dùng càng lâu, B1 và từ khoá (việc *đề
+xuất thêm từ khoá*) càng lấp trước, ca phải chờ càng ít. Câu chuyển giữa hai ví (§2.9 spec
+C2) không có danh mục.
+
+Bước **từ khoá** thêm sau lượt đo Realme (*"đổ xăng"*, *"grab"* bị mô hình xếp Ăn uống).
+Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ khoá từ thói quen** (một chữ lặp
+với một danh mục mà chưa khai từ khoá → mời thêm; chữ đang là từ khoá danh mục khác —
+*grab* ở Ăn uống — thì mời **chuyển**). ✅ Thi công 2026-09-30 — mục **5f**.
+
+⚠️ **Vòng lặp học sai — người dùng chọn chưa làm gì thêm, theo dõi sau đo** (§8 câu 8
+spec C2, 2026-09-30): với luật gọi mô hình mới, ca mô hình điền danh mục hiếm hơn hẳn. B1 học lại từ sổ
+mỗi lần mở màn, gồm cả giao dịch nhập qua Nhập nhanh. Danh mục mô hình đoán sai mà người
+dùng lưu luôn không sửa (*"xăng" → Ăn uống*) thành mẫu của B1; vì B1 đứng **trước** mô
+hình, lần sau B1 nói lại đúng cái sai ấy và nó bị **khoá lại**. Giao dịch hôm nay không
+lưu nguồn danh mục, nên muốn loại mẫu *"do AI điền, chưa xác nhận"* khỏi phép học thì phải
+có chỗ đánh dấu nguồn trước.
+
+---
+
+## 5e. Thay đổi 8 — gắn danh mục hàng loạt (C1, 2026-09-29)
+
+**Không phải sửa lỗi** — việc đầu tiên của **nhóm C**: nhóm mà người dùng duyệt đổi bất biến ④
+thành *"không tool nào ghi **thẳng**"* (2026-09-28) — AI điền sẵn, người dùng bấm mới ghi. Thiết
+kế: `docs/superpowers/specs/2026-09-28-c1-gan-danh-muc-hang-loat-design.md`. Không đổi schema,
+không thêm trường đồng bộ.
+
+### Nó làm gì
+
+Thẻ *"Có N giao dịch chưa có danh mục"* trên Sổ giao dịch (dưới thẻ tổng, Stitch `a829606a…`)
+mở màn *Gắn danh mục nhanh* (route con `/transactions/gan-danh-muc`, navigator gốc, Stitch
+`5023f081…`). Mô hình **B1** — không phải mô hình riêng — đoán danh mục cho từng khoản, **tick
+sẵn** dòng đoán được kèm câu lý do của B1; dòng không đoán được nằm ở nhóm *"CHƯA ĐOÁN ĐƯỢC"* với
+chip nét đứt *"+ Chọn danh mục"*. Bấm *Áp dụng N* mới ghi, từng dòng qua
+`TransactionRepository.updateTransaction`.
+
+### Chỗ dễ làm hỏng nhất
+
+- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`category/domain/gan_hang_loat.dart`):
+  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay` của
+  B1). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
+  số khác. Khoản điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn cố ý không có danh mục.
+- **Lọc theo chiều tiền** — `hopLeTheoChieu`: khoản chi chỉ nhận danh mục `chi` / `vay_no`,
+  khoản thu chỉ `thu` / `vay_no`. B1 học trên **cả ba** phân loại, nên thiếu bộ lọc là gắn được
+  *"Lương"* cho một khoản chi (bản sai bỏ lọc làm ca ⭐ đỏ). Bảng chọn danh mục của màn là
+  **bảng riêng** lọc bằng đúng hàm ấy — trang *Chọn danh mục* có sẵn mở đủ ba tab.
+- **Ghi từ hàng TƯƠI** — `apDungGan` đọc lại hàng trước khi ghi: `updateTransaction` ghi đủ mọi
+  cột của entity, nên ghi từ ảnh chụp lúc mở màn là đè mất một lần sửa vừa kéo về từ máy khác,
+  rồi mốc `updatedAt` mới làm bản cũ ấy **thắng** trên server. Hàng đã có danh mục / đã xoá từ lúc
+  mở màn thì từ chối (tính là "chưa lưu được").
+- **Tôn trọng luật thôi gợi ý của B1** (`tatCap`) — và chính điều này làm lượt nghiệm thu bất
+  ngờ: trên Realme cả ba khoản *"grab …"* thử **không** được đoán, vì lượt nghiệm thu B1 đã bấm
+  *Bỏ qua* cặp (*grab*, Di chuyển) hai lần. Đúng thiết kế.
+- **Phản hồi** vào bảng B1 (`nguon = hoc`) **chỉ** cho dòng có dự đoán **đang tick**: giữ dự
+  đoán → `chon`, đổi → `khac`. Dòng bỏ tick không ghi — bỏ tick là *"chưa muốn sửa dòng này"*,
+  không phải *"dự đoán sai"*.
+- **Thẻ đọc stream** (`transactionDao.watchAll` → `demChuaGan`), toàn sổ, không theo kỳ: tự đổi
+  sau lần áp dụng, lần pull và lần thêm giao dịch — không cần nạp lại sau `pop`.
+- **Toast không nêu số** (*"Đã gắn danh mục"*, *"… — có giao dịch chưa lưu được"*): spec §4 viết
+  kèm số N, nhưng nếp thông báo tạm thời của dự án là tối giản, và con số còn lại đã hiện trên thẻ
+  ngay khi quay về.
+
+### Đo trên dữ liệu thật
+
+| CSDL (2026-09-29) | Giao dịch sống | Mẫu học B1 | `demChuaGan` |
+|---|---|---|---|
+| Realme, tài khoản 10 | 66 | 26 | **0** |
+
+16 hàng trống danh mục của tài khoản ấy **đều do máy sinh** (15 nạp/rút mục tiêu, 1 điều chỉnh
+số dư) và bị loại đúng — thẻ **không hiện** trên dữ liệu thật. Giao diện bắt buộc chọn danh mục
+khi lưu, nên khoản trống danh mục chỉ đến từ server hoặc bản app cũ; giá trị của C1 nằm ở những
+tài khoản ấy (17 hàng như thế trên PostgreSQL, đo 2026-09-10).
+
+### Nghiệm thu trên máy thật (Realme RMX2205, 2026-09-29)
+
+Người dùng duyệt **nhập 4 khoản chi thử qua giao diện rồi xoá**. Sau khi nhập, CSDL trên máy
+được sửa **chỉ** `category_id = NULL` (giả lập khoản trống kéo từ server) và đổi ghi chú hai
+khoản để có dòng đoán được: *gui xe may*, *ca phe sua da*, *grab ra ga*, *mua do linh tinh*.
+
+- Thẻ *"Có 4 giao dịch chưa có danh mục"*, dòng chính xuống hai dòng ở 360 dp, không tràn.
+- Màn: *gui xe may* → Di chuyển (*"…“gui xe” … (3/3 lần)"*) và *ca phe sua da* → Ăn uống
+  (*"…(4/4 lần)"*) tick sẵn; *grab ra ga* (thôi gợi ý) và *mua do linh tinh* ở *CHƯA ĐOÁN ĐƯỢC*;
+  *Áp dụng 2*. Chọn Di chuyển cho *grab ra ga* qua bảng chọn (chỉ danh mục chi + *Cho vay*, *Đi
+  vay*) → tự tick, *Áp dụng 3*.
+- Áp dụng → quay về, toast *"Đã gắn danh mục"*, thẻ *"Có 1 …"*, tổng chi không đổi. Trang Phân
+  tích: *Chưa phân loại* **255.000 → 120.000 đ**, Ăn uống +38.000, Di chuyển +97.000.
+- CSDL: ba hàng có danh mục, `pending`, `updated_at` mới; bảng phản hồi thêm **đúng 2** hàng
+  `chon` (cụm *gui xe*, *ca phe*), **không** hàng nào cho *grab ra ga*.
+- Mở lại với một dòng còn lại: câu *"Chưa đoán được danh mục nào…"*, không tiêu đề nhóm, *Áp dụng
+  0* tắt.
+- Dọn: xoá 4 khoản qua giao diện (tổng chi về −6.741.000 đ, thẻ biến mất), xoá 2 hàng phản hồi
+  thử. Realme **không tới được backend** nên lần đẩy lên server chưa đo. Máy về bản release
+  `d79b9b34…`.
+- Một chỗ thô chỉ máy thật thấy: đường kẻ dưới tiêu đề bảng chọn là vạch **đen đậm** (`Divider`
+  lấy màu theme) — sửa cùng ngày sang xám nhạt như Stitch.
+
+---
+
+## 5f. Thay đổi 9 — đề xuất thêm từ khoá từ thói quen (2026-09-30)
+
+**Không phải sửa lỗi** — nhưng kéo theo sửa **một** lỗ hổng có sẵn (bên dưới). Người dùng đề xuất
+sau lượt đo C2: *"khi người dùng không nhập từ khoá vào danh mục nhưng họ thường lặp đi lặp lại từ
+khoá đó với 1 danh mục cụ thể thì sẽ đề xuất thêm từ khoá vào danh mục đó"*. Thiết kế:
+`docs/superpowers/specs/2026-09-30-de-xuat-them-tu-khoa-design.md`; màn Stitch `8ca1338e…`. Không
+đổi schema, không thêm trường đồng bộ.
+
+### Vì sao
+
+Từ khoá là lớp **rẻ nhất, tất định nhất** của thứ tự đoán danh mục (*tên → B1 → từ khoá → AI*):
+không cần 10 mẫu như B1, không cần ~18 s như AI, và người dùng đọc hiểu được vì sao. Nhưng bộ từ
+khoá **không học** — phải có người gõ vào trang *Từ khoá của tôi*, và hầu như không ai gõ. Đề xuất
+biến thói quen ghi chú thành từ khoá **khi người dùng đồng ý** (bất biến ④ nhóm C: bấm mới ghi).
+
+### Nó làm gì
+
+Ở màn Thêm giao dịch (tạo mới **và** sửa), khi form có danh mục — bất kể nguồn — và ghi chú có một
+cụm đi với danh mục ấy **≥ 3 lần, ≥ 60 %** (đúng ngưỡng B1, tính cả lần đang nhập), một dòng hiện
+ngay dưới hàng Danh mục: *"Thêm ‘trà sữa’ làm từ khoá của Ăn uống? [Thêm] [✕]"*. Cụm đang là từ
+khoá của **đúng một** danh mục khác → *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?
+[Chuyển] [✕]"* (lối sửa trên máy cho từ khoá seed `grab` sai). Bấm là **ghi ngay**; dòng thành
+*"Đã thêm …"* rồi **tự ẩn sau 2 giây** (người dùng chốt khi duyệt màn Stitch). ✕ ghi `bo_qua` và ẩn
+cả lượt; lưu giao dịch mà không bấm gì thì **không** ghi gì.
+
+### Chỗ dễ làm hỏng nhất
+
+- **Một định nghĩa "thường ghi"** — hàm thuần `deXuatTuKhoa` (`category/domain/de_xuat_tu_khoa.dart`)
+  dùng `kToiThieuMauDanhMuc` / `kNguongXacSuat` của B1 và mẫu `mauHocTu` của B1 (ghi chú máy sinh
+  không đếm). Hàm **tự cộng lần đang nhập**; người gọi truyền mẫu **đã trừ** giao dịch đang sửa
+  (`_mauDeXuat` của màn), nếu không đường sửa đếm một giao dịch hai lần.
+- **Chọn cụm dài nhất TRƯỚC, rồi mới áp luật chặn** (đã phủ bởi từ khoá của danh mục · cặp đang tắt
+  · xung đột ≥ 2). Áp trong vòng lặp là ✕ *"trà sữa"* xong nhận ngay đề xuất *"trà"* — bản sai ấy
+  có ca test đỏ.
+- **"Đã phủ" so CHUỖI CON bỏ dấu**, đúng như bộ so `CategorySuggestionEngine`: ghi chú đã chứa một
+  từ khoá của danh mục → im (bộ so đã bắt được); cụm nằm trong một từ khoá đã có → im (bản rộng
+  hơn). Cũng vì bộ so khớp chuỗi con mà cụm **dưới 3 chữ cái** và cụm **chỉ gồm chữ chung**
+  (`kChuChung`: *ăn, mua, đi, tiền…*) không bao giờ được đề xuất — *"ăn"* khớp cả *"căn hộ"*.
+- **Đoạn có chữ số cắt dãy** (*"trà sữa 40k"* → *"trà sữa"*). Ca test đầu dùng mẫu *"35k"* khác số
+  nên **xanh cả trên bản bỏ phép cắt** — ca đúng dùng mẫu cùng *"40k"*.
+- **Luật tắt / mở là `tatCapTu`**, thêm tham số `nguon`; nguồn `de_xuat_tu_khoa` có tập tắt
+  **riêng** — ✕ đề xuất không tắt thẻ gợi ý B1 của cùng cặp, và ngược lại.
+- **Chuyển bỏ ở danh mục cũ TRƯỚC** rồi mới thêm vào danh mục mới: có một khoảnh khắc cụm thuộc hai
+  danh mục thì bộ so coi là **hoà** và thôi đoán.
+- **Nút `ElevatedButton` có `minimumSize` hữu hạn** (bẫy 4.11) — ca theme thật 360 × 640 canh.
+
+### Lỗ hổng có sẵn đã sửa: `saveKeywords` không đẩy lên server
+
+Từ khoá lên server **trong payload danh mục** (khoá `keyword`), không có thực thể riêng. Nhưng
+`CategoryManagementRepository.saveKeywords` **không** đánh dấu danh mục `pending` và **không**
+`scheduleSync()` — nên sửa từ khoá ở trang *Từ khoá của tôi* chỉ lên server khi danh mục bị sửa vì
+lý do khác; đổi máy là mất. Nay nó đánh dấu danh mục riêng của tài khoản `pending` + `updatedAt`
+mới (LWW) và gọi `scheduleSync()`; hàng mặc định toàn cục không đánh dấu (không bao giờ đẩy).
+
+⚠️ **Giới hạn, không sửa ở đây:** danh sách từ khoá **rỗng** thì client không gửi khoá `keyword`,
+và nhánh kéo về `_gieoTuKhoaKhiTrong` gieo lại từ khoá server khi danh mục trên máy không còn từ
+khoá nào — nên **Chuyển** làm danh mục cũ rỗng thì từ khoá cũ **quay lại sau lượt pull kế**. Với
+`grab` không xảy ra (Ăn uống còn từ khoá khác).
+
+### Nghiệm thu trên máy thật
+
+🚧 **Chưa đo** — không máy nào cắm lúc thi công (2026-09-30). Kịch bản ở spec §6 và Task 5 của kế
+hoạch `docs/superpowers/plans/2026-09-30-de-xuat-them-tu-khoa.md`.
+
+---
+
 ## 6. Những phương án đã cân nhắc rồi loại bỏ
 
 Ghi lại để người sau không mất công đề xuất lại:
@@ -273,6 +560,14 @@ Ghi lại để người sau không mất công đề xuất lại:
 | Chặn tuyệt đối cả khi sửa | Người dùng có dữ liệu cũ sẽ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon |
 | Sửa `getCategoryRows` cho dùng chung | Hàm đó khử trùng lặp theo tên — sửa nó sẽ đổi hành vi hiển thị ở nhiều nơi khác; tách truy vấn riêng an toàn hơn |
 | Đổi tên 3 mục ngay, làm ID cố định sau | Hai lần migration trên máy người dùng cho cùng một vấn đề |
+| *(B1)* Đoán được thì **tự chọn sẵn** danh mục | Đoán sai là lưu sai mà người dùng không để ý; gợi ý trên thẻ thì sai chỉ tốn một cú chạm |
+| *(B1)* Khoanh vùng gợi ý theo đoạn **Chi/Thu đang chọn** (bản trình trong chat) | Màn cố ý không khoanh vùng: chiều tiền suy từ danh mục, không phải ngược lại — B1 theo nếp ấy |
+| *(B1)* Chuẩn hoá xác suất **chỉ trên danh mục chọn được** | Danh mục vừa xoá đẩy danh mục còn lại lên 100 % cho một ghi chú không liên quan |
+| *(B1)* Đếm đa thức **theo số lần lặp** | Ghi chú *"cafe cafe"* không phải hai lần bằng chứng — đếm theo số ghi chú chứa âm tiết |
+| *(B1)* Học **cả ghi chú máy sinh** | Dạy mô hình rằng *"thanh toán hóa đơn"* là một danh mục |
+| *(B1)* Câu lý do in **một âm tiết** | *"phê"* thay vì *"cà phê"* trông như máy lỗi — in cụm âm tiết luôn đi cùng nhau, ở dạng người dùng đã gõ |
+| *(B1)* Thôi gợi ý **vĩnh viễn** sau hai lần bỏ qua | Một lần bỏ qua lúc mới dùng app khoá cặp ấy mãi, kể cả khi thói quen đã rõ |
+| *(B1)* **Đồng bộ** mô hình hay bảng phản hồi giữa hai máy | Mỗi máy tự học từ sổ đã đồng bộ, nên kết quả gần như nhau |
 
 ---
 
@@ -286,6 +581,8 @@ Bốn điều lặp lại trong suốt đợt thay đổi này, đáng nhớ cho
 4. **Đo trước, kết luận sau.** Trong đợt này có hai lần test **xanh giả**: ký tự Unicode dạng tách dấu bị công cụ ghi file âm thầm gộp về NFC, nên hai chuỗi "khác nhau" hoá ra bằng nhau. Chỉ khi dựng fixture bằng escape code point và khẳng định cả độ dài chuỗi thì test mới thật sự canh được thứ nó nói là đang canh.
 
 Cũng trong đợt này, ba lần test đỏ hoá ra là **fixture sai chứ không phải mã sai** — do đặt tên trùng danh mục seed sẵn, hoặc thiếu ví nên vỡ khoá ngoại. Đọc thông báo lỗi trước khi sửa mã.
+
+B1 (2026-09-29) thêm một điều cùng họ với điều 3: **công cụ đo phải đi đúng đường của màn nó đo.** Phép đo leave-one-out tự dựng danh sách ứng viên từ khoá thay vì gọi `selectableChildrenAll` như màn, gom luôn hàng mặc định toàn cục, và báo bộ từ khoá *"phủ 0 %"* trong khi trên máy thẻ từ khoá vẫn hiện. Nó chỉ lộ ra vì con số trái với điều vừa thấy trên màn — nên khi một con số đo được trái với quan sát, nghi công cụ trước.
 
 ---
 

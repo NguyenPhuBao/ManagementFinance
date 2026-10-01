@@ -1,6 +1,7 @@
 // lib/features/ai_edge/data/cong_tac_ai.dart
 /// Công tắc **"Dùng AI trên máy"** — thứ gác việc màn Trợ lý AI có gọi mô
-/// hình hay không (lối B, người dùng chốt 2026-09-21).
+/// hình hay không (lối B, người dùng chốt 2026-09-21), và từ 2026-09-30 cả ô
+/// Nhập nhanh màn Thêm giao dịch (`DocCauBangAi`, C2).
 ///
 /// ⚠️ **Kế hoạch P3 viết khoá này là `SharedPreferences`, nhưng dự án KHÔNG có
 /// gói ấy** (đo `pubspec.yaml` ngày 2026-09-22). Nơi lưu tuỳ chọn của dự án là

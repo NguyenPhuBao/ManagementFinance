@@ -37,6 +37,7 @@ import '../domain/goi_so_ngan_sach.dart';
 import '../domain/goi_so_phan_tich.dart';
 import '../domain/goi_so_trang_chu.dart';
 import '../domain/goi_so_vi.dart';
+import '../domain/ma_ky.dart';
 
 /// Ví entity → kiểu thuần của gói số (gói số cố ý không biết `WalletEntity`).
 /// Một chỗ chép cho cả `NguonGoiSo` (gói ví) lẫn tool `danh_sach_vi` (chặng
@@ -115,7 +116,8 @@ class NguonGoiSo {
     final viChoGoi = viChoGoiSoTu(vis);
 
     return [
-      GoiSoPhanTich.tu(tk),
+      // G5 (b) cổng F: gói luôn là tháng hiện tại → số của kỳ mang chữ kỳ ấy.
+      GoiSoPhanTich.tu(tk, chuKy: kMaKy['thang_nay']!),
       GoiSoNganSach.tu(dangChay, now: moc),
       GoiSoMucTieu.tu(goals, now: moc),
       GoiSoHoaDon.tu(bills, now: moc),

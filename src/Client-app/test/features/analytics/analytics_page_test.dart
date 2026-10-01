@@ -8,6 +8,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/domain/tong_tai_san.dart';
+import 'package:flowmoney/features/analytics/domain/uoc_tinh_chi_tuy_y.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -111,6 +113,7 @@ ThongKeKy _tk({
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
   DuBaoDongTien? duBao,
+  UocTinhChiTuyY? uocTinhChiTuyY,
   Map<DateTime, NgayChiTieu> lich = const {},
   List<DiemTaiSan>? taiSan,
   DateTime? giaoDichDauTien,
@@ -148,6 +151,7 @@ ThongKeKy _tk({
       lichChiTieu: lich,
       dongTien: dongTien,
       duBao: duBao,
+      uocTinhChiTuyY: uocTinhChiTuyY,
       // Mặc định là sáu điểm phẳng — đúng cấu trúc thật, để MỌI ca của trang
       // đi qua nhánh có khối tài sản thay vì nhánh "chưa có chuỗi"; đó là cách
       // các ca cũ bắt được tràn bố cục do khối mới gây ra.
@@ -219,6 +223,70 @@ DuBaoDongTien _duBao({
   );
 }
 
+/// Nhãn trục tung của biểu đồ trong khối có tiêu đề [tieuDe] không được chồng
+/// lên nhau, và đôi một khác chuỗi (G53).
+///
+/// fl_chart dựng nhãn trục bằng widget `Text`, nên lấy được **hộp** thật của
+/// từng nhãn — lỗi in đè tái hiện được ngay trong `flutter test`. Nhãn trục tung
+/// nhận ra bằng dạng chuỗi `rutGon`; nhãn trục hoành (tên nhóm, tên kỳ) không
+/// khớp dạng ấy.
+void _nhanTrucTungKhongChong(
+  WidgetTester tester,
+  String tieuDe,
+  Type loaiBieuDo, {
+  required String boiCanh,
+}) {
+  final khoi = find
+      .ancestor(of: find.text(tieuDe), matching: find.byType(Column))
+      .first;
+  final bieuDo = find.descendant(of: khoi, matching: find.byType(loaiBieuDo));
+  expect(bieuDo, findsOneWidget);
+  final laNhanTruc = RegExp(r'^-?\d+(\.\d)?[KMB]?$');
+  final nhan = [
+    for (final e
+        in find.descendant(of: bieuDo, matching: find.byType(Text)).evaluate())
+      if (laNhanTruc.hasMatch((e.widget as Text).data ?? ''))
+        (
+          chu: (e.widget as Text).data!,
+          hop: tester.getRect(find.byWidget(e.widget)),
+        ),
+  ]..sort((a, b) => a.hop.top.compareTo(b.hop.top));
+
+  expect(nhan.length, greaterThanOrEqualTo(3));
+  for (var i = 1; i < nhan.length; i++) {
+    expect(nhan[i].hop.top, greaterThanOrEqualTo(nhan[i - 1].hop.bottom),
+        reason: '"${nhan[i - 1].chu}" và "${nhan[i].chu}" in đè lên nhau. '
+            'fl_chart vẽ nhãn ở hai biên CỘNG các bội của `interval` tính từ 0 '
+            '(bẫy 4.18). $boiCanh');
+  }
+  expect({for (final n in nhan) n.chu}.length, nhan.length,
+      reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
+}
+
+/// Mọi `LineChart` có vẽ CHẤM chỉ được cắt trên/dưới, không cắt trái/phải (G55).
+///
+/// `FlClipData.all()` cắt đúng theo mép vùng vẽ, nên chấm của kỳ đầu và kỳ cuối
+/// — nằm đúng `minX`/`maxX` — mất một nửa (Realme 2026-09-29, chấm T4). Trục
+/// ngang không thể thoát khỏi khung vì `minX`/`maxX` là đúng chỉ số đầu/cuối;
+/// trục dọc giữ lớp phòng thủ của bẫy 4.17 (người dùng chọn). Trả số biểu đồ có
+/// chấm đã kiểm, để nơi gọi đòi đủ số — không thì một bản sai giấu hết chấm
+/// cũng xanh.
+int kiemCatKhungBieuDoCoCham(WidgetTester tester) {
+  var soCoCham = 0;
+  for (final e in find.byType(LineChart).evaluate()) {
+    final data = (e.widget as LineChart).data;
+    if (!data.lineBarsData.any((b) => b.dotData.show)) continue;
+    soCoCham++;
+    final c = data.clipData;
+    expect((c.left, c.right), (false, false),
+        reason: 'Cắt trái/phải là mất nửa chấm của kỳ đầu và kỳ cuối (G55).');
+    expect((c.top, c.bottom), (true, true),
+        reason: 'Trục dọc giữ phòng thủ của bẫy 4.17: điểm ngoài dải vẫn được '
+            'VẼ nếu không cắt, và từng tràn khỏi thẻ (2026-09-09).');
+  }
+  return soCoCham;
+}
+
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
 /// ba thì trang hiện đủ ba chip.
 const _baLat = [
@@ -271,6 +339,19 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  testWidgets('⚠️ biểu đồ đường có chấm không cắt mép trái/phải (G55)',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 6000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(kiemCatKhungBieuDoCoCham(tester), 3,
+        reason: 'Xu hướng, Dòng tiền tự do, Tổng tài sản — ba biểu đồ đường có '
+            'chấm của trang (Dự báo không vẽ chấm).');
+  });
 
   testWidgets('header không vẽ icon menu chết', (tester) async {
     await moTrang(tester);
@@ -1613,6 +1694,103 @@ void main() {
           reason: 'Chín cột trên 411dp là chỗ chật nhất của trang; Flutter báo '
               'tràn qua reportError chứ không ném ra chỗ gọi.');
     });
+
+    testWidgets('⚠️ số dư đầu kỳ ÂM: nhãn trục tung không chồng lên nhau (G53)',
+        (tester) async {
+      // Số thật đọc trên Realme 2026-09-29, tài khoản 10, tháng 9: ví Tiền mặt
+      // âm nên đầu kỳ −10.490.000; −10.490.000 + 14.635.000 − 6.501.000 =
+      // −2.356.000 (phép cân của `thacNuocCua`).
+      await moCaoVaPhat(
+        tester,
+        _tk(
+          thu: 14635000,
+          chi: 6501000,
+          dongTien: const DongTien(dauKy: -10490000, cuoiKy: -2356000),
+          danhMuc: [
+            _dm('c1', 'Ăn uống', 5020000, 0.77),
+            _dm('c2', 'Nhà cửa', 1000000, 0.15),
+            _dm('c3', 'Di chuyển', 481000, 0.08),
+          ],
+        ),
+      );
+
+      _nhanTrucTungKhongChong(tester, 'Tiền đi đâu', BarChart,
+          boiCanh: 'Biên dưới âm và lẻ làm biên trên lệch khỏi mọi bội — thấy '
+              'thật trên Realme, "5.9M" chồng "5.5M".');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        '⚠️ 360dp: nhãn trục hoành MỘT dòng, xoay −35° như Stitch, không chồng nhau (G54)',
+        (tester) async {
+      // Realme 360dp: chín cột mỗi cột chỉ còn ~27dp mà ô nhãn cũ rộng 32dp hai
+      // dòng — "Di chuyển" dính "Chưa phân l…" thành "chuyểnphân l…".
+      tester.view.physicalSize = const Size(360, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, tkThacNuoc());
+
+      final bieuDo = find.descendant(
+        of: find
+            .ancestor(of: find.text('Tiền đi đâu'), matching: find.byType(Column))
+            .first,
+        matching: find.byType(BarChart),
+      );
+      const tenCot = {
+        'Đầu kỳ', '+Thu', 'Chưa phân loại', 'Di chuyển', 'Mua sắm', //
+        'Danh mục đã xoá', 'Ăn uống', 'Khác', 'Cuối kỳ',
+      };
+      final nhan = [
+        for (final e
+            in find.descendant(of: bieuDo, matching: find.byType(Text)).evaluate())
+          if (tenCot.contains((e.widget as Text).data)) e,
+      ];
+      expect(nhan.length, 9, reason: 'đủ chín nhãn trục hoành');
+
+      double gocCua(Element e) {
+        Transform? t;
+        e.visitAncestorElements((a) {
+          if (a.widget is BarChart) return false;
+          if (a.widget is Transform) {
+            t = a.widget as Transform;
+            return false;
+          }
+          return true;
+        });
+        final m = t?.transform.storage;
+        return m == null ? 0 : math.atan2(m[1], m[0]);
+      }
+
+      // Điểm NEO của mỗi nhãn là góc trên-phải sau khi xoay (đầu chữ neo ở tâm
+      // cột). Đo tâm chữ thì sai: chữ dài ngắn khác nhau nên tâm lệch nhau.
+      final neo = [
+        for (final e in nhan)
+          () {
+            final hop = tester.renderObject<RenderBox>(find.byWidget(e.widget));
+            return hop.localToGlobal(Offset(hop.size.width, 0));
+          }(),
+      ]..sort((a, b) => a.dx.compareTo(b.dx));
+      var buocCot = double.infinity;
+      for (var i = 1; i < neo.length; i++) {
+        buocCot = math.min(buocCot, neo[i].dx - neo[i - 1].dx);
+        expect(neo[i].dy, closeTo(neo[0].dy, 0.5),
+            reason: 'mọi nhãn neo trên cùng một đường ngay dưới trục');
+      }
+      for (final e in nhan) {
+        final t = e.widget as Text;
+        expect(t.maxLines, 1, reason: '"${t.data}" phải một dòng như màn Stitch');
+        final goc = gocCua(e);
+        expect(goc, closeTo(-35 * math.pi / 180, 1e-6),
+            reason: '"${t.data}" phải xoay −35° (Stitch 52450ac5…)');
+        final cao = tester.getSize(find.byWidget(t)).height;
+        expect(buocCot * math.sin(goc).abs(), greaterThanOrEqualTo(cao),
+            reason: 'Hai nhãn song song lệch nhau $buocCot theo phương ngang '
+                'thì cách nhau ${buocCot * math.sin(goc).abs()} theo phương '
+                'vuông góc — nhỏ hơn chiều cao chữ ($cao) là chồng lên nhau.');
+      }
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Tỉ lệ tiết kiệm', () {
@@ -1649,6 +1827,19 @@ void main() {
           reason: '(20tr − 5tr vay − 10tr chi) / 15tr. Dùng nguyên tong.thu sẽ '
               'ra 50% — tháng đi vay lại trông tiết kiệm hơn thật.');
       expect(find.text('Để dành 50% thu nhập'), findsNothing);
+    });
+
+    testWidgets('⚠️ chi từ 2 lần thu nhập → "Chi gấp N lần thu nhập" (G56)',
+        (tester) async {
+      await moTrang(tester);
+      // Thu nhập 20.000, chi 5.292.000 — tuần gần như không thu nhập trên
+      // Realme; bản cũ in "Để dành -26360% thu nhập".
+      await phat(tester, _tk(thu: 20000, chi: 5292000));
+
+      expect(find.text('Chi gấp 265 lần thu nhập'), findsOneWidget);
+      expect(find.textContaining('Để dành'), findsNothing,
+          reason: 'một đại lượng, một cách nói — phần trăm âm năm chữ số là '
+              'thứ G56 bỏ đi');
     });
 
     testWidgets('chi vượt thu nhập thì tỉ lệ ÂM, không kẹp về 0',
@@ -1765,6 +1956,35 @@ void main() {
 
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+
+    testWidgets('⚠️ kỳ âm NHỎ: nhãn sàn không đè nhãn 0 (cùng cơ chế G53)',
+        (tester) async {
+      // Năm tháng thu 5.000.000, tháng cuối thu 0 mà trả nợ 100.000 → tự do
+      // −100.000. Bản cũ đặt sàn = đáy × 1,15 = −115.000 (không phải bội của
+      // bước 1.955.000), nên "-115K" đứng cách mốc "0" chừng ba điểm ảnh.
+      final cs = chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
+      final cuoi = cs.length - 1;
+      await moCaoVaPhat(
+        tester,
+        _tk(
+          chuoi: [
+            for (var i = 0; i < cs.length; i++)
+              DiemThoiGian(
+                ky: cs[i].ky,
+                tong: TongThuChi(thu: i == cuoi ? 0 : 5000000, chi: 0),
+              ),
+          ],
+          chuoiVayNo: [
+            for (var i = 0; i < cs.length; i++)
+              DiemVayNo(ky: cs[i].ky, traNo: i == cuoi ? 100000 : 0),
+          ],
+        ),
+      );
+
+      _nhanTrucTungKhongChong(tester, 'Dòng tiền tự do 6 tháng', LineChart,
+          boiCanh: 'Sàn âm lẻ (đáy × 1,15) đứng sát mốc 0.');
+      expect(tester.takeException(), isNull);
     });
   });
 
@@ -1894,6 +2114,92 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
     });
+
+    // ── B4: tầng 3 "ước tính theo thói quen" (2026-09-29) ──────────────────
+    // Một dòng chữ phụ dưới hai con số, theo màn Stitch `7aa215e9…`. "Còn
+    // khoảng" trừ từ `conTieuDuocTheoNganSach` — tầng 3 đứng SAU hai tầng đầu,
+    // nên phần nó bớt đi là phần còn lại sau cam kết và ngân sách.
+
+    const uoc8Tuan = UocTinhChiTuyY(thap: 1290000, cao: 2140000, soTuan: 8);
+
+    testWidgets(
+        '⭐ có ước tính: một dòng đủ bốn số — chi thêm thấp – cao, còn '
+        '(gốc − cao) – (gốc − thấp)', (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000),
+              uocTinhChiTuyY: uoc8Tuan));
+
+      // Gốc = 7.130.000 − 1.200.000 = 5.930.000 (ca đầu nhóm).
+      // 5.930.000 − 2.140.000 = 3.790.000 · 5.930.000 − 1.290.000 = 4.640.000
+      expect(
+          find.text('Nếu tiêu như thói quen (8 tuần gần nhất): chi thêm khoảng '
+              '1.290.000 đ – 2.140.000 đ, còn khoảng 3.790.000 đ – 4.640.000 đ.'),
+          findsOneWidget,
+          reason: 'Hai số "còn khoảng" đảo thứ tự so với "chi thêm": tiêu nhiều '
+              'nhất (cao) thì còn ít nhất.');
+      // Hai con số cũ KHÔNG đổi — tầng 3 không được mượn chỗ của chúng.
+      expect(find.text('7.130.000 đ'), findsOneWidget);
+      expect(find.text('5.930.000 đ'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ ước tính null thì IM HẲN — khối y hệt bản trước B4',
+        (tester) async {
+      await moCaoVaPhat(
+          tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
+
+      expect(find.textContaining('Nếu tiêu như thói quen'), findsNothing,
+          reason: '`null` = chưa đủ tuần hoặc có ngân sách tổng — không được '
+              'in một khoảng 0 – 0 thay cho "chưa biết".');
+      expect(find.text('Còn tiêu được'), findsOneWidget);
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsOneWidget);
+      expect(find.text('7.130.000 đ'), findsOneWidget);
+    });
+
+    testWidgets(
+        'không có ngân sách: dòng vẫn hiện, gốc là "Còn tiêu được"; số âm mang '
+        'dấu trừ, không kẹp về 0', (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(soDu: 1000000),
+              uocTinhChiTuyY:
+                  const UocTinhChiTuyY(thap: 800000, cao: 1500000, soTuan: 5)));
+
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsNothing);
+      // 1.000.000 − 1.500.000 = −500.000 · 1.000.000 − 800.000 = 200.000
+      expect(
+          find.text('Nếu tiêu như thói quen (5 tuần gần nhất): chi thêm khoảng '
+              '800.000 đ – 1.500.000 đ, còn khoảng -500.000 đ – 200.000 đ.'),
+          findsOneWidget,
+          reason: 'Luật của khối Dự báo: con số được phép âm — kẹp về 0 là '
+              'giấu đúng điều người dùng cần biết.');
+    });
+
+    for (final rong in [411.0, 360.0]) {
+      testWidgets('dòng ước tính với số rất lớn không tràn ở ${rong.toInt()}dp',
+          (tester) async {
+        tester.view.physicalSize = Size(rong, 4000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await moTrang(tester);
+        await phat(
+            tester,
+            _tk(
+                duBao: _duBao(
+                    soDu: 1234567890,
+                    camKet: sauCamKet,
+                    nganSachConLai: 987654321),
+                uocTinhChiTuyY: const UocTinhChiTuyY(
+                    thap: 987654320, cao: 1234567890, soTuan: 12)));
+
+        expect(find.textContaining('Nếu tiêu như thói quen (12 tuần gần nhất)'),
+            findsOneWidget);
+        expect(tester.takeException(), isNull,
+            reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+      });
+    }
   });
 
   group('Tổng tài sản theo thời gian (#5)', () {

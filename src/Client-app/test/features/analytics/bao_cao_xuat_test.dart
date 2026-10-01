@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 
 void main() {
   DongGiaoDich g({
@@ -210,6 +211,28 @@ void main() {
         nganSach: const [ns],
       );
       expect(inKhoiTheoKy(bc), isTrue);
+    });
+  });
+
+  group('khoangCungKyNamTruoc — trọn tháng thì lùi theo LỊCH, còn lại giữ độ dài', () {
+    test('trọn tháng 2 nhuận → trọn tháng 2 năm thường (28 ngày, không tràn sang 1/3)', () {
+      expect(
+        khoangCungKyNamTruoc(from: DateTime(2028, 2, 1), to: DateTime(2028, 3, 1)),
+        (from: DateTime(2027, 2, 1), to: DateTime(2027, 3, 1)),
+      );
+    });
+    test('trọn ba tháng vắt qua năm', () {
+      expect(
+        khoangCungKyNamTruoc(from: DateTime(2025, 12, 1), to: DateTime(2026, 3, 1)),
+        (from: DateTime(2024, 12, 1), to: DateTime(2025, 3, 1)),
+      );
+    });
+    test('khoảng lẻ giữ nguyên độ dài — cùng phép với cungKyNamTruoc(Ky.tuyChon)', () {
+      final from = DateTime(2026, 9, 5);
+      final to = DateTime(2026, 9, 20);
+      final k = cungKyNamTruoc(Ky.tuyChon(from: from, to: to));
+      expect(khoangCungKyNamTruoc(from: from, to: to), (from: k.from, to: k.to));
+      expect(k.to.difference(k.from), to.difference(from));
     });
   });
 

@@ -5,6 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/core/sync/sync_engine.dart';
+
+class _SyncGia implements SyncEngine {
+  int soLan = 0;
+  @override
+  void scheduleSync() => soLan++;
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
 
 void main() {
   late AppDatabase db;
@@ -41,6 +50,37 @@ void main() {
   });
 
   tearDown(() => db.close());
+
+  test('⭐ saveKeywords đánh dấu danh mục pending + scheduleSync — không thì từ khoá không bao giờ lên server', () async {
+    // Từ khoá đi TRONG payload danh mục (`sync_engine.dart` ~1187); trước 2026-09-30 sửa từ khoá không đổi syncStatus nên
+    // chỉ lên server khi danh mục bị sửa vì lý do khác (spec đề xuất từ khoá §3).
+    final sync = _SyncGia();
+    repository = CategoryManagementRepositoryImpl(db: db, syncEngine: sync);
+    Future<void> them(String id, {bool isDefault = false}) => db.categoryDao.insert(CategoriesCompanion.insert(
+          id: id,
+          idaccount: isDefault ? 0 : 1,
+          name: id,
+          classify: 'chi',
+          isDefault: Value(isDefault),
+          isLocalOnly: const Value(false),
+          syncStatus: const Value('synced'),
+          updatedAt: DateTime(2026, 8, 21),
+        ));
+    await them('cat-tea');
+    await them('cat-default', isDefault: true);
+
+    await repository.saveKeywords(accountId: 1, categoryId: 'cat-tea', keywords: ['trà sữa']);
+    final tea = (await db.categoryDao.getById('cat-tea'))!;
+    expect(tea.syncStatus, 'pending');
+    expect(tea.updatedAt.isAfter(DateTime(2026, 8, 21)), isTrue,
+        reason: 'LWW: cùng mốc update_at thì server trả xung đột và giữ bản của nó');
+    expect(sync.soLan, 1);
+    expect(await repository.loadKeywords(accountId: 1, categoryId: 'cat-tea'), ['trà sữa']);
+
+    await repository.saveKeywords(accountId: 1, categoryId: 'cat-default', keywords: ['x']);
+    expect((await db.categoryDao.getById('cat-default'))!.syncStatus, 'synced',
+        reason: 'hàng mặc định toàn cục (idaccount 0) không bao giờ được đẩy');
+  });
 
   test('deleting a group ungroups children and soft-deletes only the group',
       () async {

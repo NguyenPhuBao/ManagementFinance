@@ -78,6 +78,7 @@ void main() {
               categoryId: 'c2', tenDanhMuc: 'Giải trí', mucThang: 50000),
         ],
         soNgayCuaSo: 20,
+        soUngVien: 1,
       ),
       thieu: null,
     );
@@ -98,6 +99,7 @@ void main() {
               categoryId: 'c2', tenDanhMuc: 'Giải trí', mucThang: 50000),
         ],
         soNgayCuaSo: 20,
+        soUngVien: 1,
       ),
       thieu: 4,
     );

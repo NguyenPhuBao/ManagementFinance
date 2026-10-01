@@ -72,4 +72,53 @@ void main() {
         reason: 'thiếu chốt rỗng thì "" khớp đúng tên rỗng — tool nhận một tham '
             'số trống như một lựa chọn');
   });
+
+  // Dời từ chinh_tham_so.dart (C2 task 4, 2026-09-29) — các ca hành vi của tenNeuTrongCau vẫn nằm ở
+  // chinh_tham_so_test nhóm 19; ở đây là phần MỚI: vị trí trong câu, cho ô Nhập nhanh bỏ đúng đoạn ấy khỏi ghi chú.
+  group('timTenTrongCau — tên có thật nằm trong câu, kèm vị trí', () {
+    test('vị trí trỏ đúng đoạn tên trong câu gốc (có dấu, chữ hoa)', () {
+      const cau = 'Ăn trưa 45k ví Techcombank nhé';
+      final k = timTenTrongCau(cau, ['Techcombank', 'Tiền mặt'], tuLoai: 'ví')!;
+      expect(k.ten, 'Techcombank');
+      expect(cau.substring(k.batDau, k.ketThuc), 'Techcombank');
+    });
+
+    test('câu chưa gom khoảng trắng vẫn khớp tên nhiều từ', () {
+      const cau = '45k   tiền    mặt';
+      final k = timTenTrongCau(cau, ['Tiền mặt'], tuLoai: 'ví')!;
+      expect(cau.substring(k.batDau, k.ketThuc), 'tiền    mặt');
+    });
+
+    test('tên ngắn: đoạn gồm cả từ loại đứng trước', () {
+      const cau = '45k ví MB';
+      final k = timTenTrongCau(cau, ['MB'], tuLoai: 'ví')!;
+      expect(cau.substring(k.batDau, k.ketThuc), 'ví MB');
+      expect(timTenTrongCau('45k MB', ['MB'], tuLoai: 'ví'), isNull);
+    });
+
+    test('không khớp giữa từ khác: "Kiem" trong "tiết kiệm"', () {
+      expect(timTenTrongCau('ví tiết kiệm', ['Kiem'], tuLoai: 'hoá đơn'), isNull);
+    });
+  });
+
+  // C2 chuyển ví (người dùng báo 2026-09-30): câu chuyển nêu HAI ví — cần mọi tên, theo thứ tự trong câu.
+  group('timCacTenTrongCau — MỌI tên có thật trong câu, theo vị trí', () {
+    test('hai tên → cả hai, theo thứ tự trong câu (không theo độ dài), kèm vị trí', () {
+      const cau = 'chuyển 500k từ Tiền mặt sang Tiết kiệm';
+      final r = timCacTenTrongCau(cau, ['Tiết kiệm', 'Tiền mặt', 'tiết kiệm mua nhà'], tuLoai: 'ví');
+      expect([for (final t in r) t.ten], ['Tiền mặt', 'Tiết kiệm']);
+      expect(cau.substring(r[1].batDau, r[1].ketThuc), 'Tiết kiệm');
+    });
+
+    test('tên dài thắng tên ngắn nằm trong nó — không đếm hai lần', () {
+      final r = timCacTenTrongCau('chuyển sang tiết kiệm mua nhà', ['Tiết kiệm', 'tiết kiệm mua nhà'], tuLoai: 'ví');
+      expect([for (final t in r) t.ten], ['tiết kiệm mua nhà']);
+    });
+
+    test('không tên nào → rỗng; tên ngắn chỉ nhận ngay sau từ loại', () {
+      expect(timCacTenTrongCau('ăn phở 45k', ['Tiết kiệm'], tuLoai: 'ví'), isEmpty);
+      expect(timCacTenTrongCau('45k MB', ['MB'], tuLoai: 'ví'), isEmpty);
+      expect(timCacTenTrongCau('45k ví MB', ['MB'], tuLoai: 'ví').single.ten, 'MB');
+    });
+  });
 }

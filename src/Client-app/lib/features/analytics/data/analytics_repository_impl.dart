@@ -1,23 +1,34 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../../budget/domain/cua_so_nhin_lai.dart';
+import '../../bill/domain/bill_note.dart';
+import '../../bill/domain/de_xuat_hoa_don.dart' show kGoiYDaTao;
+import '../../transaction/domain/khoan_lap.dart' show khoaNhomCua;
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../goal/data/models/goal_entity.dart';
 import '../domain/bao_cao_xuat.dart';
+import '../domain/chi_bat_thuong.dart';
 import '../domain/du_bao_dong_tien.dart';
 import '../domain/khoan_vao_thong_ke.dart';
 import '../domain/lich_chi_tieu.dart';
+import '../domain/nguong_co_nghia.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
+import '../domain/thu_nhap_moi_thang.dart';
 import '../domain/tong_tai_san.dart';
+import '../domain/uoc_tinh_chi_tuy_y.dart';
 import 'analytics_repository.dart';
 
-/// Gộp **bảy** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
-/// (mốc kỳ đang xem), ví, hoá đơn, mục tiêu, và ngân sách (mốc hôm nay).
+/// Gộp **tám** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
+/// (mốc kỳ đang xem), ví, hoá đơn, mục tiêu, ngân sách (mốc hôm nay), và phản
+/// hồi thẻ khoản lặp của B2.
 ///
 /// Ví là nguồn thứ tư, thêm 2026-09-15 (P2): ba trong bốn khối mượn từ trang
 /// Xuất báo cáo cần nó — "phân bổ theo ví" cần **tên** ví, "dòng tiền" cần
@@ -27,9 +38,12 @@ import 'analytics_repository.dart';
 /// bảy là ngân sách tra tại `now` — ⚠️ **không dùng chung** nguồn thứ ba, xem
 /// chú thích trong [watchKy].
 ///
+/// Nguồn thứ tám thêm 2026-09-29 (B4): tầng 3 khối Dự báo bỏ lịch sử nhập tay
+/// của những nhóm lặp người dùng đã tạo thành hoá đơn — hoá đơn ấy đã ở tầng 1.
+///
 /// Cùng khuôn với `BudgetRepositoryImpl.watchBudgets`: một controller, mỗi
-/// nguồn một subscription, phát khi **cả bảy** đã có dữ liệu. Không dùng thư
-/// viện rx; dự án không có và bảy stream không đáng kéo thêm một phụ thuộc.
+/// nguồn một subscription, phát khi **cả tám** đã có dữ liệu. Không dùng thư
+/// viện rx; dự án không có và tám stream không đáng kéo thêm một phụ thuộc.
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
   final AppDatabase db;
   final BudgetRepository budgetRepository;
@@ -68,6 +82,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // dự báo đúng khi xem tháng này và SAI khi xem tháng khác — không lỗi nào
     // báo (bẫy 1 spec dự báo).
     List<BudgetView>? nganSachHomNay;
+    // Khoá nhóm lặp đã thành hoá đơn (B2 `da_tao`) — xem [dungKhoan].
+    Set<String>? khoaLapDaTao;
 
     void push() {
       if (txs == null ||
@@ -76,7 +92,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           vi == null ||
           hoaDon == null ||
           mucTieu == null ||
-          nganSachHomNay == null) {
+          nganSachHomNay == null ||
+          khoaLapDaTao == null) {
         return;
       }
       if (controller.isClosed) return;
@@ -94,6 +111,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           hoaDon: hoaDon!,
           mucTieu: mucTieu!,
           nganSachHomNay: nganSachHomNay!,
+          khoaLapDaTao: khoaLapDaTao!,
         ));
       } catch (e, s) {
         if (!controller.isClosed) controller.addError(e, s);
@@ -144,7 +162,19 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       push();
     }, onError: controller.addError);
 
+    // Nguồn thứ tám (B4). Phản hồi `bo_qua` không đổi gì ở đây: chỉ nhóm đã
+    // thành hoá đơn mới có mặt ở tầng 1.
+    final subKhoaLap =
+        db.goiYHoaDonDao.watchAll(idaccount).listen((rows) {
+      khoaLapDaTao = {
+        for (final p in rows)
+          if (p.ketQua == kGoiYDaTao) p.khoaNhom,
+      };
+      push();
+    }, onError: controller.addError);
+
     controller.onCancel = () async {
+      await subKhoaLap.cancel();
       await subVi.cancel();
       await subTx.cancel();
       await subCat.cancel();
@@ -156,19 +186,17 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return controller.stream;
   }
 
-  ThongKeKy _dung({
-    required Ky ky,
+  /// Hàng Drift → khoản thuần của tầng thống kê. Tách khỏi `_dung` (B4) để
+  /// test được trực tiếp: `laKhoanCamKet` là thứ im lặng nếu sai.
+  ///
+  /// [khoaLapDaTao]: khoá nhóm (`khoaNhomCua`, định nghĩa duy nhất của B2) mà
+  /// người dùng đã bấm *Tạo* hoá đơn. [now] chỉ để gọi `khoaNhomCua`.
+  @visibleForTesting
+  static List<KhoanThuChi> dungKhoan(
+    List<Transaction> txs,
+    List<Category> cats, {
     required DateTime now,
-    required DateTime fromTruoc,
-    required DateTime toTruoc,
-    required DateTime mocNganSach,
-    required List<Transaction> txs,
-    required List<Category> cats,
-    required List<BudgetView> nganSach,
-    required List<Wallet> vi,
-    required List<Bill> hoaDon,
-    required List<Goal> mucTieu,
-    required List<BudgetView> nganSachHomNay,
+    Set<String> khoaLapDaTao = const {},
   }) {
     // `amount` lưu dương ở client (nhánh pull gọi `.abs()`), cộng thẳng —
     // cùng luật với `BudgetLocalDataSourceImpl.sumExpenses`.
@@ -177,10 +205,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // cũ trỏ vào danh mục đã xoá vẫn tra được `classify`. Thiếu bảng tra này
     // thì mọi khoản Trả nợ rơi về lát "chi" và vòng tròn nói sai tỷ trọng.
     final classifyTheoId = {for (final c in cats) c.id: c.classify};
-    // Bảng tra TÊN, dựng cạnh bảng tra `classify` vì `khoan` cần cả hai và nó
-    // được dựng trước `danhMucTheoId` ở dưới.
     final tenTheoId = {for (final c in cats) c.id: c.name};
-    final khoan = [
+    return [
       for (final t in txs)
         KhoanThuChi(
           ngay: t.date,
@@ -196,16 +222,64 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           // *cho vay · thu nợ · đi vay · trả nợ* không có chỗ nào lưu.
           tenDanhMuc:
               t.categoryId == null ? null : tenTheoId[t.categoryId],
+          // B4: lịch sử trả hoá đơn / nạp mục tiêu đã ở tầng 1 khối Dự báo.
+          laKhoanCamKet: _laKhoanCamKet(t, now: now, khoaLapDaTao: khoaLapDaTao),
         ),
     ];
+  }
+
+  /// Ba dấu hiệu, mỗi cái một đường một khoản chi thành "đã ở tầng 1":
+  ///
+  /// 1. `billId` / `goalId` — khoản do luồng trả hoá đơn / nạp mục tiêu sinh ra.
+  /// 2. ⚠️ Tiền tố [kGhiChuTraHoaDon] ở **đầu** ghi chú — hàng trả hoá đơn ghi
+  ///    trước 2026-09-12, khi cột nối chưa đi qua đồng bộ; đo trên Realme
+  ///    2026-09-29: ba hàng như thế trong cửa sổ 90 ngày. Cùng cách G50 nhận
+  ///    cặp nạp mục tiêu dạng cũ. Chỉ tầng 3 đọc dấu hiệu này — thống kê chi vẫn
+  ///    đếm các khoản ấy như cũ.
+  /// 3. ⚠️ Khoá nhóm nằm trong [khoaLapDaTao] — khoản nhập tay của một khoản
+  ///    lặp mà B2 đã tạo thành hoá đơn. Hoá đơn ấy ở tầng 1, còn lịch sử nhập
+  ///    tay của nó không mang `billId`, nên thiếu vế này là tầng 3 đếm đôi đúng
+  ///    khoản lớn nhất (tiền nhà 3.000.000 trên Realme). `da_tao` là vĩnh viễn,
+  ///    cùng luật ẩn thẻ gợi ý của B2: xoá hoá đơn sau đó thì khoản cũ vẫn bị
+  ///    bỏ khỏi tầng 3 — ước tính thấp hơn, không đếm đôi.
+  static bool _laKhoanCamKet(
+    Transaction t, {
+    required DateTime now,
+    required Set<String> khoaLapDaTao,
+  }) {
+    if (t.billId != null || t.goalId != null) return true;
+    if (t.note.trimLeft().startsWith(kGhiChuTraHoaDon)) return true;
+    if (khoaLapDaTao.isEmpty) return false;
+    final khoa = khoaNhomCua(t, now: now);
+    return khoa != null && khoaLapDaTao.contains(khoa);
+  }
+
+  ThongKeKy _dung({
+    required Ky ky,
+    required DateTime now,
+    required DateTime fromTruoc,
+    required DateTime toTruoc,
+    required DateTime mocNganSach,
+    required List<Transaction> txs,
+    required List<Category> cats,
+    required List<BudgetView> nganSach,
+    required List<Wallet> vi,
+    required List<Bill> hoaDon,
+    required List<Goal> mucTieu,
+    required List<BudgetView> nganSachHomNay,
+    required Set<String> khoaLapDaTao,
+  }) {
+    // Bảng tra TÊN cho dòng chi bất thường (B3) ở cuối hàm.
+    final tenTheoId = {for (final c in cats) c.id: c.name};
+    final khoan = dungKhoan(txs, cats, now: now, khoaLapDaTao: khoaLapDaTao);
 
     final from = ky.from;
     final to = ky.to;
 
     final tong = tongThuChi(khoan, from: from, to: to);
     final tongTruoc = tongThuChi(khoan, from: fromTruoc, to: toTruoc);
-    // Mốc so sánh thứ hai (#2 khảo sát, 2026-09-16). **Không** cần nguồn stream
-    // thứ tám: `khoan` là TOÀN BỘ giao dịch của tài khoản (xem chỗ đăng ký
+    // Mốc so sánh thứ hai (#2 khảo sát, 2026-09-16). **Không** cần thêm nguồn
+    // stream: `khoan` là TOÀN BỘ giao dịch của tài khoản (xem chỗ đăng ký
     // `subTx`), nên kỳ năm trước chỉ là một lời gọi nữa trên đúng danh sách ấy.
     final nt = cungKyNamTruoc(ky);
     final tongNamTruoc = tongThuChi(khoan, from: nt.from, to: nt.to);
@@ -416,8 +490,45 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       }
     }
 
+    // ── B3: chi bất thường theo danh mục (2026-09-29) ─────────────────────
+    // Chỉ khi kỳ là MỘT tháng dương lịch (cùng lý do `gapNganSach`): B3 so cả
+    // tháng với các tháng trước, tuần / quý / năm không có nghĩa ấy. Dựng từ
+    // `khoan` — TOÀN BỘ giao dịch — không đọc CSDL lần nữa: stream này phát
+    // lại sau mọi chu kỳ đồng bộ. Ngưỡng dùng CÙNG phép neo với luật tái phân
+    // bổ; mốc cửa sổ là `giaoDichDauTien` của `txs` (đã lọc xoá mềm — bẫy 3 của
+    // cửa sổ nhìn lại).
+    // Cửa sổ nhìn lại dùng chung cho B3 (chỉ khi Tháng) và B4 (mọi đơn vị).
+    final cuaSo = cuaSoNhinLai(now, giaoDichDauTien);
+    List<DongChiBatThuong>? batThuong;
+    if (ky.donVi == DonViKy.thang) {
+      final nguong =
+          nguongCoNghia(cuaSo == null ? 0 : thuNhapMoiThangTu(khoan, cuaSo));
+      batThuong = [
+        for (final d in chiBatThuong(khoan, thang: ky.from, now: now, nguong: nguong))
+          (d: d, ten: tenTheoId[d.categoryId] ?? 'Danh mục đã xoá'),
+      ];
+    }
+
+    // ── B4: tầng 3 khối Dự báo — chi tuỳ ý theo thói quen (2026-09-29) ────
+    // Tra ngân sách tại `now` như tầng 2 (`nganSachHomNay`) và bằng CHÍNH phép
+    // chọn của tầng 2 (`nganSachDangChay`): lệch là danh mục rơi vào khe giữa
+    // hai tầng hoặc bị đếm đôi. Không theo kỳ đang xem.
+    final dangChay = nganSachDangChay(nganSachHomNay, now);
+    final uocTinh = uocTinhChiTuyY(
+      khoan,
+      now: now,
+      cuaSo: cuaSo,
+      danhMucCoNganSach: {
+        for (final b in dangChay)
+          if (b.categoryId != null) b.categoryId!,
+      },
+      coNganSachTong: dangChay.any((b) => b.categoryId == null),
+    );
+
     return ThongKeKy(
       ky: ky,
+      chiBatThuong: batThuong,
+      uocTinhChiTuyY: uocTinh,
       taiSan: taiSan,
       giaoDichDauTien: giaoDichDauTien,
       duBao: duBao,

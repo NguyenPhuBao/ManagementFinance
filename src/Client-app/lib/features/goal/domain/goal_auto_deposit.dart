@@ -7,6 +7,29 @@
 /// được mà không cần dựng CSDL.
 library;
 
+import '../../wallet/domain/wallet_status.dart';
+import '../data/models/goal_entity.dart';
+
+/// Ví nguồn có cho bộ trích chạy với [goal] không — ĐỊNH NGHĨA DUY NHẤT của ba
+/// ca `LoaiTrich.khongChayDuoc` (2026-09-28): ví nguồn **không còn** (không có
+/// hàng, hoặc đã xoá mềm), **trùng ví tích luỹ** (tiền không đi đâu mà tiến độ
+/// vẫn tăng), hoặc **đã lưu trữ** (đóng băng — rút tiền im lặng khỏi ví người
+/// dùng đã cất đi là cách hỏng tệ nhất).
+///
+/// Ba nơi gọi: `GoalAutoDepositRunner` (chuyển tiền), dự báo 30 ngày, và tool
+/// mục tiêu của Trợ lý AI. Trước ngày ấy mỗi nơi một bản, và bản của bộ trích
+/// chỉ kiểm `null` — nhưng `WalletDao.getById` trả cả hàng **đã xoá mềm**, nên
+/// ví bị xoá qua đồng bộ mà còn số dư vẫn bị rút tiền (ca test ở
+/// `goal_auto_deposit_runner_test`).
+bool viNguonChoTrich(
+  GoalEntity goal, {
+  required bool viNguonConSong,
+  required String? trangThaiViNguon,
+}) =>
+    viNguonConSong &&
+    goal.autoDepositWalletId != goal.walletId &&
+    WalletStatus.laHoatDong(trangThaiViNguon);
+
 /// Bước từ một mốc sang mốc kế tiếp của chu kỳ.
 ///
 /// ## Cái bẫy của phép cộng tháng

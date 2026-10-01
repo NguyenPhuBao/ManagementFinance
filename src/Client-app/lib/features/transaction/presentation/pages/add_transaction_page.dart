@@ -13,13 +13,20 @@ import '../../../../core/di/injection_container.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
+import '../../domain/dien_san_bien_dong.dart';
+import '../../domain/doc_cau_giao_dich.dart';
+import '../../data/doc_cau_bang_ai.dart';
+import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/so_tien_lon.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
+import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
+import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -56,6 +63,16 @@ class AddTransactionPage extends StatefulWidget {
   /// đúng khuôn [wallets].
   final Map<String, String>? viHayDung;
 
+  /// Mô hình gợi ý danh mục học từ ghi chú (B1, `category/domain/phan_loai_ghi_chu.dart`).
+  ///
+  /// `null` → trang tự học từ SQLite trong CÙNG lượt đọc sổ của [viHayDung]. Ca test tiêm thẳng mô hình để khỏi
+  /// dựng CSDL, đúng khuôn [viHayDung].
+  final BoPhanLoaiGhiChu? boPhanLoai;
+
+  /// Nơi ghi phản hồi thẻ gợi ý (B1). `null` → `sl<GoiYPhanHoiStore>()` nếu đã đăng ký; ca test tiêm bản trong bộ
+  /// nhớ. Không có store nào thì trang vẫn gợi ý, chỉ không ghi và không thôi gợi ý.
+  final GoiYPhanHoiStore? phanHoiGoiY;
+
   final CategorySuggestionEngine suggestionEngine;
   final TransactionBloc? transactionBloc;
 
@@ -73,6 +90,24 @@ class AddTransactionPage extends StatefulWidget {
   /// ở chế độ sửa vì khi ấy đoạn lấy từ `type` của giao dịch.
   final String? huongBanDau;
 
+  /// Đọc câu ở ô Nhập nhanh bằng mô hình trên máy (C2 §2.8). `null` → `sl<DocCauBangAi>()` nếu đã đăng ký; không có
+  /// thì chỉ luật. Widget test tiêm bản dựng trên runtime giả.
+  final DocCauBangAi? docAi;
+
+  /// D1 — mở từ một hàng biến động số dư (`/add?…&khoa=bienDong:…`, spec D1 §3.3, Stitch `52d9d2ef…`): form điền
+  /// sẵn tiền / chiều / ngày giờ / ghi chú / danh mục, ví theo nguồn + đuôi TK; không ô Nhập nhanh; thanh tiêu đề có
+  /// **Bỏ qua**; Lưu hoặc Bỏ qua thì xoá cứng hàng ấy. `null` = mở thường. Bị bỏ qua ở chế độ sửa.
+  final DienSanBienDong? bienDong;
+
+  /// Bảng *"nguồn + đuôi TK → ví"* (D1). `null` → `sl<ViTheoNguonStore>()` nếu đã đăng ký.
+  final ViTheoNguonStore? viTheoNguon;
+
+  /// Xoá cứng hàng loại 20 theo `dedupeKey` (D1). `null` → `NotificationDao.xoaCung`.
+  final Future<void> Function(int idaccount, String khoa)? xoaBienDong;
+
+  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionDao.getAll`.
+  final Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -84,6 +119,13 @@ class AddTransactionPage extends StatefulWidget {
     this.budgetLookup,
     this.huongBanDau,
     this.viHayDung,
+    this.boPhanLoai,
+    this.phanHoiGoiY,
+    this.docAi,
+    this.bienDong,
+    this.viTheoNguon,
+    this.xoaBienDong,
+    this.khoanTrongSo,
   });
 
   @override
@@ -108,6 +150,38 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Bảng ví hay dùng, rỗng khi chưa đủ căn cứ hoặc chưa nạp xong.
   Map<String, String> _viHayDung = const {};
 
+  /// Mô hình học từ ghi chú; `null` khi chưa nạp xong hoặc học lỗi — khi ấy thẻ gợi ý rơi về bảng từ khoá.
+  BoPhanLoaiGhiChu? _boPhanLoai;
+
+  /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
+  Set<(String, String)> _tatCap = const {};
+
+  /// Cặp (cụm, danh mục) đang bị thôi ĐỀ XUẤT TỪ KHOÁ — tập riêng của nguồn `kNguonDeXuatTuKhoa` (spec 2026-09-30 §2.4).
+  Set<(String, String)> _tatCapTuKhoa = const {};
+
+  /// Cặp người dùng vừa ✕ trong lượt này — dòng ẩn tới khi rời màn.
+  final Set<(String, String)> _boQuaLuotNay = {};
+
+  /// Mẫu học trừ giao dịch đang sửa (đường sửa); `null` ở đường tạo mới → dùng `_boPhanLoai.mau`.
+  List<MauGhiChu>? _mauDeXuat;
+
+  /// Đề xuất thêm / chuyển từ khoá đang hiện dưới hàng Danh mục; `tenCu` khác `null` = đề xuất chuyển.
+  ({DeXuatTuKhoa dx, String tenDanhMuc, String? tenCu})? _deXuat;
+
+  /// "Đã thêm / Đã chuyển …" — tự ẩn sau 2 giây (người dùng chốt 2026-09-30, màn Stitch `8ca1338e…`).
+  String? _daThemTuKhoa;
+  Timer? _hoanDeXuat;
+  Timer? _anDaThem;
+
+  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện.
+  ///
+  /// ⚠️ Tách khỏi [_suggestion]: [_chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH
+  /// LÀ phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
+  ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
+
+  GoiYPhanHoiStore? get _phanHoiStore =>
+      widget.phanHoiGoiY ?? (sl.isRegistered<GoiYPhanHoiStore>() ? sl<GoiYPhanHoiStore>() : null);
+
   /// Người dùng đã tự tay đặt ví nguồn trong lượt này chưa.
   ///
   /// ⚠️ Chốt quan trọng nhất của chặng 1.2: một phép đoán từ lịch sử **không
@@ -129,6 +203,38 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _noteController = TextEditingController();
   bool _isLoadingWallets = true;
+
+  /// Ô *Nhập nhanh* (C2) — chỉ ở đường tạo mới.
+  final TextEditingController _nhapNhanhController = TextEditingController();
+
+  /// Kết quả lần *Điền* gần nhất, để dựng dòng tóm tắt dưới ô; `null` khi chưa điền lần nào.
+  ({String tomTat, bool docDuoc, bool quaAi, List<String> canhBao, String? lyDo})? _ketQuaDien;
+  bool _dangDien = false;
+
+  /// Đang chờ mô hình đọc câu (C2 §2.8) — ô hiện *"Đang đọc bằng AI…"* kèm Huỷ.
+  bool _dangDocAi = false;
+
+  /// Mỗi lần Điền / Huỷ một số mới: kết quả AI về muộn của lượt đã huỷ thì bỏ.
+  var _luotDien = 0;
+
+  /// Ô Nhập nhanh có focus → nạp mô hình ngầm (người dùng chốt 2026-09-30).
+  final FocusNode _nhapNhanhFocus = FocusNode();
+
+  /// D1: form đang mở từ một hàng biến động số dư (đường tạo mới).
+  DienSanBienDong? get _bienDong => _isEditing ? null : widget.bienDong;
+
+  /// D1: bảng nguồn → ví đã có một ví HOẠT ĐỘNG cho cặp nguồn + đuôi này — khi ấy Lưu không ghi đè (spec §3.3: ghi ở
+  /// lần Lưu đầu của mỗi cặp).
+  bool _viNguonDaNho = false;
+
+  /// D1: khoản trong sổ cùng tiền + chiều + ngày với tin — dòng *"Có thể bạn đã ghi khoản này"*.
+  List<KhoanSo> _trungTrongSo = const [];
+
+  ViTheoNguonStore? get _viTheoNguon =>
+      widget.viTheoNguon ?? (sl.isRegistered<ViTheoNguonStore>() ? sl<ViTheoNguonStore>() : null);
+
+  DocCauBangAi? get _docAi =>
+      widget.docAi ?? (sl.isRegistered<DocCauBangAi>() ? sl<DocCauBangAi>() : null);
 
   /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
   /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
@@ -164,8 +270,116 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _huong = widget.huongBanDau!;
     }
     _noteController.addListener(_onNoteChanged);
-    _loadWallets();
-    _loadViHayDung();
+    _nhapNhanhFocus.addListener(() {
+      if (_nhapNhanhFocus.hasFocus) unawaited(_docAi?.chuanBi());
+    });
+    final napVi = _loadWallets();
+    // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
+    final napHoc = _loadViHayDung().then((_) => _napTatCap());
+    unawaited(napHoc.then((_) => _tinhDeXuat()));
+    // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
+    if (_bienDong != null) unawaited(Future.wait([napVi, napHoc]).then((_) => _dienTuBienDong()));
+  }
+
+  /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([_dienKetQua]). Không lưu.
+  Future<void> _dienTuBienDong() async {
+    final d = _bienDong;
+    final id = _accountId();
+    if (d == null || !mounted) return;
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    String? viId;
+    if (id != null) {
+      try {
+        final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi);
+        // Chỉ ví HOẠT ĐỘNG (`_wallets` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
+        if (nho != null && _wallets.any((w) => w.id == nho)) viId = nho;
+      } catch (e) {
+        debugPrint('[BienDong] đọc ví theo nguồn lỗi: $e');
+      }
+    }
+    if (!mounted) return;
+    _viNguonDaNho = viId != null;
+    final kq = ketQuaTuBienDong(d,
+        chonDuoc: chonDuoc, mo: _boPhanLoai, tatCap: _tatCap, tuKhoa: tuKhoa, walletId: viId);
+    _dienKetQua(kq, chonDuoc: chonDuoc);
+    setState(() {
+      // Lần đầu của cặp nguồn + đuôi: ví TRỐNG, không phải ví mặc định — để ví mặc định là để bảng nguồn → ví học nhầm
+      // nó ở lần Lưu đầu, rồi chọn sẵn sai mãi.
+      if (viId == null) _selectedWallet = null;
+      // `_dienKetQua` chỉ đổi phần ngày; giờ trong tin là giờ giao dịch (spec §3.3).
+      final t = d.thoiGian;
+      if (t != null) _selectedDate = t;
+    });
+    if (id == null) return;
+    try {
+      final so = await (widget.khoanTrongSo ?? _khoanTrongSoMacDinh)(id);
+      final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
+      if (mounted) setState(() => _trungTrongSo = trung);
+    } catch (e) {
+      debugPrint('[BienDong] đọc sổ để nhắc trùng lỗi: $e');
+    }
+  }
+
+  static Future<List<KhoanSo>> _khoanTrongSoMacDinh(int id) async => [
+        for (final t in await sl<AppDatabase>().transactionDao.getAll(id))
+          (id: t.id, soTien: t.amount, loai: t.type, ngay: t.date, ghiChu: t.note),
+      ];
+
+  /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
+  /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
+  /// gọi: màn có thể đã `pop`. Không bao giờ ném.
+  Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
+    final store = _viTheoNguon;
+    final xoa = widget.xoaBienDong ??
+        (sl.isRegistered<AppDatabase>() ? sl<AppDatabase>().notificationDao.xoaCung : null);
+    try {
+      if (nhoVi && viDaLuu != null) await store?.ghi(id, d.nguon, d.duoi, viDaLuu);
+    } catch (e) {
+      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
+    }
+    try {
+      await xoa?.call(id, d.khoa);
+    } catch (e) {
+      debugPrint('[BienDong] xoá hàng biến động lỗi: $e');
+    }
+  }
+
+  Future<void> _boQuaBienDong() async {
+    final d = _bienDong;
+    final id = _accountId();
+    if (d != null && id != null) await _dongBienDong(d, id);
+    if (mounted) context.pop();
+  }
+
+  /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
+  Future<void> _napTatCap() async {
+    final bo = _boPhanLoai;
+    final store = _phanHoiStore;
+    final id = _accountId();
+    if (bo == null || store == null || id == null) return;
+    try {
+      final phanHoi = await store.doc(id);
+      final tat = tatCapTu(phanHoi, bo.mau);
+      final tatTuKhoa = tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
+      if (mounted) {
+        setState(() {
+          _tatCap = tat;
+          _tatCapTuKhoa = tatTuKhoa;
+        });
+      }
+    } catch (e) {
+      debugPrint('[GoiYDanhMuc] đọc phản hồi lỗi: $e');
+    }
+  }
+
+  /// Ghi một phản hồi. `unawaited` + `catchError`: phản hồi hỏng KHÔNG được chặn việc chọn hay lưu giao dịch.
+  void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
+    final store = _phanHoiStore;
+    final id = _accountId();
+    if (store == null || id == null) return;
+    unawaited(store
+        .ghi(idaccount: id, goiY: goiY, ketQua: ketQua, chonCategoryId: chon)
+        .catchError((Object e) => debugPrint('[GoiYDanhMuc] ghi phản hồi lỗi: $e')));
   }
 
   /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
@@ -199,8 +413,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   @override
   void dispose() {
     _hoanGoiY?.cancel();
+    _hoanDeXuat?.cancel();
+    _anDaThem?.cancel();
     _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
+    _nhapNhanhController.dispose();
+    _nhapNhanhFocus.dispose();
     super.dispose();
   }
 
@@ -288,6 +506,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ? (_debtDirection ?? 'chi')
           : (category.classify == 'thu' ? 'thu' : 'chi');
     });
+    unawaited(_tinhDeXuat());
   }
 
   /// Đổi ví chọn sẵn sang ví người dùng **hay dùng** cho [category].
@@ -316,7 +535,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   ///
   /// Một lượt đọc lúc mở trang, rồi [_chonDanhMuc] chỉ tra bảng — nó chạy trong
   /// `setState` nên không chờ được `await`.
+  ///
+  /// Cùng lượt đọc ấy học luôn mô hình gợi ý danh mục (B1) — MỘT lần đọc sổ cho hai bảng.
   Future<void> _loadViHayDung() async {
+    // Đặt TRƯỚC mọi nhánh thoát sớm: ca test tiêm mô hình cùng lúc tiêm `wallets`.
+    if (widget.boPhanLoai != null) _boPhanLoai = widget.boPhanLoai;
     final tiem = widget.viHayDung;
     if (tiem != null) {
       _viHayDung = tiem;
@@ -327,10 +550,35 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final userIdAccount = _accountId();
     if (userIdAccount == null) return;
     final txs = await sl<AppDatabase>().transactionDao.getAll(userIdAccount);
+    final dangSua = _editing?.id;
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
     ]));
-    if (mounted) setState(() => _viHayDung = bang);
+    BoPhanLoaiGhiChu? bo = widget.boPhanLoai;
+    if (bo == null) {
+      try {
+        bo = BoPhanLoaiGhiChu.hoc(mauHocTu([
+          for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+        ]));
+      } catch (e) {
+        // Học lỗi → rơi về bảng từ khoá, không toast (spec B1 mục 6).
+        debugPrint('[GoiYDanhMuc] học mô hình lỗi: $e');
+        bo = null;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _viHayDung = bang;
+        _boPhanLoai = bo;
+        // Đường sửa: mẫu của CHÍNH giao dịch đang sửa phải ra khỏi phép đếm — hàm đề xuất cộng bản đang gõ vào.
+        _mauDeXuat = dangSua == null
+            ? null
+            : mauHocTu([
+                for (final t in txs)
+                  if (t.id != dangSua) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+              ]);
+      });
+    }
   }
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
@@ -338,6 +586,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       _huong = huong;
       _suggestion = null;
+      _choPhanXu = null;
       final cat = _selectedCategory;
       if (huong == 'transfer' || cat == null) return;
       if (isDebtClassify(cat.classify)) {
@@ -347,6 +596,162 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         // Giữ danh mục chi dưới đoạn Thu là hai sự thật trái nhau.
         _selectedCategory = null;
       }
+    });
+    unawaited(_tinhDeXuat());
+  }
+
+  /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
+  /// Bất biến ④ nhóm C: không lưu — người dùng xem lại rồi bấm ✓.
+  ///
+  /// Mỗi ô đi qua ĐÚNG đường người dùng vẫn đi, để mọi hệ quả chạy như khi chạm tay:
+  /// - chiều qua [_chonHuong] (bỏ danh mục thuộc chiều kia) — gán thẳng `_huong` là để danh mục chi dưới đoạn Thu;
+  /// - số tiền qua `themPhimSoTien` từng chữ số (cùng trần 13 chữ số, không để biểu thức dở);
+  /// - ví đọc từ câu đặt [_nguoiDungDaChonVi] — luật ví hay dùng theo danh mục không được đè lựa chọn trong câu;
+  /// - danh mục qua [_chonDanhMuc] (chiều vay/nợ, đoạn Chi/Thu, xoá thẻ gợi ý);
+  /// - ghi chú đặt SAU danh mục: [_onNoteChanged] thấy đã có danh mục thì không hẹn gợi ý;
+  /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
+  Future<void> _dienTuCau() async {
+    final cau = _nhapNhanhController.text.trim();
+    if (cau.isEmpty || _dangDien) return;
+    _dangDien = true;
+    final luot = ++_luotDien;
+    FocusScope.of(context).unfocus();
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
+    // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
+    KetQuaAi? ai;
+    final docAi = _docAi;
+    final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
+    if (conThieu && docAi != null && mounted && await docAi.sanSang()) {
+      if (!mounted || luot != _luotDien) return;
+      setState(() => _dangDocAi = true);
+      ai = await docAi.doc(
+        cau,
+        now: DateTime.now(),
+        tenVi: [for (final w in _wallets) w.name],
+        tenDanhMuc: [for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.name],
+      );
+    }
+    // Người dùng đã bấm Huỷ — lượt ấy đã điền bằng luật.
+    if (!mounted || luot != _luotDien) return;
+    _dangDien = false;
+    if (_dangDocAi) setState(() => _dangDocAi = false);
+    _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
+  }
+
+  /// Danh mục chọn được + từ khoá của chúng (bước từ khoá của C2, người dùng chốt 2026-09-30). Lỗi đọc thì rỗng — ô
+  /// Nhập nhanh vẫn điền được mọi ô khác.
+  Future<(List<Category>, Map<String, List<String>>)> _napDanhMucVaTuKhoa() async {
+    final id = _accountId();
+    if (id == null) return (const <Category>[], const <String, List<String>>{});
+    try {
+      return (
+        await _categoryRepository.selectableChildrenAll(accountId: id),
+        await _categoryRepository.loadAllKeywords(accountId: id),
+      );
+    } catch (e) {
+      debugPrint('[NhapNhanh] đọc danh mục / từ khoá lỗi: $e');
+      return (const <Category>[], const <String, List<String>>{});
+    }
+  }
+
+  /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
+  Future<void> _huyDocAi() async {
+    _luotDien++;
+    unawaited(_docAi?.huy());
+    final cau = _nhapNhanhController.text.trim();
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    if (!mounted) return;
+    setState(() {
+      _dangDien = false;
+      _dangDocAi = false;
+    });
+    if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
+  }
+
+  KetQuaDocCau _docCau(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      docCauGiaoDich(
+        cau,
+        now: DateTime.now(),
+        vi: _wallets,
+        chonDuoc: chonDuoc,
+        mo: _boPhanLoai,
+        tatCap: _tatCap,
+        ai: ai,
+        tuKhoa: tuKhoa,
+        // Dòng nguồn "Đọc bằng AI" chỉ khi AI làm ĐỔI một ô — chiều / ví đang chọn không tính (người dùng chốt 2026-09-30).
+        chieuDangChon: _huong,
+        viDangChon: _selectedWallet?.id,
+      );
+
+  /// Đọc câu rồi điền những ô đọc được vào form (xem [_dienTuCau]).
+  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      _dienKetQua(_docCau(cau, chonDuoc, tuKhoa, ai: ai), chonDuoc: chonDuoc);
+
+  /// Điền một [KetQuaDocCau] đã dựng sẵn vào form — phần ÁP, tách khỏi phần đọc câu (2026-09-30, mở D1): ô Nhập nhanh
+  /// đi qua [_apDungKetQua], còn form điền sẵn từ tin biến động số dư (D1) dựng `KetQuaDocCau` từ query rồi gọi thẳng
+  /// đây. Mỗi ô đi đúng đường người dùng vẫn đi (chiều qua [_chonHuong], số tiền qua `themPhimSoTien`, danh mục qua
+  /// [_chonDanhMuc]…) — xem [_dienTuCau].
+  void _dienKetQua(KetQuaDocCau kq, {required List<Category> chonDuoc}) {
+    final now = DateTime.now();
+    if (kq.khongDocDuocGi) {
+      setState(() => _ketQuaDien =
+          (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null));
+      return;
+    }
+
+    final loai = kq.loai;
+    if (loai != null && loai != _huong) _chonHuong(loai);
+    Wallet? vi;
+    Wallet? viDen;
+    for (final w in _wallets) {
+      if (w.id == kq.walletId) vi = w;
+      if (w.id == kq.walletToId) viDen = w;
+    }
+    setState(() {
+      final soTien = kq.soTien;
+      if (soTien != null) {
+        var a = '0';
+        for (final c in soTien.toInt().toString().split('')) {
+          a = themPhimSoTien(a, c);
+        }
+        _amountString = a;
+      }
+      final ngay = kq.ngay;
+      if (ngay != null) {
+        _selectedDate = DateTime(ngay.year, ngay.month, ngay.day, _selectedDate.hour, _selectedDate.minute);
+      }
+      if (vi != null) {
+        _selectedWallet = vi;
+        _nguoiDungDaChonVi = true;
+      }
+      // Chuyển ví (§2.9). Câu chỉ nêu ví đích mà ví nguồn đang chọn lại chính là nó → để trống ví nguồn cho người dùng
+      // chọn: chuyển vào chính nó là khoản vô nghĩa, và màn không chặn lúc lưu.
+      if (viDen != null) {
+        _destinationWallet = viDen;
+        if (vi == null && _selectedWallet?.id == viDen.id) _selectedWallet = null;
+      }
+    });
+    Category? danhMuc;
+    if (!_isTransfer && kq.categoryId != null) {
+      for (final c in chonDuoc) {
+        if (c.id == kq.categoryId) danhMuc = c;
+      }
+      if (danhMuc != null) _chonDanhMuc(danhMuc);
+    }
+    // Rỗng = câu chỉ có số / ngày / ví: ghi chú người dùng đã gõ giữ nguyên.
+    if (kq.ghiChu.isNotEmpty) _noteController.text = kq.ghiChu;
+    final goiY = danhMuc != null ? kq.goiY : null;
+    final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
+    setState(() {
+      if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: _noteController.text.trim());
+      _ketQuaDien = (
+        tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
+        docDuoc: true,
+        quaAi: kq.quaAi,
+        canhBao: kq.canhBao,
+        lyDo: lyDo,
+      );
     });
   }
 
@@ -359,8 +764,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   static const Duration _doTreGoiY = Duration(milliseconds: 300);
 
   void _onNoteChanged() {
+    _henDeXuat();
     _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
+    // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
+    if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
     if (note.isEmpty || _isTransfer || _selectedCategory != null) {
       if (_suggestion != null && mounted) {
         setState(() => _suggestion = null);
@@ -377,6 +785,92 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
   }
 
+  void _henDeXuat() {
+    _hoanDeXuat?.cancel();
+    _hoanDeXuat = Timer(_doTreGoiY, () => unawaited(_tinhDeXuat()));
+  }
+
+  /// Đề xuất thêm từ khoá (spec 2026-09-30) — tính lại khi ghi chú hoặc danh mục đổi. Mọi nguồn danh mục như nhau
+  /// (chọn tay, thẻ gợi ý, Nhập nhanh). Không phiên / không mẫu học → im.
+  Future<void> _tinhDeXuat() async {
+    final cat = _selectedCategory;
+    final ghiChu = _noteController.text.trim();
+    final mau = _mauDeXuat ?? _boPhanLoai?.mau;
+    if (cat == null || _isTransfer || ghiChu.isEmpty || mau == null || _accountId() == null) {
+      if (mounted && _deXuat != null) setState(() => _deXuat = null);
+      return;
+    }
+    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    if (!mounted || _selectedCategory?.id != cat.id || _isTransfer || _noteController.text.trim() != ghiChu) return;
+    final ten = {for (final c in chonDuoc) c.id: c.name};
+    final d = deXuatTuKhoa(
+      ghiChu: ghiChu,
+      categoryId: cat.id,
+      mau: mau,
+      // Chỉ danh mục còn sống: từ khoá của danh mục đã xoá không phải xung đột.
+      tuKhoa: {for (final e in tuKhoa.entries) if (ten.containsKey(e.key)) e.key: e.value},
+      tatCap: {..._tatCapTuKhoa, ..._boQuaLuotNay},
+    );
+    setState(() => _deXuat = d == null
+        ? null
+        : (dx: d, tenDanhMuc: cat.name, tenCu: d.tuDanhMuc == null ? null : ten[d.tuDanhMuc]));
+  }
+
+  CategorySuggestion _goiYCua(DeXuatTuKhoa d) => CategorySuggestion(
+        category: _selectedCategory!,
+        matchedKeyword: d.tuKhoa,
+        nguon: kNguonDeXuatTuKhoa,
+        amTietChinh: d.cumBoDau,
+      );
+
+  /// Thêm / Chuyển — GHI NGAY (spec §2.3). Chuyển bỏ ở danh mục cũ TRƯỚC: không có khoảnh khắc cụm thuộc hai danh mục
+  /// (bộ so coi hai danh mục khớp ngang nhau là hoà → thôi đoán).
+  Future<void> _chapNhanDeXuat() async {
+    final d = _deXuat;
+    final id = _accountId();
+    if (d == null || id == null || _selectedCategory == null) return;
+    final goiY = _goiYCua(d.dx);
+    setState(() => _deXuat = null);
+    try {
+      final tuKhoa = await _categoryRepository.loadAllKeywords(accountId: id);
+      final cu = d.dx.tuDanhMuc;
+      if (cu != null) {
+        await _categoryRepository.saveKeywords(
+          accountId: id,
+          categoryId: cu,
+          keywords: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
+        );
+      }
+      await _categoryRepository.saveKeywords(
+        accountId: id,
+        categoryId: d.dx.categoryId,
+        keywords: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
+      );
+    } catch (e) {
+      debugPrint('[DeXuatTuKhoa] ghi từ khoá lỗi: $e');
+      return;
+    }
+    _ghiPhanHoi(goiY, kKetQuaGoiYChon, chon: d.dx.categoryId);
+    if (!mounted) return;
+    setState(() => _daThemTuKhoa = d.tenCu == null
+        ? 'Đã thêm ‘${d.dx.tuKhoa}’ vào ${d.tenDanhMuc}'
+        : 'Đã chuyển ‘${d.dx.tuKhoa}’ sang ${d.tenDanhMuc}');
+    _anDaThem?.cancel();
+    _anDaThem = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _daThemTuKhoa = null);
+    });
+  }
+
+  void _boQuaDeXuat() {
+    final d = _deXuat;
+    if (d == null || _selectedCategory == null) return;
+    _ghiPhanHoi(_goiYCua(d.dx), kKetQuaGoiYBoQua);
+    setState(() {
+      _boQuaLuotNay.add((d.dx.cumBoDau, d.dx.categoryId));
+      _deXuat = null;
+    });
+  }
+
   Future<void> _loadSuggestion(String note) async {
     final accountId = _accountId();
     // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý
@@ -388,24 +882,44 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final categories = await _categoryRepository.selectableChildrenAll(
       accountId: accountId,
     );
-    // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
-    // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
-    // với mỗi lần ghi chú thay đổi.
-    final keywordsByCategory = await _categoryRepository.loadAllKeywords(
-      accountId: accountId,
+    // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
+    // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
+    // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" bên dưới.
+    final doan = _boPhanLoai?.doan(
+      note,
+      hopLe: {for (final c in categories) c.id},
+      tatCap: _tatCap,
     );
-    final candidates = <CategoryKeywordCandidate>[];
-    for (final category in categories) {
-      for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
-        candidates.add(
-          CategoryKeywordCandidate(category: category, keyword: keyword),
-        );
+    CategorySuggestion? suggestion;
+    if (doan != null) {
+      final cat = categories.firstWhere((c) => c.id == doan.categoryId);
+      suggestion = CategorySuggestion(
+        category: cat,
+        matchedKeyword: doan.cumBoDau,
+        nguon: kNguonGoiYHoc,
+        amTietChinh: doan.cumBoDau,
+        lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
+      );
+    } else {
+      // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
+      // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
+      // với mỗi lần ghi chú thay đổi.
+      final keywordsByCategory = await _categoryRepository.loadAllKeywords(
+        accountId: accountId,
+      );
+      final candidates = <CategoryKeywordCandidate>[];
+      for (final category in categories) {
+        for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
+          candidates.add(
+            CategoryKeywordCandidate(category: category, keyword: keyword),
+          );
+        }
       }
+      suggestion = widget.suggestionEngine.suggest(
+        rawText: note,
+        candidates: candidates,
+      );
     }
-    final suggestion = widget.suggestionEngine.suggest(
-      rawText: note,
-      candidates: candidates,
-    );
     if (!mounted ||
         _huong != requestedHuong ||
         _isTransfer ||
@@ -413,13 +927,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _noteController.text.trim() != note) {
       return;
     }
-    setState(() => _suggestion = suggestion);
+    setState(() {
+      _suggestion = suggestion;
+      if (suggestion != null) _choPhanXu = (goiY: suggestion, ghiChu: note);
+    });
   }
 
   void _showWalletPickerBottomSheet(BuildContext context,
       {required bool isDestination}) {
+    // `isScrollControlled` + danh sách ví trong `Flexible` / `SingleChildScrollView`: bảng cao theo số ví và CUỘN khi
+    // nhiều ví hơn chỗ trống. Bản cũ là `Column` không cuộn trong trần 9/16 màn — đo trên OnePlus 13R (2026-09-30,
+    // nghiệm thu D1) tài khoản 5 ví tràn 13 px, ví cuối bị sọc vàng đè và không chạm được. Cùng họ G60.
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -434,12 +956,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isDestination ? 'Chọn ví đích' : 'Chọn ví thanh toán',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                  // `Expanded`: tiêu đề trần trong `Row` tràn khi cỡ chữ hệ thống lớn.
+                  Expanded(
+                    child: Text(
+                      isDestination ? 'Chọn ví đích' : 'Chọn ví thanh toán',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -458,6 +983,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       style: TextStyle(color: AppColors.textSecondary)),
                 )
               else
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                 ..._wallets.map((wallet) {
                   final isSelected = isDestination
                       ? _destinationWallet?.id == wallet.id
@@ -540,6 +1070,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                   );
                 }),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -695,6 +1229,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       bloc.add(UpdateTransactionEvent(before: editing, after: tx));
       return;
     }
+    // B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+    final choPhanXu = _choPhanXu;
+    final daChon = _selectedCategory;
+    if (choPhanXu != null && daChon != null && !_isTransfer) {
+      _ghiPhanHoi(
+        choPhanXu.goiY,
+        daChon.id == choPhanXu.goiY.categoryId ? kKetQuaGoiYChon : kKetQuaGoiYKhac,
+        chon: daChon.id,
+      );
+      _choPhanXu = null;
+    }
     bloc.add(AddTransactionEvent(
       transaction: tx,
       destinationWalletId: tx.walletTransfer,
@@ -781,6 +1326,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         : 'Thêm giao dịch thành công!')),
               ),
             );
+            final d = _bienDong;
+            final id = _accountId();
+            if (d != null && id != null) {
+              unawaited(_dongBienDong(d, id, viDaLuu: _selectedWallet?.id, nhoVi: !_viNguonDaNho));
+            }
             context.pop(true);
           } else if (state.actionSuccess == false &&
               state.errorMessage != null) {
@@ -811,11 +1361,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ),
             actions: [
-              IconButton(
-                tooltip: 'Thêm tuỳ chọn',
-                icon: const Icon(Icons.more_vert, color: AppColors.primary),
-                onPressed: () {},
-              ),
+              if (_bienDong != null)
+                // D1 (Stitch `52d9d2ef…`): bỏ qua hàng biến động — xoá nó, không tạo giao dịch.
+                TextButton(
+                  onPressed: _boQuaBienDong,
+                  child: const Text(
+                    'Bỏ qua',
+                    style: TextStyle(color: AppColors.primary, fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                )
+              else
+                IconButton(
+                  tooltip: 'Thêm tuỳ chọn',
+                  icon: const Icon(Icons.more_vert, color: AppColors.primary),
+                  onPressed: () {},
+                ),
             ],
           ),
           // Thanh chọn và con số CỐ ĐỊNH ở trên, bàn phím NEO ĐÁY, chỉ thẻ form
@@ -837,17 +1397,38 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    child: _buildFormCard(context),
+                    // C2: ô Nhập nhanh ở ĐẦU vùng cuộn, không cố định — ở 360 × 640 vùng giữa đã chật, một ô cố định
+                    // nữa là thẻ form còn chưa tới 70 dp. Chỉ ở đường tạo mới (spec §3).
+                    child: Column(
+                      children: [
+                        // D1: form đã điền từ tin — không có ô Nhập nhanh (đường điền thứ hai), thay bằng dải nguồn.
+                        if (_bienDong case final d?) ...[
+                          _buildDaiNguon(d),
+                          const SizedBox(height: 12),
+                        ] else if (!_isEditing) ...[
+                          _buildNhapNhanh(),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildFormCard(context),
+                      ],
+                    ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: _buildNumericKeyboard(
-                    context,
-                    isSubmitting: state is TransactionLoadedState &&
-                        state.isSubmitting,
+                // G58 (2026-09-29): bàn phím HỆ THỐNG mở — người dùng đang gõ
+                // ghi chú — thì không dựng 16 phím số. Ở 360 dp, thân còn ~400
+                // dp; giữ 16 phím (~240 dp) là ép thẻ form về 0, tức ô đang gõ
+                // biến mất, và hàng phím cuối tràn. Đóng bàn phím hệ thống thì
+                // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
+                // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
+                if (MediaQuery.viewInsetsOf(context).bottom == 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: _buildNumericKeyboard(
+                      context,
+                      isSubmitting: state is TransactionLoadedState &&
+                          state.isSubmitting,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -990,6 +1571,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               onTap: () =>
                   _showWalletPickerBottomSheet(context, isDestination: false),
             ),
+            if (_bienDong != null && _trungTrongSo.isNotEmpty) _buildNhacTrung(context),
             Divider(
                 height: 1,
                 indent: 64,
@@ -1023,6 +1605,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 if (selected != null) _chonDanhMuc(selected);
               },
             ),
+            if (_deXuat != null || _daThemTuKhoa != null) _buildDeXuatTuKhoa(),
             if (showDebtDirection) ...[
               Divider(
                   height: 1,
@@ -1092,6 +1675,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: TextField(
+                    key: const Key('ghi-chu-giao-dich'),
                     controller: _noteController,
                     decoration: const InputDecoration(
                       hintText: 'Thêm ghi chú cho giao dịch...',
@@ -1114,7 +1698,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             icon: Icons.calendar_today,
             label: 'Ngày',
             valueWidget: Text(
-              DateFormat('dd/MM/yyyy').format(_selectedDate),
+              // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
+              DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_selectedDate),
               style: const TextStyle(fontSize: 16, color: AppColors.primary),
             ),
             trailingIcon: Icons.calendar_month,
@@ -1122,6 +1707,346 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// D1 — dải nguồn (Stitch `52d9d2ef…`): *"Từ thông báo MB Bank · TK ••7777 · 02/09 12:01"*.
+  Widget _buildDaiNguon(DienSanBienDong d) => Container(
+        key: const Key('bien-dong-dai-nguon'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance, size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                dongNguonBienDong(d),
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  /// D1 — *"Có thể bạn đã ghi khoản này"* (spec §3.3): chỉ NHẮC, không chặn lưu. **Xem** liệt kê các khoản khớp.
+  Widget _buildNhacTrung(BuildContext context) {
+    final d = _bienDong!;
+    final chieu = d.chieu == 'thu' ? 'thu' : 'chi';
+    return Container(
+      key: const Key('bien-dong-nhac-trung'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_rounded, size: 20, color: AppColors.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Có thể bạn đã ghi khoản này',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyFormatter.format(d.soTien!)} $chieu hôm '
+                  '${DateFormat('dd/MM').format(d.thoiGian!)} đã có trong sổ',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          TextButton(onPressed: () => _xemKhoanTrung(context), child: const Text('Xem')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _xemKhoanTrung(BuildContext context) => showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Khoản đã có trong sổ',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+                const SizedBox(height: 8),
+                for (final k in _trungTrongSo)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(k.ghiChu.isEmpty ? '(không ghi chú)' : k.ghiChu),
+                    subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(k.ngay)),
+                    trailing: Text(CurrencyFormatter.formatCoDau(k.soTien, thu: k.loai == 'thu')),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
+  /// do khi danh mục đến từ B1.
+  Widget _buildNhapNhanh() {
+    final kq = _ketQuaDien;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.bolt, size: 16, color: AppColors.expense),
+              SizedBox(width: 4),
+              Text(
+                'NHẬP NHANH',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.6,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Nút Điền nằm TRONG khung ô, mép phải — màn Stitch `8afdfe11…` (C2 T5). Khung tự vẽ, nút đứng ngoài
+          // `TextField`. ⚠️ Bản dựng bằng `suffixIcon` làm ca Huỷ của `nhap_nhanh_test` trượt tay (cú chạm rơi vào lúc
+          // vùng cuộn không nhận chạm); hai phép đo tối giản (ô chưa / đã focus, chạm nút trong `suffixIcon`) không tái
+          // hiện được nên chưa lần ra nguyên nhân — đừng đổi lại khi chưa đo trên máy thật.
+          ListenableBuilder(
+            listenable: _nhapNhanhFocus,
+            builder: (context, child) => Container(
+              padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: _nhapNhanhFocus.hasFocus
+                    ? Border.all(color: AppColors.primary, width: 2)
+                    : Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              child: child,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const Key('nhap-nhanh-o'),
+                    controller: _nhapNhanhController,
+                    focusNode: _nhapNhanhFocus,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _dienTuCau(),
+                    style: const TextStyle(fontSize: 15, color: AppColors.primary),
+                    // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
+                    // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
+                    // trong khung xám (nghiệm thu Realme 2026-09-30).
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      hintText: 'VD: hôm qua ăn phở 45k tiền mặt',
+                      hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
+                ElevatedButton(
+                  key: const Key('nhap-nhanh-dien'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: _dangDocAi ? null : _dienTuCau,
+                  child: const Text('Điền'),
+                ),
+              ],
+            ),
+          ),
+          if (_dangDocAi)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Đang đọc bằng AI…',
+                      key: Key('nhap-nhanh-dang-doc'),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  TextButton(
+                    key: const Key('nhap-nhanh-huy'),
+                    onPressed: _huyDocAi,
+                    child: const Text('Huỷ'),
+                  ),
+                ],
+              ),
+            )
+          else if (kq != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  kq.docDuoc ? Icons.check_circle : Icons.info_outline,
+                  size: 16,
+                  color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    kq.tomTat,
+                    key: const Key('nhap-nhanh-tom-tat'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 22),
+              child: Row(
+                children: [
+                  Icon(
+                    kq.quaAi ? Icons.auto_awesome : Icons.rule,
+                    size: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    kq.quaAi ? 'Đọc bằng AI' : 'Đọc bằng luật',
+                    key: const Key('nhap-nhanh-nguon'),
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            for (final cb in kq.canhBao)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 22),
+                child: Text(cb, style: const TextStyle(fontSize: 12, color: AppColors.expense)),
+              ),
+            if (kq.lyDo != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 22),
+                child: Text(
+                  kq.lyDo!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Dòng đề xuất thêm / chuyển từ khoá (spec 2026-09-30, màn Stitch `8ca1338e…`).
+  Widget _buildDeXuatTuKhoa() {
+    final daThem = _daThemTuKhoa;
+    final d = _deXuat;
+    const dam = TextStyle(fontWeight: FontWeight.w700);
+    return Container(
+      key: const Key('de-xuat-tu-khoa'),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(12)),
+      child: daThem != null || d == null
+          ? Row(children: [
+              const Icon(Icons.check_circle, color: AppColors.income, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(daThem ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                ),
+              ),
+            ])
+          : Row(children: [
+              Icon(d.tenCu == null ? Icons.add_circle : Icons.sync, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text.rich(
+                  d.tenCu == null
+                      ? TextSpan(children: [
+                          const TextSpan(text: 'Thêm '),
+                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
+                          const TextSpan(text: ' làm từ khoá của '),
+                          TextSpan(text: d.tenDanhMuc, style: dam),
+                          const TextSpan(text: '?'),
+                        ])
+                      : TextSpan(children: [
+                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
+                          const TextSpan(text: ' đang là từ khoá của '),
+                          TextSpan(text: d.tenCu, style: dam),
+                          const TextSpan(text: ' — chuyển sang '),
+                          TextSpan(text: d.tenDanhMuc, style: dam),
+                          const TextSpan(text: '?'),
+                        ]),
+                  style: const TextStyle(fontSize: 13, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // ⚠️ `minimumSize` hữu hạn BẮT BUỘC (bẫy 4.11): theme ép ElevatedButton rộng vô hạn.
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onPressed: _chapNhanDeXuat,
+                child: Text(d.tenCu == null ? 'Thêm' : 'Chuyển'),
+              ),
+              IconButton(
+                tooltip: 'Bỏ qua đề xuất',
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: _boQuaDeXuat,
+              ),
+            ]),
     );
   }
 
@@ -1147,20 +2072,35 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
+            // Lý do theo NGUỒN: học → "Bạn thường ghi “grab” cho Di chuyển (6/7 lần)."; từ khoá → câu cũ.
             Text(
-              'Khớp với “${suggestion.matchedKeyword}” trong ghi chú.',
+              suggestion.lyDo,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 TextButton(
-                  onPressed: () => setState(() => _suggestion = null),
+                  onPressed: () {
+                    _ghiPhanHoi(suggestion, kKetQuaGoiYBoQua);
+                    setState(() {
+                      _suggestion = null;
+                      _choPhanXu = null;
+                    });
+                  },
                   child: const Text('Bỏ qua'),
                 ),
                 const Spacer(),
+                // ⚠️ `minimumSize` hữu hạn BẮT BUỘC: theme của app ép mọi ElevatedButton rộng vô hạn, nút trần trong
+                // `Row` làm trắng cả vùng form mà không một dòng log nào (bẫy 4.11). Lỗi có từ trước B1 — nghiệm thu
+                // máy ảo 2026-09-29 mới lộ, vì mọi widget test cũ dựng MaterialApp trần.
                 ElevatedButton(
-                  onPressed: () => _chonDanhMuc(suggestion.category),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
+                  onPressed: () {
+                    _ghiPhanHoi(suggestion, kKetQuaGoiYChon, chon: suggestion.categoryId);
+                    _choPhanXu = null;
+                    _chonDanhMuc(suggestion.category);
+                  },
                   child: const Text('Chọn danh mục này'),
                 ),
               ],
