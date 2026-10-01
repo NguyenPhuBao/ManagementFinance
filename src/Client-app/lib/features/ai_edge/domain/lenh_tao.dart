@@ -15,7 +15,7 @@ import '../../../core/category/category_name.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
-import '../../transaction/domain/doc_cau_giao_dich.dart' show chonSoTienTrongCau;
+import '../../transaction/domain/doc_cau_giao_dich.dart' show cachDocSoTien, chonSoTienTrongCau;
 
 enum LoaiLenhTao { hoaDon, mucTieu, nganSach }
 
@@ -104,6 +104,44 @@ bool _coCum(List<String> t, List<String> cum) {
 /// Loại lệnh tạo của [cau], hoặc `null` khi đó không phải lệnh (câu hỏi, câu khác).
 LoaiLenhTao? loaiLenhTao(String cau) => _nhan(cau)?.loai;
 
+/// Đối tượng tạo được — cụm âm tiết bỏ dấu (§8.1). ⚠️ Không có `quy` trần: *"quý này"* của câu hỏi cổng F cũng ra
+/// `quy`; *quỹ* chỉ nhận trong cụm dài.
+const List<List<String>> _doiTuongTao = [
+  ['hoa', 'don'],
+  ['muc', 'tieu'],
+  ['ngan', 'sach'],
+  ['de', 'danh'],
+  ['tiet', 'kiem'],
+  ['danh', 'dum'],
+  ['quy', 'khan', 'cap'],
+  ['dinh', 'ky'],
+  ['hang', 'tuan'],
+  ['hang', 'thang'],
+  ['hang', 'quy'],
+  ['hang', 'nam'],
+  ['moi', 'tuan'],
+  ['moi', 'thang'],
+  ['moi', 'quy'],
+  ['moi', 'nam'],
+  ['mot', 'thang'],
+];
+
+/// Tín hiệu muốn tạo — một âm tiết ở bất cứ đâu, hoặc cụm *lên kế hoạch*.
+const Set<String> _tinHieuTao = {'tao', 'them', 'dat', 'lap', 'muon', 'nhac'};
+
+/// Cổng RỘNG (§8.1): câu có vẻ muốn tạo hoá đơn / mục tiêu / ngân sách → mở phiên AI riêng. `true` ⇔ câu theo mẫu §2,
+/// hoặc (không từ hỏi ∧ nhắc đối tượng tạo được ∧ (có tín hiệu muốn tạo ∨ có số tiền đọc được)). Câu lọt cổng mà mô
+/// hình không gọi tool → về vòng hỏi đáp như cũ: giá của cổng rộng là một lượt chờ thừa, không phải câu trả lời sai.
+bool coVeLenhTao(String cau, {required DateTime now}) {
+  if (loaiLenhTao(cau) != null) return true;
+  if (cau.contains('?')) return false;
+  final t = amTietKhongDau(cau);
+  if (_tuHoi.any((c) => _coCum(t, c))) return false;
+  if (!_doiTuongTao.any((c) => _coCum(t, c))) return false;
+  return t.any(_tinHieuTao.contains) ||
+      _coCum(t, const ['len', 'ke', 'hoach']) ||
+      cachDocSoTien(cau, now: now).isNotEmpty;
+}
 
 /// Một đối tượng chọn được (ví / danh mục) — record thay kiểu Drift để lớp AI không đụng bảng.
 typedef MucChon = ({String id, String ten});

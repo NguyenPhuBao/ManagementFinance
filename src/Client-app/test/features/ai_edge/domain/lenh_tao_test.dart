@@ -184,4 +184,46 @@ void main() {
       expect(tomTatLenhTao(const LenhTaoNganSach(hanMuc: 1000000)).thieu, 'Chưa rõ danh mục — bạn điền trong form');
     });
   });
+
+  group('coVeLenhTao — cổng rộng (§8.1)', () {
+    final now = DateTime(2026, 9, 30);
+    const lot = [
+      'tôi muốn để dành 50 triệu mua xe trước hè năm sau',
+      'mỗi tháng trả tiền nhà 3 triệu vào mùng 5',
+      'để dành 20 triệu làm quỹ khẩn cấp',
+      'tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch',
+      'ăn uống tối đa 3 triệu một tháng',
+      'nhắc tôi đóng tiền điện hằng tháng',
+      'lên kế hoạch dành dụm mua laptop 30 triệu',
+      'hoá đơn internet 250k mỗi tháng ngày 10',
+      'toi muon tiet kiem 10 trieu trong 6 thang',
+      'tạo hoá đơn Netflix 100k', // câu theo mẫu §2 cũng lọt
+    ];
+    for (final c in lot) {
+      test('lọt: "$c"', () => expect(coVeLenhTao(c, now: now), isTrue));
+    }
+
+    const khongLot = [
+      'để dành mỗi tháng 2 triệu thì đủ không', // từ hỏi
+      'tiết kiệm được bao nhiêu rồi',
+      'hoá đơn nào sắp đến hạn',
+      'mục tiêu mua xe còn thiếu bao nhiêu',
+      'ngân sách ăn uống là gì',
+      'tôi muốn mua xe', // không đối tượng tạo được
+      'tháng này chi 3 triệu', // số tiền nhưng không đối tượng tạo được
+      'hôm qua ăn phở 45k', // giao dịch — không phải lệnh tạo
+      'đặt lịch nhắc hoá đơn?', // dấu hỏi
+    ];
+    for (final c in khongLot) {
+      test('không lọt: "$c"', () => expect(coVeLenhTao(c, now: now), isFalse));
+    }
+
+    test('⭐ 72 câu cổng F — không câu nào lọt cổng', () {
+      final nham = [
+        for (final e in kBang72Cau.entries)
+          if (coVeLenhTao(e.value.$1, now: now)) '${e.key}: ${e.value.$1}',
+      ];
+      expect(nham, isEmpty, reason: 'câu hỏi lọt cổng là mở phiên lệnh vô ích rồi mới về vòng hỏi đáp (thêm ~15 s)');
+    });
+  });
 }
