@@ -3261,14 +3261,15 @@ Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-d
 > Câu *"chỉ luật, không mô hình"*, *"lệnh không mở phiên mô hình"* và *"thẻ < 1 s"* ở trên chỉ còn đúng cho máy **chưa
 > có mô hình / tắt công tắc AI**.
 
-### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — 🚧 mã xong, CHƯA đo Realme
+### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — ✅ xong, đo Realme 10/10
 
 Người dùng (2026-09-30 đêm): *"tôi muốn tạo bằng AI mới đúng thay vì chỉ lệnh như này"* — spec C3 **§8**, kế hoạch
-`plans/2026-09-30-c3-lenh-tao-bang-ai.md`. Commit `3442495` → `24226cf` (Task 1–4). Câu tự nhiên *"tôi muốn để dành 50
+`plans/2026-09-30-c3-lenh-tao-bang-ai.md`. Commit `3442495` → `4310174` (Task 1–5). Câu tự nhiên *"tôi muốn để dành 50
 triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; luật kiểm từng ô; thẻ mở form điền sẵn, người dùng bấm Lưu.
 
 - **Cổng rộng `coVeLenhTao`** (`lenh_tao.dart`, luật): `true` ⇔ câu theo mẫu 9.42, **hoặc** (không từ hỏi ∧ nhắc một
-  *đối tượng tạo được* — hoá đơn · mục tiêu · ngân sách · để dành · tiết kiệm · dành dụm · quỹ khẩn cấp · định kỳ ·
+  *đối tượng tạo được* — hoá đơn · mục tiêu · ngân sách · để dành · tiết kiệm · dành dụm · quỹ khẩn cấp · hạn mức ·
+  giới hạn · định kỳ ·
   hằng/mỗi + tuần/tháng/quý/năm · một tháng ∧ (có *tín hiệu muốn tạo* — tạo · thêm · đặt · lập · muốn · nhắc · lên kế
   hoạch — **hoặc** một số tiền đọc được)). ⚠️ Không có `quy` trần (*"quý này"* của câu hỏi cũng ra `quy`). Lưới **72 câu
   cổng F** → `false` hết; **ở đây lưới ấy canh thật** (bản sai bỏ vế từ hỏi làm nó đỏ — khác cổng hẹp 9.42).
@@ -3284,18 +3285,24 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 
   | Ô | Nhận của AI khi |
   |---|---|
-  | loại | câu **không** theo mẫu 9.42 (câu theo mẫu → loại của luật, AI không đổi được) |
-  | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5) |
-  | tên | là **đoạn con** của câu (bỏ dấu, chữ thường), không chứa chữ số; câu theo mẫu thì tên luật thắng |
+  | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu) |
+  | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5); với **mục tiêu**, số tiền *theo kỳ* (*"2 triệu mỗi tháng"*, *"500k/tháng"*) **không** phải số tiền đích — luật lẫn AI đều bỏ (`_tienTheoKy`) |
+  | tên | không chứa chữ số, mọi chữ có trong câu **đúng thứ tự** (không cần liền nhau), gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*); câu theo mẫu thì tên luật thắng |
   | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian |
   | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
-  | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền** |
-  | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào) |
+  | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền**; từ ngày gốc suy ra **ngày bắt đầu** (dưới) |
+  | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào); chữ *"hoá đơn"* đầu tiên của câu là đối tượng của lệnh, **không** phải danh mục *Hóa đơn* |
   | ví | khớp đúng một ví **và câu nhắc ví** (chữ *ví* trần, hoặc viết tắt tên ví) |
   | tầng 4 `nhacTuTra` | không bao giờ — chỉ luật |
 
   `LenhTao.nguon` = `ai` khi **ít nhất một ô** do mô hình lấp, ngược lại `luat`.
-  ⚠️ **Ba chốt siết hơn bảng §8.3 của spec**, cả ba có ca test + bản sai có chủ ý:
+  ⭐ **Ngày nêu trong câu là NGÀY BẮT ĐẦU hoá đơn** (người dùng chốt 2026-10-01 khi xem thẻ trên Realme: *"khi nhắc
+  tới ngày thì ngày đó là ngày bắt đầu hoá đơn chứ"*) — `ngayBatDauHoaDon`: ngày N **sắp tới** (chưa qua trong tháng,
+  kể cả trùng hôm nay → tháng này; đã qua → tháng sau), kẹp về cuối tháng ngắn / năm nhuận trong khi `anchor` giữ N.
+  Query thêm `start`; thẻ ghi *"hằng tháng, bắt đầu 05/10/2026"*; form: bắt đầu 05/10, kết thúc kỳ và hạn 05/11.
+  Bản đầu (spec §4) không gửi `start` — form luôn bắt đầu hôm nay, *"ngày 5"* chỉ là ngày gốc.
+  ⚠️ **Các chốt siết hơn bảng §8.3 của spec**, đều có ca test + bản sai có chủ ý; ba cái đầu đặt lúc viết mã, phần
+  còn lại do **chính lượt đo Realme** bắt (bảng dưới):
   (1) **ví** — C2 đo Realme 9/10 câu mô hình tự điền ví mặc định; phép "câu nhắc ví" là **`cauNhacViTheoTen`**, tách từ
   `_cauNhacVi` của C2 (`doc_cau_giao_dich.dart`, một định nghĩa); (2) **ngày gốc** — số 5 của *"5 triệu"* không phải
   ngày; (3) **chữ chỉ thời gian so CÓ DẤU khi câu có dấu** — bỏ dấu thì *"tôi"* = *toi* = *tới*, *"cưới"* = *cuoi* =
@@ -3307,23 +3314,60 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   |---|---|
   | có mô hình, lọt cổng | chỉ báo *"Đang đọc lệnh bằng AI…"* + nút **Huỷ** → thẻ, dòng nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"* |
   | có mô hình, AI trả `null` | câu theo mẫu → thẻ luật; câu khác → vòng hỏi đáp như cũ |
-  | bấm **Huỷ** | câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*, **không** đi vòng hỏi đáp |
+  | bấm **Huỷ** | ngay lập tức *"Đang huỷ…"*, nút biến mất; khi engine dừng (~5 s): câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*, **không** đi vòng hỏi đáp |
   | chưa có mô hình | câu theo mẫu → thẻ luật; câu khác → câu cố định `cauKhoaHoiDap`; **không** gọi AI |
   | không lọt cổng | vòng hỏi đáp như cũ |
 
-  ⚠️ Dòng *Huỷ* **lệch spec §8.4 có chủ ý** (spec: về vòng hỏi đáp): vừa huỷ một lượt chờ mà bị đẩy vào lượt chờ 30 s
-  khác là ngược ý người bấm. Nút Huỷ **chỉ** có ở lượt đọc lệnh (`_dangDocLenh`), không ở lượt hỏi đáp thường.
+  ⚠️ Dòng *Huỷ* **lệch spec §8.4, người dùng duyệt 2026-10-01** (spec: về vòng hỏi đáp): vừa huỷ một lượt chờ mà bị
+  đẩy vào lượt chờ 30 s khác là ngược ý người bấm. Nút Huỷ **chỉ** có ở lượt đọc lệnh (`_dangDocLenh`), không ở lượt hỏi đáp thường.
   Dòng nguồn nói thứ **đã xảy ra**: AI đọc mà không lấp ô nào (luật đã đủ) thì vẫn *"Đọc bằng luật"*.
 - **Thẻ theo Stitch `59454c61…`**: ô thiếu là hộp nền nhạt + `help_outline`; nút có mũi tên `arrow_forward`; biểu tượng
   dòng đầu trong ô vuông nền nhạt 24 dp (`auto_awesome` khi AI, `rule` khi luật). **Lệch có chủ ý**: giữ avatar + bong
   bóng bo lệch như mọi tin của trợ lý (Stitch vẽ thẻ rộng hết hàng, không avatar); chữ ô thiếu giữ *"bạn điền trong
   form"* (Stitch: *"bạn chọn"* — ô thiếu có thể là số tiền). Màn Stitch vẽ bản luật: **chưa có** dòng chỉ báo lẫn dòng
-  nguồn.
-- **Giá (chưa đo — ước theo C2):** thẻ sau ~15–20 s trên Realme CPU thay vì < 1 s; câu lọt cổng mà mô hình không gọi
-  tool tốn thêm một lượt chờ rồi mới về vòng hỏi đáp.
-- `flutter test` **5146/5146** (5 skip — ca thứ năm là trần `tools_json` ba tool, chờ số đo Realme), analyze 26.
-- 🚧 **Chưa làm:** Task 5 — đo Realme (10 câu + 3 câu hỏi gần giống + 1 lần Huỷ; `tools_json` thật; đặt
-  `kTranToolsJsonLenhDaDo`, bỏ `skip`). APK debug `5aefd14a…` **đã cài** lên Realme 2026-10-01 14:23.
+  nguồn. Thẻ hoá đơn in thêm **`· danh mục X`** / **`· ví Y`** khi form sẽ điền sẵn chúng (`LenhTaoHoaDon.tenDanhMuc`
+  / `tenVi`) — không thì thẻ ghi *"Đọc bằng AI"* mà không cho thấy AI đã điền gì.
+- **Đo Realme RMX2205 2026-10-01 14:38–15:30** (CPU, bản debug, tài khoản 10, gõ không dấu qua adb; **không Lưu**
+  form nào). `tools_json` ba tool **2.024** ký tự với ví / danh mục thật (phần cố định 1.759), lời hệ thống 457;
+  mở phiên ~3 s, lượt sinh 10–15 s, **thẻ hiện sau 13–18 s**; mọi lượt **đúng một** lời gọi tool; **0**
+  `FAILED_PRECONDITION`, 0 sập. Chấm theo thẻ hiện ra; câu 1–6 đo ở bản `fe758b5c…` (mã @ `1ef8bf0`), câu 7 ở
+  `72268b43…`, câu 8–10 đo lại ở bản cuối `5ffc0123…` (mã @ `4310174`):
+
+  | # | Câu | Mô hình gọi | Thẻ hiện ra | |
+  |---|---|---|---|---|
+  | 1 | tao hoa don gym 300k ngay 5 hang thang | `tao_hoa_don` gym · 300000 · thang · 5 · *Giải trí* | AI · Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Giải trí | ✅ |
+  | 2 | tao muc tieu mua xe 50 trieu truoc thang 6 nam sau | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | luật · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 3 | dat ngan sach an uong 3 trieu | `dat_ngan_sach` Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 4 | them hoa don tien nha 3tr | `tao_hoa_don` … **ngay_goc 1 · vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tien nha** · 3.000.000 đ · hằng tháng · danh mục Nhà cửa (ngày và ví bịa **bị chặn**) | ✅ |
+  | 5 | lap muc tieu du lich 10tr trong 6 thang | `tao_muc_tieu` … **han 30/10/2026** | luật · Tạo mục tiêu **du lich** · 10.000.000 đ · hạn 01/04/2027 (hạn sai của mô hình thua luật) | ✅ |
+  | 6 | toi muon de danh 50 trieu mua xe truoc he nam sau | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | AI · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 7 | moi thang tra tien nha 3 trieu vao mung 5 | `tao_hoa_don` tiền nhà · 3tr · **ngay_goc 0 · vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tiền nhà** · 3.000.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Nhà cửa (ngày do luật đọc *mùng 5*) | ✅ |
+  | 8 | an uong toi da 3 trieu mot thang | **`tao_hoa_don`** Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ (dấu hiệu *tối đa* → ngân sách) | ✅ sau sửa |
+  | 9 | nhac toi dong tien dien hang thang | `tao_hoa_don` *tiền điện hàng tháng* · 0 · Hóa đơn | AI · Tạo hoá đơn **tiền điện** · hằng tháng · danh mục Hóa đơn · *Chưa rõ số tiền* | ✅ sau sửa |
+  | 10 | tiet kiem 2 trieu moi thang cho chuyen du lich | `tao_muc_tieu` chuyen du lich · 2tr | AI · Tạo mục tiêu **chuyen du lich** · *Chưa rõ số tiền, hạn* (2 triệu là mức góp mỗi tháng) | ✅ sau sửa |
+
+  Ba câu hỏi gần giống — *nen dat ngan sach an uong bao nhieu* · *hoa don nao sap den han* · *de danh moi thang 2
+  trieu thi du khong* — **không** mở phiên lệnh, đi thẳng vòng hỏi đáp như cũ (25 s · 31 s · câu thứ ba rơi L1b vì
+  mô hình gọi `goi_y_han_muc {tiêu dùng}` — lỗi sẵn có của vòng hỏi đáp, ngoài phạm vi). **Huỷ** (câu 6, bấm sau
+  5 s): *"Đang huỷ…"* hiện ngay, ~5 s sau *"Đã huỷ."*, ô nhập mở lại, không lượt hỏi đáp nào. Form hoá đơn mở từ
+  thẻ câu 1: Ngày bắt đầu 05/10/2026 · kết thúc kỳ 05/11/2026 · hạn 05/11/2026.
+- ⚠️ **Sáu lỗi lượt đo bắt được, 5146 ca test khi ấy đều mù** (đã sửa, mỗi cái một ca test + bản sai):
+  (1) chữ *"hoá đơn"* của lệnh khớp danh mục mặc định *Hóa đơn* — và vì luật thắng, che luôn danh mục mô hình đoán
+  (lỗi có từ bản luật 9.42); (2) *"ngày 5"* chỉ đặt ngày gốc, form vẫn bắt đầu hôm nay — người dùng chỉ ra; (3) câu 8:
+  mô hình gọi `tao_hoa_don` cho câu ngân sách; (4) câu 10: *2 triệu mỗi tháng* thành số tiền đích; và khi thêm ví dụ
+  *"… một tháng"* vào mô tả `dat_ngan_sach` để chữa (3) thì câu 10 lại bị gọi thành **ngân sách Di chuyển** — ví dụ
+  trong mô tả tool kéo lệch câu khác, nên mô tả **không** kèm ví dụ và loại lệnh do luật `_loaiTheoDauHieu` giữ;
+  (5) tên *"tiền điện hàng tháng"*; (6) bấm Huỷ xong màn đứng nguyên ~5 s (bản giả trong widget test thả lượt ngay
+  khi huỷ nên không thấy quãng ấy).
+- ⚠️ **Mô hình hay điền thừa**: 3/10 câu tự điền ví *Tiết kiệm*, 1 câu tự điền ngày gốc 1, 1 câu hạn sai — lưới kiểm
+  chặn hết. Cùng họ với C2 (ví mặc định 9/10 câu) và bẫy 4.44.
+- **Giá:** thẻ sau 13–18 s trên Realme CPU thay vì < 1 s của bản luật — **kể cả câu theo mẫu** (máy có mô hình thì
+  mọi câu lọt cổng đều đi phiên AI; cái được là danh mục mô hình đoán). Câu lọt cổng mà mô hình không gọi tool tốn
+  thêm một lượt chờ rồi mới về vòng hỏi đáp (chưa gặp trong 10 câu).
+- **Chưa đo:** OnePlus (GPU); nhánh *chưa có mô hình* trên máy thật (widget test phủ); tài khoản nhiều danh mục
+  (30 danh mục + 5 ví giả lập: `tools_json` 3.049 ký tự — dưới nửa phiên sáu tool 6.980 đã chạy được).
+- `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
+  (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

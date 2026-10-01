@@ -22,15 +22,25 @@ D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `k
 > 🔄 **ĐỔI LẦN HAI (người dùng duyệt 2026-09-30 đêm) — AI hiểu ý + điền ô, luật thành lưới kiểm và đường dự phòng: xem
 > §8.** Mọi câu "chỉ luật / không mô hình" ở §1–§7 là của bản đầu.
 >
-> 🚧 **§8 — MÃ XONG Task 1–4 ngày 2026-10-01** (`3442495` → `24226cf`), **chưa đo Realme** (Task 5). Mục **9.43**
-> `AI_EDGE_FEATURE.md`. **Bốn chỗ bản thi công khác §8**, đều có ca test + bản sai có chủ ý:
+> ✅ **§8 — XONG 2026-10-01** (`3442495` → `4310174`), đo Realme 10/10 câu ra thẻ đúng — bảng đo ở mục **9.43**
+> `AI_EDGE_FEATURE.md`. **Chín chỗ bản thi công khác spec**, đều có ca test + bản sai có chủ ý; (1)–(4) đặt lúc
+> viết mã, (5)–(9) do lượt đo Realme:
 > (1) §8.3 *ví*: tên enum của AI khớp một ví **chưa đủ** — còn phải **câu nhắc ví** (chữ *ví* trần / viết tắt tên
 > ví, `cauNhacViTheoTen` của C2); C2 đo Realme 9/10 câu mô hình tự điền ví mặc định.
 > (2) §8.3 *ngày gốc*: chữ số phải nằm **ngoài đoạn số tiền** (số 5 của *"5 triệu"*).
 > (3) §8.3 *hạn*: danh sách từ chỉ thời gian so **có dấu** khi câu có dấu (*tôi* ≠ *tới*, *cưới* ≠ *cuối*); bộ
 > không dấu không có `toi`; thêm *tuần · quý*.
 > (4) §8.4 *Huỷ*: lượt **dừng** (câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*), **không** về vòng hỏi đáp —
-> **chờ người dùng xác nhận**.
+> ✅ người dùng duyệt 2026-10-01 (cùng (1)); bấm xong hiện ngay *"Đang huỷ…"*.
+> (5) ⭐ **§4 đổi — người dùng chốt 2026-10-01: ngày nêu trong câu là NGÀY BẮT ĐẦU hoá đơn**, lấy ngày N sắp tới
+> (kẹp cuối tháng ngắn, `anchor` giữ N). Query **có** `start` khi câu nêu ngày; thẻ ghi *"bắt đầu dd/MM/yyyy"*.
+> Câu *"không `start`: hoá đơn mới bắt đầu hôm nay"* ở §4 hết hiệu lực.
+> (6) §8.3 *loại*: câu tự nhiên có dấu hiệu loại thì **luật giữ loại** — *hạn mức · giới hạn · tối đa* → ngân sách
+> (xét trước), *tiết kiệm · để dành · dành dụm* → mục tiêu — dù mô hình gọi tool nào.
+> (7) §8.3 *số tiền mục tiêu*: số tiền theo kỳ (*"2 triệu mỗi tháng"*) không phải số tiền đích — bỏ.
+> (8) §8.3 *tên*: mọi chữ có trong câu đúng thứ tự (không cần là đoạn con liền nhau), gọt chữ chu kỳ.
+> (9) §3 *danh mục hoá đơn*: chữ *"hoá đơn"* đầu tiên của câu không phải danh mục *Hóa đơn*; §4 *thẻ*: in thêm
+> `· danh mục X` / `· ví Y` khi form sẽ điền sẵn; §8.2 mô tả tool **không kèm ví dụ**.
 >
 > ✅ **THI CÔNG XONG 2026-09-30 đêm** (`51d6a3c` → `89f2112`), nghiệm thu Realme: ba lệnh → thẻ < 1 s, ba form đúng;
 > câu hỏi gần giống lệnh đi vòng tool như cũ — mục **9.42** `AI_EDGE_FEATURE.md`. Stitch thẻ lệnh gửi (timeout), chưa hiện

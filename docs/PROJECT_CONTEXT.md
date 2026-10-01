@@ -930,15 +930,18 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `cycle` ngân sách, và **ô nhập mở cả khi chưa có mô hình** (người dùng chốt). `/goals/add` nhận query. Realme: ba
   lệnh → thẻ < 1 s, ba form đúng; câu hỏi gần giống lệnh đi vòng tool như cũ. Mục **9.42** `AI_EDGE_FEATURE.md`.
   `flutter test` **5088/5088** (4 skip), analyze 26.
-- 🚧 **C3 đổi lần hai — lệnh tạo đọc bằng AI: mã xong Task 1–4 (2026-10-01, `3442495` → `24226cf`), chưa đo
-  Realme.** Người dùng: *"tôi muốn tạo bằng AI mới đúng"* (spec C3 §8). Cổng rộng luật `coVeLenhTao` → phiên AI
+- ✅ **C3 đổi lần hai — lệnh tạo đọc bằng AI: XONG 2026-10-01 (`3442495` → `4310174`), đo Realme 10/10 câu ra thẻ
+  đúng.** Người dùng: *"tôi muốn tạo bằng AI mới đúng"* (spec C3 §8). Cổng rộng luật `coVeLenhTao` → phiên AI
   riêng ba tool `DocLenhBangAi` (vòng đời dùng chung với C2: `PhienMotLoiGoi`) → lưới kiểm `lenhTaoTuAi` (luật đọc
   trước, AI chỉ lấp ô trống, mỗi ô một chốt) → thẻ có dòng nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"*; chỉ báo
   *"Đang đọc lệnh bằng AI…"* + **Huỷ**. Máy chưa có mô hình: bộ luật 9.42 làm dự phòng. Ba chốt siết hơn spec (ví
   chỉ khi câu nhắc ví · ngày gốc ngoài đoạn số tiền · chữ thời gian so có dấu) và một chỗ lệch có chủ ý (Huỷ →
   *"Đã huỷ."*, không đi vòng hỏi đáp). Màn Stitch thẻ lệnh `59454c61…` đã hiện, thẻ chỉnh theo. Mục **9.43**
-  `AI_EDGE_FEATURE.md`. `flutter test` **5146/5146** (5 skip), analyze 26. Còn: đo Realme (Task 5), tài liệu chốt
-  (Task 6).
+  `AI_EDGE_FEATURE.md`. ⭐ Người dùng chốt giữa buổi đo: **ngày nêu trong câu là ngày BẮT ĐẦU hoá đơn** (ngày N sắp
+  tới; query thêm `start`). Lượt đo bắt sáu lỗi bộ test mù — chữ *"hoá đơn"* của lệnh khớp danh mục *Hóa đơn* ·
+  mô hình gọi nhầm tool (ngân sách ↔ hoá đơn ↔ tiết kiệm; nay luật `_loaiTheoDauHieu` giữ loại) · *"2 triệu mỗi
+  tháng"* thành số tiền đích · tên dính chữ chu kỳ · Huỷ không phản hồi ~5 s. Thẻ sau 13–18 s (CPU), `tools_json`
+  2.024 ký tự, 0 vỡ trần. `flutter test` **5156/5156** (4 skip), analyze 26. Chưa đo OnePlus. Kế: **C4**.
 
 ### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
 
