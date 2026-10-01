@@ -226,4 +226,155 @@ void main() {
       expect(nham, isEmpty, reason: 'câu hỏi lọt cổng là mở phiên lệnh vô ích rồi mới về vòng hỏi đáp (thêm ~15 s)');
     });
   });
+
+  group('KetQuaLenhAi.tuLoiGoi', () {
+    test('tao_hoa_don: số dạng chuỗi, enum rỗng → null', () {
+      final k = KetQuaLenhAi.tuLoiGoi(kTenCongCuTaoHoaDon,
+          {'ten': 'gym', 'so_tien': '300000', 'chu_ky': 'thang', 'ngay_goc': 5, 'vi': '', 'danh_muc': 'Giải trí'})!;
+      expect((k.loai, k.ten, k.soTien, k.chuKy, k.ngayGoc, k.vi, k.danhMuc),
+          (LoaiLenhTao.hoaDon, 'gym', 300000.0, 'thang', 5, null, 'Giải trí'));
+    });
+    test('tao_muc_tieu / dat_ngan_sach: so_tien_dich / han_muc → soTien; 0 → null', () {
+      expect(
+          KetQuaLenhAi.tuLoiGoi(kTenCongCuTaoMucTieu, {'ten': 'mua xe', 'so_tien_dich': 50000000, 'han': '30/06/2027'})!
+              .soTien,
+          50000000);
+      final n = KetQuaLenhAi.tuLoiGoi(kTenCongCuDatNganSach, {'danh_muc': 'Ăn uống', 'han_muc': 0})!;
+      expect((n.loai, n.danhMuc, n.soTien), (LoaiLenhTao.nganSach, 'Ăn uống', null));
+    });
+    test('tên tool lạ → null (mô hình bịa tool)', () {
+      expect(KetQuaLenhAi.tuLoiGoi('bay_gio_may_gio', {}), isNull);
+    });
+  });
+
+  group('lenhTaoTuAi — lưới kiểm (§8.3)', () {
+    final now = DateTime(2026, 9, 30);
+    const vi = [(id: 'cash', ten: 'Tiền mặt'), (id: 'tcb', ten: 'Techcombank')];
+    const dmChi = [(id: 'food', ten: 'Ăn uống'), (id: 'ent', ten: 'Giải trí')];
+    KetQuaLenhAi ai({
+      LoaiLenhTao loai = LoaiLenhTao.mucTieu,
+      String? ten,
+      double? soTien,
+      String? han,
+      String? chuKy,
+      int? ngayGoc,
+      String? vi,
+      String? danhMuc,
+    }) =>
+        KetQuaLenhAi(
+            loai: loai, ten: ten, soTien: soTien, han: han, chuKy: chuKy, ngayGoc: ngayGoc, vi: vi, danhMuc: danhMuc);
+    LenhTao doc(String c, KetQuaLenhAi a) => lenhTaoTuAi(c, a, now: now, vi: vi, danhMucChi: dmChi);
+
+    test('⭐ câu tự nhiên: AI điền tên (đoạn con của câu), hạn (câu nói thời gian); số do luật đọc → nguon ai', () {
+      final l = doc('tôi muốn để dành 50 triệu mua xe trước hè năm sau',
+          ai(ten: 'mua xe', soTien: 50000000, han: '30/06/2027')) as LenhTaoMucTieu;
+      expect((l.ten, l.soTienDich, l.han, l.nguon), ('mua xe', 50000000.0, DateTime(2027, 6, 30), NguonLenh.ai));
+    });
+    test('AI bịa số không có trong câu → bỏ', () {
+      final l = doc('tôi muốn để dành tiền mua xe', ai(ten: 'mua xe', soTien: 30000000)) as LenhTaoMucTieu;
+      expect(l.soTienDich, isNull, reason: 'con số không đọc ra được từ câu là con số mô hình tự nghĩ');
+    });
+    test('luật đọc được số thì luật thắng, kể cả khi AI khác', () {
+      final l = doc('để dành 50 triệu mua xe', ai(ten: 'mua xe', soTien: 5000000)) as LenhTaoMucTieu;
+      expect(l.soTienDich, 50000000);
+    });
+    test('tên: câu theo mẫu → tên luật thắng; câu tự nhiên → tên AI phải là đoạn con của câu', () {
+      expect((doc('tạo mục tiêu mua xe 50 triệu', ai(ten: 'Mua xe hơi')) as LenhTaoMucTieu).ten, 'mua xe');
+      expect((doc('để dành 50 triệu', ai(ten: 'xe')) as LenhTaoMucTieu).ten, isNull);
+      expect((doc('để dành 50 triệu MUA XE', ai(ten: 'mua xe')) as LenhTaoMucTieu).ten, 'mua xe',
+          reason: 'so không phân biệt hoa thường, không dấu');
+      expect((doc('để dành 50 triệu mua xe', ai(ten: 'xe 50 triệu')) as LenhTaoMucTieu).ten, isNull,
+          reason: 'tên không được chứa chữ số');
+    });
+    test('⚠️ AI đổi loại của câu theo mẫu → giữ loại luật', () {
+      expect(doc('tạo hoá đơn gym 300k', ai(loai: LoaiLenhTao.mucTieu, ten: 'gym', soTien: 300000)),
+          isA<LenhTaoHoaDon>());
+    });
+    test('hạn: câu không nói thời gian / quá khứ / quá 50 năm / ngày không có thật → bỏ; luật thắng', () {
+      expect((doc('để dành 10 triệu mua xe', ai(ten: 'mua xe', han: '30/06/2027')) as LenhTaoMucTieu).han, isNull);
+      expect((doc('mua xe trước tết', ai(ten: 'mua xe', han: '01/01/2020')) as LenhTaoMucTieu).han, isNull);
+      expect((doc('mua xe trước tết', ai(ten: 'mua xe', han: '01/01/2090')) as LenhTaoMucTieu).han, isNull);
+      expect((doc('mua xe trước tết', ai(ten: 'mua xe', han: '30/02/2027')) as LenhTaoMucTieu).han, isNull);
+      expect((doc('mua xe trước tết', ai(ten: 'mua xe', han: '10/02/2027')) as LenhTaoMucTieu).han,
+          DateTime(2027, 2, 10));
+      expect((doc('tạo mục tiêu mua xe trước tháng 6 năm sau', ai(han: '15/06/2027')) as LenhTaoMucTieu).han,
+          DateTime(2027, 6, 30));
+    });
+    test('⚠️ hạn: "tôi" không phải "tới", "cưới" không phải "cuối" — câu có dấu thì so chữ CÓ DẤU', () {
+      expect((doc('tôi muốn để dành 10 triệu mua xe', ai(ten: 'mua xe', han: '30/06/2027')) as LenhTaoMucTieu).han,
+          isNull, reason: 'bỏ dấu thì "tôi" = "toi" = "tới" — mọi câu có chủ ngữ thành câu nói thời gian');
+      expect((doc('để dành 100 triệu cho đám cưới', ai(ten: 'đám cưới', han: '30/06/2027')) as LenhTaoMucTieu).han,
+          isNull);
+      expect((doc('toi muon de danh 10 trieu mua xe', ai(ten: 'mua xe', han: '30/06/2027')) as LenhTaoMucTieu).han,
+          isNull, reason: 'gõ không dấu: "toi" không nằm trong danh sách');
+      expect((doc('de danh 10 trieu mua xe truoc tet', ai(ten: 'mua xe', han: '10/02/2027')) as LenhTaoMucTieu).han,
+          DateTime(2027, 2, 10), reason: 'gõ không dấu vẫn nhận chữ thời gian');
+    });
+    test('⭐ hoá đơn tự nhiên: tên từ AI; chu kỳ / ngày gốc luật đọc được thì luật thắng', () {
+      final l = doc('mỗi tháng trả tiền nhà 3 triệu vào mùng 5',
+          ai(loai: LoaiLenhTao.hoaDon, ten: 'tiền nhà', soTien: 3000000, chuKy: 'thang', ngayGoc: 5)) as LenhTaoHoaDon;
+      expect((l.ten, l.soTien, l.chuKy, l.ngayGoc, l.nguon), ('tiền nhà', 3000000.0, kBillCycleMonth, 5, NguonLenh.ai));
+      expect(
+          (doc('trả tiền nhà 3 triệu hằng tháng', ai(loai: LoaiLenhTao.hoaDon, chuKy: 'tuan')) as LenhTaoHoaDon).chuKy,
+          kBillCycleMonth,
+          reason: 'luật đọc được chu kỳ thì luật thắng');
+      expect((doc('trả tiền nhà 3 triệu', ai(loai: LoaiLenhTao.hoaDon, chuKy: 'quy')) as LenhTaoHoaDon).chuKy,
+          kBillCycleQuarter);
+    });
+    test('ngày gốc của AI: chữ số ấy phải có trong câu, NGOÀI đoạn số tiền', () {
+      expect(
+          (doc('trả tiền nhà 3 triệu hằng tháng', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon).ngayGoc,
+          isNull);
+      expect((doc('trả tiền nhà 5 triệu hằng tháng', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon).ngayGoc,
+          isNull, reason: 'số 5 của "5 triệu" là tiền, không phải ngày');
+      expect(
+          (doc('trả tiền nhà 3 triệu hằng tháng vào hôm 5', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon)
+              .ngayGoc,
+          5);
+      expect(
+          (doc('trả tiền nhà 3 triệu hằng tháng vào hôm 5', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 45)) as LenhTaoHoaDon)
+              .ngayGoc,
+          isNull);
+    });
+    test('danh mục: tên luật trong câu thắng; không thì enum AI khớp đúng một mục', () {
+      final l = doc('trả gym 300k mỗi tháng', ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', danhMuc: 'Giải trí'))
+          as LenhTaoHoaDon;
+      expect((l.idDanhMuc, l.nguon), ('ent', NguonLenh.ai));
+      expect((doc('trả gym 300k', ai(loai: LoaiLenhTao.hoaDon, danhMuc: 'Không có')) as LenhTaoHoaDon).idDanhMuc,
+          isNull);
+    });
+    test('⚠️ ví của AI chỉ nhận khi CÂU NHẮC VÍ — mô hình hay tự điền ví mặc định (C2 đo 9/10 câu)', () {
+      expect(
+          (doc('trả gym 300k mỗi tháng', ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', vi: 'Techcombank')) as LenhTaoHoaDon)
+              .idVi,
+          isNull,
+          reason: 'câu không nói tới ví nào — ví điền sẵn sai là ô người dùng dễ bỏ sót nhất');
+      expect(
+          (doc('trả gym 300k mỗi tháng bằng techcom', ai(loai: LoaiLenhTao.hoaDon, vi: 'Techcombank')) as LenhTaoHoaDon)
+              .idVi,
+          'tcb',
+          reason: 'viết tắt tên ví');
+      expect(
+          (doc('trả gym 300k mỗi tháng ví tiền mặt', ai(loai: LoaiLenhTao.hoaDon, vi: 'Techcombank')) as LenhTaoHoaDon)
+              .idVi,
+          'cash',
+          reason: 'tên ví luật tìm thấy trong câu thắng');
+    });
+    test('ngân sách tự nhiên: danh mục luật tìm trong câu; hạn mức AI phải có trong câu', () {
+      final l = doc('ăn uống tối đa 3 triệu một tháng',
+          ai(loai: LoaiLenhTao.nganSach, danhMuc: 'Ăn uống', soTien: 3000000)) as LenhTaoNganSach;
+      expect((l.idDanhMuc, l.tenDanhMuc, l.hanMuc), ('food', 'Ăn uống', 3000000.0));
+    });
+    test('⚠️ tầng 4 chỉ luật: "tự trả" → nhacTuTra, và query không có tham số tự trả', () {
+      final l = doc('mỗi tháng tự trả gym 300k', ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000))
+          as LenhTaoHoaDon;
+      expect(l.nhacTuTra, isTrue);
+      expect(l.query.keys.where((k) => k.contains('auto') || k.contains('tu_tra')), isEmpty);
+    });
+    test('không ô nào từ AI → nguon luat', () {
+      final l = doc('tạo hoá đơn gym 300k ngày 5 hằng tháng',
+          ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, chuKy: 'thang', ngayGoc: 5)) as LenhTaoHoaDon;
+      expect(l.nguon, NguonLenh.luat);
+    });
+  });
 }

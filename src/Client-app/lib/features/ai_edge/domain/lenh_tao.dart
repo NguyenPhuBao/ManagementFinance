@@ -15,7 +15,7 @@ import '../../../core/category/category_name.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
-import '../../transaction/domain/doc_cau_giao_dich.dart' show cachDocSoTien, chonSoTienTrongCau;
+import '../../transaction/domain/doc_cau_giao_dich.dart' show cachDocSoTien, cauNhacViTheoTen, chonSoTienTrongCau;
 
 enum LoaiLenhTao { hoaDon, mucTieu, nganSach }
 
@@ -149,10 +149,78 @@ typedef MucChon = ({String id, String ten});
 /// Ví HOẠT ĐỘNG và danh mục CHI chọn được — màn chat nạp một lần rồi truyền vào [lenhTaoTheoCauHoi].
 typedef NguonLenhTao = ({List<MucChon> vi, List<MucChon> danhMucChi});
 
+/// Ai điền ô: `ai` khi ít nhất một ô do mô hình lấp (§8.3) — thẻ ghi dòng nguồn đúng thứ đã xảy ra.
+enum NguonLenh { luat, ai }
+
+const String kTenCongCuTaoHoaDon = 'tao_hoa_don';
+const String kTenCongCuTaoMucTieu = 'tao_muc_tieu';
+const String kTenCongCuDatNganSach = 'dat_ngan_sach';
+const Set<String> kTenCongCuLenhTao = {kTenCongCuTaoHoaDon, kTenCongCuTaoMucTieu, kTenCongCuDatNganSach};
+
+/// Kết quả THÔ của phiên AI lệnh tạo (§8.2) — chưa qua lưới kiểm [lenhTaoTuAi], không bao giờ dùng thẳng.
+class KetQuaLenhAi {
+  const KetQuaLenhAi({
+    required this.loai,
+    this.ten,
+    this.soTien,
+    this.chuKy,
+    this.ngayGoc,
+    this.vi,
+    this.danhMuc,
+    this.han,
+  });
+
+  final LoaiLenhTao loai;
+  final String? ten;
+  final double? soTien;
+  final String? chuKy;
+  final int? ngayGoc;
+  final String? vi;
+  final String? danhMuc;
+  final String? han;
+
+  /// Từ lời gọi tool. Lỏng tay với kiểu (số có thể đến dạng chuỗi); rỗng / 0 → `null`; tên tool lạ → `null`.
+  static KetQuaLenhAi? tuLoiGoi(String tenTool, Map<String, dynamic> a) {
+    final loai = switch (tenTool) {
+      kTenCongCuTaoHoaDon => LoaiLenhTao.hoaDon,
+      kTenCongCuTaoMucTieu => LoaiLenhTao.mucTieu,
+      kTenCongCuDatNganSach => LoaiLenhTao.nganSach,
+      _ => null,
+    };
+    if (loai == null) return null;
+    String? chuoi(Object? v) {
+      final t = v?.toString().trim() ?? '';
+      return t.isEmpty ? null : t;
+    }
+
+    double? so(Object? v) => switch (v) {
+          final num n => n <= 0 ? null : n.toDouble(),
+          final String t => switch (double.tryParse(t.replaceAll(RegExp(r'[^\d.]'), ''))) {
+              final d? when d > 0 => d,
+              _ => null,
+            },
+          _ => null,
+        };
+    return KetQuaLenhAi(
+      loai: loai,
+      ten: chuoi(a['ten']),
+      soTien: so(a['so_tien']) ?? so(a['so_tien_dich']) ?? so(a['han_muc']),
+      chuKy: chuoi(a['chu_ky']),
+      ngayGoc: so(a['ngay_goc'])?.round(),
+      vi: chuoi(a['vi']),
+      danhMuc: chuoi(a['danh_muc']),
+      han: chuoi(a['han']),
+    );
+  }
+}
+
 /// Lệnh đã đọc ô. Trường `null` = không đọc được — form để trống ô ấy. [query] chỉ mang khoá có giá trị; [duongDan] là
 /// route form điền sẵn. ⚠️ Tầng 4: không lớp nào mang tham số bật tự trả / trích tự động.
 sealed class LenhTao {
-  const LenhTao();
+  const LenhTao({this.nguon = NguonLenh.luat});
+
+  /// `ai` khi ít nhất một ô do mô hình lấp qua lưới kiểm [lenhTaoTuAi]; bộ luật luôn cho `luat`.
+  final NguonLenh nguon;
 
   String get _route;
   Map<String, String> get query;
@@ -169,6 +237,7 @@ class LenhTaoHoaDon extends LenhTao {
     this.idVi,
     this.idDanhMuc,
     this.nhacTuTra = false,
+    super.nguon,
   });
 
   final String? ten;
@@ -199,7 +268,7 @@ class LenhTaoHoaDon extends LenhTao {
 }
 
 class LenhTaoMucTieu extends LenhTao {
-  const LenhTaoMucTieu({this.ten, this.soTienDich, this.han});
+  const LenhTaoMucTieu({this.ten, this.soTienDich, this.han, super.nguon});
 
   final String? ten;
   final double? soTienDich;
@@ -217,7 +286,7 @@ class LenhTaoMucTieu extends LenhTao {
 }
 
 class LenhTaoNganSach extends LenhTao {
-  const LenhTaoNganSach({this.idDanhMuc, this.tenDanhMuc, this.hanMuc});
+  const LenhTaoNganSach({this.idDanhMuc, this.tenDanhMuc, this.hanMuc, super.nguon});
 
   /// `null` = không khớp danh mục chi nào — thẻ nói "Chưa rõ danh mục".
   final String? idDanhMuc;
@@ -327,19 +396,33 @@ LenhTao? lenhTaoTheoCauHoi(
   final s = unorm.nfc(cau);
   final b = removeVietnameseTones(s.toLowerCase());
   // Bỏ dấu lệch độ dài (ký tự lạ) thì vị trí không tin được: vẫn là lệnh, chỉ không đọc ô.
-  if (b.length != s.length) {
-    return switch (nhan.loai) {
+  if (b.length != s.length) return _rong(nhan.loai);
+  return _docTheoLuat(nhan.loai, s, b, theoMau: true, now: now, vi: vi, danhMucChi: danhMucChi);
+}
+
+LenhTao _rong(LoaiLenhTao loai) => switch (loai) {
       LoaiLenhTao.hoaDon => const LenhTaoHoaDon(),
       LoaiLenhTao.mucTieu => const LenhTaoMucTieu(),
       LoaiLenhTao.nganSach => const LenhTaoNganSach(),
     };
-  }
-  final danhTu = _mauDanhTu.firstMatch(b);
-  final tu = danhTu?.end ?? 0;
+
+/// Đọc ô bằng luật cho một [loai] đã biết; [s] là câu NFC, [b] là bản bỏ dấu chữ thường CÙNG độ dài. [theoMau] = câu
+/// theo mẫu §2 (động từ + danh từ ở đầu): chỉ khi ấy mới cắt TÊN từ đoạn sau danh từ — ở câu tự nhiên đoạn ấy không
+/// phải tên (mô hình đọc, [lenhTaoTuAi] kiểm).
+LenhTao _docTheoLuat(
+  LoaiLenhTao loai,
+  String s,
+  String b, {
+  required bool theoMau,
+  required DateTime now,
+  required List<MucChon> vi,
+  required List<MucChon> danhMucChi,
+}) {
+  final tu = theoMau ? (_mauDanhTu.firstMatch(b)?.end ?? 0) : 0;
   final tien = chonSoTienTrongCau(s, now: now);
   final soTien = tien != null && tien.batDau >= tu ? tien.giaTri : null;
 
-  switch (nhan.loai) {
+  switch (loai) {
     case LoaiLenhTao.hoaDon:
       final viNeu = timTenTrongCau(s, [for (final v in vi) v.ten], tuLoai: 'ví');
       final dmNeu = timTenTrongCau(s, [for (final d in danhMucChi) d.ten], tuLoai: 'danh mục');
@@ -349,15 +432,17 @@ LenhTao? lenhTaoTheoCauHoi(
       final tuTraO = _viTri(_mauTuTra, b, tu);
       final nhanO = _viTri(RegExp(r'(?<![a-z0-9])(?:vi|danh muc)(?![a-z0-9])'), b, tu);
       return LenhTaoHoaDon(
-        ten: _tenSau(s, tu, [
-          if (soTien != null) tien!.batDau,
-          if (chuKy != null) chuKy.start,
-          if (ngayGoc != null) ngayGoc.start,
-          if (tuTraO != null) tuTraO,
-          if (nhanO != null) nhanO,
-          if (viNeu != null) viNeu.batDau,
-          if (dmNeu != null) dmNeu.batDau,
-        ]),
+        ten: !theoMau
+            ? null
+            : _tenSau(s, tu, [
+                if (soTien != null) tien!.batDau,
+                if (chuKy != null) chuKy.start,
+                if (ngayGoc != null) ngayGoc.start,
+                if (tuTraO != null) tuTraO,
+                if (nhanO != null) nhanO,
+                if (viNeu != null) viNeu.batDau,
+                if (dmNeu != null) dmNeu.batDau,
+              ]),
         soTien: soTien,
         chuKy: chuKy == null ? kBillCycleMonth : _chuKyTheoChu[chuKy.group(1)]!,
         ngayGoc: ng != null && ng >= 1 && ng <= 31 ? ng : null,
@@ -368,10 +453,12 @@ LenhTao? lenhTaoTheoCauHoi(
     case LoaiLenhTao.mucTieu:
       final hanO = _viTri(_mauMoHan, b, tu);
       return LenhTaoMucTieu(
-        ten: _tenSau(s, tu, [
-          if (soTien != null) tien!.batDau,
-          if (hanO != null) hanO,
-        ]),
+        ten: !theoMau
+            ? null
+            : _tenSau(s, tu, [
+                if (soTien != null) tien!.batDau,
+                if (hanO != null) hanO,
+              ]),
         soTienDich: soTien,
         han: _hanMucTieu(b, now),
       );
@@ -381,6 +468,141 @@ LenhTao? lenhTaoTheoCauHoi(
         idDanhMuc: _idCua(danhMucChi, dmNeu?.ten),
         tenDanhMuc: dmNeu?.ten,
         hanMuc: soTien,
+      );
+  }
+}
+
+final RegExp _mauHanAi = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+final RegExp _tachTu = RegExp(r'[^\p{L}\p{M}\p{N}]+', unicode: true);
+
+/// Chữ chỉ thời gian — hai bộ. ⚠️ Câu CÓ DẤU thì so chữ có dấu: bỏ dấu là *"tôi"* thành *toi* = *tới*, *"cưới"* thành
+/// *cuoi* = *cuối* — mọi câu có chủ ngữ thành "câu nói thời gian" và hạn mô hình bịa lọt lưới. Bộ không dấu (cho người
+/// gõ không dấu) vì thế KHÔNG có `toi`.
+const Set<String> _tuThoiGianCoDau = {
+  'tuần', 'tháng', 'quý', 'năm', 'tết', 'hè', 'cuối', 'đầu', 'trước', 'đến', 'tới', 'trong', 'ngày', //
+};
+const Set<String> _tuThoiGianKhongDau = {
+  'tuan', 'thang', 'quy', 'nam', 'tet', 'he', 'cuoi', 'dau', 'truoc', 'den', 'trong', 'ngay', //
+};
+
+bool _cauNoiThoiGian(String s) {
+  final thuong = s.toLowerCase();
+  if (thuong.contains('/')) return true;
+  final tu = thuong.split(_tachTu);
+  return thuong != removeVietnameseTones(thuong)
+      ? tu.any(_tuThoiGianCoDau.contains)
+      : tu.any(_tuThoiGianKhongDau.contains);
+}
+
+String _chuan(String x) => removeVietnameseTones(normalizeCategoryName(x));
+
+/// Tên của AI hợp lệ ⇔ là ĐOẠN CON của câu (không dấu, chữ thường, gom khoảng trắng) và không chứa chữ số.
+String? _tenAiHopLe(String? ten, String cau) {
+  if (ten == null) return null;
+  final t = _chuan(ten);
+  if (t.isEmpty || RegExp(r'\d').hasMatch(t) || !_chuan(cau).contains(t)) return null;
+  return ten.trim();
+}
+
+/// Số của AI hợp lệ ⇔ là một cách đọc được từ chính câu (cùng phép C2).
+double? _soAiHopLe(double? so, String cau, DateTime now) {
+  if (so == null || so >= 1e13) return null;
+  return cachDocSoTien(cau, now: now).any((v) => (v - so).abs() <= 0.5) ? so.roundToDouble() : null;
+}
+
+/// Hạn của AI hợp lệ ⇔ dd/mm/yyyy có thật, SAU hôm nay, ≤ 50 năm, và câu có nói tới thời gian (AI không được bịa hạn
+/// cho câu không nhắc thời điểm nào).
+DateTime? _hanAiHopLe(String? chu, String s, DateTime now) {
+  final m = _mauHanAi.firstMatch(chu?.trim() ?? '');
+  if (m == null || !_cauNoiThoiGian(s)) return null;
+  final x = ngayHopLe(int.parse(m.group(3)!), int.parse(m.group(2)!), int.parse(m.group(1)!));
+  if (x == null) return null;
+  final homNay = DateTime(now.year, now.month, now.day);
+  if (!x.isAfter(homNay) || x.isAfter(DateTime(now.year + 50, now.month, now.day))) return null;
+  return x;
+}
+
+/// Ngày gốc của AI hợp lệ ⇔ 1–31 và chữ số ấy đứng riêng trong câu, NGOÀI đoạn số tiền [tien] (số 5 của *"5 triệu"*
+/// không phải ngày).
+int? _ngayGocAiHopLe(int? n, String b, ({int batDau, int ketThuc, double giaTri})? tien) {
+  if (n == null || n < 1 || n > 31) return null;
+  final ngoaiTien = tien == null ? b : b.replaceRange(tien.batDau, tien.ketThuc, ' ' * (tien.ketThuc - tien.batDau));
+  return RegExp('(?<![0-9])0?$n(?![0-9])').hasMatch(ngoaiTien) ? n : null;
+}
+
+MucChon? _mucTheoTenChuan(List<MucChon> ds, String? ten) {
+  if (ten == null) return null;
+  final k = normalizeCategoryName(ten);
+  final khop = [
+    for (final x in ds)
+      if (normalizeCategoryName(x.ten) == k) x,
+  ];
+  return khop.length == 1 ? khop.single : null;
+}
+
+/// Ví của AI hợp lệ ⇔ khớp đúng một ví VÀ câu nhắc ví ấy (chữ *ví* trần, hoặc viết tắt tên ví — cùng phép C2
+/// `cauNhacViTheoTen`). ⚠️ Mô hình hay tự điền ví mặc định cho câu không nói tới ví nào (C2 đo Realme: 9/10 câu); ví
+/// điền sẵn sai là ô người dùng dễ bỏ sót nhất trên form hoá đơn.
+String? _viAiHopLe(List<MucChon> vi, String? ten, String s) {
+  final m = _mucTheoTenChuan(vi, ten);
+  return m != null && cauNhacViTheoTen(s.toLowerCase(), m.ten) ? m.id : null;
+}
+
+/// Lưới kiểm (§8.3) — kết quả mô hình KHÔNG BAO GIỜ dùng thẳng. Luật đọc trước trên chính câu; AI chỉ LẤP ô luật để
+/// trống, mỗi ô qua một chốt. Loại: câu theo mẫu §2 → loại của luật (AI không đổi được); không thì theo tool AI gọi.
+/// Tầng 4 (`nhacTuTra`) chỉ luật quyết.
+LenhTao lenhTaoTuAi(
+  String cau,
+  KetQuaLenhAi ai, {
+  required DateTime now,
+  required List<MucChon> vi,
+  required List<MucChon> danhMucChi,
+}) {
+  final nhan = _nhan(cau);
+  final loai = nhan?.loai ?? ai.loai;
+  final s = unorm.nfc(cau);
+  final b = removeVietnameseTones(s.toLowerCase());
+  final lechDoDai = b.length != s.length;
+  final luat = lechDoDai
+      ? _rong(loai)
+      : _docTheoLuat(loai, s, b, theoMau: nhan != null, now: now, vi: vi, danhMucChi: danhMucChi);
+  var quaAi = false;
+  T? lap<T>(T? cuaLuat, T? cuaAi) {
+    if (cuaLuat != null || cuaAi == null) return cuaLuat;
+    quaAi = true;
+    return cuaAi;
+  }
+
+  // ⚠️ `nguon:` đặt CUỐI mỗi constructor: `lap` đổi `quaAi`, và Dart tính tham số theo thứ tự viết.
+  switch (luat) {
+    case LenhTaoHoaDon():
+      final chuKyAi = _chuKyTheoChu[ai.chuKy];
+      final chuKy = _mauChuKy.hasMatch(b) || chuKyAi == null ? luat.chuKy : chuKyAi;
+      if (chuKy != luat.chuKy) quaAi = true;
+      return LenhTaoHoaDon(
+        ten: lap(luat.ten, _tenAiHopLe(ai.ten, s)),
+        soTien: lap(luat.soTien, _soAiHopLe(ai.soTien, s, now)),
+        chuKy: chuKy,
+        ngayGoc: lap(luat.ngayGoc, lechDoDai ? null : _ngayGocAiHopLe(ai.ngayGoc, b, chonSoTienTrongCau(s, now: now))),
+        idVi: lap(luat.idVi, _viAiHopLe(vi, ai.vi, s)),
+        idDanhMuc: lap(luat.idDanhMuc, _mucTheoTenChuan(danhMucChi, ai.danhMuc)?.id),
+        nhacTuTra: luat.nhacTuTra,
+        nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
+      );
+    case LenhTaoMucTieu():
+      return LenhTaoMucTieu(
+        ten: lap(luat.ten, _tenAiHopLe(ai.ten, s)),
+        soTienDich: lap(luat.soTienDich, _soAiHopLe(ai.soTien, s, now)),
+        han: lap(luat.han, _hanAiHopLe(ai.han, s, now)),
+        nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
+      );
+    case LenhTaoNganSach():
+      final dmAi = luat.idDanhMuc == null ? _mucTheoTenChuan(danhMucChi, ai.danhMuc) : null;
+      return LenhTaoNganSach(
+        idDanhMuc: lap(luat.idDanhMuc, dmAi?.id),
+        tenDanhMuc: luat.tenDanhMuc ?? dmAi?.ten,
+        hanMuc: lap(luat.hanMuc, _soAiHopLe(ai.soTien, s, now)),
+        nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
       );
   }
 }

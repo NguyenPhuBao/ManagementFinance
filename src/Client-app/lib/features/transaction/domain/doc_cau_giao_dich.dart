@@ -564,15 +564,21 @@ DateTime? _ngayAiHopLe(String? chu, String thuong, DateTime now) {
 /// ⚠️ Khớp TỪNG TỪ CÓ DẤU, như từ chỉ thu: bỏ dấu thì *"vì"* thành *vi*, *"thế"* thành *the* — *"vì đói nên ăn phở"* từng
 /// là "câu nhắc ví" và, từ đổi lần hai, gọi AI oan ~18 s. Gõ không dấu (*vi, the, quet*) vẫn nhận.
 bool _cauNhacVi(String thuong, Wallet w) {
+  if (cauNhacViTheoTen(thuong, w.name)) return true;
+  if (w.type != 'bank' && w.type != 'banking') return false;
   final tu = [for (final m in _tu.allMatches(thuong)) unorm.nfc(m.group(0)!)];
-  final nganHang = w.type == 'bank' || w.type == 'banking';
   for (var i = 0; i < tu.length; i++) {
-    if (_chuVi.contains(tu[i])) return true;
-    if (nganHang && _chuNganHang.contains(tu[i])) return true;
-    if (nganHang && i + 1 < tu.length && _chuyenKhoan.contains('${tu[i]} ${tu[i + 1]}')) return true;
+    if (_chuNganHang.contains(tu[i])) return true;
+    if (i + 1 < tu.length && _chuyenKhoan.contains('${tu[i]} ${tu[i + 1]}')) return true;
   }
-  return _vietTatTenVi(thuong, w.name);
+  return false;
 }
+
+/// Hai vế KHÔNG cần loại ví của [_cauNhacVi]: chữ *ví* trần, hoặc viết tắt một từ trong [tenVi]. Mở công khai cho lệnh
+/// tạo ở màn Trợ lý (C3 §8.3) — chỗ ấy chỉ có tên ví, và cũng không được nhận ví mô hình tự điền. [thuong] là câu đã
+/// `toLowerCase()`, CÒN DẤU.
+bool cauNhacViTheoTen(String thuong, String tenVi) =>
+    _tu.allMatches(thuong).any((m) => _chuVi.contains(unorm.nfc(m.group(0)!))) || _vietTatTenVi(thuong, tenVi);
 
 bool _vietTatTenVi(String thuong, String tenVi) {
   final tuVi = removeVietnameseTones(normalizeCategoryName(tenVi)).split(' ');
