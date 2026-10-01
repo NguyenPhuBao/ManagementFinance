@@ -133,9 +133,9 @@ graph TD
 2. **Giải mã Payload an toàn (Safe Payload Parsing):**
    - Tuyệt đối không để crash ứng dụng khi Backend thay đổi hoặc bổ sung trường dữ liệu.
    - Bắt bọc trong `try-catch` với fallback mặc định.
-   - `account.countdown`: Bóc tách `daysLeft` (int), `expireAt` (DateTime), `message` (String).
-   - `system.broadcast`: Bóc tách `id` (String), `title` (String), `content` (String), `level` (`info` | `warning` | `critical`), `broadcastAt` (DateTime).
-   - `user.notification`: Bóc tách `id` (String), `title` (String), `message` (String), `type` (String), `createdAt` (DateTime).
+   - `account.countdown`: Bóc tách `daysRemaining` (int), `title` (String), `message` (String), `idaccount` (String), `username` (String). **Không có** `daysLeft` hay `expireAt`.
+   - `system.broadcast`: Bóc tạch `id` (String), `title` (String), `message` (String — **không phải** `content`), `level` (String **CHỮ HOA**: `'INFO'` | `'WARNING'` | `'CRITICAL'`), `createdAt` (DateTime — **không phải** `broadcastAt`), `category` (`'BROADCAST'`), `metadata` (Map).
+   - `user.notification`: **Chưa có nguồn phát thật** — `notifyUser` có 0 nơi gọi ngoài test. Giữ placeholder nếu cần implement sau.
 
 ---
 
@@ -299,44 +299,46 @@ Khi thiết bị di chuyển vào vùng không có sóng (mất mạng) và sau 
 ### 4.1. Sự Kiện Socket Payload Từ Backend
 
 #### Sự kiện `account.countdown`:
+> ⚠️ **Cập nhật 2026-10-01:** Payload thực tế từ `scheduler.service.js:184-190` + `notification.service.js:202`.
+> Không có vỏ `{event, data}`. Không có `daysLeft` / `expireAt`. Có `username`.
 ```json
 {
-  "event": "account.countdown",
-  "data": {
-    "daysLeft": 28,
-    "expireAt": "2026-10-27T00:00:00.000Z",
-    "message": "Tài khoản của bạn sẽ bị xoá vĩnh viễn sau 28 ngày nữa."
-  }
+  "idaccount": "123",
+  "username": "nguyen_phu_bao",
+  "daysRemaining": 28,
+  "title": "Cảnh báo ngừng hoạt động tài khoản",
+  "message": "Tài khoản của bạn sẽ bị ngừng hoạt động sau 28 ngày."
 }
 ```
 
 #### Sự kiện `system.broadcast`:
+> ⚠️ **Cập nhật 2026-10-01:** Payload thực tế từ `notification.service.js:217-238`.
+> Trường là `message` (không phải `content`), `createdAt` (không phải `broadcastAt`), `level` **CHỮ HOA** (`'INFO'`).
 ```json
 {
-  "event": "system.broadcast",
-  "data": {
-    "id": "broad_98f4e2",
-    "title": "Bảo trì nâng cấp hệ thống",
-    "content": "Hệ thống sẽ bảo trì định kỳ vào 02:00 sáng ngày 01/10/2026. Một số tính năng đồng bộ có thể bị gián đoạn.",
-    "level": "warning",
-    "broadcastAt": "2026-09-29T10:00:00.000Z"
-  }
+  "id": "broad_98f4e2",
+  "title": "Bảo trì nâng cấp hệ thống",
+  "message": "Hệ thống sẽ bảo trì định kỳ vào 02:00 sáng ngày 01/10/2026. Một số tính năng đồng bộ có thể bị gián đoạn.",
+  "level": "INFO",
+  "category": "BROADCAST",
+  "metadata": {},
+  "isRead": false,
+  "readAt": null,
+  "createdAt": "2026-09-29T10:00:00.000Z"
 }
 ```
 
 #### Sự kiện `user.notification`:
+> ⚠️ **Cập nhật 2026-10-01:** **Chưa có nguồn phát thật** — `notifyUser()` có 0 nơi gọi ngoài test.
+> Phần mô tả dưới đây là dự kiến (reserved) cho implementation sau.
+> Không có `severity` / `read` trong gói dự kiến.
 ```json
 {
-  "event": "user.notification",
-  "data": {
-    "id": "notif_user_abc123",
-    "type": "securityAlert",
-    "title": "Cảnh báo bảo mật",
-    "message": "Phát hiện đăng nhập mới từ thiết bị lạ.",
-    "severity": "critical",
-    "createdAt": "2026-09-29T08:30:00.000Z",
-    "read": false
-  }
+  "id": "notif_user_abc123",
+  "type": "securityAlert",
+  "title": "Cảnh báo bảo mật",
+  "message": "Phát hiện đăng nhập mới từ thiết bị lạ.",
+  "createdAt": "2026-09-29T08:30:00.000Z"
 }
 ```
 

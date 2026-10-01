@@ -3,6 +3,7 @@ import useSocket from '../../hooks/useSocket';
 import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
+import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -396,6 +397,9 @@ const DashboardPage = () => {
   const [totalCategories, setTotalCategories] = useState(null);
   const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
 
+  // Uptime thực tế từ /admin/system/health
+  const [uptimeData, setUptimeData] = useState(null);
+
   // Thống kê Biểu đồ (Ăn theo Global Filter)
   const [loginStats, setLoginStats] = useState({
     summary: { total: 0, max: 0, avg: 0 },
@@ -452,6 +456,22 @@ const DashboardPage = () => {
       }
     };
     fetchStaticStats();
+  }, []);
+
+  // Uptime — fetch ngay lúc mount và làm mới mỗi 30 giây
+  useEffect(() => {
+    const fetchUptime = async () => {
+      try {
+        const res = await adminApi.getSystemHealth();
+        const data = res.data?.data || res.data;
+        if (data?.uptime) setUptimeData(data.uptime);
+      } catch {
+        // Giữ nguyên giá trị cũ nếu fetch lỗi
+      }
+    };
+    fetchUptime();
+    const t = setInterval(fetchUptime, 30_000);
+    return () => clearInterval(t);
   }, []);
 
   // Fetch Dashboard Stats khi Global Filter thay đổi
@@ -965,7 +985,13 @@ const DashboardPage = () => {
           )}
           <StatCard icon="group" title="Tổng người dùng" value={totalUsersDisplay} />
           <StatCard icon="category" title="Tổng danh mục" value={totalCategoriesDisplay} />
-          <StatCard icon="dns" title="Uptime Hệ thống" value="99.9%" badge="Ổn định" />
+          <StatCard
+            icon="timer"
+            title="Uptime Hệ thống"
+            value={uptimeData ? `${uptimeData.uptimePercent.toFixed(3)}%` : '—'}
+            badge={uptimeData ? uptimeData.uptimeFormatted : 'Đang tải...'}
+            badgeColor={uptimeData && uptimeData.uptimePercent >= 99.5 ? 'green' : undefined}
+          />
           <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
 
@@ -1104,8 +1130,9 @@ const DashboardPage = () => {
           </div>
       </div>
 
-      {/* 3. Biểu đồ 2: Lưu lượng Request (1 Hàng riêng, Full-width) */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+      {/* 3. Giám sát hệ thống: Lưu lượng Request + Server Health Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
               <div>
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
@@ -1159,6 +1186,11 @@ const DashboardPage = () => {
                   </p>
               </div>
           </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <ServerHealthPanel />
+        </div>
       </div>
     </div>
     </>
