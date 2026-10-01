@@ -106,7 +106,7 @@ không phải báo cáo của backend. Phần chưa xong gom vào
 
 | Tài liệu | Kết quả soát |
 |---|---|
-| [SEED_TU_KHOA_GRAB.md](./SEED_TU_KHOA_GRAB.md) | ✅ `seed.js` + `database/14_fix_grab_keyword_category.sql`: `grab` sang Di chuyển, `grabfood` cho Ăn uống, chỉ hai hàng `Is_default`. ⚠️ Tệp 14 có BOM; CSDL dev của máy client **chưa áp** (đo 2026-10-01) |
+| [SEED_TU_KHOA_GRAB.md](./SEED_TU_KHOA_GRAB.md) | ✅ `seed.js` + `database/14_fix_grab_keyword_category.sql`: `grab` sang Di chuyển, `grabfood` cho Ăn uống, chỉ hai hàng `Is_default`. ⚠️ Tệp 14 có BOM; CSDL dev của máy client **đã áp** 2026-10-01 (người dùng cho phép đích danh; 2 hàng đổi, bản sao của tài khoản giữ nguyên) |
 | [SOAT_SAU_GOP_B350D40.md](./SOAT_SAU_GOP_B350D40.md) | ⚠️ Một phần. Payload ba sự kiện socket trong tài liệu ✅; kho người dùng thôi lưu thông báo ngân hàng ✅; hai lỗi FHS **đã sửa nhưng sinh hai lỗi mới** (nhóm `Vay/no` không xét chiều tiền; `trendVsLastMonth` bịa `'+100%'`); mục 5 chữ mới 1/11 hàng |
 | [D1_DOC_BIEN_DONG_XONG_SOAT.md](./D1_DOC_BIEN_DONG_XONG_SOAT.md) | ⚠️ Một phần. `LogicBusinessAI.md` hàng 3 và dòng 77 ✅; `Project.md` :1645, :2757 và `docs/progress/Client-app.md` §5.2, §13.5 chưa |
 | [CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md](./CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md) | ✅ Đơn thông báo, không xin gì |

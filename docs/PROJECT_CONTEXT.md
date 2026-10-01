@@ -939,8 +939,11 @@ truy vấn chỉ đọc trên CSDL dev, chuyển cả bốn đơn sang `DA-XONG/
 và đặt **một** đơn mới `superpowers/backend/CAN-LAM/SOAT_SAU_GOP_A7C03B7.md`:
 
 - **Seed `grab`** ✅ — `seed.js` + `database/14_fix_grab_keyword_category.sql` (chỉ hai hàng `Is_default`).
-  ⚠️ Tệp 14 mở đầu bằng **BOM** (tệp 5–13 không có) — chạy qua gói `pg` phải bỏ ba byte đầu. CSDL dev **chưa áp**
-  (đo: hai hàng còn `an uong, food, grab` / `di chuyen, xang, grabcar`); chỉ áp khi người dùng cho phép đích danh.
+  ⚠️ Tệp 14 mở đầu bằng **BOM** (tệp 5–13 không có) — chạy qua gói `pg` phải bỏ ba byte đầu. CSDL dev **đã áp
+  cùng ngày** theo cho phép đích danh của người dùng (trả lời *"cho phép"* cho đúng một câu hỏi về tệp này): một giao tác
+  `pg` trên `PersonFinance` cục bộ, đo trước / sau — đúng **2** hàng đổi `Update_at`, bảng vẫn 188 hàng, **12** bản sao
+  *Ăn uống* / *Di chuyển* của các tài khoản **giữ nguyên** bộ cũ (đúng phạm vi của đơn: chỉ tài khoản mới nhận bộ mới).
+  Không cần `prisma generate`.
 - **Tài liệu thông báo** — ba payload socket nay khớp mã; `user.notification` ghi rõ chưa có nguồn phát; kho người dùng
   thôi lưu `BankTransactionPending`. Chưa sửa: *"5 nhóm / 19 loại"*, các hàm / route không tồn tại, lời hứa *"offline
   dài ngày"*, và dòng *"chấm đỏ tĩnh"* — nay sai theo chiều ngược vì client **đã có số đếm**.

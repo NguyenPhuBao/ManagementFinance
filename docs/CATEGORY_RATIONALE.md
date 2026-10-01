@@ -364,9 +364,11 @@ Người dùng chốt ngày 2026-09-29, hai quyết định:
   bộ mới: client gieo từ khoá kéo về chỉ khi danh mục chưa có từ khoá nào
   (`_gieoTuKhoaKhiTrong`), cố ý để thao tác xoá từ khoá của người dùng không hồi sinh.
   ✅ **Backend sửa ở `main` @ `a7c03b7`** (gộp 2026-10-01, `71234eb`): `prisma/seed.js` và
-  `database/14_fix_grab_keyword_category.sql`, chỉ hai hàng `Is_default`. Đo cùng ngày:
-  CSDL dev của máy này **chưa áp** tệp 14 (hai hàng còn bộ cũ) — tài khoản mới tạo trên
-  dev vẫn nhận `grab` → Ăn uống cho tới khi tệp được áp.
+  `database/14_fix_grab_keyword_category.sql`, chỉ hai hàng `Is_default`. CSDL dev của máy
+  này **đã áp** tệp 14 cùng ngày (người dùng cho phép đích danh): hai hàng khuôn nay là
+  `an uong, food, grabfood` và `di chuyen, xang, grab, grabcar`; 12 bản sao của các tài
+  khoản đã có **giữ nguyên** bộ cũ — với họ, lối sửa là dòng *đề xuất chuyển từ khoá*
+  (mục 5f).
 - **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
   học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
   gốc (seed), không bằng một luật chặn thứ hai ở màn.

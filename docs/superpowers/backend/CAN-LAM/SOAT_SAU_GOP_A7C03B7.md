@@ -20,7 +20,7 @@ truy vấn **chỉ đọc** trên CSDL dev. Bốn đơn ấy client đã chuyể
 | 1 | FHS: tập `allExpenses` **không xét chiều tiền** — tiền **cho vay**, tiền **thu nợ về** và tiền **đi vay nhận về** đều bị đếm là *trả nợ* (DTI) và là *tiết kiệm* (50/30/20) | **lỗi mã** (do bản sửa mục 28 sinh ra) |
 | 2 | FHS: `trendVsLastMonth` trả **`'+100%'`** khi kỳ trước không có dữ liệu — trên CSDL dev là **mọi** tài khoản; không có ca test nào cho phép tính này | **lỗi mã** + test |
 | 3 | Chữ còn lại của đơn `B350D40` §5 và đơn D1 | thấp — chỉ sửa chữ |
-| 4 | `database/14`: tệp có **BOM**; chưa có trong danh sách áp của `CloudDeploy.md` | thấp |
+| 4 | `database/14`: tệp có **BOM**; chưa có trong danh sách áp của `CloudDeploy.md` (CSDL dev client đã áp) | thấp |
 | 5 | `CAN-LAM/README.md`: ghi *"0 đơn tồn đọng"* khi bốn tệp vẫn nằm trong thư mục | thấp |
 
 ## 1. Lỗi mã: `allExpenses` không xét chiều tiền
@@ -124,8 +124,9 @@ Việc backend tự ghi lại, client ghi nhận: `EventBus` gắn handler hai l
 - Tệp mở đầu bằng **BOM** (`EF BB BF`, đo bằng `head -c 3 | xxd`). Supabase SQL Editor và `psql` bỏ qua BOM; chạy qua
   gói `pg` của Node thì ký tự ấy thành một định danh đứng trước `BEGIN` và câu lệnh lỗi cú pháp. Các tệp 5–13 không có.
 - `docs/Deploy/CloudDeploy.md:88` vẫn ghi áp *"đến `database/13_…`"*.
-- CSDL dev của máy client **chưa áp** tệp 14 (đo 2026-10-01: hai hàng mặc định còn `an uong, food, grab` và
-  `di chuyen, xang, grabcar`, `Update_at` 2026-09-01). Client chỉ áp khi người dùng cho phép đích danh.
+- CSDL dev của máy client **đã áp** tệp 14 ngày 2026-10-01 (người dùng cho phép đích danh), bằng gói `pg` sau khi
+  bỏ BOM: đúng 2 hàng `Is_default` đổi, bảng vẫn 188 hàng, 12 bản sao của các tài khoản giữ nguyên bộ cũ — khớp
+  phạm vi ghi trong tệp.
 
 ## 5. `CAN-LAM/README.md`
 
