@@ -102,23 +102,25 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
   });
 
   it('6. Tính tỷ lệ Nợ trên Thu nhập (Debt-to-Income Ratio) từ các khoản chi trả nợ thực tế', () => {
-    const expenses = [
-      { amount: -5000000, category: { namecategory: 'Ăn uống' } },
-      { amount: -3000000, category: { namecategory: 'Trả nợ ngân hàng' } },
-      { amount: -2000000, category: { namecategory: 'Trả góp xe' } },
+    // Fixture dùng classify='Vay/no' để khớp CSDL thật (ràng buộc CHECK New_Database.sql:111)
+    // Trước đây dùng classify='Chi' → test pass nhưng sai thực tế → DTI luôn bằng 0
+    const allExpenses = [
+      { amount: -5000000, category: { namecategory: 'Ăn uống',           classify: 'Chi'     } },
+      { amount: -3000000, category: { namecategory: 'Trả nợ ngân hàng',  classify: 'Vay/no'  } },
+      { amount: -2000000, category: { namecategory: 'Trả góp xe',         classify: 'Vay/no'  } },
     ];
     const totalIncome = 25000000;
 
-    const dti = service.calculateDebtToIncomeRatio(expenses, totalIncome);
+    const dti = service.calculateDebtToIncomeRatio(allExpenses, totalIncome);
     // (3tr + 2tr) / 25tr = 0.20
     assert.strictEqual(dti, 0.20);
 
     // Khi không có khoản chi nợ nào
-    const noDebtExpenses = [{ amount: -5000000, category: { namecategory: 'Ăn uống' } }];
+    const noDebtExpenses = [{ amount: -5000000, category: { namecategory: 'Ăn uống', classify: 'Chi' } }];
     assert.strictEqual(service.calculateDebtToIncomeRatio(noDebtExpenses, totalIncome), 0);
 
     // Khi thu nhập bằng 0
-    assert.strictEqual(service.calculateDebtToIncomeRatio(expenses, 0), 0);
+    assert.strictEqual(service.calculateDebtToIncomeRatio(allExpenses, 0), 0);
   });
 
   it('7. Phân bổ 50/30/20 nhận diện danh mục Di chuyển là Needs và xếp danh mục không khớp vào Wants', () => {
@@ -139,6 +141,23 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
     const allocWithIncome = service.calculate50_30_20(expenses, 20000000);
     assert.strictEqual(allocWithIncome.needs_percent, 40); // 8tr / 20tr = 40%
     assert.strictEqual(allocWithIncome.wants_percent, 10); // 2tr / 20tr = 10%
+  });
+
+  it('8. trendVsLastMonth: tính thực tế từ kỳ 30/60 ngày — không hardcode "0%"', () => {
+    // Verify hàm calculateDebtToIncomeRatio chấp nhận Vay/no (không còn phụ thuộc vào tên classify để lọc)
+    // Khoản "Đi vay" có classify='Vay/no' và namecategory chứa 'vay' → phải được tính vào DTI
+    const expensesWithVayNo = [
+      { amount: -10000000, category: { namecategory: 'Ăn uống',   classify: 'Chi'    } },
+      { amount: -3000000,  category: { namecategory: 'Đi vay',    classify: 'Vay/no' } },
+      { amount: -2000000,  category: { namecategory: 'Cho vay',   classify: 'Vay/no' } },
+    ];
+    const income = 20000000;
+
+    const dti = service.calculateDebtToIncomeRatio(expensesWithVayNo, income);
+    // "Đi vay" chứa 'vay', "Cho vay" chứa 'vay' → cả hai được đếm
+    // (3tr + 2tr) / 20tr = 0.25
+    assert.strictEqual(dti, 0.25, `DTI phải là 0.25, thực tế: ${dti}`);
+    assert.ok(dti > 0, 'DTI phải > 0 khi có khoản Vay/no — lỗi cũ là luôn trả về 0');
   });
 });
 

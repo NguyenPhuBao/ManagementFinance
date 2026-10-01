@@ -6,6 +6,47 @@ const { defaultMaintenanceManager } = require('../../core/resilience/maintenance
 const { maskEmail, maskPhone, maskAddress } = require('../../utils/masking.util');
 const { validateReasonInactive } = require('../../utils/content-filter.util');
 
+/**
+ * Thời điểm server khởi động — ghi nhận 1 lần khi module được load.
+ * Bền vững trong suốt vòng đời process (dev lẫn production).
+ */
+const SERVER_START_TIME = new Date();
+
+/**
+ * Chuyển số giây thành chuỗi mô tả thân thiện.
+ * Ví dụ: 90061 → "1 ngày 1 giờ 1 phút"
+ * @param {number} totalSeconds
+ * @returns {string}
+ */
+function formatUptimeDuration(totalSeconds) {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days} ngày`);
+  if (hours > 0) parts.push(`${hours} giờ`);
+  if (minutes > 0) parts.push(`${minutes} phút`);
+  if (parts.length === 0) parts.push('Vừa khởi động');
+  return parts.join(' ');
+}
+
+/**
+ * Tính % uptime theo cửa sổ SLA 30 ngày.
+ * Nếu server chạy ít hơn 30 ngày, sử dụng thời gian thực tế.
+ * Công thức: uptimeSeconds / windowSeconds × 100
+ * @param {number} uptimeSeconds
+ * @returns {{ uptimePercent: number, slaWindowDays: number }}
+ */
+function calcUptimePercent(uptimeSeconds) {
+  const SLA_WINDOW_DAYS = 30;
+  const windowSeconds = SLA_WINDOW_DAYS * 24 * 3600;
+  // Nếu server chưa chạy đủ window, dùng tổng thời gian thực tế làm mẫu số
+  const denominator = Math.max(uptimeSeconds, windowSeconds);
+  const percent = parseFloat(((uptimeSeconds / denominator) * 100).toFixed(3));
+  return { uptimePercent: percent, slaWindowDays: SLA_WINDOW_DAYS };
+}
+
 function calcGrowth(current, previous) {
   if (current === 0) return 0;
   if (previous === 0) return 100;
@@ -463,6 +504,9 @@ const adminService = {
     const maintStatus = defaultMaintenanceManager.getStatus();
     const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
 
+    const uptimeSeconds = Math.floor(process.uptime());
+    const { uptimePercent, slaWindowDays } = calcUptimePercent(uptimeSeconds);
+
     return {
       cpu: { cores: cpus.length, percent: Math.round(cpuPercent) },
       ram: {
@@ -487,6 +531,13 @@ const adminService = {
         activatedAt: maintStatus.activatedAt,
       },
       loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
+      uptime: {
+        uptimeSeconds,
+        uptimeFormatted: formatUptimeDuration(uptimeSeconds),
+        startedAt: SERVER_START_TIME.toISOString(),
+        uptimePercent,
+        slaWindowDays,
+      },
       timestamp: new Date().toISOString(),
     };
   },

@@ -47,38 +47,26 @@ const notificationService = {
 
     try {
       if (eventBus && typeof eventBus.subscribe === 'function') {
-        // 1. Lắng nghe sự kiện biến động số dư ngân hàng
+        // 1. Lắng nghe sự kiện biến động số dư ngân hàng (legacy — Module Bank đã dừng 2026-09-18)
+        // Subscriber được giữ nguyên để không phá vỡ kiến trúc event-driven.
+        // KHÔNG lưu vào store user — accountNumber/amount là dữ liệu nhạy cảm (Data_Security.md §3)
         await eventBus.subscribe('bank_transaction.pending', async (data) => {
-          logger.info('[Notification Module] Received bank_transaction.pending event', {
+          // Không log accountNumber/amount — tuân thủ Data_Security.md
+          logger.info('[Notification Module] bank_transaction.pending received (legacy — Bank module suspended 2026-09-18)', {
             idtran: data.idtran,
             idaccount: data.idaccount,
-            amount: data.amount,
           });
 
-          const payload = {
-            idtran: data.idtran,
-            amount: data.amount,
-            bankName: data.bankName,
-            accountNumber: data.accountNumber,
-            description: data.description,
-            date: data.date,
+          // Chỉ forward real-time qua socket cho client đang online, KHÔNG persist vào store
+          // (tránh lộ accountNumber/amount qua GET /api/notifications)
+          this.getSocket().emitBankTransaction(data.idaccount, {
             title: 'Giao dịch mới từ Ngân hàng',
-            message: `Bạn vừa có giao dịch ${data.amount > 0 ? '+' : ''}${data.amount}đ từ ${data.bankName || 'ngân hàng'}. Nhấn để duyệt và chọn danh mục.`,
+            message: 'Bạn vừa có giao dịch từ ngân hàng. Nhấn để xem chi tiết.',
             type: 'BankTransactionPending',
             createdAt: new Date().toISOString(),
-          };
-
-          const store = this.getStore();
-          if (store && typeof store.addNotification === 'function') {
-            await store.addNotification(data.idaccount, {
-              title: payload.title,
-              message: payload.message,
-              type: payload.type,
-              metadata: data,
-            });
-          }
-
-          this.getSocket().emitBankTransaction(data.idaccount, payload);
+            // accountNumber và amount bị loại bỏ — Data_Security.md §3
+          });
+          // TODO: Fix EventBus double-fire khi Redis sẵn sàng (issue riêng — event-bus.js:47+54)
         });
 
         // 2. Lắng nghe sự kiện bóc tách và phân loại OCR hoàn tất
