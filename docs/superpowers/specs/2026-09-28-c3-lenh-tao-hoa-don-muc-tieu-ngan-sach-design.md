@@ -23,7 +23,8 @@ D1 → **C3** → C4. **Phụ thuộc C2** (bộ đọc số tiền / ngày / `k
 > §8.** Mọi câu "chỉ luật / không mô hình" ở §1–§7 là của bản đầu.
 >
 > ✅ **THI CÔNG XONG 2026-09-30 đêm** (`51d6a3c` → `89f2112`), nghiệm thu Realme: ba lệnh → thẻ < 1 s, ba form đúng;
-> câu hỏi gần giống lệnh đi vòng tool như cũ — mục **9.42** `AI_EDGE_FEATURE.md`. Stitch thẻ lệnh gửi (timeout), chưa hiện.
+> câu hỏi gần giống lệnh đi vòng tool như cũ — mục **9.42** `AI_EDGE_FEATURE.md`. Stitch thẻ lệnh gửi (timeout), chưa hiện
+> lúc ấy; ✅ hiện ngày 2026-10-01: **`59454c61be704c2f882f8f625917951c`** — đối chiếu ở cuối §8.4.
 >
 > ✅ **Soát lần hai trước Task 1 (2026-09-30 đêm)** — sau C2 đổi lần hai, D1, gợi ý chuyển khoản:
 > (1) mở `_chonSoTien` thành hàm công khai trong `doc_cau_giao_dich.dart` (một định nghĩa); (2) trường ví / danh mục của
@@ -190,6 +191,14 @@ nguồn đúng thứ đã xảy ra (cùng tinh thần C2 *"Đọc bằng AI ch�
 - Thẻ: thay dòng *"Lệnh tạo · không cần mô hình"* bằng dòng nguồn; phần còn lại như bản §4.
 - Stitch: dòng chỉ báo + dòng nguồn vẽ vào màn thẻ lệnh (màn *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"*, gửi 2026-09-30, timeout,
   chưa hiện lúc viết) — **trước** Task giao diện.
+  ✅ **Màn đã hiện — `59454c61be704c2f882f8f625917951c`** (kiểm 2026-10-01, tải HTML + ảnh). Nó vẽ **bản luật** (§4): chưa
+  có dòng chỉ báo lẫn dòng nguồn. Đối chiếu với thẻ đã dựng (`ai_chat_page.dart` `_theLenhTao`), **bốn** chỗ lệch:
+  (1) Stitch **không avatar**, thẻ rộng hết hàng, bo 12 đều — mã giữ avatar + bong bóng bo lệch như mọi tin của trợ lý
+  (**lệch có chủ ý**: một màn chat một kiểu bong bóng); (2) dòng ô thiếu là **hộp nền nhạt + biểu tượng `help_outline`** —
+  mã là chữ trần; (3) nút có **mũi tên `arrow_forward`** sau chữ — mã chỉ có chữ; (4) biểu tượng `receipt_long` nằm trong
+  **ô vuông nền nhạt 24 dp** — mã là biểu tượng trần. Chữ: Stitch *"bạn **chọn** trong form"* cho ví, mã *"bạn **điền**
+  trong form"* cho mọi ô (giữ một câu — ô thiếu có thể là số tiền, không "chọn" được). (2)–(4) sửa ở Task giao diện (T4)
+  khi thẻ đổi dòng đầu thành dòng nguồn.
 
 ### 8.5 Giá và giới hạn (nói rõ với người dùng khi duyệt)
 
