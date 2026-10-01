@@ -295,9 +295,16 @@ class FinancialSnapshotService {
       });
 
       // Phân tách chi tiêu
-      const expenses = transactions.filter(t => t.type !== 'Transfer' && t.category?.classify === 'Chi');
+      // allExpenses: Chi + Vay/no — dùng cho DTI và 50/30/20 (đúng với nghiệp vụ CSDL)
+      // regularExpenses: chỉ Chi — dùng cho topExpenseCategories và avgMonthlyExpense
+      const allExpenses = transactions.filter(
+        t => t.type !== 'Transfer' &&
+             (t.category?.classify === 'Chi' || t.category?.classify === 'Vay/no')
+      );
+      const regularExpenses = allExpenses.filter(t => t.category?.classify === 'Chi');
+
       const totalIncome = this.calculateValidIncome(transactions);
-      const totalExpense = expenses.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
+      const totalExpense = regularExpenses.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
 
       // Chi tiêu trung bình tháng theo mẫu số động (Dynamic Days Span)
       const oldestTx = await prisma.transaction.findFirst({
@@ -309,26 +316,57 @@ class FinancialSnapshotService {
       const daysSpan = this.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTxDate);
       const avgMonthlyExpense = totalExpense > 0 ? (totalExpense / daysSpan) * 30 : 0;
 
-      // Phân bổ 50/30/20
-      const allocation = this.calculate50_30_20(expenses, totalIncome);
+      // Phân bổ 50/30/20 — dùng allExpenses để khoản Vay/no được xét vào savings
+      const allocation = this.calculate50_30_20(allExpenses, totalIncome);
 
       // Quỹ khẩn cấp
       const emergencyMonths = this.calculateEmergencyFundMonths(wallets, avgMonthlyExpense);
 
-      // Top 3 danh mục chi tiêu lớn nhất
+      // Nhóm chi tiêu theo kỳ 30 ngày để tính trendVsLastMonth thực tế
+      // Dữ liệu 90 ngày đã load — không cần truy vấn thêm DB
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      const sixtyDaysAgo = new Date(now);
+      sixtyDaysAgo.setDate(now.getDate() - 60);
+
+      const currentByCategory = {};
+      const lastByCategory = {};
+      for (const exp of regularExpenses) {
+        const catName = exp.category?.name_category || exp.category?.namecategory || 'Khác';
+        const txDate = new Date(exp.date_transaction);
+        const amount = Math.abs(Number(exp.amount || 0));
+        if (txDate >= thirtyDaysAgo) {
+          currentByCategory[catName] = (currentByCategory[catName] || 0) + amount;
+        } else if (txDate >= sixtyDaysAgo) {
+          lastByCategory[catName] = (lastByCategory[catName] || 0) + amount;
+        }
+      }
+
+      // Top 3 danh mục chi tiêu lớn nhất (chỉ dùng regularExpenses — không lẫn khoản vay)
       const categoryMap = {};
-      for (const exp of expenses) {
+      for (const exp of regularExpenses) {
         const catName = exp.category?.name_category || exp.category?.namecategory || 'Khác';
         categoryMap[catName] = (categoryMap[catName] || 0) + Math.abs(Number(exp.amount || 0));
       }
       const topExpenseCategories = Object.entries(categoryMap)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
-        .map(([name, amount]) => ({
-          category: name,
-          percentage: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
-          trendVsLastMonth: '0%',
-        }));
+        .map(([name, amount]) => {
+          const last = lastByCategory[name] || 0;
+          const curr = currentByCategory[name] || 0;
+          let trendVsLastMonth = '0%';
+          if (last > 0) {
+            const pct = Math.round(((curr - last) / last) * 100);
+            trendVsLastMonth = pct >= 0 ? `+${pct}%` : `${pct}%`;
+          } else if (curr > 0) {
+            trendVsLastMonth = '+100%'; // tháng trước không có khoản này
+          }
+          return {
+            category: name,
+            percentage: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+            trendVsLastMonth,
+          };
+        });
 
       // Cảnh báo ngân sách (chỉ tối đa 1 cảnh báo cho mỗi danh mục)
       const overBudgetAlerts = [];
@@ -346,7 +384,8 @@ class FinancialSnapshotService {
 
       // Điểm sức khỏe tài chính
       const savingsRatio = totalIncome > 0 ? (allocation.savings_percent / 100) : 0;
-      const debtRatio = this.calculateDebtToIncomeRatio(expenses, totalIncome);
+      // allExpenses (Chi + Vay/no) → DTI đúng với thực tế CSDL
+      const debtRatio = this.calculateDebtToIncomeRatio(allExpenses, totalIncome);
       const budgetAdherence = overBudgetAlerts.length === 0 ? 0.95 : 0.70;
       const healthScore = this.calculateFinancialHealthScore({
         savingsRatio,

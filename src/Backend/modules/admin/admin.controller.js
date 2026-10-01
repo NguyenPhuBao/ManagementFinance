@@ -173,6 +173,26 @@ const adminController = {
     const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser);
     return ResponseHandler.success(res, status, active ? 'Đã kích hoạt chế độ bảo trì' : 'Đã tắt chế độ bảo trì');
   },
+
+  async getSystemHealth(req, res) {
+    try {
+      const result = await adminService.getSystemHealth();
+      return ResponseHandler.success(res, result, 'Trạng thái hệ thống');
+    } catch (error) {
+      logger.error('getSystemHealth failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async getAuditLogs(req, res) {
+    try {
+      const result = await adminService.getAuditLogs(req.query);
+      return ResponseHandler.success(res, result, 'Nhật ký hoạt động hệ thống');
+    } catch (error) {
+      logger.error('getAuditLogs failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
 };
 
 module.exports = adminController;

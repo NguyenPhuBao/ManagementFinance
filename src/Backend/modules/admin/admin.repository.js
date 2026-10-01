@@ -312,6 +312,57 @@ const adminRepository = {
       orderBy: { time_req: 'asc' },
     });
   },
+
+  async queryAuditLogs({ page = 1, limit = 50, status, search, startDate, endDate } = {}) {
+    const safeLimit = Math.min(parseInt(limit, 10) || 50, 200);
+    const safePage = Math.max(parseInt(page, 10) || 1, 1);
+    const skip = (safePage - 1) * safeLimit;
+    const where = {};
+    if (status) where.req_status = status;
+    if (search) {
+      where.OR = [
+        { request: { contains: search, mode: 'insensitive' } },
+        { account: { username: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+    if (startDate || endDate) {
+      where.time_req = {};
+      if (startDate) where.time_req.gte = new Date(startDate);
+      if (endDate) where.time_req.lte = new Date(endDate);
+    }
+    const [rows, total] = await Promise.all([
+      prisma.auditlog.findMany({
+        where,
+        orderBy: { time_req: 'desc' },
+        skip,
+        take: safeLimit,
+        select: {
+          idlog: true,
+          idaccount: true,
+          request: true,
+          req_status: true,
+          reason: true,
+          time_req: true,
+          time_res: true,
+          account: { select: { username: true } },
+        },
+      }),
+      prisma.auditlog.count({ where }),
+    ]);
+    return {
+      items: rows.map((l) => ({
+        id: l.idlog,
+        idaccount: l.idaccount,
+        username: l.account?.username || null,
+        request: l.request,
+        req_status: l.req_status,
+        reason: l.reason,
+        timeReq: l.time_req,
+        timeRes: l.time_res,
+      })),
+      total,
+    };
+  },
 };
 
 module.exports = adminRepository;

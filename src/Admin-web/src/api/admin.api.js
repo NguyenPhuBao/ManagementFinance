@@ -25,7 +25,13 @@ const adminApi = {
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
   syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
+  // System Health & Maintenance
+  getSystemHealth: () => axiosClient.get('/admin/system/health'),
+  getMaintenanceStatus: () => axiosClient.get('/admin/system/maintenance'),
+  setMaintenanceStatus: (data) => axiosClient.post('/admin/system/maintenance', data),
 
+  // Audit Logs
+  getAuditLogs: (params = {}) => axiosClient.get('/admin/audit-logs', { params }),
 };
 
 export default adminApi;

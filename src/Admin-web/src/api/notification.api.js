@@ -18,6 +18,12 @@ const notificationApi = {
    * @param {Object} data - { title, message, level }
    */
   broadcastNotification: (data) => axiosClient.post('/notifications/broadcast', data),
+
+  /**
+   * Gửi thông báo broadcast tới toàn bộ user (alias tường minh hơn)
+   * @param {{ title: string, message: string, level: 'info'|'warning'|'critical' }} data
+   */
+  broadcastToAll: (data) => axiosClient.post('/notifications/broadcast', data),
 };
 
 export default notificationApi;

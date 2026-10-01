@@ -277,6 +277,9 @@ async function runDailyMaintenanceRoutine() {
   logger.info('=== HOÀN TẤT CHU TRÌNH BẢO TRÌ HÀNG NGÀY ===');
 }
 
+let timerHandle = null;
+let cloudHealthIntervalHandle = null;
+
 /**
  * Khởi động scheduler lập lịch chạy tự động lúc 00:00:00 UTC+7 mỗi ngày
  */
@@ -295,6 +298,19 @@ function initScheduler() {
     initScheduler();
   }, msUntilMidnight);
 
+  // Cloud Health Monitor — Chạy mỗi 5 phút kiểm tra RAM & Error Rate
+  if (!cloudHealthIntervalHandle) {
+    const { checkAndAlertCloudHealth } = require('../modules/notification/notification.service');
+    cloudHealthIntervalHandle = setInterval(async () => {
+      try {
+        await checkAndAlertCloudHealth();
+      } catch (err) {
+        logger.error('[Scheduler] Cloud health check failed', { error: err.message });
+      }
+    }, 5 * 60 * 1000);
+    if (cloudHealthIntervalHandle.unref) cloudHealthIntervalHandle.unref();
+  }
+
   return timerHandle;
 }
 
@@ -303,6 +319,10 @@ function stopScheduler() {
     clearTimeout(timerHandle);
     timerHandle = null;
     logger.info('Scheduler: Đã dừng scheduler');
+  }
+  if (cloudHealthIntervalHandle) {
+    clearInterval(cloudHealthIntervalHandle);
+    cloudHealthIntervalHandle = null;
   }
 }
 

@@ -11,8 +11,8 @@ const DEFAULT_CATEGORIES = [
   { id: 'bfc1ef8d-d9af-4f8d-80bb-a7fac310891f', name: 'Thưởng', classify: 'Thu', icon: 'bonus', keyword: 'thuong, bonus' },
   { id: 'af5d9ad9-04b2-4df3-9634-b44fa0c9fef0', name: 'Đầu tư', classify: 'Thu', icon: 'invest', keyword: 'dau tu, invest' },
   // ── Chi ──
-  { id: '8e06aaf6-4608-4cb3-8770-2c2c1eae25b6', name: 'Ăn uống', classify: 'Chi', icon: 'food', keyword: 'an uong, food, grab' },
-  { id: '08639bd7-ef8f-4c58-ae8a-7f58198ad79b', name: 'Di chuyển', classify: 'Chi', icon: 'transport', keyword: 'di chuyen, xang, grabcar' },
+  { id: '8e06aaf6-4608-4cb3-8770-2c2c1eae25b6', name: 'Ăn uống', classify: 'Chi', icon: 'food', keyword: 'an uong, food, grabfood' },
+  { id: '08639bd7-ef8f-4c58-ae8a-7f58198ad79b', name: 'Di chuyển', classify: 'Chi', icon: 'transport', keyword: 'di chuyen, xang, grab, grabcar' },
   { id: 'b84b02f4-72ad-42e0-9298-860efb5889b0', name: 'Mua sắm', classify: 'Chi', icon: 'shopping', keyword: 'mua sam, shopping' },
   { id: '3d2a54d2-eb45-41b4-ad18-0f4308791dea', name: 'Nhà cửa', classify: 'Chi', icon: 'home', keyword: 'nha cua, tien nha' },
   { id: 'd5fead3c-4b9a-4649-bd63-1019bc2c7fef', name: 'Hóa đơn', classify: 'Chi', icon: 'bill', keyword: 'hoa don, dien nuoc' },

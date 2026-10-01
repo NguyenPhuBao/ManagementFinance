@@ -17,6 +17,8 @@ router.get('/request-stats', adminController.getRequestStats);
 // Hệ thống & Cứu nạn khẩn cấp (Emergency Maintenance Switch)
 router.get('/system/maintenance', adminController.getMaintenanceStatus);
 router.post('/system/maintenance', adminController.setMaintenanceStatus);
+router.get('/system/health', adminController.getSystemHealth);
+router.get('/audit-logs', adminController.getAuditLogs);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);

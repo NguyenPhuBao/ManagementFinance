@@ -1,21 +1,19 @@
-# Backend — TOÀN BỘ 26 MỤC ĐÃ HOÀN TẤT 100%
+# Backend — TOÀN BỘ 30 MỤC ĐÃ HOÀN TẤT 100%
 
-**Cập nhật:** 2026-09-27 (Backend hoàn tất 100% mục 26: `CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`; chuyển toàn bộ sang `DA-XONG/`); 2026-09-26 (các mục 22-25); 2026-09-13 (mục 21); 2026-09-12 (mục 20); 2026-09-11 (mục 19).
+**Cập nhật:** 2026-10-01 (Backend hoàn tất 4 mục mới — 27-30 từ đợt soát gộp b350d40); 2026-09-27 (mục 26); 2026-09-26 (các mục 22-25); các đợt trước.
 
-> 🎉 **CẬP NHẬT 2026-09-27 — TOÀN BỘ 26/26 MỤC ĐÃ HOÀN TẤT 100%:**
-> Toàn bộ các hạng mục kỹ thuật từ 1 đến 26 trong thư mục `CAN-LAM/` đã được Backend xử lý dứt điểm:
-> - **Mục 22 (`CLIENT_BO_LIEN_KET_NGAN_HANG.md`):** PO duyệt giữ nguyên mã nguồn và tài liệu làm baseline chuẩn hóa đối chiếu, chuyển `DA-XONG/`.
-> - **Mục 23 (`AI_EDGE_SLM_SOAT_SAU_B147FEE.md`):** Khử sạch 12 điểm tự mâu thuẫn trong `docs/AI/AI_Edge-SLM.md/Client-app.md` (H3, D1, D5, B2, F3, G1, H1, H2, màn chat, `saving_goal_ratio`, `is_recurring_hint`). Bộ 4 lệnh kiểm tra grep ra 0 dòng (Pass 100%).
-> - **Mục 24 (`AI_PHAN_DINH_10_CHUC_NANG_SOAT_C47E6E2.md`):** Đồng bộ bảng 10 chức năng AI ở `LogicBusinessAI.md`, `Project.md` §8.5 & §11.42, sơ đồ `AI_ARCHITECTURE_DIAGRAM.md` v2.2 (4 dịch vụ AI, Edge AI trợ lý offline), `Classify.md` §1.3, `ORC.md`. Bộ 3 lệnh kiểm tra grep ra 0 dòng (Pass 100%). Chốt Lối A cho Chức năng 7.
-> - **Mục 25 (`CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md`):** Phản hồi chính thức 5 câu hỏi của Client, phê duyệt toàn diện thiết kế đọc thông báo trên máy (`NotificationListenerService`), giữ `provider = 'Manual'`, bắt buộc màn hình xin đồng thuận (Nghị định 13/2023/NĐ-CP), xác nhận Chức năng 3 (Deduplication) phía Mobile.
-> - **Mục 26 (`CHATBOT_AI_CON_LECH_SAU_8BBDD97.md`):** Khử dứt điểm 7 điểm lệch Chatbot AI theo rà soát Client-app: thống nhất gemini-3.8-flash, bỏ hằng nợ cứng & tính DTI thực tế, bổ sung context userName che PII, sửa Project.md 4 endpoints, bổ sung done.fallback vào ChatbotAI_Moblie.md, bỏ fake healthScore: 65 (trả 503/null minh bạch), sửa lọc ngân sách active và chuẩn hóa phân bổ 50/30/20 với Di chuyển/Chi khác. Vượt qua 100% lệnh nghiệm thu.
-> Thư mục `CAN-LAM/` hiện **hoàn toàn sạch sẽ, không còn mục nào tồn đọng**.
+> 🎉 **CẬP NHẬT 2026-10-01 — 4 MỤC SOÁT GỘP B350D40 ĐÃ HOÀN TẤT:**
+> - **Mục 27 (`SEED_TU_KHOA_GRAB.md`):** Sửa seed từ khoá `grab` về đúng danh mục Di chuyển (thay vì Ăn uống). Cập nhật `seed.js`, viết migration `14_fix_grab_keyword_category.sql`, cập nhật 2 hàng `Is_default=true` trên CSDL sản xuất.
+> - **Mục 28 (`SOAT_SAU_GOP_B350D40.md`):** Sửa 2 lỗi code FHS: (1) bộ lọc DTI bỏ sót classify `'Vay/no'` — sửa `financial.snapshot.service.js` tách `allExpenses`/`regularExpenses`; (2) `trendVsLastMonth` hardcode `'0%'` — tính thực tế từ dữ liệu 90 ngày. Sửa bảo mật: ngừng lưu `accountNumber`/`amount` ngân hàng vào store user notification. Đồng bộ payload 3 sự kiện socket trong `Notification_Client-app.md`. Tất cả 98 tests PASS.
+> - **Mục 29 (`D1_DOC_BIEN_DONG_XONG_SOAT.md`):** Cập nhật trạng thái Chức năng 3 trong `LogicBusinessAI.md` sang 🟢 Đã hoàn thành (Client-app, 2026-09-30). Sửa mô tả nguồn đọc: thông báo app MB Bank/MoMo/ZaloPay, không SMS.
+> - **Mục 30 (`CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`):** Ghi nhận D1 hoàn thành (kết hợp với mục 29). Đơn này là thông báo bối cảnh, không yêu cầu thêm hành động backend.
+> Thư mục `CAN-LAM/` hiện **hoàn toàn sạch sẽ — 0 đơn tồn đọng**.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **0** mục — Toàn bộ 26/26 mục đã hoàn tất)
+## 0. Còn phải làm (Hiện tại: **0** mục — Toàn bộ 30/30 mục đã hoàn tất)
 
-> 🎉 **Tất cả các tài liệu từ mục 1 đến 26 đều đã hoàn tất 100%**.  
+> 🎉 **Tất cả các tài liệu từ mục 1 đến 30 đều đã hoàn tất 100%**.  
 > Không còn công việc tồn đọng trong thư mục `CAN-LAM/`. Toàn bộ tài liệu đã được nghiệm thu và lưu trữ tại [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md).
 
 ---
