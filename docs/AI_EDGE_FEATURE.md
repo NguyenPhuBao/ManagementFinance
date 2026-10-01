@@ -3369,6 +3369,42 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 - `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
   (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
 
+### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — 🚧 màn đo chạy được cả bốn đường, CHƯA có bảng đo
+
+Kế hoạch `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore). Mục này mới ghi **chạy thử** (Bước 2b,
+2c); hai bảng đo — 20 câu **đọc thật** và 15 ảnh hoá đơn **chụp thật** — chờ người dùng (Bước 3–4). Mã spike sống
+sau `--dart-define=SPIKE_C4=true` (`ai_chat/spike/`), là mã bỏ đi.
+
+**Máy:** Realme RMX2205 (CPU — GPU Mali sập native), bản **debug** `9bd65000…` (= `2e2c04c`), `flutter_gemma` 1.9.0,
+`maxTokens` 4096. ⚠️ Bản debug: app đứng yên đã **0,50 GB** PSS (Dart JIT) — số RAM dưới đây cao hơn bản release.
+
+| Đường | Đầu vào | Kết quả | Thời gian | RAM đỉnh (PSS) |
+|---|---|---|---|---|
+| Hoá đơn **lối A** (ML Kit → luật) | `T01.jpg` (ảnh **dựng bằng máy**, 63 KB) | tổng **191.862** ✅ · cửa hàng *CO.OPMART NGUYÊN TRÃI* (sai dấu ngã) · ngày ✅ | **1,0 s** | không đo (không nạp mô hình) |
+| Hoá đơn **lối B** (Gemma nhận ảnh) | cùng ảnh | tổng **191.862** ✅ · *CO.OPMART NGUYÊN TRÀI* (sai hai dấu) · ngày ✅ · JSON đọc được | **24,5 s** (nạp 1,4 + sinh 22,9) | **2,93 GB** (VmHWM 2,90 GB) |
+| Giọng nói **lối B**, chép lời | `N00.wav` 2,8 s (giọng **tổng hợp** `Microsoft An`): *"Hôm qua ăn phở bốn mươi lăm nghìn bằng tiền mặt"* | *"Hôm qua ăn **vợ** 45.000 bằng tiền mặt."* → luật: 45.000 đ · 30/9 · ví Tiền mặt ✅, ghi chú sai | **9,8 s** (nạp lại 1,4 + sinh 8,2) | **2,53 GB** |
+| Giọng nói **lối B**, ý định | cùng tệp | *"45.000 đồng \| Ăn **sở** bốn mươi lăm nghìn bằng tiền mặt."* | 3,8 s | — |
+| Giọng nói **lối A** (`SpeechRecognizer`) | — | **chưa chạy** — cần người đọc; quyền micro chưa xin lần nào | — | — |
+
+- ✅ **Câu hỏi "Realme có bị giết khi nhận ảnh không" có đáp án: KHÔNG** — dù `MemAvailable` trước lượt chỉ 1,83 GB.
+  Hệ điều hành đẩy phần còn lại sang swap (swap PSS của app lên **1,56 GB** khi đứng yên sau lượt ảnh). Mô hình nạp
+  với cờ ảnh / âm thanh **giữ ~2,4 GB** cho tới khi rời màn (`dong()`).
+- ⚠️ **Lối A hoá đơn từng sai vì ML Kit trả chữ theo CỘT** (`blocks → lines`): hoá đơn hai cột ra cả khối nhãn rồi
+  mới tới khối số, nhãn *TỔNG CỘNG* không có số cạnh nó, luật rơi về *số lớn nhất* → 200.000 (tiền khách đưa). Nay
+  `ghepDongTheoHang` (`spike_c4.dart`) ghép theo `TextLine.boundingBox`: hai dòng cùng hàng ⇔ tâm dọc của **mỗi** dòng
+  nằm trong khung dọc của dòng **kia** (đòi cả hai chiều, để dòng chữ to không nuốt dòng nhỏ sát dưới). Khung thẳng
+  trục — ảnh **nghiêng** nhiều sẽ tách hai đầu một hàng; chưa đo, ảnh chụp thật sẽ trả lời. ⚠️ Ca canh *"chữ to
+  không nuốt"* ban đầu **xanh cả trên bản sai một chiều** vì hai khung không chồng nhau; fixture phải dựng khung
+  tiêu đề trùm tới tâm dòng dưới.
+- ⚠️ **Bốn dòng trên đều là cận trên** (ảnh dựng bằng PIL, giọng tổng hợp) — cùng lời dặn của 8.7. Chúng chỉ trả
+  lời *"đường ống có chạy không, tốn bao nhiêu"*; lối nào **đúng hơn** phải đo bằng ảnh và giọng thật.
+- ⚠️ **Luật C2 viết cho câu GÕ, câu NÓI hụt ở sáu chỗ** (chạy 20 câu của bộ đo qua `docCauGiaoDich` ở dạng chữ, tên
+  ví / danh mục của tài khoản 10): *năm chục* · *một triệu hai* · *ba trăm rưỡi* không ra số tiền (ba dạng ấy là
+  `cachDocSoTien` — cách đọc hợp lệ cho AI, luật không tự chọn); *ngày năm tháng chín* lẫn *ngày 5 tháng 9* không
+  ra ngày; *bằng MB Bank* / *bằng MoMo* không khớp ví tên *Ví MB Bank* / *Ví MoMo*; số tiền bằng chữ trong câu
+  chuyển ví. Hụt **như nhau** ở cả hai lối nên không làm lệch phép so A / B, nhưng là đầu vào của spec C4: giọng nói
+  là đường vào của C2, và người nói không nói *"45k"*.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
