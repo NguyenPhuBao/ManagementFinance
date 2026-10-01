@@ -640,6 +640,24 @@ void main() {
       expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue, reason: 'lượt đã xong');
     });
 
+    testWidgets('⚠️ bấm Huỷ: phản hồi NGAY ("Đang huỷ…", nút biến mất) dù engine còn vài giây mới dừng', (t) async {
+      // Realme 2026-10-01: bấm Huỷ xong màn vẫn nguyên "Đang đọc lệnh bằng AI… Huỷ" ~5 giây (engine chưa dừng giải mã) —
+      // người dùng không biết cú chạm có ăn không. Bản giả cũ thả lượt ngay khi huỷ nên ca cũ không thấy quãng ấy.
+      final doc = _DocLenhGia(kqAi, treo: true, thaKhiHuy: false);
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: doc)));
+      await goDangCho(t, cauTuNhien);
+      await t.tap(find.byKey(const Key('huy-doc-lenh')));
+      await t.pump();
+      expect(find.text(kDangHuyLenh), findsOneWidget);
+      expect(find.text(kDangDocLenh), findsNothing);
+      expect(find.byKey(const Key('huy-doc-lenh')), findsNothing, reason: 'không cho bấm Huỷ lần hai');
+      expect(find.text(kDaHuyLenh), findsNothing, reason: 'engine chưa dừng — ô nhập chưa mở lại');
+      doc.tha();
+      await t.pumpAndSettle();
+      expect(find.text(kDaHuyLenh), findsOneWidget);
+      expect(find.text(kDangHuyLenh), findsNothing);
+    });
+
     testWidgets('bấm Huỷ với câu theo mẫu → thẻ luật (luật vốn không cần chờ)', (t) async {
       final doc = _DocLenhGia(kqAi, treo: true);
       await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: doc)));
@@ -680,9 +698,12 @@ void main() {
 
 /// Bản giả của phiên AI lệnh tạo. [treo]: lượt không tự xong — chỉ `huy()` mới thả, và khi ấy trả `null` như bản thật.
 class _DocLenhGia implements DocLenh {
-  _DocLenhGia(this.kq, {this.treo = false});
+  _DocLenhGia(this.kq, {this.treo = false, this.thaKhiHuy = true});
   final KetQuaLenhAi? kq;
   final bool treo;
+
+  /// `false`: `huy()` KHÔNG thả lượt — như engine thật còn vài giây mới dừng giải mã; test tự gọi [tha].
+  final bool thaKhiHuy;
   int soLanDoc = 0, soLanHuy = 0;
   List<String>? tenDanhMucNhan;
   Completer<void>? _cho;
@@ -705,6 +726,10 @@ class _DocLenhGia implements DocLenh {
   Future<void> huy() async {
     soLanHuy++;
     _daHuy = true;
+    if (thaKhiHuy) tha();
+  }
+
+  void tha() {
     if (!(_cho?.isCompleted ?? true)) _cho!.complete();
   }
 }

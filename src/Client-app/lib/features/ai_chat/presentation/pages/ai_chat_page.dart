@@ -116,6 +116,9 @@ const String kChuaSanSangPhien =
 /// Câu của trợ lý sau khi người dùng bấm Huỷ lượt đọc lệnh tạo bằng AI (C3 §8) mà câu không theo mẫu của bộ luật.
 const String kDaHuyLenh = 'Đã huỷ.';
 
+/// Dòng chỉ báo từ lúc bấm Huỷ tới lúc engine thật sự dừng.
+const String kDangHuyLenh = 'Đang huỷ…';
+
 class _TinNhan {
   const _TinNhan.cuaToi(this.cau)
       : cuaToi = true,
@@ -207,6 +210,9 @@ class _AiChatPageState extends State<AiChatPage> {
   /// Phiên AI lệnh tạo (C3 §8) đang chạy — dòng chỉ báo có thêm nút Huỷ. [_daHuyLenh]: người dùng vừa bấm nó.
   bool _dangDocLenh = false;
   bool _daHuyLenh = false;
+
+  /// Đã bấm Huỷ, engine chưa dừng: dòng chỉ báo đổi thành [kDangHuyLenh] và nút Huỷ biến mất.
+  bool _dangHuyLenh = false;
 
   bool get _coMoHinh => _coTep && _batCongTac;
 
@@ -405,6 +411,7 @@ class _AiChatPageState extends State<AiChatPage> {
       if (!mounted) return null;
       setState(() {
         _dangDocLenh = false;
+        _dangHuyLenh = false;
         _dangTraCuu = null;
       });
       if (kq != null) return lenhTaoTuAi(c, kq, now: now, vi: nguon.vi, danhMucChi: nguon.danhMucChi);
@@ -412,8 +419,15 @@ class _AiChatPageState extends State<AiChatPage> {
     return lenhTaoTheoCauHoi(c, now: now, vi: nguon.vi, danhMucChi: nguon.danhMucChi);
   }
 
+  /// ⚠️ Phản hồi NGAY: engine còn vài giây mới thôi giải mã (đo Realme 2026-10-01: ~5 s từ lúc bấm tới lúc lượt trả
+  /// về), và suốt quãng ấy màn đứng nguyên thì người dùng không biết cú chạm có ăn không. Ô nhập vẫn khoá tới khi lượt
+  /// thật sự dừng — mở sớm là mở phiên mới khi phiên cũ chưa đóng.
   void _huyDocLenh() {
-    _daHuyLenh = true;
+    setState(() {
+      _daHuyLenh = true;
+      _dangHuyLenh = true;
+      _dangTraCuu = kDangHuyLenh;
+    });
     unawaited(_docLenh?.huy());
   }
 
@@ -776,7 +790,7 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
           ),
           // Chỉ lượt đọc lệnh tạo (C3 §8) huỷ được: nó là lượt chờ THÊM trước vòng hỏi đáp, và có đường lùi là luật.
-          if (_dangDocLenh)
+          if (_dangDocLenh && !_dangHuyLenh)
             TextButton(
               key: const Key('huy-doc-lenh'),
               onPressed: _huyDocLenh,

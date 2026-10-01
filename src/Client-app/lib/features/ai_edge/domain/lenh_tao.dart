@@ -114,6 +114,8 @@ const List<List<String>> _doiTuongTao = [
   ['tiet', 'kiem'],
   ['danh', 'dum'],
   ['quy', 'khan', 'cap'],
+  ['han', 'muc'],
+  ['gioi', 'han'],
   ['dinh', 'ky'],
   ['hang', 'tuan'],
   ['hang', 'thang'],
@@ -499,7 +501,7 @@ LenhTao _docTheoLuat(
                 if (soTien != null) tien!.batDau,
                 if (hanO != null) hanO,
               ]),
-        soTienDich: soTien,
+        soTienDich: tien != null && _tienTheoKy(b, tien) ? null : soTien,
         han: _hanMucTieu(b, now),
       );
     case LoaiLenhTao.nganSach:
@@ -534,15 +536,49 @@ bool _cauNoiThoiGian(String s) {
       : tu.any(_tuThoiGianKhongDau.contains);
 }
 
-String _chuan(String x) => removeVietnameseTones(normalizeCategoryName(x));
-
-/// Tên của AI hợp lệ ⇔ là ĐOẠN CON của câu (không dấu, chữ thường, gom khoảng trắng) và không chứa chữ số.
+/// Tên của AI hợp lệ ⇔ không chứa chữ số, và MỌI chữ của nó có trong câu ĐÚNG THỨ TỰ (so âm tiết bỏ dấu; không cần
+/// liền nhau — đo Realme: *"tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch"* → mô hình đặt tên *"tiết kiệm du lịch"*,
+/// gom từ chính câu). Thêm một chữ câu không có (*"mua xe hơi"*) hay đảo thứ tự là tên mô hình tự nghĩ → bỏ.
 String? _tenAiHopLe(String? ten, String cau) {
-  if (ten == null) return null;
-  final t = _chuan(ten);
-  if (t.isEmpty || RegExp(r'\d').hasMatch(t) || !_chuan(cau).contains(t)) return null;
+  if (ten == null || RegExp(r'\d').hasMatch(ten)) return null;
+  final chu = amTietKhongDau(ten);
+  if (chu.isEmpty) return null;
+  final cuaCau = amTietKhongDau(cau);
+  var i = 0;
+  for (final c in chu) {
+    while (i < cuaCau.length && cuaCau[i] != c) {
+      i++;
+    }
+    if (i == cuaCau.length) return null;
+    i++;
+  }
   return ten.trim();
 }
+
+/// Câu tự nhiên có dấu hiệu NGÂN SÁCH — *hạn mức · giới hạn · tối đa* — thì loại là ngân sách, dù mô hình gọi tool
+/// nào (đo Realme 2026-10-01: *"ăn uống tối đa 3 triệu một tháng"* → mô hình gọi `tao_hoa_don`). ⚠️ *"tối đa"* bỏ dấu
+/// là `toi da` = *"tôi đã"*: câu CÓ DẤU thì so chữ có dấu; câu gõ không dấu thì chỉ nhận khi ngay sau là một con số.
+bool _coDauHieuNganSach(String s) {
+  final thuong = s.toLowerCase();
+  final t = amTietKhongDau(thuong);
+  if (_coCum(t, const ['han', 'muc']) || _coCum(t, const ['gioi', 'han'])) return true;
+  if (thuong != removeVietnameseTones(thuong)) {
+    return RegExp(r'(?<![\p{L}\p{N}])tối\s+đa(?![\p{L}\p{N}])', unicode: true).hasMatch(thuong);
+  }
+  for (var i = 0; i + 2 < t.length; i++) {
+    if (t[i] == 'toi' && t[i + 1] == 'da' && RegExp(r'^\d').hasMatch(t[i + 2])) return true;
+  }
+  return false;
+}
+
+final RegExp _mauTheoKySau = RegExp(r'^\s*(?:/\s*|(?:moi|hang|mot)\s+)(?:tuan|thang|quy|nam)(?![a-z0-9])');
+final RegExp _mauTheoKyTruoc = RegExp(r'(?<![a-z0-9])(?:moi|hang)\s+(?:tuan|thang|quy|nam)\s+(?:[a-z]+\s+){0,3}$');
+
+/// Số tiền [tien] là mức góp THEO KỲ (*"2 triệu mỗi tháng"*, *"mỗi tháng để dành 2 triệu"*, *"500k/tháng"*), không phải
+/// số tiền đích của mục tiêu. Form mục tiêu không có ô "mỗi kỳ" điền được qua lệnh (trích tự động là tầng 4), nên con
+/// số ấy bị bỏ — thẻ nói "Chưa rõ số tiền" thay vì điền sai nghĩa. *"trong 12 tháng"* là hạn, không khớp.
+bool _tienTheoKy(String b, ({int batDau, int ketThuc, double giaTri}) tien) =>
+    _mauTheoKySau.hasMatch(b.substring(tien.ketThuc)) || _mauTheoKyTruoc.hasMatch(b.substring(0, tien.batDau));
 
 /// Số của AI hợp lệ ⇔ là một cách đọc được từ chính câu (cùng phép C2).
 double? _soAiHopLe(double? so, String cau, DateTime now) {
@@ -599,8 +635,8 @@ LenhTao lenhTaoTuAi(
   required List<MucChon> danhMucChi,
 }) {
   final nhan = _nhan(cau);
-  final loai = nhan?.loai ?? ai.loai;
   final s = unorm.nfc(cau);
+  final loai = nhan?.loai ?? (_coDauHieuNganSach(s) ? LoaiLenhTao.nganSach : ai.loai);
   final b = removeVietnameseTones(s.toLowerCase());
   final lechDoDai = b.length != s.length;
   final luat = lechDoDai
@@ -637,9 +673,12 @@ LenhTao lenhTaoTuAi(
         nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
       );
     case LenhTaoMucTieu():
+      // Số tiền của câu là mức góp theo kỳ → con số mô hình trả (cũng chính nó) không phải số tiền đích.
+      final tien = lechDoDai ? null : chonSoTienTrongCau(s, now: now);
+      final theoKy = tien != null && _tienTheoKy(b, tien);
       return LenhTaoMucTieu(
         ten: lap(luat.ten, _tenAiHopLe(ai.ten, s)),
-        soTienDich: lap(luat.soTienDich, _soAiHopLe(ai.soTien, s, now)),
+        soTienDich: lap(luat.soTienDich, theoKy ? null : _soAiHopLe(ai.soTien, s, now)),
         han: lap(luat.han, _hanAiHopLe(ai.han, s, now)),
         nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
       );

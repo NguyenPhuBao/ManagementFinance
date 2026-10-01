@@ -38,7 +38,7 @@ String promptLenhTao(DateTime now) =>
 List<KhaiBaoCongCu> khaiBaoLenhTao({required List<String> tenVi, required List<String> tenDanhMuc}) => [
       KhaiBaoCongCu(
         ten: kTenCongCuTaoHoaDon,
-        moTa: 'Tạo hoá đơn định kỳ (tiền nhà, điện, Netflix, gym…).',
+        moTa: 'Tạo hoá đơn định kỳ — một khoản PHẢI TRẢ lặp lại (tiền nhà, điện, Netflix, gym…).',
         thamSo: {
           'type': 'object',
           'properties': {
@@ -79,7 +79,8 @@ List<KhaiBaoCongCu> khaiBaoLenhTao({required List<String> tenVi, required List<S
       ),
       KhaiBaoCongCu(
         ten: kTenCongCuDatNganSach,
-        moTa: 'Đặt hạn mức chi cho một danh mục.',
+        // Đo Realme 2026-10-01: với mô tả ngắn, *"ăn uống tối đa 3 triệu một tháng"* bị gọi thành tao_hoa_don.
+        moTa: 'Đặt hạn mức chi TỐI ĐA cho một danh mục (vd "ăn uống tối đa 3 triệu một tháng").',
         thamSo: {
           'type': 'object',
           'properties': {

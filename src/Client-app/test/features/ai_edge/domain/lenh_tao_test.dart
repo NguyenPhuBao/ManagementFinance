@@ -429,6 +429,41 @@ void main() {
       expect(l.nhacTuTra, isTrue);
       expect(l.query.keys.where((k) => k.contains('auto') || k.contains('tu_tra')), isEmpty);
     });
+    test('⚠️ câu có dấu hiệu NGÂN SÁCH (tối đa / hạn mức / giới hạn) → ngân sách, dù mô hình gọi tao_hoa_don', () {
+      // Realme 2026-10-01, câu 8: mô hình gọi tao_hoa_don {ten: Ăn uống, so_tien: 3000000} — thẻ "Tạo hoá đơn Ăn uống".
+      final l = doc('ăn uống tối đa 3 triệu một tháng',
+          ai(loai: LoaiLenhTao.hoaDon, ten: 'Ăn uống', soTien: 3000000, chuKy: 'thang', danhMuc: 'Ăn uống'));
+      expect(l, isA<LenhTaoNganSach>());
+      expect(((l as LenhTaoNganSach).idDanhMuc, l.hanMuc), ('food', 3000000.0));
+      expect(doc('han muc giai tri 500k', ai(loai: LoaiLenhTao.hoaDon, danhMuc: 'Giải trí')), isA<LenhTaoNganSach>());
+      expect(doc('giới hạn chi ăn uống 2 triệu', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoNganSach>());
+      expect(doc('tạo hoá đơn internet tối đa 300k', ai(loai: LoaiLenhTao.nganSach)), isA<LenhTaoHoaDon>(),
+          reason: 'câu THEO MẪU thì loại của mẫu thắng mọi thứ');
+      expect(doc('mỗi tháng trả tiền nhà 3 triệu', ai(loai: LoaiLenhTao.hoaDon)), isA<LenhTaoHoaDon>(),
+          reason: 'không dấu hiệu ngân sách → theo tool mô hình gọi');
+    });
+    test('⚠️ mục tiêu: số tiền THEO KỲ ("2 triệu mỗi tháng") không phải số tiền ĐÍCH', () {
+      // Realme 2026-10-01, câu 10: cả luật lẫn mô hình đều điền 2.000.000 làm đích — sai nghĩa câu, và form không có ô
+      // "mỗi kỳ" điền được qua lệnh (trích tự động là tầng 4).
+      final l = doc('tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch',
+          ai(ten: 'tiết kiệm du lịch', soTien: 2000000)) as LenhTaoMucTieu;
+      expect(l.soTienDich, isNull);
+      expect((doc('mỗi tháng để dành 2 triệu mua xe', ai(ten: 'mua xe', soTien: 2000000)) as LenhTaoMucTieu).soTienDich,
+          isNull, reason: '"mỗi tháng" đứng TRƯỚC số tiền');
+      expect((doc('để dành 500k/tháng mua xe', ai(ten: 'mua xe', soTien: 500000)) as LenhTaoMucTieu).soTienDich, isNull);
+      expect((doc('để dành 50 triệu mua xe trong 12 tháng', ai(ten: 'mua xe')) as LenhTaoMucTieu).soTienDich, 50000000,
+          reason: '"trong 12 tháng" là hạn, không phải theo kỳ');
+      final mau = lenhTaoTheoCauHoi('tạo mục tiêu du lịch 2 triệu mỗi tháng', now: now, vi: vi, danhMucChi: dmChi)
+          as LenhTaoMucTieu;
+      expect((mau.ten, mau.soTienDich), ('du lịch', null), reason: 'đường luật cũng thế');
+    });
+    test('tên của AI: các chữ phải có trong câu ĐÚNG THỨ TỰ (không cần liền nhau)', () {
+      final l = doc('tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch', ai(ten: 'tiết kiệm du lịch')) as LenhTaoMucTieu;
+      expect(l.ten, 'tiết kiệm du lịch', reason: 'mô hình gom chữ của chính câu — không chữ nào tự nghĩ ra');
+      expect((doc('để dành 50 triệu mua xe', ai(ten: 'xe mua')) as LenhTaoMucTieu).ten, isNull, reason: 'sai thứ tự');
+      expect((doc('để dành 50 triệu mua xe', ai(ten: 'mua xe hơi')) as LenhTaoMucTieu).ten, isNull,
+          reason: '"hơi" không có trong câu');
+    });
     test('không ô nào từ AI → nguon luat', () {
       final l = doc('tạo hoá đơn gym 300k ngày 5 hằng tháng',
           ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, chuKy: 'thang', ngayGoc: 5)) as LenhTaoHoaDon;
