@@ -234,8 +234,11 @@ class LenhTaoHoaDon extends LenhTao {
     this.soTien,
     this.chuKy = kBillCycleMonth,
     this.ngayGoc,
+    this.batDau,
     this.idVi,
     this.idDanhMuc,
+    this.tenVi,
+    this.tenDanhMuc,
     this.nhacTuTra = false,
     super.nguon,
   });
@@ -246,8 +249,16 @@ class LenhTaoHoaDon extends LenhTao {
   /// Một trong `kBillCycle*` — câu không nêu thì tháng.
   final String chuKy;
   final int? ngayGoc;
+
+  /// Ngày BẮT ĐẦU hoá đơn — [ngayBatDauHoaDon] của [ngayGoc]. `null` khi câu không nêu ngày: form lấy hôm nay.
+  final DateTime? batDau;
   final String? idVi;
   final String? idDanhMuc;
+
+  /// Tên để THẺ in ra (query chỉ mang id). Ví / danh mục điền sẵn — nhất là danh mục mô hình ĐOÁN — phải thấy được
+  /// trước khi mở form: không thì thẻ ghi "Đọc bằng AI" mà không cho thấy AI đã điền gì.
+  final String? tenVi;
+  final String? tenDanhMuc;
 
   /// Câu nhắc tự trả / trích tự động — CHỈ để thẻ nói "bật trong form" (tầng 4, AI không bật).
   final bool nhacTuTra;
@@ -255,13 +266,16 @@ class LenhTaoHoaDon extends LenhTao {
   @override
   String get _route => '/bills/add';
 
-  /// Khoá của B2 (`dienSanTuQuery`), không `start`: hoá đơn mới bắt đầu hôm nay (spec C3 §4).
+  /// Khoá của B2 (`dienSanTuQuery`). `start` chỉ có khi câu nêu ngày (người dùng chốt 2026-10-01 — bản đầu spec C3
+  /// §4 không gửi `start`, form luôn bắt đầu hôm nay); `anchor` vẫn đi kèm vì ngày bắt đầu có thể đã bị kẹp về cuối
+  /// tháng ngắn trong khi chuỗi kỳ sau phải neo đúng ngày người dùng nói.
   @override
   Map<String, String> get query => {
         if (ten != null) 'name': ten!,
         if (soTien != null) 'amount': soTien!.round().toString(),
         'cycle': chuKy,
         if (ngayGoc != null) 'anchor': '$ngayGoc',
+        if (batDau != null) 'start': _iso(batDau!),
         if (idDanhMuc != null) 'category': idDanhMuc!,
         if (idVi != null) 'wallet': idVi!,
       };
@@ -308,7 +322,8 @@ String _hai(int n) => n.toString().padLeft(2, '0');
 String _iso(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${_hai(d.month)}-${_hai(d.day)}';
 
 final RegExp _mauDanhTu = RegExp(r'(?<![a-z0-9])(hoa don|muc tieu|ngan sach)(?![a-z0-9])');
-final RegExp _mauChuKy = RegExp(r'(?<![a-z0-9])(?:hang|moi)\s+(tuan|thang|quy|nam)(?![a-z0-9])');
+final RegExp _mauHoaDon = RegExp(r'(?<![a-z0-9])hoa don(?![a-z0-9])');
+final RegExp _mauChuKy =RegExp(r'(?<![a-z0-9])(?:hang|moi)\s+(tuan|thang|quy|nam)(?![a-z0-9])');
 final RegExp _mauNgayGoc = RegExp(r'(?<![a-z0-9])(?:ngay|mung)\s+(\d{1,2})(?![\d/])');
 final RegExp _mauTuTra = RegExp(r'(?<![a-z0-9])(?:tu\s+tra|tu\s+dong|trich\s+tu\s+dong)(?![a-z0-9])');
 final RegExp _mauMoHan = RegExp(r'(?<![a-z0-9])(?:truoc|den|trong)(?![a-z0-9])');
@@ -330,6 +345,22 @@ DateTime _cuoiThang(int y, int m) => DateTime(y, m + 1, 0);
 DateTime _congThang(DateTime d, int n) {
   final cuoi = _cuoiThang(d.year, d.month + n);
   return DateTime(cuoi.year, cuoi.month, d.day > cuoi.day ? cuoi.day : d.day);
+}
+
+/// Ngày BẮT ĐẦU hoá đơn khi câu nêu *"ngày N"* — người dùng chốt 2026-10-01: *"khi nhắc tới ngày thì ngày đó là ngày
+/// bắt đầu hoá đơn"*, và là ngày N **sắp tới**: chưa qua trong tháng này (kể cả trùng hôm nay) → tháng này; đã qua →
+/// tháng sau. Tháng không có ngày N (31 ở tháng 30 ngày, 30 ở tháng 2) thì kẹp về ngày cuối tháng — ngày gốc
+/// (`anchor`) vẫn là N. `null` khi [n] ngoài 1–31.
+DateTime? ngayBatDauHoaDon(int? n, DateTime now) {
+  if (n == null || n < 1 || n > 31) return null;
+  final homNay = DateTime(now.year, now.month, now.day);
+  DateTime trong(int y, int m) {
+    final cuoi = _cuoiThang(y, m).day;
+    return DateTime(y, m, n > cuoi ? cuoi : n);
+  }
+
+  final thangNay = trong(homNay.year, homNay.month);
+  return thangNay.isBefore(homNay) ? trong(homNay.year, homNay.month + 1) : thangNay;
 }
 
 DateTime? _hanMucTieu(String b, DateTime now) {
@@ -425,7 +456,13 @@ LenhTao _docTheoLuat(
   switch (loai) {
     case LoaiLenhTao.hoaDon:
       final viNeu = timTenTrongCau(s, [for (final v in vi) v.ten], tuLoai: 'ví');
-      final dmNeu = timTenTrongCau(s, [for (final d in danhMucChi) d.ten], tuLoai: 'danh mục');
+      // ⚠️ Chữ "hoá đơn" ĐẦU TIÊN là đối tượng của lệnh, không phải danh mục: bộ mặc định có mục tên "Hóa đơn", nên
+      // không che nó đi thì MỌI lệnh tạo hoá đơn tự nhận danh mục ấy — và, vì luật thắng, che luôn danh mục mô hình
+      // đoán (đo Realme 2026-10-01: "gym" → AI "Giải trí", form vẫn ra "Hóa đơn"). Che bằng khoảng trắng CÙNG độ dài
+      // để vị trí không lệch; lần xuất hiện thứ hai (*"… danh mục hoá đơn"*) vẫn được nhận.
+      final doiTuong = _mauHoaDon.firstMatch(b);
+      final sDm = doiTuong == null ? s : s.replaceRange(doiTuong.start, doiTuong.end, ' ' * (doiTuong.end - doiTuong.start));
+      final dmNeu = timTenTrongCau(sDm, [for (final d in danhMucChi) d.ten], tuLoai: 'danh mục');
       final chuKy = _mauChuKy.firstMatch(b);
       final ngayGoc = _mauNgayGoc.firstMatch(b);
       final ng = ngayGoc == null ? null : int.parse(ngayGoc.group(1)!);
@@ -446,8 +483,11 @@ LenhTao _docTheoLuat(
         soTien: soTien,
         chuKy: chuKy == null ? kBillCycleMonth : _chuKyTheoChu[chuKy.group(1)]!,
         ngayGoc: ng != null && ng >= 1 && ng <= 31 ? ng : null,
+        batDau: ngayBatDauHoaDon(ng, now),
         idVi: _idCua(vi, viNeu?.ten),
         idDanhMuc: _idCua(danhMucChi, dmNeu?.ten),
+        tenVi: viNeu?.ten,
+        tenDanhMuc: dmNeu?.ten,
         nhacTuTra: _mauTuTra.hasMatch(b),
       );
     case LoaiLenhTao.mucTieu:
@@ -543,9 +583,9 @@ MucChon? _mucTheoTenChuan(List<MucChon> ds, String? ten) {
 /// Ví của AI hợp lệ ⇔ khớp đúng một ví VÀ câu nhắc ví ấy (chữ *ví* trần, hoặc viết tắt tên ví — cùng phép C2
 /// `cauNhacViTheoTen`). ⚠️ Mô hình hay tự điền ví mặc định cho câu không nói tới ví nào (C2 đo Realme: 9/10 câu); ví
 /// điền sẵn sai là ô người dùng dễ bỏ sót nhất trên form hoá đơn.
-String? _viAiHopLe(List<MucChon> vi, String? ten, String s) {
+MucChon? _viAiHopLe(List<MucChon> vi, String? ten, String s) {
   final m = _mucTheoTenChuan(vi, ten);
-  return m != null && cauNhacViTheoTen(s.toLowerCase(), m.ten) ? m.id : null;
+  return m != null && cauNhacViTheoTen(s.toLowerCase(), m.ten) ? m : null;
 }
 
 /// Lưới kiểm (§8.3) — kết quả mô hình KHÔNG BAO GIỜ dùng thẳng. Luật đọc trước trên chính câu; AI chỉ LẤP ô luật để
@@ -579,13 +619,20 @@ LenhTao lenhTaoTuAi(
       final chuKyAi = _chuKyTheoChu[ai.chuKy];
       final chuKy = _mauChuKy.hasMatch(b) || chuKyAi == null ? luat.chuKy : chuKyAi;
       if (chuKy != luat.chuKy) quaAi = true;
+      final viAi = luat.idVi == null ? _viAiHopLe(vi, ai.vi, s) : null;
+      final dmAi = luat.idDanhMuc == null ? _mucTheoTenChuan(danhMucChi, ai.danhMuc) : null;
+      final ngayGoc =
+          lap(luat.ngayGoc, lechDoDai ? null : _ngayGocAiHopLe(ai.ngayGoc, b, chonSoTienTrongCau(s, now: now)));
       return LenhTaoHoaDon(
         ten: lap(luat.ten, _tenAiHopLe(ai.ten, s)),
         soTien: lap(luat.soTien, _soAiHopLe(ai.soTien, s, now)),
         chuKy: chuKy,
-        ngayGoc: lap(luat.ngayGoc, lechDoDai ? null : _ngayGocAiHopLe(ai.ngayGoc, b, chonSoTienTrongCau(s, now: now))),
-        idVi: lap(luat.idVi, _viAiHopLe(vi, ai.vi, s)),
-        idDanhMuc: lap(luat.idDanhMuc, _mucTheoTenChuan(danhMucChi, ai.danhMuc)?.id),
+        ngayGoc: ngayGoc,
+        batDau: ngayBatDauHoaDon(ngayGoc, now),
+        idVi: lap(luat.idVi, viAi?.id),
+        idDanhMuc: lap(luat.idDanhMuc, dmAi?.id),
+        tenVi: luat.tenVi ?? viAi?.ten,
+        tenDanhMuc: luat.tenDanhMuc ?? dmAi?.ten,
         nhacTuTra: luat.nhacTuTra,
         nguon: quaAi ? NguonLenh.ai : NguonLenh.luat,
       );
@@ -623,12 +670,21 @@ const Map<String, String> _nhanChuKy = {
   switch (l) {
     case LenhTaoHoaDon():
       final chuKy = _nhanChuKy[l.chuKy] ?? 'hằng tháng';
+      final bd = l.batDau;
       return (
         hanhDong: 'Tạo hoá đơn',
         ten: l.ten,
         chiTiet: [
           if (l.soTien != null) tien(l.soTien),
-          l.ngayGoc == null ? chuKy : '$chuKy, ngày ${l.ngayGoc}',
+          // Thẻ nói đúng thứ form sẽ điền: ngày nêu trong câu là NGÀY BẮT ĐẦU (người dùng chốt 2026-10-01).
+          if (bd != null)
+            '$chuKy, bắt đầu ${_hai(bd.day)}/${_hai(bd.month)}/${bd.year}'
+          else if (l.ngayGoc != null)
+            '$chuKy, ngày ${l.ngayGoc}'
+          else
+            chuKy,
+          if (l.tenDanhMuc != null) 'danh mục ${l.tenDanhMuc}',
+          if (l.tenVi != null) 'ví ${l.tenVi}',
         ],
         thieu: thieu([if (l.ten == null) 'tên', if (l.soTien == null) 'số tiền']),
         nhacTuTra: l.nhacTuTra,

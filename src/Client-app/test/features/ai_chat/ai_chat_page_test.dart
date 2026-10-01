@@ -448,7 +448,9 @@ void main() {
       await go(t, 'tạo hoá đơn Netflix 100k ngày 5 hằng tháng');
       expect(find.textContaining('Mình hiểu là'), findsOneWidget);
       expect(find.textContaining('Netflix'), findsWidgets);
-      expect(find.textContaining('100.000 đ · hằng tháng, ngày 5'), findsOneWidget);
+      // Ngày nêu trong câu là NGÀY BẮT ĐẦU (người dùng chốt 2026-10-01). Màn dùng `DateTime.now()` nên chỉ canh phần
+      // không phụ thuộc hôm chạy test: ngày 5 có ở mọi tháng, tháng / năm thì đổi.
+      expect(find.textContaining('100.000 đ · hằng tháng, bắt đầu 05/'), findsOneWidget);
       expect(find.text('Mở form tạo hoá đơn'), findsOneWidget);
       expect(soLanGoi, 0, reason: 'lệnh chỉ luật — mở phiên mô hình là 15–40 s chờ vô ích');
       expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue, reason: 'lượt đã xong');

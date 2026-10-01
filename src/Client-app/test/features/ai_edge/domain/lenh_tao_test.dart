@@ -72,8 +72,37 @@ void main() {
       test('⭐ "tạo hoá đơn Netflix 100k ngày 5 hằng tháng"', () {
         final l = doc('tạo hoá đơn Netflix 100k ngày 5 hằng tháng') as LenhTaoHoaDon;
         expect((l.ten, l.soTien, l.chuKy, l.ngayGoc, l.nhacTuTra), ('Netflix', 100000.0, kBillCycleMonth, 5, false));
-        expect(l.query, {'name': 'Netflix', 'amount': '100000', 'cycle': kBillCycleMonth, 'anchor': '5'});
-        expect(l.duongDan, '/bills/add?name=Netflix&amount=100000&cycle=Month&anchor=5');
+        // Người dùng chốt 2026-10-01: ngày nêu trong câu là NGÀY BẮT ĐẦU hoá đơn — ngày 5 SẮP TỚI (28/9 → 05/10).
+        expect(l.batDau, DateTime(2026, 10, 5));
+        expect(l.query,
+            {'name': 'Netflix', 'amount': '100000', 'cycle': kBillCycleMonth, 'anchor': '5', 'start': '2026-10-05'});
+        expect(l.duongDan, '/bills/add?name=Netflix&amount=100000&cycle=Month&anchor=5&start=2026-10-05');
+      });
+      test('⭐ ngayBatDauHoaDon — ngày N sắp tới: chưa qua → tháng này; đã qua → tháng sau; trùng hôm nay → hôm nay', () {
+        expect(ngayBatDauHoaDon(5, DateTime(2026, 10, 1, 14, 30)), DateTime(2026, 10, 5));
+        expect(ngayBatDauHoaDon(5, DateTime(2026, 10, 5, 23, 59)), DateTime(2026, 10, 5), reason: 'trùng hôm nay');
+        expect(ngayBatDauHoaDon(5, DateTime(2026, 10, 10)), DateTime(2026, 11, 5), reason: 'ngày 5 tháng này đã qua');
+        expect(ngayBatDauHoaDon(5, DateTime(2026, 12, 20)), DateTime(2027, 1, 5), reason: 'sang năm');
+        expect(ngayBatDauHoaDon(null, DateTime(2026, 10, 1)), isNull);
+        expect(ngayBatDauHoaDon(0, DateTime(2026, 10, 1)), isNull);
+        expect(ngayBatDauHoaDon(32, DateTime(2026, 10, 1)), isNull);
+      });
+      test('⚠️ ngayBatDauHoaDon — tháng NGẮN và năm NHUẬN: kẹp về ngày cuối tháng (ngày gốc vẫn là số người dùng nói)', () {
+        expect(ngayBatDauHoaDon(31, DateTime(2026, 9, 10)), DateTime(2026, 9, 30), reason: 'tháng 9 có 30 ngày');
+        expect(ngayBatDauHoaDon(31, DateTime(2026, 9, 30)), DateTime(2026, 9, 30), reason: 'ngày kẹp trùng hôm nay');
+        expect(ngayBatDauHoaDon(30, DateTime(2027, 2, 10)), DateTime(2027, 2, 28));
+        expect(ngayBatDauHoaDon(30, DateTime(2028, 2, 10)), DateTime(2028, 2, 29), reason: 'năm nhuận');
+        expect(ngayBatDauHoaDon(31, DateTime(2027, 1, 31, 8)), DateTime(2027, 1, 31));
+        expect(ngayBatDauHoaDon(29, DateTime(2027, 1, 30)), DateTime(2027, 2, 28),
+            reason: 'ngày 29 tháng 1 đã qua → tháng 2 (28 ngày) → kẹp');
+        final l = doc('tạo hoá đơn thuê nhà 5tr ngày 31', luc: DateTime(2026, 9, 10)) as LenhTaoHoaDon;
+        expect((l.ngayGoc, l.batDau), (31, DateTime(2026, 9, 30)), reason: 'anchor giữ 31 — chuỗi kỳ sau vẫn neo ngày 31');
+        expect((l.query['anchor'], l.query['start']), ('31', '2026-09-30'));
+      });
+      test('không nêu ngày → không batDau, không khoá start (form lấy hôm nay)', () {
+        final l = doc('thêm hoá đơn điện 500k') as LenhTaoHoaDon;
+        expect((l.ngayGoc, l.batDau), (null, null));
+        expect(l.query.containsKey('start'), isFalse);
       });
       test('không dấu, "3tr", "moi thang"', () {
         final l = doc('tao hoa don tien nha 3tr moi thang') as LenhTaoHoaDon;
@@ -104,9 +133,9 @@ void main() {
             reason: 'tầng 4 — AI không bật tự trả, kể cả qua deeplink');
         expect((doc('tạo hoá đơn điện tự động thanh toán') as LenhTaoHoaDon).nhacTuTra, isTrue);
       });
-      test('query dùng đúng khoá của B2 (dienSanTuQuery), không có start', () {
+      test('query dùng đúng khoá của B2 (dienSanTuQuery) — có start khi câu nêu ngày', () {
         final l = doc('tạo hoá đơn gym 300k ngày 5 danh mục giải trí ví tiền mặt') as LenhTaoHoaDon;
-        expect(l.query.keys.toSet(), {'name', 'amount', 'cycle', 'anchor', 'category', 'wallet'});
+        expect(l.query.keys.toSet(), {'name', 'amount', 'cycle', 'anchor', 'start', 'category', 'wallet'});
       });
     });
 
@@ -160,10 +189,12 @@ void main() {
 
   group('tomTatLenhTao — nội dung thẻ', () {
     test('⭐ hoá đơn đủ ô', () {
-      final t = tomTatLenhTao(const LenhTaoHoaDon(ten: 'Netflix', soTien: 100000, ngayGoc: 5));
+      final t = tomTatLenhTao(
+          LenhTaoHoaDon(ten: 'Netflix', soTien: 100000, ngayGoc: 5, batDau: DateTime(2026, 10, 5)));
       // Record chứa List so theo danh tính — tách List ra so riêng.
       expect((t.hanhDong, t.ten, t.thieu, t.nhacTuTra, t.nut), ('Tạo hoá đơn', 'Netflix', '', false, 'Mở form tạo hoá đơn'));
-      expect(t.chiTiet, ['100.000 đ', 'hằng tháng, ngày 5']);
+      expect(t.chiTiet, ['100.000 đ', 'hằng tháng, bắt đầu 05/10/2026'],
+          reason: 'thẻ nói đúng thứ form sẽ điền: NGÀY BẮT ĐẦU, không phải "ngày 5" trống nghĩa');
     });
     test('ô thiếu gom một dòng; tầng 4 có dòng riêng', () {
       final t = tomTatLenhTao(const LenhTaoHoaDon(chuKy: kBillCycleWeek, nhacTuTra: true));
@@ -327,10 +358,10 @@ void main() {
           isNull);
       expect((doc('trả tiền nhà 5 triệu hằng tháng', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon).ngayGoc,
           isNull, reason: 'số 5 của "5 triệu" là tiền, không phải ngày');
-      expect(
-          (doc('trả tiền nhà 3 triệu hằng tháng vào hôm 5', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon)
-              .ngayGoc,
-          5);
+      final coNgay =
+          doc('trả tiền nhà 3 triệu hằng tháng vào hôm 5', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 5)) as LenhTaoHoaDon;
+      expect((coNgay.ngayGoc, coNgay.batDau), (5, DateTime(2026, 10, 5)),
+          reason: 'ngày do AI đọc cũng là NGÀY BẮT ĐẦU — không thì thẻ ghi "ngày 5" còn form bắt đầu hôm nay');
       expect(
           (doc('trả tiền nhà 3 triệu hằng tháng vào hôm 5', ai(loai: LoaiLenhTao.hoaDon, ngayGoc: 45)) as LenhTaoHoaDon)
               .ngayGoc,
@@ -343,17 +374,44 @@ void main() {
       expect((doc('trả gym 300k', ai(loai: LoaiLenhTao.hoaDon, danhMuc: 'Không có')) as LenhTaoHoaDon).idDanhMuc,
           isNull);
     });
+    test('⚠️ chữ "hoá đơn" của LỆNH không phải danh mục "Hóa đơn" (Realme 2026-10-01: nó che mất "Giải trí" AI đoán)', () {
+      const dm = [(id: 'bill', ten: 'Hóa đơn'), (id: 'ent', ten: 'Giải trí')];
+      LenhTaoHoaDon luat(String c) => lenhTaoTheoCauHoi(c, now: now, vi: vi, danhMucChi: dm)! as LenhTaoHoaDon;
+      expect(luat('tạo hoá đơn gym 300k ngày 5 hằng tháng').idDanhMuc, isNull,
+          reason: 'bộ danh mục mặc định CÓ mục tên "Hóa đơn" — danh từ của lệnh trùng tên nó ở mọi câu');
+      expect(luat('tao hoa don gym 300k').idDanhMuc, isNull);
+      expect(luat('tạo hoá đơn điện 500k danh mục hoá đơn').idDanhMuc, 'bill',
+          reason: 'người dùng NÊU danh mục ấy (lần xuất hiện thứ hai) thì vẫn nhận');
+      final l = lenhTaoTuAi(
+        'tạo hoá đơn gym 300k ngày 5 hằng tháng',
+        ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, danhMuc: 'Giải trí'),
+        now: now,
+        vi: vi,
+        danhMucChi: dm,
+      ) as LenhTaoHoaDon;
+      expect((l.idDanhMuc, l.tenDanhMuc, l.nguon), ('ent', 'Giải trí', NguonLenh.ai));
+      expect(tomTatLenhTao(l).chiTiet, ['300.000 đ', 'hằng tháng, bắt đầu 05/10/2026', 'danh mục Giải trí'],
+          reason: 'danh mục mô hình ĐOÁN phải hiện trên thẻ — không thì "Đọc bằng AI" mà không thấy AI đã điền gì');
+      final tuNhien = lenhTaoTuAi(
+        'hoá đơn internet 250k mỗi tháng ngày 10',
+        ai(loai: LoaiLenhTao.hoaDon, ten: 'internet', danhMuc: ''),
+        now: now,
+        vi: vi,
+        danhMucChi: dm,
+      ) as LenhTaoHoaDon;
+      expect(tuNhien.idDanhMuc, isNull, reason: 'câu tự nhiên cũng thế: "hoá đơn" là đối tượng tạo, không phải danh mục');
+    });
+
     test('⚠️ ví của AI chỉ nhận khi CÂU NHẮC VÍ — mô hình hay tự điền ví mặc định (C2 đo 9/10 câu)', () {
       expect(
           (doc('trả gym 300k mỗi tháng', ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', vi: 'Techcombank')) as LenhTaoHoaDon)
               .idVi,
           isNull,
           reason: 'câu không nói tới ví nào — ví điền sẵn sai là ô người dùng dễ bỏ sót nhất');
-      expect(
-          (doc('trả gym 300k mỗi tháng bằng techcom', ai(loai: LoaiLenhTao.hoaDon, vi: 'Techcombank')) as LenhTaoHoaDon)
-              .idVi,
-          'tcb',
-          reason: 'viết tắt tên ví');
+      final coVi =
+          doc('trả gym 300k mỗi tháng bằng techcom', ai(loai: LoaiLenhTao.hoaDon, vi: 'Techcombank')) as LenhTaoHoaDon;
+      expect((coVi.idVi, coVi.tenVi), ('tcb', 'Techcombank'), reason: 'viết tắt tên ví');
+      expect(tomTatLenhTao(coVi).chiTiet.last, 'ví Techcombank', reason: 'ví điền sẵn phải thấy được trên thẻ');
       expect(
           (doc('trả gym 300k mỗi tháng ví tiền mặt', ai(loai: LoaiLenhTao.hoaDon, vi: 'Techcombank')) as LenhTaoHoaDon)
               .idVi,
