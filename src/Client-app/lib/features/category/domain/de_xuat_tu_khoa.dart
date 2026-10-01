@@ -98,8 +98,6 @@ DeXuatTuKhoa? deXuatTuKhoa({
 
   final cumBoDau = bo.sublist(tot.i, tot.j).join(' ');
   final hienThi = normalizeCategoryName(goc.sublist(tot.i, tot.j).join(' '));
-  // Cụm nằm trong một từ khoá đã có của danh mục → bản rộng hơn, không đề xuất.
-  if (cuaC.any((k) => _boDau(k).contains(cumBoDau))) return null;
   if (tatCap.contains((cumBoDau, categoryId))) return null;
   final khac = [
     for (final e in tuKhoa.entries)
@@ -107,6 +105,10 @@ DeXuatTuKhoa? deXuatTuKhoa({
   ];
   // Thuộc ≥ 2 danh mục khác → không biết bỏ ở đâu (spec §4).
   if (khac.length > 1) return null;
+  // Cụm nằm trong một từ khoá đã có của danh mục → bản rộng hơn, không đề xuất. CHỈ khi không xung đột: cụm đang là
+  // từ khoá của danh mục khác thì nó đang kéo ghi chú về sai chỗ, và từ khoá dài hơn ở đây không cứu được (bộ so tìm
+  // từ khoá TRONG ghi chú, *"grabcar"* không bắt *"grab đi làm"*). Seed cũ cho mọi tài khoản đúng cặp ấy.
+  if (khac.isEmpty && cuaC.any((k) => _boDau(k).contains(cumBoDau))) return null;
   return DeXuatTuKhoa(
     tuKhoa: hienThi,
     cumBoDau: cumBoDau,
