@@ -18,7 +18,8 @@ Bất biến ④ nhóm C: **chỉ đề xuất, bấm mới ghi**. Tầng hậu 
 > khoá của danh mục khác**. Phần đồng bộ PostgreSQL của §6 **không đo** (bản debug trên máy thật trỏ `10.0.2.2`).
 > ⚠️ Hai câu của spec này lệch thực tế, đo cùng lượt: §1 *"từ khoá phải có người gõ vào trang Từ khoá của tôi"* và dòng
 > đầu *"đảo được trong trang Từ khoá"* — trang ấy **không còn lối vào** (`watchTree` trả `defaultChildren: const []`
-> từ 2026-09-07, form sửa danh mục không có ô từ khoá) → **G61**. Và khoản thứ 4 *trà sữa* (§2.5) ra Ăn uống nhờ **B1**
+> từ 2026-09-07, form sửa danh mục không có ô từ khoá) → **G61**, sửa ở mã cùng ngày: form Thêm / Chỉnh sửa danh mục
+> nay có khối *Từ khóa nhận diện* — đó là chỗ "đảo" một từ khoá thêm nhầm. Và khoản thứ 4 *trà sữa* (§2.5) ra Ăn uống nhờ **B1**
 > (cùng ngưỡng, đứng trước từ khoá), không phải nhờ từ khoá vừa thêm; giá trị riêng của từ khoá lộ ở ca *grab*, nơi B1
 > đang thôi gợi ý.
 

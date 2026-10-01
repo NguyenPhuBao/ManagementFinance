@@ -584,8 +584,10 @@ Dữ liệu sau lượt đo: ba khoản *trà sữa* 1.000 đ đã **xoá mềm 
 
 ⚠️ Lượt đo còn lộ **G61** (`CLIENT_APP_KNOWN_GAPS.md`): người dùng **không còn chỗ nào để tự gõ
 từ khoá** — trang *Từ khóa của tôi* chỉ mở được từ mục *Danh mục mặc định*, mục ấy trống từ khi
-mỗi tài khoản dùng bản sao riêng (2026-09-07). Nên hôm nay đề xuất này là lối **duy nhất** thêm
-từ khoá trên máy, và câu *"đảo được trong trang Từ khoá"* của spec chưa đúng.
+mỗi tài khoản dùng bản sao riêng (2026-09-07). Nên tới lượt đo này đề xuất là lối **duy nhất** thêm
+từ khoá trên máy, và câu *"đảo được trong trang Từ khoá"* của spec chưa đúng. **Sửa ở mã cùng ngày**:
+form Thêm / Chỉnh sửa danh mục nay có khối *Từ khóa nhận diện* (đúng màn Stitch `a5a6ecb3…`), nên
+từ khoá thêm nhầm qua đề xuất **gỡ được** ở đó. 🚧 Chưa nghiệm thu máy thật (Realme bị rút).
 
 ---
 
