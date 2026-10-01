@@ -223,6 +223,11 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
           'Vui lòng đăng nhập lại trước khi lưu danh mục.');
       return;
     }
+    // Chữ đang gõ dở trong ô từ khoá cũng là từ khoá: gõ xong bấm Lưu (chưa Enter, chưa dấu phẩy) là thao tác
+    // thường gặp nhất trên điện thoại, và bỏ nó đi là mất im lặng.
+    if (_keywordController.text.trim().isNotEmpty) {
+      _addKeywordText(_keywordController.text);
+    }
     setState(() => _saving = true);
     try {
       if (_isKeywordOnly) {
@@ -385,6 +390,38 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                     giaTri: _aiCoDinh,
                     onChanged: (v) => setState(() => _aiCoDinh = v),
                   ),
+                  const SizedBox(height: 24),
+                  // Khối từ khoá — cùng màn Stitch `a5a6ecb3…`, ngay dưới thẻ Cố định. Thiếu khối này (G61) thì
+                  // người dùng không có chỗ nào để thêm / gỡ từ khoá: trang từ khoá riêng chỉ mở được từ hàng
+                  // "Danh mục mặc định", mục rỗng với mọi tài khoản từ khi có bản sao riêng (2026-09-07).
+                  // Lệch Stitch có chủ ý: nhãn không ghi "cho AI" (bộ so từ khoá là luật, không phải mô hình), và
+                  // chip nét đứt "+ Thêm" là một ô nhập — chip thì không gõ chữ được.
+                  const Text('Từ khóa nhận diện',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Ghi chú chứa từ khóa sẽ được gợi ý danh mục này. '
+                    'Nhập rồi nhấn Enter hoặc dấu phẩy để tạo thẻ.',
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: _KeywordsEditor(
+                      controller: _keywordController,
+                      keywords: _keywords,
+                      onSubmitted: _addKeywordText,
+                      onChanged: _onKeywordChanged,
+                      onRemoved: (keyword) =>
+                          setState(() => _keywords.remove(keyword)),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -499,6 +536,7 @@ class _KeywordsEditor extends StatelessWidget {
             children: keywords
                 .map((keyword) => InputChip(
                       label: Text(keyword),
+                      deleteButtonTooltipMessage: 'Gỡ từ khóa $keyword',
                       onDeleted: () => onRemoved(keyword),
                     ))
                 .toList(),
