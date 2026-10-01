@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
@@ -504,4 +505,204 @@ void main() {
       expect(find.text('Mở form tạo mục tiêu'), findsOneWidget, reason: 'push, không go — lịch sử chat còn');
     });
   });
+
+  group('C3 §8 — lệnh tạo bằng AI', () {
+    Future<NguonLenhTao> nguon() async => (
+          vi: const [(id: 'cash', ten: 'Tiền mặt')],
+          danhMucChi: const [(id: 'food', ten: 'Ăn uống')],
+        );
+    Future<void> go(WidgetTester t, String cau) async {
+      await t.enterText(find.byType(TextField), cau);
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+    }
+
+    /// Gửi mà KHÔNG chờ lắng — lượt đang treo có vòng xoay, `pumpAndSettle` sẽ quá hạn.
+    Future<void> goDangCho(WidgetTester t, String cau) async {
+      await t.enterText(find.byType(TextField), cau);
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump();
+      await t.pump();
+    }
+
+    const cauTuNhien = 'tôi muốn để dành 50 triệu mua xe trước hè năm sau';
+    const kqAi = KetQuaLenhAi(loai: LoaiLenhTao.mucTieu, ten: 'mua xe', soTien: 50000000, han: '30/06/2027');
+
+    testWidgets('⭐ có mô hình + câu tự nhiên → AI đọc, thẻ "Đọc bằng AI", 0 lần gọi vòng hỏi đáp', (t) async {
+      var soLanHoi = 0;
+      final doc = _DocLenhGia(kqAi);
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        docLenh: doc,
+        onHoi: (_) {
+          soLanHoi++;
+          return const Stream<SuKienGac>.empty();
+        },
+      )));
+      await go(t, cauTuNhien);
+      expect(doc.soLanDoc, 1);
+      expect(doc.tenDanhMucNhan, ['Ăn uống'], reason: 'enum của tool là tên danh mục CHI do màn lọc');
+      expect(find.textContaining('Tạo mục tiêu'), findsOneWidget);
+      expect(find.textContaining('50.000.000 đ · hạn 30/06/2027'), findsOneWidget);
+      expect(find.text('Đọc bằng AI'), findsOneWidget);
+      expect(find.text('Mở form tạo mục tiêu'), findsOneWidget);
+      expect(soLanHoi, 0);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue, reason: 'lượt đã xong');
+    });
+
+    testWidgets('có mô hình + AI null + câu theo mẫu → thẻ luật "Đọc bằng luật"', (t) async {
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: _DocLenhGia(null))));
+      await go(t, 'tạo hoá đơn gym 300k ngày 5 hằng tháng');
+      expect(find.text('Đọc bằng luật'), findsOneWidget);
+      expect(find.text('Mở form tạo hoá đơn'), findsOneWidget);
+    });
+
+    testWidgets('có mô hình + AI đọc nhưng KHÔNG lấp ô nào (luật đã đủ) → vẫn ghi "Đọc bằng luật"', (t) async {
+      const thua = KetQuaLenhAi(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, chuKy: 'thang', ngayGoc: 5);
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: _DocLenhGia(thua))));
+      await go(t, 'tạo hoá đơn gym 300k ngày 5 hằng tháng');
+      expect(find.text('Đọc bằng luật'), findsOneWidget, reason: 'dòng nguồn nói thứ ĐÃ XẢY RA, không nói thứ đã thử');
+    });
+
+    testWidgets('có mô hình + AI null + câu tự nhiên → vòng hỏi đáp như cũ (1 lần gọi)', (t) async {
+      var soLanHoi = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        docLenh: _DocLenhGia(null),
+        onHoi: (_) {
+          soLanHoi++;
+          return Stream.value(const CauQua('Bạn đang tiết kiệm tốt.'));
+        },
+      )));
+      await go(t, cauTuNhien);
+      expect(soLanHoi, 1);
+      expect(find.byKey(const Key('the-lenh-tao')), findsNothing);
+    });
+
+    testWidgets('chưa có mô hình + câu theo mẫu → thẻ luật, KHÔNG gọi AI', (t) async {
+      final doc = _DocLenhGia(kqAi);
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: false, nguonLenhTao: nguon, docLenh: doc)));
+      await go(t, 'đặt ngân sách ăn uống 3 triệu');
+      expect(doc.soLanDoc, 0);
+      expect(find.text('Đọc bằng luật'), findsOneWidget);
+    });
+
+    testWidgets('chưa có mô hình + câu tự nhiên lọt cổng → câu cố định, không thẻ, KHÔNG gọi AI', (t) async {
+      final doc = _DocLenhGia(kqAi);
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: false, nguonLenhTao: nguon, docLenh: doc)));
+      await go(t, cauTuNhien);
+      expect(doc.soLanDoc, 0);
+      expect(find.text(cauKhoaHoiDap(coTep: false)), findsWidgets);
+      expect(find.byKey(const Key('the-lenh-tao')), findsNothing);
+    });
+
+    testWidgets('câu không lọt cổng → không gọi AI lệnh, đi vòng hỏi đáp', (t) async {
+      var soLanHoi = 0;
+      final doc = _DocLenhGia(kqAi);
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        docLenh: doc,
+        onHoi: (_) {
+          soLanHoi++;
+          return Stream.value(const CauQua('Tháng này bạn chi nhiều cho ăn uống.'));
+        },
+      )));
+      await go(t, 'tháng này tôi chi bao nhiêu');
+      expect((doc.soLanDoc, soLanHoi), (0, 1));
+    });
+
+    testWidgets('⭐ đang đọc: chỉ báo + Huỷ; bấm Huỷ với câu tự nhiên → "Đã huỷ.", KHÔNG đi vòng hỏi đáp', (t) async {
+      var soLanHoi = 0;
+      final doc = _DocLenhGia(kqAi, treo: true);
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        docLenh: doc,
+        onHoi: (_) {
+          soLanHoi++;
+          return const Stream<SuKienGac>.empty();
+        },
+      )));
+      await goDangCho(t, cauTuNhien);
+      expect(find.text(kDangDocLenh), findsOneWidget);
+      await t.tap(find.byKey(const Key('huy-doc-lenh')));
+      await t.pumpAndSettle();
+      expect(doc.soLanHuy, 1);
+      expect(find.text(kDaHuyLenh), findsOneWidget);
+      expect(find.byKey(const Key('the-lenh-tao')), findsNothing);
+      expect(soLanHoi, 0, reason: 'vừa huỷ một lượt chờ mà bị đẩy sang lượt chờ khác là ngược ý người bấm');
+      expect(find.byKey(const Key('huy-doc-lenh')), findsNothing);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue, reason: 'lượt đã xong');
+    });
+
+    testWidgets('bấm Huỷ với câu theo mẫu → thẻ luật (luật vốn không cần chờ)', (t) async {
+      final doc = _DocLenhGia(kqAi, treo: true);
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: doc)));
+      await goDangCho(t, 'tạo hoá đơn gym 300k');
+      await t.tap(find.byKey(const Key('huy-doc-lenh')));
+      await t.pumpAndSettle();
+      expect(find.text('Đọc bằng luật'), findsOneWidget);
+      expect(find.text('Mở form tạo hoá đơn'), findsOneWidget);
+    });
+
+    testWidgets('nút Huỷ CHỈ có ở lượt đọc lệnh — lượt hỏi đáp thường không vẽ nó', (t) async {
+      final treo = StreamController<SuKienGac>();
+      addTearDown(treo.close);
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        nguonLenhTao: nguon,
+        docLenh: _DocLenhGia(kqAi),
+        onHoi: (_) => treo.stream,
+      )));
+      await goDangCho(t, 'tháng này tôi chi bao nhiêu');
+      expect(find.text('Đang nghĩ…'), findsOneWidget);
+      expect(find.byKey(const Key('huy-doc-lenh')), findsNothing);
+    });
+
+    testWidgets('thẻ ở khổ 360 dp: không tràn, ô thiếu có dòng riêng', (t) async {
+      t.view.physicalSize = const Size(360, 640);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      const thieu = KetQuaLenhAi(loai: LoaiLenhTao.hoaDon, ten: 'tiền điện');
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, nguonLenhTao: nguon, docLenh: _DocLenhGia(thieu))));
+      await go(t, 'nhắc tôi đóng tiền điện hằng tháng');
+      expect(t.takeException(), isNull);
+      expect(find.text('Đọc bằng AI'), findsOneWidget);
+      expect(find.text('Chưa rõ số tiền — bạn điền trong form'), findsOneWidget);
+    });
+  });
+}
+
+/// Bản giả của phiên AI lệnh tạo. [treo]: lượt không tự xong — chỉ `huy()` mới thả, và khi ấy trả `null` như bản thật.
+class _DocLenhGia implements DocLenh {
+  _DocLenhGia(this.kq, {this.treo = false});
+  final KetQuaLenhAi? kq;
+  final bool treo;
+  int soLanDoc = 0, soLanHuy = 0;
+  List<String>? tenDanhMucNhan;
+  Completer<void>? _cho;
+  bool _daHuy = false;
+
+  @override
+  Future<KetQuaLenhAi?> doc(
+    String cau, {
+    required DateTime now,
+    required List<String> tenVi,
+    required List<String> tenDanhMuc,
+  }) async {
+    soLanDoc++;
+    tenDanhMucNhan = tenDanhMuc;
+    if (treo) await (_cho = Completer<void>()).future;
+    return _daHuy ? null : kq;
+  }
+
+  @override
+  Future<void> huy() async {
+    soLanHuy++;
+    _daHuy = true;
+    if (!(_cho?.isCompleted ?? true)) _cho!.complete();
+  }
 }

@@ -27,6 +27,8 @@
 /// dựng sẵn ở `_luongBac1` — im lặng.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -50,6 +52,7 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
 import '../../spike/spike_sql.dart';
 
@@ -110,6 +113,9 @@ const String _kHong =
 const String kChuaSanSangPhien =
     'Đang mở lại phiên đăng nhập trên máy. Bạn đợi vài giây rồi hỏi lại nhé.';
 
+/// Câu của trợ lý sau khi người dùng bấm Huỷ lượt đọc lệnh tạo bằng AI (C3 §8) mà câu không theo mẫu của bộ luật.
+const String kDaHuyLenh = 'Đã huỷ.';
+
 class _TinNhan {
   const _TinNhan.cuaToi(this.cau)
       : cuaToi = true,
@@ -145,6 +151,7 @@ class AiChatPage extends StatefulWidget {
     this.theSoLieuMau,
     this.doTrangThai,
     this.nguonLenhTao,
+    this.docLenh,
   });
 
   /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
@@ -172,6 +179,10 @@ class AiChatPage extends StatefulWidget {
   /// Khe tiêm cho test: ví / danh mục chi cho lệnh tạo (C3). `null` = `napNguonLenhTao` qua DI.
   final Future<NguonLenhTao> Function()? nguonLenhTao;
 
+  /// Khe tiêm cho test: phiên AI đọc lệnh tạo (C3 §8). `null` = `DocLenhBangAi` qua DI nếu đã đăng ký, không thì màn
+  /// chỉ dùng bộ luật.
+  final DocLenh? docLenh;
+
   @override
   State<AiChatPage> createState() => _AiChatPageState();
 }
@@ -192,6 +203,10 @@ class _AiChatPageState extends State<AiChatPage> {
 
   /// Chữ dòng chỉ báo trong lúc tool chạy (`cauDangTraCuu`); `null` = "Đang nghĩ…".
   String? _dangTraCuu;
+
+  /// Phiên AI lệnh tạo (C3 §8) đang chạy — dòng chỉ báo có thêm nút Huỷ. [_daHuyLenh]: người dùng vừa bấm nó.
+  bool _dangDocLenh = false;
+  bool _daHuyLenh = false;
 
   bool get _coMoHinh => _coTep && _batCongTac;
 
@@ -274,15 +289,23 @@ class _AiChatPageState extends State<AiChatPage> {
       return;
     }
 
-    // C3 — lệnh tạo TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, mở phiên): chỉ luật, trả thẻ mở form điền sẵn.
-    if (loaiLenhTao(c) != null) {
-      final nguon = await _napNguonLenh();
-      final lenh = lenhTaoTheoCauHoi(c, now: DateTime.now(), vi: nguon.vi, danhMucChi: nguon.danhMucChi);
+    // C3 §8 — cổng rộng TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, phiên sáu tool): có mô hình thì AI đọc và luật
+    // kiểm từng ô; không thì bộ luật dự phòng. Kết quả là thẻ mở form điền sẵn — không lưu gì.
+    if (coVeLenhTao(c, now: DateTime.now())) {
+      _daHuyLenh = false;
+      final lenh = await _docLenhTao(c);
+      if (!mounted) return;
       if (lenh != null) {
-        debugPrint('[SLM] lệnh tạo ${lenh.runtimeType} → form');
+        debugPrint('[SLM] lệnh tạo ${lenh.runtimeType} nguồn ${lenh.nguon.name} → form');
         _themCuaAi(_TinNhan.lenhTao(lenh));
         return;
       }
+      if (_daHuyLenh) {
+        // ⚠️ Lệch spec §8.4 có chủ ý: vừa bấm Huỷ một lượt chờ thì DỪNG, không đẩy sang lượt chờ của vòng hỏi đáp.
+        _themCuaAi(const _TinNhan.cuaAi(kDaHuyLenh));
+        return;
+      }
+      // Lọt cổng mà mô hình không gọi tool nào (hoặc hỏng) và câu không theo mẫu: không phải lệnh — đi tiếp như cũ.
     }
 
     // Không phải lệnh mà chưa có mô hình: câu cố định (băng nhắc tải vẫn ở đó).
@@ -357,6 +380,41 @@ class _AiChatPageState extends State<AiChatPage> {
     final id = currentAccountIdOrNull(context);
     if (id == null || id <= 0) return Future.value((vi: const <MucChon>[], danhMucChi: const <MucChon>[]));
     return _nguonLenh ??= napNguonLenhTao(id);
+  }
+
+  /// `null` → không có đường mô hình cho lệnh tạo (test không tiêm, DI chưa đăng ký): chỉ luật.
+  DocLenh? get _docLenh => widget.docLenh ?? (sl.isRegistered<DocLenhBangAi>() ? sl<DocLenhBangAi>() : null);
+
+  /// AI đọc trước (máy có mô hình), luật kiểm từng ô (`lenhTaoTuAi`); không thì bộ luật §2–§3. `null` = không phải
+  /// lệnh: câu tự nhiên mà mô hình không gọi tool, lượt hỏng / quá hạn, hoặc người dùng bấm Huỷ.
+  Future<LenhTao?> _docLenhTao(String c) async {
+    final nguon = await _napNguonLenh();
+    final now = DateTime.now();
+    final doc = _docLenh;
+    if (_coMoHinh && doc != null && mounted) {
+      setState(() {
+        _dangDocLenh = true;
+        _dangTraCuu = kDangDocLenh;
+      });
+      final kq = await doc.doc(
+        c,
+        now: now,
+        tenVi: [for (final v in nguon.vi) v.ten],
+        tenDanhMuc: [for (final d in nguon.danhMucChi) d.ten],
+      );
+      if (!mounted) return null;
+      setState(() {
+        _dangDocLenh = false;
+        _dangTraCuu = null;
+      });
+      if (kq != null) return lenhTaoTuAi(c, kq, now: now, vi: nguon.vi, danhMucChi: nguon.danhMucChi);
+    }
+    return lenhTaoTheoCauHoi(c, now: now, vi: nguon.vi, danhMucChi: nguon.danhMucChi);
+  }
+
+  void _huyDocLenh() {
+    _daHuyLenh = true;
+    unawaited(_docLenh?.huy());
   }
 
   void _themCuaAi(_TinNhan t) {
@@ -710,11 +768,20 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            _dangTraCuu ?? 'Đang nghĩ…',
-            style: const TextStyle(
-                color: AppColors.onSurfaceVariant, fontSize: 13),
+          Flexible(
+            child: Text(
+              _dangTraCuu ?? 'Đang nghĩ…',
+              style: const TextStyle(
+                  color: AppColors.onSurfaceVariant, fontSize: 13),
+            ),
           ),
+          // Chỉ lượt đọc lệnh tạo (C3 §8) huỷ được: nó là lượt chờ THÊM trước vòng hỏi đáp, và có đường lùi là luật.
+          if (_dangDocLenh)
+            TextButton(
+              key: const Key('huy-doc-lenh'),
+              onPressed: _huyDocLenh,
+              child: const Text('Huỷ'),
+            ),
         ],
       );
 
@@ -771,11 +838,28 @@ class _AiChatPageState extends State<AiChatPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
+                // Dòng nguồn nói thứ ĐÃ XẢY RA: "Đọc bằng AI" chỉ khi mô hình lấp ít nhất một ô qua lưới kiểm (§8.3).
+                Row(
                   children: [
-                    Icon(Icons.receipt_long, size: 16, color: AppColors.outline),
-                    SizedBox(width: 6),
-                    Text('Lệnh tạo · không cần mô hình', style: TextStyle(fontSize: 12, color: AppColors.outline)),
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        l.nguon == NguonLenh.ai ? Icons.auto_awesome : Icons.rule,
+                        size: 16,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l.nguon == NguonLenh.ai ? 'Đọc bằng AI' : 'Đọc bằng luật',
+                      key: const Key('nguon-lenh'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -790,7 +874,24 @@ class _AiChatPageState extends State<AiChatPage> {
                     ],
                   ),
                 ),
-                if (t.thieu.isNotEmpty) ...[const SizedBox(height: 6), Text(t.thieu, style: phu)],
+                if (t.thieu.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  // Hộp nền nhạt + dấu hỏi (Stitch `59454c61…`): ô thiếu là thứ người dùng PHẢI làm tiếp trong form.
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.help_outline, size: 15, color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(t.thieu, style: phu)),
+                      ],
+                    ),
+                  ),
+                ],
                 if (t.nhacTuTra) ...[const SizedBox(height: 6), const Text('Tự trả phải bật trong form', style: phu)],
                 const SizedBox(height: 12),
                 FilledButton(
@@ -800,7 +901,14 @@ class _AiChatPageState extends State<AiChatPage> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text(t.nut),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(child: Text(t.nut)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, size: 18),
+                    ],
+                  ),
                 ),
               ],
             ),
