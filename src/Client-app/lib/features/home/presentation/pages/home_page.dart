@@ -12,6 +12,7 @@ import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
 import '../../domain/thu_chi_thang.dart';
+import '../../../ai_chat/spike/spike_c4.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
@@ -368,6 +369,11 @@ class HomePage extends StatelessWidget {
           label: 'Quét',
           isDark: false,
           onTap: () {
+            // Spike C4: bản build có `--dart-define=SPIKE_C4=true` mở màn đo; bản thường giữ nguyên hành vi cũ.
+            if (kSpikeC4) {
+              context.push('/spike-c4');
+              return;
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Tính năng Quét QR đang phát triển')),
             );

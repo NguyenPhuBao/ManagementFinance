@@ -67,10 +67,42 @@ class SlmRuntimeThat implements SlmRuntime {
   @override
   bool get dangSan => _model != null;
 
+  /// Mô hình đang nạp có cờ ảnh / âm thanh không — chỉ đường spike C4 bật ([spikeDaPhuongThuc]).
+  bool _coAnh = false;
+  bool _coAm = false;
+
   @override
   Future<void> moHinhSan(String duongTep) async {
     if (_model != null) return;
+    await _nap(duongTep);
+  }
 
+  /// ⚠️ SPIKE C4 (2026-10-01) — đường ĐO TẠM, chỉ màn `spike_c4_page.dart` (sau cờ `SPIKE_C4`) gọi. Nạp LẠI mô hình
+  /// với `supportImage` / `supportAudio` khi cờ đang nạp khác thứ cần (đóng mô hình cũ trước — mỗi lần một mô hình),
+  /// rồi sinh một câu từ [prompt] kèm ảnh hoặc WAV 16 kHz mono. Nằm ở đây vì tệp này là chỗ duy nhất được import gói
+  /// (test quét 16). Màn spike gọi [dong] khi rời đi để đường chữ thường nạp lại bản không cờ.
+  Future<String> spikeDaPhuongThuc(String duongTep, String prompt, {Uint8List? anh, Uint8List? wav}) async {
+    final canAnh = anh != null;
+    final canAm = wav != null;
+    if (_model == null || _coAnh != canAnh || _coAm != canAm) {
+      await dong();
+      await _nap(duongTep, anh: canAnh, am: canAm);
+    }
+    final dongHo = Stopwatch()..start();
+    final chat = await _model!.createChat(temperature: 0.2, supportImage: canAnh, supportAudio: canAm);
+    await chat.addQueryChunk(canAnh
+        ? Message.withImage(text: prompt, imageBytes: anh, isUser: true)
+        : canAm
+            ? Message.withAudio(text: prompt, audioBytes: wav, isUser: true)
+            : Message.text(text: prompt, isUser: true));
+    final r = await chat.generateChatResponse();
+    final cau = (r is TextResponse ? r.token : r.toString()).trim();
+    debugPrint('[SLM][C4] sinh xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(${canAnh ? 'ảnh ${anh.length} byte' : canAm ? 'âm ${wav.length} byte' : 'chữ'} → ${cau.length} ký tự)');
+    return cau;
+  }
+
+  Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {
     // `initialize` đăng ký engine — gọi một lần trong đời tiến trình.
     if (!_daKhoiTao) {
       await FlutterGemma.initialize(inferenceEngines: const [LiteRtLmEngine()]);
@@ -116,14 +148,21 @@ class SlmRuntimeThat implements SlmRuntime {
         // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
         maxTokens: 4096,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
+        // Spike C4: hai cờ dưới chỉ khác `null` khi màn spike gọi; đường thường giữ nguyên lời gọi cũ.
+        supportImage: anh ? true : null,
+        supportAudio: am ? true : null,
+        maxNumImages: anh ? 1 : null,
+        preferredVisionBackend: anh ? (dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu) : null,
       );
     } finally {
       // Exception thường cũng dọn dấu: chỉ crash native (không chạy tới đây)
       // mới để dấu lại.
       await canary?.thuXong();
     }
+    _coAnh = anh;
+    _coAm = am;
     debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms '
-        '(${dungCpu ? 'CPU — GPU máy này từng sập' : 'GPU'})');
+        '(${dungCpu ? 'CPU — GPU máy này từng sập' : 'GPU'}${anh ? ' · ảnh' : ''}${am ? ' · âm thanh' : ''})');
   }
 
   @override

@@ -48,6 +48,8 @@ import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
 import '../../features/ai_chat/presentation/pages/ai_chat_page.dart';
+import '../../features/ai_chat/spike/spike_c4.dart';
+import '../../features/ai_chat/spike/spike_c4_page.dart';
 import '../../features/ai_edge/presentation/pages/cai_dat_ai_page.dart';
 import '../../features/notification/presentation/pages/notification_center_page.dart';
 import '../../features/notification/presentation/pages/notification_settings_page.dart';
@@ -400,6 +402,11 @@ class AppRouter {
 
           // Other
           GoRoute(path: '/ai-chat', builder: (_, __) => const AiChatPage()),
+
+          // Spike C4 — màn ĐO TẠM (giọng nói / chụp hoá đơn). Chỉ có khi build với
+          // `--dart-define=SPIKE_C4=true`; bản thường không có route này.
+          if (kSpikeC4)
+            GoRoute(path: '/spike-c4', builder: (_, __) => const SpikeC4Page()),
 
           // Cài đặt của mảng AI trên máy: tải / xoá mô hình, công tắc dùng nó.
           //

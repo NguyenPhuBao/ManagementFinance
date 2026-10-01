@@ -82,6 +82,10 @@ dependencies:
   # API bề mặt (connect/dispose/onAny), và hỏng thì hỏng ồn ào — mất kết nối,
   # chứ không phải vẽ ra hình sai trong im lặng.
   socket_io_client: ^3.1.6
+  speech_to_text: ^7.5.0
+  google_mlkit_text_recognition: ^0.17.1
+  record: ^7.1.1
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
