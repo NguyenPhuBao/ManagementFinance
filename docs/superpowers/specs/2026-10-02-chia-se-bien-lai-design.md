@@ -1,7 +1,9 @@
 # Chia sẻ biên lai từ app ngân hàng vào FlowMoney — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** 📝 thiết kế đã duyệt trong chat (năm lượt AskUserQuestion + một lượt duyệt tổng);
-**bản viết chờ người dùng đọc lại** — chưa có kế hoạch, chưa có mã.
+**Ngày:** 2026-10-02. **Trạng thái:** 📝 thiết kế duyệt trong chat (năm lượt AskUserQuestion + một lượt duyệt tổng),
+**bản viết người dùng duyệt cùng ngày** (*"Ok duyệt"*). Kế hoạch 11 task:
+`docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` (gitignore) — **chưa có mã**; Task 4 là bước thử trên Realme
+(cổng dừng, cần người dùng chia sẻ biên lai thật).
 
 Việc sau D1 số 3 (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6), nay tách khỏi C4 và làm trước. Bản thiết kế thứ hai của
 cùng lượt — *nhắc ghi sau khi rời app ngân hàng* — viết riêng, sau bản này (mục 11).

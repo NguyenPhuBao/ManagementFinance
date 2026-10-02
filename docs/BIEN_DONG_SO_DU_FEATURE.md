@@ -164,7 +164,7 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    `goi_y_chuyen_khoan_form_test.dart`.
 3. 📝 **Chia sẻ biên lai** vào FlowMoney → đọc chữ trên máy → điền sẵn. **Tách khỏi C4 và làm trước** (2026-10-02):
    người dùng báo chuyển khoản ngay trong app ngân hàng thì app ấy **không đăng thông báo biến động** (MB Bank, MoMo,
-   ZaloPay), nên D1 không có gì để đọc. Thiết kế đã duyệt trong chat, bản viết **chờ người dùng đọc lại**:
+   ZaloPay), nên D1 không có gì để đọc. Thiết kế và bản viết **đã duyệt**, kế hoạch 11 task ở `plans/2026-10-02-chia-se-bien-lai.md` (gitignore), chưa có mã:
    `docs/superpowers/specs/2026-10-02-chia-se-bien-lai-design.md`. Bảy quyết định ở mục 2 của spec; cái định hình cả
    thiết kế: bấm *Chia sẻ → "Ghi vào FlowMoney"* thì **không nhảy sang FlowMoney** — nhận ảnh ở nền, hiện tóm tắt
    không số, biên lai thành một hàng loại 20 như tin ngân hàng. Bước đầu của kế hoạch là **bước thử trên Realme** (app
