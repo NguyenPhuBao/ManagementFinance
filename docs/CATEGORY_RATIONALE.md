@@ -552,7 +552,8 @@ khoá nào — nên **Chuyển** làm danh mục cũ rỗng thì từ khoá cũ 
 
 ✅ **Đo 2026-10-01 trên Realme RMX2205** (360 dp, tài khoản 10, bản **debug** để đọc được SQLite
 bằng `run-as`: `5ffc0123…` cho ca thêm và ✕, `259d273c…` sau bản sửa cho ca chuyển). Kịch bản ở
-spec §6. Phần *đồng bộ lên PostgreSQL* **không đo** — bản debug trên máy thật trỏ `10.0.2.2`.
+spec §6. Phần *đồng bộ lên PostgreSQL* **không đo** ở lượt này — bản debug trên máy thật trỏ `10.0.2.2`;
+✅ **đo 2026-10-02 trên máy ảo**, tiểu mục *Đồng bộ lên PostgreSQL* ngay dưới.
 
 | Ca | Kỳ vọng | Thấy trên máy | |
 |---|---|---|---|
@@ -589,6 +590,40 @@ từ khoá trên máy, và câu *"đảo được trong trang Từ khoá"* của
 form Thêm / Chỉnh sửa danh mục nay có khối *Từ khóa nhận diện* (đúng màn Stitch `a5a6ecb3…`), nên
 từ khoá thêm nhầm qua đề xuất **gỡ được** ở đó. ✅ Nghiệm thu Realme cùng ngày (thêm · gõ dở rồi
 Lưu · gỡ, kiểm SQLite) — G61 đóng.
+
+### Đồng bộ lên PostgreSQL — đo đầu-cuối 2026-10-02
+
+Máy ảo `FlowMoney_16G` (411 dp; **không máy thật nào cắm**), tài khoản 10, bản debug `9bd65000…`
+(= mã @ `2e2c04c`), backend dev sau gộp `main` @ `573969f`. Mỗi ca: thao tác trên máy → đọc log
+`[SyncEngine]` → truy vấn **chỉ đọc** `category."Keyword"` / `"Update_at"` → cuối buổi chép SQLite
+(kèm `-wal`, `-shm`) về so. Trước 2026-10-02 việc này không đo được: Realme không tới được backend,
+và bản `a7c03b7` của backend không khởi động (khối 🔀 *Gộp `main` @ `573969f`*, mục 14
+`PROJECT_CONTEXT.md`).
+
+| Ca | Đường mã | Log đẩy | `category."Keyword"` trên server | |
+|---|---|---|---|---|
+| Form *Giải trí*: gõ dở `cinema` rồi **Lưu** | `saveChild` | 1/1, 0 xung đột | `game,giai tri,movie` → `cinema,game,giai tri,movie` | ✅ |
+| Form: gỡ `movie`, **Lưu** | `saveChild` | 1/1 | `cinema,game,giai tri` | ✅ |
+| Form: gỡ **hết** ba từ khoá, **Lưu** | `saveChild` | 1/1 | **giữ** `cinema,game,giai tri` (`Update_at` mới); cùng chu kỳ pull in *"Đã gieo từ khoá phân loại cho 1 danh mục"*, mở lại form thấy đủ ba thẻ | ✅ đúng giới hạn đã ghi |
+| Thêm giao dịch: Di chuyển + ghi chú *"grab di cho"* → dòng *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?"* → **Chuyển** | `saveKeywords` × 2 | **2/2**, 0 xung đột | Ăn uống `an uong,food,grab` → `an uong,food`; Di chuyển `di chuyen,grabcar,xang` → `di chuyen,grab,grabcar,xang`; cả hai `Update_at` 02:05:45 UTC = giây bấm | ✅ |
+
+- **Ca cuối là ca của bản sửa `saveKeywords`** — ba ca đầu đi `saveChild`, hàm vốn đã đánh dấu
+  `pending`; form chỉ gọi `saveKeywords` ở chế độ chỉ-từ-khoá (`_isKeywordOnly`). Trước bản sửa, cú
+  bấm **Chuyển** ghi SQLite rồi nằm đó.
+- Sau buổi đo: máy ảo **0** danh mục `pending`, từ khoá ba danh mục trên SQLite **trùng** server;
+  phản hồi `de_xuat_tu_khoa` / `grab` / `chon` có. *Giải trí* đã trả về `game,giai tri,movie`
+  (qua form, lên server). `grab` **giữ** ở Di chuyển — cùng trạng thái người dùng chọn giữ trên Realme.
+- **Chưa đo: máy thứ hai.** Theo mã, máy **mới** (chưa có từ khoá) nhận bộ của server qua
+  `_gieoTuKhoaKhiTrong`; máy **đã có** từ khoá cho danh mục ấy thì **không** nhận thay đổi từ máy kia
+  — phép gieo chỉ chạy khi danh mục trên máy trống (cố ý, mục 5d). Tức bản sửa đóng ca *"đổi
+  máy là mất"*, **không** làm hai máy đang dùng song song khớp từ khoá với nhau.
+- ⚠️ Bàn phím máy ảo cũng là **Telex** (bẫy 4.41 `AI_EDGE_FEATURE.md`): `input text netflix` thành
+  *"nètlĩ"*. Từ thử phải tránh `s f r x j w` sau nguyên âm và chữ gõ đôi.
+- Quan sát phụ, không sửa: hai hàng mặc định `database/14` ghi bằng SQL mang `Update_at` tới **micro
+  giây** (`…50.031441`), mốc pull của client dừng ở **mili giây** (`…50.031`), và server lọc `gt` —
+  nên hai hàng ấy được kéo lại ở **mỗi** chu kỳ cho tới khi có hàng mới hơn đẩy mốc đi tiếp (đo: hai
+  lượt pull liền nhau cùng mốc `…13:53:50.031Z` đều kéo lại chúng; mốc chỉ đi tiếp sau ca đầu). Vô hại (upsert luỹ đẳng), tự hết; hàng do
+  app ghi không dính vì `Date` của JS vốn chỉ tới mili giây.
 
 ---
 
