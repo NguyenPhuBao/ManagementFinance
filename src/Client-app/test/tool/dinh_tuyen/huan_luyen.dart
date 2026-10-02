@@ -184,6 +184,16 @@ List<DuDoan> kiemCheo(List<MauDinhTuyen> mau, List<String> nhan, HamHoc hoc, {in
   return ra;
 }
 
+/// Phần dự đoán mà ĐƯỜNG GHÉP giao cho mô hình: câu [luat] đã định tuyến thì
+/// trong app không bao giờ tới mô hình, nên không được tính vào ngưỡng của nó.
+/// ⚠️ Chấm mô hình trên cả những câu ấy là chấm nó ở việc không phải của nó — lần
+/// huấn luyện đầu (2026-10-02) vì thế ra ngưỡng 0,99 và phủ 3,2 %: ba câu sai nặng
+/// nhất đều là câu luật đã bắt.
+List<DuDoan> phanLuatBoLai(List<DuDoan> duDoan, String? Function(String cau) luat) => [
+      for (final d in duDoan)
+        if (luat(d.mau.cau) == null) d,
+    ];
+
 class ThongKe {
   const ThongKe({
     required this.chinhXac,

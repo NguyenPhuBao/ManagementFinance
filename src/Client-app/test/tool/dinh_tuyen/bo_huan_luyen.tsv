@@ -555,3 +555,92 @@ khong_dinh_tuyen	hay qua
 khong_dinh_tuyen	tai sao
 khong_dinh_tuyen	alo
 khong_dinh_tuyen	j vay
+# --- Vòng 2 (2026-10-02): câu ở các RANH GIỚI mà kiểm chéo vòng 1 cho thấy mô hình nhầm.
+# Chỉ dựa trên kiểm chéo của bộ huấn luyện — bộ đo chưa mở.
+# — gợi ý hạn mức nói bằng chữ "danh mục" / "tư vấn" (nhầm sang danh mục, ngân sách)
+goi_y_han_muc	goi y han muc cho tung danh muc
+goi_y_han_muc	moi danh muc nen dat ngan sach bao nhieu
+goi_y_han_muc	nen dat ngan sach cho cac danh muc the nao
+goi_y_han_muc	goi y muc chi hop ly cho moi danh muc
+goi_y_han_muc	tu van han muc chi tieu cho thang sau
+goi_y_han_muc	tu van giup toi nen dat ngan sach bao nhieu
+goi_y_han_muc	binh thuong mot thang toi tieu bao nhieu cho an uong
+goi_y_han_muc	thong thuong moi thang toi chi cho giai tri la bao nhieu
+goi_y_han_muc	goi y so tien nen dat cho ngan sach di chuyen
+goi_y_han_muc	muc ngan sach nen dat cho giao duc
+# — giao dịch: lịch sử vay nợ, gộp theo danh mục, theo ví, nạp mục tiêu, trả hoá đơn, so hai kỳ
+truy_van_giao_dich	toi da cho vay nhung khoan nao trong thang
+truy_van_giao_dich	thang nay toi thu no duoc bao nhieu
+truy_van_giao_dich	nam nay toi vay bao nhieu va da tra bao nhieu
+truy_van_giao_dich	toi da cho ai vay va thu ve bao nhieu roi
+truy_van_giao_dich	tong chi theo tung danh muc thang nay
+truy_van_giao_dich	moi danh muc thang nay toi chi bao nhieu
+truy_van_giao_dich	chi tieu theo danh muc tuan nay
+truy_van_giao_dich	thang truoc tung danh muc tieu het bao nhieu
+truy_van_giao_dich	danh muc nao chi it nhat thang nay
+truy_van_giao_dich	top danh muc chi nhieu nhat nam nay
+truy_van_giao_dich	vi nao phat sinh nhieu giao dich nhat thang nay
+truy_van_giao_dich	giao dich cua vi mb tuan nay
+truy_van_giao_dich	thang nay tu vi tiet kiem co khoan chi nao khong
+truy_van_giao_dich	lan gan nhat toi nap tien vao muc tieu la khi nao
+truy_van_giao_dich	tuan nay toi co nap tien cho muc tieu nao khong
+truy_van_giao_dich	cac lan rut tien khoi muc tieu mua xe
+truy_van_giao_dich	lan cuoi toi tra hoa don dien la ngay nao
+truy_van_giao_dich	thang nay toi da chi bao nhieu tien dien
+truy_van_giao_dich	tien cafe tuan nay het bao nhieu
+truy_van_giao_dich	quy nay toi chi nhieu hon quy truoc khong
+truy_van_giao_dich	nam nay thu nhieu hon nam ngoai khong
+truy_van_giao_dich	thang nay toi tieu tang hay giam so voi thang truoc
+# — tổng quan: tóm tắt thu chi, dư nợ (nhầm sang giao dịch, ví)
+tong_quan_tai_chinh	thang nay thu co du bu chi khong
+tong_quan_tai_chinh	thu chi thang truoc cua toi ra sao
+tong_quan_tai_chinh	tong ket thu chi quy nay
+tong_quan_tai_chinh	tom tat tinh hinh tai chinh cua toi
+tong_quan_tai_chinh	thang nay toi lai hay lo
+tong_quan_tai_chinh	toi con dang cho vay bao nhieu chua doi lai
+tong_quan_tai_chinh	tong du no hien tai cua toi la bao nhieu
+tong_quan_tai_chinh	so tien toi dang no la bao nhieu
+tong_quan_tai_chinh	ai dang no toi va no bao nhieu
+tong_quan_tai_chinh	phan tram tiet kiem quy nay cua toi
+tong_quan_tai_chinh	thu nhap nam nay cua toi la bao nhieu
+tong_quan_tai_chinh	binh quan moi ngay toi chi bao nhieu tien
+# — dự báo (nhầm sang mục tiêu, tổng quan, giao dịch)
+du_bao_dong_tien	tru het hoa don va khoan trich thi toi con bao nhieu
+du_bao_dong_tien	sau khi trich cho muc tieu va dong hoa don thi con tieu duoc bao nhieu
+du_bao_dong_tien	tong cac khoan phai tra trong 30 ngay toi
+du_bao_dong_tien	cam ket 30 ngay toi cua toi gom nhung gi
+du_bao_dong_tien	trong 2 tuan toi co nhung khoan nao den han
+du_bao_dong_tien	thang toi toi can chuan bi bao nhieu tien cho cac khoan co dinh
+du_bao_dong_tien	so du cua toi co du cho cac cam ket khong
+du_bao_dong_tien	con tieu duoc bao nhieu nua
+du_bao_dong_tien	tien con lai sau cam ket
+# — mục tiêu nói vòng (nhầm sang dự báo)
+danh_sach_muc_tieu	con bao lau nua thi toi du tien mua xe
+danh_sach_muc_tieu	bao lau nua thi dat muc tieu mua nha
+danh_sach_muc_tieu	can them bao nhieu thang de du tien du lich
+danh_sach_muc_tieu	toi sap du tien mua dien thoai chua
+# — ngân sách nói bằng chữ "hạn mức"
+danh_sach_ngan_sach	toi con duoc tieu bao nhieu cho an uong theo ngan sach
+danh_sach_ngan_sach	han muc giai tri con lai la bao nhieu
+danh_sach_ngan_sach	trong han muc toi con tieu duoc bao nhieu cho di chuyen
+danh_sach_ngan_sach	han muc nao sap het
+# — danh mục, ví
+danh_sach_danh_muc	toi chia thu chi thanh nhung danh muc nao
+danh_sach_danh_muc	phan loai chi tieu cua toi gom nhung muc gi
+danh_sach_danh_muc	danh muc nao dang co trong app
+danh_sach_vi	toi co tong cong bao nhieu tien o cac vi
+danh_sach_vi	vi nao co nhieu tien nhat hien nay
+# — không định tuyến: định nghĩa, cách dùng, lãi suất, câu hai tool
+khong_dinh_tuyen	lai suat tiet kiem ngan hang hien nay
+khong_dinh_tuyen	lai suat vay mua nha la bao nhieu
+khong_dinh_tuyen	cach tao muc tieu moi
+khong_dinh_tuyen	lam sao de them vi
+khong_dinh_tuyen	cach sua hoa don
+khong_dinh_tuyen	huong dan dat ngan sach
+khong_dinh_tuyen	ngan sach la gi
+khong_dinh_tuyen	dong tien tu do la gi
+khong_dinh_tuyen	muc tieu tiet kiem la gi
+khong_dinh_tuyen	vi tiet kiem khac vi thuong the nao
+khong_dinh_tuyen	so sanh hoa don voi ngan sach cua toi
+khong_dinh_tuyen	ngan sach va muc tieu cua toi dang the nao
+khong_dinh_tuyen	vi va hoa don cua toi co van de gi khong

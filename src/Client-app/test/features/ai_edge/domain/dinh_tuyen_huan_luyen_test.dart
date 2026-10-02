@@ -171,6 +171,17 @@ void main() {
     });
   });
 
+  test('⭐ phanLuatBoLai: câu LUẬT đã định tuyến không tới mô hình, nên không được chấm', () {
+    final d = [
+      const DuDoan(MauDinhTuyen('x', 'hoa don nao qua han'), 'y', 0.99),
+      const DuDoan(MauDinhTuyen('x', 'cau luat khong bat'), 'x', 0.7),
+    ];
+    final con = phanLuatBoLai(d, (c) => c.contains('qua han') ? 'x' : null);
+    expect(con.map((x) => x.mau.cau), ['cau luat khong bat']);
+    expect(chonNguong(con), closeTo(0.60, 1e-9),
+        reason: 'câu sai ở p = 0,99 là câu luật đã bắt — nó không được đẩy ngưỡng lên');
+  });
+
   group('chonNguong', () {
     test('mức thấp nhất hết sai + đệm 0,05', () {
       final d = [_d('x', 'y', 0.71), _d('x', 'x', 0.9)];
