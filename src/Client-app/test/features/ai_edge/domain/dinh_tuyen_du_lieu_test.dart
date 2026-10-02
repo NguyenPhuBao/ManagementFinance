@@ -12,6 +12,8 @@ import 'package:flowmoney/features/ai_edge/domain/dinh_tuyen_hoc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../tool/dinh_tuyen/du_lieu.dart';
+import '../../../tool/dinh_tuyen/huan_luyen.dart';
+import 'dinh_tuyen_72_cau_test.dart' show kBang72Cau;
 
 /// Mã băm của `bo_do.tsv` tại commit đầu (2026-10-02). ĐỪNG cập nhật hằng này
 /// để làm ca xanh: bộ đo đổi thì mọi số đo đã ghi mất nghĩa.
@@ -69,6 +71,40 @@ void main() {
     test('không hai câu nào trùng nhau sau chuẩn hoá', () {
       final khoa = mau.map((m) => chuanHoaDinhTuyen(m.cau)).toList();
       expect(khoa.toSet(), hasLength(khoa.length));
+    });
+  });
+
+  group('bộ huấn luyện', () {
+    // `khuTrung` ném nếu một câu mang hai nhãn — chính lời gọi này là một ca canh.
+    final mau = khuTrung(docTsv(docTep(kDuongBoHuanLuyen)));
+    final dem = _demNhan(mau);
+
+    test('mọi nhãn thuộc mười nhãn', () {
+      expect(dem.keys.toSet().difference(kMuoiNhan.toSet()), isEmpty);
+    });
+
+    test('đủ mẫu: mỗi nhãn ≥ 30 · giao dịch ≥ 100 · không định tuyến ≥ 60 (sau khử trùng)', () {
+      for (final n in kMuoiNhan) {
+        expect(dem[n] ?? 0, greaterThanOrEqualTo(30), reason: n);
+      }
+      expect(dem[kTenCongCuTruyVan], greaterThanOrEqualTo(100));
+      expect(dem[kNhanKhongDinhTuyen], greaterThanOrEqualTo(60));
+    });
+
+    test('cả 72 câu đã đo có mặt với đúng nhãn của bảng', () {
+      final nhanTheoCau = {for (final m in mau) chuanHoaDinhTuyen(m.cau): m.nhan};
+      for (final e in kBang72Cau.entries) {
+        expect(nhanTheoCau[chuanHoaDinhTuyen(e.value.$1)], e.value.$3, reason: '${e.key}: ${e.value.$1}');
+      }
+    });
+
+    test('⭐ không câu nào của bộ ĐO nằm trong bộ huấn luyện (sau chuẩn hoá)', () {
+      final hoc = {for (final m in mau) chuanHoaDinhTuyen(m.cau)};
+      final lot = [
+        for (final m in docTsv(docTep(kDuongBoDo)))
+          if (hoc.contains(chuanHoaDinhTuyen(m.cau))) m.cau,
+      ];
+      expect(lot, isEmpty, reason: 'mô hình sẽ được chấm trên câu nó đã học');
     });
   });
 }
