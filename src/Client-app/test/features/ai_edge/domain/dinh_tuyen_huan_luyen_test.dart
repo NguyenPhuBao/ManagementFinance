@@ -169,6 +169,46 @@ void main() {
     test('ngưỡng cao hơn thì bớt câu sai', () {
       expect(danhGia(d, 0.85).dinhTuyenSai, 0);
     });
+
+    group('hanhDong — nhãn mà app được phép định tuyến theo (hướng 1, 2026-10-02)', () {
+      test('⭐ mô hình đoán một tool NGOÀI tập hành động → không định tuyến, không tính sai', () {
+        final t = danhGia(d, 0.6, hanhDong: {'x'});
+        expect(t.soDinhTuyen, 1, reason: 'chỉ còn câu đoán x ở 0,9');
+        expect(t.dinhTuyenSai, 0, reason: 'hai câu đoán y không còn được định tuyến');
+      });
+
+      test('phủ tính trên câu mang nhãn thuộc tập hành động', () {
+        final t = danhGia(d, 0.6, hanhDong: {'x'});
+        expect(t.phu, closeTo(1 / 3, 1e-9), reason: 'một câu định tuyến đúng trên ba câu nhãn x');
+      });
+
+      test('chonNguong chỉ bị đẩy lên bởi câu sai VÀO tập hành động', () {
+        final ds = [_d('x', 'y', 0.97), _d('y', 'x', 0.71), _d('x', 'x', 0.9)];
+        expect(chonNguong(ds), closeTo(0.99, 1e-9), reason: 'không giới hạn: câu sai vào y ở 0,97 quyết ngưỡng');
+        expect(chonNguong(ds, hanhDong: {'x'}), closeTo(0.77, 1e-9),
+            reason: 'câu sai vào y ở 0,97 không còn là định tuyến; chỉ câu sai vào x ở 0,71 quyết ngưỡng');
+      });
+    });
+
+    group('chapNhan — câu mà tool khác cũng trả lời đúng', () {
+      const hai = MauDinhTuyen('y', 'thu nhieu hon chi khong', chapNhan: {'x'});
+
+      test('⭐ định tuyến sang tool được chấp nhận KHÔNG tính là sai, và không tính vào phủ', () {
+        final t = danhGia([const DuDoan(hai, 'x', 0.9), _d('x', 'x', 0.9)], 0.6, hanhDong: {'x'});
+        expect(t.dinhTuyenSai, 0);
+        expect(t.soChapNhan, 1);
+        expect(t.soDinhTuyen, 2);
+        expect(t.phu, closeTo(1, 1e-9), reason: 'phủ = câu nhãn x được định tuyến đúng / câu nhãn x');
+      });
+
+      test('định tuyến sang tool KHÔNG được chấp nhận vẫn là sai', () {
+        expect(danhGia([const DuDoan(hai, 'z', 0.9)], 0.6).dinhTuyenSai, 1);
+      });
+
+      test('câu chấp nhận không đẩy ngưỡng lên', () {
+        expect(chonNguong([const DuDoan(hai, 'x', 0.93)], hanhDong: {'x'}), closeTo(0.60, 1e-9));
+      });
+    });
   });
 
   test('⭐ phanLuatBoLai: câu LUẬT đã định tuyến không tới mô hình, nên không được chấm', () {

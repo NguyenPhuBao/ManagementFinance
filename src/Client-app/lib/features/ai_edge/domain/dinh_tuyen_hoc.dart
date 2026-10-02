@@ -19,6 +19,20 @@ import '../../../core/category/category_name.dart';
 /// nhãn này thì câu đi phiên sáu tool như trước khi có bộ định tuyến học.
 const String kNhanKhongDinhTuyen = 'khong_dinh_tuyen';
 
+/// Nhãn mà app ĐƯỢC PHÉP định tuyến theo mô hình. Mô hình học đủ mười nhãn —
+/// để biết câu nào KHÔNG phải câu giao dịch — nhưng app chỉ nghe nó khi nó đoán
+/// một nhãn ở đây; đoán tool khác thì câu đi phiên sáu tool như cũ.
+///
+/// Người dùng chốt 2026-10-02 (hướng 1) sau lần huấn luyện đầu: trên 405 câu
+/// luật bỏ lại, mô hình đoán đúng 134/147 câu giao dịch, nhưng với tám tool còn
+/// lại mỗi tool chỉ còn 14–29 câu và nó sai ở xác suất 0,91–0,93 — định tuyến cả
+/// chín tool mà không câu nào sai thì ngưỡng phải 0,98 và chỉ phủ 6,4 %. Mở thêm
+/// nhãn vào tập này khi có dữ liệu thật để tin, không cần huấn luyện lại kiểu khác.
+///
+/// Ghép chuỗi thay vì import `cong_cu.dart`: tệp này phải thuần đến mức phép học
+/// ở `test/tool/` dùng lại được mà không kéo theo tầng tool.
+const Set<String> kNhanMoHinhDuocDinhTuyen = {'truy_van_giao_dich'};
+
 /// Mọi âm tiết có chữ số (*500k*, *15*, *h0c*) thành một ký hiệu: với việc chọn
 /// tool, *"trên 500k"* và *"trên 2 triệu"* là một dấu hiệu.
 const String kKyHieuSo = '0';

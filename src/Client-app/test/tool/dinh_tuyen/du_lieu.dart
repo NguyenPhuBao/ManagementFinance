@@ -30,26 +30,41 @@ const List<String> kMuoiNhan = [
 ];
 
 class MauDinhTuyen {
-  const MauDinhTuyen(this.nhan, this.cau);
+  const MauDinhTuyen(this.nhan, this.cau, {this.chapNhan = const {}});
   final String nhan;
   final String cau;
 
+  /// Các tool KHÁC cũng trả lời đúng câu này. Mô hình học theo [nhan]; khi chấm,
+  /// định tuyến sang một tool ở đây không tính là sai (và không tính là đúng).
+  /// Tiêu chí ghi vào cột này: tool ấy trả ĐỦ số để trả lời mà Gemma không phải
+  /// làm phép tính nào — không phải "mô hình hay đoán thế".
+  final Set<String> chapNhan;
+
   @override
-  String toString() => '$nhan\t$cau';
+  String toString() => '$nhan\t$cau${chapNhan.isEmpty ? '' : '\t${chapNhan.join(',')}'}';
 }
 
-/// Mỗi dòng `nhãn<TAB>câu`; bỏ dòng trống và dòng bắt đầu `#`.
+/// Mỗi dòng `nhãn<TAB>câu[<TAB>tool chấp nhận, cách nhau dấu phẩy]`; bỏ dòng
+/// trống và dòng bắt đầu `#`.
 List<MauDinhTuyen> docTsv(String noiDung) {
   final ra = <MauDinhTuyen>[];
   final dong = noiDung.replaceAll('\r\n', '\n').split('\n');
   for (var i = 0; i < dong.length; i++) {
     final d = dong[i];
     if (d.trim().isEmpty || d.startsWith('#')) continue;
-    final t = d.indexOf('\t');
-    if (t <= 0 || d.substring(t + 1).trim().isEmpty) {
+    final cot = d.split('\t');
+    if (cot.length < 2 || cot[0].trim().isEmpty || cot[1].trim().isEmpty) {
       throw FormatException('dòng ${i + 1} không phải "nhãn<TAB>câu": $d');
     }
-    ra.add(MauDinhTuyen(d.substring(0, t).trim(), d.substring(t + 1).trim()));
+    ra.add(MauDinhTuyen(
+      cot[0].trim(),
+      cot[1].trim(),
+      chapNhan: {
+        if (cot.length > 2)
+          for (final c in cot[2].split(','))
+            if (c.trim().isNotEmpty) c.trim(),
+      },
+    ));
   }
   return ra;
 }

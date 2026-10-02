@@ -419,10 +419,10 @@ tong_quan_tai_chinh	du no cua toi hien tai
 tong_quan_tai_chinh	tinh hinh tai chinh thang nay cua toi the nao
 tong_quan_tai_chinh	tong quan tai chinh cua toi
 tong_quan_tai_chinh	tom tat tai chinh thang nay
-tong_quan_tai_chinh	thu chi thang nay the nao
-tong_quan_tai_chinh	thang nay toi thu nhieu hon chi khong
+tong_quan_tai_chinh	thu chi thang nay the nao	truy_van_giao_dich
+tong_quan_tai_chinh	thang nay toi thu nhieu hon chi khong	truy_van_giao_dich
 tong_quan_tai_chinh	thu nhap tru chi tieu con bao nhieu
-tong_quan_tai_chinh	toi co dang tieu nhieu hon kiem duoc khong
+tong_quan_tai_chinh	toi co dang tieu nhieu hon kiem duoc khong	truy_van_giao_dich
 tong_quan_tai_chinh	thu nhap trung binh moi thang cua toi
 tong_quan_tai_chinh	toi tiet kiem duoc bao nhieu trong quy nay
 tong_quan_tai_chinh	ti le de danh cua toi co tot khong
@@ -592,9 +592,9 @@ truy_van_giao_dich	quy nay toi chi nhieu hon quy truoc khong
 truy_van_giao_dich	nam nay thu nhieu hon nam ngoai khong
 truy_van_giao_dich	thang nay toi tieu tang hay giam so voi thang truoc
 # — tổng quan: tóm tắt thu chi, dư nợ (nhầm sang giao dịch, ví)
-tong_quan_tai_chinh	thang nay thu co du bu chi khong
-tong_quan_tai_chinh	thu chi thang truoc cua toi ra sao
-tong_quan_tai_chinh	tong ket thu chi quy nay
+tong_quan_tai_chinh	thang nay thu co du bu chi khong	truy_van_giao_dich
+tong_quan_tai_chinh	thu chi thang truoc cua toi ra sao	truy_van_giao_dich
+tong_quan_tai_chinh	tong ket thu chi quy nay	truy_van_giao_dich
 tong_quan_tai_chinh	tom tat tinh hinh tai chinh cua toi
 tong_quan_tai_chinh	thang nay toi lai hay lo
 tong_quan_tai_chinh	toi con dang cho vay bao nhieu chua doi lai

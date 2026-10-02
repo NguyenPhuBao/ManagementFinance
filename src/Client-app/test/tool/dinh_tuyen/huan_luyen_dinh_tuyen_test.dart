@@ -32,13 +32,13 @@ void _inBang(String ten, List<DuDoan> d, double? nguong) {
   print('\n=== $ten ===');
   print('độ chính xác (mười nhãn, kiểm chéo): ${_pt(danhGia(d, 0.5).chinhXac)}');
   for (final t in [0.5, 0.6, 0.7, 0.8, 0.9, 0.95]) {
-    final k = danhGia(d, t);
+    final k = danhGia(d, t, hanhDong: kNhanMoHinhDuocDinhTuyen);
     print('  ngưỡng ${t.toStringAsFixed(2)}: định tuyến ${k.soDinhTuyen}, SAI ${k.dinhTuyenSai}, phủ ${_pt(k.phu)}');
   }
   if (nguong == null) {
     print('NGƯỠNG: không có mức nào ≤ 0,99 cho 0 câu sai → LOẠI');
   } else {
-    final k = danhGia(d, nguong);
+    final k = danhGia(d, nguong, hanhDong: kNhanMoHinhDuocDinhTuyen);
     print('NGƯỠNG CHỌN ${nguong.toStringAsFixed(2)}: định tuyến ${k.soDinhTuyen}, SAI ${k.dinhTuyenSai}, phủ ${_pt(k.phu)}');
   }
   print('theo nhãn (đoán đúng nhãn / tổng · định tuyến đúng ở ngưỡng chọn):');
@@ -47,10 +47,15 @@ void _inBang(String ten, List<DuDoan> d, double? nguong) {
     final dung = cua.where((x) => x.nhanDoan == n).length;
     final tuyen = nguong == null
         ? 0
-        : cua.where((x) => x.nhanDoan == n && duocDinhTuyen(x, nguong)).length;
+        : cua.where((x) => x.nhanDoan == n && duocDinhTuyen(x, nguong, hanhDong: kNhanMoHinhDuocDinhTuyen)).length;
     print('  ${n.padRight(22)} $dung/${cua.length} · $tuyen');
   }
-  final sai = d.where((x) => duocDinhTuyen(x, 0.5) && x.nhanDoan != x.mau.nhan).toList()
+  final sai = d
+      .where((x) =>
+          duocDinhTuyen(x, 0.5, hanhDong: kNhanMoHinhDuocDinhTuyen) &&
+          x.nhanDoan != x.mau.nhan &&
+          !x.mau.chapNhan.contains(x.nhanDoan))
+      .toList()
     ..sort((a, b) => b.xacSuat.compareTo(a.xacSuat));
   print('câu định tuyến SAI ở ngưỡng 0,50 (${sai.length}), p giảm dần:');
   for (final x in sai) {
@@ -82,9 +87,9 @@ void main() {
       final ketQua = <(String, HamHoc, double, ThongKe)>[];
       for (final (ten, hoc) in ungVien) {
         final d = phanLuatBoLai(kiemCheo(mau, kMuoiNhan, hoc), congCuTheoCauHoi);
-        final nguong = chonNguong(d);
+        final nguong = chonNguong(d, hanhDong: kNhanMoHinhDuocDinhTuyen);
         _inBang(ten, d, nguong);
-        if (nguong != null) ketQua.add((ten, hoc, nguong, danhGia(d, nguong)));
+        if (nguong != null) ketQua.add((ten, hoc, nguong, danhGia(d, nguong, hanhDong: kNhanMoHinhDuocDinhTuyen)));
       }
       if (ketQua.isEmpty) fail('không mô hình nào đạt 0 câu định tuyến sai — không ghi trọng số');
 
@@ -111,7 +116,7 @@ void main() {
             return DuDoan(m, d.nhan, d.xacSuat);
           }(),
       ], congCuTheoCauHoi);
-      final k = danhGia(tren, nguong);
+      final k = danhGia(tren, nguong, hanhDong: kNhanMoHinhDuocDinhTuyen);
       print('trên chính bộ huấn luyện: chính xác ${_pt(k.chinhXac)}, định tuyến ${k.soDinhTuyen}, '
           'SAI ${k.dinhTuyenSai}, phủ ${_pt(k.phu)}');
     },

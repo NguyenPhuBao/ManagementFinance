@@ -199,35 +199,51 @@ class ThongKe {
     required this.chinhXac,
     required this.soDinhTuyen,
     required this.dinhTuyenSai,
+    required this.soChapNhan,
     required this.phu,
   });
 
   /// Phần câu đoán đúng nhãn (mười nhãn, không xét ngưỡng).
   final double chinhXac;
 
-  /// Số câu được định tuyến: nhãn đoán là một tool VÀ xác suất đạt ngưỡng.
+  /// Số câu được định tuyến (xem [duocDinhTuyen]).
   final int soDinhTuyen;
 
-  /// Số câu được định tuyến sang tool KHÁC nhãn đúng — kể cả câu nhãn đúng là
-  /// "không định tuyến". Đây là con số ngưỡng phải đưa về 0.
+  /// Số câu được định tuyến sang tool KHÁC nhãn đúng và không nằm trong
+  /// `chapNhan` của câu — kể cả câu nhãn đúng là "không định tuyến". Đây là
+  /// con số ngưỡng phải đưa về 0.
   final int dinhTuyenSai;
 
-  /// Số câu định tuyến đúng / số câu mang nhãn tool.
+  /// Số câu được định tuyến sang một tool trong `chapNhan` của câu: không sai,
+  /// cũng không tính vào [phu].
+  final int soChapNhan;
+
+  /// Số câu định tuyến ĐÚNG nhãn / số câu mang nhãn mà app được phép định tuyến.
   final double phu;
 }
 
-bool duocDinhTuyen(DuDoan d, double nguong) =>
-    d.nhanDoan != kNhanKhongDinhTuyen && d.xacSuat >= nguong;
+/// Được định tuyến ⇔ nhãn đoán là một tool, thuộc [hanhDong] (nếu có), và xác
+/// suất đạt ngưỡng. [hanhDong] là tập nhãn app ĐƯỢC PHÉP định tuyến theo mô
+/// hình; `null` = mọi tool. Mô hình vẫn học đủ mười nhãn — đoán một tool ngoài
+/// tập này chỉ có nghĩa "không phải việc của tôi", câu đi phiên sáu tool.
+bool duocDinhTuyen(DuDoan d, double nguong, {Set<String>? hanhDong}) =>
+    d.nhanDoan != kNhanKhongDinhTuyen &&
+    (hanhDong == null || hanhDong.contains(d.nhanDoan)) &&
+    d.xacSuat >= nguong;
 
-ThongKe danhGia(List<DuDoan> duDoan, double nguong) {
-  var dung = 0, tuyen = 0, sai = 0, tuyenDung = 0, coTool = 0;
+ThongKe danhGia(List<DuDoan> duDoan, double nguong, {Set<String>? hanhDong}) {
+  var dung = 0, tuyen = 0, sai = 0, tuyenDung = 0, chapNhan = 0, mauSo = 0;
   for (final d in duDoan) {
     if (d.nhanDoan == d.mau.nhan) dung++;
-    if (d.mau.nhan != kNhanKhongDinhTuyen) coTool++;
-    if (!duocDinhTuyen(d, nguong)) continue;
+    if (hanhDong == null ? d.mau.nhan != kNhanKhongDinhTuyen : hanhDong.contains(d.mau.nhan)) {
+      mauSo++;
+    }
+    if (!duocDinhTuyen(d, nguong, hanhDong: hanhDong)) continue;
     tuyen++;
     if (d.nhanDoan == d.mau.nhan) {
       tuyenDung++;
+    } else if (d.mau.chapNhan.contains(d.nhanDoan)) {
+      chapNhan++;
     } else {
       sai++;
     }
@@ -236,16 +252,17 @@ ThongKe danhGia(List<DuDoan> duDoan, double nguong) {
     chinhXac: duDoan.isEmpty ? 0 : dung / duDoan.length,
     soDinhTuyen: tuyen,
     dinhTuyenSai: sai,
-    phu: coTool == 0 ? 0 : tuyenDung / coTool,
+    soChapNhan: chapNhan,
+    phu: mauSo == 0 ? 0 : tuyenDung / mauSo,
   );
 }
 
 /// Ngưỡng thấp nhất trên lưới 0,50…0,99 mà không câu nào định tuyến sai, cộng
 /// đệm 0,05, kẹp trong [0,60; 0,99]. `null`: còn câu sai ở 0,99 — mô hình bị loại.
-double? chonNguong(List<DuDoan> duDoan) {
+double? chonNguong(List<DuDoan> duDoan, {Set<String>? hanhDong}) {
   for (var i = 50; i <= 99; i++) {
     final t = i / 100;
-    if (danhGia(duDoan, t).dinhTuyenSai == 0) {
+    if (danhGia(duDoan, t, hanhDong: hanhDong).dinhTuyenSai == 0) {
       return math.min(0.99, math.max(0.60, t + 0.05));
     }
   }
