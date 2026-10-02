@@ -302,7 +302,7 @@ void main() {
 
     test('⭐ themAnhVaoDeeplink giữ mọi tham số cũ của hàng tin, ghi giờ biên lai riêng (blt ≠ date)', () {
       final goc = deeplinkBienDong(_tin(luc: DateTime(2026, 10, 2, 18, 45, 20), vt: 'abc'), dedupeKey: 'bienDong:k');
-      final moi = themAnhVaoDeeplink(goc, 'aaaa.jpg', 'mau', DateTime(2026, 10, 2, 18, 45));
+      final moi = themAnhVaoDeeplink(goc, 'aaaa.jpg', DateTime(2026, 10, 2, 18, 45));
       final q = Uri.parse(moi).queryParameters;
       expect(q['amount'], '1200000');
       expect(q['vt'], 'abc');

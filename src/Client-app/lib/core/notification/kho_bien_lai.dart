@@ -9,7 +9,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import 'nhap_bien_lai.dart';
+import 'ten_tep_bien_lai.dart';
 
 class KhoBienLai {
   KhoBienLai({required this.thuMuc});
@@ -34,7 +34,7 @@ class KhoBienLai {
     if (tep == null || !tenTepBienLaiHopLe(tep)) return;
     try {
       final f = File('${(await _anh()).path}/$tep');
-      if (f.existsSync()) await f.delete();
+      if (f.existsSync()) f.deleteSync();
     } catch (e) {
       debugPrint('[BienLai] xoá ảnh hỏng: ${e.runtimeType}');
     }
@@ -66,7 +66,7 @@ class KhoBienLai {
       if (d.existsSync()) await d.delete(recursive: true);
       for (final ten in [kTepBienLaiCho, '$kTepBienLaiCho.dang_nhap']) {
         final f = File('${goc.path}/$ten');
-        if (f.existsSync()) await f.delete();
+        if (f.existsSync()) f.deleteSync();
       }
     } catch (e) {
       debugPrint('[BienLai] xoá hết hỏng: ${e.runtimeType}');

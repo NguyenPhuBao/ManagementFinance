@@ -247,6 +247,8 @@ void main() {
       expect(q['anh'], 'aaaa.jpg');
       expect(q['vt'], 'abc123', reason: 'gắn ảnh không được làm rơi tham số cũ của hàng tin');
       expect(q['note'], 'tin ngan hang');
+      expect(q.containsKey('doc'), isFalse,
+          reason: 'dữ liệu của hàng này đến từ TIN — có `doc` là form nói "Đọc từ ảnh — hãy kiểm lại" cho số không đọc từ ảnh');
       expect(await kho.duongDan('aaaa.jpg'), isNotNull);
     });
 

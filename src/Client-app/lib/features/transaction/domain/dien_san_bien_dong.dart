@@ -7,6 +7,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../../../core/notification/ten_tep_bien_lai.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 import 'doc_cau_giao_dich.dart';
@@ -24,6 +25,8 @@ class DienSanBienDong {
     this.chieu,
     this.thoiGian,
     this.duoi,
+    this.anh,
+    this.cachDoc,
   });
 
   /// `dedupeKey` của hàng loại 20 — xoá cứng hàng ấy khi Lưu / Bỏ qua.
@@ -42,6 +45,14 @@ class DienSanBienDong {
 
   /// Đuôi số tài khoản trong tin — khoá chọn sẵn ví cùng [nguon].
   final String? duoi;
+
+  /// Chia sẻ biên lai (2026-10-02): tên tệp ảnh biên lai trong `filesDir/bien_lai/` — form hiện ảnh nhỏ để đối chiếu
+  /// và xoá tệp khi Lưu / Bỏ qua. `null` = hàng không mang ảnh.
+  final String? anh;
+
+  /// `'mau'` | `'chung'` | `'khong'` — số liệu của hàng này ĐỌC TỪ ẢNH biên lai, bằng cách nào. `null` = số liệu đến
+  /// từ tin ngân hàng (kể cả khi hàng được gắn thêm ảnh để đối chiếu).
+  final String? cachDoc;
 }
 
 /// `null` khi query không phải của một hàng biến động số dư — form mở như thường.
@@ -52,7 +63,12 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
   final tien = double.tryParse(q['amount'] ?? '');
   final chieu = q['huong'];
   final duoi = q['duoi']?.trim() ?? '';
+  final anh = q['anh'];
+  final doc = q['doc'];
   return DienSanBienDong(
+    // Tên tệp sẽ được ghép thành đường dẫn — không khớp khuôn thì coi như không có ảnh.
+    anh: (anh != null && tenTepBienLaiHopLe(anh)) ? anh : null,
+    cachDoc: const {'mau', 'chung', 'khong'}.contains(doc) ? doc : null,
     khoa: khoa,
     nguon: nguon,
     ghiChu: (q['note'] ?? '').trim(),
@@ -67,14 +83,28 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
 String _hai(int n) => n.toString().padLeft(2, '0');
 
 /// Dải nguồn trên form (Stitch `52d9d2ef…`): *"Từ thông báo MB Bank · TK ••7777 · 02/09 12:01"*.
+///
+/// Hàng có số liệu ĐỌC TỪ ẢNH biên lai ([DienSanBienDong.cachDoc] khác `null`) thì nói *"Từ biên lai MB Bank · …"*;
+/// app gửi không rõ (nguồn là [kNguonBienLai]) thì chỉ *"Từ biên lai · …"* — không lặp chữ.
 String dongNguonBienDong(DienSanBienDong d) {
   final t = d.thoiGian;
+  final dau = d.cachDoc == null
+      ? 'Từ thông báo ${d.nguon}'
+      : (d.nguon == kNguonBienLai ? 'Từ biên lai' : 'Từ biên lai ${d.nguon}');
   return [
-    'Từ thông báo ${d.nguon}',
+    dau,
     if (d.duoi != null) 'TK ••${d.duoi}',
     if (t != null) '${_hai(t.day)}/${_hai(t.month)} ${_hai(t.hour)}:${_hai(t.minute)}',
   ].join(' · ');
 }
+
+/// Dòng phụ dưới dải nguồn của form mở từ BIÊN LAI. `null` = không cần nói gì (đọc bằng mẫu riêng đã đo, hoặc số
+/// liệu không đến từ ảnh).
+String? dongPhuBienLai(String? cachDoc) => switch (cachDoc) {
+      'chung' => 'Đọc từ ảnh — hãy kiểm lại',
+      'khong' => 'Chưa đọc được số tiền — nhìn ảnh để nhập',
+      _ => null,
+    };
 
 /// Dựng [KetQuaDocCau] cho đường điền của C2 (`_dienKetQua`). Danh mục đoán trên nội dung tin bằng ĐÚNG luật C2
 /// ([doanDanhMucTuGhiChu]: tên → B1 → từ khoá, không AI), chỉ trong danh mục hợp chiều ([hopLeTheoChieu]). [walletId]

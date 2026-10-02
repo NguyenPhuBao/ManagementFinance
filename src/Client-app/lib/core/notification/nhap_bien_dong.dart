@@ -23,7 +23,7 @@ import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../database/app_database.dart';
 import '../database/daos/notification_dao.dart';
 import '../utils/currency_formatter.dart';
-import 'nhap_bien_lai.dart' show tenTepBienLaiHopLe;
+import 'ten_tep_bien_lai.dart';
 import 'notification_rules.dart';
 
 const String kTepBienDongCho = 'bien_dong_cho.jsonl';
@@ -155,12 +155,14 @@ DateTime? gioBienLaiTuDeeplink(String? deeplink) {
 
 /// Gắn ảnh biên lai vào deeplink của một hàng ĐÃ CÓ (tin ngân hàng đến trước biên lai của cùng giao dịch); giữ mọi
 /// tham số cũ. [gioBienLai] là giờ in trên biên lai — có thể lệch giờ của tin vài giây tới vài phút.
-String themAnhVaoDeeplink(String deeplink, String anh, String cachDoc, DateTime gioBienLai) {
+///
+/// ⚠️ KHÔNG ghi `doc`: số tiền, giờ, nội dung của hàng này đến từ TIN ngân hàng, ảnh chỉ để đối chiếu. `doc` có mặt
+/// ⇔ dữ liệu của hàng đọc từ ảnh — form dựa vào đó để nói *"Từ biên lai…"* và *"Đọc từ ảnh — hãy kiểm lại"*.
+String themAnhVaoDeeplink(String deeplink, String anh, DateTime gioBienLai) {
   final u = Uri.parse(deeplink);
   return u.replace(queryParameters: {
     ...u.queryParameters,
     'anh': anh,
-    'doc': cachDoc,
     'blt': gioBienLai.toIso8601String(),
   }).toString();
 }

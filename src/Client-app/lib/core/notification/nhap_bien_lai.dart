@@ -24,18 +24,10 @@ import '../utils/currency_formatter.dart';
 import 'kho_bien_lai.dart';
 import 'nhap_bien_dong.dart';
 import 'notification_rules.dart';
+import 'ten_tep_bien_lai.dart';
 
-const String kTepBienLaiCho = 'bien_lai_cho.jsonl';
-const String kThuMucBienLai = 'bien_lai';
-
-/// Nguồn hiển thị khi app gửi không nằm trong `kNguonTheoGoi` (hoặc không lấy được tên gói).
-const String kNguonBienLai = 'Biên lai';
-
-final RegExp _tenTep = RegExp(r'^[A-Za-z0-9_-]{4,64}\.[A-Za-z0-9]{1,5}$');
-
-/// Tên tệp ảnh do Kotlin đặt (`<uuid>.<đuôi>`). ⚠️ Tên này đi vào `deeplink` (`anh=`) rồi được ghép thành đường dẫn —
-/// không khớp khuôn thì coi như không có ảnh, không bao giờ ghép.
-bool tenTepBienLaiHopLe(String tep) => _tenTep.hasMatch(tep);
+// Hằng tên tệp + `tenTepBienLaiHopLe` nằm ở tệp thuần riêng (tầng domain của form cũng dùng) — xuất lại ở đây.
+export 'ten_tep_bien_lai.dart';
 
 /// Một dòng Kotlin ghi: `{"tep","goi","luc"}`, `luc` là mili giây epoch (lúc chia sẻ).
 typedef DongBienLai = ({String tep, String goi, DateTime luc});
@@ -240,7 +232,7 @@ class NhapBienLai {
       if (ungVien.isNotEmpty) {
         final c = ungVien.first;
         await dao.datDeeplink(
-            idaccount, c.hang.dedupeKey, themAnhVaoDeeplink(c.hang.deeplink!, r.tep, b.cachDoc, t.thoiGian));
+            idaccount, c.hang.dedupeKey, themAnhVaoDeeplink(c.hang.deeplink!, r.tep, t.thoiGian));
         daGan.add(c.hang.dedupeKey);
         continue;
       }

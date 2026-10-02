@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/notification/kho_bien_lai.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
@@ -20,6 +22,7 @@ import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../data/doc_cau_bang_ai.dart';
 import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/so_tien_lon.dart';
+import '../widgets/xem_anh_bien_lai.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -122,6 +125,10 @@ class AddTransactionPage extends StatefulWidget {
   /// `NotificationDao.getAll`.
   final Future<List<DienSanBienDong>> Function(int idaccount)? hangBienDongCho;
 
+  /// Chia sẻ biên lai (2026-10-02): thư mục ảnh biên lai — form hiện ảnh nhỏ của hàng đang mở ([DienSanBienDong.anh])
+  /// để đối chiếu, và xoá tệp khi Lưu / Bỏ qua. `null` → `sl<KhoBienLai>()` nếu đã đăng ký.
+  final KhoBienLai? khoBienLai;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -142,6 +149,7 @@ class AddTransactionPage extends StatefulWidget {
     this.xoaBienDong,
     this.khoanTrongSo,
     this.hangBienDongCho,
+    this.khoBienLai,
   });
 
   @override
@@ -323,6 +331,26 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     unawaited(napHoc.then((_) => _tinhDeXuat()));
     // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
     if (_bienDong != null) unawaited(Future.wait([napVi, napHoc]).then((_) => _dienTuBienDong()));
+    // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
+    if (_bienDong?.anh case final anh?) {
+      unawaited(_khoBienLai?.duongDan(anh).then((p) {
+        if (mounted && p != null) setState(() => _duongDanAnh = p);
+      }));
+    }
+  }
+
+  KhoBienLai? get _khoBienLai => widget.khoBienLai ?? (sl.isRegistered<KhoBienLai>() ? sl<KhoBienLai>() : null);
+
+  /// Đường dẫn ảnh biên lai của hàng đang mở; `null` = không có ảnh (hoặc chưa tìm xong).
+  String? _duongDanAnh;
+
+  /// Xoá ảnh biên lai của hàng vừa Lưu / Bỏ qua (người dùng chốt: ảnh chỉ sống tới lúc ấy). Không bao giờ ném.
+  Future<void> _xoaAnhBienLai(DienSanBienDong d) async {
+    try {
+      await _khoBienLai?.xoa(d.anh);
+    } catch (e) {
+      debugPrint('[BienLai] xoá ảnh lỗi: ${e.runtimeType}');
+    }
   }
 
   /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([_dienKetQua]). Không lưu.
@@ -446,6 +474,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
     }
     await _xoaHangBienDong(id, d.khoa);
+    await _xoaAnhBienLai(d);
   }
 
   /// Xoá cứng một hàng loại 20 theo `dedupeKey` (ngoại lệ có chủ ý — spec D1 §3.3). Không bao giờ ném.
@@ -472,6 +501,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
     }
     await _xoaHangBienDong(id, d.khoa);
+    await _xoaAnhBienLai(d);
     final cap = gy.khoaCap;
     if (cap != null) await _xoaHangBienDong(id, cap);
   }
@@ -2080,12 +2110,56 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.account_balance, size: 18, color: AppColors.textSecondary),
+            // Chia sẻ biên lai: hàng mang ảnh → ảnh nhỏ thay biểu tượng ngân hàng, chạm để xem to. Khung CỐ ĐỊNH
+            // 48 × 64 (biên lai dọc) để dải không nhảy chiều cao khi ảnh giải mã xong.
+            if (_duongDanAnh case final p?)
+              Semantics(
+                button: true,
+                label: 'Xem ảnh biên lai',
+                child: GestureDetector(
+                  key: const Key('bien-lai-anh-nho'),
+                  onTap: () => xemAnhBienLai(context, p),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 48,
+                      height: 64,
+                      child: Image.file(
+                        File(p),
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        cacheWidth: 144,
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: AppColors.surfaceContainerHigh,
+                          child: Icon(Icons.receipt_long_outlined, size: 20, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Icon(d.cachDoc == null ? Icons.account_balance : Icons.receipt_long_outlined,
+                  size: 18, color: AppColors.textSecondary),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                dongNguonBienDong(d),
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dongNguonBienDong(d),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  if (dongPhuBienLai(d.cachDoc) case final phu?) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      phu,
+                      key: const Key('bien-lai-dong-phu'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
