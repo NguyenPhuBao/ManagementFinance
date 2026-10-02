@@ -27,7 +27,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../category/presentation/category_test_fakes.dart';
 
-/// Mười mẫu chi, ví cash: Ăn uống 6 khoản 30.000 (3 ngày thường + 3 cuối tuần) · Di chuyển 4 khoản 7.000 (2 + 2).
+/// Mười hai mẫu chi, ví cash: Ăn uống 6 khoản 30.000 · Di chuyển 6 khoản 7.000 — mỗi danh mục 3 ngày thường + 3
+/// cuối tuần. Ngưỡng của nguồn số tiền: ≥ 5 khoản ở bậc, hậu nghiệm ≥ 0,8 (ở đây ≈ 0,88).
 final _muoiMauTien = mauSoTienTu([
   for (final d in [1, 2, 3, 5, 6, 12])
     (
@@ -39,7 +40,7 @@ final _muoiMauTien = mauSoTienTu([
       ngay: DateTime(2026, 9, d),
       daXoa: false,
     ),
-  for (final d in [1, 2, 5, 6])
+  for (final d in [1, 2, 3, 5, 6, 12])
     (
       loai: 'chi',
       categoryId: 'move',
@@ -68,23 +69,31 @@ final _coMauThu = [
   ]),
 ];
 
-/// [_muoiMauTien] + năm khoản 30.000 của một danh mục KHÔNG chọn được (đã xoá), toàn ví bank. Ví cash: Ăn uống thắng
-/// rõ (≈ 0,8). Ví bank: danh mục đã xoá thắng, Ăn uống chỉ còn ≈ 0,13 → thẻ biến mất.
-final _haiVi = [
-  ..._muoiMauTien,
-  ...mauSoTienTu([
-    for (final d in [1, 2, 3, 5, 6])
-      (
-        loai: 'chi',
-        categoryId: 'da_xoa',
-        ghiChu: '',
-        soTien: 30000.0,
-        walletId: 'bank',
-        ngay: DateTime(2026, 9, d),
-        daXoa: false,
-      ),
-  ]),
-];
+/// Hai ví: Ăn uống 8 khoản 30.000 ví cash · một danh mục KHÔNG chọn được (đã xoá) 6 khoản 30.000 ví bank — mỗi bên
+/// chia đều ngày thường / cuối tuần. Ví cash: Ăn uống ≈ 0,91. Ví bank: danh mục đã xoá thắng, Ăn uống chỉ còn ≈ 0,13
+/// → thẻ biến mất.
+final _haiVi = mauSoTienTu([
+  for (final d in [1, 2, 3, 4, 5, 6, 12, 13])
+    (
+      loai: 'chi',
+      categoryId: 'food',
+      ghiChu: '',
+      soTien: 30000.0,
+      walletId: 'cash',
+      ngay: DateTime(2026, 9, d),
+      daXoa: false,
+    ),
+  for (final d in [1, 2, 3, 5, 6, 12])
+    (
+      loai: 'chi',
+      categoryId: 'da_xoa',
+      ghiChu: '',
+      soTien: 30000.0,
+      walletId: 'bank',
+      ngay: DateTime(2026, 9, d),
+      daXoa: false,
+    ),
+]);
 
 MauGhiChu _m(String c, String ghiChu) =>
     MauGhiChu(categoryId: c, amTiet: amTietCua(ghiChu), ngay: DateTime(2026, 9, 1));
@@ -97,7 +106,7 @@ final _muoiMauChu = [
 ];
 
 const _lyDoAn = 'Khoản từ 20.000 đ đến 50.000 đ bạn thường ghi cho Ăn uống (6/6 lần).';
-const _lyDoDi = 'Khoản dưới 10.000 đ bạn thường ghi cho Di chuyển (4/4 lần).';
+const _lyDoDi = 'Khoản dưới 10.000 đ bạn thường ghi cho Di chuyển (6/6 lần).';
 
 /// Store trong bộ nhớ: ghi vào [hang], đọc trả [coSan].
 class _StoreGia implements GoiYPhanHoiStore {
@@ -263,11 +272,34 @@ void main() {
       expect(find.text('Gợi ý danh mục'), findsNothing);
     });
 
-    testWidgets('⭐ ghi chú có chữ mà B1 và từ khoá đều im → thẻ theo số tiền', (tester) async {
+    testWidgets('⭐ ghi chú CÓ CHỮ mà B1 và từ khoá đều im → KHÔNG có thẻ số tiền', (tester) async {
+      // Người dùng chốt 2026-10-02 sau phép đo CSDL thật: 3/4 lần thẻ sai là khoản có ghi chú (*"ca phe sang"* 10.000
+      // → Di chuyển) — thẻ nói ngược chữ vừa gõ. Nguồn số tiền chỉ dành cho ô ghi chú TRỐNG.
       await mo(tester, app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMauChu)));
       await go(tester, ['3', '5', '000']);
-      await goGhiChu(tester, 'điện thoại');
       expect(find.text(_lyDoAn), findsOneWidget);
+      await goGhiChu(tester, 'điện thoại');
+      expect(find.text('Gợi ý danh mục'), findsNothing);
+    });
+
+    testWidgets('⭐ thẻ số tiền đang hiện → gõ chữ đầu tiên vào ghi chú → thẻ biến mất NGAY, không chờ độ trễ',
+        (tester) async {
+      await mo(tester, app());
+      await go(tester, ['3', '5', '000']);
+      expect(find.text(_lyDoAn), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('ghi-chu-giao-dich')), 'c');
+      await tester.pump();
+      expect(find.text('Gợi ý danh mục'), findsNothing,
+          reason: 'thẻ còn đứng đó 300 ms nữa là người dùng thấy nó cãi lại chữ họ đang gõ');
+      await choGoiY(tester);
+      expect(find.text('Gợi ý danh mục'), findsNothing);
+    });
+
+    testWidgets('đã có ghi chú rồi mới gõ số tiền → không có thẻ số tiền', (tester) async {
+      await mo(tester, app());
+      await goGhiChu(tester, 'điện thoại');
+      await go(tester, ['3', '5', '000']);
+      expect(find.text('Gợi ý danh mục'), findsNothing);
     });
 
     testWidgets('⭐ B1 lên tiếng thì thẻ là của B1, không phải của số tiền', (tester) async {
@@ -276,6 +308,20 @@ void main() {
       await goGhiChu(tester, 'grab tối');
       expect(find.text('Bạn thường ghi “grab” cho Di chuyển (4/4 lần).'), findsOneWidget);
       expect(find.text(_lyDoAn), findsNothing);
+    });
+
+    testWidgets('⭐ thẻ B1 đang hiện → đổi đoạn Thu rồi về Chi → thẻ B1 KHÔNG tự bật lại (hành vi trước dự án C)',
+        (tester) async {
+      // Số tiền / ví / ngày / đoạn không phải tín hiệu của B1: có mô hình số tiền cũng không được hẹn lại `_loadSuggestion`
+      // cho một ghi chú có chữ — luật "đổi đoạn → thẻ bị huỷ, không ghi phản hồi" của B1 dựa vào đó.
+      await mo(tester, app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMauChu)));
+      await goGhiChu(tester, 'grab tối');
+      expect(find.text('Bạn thường ghi “grab” cho Di chuyển (4/4 lần).'), findsOneWidget);
+      await chonDoan(tester, 'thu');
+      await chonDoan(tester, 'chi');
+      expect(find.text('Gợi ý danh mục'), findsNothing);
+      await go(tester, ['3', '5', '000']);
+      expect(find.text('Gợi ý danh mục'), findsNothing, reason: 'gõ số tiền cũng không gọi lại B1');
     });
 
     testWidgets('⭐ từ khoá lên tiếng thì thẻ là của từ khoá', (tester) async {
@@ -366,14 +412,18 @@ void main() {
         walletId: 'cash',
         idaccount: 1,
         categoryId: null,
-        amount: 35000,
+        amount: 3500,
         type: 'chi',
         note: '',
         date: DateTime(2026, 9, 1),
         updatedAt: DateTime(2026, 9, 1),
       );
       await mo(tester, app(initial: EditTransactionArgs(transaction: goc)));
-      await choGoiY(tester);
+      // Màn sửa mở với 16 phím ẨN (đã có số tiền) — chạm khối số tiền để hiện, rồi gõ thêm một số: 3.500 → 35.000.
+      // Phải GÕ thật: không cú chạm nào thì không đường nào hẹn tính, và ca này xanh cả khi bỏ chốt (đo bằng bản sai).
+      await tester.tap(find.byKey(const Key('so-tien-cham')));
+      await tester.pumpAndSettle();
+      await go(tester, ['0']);
       expect(find.text('Gợi ý danh mục'), findsNothing);
     });
 
@@ -383,7 +433,7 @@ void main() {
         soTien: 35000,
         chieu: 'chi',
         thoiGian: DateTime(2026, 9, 2, 12, 1),
-        noiDung: 'QR 123',
+        noiDung: '',
         nguon: kNguonMb,
         duoiTaiKhoan: '7777',
       );
@@ -470,7 +520,7 @@ void main() {
       final bank = makeWallet(id: 'bank', name: 'Ngân hàng').copyWith(isDefault: false);
       await mo(tester, app(phanHoiGoiY: store, mauSoTien: _haiVi, wallets: [makeWallet(), bank]));
       await go(tester, ['3', '5', '000']);
-      expect(find.text(_lyDoAn.replaceFirst('(6/6 lần)', '(6/11 lần)')), findsOneWidget);
+      expect(find.text(_lyDoAn.replaceFirst('(6/6 lần)', '(8/14 lần)')), findsOneWidget);
       await tester.ensureVisible(find.text('Ví thanh toán'));
       await tester.tap(find.text('Ví thanh toán'));
       await tester.pumpAndSettle();

@@ -18,9 +18,9 @@
 ///
 /// In HAI dòng tổng:
 /// - **mọi lần mô hình lên tiếng** — số khoản xét · số lần gợi ý · đúng, tách theo CÓ / KHÔNG ghi chú;
-/// - **những lần thẻ số tiền THẬT SỰ HIỆN trên màn** — tức B1 (học trên cùng các khoản trước đó) và bảng từ khoá đều
-///   im. Thẻ là lớp cuối sau hai nguồn ấy, nên đây mới là con số người dùng trải qua; dòng đầu đếm cả những lần mô
-///   hình đoán sai mà người dùng không bao giờ thấy.
+/// - **những lần thẻ số tiền THẬT SỰ HIỆN trên màn** — tức khoản KHÔNG ghi chú. Từ 2026-10-02 nguồn số tiền chỉ dành
+///   cho ô ghi chú trống (người dùng chốt sau lần đo đầu: 3/4 lần thẻ sai là khoản có ghi chú), nên dòng đầu đếm cả
+///   những lần mô hình đoán mà người dùng không bao giờ thấy — giữ để biết mô hình đáng tin tới đâu nếu mở rộng lại.
 ///
 /// Không `expect` gì ngoài *có ≥ 1 khoản*: đây là phép đo, không phải ca canh. Ngưỡng dừng của spec (mục 7.4): từ 5 lần gợi ý mà đúng dưới 60 % → hỏi người
 /// dùng trước khi bật.
@@ -34,11 +34,8 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
-import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
-import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,15 +60,7 @@ void main() {
           if (c.idaccount == idaccount || (c.isDefault && c.idaccount == 0)) c.id: c.name,
       };
       // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (bài học công cụ đo B1, `9f407e6`).
-      final repo = CategoryManagementRepositoryImpl(db: db);
-      final danhMuc = await repo.selectableChildrenAll(accountId: idaccount);
-      final moiDanhMuc = {for (final c in danhMuc) c.id};
-      final tuKhoa = await repo.loadAllKeywords(accountId: idaccount);
-      final ungVienTuKhoa = [
-        for (final c in danhMuc)
-          for (final k in tuKhoa[c.id] ?? const <String>[]) CategoryKeywordCandidate(category: c, keyword: k),
-      ];
-      const engine = CategorySuggestionEngine();
+      final danhMuc = await CategoryManagementRepositoryImpl(db: db).selectableChildrenAll(accountId: idaccount);
 
       ({String loai, String? categoryId, String? ghiChu, double soTien, String walletId, DateTime ngay, bool daXoa})
           rec(Transaction t) => (
@@ -91,7 +80,7 @@ void main() {
       }; // có ghi chú? → [gợi ý, đúng]
       final sai = <String>[];
       final dung = <String>[];
-      var hien = 0, hienDung = 0; // thẻ số tiền thật sự hiện (B1 + từ khoá im)
+      var hien = 0, hienDung = 0; // thẻ số tiền thật sự hiện: khoản KHÔNG ghi chú
       for (final t in txs) {
         // Chỉ xét khoản mà chính nó là một mẫu hợp lệ — có nhãn thật để so.
         if (mauSoTienTu([rec(t)]).isEmpty) continue;
@@ -111,20 +100,9 @@ void main() {
         final ghiChu = t.note.trim();
         final coGhiChu = ghiChu.isNotEmpty;
         dem[coGhiChu]![0]++;
-        // Hai nguồn đứng TRƯỚC nguồn số tiền trên màn: B1 học trên cùng các khoản trước đó, rồi bảng từ khoá.
-        var biChe = '';
-        if (coGhiChu) {
-          final b1 = BoPhanLoaiGhiChu.hoc(mauHocTu([
-            for (final u in txs)
-              if (u.date.isBefore(t.date)) (loai: u.type, categoryId: u.categoryId, ghiChu: u.note, ngay: u.date),
-          ])).doan(ghiChu, hopLe: moiDanhMuc);
-          if (b1 != null) {
-            biChe = ' [bị B1 che]';
-          } else if (engine.suggest(rawText: ghiChu, candidates: ungVienTuKhoa) != null) {
-            biChe = ' [bị từ khoá che]';
-          }
-        }
-        if (biChe.isEmpty) {
+        // Trên màn, nguồn số tiền chỉ chạy khi ô ghi chú trống.
+        final biChe = coGhiChu ? ' [có ghi chú — thẻ không hiện]' : '';
+        if (!coGhiChu) {
           hien++;
           if (d.categoryId == t.categoryId) hienDung++;
         }
@@ -147,7 +125,7 @@ void main() {
           '(${pt(soDung, goiY)}) · không ghi chú: ${dem[false]![1]}/${dem[false]![0]} · '
           'có ghi chú: ${dem[true]![1]}/${dem[true]![0]}');
       // ignore: avoid_print
-      print('ROW| thẻ số tiền THẬT SỰ HIỆN (B1 và từ khoá im): $hien · đúng $hienDung (${pt(hienDung, hien)})');
+      print('ROW| thẻ số tiền THẬT SỰ HIỆN (khoản không ghi chú): $hien · đúng $hienDung (${pt(hienDung, hien)})');
       for (final x in dung) {
         // ignore: avoid_print
         print('ROW| đúng: $x');

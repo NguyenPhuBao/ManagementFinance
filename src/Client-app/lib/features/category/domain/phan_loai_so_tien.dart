@@ -9,7 +9,8 @@
 /// `showDatePicker` trả 00:00), không phải giờ chi.
 ///
 /// Đặt ở `category/domain/`, không ở `ai_edge/`: nó đọc sổ giao dịch và so chiều tiền — thứ test quét 14 cấm ở đó.
-/// Cùng chỗ với `phan_loai_ghi_chu.dart` (B1) và dùng lại ngưỡng của nó, không khai bản thứ hai.
+/// Cùng chỗ với `phan_loai_ghi_chu.dart` (B1); dùng lại `kToiThieuMauTong` và hai hằng của luật thôi gợi ý, nhưng
+/// ngưỡng xác suất và số khoản ở bậc thì CHẶT hơn B1 — xem [kNguongXacSuatSoTien].
 library;
 
 import 'dart:math' as math;
@@ -26,6 +27,20 @@ const String kNhomCuoiTuan = 'cuoi_tuan';
 
 /// Dưới mốc này là MỘT bậc: khoản vài nghìn không đáng chia nhỏ hơn.
 const int kSanBacTien = 10000;
+
+/// Hậu nghiệm tối thiểu để thẻ lên tiếng — **0,8**, chặt hơn 0,6 của B1.
+///
+/// Người dùng chốt 2026-10-02 sau phép đo trên CSDL thật (Realme, tài khoản 10, 67 giao dịch, phát lại theo thời
+/// gian): ở ngưỡng 0,6 thẻ lên tiếng 9 lần, đúng 4; trong 5 lần thẻ thật sự hiện trên màn chỉ đúng 1. Các lần sai có
+/// hậu nghiệm 0,65–0,77, các lần đúng 0,64–0,72 — không ngưỡng nào tách được, chỉ 0,8 làm im cả chín. Số tiền là tín
+/// hiệu YẾU hơn chữ của ghi chú: hai danh mục khác nhau trùng số tiền (cà phê 10.000 và gửi xe 10.000) là chuyện
+/// thường. ⚠️ Con số 0,8 chọn trên chính bộ đo ấy — chưa có số đo nào chứng minh thẻ đúng khi nó lên tiếng; đo lại
+/// bằng `test/tool/do_goi_y_so_tien_test.dart` khi sổ có vài tháng dữ liệu dùng thật.
+const double kNguongXacSuatSoTien = 0.8;
+
+/// Danh mục gợi ý phải có ít nhất chừng này khoản ở ĐÚNG bậc tiền đang nhập — 5, chặt hơn 3 mẫu của B1 (cùng quyết
+/// định 2026-10-02): ba khoản trùng bậc tiền chưa phải thói quen.
+const int kToiThieuKhoanCungBac = 5;
 
 /// Bậc tiền `[duoi, tren)`.
 typedef BacTien = ({int duoi, int tren});
@@ -202,13 +217,13 @@ class BoPhanLoaiSoTien {
     final c = ungVien.first;
     if (ungVien.length > 1 && diem[ungVien[1]] == diem[c]) return null;
     final p = math.exp(diem[c]! - lon) / tong;
-    if (p < kNguongXacSuat) return null;
-    // Chốt DẪN ĐẦU BẬC TIỀN (spec 4.3): ít nhất `kToiThieuMauDanhMuc` khoản ở đúng bậc này, và nhiều hơn MỌI danh
+    if (p < kNguongXacSuatSoTien) return null;
+    // Chốt DẪN ĐẦU BẬC TIỀN (spec 4.3): ít nhất `kToiThieuKhoanCungBac` khoản ở đúng bậc này, và nhiều hơn MỌI danh
     // mục khác cùng chiều (kể cả danh mục ngoài `hopLe`). Thiếu nó thì một gợi ý thắng nhờ ví + thứ in "(2/5 lần)"
-    // — câu lý do nói ngược gợi ý. Chốt này bao luôn "danh mục đứng đầu phải có ít nhất 3 mẫu" của B1: ba khoản ở
-    // một bậc thì N(c) ≥ 3.
+    // — câu lý do nói ngược gợi ý. Chốt này bao luôn "danh mục đứng đầu phải có đủ mẫu" của B1: N khoản ở một bậc
+    // thì N(c) ≥ N.
     final cung = nBac[c] ?? 0;
-    if (cung < kToiThieuMauDanhMuc) return null;
+    if (cung < kToiThieuKhoanCungBac) return null;
     for (final e in nBac.entries) {
       if (e.key != c && e.value >= cung) return null;
     }

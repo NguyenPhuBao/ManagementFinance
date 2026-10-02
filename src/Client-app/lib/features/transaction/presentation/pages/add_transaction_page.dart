@@ -74,7 +74,7 @@ class AddTransactionPage extends StatefulWidget {
   final BoPhanLoaiGhiChu? boPhanLoai;
 
   /// Mô hình gợi ý danh mục theo SỐ TIỀN (dự án C, `category/domain/phan_loai_so_tien.dart`) — nguồn thứ ba của thẻ gợi
-  /// ý, dùng khi ghi chú trống hoặc B1 lẫn từ khoá đều im.
+  /// ý, CHỈ dùng khi ô ghi chú trống (ghi chú có chữ thì thẻ thuộc về B1 / từ khoá, kể cả khi hai nguồn ấy im).
   ///
   /// `null` → trang tự học từ SQLite trong CÙNG lượt đọc sổ của [viHayDung]. Ca test tiêm thẳng, đúng khuôn [boPhanLoai].
   final BoPhanLoaiSoTien? boSoTien;
@@ -914,7 +914,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         lyDo: lyDo,
       );
     });
-    // Ô Nhập nhanh điền xong mà danh mục còn trống → nguồn số tiền được thử (dự án C). Form biến động thì hàm tự thoát.
+    // Ô Nhập nhanh điền xong mà danh mục VÀ ghi chú còn trống (câu chỉ có số tiền) → nguồn số tiền được thử (dự án C).
+    // Form biến động, hoặc câu có để lại ghi chú, thì hàm tự thoát.
     _henGoiYTheoForm();
   }
 
@@ -953,6 +954,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       final x = _soTienDangCo();
       if (x == null || maBacCua(bacTienCua(x)) != cho.goiY.amTietChinh) _choPhanXu = null;
     }
+    // Ghi chú có chữ thì thẻ thuộc về B1 / từ khoá, mà số tiền, ví, ngày, đoạn không phải tín hiệu của hai nguồn ấy —
+    // không hẹn gì. ⚠️ Hẹn ở đây là ĐỔI hành vi cũ: đổi đoạn Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi (và
+    // "đổi đoạn → không ghi phản hồi" dựa vào đó); hẹn lại là thẻ B1 tự bật lên sau mỗi lần chạm đoạn.
+    if (_noteController.text.trim().isNotEmpty) return;
     _hoanGoiY?.cancel();
     if (_isTransfer || _selectedCategory != null) return;
     _hoanGoiY = Timer(_doTreGoiY, () {
@@ -960,8 +965,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
   }
 
-  /// Nguồn thứ ba của thẻ gợi ý, sau B1 và từ khoá (dự án C): đoán theo bậc tiền + nhóm thứ + ví, chỉ danh mục đúng
-  /// chiều của đoạn đang chọn. `null` = chưa đủ để nói.
+  /// Nguồn thứ ba của thẻ gợi ý (dự án C), CHỈ gọi khi ghi chú trống: đoán theo bậc tiền + nhóm thứ + ví, chỉ danh mục
+  /// đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
   CategorySuggestion? _goiYSoTien(List<Category> categories) {
     final bo = _boSoTien;
     if (bo == null || !_coNguonSoTien || _isTransfer) return null;
@@ -999,12 +1004,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return;
     }
     if (note.isEmpty) {
-      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY như trước dự án C; thẻ số tiền không phụ thuộc ghi chú.
+      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY như trước dự án C; thẻ số tiền thì chính là của ô trống.
       if (_suggestion != null && _suggestion!.nguon != kNguonGoiYSoTien && mounted) {
         setState(() => _suggestion = null);
       }
       // Không có mô hình số tiền thì ghi chú trống là hết việc — đúng hành vi trước dự án C.
       if (_boSoTien == null) return;
+    } else if (_suggestion?.nguon == kNguonGoiYSoTien && mounted) {
+      // Chữ đầu tiên vừa vào ô ghi chú: thẻ số tiền chỉ dành cho ô TRỐNG — gỡ NGAY, không chờ độ trễ; để nó đứng thêm
+      // 300 ms là người dùng thấy thẻ cãi lại chữ họ đang gõ.
+      setState(() => _suggestion = null);
     }
     _hoanGoiY = Timer(_doTreGoiY, () {
       if (!mounted) return;
@@ -1118,7 +1127,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       accountId: accountId,
     );
     CategorySuggestion? suggestion;
-    if (note.isNotEmpty) {
+    if (note.isEmpty) {
+      // Dự án C: ghi chú TRỐNG → đoán theo số tiền. KHÁC hai nguồn dưới, nguồn này khoanh theo đoạn Chi/Thu: số tiền
+      // không mang nghĩa chiều, đoạn đang chọn là thông tin chiều duy nhất.
+      //
+      // ⚠️ CHỈ khi ghi chú trống (người dùng chốt 2026-10-02 sau phép đo CSDL thật): bản đầu còn dùng nguồn này khi
+      // ghi chú có chữ mà B1 lẫn từ khoá đều im, và 3/4 lần thẻ sai rơi đúng vào đó — *"ca phe sang"* 10.000 → Di
+      // chuyển, thẻ nói ngược chữ người dùng vừa gõ.
+      suggestion = _goiYSoTien(categories);
+    } else {
       // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
       // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
       // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" ở trên.
@@ -1157,9 +1174,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         );
       }
     }
-    // Dự án C: ghi chú trống, hoặc có chữ mà B1 lẫn từ khoá đều im → đoán theo số tiền. KHÁC hai nguồn trên, nguồn này
-    // khoanh theo đoạn Chi/Thu: số tiền không mang nghĩa chiều, đoạn đang chọn là thông tin chiều duy nhất.
-    suggestion ??= _goiYSoTien(categories);
     if (!mounted ||
         _huong != requestedHuong ||
         _isTransfer ||
