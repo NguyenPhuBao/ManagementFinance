@@ -1,9 +1,22 @@
 # Chia sẻ biên lai từ app ngân hàng vào FlowMoney — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** 📝 thiết kế duyệt trong chat (năm lượt AskUserQuestion + một lượt duyệt tổng),
-**bản viết người dùng duyệt cùng ngày** (*"Ok duyệt"*). Kế hoạch 11 task:
-`docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` (gitignore) — **chưa có mã**; Task 4 là bước thử trên Realme
-(cổng dừng, cần người dùng chia sẻ biên lai thật).
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ **mã xong Task 1–10 (`86b7b91` → `ebfb9d98`), nghiệm thu Realme với biên lai MB
+Bank thật cùng tối**; ⏳ còn Task 11 (bản release, đăng xuất trên máy, MoMo / ZaloPay, xác nhận màn Stitch). Thiết kế
+duyệt trong chat (năm lượt AskUserQuestion + một lượt duyệt tổng), bản viết người dùng duyệt cùng ngày (*"Ok duyệt"*).
+Kế hoạch 11 task: `docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` (gitignore, nhật ký thi công ở cuối). Hiện
+trạng và bảng nghiệm thu: mục **7** `docs/BIEN_DONG_SO_DU_FEATURE.md`.
+
+> **Bốn chỗ bản thi công KHÁC bản viết dưới đây** (bản thi công thắng):
+> 1. **Mục 5 — mới có mẫu riêng cho MB Bank.** Bước thử chỉ thu được biên lai MB; người dùng chọn *làm tiếp, MoMo và
+>    ZaloPay dùng luật chung*, mẫu riêng bổ sung khi có biên lai thật. Biên lai MB **không có nhãn** — mẫu đọc theo vị
+>    trí; hàng chữ liền số là tài khoản người nhận (người dùng xác nhận), không phải mã giao dịch.
+> 2. **Mục 6 — chia sẻ lặp nhận ra bằng giờ in trên biên lai (`blt`), không bằng cửa sổ 5 phút.** Cửa sổ 5 phút gộp
+>    luôn hai lần chuyển cùng số tiền cách vài phút — mất khoản sau, im lặng. 5 phút chỉ còn dùng để ghép biên lai với
+>    **tin ngân hàng** của cùng giao dịch.
+> 3. **Mục 4.2 — hàng tin được gắn ảnh KHÔNG mang `doc`.** `doc` có mặt ⇔ số liệu của hàng đọc từ ảnh; hàng tin chỉ
+>    thêm `anh` + `blt`, form vẫn nói *"Từ thông báo…"*.
+> 4. **Mục 4 — thêm tệp `core/notification/ten_tep_bien_lai.dart`** (hằng + `tenTepBienLaiHopLe`, Dart thuần) để tầng
+>    domain của form không kéo theo Drift.
 
 Việc sau D1 số 3 (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6), nay tách khỏi C4 và làm trước. Bản thiết kế thứ hai của
 cùng lượt — *nhắc ghi sau khi rời app ngân hàng* — viết riêng, sau bản này (mục 11).

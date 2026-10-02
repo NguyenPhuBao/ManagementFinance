@@ -1273,6 +1273,13 @@ dưới cửa 20 mẫu. Giới hạn nói trước của spec §5 (im 3–6 thá
 
 Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi phần chạm vào hệ thống thông báo.
 
+> **2026-10-02 — hàng loại 20 nay có HAI nguồn.** Ngoài tin ngân hàng (`NhapBienDong`), **biên lai người dùng chia sẻ**
+> từ app ngân hàng cũng thành hàng loại 20 (`NhapBienLai`, mục 7 tài liệu chính) — không loại mới, không nhóm mới.
+> Ba điều đổi theo: (1) thông báo tóm tắt của Kotlin đếm **cả hai hàng chờ** (`BienDongListenerService.soDangCho`), và
+> được bắn từ hai nơi — dịch vụ nghe thông báo và `NhanBienLaiActivity`; (2) `deeplink` của hàng có thể mang `anh` /
+> `doc` / `blt` (ảnh biên lai, cách đọc, giờ in trên biên lai); (3) biên lai **không** phụ thuộc cờ `docBienDong` — mỗi
+> ảnh là người dùng tự đưa — nên tài khoản tắt công tắc vẫn có thể có hàng loại 20.
+
 - **Loại 20 `bienDongSoDu`, nhóm thứ sáu `bienDong`** (chip *Biến động*). Thêm một nhóm phải sửa **sáu** chỗ: hai `switch`
   ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `_tenNhom` / `_moTaNhom` / `_iconNhom`
   của trang Cài đặt · `loaiTuKhoa` (`nhom_tu_khoa.dart`) · nhánh `bienDong` của `deeplinkTuDedupeKey` · tập `ngoaiBoQuet`

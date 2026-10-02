@@ -1001,6 +1001,34 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
+### ✅ Chia sẻ biên lai từ app ngân hàng — mã xong Task 1–10, nghiệm thu Realme với biên lai MB thật (2026-10-02 tối)
+
+Chi tiết ở mục **7** `BIEN_DONG_SO_DU_FEATURE.md`; spec `specs/2026-10-02-chia-se-bien-lai-design.md` (banner đầu tệp);
+kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. Thông báo cho backend:
+`backend/CAN-LAM/CLIENT_CHIA_SE_BIEN_LAI.md`.
+
+- **Vì sao:** D1 chỉ đọc thông báo đã hiện trên máy; người dùng báo chuyển khoản ngay trong app ngân hàng thì có lần
+  không có thông báo. Đo Realme cùng ngày: sáu lần chuyển từ MB Bank, **một lần không có thông báo nào**.
+- **Ở đâu trên app:** màn *"Giao dịch thành công"* của app ngân hàng → *Chia sẻ* → **"Ghi vào FlowMoney"** → vẫn ở app
+  ngân hàng (Toast + tóm tắt không số) → mở FlowMoney → dòng *"biến động chưa ghi"* → form điền sẵn có **ảnh biên lai
+  nhỏ** → Lưu / Bỏ qua (ảnh bị xoá).
+- **Kiến trúc:** `NhanBienLaiActivity` (Kotlin, `Theme.NoDisplay`, không mở `MainActivity`) chép ảnh + hàng chờ →
+  `NhapBienLai` (Dart, chạy SAU `NhapBienDong`) đọc chữ bằng ML Kit qua giao diện `DocChuAnh` → `docBienLai` (mẫu riêng
+  MB Bank đọc theo vị trí; luật chung cho MoMo / ZaloPay / app khác) → hàng **loại 20** (không loại mới).
+- **Chốt hỏng im lặng:** chia sẻ lặp nhận ra bằng **giờ in trên biên lai** (`blt`), không bằng cửa sổ 5 phút · biên lai
+  trùng tin ngân hàng thì **gắn ảnh** vào hàng tin (mỗi hàng một ảnh, hàng gần giờ nhất) · dọn ảnh mồ côi phải tính cả
+  hàng chờ Kotlin vừa ghi · tên tệp ảnh đi vào deeplink nên mọi chỗ ghép đường dẫn qua `tenTepBienLaiHopLe` · đăng xuất
+  xoá ảnh, hàng chờ và hàng mang ảnh.
+- **Không đổi:** schema (v27), payload đồng bộ, loại thông báo. **Đổi:** `google_mlkit_text_recognition` thành gói
+  chính thức (người dùng duyệt; +11,1 MB thư viện arm64, +1,3 MB mô hình); manifest thêm một activity; thẻ Sổ giao dịch
+  nói *"Từ thông báo ngân hàng và biên lai…"*.
+- `flutter test` **5460/5460** (7 skip), 3 phút 40 giây (đo sau Task 10); `flutter analyze` 26. +84 ca so với 5376 —
+  tệp mới: `core/ocr/` bốn tệp, `core/notification/bien_lai_noi_day_test` · `nhap_bien_lai_test` · `kho_bien_lai_test`,
+  `transaction/domain/doc_bien_lai_test`, `transaction/presentation/form_bien_lai_test`.
+- ⏳ **Còn lại (Task 11):** bản release · Lưu / Bỏ qua / đăng xuất trên máy · vuốt app khỏi Recents rồi chia sẻ · MoMo,
+  ZaloPay (chưa có biên lai thật — đang đi luật chung) · người dùng xác nhận màn Stitch (lượt gọi trả `timeout`) · bản
+  thiết kế thứ hai: *nhắc ghi sau khi rời app ngân hàng* (chưa viết).
+
 ### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 
 Chi tiết ở mục **5g** `CATEGORY_RATIONALE.md`; spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`

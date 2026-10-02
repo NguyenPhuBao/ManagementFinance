@@ -3422,6 +3422,14 @@ Kế hoạch `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore). 
 2c); hai bảng đo — 20 câu **đọc thật** và 15 ảnh hoá đơn **chụp thật** — chờ người dùng (Bước 3–4). Mã spike sống
 sau `--dart-define=SPIKE_C4=true` (`ai_chat/spike/`), là mã bỏ đi.
 
+> **2026-10-02 — hai thứ của spike đã thành mã chính thức**, do tính năng *chia sẻ biên lai* (mục 7
+> `BIEN_DONG_SO_DU_FEATURE.md`) dùng tới: (1) gói **`google_mlkit_text_recognition`** — người dùng duyệt giữ lâu dài;
+> ba gói còn lại (`speech_to_text`, `record`, `image_picker`) vẫn là gói tạm chờ kết quả spike. (2) `DongOcr`,
+> `ghepDongTheoHang`, phép đọc số (`docSoHoaDon` → `docSoTrenAnh`, `tienTrenDong`) **dời về `lib/core/ocr/`**;
+> `spike_c4.dart` xuất lại để màn đo và test spike gọi như cũ. Từ đây chỉ `core/ocr/doc_chu_anh_mlkit.dart` và màn
+> spike được import gói ML Kit (`chi_mot_noi_import_mlkit_test.dart`). Chia sẻ biên lai **không** phải C4: nó nhận ảnh
+> từ app khác và đọc bằng luật, không chụp ảnh, không gọi Gemma.
+
 **Máy:** Realme RMX2205 (CPU — GPU Mali sập native), bản **debug** `9bd65000…` (= `2e2c04c`), `flutter_gemma` 1.9.0,
 `maxTokens` 4096. ⚠️ Bản debug: app đứng yên đã **0,50 GB** PSS (Dart JIT) — số RAM dưới đây cao hơn bản release.
 
