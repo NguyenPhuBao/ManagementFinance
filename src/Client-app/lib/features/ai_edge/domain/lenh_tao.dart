@@ -527,8 +527,17 @@ const Set<String> _tuThoiGianKhongDau = {
   'tuan', 'thang', 'quy', 'nam', 'tet', 'he', 'cuoi', 'dau', 'truoc', 'den', 'trong', 'ngay', //
 };
 
+/// Cụm CHU KỲ — *mỗi tháng · hằng tuần · một năm · /tháng* — nói câu lặp lại bao lâu một lần, không nói một THỜI ĐIỂM.
+final RegExp _mauCumChuKy = RegExp(
+  r'(?:(?<![\p{L}\p{N}])(?:hằng|hàng|mỗi|một|hang|moi|mot)\s+|/\s*)(?:tuần|tháng|quý|năm|tuan|thang|quy|nam)(?![\p{L}\p{N}])',
+  unicode: true,
+);
+
+/// Câu có nhắc một thời điểm / khoảng thời gian — xét SAU khi bỏ các cụm chu kỳ. Đo OnePlus (GPU) 2026-10-02: *"tiet
+/// kiem 2 trieu moi thang cho chuyen du lich"* → mô hình trả hạn 01/01/2027; chữ *thang* của *"moi thang"* làm câu
+/// thành "câu nói thời gian" và hạn bịa lọt lưới.
 bool _cauNoiThoiGian(String s) {
-  final thuong = s.toLowerCase();
+  final thuong = s.toLowerCase().replaceAll(_mauCumChuKy, ' ');
   if (thuong.contains('/')) return true;
   final tu = thuong.split(_tachTu);
   return thuong != removeVietnameseTones(thuong)
@@ -591,7 +600,33 @@ LoaiLenhTao? _loaiTheoDauHieu(String s) {
     ['de', 'danh'],
     ['danh', 'dum'],
   ];
-  return tietKiem.any((c) => _coCum(t, c)) ? LoaiLenhTao.mucTieu : null;
+  if (tietKiem.any((c) => _coCum(t, c))) return LoaiLenhTao.mucTieu;
+  return _coDauHieuHoaDon(s) ? LoaiLenhTao.hoaDon : null;
+}
+
+/// Câu tự nhiên có dấu hiệu HOÁ ĐƠN — *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* — xét SAU ngân sách và
+/// tiết kiệm (*"nhắc tôi để dành 2 triệu mỗi tháng"* là mục tiêu). Đo OnePlus (GPU) 2026-10-02: *"nhac toi dong tien
+/// dien hang thang"* → mô hình gọi `tao_muc_tieu {ten: tiết kiệm điện hàng tháng}`; Realme (CPU) gọi đúng `tao_hoa_don`.
+/// ⚠️ Câu CÓ DẤU thì so chữ có dấu: bỏ dấu là *"dòng tiền"* / *"đồng tiền"* = `dong tien` = *"đóng tiền"*.
+bool _coDauHieuHoaDon(String s) {
+  final thuong = s.toLowerCase();
+  final coDau = thuong != removeVietnameseTones(thuong);
+  final t = coDau ? thuong.split(_tachTu) : amTietKhongDau(thuong);
+  const cumCoDau = [
+    ['đóng', 'tiền'],
+    ['trả', 'tiền'],
+    ['nộp', 'tiền'],
+    ['thanh', 'toán'],
+    ['nhắc', 'tôi'],
+  ];
+  const cumKhongDau = [
+    ['dong', 'tien'],
+    ['tra', 'tien'],
+    ['nop', 'tien'],
+    ['thanh', 'toan'],
+    ['nhac', 'toi'],
+  ];
+  return (coDau ? cumCoDau : cumKhongDau).any((c) => _coCum(t, c));
 }
 
 final RegExp _mauTheoKySau =RegExp(r'^\s*(?:/\s*|(?:moi|hang|mot)\s+)(?:tuan|thang|quy|nam)(?![a-z0-9])');

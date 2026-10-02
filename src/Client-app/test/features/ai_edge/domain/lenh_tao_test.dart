@@ -490,6 +490,38 @@ void main() {
       expect((doc('để dành 50 triệu mua xe', ai(ten: 'mua xe hơi')) as LenhTaoMucTieu).ten, isNull,
           reason: '"hơi" không có trong câu');
     });
+    test('⚠️ câu có dấu hiệu HOÁ ĐƠN (đóng tiền / trả tiền / nộp tiền / thanh toán / nhắc tôi) → hoá đơn, dù mô hình gọi tool khác', () {
+      // OnePlus (GPU) 2026-10-02, câu 9: mô hình gọi tao_muc_tieu {ten: tiết kiệm điện hàng tháng, so_tien_dich: 0} —
+      // thẻ "Tạo mục tiêu · Chưa rõ tên, số tiền, hạn" cho một câu nhờ nhắc đóng tiền điện. Realme (CPU) gọi đúng tool.
+      final l = doc('nhac toi dong tien dien hang thang',
+          ai(loai: LoaiLenhTao.mucTieu, ten: 'tiết kiệm điện hàng tháng', soTien: 0, han: ''));
+      expect(l, isA<LenhTaoHoaDon>());
+      expect(((l as LenhTaoHoaDon).chuKy, l.ten, l.soTien), (kBillCycleMonth, null, null),
+          reason: 'tên của mô hình mang chữ "tiết kiệm" câu không có → bỏ; chu kỳ luật đọc');
+      expect(doc('nhắc tôi đóng tiền điện hằng tháng', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoHoaDon>());
+      expect(doc('mỗi quý thanh toán bảo hiểm 2 triệu', ai(loai: LoaiLenhTao.nganSach)), isA<LenhTaoHoaDon>());
+      expect(doc('hằng tháng nộp tiền học 1 triệu', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoHoaDon>());
+      expect(doc('nhắc tôi để dành 2 triệu mỗi tháng', ai(loai: LoaiLenhTao.hoaDon)), isA<LenhTaoMucTieu>(),
+          reason: 'dấu hiệu tiết kiệm xét TRƯỚC dấu hiệu hoá đơn');
+      expect(doc('hạn mức trả tiền điện 500k', ai(loai: LoaiLenhTao.hoaDon)), isA<LenhTaoNganSach>(),
+          reason: 'dấu hiệu ngân sách xét trước nhất');
+      expect(doc('tôi muốn dòng tiền dương 2 triệu mỗi tháng', ai(loai: LoaiLenhTao.mucTieu)), isA<LenhTaoMucTieu>(),
+          reason: 'câu CÓ DẤU thì so chữ có dấu: "dòng tiền" bỏ dấu là "dong tien" = "đóng tiền"');
+    });
+    test('⚠️ hạn: "mỗi tháng" / "hằng tháng" / "500k/tháng" là CHU KỲ, không phải thời điểm — hạn mô hình bịa bị bỏ', () {
+      // OnePlus (GPU) 2026-10-02, câu 10: mô hình trả han 01/01/2027 cho câu không nêu hạn nào; chữ "tháng" của "mỗi
+      // tháng" làm câu thành "câu nói thời gian" nên hạn bịa lọt lưới — thẻ in "hạn 01/01/2027".
+      DateTime? han(String c, String h) => (doc(c, ai(ten: 'du lich', han: h)) as LenhTaoMucTieu).han;
+      expect(han('tiết kiệm 2 triệu mỗi tháng cho chuyến du lịch', '01/01/2027'), isNull);
+      expect(han('tiet kiem 2 trieu moi thang cho chuyen du lich', '01/01/2027'), isNull);
+      expect(han('để dành 500k/tháng đi du lịch', '01/01/2027'), isNull,
+          reason: 'dấu "/" của "500k/tháng" không phải dấu của một ngày');
+      expect(han('hằng tuần để dành 200k đi du lịch', '01/01/2027'), isNull);
+      expect(han('mỗi tháng để dành 2 triệu đi du lịch trước tết', '10/02/2027'), DateTime(2027, 2, 10),
+          reason: 'bỏ cụm chu kỳ rồi câu VẪN còn chữ thời gian → nhận');
+      expect(han('để dành 20 triệu đi du lịch trong một năm', '30/09/2027'), DateTime(2027, 9, 30),
+          reason: '"một năm" bị gọt nhưng "trong" còn lại');
+    });
     test('không ô nào từ AI → nguon luat', () {
       final l = doc('tạo hoá đơn gym 300k ngày 5 hằng tháng',
           ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, chuKy: 'thang', ngayGoc: 5)) as LenhTaoHoaDon;
