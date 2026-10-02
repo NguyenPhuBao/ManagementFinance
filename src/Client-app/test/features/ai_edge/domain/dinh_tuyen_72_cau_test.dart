@@ -9,6 +9,10 @@
 /// Dòng `// A2` là câu A2 (2026-09-29) đưa về phiên một tool — mỗi câu đổi sang
 /// đúng tool mà mô hình đã tự chọn ở mốc 72 câu, và cả 18 câu khi ấy đều ✅.
 ///
+/// Từ dự án B (2026-10-02) bảng còn canh ĐƯỜNG GHÉP luật → mô hình nhỏ (nhóm
+/// cuối tệp): 31 câu theo luật không đổi đường, bốn câu ngoài phạm vi không bị
+/// định tuyến, 37 câu giao dịch chỉ đi phiên sáu tool hoặc tool giao dịch.
+///
 /// Câu nguyên văn từ buổi đo trọn 72 câu (Realme, 2026-09-28, `congF_tron.sh`);
 /// ba chữ gõ gấp đôi vì bàn phím Telex (`muaxxe`, `tesst`, `Netfflix` — bẫy 4.41)
 /// đổi lại thành chữ máy thật nhận được.
@@ -16,6 +20,7 @@ library;
 
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/dinh_tuyen.dart';
 import 'package:flowmoney/features/ai_edge/domain/dinh_tuyen_hoc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -121,4 +126,49 @@ void main() {
       expect(congCuTheoCauHoi(e.value.$1), e.value.$2, reason: e.key);
     });
   }
+
+  // ĐƯỜNG GHÉP (dự án B, 2026-10-02) — luật trước, bộ định tuyến học sau, với
+  // TRỌNG SỐ THẬT. Cổng ra 1–3 của spec mục 6.
+  //
+  // ⚠️ 72 câu nằm TRONG bộ huấn luyện: nhóm này canh hồi quy (huấn luyện lại mà
+  // một câu đã đo bị kéo sang tool khác thì đỏ), KHÔNG đo khả năng tổng quát —
+  // phép đo ấy là bộ đo khoá `test/tool/dinh_tuyen/bo_do.tsv`.
+  group('đường ghép luật → mô hình', () {
+    test('⭐ 31 câu theo luật KHÔNG đổi đường: vẫn tool của luật, nguồn luật', () {
+      for (final e in kBang72Cau.entries.where((e) => e.value.$2 != null)) {
+        final r = dinhTuyenCauHoi(e.value.$1);
+        expect((r.ten, r.nguon), (e.value.$2, NguonDinhTuyen.luat), reason: e.key);
+      }
+    });
+
+    test('⭐ bốn câu ngoài phạm vi KHÔNG bị định tuyến', () {
+      for (final e in kBang72Cau.entries.where((e) => e.value.$3 == kNhanKhongDinhTuyen)) {
+        final r = dinhTuyenCauHoi(e.value.$1);
+        expect((r.ten, r.nguon), (null, NguonDinhTuyen.khong),
+            reason: '${e.key}: mô hình đoán ${r.nhanMoHinh} p=${r.xacSuat}');
+      }
+    });
+
+    test('⭐ 37 câu giao dịch: phiên sáu tool HOẶC tool giao dịch — không bao giờ tool khác', () {
+      final cau = kBang72Cau.entries
+          .where((e) => e.value.$2 == null && e.value.$3 == kTenCongCuTruyVan)
+          .toList();
+      final duoc = <String>[];
+      final khong = <String>[];
+      for (final e in cau) {
+        final r = dinhTuyenCauHoi(e.value.$1);
+        expect(r.ten, anyOf(isNull, kTenCongCuTruyVan), reason: e.key);
+        expect(r.nguon, r.ten == null ? NguonDinhTuyen.khong : NguonDinhTuyen.moHinh, reason: e.key);
+        final p = r.xacSuat!.toStringAsFixed(2);
+        (r.ten == null ? khong : duoc)
+            .add(r.ten == null ? '${e.key} (${r.nhanMoHinh} p=$p)' : '${e.key} (p=$p)');
+      }
+      // Danh sách câu ĐỔI ĐƯỜNG — đầu vào của buổi đo máy (Task 8). In ra chứ
+      // không `expect` con số: huấn luyện lại là con số đổi, đó không phải lỗi.
+      // ignore: avoid_print
+      print('[72] định tuyến theo mô hình ${duoc.length}/${cau.length}: ${duoc.join(' · ')}');
+      // ignore: avoid_print
+      print('[72] ở lại phiên sáu tool ${khong.length}/${cau.length}: ${khong.join(' · ')}');
+    });
+  });
 }

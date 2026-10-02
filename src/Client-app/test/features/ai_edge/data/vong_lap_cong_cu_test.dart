@@ -11,6 +11,7 @@ import 'package:flowmoney/features/ai_edge/data/vong_lap_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/domain/dinh_tuyen.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
@@ -164,7 +165,7 @@ void main() {
     final sk = await hoiBangCongCu(
       _cauKhongDinhTuyen,
       runtime: rt, boCongCu: bo, goi: goi, idaccount: 10, now: now,
-      tranGoi: tranGoi, log: log.add,
+      tranGoi: tranGoi, log: log.add, dinhTuyen: dinhTuyenChiLuat,
     ).toList();
     return (sk, goi, phien, rt);
   }
@@ -190,7 +191,7 @@ void main() {
         cauHoi,
         runtime: _RuntimeGia(phien),
         boCongCu: BoCongCu([tool, toolDuBao]),
-        goi: goi, idaccount: 10, now: now, log: log.add,
+        goi: goi, idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyenChiLuat,
       ).toList();
       return (sk, goi, phien);
     }
@@ -208,7 +209,7 @@ void main() {
       expect(phien.ketQuaDaNhan.single.$2['Còn tiêu được'], '150.000 đ');
       expect(sk.first, const DangTraCuu(kTenCongCuDuBao), reason: 'dòng chỉ báo nói tool THẬT chạy');
       expect(sk.last, const CauQua('Bạn còn tiêu được 150.000 đ.'));
-      expect(log.any((l) => l.contains('định tuyến')), isTrue);
+      expect(log.any((l) => l.contains('định tuyến theo câu hỏi: $kTenCongCuHoaDon → $kTenCongCuDuBao')), isTrue);
     });
 
     test('⭐ câu đã định tuyến: phiên chỉ khai MỘT tool đích; câu không định tuyến: không khai tool chỉ-qua-định-tuyến', () async {
@@ -219,7 +220,7 @@ void main() {
         ]));
         await hoiBangCongCu(cauHoi,
             runtime: rt, boCongCu: BoCongCu([tool, toolDuBao]), goi: GoiSoTraCuu(),
-            idaccount: 10, now: now, log: log.add).toList();
+            idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyenChiLuat).toList();
         return [for (final k in rt.khaiBaoDaNhan!) k.ten];
       }
 
@@ -233,7 +234,9 @@ void main() {
         [const Chu('Bạn còn tiêu được 150.000 đ.')],
       ]);
       expect(goi.tenCongCuDaChay, [kTenCongCuDuBao]);
-      expect(log.any((l) => l.contains('định tuyến')), isFalse);
+      expect(log.any((l) => l.contains('định tuyến theo câu hỏi')), isFalse,
+          reason: 'không lời gọi nào bị đổi');
+      expect(log.first, contains('định tuyến: luật → $kTenCongCuDuBao'));
     });
 
     test('chỉ đổi lời gọi ĐẦU: tool dự báo đã chạy thì lời gọi sau chạy đúng tool mô hình chọn', () async {
@@ -274,8 +277,109 @@ void main() {
       final goi = GoiSoTraCuu();
       await hoiBangCongCu('tra het hoa don thi con bao nhieu',
           runtime: _RuntimeGia(phien), boCongCu: bo, goi: goi, idaccount: 10, now: now,
-          log: log.add).toList();
+          log: log.add, dinhTuyen: dinhTuyenChiLuat).toList();
       expect(goi.tenCongCuDaChay, [kTenCongCuHoaDon]);
+    });
+  });
+
+  group('định tuyến MỀM — nguồn là mô hình nhỏ (dự án B, spec mục 3.1)', () {
+    // Luật là thứ đã đo trên máy thật, mô hình nhỏ thì chưa: ở nguồn `moHinh`
+    // định tuyến chỉ làm MỘT việc — thu phiên về một tool. Hai hành vi "ép"
+    // (tự chạy tool đích với `{}`, đổi lời gọi sang tool đích) không áp.
+    late _CongCuGia toolTruyVan;
+
+    KetQuaDinhTuyen theoMoHinh(String _) => const KetQuaDinhTuyen(
+        ten: kTenCongCuTruyVan,
+        nguon: NguonDinhTuyen.moHinh,
+        nhanMoHinh: kTenCongCuTruyVan,
+        xacSuat: 0.93);
+    KetQuaDinhTuyen theoLuat(String _) =>
+        const KetQuaDinhTuyen(ten: kTenCongCuTruyVan, nguon: NguonDinhTuyen.luat);
+
+    Future<(List<SuKienGac>, GoiSoTraCuu, _RuntimeGia)> hoi(
+        List<List<SuKienLuot>> kichBan, KetQuaDinhTuyen Function(String) dinhTuyen) async {
+      toolTruyVan = _CongCuGia(kTenCongCuTruyVan, _timCoHang());
+      final rt = _RuntimeGia(PhienCongCuGia(kichBan));
+      final goi = GoiSoTraCuu();
+      final sk = await hoiBangCongCu(
+        _cauKhongDinhTuyen,
+        runtime: rt,
+        boCongCu: BoCongCu([tool, toolTruyVan]),
+        goi: goi, idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyen,
+      ).toList();
+      return (sk, goi, rt);
+    }
+
+    test('⭐ phiên chỉ khai MỘT tool đích; log ghi nguồn và xác suất', () async {
+      final (_, _, rt) = await hoi([
+        [const Chu('x')],
+      ], theoMoHinh);
+      expect([for (final k in rt.khaiBaoDaNhan!) k.ten], [kTenCongCuTruyVan]);
+      expect(log.first, contains('định tuyến: mô hình → $kTenCongCuTruyVan (p=0,93)'));
+    });
+
+    test('⭐ mô hình KHÔNG gọi tool → bậc 1 (L1): tool đích KHÔNG tự chạy, không mẫu câu', () async {
+      final (sk, goi, _) = await hoi([
+        [const Chu('Chào bạn, mình giúp gì được?')],
+      ], theoMoHinh);
+      expect(sk, [const KhongTraCuu()],
+          reason: 'một câu chào bị định tuyến nhầm mà ép chạy tool giao dịch với {} thì người dùng '
+              'nhận "chưa tra được số liệu: thiếu kỳ" — định tuyến mềm để Gemma tự từ chối gọi tool');
+      expect(toolTruyVan.argsDaNhan, isEmpty);
+      expect(goi.daTraCuu, isFalse);
+    });
+
+    test('⭐ mô hình gọi tên tool KHÁC → không đổi sang tool đích', () async {
+      final (sk, goi, _) = await hoi([
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn 45.000 đ.')],
+      ], theoMoHinh);
+      expect(toolTruyVan.argsDaNhan, isEmpty, reason: 'tool đích không nhận {} thay cho lời gọi của mô hình');
+      expect(tool.argsDaNhan, [{'trang_thai': 'qua_han'}]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuHoaDon]);
+      expect(sk.last, const CauQua('Kiem đã quá hạn 45.000 đ.'));
+      expect(log.any((l) => l.contains('định tuyến theo câu hỏi')), isFalse);
+    });
+
+    test('mô hình gọi đúng tool đích → chạy với tham số CỦA MÔ HÌNH', () async {
+      final (_, goi, _) = await hoi([
+        [const GoiCongCu(kTenCongCuTruyVan, {'ky': 'thang_nay', 'chieu': 'khoan_chi'})],
+        [const Chu('Cho vay 800.000 đ.')],
+      ], theoMoHinh);
+      expect(toolTruyVan.argsDaNhan, [{'ky': 'thang_nay', 'chieu': 'khoan_chi'}]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuTruyVan]);
+    });
+
+    test('đối chứng — CÙNG kịch bản, nguồn LUẬT: không gọi tool thì tool đích tự chạy; gọi tool khác thì đổi', () async {
+      final (sk1, goi1, _) = await hoi([
+        [const Chu('Chào bạn, mình giúp gì được?')],
+      ], theoLuat);
+      expect(toolTruyVan.argsDaNhan, [<String, dynamic>{}]);
+      expect(sk1.last, CauQua(goi1.mauCau().cau));
+      expect(log.first, contains('định tuyến: luật → $kTenCongCuTruyVan'));
+
+      final (_, goi2, _) = await hoi([
+        [goiHoaDon],
+        [const Chu('Cho vay 800.000 đ.')],
+      ], theoLuat);
+      expect(goi2.tenCongCuDaChay, [kTenCongCuTruyVan]);
+    });
+
+    test('không định tuyến: log ghi nhãn mô hình đã đoán — đo máy thật phải thấy vì sao câu đi phiên sáu tool', () async {
+      await hoi([
+        [const Chu('x')],
+      ], (_) => const KetQuaDinhTuyen(
+          ten: null, nguon: NguonDinhTuyen.khong, nhanMoHinh: kTenCongCuHoaDon, xacSuat: 0.412));
+      expect(log.first, contains('định tuyến: không (mô hình: $kTenCongCuHoaDon p=0,41)'));
+    });
+
+    test('mặc định (không truyền dinhTuyen) là đường ghép thật: câu luật bắt vẫn theo luật', () async {
+      final rt = _RuntimeGia(PhienCongCuGia([
+        [const Chu('x')],
+      ]));
+      await hoiBangCongCu('Hoa don nao qua han?',
+          runtime: rt, boCongCu: bo, goi: GoiSoTraCuu(), idaccount: 10, now: now, log: log.add).toList();
+      expect(log.first, contains('định tuyến: luật → $kTenCongCuHoaDon'));
     });
   });
 
@@ -578,7 +682,7 @@ void main() {
     final phien = _PhienNem();
     final goi = GoiSoTraCuu();
     await expectLater(
-      hoiBangCongCu('x', runtime: _RuntimeGia(phien), boCongCu: bo, goi: goi, idaccount: 10, now: now, log: log.add).toList(),
+      hoiBangCongCu('x', runtime: _RuntimeGia(phien), boCongCu: bo, goi: goi, idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyenChiLuat).toList(),
       throwsStateError,
     );
     expect(phien.daDong, isTrue);
@@ -595,7 +699,8 @@ void main() {
             goi: GoiSoTraCuu(),
             idaccount: 10,
             now: now,
-            log: log.add)
+            log: log.add,
+            dinhTuyen: dinhTuyenChiLuat)
         .toList();
 
     expect(sk, [const KhongTraCuu()],

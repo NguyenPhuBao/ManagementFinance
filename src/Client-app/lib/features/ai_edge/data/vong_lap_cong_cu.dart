@@ -21,6 +21,13 @@
 /// lý do → `(L2b+L2c)`, câu nối theo thứ tự xảy ra (`goi.cauNoiThem`) · L3 vượt
 /// trần lời gọi → `mauCau()` · L4 runtime ném → lỗi lan lên màn (câu "không
 /// chạy được").
+///
+/// **Định tuyến** (dự án B, 2026-10-02): tool đích đến từ đường ghép luật → mô
+/// hình nhỏ (`domain/dinh_tuyen.dart`). Có đích thì phiên chỉ khai một tool;
+/// nhưng hai hành vi ÉP chạy tool đích chỉ áp khi nguồn là LUẬT — nguồn mô hình
+/// là định tuyến MỀM, không gọi tool thì vẫn L1. Dòng log đầu của mỗi lượt hỏi
+/// là `[SLM][tool] định tuyến: …`.
+///
 /// Riêng `BacCongCuDaTat` (máy từng sập native ở phiên có tool — canary 1b,
 /// `domain/canary_cong_cu.dart`) đi đường L1 chứ không L4: bậc 1 vẫn chạy được.
 ///
@@ -34,8 +41,8 @@ library;
 import 'dart:async';
 
 import '../domain/canary_cong_cu.dart';
-import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
+import '../domain/dinh_tuyen.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
 import '../domain/kiem_cau_tra_loi.dart';
@@ -54,13 +61,24 @@ Stream<SuKienGac> hoiBangCongCu(
   String heThong = kPromptHeThongCongCu,
   int tranGoi = kTranGoiCongCu,
   void Function(String) log = print,
+  KetQuaDinhTuyen Function(String cauHoi) dinhTuyen = dinhTuyenCauHoi,
 }) async* {
   final dongHo = Stopwatch()..start();
   // Định tuyến theo CÂU HỎI (mục 9.33): tool mà câu hỏi đòi, nếu bộ tool có nó.
   // Có đích thì phiên chỉ khai MỘT tool ấy (mục 9.34: khai cả bộ là vỡ trần).
-  final dich = congCuTheoCauHoi(cauHoi);
+  // Từ dự án B đích đến từ đường ghép luật → mô hình nhỏ (`domain/dinh_tuyen.dart`).
+  final dt = dinhTuyen(cauHoi);
+  final dich = dt.ten;
   final tenDich =
       dich != null && boCongCu.tenCacCongCu.contains(dich) ? dich : null;
+  // ⚠️ Định tuyến MỀM (spec dự án B mục 3.1): hai hành vi ÉP bên dưới — tự chạy
+  // tool đích khi mô hình không gọi tool nào, và đổi lời gọi sang tool đích —
+  // chỉ áp khi nguồn là LUẬT, thứ đã đo trên máy thật. Nguồn mô hình nhỏ chỉ
+  // thu phiên về một tool: một câu chào bị định tuyến nhầm mà ép chạy tool giao
+  // dịch với `{}` thì người dùng nhận "thiếu kỳ" thay vì một câu trả lời.
+  final tenEp = dt.nguon == NguonDinhTuyen.luat ? tenDich : null;
+  log('[SLM][tool] định tuyến: ${_taDinhTuyen(dt)}'
+      '${dich != null && tenDich == null ? ' — không có trong bộ tool' : ''}');
   final PhienCongCu phien;
   try {
     phien = await runtime.moPhien(
@@ -134,14 +152,14 @@ Stream<SuKienGac> hoiBangCongCu(
       }
 
       if (loiGoi.isEmpty) {
-        if (!goi.daTraCuu && tenDich != null) {
-          // Mô hình không gọi tool nào mà câu hỏi có đích rõ: tự chạy tool ấy.
+        if (!goi.daTraCuu && tenEp != null) {
+          // Mô hình không gọi tool nào mà LUẬT có đích rõ: tự chạy tool ấy.
           // Phiên không chờ kết quả nào nên không có lượt sinh kế — hiện mẫu câu.
-          log('[SLM][tool] lượt $luot: không gọi tool, định tuyến theo câu hỏi → $tenDich, mẫu câu');
-          yield DangTraCuu(tenDich);
-          final kq = await boCongCu.chay(tenDich, const {},
+          log('[SLM][tool] lượt $luot: không gọi tool, định tuyến theo câu hỏi → $tenEp, mẫu câu');
+          yield DangTraCuu(tenEp);
+          final kq = await boCongCu.chay(tenEp, const {},
               idaccount: idaccount, now: now, cauHoi: cauHoi);
-          goi.them(tenDich, kq!);
+          goi.them(tenEp, kq!);
           yield CauQua(goi.mauCau().cau);
           log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: 0 lời gọi, 0 câu');
           return;
@@ -187,12 +205,12 @@ Stream<SuKienGac> hoiBangCongCu(
         // chạy tool của câu hỏi (không tham số của mô hình: chúng thuộc tool
         // kia). Kết quả vẫn trả về phiên dưới tên lời gọi mô hình đã phát — phiên
         // chờ đúng lời gọi ấy. Chỉ đổi một lần: tool đích đã chạy thì thôi.
-        final doi = tenDich != null &&
-            g0.ten != tenDich &&
-            !goi.tenCongCuDaChay.contains(tenDich);
-        final g = doi ? GoiCongCu(tenDich, const {}) : g0;
+        final doi = tenEp != null &&
+            g0.ten != tenEp &&
+            !goi.tenCongCuDaChay.contains(tenEp);
+        final g = doi ? GoiCongCu(tenEp, const {}) : g0;
         if (doi) {
-          log('[SLM][tool] lượt $luot: định tuyến theo câu hỏi: ${g0.ten} → $tenDich');
+          log('[SLM][tool] lượt $luot: định tuyến theo câu hỏi: ${g0.ten} → $tenEp');
         }
         yield DangTraCuu(g.ten);
         final moc = dongHo.elapsedMilliseconds;
@@ -221,6 +239,19 @@ Stream<SuKienGac> hoiBangCongCu(
   } finally {
     await phien.dong();
   }
+}
+
+/// Một dòng tả kết quả định tuyến — cho log: `luật → X` · `mô hình → X (p=0,93)`
+/// · `không (mô hình: Y p=0,41)` · `không`. Lượt đo máy thật đọc dòng này để
+/// biết câu đi phiên một tool hay sáu tool, và vì sao.
+String _taDinhTuyen(KetQuaDinhTuyen dt) {
+  final p = dt.xacSuat?.toStringAsFixed(2).replaceFirst('.', ',');
+  return switch (dt.nguon) {
+    NguonDinhTuyen.luat => 'luật → ${dt.ten}',
+    NguonDinhTuyen.moHinh => 'mô hình → ${dt.ten} (p=$p)',
+    NguonDinhTuyen.khong =>
+      dt.nhanMoHinh == null ? 'không' : 'không (mô hình: ${dt.nhanMoHinh} p=$p)',
+  };
 }
 
 /// Tên các tool còn lời từ chối chưa gỡ — cho log.
