@@ -13,6 +13,7 @@ import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../../../core/category/category_name.dart';
 import '../../../core/ocr/so_tien_tren_anh.dart';
+import 'doc_tin_bien_dong.dart';
 
 /// Giá trị tham số `doc` của deeplink: đọc bằng mẫu riêng · luật chung · không đọc ra số tiền.
 const String kCachDocMau = 'mau';
@@ -84,7 +85,47 @@ BienLaiDoc docBienLai({required String vanBan, required String? nguon, required 
 }
 
 /// Mẫu riêng theo nguồn. `null` = không khớp mẫu (app đổi giao diện biên lai, hoặc nguồn chưa có mẫu) → luật chung.
-BienLaiDoc? _theoNguon(String? nguon, List<String> dong, List<String> bo, DateTime luc) => null;
+///
+/// ⚠️ CHỈ nguồn đã ĐO trên biên lai thật (nếp *"không đoán"* của D1). MoMo và ZaloPay chưa có biên lai nào được thu
+/// (2026-10-02) → đi luật chung; thêm mẫu khi có hình dạng thật.
+BienLaiDoc? _theoNguon(String? nguon, List<String> dong, List<String> bo, DateTime luc) => switch (nguon) {
+      kNguonMb => _mb(dong, bo, luc),
+      _ => null,
+    };
+
+final RegExp _mbTieuDe = RegExp(r'^chuyen \S+ thanh cong$');
+final RegExp _mbTien = RegExp(r'^([\d.,]+)\s?vnd$');
+final RegExp _dongTaiKhoan = RegExp(r'^\S*\d{6,}$');
+
+/// MB Bank — biên lai *"Chuyển tiền thành công"* (đo Realme 2026-10-02, hình dạng đã che). Biên lai KHÔNG có nhãn,
+/// các trường nhận theo VỊ TRÍ:
+///
+/// ```
+/// Chuyển tiền thành công
+/// 10,000 VND
+/// 19:38 - 02/10/2026
+/// <tên người nhận>
+/// <ngân hàng nhận> …
+/// <chữ liền số — TÀI KHOẢN người nhận, không phải mã giao dịch (người dùng xác nhận)>
+/// <nội dung chuyển khoản>
+/// Giao dịch …            ← chân biên lai
+/// ```
+///
+/// Không có mã giao dịch → chống trùng dựa vào số tiền + giờ. Thiếu một trong ba hàng đầu là không phải mẫu này.
+BienLaiDoc? _mb(List<String> dong, List<String> bo, DateTime luc) {
+  final i = bo.indexWhere(_mbTieuDe.hasMatch);
+  if (i < 0 || i + 2 >= dong.length) return null;
+  final t = _mbTien.firstMatch(bo[i + 1]);
+  // `docSoTrenAnh` chứ không `tienTrenDong`: hàng này CHẮC là số tiền, nên khoản dưới 1.000 đ và từ 1 tỷ vẫn nhận.
+  final tien = t == null ? null : _hopLe(docSoTrenAnh(t.group(1)!));
+  final gio = _thoiGian([dong[i + 2]]);
+  if (tien == null || gio == null) return null;
+  // Nội dung: hàng ngay TRÊN chân biên lai. Hàng ấy trông như số tài khoản (người dùng để trống nội dung và app
+  // không tự điền) thì coi như không có nội dung — không bao giờ lấy số tài khoản làm ghi chú.
+  final chan = bo.indexWhere((d) => d.startsWith('giao dich'), i + 3);
+  final nd = chan > i + 3 && !_dongTaiKhoan.hasMatch(dong[chan - 1]) ? dong[chan - 1] : '';
+  return BienLaiDoc(soTien: tien, chieu: 'chi', thoiGian: gio, noiDung: nd, cachDoc: kCachDocMau);
+}
 
 BienLaiDoc _chung(List<String> dong, List<String> bo, DateTime luc) {
   final tien = _tienChung(dong, bo);

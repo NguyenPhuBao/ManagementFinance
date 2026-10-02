@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/domain/doc_bien_lai.dart';
+import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _luc = DateTime(2026, 10, 2, 19, 0);
@@ -102,6 +103,80 @@ void main() {
     test('nhãn có dấu hai chấm và khoảng trắng thừa: "Nội dung :  mua sach"', () {
       expect(docBienLai(vanBan: 'Số tiền: 10.000 đ\nNội dung :  mua  sach', nguon: null, luc: _luc).noiDung,
           'mua sach');
+    });
+  });
+
+  // Hình dạng thu trên Realme 2026-10-02 (đã che), dựng lại bằng số và tên GIẢ:
+  //   … / Chuyển … thành công / 99,999 VND / 99:99 - 99/99/9999 / … … … / … … / … / …9999999999999999 /
+  //   … … … chuyen tien / Giao dịch … / …
+  const mb = '''
+MB
+Chuyển tiền thành công
+10,000 VND
+19:38 - 02/10/2026
+NGUYEN VAN A
+MB Bank
+MB
+ABCD0001234567890123
+TRAN VAN B chuyen tien
+Giao dịch đã được ghi nhận thành công.
+Cảm ơn quý khách đã dùng màn hình này.
+''';
+
+  group('mẫu riêng MB Bank — biên lai không nhãn, đọc theo vị trí', () {
+    test('⭐ biên lai chuyển tiền → số tiền, giờ, nội dung; chiều chi; cachDoc mau; KHÔNG mã giao dịch', () {
+      final b = docBienLai(vanBan: mb, nguon: kNguonMb, luc: _luc);
+      expect(b.soTien, 10000);
+      expect(b.chieu, 'chi');
+      expect(b.thoiGian, DateTime(2026, 10, 2, 19, 38));
+      expect(b.noiDung, 'TRAN VAN B chuyen tien');
+      expect(b.maGiaoDich, isNull,
+          reason: 'hàng chữ liền số là TÀI KHOẢN người nhận (người dùng xác nhận) — lấy nó làm mã GD là gộp nhầm '
+              'mọi lần chuyển cho cùng một người thành một giao dịch');
+      expect(b.duoiTaiKhoan, isNull);
+      expect(b.cachDoc, kCachDocMau);
+    });
+
+    test('⭐ không có hàng nội dung → nội dung RỖNG, không lấy số tài khoản người nhận làm ghi chú', () {
+      final b = docBienLai(
+          vanBan: mb.replaceFirst('TRAN VAN B chuyen tien\n', ''), nguon: kNguonMb, luc: _luc);
+      expect(b.soTien, 10000);
+      expect(b.noiDung, '');
+    });
+
+    test('khoản dưới 1.000 đ và khoản từ 1 tỷ vẫn đọc được — hàng số tiền của mẫu là CHẮC', () {
+      expect(docBienLai(vanBan: mb.replaceFirst('10,000 VND', '500 VND'), nguon: kNguonMb, luc: _luc).soTien, 500);
+      expect(
+          docBienLai(vanBan: mb.replaceFirst('10,000 VND', '1,500,000,000 VND'), nguon: kNguonMb, luc: _luc).soTien,
+          1500000000);
+    });
+
+    test('chữ "tiền" bị đọc lệch dấu ("Chuyển tiên thành công") vẫn khớp tiêu đề', () {
+      final b = docBienLai(
+          vanBan: mb.replaceFirst('Chuyển tiền thành công', 'Chuyển tiên thành công'), nguon: kNguonMb, luc: _luc);
+      expect(b.cachDoc, kCachDocMau);
+    });
+
+    test('⭐ nguồn MB nhưng ảnh KHÔNG khớp mẫu (app đổi giao diện) → rơi về luật chung, không rơi về "không đọc"', () {
+      final b = docBienLai(vanBan: _bienLaiChung, nguon: kNguonMb, luc: _luc);
+      expect(b.soTien, 150000);
+      expect(b.cachDoc, kCachDocChung);
+    });
+
+    test('thiếu hàng giờ ngay dưới số tiền → không phải mẫu này → luật chung (số tiền vẫn đọc được nhờ đơn vị VND)', () {
+      final b = docBienLai(
+          vanBan: 'Chuyển tiền thành công\n10,000 VND\nNGUYEN VAN A', nguon: kNguonMb, luc: _luc);
+      expect(b.soTien, 10000);
+      expect(b.cachDoc, kCachDocChung);
+    });
+
+    test('nguồn khác MB (MoMo, ZaloPay, "Biên lai", null) không thử mẫu MB dù chữ giống hệt', () {
+      for (final n in [kNguonMomo, kNguonZalopay, 'Biên lai', null]) {
+        final b = docBienLai(vanBan: mb, nguon: n, luc: _luc);
+        expect(b.cachDoc, kCachDocChung, reason: '$n');
+        expect(b.soTien, 10000, reason: 'luật chung vẫn đọc được số có đơn vị VND');
+        expect(b.noiDung, '', reason: 'biên lai không nhãn: luật chung không biết hàng nào là nội dung');
+      }
     });
   });
 }
