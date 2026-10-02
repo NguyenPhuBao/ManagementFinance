@@ -2127,7 +2127,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       child: Image.file(
                         File(p),
                         fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
+                        // Canh GIỮA: ảnh chia sẻ từ app ngân hàng là ảnh toàn màn, thẻ biên lai nằm giữa — canh đỉnh là
+                        // ảnh nhỏ chỉ thấy nền (đo Realme 2026-10-02, biên lai MB Bank 1080 × 2400).
+                        alignment: Alignment.center,
                         cacheWidth: 144,
                         errorBuilder: (_, __, ___) => const ColoredBox(
                           color: AppColors.surfaceContainerHigh,

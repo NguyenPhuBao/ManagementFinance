@@ -109,18 +109,20 @@ void main() {
   // Hình dạng thu trên Realme 2026-10-02 (đã che), dựng lại bằng số và tên GIẢ:
   //   … / Chuyển … thành công / 99,999 VND / 99:99 - 99/99/9999 / … … … / … … / … / …9999999999999999 /
   //   … … … chuyen tien / Giao dịch … / …
+  // Các hàng theo thứ tự: logo · tiêu đề · số tiền · giờ · tên người nhận · ngân hàng / ví nhận (logo + tên, OCR ra
+  // hai hàng) · tài khoản nhận (chữ liền số) · nội dung · hai hàng chân biên lai (chữ chung của MB, không riêng tư).
   const mb = '''
 MB
 Chuyển tiền thành công
 10,000 VND
 19:38 - 02/10/2026
 NGUYEN VAN A
-MB Bank
-MB
-ABCD0001234567890123
+mo mo
+MoMo
+PSP0001234567890123
 TRAN VAN B chuyen tien
-Giao dịch đã được ghi nhận thành công.
-Cảm ơn quý khách đã dùng màn hình này.
+Giao dịch được xác nhận bởi MB.
+Vui lòng không chỉnh sửa hình ảnh này.
 ''';
 
   group('mẫu riêng MB Bank — biên lai không nhãn, đọc theo vị trí', () {
