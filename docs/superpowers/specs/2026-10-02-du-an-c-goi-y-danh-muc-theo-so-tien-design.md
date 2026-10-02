@@ -1,7 +1,8 @@
 # Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú không giúp được — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** 📝 người dùng **duyệt thiết kế trong chat** (sáu lượt AskUserQuestion); bản viết này
-chờ người dùng đọc lại. Chưa có kế hoạch, chưa có dòng mã nào.
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ người dùng duyệt thiết kế trong chat (sáu lượt AskUserQuestion) và **duyệt bản
+viết** cùng ngày (*"ok duyệt"*). Kế hoạch: `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md`
+(gitignore). Hai chỗ làm rõ thêm lúc lập kế hoạch, đánh dấu 🔧 ở mục 3.1 và 3.4.
 
 Dự án C là dự án thứ ba của bộ A → B → C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người, mở
 rộng khuôn B1*. Nó gồm nhiều việc độc lập, mỗi việc một spec; đây là việc **đầu tiên** người dùng chọn. Ba việc còn lại
@@ -55,7 +56,9 @@ Thẻ nguồn *số tiền* hiện khi **mọi** điều sau đúng:
 - chưa chọn danh mục (`_selectedCategory == null`);
 - đoạn đang chọn là Chi tiêu hoặc Thu nhập (không phải Chuyển khoản);
 - không ở chế độ sửa (`_editing == null`) và form không mở từ biến động số dư (`_bienDong == null`);
-- số tiền là **một con số lớn hơn 0** — đang gõ dở phép tính (`30+`) thì chưa tính;
+- số tiền là **một con số lớn hơn 0** — đang gõ dở phép tính (`30+`) thì chưa tính; 🔧 phép tính đã **đủ hai vế**
+  (`50000+30000`, màn đang hiện dòng `= 80.000 đ`) thì tính trên **tổng** — bàn phím không có phím `=`, biểu thức nằm
+  nguyên tới lúc lưu;
 - ghi chú trống, **hoặc** ghi chú có chữ mà B1 và bảng từ khoá đều trả `null`.
 
 Thứ tự nguồn của thẻ: **B1 → từ khoá → số tiền**. Ghi chú có chữ thì vẫn chạy B1 và từ khoá trước như hôm nay; nguồn số
@@ -98,6 +101,9 @@ Ghi vào bảng cục bộ sẵn có `GoiYDanhMucPhanHois` với `nguon = 'so_ti
 **Hai** lần `bo_qua` cùng cặp (mã bậc, danh mục) → thôi gợi ý cặp ấy. Mở lại khi người dùng tự lưu **ba** giao dịch có
 ngày sau lần bỏ qua cuối, ở đúng bậc ấy, cho đúng danh mục ấy. Hai hằng dùng lại của B1 (`kSoLanBoQuaThoiGoiY`,
 `kSoMauMoLai`). Tập tắt của nguồn `so_tien` **riêng**: bỏ qua thẻ số tiền không tắt thẻ B1, và ngược lại.
+
+🔧 Trong **cùng một lượt mở màn**, cặp vừa bấm *Bỏ qua* không hiện lại (cùng nếp `_boQuaLuotNay` của đề xuất từ khoá):
+thẻ tính lại ở mỗi phím số, nên thiếu chốt này thì bấm *Bỏ qua* rồi gõ thêm một chữ số cùng bậc là thẻ bật lại ngay.
 
 ## 4. Phép học
 
