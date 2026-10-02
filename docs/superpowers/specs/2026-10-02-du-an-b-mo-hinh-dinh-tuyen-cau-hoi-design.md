@@ -26,8 +26,8 @@ Ngoài thời gian chờ, phiên một tool còn hai lợi ích đã đo: prompt
 | `truy_van_giao_dich` trả lời | 37 | A8 · A9 · DC2 · C1–C20 · DC3 · E2–E6 · E13 · E15–E17 · E19 · F1–F3 |
 | Ngoài phạm vi | 4 | DC1 · E21 · E22 · F16 |
 
-⚠️ Nhãn của 37 câu suy từ **câu trả lời** trong bảng mốc, chưa đối chiếu log tool gốc (`congF_tron_ketqua.txt`,
-scratchpad phiên `de8f6403…`). Khi thi công: còn tệp ấy thì đối chiếu, không còn thì ghi rõ nhãn lấy theo câu trả lời.
+✅ Đã đối chiếu log tool gốc của buổi đo (`congF_tron_ketqua.txt`, scratchpad phiên `de8f6403…`, đọc 2026-10-02): cả
+37 câu mô hình gọi `truy_van_giao_dich`; DC1 · E22 · F16 bị chặn trước mô hình, E21 mô hình không gọi tool nào.
 
 Tức việc chính của dự án là **nhận ra câu giao dịch** — thứ luật không làm được, vì với luật câu giao dịch là "phần
 còn lại sau khi mọi luật khác im" — mà **không kéo nhầm** câu ngoài phạm vi hay câu của tool khác vào tool giao dịch.
