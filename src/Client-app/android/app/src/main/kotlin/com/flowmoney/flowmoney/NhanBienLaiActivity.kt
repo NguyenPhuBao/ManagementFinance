@@ -69,7 +69,10 @@ class NhanBienLaiActivity : Activity() {
         super.onCreate(savedInstanceState)
         val cau = try {
             nhan(intent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // Chỉ KIỂU lỗi (bản debug): thông báo lỗi có thể mang URI của ảnh. Không quyền đọc URI là
+            // `SecurityException` — phân biệt được với "không phải ảnh" khi thu mẫu.
+            thu("loi | ${e.javaClass.simpleName}")
             "FlowMoney chỉ nhận ảnh biên lai"
         }
         Toast.makeText(applicationContext, cau, Toast.LENGTH_SHORT).show()
