@@ -1001,6 +1001,17 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
+### 💰 Đơn vị *tỷ* sau chữ số — Nhập nhanh và lệnh tạo đọc được (2026-10-02)
+
+Việc treo *"đơn vị tỷ"* xong. Thiếu ở đúng **một** chỗ: `_mauSoDonVi` / `_mauTrieuLe` của
+`transaction/domain/doc_cau_giao_dich.dart` (số viết bằng chữ — `so_bang_chu.dart` — và bộ chỉnh tham số của Trợ lý
+vốn đã có *tỷ / tỉ*). Nay *2 tỷ · 1,5 tỉ · 2 ty · 1ty2 · 1ty25* đọc được; `cachDocSoTien` thêm *"1 tỷ 2"* = 1,2 tỷ;
+`ngay_trong_cau._sauLaDonViTien` thêm `ty|ti` (*"thu 2 ty"* không phải thứ Hai); `laSoTien` nhận *"2 tỷ"*.
+⚠️ Regex chạy trên chữ **đã bỏ dấu**, nên `_donViDungDau` so lại chữ gốc: *"2 tí kẹo"* không phải hai tỷ. Trần 13 chữ
+số giữ nguyên. `flutter test` **5209/5209** (4 skip; +14 ca), analyze 26. Đo OnePlus: Nhập nhanh *"mua nha 2 ty"* →
+2.000.000.000 đ; lệnh tạo mục tiêu 2 tỷ ra thẻ đúng. ⚠️ Quan sát phụ, chưa sửa: số 10 chữ số ở màn Thêm giao dịch
+chạm sát hai mép màn 361 dp (không có lề ngang quanh `FittedBox`).
+
 ### 🤖 C3 lệnh tạo bằng AI — đo OnePlus (GPU) 2026-10-02: 9 ✅ · 1 ◐ · SAI 0 sau hai sửa lưới kiểm
 
 Việc treo *"C3 AI chưa đo OnePlus"* xong. Bảng và chi tiết ở mục **9.43** `AI_EDGE_FEATURE.md`. Tài khoản 10, gõ qua

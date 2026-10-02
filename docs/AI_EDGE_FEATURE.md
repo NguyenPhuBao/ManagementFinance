@@ -3243,7 +3243,13 @@ Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-d
   `timTenTrongCau`; hạn mục tiêu *trước/đến tháng M [năm Y/sau]* → cuối tháng (tháng đã qua → năm sau; tháng 2 năm
   nhuận), *trong N tháng* kẹp cuối tháng, *đến dd/mm/yyyy*. Trường ví / danh mục tên **`idVi` / `idDanhMuc`** — test
   quét 14 cấm chuỗi `walletId` trong `ai_edge/`. Danh mục **chi** lọc ở `ai_chat/data/nguon_lenh_tao.dart` (ngoài lớp
-  AI — phép so chiều tiền). Đơn vị *tỷ* **chưa** đọc được (bộ đọc C2 không có).
+  AI — phép so chiều tiền). ✅ Đơn vị *tỷ* đọc được từ **2026-10-02** (`_mauSoDonVi` của `doc_cau_giao_dich.dart` —
+  một bộ đọc cho cả Nhập nhanh lẫn lệnh tạo): *2 tỷ · 1,5 tỉ · 2 ty · 1ty2 · "1 tỷ 2"* (cách đọc cho lớp kiểm AI).
+  ⚠️ Đơn vị khớp trên chữ **đã bỏ dấu** nên qua `_donViDungDau`: *"mua 2 tí kẹo"* bỏ dấu là `2 ti` = hai tỷ — câu có
+  dấu thì chỉ nhận *tỷ / tỉ*, gõ không dấu thì nhận `ty` / `ti` trần (bản sai bỏ phép ấy làm ca *tí* đỏ). Số viết bằng
+  chữ (*"một tỷ"*) và ngưỡng của bộ chỉnh tham số vốn đã đọc được. Đo OnePlus: Nhập nhanh *"mua nha 2 ty"* →
+  *Đã điền: 2.000.000.000 đ · Nhà cửa*; *"tao muc tieu mua nha 2 ty truoc thang 6 nam sau"* → thẻ *2.000.000.000 đ ·
+  hạn 30/06/2027*.
 - ⚠️ **Tầng 4:** *"tự trả / tự động thanh toán / trích tự động"* chỉ bật `nhacTuTra` — thẻ nói *"Tự trả phải bật trong
   form"*, query **không** mang tham số nào bật tự trả.
 - **Ô nhập mở cả khi chưa có mô hình** (người dùng chốt 2026-09-30): câu là lệnh → thẻ; câu khác → câu cố định
