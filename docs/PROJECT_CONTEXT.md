@@ -1001,6 +1001,16 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
+### 🔬 Dự án huấn luyện A — spike tra cứu xong (2026-10-02), không mã
+
+Kết luận ở mục **10.6** `AI_EDGE_FEATURE.md`. Tinh chỉnh Gemma 4 E2B → gộp LoRA → `.litertlm`: **có đường**
+(`litert-torch`; công cụ `litetune` của tác giả `flutter_gemma`, khớp `flutter_gemma_litertlm` 1.8.0 / LiteRT-LM 0.17.1),
+**giấy phép cho phép** (Gemma 4 là Apache 2.0), **chi phí ~0** (Colab T4; bước xuất không chạy trên Windows). Rủi ro
+đúng vào chỗ app dựa nhất: issue `litert-torch` #1013 còn mở — bản tinh chỉnh xuất ra **tụt tool calling 144 → 53/144**
+(một tool vẫn đúng) — và bundle tự xuất **mất ảnh / âm thanh**. Chỉ là thứ đọc được, **chưa chạy gì**. Dự án B và C
+không phụ thuộc kết quả này. Phép thử thật (**A2**: xuất nguyên bản → nạp trên hai máy → đo lại 10 câu C3 + 72 câu)
+**chờ người dùng quyết**.
+
 ### 💰 Đơn vị *tỷ* sau chữ số — Nhập nhanh và lệnh tạo đọc được (2026-10-02)
 
 Việc treo *"đơn vị tỷ"* xong. Thiếu ở đúng **một** chỗ: `_mauSoDonVi` / `_mauTrieuLe` của

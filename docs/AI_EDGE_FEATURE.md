@@ -3520,7 +3520,9 @@ engine nạp được không, giấy phép Gemma, chi phí; output là một câ
 **B** mô hình nhỏ định tuyến câu hỏi → tool, huấn luyện ngoài app, đo trên bộ câu **khác** bộ
 huấn luyện — lý do: phiên sáu tool chờ TB 45,5 s, phiên một tool 23,8 s (mốc 72 câu, 9.37).
 **C** học trên máy của từng người, mở rộng khuôn B1. Mỗi dự án một spec riêng, brainstorm lại
-khi tới lượt.
+khi tới lượt. ✅ **A xong phần tra cứu 2026-10-02 — mục 10.6**: có đường và giấy phép (Gemma 4 là
+Apache 2.0), nhưng tool calling và ảnh / âm thanh là hai chỗ người khác báo hỏng sau khi xuất; phép
+thử thật (A2) chờ người dùng quyết.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
@@ -3582,6 +3584,63 @@ Ba thứ **không có hàm nào cả**: bật công tắc tự chuyển tiền, 
 đụng vào đồng bộ / xác thực.
 
 ---
+
+### 10.6 Dự án A — spike tra cứu: tinh chỉnh Gemma 4 E2B rồi xuất `.litertlm` (2026-10-02)
+
+**Chỉ tra cứu, không chạy gì.** Mọi dòng dưới đây là thứ **đọc được trên web ngày 2026-10-02**, chưa dòng nào được
+dựng lại trên máy của dự án. Người dùng yêu cầu làm tiếp các việc còn lại khi spike C4 còn chờ họ đọc câu / chụp ảnh;
+theo lộ trình A xếp sau C4, nhưng A không viết mã và không phụ thuộc C4.
+
+**Câu trả lời một dòng:** *có đường đi, giấy phép cho phép, chi phí gần bằng 0 — nhưng hai thứ app dựa vào nhất (tool
+calling và ảnh / âm thanh) là đúng hai chỗ người khác báo hỏng sau khi xuất, nên chưa đáng làm trước khi có một phép
+thử thật trên máy.*
+
+| Câu hỏi của spike | Tìm được | Độ chắc |
+|---|---|---|
+| Có pipeline tinh chỉnh → gộp LoRA → `.litertlm` không? | Có. LoRA / QLoRA (peft, Unsloth) → `merge_and_unload()` → `litert-torch` (`litert_torch.generative.export_hf`, `bundle_litert_lm=True`) → một tệp `.litertlm`. Công cụ **`litetune`** của chính tác giả `flutter_gemma` gói năm bước *prepare · tune · convert · verify · bundle*, hỗ trợ `google/gemma-4-E2B-it` (phải nêu biến thể `E2B` / `E4B`) | Đọc README + issue; chưa chạy |
+| Engine của app nạp được không? | README `litetune` ghi: `flutter_gemma_litertlm` **1.8.0 mang LiteRT-LM 0.17.1** — đúng bản app đang dùng. Có bundle Gemma 4 E2B tinh chỉnh của cộng đồng trên Hugging Face chạy được trên LiteRT-LM / AI Edge Gallery (ví dụ `PeppX/gemma-4-e2b-uncensored-litertlm`, 2,37 GB) | Lời bên thứ ba; **chưa nạp thử trên Realme / OnePlus** |
+| Giấy phép phân phối trọng số đã tinh chỉnh? | **Gemma 4 phát hành theo Apache 2.0** (2026-04-02, cả E2B / E4B; thẻ mô hình `google/gemma-4-E2B-it` ghi Apache 2.0, không gated) — phân phối bản tinh chỉnh và dùng thương mại được, chỉ cần giữ giấy phép và ghi đã sửa. (*Gemma Terms of Use* với điều khoản chảy xuống áp cho Gemma 1–3.) | Thẻ mô hình + báo |
+| Chi phí GPU? | QLoRA E2B cần ~6–8 GB VRAM; chạy được trên **Colab T4 miễn phí**, ~15–20 phút cho 100 bước. Bước `convert` **không chạy trên Windows** (không có wheel `litert-converter`) — phải Linux x86_64, Mac Apple Silicon hoặc Colab; một báo cáo ghi ~12 phút trên Colab A100 | Nhiều bài hướng dẫn; chưa đo |
+| Huấn luyện **trên máy** từng người? | Không. Gói không có API huấn luyện; engine `.litertlm` từ chối LoRA rời (mục 10.3); huấn luyện cần GPU, xuất cần Linux, mỗi bản là một tệp ~2,4 GB | Đã đọc mã gói (10.3) |
+
+**Ba rủi ro, xếp theo mức chạm vào app:**
+
+1. ⚠️ **Tool calling tụt sau khi xuất** — `google-ai-edge/litert-torch` issue **#1013** (mở 2026-05-01, **còn mở**):
+   Gemma 4 E2B tinh chỉnh cho tool calling, xuất `dynamic_wi8_afp32`, **nạp được và không sập (0/144)** nhưng hành vi
+   đúng tụt **144/144 → 53/144** so với bản gốc trước khi xuất; lời gọi **một tool vẫn đúng 37/37**, hỏng ở nhiều tool
+   (16/25 méo) và ở các ca phải xác nhận / từ chối (0/12). Issue **#1001** (mở 2026-04-20, còn mở): ghi đè loại mô hình
+   thành `gemma4` lúc xuất vẫn ra metadata *generic* — tức mất mẫu chat Jinja ~12 KB và token đặc biệt của Gemma 4. Lối
+   vá cộng đồng nêu: chép phần `LlmMetadata` từ bundle gốc của Google, hoặc cờ `--litert_lm_llm_metadata_override`
+   (đọc qua tóm tắt tìm kiếm — bài gốc trên Medium **không mở được**, chưa kiểm). Với app này: bậc tool là đường trả lời
+   chính (mục 9.14 trở đi), và phiên **sáu tool** là chỗ đã yếu sẵn.
+2. ⚠️ **Mất ảnh và âm thanh** — bundle cộng đồng **bỏ** bộ mã hoá ảnh / âm thanh (*"removed to keep the bundle small"*);
+   `litetune` chỉ tinh chỉnh tháp chữ. Bundle chính thức app đang dùng (2,59 GB) là đa phương thức và nén riêng của
+   Google. Nếu spike C4 chọn **lối B** (Gemma đọc ảnh / nghe giọng) thì một bản tinh chỉnh kiểu này **loại lối B**.
+3. **GPU chưa rõ** — có repo phát hành bản `…-litertlm-gpu` riêng; P1 của dự án từng đo biến thể `-gpu.litertlm` **không
+   nạp được** trên engine FFI Android (mục 8). Bản tự xuất có chạy GPU trên Adreno (OnePlus) / CPU trên Mali (Realme)
+   hay không phải đo. Lượng tử 8-bit mất ít (README `litetune`: +0,00 → +0,02 trên mô hình nhỏ), 4-bit có thể mất tới
+   một phần ba độ chính xác.
+
+**Hệ quả cho ba dự án:**
+- **B** (mô hình nhỏ định tuyến câu hỏi → tool) và **C** (học trên máy từng người, khuôn B1) **không phụ thuộc** kết
+  quả này — cả hai là Dart thuần, không đụng trọng số Gemma. *"Hiểu từng người dùng"* vẫn đi đường **context + mô hình
+  nhỏ**, không đi đường tinh chỉnh.
+- Tinh chỉnh Gemma chỉ có nghĩa **một bản cho cả app** (giọng văn, bớt điền thừa tham số — họ lỗi 4.44, 9.43), và
+  người dùng phải tải lại một tệp ~2,4 GB cho mỗi bản.
+- Muốn biết thật thì cần **A2 — phép thử có mã, ~1–2 phiên**: Colab → tinh chỉnh rất nhỏ (hoặc xuất **nguyên bản không
+  tinh chỉnh** trước, để tách lỗi của bước xuất khỏi lỗi của tinh chỉnh) → nạp trên Realme và OnePlus → đo lại 10 câu
+  C3 + lưới 72 câu. Cổng: nạp được, tool calling không tụt so với bundle gốc, RAM / tốc độ không xấu hơn. **Chưa làm —
+  chờ người dùng quyết** có làm A2 hay đi thẳng B.
+
+Nguồn (đọc 2026-10-02): [litetune](https://github.com/DenisovAV/litetune) ·
+[litert-torch #1013](https://github.com/google-ai-edge/litert-torch/issues/1013) ·
+[litert-torch #1001](https://github.com/google-ai-edge/litert-torch/issues/1001) ·
+[thảo luận chuyển Gemma 4 sang litertlm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/discussions/7)
+(lối MediaPipe converter trong đó **không chạy**: *"Unknown special model: GEMMA_4_E2B"*) ·
+[thẻ mô hình gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it) ·
+[VentureBeat — Gemma 4 Apache 2.0](https://venturebeat.com/technology/google-releases-gemma-4-under-apache-2-0-and-that-license-change-may-matter) ·
+[PeppX/gemma-4-e2b-uncensored-litertlm](https://huggingface.co/PeppX/gemma-4-e2b-uncensored-litertlm) ·
+[Unsloth — Gemma 4 fine-tuning](https://unsloth.ai/docs/models/gemma-4/train).
 
 ## 11. Bản đồ năng lực — AI làm được gì trong hệ thống (khảo sát 2026-09-20)
 
