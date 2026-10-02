@@ -980,6 +980,28 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### 🔀 Gộp `main` @ `573969f` (2026-10-02, commit gộp `fb9e3c0`) — sửa lỗi cú pháp scheduler, uptime Admin-web
+
+Ba commit NPBao (`1c4c584`, `959cb9d`, `b24035b`) qua ba PR #106–#108, **không xung đột**, **không đụng
+`src/Client-app`** — hash cây `src/Client-app` trước và sau gộp là một (`2d6974c8…`), nên `flutter test` /
+`flutter analyze` không đổi kết quả. Chín tệp: Admin-web 4, Backend 3, tài liệu 2 (`Project.md` một dòng,
+`docs/Deploy/ProcessAdmin.md`). Không tệp `database/N`, không đổi `schema.prisma`, không đổi `package.json`.
+`CAN-LAM/` vẫn **một** đơn `SOAT_SAU_GOP_A7C03B7.md` — backend **chưa trả lời**, lượt gộp không chạm tệp nào đơn nêu.
+
+- ⚠️ **Bản `a7c03b7` mang lỗi cú pháp làm backend không khởi động được.** `core/scheduler.service.js` khai
+  `let timerHandle` **hai lần** (dòng 34 và 280) — `node --check` trên bản ấy báo *"Identifier 'timerHandle' has already
+  been declared"*; `index.js:49` nạp tệp ấy trong khối `try` của bước khởi động, nhánh `catch` gọi `process.exit(1)`.
+  Tức trên nhánh này backend dev **không dựng được suốt từ commit gộp `71234eb` (2026-10-01) tới `fb9e3c0`** — kết luận
+  từ đọc mã + `node --check`, **không** chạy thử backend ở phiên này. `b24035b` bỏ dòng 280 và thêm
+  `tests/unit/core.scheduler.test.js`; sau gộp `node --check` hai tệp `scheduler.service.js`, `socket.js` đều sạch.
+  Hệ quả cho client: mọi phép đo cần backend sống đặt lịch trong khoảng ấy (ví dụ *đồng bộ từ khoá lên PostgreSQL* của
+  G61 / đề xuất từ khoá) **chưa đo được** vì lý do này, không phải vì client.
+- `core/socket.js` thêm `joined_admin_room` (phát riêng cho socket vừa vào phòng admin) và `admin_ping` (ack) —
+  chỉ cho Admin-web; **không** thêm sự kiện nào tới phòng `account_<id>`, client không đổi gì.
+- Admin-web: thẻ uptime, công tắc bảo trì tách khỏi API đo tải, Audit Log tự cập nhật qua socket — ngoài phạm vi client.
+
+Client **không đổi mã**, không đặt đơn mới.
+
 ### 🔀 Gộp `main` @ `a7c03b7` (2026-10-01, commit gộp `71234eb`) — backend trả lời bốn đơn, trung tâm vận hành Admin
 
 Chín commit, **không xung đột**, **không đụng `src/Client-app`** (27 tệp: Backend 14, Admin-web 8, tài liệu 5).
