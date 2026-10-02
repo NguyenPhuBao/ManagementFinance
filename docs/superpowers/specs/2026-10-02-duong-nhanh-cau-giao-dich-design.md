@@ -1,7 +1,8 @@
 # Đường nhanh cho câu giao dịch ở màn Trợ lý AI — tool chạy trước, Gemma chỉ viết câu — thiết kế
 
 **Ngày:** 2026-10-02. **Trạng thái:** 📝 người dùng **duyệt thiết kế trong chat** (ba lượt AskUserQuestion); bản viết này
-chờ người dùng đọc lại. Chưa có dòng mã nào.
+chờ người dùng đọc lại — hỏi lại ở phiên kế cùng ngày, người dùng đáp *"chưa đọc, để sau"* và chốt thêm hai chỗ
+(hàng 5–6 mục 2). Chưa có kế hoạch, chưa có dòng mã nào.
 
 Đi tiếp từ dự án B (mục 9.45 `docs/AI_EDGE_FEATURE.md`). Người dùng hỏi sau lượt đo Realme: *"có cách nào để giảm
 thời gian phản hồi không vì hiện tại đang quá lâu"*.
@@ -53,6 +54,8 @@ mục *Lương* thắng.
 | 2 | Phạm vi | **Chỉ câu giao dịch** (`truy_van_giao_dich`). Tám tool kia giữ nguyên, mở rộng sau khi đường nhanh đo đạt |
 | 3 | Hiển thị | **Gemma viết câu, giao diện như cũ.** Không đổi bố cục tin nhắn, không cần Stitch. Không chọn *"chỉ mẫu câu"* (ngược nguyên tắc *tính năng AI ở màn Trợ lý phải dùng mô hình*) |
 | 4 | Thiết kế tổng | **Duyệt** |
+| 5 | Tool **từ chối** trên đường nhanh (vd *"danh mục abc"*) | **Quay về đường cũ** (mục 3.1 bước 2) — chốt 2026-10-02 ở phiên sau, AskUserQuestion. Không chọn *"hiện lời từ chối ngay sau ~1 s"* |
+| 6 | Chữ **"khoản"** không kèm chiều (*"các khoản dưới 50k tháng này"*) | **Đường cũ** — chỉ chữ *"giao dịch"* tính là trung tính (mục 3.2). Chốt cùng lượt |
 
 ## 3. Luồng
 
@@ -191,9 +194,11 @@ Tám tool còn lại · hiện thẻ số liệu trước câu (đổi giao di�
 khi mở màn · thêm động từ mới vào danh sách chiều (*"ngốn", "xài", "trả"*) · sửa luật `congCuTheoCauHoi` lệch nhãn
 (việc mở của dự án B) · hạ ngưỡng bộ định tuyến học.
 
-## 11. Câu hỏi còn mở
+## 11. Hai câu hỏi từng mở — ✅ người dùng chốt 2026-10-02 (hàng 5–6 mục 2)
 
-- Tool từ chối trên đường nhanh hiện quay về đường cũ (thêm ~37 s để rồi nhận cùng lời *"không có danh mục tên abc"*).
-  Có thể hiện thẳng mẫu câu trung thực (L1b) sau ~1 s. Giữ lối an toàn cho tới khi có số đo.
-- Chữ "khoản" (*"các khoản dưới 50k"*) có nên tính là trung tính như "giao dịch" không — hôm nay không, vì *"khoản"*
-  đứng cả trong *"khoản thu"*, *"khoản vay"*.
+- Tool từ chối trên đường nhanh **quay về đường cũ** (thêm ~37 s để rồi thường nhận cùng lời *"không có danh mục tên
+  abc"*). Phương án không chọn: hiện thẳng mẫu câu trung thực (L1b) sau ~1 s — luật đọc nhầm tên thì Gemma mất cơ hội sửa.
+- Chữ "khoản" (*"các khoản dưới 50k"*) **không** tính là trung tính như "giao dịch", vì *"khoản"* đứng cả trong
+  *"khoản thu"*, *"khoản vay"* — câu ấy đi đường cũ.
+
+Không còn câu hỏi mở nào về thiết kế. Bản viết vẫn **chờ người dùng đọc lại** (dòng Trạng thái đầu tệp).
