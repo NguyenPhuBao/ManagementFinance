@@ -1892,7 +1892,7 @@ thì một trong hai phải chịu thiệt.
 |---|---|---|
 | Mất kết nối | Sau ngưỡng ổn định | "Không có kết nối — thay đổi vẫn được lưu trên máy" |
 | Đã kết nối lại | Sau ngưỡng ổn định | "Đã kết nối lại" |
-| Kết quả đồng bộ | `SyncEngine.pushResultStream` | "Đã đồng bộ xong" / "Một số thay đổi chưa lên được máy chủ" — câu sau **chỉ** khi server đã nhận rồi từ chối; cả batch không tới nơi (`transportFailed`: mất mạng, timeout, 5xx) thì **im** (A4, 2026-09-29 — trước đó câu ấy hiện ở mọi chu kỳ trên máy không tới được backend) |
+| Kết quả đồng bộ | `SyncEngine.pushResultStream` | **Chỉ khi thất bại**: "Một số thay đổi chưa lên được máy chủ". Thành công (và xung đột LWW) thì **im** từ 2026-10-02 — người dùng chốt; trước đó là viên "Đã đồng bộ xong" hiện sau mỗi lần ghi. Lượt thành công chỉ **gỡ** câu "chưa lên được" đang hiện (lần thử lại cuối chu kỳ đẩy được), gỡ theo nguồn nên không đụng toast mất mạng. Câu thất bại **chỉ** khi server đã nhận rồi từ chối; cả batch không tới nơi (`transportFailed`: mất mạng, timeout, 5xx) thì **im** (A4, 2026-09-29 — trước đó câu ấy hiện ở mọi chu kỳ trên máy không tới được backend) |
 | Chữ tự do (từ 2026-09-19) | `ThongBaoNhanh.stream` (`core/ui/thong_bao_nhanh.dart`, đăng ký ở `sl`) | Bất kỳ câu một dòng nào — hiện dùng cho "Nhấn lần nữa để thoát" (E3 của lượt UX). Bậc **thấp nhất**, nguồn riêng; tham số `thongBaoNhanh` mặc định rỗng nên chỗ dựng `AppToast` cũ không phải đổi |
 
 (Sự kiện thời gian thực là nguồn thứ tư về mặt mã — xem mục 5 và

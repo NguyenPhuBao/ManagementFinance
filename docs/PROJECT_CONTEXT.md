@@ -980,6 +980,27 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
+
+Người dùng cắm OnePlus 13R, nối backend dev qua `adb reverse tcp:3000` + bản debug trỏ `127.0.0.1` (dòng địa chỉ sửa
+tạm lúc build, **không commit**), đăng ký tài khoản mới (`quangdat`, id 26; OTP đọc từ dòng `[MOCK EMAIL]` của log
+backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
+
+- **G62 — hàng sáu ô OTP tràn 6,9 px** ở 361 dp. Sáu `SizedBox(width: 45)` cứng → widget chung **`HangOOtp`**
+  (`auth/presentation/widgets/`), dùng ở cả `register_otp_page.dart` lẫn `otp_page.dart`. Chi tiết ở mục G62
+  `CLIENT_APP_KNOWN_GAPS.md`.
+- **Đồng bộ thành công thì KHÔNG hiện toast** — *"mỗi lần đồng bộ xong không cần thông báo, chỉ thông báo khi thất
+  bại"*. `AppToast._khiDayXong` bỏ viên *"Đã đồng bộ xong"*; chỉ còn *"Một số thay đổi chưa lên được máy chủ"* (khi
+  `failed > 0` và không `transportFailed`). ⚠️ Lượt thành công vẫn làm **một** việc: **gỡ** câu *"chưa lên được"* đang
+  hiện — `SyncEngine` phát kết quả lần đẩy đầu trước Pull rồi phát kết quả lần thử lại ở cuối, nên thất bại tạm thời
+  tới toast hai lượt và lượt sau lọt thì câu ấy hết đúng. Gỡ theo **nguồn** (`_Nguon.dongBo`), không theo bậc — toast
+  mất mạng mang bậc đồng bộ. Hệ quả: *"Đã kết nối lại"* không còn bị viên đồng bộ nuốt. Bảng toast ở
+  `NOTIFICATION_FEATURE.md` đã sửa.
+
+`flutter test` **5193/5193** (4 skip; +6 ca OTP, +5 ca ở `app_toast_test`; hai ca cũ viết lại và các ca thứ tự ưu tiên
+đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
+⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
+
 ### 🔀 Gộp `main` @ `573969f` (2026-10-02, commit gộp `fb9e3c0`) — sửa lỗi cú pháp scheduler, uptime Admin-web
 
 Ba commit NPBao (`1c4c584`, `959cb9d`, `b24035b`) qua ba PR #106–#108, **không xung đột**, **không đụng
