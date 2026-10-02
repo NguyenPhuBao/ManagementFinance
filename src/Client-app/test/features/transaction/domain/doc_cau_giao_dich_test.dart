@@ -45,6 +45,47 @@ void main() {
       test('"${e.key}"', () => expect(doc(e.key).soTien, e.value, reason: e.key));
     }
 
+    group('đơn vị TỶ sau chữ số (2026-10-02 — trước đó chỉ "một tỷ" viết bằng chữ đọc được)', () {
+      const ty = {
+        'mua nhà 2 tỷ': 2e9,
+        'mua nhà 2 tỉ': 2e9,
+        'mua nha 2 ty': 2e9,
+        'mua nha 2ty': 2e9,
+        'mua đất 1,5 tỷ': 1.5e9,
+        'mua đất 1.5 tỉ': 1.5e9,
+        'xe 1ty2': 1.2e9,
+        'xe 1ty25': 1.25e9,
+        'xe 1ty250': 1.25e9,
+      };
+      for (final e in ty.entries) {
+        test('"${e.key}"', () => expect(doc(e.key).soTien, e.value, reason: e.key));
+      }
+
+      test('⚠️ "tí" không phải "tỉ": câu CÓ DẤU thì đơn vị phải đúng dấu', () {
+        expect(doc('mua 2 tí kẹo').soTien, isNull,
+            reason: 'bỏ dấu thì "tí" = "ti" = tỉ — "2 tí kẹo" thành hai tỷ đồng');
+        expect(doc('mua 2 tí kẹo 5k').soTien, 5000);
+        expect(cachDocSoTien('mua 2 tí kẹo', now: now), isEmpty,
+            reason: 'lớp kiểm số của AI cũng không được nhận cách đọc ấy');
+      });
+
+      test('"thu 2 tỷ" là thu hai tỷ, không phải thứ Hai', () {
+        final r = doc('thu 2 ty tien ban nha');
+        expect((r.soTien, r.ngay), (2e9, null));
+      });
+
+      test('vượt trần 13 chữ số → không đọc', () {
+        expect(doc('gom 20000 tỷ').soTien, isNull);
+      });
+
+      test('cách đọc cho lớp kiểm AI: "1 tỷ 2" = 1,2 tỷ, "2 tỷ rưỡi" có 2,5 tỷ… như triệu', () {
+        expect(cachDocSoTien('xe 1 tỷ 2', now: now), contains(1.2e9));
+        expect(cachDocSoTien('xe 1 ty 2', now: now), contains(1.2e9));
+        expect(cachDocSoTien('xe 1ty2', now: now), contains(1.2e9));
+        expect(cachDocSoTien('nhà 2 tỷ', now: now), contains(2e9));
+      });
+    });
+
     test('"2 ly cà phê" → không đọc: số trần dưới 1.000 là số lượng', () {
       expect(doc('2 ly cà phê').soTien, isNull);
     });

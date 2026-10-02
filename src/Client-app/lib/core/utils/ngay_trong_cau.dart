@@ -50,7 +50,7 @@ const Map<String, int> _thuChu = {'hai': 1, 'ba': 2, 'tu': 3, 'nam': 4, 'sau': 5
 
 final RegExp _mauThu = RegExp(r'(?<![a-z0-9])thu ([2-7]|hai|ba|tu|nam|sau|bay)(?![a-z0-9])');
 final RegExp _mauChuNhat = RegExp(r'(?<![a-z0-9])(?:chu nhat|cn)(?![a-z0-9])');
-final RegExp _sauLaDonViTien = RegExp(r'^\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi|tram)(?![a-z])');
+final RegExp _sauLaDonViTien = RegExp(r'^\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi|tram|ty|ti)(?![a-z])');
 final RegExp _mauNgay = RegExp(r'(?:(?<![a-z0-9])ngay\s+)?(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}))?(?![\d/])');
 
 /// *đầu tháng* / *đầu tháng này* → ngày 1 tháng này; *đầu tháng trước* → ngày 1 tháng trước (người dùng chốt 2026-09-30,

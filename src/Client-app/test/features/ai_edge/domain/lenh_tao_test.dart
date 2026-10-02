@@ -145,6 +145,13 @@ void main() {
         expect((l.ten, l.soTienDich, l.han), ('mua xe', 50000000.0, DateTime(2027, 6, 30)));
         expect(l.duongDan, '/goals/add?name=mua+xe&target=50000000&deadline=2027-06-30');
       });
+      test('đơn vị TỶ: "mua nhà 2 tỷ" → 2.000.000.000 đ trên thẻ và trong đường dẫn form', () {
+        final l = doc('tạo mục tiêu mua nhà 2 tỷ trước tháng 6 năm sau') as LenhTaoMucTieu;
+        expect((l.ten, l.soTienDich), ('mua nhà', 2e9));
+        expect(l.duongDan, contains('target=2000000000'));
+        expect(tomTatLenhTao(l).chiTiet.first, '2.000.000.000 đ');
+        expect((doc('tao muc tieu mua nha 1,5 ty') as LenhTaoMucTieu).soTienDich, 1.5e9, reason: 'gõ không dấu');
+      });
       test('"đến tháng 2" khi tháng 2 năm nay đã qua → năm sau', () {
         expect((doc('tạo mục tiêu du lịch 10tr đến tháng 2') as LenhTaoMucTieu).han, DateTime(2027, 2, 28));
       });

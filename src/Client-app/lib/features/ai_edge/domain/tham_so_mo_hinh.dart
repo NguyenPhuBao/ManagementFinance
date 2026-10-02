@@ -32,7 +32,7 @@ String? thamSoTen(Object? v) {
 
 /// Một con số kèm đơn vị tiền, đơn vị đứng TRỌN từ ("2 kg", "1 trà" không phải).
 final RegExp _soKemDonVi =
-    RegExp(r'\d[\d.,]*\s*(k|nghin|ngan|tr|trieu|cu|d|dong|vnd)(?![a-z0-9])');
+    RegExp(r'\d[\d.,]*\s*(k|nghin|ngan|tr|trieu|cu|ty|ti|d|dong|vnd)(?![a-z0-9])');
 final RegExp _chiGomSo = RegExp(r'^[\d.,\s]+$');
 final RegExp _coChuSo = RegExp(r'\d');
 

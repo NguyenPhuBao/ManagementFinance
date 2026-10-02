@@ -178,10 +178,11 @@ const String kCanhBaoSoChuChuaRo = 'Số tiền viết bằng chữ chưa rõ �
 typedef _Khoang = ({int batDau, int ketThuc});
 typedef _CumTien = ({int batDau, int ketThuc, double giaTri, bool lit});
 
-/// Số + đơn vị trên câu đã bỏ dấu: `45k`, `45 nghìn`, `2tr`, `1tr2`, `1,2 triệu`, `2 củ`, `2 lít`, `3 xị`. Nhóm 3 là
-/// phần lẻ dính liền sau `tr` (`1tr2`, `1tr25`, `1tr200`).
+/// Số + đơn vị trên câu đã bỏ dấu: `45k`, `45 nghìn`, `2tr`, `1tr2`, `1,2 triệu`, `2 củ`, `2 lít`, `3 xị`, `2 tỷ`,
+/// `1,5 tỉ`. Nhóm 3 là phần lẻ dính liền sau `tr` / `ty` (`1tr2`, `1tr25`, `1tr200`, `1ty2`).
+/// ⚠️ `ty` / `ti` khớp trên chữ ĐÃ BỎ DẤU nên phải qua [_donViDungDau] — *"2 tí kẹo"* bỏ dấu là `2 ti`.
 final RegExp _mauSoDonVi = RegExp(
-  r'(?<![\p{L}\p{N}.,/])(\d+(?:[.,]\d+)?)\s*(trieu|tr|cu|nghin|ngan|k|lit|xi)(\d{1,3})?(?![\p{L}\p{N}])',
+  r'(?<![\p{L}\p{N}.,/])(\d+(?:[.,]\d+)?)\s*(trieu|tr|cu|nghin|ngan|k|lit|xi|ty|ti)(\d{1,3})?(?![\p{L}\p{N}])',
   unicode: true,
 );
 
@@ -212,7 +213,23 @@ const Map<String, double> _giaTriDonVi = {
   'k': 1000,
   'lit': 100000,
   'xi': 100000,
+  'ty': 1000000000,
+  'ti': 1000000000,
 };
+
+const Set<String> _donViTy = {'ty', 'ti'};
+const Set<String> _chuTyHopLe = {'tỷ', 'tỉ', 'ty', 'ti'};
+
+/// Đơn vị của cụm [m] (khớp trên chữ bỏ dấu) có đúng là nó trên câu gốc [s] không. Chỉ *tỷ / tỉ* cần xét: dạng bỏ dấu
+/// `ti` trùng với *tí* (*"mua 2 tí kẹo"*), *tì*, *tị*. Người gõ không dấu viết `ty` / `ti` trần thì nhận.
+bool _donViDungDau(String s, RegExpMatch m, String dv) {
+  if (!_donViTy.contains(dv)) return true;
+  final chu = _tu.firstMatch(s.substring(m.start, m.end).toLowerCase())?.group(0);
+  return _chuTyHopLe.contains(chu);
+}
+
+/// Phần lẻ dính liền sau đơn vị (`1tr2` = 1,2 triệu; `1ty25` = 1,25 tỷ): [le] chữ số đọc là phần thập phân của đơn vị.
+double _phanLe(String le, double donVi) => int.parse(le) * donVi / const [1, 10, 100, 1000][le.length];
 
 /// Chữ đứng ngay trước số tiền mà không mang nghĩa gì cho ghi chú (*"ăn phở hết 45k"*). ⚠️ `mat` không dấu cố ý vắng:
 /// đó còn là *mặt* của *"tiền mặt"*.
@@ -477,11 +494,12 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
   for (final m in _mauSoDonVi.allMatches(b)) {
     if (trungNgay(m.start, m.end)) continue;
     final dv = m.group(2)!;
+    if (!_donViDungDau(s, m, dv)) continue;
     final le = m.group(3);
     var gt = double.parse(m.group(1)!.replaceAll(',', '.')) * _giaTriDonVi[dv]!;
     if (le != null) {
-      if (dv == 'tr') {
-        gt += int.parse(le) * const [0, 100000, 10000, 1000][le.length];
+      if (dv == 'tr' || _donViTy.contains(dv)) {
+        gt += _phanLe(le, _giaTriDonVi[dv]!);
       } else if (dv == 'k' && le.length == 1) {
         gt += int.parse(le) * 100;
       } else {
@@ -493,8 +511,10 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
   }
 
   for (final m in _mauTrieuLe.allMatches(b)) {
-    if (trungNgay(m.start, m.end)) continue;
-    kq.add(int.parse(m.group(1)!) * 1e6 + int.parse(m.group(2)!) * 1e5);
+    final dv = m.group(2)!;
+    if (trungNgay(m.start, m.end) || !_donViDungDau(s, m, dv)) continue;
+    final donVi = _giaTriDonVi[dv]!;
+    kq.add(int.parse(m.group(1)!) * donVi + int.parse(m.group(3)!) * donVi / 10);
     daPhu.add((batDau: m.start, ketThuc: m.end));
   }
 
@@ -527,9 +547,9 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
   return {for (final v in kq) if (v >= 1000 && v < 1e13) v};
 }
 
-/// *"2 triệu 5"*, *"2 tr 5"*, *"2 củ 5"* — một chữ số lẻ tách bằng dấu cách, không kèm đơn vị riêng.
+/// *"2 triệu 5"*, *"2 tr 5"*, *"2 củ 5"*, *"1 tỷ 2"* — một chữ số lẻ tách bằng dấu cách, không kèm đơn vị riêng.
 final RegExp _mauTrieuLe = RegExp(
-  r'(?<![\p{L}\p{N}.,/])(\d+)\s*(?:trieu|tr|cu)\s+(\d)(?![\p{L}\p{N}.,/])(?!\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi)(?![a-z]))',
+  r'(?<![\p{L}\p{N}.,/])(\d+)\s*(trieu|tr|cu|ty|ti)\s+(\d)(?![\p{L}\p{N}.,/])(?!\s*(?:k|nghin|ngan|tr|trieu|cu|lit|xi|ty|ti)(?![a-z]))',
   unicode: true,
 );
 final RegExp _bacCuoi = RegExp(r'(nghin|ngan|trieu|ty|ti)\s*$');
@@ -721,10 +741,11 @@ _CumTien? _chonSoTien(
 
   for (final m in _mauSoDonVi.allMatches(b)) {
     final dv = m.group(2)!;
+    if (!_donViDungDau(s, m, dv)) continue;
     final le = m.group(3);
-    if (le != null && dv != 'tr') continue; // "2k5" — không chắc thì không đọc
+    if (le != null && dv != 'tr' && !_donViTy.contains(dv)) continue; // "2k5" — không chắc thì không đọc
     var gt = double.parse(m.group(1)!.replaceAll(',', '.')) * _giaTriDonVi[dv]!;
-    if (le != null) gt += int.parse(le) * const [0, 100000, 10000, 1000][le.length];
+    if (le != null) gt += _phanLe(le, _giaTriDonVi[dv]!);
     if (trungNgay(m.start, m.end)) continue;
     cum.add((batDau: m.start, ketThuc: m.end, giaTri: gt, lit: dv == 'lit' || dv == 'xi'));
   }
