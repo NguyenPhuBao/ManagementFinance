@@ -175,6 +175,16 @@ class NotificationScanner {
   /// dùng vừa chạm thông báo tóm tắt là đang chờ thấy dòng ấy). `null` thì bỏ qua.
   final NhapBienDong? nhapBienDong;
 
+  /// Chia sẻ biên lai (2026-10-02): ghi cờ *"máy đang có tài khoản đăng nhập"* phía native (`KenhBienDong.datCoPhien`)
+  /// — `true` ở [start], `false` ở [stop]. `NhanBienLaiActivity` chỉ nhận ảnh khi cờ bật: hàng chờ biên lai gắn MÁY,
+  /// không có phiên thì không biết biên lai thuộc về ai. `null` thì bỏ qua.
+  final Future<void> Function(bool co)? datCoPhien;
+
+  /// Chia sẻ biên lai — chế độ THU MẪU, chỉ nối ở bản debug (DI truyền khi `kDebugMode`): in hình dạng đã che của chữ
+  /// trên các biên lai đang chờ (`thuMauBienLai`). Chạy trước lượt nhập ở [start] và mỗi lần quay lại từ nền. `null`
+  /// (bản release, test) thì bỏ qua.
+  final Future<void> Function()? thuMauBienLai;
+
   /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
   /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
   static const Duration giuBienDong = Duration(days: 30);
@@ -253,6 +263,8 @@ class NotificationScanner {
     this.resyncLich,
     this.nhapHangCho,
     this.nhapBienDong,
+    this.datCoPhien,
+    this.thuMauBienLai,
     this.nhatKy,
     this.eventDao,
     DateTime Function()? clock,
@@ -286,6 +298,12 @@ class NotificationScanner {
     // nuốt lỗi như mọi bước dọn dẹp ở đây.
     try {
       await nhapHangCho?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    // Chia sẻ biên lai: từ đây máy có phiên — activity nhận ảnh được phép cất biên lai.
+    try {
+      await datCoPhien?.call(true);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
@@ -345,6 +363,11 @@ class NotificationScanner {
   /// lỗi như mọi bước phụ ở đây.
   Future<void> _nhapBienDong(int idaccount) async {
     try {
+      await thuMauBienLai?.call();
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    try {
       await nhapBienDong?.nhap(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý.
@@ -387,6 +410,10 @@ class NotificationScanner {
     // không còn ai đã đồng ý, dịch vụ phải thôi đọc và thôi bắn tóm tắt.
     try {
       await nhapBienDong?.tatDocMay();
+    } catch (_) {}
+    // Chia sẻ biên lai: hết phiên thì activity nhận ảnh từ chối — không cất biên lai không biết của ai.
+    try {
+      await datCoPhien?.call(false);
     } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {

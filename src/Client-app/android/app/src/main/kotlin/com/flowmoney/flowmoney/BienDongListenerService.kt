@@ -87,6 +87,55 @@ class BienDongListenerService : NotificationListenerService() {
         fun huyTomTat(context: Context) {
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_TOM_TAT)
         }
+
+        /**
+         * Số khoản đang chờ nhập: tin ngân hàng (D1) + biên lai người dùng chia sẻ
+         * (`NhanBienLaiActivity`, 2026-10-02). MỘT phép đếm cho cả hai nơi bắn tóm
+         * tắt — đếm riêng từng nơi thì con số nhảy lùi khi nguồn kia bắn sau.
+         */
+        fun soDangCho(context: Context): Int {
+            fun dem(ten: String): Int {
+                val f = File(context.filesDir, ten)
+                return if (f.exists()) f.readLines().count { it.isNotBlank() } else 0
+            }
+            return dem(TEP_HANG_CHO) + dem(NhanBienLaiActivity.TEP_HANG_CHO)
+        }
+
+        /**
+         * MỘT thông báo id cố định, nội dung không số tiền, không tên người gửi —
+         * "Có N biến động số dư mới — chạm để ghi". Chạm mở `MainActivity` kèm extra
+         * [EXTRA_MO_TU_TOM_TAT]; Dart nhập hai hàng chờ ở `NotificationScanner.start`
+         * / `resumed` rồi gọi [huyTomTat]. Gọi từ dịch vụ này (tin ngân hàng) và từ
+         * `NhanBienLaiActivity` (biên lai được chia sẻ).
+         */
+        fun baoTomTat(context: Context) {
+            val soDong = soDangCho(context)
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(
+                    NotificationChannel(KENH_TOM_TAT, "Biến động số dư", NotificationManager.IMPORTANCE_DEFAULT)
+                )
+            }
+            val mo = Intent(context, MainActivity::class.java).apply {
+                putExtra(EXTRA_MO_TU_TOM_TAT, true)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            var co = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) co = co or PendingIntent.FLAG_IMMUTABLE
+            val pi = PendingIntent.getActivity(context, ID_TOM_TAT, mo, co)
+
+            @Suppress("DEPRECATION")
+            val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, KENH_TOM_TAT)
+            else Notification.Builder(context)
+            val tb = b.setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("FlowMoney")
+                .setContentText("Có $soDong biến động số dư mới — chạm để ghi")
+                .setContentIntent(pi)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(true)
+                .build()
+            nm.notify(ID_TOM_TAT, tb)
+        }
     }
 
     /**
@@ -127,7 +176,7 @@ class BienDongListenerService : NotificationListenerService() {
                 .toString()
             val tep = File(filesDir, TEP_HANG_CHO)
             tep.appendText(dong + "\n")
-            baoTomTat(tep.readLines().count { it.isNotBlank() })
+            baoTomTat(this)
         } catch (_: Exception) {
             // Nuốt có chủ ý: một tin hỏng không được làm dịch vụ hệ thống văng.
         }
@@ -159,38 +208,4 @@ class BienDongListenerService : NotificationListenerService() {
         "ngay", "ngày", "gio", "giờ", "noi", "nội", "dung", "giao", "dich", "dịch", "bien", "biến", "dong", "động",
         "thoi", "thời", "gian", "phat", "phát", "sinh", "ghi", "no", "nợ", "co", "có", "vi", "ví", "đ",
     )
-
-    /**
-     * MỘT thông báo id cố định, nội dung không số tiền, không tên người gửi —
-     * "Có N biến động số dư mới — chạm để ghi". Chạm mở `MainActivity` kèm extra
-     * [EXTRA_MO_TU_TOM_TAT]; Dart nhập hàng chờ ở `NotificationScanner.start`
-     * / `resumed` rồi gọi [huyTomTat].
-     */
-    private fun baoTomTat(soDong: Int) {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(
-                NotificationChannel(KENH_TOM_TAT, "Biến động số dư", NotificationManager.IMPORTANCE_DEFAULT)
-            )
-        }
-        val mo = Intent(this, MainActivity::class.java).apply {
-            putExtra(EXTRA_MO_TU_TOM_TAT, true)
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
-        var co = PendingIntent.FLAG_UPDATE_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) co = co or PendingIntent.FLAG_IMMUTABLE
-        val pi = PendingIntent.getActivity(this, ID_TOM_TAT, mo, co)
-
-        @Suppress("DEPRECATION")
-        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, KENH_TOM_TAT)
-        else Notification.Builder(this)
-        val tb = b.setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("FlowMoney")
-            .setContentText("Có $soDong biến động số dư mới — chạm để ghi")
-            .setContentIntent(pi)
-            .setOnlyAlertOnce(true)
-            .setAutoCancel(true)
-            .build()
-        nm.notify(ID_TOM_TAT, tb)
-    }
 }

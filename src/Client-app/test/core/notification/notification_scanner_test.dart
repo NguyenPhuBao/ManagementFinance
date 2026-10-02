@@ -180,6 +180,7 @@ void main() {
     void Function()? onNapKeHoach,
     NhapHangCho? nhapHangCho,
     NhapBienDong? nhapBienDong,
+    Future<void> Function(bool co)? datCoPhien,
     NhatKyThongBao? nhatKy,
     NotificationEventDao? eventDao,
     Set<String>? viDaDung,
@@ -216,6 +217,7 @@ void main() {
       resyncLich: onResyncLich,
       nhapHangCho: nhapHangCho,
       nhapBienDong: nhapBienDong,
+      datCoPhien: datCoPhien,
       nhatKy: nhatKy,
       eventDao: eventDao,
       clock: () => now,
@@ -325,6 +327,18 @@ void main() {
           for (final h in await db.notificationDao.getAll(accountId))
             if (h.kind == NotificationKind.bienDongSoDu.name) h,
         ];
+
+    test('chia sẻ biên lai: start bật cờ phiên phía native, stop tắt — kể cả khi kênh ném', () async {
+      final goi = <bool>[];
+      final scanner = dungScanner(datCoPhien: (co) async {
+        goi.add(co);
+        throw StateError('kênh hỏng');
+      });
+      await scanner.start(accountId);
+      expect(goi, [true], reason: 'chưa bật cờ thì NhanBienLaiActivity từ chối mọi biên lai dù đã đăng nhập');
+      await scanner.stop();
+      expect(goi, [true, false], reason: 'không tắt thì người đăng nhập sau nhận biên lai của người trước');
+    });
 
     test('D1: start() nhập tệp hàng chờ biến động → hàng loại 20; app quay lại từ nền cũng nhập', () async {
       final tam = await Directory.systemTemp.createTemp('scanner_bien_dong_');

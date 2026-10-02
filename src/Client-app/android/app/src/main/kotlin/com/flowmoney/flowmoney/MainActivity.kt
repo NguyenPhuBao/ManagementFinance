@@ -34,7 +34,9 @@ import java.io.IOException
  * Kênh `flowmoney/bien_dong` — đọc biến động số dư trên máy (D1, 2026-09-30):
  * `coQuyen` (Cài đặt "Truy cập thông báo" đã bật cho app chưa), `moCaiDat`,
  * `moTuThongBao` (lần mở này có đến từ thông báo tóm tắt không — đọc là tiêu),
- * `huyTomTat`, `datBat` (cờ bật/tắt của `BienDongListenerService`). Xem
+ * `huyTomTat`, `datBat` (cờ bật/tắt của `BienDongListenerService`),
+ * `datCoPhien` (máy đang có tài khoản đăng nhập không — `NhanBienLaiActivity`
+ * chỉ nhận biên lai được chia sẻ khi cờ bật, 2026-10-02). Xem
  * `lib/core/notification/kenh_bien_dong.dart`.
  */
 class MainActivity : FlutterActivity() {
@@ -102,6 +104,10 @@ class MainActivity : FlutterActivity() {
                         }
                         "datBat" -> {
                             BienDongListenerService.datBat(this, call.argument<Boolean>("bat") ?: false)
+                            ket.success(null)
+                        }
+                        "datCoPhien" -> {
+                            NhanBienLaiActivity.datCoPhien(this, call.argument<Boolean>("co") ?: false)
                             ket.success(null)
                         }
                         else -> ket.notImplemented()

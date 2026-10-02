@@ -38,6 +38,10 @@ abstract class KenhBienDong {
   /// Bật / tắt dịch vụ Kotlin (cờ `SharedPreferences` phía native). Tắt thì dịch
   /// vụ thôi đọc dù quyền hệ thống vẫn còn.
   Future<void> datBat(bool bat);
+
+  /// Chia sẻ biên lai (2026-10-02): máy đang có tài khoản đăng nhập không (cờ phía native). `NhanBienLaiActivity`
+  /// chỉ nhận ảnh khi cờ bật — hàng chờ gắn máy, không có phiên thì không biết biên lai thuộc về ai.
+  Future<void> datCoPhien(bool co);
 }
 
 class KenhBienDongAndroid implements KenhBienDong {
@@ -107,6 +111,15 @@ class KenhBienDongAndroid implements KenhBienDong {
       // Bỏ qua có chủ ý.
     }
   }
+
+  @override
+  Future<void> datCoPhien(bool co) async {
+    try {
+      await _kenh.invokeMethod<void>('datCoPhien', {'co': co});
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
 }
 
 /// Nền tảng không có tầng Kotlin (web, máy ảo không phải Android, test): không
@@ -128,4 +141,6 @@ class KenhBienDongTrong implements KenhBienDong {
   Future<void> huyTomTat() async {}
   @override
   Future<void> datBat(bool bat) async {}
+  @override
+  Future<void> datCoPhien(bool co) async {}
 }

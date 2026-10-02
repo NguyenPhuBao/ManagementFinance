@@ -80,11 +80,14 @@ import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
 import '../notification/nhap_bien_dong.dart';
+import '../notification/nhap_bien_lai.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
 import '../notification/prefs/notification_prefs_store.dart';
+import '../ocr/doc_chu_anh.dart';
+import '../ocr/doc_chu_anh_mlkit.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -411,6 +414,9 @@ Future<void> setupDependencies() async {
           ? const KenhBienDongAndroid()
           : const KenhBienDongTrong());
 
+  // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
+  sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -539,6 +545,12 @@ Future<void> setupDependencies() async {
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         datBat: (bat) => sl<KenhBienDong>().datBat(bat),
       ),
+      // Chia sẻ biên lai: cờ "máy đang có phiên" phía native — xem `NhanBienLaiActivity`.
+      datCoPhien: (co) => sl<KenhBienDong>().datCoPhien(co),
+      // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
+      thuMauBienLai: kDebugMode
+          ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
+          : null,
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),
       eventDao: sl<AppDatabase>().notificationEventDao,

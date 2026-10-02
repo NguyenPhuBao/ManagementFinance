@@ -83,6 +83,26 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- Chia sẻ biên lai (2026-10-02): mục "Ghi vào FlowMoney" trong bảng
+             chia sẻ của app ngân hàng / ví. Activity KHÔNG giao diện: chép ảnh,
+             báo Toast + thông báo tóm tắt rồi đóng — người dùng VẪN Ở app ngân
+             hàng (người dùng chốt). Thiếu category DEFAULT thì bảng chia sẻ không
+             liệt kê app; không exported thì app khác không gửi tới được — cả hai
+             im lặng. `bien_lai_noi_day_test.dart` canh. -->
+        <activity
+            android:name=".NhanBienLaiActivity"
+            android:exported="true"
+            android:label="Ghi vào FlowMoney"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="image/*"/>
+            </intent-filter>
+        </activity>
         <!-- BA receiver của flutter_local_notifications. Thiếu cái nào cũng
              hỏng im lặng — không exception, không log, không một dòng trong
              logcat — nên `android_manifest_receivers_test.dart` canh cả ba.

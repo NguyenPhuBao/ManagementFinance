@@ -47,6 +47,8 @@ class _KenhGia implements KenhBienDong {
   Future<void> huyTomTat() async {}
   @override
   Future<void> datBat(bool bat) async => datBatGoi.add(bat);
+  @override
+  Future<void> datCoPhien(bool co) async {}
 }
 
 /// Trang hỏi quyền thông báo của hệ điều hành lúc mở (công tắc tổng mặc định bật) — ngoài phạm vi
