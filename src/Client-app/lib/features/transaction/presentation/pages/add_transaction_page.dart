@@ -28,7 +28,9 @@ import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
 import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
+import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
+import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -70,6 +72,12 @@ class AddTransactionPage extends StatefulWidget {
   /// `null` → trang tự học từ SQLite trong CÙNG lượt đọc sổ của [viHayDung]. Ca test tiêm thẳng mô hình để khỏi
   /// dựng CSDL, đúng khuôn [viHayDung].
   final BoPhanLoaiGhiChu? boPhanLoai;
+
+  /// Mô hình gợi ý danh mục theo SỐ TIỀN (dự án C, `category/domain/phan_loai_so_tien.dart`) — nguồn thứ ba của thẻ gợi
+  /// ý, dùng khi ghi chú trống hoặc B1 lẫn từ khoá đều im.
+  ///
+  /// `null` → trang tự học từ SQLite trong CÙNG lượt đọc sổ của [viHayDung]. Ca test tiêm thẳng, đúng khuôn [boPhanLoai].
+  final BoPhanLoaiSoTien? boSoTien;
 
   /// Nơi ghi phản hồi thẻ gợi ý (B1). `null` → `sl<GoiYPhanHoiStore>()` nếu đã đăng ký; ca test tiêm bản trong bộ
   /// nhớ. Không có store nào thì trang vẫn gợi ý, chỉ không ghi và không thôi gợi ý.
@@ -126,6 +134,7 @@ class AddTransactionPage extends StatefulWidget {
     this.huongBanDau,
     this.viHayDung,
     this.boPhanLoai,
+    this.boSoTien,
     this.phanHoiGoiY,
     this.docAi,
     this.bienDong,
@@ -168,6 +177,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
   Set<(String, String)> _tatCap = const {};
+
+  /// Mô hình học theo số tiền (dự án C); `null` khi chưa nạp xong hoặc học lỗi — khi ấy thẻ chỉ còn B1 / từ khoá.
+  BoPhanLoaiSoTien? _boSoTien;
+
+  /// Cặp (mã bậc, danh mục) của nguồn số tiền đang bị thôi gợi ý (`tatCapSoTienTu`).
+  Set<(String, String)> _tatCapSoTien = const {};
+
+  /// Cặp người dùng vừa bấm *Bỏ qua* trong lượt mở màn này. Thẻ nguồn số tiền tính lại ở MỖI phím số, nên thiếu tập
+  /// này thì bấm Bỏ qua xong gõ thêm một chữ số cùng bậc là thẻ bật lại ngay (cùng nếp [_boQuaLuotNay]).
+  final Set<(String, String)> _boQuaSoTienLuotNay = {};
 
   /// Cặp (cụm, danh mục) đang bị thôi ĐỀ XUẤT TỪ KHOÁ — tập riêng của nguồn `kNguonDeXuatTuKhoa` (spec 2026-09-30 §2.4).
   Set<(String, String)> _tatCapTuKhoa = const {};
@@ -464,17 +483,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
   Future<void> _napTatCap() async {
     final bo = _boPhanLoai;
+    final boTien = _boSoTien;
     final store = _phanHoiStore;
     final id = _accountId();
-    if (bo == null || store == null || id == null) return;
+    // Hai mô hình độc lập: B1 học lỗi (`null`) không được kéo theo việc bỏ nạp tập tắt của nguồn số tiền.
+    if ((bo == null && boTien == null) || store == null || id == null) return;
     try {
       final phanHoi = await store.doc(id);
-      final tat = tatCapTu(phanHoi, bo.mau);
-      final tatTuKhoa = tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
+      final tat = bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, bo.mau);
+      final tatTuKhoa =
+          bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
+      final tatTien = boTien == null ? const <(String, String)>{} : tatCapSoTienTu(phanHoi, boTien.mau);
       if (mounted) {
         setState(() {
           _tatCap = tat;
           _tatCapTuKhoa = tatTuKhoa;
+          _tatCapSoTien = tatTien;
         });
       }
     } catch (e) {
@@ -650,6 +674,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _loadViHayDung() async {
     // Đặt TRƯỚC mọi nhánh thoát sớm: ca test tiêm mô hình cùng lúc tiêm `wallets`.
     if (widget.boPhanLoai != null) _boPhanLoai = widget.boPhanLoai;
+    if (widget.boSoTien != null) _boSoTien = widget.boSoTien;
     final tiem = widget.viHayDung;
     if (tiem != null) {
       _viHayDung = tiem;
@@ -676,10 +701,33 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         bo = null;
       }
     }
+    // Dự án C: mô hình theo số tiền, học từ CÙNG lượt đọc sổ. `getAll` đã bỏ hàng có `deletedAt`; `isDeleted` là cờ
+    // xoá mềm thứ hai của bảng — mẫu học không được chứa khoản người dùng đã bỏ.
+    BoPhanLoaiSoTien? boTien = widget.boSoTien;
+    if (boTien == null) {
+      try {
+        boTien = BoPhanLoaiSoTien.hoc(mauSoTienTu([
+          for (final t in txs)
+            (
+              loai: t.type,
+              categoryId: t.categoryId,
+              ghiChu: t.note,
+              soTien: t.amount,
+              walletId: t.walletId,
+              ngay: t.date,
+              daXoa: t.isDeleted,
+            ),
+        ]));
+      } catch (e) {
+        debugPrint('[GoiYDanhMuc] học mô hình số tiền lỗi: $e');
+        boTien = null;
+      }
+    }
     if (mounted) {
       setState(() {
         _viHayDung = bang;
         _boPhanLoai = bo;
+        _boSoTien = boTien;
         // Đường sửa: mẫu của CHÍNH giao dịch đang sửa phải ra khỏi phép đếm — hàm đề xuất cộng bản đang gõ vào.
         _mauDeXuat = dangSua == null
             ? null
@@ -708,6 +756,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       }
     });
     unawaited(_tinhDeXuat());
+    // Đoạn Chi / Thu là thông tin CHIỀU duy nhất của gợi ý theo số tiền (dự án C): đổi đoạn là đổi tập mẫu được học.
+    _henGoiYTheoForm();
   }
 
   /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
@@ -864,6 +914,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         lyDo: lyDo,
       );
     });
+    // Ô Nhập nhanh điền xong mà danh mục còn trống → nguồn số tiền được thử (dự án C). Form biến động thì hàm tự thoát.
+    _henGoiYTheoForm();
   }
 
   /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
@@ -874,25 +926,91 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Timer? _hoanGoiY;
   static const Duration _doTreGoiY = Duration(milliseconds: 300);
 
+  /// Số tiền đang trên màn dưới dạng MỘT con số, hoặc `null` khi chưa có (0) hay phép tính còn dở (`"30000+"`). Phép
+  /// tính đủ hai vế tính trên TỔNG — bàn phím không có phím `=`, biểu thức nằm nguyên tới lúc lưu (spec dự án C 3.1).
+  double? _soTienDangCo() {
+    if (coToanTu(_amountString) && !coPhepToanDangCho(_amountString)) return null;
+    final x = ketQuaBieuThuc(_amountString);
+    return x > 0 ? x : null;
+  }
+
+  /// Nguồn số tiền có được dùng ở lượt mở màn này không — MỘT định nghĩa cho cả chỗ hẹn lẫn chỗ đoán: đã có mô hình,
+  /// không ở chế độ sửa, không phải form biến động số dư (người dùng không chọn hai chỗ ấy cho lần này — spec mục 2
+  /// hàng 4). Hai chỗ mỗi nơi một bản chép thì bỏ một vế ở MỘT chỗ vẫn xanh (đo bằng bản sai 2026-10-02).
+  bool get _coNguonSoTien => _boSoTien != null && !_isEditing && _bienDong == null;
+
+  /// Dự án C — hẹn tính lại thẻ gợi ý khi một tín hiệu của nguồn SỐ TIỀN đổi (số tiền, ví, ngày, đoạn). Dùng CÙNG timer
+  /// với ghi chú: thẻ chỉ có một, nên chỉ một lượt tính đang chờ.
+  ///
+  /// Thoát sớm khi nguồn số tiền không dùng được ([_coNguonSoTien]) → mọi đường cũ (B1, từ khoá) không đổi một bước nào.
+  void _henGoiYTheoForm() {
+    if (!_coNguonSoTien) return;
+    // Gợi ý số tiền đã hiện mà bậc vừa đổi: thẻ ấy nói về bậc cũ — huỷ, không phải phán xét của người dùng (spec 3.4).
+    // Đặt Ở ĐÂY chứ không chỉ trong `_loadSuggestion`: khi người dùng đã chọn danh mục qua bảng rồi mới đổi số tiền,
+    // `_loadSuggestion` không chạy nữa, và gợi ý cũ sẽ bị ghi `khac` lúc lưu cho một khoản ở bậc khác hẳn.
+    final cho = _choPhanXu;
+    if (cho != null && cho.goiY.nguon == kNguonGoiYSoTien) {
+      final x = _soTienDangCo();
+      if (x == null || maBacCua(bacTienCua(x)) != cho.goiY.amTietChinh) _choPhanXu = null;
+    }
+    _hoanGoiY?.cancel();
+    if (_isTransfer || _selectedCategory != null) return;
+    _hoanGoiY = Timer(_doTreGoiY, () {
+      if (mounted) unawaited(_loadSuggestion(_noteController.text.trim()));
+    });
+  }
+
+  /// Nguồn thứ ba của thẻ gợi ý, sau B1 và từ khoá (dự án C): đoán theo bậc tiền + nhóm thứ + ví, chỉ danh mục đúng
+  /// chiều của đoạn đang chọn. `null` = chưa đủ để nói.
+  CategorySuggestion? _goiYSoTien(List<Category> categories) {
+    final bo = _boSoTien;
+    if (bo == null || !_coNguonSoTien || _isTransfer) return null;
+    final soTien = _soTienDangCo();
+    if (soTien == null) return null;
+    final d = bo.doan(
+      chieu: _huong,
+      soTien: soTien,
+      ngay: _selectedDate,
+      walletId: _selectedWallet?.id,
+      hopLe: hopLeTheoChieu(_huong, categories),
+      tatCap: {..._tatCapSoTien, ..._boQuaSoTienLuotNay},
+    );
+    if (d == null) return null;
+    final cat = categories.firstWhere((c) => c.id == d.categoryId);
+    return CategorySuggestion(
+      category: cat,
+      matchedKeyword: d.maBac,
+      nguon: kNguonGoiYSoTien,
+      amTietChinh: d.maBac,
+      lyDo: cauLyDoSoTien(d, tenDanhMuc: cat.name),
+    );
+  }
+
   void _onNoteChanged() {
     _henDeXuat();
     _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
     // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
     if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
-    if (note.isEmpty || _isTransfer || _selectedCategory != null) {
+    if (_isTransfer || _selectedCategory != null) {
       if (_suggestion != null && mounted) {
         setState(() => _suggestion = null);
       }
       return;
     }
+    if (note.isEmpty) {
+      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY như trước dự án C; thẻ số tiền không phụ thuộc ghi chú.
+      if (_suggestion != null && _suggestion!.nguon != kNguonGoiYSoTien && mounted) {
+        setState(() => _suggestion = null);
+      }
+      // Không có mô hình số tiền thì ghi chú trống là hết việc — đúng hành vi trước dự án C.
+      if (_boSoTien == null) return;
+    }
     _hoanGoiY = Timer(_doTreGoiY, () {
       if (!mounted) return;
       // Đọc lại từ controller thay vì dùng `note` đã bắt ở trên: trong lúc chờ
       // người dùng có thể đã gõ tiếp, và thứ đáng gợi ý là văn bản HIỆN TẠI.
-      final hienTai = _noteController.text.trim();
-      if (hienTai.isEmpty) return;
-      _loadSuggestion(hienTai);
+      _loadSuggestion(_noteController.text.trim());
     });
   }
 
@@ -987,60 +1105,80 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý
     // danh mục của người khác.
     if (accountId == null) return;
+    // MỘT cửa cho cả ba nguồn (dự án C): hàm này nay được hẹn cả khi số tiền / ví / ngày / đoạn đổi, không chỉ khi
+    // ghi chú đổi — nên tự nó phải chặn hai trạng thái không bao giờ có thẻ.
+    if (_isTransfer || _selectedCategory != null) return;
     final requestedHuong = _huong;
+    final soTienLucHoi = _amountString;
+    final viLucHoi = _selectedWallet?.id;
+    final ngayLucHoi = _selectedDate;
     // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba
     // phân loại vì chiều tiền suy từ danh mục được chọn, không phải ngược lại.
     final categories = await _categoryRepository.selectableChildrenAll(
       accountId: accountId,
     );
-    // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
-    // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
-    // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" bên dưới.
-    final doan = _boPhanLoai?.doan(
-      note,
-      hopLe: {for (final c in categories) c.id},
-      tatCap: _tatCap,
-    );
     CategorySuggestion? suggestion;
-    if (doan != null) {
-      final cat = categories.firstWhere((c) => c.id == doan.categoryId);
-      suggestion = CategorySuggestion(
-        category: cat,
-        matchedKeyword: doan.cumBoDau,
-        nguon: kNguonGoiYHoc,
-        amTietChinh: doan.cumBoDau,
-        lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
+    if (note.isNotEmpty) {
+      // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
+      // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
+      // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" ở trên.
+      final doan = _boPhanLoai?.doan(
+        note,
+        hopLe: {for (final c in categories) c.id},
+        tatCap: _tatCap,
       );
-    } else {
-      // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
-      // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
-      // với mỗi lần ghi chú thay đổi.
-      final keywordsByCategory = await _categoryRepository.loadAllKeywords(
-        accountId: accountId,
-      );
-      final candidates = <CategoryKeywordCandidate>[];
-      for (final category in categories) {
-        for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
-          candidates.add(
-            CategoryKeywordCandidate(category: category, keyword: keyword),
-          );
+      if (doan != null) {
+        final cat = categories.firstWhere((c) => c.id == doan.categoryId);
+        suggestion = CategorySuggestion(
+          category: cat,
+          matchedKeyword: doan.cumBoDau,
+          nguon: kNguonGoiYHoc,
+          amTietChinh: doan.cumBoDau,
+          lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
+        );
+      } else {
+        // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
+        // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
+        // với mỗi lần ghi chú thay đổi.
+        final keywordsByCategory = await _categoryRepository.loadAllKeywords(
+          accountId: accountId,
+        );
+        final candidates = <CategoryKeywordCandidate>[];
+        for (final category in categories) {
+          for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
+            candidates.add(
+              CategoryKeywordCandidate(category: category, keyword: keyword),
+            );
+          }
         }
+        suggestion = widget.suggestionEngine.suggest(
+          rawText: note,
+          candidates: candidates,
+        );
       }
-      suggestion = widget.suggestionEngine.suggest(
-        rawText: note,
-        candidates: candidates,
-      );
     }
+    // Dự án C: ghi chú trống, hoặc có chữ mà B1 lẫn từ khoá đều im → đoán theo số tiền. KHÁC hai nguồn trên, nguồn này
+    // khoanh theo đoạn Chi/Thu: số tiền không mang nghĩa chiều, đoạn đang chọn là thông tin chiều duy nhất.
+    suggestion ??= _goiYSoTien(categories);
     if (!mounted ||
         _huong != requestedHuong ||
         _isTransfer ||
         _selectedCategory != null ||
-        _noteController.text.trim() != note) {
+        _noteController.text.trim() != note ||
+        _amountString != soTienLucHoi ||
+        _selectedWallet?.id != viLucHoi ||
+        _selectedDate != ngayLucHoi) {
       return;
     }
     setState(() {
       _suggestion = suggestion;
-      if (suggestion != null) _choPhanXu = (goiY: suggestion, ghiChu: note);
+      if (suggestion != null) {
+        _choPhanXu = (goiY: suggestion, ghiChu: note);
+      } else if (_choPhanXu?.goiY.nguon == kNguonGoiYSoTien) {
+        // Thẻ số tiền vừa bị thay bằng "không có gì" (bậc / ví / ngày / đoạn đổi): gợi ý cũ không còn là thứ người
+        // dùng đang nhìn — bỏ, không ghi phản hồi nào cho nó.
+        _choPhanXu = null;
+      }
     });
   }
 
@@ -1114,6 +1252,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           _nguoiDungDaChonVi = true;
                         }
                       });
+                      // Ví là một tín hiệu của gợi ý theo số tiền (dự án C); ví ĐÍCH thì không.
+                      if (!isDestination) _henGoiYTheoForm();
                       Navigator.pop(ctx);
                     },
                     borderRadius: BorderRadius.circular(12),
@@ -1200,6 +1340,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// dịch **kẹt hàng đợi đẩy vĩnh viễn**, im lặng.
   void _onKeyPress(String key) {
     setState(() => _amountString = themPhimSoTien(_amountString, key));
+    _henGoiYTheoForm();
   }
 
   String _getFormattedAmount() {
@@ -1238,6 +1379,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       setState(() {
         _selectedDate = picked;
       });
+      // Nhóm thứ (ngày thường / cuối tuần) là một tín hiệu của gợi ý theo số tiền (dự án C).
+      _henGoiYTheoForm();
     }
   }
 
@@ -2304,11 +2447,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
-            Row(
+            // `Wrap` chứ không `Row` + `Spacer`: đủ chỗ thì hai nút nằm hai đầu một hàng y như trước; chật (màn 360 dp
+            // với cỡ chữ lớn) thì nút sau XUỐNG DÒNG thay vì tràn sọc vàng. Từ dự án C thẻ này hiện cả khi 16 phím số
+            // đang mở — tức thường xuyên hơn hẳn. `SizedBox` rộng hết cỡ để `spaceBetween` có chỗ mà giãn: `Wrap` trong
+            // `Column` căn trái tự co theo nội dung, hai nút sẽ dính vào nhau.
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 4,
               children: [
                 TextButton(
                   onPressed: () {
                     _ghiPhanHoi(suggestion, kKetQuaGoiYBoQua);
+                    if (suggestion.nguon == kNguonGoiYSoTien) {
+                      _boQuaSoTienLuotNay.add((suggestion.amTietChinh, suggestion.categoryId));
+                    }
                     setState(() {
                       _suggestion = null;
                       _choPhanXu = null;
@@ -2316,7 +2471,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   },
                   child: const Text('Bỏ qua'),
                 ),
-                const Spacer(),
                 // ⚠️ `minimumSize` hữu hạn BẮT BUỘC: theme của app ép mọi ElevatedButton rộng vô hạn, nút trần trong
                 // `Row` làm trắng cả vùng form mà không một dòng log nào (bẫy 4.11). Lỗi có từ trước B1 — nghiệm thu
                 // máy ảo 2026-09-29 mới lộ, vì mọi widget test cũ dựng MaterialApp trần.
@@ -2330,6 +2484,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   child: const Text('Chọn danh mục này'),
                 ),
               ],
+              ),
             ),
           ],
         ),
