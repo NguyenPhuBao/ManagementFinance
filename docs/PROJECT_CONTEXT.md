@@ -1001,6 +1001,20 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
+### 🤖 C3 lệnh tạo bằng AI — đo OnePlus (GPU) 2026-10-02: 9 ✅ · 1 ◐ · SAI 0 sau hai sửa lưới kiểm
+
+Việc treo *"C3 AI chưa đo OnePlus"* xong. Bảng và chi tiết ở mục **9.43** `AI_EDGE_FEATURE.md`. Tài khoản 10, gõ qua
+adb, chấm theo thẻ hiện ra; thẻ hiện sau **~6–7 s** (Realme CPU 13–18 s), 0 `FAILED_PRECONDITION`, 0 sập; ba câu hỏi
+gần giống không mở phiên lệnh; Huỷ đạt.
+
+- Lần đầu **8 ✅ · 2 thẻ SAI** — cùng mô hình, cùng câu mà **GPU gọi tool khác CPU** (câu 8, 9) và bịa hạn (câu 10):
+  câu 9 *"nhac toi dong tien dien hang thang"* ra thẻ *Tạo mục tiêu*; câu 10 mang *hạn 01/01/2027* câu không nói.
+- Sửa ở `ai_edge/domain/lenh_tao.dart`, test đỏ trước: `_loaiTheoDauHieu` thêm dấu hiệu **hoá đơn** (*đóng tiền · trả
+  tiền · nộp tiền · thanh toán · nhắc tôi*, xét sau ngân sách và tiết kiệm, câu có dấu so chữ có dấu); `_cauNoiThoiGian`
+  bỏ **cụm chu kỳ** (*mỗi tháng*, *500k/tháng*…) trước khi tìm chữ thời gian. Đo lại hai câu: câu 9 → *Tạo hoá đơn ·
+  hằng tháng · chưa rõ tên, số tiền* (◐ — thiếu tên), câu 10 → hết hạn bịa (✅).
+- `flutter test` **5195/5195** (4 skip; +2 ca ở `lenh_tao_test`), analyze 26. `tools_json` không đổi (2.024).
+
 ### 🔀 Gộp `main` @ `573969f` (2026-10-02, commit gộp `fb9e3c0`) — sửa lỗi cú pháp scheduler, uptime Admin-web
 
 Ba commit NPBao (`1c4c584`, `959cb9d`, `b24035b`) qua ba PR #106–#108, **không xung đột**, **không đụng

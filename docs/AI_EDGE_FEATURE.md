@@ -3261,7 +3261,7 @@ Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-d
 > Câu *"chỉ luật, không mô hình"*, *"lệnh không mở phiên mô hình"* và *"thẻ < 1 s"* ở trên chỉ còn đúng cho máy **chưa
 > có mô hình / tắt công tắc AI**.
 
-### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — ✅ xong, đo Realme 10/10
+### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — ✅ xong, đo Realme 10/10, OnePlus 9 ✅ + 1 ◐ (2026-10-02, sau hai sửa)
 
 Người dùng (2026-09-30 đêm): *"tôi muốn tạo bằng AI mới đúng thay vì chỉ lệnh như này"* — spec C3 **§8**, kế hoạch
 `plans/2026-09-30-c3-lenh-tao-bang-ai.md`. Commit `3442495` → `4310174` (Task 1–5). Câu tự nhiên *"tôi muốn để dành 50
@@ -3285,10 +3285,10 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 
   | Ô | Nhận của AI khi |
   |---|---|
-  | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu) |
+  | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu; *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* → hoá đơn, xét sau cùng — thêm 2026-10-02) |
   | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5); với **mục tiêu**, số tiền *theo kỳ* (*"2 triệu mỗi tháng"*, *"500k/tháng"*) **không** phải số tiền đích — luật lẫn AI đều bỏ (`_tienTheoKy`) |
   | tên | không chứa chữ số, mọi chữ có trong câu **đúng thứ tự** (không cần liền nhau), gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*); câu theo mẫu thì tên luật thắng |
-  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian |
+  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) |
   | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
   | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền**; từ ngày gốc suy ra **ngày bắt đầu** (dưới) |
   | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào); chữ *"hoá đơn"* đầu tiên của câu là đối tượng của lệnh, **không** phải danh mục *Hóa đơn* |
@@ -3364,7 +3364,43 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 - **Giá:** thẻ sau 13–18 s trên Realme CPU thay vì < 1 s của bản luật — **kể cả câu theo mẫu** (máy có mô hình thì
   mọi câu lọt cổng đều đi phiên AI; cái được là danh mục mô hình đoán). Câu lọt cổng mà mô hình không gọi tool tốn
   thêm một lượt chờ rồi mới về vòng hỏi đáp (chưa gặp trong 10 câu).
-- **Chưa đo:** OnePlus (GPU); nhánh *chưa có mô hình* trên máy thật (widget test phủ); tài khoản nhiều danh mục
+- **Đo OnePlus 13R 2026-10-02 09:49–10:03** (GPU, bản debug, tài khoản 10 — cùng dữ liệu với lượt Realme: 6 ví, 10
+  danh mục chi; gõ không dấu qua adb; **không Lưu** form nào). `tools_json` **2.024** ký tự, hệ thống 457; mở phiên
+  2,0–2,2 s, lượt sinh 2,3–3,8 s, **đọc lệnh 4,4–5,8 s — thẻ hiện sau ~6–7 s** (Realme CPU 13–18 s); nạp mô hình
+  lần đầu thêm 4,7 s; mọi lượt **đúng một** lời gọi; **0** `FAILED_PRECONDITION`, 0 sập. Chấm theo thẻ hiện ra;
+  câu 1–10 ở bản `c4a9c9aa…`, câu 9–10 đo lại ở bản `17c8a89e…` sau hai sửa:
+
+  | # | Mô hình gọi (GPU) | Thẻ hiện ra | |
+  |---|---|---|---|
+  | 1 | `tao_hoa_don` gym · 300000 · thang · 5 · **vi Tiền mặt** · Giải trí | AI · Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Giải trí | ✅ |
+  | 2 | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | luật · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 3 | `dat_ngan_sach` Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 4 | `tao_hoa_don` tien nha · 3tr · **ngay_goc 1 · vi Tiền mặt** · Nhà cửa | AI · Tạo hoá đơn **tien nha** · 3.000.000 đ · hằng tháng · danh mục Nhà cửa | ✅ |
+  | 5 | `tao_muc_tieu` du lich · 10tr · **han 30/06/2026** (đã qua) | luật · Tạo mục tiêu **du lich** · 10.000.000 đ · hạn 02/04/2027 | ✅ |
+  | 6 | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | AI · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 7 | `tao_hoa_don` **tiền nha** · 3tr · ngay_goc 0 · **vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tiền nha** · 3.000.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Nhà cửa | ✅ ⚠️ tên nửa dấu |
+  | 8 | **`tao_muc_tieu`** *tiết kiệm ăn uống* · 3tr · 30/06/2026 | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 9 | **`tao_muc_tieu`** *tiết kiệm điện hàng tháng* · 0 | luật · **Tạo mục tiêu** · *Chưa rõ tên, số tiền, hạn* → sau sửa: luật · Tạo hoá đơn · hằng tháng · *Chưa rõ tên, số tiền* | ✗ → ◐ |
+  | 10 | `tao_muc_tieu` *tiết kiệm du lịch* · 2tr · **han 01/01/2027** | AI · Tạo mục tiêu **tiết kiệm du lịch** · **hạn 01/01/2027** → sau sửa: AI · Tạo mục tiêu **tiết kiệm du lịch** · *Chưa rõ số tiền, hạn* | ✗ → ✅ |
+
+  Lần đầu **8 ✅ · 2 thẻ SAI**; sau sửa **9 ✅ · 1 ◐ · SAI 0** (câu 9 đúng loại nhưng thiếu tên — tên mô hình đặt mang
+  chữ *"tiết kiệm"* câu không có nên bị lưới bỏ; Realme ra *"tiền điện"*). Ba câu hỏi gần giống **không** mở phiên
+  lệnh, vòng hỏi đáp trả lời sau 8–11 s (Realme 25–31 s). **Huỷ** (câu 6, bấm sau 1 s — GPU đọc xong trong ~5 s nên
+  không chờ 5 s được): *"Đang huỷ…"* ngay, rồi *"Đã huỷ."*, ô nhập mở lại, không lượt hỏi đáp.
+- ⚠️ **Hai lỗi lượt đo OnePlus bắt được** — cùng mô hình, cùng câu, **GPU gọi tool khác CPU** ở câu 8, 9 (và bịa
+  hạn ở câu 10), nên chỗ lưới còn dựa vào mô hình thì lộ ra; 5193 ca test đều mù (nay **5195/5195**, 4 skip, analyze 26). Sửa cùng ngày, mỗi cái một ca test
+  đỏ trước:
+  (1) **loại**: câu không dấu hiệu nào thì lưới nhận loại của tool mô hình gọi → nay `_loaiTheoDauHieu` có thêm dấu
+  hiệu **hoá đơn** — *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* — xét **sau** ngân sách và tiết kiệm
+  (*"nhắc tôi để dành 2 triệu mỗi tháng"* vẫn là mục tiêu); câu có dấu thì so chữ **có dấu** (*"dòng tiền"* bỏ dấu là
+  `dong tien` = *"đóng tiền"*);
+  (2) **hạn**: `_cauNoiThoiGian` coi chữ *tháng* của *"mỗi tháng"* là "câu có nói thời gian" nên hạn bịa lọt → nay bỏ
+  các **cụm chu kỳ** (`_mauCumChuKy`: *hằng / mỗi / một + tuần · tháng · quý · năm*, và *"/tháng"*) trước khi tìm chữ
+  thời gian; *"mỗi tháng để dành 2 triệu trước tết"* vẫn nhận hạn.
+- ⚠️ **Mô hình trên GPU điền thừa nhiều hơn**: 3/10 câu tự điền ví, 1 câu ngày gốc 1, 3 câu hạn sai / đã qua, 2 câu
+  gọi nhầm tool — trừ hai lỗi trên, lưới chặn hết. Tên *"tiền nha"* (câu 7) là mô hình thêm dấu nửa chừng cho câu gõ
+  không dấu; lưới so bỏ dấu nên nhận — chưa sửa, người dùng sửa được trong form.
+- **Chưa đo:** nhánh *chưa có mô hình* trên máy thật (widget test phủ); tài khoản nhiều danh mục
   (30 danh mục + 5 ví giả lập: `tools_json` 3.049 ký tự — dưới nửa phiên sáu tool 6.980 đã chạy được).
 - `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
   (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
