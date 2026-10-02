@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
+import '../widgets/hang_o_otp.dart';
 
 class OtpPage extends StatefulWidget {
   final String email;
@@ -179,12 +180,10 @@ class _OtpPageState extends State<OtpPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(_otpLength, (index) {
-                            return SizedBox(
-                              width: 45,
-                              child: TextFormField(
+                        HangOOtp(
+                          soO: _otpLength,
+                          dungO: (index) {
+                            return TextFormField(
                                 controller: _controllers[index],
                                 focusNode: _focusNodes[index],
                                 keyboardType: TextInputType.number,
@@ -212,9 +211,8 @@ class _OtpPageState extends State<OtpPage> {
                                   filled: true,
                                   fillColor: Colors.white,
                                 ),
-                              ),
-                            );
-                          }),
+                              );
+                          },
                         ),
                         const SizedBox(height: 16),
                         if (_infoMessage != null)
