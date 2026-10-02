@@ -9,6 +9,11 @@ library;
 import 'dart:convert';
 
 import '../../../core/category/category_name.dart';
+import '../../../core/ocr/so_tien_tren_anh.dart';
+
+// `DongOcr` + `ghepDongTheoHang` dời về `core/ocr` (2026-10-02, chia sẻ biên lai dùng chung) — xuất lại để màn đo
+// và test của spike gọi như cũ.
+export '../../../core/ocr/dong_ocr.dart';
 
 /// Bật bằng `flutter build apk --debug --dart-define=SPIKE_C4=true`.
 const bool kSpikeC4 = bool.fromEnvironment('SPIKE_C4');
@@ -73,61 +78,10 @@ const List<String> _nhanLoai = [
   'tam tinh',
 ];
 
-final RegExp _so = RegExp(r'\d[\d.,]*\d|\d');
 final RegExp _ngay = RegExp(r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})\b');
 
-/// Một chuỗi số trên hoá đơn → số nguyên đồng. `.` / `,` theo sau bởi đúng 3 chữ số là ngăn nghìn; phần lẻ sau dấu
-/// cuối (1–2 chữ số) bị bỏ. `null` khi không ra số.
-int? docSoHoaDon(String s) {
-  final m = RegExp(r'^(\d{1,3}(?:[.,]\d{3})+)(?:[.,]\d{1,2})?$').firstMatch(s);
-  if (m != null) return int.tryParse(m.group(1)!.replaceAll(RegExp(r'[.,]'), ''));
-  final le = RegExp(r'^(\d+)[.,]\d{1,2}$').firstMatch(s);
-  if (le != null) return int.tryParse(le.group(1)!);
-  return int.tryParse(s);
-}
-
-/// Số tiền hợp lý trên một dòng: từ 1.000 đ, dưới 10 chữ số. Bỏ chuỗi bắt đầu bằng `0` (số điện thoại) và chuỗi liền
-/// từ 9 chữ số không ngăn nghìn (mã vạch, mã số thuế, số tài khoản).
-List<int> _tienTrenDong(String dong) => [
-      for (final m in _so.allMatches(dong))
-        if (!(m.group(0)!.startsWith('0') && m.group(0)!.length > 1) &&
-            !(m.group(0)!.length > 8 && !m.group(0)!.contains(RegExp(r'[.,]'))))
-          if (docSoHoaDon(m.group(0)!) case final v? when v >= 1000 && v < 1000000000) v,
-    ];
-
-/// Một dòng chữ OCR kèm khung của nó trên ảnh (điểm ảnh, gốc ở góc trên trái). Kiểu thuần — màn đo chép từ
-/// `TextLine.boundingBox` của ML Kit sang, để phép ghép hàng test được mà không cần gói ấy.
-class DongOcr {
-  final String chu;
-  final double trai, tren, phai, duoi;
-  const DongOcr(this.chu, {required this.trai, required this.tren, required this.phai, required this.duoi});
-}
-
-/// Ghép các dòng OCR CÙNG HÀNG thành một dòng chữ, hàng xếp từ trên xuống, trong hàng xếp từ trái sang.
-///
-/// ⚠️ ML Kit trả `blocks → lines` theo CỘT: hoá đơn hai cột ra cả khối nhãn rồi mới tới khối số, nên nối theo thứ tự
-/// trả về thì nhãn *TỔNG CỘNG* không có số nào cạnh nó (đo Realme 2026-10-01: ảnh thử ra tiền khách đưa).
-///
-/// Hai dòng cùng hàng ⇔ tâm dọc của MỖI dòng nằm trong khung dọc của dòng KIA. Đòi cả hai chiều để một dòng chữ to
-/// (tên cửa hàng) không nuốt dòng nhỏ sát dưới nó. Khung là khung thẳng trục — ảnh nghiêng nhiều thì hai đầu một hàng
-/// lệch quá nửa chiều cao chữ và phép này tách chúng ra; giới hạn của spike, đo bằng ảnh thật.
-String ghepDongTheoHang(List<DongOcr> dong) {
-  double tam(DongOcr d) => (d.tren + d.duoi) / 2;
-  bool cungHang(DongOcr a, DongOcr b) =>
-      tam(a) >= b.tren && tam(a) <= b.duoi && tam(b) >= a.tren && tam(b) <= a.duoi;
-
-  final hang = <List<DongOcr>>[];
-  for (final d in [...dong]..sort((a, b) => tam(a).compareTo(tam(b)))) {
-    // Xét MỌI hàng đã có, không chỉ hàng cuối: ảnh nghiêng thì đầu phải của hàng trên có thể thấp hơn đầu trái hàng dưới.
-    final h = hang.where((h) => h.any((x) => cungHang(x, d))).firstOrNull;
-    h == null ? hang.add([d]) : h.add(d);
-  }
-  double dinh(List<DongOcr> h) => h.map((d) => d.tren).reduce((a, b) => a < b ? a : b);
-  hang.sort((a, b) => dinh(a).compareTo(dinh(b)));
-  return [
-    for (final h in hang) ([...h]..sort((a, b) => a.trai.compareTo(b.trai))).map((d) => d.chu).join(' '),
-  ].join('\n');
-}
+/// Tên cũ của `docSoTrenAnh` (`core/ocr/so_tien_tren_anh.dart`) — màn đo và test của spike còn gọi.
+int? docSoHoaDon(String s) => docSoTrenAnh(s);
 
 /// Lối A chụp hoá đơn: chữ OCR (mỗi dòng một dòng) → tổng tiền + tên cửa hàng + ngày.
 ///
@@ -146,10 +100,10 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     if (_nhanLoai.any(bo[i].contains)) continue;
     final h = _nhanTong.indexWhere(bo[i].contains);
     if (h < 0 || h > hang) continue;
-    var tien = _tienTrenDong(dong[i]);
+    var tien = tienTrenDong(dong[i]);
     var nguon = dong[i];
     if (tien.isEmpty && i + 1 < dong.length && !_nhanLoai.any(bo[i + 1].contains)) {
-      tien = _tienTrenDong(dong[i + 1]);
+      tien = tienTrenDong(dong[i + 1]);
       nguon = '${dong[i]} ⏎ ${dong[i + 1]}';
     }
     if (tien.isEmpty) continue;
@@ -160,7 +114,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
   if (tong == null) {
     for (var i = 0; i < dong.length; i++) {
       if (_nhanLoai.any(bo[i].contains)) continue;
-      for (final v in _tienTrenDong(dong[i])) {
+      for (final v in tienTrenDong(dong[i])) {
         if (tong == null || v > tong) {
           tong = v;
           canCu = '(không nhãn — số lớn nhất) ${dong[i]}';
