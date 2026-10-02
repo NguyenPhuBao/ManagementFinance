@@ -89,17 +89,27 @@ class GoiSoTraCuu extends GoiSo {
       [...tongHop, ...soLieuBoLoc, for (final h in hang) ...h.soLieu];
 
   /// G5 (b) cổng F: kỳ theo LƯỢT chứa [s] — khoá `ky` nếu là chữ kỳ tương đối,
-  /// cộng chữ kỳ trong các khoá `so_sanh_*` (E13 *"so với tháng trước"*). Mọi
-  /// thời gian, kỳ tự do, kỳ tới → `null` (không xét).
+  /// cộng chữ kỳ trong các khoá `so_sanh_*` (E13 *"so với tháng trước"*).
+  ///
+  /// **Kỳ tự do và mọi thời gian** (đo Realme 2026-10-02, dự án B Task 8 — E2
+  /// *"Tháng này bạn đã chi…"* cho số của tháng 9, C19 *"trong tháng này"* cho
+  /// số của mọi thời gian, cả hai từng được HIỆN): kỳ của lượt ĐÃ BIẾT, chỉ là
+  /// không phải một chữ kỳ tương đối — trả tập CHỈ gồm kỳ tương đương
+  /// (`KetQuaCongCu.kyTuongDuong`) và kỳ của phép so, nên chữ kỳ tương đối khác
+  /// trong câu bị `kiemKy` chặn. Bản trước trả `null` (không xét) cho hai kỳ ấy.
+  /// Lượt không khai `ky`, hoặc khai chữ kỳ lạ (kỳ tới) → `null`, vẫn không xét.
   @override
   Set<String>? kyCua(SoLieu s) {
     for (final kq in _luot) {
       final cua = [...kq.tongHop, ...kq.soLieuBoLoc, for (final h in kq.hang) ...h.soLieu];
       if (!cua.contains(s)) continue;
       final ky = kq.chuThem['ky'];
-      if (ky == null || !laChuKyTuongDoi(ky)) return null;
+      if (ky == null) return null;
+      final tuongDoi = laChuKyTuongDoi(ky);
+      if (!tuongDoi && ky != kChuKyTuyChon && ky != kChuKyMoiLuc) return null;
       return {
-        ky,
+        if (tuongDoi) ky,
+        ...kq.kyTuongDuong,
         for (final e in kq.chuThem.entries)
           if (e.key.startsWith('so_sanh_')) ...chuKyTrong(e.value),
       };

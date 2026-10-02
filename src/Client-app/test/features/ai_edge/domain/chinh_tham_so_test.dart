@@ -698,6 +698,32 @@ void main() {
       expect((r['ky'], r['tu_ngay'], r['den_ngay'], r['chieu']),
           ('tuy_chon', '01/09/2026', '15/09/2026', 'khoan_chi'));
     });
+
+    // Đo Realme 2026-10-02 (dự án B, Task 8): ở phiên MỘT tool, cùng câu F2 mô
+    // hình điền khác — nhét cả đoạn kỳ vào tu_khoa. Tìm "từ 1/9 den 15/9" trong
+    // ghi chú ra 0 khoản, mẫu câu L2c nói "không có giao dịch nào khớp" trong khi
+    // bản trước trả 3.595.000 đ.
+    test('⭐ F2 lần hai (args nguyên văn): tu_khoa chỉ là ĐOẠN KỲ của câu hỏi → gỡ', () {
+      final r = chinh('tu 1/9 den 15/9 toi chi nhung gi',
+          {'ky': 'tuy_chon', 'so_tien_den': 1500000, 'tu_khoa': 'từ 1/9 den 15/9'});
+      expect(r.containsKey('tu_khoa'), isFalse);
+      expect(r.containsKey('so_tien_den'), isFalse);
+      expect((r['ky'], r['tu_ngay'], r['den_ngay'], r['chieu']),
+          ('tuy_chon', '01/09/2026', '15/09/2026', 'khoan_chi'));
+      expect(chinh('thang 8 toi chi bao nhieu', {'ky': 'thang_nay', 'tu_khoa': 'thang 8'}).containsKey('tu_khoa'),
+          isFalse);
+    });
+    test('phản ví dụ: tu_khoa có chữ NGOÀI đoạn kỳ, hoặc đứng sau "ghi chú", hoặc câu không nêu kỳ cụ thể → giữ', () {
+      expect(chinh('thang 8 toi chi gi cho tien nha', {'ky': 'thang_nay', 'tu_khoa': 'tien nha thang 8'})['tu_khoa'],
+          'tien nha thang 8');
+      expect(chinh('tu 1/9 den 15/9 toi chi nhung gi', {'ky': 'tuy_chon', 'tu_khoa': 'grab'})['tu_khoa'], 'grab');
+      expect(chinh('tim cac giao dich co ghi chu thang 9', {'ky': 'moi_luc', 'tu_khoa': 'thang 9'})['tu_khoa'],
+          'thang 9', reason: 'người dùng hỏi ĐÚNG chữ ấy trong ghi chú');
+      expect(chinh('tim giao dich T9', {'ky': 'moi_luc', 'tu_khoa': 'T9'})['tu_khoa'], 'T9',
+          reason: 'câu không nêu kỳ cụ thể — "T9" là chữ của ghi chú "Tien nha T9"');
+      expect(chinh('thang 8 toi chi bao nhieu', {'ky': 'thang_nay', 'tu_khoa': 'thang 9'})['tu_khoa'], 'thang 9',
+          reason: 'chỉ gỡ ĐOẠN CỦA CÂU HỎI — chữ kỳ mô hình tự nghĩ ra không có bằng chứng để gỡ');
+    });
     test('phản ví dụ F2: câu CÓ số tiền giữ ngưỡng; tu_khoa "chi" đến từ "ghi chú chi" thì giữ', () {
       expect(chinh('khoan chi lon nhat thang nay', {'ky': 'thang_nay', 'so_tien_tu': 1000000}).containsKey('so_tien_tu'),
           isFalse, reason: 'không có số trong câu — không bằng chứng');

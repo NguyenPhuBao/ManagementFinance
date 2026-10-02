@@ -153,6 +153,16 @@ String? _chuoi(Object? v) {
   return s.isEmpty ? null : s;
 }
 
+/// Mọi âm tiết của [boDau] là chữ số (ngày, tháng, năm) hoặc chữ nối của một
+/// đoạn kỳ — *"tu 1/9 den 15/9"*, *"thang 8"*. Chuỗi rỗng → `false`.
+bool _chiLaChuKy(String boDau) {
+  final am = boDau.split(RegExp(r'[^a-z0-9]+')).where((t) => t.isNotEmpty).toList();
+  return am.isNotEmpty &&
+      am.every((t) => RegExp(r'[0-9]').hasMatch(t) || _chuNoiKy.contains(t));
+}
+
+final Set<String> _chuNoiKy = 'tu|den|toi|ngay|thang|nam|quy|tuan'.split('|').toSet();
+
 KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   String cauHoi,
   Map<String, dynamic> args, {
@@ -329,6 +339,21 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['tu_ngay'] = _ddmmyyyy(kyTuDo.from);
     a['den_ngay'] = _ddmmyyyy(kyTuDo.to.subtract(const Duration(hours: 12)));
     ghi.add('câu hỏi nêu kỳ cụ thể → ky=$kMaKyTuyChon ${a['tu_ngay']}–${a['den_ngay']}');
+  }
+  // 11b. Đo Realme 2026-10-02 (dự án B, Task 8 — F2 ở phiên một tool): mô hình
+  // nhét cả ĐOẠN KỲ của câu hỏi vào tu_khoa ("từ 1/9 den 15/9"); tìm chuỗi ấy
+  // trong ghi chú ra 0 khoản. Cùng lý lẽ 2a (chữ chiều): luật 11 đã đọc kỳ rồi.
+  // Chỉ gỡ khi câu NÊU kỳ cụ thể, tu_khoa nằm trong câu, và mọi âm tiết của nó
+  // là chữ số hoặc chữ kỳ — "tien nha thang 8", chữ sau "ghi chú" thì giữ.
+  final tkKy = _chuoi(a['tu_khoa']);
+  if (kyTuDo != null &&
+      tkKy != null &&
+      _khop(tkKy, bangCa) == null &&
+      _bo(tkKy) != sauGhiChu &&
+      q.contains(_bo(tkKy)) &&
+      _chiLaChuKy(_bo(tkKy))) {
+    a.remove('tu_khoa');
+    ghi.add('tu_khoa "$tkKy" chỉ là chữ kỳ → bỏ');
   }
 
   // 5. Sắp xếp và kỳ. "3 tháng gần nhất" là kỳ, không phải "lần gần nhất".
