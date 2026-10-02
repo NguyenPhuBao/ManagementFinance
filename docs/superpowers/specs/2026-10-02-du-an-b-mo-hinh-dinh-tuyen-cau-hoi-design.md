@@ -1,5 +1,43 @@
 # Dự án B — mô hình nhỏ định tuyến câu hỏi → tool — thiết kế
 
+> 🚧 **Tiến độ 2026-10-02: Task 1–5 xong (`cc729f7` → `b54e35e`), CHƯA nối gì vào app, bộ đo khoá CHƯA mở.**
+> Kế hoạch 9 task `plans/2026-10-02-du-an-b-mo-hinh-dinh-tuyen.md` (gitignore). Còn lại: Task 6 đường ghép + vòng lặp
+> (định tuyến mềm) · Task 7 mở bộ đo một lần · Task 8 đo máy · Task 9 tài liệu.
+>
+> ⭐ **Người dùng ĐỔI quyết định 3 sau lần huấn luyện đầu — "hướng 1": app chỉ định tuyến theo mô hình khi nó đoán
+> `truy_van_giao_dich`.** Mô hình vẫn học mười nhãn (để biết câu nào *không phải* giao dịch); hằng
+> `kNhanMoHinhDuocDinhTuyen` (`ai_edge/domain/dinh_tuyen_hoc.dart`) là tập nhãn được hành động. Số đo dẫn tới quyết định
+> (kiểm chéo 5 phần, 606 câu sau khử trùng, **405** câu luật bỏ lại — câu do tôi soạn nên lạc quan hơn thực tế):
+>
+> | | Chín tool (thiết kế gốc) | Chỉ nhãn giao dịch (hướng 1) |
+> |---|---|---|
+> | Logistic — ngưỡng 0-câu-sai + đệm | 0,98 | **0,76** |
+> | Số câu được định tuyến / sai | 20 / 0 | **110 / 0** |
+> | Phủ | 6,4 % câu mang nhãn tool | **74,1 %** của 147 câu giao dịch |
+> | Naive Bayes | loại (sai ở p ≈ 1) | ngưỡng 0,99 · 99 / 0 · 66,7 % |
+>
+> Vì sao chín tool hỏng: ngưỡng do **một** câu sai tệ nhất quyết định, và với tám tool ngoài giao dịch mỗi tool chỉ còn
+> 14–29 câu sau khi luật lấy phần của mình — mô hình sai ở p = 0,93 (*"tháng này tôi thu nợ được bao nhiêu"* → tổng quan)
+> và 0,91 (*"các lần rút tiền khỏi mục tiêu mua xe"* → mục tiêu). Ở ngưỡng 0,80 chín tool định tuyến 154 câu, sai 3
+> (người dùng đã xem phương án này và không chọn). Đi từ hướng 1 sang chín tool về sau chỉ là thêm nhãn vào hằng trên.
+>
+> **Ba chỗ lệch thiết kế / kế hoạch, ghi cho lần sau:**
+> 1. **Chấm trên ĐƯỜNG GHÉP, không chấm mô hình đứng riêng** (`phanLuatBoLai`). Lần huấn luyện đầu chấm trên mọi câu
+>    nên ra ngưỡng 0,99, phủ 3,2 % — ba câu sai nặng nhất đều là câu luật đã bắt (*"ngày nào tháng này tôi chi nhiều
+>    nhất"*…), thứ trong app không bao giờ tới mô hình. Mục 4.2 không nói rõ; nay là luật.
+> 2. **Cột "chấp nhận" trong bộ huấn luyện** (cột TSV thứ ba): sáu câu so *thu* với *chi* mang nhãn tổng quan mà tool
+>    giao dịch cũng trả đủ số (*thu nhiều hơn chi không · thu có đủ bù chi không · thu chi tháng này thế nào…*) — định
+>    tuyến sang đó không tính sai. Tiêu chí: tool ấy trả ĐỦ số mà Gemma không phải tính. ⚠️ Cố ý **không** ghi cho
+>    *"tháng này tôi lãi hay lỗ"* (câu hỏi kết quả ròng) — chính câu ấy, ở p = 0,707, quyết ngưỡng 0,76; ghi nó vào cột
+>    chấp nhận thì ngưỡng tụt về sàn 0,60. Đã biết con số trước khi quyết nên chọn phía thận trọng.
+> 3. **Dữ liệu vòng 2**: +77 câu ở các ranh giới kiểm chéo vòng 1 cho thấy mô hình nhầm (chỉ dựa trên kiểm chéo).
+>
+> ⚠️ **Phát hiện ngoài phạm vi — báo người dùng, chưa sửa:** luật `congCuTheoCauHoi` định tuyến **201/606** câu của bộ
+> huấn luyện và **lệch nhãn 18 câu** — vd. *"các danh mục thu nhập của tôi"*, *"thuế thu nhập cá nhân tính thế nào"*,
+> *"dòng tiền tự do là gì"* → tổng quan (regex `thu nhap`, `dong tien tu do`); *"ngân sách nhà nước năm nay bao nhiêu"* →
+> ngân sách; *"lần cuối tôi trả hoá đơn điện là ngày nào"* → hoá đơn; *"đóng hết hoá đơn thì tôi còn bao nhiêu"* → hoá
+> đơn (luật dự báo chỉ nhận *"trả hết"*). Danh sách đầy đủ: chạy công cụ huấn luyện, khối *LUẬT định tuyến…*.
+
 **Ngày:** 2026-10-02. **Người dùng duyệt** thiết kế trong chat (brainstorm, năm lượt AskUserQuestion). Đây là dự án
 thứ hai trong ba dự án huấn luyện A → B → C (mục 10.3 `docs/AI_EDGE_FEATURE.md`; lộ trình
 `plans/2026-09-30-lo-trinh-con-lai.md` giai đoạn 3). Dự án A dừng ở spike tra cứu (mục 10.6); B không phụ thuộc A.
@@ -38,7 +76,7 @@ còn lại sau khi mọi luật khác im" — mà **không kéo nhầm** câu ng
 |---|---|---|---|
 | 1 | Bộ đo lấy từ đâu | **Tôi soạn cả hai bộ, khoá bộ đo trước** | Bộ đo viết và commit trước bộ huấn luyện, không sửa về sau. ⚠️ Hai bộ cùng một người soạn nên số đo **lạc quan hơn thực tế** — mọi chỗ trích số đo phải kèm câu này |
 | 2 | Mô hình đứng đâu so với luật | **Luật trước, mô hình sau** | Luật giữ nguyên; mô hình chỉ xét câu luật trả `null`. 31 câu đã đo không đổi đường. Thêm một tầng, không bớt tầng nào |
-| 3 | Bộ nhãn | **Chín tool + `khong_dinh_tuyen`** | Mười nhãn. Nhãn âm dẫn về phiên sáu tool như hôm nay; mô hình **không chặn** câu nào (chặn là việc của `chuDeBiChan`) |
+| 3 | Bộ nhãn | **Chín tool + `khong_dinh_tuyen`** — ⭐ *đổi cùng ngày: học mười nhãn, **hành động chỉ với nhãn giao dịch** (banner đầu tệp)* | Mười nhãn. Nhãn âm dẫn về phiên sáu tool như hôm nay; mô hình **không chặn** câu nào (chặn là việc của `chuDeBiChan`) |
 | 4 | Loại mô hình | **Huấn luyện cả hai, chọn bằng số đo** | Naive Bayes và hồi quy logistic, cùng dữ liệu và đặc trưng; chỉ một mô hình vào app |
 | 5 | Thiết kế tổng | **Duyệt** | Gồm việc trọng số là tệp Dart sinh ra, không phải asset (lệch chữ của lộ trình — mục 4.3) |
 
