@@ -627,6 +627,83 @@ và bản `a7c03b7` của backend không khởi động (khối 🔀 *Gộp `mai
 
 ---
 
+## 5g. Thay đổi 10 — gợi ý danh mục theo số tiền khi ghi chú TRỐNG (dự án C, 2026-10-02)
+
+🚧 **Mã xong, chưa nghiệm thu trên máy.** Spec
+`docs/superpowers/specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md` (banner đầu tệp = hiện trạng);
+kế hoạch `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md` (gitignore, nhật ký thi công ở
+cuối). Commit `cf0a879` → `83b1b77`.
+
+### Vì sao
+
+Thẻ *"Gợi ý danh mục"* của màn Thêm giao dịch chỉ chạy khi ô ghi chú có chữ (B1 học từ ghi chú, bảng từ khoá khớp trên
+ghi chú). Đo CSDL dev 2026-10-02, tài khoản 10: **18/43** khoản thu chi không có ghi chú — phần B1 không với tới.
+Đây là việc đầu của **dự án C** (*app học trên máy của từng người, mở rộng khuôn B1* — mục 10.3 `AI_EDGE_FEATURE.md`).
+
+### Nó làm gì
+
+Ghi chú trống, chưa chọn danh mục, đã có số tiền → thẻ gợi ý (đúng widget của B1) với câu lý do theo **bậc tiền**:
+*"Khoản từ 20.000 đ đến 50.000 đ bạn thường ghi cho Ăn uống (6/7 lần)."* Tính lại sau 300 ms khi số tiền, ví, ngày,
+đoạn Chi / Thu đổi, và sau khi ô Nhập nhanh điền một câu chỉ có số tiền. Không chạy ở chế độ sửa và form biến động.
+
+Luật thuần ở `category/domain/phan_loai_so_tien.dart`: Naive Bayes trên **bậc tiền** (thang 1·2·5) + **nhóm thứ**
+(ngày thường / cuối tuần) + **ví**, chỉ học mẫu **cùng chiều** với đoạn đang chọn (9.000.000 dưới đoạn Thu là *Lương*,
+dưới đoạn Chi là *Nhà cửa*). Phản hồi Chọn / Bỏ qua ghi vào bảng sẵn có `GoiYDanhMucPhanHois` với `nguon = 'so_tien'`,
+khoá là **mã bậc** (`20000-50000`). Không đổi schema, không đồng bộ, không gọi Gemma.
+
+⚠️ **Không có giờ**: giờ lưu trong giao dịch là giờ NHẬP (`_selectedDate = DateTime.now()`, `showDatePicker` trả 00:00).
+
+### ⭐ Phép đo lật thiết kế — và ba quyết định người dùng chốt sau đó
+
+Thiết kế đầu (ngưỡng của B1: hậu nghiệm ≥ 0,6, ≥ 3 khoản ở bậc; thẻ hiện cả khi ghi chú có chữ mà B1 lẫn từ khoá đều
+im) được đo bằng `test/tool/do_goi_y_so_tien_test.dart` — **phát lại theo thời gian** trên CSDL Realme, tài khoản 10,
+67 giao dịch:
+
+| | Số lần | Đúng |
+|---|---|---|
+| Mô hình lên tiếng | 9 | 4 (44 %) |
+| Thẻ thật sự hiện trên màn | 5 | **1 (20 %)** |
+
+Dưới ngưỡng dừng 60 % của spec. Ba điều đọc được:
+
+- Sổ trên Realme phần lớn là **dữ liệu thử** (nhiều khoản đúng 10.000 đ gõ để thử B1 ở HAI danh mục) — gần như ca xấu
+  nhất cho một mô hình dựa vào số tiền. Nhưng điểm yếu là **thật**: khoản nhỏ trùng số tiền giữa các danh mục.
+- **3/4 lần sai là khoản CÓ ghi chú** (*"ca phe sang"* 10.000 → Di chuyển) — thẻ nói ngược chữ vừa gõ.
+- **Không ngưỡng nào tách được đúng khỏi sai**: lần sai có hậu nghiệm 0,65–0,77, lần đúng 0,64–0,72.
+
+Người dùng chốt (2026-10-02): **(1)** thẻ **chỉ** hiện khi ghi chú trống; **(2)** hậu nghiệm từ **0,8**
+(`kNguongXacSuatSoTien`); **(3)** ít nhất **5** khoản ở đúng bậc (`kToiThieuKhoanCungBac`). Đo lại: thẻ **im hẳn** trên
+dữ liệu hiện tại (0 lần) — *"chưa đủ để nói"*, không phải *"đạt"*. ⚠️ 0,8 chọn trên chính bộ đo ấy; chưa có số đo nào
+chứng minh thẻ đúng khi nó lên tiếng. **Đo lại khi sổ có vài tháng dữ liệu dùng thật.**
+
+### Chỗ dễ làm hỏng nhất
+
+- **Chốt *dẫn đầu bậc tiền***: danh mục gợi ý phải có nhiều khoản ở đúng bậc ấy hơn MỌI danh mục khác cùng chiều. Thiếu
+  nó thì một gợi ý thắng nhờ ví + thứ in *"(2/9 lần)"* — câu lý do nói ngược gợi ý.
+- **Giá trị LẠ của một đặc trưng thì bỏ đặc trưng ấy** (ví mới tạo, ví chưa chọn, nhóm thứ chưa có mẫu). Tính nó thì mọi
+  danh mục đếm 0 và phép làm trơn `1/(N(c)+K)` phạt danh mục **đông mẫu** — kéo hậu nghiệm của chính danh mục đáng tin
+  nhất xuống. Kế hoạch viết sai chỗ này (`max(2, K)`); bản sai có chủ ý lộ ra.
+- **Có ghi chú thì số tiền / ví / ngày / đoạn KHÔNG hẹn tính lại** (`_henGoiYTheoForm`). Hẹn là đổi hành vi B1: đổi đoạn
+  Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi, và luật *"đổi đoạn → không ghi phản hồi"* dựa vào đó.
+- **`_choPhanXu` của nguồn số tiền huỷ khi bậc đổi** — kể cả khi người dùng đã chọn danh mục qua bảng rồi mới đổi số
+  tiền; không thì lúc lưu ghi `khac` cho một khoản ở bậc khác hẳn.
+- **Cặp vừa *Bỏ qua* không hiện lại trong lượt mở màn** (`_boQuaSoTienLuotNay`): thẻ tính lại ở mỗi phím số.
+- **Hàng nút của thẻ gợi ý nay là `Wrap`** (trước: `Row` + `Spacer`, có từ B1): đủ chỗ thì hai nút hai đầu như cũ, chật
+  thì nút sau xuống dòng. Bản `Row` tràn 157 px ở 360 × 640 trong font test — và từ lát này thẻ hiện cả khi 16 phím số
+  đang mở.
+
+### Chưa làm / chưa biết
+
+- **Chưa nghiệm thu trên máy thật.** Đặc biệt: ở 360 dp khi 16 phím số mở, thẻ (dưới hàng *Danh mục*) có nằm trong vùng
+  nhìn thấy không — `flutter test` không thấy được.
+- Chỗ hẹn ở `_pickDate` chưa có ca test (bộ chọn ngày + ngày phụ thuộc hôm chạy).
+- Thị trường: Wallet (BudgetBakers) có *mẫu giao dịch* (tên, ví, danh mục, số tiền) cho khoản nhập lại — thứ phổ biến
+  nhất cho việc này; để sau, cần Stitch. Màn Gắn danh mục nhanh và form biến động chưa dùng nguồn số tiền.
+- Ba việc còn lại của dự án C: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ tự khối trang Phân tích · thông báo
+  theo phản ứng — mỗi việc một spec khi tới lượt.
+
+---
+
 ## 6. Những phương án đã cân nhắc rồi loại bỏ
 
 Ghi lại để người sau không mất công đề xuất lại:

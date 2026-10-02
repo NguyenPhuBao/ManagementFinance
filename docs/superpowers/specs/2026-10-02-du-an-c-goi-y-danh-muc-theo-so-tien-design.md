@@ -1,8 +1,16 @@
 # Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú không giúp được — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** ✅ người dùng duyệt thiết kế trong chat (sáu lượt AskUserQuestion) và **duyệt bản
-viết** cùng ngày (*"ok duyệt"*). Kế hoạch: `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md`
-(gitignore). Hai chỗ làm rõ thêm lúc lập kế hoạch, đánh dấu 🔧 ở mục 3.1 và 3.4.
+**Ngày:** 2026-10-02. **Trạng thái:** 🚧 **mã xong (`cf0a879` → `83b1b77`), CHƯA nghiệm thu trên máy thật.** Người dùng
+duyệt thiết kế trong chat (sáu lượt AskUserQuestion) và duyệt bản viết cùng ngày (*"ok duyệt"*). Kế hoạch:
+`docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md` (gitignore, nhật ký thi công ở cuối).
+
+> ⭐ **ĐỔI SAU PHÉP ĐO (2026-10-02, cùng ngày).** Thiết kế dưới đây được đo trên CSDL thật trước khi bật: thẻ thật sự
+> hiện 5 lần, **đúng 1** — dưới ngưỡng dừng 60 % (mục 7.4). Người dùng chốt ba thay đổi, **thắng mọi chỗ khác của tệp
+> này**: **(1)** thẻ **chỉ** hiện khi ô ghi chú trống — bỏ trường hợp *"ghi chú có chữ mà B1 lẫn từ khoá đều im"* (hàng 4
+> mục 2, mục 3.1); **(2)** hậu nghiệm từ **0,8** thay vì 0,6; **(3)** ít nhất **5** khoản ở đúng bậc thay vì 3 (mục 4.3).
+> Số đo và lý lẽ ở mục 7.5. Các chỗ bị thay được đánh dấu ⛔ tại chỗ.
+
+Hai chỗ làm rõ thêm lúc lập kế hoạch, đánh dấu 🔧 ở mục 3.1 và 3.4.
 
 Dự án C là dự án thứ ba của bộ A → B → C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người, mở
 rộng khuôn B1*. Nó gồm nhiều việc độc lập, mỗi việc một spec; đây là việc **đầu tiên** người dùng chọn. Ba việc còn lại
@@ -41,11 +49,12 @@ nhất và phổ biến nhất — ghi ở mục 9, không làm lần này.
 | 1 | Việc đầu của dự án C | **Gợi ý danh mục khi không ghi chú** |
 | 2 | Tín hiệu | **Số tiền + thứ + ví.** Không giờ |
 | 3 | Cách hiện | **Thẻ gợi ý như B1** (Chọn / Bỏ qua). Không tự điền sẵn danh mục |
-| 4 | Phạm vi | Màn Thêm giao dịch: ghi chú trống, **và** ghi chú có chữ mà B1 lẫn từ khoá đều im. Không làm màn Gắn danh mục nhanh, không làm form biến động số dư |
+| 4 | Phạm vi | Màn Thêm giao dịch: ghi chú trống, ~~**và** ghi chú có chữ mà B1 lẫn từ khoá đều im~~ ⛔ **bỏ vế sau** (hàng 9). Không làm màn Gắn danh mục nhanh, không làm form biến động số dư |
 | 5 | Cách học | **Naive Bayes ba tín hiệu** — cùng khuôn B1. Không chọn *đếm quanh ±20 %*, không chọn *khớp đúng số tiền* |
 | 6 | Thứ | Gom hai nhóm **ngày thường / cuối tuần** (không dùng bảy giá trị) |
-| 7 | Chốt cho câu lý do | Danh mục gợi ý phải **dẫn đầu bậc tiền** với ít nhất 3 khoản |
+| 7 | Chốt cho câu lý do | Danh mục gợi ý phải **dẫn đầu bậc tiền** với ít nhất 3 khoản (⛔ nay **5** — hàng 9) |
 | 8 | Ngưỡng dừng khi đo | Gợi ý hiện ra đúng dưới **60 %** trên CSDL thật → dừng, hỏi người dùng |
+| 9 | ⭐ Sau phép đo (đúng 1/5) | **Siết ngưỡng + chỉ khi ghi chú trống**: hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc · ghi chú có chữ thì thẻ số tiền không bao giờ chen vào. Không chọn *chỉ siết ngưỡng*, *bật như thiết kế*, *gỡ khỏi màn* |
 
 ## 3. Hành vi trên màn Thêm giao dịch
 
@@ -59,17 +68,20 @@ Thẻ nguồn *số tiền* hiện khi **mọi** điều sau đúng:
 - số tiền là **một con số lớn hơn 0** — đang gõ dở phép tính (`30+`) thì chưa tính; 🔧 phép tính đã **đủ hai vế**
   (`50000+30000`, màn đang hiện dòng `= 80.000 đ`) thì tính trên **tổng** — bàn phím không có phím `=`, biểu thức nằm
   nguyên tới lúc lưu;
-- ghi chú trống, **hoặc** ghi chú có chữ mà B1 và bảng từ khoá đều trả `null`.
+- ghi chú **trống**. ⛔ Bản đầu: *"hoặc ghi chú có chữ mà B1 và bảng từ khoá đều trả `null`"* — bỏ sau phép đo (mục 7.5).
 
-Thứ tự nguồn của thẻ: **B1 → từ khoá → số tiền**. Ghi chú có chữ thì vẫn chạy B1 và từ khoá trước như hôm nay; nguồn số
-tiền chỉ là lớp cuối.
+Nguồn của thẻ: ghi chú **có chữ** → B1 → từ khoá (như trước dự án C, không rơi xuống số tiền); ghi chú **trống** → số
+tiền. Người dùng gõ chữ đầu tiên vào ô ghi chú thì thẻ số tiền gỡ **ngay**, không chờ độ trễ.
 
 ### 3.2 Lúc nào tính lại
 
 - Sau khi người dùng dừng gõ số tiền **300 ms** (cùng độ trễ `_doTreGoiY` của ghi chú).
 - Khi đổi ví, đổi ngày, đổi đoạn Chi tiêu ↔ Thu nhập.
-- Khi ghi chú đổi (đường `_onNoteChanged` → `_loadSuggestion` rơi xuống nguồn số tiền).
-- Sau khi ô *Nhập nhanh* điền xong mà danh mục còn trống.
+- Khi ghi chú bị xoá hết (đường `_onNoteChanged` → `_loadSuggestion('')`).
+- Sau khi ô *Nhập nhanh* điền xong mà danh mục **và ghi chú** còn trống (câu chỉ có số tiền).
+
+⚠️ Có ghi chú thì số tiền / ví / ngày / đoạn **không** hẹn tính lại: chúng không phải tín hiệu của B1 và từ khoá, và hẹn
+lại là đổi hành vi B1 (đổi đoạn Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi).
 
 Mỗi lượt tính kiểm lại trạng thái form trước khi `setState`, cùng nếp `_loadSuggestion`: giữa lúc hẹn và lúc tính người
 dùng có thể đã chọn danh mục hoặc đổi số tiền.
@@ -149,16 +161,20 @@ Trả `null` — thẻ **im** — khi bất kỳ điều nào sau đúng:
 | Chốt | Ngưỡng |
 |---|---|
 | Sổ mỏng | dưới `kToiThieuMauTong` = 10 mẫu cùng chiều |
-| Danh mục đứng đầu ít mẫu | dưới `kToiThieuMauDanhMuc` = 3 |
-| Hậu nghiệm thấp | dưới `kNguongXacSuat` = 0,6 |
+| Hậu nghiệm thấp | dưới `kNguongXacSuatSoTien` = **0,8** (⛔ bản đầu: 0,6 của B1) |
 | Hoà ở đỉnh | hai ứng viên cùng điểm |
-| **Không dẫn đầu bậc tiền** | danh mục đoán có dưới 3 mẫu ở đúng bậc ấy, **hoặc** có danh mục khác (cùng chiều) nhiều mẫu bằng hoặc hơn ở bậc ấy |
+| **Không dẫn đầu bậc tiền** | danh mục đoán có dưới `kToiThieuKhoanCungBac` = **5** khoản ở đúng bậc ấy (⛔ bản đầu: 3), **hoặc** có danh mục khác (cùng chiều) nhiều khoản bằng hoặc hơn ở bậc ấy. Chốt này bao luôn *"danh mục đứng đầu phải đủ mẫu"* của B1 |
 | Cặp đang tắt | (mã bậc, danh mục) ∈ tập tắt |
 
 Chốt *dẫn đầu bậc tiền* là chốt riêng của nguồn này: thiếu nó thì một gợi ý thắng nhờ ví và thứ sẽ in *"(2/9 lần)"* —
 câu lý do nói ngược gợi ý.
 
-Ba hằng ngưỡng **dùng lại** của `phan_loai_ghi_chu.dart`, không khai bản thứ hai.
+`kToiThieuMauTong` **dùng lại** của `phan_loai_ghi_chu.dart`; hai ngưỡng còn lại là hằng **riêng** của nguồn này, chặt hơn
+B1 — số tiền là tín hiệu yếu hơn chữ của ghi chú.
+
+🔧 **Đặc trưng mang giá trị LẠ thì bỏ** (làm rõ lúc thi công): ví mới tạo, ví chưa chọn, nhóm thứ chưa có mẫu nào — mọi
+danh mục đếm 0, và phép làm trơn `1/(N(c)+K)` khi ấy chỉ còn phạt danh mục đông mẫu. `K_f` = đúng số giá trị đã gặp,
+không có sàn 2.
 
 ## 5. Vị trí mã
 
@@ -203,7 +219,8 @@ Mỗi ca canh thử bằng **bản sai có chủ ý**; ca xanh ngay là ca chưa
 ### 7.2 Màn Thêm giao dịch
 
 - Ghi chú trống + số tiền → thẻ hiện với câu lý do theo bậc.
-- B1 lên tiếng → thẻ B1; từ khoá lên tiếng → thẻ từ khoá; cả hai im → thẻ số tiền.
+- B1 lên tiếng → thẻ B1; từ khoá lên tiếng → thẻ từ khoá; ⛔ cả hai im mà ghi chú có chữ → **không** có thẻ số tiền
+  (bản đầu: có).
 - Không hiện khi: đã có danh mục · Chuyển khoản · đang sửa · form biến động · số tiền 0 · phép tính dở.
 - Đổi đoạn Chi → Thu: thẻ đổi theo (hoặc biến mất).
 - *Chọn* → danh mục được điền, ghi `chon` nguồn `so_tien`; *Bỏ qua* → ghi `bo_qua`; lưu với danh mục khác → `khac`; đổi
@@ -225,6 +242,32 @@ nó, đoán, so với danh mục thật. In: số khoản xét · số lần g�
    nhất 5 lần gợi ý) → dừng, hỏi người dùng. Dưới 5 lần gợi ý → ghi *"chưa đủ để nói"*, không coi là đạt hay trượt.
 3. Nghiệm thu máy đang cắm, chấm theo thứ hiện ra trên màn. Tài khoản đang đăng nhập trên OnePlus (id 26) mới có 5 giao
    dịch nên thẻ im; muốn thấy thẻ thật cần khoảng 12 giao dịch thử — **hỏi người dùng trước khi tạo**.
+
+### 7.5 ⭐ Kết quả đo (2026-10-02) và thay đổi sau đó
+
+Realme RMX2205, tài khoản 10, 67 giao dịch, bản debug `e57753f8…`; phát lại theo thời gian, **thiết kế đầu** (0,6 · 3
+khoản · cả hai trường hợp ghi chú):
+
+| | Số lần | Đúng |
+|---|---|---|
+| Mô hình lên tiếng (45 khoản xét) | 9 | 4 (44,4 %) |
+| Thẻ thật sự hiện trên màn (B1 và từ khoá im) | 5 | **1 (20 %)** |
+
+Năm lần thẻ hiện: *"Gui xe"* 50.000 → Di chuyển ✓ · *"ca phe sang"* / *"ca phe voi ban"* / *"ca phe den"* 10.000 → Di
+chuyển ✗ (thật: Ăn uống) · 800.000 không ghi chú → Ăn uống ✗ (thật: Cho vay).
+
+- Sổ ấy phần lớn là **dữ liệu thử**: nhiều khoản đúng 10.000 đ gõ để thử B1 / từ khoá ở hai danh mục, năm khoản Ăn uống
+  500k–1tr của lượt thử chi bất thường. Gần như ca xấu nhất cho mô hình dựa vào số tiền — nhưng khoản nhỏ trùng số tiền
+  giữa các danh mục là chuyện thật.
+- Lần sai có hậu nghiệm 0,65–0,77, lần đúng 0,64–0,72: **không ngưỡng nào tách được**; chỉ 0,8 làm im cả chín.
+- 3/4 lần sai người dùng thấy là khoản **có ghi chú** — thẻ nói ngược chữ vừa gõ.
+
+Người dùng chốt hàng 9 mục 2. **Đo lại với luật mới: 0 lần gợi ý** — *"chưa đủ để nói"*, không phải *"đạt"*. ⚠️ Con số
+0,8 chọn trên chính bộ đo này; chưa có số đo nào chứng minh thẻ đúng khi nó lên tiếng. Đo lại bằng công cụ khi sổ có
+vài tháng dữ liệu dùng thật.
+
+**Còn lại của cổng ra:** mục 7.4 điểm 1 ✅ (`flutter test` 5374/5374, 7 skip; `flutter analyze` 26) · điểm 3 **chưa
+làm** (nghiệm thu máy thật — người dùng dặn dừng sau phần chỉnh ngưỡng).
 
 ## 8. Rủi ro đã biết
 

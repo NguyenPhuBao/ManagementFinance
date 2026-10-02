@@ -1001,6 +1001,25 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
+### 🚧 Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: mã xong, chưa nghiệm thu máy (2026-10-02)
+
+Chi tiết ở mục **5g** `CATEGORY_RATIONALE.md`; spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`
+(banner đầu tệp); kế hoạch ở `plans/` (gitignore). Commit `cf0a879` → `83b1b77`.
+
+- **Ở đâu trên app:** màn Thêm giao dịch — ô ghi chú trống, chưa chọn danh mục, đã có số tiền → thẻ *"Gợi ý danh mục"*
+  (widget của B1) với câu lý do theo bậc tiền. Thứ tự nguồn: ghi chú có chữ → B1 → từ khoá; ghi chú trống → số tiền.
+- **Luật:** `category/domain/phan_loai_so_tien.dart` — Naive Bayes trên bậc tiền (thang 1·2·5) + ngày thường / cuối
+  tuần + ví, chỉ mẫu cùng chiều; danh mục gợi ý phải dẫn đầu bậc tiền. Phản hồi vào bảng sẵn có, `nguon = 'so_tien'`.
+  Không giờ (giờ lưu là giờ nhập). Không đổi schema, payload, `pubspec`; không gọi Gemma.
+- ⭐ **Phép đo lật thiết kế:** phát lại theo thời gian trên CSDL Realme (tài khoản 10, 67 giao dịch) với ngưỡng của B1 —
+  thẻ thật sự hiện 5 lần, **đúng 1**. Người dùng chốt: chỉ khi ghi chú trống · hậu nghiệm ≥ **0,8** · ≥ **5** khoản ở
+  bậc. Đo lại: thẻ im hẳn trên dữ liệu hiện tại (*chưa đủ để nói*). Công cụ: `test/tool/do_goi_y_so_tien_test.dart`.
+- Kèm: hàng nút của thẻ gợi ý đổi `Row` + `Spacer` → `Wrap` (tràn 157 px ở 360 × 640 trong font test).
+- `flutter test` **5374/5374** (7 skip — thêm công cụ đo), 3 phút 54 giây; `flutter analyze` **26**. +77 ca: 50 ở
+  `category/domain/phan_loai_so_tien_test`, 27 ở `transaction/presentation/add_transaction_goi_y_so_tien_test`.
+- ⚠️ **Chưa làm:** nghiệm thu máy thật (Task 6 của kế hoạch) — nhất là thẻ có nằm trong vùng nhìn thấy khi 16 phím số
+  mở ở 360 dp không. Người dùng dặn dừng sau phần chỉnh ngưỡng.
+
 ### 🧭 Dự án huấn luyện B — bộ định tuyến HỌC cho Trợ lý AI: ✅ xong trọn 9 task (2026-10-02)
 
 Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an-b-mo-hinh-dinh-tuyen-cau-hoi-design.md`

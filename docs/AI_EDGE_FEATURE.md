@@ -3681,7 +3681,9 @@ sai**, đưa 13/18 câu giao dịch về phiên một tool (số đo lạc quan 
 tool giao dịch vốn đã dài. Phép học nằm ở `test/tool/dinh_tuyen/`, app chỉ mang phép đoán và một tệp trọng số Dart 76 KB.
 Kế: **C**. 📝 **C bắt đầu 2026-10-02**: dự án gồm nhiều việc độc lập, mỗi việc một spec; việc đầu người dùng chọn là
 *gợi ý danh mục theo số tiền khi ghi chú không giúp được* (màn Thêm giao dịch, Naive Bayes trên bậc tiền + ngày thường /
-cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`, thiết kế và bản viết đã duyệt, kế hoạch 6 task ở `plans/` (gitignore), 🚧 **đang thi công**. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
+cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`, thiết kế và bản viết đã duyệt. 🚧 **Mã xong (`cf0a879` → `83b1b77`), chưa nghiệm thu máy** — mục **5g**
+`CATEGORY_RATIONALE.md`. Phép đo trên CSDL thật lật thiết kế: với ngưỡng của B1 thẻ đúng 1/5 lần → người dùng chốt *chỉ
+khi ghi chú trống · hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc*; đo lại thẻ im hẳn trên dữ liệu hiện tại. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
 tự khối trang Phân tích · thông báo theo phản ứng.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
