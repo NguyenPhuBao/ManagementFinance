@@ -12,6 +12,9 @@
 /// Cùng chỗ với `phan_loai_ghi_chu.dart` (B1) và dùng lại ngưỡng của nó, không khai bản thứ hai.
 library;
 
+import 'dart:math' as math;
+
+import '../../../core/utils/currency_formatter.dart';
 import '../../transaction/domain/khoang_tien.dart';
 import 'phan_loai_ghi_chu.dart';
 
@@ -97,3 +100,136 @@ List<MauSoTien> mauSoTienTu(
             ngay: t.ngay,
           ),
     ];
+
+class DoanSoTien {
+  final String categoryId;
+  final double xacSuat;
+  final String maBac;
+  final BacTien bac;
+
+  /// Số mẫu của danh mục đoán ở bậc này, cùng chiều.
+  final int soLanCung;
+
+  /// Số mẫu của bậc này, cùng chiều, mọi danh mục.
+  final int soLanTong;
+  const DoanSoTien({
+    required this.categoryId,
+    required this.xacSuat,
+    required this.maBac,
+    required this.bac,
+    required this.soLanCung,
+    required this.soLanTong,
+  });
+}
+
+class BoPhanLoaiSoTien {
+  BoPhanLoaiSoTien._(this._mau);
+
+  factory BoPhanLoaiSoTien.hoc(List<MauSoTien> mau) => BoPhanLoaiSoTien._(List.unmodifiable(mau));
+
+  final List<MauSoTien> _mau;
+
+  /// Mẫu đã học — luật mở lại gợi ý (`tatCapSoTienTu`) đếm mẫu MỚI trên chính danh sách này.
+  List<MauSoTien> get mau => _mau;
+
+  /// `null` = chưa đủ để nói (spec 4.3): số tiền không dương, sổ mỏng (đếm theo CHIỀU), hậu nghiệm thấp, hoà ở đỉnh,
+  /// danh mục đoán không dẫn đầu bậc tiền, hoặc cặp (mã bậc, danh mục) đang bị thôi gợi ý.
+  ///
+  /// [walletId] `null` (form chưa có ví) → bỏ đặc trưng ví, vẫn đoán bằng hai đặc trưng kia.
+  DoanSoTien? doan({
+    required String chieu,
+    required double soTien,
+    required DateTime ngay,
+    String? walletId,
+    required Set<String> hopLe,
+    Set<(String, String)> tatCap = const {},
+  }) {
+    if (soTien <= 0) return null;
+    final m = [
+      for (final x in _mau)
+        if (x.chieu == chieu) x,
+    ];
+    if (m.length < kToiThieuMauTong) return null;
+    final bac = bacTienCua(soTien);
+    final ma = maBacCua(bac);
+    final thu = nhomThuCua(ngay);
+
+    final n = <String, int>{};
+    final nBac = <String, int>{};
+    final nThu = <String, int>{};
+    final nVi = <String, int>{};
+    final cacBac = <String>{};
+    final cacThu = <String>{};
+    final cacVi = <String>{};
+    for (final x in m) {
+      final c = x.categoryId;
+      n[c] = (n[c] ?? 0) + 1;
+      if (x.maBac == ma) nBac[c] = (nBac[c] ?? 0) + 1;
+      if (x.nhomThu == thu) nThu[c] = (nThu[c] ?? 0) + 1;
+      if (x.walletId == walletId) nVi[c] = (nVi[c] ?? 0) + 1;
+      cacBac.add(x.maBac);
+      cacThu.add(x.nhomThu);
+      cacVi.add(x.walletId);
+    }
+    // Laplace: mẫu số cộng số giá trị khác nhau của đặc trưng trong các mẫu cùng chiều.
+    //
+    // ⚠️ Một đặc trưng chỉ góp phần khi GIÁ TRỊ đang hỏi đã từng gặp. Giá trị lạ (ví mới tạo, ví chưa chọn, nhóm thứ
+    // chưa có mẫu nào) thì mọi danh mục đều đếm 0, và phép làm trơn 1/(N(c)+K) khi ấy chỉ còn một tác dụng: phạt
+    // danh mục ĐÔNG mẫu — tức kéo hậu nghiệm của chính danh mục đáng tin nhất xuống, vì một lý do chẳng liên quan gì
+    // tới khoản đang nhập. Bậc tiền lạ thì không cần bỏ: chốt dẫn đầu bậc bên dưới đã trả `null`.
+    double hop(Map<String, int> dem, String c, Set<String> giaTri, String? dangHoi) => giaTri.contains(dangHoi)
+        ? math.log(((dem[c] ?? 0) + 1) / (n[c]! + giaTri.length))
+        : 0.0;
+    final diem = <String, double>{
+      for (final c in n.keys)
+        c: math.log(n[c]! / m.length) +
+            hop(nBac, c, cacBac, ma) +
+            hop(nThu, c, cacThu, thu) +
+            hop(nVi, c, cacVi, walletId),
+    };
+    // Hậu nghiệm trên MỌI danh mục đã học; `hopLe` chỉ lọc ứng viên — tính trên phần còn lại là đẩy danh mục duy nhất
+    // còn sống lên 100 % (cùng lý lẽ B1).
+    final lon = diem.values.reduce(math.max);
+    final tong = diem.values.fold(0.0, (a, d) => a + math.exp(d - lon));
+    final ungVien = [
+      for (final c in diem.keys)
+        if (hopLe.contains(c)) c,
+    ]..sort((a, b) {
+        final s = diem[b]!.compareTo(diem[a]!);
+        return s != 0 ? s : a.compareTo(b);
+      });
+    if (ungVien.isEmpty) return null;
+    final c = ungVien.first;
+    if (ungVien.length > 1 && diem[ungVien[1]] == diem[c]) return null;
+    final p = math.exp(diem[c]! - lon) / tong;
+    if (p < kNguongXacSuat) return null;
+    // Chốt DẪN ĐẦU BẬC TIỀN (spec 4.3): ít nhất `kToiThieuMauDanhMuc` khoản ở đúng bậc này, và nhiều hơn MỌI danh
+    // mục khác cùng chiều (kể cả danh mục ngoài `hopLe`). Thiếu nó thì một gợi ý thắng nhờ ví + thứ in "(2/5 lần)"
+    // — câu lý do nói ngược gợi ý. Chốt này bao luôn "danh mục đứng đầu phải có ít nhất 3 mẫu" của B1: ba khoản ở
+    // một bậc thì N(c) ≥ 3.
+    final cung = nBac[c] ?? 0;
+    if (cung < kToiThieuMauDanhMuc) return null;
+    for (final e in nBac.entries) {
+      if (e.key != c && e.value >= cung) return null;
+    }
+    if (tatCap.contains((ma, c))) return null;
+    return DoanSoTien(
+      categoryId: c,
+      xacSuat: p,
+      maBac: ma,
+      bac: bac,
+      soLanCung: cung,
+      soLanTong: nBac.values.fold(0, (a, b) => a + b),
+    );
+  }
+}
+
+/// Câu lý do in trên thẻ. Số tiền qua `CurrencyFormatter.format` — test quét 11 cấm nối ký hiệu tiền bằng tay.
+String cauLyDoSoTien(DoanSoTien d, {required String tenDanhMuc}) {
+  final lan = '(${d.soLanCung}/${d.soLanTong} lần)';
+  if (d.bac.duoi == 0) {
+    return 'Khoản dưới ${CurrencyFormatter.format(d.bac.tren)} bạn thường ghi cho $tenDanhMuc $lan.';
+  }
+  return 'Khoản từ ${CurrencyFormatter.format(d.bac.duoi)} đến ${CurrencyFormatter.format(d.bac.tren)} '
+      'bạn thường ghi cho $tenDanhMuc $lan.';
+}
