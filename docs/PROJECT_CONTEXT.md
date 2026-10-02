@@ -1001,10 +1001,10 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
 
-### 🚧 Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: mã xong, chưa nghiệm thu máy (2026-10-02)
+### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 
 Chi tiết ở mục **5g** `CATEGORY_RATIONALE.md`; spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`
-(banner đầu tệp); kế hoạch ở `plans/` (gitignore). Commit `cf0a879` → `83b1b77`.
+(banner đầu tệp); kế hoạch ở `plans/` (gitignore). Commit `cf0a879` → `83b1b77`, rồi bản sửa tự cuộn cùng tối.
 
 - **Ở đâu trên app:** màn Thêm giao dịch — ô ghi chú trống, chưa chọn danh mục, đã có số tiền → thẻ *"Gợi ý danh mục"*
   (widget của B1) với câu lý do theo bậc tiền. Thứ tự nguồn: ghi chú có chữ → B1 → từ khoá; ghi chú trống → số tiền.
@@ -1017,8 +1017,15 @@ Chi tiết ở mục **5g** `CATEGORY_RATIONALE.md`; spec `specs/2026-10-02-du-a
 - Kèm: hàng nút của thẻ gợi ý đổi `Row` + `Spacer` → `Wrap` (tràn 157 px ở 360 × 640 trong font test).
 - `flutter test` **5374/5374** (7 skip — thêm công cụ đo), 3 phút 54 giây; `flutter analyze` **26**. +77 ca: 50 ở
   `category/domain/phan_loai_so_tien_test`, 27 ở `transaction/presentation/add_transaction_goi_y_so_tien_test`.
-- ⚠️ **Chưa làm:** nghiệm thu máy thật (Task 6 của kế hoạch) — nhất là thẻ có nằm trong vùng nhìn thấy khi 16 phím số
-  mở ở 360 dp không. Người dùng dặn dừng sau phần chỉnh ngưỡng.
+- ✅ **Nghiệm thu Realme RMX2205 (360 dp) tối 2026-10-02** (bảng ở cuối mục 5g): thẻ, câu lý do, *Chọn*, *Bỏ qua*,
+  đổi đoạn / ví / **ngày**, gõ ghi chú — đạt; phản hồi ghi đúng hai hàng `so_tien`. ❌ Một lỗi: **thẻ khuất hẳn dưới
+  16 phím số** — `find.text` của bộ test mù vì `SingleChildScrollView` dựng cả phần ngoài khung nhìn. Người dùng chọn
+  **form tự cuộn tới thẻ** (`_cuonToiTheGoiY`): chỉ thẻ nguồn số tiền, chỉ khi thẻ vừa hiện hoặc đổi danh mục. Đo lại
+  trên máy: thẻ và hai nút nằm trọn trên bàn phím số. `flutter test` **5376/5376** (7 skip; +2 ca đo VỊ TRÍ ở 360 × 800),
+  3 phút 34 giây; `flutter analyze` 26.
+- ⚠️ Dữ liệu thử **giữ lại** trên Realme (người dùng cho phép): sáu khoản chi 1.000 đ *Mua sắm* ở *Ví MB Bank* — đáp án
+  các bộ câu AI đo trên máy ấy phải tính lại. Lượt đo chứng minh thẻ **chạy đúng luật**, chưa chứng minh thẻ **đoán
+  đúng** (dữ liệu tự dựng).
 
 ### 🧭 Dự án huấn luyện B — bộ định tuyến HỌC cho Trợ lý AI: ✅ xong trọn 9 task (2026-10-02)
 

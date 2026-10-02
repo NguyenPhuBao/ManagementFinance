@@ -629,10 +629,11 @@ và bản `a7c03b7` của backend không khởi động (khối 🔀 *Gộp `mai
 
 ## 5g. Thay đổi 10 — gợi ý danh mục theo số tiền khi ghi chú TRỐNG (dự án C, 2026-10-02)
 
-🚧 **Mã xong, chưa nghiệm thu trên máy.** Spec
+✅ **Xong + nghiệm thu Realme RMX2205 (360 dp) tối 2026-10-02** — bảng ở cuối mục; lượt ấy lộ một lỗi (thẻ khuất dưới
+16 phím số), sửa cùng tối. Spec
 `docs/superpowers/specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md` (banner đầu tệp = hiện trạng);
 kế hoạch `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md` (gitignore, nhật ký thi công ở
-cuối). Commit `cf0a879` → `83b1b77`.
+cuối). Commit `cf0a879` → `83b1b77`, rồi bản sửa tự cuộn.
 
 ### Vì sao
 
@@ -691,12 +692,43 @@ chứng minh thẻ đúng khi nó lên tiếng. **Đo lại khi sổ có vài th
 - **Hàng nút của thẻ gợi ý nay là `Wrap`** (trước: `Row` + `Spacer`, có từ B1): đủ chỗ thì hai nút hai đầu như cũ, chật
   thì nút sau xuống dòng. Bản `Row` tràn 157 px ở 360 × 640 trong font test — và từ lát này thẻ hiện cả khi 16 phím số
   đang mở.
+- **Thẻ nguồn số tiền vừa hiện thì form TỰ CUỘN tới nó** (`_cuonToiTheGoiY`, `keepVisibleAtEnd`; người dùng chọn
+  2026-10-02 sau nghiệm thu). Hai chốt: chỉ cuộn khi thẻ **vừa hiện hoặc đổi danh mục** — cùng một gợi ý tính lại ở mỗi
+  phím số mà cuộn là giành quyền cuộn của người dùng; và **không** cuộn cho thẻ B1 / từ khoá — hai thẻ ấy hiện lúc đang
+  gõ ghi chú, ô ghi chú nằm DƯỚI thẻ, kéo đáy thẻ về sát bàn phím là đẩy ô đang gõ ra sau bàn phím.
+
+### Nghiệm thu máy thật — Realme RMX2205 (360 dp), 2026-10-02 tối
+
+Bản debug `8e91c78e…` (mã `bbac088`), rồi bản sửa `52a3a37f…`. Tài khoản 10; dữ liệu thử người dùng cho phép **giữ
+lại**: sáu khoản chi 1.000 đ, *Mua sắm*, *Ví MB Bank*, ghi chú trống (năm khoản mẫu + khoản lưu qua nút *Chọn*). Chọn
+bộ ấy bằng cách mô phỏng phép đoán trên bản chép CSDL: bậc dưới 10.000 đ chưa có khoản chi nào, và ví MB Bank chưa
+từng dùng cho khoản chi — năm khoản là hậu nghiệm ≈ 0,91; cùng năm khoản ấy ở ví *Tiền mặt* (35/37 khoản chi cũ) chỉ
+≈ 0,60, tức **bậc tiền một mình không vượt 0,8 với 5–8 khoản**, phải có ví hoặc nhóm thứ góp phần.
+
+| Phép thử | Kết quả |
+|---|---|
+| Khoản 2–5 (chưa đủ 5 khoản ở bậc) | ✅ thẻ im |
+| Khoản 6: 1.000 đ, ghi chú trống | ✅ *"Khoản dưới 10.000 đ bạn thường ghi cho Mua sắm (5/5 lần)."* |
+| Thẻ trong vùng nhìn thấy khi 16 phím mở | ❌ **khuất hẳn** dưới bàn phím số (hàng *Danh mục* kết thúc ở y 1614, phím bắt đầu 1692 trên 2400) → sửa tự cuộn; ✅ đo lại: thẻ và hai nút nằm trọn trên bàn phím |
+| Đổi đoạn Chi → Thu → Chi | ✅ ẩn / hiện lại |
+| Đổi ví sang *Tiết kiệm* rồi về MB Bank | ✅ ẩn / hiện lại (mô phỏng: 0,60 / 0,91) |
+| Đổi **ngày** sang Thứ Bảy 03/10 rồi về Thứ Sáu | ✅ ẩn / hiện lại (mô phỏng: 0,69 / 0,91) — chỗ hẹn `_pickDate`, chưa có ca test |
+| Gõ một chữ vào ghi chú / xoá chữ ấy | ✅ thẻ mất ngay / hiện lại |
+| *Bỏ qua* | ✅ không bật lại trong lượt (đổi số tiền cùng bậc, đổi đoạn); mở lại màn thì hiện (mới một lần bỏ qua) |
+| *Chọn danh mục này* → lưu | ✅ hàng *Danh mục* = Mua sắm |
+| Bảng phản hồi | ✅ hai hàng `so_tien` · `0-10000`: một `bo_qua`, một `chon` |
+| Lỗi bố cục trong logcat | ✅ 0 |
+
+Chưa đo trên máy: thôi gợi ý sau hai lần *Bỏ qua* · đường ô Nhập nhanh · thẻ B1 / từ khoá khi bàn phím **hệ thống**
+mở. ⚠️ Về cái cuối: ở bản trước khi sửa, xoá hết ghi chú lúc ô ghi chú còn focus thì thẻ số tiền hiện lại với hàng nút
+bị bàn phím hệ thống cắt một phần; thẻ B1 nằm đúng chỗ ấy và **không** tự cuộn (cố ý) nên có thể bị cắt y hệt — chưa
+đo, chưa ai chốt sửa.
 
 ### Chưa làm / chưa biết
 
-- **Chưa nghiệm thu trên máy thật.** Đặc biệt: ở 360 dp khi 16 phím số mở, thẻ (dưới hàng *Danh mục*) có nằm trong vùng
-  nhìn thấy không — `flutter test` không thấy được.
-- Chỗ hẹn ở `_pickDate` chưa có ca test (bộ chọn ngày + ngày phụ thuộc hôm chạy).
+- Chỗ hẹn ở `_pickDate` chưa có ca test (bộ chọn ngày + ngày phụ thuộc hôm chạy) — mới kiểm trên máy thật.
+- ⚠️ Số đo trên là **thẻ có chạy đúng luật không**, không phải **thẻ có đoán đúng không**: dữ liệu do chính lượt thử
+  dựng. Câu *"chưa có số đo nào chứng minh thẻ đúng khi nó lên tiếng"* ở trên vẫn nguyên.
 - Thị trường: Wallet (BudgetBakers) có *mẫu giao dịch* (tên, ví, danh mục, số tiền) cho khoản nhập lại — thứ phổ biến
   nhất cho việc này; để sau, cần Stitch. Màn Gắn danh mục nhanh và form biến động chưa dùng nguồn số tiền.
 - Ba việc còn lại của dự án C: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ tự khối trang Phân tích · thông báo

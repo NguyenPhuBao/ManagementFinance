@@ -1,6 +1,8 @@
 # Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú không giúp được — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** 🚧 **mã xong (`cf0a879` → `83b1b77`), CHƯA nghiệm thu trên máy thật.** Người dùng
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ **xong (`cf0a879` → `83b1b77`) + nghiệm thu Realme RMX2205 tối cùng ngày** —
+rủi ro đầu của mục 8 xảy ra thật (thẻ khuất dưới 16 phím số), người dùng chọn *form tự cuộn tới thẻ*; bảng nghiệm thu
+ở mục **5g** `docs/CATEGORY_RATIONALE.md`. Người dùng
 duyệt thiết kế trong chat (sáu lượt AskUserQuestion) và duyệt bản viết cùng ngày (*"ok duyệt"*). Kế hoạch:
 `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md` (gitignore, nhật ký thi công ở cuối).
 
@@ -266,14 +268,16 @@ Người dùng chốt hàng 9 mục 2. **Đo lại với luật mới: 0 lần g
 0,8 chọn trên chính bộ đo này; chưa có số đo nào chứng minh thẻ đúng khi nó lên tiếng. Đo lại bằng công cụ khi sổ có
 vài tháng dữ liệu dùng thật.
 
-**Còn lại của cổng ra:** mục 7.4 điểm 1 ✅ (`flutter test` 5374/5374, 7 skip; `flutter analyze` 26) · điểm 3 **chưa
-làm** (nghiệm thu máy thật — người dùng dặn dừng sau phần chỉnh ngưỡng).
+**Cổng ra:** mục 7.4 điểm 1 ✅ (`flutter test` 5376/5376, 7 skip; `flutter analyze` 26) · điểm 3 ✅ nghiệm thu Realme
+RMX2205 tối 2026-10-02 (mục 5g `CATEGORY_RATIONALE.md`): mọi phép thử đạt trừ **thẻ khuất dưới 16 phím số** → sửa bằng
+tự cuộn (`_cuonToiTheGoiY`), đo lại đạt.
 
 ## 8. Rủi ro đã biết
 
 - **Thẻ nằm dưới vùng nhìn thấy.** Ở 360 dp, khi 16 phím số đang mở, thẻ (dưới hàng *Danh mục*) có thể bị che; người
   dùng chỉ thấy khi cuộn hoặc ẩn bàn phím. `flutter test` không thấy được — kiểm trên máy thật. Nếu thẻ không ai thấy
-  thì báo người dùng trước khi sửa bố cục.
+  thì báo người dùng trước khi sửa bố cục. ✅ **Xảy ra thật trên Realme 2026-10-02** — người dùng chọn *form tự cuộn tới
+  thẻ khi thẻ vừa hiện*; hai ca test mới đo vị trí thật ở 360 × 800.
 - **Dữ liệu mỏng.** Tài khoản lớn nhất có 39 mẫu trong một tháng; phần lớn lượt đoán sẽ im. Đó là hành vi đúng (mỗi luật
   học có ngưỡng, dưới ngưỡng thì im hẳn), nhưng nghĩa là giá trị thật chỉ đo được sau vài tháng dùng.
 - **Naive Bayes coi ba tín hiệu độc lập** — ví và danh mục thật ra tương quan (luật ví hay dùng theo danh mục đặt ví từ
