@@ -3679,7 +3679,11 @@ hình sau, app chỉ nghe mô hình khi nó đoán **câu giao dịch** (p ≥ 0
 sai**, đưa 13/18 câu giao dịch về phiên một tool (số đo lạc quan hơn thực tế — hai bộ cùng người soạn). Đo Realme (CPU)
 35 câu đổi đường: chờ 48,2 → 36,9 s, 35/35 không tụt sau hai bản sửa lớp chắn — lợi ít hơn kỳ vọng 45 → 24 s vì khai báo
 tool giao dịch vốn đã dài. Phép học nằm ở `test/tool/dinh_tuyen/`, app chỉ mang phép đoán và một tệp trọng số Dart 76 KB.
-Kế: **C**.
+Kế: **C**. 📝 **C bắt đầu 2026-10-02**: dự án gồm nhiều việc độc lập, mỗi việc một spec; việc đầu người dùng chọn là
+*gợi ý danh mục theo số tiền khi ghi chú không giúp được* (màn Thêm giao dịch, Naive Bayes trên bậc tiền + ngày thường /
+cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`, thiết kế duyệt trong
+chat, bản viết chờ người dùng đọc, **chưa có mã**. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
+tự khối trang Phân tích · thông báo theo phản ứng.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
