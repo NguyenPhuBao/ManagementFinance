@@ -552,4 +552,47 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text(_lyDoAn), findsOneWidget);
   });
+
+  // Nghiệm thu Realme RMX2205 (360 dp) 2026-10-02: thẻ ĐÃ dựng nhưng nằm khuất hẳn dưới 16 phím số — gõ số tiền xong
+  // người dùng không thấy gì đổi. `find.text` ở ca trên mù vì `SingleChildScrollView` dựng cả phần ngoài khung nhìn;
+  // các ca dưới đo VỊ TRÍ thật.
+  group('thẻ theo số tiền nằm trong vùng nhìn thấy khi 16 phím mở (360 × 800)', () {
+    Future<void> moManHep(WidgetTester tester, Widget w) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await mo(tester, w);
+    }
+
+    ScrollPosition viTriCuon(WidgetTester tester) => tester
+        .state<ScrollableState>(
+          find.descendant(of: find.byKey(const Key('vung-cuon-form')), matching: find.byType(Scrollable)).first,
+        )
+        .position;
+
+    testWidgets('⭐ thẻ vừa hiện → form tự cuộn: nút "Chọn danh mục này" nằm TRÊN bàn phím số', (tester) async {
+      await moManHep(tester, app(theme: AppTheme.lightTheme));
+      await go(tester, ['3', '5', '000']);
+      expect(tester.takeException(), isNull);
+      final dinhBanPhim = tester.getRect(find.byKey(const Key('ban-phim-so'))).top;
+      final nut = tester.getRect(find.text('Chọn danh mục này'));
+      expect(nut.bottom, lessThanOrEqualTo(dinhBanPhim),
+          reason: 'nút của thẻ khuất dưới 16 phím thì người dùng không biết có gợi ý');
+      expect(viTriCuon(tester).pixels, greaterThan(0), reason: 'ở 360 × 800 thẻ chỉ vào khung nhìn khi form cuộn');
+    });
+
+    testWidgets('⭐ thẻ đang hiện, người dùng cuộn về đầu → gõ tiếp trong CÙNG bậc → form không giật lại',
+        (tester) async {
+      await moManHep(tester, app(theme: AppTheme.lightTheme));
+      await go(tester, ['7']);
+      expect(find.text('Di chuyển'), findsOneWidget);
+      final viTri = viTriCuon(tester);
+      expect(viTri.pixels, greaterThan(0));
+      viTri.jumpTo(0);
+      await tester.pump();
+      await go(tester, ['0']); // 70 đ — cùng bậc, cùng gợi ý
+      expect(find.text('Di chuyển'), findsOneWidget);
+      expect(viTriCuon(tester).pixels, 0, reason: 'cuộn lại ở mỗi phím số là giành quyền cuộn của người dùng');
+    });
+  });
 }

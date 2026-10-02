@@ -227,6 +227,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Category? _selectedCategory;
   CategorySuggestion? _suggestion;
 
+  /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
+  final GlobalKey _khoaTheGoiY = GlobalKey();
+
   /// Chiều tiền người dùng chọn khi danh mục là vay/nợ: `'chi'` (tiền ra) hoặc
   /// `'thu'` (tiền vào). `null` với mọi danh mục khác. Được gợi sẵn theo tên
   /// danh mục lúc chọn ([_chonDanhMuc]) và đổi bằng công tắc trên form.
@@ -1184,6 +1187,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedDate != ngayLucHoi) {
       return;
     }
+    final truoc = _suggestion;
     setState(() {
       _suggestion = suggestion;
       if (suggestion != null) {
@@ -1193,6 +1197,34 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         // dùng đang nhìn — bỏ, không ghi phản hồi nào cho nó.
         _choPhanXu = null;
       }
+    });
+    // Chỉ khi thẻ nguồn số tiền VỪA hiện (hoặc đổi sang danh mục khác). Cùng một gợi ý được tính lại ở mỗi phím số
+    // thì không cuộn — người dùng đã cuộn đi là có chủ ý.
+    if (suggestion != null &&
+        suggestion.nguon == kNguonGoiYSoTien &&
+        (truoc?.nguon != kNguonGoiYSoTien || truoc?.category.id != suggestion.category.id)) {
+      _cuonToiTheGoiY();
+    }
+  }
+
+  /// Đưa thẻ gợi ý theo số tiền vào khung nhìn (người dùng chọn 2026-10-02).
+  ///
+  /// Nghiệm thu Realme RMX2205 (360 dp): thẻ nằm dưới hàng *Danh mục*, mà ngay dưới hàng ấy là 16 phím số — thẻ đã
+  /// dựng nhưng khuất hẳn, gõ số tiền xong người dùng không thấy gì đổi. `keepVisibleAtEnd`: chỉ cuộn khi đáy thẻ
+  /// đang khuất, và cuộn vừa đủ; thẻ đã nằm trong khung (màn cao, 16 phím đang ẩn) thì không động gì.
+  ///
+  /// ⚠️ KHÔNG gọi cho thẻ B1 / từ khoá: hai thẻ ấy hiện lúc người dùng đang gõ GHI CHÚ, và ô ghi chú nằm DƯỚI thẻ —
+  /// kéo đáy thẻ về sát bàn phím là đẩy chính ô đang gõ ra sau bàn phím.
+  void _cuonToiTheGoiY() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _khoaTheGoiY.currentContext;
+      if (!mounted || ctx == null) return;
+      unawaited(Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      ));
     });
   }
 
@@ -1689,6 +1721,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 const SizedBox(height: 8),
                 Expanded(
                   child: SingleChildScrollView(
+                    key: const Key('vung-cuon-form'),
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                     // C2: ô Nhập nhanh ở ĐẦU vùng cuộn, không cố định — ở 360 × 640 vùng giữa đã chật, một ô cố định
                     // nữa là thẻ form còn chưa tới 70 dp. Chỉ ở đường tạo mới (spec §3).
@@ -2434,6 +2467,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Widget _buildSuggestionCard(CategorySuggestion suggestion) => Container(
+        key: _khoaTheGoiY,
         width: double.infinity,
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.all(16),
