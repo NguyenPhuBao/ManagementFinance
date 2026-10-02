@@ -3530,7 +3530,12 @@ chưa có dự án B) rồi **sau** (`8939ad2d…` = `ef6c5ca`), cùng máy cùn
 ⚠️ **Giảm ~12 s mỗi câu (−23 %), ít hơn hẳn kỳ vọng 45,5 → 23,8 s của spec.** Con số 23,8 s là của phiên một tool với
 tool **nhỏ** (hoá đơn, ví, ngân sách…); riêng khai báo `truy_van_giao_dich` đã là 3.278 / 6.980 ký tự, và lời hệ thống
 2.679 ký tự (viết cho sáu tool, đầy ví dụ định tuyến) không đổi. Muốn giảm tiếp là rút lời hệ thống cho phiên một
-tool — spec dự án B cấm đổi lời hệ thống, nên đó là việc khác, chưa làm, chưa hỏi. ⚠️ Bản debug: số tuyệt đối không
+tool — spec dự án B cấm đổi lời hệ thống, nên đó là việc khác, chưa làm. 📝 **Người dùng hỏi cách giảm chờ ngay sau
+lượt đo** và chọn hướng khác, lợi hơn: **đường nhanh — tool chạy trước bằng tham số luật đọc, Gemma chỉ viết câu**
+(spec `specs/2026-10-02-duong-nhanh-cau-giao-dich-design.md`, thiết kế duyệt trong chat, **chưa thi công**). Phép đo
+ngoài máy dẫn tới nó: bộ chỉnh tự điền tham số từ `{}` ra đúng kết quả ở 28/35 câu đã đo (in-sample) và 13–14/18 câu
+giao dịch của bộ đo khoá; chỗ hụt là ba họ từ vựng đóng (kỳ *"trước"*, chiều chuyển ví, tên lạ) và một họ mở (động từ
+chỉ chiều lạ — chốt: luật không đọc ra chiều thì để Gemma điền như hôm nay). ⚠️ Bản debug: số tuyệt đối không
 so được với mốc 72 câu (bản release); phép so trước/sau thì cùng điều kiện.
 
 **Nội dung — chấm theo câu trả lời hiện ra.** Gemma gọi đúng tool ở 35/35 câu của cả hai lượt (lượt sau không câu nào
