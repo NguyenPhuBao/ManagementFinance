@@ -21,7 +21,10 @@ mở rộng bộ tool ba lát — **chín** tool, câu đã định tuyến khai
 nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến năm họ câu — `kBang72Cau`) (**9.38**) · G56 `LoaiSo.soLan`
 (**9.39**) · nhóm B (B1 gợi ý danh mục học từ ghi chú, B5a/B5b, B2, B3, B4 — mục của từng mảng, hàng tương ứng `CLAUDE.md`)
 · nhóm C: **C1** gắn danh mục hàng loạt (**9.40**), **C2** ô Nhập nhanh — *"AI đọc mọi câu"*, **lối B mở sang chỗ thứ hai**
-(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**.
+(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**
+· **C3** lệnh tạo hoá đơn / mục tiêu / ngân sách, bản luật rồi bản đọc bằng AI (**9.42–9.43**) · spike **C4** giọng nói + chụp
+hoá đơn, còn dở (**9.44**) · dự án huấn luyện **A** — spike tra cứu (**10.6**) · ✅ dự án **B** — bộ định tuyến HỌC: câu giao
+dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02).
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -186,6 +189,7 @@ lib/features/ai_edge/
   domain/ + data/ (bộ chỉnh tham số theo câu hỏi, 2026-09-25 rạng sáng — mục 9.28) chinh_tham_so.dart: chinhThamSoTimGiaoDich — sáu luật, bỏ dấu, từ khoá chuỗi tách lúc chạy; cong_cu.dart: CongCu.chay nhận cauHoi (bảy tool, BoCongCu, vòng lặp); cong_cu_giao_dich.dart: áp bộ chỉnh TRƯỚC mọi phép kiểm, log "chỉnh tham số theo câu hỏi", trường log
   domain/   (vòng sửa cổng F, 2026-09-28 — mục 9.37) kiem_ky.dart: kiemKy — lớp chắn thứ SÁU (chữ kỳ lệch kỳ của số) · goi_so.dart: GoiSo.kyCua · kiem_nhan.dart: số tổng gán cho đối tượng · chinh_tham_so.dart: cauHoiVeTrich, tenNeuTrongCau (dời ra core/utils/khop_ten.dart ở C2 T4), luật 2a/2b/2c/4b, tu_tra
   (C2, 2026-09-29 → 30 — mục 9.41) kiem_so.dart + chinh_tham_so.dart gọi timSoBangChu (một bộ đọc số chữ, đọc cả hàng chục) · ma_ky.dart gọi ngayHopLe ở core/utils/ngay_trong_cau.dart
+  domain/ + data/ (dự án B, 2026-10-02 — mục 9.45) dinh_tuyen_hoc.dart: đặc trưng + phép ĐOÁN của bộ định tuyến học (amTietDinhTuyen · dacTrungCua · TrongSoDinhTuyen · doanDinhTuyen · kNhanMoHinhDuocDinhTuyen) · trong_so_dinh_tuyen.g.dart: SINH RA, không sửa tay (kNguongDinhTuyen · kBamBoHuanLuyen · kTrongSoDinhTuyen) · dinh_tuyen.dart: ĐƯỜNG GHÉP luật → mô hình (dinhTuyenCauHoi · dinhTuyenChiLuat · KetQuaDinhTuyen · NguonDinhTuyen) · vong_lap_cong_cu.dart: nhận hàm định tuyến, tenEp — ép chạy tool đích CHỈ khi nguồn là luật (định tuyến mềm), dòng log `định tuyến: …`
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -196,6 +200,7 @@ lib/core/utils/so_bang_chu.dart                    — (C2 T1) timSoBangChu: M�
 lib/core/utils/ngay_trong_cau.dart                 — (C2 T2) timNgayTrongCau (ô Nhập nhanh) · ngayHopLe (dời từ ma_ky.dart)
 lib/features/transaction/domain/doc_cau_giao_dich.dart — (C2) docCauGiaoDich: luật đọc câu + lưới kiểm ô của AI (cachDocSoTien, KetQuaAi)
 lib/features/transaction/data/doc_cau_bang_ai.dart — (C2 §2.8) DocCauBangAi: phiên một tool dien_giao_dich; NGOÀI ai_edge vì schema mang 'thu'/'chi' (test quét 14)
+test/tool/dinh_tuyen/                             — (dự án B) KHÔNG vào bản app: du_lieu.dart (đọc TSV, mười nhãn, mã băm) · huan_luyen.dart (hocNaiveBayes · hocLogistic · kiemCheo · phanLuatBoLai · danhGia · chonNguong · sinhTepTrongSo) · bo_huan_luyen.tsv · bo_do.tsv (KHOÁ bằng mã băm) · huan_luyen_dinh_tuyen_test.dart và do_bo_do_test.dart (`skip`, chạy tay)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
 lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge
@@ -2773,7 +2778,7 @@ luật chặn thử bằng bản sai có chủ ý.
 | **G3** | E8 · F12 | Hoá đơn nêu tên → tập riêng của nó: mọi hàng còn phải trả + mọi hàng hạn tháng này / tháng tới, mọi trạng thái, **không kỳ dự kiến** (B1c *"còn phải trả"* không được cộng kỳ chiếu), không hàng nào thì hàng mới nhất; tổng hợp trên tập ấy, bỏ *Cố định mỗi tháng*. *"tự trả / tự động thanh toán"* → bộ chỉnh đặt `tu_tra` (+ `ky=tat_ca` khi không nêu kỳ) — *"phải tự trả"* là trả tay; ca test cũ *"F12 không đổi tham số"* viết lại | `631437f` |
 | **G4** | F15 · F14 | Câu *chuyển bớt / cân đối / bù ngân sách* → `danh_sach_ngan_sach`, phiên một tool (bộ chỉnh đặt `can_doi`). Mục tiêu nêu tên → chỉ mục tiêu ấy (đếm / kết luận trích cũng chỉ trên nó); hỏi trích của mục tiêu không bật trích → `ket_qua` *"<tên> không bật trích tự động"* — log cổng F cho thấy mô hình đã viết kỳ trích **06/10 của MuaXe** cho MuaDT, `kiemSo` chặn do may | `34339a6` |
 | **G5 (a)** | E3 | `kiemNhan`, theo vế: số **tiền** chỉ khớp mục tổng không tên + vế nêu tên đối tượng có mục **cùng họ nhãn** (`Chi` ⊆ `Tổng chi`) + vế không có số nào của đối tượng → chặn. Câu đúng 27/09 *"Giải trí với tổng chi là 30.000 đ"* (số của chính nó) vẫn qua | `38e079b` |
-| **G5 (b)** | E21 | Lớp chắn **thứ sáu** `kiemKy` (`kiem_ky.dart`): vế có chữ kỳ tương đối mà mọi mục khớp số có kỳ đã biết và không kỳ nào trùng → chặn. Kỳ từ `GoiSo.kyCua` (mặc định `null` = không xét): Trang chủ thu / chi / còn lại = tháng này (tổng số dư là số hiện tại); Phân tích khi `NguonGoiSo` truyền `chuKy`; tra cứu theo lượt | `eeaadc4` |
+| **G5 (b)** | E21 | Lớp chắn **thứ sáu** `kiemKy` (`kiem_ky.dart`): vế có chữ kỳ tương đối mà mọi mục khớp số có kỳ đã biết và không kỳ nào trùng → chặn. Kỳ từ `GoiSo.kyCua` (mặc định `null` = không xét): Trang chủ thu / chi / còn lại = tháng này (tổng số dư là số hiện tại); Phân tích khi `NguonGoiSo` truyền `chuKy`; tra cứu theo lượt (⚠️ từ 2026-10-02 lượt *mọi thời gian* và *kỳ tự do* **cũng được xét** — mục 9.45) | `eeaadc4` |
 
 `flutter test` **4146/4146** (3 skip, +44 ca), `flutter analyze` 26 (mức nền). `tools_json`, lời hệ thống, mẫu câu,
 schema, payload **không đổi**. Không ca test cũ nào phải sửa kỳ vọng ngoài hai ca ghi
@@ -3447,6 +3452,148 @@ sau `--dart-define=SPIKE_C4=true` (`ai_chat/spike/`), là mã bỏ đi.
   chuyển ví. Hụt **như nhau** ở cả hai lối nên không làm lệch phép so A / B, nhưng là đầu vào của spec C4: giọng nói
   là đường vào của C2, và người nói không nói *"45k"*.
 
+### 9.45 Dự án B — bộ định tuyến HỌC: mô hình nhỏ đưa câu giao dịch về phiên một tool (2026-10-02) — ✅ xong, đo Realme 35/35 không tụt · SAI 0 · chờ −12 s/câu
+
+Spec `specs/2026-10-02-du-an-b-mo-hinh-dinh-tuyen-cau-hoi-design.md` (banner đầu tệp = hiện trạng); kế hoạch 9 task
+`plans/2026-10-02-du-an-b-mo-hinh-dinh-tuyen.md` (gitignore). Commit `cc729f7` → `ef48b35` + commit tài liệu của mục này.
+✅ **Xong trọn 9 task; cả năm cổng ra đạt** (cổng 4 đạt sau hai bản sửa của lượt đo).
+
+**Việc này ở đâu trên app.** Màn Trợ lý AI, bước *chọn tool* — giữa lúc bấm Gửi và lúc Gemma trả lời. Phiên **sáu
+tool** (Gemma tự chọn) chờ lâu gấp đôi phiên **một tool** (tầng mã đã biết tool đích). Luật viết tay
+`congCuTheoCauHoi` chỉ nhận ra 31/72 câu của mốc 72 câu; 37 câu còn lại đều là **câu giao dịch** — với luật, câu giao
+dịch là "phần còn lại sau khi mọi luật khác im". Dự án B thêm một tầng: câu luật bỏ lại được một mô hình nhỏ xét, đủ
+tin là câu giao dịch thì phiên chỉ khai `truy_van_giao_dich`.
+
+**Năm quyết định người dùng chốt** (mục 2 spec): bộ đo do tôi soạn và **khoá trước** bộ huấn luyện · **luật trước, mô
+hình sau** (`congCuTheoCauHoi` không sửa một dòng) · học **mười nhãn** (chín tool + `khong_dinh_tuyen`) nhưng ⭐ **app
+chỉ hành động khi mô hình đoán nhãn giao dịch** (*hướng 1*, đổi sau lần huấn luyện đầu — hằng
+`kNhanMoHinhDuocDinhTuyen`) · huấn luyện Naive Bayes **và** logistic, chọn bằng số đo · trọng số là **tệp Dart sinh
+ra**, không phải asset.
+
+**Mô hình.** Đặc trưng: câu → bỏ dấu → âm tiết đơn + cặp âm tiết liền nhau, nhị phân; âm tiết có chữ số thành một ký
+hiệu. Phép **đoán** (tuyến tính + softmax, `dinh_tuyen_hoc.dart`) nằm trong `lib/`; phép **học**, kiểm chéo, chọn
+ngưỡng nằm ở `test/tool/dinh_tuyen/huan_luyen.dart` và gọi lại đúng phép đoán ấy. Không có gì ngẫu nhiên — chạy lại ra
+cùng trọng số. Bộ huấn luyện 606 câu sau khử trùng (72 câu đã đo + câu tôi soạn); trọng số 786 đặc trưng × 10 nhãn,
+76,2 KB mã nguồn.
+
+| Kiểm chéo 5 phần, **405** câu luật bỏ lại | chính xác 10 nhãn | ngưỡng 0-câu-sai + đệm | định tuyến / sai | phủ câu giao dịch |
+|---|---|---|---|---|
+| **logistic (chọn)** | 85,7 % | **0,76** | 110 / 0 | 74,1 % của 147 |
+| Naive Bayes | 82,7 % | 0,99 | 99 / 0 | 66,7 % |
+| logistic, **chín tool** (thiết kế gốc — người dùng không chọn) | — | 0,98 | 20 / 0 | 6,4 % câu mang nhãn tool |
+
+Vì sao chín tool hỏng ở kiểm chéo: ngưỡng do **một** câu sai tệ nhất quyết định, và với tám tool ngoài giao dịch mỗi
+tool chỉ còn 14–29 câu sau khi luật lấy phần của mình — mô hình sai ở p = 0,93 và 0,91. Đi từ hướng 1 sang chín tool
+về sau chỉ là thêm nhãn vào `kNhanMoHinhDuocDinhTuyen`.
+
+**Đường ghép** (`ai_edge/domain/dinh_tuyen.dart`): `dinhTuyenCauHoi` = luật → (luật im) mô hình → định tuyến ⇔ nhãn
+đoán ∈ `kNhanMoHinhDuocDinhTuyen` ∧ p ≥ `kNguongDinhTuyen`. Trả `KetQuaDinhTuyen(ten, nguon, nhanMoHinh, xacSuat)`.
+`hoiBangCongCu` nhận hàm định tuyến (mặc định là đường ghép) và in **dòng log đầu** của mỗi lượt hỏi:
+`[SLM][tool] định tuyến: luật → X` · `mô hình → X (p=0,93)` · `không (mô hình: Y p=0,41)`.
+
+⚠️ **Định tuyến bằng mô hình là định tuyến MỀM** (spec 3.1). Với nguồn **luật**, vòng lặp có hai hành vi ép: mô hình
+không gọi tool thì tự chạy tool đích với `{}`; mô hình gọi tool khác thì đổi sang tool đích. Hai hành vi ấy **không
+áp** cho nguồn mô hình (`tenEp` trong `vong_lap_cong_cu.dart`) — ở đó định tuyến chỉ thu phiên về một tool; Gemma
+không gọi tool thì vẫn L1 (bậc 1). Lý do: một câu chào bị định tuyến nhầm mà ép chạy tool giao dịch với `{}` thì nhận
+*"thiếu kỳ"* thay vì một câu trả lời. Trần thiệt hại của một lần định tuyến sai là: Gemma chỉ thấy một tool và vẫn gọi
+nó cho câu không thuộc nó.
+
+**Bộ đo khoá — mở ĐÚNG MỘT LẦN** (62 câu, `test/tool/dinh_tuyen/do_bo_do_test.dart`, công cụ commit trước khi chạy).
+⚠️ Hai bộ dữ liệu do cùng một người soạn nên **số đo lạc quan hơn thực tế**.
+
+| | Kết quả |
+|---|---|
+| Đường ghép, 62 câu | định tuyến đúng **28** · **SAI 3 — cả ba do LUẬT, 0 do mô hình** · 31 câu không định tuyến (10 câu ngoài phạm vi ở lại đúng, 21 câu mang nhãn tool đi phiên sáu tool như cũ) |
+| Mô hình, 44 câu luật bỏ lại | 18 câu giao dịch → **13** được định tuyến (phủ **72,2 %**; kiểm chéo nói 74,1 %) · 26 câu khác → **0** bị kéo vào tool giao dịch · đoán đúng nhãn 43/44 |
+| Luật | định tuyến 18/62, đúng nhãn 15 |
+| Tham khảo — chín tool, ngưỡng 0,76 | 21 định tuyến / 0 sai trên bộ đo — nhưng kiểm chéo (bộ lớn hơn) sai 3 ở ngưỡng 0,80; không dùng |
+
+Năm câu giao dịch bị bỏ lỡ (p = 0,52–0,73, dưới ngưỡng): *hôm qua có khoản thu nào không* · *quý này danh mục nào ngốn
+nhiều tiền nhất* · *tiền đi cho y tế tháng này là bao nhiêu* · *3 khoản thu mới nhất* · *tuần trước tôi xài tổng cộng bao nhiêu* —
+chúng đi phiên sáu tool như trước dự án B, không tệ đi.
+
+**Bảng 72 câu, đường ghép** (`dinh_tuyen_72_cau_test.dart`, trọng số thật): 31 câu theo luật **không đổi đường** · bốn
+câu ngoài phạm vi **không bị định tuyến** · 37 câu giao dịch → **35** sang phiên một tool, **E3** (p = 0,70) và **E15**
+(p = 0,74) ở lại. ⚠️ 72 câu nằm **trong** bộ huấn luyện — đây là phép canh hồi quy, không phải số đo.
+
+**Đo máy — cổng ra 4** (Realme RMX2205, **CPU**, bản **debug** + `SPIKE_C4`, 2026-10-02 12:13 → 13:46, tài khoản và
+dữ liệu của máy; 0 lần sập, 0 vỡ trần). 35 câu **đổi đường** của bảng 72, đo **trước** (`9bd65000…` = mã `2e2c04c`,
+chưa có dự án B) rồi **sau** (`8939ad2d…` = `ef6c5ca`), cùng máy cùng buổi; ba câu tụt đo lại trên bản sửa
+(`e57753f8…` = `ef48b35`). Bộ đo ở scratchpad phiên `d048aff8…` (`chay35.sh` · `hoi.sh` · `ban_ghi.py` · `so_sanh.py`).
+
+| Thời gian chờ | Trước — phiên 6 tool | Sau — phiên 1 tool |
+|---|---|---|
+| `tools_json` | 6.980 ký tự | **3.278** ký tự |
+| Lượt sinh đầu (Gemma chọn tool + điền tham số), 35 câu | 41,0 s (35,4 – 45,8) | **29,1 s** (27,1 – 34,9) |
+| Tổng chờ, 23 câu có dòng `xong sau` ở cả hai lượt | 48,2 s | **36,9 s** |
+
+⚠️ **Giảm ~12 s mỗi câu (−23 %), ít hơn hẳn kỳ vọng 45,5 → 23,8 s của spec.** Con số 23,8 s là của phiên một tool với
+tool **nhỏ** (hoá đơn, ví, ngân sách…); riêng khai báo `truy_van_giao_dich` đã là 3.278 / 6.980 ký tự, và lời hệ thống
+2.679 ký tự (viết cho sáu tool, đầy ví dụ định tuyến) không đổi. Muốn giảm tiếp là rút lời hệ thống cho phiên một
+tool — spec dự án B cấm đổi lời hệ thống, nên đó là việc khác, chưa làm, chưa hỏi. ⚠️ Bản debug: số tuyệt đối không
+so được với mốc 72 câu (bản release); phép so trước/sau thì cùng điều kiện.
+
+**Nội dung — chấm theo câu trả lời hiện ra.** Gemma gọi đúng tool ở 35/35 câu của cả hai lượt (lượt sau không câu nào
+rơi L1). 24 câu trả lời **giống hệt từng chữ**; 8 câu khác chữ, cùng nội dung đúng; **3 câu tụt** ở bản sau → sửa →
+đo lại đạt. ⚠️ Hôm đo là **02/10**: 19 câu *"tháng này / hôm nay / quý này"* ra *"… không có giao dịch nào khớp"*
+(tháng 10 chưa có dữ liệu) — đúng, nhưng với 19 câu ấy phép chấm nội dung chỉ kiểm được **bộ lọc** in trong mẫu câu.
+
+| Câu | Trước | Sau | Đánh giá |
+|---|---|---|---|
+| A9 *Thang truoc toi chi bao nhieu?* | *Tháng trước bạn đã chi tổng cộng 6.741.000 đ.* | *Tháng trước bạn chi tổng cộng 6.741.000 đ.* | ✅ = |
+| C6 *…khoan chi nao tren 1 trieu…* (tháng trước) | chữ Gemma: 2 khoản, 3.000.000 đ và 1.500.000 đ | mẫu câu: hai hàng ấy + Tổng chi 4.500.000 đ | ✅ = (chữ → mẫu câu) |
+| C8 *…khoan thu nao tu 5 trieu tro len…* | *…2 khoản thu là Lương với tổng cộng 14.000.000 đ* | mẫu câu: Lương 9.000.000 đ, Lương 5.000.000 đ, Tổng thu 14.000.000 đ | ✅ = (chữ → mẫu câu) |
+| C17 *tim cac giao dich co ghi chu hoa don* | *Có 6 giao dịch… Tổng chi là 411.000 đ* (`chieu: khoan_chi` thừa) | mẫu câu: 4 hàng + Số giao dịch 6, Tổng chi 411.000 đ (không lọc chiều) | ✅ = |
+| C20 · E16 · E17 · F1 | — | khác vài chữ, cùng số | ✅ = |
+| **F2** *tu 1/9 den 15/9 toi chi nhung gi* | *…bạn đã chi tổng cộng 3.595.000 đ* ✅ | *…ghi chú chứa "từ 1/9 den 15/9" — không có giao dịch nào khớp* ✗ | **tụt** → sửa → *…3.595.000 đ* ✅ |
+| **E2** *Thang 9 toi da tieu het bao nhieu tien?* | *Trong tháng 9, tổng chi… 6.741.000 đ* ✅ | ***Tháng này** bạn đã chi tổng cộng 6.741.000 đ* — SAI kỳ | **tụt** → sửa → mẫu câu *Tháng 9/2026, khoản chi — … Tổng chi: 6.741.000 đ* ✅ |
+| **C19** *cac khoan chi cho giao duc tu vi test* | *…2 khoản chi… tổng 45.000 đ* ◐ | *Các khoản chi cho giáo dục **trong tháng này** là: test 35.000 đ, Giáo dục 10.000 đ* — SAI kỳ | **tụt** → sửa → mẫu câu *Mọi thời gian, khoản chi, danh mục "Giáo dục", ví "test" — … Tổng chi: 45.000 đ* ✅ |
+
+**Kết quả cổng 4 sau khi sửa: 35/35 không tụt, SAI 0.** Ba câu tụt là đúng rủi ro spec mục 6 đã báo (*Gemma điền khác
+đi ở phiên một tool*) và lộ ra **hai lỗ hổng có sẵn** — phiên sáu tool cũng có thể vấp, lần đo này chỉ không vấp.
+Người dùng duyệt sửa trong phiên (`ef48b35`):
+
+- **Bộ chỉnh luật 11b** (`chinh_tham_so.dart`): câu nêu kỳ cụ thể mà `tu_khoa` chỉ là **đoạn kỳ của chính câu hỏi**
+  (mọi âm tiết là chữ số hoặc *từ · đến · tới · ngày · tháng · năm · quý · tuần*) → gỡ. Cùng lý lẽ luật 2a (chữ chiều).
+  Chữ đứng sau *"ghi chú"*, `tu_khoa` có chữ khác (*"tien nha thang 8"*), câu không nêu kỳ cụ thể → giữ.
+- **`kiemKy` xét cả lượt *kỳ tự do* và *mọi thời gian*** (`GoiSoTraCuu.kyCua`): bản trước trả `null` (không xét) cho
+  hai loại lượt ấy, nên *"Tháng này bạn đã chi…"* cho số của tháng 9 lọt cả sáu lớp chắn — số thật, nhãn thật, chỉ chữ
+  kỳ sai. Nay trả tập **chỉ gồm kỳ tương đương** + kỳ của phép so. `KetQuaCongCu.kyTuongDuong` (không vào JSON gửi mô
+  hình) do `ganKyTuyChon` tính tại `now`: chữ kỳ tương đối **trùng khít** khoảng — hỏi *"tháng 9"* ngày 02/10 thì
+  *"tháng trước bạn chi…"* là câu **đúng** và không bị chắn oan. ⚠️ Lượt *mọi thời gian* không có kỳ tương đương nào:
+  *"lần gần nhất là hôm qua, 10.000 đ"* sẽ bị chặn dù có thể đúng — rơi về mẫu câu có ngày, chấp nhận.
+- ⚠️ **Lỗi kỳ này chỉ lộ khi sang tháng mới.** Mốc 72 câu đo ngày 28/09: khi ấy *"tháng 9"* **là** *"tháng này"* nên
+  câu của Gemma đúng do trùng hợp. Bộ đo máy nào có câu nêu tháng cụ thể đều phải đo lại sau khi lịch lật.
+
+**Bẫy và bài học:**
+
+- **Chấm trên ĐƯỜNG GHÉP, không chấm mô hình đứng riêng** (`phanLuatBoLai`). Lần huấn luyện đầu chấm trên mọi câu nên
+  ra ngưỡng 0,99, phủ 3,2 % — ba câu sai nặng nhất đều là câu luật đã bắt, thứ trong app không bao giờ tới mô hình.
+- **Ngưỡng do MỘT câu sai tệ nhất quyết định.** Câu đang quyết 0,76: *"thang nay toi lai hay lo"* (tổng quan → giao
+  dịch, p = 0,707). Thêm câu khó vào bộ huấn luyện có thể đẩy ngưỡng lên.
+- **Cột "chấp nhận"** (cột TSV thứ ba): sáu câu so thu với chi mang nhãn tổng quan mà tool giao dịch cũng trả đủ số —
+  định tuyến sang đó không tính sai. Cố ý **không** ghi cho *"tháng này tôi lãi hay lỗ"* (banner spec).
+- **Sửa `bo_huan_luyen.tsv` thì phải sinh lại trọng số** (`flutter test test/tool/dinh_tuyen/huan_luyen_dinh_tuyen_test.dart
+  --run-skipped`, ghi đè `.g.dart`); ca *"trọng số KHÔNG cũ hơn bộ huấn luyện"* canh bằng mã băm (tính trên nội dung đã
+  đổi CRLF → LF vì repo `core.autocrlf=true`).
+- **Test của vòng lặp ghim về `dinhTuyenChiLuat`** — không thì câu mẫu của khung phụ thuộc bộ trọng số và đỏ ngẫu
+  nhiên mỗi lần huấn luyện lại.
+- **Bảng 72 KHÔNG bắt được lỗi ngưỡng**: bản sai *ngưỡng mặc định 0* vẫn xanh trên bảng 72 (in-sample, mô hình vốn đoán
+  đúng) — ca canh ngưỡng nằm ở `dinh_tuyen_test.dart` với trọng số tay.
+- Tệp trọng số nằm trong `ai_edge/` nên nhãn / từ vựng lưu thành **một chuỗi bọc `|`** tách lúc chạy (test quét 14).
+- Từ nay **mọi lần chạy `do_bo_do_test.dart` là "đã nhìn bộ đo"** — sửa dữ liệu hay ngưỡng theo nó rồi chạy lại là học
+  trên bộ đo. Phép đo đáng tin hơn là 30–40 câu **người dùng gõ thật**, chạy bằng đúng công cụ ấy.
+
+📌 **Việc mở — LUẬT `congCuTheoCauHoi` lệch nhãn** (ngoài phạm vi dự án B; người dùng chốt 2026-10-02: *ghi lại, làm
+sau dự án B* — soát từng câu, sửa luật, đo lại câu đã đo bị ảnh hưởng, bảng 72 canh câu đổi đường). Trên bộ đo luật
+sai **3/18** câu nó bắt: *"So sánh tổng hoá đơn tháng tới với ngân sách còn lại của tôi"* và *"Mục tiêu và ngân sách
+của tôi cái nào đang có vấn đề?"* (câu cần **hai** tool, regex *ngân sách* giành → chỉ tra Ngân sách) · *"sau khi đóng
+hết hoá đơn tôi còn lại bao nhiêu"* → Hoá đơn thay vì Dự báo (luật dự báo chỉ nhận *"trả hết"*). Trên bộ huấn luyện
+luật lệch **18/201** câu nó bắt — vd. *"các danh mục thu nhập của tôi"*, *"thuế thu nhập cá nhân tính thế nào"*, *"dòng
+tiền tự do là gì"* → tổng quan; *"ngân sách nhà nước năm nay bao nhiêu"* → ngân sách; *"lần cuối tôi trả hoá đơn điện
+là ngày nào"* → hoá đơn. Danh sách đầy đủ: khối *LUẬT định tuyến…* của công cụ huấn luyện. ⚠️ Một số là nhãn của tôi
+còn bàn được (năm câu *"ngân sách X bao nhiêu là đủ / vừa"*).
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
@@ -3522,7 +3669,12 @@ huấn luyện — lý do: phiên sáu tool chờ TB 45,5 s, phiên một tool 2
 **C** học trên máy của từng người, mở rộng khuôn B1. Mỗi dự án một spec riêng, brainstorm lại
 khi tới lượt. ✅ **A xong phần tra cứu 2026-10-02 — mục 10.6**: có đường và giấy phép (Gemma 4 là
 Apache 2.0), nhưng tool calling và ảnh / âm thanh là hai chỗ người khác báo hỏng sau khi xuất; phép
-thử thật (A2) chờ người dùng quyết.
+thử thật (A2) chờ người dùng quyết. ✅ **B xong 2026-10-02 — mục 9.45**: hồi quy logistic trên âm tiết, luật trước mô
+hình sau, app chỉ nghe mô hình khi nó đoán **câu giao dịch** (p ≥ 0,76); bộ đo khoá 62 câu: mô hình **0 câu định tuyến
+sai**, đưa 13/18 câu giao dịch về phiên một tool (số đo lạc quan hơn thực tế — hai bộ cùng người soạn). Đo Realme (CPU)
+35 câu đổi đường: chờ 48,2 → 36,9 s, 35/35 không tụt sau hai bản sửa lớp chắn — lợi ít hơn kỳ vọng 45 → 24 s vì khai báo
+tool giao dịch vốn đã dài. Phép học nằm ở `test/tool/dinh_tuyen/`, app chỉ mang phép đoán và một tệp trọng số Dart 76 KB.
+Kế: **C**.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng

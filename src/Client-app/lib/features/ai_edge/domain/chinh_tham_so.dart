@@ -22,7 +22,10 @@
 ///    `sap_xep=moi_nhat`; câu không có chữ kỳ nào → `ky=moi_luc`.
 /// 11. **Kỳ nêu cụ thể** (spec mở rộng tool 2026-09-27 §3.1): *tháng 8, quý 2,
 ///    từ 1/9 đến 15/9, 3 tháng gần nhất, năm ngoái* → `ky=tuy_chon` + `tu_ngay`
-///    / `den_ngay`; thắng luật 5.
+///    / `den_ngay`; thắng luật 5. **11b** (đo Realme 2026-10-02, mục 9.45):
+///    `tu_khoa` chỉ là ĐOẠN KỲ của câu hỏi (*"từ 1/9 den 15/9"*) → gỡ — cùng
+///    lý lẽ 2a; chữ sau *"ghi chú"*, `tu_khoa` có chữ khác, câu không nêu kỳ
+///    cụ thể thì giữ.
 /// 12. **So sánh hai kỳ** (E13): *so với / hơn tháng trước* → `so_voi=ky_truoc`;
 ///    *cùng kỳ năm trước / năm ngoái* → `cung_ky_nam_truoc`. `ky` là kỳ GỐC —
 ///    kỳ đang nói — chứ không phải kỳ đem ra so; câu không so sánh mà mô hình

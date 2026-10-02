@@ -1,8 +1,23 @@
 # Dự án B — mô hình nhỏ định tuyến câu hỏi → tool — thiết kế
 
-> 🚧 **Tiến độ 2026-10-02: Task 1–5 xong (`cc729f7` → `b54e35e`), CHƯA nối gì vào app, bộ đo khoá CHƯA mở.**
-> Kế hoạch 9 task `plans/2026-10-02-du-an-b-mo-hinh-dinh-tuyen.md` (gitignore). Còn lại: Task 6 đường ghép + vòng lặp
-> (định tuyến mềm) · Task 7 mở bộ đo một lần · Task 8 đo máy · Task 9 tài liệu.
+> ✅ **XONG trọn 9 task 2026-10-02 (`cc729f7` → `ef48b35`) — đã nối vào app, cả năm cổng ra đạt.** Kết quả đầy đủ ở mục
+> **9.45** `docs/AI_EDGE_FEATURE.md`. Kế hoạch `plans/2026-10-02-du-an-b-mo-hinh-dinh-tuyen.md` (gitignore).
+>
+> - **Bộ đo khoá, mở đúng một lần** (62 câu; ⚠️ lạc quan hơn thực tế — hai bộ cùng người soạn): đường ghép định tuyến
+>   đúng 28, **SAI 3 — cả ba do LUẬT, 0 do mô hình**; mô hình đưa **13/18** câu giao dịch luật bỏ lại về phiên một tool
+>   (phủ 72,2 %; kiểm chéo 74,1 %), **0/26** câu khác bị kéo nhầm. Mọi lần chạy `do_bo_do_test.dart` từ nay là *"đã nhìn
+>   bộ đo"*.
+> - **Bảng 72 câu** (in-sample): 31 câu theo luật không đổi đường · 4 câu ngoài phạm vi không bị định tuyến · 35/37 câu
+>   giao dịch sang phiên một tool (E3, E15 ở lại).
+> - **Đo Realme (CPU, bản debug), 35 câu đổi đường, trước / sau cùng buổi:** lượt sinh đầu 41,0 → **29,1 s**, tổng chờ
+>   48,2 → **36,9 s**. ⚠️ Ít hơn kỳ vọng 45,5 → 23,8 s của mục 1: khai báo tool giao dịch đã là 3.278 / 6.980 ký tự
+>   `tools_json`, lời hệ thống không đổi. Nội dung: 32 câu không đổi, **3 câu tụt** (F2 `tu_khoa` thừa; E2, C19 chữ kỳ
+>   sai *"tháng này"*) — đúng rủi ro mục 6 đã báo; người dùng duyệt sửa hai lỗ hổng có sẵn (bộ chỉnh luật 11b; `kiemKy`
+>   xét kỳ tự do / mọi thời gian) → đo lại **35/35 không tụt, SAI 0**. Phần *"không tự mở rộng bộ chỉnh trong dự án
+>   này"* của mục 6 vì thế đã được người dùng cho vượt, có chủ ý.
+> - **Lệch thiết kế ở Task 6:** dòng log là `[SLM][tool] định tuyến: …` đúng như mục 3; `hoiBangCongCu` nhận tham số
+>   `dinhTuyen` (mặc định đường ghép) để test ghim về `dinhTuyenChiLuat`.
+> - 📌 **Luật lệch nhãn** (3/18 câu trên bộ đo, 18/201 trên bộ huấn luyện): người dùng chốt *ghi lại, làm sau dự án B*.
 >
 > ⭐ **Người dùng ĐỔI quyết định 3 sau lần huấn luyện đầu — "hướng 1": app chỉ định tuyến theo mô hình khi nó đoán
 > `truy_van_giao_dich`.** Mô hình vẫn học mười nhãn (để biết câu nào *không phải* giao dịch); hằng
@@ -32,7 +47,7 @@
 >    chấp nhận thì ngưỡng tụt về sàn 0,60. Đã biết con số trước khi quyết nên chọn phía thận trọng.
 > 3. **Dữ liệu vòng 2**: +77 câu ở các ranh giới kiểm chéo vòng 1 cho thấy mô hình nhầm (chỉ dựa trên kiểm chéo).
 >
-> ⚠️ **Phát hiện ngoài phạm vi — báo người dùng, chưa sửa:** luật `congCuTheoCauHoi` định tuyến **201/606** câu của bộ
+> ⚠️ **Phát hiện ngoài phạm vi — đã báo người dùng (chốt: làm sau dự án B), chưa sửa:** luật `congCuTheoCauHoi` định tuyến **201/606** câu của bộ
 > huấn luyện và **lệch nhãn 18 câu** — vd. *"các danh mục thu nhập của tôi"*, *"thuế thu nhập cá nhân tính thế nào"*,
 > *"dòng tiền tự do là gì"* → tổng quan (regex `thu nhap`, `dong tien tu do`); *"ngân sách nhà nước năm nay bao nhiêu"* →
 > ngân sách; *"lần cuối tôi trả hoá đơn điện là ngày nào"* → hoá đơn; *"đóng hết hoá đơn thì tôi còn bao nhiêu"* → hoá

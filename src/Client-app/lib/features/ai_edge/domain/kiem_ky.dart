@@ -8,6 +8,12 @@
 /// khớp nó có kỳ đã biết (`GoiSo.kyCua` khác `null`) và không P nào thuộc hợp các
 /// kỳ ấy → chặn. Kỳ không biết thì không xét — sai theo chiều an toàn ở tầng này
 /// là CHO QUA, vì chắn oan đã vấp nhiều lần (bẫy 4.49, 4.50).
+///
+/// ⚠️ "Kỳ không biết" KHÔNG gồm lượt tra cứu *mọi thời gian* và *kỳ tự do* (từ
+/// 2026-10-02, mục 9.45 `AI_EDGE_FEATURE.md`): kỳ của chúng đã biết, chỉ là
+/// không phải chữ kỳ tương đối — `GoiSoTraCuu.kyCua` trả tập chỉ gồm kỳ TƯƠNG
+/// ĐƯƠNG (`KetQuaCongCu.kyTuongDuong`), nên *"Tháng này bạn đã chi…"* cho số
+/// của tháng 9 bị chặn. Đo Realme: câu ấy từng được hiện.
 library;
 
 import '../../../core/category/category_name.dart';

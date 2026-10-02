@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-30)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-02)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -1000,6 +1000,33 @@ backend vì dev không đặt `SMTP_USER`), rồi báo hai điều:
 `flutter test` **5193/5193** (4 skip; +6 ca OTP, +5 ca ở `app_toast_test`; hai ca cũ viết lại và các ca thứ tự ưu tiên
 đổi sang toast thất bại), `flutter analyze` 26. Schema, payload, `pubspec` không đổi. Bản `c4a9c9aa…` đã cài lên OnePlus;
 ⚠️ **chưa nhìn lại** màn OTP trên máy (người dùng đã đăng ký xong trước khi bản sửa tới).
+
+### 🧭 Dự án huấn luyện B — bộ định tuyến HỌC cho Trợ lý AI: ✅ xong trọn 9 task (2026-10-02)
+
+Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an-b-mo-hinh-dinh-tuyen-cau-hoi-design.md`
+(banner đầu tệp). Commit `cc729f7` → `ef48b35`.
+
+- **Là gì:** ở màn Trợ lý AI, câu hỏi mà luật `congCuTheoCauHoi` không nhận ra nay được một mô hình nhỏ (hồi quy
+  logistic trên âm tiết, Dart thuần, trọng số là tệp sinh ra 76 KB) xét: đủ tin là **câu giao dịch** (p ≥ 0,76) thì
+  phiên chỉ khai tool `truy_van_giao_dich`. Luật trước, mô hình sau; mô hình học mười nhãn nhưng app **chỉ nghe nhãn
+  giao dịch** (người dùng chốt *hướng 1*). Định tuyến bằng mô hình là **mềm** — không ép chạy tool.
+- **Mã:** `ai_edge/domain/dinh_tuyen_hoc.dart` (đặc trưng + phép đoán) · `trong_so_dinh_tuyen.g.dart` (sinh ra) ·
+  `dinh_tuyen.dart` (đường ghép) · `data/vong_lap_cong_cu.dart` (`tenEp`, dòng log `định tuyến: …`). Phép học, hai bộ
+  dữ liệu và hai công cụ chạy tay ở `test/tool/dinh_tuyen/` — không vào bản app.
+- **Số đo:** bộ đo khoá 62 câu, mở đúng một lần — mô hình **0 câu định tuyến sai**, 13/18 câu giao dịch được định
+  tuyến (⚠️ lạc quan hơn thực tế: hai bộ cùng người soạn). Realme (CPU, debug), 35 câu đổi đường trước / sau: tổng chờ
+  48,2 → **36,9 s** (−23 %, ít hơn kỳ vọng 45 → 24 s), 35/35 không tụt, SAI 0 **sau hai bản sửa**.
+- **Hai bản sửa lớp chắn do lượt đo lộ ra** (lỗ hổng có sẵn, không riêng phiên một tool): bộ chỉnh **luật 11b** gỡ
+  `tu_khoa` chỉ là đoạn kỳ của câu hỏi; **`kiemKy` nay xét cả lượt kỳ tự do / mọi thời gian** (`GoiSoTraCuu.kyCua` +
+  `KetQuaCongCu.kyTuongDuong`) — *"Tháng này bạn đã chi…"* cho số của tháng 9 từng được hiện. ⚠️ Lỗi kỳ này chỉ lộ khi
+  lịch sang tháng mới: mốc 72 câu đo ngày 28/09, khi *"tháng 9"* còn là *"tháng này"*.
+- 📌 **Việc mở, người dùng chốt làm SAU dự án B:** luật `congCuTheoCauHoi` lệch nhãn — 3/18 câu nó bắt trên bộ đo,
+  18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
+  tool để rút tiếp thời gian chờ.
+
+`flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
+Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`
+(= `ef48b35`). Kế theo lộ trình: **dự án C** (học trên máy từng người).
 
 ### 🔬 Dự án huấn luyện A — spike tra cứu xong (2026-10-02), không mã
 
