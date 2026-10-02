@@ -233,3 +233,22 @@ String cauLyDoSoTien(DoanSoTien d, {required String tenDanhMuc}) {
   return 'Khoản từ ${CurrencyFormatter.format(d.bac.duoi)} đến ${CurrencyFormatter.format(d.bac.tren)} '
       'bạn thường ghi cho $tenDanhMuc $lan.';
 }
+
+/// Cặp (mã bậc, danh mục) của nguồn số tiền đang bị thôi gợi ý — cùng luật `tatCapTu` của B1, đếm mẫu theo BẬC thay
+/// vì theo cụm âm tiết: hai lần bỏ qua thì tắt; ba giao dịch mới (ngày SAU lần bỏ qua cuối) cùng bậc cho đúng danh
+/// mục ấy thì mở lại. Tập riêng của nguồn `so_tien`: bỏ qua thẻ B1 không tắt thẻ này, và ngược lại.
+Set<(String, String)> tatCapSoTienTu(List<PhanHoiGoiY> phanHoi, List<MauSoTien> mau) {
+  final boQua = <(String, String), List<DateTime>>{};
+  for (final p in phanHoi) {
+    if (p.nguon != kNguonGoiYSoTien || p.ketQua != kKetQuaGoiYBoQua) continue;
+    boQua.putIfAbsent((p.amTietChinh, p.goiYCategoryId), () => []).add(p.createdAt);
+  }
+  final ra = <(String, String)>{};
+  for (final e in boQua.entries) {
+    if (e.value.length < kSoLanBoQuaThoiGoiY) continue;
+    final cuoi = e.value.reduce((a, b) => a.isAfter(b) ? a : b);
+    final moi = mau.where((x) => x.maBac == e.key.$1 && x.categoryId == e.key.$2 && x.ngay.isAfter(cuoi)).length;
+    if (moi < kSoMauMoLai) ra.add(e.key);
+  }
+  return ra;
+}

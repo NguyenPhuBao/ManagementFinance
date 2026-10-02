@@ -321,6 +321,59 @@ void main() {
     });
   });
 
+  group('tatCapSoTienTu', () {
+    PhanHoiGoiY ph(int ngay, {String nguon = kNguonGoiYSoTien, String ketQua = kKetQuaGoiYBoQua}) => PhanHoiGoiY(
+          nguon: nguon,
+          amTietChinh: '20000-50000',
+          goiYCategoryId: 'food',
+          ketQua: ketQua,
+          createdAt: DateTime(2026, 9, ngay),
+        );
+    MauSoTien m(double soTien, int ngay, {String c = 'food'}) =>
+        mauSoTienTu([_gd(c, soTien, ngay: DateTime(2026, 9, ngay))]).single;
+
+    test('một lần bỏ qua chưa tắt', () => expect(tatCapSoTienTu([ph(10)], const []), isEmpty));
+
+    test('⭐ hai lần bỏ qua cùng (mã bậc, danh mục) → tắt', () {
+      expect(tatCapSoTienTu([ph(10), ph(11)], const []), {('20000-50000', 'food')});
+    });
+
+    test('⭐ ba mẫu MỚI cùng bậc cùng danh mục sau lần bỏ qua cuối → mở lại', () {
+      expect(tatCapSoTienTu([ph(10), ph(11)], [m(30000, 12), m(35000, 13), m(40000, 14)]), isEmpty);
+    });
+
+    test('hai mẫu mới chưa đủ để mở lại', () {
+      expect(tatCapSoTienTu([ph(10), ph(11)], [m(30000, 12), m(35000, 13)]), {('20000-50000', 'food')});
+    });
+
+    test('mẫu KHÁC BẬC không mở lại', () {
+      expect(tatCapSoTienTu([ph(10), ph(11)], [m(60000, 12), m(60000, 13), m(60000, 14)]), {('20000-50000', 'food')});
+    });
+
+    test('mẫu của danh mục KHÁC không mở lại', () {
+      expect(
+        tatCapSoTienTu([ph(10), ph(11)], [for (final d in [12, 13, 14]) m(30000, d, c: 'shop')]),
+        {('20000-50000', 'food')},
+      );
+    });
+
+    test('mẫu có TRƯỚC lần bỏ qua cuối không mở lại', () {
+      expect(tatCapSoTienTu([ph(10), ph(11)], [m(30000, 7), m(30000, 8), m(30000, 9)]), {('20000-50000', 'food')});
+    });
+
+    test('⭐ phản hồi của nguồn KHÁC (B1) không tắt nguồn số tiền', () {
+      expect(tatCapSoTienTu([ph(10, nguon: kNguonGoiYHoc), ph(11, nguon: kNguonGoiYHoc)], const []), isEmpty);
+    });
+
+    test('"khac" và "chon" không tính là bỏ qua', () {
+      expect(tatCapSoTienTu([ph(10, ketQua: kKetQuaGoiYKhac), ph(11, ketQua: kKetQuaGoiYChon)], const []), isEmpty);
+    });
+
+    test('hai lần bỏ qua của nguồn số tiền không lọt vào tập tắt của B1', () {
+      expect(tatCapTu([ph(10), ph(11)], const []), isEmpty);
+    });
+  });
+
   test('hằng nguồn không trùng nguồn nào của B1', () {
     expect({kNguonGoiYSoTien, kNguonGoiYHoc, kNguonGoiYTuKhoa, kNguonDeXuatTuKhoa}, hasLength(4));
   });
