@@ -332,8 +332,15 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
         <span className="material-symbols-outlined text-primary text-[24px]">{icon}</span>
       </div>
       {badge && (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${badgeColor === 'green' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
+        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+          badgeColor === 'green' ? 'bg-[#dcfce7] text-[#166534]' :
+          badgeColor === 'red' ? 'bg-[#fee2e2] text-[#991b1b]' :
+          badgeColor === 'amber' ? 'bg-[#fef3c7] text-[#92400e]' :
+          'bg-surface-container-high text-secondary'
+        }`}>
           {badgeColor === 'green' && <span className="material-symbols-outlined text-[14px]">trending_up</span>}
+          {badgeColor === 'red' && <span className="material-symbols-outlined text-[14px]">error</span>}
+          {badgeColor === 'amber' && <span className="material-symbols-outlined text-[14px]">info</span>}
           {badge}
         </span>
       )}
@@ -399,6 +406,7 @@ const DashboardPage = () => {
 
   // Uptime thực tế từ /admin/system/health
   const [uptimeData, setUptimeData] = useState(null);
+  const [uptimeStatus, setUptimeStatus] = useState('loading'); // 'loading' | 'success' | 'unsupported' | 'error'
 
   // Thống kê Biểu đồ (Ăn theo Global Filter)
   const [loginStats, setLoginStats] = useState({
@@ -426,6 +434,7 @@ const DashboardPage = () => {
     totalPages: 1,
   });
   const [loadingActivities, setLoadingActivities] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
   const getPageNumbers = (curr, total) => {
@@ -460,18 +469,34 @@ const DashboardPage = () => {
 
   // Uptime — fetch ngay lúc mount và làm mới mỗi 30 giây
   useEffect(() => {
+    let isMounted = true;
     const fetchUptime = async () => {
       try {
         const res = await adminApi.getSystemHealth();
-        const data = res.data?.data || res.data;
-        if (data?.uptime) setUptimeData(data.uptime);
-      } catch {
-        // Giữ nguyên giá trị cũ nếu fetch lỗi
+        if (!isMounted) return;
+        const data = res?.data?.data || res?.data;
+        if (data?.uptime) {
+          setUptimeData(data.uptime);
+          setUptimeStatus('success');
+        } else if (data) {
+          // Backend phản hồi thành công nhưng chưa có trường uptime (chưa deploy backend mới)
+          setUptimeData(null);
+          setUptimeStatus('unsupported');
+        } else {
+          setUptimeStatus('error');
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn('[Dashboard] Không thể tải thông tin uptime hệ thống:', err?.message || err);
+        setUptimeStatus((prev) => (prev === 'success' ? 'success' : 'error'));
       }
     };
     fetchUptime();
     const t = setInterval(fetchUptime, 30_000);
-    return () => clearInterval(t);
+    return () => {
+      isMounted = false;
+      clearInterval(t);
+    };
   }, []);
 
   // Fetch Dashboard Stats khi Global Filter thay đổi
@@ -553,7 +578,15 @@ const DashboardPage = () => {
 
   // Lắng nghe Real-time Socket.io qua useSocket hook
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      setSocketConnected(false);
+      return;
+    }
+
+    setSocketConnected(socket.connected);
+
+    const onConnect = () => setSocketConnected(true);
+    const onDisconnect = () => setSocketConnected(false);
 
     const handleAuditActivity = (data) => {
       const newActivity = {
@@ -647,9 +680,13 @@ const DashboardPage = () => {
       }
     };
 
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
 
     return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
     };
   }, [socket, activityLimit]);
@@ -710,6 +747,25 @@ const DashboardPage = () => {
   const growthSign = newUsers.growth >= 0 ? '+' : '';
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
+
+  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, không giả lập)
+  let uptimeDisplayValue = '—';
+  let uptimeBadge = 'Đang tải...';
+  let uptimeBadgeColor = undefined;
+
+  if (uptimeStatus === 'success' && uptimeData) {
+    uptimeDisplayValue = `${uptimeData.uptimePercent.toFixed(3)}%`;
+    uptimeBadge = uptimeData.uptimeFormatted || 'Ổn định';
+    uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
+  } else if (uptimeStatus === 'unsupported') {
+    uptimeDisplayValue = '—';
+    uptimeBadge = 'Chưa hỗ trợ API';
+    uptimeBadgeColor = 'amber';
+  } else if (uptimeStatus === 'error') {
+    uptimeDisplayValue = '—';
+    uptimeBadge = 'Lỗi kết nối';
+    uptimeBadgeColor = 'red';
+  }
 
   // Pagination display values (Trang 1: 1 - 5 of 36 items)
   const currPage = activityPagination.page || 1;
@@ -988,9 +1044,9 @@ const DashboardPage = () => {
           <StatCard
             icon="timer"
             title="Uptime Hệ thống"
-            value={uptimeData ? `${uptimeData.uptimePercent.toFixed(3)}%` : '—'}
-            badge={uptimeData ? uptimeData.uptimeFormatted : 'Đang tải...'}
-            badgeColor={uptimeData && uptimeData.uptimePercent >= 99.5 ? 'green' : undefined}
+            value={uptimeDisplayValue}
+            badge={uptimeBadge}
+            badgeColor={uptimeBadgeColor}
           />
           <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
@@ -1003,13 +1059,20 @@ const DashboardPage = () => {
                   Hoạt động gần đây
               </h2>
               <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                  {socketConnected ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
                       <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
                       Real-time
-                  </span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-label-md text-[11px] font-medium border border-amber-200" title="Đang kết nối lại socket...">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                      Đang kết nối...
+                    </span>
+                  )}
               </div>
           </div>
           
