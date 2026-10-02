@@ -1,0 +1,107 @@
+/// `docBienLai` — chữ trên ảnh biên lai (đã ghép theo hàng) → các trường của một khoản chờ ghi. Spec
+/// `2026-10-02-chia-se-bien-lai-design.md` mục 5.
+///
+/// ⚠️ Mọi biên lai trong tệp này là DỰNG LẠI bằng số và tên giả theo hình dạng đã che thu trên máy thật — không chép
+/// chữ thật của biên lai nào vào repo.
+library;
+
+import 'package:flowmoney/features/transaction/domain/doc_bien_lai.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+final _luc = DateTime(2026, 10, 2, 19, 0);
+
+const _bienLaiChung = '''
+Giao dịch thành công
+Số tiền 150.000 VND
+Người nhận NGUYEN VAN A
+Tài khoản nhận 0123456789
+Thời gian 02/10/2026 18:45
+Mã giao dịch FT26275123456
+Nội dung tra tien nha thang 10
+Phí giao dịch 0 VND
+''';
+
+void main() {
+  group('luật chung', () {
+    test('⭐ biên lai có nhãn đủ: số tiền, giờ trên ảnh, mã GD, nội dung; chiều chi; cachDoc chung', () {
+      final b = docBienLai(vanBan: _bienLaiChung, nguon: null, luc: _luc);
+      expect(b.soTien, 150000);
+      expect(b.chieu, 'chi');
+      expect(b.thoiGian, DateTime(2026, 10, 2, 18, 45));
+      expect(b.maGiaoDich, 'FT26275123456');
+      expect(b.noiDung, 'tra tien nha thang 10');
+      expect(b.duoiTaiKhoan, isNull, reason: 'tài khoản trên biên lai là của người NHẬN — không phải khoá chọn ví');
+      expect(b.cachDoc, kCachDocChung);
+    });
+
+    test('⭐ số tài khoản và mã GD KHÔNG thành số tiền', () {
+      final b = docBienLai(vanBan: 'Tài khoản nhận 1234567890123\nMã giao dịch 987654321012', nguon: null, luc: _luc);
+      expect(b.soTien, isNull);
+      expect(b.cachDoc, kCachDocKhong);
+      expect(b.maGiaoDich, '987654321012', reason: 'không đọc ra tiền thì các trường khác vẫn điền nếu đọc được');
+    });
+
+    test('không nhãn "số tiền" → số có đơn vị đ / VND lớn nhất; hàng phí và số dư bị bỏ', () {
+      final b = docBienLai(
+          vanBan: 'Chuyển tiền thành công\n-250.000 đ\nPhí 1.100 đ\nSố dư 9.999.000 đ', nguon: null, luc: _luc);
+      expect(b.soTien, 250000);
+    });
+
+    test('⭐ không nhãn VÀ không đơn vị → không phải số tiền (mã đơn 1.234.567 trông y như một số tiền)', () {
+      final b = docBienLai(vanBan: 'Giao dịch thành công\nMã đơn 1.234.567\nĐiểm thưởng 2.500', nguon: null, luc: _luc);
+      expect(b.soTien, isNull, reason: 'điền một con số không chắc là tiền thì tệ hơn để trống kèm ảnh');
+    });
+
+    test('⭐ hàng "Phí giao dịch" có số to hơn không thắng hàng "Số tiền"', () {
+      final b = docBienLai(vanBan: 'Phí giao dịch 22.000 VND\nSố tiền 5.000 VND', nguon: null, luc: _luc);
+      expect(b.soTien, 5000);
+    });
+
+    test('nhãn và số ở HAI hàng (OCR tách) → nhìn hàng kế; "Số tiền bằng chữ" không phải hàng số tiền', () {
+      expect(docBienLai(vanBan: 'Số tiền\n75.000 VND', nguon: null, luc: _luc).soTien, 75000);
+      expect(
+          docBienLai(vanBan: 'Số tiền bằng chữ: Bảy mươi lăm nghìn đồng\nMã 1.234.567\nSố tiền 75.000 VND',
+                  nguon: null, luc: _luc)
+              .soTien,
+          75000);
+    });
+
+    test('không có ngày trên ảnh → lúc chia sẻ; có ngày không có giờ → 00:00 của ngày ấy', () {
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ', nguon: null, luc: _luc).thoiGian, _luc);
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ\nNgày 01/10/2026', nguon: null, luc: _luc).thoiGian,
+          DateTime(2026, 10, 1));
+    });
+
+    test('giờ đứng TRƯỚC ngày (18:45 - 02/10/2026) vẫn đọc được; ngày vô lý (45/13/2026) thì bỏ', () {
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ\n18:45 - 02/10/2026', nguon: null, luc: _luc).thoiGian,
+          DateTime(2026, 10, 2, 18, 45));
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ\n45/13/2026', nguon: null, luc: _luc).thoiGian, _luc);
+    });
+
+    test('ảnh không phải biên lai / chữ rỗng → không số tiền, cachDoc khong, không ném', () {
+      for (final v in ['', 'Hôm nay trời đẹp', 'Cuộc họp lúc 14:00', '\n\n  \n']) {
+        final b = docBienLai(vanBan: v, nguon: null, luc: _luc);
+        expect(b.soTien, isNull, reason: v);
+        expect(b.cachDoc, kCachDocKhong);
+        expect(b.chieu, 'chi');
+        expect(b.thoiGian, _luc);
+      }
+    });
+
+    test('số từ 1 tỷ trở lên không được điền (giới hạn của phép đọc số trên ảnh) — rơi về "chưa đọc được"', () {
+      final b = docBienLai(vanBan: 'Số tiền 99.999.999.999.999 đ', nguon: null, luc: _luc);
+      expect(b.soTien, isNull);
+      expect(b.cachDoc, kCachDocKhong);
+    });
+
+    test('nội dung ở hàng kế nhãn; không nhãn nội dung → rỗng', () {
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ\nLời nhắn\nmua sach', nguon: null, luc: _luc).noiDung, 'mua sach');
+      expect(docBienLai(vanBan: 'Số tiền 10.000 đ', nguon: null, luc: _luc).noiDung, '');
+    });
+
+    test('nhãn có dấu hai chấm và khoảng trắng thừa: "Nội dung :  mua sach"', () {
+      expect(docBienLai(vanBan: 'Số tiền: 10.000 đ\nNội dung :  mua  sach', nguon: null, luc: _luc).noiDung,
+          'mua sach');
+    });
+  });
+}
