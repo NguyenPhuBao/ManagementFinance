@@ -23,6 +23,7 @@ import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../database/app_database.dart';
 import '../database/daos/notification_dao.dart';
 import '../utils/currency_formatter.dart';
+import 'nhap_bien_lai.dart' show tenTepBienLaiHopLe;
 import 'notification_rules.dart';
 
 const String kTepBienDongCho = 'bien_dong_cho.jsonl';
@@ -91,7 +92,18 @@ String dedupeKeyBienDong(TinBienDong t) => t.maGiaoDich != null
 
 /// `/add?amount=…&huong=…&date=…&note=…&nguon=…&duoi=…&khoa=…` — route `/add` nằm ngoài shell, `push`
 /// được (như deeplink `ghiChep`). `khoa` = dedupeKey để form xoá hàng khi Lưu / Bỏ qua (Task 7).
-String deeplinkBienDong(TinBienDong t, {required String dedupeKey}) => Uri(
+///
+/// Chia sẻ biên lai (2026-10-02) thêm hai tham số tuỳ chọn — hàng sinh từ tin ngân hàng không truyền gì và query của
+/// nó y như trước: [anh] = tên tệp ảnh trong `filesDir/bien_lai/`; [cachDoc] = `mau` | `chung` (cách đọc chữ trên
+/// ảnh). Có [anh] thì query mang thêm `blt` = giờ IN TRÊN BIÊN LAI — dấu để nhận ra cùng một biên lai được chia sẻ
+/// lại ([gioBienLaiTuDeeplink]).
+String deeplinkBienDong(
+  TinBienDong t, {
+  required String dedupeKey,
+  String? anh,
+  String? cachDoc,
+}) =>
+    Uri(
       path: '/add',
       queryParameters: {
         'amount': t.soTien.toInt().toString(),
@@ -102,9 +114,56 @@ String deeplinkBienDong(TinBienDong t, {required String dedupeKey}) => Uri(
         if (t.duoiTaiKhoan != null) 'duoi': t.duoiTaiKhoan!,
         // Vân tay số dư — chỉ để [dauTuDeeplink] so hàng ĐÃ CÓ với tin mới; form không đọc nó.
         if (t.vanTaySoDu != null) 'vt': t.vanTaySoDu!,
+        if (anh != null) 'anh': anh,
+        if (anh != null) 'blt': t.thoiGian.toIso8601String(),
+        if (cachDoc != null) 'doc': cachDoc,
         'khoa': dedupeKey,
       },
     ).toString();
+
+/// Biên lai KHÔNG đọc ra số tiền: không `amount`, không `huong` — form mở với số tiền trống, và [dauTuDeeplink] trả
+/// `null` nên hàng này không tham gia gộp trùng với gì cả.
+String deeplinkBienLaiChuaDoc({
+  required String nguon,
+  required DateTime luc,
+  required String noiDung,
+  required String anh,
+  required String dedupeKey,
+}) =>
+    Uri(path: '/add', queryParameters: {
+      'date': luc.toIso8601String(),
+      'note': noiDung,
+      'nguon': nguon,
+      'anh': anh,
+      'doc': 'khong',
+      'khoa': dedupeKey,
+    }).toString();
+
+/// Tên tệp ảnh biên lai gắn trên một hàng loại 20; `null` khi hàng không có ảnh hoặc tên không hợp lệ
+/// ([tenTepBienLaiHopLe] — tên này sẽ được ghép thành đường dẫn).
+String? anhTuDeeplink(String? deeplink) {
+  final a = deeplink == null ? null : Uri.tryParse(deeplink)?.queryParameters['anh'];
+  return (a != null && tenTepBienLaiHopLe(a)) ? a : null;
+}
+
+/// Giờ in trên biên lai mà hàng này đang mang (`blt`); `null` khi hàng chưa mang biên lai nào. Hai lần chia sẻ CÙNG
+/// một biên lai có giờ in y hệt nhau — khác với hai lần chuyển cùng số tiền cách nhau vài phút.
+DateTime? gioBienLaiTuDeeplink(String? deeplink) {
+  final g = deeplink == null ? null : Uri.tryParse(deeplink)?.queryParameters['blt'];
+  return g == null ? null : DateTime.tryParse(g);
+}
+
+/// Gắn ảnh biên lai vào deeplink của một hàng ĐÃ CÓ (tin ngân hàng đến trước biên lai của cùng giao dịch); giữ mọi
+/// tham số cũ. [gioBienLai] là giờ in trên biên lai — có thể lệch giờ của tin vài giây tới vài phút.
+String themAnhVaoDeeplink(String deeplink, String anh, String cachDoc, DateTime gioBienLai) {
+  final u = Uri.parse(deeplink);
+  return u.replace(queryParameters: {
+    ...u.queryParameters,
+    'anh': anh,
+    'doc': cachDoc,
+    'blt': gioBienLai.toIso8601String(),
+  }).toString();
+}
 
 /// Đọc ngược dấu hiệu từ `deeplink` (+ `subjectId` = mã GD) của một hàng loại 20 đang có. `null`
 /// nếu không phải deeplink của loại này.

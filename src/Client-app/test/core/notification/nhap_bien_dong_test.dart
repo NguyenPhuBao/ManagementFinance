@@ -275,4 +275,52 @@ void main() {
       expect((await db.notificationDao.getAll(7)).map((h) => h.id), ['b']);
     });
   });
+
+  group('deeplink có ảnh biên lai (chia sẻ biên lai, 2026-10-02)', () {
+    final t = _tin(soTien: 150000, chieu: 'chi', luc: DateTime(2026, 10, 2, 18, 45), ma: 'FT1');
+
+    test('⭐ không truyền anh / cachDoc → query Y NHƯ TRƯỚC (hàng D1 không đổi một tham số nào)', () {
+      final q = Uri.parse(deeplinkBienDong(t, dedupeKey: 'bienDong:FT1')).queryParameters;
+      expect(q.keys.toSet(), {'amount', 'huong', 'date', 'note', 'nguon', 'duoi', 'khoa'});
+    });
+
+    test('có anh → thêm anh, doc và blt (giờ in trên biên lai)', () {
+      final q = Uri.parse(deeplinkBienDong(t, dedupeKey: 'bienDong:FT1', anh: 'aaaa.jpg', cachDoc: 'mau'))
+          .queryParameters;
+      expect(q['anh'], 'aaaa.jpg');
+      expect(q['doc'], 'mau');
+      expect(DateTime.parse(q['blt']!), DateTime(2026, 10, 2, 18, 45));
+    });
+
+    test('anhTuDeeplink: đọc lại tên tệp; tên bẩn / không có / deeplink null → null', () {
+      expect(anhTuDeeplink('/add?khoa=bienDong:x&anh=aaaa.jpg'), 'aaaa.jpg');
+      expect(anhTuDeeplink('/add?khoa=bienDong:x&anh=..%2Fx.jpg'), isNull,
+          reason: 'tên tệp sẽ được ghép thành đường dẫn — không nhận tên có dấu gạch chéo');
+      expect(anhTuDeeplink('/add?khoa=bienDong:x'), isNull);
+      expect(anhTuDeeplink(null), isNull);
+    });
+
+    test('⭐ themAnhVaoDeeplink giữ mọi tham số cũ của hàng tin, ghi giờ biên lai riêng (blt ≠ date)', () {
+      final goc = deeplinkBienDong(_tin(luc: DateTime(2026, 10, 2, 18, 45, 20), vt: 'abc'), dedupeKey: 'bienDong:k');
+      final moi = themAnhVaoDeeplink(goc, 'aaaa.jpg', 'mau', DateTime(2026, 10, 2, 18, 45));
+      final q = Uri.parse(moi).queryParameters;
+      expect(q['amount'], '1200000');
+      expect(q['vt'], 'abc');
+      expect(q['khoa'], 'bienDong:k');
+      expect(DateTime.parse(q['date']!), DateTime(2026, 10, 2, 18, 45, 20), reason: 'giờ của TIN không bị đè');
+      expect(gioBienLaiTuDeeplink(moi), DateTime(2026, 10, 2, 18, 45));
+      expect(gioBienLaiTuDeeplink(goc), isNull, reason: 'hàng chưa mang biên lai nào');
+      expect(dauTuDeeplink(moi, maGiaoDich: null)!.vanTay, 'abc', reason: 'phép gộp trùng của D1 vẫn đọc được hàng đã gắn ảnh');
+    });
+
+    test('⭐ biên lai chưa đọc: không amount, không huong → dauTuDeeplink trả null (không gộp trùng với gì)', () {
+      final link = deeplinkBienLaiChuaDoc(
+          nguon: 'Biên lai', luc: DateTime(2026, 10, 2), noiDung: '', anh: 'aaaa.jpg', dedupeKey: 'bienDong:bienLai|aaaa.jpg');
+      final q = Uri.parse(link).queryParameters;
+      expect(q['doc'], 'khong');
+      expect(q.containsKey('amount'), isFalse);
+      expect(anhTuDeeplink(link), 'aaaa.jpg');
+      expect(dauTuDeeplink(link, maGiaoDich: null), isNull);
+    });
+  });
 }

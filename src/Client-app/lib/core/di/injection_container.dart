@@ -79,6 +79,7 @@ import '../notification/badge_updater.dart';
 import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
+import '../notification/kho_bien_lai.dart';
 import '../notification/nhap_bien_dong.dart';
 import '../notification/nhap_bien_lai.dart';
 import '../notification/nhat_ky_thong_bao.dart';
@@ -416,6 +417,8 @@ Future<void> setupDependencies() async {
 
   // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
+  // Thư mục ảnh biên lai (`filesDir/bien_lai/` phía Kotlin) — form Thêm giao dịch cũng dùng để hiện và xoá ảnh.
+  sl.registerLazySingleton<KhoBienLai>(() => KhoBienLai(thuMuc: getApplicationSupportDirectory));
 
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
@@ -547,10 +550,20 @@ Future<void> setupDependencies() async {
       ),
       // Chia sẻ biên lai: cờ "máy đang có phiên" phía native — xem `NhanBienLaiActivity`.
       datCoPhien: (co) => sl<KenhBienDong>().datCoPhien(co),
-      // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
-      thuMauBienLai: kDebugMode
-          ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
-          : null,
+      // Chia sẻ biên lai: hàng chờ + ảnh do `NhanBienLaiActivity` ghi vào `filesDir`; nhập vào tài khoản đang đăng
+      // nhập, cùng tên nguồn với D1 (`nguonCuaGoi`). Không đọc cờ `docBienDong` — mỗi biên lai là người dùng tự đưa.
+      nhapBienLai: NhapBienLai(
+        thuMuc: getApplicationSupportDirectory,
+        dao: sl<AppDatabase>().notificationDao,
+        docChu: sl<DocChuAnh>(),
+        kho: sl<KhoBienLai>(),
+        nguonCuaGoi: nguonCuaGoi,
+        huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
+        // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
+        thuMau: kDebugMode
+            ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
+            : null,
+      ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),
       eventDao: sl<AppDatabase>().notificationEventDao,

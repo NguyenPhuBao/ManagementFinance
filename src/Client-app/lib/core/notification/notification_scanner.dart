@@ -23,6 +23,7 @@ import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
+import 'nhap_bien_lai.dart';
 import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
@@ -180,10 +181,10 @@ class NotificationScanner {
   /// không có phiên thì không biết biên lai thuộc về ai. `null` thì bỏ qua.
   final Future<void> Function(bool co)? datCoPhien;
 
-  /// Chia sẻ biên lai — chế độ THU MẪU, chỉ nối ở bản debug (DI truyền khi `kDebugMode`): in hình dạng đã che của chữ
-  /// trên các biên lai đang chờ (`thuMauBienLai`). Chạy trước lượt nhập ở [start] và mỗi lần quay lại từ nền. `null`
-  /// (bản release, test) thì bỏ qua.
-  final Future<void> Function()? thuMauBienLai;
+  /// Chia sẻ biên lai — ảnh người dùng chia sẻ từ app ngân hàng nằm trong hàng chờ do `NhanBienLaiActivity` ghi; nhập
+  /// ở mỗi [start] và mỗi lần quay lại từ nền, NGAY SAU [nhapBienDong] (tin ngân hàng thành hàng trước, biên lai của
+  /// cùng giao dịch gắn ảnh vào hàng ấy). [stop] gọi `donKhiDangXuat`. `null` thì bỏ qua.
+  final NhapBienLai? nhapBienLai;
 
   /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
   /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
@@ -264,7 +265,7 @@ class NotificationScanner {
     this.nhapHangCho,
     this.nhapBienDong,
     this.datCoPhien,
-    this.thuMauBienLai,
+    this.nhapBienLai,
     this.nhatKy,
     this.eventDao,
     DateTime Function()? clock,
@@ -363,12 +364,13 @@ class NotificationScanner {
   /// lỗi như mọi bước phụ ở đây.
   Future<void> _nhapBienDong(int idaccount) async {
     try {
-      await thuMauBienLai?.call();
+      await nhapBienDong?.nhap(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
+    // SAU tin ngân hàng — thứ tự này quyết định biên lai gắn ảnh vào hàng tin hay đẻ hàng thứ hai.
     try {
-      await nhapBienDong?.nhap(idaccount);
+      await nhapBienLai?.nhap(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
@@ -414,6 +416,11 @@ class NotificationScanner {
     // Chia sẻ biên lai: hết phiên thì activity nhận ảnh từ chối — không cất biên lai không biết của ai.
     try {
       await datCoPhien?.call(false);
+    } catch (_) {}
+    // SAU khi tắt cờ (không còn biên lai mới nào được cất): xoá ảnh, hàng chờ và các hàng đang mang ảnh — người
+    // đăng nhập sau không được thấy biên lai của người trước.
+    try {
+      await nhapBienLai?.donKhiDangXuat(id);
     } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
