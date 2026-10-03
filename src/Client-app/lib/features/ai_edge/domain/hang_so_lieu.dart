@@ -105,6 +105,11 @@ class KetQuaCongCu {
   /// [boLoc] đã nêu.
   final List<SoLieu> soLieuBoLoc;
 
+  /// Chữ kỳ TƯƠNG ĐỐI trùng khít khoảng của một lượt KỲ TỰ DO, tính tại lúc
+  /// hỏi (*"tháng trước"* cho khoảng 1–30/9 khi hôm nay là 02/10). Chỉ cho
+  /// `kiemKy`: câu nói đúng chữ ấy thì không bị chắn oan. KHÔNG vào [json].
+  final List<String> kyTuongDuong;
+
   const KetQuaCongCu({
     required this.hang,
     required this.tongHop,
@@ -115,6 +120,7 @@ class KetQuaCongCu {
     this.soLieuBoLoc = const [],
     this.doiTuongRong = 'giao dịch',
     this.chiMauCau = false,
+    this.kyTuongDuong = const [],
   })  : loi = null,
         choNguoiDung = null,
         thamSoGo = const [];
@@ -134,6 +140,7 @@ class KetQuaCongCu {
         soLieuBoLoc = const [],
         doiTuongRong = 'giao dịch',
         chiMauCau = false,
+        kyTuongDuong = const [],
         loi = vi;
 
   /// Bản sao có THÊM: bộ lọc (đầu / cuối), số liệu bộ lọc, tổng hợp, chữ kèm,
@@ -147,6 +154,7 @@ class KetQuaCongCu {
     Map<String, String> chuThemMoi = const {},
     List<String> tenLienQuanThem = const [],
     bool chiMauCauThem = false,
+    List<String> kyTuongDuongThem = const [],
   }) {
     if (loi != null) return this;
     return KetQuaCongCu(
@@ -159,6 +167,7 @@ class KetQuaCongCu {
       soLieuBoLoc: [...soLieuBoLoc, ...soLieuBoLocThem],
       doiTuongRong: doiTuongRong,
       chiMauCau: chiMauCau || chiMauCauThem,
+      kyTuongDuong: [...kyTuongDuong, ...kyTuongDuongThem],
     );
   }
 

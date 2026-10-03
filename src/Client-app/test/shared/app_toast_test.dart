@@ -6,8 +6,9 @@
 ///    được lưu trên máy. Không có câu đó, người dùng sẽ ngừng nhập liệu vì sợ
 ///    mất, mà đó chính là thứ kiến trúc offline-first sinh ra để tránh.
 /// 2. **Đã kết nối lại.**
-/// 3. **Đã đồng bộ xong** — hoặc còn thay đổi chưa lên được (chỉ khi server đã
-///    nhận và từ chối; cả batch không tới nơi thì im — A4, 2026-09-28).
+/// 3. **Còn thay đổi chưa lên được** (chỉ khi server đã nhận và từ chối; cả batch
+///    không tới nơi thì im — A4, 2026-09-28). Đồng bộ **thành công thì im** —
+///    người dùng chốt 2026-10-02; trước đó là viên "Đã đồng bộ xong".
 ///
 /// **Cả ba đều tự ẩn sau vài giây**, kể cả toast mất kết nối. Bản đầu giữ dải
 /// mất kết nối cho tới khi có mạng, với lập luận "trạng thái kéo dài thì phải
@@ -146,20 +147,67 @@ void main() {
             'nó chiếm chỗ vô ích.');
   });
 
-  testWidgets('đẩy thành công thì báo chung chung, KHÔNG nêu số',
-      (tester) async {
+  testWidgets('⭐ đẩy thành công thì KHÔNG hiện toast nào', (tester) async {
     await dung(tester);
     dayLen.add(ketQua(thanhCong: 5));
     await nhip(tester);
 
-    expect(find.textContaining('đồng bộ'), findsOneWidget);
-    expect(find.textContaining('5'), findsNothing,
-        reason: 'Người dùng không cần biết bao nhiêu bản ghi vừa lên server — '
-            'con số ấy là chi tiết cài đặt, không phải điều họ quan tâm. Biết '
-            '"đã xong" là đủ.');
-
-    await choTanHan(tester);
+    expect(find.byType(Icon), findsNothing,
+        reason: 'Người dùng chốt 2026-10-02: đồng bộ xong thì im, chỉ báo khi '
+            'thất bại. Đồng bộ chạy sau MỖI lần ghi, nên một viên "Đã đồng bộ '
+            'xong" hiện sau mỗi thao tác là tiếng ồn. Mọi toast của widget này '
+            'đều có icon, nên không icon = không toast.');
     expect(find.textContaining('đồng bộ'), findsNothing);
+    expect(find.text('nội dung màn hình'), findsOneWidget);
+  });
+
+  testWidgets('chỉ có xung đột (lấy theo server), không thao tác hỏng → cũng im',
+      (tester) async {
+    await dung(tester);
+    dayLen.add(const SyncResult(
+        totalOps: 3, succeeded: 2, failed: 0, conflictIds: ['a']));
+    await nhip(tester);
+
+    expect(find.byType(Icon), findsNothing,
+        reason: 'Xung đột LWW không phải thất bại: bản server thắng và máy '
+            'kéo nó về. Câu "chưa lên được" ở đây là báo động giả.');
+  });
+
+  testWidgets('lần thử lại đẩy được thì GỠ toast "chưa lên được" đang hiện',
+      (tester) async {
+    await dung(tester);
+    // SyncEngine phát kết quả lần đẩy đầu TRƯỚC bước Pull, rồi phát kết quả lần
+    // thử lại ở cuối chu kỳ — hai lượt phát cho cùng một thất bại tạm thời.
+    dayLen.add(ketQua(thanhCong: 2, that: 1));
+    await nhip(tester);
+    expect(find.textContaining('chưa lên được'), findsOneWidget);
+
+    dayLen.add(ketQua(thanhCong: 1));
+    await nhip(tester);
+    await tester.pump(thoiGianHieuUngToast);
+    await tester.pump();
+
+    expect(find.textContaining('chưa lên được'), findsNothing,
+        reason: 'Thành công thì im — nhưng im mà để nguyên câu "chưa lên được" '
+            'tới hết giờ là giữ một báo động đã hết đúng. Gỡ nó, không hiện gì '
+            'thay vào.');
+    expect(find.byType(Icon), findsNothing);
+  });
+
+  testWidgets('đồng bộ thành công KHÔNG gỡ toast của nguồn khác',
+      (tester) async {
+    await dung(tester);
+    ketNoi.add(ConnectionEvent.mat);
+    await nhip(tester);
+    dayLen.add(ketQua(thanhCong: 2));
+    await nhip(tester);
+    await tester.pump(thoiGianHieuUngToast);
+    await tester.pump();
+
+    expect(find.textContaining('Không có kết nối'), findsOneWidget,
+        reason: 'Toast mất mạng mang BẬC đồng bộ nhưng NGUỒN kết nối. Gỡ theo '
+            'bậc thay vì theo nguồn là một lượt đẩy lọt được làm mất câu báo '
+            'mất mạng.');
   });
 
   testWidgets('còn thay đổi chưa lên được thì vẫn phải phân biệt được',
@@ -186,39 +234,65 @@ void main() {
   });
 
   group('thứ tự ưu tiên giữa các toast', () {
-    testWidgets('toast "đã kết nối lại" KHÔNG được ghi đè toast đồng bộ',
+    testWidgets('toast "đã kết nối lại" KHÔNG được ghi đè toast đồng bộ hỏng',
         (tester) async {
       await dung(tester);
       // Đúng thứ tự quan sát được trên máy thật: SyncEngine phản ứng ngay khi
       // mạng về và đẩy xong sau ~0,4 giây, còn ConnectionMonitor phải chờ hết
       // ngưỡng ổn định (3 giây) mới báo "đã kết nối lại".
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 1, that: 1));
       await nhip(tester);
       ketNoi.add(ConnectionEvent.khoiPhuc);
       await nhip(tester);
 
-      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
-          reason: '"Đã đồng bộ xong" trả lời câu người dùng thật sự lo: dữ '
+      expect(find.textContaining('chưa lên được'), findsOneWidget,
+          reason: 'Câu đồng bộ hỏng trả lời điều người dùng thật sự lo: dữ '
               'liệu ghi lúc mất mạng đã an toàn chưa. "Đã kết nối lại" không '
               'trả lời câu đó, nên để nó ghi đè là nuốt mất thứ đáng nói.');
       expect(find.textContaining('Đã kết nối lại'), findsNothing);
     });
 
-    testWidgets('đồng bộ xong SAU thì vẫn ghi đè được toast khôi phục',
+    testWidgets('đồng bộ THÀNH CÔNG im lặng nên "đã kết nối lại" hiện được',
+        (tester) async {
+      await dung(tester);
+      dayLen.add(ketQua(thanhCong: 2));
+      await nhip(tester);
+      ketNoi.add(ConnectionEvent.khoiPhuc);
+      await nhip(tester);
+
+      expect(find.textContaining('Đã kết nối lại'), findsOneWidget,
+          reason: 'Trước 2026-10-02 "Đã đồng bộ xong" chiếm chỗ và nuốt câu '
+              'này. Nay thành công không hiện gì thì không còn gì để nuốt.');
+    });
+
+    testWidgets('đồng bộ thành công đến SAU không gỡ toast khôi phục',
         (tester) async {
       await dung(tester);
       ketNoi.add(ConnectionEvent.khoiPhuc);
       await nhip(tester);
       dayLen.add(ketQua(thanhCong: 3));
       await nhip(tester);
+      await tester.pump(thoiGianHieuUngToast);
+      await tester.pump();
 
-      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
+      expect(find.textContaining('Đã kết nối lại'), findsOneWidget);
+    });
+
+    testWidgets('đồng bộ hỏng đến SAU thì ghi đè được toast khôi phục',
+        (tester) async {
+      await dung(tester);
+      ketNoi.add(ConnectionEvent.khoiPhuc);
+      await nhip(tester);
+      dayLen.add(ketQua(thanhCong: 3, that: 1));
+      await nhip(tester);
+
+      expect(find.textContaining('chưa lên được'), findsOneWidget,
           reason: 'Chiều ngược lại thì tin mới cụ thể hơn, phải được hiện.');
     });
 
     testWidgets('mất mạng luôn thắng mọi toast khác', (tester) async {
       await dung(tester);
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 2, that: 1));
       await nhip(tester);
       ketNoi.add(ConnectionEvent.mat);
       await nhip(tester);
@@ -231,7 +305,7 @@ void main() {
     testWidgets('toast đồng bộ ẩn rồi thì khôi phục hiện được bình thường',
         (tester) async {
       await dung(tester);
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 2, that: 1));
       await nhip(tester);
       await choTanHan(tester);
 
@@ -310,12 +384,12 @@ void main() {
     testWidgets('realtime KHÔNG ghi đè kết quả đồng bộ đang hiện',
         (tester) async {
       await dung(tester);
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 2, that: 1));
       await nhip(tester);
       realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
 
-      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
+      expect(find.textContaining('chưa lên được'), findsOneWidget,
           reason: 'Thứ tự ưu tiên: đồng bộ > realtime > kết nối. Toast đồng bộ '
               'trả lời câu người dùng thật sự lo — dữ liệu vừa ghi đã an toàn '
               'chưa.');
@@ -324,7 +398,7 @@ void main() {
 
     testWidgets('sự kiện bị nuốt KHÔNG được xếp hàng hiện sau', (tester) async {
       await dung(tester);
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 2, that: 1));
       await nhip(tester);
       realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
@@ -340,7 +414,7 @@ void main() {
     testWidgets('toast đồng bộ ẩn rồi thì realtime hiện được bình thường',
         (tester) async {
       await dung(tester);
-      dayLen.add(ketQua(thanhCong: 2));
+      dayLen.add(ketQua(thanhCong: 2, that: 1));
       await nhip(tester);
       await choTanHan(tester);
 

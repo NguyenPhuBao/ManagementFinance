@@ -144,6 +144,39 @@ void main() {
     });
   });
 
+  // Đo trên Realme RMX2205 2026-09-30: hai lần chuyển −10.000 đ từ MB cách nhau 4 phút, tin KHÔNG có "Ma GD"
+  // → luật gộp 5 phút coi là một, khoản thứ hai MẤT im lặng. Thứ duy nhất khác giữa hai tin là số dư sau GD.
+  group('vân tay số dư sau GD (gộp trùng)', () {
+    const tieuDe = 'Thông báo biến động số dư';
+    String mb(String sd) => 'TK 03xxx262|GD: -10,000VND 30/09/26 19:17 |SD: ${sd}VND|DEN: X - PSP1'
+        '|ND: X chuyen tien';
+    test('⭐ hai tin chỉ khác SD → hai vân tay khác nhau; cùng SD → cùng vân tay', () {
+      final a = doc(kNguonMb, tieuDe, mb('5,027,757'))!;
+      final b = doc(kNguonMb, tieuDe, mb('5,017,757'))!;
+      final a2 = doc(kNguonMb, tieuDe, mb('5,027,757'))!;
+      expect(a.vanTaySoDu, isNotNull);
+      expect(a.vanTaySoDu, isNot(b.vanTaySoDu),
+          reason: 'hai giao dịch thật cùng tiền, cùng chiều → số dư sau khác nhau là dấu hiệu duy nhất');
+      expect(a.vanTaySoDu, a2.vanTaySoDu, reason: 'SMS + app của CÙNG giao dịch mang cùng SD → phải gộp được');
+    });
+    test('⭐ vân tay KHÔNG chứa con số số dư (quy tắc §13.6 — hàng và khoá sống trên đĩa)', () {
+      final t = doc(kNguonMb, tieuDe, mb('5,027,757'))!;
+      expect(t.vanTaySoDu, isNot(contains('5027757')));
+      expect(t.vanTaySoDu, isNot(contains('5,027,757')));
+    });
+    test('BIDV "Số dư cuối" và Techcombank "Số dư: VND" cũng có vân tay; SD = 0 vẫn có', () {
+      final bidv = doc(kNguonBidv, 'BIDV',
+          'Tài khoản thanh toán: 5111012066 Số tiền GD: -1,000 VND Số dư cuối: 0 VND Nội dung giao dịch: X')!;
+      final tcb = doc(kNguonTcb, '- VND 45,000', 'Tài khoản: 5555047777777 Số dư: VND 173,042 PHO 24')!;
+      expect(bidv.vanTaySoDu, isNotNull);
+      expect(tcb.vanTaySoDu, isNotNull);
+    });
+    test('tin không mang số dư (MoMo, ZaloPay) → vân tay null', () {
+      expect(doc(kNguonMomo, 'Nhận chuyển khoản từ A', 'Số tiền 20.000 ₫')!.vanTaySoDu, isNull);
+      expect(doc(kNguonZalopay, 'Nhận tiền qua mã QR', 'Nhận 15.000đ qua chuyển khoản')!.vanTaySoDu, isNull);
+    });
+  });
+
   test('kNguonBienDong có đủ BẢY nguồn của danh sách trắng (spec §2), đúng chữ cho màn xin đồng ý', () {
     expect(kNguonBienDong, [kNguonMb, kNguonVcb, kNguonTcb, kNguonBidv, kNguonSms, kNguonMomo, kNguonZalopay]);
     expect(kNguonBienDong, hasLength(7));

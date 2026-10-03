@@ -39,12 +39,13 @@ import '../theme/app_colors.dart';
 /// quan trọng ngang thông tin chính: thiếu nó, người dùng ngừng nhập liệu vì sợ
 /// mất — đúng nỗi sợ mà kiến trúc offline-first sinh ra để xoá bỏ.
 ///
-/// ## Thông báo đồng bộ không nêu số lượng
+/// ## Đồng bộ: chỉ báo khi THẤT BẠI, và không nêu số lượng
 ///
-/// "Đã đồng bộ 5 thay đổi" nghe cụ thể hơn, nhưng con số ấy là chi tiết cài
-/// đặt chứ không phải điều người dùng quan tâm — biết "đã xong" là đủ. Vẫn
-/// phải phân biệt **xong** với **còn kẹt lại**: gộp hai trạng thái ấy vào một
-/// câu là để người dùng tưởng dữ liệu đã an toàn.
+/// Từ 2026-10-02 (người dùng chốt) đồng bộ **thành công thì im**: nó chạy sau
+/// mỗi lần ghi, nên viên "Đã đồng bộ xong" của bản trước hiện sau mỗi thao tác.
+/// Chỉ còn câu **còn kẹt lại** — "Một số thay đổi chưa lên được máy chủ" — và
+/// nó không nêu con số: bao nhiêu bản ghi là chi tiết cài đặt chứ không phải
+/// điều người dùng quan tâm.
 
 /// Thời gian trượt + mờ, cho cả chiều vào lẫn chiều ra.
 ///
@@ -174,15 +175,16 @@ class _AppToastState extends State<AppToast> {
       return;
     }
 
-    _hien(
-      const _NoiDungToast(
-        chu: 'Đã đồng bộ xong',
-        mau: AppColors.income,
-        icon: Icons.cloud_done_outlined,
-        bac: _Bac.dongBo,
-        nguon: _Nguon.dongBo,
-      ),
-    );
+    // Thành công thì IM (người dùng chốt 2026-10-02) — đồng bộ chạy sau mỗi lần
+    // ghi, nên viên "Đã đồng bộ xong" hiện sau mỗi thao tác. Xung đột LWW cũng
+    // rơi vào đây: bản server thắng, không có gì "chưa lên được".
+    //
+    // Một việc vẫn phải làm: gỡ câu "chưa lên được" nếu nó đang hiện. SyncEngine
+    // phát kết quả lần đẩy đầu TRƯỚC bước Pull rồi phát kết quả lần thử lại ở
+    // cuối chu kỳ, nên một thất bại tạm thời tới đây hai lượt — lượt sau mà lọt
+    // thì câu ấy đã hết đúng. Gỡ theo NGUỒN, không theo bậc: toast mất mạng mang
+    // bậc đồng bộ nhưng không phải của nguồn này.
+    if (_dangHien && _dai?.nguon == _Nguon.dongBo) _an();
   }
 
   /// Sự kiện từ máy chủ. Chữ và màu suy từ chính enum — payload không được đọc,
@@ -249,14 +251,19 @@ class _AppToastState extends State<AppToast> {
       _dangHien = true;
     });
 
-    _dongHoAn = Timer(widget.tuAnSau, () {
+    _dongHoAn = Timer(widget.tuAnSau, _an);
+  }
+
+  /// Cho toast đang hiện trượt ra rồi dọn — hết giờ, hoặc bị gỡ sớm.
+  void _an() {
+    _dongHoAn?.cancel();
+    _dongHoDon?.cancel();
+    if (!mounted) return;
+    setState(() => _dangHien = false);
+    // Giữ nội dung tới hết hiệu ứng ra, nếu không nó biến mất phụt.
+    _dongHoDon = Timer(thoiGianHieuUngToast, () {
       if (!mounted) return;
-      setState(() => _dangHien = false);
-      // Giữ nội dung tới hết hiệu ứng ra, nếu không nó biến mất phụt.
-      _dongHoDon = Timer(thoiGianHieuUngToast, () {
-        if (!mounted) return;
-        setState(() => _dai = null);
-      });
+      setState(() => _dai = null);
     });
   }
 

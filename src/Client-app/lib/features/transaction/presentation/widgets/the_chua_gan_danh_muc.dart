@@ -36,7 +36,7 @@ class TheBienDongChuaGhi extends StatelessWidget {
   Widget build(BuildContext context) => TheViecChoDuyet(
         icon: Icons.account_balance_outlined,
         tieuDe: 'Có $soBienDong biến động chưa ghi',
-        phu: 'Từ thông báo ngân hàng, bạn duyệt trước khi lưu',
+        phu: 'Từ thông báo ngân hàng và biên lai, bạn duyệt trước khi lưu',
         nhanNut: 'Xem',
         khoaNut: const Key('the-bien-dong-xem'),
         onNhan: onXem,

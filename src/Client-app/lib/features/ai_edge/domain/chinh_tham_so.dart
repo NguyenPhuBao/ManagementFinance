@@ -22,7 +22,10 @@
 ///    `sap_xep=moi_nhat`; câu không có chữ kỳ nào → `ky=moi_luc`.
 /// 11. **Kỳ nêu cụ thể** (spec mở rộng tool 2026-09-27 §3.1): *tháng 8, quý 2,
 ///    từ 1/9 đến 15/9, 3 tháng gần nhất, năm ngoái* → `ky=tuy_chon` + `tu_ngay`
-///    / `den_ngay`; thắng luật 5.
+///    / `den_ngay`; thắng luật 5. **11b** (đo Realme 2026-10-02, mục 9.45):
+///    `tu_khoa` chỉ là ĐOẠN KỲ của câu hỏi (*"từ 1/9 den 15/9"*) → gỡ — cùng
+///    lý lẽ 2a; chữ sau *"ghi chú"*, `tu_khoa` có chữ khác, câu không nêu kỳ
+///    cụ thể thì giữ.
 /// 12. **So sánh hai kỳ** (E13): *so với / hơn tháng trước* → `so_voi=ky_truoc`;
 ///    *cùng kỳ năm trước / năm ngoái* → `cung_ky_nam_truoc`. `ky` là kỳ GỐC —
 ///    kỳ đang nói — chứ không phải kỳ đem ra so; câu không so sánh mà mô hình
@@ -152,6 +155,16 @@ String? _chuoi(Object? v) {
   final s = v.toString().trim();
   return s.isEmpty ? null : s;
 }
+
+/// Mọi âm tiết của [boDau] là chữ số (ngày, tháng, năm) hoặc chữ nối của một
+/// đoạn kỳ — *"tu 1/9 den 15/9"*, *"thang 8"*. Chuỗi rỗng → `false`.
+bool _chiLaChuKy(String boDau) {
+  final am = boDau.split(RegExp(r'[^a-z0-9]+')).where((t) => t.isNotEmpty).toList();
+  return am.isNotEmpty &&
+      am.every((t) => RegExp(r'[0-9]').hasMatch(t) || _chuNoiKy.contains(t));
+}
+
+final Set<String> _chuNoiKy = 'tu|den|toi|ngay|thang|nam|quy|tuan'.split('|').toSet();
 
 KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   String cauHoi,
@@ -329,6 +342,21 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     a['tu_ngay'] = _ddmmyyyy(kyTuDo.from);
     a['den_ngay'] = _ddmmyyyy(kyTuDo.to.subtract(const Duration(hours: 12)));
     ghi.add('câu hỏi nêu kỳ cụ thể → ky=$kMaKyTuyChon ${a['tu_ngay']}–${a['den_ngay']}');
+  }
+  // 11b. Đo Realme 2026-10-02 (dự án B, Task 8 — F2 ở phiên một tool): mô hình
+  // nhét cả ĐOẠN KỲ của câu hỏi vào tu_khoa ("từ 1/9 den 15/9"); tìm chuỗi ấy
+  // trong ghi chú ra 0 khoản. Cùng lý lẽ 2a (chữ chiều): luật 11 đã đọc kỳ rồi.
+  // Chỉ gỡ khi câu NÊU kỳ cụ thể, tu_khoa nằm trong câu, và mọi âm tiết của nó
+  // là chữ số hoặc chữ kỳ — "tien nha thang 8", chữ sau "ghi chú" thì giữ.
+  final tkKy = _chuoi(a['tu_khoa']);
+  if (kyTuDo != null &&
+      tkKy != null &&
+      _khop(tkKy, bangCa) == null &&
+      _bo(tkKy) != sauGhiChu &&
+      q.contains(_bo(tkKy)) &&
+      _chiLaChuKy(_bo(tkKy))) {
+    a.remove('tu_khoa');
+    ghi.add('tu_khoa "$tkKy" chỉ là chữ kỳ → bỏ');
   }
 
   // 5. Sắp xếp và kỳ. "3 tháng gần nhất" là kỳ, không phải "lần gần nhất".

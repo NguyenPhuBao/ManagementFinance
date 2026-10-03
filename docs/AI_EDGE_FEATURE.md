@@ -21,7 +21,10 @@ mở rộng bộ tool ba lát — **chín** tool, câu đã định tuyến khai
 nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến năm họ câu — `kBang72Cau`) (**9.38**) · G56 `LoaiSo.soLan`
 (**9.39**) · nhóm B (B1 gợi ý danh mục học từ ghi chú, B5a/B5b, B2, B3, B4 — mục của từng mảng, hàng tương ứng `CLAUDE.md`)
 · nhóm C: **C1** gắn danh mục hàng loạt (**9.40**), **C2** ô Nhập nhanh — *"AI đọc mọi câu"*, **lối B mở sang chỗ thứ hai**
-(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**.
+(**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**
+· **C3** lệnh tạo hoá đơn / mục tiêu / ngân sách, bản luật rồi bản đọc bằng AI (**9.42–9.43**) · spike **C4** giọng nói + chụp
+hoá đơn, còn dở (**9.44**) · dự án huấn luyện **A** — spike tra cứu (**10.6**) · ✅ dự án **B** — bộ định tuyến HỌC: câu giao
+dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02).
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -186,6 +189,7 @@ lib/features/ai_edge/
   domain/ + data/ (bộ chỉnh tham số theo câu hỏi, 2026-09-25 rạng sáng — mục 9.28) chinh_tham_so.dart: chinhThamSoTimGiaoDich — sáu luật, bỏ dấu, từ khoá chuỗi tách lúc chạy; cong_cu.dart: CongCu.chay nhận cauHoi (bảy tool, BoCongCu, vòng lặp); cong_cu_giao_dich.dart: áp bộ chỉnh TRƯỚC mọi phép kiểm, log "chỉnh tham số theo câu hỏi", trường log
   domain/   (vòng sửa cổng F, 2026-09-28 — mục 9.37) kiem_ky.dart: kiemKy — lớp chắn thứ SÁU (chữ kỳ lệch kỳ của số) · goi_so.dart: GoiSo.kyCua · kiem_nhan.dart: số tổng gán cho đối tượng · chinh_tham_so.dart: cauHoiVeTrich, tenNeuTrongCau (dời ra core/utils/khop_ten.dart ở C2 T4), luật 2a/2b/2c/4b, tu_tra
   (C2, 2026-09-29 → 30 — mục 9.41) kiem_so.dart + chinh_tham_so.dart gọi timSoBangChu (một bộ đọc số chữ, đọc cả hàng chục) · ma_ky.dart gọi ngayHopLe ở core/utils/ngay_trong_cau.dart
+  domain/ + data/ (dự án B, 2026-10-02 — mục 9.45) dinh_tuyen_hoc.dart: đặc trưng + phép ĐOÁN của bộ định tuyến học (amTietDinhTuyen · dacTrungCua · TrongSoDinhTuyen · doanDinhTuyen · kNhanMoHinhDuocDinhTuyen) · trong_so_dinh_tuyen.g.dart: SINH RA, không sửa tay (kNguongDinhTuyen · kBamBoHuanLuyen · kTrongSoDinhTuyen) · dinh_tuyen.dart: ĐƯỜNG GHÉP luật → mô hình (dinhTuyenCauHoi · dinhTuyenChiLuat · KetQuaDinhTuyen · NguonDinhTuyen) · vong_lap_cong_cu.dart: nhận hàm định tuyến, tenEp — ép chạy tool đích CHỈ khi nguồn là luật (định tuyến mềm), dòng log `định tuyến: …`
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
@@ -196,6 +200,7 @@ lib/core/utils/so_bang_chu.dart                    — (C2 T1) timSoBangChu: M�
 lib/core/utils/ngay_trong_cau.dart                 — (C2 T2) timNgayTrongCau (ô Nhập nhanh) · ngayHopLe (dời từ ma_ky.dart)
 lib/features/transaction/domain/doc_cau_giao_dich.dart — (C2) docCauGiaoDich: luật đọc câu + lưới kiểm ô của AI (cachDocSoTien, KetQuaAi)
 lib/features/transaction/data/doc_cau_bang_ai.dart — (C2 §2.8) DocCauBangAi: phiên một tool dien_giao_dich; NGOÀI ai_edge vì schema mang 'thu'/'chi' (test quét 14)
+test/tool/dinh_tuyen/                             — (dự án B) KHÔNG vào bản app: du_lieu.dart (đọc TSV, mười nhãn, mã băm) · huan_luyen.dart (hocNaiveBayes · hocLogistic · kiemCheo · phanLuatBoLai · danhGia · chonNguong · sinhTepTrongSo) · bo_huan_luyen.tsv · bo_do.tsv (KHOÁ bằng mã băm) · huan_luyen_dinh_tuyen_test.dart và do_bo_do_test.dart (`skip`, chạy tay)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
 lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge
@@ -2773,7 +2778,7 @@ luật chặn thử bằng bản sai có chủ ý.
 | **G3** | E8 · F12 | Hoá đơn nêu tên → tập riêng của nó: mọi hàng còn phải trả + mọi hàng hạn tháng này / tháng tới, mọi trạng thái, **không kỳ dự kiến** (B1c *"còn phải trả"* không được cộng kỳ chiếu), không hàng nào thì hàng mới nhất; tổng hợp trên tập ấy, bỏ *Cố định mỗi tháng*. *"tự trả / tự động thanh toán"* → bộ chỉnh đặt `tu_tra` (+ `ky=tat_ca` khi không nêu kỳ) — *"phải tự trả"* là trả tay; ca test cũ *"F12 không đổi tham số"* viết lại | `631437f` |
 | **G4** | F15 · F14 | Câu *chuyển bớt / cân đối / bù ngân sách* → `danh_sach_ngan_sach`, phiên một tool (bộ chỉnh đặt `can_doi`). Mục tiêu nêu tên → chỉ mục tiêu ấy (đếm / kết luận trích cũng chỉ trên nó); hỏi trích của mục tiêu không bật trích → `ket_qua` *"<tên> không bật trích tự động"* — log cổng F cho thấy mô hình đã viết kỳ trích **06/10 của MuaXe** cho MuaDT, `kiemSo` chặn do may | `34339a6` |
 | **G5 (a)** | E3 | `kiemNhan`, theo vế: số **tiền** chỉ khớp mục tổng không tên + vế nêu tên đối tượng có mục **cùng họ nhãn** (`Chi` ⊆ `Tổng chi`) + vế không có số nào của đối tượng → chặn. Câu đúng 27/09 *"Giải trí với tổng chi là 30.000 đ"* (số của chính nó) vẫn qua | `38e079b` |
-| **G5 (b)** | E21 | Lớp chắn **thứ sáu** `kiemKy` (`kiem_ky.dart`): vế có chữ kỳ tương đối mà mọi mục khớp số có kỳ đã biết và không kỳ nào trùng → chặn. Kỳ từ `GoiSo.kyCua` (mặc định `null` = không xét): Trang chủ thu / chi / còn lại = tháng này (tổng số dư là số hiện tại); Phân tích khi `NguonGoiSo` truyền `chuKy`; tra cứu theo lượt | `eeaadc4` |
+| **G5 (b)** | E21 | Lớp chắn **thứ sáu** `kiemKy` (`kiem_ky.dart`): vế có chữ kỳ tương đối mà mọi mục khớp số có kỳ đã biết và không kỳ nào trùng → chặn. Kỳ từ `GoiSo.kyCua` (mặc định `null` = không xét): Trang chủ thu / chi / còn lại = tháng này (tổng số dư là số hiện tại); Phân tích khi `NguonGoiSo` truyền `chuKy`; tra cứu theo lượt (⚠️ từ 2026-10-02 lượt *mọi thời gian* và *kỳ tự do* **cũng được xét** — mục 9.45) | `eeaadc4` |
 
 `flutter test` **4146/4146** (3 skip, +44 ca), `flutter analyze` 26 (mức nền). `tools_json`, lời hệ thống, mẫu câu,
 schema, payload **không đổi**. Không ca test cũ nào phải sửa kỳ vọng ngoài hai ca ghi
@@ -3180,7 +3185,7 @@ ngoặc là lượt sinh của mô hình (log `[NhapNhanh][AI]`):
 | 2 | nhận lương 9tr | — | 4,4 s | 9.000.000 · Thu nhập · Lương | ✅ |
 | 3 | tiền điện tháng này một triệu hai | số tiền | 18,2 s (15,8) | 1.200.000 · Hóa đơn (AI) | ✅ |
 | 4 | đổ xăng 50k | — | 4,4 s | 50.000 · Di chuyển (từ khoá *xăng*) | ✅ lượt 2: Ăn uống |
-| 5 | grab 35k | — | 4,5 s | 35.000 · **Ăn uống** (từ khoá seed *grab*) | ❌ seed sai — đơn `CAN-LAM/SEED_TU_KHOA_GRAB.md` |
+| 5 | grab 35k | — | 4,5 s | 35.000 · **Ăn uống** (từ khoá seed *grab*) | ❌ seed sai — đơn `DA-XONG/SEED_TU_KHOA_GRAB.md` |
 | 6 | thứ sáu tuần trước ăn lẩu 300k | — | 4,3 s | 300.000 · 25/09 · Ăn uống | ✅ |
 | 7 | đầu tháng đóng học phí 2tr | — | 4,4 s | 2.000.000 · **01/09** · Giáo dục (từ khoá) | ✅ lượt 2: ngày không đổi |
 | 8 | mua 2 ly trà sữa 60k | — | 4,4 s | 60.000 · danh mục **trống** | ◐ cố ý — danh mục không gọi AI (lượt 2: AI điền Ăn uống) |
@@ -3222,6 +3227,385 @@ gắn *Recommended* cho phương án thu hẹp nguyên tắc *"AI là lớp cu�
 | ăn sáng 30k, grab 50k | ghi chú | 17,4 s (14,4) | 30.000 · Ăn uống (từ khoá *grab*), ghi chú vẫn *"ăn sáng, grab 50k"* | ◐ AI **cộng** 80.000 (luật giữ 30.000) và trả ghi chú còn nguyên số — lớp kiểm chặn cả hai |
 
 Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm giữ đúng: không số nào bị đổi, không chữ nào bị thêm.
+
+**Sau đó (2026-09-30 tối, việc sau D1):** ô Nhập nhanh điền được **số tiền** thì bàn phím số 16 phím **ẩn**, ✓ lên thanh
+tiêu đề, dưới số tiền là *"Chạm để sửa số tiền"* — việc còn lại là soát thẻ form, không gõ số (người dùng chốt; mục 6
+`BIEN_DONG_SO_DU_FEATURE.md`). Câu không đọc ra số tiền thì bàn phím giữ nguyên.
+
+### 9.42 C3 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI (2026-09-30) — chỉ luật, không mô hình
+
+Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-design.md` (banner *soát lần hai*).
+*"tạo hoá đơn gym 300k ngày 5 hằng tháng"* → thẻ *"Mình hiểu là: Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, ngày 5"*
++ nút **Mở form tạo hoá đơn** → `/bills/add?…` điền sẵn; người dùng bấm Lưu (bất biến ④ nhóm C).
+
+- **Thứ tự:** `_hoi` gọi `loaiLenhTao` **trước** chặn chủ đề, định tuyến và mở phiên — lệnh không mở phiên mô hình.
+  Nhận lệnh = động từ *tạo · thêm · đặt · lập* ở **đầu** câu (sau tiền tố lịch sự), danh từ ngay sau (chữ đệm là danh
+  sách **trắng** — *"đặt lịch nhắc hoá đơn"* không phải lệnh), không từ hỏi (*bao nhiêu · nào · nên · không · là gì · ở
+  đâu · sao · ?*). ⚠️ Lưới **72 câu cổng F** (`kBang72Cau`) xanh cả trên bản sai bỏ vế từ hỏi — không câu nào mở bằng
+  động từ tạo; nó canh việc **mở rộng** danh sách về sau. Vế từ hỏi do chính các câu hỏi gần giống lệnh canh.
+- **Đọc ô** (`lenhTaoTheoCauHoi`, `ai_edge/domain/lenh_tao.dart`): số tiền qua **`chonSoTienTrongCau`** — bộ chọn của ô
+  Nhập nhanh C2 mở ra công khai (một định nghĩa); tên = đoạn sau danh từ tới dấu hiệu đầu tiên; ví / danh mục qua
+  `timTenTrongCau`; hạn mục tiêu *trước/đến tháng M [năm Y/sau]* → cuối tháng (tháng đã qua → năm sau; tháng 2 năm
+  nhuận), *trong N tháng* kẹp cuối tháng, *đến dd/mm/yyyy*. Trường ví / danh mục tên **`idVi` / `idDanhMuc`** — test
+  quét 14 cấm chuỗi `walletId` trong `ai_edge/`. Danh mục **chi** lọc ở `ai_chat/data/nguon_lenh_tao.dart` (ngoài lớp
+  AI — phép so chiều tiền). ✅ Đơn vị *tỷ* đọc được từ **2026-10-02** (`_mauSoDonVi` của `doc_cau_giao_dich.dart` —
+  một bộ đọc cho cả Nhập nhanh lẫn lệnh tạo): *2 tỷ · 1,5 tỉ · 2 ty · 1ty2 · "1 tỷ 2"* (cách đọc cho lớp kiểm AI).
+  ⚠️ Đơn vị khớp trên chữ **đã bỏ dấu** nên qua `_donViDungDau`: *"mua 2 tí kẹo"* bỏ dấu là `2 ti` = hai tỷ — câu có
+  dấu thì chỉ nhận *tỷ / tỉ*, gõ không dấu thì nhận `ty` / `ti` trần (bản sai bỏ phép ấy làm ca *tí* đỏ). Số viết bằng
+  chữ (*"một tỷ"*) và ngưỡng của bộ chỉnh tham số vốn đã đọc được. Đo OnePlus: Nhập nhanh *"mua nha 2 ty"* →
+  *Đã điền: 2.000.000.000 đ · Nhà cửa*; *"tao muc tieu mua nha 2 ty truoc thang 6 nam sau"* → thẻ *2.000.000.000 đ ·
+  hạn 30/06/2027*.
+- ⚠️ **Tầng 4:** *"tự trả / tự động thanh toán / trích tự động"* chỉ bật `nhacTuTra` — thẻ nói *"Tự trả phải bật trong
+  form"*, query **không** mang tham số nào bật tự trả.
+- **Ô nhập mở cả khi chưa có mô hình** (người dùng chốt 2026-09-30): câu là lệnh → thẻ; câu khác → câu cố định
+  `cauKhoaHoiDap`. Chip gợi ý **vẫn khoá** (chúng là câu hỏi).
+- `/budget/rules` không nhận chu kỳ → query ngân sách chỉ `category` + `amount`. Form mục tiêu nhận query mới
+  (`dienSanMucTieuTuQuery`, mục 3.28 `GOAL_FEATURE.md`).
+- **Đo Realme 2026-09-30 22:23–22:26** (bản debug, có mô hình, không Lưu gì): ba lệnh (hoá đơn · mục tiêu · ngân sách
+  gõ không dấu) → thẻ **< 1 s**, log `[SLM] lệnh tạo … → form`, không phiên mô hình; ba form điền đúng; quay về giữ lịch
+  sử chat. Câu *"nen dat ngan sach an uong bao nhieu"* → vòng tool như cũ (1 lời gọi, 33 s). Chưa đo trên máy: nhánh
+  *chưa có mô hình* (widget test phủ).
+- Stitch: màn *"Trợ lý AI - Thẻ lệnh tạo hoá đơn"* gửi 2026-09-30 (timeout) — chưa hiện lúc thi công; ✅ hiện ngày
+  2026-10-01, id `59454c61be704c2f882f8f625917951c` (đối chiếu ở mục 9.43).
+
+> 🔄 **Từ 2026-10-01 bộ luật của mục này là ĐƯỜNG DỰ PHÒNG và LƯỚI KIỂM** — máy có mô hình thì AI đọc trước (mục 9.43).
+> Câu *"chỉ luật, không mô hình"*, *"lệnh không mở phiên mô hình"* và *"thẻ < 1 s"* ở trên chỉ còn đúng cho máy **chưa
+> có mô hình / tắt công tắc AI**.
+
+### 9.43 C3 đổi lần hai — lệnh tạo ĐỌC BẰNG AI, luật kiểm và dự phòng (2026-10-01) — ✅ xong, đo Realme 10/10, OnePlus 9 ✅ + 1 ◐ (2026-10-02, sau hai sửa)
+
+Người dùng (2026-09-30 đêm): *"tôi muốn tạo bằng AI mới đúng thay vì chỉ lệnh như này"* — spec C3 **§8**, kế hoạch
+`plans/2026-09-30-c3-lenh-tao-bang-ai.md`. Commit `3442495` → `4310174` (Task 1–5). Câu tự nhiên *"tôi muốn để dành 50
+triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; luật kiểm từng ô; thẻ mở form điền sẵn, người dùng bấm Lưu.
+
+- **Cổng rộng `coVeLenhTao`** (`lenh_tao.dart`, luật): `true` ⇔ câu theo mẫu 9.42, **hoặc** (không từ hỏi ∧ nhắc một
+  *đối tượng tạo được* — hoá đơn · mục tiêu · ngân sách · để dành · tiết kiệm · dành dụm · quỹ khẩn cấp · hạn mức ·
+  giới hạn · định kỳ ·
+  hằng/mỗi + tuần/tháng/quý/năm · một tháng ∧ (có *tín hiệu muốn tạo* — tạo · thêm · đặt · lập · muốn · nhắc · lên kế
+  hoạch — **hoặc** một số tiền đọc được)). ⚠️ Không có `quy` trần (*"quý này"* của câu hỏi cũng ra `quy`). Lưới **72 câu
+  cổng F** → `false` hết; **ở đây lưới ấy canh thật** (bản sai bỏ vế từ hỏi làm nó đỏ — khác cổng hẹp 9.42).
+- **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
+  `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
+  + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
+  token, mục 9.34). ⚠️ Tầng 4: không tool nào có tham số tự trả / trích tự động (ca test quét khoá tham số).
+  Vòng đời phiên (nạp một lần · lời gọi đầu tiên · quá hạn · huỷ · đóng) tách thành **`PhienMotLoiGoi`**
+  (`ai_edge/data/phien_mot_loi_goi.dart`) — `DocCauBangAi` của C2 nay **uỷ thác** sang nó (test C2 không đổi một dòng);
+  nó log `tools_json N ký tự` trước khi mở phiên.
+- **Lưới kiểm `lenhTaoTuAi`** (`lenh_tao.dart`) — kết quả mô hình **không bao giờ dùng thẳng**: luật đọc trước trên chính
+  câu (`_docTheoLuat`, tách từ `lenhTaoTheoCauHoi`), AI chỉ **lấp ô luật để trống**, mỗi ô một chốt:
+
+  | Ô | Nhận của AI khi |
+  |---|---|
+  | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu; *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* → hoá đơn, xét sau cùng — thêm 2026-10-02) |
+  | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5); với **mục tiêu**, số tiền *theo kỳ* (*"2 triệu mỗi tháng"*, *"500k/tháng"*) **không** phải số tiền đích — luật lẫn AI đều bỏ (`_tienTheoKy`) |
+  | tên | không chứa chữ số, mọi chữ có trong câu **đúng thứ tự** (không cần liền nhau), gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*); câu theo mẫu thì tên luật thắng |
+  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) |
+  | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
+  | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền**; từ ngày gốc suy ra **ngày bắt đầu** (dưới) |
+  | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào); chữ *"hoá đơn"* đầu tiên của câu là đối tượng của lệnh, **không** phải danh mục *Hóa đơn* |
+  | ví | khớp đúng một ví **và câu nhắc ví** (chữ *ví* trần, hoặc viết tắt tên ví) |
+  | tầng 4 `nhacTuTra` | không bao giờ — chỉ luật |
+
+  `LenhTao.nguon` = `ai` khi **ít nhất một ô** do mô hình lấp, ngược lại `luat`.
+  ⭐ **Ngày nêu trong câu là NGÀY BẮT ĐẦU hoá đơn** (người dùng chốt 2026-10-01 khi xem thẻ trên Realme: *"khi nhắc
+  tới ngày thì ngày đó là ngày bắt đầu hoá đơn chứ"*) — `ngayBatDauHoaDon`: ngày N **sắp tới** (chưa qua trong tháng,
+  kể cả trùng hôm nay → tháng này; đã qua → tháng sau), kẹp về cuối tháng ngắn / năm nhuận trong khi `anchor` giữ N.
+  Query thêm `start`; thẻ ghi *"hằng tháng, bắt đầu 05/10/2026"*; form: bắt đầu 05/10, kết thúc kỳ và hạn 05/11.
+  Bản đầu (spec §4) không gửi `start` — form luôn bắt đầu hôm nay, *"ngày 5"* chỉ là ngày gốc.
+  ⚠️ **Các chốt siết hơn bảng §8.3 của spec**, đều có ca test + bản sai có chủ ý; ba cái đầu đặt lúc viết mã, phần
+  còn lại do **chính lượt đo Realme** bắt (bảng dưới):
+  (1) **ví** — C2 đo Realme 9/10 câu mô hình tự điền ví mặc định; phép "câu nhắc ví" là **`cauNhacViTheoTen`**, tách từ
+  `_cauNhacVi` của C2 (`doc_cau_giao_dich.dart`, một định nghĩa); (2) **ngày gốc** — số 5 của *"5 triệu"* không phải
+  ngày; (3) **chữ chỉ thời gian so CÓ DẤU khi câu có dấu** — bỏ dấu thì *"tôi"* = *toi* = *tới*, *"cưới"* = *cuoi* =
+  *cuối*: mọi câu có chủ ngữ thành "câu nói thời gian" và hạn mô hình bịa lọt lưới; bộ không dấu (cho người gõ không
+  dấu) vì thế không có `toi`.
+- **Màn chat** (`_hoi` → `_docLenhTao`): cổng **trước** chặn chủ đề / định tuyến.
+
+  | Tình huống | Hành vi |
+  |---|---|
+  | có mô hình, lọt cổng | chỉ báo *"Đang đọc lệnh bằng AI…"* + nút **Huỷ** → thẻ, dòng nguồn *"Đọc bằng AI"* / *"Đọc bằng luật"* |
+  | có mô hình, AI trả `null` | câu theo mẫu → thẻ luật; câu khác → vòng hỏi đáp như cũ |
+  | bấm **Huỷ** | ngay lập tức *"Đang huỷ…"*, nút biến mất; khi engine dừng (~5 s): câu theo mẫu → thẻ luật; câu khác → *"Đã huỷ."*, **không** đi vòng hỏi đáp |
+  | chưa có mô hình | câu theo mẫu → thẻ luật; câu khác → câu cố định `cauKhoaHoiDap`; **không** gọi AI |
+  | không lọt cổng | vòng hỏi đáp như cũ |
+
+  ⚠️ Dòng *Huỷ* **lệch spec §8.4, người dùng duyệt 2026-10-01** (spec: về vòng hỏi đáp): vừa huỷ một lượt chờ mà bị
+  đẩy vào lượt chờ 30 s khác là ngược ý người bấm. Nút Huỷ **chỉ** có ở lượt đọc lệnh (`_dangDocLenh`), không ở lượt hỏi đáp thường.
+  Dòng nguồn nói thứ **đã xảy ra**: AI đọc mà không lấp ô nào (luật đã đủ) thì vẫn *"Đọc bằng luật"*.
+- **Thẻ theo Stitch `59454c61…`**: ô thiếu là hộp nền nhạt + `help_outline`; nút có mũi tên `arrow_forward`; biểu tượng
+  dòng đầu trong ô vuông nền nhạt 24 dp (`auto_awesome` khi AI, `rule` khi luật). **Lệch có chủ ý**: giữ avatar + bong
+  bóng bo lệch như mọi tin của trợ lý (Stitch vẽ thẻ rộng hết hàng, không avatar); chữ ô thiếu giữ *"bạn điền trong
+  form"* (Stitch: *"bạn chọn"* — ô thiếu có thể là số tiền). Màn Stitch vẽ bản luật: **chưa có** dòng chỉ báo lẫn dòng
+  nguồn. Thẻ hoá đơn in thêm **`· danh mục X`** / **`· ví Y`** khi form sẽ điền sẵn chúng (`LenhTaoHoaDon.tenDanhMuc`
+  / `tenVi`) — không thì thẻ ghi *"Đọc bằng AI"* mà không cho thấy AI đã điền gì.
+- **Đo Realme RMX2205 2026-10-01 14:38–15:30** (CPU, bản debug, tài khoản 10, gõ không dấu qua adb; **không Lưu**
+  form nào). `tools_json` ba tool **2.024** ký tự với ví / danh mục thật (phần cố định 1.759), lời hệ thống 457;
+  mở phiên ~3 s, lượt sinh 10–15 s, **thẻ hiện sau 13–18 s**; mọi lượt **đúng một** lời gọi tool; **0**
+  `FAILED_PRECONDITION`, 0 sập. Chấm theo thẻ hiện ra; câu 1–6 đo ở bản `fe758b5c…` (mã @ `1ef8bf0`), câu 7 ở
+  `72268b43…`, câu 8–10 đo lại ở bản cuối `5ffc0123…` (mã @ `4310174`):
+
+  | # | Câu | Mô hình gọi | Thẻ hiện ra | |
+  |---|---|---|---|---|
+  | 1 | tao hoa don gym 300k ngay 5 hang thang | `tao_hoa_don` gym · 300000 · thang · 5 · *Giải trí* | AI · Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Giải trí | ✅ |
+  | 2 | tao muc tieu mua xe 50 trieu truoc thang 6 nam sau | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | luật · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 3 | dat ngan sach an uong 3 trieu | `dat_ngan_sach` Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 4 | them hoa don tien nha 3tr | `tao_hoa_don` … **ngay_goc 1 · vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tien nha** · 3.000.000 đ · hằng tháng · danh mục Nhà cửa (ngày và ví bịa **bị chặn**) | ✅ |
+  | 5 | lap muc tieu du lich 10tr trong 6 thang | `tao_muc_tieu` … **han 30/10/2026** | luật · Tạo mục tiêu **du lich** · 10.000.000 đ · hạn 01/04/2027 (hạn sai của mô hình thua luật) | ✅ |
+  | 6 | toi muon de danh 50 trieu mua xe truoc he nam sau | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | AI · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 7 | moi thang tra tien nha 3 trieu vao mung 5 | `tao_hoa_don` tiền nhà · 3tr · **ngay_goc 0 · vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tiền nhà** · 3.000.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Nhà cửa (ngày do luật đọc *mùng 5*) | ✅ |
+  | 8 | an uong toi da 3 trieu mot thang | **`tao_hoa_don`** Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ (dấu hiệu *tối đa* → ngân sách) | ✅ sau sửa |
+  | 9 | nhac toi dong tien dien hang thang | `tao_hoa_don` *tiền điện hàng tháng* · 0 · Hóa đơn | AI · Tạo hoá đơn **tiền điện** · hằng tháng · danh mục Hóa đơn · *Chưa rõ số tiền* | ✅ sau sửa |
+  | 10 | tiet kiem 2 trieu moi thang cho chuyen du lich | `tao_muc_tieu` chuyen du lich · 2tr | AI · Tạo mục tiêu **chuyen du lich** · *Chưa rõ số tiền, hạn* (2 triệu là mức góp mỗi tháng) | ✅ sau sửa |
+
+  Ba câu hỏi gần giống — *nen dat ngan sach an uong bao nhieu* · *hoa don nao sap den han* · *de danh moi thang 2
+  trieu thi du khong* — **không** mở phiên lệnh, đi thẳng vòng hỏi đáp như cũ (25 s · 31 s · câu thứ ba rơi L1b vì
+  mô hình gọi `goi_y_han_muc {tiêu dùng}` — lỗi sẵn có của vòng hỏi đáp, ngoài phạm vi). **Huỷ** (câu 6, bấm sau
+  5 s): *"Đang huỷ…"* hiện ngay, ~5 s sau *"Đã huỷ."*, ô nhập mở lại, không lượt hỏi đáp nào. Form hoá đơn mở từ
+  thẻ câu 1: Ngày bắt đầu 05/10/2026 · kết thúc kỳ 05/11/2026 · hạn 05/11/2026.
+- ⚠️ **Sáu lỗi lượt đo bắt được, 5146 ca test khi ấy đều mù** (đã sửa, mỗi cái một ca test + bản sai):
+  (1) chữ *"hoá đơn"* của lệnh khớp danh mục mặc định *Hóa đơn* — và vì luật thắng, che luôn danh mục mô hình đoán
+  (lỗi có từ bản luật 9.42); (2) *"ngày 5"* chỉ đặt ngày gốc, form vẫn bắt đầu hôm nay — người dùng chỉ ra; (3) câu 8:
+  mô hình gọi `tao_hoa_don` cho câu ngân sách; (4) câu 10: *2 triệu mỗi tháng* thành số tiền đích; và khi thêm ví dụ
+  *"… một tháng"* vào mô tả `dat_ngan_sach` để chữa (3) thì câu 10 lại bị gọi thành **ngân sách Di chuyển** — ví dụ
+  trong mô tả tool kéo lệch câu khác, nên mô tả **không** kèm ví dụ và loại lệnh do luật `_loaiTheoDauHieu` giữ;
+  (5) tên *"tiền điện hàng tháng"*; (6) bấm Huỷ xong màn đứng nguyên ~5 s (bản giả trong widget test thả lượt ngay
+  khi huỷ nên không thấy quãng ấy).
+- ⚠️ **Mô hình hay điền thừa**: 3/10 câu tự điền ví *Tiết kiệm*, 1 câu tự điền ngày gốc 1, 1 câu hạn sai — lưới kiểm
+  chặn hết. Cùng họ với C2 (ví mặc định 9/10 câu) và bẫy 4.44.
+- **Giá:** thẻ sau 13–18 s trên Realme CPU thay vì < 1 s của bản luật — **kể cả câu theo mẫu** (máy có mô hình thì
+  mọi câu lọt cổng đều đi phiên AI; cái được là danh mục mô hình đoán). Câu lọt cổng mà mô hình không gọi tool tốn
+  thêm một lượt chờ rồi mới về vòng hỏi đáp (chưa gặp trong 10 câu).
+- **Đo OnePlus 13R 2026-10-02 09:49–10:03** (GPU, bản debug, tài khoản 10 — cùng dữ liệu với lượt Realme: 6 ví, 10
+  danh mục chi; gõ không dấu qua adb; **không Lưu** form nào). `tools_json` **2.024** ký tự, hệ thống 457; mở phiên
+  2,0–2,2 s, lượt sinh 2,3–3,8 s, **đọc lệnh 4,4–5,8 s — thẻ hiện sau ~6–7 s** (Realme CPU 13–18 s); nạp mô hình
+  lần đầu thêm 4,7 s; mọi lượt **đúng một** lời gọi; **0** `FAILED_PRECONDITION`, 0 sập. Chấm theo thẻ hiện ra;
+  câu 1–10 ở bản `c4a9c9aa…`, câu 9–10 đo lại ở bản `17c8a89e…` sau hai sửa:
+
+  | # | Mô hình gọi (GPU) | Thẻ hiện ra | |
+  |---|---|---|---|
+  | 1 | `tao_hoa_don` gym · 300000 · thang · 5 · **vi Tiền mặt** · Giải trí | AI · Tạo hoá đơn **gym** · 300.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Giải trí | ✅ |
+  | 2 | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | luật · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 3 | `dat_ngan_sach` Ăn uống · 3tr | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 4 | `tao_hoa_don` tien nha · 3tr · **ngay_goc 1 · vi Tiền mặt** · Nhà cửa | AI · Tạo hoá đơn **tien nha** · 3.000.000 đ · hằng tháng · danh mục Nhà cửa | ✅ |
+  | 5 | `tao_muc_tieu` du lich · 10tr · **han 30/06/2026** (đã qua) | luật · Tạo mục tiêu **du lich** · 10.000.000 đ · hạn 02/04/2027 | ✅ |
+  | 6 | `tao_muc_tieu` mua xe · 50tr · 30/06/2027 | AI · Tạo mục tiêu **mua xe** · 50.000.000 đ · hạn 30/06/2027 | ✅ |
+  | 7 | `tao_hoa_don` **tiền nha** · 3tr · ngay_goc 0 · **vi Tiết kiệm** · Nhà cửa | AI · Tạo hoá đơn **tiền nha** · 3.000.000 đ · hằng tháng, bắt đầu 05/10/2026 · danh mục Nhà cửa | ✅ ⚠️ tên nửa dấu |
+  | 8 | **`tao_muc_tieu`** *tiết kiệm ăn uống* · 3tr · 30/06/2026 | luật · Đặt ngân sách **Ăn uống** · 3.000.000 đ | ✅ |
+  | 9 | **`tao_muc_tieu`** *tiết kiệm điện hàng tháng* · 0 | luật · **Tạo mục tiêu** · *Chưa rõ tên, số tiền, hạn* → sau sửa: luật · Tạo hoá đơn · hằng tháng · *Chưa rõ tên, số tiền* | ✗ → ◐ |
+  | 10 | `tao_muc_tieu` *tiết kiệm du lịch* · 2tr · **han 01/01/2027** | AI · Tạo mục tiêu **tiết kiệm du lịch** · **hạn 01/01/2027** → sau sửa: AI · Tạo mục tiêu **tiết kiệm du lịch** · *Chưa rõ số tiền, hạn* | ✗ → ✅ |
+
+  Lần đầu **8 ✅ · 2 thẻ SAI**; sau sửa **9 ✅ · 1 ◐ · SAI 0** (câu 9 đúng loại nhưng thiếu tên — tên mô hình đặt mang
+  chữ *"tiết kiệm"* câu không có nên bị lưới bỏ; Realme ra *"tiền điện"*). Ba câu hỏi gần giống **không** mở phiên
+  lệnh, vòng hỏi đáp trả lời sau 8–11 s (Realme 25–31 s). **Huỷ** (câu 6, bấm sau 1 s — GPU đọc xong trong ~5 s nên
+  không chờ 5 s được): *"Đang huỷ…"* ngay, rồi *"Đã huỷ."*, ô nhập mở lại, không lượt hỏi đáp.
+- ⚠️ **Hai lỗi lượt đo OnePlus bắt được** — cùng mô hình, cùng câu, **GPU gọi tool khác CPU** ở câu 8, 9 (và bịa
+  hạn ở câu 10), nên chỗ lưới còn dựa vào mô hình thì lộ ra; 5193 ca test đều mù (nay **5195/5195**, 4 skip, analyze 26). Sửa cùng ngày, mỗi cái một ca test
+  đỏ trước:
+  (1) **loại**: câu không dấu hiệu nào thì lưới nhận loại của tool mô hình gọi → nay `_loaiTheoDauHieu` có thêm dấu
+  hiệu **hoá đơn** — *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* — xét **sau** ngân sách và tiết kiệm
+  (*"nhắc tôi để dành 2 triệu mỗi tháng"* vẫn là mục tiêu); câu có dấu thì so chữ **có dấu** (*"dòng tiền"* bỏ dấu là
+  `dong tien` = *"đóng tiền"*);
+  (2) **hạn**: `_cauNoiThoiGian` coi chữ *tháng* của *"mỗi tháng"* là "câu có nói thời gian" nên hạn bịa lọt → nay bỏ
+  các **cụm chu kỳ** (`_mauCumChuKy`: *hằng / mỗi / một + tuần · tháng · quý · năm*, và *"/tháng"*) trước khi tìm chữ
+  thời gian; *"mỗi tháng để dành 2 triệu trước tết"* vẫn nhận hạn.
+- ⚠️ **Mô hình trên GPU điền thừa nhiều hơn**: 3/10 câu tự điền ví, 1 câu ngày gốc 1, 3 câu hạn sai / đã qua, 2 câu
+  gọi nhầm tool — trừ hai lỗi trên, lưới chặn hết. Tên *"tiền nha"* (câu 7) là mô hình thêm dấu nửa chừng cho câu gõ
+  không dấu; lưới so bỏ dấu nên nhận — chưa sửa, người dùng sửa được trong form.
+- **Chưa đo:** nhánh *chưa có mô hình* trên máy thật (widget test phủ); tài khoản nhiều danh mục
+  (30 danh mục + 5 ví giả lập: `tools_json` 3.049 ký tự — dưới nửa phiên sáu tool 6.980 đã chạy được).
+- `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
+  (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
+
+### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — 🚧 màn đo chạy được cả bốn đường, CHƯA có bảng đo
+
+Kế hoạch `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore). Mục này mới ghi **chạy thử** (Bước 2b,
+2c); hai bảng đo — 20 câu **đọc thật** và 15 ảnh hoá đơn **chụp thật** — chờ người dùng (Bước 3–4). Mã spike sống
+sau `--dart-define=SPIKE_C4=true` (`ai_chat/spike/`), là mã bỏ đi.
+
+> **2026-10-02 — hai thứ của spike đã thành mã chính thức**, do tính năng *chia sẻ biên lai* (mục 7
+> `BIEN_DONG_SO_DU_FEATURE.md`) dùng tới: (1) gói **`google_mlkit_text_recognition`** — người dùng duyệt giữ lâu dài;
+> ba gói còn lại (`speech_to_text`, `record`, `image_picker`) vẫn là gói tạm chờ kết quả spike. (2) `DongOcr`,
+> `ghepDongTheoHang`, phép đọc số (`docSoHoaDon` → `docSoTrenAnh`, `tienTrenDong`) **dời về `lib/core/ocr/`**;
+> `spike_c4.dart` xuất lại để màn đo và test spike gọi như cũ. Từ đây chỉ `core/ocr/doc_chu_anh_mlkit.dart` và màn
+> spike được import gói ML Kit (`chi_mot_noi_import_mlkit_test.dart`). Chia sẻ biên lai **không** phải C4: nó nhận ảnh
+> từ app khác và đọc bằng luật, không chụp ảnh, không gọi Gemma.
+
+**Máy:** Realme RMX2205 (CPU — GPU Mali sập native), bản **debug** `9bd65000…` (= `2e2c04c`), `flutter_gemma` 1.9.0,
+`maxTokens` 4096. ⚠️ Bản debug: app đứng yên đã **0,50 GB** PSS (Dart JIT) — số RAM dưới đây cao hơn bản release.
+
+| Đường | Đầu vào | Kết quả | Thời gian | RAM đỉnh (PSS) |
+|---|---|---|---|---|
+| Hoá đơn **lối A** (ML Kit → luật) | `T01.jpg` (ảnh **dựng bằng máy**, 63 KB) | tổng **191.862** ✅ · cửa hàng *CO.OPMART NGUYÊN TRÃI* (sai dấu ngã) · ngày ✅ | **1,0 s** | không đo (không nạp mô hình) |
+| Hoá đơn **lối B** (Gemma nhận ảnh) | cùng ảnh | tổng **191.862** ✅ · *CO.OPMART NGUYÊN TRÀI* (sai hai dấu) · ngày ✅ · JSON đọc được | **24,5 s** (nạp 1,4 + sinh 22,9) | **2,93 GB** (VmHWM 2,90 GB) |
+| Giọng nói **lối B**, chép lời | `N00.wav` 2,8 s (giọng **tổng hợp** `Microsoft An`): *"Hôm qua ăn phở bốn mươi lăm nghìn bằng tiền mặt"* | *"Hôm qua ăn **vợ** 45.000 bằng tiền mặt."* → luật: 45.000 đ · 30/9 · ví Tiền mặt ✅, ghi chú sai | **9,8 s** (nạp lại 1,4 + sinh 8,2) | **2,53 GB** |
+| Giọng nói **lối B**, ý định | cùng tệp | *"45.000 đồng \| Ăn **sở** bốn mươi lăm nghìn bằng tiền mặt."* | 3,8 s | — |
+| Giọng nói **lối A** (`SpeechRecognizer`) | — | **chưa chạy** — cần người đọc; quyền micro chưa xin lần nào | — | — |
+
+- ✅ **Câu hỏi "Realme có bị giết khi nhận ảnh không" có đáp án: KHÔNG** — dù `MemAvailable` trước lượt chỉ 1,83 GB.
+  Hệ điều hành đẩy phần còn lại sang swap (swap PSS của app lên **1,56 GB** khi đứng yên sau lượt ảnh). Mô hình nạp
+  với cờ ảnh / âm thanh **giữ ~2,4 GB** cho tới khi rời màn (`dong()`).
+- ⚠️ **Lối A hoá đơn từng sai vì ML Kit trả chữ theo CỘT** (`blocks → lines`): hoá đơn hai cột ra cả khối nhãn rồi
+  mới tới khối số, nhãn *TỔNG CỘNG* không có số cạnh nó, luật rơi về *số lớn nhất* → 200.000 (tiền khách đưa). Nay
+  `ghepDongTheoHang` (`spike_c4.dart`) ghép theo `TextLine.boundingBox`: hai dòng cùng hàng ⇔ tâm dọc của **mỗi** dòng
+  nằm trong khung dọc của dòng **kia** (đòi cả hai chiều, để dòng chữ to không nuốt dòng nhỏ sát dưới). Khung thẳng
+  trục — ảnh **nghiêng** nhiều sẽ tách hai đầu một hàng; chưa đo, ảnh chụp thật sẽ trả lời. ⚠️ Ca canh *"chữ to
+  không nuốt"* ban đầu **xanh cả trên bản sai một chiều** vì hai khung không chồng nhau; fixture phải dựng khung
+  tiêu đề trùm tới tâm dòng dưới.
+- ⚠️ **Bốn dòng trên đều là cận trên** (ảnh dựng bằng PIL, giọng tổng hợp) — cùng lời dặn của 8.7. Chúng chỉ trả
+  lời *"đường ống có chạy không, tốn bao nhiêu"*; lối nào **đúng hơn** phải đo bằng ảnh và giọng thật.
+- ⚠️ **Luật C2 viết cho câu GÕ, câu NÓI hụt ở sáu chỗ** (chạy 20 câu của bộ đo qua `docCauGiaoDich` ở dạng chữ, tên
+  ví / danh mục của tài khoản 10): *năm chục* · *một triệu hai* · *ba trăm rưỡi* không ra số tiền (ba dạng ấy là
+  `cachDocSoTien` — cách đọc hợp lệ cho AI, luật không tự chọn); *ngày năm tháng chín* lẫn *ngày 5 tháng 9* không
+  ra ngày; *bằng MB Bank* / *bằng MoMo* không khớp ví tên *Ví MB Bank* / *Ví MoMo*; số tiền bằng chữ trong câu
+  chuyển ví. Hụt **như nhau** ở cả hai lối nên không làm lệch phép so A / B, nhưng là đầu vào của spec C4: giọng nói
+  là đường vào của C2, và người nói không nói *"45k"*.
+
+### 9.45 Dự án B — bộ định tuyến HỌC: mô hình nhỏ đưa câu giao dịch về phiên một tool (2026-10-02) — ✅ xong, đo Realme 35/35 không tụt · SAI 0 · chờ −12 s/câu
+
+Spec `specs/2026-10-02-du-an-b-mo-hinh-dinh-tuyen-cau-hoi-design.md` (banner đầu tệp = hiện trạng); kế hoạch 9 task
+`plans/2026-10-02-du-an-b-mo-hinh-dinh-tuyen.md` (gitignore). Commit `cc729f7` → `ef48b35` + commit tài liệu của mục này.
+✅ **Xong trọn 9 task; cả năm cổng ra đạt** (cổng 4 đạt sau hai bản sửa của lượt đo).
+
+**Việc này ở đâu trên app.** Màn Trợ lý AI, bước *chọn tool* — giữa lúc bấm Gửi và lúc Gemma trả lời. Phiên **sáu
+tool** (Gemma tự chọn) chờ lâu gấp đôi phiên **một tool** (tầng mã đã biết tool đích). Luật viết tay
+`congCuTheoCauHoi` chỉ nhận ra 31/72 câu của mốc 72 câu; 37 câu còn lại đều là **câu giao dịch** — với luật, câu giao
+dịch là "phần còn lại sau khi mọi luật khác im". Dự án B thêm một tầng: câu luật bỏ lại được một mô hình nhỏ xét, đủ
+tin là câu giao dịch thì phiên chỉ khai `truy_van_giao_dich`.
+
+**Năm quyết định người dùng chốt** (mục 2 spec): bộ đo do tôi soạn và **khoá trước** bộ huấn luyện · **luật trước, mô
+hình sau** (`congCuTheoCauHoi` không sửa một dòng) · học **mười nhãn** (chín tool + `khong_dinh_tuyen`) nhưng ⭐ **app
+chỉ hành động khi mô hình đoán nhãn giao dịch** (*hướng 1*, đổi sau lần huấn luyện đầu — hằng
+`kNhanMoHinhDuocDinhTuyen`) · huấn luyện Naive Bayes **và** logistic, chọn bằng số đo · trọng số là **tệp Dart sinh
+ra**, không phải asset.
+
+**Mô hình.** Đặc trưng: câu → bỏ dấu → âm tiết đơn + cặp âm tiết liền nhau, nhị phân; âm tiết có chữ số thành một ký
+hiệu. Phép **đoán** (tuyến tính + softmax, `dinh_tuyen_hoc.dart`) nằm trong `lib/`; phép **học**, kiểm chéo, chọn
+ngưỡng nằm ở `test/tool/dinh_tuyen/huan_luyen.dart` và gọi lại đúng phép đoán ấy. Không có gì ngẫu nhiên — chạy lại ra
+cùng trọng số. Bộ huấn luyện 606 câu sau khử trùng (72 câu đã đo + câu tôi soạn); trọng số 786 đặc trưng × 10 nhãn,
+76,2 KB mã nguồn.
+
+| Kiểm chéo 5 phần, **405** câu luật bỏ lại | chính xác 10 nhãn | ngưỡng 0-câu-sai + đệm | định tuyến / sai | phủ câu giao dịch |
+|---|---|---|---|---|
+| **logistic (chọn)** | 85,7 % | **0,76** | 110 / 0 | 74,1 % của 147 |
+| Naive Bayes | 82,7 % | 0,99 | 99 / 0 | 66,7 % |
+| logistic, **chín tool** (thiết kế gốc — người dùng không chọn) | — | 0,98 | 20 / 0 | 6,4 % câu mang nhãn tool |
+
+Vì sao chín tool hỏng ở kiểm chéo: ngưỡng do **một** câu sai tệ nhất quyết định, và với tám tool ngoài giao dịch mỗi
+tool chỉ còn 14–29 câu sau khi luật lấy phần của mình — mô hình sai ở p = 0,93 và 0,91. Đi từ hướng 1 sang chín tool
+về sau chỉ là thêm nhãn vào `kNhanMoHinhDuocDinhTuyen`.
+
+**Đường ghép** (`ai_edge/domain/dinh_tuyen.dart`): `dinhTuyenCauHoi` = luật → (luật im) mô hình → định tuyến ⇔ nhãn
+đoán ∈ `kNhanMoHinhDuocDinhTuyen` ∧ p ≥ `kNguongDinhTuyen`. Trả `KetQuaDinhTuyen(ten, nguon, nhanMoHinh, xacSuat)`.
+`hoiBangCongCu` nhận hàm định tuyến (mặc định là đường ghép) và in **dòng log đầu** của mỗi lượt hỏi:
+`[SLM][tool] định tuyến: luật → X` · `mô hình → X (p=0,93)` · `không (mô hình: Y p=0,41)`.
+
+⚠️ **Định tuyến bằng mô hình là định tuyến MỀM** (spec 3.1). Với nguồn **luật**, vòng lặp có hai hành vi ép: mô hình
+không gọi tool thì tự chạy tool đích với `{}`; mô hình gọi tool khác thì đổi sang tool đích. Hai hành vi ấy **không
+áp** cho nguồn mô hình (`tenEp` trong `vong_lap_cong_cu.dart`) — ở đó định tuyến chỉ thu phiên về một tool; Gemma
+không gọi tool thì vẫn L1 (bậc 1). Lý do: một câu chào bị định tuyến nhầm mà ép chạy tool giao dịch với `{}` thì nhận
+*"thiếu kỳ"* thay vì một câu trả lời. Trần thiệt hại của một lần định tuyến sai là: Gemma chỉ thấy một tool và vẫn gọi
+nó cho câu không thuộc nó.
+
+**Bộ đo khoá — mở ĐÚNG MỘT LẦN** (62 câu, `test/tool/dinh_tuyen/do_bo_do_test.dart`, công cụ commit trước khi chạy).
+⚠️ Hai bộ dữ liệu do cùng một người soạn nên **số đo lạc quan hơn thực tế**.
+
+| | Kết quả |
+|---|---|
+| Đường ghép, 62 câu | định tuyến đúng **28** · **SAI 3 — cả ba do LUẬT, 0 do mô hình** · 31 câu không định tuyến (10 câu ngoài phạm vi ở lại đúng, 21 câu mang nhãn tool đi phiên sáu tool như cũ) |
+| Mô hình, 44 câu luật bỏ lại | 18 câu giao dịch → **13** được định tuyến (phủ **72,2 %**; kiểm chéo nói 74,1 %) · 26 câu khác → **0** bị kéo vào tool giao dịch · đoán đúng nhãn 43/44 |
+| Luật | định tuyến 18/62, đúng nhãn 15 |
+| Tham khảo — chín tool, ngưỡng 0,76 | 21 định tuyến / 0 sai trên bộ đo — nhưng kiểm chéo (bộ lớn hơn) sai 3 ở ngưỡng 0,80; không dùng |
+
+Năm câu giao dịch bị bỏ lỡ (p = 0,52–0,73, dưới ngưỡng): *hôm qua có khoản thu nào không* · *quý này danh mục nào ngốn
+nhiều tiền nhất* · *tiền đi cho y tế tháng này là bao nhiêu* · *3 khoản thu mới nhất* · *tuần trước tôi xài tổng cộng bao nhiêu* —
+chúng đi phiên sáu tool như trước dự án B, không tệ đi.
+
+**Bảng 72 câu, đường ghép** (`dinh_tuyen_72_cau_test.dart`, trọng số thật): 31 câu theo luật **không đổi đường** · bốn
+câu ngoài phạm vi **không bị định tuyến** · 37 câu giao dịch → **35** sang phiên một tool, **E3** (p = 0,70) và **E15**
+(p = 0,74) ở lại. ⚠️ 72 câu nằm **trong** bộ huấn luyện — đây là phép canh hồi quy, không phải số đo.
+
+**Đo máy — cổng ra 4** (Realme RMX2205, **CPU**, bản **debug** + `SPIKE_C4`, 2026-10-02 12:13 → 13:46, tài khoản và
+dữ liệu của máy; 0 lần sập, 0 vỡ trần). 35 câu **đổi đường** của bảng 72, đo **trước** (`9bd65000…` = mã `2e2c04c`,
+chưa có dự án B) rồi **sau** (`8939ad2d…` = `ef6c5ca`), cùng máy cùng buổi; ba câu tụt đo lại trên bản sửa
+(`e57753f8…` = `ef48b35`). Bộ đo ở scratchpad phiên `d048aff8…` (`chay35.sh` · `hoi.sh` · `ban_ghi.py` · `so_sanh.py`).
+
+| Thời gian chờ | Trước — phiên 6 tool | Sau — phiên 1 tool |
+|---|---|---|
+| `tools_json` | 6.980 ký tự | **3.278** ký tự |
+| Lượt sinh đầu (Gemma chọn tool + điền tham số), 35 câu | 41,0 s (35,4 – 45,8) | **29,1 s** (27,1 – 34,9) |
+| Tổng chờ, 23 câu có dòng `xong sau` ở cả hai lượt | 48,2 s | **36,9 s** |
+
+⚠️ **Giảm ~12 s mỗi câu (−23 %), ít hơn hẳn kỳ vọng 45,5 → 23,8 s của spec.** Con số 23,8 s là của phiên một tool với
+tool **nhỏ** (hoá đơn, ví, ngân sách…); riêng khai báo `truy_van_giao_dich` đã là 3.278 / 6.980 ký tự, và lời hệ thống
+2.679 ký tự (viết cho sáu tool, đầy ví dụ định tuyến) không đổi. Muốn giảm tiếp là rút lời hệ thống cho phiên một
+tool — spec dự án B cấm đổi lời hệ thống, nên đó là việc khác, chưa làm. 📝 **Người dùng hỏi cách giảm chờ ngay sau
+lượt đo** và chọn hướng khác, lợi hơn: **đường nhanh — tool chạy trước bằng tham số luật đọc, Gemma chỉ viết câu**
+(spec `specs/2026-10-02-duong-nhanh-cau-giao-dich-design.md`, thiết kế duyệt trong chat, **chưa thi công**). Phép đo
+ngoài máy dẫn tới nó: bộ chỉnh tự điền tham số từ `{}` ra đúng kết quả ở 28/35 câu đã đo (in-sample) và 13–14/18 câu
+giao dịch của bộ đo khoá; chỗ hụt là ba họ từ vựng đóng (kỳ *"trước"*, chiều chuyển ví, tên lạ) và một họ mở (động từ
+chỉ chiều lạ — chốt: luật không đọc ra chiều thì để Gemma điền như hôm nay). ⚠️ Bản debug: số tuyệt đối không
+so được với mốc 72 câu (bản release); phép so trước/sau thì cùng điều kiện.
+
+**Nội dung — chấm theo câu trả lời hiện ra.** Gemma gọi đúng tool ở 35/35 câu của cả hai lượt (lượt sau không câu nào
+rơi L1). 24 câu trả lời **giống hệt từng chữ**; 8 câu khác chữ, cùng nội dung đúng; **3 câu tụt** ở bản sau → sửa →
+đo lại đạt. ⚠️ Hôm đo là **02/10**: 19 câu *"tháng này / hôm nay / quý này"* ra *"… không có giao dịch nào khớp"*
+(tháng 10 chưa có dữ liệu) — đúng, nhưng với 19 câu ấy phép chấm nội dung chỉ kiểm được **bộ lọc** in trong mẫu câu.
+
+| Câu | Trước | Sau | Đánh giá |
+|---|---|---|---|
+| A9 *Thang truoc toi chi bao nhieu?* | *Tháng trước bạn đã chi tổng cộng 6.741.000 đ.* | *Tháng trước bạn chi tổng cộng 6.741.000 đ.* | ✅ = |
+| C6 *…khoan chi nao tren 1 trieu…* (tháng trước) | chữ Gemma: 2 khoản, 3.000.000 đ và 1.500.000 đ | mẫu câu: hai hàng ấy + Tổng chi 4.500.000 đ | ✅ = (chữ → mẫu câu) |
+| C8 *…khoan thu nao tu 5 trieu tro len…* | *…2 khoản thu là Lương với tổng cộng 14.000.000 đ* | mẫu câu: Lương 9.000.000 đ, Lương 5.000.000 đ, Tổng thu 14.000.000 đ | ✅ = (chữ → mẫu câu) |
+| C17 *tim cac giao dich co ghi chu hoa don* | *Có 6 giao dịch… Tổng chi là 411.000 đ* (`chieu: khoan_chi` thừa) | mẫu câu: 4 hàng + Số giao dịch 6, Tổng chi 411.000 đ (không lọc chiều) | ✅ = |
+| C20 · E16 · E17 · F1 | — | khác vài chữ, cùng số | ✅ = |
+| **F2** *tu 1/9 den 15/9 toi chi nhung gi* | *…bạn đã chi tổng cộng 3.595.000 đ* ✅ | *…ghi chú chứa "từ 1/9 den 15/9" — không có giao dịch nào khớp* ✗ | **tụt** → sửa → *…3.595.000 đ* ✅ |
+| **E2** *Thang 9 toi da tieu het bao nhieu tien?* | *Trong tháng 9, tổng chi… 6.741.000 đ* ✅ | ***Tháng này** bạn đã chi tổng cộng 6.741.000 đ* — SAI kỳ | **tụt** → sửa → mẫu câu *Tháng 9/2026, khoản chi — … Tổng chi: 6.741.000 đ* ✅ |
+| **C19** *cac khoan chi cho giao duc tu vi test* | *…2 khoản chi… tổng 45.000 đ* ◐ | *Các khoản chi cho giáo dục **trong tháng này** là: test 35.000 đ, Giáo dục 10.000 đ* — SAI kỳ | **tụt** → sửa → mẫu câu *Mọi thời gian, khoản chi, danh mục "Giáo dục", ví "test" — … Tổng chi: 45.000 đ* ✅ |
+
+**Kết quả cổng 4 sau khi sửa: 35/35 không tụt, SAI 0.** Ba câu tụt là đúng rủi ro spec mục 6 đã báo (*Gemma điền khác
+đi ở phiên một tool*) và lộ ra **hai lỗ hổng có sẵn** — phiên sáu tool cũng có thể vấp, lần đo này chỉ không vấp.
+Người dùng duyệt sửa trong phiên (`ef48b35`):
+
+- **Bộ chỉnh luật 11b** (`chinh_tham_so.dart`): câu nêu kỳ cụ thể mà `tu_khoa` chỉ là **đoạn kỳ của chính câu hỏi**
+  (mọi âm tiết là chữ số hoặc *từ · đến · tới · ngày · tháng · năm · quý · tuần*) → gỡ. Cùng lý lẽ luật 2a (chữ chiều).
+  Chữ đứng sau *"ghi chú"*, `tu_khoa` có chữ khác (*"tien nha thang 8"*), câu không nêu kỳ cụ thể → giữ.
+- **`kiemKy` xét cả lượt *kỳ tự do* và *mọi thời gian*** (`GoiSoTraCuu.kyCua`): bản trước trả `null` (không xét) cho
+  hai loại lượt ấy, nên *"Tháng này bạn đã chi…"* cho số của tháng 9 lọt cả sáu lớp chắn — số thật, nhãn thật, chỉ chữ
+  kỳ sai. Nay trả tập **chỉ gồm kỳ tương đương** + kỳ của phép so. `KetQuaCongCu.kyTuongDuong` (không vào JSON gửi mô
+  hình) do `ganKyTuyChon` tính tại `now`: chữ kỳ tương đối **trùng khít** khoảng — hỏi *"tháng 9"* ngày 02/10 thì
+  *"tháng trước bạn chi…"* là câu **đúng** và không bị chắn oan. ⚠️ Lượt *mọi thời gian* không có kỳ tương đương nào:
+  *"lần gần nhất là hôm qua, 10.000 đ"* sẽ bị chặn dù có thể đúng — rơi về mẫu câu có ngày, chấp nhận.
+- ⚠️ **Lỗi kỳ này chỉ lộ khi sang tháng mới.** Mốc 72 câu đo ngày 28/09: khi ấy *"tháng 9"* **là** *"tháng này"* nên
+  câu của Gemma đúng do trùng hợp. Bộ đo máy nào có câu nêu tháng cụ thể đều phải đo lại sau khi lịch lật.
+
+**Bẫy và bài học:**
+
+- **Chấm trên ĐƯỜNG GHÉP, không chấm mô hình đứng riêng** (`phanLuatBoLai`). Lần huấn luyện đầu chấm trên mọi câu nên
+  ra ngưỡng 0,99, phủ 3,2 % — ba câu sai nặng nhất đều là câu luật đã bắt, thứ trong app không bao giờ tới mô hình.
+- **Ngưỡng do MỘT câu sai tệ nhất quyết định.** Câu đang quyết 0,76: *"thang nay toi lai hay lo"* (tổng quan → giao
+  dịch, p = 0,707). Thêm câu khó vào bộ huấn luyện có thể đẩy ngưỡng lên.
+- **Cột "chấp nhận"** (cột TSV thứ ba): sáu câu so thu với chi mang nhãn tổng quan mà tool giao dịch cũng trả đủ số —
+  định tuyến sang đó không tính sai. Cố ý **không** ghi cho *"tháng này tôi lãi hay lỗ"* (banner spec).
+- **Sửa `bo_huan_luyen.tsv` thì phải sinh lại trọng số** (`flutter test test/tool/dinh_tuyen/huan_luyen_dinh_tuyen_test.dart
+  --run-skipped`, ghi đè `.g.dart`); ca *"trọng số KHÔNG cũ hơn bộ huấn luyện"* canh bằng mã băm (tính trên nội dung đã
+  đổi CRLF → LF vì repo `core.autocrlf=true`).
+- **Test của vòng lặp ghim về `dinhTuyenChiLuat`** — không thì câu mẫu của khung phụ thuộc bộ trọng số và đỏ ngẫu
+  nhiên mỗi lần huấn luyện lại.
+- **Bảng 72 KHÔNG bắt được lỗi ngưỡng**: bản sai *ngưỡng mặc định 0* vẫn xanh trên bảng 72 (in-sample, mô hình vốn đoán
+  đúng) — ca canh ngưỡng nằm ở `dinh_tuyen_test.dart` với trọng số tay.
+- Tệp trọng số nằm trong `ai_edge/` nên nhãn / từ vựng lưu thành **một chuỗi bọc `|`** tách lúc chạy (test quét 14).
+- Từ nay **mọi lần chạy `do_bo_do_test.dart` là "đã nhìn bộ đo"** — sửa dữ liệu hay ngưỡng theo nó rồi chạy lại là học
+  trên bộ đo. Phép đo đáng tin hơn là 30–40 câu **người dùng gõ thật**, chạy bằng đúng công cụ ấy.
+
+📌 **Việc mở — LUẬT `congCuTheoCauHoi` lệch nhãn** (ngoài phạm vi dự án B; người dùng chốt 2026-10-02: *ghi lại, làm
+sau dự án B* — soát từng câu, sửa luật, đo lại câu đã đo bị ảnh hưởng, bảng 72 canh câu đổi đường). Trên bộ đo luật
+sai **3/18** câu nó bắt: *"So sánh tổng hoá đơn tháng tới với ngân sách còn lại của tôi"* và *"Mục tiêu và ngân sách
+của tôi cái nào đang có vấn đề?"* (câu cần **hai** tool, regex *ngân sách* giành → chỉ tra Ngân sách) · *"sau khi đóng
+hết hoá đơn tôi còn lại bao nhiêu"* → Hoá đơn thay vì Dự báo (luật dự báo chỉ nhận *"trả hết"*). Trên bộ huấn luyện
+luật lệch **18/201** câu nó bắt — vd. *"các danh mục thu nhập của tôi"*, *"thuế thu nhập cá nhân tính thế nào"*, *"dòng
+tiền tự do là gì"* → tổng quan; *"ngân sách nhà nước năm nay bao nhiêu"* → ngân sách; *"lần cuối tôi trả hoá đơn điện
+là ngày nào"* → hoá đơn. Danh sách đầy đủ: khối *LUẬT định tuyến…* của công cụ huấn luyện. ⚠️ Một số là nhãn của tôi
+còn bàn được (năm câu *"ngân sách X bao nhiêu là đủ / vừa"*).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
@@ -3296,7 +3680,19 @@ engine nạp được không, giấy phép Gemma, chi phí; output là một câ
 **B** mô hình nhỏ định tuyến câu hỏi → tool, huấn luyện ngoài app, đo trên bộ câu **khác** bộ
 huấn luyện — lý do: phiên sáu tool chờ TB 45,5 s, phiên một tool 23,8 s (mốc 72 câu, 9.37).
 **C** học trên máy của từng người, mở rộng khuôn B1. Mỗi dự án một spec riêng, brainstorm lại
-khi tới lượt.
+khi tới lượt. ✅ **A xong phần tra cứu 2026-10-02 — mục 10.6**: có đường và giấy phép (Gemma 4 là
+Apache 2.0), nhưng tool calling và ảnh / âm thanh là hai chỗ người khác báo hỏng sau khi xuất; phép
+thử thật (A2) chờ người dùng quyết. ✅ **B xong 2026-10-02 — mục 9.45**: hồi quy logistic trên âm tiết, luật trước mô
+hình sau, app chỉ nghe mô hình khi nó đoán **câu giao dịch** (p ≥ 0,76); bộ đo khoá 62 câu: mô hình **0 câu định tuyến
+sai**, đưa 13/18 câu giao dịch về phiên một tool (số đo lạc quan hơn thực tế — hai bộ cùng người soạn). Đo Realme (CPU)
+35 câu đổi đường: chờ 48,2 → 36,9 s, 35/35 không tụt sau hai bản sửa lớp chắn — lợi ít hơn kỳ vọng 45 → 24 s vì khai báo
+tool giao dịch vốn đã dài. Phép học nằm ở `test/tool/dinh_tuyen/`, app chỉ mang phép đoán và một tệp trọng số Dart 76 KB.
+Kế: **C**. 📝 **C bắt đầu 2026-10-02**: dự án gồm nhiều việc độc lập, mỗi việc một spec; việc đầu người dùng chọn là
+*gợi ý danh mục theo số tiền khi ghi chú không giúp được* (màn Thêm giao dịch, Naive Bayes trên bậc tiền + ngày thường /
+cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`, thiết kế và bản viết đã duyệt. ✅ **Xong (`cf0a879` → `83b1b77`) + nghiệm thu Realme tối 2026-10-02** (thẻ khuất dưới 16 phím số ở 360 dp → form tự cuộn tới thẻ) — mục **5g**
+`CATEGORY_RATIONALE.md`. Phép đo trên CSDL thật lật thiết kế: với ngưỡng của B1 thẻ đúng 1/5 lần → người dùng chốt *chỉ
+khi ghi chú trống · hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc*; đo lại thẻ im hẳn trên dữ liệu hiện tại. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
+tự khối trang Phân tích · thông báo theo phản ứng.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
@@ -3358,6 +3754,63 @@ Ba thứ **không có hàm nào cả**: bật công tắc tự chuyển tiền, 
 đụng vào đồng bộ / xác thực.
 
 ---
+
+### 10.6 Dự án A — spike tra cứu: tinh chỉnh Gemma 4 E2B rồi xuất `.litertlm` (2026-10-02)
+
+**Chỉ tra cứu, không chạy gì.** Mọi dòng dưới đây là thứ **đọc được trên web ngày 2026-10-02**, chưa dòng nào được
+dựng lại trên máy của dự án. Người dùng yêu cầu làm tiếp các việc còn lại khi spike C4 còn chờ họ đọc câu / chụp ảnh;
+theo lộ trình A xếp sau C4, nhưng A không viết mã và không phụ thuộc C4.
+
+**Câu trả lời một dòng:** *có đường đi, giấy phép cho phép, chi phí gần bằng 0 — nhưng hai thứ app dựa vào nhất (tool
+calling và ảnh / âm thanh) là đúng hai chỗ người khác báo hỏng sau khi xuất, nên chưa đáng làm trước khi có một phép
+thử thật trên máy.*
+
+| Câu hỏi của spike | Tìm được | Độ chắc |
+|---|---|---|
+| Có pipeline tinh chỉnh → gộp LoRA → `.litertlm` không? | Có. LoRA / QLoRA (peft, Unsloth) → `merge_and_unload()` → `litert-torch` (`litert_torch.generative.export_hf`, `bundle_litert_lm=True`) → một tệp `.litertlm`. Công cụ **`litetune`** của chính tác giả `flutter_gemma` gói năm bước *prepare · tune · convert · verify · bundle*, hỗ trợ `google/gemma-4-E2B-it` (phải nêu biến thể `E2B` / `E4B`) | Đọc README + issue; chưa chạy |
+| Engine của app nạp được không? | README `litetune` ghi: `flutter_gemma_litertlm` **1.8.0 mang LiteRT-LM 0.17.1** — đúng bản app đang dùng. Có bundle Gemma 4 E2B tinh chỉnh của cộng đồng trên Hugging Face chạy được trên LiteRT-LM / AI Edge Gallery (ví dụ `PeppX/gemma-4-e2b-uncensored-litertlm`, 2,37 GB) | Lời bên thứ ba; **chưa nạp thử trên Realme / OnePlus** |
+| Giấy phép phân phối trọng số đã tinh chỉnh? | **Gemma 4 phát hành theo Apache 2.0** (2026-04-02, cả E2B / E4B; thẻ mô hình `google/gemma-4-E2B-it` ghi Apache 2.0, không gated) — phân phối bản tinh chỉnh và dùng thương mại được, chỉ cần giữ giấy phép và ghi đã sửa. (*Gemma Terms of Use* với điều khoản chảy xuống áp cho Gemma 1–3.) | Thẻ mô hình + báo |
+| Chi phí GPU? | QLoRA E2B cần ~6–8 GB VRAM; chạy được trên **Colab T4 miễn phí**, ~15–20 phút cho 100 bước. Bước `convert` **không chạy trên Windows** (không có wheel `litert-converter`) — phải Linux x86_64, Mac Apple Silicon hoặc Colab; một báo cáo ghi ~12 phút trên Colab A100 | Nhiều bài hướng dẫn; chưa đo |
+| Huấn luyện **trên máy** từng người? | Không. Gói không có API huấn luyện; engine `.litertlm` từ chối LoRA rời (mục 10.3); huấn luyện cần GPU, xuất cần Linux, mỗi bản là một tệp ~2,4 GB | Đã đọc mã gói (10.3) |
+
+**Ba rủi ro, xếp theo mức chạm vào app:**
+
+1. ⚠️ **Tool calling tụt sau khi xuất** — `google-ai-edge/litert-torch` issue **#1013** (mở 2026-05-01, **còn mở**):
+   Gemma 4 E2B tinh chỉnh cho tool calling, xuất `dynamic_wi8_afp32`, **nạp được và không sập (0/144)** nhưng hành vi
+   đúng tụt **144/144 → 53/144** so với bản gốc trước khi xuất; lời gọi **một tool vẫn đúng 37/37**, hỏng ở nhiều tool
+   (16/25 méo) và ở các ca phải xác nhận / từ chối (0/12). Issue **#1001** (mở 2026-04-20, còn mở): ghi đè loại mô hình
+   thành `gemma4` lúc xuất vẫn ra metadata *generic* — tức mất mẫu chat Jinja ~12 KB và token đặc biệt của Gemma 4. Lối
+   vá cộng đồng nêu: chép phần `LlmMetadata` từ bundle gốc của Google, hoặc cờ `--litert_lm_llm_metadata_override`
+   (đọc qua tóm tắt tìm kiếm — bài gốc trên Medium **không mở được**, chưa kiểm). Với app này: bậc tool là đường trả lời
+   chính (mục 9.14 trở đi), và phiên **sáu tool** là chỗ đã yếu sẵn.
+2. ⚠️ **Mất ảnh và âm thanh** — bundle cộng đồng **bỏ** bộ mã hoá ảnh / âm thanh (*"removed to keep the bundle small"*);
+   `litetune` chỉ tinh chỉnh tháp chữ. Bundle chính thức app đang dùng (2,59 GB) là đa phương thức và nén riêng của
+   Google. Nếu spike C4 chọn **lối B** (Gemma đọc ảnh / nghe giọng) thì một bản tinh chỉnh kiểu này **loại lối B**.
+3. **GPU chưa rõ** — có repo phát hành bản `…-litertlm-gpu` riêng; P1 của dự án từng đo biến thể `-gpu.litertlm` **không
+   nạp được** trên engine FFI Android (mục 8). Bản tự xuất có chạy GPU trên Adreno (OnePlus) / CPU trên Mali (Realme)
+   hay không phải đo. Lượng tử 8-bit mất ít (README `litetune`: +0,00 → +0,02 trên mô hình nhỏ), 4-bit có thể mất tới
+   một phần ba độ chính xác.
+
+**Hệ quả cho ba dự án:**
+- **B** (mô hình nhỏ định tuyến câu hỏi → tool) và **C** (học trên máy từng người, khuôn B1) **không phụ thuộc** kết
+  quả này — cả hai là Dart thuần, không đụng trọng số Gemma. *"Hiểu từng người dùng"* vẫn đi đường **context + mô hình
+  nhỏ**, không đi đường tinh chỉnh.
+- Tinh chỉnh Gemma chỉ có nghĩa **một bản cho cả app** (giọng văn, bớt điền thừa tham số — họ lỗi 4.44, 9.43), và
+  người dùng phải tải lại một tệp ~2,4 GB cho mỗi bản.
+- Muốn biết thật thì cần **A2 — phép thử có mã, ~1–2 phiên**: Colab → tinh chỉnh rất nhỏ (hoặc xuất **nguyên bản không
+  tinh chỉnh** trước, để tách lỗi của bước xuất khỏi lỗi của tinh chỉnh) → nạp trên Realme và OnePlus → đo lại 10 câu
+  C3 + lưới 72 câu. Cổng: nạp được, tool calling không tụt so với bundle gốc, RAM / tốc độ không xấu hơn. **Chưa làm —
+  chờ người dùng quyết** có làm A2 hay đi thẳng B.
+
+Nguồn (đọc 2026-10-02): [litetune](https://github.com/DenisovAV/litetune) ·
+[litert-torch #1013](https://github.com/google-ai-edge/litert-torch/issues/1013) ·
+[litert-torch #1001](https://github.com/google-ai-edge/litert-torch/issues/1001) ·
+[thảo luận chuyển Gemma 4 sang litertlm](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/discussions/7)
+(lối MediaPipe converter trong đó **không chạy**: *"Unknown special model: GEMMA_4_E2B"*) ·
+[thẻ mô hình gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it) ·
+[VentureBeat — Gemma 4 Apache 2.0](https://venturebeat.com/technology/google-releases-gemma-4-under-apache-2-0-and-that-license-change-may-matter) ·
+[PeppX/gemma-4-e2b-uncensored-litertlm](https://huggingface.co/PeppX/gemma-4-e2b-uncensored-litertlm) ·
+[Unsloth — Gemma 4 fine-tuning](https://unsloth.ai/docs/models/gemma-4/train).
 
 ## 11. Bản đồ năng lực — AI làm được gì trong hệ thống (khảo sát 2026-09-20)
 

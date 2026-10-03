@@ -27,7 +27,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/notification/hang_cho_su_kien.dart';
+import 'package:flowmoney/core/notification/kho_bien_lai.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
+import 'package:flowmoney/core/notification/nhap_bien_lai.dart';
+import 'package:flowmoney/core/ocr/doc_chu_anh.dart';
+import 'package:flowmoney/core/ocr/dong_ocr.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/database/daos/notification_event_dao.dart';
@@ -123,6 +127,18 @@ class OsNotifierGia implements OsNotifier {
   }
 }
 
+/// Bộ đọc chữ giả: gọi một hàm lúc được hỏi rồi trả về không dòng nào (biên lai thành hàng *chưa đọc được*).
+class _DocAnhGia implements DocChuAnh {
+  _DocAnhGia(this.khiDoc);
+  final Future<void> Function() khiDoc;
+
+  @override
+  Future<List<DongOcr>> doc(String duongDan) async {
+    await khiDoc();
+    return const [];
+  }
+}
+
 void main() {
   const accountId = 7;
   final now = DateTime(2026, 9, 15, 10);
@@ -180,8 +196,12 @@ void main() {
     void Function()? onNapKeHoach,
     NhapHangCho? nhapHangCho,
     NhapBienDong? nhapBienDong,
+    Future<void> Function(bool co)? datCoPhien,
+    NhapBienLai? nhapBienLai,
     NhatKyThongBao? nhatKy,
     NotificationEventDao? eventDao,
+    Set<String>? viDaDung,
+    void Function()? onNapViDaDung,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -193,6 +213,12 @@ void main() {
       loadBills: (id, at) async => bills,
       loadGoals: (id, at) async => goals,
       loadWallets: (id, at) async => wallets,
+      loadViDaDung: viDaDung == null
+          ? null
+          : (id) async {
+              onNapViDaDung?.call();
+              return viDaDung;
+            },
       syncStatus: syncStatus.stream,
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
@@ -208,6 +234,8 @@ void main() {
       resyncLich: onResyncLich,
       nhapHangCho: nhapHangCho,
       nhapBienDong: nhapBienDong,
+      datCoPhien: datCoPhien,
+      nhapBienLai: nhapBienLai,
       nhatKy: nhatKy,
       eventDao: eventDao,
       clock: () => now,
@@ -317,6 +345,52 @@ void main() {
           for (final h in await db.notificationDao.getAll(accountId))
             if (h.kind == NotificationKind.bienDongSoDu.name) h,
         ];
+
+    test('chia sẻ biên lai: start bật cờ phiên phía native, stop tắt — kể cả khi kênh ném', () async {
+      final goi = <bool>[];
+      final scanner = dungScanner(datCoPhien: (co) async {
+        goi.add(co);
+        throw StateError('kênh hỏng');
+      });
+      await scanner.start(accountId);
+      expect(goi, [true], reason: 'chưa bật cờ thì NhanBienLaiActivity từ chối mọi biên lai dù đã đăng nhập');
+      await scanner.stop();
+      expect(goi, [true, false], reason: 'không tắt thì người đăng nhập sau nhận biên lai của người trước');
+    });
+
+    test('⭐ chia sẻ biên lai: start nhập biên lai SAU tin ngân hàng; stop xoá ảnh, hàng chờ và hàng mang ảnh', () async {
+      final tam = await Directory.systemTemp.createTemp('scanner_bien_lai_');
+      addTearDown(() => tam.delete(recursive: true));
+      await File('${tam.path}/$kTepBienDongCho').writeAsString(dongMb('M1'));
+      File('${tam.path}/$kThuMucBienLai/aaaa.jpg')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('anh');
+      await File('${tam.path}/$kTepBienLaiCho')
+          .writeAsString('{"tep":"aaaa.jpg","goi":"","luc":${now.millisecondsSinceEpoch}}\n');
+
+      var soHangLucDocAnh = -1;
+      final scanner = dungScanner(
+        nhapBienDong: nhapBienDongTam(tam),
+        nhapBienLai: NhapBienLai(
+          thuMuc: () async => tam,
+          dao: db.notificationDao,
+          docChu: _DocAnhGia(() async => soHangLucDocAnh = (await hangBienDong()).length),
+          kho: KhoBienLai(thuMuc: () async => tam),
+          nguonCuaGoi: (_) => null,
+          clock: () => now,
+        ),
+      );
+      await scanner.start(accountId);
+      expect(soHangLucDocAnh, 1,
+          reason: 'lúc đọc ảnh biên lai, hàng của tin ngân hàng phải ĐÃ có — nhập ngược thứ tự là biên lai không '
+              'bao giờ gắn được vào hàng tin của cùng giao dịch');
+      expect((await hangBienDong()).length, 2);
+
+      await scanner.stop();
+      expect(Directory('${tam.path}/$kThuMucBienLai').existsSync(), isFalse);
+      expect((await hangBienDong()).map((h) => h.subjectId), ['M1'],
+          reason: 'hàng mang ảnh bị xoá cùng ảnh; hàng tin ngân hàng (không ảnh) thì giữ');
+    });
 
     test('D1: start() nhập tệp hàng chờ biến động → hàng loại 20; app quay lại từ nền cũng nhập', () async {
       final tam = await Directory.systemTemp.createTemp('scanner_bien_dong_');
@@ -835,6 +909,35 @@ void main() {
               'đúng kiểu hỏng mà số ngày nhắc hoá đơn đã vấp một lần.');
       expect((await db.notificationDao.getAll(accountId)).single.kind,
           'walletLowBalance');
+    });
+
+    test('⭐ ví mới tạo 0 đ (chưa giao dịch nào) → không báo sắp cạn; tập ví đã dùng tới được bộ luật', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nguongSoDuThap: 100000));
+      final moi = await dungScanner(
+        prefs: prefs,
+        budgets: const [],
+        wallets: [vi(soDu: 0)],
+        viDaDung: const {},
+      ).scan(accountId);
+      expect(moi, 0, reason: 'đo Realme 2026-09-30: tạo "Ví MB Bank" 0 đ là bị báo "chỉ còn 0 đồng" ngay');
+    });
+
+    test('ngưỡng 0 (tắt) → KHÔNG hỏi CSDL tập ví đã dùng', () async {
+      var soLan = 0;
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 0)], viDaDung: const {}, onNapViDaDung: () => soLan++)
+          .scan(accountId);
+      expect(soLan, 0, reason: 'mặc định là 0 — phần lớn bản cài không bao giờ cần truy vấn này');
+    });
+
+    test('⭐ hàng "sắp cạn" hôm nay bị GỠ khi ví đã lên trên ngưỡng (BadgeUpdater huỷ nó khỏi khay)', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nguongSoDuThap: 100000));
+      expect(await dungScanner(prefs: prefs, budgets: const [], wallets: [vi(soDu: 0)]).scan(accountId), 1);
+      await dungScanner(prefs: prefs, budgets: const [], wallets: [vi(soDu: 150000)]).scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletLowBalance');
+      expect(h.dismissedAt, isNotNull,
+          reason: 'đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" treo trên khay sau khi ví đã có 10.000 đ');
     });
 
     test('không đặt ngưỡng thì ví còn ít tiền vẫn im', () async {

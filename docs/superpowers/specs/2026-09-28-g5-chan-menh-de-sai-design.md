@@ -4,6 +4,12 @@
 trong chat, sau khi chọn sửa cả năm gốc G1–G5 của cổng F lần 1 (mục 9.36 `docs/AI_EDGE_FEATURE.md`). G1–G4 đã sửa ở
 mã (`7ce43e1`, `631437f`, `34339a6`); spec này chỉ phủ **G5**.
 
+> ⚠️ **Đổi 2026-10-02 (người dùng duyệt, mục 9.45 `docs/AI_EDGE_FEATURE.md`):** hàng `GoiSoTraCuu` của bảng mục 3 ghi
+> lượt *mọi thời gian* và *kỳ tự do* → `null` (không xét). Đo Realme 02/10 thấy hai câu SAI kỳ được hiện qua đúng khe
+> ấy (*"Tháng này bạn đã chi 6.741.000 đ"* cho số của tháng 9). Nay hai loại lượt ấy trả tập **chỉ gồm kỳ tương đương**
+> (`KetQuaCongCu.kyTuongDuong` — chữ kỳ tương đối trùng khít khoảng tại lúc hỏi) cộng kỳ của phép so; lượt *kỳ tới* hay
+> không có khoá `ky` vẫn `null`.
+
 ## 1. Vấn đề
 
 Cổng F lần 1 có **3 câu SAI** — cổng đòi 0. Hai câu lọt **cả năm lớp chắn** của `kiemCauTraLoi` vì mọi con số đều

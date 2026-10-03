@@ -11,10 +11,13 @@
 /// OTP) chứ không trích gì. Tin không khớp khuôn → `null`, im — báo sai tệ hơn không báo.
 library;
 
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 /// Tên hiển thị của bảy nguồn trong danh sách trắng (spec §2; hai ví điện tử là quyết định của người
-/// dùng, đơn `CAN-LAM/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`). Màn xin đồng ý liệt kê **đúng** danh
+/// dùng, đơn `DA-XONG/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`). Màn xin đồng ý liệt kê **đúng** danh
 /// sách này, không chép tay.
 const String kNguonMb = 'MB Bank';
 const String kNguonVcb = 'Vietcombank';
@@ -73,6 +76,11 @@ class TinBienDong {
 
   /// Mã giao dịch của ngân hàng, dùng **cục bộ** để gộp trùng. Không đi đâu.
   final String? maGiaoDich;
+
+  /// Vân tay của **số dư sau giao dịch** ([vanTaySoDu]) — `null` khi tin không mang số dư (MoMo, ZaloPay).
+  /// Dùng **cục bộ** để gộp trùng khi tin không có mã GD: hai lần chuyển cùng tiền, cùng chiều cách vài phút
+  /// là hai giao dịch thật và chỉ khác nhau ở số dư sau (đo Realme 2026-09-30 — khoản thứ hai từng MẤT).
+  final String? vanTaySoDu;
   const TinBienDong({
     required this.soTien,
     required this.chieu,
@@ -81,7 +89,18 @@ class TinBienDong {
     required this.nguon,
     this.duoiTaiKhoan,
     this.maGiaoDich,
+    this.vanTaySoDu,
   });
+}
+
+/// Số dư trong tin (`5,027,757` · `0` · `-1,000`) → 12 ký tự hex đầu của SHA-256. Chỉ để SO BẰNG: không giữ
+/// con số trên đĩa (hàng loại 20, khoá trùng — quy tắc §13.6 `progress/Client-app.md`). ⚠️ Không phải lớp bảo
+/// vệ mật mã: không gian số dư nhỏ, dò ngược được — nó chỉ ngăn con số nằm trần trong CSDL và nhật ký.
+String? vanTaySoDu(String? soDu) {
+  if (soDu == null) return null;
+  final chuan = soDu.replaceAll(RegExp(r'[.,\s]'), '');
+  if (!RegExp(r'^-?\d+$').hasMatch(chuan)) return null;
+  return sha256.convert(utf8.encode('flowmoney-sd:$chuan')).toString().substring(0, 12);
 }
 
 /// Lớp lọc OTP **thứ hai** (Kotlin đã lọc trước khi ghi đĩa): một tin xác thực lọt tới đây cũng
@@ -153,6 +172,7 @@ TinBienDong? _docBidv(String chu, DateTime luc) {
     nguon: kNguonBidv,
     duoiTaiKhoan: _duoi(RegExp(r'Tài khoản thanh toán:\s*(\S+)').firstMatch(chu)?.group(1)),
     maGiaoDich: RegExp(r'Mã giao dịch:\s*(\S+)').firstMatch(chu)?.group(1),
+    vanTaySoDu: vanTaySoDu(RegExp(r'Số dư cuối:\s*(-?[\d.,]+)\s*VND').firstMatch(chu)?.group(1)),
   );
 }
 
@@ -175,6 +195,7 @@ TinBienDong? _docMb(String chu, DateTime luc) {
     nguon: kNguonMb,
     duoiTaiKhoan: _duoi(RegExp(r'TK\s+(\S+?)\s*\|').firstMatch(chu)?.group(1)),
     maGiaoDich: nd == null ? null : RegExp(r'Ma GD\s*(.+)$').firstMatch(nd)?.group(1)?.trim(),
+    vanTaySoDu: vanTaySoDu(RegExp(r'SD:\s*(-?[\d.,]+)\s*VND').firstMatch(chu)?.group(1)),
   );
 }
 
@@ -199,6 +220,7 @@ TinBienDong? _docTcb(String chu, DateTime luc) {
     nguon: kNguonTcb,
     duoiTaiKhoan: _duoi(RegExp(r'Tài khoản:\s*(\d+)').firstMatch(chu)?.group(1)),
     maGiaoDich: nd == null ? null : RegExp(r'\s(\d{9,})$').firstMatch(nd)?.group(1),
+    vanTaySoDu: vanTaySoDu(RegExp(r'Số dư:\s*VND\s*(-?[\d.,]+)').firstMatch(chu)?.group(1)),
   );
 }
 

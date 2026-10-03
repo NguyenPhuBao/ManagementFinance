@@ -25,6 +25,11 @@ import 'dong_y_bien_dong_page.dart';
 ///
 /// Trang **không có nút Lưu**: mỗi thay đổi ghi thẳng xuống kho. Trang cài đặt
 /// kiểu này không ai đi tìm nút lưu — họ gạt công tắc rồi bấm quay lại.
+/// Hàng gợi ý pin của thẻ D1 (Stitch `2ff589c7…`).
+const String kTieuDeTreNen = 'Tin có thể đến trễ khi app chạy nền';
+const String kMoTaTreNen = 'Một số máy (Realme, OPPO, Xiaomi…) tạm dừng FlowMoney khi ở nền. '
+    'Bật "Cho phép hoạt động dưới nền" trong mục pin của ứng dụng để nhận ngay.';
+
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({
     super.key,
@@ -67,6 +72,9 @@ class NotificationSettingsPage extends StatefulWidget {
   final KenhBienDong? kenhBienDong;
 
   static const Key khoaCongTacOs = Key('notification_settings_os');
+
+  /// Nút "Mở cài đặt" của hàng gợi ý pin trong thẻ D1.
+  static const Key khoaMoCaiDatPin = Key('notification_settings_mo_cai_dat_pin');
 
   static const Key khoaCongTacImLang = Key('notification_settings_im_lang');
 
@@ -115,6 +123,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
   /// thống rồi quay lại, dòng trạng thái phải đổi theo ngay.
   bool _coQuyenBienDong = false;
 
+  /// Máy có cho FlowMoney chạy nền không (miễn tối ưu pin). Đã cho thì ẩn hàng gợi ý pin — nói "có thể trễ" khi
+  /// không trễ là nói sai. Đọc lại cùng lúc với quyền, mỗi lần quay về từ Cài đặt.
+  bool _duocChayNen = true;
+
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
 
@@ -146,7 +158,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
 
   Future<void> _docQuyenBienDong() async {
     final co = await _kenh.coQuyen();
-    if (mounted) setState(() => _coQuyenBienDong = co);
+    final chayNen = await _kenh.duocChayNen();
+    if (mounted) {
+      setState(() {
+        _coQuyenBienDong = co;
+        _duocChayNen = chayNen;
+      });
+    }
   }
 
   Future<void> _nap() async {
@@ -164,6 +182,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
     final coQuyen = p.osBat ? await _os.daCoQuyen() : true;
     final deXuat = await _taiDeXuat(id);
     final coQuyenBienDong = await _kenh.coQuyen();
+    final duocChayNen = await _kenh.duocChayNen();
 
     if (!mounted) return;
     setState(() {
@@ -171,6 +190,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
       _prefs = p;
       _coQuyenOs = coQuyen;
       _coQuyenBienDong = coQuyenBienDong;
+      _duocChayNen = duocChayNen;
       _deXuat = deXuat;
       _dangNap = false;
     });
@@ -802,6 +822,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
               if (bat) ...[
                 const SizedBox(height: 14),
                 _dongQuyenBienDong(),
+                // Chỉ khi đang đọc thật (chưa có quyền thì chưa có tin nào để trễ) VÀ máy chưa cho chạy nền.
+                if (_coQuyenBienDong && !_duocChayNen) ...[
+                  const SizedBox(height: 10),
+                  _dongTreNen(),
+                ],
               ] else if (_coQuyenBienDong) ...[
                 const SizedBox(height: 10),
                 const Text(
@@ -916,6 +941,55 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
               child: const Text('Mở Cài đặt',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Hàng gợi ý pin (Stitch `2ff589c7…`): ColorOS / MIUI tạm dừng app ở nền nên tin tới trễ. Gợi ý nhẹ, không
+  /// phải cảnh báo — tin không mất, chỉ trễ tới khi người dùng bật màn hình / mở app. Câu chữ theo tên mục thật
+  /// trên Realme ("Cho phép hoạt động dưới nền"), khác bản Stitch một cụm.
+  Widget _dongTreNen() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.battery_saver_outlined, size: 20, color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  kTieuDeTreNen,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+                SizedBox(height: 4),
+                Text(kMoTaTreNen, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            key: NotificationSettingsPage.khoaMoCaiDatPin,
+            onPressed: _kenh.moCaiDatPin,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: const StadiumBorder(side: BorderSide(color: AppColors.outlineVariant)),
+            ),
+            child: const Text('Mở cài đặt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );

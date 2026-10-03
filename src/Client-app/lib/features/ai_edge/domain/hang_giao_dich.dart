@@ -16,6 +16,7 @@ import '../../transaction/domain/tim_giao_dich.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
 import 'loi_tham_so.dart';
+import 'ma_ky.dart';
 
 /// Mã tham số `chieu` của mô hình → chiều. ⚠️ Không dùng chữ trần của cột
 /// `type` làm mã — test quét 14 cấm chúng trong `ai_edge/`.
@@ -218,6 +219,12 @@ KetQuaCongCu ganKyTuyChon(
 }) {
   final den = DateTime(to.year, to.month, to.day - 1);
   return kq.boSung(
+    // Kỳ tương đối TRÙNG KHÍT khoảng, tại `now` — cho `kiemKy` (đo Realme
+    // 2026-10-02: hỏi "tháng 9" vào tháng 10, câu "tháng trước bạn chi…" đúng).
+    kyTuongDuongThem: [
+      for (final e in kMaKy.entries)
+        if (kyTuMa(e.key, now) case final k? when k.from == from && k.to == to) e.value,
+    ],
     boLocDau: [chu],
     soLieuBoLocThem: [
       soNgayThang('Từ ngày', from, now: now, nhanKhac: const ['Từ']),

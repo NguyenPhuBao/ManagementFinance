@@ -3,6 +3,7 @@
 /// khoảng tiền đã hiểu dội lại; tên liên quan cho bộ kiểm.
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_giao_dich.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
@@ -288,6 +289,30 @@ void main() {
       expect(kiemNhan('Từ 01/08 đến 31/08 tổng chi là 2.031.000 đ.', [g]), isTrue);
       expect(kiemSo('Tháng 6 bạn chi tổng cộng 2.031.000 đ.', g), isFalse,
           reason: '"tháng 6" không phải tên kỳ của gói — chữ số 6 là số bịa');
+    });
+
+    // Đo Realme 2026-10-02 (dự án B, Task 8): `kiemKy` nay xét cả kỳ tự do, nên
+    // lượt phải khai chữ kỳ tương đối TRÙNG KHÍT khoảng — không thì câu đúng
+    // "tháng trước bạn chi…" (hỏi "tháng 9" vào tháng 10) bị chắn oan.
+    test('⭐ kỳ tự do khai KỲ TƯƠNG ĐƯƠNG: khoảng trùng khít một kỳ tương đối tại `now`', () {
+      final n = DateTime(2026, 10, 2, 13);
+      KetQuaCongCu gan(DateTime from, DateTime to) => ganKyTuyChon(
+            hangGiaoDich(kq, tieuChi: const TieuChiTim(), chuKy: 'khoảng đã chọn', now: n),
+            from: from, to: to, chu: 'x', ten: const [], now: n);
+      expect(gan(DateTime(2026, 9, 1), DateTime(2026, 10, 1)).kyTuongDuong, ['tháng trước']);
+      expect(gan(DateTime(2026, 10, 1), DateTime(2026, 11, 1)).kyTuongDuong, ['tháng này']);
+      expect(gan(DateTime(2026, 10, 2), DateTime(2026, 10, 3)).kyTuongDuong, ['hôm nay']);
+      expect(gan(DateTime(2026, 1, 1), DateTime(2027, 1, 1)).kyTuongDuong, ['năm nay']);
+      expect(gan(DateTime(2026, 9, 1), DateTime(2026, 9, 16)).kyTuongDuong, isEmpty,
+          reason: 'nửa tháng không phải "tháng trước"');
+      expect(gan(DateTime(2026, 8, 1), DateTime(2026, 9, 1)).kyTuongDuong, isEmpty);
+    });
+
+    test('boSung giữ kỳ tương đương; mặc định rỗng; không vào JSON gửi mô hình', () {
+      final r = KetQuaCongCu(hang: const [], tongHop: [soTien('Tổng chi', 1)], kyTuongDuong: const ['tháng trước']);
+      expect(r.boSung(chiMauCauThem: true).kyTuongDuong, ['tháng trước']);
+      expect(const KetQuaCongCu(hang: [], tongHop: []).kyTuongDuong, isEmpty);
+      expect(r.json.toString(), isNot(contains('tháng trước')));
     });
   });
 }

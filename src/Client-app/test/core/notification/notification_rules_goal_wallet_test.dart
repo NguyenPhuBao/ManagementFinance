@@ -84,6 +84,7 @@ void main() {
     DateTime? at,
     DateTime? silenceBefore,
     int nguongSoDuThap = 0,
+    Set<String>? viDaDung,
   }) {
     return buildNotificationCandidates(NotificationRuleInput(
       now: at ?? now,
@@ -93,6 +94,7 @@ void main() {
       syncFailed: dongBoHong,
       silenceBefore: silenceBefore,
       lowBalanceThreshold: nguongSoDuThap,
+      viDaDung: viDaDung,
     ));
   }
 
@@ -604,6 +606,25 @@ void main() {
       expect(homNay == homSau, isFalse);
     });
 
+    // Đo Realme 2026-09-30: người dùng tạo "Ví MB Bank" 0 đ → lập tức "Số dư ví sắp cạn · Ví MB Bank chỉ còn
+    // 0 đồng". Ví chưa từng dùng thì "sắp cạn" là vô nghĩa — nó chưa từng có tiền để cạn.
+    test('⭐ ví CHƯA có giao dịch nào (mới tạo 0 đ) → không cảnh báo sắp cạn', () {
+      expect(
+        chay(wallets: [vi(id: 'moi', soDu: 0)], nguongSoDuThap: 100000, viDaDung: {'khac'}),
+        isEmpty,
+        reason: 'ví mới tạo không có giao dịch nào, kể cả khoản neo "Số dư ban đầu" (chỉ sinh khi số dư đầu ≠ 0)',
+      );
+    });
+
+    test('⭐ ví ĐÃ có giao dịch mà xuống dưới ngưỡng → vẫn cảnh báo', () {
+      expect(chay(wallets: [vi(id: 'cu', soDu: 0)], nguongSoDuThap: 100000, viDaDung: {'cu'}), hasLength(1),
+          reason: 'tiêu về đúng 0 là "đã cạn" thật — luật mới chỉ im ví chưa từng dùng');
+    });
+
+    test('viDaDung null (nơi gọi không biết) → giữ luật cũ, không tắt tính năng im lặng', () {
+      expect(chay(wallets: [vi(soDu: 0)], nguongSoDuThap: 100000), hasLength(1));
+    });
+
     test('khoá của hai ví khác nhau thì khác nhau', () {
       final ra = chay(
         wallets: [vi(id: 'v1', soDu: 1000), vi(id: 'v2', soDu: 2000)],
@@ -613,6 +634,46 @@ void main() {
       expect(ra.map((c) => c.dedupeKey).toSet(), hasLength(2),
           reason: 'Quên id ví trong khoá thì ví thứ hai bị coi là trùng và im '
               'lặng biến mất.');
+    });
+  });
+
+  // Đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" vẫn nằm trên khay sau khi ví đã nhận 10.000 đ — khoá
+  // gộp theo NGÀY nên hàng không tự mất, và không ai gỡ nó.
+  group('hàng "sắp cạn" tự gỡ khi ví đã hồi', () {
+    AppNotification hang(String id, {String kind = 'walletLowBalance', String? vi, DateTime? daGo, DateTime? daDoc}) =>
+        AppNotification(
+          id: id,
+          idaccount: 7,
+          kind: kind,
+          dedupeKey: 'k$id',
+          title: 't',
+          body: 'b',
+          severity: 'warning',
+          subjectType: 'wallet',
+          subjectId: vi,
+          createdAt: now,
+          dismissedAt: daGo,
+          readAt: daDoc,
+        );
+
+    test('⭐ ví đã lên TRÊN ngưỡng → hàng sắp cạn của nó được chọn để gỡ (kể cả đã đọc — gỡ khỏi trung tâm)', () {
+      final ids = hangSapCanDaHoi(
+        [hang('a', vi: 'v1'), hang('b', vi: 'v1', daDoc: now)],
+        [vi(id: 'v1', soDu: 150000)],
+        100000,
+      );
+      expect(ids, ['a', 'b']);
+    });
+
+    test('ví vẫn trong ngưỡng / hàng đã gỡ / loại khác / ví không còn / ngưỡng 0 → không chọn', () {
+      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 50000)], 100000), isEmpty);
+      expect(hangSapCanDaHoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty);
+      expect(hangSapCanDaHoi([hang('a', kind: 'walletNegative', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 100000),
+          isEmpty, reason: 'chỉ loại "sắp cạn" — việc của lỗi này');
+      expect(hangSapCanDaHoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty,
+          reason: 'không biết ví → không đoán');
+      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
+          reason: 'ngưỡng 0 = tính năng tắt: không có căn cứ để nói "đã hồi"');
     });
   });
 

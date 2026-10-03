@@ -119,4 +119,65 @@ void main() {
       expect(khoanCoTheDaGhi(so, soTien: 45000, chieu: 'chi', ngay: null), isEmpty);
     });
   });
+
+  group('biên lai được chia sẻ (2026-10-02)', () {
+    test('⭐ query có anh + doc → DienSanBienDong mang ảnh và cách đọc; tên tệp bẩn → không ảnh', () {
+      final d = dienSanBienDongTuQuery({
+        'khoa': 'bienDong:FT1',
+        'nguon': 'MB Bank',
+        'amount': '150000',
+        'huong': 'chi',
+        'anh': 'aaaa.jpg',
+        'doc': 'chung',
+      })!;
+      expect(d.anh, 'aaaa.jpg');
+      expect(d.cachDoc, 'chung');
+      final ban = dienSanBienDongTuQuery({'khoa': 'bienDong:x', 'nguon': 'MB Bank', 'anh': '../x.jpg', 'doc': 'la'})!;
+      expect(ban.anh, isNull, reason: 'tên tệp sẽ được ghép thành đường dẫn');
+      expect(ban.cachDoc, isNull);
+    });
+
+    test('hàng tin ngân hàng thường (không anh, không doc) → cả hai null', () {
+      final d = dienSanBienDongTuQuery({'khoa': 'bienDong:x', 'nguon': 'MB Bank', 'amount': '1000', 'huong': 'thu'})!;
+      expect(d.anh, isNull);
+      expect(d.cachDoc, isNull);
+    });
+
+    test('biên lai chưa đọc: không amount, không huong vẫn ra DienSanBienDong — số tiền và chiều null', () {
+      final d = dienSanBienDongTuQuery(
+          {'khoa': 'bienDong:bienLai|aaaa.jpg', 'nguon': 'Biên lai', 'anh': 'aaaa.jpg', 'doc': 'khong'})!;
+      expect(d.soTien, isNull);
+      expect(d.chieu, isNull);
+      expect(d.anh, 'aaaa.jpg');
+    });
+
+    DienSanBienDong d({String nguon = 'MB Bank', String? anh, String? cachDoc}) => DienSanBienDong(
+        khoa: 'bienDong:x', nguon: nguon, ghiChu: '', thoiGian: DateTime(2026, 10, 2, 18, 45), anh: anh, cachDoc: cachDoc);
+
+    test('⭐ dòng nguồn: số liệu đọc từ ảnh → "Từ biên lai …"; nguồn không rõ thì không lặp chữ', () {
+      expect(dongNguonBienDong(d(anh: 'aaaa.jpg', cachDoc: 'mau')), 'Từ biên lai MB Bank · 02/10 18:45');
+      expect(dongNguonBienDong(d(nguon: 'Biên lai', anh: 'aaaa.jpg', cachDoc: 'chung')), 'Từ biên lai · 02/10 18:45');
+    });
+
+    test('⭐ hàng TIN ngân hàng được gắn ảnh (có anh, KHÔNG doc) vẫn nói "Từ thông báo …" — số liệu không đọc từ ảnh', () {
+      expect(dongNguonBienDong(d(anh: 'aaaa.jpg')), 'Từ thông báo MB Bank · 02/10 18:45');
+      expect(dongNguonBienDong(d()), 'Từ thông báo MB Bank · 02/10 18:45');
+    });
+
+    test('dòng phụ theo cách đọc: luật chung → nhắc kiểm; chưa đọc được → nhắc nhìn ảnh; mẫu riêng / không → im', () {
+      expect(dongPhuBienLai('chung'), 'Đọc từ ảnh — hãy kiểm lại');
+      expect(dongPhuBienLai('khong'), 'Chưa đọc được số tiền — nhìn ảnh để nhập');
+      expect(dongPhuBienLai('mau'), isNull);
+      expect(dongPhuBienLai(null), isNull);
+    });
+
+    test('deeplink do NhapBienLai dựng đọc lại đúng qua dienSanBienDongTuQuery (hợp đồng hai đầu)', () {
+      final t = TinBienDong(
+          soTien: 10000, chieu: 'chi', thoiGian: DateTime(2026, 10, 2, 19, 38), noiDung: 'A chuyen tien', nguon: kNguonMb);
+      final link = deeplinkBienDong(t, dedupeKey: dedupeKeyBienDong(t), anh: 'aaaa.png', cachDoc: 'mau');
+      final r = dienSanBienDongTuQuery(Uri.parse(link).queryParameters)!;
+      expect((r.soTien, r.chieu, r.ghiChu, r.anh, r.cachDoc), (10000, 'chi', 'A chuyen tien', 'aaaa.png', 'mau'));
+      expect(r.thoiGian, DateTime(2026, 10, 2, 19, 38));
+    });
+  });
 }

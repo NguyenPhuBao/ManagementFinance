@@ -204,6 +204,18 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
               t.kind.equals(kKindBienDongSoDu)))
         .go();
   }
+
+  /// Chia sẻ biên lai (2026-10-02): ghi lại `deeplink` của một hàng biến động ĐÃ CÓ — dùng để gắn ảnh biên lai vào
+  /// hàng sinh từ tin ngân hàng của cùng giao dịch (`NhapBienLai`). Chỉ hàng loại [kKindBienDongSoDu], cùng lý do
+  /// với [xoaCung]. Trả số hàng đã đổi.
+  Future<int> datDeeplink(int idaccount, String dedupeKey, String deeplink) {
+    return (update(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.dedupeKey.equals(dedupeKey) &
+              t.kind.equals(kKindBienDongSoDu)))
+        .write(AppNotificationsCompanion(deeplink: Value(deeplink)));
+  }
 }
 
 /// `NotificationKind.bienDongSoDu.name` — chép thành chuỗi vì tầng CSDL không phụ thuộc tầng thông

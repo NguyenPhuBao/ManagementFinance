@@ -107,6 +107,16 @@ vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. M
 mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này, và bật sẵn là lặng
 lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
 
+✅ **Hai luật thêm 2026-09-30** (đo Realme: tạo *"Ví MB Bank"* 0 đ là bị báo ngay *"chỉ còn 0 đồng"*, rồi thông báo ấy
+treo trên khay sau khi ví đã có 10.000 đ; ví *"tiết kiệm mua nhà"* 0 đ bị báo **mỗi ngày** từ 22/09):
+- **Ví chưa từng dùng thì im** — `NotificationRuleInput.viDaDung` (tập ví có ít nhất một giao dịch còn sống, vai nguồn
+  **hoặc** đích — `TransactionDao.viDaDung`). ⚠️ Kiểu **nullable**: `null` = không biết → luật cũ; mặc định tập rỗng là
+  một nơi gọi quên truyền tắt cả tính năng, im lặng. Bộ quét chỉ hỏi CSDL khi ngưỡng > 0. Ví tạo với số dư đầu ≠ 0 có
+  khoản neo *"Số dư ban đầu"* nên **đã dùng**.
+- **Ví đã hồi thì tự gỡ** — `hangSapCanDaHoi`: hàng `walletLowBalance` chưa gỡ mà ví nay **trên** ngưỡng → bộ quét
+  `dismiss` ở **mọi** lượt (đứng trước nhánh thoát sớm "không có gì mới"), `BadgeUpdater` huỷ thông báo khỏi khay. Ngưỡng
+  0 hay ví không còn thì không đoán.
+
 ⚠️ ~~**Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.~~
 **Chốt này ĐÃ GỠ ngày 2026-09-09 — LOẠI ví không miễn trừ gì cả.**
 
@@ -503,6 +513,8 @@ lịch thừa khác, phép dọn dẹp của resync không được nới lỏng
 
 ### 4.9 Badge số trên icon app (2026-09-08)
 
+> **Chuông trong app** (khác badge trên icon app) hiện **số** chưa đọc từ 2026-09-30 thay chấm đỏ — 0 ẩn, 1–99 đúng số, > 99 `99+` (`nhanSoChuaDoc`, `shared/widgets/notification_bell.dart`; Stitch `ec9eda7c…`). Đây là việc **duy nhất** client nhận từ `docs/Notification/Notification_Client-app.md` (§3.5 A). Cùng luồng `watchUnreadCount` với badge dưới đây; nghiệm thu Realme hiện 42, khớp SQLite.
+
 Badge mang **số chưa đọc trong app** — đúng con số `watchUnreadCount` mà chuông
 trên Home đang hiện. Không có phép đếm thứ hai: hai phép đếm sẽ trôi khỏi nhau
 và không ai phát hiện, vì badge sai **không ném lỗi, không ghi log**.
@@ -525,7 +537,13 @@ nhất là một thông báo mang con số ấy, tắt hết phần hiển thị
 > `getActiveNotifications()` đếm 2 ngay sau khi bắn (con + tóm tắt), rồi
 > `dumpsys notification` chỉ còn 1 vài giây sau. Thêm nữa, khi khay **trống**
 > thì `datBadge(6)` chạy trót lọt nhưng chẳng hiện gì cả: không có thông báo con
-> thì bản tóm tắt cũng không được hiển thị.
+> thì bản tóm tắt cũng không được hiển thị. ⚠️ **Câu này chỉ đúng trên OnePlus** — đo
+> Realme RMX2205 2026-09-30: bản tóm tắt KHÔNG con vẫn hiện thành một thông báo **rỗng**
+> *"Nhắc tài chính"*, chạm vào không dẫn đi đâu; D1 làm nó nổ sau **mọi** tin ngân hàng
+> (hàng loại 20 tăng số chưa đọc mà không bao giờ có con trên khay). Từ `3456b69`
+> `datBadge` **đếm con theo `groupKey`** (tóm tắt D1 của Kotlin không thuộc nhóm): không
+> con → **gỡ** tóm tắt; còn con → số > 0 cập nhật, số 0 giữ. Đo lại trên Realme:
+> `badge=40, khay=0` → không đăng gì.
 >
 > **Hệ quả cần nhớ:** trên Android badge thực chất là **chấm**, và chấm suy từ
 > *thông báo đang trên khay*, không từ số chưa đọc. Nghĩa là còn 6 mục chưa đọc
@@ -1255,6 +1273,13 @@ dưới cửa 20 mẫu. Giới hạn nói trước của spec §5 (im 3–6 thá
 
 Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi phần chạm vào hệ thống thông báo.
 
+> **2026-10-02 — hàng loại 20 nay có HAI nguồn.** Ngoài tin ngân hàng (`NhapBienDong`), **biên lai người dùng chia sẻ**
+> từ app ngân hàng cũng thành hàng loại 20 (`NhapBienLai`, mục 7 tài liệu chính) — không loại mới, không nhóm mới.
+> Ba điều đổi theo: (1) thông báo tóm tắt của Kotlin đếm **cả hai hàng chờ** (`BienDongListenerService.soDangCho`), và
+> được bắn từ hai nơi — dịch vụ nghe thông báo và `NhanBienLaiActivity`; (2) `deeplink` của hàng có thể mang `anh` /
+> `doc` / `blt` (ảnh biên lai, cách đọc, giờ in trên biên lai); (3) biên lai **không** phụ thuộc cờ `docBienDong` — mỗi
+> ảnh là người dùng tự đưa — nên tài khoản tắt công tắc vẫn có thể có hàng loại 20.
+
 - **Loại 20 `bienDongSoDu`, nhóm thứ sáu `bienDong`** (chip *Biến động*). Thêm một nhóm phải sửa **sáu** chỗ: hai `switch`
   ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `_tenNhom` / `_moTaNhom` / `_iconNhom`
   của trang Cài đặt · `loaiTuKhoa` (`nhom_tu_khoa.dart`) · nhánh `bienDong` của `deeplinkTuDedupeKey` · tập `ngoaiBoQuet`
@@ -1378,7 +1403,7 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 | `goalAutoDeposited` | `goalAuto:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Quét chạy sau mọi lần đồng bộ; thiếu đơn vị lặp là mỗi lần mở app thêm một "Đã trích" cho việc chỉ xảy ra một lần. Hai kỳ khác nhau vẫn phải ra hai thông báo — trích bù hai tháng là hai lần tiền rời ví |
 | `goalAutoDepositFailed` | `goalAutoFail:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Như trên |
 | `walletNegative` | `walletNeg:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví âm cho tới khi người dùng nạp tiền |
-| `walletLowBalance` | `walletLow:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví cạn cho tới khi người dùng nạp tiền — cùng lý lẽ (thêm 2026-09-07) |
+| `walletLowBalance` | `walletLow:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví cạn cho tới khi người dùng nạp tiền — cùng lý lẽ (thêm 2026-09-07). Từ 2026-09-30 hàng tự **gỡ** khi ví lên lại trên ngưỡng (`hangSapCanDaHoi`) |
 | `syncFailed` | `syncFailed:<yyyy-MM-dd>` | mỗi ngày | Mất mạng là hỏng ở **mọi** chu kỳ đồng bộ |
 
 `syncFailed` là **người tiêu thụ đầu tiên** của `SyncEngine.statusStream` cho
@@ -1707,7 +1732,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/database/notification_schema_v13_test.dart` | Migration v12→v13 giữ nguyên dữ liệu cũ, không đẩy bản ghi nào vào hàng đợi |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái; `markOverdue` không ghi đè lần hai |
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
-| `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
+| `test/shared/widgets/notification_bell_test.dart` | **Số** chưa đọc (từ 2026-09-30, thay chấm đỏ): 0 ẩn · 1–99 · `99+` (`nhanSoChuaDoc`); `99+` không làm nút rộng quá 48; bám dòng dữ liệu; nhãn trình đọc màn hình |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
 | `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười chín** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
@@ -1874,7 +1899,7 @@ thì một trong hai phải chịu thiệt.
 |---|---|---|
 | Mất kết nối | Sau ngưỡng ổn định | "Không có kết nối — thay đổi vẫn được lưu trên máy" |
 | Đã kết nối lại | Sau ngưỡng ổn định | "Đã kết nối lại" |
-| Kết quả đồng bộ | `SyncEngine.pushResultStream` | "Đã đồng bộ xong" / "Một số thay đổi chưa lên được máy chủ" — câu sau **chỉ** khi server đã nhận rồi từ chối; cả batch không tới nơi (`transportFailed`: mất mạng, timeout, 5xx) thì **im** (A4, 2026-09-29 — trước đó câu ấy hiện ở mọi chu kỳ trên máy không tới được backend) |
+| Kết quả đồng bộ | `SyncEngine.pushResultStream` | **Chỉ khi thất bại**: "Một số thay đổi chưa lên được máy chủ". Thành công (và xung đột LWW) thì **im** từ 2026-10-02 — người dùng chốt; trước đó là viên "Đã đồng bộ xong" hiện sau mỗi lần ghi. Lượt thành công chỉ **gỡ** câu "chưa lên được" đang hiện (lần thử lại cuối chu kỳ đẩy được), gỡ theo nguồn nên không đụng toast mất mạng. Câu thất bại **chỉ** khi server đã nhận rồi từ chối; cả batch không tới nơi (`transportFailed`: mất mạng, timeout, 5xx) thì **im** (A4, 2026-09-29 — trước đó câu ấy hiện ở mọi chu kỳ trên máy không tới được backend) |
 | Chữ tự do (từ 2026-09-19) | `ThongBaoNhanh.stream` (`core/ui/thong_bao_nhanh.dart`, đăng ký ở `sl`) | Bất kỳ câu một dòng nào — hiện dùng cho "Nhấn lần nữa để thoát" (E3 của lượt UX). Bậc **thấp nhất**, nguồn riêng; tham số `thongBaoNhanh` mặc định rỗng nên chỗ dựng `AppToast` cũ không phải đổi |
 
 (Sự kiện thời gian thực là nguồn thứ tư về mặt mã — xem mục 5 và

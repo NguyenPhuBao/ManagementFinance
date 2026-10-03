@@ -56,6 +56,7 @@ import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -78,12 +79,16 @@ import '../notification/badge_updater.dart';
 import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
+import '../notification/kho_bien_lai.dart';
 import '../notification/nhap_bien_dong.dart';
+import '../notification/nhap_bien_lai.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
 import '../notification/prefs/notification_prefs_store.dart';
+import '../ocr/doc_chu_anh.dart';
+import '../ocr/doc_chu_anh_mlkit.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -410,6 +415,11 @@ Future<void> setupDependencies() async {
           ? const KenhBienDongAndroid()
           : const KenhBienDongTrong());
 
+  // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
+  sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
+  // Thư mục ảnh biên lai (`filesDir/bien_lai/` phía Kotlin) — form Thêm giao dịch cũng dùng để hiện và xoá ảnh.
+  sl.registerLazySingleton<KhoBienLai>(() => KhoBienLai(thuMuc: getApplicationSupportDirectory));
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -445,6 +455,9 @@ Future<void> setupDependencies() async {
       ],
       loadWallets: (idaccount, now) =>
           sl<AppDatabase>().walletDao.getAll(idaccount),
+      // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
+      loadViDaDung: (idaccount) =>
+          sl<AppDatabase>().transactionDao.viDaDung(idaccount),
       // Tổng kết tuần chỉ cần biết tuần vừa khép CÓ giao dịch hay không —
       // không tổng, không gom danh mục. Câu chữ đã chốt không nêu số nào.
       loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
@@ -535,6 +548,22 @@ Future<void> setupDependencies() async {
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         datBat: (bat) => sl<KenhBienDong>().datBat(bat),
       ),
+      // Chia sẻ biên lai: cờ "máy đang có phiên" phía native — xem `NhanBienLaiActivity`.
+      datCoPhien: (co) => sl<KenhBienDong>().datCoPhien(co),
+      // Chia sẻ biên lai: hàng chờ + ảnh do `NhanBienLaiActivity` ghi vào `filesDir`; nhập vào tài khoản đang đăng
+      // nhập, cùng tên nguồn với D1 (`nguonCuaGoi`). Không đọc cờ `docBienDong` — mỗi biên lai là người dùng tự đưa.
+      nhapBienLai: NhapBienLai(
+        thuMuc: getApplicationSupportDirectory,
+        dao: sl<AppDatabase>().notificationDao,
+        docChu: sl<DocChuAnh>(),
+        kho: sl<KhoBienLai>(),
+        nguonCuaGoi: nguonCuaGoi,
+        huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
+        // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
+        thuMau: kDebugMode
+            ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
+            : null,
+      ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),
       eventDao: sl<AppDatabase>().notificationEventDao,
@@ -595,6 +624,16 @@ Future<void> setupDependencies() async {
   // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
   sl.registerLazySingleton<DocCauBangAi>(
     () => DocCauBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+
+  // C3 §8 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI đọc bằng mô hình (người dùng chốt 2026-09-30):
+  // phiên RIÊNG ba tool. Cùng hai điều kiện sẵn sàng với ô Nhập nhanh.
+  sl.registerLazySingleton<DocLenhBangAi>(
+    () => DocLenhBangAi(
       runtime: sl<SlmRuntime>(),
       sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),

@@ -4,8 +4,10 @@ import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -32,7 +34,9 @@ import java.io.IOException
  * Kênh `flowmoney/bien_dong` — đọc biến động số dư trên máy (D1, 2026-09-30):
  * `coQuyen` (Cài đặt "Truy cập thông báo" đã bật cho app chưa), `moCaiDat`,
  * `moTuThongBao` (lần mở này có đến từ thông báo tóm tắt không — đọc là tiêu),
- * `huyTomTat`, `datBat` (cờ bật/tắt của `BienDongListenerService`). Xem
+ * `huyTomTat`, `datBat` (cờ bật/tắt của `BienDongListenerService`),
+ * `datCoPhien` (máy đang có tài khoản đăng nhập không — `NhanBienLaiActivity`
+ * chỉ nhận biên lai được chia sẻ khi cờ bật, 2026-10-02). Xem
  * `lib/core/notification/kenh_bien_dong.dart`.
  */
 class MainActivity : FlutterActivity() {
@@ -74,6 +78,21 @@ class MainActivity : FlutterActivity() {
                             )
                             ket.success(null)
                         }
+                        "moCaiDatPin" -> {
+                            // Trang thông tin ứng dụng — ColorOS đặt "Mức sử dụng pin → Cho phép hoạt động dưới nền"
+                            // ở đây (MIUI tương tự). Không dùng hộp thoại xin miễn tối ưu pin: cần quyền mà Play giới hạn.
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            ket.success(null)
+                        }
+                        "duocChayNen" -> {
+                            // Đo đối chứng Realme 2026-09-30: công tắc "Cho phép hoạt động dưới nền" của ColorOS CHÍNH là
+                            // trạng thái này; tắt thì Hans đóng băng app ~12 giây sau khi về nền.
+                            val pm = getSystemService(POWER_SERVICE) as PowerManager
+                            ket.success(pm.isIgnoringBatteryOptimizations(packageName))
+                        }
                         "moTuThongBao" -> {
                             val v = moTuTomTat
                             moTuTomTat = false
@@ -85,6 +104,10 @@ class MainActivity : FlutterActivity() {
                         }
                         "datBat" -> {
                             BienDongListenerService.datBat(this, call.argument<Boolean>("bat") ?: false)
+                            ket.success(null)
+                        }
+                        "datCoPhien" -> {
+                            NhanBienLaiActivity.datCoPhien(this, call.argument<Boolean>("co") ?: false)
                             ket.success(null)
                         }
                         else -> ket.notImplemented()

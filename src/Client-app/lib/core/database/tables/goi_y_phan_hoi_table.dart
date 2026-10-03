@@ -26,11 +26,12 @@ class GoiYDanhMucPhanHois extends Table {
   /// Lúc người dùng phân xử — luật mở lại đếm giao dịch có ngày SAU mốc này.
   DateTimeColumn get createdAt => dateTime()();
 
-  /// `hoc` | `tu_khoa` | `de_xuat_tu_khoa`.
+  /// `hoc` | `tu_khoa` | `de_xuat_tu_khoa` | `so_tien` (dự án C, 2026-10-02 — thẻ gợi ý theo số tiền).
   TextColumn get nguon => text()();
 
-  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`, và cụm được đề xuất làm từ khoá — nguồn `de_xuat_tu_khoa`), hoặc từ khoá khớp
-  /// (nguồn `tu_khoa`).
+  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`, và cụm được đề xuất làm từ khoá — nguồn `de_xuat_tu_khoa`), từ khoá khớp
+  /// (nguồn `tu_khoa`), hoặc **mã bậc tiền** như `20000-50000` (nguồn `so_tien`). Tên cột giữ nguyên: nó là "khoá của
+  /// luật thôi gợi ý", mỗi nguồn một kiểu khoá.
   TextColumn get amTietChinh => text()();
 
   TextColumn get goiYCategoryId => text()();

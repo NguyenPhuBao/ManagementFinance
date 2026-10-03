@@ -176,6 +176,17 @@ class NotificationRuleInput {
   /// [defaultBillLeadDays].
   final int lowBalanceThreshold;
 
+  /// Id các ví **đã có ít nhất một giao dịch** (bất kỳ vai: ví nguồn hay ví đích của khoản chuyển).
+  ///
+  /// Ví chưa từng dùng — tạo mới 0 đ — thì "sắp cạn" vô nghĩa: nó chưa từng có tiền để cạn (đo Realme
+  /// 2026-09-30: tạo ví xong là bị báo ngay). Khoản neo "Số dư ban đầu" là một giao dịch, nên ví tạo với số
+  /// dư đầu khác 0 **đã dùng**.
+  ///
+  /// `null` = **không biết** → giữ luật cũ (báo theo số dư). Cố ý không mặc định tập rỗng: rỗng nghĩa là
+  /// "không ví nào từng dùng", và một nơi gọi quên truyền sẽ tắt cả tính năng, im lặng. Bộ quét chỉ hỏi CSDL
+  /// khi [lowBalanceThreshold] > 0.
+  final Set<String>? viDaDung;
+
   /// Tuần **vừa khép lại** có ít nhất một giao dịch không.
   ///
   /// Là `bool` chứ không phải tổng thu/chi, cùng kỷ luật thu hẹp đầu vào với
@@ -227,6 +238,7 @@ class NotificationRuleInput {
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
     this.lowBalanceThreshold = 0,
+    this.viDaDung,
     this.tuanQuaCoGiaoDich = false,
     this.chiLon = const [],
     this.nguongChiLon = 0,
@@ -850,6 +862,24 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 
 // ── Ví ───────────────────────────────────────────────────────────────────────
 
+/// Id các hàng **"sắp cạn"** chưa gỡ mà ví của chúng nay đã lên **trên** [nguong] — bộ quét gỡ chúng
+/// (`dismiss`), rồi `BadgeUpdater` huỷ thông báo tương ứng trên khay.
+///
+/// Khoá gộp theo NGÀY nên hàng không tự mất trong ngày: đo Realme 2026-09-30, "Ví MB Bank chỉ còn 0 đồng" vẫn
+/// nằm trên khay sau khi ví đã nhận 10.000 đ. Chỉ loại `walletLowBalance`; ví không còn trong [wallets] thì
+/// không đoán; [nguong] ≤ 0 là tính năng tắt — không có căn cứ để nói "đã hồi".
+List<String> hangSapCanDaHoi(Iterable<AppNotification> hang, List<Wallet> wallets, int nguong) {
+  if (nguong <= 0) return const [];
+  final soDu = {for (final v in wallets) if (!v.isDeleted) v.id: v.balance};
+  return [
+    for (final h in hang)
+      if (h.kind == NotificationKind.walletLowBalance.name &&
+          h.dismissedAt == null &&
+          (soDu[h.subjectId] ?? double.negativeInfinity) > nguong)
+        h.id,
+  ];
+}
+
 List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
@@ -885,6 +915,10 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
       // chọn, nên hiểu nó thành một ngưỡng thật là bật tính năng cho mọi bản
       // đã cài mà người dùng chưa hề đặt gì.
       if (nguong <= 0 || v.balance > nguong) continue;
+
+      // Ví chưa từng dùng thì chưa từng có tiền để cạn — xem [NotificationRuleInput.viDaDung].
+      final daDung = input.viDaDung;
+      if (daDung != null && !daDung.contains(v.id)) continue;
 
       ra.add(NotificationCandidate(
         kind: NotificationKind.walletLowBalance,

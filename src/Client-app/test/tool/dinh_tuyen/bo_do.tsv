@@ -1,0 +1,66 @@
+# Bộ đo KHOÁ của bộ định tuyến học (dự án B) — KHÔNG sửa sau commit đầu.
+# Viết TRƯỚC bộ huấn luyện. Mã băm ở dinh_tuyen_du_lieu_test.dart canh mọi lần sửa.
+# Định dạng: nhãn<TAB>câu. Nhãn = tool trả lời đúng câu, hoặc khong_dinh_tuyen.
+# Giới hạn: người soạn bộ này cũng soạn bộ huấn luyện — số đo lạc quan hơn thực tế.
+truy_van_giao_dich	Tuần này tôi đã tiêu những gì?
+truy_van_giao_dich	hom qua co khoan thu nao khong
+truy_van_giao_dich	Tháng 7 tôi chi cho ăn uống hết bao nhiêu?
+truy_van_giao_dich	cho toi xem cac giao dich tren 2 trieu trong nam nay
+truy_van_giao_dich	Lần gần đây nhất tôi mua sắm là khi nào?
+truy_van_giao_dich	tien di cho y te thang nay la bao nhieu
+truy_van_giao_dich	Quý này danh mục nào ngốn nhiều tiền nhất?
+truy_van_giao_dich	3 khoan thu moi nhat
+truy_van_giao_dich	Tôi đã chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm trong tháng này?
+truy_van_giao_dich	co giao dich nao ghi chu cafe khong
+truy_van_giao_dich	Tuần trước tôi xài tổng cộng bao nhiêu?
+truy_van_giao_dich	tu 10/9 den 20/9 toi nhan duoc nhung khoan nao
+truy_van_giao_dich	Khoản chi nhỏ nhất tháng này là gì?
+truy_van_giao_dich	thang nay tieu nhieu hon thang truoc khong
+truy_van_giao_dich	Từ ví Momo tôi đã trả những khoản gì trong tuần này?
+truy_van_giao_dich	hom nay toi da chi bao nhieu tien
+truy_van_giao_dich	Năm nay tôi nhận lương mấy lần?
+truy_van_giao_dich	cac khoan duoi 50k thang nay
+khong_dinh_tuyen	Chào bạn
+khong_dinh_tuyen	Thời tiết Hà Nội hôm nay thế nào?
+khong_dinh_tuyen	ty gia do la hom nay bao nhieu
+khong_dinh_tuyen	Bạn là ai vậy?
+khong_dinh_tuyen	Tôi nên đầu tư vào cổ phiếu nào?
+khong_dinh_tuyen	cam on nhe
+khong_dinh_tuyen	Giải thích lãi kép là gì
+khong_dinh_tuyen	So sánh tổng hoá đơn tháng tới với ngân sách còn lại của tôi
+khong_dinh_tuyen	bitcoin dang gia bao nhieu
+khong_dinh_tuyen	Viết giúp tôi một bài thơ về tiền
+khong_dinh_tuyen	Mục tiêu và ngân sách của tôi cái nào đang có vấn đề?
+khong_dinh_tuyen	ok
+danh_sach_ngan_sach	Tôi đã vượt ngân sách nào chưa?
+danh_sach_ngan_sach	han muc mua sam thang nay con du khong
+danh_sach_ngan_sach	Ngân sách di chuyển đã dùng bao nhiêu phần trăm?
+danh_sach_ngan_sach	con ngan sach nao chua dung toi khong
+danh_sach_hoa_don	Tiền điện tháng này tôi đóng chưa?
+danh_sach_hoa_don	hoa don nao sap den han trong tuan nay
+danh_sach_hoa_don	Tôi có hoá đơn nào bật tự động thanh toán?
+danh_sach_hoa_don	tong tien hoa don con phai dong la bao nhieu
+danh_sach_vi	Trong ví Momo còn bao nhiêu tiền?
+danh_sach_vi	tai khoan nao cua toi dang bi am
+danh_sach_vi	Liệt kê các ví của tôi
+danh_sach_vi	toi dang co tat ca bao nhieu tien
+danh_sach_muc_tieu	Tiến độ mục tiêu mua laptop tới đâu rồi?
+danh_sach_muc_tieu	bao gio thi toi tiet kiem du tien mua nha
+danh_sach_muc_tieu	Mục tiêu nào sắp hoàn thành?
+danh_sach_muc_tieu	quy du lich con thieu bao nhieu nua
+goi_y_han_muc	Tôi nên đặt hạn mức ăn uống bao nhiêu là hợp lý?
+goi_y_han_muc	goi y ngan sach cho thang toi
+goi_y_han_muc	Mỗi tháng tôi thường tiêu bao nhiêu cho giải trí?
+goi_y_han_muc	muc chi hop ly cho di chuyen la bao nhieu
+du_bao_dong_tien	Tôi có đủ tiền cho các khoản phải trả sắp tới không?
+du_bao_dong_tien	sau khi dong het hoa don toi con lai bao nhieu
+du_bao_dong_tien	Trong 30 ngày tới tôi có những khoản cam kết nào?
+du_bao_dong_tien	tu gio den cuoi thang toi con tieu duoc bao nhieu
+tong_quan_tai_chinh	Tháng này tôi kiếm được bao nhiêu?
+tong_quan_tai_chinh	ti le tiet kiem cua toi thang nay
+tong_quan_tai_chinh	Trung bình mỗi ngày tôi tiêu bao nhiêu?
+tong_quan_tai_chinh	nguoi ta con no toi bao nhieu
+danh_sach_danh_muc	Tôi đang có bao nhiêu danh mục?
+danh_sach_danh_muc	ke ten cac danh muc chi
+danh_sach_danh_muc	Danh mục thu của tôi gồm những gì?
+danh_sach_danh_muc	app co nhung nhom chi tieu nao

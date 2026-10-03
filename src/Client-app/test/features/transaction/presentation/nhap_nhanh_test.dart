@@ -501,7 +501,8 @@ void main() {
       addTearDown(tester.view.reset);
     }
 
-    testWidgets('360 × 640: không tràn, sau khi điền vẫn thấy ✓ và bàn phím số', (tester) async {
+    testWidgets('360 × 640: không tràn; sau khi điền thấy ✓ (thanh tiêu đề), chạm số tiền thì bàn phím số hiện, vẫn không tràn',
+        (tester) async {
       kho(tester);
       await tester.pumpWidget(app(theme: AppTheme.lightTheme, boPhanLoai: moHinh));
       await tester.pumpAndSettle();
@@ -509,7 +510,14 @@ void main() {
 
       expect(tester.takeException(), isNull, reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi');
       expect(find.byIcon(Icons.check), findsOneWidget);
+      // Điền được số tiền → 16 phím ẩn, ✓ lên thanh tiêu đề (2026-09-30, `ban_phim_so_an_test.dart`).
+      expect(find.text('000'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('so-tien-cham')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
       expect(find.text('000'), findsOneWidget);
+      expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
     testWidgets('⚠️ theme thật: ô trong khung KHÔNG có nền và viền riêng (máy thật hiện một ô trắng có viền)', (tester) async {

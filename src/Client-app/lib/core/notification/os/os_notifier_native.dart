@@ -416,23 +416,38 @@ class LocalOsNotifier implements OsNotifier {
     return {for (final n in dang) if (n.id != null) n.id!};
   }
 
+  /// Id các thông báo **con** của nhóm [khoaNhom] đang trên khay (bỏ chính bản
+  /// tóm tắt). Theo `groupKey` chứ không theo "mọi thông báo của app": tóm tắt
+  /// biến động số dư do Kotlin bắn (D1) không thuộc nhóm, nó không làm bản tóm
+  /// tắt này có con.
+  Future<Set<int>> _conTrongNhom() async {
+    final dang = await _plugin.getActiveNotifications();
+    return {
+      for (final n in dang)
+        if (n.groupKey == khoaNhom && n.id != null && n.id != idTomTat) n.id!,
+    };
+  }
+
   @override
   Future<void> datBadge(int soLuong) async {
     await init();
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      if (soLuong > 0) {
-        await _dangBanTomTat(soLuong: soLuong);
+      // Bản tóm tắt chỉ sống khi nhóm **còn con** trên khay. Không con mà vẫn
+      // đăng thì Realme (ColorOS) hiện nó thành một thông báo RỖNG "Nhắc tài
+      // chính", chạm vào không dẫn đi đâu (đo 2026-09-30; OnePlus giấu nó nên
+      // phép đo 2026-09-08 không thấy). Hàng chỉ sống trong app — biến động số
+      // dư loại 20 — tăng số chưa đọc mà không bao giờ có con trên khay.
+      final con = await _conTrongNhom();
+      if (con.isEmpty) {
+        await _plugin.cancel(id: idTomTat);
         return;
       }
-
-      // Số 0: dọn nốt bản tóm tắt, nhưng **chỉ khi không còn thông báo con
-      // nào**. Còn con mà gỡ tóm tắt là các thông báo bung ra nằm rời rạc —
-      // đúng thứ `groupKey` sinh ra để tránh. Và "còn con" là chuyện thường:
-      // nhắc ghi chép hằng ngày không có hàng nào trong bảng nên số chưa đọc
-      // bằng 0 trong khi nó vẫn nằm trên khay.
-      final conLai = (await activeIds())..remove(idTomTat);
-      if (conLai.isEmpty) await _plugin.cancel(id: idTomTat);
+      // Còn con: số > 0 thì cập nhật con số; số 0 thì GIỮ tóm tắt — gỡ nó là
+      // các con bung ra nằm rời rạc, đúng thứ `groupKey` sinh ra để tránh. "Còn
+      // con khi số 0" là chuyện thường: nhắc ghi chép hằng ngày không có hàng
+      // nào trong bảng nhưng vẫn nằm trên khay.
+      if (soLuong > 0) await _dangBanTomTat(soLuong: soLuong);
       return;
     }
 

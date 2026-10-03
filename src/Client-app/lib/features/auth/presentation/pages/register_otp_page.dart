@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
+import '../widgets/hang_o_otp.dart';
 
 /// Màn hình nhập OTP trong luồng đăng ký mới.
 ///
@@ -233,12 +234,10 @@ class _RegisterOtpPageState extends State<RegisterOtpPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // OTP digit boxes
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: List.generate(_otpLength, (i) {
-                              return SizedBox(
-                                width: 45,
-                                child: TextFormField(
+                          HangOOtp(
+                            soO: _otpLength,
+                            dungO: (i) {
+                              return TextFormField(
                                   controller: _controllers[i],
                                   focusNode: _focusNodes[i],
                                   keyboardType: TextInputType.number,
@@ -271,9 +270,8 @@ class _RegisterOtpPageState extends State<RegisterOtpPage> {
                                     filled: true,
                                     fillColor: Colors.white,
                                   ),
-                                ),
-                              );
-                            }),
+                                );
+                            },
                           ),
 
                           // Error message

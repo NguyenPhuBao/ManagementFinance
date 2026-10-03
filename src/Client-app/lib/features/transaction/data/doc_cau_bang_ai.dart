@@ -14,11 +14,8 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
-import '../../ai_edge/data/phien_cong_cu.dart';
+import '../../ai_edge/data/phien_mot_loi_goi.dart';
 import '../../ai_edge/data/slm_runtime.dart';
-import '../../ai_edge/domain/canary_cong_cu.dart';
 import '../../ai_edge/domain/cong_cu.dart';
 import '../domain/doc_cau_giao_dich.dart';
 
@@ -95,27 +92,19 @@ class DocCauBangAi {
   final Future<String> Function() duongTep;
   final Duration thoiHan;
 
-  Future<bool>? _nap;
-  PhienCongCu? _phien;
-  var _luot = 0;
+  /// Vòng đời phiên (nạp một lần, lời gọi đầu tiên, quá hạn, huỷ) dùng chung với lệnh tạo của màn Trợ lý (C3 §8.2).
+  late final PhienMotLoiGoi _phien = PhienMotLoiGoi(
+    runtime: runtime,
+    sanSang: sanSang,
+    duongTep: duongTep,
+    thoiHan: thoiHan,
+    nhan: '[NhapNhanh][AI]',
+  );
 
   /// Nạp mô hình ngầm — màn gọi khi ô Nhập nhanh có focus (người dùng chốt), để lúc bấm Điền chỉ còn chờ lượt sinh.
   /// MỘT `Future` dùng chung: bấm Điền lúc đang nạp thì chờ chính nó. `false` = không dùng được AI; nạp lỗi thì lần
   /// sau thử lại.
-  Future<bool> chuanBi() => _nap ??= () async {
-        try {
-          if (!await sanSang()) {
-            _nap = null;
-            return false;
-          }
-          if (!runtime.dangSan) await runtime.moHinhSan(await duongTep());
-          return true;
-        } catch (e) {
-          debugPrint('[NhapNhanh][AI] nạp mô hình hỏng: $e');
-          _nap = null;
-          return false;
-        }
-      }();
+  Future<bool> chuanBi() => _phien.chuanBi();
 
   /// Các ô thô mô hình đọc được từ [cau], hoặc `null` (người gọi dùng luật).
   Future<KetQuaAi?> doc(
@@ -124,44 +113,15 @@ class DocCauBangAi {
     required List<String> tenVi,
     required List<String> tenDanhMuc,
   }) async {
-    final luot = ++_luot;
-    if (!await chuanBi() || luot != _luot) return null;
-    final dongHo = Stopwatch()..start();
-    try {
-      final phien = await runtime.moPhien(
-        heThong: promptNhapNhanh(now),
-        cauHoi: cau,
-        congCu: [khaiBaoDienGiaoDich(tenVi: tenVi, tenDanhMuc: tenDanhMuc)],
-      );
-      _phien = phien;
-      try {
-        if (luot != _luot) return null;
-        final goi = await phien
-            .sinhLuot()
-            .where((e) => e is GoiCongCu && e.ten == kTenCongCuDienGiaoDich)
-            .cast<GoiCongCu>()
-            .first
-            .timeout(thoiHan);
-        debugPrint('[NhapNhanh][AI] ${dongHo.elapsedMilliseconds} ms: ${goi.args}');
-        return luot == _luot ? KetQuaAi.tuThamSo(goi.args) : null;
-      } finally {
-        await phien.huy();
-        await phien.dong();
-        if (identical(_phien, phien)) _phien = null;
-      }
-    } on BacCongCuDaTat {
-      debugPrint('[NhapNhanh][AI] máy từng sập native ở phiên có tool → luật');
-      return null;
-    } catch (e) {
-      // Quá hạn (TimeoutException), mô hình không gọi tool (StateError: No element), lượt bị huỷ, engine lỗi.
-      debugPrint('[NhapNhanh][AI] không đọc được sau ${dongHo.elapsedMilliseconds} ms: $e → luật');
-      return null;
-    }
+    final goi = await _phien.goiDauTien(
+      heThong: promptNhapNhanh(now),
+      cauHoi: cau,
+      congCu: [khaiBaoDienGiaoDich(tenVi: tenVi, tenDanhMuc: tenDanhMuc)],
+      laDich: (g) => g.ten == kTenCongCuDienGiaoDich,
+    );
+    return goi == null ? null : KetQuaAi.tuThamSo(goi.args);
   }
 
   /// Người dùng bấm Huỷ: lượt đang chạy trả `null`, engine thôi giải mã.
-  Future<void> huy() async {
-    _luot++;
-    await _phien?.huy();
-  }
+  Future<void> huy() => _phien.huy();
 }

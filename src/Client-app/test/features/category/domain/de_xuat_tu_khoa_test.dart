@@ -85,6 +85,24 @@ void main() {
       final d = dx('grab', 'dc', lap(2, 'dc', 'grab'), tuKhoa: {'au': ['cơm', 'Grab']})!;
       expect((d.tuKhoa, d.categoryId, d.tuDanhMuc), ('grab', 'dc', 'au'));
     });
+    test('⭐ CHUYỂN vẫn đề xuất khi cụm nằm trong một từ khoá dài hơn của danh mục đích (seed cũ: "grabcar")', () {
+      // Dữ liệu thật của tài khoản seed cũ, đo trên Realme 2026-10-01: Di chuyển có `grabcar`, Ăn uống có `grab`.
+      final tuKhoa = {
+        'dc': ['di chuyen', 'grabcar', 'xang'],
+        'au': ['an uong', 'food', 'grab'],
+      };
+      final d = dx('grab', 'dc', lap(6, 'dc', 'grab đi làm'), tuKhoa: tuKhoa);
+      expect(d, isNotNull,
+          reason: '"grabcar" không bắt được ghi chú "grab …" (bộ so tìm từ khoá TRONG ghi chú), còn "grab" đang kéo '
+              'mọi ghi chú ấy về Ăn uống — luật "bản rộng hơn" không được chặn lối sửa này');
+      expect((d!.tuKhoa, d.categoryId, d.tuDanhMuc), ('grab', 'dc', 'au'));
+    });
+    test('cụm nằm trong từ khoá dài hơn của danh mục đích, và thuộc HAI danh mục khác → vẫn không', () {
+      expect(
+        dx('grab', 'dc', lap(6, 'dc', 'grab'), tuKhoa: {'dc': ['grabcar'], 'au': ['grab'], 'gt': ['grab']}),
+        isNull,
+      );
+    });
     test('cụm là từ khoá của HAI danh mục khác → không', () {
       expect(dx('grab', 'dc', lap(2, 'dc', 'grab'), tuKhoa: {'au': ['grab'], 'gt': ['grab']}), isNull);
     });

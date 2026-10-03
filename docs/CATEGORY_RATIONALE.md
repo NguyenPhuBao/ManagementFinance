@@ -359,10 +359,16 @@ ngược với mọi lần họ đã tự chốt Di chuyển.
 
 Người dùng chốt ngày 2026-09-29, hai quyết định:
 
-- **Xin backend sửa seed** — đơn `docs/superpowers/backend/CAN-LAM/SEED_TU_KHOA_GRAB.md`
+- **Xin backend sửa seed** — đơn `docs/superpowers/backend/DA-XONG/SEED_TU_KHOA_GRAB.md`
   (`grab` sang Di chuyển, `grabfood` cho Ăn uống). ⚠️ Chỉ tài khoản / máy **mới** nhận
   bộ mới: client gieo từ khoá kéo về chỉ khi danh mục chưa có từ khoá nào
   (`_gieoTuKhoaKhiTrong`), cố ý để thao tác xoá từ khoá của người dùng không hồi sinh.
+  ✅ **Backend sửa ở `main` @ `a7c03b7`** (gộp 2026-10-01, `71234eb`): `prisma/seed.js` và
+  `database/14_fix_grab_keyword_category.sql`, chỉ hai hàng `Is_default`. CSDL dev của máy
+  này **đã áp** tệp 14 cùng ngày (người dùng cho phép đích danh): hai hàng khuôn nay là
+  `an uong, food, grabfood` và `di chuyen, xang, grab, grabcar`; 12 bản sao của các tài
+  khoản đã có **giữ nguyên** bộ cũ — với họ, lối sửa là dòng *đề xuất chuyển từ khoá*
+  (mục 5f).
 - **Giữ luật *Bỏ qua* như spec** — thôi gợi ý chỉ tắt đúng cặp (cụm, danh mục) của nguồn
   học; bộ từ khoá vẫn chạy như trước B1. Lỗi thật nằm ở từ khoá sai, và nó được xử lý ở
   gốc (seed), không bằng một luật chặn thứ hai ở màn.
@@ -516,6 +522,11 @@ cả lượt; lưu giao dịch mà không bấm gì thì **không** ghi gì.
   từ khoá của danh mục → im (bộ so đã bắt được); cụm nằm trong một từ khoá đã có → im (bản rộng
   hơn). Cũng vì bộ so khớp chuỗi con mà cụm **dưới 3 chữ cái** và cụm **chỉ gồm chữ chung**
   (`kChuChung`: *ăn, mua, đi, tiền…*) không bao giờ được đề xuất — *"ăn"* khớp cả *"căn hộ"*.
+  ⚠️ Vế *"cụm nằm trong một từ khoá đã có"* **chỉ áp khi không xung đột** (sửa 2026-10-01, người
+  dùng chọn sau lượt đo Realme): seed cũ cho mọi tài khoản `grab` ở Ăn uống **và** `grabcar` ở Di
+  chuyển, nên *grab* ⊂ *grabcar* từng chặn đúng ca *chuyển* mà tính năng sinh ra để sửa — trong
+  khi *grabcar* không bắt được ghi chú *"grab đi làm"* (bộ so tìm từ khoá **trong** ghi chú). Ca
+  ⭐ *chuyển* cũ xanh vì fixture không có `grabcar`; ca mới dựng đúng bộ từ khoá của tài khoản thật.
 - **Đoạn có chữ số cắt dãy** (*"trà sữa 40k"* → *"trà sữa"*). Ca test đầu dùng mẫu *"35k"* khác số
   nên **xanh cả trên bản bỏ phép cắt** — ca đúng dùng mẫu cùng *"40k"*.
 - **Luật tắt / mở là `tatCapTu`**, thêm tham số `nguon`; nguồn `de_xuat_tu_khoa` có tập tắt
@@ -539,8 +550,189 @@ khoá nào — nên **Chuyển** làm danh mục cũ rỗng thì từ khoá cũ 
 
 ### Nghiệm thu trên máy thật
 
-🚧 **Chưa đo** — không máy nào cắm lúc thi công (2026-09-30). Kịch bản ở spec §6 và Task 5 của kế
-hoạch `docs/superpowers/plans/2026-09-30-de-xuat-them-tu-khoa.md`.
+✅ **Đo 2026-10-01 trên Realme RMX2205** (360 dp, tài khoản 10, bản **debug** để đọc được SQLite
+bằng `run-as`: `5ffc0123…` cho ca thêm và ✕, `259d273c…` sau bản sửa cho ca chuyển). Kịch bản ở
+spec §6. Phần *đồng bộ lên PostgreSQL* **không đo** ở lượt này — bản debug trên máy thật trỏ `10.0.2.2`;
+✅ **đo 2026-10-02 trên máy ảo**, tiểu mục *Đồng bộ lên PostgreSQL* ngay dưới.
+
+| Ca | Kỳ vọng | Thấy trên máy | |
+|---|---|---|---|
+| *trà sữa* + Ăn uống, lần 1 và 2 | chưa có dòng | không có dòng | ✅ |
+| Lần 3 | dòng *"Thêm ‘trà sữa’ làm từ khoá của Ăn uống?"* | hiện, hai dòng chữ + nút, không tràn | ✅ |
+| Bấm **Thêm** | ghi ngay | `category_keywords` có *trà sữa* (có dấu), Ăn uống thành `pending`, phản hồi `de_xuat_tu_khoa` / `chon` | ✅ |
+| Khoản 4, Nhập nhanh *"trà sữa 40k"* | Ăn uống, không gọi AI | *"Đã điền: 40.000 đ · Ăn uống"*, *"Đọc bằng luật"*, dưới 2,5 s | ✅ ⚠️ |
+| *gui xe* + Di chuyển → **✕** | ẩn cả lượt, ghi `bo_qua` | ẩn; gõ lại vẫn ẩn; phản hồi `de_xuat_tu_khoa` / `bo_qua` | ✅ |
+| *grab* + Di chuyển | dòng *chuyển* | **không có dòng nào** (bản `5ffc0123…`) → sửa → hiện *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?"* | ✗ → ✅ |
+| Bấm **Chuyển** | bỏ ở cũ, thêm ở mới | Ăn uống `an uong · food · trà sữa`; Di chuyển `di chuyen · grabcar · xang · grab`; phản hồi `chon` | ✅ |
+| Dòng xác nhận tự ẩn sau 2 s | thấy rồi mất | *"Đã chuyển ‘grab’ sang Di chuyển"* có ở khung 0,5 s → 2,1 s sau cú chạm, mất ở khung 2,5 s | ✅ |
+| Nhập nhanh *"grab 35k"* | Di chuyển | *"Đã điền: 35.000 đ · Di chuyển"*, *"Khớp với “grab” trong ghi chú."*, đọc bằng luật | ✅ |
+
+Ba điều lượt đo cho thấy mà bộ test không:
+
+- **Ca *chuyển* hỏng trên dữ liệu thật** vì `grabcar` — xem mục *Chỗ dễ làm hỏng nhất*. Sửa trong
+  cùng lượt, hai ca test mới (một đỏ trên mã cũ).
+- ⚠️ **Khoản 4 *trà sữa* ra Ăn uống là nhờ B1, không phải nhờ từ khoá vừa thêm**: dòng lý do là
+  *"Bạn thường ghi “trà sữa” cho Ăn uống (3/3 lần)"*. Đề xuất từ khoá và B1 dùng **chung** ngưỡng
+  3 lần / 60 % và B1 đứng trước từ khoá, nên ở chỗ B1 còn nói thì từ khoá học được không thêm gì.
+  Giá trị riêng của nó lộ ở ca *grab*: cặp (*grab*, Di chuyển) đang bị B1 **thôi gợi ý** (hai lần
+  bỏ qua ngày 29/09), nên trước lượt này *"grab 35k"* rơi xuống từ khoá seed và ra Ăn uống; sau
+  **Chuyển** nó ra Di chuyển bằng từ khoá.
+- **Dòng *"Đã thêm…"* chỉ sống 2 s** — một lệnh `screencap` gửi sau cú chạm là trễ (lần đo đầu
+  không bắt được). Phải cho vòng chụp chạy nền **trên máy** trước khi chạm.
+
+Dữ liệu sau lượt đo: ba khoản *trà sữa* 1.000 đ đã **xoá mềm qua giao diện**, ví Tiền mặt về
+−6.097.000 đ; từ khoá *trà sữa* (Ăn uống) và *grab* (Di chuyển) **giữ** (người dùng chọn).
+
+⚠️ Lượt đo còn lộ **G61** (`CLIENT_APP_KNOWN_GAPS.md`): người dùng **không còn chỗ nào để tự gõ
+từ khoá** — trang *Từ khóa của tôi* chỉ mở được từ mục *Danh mục mặc định*, mục ấy trống từ khi
+mỗi tài khoản dùng bản sao riêng (2026-09-07). Nên tới lượt đo này đề xuất là lối **duy nhất** thêm
+từ khoá trên máy, và câu *"đảo được trong trang Từ khoá"* của spec chưa đúng. **Sửa ở mã cùng ngày**:
+form Thêm / Chỉnh sửa danh mục nay có khối *Từ khóa nhận diện* (đúng màn Stitch `a5a6ecb3…`), nên
+từ khoá thêm nhầm qua đề xuất **gỡ được** ở đó. ✅ Nghiệm thu Realme cùng ngày (thêm · gõ dở rồi
+Lưu · gỡ, kiểm SQLite) — G61 đóng.
+
+### Đồng bộ lên PostgreSQL — đo đầu-cuối 2026-10-02
+
+Máy ảo `FlowMoney_16G` (411 dp; **không máy thật nào cắm**), tài khoản 10, bản debug `9bd65000…`
+(= mã @ `2e2c04c`), backend dev sau gộp `main` @ `573969f`. Mỗi ca: thao tác trên máy → đọc log
+`[SyncEngine]` → truy vấn **chỉ đọc** `category."Keyword"` / `"Update_at"` → cuối buổi chép SQLite
+(kèm `-wal`, `-shm`) về so. Trước 2026-10-02 việc này không đo được: Realme không tới được backend,
+và bản `a7c03b7` của backend không khởi động (khối 🔀 *Gộp `main` @ `573969f`*, mục 14
+`PROJECT_CONTEXT.md`).
+
+| Ca | Đường mã | Log đẩy | `category."Keyword"` trên server | |
+|---|---|---|---|---|
+| Form *Giải trí*: gõ dở `cinema` rồi **Lưu** | `saveChild` | 1/1, 0 xung đột | `game,giai tri,movie` → `cinema,game,giai tri,movie` | ✅ |
+| Form: gỡ `movie`, **Lưu** | `saveChild` | 1/1 | `cinema,game,giai tri` | ✅ |
+| Form: gỡ **hết** ba từ khoá, **Lưu** | `saveChild` | 1/1 | **giữ** `cinema,game,giai tri` (`Update_at` mới); cùng chu kỳ pull in *"Đã gieo từ khoá phân loại cho 1 danh mục"*, mở lại form thấy đủ ba thẻ | ✅ đúng giới hạn đã ghi |
+| Thêm giao dịch: Di chuyển + ghi chú *"grab di cho"* → dòng *"‘grab’ đang là từ khoá của Ăn uống — chuyển sang Di chuyển?"* → **Chuyển** | `saveKeywords` × 2 | **2/2**, 0 xung đột | Ăn uống `an uong,food,grab` → `an uong,food`; Di chuyển `di chuyen,grabcar,xang` → `di chuyen,grab,grabcar,xang`; cả hai `Update_at` 02:05:45 UTC = giây bấm | ✅ |
+
+- **Ca cuối là ca của bản sửa `saveKeywords`** — ba ca đầu đi `saveChild`, hàm vốn đã đánh dấu
+  `pending`; form chỉ gọi `saveKeywords` ở chế độ chỉ-từ-khoá (`_isKeywordOnly`). Trước bản sửa, cú
+  bấm **Chuyển** ghi SQLite rồi nằm đó.
+- Sau buổi đo: máy ảo **0** danh mục `pending`, từ khoá ba danh mục trên SQLite **trùng** server;
+  phản hồi `de_xuat_tu_khoa` / `grab` / `chon` có. *Giải trí* đã trả về `game,giai tri,movie`
+  (qua form, lên server). `grab` **giữ** ở Di chuyển — cùng trạng thái người dùng chọn giữ trên Realme.
+- **Chưa đo: máy thứ hai.** Theo mã, máy **mới** (chưa có từ khoá) nhận bộ của server qua
+  `_gieoTuKhoaKhiTrong`; máy **đã có** từ khoá cho danh mục ấy thì **không** nhận thay đổi từ máy kia
+  — phép gieo chỉ chạy khi danh mục trên máy trống (cố ý, mục 5d). Tức bản sửa đóng ca *"đổi
+  máy là mất"*, **không** làm hai máy đang dùng song song khớp từ khoá với nhau.
+- ⚠️ Bàn phím máy ảo cũng là **Telex** (bẫy 4.41 `AI_EDGE_FEATURE.md`): `input text netflix` thành
+  *"nètlĩ"*. Từ thử phải tránh `s f r x j w` sau nguyên âm và chữ gõ đôi.
+- Quan sát phụ, không sửa: hai hàng mặc định `database/14` ghi bằng SQL mang `Update_at` tới **micro
+  giây** (`…50.031441`), mốc pull của client dừng ở **mili giây** (`…50.031`), và server lọc `gt` —
+  nên hai hàng ấy được kéo lại ở **mỗi** chu kỳ cho tới khi có hàng mới hơn đẩy mốc đi tiếp (đo: hai
+  lượt pull liền nhau cùng mốc `…13:53:50.031Z` đều kéo lại chúng; mốc chỉ đi tiếp sau ca đầu). Vô hại (upsert luỹ đẳng), tự hết; hàng do
+  app ghi không dính vì `Date` của JS vốn chỉ tới mili giây.
+
+---
+
+## 5g. Thay đổi 10 — gợi ý danh mục theo số tiền khi ghi chú TRỐNG (dự án C, 2026-10-02)
+
+✅ **Xong + nghiệm thu Realme RMX2205 (360 dp) tối 2026-10-02** — bảng ở cuối mục; lượt ấy lộ một lỗi (thẻ khuất dưới
+16 phím số), sửa cùng tối. Spec
+`docs/superpowers/specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md` (banner đầu tệp = hiện trạng);
+kế hoạch `docs/superpowers/plans/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien.md` (gitignore, nhật ký thi công ở
+cuối). Commit `cf0a879` → `83b1b77`, rồi bản sửa tự cuộn.
+
+### Vì sao
+
+Thẻ *"Gợi ý danh mục"* của màn Thêm giao dịch chỉ chạy khi ô ghi chú có chữ (B1 học từ ghi chú, bảng từ khoá khớp trên
+ghi chú). Đo CSDL dev 2026-10-02, tài khoản 10: **18/43** khoản thu chi không có ghi chú — phần B1 không với tới.
+Đây là việc đầu của **dự án C** (*app học trên máy của từng người, mở rộng khuôn B1* — mục 10.3 `AI_EDGE_FEATURE.md`).
+
+### Nó làm gì
+
+Ghi chú trống, chưa chọn danh mục, đã có số tiền → thẻ gợi ý (đúng widget của B1) với câu lý do theo **bậc tiền**:
+*"Khoản từ 20.000 đ đến 50.000 đ bạn thường ghi cho Ăn uống (6/7 lần)."* Tính lại sau 300 ms khi số tiền, ví, ngày,
+đoạn Chi / Thu đổi, và sau khi ô Nhập nhanh điền một câu chỉ có số tiền. Không chạy ở chế độ sửa và form biến động.
+
+Luật thuần ở `category/domain/phan_loai_so_tien.dart`: Naive Bayes trên **bậc tiền** (thang 1·2·5) + **nhóm thứ**
+(ngày thường / cuối tuần) + **ví**, chỉ học mẫu **cùng chiều** với đoạn đang chọn (9.000.000 dưới đoạn Thu là *Lương*,
+dưới đoạn Chi là *Nhà cửa*). Phản hồi Chọn / Bỏ qua ghi vào bảng sẵn có `GoiYDanhMucPhanHois` với `nguon = 'so_tien'`,
+khoá là **mã bậc** (`20000-50000`). Không đổi schema, không đồng bộ, không gọi Gemma.
+
+⚠️ **Không có giờ**: giờ lưu trong giao dịch là giờ NHẬP (`_selectedDate = DateTime.now()`, `showDatePicker` trả 00:00).
+
+### ⭐ Phép đo lật thiết kế — và ba quyết định người dùng chốt sau đó
+
+Thiết kế đầu (ngưỡng của B1: hậu nghiệm ≥ 0,6, ≥ 3 khoản ở bậc; thẻ hiện cả khi ghi chú có chữ mà B1 lẫn từ khoá đều
+im) được đo bằng `test/tool/do_goi_y_so_tien_test.dart` — **phát lại theo thời gian** trên CSDL Realme, tài khoản 10,
+67 giao dịch:
+
+| | Số lần | Đúng |
+|---|---|---|
+| Mô hình lên tiếng | 9 | 4 (44 %) |
+| Thẻ thật sự hiện trên màn | 5 | **1 (20 %)** |
+
+Dưới ngưỡng dừng 60 % của spec. Ba điều đọc được:
+
+- Sổ trên Realme phần lớn là **dữ liệu thử** (nhiều khoản đúng 10.000 đ gõ để thử B1 ở HAI danh mục) — gần như ca xấu
+  nhất cho một mô hình dựa vào số tiền. Nhưng điểm yếu là **thật**: khoản nhỏ trùng số tiền giữa các danh mục.
+- **3/4 lần sai là khoản CÓ ghi chú** (*"ca phe sang"* 10.000 → Di chuyển) — thẻ nói ngược chữ vừa gõ.
+- **Không ngưỡng nào tách được đúng khỏi sai**: lần sai có hậu nghiệm 0,65–0,77, lần đúng 0,64–0,72.
+
+Người dùng chốt (2026-10-02): **(1)** thẻ **chỉ** hiện khi ghi chú trống; **(2)** hậu nghiệm từ **0,8**
+(`kNguongXacSuatSoTien`); **(3)** ít nhất **5** khoản ở đúng bậc (`kToiThieuKhoanCungBac`). Đo lại: thẻ **im hẳn** trên
+dữ liệu hiện tại (0 lần) — *"chưa đủ để nói"*, không phải *"đạt"*. ⚠️ 0,8 chọn trên chính bộ đo ấy; chưa có số đo nào
+chứng minh thẻ đúng khi nó lên tiếng. **Đo lại khi sổ có vài tháng dữ liệu dùng thật.**
+
+### Chỗ dễ làm hỏng nhất
+
+- **Chốt *dẫn đầu bậc tiền***: danh mục gợi ý phải có nhiều khoản ở đúng bậc ấy hơn MỌI danh mục khác cùng chiều. Thiếu
+  nó thì một gợi ý thắng nhờ ví + thứ in *"(2/9 lần)"* — câu lý do nói ngược gợi ý.
+- **Giá trị LẠ của một đặc trưng thì bỏ đặc trưng ấy** (ví mới tạo, ví chưa chọn, nhóm thứ chưa có mẫu). Tính nó thì mọi
+  danh mục đếm 0 và phép làm trơn `1/(N(c)+K)` phạt danh mục **đông mẫu** — kéo hậu nghiệm của chính danh mục đáng tin
+  nhất xuống. Kế hoạch viết sai chỗ này (`max(2, K)`); bản sai có chủ ý lộ ra.
+- **Có ghi chú thì số tiền / ví / ngày / đoạn KHÔNG hẹn tính lại** (`_henGoiYTheoForm`). Hẹn là đổi hành vi B1: đổi đoạn
+  Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi, và luật *"đổi đoạn → không ghi phản hồi"* dựa vào đó.
+- **`_choPhanXu` của nguồn số tiền huỷ khi bậc đổi** — kể cả khi người dùng đã chọn danh mục qua bảng rồi mới đổi số
+  tiền; không thì lúc lưu ghi `khac` cho một khoản ở bậc khác hẳn.
+- **Cặp vừa *Bỏ qua* không hiện lại trong lượt mở màn** (`_boQuaSoTienLuotNay`): thẻ tính lại ở mỗi phím số.
+- **Hàng nút của thẻ gợi ý nay là `Wrap`** (trước: `Row` + `Spacer`, có từ B1): đủ chỗ thì hai nút hai đầu như cũ, chật
+  thì nút sau xuống dòng. Bản `Row` tràn 157 px ở 360 × 640 trong font test — và từ lát này thẻ hiện cả khi 16 phím số
+  đang mở.
+- **Thẻ nguồn số tiền vừa hiện thì form TỰ CUỘN tới nó** (`_cuonToiTheGoiY`, `keepVisibleAtEnd`; người dùng chọn
+  2026-10-02 sau nghiệm thu). Hai chốt: chỉ cuộn khi thẻ **vừa hiện hoặc đổi danh mục** — cùng một gợi ý tính lại ở mỗi
+  phím số mà cuộn là giành quyền cuộn của người dùng; và **không** cuộn cho thẻ B1 / từ khoá — hai thẻ ấy hiện lúc đang
+  gõ ghi chú, ô ghi chú nằm DƯỚI thẻ, kéo đáy thẻ về sát bàn phím là đẩy ô đang gõ ra sau bàn phím.
+
+### Nghiệm thu máy thật — Realme RMX2205 (360 dp), 2026-10-02 tối
+
+Bản debug `8e91c78e…` (mã `bbac088`), rồi bản sửa `52a3a37f…`. Tài khoản 10; dữ liệu thử người dùng cho phép **giữ
+lại**: sáu khoản chi 1.000 đ, *Mua sắm*, *Ví MB Bank*, ghi chú trống (năm khoản mẫu + khoản lưu qua nút *Chọn*). Chọn
+bộ ấy bằng cách mô phỏng phép đoán trên bản chép CSDL: bậc dưới 10.000 đ chưa có khoản chi nào, và ví MB Bank chưa
+từng dùng cho khoản chi — năm khoản là hậu nghiệm ≈ 0,91; cùng năm khoản ấy ở ví *Tiền mặt* (35/37 khoản chi cũ) chỉ
+≈ 0,60, tức **bậc tiền một mình không vượt 0,8 với 5–8 khoản**, phải có ví hoặc nhóm thứ góp phần.
+
+| Phép thử | Kết quả |
+|---|---|
+| Khoản 2–5 (chưa đủ 5 khoản ở bậc) | ✅ thẻ im |
+| Khoản 6: 1.000 đ, ghi chú trống | ✅ *"Khoản dưới 10.000 đ bạn thường ghi cho Mua sắm (5/5 lần)."* |
+| Thẻ trong vùng nhìn thấy khi 16 phím mở | ❌ **khuất hẳn** dưới bàn phím số (hàng *Danh mục* kết thúc ở y 1614, phím bắt đầu 1692 trên 2400) → sửa tự cuộn; ✅ đo lại: thẻ và hai nút nằm trọn trên bàn phím |
+| Đổi đoạn Chi → Thu → Chi | ✅ ẩn / hiện lại |
+| Đổi ví sang *Tiết kiệm* rồi về MB Bank | ✅ ẩn / hiện lại (mô phỏng: 0,60 / 0,91) |
+| Đổi **ngày** sang Thứ Bảy 03/10 rồi về Thứ Sáu | ✅ ẩn / hiện lại (mô phỏng: 0,69 / 0,91) — chỗ hẹn `_pickDate`, chưa có ca test |
+| Gõ một chữ vào ghi chú / xoá chữ ấy | ✅ thẻ mất ngay / hiện lại |
+| *Bỏ qua* | ✅ không bật lại trong lượt (đổi số tiền cùng bậc, đổi đoạn); mở lại màn thì hiện (mới một lần bỏ qua) |
+| *Chọn danh mục này* → lưu | ✅ hàng *Danh mục* = Mua sắm |
+| Bảng phản hồi | ✅ hai hàng `so_tien` · `0-10000`: một `bo_qua`, một `chon` |
+| Lỗi bố cục trong logcat | ✅ 0 |
+
+Chưa đo trên máy: thôi gợi ý sau hai lần *Bỏ qua* · đường ô Nhập nhanh · thẻ B1 / từ khoá khi bàn phím **hệ thống**
+mở. ⚠️ Về cái cuối: ở bản trước khi sửa, xoá hết ghi chú lúc ô ghi chú còn focus thì thẻ số tiền hiện lại với hàng nút
+bị bàn phím hệ thống cắt một phần; thẻ B1 nằm đúng chỗ ấy và **không** tự cuộn (cố ý) nên có thể bị cắt y hệt — chưa
+đo, chưa ai chốt sửa.
+
+### Chưa làm / chưa biết
+
+- Chỗ hẹn ở `_pickDate` chưa có ca test (bộ chọn ngày + ngày phụ thuộc hôm chạy) — mới kiểm trên máy thật.
+- ⚠️ Số đo trên là **thẻ có chạy đúng luật không**, không phải **thẻ có đoán đúng không**: dữ liệu do chính lượt thử
+  dựng. Câu *"chưa có số đo nào chứng minh thẻ đúng khi nó lên tiếng"* ở trên vẫn nguyên.
+- Thị trường: Wallet (BudgetBakers) có *mẫu giao dịch* (tên, ví, danh mục, số tiền) cho khoản nhập lại — thứ phổ biến
+  nhất cho việc này; để sau, cần Stitch. Màn Gắn danh mục nhanh và form biến động chưa dùng nguồn số tiền.
+- Ba việc còn lại của dự án C: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ tự khối trang Phân tích · thông báo
+  theo phản ứng — mỗi việc một spec khi tới lượt.
 
 ---
 

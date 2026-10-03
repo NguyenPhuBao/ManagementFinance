@@ -50,7 +50,7 @@ void main() {
     test('⭐ số kèm đơn vị, chỉ gồm chữ số, "nửa triệu" → true', () {
       for (final s in [
         '500k', '500 k', '500K', '1 triệu', '1tr', '5 củ', '100 nghìn', '200.000đ',
-        '200.000 đồng', '1.000.000', '1000000', 'trên 500k', 'nửa triệu', '50 vnd',
+        '200.000 đồng', '1.000.000', '1000000', 'trên 500k', 'nửa triệu', '50 vnd', '2 tỷ', '1,5 ty', '3 tỉ',
       ]) {
         expect(laSoTien(s), isTrue, reason: s);
       }

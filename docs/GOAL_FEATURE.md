@@ -1046,6 +1046,14 @@ chúc mừng người dùng vì đã bỏ dở.
 
 ---
 
+### 3.28 Form tạo nhận query điền sẵn (C3, 2026-09-30)
+
+`/goals/add?name&target&deadline` — lệnh tạo ở màn Trợ lý AI mở form với tên, số tiền đích, hạn điền sẵn.
+`dienSanMucTieuTuQuery` (`goal/domain/dien_san_muc_tieu.dart`, khuôn `dienSanTuQuery` của B2): query hỏng thì bỏ đúng
+trường ấy, ngày tràn (*2027-02-30*) bị loại. `GoalAddPage.dienSan` chỉ dùng ở đường **tạo mới** — đường sửa bỏ qua. Thứ
+tự điền: hạn trước số tiền, như `_napGoalDeSua`; ⚠️ ở đường tạo mới thứ tự ấy **không** quyết định gì (bản sai gán tiền
+trước vẫn xanh — chưa ô trích nào có số nên listener tính chéo không đổi hạn), giữ để hai đường điền đọc như nhau.
+
 ## 4. Tám cái bẫy
 
 > **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08, 4.8 đóng 2026-09-28.

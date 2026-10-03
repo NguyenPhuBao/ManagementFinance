@@ -23,8 +23,10 @@ import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 
 class _KenhGia implements KenhBienDong {
   bool quyen = false;
+  bool chayNen = false;
   final List<bool> datBatGoi = [];
   int soLanMoCaiDat = 0;
+  int soLanMoCaiDatPin = 0;
   int soLanHoiQuyen = 0;
 
   @override
@@ -36,11 +38,17 @@ class _KenhGia implements KenhBienDong {
   @override
   Future<void> moCaiDat() async => soLanMoCaiDat++;
   @override
+  Future<void> moCaiDatPin() async => soLanMoCaiDatPin++;
+  @override
+  Future<bool> duocChayNen() async => chayNen;
+  @override
   Future<bool> moTuThongBao() async => false;
   @override
   Future<void> huyTomTat() async {}
   @override
   Future<void> datBat(bool bat) async => datBatGoi.add(bat);
+  @override
+  Future<void> datCoPhien(bool co) async {}
 }
 
 /// Trang hỏi quyền thông báo của hệ điều hành lúc mở (công tắc tổng mặc định bật) — ngoài phạm vi
@@ -257,6 +265,64 @@ void main() {
       expect(find.text('Đã cấp quyền — đang đọc ${nguonDangDoc.length} nguồn'), findsOneWidget);
       expect(find.text(nguonDangDoc.join(', ')), findsOneWidget);
       expect(find.text('Chưa cấp quyền truy cập thông báo'), findsNothing);
+    });
+
+    // Đo Realme RMX2205 2026-09-30: ColorOS (Hans) đóng băng FlowMoney ~40 giây sau khi về nền — tin ngân hàng
+    // tới trễ cho tới khi bật màn hình / mở app (trễ ~84 giây ở lượt đo), dù app đã được miễn tối ưu pin chuẩn.
+    // Người dùng chọn thêm dòng hướng dẫn (Stitch `2ff589c7…`).
+    testWidgets('⭐ bật + có quyền → hàng "Tin có thể đến trễ…"; Mở cài đặt gọi moCaiDatPin, KHÔNG moCaiDat',
+        (tester) async {
+      kenh.quyen = true;
+      await store.write(id, const NotificationPrefs(docBienDong: true, dongYBienDong: true));
+      await moTrang(tester);
+      expect(find.text(kTieuDeTreNen), findsOneWidget);
+      final nut = find.byKey(NotificationSettingsPage.khoaMoCaiDatPin);
+      await tester.ensureVisible(nut);
+      await tester.tap(nut);
+      await tester.pumpAndSettle();
+      expect(kenh.soLanMoCaiDatPin, 1);
+      expect(kenh.soLanMoCaiDat, 0, reason: 'nút pin không được mở trang Truy cập thông báo');
+    });
+
+    testWidgets('chưa có quyền / công tắc tắt → không có hàng pin (chưa đọc gì thì chưa có gì để trễ)',
+        (tester) async {
+      await store.write(id, const NotificationPrefs(docBienDong: true, dongYBienDong: true));
+      await moTrang(tester);
+      expect(find.text(kTieuDeTreNen), findsNothing, reason: 'chưa có quyền');
+
+      kenh.quyen = true;
+      await store.write(id, const NotificationPrefs(docBienDong: false, dongYBienDong: true));
+      await moTrang(tester);
+      expect(find.text(kTieuDeTreNen), findsNothing, reason: 'công tắc tắt');
+    });
+
+    // Đo đối chứng Realme 2026-09-30: "Cho phép hoạt động dưới nền" TẮT → Hans đóng băng app sau ~12 giây; BẬT → không
+    // đóng băng (2 × 110 giây). Công tắc ấy CHÍNH là miễn tối ưu pin chuẩn — đọc được, nên đã bật thì im.
+    testWidgets('⭐ máy ĐÃ cho phép chạy nền → không hiện hàng pin (nói "có thể trễ" khi không trễ là nói sai)',
+        (tester) async {
+      kenh.quyen = true;
+      kenh.chayNen = true;
+      await store.write(id, const NotificationPrefs(docBienDong: true, dongYBienDong: true));
+      await moTrang(tester);
+      expect(find.textContaining('Đã cấp quyền'), findsOneWidget);
+      expect(find.text(kTieuDeTreNen), findsNothing);
+    });
+
+    testWidgets('⭐ bật "hoạt động dưới nền" ở Cài đặt rồi quay về (resumed) → hàng pin tự biến mất', (tester) async {
+      kenh.quyen = true;
+      await store.write(id, const NotificationPrefs(docBienDong: true, dongYBienDong: true));
+      await moTrang(tester);
+      expect(find.text(kTieuDeTreNen), findsOneWidget);
+
+      kenh.chayNen = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text(kTieuDeTreNen), findsNothing);
     });
 
     testWidgets('⭐ quay về app (resumed) → đọc lại quyền, dòng trạng thái đổi theo', (tester) async {

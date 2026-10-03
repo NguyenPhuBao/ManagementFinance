@@ -23,6 +23,7 @@ import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
+import 'nhap_bien_lai.dart';
 import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
@@ -85,6 +86,9 @@ typedef GoalsLoader = Future<List<GoalEntity>> Function(
 typedef WalletsLoader = Future<List<Wallet>> Function(
     int idaccount, DateTime now);
 
+/// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).
+typedef ViDaDungLoader = Future<Set<String>> Function(int idaccount);
+
 /// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
 typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
 
@@ -106,6 +110,10 @@ class NotificationScanner {
   /// cần một phần của bộ luật không phải dựng cả chuỗi phụ thuộc.
   final GoalsLoader? loadGoals;
   final WalletsLoader? loadWallets;
+
+  /// Bỏ trống thì bộ luật nhận `viDaDung: null` = **không biết** → luật "sắp cạn" giữ cách cũ (báo theo số
+  /// dư, kể cả ví mới tạo 0 đ). Chỉ gọi khi ngưỡng số dư thấp > 0.
+  final ViDaDungLoader? loadViDaDung;
 
   /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
   /// `loadWallets`.
@@ -167,6 +175,16 @@ class NotificationScanner {
   /// ở mỗi [start] **và** mỗi lần app quay lại từ nền (trước lượt quét — người
   /// dùng vừa chạm thông báo tóm tắt là đang chờ thấy dòng ấy). `null` thì bỏ qua.
   final NhapBienDong? nhapBienDong;
+
+  /// Chia sẻ biên lai (2026-10-02): ghi cờ *"máy đang có tài khoản đăng nhập"* phía native (`KenhBienDong.datCoPhien`)
+  /// — `true` ở [start], `false` ở [stop]. `NhanBienLaiActivity` chỉ nhận ảnh khi cờ bật: hàng chờ biên lai gắn MÁY,
+  /// không có phiên thì không biết biên lai thuộc về ai. `null` thì bỏ qua.
+  final Future<void> Function(bool co)? datCoPhien;
+
+  /// Chia sẻ biên lai — ảnh người dùng chia sẻ từ app ngân hàng nằm trong hàng chờ do `NhanBienLaiActivity` ghi; nhập
+  /// ở mỗi [start] và mỗi lần quay lại từ nền, NGAY SAU [nhapBienDong] (tin ngân hàng thành hàng trước, biên lai của
+  /// cùng giao dịch gắn ảnh vào hàng ấy). [stop] gọi `donKhiDangXuat`. `null` thì bỏ qua.
+  final NhapBienLai? nhapBienLai;
 
   /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
   /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
@@ -233,6 +251,7 @@ class NotificationScanner {
     this.runAutoPays,
     this.loadGoals,
     this.loadWallets,
+    this.loadViDaDung,
     this.loadWeekActivity,
     this.loadChiLon,
     this.loadKeHoach,
@@ -245,6 +264,8 @@ class NotificationScanner {
     this.resyncLich,
     this.nhapHangCho,
     this.nhapBienDong,
+    this.datCoPhien,
+    this.nhapBienLai,
     this.nhatKy,
     this.eventDao,
     DateTime Function()? clock,
@@ -278,6 +299,12 @@ class NotificationScanner {
     // nuốt lỗi như mọi bước dọn dẹp ở đây.
     try {
       await nhapHangCho?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    // Chia sẻ biên lai: từ đây máy có phiên — activity nhận ảnh được phép cất biên lai.
+    try {
+      await datCoPhien?.call(true);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
@@ -341,6 +368,12 @@ class NotificationScanner {
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
+    // SAU tin ngân hàng — thứ tự này quyết định biên lai gắn ảnh vào hàng tin hay đẻ hàng thứ hai.
+    try {
+      await nhapBienLai?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
   }
 
   /// Dừng hẳn. Gọi khi đăng xuất hoặc khi phiên chết.
@@ -379,6 +412,15 @@ class NotificationScanner {
     // không còn ai đã đồng ý, dịch vụ phải thôi đọc và thôi bắn tóm tắt.
     try {
       await nhapBienDong?.tatDocMay();
+    } catch (_) {}
+    // Chia sẻ biên lai: hết phiên thì activity nhận ảnh từ chối — không cất biên lai không biết của ai.
+    try {
+      await datCoPhien?.call(false);
+    } catch (_) {}
+    // SAU khi tắt cờ (không còn biên lai mới nào được cất): xoá ảnh, hàng chờ và các hàng đang mang ảnh — người
+    // đăng nhập sau không được thấy biên lai của người trước.
+    try {
+      await nhapBienLai?.donKhiDangXuat(id);
     } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
@@ -453,6 +495,13 @@ class NotificationScanner {
       // Cửa sổ đọc dùng lại **đúng** `cuaSoSuKien` mà `silenceBefore` dùng: đọc
       // rộng hơn là tốn công cho những hàng bộ luật chắc chắn lọc bỏ, còn đọc
       // hẹp hơn là bỏ sót đúng những khoản vẫn còn nằm trong cửa sổ ấy.
+      // Cùng kỷ luật "chỉ hỏi khi có thể dùng tới": ngưỡng mặc định 0 = tắt.
+      Set<String>? viDaDung;
+      final docViDaDung = loadViDaDung;
+      if (docViDaDung != null && prefs.nguongSoDuThap > 0) {
+        viDaDung = await docViDaDung(idaccount);
+      }
+
       var chiLon = const <KhoanChiLon>[];
       final docChi = loadChiLon;
       if (docChi != null && prefs.nguongChiLon > 0) {
@@ -488,6 +537,7 @@ class NotificationScanner {
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
+          viDaDung: viDaDung,
           tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
           chiLon: chiLon,
           nguongChiLon: prefs.nguongChiLon,
@@ -497,6 +547,15 @@ class NotificationScanner {
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
       ).where((c) => prefs.chapNhan(c.kind)).toList();
+
+      // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
+      // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
+      if (wallets.isNotEmpty) {
+        for (final id in hangSapCanDaHoi(await dao.getAll(idaccount), wallets, prefs.nguongSoDuThap)) {
+          await dao.dismiss(id);
+        }
+      }
+
       if (ungVien.isEmpty) {
         // Vẫn phải đồng bộ lịch: "không có gì mới để báo" và "lịch tương lai
         // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không

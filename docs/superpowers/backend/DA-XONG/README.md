@@ -97,6 +97,22 @@ Bốn tài liệu này đã được giải quyết trọn vẹn, vượt qua c�
 | [CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md](./CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md) | Phản hồi chính thức 5 câu hỏi của Client: đồng thuận không vi phạm chính sách dừng module bank, giữ nguyên `provider = 'Manual'`, đồng ý regex baseline, bắt buộc Consent Screen theo NĐ 13/2023, xác nhận gộp trùng SMS/thông báo app là hiện thân Chức năng 3 phía Client. |
 | [CHATBOT_AI_SOAT_SAU_422DEBF.md](./CHATBOT_AI_SOAT_SAU_422DEBF.md) | Hoàn tất 100% 3 nhóm yêu cầu: (Nhóm 1) Sửa & khử lệch 9 điểm tài liệu (Chức năng 3 Deduplication trên máy, trạng thái 4 & 7 đã hoàn thành, đồng bộ 1 hợp đồng API, sửa sơ đồ Health -> Chat, múi giờ 11.44, D1 theo ngày, link DA-XONG); (Nhóm 2) Sửa Math.abs khoản chi âm CSDL, mẫu số ngày động, chuẩn hóa Fallback không bịa số, sửa API Admin-web text/content, xây dựng Redis Token-Bucket Limiter (15 req/m), Snapshot Cache (TTL 120s), Gemini Circuit Breaker, nâng cấp PII Masking toàn diện; (Nhóm 3) Gắn banner tạm dừng Module Bank do chính sách tại 5 tệp. |
 
+## 4b. Đóng trong đợt backend 2026-10-01 (gộp `main` @ `a7c03b7`) — client chuyển, client soát
+
+Backend báo mục 27–30 *"hoàn tất 100%"* ở `../CAN-LAM/README.md` nhưng **không chuyển tệp**; client chuyển cả bốn sang
+đây ngày 2026-10-01 sau khi soát bằng mã và truy vấn chỉ đọc trên CSDL dev. Bảng dưới là **kết quả soát của client**,
+không phải báo cáo của backend. Phần chưa xong gom vào
+[`../CAN-LAM/SOAT_SAU_GOP_A7C03B7.md`](../CAN-LAM/SOAT_SAU_GOP_A7C03B7.md).
+
+| Tài liệu | Kết quả soát |
+|---|---|
+| [SEED_TU_KHOA_GRAB.md](./SEED_TU_KHOA_GRAB.md) | ✅ `seed.js` + `database/14_fix_grab_keyword_category.sql`: `grab` sang Di chuyển, `grabfood` cho Ăn uống, chỉ hai hàng `Is_default`. ⚠️ Tệp 14 có BOM; CSDL dev của máy client **đã áp** 2026-10-01 (người dùng cho phép đích danh; 2 hàng đổi, bản sao của tài khoản giữ nguyên) |
+| [SOAT_SAU_GOP_B350D40.md](./SOAT_SAU_GOP_B350D40.md) | ⚠️ Một phần. Payload ba sự kiện socket trong tài liệu ✅; kho người dùng thôi lưu thông báo ngân hàng ✅; hai lỗi FHS **đã sửa nhưng sinh hai lỗi mới** (nhóm `Vay/no` không xét chiều tiền; `trendVsLastMonth` bịa `'+100%'`); mục 5 chữ mới 1/11 hàng |
+| [D1_DOC_BIEN_DONG_XONG_SOAT.md](./D1_DOC_BIEN_DONG_XONG_SOAT.md) | ⚠️ Một phần. `LogicBusinessAI.md` hàng 3 và dòng 77 ✅; `Project.md` :1645, :2757 và `docs/progress/Client-app.md` §5.2, §13.5 chưa |
+| [CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md](./CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md) | ✅ Đơn thông báo, không xin gì |
+
+Thư mục này nay **48** tệp + mục lục (đếm bằng máy 2026-10-01).
+
 ---
 
 ## 5. Hai chỗ dễ đọc nhầm

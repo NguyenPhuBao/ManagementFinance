@@ -20,7 +20,8 @@ String? _nguonGia(String goi) => switch (goi) {
       _ => null,
     };
 
-TinBienDong _tin({double soTien = 1200000, String chieu = 'thu', DateTime? luc, String? ma, String nguon = kNguonMb}) =>
+TinBienDong _tin(
+        {double soTien = 1200000, String chieu = 'thu', DateTime? luc, String? ma, String nguon = kNguonMb, String? vt}) =>
     TinBienDong(
       soTien: soTien,
       chieu: chieu,
@@ -29,6 +30,7 @@ TinBienDong _tin({double soTien = 1200000, String chieu = 'thu', DateTime? luc, 
       nguon: nguon,
       duoiTaiKhoan: '999',
       maGiaoDich: ma,
+      vanTaySoDu: vt,
     );
 
 /// Một dòng Kotlin ghi — `luc` là mili giây epoch (`StatusBarNotification.postTime`).
@@ -42,8 +44,10 @@ String _dong({String goi = 'goi.mb', String tieuDe = 'Thông báo biến động
       'khoa': khoa,
     });
 
-String _mb({String dau = '+', String tien = '1,200,000', String gio = '15:33', String nd = 'Chuyen tien', String? ma}) =>
-    'TK 25xxx999|GD: $dau${tien}VND 02/09/26 $gio |SD: 1,200,007VND|ND: $nd${ma == null ? '' : ' Ma GD $ma'}';
+String _mb(
+        {String dau = '+', String tien = '1,200,000', String gio = '15:33', String nd = 'Chuyen tien', String? ma,
+        String sd = '1,200,007'}) =>
+    'TK 25xxx999|GD: $dau${tien}VND 02/09/26 $gio |SD: ${sd}VND|ND: $nd${ma == null ? '' : ' Ma GD $ma'}';
 
 void main() {
   group('dòng JSON của Kotlin', () {
@@ -76,6 +80,27 @@ void main() {
       expect(trungBienDong(goc, dauBienDong(_tin(luc: DateTime(2026, 9, 2, 15, 39)))), isFalse);
       expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi'))), isFalse);
       expect(trungBienDong(goc, dauBienDong(_tin(soTien: 1200001))), isFalse);
+    });
+    test('⭐ vân tay số dư KHÁC nhau → không trùng dù cùng tiền + chiều cách 4 phút; cùng vân tay → trùng', () {
+      final goc = dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 17), vt: 'aaa'));
+      expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 21), vt: 'bbb'))),
+          isFalse,
+          reason: 'đo Realme 2026-09-30: hai lần chuyển −10.000 đ thật, khoản 19:21 bị gộp vào 19:17 và MẤT');
+      expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 18), vt: 'aaa'))),
+          isTrue, reason: 'cùng số dư sau GD = cùng giao dịch (SMS + app)');
+      expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 19)))), isTrue,
+          reason: 'một bên không có số dư (nguồn khác khuôn) → giữ luật cửa sổ 5 phút');
+    });
+    test('⭐ khoá không mã GD mang vân tay khi có → hai giao dịch CÙNG PHÚT khác số dư không đè nhau', () {
+      final a = dedupeKeyBienDong(_tin(chieu: 'chi', vt: 'aaa'));
+      final b = dedupeKeyBienDong(_tin(chieu: 'chi', vt: 'bbb'));
+      expect(a, isNot(b), reason: 'cùng khoá thì insertAllIfAbsent bỏ hàng thứ hai, im lặng');
+      expect(a, 'bienDong:MB Bank|1200000|chi|2026-09-02T15:33|aaa');
+    });
+    test('deeplink mang vân tay (vt) và dauTuDeeplink đọc ngược được — để so với tin mới', () {
+      final d = deeplinkBienDong(_tin(vt: 'aaa'), dedupeKey: 'k');
+      expect(Uri.parse(d).queryParameters['vt'], 'aaa');
+      expect(dauTuDeeplink(d, maGiaoDich: null)!.vanTay, 'aaa');
     });
     test('deeplink mở /add với đủ ô điền sẵn và khoá để xoá hàng khi Lưu / Bỏ qua', () {
       final u = Uri.parse(deeplinkBienDong(_tin(ma: 'M1'), dedupeKey: 'bienDong:M1'));
@@ -183,6 +208,20 @@ void main() {
           everyElement(anyOf('+1.200.000 đ · MB Bank', '+50.000 đ · MB Bank')));
     });
 
+    test('⭐ sự cố Realme 2026-09-30: hai lần chuyển −10.000 đ khác số dư → HAI hàng, cả trong lô lẫn khác lượt',
+        () async {
+      await ghiTep([
+        _dong(noiDung: _mb(dau: '-', tien: '10,000', gio: '19:17', sd: '5,027,757'), khoa: 'a'),
+        _dong(noiDung: _mb(dau: '-', tien: '10,000', gio: '19:21', sd: '5,017,757'), khoa: 'b'),
+      ]);
+      expect(await nhap.nhap(7), 2, reason: 'cùng lô');
+      await ghiTep([_dong(noiDung: _mb(dau: '-', tien: '10,000', gio: '19:23', sd: '5,007,757'), khoa: 'c')]);
+      expect(await nhap.nhap(7), 1, reason: 'khác lượt: so với hàng ĐÃ CÓ phải đọc được vân tay từ deeplink');
+      await ghiTep([_dong(noiDung: _mb(dau: '-', tien: '10,000', gio: '19:23', sd: '5,007,757'), khoa: 'd')]);
+      expect(await nhap.nhap(7), 0, reason: 'cùng tin bắn lại (cùng số dư) vẫn gộp');
+      expect(await hang(), hasLength(3));
+    });
+
     test('dòng hỏng, gói lạ, tin không khớp khuôn → bỏ; dòng lành vẫn nhập', () async {
       await ghiTep([
         'rác không phải json',
@@ -234,6 +273,54 @@ void main() {
       ]);
       await db.notificationDao.purgeKindOlderThan(NotificationKind.bienDongSoDu.name, DateTime(2026, 9, 1));
       expect((await db.notificationDao.getAll(7)).map((h) => h.id), ['b']);
+    });
+  });
+
+  group('deeplink có ảnh biên lai (chia sẻ biên lai, 2026-10-02)', () {
+    final t = _tin(soTien: 150000, chieu: 'chi', luc: DateTime(2026, 10, 2, 18, 45), ma: 'FT1');
+
+    test('⭐ không truyền anh / cachDoc → query Y NHƯ TRƯỚC (hàng D1 không đổi một tham số nào)', () {
+      final q = Uri.parse(deeplinkBienDong(t, dedupeKey: 'bienDong:FT1')).queryParameters;
+      expect(q.keys.toSet(), {'amount', 'huong', 'date', 'note', 'nguon', 'duoi', 'khoa'});
+    });
+
+    test('có anh → thêm anh, doc và blt (giờ in trên biên lai)', () {
+      final q = Uri.parse(deeplinkBienDong(t, dedupeKey: 'bienDong:FT1', anh: 'aaaa.jpg', cachDoc: 'mau'))
+          .queryParameters;
+      expect(q['anh'], 'aaaa.jpg');
+      expect(q['doc'], 'mau');
+      expect(DateTime.parse(q['blt']!), DateTime(2026, 10, 2, 18, 45));
+    });
+
+    test('anhTuDeeplink: đọc lại tên tệp; tên bẩn / không có / deeplink null → null', () {
+      expect(anhTuDeeplink('/add?khoa=bienDong:x&anh=aaaa.jpg'), 'aaaa.jpg');
+      expect(anhTuDeeplink('/add?khoa=bienDong:x&anh=..%2Fx.jpg'), isNull,
+          reason: 'tên tệp sẽ được ghép thành đường dẫn — không nhận tên có dấu gạch chéo');
+      expect(anhTuDeeplink('/add?khoa=bienDong:x'), isNull);
+      expect(anhTuDeeplink(null), isNull);
+    });
+
+    test('⭐ themAnhVaoDeeplink giữ mọi tham số cũ của hàng tin, ghi giờ biên lai riêng (blt ≠ date)', () {
+      final goc = deeplinkBienDong(_tin(luc: DateTime(2026, 10, 2, 18, 45, 20), vt: 'abc'), dedupeKey: 'bienDong:k');
+      final moi = themAnhVaoDeeplink(goc, 'aaaa.jpg', DateTime(2026, 10, 2, 18, 45));
+      final q = Uri.parse(moi).queryParameters;
+      expect(q['amount'], '1200000');
+      expect(q['vt'], 'abc');
+      expect(q['khoa'], 'bienDong:k');
+      expect(DateTime.parse(q['date']!), DateTime(2026, 10, 2, 18, 45, 20), reason: 'giờ của TIN không bị đè');
+      expect(gioBienLaiTuDeeplink(moi), DateTime(2026, 10, 2, 18, 45));
+      expect(gioBienLaiTuDeeplink(goc), isNull, reason: 'hàng chưa mang biên lai nào');
+      expect(dauTuDeeplink(moi, maGiaoDich: null)!.vanTay, 'abc', reason: 'phép gộp trùng của D1 vẫn đọc được hàng đã gắn ảnh');
+    });
+
+    test('⭐ biên lai chưa đọc: không amount, không huong → dauTuDeeplink trả null (không gộp trùng với gì)', () {
+      final link = deeplinkBienLaiChuaDoc(
+          nguon: 'Biên lai', luc: DateTime(2026, 10, 2), noiDung: '', anh: 'aaaa.jpg', dedupeKey: 'bienDong:bienLai|aaaa.jpg');
+      final q = Uri.parse(link).queryParameters;
+      expect(q['doc'], 'khong');
+      expect(q.containsKey('amount'), isFalse);
+      expect(anhTuDeeplink(link), 'aaaa.jpg');
+      expect(dauTuDeeplink(link, maGiaoDich: null), isNull);
     });
   });
 }

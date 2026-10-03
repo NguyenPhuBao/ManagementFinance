@@ -311,5 +311,22 @@ void main() {
       expect(con, {'khac', 'loaiKhac'},
           reason: 'tin đã xử lý không còn lý do giữ nội dung ngân hàng (spec D1 §3.3) — xoá mềm là giữ nguyên nội dung');
     });
+
+    test('⭐ datDeeplink (gắn ảnh biên lai): chỉ đổi hàng loại 20 của đúng tài khoản', () async {
+      await db.notificationDao.insertIfAbsent(mau(id: 'bd', kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'khac', idaccount: 9, kind: 'bienDongSoDu', dedupeKey: 'bienDong:M1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'loaiKhac', kind: 'billDueSoon', dedupeKey: 'bienDong:M2'));
+
+      expect(await db.notificationDao.datDeeplink(accountId, 'bienDong:M1', '/add?anh=aaaa.jpg'), 1);
+      expect(await db.notificationDao.datDeeplink(accountId, 'bienDong:M2', '/add?anh=aaaa.jpg'), 0);
+
+      final link = {
+        for (final h in [...await db.notificationDao.getAll(accountId), ...await db.notificationDao.getAll(9)])
+          h.id: h.deeplink,
+      };
+      expect(link['bd'], '/add?anh=aaaa.jpg');
+      expect(link['khac'], isNot('/add?anh=aaaa.jpg'), reason: 'tài khoản khác cùng khoá không bị đụng');
+      expect(link['loaiKhac'], isNot('/add?anh=aaaa.jpg'));
+    });
   });
 }
