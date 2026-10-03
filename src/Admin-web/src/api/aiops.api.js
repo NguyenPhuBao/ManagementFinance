@@ -40,6 +40,7 @@ const aiopsApi = {
   calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),
+  setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
 };
 
 export default aiopsApi;

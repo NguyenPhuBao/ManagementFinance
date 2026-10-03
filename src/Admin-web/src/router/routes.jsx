@@ -4,7 +4,6 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import CategoryPage from '../pages/categories/CategoryPage';
 import UserListPage from '../pages/users/UserListPage';
 import UserDetailPage from '../pages/users/UserDetailPage';
-import AICopilotPage from '../pages/ai/AICopilotPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import BroadcastPage from '../pages/system/BroadcastPage';
 import AIOpsPage from '../pages/system/AIOpsPage';
@@ -25,10 +24,6 @@ const routes = [
   {
     path: '/dashboard',
     element: <DashboardPage />,
-  },
-  {
-    path: '/ai-copilot',
-    element: <AICopilotPage />,
   },
   {
     path: '/categories',

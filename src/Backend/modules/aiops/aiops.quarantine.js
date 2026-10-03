@@ -59,6 +59,12 @@ class AIOpsQuarantine {
     const ip = normalizeIp(rawIp);
     if (!ip) return null;
 
+    // Trong môi trường development, không cô lập IP loopback để bảo vệ dàn máy test adb reverse
+    if (process.env.NODE_ENV === 'development' && (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
+      logger.info(`[AIOps Quarantine] Bỏ qua cô lập IP loopback ${ip} trong môi trường development`);
+      return null;
+    }
+
     const duration = durationMs !== null ? durationMs : this.defaultDurationMs;
     const now = Date.now();
     const expiresAt = now + duration;
@@ -116,6 +122,11 @@ class AIOpsQuarantine {
     const ip = normalizeIp(rawIp);
     if (!ip) return { quarantined: false };
 
+    // Miễn trừ loopback khi dev để tránh ảnh hưởng đến các thiết bị test qua adb reverse
+    if (process.env.NODE_ENV === 'development' && (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
+      return { quarantined: false };
+    }
+
     const record = this._map.get(ip);
     if (!record) return { quarantined: false };
 
@@ -151,6 +162,15 @@ class AIOpsQuarantine {
   }
 
   /**
+   * Giải phóng phong tỏa nhanh chóng cho 1 địa chỉ IP
+   */
+  unquarantine(rawIp) {
+    const ip = normalizeIp(rawIp);
+    if (!ip) return false;
+    return this.unblock(ip);
+  }
+
+  /**
    * Lấy danh sách các IP đang bị cô lập (đã mask IP)
    */
   getQuarantinedList() {
@@ -181,17 +201,31 @@ class AIOpsQuarantine {
    */
   createMiddleware() {
     return (req, res, next) => {
-      // Fast-lane: Miễn trừ tuyệt đối 100% cho Admin-web
+      // Fast-lane 1: Miễn trừ tuyệt đối 100% cho Admin-web và các route /api/admin
       if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) {
         return next();
       }
 
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      // Fast-lane 2: Cho phép request POST /api/auth/login đi tiếp nếu đang đăng nhập tài khoản admin hoặc từ Admin-web
+      const isLoginRoute = (req.originalUrl && req.originalUrl.includes('/auth/login')) || 
+                           (req.path && req.path.includes('/auth/login'));
+      const isTryingAdmin = req.body && (
+        req.body.username === 'admin' || 
+        req.body.email === 'admin' ||
+        (typeof req.body.username === 'string' && req.body.username.toLowerCase().includes('admin'))
+      );
+      if (isLoginRoute && (isTryingAdmin || req.isAdminWebClient)) {
+        return next();
+      }
+
+      // Đọc IP an toàn tuân thủ app.set('trust proxy', 1)
+      const clientIp = req.ip || req.socket?.remoteAddress;
       const check = this.isQuarantined(clientIp);
 
       if (check.quarantined) {
         return res.status(403).json({
           success: false,
+          code: 'AIOPS_QUARANTINED',
           error: 'AIOPS_QUARANTINED',
           message: 'Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do hệ thống phát hiện hành vi bất thường hoặc dấu hiệu tấn công an ninh.',
           reason: check.reason,

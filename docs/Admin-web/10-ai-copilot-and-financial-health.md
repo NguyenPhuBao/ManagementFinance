@@ -1,23 +1,25 @@
 # 🤖 Chức Năng 10: Trợ Lý Tài Chính Thông Minh & Điểm Sức Khỏe FHS (AI Copilot & Financial Health Intelligence)
 
 > **Mã chức năng:** `ADMIN-FEAT-10`  
-> **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/ai/AICopilotPage.jsx`, `FinancialHealthCard.jsx`, `ChatMessageBubble.jsx`, `PromptSuggestionChips.jsx`, `src/Admin-web/src/api/chatbot.api.js`  
+> **Trạng thái trên Admin-web:** ⚠️ **ĐÃ LOẠI BỎ KHỎI GIAO DIỆN ADMIN-WEB THEO QUYẾT ĐỊNH CỦA PO**  
+> **Phạm vi bảo lưu:** Giữ nguyên 100% mã nguồn và dịch vụ Backend để phục vụ ứng dụng di động (`src/Client-app`).  
+> **Module liên quan:**  
+> - Frontend: Đã gỡ khỏi `src/Admin-web/src/components/layout/Sidebar.jsx` và `src/Admin-web/src/router/routes.jsx`  
 > - Backend: `src/Backend/modules/ai/features/chatbot/`, `financial.snapshot.service.js`, `rag/hybrid.search.js`, `chatbot.controller.js`  
 
 ---
 
-## 📌 1. TỔNG QUAN & MỤC ĐÍCH NGHIỆP VỤ
+## 📌 1. QUYẾT ĐỊNH CỦA PRODUCT OWNER (PO DIRECTIVE)
 
-Chức năng **Trợ Lý Tài Chính Thông Minh & Đánh Giá Điểm Sức Khỏe FHS (Financial Health Score)** tích hợp mô hình ngôn ngữ lớn (LLM/SLM) kết hợp kỹ thuật **RAG (Retrieval-Augmented Generation)** và **Financial Snapshot Engine** vào giao diện quản trị Admin-web.
-
-Chức năng phục vụ 2 mục đích chiến lược:
-1. **Môi trường Sandbox Quản trị (Admin AI Sandbox):** Cho phép ban quản trị và QA kiểm thử trực tiếp năng lực suy luận, mức độ chính xác của tri thức tài chính và khả năng tư vấn của Chatbot AI trước khi triển khai tới người dùng di động.
-2. **Công Cụ Chẩn Đoán Tài Chính Vĩ Mô (Financial Health Diagnostics):** Tự động bóc tách cơ cấu chi tiêu thực tế của tài khoản theo quy tắc **50/30/20**, tính toán số tháng dự phòng khẩn cấp và chấm điểm sức khỏe tài chính FHS (0 - 100).
+Theo chỉ đạo của PO tại đợt rà soát hệ thống:
+- **Lý do loại bỏ khỏi Admin-web:** Trợ lý AI và Điểm sức khỏe FHS được nghiên cứu và thiết kế nhằm mục đích hỗ trợ người dùng cá nhân quản lý thu chi, thiết lập ngân sách và lập kế hoạch tiết kiệm trên ứng dụng di động di động (Client-app). Tính năng này hoàn toàn không mang lại giá trị vận hành cho ban quản trị trên Admin-web.
+- **Biện pháp thực hiện:**
+  1. Gỡ bỏ tuyến đường `/ai-copilot` và liên kết trên Sidebar của `src/Admin-web`.
+  2. Tuyệt đối **không xóa** mã nguồn tầng Backend (`src/Backend/modules/ai/`) để đảm bảo ứng dụng Mobile Client-app tiếp tục gọi các API phân tích chi tiêu, gợi ý danh mục và hỏi đáp tài chính thông thường.
 
 ---
 
-## ⚙️ 2. CƠ CHẾ HOẠT ĐỘNG CHI TIẾT (END-TO-END FLOW)
+## ⚙️ 2. TỔNG QUAN KIẾN TRÚC KỸ THUẬT (DÀNH CHO CLIENT-APP)
 
 ```mermaid
 sequenceDiagram
@@ -28,7 +30,7 @@ sequenceDiagram
     participant Gateway as Express AI Router (/api/ai/chatbot/*)
     participant Snapshot as Financial Snapshot Service
     participant RAG as Hybrid Knowledge Search (Vector + BM25)
-    participant LLM as Google Gemini / Local SLM Engine
+    participant LLM as Google Gemini 3.8 Flash (GEMINI_MODEL)
 
     Admin->>UI: Mở trang AI Copilot
     UI->>API: Gọi GET /api/ai/chatbot/snapshot

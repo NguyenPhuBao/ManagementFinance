@@ -81,6 +81,8 @@ async function bootstrap() {
           requestsPerMin: lastSample.requestsPerMin || 0,
           threatScore: aiopsStatus.threatScore ?? 5,
           threatStatus: aiopsStatus.status || 'NORMAL',
+          vectorScores: aiopsStatus.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+          targetConcurrency: aiopsStatus.targetConcurrency || 1000,
           activeQuarantines: aiopsStatus.quarantinedCount || 0,
           maintenance: defaultMaintenanceManager.getStatus(),
           dbPool: defaultDbBulkhead.getStats(),

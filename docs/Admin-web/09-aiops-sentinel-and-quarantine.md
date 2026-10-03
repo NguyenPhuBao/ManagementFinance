@@ -16,87 +16,113 @@
 
 ---
 
-## ⚙️ 2. KIẾN TRÚC & CƠ CHẾ HOẠT ĐỘNG 3 TẦNG (3-TIER ARCHITECTURE)
+## ⚙️ 2. KIẾN TRÚC & CƠ CHẾ HOẠT ĐỘNG 4 VECTƠ ĐỘC LẬP (MULTI-VECTOR RISK ARCHITECTURE)
+
+Hệ thống bãi bỏ hoàn toàn cơ chế tính điểm gộp đơn nhất (Monolithic Additive) dễ gây báo động giả khi mở rộng quy mô. Thay vào đó, Sentinel phân tách rủi ro thành **4 vectơ hoàn toàn độc lập**, mỗi vectơ có thang đo $[0, 100]$ điểm và biện pháp phòng vệ cá nhân hóa riêng biệt:
 
 ```mermaid
 graph TD
-    subgraph "Tầng 1: Thu Thập & Chuẩn Hóa Chỉ Số (Feature Collector - 10s Window)"
-        F1[Requests/min & Error Rates 4xx/5xx]
-        F2[Failed Logins & Token Reuse & Malformed Probes]
-        F3[CPU %, RAM %, Event Loop Lag, DB Pool Active]
-        F4[Zero PII: Băm SHA-256 IP thành 16 ký tự _hashIp]
+    subgraph "Tầng 1: Thu Thập & Chuẩn Hóa Theo Cửa Sổ (Feature Collector)"
+        F1[Tín hiệu Xác thực: Failed Logins, Revoked Token Reuses]
+        F2[Tín hiệu Lưu lượng: Current RPM, IP Entropy, 4xx Rate]
+        F3[Tín hiệu Xâm nhập: SQLi, Path Traversal, XSS payloads]
+        F4[Tín hiệu Hạ tầng: Event Loop Lag, CPU %, RAM %, 5xx Rate]
     end
 
-    subgraph "Tầng 2: Học Máy & Phát Hiện Bất Thường (Hybrid Anomaly Detector)"
-        D1[Tier 1: Dynamic Hourly Baseline - EWMA alpha=0.15 theo 24h VN]
-        D2[Tier 2: Multivariate Threat Scorer - Tính Threat Score 0-100]
-        D3[Anti-Poisoning Guard: Chỉ cập nhật Baseline khi Threat < 70]
-        D4[Phân loại thông minh: DoS Flood vs. Lưu lượng tự nhiên Organic Peak]
+    subgraph "Tầng 2: 4 Vectơ Rủi Ro Độc Lập (Multi-Vector Scorer)"
+        V1["Vectơ 1: Xác Thực & Danh Tính (S_auth)"]
+        V2["Vectơ 2: Lưu Lượng & DoS/DDoS (S_traffic)"]
+        V3["Vectơ 3: Khai Thác Lỗ Hổng (S_exploit)"]
+        V4["Vectơ 4: Sức Khỏe Tài Nguyên (S_resource)"]
+        
+        V1 ---|Phòng vệ| A1["Chỉ cô lập IP Brute-Force (/auth/login) - KHÔNG chặn user khác"]
+        V2 ---|Phòng vệ| A2["Phân biệt Đỉnh hữu cơ vs DDoS - Áp dụng Adaptive Rate-Limit"]
+        V3 ---|Phòng vệ| A3["Cắt kết nối HTTP 403 tức thì với IP mang injection payload"]
+        V4 ---|Phòng vệ| A4["Kích hoạt Load Shedding - Chỉ bảo trì khi sập dây chuyền"]
     end
 
-    subgraph "Tầng 3: Tường Lửa Tự Động & Điều Phối (Quarantine & Dispatcher)"
-        Q1[Auto-Quarantine: Chặn IP 15-30 phút trong In-Memory Map O1]
-        Q2[Express Pipeline Middleware: Ngắt kết nối trả về HTTP 403]
-        Q3[Fast-Lane: Admin req.isAdmin=true MIỄN TRỪ TUYỆT ĐỐI]
-        Q4[Socket Hub: emit admin.security_alert & admin.security_blocked]
+    subgraph "Tầng 3: Tổng Hợp & Đánh Giá Tương Quan (Corroborated Composite Scorer)"
+        C1["rawMax = max(S_auth, S_traffic, S_exploit, S_resource)"]
+        C2["corroborationBonus = (highVectorsCount - 1) * 8 nếu >= 2 vectơ >= 60"]
+        C3["Threat Score = min(100, max(5, rawMax + corroborationBonus))"]
     end
 
-    subgraph "Giao Diện Điều Hành AIOps (src/Admin-web)"
-        UI1[Đồng hồ Threat Score bán nguyệt SVG]
-        UI2[Biểu đồ SVG 60 mẫu lịch sử 10 phút]
-        UI3[Bảng Bóc Tách Nguyên Nhân Gốc Rễ Root Cause]
-        UI4[Bảng Nguồn Bị Cô Lập & Nút Gỡ Chặn Unblock]
-        UI5[Banner Báo Động Đỏ Toàn Cục AppLayout khi Threat >= 85]
+    subgraph "Tầng 4: Bộ Điều Khiển Quy Mô Dung Lượng (Target Concurrency Scaler)"
+        SC["Admin tùy chỉnh N = 1,000 - 2,000 CCU"]
+        SC -->|"Baseline RPM = N * 10"| V2
+        SC -->|"Ngưỡng cách ly IP = 20 + 50*log10(N)"| V2
     end
 
-    F1 & F2 & F3 --> F4 --> D1 --> D2
-    D2 --> D3
-    D2 --> D4
-    
-    D2 -- "Threat >= 70" --> Q4
-    D2 -- "Vi phạm ngưỡng" --> Q1
-    Q1 --> Q2
-    Q1 --> Q4
-    
-    Q4 --> UI1 & UI2 & UI3 & UI4 & UI5
+    F1 --> V1
+    F2 --> V2
+    F3 --> V3
+    F4 --> V4
+
+    V1 & V2 & V3 & V4 --> C1 --> C2 --> C3
 ```
 
 ---
 
-## 📐 3. CÁC CÔNG THỨC TOÁN HỌC & MÔ HÌNH MÁY HỌC
+## 📐 3. CÁC CÔNG THỨC TOÁN HỌC & MÔ HÌNH CHỊU TẢI DUNG LƯỢNG
 
-### 3.1. Thuật toán Học Đường Chuẩn Động (EWMA Baseline)
-Đường chuẩn hệ thống cho từng khung giờ $h \in [0, 23]$ múi giờ `Asia/Ho_Chi_Minh` được cập nhật liên tục bằng giải thuật Trung Bình Động Làm Mượt Lũy Thừa (Exponentially Weighted Moving Average - EWMA) với hệ số suy giảm $\alpha = 0.15$:
+### 3.1. Khảo Sát & Ước Tính Request Theo Chức Năng (Request Profiling)
+Khảo sát chi tiết số lượng HTTP Request phát sinh khi Admin hoặc Client thực hiện từng chức năng cốt lõi:
 
-$$B_t(h) = \alpha \cdot X_t + (1 - \alpha) \cdot B_{t-1}(h)$$
-
-- $X_t$: Giá trị đo lường thực tế tại chu kỳ hiện tại (Request/phút, RAM %, CPU %, Lag ms).
-- $B_{t-1}(h)$: Giá trị đường chuẩn cũ của khung giờ $h$.
-- $\alpha = 0.15$: Trọng số tối ưu giúp mô hình thích nghi với xu hướng dài hạn nhưng không bị nhiễu bởi các biến động tức thời.
-
-### 3.2. Công thức Đánh Giá Điểm Nguy Cơ Tổng Hợp (Multivariate Threat Scorer)
-Threat Score là chỉ số rủi ro chuẩn hóa trong thang điểm từ **0 đến 100**:
-
-$$\text{Threat Score} = \min\left(100, \sum_{i=1}^{m} W_i \cdot A_i\right)$$
-
-Trong đó $W_i$ là trọng số rủi ro và $A_i$ là mức độ vi phạm của các tín hiệu an ninh:
-
-| Tín hiệu an ninh / Bất thường | Điều kiện kích hoạt vi phạm | Trọng số ($W_i$) | Mã bất thường (`code`) |
+| Nhóm chức năng | Hành động cụ thể | Số request phát sinh | Chi tiết endpoints |
 |---|---|:---:|---|
-| **Dò mật khẩu (Brute-Force)** | $\ge 5$ lần đăng nhập thất bại / 10s | **+40 điểm** | `AUTH_BRUTE_FORCE` |
-| **Chiếm đoạt Token (Token Hijacking)** | $\ge 1$ lần dùng lại Refresh Token đã thu hồi | **+65 điểm** | `TOKEN_HIJACKING_ATTACK` |
-| **Rà quét mã độc / SQLi / Path Traversal** | $\ge 3$ request chứa payload độc hại / 10s | **+35 điểm** | `MALICIOUS_REQUEST_PROBES` |
-| **Tấn công DoS Request Burst** | $> 120$ request từ 1 IP / 10s | **+50 điểm** | `DDOS_ATTACK_FLOOD` |
-| **Nghẽn Event Loop Lag** | $\text{Lag} \ge 120\text{ms}$ | **+30 điểm** | `SYSTEM_EVENT_LOOP_FREEZE` |
-| **Cạn kiệt bộ nhớ RAM** | $\text{RAM} \ge 90\%$ | **+25 điểm** | `MEMORY_LEAK_EXHAUSTION` |
+| **Xác thực (Auth)** | Đăng nhập tài khoản | **3 reqs** | `POST /auth/login` $\to$ `GET /users/profile` $\to$ `GET /categories` |
+| **Bảng điều khiển (Dashboard)** | Khởi động & tải trang chủ | **4 reqs** | `GET /wallets` $\to$ `GET /transactions/summary` $\to$ `GET /budgets` $\to$ `GET /audit_log/summary` |
+| **Giao dịch (Transactions)** | Thêm 1 giao dịch mới | **2 reqs** | `POST /transactions` $\to$ `GET /wallets/balance` (cập nhật số dư) |
+| **Báo cáo (Reports)** | Xuất báo cáo thu chi tháng | **3 reqs** | `GET /reports/cashflow` $\to$ `GET /reports/category-breakdown` $\to$ `GET /reports/trends` |
+| **Đồng bộ ngầm (Background Sync)** | Mobile app duy trì kết nối | **~2 req/phút** | Heartbeat token check & thông báo đẩy |
 
-### 3.3. Phân Biệt Đột Biến Tự Nhiên (Organic Peak) vs. Tấn Công Từ Chối Dịch Vụ (DDoS)
-Khi lượng request tăng vọt gấp 3 lần đường chuẩn, thuật toán phân loại thông minh kích hoạt:
-- **Nếu:** Tỷ lệ lỗi 4xx/5xx vẫn thấp ($< 5\%$), số lượng địa chỉ IP duy nhất phân tán rộng rãi, và không có payload độc hại $\implies$ Nhận diện là **Lưu Lượng Tự Nhiên Hợp Pháp (Organic Peak)** $\implies$ Threat Score được ghim ở mức an toàn ($< 50$).
-- **Nếu:** Tỷ lệ lỗi 4xx cao ($> 40\%$), tập trung từ một nhóm nhỏ IP lặp đi lặp lại $\implies$ Nhận diện là **Tấn Công DDoS Flood** $\implies$ Threat Score vọt lên $\ge 85$ và kích hoạt tường lửa cách ly.
+Trung bình một người dùng hoạt động tích cực (Active User) tạo ra khoảng **10 requests/phút** ($\mu \approx 0.15\text{ req/s}$).
 
-### 3.4. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (Anti-Poisoning Guard)
-Để ngăn chặn kẻ tấn công cố tình gửi lưu lượng xấu kéo dài nhằm "huấn luyện" mô hình máy học coi hành vi xấu là bình thường:
+### 3.2. Mô Hình Chịu Tải & Công Thức Tính Quy Mô (Capacity Scaling Model)
+Từ khảo sát trên, hệ thống xây dựng mô hình suy diễn tự động cho số lượng người dùng đồng thời $N \in [100, 50000]$:
+
+1. **Baseline RPM kỳ vọng:**
+   $$\text{Baseline RPM}(N) = N \times 10\text{ req/phút}$$
+   - Với $N = 1,000$ người dùng đồng thời $\implies \text{Baseline RPM} = 10,000\text{ req/phút}$.
+   - Với $N = 2,000$ người dùng đồng thời $\implies \text{Baseline RPM} = 20,000\text{ req/phút}$.
+
+2. **Trần Đỉnh An Toàn (Safe Peak Ceiling $3\times$):**
+   $$\text{Safe Peak RPM}(N) = 3 \times \text{Baseline RPM}(N)$$
+   Lưu lượng hợp pháp có thể dao động tự nhiên lên tới $3\times$ baseline trong các đợt cao điểm mà **không bao giờ bị hệ thống coi là tấn công DoS**.
+
+3. **Ngưỡng Cách Ly IP Tự Động Thích Ứng (Dynamic IP Quarantine Threshold):**
+   Thay vì cố định cứng 120 req/10s, ngưỡng cách ly 1 địa chỉ IP được điều chỉnh thích ứng theo quy mô:
+   $$\text{Quarantine Burst Limit}(N) = \max\left(150, \text{round}\left(20 + 50 \cdot \log_{10}(N)\right)\right)\text{ req/10s}$$
+   - $N = 1,000 \implies 20 + 50 \times 3 = 170\text{ req/10s}$.
+   - $N = 2,000 \implies 20 + 50 \times 3.301 = 185\text{ req/10s}$.
+
+### 3.3. Công Thức Đo Lường Cá Nhân Hóa Từng Vectơ Rủi Ro
+Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm $[0, 100]$:
+
+1. **Vectơ 1: Xác Thực & Danh Tính ($S_{\text{auth}}$)**:
+   $$S_{\text{auth}} = \min(100, (\text{failedLogins} \times 8) + (\text{tokenReuseAttacks} \times 25))$$
+   - 1 lần đăng nhập sai chỉ chiếm $8$ điểm (không thể gây báo động hay khóa admin).
+   - Chỉ khi đăng nhập sai $\ge 5$ lần/10s hoặc có tái dùng token đã thu hồi, $S_{\text{auth}}$ mới chạm ngưỡng cảnh báo.
+
+2. **Vectơ 2: Lưu Lượng & DoS ($S_{\text{traffic}}$)**:
+   $$S_{\text{traffic}} = \min(100, \text{rpmThreat} \times (1 - \text{entropyFactor}))$$
+   - Khi RPM tăng vọt nhưng độ phân tán IP cao ($\text{distinctIps} \ge 10$) $\implies$ $\text{entropyFactor} \to 0.8 \implies$ $S_{\text{traffic}}$ được dìm xuống dưới $25$ điểm (Lưu lượng tự nhiên).
+   - Khi RPM tăng vọt mà chỉ có $1-2$ IP $\implies$ $\text{entropyFactor} \to 0 \implies$ $S_{\text{traffic}}$ vọt lên $80-100$ điểm (DDoS tập trung).
+
+3. **Vectơ 3: Khai Thác Lỗ Hổng & Thăm Dò ($S_{\text{exploit}}$)**:
+   $$S_{\text{exploit}} = \min(100, \text{malformedRequests} \times 30)$$
+   - Phát hiện các mẫu SQL Injection (`' OR 1=1`), Path Traversal (`../etc/passwd`), XSS probe.
+
+4. **Vectơ 4: Sức Khỏe Tài Nguyên Hệ Thống ($S_{\text{resource}}$)**:
+   $$S_{\text{resource}} = \min(100, \text{lagFactor} + \text{ramFactor} + \text{cpuFactor} + \text{err5xxFactor})$$
+   - Phản ánh độ trễ Event Loop ($> 100\text{ms}$), RAM ($> 90\%$), CPU ($> 85\%$) và mã lỗi HTTP 5xx ($> 5\%$).
+
+### 3.4. Công Thức Tổng Hợp Tương Quan (Corroborated Composite Threat Score)
+$$S_{\text{composite}} = \min\left(100, \max\left(5, \max(S_{\text{auth}}, S_{\text{traffic}}, S_{\text{exploit}}, S_{\text{resource}}) + \text{Bonus}_{\text{corroboration}}\right)\right)$$
+Trong đó $\text{Bonus}_{\text{corroboration}} = (\text{Số lượng vectơ} \ge 60 - 1) \times 8$.  
+Hệ thống **không cộng dồn ngẫu nhiên**, chỉ bổ sung điểm tương quan khi phát hiện nhiều vectơ độc lập cùng bị công kích đồng thời.
+
+### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (Anti-Poisoning Guard)
 ```javascript
 // Chỉ cập nhật baseline khi Threat Score < 70 (Hệ thống đang trong trạng thái an toàn)
 if (threatScore < 70) {
@@ -126,6 +152,7 @@ Khi một IP đã bị phong tỏa gửi request lên server:
 HTTP/1.1 403 Forbidden
 {
   "success": false,
+  "code": "AIOPS_QUARANTINED",
   "error": "AIOPS_QUARANTINED",
   "message": "Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do hệ thống phát hiện hành vi bất thường hoặc dấu hiệu tấn công an ninh.",
   "reason": "Tấn công DoS quá ngưỡng request",
@@ -134,9 +161,14 @@ HTTP/1.1 403 Forbidden
 ```
 Request bị ngắt lập tức trước khi chạm vào router nghiệp vụ hoặc database, giải phóng tài nguyên CPU và RAM tức thì.
 
-### 4.3. Miễn Trừ Quản Trị Tuyệt Đối (Admin Fast-Lane Exemption)
-Nếu quản trị viên đang thao tác trên cùng mạng IP với kẻ tấn công:
-- Nhờ middleware gắn cờ `req.isAdmin = true`, kết nối của Admin **tuyệt đối 100% không bị phong tỏa**, đảm bảo quản trị viên luôn vào được hệ thống để xử lý sự cố.
+### 4.3. Miễn Trừ Quản Trị Tuyệt Đối & Tự Động Giải Cứu (Admin Fast-Lane & Auto-Unquarantine)
+Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 tầng thông suốt:
+1. **Nhận diện Kênh Admin-web:** Toàn bộ request từ Admin-web được gắn header `x-client-platform: admin-web` cùng bộ lọc Origin/Referer, được middleware `adminPriority` cấp quyền `req.isAdmin = true` và `req.isAdminWebClient = true`.
+2. **Mở Cửa Ngõ Đăng Nhập:** Request `POST /api/auth/login` với tài khoản `admin` hoặc từ Admin-web không bị chặn đứng bởi phong tỏa, cho phép đi tiếp vào controller để so khớp mật khẩu bcrypt an toàn.
+3. **Cơ Chế Tự Động Giải Cứu (Auto-Unquarantine Upon Admin Login):** Khi đăng nhập thành công với vai trò Quản trị viên, hệ thống **tự động xóa IP đó khỏi danh sách phong tỏa ngay tức thì** (`defaultAIOpsQuarantine.unquarantine(clientIp)`).
+4. **Miễn Trừ Môi Trường Phát Triển (Dev Loopback Exemption):** Khi `NODE_ENV === 'development'`, các địa chỉ loopback (`127.0.0.1`, `::1`, `localhost`) được miễn trừ hoàn toàn khỏi lệnh cô lập, đảm bảo các thiết bị thử nghiệm thật kết nối qua `adb reverse` hoặc máy ảo không bao giờ bị khóa chùm.
+5. **Khai Thác IP Chuẩn Xác Tuân Thủ `trust proxy`:** Tuyệt đối không đọc thô phần tử đầu của `X-Forwarded-For` (vốn cho phép client giả mạo IP); hệ thống sử dụng chuẩn `req.ip || req.socket?.remoteAddress` đảm bảo tôn trọng `app.set('trust proxy', 1)`.
+6. **Phân Định Token Expired vs Token Reuse:** Hết hạn phiên làm việc thông thường chỉ trả về `401 Unauthorized` để client đăng nhập lại, tuyệt đối KHÔNG phong tỏa IP. Chỉ khi kẻ gian cố tình tái sử dụng Refresh Token đã bị thu hồi (`req.tokenReuseDetected === true`) mới kích hoạt cảnh báo Token Hijacking.
 
 ---
 
@@ -150,23 +182,30 @@ Nếu quản trị viên đang thao tác trên cùng mạng IP với kẻ tấn 
 
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (`AIOpsPage.jsx`)
 
-1. **Đồng Hồ Bán Nguyệt Đo Rủi Ro (Threat Score Gauge SVG):**
-   - Thiết kế bán nguyệt bán kính $R=85$, góc quét $180^\circ$. Kim đo xoay mượt mà:
-     $$\theta = -90^\circ + \left(\frac{\text{Threat Score}}{100}\right) \times 180^\circ$$
-   - 3 vùng màu: Xanh (0-69 Bình thường), Vàng (70-84 Cảnh báo), Đỏ (85-100 Nguy cấp).
-2. **Biểu Đồ Xu Hướng Rủi Ro 60 Mẫu Gần Nhất (Threat Timeline SVG):**
-   - Trực quan hóa 60 mẫu trượt gần nhất (10 phút) kèm 2 đường ngưỡng ranh giới (70 và 85).
-3. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis):**
+1. **Bộ Điều Khiển Quy Mô Người Dùng Mục Tiêu (Target Concurrency Scaler):**
+   - Cho phép Admin thiết lập hoặc chọn nhanh quy mô tải người dùng đồng thời ($N = 500$, $1,000$, $2,000$, $5,000$ CCU hoặc tùy biến).
+   - Tự động hiển thị và tính toán: Baseline RPM ($N \times 10$), Trần đỉnh an toàn ($3\times$), và Ngưỡng cách ly IP cá nhân ($20 + 50 \cdot \log_{10}(N)$).
+   - Cập nhật trực tiếp xuống lõi máy chủ qua API `POST /api/admin/aiops/scale` trong thời gian thực.
+2. **Ma Trận 4 Vectơ Rủi Ro Độc Lập (Multi-Vector Risk Matrix):**
+   - 4 thẻ trực quan với thước đo Progress Bar $[0, 100]$ điểm và huy hiệu màu tương ứng (Xanh, Vàng, Cam, Đỏ).
+   - Hiển thị chi tiết từng chỉ số đóng góp và **Hành vi phòng vệ cá nhân hóa độc lập** cho từng nhóm rủi ro (Auth, Traffic, Exploit, Resource).
+3. **Đồng Hồ Bán Nguyệt Đo Rủi Ro Tổng Hợp (Composite Threat Score Gauge SVG):**
+   - Thiết kế bán nguyệt bán kính $R=85$, quét từ $0$ đến $100$.
+   - 4 phân vùng màu chuẩn xác: Xanh ($0-59$ Bình thường), Vàng ($60-79$ Tăng cao), Cam ($80-89$ Cảnh báo), Đỏ ($90-100$ Nguy cấp).
+   - Công thức hiển thị: $\text{Threat Score} = \max(\text{Vectơ}) + \text{Bonus kết hợp}$.
+4. **Biểu Đồ Xu Hướng Rủi Ro 60 Mẫu Gần Nhất (Threat Timeline SVG):**
+   - Trực quan hóa 60 mẫu trượt gần nhất (10 phút) kèm 2 đường ngưỡng ranh giới (80 và 90).
+5. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis):**
    - Phân tích chi tiết chỉ số đo được, giá trị đường chuẩn Baseline và giải thích tiếng Việt rõ ràng.
-4. **Bảng Nguồn Request Đang Bị Cô Lập (Active Quarantine Blacklist):**
+6. **Bảng Nguồn Request Đang Bị Cô Lập (Active Quarantine Blacklist):**
    - Hiển thị danh sách IP bị phong tỏa (đã mask `a.b.xx.xx`), nguyên nhân, thời gian bị chặn, số lần vi phạm (Hits).
    - Nút **"Gỡ Chặn (Unblock)"** cho phép Admin mở khóa thủ công cho IP bất kỳ chỉ với 1 click.
-5. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp:**
-   - Kích hoạt nhanh chế độ bảo trì khẩn cấp ngay trên màn hình AIOps khi phát hiện mối đe dọa vượt tầm kiểm soát.
-6. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
+7. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp:**
+   - Kích hoạt nhanh chế độ bảo trì khẩn cấp ngay trên màn hình AIOps khi phát hiện mối đe dọa vượt tầm kiểm soát ($\ge 80$).
+8. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
    - Cho phép đặt lại đường chuẩn khi doanh nghiệp mở đợt khuyến mãi lớn.
-7. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
-   - Khi Threat Score $\ge 85$, dải banner đỏ nhấp nháy Animation Pulse sẽ xuất hiện trên đỉnh tất cả các trang của Admin-web.
+9. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
+   - Khi Threat Score $\ge 90$, dải banner đỏ nhấp nháy Animation Pulse sẽ xuất hiện trên đỉnh tất cả các trang của Admin-web.
 
 ---
 
@@ -174,8 +213,9 @@ Nếu quản trị viên đang thao tác trên cùng mạng IP với kẻ tấn 
 
 - **Đến Backend:**
   - Bộ nhớ In-Memory Ring Buffer chỉ lưu 60 mẫu gần nhất $\implies$ chiếm dụng $< 2\text{MB}$ RAM, thời gian tính toán Threat Score chỉ mất $< 0.2\text{ms}$.
+  - Điều chỉnh trần dung lượng động, không cần khởi động lại máy chủ.
 - **Đến Mobile App (Client-app):**
-  - Người dùng bình thường không nhận thấy bất kỳ sự khác biệt nào.
+  - Người dùng bình thường không nhận thấy bất kỳ sự khác biệt nào ngay cả trong giờ cao điểm 1,000 - 2,000 người dùng.
   - Thiết bị nào cố tình gửi request spam hoặc can thiệp token sẽ nhận thông báo bị phong tỏa kèm thời gian đếm ngược còn lại để mở khóa.
 
 ---
@@ -185,14 +225,15 @@ Nếu quản trị viên đang thao tác trên cùng mạng IP với kẻ tấn 
 ### REST API Endpoints
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
-| `GET` | `/api/admin/aiops/status` | Lấy Threat Score, trạng thái an ninh và phân tích bất thường | Admin |
+| `GET` | `/api/admin/aiops/status` | Lấy Threat Score, 4 điểm vectơ, trạng thái và phân tích | Admin |
 | `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử phục vụ vẽ biểu đồ SVG | Admin |
 | `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP đang bị phong tỏa | Admin |
 | `DELETE` | `/api/admin/aiops/quarantine/:hash` | Gỡ chặn và mở khóa kết nối thủ công cho IP | Admin |
+| `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin |
 | `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin |
 
 ### Socket.io Events
 - **Phát tán tới Admin-web (`admin_room`):**
-  - `admin.security_alert`: Báo động khi Threat Score $\ge 70$.
+  - `admin.security_alert`: Báo động khi Threat Score $\ge 80$.
   - `admin.security_blocked`: Thông báo real-time ngay khi có 1 IP bị tường lửa phong tỏa.
-  - `admin.metrics_stream`: Stream thông số nhịp tim và threat score mỗi 3 giây.
+  - `admin.metrics_stream`: Stream thông số nhịp tim, Threat Score, 4 điểm vectơ và quy mô CCU mỗi 3 giây.

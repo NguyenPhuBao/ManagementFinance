@@ -40,7 +40,7 @@ class PIIMasker {
           ? rawSnapshot.topExpenseCategories.map(cat => ({
               category: this.maskPII(cat.category || cat.name || ''),
               percentage: Math.round(cat.percentage || 0),
-              trendVsLastMonth: cat.trendVsLastMonth || '0%',
+              trendVsLastMonth: cat.trendVsLastMonth !== undefined ? cat.trendVsLastMonth : null,
             }))
           : [],
         overBudgetAlerts: Array.isArray(rawSnapshot.overBudgetAlerts)

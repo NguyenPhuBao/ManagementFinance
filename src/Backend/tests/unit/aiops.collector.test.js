@@ -118,4 +118,50 @@ test('AIOps Feature Collector Suite', async (t) => {
     assert.ok(!internalHashes[0].includes('113.161'), 'Raw IP must not be stored in memory');
     assert.strictEqual(internalHashes[0].length, 16, 'Should store truncated safe hash');
   });
+
+  await t.test('6. Normal expired refresh token (401 without req.tokenReuseDetected) does NOT record token reuse or quarantine IP', () => {
+    const collector = new FeatureCollector({ windowSeconds: 10 });
+    const mw = collector.createMiddleware();
+
+    const normalIp = '42.112.50.88';
+    const req = {
+      ip: normalIp,
+      headers: {},
+      method: 'POST',
+      path: '/api/auth/refresh',
+      originalUrl: '/api/auth/refresh',
+      // Không có cờ tokenReuseDetected
+    };
+    const res = new EventEmitter();
+    res.statusCode = 401;
+
+    mw(req, res, () => {});
+    res.emit('finish');
+
+    const sample = collector.getSample();
+    assert.strictEqual(sample.tokenReuseAttacks, 0, 'Normal expired session must NOT increment tokenReuseAttacks');
+  });
+
+  await t.test('7. Malicious token reuse (401 with req.tokenReuseDetected = true) records attack', () => {
+    const collector = new FeatureCollector({ windowSeconds: 10 });
+    const mw = collector.createMiddleware();
+
+    const attackerIp = '198.51.100.22';
+    const req = {
+      ip: attackerIp,
+      headers: {},
+      method: 'POST',
+      path: '/api/auth/refresh',
+      originalUrl: '/api/auth/refresh',
+      tokenReuseDetected: true, // Được auth.service đánh dấu khi dùng lại token đã revoke
+    };
+    const res = new EventEmitter();
+    res.statusCode = 401;
+
+    mw(req, res, () => {});
+    res.emit('finish');
+
+    const sample = collector.getSample();
+    assert.strictEqual(sample.tokenReuseAttacks, 1, 'Reused revoked token must be recorded as tokenReuseAttack');
+  });
 });

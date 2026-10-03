@@ -19,6 +19,9 @@ test('AIOps Service Suite', async (t) => {
 
   await t.test('2. tick() collects sample, evaluates, and stores in history ring buffer', async () => {
     const collector = new FeatureCollector();
+    // Đảm bảo kiểm thử độc lập không phụ thuộc tải phần cứng thực tế của OS
+    collector._getRamPercent = () => 50;
+    collector._getCpuPercent = () => 10;
     const detector = new AnomalyDetector();
     const service = new AIOpsService({ collector, detector, maxHistory: 3 });
 

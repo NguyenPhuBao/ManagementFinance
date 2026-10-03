@@ -10,7 +10,7 @@
 ## 1. TỔNG QUAN & PHÂN ĐỊNH TRÁCH NHIỆM
 
 Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh hoạt:
-1. **Trợ lý AI Trên Máy (On-Device SLM - Đã có sẵn):** Chạy mô hình Gemma 4 E2B cục bộ qua LiteRT-LM + 7 tool chỉ đọc trên SQLite v24 (`lib/features/ai_chat/`). Hoạt động **100% Offline khi không có mạng**.
+1. **Trợ lý AI Trên Máy (On-Device SLM - Đã có sẵn):** Chạy mô hình Gemma 4 E2B cục bộ qua LiteRT-LM + 9 tool chỉ đọc trên SQLite v27 (`lib/features/ai_chat/`). Hoạt động **100% Offline khi không có mạng**.
 2. **Trợ lý Tài chính Trực Tuyến (Cloud AI Copilot - Đợt này):** Kết nối lên Backend (`POST /api/ai/chatbot/chat/stream`), sử dụng mô hình Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường `GEMINI_MODEL` tại Backend) có khả năng suy luận mở, RAG tri thức luật thuế/quy tắc 50/30/20 và Tấm khiên riêng tư (Privacy Shield). Hoạt động **khi có kết nối mạng Internet**.
 
 ---

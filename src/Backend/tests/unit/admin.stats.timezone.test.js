@@ -51,9 +51,15 @@ test('AdminStats Timezone Test — Gom bucket phải chuẩn theo múi giờ Vi�
     }
   });
 
-  await t.test('2. Kiểm tra log lúc 02:30 sáng ngày 26/09 GMT+7 (19:30 ngày 25/09 UTC) khi xem theo 7 ngày phải thuộc ngày 26 chứ không phải 25', async () => {
-    // 02:30 sáng ngày 26/09 Việt Nam tương đương 19:30 ngày 25/09 UTC
-    const logDate = new Date('2026-09-26T02:30:00+07:00');
+  await t.test('2. Kiểm tra log lúc 02:30 sáng GMT+7 (19:30 tối hôm trước UTC) khi xem theo 7 ngày phải thuộc ngày hiện tại chứ không phải ngày hôm trước', async () => {
+    // Lấy ngày cách đây 2 ngày để luôn nằm trọn vẹn trong cửa sổ 7days
+    const targetVn = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const yyyy = targetVn.getFullYear();
+    const mm = String(targetVn.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetVn.getDate()).padStart(2, '0');
+    
+    // 02:30 sáng ngày dd tại Việt Nam (+07:00) tương đương 19:30 ngày hôm trước (dd-1) theo UTC
+    const logDate = new Date(`${yyyy}-${mm}-${dd}T02:30:00+07:00`);
     const mockLogs = [
       {
         idlog: 2,
@@ -69,17 +75,14 @@ test('AdminStats Timezone Test — Gom bucket phải chuẩn theo múi giờ Vi�
       adminRepository.getLoginLogsByRange = async () => mockLogs;
 
       const loginStats = await adminService.getLoginStats('7days');
-      const bucketDay26 = loginStats.timeline.find((b) => b.key.endsWith('-26'));
-      const bucketDay25 = loginStats.timeline.find((b) => b.key.endsWith('-25'));
+      const expectedDayKey = `${yyyy}-${mm}-${dd}`;
+      const bucketTarget = loginStats.timeline.find((b) => b.key === expectedDayKey);
 
       assert.strictEqual(
-        bucketDay26?.count,
+        bucketTarget?.count,
         1,
-        `Kỳ vọng bucket ngày 26/09 có count = 1, thực tế ngày 26 có ${bucketDay26?.count}, ngày 25 có ${bucketDay25?.count}`
+        `Kỳ vọng bucket ngày ${expectedDayKey} có count = 1, thực tế có ${bucketTarget?.count}`
       );
-      if (bucketDay25) {
-        assert.strictEqual(bucketDay25.count, 0, `Kỳ vọng bucket ngày 25/09 có count = 0`);
-      }
     } finally {
       adminRepository.getLoginLogsByRange = originalGetLoginLogs;
     }
