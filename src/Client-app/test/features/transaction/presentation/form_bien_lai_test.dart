@@ -195,6 +195,22 @@ void main() {
     expect(find.text('Từ biên lai MB Bank · 02/10 18:45'), findsOneWidget);
   });
 
+  testWidgets('⭐ nút ✕ đọc được cả trên biên lai NỀN SÁNG: tương phản ✕ trắng / nền nút (đặt lên ảnh trắng) ≥ 3:1',
+      (tester) async {
+    // Nghiệm thu Realme 2026-10-03: ✕ trắng không nền gần như chìm khi ảnh xám nhạt (biên lai MB nền xanh đậm thì
+    // rõ — nên lượt đo đầu không thấy). Nút nằm ĐÈ góc trên của ảnh, nên trường hợp tệ nhất là ảnh trắng sau nút.
+    await mo(tester, bienLai());
+    await tester.tap(anhNho);
+    await tester.pumpAndSettle();
+    final nut = tester.widget<IconButton>(
+        find.ancestor(of: find.byTooltip('Đóng'), matching: find.byType(IconButton)));
+    final nen = nut.style?.backgroundColor?.resolve(<WidgetState>{}) ?? Colors.transparent;
+    final tren = Color.alphaBlend(nen, Colors.white);
+    final tuongPhan = (Colors.white.computeLuminance() + 0.05) / (tren.computeLuminance() + 0.05);
+    expect(tuongPhan, greaterThanOrEqualTo(3.0),
+        reason: 'WCAG 1.4.11 (thành phần không phải chữ) đòi 3:1; ✕ không nền trên ảnh trắng là 1:1 — vô hình');
+  });
+
   testWidgets('⭐ Bỏ qua → hàng bị xoá VÀ tệp ảnh bị xoá, không tạo giao dịch', (tester) async {
     await mo(tester, bienLai());
     await tester.tap(find.text('Bỏ qua'));

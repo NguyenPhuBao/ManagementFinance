@@ -31,6 +31,9 @@ Future<void> xemAnhBienLai(BuildContext context, String duongDan) => showDialog<
                 right: 4,
                 child: IconButton(
                   tooltip: 'Đóng',
+                  // Nền tròn tối: nút nằm ĐÈ góc ảnh, và ✕ trắng không nền chìm hẳn trên biên lai nền sáng (nghiệm thu
+                  // Realme 2026-10-03; biên lai MB nền xanh đậm thì vẫn rõ nên lượt đo đầu không thấy).
+                  style: IconButton.styleFrom(backgroundColor: Colors.black54),
                   icon: const Icon(Icons.close, color: Colors.white),
                   onPressed: () => Navigator.of(ctx).pop(),
                 ),
