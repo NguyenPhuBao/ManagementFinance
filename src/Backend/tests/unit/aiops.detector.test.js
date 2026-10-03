@@ -248,4 +248,54 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
     assert.strictEqual(evalResult.status, 'NORMAL', '15,000 RPM for 2000 users must stay NORMAL');
     assert.ok(evalResult.threatScore < 50, `Threat score should stay low: ${evalResult.threatScore}`);
   });
+
+  await t.test('9. Per-Vector Defense: Personalizes defense actions per vector without triggering broad EMERGENCY_MAINTENANCE', () => {
+    const detector = new AnomalyDetector({ targetConcurrency: 1000 });
+
+    // Attack on Auth only (Brute-Force)
+    const authAttackSample = {
+      timestamp: new Date().toISOString(),
+      requestsPerMin: 100,
+      errorRate4xx: 0.1,
+      errorRate5xx: 0,
+      failedLogins: 20,
+      tokenReuseAttacks: 0,
+      malformedRequests: 0,
+      eventLoopLagMs: 5,
+      cpuPercent: 15,
+      ramPercent: 40,
+      dbPoolActive: 2,
+      loadSheddingCount: 0,
+      distinctIpsCount: 1,
+    };
+
+    const authResult = detector.evaluate(authAttackSample);
+    assert.ok(authResult.vectorDefenses, 'Must return vectorDefenses');
+    assert.strictEqual(authResult.vectorDefenses.auth.defenseAction, 'QUARANTINE_IP');
+    assert.strictEqual(authResult.vectorDefenses.resource.defenseAction, 'MONITOR');
+    // Critical: Auth attack must NEVER recommend emergency maintenance for entire platform
+    assert.notStrictEqual(authResult.recommendedAction, 'EMERGENCY_MAINTENANCE');
+    assert.strictEqual(authResult.recommendedAction, 'ACTIVE_QUARANTINE_ENGAGED');
+
+    // Attack on Exploit only (SQL Injection probes)
+    const exploitSample = {
+      timestamp: new Date().toISOString(),
+      requestsPerMin: 100,
+      errorRate4xx: 0.1,
+      errorRate5xx: 0,
+      failedLogins: 0,
+      tokenReuseAttacks: 0,
+      malformedRequests: 8,
+      eventLoopLagMs: 5,
+      cpuPercent: 15,
+      ramPercent: 40,
+      dbPoolActive: 2,
+      loadSheddingCount: 0,
+      distinctIpsCount: 1,
+    };
+
+    const exploitResult = detector.evaluate(exploitSample);
+    assert.strictEqual(exploitResult.vectorDefenses.exploit.defenseAction, 'BLOCK_INJECTION_IP');
+    assert.notStrictEqual(exploitResult.recommendedAction, 'EMERGENCY_MAINTENANCE');
+  });
 });

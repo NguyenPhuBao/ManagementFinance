@@ -69,6 +69,7 @@ class AIOpsService {
       threatScore: evaluation.threatScore,
       status: evaluation.status,
       vectorScores: evaluation.vectorScores,
+      vectorDefenses: evaluation.vectorDefenses,
       targetConcurrency: evaluation.targetConcurrency,
       isAnomaly: evaluation.isAnomaly,
       anomalies: evaluation.anomalies,
@@ -83,6 +84,7 @@ class AIOpsService {
       threatScore: evaluation.threatScore,
       status: evaluation.status,
       vectorScores: evaluation.vectorScores,
+      vectorDefenses: evaluation.vectorDefenses,
       isAnomaly: evaluation.isAnomaly,
       anomalies: evaluation.anomalies,
       requestsPerMin: sample.requestsPerMin,
@@ -116,6 +118,8 @@ class AIOpsService {
     const alertPayload = {
       threatScore: evaluation.threatScore,
       status: evaluation.status,
+      vectorScores: evaluation.vectorScores,
+      vectorDefenses: evaluation.vectorDefenses,
       anomalies: evaluation.anomalies,
       recommendedAction: evaluation.recommendedAction,
       sample,
@@ -135,9 +139,9 @@ class AIOpsService {
       action: evaluation.recommendedAction,
     });
 
-    // Nếu mức độ CRITICAL (threatScore >= 85) và cách lần gửi trước tối thiểu 5 phút
+    // Chỉ gửi thông báo khẩn cấp (Email tới Admin) khi có nguy cơ sập hạ tầng (EMERGENCY_MAINTENANCE) và cách tối thiểu 5 phút
     const now = Date.now();
-    if (evaluation.threatScore >= 85 && now - this._lastAlertTime > 5 * 60 * 1000) {
+    if (evaluation.recommendedAction === 'EMERGENCY_MAINTENANCE' && now - this._lastAlertTime > 5 * 60 * 1000) {
       this._lastAlertTime = now;
       this._sendEmergencyNotification(evaluation);
     }
