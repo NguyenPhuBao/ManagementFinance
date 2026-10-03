@@ -20,6 +20,7 @@ import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 void main() {
   mainTongKetTuan();
   mainBienDong();
+  mainNhacSauNganHang();
   group('mặc định', () {
     test('bật hết mọi nhóm và bật cả thông báo hệ điều hành', () {
       const p = NotificationPrefs.macDinh;
@@ -660,6 +661,43 @@ void mainBienDong() {
           isTrue);
       expect(NotificationPrefs.macDinh.chapNhan(NotificationKind.bienDongSoDu),
           isFalse);
+    });
+  });
+}
+
+/// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03) — hai cờ, cùng khuôn `docBienDong` / `dongYBienDong`.
+void mainNhacSauNganHang() {
+  group('nhắc ghi sau khi dùng app ngân hàng — hai cờ', () {
+    test('⭐ mặc định TẮT và CHƯA đồng ý, kể cả bản ghi cũ không có khoá', () {
+      expect(NotificationPrefs.macDinh.nhacSauNganHang, isFalse);
+      expect(NotificationPrefs.macDinh.dongYNhacSauNganHang, isFalse);
+      final cu = NotificationPrefs.fromJson({'osBat': true, 'docBienDong': true});
+      expect((cu.nhacSauNganHang, cu.dongYNhacSauNganHang), (false, false),
+          reason: 'đọc thành BẬT là tự đọc dữ liệu sử dụng mà người dùng chưa từng đồng ý');
+    });
+
+    test('đi một vòng JSON và copyWith; tắt KHÔNG xoá lần đồng ý', () {
+      const p = NotificationPrefs(nhacSauNganHang: true, dongYNhacSauNganHang: true);
+      final lai = NotificationPrefs.fromJson(p.toJson());
+      expect((lai.nhacSauNganHang, lai.dongYNhacSauNganHang), (true, true));
+      final tat = p.copyWith(nhacSauNganHang: false);
+      expect((tat.nhacSauNganHang, tat.dongYNhacSauNganHang), (false, true));
+      expect(p.copyWith(gioNhac: 9).nhacSauNganHang, isTrue);
+    });
+
+    test('hai bản chỉ khác một cờ thì KHÔNG bằng nhau (== và hashCode)', () {
+      for (final (a, b) in [
+        (const NotificationPrefs(nhacSauNganHang: true), const NotificationPrefs()),
+        (const NotificationPrefs(dongYNhacSauNganHang: true), const NotificationPrefs()),
+      ]) {
+        expect(a == b, isFalse, reason: 'trang Cài đặt bỏ qua một lần ghi vì "không đổi gì"');
+        expect(a.hashCode == b.hashCode, isFalse);
+      }
+    });
+
+    test('không đụng nhóm bienDong: batNhom(bienDong) vẫn chỉ đọc docBienDong', () {
+      const p = NotificationPrefs(nhacSauNganHang: true);
+      expect(p.batNhom(NotificationGroup.bienDong), isFalse);
     });
   });
 }

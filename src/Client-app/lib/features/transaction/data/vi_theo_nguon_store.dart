@@ -12,11 +12,26 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 String _cap(String nguon, String? duoi) => '$nguon|${duoi ?? ''}';
 
+/// Ví của cả NGUỒN (xem [ViTheoNguonStore.docTheoNguon]) — một phép cho hai bản cài đặt.
+String? _viTheoNguon(Map<String, String> bang, String nguon) {
+  final rieng = bang[_cap(nguon, null)];
+  if (rieng != null) return rieng;
+  final ds = {
+    for (final e in bang.entries)
+      if (e.key.startsWith('$nguon|')) e.value,
+  };
+  return ds.length == 1 ? ds.single : null;
+}
+
 abstract class ViTheoNguonStore {
   /// `null` = chưa biết.
   Future<String?> doc(int idaccount, String nguon, String? duoi);
 
   Future<void> ghi(int idaccount, String nguon, String? duoi, String walletId);
+
+  /// Ví của cả NGUỒN, không kèm đuôi — dòng nhắc sau khi dùng app ngân hàng (2026-10-03) không có số tài khoản. Cặp
+  /// `<nguồn>|` (đuôi trống) đã nhớ → ví ấy; không có thì mọi cặp `<nguồn>|*` trỏ về MỘT ví → ví ấy; còn lại `null`.
+  Future<String?> docTheoNguon(int idaccount, String nguon);
 }
 
 class SecureStorageViTheoNguonStore implements ViTheoNguonStore {
@@ -46,6 +61,9 @@ class SecureStorageViTheoNguonStore implements ViTheoNguonStore {
       (await _bang(idaccount))[_cap(nguon, duoi)];
 
   @override
+  Future<String?> docTheoNguon(int idaccount, String nguon) async => _viTheoNguon(await _bang(idaccount), nguon);
+
+  @override
   Future<void> ghi(int idaccount, String nguon, String? duoi, String walletId) async {
     try {
       final bang = await _bang(idaccount)
@@ -62,6 +80,10 @@ class InMemoryViTheoNguonStore implements ViTheoNguonStore {
 
   @override
   Future<String?> doc(int idaccount, String nguon, String? duoi) async => values[idaccount]?[_cap(nguon, duoi)];
+
+  @override
+  Future<String?> docTheoNguon(int idaccount, String nguon) async =>
+      _viTheoNguon(values[idaccount] ?? const {}, nguon);
 
   @override
   Future<void> ghi(int idaccount, String nguon, String? duoi, String walletId) async =>

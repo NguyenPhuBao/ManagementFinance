@@ -81,6 +81,7 @@ import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
 import '../notification/kenh_phien_ngan_hang.dart';
 import '../notification/kho_bien_lai.dart';
+import '../notification/moc_phien_store.dart';
 import '../notification/nhap_bien_dong.dart';
 import '../notification/nhap_bien_lai.dart';
 import '../notification/nhat_ky_thong_bao.dart';
@@ -361,6 +362,10 @@ Future<void> setupDependencies() async {
   // cục bộ theo tài khoản, cùng khuôn kho tuỳ chọn thông báo.
   sl.registerLazySingleton<ViTheoNguonStore>(
     () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
+  );
+  // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): mốc "đã xét đến" theo tài khoản.
+  sl.registerLazySingleton<MocPhienStore>(
+    () => const SecureStorageMocPhienStore(FlutterSecureStorage()),
   );
 
   // Đề xuất giờ nhắc / tắt nhóm bị lờ (B5b) — đọc nhật ký B5a, chỉ đề xuất.
