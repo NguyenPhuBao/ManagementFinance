@@ -1,5 +1,9 @@
 # Đọc biến động số dư trên máy (D1) — tài liệu bàn giao
 
+> **Cập nhật 2026-10-03:** thêm **nhắc ghi sau khi dùng app ngân hàng** (mục **8**) — quyền *Truy cập dữ liệu sử dụng*,
+> dòng *"Chưa thấy giao dịch nào"* trong danh sách *Biến động* + thông báo im lặng; xong 10 task, nghiệm thu Realme debug
+> + release. Thẻ Sổ giao dịch đổi chữ thành **"Có N mục chờ ghi"**.
+
 > **Cập nhật 2026-10-02:** thêm đường **chia sẻ biên lai** (mục **7**) — bù cho lúc app ngân hàng không đăng thông báo
 > biến động. Mã xong, nghiệm thu Realme với biên lai MB Bank thật; còn bản release, đăng xuất, MoMo / ZaloPay.
 
@@ -22,7 +26,8 @@ Luồng người dùng:
 1. *Cá nhân → Cài đặt thông báo → Tự động hoá giao dịch → Biến động số dư*. Bật lần đầu → **màn xin đồng ý**
    (Stitch `bed4d292…`) → *Đồng ý và mở Cài đặt* → cấp quyền *Truy cập thông báo* trong Cài đặt hệ thống.
 2. Tin ngân hàng tới → thông báo tóm tắt *"Có N biến động số dư mới — chạm để ghi"* (**không số tiền**).
-3. Chạm tóm tắt, hoặc thẻ *"Có N biến động chưa ghi"* ở Sổ giao dịch → trung tâm thông báo lọc sẵn nhóm *Biến động*.
+3. Chạm tóm tắt, hoặc thẻ *"Có N mục chờ ghi"* ở Sổ giao dịch (chữ cũ *"…biến động chưa ghi"* tới 2026-10-03, mục 8)
+   → trung tâm thông báo lọc sẵn nhóm *Biến động*.
 4. Chạm một dòng → form Thêm giao dịch điền sẵn (Stitch `52d9d2ef…`) → **Lưu** hoặc **Bỏ qua**. Cả hai xoá dòng ấy.
 
 ## 2. Kiến trúc
@@ -169,12 +174,8 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    biên lai MB Bank thật (2026-10-02); Task 11 xong 2026-10-03** (debug + release trên Realme, mục **7.7**; còn mở:
    mẫu riêng MoMo / ZaloPay khi có biên lai thật); chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản
    ngay trong app ngân hàng thì có lần app ấy không đăng thông báo biến động. Cùng lượt người dùng chọn thêm **nhắc ghi
-   sau khi rời app ngân hàng** — spec `docs/superpowers/specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt
-   2026-10-03**, kế hoạch 10 task (gitignore) cùng tên ở `plans/`; **đang thi công** — Task 1–8 xong 2026-10-03 (hàm
-   thuần · tầng Kotlin + kênh + worker · đo Realme: nhắc 4–7 phút sau khi rời app, worker sống qua vuốt Recents →
-   người dùng giữ **cả hai** đường nền · Stitch xác nhận · cờ, mốc, ví theo nguồn · lượt nhập thành dòng loại 20 ·
-   form *"Dùng MB Bank · …"* + thẻ *"Có N mục chờ ghi"* · màn đồng ý + công tắc ở Cài đặt); còn Task 9 (nghiệm thu
-   máy thật) và 10 (tài liệu này + đơn CAN-LAM). Đo Doze (tắt màn, rút cáp) để sau.
+   sau khi rời app ngân hàng** — ✅ **xong 2026-10-03** (10 task, nghiệm thu Realme debug + release), mục **8**. Còn
+   mở: đo chuyển thật **có** tin (không được nhắc) và Doze (tắt màn, rút cáp).
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).
 
 ## 7. Chia sẻ biên lai (2026-10-02)
@@ -201,7 +202,7 @@ không cho đọc màn hình app khác; quyền Trợ năng (đọc cả số d�
 1. Màn *"Giao dịch thành công"* → *Chia sẻ* → **"Ghi vào FlowMoney"**.
 2. Vẫn ở app ngân hàng (người dùng chốt — để còn chuyển tiếp). Toast *"FlowMoney đã nhận biên lai"* + tóm tắt không số
    của D1, N đếm cả tin ngân hàng lẫn biên lai đang chờ.
-3. Mở FlowMoney → chữ trên ảnh được đọc → dòng loại 20 trong trung tâm thông báo / thẻ *"Có N biến động chưa ghi"*.
+3. Mở FlowMoney → chữ trên ảnh được đọc → dòng loại 20 trong trung tâm thông báo / thẻ *"Có N mục chờ ghi"*.
 4. Chạm dòng → form điền sẵn, dải nguồn có **ảnh nhỏ** (chạm để xem to) → **Lưu** / **Bỏ qua** → hàng và ảnh bị xoá.
 
 Không cần công tắc *Đọc biến động số dư*, không qua màn xin đồng ý: mỗi ảnh là người dùng tự chia sẻ.
@@ -375,3 +376,152 @@ chia sẻ qua Thư viện `com.oneplus.gallery`. **Không** thử đăng xuất 
 xung đột · 10 lỗi**. Mười lỗi **có từ trước, không do tính năng này**: hai ví trên Realme trùng tên với ví đã có trên
 server (`Unique constraint (Idaccount, Name)` → `WALLET_NAME_DUPLICATE`), kéo theo giao dịch trong hai ví ấy vỡ
 `fk_transaction_wallet`, và một lần trả hoá đơn bị `chanTraHaiLan` chặn — chính là *"10 failed"* ghi từ 28/09.
+
+## 8. Nhắc ghi sau khi dùng app ngân hàng (2026-10-03)
+
+> **Trạng thái:** ✅ **xong trọn kế hoạch 10 task** (`77b0ff8` → `5cfb429` + bốn bản sửa lúc nghiệm thu), **nghiệm thu
+> Realme RMX2205** bản debug và bản release (mục 8.7). ⏳ **Chưa đo:** chuyển tiền thật **có** tin biến động → không
+> được nhắc (lần chuyển thật trong buổi MB không bắn tin — đo được ca ngược), và chạy nền lúc **Doze** (tắt màn, rút
+> cáp — người dùng tự đo). Spec `docs/superpowers/specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md`; kế hoạch
+> (gitignore) cùng tên ở `plans/` — nhật ký thi công cuối tệp. Stitch: màn đồng ý mới + ba màn sửa, người dùng xác
+> nhận bằng mắt (API trễ hơn giao diện > 2 giờ, chưa lấy được id màn mới). Thông báo cho backend:
+> `docs/superpowers/backend/CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md`.
+
+### 8.1. Vì sao
+
+D1 chỉ đọc thông báo đã hiện; chia sẻ biên lai (mục 7) chỉ cứu được khoản người dùng **nhớ** chia sẻ. Đo Realme
+02/10: sáu lần chuyển MB, một lần không có tin; MoMo / ZaloPay không bắn tin khi chuyển đi. Bản này nhắc **khi người
+dùng quên**. Tín hiệu hợp lệ duy nhất là quyền **Truy cập dữ liệu sử dụng** (`PACKAGE_USAGE_STATS`,
+`UsageStatsManager.queryEvents`): giờ một app lên / rời màn hình — không đọc màn hình, không đọc nội dung. Đo
+`dumpsys usagestats`: MB Bank là app Flutter một màn, và **thời lượng phiên không tách được "xem số dư" với "chuyển
+tiền"** (phiên 95 s không chuyển dài hơn mọi phiên có chuyển) → nhắc oan là chuyện thường, nên lời nhắc **im lặng** và
+bỏ được bằng **một chạm**.
+
+### 8.2. Luồng
+
+1. *Cá nhân → Cài đặt thông báo → Tự động hoá giao dịch*: khối **"Nhắc ghi sau khi dùng app ngân hàng"** dưới *Biến
+   động số dư*, mặc định TẮT, dùng được khi D1 tắt. Bật lần đầu → **màn đồng ý** (thanh tiêu đề *"Nhắc ghi giao
+   dịch"*) → *Đồng ý và mở Cài đặt* → trang *Truy cập dữ liệu sử dụng* (máy đã có quyền thì bỏ bước này). Dòng trạng
+   thái *"Đã cấp quyền — đang theo dõi 3 app"* / *"Chưa cấp quyền truy cập dữ liệu sử dụng · Mở Cài đặt"*.
+2. Dùng MB Bank / MoMo / ZaloPay (danh sách của D1) **≥ 20 giây** mà quanh phiên không có tin, biên lai hay giao dịch
+   → khi FlowMoney chưa được mở lại: thông báo **im lặng** *"Vừa dùng MB Bank — có giao dịch cần ghi?"* (nhiều app thì
+   gộp *"MB Bank, MoMo"*), nút **Không có giao dịch**.
+3. Mở FlowMoney (bất kỳ đường nào) → dòng *"MB Bank · 18:44 – 18:45 — Chưa thấy giao dịch nào, chạm để ghi"* trong
+   danh sách *Biến động*; thẻ Sổ giao dịch nay là **"Có N mục chờ ghi"**; thông báo nhắc tự gỡ.
+4. Chạm dòng → form: dải *"Dùng MB Bank · 03/10 18:44"*, số tiền **trống** (16 phím hiện), ngày giờ = **lúc mở app
+   ngân hàng**, ví theo nguồn (chưa biết thì trống) → **Lưu** (nhớ ví cho nguồn) / **Bỏ qua** / vuốt — dòng xoá cứng.
+
+### 8.3. Kiến trúc
+
+```
+Cài đặt (Dart) ─ bật/tắt ─► NotificationPrefs.nhacSauNganHang (+ dongYNhacSauNganHang)       [TÀI KHOẢN]
+                            MocPhienStore.daXetDen                                             [TÀI KHOẢN]
+                            MocPhienStore.danhDauDangXuat (cờ "vừa đăng xuất")                 [MÁY]
+NotificationScanner.start / resumed → _nhapBienDong:
+  NhapBienDong → NhapBienLai → NhapPhienNganHang.nhap(idaccount)                                ← thứ tự bắt buộc
+     cờ "vừa đăng xuất" ? → daXetDen = bây giờ (lượt nhập đầu sau đăng xuất = lần đăng nhập kế)
+     cờ tài khoản tắt → datBat(false) · thiếu quyền → daXetDen = bây giờ
+     → suKien(tu) → phienTuSuKien → phienCanXet → phienCanNhac(hàng loại 20, giao dịch, ví theo nguồn)
+     → insertAllIfAbsent hàng loại 20 (khoá bienDong:phien|…) → daXetDen → datBat(true) → huyNhac()
+NotificationScanner.stop → dongKhiDangXuat: daXetDen = bây giờ, cờ "vừa đăng xuất", datBat(false)
+
+Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager 15 phút) ← BienDongListenerService
+  (sau khi ghi hàng chờ D1; giãn ≥ 60 s) → queryEvents → dựng phiên (khớp tay §4.2 spec) → bỏ phiên có tin / biên lai
+  trong hàng chờ, bỏ phiên nếu FlowMoney đã lên sau batDau → thông báo im lặng id 20261003
+  NhacGhiReceiver ("Không có giao dịch") → boDen = daBaoDen, gỡ thông báo
+```
+
+| Tệp | Vai |
+|---|---|
+| `lib/core/notification/phien_ngan_hang.dart` | hằng (khớp tay với Kotlin), `SuKienSuDung`, `phienTuSuKien`, `phienCanXet`, `mocSauKhiXet`, `phienCanNhac`, khoá / deeplink / tiêu đề — Dart thuần |
+| `lib/core/notification/kenh_phien_ngan_hang.dart` | kênh `flowmoney/phien_ngan_hang` + bản trống (web / test) |
+| `lib/core/notification/moc_phien_store.dart` | `daXetDen` theo tài khoản (`nhac_phien:<id>`) + cờ máy `nhac_phien_dang_xuat` |
+| `lib/core/notification/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
+| `lib/core/notification/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
+| `lib/features/transaction/…` | `DienSanBienDong.phien`, `dongNguonBienDong`, `ViTheoNguonStore.docTheoNguon`, chữ thẻ |
+| `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · khối ở `notification_settings_page.dart` |
+| `android/…/PhienNganHang.kt` · `NhacGhiWorker.kt` · `NhacGhiReceiver.kt` | đọc sử dụng, dựng phiên, thông báo, lịch · worker · nút |
+| `android/…/BienDongListenerService.kt` · `MainActivity.kt` · `AndroidManifest.xml` · `build.gradle.kts` | móc kiểm · kênh · quyền + receiver · `work-runtime-ktx:2.11.0` |
+
+### 8.4. Quyết định (kèm lý do)
+
+- **Cả hai: dòng trong app (luôn có) + thông báo ở nền (lớp thêm).** Thông báo **im lặng, gộp một**, không số tiền,
+  không giờ; nút *Không có giao dịch* — vì nhắc oan là chuyện thường (8.1).
+- **Danh sách app = danh sách D1** (`kNguonTheoGoi` ↔ `DANH_SACH_TRANG`), không màn tự chọn app; **công tắc riêng**,
+  mặc định TẮT, màn đồng ý bắt buộc (cùng khuôn D1 backend yêu cầu); lần đồng ý được nhớ khi tắt.
+- **Giữ CẢ HAI đường nền** (người dùng chốt sau đo Task 3, mục 8.6): WorkManager 15 phút + `kiem` ăn theo dịch vụ nghe
+  thông báo của D1. Phép đo Doze chỉ để ghi tài liệu.
+- **Kotlin phát hiện + bắn thông báo; Dart quyết định dòng nào được tạo.** Luật dựng phiên viết hai lần, hằng khớp tay
+  có test đọc tệp Kotlin; lượt nhập Dart luôn gỡ thông báo nên hai bên lệch thì thông báo cũng không đứng lâu.
+- **Ngưỡng:** gộp phiên 3 phút · trên màn ≥ 20 s · tin / biên lai trong [mở − 2 phút, rời + 10 phút] · giao dịch trong
+  [mở − 2 phút, rời + 30 phút] · lùi tối đa 7 ngày.
+- **Bằng chứng giao dịch = MỌI giao dịch sống** (soát với mã, sửa spec cùng ngày): `laGhiChuMay` đi qua
+  `khoanVaoThongKe` nên loại cả **chuyển khoản** người dùng tự ghi — đúng thứ hay đi sau một phiên ngân hàng. Biết ví
+  của nguồn thì chỉ tính giao dịch ở ví ấy.
+- **Mốc theo tài khoản**, `boDen` (nút *Không có giao dịch*) theo máy. **Đăng xuất đặt mốc = giờ đăng xuất VÀ ghi cờ
+  máy "vừa đăng xuất"** — cờ thêm sau nghiệm thu (`8deeeb5`): chỉ mốc thì phiên giữa đăng xuất và lần đăng nhập kế vẫn
+  thành dòng, kể cả cho **tài khoản khác** đăng nhập sau.
+- **Thẻ Sổ giao dịch đổi chữ "Có N mục chờ ghi"** — dòng nhắc chưa chắc đã có giao dịch.
+- **Chỉ Android 10+** (`ACTIVITY_RESUMED` / `ACTIVITY_PAUSED`); máy cũ coi như không có quyền.
+- **Thanh tiêu đề màn đồng ý *"Nhắc ghi giao dịch"*** (`4818bcf`, người dùng chọn): tên đầy đủ cụt ở 360 dp; tên đầy
+  đủ vẫn là tiêu đề khối ở Cài đặt.
+
+### 8.5. Bẫy
+
+- ⚠️ **Thứ tự nhập bắt buộc: `NhapBienDong` → `NhapBienLai` → `NhapPhienNganHang`** — tin và biên lai đang chờ phải
+  thành hàng trước khi xét bằng chứng; ngược lại là nhắc oan. Ca canh ở `notification_scanner_test`.
+- ⚠️ **Cờ máy gắn MÁY, công tắc gắn TÀI KHOẢN** (bẫy 3 của D1): lượt nhập ghi lại cờ máy theo người đang đăng nhập ở
+  **mọi** lượt — vì thế cài bản mới lên máy đang mang cờ đo thì lượt đầu tự tắt nhắc.
+- ⚠️ **Sự kiện dùng app là của MÁY** — mọi mốc theo tài khoản phải chặn được phiên lúc không ai đăng nhập (`8deeeb5`).
+- ⚠️ **Hằng Dart ↔ Kotlin khớp tay**; `phien_ngan_hang_noi_day_test` đọc tệp Kotlin để so.
+- ⚠️ **Không dùng `laGhiChuMay` làm bằng chứng** — nó loại chuyển khoản tự ghi (8.4).
+- ⚠️ **Hàng gợi ý pin** của D1 và của khối này cùng điều kiện — D1 đã hiện thì khối này không lặp.
+- ⚠️ **WorkManager chạy lượt ĐẦU ngay lúc `enqueueUniquePeriodicWork`**, không đợi 15 phút.
+- ⚠️ **Cắm cáp USB = đang sạc → Android không vào Doze** — đo tắt màn phải rút cáp.
+- ⚠️ `appops set … GET_USAGE_STATS` bị ColorOS từ chối — người dùng tự bật ở `USAGE_ACCESS_SETTINGS -d package:…`.
+- ⚠️ Log `NhacGhi` (chỉ bản debug, chỉ số đếm): `su_kien` đếm cả sự kiện của chính FlowMoney — `su_kien=3 phien=0` là
+  *chưa có MB*.
+- ⚠️ ColorOS thu gọn thông báo im lặng: nút *Không có giao dịch* chỉ hiện khi **vuốt mở rộng**; `uiautomator dump`
+  **không thấy** nó trong khay — nghiệm thu nhờ người dùng bấm (đừng chụp khay — lẫn thông báo app khác).
+- ⚠️ Widget test dựng `GoRouter` riêng cho form phải khai `/add/category` (hàng *Danh mục* `push` trang chọn).
+- ⚠️ **Lỗi chung lộ ra ở lượt này, không riêng tính năng:** `SnackBar` có `action` không tự ẩn ở Flutter 3.47 (đặt
+  `persist: false` — `c18e095`); *Đăng xuất* ở drawer không làm gì (`c2d6985`, mục 14 `PROJECT_CONTEXT.md`).
+- ⚠️ Quan sát mở: một lần (1/6, bản release, chạm thật từ khay) dải chip **không tự cuộn** tới *Biến động* — lọc vẫn
+  đúng; `am start` lúc nền ×3, khởi động nguội ×2 đều cuộn đúng.
+
+### 8.6. Đo chạy nền — Realme RMX2205, 2026-10-03
+
+Task 3 (bản đo `SPIKE_NHAC`, FlowMoney ở nền / đã vuốt Recents):
+
+| Lần | Phiên MB | Nhắc | Đường | Trễ sau khi rời MB |
+|---|---|---|---|---|
+| 1 | 14:14:00–14:14:53 (53 s) | 14:21:10 | D1 | 6 phút 17 giây |
+| 2 | 14:26:19–14:27:03 (44 s) | 14:33:59 | D1 | 6 phút 56 giây |
+| 3 | 15:08:09–15:08:34 (6 + 19 s gộp = 25 s) | 15:13:30 | worker | 4 phút 56 giây |
+| 4 | 15:27:43–15:27:58 (**15 s**) | không nhắc ✅ (dưới 20 s) | — | — |
+| 5 | 15:33:22–15:34:08 (46 s, đã vuốt Recents) | 15:38:09 | D1 | 4 phút 1 giây |
+
+Task 9 (bản đủ tính năng): 18:33:04 → 18:40:03 (D1, 6 phút 59 giây) · 19:24:28 → 19:30:36 (worker, 6 phút 8 giây) ·
+bản release 20:45:20 → ~20:58 (~13 phút; release không log nên không biết đường nào). Worker đúng 15 phút, kể cả lúc rút
+cáp và sau khi vuốt Recents (ColorOS chỉ gỡ task, tiến trình sống). Doze: **chưa đo**.
+
+### 8.7. Nghiệm thu máy thật — Realme RMX2205, 2026-10-03 (Task 9)
+
+Bản debug (`127.0.0.1` tạm) rồi release `6029c7fc…`; tài khoản 10; phiên ngân hàng tạo bằng `adb shell monkey -p <gói>`
+(để yên ~26 s ở màn đầu, không chạm, không chụp app ngân hàng — người dùng chọn), riêng dòng 8 là chuyển tiền thật.
+
+| # | Phép thử | Kết quả |
+|---|---|---|
+| 1 | Bật lần đầu → màn đồng ý; *Không, cảm ơn* | ✅ công tắc tắt, cờ máy tắt. Tiêu đề thanh cụt ở 360 dp → `4818bcf` |
+| 2 | Đồng ý → quyền | ✅ máy đã có quyền: không mở Cài đặt thừa, *"Đã cấp quyền — đang theo dõi 3 app"*; thiếu quyền: *Mở Cài đặt* → đúng trang của FlowMoney → bật → Back → dòng đổi ngay |
+| 3 | MB 27 s, không chuyển, không mở FlowMoney | ✅ thông báo im lặng sau 6 phút 59 giây (`importance=2`, kênh `flowmoney_nhac_ghi`, không âm / rung) |
+| 4 | *Không có giao dịch* → mở app | ✅ thông báo mất, không dòng |
+| 5 | MB + MoMo + ZaloPay liền nhau → chạm thông báo | ✅ thông báo gộp 2 nguồn (ZaloPay chưa đủ 3 phút) → danh sách có **3** dòng |
+| 6 | Chạm dòng → form | ✅ số tiền trống, 16 phím, dải *"Dùng MB Bank · 03/10 18:44"*, ngày = lúc mở MB, ví trống (chưa biết) |
+| 7 | Lưu / Bỏ qua / vuốt | ✅ Lưu → giao dịch đúng 18:44 (khoản thử, đã xoá); Bỏ qua, vuốt → dòng mất. Dải *"Đã xoá thông báo"* đứng yên > 7 phút → `c18e095`, đo lại tự ẩn |
+| 8 | Chuyển tiền thật **có** tin | ⏳ chưa đo — lần chuyển thật MB không bắn tin → **có** nhắc (6 phút 8 giây), form **tự điền Ví MB Bank** (nhớ từ lần Lưu ở dòng 7) — đúng ca tính năng sinh ra để bắt |
+| 9 | Mở MB rồi ghi tay ngay vào Ví MB Bank | ✅ không thông báo, không dòng |
+| 10 | Rút quyền | ✅ không thông báo, không dòng; dòng *"Chưa cấp quyền truy cập dữ liệu sử dụng · Mở Cài đặt"* |
+| 11 | Đăng xuất → dùng MB → đăng nhập lại | ❌→✅ không thông báo lúc đã đăng xuất, nhưng đăng nhập lại ra dòng cho phiên ấy → `8deeeb5`, đo lại đạt. *Đăng xuất* ở drawer không làm gì → `c2d6985`, đo lại đạt |
+| 12 | 360 dp | ✅ 0 pixel vàng thuần `#FFFF00` trên 32 ảnh (Cài đặt, màn đồng ý, danh sách, form, Sổ giao dịch); đối chứng dương 100/100 |
+| 13 | Bản release một vòng | ✅ thông báo → chạm → dòng → form (ví tự điền) → Bỏ qua |

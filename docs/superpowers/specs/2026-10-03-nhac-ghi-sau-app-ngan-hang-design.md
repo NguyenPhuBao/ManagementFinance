@@ -2,7 +2,23 @@
 
 **Ngày:** 2026-10-03. **Trạng thái:** thiết kế duyệt trong chat (mười lượt AskUserQuestion — năm câu hỏi rồi duyệt
 từng phần 1–5); bản viết người dùng **duyệt** cùng ngày (*"Ok duyệt"*). Kế hoạch:
-`docs/superpowers/plans/2026-10-03-nhac-ghi-sau-app-ngan-hang.md` (gitignore). Chưa có mã.
+`docs/superpowers/plans/2026-10-03-nhac-ghi-sau-app-ngan-hang.md` (gitignore). ✅ **Xong 2026-10-03** — 10 task
+(`77b0ff8` → `5cfb429` + bốn bản sửa lúc nghiệm thu), nghiệm thu Realme debug + release; tài liệu bàn giao: mục **8**
+`docs/BIEN_DONG_SO_DU_FEATURE.md`.
+
+> **Chỗ bản thi công KHÁC bản viết (2026-10-03):**
+> 1. **Bằng chứng giao dịch = mọi giao dịch sống** — đã sửa ở §4.3 lúc viết kế hoạch (`laGhiChuMay` loại cả chuyển
+>    khoản tự ghi).
+> 2. **Đường nền:** §2 dòng 5 nói *"đường nào không chạy thì bỏ"* — đo Task 3 cả hai đều chạy, người dùng chốt **giữ
+>    cả hai**; Doze chưa đo.
+> 3. **Đăng xuất (§2 dòng 9, §4.4):** chỉ đặt mốc = giờ đăng xuất là **chưa đủ** — nghiệm thu bắt được phiên giữa đăng
+>    xuất và lần đăng nhập kế thành dòng nhắc (kể cả cho tài khoản khác). Nay thêm cờ theo **máy**
+>    (`MocPhienStore.danhDauDangXuat`, khoá `nhac_phien_dang_xuat`): lượt nhập đầu sau đăng xuất đặt mốc = lúc đăng
+>    nhập (`8deeeb5`).
+> 4. **Thanh tiêu đề màn đồng ý** là *"Nhắc ghi giao dịch"*, không phải tên đầy đủ (§3.1, §8): tên đầy đủ cụt ở 360 dp
+>    (`4818bcf`, người dùng chọn). Khối ở Cài đặt vẫn mang tên đầy đủ.
+> 5. **Màn đồng ý dùng chung khung `ManDongY`** với D1 (§5.3 không ghi); dòng trạng thái thiếu quyền là *"Chưa cấp
+>    quyền truy cập dữ liệu sử dụng · Mở Cài đặt"* (§3.1 viết gọn *"Chưa cấp quyền — Mở Cài đặt"*).
 
 Việc sau D1 số 3b (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6), bản thiết kế thứ hai của cùng lượt với *chia sẻ biên lai*
 (spec `2026-10-02-chia-se-bien-lai-design.md` mục 11). Hai việc bù cho nhau: biên lai cứu giao dịch **khi người dùng

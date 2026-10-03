@@ -890,8 +890,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - ✅ **D1 — đọc biến động số dư trên máy, XONG + nghiệm thu máy thật 2026-09-30** (`1d7ca56` → `02f995f`; tài liệu
   bàn giao **`docs/BIEN_DONG_SO_DU_FEATURE.md`**; spec `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md` có banner
   lệch-thiết-kế; kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md`, gitignore). Kotlin `BienDongListenerService`
-  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N biến động chưa
-  ghi"* ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
+  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N mục chờ ghi"*
+  (chữ cũ *"…biến động chưa ghi"* tới 2026-10-03) ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
   **xoá cứng** hàng (ngoại lệ mục 4.3 `NOTIFICATION_FEATURE.md`). Màn xin đồng ý bắt buộc (Stitch `bed4d292…`) liệt kê
   **nguồn đang đọc** (người dùng chốt, không bảy nguồn Stitch vẽ): danh sách trắng đo trên máy **MB Bank · MoMo ·
   ZaloPay**. ⭐ Chốt đáng nhớ: cờ Kotlin gắn **máy**, `docBienDong` gắn **tài khoản** → mỗi lượt nhập ghi lại cờ theo tài
@@ -980,6 +980,26 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### ✅ Nhắc ghi sau khi dùng app ngân hàng — xong trọn 10 task, nghiệm thu Realme debug + release (2026-10-03)
+
+- **Tài liệu chính: mục 8 `docs/BIEN_DONG_SO_DU_FEATURE.md`** (luồng, kiến trúc, quyết định, bẫy, bảng đo chạy nền,
+  bảng nghiệm thu 13 dòng). Spec `specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md`; kế hoạch (gitignore) cùng tên ở
+  `plans/` — nhật ký thi công cuối tệp. Thông báo cho backend: `CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md`.
+- **Người dùng thấy:** công tắc mới (mặc định TẮT) dưới *Biến động số dư* ở *Cài đặt thông báo → Tự động hoá giao
+  dịch* → màn đồng ý → quyền *Truy cập dữ liệu sử dụng*. Dùng MB Bank / MoMo / ZaloPay ≥ 20 giây mà quanh đó không có
+  tin, biên lai hay giao dịch → dòng *"MB Bank · HH:mm – HH:mm — Chưa thấy giao dịch nào"* trong danh sách *Biến động*
+  (thẻ Sổ giao dịch nay *"Có N mục chờ ghi"*) + thông báo **im lặng** có nút *Không có giao dịch* → form số tiền trống,
+  giờ = lúc mở app ngân hàng, ví theo nguồn.
+- **Mã:** `77b0ff8` → `5cfb429` (Task 1–8) + bốn bản sửa lúc nghiệm thu: `c18e095` dải *"Đã xoá thông báo"* đứng yên
+  hàng phút (`persist: false` — Flutter mới giữ SnackBar có `action`; đây là SnackBarAction duy nhất của app) ·
+  `c2d6985` *Đăng xuất* ở **drawer** không làm gì (có sẵn từ 19/09 — context của drawer đã bị gỡ khi drawer đóng) ·
+  `8deeeb5` phiên lúc **không ai đăng nhập** thành dòng nhắc khi đăng nhập lại (cờ máy `nhac_phien_dang_xuat`) ·
+  `4818bcf` thanh tiêu đề màn đồng ý cụt ở 360 dp → *"Nhắc ghi giao dịch"*. Không đổi schema, không thêm trường đồng bộ,
+  không thêm `NotificationKind`.
+- **Đo:** nhắc tới 4–7 phút sau khi rời app (đường D1 hoặc worker 15 phút); bản release 1 vòng ~13 phút. Chưa đo: dòng 8
+  (chuyển thật **có** tin → không nhắc — lần chuyển thật MB không bắn tin, nên đo được ca ngược: có nhắc), Doze (rút cáp,
+  người dùng tự đo). `flutter test` **5551/5551**, 7 skip; analyze 26. Realme để lại debug `5efd5658…`.
+
 ### 🔀 Gộp `main` @ `29e9a89` (2026-10-03, commit gộp `8d31143`) — AIOps Sentinel chặn IP ở đường bình thường của client
 
 - PR #109 (`7f1a096`): Admin-web thời gian thực + **AIOps Sentinel** (`modules/aiops/`). **Không xung đột**, chỉ chạm
@@ -1058,10 +1078,7 @@ kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. 
   `test/core/ocr/ban_release_r8_mlkit_test.dart`. Sửa thêm: nút ✕ màn xem ảnh to có **nền tròn tối** (chìm trên biên
   lai nền sáng), ca test đo tương phản ≥ 3:1. Dung lượng đo trên release: 11,06 MB thư viện arm64 + 1,49 MB mô hình.
   Ba màn Stitch người dùng xác nhận. Còn mở: mẫu riêng MoMo / ZaloPay (chờ biên lai thật) · bản thiết kế thứ hai *nhắc
-  ghi sau khi rời app ngân hàng* — spec `specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt 2026-10-03**,
-  kế hoạch 10 task (gitignore), **đang thi công** (Task 1–8 xong 2026-10-03 — `77b0ff8`, `6d9443a`, `79311b7`,
-  `2bbcd76`, `a58efd8`, `5cfb429`; đo Realme Task 3 → giữ **cả hai** đường nền; còn Task 9 nghiệm thu máy thật và
-  Task 10 tài liệu + đơn CAN-LAM).
+  ghi sau khi rời app ngân hàng* — ✅ **xong 2026-10-03**, khối riêng ở đầu nhóm 10-03 của mục này.
 
 ### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 

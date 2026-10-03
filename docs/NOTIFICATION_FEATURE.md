@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -782,6 +782,12 @@ trong bảng** để chặn trùng: lượt quét sau nhìn thấy `dedupeKey` �
 nên không có hàm này thì một cú vuốt nhầm làm thông báo mất khỏi giao diện
 **vĩnh viễn**.
 
+⚠️ **SnackBar ấy phải mang `persist: false`** (2026-10-03, `c18e095`): từ khi
+nâng Flutter 3.47, SnackBar có `action` mặc định **không tự ẩn** — `duration`
+4 giây bị bỏ qua, dải đứng yên tới khi người dùng chạm và đi theo qua mọi màn
+(nghiệm thu Realme: hơn 7 phút, đè lên nút ở Sổ giao dịch). Đây là
+`SnackBarAction` duy nhất của app; thêm cái thứ hai thì nhớ dòng này.
+
 ⚠️ `NotificationCenterPage` nay nhận `idaccount` từ **route**, không tự hỏi
 `AuthBloc` — cùng mẫu `NotificationSettingsPage`. Bản đầu viết
 `idaccount ?? currentAccountIdOrNull(context)` và đó là lỗi thật: `null` khi ấy
@@ -1279,6 +1285,15 @@ Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi 
 > được bắn từ hai nơi — dịch vụ nghe thông báo và `NhanBienLaiActivity`; (2) `deeplink` của hàng có thể mang `anh` /
 > `doc` / `blt` (ảnh biên lai, cách đọc, giờ in trên biên lai); (3) biên lai **không** phụ thuộc cờ `docBienDong` — mỗi
 > ảnh là người dùng tự đưa — nên tài khoản tắt công tắc vẫn có thể có hàng loại 20.
+
+> **2026-10-03 — nguồn thứ BA: dòng nhắc sau khi dùng app ngân hàng** (`NhapPhienNganHang`, mục 8
+> `BIEN_DONG_SO_DU_FEATURE.md`). Vẫn loại 20, nhóm `bienDong`, không loại mới. Khoá mang tiền tố **`bienDong:phien|`**
+> (`<nguồn>|<giờ mở>`), **không số tiền** — `dauTuDeeplink` trả `null` nên dòng nhắc không tham gia phép gộp trùng của
+> D1 và **không bao giờ là bằng chứng** cho chính luật nhắc. Lượt nhập chạy SAU tin và biên lai. Công tắc là cờ riêng
+> `nhacSauNganHang` (mặc định TẮT, kèm `dongYNhacSauNganHang`), độc lập với `docBienDong`. Thông báo ra ngoài là của
+> **Kotlin** (id `20261003`, kênh `flowmoney_nhac_ghi`, `IMPORTANCE_LOW`), không qua `OsNotifier` — nên **không vào
+> nhật ký B5a** và B5b không đề xuất tắt nó; công tắc ở Cài đặt là đường tắt duy nhất. Thẻ ở Sổ giao dịch nay *"Có N
+> mục chờ ghi"*.
 
 - **Loại 20 `bienDongSoDu`, nhóm thứ sáu `bienDong`** (chip *Biến động*). Thêm một nhóm phải sửa **sáu** chỗ: hai `switch`
   ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `_tenNhom` / `_moTaNhom` / `_iconNhom`
