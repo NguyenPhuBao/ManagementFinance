@@ -24,6 +24,10 @@ const AIOpsPage = () => {
   const [customConcurrency, setCustomConcurrency] = useState('1000');
   const [savingScale, setSavingScale] = useState(false);
 
+  // Multi-Vector Trend Chart state & Hover tooltip
+  const [activeVectorTab, setActiveVectorTab] = useState('all'); // 'all' | 'auth' | 'traffic' | 'exploit' | 'resource'
+  const [hoveredPointIndex, setHoveredPointIndex] = useState(null);
+
   // Socket.io connection
   const socket = useSocket();
 
@@ -79,6 +83,8 @@ const AIOpsPage = () => {
         threatScore: metrics.threatScore ?? prev?.threatScore ?? 5,
         status: metrics.threatStatus || prev?.status || 'NORMAL',
         vectorScores: metrics.vectorScores || prev?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+        vectorDefenses: metrics.vectorDefenses || prev?.vectorDefenses || {},
+        recommendedAction: metrics.recommendedAction || prev?.recommendedAction || null,
         targetConcurrency: metrics.targetConcurrency || prev?.targetConcurrency || 1000,
         sample: {
           ...(prev?.sample || {}),
@@ -98,6 +104,7 @@ const AIOpsPage = () => {
           threatScore: data.threatScore,
           status: data.status,
           vectorScores: data.vectorScores || prev?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+          vectorDefenses: data.vectorDefenses || prev?.vectorDefenses || {},
           targetConcurrency: data.targetConcurrency || prev?.targetConcurrency || 1000,
           anomalies: data.anomalies,
           recommendedAction: data.recommendedAction,
@@ -221,6 +228,7 @@ const AIOpsPage = () => {
   const currentStatus = statusData?.status || 'NORMAL';
   const targetConcurrency = statusData?.targetConcurrency || selectedConcurrency || 1000;
   const vectorScores = statusData?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 };
+  const vectorDefenses = statusData?.vectorDefenses || {};
   const sample = statusData?.sample || {};
   const anomalies = statusData?.anomalies || [];
   const recommendedAction = statusData?.recommendedAction;
@@ -229,6 +237,15 @@ const AIOpsPage = () => {
   const baselineRpm = targetConcurrency * 10;
   const safePeakRpm = baselineRpm * 3;
   const quarantineThreshold = Math.max(150, Math.round(20 + 50 * Math.log10(targetConcurrency)));
+
+  // Cơ chế phòng vệ cá nhân hóa: Chỉ kích hoạt bảo trì khẩn cấp khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền
+  const isEmergencyResourceRisk = useMemo(() => {
+    return (
+      recommendedAction === 'EMERGENCY_MAINTENANCE' ||
+      (vectorScores.resource >= 85) ||
+      (vectorScores.resource >= 70 && (sample?.errorRate5xx || 0) >= 0.15 && (sample?.eventLoopLagMs || 0) >= 250)
+    );
+  }, [recommendedAction, vectorScores.resource, sample]);
 
   // Hàm tiện ích lấy style theo điểm số của từng vectơ
   const getVectorTheme = (score) => {
@@ -276,29 +293,116 @@ const AIOpsPage = () => {
     };
   }, [threatScore]);
 
-  // Chuẩn bị đường vẽ SVG cho Timeline (60 mẫu)
-  const chartSvgPath = useMemo(() => {
-    if (!historyData || historyData.length === 0) return { path: '', area: '', points: [] };
+  // Chuẩn bị đường vẽ SVG độc lập cho 4 Vectơ Rủi Ro (60 mẫu gần nhất — 10 phút)
+  const chartSvgPaths = useMemo(() => {
+    if (!historyData || historyData.length === 0) {
+      return {
+        samples: [],
+        auth: { path: '', area: '', points: [], color: '#f59e0b', name: '1. Xác Thực & Danh Tính', id: 'auth' },
+        traffic: { path: '', area: '', points: [], color: '#3b82f6', name: '2. Lưu Lượng & DoS', id: 'traffic' },
+        exploit: { path: '', area: '', points: [], color: '#f43f5e', name: '3. Khai Thác Lỗ Hổng', id: 'exploit' },
+        resource: { path: '', area: '', points: [], color: '#0d9488', name: '4. Tài Nguyên Máy Chủ', id: 'resource' },
+        composite: { path: '', area: '', points: [], color: '#8b5cf6', name: 'Điểm Tổng Hợp (Composite)', id: 'composite' },
+      };
+    }
     const width = 800;
     const height = 180;
-    const padding = 20;
+    const padding = 25;
 
     const maxVal = 100;
     const minVal = 0;
     const count = historyData.length;
     const stepX = count > 1 ? (width - 2 * padding) / (count - 1) : width;
 
-    const points = historyData.map((d, i) => {
+    // Trích xuất điểm số của 4 vector cho từng mẫu lịch sử
+    const samples = historyData.map((d, i) => {
       const x = padding + i * stepX;
-      const y = height - padding - ((d.threatScore - minVal) / (maxVal - minVal)) * (height - 2 * padding);
-      return { x, y, score: d.threatScore, time: d.timestamp };
+      const vs = d.vectorScores || {};
+      
+      const authScore = vs.auth !== undefined ? vs.auth : (d.failedLogins ? Math.min(100, d.failedLogins * 10) : 0);
+      const trafficScore = vs.traffic !== undefined ? vs.traffic : (d.requestsPerMin ? Math.min(100, Math.round(d.requestsPerMin / 30)) : 0);
+      const exploitScore = vs.exploit !== undefined ? vs.exploit : (d.malformedRequests ? Math.min(100, d.malformedRequests * 25) : 0);
+      const resourceScore = vs.resource !== undefined ? vs.resource : (d.cpuPercent || d.ramPercent ? Math.max(d.cpuPercent || 0, d.ramPercent || 0) : 0);
+      const compScore = d.threatScore ?? Math.max(authScore, trafficScore, exploitScore, resourceScore);
+
+      const getY = (val) => height - padding - ((Math.min(100, Math.max(0, val)) - minVal) / (maxVal - minVal)) * (height - 2 * padding);
+
+      return {
+        index: i,
+        x,
+        time: d.timestamp,
+        auth: { y: getY(authScore), score: authScore },
+        traffic: { y: getY(trafficScore), score: trafficScore },
+        exploit: { y: getY(exploitScore), score: exploitScore },
+        resource: { y: getY(resourceScore), score: resourceScore },
+        composite: { y: getY(compScore), score: compScore },
+        raw: d,
+      };
     });
 
-    const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-    const area = `${path} L ${points[points.length - 1].x.toFixed(1)} ${height - padding} L ${points[0].x.toFixed(1)} ${height - padding} Z`;
+    const buildPath = (key) =>
+      samples.map((s, i) => `${i === 0 ? 'M' : 'L'} ${s.x.toFixed(1)} ${s[key].y.toFixed(1)}`).join(' ');
 
-    return { path, area, points };
+    const buildArea = (pathStr) => {
+      if (!pathStr || samples.length === 0) return '';
+      const firstX = samples[0].x.toFixed(1);
+      const lastX = samples[samples.length - 1].x.toFixed(1);
+      return `${pathStr} L ${lastX} 155 L ${firstX} 155 Z`;
+    };
+
+    const authPath = buildPath('auth');
+    const trafficPath = buildPath('traffic');
+    const exploitPath = buildPath('exploit');
+    const resourcePath = buildPath('resource');
+    const compositePath = buildPath('composite');
+
+    return {
+      samples,
+      auth: {
+        path: authPath,
+        area: buildArea(authPath),
+        points: samples.map((s) => ({ x: s.x, y: s.auth.y, score: s.auth.score, time: s.time })),
+        color: '#f59e0b',
+        name: '1. Xác Thực & Danh Tính',
+        id: 'auth',
+      },
+      traffic: {
+        path: trafficPath,
+        area: buildArea(trafficPath),
+        points: samples.map((s) => ({ x: s.x, y: s.traffic.y, score: s.traffic.score, time: s.time })),
+        color: '#3b82f6',
+        name: '2. Lưu Lượng & DoS',
+        id: 'traffic',
+      },
+      exploit: {
+        path: exploitPath,
+        area: buildArea(exploitPath),
+        points: samples.map((s) => ({ x: s.x, y: s.exploit.y, score: s.exploit.score, time: s.time })),
+        color: '#f43f5e',
+        name: '3. Khai Thác Lỗ Hổng',
+        id: 'exploit',
+      },
+      resource: {
+        path: resourcePath,
+        area: buildArea(resourcePath),
+        points: samples.map((s) => ({ x: s.x, y: s.resource.y, score: s.resource.score, time: s.time })),
+        color: '#0d9488',
+        name: '4. Tài Nguyên Máy Chủ',
+        id: 'resource',
+      },
+      composite: {
+        path: compositePath,
+        area: buildArea(compositePath),
+        points: samples.map((s) => ({ x: s.x, y: s.composite.y, score: s.composite.score, time: s.time })),
+        color: '#8b5cf6',
+        name: 'Điểm Tổng Hợp (Composite)',
+        id: 'composite',
+      },
+    };
   }, [historyData]);
+
+  // Fallback tương thích ngược
+  const chartSvgPath = chartSvgPaths.composite;
 
   return (
     <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
@@ -335,10 +439,11 @@ const AIOpsPage = () => {
             <span className="material-symbols-outlined text-[14px] text-blue-400 hover:text-blue-600">help</span>
           </button>
 
-          {threatScore >= 80 && (
+          {isEmergencyResourceRisk && (
             <button
               onClick={() => setShowMitigationModal(true)}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 animate-pulse"
+              title="Chỉ hiển thị khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền"
             >
               <span className="material-symbols-outlined text-[18px]">emergency</span>
               <span>1-Click Bảo Trì Khẩn Cấp</span>
@@ -572,12 +677,18 @@ const AIOpsPage = () => {
             </div>
             <div>
               <span className="font-semibold text-on-surface">Phòng vệ Sentinel: </span>
-              <span className="font-bold" style={{ color: theme.color }}>
-                {recommendedAction === 'EMERGENCY_MAINTENANCE'
-                  ? '🚨 KÍCH HOẠT BẢO TRÌ KHẨN CẤP ĐỂ NGĂN CHẶN SẬP DÂY CHUYỀN'
+              <span className="font-bold text-[11px]" style={{ color: theme.color }}>
+                {isEmergencyResourceRisk
+                  ? '🚨 [TÀI NGUYÊN] NGUY CƠ SẬP DÂY CHUYỀN (Lag > 250ms & 5xx > 15%) — ĐỀ XUẤT BẢO TRÌ KHẨN CẤP'
+                  : vectorScores.exploit >= 70
+                  ? '⚔️ [KHAI THÁC] PHÁT HIỆN INJECTION/TRAVERSAL — ĐÃ NGẮT HTTP 403 & PHONG TỎA IP 30 PHÚT'
+                  : vectorScores.auth >= 70
+                  ? '🛡️ [XÁC THỰC] PHÁT HIỆN BRUTE-FORCE/TOKEN HIJACK — ĐÃ CÔ LẬP NGUỒN IP TẠI GATEWAY'
+                  : vectorScores.traffic >= 70
+                  ? '⚡ [LƯU LƯỢNG] LƯU LƯỢNG VƯỢT TRẦN CCU — KÍCH HOẠT ADAPTIVE RATE-LIMITING'
                   : recommendedAction === 'INVESTIGATE'
-                  ? '⚠️ NGUỒN TẤN CÔNG ĐÃ BỊ TỰ ĐỘNG CHẶN — THEO DÕI LOGS'
-                  : '✅ HỆ THỐNG AN TOÀN, HOẠT ĐỘNG ỔN ĐỊNH'}
+                  ? '⚠️ PHÁT HIỆN BẤT THƯỜNG — NGUỒN ĐÃ BỊ TỰ ĐỘNG CÔ LẬP, THEO DÕI LOGS'
+                  : '✅ HỆ THỐNG AN TOÀN — CƠ CHẾ PHÒNG VỆ 4 VECTOR ĐANG HOẠT ĐỘNG ỔN ĐỊNH'}
               </span>
             </div>
           </div>
@@ -712,12 +823,13 @@ const AIOpsPage = () => {
           {(() => {
             const vScore = vectorScores.auth || 0;
             const vTheme = getVectorTheme(vScore);
+            const isQuarantining = quarantineList.length > 0 || vScore >= 70;
             return (
               <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[17px] text-indigo-600">badge</span>
+                      <span className="material-symbols-outlined text-[17px] text-amber-600">badge</span>
                       1. Xác Thực & Danh Tính
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${vTheme.badge}`}>
@@ -746,7 +858,24 @@ const AIOpsPage = () => {
                     <span>Tái dùng token hủy:</span>
                     <strong className="font-mono">{sample.tokenReuseAttacks ?? 0} lần</strong>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-indigo-50/60 text-indigo-950 text-[10px] leading-relaxed">
+                  {/* Badge hành động phòng vệ động */}
+                  <div className="pt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                      isQuarantining ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      <span className="material-symbols-outlined text-[12px]">
+                        {isQuarantining ? 'lock' : 'check_circle'}
+                      </span>
+                      <span>
+                        {quarantineList.length > 0
+                          ? `Đang cô lập ${quarantineList.length} IP vi phạm`
+                          : vScore >= 70
+                          ? 'Đã kích hoạt cô lập IP vi phạm'
+                          : 'Sẵn sàng cô lập IP vi phạm'}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-2 p-2 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 text-[10px] leading-relaxed">
                     <strong>Phòng vệ:</strong> Chỉ cô lập IP Brute-Force (`/auth/login`). Tuyệt đối không ảnh hưởng khách hàng khác.
                   </div>
                 </div>
@@ -758,6 +887,7 @@ const AIOpsPage = () => {
           {(() => {
             const vScore = vectorScores.traffic || 0;
             const vTheme = getVectorTheme(vScore);
+            const isThrottling = vScore >= 70;
             return (
               <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
@@ -792,7 +922,22 @@ const AIOpsPage = () => {
                     <span>Độ phân tán IP:</span>
                     <strong className="font-mono">{sample.distinctIpsCount ?? 0} IPs</strong>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-blue-50/60 text-blue-950 text-[10px] leading-relaxed">
+                  {/* Badge hành động phòng vệ động */}
+                  <div className="pt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                      isThrottling ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      <span className="material-symbols-outlined text-[12px]">
+                        {isThrottling ? 'speed' : 'check_circle'}
+                      </span>
+                      <span>
+                        {isThrottling
+                          ? 'Đang điều tiết Adaptive Rate-Limit'
+                          : `Lưu lượng an toàn theo chuẩn ${targetConcurrency} CCU`}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-2 p-2 rounded-lg bg-blue-50/70 border border-blue-200/60 text-blue-950 text-[10px] leading-relaxed">
                     <strong>Phòng vệ:</strong> Phân biệt đỉnh người dùng thật qua Entropy. Kích hoạt Rate-Limit theo trần quy mô {targetConcurrency} CCU.
                   </div>
                 </div>
@@ -804,6 +949,7 @@ const AIOpsPage = () => {
           {(() => {
             const vScore = vectorScores.exploit || 0;
             const vTheme = getVectorTheme(vScore);
+            const isExploitActive = vScore >= 70;
             return (
               <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
@@ -838,7 +984,22 @@ const AIOpsPage = () => {
                     <span>Đường dẫn cấm/Traversal:</span>
                     <strong className="font-mono">Tự động phát hiện</strong>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-rose-50/60 text-rose-950 text-[10px] leading-relaxed">
+                  {/* Badge hành động phòng vệ động */}
+                  <div className="pt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                      isExploitActive ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      <span className="material-symbols-outlined text-[12px]">
+                        {isExploitActive ? 'security' : 'check_circle'}
+                      </span>
+                      <span>
+                        {isExploitActive
+                          ? 'Đã ngắt HTTP 403 & Blacklist 30p'
+                          : 'Sẵn sàng chặn SQLi/Payload'}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-2 p-2 rounded-lg bg-rose-50/70 border border-rose-200/60 text-rose-950 text-[10px] leading-relaxed">
                     <strong>Phòng vệ:</strong> Cắt kết nối HTTP 403 tức thì với IP mang injection payload, đưa vào danh sách đen 30 phút.
                   </div>
                 </div>
@@ -884,7 +1045,28 @@ const AIOpsPage = () => {
                     <span>CPU / RAM:</span>
                     <strong className="font-mono">{sample.cpuPercent ?? 0}% / {sample.ramPercent ?? 0}%</strong>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-teal-50/60 text-teal-950 text-[10px] leading-relaxed">
+                  {/* Badge hành động phòng vệ động */}
+                  <div className="pt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                      isEmergencyResourceRisk
+                        ? 'bg-red-100 text-red-800 border-red-300'
+                        : vScore >= 60
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      <span className="material-symbols-outlined text-[12px]">
+                        {isEmergencyResourceRisk ? 'crisis_alert' : vScore >= 60 ? 'tune' : 'check_circle'}
+                      </span>
+                      <span>
+                        {isEmergencyResourceRisk
+                          ? '🚨 Đề xuất Bảo Trì Khẩn Cấp'
+                          : vScore >= 60
+                          ? 'Đang kích hoạt Load Shedding'
+                          : 'Tài nguyên phần cứng ổn định'}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-2 p-2 rounded-lg bg-teal-50/70 border border-teal-200/60 text-teal-950 text-[10px] leading-relaxed">
                     <strong>Phòng vệ:</strong> Load Shedding & cảnh báo máy chủ. Chỉ kích hoạt Bảo trì nếu có sập dây chuyền (Lag &gt; 250ms &amp; 5xx &gt; 15%).
                   </div>
                 </div>
@@ -982,114 +1164,415 @@ const AIOpsPage = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* KHỐI 3: BIỂU ĐỒ SVG XU HƯỚNG NGUY CƠ REAL-TIME (THREAT TIMELINE) */}
+      {/* KHỐI 3: BIỂU ĐỒ SVG XU HƯỚNG 4 VECTƠ RỦI RO ĐỘC LẬP THỜI GIAN THỰC */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-outline-variant pb-3">
+      <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
+        {/* Header & Bộ lọc Tabs cho 4 Vectơ */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-outline-variant pb-3">
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">show_chart</span>
-              Biểu Đồ Xu Hướng Rủi Ro Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)
+              Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Theo dõi biến thiên Threat Score liên tục, hỗ trợ nhận diện các đợt càn quét hoặc suy giảm phần cứng kéo dài
+              Tách biệt đường cong riêng cho từng vectơ: Xác thực, Lưu lượng, Khai thác và Tài nguyên. Loại bỏ hoàn toàn sự sai lệch do gộp chung điểm.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-medium self-end sm:self-auto">
+          {/* Tab Filter Chuyển Đổi Vectơ */}
+          <div className="flex items-center gap-1.5 flex-wrap bg-surface-container-low p-1 rounded-xl border border-outline-variant/60">
+            {[
+              { id: 'all', label: 'Tất Cả 4 Vectơ', icon: 'hub', color: 'text-indigo-600' },
+              { id: 'auth', label: '1. Xác Thực', icon: 'badge', color: 'text-amber-600' },
+              { id: 'traffic', label: '2. Lưu Lượng', icon: 'waves', color: 'text-blue-600' },
+              { id: 'exploit', label: '3. Khai Thác', icon: 'bug_report', color: 'text-rose-600' },
+              { id: 'resource', label: '4. Tài Nguyên', icon: 'memory', color: 'text-teal-600' },
+            ].map((tab) => {
+              const isActive = activeVectorTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveVectorTab(tab.id);
+                    setHoveredPointIndex(null);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-white text-on-surface shadow-xs border border-outline-variant/80'
+                      : 'text-slate-600 hover:text-on-surface hover:bg-white/50'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-[14px] ${tab.color}`}>
+                    {tab.icon}
+                  </span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Legend và Điểm số Thời gian thực */}
+        <div className="flex items-center justify-between flex-wrap gap-2 text-[11px] font-medium bg-surface-container-lowest p-2.5 rounded-xl border border-outline-variant/60">
+          <div className="flex items-center gap-3.5 flex-wrap">
+            <span
+              onClick={() => setActiveVectorTab(activeVectorTab === 'auth' ? 'all' : 'auth')}
+              className={`flex items-center gap-1.5 cursor-pointer px-2 py-0.5 rounded transition-all ${
+                activeVectorTab === 'auth' ? 'bg-amber-100 font-bold ring-1 ring-amber-300' : 'hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+              <span className="text-amber-900">1. Xác Thực: <strong>{vectorScores.auth ?? 0}</strong></span>
+            </span>
+
+            <span
+              onClick={() => setActiveVectorTab(activeVectorTab === 'traffic' ? 'all' : 'traffic')}
+              className={`flex items-center gap-1.5 cursor-pointer px-2 py-0.5 rounded transition-all ${
+                activeVectorTab === 'traffic' ? 'bg-blue-100 font-bold ring-1 ring-blue-300' : 'hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
+              <span className="text-blue-900">2. Lưu Lượng: <strong>{vectorScores.traffic ?? 0}</strong></span>
+            </span>
+
+            <span
+              onClick={() => setActiveVectorTab(activeVectorTab === 'exploit' ? 'all' : 'exploit')}
+              className={`flex items-center gap-1.5 cursor-pointer px-2 py-0.5 rounded transition-all ${
+                activeVectorTab === 'exploit' ? 'bg-rose-100 font-bold ring-1 ring-rose-300' : 'hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+              <span className="text-rose-900">3. Khai Thác: <strong>{vectorScores.exploit ?? 0}</strong></span>
+            </span>
+
+            <span
+              onClick={() => setActiveVectorTab(activeVectorTab === 'resource' ? 'all' : 'resource')}
+              className={`flex items-center gap-1.5 cursor-pointer px-2 py-0.5 rounded transition-all ${
+                activeVectorTab === 'resource' ? 'bg-teal-100 font-bold ring-1 ring-teal-300' : 'hover:bg-slate-100'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block" />
+              <span className="text-teal-900">4. Tài Nguyên: <strong>{vectorScores.resource ?? 0}</strong></span>
+            </span>
+
+            {activeVectorTab === 'all' && (
+              <span className="flex items-center gap-1.5 text-purple-700">
+                <span className="w-2.5 h-0.5 bg-purple-500 inline-block border-b border-dashed border-purple-700" />
+                <span>Trần Max: <strong>{threatScore}</strong></span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-slate-500">
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 bg-red-500 inline-block" />
-              <span>Khẩn cấp (85)</span>
+              <span>Ngưỡng Khẩn cấp (85)</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 bg-amber-500 inline-block" />
-              <span>Cảnh báo (70)</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" />
-              <span>Threat Score</span>
+              <span>Ngưỡng Cảnh báo (70)</span>
             </span>
           </div>
         </div>
 
-        {/* SVG Container */}
+        {/* SVG Multi-Vector Chart Container */}
         <div className="w-full overflow-x-auto">
-          <div className="min-w-[640px] h-[200px] relative">
-            <svg className="w-full h-full" viewBox="0 0 800 180" preserveAspectRatio="none">
+          <div className="min-w-[640px] h-[210px] relative select-none">
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 800 180"
+              preserveAspectRatio="none"
+              onMouseLeave={() => setHoveredPointIndex(null)}
+            >
               <defs>
-                <linearGradient id="threatGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
-                  <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                <linearGradient id="authGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
+                </linearGradient>
+                <linearGradient id="trafficGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                </linearGradient>
+                <linearGradient id="exploitGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
+                </linearGradient>
+                <linearGradient id="resourceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0d9488" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#0d9488" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
               {/* Ngưỡng 85 (Critical line) */}
               <line
-                x1="20"
-                y1={180 - 20 - (85 / 100) * 140}
-                x2="780"
-                y2={180 - 20 - (85 / 100) * 140}
+                x1="25"
+                y1={180 - 25 - (85 / 100) * 130}
+                x2="775"
+                y2={180 - 25 - (85 / 100) * 130}
                 stroke="#ef4444"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
-                strokeOpacity="0.6"
+                strokeOpacity="0.7"
               />
-              <text x="785" y={180 - 16 - (85 / 100) * 140} fill="#ef4444" fontSize="10" fontWeight="bold">85</text>
+              <text x="780" y={180 - 21 - (85 / 100) * 130} fill="#ef4444" fontSize="10" fontWeight="bold">85</text>
 
               {/* Ngưỡng 70 (Warning line) */}
               <line
-                x1="20"
-                y1={180 - 20 - (70 / 100) * 140}
-                x2="780"
-                y2={180 - 20 - (70 / 100) * 140}
+                x1="25"
+                y1={180 - 25 - (70 / 100) * 130}
+                x2="775"
+                y2={180 - 25 - (70 / 100) * 130}
                 stroke="#f59e0b"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
-                strokeOpacity="0.6"
+                strokeOpacity="0.7"
               />
-              <text x="785" y={180 - 16 - (70 / 100) * 140} fill="#f59e0b" fontSize="10" fontWeight="bold">70</text>
+              <text x="780" y={180 - 21 - (70 / 100) * 130} fill="#f59e0b" fontSize="10" fontWeight="bold">70</text>
 
               {/* Baseline 0 */}
-              <line x1="20" y1="160" x2="780" y2="160" stroke="#cbd5e1" strokeWidth="1" />
+              <line x1="25" y1="155" x2="775" y2="155" stroke="#cbd5e1" strokeWidth="1" />
 
-              {/* Area Under Curve */}
-              {chartSvgPath.area && (
-                <path d={chartSvgPath.area} fill="url(#threatGradient)" />
+              {/* 1. Đường & Vùng phủ Vectơ Xác thực (Amber) */}
+              {(activeVectorTab === 'all' || activeVectorTab === 'auth') && chartSvgPaths.auth.path && (
+                <>
+                  {activeVectorTab === 'auth' && chartSvgPaths.auth.area && (
+                    <path
+                      d={chartSvgPaths.auth.area}
+                      fill="url(#authGradient)"
+                    />
+                  )}
+                  <path
+                    d={chartSvgPaths.auth.path}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth={activeVectorTab === 'auth' ? '2.8' : '2'}
+                    strokeOpacity={activeVectorTab === 'all' || activeVectorTab === 'auth' ? 1 : 0.15}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {chartSvgPaths.auth.points.map((p, idx) => (
+                    <circle
+                      key={`auth-${idx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={hoveredPointIndex === idx ? 4.5 : p.score >= 70 ? 3.5 : 2}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={hoveredPointIndex === idx ? 1.5 : 0.8}
+                    />
+                  ))}
+                </>
               )}
 
-              {/* Line Curve */}
-              {chartSvgPath.path && (
+              {/* 2. Đường & Vùng phủ Vectơ Lưu lượng (Blue) */}
+              {(activeVectorTab === 'all' || activeVectorTab === 'traffic') && chartSvgPaths.traffic.path && (
+                <>
+                  {activeVectorTab === 'traffic' && chartSvgPaths.traffic.area && (
+                    <path
+                      d={chartSvgPaths.traffic.area}
+                      fill="url(#trafficGradient)"
+                    />
+                  )}
+                  <path
+                    d={chartSvgPaths.traffic.path}
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth={activeVectorTab === 'traffic' ? '2.8' : '2'}
+                    strokeOpacity={activeVectorTab === 'all' || activeVectorTab === 'traffic' ? 1 : 0.15}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {chartSvgPaths.traffic.points.map((p, idx) => (
+                    <circle
+                      key={`traffic-${idx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={hoveredPointIndex === idx ? 4.5 : p.score >= 70 ? 3.5 : 2}
+                      fill="#3b82f6"
+                      stroke="#ffffff"
+                      strokeWidth={hoveredPointIndex === idx ? 1.5 : 0.8}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* 3. Đường & Vùng phủ Vectơ Khai thác (Rose) */}
+              {(activeVectorTab === 'all' || activeVectorTab === 'exploit') && chartSvgPaths.exploit.path && (
+                <>
+                  {activeVectorTab === 'exploit' && chartSvgPaths.exploit.area && (
+                    <path
+                      d={chartSvgPaths.exploit.area}
+                      fill="url(#exploitGradient)"
+                    />
+                  )}
+                  <path
+                    d={chartSvgPaths.exploit.path}
+                    fill="none"
+                    stroke="#f43f5e"
+                    strokeWidth={activeVectorTab === 'exploit' ? '2.8' : '2'}
+                    strokeOpacity={activeVectorTab === 'all' || activeVectorTab === 'exploit' ? 1 : 0.15}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {chartSvgPaths.exploit.points.map((p, idx) => (
+                    <circle
+                      key={`exploit-${idx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={hoveredPointIndex === idx ? 4.5 : p.score >= 70 ? 3.5 : 2}
+                      fill="#f43f5e"
+                      stroke="#ffffff"
+                      strokeWidth={hoveredPointIndex === idx ? 1.5 : 0.8}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* 4. Đường & Vùng phủ Vectơ Tài nguyên (Teal) */}
+              {(activeVectorTab === 'all' || activeVectorTab === 'resource') && chartSvgPaths.resource.path && (
+                <>
+                  {activeVectorTab === 'resource' && chartSvgPaths.resource.area && (
+                    <path
+                      d={chartSvgPaths.resource.area}
+                      fill="url(#resourceGradient)"
+                    />
+                  )}
+                  <path
+                    d={chartSvgPaths.resource.path}
+                    fill="none"
+                    stroke="#0d9488"
+                    strokeWidth={activeVectorTab === 'resource' ? '2.8' : '2'}
+                    strokeOpacity={activeVectorTab === 'all' || activeVectorTab === 'resource' ? 1 : 0.15}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {chartSvgPaths.resource.points.map((p, idx) => (
+                    <circle
+                      key={`resource-${idx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={hoveredPointIndex === idx ? 4.5 : p.score >= 70 ? 3.5 : 2}
+                      fill="#0d9488"
+                      stroke="#ffffff"
+                      strokeWidth={hoveredPointIndex === idx ? 1.5 : 0.8}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* Đường trần tham chiếu Max composite nếu ở Tab All */}
+              {activeVectorTab === 'all' && chartSvgPaths.composite.path && (
                 <path
-                  d={chartSvgPath.path}
+                  d={chartSvgPaths.composite.path}
                   fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  stroke="#8b5cf6"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 3"
+                  strokeOpacity="0.5"
                 />
               )}
 
-              {/* Point Markers */}
-              {chartSvgPath.points.map((p, idx) => (
-                <circle
-                  key={idx}
-                  cx={p.x}
-                  cy={p.y}
-                  r={p.score >= 70 ? 4 : 2.5}
-                  fill={p.score >= 85 ? '#ef4444' : p.score >= 70 ? '#f59e0b' : '#2563eb'}
-                  stroke="#ffffff"
-                  strokeWidth="1"
-                />
+              {/* Cột bắt sự kiện chuột tương tác hover cho từng mẫu thời gian */}
+              {chartSvgPaths.samples && chartSvgPaths.samples.map((s, idx) => (
+                <g key={`hover-zone-${idx}`}>
+                  {hoveredPointIndex === idx && (
+                    <line
+                      x1={s.x}
+                      y1="15"
+                      x2={s.x}
+                      y2="155"
+                      stroke="#64748b"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                    />
+                  )}
+                  <rect
+                    x={s.x - 6}
+                    y="10"
+                    width="12"
+                    height="150"
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredPointIndex(idx)}
+                  />
+                </g>
               ))}
             </svg>
+
+            {/* Tooltip Card hiển thị chi tiết khi rê chuột */}
+            {hoveredPointIndex !== null && chartSvgPaths.samples[hoveredPointIndex] && (() => {
+              const hs = chartSvgPaths.samples[hoveredPointIndex];
+              const timeStr = hs.time ? new Date(hs.time).toLocaleTimeString('vi-VN') : 'Mẫu vừa xong';
+              const leftPercent = Math.min(85, Math.max(15, (hs.x / 800) * 100));
+              return (
+                <div
+                  className="absolute top-1 pointer-events-none z-20 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl border border-slate-700 text-[11px] space-y-1.5 backdrop-blur-xs min-w-[210px] transform -translate-x-1/2 transition-transform duration-75"
+                  style={{ left: `${leftPercent}%` }}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-1">
+                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-primary">schedule</span>
+                      {timeStr}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Mẫu #{hoveredPointIndex + 1}</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-amber-400">
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        1. Xác Thực:
+                      </span>
+                      <strong className="font-mono">{hs.auth.score}/100</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-blue-400">
+                        <span className="w-2 h-2 rounded-full bg-blue-400" />
+                        2. Lưu Lượng:
+                      </span>
+                      <strong className="font-mono">{hs.traffic.score}/100</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-rose-400">
+                        <span className="w-2 h-2 rounded-full bg-rose-400" />
+                        3. Khai Thác:
+                      </span>
+                      <strong className="font-mono">{hs.exploit.score}/100</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-teal-400">
+                        <span className="w-2 h-2 rounded-full bg-teal-400" />
+                        4. Tài Nguyên:
+                      </span>
+                      <strong className="font-mono">{hs.resource.score}/100</strong>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-700/80 flex items-center justify-between text-purple-300 font-bold">
+                      <span>Threat Score:</span>
+                      <span className="font-mono">{hs.composite.score}/100</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 px-2 pt-1 border-t border-slate-100">
-          <span>10 phút trước</span>
-          <span>5 phút trước</span>
-          <span>Thời điểm hiện tại</span>
+        {/* Chân biểu đồ & Nguyên tắc bảo vệ */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 px-2 pt-2 border-t border-slate-100 gap-2">
+          <div className="flex items-center gap-4">
+            <span>🕒 10 phút trước</span>
+            <span>🕒 5 phút trước</span>
+            <span className="font-semibold text-slate-700">🕒 Hiện tại</span>
+          </div>
+
+          <div className="text-[10px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+            🛡️ <strong>Nguyên tắc:</strong> Phòng vệ được kích hoạt độc lập theo từng vectơ. Tuyệt đối không dùng điểm gộp chung để ngắt kết nối hệ thống.
+          </div>
         </div>
       </div>
 

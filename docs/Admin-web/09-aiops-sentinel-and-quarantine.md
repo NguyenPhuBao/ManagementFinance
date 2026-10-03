@@ -193,19 +193,28 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
    - Thiết kế bán nguyệt bán kính $R=85$, quét từ $0$ đến $100$.
    - 4 phân vùng màu chuẩn xác: Xanh ($0-59$ Bình thường), Vàng ($60-79$ Tăng cao), Cam ($80-89$ Cảnh báo), Đỏ ($90-100$ Nguy cấp).
    - Công thức hiển thị: $\text{Threat Score} = \max(\text{Vectơ}) + \text{Bonus kết hợp}$.
-4. **Biểu Đồ Xu Hướng Rủi Ro 60 Mẫu Gần Nhất (Threat Timeline SVG):**
-   - Trực quan hóa 60 mẫu trượt gần nhất (10 phút) kèm 2 đường ngưỡng ranh giới (80 và 90).
+4. **Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (Multi-Vector Trend Chart SVG):**
+   - Trực quan hóa 60 mẫu trượt gần nhất (10 phút) của cả **4 vectơ độc lập** trên cùng một hệ quy chiếu $[0, 100]$ điểm.
+   - **Thanh chuyển Tab (Filter Tabs):** Cho phép xem đồng thời "Tất Cả 4 Vectơ" hoặc soi cận cảnh từng vectơ riêng biệt:
+     - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` — Theo dõi failed logins & token reuse.
+     - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` — Theo dõi biến thiên RPM theo trần CCU.
+     - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` — Theo dõi các mẫu SQLi, traversal injection.
+     - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` — Theo dõi tải CPU/RAM và độ trễ Event Loop.
+     - 🟣 **Trần tham chiếu (Composite Max):** Nét đứt tím `#8b5cf6`.
+   - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss).
+   - Hiển thị 2 vạch ngưỡng định lượng: Vạch vàng Cảnh báo ($70$) và Vạch đỏ Khẩn cấp ($85$).
 5. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis):**
    - Phân tích chi tiết chỉ số đo được, giá trị đường chuẩn Baseline và giải thích tiếng Việt rõ ràng.
 6. **Bảng Nguồn Request Đang Bị Cô Lập (Active Quarantine Blacklist):**
    - Hiển thị danh sách IP bị phong tỏa (đã mask `a.b.xx.xx`), nguyên nhân, thời gian bị chặn, số lần vi phạm (Hits).
    - Nút **"Gỡ Chặn (Unblock)"** cho phép Admin mở khóa thủ công cho IP bất kỳ chỉ với 1 click.
-7. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp:**
-   - Kích hoạt nhanh chế độ bảo trì khẩn cấp ngay trên màn hình AIOps khi phát hiện mối đe dọa vượt tầm kiểm soát ($\ge 80$).
+7. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp (Chỉ Khi Sập Dây Chuyền):**
+   - **Nguyên tắc bảo vệ nghiêm ngặt:** Nút kích hoạt này **CHỈ hiển thị khi Vectơ 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền** (`resourceScore >= 85` hoặc `resourceScore >= 70 && Event Loop Lag > 250ms && 5xx > 15%`).
+   - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công Brute-Force mật khẩu (Vectơ 1) hay tấn công Injection (Vectơ 3) từ các IP bên ngoài.
 8. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
    - Cho phép đặt lại đường chuẩn khi doanh nghiệp mở đợt khuyến mãi lớn.
 9. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
-   - Khi Threat Score $\ge 90$, dải banner đỏ nhấp nháy Animation Pulse sẽ xuất hiện trên đỉnh tất cả các trang của Admin-web.
+   - Banner bảo trì khẩn cấp màu đỏ chỉ xuất hiện khi `recommendedAction === 'EMERGENCY_MAINTENANCE'` hoặc `vectorScores.resource >= 85`. Các đợt tấn công từ IP hacker chỉ hiển thị Toast thông báo cô lập IP thành công (`admin.security_blocked`), không làm gián đoạn trải nghiệm của Admin và người dùng bình thường.
 
 ---
 

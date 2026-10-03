@@ -237,16 +237,69 @@ class AnomalyDetector {
     // Điểm nền môi trường tối thiểu là 5
     let threatScore = Math.min(100, Math.max(5, rawMax + corroborationBonus));
 
-    // Xác định phân cấp trạng thái
+    // ─────────────────────────────────────────────────────────────
+    // CƠ CHẾ PHÒNG THỦ CÁ NHÂN HÓA THEO TỪNG VECTƠ (PER-VECTOR DEFENSE)
+    // ─────────────────────────────────────────────────────────────
+    const vectorDefenses = {
+      auth: {
+        score: Math.round(authScore),
+        status: authScore >= 70 ? 'ALERT' : authScore >= 30 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: authScore >= 70 ? 'QUARANTINE_IP' : 'MONITOR',
+        actionLabel: authScore >= 70
+          ? 'Tự động kích hoạt tường lửa Active Quarantine cô lập IP Brute-Force/Token-hijacking tại Gateway (Không ảnh hưởng khách hàng khác)'
+          : 'Giám sát xác thực bình thường',
+      },
+      traffic: {
+        score: Math.round(trafficScore),
+        status: trafficScore >= 70 ? 'ALERT' : trafficScore >= 30 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: trafficScore >= 70 ? 'ADAPTIVE_RATE_LIMIT' : 'MONITOR',
+        actionLabel: trafficScore >= 70
+          ? 'Kích hoạt bộ giới hạn tần suất thích ứng (Adaptive Rate-Limit) theo trần quy mô CCU, bảo vệ băng thông'
+          : 'Lưu lượng trong giới hạn an toàn',
+      },
+      exploit: {
+        score: Math.round(exploitScore),
+        status: exploitScore >= 70 ? 'ALERT' : exploitScore >= 30 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: exploitScore >= 70 ? 'BLOCK_INJECTION_IP' : 'MONITOR',
+        actionLabel: exploitScore >= 70
+          ? 'Cắt kết nối HTTP 403 tức thì và đưa nguồn IP mang injection payload vào danh sách đen 30 phút'
+          : 'Không phát hiện mẫu thăm dò lỗ hổng',
+      },
+      resource: {
+        score: Math.round(resourceScore),
+        status: resourceScore >= 85 ? 'CRITICAL' : resourceScore >= 70 ? 'WARNING' : resourceScore >= 30 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: resourceScore >= 85 ? 'EMERGENCY_MAINTENANCE' : resourceScore >= 70 ? 'LOAD_SHEDDING' : 'MONITOR',
+        actionLabel: resourceScore >= 85
+          ? '🚨 Nguy cơ sập dây chuyền hạ tầng (Lag > 250ms & 5xx > 15% / OOM): Đề xuất kích hoạt Bảo trì khẩn cấp để bảo vệ CSDL'
+          : resourceScore >= 70
+          ? 'Tự động kích hoạt Load Shedding (hạ tải nhẹ HTTP 503 cho request không ưu tiên, bảo vệ tiến trình lõi)'
+          : 'Tài nguyên phần cứng ổn định',
+      },
+    };
+
+    // Xác định phân cấp trạng thái và hành động tổng thể
+    // QUY TẮC CỐT LÕI: Chỉ đề xuất EMERGENCY_MAINTENANCE khi HẠ TẦNG (vector resource) sập nghiêm trọng (>= 85)
+    // hoặc khi có tấn công DoS kết hợp gây lỗi máy chủ 5xx diện rộng!
     let status = 'NORMAL';
     let recommendedAction = null;
 
-    if (threatScore >= 85) {
+    if (resourceScore >= 85 || (resourceScore >= 70 && err5xxScore >= 70)) {
       status = 'CRITICAL';
       recommendedAction = 'EMERGENCY_MAINTENANCE';
+    } else if (threatScore >= 85) {
+      status = 'CRITICAL';
+      recommendedAction = exploitScore >= 85 ? 'BLOCK_INJECTION_IP' : authScore >= 85 ? 'QUARANTINE_IP' : 'ADAPTIVE_RATE_LIMIT';
     } else if (threatScore >= 70) {
       status = 'WARNING';
-      recommendedAction = 'INVESTIGATE';
+      if (resourceScore >= 70) {
+        recommendedAction = 'LOAD_SHEDDING';
+      } else if (authScore >= 70 || exploitScore >= 70) {
+        recommendedAction = 'ACTIVE_QUARANTINE_ENGAGED';
+      } else if (trafficScore >= 70) {
+        recommendedAction = 'ADAPTIVE_RATE_LIMIT';
+      } else {
+        recommendedAction = 'INVESTIGATE';
+      }
     }
 
     const isAnomaly = anomalies.length > 0 || threatScore >= 70;
@@ -265,6 +318,7 @@ class AnomalyDetector {
         exploit: Math.round(exploitScore),
         resource: Math.round(resourceScore),
       },
+      vectorDefenses,
       targetConcurrency: this.targetConcurrency,
       isAnomaly,
       anomalies,
