@@ -46,6 +46,15 @@ void main() {
             'commit.');
   });
 
+  test('⚠️ luồng xác nhận đăng xuất của drawer KHÔNG nằm ở HomePage', () {
+    expect(nguon.contains('xacNhanDangXuat'), isFalse,
+        reason: 'Nghiệm thu Realme 2026-10-03: luồng ấy từng nằm ở đây và dùng '
+            'context của drawer — đóng drawer là gỡ context, nên sau hộp thoại '
+            '`mounted == false` và bấm "Đăng xuất" không làm gì. Nay '
+            '`DrawerTrangChu` tự đóng và tự hỏi bằng context của Scaffold (có '
+            'ca test mở drawer thật); HomePage chỉ đăng xuất.');
+  });
+
   test('ba nút tròn đặt sẵn chiều vẫn còn — chúng là lối vào nhanh nhất', () {
     for (final huong in ["'thu'", "'chi'", "'transfer'"]) {
       expect(nguon.contains("push('/add', extra: $huong)"), isTrue,

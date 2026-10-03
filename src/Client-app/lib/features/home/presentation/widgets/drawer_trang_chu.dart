@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 
 /// Một mục trong drawer: nhãn, icon, và route đích.
 class MucDrawer {
@@ -69,7 +70,23 @@ class DrawerTrangChu extends StatelessWidget {
 
   /// Người dùng chạm một mục; nhận [MucDrawer.duong].
   final void Function(String duong) onChon;
+
+  /// Người dùng ĐÃ XÁC NHẬN đăng xuất — drawer tự đóng và tự hỏi ([_dangXuat]).
   final VoidCallback onDangXuat;
+
+  /// Đóng drawer, hỏi xác nhận, đồng ý thì gọi [onDangXuat].
+  ///
+  /// ⚠️ Hộp thoại và phép kiểm `mounted` bám context của **Scaffold** (trang), không phải [drawer]: đóng drawer là gỡ
+  /// cây con của nó, nên sau hộp thoại context của drawer `mounted == false`. Bản trước làm luồng này ở `HomePage`
+  /// bằng context của drawer — hộp thoại vẫn hiện, bấm "Đăng xuất" thì không làm gì; sống từ 2026-09-19 tới lượt
+  /// nghiệm thu Realme 2026-10-03 vì ca test dựng drawer làm `body`, không bao giờ đóng.
+  Future<void> _dangXuat(BuildContext drawer) async {
+    final khung = Scaffold.maybeOf(drawer);
+    final trang = khung?.context ?? drawer;
+    khung?.closeDrawer();
+    final dongY = await xacNhanDangXuat(trang);
+    if (dongY == true && trang.mounted) onDangXuat();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +119,7 @@ class DrawerTrangChu extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 32),
-              onTap: onDangXuat,
+              onTap: () => _dangXuat(context),
             ),
             const SizedBox(height: 8),
           ],
