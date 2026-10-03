@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'man_dong_y.dart';
 
-/// Tên tính năng — trên thanh tiêu đề màn đồng ý và khối ở Cài đặt thông báo.
+/// Tên tính năng — tiêu đề khối ở Cài đặt thông báo (ở đó chữ xuống dòng được).
 const String kTenNhacSauNganHang = 'Nhắc ghi sau khi dùng app ngân hàng';
+
+/// Thanh tiêu đề màn đồng ý. ⚠️ Không dùng [kTenNhacSauNganHang]: thanh tiêu đề một dòng, và ở 360 dp (Realme,
+/// 2026-10-03) tên đầy đủ cụt thành "…app ngân h…" — người dùng chọn rút gọn. Giữ không dài hơn "Đọc biến động số dư"
+/// của màn đồng ý D1, tiêu đề đã chứng minh vừa trên máy thật.
+const String kTieuDeThanhNhacSauNganHang = 'Nhắc ghi giao dịch';
 
 /// Bốn cam kết của màn đồng ý (spec 2026-10-03 §3.1).
 const List<String> kCamKetNhacSauNganHang = [
@@ -26,7 +31,7 @@ class DongYNhacSauNganHangPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ManDongY(
-        tieuDeThanh: kTenNhacSauNganHang,
+        tieuDeThanh: kTieuDeThanhNhacSauNganHang,
         icon: Icons.notifications_paused_outlined,
         tieuDe: 'Nhắc ghi những lần bạn quên',
         moTa: 'Khi bạn dùng app ngân hàng mà chưa thấy giao dịch nào được ghi, FlowMoney nhắc bạn ghi lại. '

@@ -111,6 +111,18 @@ void main() {
       await moMan(tester, (_) {});
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('⭐ thanh tiêu đề NGẮN — không dài hơn tiêu đề màn đồng ý D1', (tester) async {
+      await moMan(tester, (_) {});
+      final thanh = tester.widget<Text>(
+          find.descendant(of: find.byType(AppBar), matching: find.byType(Text)).first);
+      expect(thanh.data, kTieuDeThanhNhacSauNganHang);
+      // So độ dài chứ không đo bề rộng: font của bộ test rộng gấp đôi ngoài đời (bẫy 4.4), ở 360 dp chuỗi nào cũng
+      // cụt. "Đọc biến động số dư" là tiêu đề đã chứng minh vừa trên máy thật.
+      expect(kTieuDeThanhNhacSauNganHang.length, lessThanOrEqualTo('Đọc biến động số dư'.length),
+          reason: 'Nghiệm thu Realme 2026-10-03 (360 dp): tên đầy đủ "Nhắc ghi sau khi dùng app ngân hàng" cụt thành '
+              '"…app ngân h…" trên thanh tiêu đề. Người dùng chọn rút gọn; tên đầy đủ vẫn ở khối Cài đặt.');
+    });
   });
 
   group('công tắc ở Cài đặt thông báo', () {
