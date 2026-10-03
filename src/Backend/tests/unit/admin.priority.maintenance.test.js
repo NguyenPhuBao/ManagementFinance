@@ -80,4 +80,83 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
       done();
     });
   });
+
+  it('5. Bảo trì thông thường (im lặng): Không phát broadcast tới người dùng', () => {
+    let broadcastCalled = false;
+    const mockNotif = {
+      broadcast: async () => { broadcastCalled = true; },
+    };
+    const mgr = new MaintenanceManager({ notificationService: mockNotif });
+
+    mgr.setMaintenance(true, 'Bảo trì kỹ thuật định kỳ', 'admin', { isEmergency: false });
+    const status = mgr.getStatus();
+
+    assert.strictEqual(status.active, true);
+    assert.strictEqual(status.isEmergency, false);
+    assert.strictEqual(broadcastCalled, false, 'Bảo trì thường KHÔNG được phát broadcast');
+  });
+
+  it('6. Bảo trì khẩn cấp: Tự động phát broadcast CRITICAL tới toàn bộ người dùng', () => {
+    let broadcastPayload = null;
+    const mockNotif = {
+      broadcast: async (payload) => {
+        broadcastPayload = payload;
+      },
+    };
+    const mgr = new MaintenanceManager({ notificationService: mockNotif });
+
+    mgr.setMaintenance(true, 'Sự cố máy chủ nghiêm trọng', 'admin', { isEmergency: true });
+    const status = mgr.getStatus();
+
+    assert.strictEqual(status.active, true);
+    assert.strictEqual(status.isEmergency, true);
+    assert.ok(broadcastPayload, 'Phải phát broadcast khi khẩn cấp');
+    assert.strictEqual(broadcastPayload.level, 'CRITICAL');
+    assert.strictEqual(broadcastPayload.metadata.isEmergency, true);
+  });
+
+  it('7. Lên lịch bảo trì: Lưu thông tin lịch và cho phép hủy lịch chủ động', () => {
+    const mgr = new MaintenanceManager();
+    const futureDate = new Date(Date.now() + 100000).toISOString();
+
+    mgr.scheduleMaintenance({
+      scheduledAt: futureDate,
+      reason: 'Nâng cấp CSDL tối nay',
+      isEmergency: false,
+      createdBy: 'admin-lead',
+    });
+
+    let status = mgr.getStatus();
+    assert.ok(status.scheduled, 'Phải có thông tin scheduled');
+    assert.strictEqual(status.scheduled.scheduledAt, futureDate);
+    assert.strictEqual(status.scheduled.createdBy, 'admin-lead');
+
+    // Hủy lịch
+    const cancelRes = mgr.cancelScheduledMaintenance();
+    assert.strictEqual(cancelRes.cancelled, true);
+    assert.strictEqual(mgr.getStatus().scheduled, null);
+  });
+
+  it('8. QUY TẮC CỐT LÕI CỦA PO: Kích hoạt Bảo trì khẩn cấp tự động HỦY/XÓA lịch bảo trì đã hẹn trước', () => {
+    const mgr = new MaintenanceManager();
+    const futureDate = new Date(Date.now() + 100000).toISOString();
+
+    // 1. Đặt lịch trước
+    mgr.scheduleMaintenance({
+      scheduledAt: futureDate,
+      reason: 'Bảo trì ngày mai',
+      isEmergency: false,
+      createdBy: 'admin-01',
+    });
+    assert.ok(mgr.getStatus().scheduled, 'Lịch bảo trì phải tồn tại trước khi sự cố xảy ra');
+
+    // 2. Sự cố khẩn cấp xảy ra -> Bật bảo trì khẩn cấp ngay
+    mgr.setMaintenance(true, 'Sập đường truyền cáp quang', 'admin-02', { isEmergency: true });
+
+    // 3. Kiểm tra: Lịch hẹn đã bị xóa sạch (scheduled = null)
+    const status = mgr.getStatus();
+    assert.strictEqual(status.active, true);
+    assert.strictEqual(status.isEmergency, true);
+    assert.strictEqual(status.scheduled, null, 'Lịch hẹn trước phải bị xóa sạch khi kích hoạt bảo trì khẩn cấp');
+  });
 });

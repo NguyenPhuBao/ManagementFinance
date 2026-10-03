@@ -260,9 +260,101 @@ function emitSystemBroadcast(broadcastData) {
   }
 }
 
+/**
+ * Phát sự kiện người dùng đăng ký mới tới admin_room
+ * @param {Object} userData 
+ */
+function emitUserRegistered(userData) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.user_registered', userData);
+    logger.info('[Socket] Emitted admin.user_registered to admin_room', { username: userData.username });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin.user_registered', { error: error.message });
+  }
+}
+
+/**
+ * Phát sự kiện người dùng đăng nhập thành công tới admin_room (cập nhật biểu đồ login)
+ * @param {Object} loginData 
+ */
+function emitUserLoggedIn(loginData) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.user_logged_in', loginData);
+    logger.debug('[Socket] Emitted admin.user_logged_in to admin_room', { idaccount: loginData.idaccount });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin.user_logged_in', { error: error.message });
+  }
+}
+
+/**
+ * Phát sự kiện thay đổi trạng thái người dùng (Active, Inactive, PendingDelete)
+ * @param {Object} statusData 
+ */
+function emitUserStatusChanged(statusData) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.user_status_changed', statusData);
+    logger.info('[Socket] Emitted admin.user_status_changed to admin_room', { idaccount: statusData.idaccount, status: statusData.status });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin.user_status_changed', { error: error.message });
+  }
+}
+
+/**
+ * Phát sự kiện thay đổi danh mục (thêm, sửa, xóa) tới admin_room
+ * @param {Object} categoryData 
+ */
+function emitCategoryUpdated(categoryData) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.category_updated', categoryData);
+    logger.info('[Socket] Emitted admin.category_updated to admin_room', { action: categoryData.action });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin.category_updated', { error: error.message });
+  }
+}
+
+/**
+ * Phát sự kiện thay đổi trạng thái bảo trì hệ thống tới admin_room và toàn bộ client
+ * @param {Object} maintenanceStatus 
+ */
+function emitMaintenanceChanged(maintenanceStatus) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.maintenance_changed', maintenanceStatus);
+    io.emit('system.maintenance_changed', maintenanceStatus);
+    logger.info('[Socket] Emitted maintenance_changed', { active: maintenanceStatus.active, isEmergency: maintenanceStatus.isEmergency });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit maintenance_changed', { error: error.message });
+  }
+}
+
+/**
+ * Phát luồng nhịp tim thông số phần cứng & sức tải (3s/lần) tới admin_room
+ * @param {Object} metrics 
+ */
+function emitSystemMetricsStream(metrics) {
+  if (!io) return;
+  try {
+    io.to('admin_room').emit('admin.metrics_stream', metrics);
+  } catch (error) {
+    logger.error('[Socket] Failed to emit admin.metrics_stream', { error: error.message });
+  }
+}
+
+/**
+ * Helper hỗ trợ mock IO trong unit test
+ */
+function _setMockIO(mockInstance) {
+  io = mockInstance;
+}
+
 module.exports = {
   initSocket,
   getIO,
+  _setMockIO,
   emitAuditActivity,
   emitBankTransaction,
   emitOcrCompleted,
@@ -271,6 +363,12 @@ module.exports = {
   emitSyncCompleted,
   emitAdminNotification,
   emitSystemBroadcast,
+  emitUserRegistered,
+  emitUserLoggedIn,
+  emitUserStatusChanged,
+  emitCategoryUpdated,
+  emitMaintenanceChanged,
+  emitSystemMetricsStream,
 };
 
 

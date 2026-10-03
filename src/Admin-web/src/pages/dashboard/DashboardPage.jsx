@@ -680,14 +680,61 @@ const DashboardPage = () => {
       }
     };
 
+    // Lắng nghe sự kiện người dùng đăng ký mới Realtime
+    const handleUserRegistered = (newUser) => {
+      setTotalUsers((prev) => (prev !== null ? prev + 1 : 1));
+      setNewUsers((prev) => {
+        const cur = (prev?.current || 0) + 1;
+        const previous = prev?.previous || 0;
+        const growth = previous === 0 ? 100 : parseFloat(((cur / previous) * 100).toFixed(2));
+        return { ...prev, current: cur, growth };
+      });
+    };
+
+    // Lắng nghe sự kiện người dùng đăng nhập thành công Realtime
+    const handleUserLoggedIn = (data) => {
+      setLoginStats((prev) => {
+        if (!prev.timeline || prev.timeline.length === 0) return prev;
+        const updated = [...prev.timeline];
+        const targetIdx = findTargetBucketIdx(updated, prev.format, data?.time);
+        if (targetIdx !== -1) {
+          updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
+        }
+        const counts = updated.map(u => u.count);
+        const total = counts.reduce((a, b) => a + b, 0);
+        const max = Math.max(...counts);
+        const avg = Math.round(total / counts.length);
+        return {
+          ...prev,
+          summary: { total, max, avg },
+          timeline: updated,
+        };
+      });
+    };
+
+    // Lắng nghe sự kiện danh mục thêm/xóa Realtime
+    const handleCategoryUpdated = (data) => {
+      if (data?.action === 'create') {
+        setTotalCategories((prev) => (prev !== null ? prev + 1 : 1));
+      } else if (data?.action === 'delete') {
+        setTotalCategories((prev) => (prev !== null ? Math.max(0, prev - 1) : 0));
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
+    socket.on('admin.user_registered', handleUserRegistered);
+    socket.on('admin.user_logged_in', handleUserLoggedIn);
+    socket.on('admin.category_updated', handleCategoryUpdated);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
+      socket.off('admin.user_registered', handleUserRegistered);
+      socket.off('admin.user_logged_in', handleUserLoggedIn);
+      socket.off('admin.category_updated', handleCategoryUpdated);
     };
   }, [socket, activityLimit]);
 

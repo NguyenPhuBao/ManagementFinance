@@ -1,7 +1,11 @@
 /**
  * Maintenance Manager
- * Quản lý trạng thái bảo trì khẩn cấp (Emergency Maintenance Mode)
- * Lưu trữ cờ trong RAM / Redis nhẹ, hoàn toàn không phụ thuộc CSDL
+ * Quản lý trạng thái bảo trì hệ thống (Maintenance & Emergency Maintenance Mode)
+ * Hỗ trợ:
+ * 1. Bảo trì kỹ thuật thông thường (Im lặng - không phát broadcast người dùng).
+ * 2. Bảo trì khẩn cấp (Phát broadcast CRITICAL tới toàn bộ client-app & người dùng).
+ * 3. Lên lịch bảo trì (Scheduled Maintenance hẹn giờ).
+ * 4. Ghi đè khẩn cấp (Emergency Overrides): Kích hoạt khẩn cấp sẽ tự động xóa sạch lịch hẹn trước.
  */
 
 const logger = require('../logger');
@@ -9,50 +13,191 @@ const logger = require('../logger');
 class MaintenanceManager {
   constructor(options = {}) {
     this.active = false;
+    this.isEmergency = false;
     this.reason = 'Hệ thống đang gặp sự cố. Quý khách vui lòng quay lại sau ít phút!';
     this.activatedBy = null;
     this.activatedAt = null;
+    this.scheduled = null; // { scheduledAt, reason, isEmergency, createdBy, createdAt }
+    this._scheduledTimer = null;
     this.redis = options.redis || null;
+    this.notificationService = options.notificationService || null;
   }
 
   isMaintenanceActive() {
     return this.active;
   }
 
-  setMaintenance(active, reason = null, activatedBy = 'system') {
-    this.active = Boolean(active);
+  isEmergencyMode() {
+    return this.active && this.isEmergency;
+  }
+
+  getNotificationService() {
+    if (!this.notificationService) {
+      try {
+        const notif = require('../../modules/notification/notification.service');
+        this.notificationService = notif;
+      } catch (e) {
+        // Ignored if circular dependency during startup
+      }
+    }
+    return this.notificationService;
+  }
+
+  setMaintenance(active, reason = null, activatedBy = 'system', options = {}) {
+    const isActivating = Boolean(active);
+    const isEmergency = Boolean(options.isEmergency);
+
+    this.active = isActivating;
+
     if (this.active) {
-      this.reason = reason || this.reason;
+      this.reason = reason || this.reason || 'Hệ thống đang bảo trì kỹ thuật.';
       this.activatedBy = activatedBy;
       this.activatedAt = new Date().toISOString();
-      logger.warn('[MAINTENANCE] BẬT chế độ bảo trì khẩn cấp', {
+      this.isEmergency = isEmergency;
+
+      // RULE CỐT LÕI TỪ PO: Nếu kích hoạt BẢO TRÌ KHẨN CẤP, lập tức HỦY & XÓA SẠCH LỊCH BẢO TRÌ ĐÃ HẸN
+      if (this.isEmergency && this.scheduled) {
+        logger.warn('[MAINTENANCE] Phát hiện sự cố khẩn cấp: TỰ ĐỘNG XÓA LỊCH BẢO TRÌ ĐÃ HẸN TRƯỚC', {
+          clearedSchedule: this.scheduled,
+          emergencyActivatedBy: this.activatedBy,
+        });
+        this.cancelScheduledMaintenance();
+      }
+
+      logger.warn(`[MAINTENANCE] BẬT chế độ bảo trì [${this.isEmergency ? 'KHẨN CẤP' : 'THÔNG THƯỜNG'}]`, {
         reason: this.reason,
+        isEmergency: this.isEmergency,
         activatedBy: this.activatedBy,
         activatedAt: this.activatedAt,
       });
+
+      // RULE CỐT LÕI TỪ PO: Khi check "Bảo trì khẩn cấp" mới phát thông báo tới toàn bộ hệ thống & người dùng.
+      // Bảo trì thông thường: Không phát thông báo, chỉ chặn traffic client.
+      if (this.isEmergency) {
+        const notifService = this.getNotificationService();
+        if (notifService && typeof notifService.broadcast === 'function') {
+          notifService.broadcast({
+            title: '⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP',
+            message: this.reason,
+            level: 'CRITICAL',
+            metadata: {
+              type: 'EMERGENCY_MAINTENANCE',
+              isEmergency: true,
+              activatedAt: this.activatedAt,
+              activatedBy: this.activatedBy,
+            },
+          }).catch((err) => {
+            logger.error('[MAINTENANCE] Lỗi phát thông báo khẩn cấp', { error: err.message });
+          });
+        }
+      }
     } else {
       logger.info('[MAINTENANCE] TẮT chế độ bảo trì — Hệ thống trở lại bình thường', {
         deactivatedBy: activatedBy,
       });
+      this.isEmergency = false;
       this.activatedBy = null;
       this.activatedAt = null;
     }
 
-    // Đồng bộ vào Redis nếu có kết nối
+    // Đồng bộ vào Redis nếu có
     if (this.redis && typeof this.redis.set === 'function') {
       const payload = JSON.stringify(this.getStatus());
-      this.redis.set('system:maintenance_mode', payload).catch(() => { });
+      this.redis.set('system:maintenance_mode', payload).catch(() => {});
     }
 
+    // Phát sự kiện realtime tới admin_room và toàn bộ client
+    try {
+      const { emitMaintenanceChanged } = require('../socket');
+      emitMaintenanceChanged(this.getStatus());
+    } catch (_) {}
+
     return this.getStatus();
+  }
+
+  scheduleMaintenance({ scheduledAt, reason, isEmergency = false, createdBy = 'admin' }) {
+    if (!scheduledAt) {
+      throw new Error('Vui lòng chọn thời điểm bảo trì');
+    }
+
+    const targetDate = new Date(scheduledAt);
+    const now = new Date();
+    const delayMs = targetDate.getTime() - now.getTime();
+
+    if (isNaN(delayMs) || delayMs <= 0) {
+      throw new Error('Thời điểm bảo trì phải nằm trong tương lai');
+    }
+
+    // Hủy timer cũ nếu có
+    this.cancelScheduledMaintenance();
+
+    this.scheduled = {
+      scheduledAt: targetDate.toISOString(),
+      reason: reason || 'Bảo trì hệ thống theo lịch trình định kỳ.',
+      isEmergency: Boolean(isEmergency),
+      createdBy,
+      createdAt: now.toISOString(),
+    };
+
+    logger.info('[MAINTENANCE] Đã lên lịch bảo trì hệ thống', {
+      scheduledAt: this.scheduled.scheduledAt,
+      isEmergency: this.scheduled.isEmergency,
+      delayMs,
+    });
+
+    // Thiết lập timer Node.js
+    this._scheduledTimer = setTimeout(() => {
+      logger.info('[MAINTENANCE] Đến giờ hẹn: Tự động kích hoạt bảo trì hệ thống', {
+        scheduled: this.scheduled,
+      });
+      const sched = this.scheduled;
+      this._scheduledTimer = null;
+      this.scheduled = null;
+
+      if (sched) {
+        this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
+          isEmergency: sched.isEmergency,
+        });
+      }
+    }, delayMs);
+
+    // Không làm treo tiến trình Node.js nếu có scheduler
+    if (this._scheduledTimer && typeof this._scheduledTimer.unref === 'function') {
+      this._scheduledTimer.unref();
+    }
+
+    try {
+      const { emitMaintenanceChanged } = require('../socket');
+      emitMaintenanceChanged(this.getStatus());
+    } catch (_) {}
+
+    return this.getStatus();
+  }
+
+  cancelScheduledMaintenance() {
+    if (this._scheduledTimer) {
+      clearTimeout(this._scheduledTimer);
+      this._scheduledTimer = null;
+    }
+    const hadSchedule = Boolean(this.scheduled);
+    this.scheduled = null;
+
+    try {
+      const { emitMaintenanceChanged } = require('../socket');
+      emitMaintenanceChanged(this.getStatus());
+    } catch (_) {}
+
+    return { cancelled: hadSchedule };
   }
 
   getStatus() {
     return {
       active: this.active,
+      isEmergency: this.isEmergency,
       reason: this.reason,
       activatedBy: this.activatedBy,
       activatedAt: this.activatedAt,
+      scheduled: this.scheduled,
     };
   }
 }

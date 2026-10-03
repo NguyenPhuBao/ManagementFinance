@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/admin.api';
+import useSocket from '../../hooks/useSocket';
 
-const REFRESH_MS = 30_000;
+const REFRESH_MS = 60_000;
 
 const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
   const pct = max > 0 ? Math.round((value / max) * 100) : value;
@@ -172,6 +173,52 @@ const ServerHealthPanel = () => {
     return () => clearInterval(t);
   }, [refreshAll]);
 
+  // Lắng nghe luồng nhịp tim metrics_stream qua Socket.io thời gian thực (3s/lần)
+  const socket = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMetricsStream = (data) => {
+      if (!data) return;
+      setHealth((prev) => ({
+        ...prev,
+        uptime: {
+          uptimeFormatted: data.uptimeFormatted,
+          uptimePercent: Math.min(100, parseFloat(((data.uptimeSeconds / (30 * 24 * 3600)) * 100).toFixed(3))),
+          startedAt: prev?.uptime?.startedAt || null,
+          slaWindowDays: 30,
+        },
+        cpu: { percent: data.cpuPercent },
+        ram: { percent: data.ramPercent, rssMb: data.ramRssMb },
+        eventLoop: { lagMs: data.eventLoopLagMs, overloaded: data.eventLoopLagMs > 50 },
+        dbPool: data.dbPool || prev?.dbPool,
+        loadShedding: prev?.loadShedding || { totalShed: 0 },
+      }));
+      setHealthLoading(false);
+      setHealthError(null);
+
+      if (data.maintenance) {
+        setMaintenance(data.maintenance);
+      }
+    };
+
+    const handleMaintenanceChanged = (mState) => {
+      if (mState) {
+        setMaintenance(mState);
+      }
+    };
+
+    socket.on('admin.metrics_stream', handleMetricsStream);
+    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
+    socket.on('system.maintenance_changed', handleMaintenanceChanged);
+
+    return () => {
+      socket.off('admin.metrics_stream', handleMetricsStream);
+      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
+      socket.off('system.maintenance_changed', handleMaintenanceChanged);
+    };
+  }, [socket]);
+
   // 3. Thao tác công tắc bảo trì khẩn cấp (Emergency Switch)
   const toggle = async () => {
     const next = !maintenance.active;
@@ -181,11 +228,12 @@ const ServerHealthPanel = () => {
     }
     setToggling(true);
     try {
-      const payload = { active: next, reason: next ? reason.trim() : null };
+      const payload = { active: next, reason: next ? reason.trim() : null, isEmergency: true };
       await adminApi.setMaintenanceStatus(payload);
       setMaintenance((prev) => ({
         ...prev,
         active: next,
+        isEmergency: next,
         reason: next ? reason.trim() : '',
         activatedAt: new Date().toISOString(),
       }));
@@ -322,19 +370,43 @@ const ServerHealthPanel = () => {
         )}
 
         {maintenance.active && (
-          <div className="text-xs text-orange-900 bg-orange-100/70 border border-orange-200 rounded-md p-2 space-y-1 mt-2">
+          <div className={`text-xs rounded-md p-2 space-y-1 mt-2 border ${
+            maintenance.isEmergency
+              ? 'text-red-900 bg-red-100/80 border-red-300'
+              : 'text-orange-900 bg-orange-100/70 border-orange-200'
+          }`}>
             <p className="font-semibold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px] text-orange-700">warning</span>
-              Đang bảo trì: {maintenance.reason || 'Hệ thống đang bảo trì khẩn cấp'}
+              <span className={`material-symbols-outlined text-[15px] ${maintenance.isEmergency ? 'text-red-700' : 'text-orange-700'}`}>
+                {maintenance.isEmergency ? 'error' : 'warning'}
+              </span>
+              <span>
+                {maintenance.isEmergency ? 'Bảo trì khẩn cấp: ' : 'Bảo trì kỹ thuật: '}
+                {maintenance.reason || 'Hệ thống đang bảo trì'}
+              </span>
             </p>
             {maintenance.activatedBy && (
-              <p className="text-orange-700/80 text-[11px]">
+              <p className="opacity-80 text-[11px]">
                 Kích hoạt bởi: <b>{maintenance.activatedBy}</b>
                 {maintenance.activatedAt && ` lúc ${new Date(maintenance.activatedAt).toLocaleTimeString('vi-VN')}`}
               </p>
             )}
           </div>
         )}
+
+        {maintenance.scheduled && !maintenance.active && (
+          <div className="text-[11px] text-blue-900 bg-blue-50 border border-blue-200 rounded-md p-2 mt-2 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px] text-blue-600">event</span>
+              Lịch bảo trì: {new Date(maintenance.scheduled.scheduledAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+            </span>
+          </div>
+        )}
+
+        <div className="mt-2 text-right">
+          <a href="/broadcast" className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5">
+            Quản trị & Lên lịch bảo trì &rarr;
+          </a>
+        </div>
       </div>
     </div>
   );

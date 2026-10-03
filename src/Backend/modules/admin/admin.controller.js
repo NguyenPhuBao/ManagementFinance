@@ -168,10 +168,36 @@ const adminController = {
 
   setMaintenanceStatus(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    const { active, reason } = req.body || {};
-    const adminUser = req.user?.username || req.user?.id || 'admin';
-    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser);
-    return ResponseHandler.success(res, status, active ? 'Đã kích hoạt chế độ bảo trì' : 'Đã tắt chế độ bảo trì');
+    const { active, reason, isEmergency, scheduledAt } = req.body || {};
+    const adminUser = req.user?.username || req.user?.fullname || 'admin';
+
+    // 1. Xử lý lên lịch bảo trì trong tương lai
+    if (scheduledAt) {
+      try {
+        const status = defaultMaintenanceManager.scheduleMaintenance({
+          scheduledAt,
+          reason,
+          isEmergency,
+          createdBy: adminUser,
+        });
+        return ResponseHandler.success(res, status, 'Đã lên lịch bảo trì hệ thống thành công');
+      } catch (err) {
+        return ResponseHandler.badRequest(res, err.message);
+      }
+    }
+
+    // 2. Kích hoạt hoặc tắt bảo trì tức thì
+    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency });
+    const msg = active
+      ? (isEmergency ? 'Đã kích hoạt chế độ bảo trì khẩn cấp' : 'Đã kích hoạt chế độ bảo trì kỹ thuật')
+      : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
+    return ResponseHandler.success(res, status, msg);
+  },
+
+  cancelScheduledMaintenance(req, res) {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    defaultMaintenanceManager.cancelScheduledMaintenance();
+    return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Đã hủy lịch bảo trì hệ thống');
   },
 
   async getSystemHealth(req, res) {

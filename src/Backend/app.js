@@ -34,8 +34,13 @@ if (config.env === 'development') {
   app.use(morgan('dev'));
 }
 
+// ─── AIOPS SENTINEL REAL-TIME METRIC STREAMING ───────────────────
+const { defaultFeatureCollector } = require('./modules/aiops/feature.collector');
+app.use(defaultFeatureCollector.createMiddleware());
+
 // ─── RESILIENCE & ADMIN PRIORITY PIPELINE ───────────────────────
 const { defaultAdminPriority } = require('./middleware/admin-priority.middleware');
+const { defaultAIOpsQuarantine } = require('./modules/aiops/aiops.quarantine');
 const { defaultMaintenance } = require('./middleware/maintenance.middleware');
 const { defaultLoadShedding } = require('./middleware/load-shedding.middleware');
 const { defaultRetryGuard } = require('./middleware/retry-guard.middleware');
@@ -43,6 +48,9 @@ const { defaultRequestTimeout } = require('./middleware/request-timeout.middlewa
 
 // 1. Làn ưu tiên Admin-web (Fast-Lane Identification)
 app.use(defaultAdminPriority);
+
+// 1b. AIOps Active Quarantine Shield (Chặn đứng tức thì các IP tấn công/bất thường)
+app.use(defaultAIOpsQuarantine.createMiddleware());
 
 // 2. Kiểm tra chế độ bảo trì khẩn cấp (Chặn client, giữ admin thông suốt)
 app.use(defaultMaintenance);
