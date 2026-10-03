@@ -165,6 +165,27 @@ void main() {
     await dongTrang(tester);
   });
 
+  testWidgets('dải "Đã xoá thông báo" TỰ ẨN sau vài giây dù có nút Hoàn tác',
+      (tester) async {
+    await moTrang(tester);
+    await vuotXoa(tester);
+    expect(find.text('Đã xoá thông báo'), findsOneWidget);
+
+    // 4 giây hiển thị + hoạt ảnh thu dải. Bơm từng nhịp chứ không
+    // `pumpAndSettle` — xem chú thích ở `nhip`.
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    expect(find.text('Đã xoá thông báo'), findsNothing,
+        reason: 'Nghiệm thu Realme 2026-10-03: dải này đứng yên HƠN 7 PHÚT và đi '
+            'theo qua mọi màn (Sổ giao dịch, chi tiết giao dịch), đè lên nút. '
+            'Flutter mới giữ SnackBar có `action` tới khi người dùng chạm '
+            '(`persist` mặc định theo `action`) — dải ở đây chỉ để báo việc vừa '
+            'xảy ra, nên phải tự ẩn.');
+    await dongTrang(tester);
+  });
+
   testWidgets('bấm Hoàn tác thì thông báo trở lại', (tester) async {
     await moTrang(tester);
     await vuotXoa(tester);

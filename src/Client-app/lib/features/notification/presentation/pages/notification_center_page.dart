@@ -559,6 +559,9 @@ Future<void> _xoaCoHoanTac(
     SnackBar(
       content: const Text('Đã xoá thông báo'),
       duration: const Duration(seconds: 4),
+      // ⚠️ BẮT BUỘC: Flutter mới giữ SnackBar có `action` tới khi người dùng chạm (`persist` mặc định theo
+      // `action`) — thiếu dòng này dải đứng yên hàng phút và đi theo qua mọi màn (nghiệm thu Realme 2026-10-03).
+      persist: false,
       action: SnackBarAction(
         label: 'Hoàn tác',
         onPressed: () {
