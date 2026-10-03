@@ -169,7 +169,8 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    biên lai MB Bank thật (2026-10-02); Task 11 xong 2026-10-03** (debug + release trên Realme, mục **7.7**; còn mở:
    mẫu riêng MoMo / ZaloPay khi có biên lai thật); chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản
    ngay trong app ngân hàng thì có lần app ấy không đăng thông báo biến động. Cùng lượt người dùng chọn thêm **nhắc ghi
-   sau khi rời app ngân hàng** — bản thiết kế riêng, **chưa viết**.
+   sau khi rời app ngân hàng** — spec `docs/superpowers/specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt
+   2026-10-03**, kế hoạch 10 task (gitignore) cùng tên ở `plans/`; **chưa thi công**.
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).
 
 ## 7. Chia sẻ biên lai (2026-10-02)

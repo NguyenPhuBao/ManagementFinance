@@ -230,7 +230,8 @@ gấp đôi rộng).
 
 ## 11. Không làm trong bản này
 
-- **Nhắc ghi sau khi rời app ngân hàng** — bản thiết kế riêng, viết sau; cần thử trước quyền *Truy cập dữ liệu sử dụng*
+- **Nhắc ghi sau khi rời app ngân hàng** — bản thiết kế riêng: `2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md`
+  (duyệt 2026-10-03); cần thử trước quyền *Truy cập dữ liệu sử dụng*
   và việc ColorOS đóng băng app nền có cho nhắc đúng lúc không.
 - Đính kèm ảnh vào giao dịch · PDF · nhiều ảnh một lần · chụp ảnh từ trong FlowMoney (C4) · iOS.
 - Tự lưu không cần bấm (bất biến ④).

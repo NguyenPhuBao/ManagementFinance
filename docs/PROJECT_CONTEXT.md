@@ -1058,7 +1058,8 @@ kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. 
   `test/core/ocr/ban_release_r8_mlkit_test.dart`. Sửa thêm: nút ✕ màn xem ảnh to có **nền tròn tối** (chìm trên biên
   lai nền sáng), ca test đo tương phản ≥ 3:1. Dung lượng đo trên release: 11,06 MB thư viện arm64 + 1,49 MB mô hình.
   Ba màn Stitch người dùng xác nhận. Còn mở: mẫu riêng MoMo / ZaloPay (chờ biên lai thật) · bản thiết kế thứ hai *nhắc
-  ghi sau khi rời app ngân hàng* (chưa viết).
+  ghi sau khi rời app ngân hàng* — spec `specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt 2026-10-03**,
+  kế hoạch 10 task (gitignore), **chưa thi công**.
 
 ### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 

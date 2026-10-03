@@ -1,7 +1,8 @@
 # Nhắc ghi sau khi dùng app ngân hàng — thiết kế
 
 **Ngày:** 2026-10-03. **Trạng thái:** thiết kế duyệt trong chat (mười lượt AskUserQuestion — năm câu hỏi rồi duyệt
-từng phần 1–5); bản viết **chờ người dùng đọc lại**. Chưa có kế hoạch, chưa có mã.
+từng phần 1–5); bản viết người dùng **duyệt** cùng ngày (*"Ok duyệt"*). Kế hoạch:
+`docs/superpowers/plans/2026-10-03-nhac-ghi-sau-app-ngan-hang.md` (gitignore). Chưa có mã.
 
 Việc sau D1 số 3b (`docs/BIEN_DONG_SO_DU_FEATURE.md` mục 6), bản thiết kế thứ hai của cùng lượt với *chia sẻ biên lai*
 (spec `2026-10-02-chia-se-bien-lai-design.md` mục 11). Hai việc bù cho nhau: biên lai cứu giao dịch **khi người dùng
@@ -129,10 +130,13 @@ Phiên đã kết thúc, `batDau > mốc` (mục 4.4), `trenMan ≥ kToiThieuTre
 1. **Tin / biên lai:** một hàng loại 20 **không phải dòng nhắc** (khoá không mang tiền tố `bienDong:phien|`), cùng nguồn
    (tham số `nguon` của deeplink), `createdAt ∈ [batDau − kTruocPhien, ketThuc + kSauPhienTin]`. `createdAt` của hàng
    loại 20 là mốc **sự kiện** (giờ trong tin / giờ in trên biên lai).
-2. **Giao dịch đã ghi:** một giao dịch sống, **không** do máy tạo (`laGhiChuMay`, định nghĩa của B1), `date ∈ [batDau −
-   kTruocPhien, ketThuc + kSauPhienGiaoDich]`. Biết ví của nguồn (mục 5.4) → chỉ tính giao dịch có `walletId` hoặc
-   `walletTransfer` là ví ấy; chưa biết → mọi giao dịch. Giao dịch ghi tay mang **giờ nhập** (`_selectedDate =
-   DateTime.now()`); chọn ngày bằng lịch thì giờ về 00:00 và giao dịch ấy không được tính — chấp nhận.
+2. **Giao dịch đã ghi:** **mọi** giao dịch sống, `date ∈ [batDau − kTruocPhien, ketThuc + kSauPhienGiaoDich]`. Biết ví
+   của nguồn (mục 5.4) → chỉ tính giao dịch có `walletId` hoặc `walletTransfer` là ví ấy; chưa biết → mọi giao dịch.
+   Giao dịch ghi tay mang **giờ nhập** (`_selectedDate = DateTime.now()`); chọn ngày bằng lịch thì giờ về 00:00 và giao
+   dịch ấy không được tính — chấp nhận. *(Sửa lúc viết kế hoạch, 2026-10-03: bản duyệt ghi "không tính giao dịch máy
+   tạo — `laGhiChuMay`", nhưng hàm ấy đi qua `khoanVaoThongKe` nên loại cả **chuyển khoản người dùng tự ghi** — đúng
+   thứ hay đi sau một phiên ngân hàng. Giao dịch máy tạo mang ngày của KỲ — tự trả hoá đơn `occurredAt: bill.dueDate`,
+   trích mục tiêu `occurredAt: ky` — nên hầu như không rơi vào cửa sổ quanh một phiên.)*
 
 Thứ tự trong lượt nhập là **bắt buộc**: `NhapBienDong` → `NhapBienLai` → `NhapPhienNganHang`, để tin và biên lai đang
 chờ đã thành hàng trước khi xét bằng chứng 1.
@@ -192,7 +196,7 @@ Kotlin (không chạm SQLite):
 
 | Tệp | Vai |
 |---|---|
-| `PhienNganHang.kt` (mới) | `object`: hằng §4.1, `coQuyen` (AppOps `OPSTR_GET_USAGE_STATS` = `MODE_ALLOWED`), `suKien(tu)` (lọc gói theo dõi **trước** khi trả), `kiem(ctx)`, bắn / gỡ thông báo |
+| `PhienNganHang.kt` (mới) | `object`: hằng §4.1, `coQuyen` (AppOps `OPSTR_GET_USAGE_STATS` = `MODE_ALLOWED`), `suKien(tu)` (lọc gói theo dõi **trước** khi trả), `kiem(ctx)`, bắn / gỡ thông báo. **Chỉ Android 10+ (API 29)** — `ACTIVITY_RESUMED` / `ACTIVITY_PAUSED`, `unsafeCheckOpNoThrow`; máy cũ hơn coi như không có quyền |
 | `NhacGhiWorker.kt` (mới) | `Worker` gọi `PhienNganHang.kiem`, luôn `Result.success()` |
 | `NhacGhiReceiver.kt` (mới) | nút *Không có giao dịch*; `exported="false"`, intent tường minh |
 | `BienDongListenerService.kt` | cuối `onNotificationPosted` (sau khi ghi hàng chờ) và `onListenerConnected`: `PhienNganHang.kiem` trên luồng nền, giãn ≥ 60 s. Danh sách gói = `DANH_SACH_TRANG` (một danh sách cho cả hai tính năng) |
@@ -283,8 +287,8 @@ Kiểm 360 dp, một widget test dựng bằng `AppTheme.lightTheme` (bẫy 4.11
 
 - **Hàm thuần:** `phienTuSuKien` — gộp đúng biên 3 phút, phiên đang mở, hai lớp đổi chỗ cùng mili giây (thứ tự lộn),
   `ra` lẻ, sự kiện tương lai, nhiều gói xen nhau. `phienCanNhac` — từng bằng chứng (tin, biên lai, giao dịch), đúng mép
-  cửa sổ (2 / 10 / 30 phút), ví đã biết / chưa biết, giao dịch máy tạo không tính, dòng nhắc cũ không là bằng chứng,
-  `boDen`, `daXetDen`, ngưỡng 20 s, 7 ngày. Khoá, deeplink khứ hồi, `dienSanBienDongTuQuery` với `phien`,
+  cửa sổ (2 / 10 / 30 phút), ví đã biết / chưa biết, dòng nhắc cũ không là bằng chứng,
+  `boDen`, `daXetDen`, ngưỡng 20 s, 7 ngày; chuyển khoản tự ghi **là** bằng chứng. Khoá, deeplink khứ hồi, `dienSanBienDongTuQuery` với `phien`,
   `dongNguonBienDong`, `tieuDePhien`.
 - **`NhapPhienNganHang`:** cờ tắt / thiếu quyền → không dòng (thiếu quyền thì `daXetDen` = bây giờ); không tạo trùng khi
   gọi hai lần; mốc tiến đúng; gọi `huyNhac`; không bao giờ ném; `dongKhiDangXuat`. Scanner gọi nó **sau**
