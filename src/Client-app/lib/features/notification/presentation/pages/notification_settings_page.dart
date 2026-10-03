@@ -5,6 +5,8 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
 import '../../../../core/notification/hoc_gio_thong_bao.dart';
 import '../../../../core/notification/kenh_bien_dong.dart';
+import '../../../../core/notification/kenh_phien_ngan_hang.dart';
+import '../../../../core/notification/moc_phien_store.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
@@ -13,6 +15,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'dong_y_bien_dong_page.dart';
+import 'dong_y_nhac_sau_ngan_hang_page.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
 ///
@@ -27,6 +30,9 @@ import 'dong_y_bien_dong_page.dart';
 /// kiểu này không ai đi tìm nút lưu — họ gạt công tắc rồi bấm quay lại.
 /// Hàng gợi ý pin của thẻ D1 (Stitch `2ff589c7…`).
 const String kTieuDeTreNen = 'Tin có thể đến trễ khi app chạy nền';
+
+/// Tiêu đề hàng gợi ý pin của khối *Nhắc ghi sau khi dùng app ngân hàng* (cùng mô tả [kMoTaTreNen]).
+const String kTieuDeTreNenNhac = 'Lời nhắc có thể đến trễ khi app chạy nền';
 const String kMoTaTreNen = 'Một số máy (Realme, OPPO, Xiaomi…) tạm dừng FlowMoney khi ở nền. '
     'Bật "Cho phép hoạt động dưới nền" trong mục pin của ứng dụng để nhận ngay.';
 
@@ -40,6 +46,8 @@ class NotificationSettingsPage extends StatefulWidget {
     this.taiDeXuat,
     this.boQuaDeXuat,
     this.kenhBienDong,
+    this.kenhPhienNganHang,
+    this.mocPhien,
   });
 
   /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
@@ -71,7 +79,20 @@ class NotificationSettingsPage extends StatefulWidget {
   /// cho test.
   final KenhBienDong? kenhBienDong;
 
+  /// Kênh tới tầng Kotlin của nhắc ghi sau khi dùng app ngân hàng. Mặc định `sl<KenhPhienNganHang>()`; tiêm được cho
+  /// test.
+  final KenhPhienNganHang? kenhPhienNganHang;
+
+  /// Mốc đã xét theo tài khoản của nhắc ghi. Mặc định `sl<MocPhienStore>()`.
+  final MocPhienStore? mocPhien;
+
   static const Key khoaCongTacOs = Key('notification_settings_os');
+
+  /// Công tắc *Nhắc ghi sau khi dùng app ngân hàng* (khối dưới D1 trong thẻ *Tự động hoá giao dịch*).
+  static const Key khoaCongTacNhacSauNganHang = Key('notification_settings_nhac_sau_ngan_hang');
+
+  /// Nút "Mở Cài đặt" của dòng quyền *Truy cập dữ liệu sử dụng* — khác nút của D1 (*Truy cập thông báo*).
+  static const Key khoaMoCaiDatSuDung = Key('notification_settings_mo_cai_dat_su_dung');
 
   /// Nút "Mở cài đặt" của hàng gợi ý pin trong thẻ D1.
   static const Key khoaMoCaiDatPin = Key('notification_settings_mo_cai_dat_pin');
@@ -127,6 +148,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
   /// không trễ là nói sai. Đọc lại cùng lúc với quyền, mỗi lần quay về từ Cài đặt.
   bool _duocChayNen = true;
 
+  /// Nhắc ghi sau khi dùng app ngân hàng: quyền *Truy cập dữ liệu sử dụng* — sự thật của máy, tách khỏi cờ
+  /// `nhacSauNganHang` (ý muốn). Đọc lại cùng lúc với quyền D1.
+  bool _coQuyenPhien = false;
+
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
 
@@ -137,6 +162,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
       (sl.isRegistered<KenhBienDong>()
           ? sl<KenhBienDong>()
           : const KenhBienDongTrong());
+
+  KenhPhienNganHang get _kenhPhien =>
+      widget.kenhPhienNganHang ??
+      (sl.isRegistered<KenhPhienNganHang>() ? sl<KenhPhienNganHang>() : const KenhPhienNganHangTrong());
+
+  MocPhienStore get _mocPhien =>
+      widget.mocPhien ?? (sl.isRegistered<MocPhienStore>() ? sl<MocPhienStore>() : _mocTam);
+  final MocPhienStore _mocTam = InMemoryMocPhienStore();
 
   @override
   void initState() {
@@ -159,10 +192,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
   Future<void> _docQuyenBienDong() async {
     final co = await _kenh.coQuyen();
     final chayNen = await _kenh.duocChayNen();
+    final coPhien = await _kenhPhien.coQuyen();
     if (mounted) {
       setState(() {
         _coQuyenBienDong = co;
         _duocChayNen = chayNen;
+        _coQuyenPhien = coPhien;
       });
     }
   }
@@ -183,6 +218,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
     final deXuat = await _taiDeXuat(id);
     final coQuyenBienDong = await _kenh.coQuyen();
     final duocChayNen = await _kenh.duocChayNen();
+    final coQuyenPhien = await _kenhPhien.coQuyen();
 
     if (!mounted) return;
     setState(() {
@@ -191,6 +227,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
       _coQuyenOs = coQuyen;
       _coQuyenBienDong = coQuyenBienDong;
       _duocChayNen = duocChayNen;
+      _coQuyenPhien = coQuyenPhien;
       _deXuat = deXuat;
       _dangNap = false;
     });
@@ -412,6 +449,36 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
       await _ghi(_prefs.copyWith(docBienDong: true));
       await _kenh.datBat(true);
     }
+    await _docQuyenBienDong();
+  }
+
+  /// Công tắc *Nhắc ghi sau khi dùng app ngân hàng* (spec 2026-10-03 §3.1) — khuôn [_doiBienDong]: bật lần đầu phải qua
+  /// màn đồng ý; *Không, cảm ơn* / Back → không bật gì. MỖI lần bật đặt mốc đã xét = bây giờ: phiên trước lúc bật (kể
+  /// cả lúc đang tắt) không bao giờ được nhắc.
+  Future<void> _doiNhacSauNganHang(bool bat) async {
+    final id = _idaccount;
+    if (id == null) return;
+    if (!bat) {
+      await _ghi(_prefs.copyWith(nhacSauNganHang: false));
+      await _kenhPhien.datBat(false);
+      return;
+    }
+    var vuaDongY = false;
+    if (!_prefs.dongYNhacSauNganHang) {
+      final dongY = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const DongYNhacSauNganHangPage()),
+      );
+      if (dongY != true || !mounted) return;
+      await _ghi(_prefs.copyWith(nhacSauNganHang: true, dongYNhacSauNganHang: true));
+      vuaDongY = true;
+    } else {
+      await _ghi(_prefs.copyWith(nhacSauNganHang: true));
+    }
+    final bayGio = DateTime.now();
+    await _mocPhien.ghi(id, bayGio);
+    await _kenhPhien.datBat(true, daXetDen: bayGio);
+    // "Đồng ý và mở Cài đặt": app không tự cấp được quyền. Máy đã có quyền thì mở Cài đặt là một bước thừa.
+    if (vuaDongY && !await _kenhPhien.coQuyen()) await _kenhPhien.moCaiDat();
     await _docQuyenBienDong();
   }
 
@@ -838,14 +905,101 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
             ],
           ),
         ),
+        const Divider(height: 1, indent: 20, endIndent: 20, color: AppColors.outlineVariant),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+          child: _khoiNhacSauNganHang(),
+        ),
+      ],
+    );
+  }
+
+  /// Khối *Nhắc ghi sau khi dùng app ngân hàng* (spec 2026-10-03 §3.1) — dưới khối D1, cùng thẻ. Hàng pin chỉ hiện khi
+  /// khối D1 KHÔNG đang hiện hàng của nó (hai hàng = hai nút cùng khoá [NotificationSettingsPage.khoaMoCaiDatPin]).
+  Widget _khoiNhacSauNganHang() {
+    final bat = _prefs.nhacSauNganHang;
+    final d1DangHienPin = _prefs.docBienDong && _coQuyenBienDong && !_duocChayNen;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.notifications_paused_outlined, size: 18, color: AppColors.onSecondaryContainer),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          kTenNhacSauNganHang,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Nhắc khi bạn dùng ${nguonDangDoc.join(', ')} mà chưa ghi giao dịch',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch(
+              key: NotificationSettingsPage.khoaCongTacNhacSauNganHang,
+              value: bat,
+              onChanged: _doiNhacSauNganHang,
+              activeThumbColor: Colors.white,
+              activeTrackColor: const Color(0xFF006E1C),
+            ),
+          ],
+        ),
+        if (bat) ...[
+          const SizedBox(height: 14),
+          _dongQuyenPhien(),
+          if (_coQuyenPhien && !_duocChayNen && !d1DangHienPin) ...[
+            const SizedBox(height: 10),
+            _dongTreNen(tieuDe: kTieuDeTreNenNhac),
+          ],
+        ] else if (_coQuyenPhien) ...[
+          const SizedBox(height: 10),
+          const Text(kNhacThuHoiQuyenSuDung, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        ],
       ],
     );
   }
 
   /// Hai biến thể của Stitch: *Chưa cấp quyền — Mở Cài đặt* và *Đã cấp quyền — đang đọc N
   /// nguồn*. N và tên nguồn suy từ [nguonDangDoc] (người dùng chốt: không hứa nguồn chưa đo).
-  Widget _dongQuyenBienDong() {
-    final co = _coQuyenBienDong;
+  Widget _dongQuyenBienDong() => _dongQuyen(
+        co: _coQuyenBienDong,
+        chuCo: 'Đã cấp quyền — đang đọc ${nguonDangDoc.length} nguồn',
+        chuChua: 'Chưa cấp quyền truy cập thông báo',
+        moCaiDat: _kenh.moCaiDat,
+      );
+
+  /// Dòng quyền *Truy cập dữ liệu sử dụng* của nhắc ghi — cùng bố cục với D1, nút mở ĐÚNG trang của nó.
+  Widget _dongQuyenPhien() => _dongQuyen(
+        co: _coQuyenPhien,
+        chuCo: 'Đã cấp quyền — đang theo dõi ${nguonDangDoc.length} app',
+        chuChua: 'Chưa cấp quyền truy cập dữ liệu sử dụng',
+        moCaiDat: _kenhPhien.moCaiDat,
+        khoaNut: NotificationSettingsPage.khoaMoCaiDatSuDung,
+      );
+
+  /// Dòng trạng thái một quyền hệ thống: *sự thật của máy* ([co]), chữ cho hai trạng thái, nút mở trang quyền.
+  Widget _dongQuyen({
+    required bool co,
+    required String chuCo,
+    required String chuChua,
+    required Future<void> Function() moCaiDat,
+    Key? khoaNut,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -876,7 +1030,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Đã cấp quyền — đang đọc ${nguonDangDoc.length} nguồn',
+                        chuCo,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -891,9 +1045,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                       ),
                     ],
                   )
-                : const Text(
-                    'Chưa cấp quyền truy cập thông báo',
-                    style: TextStyle(
+                : Text(
+                    chuChua,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
@@ -929,7 +1083,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
             // `TextButton` chứ không `ElevatedButton`: theme của app ép mọi ElevatedButton rộng vô
             // hạn (bẫy 4.11 `ANALYTICS_FEATURE.md`) — trong `Row` là trắng cả trang.
             TextButton(
-              onPressed: _kenh.moCaiDat,
+              key: khoaNut,
+              onPressed: moCaiDat,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -949,7 +1104,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
   /// Hàng gợi ý pin (Stitch `2ff589c7…`): ColorOS / MIUI tạm dừng app ở nền nên tin tới trễ. Gợi ý nhẹ, không
   /// phải cảnh báo — tin không mất, chỉ trễ tới khi người dùng bật màn hình / mở app. Câu chữ theo tên mục thật
   /// trên Realme ("Cho phép hoạt động dưới nền"), khác bản Stitch một cụm.
-  Widget _dongTreNen() {
+  Widget _dongTreNen({String tieuDe = kTieuDeTreNen}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -964,16 +1119,16 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
             child: Icon(Icons.battery_saver_outlined, size: 20, color: AppColors.textSecondary),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  kTieuDeTreNen,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  tieuDe,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
                 ),
-                SizedBox(height: 4),
-                Text(kMoTaTreNen, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+                const Text(kMoTaTreNen, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
