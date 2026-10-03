@@ -166,16 +166,20 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    chuyển **sang** MoMo không nhận ra (3/5 hàng thật được gợi ý). Ca test `goi_y_chuyen_khoan_test.dart`,
    `goi_y_chuyen_khoan_form_test.dart`.
 3. ✅ **Chia sẻ biên lai** vào FlowMoney → đọc chữ trên máy → điền sẵn — **mã xong Task 1–10, nghiệm thu Realme với
-   biên lai MB Bank thật (2026-10-02)**; chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản
+   biên lai MB Bank thật (2026-10-02); Task 11 xong 2026-10-03** (debug + release trên Realme, mục **7.7**; còn mở:
+   mẫu riêng MoMo / ZaloPay khi có biên lai thật); chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản
    ngay trong app ngân hàng thì có lần app ấy không đăng thông báo biến động. Cùng lượt người dùng chọn thêm **nhắc ghi
    sau khi rời app ngân hàng** — bản thiết kế riêng, **chưa viết**.
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).
 
 ## 7. Chia sẻ biên lai (2026-10-02)
 
-> **Trạng thái:** ✅ mã xong Task 1–10 của kế hoạch (`86b7b91` → `ebfb9d98`), nghiệm thu Realme bản debug với **năm**
-> lượt chia sẻ biên lai MB Bank thật. ⏳ **Còn lại (Task 11):** bản release · đăng xuất trên máy · vuốt app khỏi Recents
-> rồi chia sẻ · MoMo và ZaloPay (chưa có biên lai thật) · người dùng xác nhận màn Stitch. Spec
+> **Trạng thái:** ✅ **xong trọn kế hoạch 11 task** — Task 1–10 (`86b7b91` → `ebfb9d98`) nghiệm thu Realme bản debug
+> với **năm** lượt chia sẻ biên lai MB Bank thật (2026-10-02); Task 11 (2026-10-03, mục **7.7**): Lưu / Bỏ qua / chưa
+> đọc được / đăng xuất / gỡ khỏi Recents trên máy, **bản release** (lượt ấy lộ R8 gãy từ 01/10 — đã sửa) và nút ✕ của
+> màn xem ảnh. Stitch (người dùng xác nhận): `805cd430…` *"Thêm giao dịch - Từ biên lai"* · `c0597919…` *"…- Biên lai
+> chưa đọc được"* · `55431838…` *"Xem biên lai - FlowMoney"* (vẽ ✕ không nền — bản thi công thêm nền tròn tối, lệch có
+> chủ ý). ⏳ **Còn mở:** mẫu riêng MoMo / ZaloPay — chờ biên lai thật (người dùng chốt: làm khi có giao dịch). Spec
 > `docs/superpowers/specs/2026-10-02-chia-se-bien-lai-design.md`; kế hoạch (gitignore)
 > `docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` — nhật ký thi công ở cuối tệp ấy. Thông báo cho backend:
 > `docs/superpowers/backend/CAN-LAM/CLIENT_CHIA_SE_BIEN_LAI.md`.
@@ -250,9 +254,20 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 - **Ảnh xoá khi Lưu / Bỏ qua / đăng xuất / quá 30 ngày**; không đính kèm vào giao dịch. Một luật: ảnh sống khi còn một
   hàng loại 20 hoặc một dòng hàng chờ trỏ tới nó — `NhapBienLai` dọn ảnh mồ côi ở mỗi lượt.
 - **Chỉ nhận khi máy có phiên** (cờ `co_phien`, `NotificationScanner` ghi ở `start` / `stop`): hàng chờ gắn máy.
-- **`google_mlkit_text_recognition` thành gói chính thức** (người dùng duyệt). Giá: thư viện gốc
-  `libmlkit_google_ocr_pipeline.so` **11,1 MB** cho arm64 (6,8 MB armeabi-v7a) + mô hình **1,3 MB** — đo trên APK debug
-  2026-10-02. Ba gói spike C4 còn lại vẫn là gói tạm.
+- **`google_mlkit_text_recognition` thành gói chính thức** (người dùng duyệt). Giá, đo trên **APK release**
+  2026-10-03 (bằng con số trên APK debug 02/10): thư viện gốc `libmlkit_google_ocr_pipeline.so` **11,06 MB** arm64 ·
+  6,78 MB armeabi-v7a · 11,63 MB x86_64, mô hình `assets/mlkit-google-ocr-models/` **1,49 MB** → một máy arm64 tải thêm
+  khoảng **12,5 MB**; APK gộp ba ABI thêm ~31 MB. APK release 30/09 (trước spike C4) 202,2 MB → nay 234,6 MB (+32,4 MB,
+  gồm cả ba gói spike C4 và phần dex). Không dựng bản *không có* gói để so: gỡ gói phải gỡ cả đường DI lẫn màn spike, mà
+  phần gói mang vào nằm trọn trong hai thư mục trên — đọc thẳng từ APK. Ba gói spike C4 còn lại vẫn là gói tạm.
+- **Bản release cần `android/app/proguard-rules.pro`** (2026-10-03): plugin tham chiếu lớp tuỳ chọn của bốn hệ chữ
+  Trung · Devanagari · Nhật · Hàn mà nó chỉ khai `compileOnly`; R8 coi lớp thiếu là lỗi. Tệp chỉ có bốn dòng
+  `-dontwarn` — app chỉ dùng `TextRecognitionScript.latin` (nhánh 0 của `TextRecognizer.initialize` phía Kotlin) nên
+  bốn nhánh kia không bao giờ chạy; **không** `-keep` gì của ML Kit (lỗi là lớp thiếu, không phải lớp bị cắt nhầm).
+  Flutter Gradle plugin tự nạp tệp khi nó tồn tại. Canh: `test/core/ocr/ban_release_r8_mlkit_test.dart`.
+- **Nút ✕ của màn xem ảnh to có nền tròn tối** (`Colors.black54`) — lệch có chủ ý với màn Stitch `55431838…` (✕ không
+  nền): nút nằm đè góc ảnh, ✕ trắng không nền chìm hẳn trên biên lai nền sáng. Ca test đo **tương phản** ✕ trắng / nền
+  nút đặt lên ảnh trắng ≥ 3:1 (WCAG 1.4.11) chứ không đo chi tiết cài đặt.
 
 ### 7.5. Bẫy
 
@@ -263,12 +278,26 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 - ⚠️ **`NhapBienLai` phải chạy SAU `NhapBienDong`** trong cùng lượt; ngược lại biên lai không bao giờ gắn được vào hàng
   tin của cùng giao dịch. Ca test của `NotificationScanner` canh.
 - ⚠️ **`adb shell am start … SEND` không cấp được quyền đọc URI của MediaStore** → `SecurityException` → Toast *"chỉ
-  nhận ảnh biên lai"*. Tự thử đường thành công bằng `file://` trong vùng riêng của app (`run-as … cat > cache/x.png`).
+  nhận ảnh biên lai"*. Tự thử đường thành công bằng `file://` trong vùng riêng của app. ⚠️ Đưa ảnh vào vùng ấy bằng
+  `adb shell "run-as … sh -c 'cat > cache/x.png'" < x.png` **chỉ chép được 5 byte** (stdin của `adb shell` không đi nhị
+  phân — đo 2026-10-03) và Toast *"chỉ nhận ảnh"* trông y như lỗi của app; dùng `adb push x.png /data/local/tmp/` →
+  `chmod 644` → `run-as … cp /data/local/tmp/x.png cache/`, rồi `ls -l` kiểm kích thước.
 - ⚠️ **Sửa mã Dart bằng script Python trong heredoc làm hỏng mọi dấu gạch chéo ngược** (`\b` → ký tự backspace trong
   regex; `'\n'` → xuống dòng thật) — vấp hai lần trong lượt này. Dùng công cụ Edit / Write.
 - ⚠️ **`KhoBienLai.xoa` xoá ĐỒNG BỘ** (`deleteSync`): bản `await f.delete()` treo trong widget test (I/O thật không
   chạy dưới FakeAsync) nên Bỏ qua không bao giờ `pop`.
 - ⚠️ Ảnh chia sẻ từ MB Bank là ảnh **toàn màn** 1080 × 2400, thẻ biên lai nằm giữa — ảnh nhỏ canh đỉnh chỉ thấy nền.
+- ⚠️ **Bản release đã KHÔNG dựng được từ lúc spike C4 thêm gói ML Kit (01/10) tới 2026-10-03** — `minifyReleaseWithR8`
+  dừng ở *"Missing class com.google.mlkit.vision.text.chinese…"*. Bản debug không chạy R8; `flutter test`, `flutter
+  analyze` và mọi lượt nghiệm thu bản debug đều xanh; không ai dựng release giữa hai mốc nên không lộ. **Thêm gói có
+  mã Android gốc thì dựng thử `--release` ngay**, đừng đợi tới lúc nghiệm thu.
+- ⚠️ **Lệnh dựng chạy nền báo `exit 0` không có nghĩa là dựng được**: lượt đầu chạy `flutter build … ; tail` nên mã thoát
+  là của `tail`, và tệp `app-release.apk` trong thư mục là bản **cũ 30/09** — đo dung lượng trên nó cho ra kết luận sai
+  *"bản release không có ML Kit"*. Xoá APK cũ trước khi dựng, ghi `echo $?` ngay sau `flutter`, so thời gian tệp.
+- ⚠️ **Thư viện ảnh ColorOS tự vẽ bảng chia sẻ** (7 trang; *"Ghi vào FlowMoney"* ở trang 3 trên Realme) — vẫn đúng
+  `ACTION_SEND` kèm quyền đọc URI, nên đây là đường thử **bản release** không cần app ngân hàng: đẩy ảnh vào
+  `/sdcard/Pictures/…`, quét media, mở bằng `am start -a VIEW -d content://media/external/images/media/<id>` rồi chạm
+  *Chia sẻ*. Nguồn ra `Biên lai` (gói gửi là thư viện ảnh).
 - ⚠️ **Giới hạn còn lại:** tin ngân hàng của một giao dịch KHÁC, cùng số tiền, đến trong 5 phút quanh một hàng sinh từ
   biên lai (hàng ấy không mang vân tay số dư) sẽ bị `NhapBienDong` coi là trùng. Hiếm — cần hai lần chuyển cùng tiền
   trong 5 phút, một lần chỉ có biên lai, lần kia chỉ có tin — và chưa sửa.
@@ -288,5 +317,43 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 | Log thu mẫu | ✅ chỉ hình dạng đã che |
 
 Lỗi lộ ra lúc đo, đã sửa: ảnh nhỏ canh đỉnh chỉ thấy nền (`ebfb9d98`) · thẻ Sổ giao dịch chỉ nói *"từ thông báo ngân
-hàng"* (cùng commit). **Chưa đo:** Lưu / Bỏ qua trên máy (giữ nguyên các dòng cho người dùng tự xử lý) · biên lai *chưa
-đọc được* trên máy · bản release · đăng xuất · MoMo, ZaloPay.
+hàng"* (cùng commit).
+
+### 7.7. Nghiệm thu máy thật — Realme RMX2205, 2026-10-03 (Task 11)
+
+Bản debug `f80653cb…` (= `ebfb9d98`). Lưu / Bỏ qua dùng **biên lai thử** (người dùng chọn): một ảnh PNG trơn không
+chữ, và một biên lai giả dựng bằng PIL (*"Chuyển tiền thành công · 12,345 VND · 08:45 - 03/10/2026"*), chia sẻ qua
+`file://` từ `com.android.shell` — nguồn ra `Biên lai`. Giao dịch thử 12.345 đ lưu vào ví *test* rồi xoá qua giao diện.
+
+| Phép thử | Kết quả |
+|---|---|
+| Chia sẻ hai biên lai thử khi FlowMoney đang ở nền | ✅ tiêu điểm giữ ở màn hình chính; tóm tắt *"Có 2 biến động số dư mới — chạm để ghi"* (không số) |
+| Chạm tóm tắt | ✅ trung tâm thông báo nhóm *Biến động*: *"-12.345 đ · Biên lai"* và *"Biên lai chưa đọc được · Biên lai — Chạm để nhìn ảnh và nhập số tiền"* |
+| Form *chưa đọc được* | ✅ `0 đ`, 16 phím hiện, ảnh nhỏ, dòng phụ cam *"Chưa đọc được số tiền — nhìn ảnh để nhập"*, ví trống |
+| Xem ảnh to | ✅ nền đen, ảnh vừa khung, nút ✕ — ⚠️ ✕ trắng **gần như chìm trên ảnh sáng màu** (ảnh thử xám nhạt); biên lai MB nền xanh đậm thì rõ → **đã sửa**: nền tròn `black54`, nhìn lại trên bản release `04de3221…` với cùng ảnh xám — ✕ rõ |
+| **Bỏ qua** | ✅ dòng biến mất, tệp ảnh bị xoá, hàng chờ đã tiêu thụ |
+| Form *đọc theo luật chung* | ✅ 12.345 đ, giờ `03/10/2026 08:45` lấy từ chữ trên ảnh, ghi chú *"bien lai thu nghiem"*, dòng *"Đọc từ ảnh — hãy kiểm lại"* |
+| Ảnh nhỏ canh giữa (`ebfb9d98`) | ✅ với biên lai giả **và** biên lai MB thật 19:46 (thấy thẻ *"Chuyển tiền thành công"*) |
+| **Lưu** | ✅ dòng biến mất, tệp ảnh bị xoá; giao dịch vào sổ |
+| Gỡ FlowMoney khỏi Recents rồi chia sẻ | ✅ nhận. ⚠️ Lần này ColorOS **chỉ gỡ task, không giết tiến trình** (khác ghi nhận 22/09 ở `AI_EDGE_FEATURE.md` — nhiều khả năng dịch vụ nghe thông báo của D1 giữ tiến trình) |
+| `am force-stop` rồi chia sẻ | ✅ nhận; cờ phiên phía native còn nguyên |
+| Đăng xuất | ✅ `files/bien_lai/` mất hẳn, hàng chờ mất, **3 dòng mang ảnh bị xoá cứng** (hai hàng tin MB 19:38 / 19:44 được gắn ảnh, một hàng từ biên lai 19:46 — người dùng cho phép), 10 dòng tin còn lại; không còn thông báo nào đang hiện |
+| Chia sẻ khi đã đăng xuất | ✅ Toast *"Đăng nhập FlowMoney để ghi biên lai"*, không tệp |
+| Bố cục 360 dp | ✅ logcat 0 dòng `overflowed` / `RenderFlex` / `EXCEPTION CAUGHT` |
+
+**Bản release** `0d2d03da…` (sau khi thêm `proguard-rules.pro`; bản `04de3221…` thêm nền nút ✕), chia sẻ qua **Thư viện ảnh ColorOS** — đường thật có
+cấp quyền URI, không cần `run-as` (bản release không `run-as` được nên phần *tệp đã xoá* chỉ kiểm ở bản debug):
+
+| Phép thử | Kết quả |
+|---|---|
+| `flutter build apk --release` | ✅ sau khi thêm `proguard-rules.pro` (trước đó gãy ở R8 — mục 7.5) |
+| Bảng chia sẻ của Thư viện có *"Ghi vào FlowMoney"* | ✅ trang 3/7 |
+| Chưa đăng nhập | ✅ Toast *"Đăng nhập FlowMoney để ghi biên lai"*, vẫn ở Thư viện |
+| Đã đăng nhập | ✅ Toast *"FlowMoney đã nhận biên lai"*, vẫn ở Thư viện; tóm tắt *"Có 1 biến động số dư mới — chạm để ghi"* |
+| Chạm tóm tắt → ML Kit của **bản release** đọc chữ | ✅ dòng *"-12.345 đ · Biên lai — bien lai thu nghiem"*; form 12.345 đ, giờ 08:45 từ ảnh, *"Đọc từ ảnh — hãy kiểm lại"* |
+| Bỏ qua | ✅ dòng biến mất |
+
+Đăng nhập lại cần backend dev (người dùng cho bật): lượt đồng bộ đầu tiên sau nhiều ngày — 65 thao tác, **45 lên · 10
+xung đột · 10 lỗi**. Mười lỗi **có từ trước, không do tính năng này**: hai ví trên Realme trùng tên với ví đã có trên
+server (`Unique constraint (Idaccount, Name)` → `WALLET_NAME_DUPLICATE`), kéo theo giao dịch trong hai ví ấy vỡ
+`fk_transaction_wallet`, và một lần trả hoá đơn bị `chanTraHaiLan` chặn — chính là *"10 failed"* ghi từ 28/09.

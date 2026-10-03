@@ -1,7 +1,11 @@
 # Chia sẻ biên lai từ app ngân hàng vào FlowMoney — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** ✅ **mã xong Task 1–10 (`86b7b91` → `ebfb9d98`), nghiệm thu Realme với biên lai MB
-Bank thật cùng tối**; ⏳ còn Task 11 (bản release, đăng xuất trên máy, MoMo / ZaloPay, xác nhận màn Stitch). Thiết kế
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ **xong trọn 11 task** — mã Task 1–10 (`86b7b91` → `ebfb9d98`), nghiệm thu Realme
+với biên lai MB Bank thật cùng tối; Task 11 ngày 2026-10-03 (debug + **release** trên Realme, mục 7.7
+`BIEN_DONG_SO_DU_FEATURE.md`; lượt ấy lộ bản release gãy ở R8 từ 01/10 → `android/app/proguard-rules.pro`). Ba màn
+Stitch người dùng xác nhận (`805cd430…`, `c0597919…`, `55431838…`). ⏳ Còn mở: mẫu riêng MoMo / ZaloPay khi có biên lai
+thật. **Mục 10 "đo dung lượng có / không có gói"**: đo thẳng phần gói trong APK release (11,06 MB thư viện arm64 + 1,49 MB
+mô hình), không dựng bản không có gói. Thiết kế
 duyệt trong chat (năm lượt AskUserQuestion + một lượt duyệt tổng), bản viết người dùng duyệt cùng ngày (*"Ok duyệt"*).
 Kế hoạch 11 task: `docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` (gitignore, nhật ký thi công ở cuối). Hiện
 trạng và bảng nghiệm thu: mục **7** `docs/BIEN_DONG_SO_DU_FEATURE.md`.
