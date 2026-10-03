@@ -150,6 +150,18 @@ class BienDongListenerService : NotificationListenerService() {
         get() = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        xuLyBienDong(sbn)
+        // Nhắc ghi (2026-10-03): SAU khi tin của chính app ngân hàng đã vào hàng chờ — tin ấy là bằng chứng của phiên.
+        PhienNganHang.kiemNen(this)
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        PhienNganHang.kiemNen(this)
+    }
+
+    /** D1 — lọc thô và cất một tin biến động (thân cũ của [onNotificationPosted], tách ra 2026-10-03). */
+    private fun xuLyBienDong(sbn: StatusBarNotification) {
         try {
             if (thuMau) thuMau(sbn)
             if (!bat(this)) return

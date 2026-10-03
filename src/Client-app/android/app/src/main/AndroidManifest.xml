@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Thông báo nhắc hoá đơn / cảnh báo ngân sách.
          Từ Android 13 (API 33), thiếu POST_NOTIFICATIONS thì thông báo bị nuốt
          hoàn toàn — không lỗi, không log. Quyền được xin có ngữ cảnh trong app
@@ -33,6 +34,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): quyền "Truy cập dữ liệu sử dụng" — người dùng tự bật
+         trong Cài đặt hệ thống sau màn đồng ý. Chỉ đọc giờ mở / rời của 3 app trong danh sách D1. Thiếu khai báo
+         thì Cài đặt không liệt kê app — im lặng. `phien_ngan_hang_noi_day_test.dart` canh. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
 
     <!-- Predictive back TẮT (2026-09-19, UX E3): targetSdk 36 bật nó mặc định,
          và khi bật thì Android chỉ giao Back cho Flutter nếu lời gọi
@@ -103,6 +108,10 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
+        <!-- Nút "Không có giao dịch" của thông báo nhắc ghi (2026-10-03). KHÔNG exported — intent tường minh. -->
+        <receiver
+            android:name=".NhacGhiReceiver"
+            android:exported="false" />
         <!-- BA receiver của flutter_local_notifications. Thiếu cái nào cũng
              hỏng im lặng — không exception, không log, không một dòng trong
              logcat — nên `android_manifest_receivers_test.dart` canh cả ba.

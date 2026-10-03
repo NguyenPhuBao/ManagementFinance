@@ -79,6 +79,7 @@ import '../notification/badge_updater.dart';
 import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
+import '../notification/kenh_phien_ngan_hang.dart';
 import '../notification/kho_bien_lai.dart';
 import '../notification/nhap_bien_dong.dart';
 import '../notification/nhap_bien_lai.dart';
@@ -414,6 +415,12 @@ Future<void> setupDependencies() async {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android
           ? const KenhBienDongAndroid()
           : const KenhBienDongTrong());
+
+  // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): kênh tới `PhienNganHang.kt` — chỉ Android; nơi khác bản trống.
+  sl.registerLazySingleton<KenhPhienNganHang>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhPhienNganHangAndroid()
+          : const KenhPhienNganHangTrong());
 
   // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());

@@ -38,11 +38,18 @@ import java.io.IOException
  * `datCoPhien` (máy đang có tài khoản đăng nhập không — `NhanBienLaiActivity`
  * chỉ nhận biên lai được chia sẻ khi cờ bật, 2026-10-02). Xem
  * `lib/core/notification/kenh_bien_dong.dart`.
+ *
+ * Kênh `flowmoney/phien_ngan_hang` — nhắc ghi sau khi dùng app ngân hàng
+ * (2026-10-03): `coQuyen` (*Truy cập dữ liệu sử dụng*), `moCaiDat`, `suKien`
+ * (vào / ra màn hình của các app trong danh sách D1), `boDen` (mốc nút "Không có
+ * giao dịch"), `datBat` (cờ máy + mốc + lịch WorkManager), `huyNhac`. Xem
+ * `lib/core/notification/kenh_phien_ngan_hang.dart` và `PhienNganHang.kt`.
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
     private val kenhLyDoThoat = "flowmoney/ly_do_thoat"
     private val kenhBienDong = "flowmoney/bien_dong"
+    private val kenhPhienNganHang = "flowmoney/phien_ngan_hang"
 
     /** Lần khởi động / lần `onNewIntent` gần nhất có mang extra của thông báo tóm tắt. */
     private var moTuTomTat = false
@@ -114,6 +121,39 @@ class MainActivity : FlutterActivity() {
                     }
                 } catch (e: Exception) {
                     ket.error("loi_bien_dong", e.message, null)
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhPhienNganHang)
+            .setMethodCallHandler { call, ket ->
+                try {
+                    when (call.method) {
+                        "coQuyen" -> ket.success(PhienNganHang.coQuyen(this))
+                        "moCaiDat" -> {
+                            PhienNganHang.moCaiDat(this)
+                            ket.success(null)
+                        }
+                        "suKien" -> {
+                            val tu = (call.argument<Number>("tu") ?: 0).toLong()
+                            ket.success(PhienNganHang.suKienChoDart(this, tu))
+                        }
+                        "boDen" -> ket.success(PhienNganHang.boDen(this))
+                        "datBat" -> {
+                            PhienNganHang.datBat(
+                                this,
+                                call.argument<Boolean>("bat") ?: false,
+                                (call.argument<Number>("daXetDen") ?: 0).toLong(),
+                            )
+                            ket.success(null)
+                        }
+                        "huyNhac" -> {
+                            PhienNganHang.huyNhac(this)
+                            ket.success(null)
+                        }
+                        else -> ket.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    ket.error("loi_phien_ngan_hang", e.message, null)
                 }
             }
 

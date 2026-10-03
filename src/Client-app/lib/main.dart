@@ -20,6 +20,7 @@ import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';
 import 'core/notification/app_lifecycle_watcher.dart';
 import 'core/notification/kenh_bien_dong.dart';
+import 'core/notification/kenh_phien_ngan_hang.dart';
 import 'core/notification/mo_tu_tom_tat_bien_dong.dart';
 import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
@@ -60,6 +61,9 @@ void main() async {
   // cùng một khoản chi.
   sl<BillPaymentConflictResolver>()
       .batDauNghe(sl<SyncEngine>().pushResultStream);
+
+  // TẠM — bước thử chạy nền của nhắc ghi (Task 3 kế hoạch 2026-10-03): bật cờ máy khi chưa có công tắc. Gỡ ở Task 6.
+  if (kSpikeNhac) unawaited(sl<KenhPhienNganHang>().datBat(true, daXetDen: DateTime.now()));
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)
