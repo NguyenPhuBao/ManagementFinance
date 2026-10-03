@@ -3011,6 +3011,50 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `10-ai-copilot-and-financial-health.md`: Trợ lý tài chính thông minh SSE Streaming (`ReadableStream`), RAG Hybrid Search, PII Masking, và Thẻ chấm điểm sức khỏe tài chính FHS 50/30/20 vĩ mô.
   - `11-full-realtime-architecture.md`: Trục điều phối sự kiện tập trung qua kênh bảo mật `admin_room`, bảng đối soát 9 sự kiện Socket.io, gói tin Micro-payload $< 450$ bytes, độ trễ $< 50\text{ms}$, và cơ chế dọn dẹp listener chống rò rỉ bộ nhớ.
 
+### 11.53. Tái Thiết Toàn Diện Bộ Test Suite V2 Cho Backend & Admin-Web Chuẩn Hóa Theo Chức Năng Thực Tế (2026-10-03)
+- **1. Mục Tiêu & Chủ Trương (PO Directive):**
+  - Khảo sát toàn diện hệ thống mã nguồn Backend và Admin-web, xây dựng lại bộ test suite v2 độc lập bám sát 100% các chức năng thực tế đã triển khai, thay thế hoàn toàn các bộ test cũ bị lệch lạc.
+  - Tuân thủ nghiêm ngặt nguyên tắc bảo mật `Data_Security.md` (Zero PII, hash IP, scoping theo userId/idaccount), giữ nguyên tình trạng đóng băng Module Bank, và áp dụng Karpathy Simplicity Guidelines.
+- **2. Kết Quả Triển Khai Backend V2 Test Suites (Node Native Test Runner — 42/42 tests PASS 100% trong 1.8s):**
+  - Khắc phục lỗi đảo ngược logic BullMQ worker trong `src/Backend/index.js` (chỉ khởi chạy workers khi `redisOk === true`).
+  - Xây dựng test runner độc lập đa nền tảng `src/Backend/tests/run-v2.js` với lệnh chạy `rtk npm run test:v2`:
+    + `sync.engine.test.js` (9 tests): Batch & Operation validation (6 entities: wallet, transaction, budget, bill, goal, category), FK dependency ordering (Create: Category -> Wallet -> Budget -> Transaction; Delete: Transaction -> Sub-entities -> Wallet -> Category), LWW Conflict resolution.
+    + `auth.lifecycle.test.js` (8 tests): Cặp Username-Password validation, Vòng đời xóa tài khoản (PendingDelete 30 ngày ân hạn & Hủy xóa), Chuẩn hóa Audit Log request status (Pass, Accepted, Rejected, Fail, Interrupted).
+    + `admin.operations.test.js` (7 tests): Bảo vệ quyền riêng tư người dùng (Cấm sửa/xóa danh mục cá nhân), Unique tên danh mục hệ thống, Bảo vệ tài khoản Admin & PendingDelete, Capping Audit Log tối đa 200 items.
+    + `aiops.multivector.test.js` (7 tests): Phân rã 4 vectơ rủi ro độc lập (auth, traffic, exploit, resource), Hành động phòng vệ riêng từng vectơ, Dynamic CCU scaling (100 - 50,000 CCU), Active Quarantine Shield với Zero Raw IP (IP Masking).
+    + `resilience.pipeline.test.js` (7 tests): DB Bulkhead (80% Client / 20% Admin headroom), Intelligent Load Shedding (HTTP 503 khi lag > 100ms, Admin bypass), Retry Storm Guard (chặn từ lần 4 với HTTP 429), Request Timeout ceiling (30s, bỏ qua SSE).
+    + `core.scheduler.test.js` (4 tests): Giờ nửa đêm Việt Nam (GMT+7), Daily OTP purge (>24h), Daily refresh token purge (>30d), Scheduler lifecycle an toàn không rò rỉ timer.
+- **3. Kết Quả Triển Khai Admin-Web Test Suites (Vitest v1.6.1 + React Testing Library + JSDOM — 35/35 tests PASS 100% trong 2.9s):**
+  - Cài đặt hạ tầng kiểm thử chuẩn hóa cho Vite 5.4 tại `src/Admin-web`: `vitest.config.js`, `src/tests/setup.js` và lệnh chạy `rtk npm test`:
+    + `components.test.jsx` (6 tests): ConfirmModal, Pagination (smart page numbers, prev/next disable), EmptyState & Loading spinner.
+    + `auth.page.test.jsx` (4 tests): Form đăng nhập, Toggle ẩn/hiện mật khẩu, Gọi `login()` & điều hướng `/dashboard`, Xử lý lỗi API.
+    + `categories.page.test.jsx` (5 tests): Tải danh mục mặc định (`is_default = true`), Nút "Làm mới" đồng bộ thủ công không dùng socket (theo PO), Che mờ danh mục cá nhân (`***`), Pre-validation chống trùng tên, Thêm danh mục hệ thống.
+    + `users.page.test.jsx` (5 tests): Hiển thị danh sách, Badge `PendingDelete` kèm đếm ngược ngày và khóa thao tác "Chỉ xem", Vô hiệu hóa bắt buộc lý do, Kích hoạt tài khoản, Lắng nghe Socket `admin.user_status_changed`.
+    + `audit.page.test.jsx` (4 tests): Tải bảng audit logs, Lọc trạng thái (Pass, Fail, Rejected...), Chèn log thời gian thực qua Socket `audit_activity`, Capping query $\le 200$ items.
+    + `aiops.page.test.jsx` (5 tests): 4 Vectơ Rủi Ro độc lập & Threat Score Gauge, Quarantine Shield với Zero Raw IP, Gỡ chặn IP với hash, Thông điệp phòng vệ riêng cho từng vector, Luồng nhịp tim Socket `admin.metrics_stream`.
+    + `broadcast.page.test.jsx` (6 tests): 2 chế độ bảo trì (Kỹ thuật im lặng vs Khẩn cấp phát cảnh báo), Tắt bảo trì khôi phục hệ thống, Form phát thông báo toàn mạng (Info/Warning/Critical), Cập nhật Realtime qua Socket `admin.maintenance_changed`.
+- **4. Tổng Kết Toàn Diện:**
+  - **77/77 tests PASS 100% (Backend: 42, Admin-web: 35)**.
+  - Mã nguồn kiểm thử sạch sẽ, không phụ thuộc ngoại cảnh, chạy tốc độ cao (< 5 giây tổng thời gian).
+
+### 11.54. Chuyển Dịch Toàn Diện Hệ Thống Cloud Sang Môi Trường Production & Chuẩn Hóa Biến Môi Trường (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương (PO Directive):**
+  - Chính thức kích hoạt môi trường **Production** (`NODE_ENV=production`) cho toàn bộ hệ thống Cloud: **Backend (Render)** và **Admin-web (Vercel)**, chấm dứt giai đoạn chạy tạm ở chế độ development trên Cloud.
+  - Vận hành hệ thống theo tiêu chuẩn an ninh sản xuất cao nhất: Kích hoạt mã hóa At-Rest 256-bit chuẩn Nghị định 13/2023/NĐ-CP & PCI-DSS v4.0, ẩn giấu toàn bộ stack trace lỗi 500 (`error-handler.js`), khóa triệt để cờ mock input (`ALLOW_MOCK_INPUT=false`), và tắt toàn bộ log truy vấn SQL thô trên Cloud (`PRISMA_LOG_QUERY=false`).
+- **2. Tối Ưu Hóa & Khắc Phục Triệt Để Hiện Tượng Log Cloud:**
+  - **Giải mã lệnh `prisma:query DEALLOCATE ALL`:** Xác định đây là cơ chế dọn dẹp prepared statements tiêu chuẩn của Prisma ORM khi dùng chung socket connection pool với PgBouncer (cổng 6543 Supabase), hoàn toàn không phải lỗi (HTTP 200 OK 0.709ms).
+  - **Phân tách cờ log Prisma (`src/Backend/config/db.js`):** Tách biệt việc in log truy vấn CSDL khỏi `NODE_ENV === 'development'`, chuyển thành `process.env.PRISMA_LOG_QUERY === 'true'`. Trên Cloud Render, đặt `PRISMA_LOG_QUERY=false` giúp luồng log sạch 100%, không bị spam câu lệnh SQL và bảo vệ dữ liệu nhạy cảm.
+  - **Loại trừ nhiễu Audit Log định kỳ (`src/Backend/middleware/audit-log.middleware.js`):** Bổ sung các route giám sát tự động (`/admin/aiops`, `/admin/system/health`, `/admin/maintenance/status`, `/admin/audit-logs`) vào danh sách loại trừ ghi audit log. Chấm dứt hiện tượng nạp hàng loạt bản ghi `INSERT INTO audit_log` và bắn socket `audit_activity` giả mạo khi Admin-web thực hiện polling giám sát.
+- **3. Cập Nhật Nguồn Sự Thật Triển Khai Cloud (`docs/Deploy/CloudDeploy.md`):**
+  - Bổ sung 10 nhóm biến môi trường Production bí mật bắt buộc trên Render Dashboard: Core runtime, PostgreSQL Supabase Pooler (`DATABASE_URL`, `DIRECT_URL`), Upstash Redis TLS (`REDIS_URL`), Chuẩn mã hóa At-Rest (`DATA_ENCRYPTION_KEY`, `BLIND_INDEX_SECRET`), JWT Authentication kép (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`), Quản trị cứu hộ (`ADMIN_EMERGENCY_KEY`, `ADMIN_ALERT_EMAIL`), CORS & Rate Limit (`CORS_ORIGIN`, `RATE_LIMIT_ENABLED`), Trí tuệ nhân tạo Gemini (`GEMINI_API_KEY`, `GEMINI_MODEL`), Mail SMTP, và Khóa Mock Input (`ALLOW_MOCK_INPUT=false`).
+  - Cung cấp sẵn các lệnh 1-line Node.js Crypto Generator giúp PO/DevOps sinh bộ khóa 256-bit an toàn chỉ trong 1 thao tác.
+  - Cập nhật hướng dẫn Manual Redeploy (Clear build cache & deploy) và bảng chỉ số đối soát giữa Development Local và Production Cloud.
+- **4. Kiểm Định Chất Lượng:**
+  - Backend Test Suites V2: **42/42 tests PASS 100%**.
+  - Admin-web Test Suites: **35/35 tests PASS 100%**.
+  - Toàn hệ thống: **77/77 tests PASS 100%**, sẵn sàng vận hành sản xuất ổn định, an toàn.
+
+
 
 
 

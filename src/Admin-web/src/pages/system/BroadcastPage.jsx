@@ -624,7 +624,7 @@ const BroadcastPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+              <label htmlFor="broadcast-title" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
                 Tiêu đề thông báo <span className="text-red-500">*</span>
               </label>
               <input
@@ -641,7 +641,7 @@ const BroadcastPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+              <label htmlFor="broadcast-message" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
                 Nội dung thông báo <span className="text-red-500">*</span>
               </label>
               <textarea

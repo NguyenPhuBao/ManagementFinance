@@ -2,9 +2,10 @@ const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
 const logger = require('../core/logger');
 
-// Prisma ORM client
+// Prisma ORM client (Chỉ bật log query SQL khi có cờ PRISMA_LOG_QUERY=true để tránh làm ngập log Cloud)
+const enableQueryLog = process.env.PRISMA_LOG_QUERY === 'true';
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development'
+  log: enableQueryLog
     ? ['query', 'info', 'warn', 'error']
     : ['error'],
 });

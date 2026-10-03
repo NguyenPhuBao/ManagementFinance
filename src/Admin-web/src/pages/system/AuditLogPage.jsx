@@ -255,11 +255,12 @@ const AuditLogPage = () => {
               ) : (
                 logs.map((log) => {
                   const cfg = STATUS_CONFIG[log.req_status] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
+                  const displayId = log.id || log.idlog;
                   return (
-                    <tr key={log.id} className="hover:bg-surface-container-lowest transition-colors">
-                      <td className="py-3 px-4 text-on-surface-variant font-mono font-medium">#{log.id}</td>
+                    <tr key={displayId} className="hover:bg-surface-container-lowest transition-colors">
+                      <td className="py-3 px-4 text-on-surface-variant font-mono font-medium">#{displayId}</td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-on-surface">{log.username || '—'}</div>
+                        <div className="font-semibold text-on-surface">{log.username || log.account?.username || '—'}</div>
                         <div className="text-[11px] text-on-surface-variant">UID: {log.idaccount}</div>
                       </td>
                       <td className="py-3 px-4 text-on-surface max-w-[240px] truncate font-medium" title={log.request}>
