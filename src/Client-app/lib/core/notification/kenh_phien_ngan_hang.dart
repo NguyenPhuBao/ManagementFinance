@@ -9,10 +9,6 @@ import 'phien_ngan_hang.dart';
 
 const String kKenhPhienNganHang = 'flowmoney/phien_ngan_hang';
 
-/// TẠM — chỉ sống khi build với `--dart-define=SPIKE_NHAC=true` (bước thử chạy nền, Task 3 kế hoạch
-/// `2026-10-03-nhac-ghi-sau-app-ngan-hang.md`): `main.dart` bật cờ máy lúc khởi động khi chưa có công tắc. Gỡ ở Task 6.
-const bool kSpikeNhac = bool.fromEnvironment('SPIKE_NHAC');
-
 abstract class KenhPhienNganHang {
   /// Quyền *Truy cập dữ liệu sử dụng* (chỉ Android 10+; máy cũ hơn → `false`).
   Future<bool> coQuyen();

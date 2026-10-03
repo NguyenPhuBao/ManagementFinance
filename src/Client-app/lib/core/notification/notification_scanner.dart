@@ -24,6 +24,7 @@ import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
 import 'nhap_bien_lai.dart';
+import 'nhap_phien_ngan_hang.dart';
 import 'nhat_ky_thong_bao.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
@@ -186,6 +187,9 @@ class NotificationScanner {
   /// cùng giao dịch gắn ảnh vào hàng ấy). [stop] gọi `donKhiDangXuat`. `null` thì bỏ qua.
   final NhapBienLai? nhapBienLai;
 
+  /// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): xét phiên dùng app ngân hàng SAU tin và biên lai. `null` thì bỏ qua.
+  final NhapPhienNganHang? nhapPhien;
+
   /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
   /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
   static const Duration giuBienDong = Duration(days: 30);
@@ -266,6 +270,7 @@ class NotificationScanner {
     this.nhapBienDong,
     this.datCoPhien,
     this.nhapBienLai,
+    this.nhapPhien,
     this.nhatKy,
     this.eventDao,
     DateTime Function()? clock,
@@ -374,6 +379,12 @@ class NotificationScanner {
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
+    // SAU tin và biên lai — chúng là bằng chứng của phiên; xét trước là nhắc oan đúng phiên vừa có tin.
+    try {
+      await nhapPhien?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
   }
 
   /// Dừng hẳn. Gọi khi đăng xuất hoặc khi phiên chết.
@@ -412,6 +423,10 @@ class NotificationScanner {
     // không còn ai đã đồng ý, dịch vụ phải thôi đọc và thôi bắn tóm tắt.
     try {
       await nhapBienDong?.tatDocMay();
+    } catch (_) {}
+    // Nhắc ghi: đặt mốc về lúc đăng xuất (phiên lúc không ai đăng nhập không thành dòng của ai) và tắt cờ máy.
+    try {
+      await nhapPhien?.dongKhiDangXuat(id);
     } catch (_) {}
     // Chia sẻ biên lai: hết phiên thì activity nhận ảnh từ chối — không cất biên lai không biết của ai.
     try {

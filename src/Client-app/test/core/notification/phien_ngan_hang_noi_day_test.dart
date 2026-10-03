@@ -96,4 +96,14 @@ void main() {
     expect(di, contains('KenhPhienNganHangAndroid'));
     expect(di, contains('KenhPhienNganHangTrong'));
   });
+
+  test('DI: scanner nhận NhapPhienNganHang; cờ spike đã gỡ', () {
+    final di = _doc('lib/core/di/injection_container.dart');
+    expect(di, contains('nhapPhien:'),
+        reason: 'NhapPhienNganHang có test riêng xanh hết, nhưng không nối thì không dòng nhắc nào được tạo');
+    expect(di, contains('docTheoNguon'));
+    for (final tep in ['lib/main.dart', 'lib/core/notification/kenh_phien_ngan_hang.dart']) {
+      expect(_doc(tep), isNot(contains('SPIKE_NHAC')), reason: 'cờ đo tạm phải gỡ ($tep)');
+    }
+  });
 }

@@ -84,6 +84,7 @@ import '../notification/kho_bien_lai.dart';
 import '../notification/moc_phien_store.dart';
 import '../notification/nhap_bien_dong.dart';
 import '../notification/nhap_bien_lai.dart';
+import '../notification/nhap_phien_ngan_hang.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
@@ -575,6 +576,20 @@ Future<void> setupDependencies() async {
         thuMau: kDebugMode
             ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
             : null,
+      ),
+      // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): sự kiện sử dụng từ `PhienNganHang.kt`, bằng chứng từ hàng loại
+      // 20 và sổ giao dịch, ví theo nguồn của D1. Công tắc là cờ `nhacSauNganHang` của tài khoản.
+      nhapPhien: NhapPhienNganHang(
+        kenh: sl<KenhPhienNganHang>(),
+        dao: sl<AppDatabase>().notificationDao,
+        moc: sl<MocPhienStore>(),
+        batNhac: (id) async => (await sl<NotificationPrefsStore>().read(id)).nhacSauNganHang,
+        nguonCuaGoi: nguonCuaGoi,
+        giaoDichTrongKhoang: (id, tu, den) async => [
+          for (final t in await sl<AppDatabase>().transactionDao.getByDateRange(id, tu, den))
+            (ngay: t.date, walletId: t.walletId, walletTransfer: t.walletTransfer),
+        ],
+        viCuaNguon: (id, nguon) => sl<ViTheoNguonStore>().docTheoNguon(id, nguon),
       ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),
