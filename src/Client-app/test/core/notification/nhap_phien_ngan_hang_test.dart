@@ -200,4 +200,31 @@ void main() {
     expect(moc.values[id], _t(12, 0));
     expect(kenh.datBatGoi.last.$1, isFalse);
   });
+
+  group('⭐ phiên lúc KHÔNG AI đăng nhập không bao giờ thành dòng nhắc', () {
+    // Nghiệm thu Realme 2026-10-03: đăng xuất 20:15:00, dùng MB 20:15:18–20:15:44, đăng nhập lại 20:28 → dòng
+    // "MB Bank · 20:15". Đăng xuất chỉ đặt mốc = GIỜ ĐĂNG XUẤT, nên phiên nằm giữa đăng xuất và lần đăng nhập kế vẫn
+    // lọt — và nếu tài khoản KHÁC đăng nhập, phiên của người trước thành dòng của họ.
+    test('cùng tài khoản đăng nhập lại', () async {
+      await dung(bayGio: _t(11, 0)).dongKhiDangXuat(id);
+      // Sự kiện mặc định: MB 11:19–11:20:35, tức SAU lúc đăng xuất.
+      expect(await dung().nhap(id), 0);
+      expect(await dongNhac(), isEmpty);
+      expect(moc.values[id], _t(12, 0), reason: 'mốc = lúc đăng nhập (lượt nhập đầu sau đăng xuất)');
+    });
+
+    test('tài khoản KHÁC đăng nhập sau đó', () async {
+      const khac = 9;
+      moc.values[khac] = _t(10, 0); // mốc cũ của người kia, trước cả phiên
+      await dung(bayGio: _t(11, 0)).dongKhiDangXuat(id);
+      expect(await dung().nhap(khac), 0);
+      expect(await db.notificationDao.getAll(khac), isEmpty);
+    });
+
+    test('cờ đăng xuất chỉ dùng MỘT lần — phiên sau lần đăng nhập vẫn được xét', () async {
+      await dung(bayGio: _t(11, 0)).dongKhiDangXuat(id);
+      await dung(bayGio: _t(11, 5)).nhap(id); // đăng nhập lại 11:05
+      expect(await dung().nhap(id), 1, reason: 'phiên 11:19 là lúc ĐÃ đăng nhập');
+    });
+  });
 }

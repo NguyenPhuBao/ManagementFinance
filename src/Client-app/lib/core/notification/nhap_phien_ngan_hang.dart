@@ -53,6 +53,11 @@ class NhapPhienNganHang {
   Future<int> nhap(int idaccount) async {
     try {
       final bayGio = clock();
+      if (await moc.layVaXoaDangXuat()) {
+        // Lượt nhập đầu sau một lần đăng xuất = lần đăng nhập kế: phiên giữa hai lúc ấy không thuộc tài khoản nào —
+        // kể cả khi người đăng nhập lại là người khác (nghiệm thu Realme 2026-10-03).
+        await moc.ghi(idaccount, bayGio);
+      }
       final daXet = await moc.doc(idaccount);
       if (!await batNhac(idaccount)) {
         // Cờ Kotlin gắn MÁY, công tắc gắn TÀI KHOẢN (bẫy 3 D1): ghi lại theo người đang đăng nhập ở MỌI lượt.
@@ -106,9 +111,13 @@ class NhapPhienNganHang {
   }
 
   /// Đăng xuất: phiên lúc không ai đăng nhập không bao giờ thành dòng nhắc của ai (spec §4.4). Không bao giờ ném.
+  ///
+  /// ⚠️ Mốc = giờ đăng xuất là CHƯA ĐỦ: phiên giữa lúc ấy và lần đăng nhập kế vẫn mở sau mốc. Cờ máy
+  /// [MocPhienStore.danhDauDangXuat] để lượt nhập đầu sau đó đặt mốc = lúc đăng nhập.
   Future<void> dongKhiDangXuat(int? idaccount) async {
     try {
       if (idaccount != null) await moc.ghi(idaccount, clock());
+      await moc.danhDauDangXuat();
     } catch (_) {
       // Bỏ qua có chủ ý.
     }

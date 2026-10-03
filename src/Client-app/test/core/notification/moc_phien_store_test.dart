@@ -31,6 +31,13 @@ void main() {
         await store.ghi(7, DateTime(2026, 10, 3, 12));
         expect(await store.doc(7), DateTime(2026, 10, 3, 12));
       });
+
+      test('⭐ cờ "đã đăng xuất" theo MÁY: đánh dấu → lấy được đúng một lần', () async {
+        expect(await store.layVaXoaDangXuat(), isFalse);
+        await store.danhDauDangXuat();
+        expect(await store.layVaXoaDangXuat(), isTrue);
+        expect(await store.layVaXoaDangXuat(), isFalse);
+      });
     });
   }
 
