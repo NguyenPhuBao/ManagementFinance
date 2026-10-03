@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-02)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-03)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -979,6 +979,31 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   ⚠️ Phải ghép nhãn với số theo **toạ độ dòng** (`boundingBox`) trước khi đo, nếu không phép so A / B là so một bộ luật
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
+
+### 🔀 Gộp `main` @ `29e9a89` (2026-10-03, commit gộp `8d31143`) — AIOps Sentinel chặn IP ở đường bình thường của client
+
+- PR #109 (`7f1a096`): Admin-web thời gian thực + **AIOps Sentinel** (`modules/aiops/`). **Không xung đột**, chỉ chạm
+  `src/Backend`, `src/Admin-web`, `docs/Admin-web`; cây `src/Client-app` giữ hash `f65c6734…` nên bộ test client không
+  đổi (5463/5463 đo trước gộp). `node --check` 20 tệp JS đổi: 0 lỗi; không gói npm mới; không migration.
+- ⚠️ **Nodemon không tự nạp lại** sau gộp (lớp vỏ cha đã bị dừng — nó chỉ in *restarting*, `node index.js` vẫn là tiến
+  trình 08:51). Dừng cả cây rồi chạy lại `npm run dev` (người dùng cho phép): khởi động sạch 10:53, `/health` 200.
+- **Đơn mới `CAN-LAM/SOAT_SAU_GOP_29E9A89.md`** (người dùng chọn viết): middleware *AIOps Quarantine* chặn IP **15 phút
+  sau một 401 ở `/auth/refresh`** (heuristic 4) — đường bình thường của client (refresh hết hạn, tài khoản khoá / xoá —
+  G36); IP lấy từ phần tử đầu `X-Forwarded-For` (tự khai được, bỏ qua `trust proxy`) → chặn được IP người khác; đếm theo
+  IP phạt nhóm dùng chung (CGNAT; dev: mọi máy qua `adb reverse` là `127.0.0.1`); thân 403 dùng `error` thay `code`.
+  Đo bằng `curl` với IP TEST-NET `203.0.113.7`. Client không đổi gì: 403 ở refresh là *tạm thời* (`LamMoiTamThoi`).
+- ⚠️ **Dev:** một máy dính 401 ở `/auth/refresh` là mọi máy bị 403 `AIOPS_QUARANTINED` 15 phút; danh sách trong bộ nhớ —
+  khởi động lại backend là sạch.
+
+### 🧹 Dọn ví trùng tên trên Realme + mở G63 (2026-10-03)
+
+Lượt đồng bộ đầu sau 11 ngày (đăng nhập lại khi nghiệm thu chia sẻ biên lai) báo **10 lỗi** — *"10 failed"* ghi từ 28/09.
+Chẩn đoán trên CSDL Realme + PostgreSQL: hai máy cùng tài khoản 10 mỗi máy tự tạo "Ví MB Bank" / "Ví MoMo" ngày 30/09
+→ máy đẩy sau kẹt `WALLET_NAME_DUPLICATE` mãi, pull kéo ví server về không xét tên → Realme có **hai ví trùng tên** (và hai
+ví mặc định), giao dịch trong ví bị từ chối gửi lại mọi chu kỳ. Người dùng chốt **không làm tính năng** (chỉ xảy ra khi một
+tài khoản dùng trên hai máy) → **G63 hoãn**, kèm phác thảo lối sửa đã duyệt một nửa; dữ liệu Realme **dọn qua giao diện**
+(xoá 7 giao dịch thử + hai ví trùng của Realme), đo lại: server còn đúng một ví mỗi loại, Realme đồng bộ sạch. Mục G63
+`CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
 

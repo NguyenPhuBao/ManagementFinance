@@ -1622,8 +1622,10 @@ người dùng một máy (cách đồ án được dùng và trình diễn) kh�
 **Dữ liệu kẹt đã dọn (2026-10-03, người dùng chọn xoá bản của Realme, tôi điều khiển máy):** xoá qua giao diện 7 giao
 dịch của "Ví MB Bank" `680dbb73…` (+10.000 đ 30/09 19:04 — một lần chuyển thử; 6 khoản thử 1.000 đ của dự án C 02/10),
 rồi xoá hai ví trùng của Realme. Lối vào đúng ví khi hai ví cùng tên: menu ⋮ của thẻ → *Xem giao dịch* (lọc theo **id**).
-Bảy giao dịch và "Ví MoMo" đã lên server (lệnh xoá một bản ghi server không có được tính là xong); lệnh xoá "Ví MB Bank"
-đi khi hết hạn chặn.
+Bảy giao dịch và "Ví MoMo" lên server lúc 10:39; lệnh xoá "Ví MB Bank" đi lúc **10:54:27**, ngay khi hết hạn chặn
+(1 thao tác, 1 lên, 0 lỗi). Đo lại trên PostgreSQL: tài khoản 10 còn đúng một "Ví MB Bank" và một "Ví MoMo", không giao
+dịch nào của Realme lọt lên; Realme đồng bộ sạch. ⚠️ Trong lúc dọn, trang *Chỉnh sửa ví* **không lưu được** ví trùng (chốt
+trùng tên cục bộ) — kể cả khi chỉ tắt cờ mặc định; xoá thẳng thì được (luật xoá không chặn ví mặc định).
 
 **Phác thảo lối sửa, nếu sau này cần hỗ trợ nhiều máy** (người dùng đã chọn từng điểm trước khi hoãn):
 - Cột cục bộ `wallets.bi_tu_choi_trung_ten` (schema mới), đặt bởi một bộ nghe `pushResultStream` khi thao tác ví hỏng với
