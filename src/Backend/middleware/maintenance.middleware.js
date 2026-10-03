@@ -38,6 +38,7 @@ function createMaintenanceMiddleware(options = {}) {
       statusCode: 503,
       code: 'MAINTENANCE_MODE',
       message: status.reason || 'Hệ thống đang bảo trì để nâng cấp định kỳ. Quý khách vui lòng quay lại sau ít phút!',
+      isEmergency: Boolean(status.isEmergency),
       activatedAt: status.activatedAt,
       timestamp: new Date().toISOString(),
     });

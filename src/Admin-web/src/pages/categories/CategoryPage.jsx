@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import { normalizeCategoryName, normalizeVietnameseUnaccent } from '../../utils/string';
 import adminApi from '../../api/admin.api';
+import useSocket from '../../hooks/useSocket';
 import Pagination from '../../components/common/Pagination';
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
 
 const CategoryPage = () => {
+  const socket = useSocket();
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
@@ -88,6 +90,22 @@ const CategoryPage = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Lắng nghe sự kiện thay đổi danh mục thời gian thực qua Socket.io
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCategoryUpdated = (data) => {
+      console.log('[CategoryPage] Nhận sự kiện admin.category_updated:', data);
+      fetchCategories();
+    };
+
+    socket.on('admin.category_updated', handleCategoryUpdated);
+
+    return () => {
+      socket.off('admin.category_updated', handleCategoryUpdated);
+    };
+  }, [socket]);
 
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));

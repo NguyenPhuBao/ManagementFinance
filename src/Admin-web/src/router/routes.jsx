@@ -7,6 +7,7 @@ import UserDetailPage from '../pages/users/UserDetailPage';
 import AICopilotPage from '../pages/ai/AICopilotPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import BroadcastPage from '../pages/system/BroadcastPage';
+import AIOpsPage from '../pages/system/AIOpsPage';
 
 const routes = [
   // Public routes
@@ -48,6 +49,10 @@ const routes = [
   {
     path: '/broadcast',
     element: <BroadcastPage />,
+  },
+  {
+    path: '/aiops',
+    element: <AIOpsPage />,
   },
 ];
 

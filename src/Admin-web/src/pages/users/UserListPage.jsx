@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { USER_STATUS_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
+import useSocket from '../../hooks/useSocket';
 import UserDetailModal from '../../components/common/UserDetailModal';
 import Pagination from '../../components/common/Pagination';
 
 const UserListPage = () => {
+  const socket = useSocket();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
@@ -68,6 +70,7 @@ const UserListPage = () => {
         const res = await adminApi.getUsers();
         const mapped = res.data.map((u) => ({
           id: u.id,
+          idaccount: u.idaccount,
           name: u.fullname,
           email: u.email,
           phone: u.phone || '—',
@@ -88,6 +91,67 @@ const UserListPage = () => {
     };
     fetchUsers();
   }, []);
+
+  // Lắng nghe sự kiện Realtime Socket.io cho User Management
+  useEffect(() => {
+    if (!socket) return;
+
+    // 1. Khi có người dùng đăng ký mới từ Client-app
+    const handleUserRegistered = (newUser) => {
+      if (!newUser) return;
+      setUsers((prevList) => {
+        if (prevList.some((u) => u.username === newUser.username || (newUser.id && u.id === newUser.id))) {
+          return prevList;
+        }
+        const mapped = {
+          id: newUser.id || Date.now(),
+          idaccount: newUser.idaccount,
+          name: newUser.fullname || newUser.username,
+          email: newUser.email || '—',
+          phone: newUser.phone || '—',
+          status: (newUser.status || 'active').toLowerCase(),
+          address: '',
+          username: newUser.username,
+          reason_inactive: null,
+          countdown: null,
+          delete_at: null,
+          created_at: newUser.created_at || new Date().toISOString(),
+          isRealtimeAdded: true,
+        };
+        return [mapped, ...prevList];
+      });
+    };
+
+    // 2. Khi trạng thái người dùng thay đổi (Active/Inactive/PendingDelete/Deleted)
+    const handleUserStatusChanged = (statusData) => {
+      if (!statusData) return;
+      setUsers((prevList) =>
+        prevList.map((u) => {
+          const isTarget =
+            (statusData.iduser && u.id === statusData.iduser) ||
+            (statusData.idaccount && u.idaccount === statusData.idaccount) ||
+            (statusData.username && u.username === statusData.username);
+          if (isTarget) {
+            return {
+              ...u,
+              status: (statusData.status || u.status).toLowerCase(),
+              reason_inactive: statusData.reason_inactive !== undefined ? statusData.reason_inactive : u.reason_inactive,
+              countdown: statusData.countdown !== undefined ? statusData.countdown : u.countdown,
+            };
+          }
+          return u;
+        })
+      );
+    };
+
+    socket.on('admin.user_registered', handleUserRegistered);
+    socket.on('admin.user_status_changed', handleUserStatusChanged);
+
+    return () => {
+      socket.off('admin.user_registered', handleUserRegistered);
+      socket.off('admin.user_status_changed', handleUserStatusChanged);
+    };
+  }, [socket]);
 
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));

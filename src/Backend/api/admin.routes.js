@@ -1,11 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../modules/admin/admin.controller');
+const aiopsController = require('../modules/aiops/aiops.controller');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
 // Tất cả admin routes yêu cầu đăng nhập + role admin
 router.use(authenticate, authorize('admin'));
+
+// AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
+router.get('/aiops/status', aiopsController.getStatus);
+router.get('/aiops/history', aiopsController.getHistory);
+router.post('/aiops/calibrate', aiopsController.calibrate);
+router.get('/aiops/quarantine', aiopsController.getQuarantineList);
+router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
 
 // Dashboard — thống kê
 router.get('/totaluser', adminController.totalUsers);
@@ -17,6 +25,7 @@ router.get('/request-stats', adminController.getRequestStats);
 // Hệ thống & Cứu nạn khẩn cấp (Emergency Maintenance Switch)
 router.get('/system/maintenance', adminController.getMaintenanceStatus);
 router.post('/system/maintenance', adminController.setMaintenanceStatus);
+router.delete('/system/maintenance/schedule', adminController.cancelScheduledMaintenance);
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
 
