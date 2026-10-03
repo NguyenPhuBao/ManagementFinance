@@ -85,7 +85,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
      ```
      *(Dùng cho `DIRECT_URL` để Prisma chạy Migration hoặc chạy script SQL).*
 3. **Áp dụng Lược đồ CSDL:**
-   - Chạy các script từ `database/1_schema.sql` đến `database/13_drop_budget_threshold_default.sql` qua Supabase SQL Editor.
+   - Chạy các script từ `database/1_schema.sql` đến `database/14_fix_grab_keyword_category.sql` qua Supabase SQL Editor.
    - ⚠️ **Cảnh báo:** Tuyệt đối không chạy `prisma migrate dev` trên Supabase để tránh mất mệnh đề `WHERE` của 5 Partial Unique Indexes.
 
 ---

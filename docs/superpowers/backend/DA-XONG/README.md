@@ -111,7 +111,19 @@ không phải báo cáo của backend. Phần chưa xong gom vào
 | [D1_DOC_BIEN_DONG_XONG_SOAT.md](./D1_DOC_BIEN_DONG_XONG_SOAT.md) | ⚠️ Một phần. `LogicBusinessAI.md` hàng 3 và dòng 77 ✅; `Project.md` :1645, :2757 và `docs/progress/Client-app.md` §5.2, §13.5 chưa |
 | [CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md](./CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md) | ✅ Đơn thông báo, không xin gì |
 
-Thư mục này nay **48** tệp + mục lục (đếm bằng máy 2026-10-01).
+---
+
+## 4c. Đóng trong đợt backend 2026-10-03 (Hoàn tất mục 31, 32, 33 — PO phê duyệt)
+
+Ba tài liệu này đã được giải quyết triệt để và chuyển sang `DA-XONG/` ngày 2026-10-03:
+
+| Tài liệu | Kết quả xử lý |
+|---|---|
+| [SOAT_SAU_GOP_A7C03B7.md](./SOAT_SAU_GOP_A7C03B7.md) | ✅ Sửa dứt điểm 2 lỗi mã FHS: (1) `allExpenses` lọc đúng chiều tiền `Vay/no` (`amount < 0` mới tính trả nợ; loại trừ Cho vay/thu nợ khỏi DTI; tiền dương vay nợ không tính vào tiết kiệm 50/30/20); (2) `trendVsLastMonth` trả `null` khi kỳ trước bằng 0, không bịa fake `+100%`; (3) Khử BOM khỏi `14_fix_grab_keyword_category.sql` và bổ sung vào `CloudDeploy.md:88`; (4) Sửa đồng bộ toàn bộ tài liệu lệch (SQLite v27, 9 tools, Gemini 3.8 Flash, chuông badge số đếm). 18/18 tests PASS. |
+| [CLIENT_CHIA_SE_BIEN_LAI.md](./CLIENT_CHIA_SE_BIEN_LAI.md) | ✅ Module Bank đã dừng độc lập. Ghi nhận thêm nguồn biên lai chia sẻ (ML Kit on-device) cho chức năng 3 trong `LogicBusinessAI.md` và `Project.md`. Không áp lệnh cấm, không cần màn đồng ý riêng do người dùng chủ động bấm chia sẻ từng lần. |
+| [SOAT_SAU_GOP_29E9A89.md](./SOAT_SAU_GOP_29E9A89.md) | ✅ Khắc phục 4 điểm tồn tại của AIOps Quarantine: (1) Heuristic 4 chỉ chặn khi `req.tokenReuseDetected`; (2) Lấy IP chuẩn xác qua `req.ip` tuân thủ `trust proxy`; (3) Miễn trừ loopback dev `127.0.0.1`, `::1`, `localhost` khi `NODE_ENV=development`; (4) Bổ sung chuẩn `code: 'AIOPS_QUARANTINED'` trong HTTP 403. 11/11 tests PASS. |
+
+Thư mục này nay **51** tệp + mục lục (đếm bằng máy 2026-10-03).
 
 ---
 

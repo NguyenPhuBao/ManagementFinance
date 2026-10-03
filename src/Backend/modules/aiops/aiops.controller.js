@@ -60,6 +60,18 @@ const aiopsController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  setScale(req, res) {
+    try {
+      const { concurrency } = req.body;
+      const result = defaultAIOpsService.setConcurrencyScale(concurrency);
+      req.auditActionName = `Cập nhật quy mô tải AIOps (${result.targetConcurrency} users)`;
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      logger.error('[AIOpsController] setScale failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
 };
 
 module.exports = aiopsController;

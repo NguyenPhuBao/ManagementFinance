@@ -89,6 +89,10 @@ class FinancialSnapshotService {
     let wantsAmount = 0;
 
     for (const item of expenses) {
+      // Bỏ qua khoản Vay/no mang số dương (tiền vào thu nợ/nhận vay) — không đưa tiền vào vào phân bổ chi
+      if (item.category?.classify === 'Vay/no' && Number(item.amount || 0) > 0) {
+        continue;
+      }
       const amount = Math.abs(Number(item.amount || 0));
       const catName = (item.category?.name_category || item.category?.namecategory || '').toLowerCase();
 
@@ -148,6 +152,7 @@ class FinancialSnapshotService {
 
   /**
    * Tính Tỷ lệ Nợ trên Thu nhập (Debt-to-Income Ratio) từ chi tiêu thực tế
+   * Chỉ tính các khoản nợ thực tế: Đi vay / Trả nợ (tiền ra âm). Tuyệt đối KHÔNG tính Cho vay.
    * @param {Array<object>} expenses 
    * @param {number} totalIncome 
    * @returns {number}
@@ -159,14 +164,45 @@ class FinancialSnapshotService {
 
     const debtKeywords = ['trả nợ', 'nợ', 'vay', 'lãi', 'tiền lãi', 'trả góp'];
     const totalDebt = expenses.reduce((sum, item) => {
+      const amount = Number(item.amount || 0);
       const catName = (item.category?.name_category || item.category?.namecategory || '').toLowerCase();
+
+      // "Cho vay" là cho người khác vay hoặc thu nợ về, không phải nghĩa vụ nợ của người dùng
+      if (catName.includes('cho vay')) {
+        return sum;
+      }
+
+      // Khoản Vay/no mang số dương (tiền vào) là nhận tiền vay/thu nợ về, không phải trả nợ
+      if (item.category?.classify === 'Vay/no' && amount > 0) {
+        return sum;
+      }
+
+      // Khoản chi trả nợ hợp lệ (mang số âm hoặc thuộc danh mục nợ hợp lệ)
       if (debtKeywords.some(kw => catName.includes(kw))) {
-        return sum + Math.abs(Number(item.amount || 0));
+        return sum + Math.abs(amount);
       }
       return sum;
     }, 0);
 
     return Math.min(1, Number((totalDebt / totalIncome).toFixed(2)));
+  }
+
+  /**
+   * Tính xu hướng chi tiêu so với tháng trước (kỳ 30 ngày trước)
+   * @param {number} curr - Chi tiêu 30 ngày gần nhất
+   * @param {number} last - Chi tiêu 30-60 ngày trước
+   * @returns {string|null} - '+15%', '-20%', '0%' hoặc null nếu tháng trước chưa có dữ liệu
+   */
+  calculateTrendVsLastMonth(curr = 0, last = 0) {
+    if (last > 0) {
+      const pct = Math.round(((curr - last) / last) * 100);
+      return pct >= 0 ? `+${pct}%` : `${pct}%`;
+    }
+    if (curr > 0) {
+      // Tháng trước chưa có dữ liệu giao dịch để so sánh
+      return null;
+    }
+    return '0%';
   }
 
   /**
@@ -295,11 +331,12 @@ class FinancialSnapshotService {
       });
 
       // Phân tách chi tiêu
-      // allExpenses: Chi + Vay/no — dùng cho DTI và 50/30/20 (đúng với nghiệp vụ CSDL)
+      // allExpenses: Chi + Vay/no (chỉ xét tiền ra âm) — dùng cho DTI và 50/30/20 (đúng với nghiệp vụ CSDL)
       // regularExpenses: chỉ Chi — dùng cho topExpenseCategories và avgMonthlyExpense
       const allExpenses = transactions.filter(
         t => t.type !== 'Transfer' &&
-             (t.category?.classify === 'Chi' || t.category?.classify === 'Vay/no')
+             (t.category?.classify === 'Chi' ||
+              (t.category?.classify === 'Vay/no' && Number(t.amount || 0) < 0))
       );
       const regularExpenses = allExpenses.filter(t => t.category?.classify === 'Chi');
 
@@ -354,13 +391,7 @@ class FinancialSnapshotService {
         .map(([name, amount]) => {
           const last = lastByCategory[name] || 0;
           const curr = currentByCategory[name] || 0;
-          let trendVsLastMonth = '0%';
-          if (last > 0) {
-            const pct = Math.round(((curr - last) / last) * 100);
-            trendVsLastMonth = pct >= 0 ? `+${pct}%` : `${pct}%`;
-          } else if (curr > 0) {
-            trendVsLastMonth = '+100%'; // tháng trước không có khoản này
-          }
+          const trendVsLastMonth = this.calculateTrendVsLastMonth(curr, last);
           return {
             category: name,
             percentage: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,

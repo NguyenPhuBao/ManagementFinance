@@ -68,6 +68,8 @@ class AIOpsService {
     this._currentStatus = {
       threatScore: evaluation.threatScore,
       status: evaluation.status,
+      vectorScores: evaluation.vectorScores,
+      targetConcurrency: evaluation.targetConcurrency,
       isAnomaly: evaluation.isAnomaly,
       anomalies: evaluation.anomalies,
       recommendedAction: evaluation.recommendedAction,
@@ -80,6 +82,7 @@ class AIOpsService {
       timestamp: sample.timestamp,
       threatScore: evaluation.threatScore,
       status: evaluation.status,
+      vectorScores: evaluation.vectorScores,
       isAnomaly: evaluation.isAnomaly,
       anomalies: evaluation.anomalies,
       requestsPerMin: sample.requestsPerMin,
@@ -156,8 +159,30 @@ class AIOpsService {
     } catch (_) {}
   }
 
+  setConcurrencyScale(scaleNumber) {
+    const scaleInfo = this.detector.setConcurrencyScale(scaleNumber);
+    if (this._currentStatus) {
+      this._currentStatus.targetConcurrency = scaleInfo.targetConcurrency;
+    }
+    if (this.collector && typeof this.collector.setTargetConcurrency === 'function') {
+      this.collector.setTargetConcurrency(scaleInfo.targetConcurrency);
+    }
+    logger.info(`[AIOps] Cập nhật quy mô người dùng: ${scaleInfo.targetConcurrency} users (Baseline: ${scaleInfo.expectedBaselineRPM} RPM)`);
+    return {
+      success: true,
+      ...scaleInfo,
+      message: `Đã cập nhật quy mô hệ thống lên ${scaleInfo.targetConcurrency} người dùng thành công!`,
+    };
+  }
+
   getStatus() {
-    return this._currentStatus;
+    const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+    return {
+      ...this._currentStatus,
+      targetConcurrency: this.detector.targetConcurrency,
+      vectorScores: this._currentStatus?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+      quarantinedCount: defaultAIOpsQuarantine.getQuarantinedList().length,
+    };
   }
 
   getHistory() {

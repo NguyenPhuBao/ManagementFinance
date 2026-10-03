@@ -23,7 +23,7 @@ graph TD
         A1[Thêm Danh Mục Hệ Thống Mới]
         A2[Chỉnh Sửa Danh Mục Hệ Thống]
         A3[Xóa Mềm Danh Mục Hệ Thống]
-        A4[Đồng Bộ & Làm Mới Danh Mục]
+        A4[Nút 'Làm mới' Thủ Công trên Toolbar]
     end
 
     subgraph "Tầng Xử Lý Nghiệp Vụ Backend (src/Backend)"
@@ -34,7 +34,6 @@ graph TD
         B5[Tự Động Khôi Phục: Restore & Update delete_at = null]
         B6[INSERT Prisma category]
         B7[Soft-Delete: Set delete_at = now]
-        B8[Socket.io Hub: emitCategoryUpdated]
     end
 
     subgraph "Phòng Vệ Riêng Tư Người Dùng (Privacy Shield)"
@@ -49,20 +48,19 @@ graph TD
 
     A1 --> B1 --> B3
     B3 -- "Chưa có" --> B4
-    B4 -- "Đã từng xóa" --> B5 --> B8
-    B4 -- "Mới hoàn toàn" --> B6 --> B8
+    B4 -- "Đã từng xóa" --> B5
+    B4 -- "Mới hoàn toàn" --> B6
 
     A2 --> B2
     B2 -- "is_default = false" --> P2
-    B2 -- "is_default = true" --> B1 --> B8
+    B2 -- "is_default = true" --> B1
 
     A3 --> B2
     B2 -- "is_default = false" --> P2
-    B2 -- "is_default = true" --> B7 --> B8
+    B2 -- "is_default = true" --> B7
 
-    B8 -.->|admin.category_updated| A4
-    B8 -.->|Data Sync Event| M1
-    B6 & B5 --> M2
+    A4 -->|Trigger refetch GET /api/admin/getcategory| B1
+    B6 & B5 --> M1 & M2
 ```
 
 ### 2.1. Cơ Chế Chuẩn Hóa Phân Loại Danh Mục (Canonical Classify Normalization)
@@ -134,8 +132,8 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
    - Hướng dẫn nhập từ khóa gợi ý cho AI.
 3. **Modal Cảnh Báo Xóa An Toàn:**
    - Cảnh báo rõ việc xóa chỉ là ẩn khỏi danh mục mặc định của hệ thống, không làm mất giao dịch cũ.
-4. **Nút Đồng Bộ & Làm Mới Tức Thời:**
-   - Kích hoạt refetch và hiển thị Toast thông báo trạng thái.
+4. **Nút 'Làm Mới' Trên Thanh Công Cụ (`Refresh Button`):**
+   - Theo quyết định của PO (Mục 05): Bỏ lắng nghe Real-time Socket.io vì danh mục hệ thống có tần suất thay đổi rất thấp; trang bị nút "Làm mới" trực tiếp trên toolbar (cạnh nút "Lọc") kèm biểu tượng xoay khi đang tải, cho phép Admin chủ động tải lại danh sách khi cần.
 
 ---
 
@@ -143,13 +141,14 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 
 - **Đến Backend:**
   - Index độc lập trên `[name_category, is_default, delete_at]` giúp tốc độ kiểm tra trùng lặp chỉ mất $< 2\text{ms}$.
+  - Giảm tải kết nối WebSocket duy trì không cần thiết cho màn hình danh mục.
 - **Đến Mobile App (Client-app):**
   - Khi người dùng đăng ký mới hoặc cài lại ứng dụng, Mobile App gọi `GET /api/sync/pull` để kéo danh sách các danh mục `is_default = true` mới nhất này vào CSDL SQLite nội bộ trên điện thoại.
   - Các giao dịch mới tạo trên điện thoại sẽ tự động gợi ý danh mục dựa trên bộ từ khóa `keyword` mà Admin đã cấu hình.
 
 ---
 
-## 📡 8. DANH MỤC API & SOCKET.IO PHỤ TRÁCH
+## 📡 8. DANH MỤC API & PHƯƠNG THỨC ĐỒNG BỘ
 
 ### REST API Endpoints
 | Phương thức | Endpoint | Chức năng | Phân quyền |
@@ -159,6 +158,6 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 | `PUT` | `/api/admin/updatecategory/:id` | Cập nhật thông tin danh mục hệ thống | Admin |
 | `DELETE` | `/api/admin/deletecategory/:id` | Xóa mềm danh mục hệ thống | Admin |
 
-### Socket.io Events
-- **Phát tán (`Server -> admin_room`):**
-  - Sự kiện `admin.category_updated`: Phát payload `{ action: 'create'|'update'|'delete', category }` giúp mọi tab Admin-web khác tự động đồng bộ danh mục tức thời mà không cần F5.
+### Phương Thức Đồng Bộ (Sync Strategy)
+- **Cơ chế:** Kéo thủ công qua nút "Làm mới" (Manual Pull via REST API).
+- **Socket.io:** Đã loại bỏ hoàn toàn listener tại giao diện Quản lý Danh mục theo quyết định tối ưu hóa tài nguyên của PO.

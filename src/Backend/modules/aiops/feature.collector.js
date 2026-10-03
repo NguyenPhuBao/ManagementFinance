@@ -18,6 +18,15 @@ class FeatureCollector {
     this._ipHashes = new Set();
     this._ipStats = new Map();
     this._salt = crypto.randomBytes(8).toString('hex');
+    this.targetConcurrency = options.targetConcurrency || 1000;
+  }
+
+  setTargetConcurrency(n) {
+    this.targetConcurrency = Math.max(100, Number(n || 1000));
+  }
+
+  _getBurstThreshold() {
+    return Math.max(150, Math.round(20 + 50 * Math.log10(this.targetConcurrency || 1000)));
   }
 
   /**
@@ -49,8 +58,8 @@ class FeatureCollector {
     return (req, res, next) => {
       this._requests += 1;
 
-      // Thu thập IP an toàn
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      // Thu thập IP an toàn qua req.ip (tuân thủ app.set('trust proxy', 1))
+      const clientIp = req.ip || req.socket?.remoteAddress;
       if (clientIp) {
         this._ipHashes.add(this._hashIp(clientIp));
 
@@ -62,11 +71,12 @@ class FeatureCollector {
         }
         ipStat.count += 1;
 
-        // Heuristic 1: Phát hiện DoS Request Burst từ 1 nguồn đơn lẻ (> 120 req trong 10s)
-        if (ipStat.count > 120 && !req.isAdmin && (!req.originalUrl || !req.originalUrl.startsWith('/api/admin'))) {
+        // Heuristic 1: Phát hiện DoS Request Burst từ 1 nguồn đơn lẻ theo ngưỡng quy mô
+        const burstThreshold = this._getBurstThreshold();
+        if (ipStat.count > burstThreshold && !req.isAdmin && (!req.originalUrl || !req.originalUrl.startsWith('/api/admin'))) {
           defaultAIOpsQuarantine.quarantine(
             clientIp,
-            `Tấn công DoS Request Burst dồn dập (${ipStat.count} req/10s)`,
+            `Tấn công DoS Request Burst dồn dập (${ipStat.count} req/10s, ngưỡng: ${burstThreshold})`,
             15 * 60 * 1000
           );
         }
@@ -118,14 +128,17 @@ class FeatureCollector {
               }
             }
           } else if (status === 401 && path.includes('/refresh')) {
-            this.recordTokenReuse();
-            if (clientIp && !req.isAdmin) {
-              // Heuristic 4: Phát hiện sử dụng token đã thu hồi (Token Hijacking)
-              defaultAIOpsQuarantine.quarantine(
-                clientIp,
-                'Phát hiện tái sử dụng Token đã thu hồi (Token Hijacking Attack)',
-                15 * 60 * 1000
-              );
+            // Heuristic 4: Chỉ ghi nhận tấn công khi thực sự tái sử dụng token đã thu hồi (req.tokenReuseDetected)
+            // Tuyệt đối không coi việc hết hạn phiên làm việc thông thường là hành vi tấn công
+            if (req.tokenReuseDetected) {
+              this.recordTokenReuse();
+              if (clientIp && !req.isAdmin) {
+                defaultAIOpsQuarantine.quarantine(
+                  clientIp,
+                  'Phát hiện tái sử dụng Token đã thu hồi (Token Hijacking Attack)',
+                  15 * 60 * 1000
+                );
+              }
             }
           }
         } else if (status >= 500) {

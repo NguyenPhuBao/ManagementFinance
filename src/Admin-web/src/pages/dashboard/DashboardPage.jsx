@@ -450,14 +450,16 @@ const DashboardPage = () => {
     return [1, '...', curr - 1, curr, curr + 1, '...', total];
   };
 
-  // Static stats (Tổng user & Tổng category) — fetch 1 lần
+  // Static stats (Tổng user & Tổng category) — fetch ngay & polling 10 giây/lần
   useEffect(() => {
+    let isMounted = true;
     const fetchStaticStats = async () => {
       try {
         const [usersRes, catRes] = await Promise.all([
           adminApi.getTotalUsers(),
           adminApi.getTotalCategories(),
         ]);
+        if (!isMounted) return;
         setTotalUsers(usersRes.data.total);
         setTotalCategories(catRes.data.total);
       } catch (err) {
@@ -465,9 +467,14 @@ const DashboardPage = () => {
       }
     };
     fetchStaticStats();
+    const interval = setInterval(fetchStaticStats, 10_000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  // Uptime — fetch ngay lúc mount và làm mới mỗi 30 giây
+  // Uptime — fetch ngay lúc mount và làm mới mỗi 10 giây (Server Health & Resilience)
   useEffect(() => {
     let isMounted = true;
     const fetchUptime = async () => {
@@ -492,15 +499,16 @@ const DashboardPage = () => {
       }
     };
     fetchUptime();
-    const t = setInterval(fetchUptime, 30_000);
+    const t = setInterval(fetchUptime, 10_000);
     return () => {
       isMounted = false;
       clearInterval(t);
     };
   }, []);
 
-  // Fetch Dashboard Stats khi Global Filter thay đổi
+  // Fetch Dashboard Stats khi Global Filter thay đổi & Polling 10s (Background polling không block UI)
   useEffect(() => {
+    let isMounted = true;
     let filterParams = {};
     if (timeFilter === 'custom') {
       if (customFilter.mode === 'day') {
@@ -514,28 +522,41 @@ const DashboardPage = () => {
       filterParams = { period: timeFilter };
     }
 
-    const fetchAllDashboardData = async () => {
-      setLoadingLogin(true);
-      setLoadingRequest(true);
+    const fetchAllDashboardData = async (isBackground = false) => {
+      if (!isBackground) {
+        setLoadingLogin(true);
+        setLoadingRequest(true);
+      }
       try {
         const [usersTimeRes, loginRes, reqRes] = await Promise.all([
           adminApi.getUserToTime(filterParams),
           adminApi.getLoginStats(filterParams),
           adminApi.getRequestStats(filterParams),
         ]);
+        if (!isMounted) return;
         if (usersTimeRes.data) setNewUsers(usersTimeRes.data);
         if (loginRes.data) setLoginStats(loginRes.data);
         if (reqRes.data) setRequestStats(reqRes.data);
       } catch (err) {
         console.error('Lỗi tải dữ liệu dashboard theo bộ lọc:', err);
       } finally {
-        setLoadingLogin(false);
-        setLoadingRequest(false);
-        setLoading(false);
+        if (!isBackground && isMounted) {
+          setLoadingLogin(false);
+          setLoadingRequest(false);
+          setLoading(false);
+        }
       }
     };
 
-    fetchAllDashboardData();
+    fetchAllDashboardData(false);
+    const interval = setInterval(() => {
+      fetchAllDashboardData(true);
+    }, 10_000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [timeFilter, customFilter]);
 
   // Fetch Hoạt động người dùng theo phân trang (Trang 1 = mới nhất, sort: 'desc')
@@ -612,7 +633,7 @@ const DashboardPage = () => {
         };
       });
 
-      // Nếu đang ở Trang 1 (mới nhất), chèn ngay bản ghi mới vào đầu bảng
+      // Nếu đang ở Trang 1 (mới nhất), chèn ngay bản ghi mới vào đầu bảng (Real-time Audit Log)
       setActivityPage((currentPage) => {
         if (currentPage === 1) {
           setRecentActivities((prevList) => {
@@ -622,119 +643,16 @@ const DashboardPage = () => {
         }
         return currentPage;
       });
-
-      // Xác định đúng bucket index theo giờ Việt Nam thay vì luôn cộng vào phần tử cuối (23:00)
-      const findTargetBucketIdx = (timeline, format, timeReq) => {
-        if (!timeline || timeline.length === 0) return -1;
-        const d = timeReq ? new Date(timeReq) : new Date();
-        if (format === 'hour' || timeline.length === 24) {
-          const hourKey = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'Asia/Ho_Chi_Minh',
-            hour: '2-digit',
-            hour12: false,
-          }).format(d);
-          const idx = timeline.findIndex((b) => b.key === hourKey);
-          return idx !== -1 ? idx : timeline.length - 1;
-        }
-        return timeline.length - 1;
-      };
-
-      // Cập nhật real-time vào biểu đồ lưu lượng request
-      setRequestStats((prev) => {
-        if (!prev.timeline || prev.timeline.length === 0) return prev;
-        const updated = [...prev.timeline];
-        const targetIdx = findTargetBucketIdx(updated, prev.format, data.time_req);
-        if (targetIdx !== -1) {
-          updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
-        }
-        const counts = updated.map(u => u.count);
-        const total = counts.reduce((a, b) => a + b, 0);
-        const max = Math.max(...counts);
-        const avg = Math.round(total / counts.length);
-        return {
-          ...prev,
-          summary: { total, max, avg },
-          timeline: updated,
-        };
-      });
-
-      // Nếu là hành động đăng nhập, cập nhật real-time vào biểu đồ đăng nhập
-      if (data.action && data.action.includes('Đăng nhập')) {
-        setLoginStats((prev) => {
-          if (!prev.timeline || prev.timeline.length === 0) return prev;
-          const updated = [...prev.timeline];
-          const targetIdx = findTargetBucketIdx(updated, prev.format, data.time_req);
-          if (targetIdx !== -1) {
-            updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
-          }
-          const counts = updated.map(u => u.count);
-          const total = counts.reduce((a, b) => a + b, 0);
-          const max = Math.max(...counts);
-          const avg = Math.round(total / counts.length);
-          return {
-            ...prev,
-            summary: { total, max, avg },
-            timeline: updated,
-          };
-        });
-      }
-    };
-
-    // Lắng nghe sự kiện người dùng đăng ký mới Realtime
-    const handleUserRegistered = (newUser) => {
-      setTotalUsers((prev) => (prev !== null ? prev + 1 : 1));
-      setNewUsers((prev) => {
-        const cur = (prev?.current || 0) + 1;
-        const previous = prev?.previous || 0;
-        const growth = previous === 0 ? 100 : parseFloat(((cur / previous) * 100).toFixed(2));
-        return { ...prev, current: cur, growth };
-      });
-    };
-
-    // Lắng nghe sự kiện người dùng đăng nhập thành công Realtime
-    const handleUserLoggedIn = (data) => {
-      setLoginStats((prev) => {
-        if (!prev.timeline || prev.timeline.length === 0) return prev;
-        const updated = [...prev.timeline];
-        const targetIdx = findTargetBucketIdx(updated, prev.format, data?.time);
-        if (targetIdx !== -1) {
-          updated[targetIdx] = { ...updated[targetIdx], count: updated[targetIdx].count + 1 };
-        }
-        const counts = updated.map(u => u.count);
-        const total = counts.reduce((a, b) => a + b, 0);
-        const max = Math.max(...counts);
-        const avg = Math.round(total / counts.length);
-        return {
-          ...prev,
-          summary: { total, max, avg },
-          timeline: updated,
-        };
-      });
-    };
-
-    // Lắng nghe sự kiện danh mục thêm/xóa Realtime
-    const handleCategoryUpdated = (data) => {
-      if (data?.action === 'create') {
-        setTotalCategories((prev) => (prev !== null ? prev + 1 : 1));
-      } else if (data?.action === 'delete') {
-        setTotalCategories((prev) => (prev !== null ? Math.max(0, prev - 1) : 0));
-      }
     };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
-    socket.on('admin.user_registered', handleUserRegistered);
-    socket.on('admin.user_logged_in', handleUserLoggedIn);
-    socket.on('admin.category_updated', handleCategoryUpdated);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
-      socket.off('admin.user_registered', handleUserRegistered);
-      socket.off('admin.user_logged_in', handleUserLoggedIn);
-      socket.off('admin.category_updated', handleCategoryUpdated);
     };
   }, [socket, activityLimit]);
 

@@ -8,12 +8,14 @@ const axiosClient = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'x-client-platform': 'admin-web',
   },
 });
 
 // Request interceptor
 axiosClient.interceptors.request.use(
   (config) => {
+    config.headers['x-client-platform'] = 'admin-web';
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -82,7 +84,12 @@ axiosClient.interceptors.response.use(
 
       try {
         // Dùng instance axios độc lập để tránh bị lặp vô hạn interceptor
-        const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+        const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-platform': 'admin-web',
+          },
+        });
         const data = res.data?.data || res.data;
         const newAccessToken = data?.accessToken;
         const newRefreshToken = data?.refreshToken;

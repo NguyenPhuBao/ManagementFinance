@@ -92,6 +92,7 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.strictEqual(nextCalled, false, 'next() must NOT be called for blocked IP');
     assert.strictEqual(statusCode, 403);
     assert.strictEqual(jsonBody.success, false);
+    assert.strictEqual(jsonBody.code, 'AIOPS_QUARANTINED');
     assert.strictEqual(jsonBody.error, 'AIOPS_QUARANTINED');
     assert.ok(jsonBody.message.includes('phong tỏa'));
   });
@@ -139,5 +140,62 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.strictEqual(emittedEvent, 'admin.security_blocked');
     assert.strictEqual(emittedData.maskedIp, '118.69.xx.xx');
     assert.strictEqual(emittedData.reason, 'DDoS Attack Burst');
+  });
+
+  await t.test('8. unquarantine(rawIp) unblocks IP directly without needing hash', () => {
+    const q = new AIOpsQuarantine();
+    const ip = '14.161.22.33';
+
+    q.quarantine(ip, 'Testing direct unquarantine');
+    assert.strictEqual(q.isQuarantined(ip).quarantined, true);
+
+    const result = q.unquarantine(ip);
+    assert.strictEqual(result, true);
+    assert.strictEqual(q.isQuarantined(ip).quarantined, false);
+  });
+
+  await t.test('9. POST /api/auth/login with admin username bypasses quarantine so credentials can be verified', () => {
+    const q = new AIOpsQuarantine();
+    const mw = q.createMiddleware();
+    const ip = '14.161.22.33';
+
+    q.quarantine(ip, 'Accidentally quarantined IP');
+
+    const req = {
+      ip,
+      headers: {},
+      method: 'POST',
+      originalUrl: '/api/auth/login',
+      path: '/api/auth/login',
+      body: { username: 'admin', password: 'SecretPassword123' },
+      isAdmin: false,
+    };
+
+    let nextCalled = false;
+    mw(req, {}, () => { nextCalled = true; });
+
+    assert.strictEqual(nextCalled, true, 'Admin login attempt must NOT be rejected by quarantine shield');
+  });
+
+  await t.test('10. Requests with req.isAdminWebClient = true bypass quarantine', () => {
+    const q = new AIOpsQuarantine();
+    const mw = q.createMiddleware();
+    const ip = '14.161.22.33';
+
+    q.quarantine(ip, 'Quarantined IP');
+
+    const req = {
+      ip,
+      headers: {},
+      method: 'POST',
+      originalUrl: '/api/auth/login',
+      isAdminWebClient: true,
+      isAdmin: false,
+    };
+
+    let nextCalled = false;
+    mw(req, {}, () => { nextCalled = true; });
+
+    assert.strictEqual(nextCalled, true, 'Admin-web client must bypass quarantine');
   });
 });

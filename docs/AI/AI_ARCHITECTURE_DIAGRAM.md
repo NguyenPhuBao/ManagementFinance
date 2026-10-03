@@ -18,8 +18,8 @@ flowchart TB
 
   subgraph CLIENT["📱 CLIENT (Mobile App - Flutter)"]
     direction LR
-    LOCAL_DB[("Drift SQLite v24<br/>(Dữ liệu tài chính cá nhân)")]:::client
-    EDGE_AI["<b>Edge AI (On-Device)</b><br/>Hệ luật: dự báo dòng tiền, tái phân bổ, nhận xét<br/><i>Gemma 4 E2B: Trợ lý AI (tool chỉ đọc, offline)</i>"]:::edge
+    LOCAL_DB[("Drift SQLite v27<br/>(Dữ liệu tài chính cá nhân)")]:::client
+    EDGE_AI["<b>Edge AI (On-Device)</b><br/>Hệ luật: dự báo dòng tiền, tái phân bổ, nhận xét<br/><i>Gemma 4 E2B: Trợ lý AI (9 tool chỉ đọc, offline)</i>"]:::edge
     LOCAL_DB <-->|"100% Offline (F1)"| EDGE_AI
   end
 
@@ -57,8 +57,8 @@ skinparam defaultFontName Arial
 skinparam shadowing false
 
 package "📱 CLIENT (Mobile App - Flutter)" #EFF6FF {
-  database "Drift SQLite v24\n(Dữ liệu cá nhân cục bộ)" as LocalDB #DBEAFE
-  component "<b>Edge AI (On-Device)</b>\nHệ luật: dự báo, tái phân bổ, nhận xét\n<i>Gemma 4 E2B: Trợ lý AI (tool chỉ đọc, offline)</i>" as EdgeAI #EDE9FE
+  database "Drift SQLite v27\n(Dữ liệu cá nhân cục bộ)" as LocalDB #DBEAFE
+  component "<b>Edge AI (On-Device)</b>\nHệ luật: dự báo, tái phân bổ, nhận xét\n<i>Gemma 4 E2B: Trợ lý AI (9 tool chỉ đọc, offline)</i>" as EdgeAI #EDE9FE
   LocalDB <--> EdgeAI : 100% Offline (F1)
 }
 
@@ -93,6 +93,6 @@ Chat --> Gemini : Phân tích & Trả lời
 
 ## 3. Ý Nghĩa 3 Trục Kiến Trúc Cốt Lõi
 
-1. **Khối Client (Edge AI & Hệ luật cục bộ):** Chạy 100% Offline trên Mobile. Hệ luật đảm nhiệm dự báo dòng tiền 30 ngày, gợi ý ngân sách $\le 90$ ngày, tái phân bổ ngân sách C1–C7 và các khối nhận xét. Mô hình **Gemma 4 E2B** phục vụ màn Trợ lý AI hỏi đáp bằng 7 tool chỉ đọc dữ liệu từ Drift SQLite cục bộ; dữ liệu cá nhân tuyệt đối không ra ngoài.
+1. **Khối Client (Edge AI & Hệ luật cục bộ):** Chạy 100% Offline trên Mobile. Hệ luật đảm nhiệm dự báo dòng tiền 30 ngày, gợi ý ngân sách $\le 90$ ngày, tái phân bổ ngân sách C1–C7 và các khối nhận xét. Mô hình **Gemma 4 E2B** phục vụ màn Trợ lý AI hỏi đáp bằng 9 tool chỉ đọc dữ liệu từ Drift SQLite cục bộ; dữ liệu cá nhân tuyệt đối không ra ngoài.
 2. **Khối Backend (Cloud AI Gateway):** Đóng vai trò chốt chặn an toàn: giữ bí mật API Key (không đưa lên mobile) và lọc bỏ dữ liệu nhạy cảm văn bản (`masking.util.js`) trước khi gọi ra ngoài.
 3. **4 Dịch Vụ AI Cốt Lõi Tại Backend:** Quét hóa đơn (OCR), phân loại giao dịch tầng 3 (Classifier), trợ lý tài chính trực tuyến có Privacy Shield (Chatbot - Google Gemini 3.8 Flash), và đánh giá sức khỏe tài chính Lối A (Financial Health Score tính toán tất định tại Backend nạp vào làm ngữ cảnh cho Chatbot).

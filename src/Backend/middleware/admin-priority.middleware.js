@@ -26,7 +26,29 @@ function createAdminPriorityMiddleware(options = {}) {
       return next();
     }
 
-    // 3. Nhận diện sớm qua Authorization Bearer Token nếu role là admin
+    // 3. Nhận diện kênh quản trị Admin-web qua Header hoặc Origin/Referer
+    const clientPlatform = (req.headers && (req.headers['x-client-platform'] || req.headers['x-client-type'])) || '';
+    const origin = (req.headers && (req.headers.origin || req.headers.referer)) || '';
+    const isAdminWebOrigin = origin.includes('management-finance-gamma.vercel.app') ||
+                             origin.includes('localhost:5173') ||
+                             origin.includes('localhost:3000') ||
+                             origin.includes('localhost:5174');
+
+    if (clientPlatform === 'admin-web' || isAdminWebOrigin) {
+      req.isAdminWebClient = true;
+      // Nếu là request xác thực hoặc quản trị từ Admin-web thì đánh dấu ưu tiên Fast-Lane
+      if (
+        url.includes('/auth/login') ||
+        url.includes('/auth/refresh') ||
+        url.startsWith('/api/admin') ||
+        url.startsWith('/health/admin')
+      ) {
+        req.isAdmin = true;
+        return next();
+      }
+    }
+
+    // 4. Nhận diện sớm qua Authorization Bearer Token nếu role là admin
     const authHeader = req.headers && (req.headers.authorization || req.headers['authorization']);
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];

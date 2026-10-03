@@ -185,4 +185,67 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
     // Baseline should NOT be influenced by attack data
     assert.strictEqual(afterAttackBaseline, initialBaselineReq, 'Baseline must not learn from attack data');
   });
+
+  await t.test('7. Multi-Vector Decomposition: Returns 4 separate vector scores with proper categories', () => {
+    const detector = new AnomalyDetector({ targetConcurrency: 1000 });
+    const sample = {
+      timestamp: new Date().toISOString(),
+      requestsPerMin: 120,
+      errorRate4xx: 0.01,
+      errorRate5xx: 0,
+      failedLogins: 0,
+      tokenReuseAttacks: 0,
+      malformedRequests: 5, // Exploit probe only
+      eventLoopLagMs: 10,
+      cpuPercent: 20,
+      ramPercent: 40,
+      dbPoolActive: 2,
+      loadSheddingCount: 0,
+      distinctIpsCount: 15,
+    };
+
+    const result = detector.evaluate(sample);
+
+    assert.ok(result.vectorScores, 'Result must include vectorScores');
+    assert.strictEqual(typeof result.vectorScores.auth, 'number');
+    assert.strictEqual(typeof result.vectorScores.traffic, 'number');
+    assert.strictEqual(typeof result.vectorScores.exploit, 'number');
+    assert.strictEqual(typeof result.vectorScores.resource, 'number');
+    assert.strictEqual(result.targetConcurrency, 1000);
+
+    // Exploit score should be high while auth/traffic/resource stay low
+    assert.ok(result.vectorScores.exploit >= 50, `Exploit score must be elevated: ${result.vectorScores.exploit}`);
+    assert.ok(result.vectorScores.auth === 0, `Auth score must be 0: ${result.vectorScores.auth}`);
+  });
+
+  await t.test('8. Dynamic Concurrency Scaling: setConcurrencyScale(2000) dynamically adjusts baseline capacity', () => {
+    const detector = new AnomalyDetector({ targetConcurrency: 1000 });
+    assert.strictEqual(detector.targetConcurrency, 1000);
+
+    const scaleResult = detector.setConcurrencyScale(2000);
+    assert.strictEqual(detector.targetConcurrency, 2000);
+    assert.strictEqual(scaleResult.expectedBaselineRPM, 20000);
+    assert.strictEqual(scaleResult.peakCeilingRPM, 50000);
+
+    // A sample of 15,000 RPM at 2000 users should be well within normal baseline (< 2.5x)
+    const highTrafficSample = {
+      timestamp: new Date().toISOString(),
+      requestsPerMin: 15000,
+      errorRate4xx: 0.01,
+      errorRate5xx: 0,
+      failedLogins: 5,
+      tokenReuseAttacks: 0,
+      malformedRequests: 0,
+      eventLoopLagMs: 15,
+      cpuPercent: 35,
+      ramPercent: 50,
+      dbPoolActive: 5,
+      loadSheddingCount: 0,
+      distinctIpsCount: 800,
+    };
+
+    const evalResult = detector.evaluate(highTrafficSample);
+    assert.strictEqual(evalResult.status, 'NORMAL', '15,000 RPM for 2000 users must stay NORMAL');
+    assert.ok(evalResult.threatScore < 50, `Threat score should stay low: ${evalResult.threatScore}`);
+  });
 });

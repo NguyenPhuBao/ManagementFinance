@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import { normalizeCategoryName, normalizeVietnameseUnaccent } from '../../utils/string';
 import adminApi from '../../api/admin.api';
-import useSocket from '../../hooks/useSocket';
 import Pagination from '../../components/common/Pagination';
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
 
 const CategoryPage = () => {
-  const socket = useSocket();
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
@@ -90,22 +88,6 @@ const CategoryPage = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
-
-  // Lắng nghe sự kiện thay đổi danh mục thời gian thực qua Socket.io
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleCategoryUpdated = (data) => {
-      console.log('[CategoryPage] Nhận sự kiện admin.category_updated:', data);
-      fetchCategories();
-    };
-
-    socket.on('admin.category_updated', handleCategoryUpdated);
-
-    return () => {
-      socket.off('admin.category_updated', handleCategoryUpdated);
-    };
-  }, [socket]);
 
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));
@@ -350,6 +332,15 @@ const CategoryPage = () => {
                       {(filter.type !== 'all' || (filter.keyword && filter.keyword.trim())) && (
                         <span className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2"></span>
                       )}
+                  </button>
+                  <button 
+                      className="px-4 py-2 border border-outline rounded text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2 cursor-pointer" 
+                      onClick={() => fetchCategories()}
+                      disabled={loading}
+                      title="Làm mới danh sách danh mục"
+                  >
+                      <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                      Làm mới
                   </button>
                   <button className="px-4 py-2 border rounded font-label-md text-label-md transition-colors flex items-center gap-2 bg-primary text-white border-transparent hover:bg-surface-tint shadow-sm cursor-pointer" onClick={startAdd}>
                       Thêm danh mục mới

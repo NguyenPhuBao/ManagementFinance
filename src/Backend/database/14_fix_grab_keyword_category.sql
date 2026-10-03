@@ -1,4 +1,4 @@
-﻿-- Migration 14: Sửa từ khoá mặc định danh mục 'Ăn uống' và 'Di chuyển'
+-- Migration 14: Sửa từ khoá mặc định danh mục 'Ăn uống' và 'Di chuyển'
 -- Ngày: 2026-10-01
 -- Lý do: 'grab' đứng riêng trong Ăn uống gây xếp nhầm mọi ghi chú "grab đi làm/về nhà"
 --        vào Ăn uống thay vì Di chuyển (mâu thuẫn với training-data.csv:11).

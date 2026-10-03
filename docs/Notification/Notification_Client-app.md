@@ -37,11 +37,12 @@ graph TD
    - Có cơ chế chống trùng nội bộ bằng khoá duy nhất: `{idaccount, dedupeKey}` kết hợp `InsertMode.insertOrIgnore`.
    - Không chứa các cột đồng bộ đồng đẳng (`syncStatus`, `syncError`) vì đây là dữ liệu suy ra được từ nghiệp vụ tài chính.
    - Hỗ trợ xoá mềm `dismissedAt` để bảo toàn khóa chống trùng, phân trang `watchFeed(idaccount, limit, kinds, chiChuaDoc)`.
-2. **Hệ Thống 19 Loại Thông Báo Tài Chính Cục Bộ (`NotificationKind`):**
-   - Chia thành 5 nhóm người dùng bật/tắt độc lập (`NotificationGroup`):
+2. **Hệ Thống 20 Loại Thông Báo Tài Chính Cục Bộ (`NotificationKind`):**
+   - Chia thành 6 nhóm người dùng bật/tắt độc lập (`NotificationGroup`):
      - `bill`: Hóa đơn sắp đến hạn, quá hạn, tự động thanh toán, trả trên thiết bị khác...
      - `budget`: Chi tiêu chạm ngưỡng cảnh báo, vượt hạn mức, khoản chi lớn bất thường, đề xuất tái phân bổ ngân sách AI...
      - `goal`: Hoàn thành mục tiêu, chậm tiến độ, chạm cột mốc, tự động trích tiền...
+     - `transaction`: Biến động số dư đọc trên máy / biên lai chia sẻ (D1).
      - `system`: Lỗi đồng bộ dữ liệu, số dư ví âm, số dư ví thấp.
      - `summary`: Báo cáo tổng kết tuần.
 3. **Giao Diện Trung Tâm Thông Báo (`NotificationCenterPage`):**
@@ -62,7 +63,7 @@ Mặc dù hệ thống thông báo nội bộ của Client-app rất hoàn chỉ
 | **Sự kiện `system.broadcast`** (Socket.io) | Chưa bắt sự kiện broadcast từ Admin | Khi quản trị viên phát thông báo bảo trì/nâng cấp hệ thống, Client-app không hiển thị. |
 | **Sự kiện `user.notification`** (Socket.io) | Chưa bắt sự kiện thông báo trực tiếp từ Backend | Các cảnh báo bảo mật, cảnh báo hệ thống từ server bị bỏ sót. |
 | **REST API `/api/notifications/*`** | Client-app chưa có `NotificationApiClient` | Không kéo được lịch sử thông báo server khi offline quay lại; trạng thái đọc không được đồng bộ lên backend. |
-| **Widget `NotificationBell`** | Chỉ hiển thị 1 chấm đỏ tĩnh 10x10 | Không hiển thị số lượng chưa đọc động như Admin-web (`1`, `5`, `99+`). |
+| **Widget `NotificationBell`** | Đã hiển thị số lượng chưa đọc động (0 ẩn, 1–99, `99+`) từ 2026-09-30 | Đồng bộ chuẩn UX theo badge số đếm. |
 
 ---
 

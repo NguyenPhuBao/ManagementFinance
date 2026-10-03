@@ -377,6 +377,17 @@ const authService = {
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
+    // Tự động gỡ phong tỏa IP khi đăng nhập thành công với quyền Quản trị viên (Admin Fast-Lane Recovery)
+    if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {
+      try {
+        const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
+        const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+        if (clientIp) {
+          defaultAIOpsQuarantine.unquarantine(clientIp);
+        }
+      } catch (_) {}
+    }
+
     try {
       const { emitUserLoggedIn } = require('../../core/socket');
       emitUserLoggedIn({
@@ -415,6 +426,9 @@ const authService = {
     // CSDL mới: Status = true nghĩa là token ĐÃ bị thu hồi
     if (!storedToken || storedToken.status === true) {
       if (storedToken && storedToken.status === true) {
+        // Đánh dấu cờ phát hiện tấn công tái sử dụng token đã thu hồi (Token Reuse Attack)
+        if (req) req.tokenReuseDetected = true;
+
         // Thu hồi toàn bộ token của tài khoản nếu phát hiện dùng lại token đã revoke (Token Reuse Detection)
         await prisma.refreshtoken.updateMany({
           where: { idaccount: storedToken.idaccount, status: false },

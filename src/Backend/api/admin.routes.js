@@ -12,6 +12,7 @@ router.use(authenticate, authorize('admin'));
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
 router.post('/aiops/calibrate', aiopsController.calibrate);
+router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
 router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
 
