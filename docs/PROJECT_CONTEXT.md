@@ -1059,8 +1059,9 @@ kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. 
   lai nền sáng), ca test đo tương phản ≥ 3:1. Dung lượng đo trên release: 11,06 MB thư viện arm64 + 1,49 MB mô hình.
   Ba màn Stitch người dùng xác nhận. Còn mở: mẫu riêng MoMo / ZaloPay (chờ biên lai thật) · bản thiết kế thứ hai *nhắc
   ghi sau khi rời app ngân hàng* — spec `specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt 2026-10-03**,
-  kế hoạch 10 task (gitignore), **đang thi công** (Task 1, 2, 5 xong 2026-10-03 — `77b0ff8`, `6d9443a`, `79311b7`;
-  Task 3 đo chạy nền trên Realme đang dở).
+  kế hoạch 10 task (gitignore), **đang thi công** (Task 1–8 xong 2026-10-03 — `77b0ff8`, `6d9443a`, `79311b7`,
+  `2bbcd76`, `a58efd8`, `5cfb429`; đo Realme Task 3 → giữ **cả hai** đường nền; còn Task 9 nghiệm thu máy thật và
+  Task 10 tài liệu + đơn CAN-LAM).
 
 ### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 

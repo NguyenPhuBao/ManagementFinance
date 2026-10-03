@@ -170,8 +170,11 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    mẫu riêng MoMo / ZaloPay khi có biên lai thật); chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản
    ngay trong app ngân hàng thì có lần app ấy không đăng thông báo biến động. Cùng lượt người dùng chọn thêm **nhắc ghi
    sau khi rời app ngân hàng** — spec `docs/superpowers/specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` **duyệt
-   2026-10-03**, kế hoạch 10 task (gitignore) cùng tên ở `plans/`; **đang thi công** — Task 1 (hàm thuần), 2 (tầng
-   Kotlin + kênh + worker), 5 (cờ, mốc, ví theo nguồn) xong 2026-10-03; Task 3 (đo chạy nền trên Realme) đang dở.
+   2026-10-03**, kế hoạch 10 task (gitignore) cùng tên ở `plans/`; **đang thi công** — Task 1–8 xong 2026-10-03 (hàm
+   thuần · tầng Kotlin + kênh + worker · đo Realme: nhắc 4–7 phút sau khi rời app, worker sống qua vuốt Recents →
+   người dùng giữ **cả hai** đường nền · Stitch xác nhận · cờ, mốc, ví theo nguồn · lượt nhập thành dòng loại 20 ·
+   form *"Dùng MB Bank · …"* + thẻ *"Có N mục chờ ghi"* · màn đồng ý + công tắc ở Cài đặt); còn Task 9 (nghiệm thu
+   máy thật) và 10 (tài liệu này + đơn CAN-LAM). Đo Doze (tắt màn, rút cáp) để sau.
 4. Đo thêm nguồn: Vietcombank, Techcombank, BIDV, Tin nhắn (chế độ thu mẫu bản debug — hình dạng đã che).
 
 ## 7. Chia sẻ biên lai (2026-10-02)
