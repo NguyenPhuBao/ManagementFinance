@@ -5,10 +5,10 @@ Tài liệu này là **Nguồn sự thật (Source of Truth)** hướng dẫn ki
 ---
 
 > [!IMPORTANT]
-> **QUY ĐỊNH CHIẾN LƯỢC CỦA PRODUCT OWNER (PO) — GIAI ĐOẠN HIỆN TẠI:**  
-> **Hiện tại MỌI MÔI TRƯỜNG (kể cả triển khai trên Render / Cloud) ĐỀU THỐNG NHẤT CHẠY THEO CHẾ ĐỘ `DEVELOPMENT` (`NODE_ENV=development`).**  
-> - **Mục đích:** Hỗ trợ việc phát triển, kiểm thử liên thông giữa Backend, Admin-web và Client-app diễn ra thuận lợi, theo dõi log chi tiết và chẩn đoán lỗi nhanh chóng.  
-> - **Nguyên tắc chuyển đổi:** Chỉ sau khi hoàn thiện toàn bộ dự án và **CÓ YÊU CẦU/PHÊ DUYỆT TỪ PO**, hệ thống mới được kích hoạt chuyển đổi sang môi trường **`PRODUCTION`** (`NODE_ENV=production`). Mọi hành vi tự ý chuyển đổi khi chưa có lệnh từ PO đều bị nghiêm cấm.
+> **QUYẾT ĐỊNH CHIẾN LƯỢC CỦA PRODUCT OWNER (PO) — CHÍNH THỨC KÍCH HOẠT PRODUCTION:**  
+> **Toàn bộ hệ thống Backend Cloud (Render) và Admin-web Cloud (Vercel) CHÍNH THỨC CHUYỂN SANG MÔI TRƯỜNG `PRODUCTION` (`NODE_ENV=production`).**  
+> - **Mục tiêu:** Vận hành hệ thống theo tiêu chuẩn sản xuất cao cấp, bảo mật dữ liệu tối đa (`Data_Security.md`), kích hoạt cơ chế mã hóa dữ liệu At-Rest 256-bit, tắt log debug/query thô, và che giấu thông tin lỗi nhạy cảm.  
+> - **Yêu cầu bắt buộc:** Bổ sung đầy đủ 100% các biến môi trường Production bí mật trên Render Dashboard (xem Mục 3.3 bên dưới). Thiếu bất kỳ biến khóa nào sẽ kích hoạt cơ chế tự bảo vệ an toàn (Safe Crash-on-Start).
 
 ---
 
@@ -127,39 +127,118 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 > - `ioredis`: Kết nối Redis phục vụ Rate Limiter Token-Bucket & Snapshot Cache
 > - `express-rate-limit`: Bảo vệ các route API cơ bản
 
-3. **Khai Báo Biến Môi Trường (Environment):**
-   Vào tab **Environment** của Web Service trên Render, thêm các biến sau:
+3. **Khai Báo Toàn Bộ Biến Môi Trường Production Trên Render (Environment Variables):**
+   Vào tab **Environment** của Web Service trên Render, nhấn **Add Environment Variable** hoặc **Edit as Raw / Secret File** và điền đầy đủ các biến sau:
 
    ```env
-   # --- 1. Chế độ chạy (Giai đoạn hiện tại) ---
-   NODE_ENV=development
+   # ========================================================
+   # 1. RUNTIME & HỆ THỐNG MÁY CHỦ (PRODUCTION CORE)
+   # ========================================================
+   NODE_ENV=production
    PORT=10000
+   HOST=0.0.0.0
+   TZ=Asia/Ho_Chi_Minh
+   LOG_LEVEL=info
+   PRISMA_LOG_QUERY=false
 
-   # --- 2. Kết nối CSDL Supabase ---
-   DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
-   DIRECT_URL=postgresql://postgres.[PROJECT-REF]:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+   # ========================================================
+   # 2. CƠ SỞ DỮ LIỆU POSTGRESQL (SUPABASE CONNECTION POOLING)
+   # ========================================================
+   # Cổng 6543 (Transaction Pooler PgBouncer) phục vụ API thông thường
+   DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+   # Cổng 5432 (Direct Connection) phục vụ migrations và scripts
+   DIRECT_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+   PG_POOL_MAX=20
 
-   # --- 3. Kết nối Upstash Redis ---
+   # ========================================================
+   # 3. MESSAGE BROKER & IN-MEMORY CACHE (UPSTASH REDIS TLS)
+   # ========================================================
    REDIS_URL=rediss://default:[UPSTASH_PASSWORD]@[YOUR-ENDPOINT].upstash.io:6379
 
-   # --- 4. Bảo mật & Mã hóa ---
-   DATA_ENCRYPTION_KEY=[CHUỖI_HEX_64_KÝ_TỰ]
-   BLIND_INDEX_SECRET=[CHUỖI_BẢO_MẬT_NGẪU_NHIÊN]
+   # ========================================================
+   # 4. MÃ HÓA DỮ LIỆU AT-REST (NGHỊ ĐỊNH 13/2023/NĐ-CP & PCI-DSS v4.0)
+   # ========================================================
+   # BẮT BUỘC Ở PRODUCTION: Chuỗi hex đúng 64 ký tự (32 bytes AES-256)
+   DATA_ENCRYPTION_KEY=[CHUỖI_HEX_64_KÝ_TỰ_SINH_BỞI_CRYPTO]
+   # BẮT BUỘC Ở PRODUCTION: Chuỗi bí mật dùng cho HMAC-SHA256 Blind Index
+   BLIND_INDEX_SECRET=[CHUỖI_BẢO_MẬT_NGẪU_NHIÊN_32_KÝ_TỰ]
 
-   # --- 5. Xác thực JWT ---
-   JWT_SECRET=[SECRET_KEY_ACCESS_TOKEN]
-   JWT_REFRESH_SECRET=[SECRET_KEY_REFRESH_TOKEN]
-   JWT_EXPIRES_IN=15m
-   JWT_REFRESH_EXPIRES_IN=7d
+   # ========================================================
+   # 5. XÁC THỰC BẢO MẬT JWT (TOKEN PAIR & EXPIRATION)
+   # ========================================================
+   JWT_ACCESS_SECRET=[SECRET_KEY_ACCESS_TOKEN_NGẪU_NHIÊN]
+   JWT_REFRESH_SECRET=[SECRET_KEY_REFRESH_TOKEN_NGẪU_NHIÊN]
+   JWT_ADMIN_ACCESS_EXPIRES=15m
+   JWT_ADMIN_REFRESH_EXPIRES=7d
+   JWT_USER_ACCESS_EXPIRES=7d
+   JWT_USER_REFRESH_EXPIRES=90d
 
-   # --- 6. Email & AI Gemini ---
-   EMAIL_USER=[EMAIL_HỆ_THỐNG@GMAIL.COM]
-   EMAIL_PASS=[APP_PASSWORD_16_KÝ_TỰ]
-   GEMINI_API_KEY=[API_KEY_GOOGLE_GEMINI]
+   # ========================================================
+   # 6. ĐẶC QUYỀN QUẢN TRỊ & GIÁM SÁT AN NINH (ADMIN FAST-LANE)
+   # ========================================================
+   # Khóa cứu hộ đặc quyền x-emergency-admin-key (Bypass Rate Limiter)
+   ADMIN_EMERGENCY_KEY=[SECRET_EMERGENCY_ADMIN_KEY_2026]
+   # Email nhận thông báo đỏ khi AIOps Sentinel phát hiện tấn công mức CRITICAL
+   ADMIN_ALERT_EMAIL=[EMAIL_QUAN_TRI_VIEN@GMAIL.COM]
 
-   # --- 7. Khóa dữ liệu mock ---
+   # ========================================================
+   # 7. MẠNG, CORS & ĐIỀU TIẾT TẢI (NETWORK & RATE LIMITING)
+   # ========================================================
+   # Khai báo chính xác domain Vercel của Admin-web và domain local
+   CORS_ORIGIN=https://managementfinance-admin.vercel.app,http://localhost:5173,http://localhost:3000
+   RATE_LIMIT_ENABLED=true
+   RATE_LIMIT_WINDOW_MS=900000
+   RATE_LIMIT_MAX=1000
+
+   # ========================================================
+   # 8. TRÍ TUỆ NHÂN TẠO GOOGLE GEMINI (AI OCR & CLASSIFICATION)
+   # ========================================================
+   GEMINI_API_KEY=[API_KEY_GOOGLE_AI_STUDIO]
+   GEMINI_MODEL=gemini-3.8-flash
+
+   # ========================================================
+   # 9. DỊCH VỤ EMAIL HỆ THỐNG (GMAIL SMTP / SENDGRID)
+   # ========================================================
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=[EMAIL_GUI_OTP@GMAIL.COM]
+   SMTP_PASS=[APP_PASSWORD_16_KÝ_TỰ_GOOGLE]
+   SMTP_FROM="ManagementFinance" <no-reply@managementfinance.app>
+
+   # ========================================================
+   # 10. CHỐNG GIAN LẬN DỮ LIỆU (ANTI-TAMPERING)
+   # ========================================================
    ALLOW_MOCK_INPUT=false
    ```
+
+4. **Công Cụ Sinh Bộ Khóa Bảo Mật Chuẩn Production (1-Line Command Generator):**
+   Mở terminal trên máy tính của bạn và chạy các lệnh sau để sinh bộ khóa ngẫu nhiên đạt chuẩn 256-bit an toàn, sau đó dán vào Render:
+
+   ```bash
+   # 1. Sinh khóa DATA_ENCRYPTION_KEY (Bắt buộc chuẩn 64 hex characters)
+   node -e "console.log('DATA_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))"
+
+   # 2. Sinh khóa BLIND_INDEX_SECRET (32 bytes ngẫu nhiên)
+   node -e "console.log('BLIND_INDEX_SECRET=' + require('crypto').randomBytes(32).toString('hex'))"
+
+   # 3. Sinh khóa JWT_ACCESS_SECRET và JWT_REFRESH_SECRET
+   node -e "console.log('JWT_ACCESS_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
+   node -e "console.log('JWT_REFRESH_SECRET=' + require('crypto').randomBytes(48).toString('base64'))"
+
+   # 4. Sinh khóa ADMIN_EMERGENCY_KEY
+   node -e "console.log('ADMIN_EMERGENCY_KEY=' + require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+5. **Quy Trình Triển Khai Lại (Manual Trigger / Redeploy):**
+   - Sau khi lưu toàn bộ biến trên Render, bấm **Manual Deploy** $\rightarrow$ Chọn **Deploy latest commit** (hoặc **Clear build cache & deploy** nếu muốn cài đặt lại sạch sẽ).
+   - Kiểm tra tab **Logs**: Máy chủ sẽ hiển thị thông báo khởi động đạt chuẩn:
+     ```
+     ==> Starting service with 'npm start'
+     2026-10-03 20:45:00 [INFO] WealthCommand Backend running at http://0.0.0.0:10000
+     2026-10-03 20:45:00 [INFO] Environment: production
+     2026-10-03 20:45:00 [INFO] Database: PersonFinance @ PostgreSQL
+     2026-10-03 20:45:00 [INFO] PostgreSQL connected
+     ```
 
 ---
 
@@ -210,7 +289,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 ## 📌 4. SO SÁNH CHI TIẾT GIỮA DEVELOPMENT VÀ PRODUCTION
 
-| Tiêu Chí / Cơ Chế | Môi Trường Development (Hiện Tại) | Môi Trường Production (Tương Lai) | Mục Đích Kỹ Thuật & Tác Động |
+| Tiêu Chí / Cơ Chế | Môi Trường Development (Local Dev) | Môi Trường Production (Đang Kích Hoạt Trên Cloud) | Mục Đích Kỹ Thuật & Tác Động |
 |---|---|---|---|
 | **Biến `NODE_ENV`** | `development` | `production` | Kích hoạt toàn bộ các chốt chặn an toàn và tối ưu hóa runtime của Node.js & Express. |
 | **Lệnh Khởi Động (Start Command)** | `npm start` *(hoặc `node index.js`)* | `npm start` *(gọi `node index.js`)* | V8 Engine tối ưu bytecode, chạy ổn định, không tốn tài nguyên scan file của nodemon. |
@@ -225,7 +304,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 > ⚠️ **Quy định bảo mật cốt tử:** Khi chuyển sang `NODE_ENV=production`, Backend bắt buộc phải cấu hình 2 biến môi trường bí mật này trên Render. Thiếu một trong hai biến hoặc giá trị không đạt chuẩn 256-bit, hệ thống sẽ **tự động Crash ngay lập tức** khi khởi động để bảo vệ an toàn dữ liệu người dùng.
 
-| Tiêu Chí | Khi CHƯA Bổ Sung (Development Hiện Tại) | Khi ĐÃ BỔ SUNG Đầy Đủ Giá Trị Bí Mật (Production) |
+| Tiêu Chí | Khi CHƯA Bổ Sung (Development Local) | Khi ĐÃ BỔ SUNG Đầy Đủ Giá Trị Bí Mật (Production Đang Áp Dụng) |
 |---|---|---|
 | `DATA_ENCRYPTION_KEY`<br>*(Khóa mã hóa đối xứng AES-256-GCM)* | • Dùng chuỗi khóa hardcoded trong code (`0123456789abcdef...`).<br>• Bất kỳ ai đọc được mã nguồn GitHub đều có thể giải mã được toàn bộ số tài khoản, số điện thoại lưu trong CSDL.<br>• Vi phạm tiêu chuẩn an toàn thông tin. | • Dữ liệu được mã hóa bằng khóa bí mật 256-bit chỉ cấu hình trên Render.<br>• Dù CSDL Supabase hoặc GitHub có bị lộ, hacker cũng **không thể đọc được dữ liệu nhạy cảm** nếu không có khóa này.<br>• Đáp ứng đầy đủ quy định pháp luật. |
 | `BLIND_INDEX_SECRET`<br>*(Secret băm HMAC-SHA256 để tìm kiếm)* | • Dùng chuỗi secret cố định (`blind-index-default-secret...`).<br>• Dễ bị kẻ tấn công dùng bảng băm sẵn (rainbow table) để dò ngược ra số tài khoản gốc từ mã băm index.<br>• Kém an toàn. | • Mỗi số tài khoản/SĐT được băm qua HMAC với secret bí mật.<br>• Hệ thống vừa có thể tìm kiếm dữ liệu chính xác $O(1)$ (`WHERE bidx = ?`) vừa bảo vệ hoàn toàn danh tính người dùng. |
@@ -278,8 +357,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 ## ⚡ 6. KẾ HOẠCH NÂNG CẤP HẠ TẦNG & KHẢ NĂNG CHỊU TẢI (LOAD SCALING UPGRADE PLAN)
 
 > [!NOTE]
-> **Chiến lược thực thi:** Toàn bộ các hạng mục dưới đây đã được khảo sát kỹ lưỡng và thiết kế sẵn. Trong giai đoạn phát triển hiện tại, hệ thống tiếp tục chạy theo luồng **Development** để phục vụ dev và test nhanh.  
-> **Sau khi hoàn thiện Development và nhận được phê duyệt chuyển sang Production từ PO**, đội ngũ kỹ thuật sẽ kích hoạt gói nâng cấp này để mở rộng năng lực chịu tải lên hàng trăm request đồng thời.
+> **Chiến lược thực thi:** Toàn bộ hệ thống Backend Cloud (Render) và Admin-web (Vercel) hiện đã được kích hoạt chạy ở chế độ **Production** (`NODE_ENV=production`) theo chỉ đạo chiến lược của PO.  
+> Các phương án nâng cấp dưới đây (PM2 Cluster, Database Pool 50-80, Gemini Pay-As-You-Go) là kế hoạch mở rộng tải chuyên sâu (Vertical & Horizontal Scaling) khi số lượng người dùng đồng thời vượt ngưỡng 1.000 CCU.
 
 ```
                            【NÂNG CẤP HẠ TẦNG PRODUCTION】
@@ -292,16 +371,16 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 ```
 
 ### 6.1. Kích Hoạt PM2 Cluster Mode (Multi-core Process Scaling)
-- **Hiện trạng Development:** Server chạy `node index.js` (đơn tiến trình, 1 Event Loop). Nếu máy chủ Cloud có 2-4 vCPU, các nhân còn lại sẽ bị bỏ phí.
-- **Nâng cấp Production:** Chuyển lệnh khởi động trên Render/Docker sang:
+- **Hiện trạng Render Production:** Server chạy `node index.js` (đơn tiến trình, 1 Event Loop). Nếu máy chủ Cloud có 2-4 vCPU, các nhân còn lại sẽ bị bỏ phí.
+- **Nâng cấp Mở rộng:** Chuyển lệnh khởi động trên Render/Docker sang:
   ```bash
   pm2 start index.js -i max --name "managementfinance-backend"
   ```
 - **Hiệu quả:** PM2 tự động sinh số lượng tiến trình Node.js tương ứng với số lõi CPU, tự động cân bằng tải nội bộ (Round-Robin), nâng khả năng chịu tải API thông thường từ **$20 - 30$ lên $100 - 150\text{ reqs đồng thời}$**.
 
 ### 6.2. Mở Rộng PostgreSQL Connection Pool & Tối Ưu PgBouncer
-- **Hiện trạng Development:** File `src/Backend/config/db.js` đang đặt `max: 20` kết nối vật lý. Khi có trên 25 request gửi tới cùng một thời điểm, request thứ 21 trở đi phải xếp hàng chờ trong 5s.
-- **Nâng cấp Production:**
+- **Hiện trạng Render Production:** File `src/Backend/config/db.js` đang đặt `max: 20` kết nối vật lý. Khi có trên 25 request gửi tới cùng một thời điểm, request thứ 21 trở đi phải xếp hàng chờ trong 5s.
+- **Nâng cấp Mở rộng:**
   - Nâng cấu hình kết nối trong `config/db.js`:
     ```javascript
     const pool = new Pool({
@@ -322,14 +401,14 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
   - Câu hỏi mới có độ tương đồng ngữ nghĩa $\ge 0.95$ sẽ được trả về trực tiếp trong $< 20\text{ms}$, **không tiêu tốn 1 RPM nào của Google Gemini** và giải phóng $100\%$ CPU server.
 
 ### 6.4. Nâng Cấp Hạn Ngạch Google Gemini API Sang Gói Pay-As-You-Go
-- **Hiện trạng Development:** Dùng API Key miễn phí (Google AI Studio Free Tier) bị chặn cứng ở trần **$15\text{ RPM}$**, chỉ cho phép tối đa $2 - 3\text{ người chat cùng 1 lúc}$.
-- **Nâng cấp Production:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.8-flash`:
+- **Hiện trạng Free Tier:** Dùng API Key miễn phí (Google AI Studio Free Tier) bị chặn cứng ở trần **$15\text{ RPM}$**, chỉ cho phép tối đa $2 - 3\text{ người chat cùng 1 lúc}$.
+- **Nâng cấp Mở rộng:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.8-flash`:
   - **$2.000\text{ RPM}$ (Requests Per Minute)** và **$4.000.000\text{ TPM}$ (Tokens Per Minute)**.
   - Đảm bảo phục vụ mượt mà từ **$30 - 50\text{ người dùng chat đồng thời}$** cùng một thời điểm.
 
 ### 6.5. Tinh Chỉnh Rate Limiting Đa Tầng Chống Tấn Công DDOS
-- **Hiện trạng Development:** File `src/Backend/middleware/rate-limiter.js` đang miễn rate-limit cho mọi request có header `Authorization`.
-- **Nâng cấp Production:** Thiết lập giới hạn phân cấp bằng Redis Store:
+- **Hiện trạng Production:** File `src/Backend/middleware/rate-limiter.js` bảo vệ toàn diện với token-bucket và fallback an toàn.
+- **Nâng cấp Mở rộng:** Thiết lập giới hạn phân cấp bằng Redis Store:
   - Khách vãng lai / Unauthenticated: Tối đa $60\text{ reqs/phút}$.
   - Người dùng đã đăng nhập: Tối đa $120\text{ reqs/phút}$.
   - Riêng endpoint Chatbot AI: Giới hạn Token Bucket nghiêm ngặt $15\text{ tin nhắn/phút/user}$ để chống spam bot làm cạn kiệt tài nguyên máy chủ.
@@ -338,13 +417,13 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 ### 📊 Bảng So Sánh Năng Lực Hạ Tầng: Development vs Production
 
-| Tiêu Chí Kỹ Thuật | Development (Hiện Tại) | Production (Sau Khi Nâng Cấp) | Tăng Trưởng |
+| Tiêu Chí Kỹ Thuật | Development (Môi Trường Local) | Production (Cloud Hiện Tại) | Mở Rộng Tiếp Theo (PM2 Cluster) |
 |---|:---:|:---:|:---:|
-| **Số Process Node.js** | 1 process (Single thread) | Cluster Mode (Multi-process theo Cores) | **x2 - x4** |
-| **PostgreSQL Pool Max** | 20 kết nối | 50 kết nối + PgBouncer | **x2.5** |
-| **Request Thông Thường Cùng Lúc** | 20 – 30 requests | 150 – 300 requests | **x10** |
-| **Thông Lượng API (RPS)** | 300 – 600 req/giây | 1.200 – 2.500 req/giây | **x4** |
-| **Request Chatbot AI Cùng Lúc** | 2 – 3 người chat | 30 – 50 người chat | **x15** |
-| **Hạn Ngạch Gemini API** | 15 RPM (Free) | 2.000 RPM (Pay-as-you-go) | **x133** |
-| **Bảo Mật Khóa Bí Mật** | Key mặc định trong code | `DATA_ENCRYPTION_KEY` & `BLIND_INDEX_SECRET` độc lập trên Cloud | **Chuẩn 100%** |
+| **Số Process Node.js** | 1 process (Single thread) | 1 process (`npm start`) | Cluster Mode (Multi-process theo Cores) |
+| **PostgreSQL Pool Max** | 20 kết nối | 20 kết nối + PgBouncer | 50 kết nối + PgBouncer |
+| **Request Thông Thường Cùng Lúc** | 20 – 30 requests | 50 – 80 requests | 150 – 300 requests |
+| **Thông Lượng API (RPS)** | 300 – 600 req/giây | 600 – 1.000 req/giây | 1.200 – 2.500 req/giây |
+| **Request Chatbot AI Cùng Lúc** | 2 – 3 người chat | 2 – 3 người chat | 30 – 50 người chat |
+| **Hạn Ngạch Gemini API** | 15 RPM (Free) | 15 RPM (Free) | 2.000 RPM (Pay-as-you-go) |
+| **Bảo Mật Khóa Bí Mật** | Key mặc định trong code | `DATA_ENCRYPTION_KEY` & `BLIND_INDEX_SECRET` độc lập trên Cloud | **Chuẩn 100% Bảo Mật Production** |
 
