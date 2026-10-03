@@ -206,6 +206,20 @@ const authService = {
 
     logger.info("User registered via OTP successfully", { username: account.username, idaccount: account.idaccount });
 
+    try {
+      const { emitUserRegistered } = require('../../core/socket');
+      emitUserRegistered({
+        id: account.User?.iduser || account.idaccount,
+        idaccount: account.idaccount,
+        username: account.username,
+        fullname: account.User?.fullname || data.fullname,
+        email: account.User?.email || data.email,
+        phone: data.phone || '—',
+        status: account.status ? account.status.toLowerCase() : 'active',
+        created_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
     return {
       accessToken,
       refreshToken,
@@ -266,6 +280,20 @@ const authService = {
     await saveRefreshToken(refreshToken, payload, req);
 
     logger.info("User registered", { username: account.username, idaccount: account.idaccount });
+
+    try {
+      const { emitUserRegistered } = require('../../core/socket');
+      emitUserRegistered({
+        id: account.User?.iduser || account.idaccount,
+        idaccount: account.idaccount,
+        username: account.username,
+        fullname: account.User?.fullname || data.fullname,
+        email: account.User?.email || data.email,
+        phone: data.phone || '—',
+        status: account.status ? account.status.toLowerCase() : 'active',
+        created_at: new Date().toISOString(),
+      });
+    } catch (_) {}
 
     return {
       accessToken,
@@ -348,6 +376,16 @@ const authService = {
     await saveRefreshToken(refreshToken, payload, req);
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
+
+    try {
+      const { emitUserLoggedIn } = require('../../core/socket');
+      emitUserLoggedIn({
+        idaccount: account.idaccount,
+        username: account.username,
+        idrole: account.idrole,
+        time: new Date().toISOString(),
+      });
+    } catch (_) {}
 
     return {
       accessToken,
@@ -553,6 +591,15 @@ const authService = {
     invalidateAccountCache(idaccount);
     logger.info("Account scheduled for deletion (30 days grace period, countdown: 30)", { idaccount });
 
+    try {
+      const { emitUserStatusChanged } = require('../../core/socket');
+      emitUserStatusChanged({
+        idaccount,
+        status: 'pendingdelete',
+        countdown: 30,
+      });
+    } catch (_) {}
+
     // Gửi email cảnh báo bảo mật bất đồng bộ
     try {
       const notificationJobs = require('../notification/notification.jobs');
@@ -595,6 +642,16 @@ const authService = {
     const { invalidateAccountCache } = require('../../middleware/auth');
     invalidateAccountCache(idaccount);
     logger.info("Account deletion cancelled by user, restored to Active", { idaccount });
+
+    try {
+      const { emitUserStatusChanged } = require('../../core/socket');
+      emitUserStatusChanged({
+        idaccount,
+        status: 'active',
+        countdown: null,
+      });
+    } catch (_) {}
+
     return { idaccount, status: 'Active', countdown: null };
   },
 

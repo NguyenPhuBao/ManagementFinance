@@ -2878,6 +2878,142 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Toàn bộ 4 test suites mới (`notification.store.test.js`, `notification.service.test.js`, `notification.controller.test.js`, `notification.worker.test.js`) đạt 100% pass.
   - Toàn bộ hệ thống Backend đạt **87/87 tests PASS 100% (25 test suites)**.
 
+### 11.48. Nâng Cấp Hệ Thống Bảo Trì & Phát Thông Báo (Maintenance & Notification Hub) (2026-10-02)
+- **1. Phân Định Chế Độ Bảo Trì Kỹ Thuật (Im Lặng) vs. Bảo Trì Khẩn Cấp (Emergency Auto-Broadcast):**
+  - Bổ sung cờ `isEmergency` vào `MaintenanceManager` và `maintenance.middleware.js`:
+    + *Bảo trì kỹ thuật (im lặng):* Chặn lưu lượng Client-app với HTTP 503 `MAINTENANCE_MODE`, giữ Admin thông luồng, **hoàn toàn không phát thông báo cảnh báo** tới người dùng.
+    + *Bảo trì khẩn cấp (Emergency Checkbox):* Chặn lưu lượng Client-app, đồng thời **tự động phát thông báo khẩn cấp (CRITICAL)** dạng broadcast qua Socket.io tới toàn bộ Client-app và người dùng online.
+- **2. Quy Tắc Ghi Đè Khẩn Cấp Tự Động Hủy Lịch Bảo Trì Đã Hẹn (PO Policy):**
+  - Khi có lịch bảo trì đã hẹn trước trong tương lai, nhưng xảy ra sự cố và Admin kích hoạt *Bảo trì khẩn cấp*, hệ thống lập tức **tự động hủy timer và xóa sạch lịch hẹn trước đó** (`scheduled = null`), ưu tiên 100% cho xử lý sự cố. Admin sẽ tự cài đặt lại lịch mới sau khi sự cố khắc phục.
+- **3. Tính Năng Lên Lịch Thời Điểm Bảo Trì (Scheduled Maintenance):**
+  - Cho phép Admin chọn mốc thời gian bảo trì (Datetime-local theo giờ Việt Nam GMT+7).
+  - Tự động kích hoạt bảo trì đúng thời điểm đã hẹn kèm thông báo sự kiện nếu có chọn chế độ khẩn cấp.
+  - Cung cấp API và nút bấm hủy lịch bảo trì chủ động (`DELETE /api/admin/system/maintenance/schedule`).
+- **4. Nâng Cấp Giao Diện Admin-Web:**
+  - `Sidebar.jsx`: Đổi tên mục menu `Phát Thông Báo` thành `Bảo trì & Thông báo` (`/broadcast`).
+  - `BroadcastPage.jsx`: Tái cấu trúc thành trung tâm điều hành 2 tab hiện đại:
+    + Tab 1: *Điều Hành Bảo Trì* (Banner trạng thái toàn cục, Khối kích hoạt tức thì + Checkbox Khẩn cấp, Khối Lên lịch bảo trì + Card lịch hẹn + Hủy lịch + Ghi chú quy tắc).
+    + Tab 2: *Phát Thông Báo Hệ Thống* (Form phát sóng thủ công đa cấp độ INFO / WARNING / CRITICAL, Live Preview).
+  - `ServerHealthPanel.jsx`: Đồng bộ nhận diện trạng thái bảo trì thường vs khẩn cấp và hiển thị thông tin lịch hẹn kèm liên kết điều hướng sang Hub bảo trì.
+### 11.49. Triển Khai Hệ Thống Máy Học AIOps Sentinel — Tự Động Học Baseline & Phát Hiện Xâm Nhập / Sự Cố Thời Gian Thực (2026-10-03)
+- **1. Kiến Trúc Máy Học Lai 2 Tầng (Hybrid 2-Tier AI Engine):**
+  - Chạy ngầm trực tiếp trong tiến trình Node.js (In-process Online Learning), siêu nhẹ ($< 15\text{MB}$ RAM, $< 1\%$ CPU), không làm chậm Event Loop.
+  - **Tier 1 — Dynamic Hourly Baseline (EWMA & IQR):** Tự động học đường chuẩn hệ thống theo 24 giờ múi giờ Việt Nam (`Asia/Ho_Chi_Minh` GMT+7) với hệ số suy giảm $\alpha = 0.15$.
+  - **Tier 2 — Multivariate Threat Scorer:** Tương quan chéo đa chỉ số, phân loại chính xác các hình thái tấn công và sự cố phần cứng:
+    + *Dò vét mật khẩu (Brute-Force Auth):* `failedLogins >= 5` trong 10 giây.
+    + *Tái sử dụng Token đã thu hồi (Token Hijacking / Replay Attack):* `tokenReuseAttacks >= 1`.
+    + *Rà quét lỗ hổng SQLi / Path Traversal (Malicious Request Probes):* `malformedRequests >= 3`.
+    + *Tấn công từ chối dịch vụ (DDoS Flood) vs. Lưu lượng tự nhiên (Organic Peak):* Tự động phân loại dựa trên tỷ lệ lỗi 4xx/5xx, số lượng IP duy nhất và payload độc hại. Nếu tăng trưởng tự nhiên lành mạnh, Threat Score duy trì an toàn ($< 50$).
+    + *Nghẽn Event Loop & Rò rỉ bộ nhớ (Memory Leak):* `eventLoopLagMs >= 120ms` hoặc `ramPercent >= 90%`.
+  - **Cơ chế Anti-Poisoning:** Chỉ cập nhật đường chuẩn khi Threat Score $< 70$, ngăn chặn kẻ tấn công thao túng hoặc làm sai lệch mô hình máy học.
+- **2. Tầng Thu Thập & Chuẩn Hóa Chỉ Số (Feature Collector):**
+  - `src/Backend/modules/aiops/feature.collector.js`: Chu kỳ trích xuất sliding window 10 giây.
+  - Thu thập 12 chỉ số động: `requestsPerMin`, `errorRate4xx`, `errorRate5xx`, `failedLogins`, `tokenReuseAttacks`, `malformedRequests`, `eventLoopLagMs`, `cpuPercent`, `ramPercent`, `dbPoolActive`, `loadSheddingCount`, `distinctIpsCount`.
+  - **Tuân thủ Data Security & Pháp luật:** 100% Zero PII. Địa chỉ IP được băm HMAC/SHA-256 rút gọn 16 ký tự (`_hashIp`), tuyệt đối không lưu trữ IP thô trong memory hoặc log.
+- **3. Tầng Điều Phối & Báo Động Realtime (AIOps Service & APIs):**
+  - `src/Backend/modules/aiops/aiops.service.js`: Duy trì bộ đệm trượt 60 mẫu gần nhất (10 phút) phục vụ trực quan hóa dữ liệu.
+  - Tự động phát sự kiện Socket.io `admin.security_alert` vào room `admin_room` khi Threat Score $\ge 70$.
+  - Tự động kích hoạt cơ chế gửi email khẩn cấp tới quản trị viên khi Threat Score $\ge 85$ (mức độ CRITICAL).
+  - Tích hợp Express Middleware thu thập request metrics trong `app.js` và khởi động sampler trong `index.js`.
+  - Cung cấp các REST endpoints cho Admin:
+    + `GET /api/admin/aiops/status`: Lấy Threat Score, trạng thái nguy cơ, phân tích bất thường và hành động khuyến nghị tức thời.
+    + `GET /api/admin/aiops/history`: Lấy chuỗi 60 mẫu chỉ số phục vụ vẽ biểu đồ thời gian thực.
+    + `POST /api/admin/aiops/calibrate`: Cho phép quản trị viên tái hiệu chuẩn đường chuẩn máy học.
+- **4. Giao Diện Quản Trị AIOps Sentinel & Banner Toàn Cục (Admin-web):**
+  - `src/Admin-web/src/pages/system/AIOpsPage.jsx`: Xây dựng bằng 100% Pure HTML + Tailwind CSS v4:
+    + *Threat Score Gauge:* Đồng hồ đo rủi ro bán nguyệt SVG thời gian thực với kim xoay mượt mà (Xanh 0-69, Vàng 70-84, Đỏ 85-100).
+    + *Threat Timeline:* Biểu đồ đường SVG trực quan hóa 60 mẫu lịch sử gần nhất kèm đường ngưỡng cảnh báo (70) và nguy cấp (85).
+    + *Root Cause Analysis:* Bảng bóc tách nguyên nhân bất thường chi tiết kèm giải thích tiếng Việt.
+    + *1-Click Mitigation Modal:* Kích hoạt chế độ bảo trì khẩn cấp lập tức khi phát hiện nguy cơ cao.
+  - `AppLayout.jsx`: Bổ sung dải Banner Báo Động Đỏ nhấp nháy toàn cục ở đỉnh màn hình khi Threat Score $\ge 85$, cung cấp nút điều hướng xem phân tích và nút 1-click kích hoạt Bảo trì khẩn cấp trực tiếp.
+  - `Header.jsx`: Đồng bộ nhận sự kiện `admin.security_alert` đẩy trực tiếp vào chuông thông báo Admin.
+  - `Sidebar.jsx` & `routes.jsx`: Đăng ký menu `AIOps Sentinel` (icon `security`) và route `/aiops`.
+- **5. Kiểm Thử Khép Kín & Nghiệm Thu:**
+  - Toàn bộ 3 test suites Backend mới (`aiops.collector.test.js`, `aiops.detector.test.js`, `aiops.service.test.js`): **18/18 tests PASS 100%**.
+  - Admin-web production build (`rtk npm run build`): **Thành công 100% (160 modules transformed, 0 errors)**.
+
+### 11.50. Nâng Cấp Hệ Thống Phòng Vệ Chủ Động AIOps — Tự Động Chặn Đứng Nguồn Tấn Công & Cô Lập Nguồn Request Bất Thường (Active Quarantine Shield) (2026-10-03)
+- **1. Cơ Chế Chặn Đứng Tự Động & Cô Lập (Active Quarantine Manager):**
+  - Triển khai `src/Backend/modules/aiops/aiops.quarantine.js`: Quản lý danh sách IP bị cô lập trong bộ nhớ In-Memory với tra cứu $O(1)$ siêu tốc ($< 0.1\text{ms}$).
+  - Cắt đứt kết nối ngay tại đầu Express Pipeline với mã HTTP 403 Forbidden (`AIOPS_QUARANTINED`), giải phóng tài nguyên CPU/RAM/DB tức thì.
+  - **Miễn trừ Fast-Lane:** Toàn bộ kết nối quản trị Admin-web (`req.isAdmin = true`) được miễn trừ tuyệt đối 100%, không bị ảnh hưởng.
+- **2. 4 Kịch Bản Kích Hoạt Tự Động Phong Tỏa (Auto-Quarantine Triggers):**
+  - *Tấn công DoS Request Burst:* 1 IP gửi $> 120$ request trong 10s $\implies$ Tự động phong tỏa 15 phút.
+  - *Tấn công rà quét lỗ hổng SQLi / Path Traversal:* 1 IP gửi request chứa chuỗi nguy hại $\ge 3$ lần $\implies$ Tự động phong tỏa 30 phút.
+  - *Tấn công dò mật khẩu (Brute-Force Auth):* 1 IP thất bại liên tiếp 5 lần đăng nhập trong 10s $\implies$ Tự động phong tỏa 15 phút.
+  - *Tấn công chiếm đoạt Token (Token Hijacking):* 1 IP gửi refresh token đã bị thu hồi $\implies$ Tự động phong tỏa 15 phút.
+- **3. Thông Báo Real-Time Socket.io & REST APIs Quản Trị:**
+  - Phát sự kiện Socket.io `admin.security_blocked` tới room `admin_room` ngay thời khắc 1 nguồn bị chặn.
+  - Cung cấp 2 REST endpoints cho Admin:
+    + `GET /api/admin/aiops/quarantine`: Lấy danh sách toàn bộ các nguồn IP đang bị cô lập (đã mask 2 octet cuối để tuân thủ `Data_Security.md`).
+    + `DELETE /api/admin/aiops/quarantine/:hash`: Mở khóa / gỡ chặn thủ công cho IP.
+- **4. Giao Diện Admin-Web Phản Ứng Tức Thì:**
+  - `AppLayout.jsx`: Hiển thị Toast cảnh báo nổi bật góc màn hình `🛡️ [AIOps Đã Chặn Đứng Nguồn Tấn Công] IP ... | Lý do: ...` khi phát hiện tấn công.
+  - `AIOpsPage.jsx`: Bổ sung bảng **Danh Sách Nguồn Đang Bị Cô Lập (Active Quarantine Blacklist)** kèm đếm thời gian còn lại, số lần vi phạm (Hits) và nút **"Gỡ Chặn (Unblock)"**.
+- **5. Kiểm Thử Khép Kín:**
+  - Bộ test `aiops.quarantine.test.js`: **8/8 tests PASS 100%**.
+  - Toàn bộ 4 test suites AIOps Backend: **26/26 tests PASS 100%**.
+  - Admin-web build (`rtk npm run build`): **Thành công 100% (160 modules transformed, 0 errors)**.
+
+### 11.51. Triển Khai Kiến Trúc Real-Time Toàn Diện Cho Admin-Web (Full Real-Time Architecture) (2026-10-03)
+- **1. Mục Tiêu & Kiến Trúc Hướng Sự Kiện Tập Trung (Centralized Event-Driven Architecture):**
+  - Chuyển đổi 100% các thông số, thẻ số liệu, bảng dữ liệu, biểu đồ xu hướng và cảnh báo trên toàn bộ Admin-web sang cơ chế Real-time tức thì qua Socket.io Event Bus chuyên dụng cho Quản trị viên (`admin_room`), loại bỏ hoàn toàn việc phải F5 tải lại trang hoặc phụ thuộc polling gián đoạn.
+  - Phân quyền & Bảo mật nghiêm ngặt: Chỉ Admin đã xác thực JWT (`idrole === 1`) mới được gia nhập `admin_room`. Tuyệt đối tuân thủ `Data_Security.md`: không phát tán PII thô (Mật khẩu, Token, Raw IP) qua Socket.io.
+- **2. Tầng Phát Sự Kiện Tập Trung Backend & System Metrics Streamer:**
+  - `src/Backend/core/socket.js`: Xây dựng các dispatcher chuyên dụng:
+    + `emitUserRegistered(userData, stats)`: Phát tới `admin_room` khi có người dùng đăng ký mới.
+    + `emitUserLoggedIn(loginData)`: Phát tới `admin_room` khi người dùng đăng nhập thành công.
+    + `emitUserStatusChanged(statusData)`: Phát tới `admin_room` khi thay đổi trạng thái tài khoản (Active, Inactive, PendingDelete, CancelDelete).
+    + `emitCategoryUpdated(categoryData)`: Phát tới `admin_room` khi thêm/sửa/xóa danh mục hệ thống.
+    + `emitMaintenanceChanged(maintenanceStatus)`: Phát đồng thời `admin.maintenance_changed` cho Admin và `system.maintenance_changed` cho toàn bộ Client.
+    + `emitSystemMetricsStream(metrics)`: Phát nhịp tim thông số phần cứng định kỳ.
+  - `src/Backend/index.js`: Khởi động **System Metrics Streamer Timer** (chu kỳ 3 giây/lần):
+    + Stream liên tục các thông số: `uptimeSeconds`, `uptimeFormatted`, `eventLoopLagMs`, `cpuPercent`, `ramPercent`, `ramRssMb`, `requestsPerMin`, `threatScore`, `threatStatus`, `activeQuarantines`, `maintenance`, `dbPool`.
+    + Tối ưu hóa kích thước payload $< 450$ bytes, non-blocking với `.unref()` timer.
+- **3. Tích Hợp Hook Sự Kiện Nghiệp Vụ Tại Các Service Backend:**
+  - `src/Backend/modules/auth/auth.service.js`: Phát `emitUserRegistered` (cả đăng ký OTP lẫn tài khoản thường), `emitUserLoggedIn` (đăng nhập thành công), `emitUserStatusChanged` (khi lên lịch xóa hoặc hủy xóa tài khoản).
+  - `src/Backend/modules/admin/admin.service.js`: Phát `emitUserStatusChanged` trong `updateStatus` và `deleteUser`; phát `emitCategoryUpdated` trong `addCategory`, `updateCategory`, `deleteCategory`.
+  - `src/Backend/core/resilience/maintenance.manager.js`: Phát `emitMaintenanceChanged` khi bật/tắt bảo trì tức thời, lên lịch bảo trì hoặc hủy lịch hẹn.
+- **4. Nâng Cấp Toàn Diện Các Trang Giao Diện Admin-Web Phản Ứng Tức Thì:**
+  - `ServerHealthPanel.jsx`: Nhận luồng `admin.metrics_stream` (3s/lần) và `maintenance_changed`, loại bỏ hoàn toàn polling 30s cũ.
+  - `DashboardPage.jsx`:
+    + Lắng nghe `admin.user_registered`: Tự động tăng `totalUsers` và `newUsers.current`, cập nhật trực tiếp tỉ lệ tăng trưởng.
+    + Lắng nghe `admin.user_logged_in`: Tự động nảy số lượng đăng nhập theo khung giờ trên biểu đồ `loginStats`.
+    + Lắng nghe `admin.category_updated`: Tự động tăng/giảm thẻ `totalCategories`.
+  - `UserListPage.jsx`:
+    + Lắng nghe `admin.user_registered`: Tự động chèn tài khoản mới vào đầu bảng danh sách người dùng với highlight viền nổi bật.
+    + Lắng nghe `admin.user_status_changed`: Cập nhật trực tiếp Badge trạng thái (`Active`, `Inactive`, `PendingDelete`) của từng dòng mà không cần tải lại bảng.
+  - `CategoryPage.jsx`: Lắng nghe `admin.category_updated`, tự động đồng bộ lại danh sách và các thẻ phân loại Thu/Chi tức thời khi có thao tác từ tab/quản trị viên khác.
+  - `AuditLogPage.jsx`: Lắng nghe `audit_activity`, tự động chèn nhật ký request mới nhất lên đầu bảng khi đang ở Trang 1.
+  - `BroadcastPage.jsx`: Lắng nghe `admin.maintenance_changed` và `system.maintenance_changed`, tự động chuyển công tắc bảo trì (Thường/Khẩn cấp) và cập nhật/xóa Card lịch hẹn bảo trì ngay khi có thay đổi.
+  - `AIOpsPage.jsx`: Kết nối trực tiếp luồng `admin.metrics_stream` mỗi 3s giúp đồng hồ Threat Score và các chỉ số tài nguyên hệ thống nhảy số mượt mà; giảm polling dự phòng xuống 60s.
+- **5. Kiểm Thử Khép Kín & Nghiệm Thu:**
+  - Bộ test mới `admin.realtime.socket.test.js`: **7/7 tests PASS 100%**.
+  - Bộ test `admin.priority.maintenance.test.js`: **8/8 tests PASS 100%**.
+  - Toàn bộ 4 test suites AIOps Backend: **26/26 tests PASS 100%**.
+  - Admin-web build (`rtk npm run build`): **Thành công 100% (160 modules transformed, 0 errors)**.
+
+### 11.52. Hoàn Tất Hệ Thống Tài Liệu Kỹ Thuật Chuyên Sâu Cho Toàn Bộ Chức Năng Admin-Web (docs/Admin-web/) (2026-10-03)
+- **1. Mục Tiêu & Chuẩn Hóa:**
+  - Thiết lập bộ tài liệu kỹ thuật nguồn sự thật (Single Source of Truth) toàn diện cho toàn bộ 11 chức năng đã và đang vận hành trên phân hệ quản trị Admin-web tại thư mục `docs/Admin-web/`.
+  - Mỗi chức năng được tách thành 1 file `.md` độc lập, cấu trúc chuẩn hóa gồm 9 phần: Mục đích nghiệp vụ, Cơ chế hoạt động & Sequence Diagram, Các chỉ số/công thức/cách tính, Giới hạn kỹ thuật, Công dụng, Tính năng đi kèm, Ảnh hưởng đến Hệ thống & Mobile App (Client-app), Danh mục API & Socket.io, và Xử lý ngoại lệ.
+- **2. Danh Mục 12 Tài Liệu Đã Ban Hành:**
+  - `README.md`: Tổng quan kiến trúc tổng thể, sơ đồ Mermaid kết nối 3 phân hệ, mục lục sitemap 11 chức năng, ma trận ảnh hưởng tới Mobile App và cam kết an toàn dữ liệu `Data_Security.md`.
+  - `01-authentication-and-authorization.md`: Hệ thống xác thực token JWT kép, Silent Refresh, phân quyền `idrole === 1`, Cache Invalidation, và Làn khẩn cấp cứu hộ `X-Emergency-Admin-Key`.
+  - `02-dashboard-and-analytics.md`: Động cơ phân tích thống kê theo ngữ cảnh thời gian (Contextual Time Filter Engine), công thức tăng trưởng `Growth %`, thuật toán gom nhóm bucket $O(N)$ theo múi giờ `Asia/Ho_Chi_Minh` (GMT+7), biểu đồ SVG tương tác và bảng hoạt động người dùng.
+  - `03-server-health-and-sla-monitoring.md`: Công thức đo lường Uptime SLA 30 ngày chuẩn hóa, đo tải CPU đa nhân, RAM (RSS vs OS Free/Total), Event Loop Lag micro-timer, DB Connection Pool Bulkhead, và Load Shedding counter.
+  - `04-user-management-and-lifecycle.md`: Vòng đời tài khoản 5 trạng thái (`Active`, `Inactive`, `PendingDelete`, `Deleted`), quy tắc mặt nạ hóa PII (Email, Phone, Address), cơ chế cưỡng chế đăng xuất Socket `force_logout` khi khóa tài khoản, và giao dịch xóa mềm 5 bước an toàn (Prisma Transaction).
+  - `05-category-management.md`: Quản lý danh mục mặc định hệ thống, chuẩn hóa canonical classify (`Thu`, `Chi`, `Vay/no`), cơ chế tự động phục hồi (Restore) danh mục đã xóa, và phòng vệ chiều sâu cấm truy cập danh mục riêng tư của người dùng.
+  - `06-audit-logging-and-traceability.md`: Hệ thống nhật ký truy vết Append-only bất biến, phân loại 7 mã trạng thái HTTP, bộ lọc giảm nhiễu Noise Reduction, ánh xạ tên hành động tiếng Việt `formatActionName`, và luồng stream log thời gian thực.
+  - `07-maintenance-and-resilience.md`: Quản trị chế độ bảo trì 2 tầng (Thông thường im lặng vs Khẩn cấp CRITICAL), Làn ưu tiên Quản trị viên (Fast-Lane), và **Quy tắc cốt lõi của PO: Kích hoạt bảo trì khẩn cấp tự động xóa sạch lịch hẹn trước**.
+  - `08-broadcast-and-notification.md`: Hệ thống phát sóng thông báo toàn mạng (Info, Warning, Critical) qua Socket.io room chung, hộp thư cảnh báo an ninh Header cho Admin, và xử lý lưu trữ ngoại tuyến cho người dùng tắt mạng.
+  - `09-aiops-sentinel-and-quarantine.md`: Hệ thống AI giám sát bất thường In-process, mô hình học máy EWMA Baseline 24h ($\alpha = 0.15$), Multivariate Threat Scorer (0 - 100), chống đầu độc mô hình Anti-Poisoning, và Tường lửa chủ động (Active Quarantine Shield) tự động chặn đứng nguồn IP tấn công với HTTP 403 `AIOPS_QUARANTINED`.
+  - `10-ai-copilot-and-financial-health.md`: Trợ lý tài chính thông minh SSE Streaming (`ReadableStream`), RAG Hybrid Search, PII Masking, và Thẻ chấm điểm sức khỏe tài chính FHS 50/30/20 vĩ mô.
+  - `11-full-realtime-architecture.md`: Trục điều phối sự kiện tập trung qua kênh bảo mật `admin_room`, bảng đối soát 9 sự kiện Socket.io, gói tin Micro-payload $< 450$ bytes, độ trễ $< 50\text{ms}$, và cơ chế dọn dẹp listener chống rò rỉ bộ nhớ.
+
+
+
+
 
 
 

@@ -181,8 +181,18 @@ const adminService = {
       invalidateAccountCache(u.account.idaccount);
 
       // Phát sự kiện cưỡng chế đăng xuất qua Socket.IO kèm lý do
-      const { emitForceLogout } = require('../../core/socket');
+      const { emitForceLogout, emitUserStatusChanged } = require('../../core/socket');
       emitForceLogout(u.account.idaccount, 'ACCOUNT_INACTIVE', `Tài khoản của bạn đã bị vô hiệu hóa. Lý do: ${reason}`);
+
+      try {
+        emitUserStatusChanged({
+          iduser,
+          idaccount: u.account.idaccount,
+          username: u.account.username,
+          status: 'inactive',
+          reason_inactive: reason,
+        });
+      } catch (_) {}
 
       return {
         id: iduser,
@@ -197,6 +207,17 @@ const adminService = {
       await adminRepository.updateAccountStatus(iduser, 'Active', null);
       const { invalidateAccountCache } = require('../../middleware/auth');
       invalidateAccountCache(u.account.idaccount);
+
+      try {
+        const { emitUserStatusChanged } = require('../../core/socket');
+        emitUserStatusChanged({
+          iduser,
+          idaccount: u.account.idaccount,
+          username: u.account.username,
+          status: 'active',
+          reason_inactive: null,
+        });
+      } catch (_) {}
 
       return {
         id: iduser,
@@ -240,8 +261,17 @@ const adminService = {
     invalidateAccountCache(idaccount);
 
     // 2. Emit force logout via Socket.IO
-    const { emitForceLogout } = require('../../core/socket');
+    const { emitForceLogout, emitUserStatusChanged } = require('../../core/socket');
     emitForceLogout(idaccount, 'ACCOUNT_DELETED', 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.');
+
+    try {
+      emitUserStatusChanged({
+        iduser,
+        idaccount,
+        username: u.account.username,
+        status: 'deleted',
+      });
+    } catch (_) {}
 
     return {
       message: 'Người dùng đã được xóa mềm thành công',
@@ -327,7 +357,12 @@ const adminService = {
           update_at: new Date(),
         },
       });
-      return { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+      const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+      try {
+        const { emitCategoryUpdated } = require('../../core/socket');
+        emitCategoryUpdated({ action: 'create', category: resultData });
+      } catch (_) {}
+      return resultData;
     }
 
     const result = await adminRepository.createCategory({
@@ -338,7 +373,12 @@ const adminService = {
       icon: data.icon,
       created_by: idaccount ? Number(idaccount) : 1,
     });
-    return { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+    const createdData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+    try {
+      const { emitCategoryUpdated } = require('../../core/socket');
+      emitCategoryUpdated({ action: 'create', category: createdData });
+    } catch (_) {}
+    return createdData;
   },
 
   async updateCategory(idcategory, data, idaccount) {
@@ -391,7 +431,12 @@ const adminService = {
       keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
     });
-    return { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+    const updatedData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+    try {
+      const { emitCategoryUpdated } = require('../../core/socket');
+      emitCategoryUpdated({ action: 'update', category: updatedData });
+    } catch (_) {}
+    return updatedData;
   },
 
   async deleteCategory(idcategory) {
@@ -406,6 +451,10 @@ const adminService = {
     }
     // Cho phép Admin xóa mềm danh mục hệ thống (Soft-delete: set delete_at = now())
     await adminRepository.deleteCategory(idcategory);
+    try {
+      const { emitCategoryUpdated } = require('../../core/socket');
+      emitCategoryUpdated({ action: 'delete', idcategory });
+    } catch (_) {}
     return { id: idcategory };
   },
 

@@ -49,6 +49,51 @@ async function bootstrap() {
     const { initScheduler } = require('./core/scheduler.service');
     initScheduler();
 
+    // 3d. Start AIOps Sentinel Machine Learning Monitoring Engine (10s cycle)
+    const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
+    defaultAIOpsService.start();
+
+    // 3e. Khởi động System Metrics Streamer (3s/lần) phát nhịp tim tới admin_room
+    const { emitSystemMetricsStream } = require('./core/socket');
+    const { defaultEventLoopMonitor } = require('./core/resilience/event-loop-monitor');
+    const { defaultDbBulkhead } = require('./core/resilience/db-bulkhead');
+    const { defaultMaintenanceManager } = require('./core/resilience/maintenance.manager');
+    const os = require('os');
+
+    const metricsInterval = setInterval(() => {
+      try {
+        const aiopsStatus = defaultAIOpsService.getStatus() || {};
+        const lastSample = aiopsStatus.sample || {};
+        const uptimeSec = Math.floor(process.uptime());
+        
+        const memRssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+        const totalMemMb = Math.round(os.totalmem() / 1024 / 1024);
+        const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
+        const usedMemPct = Math.round(((totalMemMb - freeMemMb) / totalMemMb) * 100);
+
+        const payload = {
+          uptimeSeconds: uptimeSec,
+          uptimeFormatted: `${Math.floor(uptimeSec / 86400)}d ${Math.floor((uptimeSec % 86400) / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m ${uptimeSec % 60}s`,
+          eventLoopLagMs: defaultEventLoopMonitor.getLag(),
+          cpuPercent: lastSample.cpuPercent || 0,
+          ramPercent: usedMemPct,
+          ramRssMb: memRssMb,
+          requestsPerMin: lastSample.requestsPerMin || 0,
+          threatScore: aiopsStatus.threatScore ?? 5,
+          threatStatus: aiopsStatus.status || 'NORMAL',
+          activeQuarantines: aiopsStatus.quarantinedCount || 0,
+          maintenance: defaultMaintenanceManager.getStatus(),
+          dbPool: defaultDbBulkhead.getStats(),
+          timestamp: new Date().toISOString(),
+        };
+
+        emitSystemMetricsStream(payload);
+      } catch (err) {
+        // Silent catch for stream stability
+      }
+    }, 3000);
+    metricsInterval.unref();
+
     // 4. Start listening
     httpServer.listen(config.port, config.host, () => {
       logger.info(`WealthCommand Backend running at http://${config.host}:${config.port}`);
@@ -65,6 +110,8 @@ async function bootstrap() {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
+  const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
+  defaultAIOpsService.stop();
   const { prisma } = require('./config/db');
   const { redis } = require('./config/redis');
   await prisma.$disconnect();
@@ -74,6 +121,8 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down...');
+  const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
+  defaultAIOpsService.stop();
   const { prisma } = require('./config/db');
   const { redis } = require('./config/redis');
   await prisma.$disconnect();

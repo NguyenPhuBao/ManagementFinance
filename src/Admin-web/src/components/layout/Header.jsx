@@ -32,7 +32,7 @@ const Header = ({ onMenuToggle }) => {
     fetchAlerts();
   }, []);
 
-  // Lắng nghe sự kiện socket realtime admin.notification
+  // Lắng nghe sự kiện socket realtime admin.notification & admin.security_alert
   useEffect(() => {
     if (!socket) return;
 
@@ -41,10 +41,26 @@ const Header = ({ onMenuToggle }) => {
       setUnreadCount((prev) => prev + 1);
     };
 
+    const handleSecurityAlert = (alertData) => {
+      if (!alertData) return;
+      const formatted = {
+        id: `aiops-${Date.now()}`,
+        title: `🚨 [AIOps] ${alertData.status}: Threat Score ${alertData.threatScore}/100`,
+        message: alertData.anomalies?.map(a => a.message).join(' | ') || 'Phát hiện rủi ro an ninh/quá tải hệ thống',
+        level: alertData.status === 'CRITICAL' ? 'critical' : 'warning',
+        createdAt: alertData.timestamp || new Date().toISOString(),
+        isRead: false,
+      };
+      setNotifications((prev) => [formatted, ...prev.slice(0, 9)]);
+      setUnreadCount((prev) => prev + 1);
+    };
+
     socket.on('admin.notification', handleAdminNotification);
+    socket.on('admin.security_alert', handleSecurityAlert);
 
     return () => {
       socket.off('admin.notification', handleAdminNotification);
+      socket.off('admin.security_alert', handleSecurityAlert);
     };
   }, [socket]);
 
@@ -192,10 +208,6 @@ const Header = ({ onMenuToggle }) => {
             </div>
           </div>
         )}
-        
-        <div className="ml-2 w-8 h-8 rounded-full bg-secondary-container overflow-hidden border border-outline-variant flex-shrink-0">
-          <img alt="Admin User Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoaRQFFasB3oo7h6BMWvwP3TbbgITuwpZ5a9CKkAOFy7XG6SLVrhi-Kdtks5RVbuhEkU1Ix7b1vbRyLZ-UQ14RqwpL32T2JmZYHhQTEueyBj-xnQyFXwiqKUdjdf-z-Fn3kvJuvGRbOiEQh6k8_tB4urRNnGPfDielXNVcw3DaKa6bgObMYp5KsZVt29Af3EGHiU-Qzv4WsBRvJk6d47l9PqDJ3QWHRVm6Ga-Za6MuHnjNHcBRa9mH" />
-        </div>
       </div>
     </header>
   );
