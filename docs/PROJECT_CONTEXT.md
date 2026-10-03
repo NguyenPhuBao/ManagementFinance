@@ -1027,7 +1027,7 @@ kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. 
   `transaction/domain/doc_bien_lai_test`, `transaction/presentation/form_bien_lai_test`.
 - ✅ **Task 11 xong 2026-10-03** (mục **7.7** `BIEN_DONG_SO_DU_FEATURE.md`): trên Realme bản debug — chưa đọc được ·
   xem ảnh to · Bỏ qua / Lưu xoá ảnh · gỡ khỏi Recents / force-stop rồi chia sẻ vẫn nhận · đăng xuất xoá thư mục ảnh,
-  hàng chờ và 3 dòng mang ảnh · chia sẻ khi đã đăng xuất bị từ chối; bản **release** chia sẻ qua Thư viện ảnh, ML Kit
+  hàng chờ và 3 dòng mang ảnh · chia sẻ khi đã đăng xuất bị từ chối; bản **release** (Realme và OnePlus 13R — Thư viện OnePlus giấu đích chia sẻ sau nút *Khác*) chia sẻ qua Thư viện ảnh, ML Kit
   đọc đúng. ⚠️ **Lượt ấy lộ bản release GÃY từ 01/10** (spike C4 thêm gói ML Kit): R8 dừng ở *Missing class* của bốn hệ
   chữ plugin chỉ khai `compileOnly` → `android/app/proguard-rules.pro` bốn dòng `-dontwarn` (Flutter tự nạp) + ca test
   `test/core/ocr/ban_release_r8_mlkit_test.dart`. Sửa thêm: nút ✕ màn xem ảnh to có **nền tròn tối** (chìm trên biên

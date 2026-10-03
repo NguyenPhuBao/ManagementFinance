@@ -353,6 +353,19 @@ cấp quyền URI, không cần `run-as` (bản release không `run-as` được
 | Chạm tóm tắt → ML Kit của **bản release** đọc chữ | ✅ dòng *"-12.345 đ · Biên lai — bien lai thu nghiem"*; form 12.345 đ, giờ 08:45 từ ảnh, *"Đọc từ ảnh — hãy kiểm lại"* |
 | Bỏ qua | ✅ dòng biến mất |
 
+**OnePlus 13R (`CPH2691`, 1264 × 2780), bản release `04de3221…`** — người dùng yêu cầu làm lại trên máy này cùng ngày;
+chia sẻ qua Thư viện `com.oneplus.gallery`. **Không** thử đăng xuất (phép đăng xuất người dùng cho là cho Realme).
+
+| Phép thử | Kết quả |
+|---|---|
+| Bảng chia sẻ của Thư viện | ⚠️ *"Ghi vào FlowMoney"* **không** nằm ở hàng app mặc định — phải chạm **Khác** rồi cuộn danh sách *Tất cả các ứng dụng* (hàng mặc định gồm Gemini, Maps, Tin nhắn, Photos…). Người dùng lần đầu có thể không tìm thấy; bảng chia sẻ của app ngân hàng chưa đo trên máy này |
+| Chia sẻ biên lai giả rồi ảnh trơn | ✅ cả hai: Toast *"FlowMoney đã nhận biên lai"*, vẫn ở Thư viện; tóm tắt *"Có 2 biến động số dư mới — chạm để ghi"* |
+| Chạm tóm tắt → ML Kit release đọc chữ | ✅ *"-12.345 đ · Biên lai — bien lai thu nghiem"* và *"Biên lai chưa đọc được · Biên lai"* |
+| Form đọc được | ✅ 12.345 đ, giờ 08:45 từ ảnh, ảnh nhỏ canh giữa, *"Đọc từ ảnh — hãy kiểm lại"* |
+| Xem ảnh to | ✅ ✕ nền tròn tối rõ trên biên lai trắng. Màn rộng nên ảnh không phủ hết bề ngang — nút lấn ra viền đen, nửa phải vòng tròn lẫn vào nền đen (✕ vẫn rõ) |
+| Form chưa đọc được | ✅ `0 đ`, 16 phím, ảnh nhỏ, dòng phụ cam; giờ là **lúc chia sẻ** (ảnh không có chữ giờ) |
+| Bỏ qua cả hai | ✅ không còn dòng biên lai nào |
+
 Đăng nhập lại cần backend dev (người dùng cho bật): lượt đồng bộ đầu tiên sau nhiều ngày — 65 thao tác, **45 lên · 10
 xung đột · 10 lỗi**. Mười lỗi **có từ trước, không do tính năng này**: hai ví trên Realme trùng tên với ví đã có trên
 server (`Unique constraint (Idaccount, Name)` → `WALLET_NAME_DUPLICATE`), kéo theo giao dịch trong hai ví ấy vỡ
