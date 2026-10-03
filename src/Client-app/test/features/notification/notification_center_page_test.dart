@@ -209,7 +209,7 @@ void main() {
       ));
       await nhip(tester);
       expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Biến động')).selected, isTrue,
-          reason: 'thẻ "Có N biến động chưa ghi" và cú chạm tóm tắt mở THẲNG danh sách cần ghi');
+          reason: 'thẻ "Có N mục chờ ghi" và cú chạm tóm tắt mở THẲNG danh sách cần ghi');
       expect(find.text('-45.000 đ · MB Bank'), findsOneWidget);
       expect(find.text('Số dư ví đang âm'), findsNothing);
       await dongTrang(tester);

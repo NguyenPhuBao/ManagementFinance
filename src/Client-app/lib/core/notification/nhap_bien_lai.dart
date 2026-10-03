@@ -3,7 +3,7 @@
 /// Dart đọc khi app mở. Hai hằng tên tệp khớp TAY với hằng Kotlin — `bien_lai_noi_day_test.dart` canh.
 ///
 /// [NhapBienLai] (cuối tệp) biến mỗi biên lai chờ thành một hàng `AppNotifications` loại `bienDongSoDu` — CÙNG loại
-/// với tin ngân hàng của D1, để trung tâm thông báo, thẻ *"Có N biến động chưa ghi"* và form `/add` dùng nguyên.
+/// với tin ngân hàng của D1, để trung tâm thông báo, thẻ *"Có N mục chờ ghi"* và form `/add` dùng nguyên.
 library;
 
 import 'dart:convert';

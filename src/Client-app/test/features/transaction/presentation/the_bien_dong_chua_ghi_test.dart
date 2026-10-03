@@ -1,4 +1,4 @@
-/// D1 Task 8 — thẻ *"Có N biến động chưa ghi"* trên Sổ giao dịch (Stitch `e59155ff…`): đứng TRÊN thẻ C1, N là số hàng
+/// D1 Task 8 — thẻ *"Có N mục chờ ghi"* trên Sổ giao dịch (Stitch `e59155ff…`): đứng TRÊN thẻ C1, N là số hàng
 /// loại 20 chưa ghi (`NotificationDao.watchDemBienDong`), **Xem** mở trung tâm thông báo lọc sẵn nhóm Biến động.
 library;
 
@@ -97,9 +97,9 @@ void main() {
   testWidgets('⭐ N > 0 → thẻ nói đúng N, đứng TRÊN thẻ C1 (Stitch)', (tester) async {
     await moTrang(tester, nguonBienDong: (_) => Stream.value(2), nguonChuaGan: (_) => Stream.value(3));
 
-    expect(find.text('Có 2 biến động chưa ghi'), findsOneWidget);
+    expect(find.text('Có 2 mục chờ ghi'), findsOneWidget);
     expect(find.text('Có 3 giao dịch chưa có danh mục'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Có 2 biến động chưa ghi')).dy,
+    expect(tester.getTopLeft(find.text('Có 2 mục chờ ghi')).dy,
         lessThan(tester.getTopLeft(find.text('Có 3 giao dịch chưa có danh mục')).dy));
 
     await dongTrang(tester);
@@ -108,7 +108,7 @@ void main() {
   testWidgets('N = 0 → không dựng thẻ, trang vẫn dựng đủ', (tester) async {
     await moTrang(tester, nguonBienDong: (_) => Stream.value(0), nguonChuaGan: (_) => Stream.value(0));
 
-    expect(find.textContaining('biến động chưa ghi'), findsNothing);
+    expect(find.textContaining('mục chờ ghi'), findsNothing);
     expect(find.text('Thu nhập'), findsOneWidget, reason: 'ĐÒI KẾT QUẢ: bản sai làm trắng trang cũng xanh kỳ vọng trên');
 
     await dongTrang(tester);
@@ -150,7 +150,7 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('Có 2 biến động chưa ghi'), findsOneWidget);
+    expect(find.text('Có 2 mục chờ ghi'), findsOneWidget);
 
     await dongTrang(tester);
   });

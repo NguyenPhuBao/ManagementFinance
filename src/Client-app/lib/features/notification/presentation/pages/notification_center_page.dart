@@ -29,7 +29,7 @@ class NotificationCenterPage extends StatefulWidget {
     this.nhomBanDau,
   });
 
-  /// D1 — chip nhóm chọn sẵn khi mở (`/notifications?nhom=bienDong` từ thẻ *"Có N biến động chưa ghi"* và cú chạm
+  /// D1 — chip nhóm chọn sẵn khi mở (`/notifications?nhom=bienDong` từ thẻ *"Có N mục chờ ghi"* và cú chạm
   /// thông báo tóm tắt). `null` = *Tất cả*.
   final NotificationGroup? nhomBanDau;
 
@@ -405,7 +405,7 @@ extension on _Loc {
 
 /// Dải chip lọc, cuộn ngang.
 ///
-/// Lần dựng ĐẦU tự cuộn tới chip đang chọn: mở với `nhomBanDau` (D1 — thẻ *Có N biến động chưa ghi*, cú chạm tóm tắt)
+/// Lần dựng ĐẦU tự cuộn tới chip đang chọn: mở với `nhomBanDau` (D1 — thẻ *Có N mục chờ ghi*, cú chạm tóm tắt)
 /// chọn chip *Biến động* ở CUỐI dải, và ở 411 dp nó nằm ngoài mép phải — đo trên OnePlus 2026-09-30, người dùng thấy
 /// *"Không có thông báo nào khớp bộ lọc"* mà không biết đang lọc gì.
 class _HangChip extends StatefulWidget {

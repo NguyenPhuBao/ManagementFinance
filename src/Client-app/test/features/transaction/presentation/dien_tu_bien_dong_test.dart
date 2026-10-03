@@ -4,7 +4,7 @@
 /// 1. **Không tự lưu** — form chỉ điền sẵn, người dùng bấm ✓ (bất biến ④ nhóm C).
 /// 2. **Lần đầu của một nguồn + đuôi TK thì ví KHÔNG chọn sẵn**: để ví mặc định là để bảng *"nguồn → ví"* học
 ///    nhầm ví mặc định ở lần Lưu đầu, rồi chọn sẵn sai mãi.
-/// 3. **Lưu / Bỏ qua xoá cứng hàng loại 20** (theo `khoa`) — không thì dòng *"biến động chưa ghi"* còn đó sau khi
+/// 3. **Lưu / Bỏ qua xoá cứng hàng loại 20** (theo `khoa`) — không thì *"mục chờ ghi"* còn đó sau khi
 ///    đã ghi, và nội dung tin ngân hàng ở lại máy.
 /// 4. **Nhắc trùng chỉ nhắc**, không chặn lưu.
 library;
@@ -128,7 +128,7 @@ void main() {
     expect(repo.added.single.transaction.amount, 45000);
     expect(repo.added.single.transaction.date, DateTime(2026, 9, 2, 12, 1));
     expect(await store.doc(1, kNguonMb, '7777'), 'mb');
-    expect(daXoa, [(1, khoa)], reason: 'đã ghi thì hàng "biến động chưa ghi" phải biến mất (xoá cứng, spec §3.3)');
+    expect(daXoa, [(1, khoa)], reason: 'đã ghi thì "mục chờ ghi" phải biến mất (xoá cứng, spec §3.3)');
     expect(find.text('Trang trước'), findsOneWidget);
   });
 
