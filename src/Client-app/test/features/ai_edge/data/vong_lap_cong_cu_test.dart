@@ -22,11 +22,18 @@ import 'package:flowmoney/features/ai_edge/domain/slm_prompt.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RuntimeGia implements SlmRuntime {
-  _RuntimeGia(this.phien, {this.loiMoPhien});
+  _RuntimeGia(this.phien, {this.loiMoPhien, this.chuSinhDan = const []});
   final PhienCongCu phien;
 
   /// Có giá trị thì `moPhien` ném nó thay vì mở phiên.
   final Object? loiMoPhien;
+
+  /// Token `sinhDan` phát — lượt viết câu của đường nhanh.
+  final List<String> chuSinhDan;
+  final List<String> promptSinhDan = [];
+
+  /// Số lần `moPhien` được GỌI (kể cả lần ném `loiMoPhien`) — đường nhanh không mở.
+  int soLanMoPhien = 0;
   String? heThongDaNhan;
   String? cauHoiDaNhan;
   List<KhaiBaoCongCu>? khaiBaoDaNhan;
@@ -38,7 +45,10 @@ class _RuntimeGia implements SlmRuntime {
   @override
   Future<String> sinh(String prompt, {int tranToken = 120}) async => '';
   @override
-  Stream<String> sinhDan(String prompt, {int tranToken = 300}) => const Stream.empty();
+  Stream<String> sinhDan(String prompt, {int tranToken = 300}) {
+    promptSinhDan.add(prompt);
+    return Stream.fromIterable(chuSinhDan);
+  }
   @override
   Future<void> huy() async {}
   @override
@@ -49,6 +59,7 @@ class _RuntimeGia implements SlmRuntime {
     required String cauHoi,
     required List<KhaiBaoCongCu> congCu,
   }) async {
+    soLanMoPhien++;
     final loi = loiMoPhien;
     if (loi != null) throw loi;
     heThongDaNhan = heThong;
@@ -401,6 +412,94 @@ void main() {
       await hoiBangCongCu('Hoa don nao qua han?',
           runtime: rt, boCongCu: bo, goi: GoiSoTraCuu(), idaccount: 10, now: now, log: log.add).toList();
       expect(log.first, contains('định tuyến: luật → $kTenCongCuHoaDon'));
+    });
+  });
+
+  // Spec 2026-10-02 "đường nhanh": câu giao dịch mà luật đọc đủ tham số → tool chạy
+  // TRƯỚC với {} (bộ chỉnh trong tool điền tham số), Gemma chỉ viết câu. Đo Realme
+  // 2026-10-04: lượt Gemma điền tham số chiếm ~20 s / 26 s của một câu giao dịch.
+  group('ĐƯỜNG NHANH — câu giao dịch luật đọc đủ (spec 2026-10-02)', () {
+    late _CongCuGia toolTruyVan;
+    KetQuaDinhTuyen veGiaoDich(String _) => const KetQuaDinhTuyen(
+        ten: kTenCongCuTruyVan,
+        nguon: NguonDinhTuyen.moHinh,
+        nhanMoHinh: kTenCongCuTruyVan,
+        xacSuat: 0.99);
+    const cauDu = 'thang nay toi chi bao nhieu';
+    const cauDung = 'Tháng này bạn đã chi 800.000 đ cho Cho vay.';
+
+    Future<(List<SuKienGac>, GoiSoTraCuu, _RuntimeGia)> hoi(
+      String cau, {
+      KetQuaCongCu? ketQua,
+      List<String> chu = const [],
+      List<List<SuKienLuot>> kichBan = const [
+        [Chu('x')],
+      ],
+      KetQuaDinhTuyen Function(String)? dinhTuyen,
+      Object? loiMoPhien,
+    }) async {
+      toolTruyVan = _CongCuGia(kTenCongCuTruyVan, ketQua ?? _timCoHang());
+      final rt = _RuntimeGia(PhienCongCuGia(kichBan), loiMoPhien: loiMoPhien, chuSinhDan: chu);
+      final goi = GoiSoTraCuu();
+      final sk = await hoiBangCongCu(cau,
+              runtime: rt, boCongCu: BoCongCu([tool, toolTruyVan]), goi: goi,
+              idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyen ?? veGiaoDich)
+          .toList();
+      return (sk, goi, rt);
+    }
+
+    test('⭐ không mở phiên có tool; tool chạy với {}; Gemma chỉ viết câu từ kết quả', () async {
+      final (sk, goi, rt) = await hoi(cauDu, chu: ['Tháng này bạn đã chi ', '800.000 đ cho Cho vay.']);
+      expect(rt.soLanMoPhien, 0);
+      expect(toolTruyVan.argsDaNhan, [<String, dynamic>{}]);
+      expect(goi.tenCongCuDaChay, [kTenCongCuTruyVan]);
+      expect(rt.promptSinhDan.single, contains('Kết quả tra cứu:'));
+      expect(rt.promptSinhDan.single, contains('Câu hỏi: $cauDu'));
+      expect(sk, [
+        const DangTraCuu(kTenCongCuTruyVan),
+        const DangTraCuu(null),
+        const CauQua(cauDung),
+      ]);
+      expect(log.any((l) => l.contains('đường nhanh: luật đọc đủ → $kTenCongCuTruyVan')), isTrue);
+      expect(log.last, contains('xong sau'));
+    });
+
+    test('⭐ 0 khoản theo bộ lọc → mẫu câu ngay, KHÔNG gọi Gemma', () async {
+      final (sk, goi, rt) = await hoi(cauDu, ketQua: _timRong(), chu: ['Không có khoản nào.']);
+      expect(rt.promptSinhDan, isEmpty);
+      expect(rt.soLanMoPhien, 0);
+      expect(sk.last, CauQua(goi.mauCau().cau));
+    });
+
+    test('⭐ câu Gemma trượt kiểm → mẫu câu (L2)', () async {
+      final (sk, goi, _) = await hoi(cauDu, chu: ['Tháng này bạn chi 1.000.000 đ cho Cho vay.']);
+      expect(sk.whereType<CauQua>().single, CauQua(goi.mauCau().cau));
+    });
+
+    test('⭐ tool TỪ CHỐI → đường cũ: mở phiên một tool, lượt từ chối không vào gói', () async {
+      final (_, goi, rt) = await hoi(cauDu, ketQua: _tuChoiDanhMuc('abc'));
+      expect(rt.soLanMoPhien, 1);
+      expect(goi.tuChoiChuaGo, isEmpty, reason: 'lời từ chối của đường nhanh bị bỏ — không thành L1b');
+      expect(log.any((l) => l.contains('đường nhanh: tool từ chối')), isTrue);
+    });
+
+    test('câu luật không đọc đủ → đường cũ', () async {
+      final (_, _, rt) = await hoi('Quy nay danh muc nao ngon nhieu tien nhat?');
+      expect(rt.soLanMoPhien, 1);
+      expect(toolTruyVan.argsDaNhan, isEmpty);
+    });
+
+    test('đích không phải tool giao dịch → đường cũ', () async {
+      final (_, _, rt) = await hoi(cauDu,
+          dinhTuyen: (_) => const KetQuaDinhTuyen(ten: kTenCongCuHoaDon, nguon: NguonDinhTuyen.luat));
+      expect(rt.soLanMoPhien, 1);
+    });
+
+    test('⭐ máy đã tắt bậc tool (canary 1b) vẫn đi đường nhanh', () async {
+      final (sk, _, rt) = await hoi(cauDu, chu: [cauDung], loiMoPhien: const BacCongCuDaTat());
+      expect(sk.whereType<KhongTraCuu>(), isEmpty);
+      expect(sk.last, const CauQua(cauDung));
+      expect(rt.soLanMoPhien, 0);
     });
   });
 

@@ -28,6 +28,11 @@
 /// là định tuyến MỀM, không gọi tool thì vẫn L1. Dòng log đầu của mỗi lượt hỏi
 /// là `[SLM][tool] định tuyến: …`.
 ///
+/// **Đường nhanh** (spec 2026-10-02, thi công 2026-10-04): đích là tool giao dịch
+/// và luật đọc đủ tham số (`docDuThamSoGiaoDich`) → tool chạy TRƯỚC với `{}` (bộ
+/// chỉnh trong tool điền tham số), Gemma chỉ viết câu qua `sinhDan` — không mở
+/// phiên có tool. Tool từ chối → lời từ chối bị bỏ, đi tiếp đường trên như cũ.
+///
 /// Riêng `BacCongCuDaTat` (máy từng sập native ở phiên có tool — canary 1b,
 /// `domain/canary_cong_cu.dart`) đi đường L1 chứ không L4: bậc 1 vẫn chạy được.
 ///
@@ -41,10 +46,12 @@ library;
 import 'dart:async';
 
 import '../domain/canary_cong_cu.dart';
+import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
 import '../domain/dinh_tuyen.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
+import '../domain/hang_so_lieu.dart';
 import '../domain/kiem_cau_tra_loi.dart';
 import '../domain/slm_prompt.dart';
 import 'bo_cong_cu.dart';
@@ -80,6 +87,25 @@ Stream<SuKienGac> hoiBangCongCu(
   final tenEp = dt.nguon == NguonDinhTuyen.luat ? tenDich : null;
   log('[SLM][tool] định tuyến: ${_taDinhTuyen(dt)}'
       '${dich != null && tenDich == null ? ' — không có trong bộ tool' : ''}');
+  // ĐƯỜNG NHANH (spec 2026-10-02): câu giao dịch mà luật đọc đủ tham số → tool chạy
+  // TRƯỚC bằng tham số của luật (bộ chỉnh trong tool), Gemma chỉ viết câu — không
+  // mở phiên có tool (~20 s Gemma điền tham số trên Realme). Tool từ chối → đường
+  // cũ: luật đọc sai thì Gemma còn cơ hội. Xét TRƯỚC `moPhien`: máy đã tắt bậc tool
+  // (canary 1b) vẫn đi được.
+  if (tenDich == kTenCongCuTruyVan && docDuThamSoGiaoDich(cauHoi)) {
+    log('[SLM][tool] đường nhanh: luật đọc đủ → $kTenCongCuTruyVan');
+    yield const DangTraCuu(kTenCongCuTruyVan);
+    final moc = dongHo.elapsedMilliseconds;
+    final kq = await boCongCu.chay(kTenCongCuTruyVan, const {},
+        idaccount: idaccount, now: now, cauHoi: cauHoi);
+    if (kq != null && kq.loi == null) {
+      log('[SLM][tool] đường nhanh: ${kq.hang.length} hàng, ${dongHo.elapsedMilliseconds - moc} ms');
+      goi.them(kTenCongCuTruyVan, kq);
+      yield* _vietCauDuongNhanh(cauHoi, kq, runtime: runtime, goi: goi, dongHo: dongHo, log: log);
+      return;
+    }
+    log('[SLM][tool] đường nhanh: tool từ chối (${kq?.loi ?? 'không có tool'}) → đường cũ');
+  }
   final PhienCongCu phien;
   try {
     phien = await runtime.moPhien(
@@ -241,6 +267,41 @@ Stream<SuKienGac> hoiBangCongCu(
   } finally {
     await phien.dong();
   }
+}
+
+/// Lượt viết câu của đường nhanh: cổng hiện chữ đóng (0 khoản theo bộ lọc, tool
+/// đòi mẫu câu) → mẫu câu ngay, không gọi Gemma; còn lại Gemma viết câu, gác theo
+/// câu như mọi lượt; chưa câu nào qua kiểm → mẫu câu (L2), đã có câu hiện thì giữ.
+/// `sinhDan` ném → lỗi lan lên màn (L4).
+Stream<SuKienGac> _vietCauDuongNhanh(
+  String cauHoi,
+  KetQuaCongCu kq, {
+  required SlmRuntime runtime,
+  required GoiSoTraCuu goi,
+  required Stopwatch dongHo,
+  required void Function(String) log,
+}) async* {
+  if (!goi.choHienChuMoHinh) {
+    log('[SLM][tool] đường nhanh: ${_viSaoDong(goi)} → mẫu câu (${_nhanLui(goi)})');
+    yield CauQua(goi.mauCau().cau);
+    log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: 0 lời gọi, 0 câu');
+    return;
+  }
+  yield const DangTraCuu(null);
+  var soCau = 0;
+  await for (final sk in gacTheoCau(
+    runtime.sinhDan(promptVietCau(cauHoi, kq.json), tranToken: 300),
+    kiem: (c) => kiemCauTraLoi(c, [goi]),
+    huy: runtime.huy,
+  )) {
+    if (sk is CauQua) soCau++;
+    yield sk;
+  }
+  if (soCau == 0) {
+    log('[SLM][tool] đường nhanh: chưa câu nào qua kiểm → mẫu câu (L2)');
+    yield CauQua(goi.mauCau().cau);
+  }
+  log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: 0 lời gọi, $soCau câu');
 }
 
 /// Một dòng tả kết quả định tuyến — cho log: `luật → X` · `mô hình → X (p=0,93)`
