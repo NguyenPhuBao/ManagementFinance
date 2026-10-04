@@ -364,6 +364,31 @@ const authService = {
       });
     }
 
+    // Kiểm tra chế độ bảo trì hệ thống (Maintenance Mode)
+    // Nếu hệ thống đang bật bảo trì, CHỈ cho phép tài khoản Admin đăng nhập để khắc phục sự cố.
+    // Người dùng thông thường sẽ bị từ chối với HTTP 503 MAINTENANCE_MODE.
+    try {
+      const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+      if (defaultMaintenanceManager && typeof defaultMaintenanceManager.isMaintenanceActive === 'function' && defaultMaintenanceManager.isMaintenanceActive()) {
+        const isAdminAccount = account.idrole === 1 || 
+          (account.role && (String(account.role.rolename || '').toLowerCase() === 'admin' || account.role.idrole === 1));
+        if (!isAdminAccount) {
+          const mStatus = defaultMaintenanceManager.getStatus();
+          throw Object.assign(
+            new Error(mStatus.reason || 'Hệ thống đang bảo trì để nâng cấp định kỳ. Quý khách vui lòng quay lại sau ít phút!'),
+            {
+              statusCode: 503,
+              code: 'MAINTENANCE_MODE',
+              isEmergency: Boolean(mStatus.isEmergency),
+              activatedAt: mStatus.activatedAt,
+            }
+          );
+        }
+      }
+    } catch (err) {
+      if (err.statusCode === 503) throw err;
+    }
+
     const payload = {
       idaccount: account.idaccount,
       username: account.username,

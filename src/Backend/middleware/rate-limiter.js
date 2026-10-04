@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const config = require('../config');
 
 // Kiểm tra nếu RATE_LIMIT_MAX=0 hoặc RATE_LIMIT_ENABLED=false -> Tắt hoàn toàn rate limit
@@ -11,7 +12,7 @@ const generalLimiter = isRateLimitDisabled
       max: config.env === 'development' ? Math.max(config.rateLimit.max || 1000, 10000) : (config.rateLimit.max || 1000),
       standardHeaders: true,
       skip: (req) => {
-        // 0. Miễn rate limit tuyệt đối cho Admin-web (Fast-Lane)
+        // 0. Miễn rate limit tuyệt đối cho Admin-web đã được server xác thực (Fast-Lane)
         if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) return true;
 
         // 1. Luôn bỏ qua preflight OPTIONS của CORS (tránh nghẽn rate limit khi gọi từ Vercel)
@@ -20,9 +21,18 @@ const generalLimiter = isRateLimitDisabled
         // 2. Miễn rate limit cho webhook Casso (đẩy dữ liệu burst từ ngân hàng)
         if (req.originalUrl && req.originalUrl.startsWith('/api/bank/webhook')) return true;
 
-        // 3. Miễn rate limit cho người dùng Client-app & Admin-web đã đăng nhập (có Authorization header)
+        // 3. CHỈ miễn rate limit khi token Authorization ĐÃ ĐƯỢC SERVER XÁC THỰC CHỮ KÝ (không miễn bừa bãi cho token rác)
         const authHeader = req.headers.authorization || req.headers['authorization'] || (typeof req.get === 'function' && req.get('Authorization'));
-        if (authHeader) return true;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const token = authHeader.split(' ')[1];
+          try {
+            const secret = (config.jwt && (config.jwt.accessSecret || config.jwt.secret)) || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'secret';
+            jwt.verify(token, secret);
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }
 
         return false;
       },
@@ -42,7 +52,6 @@ const authLimiter = isRateLimitDisabled
       standardHeaders: true,
       skip: (req) => {
         if (req.method === 'OPTIONS') return true;
-        if (req.isAdmin || (req.originalUrl && req.originalUrl.includes('/admin'))) return true;
         return false;
       },
       message: {
@@ -53,5 +62,3 @@ const authLimiter = isRateLimitDisabled
     });
 
 module.exports = { generalLimiter, authLimiter };
-
-
