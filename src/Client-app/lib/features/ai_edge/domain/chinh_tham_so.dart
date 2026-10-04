@@ -559,7 +559,8 @@ KetQuaChinhThamSo chinhThamSoDanhMuc(String cauHoi, Map<String, dynamic> args) {
 final List<RegExp> _mauDuBao = [
   RegExp(r'(?<![a-z0-9])con (?:duoc )?tieu duoc(?![a-z0-9])'),
   RegExp(r'(?<![a-z0-9])(?:co )?du (?:tien )?(?:de )?(?:tra|trich|thanh toan)(?![a-z0-9])'),
-  RegExp(r'(?<![a-z0-9])(?:tra|thanh toan) (?:het|xong)\b.*\bcon(?![a-z0-9])'),
+  // 2026-10-04 (họ B): *đóng / trừ* hết hoá đơn, và *dư* cũng là "còn".
+  RegExp(r'(?<![a-z0-9])(?:tra|thanh toan|dong|tru) (?:het|xong)\b.*\b(?:con|du)(?![a-z0-9])'),
   RegExp(r'(?<![a-z0-9])\d+ (?:ngay|tuan|thang) (?:toi|sap toi|nua)\b.*\b(?:phai|can|se) (?:tra|chi|dong)(?![a-z0-9])'),
   RegExp(r'(?<![a-z0-9])sap (?:toi )?(?:toi )?(?:phai|can) (?:tra|chi|dong)(?![a-z0-9])'),
 ];
@@ -567,6 +568,11 @@ final List<RegExp> _mauDuBao = [
 /// Lát 2: câu về thu nhập, tiết kiệm, dòng tiền tự do, trung bình ngày, ngày chi
 /// nhiều nhất, tài sản tăng/giảm, dư nợ. ⚠️ *"khoản chi lớn nhất"* KHÔNG ở đây —
 /// tool giao dịch đã trả lời nó (C18), và đổi tool là làm tụt câu cũ.
+///
+/// ⚠️ Câu hỏi ĐỊNH NGHĨA (*"dòng tiền tự do là gì"*, *"thuế thu nhập cá nhân tính
+/// thế nào"*) mang đúng từ khoá mà không hỏi số của người dùng — [_laCauDinhNghia]
+/// chặn chúng trước (họ D, 2026-10-04). Chỉ chặn ở nhánh tổng quan: *"khoản chi lớn
+/// nhất tháng này là gì"* (C18) cũng kết thúc bằng *"là gì"*.
 final List<RegExp> _mauTongQuan = [
   RegExp(r'(?<![a-z0-9])thu nhap(?![a-z0-9])'),
   RegExp(r'(?<![a-z0-9])(?:de danh|tiet kiem) (?:duoc )?(?:bao nhieu )?(?:phan tram|%)'),
@@ -585,6 +591,37 @@ final List<RegExp> _mauDanhMuc = [
   RegExp(r'(?<![a-z0-9])(?:bao nhieu|may) danh muc(?![a-z0-9])'),
   RegExp(r'(?<![a-z0-9])(?:liet ke|ke ten|danh sach)(?: cac| nhung)? danh muc(?![a-z0-9])'),
 ];
+
+/// 2026-10-04 (họ C): *"các danh mục thu nhập của tôi"* — liệt kê theo LOẠI. Mẫu
+/// riêng vì nó đòi thêm `!_coSoHoacKy`: *"các danh mục chi tháng này tiêu bao
+/// nhiêu"* là câu tiền; còn ba mẫu trên thì *"bao nhiêu danh mục"* là câu ĐẾM.
+final RegExp _mauDanhMucTheoLoai = RegExp(
+    r'(?<![a-z0-9])(?:nhung|cac) danh muc (?:khoan )?(?:thu nhap|thu|chi tieu|chi)(?![a-z0-9])');
+
+/// Câu nhắc số tiền hay kỳ — không còn là câu LIỆT KÊ danh mục thuần.
+bool _coSoHoacKy(String q) => _coMot(q,
+    'bao nhieu|tong|nhieu nhat|it nhat|hom nay|hom qua|tuan|thang|quy|nam nay|nam ngoai');
+
+/// Họ D (2026-10-04): câu hỏi định nghĩa / cách tính — không phải câu số liệu.
+final RegExp _mauDinhNghia = RegExp(
+    r'(?<![a-z0-9])(?:la gi|nghia la gi|tinh the nao|tinh nhu the nao|cach tinh)$');
+
+bool _laCauDinhNghia(String q) => _mauDinhNghia.hasMatch(q.trim());
+
+/// Họ C (2026-10-04): *"có những loại thu nhập nào"* hỏi DANH MỤC thu, không hỏi
+/// số thu nhập — tổng quan không được giành nó.
+final RegExp _mauLoaiThuNhap =
+    RegExp(r'(?<![a-z0-9])(?:loai|danh muc|nguon) (?:khoan )?thu nhap(?![a-z0-9])');
+
+/// Họ B2 (2026-10-04): *"nếu tiêu đúng ngân sách thì cuối tháng còn bao nhiêu"* —
+/// tầng 2 của tool dự báo; xét TRƯỚC luật ngân sách (câu có chữ "ngân sách").
+final RegExp _mauDuBaoTheoNganSach = RegExp(
+    r'(?<![a-z0-9])neu (?:tieu|chi) (?:dung|het|theo|du) (?:ngan sach|han muc)(?![a-z0-9])');
+
+/// Họ E (2026-10-04): số LOẠI đối tượng câu nhắc trong ngân sách / hoá đơn / mục
+/// tiêu. Từ hai trở lên là câu cần hai tool — luật một loại chỉ trả lời nửa câu.
+int _soLoaiDoiTuong(String q) =>
+    ['ngan sach', 'hoa don', 'muc tieu'].where((t) => _co(q, t)).length;
 
 /// H2 cổng F lần 2 (B2): *"mỗi tháng tôi cần để dành bao nhiêu cho MuaXe"* — mô
 /// hình gọi `goi_y_han_muc` với danh_muc = tên mục tiêu rồi bị từ chối. Chữ
@@ -624,13 +661,18 @@ bool _coMot(String q, String ds) => ds.split('|').any((t) => _co(q, t));
 
 /// ⚠️ *"thu nhập trung bình mỗi tháng"* là câu tổng quan: `goi_y_han_muc` trả
 /// mức CHI theo danh mục.
+///
+/// Họ A (2026-10-04): xin mức NÊN đặt không chỉ là *"nên đặt"* — *"bao nhiêu là đủ /
+/// vừa / hợp lý"*, *"nên để"*, *"nên là"* cũng thế; một danh sách cho cả hai luật.
+const String _tuNenDat = 'nen dat|nen de|nen la|la du|la vua|hop ly';
+
 bool _laCauGoiYHanMuc(String q) =>
-    (_co(q, 'ngan sach') && _co(q, 'nen dat')) ||
+    (_co(q, 'ngan sach') && _coMot(q, _tuNenDat)) ||
     (_co(q, 'trung binh moi thang') && !_coMot(q, 'thu nhap|thu|luong'));
 
 bool _laCauNganSach(String q) =>
     _co(q, 'ngan sach') &&
-    !_co(q, 'nen dat') &&
+    !_coMot(q, _tuNenDat) &&
     _coMot(q, 'nao|con|sap het|bao nhieu|chua dung|vuot');
 
 bool _laCauMucTieu(String q) =>
@@ -640,7 +682,9 @@ bool _laCauMucTieu(String q) =>
 
 bool _laCauHoaDon(String q) =>
     _co(q, 'hoa don') &&
-    !_coMot(q, 'ghi chu|giao dich|khoan chi|da tra|thanh toan hoa don') &&
+    // `lan cuoi / lan truoc / lan gan nhat`: câu LỊCH SỬ trả — tool giao dịch (họ F).
+    !_coMot(q,
+        'ghi chu|giao dich|khoan chi|da tra|thanh toan hoa don|lan cuoi|lan truoc|lan gan nhat') &&
     _coMot(q, 'nao|bao nhieu|may|qua han|chua tra|den han|con phai tra|tu tra|thang toi|sap toi');
 
 bool _laCauVi(String q) =>
@@ -651,23 +695,42 @@ bool _laCauVi(String q) =>
 String? congCuTheoCauHoi(String cauHoi) {
   final q = _bo(cauHoi);
   if (q.isEmpty) return null;
-  // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
-  // một tool (bộ chỉnh đặt chon=can_doi). Sáu tool thì mô hình chọn goi_y_han_muc.
-  if (_co(q, 'ngan sach') && _tuCanDoi.any((t) => _co(q, t))) return kTenCongCuNganSach;
+  // Họ E (2026-10-04): ngân sách NHÀ NƯỚC — ngoài phạm vi app.
+  if (_co(q, 'nha nuoc')) return null;
+  // Họ B2: tầng 2 của dự báo mang chữ "ngân sách" — xét trước khối ngân sách.
+  if (_mauDuBaoTheoNganSach.hasMatch(q)) return kTenCongCuDuBao;
+  final haiLoai = _soLoaiDoiTuong(q) >= 2;
+  if (_co(q, 'ngan sach')) {
+    // Họ E: ngân sách + hoá đơn / mục tiêu → câu hai tool, phiên sáu tool.
+    if (haiLoai) return null;
+    // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
+    // một tool (bộ chỉnh đặt chon=can_doi). Sáu tool thì mô hình chọn goi_y_han_muc.
+    if (_tuCanDoi.any((t) => _co(q, t))) return kTenCongCuNganSach;
+    if (_laCauGoiYHanMuc(q)) return kTenCongCuGoiYHanMuc;
+    if (_laCauNganSach(q)) return kTenCongCuNganSach;
+    return null;
+  }
   if (_laCauGoiYHanMuc(q)) return kTenCongCuGoiYHanMuc;
-  if (_laCauNganSach(q)) return kTenCongCuNganSach;
-  if (_co(q, 'ngan sach')) return null;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauCanTich.hasMatch(q)) return kTenCongCuMucTieu;
-  if (_mauDuBao.any((m) => m.hasMatch(q))) return kTenCongCuDuBao;
+  // Họ G: "hạn mức" là chữ của ngân sách — "trong hạn mức còn tiêu được" không
+  // phải câu dự báo.
+  if (!_co(q, 'han muc') && _mauDuBao.any((m) => m.hasMatch(q))) {
+    return kTenCongCuDuBao;
+  }
   if (_mauSoDuVi.any((m) => m.hasMatch(q))) return kTenCongCuVi;
   if (_laCauVi(q)) return kTenCongCuVi;
+  // Họ E: hoá đơn + mục tiêu mà không phải câu đủ tiền (dự báo đã xét ở trên).
+  if (haiLoai) return null;
   if (_laCauMucTieu(q)) return kTenCongCuMucTieu;
   if (_co(q, 'muc tieu')) return null;
   if (_laCauHoaDon(q)) return kTenCongCuHoaDon;
-  if (_mauDanhMuc.any((m) => m.hasMatch(q)) && !_co(q, 'nhat')) {
+  if (!_co(q, 'nhat') &&
+      (_mauDanhMuc.any((m) => m.hasMatch(q)) ||
+          (_mauDanhMucTheoLoai.hasMatch(q) && !_coSoHoacKy(q)))) {
     return kTenCongCuDanhMuc;
   }
+  if (_laCauDinhNghia(q) || _mauLoaiThuNhap.hasMatch(q)) return null;
   if (_mauTongQuan.any((m) => m.hasMatch(q))) return kTenCongCuTongQuan;
   return null;
 }

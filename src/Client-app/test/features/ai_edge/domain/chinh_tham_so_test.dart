@@ -924,4 +924,90 @@ void main() {
       expect(congCuTheoCauHoi('Vi Tiet kiem hien co bao nhieu tien?'), kTenCongCuVi);
     });
   });
+
+  // 2026-10-04 — luật định tuyến LỆCH NHÃN (việc mở ghi cuối mục 9.45): 18/201 câu
+  // bộ huấn luyện luật bắt mà sai tool, gom thành bảy họ. Nguyên tắc sửa: luật chỉ
+  // định tuyến khi CHẮC; không chắc thì `null` (phiên sáu tool, mô hình tự chọn).
+  group('23. luật lệch nhãn — bảy họ (2026-10-04)', () {
+    test('A: "bao nhiêu là đủ / vừa / hợp lý", "nên để / nên là" → gợi ý hạn mức', () {
+      for (final c in [
+        'ngan sach giao duc bao nhieu la du',
+        'dat ngan sach thang sau bao nhieu la hop ly',
+        'ngan sach an uong bao nhieu la vua',
+        'nen de ngan sach nha cua bao nhieu',
+        'dua tren chi tieu cu thi ngan sach nen la bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuGoiYHanMuc, reason: c);
+      }
+      // phản ví dụ: hỏi số còn lại của ngân sách đang có vẫn là tool ngân sách
+      expect(congCuTheoCauHoi('Ngan sach an uong con lai bao nhieu?'), kTenCongCuNganSach);
+    });
+
+    test('B: đóng / trừ / trả xong hoá đơn … còn / dư bao nhiêu → dự báo', () {
+      for (final c in [
+        'dong het hoa don thi toi con bao nhieu',
+        'tra xong hoa don va trich tiet kiem thi du bao nhieu',
+        'tru het hoa don va khoan trich thi toi con bao nhieu',
+        'sau khi dong het hoa don toi con lai bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuDuBao, reason: c);
+      }
+      expect(congCuTheoCauHoi('tra het hoa don thi con bao nhieu'), kTenCongCuDuBao); // F5 giữ
+    });
+
+    test('B2: "nếu tiêu đúng ngân sách thì cuối tháng còn bao nhiêu" → dự báo (xét trước ngân sách)', () {
+      expect(congCuTheoCauHoi('neu tieu dung ngan sach thi cuoi thang con bao nhieu'),
+          kTenCongCuDuBao);
+    });
+
+    test('C: "các danh mục thu nhập / chi tiêu của tôi" → danh mục; "loại thu nhập" không thành tổng quan', () {
+      expect(congCuTheoCauHoi('cac danh muc thu nhap cua toi'), kTenCongCuDanhMuc);
+      expect(congCuTheoCauHoi('co nhung loai thu nhap nao'), isNot(kTenCongCuTongQuan));
+      // phản ví dụ: câu tiền theo danh mục ở lại tool giao dịch / phiên sáu tool
+      expect(congCuTheoCauHoi('Thang nay toi chi nhieu nhat vao danh muc nao?'), isNull);
+      expect(congCuTheoCauHoi('cac khoan chi cho danh muc abc thang nay'), isNull);
+    });
+
+    test('D: câu hỏi ĐỊNH NGHĨA không phải câu số liệu tổng quan → null', () {
+      expect(congCuTheoCauHoi('dong tien tu do la gi'), isNull);
+      expect(congCuTheoCauHoi('thue thu nhap ca nhan tinh the nao'), isNull);
+      // phản ví dụ: "… là bao nhiêu" vẫn là câu số liệu
+      expect(congCuTheoCauHoi('thu nhap thang nay cua toi la bao nhieu'), kTenCongCuTongQuan);
+      // phản ví dụ: "là gì" cũng kết thúc câu hỏi số liệu của tool khác — chỉ
+      // chặn ở nhánh tổng quan, không chặn toàn cục
+      expect(congCuTheoCauHoi('hoa don sap toi cua toi la gi'), kTenCongCuHoaDon);
+    });
+
+    test('E: câu cần HAI tool (ngân sách / hoá đơn / mục tiêu) và ngân sách nhà nước → null', () {
+      for (final c in [
+        'ngan sach va hoa don cua toi the nao',
+        'ngan sach va muc tieu cua toi dang the nao',
+        'So sanh tong hoa don thang toi voi ngan sach con lai cua toi',
+        'Muc tieu va ngan sach cua toi cai nao dang co van de?',
+        'muc tieu va hoa don cua toi cai nao can chu y',
+        'ngan sach nha nuoc nam nay bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(c), isNull, reason: c);
+      }
+      // phản ví dụ: hai loại cam kết mà hỏi ĐỦ TIỀN → dự báo vẫn gộp được
+      expect(congCuTheoCauHoi('co du tien tra hoa don va trich cho muc tieu khong'),
+          kTenCongCuDuBao);
+    });
+
+    test('F: "lần cuối tôi trả hoá đơn …" là câu lịch sử giao dịch → không phải tool hoá đơn', () {
+      expect(congCuTheoCauHoi('lan cuoi toi tra hoa don dien la ngay nao'),
+          isNot(kTenCongCuHoaDon));
+      // phản ví dụ: hạn sắp tới vẫn là tool hoá đơn — kể cả "gần nhất" không đi
+      // kèm "lần" (loại cả "gan nhat" là mất câu này)
+      expect(congCuTheoCauHoi('Hoa don Netflix khi nao den han?'), kTenCongCuHoaDon);
+      expect(congCuTheoCauHoi('hoa don nao den han gan nhat'), kTenCongCuHoaDon);
+    });
+
+    test('G: "trong hạn mức … còn tiêu được" là câu ngân sách → không phải dự báo', () {
+      expect(congCuTheoCauHoi('trong han muc toi con tieu duoc bao nhieu cho di chuyen'),
+          isNot(kTenCongCuDuBao));
+      // phản ví dụ: "còn tiêu được" không nhắc hạn mức vẫn là dự báo
+      expect(congCuTheoCauHoi('thang nay toi con tieu duoc bao nhieu'), kTenCongCuDuBao);
+    });
+  });
 }
