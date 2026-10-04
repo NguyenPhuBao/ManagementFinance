@@ -3333,6 +3333,26 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     * Toàn bộ Admin-web Test Suite: **57/57 tests PASS 100%** trên cả 8 file kiểm thử.
     * Toàn bộ hệ thống: **100/100 tests PASS 100%**.
 
+### 11.60. Tối Ưu Hóa Trải Nghiệm & Tính Minh Bạch AIOps Sentinel & Nhật Ký Kiểm Toán (2026-10-04)
+- **1. Thiết Kế Lại Toàn Diện Popup Xác Nhận (ConfirmModal):**
+  - Khắc phục triệt để lỗi nút "Xác nhận" bị tàng hình do phụ thuộc CSS variable không tồn tại trong Tailwind CSS 4.
+  - Thiết kế lại `src/Admin-web/src/components/common/ConfirmModal.jsx` theo phong cách hiện đại: Hộp thoại bo góc mềm mại (`rounded-2xl bg-white shadow-2xl border border-slate-200`), badge icon tròn theo ngữ nghĩa (Xanh Emerald cho BẬT/kích hoạt, Đỏ cho TẮT/nguy hiểm), nút Close (x) ở góc trên, hộp thông điệp bo góc dễ đọc và 2 nút "Hủy bỏ" & "Xác nhận..." cân đối, rõ ràng, hỗ trợ phím Escape và hiệu ứng loading spinner.
+- **2. Điều Tra & Khắc Phục Triệt Để Bất Thường Đăng Nhập 30 lần thất bại/10s (Auth Brute-force):**
+  - **Nguyên nhân gốc rễ (Root Cause):** Bộ kiểm thử `src/Backend/tests/unit/aiops.service.test.js` khi giả lập 30 lần `collector.recordFailedLogin()` đã không mock repository, dẫn đến việc instance test kết nối thẳng vào CSDL PostgreSQL thật qua `defaultAIOpsIncidentRepository`. Mỗi lần chạy test suite, hệ thống tự động ghi thêm bản ghi sự cố `AUTH_BRUTE_FORCE` (30 lần thất bại/10s) vào bảng CSDL `aiops_incident`. Khi PO đăng nhập thật và mở trang AIOps, bảng RCA truy vấn CSDL và hiển thị lại toàn bộ các bản ghi giả lập này.
+  - **Khắc phục triệt để:** Cách ly hoàn toàn test suite bằng mock repository in-memory, tuyệt đối không chạm CSDL thật; đồng thời thực hiện dọn sạch các bản ghi giả lập rác trong CSDL và bổ sung logic ghi nhận tên tài khoản mục tiêu (`req.body?.username || req.body?.email`) khi có tấn công dò mật khẩu thật.
+- **3. Bổ Sung Alert Toast Thông Báo Khi Nhấn Nút "Làm Mới" AIOps:**
+  - Trong `AIOpsPage.jsx`, xây dựng hàm `handleManualRefresh` kích hoạt tải lại dữ liệu AIOps và sự cố CSDL đồng thời phát Alert Toast `alert.success('Đã làm mới dữ liệu AIOps Sentinel thành công!')` giúp Quản trị viên nhận biết phản hồi hệ thống tức thì.
+- **4. Bảng Nhật Ký Kiểm Toán (Audit Log) Hiển Thị Tài Khoản Kèm IP Tương Ứng:**
+  - Backend: Cập nhật `queryAuditLogs` trong `admin.repository.js` lấy địa chỉ IP mới nhất từ bảng `refreshtoken` (`account.refreshtoken.ip_address`), đồng thời truyền `ip` qua middleware và sự kiện Socket.io `audit_activity`.
+  - Frontend: Trong `AuditLogPage.jsx`, cột **TÀI KHOẢN** hiển thị tên tài khoản, UID và địa chỉ IP (`IP: 127.0.0.1`) với icon router nổi bật, định dạng font mono chuyên nghiệp.
+- **5. Bảng RCA Hiển Thị Đối Tượng Vi Phạm Kèm Cả IP Và Tên Tài Khoản Vi Phạm:**
+  - Backend: `feature.collector.js` khi bắt lỗi 401 trên route login trích xuất tài khoản mục tiêu đưa vào `ipStat.targetAccount` và map vào `suspectActors`.
+  - Frontend: Bảng RCA trong `AIOpsPage.jsx` tại cột 2 "Đối tượng vi phạm (Actor)" giờ đây hiển thị rõ ràng địa chỉ IP vi phạm (`IP: 127.0.0.1`), đi kèm huy hiệu tên tài khoản (`TK: admin` hoặc `Khách vãng lai / Ẩn danh`) và endpoint mục tiêu.
+- **6. Nghiệm Thu & Kiểm Thử:**
+  - Admin-web Test Suite: **57/57 tests PASS 100%**.
+  - Backend Operations & AIOps Test Suites: **100% PASS**.
+  - Production Build (Vite): Thành công 100% với 0 lỗi cú pháp.
+
 
 
 
