@@ -1000,7 +1000,7 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   học được 5 kỳ; dự phóng 1.048.709 → 930.000, chip *chậm* → *đúng nhịp*. Nghiệm thu Realme 360 dp đạt cả hai chiều.
 - **Lỗi có từ trước lộ khi nghiệm thu**: ở 360 dp dòng *"Theo …: X"* cùng hàng chip dài bị cắt "…" — người dùng chọn đưa xuống
   **hàng riêng dưới chip** (`8eb5b93`). Trang chi tiết ngân sách chưa có màn Stitch; lượt `generate_screen_from_text` trả
-  `timeout`, chờ người dùng xem.
+  `timeout` — ✅ người dùng xác nhận tối cùng ngày: màn **có**, `414e3e01cd43401ea7be9217b5cb09f5`.
 - `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
 
 ### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector

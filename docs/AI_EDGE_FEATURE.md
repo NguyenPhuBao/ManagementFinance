@@ -4180,7 +4180,8 @@ xuất cân đối (thẻ + thông báo + tool `can_doi`), **ô NHỊP CHI** tra
   đ"*. ⚠️ Lượt ấy lộ một lỗi **có từ trước**: ở 360 dp chip dài cùng hàng làm dòng *"Theo …: X"* bị cắt **"…"**, mất con số —
   người dùng chọn đưa dòng **xuống hàng riêng dưới chip** (`8eb5b93`; ca test hỏi `RenderParagraph.didExceedMaxLines` vì
   `find.text` so `data`, mù với dấu "…"). Trang chi tiết ngân sách **chưa có màn Stitch** — đã gọi
-  `generate_screen_from_text` (*"Chi tiết ngân sách - Nhịp chi"*), lượt gọi trả `timeout`.
+  `generate_screen_from_text` (*"Chi tiết ngân sách - Nhịp chi"*), lượt gọi trả `timeout`. ✅ Người dùng xác nhận
+  2026-10-04 tối: màn **có** — `414e3e01cd43401ea7be9217b5cb09f5` (dự án nay 99 màn); timeout không phải thất bại.
 
 #### (4) Thứ tự khối trang Phân tích
 
