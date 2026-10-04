@@ -3607,6 +3607,33 @@ tiền tự do là gì"* → tổng quan; *"ngân sách nhà nước năm nay ba
 là ngày nào"* → hoá đơn. Danh sách đầy đủ: khối *LUẬT định tuyến…* của công cụ huấn luyện. ⚠️ Một số là nhãn của tôi
 còn bàn được (năm câu *"ngân sách X bao nhiêu là đủ / vừa"*).
 
+✅ **SỬA 2026-10-04 (`645a7e3`), người dùng chọn làm sau dự án C việc hai — luật lệch 18 → 0** trên bộ huấn luyện. Bảy
+họ, nguyên tắc *không chắc thì `null`*: **A** *"ngân sách … bao nhiêu là đủ / vừa / hợp lý, nên để, nên là"* → gợi ý hạn mức
+(một danh sách `_tuNenDat` cho cả hai luật) · **B** *đóng / trừ* hết hoá đơn … *còn / dư* → dự báo · **B2** *"nếu tiêu đúng
+ngân sách …"* → dự báo, xét trước khối ngân sách · **C** *"các danh mục thu nhập / chi"* → danh mục (mẫu riêng, loại câu có
+số / kỳ), *"loại thu nhập"* thôi thành tổng quan · **D** câu định nghĩa (*"… là gì"*, *"tính thế nào"*) không thành tổng quan
+— chỉ ở nhánh tổng quan, vì C18 *"khoản chi lớn nhất tháng này là gì"* cũng kết thúc bằng *"là gì"* · **E** câu nhắc **hai**
+trong ngân sách / hoá đơn / mục tiêu và *"ngân sách nhà nước"* → `null` (dự báo *"đủ tiền trả hoá đơn và trích mục tiêu"* vẫn
+xét trước) · **F** hoá đơn loại *lần cuối / lần trước / lần gần nhất* · **G** mẫu dự báo không nhận câu có *"hạn mức"*. So 606
+câu trước / sau: **19 câu đổi đường, cả 19 cố ý** (11 sai → đúng, 7 sai → `null`, 1 `null` → đúng), không câu đúng nào hỏng;
+bảng 72 câu y nguyên; bộ định tuyến học không đẩy câu nào trong số câu nay về `null` (*"lần cuối trả hoá đơn điện"* p = 0,64 <
+0,76); ba câu bộ đo (trích nguyên văn ở trên, không chạy lại công cụ bộ đo) hết sai. Luật bắt 201 → 194 câu.
+
+📊 **Đo Realme 2026-10-04** (CPU, debug `11ae2912…`, chấm theo câu hiện ra): A ✅ *"…chi trung bình mỗi tháng 1.150.000 đ, hạn
+mức hiện tại 500.000 đ"* · B ✅ *"…thiếu tiền cho cam kết 7.831.000 đ"* · C ✅ ba danh mục thu · C2 ✅ mười danh mục chi · E ✅
+mô hình gọi **cả hai** tool (ngân sách + mục tiêu), 42 s · B2 ◐ câu đúng bị **`kiemTen` chặn oan** → ✅ sửa `516d6e8` (dấu phẩy
+ngay sau từ loại bị đọc là "nối thêm một tên", nên *"…ngân sách, bạn sẽ thiếu…"* lấy "bạn" làm tên ngân sách) · **D ✗** `null`
+→ mô hình không gọi tool → bậc 1 trả lời **lạc đề** (số dư ví) — tệ hơn trước sửa · **F ✗** `null` → mô hình **vẫn** chọn tool
+hoá đơn (như trước sửa) · **G ◐** `null` → mô hình chọn gợi ý hạn mức, không nói số còn lại. ⭐ Bài học: đẩy về `null` chỉ có
+lợi cho câu **hai tool** (E); câu một tool mà luật không nhận thì mô hình sáu tool thường chọn sai.
+
+📌 **Người dùng đã chốt, CHƯA LÀM** (dừng theo lời dặn): **D → từ chối lịch sự** như chủ đề ngoài phạm vi (`chuDeBiChan`) —
+⚠️ chỉ câu định nghĩa **không** mang dấu hiệu dữ liệu riêng (*tôi, tháng, tuần, hôm, nhất, khoản, giao dịch, chữ số…*), vì *"khoản
+chi lớn nhất tháng này là gì"* / *"hoá đơn sắp tới của tôi là gì"* là câu số liệu · **G → *"hạn mức"* = *"ngân sách"*** trong
+luật (đổi đường thêm ~13 câu *"hạn mức …"* của bộ huấn luyện đang đi phiên sáu tool — so từng câu, không câu nào được thành
+sai; khi ấy chặn *"hạn mức"* ở mẫu dự báo thành mã chết, bỏ) · **F → để nguyên, ghi lại** (luật không định tuyến sang tool
+giao dịch; thêm lối ấy đổi đường C15 / C20 đã đo).
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có

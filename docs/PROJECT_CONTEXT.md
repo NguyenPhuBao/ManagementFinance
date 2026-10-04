@@ -1179,7 +1179,9 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   `KetQuaCongCu.kyTuongDuong`) — *"Tháng này bạn đã chi…"* cho số của tháng 9 từng được hiện. ⚠️ Lỗi kỳ này chỉ lộ khi
   lịch sang tháng mới: mốc 72 câu đo ngày 28/09, khi *"tháng 9"* còn là *"tháng này"*.
 - 📌 **Việc mở, người dùng chốt làm SAU dự án B:** luật `congCuTheoCauHoi` lệch nhãn — 3/18 câu nó bắt trên bộ đo,
-  18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
+  18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). ✅ **Sửa 2026-10-04** (`645a7e3`, luật lệch 18 → 0; đo Realme
+  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). Còn **họ D và G** người dùng đã chọn
+  hướng mà chưa làm — cuối mục 9.45 `AI_EDGE_FEATURE.md`. Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
   tool để rút tiếp thời gian chờ.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
