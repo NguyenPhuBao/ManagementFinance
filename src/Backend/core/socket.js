@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('./logger');
 const { getAccountValidity, accountRejection } = require('../middleware/auth');
+const { createCorsOriginValidator } = require('../config/cors');
 
 let io = null;
 
@@ -13,7 +14,7 @@ let io = null;
 function initSocket(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: config.cors.origin || true,
+      origin: createCorsOriginValidator(config.cors.origin),
       credentials: true,
       methods: ['GET', 'POST'],
     },

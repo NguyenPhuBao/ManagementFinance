@@ -6,7 +6,7 @@ const defaultSocketUrl =
   import.meta.env.VITE_SOCKET_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
-    : '');
+    : 'https://managementfinance.onrender.com');
 
 /**
  * Custom hook quản lý kết nối Socket.IO tập trung cho Admin-web
@@ -19,7 +19,11 @@ const useSocket = (serverUrl = defaultSocketUrl, options = {}) => {
 
   useEffect(() => {
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    const client = io(serverUrl || '/', {
+    const targetUrl = serverUrl || (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:3000'
+      : 'https://managementfinance.onrender.com');
+
+    const client = io(targetUrl, {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       autoConnect: true,
@@ -53,6 +57,14 @@ const useSocket = (serverUrl = defaultSocketUrl, options = {}) => {
 
     client.on('connect_error', (error) => {
       console.warn('[Socket] Lỗi kết nối Socket.io:', error.message);
+      // Nếu lỗi xác thực, thử cập nhật token mới nhất từ localStorage và thử lại
+      if (error.message && error.message.includes('Authentication error')) {
+        const freshToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+        if (freshToken && client.auth?.token !== freshToken) {
+          client.auth.token = freshToken;
+          setTimeout(() => client.connect(), 2000);
+        }
+      }
     });
 
     setSocket(client);

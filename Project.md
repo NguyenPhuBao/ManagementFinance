@@ -3387,6 +3387,20 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Lưu giữ `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` tại [`docs/superpowers/backend/CAN-LAM/`](docs/superpowers/backend/CAN-LAM/) để Client-app theo dõi quá trình xây dựng và nghiệm thu chức năng trên thiết bị di động.
   - Thư mục `docs/superpowers/backend/CAN-LAM/` ghi nhận 1 mục đang triển khai tại Client-app (Mục 34). Backend hoàn tất 100% trách nhiệm tư vấn & bảo mật.
 
+### 11.63. Khắc Phục Sự Cố Real-time Socket.IO & Nâng Cấp Bộ Chuẩn Hóa CORS Động Cho Vercel/Render (2026-10-04)
+- **1. Bối cảnh & Nguyên nhân gốc rễ:**
+  - Audit Log và các màn hình Admin-web (Dashboard, AIOps, Broadcast) bị kẹt ở trạng thái *"🟡 Đang kết nối..."* do `useSocket.js` thiếu fallback URL khi build trên Vercel, khiến client kết nối về Vercel (`https://management-finance-gamma.vercel.app/socket.io/`) và nhận lại file HTML thay vì handshake socket.
+  - Vercel Serverless không hỗ trợ chuyển tiếp WebSockets qua `rewrites`. Client bắt buộc phải kết nối trực tiếp tới Render (`https://managementfinance.onrender.com`).
+  - Biến môi trường `CORS_ORIGIN` cũ trên Render chỉ cho phép `https://managementfinance-admin.vercel.app`, từ chối domain thực tế `https://management-finance-gamma.vercel.app`.
+- **2. Giải pháp kỹ thuật đã triển khai:**
+  - **Backend (`src/Backend/config/cors.js`):** Xây dựng bộ chuẩn hóa `isOriginAllowed` và `createCorsOriginValidator` tự động nhận diện tất cả các domain Vercel thuộc dự án (`/^https:\/\/(management-finance|managementfinance)[a-z0-9-]*\.vercel\.app$/`), localhost mọi cổng, và danh sách trong `CORS_ORIGIN`. Áp dụng đồng bộ cho cả Express (`app.js`) và Socket.IO (`core/socket.js`).
+  - **Admin-web (`src/Admin-web/src/hooks/useSocket.js`):** Cung cấp fallback URL mặc định an toàn sang `https://managementfinance.onrender.com` khi chạy production; bổ sung cơ chế tự động nạp lại token mới nhất từ `localStorage` và thử lại khi gặp lỗi xác thực `Authentication error`.
+  - **Tài liệu triển khai (`docs/Deploy/CloudDeploy.md`):** Cập nhật hướng dẫn cấu hình biến môi trường Vercel (`VITE_API_BASE_URL`, `VITE_SOCKET_URL`), cập nhật mẫu `CORS_ORIGIN`, và phân tích nguyên nhân hiệu năng của gói Free Render (Cold start 30–50s, 0.1 vCPU, 512MB RAM, double proxy hop).
+- **3. Kiểm chứng & Đo lường:**
+  - Unit test CORS Backend: **6/6 tests PASS 100%** (`tests/unit/cors.test.js`).
+  - Toàn bộ test suite Backend: **220/220 tests PASS 100%**.
+  - Toàn bộ test suite Admin-web: **57/57 tests PASS 100%**.
+
 
 
 
