@@ -210,6 +210,59 @@ void main() {
         returnsNormally);
   });
 
+  // 2026-10-04 (người dùng duyệt): phiên MỘT tool từng nhận nguyên lời 2.679 ký tự
+  // viết cho phiên sáu tool — ¾ là ví dụ của tool giao dịch, cộng hai ví dụ trỏ tool
+  // ngân sách mà phiên ấy không khai ("ví dụ trỏ tới tool không được khai là dạy mô
+  // hình gọi tool bịa").
+  group('heThongCho — lời hệ thống theo phiên', () {
+    const tamToolKhac = [
+      kTenCongCuNganSach,
+      kTenCongCuHoaDon,
+      kTenCongCuVi,
+      kTenCongCuMucTieu,
+      kTenCongCuGoiYHanMuc,
+      kTenCongCuDuBao,
+      kTenCongCuTongQuan,
+      kTenCongCuDanhMuc,
+    ];
+    const moiTenTool = [...tamToolKhac, kTenCongCuTruyVan];
+
+    test('⭐ phiên sáu tool (không định tuyến) nhận ĐÚNG lời cũ — 2.679 ký tự đã đo cổng F', () {
+      expect(heThongCho(null), kPromptHeThongCongCu);
+      expect(kPromptHeThongCongCu.length, 2679,
+          reason: 'lời của phiên sáu tool đã đo trên Realme — đổi nó là phải đo lại cả cổng F');
+    });
+
+    test('⭐ phiên một tool KHÔNG phải giao dịch: chỉ phần chung, không tên tool nào', () {
+      for (final t in tamToolKhac) {
+        final ht = heThongCho(t);
+        for (final luat in ['TRƯỚC', 'chép nguyên', '"loi"', 'gọi lại ngay', 'ngày tháng', 'tiếng Việt']) {
+          expect(ht, contains(luat), reason: '$t thiếu "$luat"');
+        }
+        for (final ten in moiTenTool) {
+          expect(ht, isNot(contains(ten)), reason: '$t nhắc $ten');
+        }
+        expect(ht.length, lessThan(1000), reason: t);
+      }
+    });
+
+    test('⭐ phiên một tool giao dịch: giữ ví dụ giao dịch + điền tham số, BỎ ví dụ tool ngân sách', () {
+      final ht = heThongCho(kTenCongCuTruyVan);
+      for (final vd in ['gop=danh_muc', 'so_voi=ky_truoc', 'ky=tuy_chon', 'Điền tham số', '"loi"']) {
+        expect(ht, contains(vd), reason: vd);
+      }
+      expect(ht, isNot(contains(kTenCongCuNganSach)));
+      expect(ht.length, lessThan(kPromptHeThongCongCu.length));
+    });
+
+    test('mọi lời theo phiên chỉ mang con số giới hạn độ dài', () {
+      for (final t in [null, ...moiTenTool]) {
+        expect(RegExp(r'\d+').allMatches(heThongCho(t)).map((m) => m.group(0)).toList(), ['60'],
+            reason: '$t');
+      }
+    });
+  });
+
   group('kPromptHeThongCongCu (bậc tool, chặng 4b)', () {
     test('bảo gọi công cụ TRƯỚC khi trả lời và chép nguyên chuỗi số', () {
       expect(kPromptHeThongCongCu, contains('công cụ'));

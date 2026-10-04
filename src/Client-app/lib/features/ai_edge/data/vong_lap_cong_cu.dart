@@ -58,7 +58,8 @@ Stream<SuKienGac> hoiBangCongCu(
   required GoiSoTraCuu goi,
   required int idaccount,
   required DateTime now,
-  String heThong = kPromptHeThongCongCu,
+  /// `null` = lời theo phiên ([heThongCho] của tool đích, 2026-10-04).
+  String? heThong,
   int tranGoi = kTranGoiCongCu,
   void Function(String) log = print,
   KetQuaDinhTuyen Function(String cauHoi) dinhTuyen = dinhTuyenCauHoi,
@@ -82,7 +83,8 @@ Stream<SuKienGac> hoiBangCongCu(
   final PhienCongCu phien;
   try {
     phien = await runtime.moPhien(
-      heThong: heThong,
+      // Phiên một tool không nạp ví dụ của tool khác — cùng `tenDich` với khai báo.
+      heThong: heThong ?? heThongCho(tenDich),
       cauHoi: cauHoi,
       congCu: boCongCu.khaiBaoCho(tenDich),
     );

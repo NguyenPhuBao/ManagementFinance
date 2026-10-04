@@ -146,7 +146,32 @@ String promptHoiDap(String cauHoi, List<GoiSo> goi) =>
 /// để đổi tên là test đỏ. Không mang con số nào ngoài giới hạn độ dài — một số ở
 /// đây là một số mô hình có thể chép vào câu mà không gói nào có (ca test canh);
 /// vì thế ngưỡng tiền trong ví dụ viết bằng chữ.
-const String kPromptHeThongCongCu =
+///
+/// ⚠️ Từ 2026-10-04 lời ghép từ năm KHỐI và [heThongCho] chọn theo phiên; ghép
+/// đúng thứ tự cũ nên phiên sáu tool nhận lời y từng ký tự (ca test canh 2.679).
+const String kPromptHeThongCongCu = _khoiChung +
+    _viDuGiaoDichMot +
+    _viDuNganSachDuoiNua +
+    _viDuGiaoDichHai +
+    _viDuNganSachChuaDat +
+    _dienThamSoGiaoDich;
+
+/// Lời hệ thống cho phiên mở theo [tenDich] (2026-10-04, người dùng duyệt):
+/// - `null` — phiên sáu tool (câu không định tuyến): [kPromptHeThongCongCu],
+///   nguyên lời đã đo cổng F.
+/// - tool giao dịch — phần chung + ví dụ và luật điền tham số của chính nó; BỎ
+///   hai ví dụ tool ngân sách: phiên ấy không khai tool ngân sách, và ví dụ trỏ
+///   tới tool không được khai là dạy mô hình gọi tool bịa.
+/// - tám tool còn lại — chỉ phần chung: mọi ví dụ trong lời cũ thuộc tool khác,
+///   và tham số của chúng bộ chỉnh đã sửa theo câu hỏi.
+String heThongCho(String? tenDich) => switch (tenDich) {
+      null => kPromptHeThongCongCu,
+      kTenCongCuTruyVan =>
+        _khoiChung + _viDuGiaoDichMot + _viDuGiaoDichHai + _dienThamSoGiaoDich,
+      _ => _khoiChung.trimRight(),
+    };
+
+const String _khoiChung =
     'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Bạn KHÔNG có sẵn số liệu nào '
     'của người dùng: muốn biết bất kỳ con số hay tên nào (ngân sách, hoá đơn, ví, '
     'chi tiêu, mục tiêu, gợi ý hạn mức, từng giao dịch), hãy gọi công cụ phù hợp '
@@ -154,7 +179,9 @@ const String kPromptHeThongCongCu =
     'lời ấy, chưa trả lời. Khi trả lời: chỉ dùng tên và số mà công cụ trả về, chép '
     'nguyên chuỗi số và ngày tháng (kể cả "đ", dấu phẩy và dấu gạch chéo), nêu tên '
     'đối tượng trước con số, không tự tính toán hay suy đoán. Công cụ báo không có '
-    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. '
+    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. ';
+
+const String _viDuGiaoDichMot =
     'Ví dụ chọn công cụ: "tháng này tôi tiêu gì trên nửa triệu", "các khoản chi hơn '
     'một số tiền trong quý này", "liệt kê các khoản chi từ một số tiền đến một số '
     'tiền" → $kTenCongCuTruyVan với ky, chieu=khoan_chi, so_tien_tu hoặc so_tien_den '
@@ -167,18 +194,26 @@ const String kPromptHeThongCongCu =
     '$kTenCongCuTruyVan với ky. "tháng này chi nhiều nhất vào danh mục nào" → '
     '$kTenCongCuTruyVan với gop=danh_muc, chon=nhieu_nhat. "danh mục nào tôi ít tiêu '
     'nhất" → gop=danh_muc, chon=it_nhat. "tôi đã cho vay bao nhiêu và thu về bao nhiêu" '
-    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. "ngân sách nào chưa dùng đến nửa" '
-    '→ $kTenCongCuNganSach với chon=duoi_nua. '
+    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. ';
+
+const String _viDuNganSachDuoiNua =
+    '"ngân sách nào chưa dùng đến nửa" → $kTenCongCuNganSach với chon=duoi_nua. ';
+
+const String _viDuGiaoDichHai =
     // Lát 1 spec mở rộng tool (2026-09-27). Không nêu tháng bằng chữ số: số trong
     // lời hệ thống là số mô hình có thể chép vào câu.
     '"một tháng, quý, năm cụ thể tôi chi bao nhiêu", "từ ngày này đến ngày kia tôi '
     'chi những gì" → $kTenCongCuTruyVan với ky=tuy_chon, tu_ngay và den_ngay. "tháng '
     'này chi nhiều hơn hay ít hơn tháng trước" → $kTenCongCuTruyVan với ky=thang_nay, '
-    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "danh '
-    'mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. '
-    // ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
-    // phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
-    // không được khai là dạy mô hình gọi tool bịa.
+    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. ';
+
+const String _viDuNganSachChuaDat =
+    '"danh mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. ';
+
+// ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
+// phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
+// không được khai là dạy mô hình gọi tool bịa.
+const String _dienThamSoGiaoDich =
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '

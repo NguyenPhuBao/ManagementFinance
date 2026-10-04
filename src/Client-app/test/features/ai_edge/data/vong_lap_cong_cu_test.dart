@@ -18,6 +18,7 @@ import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/loi_tham_so.dart';
+import 'package:flowmoney/features/ai_edge/domain/slm_prompt.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RuntimeGia implements SlmRuntime {
@@ -226,6 +227,26 @@ void main() {
 
       expect(await khaiBaoCua('tra het hoa don thi con bao nhieu'), [kTenCongCuDuBao]);
       expect(await khaiBaoCua(_cauKhongDinhTuyen), [kTenCongCuHoaDon]);
+    });
+
+    // 2026-10-04: lời hệ thống đi theo phiên — phiên một tool không nạp ví dụ của tool
+    // khác; phiên sáu tool giữ đúng lời đã đo.
+    test('⭐ lời hệ thống theo đích: câu định tuyến → heThongCho(đích); câu không định tuyến → lời cũ', () async {
+      Future<String?> heThongCua(String cauHoi) async {
+        toolDuBao = _CongCuGia(kTenCongCuDuBao, duBao());
+        final rt = _RuntimeGia(PhienCongCuGia([
+          [const Chu('x')],
+        ]));
+        await hoiBangCongCu(cauHoi,
+            runtime: rt, boCongCu: BoCongCu([tool, toolDuBao]), goi: GoiSoTraCuu(),
+            idaccount: 10, now: now, log: log.add, dinhTuyen: dinhTuyenChiLuat).toList();
+        return rt.heThongDaNhan;
+      }
+
+      expect(await heThongCua('tra het hoa don thi con bao nhieu'), heThongCho(kTenCongCuDuBao));
+      expect(heThongCho(kTenCongCuDuBao), isNot(kPromptHeThongCongCu),
+          reason: 'tiền đề: hai lời phải khác nhau thì ca trên mới canh được gì');
+      expect(await heThongCua(_cauKhongDinhTuyen), kPromptHeThongCongCu);
     });
 
     test('mô hình gọi đúng tool dự báo → chạy bình thường, không log định tuyến', () async {
