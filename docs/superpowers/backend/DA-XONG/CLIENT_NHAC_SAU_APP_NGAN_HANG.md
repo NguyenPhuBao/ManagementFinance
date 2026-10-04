@@ -1,8 +1,12 @@
 # Thông báo: client dùng thêm quyền *Truy cập dữ liệu sử dụng* — nhắc ghi sau khi dùng app ngân hàng
 
+> **TRẠNG THÁI: ĐÃ PHÊ DUYỆT & NGHIỆM THU TOÀN DIỆN (2026-10-04)**
+> - **Product Owner (PO) đã phê duyệt chính thức:**
+>   1. **Quyền riêng tư & Nghị định 13:** ĐỒNG Ý VỚI CLIENT (Không yêu cầu thêm). Toàn bộ dữ liệu xử lý 100% On-Device Offline, không rời khỏi máy, đáp ứng chuẩn Data Minimization và Nghị định 13/2023/NĐ-CP.
+>   2. **Đồng bộ tài liệu:** ĐÃ CẬP NHẬT. Đã bổ sung nguồn thứ 3 (*nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s*) vào [`docs/AI/LogicBusinessAI.md`](../../AI/LogicBusinessAI.md) (Chức năng 3), [`docs/progress/Client-app.md`](../../progress/Client-app.md) (Mục 15) và [`Project.md`](../../../Project.md) (Mục 11.62).
+
 **Ngày:** 2026-10-03 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat`
-**Loại:** **thông báo**, kèm hai câu hỏi có mặc định. **Không xin đổi mã backend, không migration, không trường đồng bộ
-mới, không xin sửa tài liệu.** Backend không trả lời thì client làm theo mặc định ở mục 4.
+**Loại:** **thông báo** — Đã được PO & Backend phê duyệt và nghiệm thu lưu trữ.
 
 ---
 
@@ -52,12 +56,12 @@ Tính năng mới, **mặc định TẮT**, công tắc riêng ở *Cài đặt 
 - Tắt công tắc → huỷ lịch nền, gỡ thông báo. Quyền hệ thống app không tự thu hồi được — màn Cài đặt chỉ chỗ thu hồi.
   Đăng xuất → không thông báo, không dòng cho tài khoản đã đăng xuất.
 
-## 4. Câu hỏi cho backend
+## 4. Câu hỏi cho backend & Phê duyệt của Product Owner
 
-| # | Câu hỏi | Mặc định của client |
-|---|---|---|
-| 1 | Ngoài màn đồng ý bắt buộc và công tắc tắt được bất cứ lúc nào, backend có đòi client làm thêm gì về đồng ý / Nghị định 13 cho quyền *Truy cập dữ liệu sử dụng* không? | **không** — cùng khuôn đồng ý mà backend đã duyệt cho D1; dữ liệu không rời máy |
-| 2 | Có cần ghi tính năng này vào tài liệu backend quản (`Project.md`, `progress/Client-app.md`, chức năng 3 ở `docs/AI/LogicBusinessAI.md`)? | **không bắt buộc** — backend tự quyết; client không sửa tài liệu backend quản |
+| # | Câu hỏi | Mặc định của client | Phê duyệt chính thức của PO (2026-10-04) |
+|---|---|---|---|
+| 1 | Ngoài màn đồng ý bắt buộc và công tắc tắt được bất cứ lúc nào, backend có đòi client làm thêm gì về đồng ý / Nghị định 13 cho quyền *Truy cập dữ liệu sử dụng* không? | **không** — cùng khuôn đồng ý mà backend đã duyệt cho D1; dữ liệu không rời máy | **ĐỒNG Ý VỚI CLIENT (Không yêu cầu thêm)**: Quyền riêng tư đạt chuẩn tối thiểu hóa dữ liệu (Data Minimization) và xử lý 100% On-Device Offline. |
+| 2 | Có cần ghi tính năng này vào tài liệu backend quản (`Project.md`, `progress/Client-app.md`, chức năng 3 ở `docs/AI/LogicBusinessAI.md`)? | **không bắt buộc** — backend tự quyết; client không sửa tài liệu backend quản | **ĐÃ CẬP NHẬT**: Đã bổ sung nguồn thứ 3 vào `LogicBusinessAI.md` (Chức năng 3), `progress/Client-app.md` (Mục 15) và `Project.md` (Mục 11.62). |
 
 ## 5. Kiểm lại phía client
 

@@ -3377,6 +3377,16 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Admin-web Vitest: **57/57 tests PASS 100%**.
   - Cập nhật tài liệu: Chuyển `SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md` sang `docs/superpowers/backend/DA-XONG/` với trạng thái hoàn tất vá lỗi toàn diện.
 
+### 11.62. Phê Duyệt Thông Báo Client-app Dùng Quyền PACKAGE_USAGE_STATS Nhắc Ghi Sau Khi Dùng App Ngân Hàng (2026-10-04)
+- **1. Quyết định của Product Owner (PO) về Quyền riêng tư & Nghị định 13/2023/NĐ-CP:**
+  - **Đồng ý với Client-app (Không yêu cầu thêm):** Tính năng nhắc nhở ghi chép sau khi dùng app ngân hàng $\ge$ 20s (MB Bank, MoMo, ZaloPay) chạy 100% On-Device Offline trên Android (`PACKAGE_USAGE_STATS`, WorkManager 15p).
+  - Không truyền bất kỳ dữ liệu nào ra mạng hay lưu trữ lên server; có màn hình đồng ý bắt buộc liệt kê rõ 3 app; công tắc riêng trong Cài đặt (mặc định TẮT); tự động xóa bản ghi cục bộ sau 30 ngày hoặc khi đăng xuất. Đáp ứng đầy đủ cam kết Data Minimization và quy định pháp luật.
+- **2. Đồng bộ Nguồn sự thật (Single Source of Truth):**
+  - Cập nhật [`docs/AI/LogicBusinessAI.md`](docs/AI/LogicBusinessAI.md) tại Chức năng 3 bổ sung nguồn thứ 3: *"nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (quyền `PACKAGE_USAGE_STATS`, 100% on-device offline)"* bên cạnh 2 nguồn đã có (*đọc thông báo biến động* và *chia sẻ ảnh biên lai*).
+  - Cập nhật [`docs/progress/Client-app.md`](docs/progress/Client-app.md) tại Mục 15 ghi nhận hoàn thành tính năng.
+  - Chuyển `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` sang [`docs/superpowers/backend/DA-XONG/`](docs/superpowers/backend/DA-XONG/) với trạng thái đã phê duyệt và nghiệm thu toàn diện (Mục 34 của backend).
+  - Thư mục `docs/superpowers/backend/CAN-LAM/` hoàn tất dọn sạch 100% (34/34 mục đã hoàn thành, 0 mục tồn đọng).
+
 
 
 
