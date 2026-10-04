@@ -152,11 +152,15 @@ class FeatureCollector {
               const ipStat = this._ipStats.get(clientIp);
               if (ipStat) {
                 ipStat.failedLogins += 1;
+                if (req.body && (req.body.username || req.body.email || req.body.identifier)) {
+                  ipStat.targetAccount = String(req.body.username || req.body.email || req.body.identifier).trim().slice(0, 100);
+                  ipStat.username = ipStat.targetAccount;
+                }
                 // Heuristic 3: Phát hiện tấn công dò mật khẩu (Brute-force) từ 1 IP (nới rộng lên >= 15 lần để tránh người dùng gõ nhầm)
                 if (ipStat.failedLogins >= 15 && !req.isAdmin) {
                   defaultAIOpsQuarantine.quarantine(
                     clientIp,
-                    `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai)`,
+                    `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai${ipStat.targetAccount ? ` - Mục tiêu: ${ipStat.targetAccount}` : ''})`,
                     15 * 60 * 1000
                   );
                 }
@@ -293,7 +297,8 @@ class FeatureCollector {
           maskedIp: this._maskIp(ip),
           ipHash: this._hashIp(ip),
           userId: ipStat.userId || null,
-          username: ipStat.username || (ipStat.userId ? `User #${ipStat.userId}` : 'Khách vãng lai (Ẩn danh)'),
+          username: ipStat.username || ipStat.targetAccount || (ipStat.userId ? `User #${ipStat.userId}` : 'Chưa đăng nhập / Guest'),
+          targetAccount: ipStat.targetAccount || null,
           userAgent: ipStat.userAgent || 'Unknown Client',
           targetEndpoint: ipStat.targetEndpoint || '/',
           failedLogins: ipStat.failedLogins || 0,

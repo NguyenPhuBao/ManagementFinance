@@ -23,7 +23,13 @@ test('AIOps Service Suite', async (t) => {
     collector._getRamPercent = () => 50;
     collector._getCpuPercent = () => 10;
     const detector = new AnomalyDetector();
-    const service = new AIOpsService({ collector, detector, maxHistory: 3 });
+    const mockRepo = {
+      upsertIncident: async (anomaly) => ({ id: 'mock_inc', ...anomaly }),
+      autoMitigateStaleIncidents: async () => [],
+      getSetting: async () => null,
+      setSetting: async () => true,
+    };
+    const service = new AIOpsService({ collector, detector, maxHistory: 3, repository: mockRepo });
 
     // Tick 1
     const res1 = await service.tick();
@@ -59,7 +65,13 @@ test('AIOps Service Suite', async (t) => {
       },
     };
 
-    const service = new AIOpsService({ collector, detector, io: mockIo });
+    const mockRepo = {
+      upsertIncident: async (anomaly) => ({ id: 'mock_inc', ...anomaly }),
+      autoMitigateStaleIncidents: async () => [],
+      getSetting: async () => null,
+      setSetting: async () => true,
+    };
+    const service = new AIOpsService({ collector, detector, io: mockIo, repository: mockRepo });
 
     // Simulate brute-force attack (relaxed threshold >= 25)
     for (let i = 0; i < 30; i++) {

@@ -344,7 +344,16 @@ const adminRepository = {
           reason: true,
           time_req: true,
           time_res: true,
-          account: { select: { username: true } },
+          account: {
+            select: {
+              username: true,
+              refreshtoken: {
+                select: { ip_address: true },
+                orderBy: { create_at: 'desc' },
+                take: 1,
+              },
+            },
+          },
         },
       }),
       prisma.auditlog.count({ where }),
@@ -354,6 +363,7 @@ const adminRepository = {
         id: l.idlog,
         idaccount: l.idaccount,
         username: l.account?.username || null,
+        ip: l.account?.refreshtoken?.[0]?.ip_address || '127.0.0.1',
         request: l.request,
         req_status: l.req_status,
         reason: l.reason,

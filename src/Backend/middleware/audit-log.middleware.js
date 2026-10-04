@@ -94,6 +94,7 @@ function auditLogMiddleware(req, res, next) {
             time_req,
             time_res,
             userDetails,
+            ip: clientIp,
           });
         } catch (err) {
           logger.error('[AuditLog] Error saving log', { error: err.message, path });

@@ -167,6 +167,18 @@ const AIOpsPage = () => {
     }
   };
 
+  // Làm mới thủ công toàn bộ dữ liệu AIOps Sentinel (Header Refresh Button)
+  const handleManualRefresh = async () => {
+    try {
+      await fetchAIOpsData();
+      await fetchIncidents(1);
+      setFeedback({ ok: true, msg: 'Đã làm mới dữ liệu AIOps Sentinel thành công!' });
+    } catch (err) {
+      console.error('[AIOpsPage] Error refreshing data:', err);
+      setFeedback({ ok: false, msg: 'Không thể làm mới dữ liệu AIOps Sentinel.' });
+    }
+  };
+
   // Lấy dữ liệu lịch sử xu hướng theo bộ lọc (Ưu tiên bộ lọc chính xác nếu cả 2 được áp dụng)
   const fetchHistoryFiltered = async (options = {}) => {
     try {
@@ -950,7 +962,7 @@ const AIOpsPage = () => {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
-            onClick={fetchAIOpsData}
+            onClick={handleManualRefresh}
             disabled={loading}
             className="px-3.5 py-2 bg-white hover:bg-gray-50 border border-outline-variant text-on-surface text-xs font-semibold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
           >
@@ -2845,18 +2857,20 @@ const AIOpsPage = () => {
                         )}
                       </td>
 
-                      {/* Cột 2: Đối tượng vi phạm (Actor Identity) */}
+                      {/* Cột 2: Đối tượng vi phạm (Actor Identity & Account) */}
                       <td className="py-3 px-3 align-top space-y-1">
-                        <div className="flex items-center gap-1.5">
+                        {/* IP Đối tượng vi phạm */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="material-symbols-outlined text-[15px] text-slate-500">
-                            {userId ? 'account_circle' : 'router'}
+                            router
                           </span>
-                          <span className="font-mono font-bold text-slate-800 text-xs">
-                            {actorIdentity}
+                          <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            <span className="text-slate-400 font-normal mr-1">IP:</span>
+                            <span>{actorIdentity}</span>
                           </span>
                           {actorHash && (
                             <span
-                              className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200"
+                              className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-50 text-slate-500 border border-slate-200"
                               title={`SHA-256 IP Hash: ${actorHash}`}
                             >
                               #{actorHash.slice(0, 8)}
@@ -2864,12 +2878,18 @@ const AIOpsPage = () => {
                           )}
                         </div>
 
-                        {(username || userId) && (
-                          <div className="text-[10px] font-semibold text-primary flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]">badge</span>
-                            <span>{username ? `User: ${username}` : `UID: #${userId}`}</span>
-                          </div>
-                        )}
+                        {/* Tên tài khoản vi phạm đi kèm */}
+                        <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px] text-primary">
+                            account_circle
+                          </span>
+                          <span>
+                            TK:{' '}
+                            <span className="text-primary font-bold">
+                              {username || (userId ? `UID #${userId}` : 'Khách vãng lai / Ẩn danh')}
+                            </span>
+                          </span>
+                        </div>
 
                         {endpoint && (
                           <div

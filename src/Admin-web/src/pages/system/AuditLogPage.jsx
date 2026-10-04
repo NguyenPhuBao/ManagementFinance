@@ -83,9 +83,10 @@ const AuditLogPage = () => {
           time_req: data.time_req || new Date().toISOString(),
           time_res: data.time_res || new Date().toISOString(),
           account: {
-            username: data.user || 'Người dùng',
+            username: data.username || data.user || 'Người dùng',
             User: { fullname: data.user || null },
           },
+          ip: data.ip || '127.0.0.1',
         };
         setLogs((prev) => {
           const filtered = prev.filter((item) => item.idlog !== newLog.idlog);
@@ -260,8 +261,18 @@ const AuditLogPage = () => {
                     <tr key={displayId} className="hover:bg-surface-container-lowest transition-colors">
                       <td className="py-3 px-4 text-on-surface-variant font-mono font-medium">#{displayId}</td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-on-surface">{log.username || log.account?.username || '—'}</div>
-                        <div className="text-[11px] text-on-surface-variant">UID: {log.idaccount}</div>
+                        <div className="font-semibold text-on-surface flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[15px] text-slate-400">account_circle</span>
+                          <span>{log.username || log.account?.username || '—'}</span>
+                        </div>
+                        <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5 font-mono">
+                          <span>UID: {log.idaccount}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200" title="Địa chỉ IP truy cập">
+                            <span className="material-symbols-outlined text-[11px] text-slate-400">router</span>
+                            <span>{log.ip || log.ip_address || '127.0.0.1'}</span>
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-on-surface max-w-[240px] truncate font-medium" title={log.request}>
                         {log.request}

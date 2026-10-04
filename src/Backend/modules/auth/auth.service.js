@@ -874,6 +874,8 @@ const authService = {
         id: log.idlog,
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
+        username: data.userDetails?.username || null,
+        ip: data.ip || '127.0.0.1',
         action: data.request,
         reason: data.reason || null,
         status: reqStatus,
