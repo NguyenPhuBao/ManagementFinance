@@ -1187,8 +1187,10 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   lạc đề 45 s); *"hạn mức"* đọc như *"ngân sách"* (`_coNganSach`, trừ thẻ tín dụng) — 11 câu bộ huấn luyện `null` → đúng,
   không câu nào khác đổi đường. Đo Realme 5 câu: D ✅ · D2 (câu số liệu *"là gì"*) ✅ lọt · G ✅ · G2 ◐ · B2 ✅. ✅ **G2 sửa cùng tối** (`4064b8a`):
   *"sắp hết"* = ngưỡng cảnh báo riêng `isNearLimit` (cùng luật thông báo *Sắp vượt*) + đã vượt, mã nội bộ `kChonSapHet`
-  (không vào enum gửi mô hình); đo lại Realme G2 và A3 ✅ *"…chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức"*. Còn một
-  ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một tool để rút tiếp thời gian chờ.
+  (không vào enum gửi mô hình); đo lại Realme G2 và A3 ✅ *"…chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức"*. ✅ **Lời hệ
+  thống theo phiên** cùng tối (người dùng duyệt): `heThongCho(tenDich)` — phiên sáu tool giữ đúng 2.679 ký tự, phiên giao
+  dịch 2.529 (bỏ hai ví dụ tool ngân sách không được khai), tám phiên còn lại 618 (chỉ phần chung). A/B Realme 9 câu: tổng chờ
+  TB **19,3 → 13,3 s**, tám câu theo luật −5,3 → −8,5 s mỗi câu, nội dung 9/9 giữ hoặc tốt hơn (cuối mục 9.45).
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
 Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`

@@ -3668,6 +3668,37 @@ chỉ mẫu câu (khuôn H3 của `can_doi`). ⚠️ Bản đầu viết *"…s�
 *han muc nao sap het* và A3 *ngan sach nao sap het* → ✅ *"Tổng còn lại: 1.840.000 đ; Số ngân sách: 4 — chưa ngân sách nào
 sắp hết, cũng chưa vượt hạn mức."*, 19–23 s.
 
+✅ **Lời hệ thống THEO PHIÊN (2026-10-04 tối, người dùng duyệt thiết kế ngắn trong chat)**: phiên MỘT tool (câu đã định
+tuyến) từng nhận nguyên `kPromptHeThongCongCu` 2.679 ký tự viết cho phiên sáu tool — ¾ là ví dụ / luật điền tham số của tool
+**giao dịch**, cộng hai ví dụ trỏ tool **ngân sách** mà phiên một tool giao dịch **không khai** (đúng điều chú thích của chính
+lời ấy cấm: *ví dụ trỏ tới tool không được khai là dạy mô hình gọi tool bịa*). Nay lời ghép từ năm khối và **`heThongCho(tenDich)`**
+(`slm_prompt.dart`) chọn theo phiên — cùng `tenDich` với `BoCongCu.khaiBaoCho`:
+- `null` (phiên sáu tool) → `kPromptHeThongCongCu` **y từng ký tự** (năm khối ghép đúng thứ tự cũ; ca test canh độ dài 2.679 —
+  đổi nó là phải đo lại cổng F);
+- tool giao dịch → phần chung + ví dụ giao dịch + luật điền tham số, **bỏ** hai ví dụ tool ngân sách: **2.529** ký tự;
+- tám tool còn lại → **chỉ phần chung** (vai trò, gọi tool trước, gọi lại khi `loi`, chép nguyên số và ngày, nêu tên trước
+  số, không tự tính, không có thì nói không có, tiếng Việt dưới 60 từ): **618** ký tự — tham số của chúng bộ chỉnh đã sửa theo
+  câu hỏi.
+
+`hoiBangCongCu(heThong:)` nay `String?`, `null` = theo phiên. 📊 **A/B trên Realme** (CPU, cùng 9 câu, cùng dữ liệu; trước =
+debug `96da31b8…`, sau = `e7d9be66…`):
+
+| Câu | Đường | Lượt sinh đầu | Tổng | Nội dung |
+|---|---|---|---|---|
+| *Con bao nhieu tien ngan sach thang nay?* | luật → ngân sách | 13,9 → 8,6 s | 22,0 → 16,7 s | = (*tổng còn lại 1.840.000 đ*) |
+| *Hoa don nao qua han?* | luật → hoá đơn | 13,4 → 5,9 s | 21,2 → 12,8 s | = (*Kiem và di h0c đã quá hạn*; bản trước kèm thêm tổng còn phải trả) |
+| *Vi nao dang am?* | luật → ví | 10,4 → 3,6 s | 16,2 → 10,9 s | ↑ nay kèm số dư từng ví |
+| *Muc tieu nao dang cham ke hoach?* | luật → mục tiêu | 12,6 → 6,6 s | 17,2 → 11,1 s | = (mẫu câu L2c, cả hai mục tiêu đúng kế hoạch) |
+| *ngan sach an uong bao nhieu la vua* | luật → gợi ý hạn mức | 11,4 → 4,4 s | 17,8 → 10,8 s | = |
+| *dong het hoa don thi toi con bao nhieu* | luật → dự báo | 10,7 → 3,8 s | 18,6 → 11,3 s | = (*thiếu 7.831.000 đ*) |
+| *thu nhap thang nay cua toi la bao nhieu* | luật → tổng quan | 12,0 → 5,2 s | 16,8 → 10,1 s | = |
+| *cac danh muc thu nhap cua toi* | luật → danh mục | 11,3 → 4,6 s | 16,5 → 9,6 s | ↑ thôi xưng *"Tôi có…"* |
+| *khoan chi lon nhat thang nay la gi* | mô hình → giao dịch | 21,8 → 20,4 s | 27,7 → 26,2 s | = |
+
+Trung bình: lượt sinh đầu **13,1 → 7,0 s**, tổng **19,3 → 13,3 s (−6,1 s)**; tám câu theo luật **−5,3 → −8,5 s** mỗi câu. Mở
+phiên không đổi (~2,9 s). Nội dung 9/9 giữ hoặc tốt hơn, không câu nào tụt. Câu giao dịch chỉ bớt 150 ký tự nên chỉ −1,5 s — chỗ
+đáng làm tiếp cho nó là **đường nhanh** (spec chờ đọc lại), không phải cắt thêm lời.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
