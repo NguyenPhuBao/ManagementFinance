@@ -1,13 +1,12 @@
 /// Các kỳ gần nhất của một ngân sách — nguồn cho biểu đồ lịch sử.
 ///
-/// Đi lại **đúng** phép cắt kỳ của `BudgetEntity.currentPeriod` (cùng mốc neo,
-/// cùng `advancePeriodFrom`, cùng cách cắt ở ngày hết hạn) thay vì tự tính:
+/// Đi lại **đúng** phép cắt kỳ của `BudgetEntity.currentPeriod` (cùng lưới
+/// `BudgetEntity.mocKy`, cùng cách cắt ở ngày hết hạn) thay vì tự tính:
 /// hai cách cắt lệch nhau một ngày là có giao dịch bị đếm hai lần hoặc không
 /// lần nào, và không có exception nào báo.
 library;
 
 import '../data/models/budget_entity.dart';
-import '../data/models/budget_period.dart';
 
 typedef BudgetPeriod = ({DateTime from, DateTime to});
 
@@ -43,18 +42,15 @@ List<BudgetPeriod> recentPeriods(
   if (count <= 0 || now.isBefore(b.startDate)) return const [];
 
   final current = b.currentPeriod(now);
-  final cycle = b.timeRecurrence;
-
   // "Ngày cụ thể" là một kỳ duy nhất — không có kỳ trước để liệt kê.
-  if (cycle == null && b.endDate != null) return [current];
+  if (b.timeRecurrence == null && b.endDate != null) return [current];
 
-  final anchor = b.periodAnchor;
   final until = b.expiresAt;
   final periods = <BudgetPeriod>[];
 
   var steps = 0;
   var from = b.startDate;
-  var to = anchor;
+  var to = b.mocKy(0);
   while (steps < 1000) {
     // Ngày hết hạn cắt ngắn kỳ cuối, y như `currentPeriod`.
     final end = until != null && until.isBefore(to) ? until : to;
@@ -62,11 +58,7 @@ List<BudgetPeriod> recentPeriods(
     if (!current.from.isAfter(from)) break;
     steps++;
     from = to;
-    to = advancePeriodFrom(
-      anchor: anchor,
-      steps: steps,
-      timeRecurrence: cycle ?? BudgetRecurrence.month,
-    );
+    to = b.mocKy(steps);
   }
 
   if (periods.length <= count) return periods;

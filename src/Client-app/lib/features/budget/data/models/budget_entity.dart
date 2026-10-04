@@ -193,32 +193,50 @@ class BudgetEntity {
 
   // ── Chu kỳ và hạn dùng ──────────────────────────────────────────────────────
 
-  /// Mốc gốc để nhảy chu kỳ: cuối kỳ đầu tiên.
+  /// Mốc thứ [s] trên **lưới kỳ** của ngân sách — định nghĩa DUY NHẤT của "kỳ
+  /// nhảy tới đâu", cho [currentPeriod], `recentPeriods` và [expiresAt].
   ///
-  /// Bình thường là đúng một chu kỳ kể từ ngày bắt đầu. Hàng kéo về từ backend
-  /// có thể mang sẵn [nextTimeRecurrence] khác, khi đó nó được tôn trọng.
+  /// Kỳ đầu là `[startDate, mocKy(0))`; kỳ thứ s (s ≥ 1) là
+  /// `[mocKy(s − 1), mocKy(s))`. `mocKy(0)` là cuối kỳ đầu; s âm đi lùi về
+  /// TRƯỚC ngày bắt đầu trên cùng lưới.
+  ///
+  /// ⚠️ Mọi mốc nhảy từ **[startDate]** (`s + 1` chu kỳ), không từ `mocKy(0)`:
+  /// mốc ấy có thể đã bị **kẹp** — 31/01 + 1 tháng = 28/02 — và nhảy tiếp từ
+  /// nó thì lưới dính hẳn ở ngày 28 (28/03, 28/04…), ba ngày cuối của mọi
+  /// tháng rơi sang kỳ sau, im lặng (G66). Nhảy từ ngày gốc thì tháng ngắn kẹp
+  /// về ngày cuối còn tháng sau quay lại ngày 31 — xem `advancePeriodFrom`.
+  ///
+  /// Hàng kéo về từ backend hoặc Admin-web có thể mang sẵn
+  /// [nextTimeRecurrence]; khi có, lưới neo vào nó (`mocKy(0)` là chính nó).
+  /// Nếu chính mốc ấy đã bị kẹp thì lưới vẫn dính — không còn biết ngày gốc.
   ///
   /// Không có chu kỳ ("Ngày cụ thể") thì cả vòng đời là **một kỳ duy nhất**,
-  /// đóng ở [endDate].
+  /// đóng ở [endDate]: mọi mốc đều là ngày ấy, nên không có kỳ thứ hai.
   ///
   /// Thiếu **cả hai** thì rơi về chu kỳ tháng, tức giá trị mặc định của cột
   /// trước v12. Đó là dữ liệu vô nghĩa mà form không tạo ra được — "Ngày cụ
   /// thể" bắt buộc có ngày kết thúc — nhưng hàng cũ ghi thẳng vào SQLite hoặc
   /// kéo về từ một backend chưa cập nhật thì có. Trả kỳ rỗng ở đây là để số
   /// "đã chi" đứng im ở 0 vĩnh viễn, không exception, không log.
-  DateTime get _anchor {
+  DateTime mocKy(int s) {
     final cycle = timeRecurrence;
     if (cycle == null) {
       final het = endDate;
       if (het != null) return het;
-      return advancePeriod(startDate, BudgetRecurrence.month);
+    } else {
+      final neo = nextTimeRecurrence;
+      if (neo != null) {
+        return s == 0
+            ? neo
+            : advancePeriodFrom(anchor: neo, steps: s, timeRecurrence: cycle);
+      }
     }
-    return nextTimeRecurrence ?? advancePeriod(startDate, cycle);
+    return advancePeriodFrom(
+      anchor: startDate,
+      steps: s + 1,
+      timeRecurrence: cycle ?? BudgetRecurrence.month,
+    );
   }
-
-  /// Mốc neo chu kỳ, công khai cho `recentPeriods` đi lại đúng phép cắt kỳ
-  /// của [currentPeriod]. Đọc tài liệu ở [_anchor].
-  DateTime get periodAnchor => _anchor;
 
   /// Thời khắc ngân sách ngừng theo dõi, hoặc null nếu chạy mãi.
   ///
@@ -227,7 +245,7 @@ class BudgetEntity {
   /// thắng. Bật lặp lại mà không đặt ngày kết thúc thì không bao giờ hết hạn,
   /// và đó là cấu hình mặc định của mọi ngân sách hiện có.
   DateTime? get expiresAt {
-    final byCycle = recurrence ? null : _anchor;
+    final byCycle = recurrence ? null : mocKy(0);
     final byDate = endDate;
     if (byDate == null) return byCycle;
     if (byCycle == null) return byDate;
@@ -244,9 +262,8 @@ class BudgetEntity {
 
   /// Khoảng thời gian dùng để cộng các khoản chi.
   ///
-  /// Kỳ đầu chạy từ [startDate] tới [_anchor]; các kỳ sau nhảy từ chính mốc đó.
-  /// Nhảy dồn từ kết quả đã kẹp sẽ làm ngân sách bắt đầu ngày 31 tụt dần về
-  /// ngày 28 và không bao giờ quay lại — xem `advancePeriodFrom`.
+  /// Kỳ đầu chạy từ [startDate] tới `mocKy(0)`; các kỳ sau đi đúng lưới
+  /// [mocKy] — đọc vì sao lưới không được nhảy từ mốc đã kẹp ở đó (G66).
   ///
   /// Ngân sách **đã hết hạn** chốt ở kỳ cuối thay vì trôi tiếp theo đồng hồ:
   /// nếu không, số "đã chi" của một ngân sách chết vẫn tăng mỗi khi người dùng
@@ -264,27 +281,20 @@ class BudgetEntity {
       if (moment.isBefore(startDate)) moment = startDate;
     }
 
-    final anchor = _anchor;
-    final cycle = timeRecurrence;
     var from = startDate;
-    var to = anchor;
+    var to = mocKy(0);
 
     // Không có chu kỳ thì không có kỳ thứ hai để nhảy sang — trả luôn kỳ duy
-    // nhất. Bỏ nhánh này thì vòng dưới gọi `advancePeriodFrom` với một chu kỳ
-    // null và rơi vào nhánh mặc định (tháng), tức tự bịa ra chu kỳ tháng cho
-    // một ngân sách người dùng cố ý đặt là "Ngày cụ thể".
-    if (cycle != null || endDate == null) {
+    // nhất. Bỏ nhánh này thì vòng dưới quét lưới của một ngân sách người dùng
+    // cố ý đặt là "Ngày cụ thể", thứ không có lưới nào.
+    if (timeRecurrence != null || endDate == null) {
       // Chặn trên 1000 vòng: dữ liệu hỏng (ví dụ ngày bắt đầu năm 1970 kèm chu
       // kỳ tuần) không được treo giao diện.
       var steps = 0;
       while (!moment.isBefore(to) && steps < 1000) {
         steps++;
         from = to;
-        to = advancePeriodFrom(
-          anchor: anchor,
-          steps: steps,
-          timeRecurrence: cycle ?? BudgetRecurrence.month,
-        );
+        to = mocKy(steps);
       }
     }
 

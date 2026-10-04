@@ -54,7 +54,7 @@ void main() {
     );
   });
 
-  test('các kỳ liền nhau: `to` kỳ trước bằng `from` kỳ sau', () {
+  test('các kỳ liền nhau: `to` kỳ trước bằng `from` kỳ sau — và đúng NGÀY', () {
     // Ngày 31 là chỗ hay hở: `advancePeriod` kẹp về 28/2 rồi nhảy tiếp.
     final b = nganSach(start: DateTime(2026, 1, 31));
     final ky = recentPeriods(b, count: 6, now: DateTime(2026, 6, 10));
@@ -67,6 +67,16 @@ void main() {
             'lần.',
       );
     }
+    // Chỉ kiểm "liền nhau" thì lưới trôi về ngày 28 vẫn xanh (G66): mọi kỳ
+    // vẫn khít nhau, chỉ là khít nhau ở sai ngày.
+    expect(ky.map((k) => k.from).toList(), [
+      DateTime(2026, 1, 31),
+      DateTime(2026, 2, 28),
+      DateTime(2026, 3, 31),
+      DateTime(2026, 4, 30),
+      DateTime(2026, 5, 31),
+    ]);
+    expect(ky.last.to, DateTime(2026, 6, 30));
   });
 
   test('kỳ cuối trùng khớp với currentPeriod', () {
