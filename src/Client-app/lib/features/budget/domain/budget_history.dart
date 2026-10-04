@@ -64,3 +64,48 @@ List<BudgetPeriod> recentPeriods(
   if (periods.length <= count) return periods;
   return periods.sublist(periods.length - count);
 }
+
+/// Tối đa [toiDa] kỳ ĐÃ ĐÓNG gần nhất trên lưới kỳ của ngân sách — kể cả các kỳ
+/// TRƯỚC ngày bắt đầu — cũ trước mới sau. Nguồn của phép học nhịp chi
+/// (`nhip_chi.dart`, spec dự án C việc hai mục 4.1).
+///
+/// - Lưới là [BudgetEntity.mocKy] — CÙNG lưới `currentPeriod` nhảy, nên kỳ đã
+///   đóng sau kỳ đầu trùng khít kỳ của [recentPeriods] (có ca canh).
+/// - Chỉ kỳ có `to ≤ from` của kỳ hiện tại — kỳ hiện tại không bao giờ là mẫu.
+/// - Bỏ kỳ bắt đầu trước [mocDauTien] (giao dịch đầu tiên của tài khoản): kỳ ấy
+///   THIẾU dữ liệu, không phải "không chi". `null` = chưa có giao dịch → rỗng.
+/// - "Ngày cụ thể" (`timeRecurrence == null`) → rỗng: không có lưới để lùi.
+List<BudgetPeriod> kyDaDongTruoc(
+  BudgetEntity b, {
+  required DateTime now,
+  required DateTime? mocDauTien,
+  required int toiDa,
+}) {
+  if (toiDa <= 0 || mocDauTien == null) return const [];
+  if (b.timeRecurrence == null) return const [];
+  if (now.isBefore(b.startDate)) return const [];
+
+  final dauKyHienTai = b.currentPeriod(now).from;
+  // s = chỉ số mốc lớn nhất còn ≤ đầu kỳ hiện tại. Chặn 1000 vòng như
+  // `currentPeriod`: dữ liệu hỏng không được treo giao diện.
+  var s = 0;
+  var vong = 0;
+  if (b.mocKy(0).isAfter(dauKyHienTai)) {
+    while (b.mocKy(s).isAfter(dauKyHienTai) && vong++ < 1000) {
+      s--;
+    }
+  } else {
+    while (!b.mocKy(s + 1).isAfter(dauKyHienTai) && vong++ < 1000) {
+      s++;
+    }
+  }
+
+  final ra = <BudgetPeriod>[];
+  while (ra.length < toiDa) {
+    final from = b.mocKy(s - 1);
+    if (from.isBefore(mocDauTien)) break;
+    ra.add((from: from, to: b.mocKy(s)));
+    s--;
+  }
+  return ra.reversed.toList();
+}
