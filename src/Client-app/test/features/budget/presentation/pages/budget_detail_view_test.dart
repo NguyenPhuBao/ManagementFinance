@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -135,6 +136,10 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
+    // `scrollUntilVisible` dừng khi dòng mới ló mép khung — ô NHỊP CHI cao thêm
+    // một hàng (2026-10-04) là tâm dòng rơi ra ngoài và cú chạm trượt, im lặng.
+    await tester.ensureVisible(find.byKey(const ValueKey('budget-tx-t2')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('budget-tx-t2')));
     await tester.pump();
 
@@ -189,6 +194,25 @@ void main() {
     await dung360(tester, loaded(nhipChi: nhipAnUong()));
     expect(find.textContaining('Theo nhịp thường lệ'), findsOneWidget);
     expect(find.textContaining('Theo thời gian đã trôi'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // Nghiệm thu Realme 360 dp 2026-10-04: chip "Chậm hơn dự kiến" đứng cùng hàng
+  // làm dòng "Theo thời gian đã trôi: 53.824 đ" bị cắt thành "…" — mất đúng con
+  // số. Người dùng chọn đưa dòng xuống hàng riêng dưới chip, đọc trọn.
+  testWidgets('dòng "Theo …: X" nằm DƯỚI chip và không bị cắt ở 360dp',
+      (tester) async {
+    await dung360(tester, loaded(v: view(spent: 0)));
+    final chip = find.text('Chậm hơn dự kiến');
+    final dong = find.textContaining('Theo thời gian đã trôi');
+    expect(chip, findsOneWidget);
+    expect(tester.getRect(dong).top,
+        greaterThanOrEqualTo(tester.getRect(chip).bottom),
+        reason: 'cùng hàng với chip thì dòng chỉ còn phần bề rộng thừa');
+    expect(tester.renderObject<RenderParagraph>(dong).didExceedMaxLines,
+        isFalse,
+        reason: 'bị cắt "…" là mất con số — `find.text` so `data` nên không '
+            'thấy, phải hỏi chính RenderParagraph');
     expect(tester.takeException(), isNull);
   });
 }
