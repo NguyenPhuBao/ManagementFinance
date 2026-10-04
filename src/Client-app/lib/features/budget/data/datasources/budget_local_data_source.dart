@@ -3,6 +3,12 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../models/budget_entity.dart';
 
+/// Một khoản CHI có thuộc ngân sách của [categoryIdNganSach] không — vế danh mục
+/// của "đã chi". `null` = ngân sách tổng → mọi danh mục. Định nghĩa DUY NHẤT, cho
+/// `getExpenses` và phép học nhịp chi (đọc một lần rồi chia theo ngân sách).
+bool khoanThuocNganSach(String? categoryIdNganSach, Transaction t) =>
+    categoryIdNganSach == null || t.categoryId == categoryIdNganSach;
+
 abstract class BudgetLocalDataSource {
   Future<List<BudgetEntity>> getBudgets(int idaccount);
   Stream<List<BudgetEntity>> watchBudgets(int idaccount);
@@ -149,7 +155,7 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
     return rows
         .where((t) => t.type == 'chi')
         .where((t) => t.date.isBefore(to))
-        .where((t) => categoryId == null || t.categoryId == categoryId)
+        .where((t) => khoanThuocNganSach(categoryId, t))
         .toList();
   }
 

@@ -13,6 +13,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/domain/budget_history.dart';
+import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_cubit.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
@@ -89,6 +90,12 @@ class _FakeRepository implements BudgetRepository {
     calls.add('getExpenseCategories($idaccount)');
     return categories;
   }
+
+  @override
+  Future<Map<String, NhipChi?>> nhipChiTheoNganSach(
+          int idaccount, List<BudgetEntity> budgets,
+          {DateTime? now}) async =>
+      const {};
 
   @override
   Future<List<BudgetPeriodSummary>> getPeriodHistory(

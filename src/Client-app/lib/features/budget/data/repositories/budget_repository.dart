@@ -2,6 +2,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/budget_history.dart';
+import '../../domain/nhip_chi.dart';
 import '../models/budget_entity.dart';
 
 abstract class BudgetRepository {
@@ -91,4 +92,16 @@ abstract class BudgetRepository {
 
   /// Danh mục chi để chọn khi tạo/sửa ngân sách.
   Future<List<Category>> getExpenseCategories(int idaccount);
+
+  /// Nhịp chi riêng của từng ngân sách trong [budgets] (khoá `budget.id`), học từ
+  /// tối đa `kSoKyHocToiDa` kỳ đã đóng — lùi cả về trước ngày tạo (`kyDaDongTruoc`);
+  /// `null` khi chưa đủ `kSoKyHocToiThieu` kỳ có chi. Đọc khoản chi MỘT lần, cùng
+  /// định nghĩa "đã chi" với số đã chi của thẻ. Spec dự án C việc hai mục 4.
+  ///
+  /// Người gọi đi qua `docNhipChi` (nhịp là phần phụ — đọc hỏng thì rơi về chi đều).
+  Future<Map<String, NhipChi?>> nhipChiTheoNganSach(
+    int idaccount,
+    List<BudgetEntity> budgets, {
+    DateTime? now,
+  });
 }
