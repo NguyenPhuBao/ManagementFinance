@@ -275,6 +275,27 @@ void main() {
       expect(p, contains('Câu hỏi: tháng này tôi chi gì'));
       expect(p, endsWith('Trả lời:'));
     });
+    // Đo Realme 2026-10-04 (35 câu đổi đường): bốn câu tụt vì Gemma trả lời lệch
+    // trọng tâm — E5 hỏi "tổng cộng bao nhiêu" mà chỉ kể bốn dòng, C6 · C17 kể thiếu
+    // dòng, E13 hỏi "nhiều hơn hay ít hơn" mà không nói. Spec §5: câu chữ lời dặn chốt
+    // ở lượt đo máy.
+    test('⭐ dặn trả lời đúng điều câu hỏi hỏi: số tổng · kể đủ các dòng · nhiều hơn hay ít hơn', () {
+      final p = promptVietCau('x', const {});
+      for (final y in ['số tổng', 'kể đủ', 'nhiều hơn hay ít hơn']) {
+        expect(p, contains(y), reason: y);
+      }
+      expect(p, isNot(contains('một hoặc hai câu')), reason: 'lời dặn ấy làm Gemma cắt bớt dòng');
+    });
+    test('⭐ số tổng hợp đứng TRƯỚC các dòng trong khối kết quả', () {
+      final p = promptVietCau('x', const {
+        'hang': [
+          {'ten': 'Di choi', 'Số tiền': '300.000 đ'},
+        ],
+        'Tổng chi': '880.000 đ',
+      });
+      expect(p.indexOf('"Tổng chi"'), lessThan(p.indexOf('"hang"')),
+          reason: 'E5: Gemma kể các dòng đầu khối và bỏ số tổng nằm sau');
+    });
     test('cùng luật trả lời của bậc tool; không nhắc tên tool nào', () {
       final p = promptVietCau('x', const {});
       for (final luat in ['chép nguyên', 'nêu tên', 'không tự tính', 'tiếng Việt']) {

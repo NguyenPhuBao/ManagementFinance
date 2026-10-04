@@ -230,18 +230,31 @@ const String _dienThamSoGiaoDich =
 
 /// Đường nhanh (spec 2026-10-02 §5): lời dặn cho lượt Gemma CHỈ VIẾT CÂU từ kết quả
 /// tool giao dịch đã chạy — một tin, không few-shot, không tool; cùng các ý của
-/// phần "Khi trả lời" trong [kPromptHeThongCongCu]. Kết quả là đúng khối JSON phiên
-/// có tool nhận qua `traKetQua`. ⚠️ Chỉ dẫn không chứa chữ số (ca test canh).
-String promptVietCau(String cauHoi, Map<String, dynamic> ketQua) =>
-    '$_chiDanVietCau\n'
-    'Kết quả tra cứu:\n${jsonEncode(ketQua)}\n'
-    'Câu hỏi: $cauHoi\n'
-    'Trả lời:';
+/// phần "Khi trả lời" trong [kPromptHeThongCongCu]. Kết quả là khối JSON phiên có
+/// tool nhận qua `traKetQua`, nhưng số TỔNG HỢP đứng trước các dòng (`hang`).
+/// ⚠️ Chỉ dẫn không chứa chữ số (ca test canh).
+///
+/// Câu chữ chốt ở lượt đo Realme 2026-10-04 (spec §5 để ngỏ): bản đầu dặn "một hoặc
+/// hai câu" và để `hang` đầu khối — bốn câu tụt: E5 hỏi tổng mà chỉ kể dòng, C6 ·
+/// C17 kể thiếu dòng, E13 không nói nhiều hơn hay ít hơn.
+String promptVietCau(String cauHoi, Map<String, dynamic> ketQua) {
+  final khoi = {
+    for (final e in ketQua.entries)
+      if (e.key != 'hang') e.key: e.value,
+    if (ketQua.containsKey('hang')) 'hang': ketQua['hang'],
+  };
+  return '$_chiDanVietCau\n'
+      'Kết quả tra cứu:\n${jsonEncode(khoi)}\n'
+      'Câu hỏi: $cauHoi\n'
+      'Trả lời:';
+}
 
 const String _chiDanVietCau =
     'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Ứng dụng đã tra sổ giao dịch của '
-    'người dùng cho câu hỏi dưới đây; kết quả nằm ở phần Kết quả tra cứu. Trả lời câu '
-    'hỏi bằng tiếng Việt, ngắn gọn, một hoặc hai câu. Chỉ dùng tên và số có trong kết '
-    'quả, chép nguyên chuỗi số và ngày tháng (kể cả "đ", dấu phẩy và dấu gạch chéo), '
-    'nêu tên đối tượng trước con số, không tự tính toán hay suy đoán. Kết quả không có '
-    'giao dịch nào thì nói rõ là không có.';
+    'người dùng cho câu hỏi dưới đây; kết quả nằm ở phần Kết quả tra cứu. Trả lời đúng '
+    'điều câu hỏi hỏi, bằng tiếng Việt, ngắn gọn: hỏi tổng hay bao nhiêu thì nêu số tổng '
+    'trong kết quả; hỏi những khoản nào hay có khoản nào thì kể đủ các dòng trong kết '
+    'quả; hỏi nhiều hơn hay ít hơn thì nói rõ nhiều hơn hay ít hơn và mức chênh lệch. '
+    'Chỉ dùng tên và số có trong kết quả, chép nguyên chuỗi số và ngày tháng (kể cả "đ", '
+    'dấu phẩy và dấu gạch chéo), nêu tên đối tượng trước con số, không tự tính toán hay '
+    'suy đoán. Kết quả không có giao dịch nào thì nói rõ là không có.';
