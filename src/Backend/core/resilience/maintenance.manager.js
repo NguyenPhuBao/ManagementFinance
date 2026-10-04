@@ -92,6 +92,10 @@ class MaintenanceManager {
         }
       }
     } else {
+      if (this._autoEndTimer) {
+        clearTimeout(this._autoEndTimer);
+        this._autoEndTimer = null;
+      }
       logger.info('[MAINTENANCE] TẮT chế độ bảo trì — Hệ thống trở lại bình thường', {
         deactivatedBy: activatedBy,
       });
@@ -115,7 +119,11 @@ class MaintenanceManager {
     return this.getStatus();
   }
 
-  scheduleMaintenance({ scheduledAt, reason, isEmergency = false, createdBy = 'admin' }) {
+  scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency = false, createdBy = 'admin' }) {
+    if (this.active) {
+      throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');
+    }
+
     if (!scheduledAt) {
       throw new Error('Vui lòng chọn thời điểm bảo trì');
     }
@@ -128,11 +136,20 @@ class MaintenanceManager {
       throw new Error('Thời điểm bảo trì phải nằm trong tương lai');
     }
 
+    let targetEndDate = null;
+    if (scheduledEndAt) {
+      targetEndDate = new Date(scheduledEndAt);
+      if (isNaN(targetEndDate.getTime()) || targetEndDate.getTime() <= targetDate.getTime()) {
+        throw new Error('Thời điểm kết thúc bảo trì phải sau thời điểm bắt đầu bảo trì!');
+      }
+    }
+
     // Hủy timer cũ nếu có
     this.cancelScheduledMaintenance();
 
     this.scheduled = {
       scheduledAt: targetDate.toISOString(),
+      scheduledEndAt: targetEndDate ? targetEndDate.toISOString() : null,
       reason: reason || 'Bảo trì hệ thống theo lịch trình định kỳ.',
       isEmergency: Boolean(isEmergency),
       createdBy,
@@ -141,6 +158,7 @@ class MaintenanceManager {
 
     logger.info('[MAINTENANCE] Đã lên lịch bảo trì hệ thống', {
       scheduledAt: this.scheduled.scheduledAt,
+      scheduledEndAt: this.scheduled.scheduledEndAt,
       isEmergency: this.scheduled.isEmergency,
       delayMs,
     });
@@ -158,6 +176,21 @@ class MaintenanceManager {
         this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
           isEmergency: sched.isEmergency,
         });
+
+        // Nếu có thời điểm kết thúc đã hẹn, thiết lập timer tự động kết thúc
+        if (sched.scheduledEndAt) {
+          const endDelayMs = new Date(sched.scheduledEndAt).getTime() - Date.now();
+          if (endDelayMs > 0) {
+            this._autoEndTimer = setTimeout(() => {
+              logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
+              this._autoEndTimer = null;
+              this.setMaintenance(false, 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
+            }, endDelayMs);
+            if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
+              this._autoEndTimer.unref();
+            }
+          }
+        }
       }
     }, delayMs);
 
@@ -178,6 +211,10 @@ class MaintenanceManager {
     if (this._scheduledTimer) {
       clearTimeout(this._scheduledTimer);
       this._scheduledTimer = null;
+    }
+    if (this._autoEndTimer) {
+      clearTimeout(this._autoEndTimer);
+      this._autoEndTimer = null;
     }
     const hadSchedule = Boolean(this.scheduled);
     this.scheduled = null;

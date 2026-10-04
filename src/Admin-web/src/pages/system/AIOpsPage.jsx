@@ -6,6 +6,13 @@ import { formatDateTime } from '../../utils/format';
 import Pagination from '../../components/common/Pagination';
 import ConfirmModal from '../../components/common/ConfirmModal';
 
+const VECTOR_LABELS = {
+  auth: '1. Xác Thực & Danh Tính',
+  traffic: '2. Lưu Lượng & DoS',
+  exploit: '3. Khai Thác Lỗ Hổng',
+  resource: '4. Sức Khỏe Tài Nguyên',
+};
+
 const AIOpsPage = () => {
   const [statusData, setStatusData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
@@ -14,6 +21,15 @@ const AIOpsPage = () => {
   const [calibrating, setCalibrating] = useState(false);
   const [unblockingHash, setUnblockingHash] = useState(null);
   const [feedback, setFeedback] = useState(null);
+
+  // System Maintenance Status state
+  const [maintenanceStatus, setMaintenanceStatus] = useState({
+    active: false,
+    isEmergency: false,
+    reason: '',
+    activatedBy: null,
+    activatedAt: null,
+  });
 
   // Mitigation modal state
   const [showMitigationModal, setShowMitigationModal] = useState(false);
@@ -46,6 +62,31 @@ const AIOpsPage = () => {
   const [activeVectorTab, setActiveVectorTab] = useState('all'); // 'all' | 'auth' | 'traffic' | 'exploit' | 'resource'
   const [hoveredPointIndex, setHoveredPointIndex] = useState(null);
 
+  // Time Selection & Precision Range State (Multi-Vector Trend Chart)
+  const [timePreset, setTimePreset] = useState('realtime'); // 'realtime' | 'day' | 'month' | 'year'
+  const [customFilterType, setCustomFilterType] = useState('date'); // 'date' | 'month' | 'year'
+  const [customRange, setCustomRange] = useState({
+    from: '',
+    to: '',
+    applied: false,
+  });
+  const [fetchingHistory, setFetchingHistory] = useState(false);
+
+  // 4 Vector Config & Toggle Confirmation State
+  const [vectorConfig, setVectorConfig] = useState({
+    auth: true,
+    traffic: true,
+    exploit: true,
+    resource: true,
+  });
+  const [vectorToggleModal, setVectorToggleModal] = useState({
+    open: false,
+    vector: null,
+    targetState: false,
+    vectorName: '',
+    loading: false,
+  });
+
   // Persistent Incident Journal (CSDL) & Phân Trang State
   const [incidentsList, setIncidentsList] = useState([]);
   const [incidentPage, setIncidentPage] = useState(1);
@@ -65,15 +106,33 @@ const AIOpsPage = () => {
   const fetchAIOpsData = async () => {
     try {
       setLoading(true);
-      const [statusRes, historyRes, quarantineRes] = await Promise.all([
+      const historyParams = (customRange.applied && customRange.from && customRange.to)
+        ? { from: customRange.from, to: customRange.to }
+        : { range: timePreset };
+
+      const [statusRes, historyRes, quarantineRes, maintenanceRes, vectorConfigRes] = await Promise.all([
         aiopsApi.getStatus(),
-        aiopsApi.getHistory(),
+        aiopsApi.getHistory(historyParams),
         aiopsApi.getQuarantineList(),
+        adminApi.getMaintenanceStatus(),
+        typeof aiopsApi.getVectorConfig === 'function' ? aiopsApi.getVectorConfig().catch(() => null) : Promise.resolve(null),
       ]);
 
       const sData = statusRes?.data || statusRes;
       const hData = historyRes?.data || historyRes;
       const qData = quarantineRes?.data || quarantineRes;
+      const mData = maintenanceRes?.data || maintenanceRes;
+      const vConfigData = vectorConfigRes?.data || vectorConfigRes;
+
+      if (mData) {
+        setMaintenanceStatus(mData);
+      }
+
+      if (vConfigData && typeof vConfigData === 'object' && vConfigData.auth !== undefined) {
+        setVectorConfig(vConfigData);
+      } else if (sData?.vectorConfig) {
+        setVectorConfig(sData.vectorConfig);
+      }
 
       if (sData) {
         setStatusData(sData);
@@ -92,6 +151,114 @@ const AIOpsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Lấy dữ liệu lịch sử xu hướng theo bộ lọc (Ưu tiên bộ lọc chính xác nếu cả 2 được áp dụng)
+  const fetchHistoryFiltered = async (options = {}) => {
+    try {
+      setFetchingHistory(true);
+      const targetApplied = options.customApplied !== undefined ? options.customApplied : customRange.applied;
+      const targetFrom = options.from !== undefined ? options.from : customRange.from;
+      const targetTo = options.to !== undefined ? options.to : customRange.to;
+      const targetPreset = options.preset !== undefined ? options.preset : timePreset;
+
+      const params = {};
+      // PO Priority Rule: Ưu tiên bộ lọc chọn chính xác thay vì bộ select nếu cả 2 được áp dụng
+      if (targetApplied && targetFrom && targetTo) {
+        params.from = targetFrom;
+        params.to = targetTo;
+      } else {
+        params.range = targetPreset;
+      }
+
+      const historyRes = await aiopsApi.getHistory(params);
+      const hData = historyRes?.data || historyRes;
+      if (Array.isArray(hData)) {
+        setHistoryData(hData);
+      }
+    } catch (err) {
+      console.error('[AIOpsPage] Error fetching history:', err);
+      setFeedback({ ok: false, msg: 'Không thể tải dữ liệu lịch sử xu hướng.' });
+    } finally {
+      setFetchingHistory(false);
+    }
+  };
+
+  // Mở popup xác nhận bật/tắt từng vector
+  const handleOpenToggleVectorModal = (vectorKey) => {
+    const currentState = vectorConfig[vectorKey] !== false;
+    const nextState = !currentState;
+    setVectorToggleModal({
+      open: true,
+      vector: vectorKey,
+      targetState: nextState,
+      vectorName: VECTOR_LABELS[vectorKey] || vectorKey,
+      loading: false,
+    });
+  };
+
+  // Xác nhận bật/tắt vector sau khi nhấn trên popup xác nhận
+  const handleConfirmToggleVector = async () => {
+    if (!vectorToggleModal.vector) return;
+    try {
+      setVectorToggleModal((prev) => ({ ...prev, loading: true }));
+      const res = await aiopsApi.toggleVector(vectorToggleModal.vector, vectorToggleModal.targetState);
+      const resData = res?.data || res;
+      const updatedConfig = resData?.vectorConfig || {
+        ...vectorConfig,
+        [vectorToggleModal.vector]: vectorToggleModal.targetState,
+      };
+      setVectorConfig(updatedConfig);
+      setFeedback({
+        ok: true,
+        msg: `Đã ${vectorToggleModal.targetState ? 'BẬT' : 'TẮT'} tính điểm cho "${vectorToggleModal.vectorName}". ${
+          vectorToggleModal.targetState
+            ? 'Vector này hiện được tính vào Threat Score và các cơ chế phòng vệ tự động.'
+            : 'Vector này vẫn được đo lường hiển thị nhưng KHÔNG tính vào Threat Score chung.'
+        }`,
+      });
+      setVectorToggleModal({ open: false, vector: null, targetState: false, vectorName: '', loading: false });
+    } catch (err) {
+      setFeedback({
+        ok: false,
+        msg: err?.response?.data?.message || err?.message || 'Không thể thay đổi cấu hình vector.',
+      });
+      setVectorToggleModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Xử lý chuyển đổi bộ Preset nhanh
+  const handleSelectTimePreset = (presetKey) => {
+    setTimePreset(presetKey);
+    setCustomRange((prev) => ({ ...prev, applied: false }));
+    fetchHistoryFiltered({ preset: presetKey, customApplied: false });
+  };
+
+  // Xử lý áp dụng bộ lọc chính xác (Từ ... Đến ...)
+  const handleApplyCustomRange = () => {
+    if (!customRange.from || !customRange.to) {
+      setFeedback({
+        ok: false,
+        msg: 'Vui lòng chọn đầy đủ thời điểm bắt đầu (Từ) và kết thúc (Đến).',
+      });
+      return;
+    }
+    if (customRange.from > customRange.to) {
+      setFeedback({
+        ok: false,
+        msg: 'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc.',
+      });
+      return;
+    }
+
+    setCustomRange((prev) => ({ ...prev, applied: true }));
+    fetchHistoryFiltered({ from: customRange.from, to: customRange.to, customApplied: true });
+  };
+
+  // Xử lý hủy bỏ bộ lọc chính xác để dùng lại bộ select nhanh
+  const handleClearCustomRange = () => {
+    setCustomRange({ from: '', to: '', applied: false });
+    fetchHistoryFiltered({ customApplied: false, preset: timePreset });
   };
 
   const fetchIncidents = async (
@@ -217,6 +384,9 @@ const AIOpsPage = () => {
     // 1. Nhận luồng nhịp tim phần cứng & Threat Score 3s/lần
     const handleMetricsStream = (metrics) => {
       if (!metrics) return;
+      if (metrics.vectorConfig) {
+        setVectorConfig(metrics.vectorConfig);
+      }
       setStatusData((prev) => {
         const streamConcurrency = metrics.targetConcurrency && metrics.targetConcurrency >= 100
           ? metrics.targetConcurrency
@@ -244,6 +414,9 @@ const AIOpsPage = () => {
 
     const handleAlert = (data) => {
       if (data) {
+        if (data.vectorConfig) {
+          setVectorConfig(data.vectorConfig);
+        }
         setStatusData(prev => ({
           ...prev,
           threatScore: data.threatScore,
@@ -282,16 +455,34 @@ const AIOpsPage = () => {
       setIncidentTotal((prev) => prev + 1);
     };
 
+    const handleMaintenanceChanged = (mState) => {
+      if (mState) {
+        setMaintenanceStatus(mState);
+      }
+    };
+
+    const handleVectorConfigChanged = (newConfig) => {
+      if (newConfig) {
+        setVectorConfig(newConfig);
+      }
+    };
+
     socket.on('admin.metrics_stream', handleMetricsStream);
     socket.on('admin.security_alert', handleAlert);
     socket.on('admin.security_blocked', handleBlocked);
     socket.on('admin.anomaly_detected', handleAnomalyDetected);
+    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
+    socket.on('system.maintenance_changed', handleMaintenanceChanged);
+    socket.on('admin.vector_config_changed', handleVectorConfigChanged);
 
     return () => {
       socket.off('admin.metrics_stream', handleMetricsStream);
       socket.off('admin.security_alert', handleAlert);
       socket.off('admin.security_blocked', handleBlocked);
       socket.off('admin.anomaly_detected', handleAnomalyDetected);
+      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
+      socket.off('system.maintenance_changed', handleMaintenanceChanged);
+      socket.off('admin.vector_config_changed', handleVectorConfigChanged);
     };
   }, [socket]);
 
@@ -402,14 +593,15 @@ const AIOpsPage = () => {
   const safePeakRpm = baselineRpm * 3;
   const quarantineThreshold = Math.max(150, Math.round(20 + 50 * Math.log10(targetConcurrency)));
 
-  // Cơ chế phòng vệ cá nhân hóa: Chỉ kích hoạt bảo trì khẩn cấp khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền
+  // Cơ chế phòng vệ cá nhân hóa: Chỉ kích hoạt bảo trì khẩn cấp khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền (và Vector Tài nguyên đang bật)
   const isEmergencyResourceRisk = useMemo(() => {
+    if (vectorConfig.resource === false) return false;
     return (
       recommendedAction === 'EMERGENCY_MAINTENANCE' ||
       (vectorScores.resource >= 85) ||
       (vectorScores.resource >= 70 && (sample?.errorRate5xx || 0) >= 0.15 && (sample?.eventLoopLagMs || 0) >= 250)
     );
-  }, [recommendedAction, vectorScores.resource, sample]);
+  }, [recommendedAction, vectorScores.resource, sample, vectorConfig.resource]);
 
   // Hàm tiện ích lấy style theo điểm số của từng vectơ
   const getVectorTheme = (score) => {
@@ -636,6 +828,94 @@ const AIOpsPage = () => {
           </button>
         </div>
       )}
+
+      {/* ======================================================== */}
+      {/* THẺ TÌNH TRẠNG HỆ THỐNG (SYSTEM OPERATIONAL STATUS) */}
+      {/* ======================================================== */}
+      <div
+        className={`rounded-2xl border p-4.5 transition-all shadow-xs ${
+          maintenanceStatus?.active
+            ? maintenanceStatus.isEmergency
+              ? 'border-red-300 bg-red-50/90 text-red-950'
+              : 'border-amber-300 bg-amber-50/90 text-amber-950'
+            : 'border-emerald-300 bg-emerald-50/80 text-emerald-950'
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3.5">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                maintenanceStatus?.active
+                  ? maintenanceStatus.isEmergency
+                    ? 'bg-red-600 text-white animate-pulse'
+                    : 'bg-amber-600 text-white'
+                  : 'bg-emerald-600 text-white'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                {maintenanceStatus?.active ? (maintenanceStatus.isEmergency ? 'error' : 'engineering') : 'check_circle'}
+              </span>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm font-bold m-0 tracking-tight">
+                  Tình Trạng Hệ Thống:
+                </h2>
+                {maintenanceStatus?.active ? (
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-2xs border ${
+                      maintenanceStatus.isEmergency
+                        ? 'bg-red-100 text-red-800 border-red-300'
+                        : 'bg-amber-100 text-amber-900 border-amber-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <span>Đang bảo trì</span>
+                    <span className="text-[10px] opacity-80 uppercase">
+                      ({maintenanceStatus.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'})
+                    </span>
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-2xs border bg-emerald-100 text-emerald-800 border-emerald-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Đang hoạt động</span>
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs opacity-90 mt-1 m-0">
+                {maintenanceStatus?.active
+                  ? `Hệ thống đang chặn các kết nối Client-app. Lý do: "${maintenanceStatus.reason || 'Bảo trì hệ thống'}"${
+                      maintenanceStatus.activatedAt ? ` • Từ: ${formatDateTime(maintenanceStatus.activatedAt)}` : ''
+                    }`
+                  : 'Các tiến trình lõi, lưu lượng và kết nối Client-app & Admin-web đang vận hành trơn tru không bị giới hạn.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Thông tin nhanh & Điều hướng */}
+          <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/80 border border-outline-variant/60 rounded-xl text-[11px] font-medium text-slate-700 shadow-2xs">
+              <span className="text-slate-400">Threat Score:</span>
+              <b className={threatScore >= 70 ? 'text-red-600' : 'text-emerald-700'}>{threatScore}/100</b>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/80 border border-outline-variant/60 rounded-xl text-[11px] font-medium text-slate-700 shadow-2xs">
+              <span className="text-slate-400">Quy mô:</span>
+              <b className="text-primary">{targetConcurrency.toLocaleString('vi-VN')} CCU</b>
+            </div>
+            {maintenanceStatus?.active && (
+              <a
+                href="/broadcast"
+                className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer no-underline"
+              >
+                <span className="material-symbols-outlined text-[15px] text-amber-600">settings</span>
+                <span>Điều Hành Bảo Trì</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ======================================================== */}
       {/* KHỐI 0: BỘ ĐIỀU KHIỂN QUY MÔ NGƯỜI DÙNG & MÔ HÌNH CHỊU TẢI DUNG LƯỢNG */}
@@ -988,18 +1268,48 @@ const AIOpsPage = () => {
             const vScore = vectorScores.auth || 0;
             const vTheme = getVectorTheme(vScore);
             const isQuarantining = quarantineList.length > 0 || vScore >= 70;
+            const isEnabled = vectorConfig.auth !== false;
             return (
-              <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                isEnabled ? 'border-outline-variant/70 bg-surface-container-lowest' : 'border-slate-300 bg-slate-50/70 opacity-90'
+              }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-amber-600">badge</span>
                       1. Xác Thực & Danh Tính
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${vTheme.badge}`}>
-                      {vTheme.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        data-testid="toggle-vector-auth"
+                        onClick={() => handleOpenToggleVectorModal('auth')}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Xác Thực`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
+
+                  {!isEnabled && (
+                    <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
+                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
                     <span className="text-[11px] text-slate-400">/ 100 điểm</span>
@@ -1007,7 +1317,7 @@ const AIOpsPage = () => {
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${vTheme.bg} transition-all duration-500`}
+                      className={`h-full ${isEnabled ? vTheme.bg : 'bg-slate-400'} transition-all duration-500`}
                       style={{ width: `${Math.min(100, Math.max(0, vScore))}%` }}
                     />
                   </div>
@@ -1025,13 +1335,19 @@ const AIOpsPage = () => {
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      isQuarantining ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      !isEnabled
+                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                        : isQuarantining
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     }`}>
                       <span className="material-symbols-outlined text-[12px]">
-                        {isQuarantining ? 'lock' : 'check_circle'}
+                        {!isEnabled ? 'visibility' : isQuarantining ? 'lock' : 'check_circle'}
                       </span>
                       <span>
-                        {quarantineList.length > 0
+                        {!isEnabled
+                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          : quarantineList.length > 0
                           ? `Đang cô lập ${quarantineList.length} IP vi phạm`
                           : vScore >= 70
                           ? 'Đã kích hoạt cô lập IP vi phạm'
@@ -1052,18 +1368,48 @@ const AIOpsPage = () => {
             const vScore = vectorScores.traffic || 0;
             const vTheme = getVectorTheme(vScore);
             const isThrottling = vScore >= 70;
+            const isEnabled = vectorConfig.traffic !== false;
             return (
-              <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                isEnabled ? 'border-outline-variant/70 bg-surface-container-lowest' : 'border-slate-300 bg-slate-50/70 opacity-90'
+              }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-blue-600">waves</span>
                       2. Lưu Lượng & DoS
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${vTheme.badge}`}>
-                      {vTheme.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        data-testid="toggle-vector-traffic"
+                        onClick={() => handleOpenToggleVectorModal('traffic')}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Lưu Lượng`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
+
+                  {!isEnabled && (
+                    <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
+                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
                     <span className="text-[11px] text-slate-400">/ 100 điểm</span>
@@ -1071,7 +1417,7 @@ const AIOpsPage = () => {
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${vTheme.bg} transition-all duration-500`}
+                      className={`h-full ${isEnabled ? vTheme.bg : 'bg-slate-400'} transition-all duration-500`}
                       style={{ width: `${Math.min(100, Math.max(0, vScore))}%` }}
                     />
                   </div>
@@ -1089,13 +1435,19 @@ const AIOpsPage = () => {
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      isThrottling ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      !isEnabled
+                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                        : isThrottling
+                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     }`}>
                       <span className="material-symbols-outlined text-[12px]">
-                        {isThrottling ? 'speed' : 'check_circle'}
+                        {!isEnabled ? 'visibility' : isThrottling ? 'speed' : 'check_circle'}
                       </span>
                       <span>
-                        {isThrottling
+                        {!isEnabled
+                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          : isThrottling
                           ? 'Đang điều tiết Adaptive Rate-Limit'
                           : `Lưu lượng an toàn theo chuẩn ${targetConcurrency} CCU`}
                       </span>
@@ -1114,18 +1466,48 @@ const AIOpsPage = () => {
             const vScore = vectorScores.exploit || 0;
             const vTheme = getVectorTheme(vScore);
             const isExploitActive = vScore >= 70;
+            const isEnabled = vectorConfig.exploit !== false;
             return (
-              <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                isEnabled ? 'border-outline-variant/70 bg-surface-container-lowest' : 'border-slate-300 bg-slate-50/70 opacity-90'
+              }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-rose-600">bug_report</span>
                       3. Khai Thác Lỗ Hổng
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${vTheme.badge}`}>
-                      {vTheme.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        data-testid="toggle-vector-exploit"
+                        onClick={() => handleOpenToggleVectorModal('exploit')}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Khai Thác`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
+
+                  {!isEnabled && (
+                    <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
+                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
                     <span className="text-[11px] text-slate-400">/ 100 điểm</span>
@@ -1133,7 +1515,7 @@ const AIOpsPage = () => {
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${vTheme.bg} transition-all duration-500`}
+                      className={`h-full ${isEnabled ? vTheme.bg : 'bg-slate-400'} transition-all duration-500`}
                       style={{ width: `${Math.min(100, Math.max(0, vScore))}%` }}
                     />
                   </div>
@@ -1151,13 +1533,19 @@ const AIOpsPage = () => {
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      isExploitActive ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      !isEnabled
+                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                        : isExploitActive
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     }`}>
                       <span className="material-symbols-outlined text-[12px]">
-                        {isExploitActive ? 'security' : 'check_circle'}
+                        {!isEnabled ? 'visibility' : isExploitActive ? 'security' : 'check_circle'}
                       </span>
                       <span>
-                        {isExploitActive
+                        {!isEnabled
+                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          : isExploitActive
                           ? 'Đã ngắt HTTP 403 & Blacklist 30p'
                           : 'Sẵn sàng chặn SQLi/Payload'}
                       </span>
@@ -1175,18 +1563,48 @@ const AIOpsPage = () => {
           {(() => {
             const vScore = vectorScores.resource || 0;
             const vTheme = getVectorTheme(vScore);
+            const isEnabled = vectorConfig.resource !== false;
             return (
-              <div className="p-4 rounded-xl border border-outline-variant/70 bg-surface-container-lowest flex flex-col justify-between space-y-3">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                isEnabled ? 'border-outline-variant/70 bg-surface-container-lowest' : 'border-slate-300 bg-slate-50/70 opacity-90'
+              }`}>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-teal-600">memory</span>
                       4. Sức Khỏe Tài Nguyên
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${vTheme.badge}`}>
-                      {vTheme.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        data-testid="toggle-vector-resource"
+                        onClick={() => handleOpenToggleVectorModal('resource')}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Tài Nguyên`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
+
+                  {!isEnabled && (
+                    <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
+                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
                     <span className="text-[11px] text-slate-400">/ 100 điểm</span>
@@ -1194,7 +1612,7 @@ const AIOpsPage = () => {
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${vTheme.bg} transition-all duration-500`}
+                      className={`h-full ${isEnabled ? vTheme.bg : 'bg-slate-400'} transition-all duration-500`}
                       style={{ width: `${Math.min(100, Math.max(0, vScore))}%` }}
                     />
                   </div>
@@ -1212,17 +1630,21 @@ const AIOpsPage = () => {
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      isEmergencyResourceRisk
+                      !isEnabled
+                        ? 'bg-slate-100 text-slate-600 border-slate-200'
+                        : isEmergencyResourceRisk
                         ? 'bg-red-100 text-red-800 border-red-300'
                         : vScore >= 60
                         ? 'bg-amber-100 text-amber-800 border-amber-300'
                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     }`}>
                       <span className="material-symbols-outlined text-[12px]">
-                        {isEmergencyResourceRisk ? 'crisis_alert' : vScore >= 60 ? 'tune' : 'check_circle'}
+                        {!isEnabled ? 'visibility' : isEmergencyResourceRisk ? 'crisis_alert' : vScore >= 60 ? 'tune' : 'check_circle'}
                       </span>
                       <span>
-                        {isEmergencyResourceRisk
+                        {!isEnabled
+                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          : isEmergencyResourceRisk
                           ? '🚨 Đề xuất Bảo Trì Khẩn Cấp'
                           : vScore >= 60
                           ? 'Đang kích hoạt Load Shedding'
@@ -1336,7 +1758,15 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">show_chart</span>
-              Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)
+              {(() => {
+                if (customRange.applied && customRange.from && customRange.to) {
+                  return `Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — Tùy Biến Chính Xác (${customRange.from} → ${customRange.to})`;
+                }
+                if (timePreset === 'day') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 24 Giờ Qua (Theo Ngày)';
+                if (timePreset === 'month') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 30 Ngày Qua (Theo Tháng)';
+                if (timePreset === 'year') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 12 Tháng Qua (Theo Năm)';
+                return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)';
+              })()}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
               Tách biệt đường cong riêng cho từng vectơ: Xác thực, Lưu lượng, Khai thác và Tài nguyên. Loại bỏ hoàn toàn sự sai lệch do gộp chung điểm.
@@ -1375,6 +1805,198 @@ const AIOpsPage = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* ======================================================== */}
+        {/* BỘ LỌC THỜI GIAN: BỘ SELECT PRESETS VÀ BỘ LỌC CHÍNH XÁC */}
+        {/* ======================================================== */}
+        <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-3">
+          {/* Hàng 1: Bộ Select thời gian nhanh (Presets) */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px] text-primary">history_toggle_drop_down</span>
+                <span>Bộ chọn thời gian quan sát:</span>
+              </span>
+              {[
+                { id: 'realtime', label: 'Thời gian thực (10 phút)' },
+                { id: 'day', label: 'Ngày (24 giờ qua)' },
+                { id: 'month', label: 'Tháng (30 ngày qua)' },
+                { id: 'year', label: 'Năm (12 tháng qua)' },
+              ].map((p) => {
+                const isSelected = timePreset === p.id && !customRange.applied;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    data-testid={`preset-${p.id}`}
+                    onClick={() => handleSelectTimePreset(p.id)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'bg-primary text-white border-primary shadow-xs'
+                        : customRange.applied
+                        ? 'bg-white/60 text-slate-400 border-slate-200 hover:bg-white hover:text-slate-700'
+                        : 'bg-white text-slate-700 border-outline-variant hover:bg-slate-100'
+                    }`}
+                    title={customRange.applied ? 'Click để bỏ qua bộ lọc chính xác và áp dụng preset này' : undefined}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {fetchingHistory && (
+              <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
+                <span>Đang tải dữ liệu...</span>
+              </span>
+            )}
+          </div>
+
+          {/* Hàng 2: Bộ lọc chọn từ ... đến ... chi tiết chính xác */}
+          <div className="pt-2 border-t border-slate-200/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px] text-indigo-600">date_range</span>
+                <span>Bộ lọc chính xác:</span>
+              </span>
+
+              {/* Loại bộ lọc: Ngày / Tháng / Năm */}
+              <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white text-xs">
+                {[
+                  { id: 'date', label: 'Theo Ngày' },
+                  { id: 'month', label: 'Theo Tháng' },
+                  { id: 'year', label: 'Theo Năm' },
+                ].map((type) => (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => {
+                      setCustomFilterType(type.id);
+                      setCustomRange((prev) => ({ ...prev, from: '', to: '' }));
+                    }}
+                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                      customFilterType === type.id
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Inputs Từ ... Đến ... */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-500 font-medium">Từ:</span>
+                {customFilterType === 'date' && (
+                  <input
+                    type="date"
+                    data-testid="filter-from-date"
+                    value={customRange.from}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                {customFilterType === 'month' && (
+                  <input
+                    type="month"
+                    data-testid="filter-from-month"
+                    value={customRange.from}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                {customFilterType === 'year' && (
+                  <input
+                    type="number"
+                    data-testid="filter-from-year"
+                    min="2020"
+                    max="2035"
+                    placeholder="2024"
+                    value={customRange.from}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
+                    className="w-20 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+
+                <span className="text-slate-500 font-medium">Đến:</span>
+                {customFilterType === 'date' && (
+                  <input
+                    type="date"
+                    data-testid="filter-to-date"
+                    value={customRange.to}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                {customFilterType === 'month' && (
+                  <input
+                    type="month"
+                    data-testid="filter-to-month"
+                    value={customRange.to}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
+                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+                {customFilterType === 'year' && (
+                  <input
+                    type="number"
+                    data-testid="filter-to-year"
+                    min="2020"
+                    max="2035"
+                    placeholder="2026"
+                    value={customRange.to}
+                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
+                    className="w-20 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <button
+                type="button"
+                data-testid="apply-custom-range-btn"
+                onClick={handleApplyCustomRange}
+                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">tune</span>
+                <span>Lọc Chính Xác</span>
+              </button>
+
+              {customRange.applied && (
+                <button
+                  type="button"
+                  data-testid="clear-custom-range-btn"
+                  onClick={handleClearCustomRange}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium transition-all cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                  <span>Xóa bộ lọc</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Banner Ưu Tiên Bộ Lọc Chính Xác (PO Rule) */}
+          {customRange.applied && customRange.from && customRange.to && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-amber-600">verified</span>
+                <span>
+                  <strong>ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC:</strong> Dữ liệu từ <strong>{customRange.from}</strong> đến <strong>{customRange.to}</strong>. Bộ select nhanh đang tạm thời bị bỏ qua.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearCustomRange}
+                className="text-xs font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer whitespace-nowrap self-end sm:self-auto"
+              >
+                Dùng lại bộ select
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Legend và Điểm số Thời gian thực */}
@@ -1729,9 +2351,21 @@ const AIOpsPage = () => {
         {/* Chân biểu đồ & Nguyên tắc bảo vệ */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 px-2 pt-2 border-t border-slate-100 gap-2">
           <div className="flex items-center gap-4">
-            <span>🕒 10 phút trước</span>
-            <span>🕒 5 phút trước</span>
-            <span className="font-semibold text-slate-700">🕒 Hiện tại</span>
+            {historyData && historyData.length > 0 ? (
+              <>
+                <span>🕒 Mẫu đầu: {historyData[0]?.timestamp ? formatDateTime(historyData[0].timestamp) : '10 phút trước'}</span>
+                {historyData.length > 2 && (
+                  <span>🕒 Giữa kỳ: {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5 phút trước'}</span>
+                )}
+                <span className="font-semibold text-slate-700">🕒 Mẫu mới nhất: {historyData[historyData.length - 1]?.timestamp ? formatDateTime(historyData[historyData.length - 1].timestamp) : 'Hiện tại'}</span>
+              </>
+            ) : (
+              <>
+                <span>🕒 10 phút trước</span>
+                <span>🕒 5 phút trước</span>
+                <span className="font-semibold text-slate-700">🕒 Hiện tại</span>
+              </>
+            )}
           </div>
 
           <div className="text-[10px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
@@ -2185,6 +2819,29 @@ const AIOpsPage = () => {
         confirmText={quarantiningActor ? 'Đang kích hoạt...' : 'Xác Nhận Phong Tỏa'}
         cancelText="Hủy bỏ"
         loading={quarantiningActor}
+      />
+
+      {/* Modal xác nhận BẬT / TẮT Vector Rủi Ro */}
+      <ConfirmModal
+        open={vectorToggleModal.open}
+        onConfirm={handleConfirmToggleVector}
+        onCancel={() => setVectorToggleModal({ open: false, vector: null, targetState: false, vectorName: '', loading: false })}
+        title={`Xác nhận ${vectorToggleModal.targetState ? 'BẬT' : 'TẮT'} Vector`}
+        message={
+          vectorToggleModal.targetState
+            ? `Bạn có chắc chắn muốn BẬT lại "${vectorToggleModal.vectorName}"? Vector này sẽ được tính vào Threat Score tổng hợp và kích hoạt các phản ứng phòng vệ tự động khi vượt ngưỡng an toàn.`
+            : `Bạn có chắc chắn muốn TẮT "${vectorToggleModal.vectorName}"? Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG thông số để bạn quan sát, nhưng HOÀN TOÀN KHÔNG TÍNH vào Threat Score chung và KHÔNG kích hoạt phản ứng phòng vệ cho vector này.`
+        }
+        confirmDanger={!vectorToggleModal.targetState}
+        confirmText={
+          vectorToggleModal.loading
+            ? 'Đang xử lý...'
+            : vectorToggleModal.targetState
+            ? 'Xác nhận BẬT'
+            : 'Xác nhận TẮT'
+        }
+        cancelText="Hủy bỏ"
+        loading={vectorToggleModal.loading}
       />
 
       {/* ======================================================== */}

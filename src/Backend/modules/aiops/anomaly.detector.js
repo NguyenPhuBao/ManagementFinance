@@ -16,7 +16,32 @@ class AnomalyDetector {
   constructor(options = {}) {
     this.alpha = options.alpha || 0.15; // Hệ số suy giảm EWMA
     this.targetConcurrency = Math.max(100, Number(options.targetConcurrency || 1000));
+    this.vectorConfig = {
+      auth: true,
+      traffic: true,
+      exploit: true,
+      resource: true,
+      ...(options.vectorConfig || {}),
+    };
     this.hourlyBaselines = this._initializeBaselines();
+  }
+
+  setVectorEnabled(vectorName, isEnabled) {
+    if (['auth', 'traffic', 'exploit', 'resource'].includes(vectorName)) {
+      this.vectorConfig[vectorName] = Boolean(isEnabled);
+    }
+    return { ...this.vectorConfig };
+  }
+
+  setVectorConfig(newConfig) {
+    if (newConfig && typeof newConfig === 'object') {
+      for (const v of ['auth', 'traffic', 'exploit', 'resource']) {
+        if (newConfig[v] !== undefined) {
+          this.vectorConfig[v] = Boolean(newConfig[v]);
+        }
+      }
+    }
+    return { ...this.vectorConfig };
   }
 
   _getVnHour() {
@@ -107,8 +132,8 @@ class AnomalyDetector {
     // VECTOR 1: RỦI RO XÁC THỰC & DANH TÍNH (AUTH & IDENTITY)
     // ─────────────────────────────────────────────────────────────
     let authScore = 0;
-    // Ngưỡng phát hiện Brute-Force: tối thiểu 8 lần, hoặc 1.5% số lượng active users
-    const bruteForceThreshold = Math.max(8, Math.round(N * 0.015));
+    // Ngưỡng phát hiện Brute-Force: tối thiểu 25 lần/10s, hoặc 2.5% số lượng active users (tránh người dùng gõ nhầm bị báo động)
+    const bruteForceThreshold = Math.max(25, Math.round(N * 0.025));
     if (sample.failedLogins >= bruteForceThreshold) {
       const isSevere = sample.failedLogins >= bruteForceThreshold * 2;
       authScore = isSevere ? 80 : 70;
@@ -135,12 +160,15 @@ class AnomalyDetector {
         mitigationTaken: 'Hệ thống kích hoạt Rate Limiter và đưa IP vào Khiên Chắn Active Quarantine nếu vượt ngưỡng vi phạm.',
       });
     } else if (sample.failedLogins > 0) {
-      authScore = Math.min(25, Math.round((sample.failedLogins / bruteForceThreshold) * 25));
+      // 1-24 lần: lỗi người dùng thông thường, chỉ tính điểm nhẹ (tối đa 15 điểm), tuyệt đối không báo động
+      authScore = Math.min(15, Math.round((sample.failedLogins / bruteForceThreshold) * 15));
     }
 
-    if (sample.tokenReuseAttacks >= 1) {
-      const isMultiple = sample.tokenReuseAttacks >= 2;
-      authScore = Math.max(authScore, isMultiple ? 85 : 75);
+    // Tái sử dụng Refresh Token: Chỉ báo động khi lặp lại >= 5 lần
+    // (1-4 lần: thường do mở nhiều tab trình duyệt hoặc retry mạng, không phải tấn công)
+    if (sample.tokenReuseAttacks >= 5) {
+      const isSevere = sample.tokenReuseAttacks >= 10;
+      authScore = Math.max(authScore, isSevere ? 80 : 70);
       const tokenActor = suspects.find((s) => s.tokenReuse > 0) || {
         type: 'AUTHENTICATED_USER',
         identity: 'Phiên làm việc bị thu hồi',
@@ -154,15 +182,18 @@ class AnomalyDetector {
         vector: 'auth',
         metric: 'tokenReuseAttacks',
         current: sample.tokenReuseAttacks,
-        threshold: 1,
+        threshold: 5,
         baseline: 0,
         unit: 'lần vi phạm',
         severity: 'HIGH',
         actor: tokenActor,
-        message: `Phát hiện tái sử dụng Refresh Token đã bị thu hồi (${sample.tokenReuseAttacks} lần) — Dấu hiệu đánh cắp hoặc tái tạo phiên xác thực trái phép.`,
+        message: `Phát hiện tái sử dụng Refresh Token đã bị thu hồi liên tục (${sample.tokenReuseAttacks} lần) — Dấu hiệu đánh cắp hoặc tái tạo phiên xác thực trái phép.`,
         rootCauseDiagnosis: `Token đã bị thu hồi nhưng vẫn tiếp tục được gửi lên từ nguồn ${tokenActor.identity}.`,
         mitigationTaken: 'Đã ngay lập tức thu hồi toàn bộ Token Family của tài khoản và ngắt phiên đăng nhập.',
       });
+    } else if (sample.tokenReuseAttacks > 0) {
+      // 1-4 lần vi phạm đơn lẻ: chỉ ghi nhận điểm nhẹ từ 10 - 25, không gắn cờ bất thường
+      authScore = Math.max(authScore, Math.min(25, sample.tokenReuseAttacks * 6));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -174,7 +205,8 @@ class AnomalyDetector {
     const sampleWindowRequests = Math.max(1, Math.round((sample.requestsPerMin / 60) * 10));
     const ipEntropy = sample.distinctIpsCount / sampleWindowRequests;
 
-    if (trafficRatio >= 2.5) {
+    // Chỉ xem xét rủi ro lưu lượng khi RPM đạt tối thiểu 300 req/phút VÀ gấp 3.5 lần baseline
+    if (sample.requestsPerMin >= 300 && trafficRatio >= 3.5) {
       // Phân biệt: DDoS (ít IP nguồn, tỷ lệ lỗi cao) vs Organic Traffic Peak (nhiều IP thật)
       const isDdosIndicator =
         sample.distinctIpsCount <= 3 ||
@@ -184,7 +216,7 @@ class AnomalyDetector {
         sample.malformedRequests > 0;
 
       if (isDdosIndicator) {
-        trafficScore = Math.min(100, Math.round(50 + (trafficRatio - 2.5) * 20));
+        trafficScore = Math.min(100, Math.round(50 + (trafficRatio - 3.5) * 15));
         const trafficActor = suspects.find((s) => s.reqCount >= 50) || {
           type: 'IP_SOURCE',
           identity: `${sample.distinctIpsCount} địa chỉ IP tập trung`,
@@ -199,7 +231,7 @@ class AnomalyDetector {
           metric: 'requestsPerMin',
           current: sample.requestsPerMin,
           baseline: baseline.requestsPerMin,
-          threshold: Math.round(expectedRpm * 2.5),
+          threshold: Math.round(expectedRpm * 3.5),
           unit: 'req/phút',
           severity: 'HIGH',
           actor: trafficActor,
@@ -209,18 +241,20 @@ class AnomalyDetector {
         });
       } else {
         // Tăng trưởng tự nhiên lành mạnh từ người dùng thật (Flash Sale / Giờ cao điểm)
-        trafficScore = Math.min(25, Math.round(10 + (trafficRatio - 2.5) * 5));
+        trafficScore = Math.min(25, Math.round(10 + (trafficRatio - 3.5) * 5));
       }
     } else {
-      trafficScore = Math.min(15, Math.round(trafficRatio * 5));
+      trafficScore = Math.min(15, Math.round(trafficRatio * 4));
     }
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 3: RỦI RO THĂM DÒ LỖ HỔNG & INJECTION (EXPLOITS & PROBES)
     // ─────────────────────────────────────────────────────────────
     let exploitScore = 0;
-    if (sample.malformedRequests >= 3) {
-      exploitScore = Math.min(100, Math.round(sample.malformedRequests * 12));
+    // Nới rộng ngưỡng: chỉ báo động khi có từ 8 mẫu độc hại trở lên trong 10s (tránh bắt nhầm ký tự đặc biệt)
+    if (sample.malformedRequests >= 8) {
+      const isSevere = sample.malformedRequests >= 20;
+      exploitScore = isSevere ? 80 : 70;
       const exploitActor = suspects.find((s) => s.malformed > 0) || {
         type: 'IP_SOURCE',
         identity: 'Nguồn thăm dò lỗ hổng',
@@ -234,7 +268,7 @@ class AnomalyDetector {
         vector: 'exploit',
         metric: 'malformedRequests',
         current: sample.malformedRequests,
-        threshold: 3,
+        threshold: 8,
         baseline: 0,
         unit: 'mẫu độc hại',
         severity: 'HIGH',
@@ -244,68 +278,80 @@ class AnomalyDetector {
         mitigationTaken: 'Đã tự động ngắt kết nối và cô lập IP độc hại vào Khiên Chắn Active Quarantine 30 phút.',
       });
     } else if (sample.malformedRequests > 0) {
-      exploitScore = sample.malformedRequests * 10;
+      // 1-7 requests: chỉ tính điểm nhẹ 5 - 25, không gắn cờ bất thường
+      exploitScore = Math.min(25, sample.malformedRequests * 3);
     }
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 4: SỨC KHỎE HẠ TẦNG & TÀI NGUYÊN (SYSTEM RESOURCES)
     // ─────────────────────────────────────────────────────────────
     let lagScore = 0;
-    if (sample.eventLoopLagMs >= 120) {
-      const isSevereLag = sample.eventLoopLagMs >= 300;
-      lagScore = isSevereLag ? 85 : 55;
+    // Nới rộng ngưỡng lag: chỉ cảnh báo khi lag >= 250ms (thay vì 120ms), nghiêm trọng khi >= 400ms
+    if (sample.eventLoopLagMs >= 250) {
+      const isSevereLag = sample.eventLoopLagMs >= 400;
+      lagScore = isSevereLag ? 80 : 50;
       anomalies.push({
         code: 'EVENT_LOOP_FREEZE',
         vector: 'resource',
         metric: 'eventLoopLagMs',
         current: sample.eventLoopLagMs,
-        threshold: 120,
+        threshold: 250,
         baseline: 15,
         unit: 'ms lag',
         severity: isSevereLag ? 'HIGH' : 'MEDIUM',
         actor: systemActor,
         message: `Event Loop bị trễ nghiêm trọng (${sample.eventLoopLagMs}ms lag) — Tiến trình Node.js đang bị nghẽn CPU hoặc I/O treo.`,
-        rootCauseDiagnosis: `Độ trễ Event Loop đạt ${sample.eventLoopLagMs}ms (ngưỡng an toàn < 120ms). Tiến trình đang chịu tải tính toán nặng hoặc I/O bị chặn.`,
+        rootCauseDiagnosis: `Độ trễ Event Loop đạt ${sample.eventLoopLagMs}ms (ngưỡng an toàn < 250ms). Tiến trình đang chịu tải tính toán nặng hoặc I/O bị chặn.`,
         mitigationTaken: 'Load Shedding kích hoạt: Tự động trả HTTP 503 cho request khách vãng lai để giải tỏa CPU máy chủ.',
       });
+    } else if (sample.eventLoopLagMs >= 100) {
+      // Lag 100-249ms (thường gặp khi cold-start hoặc GC): chỉ tính điểm nhẹ 10-25 điểm
+      lagScore = Math.min(25, Math.round((sample.eventLoopLagMs / 250) * 25));
     }
 
     let ramScore = 0;
-    if (sample.ramPercent >= 90) {
-      ramScore = 80;
+    if (sample.ramPercent >= 92) {
+      ramScore = 75;
       anomalies.push({
         code: 'MEMORY_EXHAUSTION',
         vector: 'resource',
         metric: 'ramPercent',
         current: sample.ramPercent,
-        threshold: 90,
+        threshold: 92,
         baseline: 50,
         unit: '% RAM',
         severity: 'HIGH',
         actor: systemActor,
         message: `Bộ nhớ RAM tiêu thụ đã chạm ${sample.ramPercent}% — Nguy cơ rò rỉ bộ nhớ (Memory Leak) hoặc sập tiến trình (OOM).`,
-        rootCauseDiagnosis: `Bộ nhớ RAM đã vượt ngưỡng nguy hiểm (${sample.ramPercent}% > 90%). Cần giám sát rò rỉ bộ nhớ hoặc scale up tài nguyên.`,
+        rootCauseDiagnosis: `Bộ nhớ RAM đã vượt ngưỡng nguy hiểm (${sample.ramPercent}% > 92%). Cần giám sát rò rỉ bộ nhớ hoặc scale up tài nguyên.`,
         mitigationTaken: 'Cảnh báo tài nguyên hệ thống phát ra tới Quản trị viên để chuẩn bị mở rộng hạ tầng.',
       });
+    } else if (sample.ramPercent >= 80) {
+      ramScore = Math.min(25, Math.round((sample.ramPercent - 80) * 2));
     }
 
     let err5xxScore = 0;
-    if (sample.errorRate5xx >= 0.15) {
-      err5xxScore = 75;
+    // Chỉ đánh giá tỷ lệ lỗi 5xx khi cỡ mẫu tối thiểu >= 10 requests trong cửa sổ đánh giá
+    // Tuyệt đối không coi 1 lỗi trong 1 request đơn lẻ (100%) khi mới khởi động là sập server!
+    const minRequestsFor5xx = 10;
+    if (sampleWindowRequests >= minRequestsFor5xx && sample.errorRate5xx >= 0.25) {
+      err5xxScore = 70;
       anomalies.push({
         code: 'SERVER_5XX_SURGE',
         vector: 'resource',
         metric: 'errorRate5xx',
         current: sample.errorRate5xx,
-        threshold: 0.15,
+        threshold: 0.25,
         baseline: 0.01,
         unit: '% lỗi',
         severity: 'HIGH',
         actor: systemActor,
         message: `Tỷ lệ lỗi máy chủ 5xx tăng bất thường (${Math.round(sample.errorRate5xx * 100)}% yêu cầu) — Dấu hiệu database hoặc service phụ thuộc tê liệt.`,
-        rootCauseDiagnosis: `Tỷ lệ lỗi HTTP 500 đạt ${Math.round(sample.errorRate5xx * 100)}%. Cơ sở dữ liệu hoặc phụ thuộc ngoài không phản hồi kịp thời.`,
+        rootCauseDiagnosis: `Tỷ lệ lỗi HTTP 500 đạt ${Math.round(sample.errorRate5xx * 100)}% trên tổng ${sampleWindowRequests} requests.`,
         mitigationTaken: 'DB Bulkhead tự động bảo lưu 20% kết nối cho luồng Quản trị viên (Fast-Lane) để cứu hộ.',
       });
+    } else if (sample.errorRate5xx > 0 && sampleWindowRequests >= minRequestsFor5xx) {
+      err5xxScore = Math.min(20, Math.round(sample.errorRate5xx * 60));
     }
 
     // Compound resource exhaustion: Nếu có từ 2 chỉ số phần cứng bị nguy hiểm cùng lúc
@@ -314,10 +360,16 @@ class AnomalyDetector {
     const resourceScore = Math.min(100, Math.max(lagScore, ramScore, err5xxScore) + compoundBonus);
 
     // ─────────────────────────────────────────────────────────────
-    // TỔNG HỢP COMPOSITE THREAT SCORE THEO 4 VECTOR
+    // TỔNG HỢP COMPOSITE THREAT SCORE THEO 4 VECTOR (Áp dụng Vector Config)
     // ─────────────────────────────────────────────────────────────
-    const rawMax = Math.max(authScore, trafficScore, exploitScore, resourceScore);
-    const highVectorsCount = [authScore, trafficScore, exploitScore, resourceScore].filter((s) => s >= 60).length;
+    const activeScores = [];
+    if (this.vectorConfig.auth) activeScores.push(authScore);
+    if (this.vectorConfig.traffic) activeScores.push(trafficScore);
+    if (this.vectorConfig.exploit) activeScores.push(exploitScore);
+    if (this.vectorConfig.resource) activeScores.push(resourceScore);
+
+    const rawMax = activeScores.length > 0 ? Math.max(...activeScores) : 5;
+    const highVectorsCount = activeScores.filter((s) => s >= 65).length;
     const corroborationBonus = highVectorsCount >= 2 ? (highVectorsCount - 1) * 8 : 0;
     
     // Điểm nền môi trường tối thiểu là 5
@@ -329,34 +381,46 @@ class AnomalyDetector {
     const vectorDefenses = {
       auth: {
         score: Math.round(authScore),
-        status: authScore >= 70 ? 'ALERT' : authScore >= 30 ? 'ELEVATED' : 'NORMAL',
-        defenseAction: authScore >= 70 ? 'QUARANTINE_IP' : 'MONITOR',
-        actionLabel: authScore >= 70
+        disabled: !this.vectorConfig.auth,
+        status: !this.vectorConfig.auth ? 'NORMAL' : authScore >= 70 ? 'ALERT' : authScore >= 40 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: !this.vectorConfig.auth ? 'MONITOR' : authScore >= 70 ? 'QUARANTINE_IP' : 'MONITOR',
+        actionLabel: !this.vectorConfig.auth
+          ? 'Vectơ Xác thực đã bị tắt khỏi tính toán rủi ro (Chế độ giám sát thụ động)'
+          : authScore >= 70
           ? 'Tự động kích hoạt tường lửa Active Quarantine cô lập IP Brute-Force/Token-hijacking tại Gateway (Không ảnh hưởng khách hàng khác)'
           : 'Giám sát xác thực bình thường',
       },
       traffic: {
         score: Math.round(trafficScore),
-        status: trafficScore >= 70 ? 'ALERT' : trafficScore >= 30 ? 'ELEVATED' : 'NORMAL',
-        defenseAction: trafficScore >= 70 ? 'ADAPTIVE_RATE_LIMIT' : 'MONITOR',
-        actionLabel: trafficScore >= 70
+        disabled: !this.vectorConfig.traffic,
+        status: !this.vectorConfig.traffic ? 'NORMAL' : trafficScore >= 70 ? 'ALERT' : trafficScore >= 40 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: !this.vectorConfig.traffic ? 'MONITOR' : trafficScore >= 70 ? 'ADAPTIVE_RATE_LIMIT' : 'MONITOR',
+        actionLabel: !this.vectorConfig.traffic
+          ? 'Vectơ Lưu lượng đã bị tắt khỏi tính toán rủi ro (Chế độ giám sát thụ động)'
+          : trafficScore >= 70
           ? 'Kích hoạt bộ giới hạn tần suất thích ứng (Adaptive Rate-Limit) theo trần quy mô CCU, bảo vệ băng thông'
           : 'Lưu lượng trong giới hạn an toàn',
       },
       exploit: {
         score: Math.round(exploitScore),
-        status: exploitScore >= 70 ? 'ALERT' : exploitScore >= 30 ? 'ELEVATED' : 'NORMAL',
-        defenseAction: exploitScore >= 70 ? 'BLOCK_INJECTION_IP' : 'MONITOR',
-        actionLabel: exploitScore >= 70
+        disabled: !this.vectorConfig.exploit,
+        status: !this.vectorConfig.exploit ? 'NORMAL' : exploitScore >= 70 ? 'ALERT' : exploitScore >= 40 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: !this.vectorConfig.exploit ? 'MONITOR' : exploitScore >= 70 ? 'BLOCK_INJECTION_IP' : 'MONITOR',
+        actionLabel: !this.vectorConfig.exploit
+          ? 'Vectơ Khai thác đã bị tắt khỏi tính toán rủi ro (Chế độ giám sát thụ động)'
+          : exploitScore >= 70
           ? 'Cắt kết nối HTTP 403 tức thì và đưa nguồn IP mang injection payload vào danh sách đen 30 phút'
           : 'Không phát hiện mẫu thăm dò lỗ hổng',
       },
       resource: {
         score: Math.round(resourceScore),
-        status: resourceScore >= 85 ? 'CRITICAL' : resourceScore >= 70 ? 'WARNING' : resourceScore >= 30 ? 'ELEVATED' : 'NORMAL',
-        defenseAction: resourceScore >= 85 ? 'EMERGENCY_MAINTENANCE' : resourceScore >= 70 ? 'LOAD_SHEDDING' : 'MONITOR',
-        actionLabel: resourceScore >= 85
-          ? '🚨 Nguy cơ sập dây chuyền hạ tầng (Lag > 250ms & 5xx > 15% / OOM): Đề xuất kích hoạt Bảo trì khẩn cấp để bảo vệ CSDL'
+        disabled: !this.vectorConfig.resource,
+        status: !this.vectorConfig.resource ? 'NORMAL' : resourceScore >= 85 ? 'CRITICAL' : resourceScore >= 70 ? 'WARNING' : resourceScore >= 40 ? 'ELEVATED' : 'NORMAL',
+        defenseAction: !this.vectorConfig.resource ? 'MONITOR' : resourceScore >= 85 ? 'EMERGENCY_MAINTENANCE' : resourceScore >= 70 ? 'LOAD_SHEDDING' : 'MONITOR',
+        actionLabel: !this.vectorConfig.resource
+          ? 'Vectơ Tài nguyên đã bị tắt khỏi tính toán rủi ro (Chế độ giám sát thụ động)'
+          : resourceScore >= 85
+          ? '🚨 Nguy cơ sập dây chuyền hạ tầng (Lag > 400ms & 5xx > 25% / OOM): Đề xuất kích hoạt Bảo trì khẩn cấp để bảo vệ CSDL'
           : resourceScore >= 70
           ? 'Tự động kích hoạt Load Shedding (hạ tải nhẹ HTTP 503 cho request không ưu tiên, bảo vệ tiến trình lõi)'
           : 'Tài nguyên phần cứng ổn định',
@@ -364,28 +428,44 @@ class AnomalyDetector {
     };
 
     // Xác định phân cấp trạng thái và hành động tổng thể
-    // QUY TẮC CỐT LÕI: Chỉ đề xuất EMERGENCY_MAINTENANCE khi HẠ TẦNG (vector resource) sập nghiêm trọng (>= 85)
-    // hoặc khi có tấn công DoS kết hợp gây lỗi máy chủ 5xx diện rộng!
+    // QUY TẮC CỐT LÕI: Chỉ đề xuất EMERGENCY_MAINTENANCE khi HẠ TẦNG sập nghiêm trọng đa chỉ số VÀ Vector Resource đang BẬT
+    const severeResourceCrisis = Boolean(this.vectorConfig.resource) && resourceScore >= 85 && (
+      (lagScore >= 70 && err5xxScore >= 70) ||
+      (lagScore >= 70 && ramScore >= 70) ||
+      (ramScore >= 70 && err5xxScore >= 70)
+    );
+
     let status = 'NORMAL';
     let recommendedAction = null;
 
-    if (resourceScore >= 85 || (resourceScore >= 70 && err5xxScore >= 70)) {
+    if (severeResourceCrisis) {
       status = 'CRITICAL';
       recommendedAction = 'EMERGENCY_MAINTENANCE';
     } else if (threatScore >= 85) {
       status = 'CRITICAL';
-      recommendedAction = exploitScore >= 85 ? 'BLOCK_INJECTION_IP' : authScore >= 85 ? 'QUARANTINE_IP' : 'ADAPTIVE_RATE_LIMIT';
-    } else if (threatScore >= 70) {
-      status = 'WARNING';
-      if (resourceScore >= 70) {
-        recommendedAction = 'LOAD_SHEDDING';
-      } else if (authScore >= 70 || exploitScore >= 70) {
-        recommendedAction = 'ACTIVE_QUARANTINE_ENGAGED';
-      } else if (trafficScore >= 70) {
+      if (this.vectorConfig.exploit && exploitScore >= 85) {
+        recommendedAction = 'BLOCK_INJECTION_IP';
+      } else if (this.vectorConfig.auth && authScore >= 85) {
+        recommendedAction = 'QUARANTINE_IP';
+      } else if (this.vectorConfig.traffic && trafficScore >= 85) {
         recommendedAction = 'ADAPTIVE_RATE_LIMIT';
       } else {
         recommendedAction = 'INVESTIGATE';
       }
+    } else if (threatScore >= 70) {
+      status = 'WARNING';
+      if (this.vectorConfig.resource && resourceScore >= 70) {
+        recommendedAction = 'LOAD_SHEDDING';
+      } else if ((this.vectorConfig.auth && authScore >= 70) || (this.vectorConfig.exploit && exploitScore >= 70)) {
+        recommendedAction = 'ACTIVE_QUARANTINE_ENGAGED';
+      } else if (this.vectorConfig.traffic && trafficScore >= 70) {
+        recommendedAction = 'ADAPTIVE_RATE_LIMIT';
+      } else {
+        recommendedAction = 'INVESTIGATE';
+      }
+    } else if (threatScore >= 40) {
+      status = 'ELEVATED';
+      recommendedAction = 'MONITOR';
     }
 
     const isAnomaly = anomalies.length > 0 || threatScore >= 70;
@@ -405,6 +485,7 @@ class AnomalyDetector {
         resource: Math.round(resourceScore),
       },
       vectorDefenses,
+      vectorConfig: { ...this.vectorConfig },
       targetConcurrency: this.targetConcurrency,
       isAnomaly,
       anomalies,

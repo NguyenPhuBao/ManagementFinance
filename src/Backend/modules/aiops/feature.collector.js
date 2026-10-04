@@ -19,6 +19,7 @@ class FeatureCollector {
     this._ipStats = new Map();
     this._salt = crypto.randomBytes(8).toString('hex');
     this.targetConcurrency = options.targetConcurrency || 1000;
+    this._startupTime = Date.now();
   }
 
   setTargetConcurrency(n) {
@@ -128,8 +129,8 @@ class FeatureCollector {
           const ipStat = this._ipStats.get(clientIp);
           if (ipStat) {
             ipStat.malformed += 1;
-            // Heuristic 2: Phát hiện rà quét lỗ hổng SQLi / Path Traversal lặp lại
-            if (ipStat.malformed >= 3 && !req.isAdmin) {
+            // Heuristic 2: Phát hiện rà quét lỗ hổng SQLi / Path Traversal lặp lại (nới rộng lên >= 8 lần)
+            if (ipStat.malformed >= 8 && !req.isAdmin) {
               defaultAIOpsQuarantine.quarantine(
                 clientIp,
                 `Rà quét lỗ hổng độc hại SQLi / Path Traversal (${ipStat.malformed} lần)`,
@@ -151,8 +152,8 @@ class FeatureCollector {
               const ipStat = this._ipStats.get(clientIp);
               if (ipStat) {
                 ipStat.failedLogins += 1;
-                // Heuristic 3: Phát hiện tấn công dò mật khẩu (Brute-force) từ 1 IP
-                if (ipStat.failedLogins >= 5 && !req.isAdmin) {
+                // Heuristic 3: Phát hiện tấn công dò mật khẩu (Brute-force) từ 1 IP (nới rộng lên >= 15 lần để tránh người dùng gõ nhầm)
+                if (ipStat.failedLogins >= 15 && !req.isAdmin) {
                   defaultAIOpsQuarantine.quarantine(
                     clientIp,
                     `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai)`,
@@ -162,16 +163,22 @@ class FeatureCollector {
               }
             }
           } else if (status === 401 && path.includes('/refresh')) {
-            // Heuristic 4: Chỉ ghi nhận tấn công khi thực sự tái sử dụng token đã thu hồi (req.tokenReuseDetected)
-            // Tuyệt đối không coi việc hết hạn phiên làm việc thông thường là hành vi tấn công
+            // Heuristic 4: Chỉ ghi nhận tái sử dụng token khi thực sự phát hiện cờ req.tokenReuseDetected
             if (req.tokenReuseDetected) {
               this.recordTokenReuse();
-              if (clientIp && !req.isAdmin) {
-                defaultAIOpsQuarantine.quarantine(
-                  clientIp,
-                  'Phát hiện tái sử dụng Token đã thu hồi (Token Hijacking Attack)',
-                  15 * 60 * 1000
-                );
+              if (clientIp) {
+                const ipStat = this._ipStats.get(clientIp);
+                if (ipStat) {
+                  ipStat.tokenReuse = (ipStat.tokenReuse || 0) + 1;
+                  // Chỉ cách ly khi tái sử dụng lặp lại >= 5 lần từ 1 IP (tránh trường hợp người dùng mở 2 tab hoặc mạng chập chờn)
+                  if (ipStat.tokenReuse >= 5 && !req.isAdmin) {
+                    defaultAIOpsQuarantine.quarantine(
+                      clientIp,
+                      `Phát hiện tái sử dụng Token đã thu hồi liên tục (${ipStat.tokenReuse} lần - Token Hijacking Attack)`,
+                      15 * 60 * 1000
+                    );
+                  }
+                }
               }
             }
           }
@@ -189,6 +196,11 @@ class FeatureCollector {
    */
   _getEventLoopLag() {
     try {
+      // Warmup 45s đầu khởi động máy chủ: bỏ qua giật lag do nạp module/kết nối ban đầu
+      const warmupMs = process.env.NODE_ENV === 'test' ? 0 : 45000;
+      if (Date.now() - this._startupTime < warmupMs) {
+        return 10;
+      }
       const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
       if (defaultEventLoopMonitor && typeof defaultEventLoopMonitor.getLag === 'function') {
         return defaultEventLoopMonitor.getLag();

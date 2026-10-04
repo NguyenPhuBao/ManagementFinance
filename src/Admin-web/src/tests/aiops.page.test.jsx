@@ -17,11 +17,14 @@ vi.mock('../api/aiops.api', () => ({
     getIncidents: vi.fn(),
     clearIncidents: vi.fn(),
     quarantineActor: vi.fn(),
+    getVectorConfig: vi.fn(),
+    toggleVector: vi.fn(),
   },
 }));
 
 vi.mock('../api/admin.api', () => ({
   default: {
+    getMaintenanceStatus: vi.fn(),
     setMaintenanceStatus: vi.fn(),
   },
 }));
@@ -145,7 +148,14 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
         totalPages: 1,
       },
     });
+    adminApi.getMaintenanceStatus.mockResolvedValue({ data: { active: false, scheduled: null } });
     aiopsApi.clearIncidents.mockResolvedValue({ data: { success: true } });
+    aiopsApi.getVectorConfig.mockResolvedValue({
+      data: { auth: true, traffic: true, exploit: true, resource: true },
+    });
+    aiopsApi.toggleVector.mockResolvedValue({
+      data: { success: true, vectorConfig: { auth: true, traffic: true, exploit: true, resource: true } },
+    });
   });
 
   it('5.1. Tải và hiển thị 4 Vectơ Rủi Ro Độc Lập cùng Threat Score Gauge', async () => {
@@ -409,6 +419,191 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
           durationMinutes: 15,
         })
       );
+    });
+  });
+
+  it('5.12. Hiển thị thẻ Tình Trạng Hệ Thống phía trên Target Concurrency Scaler với Badge xanh lá nhạt', async () => {
+    adminApi.getMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: false,
+        scheduled: null,
+      },
+    });
+
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tình Trạng Hệ Thống:')).toBeInTheDocument();
+      expect(screen.getByText('Đang hoạt động')).toBeInTheDocument();
+    });
+  });
+
+  it('5.13. Cập nhật thẻ Tình Trạng Hệ Thống sang "Đang bảo trì" khi nhận Socket admin.maintenance_changed', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tình Trạng Hệ Thống:')).toBeInTheDocument();
+    });
+
+    const mHandler = socketListeners['admin.maintenance_changed'];
+    expect(mHandler).toBeDefined();
+
+    act(() => {
+      mHandler({
+        active: true,
+        isEmergency: true,
+        reason: 'Bảo trì khẩn cấp nâng cấp cụm DB',
+        activatedBy: 'SecurityOps',
+        activatedAt: new Date().toISOString(),
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Đang bảo trì')).toBeInTheDocument();
+      expect(screen.getByText(/Bảo trì khẩn cấp nâng cấp cụm DB/i)).toBeInTheDocument();
+      expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
+    });
+  });
+
+  it('5.14. Bật/Tắt từng vector: Click toggle mở ConfirmModal xác nhận, bấm xác nhận gọi API toggleVector và cập nhật UI', async () => {
+    aiopsApi.toggleVector.mockResolvedValueOnce({
+      data: {
+        success: true,
+        vectorConfig: { auth: false, traffic: true, exploit: true, resource: true },
+      },
+    });
+
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toggle-vector-auth')).toBeInTheDocument();
+    });
+
+    // 1. Click toggle switch của Vector 1 (Xác thực)
+    const toggleAuth = screen.getByTestId('toggle-vector-auth');
+    fireEvent.click(toggleAuth);
+
+    // 2. Kiểm tra Popup xác nhận (ConfirmModal) hiển thị
+    await waitFor(() => {
+      expect(screen.getByText('Xác nhận TẮT Vector')).toBeInTheDocument();
+      expect(screen.getByText(/Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG thông số để bạn quan sát/i)).toBeInTheDocument();
+    });
+
+    // 3. Bấm nút Xác nhận TẮT trên modal
+    const confirmBtn = screen.getByRole('button', { name: /Xác nhận TẮT/i });
+    fireEvent.click(confirmBtn);
+
+    // 4. Verify API toggleVector được gọi chính xác
+    await waitFor(() => {
+      expect(aiopsApi.toggleVector).toHaveBeenCalledWith('auth', false);
+    });
+  });
+
+  it('5.15. Khi Vector bị TẮT: Vẫn đo lường hiển thị sub-score nhưng hiển thị badge chỉ đo lường và tắt phòng vệ', async () => {
+    aiopsApi.getVectorConfig.mockResolvedValueOnce({
+      data: { auth: true, traffic: true, exploit: false, resource: true },
+    });
+
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/3\. Khai Thác Lỗ Hổng/i)).toBeInTheDocument();
+    });
+
+    // Vẫn hiển thị điểm đo lường của vector
+    expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+
+    // Hiển thị badge chỉ đo lường
+    expect(
+      screen.getByText(/Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Đã tắt phòng vệ — Chỉ đo lường/i)
+    ).toBeInTheDocument();
+  });
+
+  it('5.16. Bộ select thời gian quan sát xu hướng 4 Vector (Presets: realtime, day, month, year) gọi getHistory', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preset-day')).toBeInTheDocument();
+    });
+
+    // Click Day (24 giờ qua)
+    fireEvent.click(screen.getByTestId('preset-day'));
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+    });
+
+    // Click Month (30 ngày qua)
+    fireEvent.click(screen.getByTestId('preset-month'));
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'month' });
+    });
+
+    // Click Year (12 tháng qua)
+    fireEvent.click(screen.getByTestId('preset-year'));
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'year' });
+    });
+  });
+
+  it('5.17. Bộ lọc chọn chính xác và Quy tắc ưu tiên cốt lõi: Ưu tiên bộ lọc chọn chính xác thay vì bộ select nếu cả 2 được áp dụng', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('apply-custom-range-btn')).toBeInTheDocument();
+    });
+
+    // Chọn Preset Day trước
+    fireEvent.click(screen.getByTestId('preset-day'));
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+    });
+
+    // Nhập bộ lọc chi tiết chính xác (Từ ngày đến ngày)
+    const fromInput = screen.getByTestId('filter-from-date');
+    const toInput = screen.getByTestId('filter-to-date');
+    fireEvent.change(fromInput, { target: { value: '2026-09-01' } });
+    fireEvent.change(toInput, { target: { value: '2026-10-04' } });
+
+    // Bấm Lọc Chính Xác
+    const applyBtn = screen.getByTestId('apply-custom-range-btn');
+    fireEvent.click(applyBtn);
+
+    // Verify PO Rule: Ưu tiên bộ lọc chính xác, params gửi { from, to } thay vì { range: 'day' }
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ from: '2026-09-01', to: '2026-10-04' });
+      expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC/i)).toBeInTheDocument();
+      expect(screen.getByText(/Bộ select nhanh đang tạm thời bị bỏ qua/i)).toBeInTheDocument();
+    });
+
+    // Bấm xóa bộ lọc chính xác -> quay lại preset Day
+    const clearBtn = screen.getByTestId('clear-custom-range-btn');
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+    });
+  });
+
+  it('5.18. Đồng bộ cấu hình vector realtime khi nhận Socket admin.vector_config_changed', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toggle-vector-traffic')).toBeInTheDocument();
+    });
+
+    const vConfigHandler = socketListeners['admin.vector_config_changed'];
+    expect(vConfigHandler).toBeDefined();
+
+    act(() => {
+      vConfigHandler({ auth: true, traffic: false, exploit: true, resource: true });
+    });
+
+    await waitFor(() => {
+      const toggleTraffic = screen.getByTestId('toggle-vector-traffic');
+      expect(toggleTraffic.getAttribute('aria-checked')).toBe('false');
     });
   });
 });
