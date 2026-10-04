@@ -980,6 +980,29 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### ✅ Dự án C việc hai — nhịp chi ngân sách + G66 (2026-10-04)
+
+Người dùng chọn việc thứ hai của dự án C là *nhịp / ngưỡng ngân sách*; brainstorm đổi hình dạng: **màu 70/90 giữ nguyên**,
+**không** thêm thông báo, thay giả định *chi đều* bằng **nhịp học từ ≤ 6 kỳ đã đóng** (kể cả trước ngày tạo ngân sách, ≥ 3
+kỳ có chi, trung vị) ở ba chỗ — dự phóng *Đề xuất cân đối* (thẻ + thông báo `budgetRebalance` + tool `can_doi`), ô NHỊP CHI
+trang chi tiết, trạng thái nhịp của tool `danh_sach_ngan_sach`. Spec `specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md`,
+chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
+
+- **G66 trước** (người dùng chọn, `02d46ca`): ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày đã kẹp từ kỳ thứ hai — nay
+  **`BudgetEntity.mocKy(s)`** là định nghĩa duy nhất của lưới kỳ, nhảy `s + 1` chu kỳ từ `startDate`; `currentPeriod`,
+  `recentPeriods`, `expiresAt` cùng gọi nó; `_anchor` / `periodAnchor` bỏ. Dữ liệu thật không có ngân sách nào dính.
+- **Nhịp chi** (`3e827dc` → `8eb5b93`, 9 task inline): `nhip_chi.dart` thuần (`hocNhipChi`, `viTriTrongKy`) · `kyDaDongTruoc`
+  trên lưới `mocKy` · `BudgetRepository.nhipChiTheoNganSach` đọc khoản chi **một** lượt (vế danh mục `khoanThuocNganSach`
+  tách khỏi `getExpenses`) · cửa **`docNhipChi`** — nhịp là phần phụ, hỏng thì `{}` → chi đều · `budgetPaceOf(nhipChi:)`,
+  `duPhongCua(nhipChi:)`, `DuLieuTaiPhanBo.nhipTheoNganSach`, `hangNganSach(nhipTheoNganSach:)`. Không đổi schema, payload,
+  `tools_json`, khoá thông báo.
+- ⭐ **Phép đo lật dự đoán "im"**: CSDL Realme có giao dịch từ **10/04/2026** (dữ liệu thử B2/B3 người dùng cho giữ) → *Ăn uống*
+  học được 5 kỳ; dự phóng 1.048.709 → 930.000, chip *chậm* → *đúng nhịp*. Nghiệm thu Realme 360 dp đạt cả hai chiều.
+- **Lỗi có từ trước lộ khi nghiệm thu**: ở 360 dp dòng *"Theo …: X"* cùng hàng chip dài bị cắt "…" — người dùng chọn đưa xuống
+  **hàng riêng dưới chip** (`8eb5b93`). Trang chi tiết ngân sách chưa có màn Stitch; lượt `generate_screen_from_text` trả
+  `timeout`, chờ người dùng xem.
+- `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
+
 ### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
 
 - Bảy PR của NPBao (#111–#117, 03–04/10): AIOps Sentinel bốn vector + nhật ký sự cố (RCA), bảo trì hai chế độ có giờ

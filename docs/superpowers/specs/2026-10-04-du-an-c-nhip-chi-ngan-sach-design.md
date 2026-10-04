@@ -6,6 +6,15 @@ vi, cách báo sớm, nguồn học, cách dự phóng, ba phần thiết kế);
 mã**. Người dùng dặn dừng sau kế hoạch và viết bàn giao; Task 0 của kế hoạch hỏi thứ tự **G66** trước khi code — ✅
 phiên sau người dùng chọn sửa G66 **trước** (`02d46ca`); việc nhịp chi bắt đầu ở Task 1.
 
+> ✅ **THI CÔNG XONG 2026-10-04** (`3e827dc` → `8eb5b93`, nghiệm thu Realme 360 dp cùng ngày; mục 11.5 (3)
+> `AI_EDGE_FEATURE.md`). **Ba chỗ bản thi công khác bản viết:**
+> 1. `mocKy` có từ G66 với thân nhảy từ `startDate` — mục 4.1 bản viết tả nó nhảy từ mốc neo (chính lưới G66), đã sửa tại chỗ.
+> 2. **Mục 7.3 đoán sai "im"**: CSDL Realme có giao dịch từ 10/04/2026 (dữ liệu thử B2/B3 người dùng cho giữ), nên *Ăn uống*
+>    học được 5 kỳ — chiều dương của 7.4 nghiệm thu được trên máy **không phải bơm dữ liệu**.
+> 3. **Ô NHỊP CHI đổi bố cục** (người dùng chọn lúc nghiệm thu, ngoài phạm vi mục 5): dòng *"Theo …: X"* xuống **hàng riêng
+>    dưới chip** vì ở 360 dp chip dài cùng hàng cắt mất con số (lỗi có từ trước). Mục 3.2 / 5 chỉ nói đổi chữ, còn mục 7.2
+>    đòi "chip và dòng phụ cùng một hàng" — câu ấy nay **ngược** bản thi công (có đánh dấu tại chỗ).
+
 > 🔧 **Bốn chỗ làm rõ lúc lập kế hoạch (2026-10-04), thắng chỗ tương ứng bên dưới:**
 > 1. **Kỳ trước ngày tạo cắt trên LƯỚI mốc neo, không lùi từ `startDate`** (mục 4.1 đã viết lại). Lùi từ `startDate` lệch
 >    lưới với kỳ thật khi ngân sách mang `nextTimeRecurrence` riêng (hàng kéo về) hoặc bắt đầu ngày 29–31 (mốc neo bị kẹp).
@@ -199,7 +208,8 @@ Lớp `ai_edge/` **không** đọc bảng giao dịch (test quét 14): nó chỉ
   cắt kỳ không lệch).
 - `TaiPhanBoNguonImpl.nap` mang `nhipTheoNganSach`; `BudgetDetailCubit` truyền nhịp vào `pace`; tool ngân sách in trạng
   thái theo nhịp.
-- Widget test `_PaceCard` ở **360 dp**: cả hai nhãn, không tràn (`takeException`), chip và dòng phụ cùng một hàng.
+- Widget test `_PaceCard` ở **360 dp**: cả hai nhãn, không tràn (`takeException`), ~~chip và dòng phụ cùng một hàng~~ ✅ dòng phụ
+  ở **hàng riêng dưới chip** và không bị cắt "…" (`didExceedMaxLines`) — đổi lúc nghiệm thu, xem khối ✅ đầu tệp.
 
 ### 7.3 Công cụ đo trên CSDL thật
 

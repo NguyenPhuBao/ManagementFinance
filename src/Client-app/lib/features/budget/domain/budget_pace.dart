@@ -18,14 +18,16 @@ library;
 import '../data/models/budget_entity.dart';
 import 'nhip_chi.dart';
 
+/// So với **mốc so sánh**: phần thời gian đã trôi của kỳ (chi đều), hoặc phần
+/// mọi khi đã chi tới lúc này khi đã học nhịp riêng (`BudgetPace.theoNhipRieng`).
 enum BudgetPaceStatus {
-  /// Tiêu ít hơn hẳn phần thời gian đã trôi.
+  /// Tiêu ít hơn hẳn mốc so sánh.
   slow,
 
-  /// Trong biên ±5 điểm phần trăm quanh tỉ lệ thời gian đã trôi.
+  /// Trong biên ±5 điểm phần trăm quanh mốc so sánh.
   onTrack,
 
-  /// Tiêu nhiều hơn hẳn phần thời gian đã trôi.
+  /// Tiêu nhiều hơn hẳn mốc so sánh.
   fast,
 }
 

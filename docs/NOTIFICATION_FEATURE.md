@@ -985,6 +985,14 @@ ba: tool ngân sách của Trợ lý AI (`chon=can_doi`). Đừng chép lại s�
 Hỏng nếu làm khác: thông báo nói *"Ăn uống dự kiến vượt"* trong khi thẻ trên
 trang nói về *"Mua sắm"*, cả hai đều trông hợp lý và không gì báo lỗi.
 
+✅ **Từ 2026-10-04 dự phóng theo NHỊP CHI RIÊNG khi đã học** (dự án C việc hai, mục
+11.5 (3) `AI_EDGE_FEATURE.md`): `TaiPhanBoNguonImpl.nap` đọc thêm nhịp chi của
+từng ngân sách (`docNhipChi`), `keHoachTaiPhanBoTu` chuyền nó vào `taiPhanBoCua`,
+và dự phóng = *đã chi + phần mọi khi còn chi tới cuối kỳ* thay cho giả định chi
+đều — tiền nhà trả ngày 1 thôi bị dự phóng thành thâm hụt 20 triệu vào ngày 6.
+Chưa đủ 3 kỳ có chi thì phép cũ, từng số như trước. Thông báo này đi qua đúng phép
+ghép ấy nên **tự theo** — khoá, câu chữ, công tắc **không đổi**.
+
 ### ⚠️ Khoá chỉ có TUẦN — không ngân sách, không số tiền
 
 `budgetRebalance:<nam>-W<tuan>` (tuần ISO, qua `khoaTuan`). Kế hoạch là một hàm

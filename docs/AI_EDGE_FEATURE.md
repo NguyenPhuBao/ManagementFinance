@@ -3694,9 +3694,11 @@ cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc
 khi ghi chú trống · hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc*; đo lại thẻ im hẳn trên dữ liệu hiện tại. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
 tự khối trang Phân tích · thông báo theo phản ứng. 📝 **Việc thứ hai người dùng chọn 2026-10-04: nhịp chi ngân sách** — spec
 `specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md` (thiết kế + bản viết đã duyệt), kế hoạch 12 task
-`plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore), **chưa có mã**. Hình dạng đổi so với tên việc — xem 11.5 (3).
+`plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore). Hình dạng đổi so với tên việc — xem 11.5 (3).
 Lượt lập kế hoạch lộ ra **G66** (lỗi có sẵn của lưới kỳ ngân sách, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ người dùng chọn sửa
-**trước**, đóng cùng ngày (`02d46ca`: `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ); việc nhịp chi bắt đầu ở Task 1.
+**trước**, đóng cùng ngày (`02d46ca`: `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ). ✅ **Việc thứ hai XONG
+2026-10-04** (`3e827dc` → `8eb5b93`, nghiệm thu Realme cùng ngày) — chi tiết ở 11.5 (3). **Hai việc còn lại** của dự án C:
+thứ tự khối trang Phân tích (phần *học*) · thông báo theo phản ứng.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
@@ -3944,6 +3946,10 @@ Bốn việc cá nhân hoá ở tầng số, người dùng chọn cả bốn ng
 Cố định · học nhịp chi theo ngày trong tháng · phát hiện khoản chi bất thường theo danh
 mục.
 
+> ✅ **Việc #3 — học nhịp chi — xong cho NGÂN SÁCH 2026-10-04** (dự án C việc hai, mục 11.5 (3)): nhịp học theo **phần
+> thời gian của kỳ** chứ không theo *ngày trong tháng* (kỳ tuần / quý / năm dùng chung phép). ✅ **Việc #4** (bất thường theo
+> danh mục) xong ở B3 (2026-09-29, mục 3.35 `ANALYTICS_FEATURE.md`).
+
 ⚠️ **Luật chung cho cả bốn:** mỗi luật có **ngưỡng mẫu tối thiểu, dưới ngưỡng thì im
 lặng hoàn toàn**, rồi tự bật khi đủ. Không có ngưỡng thì luật sẽ "im hàng tháng rồi nổ
 bừa ngay khi vừa đủ mẫu" — đúng sai lầm mà mục 5f `NOTIFICATION_FEATURE.md` đã loại một
@@ -4079,7 +4085,7 @@ Tiền mặt, nên phép **đổi ví** không có cách nào hiện ra. Chiều
 widget test; muốn thấy thật thì cần một tài khoản có ≥ 5 giao dịch cùng danh mục ở một ví
 **khác** ví mặc định.
 
-#### (3) Ngưỡng cảnh báo ngân sách 70 % / 90 %
+#### ✅ (3) Ngưỡng cảnh báo ngân sách 70 % / 90 % — **XONG 2026-10-04 (dạng nhịp chi, màu giữ nguyên)**
 
 `budget_visuals.dart`: `_cautionAt = 0.70`, `_criticalAt = 0.90` — cứng cho mọi người.
 Nhưng 70 % vào ngày 20 là bình thường, còn 70 % vào ngày 5 là báo động.
@@ -4096,7 +4102,35 @@ oan** với khoản lớn đầu kỳ (Nhà ở trả tiền nhà ngày 1: ngày
 giả định ấy bằng nhịp học từ ≤ 6 kỳ đã đóng (kể cả trước ngày tạo ngân sách, cần ≥ 3 kỳ có chi, trung vị) ở **dự phóng** của Đề
 xuất cân đối (thẻ + thông báo + tool `can_doi`), **ô NHỊP CHI** trang chi tiết, và trạng thái nhịp của tool
 `danh_sach_ngan_sach`. Dự phóng = *đã chi + phần mọi khi còn chi tới cuối kỳ* (không nhân tốc độ kỳ này). Dữ liệu thật bắt đầu
-02/09 → **im** tới khi đủ ba kỳ.
+02/09 → **im** tới khi đủ ba kỳ. *(Câu "im tới khi đủ ba kỳ" là dự đoán lúc thiết kế — phép đo bên dưới lật nó trên Realme.)*
+
+✅ **Thi công 2026-10-04** (`3e827dc` → `8eb5b93`, inline, TDD từng task, mỗi ca xanh từ đầu qua bản sai có chủ ý):
+- **Phép học thuần** `budget/domain/nhip_chi.dart`: `hocNhipChi(List<KyChi>) → NhipChi?` — hai trung vị theo phần thời gian
+  của kỳ (`viTriTrongKy`, cũng là phép "thời gian đã trôi" của `budgetPaceOf`): `phanDaChiMoiKhi(x)` cho chip,
+  `conChiMoiKhi(x)` cho dự phóng. Chỉ kỳ **có chi**; dưới `kSoKyHocToiThieu = 3` → `null` = *chưa biết* → mọi chỗ dùng
+  ra **đúng từng số như trước**. Tối đa `kSoKyHocToiDa = 6` kỳ.
+- **Kỳ đã đóng** `kyDaDongTruoc` (`budget_history.dart`) trên **cùng lưới `BudgetEntity.mocKy`** mà `currentPeriod` nhảy —
+  lùi cả về **trước** ngày tạo ngân sách, bỏ kỳ bắt đầu trước giao dịch đầu tiên của tài khoản (thiếu dữ liệu ≠ không chi).
+- **Đọc một lần**: `BudgetRepository.nhipChiTheoNganSach` đọc khoản chi MỘT lượt cho mọi ngân sách rồi chia bằng
+  `khoanThuocNganSach` — vế danh mục tách khỏi `getExpenses` để "đã chi" có một định nghĩa. Mọi nơi dùng gọi qua
+  **`docNhipChi`** (`budget/data/doc_nhip_chi.dart`): nhịp là phần **phụ**, đọc hỏng thì `{}` → chi đều, không hỏng trang.
+- **Ba chỗ dùng**: `duPhongCua(nhipChi:)` / `taiPhanBoCua(nhipTheoNganSach:)` qua `DuLieuTaiPhanBo.nhipTheoNganSach` — thẻ
+  *Đề xuất cân đối*, thông báo `budgetRebalance`, tool `can_doi` cùng theo vì cùng đi qua `keHoachTaiPhanBoTu`;
+  `budgetPaceOf(nhipChi:)` (`BudgetPace.theoNhipRieng`, `.phanThoiGian`) cho ô NHỊP CHI trang chi tiết (*"Theo nhịp thường
+  lệ: X"* khi đã học, *"Theo thời gian đã trôi: X"* khi chưa); `hangNganSach(nhipTheoNganSach:)` cho tool
+  `danh_sach_ngan_sach`. Khai báo tool **không đổi chữ nào** (`tools_json` giữ nguyên). Màu 70/90, thông báo *Sắp vượt*,
+  khoá `budgetRebalance:<tuần ISO>`, schema, payload: **không đổi**.
+- ⭐ **Phép đo trên CSDL Realme lật dự đoán "im"** (`test/tool/do_nhip_chi_test.dart`, bảng ở nhật ký kế hoạch): giao dịch
+  đầu tiên là **10/04/2026** — dữ liệu thử người dùng cho giữ từ lượt nghiệm thu B2/B3 ngày 29/09 (*"An uong T4…T8"*,
+  *"Tien nha T7/T8"*) — nên *Ăn uống* **học được 5 kỳ** (5→9/2026): dự phóng 1.048.709 → **930.000**, chip *Tiêu chậm* →
+  *Đúng nhịp*. Ba ngân sách kia (Di chuyển, Mua sắm, Giáo dục) 1 kỳ có chi → im, số y như cũ.
+- **Nghiệm thu Realme 360 dp** (debug `24588b4f…`): thẻ cân đối nói *"Ăn uống dự kiến vượt 430.000 đ"* (= 10.000 + mọi khi
+  còn chi ~920.000 − hạn mức 500.000; phép cũ ~548.700); ô NHỊP CHI *Ăn uống* *"Đúng nhịp · Theo nhịp thường lệ: 0 đ"* (dữ
+  liệu thử ghi ngày 10 nên tới ngày 4 mọi khi chưa chi gì); *Di chuyển* *"Chậm hơn dự kiến · Theo thời gian đã trôi: 54.044
+  đ"*. ⚠️ Lượt ấy lộ một lỗi **có từ trước**: ở 360 dp chip dài cùng hàng làm dòng *"Theo …: X"* bị cắt **"…"**, mất con số —
+  người dùng chọn đưa dòng **xuống hàng riêng dưới chip** (`8eb5b93`; ca test hỏi `RenderParagraph.didExceedMaxLines` vì
+  `find.text` so `data`, mù với dấu "…"). Trang chi tiết ngân sách **chưa có màn Stitch** — đã gọi
+  `generate_screen_from_text` (*"Chi tiết ngân sách - Nhịp chi"*), lượt gọi trả `timeout`.
 
 #### (4) Thứ tự khối trang Phân tích
 
