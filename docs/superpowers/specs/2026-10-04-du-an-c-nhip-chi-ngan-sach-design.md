@@ -1,8 +1,22 @@
 # Dự án C, việc thứ hai — dự phóng và nhịp chi ngân sách theo nhịp riêng của từng người — thiết kế
 
 **Ngày:** 2026-10-04. **Trạng thái:** thiết kế người dùng duyệt trong chat (bảy lượt AskUserQuestion: chọn việc, phạm
-vi, cách báo sớm, nguồn học, cách dự phóng, ba phần thiết kế); **bản viết chờ người dùng đọc lại** — chưa có kế hoạch,
-chưa có mã.
+vi, cách báo sớm, nguồn học, cách dự phóng, ba phần thiết kế); bản viết người dùng cho đi tiếp cùng ngày (*"tiếp tục"*);
+**kế hoạch 12 task (Task 0–11)** `docs/superpowers/plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore) — **chưa có
+mã**. Người dùng dặn dừng sau kế hoạch và viết bàn giao; Task 0 của kế hoạch hỏi thứ tự **G66** trước khi code.
+
+> 🔧 **Bốn chỗ làm rõ lúc lập kế hoạch (2026-10-04), thắng chỗ tương ứng bên dưới:**
+> 1. **Kỳ trước ngày tạo cắt trên LƯỚI mốc neo, không lùi từ `startDate`** (mục 4.1 đã viết lại). Lùi từ `startDate` lệch
+>    lưới với kỳ thật khi ngân sách mang `nextTimeRecurrence` riêng (hàng kéo về) hoặc bắt đầu ngày 29–31 (mốc neo bị kẹp).
+>    Lưới có **một** định nghĩa mới, `BudgetEntity.mocKy(int s)`, mà `currentPeriod`, `recentPeriods` và `kyDaDongTruoc` cùng
+>    gọi (Task 1).
+> 2. **Tên tham số là `nhipChi`**, không `nhip` — `duPhongCua` đã có biến cục bộ `nhip` (kiểu `BudgetPace`).
+> 3. **Ví dụ mục 1.2 và 3.3 là đúng số của bộ mẫu test** (`test/features/budget/domain/nhip_chi_mau.dart`), cùng một mốc
+>    trưa **06/11/2026** cho cả ba ngân sách; bản đầu dùng số tròn ước lượng (`~`).
+> 4. **Lộ ra một lỗi CÓ SẴN khi dựng lưới — G66** (`CLIENT_APP_KNOWN_GAPS.md`): ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày
+>    đã kẹp từ kỳ thứ hai (đo: bắt đầu 31/01 → kỳ 28/03→28/04, 28/04→28/05…), vì `_anchor` là mốc **đã kẹp**. Không thuộc việc
+>    này; memory *sửa lỗi trước, thêm tính năng sau* → Task 0 hỏi người dùng làm G66 trước. Ca canh *"ngày 31"* của Task 1 bảo
+>    đảm `kyDaDongTruoc` đi theo bất kỳ bản sửa nào của lưới.
 
 Dự án C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người*. Việc đầu — gợi ý danh mục theo số tiền
 — xong 2026-10-02 (spec `2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`). Đây là việc thứ hai, người dùng
@@ -26,13 +40,13 @@ khảo sát lúc brainstorm **đổi hình dạng** của việc này — mục 
 ### 1.2 ⚠️ Chỗ hỏng đang chạy hôm nay — báo động oan và đề xuất cắt ngân sách khác
 
 Giả định *chi đều* sai với mọi danh mục có khoản lớn cố định ở một ngày trong kỳ. Ví dụ **Nhà ở** hạn mức 5.000.000/tháng,
-tiền nhà 4.000.000 trả ngày 1, điện nước ~600.000 rải rác. Trưa 06/11, đã chi 4.100.000:
+các tháng trước: tiền nhà 4.000.000 ngày 1 + 200.000 các ngày 10, 20, 28 (4.600.000 mỗi kỳ). Trưa 06/11, đã chi 4.200.000:
 
 | | Hôm nay | Theo nhịp riêng (thiết kế này) |
 |---|---|---|
-| Dự phóng cuối kỳ (`duPhongCua`) | 4.100.000 × 30 / 5 = **24.600.000** → thâm hụt 19,6 triệu → **kế hoạch cân đối + thông báo**, đề xuất **cắt ngân sách khác** | 4.100.000 + ~500.000 mọi khi còn chi = **~4.600.000** → không thâm hụt, không kế hoạch |
-| Chip NHỊP CHI | phần đã chi 82 % so với thời gian 18 % → **"Nhanh hơn dự kiến"** | mọi khi tới lúc này đã chi ~89 % của kỳ → 82 % là **"Chậm hơn dự kiến"** |
-| *"Theo … : X"* | Theo thời gian đã trôi: ~917.000 | Theo nhịp thường lệ: ~4.460.000 |
+| Dự phóng cuối kỳ (`duPhongCua`) | 4.200.000 × 30 / 5 = **25.200.000** → thâm hụt 20,2 triệu → **kế hoạch cân đối + thông báo**, đề xuất **cắt ngân sách khác** | 4.200.000 + 600.000 mọi khi còn chi = **4.800.000** → không thâm hụt, không kế hoạch |
+| Chip NHỊP CHI | phần đã chi 84 % so với thời gian 18,3 % → **"Nhanh hơn dự kiến"** | mọi khi tới lúc này đã chi 4/4,6 ≈ 87 % của kỳ → 84 % là **"Đúng nhịp"** (lệch 3 điểm, trong biên ±5) |
+| *"Theo … : X"* | Theo thời gian đã trôi: 916.667 đ | Theo nhịp thường lệ: 4.347.826 đ |
 
 ⚠️ **Đính chính trong chính lượt brainstorm:** câu đầu tôi viết cho người dùng nói ca *Ăn uống ngày 5 đã chi 70 %* "chưa
 có thông báo vì chờ tới 90 %". Sai — thông báo *Đề xuất cân đối* (P2, 2026-09-20) đã là một **thông báo báo sớm**: nó
@@ -71,13 +85,16 @@ bắn khi dự phóng vượt hạn mức. Việc này vì thế **không** thê
 3. **Tool `danh_sach_ngan_sach`** của Trợ lý AI: trạng thái *tiêu nhanh · đúng nhịp · tiêu chậm* của mỗi hàng
    (`chuNhipNganSach`) theo cùng phép với chip.
 
-### 3.3 Ví dụ dùng làm ca test chính (tháng 30 ngày, trưa)
+### 3.3 Ví dụ dùng làm ca test chính (trưa 06/11/2026 — đã qua 5,5/30 ngày; kỳ học 8–10/2026)
 
-| Ngân sách | Kỳ trước (mọi khi) | Hôm nay | Dự phóng mới | Kế hoạch cân đối |
+| Ngân sách | Kỳ trước (mọi khi) | Đã chi | Dự phóng hôm nay → mới | Kế hoạch cân đối |
 |---|---|---|---|---|
-| **Nhà ở** 5.000.000 | 4.000.000 ngày 1 + ~600.000 rải rác | 06/11, đã chi 4.100.000 | ~4.600.000 | **không** (hôm nay: có, thâm hụt 19,6 triệu) |
-| **Ăn uống** 3.000.000 | ~2.800.000 chi đều | 05/11, đã chi 2.100.000 | 2.100.000 + ~2.380.000 ≈ 4.480.000 | **có**, thâm hụt ~1,48 triệu (hôm nay cũng có) |
-| **Mua sắm** 2.000.000 | ~1.200.000 rải rác đều | 06/11, một món 1.500.000 | 1.500.000 + ~980.000 ≈ 2.480.000 | **có**, *"dự kiến vượt ~480.000"* (hôm nay: 9.000.000, thâm hụt 7 triệu; lối "giữ tốc độ" bị loại ở quyết định 5: 1.500.000 ÷ 0,183 ≈ 8,2 triệu) |
+| **Nhà ở** 5.000.000 | 4.000.000 ngày 1 + 200.000 các ngày 10, 20, 28 | 4.200.000 | 25.200.000 → **4.800.000** | hôm nay **có** (thâm hụt 20,2 triệu, báo oan) → **không** |
+| **Ăn uống** 3.000.000 | 100.000 mỗi ngày 1–28 (2.800.000, chi đều) | 2.100.000 | 12.600.000 → **4.300.000** | **có** cả hai — thâm hụt 9,6 triệu (thổi phồng) → **1.300.000** |
+| **Mua sắm** 2.000.000 | 300.000 các ngày 5, 12, 19, 26 | 1.500.000 (một món) | 9.000.000 → **2.400.000** | **có** cả hai — thâm hụt 7 triệu → *"dự kiến vượt 400.000"* (lối "giữ tốc độ" bị loại ở quyết định 5: 1.500.000 ÷ 0,25 = 6.000.000) |
+
+Ba ngân sách cùng chạy: hôm nay kế hoạch nhắm **nhầm Nhà ở**; theo nhịp riêng nó nhắm **Ăn uống** (1.300.000) và Nhà ở
+thành **nguồn bù** (dư địa 5.000.000 − 4.800.000 = 200.000, cắt 25 % = 50.000).
 
 ## 4. Phép học
 
@@ -85,12 +102,15 @@ bắn khi dự phóng vượt hạn mức. Việc này vì thế **không** thê
 
 Một chỗ cắt kỳ, cạnh phép cắt kỳ sẵn có, để hai phép không lệch nhau một ngày (lý do đứng đầu `budget_history.dart`).
 
-- **Kỳ từ ngày tạo trở đi:** đúng `recentPeriods` (cùng mốc neo `periodAnchor`, cùng `advancePeriodFrom`, cùng cắt ở
-  ngày hết hạn).
-- **Kỳ trước ngày tạo:** kỳ thứ −k = `[advancePeriodFrom(anchor: startDate, steps: −k), advancePeriodFrom(anchor:
-  startDate, steps: −k + 1))`. Luôn tính **từ mốc gốc `startDate`** — lùi dồn từ kết quả đã kẹp làm mốc ngày 31 tụt về 28
-  (bẫy ghi ở `budget_period.dart`). Kỳ −1 kết thúc đúng ở `startDate`, nên không hở không chồng với kỳ đầu.
-  `advancePeriodFrom` đã nhận `steps` âm (`DateTime` tự quy tháng âm về năm trước; tuần là `add(Duration)` âm).
+- 🔧 **Một lưới cho mọi kỳ:** kỳ thứ s là `[mocKy(s − 1), mocKy(s))` với `BudgetEntity.mocKy(int s)` — định nghĩa DUY NHẤT
+  của mốc kỳ (`mocKy(0)` = mốc neo `periodAnchor`; s ≥ 1 là `advancePeriodFrom(anchor: mốc neo, steps: s)`, đúng phép
+  `currentPeriod` nhảy hôm nay; s âm đi lùi về **trước** ngày tạo — `advancePeriodFrom` đã nhận `steps` âm). `currentPeriod`
+  và `recentPeriods` đổi sang gọi `mocKy` (refactor không đổi hành vi), nên **kỳ đã đóng sau kỳ đầu trùng khít
+  `recentPeriods`** — có ca canh, kể cả ngân sách bắt đầu ngày 31.
+- Kỳ **đầu** của ngân sách (`[startDate, mốc neo)`) có thể lệch lưới (mốc neo kẹp, hoặc `nextTimeRecurrence` riêng); phép
+  học dùng kỳ **trên lưới** chứa nó (`[mocKy(−1), mocKy(0))`) — tức học về **danh mục**, không chép lại lịch sử ngân sách.
+- ⚠️ *Bản đầu của mục này lùi từ `startDate` (`[advancePeriodFrom(anchor: startDate, steps: −k), …)`). Bỏ lúc lập kế hoạch:
+  lệch lưới với kỳ thật ở đúng hai ca trên — và hai lưới lệch nhau là thứ mục này sinh ra để tránh.*
 - **Chỉ kỳ đã đóng:** `to ≤ from` của kỳ hiện tại. Kỳ hiện tại không bao giờ là mẫu.
 - **Bỏ kỳ bắt đầu trước giao dịch đầu tiên** của tài khoản (`mocGiaoDichDauTien`, đã bỏ hàng xoá mềm).
 - Lấy tối đa **6** kỳ gần nhất thoả các điều trên, **cũ trước mới sau**.
@@ -115,10 +135,10 @@ chưa biết** — mọi chỗ dùng phải rơi về phép hôm nay, không `??
 
 ### 4.3 Chỗ dùng nhận `NhipChi?`, không tự tính
 
-| Hàm | Khi `nhip != null` | Khi `nhip == null` |
+| Hàm | Khi `nhipChi != null` | Khi `nhipChi == null` |
 |---|---|---|
-| `budgetPaceOf(b, now, {NhipChi? nhip})` | `expectedSpent = amount × phanDaChiMoiKhi(x)`; status so `spent/amount` với `phanDaChiMoiKhi(x)` ±5 điểm; `theoNhipRieng = true` | y như hôm nay, `theoNhipRieng = false` |
-| `duPhongCua(v, …, {NhipChi? nhip})` | `spent + conChiMoiKhi(x)` | y như hôm nay (nhân tuyến tính từ ngày 5, cộng mức tháng trước đó) |
+| `budgetPaceOf(b, now, {NhipChi? nhipChi})` | `expectedSpent = amount × phanDaChiMoiKhi(x)`; status so `spent/amount` với `phanDaChiMoiKhi(x)` ±5 điểm; `theoNhipRieng = true`; `x` đo bằng `viTriTrongKy` (định nghĩa duy nhất, `BudgetPace.phanThoiGian` mang nó ra) | y như hôm nay, `theoNhipRieng = false` |
+| `duPhongCua(v, …, {NhipChi? nhipChi})` | `spent + conChiMoiKhi(BudgetPace.phanThoiGian)` | y như hôm nay (nhân tuyến tính từ ngày 5, cộng mức tháng trước đó) |
 
 `daysLeft`, `suggestedPerDay` của `BudgetPace` **không** đổi — dòng *"Nên chi X/ngày · còn N ngày"* vẫn chia đều phần còn
 lại, vì đó là lời khuyên chứ không phải dự đoán.
@@ -127,15 +147,18 @@ lại, vì đó là lời khuyên chứ không phải dự đoán.
 
 | Tệp | Việc |
 |---|---|
-| `budget/domain/budget_history.dart` | thêm `kyDaDongTruoc` |
-| `budget/domain/nhip_chi.dart` *(mới)* | `KyChi`, `NhipChi`, `hocNhipChi`, `kSoKyHocToiThieu`, `kSoKyHocToiDa` |
-| `budget/domain/budget_pace.dart` | tham số `nhip`, trường `theoNhipRieng` |
-| `budget/data/repositories/budget_repository(_impl).dart` | `nhipChiTheoNganSach(idaccount, List<BudgetEntity>, {now})` → `Map<String, NhipChi?>` (khoá `budget.id`). Đọc **một lần** khoảng `[from kỳ cũ nhất, now)` qua `getExpenses` — **cùng định nghĩa "đã chi"** với `spent` (chỉ `chi`, đúng danh mục, `categoryId == null` gom mọi danh mục, biên `to` mở) — rồi chia theo ngân sách và theo kỳ. Mọi lớp giả `implements BudgetRepository` trong test phải thêm hàm |
-| `budget/data/tai_phan_bo_nguon.dart` | `DuLieuTaiPhanBo.nhipTheoNganSach`; `nap` điền qua repository; `keHoachTaiPhanBoTu` chuyền vào `taiPhanBoCua` |
-| `ai_edge/domain/tai_phan_bo.dart` | `duPhongCua(nhip:)`; `taiPhanBoCua(nhipTheoNganSach:)` |
+| `budget/data/models/budget_entity.dart` | 🔧 `mocKy(int s)` — định nghĩa duy nhất của mốc lưới kỳ; `currentPeriod` gọi nó |
+| `budget/domain/budget_history.dart` | `recentPeriods` gọi `mocKy`; thêm `kyDaDongTruoc` |
+| `budget/domain/nhip_chi.dart` *(mới)* | `KyChi`, `NhipChi` (+ `tongTheoKy` cho công cụ đo và test), `hocNhipChi`, `viTriTrongKy`, `kSoKyHocToiThieu`, `kSoKyHocToiDa` |
+| `budget/domain/budget_pace.dart` | tham số `nhipChi`, trường `theoNhipRieng` và `phanThoiGian`; phần thời gian đo bằng `viTriTrongKy` |
+| `budget/data/datasources/budget_local_data_source.dart` | 🔧 `khoanThuocNganSach` — vế danh mục của `getExpenses` tách ra dùng chung |
+| `budget/data/repositories/budget_repository(_impl).dart` | `nhipChiTheoNganSach(idaccount, List<BudgetEntity>, {now})` → `Map<String, NhipChi?>` (khoá `budget.id`). Đọc **một lần** khoảng `[from kỳ cũ nhất, to kỳ mới nhất)` qua `getExpenses(categoryId: null)` — **cùng định nghĩa "đã chi"** với `spent` (chỉ `chi`, biên `to` mở) — rồi chia theo ngân sách bằng `khoanThuocNganSach` và theo kỳ. Lớp giả viết đủ hàm (`budget_cubit_test`) phải thêm hàm; lớp giả `noSuchMethod` thì không |
+| `budget/data/doc_nhip_chi.dart` *(mới)* | 🔧 `docNhipChi` — cửa đọc cho ba nơi dùng; đọc hỏng → `{}` (nhịp là phần phụ, rơi về chi đều) |
+| `budget/data/tai_phan_bo_nguon.dart` | `DuLieuTaiPhanBo.nhipTheoNganSach`; `nap` điền qua `docNhipChi`; `keHoachTaiPhanBoTu` chuyền vào `taiPhanBoCua` |
+| `ai_edge/domain/tai_phan_bo.dart` | `duPhongCua(nhipChi:)`; `taiPhanBoCua(nhipTheoNganSach:)` |
 | `budget/presentation/bloc/budget_detail_cubit.dart` | nạp nhịp của ngân sách đang xem, truyền vào `budgetPaceOf` |
 | `budget/presentation/pages/budget_detail_view.dart` | `_PaceCard`: *"Theo nhịp thường lệ: X"* khi `pace.theoNhipRieng` |
-| `ai_edge/domain/hang_ngan_sach.dart` + `ai_edge/data/cong_cu_ngan_sach.dart` | `hangNganSach(nhipTheoNganSach:)`; tool nạp qua `BudgetRepository` (không qua `TaiPhanBoNguon.nap` — hàm ấy còn tính thu nhập và `suggestAmount`, thừa cho tool) |
+| `ai_edge/domain/hang_ngan_sach.dart` + `ai_edge/data/cong_cu_ngan_sach.dart` | `hangNganSach(nhipTheoNganSach:)`; tool nạp qua `docNhipChi(BudgetRepository, …)` (không qua `TaiPhanBoNguon.nap` — hàm ấy còn tính thu nhập và `suggestAmount`, thừa cho tool) |
 | `budget/presentation/widgets/budget_visuals.dart` | sửa chú thích lỗi thời dòng 9 *"ứng dụng không gửi thông báo đẩy"* (sai từ khi có hệ thông báo) |
 | `test/tool/do_nhip_chi_test.dart` *(mới, skip)* | công cụ đo trên CSDL thật — mục 7.3 |
 
@@ -156,12 +179,13 @@ Lớp `ai_edge/` **không** đọc bảng giao dịch (test quét 14): nó chỉ
 
 ### 7.1 Hàm thuần (TDD, ca đỏ trước)
 
-- `kyDaDongTruoc`: kỳ tháng bắt đầu ngày 31 lùi qua tháng 2 năm thường **và** năm nhuận (memory *test lịch tháng ngắn và năm
-  nhuận*) — mốc không trôi về 28; kỳ tuần, quý; kỳ trước giao dịch đầu tiên bị bỏ; *Ngày cụ thể* trả rỗng; tối đa 6; kỳ
-  hiện tại không tính; kỳ −1 kết thúc đúng `startDate`; ngân sách có `nextTimeRecurrence` khác chuẩn (hàng kéo về).
+- `kyDaDongTruoc`: tháng Hai năm thường **và** năm nhuận, cả 2100 (memory *test lịch tháng ngắn và năm nhuận*); kỳ tuần,
+  quý, năm; kỳ trước giao dịch đầu tiên bị bỏ; *Ngày cụ thể* trả rỗng; tối đa 6; kỳ hiện tại không tính; ngân sách có
+  `nextTimeRecurrence` khác chuẩn (hàng kéo về); 🔧 ⭐ kỳ đã đóng sau kỳ đầu **trùng `recentPeriods`** — cả ngân sách bắt đầu
+  ngày 31 (ca canh G66: sửa lưới ở một chỗ mà chỗ kia không theo thì đỏ).
 - `hocNhipChi`: < 3 kỳ có chi → `null`; kỳ `T_p = 0` không tính vào cả hai phép (quyết định 7); trung vị số kỳ lẻ / chẵn;
   một tháng bất thường không kéo lệch.
-- `budgetPaceOf` / `duPhongCua` với `nhip: null` cho **đúng từng số** như bản trước (ca hồi quy, viết **trước** khi sửa
+- `budgetPaceOf` / `duPhongCua` với `nhipChi: null` cho **đúng từng số** như bản trước (ca hồi quy, viết **trước** khi sửa
   hàm); ba ví dụ mục 3.3 qua `taiPhanBoCua` (Nhà ở: không kế hoạch · Ăn uống: có · Mua sắm: thâm hụt ~480.000).
 - Mỗi ca xanh ngay từ đầu phải qua một **bản sai có chủ ý** (họ G43).
 
@@ -205,6 +229,10 @@ ngân sách bắt đầu 01/09, vì kỳ ấy bắt đầu trước giao dịch 
   → báo sớm nhiều hơn với danh mục kiểu Giải trí 3/6 tháng. Người dùng chọn điều này.
 - **Đổi danh mục / ngày bắt đầu của ngân sách** → nhịp học lại theo cấu hình mới (vì nó suy từ giao dịch, không lưu).
   Không có gì để vỡ.
+- 🔧 **Kỳ đầu lệch lưới** (mốc neo kẹp, hoặc `nextTimeRecurrence` riêng): trong chính kỳ đầu ấy, phần thời gian `x` đo trên
+  kỳ ngắn/dài hơn một chu kỳ còn nhịp học trên kỳ đầy đủ — lệch nhẹ, chỉ trong kỳ đầu. Không vá.
+- 🔧 **Phụ thuộc G66:** lưới hôm nay trôi về ngày kẹp với ngân sách bắt đầu ngày 29–31. Nhịp học **đi theo đúng lưới ấy**
+  (nhất quán với kỳ thật); sửa G66 ở `mocKy` thì cả hai cùng đổi.
 - **Chi phí đọc:** `nap` chạy sau mỗi thay đổi giao dịch (`BudgetCubit`) và mỗi lượt quét thông báo — thêm **một** truy vấn
   khoảng ≤ 6 kỳ + kỳ hiện tại; số ngân sách của một tài khoản nhỏ.
 - **Im trên dữ liệu hiện tại** (mục 7.3) — đúng ý người dùng (*xây cho tương lai, dưới ngưỡng thì im*).

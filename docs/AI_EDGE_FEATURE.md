@@ -3692,7 +3692,10 @@ Kế: **C**. 📝 **C bắt đầu 2026-10-02**: dự án gồm nhiều việc �
 cuối tuần + ví, thẻ B1) — spec `specs/2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`, thiết kế và bản viết đã duyệt. ✅ **Xong (`cf0a879` → `83b1b77`) + nghiệm thu Realme tối 2026-10-02** (thẻ khuất dưới 16 phím số ở 360 dp → form tự cuộn tới thẻ) — mục **5g**
 `CATEGORY_RATIONALE.md`. Phép đo trên CSDL thật lật thiết kế: với ngưỡng của B1 thẻ đúng 1/5 lần → người dùng chốt *chỉ
 khi ghi chú trống · hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc*; đo lại thẻ im hẳn trên dữ liệu hiện tại. Ba việc còn lại: ngưỡng cảnh báo ngân sách theo nhịp chi riêng · thứ
-tự khối trang Phân tích · thông báo theo phản ứng.
+tự khối trang Phân tích · thông báo theo phản ứng. 📝 **Việc thứ hai người dùng chọn 2026-10-04: nhịp chi ngân sách** — spec
+`specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md` (thiết kế + bản viết đã duyệt), kế hoạch 12 task
+`plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore), **chưa có mã**. Hình dạng đổi so với tên việc — xem 11.5 (3).
+Lượt lập kế hoạch lộ ra **G66** (lỗi có sẵn của lưới kỳ ngân sách, `CLIENT_APP_KNOWN_GAPS.md`) — Task 0 hỏi sửa trước hay sau.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
@@ -4083,6 +4086,16 @@ Nhưng 70 % vào ngày 20 là bình thường, còn 70 % vào ngày 5 là báo �
 ⭐ **Ghép thẳng với việc #3 của mục 11.4** (học nhịp chi theo ngày trong tháng): nhịp chi
 không chỉ dùng để dự phóng cuối kỳ mà còn để **dịch ngưỡng cảnh báo** theo từng người.
 Một phép học, hai chỗ dùng.
+
+📝 **2026-10-04 — thiết kế xong, chưa có mã** (dự án C việc hai; spec
+`docs/superpowers/specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md`). Brainstorm **đổi hình dạng** của mục này:
+người dùng chọn **giữ màu 70/90** (màu = đã dùng bao nhiêu, chốt 2026-09-04) và **không thêm thông báo mới**, vì lượt khảo
+sát thấy app **đã có** một thông báo báo sớm — *Đề xuất cân đối* — mà dự phóng của nó giả định *chi đều* nên **đang báo động
+oan** với khoản lớn đầu kỳ (Nhà ở trả tiền nhà ngày 1: ngày 6 dự phóng 25,2 triệu, đề xuất cắt ngân sách khác). Việc này thay
+giả định ấy bằng nhịp học từ ≤ 6 kỳ đã đóng (kể cả trước ngày tạo ngân sách, cần ≥ 3 kỳ có chi, trung vị) ở **dự phóng** của Đề
+xuất cân đối (thẻ + thông báo + tool `can_doi`), **ô NHỊP CHI** trang chi tiết, và trạng thái nhịp của tool
+`danh_sach_ngan_sach`. Dự phóng = *đã chi + phần mọi khi còn chi tới cuối kỳ* (không nhân tốc độ kỳ này). Dữ liệu thật bắt đầu
+02/09 → **im** tới khi đủ ba kỳ.
 
 #### (4) Thứ tự khối trang Phân tích
 
