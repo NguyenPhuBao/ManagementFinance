@@ -3627,12 +3627,35 @@ ngay sau từ loại bị đọc là "nối thêm một tên", nên *"…ngân s
 hoá đơn (như trước sửa) · **G ◐** `null` → mô hình chọn gợi ý hạn mức, không nói số còn lại. ⭐ Bài học: đẩy về `null` chỉ có
 lợi cho câu **hai tool** (E); câu một tool mà luật không nhận thì mô hình sáu tool thường chọn sai.
 
-📌 **Người dùng đã chốt, CHƯA LÀM** (dừng theo lời dặn): **D → từ chối lịch sự** như chủ đề ngoài phạm vi (`chuDeBiChan`) —
-⚠️ chỉ câu định nghĩa **không** mang dấu hiệu dữ liệu riêng (*tôi, tháng, tuần, hôm, nhất, khoản, giao dịch, chữ số…*), vì *"khoản
-chi lớn nhất tháng này là gì"* / *"hoá đơn sắp tới của tôi là gì"* là câu số liệu · **G → *"hạn mức"* = *"ngân sách"*** trong
-luật (đổi đường thêm ~13 câu *"hạn mức …"* của bộ huấn luyện đang đi phiên sáu tool — so từng câu, không câu nào được thành
-sai; khi ấy chặn *"hạn mức"* ở mẫu dự báo thành mã chết, bỏ) · **F → để nguyên, ghi lại** (luật không định tuyến sang tool
-giao dịch; thêm lối ấy đổi đường C15 / C20 đã đo).
+✅ **D và G XONG 2026-10-04 (`b9d32d6`), hướng người dùng đã chốt** · **F → để nguyên, ghi lại** (luật không định tuyến
+sang tool giao dịch; thêm lối ấy đổi đường C15 / C20 đã đo).
+- **D → từ chối lịch sự** như chủ đề ngoài phạm vi: `chuDeBiChan` nhận câu kết thúc bằng *là gì · nghĩa là gì · tính
+  (như) thế nào · cách tính* (cho phép *vậy · thế · ạ · nhỉ · hả* sau đuôi) mà phần **trước** đuôi không mang dấu hiệu số
+  liệu riêng (*tôi, mình, tháng, tuần, năm nay / ngoái, hôm, ngày, nhất, khoản, giao dịch, nào, sắp tới*). ⚠️ **Chữ số
+  không tính** — *"quy tắc 50 30 20 là gì"* là quy tắc chung (bản nháp đầu đếm chữ số làm dấu hiệu, và *"nào"* phải xét
+  **trước** đuôi vì *"tính thế nào"* chứa nó). So **không dấu** ở riêng phép này (người dùng gõ không dấu; cụm đuôi bỏ dấu
+  vẫn một nghĩa). Hai ca canh: bảng 72 chỉ DC1 · E22 · F16 bị chặn; bộ huấn luyện không câu nhãn tool nào bị chặn — bản
+  sai bỏ phép kiểm dấu hiệu đỏ ở cả hai. `_laCauDinhNghia` của luật định tuyến **giữ** làm lớp thứ hai (câu định nghĩa có
+  dấu hiệu riêng lọt `chuDeBiChan` vẫn không thành tổng quan).
+- **G → *"hạn mức"* = *"ngân sách"***: một hàm `_coNganSach` (*ngân sách* hoặc *hạn mức*, trừ *hạn mức thẻ tín dụng*)
+  thay `_co(q,'ngan sach')` ở `congCuTheoCauHoi`, `_laCauGoiYHanMuc`, `_laCauNganSach`, `_soLoaiDoiTuong`. ⚠️ Vế *"hạn
+  mức"* ở mẫu dự báo **không** thành mã chết như dự tính — câu hạn mức thẻ tín dụng vẫn tới đó, nên giữ. So 607 câu bộ
+  huấn luyện trước / sau: **11 câu `null` → đúng**, không câu nào khác đổi đường; bảng 72 y nguyên. Sáu câu *"hạn mức"*
+  còn `null` (*gợi ý / đề xuất / tư vấn hạn mức*, *tiêu quá hạn mức không*, *hạn mức … danh mục hoá đơn* — họ E đếm
+  *hoá đơn*): không câu nào thành sai.
+
+📊 **Đo Realme 2026-10-04 tối** (CPU, debug `af57f158…` = `b9d32d6`, chấm theo câu hiện ra):
+
+| Câu | Trước | Sau |
+|---|---|---|
+| D *dong tien tu do la gi* | ✗ bậc 1 lạc đề (số dư ví), 45 s | ✅ *"Mình chỉ nhận xét được trên số liệu của bạn trong app."* — ngay, không gọi mô hình |
+| D2 *khoan chi lon nhat thang nay la gi* (câu số liệu đuôi *là gì* — phải lọt) | — | ✅ không bị chặn; mô hình định tuyến → tool giao dịch, *"Khoản chi lớn nhất tháng này là 10.000 đ…"*, 34 s |
+| G *trong han muc toi con tieu duoc bao nhieu cho di chuyen* | ◐ gợi ý hạn mức, không nói số còn lại | ✅ (mẫu câu L2) luật → tool ngân sách, *"Di chuyển … Còn lại 450.000 đ, Còn 28 ngày"*, 21 s. Mô hình điền `chon: chua_dat`, bộ chỉnh gỡ; câu của nó *"bạn chưa đặt ngân sách"* bị chặn |
+| G2 *han muc nao sap het* | `null` | ◐ luật → tool ngân sách (như A3), *"Ngân sách "Ăn uống" … còn lại 490.000 đ"* — số đúng, nhưng không nói rằng chưa ngân sách nào gần hết (Ăn uống mới dùng 2 %) |
+| B2 *neu tieu dung ngan sach thi cuoi thang con bao nhieu* | ◐ câu đúng bị `kiemTen` chặn oan | ✅ chữ mô hình hiện: *"…nếu bạn tiêu đúng ngân sách, bạn sẽ thiếu 9.671.000 đ"* (`516d6e8`) |
+
+⚠️ Ghi lại, chưa sửa: ở câu G mô hình (phiên một tool ngân sách) chọn `chon: chua_dat` cho câu *"hạn mức"* — mô tả mã
+`chua_dat` có lẽ kéo nó; bộ chỉnh luật 10 đã gỡ nên câu hiện ra đúng.
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

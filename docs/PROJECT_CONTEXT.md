@@ -1182,9 +1182,11 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   lịch sang tháng mới: mốc 72 câu đo ngày 28/09, khi *"tháng 9"* còn là *"tháng này"*.
 - 📌 **Việc mở, người dùng chốt làm SAU dự án B:** luật `congCuTheoCauHoi` lệch nhãn — 3/18 câu nó bắt trên bộ đo,
   18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). ✅ **Sửa 2026-10-04** (`645a7e3`, luật lệch 18 → 0; đo Realme
-  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). Còn **họ D và G** người dùng đã chọn
-  hướng mà chưa làm — cuối mục 9.45 `AI_EDGE_FEATURE.md`. Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
-  tool để rút tiếp thời gian chờ.
+  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). ✅ **Họ D và G xong tối cùng ngày**
+  (`b9d32d6`, cuối mục 9.45 `AI_EDGE_FEATURE.md`): câu định nghĩa chung → `chuDeBiChan` từ chối ngay (đo Realme: hết câu
+  lạc đề 45 s); *"hạn mức"* đọc như *"ngân sách"* (`_coNganSach`, trừ thẻ tín dụng) — 11 câu bộ huấn luyện `null` → đúng,
+  không câu nào khác đổi đường. Đo Realme 5 câu: D ✅ · D2 (câu số liệu *"là gì"*) ✅ lọt · G ✅ · G2 ◐ · B2 ✅. Còn một
+  ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một tool để rút tiếp thời gian chờ.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
 Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`
