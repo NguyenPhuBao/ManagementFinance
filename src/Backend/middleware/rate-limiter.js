@@ -52,9 +52,6 @@ const authLimiter = isRateLimitDisabled
       standardHeaders: true,
       skip: (req) => {
         if (req.method === 'OPTIONS') return true;
-        // KHÔNG skip dựa vào query string '/admin' hay header tự khai
-        // Chỉ skip khi đã xác thực là Admin thật qua khóa khẩn cấp
-        if (req.isAdmin) return true;
         return false;
       },
       message: {
