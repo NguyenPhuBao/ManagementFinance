@@ -3,6 +3,7 @@ import adminApi from '../../api/admin.api';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
 import { formatDateTime } from '../../utils/format';
+import { useAlertSafe } from '../../store/alert.context';
 
 const BROADCAST_LEVELS = [
   { value: 'info', label: 'INFO — Thông báo thường', color: 'text-blue-500', icon: 'info' },
@@ -11,6 +12,7 @@ const BROADCAST_LEVELS = [
 ];
 
 const BroadcastPage = () => {
+  const alert = useAlertSafe();
   const socket = useSocket();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
 
@@ -25,7 +27,19 @@ const BroadcastPage = () => {
   });
   const [loadingMaintenance, setLoadingMaintenance] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [maintenanceFeedback, setMaintenanceFeedback] = useState(null);
+  const [maintenanceFeedback, _setMaintenanceFeedback] = useState(null);
+
+  // Wrapper kích hoạt Global Floating Alert toast đồng thời lưu feedback
+  const setMaintenanceFeedback = (fb) => {
+    _setMaintenanceFeedback(fb);
+    if (fb && alert) {
+      if (fb.ok) {
+        alert.success(fb.msg, 'Quản Trị Bảo Trì');
+      } else {
+        alert.error(fb.msg, 'Lỗi Hệ Thống');
+      }
+    }
+  };
 
   // Form Bật/Tắt tức thì
   const [instantReason, setInstantReason] = useState('');
@@ -211,11 +225,14 @@ const BroadcastPage = () => {
     try {
       await notificationApi.broadcastToAll({ title: title.trim(), message: message.trim(), level });
       setBroadcastResult({ ok: true, msg: 'Đã phát thông báo tới toàn bộ người dùng đang online!' });
+      if (alert) alert.success('Đã phát thông báo tới toàn bộ người dùng đang online!', 'Phát Sóng Thành Công');
       setTitle('');
       setMessage('');
       setLevel('info');
     } catch (e) {
-      setBroadcastResult({ ok: false, msg: e.response?.data?.message || 'Gửi thất bại. Thử lại sau.' });
+      const errMsg = e.response?.data?.message || 'Gửi thất bại. Thử lại sau.';
+      setBroadcastResult({ ok: false, msg: errMsg });
+      if (alert) alert.error(errMsg, 'Gửi Thất Bại');
     } finally {
       setSending(false);
     }

@@ -38,6 +38,12 @@ export const formatDateTime = (date) => {
   return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm');
 };
 
+// Format date time with full seconds (Asia/Ho_Chi_Minh)
+export const formatFullDateTime = (date) => {
+  if (!date) return '';
+  return dayjs(date).tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
+};
+
 // Format relative time (e.g. "2 giờ trước") theo mốc giờ Việt Nam
 export const formatRelativeTime = (date) => {
   if (!date) return '';

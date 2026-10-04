@@ -3292,17 +3292,46 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
       - Hàng 2 (Precision Range Picker): Bộ chọn chế độ (Theo Ngày, Theo Tháng, Theo Năm), 2 input `Từ` và `Đến` kèm các loại input tương ứng (`date`, `month`, `number`), nút `Lọc Chính Xác` và nút `Xóa bộ lọc`.
       - **Banner Ưu Tiên Bộ Lọc Chính Xác:** Khi áp dụng khoảng thời gian chi tiết, banner màu vàng hổ phách nổi bật khẳng định quyền ưu tiên tuyệt đối của bộ lọc chính xác, làm mờ các nút preset và cung cấp nút 1-click quay lại dùng bộ select nhanh.
       - Lắng nghe Socket.io `admin.vector_config_changed` đồng bộ trạng thái toggle tức thời giữa nhiều phiên Admin đang mở.
-- **4. Kiểm Định Chất Lượng Toàn Diện:**
-  - **Backend Unit Tests (`src/Backend/tests/unit/`):**
-    * `aiops.detector.test.js`: Thêm test 10 & 11 kiểm tra vector disabled loại khỏi threat score và tắt `severeResourceCrisis` $\rightarrow$ **12/12 tests PASS 100%**.
-    * `aiops.service.test.js`: Thêm test 6 & 7 kiểm tra `toggleVector`, lưu CSDL, phát socket và ưu tiên lọc `from/to` $\rightarrow$ **7/7 tests PASS 100%**.
-    * `admin.priority.maintenance.test.js`: **12/12 tests PASS 100%**.
-    * **Tổng Backend Unit Tests:** **31/31 tests PASS 100%**.
-  - **Backend Integration Tests (`src/Backend/tests/v2/aiops.multivector.test.js`):** **12/12 tests PASS 100%**.
-  - **Admin-web Unit Tests (`src/Admin-web/src/tests/`):**
-    * `aiops.page.test.jsx`: Bổ sung 5 test cases chuyên sâu (5.14, 5.15, 5.16, 5.17, 5.18) kiểm định popup xác nhận bật/tắt vector, badge chỉ đo lường, bộ select presets, quy tắc ưu tiên lọc chính xác và socket đồng bộ $\rightarrow$ **18/18 tests PASS 100%**.
-    * **Tổng Admin-web Test Suite:** **50/50 tests PASS 100%** trên toàn bộ 7 file kiểm thử.
-  - **Toàn bộ hệ thống:** **93/93 tests PASS 100%** không có bất kỳ xung đột hay lỗi hồi quy nào.
+- **5. Hoàn Thiện 5 Yêu Cầu Cốt Lõi Về Biểu Đồ Xu Hướng & Dữ Liệu Thực Tế 100% (AIOps Sentinel):**
+  - **Dữ Liệu Thật 100% — Loại bỏ triệt để mọi cơ chế Fake/Synthetic Data (Yêu cầu 2 của PO):**
+    * Backend Service (`src/Backend/modules/aiops/aiops.service.js`): Xóa bỏ hoàn toàn các hàm sinh dữ liệu giả lập (`_generateDayHistory`, `_generateMonthHistory`, `_generateYearHistory`, `_generateCustomRangeHistory`). Viết lại hàm `getHistory({ range, from, to })` chỉ lọc đúng các mẫu thực tế đã được hệ thống ghi nhận (`this._history`).
+    * Nếu trong khoảng thời gian người dùng chọn không có mẫu thực tế nào (hoặc hệ thống chưa chạy thời điểm đó), Backend trả về `[]`.
+    * Frontend (`src/Admin-web/src/pages/system/AIOpsPage.jsx`): Tích hợp Empty State trung thực, thông báo rõ ràng "Không có dữ liệu đo lường trong khoảng thời gian đã chọn (Hệ thống cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo giả lập)", kèm nút 1-click quay về thời gian thực.
+  - **Tooltip Chi Tiết Ngày Tháng Năm Giờ Phút Giây (Yêu cầu 1 của PO):**
+    * Thêm tiện ích `formatFullDateTime` (`src/Admin-web/src/utils/format.js`) xuất chuỗi chuẩn hóa `DD/MM/YYYY HH:mm:ss` theo múi giờ `Asia/Ho_Chi_Minh`.
+    * Cập nhật Tooltip SVG: Hiển thị đầy đủ ngày tháng năm giờ phút giây khi rê chuột vào từng điểm mẫu.
+  - **Trục X Hiển Thị Số Liệu Rõ Ràng & Độc Lập (Yêu cầu 3 của PO):**
+    * Thiết kế `xAxisConfig` useMemo tự động tính toán các mốc phân chia trục X:
+      + Bộ chọn nhanh (Presets): Thời gian thực (`1 -> 30 Mẫu`), Ngày (`1 -> 24 Giờ`), Tháng (`1 -> 30 Ngày`), Năm (`1 -> 12 Tháng`).
+      + Bộ lọc chính xác (Precision Range): Theo Ngày (`1 -> diffDays Ngày`), Theo Tháng (`1 -> diffMonths Tháng`), Theo Năm (`fromYear -> toYear`).
+    * Vẽ đường trục hoành, các vạch tick nhỏ (`x1={t.x} y1="155" x2={t.x} y2="161"`), text nhãn số liệu (`y="174"`), gridlines dọc mờ định vị thời gian và nhãn đơn vị ở góc phải biểu đồ.
+  - **Nút "Làm Mới" Bộ Lọc Chính Xác (Yêu cầu 4 của PO):**
+    * Bổ sung nút "Làm mới" (`data-testid="refresh-custom-range-btn"`) ngay cạnh nút "Lọc Chính Xác". Khi click, xóa sạch input `Từ/Đến`, hủy trạng thái applied và tự động đồng bộ lại preset đang chọn.
+  - **Loại Bỏ Hoàn Toàn Chữ Thừa `_toggle_drop_down` (Yêu cầu 5 của PO):**
+    * Thay thế mã icon Material Symbols bị lỗi ligature font (`history_toggle_drop_down`) bằng icon chuẩn quốc tế `schedule`, loại bỏ 100% tình trạng font fallback hiển thị text `_TOGGLE_DROP_DOWN`.
+  - **Kiểm Thử Toàn Diện Sau Nâng Cấp:**
+    * Backend unit tests: **7/7 tests PASS 100%** (bao gồm test lọc dữ liệu thật và trả về rỗng khi không có mẫu).
+    * Backend multivector integration tests: **12/12 tests PASS 100%**.
+    * Admin-web unit tests: **52/52 tests PASS 100%** (bổ sung tests 5.19 & 5.20 kiểm tra nút Làm Mới, vạch Trục X và icon schedule).
+    * Toàn bộ hệ thống: **95/95 tests PASS 100%**.
+
+- **6. Hệ Thống Global Floating Alert Toast Trong Admin-web & Bảo Toàn Icon Chuông Thông Báo (🔔):**
+  - **Chuyển Đổi Toàn Bộ Thông Báo Về Dạng Alert Nổi (Floating Toast Alert):**
+    * Tạo `AlertContext` & `AlertProvider` (`src/Admin-web/src/store/alert.context.jsx`): Cung cấp các tiện ích `showAlert`, `success`, `error`, `warning`, `info`, `removeAlert`, `clearAllAlerts`, tự động dọn timer và hỗ trợ hook `useAlertSafe` tránh lỗi khi chạy unit test.
+    * Tạo Component `AlertToast` & `AlertContainer` (`src/Admin-web/src/components/common/AlertToast.jsx`): Hiển thị cố định tại góc trên bên phải màn hình (`fixed top-20 right-6 z-[9999]`). Thẻ AlertItem trang bị icon tương ứng theo 4 cấp độ, hiệu ứng trượt mượt mà (`slide-in-from-right-6`), nút đóng nhanh "x" và thanh tiến trình thời gian (progress bar) tự đóng sau 4.5-6 giây.
+    * Tích hợp ở cấp ứng dụng cao nhất (`src/Admin-web/src/App.jsx`): Bọc `<AlertProvider>` và `<AlertContainer />` bên ngoài RouterProvider để mọi trang, mọi route đều hiển thị Alert nổi bất kể người dùng cuộn ở đầu trang, giữa trang hay đáy trang.
+  - **Liên Kết Alert Toast Trên Các Trang Chức Năng:**
+    * `AIOpsPage.jsx`: Chuyển đổi toàn bộ phản hồi thao tác (`feedback`) và socket chặn đứng tấn công sang `alert.success` / `alert.error`.
+    * `BroadcastPage.jsx`: Chuyển đổi toàn bộ phản hồi bật/tắt bảo trì khẩn cấp, lên lịch và phát thông báo sang `alert.success` / `alert.error`.
+    * `CategoryPage.jsx`: Thay thế các popup thô `window.alert` bằng các thông báo Alert Toast sang trọng, hiển thị Alert khi lưu/xóa/đồng bộ danh mục.
+    * `UserListPage.jsx`: Kích hoạt Alert Toast khi vô hiệu hóa, kích hoạt hoặc xóa tài khoản người dùng.
+  - **Bảo Toàn Nguyên Vẹn Hoạt Động Của Icon Chuông Thông Báo (🔔) Trên Header:**
+    * Chiếc chuông thông báo trên Header (`src/Admin-web/src/components/layout/Header.jsx`) giữ nguyên vẹn 100% tính năng: Badge đếm số đỏ chưa đọc (như số 14), dropdown xem danh sách cảnh báo từ CSDL, nút làm mới danh sách, và đánh dấu đã đọc.
+    * Đồng bộ thời gian thực: Khi Socket.io nhận sự kiện `admin.notification` hoặc `admin.security_alert`, hệ thống vừa tăng badge số đếm trên chuông, vừa bắn Alert Toast nổi trên màn hình để Admin nắm bắt tức thời.
+  - **Kiểm Thử Toàn Diện Hệ Thống Alert:**
+    * Tạo bộ test mới `src/Admin-web/src/tests/alert.system.test.jsx`: Kiểm thử đầy đủ 5 trường hợp (bắn success, error/warning/info xếp chồng, bấm 'x' đóng thủ công, tự đóng sau duration, và kiểm tra tính ổn định của icon chuông cùng badge 14).
+    * Toàn bộ Admin-web Test Suite: **57/57 tests PASS 100%** trên cả 8 file kiểm thử.
+    * Toàn bộ hệ thống: **100/100 tests PASS 100%**.
 
 
 
