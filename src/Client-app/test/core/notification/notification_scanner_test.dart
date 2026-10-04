@@ -27,9 +27,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
 import 'package:flowmoney/core/notification/hang_cho_su_kien.dart';
+import 'package:flowmoney/core/notification/kenh_phien_ngan_hang.dart';
 import 'package:flowmoney/core/notification/kho_bien_lai.dart';
+import 'package:flowmoney/core/notification/moc_phien_store.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/core/notification/nhap_bien_lai.dart';
+import 'package:flowmoney/core/notification/nhap_phien_ngan_hang.dart';
+import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
 import 'package:flowmoney/core/ocr/doc_chu_anh.dart';
 import 'package:flowmoney/core/ocr/dong_ocr.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
@@ -127,6 +131,24 @@ class OsNotifierGia implements OsNotifier {
   }
 }
 
+/// Kênh phiên app ngân hàng giả: trả sự kiện đặt sẵn, ghi lại mọi lời bật / tắt cờ máy.
+class _KenhPhienGia implements KenhPhienNganHang {
+  List<SuKienSuDung> suKienTra = const [];
+  final List<(bool, DateTime?)> datBatGoi = [];
+  @override
+  Future<bool> coQuyen() async => true;
+  @override
+  Future<void> moCaiDat() async {}
+  @override
+  Future<List<SuKienSuDung>> suKien(DateTime tu) async => suKienTra;
+  @override
+  Future<DateTime?> boDen() async => null;
+  @override
+  Future<void> datBat(bool bat, {DateTime? daXetDen}) async => datBatGoi.add((bat, daXetDen));
+  @override
+  Future<void> huyNhac() async {}
+}
+
 /// Bộ đọc chữ giả: gọi một hàm lúc được hỏi rồi trả về không dòng nào (biên lai thành hàng *chưa đọc được*).
 class _DocAnhGia implements DocChuAnh {
   _DocAnhGia(this.khiDoc);
@@ -198,6 +220,7 @@ void main() {
     NhapBienDong? nhapBienDong,
     Future<void> Function(bool co)? datCoPhien,
     NhapBienLai? nhapBienLai,
+    NhapPhienNganHang? nhapPhien,
     NhatKyThongBao? nhatKy,
     NotificationEventDao? eventDao,
     Set<String>? viDaDung,
@@ -236,6 +259,7 @@ void main() {
       nhapBienDong: nhapBienDong,
       datCoPhien: datCoPhien,
       nhapBienLai: nhapBienLai,
+      nhapPhien: nhapPhien,
       nhatKy: nhatKy,
       eventDao: eventDao,
       clock: () => now,
@@ -438,6 +462,40 @@ void main() {
       expect(goi.last, isFalse,
           reason: 'cờ Kotlin gắn máy: sau đăng xuất không còn tài khoản nào đã đồng ý, dịch vụ phải thôi '
               'đọc và thôi bắn thông báo tóm tắt');
+    });
+
+    test('⭐ nhắc ghi: start xét phiên SAU khi tin ngân hàng thành hàng; stop đặt mốc lúc đăng xuất + tắt cờ máy',
+        () async {
+      final tam = await Directory.systemTemp.createTemp('scanner_phien_');
+      addTearDown(() => tam.delete(recursive: true));
+      await File('${tam.path}/$kTepBienDongCho').writeAsString(dongMb('M1')); // tin 02/09 15:33
+      final kenh = _KenhPhienGia()
+        ..suKienTra = [
+          SuKienSuDung(goi: 'com.mbmobile', lop: 'Main', vao: true, luc: DateTime(2026, 9, 2, 15, 32)),
+          SuKienSuDung(goi: 'com.mbmobile', lop: 'Main', vao: false, luc: DateTime(2026, 9, 2, 15, 34)),
+        ];
+      final moc = InMemoryMocPhienStore()..values[accountId] = DateTime(2026, 9, 2, 15);
+      final scanner = dungScanner(
+        nhapBienDong: nhapBienDongTam(tam),
+        nhapPhien: NhapPhienNganHang(
+          kenh: kenh,
+          dao: db.notificationDao,
+          moc: moc,
+          batNhac: (_) async => true,
+          nguonCuaGoi: (g) => g == 'com.mbmobile' ? kNguonMb : null,
+          giaoDichTrongKhoang: (_, __, ___) async => const [],
+          clock: () => DateTime(2026, 9, 2, 16),
+        ),
+      );
+      await scanner.start(accountId);
+      expect([for (final h in await hangBienDong()) h.dedupeKey].where(laKhoaPhien), isEmpty,
+          reason: 'xét phiên TRƯỚC khi nhập tin là nhắc oan một phiên đã có tin — thứ tự '
+              'NhapBienDong → NhapBienLai → NhapPhienNganHang');
+      expect(moc.values[accountId], DateTime(2026, 9, 2, 15, 34));
+
+      await scanner.stop();
+      expect(kenh.datBatGoi.last.$1, isFalse, reason: 'không còn ai đăng nhập thì không còn ai đã đồng ý');
+      expect(moc.values[accountId], DateTime(2026, 9, 2, 16), reason: 'đăng xuất đặt mốc về lúc đăng xuất');
     });
 
     test('D1: start() dọn hàng loại 20 cũ hơn 30 ngày, giữ hàng loại khác cùng tuổi (mốc 90)', () async {

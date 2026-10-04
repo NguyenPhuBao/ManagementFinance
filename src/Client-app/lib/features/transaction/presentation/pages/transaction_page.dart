@@ -42,7 +42,7 @@ class TransactionPage extends StatefulWidget {
   /// `demChuaGan` trên `transactionDao.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
   final Stream<int> Function(int idaccount)? nguonChuaGan;
 
-  /// D1 — số hàng biến động số dư chưa ghi, dạng **stream** — nuôi thẻ *"Có N biến động chưa ghi"*. `null` →
+  /// D1 — số hàng biến động số dư chưa ghi, dạng **stream** — nuôi thẻ *"Có N mục chờ ghi"*. `null` →
   /// `NotificationDao.watchDemBienDong`. Ca test tiêm thẳng.
   final Stream<int> Function(int idaccount)? nguonBienDong;
 
@@ -375,7 +375,7 @@ class _TransactionPageState extends State<TransactionPage> {
     );
   }
 
-  /// Thẻ lối vào D1 — chỉ dựng khi còn hàng biến động chưa ghi. Nguồn là stream: Lưu / Bỏ qua (xoá cứng hàng) tự
+  /// Thẻ lối vào D1 — chỉ dựng khi còn mục chờ ghi (hàng loại 20). Nguồn là stream: Lưu / Bỏ qua (xoá cứng hàng) tự
   /// làm con số đổi. **Xem** mở trung tâm thông báo lọc sẵn nhóm Biến động — route NGOÀI shell nên `push` được.
   Widget _buildTheBienDong() {
     return StreamBuilder<int>(

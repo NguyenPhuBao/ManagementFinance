@@ -1,9 +1,10 @@
 /// D1 — điền sẵn form Thêm giao dịch từ một hàng biến động số dư (spec
 /// `2026-09-28-d1-doc-bien-dong-so-du-design.md` §3.3). Hàm thuần.
 ///
-/// Hợp đồng query là `deeplinkBienDong` (`core/notification/nhap_bien_dong.dart`): `amount · huong · date · note ·
-/// nguon · duoi · khoa`. Query hỏng thì bỏ đúng trường ấy, không ném — route đọc query từ URL (khuôn
-/// `dienSanTuQuery` của B2).
+/// Hợp đồng query là `deeplinkBienDong` / `deeplinkBienLaiChuaDoc` (`core/notification/nhap_bien_dong.dart`) và
+/// `deeplinkPhien` (`core/notification/phien_ngan_hang.dart`): `amount · huong · date · note · nguon · duoi · khoa`
+/// (+ `anh · doc · blt` của biên lai, `phien` của dòng nhắc). Query hỏng thì bỏ đúng trường ấy, không ném — route đọc
+/// query từ URL (khuôn `dienSanTuQuery` của B2).
 library;
 
 import '../../../core/database/app_database.dart';
@@ -27,6 +28,7 @@ class DienSanBienDong {
     this.duoi,
     this.anh,
     this.cachDoc,
+    this.phien,
   });
 
   /// `dedupeKey` của hàng loại 20 — xoá cứng hàng ấy khi Lưu / Bỏ qua.
@@ -53,6 +55,10 @@ class DienSanBienDong {
   /// `'mau'` | `'chung'` | `'khong'` — số liệu của hàng này ĐỌC TỪ ẢNH biên lai, bằng cách nào. `null` = số liệu đến
   /// từ tin ngân hàng (kể cả khi hàng được gắn thêm ảnh để đối chiếu).
   final String? cachDoc;
+
+  /// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): giờ RỜI app ngân hàng của phiên đang nhắc. Có mặt ⇔ hàng là dòng
+  /// nhắc (không số tiền, không chiều — [thoiGian] là giờ mở app).
+  final DateTime? phien;
 }
 
 /// `null` khi query không phải của một hàng biến động số dư — form mở như thường.
@@ -77,6 +83,7 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
     chieu: const {'thu', 'chi'}.contains(chieu) ? chieu : null,
     thoiGian: DateTime.tryParse(q['date'] ?? ''),
     duoi: duoi.isEmpty ? null : duoi,
+    phien: DateTime.tryParse(q['phien'] ?? ''),
   );
 }
 
@@ -88,9 +95,11 @@ String _hai(int n) => n.toString().padLeft(2, '0');
 /// app gửi không rõ (nguồn là [kNguonBienLai]) thì chỉ *"Từ biên lai · …"* — không lặp chữ.
 String dongNguonBienDong(DienSanBienDong d) {
   final t = d.thoiGian;
-  final dau = d.cachDoc == null
-      ? 'Từ thông báo ${d.nguon}'
-      : (d.nguon == kNguonBienLai ? 'Từ biên lai' : 'Từ biên lai ${d.nguon}');
+  final dau = d.phien != null
+      ? 'Dùng ${d.nguon}'
+      : d.cachDoc == null
+          ? 'Từ thông báo ${d.nguon}'
+          : (d.nguon == kNguonBienLai ? 'Từ biên lai' : 'Từ biên lai ${d.nguon}');
   return [
     dau,
     if (d.duoi != null) 'TK ••${d.duoi}',

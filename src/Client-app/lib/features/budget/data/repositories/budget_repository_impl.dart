@@ -8,6 +8,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/budget_history.dart';
 import '../../domain/cua_so_nhin_lai.dart';
+import '../../domain/nhip_chi.dart';
 import '../datasources/budget_local_data_source.dart';
 import '../models/budget_entity.dart';
 import 'budget_repository.dart';
@@ -116,6 +117,55 @@ class BudgetRepositoryImpl implements BudgetRepository {
       ));
     }
     return out;
+  }
+
+  @override
+  Future<Map<String, NhipChi?>> nhipChiTheoNganSach(
+    int idaccount,
+    List<BudgetEntity> budgets, {
+    DateTime? now,
+  }) async {
+    if (budgets.isEmpty) return const {};
+    final moment = now ?? clock();
+    final moc = await localDataSource.mocGiaoDichDauTien(idaccount);
+    final kyTheoNganSach = {
+      for (final b in budgets)
+        b.id: kyDaDongTruoc(b,
+            now: moment, mocDauTien: moc, toiDa: kSoKyHocToiDa),
+    };
+
+    DateTime? tu;
+    DateTime? den;
+    for (final ds in kyTheoNganSach.values) {
+      for (final k in ds) {
+        if (tu == null || k.from.isBefore(tu)) tu = k.from;
+        if (den == null || k.to.isAfter(den)) den = k.to;
+      }
+    }
+    if (tu == null || den == null) return {for (final b in budgets) b.id: null};
+
+    // MỘT lượt đọc cho mọi ngân sách: `categoryId: null` = mọi khoản chi (đúng
+    // định nghĩa ngân sách tổng); từng ngân sách lọc lại bằng CHÍNH vế của
+    // `getExpenses` (`khoanThuocNganSach`).
+    final chi = await localDataSource.getExpenses(
+      idaccount: idaccount,
+      categoryId: null,
+      from: tu,
+      to: den,
+    );
+    return {
+      for (final b in budgets)
+        b.id: hocNhipChi([
+          for (final k in kyTheoNganSach[b.id]!)
+            KyChi(from: k.from, to: k.to, khoan: [
+              for (final t in chi)
+                if (khoanThuocNganSach(b.categoryId, t) &&
+                    !t.date.isBefore(k.from) &&
+                    t.date.isBefore(k.to))
+                  (ngay: t.date, soTien: t.amount),
+            ]),
+        ]),
+    };
   }
 
   @override

@@ -14,7 +14,7 @@ import 'package:flutter/widgets.dart';
 
 import 'kenh_bien_dong.dart';
 
-/// Đích của cú chạm tóm tắt và của thẻ *"Có N biến động chưa ghi"* ở Sổ giao dịch.
+/// Đích của cú chạm tóm tắt và của thẻ *"Có N mục chờ ghi"* ở Sổ giao dịch.
 const String kRouteBienDongChuaGhi = '/notifications?nhom=bienDong';
 
 class MoTuTomTatBienDong {

@@ -161,14 +161,74 @@ void main() {
         reason: 'Không còn "đang phát triển": tính năng đã có.');
   });
 
-  testWidgets('có "Đăng xuất" ở đáy và chạm thì gọi onDangXuat', (tester) async {
+  testWidgets('có "Đăng xuất" ở đáy và chạm thì hỏi xác nhận', (tester) async {
     var goi = 0;
     await bom(tester, onChon: (_) {}, onDangXuat: () => goi++);
 
     await tester.tap(find.text('Đăng xuất'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(goi, 1, reason: 'Stitch có "Đăng xuất" ở đáy drawer; bản chạy thiếu.');
+    expect(find.textContaining('Bạn có chắc muốn đăng xuất'), findsOneWidget,
+        reason: 'Stitch có "Đăng xuất" ở đáy drawer; bản chạy thiếu.');
+    expect(goi, 0, reason: 'Chưa xác nhận thì chưa đăng xuất.');
+  });
+
+  group('⚠️ Đăng xuất từ drawer THẬT (mở trong Scaffold)', () {
+    // Nghiệm thu Realme 2026-10-03: bấm "Đăng xuất" ở drawer → hộp thoại hiện →
+    // bấm "Đăng xuất" → KHÔNG có gì xảy ra. Luồng ấy từng nằm ở `HomePage` và
+    // dùng context của chính drawer: đóng drawer là gỡ cây con của nó, nên sau
+    // hộp thoại `context.mounted == false` và lệnh đăng xuất bị bỏ qua, im lặng.
+    // Lỗi sống từ 2026-09-19 vì ca cũ dựng drawer làm `body` — không bao giờ
+    // đóng, nên context không bao giờ bị gỡ.
+    Future<ScaffoldState> moDrawer(
+        WidgetTester tester, VoidCallback onDangXuat) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          drawer: DrawerTrangChu(
+            ten: 'Đạt',
+            email: 'dat@example.com',
+            onChon: (_) {},
+            onDangXuat: onDangXuat,
+          ),
+          body: const SizedBox.expand(),
+        ),
+      ));
+      final khung = tester.state<ScaffoldState>(find.byType(Scaffold));
+      khung.openDrawer();
+      await tester.pumpAndSettle();
+      return khung;
+    }
+
+    testWidgets('xác nhận → đóng drawer và gọi onDangXuat đúng một lần',
+        (tester) async {
+      var goi = 0;
+      final khung = await moDrawer(tester, () => goi++);
+
+      await tester.tap(find.text('Đăng xuất'));
+      await tester.pumpAndSettle();
+      expect(khung.isDrawerOpen, isFalse,
+          reason: 'Hộp thoại mở trên trang, không đè lên drawer.');
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Đăng xuất'));
+      await tester.pumpAndSettle();
+
+      expect(goi, 1,
+          reason: 'Bản cũ: hộp thoại hiện, bấm "Đăng xuất" không làm gì — '
+              'context của drawer đã bị gỡ khi drawer đóng.');
+    });
+
+    testWidgets('Huỷ → không đăng xuất', (tester) async {
+      var goi = 0;
+      await moDrawer(tester, () => goi++);
+
+      await tester.tap(find.text('Đăng xuất'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Huỷ'));
+      await tester.pumpAndSettle();
+
+      expect(goi, 0);
+    });
   });
 
   testWidgets('chữ cái đầu của avatar phải khác màu nền', (tester) async {

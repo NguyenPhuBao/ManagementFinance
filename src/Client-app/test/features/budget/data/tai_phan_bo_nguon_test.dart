@@ -8,17 +8,30 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
+import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Repository giả: chỉ `suggestAmount` được dùng ở đây.
+import '../domain/nhip_chi_mau.dart';
+
+/// Repository giả: chỉ `suggestAmount` và `nhipChiTheoNganSach` được dùng ở đây.
 class _Repo implements BudgetRepository {
   final Map<String, double?> goiY;
-  _Repo(this.goiY);
+  final Map<String, NhipChi?> nhip;
+  final bool nemNhip;
+  _Repo(this.goiY, {this.nhip = const {}, this.nemNhip = false});
 
   @override
   Future<double?> suggestAmount(int idaccount, String categoryId,
           {DateTime? now}) async =>
       goiY[categoryId];
+
+  @override
+  Future<Map<String, NhipChi?>> nhipChiTheoNganSach(
+      int idaccount, List<BudgetEntity> budgets,
+      {DateTime? now}) async {
+    if (nemNhip) throw StateError('hỏng');
+    return nhip;
+  }
 
   @override
   dynamic noSuchMethod(Invocation i) =>
@@ -178,4 +191,58 @@ void main() {
     expect(d.phanHoi.single.action, 'accepted');
     expect(d.phanHoi.single.periodFrom, DateTime(2026, 8, 1));
   });
+
+  test('nap mang nhịp của repository, khoá budget.id', () async {
+    final n = nhipNhaO();
+    final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}, nhip: {'b1': n}))
+        .nap(7, [_ns('b1', 'c-nha')], now);
+    expect(d.nhipTheoNganSach['b1'], same(n));
+  });
+
+  test('đọc nhịp hỏng → nap vẫn trả dữ liệu, nhịp rỗng (phần phụ)', () async {
+    final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}, nemNhip: true))
+        .nap(7, [_ns('b1', 'c-nha')], now);
+    expect(d.nhipTheoNganSach, isEmpty);
+  });
+
+  test('⭐ keHoachTaiPhanBoTu chuyền nhịp vào taiPhanBoCua — Nhà ở hết báo oan',
+      () async {
+    final nhaO = BudgetView(
+      budget: BudgetEntity(
+        id: 'nha',
+        idaccount: 7,
+        categoryId: 'c-nha',
+        amount: 5000000,
+        spent: 4200000,
+        startDate: DateTime(2026, 8, 1),
+        recurrence: true,
+        timeRecurrence: BudgetRecurrence.month,
+        updatedAt: DateTime(2026, 8, 1),
+      ),
+      categoryName: 'Nhà ở',
+    );
+    final coNhip = await keHoachTaiPhanBoTu(
+        _NguonCo(DuLieuTaiPhanBo(
+            coDinh: const {},
+            thuNhapMoiThang: 0,
+            mucThangTheoNganSach: const {},
+            phanHoi: const [],
+            nhipTheoNganSach: {'nha': nhipNhaO()})),
+        7,
+        [nhaO],
+        mocMau);
+    final khongNhip = await keHoachTaiPhanBoTu(
+        _NguonCo(DuLieuTaiPhanBo.rong), 7, [nhaO], mocMau);
+    expect(coNhip, isNull);
+    expect(khongNhip?.thieu.budget.id, 'nha');
+  });
+}
+
+class _NguonCo implements TaiPhanBoNguon {
+  _NguonCo(this.d);
+  final DuLieuTaiPhanBo d;
+  @override
+  Future<DuLieuTaiPhanBo> nap(
+          int idaccount, List<BudgetView> dangChay, DateTime now) async =>
+      d;
 }

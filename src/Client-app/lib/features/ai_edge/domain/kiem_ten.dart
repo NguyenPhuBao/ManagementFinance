@@ -112,9 +112,13 @@ List<String> _cacCum(String sau) {
     final t = raw.replaceAll(_dauNgoac, '');
     final loi = t.replaceAll(_dauCau, '');
     if (loi.isEmpty) {
-      // Chỉ dấu câu: dấu phẩy nối cụm kế, dấu khác kết thúc.
+      // Chỉ dấu câu: dấu phẩy nối cụm kế, dấu khác kết thúc. ⚠️ Dấu phẩy chỉ nối
+      // DANH SÁCH khi trước nó đã có một tên: đứng ngay sau từ loại ("…tiêu đúng
+      // ngân sách, bạn sẽ thiếu…") nó kết thúc mệnh đề — đọc tiếp là lấy "bạn"
+      // làm tên một ngân sách (đo Realme 2026-10-04).
+      final daCoTen = tu.isNotEmpty || cum.isNotEmpty;
       chot();
-      if (!t.startsWith(',')) break;
+      if (!t.startsWith(',') || !daCoTen) break;
       continue;
     }
     if (kTuChucNang.contains(loi)) {

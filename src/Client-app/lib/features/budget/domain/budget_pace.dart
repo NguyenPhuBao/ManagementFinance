@@ -8,18 +8,26 @@
 /// Mọi mốc đều lấy từ `BudgetEntity.currentPeriod` chứ không tự cắt tháng:
 /// hàm ấy đã xử lý tháng ngắn, ngày 31 bị kẹp, ngân sách hết hạn và "Ngày cụ
 /// thể". Tính lại ở đây là hai nơi có thể lệch nhau.
+///
+/// Có `nhipChi` (dự án C việc hai, `nhip_chi.dart`) thì "đáng lẽ đã chi" theo
+/// nhịp riêng đã học từ các kỳ trước thay vì giả định chi đều — tiền nhà trả
+/// ngày 1 thôi bị gọi là "nhanh" mỗi đầu tháng. Số ngày, "nên chi/ngày" và phần
+/// thời gian đã trôi KHÔNG đổi theo nhịp.
 library;
 
 import '../data/models/budget_entity.dart';
+import 'nhip_chi.dart';
 
+/// So với **mốc so sánh**: phần thời gian đã trôi của kỳ (chi đều), hoặc phần
+/// mọi khi đã chi tới lúc này khi đã học nhịp riêng (`BudgetPace.theoNhipRieng`).
 enum BudgetPaceStatus {
-  /// Tiêu ít hơn hẳn phần thời gian đã trôi.
+  /// Tiêu ít hơn hẳn mốc so sánh.
   slow,
 
-  /// Trong biên ±5 điểm phần trăm quanh tỉ lệ thời gian đã trôi.
+  /// Trong biên ±5 điểm phần trăm quanh mốc so sánh.
   onTrack,
 
-  /// Tiêu nhiều hơn hẳn phần thời gian đã trôi.
+  /// Tiêu nhiều hơn hẳn mốc so sánh.
   fast,
 }
 
@@ -33,10 +41,20 @@ class BudgetPace {
   /// Số tiền còn lại chia đều cho [daysLeft]. 0 khi đã vượt hoặc đã hết kỳ.
   final double suggestedPerDay;
 
-  /// Số "đáng lẽ" đã tiêu nếu chi đều theo thời gian đã trôi.
+  /// Số "đáng lẽ" đã tiêu tới lúc này: theo nhịp riêng khi [theoNhipRieng],
+  /// không thì nếu chi đều theo thời gian đã trôi.
   final double expectedSpent;
 
   final BudgetPaceStatus status;
+
+  /// Phần thời gian đã trôi của kỳ, 0–1 — `viTriTrongKy`. Dự phóng của tái phân
+  /// bổ đọc nó thay vì tự tính lại.
+  final double phanThoiGian;
+
+  /// `true` khi [expectedSpent] và [status] tính theo NHỊP RIÊNG đã học
+  /// (`nhip_chi.dart`), `false` khi theo giả định chi đều — giao diện đổi chữ
+  /// theo nó.
+  final bool theoNhipRieng;
 
   const BudgetPace({
     required this.daysTotal,
@@ -44,6 +62,8 @@ class BudgetPace {
     required this.suggestedPerDay,
     required this.expectedSpent,
     required this.status,
+    this.phanThoiGian = 0,
+    this.theoNhipRieng = false,
   });
 
   static const BudgetPace empty = BudgetPace(
@@ -69,7 +89,7 @@ int _daysBetween(DateTime from, DateTime to) {
   return (micro / _oneDay.inMicroseconds).ceil();
 }
 
-BudgetPace budgetPaceOf(BudgetEntity b, DateTime now) {
+BudgetPace budgetPaceOf(BudgetEntity b, DateTime now, {NhipChi? nhipChi}) {
   final ky = b.currentPeriod(now);
   final daysTotal = _daysBetween(ky.from, ky.to);
   if (daysTotal <= 0) return BudgetPace.empty;
@@ -86,13 +106,14 @@ BudgetPace budgetPaceOf(BudgetEntity b, DateTime now) {
   final remaining = b.remaining > 0 ? b.remaining : 0.0;
   final suggestedPerDay = daysLeft == 0 ? 0.0 : remaining / daysLeft;
 
-  final total = ky.to.difference(ky.from).inMicroseconds;
-  final elapsed = now.difference(ky.from).inMicroseconds;
-  final elapsedFraction = (elapsed / total).clamp(0.0, 1.0);
-  final expectedSpent = b.amount * elapsedFraction;
+  final elapsedFraction = viTriTrongKy(ky.from, ky.to, now);
+  // Phần "đáng lẽ đã chi": nhịp riêng khi đã học, không thì giả định chi đều.
+  final mocSoSanh =
+      nhipChi?.phanDaChiMoiKhi(elapsedFraction) ?? elapsedFraction;
+  final expectedSpent = b.amount * mocSoSanh;
 
   final spentFraction = b.amount > 0 ? b.spent / b.amount : 0.0;
-  final diff = spentFraction - elapsedFraction;
+  final diff = spentFraction - mocSoSanh;
   final status = diff > _paceTolerance
       ? BudgetPaceStatus.fast
       : diff < -_paceTolerance
@@ -105,5 +126,7 @@ BudgetPace budgetPaceOf(BudgetEntity b, DateTime now) {
     suggestedPerDay: suggestedPerDay,
     expectedSpent: expectedSpent,
     status: status,
+    phanThoiGian: elapsedFraction,
+    theoNhipRieng: nhipChi != null,
   );
 }

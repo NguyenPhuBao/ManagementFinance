@@ -79,9 +79,12 @@ import '../notification/badge_updater.dart';
 import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
+import '../notification/kenh_phien_ngan_hang.dart';
 import '../notification/kho_bien_lai.dart';
+import '../notification/moc_phien_store.dart';
 import '../notification/nhap_bien_dong.dart';
 import '../notification/nhap_bien_lai.dart';
+import '../notification/nhap_phien_ngan_hang.dart';
 import '../notification/nhat_ky_thong_bao.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
@@ -361,6 +364,10 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<ViTheoNguonStore>(
     () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
   );
+  // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): mốc "đã xét đến" theo tài khoản.
+  sl.registerLazySingleton<MocPhienStore>(
+    () => const SecureStorageMocPhienStore(FlutterSecureStorage()),
+  );
 
   // Đề xuất giờ nhắc / tắt nhóm bị lờ (B5b) — đọc nhật ký B5a, chỉ đề xuất.
   sl.registerLazySingleton<DeXuatThongBaoNguon>(
@@ -414,6 +421,12 @@ Future<void> setupDependencies() async {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android
           ? const KenhBienDongAndroid()
           : const KenhBienDongTrong());
+
+  // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): kênh tới `PhienNganHang.kt` — chỉ Android; nơi khác bản trống.
+  sl.registerLazySingleton<KenhPhienNganHang>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhPhienNganHangAndroid()
+          : const KenhPhienNganHangTrong());
 
   // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
@@ -563,6 +576,20 @@ Future<void> setupDependencies() async {
         thuMau: kDebugMode
             ? () => thuMauBienLai(thuMuc: getApplicationSupportDirectory, docChu: sl<DocChuAnh>())
             : null,
+      ),
+      // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): sự kiện sử dụng từ `PhienNganHang.kt`, bằng chứng từ hàng loại
+      // 20 và sổ giao dịch, ví theo nguồn của D1. Công tắc là cờ `nhacSauNganHang` của tài khoản.
+      nhapPhien: NhapPhienNganHang(
+        kenh: sl<KenhPhienNganHang>(),
+        dao: sl<AppDatabase>().notificationDao,
+        moc: sl<MocPhienStore>(),
+        batNhac: (id) async => (await sl<NotificationPrefsStore>().read(id)).nhacSauNganHang,
+        nguonCuaGoi: nguonCuaGoi,
+        giaoDichTrongKhoang: (id, tu, den) async => [
+          for (final t in await sl<AppDatabase>().transactionDao.getByDateRange(id, tu, den))
+            (ngay: t.date, walletId: t.walletId, walletTransfer: t.walletTransfer),
+        ],
+        viCuaNguon: (id, nguon) => sl<ViTheoNguonStore>().docTheoNguon(id, nguon),
       ),
       // Nhật ký B5a: `huy_lich` lúc đăng xuất, dọn 180 ngày lúc start.
       nhatKy: sl<NhatKyThongBao>(),

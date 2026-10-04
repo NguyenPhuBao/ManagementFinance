@@ -23,9 +23,10 @@ class TheChuaGanDanhMuc extends StatelessWidget {
       );
 }
 
-/// Thẻ *"Có N biến động chưa ghi"* (D1, Stitch `e59155ff…`) — đứng TRÊN thẻ C1. N là số hàng loại 20 chưa ghi
-/// (`NotificationDao.watchDemBienDong`); **Xem** mở trung tâm thông báo lọc sẵn nhóm Biến động. Chỉ vẽ; N = 0 thì chỗ
-/// gọi không dựng.
+/// Thẻ *"Có N mục chờ ghi"* (D1, Stitch `e59155ff…`; đổi chữ 2026-10-03 vì dòng nhắc sau khi dùng app ngân hàng chưa
+/// chắc có giao dịch) — đứng TRÊN thẻ C1. N là số hàng loại 20 chưa ghi (`NotificationDao.watchDemBienDong`): tin ngân
+/// hàng, biên lai và dòng nhắc; **Xem** mở trung tâm thông báo lọc sẵn nhóm Biến động. Chỉ vẽ; N = 0 thì chỗ gọi không
+/// dựng.
 class TheBienDongChuaGhi extends StatelessWidget {
   const TheBienDongChuaGhi({super.key, required this.soBienDong, required this.onXem});
 
@@ -35,8 +36,8 @@ class TheBienDongChuaGhi extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TheViecChoDuyet(
         icon: Icons.account_balance_outlined,
-        tieuDe: 'Có $soBienDong biến động chưa ghi',
-        phu: 'Từ thông báo ngân hàng và biên lai, bạn duyệt trước khi lưu',
+        tieuDe: 'Có $soBienDong mục chờ ghi',
+        phu: 'Tin ngân hàng, biên lai và lần dùng app ngân hàng — bạn duyệt trước khi lưu',
         nhanNut: 'Xem',
         khoaNut: const Key('the-bien-dong-xem'),
         onNhan: onXem,

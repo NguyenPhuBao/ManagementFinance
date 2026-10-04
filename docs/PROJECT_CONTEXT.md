@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-03)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-04)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -890,8 +890,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
 - ✅ **D1 — đọc biến động số dư trên máy, XONG + nghiệm thu máy thật 2026-09-30** (`1d7ca56` → `02f995f`; tài liệu
   bàn giao **`docs/BIEN_DONG_SO_DU_FEATURE.md`**; spec `specs/2026-09-28-d1-doc-bien-dong-so-du-design.md` có banner
   lệch-thiết-kế; kế hoạch `plans/2026-09-28-d1-doc-bien-dong-so-du.md`, gitignore). Kotlin `BienDongListenerService`
-  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N biến động chưa
-  ghi"* ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
+  lọc thô + hàng chờ + tóm tắt không số → `NhapBienDong` (loại 20, nhóm thứ sáu `bienDong`) → thẻ *"Có N mục chờ ghi"*
+  (chữ cũ *"…biến động chưa ghi"* tới 2026-10-03) ở Sổ giao dịch / cú chạm tóm tắt (`MoTuTomTatBienDong`) → trung tâm lọc sẵn → form `/add` điền sẵn → Lưu / Bỏ qua
   **xoá cứng** hàng (ngoại lệ mục 4.3 `NOTIFICATION_FEATURE.md`). Màn xin đồng ý bắt buộc (Stitch `bed4d292…`) liệt kê
   **nguồn đang đọc** (người dùng chốt, không bảy nguồn Stitch vẽ): danh sách trắng đo trên máy **MB Bank · MoMo ·
   ZaloPay**. ⭐ Chốt đáng nhớ: cờ Kotlin gắn **máy**, `docBienDong` gắn **tài khoản** → mỗi lượt nhập ghi lại cờ theo tài
@@ -980,6 +980,80 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### ✅ Dự án C việc hai — nhịp chi ngân sách + G66 (2026-10-04)
+
+Người dùng chọn việc thứ hai của dự án C là *nhịp / ngưỡng ngân sách*; brainstorm đổi hình dạng: **màu 70/90 giữ nguyên**,
+**không** thêm thông báo, thay giả định *chi đều* bằng **nhịp học từ ≤ 6 kỳ đã đóng** (kể cả trước ngày tạo ngân sách, ≥ 3
+kỳ có chi, trung vị) ở ba chỗ — dự phóng *Đề xuất cân đối* (thẻ + thông báo `budgetRebalance` + tool `can_doi`), ô NHỊP CHI
+trang chi tiết, trạng thái nhịp của tool `danh_sach_ngan_sach`. Spec `specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md`,
+chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
+
+- **G66 trước** (người dùng chọn, `02d46ca`): ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày đã kẹp từ kỳ thứ hai — nay
+  **`BudgetEntity.mocKy(s)`** là định nghĩa duy nhất của lưới kỳ, nhảy `s + 1` chu kỳ từ `startDate`; `currentPeriod`,
+  `recentPeriods`, `expiresAt` cùng gọi nó; `_anchor` / `periodAnchor` bỏ. Dữ liệu thật không có ngân sách nào dính.
+- **Nhịp chi** (`3e827dc` → `8eb5b93`, 9 task inline): `nhip_chi.dart` thuần (`hocNhipChi`, `viTriTrongKy`) · `kyDaDongTruoc`
+  trên lưới `mocKy` · `BudgetRepository.nhipChiTheoNganSach` đọc khoản chi **một** lượt (vế danh mục `khoanThuocNganSach`
+  tách khỏi `getExpenses`) · cửa **`docNhipChi`** — nhịp là phần phụ, hỏng thì `{}` → chi đều · `budgetPaceOf(nhipChi:)`,
+  `duPhongCua(nhipChi:)`, `DuLieuTaiPhanBo.nhipTheoNganSach`, `hangNganSach(nhipTheoNganSach:)`. Không đổi schema, payload,
+  `tools_json`, khoá thông báo.
+- ⭐ **Phép đo lật dự đoán "im"**: CSDL Realme có giao dịch từ **10/04/2026** (dữ liệu thử B2/B3 người dùng cho giữ) → *Ăn uống*
+  học được 5 kỳ; dự phóng 1.048.709 → 930.000, chip *chậm* → *đúng nhịp*. Nghiệm thu Realme 360 dp đạt cả hai chiều.
+- **Lỗi có từ trước lộ khi nghiệm thu**: ở 360 dp dòng *"Theo …: X"* cùng hàng chip dài bị cắt "…" — người dùng chọn đưa xuống
+  **hàng riêng dưới chip** (`8eb5b93`). Trang chi tiết ngân sách chưa có màn Stitch; lượt `generate_screen_from_text` trả
+  `timeout`, chờ người dùng xem.
+- `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
+
+### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
+
+- Bảy PR của NPBao (#111–#117, 03–04/10): AIOps Sentinel bốn vector + nhật ký sự cố (RCA), bảo trì hai chế độ có giờ
+  kết thúc hẹn trước, che IP ở `refreshtoken`. **Không xung đột**, không đụng `src/Client-app` (cây giữ hash
+  `ad38eb94…`, bộ test client không đổi — 5551/5551 đo trước gộp). **Không gói npm mới** (`package.json` chỉ đổi script).
+- **Migration `database/15–18`** — CSDL dev **chưa áp** (tới `14`), backend **vẫn chạy được**: bảng `aiops_incident` /
+  `aiops_setting` (15, 16) do chính `AIOpsIncidentRepository.initTable()` **tự tạo** lúc khởi động (`CREATE TABLE IF NOT
+  EXISTS`, lỗi thì rơi về bộ nhớ); mã AIOps đọc/ghi qua `pool` chứ không qua model Prisma nên không cần `prisma
+  generate`. 17 (che IP cũ của `refreshtoken`, `UPDATE`) và 18 (nới cột băm / IP) chỉ đổi dữ liệu và độ rộng cột —
+  mã mới ghi IP đã che `a.b.xx.xx` vừa `varchar(45)`. Áp 17–18 vẫn cần câu cho phép gọi đúng việc.
+- **Backend đóng cả ba đơn 31–33** và tự chuyển sang `DA-XONG/` (51 tệp + mục lục). Client soát bằng mã cùng ngày:
+  - **33** ✅ — heuristic 4 (`feature.collector.js`) chỉ đếm khi `req.tokenReuseDetected` và chặn từ lần **thứ năm**; IP
+    lấy `req.ip || req.socket.remoteAddress` rồi bỏ `::ffff:`; loopback được **miễn** khi `NODE_ENV=development` (`.env`
+    dev đang đặt đúng thế) → bàn thử `adb reverse` thôi bị 403 15 phút; thân 403 có `code: 'AIOPS_QUARANTINED'`.
+  - **31** ✅ — `allExpenses` chỉ nhận `Vay/no` **tiền ra**, DTI bỏ *Cho vay* và mọi khoản tiền vào, `trendVsLastMonth`
+    trả `null` khi kỳ trước rỗng (`calculateTrendVsLastMonth`, có test). Backend **tự chọn** câu đơn để ngỏ: *cho vay*
+    (tiền ra) **vẫn là tiết kiệm** trong 50/30/20 (`savingsKeywords` giữ `'cho vay'`). `node --test` FHS + quarantine:
+    **29/29**.
+  - **32** ✅ — hai câu trả lời trùng mặc định của client (không màn đồng ý riêng; backend tự ghi nguồn biên lai vào
+    `LogicBusinessAI.md`, `Project.md`).
+- ⚠️ `CAN-LAM/README.md` ghi *"0 đơn tồn đọng"* nhưng `ls` thấy **một** đơn: **34** `CLIENT_NHAC_SAU_APP_NGAN_HANG.md`
+  (client viết 10-03 tối, **chưa push** nên backend chưa thấy). README do backend quản — không sửa.
+- Ghi nhận, **không** ảnh hưởng client (Dio trên Android không gửi `Origin` / `Referer` / `x-client-platform`): đường
+  ưu tiên Admin-web nhận diện bằng header **tự khai** (`x-client-platform: admin-web` trên `/auth/login`, `/auth/refresh`
+  là bỏ qua quarantine và cắt tải), và quarantine bỏ qua `/auth/login` khi `username` **chứa** chữ `admin`. ✅ **Đơn 35
+  viết 2026-10-04** theo yêu cầu người dùng — `CAN-LAM/SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md` (đọc mã, chưa chạy): hai chỗ ấy
+  cộng hai chỗ cùng họ soát thêm — bước 4 làn ưu tiên đọc role bằng `jwt.decode` (không kiểm chữ ký), và `authLimiter`
+  không gắn route nào; ca 10 `tests/unit/aiops.quarantine.test.js` đang khoá hành vi sai. Client không phải sửa gì.
+- `Notification_Client-app.md` (backend quản) nay tả client đúng v27 / 9 tool / 20 loại / chuông có số đếm; một chữ
+  lệch nhỏ: nhóm thứ sáu ghi `transaction`, tên thật là `bienDong`.
+
+### ✅ Nhắc ghi sau khi dùng app ngân hàng — xong trọn 10 task, nghiệm thu Realme debug + release (2026-10-03)
+
+- **Tài liệu chính: mục 8 `docs/BIEN_DONG_SO_DU_FEATURE.md`** (luồng, kiến trúc, quyết định, bẫy, bảng đo chạy nền,
+  bảng nghiệm thu 13 dòng). Spec `specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md`; kế hoạch (gitignore) cùng tên ở
+  `plans/` — nhật ký thi công cuối tệp. Thông báo cho backend: `CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md`.
+- **Người dùng thấy:** công tắc mới (mặc định TẮT) dưới *Biến động số dư* ở *Cài đặt thông báo → Tự động hoá giao
+  dịch* → màn đồng ý → quyền *Truy cập dữ liệu sử dụng*. Dùng MB Bank / MoMo / ZaloPay ≥ 20 giây mà quanh đó không có
+  tin, biên lai hay giao dịch → dòng *"MB Bank · HH:mm – HH:mm — Chưa thấy giao dịch nào"* trong danh sách *Biến động*
+  (thẻ Sổ giao dịch nay *"Có N mục chờ ghi"*) + thông báo **im lặng** có nút *Không có giao dịch* → form số tiền trống,
+  giờ = lúc mở app ngân hàng, ví theo nguồn.
+- **Mã:** `77b0ff8` → `5cfb429` (Task 1–8) + bốn bản sửa lúc nghiệm thu: `c18e095` dải *"Đã xoá thông báo"* đứng yên
+  hàng phút (`persist: false` — Flutter mới giữ SnackBar có `action`; đây là SnackBarAction duy nhất của app) ·
+  `c2d6985` *Đăng xuất* ở **drawer** không làm gì (có sẵn từ 19/09 — context của drawer đã bị gỡ khi drawer đóng) ·
+  `8deeeb5` phiên lúc **không ai đăng nhập** thành dòng nhắc khi đăng nhập lại (cờ máy `nhac_phien_dang_xuat`) ·
+  `4818bcf` thanh tiêu đề màn đồng ý cụt ở 360 dp → *"Nhắc ghi giao dịch"*. Không đổi schema, không thêm trường đồng bộ,
+  không thêm `NotificationKind`.
+- **Đo:** nhắc tới 4–7 phút sau khi rời app (đường D1 hoặc worker 15 phút); bản release 1 vòng ~13 phút. Chưa đo: dòng 8
+  (chuyển thật **có** tin → không nhắc — lần chuyển thật MB không bắn tin, nên đo được ca ngược: có nhắc), Doze (rút cáp,
+  người dùng tự đo). `flutter test` **5551/5551**, 7 skip; analyze 26. Realme để lại debug `5efd5658…`.
+
 ### 🔀 Gộp `main` @ `29e9a89` (2026-10-03, commit gộp `8d31143`) — AIOps Sentinel chặn IP ở đường bình thường của client
 
 - PR #109 (`7f1a096`): Admin-web thời gian thực + **AIOps Sentinel** (`modules/aiops/`). **Không xung đột**, chỉ chạm
@@ -993,7 +1067,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   IP phạt nhóm dùng chung (CGNAT; dev: mọi máy qua `adb reverse` là `127.0.0.1`); thân 403 dùng `error` thay `code`.
   Đo bằng `curl` với IP TEST-NET `203.0.113.7`. Client không đổi gì: 403 ở refresh là *tạm thời* (`LamMoiTamThoi`).
 - ⚠️ **Dev:** một máy dính 401 ở `/auth/refresh` là mọi máy bị 403 `AIOPS_QUARANTINED` 15 phút; danh sách trong bộ nhớ —
-  khởi động lại backend là sạch.
+  khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
+  `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
 ### 🧹 Dọn ví trùng tên trên Realme + mở G63 (2026-10-03)
 
@@ -1058,7 +1133,7 @@ kế hoạch 11 task ở `plans/` (gitignore). Commit `86b7b91` → `ebfb9d98`. 
   `test/core/ocr/ban_release_r8_mlkit_test.dart`. Sửa thêm: nút ✕ màn xem ảnh to có **nền tròn tối** (chìm trên biên
   lai nền sáng), ca test đo tương phản ≥ 3:1. Dung lượng đo trên release: 11,06 MB thư viện arm64 + 1,49 MB mô hình.
   Ba màn Stitch người dùng xác nhận. Còn mở: mẫu riêng MoMo / ZaloPay (chờ biên lai thật) · bản thiết kế thứ hai *nhắc
-  ghi sau khi rời app ngân hàng* (chưa viết).
+  ghi sau khi rời app ngân hàng* — ✅ **xong 2026-10-03**, khối riêng ở đầu nhóm 10-03 của mục này.
 
 ### ✅ Dự án C, việc đầu — gợi ý danh mục theo số tiền khi ghi chú TRỐNG: xong + nghiệm thu Realme (2026-10-02)
 
@@ -1106,7 +1181,9 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   `KetQuaCongCu.kyTuongDuong`) — *"Tháng này bạn đã chi…"* cho số của tháng 9 từng được hiện. ⚠️ Lỗi kỳ này chỉ lộ khi
   lịch sang tháng mới: mốc 72 câu đo ngày 28/09, khi *"tháng 9"* còn là *"tháng này"*.
 - 📌 **Việc mở, người dùng chốt làm SAU dự án B:** luật `congCuTheoCauHoi` lệch nhãn — 3/18 câu nó bắt trên bộ đo,
-  18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
+  18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). ✅ **Sửa 2026-10-04** (`645a7e3`, luật lệch 18 → 0; đo Realme
+  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). Còn **họ D và G** người dùng đã chọn
+  hướng mà chưa làm — cuối mục 9.45 `AI_EDGE_FEATURE.md`. Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
   tool để rút tiếp thời gian chờ.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.

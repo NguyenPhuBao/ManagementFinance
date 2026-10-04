@@ -43,6 +43,20 @@ void main() {
         await store.ghi(7, 'MB Bank', '7777', 'w-moi');
         expect(await store.doc(7, 'MB Bank', '7777'), 'w-moi');
       });
+
+      test('⭐ docTheoNguon: cặp đuôi trống thắng; không có thì mọi cặp của nguồn trỏ về MỘT ví → ví ấy; hai ví → null',
+          () async {
+        expect(await store.docTheoNguon(7, 'MB Bank'), isNull);
+        await store.ghi(7, 'MB Bank', '7777', 'w-mb');
+        expect(await store.docTheoNguon(7, 'MB Bank'), 'w-mb');
+        await store.ghi(7, 'MB Bank', '1234', 'w-khac');
+        expect(await store.docTheoNguon(7, 'MB Bank'), isNull, reason: 'hai tài khoản MB — không đoán');
+        await store.ghi(7, 'MB Bank', null, 'w-nhac');
+        expect(await store.docTheoNguon(7, 'MB Bank'), 'w-nhac', reason: 'lần Lưu từ dòng nhắc đã chọn ví cho nguồn');
+        expect(await store.docTheoNguon(9, 'MB Bank'), isNull);
+        await store.ghi(7, 'MB', '5555', 'w-mb2');
+        expect(await store.docTheoNguon(7, 'MB'), 'w-mb2', reason: 'tiền tố "MB|" không ăn sang "MB Bank|"');
+      });
     });
   }
 

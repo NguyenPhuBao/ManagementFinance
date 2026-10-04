@@ -4,6 +4,7 @@
 library;
 
 import '../../budget/data/de_xuat_nguon.dart';
+import '../../budget/data/doc_nhip_chi.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../budget/data/tai_phan_bo_nguon.dart';
 import '../../../core/utils/khop_ten.dart';
@@ -76,11 +77,15 @@ class CongCuNganSach implements CongCu {
     // G2 cổng F (E10): câu nêu tên một ngân sách đang chạy → chỉ hàng ấy.
     final ten = tenNeuTrongCau(cauHoi, [for (final v in dangChay) v.displayName], tuLoai: 'ngân sách');
     if (ten != null) log('[SLM][tool] câu hỏi nêu ngân sách → chỉ "$ten"');
+    // Nhịp riêng — cùng phép với chip trang chi tiết (phần phụ: hỏng thì chi đều).
+    final nhip = await docNhipChi(
+        nganSach, idaccount, [for (final v in dangChay) v.budget], now);
     return hangNganSach(
       dangChay,
       now: now,
       chon: (chon == null || chon.isEmpty) ? null : chon,
       ten: ten,
+      nhipTheoNganSach: nhip,
     );
   }
 }

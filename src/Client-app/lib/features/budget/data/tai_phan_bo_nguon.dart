@@ -1,5 +1,6 @@
 /// Nguồn dữ liệu của Tầng 2 tái phân bổ (Edge-SLM P2): cờ Cố định, mức mỗi
-/// tháng của từng ngân sách, thu nhập mỗi tháng, phản hồi cũ.
+/// tháng của từng ngân sách, thu nhập mỗi tháng, phản hồi cũ, và nhịp chi
+/// riêng (dự án C việc hai).
 ///
 /// ⚠️ Đặt ở `budget/data/`, **không** ở `ai_edge/`: tệp này đọc bảng giao dịch
 /// để tính thu nhập, mà test quét thứ 14 cấm `ai_edge/` chạm bảng ấy. Nó là
@@ -13,6 +14,8 @@ import '../../analytics/domain/thong_ke_thang.dart';
 import '../../analytics/domain/thu_nhap_moi_thang.dart';
 import '../data/models/budget_entity.dart';
 import '../domain/cua_so_nhin_lai.dart';
+import '../domain/nhip_chi.dart';
+import 'doc_nhip_chi.dart';
 import 'repositories/budget_repository.dart';
 
 class DuLieuTaiPhanBo {
@@ -34,11 +37,16 @@ class DuLieuTaiPhanBo {
 
   final List<PhanHoiCu> phanHoi;
 
+  /// Nhịp chi riêng của từng ngân sách đang chạy (khoá `budget.id`) — dự án C
+  /// việc hai. `null` / thiếu khoá = chưa biết nhịp → dự phóng đi phép chi đều.
+  final Map<String, NhipChi?> nhipTheoNganSach;
+
   const DuLieuTaiPhanBo({
     required this.coDinh,
     required this.thuNhapMoiThang,
     required this.mucThangTheoNganSach,
     required this.phanHoi,
+    this.nhipTheoNganSach = const {},
   });
 
   static const DuLieuTaiPhanBo rong = DuLieuTaiPhanBo(
@@ -75,6 +83,7 @@ Future<KeHoachTaiPhanBo?> keHoachTaiPhanBoTu(
     thuNhapMoiThang: d.thuNhapMoiThang,
     mucThangTheoNganSach: d.mucThangTheoNganSach,
     phanHoi: d.phanHoi,
+    nhipTheoNganSach: d.nhipTheoNganSach,
   );
 }
 
@@ -119,6 +128,12 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
       thuNhapMoiThang: await _thuNhapMoiThang(idaccount, cats, now),
       mucThangTheoNganSach: tb,
       phanHoi: phanHoi,
+      nhipTheoNganSach: await docNhipChi(
+        budgets,
+        idaccount,
+        [for (final v in dangChay) v.budget],
+        now,
+      ),
     );
   }
 

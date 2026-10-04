@@ -15,7 +15,6 @@ import '../../domain/thu_chi_thang.dart';
 import '../../../ai_chat/spike/spike_c4.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
-import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../goal/data/models/goal_entity.dart';
@@ -248,7 +247,7 @@ class HomePage extends StatelessWidget {
 
   /// Drawer là widget riêng (`DrawerTrangChu`) từ 2026-09-19 để test được mà
   /// không dựng cả trang; ở đây chỉ còn đọc tên/email từ bloc và nối callback.
-  Widget _buildDrawer(BuildContext context) {
+  Widget _buildDrawer(BuildContext trang) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final user = (state is AuthSuccess) ? state.user : null;
@@ -264,13 +263,11 @@ class HomePage extends StatelessWidget {
             context.pop(); // đóng drawer
             context.push(duong);
           },
-          onDangXuat: () async {
-            context.pop(); // đóng drawer trước, hộp thoại mở trên trang
-            final dongY = await xacNhanDangXuat(context);
-            if (dongY == true && context.mounted) {
-              context.read<AuthBloc>().add(LogoutRequested());
-              context.go('/login');
-            }
+          // Drawer tự đóng và tự hỏi xác nhận; tới đây là người dùng đã đồng ý. Dùng context của TRANG: `context`
+          // của builder này nằm trong drawer và đã bị gỡ khi drawer đóng (lỗi 2026-09-19 → 2026-10-03).
+          onDangXuat: () {
+            trang.read<AuthBloc>().add(LogoutRequested());
+            trang.go('/login');
           },
         );
       },

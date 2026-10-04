@@ -48,6 +48,9 @@ dependencies {
     // Đi kèm `isCoreLibraryDesugaringEnabled` ở trên — hai thứ này phải có
     // cùng nhau, thiếu một là lỗi build.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Nhắc ghi sau khi dùng app ngân hàng: kiểm định kỳ 15 phút. ĐÚNG bản `background_downloader` 9.6.3 đang kéo vào
+    // (`implementation` của plugin không lộ ra module app) — trùng bản, không xung đột.
+    implementation("androidx.work:work-runtime-ktx:2.11.0")
 }
 
 flutter {

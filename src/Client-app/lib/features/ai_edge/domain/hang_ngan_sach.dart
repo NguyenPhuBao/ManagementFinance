@@ -12,11 +12,15 @@
 ///
 /// [ten] (G2 cổng F, E10): tên ngân sách câu hỏi nêu (`tenNeuTrongCau` — tên
 /// lấy từ chính [dangChay]) → chỉ hàng ấy, và BỎ "Tổng còn lại" của mọi ngân sách.
+///
+/// [nhipTheoNganSach] (dự án C việc hai): trạng thái nhịp theo nhịp riêng đã học
+/// — cùng phép với chip trang chi tiết; thiếu khoá = chi đều.
 library;
 
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_pace.dart';
 import '../../budget/domain/de_xuat_ngan_sach.dart';
+import '../../budget/domain/nhip_chi.dart';
 import 'chon.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
@@ -34,6 +38,7 @@ KetQuaCongCu hangNganSach(
   required DateTime now,
   String? chon,
   String? ten,
+  Map<String, NhipChi?> nhipTheoNganSach = const {},
 }) {
   if (chon != null && !kChon.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChon);
@@ -67,7 +72,7 @@ KetQuaCongCu hangNganSach(
   final hang = <HangSoLieu>[];
   for (final v in khop.take(kToiDaMucMoiGoi)) {
     final b = v.budget;
-    final nhip = budgetPaceOf(b, now);
+    final nhip = budgetPaceOf(b, now, nhipChi: nhipTheoNganSach[b.id]);
     final ten = v.displayName;
     hang.add(HangSoLieu(
       ten: ten,

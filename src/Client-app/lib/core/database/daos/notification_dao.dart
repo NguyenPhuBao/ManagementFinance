@@ -85,7 +85,7 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
     return q.map((r) => r.read(dem) ?? 0).watchSingle();
   }
 
-  /// D1 — số hàng biến động số dư CHƯA ghi (chưa gạt) của tài khoản: con số trên thẻ *"Có N biến động chưa ghi"* ở
+  /// D1 — số hàng biến động số dư CHƯA ghi (chưa gạt) của tài khoản: con số trên thẻ *"Có N mục chờ ghi"* ở
   /// Sổ giao dịch. Stream, nên Lưu / Bỏ qua (xoá cứng) tự làm con số đổi.
   Stream<int> watchDemBienDong(int idaccount) {
     final dem = appNotifications.id.count();

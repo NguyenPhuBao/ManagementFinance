@@ -165,6 +165,8 @@ class NotificationPrefs {
     this.phutTongKet = _phutTongKetMacDinh,
     this.docBienDong = false,
     this.dongYBienDong = false,
+    this.nhacSauNganHang = false,
+    this.dongYNhacSauNganHang = false,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -297,6 +299,14 @@ class NotificationPrefs {
   /// bật lại không hỏi lần nữa. Mặc định CHƯA — bản ghi không có khoá là chưa từng thấy màn ấy.
   final bool dongYBienDong;
 
+  /// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03) — công tắc TÍNH NĂNG, mặc định TẮT, cờ riêng như [docBienDong]
+  /// (đứng sau màn đồng ý). Dòng nhắc là hàng loại 20 của nhóm `bienDong` nhưng [batNhom] của nhóm ấy vẫn chỉ đọc
+  /// [docBienDong] — hai tính năng tắt bật độc lập.
+  final bool nhacSauNganHang;
+
+  /// Đã bấm *Đồng ý* ở màn đồng ý của [nhacSauNganHang]. Tắt tính năng KHÔNG xoá — bật lại không hỏi nữa.
+  final bool dongYNhacSauNganHang;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
 
@@ -394,6 +404,8 @@ class NotificationPrefs {
     int? phutTongKet,
     bool? docBienDong,
     bool? dongYBienDong,
+    bool? nhacSauNganHang,
+    bool? dongYNhacSauNganHang,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -415,6 +427,8 @@ class NotificationPrefs {
       phutTongKet: phutTongKet ?? this.phutTongKet,
       docBienDong: docBienDong ?? this.docBienDong,
       dongYBienDong: dongYBienDong ?? this.dongYBienDong,
+      nhacSauNganHang: nhacSauNganHang ?? this.nhacSauNganHang,
+      dongYNhacSauNganHang: dongYNhacSauNganHang ?? this.dongYNhacSauNganHang,
     );
   }
 
@@ -438,6 +452,8 @@ class NotificationPrefs {
         'phutTongKet': phutTongKet,
         'docBienDong': docBienDong,
         'dongYBienDong': dongYBienDong,
+        'nhacSauNganHang': nhacSauNganHang,
+        'dongYNhacSauNganHang': dongYNhacSauNganHang,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -482,6 +498,11 @@ class NotificationPrefs {
           json['docBienDong'] is bool ? json['docBienDong']! as bool : false,
       dongYBienDong:
           json['dongYBienDong'] is bool ? json['dongYBienDong']! as bool : false,
+      nhacSauNganHang:
+          json['nhacSauNganHang'] is bool ? json['nhacSauNganHang']! as bool : false,
+      dongYNhacSauNganHang: json['dongYNhacSauNganHang'] is bool
+          ? json['dongYNhacSauNganHang']! as bool
+          : false,
     );
   }
 
@@ -520,6 +541,8 @@ class NotificationPrefs {
       other.phutNhacGhiChep == phutNhacGhiChep &&
       other.docBienDong == docBienDong &&
       other.dongYBienDong == dongYBienDong &&
+      other.nhacSauNganHang == nhacSauNganHang &&
+      other.dongYNhacSauNganHang == dongYNhacSauNganHang &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -539,6 +562,8 @@ class NotificationPrefs {
         phutNhacGhiChep,
         docBienDong,
         dongYBienDong,
+        nhacSauNganHang,
+        dongYNhacSauNganHang,
         Object.hashAllUnordered(nhomTat),
       );
 

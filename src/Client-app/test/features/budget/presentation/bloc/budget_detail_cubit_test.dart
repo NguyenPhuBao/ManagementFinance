@@ -14,9 +14,12 @@ import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/domain/budget_history.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
+import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_detail_cubit.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
+
+import '../../domain/nhip_chi_mau.dart';
 
 final _bayGio = DateTime(2026, 9, 15, 12);
 
@@ -25,6 +28,17 @@ class _FakeRepository implements BudgetRepository {
   final controller = StreamController<List<BudgetView>>.broadcast();
   List<BudgetPeriodSummary> history = const [];
   List<TransactionEntity> transactions = const [];
+  Map<String, NhipChi?> nhip = const {};
+  bool nemNhip = false;
+
+  @override
+  Future<Map<String, NhipChi?>> nhipChiTheoNganSach(
+      int idaccount, List<BudgetEntity> budgets,
+      {DateTime? now}) async {
+    calls.add('nhipChiTheoNganSach(${budgets.map((b) => b.id).join(',')})');
+    if (nemNhip) throw StateError('hỏng');
+    return nhip;
+  }
 
   @override
   Stream<List<BudgetView>> watchBudgets(int idaccount, {DateTime? now}) {
@@ -166,5 +180,28 @@ void main() {
     expect((next as BudgetDetailLoaded).view.budget.spent, 200,
         reason: 'Ghi một khoản chi ở nơi khác phải làm trang này nhúc nhích '
             'ngay, y như danh sách.');
+  });
+
+  test('⭐ có nhịp thì ô NHỊP CHI so với nhịp riêng của ngân sách đang xem',
+      () async {
+    final n = nhipAnUong();
+    repo.nhip = {'b1': n};
+    cubit.watch(idaccount: 7, budgetId: 'b1');
+    repo.controller.add([_view('b1')]);
+    final s = await cubit.stream.firstWhere((s) => s is BudgetDetailLoaded)
+        as BudgetDetailLoaded;
+    expect(repo.calls, contains('nhipChiTheoNganSach(b1)'));
+    expect(s.pace.theoNhipRieng, isTrue);
+    expect(s.pace.expectedSpent,
+        closeTo(3000000 * n.phanDaChiMoiKhi(s.pace.phanThoiGian), 1e-6));
+  });
+
+  test('đọc nhịp hỏng → trang vẫn Loaded, nhịp theo chi đều', () async {
+    repo.nemNhip = true;
+    cubit.watch(idaccount: 7, budgetId: 'b1');
+    repo.controller.add([_view('b1')]);
+    final s = await cubit.stream.firstWhere((s) => s is BudgetDetailLoaded)
+        as BudgetDetailLoaded;
+    expect(s.pace.theoNhipRieng, isFalse);
   });
 }

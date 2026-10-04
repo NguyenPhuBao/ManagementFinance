@@ -4,6 +4,7 @@
 library;
 
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
+import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -178,6 +179,31 @@ void main() {
       final r = dienSanBienDongTuQuery(Uri.parse(link).queryParameters)!;
       expect((r.soTien, r.chieu, r.ghiChu, r.anh, r.cachDoc), (10000, 'chi', 'A chuyen tien', 'aaaa.png', 'mau'));
       expect(r.thoiGian, DateTime(2026, 10, 2, 19, 38));
+    });
+  });
+
+  group('nhắc ghi sau khi dùng app ngân hàng — dòng không số tiền', () {
+    final p = PhienNganHang(
+        goi: 'com.mbmobile',
+        batDau: DateTime(2026, 10, 3, 11, 19),
+        ketThuc: DateTime(2026, 10, 3, 11, 20, 35),
+        trenMan: const Duration(seconds: 95));
+    final khoa = dedupeKeyPhien('MB Bank', p.batDau);
+    final d = dienSanBienDongTuQuery(Uri.parse(deeplinkPhien(p, nguon: 'MB Bank', dedupeKey: khoa)).queryParameters)!;
+
+    test('⭐ đọc được: khoá, nguồn, giờ mở, giờ rời; KHÔNG số tiền, KHÔNG chiều', () {
+      expect((d.khoa, d.nguon, d.thoiGian, d.phien), (khoa, 'MB Bank', p.batDau, p.ketThuc));
+      expect((d.soTien, d.chieu, d.anh, d.cachDoc), (null, null, null, null));
+    });
+
+    test('dải nguồn nói "Dùng …" — không "Từ thông báo …" (không có thông báo nào)', () {
+      expect(dongNguonBienDong(d), 'Dùng MB Bank · 03/10 11:19');
+    });
+
+    test('query không có phien → phien null, dải nguồn như cũ', () {
+      final cu = dienSanBienDongTuQuery({'khoa': 'bienDong:M1', 'nguon': 'MB Bank', 'date': '2026-10-03T11:19:00'})!;
+      expect(cu.phien, isNull);
+      expect(dongNguonBienDong(cu), startsWith('Từ thông báo MB Bank'));
     });
   });
 }

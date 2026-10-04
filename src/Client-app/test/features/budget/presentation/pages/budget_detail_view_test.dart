@@ -6,15 +6,19 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_history.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
+import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_detail_cubit.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_detail_view.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
+
+import '../../domain/nhip_chi_mau.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 12);
@@ -64,11 +68,12 @@ void main() {
     BudgetView? v,
     bool expired = false,
     List<TransactionEntity>? transactions,
+    NhipChi? nhipChi,
   }) {
     final view0 = v ?? view();
     return BudgetDetailLoaded(
       view: view0,
-      pace: budgetPaceOf(view0.budget, now),
+      pace: budgetPaceOf(view0.budget, now, nhipChi: nhipChi),
       history: lichSu(),
       transactions: transactions ?? [tx('t1', 50000), tx('t2', 120000)],
       lookup: TransactionLookup.empty,
@@ -131,6 +136,10 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
+    // `scrollUntilVisible` dừng khi dòng mới ló mép khung — ô NHỊP CHI cao thêm
+    // một hàng (2026-10-04) là tâm dòng rơi ra ngoài và cú chạm trượt, im lặng.
+    await tester.ensureVisible(find.byKey(const ValueKey('budget-tx-t2')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('budget-tx-t2')));
     await tester.pump();
 
@@ -159,5 +168,51 @@ void main() {
   testWidgets('kỳ không có giao dịch thì nói rõ, không để trống', (tester) async {
     await dung(tester, loaded(transactions: const []));
     expect(find.textContaining('Chưa có khoản chi'), findsOneWidget);
+  });
+
+  Future<void> dung360(WidgetTester tester, BudgetDetailLoaded state) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(
+      home: BudgetDetailView(
+          state: state, onEdit: null, onTapTransaction: (_) {}),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('chưa có nhịp riêng → "Theo thời gian đã trôi", không tràn ở 360dp',
+      (tester) async {
+    await dung360(tester, loaded());
+    expect(find.textContaining('Theo thời gian đã trôi'), findsOneWidget);
+    expect(find.textContaining('Theo nhịp thường lệ'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('⭐ có nhịp riêng → "Theo nhịp thường lệ", không tràn ở 360dp',
+      (tester) async {
+    await dung360(tester, loaded(nhipChi: nhipAnUong()));
+    expect(find.textContaining('Theo nhịp thường lệ'), findsOneWidget);
+    expect(find.textContaining('Theo thời gian đã trôi'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // Nghiệm thu Realme 360 dp 2026-10-04: chip "Chậm hơn dự kiến" đứng cùng hàng
+  // làm dòng "Theo thời gian đã trôi: 53.824 đ" bị cắt thành "…" — mất đúng con
+  // số. Người dùng chọn đưa dòng xuống hàng riêng dưới chip, đọc trọn.
+  testWidgets('dòng "Theo …: X" nằm DƯỚI chip và không bị cắt ở 360dp',
+      (tester) async {
+    await dung360(tester, loaded(v: view(spent: 0)));
+    final chip = find.text('Chậm hơn dự kiến');
+    final dong = find.textContaining('Theo thời gian đã trôi');
+    expect(chip, findsOneWidget);
+    expect(tester.getRect(dong).top,
+        greaterThanOrEqualTo(tester.getRect(chip).bottom),
+        reason: 'cùng hàng với chip thì dòng chỉ còn phần bề rộng thừa');
+    expect(tester.renderObject<RenderParagraph>(dong).didExceedMaxLines,
+        isFalse,
+        reason: 'bị cắt "…" là mất con số — `find.text` so `data` nên không '
+            'thấy, phải hỏi chính RenderParagraph');
+    expect(tester.takeException(), isNull);
   });
 }

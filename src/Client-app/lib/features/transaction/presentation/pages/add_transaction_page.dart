@@ -362,7 +362,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     String? viId;
     if (id != null) {
       try {
-        final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi);
+        // Dòng nhắc (không đuôi TK) thì thử thêm ví của cả NGUỒN — chỉ khi nó chắc (một ví duy nhất).
+        final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi) ??
+            (d.phien != null ? await _viTheoNguon?.docTheoNguon(id, d.nguon) : null);
         // Chỉ ví HOẠT ĐỘNG (`_wallets` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
         if (nho != null && _wallets.any((w) => w.id == nho)) viId = nho;
       } catch (e) {

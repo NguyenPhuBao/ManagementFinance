@@ -253,35 +253,29 @@ class _PaceCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: mauNhip.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Text(
-                  budgetPaceStatusLabel(pace.status),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: mauNhip,
-                  ),
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: mauNhip.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Text(
+              budgetPaceStatusLabel(pace.status),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: mauNhip,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Theo thời gian đã trôi: '
-                  '${CurrencyFormatter.format(pace.expectedSpent)}',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Hàng RIÊNG dưới chip, được xuống dòng: cùng hàng với chip thì ở
+          // 360 dp chip "Chậm hơn dự kiến" ăn hết chỗ và con số bị cắt "…"
+          // (nghiệm thu Realme 2026-10-04, người dùng chọn bố cục này).
+          Text(
+            '${pace.theoNhipRieng ? 'Theo nhịp thường lệ' : 'Theo thời gian đã trôi'}: '
+            '${CurrencyFormatter.format(pace.expectedSpent)}',
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ),
