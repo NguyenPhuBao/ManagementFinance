@@ -1160,3 +1160,18 @@ bool _coSoTien(String q) {
 bool _cuoi(String chuoi, String cum) =>
     RegExp('(?<![a-z0-9])${RegExp.escape(cum)}\$').hasMatch(chuoi);
 
+
+/// Đường nhanh (spec 2026-10-02 §3.2): luật đọc ĐỦ tham số để chạy tool giao dịch
+/// không cần Gemma điền — khi luật biết CHIỀU: động từ chiều, câu nói cả thu lẫn
+/// chi, câu chuyển tiền, hoặc câu tự nói trung tính bằng chữ "giao dịch". Kỳ không
+/// nằm trong điều kiện: không nêu kỳ → mọi thời gian; kỳ chưa tới thì tool từ chối
+/// và vòng lặp về đường cũ. ⚠️ "khoản" trơn KHÔNG đủ (đứng cả trong "khoản thu",
+/// "khoản vay"); động từ lạ ("ngốn", "xài", "trả") → `false` — để Gemma điền.
+bool docDuThamSoGiaoDich(String cauHoi) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return false;
+  return _chieuTheoDongTu(q) != null ||
+      _coCaHaiChieu(q) ||
+      _coChuyenTien(q) ||
+      _co(q, 'giao dich');
+}

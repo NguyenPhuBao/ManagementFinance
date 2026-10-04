@@ -1111,4 +1111,67 @@ void main() {
           reason: 'tên lạ đứng cuối câu vẫn nhận');
     });
   });
+
+  // Spec §3.2: đúng khi luật biết CHIỀU — động từ chiều, cả thu lẫn chi, chuyển
+  // tiền, hoặc chữ "giao dịch". "khoản" trơn KHÔNG đủ (người dùng chốt 2026-10-02).
+  group('26. docDuThamSoGiaoDich — luật đọc đủ cho đường nhanh (spec §3.2)', () {
+    test('⭐ bảng 72: 32 câu giao dịch đủ', () {
+      for (final c in [
+        'Thang nay toi chi nhieu nhat vao danh muc nao?', 'Thang truoc toi chi bao nhieu?',
+        'Thang nay toi chi bao nhieu?', 'thang nay toi tieu gi tren 500k', 'hom qua toi da chi nhung gi',
+        'hom nay toi co giao dich nao khong', 'tuan nay co khoan chi nao duoi 100 nghin khong',
+        'tuan truoc toi da tieu nhung khoan nao', 'thang truoc toi co khoan chi nao tren 1 trieu khong',
+        'cac khoan chi hon nua trieu trong quy nay', 'nam nay toi co khoan thu nao tu 5 trieu tro len khong',
+        'liet ke cac khoan chi tu 200k den 1 trieu thang nay', 'thang nay toi nhan duoc nhung khoan thu nao',
+        'thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao', 'vi tien mat thang nay chi nhung gi',
+        'thang nay toi chi gi cho mua sam tu vi tien mat', 'lan gan nhat toi chi cho di chuyen la ngay nao',
+        '5 khoan chi gan day nhat cua toi', 'tim cac giao dich co ghi chu hoa don',
+        'khoan chi lon nhat thang nay la gi', 'cac khoan chi cho giao duc tu vi test',
+        'cac khoan chi cho danh muc abc thang nay', 'Thang 9 toi da tieu het bao nhieu tien?',
+        'Co khoan chi nao khong qua 30 nghin trong thang nay khong?',
+        'Ke tu dau nam toi da chi cho giai tri tong cong bao nhieu?',
+        'Thang nay toi chi nhieu hon hay it hon thang truoc?', 'Khoan thu lon nhat nam nay la gi?',
+        'Tuan nay toi co tieu gi khong?', 'Trong quy nay khoan chi nao lon nhat?', 'thang 8 toi chi bao nhieu',
+        'tu 1/9 den 15/9 toi chi nhung gi', 'thang nay chi nhieu hon hay it hon thang truoc',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isTrue, reason: c);
+      }
+    });
+    test('⭐ bảng 72 ở đường cũ: "khoản" trơn (C12), "nạp tiền" (C20, E6)', () {
+      for (final c in [
+        'liet ke cac khoan an uong thang nay',
+        'lan cuoi toi nap tien cho muc tieu muaxe la ngay nao',
+        'Nhung lan toi nap tien vao muc tieu MuaDT',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isFalse, reason: c);
+      }
+    });
+    // 18 câu giao dịch của bộ đo khoá — chép nguyên văn; KHÔNG đọc tệp bộ đo lúc chạy.
+    test('bộ đo khoá: 13 câu đủ', () {
+      for (final c in [
+        'Tuần này tôi đã tiêu những gì?', 'hom qua co khoan thu nao khong',
+        'Tháng 7 tôi chi cho ăn uống hết bao nhiêu?', 'cho toi xem cac giao dich tren 2 trieu trong nam nay',
+        'Lần gần đây nhất tôi mua sắm là khi nào?', '3 khoan thu moi nhat',
+        'Tôi đã chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm trong tháng này?',
+        'co giao dich nao ghi chu cafe khong', 'tu 10/9 den 20/9 toi nhan duoc nhung khoan nao',
+        'Khoản chi nhỏ nhất tháng này là gì?', 'thang nay tieu nhieu hon thang truoc khong',
+        'hom nay toi da chi bao nhieu tien', 'Năm nay tôi nhận lương mấy lần?',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isTrue, reason: c);
+      }
+    });
+    test('bộ đo khoá: 5 câu không đủ — động từ lạ, "khoản" trơn, "tiền đi cho"', () {
+      for (final c in [
+        'tien di cho y te thang nay la bao nhieu', 'Quý này danh mục nào ngốn nhiều tiền nhất?',
+        'Tuần trước tôi xài tổng cộng bao nhiêu?', 'Từ ví Momo tôi đã trả những khoản gì trong tuần này?',
+        'cac khoan duoi 50k thang nay',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isFalse, reason: c);
+      }
+    });
+    test('câu nói cả thu lẫn chi (E15) đủ; câu rỗng không', () {
+      expect(docDuThamSoGiaoDich('Toi da cho vay bao nhieu va thu ve duoc bao nhieu?'), isTrue);
+      expect(docDuThamSoGiaoDich('  '), isFalse);
+    });
+  });
 }
