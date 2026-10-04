@@ -274,7 +274,7 @@ class _PaceCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Theo thời gian đã trôi: '
+                  '${pace.theoNhipRieng ? 'Theo nhịp thường lệ' : 'Theo thời gian đã trôi'}: '
                   '${CurrencyFormatter.format(pace.expectedSpent)}',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

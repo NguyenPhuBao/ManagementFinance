@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
+import '../../data/doc_nhip_chi.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../domain/budget_history.dart';
@@ -111,10 +112,12 @@ class BudgetDetailCubit extends Cubit<BudgetDetailState> {
       final transactions =
           await repository.getPeriodTransactions(budgetId, now: now);
       final lookup = await repository.lookupFor(idaccount);
+      // Nhịp riêng của đúng ngân sách đang xem — phần phụ, hỏng thì chi đều.
+      final nhip = await docNhipChi(repository, idaccount, [view.budget], now);
       if (isClosed || generation != _generation) return;
       emit(BudgetDetailLoaded(
         view: view,
-        pace: budgetPaceOf(view.budget, now),
+        pace: budgetPaceOf(view.budget, now, nhipChi: nhip[view.budget.id]),
         history: history,
         transactions: transactions,
         lookup: lookup,
