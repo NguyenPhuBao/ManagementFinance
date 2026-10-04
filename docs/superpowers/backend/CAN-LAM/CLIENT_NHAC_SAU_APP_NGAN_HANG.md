@@ -11,7 +11,7 @@ mới, không xin sửa tài liệu.** Backend không trả lời thì client l�
 | Tệp | Vì sao |
 |---|---|
 | `docs/superpowers/backend/DA-XONG/CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` | đơn gốc của D1 và phản hồi duyệt toàn diện của backend (2026-09-26) — trong đó yêu cầu **màn xin đồng ý bắt buộc** |
-| `docs/superpowers/backend/CAN-LAM/CLIENT_CHIA_SE_BIEN_LAI.md` | thông báo trước của cùng lượt (2026-10-02): biên lai cứu giao dịch khi người dùng **nhớ** chia sẻ |
+| `docs/superpowers/backend/DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md` | thông báo trước của cùng lượt (2026-10-02; backend đóng 2026-10-03): biên lai cứu giao dịch khi người dùng **nhớ** chia sẻ |
 | `docs/superpowers/specs/2026-10-03-nhac-ghi-sau-app-ngan-hang-design.md` | thiết kế phía client, người dùng duyệt 2026-10-03 |
 | `docs/BIEN_DONG_SO_DU_FEATURE.md` mục 8 | hiện trạng sau khi làm, bảng đo chạy nền và bảng nghiệm thu máy thật |
 

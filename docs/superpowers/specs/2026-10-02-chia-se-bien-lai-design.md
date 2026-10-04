@@ -183,7 +183,7 @@ số dư không áp dụng — biên lai không mang số dư).
 - Chế độ thu mẫu chỉ ở bản **debug**, chỉ in **hình dạng đã che** của chữ trên biên lai (chữ số → `9`, từ ngoài danh
   sách cấu trúc → `…`), tag `BienLaiThu` — quy tắc §13.6 `progress/Client-app.md`. Bản release không in gì.
 - Không thêm trường đồng bộ, không đổi schema. Phía backend: một **thông báo** trong
-  `docs/superpowers/backend/CAN-LAM/CLIENT_CHIA_SE_BIEN_LAI.md` (không xin đổi mã), theo tiền lệ
+  `docs/superpowers/backend/DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md` (không xin đổi mã; backend đóng 2026-10-03), theo tiền lệ
   `DA-XONG/CLIENT_DOC_BIEN_DONG_THEM_VI_DIEN_TU.md`.
 
 ## 8. Giao diện

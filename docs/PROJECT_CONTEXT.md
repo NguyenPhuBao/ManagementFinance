@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-03)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-04)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -980,6 +980,35 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   hỏng với mô hình. Chưa làm: lối B (ảnh / âm thanh) chưa chạy lần nào trên 1.9.0, RAM đỉnh chưa đo; 60 lượt đọc + 15
   ảnh thật cần người dùng.
 
+### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
+
+- Bảy PR của NPBao (#111–#117, 03–04/10): AIOps Sentinel bốn vector + nhật ký sự cố (RCA), bảo trì hai chế độ có giờ
+  kết thúc hẹn trước, che IP ở `refreshtoken`. **Không xung đột**, không đụng `src/Client-app` (cây giữ hash
+  `ad38eb94…`, bộ test client không đổi — 5551/5551 đo trước gộp). **Không gói npm mới** (`package.json` chỉ đổi script).
+- **Migration `database/15–18`** — CSDL dev **chưa áp** (tới `14`), backend **vẫn chạy được**: bảng `aiops_incident` /
+  `aiops_setting` (15, 16) do chính `AIOpsIncidentRepository.initTable()` **tự tạo** lúc khởi động (`CREATE TABLE IF NOT
+  EXISTS`, lỗi thì rơi về bộ nhớ); mã AIOps đọc/ghi qua `pool` chứ không qua model Prisma nên không cần `prisma
+  generate`. 17 (che IP cũ của `refreshtoken`, `UPDATE`) và 18 (nới cột băm / IP) chỉ đổi dữ liệu và độ rộng cột —
+  mã mới ghi IP đã che `a.b.xx.xx` vừa `varchar(45)`. Áp 17–18 vẫn cần câu cho phép gọi đúng việc.
+- **Backend đóng cả ba đơn 31–33** và tự chuyển sang `DA-XONG/` (51 tệp + mục lục). Client soát bằng mã cùng ngày:
+  - **33** ✅ — heuristic 4 (`feature.collector.js`) chỉ đếm khi `req.tokenReuseDetected` và chặn từ lần **thứ năm**; IP
+    lấy `req.ip || req.socket.remoteAddress` rồi bỏ `::ffff:`; loopback được **miễn** khi `NODE_ENV=development` (`.env`
+    dev đang đặt đúng thế) → bàn thử `adb reverse` thôi bị 403 15 phút; thân 403 có `code: 'AIOPS_QUARANTINED'`.
+  - **31** ✅ — `allExpenses` chỉ nhận `Vay/no` **tiền ra**, DTI bỏ *Cho vay* và mọi khoản tiền vào, `trendVsLastMonth`
+    trả `null` khi kỳ trước rỗng (`calculateTrendVsLastMonth`, có test). Backend **tự chọn** câu đơn để ngỏ: *cho vay*
+    (tiền ra) **vẫn là tiết kiệm** trong 50/30/20 (`savingsKeywords` giữ `'cho vay'`). `node --test` FHS + quarantine:
+    **29/29**.
+  - **32** ✅ — hai câu trả lời trùng mặc định của client (không màn đồng ý riêng; backend tự ghi nguồn biên lai vào
+    `LogicBusinessAI.md`, `Project.md`).
+- ⚠️ `CAN-LAM/README.md` ghi *"0 đơn tồn đọng"* nhưng `ls` thấy **một** đơn: **34** `CLIENT_NHAC_SAU_APP_NGAN_HANG.md`
+  (client viết 10-03 tối, **chưa push** nên backend chưa thấy). README do backend quản — không sửa.
+- Ghi nhận, **không** ảnh hưởng client (Dio trên Android không gửi `Origin` / `Referer` / `x-client-platform`): đường
+  ưu tiên Admin-web nhận diện bằng header **tự khai** (`x-client-platform: admin-web` trên `/auth/login`, `/auth/refresh`
+  là bỏ qua quarantine và cắt tải), và quarantine bỏ qua `/auth/login` khi `username` **chứa** chữ `admin`. Chưa viết
+  đơn — chờ người dùng quyết.
+- `Notification_Client-app.md` (backend quản) nay tả client đúng v27 / 9 tool / 20 loại / chuông có số đếm; một chữ
+  lệch nhỏ: nhóm thứ sáu ghi `transaction`, tên thật là `bienDong`.
+
 ### ✅ Nhắc ghi sau khi dùng app ngân hàng — xong trọn 10 task, nghiệm thu Realme debug + release (2026-10-03)
 
 - **Tài liệu chính: mục 8 `docs/BIEN_DONG_SO_DU_FEATURE.md`** (luồng, kiến trúc, quyết định, bẫy, bảng đo chạy nền,
@@ -1013,7 +1042,8 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   IP phạt nhóm dùng chung (CGNAT; dev: mọi máy qua `adb reverse` là `127.0.0.1`); thân 403 dùng `error` thay `code`.
   Đo bằng `curl` với IP TEST-NET `203.0.113.7`. Client không đổi gì: 403 ở refresh là *tạm thời* (`LamMoiTamThoi`).
 - ⚠️ **Dev:** một máy dính 401 ở `/auth/refresh` là mọi máy bị 403 `AIOPS_QUARANTINED` 15 phút; danh sách trong bộ nhớ —
-  khởi động lại backend là sạch.
+  khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
+  `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
 ### 🧹 Dọn ví trùng tên trên Realme + mở G63 (2026-10-03)
 

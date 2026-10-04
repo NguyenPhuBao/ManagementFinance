@@ -188,7 +188,8 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
 > chủ ý). ⏳ **Còn mở:** mẫu riêng MoMo / ZaloPay — chờ biên lai thật (người dùng chốt: làm khi có giao dịch). Spec
 > `docs/superpowers/specs/2026-10-02-chia-se-bien-lai-design.md`; kế hoạch (gitignore)
 > `docs/superpowers/plans/2026-10-02-chia-se-bien-lai.md` — nhật ký thi công ở cuối tệp ấy. Thông báo cho backend:
-> `docs/superpowers/backend/CAN-LAM/CLIENT_CHIA_SE_BIEN_LAI.md`.
+> `docs/superpowers/backend/DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md` — backend đóng 2026-10-03, hai câu trả lời trùng mặc
+> định của client (không màn đồng ý riêng; nguồn biên lai ghi vào `LogicBusinessAI.md`).
 
 ### 7.1. Vì sao
 
