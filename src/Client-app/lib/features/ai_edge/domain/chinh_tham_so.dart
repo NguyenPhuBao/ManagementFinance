@@ -383,10 +383,10 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   }
 
   // 15. H3 cổng F lần 2 (E19): kỳ tương đối NÊU TRONG CÂU ("quý này") thắng ky của
-  // mô hình — cùng lý lẽ luật 4: câu hỏi là nguồn sự thật. Chỉ các mã "… này":
-  // câu nêu chúng thì không còn cách đọc nào khác.
+  // mô hình — cùng lý lẽ luật 4: câu hỏi là nguồn sự thật. Mã "… này", kỳ "trước"
+  // và "đầu …" (đường nhanh §4): câu nêu chúng thì không còn cách đọc nào khác.
   if (kyTuDo == null && soSanh == null && !tuongLai) {
-    final neu = _kyGocNeu(q);
+    final neu = _kyNeuTrongCau(q);
     if (neu != null && a['ky'] != neu) {
       a['ky'] = neu;
       ghi.add('câu hỏi nêu kỳ → ky=$neu');
@@ -809,6 +809,23 @@ final RegExp _mauSoVoiNamTruoc = RegExp(
 String? _kyGocNeu(String q) {
   for (final ma in ['hom_nay', 'tuan_nay', 'thang_nay', 'quy_nay', 'nam_nay']) {
     if (_co(q, ma)) return ma;
+  }
+  return null;
+}
+
+/// Đường nhanh §4 (spec 2026-10-02, thi công 2026-10-04): kỳ tương đối NÊU trong
+/// câu cho luật 15 — mã "… này" của [_kyGocNeu] trước, rồi kỳ "trước", rồi "đầu …".
+/// Đường nhanh chạy tool với `{}`, nên kỳ chỉ còn đến từ đây: thiếu mã là tool từ
+/// chối "thiếu kỳ". ⚠️ Không dùng cho kỳ GỐC của câu so sánh (12b) — ở đó "tháng
+/// trước" là kỳ đem ra so, không phải kỳ đang hỏi.
+String? _kyNeuTrongCau(String q) {
+  final nay = _kyGocNeu(q);
+  if (nay != null) return nay;
+  for (final ma in ['hom_qua', 'tuan_truoc', 'thang_truoc']) {
+    if (_co(q, ma)) return ma;
+  }
+  for (final (cum, ma) in [('dau nam', 'nam_nay'), ('dau thang', 'thang_nay'), ('dau tuan', 'tuan_nay')]) {
+    if (_co(q, cum)) return ma;
   }
   return null;
 }

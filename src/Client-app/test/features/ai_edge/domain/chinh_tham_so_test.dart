@@ -1040,4 +1040,33 @@ void main() {
           isNot(kTenCongCuNganSach));
     });
   });
+
+  // Đường nhanh §4 (spec 2026-10-02): tool chạy với {} nên kỳ chỉ còn đến từ bộ chỉnh.
+  // A9 · C2 · C5 · C6 · E5 từng để trống ky → tool từ chối "thiếu kỳ".
+  group('24. đường nhanh §4 — kỳ "trước" và "đầu …" nêu trong câu (luật 15)', () {
+    test('⭐ args rỗng: câu nêu kỳ "trước" → mã kỳ ấy', () {
+      expect(chinh('hom qua toi da chi nhung gi', {})['ky'], 'hom_qua'); // C2
+      expect(chinh('tuan truoc toi da tieu nhung khoan nao', {})['ky'], 'tuan_truoc'); // C5
+      expect(chinh('Thang truoc toi chi bao nhieu?', {})['ky'], 'thang_truoc'); // A9
+      expect(chinh('thang truoc toi co khoan chi nao tren 1 trieu khong', {})['ky'], 'thang_truoc'); // C6
+    });
+    test('⭐ "đầu năm / đầu tháng / đầu tuần" → kỳ "… này"', () {
+      expect(chinh('Ke tu dau nam toi da chi cho giai tri tong cong bao nhieu?', {})['ky'], 'nam_nay'); // E5
+      expect(chinh('chi tieu dau thang the nao', {})['ky'], 'thang_nay');
+      expect(chinh('chi tieu dau tuan the nao', {})['ky'], 'tuan_nay');
+    });
+    test('kỳ nêu trong câu thắng kỳ mô hình điền', () {
+      expect(chinh('hom qua toi da chi nhung gi', {'ky': 'hom_nay'})['ky'], 'hom_qua');
+    });
+    test('phản ví dụ: câu SO SÁNH giữ luật 12 — kỳ gốc "tháng này", "tháng trước" đi so_voi', () {
+      final r = chinh('thang nay chi nhieu hon hay it hon thang truoc', {});
+      expect(r['ky'], 'thang_nay');
+      expect(r['so_voi'], 'ky_truoc');
+    });
+    test('phản ví dụ: kỳ cụ thể (luật 11) và "… này" như cũ', () {
+      expect(chinh('tu 1/9 den 15/9 toi chi nhung gi', {})['ky'], 'tuy_chon');
+      expect(chinh('dau thang nay toi chi bao nhieu', {})['ky'], 'thang_nay');
+      expect(chinh('quy nay toi chi bao nhieu', {})['ky'], 'quy_nay');
+    });
+  });
 }
