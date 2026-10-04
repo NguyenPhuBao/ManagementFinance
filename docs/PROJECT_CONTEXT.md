@@ -1027,8 +1027,10 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   (client viết 10-03 tối, **chưa push** nên backend chưa thấy). README do backend quản — không sửa.
 - Ghi nhận, **không** ảnh hưởng client (Dio trên Android không gửi `Origin` / `Referer` / `x-client-platform`): đường
   ưu tiên Admin-web nhận diện bằng header **tự khai** (`x-client-platform: admin-web` trên `/auth/login`, `/auth/refresh`
-  là bỏ qua quarantine và cắt tải), và quarantine bỏ qua `/auth/login` khi `username` **chứa** chữ `admin`. Chưa viết
-  đơn — chờ người dùng quyết.
+  là bỏ qua quarantine và cắt tải), và quarantine bỏ qua `/auth/login` khi `username` **chứa** chữ `admin`. ✅ **Đơn 35
+  viết 2026-10-04** theo yêu cầu người dùng — `CAN-LAM/SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md` (đọc mã, chưa chạy): hai chỗ ấy
+  cộng hai chỗ cùng họ soát thêm — bước 4 làn ưu tiên đọc role bằng `jwt.decode` (không kiểm chữ ký), và `authLimiter`
+  không gắn route nào; ca 10 `tests/unit/aiops.quarantine.test.js` đang khoá hành vi sai. Client không phải sửa gì.
 - `Notification_Client-app.md` (backend quản) nay tả client đúng v27 / 9 tool / 20 loại / chuông có số đếm; một chữ
   lệch nhỏ: nhóm thứ sáu ghi `transaction`, tên thật là `bienDong`.
 
