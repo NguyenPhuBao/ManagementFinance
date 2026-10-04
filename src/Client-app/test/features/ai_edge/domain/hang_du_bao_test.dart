@@ -251,4 +251,15 @@ void main() {
       expect(r.hang.map((h) => h.ten).toList(), ['Kiem', 'HD1', 'HD2', 'HD3']);
     });
   });
+
+  test('⭐ đo Realme 2026-10-04: "…tiêu đúng ngân sách, bạn sẽ thiếu X" qua sáu lớp chắn', () {
+    // soDu 100.000 − cam kết 150.000 − ngân sách còn 40.000 → thiếu 90.000.
+    final g = GoiSoTraCuu()
+      ..them('du_bao_dong_tien',
+          hangDuBao(_db(soDu: 100000, camKet: haiCamKet, nganSachConLai: 40000), now: now));
+    const cau = 'Dựa trên thông tin, nếu bạn tiêu đúng ngân sách, bạn sẽ thiếu 90.000 đ.';
+    expect(kiemCauTraLoi(cau, [g]), isTrue,
+        reason: 'kiemTen từng đọc "bạn" sau "ngân sách," là tên một ngân sách — câu đúng '
+            'rơi về mẫu câu liệt kê dài');
+  });
 }

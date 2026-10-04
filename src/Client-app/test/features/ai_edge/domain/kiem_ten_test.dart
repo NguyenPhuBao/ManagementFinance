@@ -154,4 +154,32 @@ void main() {
     expect(kiemTen('Mục tiêu Tiết kiệm của bạn.', [mucTieu, tongKet]), isTrue,
         reason: 'Tiết kiệm là tên ví — vẫn là tên có thật trong gói');
   });
+
+  // Đo Realme 2026-10-04 (B2 của lượt sửa luật định tuyến): mô hình viết đúng
+  // "…nếu bạn tiêu đúng ngân sách, bạn sẽ thiếu 9.671.000 đ" mà bị chặn — dấu
+  // phẩy NGAY SAU từ loại bị đọc là "nối thêm một tên", nên "bạn" thành tên một
+  // ngân sách. Dấu phẩy chỉ nối danh sách khi trước nó ĐÃ có một tên.
+  group('dấu phẩy ngay sau từ loại kết thúc mệnh đề', () {
+    final nganSach = _Gia('tra_cuu', [
+      soTien('Còn lại', 450000, ten: 'Ăn uống'),
+      soTien('Còn lại', 450000, ten: 'Di chuyển'),
+    ]);
+
+    test('⭐ câu đo Realme qua: "…tiêu đúng ngân sách, bạn sẽ thiếu…"', () {
+      expect(
+          kiemTen('Dựa trên thông tin, nếu bạn tiêu đúng ngân sách, bạn sẽ thiếu 9.671.000 đ.',
+              [nganSach]),
+          isTrue);
+    });
+
+    test('danh sách tên nối bằng dấu phẩy vẫn được kiểm từng tên', () {
+      expect(kiemTen('Các mục tiêu MuaXe, MuaDT đều đúng kế hoạch.', [mucTieu]), isTrue);
+      expect(kiemTen('Các mục tiêu MuaXe, mua nhà đều đúng kế hoạch.', [mucTieu]), isFalse,
+          reason: 'tên thứ hai sau dấu phẩy vẫn phải là tên thật');
+      // Dấu phẩy ĐỨNG RIÊNG đi nhánh khác của `_cacCum` (dấu phẩy dính chữ thì
+      // nhánh "dấu ở cuối chữ") — chính nhánh bản sửa đụng tới.
+      expect(kiemTen('Các mục tiêu MuaXe , mua nhà đều đúng kế hoạch.', [mucTieu]), isFalse,
+          reason: 'đã có tên MuaXe nên dấu phẩy đứng riêng vẫn nối tên kế');
+    });
+  });
 }
