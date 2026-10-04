@@ -3383,9 +3383,9 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Không truyền bất kỳ dữ liệu nào ra mạng hay lưu trữ lên server; có màn hình đồng ý bắt buộc liệt kê rõ 3 app; công tắc riêng trong Cài đặt (mặc định TẮT); tự động xóa bản ghi cục bộ sau 30 ngày hoặc khi đăng xuất. Đáp ứng đầy đủ cam kết Data Minimization và quy định pháp luật.
 - **2. Đồng bộ Nguồn sự thật (Single Source of Truth):**
   - Cập nhật [`docs/AI/LogicBusinessAI.md`](docs/AI/LogicBusinessAI.md) tại Chức năng 3 bổ sung nguồn thứ 3: *"nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (quyền `PACKAGE_USAGE_STATS`, 100% on-device offline)"* bên cạnh 2 nguồn đã có (*đọc thông báo biến động* và *chia sẻ ảnh biên lai*).
-  - Cập nhật [`docs/progress/Client-app.md`](docs/progress/Client-app.md) tại Mục 15 ghi nhận hoàn thành tính năng.
-  - Chuyển `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` sang [`docs/superpowers/backend/DA-XONG/`](docs/superpowers/backend/DA-XONG/) với trạng thái đã phê duyệt và nghiệm thu toàn diện (Mục 34 của backend).
-  - Thư mục `docs/superpowers/backend/CAN-LAM/` hoàn tất dọn sạch 100% (34/34 mục đã hoàn thành, 0 mục tồn đọng).
+  - Cập nhật [`docs/progress/Client-app.md`](docs/progress/Client-app.md) tại Mục 15 ghi nhận kiến trúc và thiết kế tính năng đang được Client-app xây dựng.
+  - Lưu giữ `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` tại [`docs/superpowers/backend/CAN-LAM/`](docs/superpowers/backend/CAN-LAM/) để Client-app theo dõi quá trình xây dựng và nghiệm thu chức năng trên thiết bị di động.
+  - Thư mục `docs/superpowers/backend/CAN-LAM/` ghi nhận 1 mục đang triển khai tại Client-app (Mục 34). Backend hoàn tất 100% trách nhiệm tư vấn & bảo mật.
 
 
 

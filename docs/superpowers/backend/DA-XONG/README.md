@@ -127,16 +127,17 @@ Thư mục này đợt trước có 51 tệp + mục lục.
 
 ---
 
-## 4d. Đóng trong đợt backend 2026-10-04 (Hoàn tất mục 34 và 35 — PO phê duyệt & nghiệm thu)
+## 4d. Đóng trong đợt backend 2026-10-04 (Hoàn tất mục 35 — PO phê duyệt & nghiệm thu)
 
-Hai tài liệu này đã được giải quyết triệt để và chuyển sang `DA-XONG/` ngày 2026-10-04:
+Tài liệu này đã được giải quyết triệt để và chuyển sang `DA-XONG/` ngày 2026-10-04:
 
 | Tài liệu | Kết quả xử lý |
 |---|---|
-| [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | ✅ PO phê duyệt đồng ý với Client về quyền riêng tư & Nghị định 13/2023/NĐ-CP (100% on-device offline, không gửi dữ liệu ra ngoài, không đòi thêm điều kiện). Đã đồng bộ tài liệu nguồn sự thật (Single Source of Truth): bổ sung nguồn thứ 3 (*nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s, quyền PACKAGE_USAGE_STATS*) vào `LogicBusinessAI.md` (Chức năng 3), `docs/progress/Client-app.md` (§15) và `Project.md` (§11.62). |
 | [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](./SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | ✅ Đã vá triệt để 5 điểm yếu bảo mật logic: (1) Xóa bỏ logic tự khai `x-client-platform` / Origin cấp `req.isAdmin`; (2) Xóa bỏ Fast-lane 2 trong AIOps Quarantine; (3) Chuyển `jwt.decode` sang `jwt.verify(token, secret)` trong `admin-priority.middleware.js` và `rate-limiter.js`; (4) Dùng `crypto.timingSafeEqual` an toàn; (5) Bắt `/auth/login` qua chế độ bảo trì và gắn trực tiếp `authLimiter` vào route xác thực công khai. Đã gỡ bypass trong `authLimiter.skip`. 30/30 tests PASS. |
 
-Thư mục này nay **53** tệp + mục lục (đếm bằng máy 2026-10-04).
+*(Lưu ý: Mục 34 [`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) là đơn tư vấn thiết kế cho chức năng phía Client-app; PO đã duyệt và tài liệu được lưu tại `CAN-LAM/` để Client-app tiến hành xây dựng trên máy).*
+
+Thư mục này nay **52** tệp + mục lục (đếm bằng máy 2026-10-04).
 
 ---
 

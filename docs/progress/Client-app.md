@@ -744,4 +744,5 @@ class AuthInterceptor extends Interceptor {
   - Tính năng mặc định **TẮT**, có màn hình xin đồng ý bắt buộc liệt kê rõ 3 app ngân hàng theo dõi.
   - Cam kết 100% chạy trên máy: Chỉ ghi nhận giờ mở/giờ rời của đúng 3 app, tuyệt đối không đọc màn hình hay nội dung app khác, không gửi bất kỳ dữ liệu nào ra mạng/server.
   - Không tự ý tạo giao dịch: Thông báo nhắc nhở mở form Thêm giao dịch với số tiền trống để người dùng tự nhập và bấm Lưu.
-  - Bảng nhắc nhở cục bộ không nằm trong luồng đồng bộ, tự động dọn dẹp sau 30 ngày hoặc khi đăng xuất. Lược đồ đồng bộ không đổi (vẫn Drift SQLite v27, payload 13 trường).
+  - Bảng nhắc nhở cục bộ không nằm trong luồng đồng bộ, tự động dọn dẹp sau 30 ngày hoặc khi đăng xuất. Lược đồ đồng bộ không đổi (vẫn Drift SQLite v27, payload 13 trường).
+- **Trạng thái triển khai:** Đã được PO phê duyệt câu hỏi thiết kế (2026-10-04); đang trong quá trình xây dựng tại Client-app (theo dõi tại [`docs/superpowers/backend/CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../superpowers/backend/CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md)).

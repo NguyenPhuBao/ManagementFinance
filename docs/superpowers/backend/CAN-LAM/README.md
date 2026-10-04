@@ -1,24 +1,25 @@
-# Backend — HOÀN TẤT TOÀN BỘ (Mục 1–35 đã hoàn tất 100%; 0 đơn tồn đọng)
+# Backend & Client — DANH SÁCH CẦN LÀM (1 mục đang triển khai tại Client-app)
 
-**Cập nhật:** 2026-10-04 (Backend hoàn tất xử lý và nghiệm thu toàn diện mục 34 và 35 theo phê duyệt trực tiếp của Product Owner). Thư mục `CAN-LAM/` hiện hoàn toàn sạch sẽ — 0 đơn tồn đọng.
+**Cập nhật:** 2026-10-04 (Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế và đang lưu tại `CAN-LAM/` để Client-app xây dựng chức năng trên thiết bị).
 
-> 🎉 **CẬP NHẬT 2026-10-04 — 2 ĐƠN 34 & 35 ĐÃ HOÀN TẤT 100% THEO PHÊ DUYỆT CỦA PO:**
-> - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** PO duyệt đồng ý với Client về quyền riêng tư & Nghị định 13/2023/NĐ-CP (100% on-device offline, không gửi dữ liệu ra ngoài, không đòi thêm điều kiện). Đã đồng bộ tài liệu nguồn sự thật (Single Source of Truth): bổ sung nguồn thứ 3 (*nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s, quyền PACKAGE_USAGE_STATS*) vào `LogicBusinessAI.md` (Chức năng 3), `docs/progress/Client-app.md` (§15) và `Project.md` (§11.62). Chuyển sang `DA-XONG/`.
-> - **Mục 35 (`SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md`):** Đã vá triệt để 5 điểm yếu bảo mật logic: (1) Xóa bỏ logic tự khai `x-client-platform` / Origin cấp `req.isAdmin`; (2) Xóa bỏ Fast-lane 2 trong AIOps Quarantine; (3) Chuyển `jwt.decode` sang `jwt.verify(token, secret)` trong `admin-priority.middleware.js` và `rate-limiter.js`; (4) Dùng `crypto.timingSafeEqual` an toàn; (5) Bắt `/auth/login` qua chế độ bảo trì và gắn trực tiếp `authLimiter` vào route xác thực công khai. Đã gỡ bypass trong `authLimiter.skip`. Toàn bộ test suite PASS 100%.
-
----
-
-## 0. Còn phải làm (Hiện tại: **0** mục tồn đọng)
-
-> Toàn bộ 35 mục yêu cầu kỹ thuật và soát xét đã được giải quyết triệt để và lưu trữ tại [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md). Thư mục `CAN-LAM/` hiện không còn tài liệu tồn đọng nào cần giải quyết.
+> 📌 **HIỆN TRẠNG 2026-10-04:**
+> - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** Phía Client-app hỏi ý kiến thiết kế tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (`PACKAGE_USAGE_STATS`). PO đã phê duyệt: đồng ý với Client (100% on-device offline, không đòi thêm NĐ 13, bổ sung nguồn 3 vào tài liệu). Tệp nằm tại `CAN-LAM/` để Client-app tiến hành xây dựng và nghiệm thu chức năng trên máy.
+> - **Mục 35 (`SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md`):** Đã vá triệt để 5 điểm yếu bảo mật logic phía Backend, vượt qua 30 unit tests và lưu trữ tại `DA-XONG/`.
 
 ---
 
-## 1. Trạng thái các mục đã xử lý (Gần nhất)
+## 0. Còn phải làm (Hiện tại: **1** mục đang triển khai tại Client-app)
+
+| # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
+|---|---|---|---|---|
+| **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật); Client-app đang triển khai tính năng trên máy. | ⏳ Đang làm tại Client-app |
+
+---
+
+## 1. Trạng thái các mục Backend đã xử lý (Gần nhất)
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
-| **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](../DA-XONG/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | PO duyệt đồng ý với Client (100% on-device, không đòi thêm NĐ 13); đã đồng bộ nguồn 3 vào LogicBusinessAI.md, progress/Client-app.md, Project.md. | ✅ Đã xong 100% |
 | **35** | [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](../DA-XONG/SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | Xóa bỏ ưu tiên tự khai header, xóa Fast-lane 2 AIOps, chuyển sang jwt.verify, timingSafeEqual, bảo trì login, authLimiter chuẩn. Test PASS 100%. | ✅ Đã xong 100% |
 | **31** | [SOAT_SAU_GOP_A7C03B7.md](../DA-XONG/SOAT_SAU_GOP_A7C03B7.md) | Sửa dứt điểm 2 lỗi mã FHS (`allExpenses` chiều tiền Vay/no, `trendVsLastMonth` null), khử BOM file SQL 14, cập nhật CloudDeploy.md, chuẩn hóa toàn diện tài liệu (v27, 9 tools, Gemini 3.8 Flash). Test FHS PASS 100%. | ✅ Đã xong 100% |
 | **32** | [CLIENT_CHIA_SE_BIEN_LAI.md](../DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md) | Module Bank đã dừng độc lập, cập nhật tài liệu ăn khớp với cơ chế chia sẻ biên lai on-device ML Kit của Client-app. | ✅ Đã xong 100% |
@@ -34,7 +35,7 @@
 
 ## 2. Trạng thái toàn bộ tài liệu kỹ thuật (Đã lưu trữ tại `DA-XONG/`)
 
-**53** tài liệu (đếm bằng máy 2026-10-04, không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
+**52** tài liệu (đếm bằng máy 2026-10-04, không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
 
 ---
 
