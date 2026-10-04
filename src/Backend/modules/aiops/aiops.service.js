@@ -1,5 +1,6 @@
 const { defaultFeatureCollector } = require('./feature.collector');
 const { defaultAnomalyDetector } = require('./anomaly.detector');
+const { defaultAIOpsIncidentRepository } = require('./aiops.repository');
 const logger = require('../../core/logger');
 
 /**
@@ -11,6 +12,7 @@ class AIOpsService {
   constructor(options = {}) {
     this.collector = options.collector || defaultFeatureCollector;
     this.detector = options.detector || defaultAnomalyDetector;
+    this.repository = options.repository || defaultAIOpsIncidentRepository;
     this.maxHistory = options.maxHistory || 60;
     this.samplingIntervalMs = options.samplingIntervalMs || 10000;
     this.io = options.io || null;
@@ -39,8 +41,36 @@ class AIOpsService {
     return null;
   }
 
+  async loadPersistedSettings() {
+    try {
+      if (this.repository && typeof this.repository.getSetting === 'function') {
+        const saved = await this.repository.getSetting('target_concurrency', '1000');
+        const num = parseInt(saved, 10);
+        if (num >= 100 && num <= 50000) {
+          const scaleInfo = this.detector.setConcurrencyScale(num);
+          if (this._currentStatus) {
+            this._currentStatus.targetConcurrency = scaleInfo.targetConcurrency;
+          }
+          if (this.collector && typeof this.collector.setTargetConcurrency === 'function') {
+            this.collector.setTargetConcurrency(scaleInfo.targetConcurrency);
+          }
+          logger.info(`[AIOps] Đã nạp thành công quy mô người dùng lưu cứng từ CSDL: ${num} CCU`);
+        }
+      }
+    } catch (err) {
+      logger.warn('[AIOps] Lỗi nạp cài đặt lưu cứng từ CSDL (dùng mặc định 1000 CCU)', { error: err.message });
+    }
+  }
+
   start() {
     if (this._timer) return;
+    if (this.repository && typeof this.repository.initTable === 'function') {
+      this.repository.initTable()
+        .then(() => this.loadPersistedSettings())
+        .catch((err) => {
+          logger.warn('[AIOps] Không thể khởi tạo bảng CSDL khi start', { error: err.message });
+        });
+    }
     this._timer = setInterval(() => {
       this.tick().catch((err) => {
         logger.error('[AIOps] Error during sampling tick', { error: err.message });
@@ -105,6 +135,34 @@ class AIOpsService {
       this._history.shift();
     }
 
+    // Lưu các bất thường vào CSDL PostgreSQL vĩnh viễn và phát socket thời gian thực
+    if (evaluation.anomalies && evaluation.anomalies.length > 0) {
+      const io = this.getIO();
+      for (const anomaly of evaluation.anomalies) {
+        try {
+          const savedIncident = await this.repository.upsertIncident(anomaly);
+          if (io && savedIncident) {
+            io.to('admin_room').emit('admin.anomaly_detected', savedIncident);
+          }
+        } catch (err) {
+          logger.warn('[AIOps] Lỗi lưu anomaly vào CSDL', { error: err.message });
+        }
+      }
+    }
+
+    // Tự động chuyển các sự cố không còn tái diễn sau 60s sang trạng thái MITIGATED trong CSDL
+    try {
+      const mitigated = await this.repository.autoMitigateStaleIncidents(60);
+      if (mitigated && mitigated.length > 0) {
+        const io = this.getIO();
+        if (io) {
+          for (const m of mitigated) {
+            io.to('admin_room').emit('admin.anomaly_detected', m);
+          }
+        }
+      }
+    } catch (_) {}
+
     // Báo động thời gian thực khi Threat Score >= 70
     if (evaluation.threatScore >= 70) {
       this._dispatchAlert(evaluation, sample);
@@ -163,7 +221,7 @@ class AIOpsService {
     } catch (_) {}
   }
 
-  setConcurrencyScale(scaleNumber) {
+  async setConcurrencyScale(scaleNumber, persistToDb = true) {
     const scaleInfo = this.detector.setConcurrencyScale(scaleNumber);
     if (this._currentStatus) {
       this._currentStatus.targetConcurrency = scaleInfo.targetConcurrency;
@@ -171,11 +229,18 @@ class AIOpsService {
     if (this.collector && typeof this.collector.setTargetConcurrency === 'function') {
       this.collector.setTargetConcurrency(scaleInfo.targetConcurrency);
     }
-    logger.info(`[AIOps] Cập nhật quy mô người dùng: ${scaleInfo.targetConcurrency} users (Baseline: ${scaleInfo.expectedBaselineRPM} RPM)`);
+    if (persistToDb && this.repository && typeof this.repository.setSetting === 'function') {
+      try {
+        await this.repository.setSetting('target_concurrency', String(scaleInfo.targetConcurrency));
+      } catch (err) {
+        logger.error('[AIOps] Lỗi lưu cứng quy mô người dùng vào CSDL', { error: err.message });
+      }
+    }
+    logger.info(`[AIOps] Cập nhật và lưu cứng quy mô người dùng: ${scaleInfo.targetConcurrency} users (Baseline: ${scaleInfo.expectedBaselineRPM} RPM)`);
     return {
       success: true,
       ...scaleInfo,
-      message: `Đã cập nhật quy mô hệ thống lên ${scaleInfo.targetConcurrency} người dùng thành công!`,
+      message: `Đã cập nhật và lưu cứng quy mô hệ thống lên ${scaleInfo.targetConcurrency} người dùng thành công!`,
     };
   }
 
@@ -186,6 +251,7 @@ class AIOpsService {
       targetConcurrency: this.detector.targetConcurrency,
       vectorScores: this._currentStatus?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
       quarantinedCount: defaultAIOpsQuarantine.getQuarantinedList().length,
+      recentIncidents: (this.repository?._inMemoryFallback || []).slice(0, 10),
     };
   }
 

@@ -179,6 +179,29 @@ function maskTransactionDescription(text, options = {}) {
   return safe;
 }
 
+/**
+ * Che địa chỉ IP (Zero Raw IP theo Data_Security.md & Nghị định 13/2023/NĐ-CP)
+ * Giữ 2 octet đầu cho IPv4 (xác định subnet/vùng/ISP), che 2 octet sau bằng xx.xx
+ * Giữ 2 nhóm đầu cho IPv6, che các nhóm sau
+ * Nếu không có IP hợp lệ -> trả về null
+ * @param {string|null} rawIp 
+ * @returns {string|null}
+ */
+function maskIp(rawIp) {
+  if (!rawIp || typeof rawIp !== 'string') return null;
+  const clean = rawIp.replace(/^::ffff:/, '').trim();
+  if (!clean) return null;
+  const v4Parts = clean.split('.');
+  if (v4Parts.length === 4) {
+    return `${v4Parts[0]}.${v4Parts[1]}.xx.xx`;
+  }
+  const v6Parts = clean.split(':');
+  if (v6Parts.length > 2) {
+    return `${v6Parts[0]}:${v6Parts[1]}:xxxx:xxxx`;
+  }
+  return 'xx.xx.xx.xx';
+}
+
 module.exports = {
   maskEmail,
   maskPhone,
@@ -186,5 +209,6 @@ module.exports = {
   maskFullname,
   maskAddress,
   maskTransactionDescription,
+  maskIp,
 };
 

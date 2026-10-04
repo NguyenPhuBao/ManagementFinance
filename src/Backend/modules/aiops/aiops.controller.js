@@ -61,14 +61,64 @@ const aiopsController = {
     }
   },
 
-  setScale(req, res) {
+  quarantineActor(req, res) {
+    try {
+      const { hash, ip, maskedIp, reason, durationMinutes } = req.body;
+      if (!hash && !ip) {
+        return ResponseHandler.error(res, 'Thiếu thông tin nhận diện đối tượng cần phong tỏa (IP hoặc Hash)', 400);
+      }
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const durationMs = (parseInt(durationMinutes, 10) || 15) * 60 * 1000;
+      const record = defaultAIOpsQuarantine.quarantineActor({
+        rawIp: ip,
+        ipHash: hash,
+        maskedIp,
+        reason: reason || 'Admin chủ động phong tỏa từ nhật ký RCA',
+        durationMs,
+      });
+      if (!record) {
+        return ResponseHandler.error(res, 'Không thể phong tỏa nguồn request này', 400);
+      }
+      req.auditActionName = `Phong tỏa IP thủ công (${record.maskedIp || hash})`;
+      return ResponseHandler.success(res, record, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
+    } catch (error) {
+      logger.error('[AIOpsController] quarantineActor failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async setScale(req, res) {
     try {
       const { concurrency } = req.body;
-      const result = defaultAIOpsService.setConcurrencyScale(concurrency);
+      const result = await defaultAIOpsService.setConcurrencyScale(concurrency);
       req.auditActionName = `Cập nhật quy mô tải AIOps (${result.targetConcurrency} users)`;
       return ResponseHandler.success(res, result, result.message);
     } catch (error) {
       logger.error('[AIOpsController] setScale failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async getIncidents(req, res) {
+    try {
+      const { page, limit, vector, status, search } = req.query;
+      const { defaultAIOpsIncidentRepository } = require('./aiops.repository');
+      const result = await defaultAIOpsIncidentRepository.getIncidents({ page, limit, vector, status, search });
+      return ResponseHandler.success(res, result, 'Danh sách sự cố bất thường từ CSDL');
+    } catch (error) {
+      logger.error('[AIOpsController] getIncidents failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async clearIncidents(req, res) {
+    try {
+      const { defaultAIOpsIncidentRepository } = require('./aiops.repository');
+      await defaultAIOpsIncidentRepository.clearIncidents();
+      req.auditActionName = 'Làm sạch nhật ký sự cố AIOps Sentinel';
+      return ResponseHandler.success(res, { cleared: true }, 'Đã xóa toàn bộ nhật ký sự cố');
+    } catch (error) {
+      logger.error('[AIOpsController] clearIncidents failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
     }
   },

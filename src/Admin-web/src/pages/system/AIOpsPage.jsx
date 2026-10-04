@@ -3,6 +3,8 @@ import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import { formatDateTime } from '../../utils/format';
+import Pagination from '../../components/common/Pagination';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 const AIOpsPage = () => {
   const [statusData, setStatusData] = useState(null);
@@ -19,14 +21,43 @@ const AIOpsPage = () => {
   const [mitigationReason, setMitigationReason] = useState('Phòng vệ khẩn cấp AIOps Sentinel do phát hiện nguy cơ cao');
   const [mitigating, setMitigating] = useState(false);
 
-  // Target Concurrency Scaling state
-  const [selectedConcurrency, setSelectedConcurrency] = useState(1000);
-  const [customConcurrency, setCustomConcurrency] = useState('1000');
+  // Target Concurrency Scaling state (Lưu cứng vào localStorage làm bộ nhớ đệm ban đầu)
+  const [selectedConcurrency, setSelectedConcurrency] = useState(() => {
+    try {
+      const saved = localStorage.getItem('aiops_target_concurrency');
+      const parsed = parseInt(saved, 10);
+      return parsed >= 100 && parsed <= 50000 ? parsed : 1000;
+    } catch (_) {
+      return 1000;
+    }
+  });
+  const [customConcurrency, setCustomConcurrency] = useState(() => {
+    try {
+      const saved = localStorage.getItem('aiops_target_concurrency');
+      const parsed = parseInt(saved, 10);
+      return parsed >= 100 && parsed <= 50000 ? String(parsed) : '1000';
+    } catch (_) {
+      return '1000';
+    }
+  });
   const [savingScale, setSavingScale] = useState(false);
 
   // Multi-Vector Trend Chart state & Hover tooltip
   const [activeVectorTab, setActiveVectorTab] = useState('all'); // 'all' | 'auth' | 'traffic' | 'exploit' | 'resource'
   const [hoveredPointIndex, setHoveredPointIndex] = useState(null);
+
+  // Persistent Incident Journal (CSDL) & Phân Trang State
+  const [incidentsList, setIncidentsList] = useState([]);
+  const [incidentPage, setIncidentPage] = useState(1);
+  const [incidentPageSize, setIncidentPageSize] = useState(10);
+  const [incidentTotal, setIncidentTotal] = useState(0);
+  const [incidentVectorFilter, setIncidentVectorFilter] = useState('all');
+  const [incidentStatusFilter, setIncidentStatusFilter] = useState('all');
+  const [incidentSearch, setIncidentSearch] = useState('');
+  const [showClearIncidentsModal, setShowClearIncidentsModal] = useState(false);
+  const [clearingIncidents, setClearingIncidents] = useState(false);
+  const [quarantineModalTarget, setQuarantineModalTarget] = useState(null);
+  const [quarantiningActor, setQuarantiningActor] = useState(false);
 
   // Socket.io connection
   const socket = useSocket();
@@ -46,9 +77,12 @@ const AIOpsPage = () => {
 
       if (sData) {
         setStatusData(sData);
-        if (sData.targetConcurrency) {
+        if (sData.targetConcurrency && sData.targetConcurrency >= 100) {
           setSelectedConcurrency(sData.targetConcurrency);
           setCustomConcurrency(String(sData.targetConcurrency));
+          try {
+            localStorage.setItem('aiops_target_concurrency', String(sData.targetConcurrency));
+          } catch (_) {}
         }
       }
       if (Array.isArray(hData)) setHistoryData(hData);
@@ -60,8 +94,28 @@ const AIOpsPage = () => {
     }
   };
 
+  const fetchIncidents = async (
+    page = incidentPage,
+    limit = incidentPageSize,
+    vector = incidentVectorFilter,
+    status = incidentStatusFilter,
+    search = incidentSearch
+  ) => {
+    try {
+      const res = await aiopsApi.getIncidents({ page, limit, vector, status, search });
+      const data = res?.data || res;
+      if (data && data.incidents) {
+        setIncidentsList(data.incidents);
+        setIncidentTotal(data.total || 0);
+      }
+    } catch (err) {
+      console.error('[AIOpsPage] Error fetching incidents:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAIOpsData();
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch);
 
     // Polling dự phòng mỗi 60 giây (luồng chính đã dùng Socket.io stream 3s/lần)
     const interval = setInterval(() => {
@@ -71,6 +125,91 @@ const AIOpsPage = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Gọi lại API sự cố khi thay đổi phân trang hoặc bộ lọc
+  useEffect(() => {
+    fetchIncidents(incidentPage, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch);
+  }, [incidentPage, incidentPageSize, incidentVectorFilter, incidentStatusFilter]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setIncidentPage(1);
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch);
+  };
+
+  const handleClearIncidents = async () => {
+    try {
+      setClearingIncidents(true);
+      await aiopsApi.clearIncidents();
+      setIncidentsList([]);
+      setIncidentTotal(0);
+      setIncidentPage(1);
+      setShowClearIncidentsModal(false);
+      setFeedback({ ok: true, msg: 'Đã làm sạch toàn bộ nhật ký sự cố bất thường thành công.' });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Xóa nhật ký thất bại' });
+    } finally {
+      setClearingIncidents(false);
+    }
+  };
+
+  // Mở modal xác nhận phong tỏa IP từ bảng RCA
+  const handleOpenQuarantineModal = (item) => {
+    setQuarantineModalTarget(item);
+  };
+
+  // Xác nhận phong tỏa IP từ modal
+  const handleConfirmQuarantine = async () => {
+    if (!quarantineModalTarget) return;
+    try {
+      setQuarantiningActor(true);
+      const actorHash = quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash;
+      const actorIdentity = quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity;
+      const code = quarantineModalTarget.code || 'SỰ CỐ AN NINH';
+
+      const res = await aiopsApi.quarantineActor({
+        hash: actorHash,
+        ip: actorIdentity && !actorIdentity.includes('xx') ? actorIdentity : null,
+        maskedIp: actorIdentity,
+        reason: `Admin chủ động phong tỏa từ nhật ký RCA (${code})`,
+        durationMinutes: 15,
+      });
+
+      const resData = res?.data || res;
+      setFeedback({
+        ok: true,
+        msg: res?.message || `Đã kích hoạt khiên chắn phong tỏa nguồn IP ${actorIdentity || actorHash} thành công trong 15 phút.`,
+      });
+
+      // Cập nhật ngay vào danh sách cô lập cục bộ
+      if (resData) {
+        setQuarantineList((prev) => {
+          const exists = prev.some((x) => x.hash === (resData.hash || actorHash));
+          if (exists) return prev;
+          return [
+            {
+              hash: resData.hash || actorHash,
+              maskedIp: resData.maskedIp || actorIdentity,
+              reason: resData.reason || `Admin phong tỏa từ sự cố ${code}`,
+              bannedAt: resData.bannedAt || new Date().toISOString(),
+              expiresAt: resData.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+              remainingMinutes: 15,
+              hits: resData.hits || 1,
+            },
+            ...prev,
+          ];
+        });
+      }
+      setQuarantineModalTarget(null);
+    } catch (err) {
+      setFeedback({
+        ok: false,
+        msg: err?.response?.data?.message || err?.message || 'Phong tỏa nguồn IP thất bại.',
+      });
+    } finally {
+      setQuarantiningActor(false);
+    }
+  };
+
   // Lắng nghe sự kiện Socket.io thời gian thực
   useEffect(() => {
     if (!socket) return;
@@ -78,23 +217,29 @@ const AIOpsPage = () => {
     // 1. Nhận luồng nhịp tim phần cứng & Threat Score 3s/lần
     const handleMetricsStream = (metrics) => {
       if (!metrics) return;
-      setStatusData((prev) => ({
-        ...prev,
-        threatScore: metrics.threatScore ?? prev?.threatScore ?? 5,
-        status: metrics.threatStatus || prev?.status || 'NORMAL',
-        vectorScores: metrics.vectorScores || prev?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
-        vectorDefenses: metrics.vectorDefenses || prev?.vectorDefenses || {},
-        recommendedAction: metrics.recommendedAction || prev?.recommendedAction || null,
-        targetConcurrency: metrics.targetConcurrency || prev?.targetConcurrency || 1000,
-        sample: {
-          ...(prev?.sample || {}),
-          cpuPercent: metrics.cpuPercent,
-          ramPercent: metrics.ramPercent,
-          eventLoopLagMs: metrics.eventLoopLagMs,
-          requestsPerMin: metrics.requestsPerMin,
-        },
-        lastEvaluatedAt: metrics.timestamp,
-      }));
+      setStatusData((prev) => {
+        const streamConcurrency = metrics.targetConcurrency && metrics.targetConcurrency >= 100
+          ? metrics.targetConcurrency
+          : (prev?.targetConcurrency || selectedConcurrency || 1000);
+
+        return {
+          ...prev,
+          threatScore: metrics.threatScore ?? prev?.threatScore ?? 5,
+          status: metrics.threatStatus || prev?.status || 'NORMAL',
+          vectorScores: metrics.vectorScores || prev?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+          vectorDefenses: metrics.vectorDefenses || prev?.vectorDefenses || {},
+          recommendedAction: metrics.recommendedAction || prev?.recommendedAction || null,
+          targetConcurrency: streamConcurrency,
+          sample: {
+            ...(prev?.sample || {}),
+            cpuPercent: metrics.cpuPercent,
+            ramPercent: metrics.ramPercent,
+            eventLoopLagMs: metrics.eventLoopLagMs,
+            requestsPerMin: metrics.requestsPerMin,
+          },
+          lastEvaluatedAt: metrics.timestamp,
+        };
+      });
     };
 
     const handleAlert = (data) => {
@@ -123,14 +268,30 @@ const AIOpsPage = () => {
       setQuarantineList(prev => [blockData, ...prev.filter(x => x.hash !== blockData.hash)]);
     };
 
+    const handleAnomalyDetected = (newIncident) => {
+      if (!newIncident) return;
+      setIncidentsList((prev) => {
+        const existingIdx = prev.findIndex((i) => i.id === newIncident.id);
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = newIncident;
+          return updated;
+        }
+        return [newIncident, ...prev];
+      });
+      setIncidentTotal((prev) => prev + 1);
+    };
+
     socket.on('admin.metrics_stream', handleMetricsStream);
     socket.on('admin.security_alert', handleAlert);
     socket.on('admin.security_blocked', handleBlocked);
+    socket.on('admin.anomaly_detected', handleAnomalyDetected);
 
     return () => {
       socket.off('admin.metrics_stream', handleMetricsStream);
       socket.off('admin.security_alert', handleAlert);
       socket.off('admin.security_blocked', handleBlocked);
+      socket.off('admin.anomaly_detected', handleAnomalyDetected);
     };
   }, [socket]);
 
@@ -146,13 +307,16 @@ const AIOpsPage = () => {
       const res = await aiopsApi.setScale(val);
       setSelectedConcurrency(val);
       setCustomConcurrency(String(val));
+      try {
+        localStorage.setItem('aiops_target_concurrency', String(val));
+      } catch (_) {}
       setStatusData(prev => ({
         ...prev,
         targetConcurrency: val,
       }));
       setFeedback({
         ok: true,
-        msg: res?.message || `Đã cập nhật quy mô chịu tải mục tiêu: ${val.toLocaleString('vi-VN')} người dùng đồng thời!`
+        msg: res?.message || `Đã cập nhật và lưu cứng quy mô chịu tải mục tiêu: ${val.toLocaleString('vi-VN')} người dùng đồng thời!`
       });
     } catch (err) {
       setFeedback({
@@ -1577,80 +1741,451 @@ const AIOpsPage = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* KHỐI 4: BẢNG PHÂN TÍCH NGUYÊN NHÂN GỐC RỄ (ROOT CAUSE ANALYSIS) */}
+      {/* KHỐI 4: BẢNG PHÂN TÍCH NGUYÊN NHÂN GỐC RỄ (ROOT CAUSE ANALYSIS) - CSDL PERSISTENT JOURNAL */}
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-outline-variant pb-3">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-outline-variant pb-3 gap-3">
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">troubleshoot</span>
-              Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis)
+              Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Giải trình cơ chế phát hiện tự động bằng thuật toán AI và mức độ ảnh hưởng của từng bất thường
+              Nhật ký sự cố lưu trữ bền vững trong CSDL (PostgreSQL) — Lưu vĩnh viễn phục vụ điều tra truy vết, tuân thủ Luật An ninh mạng & Nghị định 13/2023/NĐ-CP.
             </p>
           </div>
 
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/60">
-            {anomalies.length} mối nguy hiểm ghi nhận
-          </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/60 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[15px] text-primary">database</span>
+              <span>{incidentTotal} sự cố ghi nhận trong CSDL</span>
+            </span>
+
+            {incidentTotal > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowClearIncidentsModal(true)}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 border border-outline-variant/60 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Làm sạch toàn bộ nhật ký sự cố trong CSDL"
+              >
+                <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
+                <span>Làm sạch CSDL</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {anomalies.length > 0 ? (
-          <div className="overflow-x-auto">
+        {/* Toolbar: Bộ lọc Vector, Trạng thái & Tìm kiếm */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-1">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Vector Filter Pills */}
+            <div className="inline-flex rounded-lg border border-outline-variant/60 p-0.5 bg-surface-container-lowest text-xs">
+              {[
+                { key: 'all', label: 'Tất cả Vector' },
+                { key: 'auth', label: '🛡️ Xác thực' },
+                { key: 'traffic', label: '🌐 Lưu lượng' },
+                { key: 'exploit', label: '💉 Khai thác' },
+                { key: 'resource', label: '⚡ Tài nguyên' },
+              ].map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => {
+                    setIncidentVectorFilter(v.key);
+                    setIncidentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    incidentVectorFilter === v.key
+                      ? 'bg-primary text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status Filter Pills */}
+            <div className="inline-flex rounded-lg border border-outline-variant/60 p-0.5 bg-surface-container-lowest text-xs">
+              {[
+                { key: 'all', label: 'Mọi trạng thái' },
+                { key: 'ACTIVE', label: '🔴 Đang diễn ra' },
+                { key: 'MITIGATED', label: '🟢 Đã giảm thiểu' },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => {
+                    setIncidentStatusFilter(s.key);
+                    setIncidentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    incidentStatusFilter === s.key
+                      ? 'bg-slate-800 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search Form */}
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-1.5">
+            <div className="relative flex-1 sm:w-64">
+              <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                search
+              </span>
+              <input
+                type="text"
+                value={incidentSearch}
+                onChange={(e) => setIncidentSearch(e.target.value)}
+                placeholder="Tìm IP, Hash, User, Mã..."
+                className="w-full pl-8 pr-7 py-1 text-xs border border-outline-variant/80 rounded-lg focus:outline-none focus:border-primary bg-white text-slate-800 placeholder:text-slate-400"
+              />
+              {incidentSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncidentSearch('');
+                    setIncidentPage(1);
+                    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, '');
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                </button>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 border border-outline-variant/80 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer transition-colors"
+            >
+              Lọc
+            </button>
+          </form>
+        </div>
+
+        {/* Table Content */}
+        {incidentsList.length > 0 ? (
+          <div className="overflow-x-auto rounded-xl border border-outline-variant/70">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/80 bg-surface-container-low/50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3">Mức độ</th>
-                  <th className="py-2.5 px-3">Mã Bất Thường</th>
-                  <th className="py-2.5 px-3">Chỉ số đo được</th>
-                  <th className="py-2.5 px-3">Đường chuẩn (Baseline)</th>
-                  <th className="py-2.5 px-3">Mô tả chi tiết từ AI</th>
+                <tr className="border-b border-outline-variant/80 bg-surface-container-low/60 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                  <th className="py-2.5 px-3 whitespace-nowrap">Thời điểm & Trạng thái</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Đối tượng vi phạm (Actor)</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Vector & Mã Bất Thường</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Chỉ số đo vs Ngưỡng</th>
+                  <th className="py-2.5 px-3">Bóc tách nguyên nhân & Xử lý</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap text-center">Thao tác & Phòng vệ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/40">
-                {anomalies.map((a, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          a.severity === 'HIGH'
-                            ? 'bg-red-100 text-red-800'
-                            : a.severity === 'MEDIUM'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {a.severity}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-bold text-slate-800 whitespace-nowrap">
-                      {a.code}
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-red-600 whitespace-nowrap">
-                      {a.current}
-                    </td>
-                    <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
-                      {a.baseline}
-                    </td>
-                    <td className="py-3 px-3 text-slate-700 font-medium">
-                      {a.message}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-outline-variant/40 bg-white">
+                {incidentsList.map((item) => {
+                  const firstTime = item.first_detected_at || item.firstDetectedAt;
+                  const lastTime = item.last_seen_at || item.lastSeenAt;
+                  const status = item.status || 'ACTIVE';
+                  const hits = item.hits || 1;
+                  const actorIdentity = item.actor_identity || item.actorIdentity || '127.0.0.1';
+                  const actorHash = item.actor_hash || item.actorHash || '';
+                  const userId = item.user_id || item.userId;
+                  const username = item.username;
+                  const userAgent = item.user_agent || item.userAgent;
+                  const endpoint = item.target_endpoint || item.targetEndpoint;
+                  const vector = item.vector || 'traffic';
+                  const severity = item.severity || 'MEDIUM';
+                  const metricCurrent = item.metric_current ?? item.metricCurrent ?? item.current ?? 0;
+                  const metricBaseline = item.metric_baseline ?? item.metricBaseline ?? item.baseline ?? 0;
+                  const metricUnit = item.metric_unit || item.metricUnit || item.unit || '';
+                  const message = item.message || '';
+                  const rootCause = item.root_cause_diagnosis || item.rootCauseDiagnosis;
+                  const mitigation = item.mitigation_taken || item.mitigationTaken;
+
+                  // Tính tỷ lệ vượt ngưỡng
+                  const ratio = metricBaseline > 0 ? (Number(metricCurrent) / Number(metricBaseline)).toFixed(1) : null;
+
+                  // Kiểm tra IP đã nằm trong danh sách cô lập Shield chưa
+                  const isQuarantined = quarantineList.some(
+                    (q) => q.hash === actorHash || q.maskedIp === actorIdentity
+                  );
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Cột 1: Thời điểm & Trạng thái */}
+                      <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
+                        <div className="font-semibold text-slate-800 text-[11px]">
+                          {formatDateTime(firstTime)}
+                        </div>
+                        <div>
+                          {status === 'ACTIVE' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                              ĐANG DIỄN RA
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                              ĐÃ GIẢM THIỂU
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          {hits > 1 ? `Lặp lại ${hits} lần` : 'Phát hiện lần 1'}
+                        </div>
+                        {lastTime && lastTime !== firstTime && (
+                          <div className="text-[9px] text-slate-400">
+                            Gần nhất: {formatDateTime(lastTime)}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Cột 2: Đối tượng vi phạm (Actor Identity) */}
+                      <td className="py-3 px-3 align-top space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[15px] text-slate-500">
+                            {userId ? 'account_circle' : 'router'}
+                          </span>
+                          <span className="font-mono font-bold text-slate-800 text-xs">
+                            {actorIdentity}
+                          </span>
+                          {actorHash && (
+                            <span
+                              className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200"
+                              title={`SHA-256 IP Hash: ${actorHash}`}
+                            >
+                              #{actorHash.slice(0, 8)}
+                            </span>
+                          )}
+                        </div>
+
+                        {(username || userId) && (
+                          <div className="text-[10px] font-semibold text-primary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">badge</span>
+                            <span>{username ? `User: ${username}` : `UID: #${userId}`}</span>
+                          </div>
+                        )}
+
+                        {endpoint && (
+                          <div
+                            className="text-[10px] font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 max-w-[210px] truncate"
+                            title={`Mục tiêu: ${endpoint}`}
+                          >
+                            🎯 {endpoint}
+                          </div>
+                        )}
+
+                        {userAgent && (
+                          <div
+                            className="text-[9px] text-slate-400 max-w-[210px] truncate"
+                            title={`User-Agent: ${userAgent}`}
+                          >
+                            🌐 {userAgent}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Cột 3: Vector & Mã Bất Thường */}
+                      <td className="py-3 px-3 align-top whitespace-nowrap space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              vector === 'auth'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                : vector === 'traffic'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : vector === 'exploit'
+                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}
+                          >
+                            {vector}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              severity === 'HIGH'
+                                ? 'bg-red-100 text-red-800'
+                                : severity === 'MEDIUM'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}
+                          >
+                            {severity}
+                          </span>
+                        </div>
+                        <div className="font-mono font-bold text-slate-900 text-xs">
+                          {item.code}
+                        </div>
+                      </td>
+
+                      {/* Cột 4: Chỉ số đo được vs Baseline */}
+                      <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
+                        <div className="font-bold text-red-600 text-xs">
+                          {metricCurrent} {metricUnit}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          Ngưỡng: {metricBaseline} {metricUnit}
+                        </div>
+                        {ratio && Number(ratio) > 1 && (
+                          <span className="inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-50 text-red-700 border border-red-200">
+                            Vượt {ratio}x
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Cột 5: Bóc tách nguyên nhân & Hành động xử lý */}
+                      <td className="py-3 px-3 align-top space-y-1.5 max-w-sm">
+                        <div className="text-slate-800 font-medium text-xs leading-relaxed">
+                          {message}
+                        </div>
+
+                        {rootCause && (
+                          <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-start gap-1.5 leading-relaxed">
+                            <span className="material-symbols-outlined text-[15px] text-amber-600 shrink-0 mt-0.5">
+                              psychology
+                            </span>
+                            <span>{rootCause}</span>
+                          </div>
+                        )}
+
+                        {mitigation && (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="material-symbols-outlined text-[12px]">security</span>
+                            <span>{mitigation}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Cột 6: Thao tác & Phòng vệ */}
+                      <td className="py-3 px-3 align-top text-center whitespace-nowrap">
+                        {isQuarantined ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                              <span className="material-symbols-outlined text-[13px]">block</span>
+                              Đã cách ly Shield
+                            </span>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => handleUnblock(actorHash)}
+                                disabled={unblockingHash === actorHash}
+                                className="text-[10px] font-semibold text-slate-500 hover:text-slate-800 underline transition-colors cursor-pointer"
+                                title="Mở khóa và gỡ bỏ địa chỉ IP khỏi danh sách cô lập"
+                              >
+                                {unblockingHash === actorHash ? 'Đang mở...' : 'Gỡ chặn'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : vector === 'resource' || actorHash === 'system_host' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            <span className="material-symbols-outlined text-[13px]">tune</span>
+                            Nội bộ hệ thống
+                          </span>
+                        ) : (
+                          <div className="space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenQuarantineModal(item)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 transition-all shadow-xs active:scale-95 cursor-pointer"
+                              title={`Kích hoạt khiên chắn phong tỏa IP ${actorIdentity}`}
+                            >
+                              <span className="material-symbols-outlined text-[13px]">shield</span>
+                              <span>Phong Tỏa IP</span>
+                            </button>
+                            <div className="text-[9px] text-slate-400">
+                              Sentinel giám sát
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+
+            {/* Phân trang Server-side */}
+            <Pagination
+              currentPage={incidentPage}
+              pageSize={incidentPageSize}
+              total={incidentTotal}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onPageChange={(p) => setIncidentPage(p)}
+              onPageSizeChange={(s) => {
+                setIncidentPageSize(s);
+                setIncidentPage(1);
+              }}
+              itemLabel="sự cố ghi nhận"
+            />
           </div>
         ) : (
           <div className="p-8 text-center rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-2">
             <span className="material-symbols-outlined text-[44px] text-emerald-600">verified</span>
-            <p className="font-bold text-sm text-emerald-950">Không phát hiện mối đe dọa nào</p>
+            <p className="font-bold text-sm text-emerald-950">
+              {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all'
+                ? 'Không tìm thấy sự cố nào phù hợp với bộ lọc'
+                : 'Chưa có mối nguy hiểm hoặc bất thường nào được ghi nhận'}
+            </p>
             <p className="text-xs text-emerald-800/80 max-w-md mx-auto">
-              Tất cả 12 thông số hệ thống (lưu lượng, mã phản hồi 4xx/5xx, chu kỳ xác thực, tải CPU/RAM và độ trễ Event Loop) đang dao động hoàn toàn trong ngưỡng an toàn.
+              {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncidentVectorFilter('all');
+                    setIncidentStatusFilter('all');
+                    setIncidentSearch('');
+                    setIncidentPage(1);
+                    fetchIncidents(1, incidentPageSize, 'all', 'all', '');
+                  }}
+                  className="font-bold text-primary underline cursor-pointer"
+                >
+                  Xóa bộ lọc để xem toàn bộ sự cố trong CSDL
+                </button>
+              ) : (
+                'Tất cả 12 thông số hệ thống đang hoạt động ổn định. Mọi bất thường phát sinh sẽ được ghi nhận và lưu trữ vĩnh viễn vào CSDL tại đây.'
+              )}
             </p>
           </div>
         )}
       </div>
+
+      {/* Modal xác nhận làm sạch CSDL Sự Cố */}
+      <ConfirmModal
+        open={showClearIncidentsModal}
+        onConfirm={handleClearIncidents}
+        onCancel={() => setShowClearIncidentsModal(false)}
+        title="Làm sạch Toàn bộ Nhật ký Sự cố CSDL"
+        message="Bạn có chắc chắn muốn xóa toàn bộ lịch sử sự cố AIOps trong CSDL PostgreSQL? Thao tác này chỉ dùng khi hoàn tất nghiệm thu kiểm thử hoặc bảo trì hệ thống. Hành động này không thể hoàn tác."
+        confirmDanger={true}
+        confirmText="Xác nhận Xóa CSDL"
+        cancelText="Hủy bỏ"
+        loading={clearingIncidents}
+      />
+
+      {/* Modal xác nhận phong tỏa nguồn IP từ bảng RCA */}
+      <ConfirmModal
+        open={quarantineModalTarget !== null}
+        onConfirm={handleConfirmQuarantine}
+        onCancel={() => setQuarantineModalTarget(null)}
+        title="Xác nhận Phong Tỏa Nguồn IP (Active Quarantine)"
+        message={
+          quarantineModalTarget
+            ? `Bạn có chắc chắn muốn kích hoạt Khiên Chắn Active Quarantine cô lập kết nối từ nguồn IP [${
+                quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || 'xx.xx.xx.xx'
+              }]${
+                quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash
+                  ? ` (Hash: #${(quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash).slice(0, 8)})`
+                  : ''
+              } trong vòng 15 phút? Mọi request từ IP này sẽ bị ngắt kết nối với mã lỗi HTTP 403.`
+            : ''
+        }
+        confirmDanger={true}
+        confirmText={quarantiningActor ? 'Đang kích hoạt...' : 'Xác Nhận Phong Tỏa'}
+        cancelText="Hủy bỏ"
+        loading={quarantiningActor}
+      />
 
       {/* ======================================================== */}
       {/* MODAL 1-CLICK BẢO TRÌ KHẨN CẤP */}

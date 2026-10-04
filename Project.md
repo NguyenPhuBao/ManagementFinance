@@ -3054,6 +3054,124 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Admin-web Test Suites: **35/35 tests PASS 100%**.
   - Toàn hệ thống: **77/77 tests PASS 100%**, sẵn sàng vận hành sản xuất ổn định, an toàn.
 
+### 11.55. AIOps Root Cause Analysis (RCA): Nhật Ký Sự Cố CSDL Bền Vững (PostgreSQL), Định Danh Đối Tượng Vi Phạm Hợp Pháp & Phân Trang Server-Side (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khẳng định tính pháp lý của việc định danh đối tượng vi phạm:** Việc ghi nhận danh tính đối tượng (Actor Identity) thực hiện hành vi bất thường là **100% hợp pháp và bắt buộc** theo Luật An ninh mạng 2018 (Điều 26), Nghị định 53/2022/NĐ-CP (lưu vết sự cố an ninh mạng tối thiểu 12 tháng) và Nghị định 13/2023/NĐ-CP (Điều 17 - Xử lý dữ liệu cá nhân không cần sự đồng ý trong trường hợp khẩn cấp bảo vệ an ninh quốc gia, trật tự an toàn xã hội, phòng chống gian lận). Tuân thủ nghiêm ngặt chuẩn `Data_Security.md`: IP được che bớt an toàn (`113.161.xx.xx`), băm SHA-256 (`actor_hash`), User-Agent, Username/UserID (nếu đã xác thực), và Endpoint mục tiêu; tuyệt đối không thu thập hoặc lưu trữ mật khẩu, OTP hay số thẻ ngân hàng.
+  - **Chuyển dịch sang Nhật Ký CSDL Bền Vững (Persistent Journal):** Chấm dứt cơ chế bảng tạm snapshot trong RAM (tắt trình duyệt hoặc restart server là mất). Toàn bộ các trường hợp bất thường phải được lưu trữ vĩnh viễn vào CSDL PostgreSQL phục vụ điều tra truy vết sau này.
+  - **Tích hợp Phân Trang & Bộ Lọc Nâng Cao:** Triển khai phân trang Server-side linh hoạt và giao diện `Pagination.jsx` kèm các bộ lọc vector, trạng thái, ô tìm kiếm giúp Admin quản trị lịch sử sự cố dễ dàng.
+- **2. Kiến Trúc CSDL & Triển Khai Backend:**
+  - **Tạo bảng CSDL `aiops_incident` (PostgreSQL):** Migration SQL `15_create_aiops_incident_table.sql` và Prisma schema model `aiops_incident` với 22 trường dữ liệu chi tiết và 5 chỉ mục tối ưu hóa tốc độ truy vấn (`idx_aiops_incidents_status`, `idx_aiops_incidents_vector`, `idx_aiops_incidents_detected_at`, `idx_aiops_incidents_actor_hash`, `idx_aiops_incidents_code`).
+  - **AIOps Incident Repository (`src/Backend/modules/aiops/aiops.repository.js`):** Xây dựng tầng truy xuất dữ liệu độc lập hỗ trợ `initTable()` tự động tạo bảng khi khởi động, `upsertIncident()` cộng dồn số lần lặp (`hits`) và gia hạn `last_seen_at`, `markMitigated()`, `autoMitigateStaleIncidents(60)` tự động đánh dấu giảm thiểu khi sự cố chấm dứt > 60s, `getIncidents()` hỗ trợ phân trang SQL và tìm kiếm full-text, `clearIncidents()` dọn dẹp CSDL khi nghiệm thu, kèm cơ chế tự động chuyển đổi Fallback bộ nhớ in-memory khi CSDL ngoại tuyến.
+  - **Bộ Thu Thập Đặc Trưng & Phát Hiện Bất Thường Giàu Ngữ Cảnh:**
+    + `FeatureCollector`: Bổ sung hàm che giấu IP `_maskIp()`, băm SHA-256 đối tượng, thu thập User-Agent, Target Endpoint, Username/UserID từ JWT payload, và trích xuất danh sách nghi phạm `suspectActors`.
+    + `AnomalyDetector`: Làm giàu 100% các bất thường của cả 4 vectơ (Auth, Traffic, Exploit, Resource) với thông tin đối tượng vi phạm, đơn vị đo lường, chẩn đoán nguyên nhân gốc rễ (Root Cause Diagnosis) và hành động phòng vệ tự động đã thực hiện.
+  - **Dịch Vụ AIOps & API Tuyến Quản Trị:**
+    + `AIOpsService`: Tích hợp Repository, tự động ghi nhận sự cố vào PostgreSQL mỗi chu kỳ nhịp tim (tick), phát sự kiện Socket.io `admin.anomaly_detected` theo thời gian thực tới `admin_room`.
+    + Tuyến API mới: `GET /api/admin/aiops/incidents` (phân trang & bộ lọc), `POST /api/admin/aiops/incidents/clear` (làm sạch CSDL nghiệm thu).
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Client API (`src/Admin-web/src/api/aiops.api.js`):** Bổ sung `getIncidents(params)` hỗ trợ URLSearchParams linh hoạt và `clearIncidents()`.
+  - **Tái Cấu Trúc Khối 4 Trang AIOps (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    + Header thông minh với huy hiệu đếm tổng số sự cố từ CSDL (`{incidentTotal} sự cố ghi nhận trong CSDL`) và nút "Làm sạch CSDL".
+    + Thanh công cụ điều khiển: Nút lọc nhanh 4 Vectơ (Xác thực, Lưu lượng, Khai thác, Tài nguyên), Nút lọc Trạng thái (Đang diễn ra `ACTIVE`, Đã giảm thiểu `MITIGATED`), và Ô tìm kiếm đa năng (IP, Hash, User, Endpoint, Mã).
+    + Bảng dữ liệu 6 cột toàn diện: Thời điểm & Trạng thái (đếm số lần lặp `hits`, vệt nhấp nháy đỏ), Đối tượng vi phạm (Actor Identity - Masked IP, SHA-256 Hash tag `#...`, User badge, Endpoint mục tiêu, User-Agent), Vector & Mã bất thường, Chỉ số đo được vs Ngưỡng (kèm tỷ lệ vượt ngưỡng `Vượt X.Xx`), Bóc tách nguyên nhân & Hành động xử lý, và Trạng thái cô lập Shield.
+    + Tích hợp linh kiện phân trang chuẩn `Pagination.jsx` với các tùy chọn 5, 10, 20, 50 sự cố/trang.
+    + Tích hợp hộp thoại xác nhận an toàn `ConfirmModal.jsx` trước khi thực hiện thao tác xóa sạch CSDL.
+    + Lắng nghe sự kiện Socket.io `admin.anomaly_detected` cập nhật ngay lập tức các sự cố mới vào danh sách mà không làm gián đoạn hoặc mất dữ liệu cũ.
+- **4. Kiểm Thử & Nghiệm Thu Toàn Diện:**
+  - **Backend Test Suite:** **45/45 tests PASS 100%** (Section 4 mới bổ sung 3 tests kiểm thử trọn vẹn vòng đời lưu trữ, định danh actor và phân trang server-side).
+  - **Admin-web Test Suite:** **39/39 tests PASS 100%** (bổ sung 4 tests mới 5.6 - 5.9 kiểm thử render RCA CSDL, bộ lọc vector/trạng thái, realtime socket injection, và clear modal).
+  - **Tổng toàn hệ thống:** **84/84 tests PASS 100%**.
+  - **Vite Production Build:** Thành công trong 1.84s với 0 cảnh báo lỗi cú pháp.
+
+### 11.56. AIOps Target Concurrency Scaler: Cơ Chế Lưu Cứng 2 Lớp (PostgreSQL Supabase & Browser LocalStorage) Bảo Đảm Tính Ổn Định Tuyệt Đối Của Hệ Thống (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khắc phục triệt để hiện tượng nhảy số 100 CCU:** Giá trị "Số người dùng đồng thời" (Target Concurrency) không được phép phụ thuộc đơn thuần vào bộ nhớ tạm in-memory RAM của tiến trình máy chủ. Giá trị này phải được **lưu cứng (hard-persisted)** bền vững, không tự ý thay đổi khi tải lại trang, đăng nhập lại tài khoản, hoặc khi máy chủ (Render Cloud) tự động khởi động lại / scale up.
+  - **Mục tiêu tính ổn định:** Bảo đảm hệ thống luôn duy trì đúng quy mô vận hành chuẩn kỳ vọng (mặc định 1,000 CCU, hoặc giá trị Admin đã thiết lập), giữ vững trần bảo vệ DoS, ngưỡng cách ly IP và chỉ số Baseline RPM an toàn theo thời gian thực.
+- **2. Kiến Trúc CSDL & Triển Khai Backend:**
+  - **Tạo bảng CSDL `aiops_setting` (PostgreSQL):** Migration SQL `16_create_aiops_setting_table.sql` và Prisma schema model `aiops_setting` (`key VARCHAR(64) PRIMARY KEY`, `value TEXT NOT NULL`, `updated_at TIMESTAMP(6)`). Bảng này đã được đồng bộ trực tiếp lên CSDL Cloud Supabase (PostgreSQL AWS Tokyo) với giá trị mặc định khởi tạo `target_concurrency = '1000'`.
+  - **AIOps Setting Repository (`src/Backend/modules/aiops/aiops.repository.js`):** Bổ sung các phương thức `getSetting(key, defaultValue)` và `setSetting(key, value)` với câu lệnh `INSERT ... ON CONFLICT (key) DO UPDATE` (UPSERT) cùng bộ nhớ đệm `_settingsFallback` bảo đảm hoạt động thông suốt cả khi CSDL tạm ngắt kết nối.
+  - **AIOps Service Khôi Phục Tham Số Khi Khởi Động (`src/Backend/modules/aiops/aiops.service.js`):** Phương thức `loadPersistedSettings()` được gọi ngay trong hàm `start()`, tự động đọc giá trị `target_concurrency` đã lưu trong CSDL để tái nạp vào mô hình chịu tải của `AnomalyDetector` và `FeatureCollector`.
+  - **AIOps Controller & Tuyến API Cập Nhật Quy Mô:** Cập nhật hàm `setScale(req, res)` thành async để chờ `setConcurrencyScale()` hoàn tất việc ghi cứng giá trị mới vào CSDL PostgreSQL trước khi phản hồi thành công về cho Admin-web.
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Lớp Lưu Cứng Cục Bộ Tức Thì (`localStorage`):** Trong `AIOpsPage.jsx`, các state `selectedConcurrency` và `customConcurrency` sử dụng hàm khởi tạo lười (lazy initializer) đọc trực tiếp từ `localStorage.getItem('aiops_target_concurrency')` (mặc định 1,000 CCU), loại bỏ 100% hiện tượng giật số hoặc hiển thị 100 CCU trước khi API round-trip hoàn tất.
+  - **Đồng Bộ Hai Chiều An Toàn:** Khi API `getStatus()` trả về `targetConcurrency` từ Server, Admin-web cập nhật đồng bộ vào `localStorage`. Khi Admin nhấn nút "Áp Dụng" hoặc chọn nút mẫu nhanh (500, 1,000, 2,000, 5,000 người), giá trị được ghi ngay vào `localStorage` và gửi API `POST /api/admin/aiops/scale` lưu vào CSDL.
+  - **Bảo Vệ Luồng Socket.io (`admin.metrics_stream`):** Kiểm tra chặt chẽ giá trị `metrics.targetConcurrency` từ Socket stream; nếu giá trị rỗng/không hợp lệ hoặc nhỏ hơn 1, hệ thống từ chối cập nhật đè lên cấu hình đang áp dụng.
+- **4. Kiểm Thử & Nghiệm Thu Hoàn Hảo:**
+  - **Backend Test Suite:** **46/46 tests PASS 100%** (bổ sung test 4.4 kiểm thử kiểm chứng khôi phục scale từ CSDL qua vòng đời service mới).
+  - **Admin-web Test Suite:** **40/40 tests PASS 100%** (bổ sung test 5.10 kiểm thử duy trì giá trị CCU từ LocalStorage và ghi nhớ khi apply).
+  - **Tổng toàn hệ thống:** **86/86 tests PASS 100%**, build production Vite hoàn tất sạch sẽ không một lỗi.
+
+### 11.57. AIOps Root Cause Analysis (RCA): Tích Hợp Nút Phong Tỏa IP Thủ Công & Gỡ Chặn Tức Thì Trực Tiếp Tại Bảng Sự Cố (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Trao quyền can thiệp chủ động cho Quản Trị Viên (Admin):** Tại bảng Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA), ngoài việc chờ đợi thuật toán Sentinel tự động kích hoạt cách ly khi đủ ngưỡng, Admin có toàn quyền chủ động bấm nút **"Phong Tỏa IP"** để chặn đứng ngay lập tức bất kỳ nguồn request khả nghi nào (Brute-force, SQLi injection probe, DoS burst).
+  - **Mở khóa linh hoạt:** Nếu một IP đã bị đưa vào danh sách cô lập, hệ thống cho phép Admin bấm nút **"Gỡ chặn"** để mở khóa tức thì ngay trên cùng một hàng sự cố mà không cần chuyển qua bảng Blacklist khác.
+- **2. Kiến Trúc Backend & Khiên Chắn Cách Ly Đa Chiều (Dual-Index Shield):**
+  - **Nâng cấp `AIOpsQuarantine` (`src/Backend/modules/aiops/aiops.quarantine.js`):** Bổ sung cấu trúc lưu trữ `_byHash` song hành cùng `_map`. Phương thức `quarantineActor({ rawIp, ipHash, maskedIp, reason, durationMs })` cho phép phong tỏa an toàn qua `actor_hash` đạt chuẩn `Data_Security.md`. Khi request gửi đến máy chủ, middleware tính `hashIp(clientIp)` và đối chiếu $O(1)$ với cả `_map` và `_byHash`, lập tức ngắt kết nối với mã lỗi HTTP 403 Forbidden. Phương thức `unblock` giải phóng phong tỏa đồng thời trên cả hai chỉ mục.
+  - **Tuyến API Quản Trị Mới:** Khai báo route `POST /api/admin/aiops/quarantine` (yêu cầu phân quyền Admin) xử lý bởi `aiopsController.quarantineActor`, tự động ghi Audit Log an ninh (`req.auditActionName = 'Phong tỏa IP thủ công (...)`) và phát sự kiện Socket.io `admin.security_blocked` tới tất cả Admin clients.
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Client API (`src/Admin-web/src/api/aiops.api.js`):** Bổ sung hàm `quarantineActor(payload)`.
+  - **Cột Thao Tác & Phòng Vệ (`AIOpsPage.jsx`):**
+    + Nếu IP đã bị phong tỏa (`isQuarantined`): Hiển thị huy hiệu `Đã phong tỏa Shield` màu đỏ kèm nút `Gỡ chặn` (underline nhỏ gọn).
+    + Nếu là sự cố tài nguyên nội bộ (`vector === 'resource'` hoặc `actor = 'Hệ thống'`): Hiển thị huy hiệu `Nội bộ hệ thống` (ngăn Admin thao tác phong tỏa nhầm máy chủ).
+    + Nếu là nguồn IP ngoại vi chưa bị phong tỏa: Hiển thị nút **"Phong Tỏa IP"** (đỏ cảnh báo `bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 active:scale-95`).
+    + Tích hợp hộp thoại xác nhận an toàn `ConfirmModal`: hiển thị rõ Masked IP, SHA-256 Hash, thời hạn 15 phút và cảnh báo HTTP 403. Sau khi xác nhận, tự động cập nhật danh sách phong tỏa và hiển thị Toast thông báo thành công.
+- **4. Kiểm Thử & Nghiệm Thu Hoàn Hảo:**
+  - **Backend Test Suite:** **47/47 tests PASS 100%** (test 3.4 kiểm thử phong tỏa qua hash và chặn 403 thành công).
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** (test 5.11 kiểm thử click nút Phong Tỏa IP, mở modal và gọi API).
+  - **Tổng toàn hệ thống:** **88/88 tests PASS 100%**, build production Vite hoàn tất sạch sẽ trong 3.80s.
+
+### 11.58. Cơ Chế Triệt Tiêu IP Thô (Zero Raw IP) & Bảo Vệ Quyền Riêng Tư Theo Thiết Kế Cho Phiên Đăng Nhập RefreshToken (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO (Áp Dụng Phương Án A):**
+  - **Khảo sát rủi ro pháp lý:** Bảng `refreshtoken` trước đây ghi nhận địa chỉ IP của thiết bị khi đăng nhập kèm với `Idaccount`. Dù việc lưu vết IP phiên đăng nhập là hợp pháp theo Luật An ninh mạng 2018 (Điều 26) và Nghị định 53/2022/NĐ-CP (lưu vết phiên tối thiểu 12 tháng phục vụ an ninh/chống chiếm đoạt tài khoản), việc lưu trữ IP thô (`raw IP`) gắn chặt với mã tài khoản người dùng vẫn tiềm ẩn rủi ro tái định danh thiết bị/vị trí chính xác của cá nhân nếu CSDL bị rò rỉ, có nguy cơ vi phạm Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15) và Nghị định 13/2023/NĐ-CP.
+  - **PO phê duyệt thực thi Phương Án A (Zero Raw IP):** Triệt tiêu hoàn toàn IP thô trong CSDL bằng cách áp dụng cơ chế mặt nạ hóa (IP Masking) ngay tại tầng ứng dụng trước khi lưu vào CSDL, đồng thời làm sạch toàn bộ dữ liệu lịch sử trên CSDL Cloud Supabase.
+- **2. Kiến Trúc Kỹ Thuật & Triển Khai Backend:**
+  - **Tiện ích Mặt nạ hóa IP (`src/Backend/utils/masking.util.js`):**
+    + Bổ sung hàm `maskIp(rawIp)`: Với IPv4, tự động che mờ 2 byte cuối thành `a.b.xx.xx` (ví dụ `113.161.45.67` $\rightarrow$ `113.161.xx.xx`); với IPv6, giữ 2 nhóm đầu và che mờ các nhóm còn lại (`2001:0db8:xxxx:xxxx:...`); xử lý an toàn giá trị rỗng/null.
+  - **Áp dụng tại Cổng Xác Thực (`src/Backend/modules/auth/auth.service.js`):**
+    + Tích hợp `maskIp()` trực tiếp vào hàm `getDeviceInfo(req)`. Mọi phiên đăng nhập mới (`login`) khi tạo bản ghi vào bảng `refreshtoken` đều được tự động lưu trữ dưới dạng IP đã che mờ (`a.b.xx.xx`).
+  - **Migration CSDL & Đồng Bộ Cloud Supabase (`AWS Tokyo`):**
+    + Viết mã Migration SQL `src/Backend/database/17_mask_refreshtoken_ip_address.sql` sử dụng hàm `REGEXP_REPLACE` chuẩn hóa toàn bộ các bản ghi `refreshtoken` cũ có dạng IPv4 về `\1.\2.xx.xx`.
+    + Chạy tập lệnh đồng bộ `src/Backend/sync_to_supabase.js`, cập nhật thành công 100% bản ghi trên CSDL Cloud Supabase PostgreSQL (`aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres`), xác nhận qua Prisma client toàn bộ IP đều ở định dạng `127.0.xx.xx` hoặc `a.b.xx.xx`.
+- **3. Hiện Trạng An Toàn Tuyệt Đối Của Toàn Bộ CSDL:**
+  - Bảng `refreshtoken`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`).
+  - Bảng `aiops_incident`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`) và mã băm SHA-256 đối tượng vi phạm.
+  - Bảng `audit_log`: Hoàn toàn không lưu trường địa chỉ IP.
+  - $\rightarrow$ **100% CSDL không còn bất kỳ trường nào lưu địa chỉ IP thô của người dùng.** Vừa giữ vững khả năng nhận diện vùng mạng lạ của phiên đăng nhập để cảnh báo an ninh, vừa bảo đảm tuân thủ pháp luật tối đa (Privacy by Design).
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`src/Backend/tests/v2/auth.lifecycle.test.js`):** Bổ sung trọn vẹn Suite 4 gồm 3 tests kiểm thử chuyên sâu:
+    + Test 4.1: Che mờ IPv4 chuẩn xác (`113.161.45.67` $\rightarrow$ `113.161.xx.xx`).
+    + Test 4.2: Che mờ IPv6 và xử lý header chuỗi IP `x-forwarded-for`.
+    + Test 4.3: Xử lý an toàn khi IP không xác định / null.
+    + Kết quả: **50/50 tests PASS 100%** trong 1.94s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** trong 2.92s.
+  - **Tổng toàn hệ thống:** **91/91 tests PASS 100%**.
+
+### 11.59. Nâng Cấp Dung Lượng Các Cột Hash & IP (Overflow Guard 256/512 Ký Tự) Loại Bỏ Nguy Cơ Tràn Dữ Liệu CSDL (2026-10-04)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khảo sát rủi ro kỹ thuật:** Rà soát toàn bộ cấu trúc bảng CSDL phát hiện các cột lưu mã băm hoặc địa chỉ IP có dung lượng hẹp như `refreshtoken.IP_address` (`VARCHAR(45)`), `aiops_incident.actor_hash` (`VARCHAR(64)`), `bank_account.Account_number_hash` (`VARCHAR(64)`), hay các bẫy giới hạn biên `VARCHAR(255)` (`refreshtoken.Token_hash`, `otp_code.code_hash`).
+  - **PO chỉ đạo:** Đảm bảo CSDL lưu trữ an toàn các giá trị băm (Hash), triệt tiêu hoàn toàn nguy cơ khai báo cột chỉ có 40 hoặc 45 ký tự trong khi chuỗi hash/token có thể dài tới 256 ký tự (như SHA-256 kèm tiền tố thuật toán, SHA-512, hoặc token bảo mật 256 ký tự), ngăn ngừa triệt để lỗi ngoại lệ `value too long for type character varying(...)` trong môi trường sản xuất.
+- **2. Kiến Trúc CSDL & Triển Khai Migration 18:**
+  - **Tạo Migration SQL `18_expand_hash_and_ip_columns_capacity.sql`:**
+    + `refreshtoken.IP_address`: Nâng cấp từ `VARCHAR(45)` lên `VARCHAR(256)`. Dung lượng này đảm bảo an toàn 100% cho mọi định dạng: IPv4, IPv6, Masked IP (`a.b.xx.xx`), chuỗi băm IP SHA-256 lẫn định danh thiết bị.
+    + `refreshtoken.Token_hash`: Nâng cấp từ `VARCHAR(255)` lên `VARCHAR(512)`. Loại trừ hoàn toàn bẫy 255/256 ký tự đối với token băm.
+    + `aiops_incident.actor_hash`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`. Chứa được mọi định dạng băm có tiền tố (như `sha256:...`, SHA-512 128 chars).
+    + `aiops_incident.actor_identity`: Nâng cấp từ `VARCHAR(100)` lên `VARCHAR(256)`.
+    + `aiops_incident.id`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    + `bank_account.Account_number_hash`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    + `otp_code.code_hash`: Nâng cấp từ `VARCHAR(255)` lên `VARCHAR(512)`.
+  - **Đồng Bộ Cloud Supabase PostgreSQL (AWS Tokyo):**
+    + Cập nhật và thực thi qua `sync_to_supabase.js`. CSDL Supabase PostgreSQL đã cập nhật thành công 100% metadata cho toàn bộ 7 cột trên mà không gây downtime hay khóa bảng.
+  - **Đồng Bộ Prisma ORM & Mã Nguồn Tầng Dữ Liệu:**
+    + Cập nhật các trường tương ứng trong `src/Backend/prisma/schema.prisma` và chạy `rtk npx prisma generate` sinh lại Client.
+    + Cập nhật hàm `initTable()` trong `src/Backend/modules/aiops/aiops.repository.js` đồng bộ định nghĩa `VARCHAR(256)`.
+- **3. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`src/Backend/tests/v2/auth.lifecycle.test.js`):** Bổ sung test 4.4 kiểm chứng cơ chế chống tràn dữ liệu hash 256 ký tự và token hash 512 ký tự:
+    + **51/51 tests PASS 100%** trong 1.99s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** trong 7.60s.
+  - **Tổng toàn hệ thống:** **92/92 tests PASS 100%**.
+
+
+
 
 
 

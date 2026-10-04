@@ -7,6 +7,7 @@ const authRepository = require("./auth.repository");
 const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
+const { maskIp } = require("../../utils/masking.util");
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -73,8 +74,9 @@ function generateTokens(payload, idrole) {
 function getDeviceInfo(req) {
   const headers = (req && req.headers) ? req.headers : {};
   const userAgent = headers["user-agent"] || null;
+  const rawIp = (req && req.ip) || (headers['x-forwarded-for']?.split(',')[0]?.trim()) || (req && req.socket?.remoteAddress) || null;
   return {
-    ip_address: (req && req.ip) || null,
+    ip_address: maskIp(rawIp),
     user_agent: userAgent,
     device_name: (userAgent || "").substring(0, 100),
   };
@@ -916,6 +918,7 @@ const authService = {
       },
     };
   },
+  getDeviceInfo,
 };
 
 module.exports = authService;
