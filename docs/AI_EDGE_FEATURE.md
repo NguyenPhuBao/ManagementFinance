@@ -3695,7 +3695,8 @@ khi ghi chú trống · hậu nghiệm ≥ 0,8 · ≥ 5 khoản ở bậc*; đo 
 tự khối trang Phân tích · thông báo theo phản ứng. 📝 **Việc thứ hai người dùng chọn 2026-10-04: nhịp chi ngân sách** — spec
 `specs/2026-10-04-du-an-c-nhip-chi-ngan-sach-design.md` (thiết kế + bản viết đã duyệt), kế hoạch 12 task
 `plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore), **chưa có mã**. Hình dạng đổi so với tên việc — xem 11.5 (3).
-Lượt lập kế hoạch lộ ra **G66** (lỗi có sẵn của lưới kỳ ngân sách, `CLIENT_APP_KNOWN_GAPS.md`) — Task 0 hỏi sửa trước hay sau.
+Lượt lập kế hoạch lộ ra **G66** (lỗi có sẵn của lưới kỳ ngân sách, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ người dùng chọn sửa
+**trước**, đóng cùng ngày (`02d46ca`: `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ); việc nhịp chi bắt đầu ở Task 1.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng

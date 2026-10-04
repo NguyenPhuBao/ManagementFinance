@@ -3,7 +3,8 @@
 **Ngày:** 2026-10-04. **Trạng thái:** thiết kế người dùng duyệt trong chat (bảy lượt AskUserQuestion: chọn việc, phạm
 vi, cách báo sớm, nguồn học, cách dự phóng, ba phần thiết kế); bản viết người dùng cho đi tiếp cùng ngày (*"tiếp tục"*);
 **kế hoạch 12 task (Task 0–11)** `docs/superpowers/plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore) — **chưa có
-mã**. Người dùng dặn dừng sau kế hoạch và viết bàn giao; Task 0 của kế hoạch hỏi thứ tự **G66** trước khi code.
+mã**. Người dùng dặn dừng sau kế hoạch và viết bàn giao; Task 0 của kế hoạch hỏi thứ tự **G66** trước khi code — ✅
+phiên sau người dùng chọn sửa G66 **trước** (`02d46ca`); việc nhịp chi bắt đầu ở Task 1.
 
 > 🔧 **Bốn chỗ làm rõ lúc lập kế hoạch (2026-10-04), thắng chỗ tương ứng bên dưới:**
 > 1. **Kỳ trước ngày tạo cắt trên LƯỚI mốc neo, không lùi từ `startDate`** (mục 4.1 đã viết lại). Lùi từ `startDate` lệch
@@ -16,7 +17,8 @@ mã**. Người dùng dặn dừng sau kế hoạch và viết bàn giao; Task 0
 > 4. **Lộ ra một lỗi CÓ SẴN khi dựng lưới — G66** (`CLIENT_APP_KNOWN_GAPS.md`): ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày
 >    đã kẹp từ kỳ thứ hai (đo: bắt đầu 31/01 → kỳ 28/03→28/04, 28/04→28/05…), vì `_anchor` là mốc **đã kẹp**. Không thuộc việc
 >    này; memory *sửa lỗi trước, thêm tính năng sau* → Task 0 hỏi người dùng làm G66 trước. Ca canh *"ngày 31"* của Task 1 bảo
->    đảm `kyDaDongTruoc` đi theo bất kỳ bản sửa nào của lưới.
+>    đảm `kyDaDongTruoc` đi theo bất kỳ bản sửa nào của lưới. ✅ **G66 đóng cùng ngày** (`02d46ca`, người dùng chọn làm
+>    trước): `mocKy` đã có và nhảy từ `startDate` — lưới không còn trôi về ngày kẹp.
 
 Dự án C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người*. Việc đầu — gợi ý danh mục theo số tiền
 — xong 2026-10-02 (spec `2026-10-02-du-an-c-goi-y-danh-muc-theo-so-tien-design.md`). Đây là việc thứ hai, người dùng
@@ -103,10 +105,11 @@ thành **nguồn bù** (dư địa 5.000.000 − 4.800.000 = 200.000, cắt 25 %
 Một chỗ cắt kỳ, cạnh phép cắt kỳ sẵn có, để hai phép không lệch nhau một ngày (lý do đứng đầu `budget_history.dart`).
 
 - 🔧 **Một lưới cho mọi kỳ:** kỳ thứ s là `[mocKy(s − 1), mocKy(s))` với `BudgetEntity.mocKy(int s)` — định nghĩa DUY NHẤT
-  của mốc kỳ (`mocKy(0)` = mốc neo `periodAnchor`; s ≥ 1 là `advancePeriodFrom(anchor: mốc neo, steps: s)`, đúng phép
-  `currentPeriod` nhảy hôm nay; s âm đi lùi về **trước** ngày tạo — `advancePeriodFrom` đã nhận `steps` âm). `currentPeriod`
-  và `recentPeriods` đổi sang gọi `mocKy` (refactor không đổi hành vi), nên **kỳ đã đóng sau kỳ đầu trùng khít
-  `recentPeriods`** — có ca canh, kể cả ngân sách bắt đầu ngày 31.
+  của mốc kỳ (`mocKy(0)` = cuối kỳ đầu; s âm đi lùi về **trước** ngày tạo — `advancePeriodFrom` đã nhận `steps` âm).
+  ✅ **Đã có từ G66** (`02d46ca`): `currentPeriod`, `recentPeriods`, `expiresAt` cùng gọi nó; thân nhảy `s + 1` chu kỳ **từ
+  `startDate`** (có `nextTimeRecurrence` thì `s` chu kỳ từ mốc ấy) — *bản viết ở đây từng ghi "`advancePeriodFrom(anchor:
+  mốc neo, steps: s)`", tức chính lưới G66*. Nên **kỳ đã đóng sau kỳ đầu trùng khít `recentPeriods`** — có ca canh, kể cả
+  ngân sách bắt đầu ngày 31.
 - Kỳ **đầu** của ngân sách (`[startDate, mốc neo)`) có thể lệch lưới (mốc neo kẹp, hoặc `nextTimeRecurrence` riêng); phép
   học dùng kỳ **trên lưới** chứa nó (`[mocKy(−1), mocKy(0))`) — tức học về **danh mục**, không chép lại lịch sử ngân sách.
 - ⚠️ *Bản đầu của mục này lùi từ `startDate` (`[advancePeriodFrom(anchor: startDate, steps: −k), …)`). Bỏ lúc lập kế hoạch:
@@ -231,8 +234,9 @@ ngân sách bắt đầu 01/09, vì kỳ ấy bắt đầu trước giao dịch 
   Không có gì để vỡ.
 - 🔧 **Kỳ đầu lệch lưới** (mốc neo kẹp, hoặc `nextTimeRecurrence` riêng): trong chính kỳ đầu ấy, phần thời gian `x` đo trên
   kỳ ngắn/dài hơn một chu kỳ còn nhịp học trên kỳ đầy đủ — lệch nhẹ, chỉ trong kỳ đầu. Không vá.
-- 🔧 **Phụ thuộc G66:** lưới hôm nay trôi về ngày kẹp với ngân sách bắt đầu ngày 29–31. Nhịp học **đi theo đúng lưới ấy**
-  (nhất quán với kỳ thật); sửa G66 ở `mocKy` thì cả hai cùng đổi.
+- 🔧 **Phụ thuộc G66:** ✅ hết — G66 đóng 2026-10-04 (`02d46ca`) trước khi việc này có mã; lưới `mocKy` nhảy từ
+  `startDate`, nên ngân sách bắt đầu ngày 29–31 học trên đúng kỳ người dùng đặt. *(Câu cũ: "lưới hôm nay trôi về ngày kẹp…
+  nhịp học đi theo đúng lưới ấy" — ảnh chụp trước bản sửa.)*
 - **Chi phí đọc:** `nap` chạy sau mỗi thay đổi giao dịch (`BudgetCubit`) và mỗi lượt quét thông báo — thêm **một** truy vấn
   khoảng ≤ 6 kỳ + kỳ hiện tại; số ngân sách của một tài khoản nhỏ.
 - **Im trên dữ liệu hiện tại** (mục 7.3) — đúng ý người dùng (*xây cho tương lai, dưới ngưỡng thì im*).
