@@ -1009,5 +1009,30 @@ void main() {
       // phản ví dụ: "còn tiêu được" không nhắc hạn mức vẫn là dự báo
       expect(congCuTheoCauHoi('thang nay toi con tieu duoc bao nhieu'), kTenCongCuDuBao);
     });
+
+    // Người dùng chốt 2026-10-04: "hạn mức" là chữ của ngân sách. Đo Realme câu
+    // "trong hạn mức … còn tiêu được bao nhiêu cho di chuyển" đi phiên sáu tool, mô
+    // hình chọn goi_y_han_muc và không nói số còn lại.
+    test('G: "hạn mức" đọc như "ngân sách" — cùng hai luật ngân sách / gợi ý hạn mức', () {
+      for (final c in [
+        'trong han muc toi con tieu duoc bao nhieu cho di chuyen',
+        'han muc nao sap het',
+        'han muc an uong con lai bao nhieu',
+        'Hạn mức giải trí còn lại là bao nhiêu?',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuNganSach, reason: c);
+      }
+      for (final c in [
+        'toi nen dat han muc bao nhieu cho y te',
+        'han muc hop ly cho an uong la bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuGoiYHanMuc, reason: c);
+      }
+      // phản ví dụ: hạn mức + hoá đơn là câu hai loại (họ E) → phiên sáu tool
+      expect(congCuTheoCauHoi('han muc va hoa don cua toi the nao'), isNull);
+      // phản ví dụ: hạn mức THẺ TÍN DỤNG không phải ngân sách của app
+      expect(congCuTheoCauHoi('han muc the tin dung cua toi con bao nhieu'),
+          isNot(kTenCongCuNganSach));
+    });
   });
 }

@@ -621,7 +621,15 @@ final RegExp _mauDuBaoTheoNganSach = RegExp(
 /// Họ E (2026-10-04): số LOẠI đối tượng câu nhắc trong ngân sách / hoá đơn / mục
 /// tiêu. Từ hai trở lên là câu cần hai tool — luật một loại chỉ trả lời nửa câu.
 int _soLoaiDoiTuong(String q) =>
-    ['ngan sach', 'hoa don', 'muc tieu'].where((t) => _co(q, t)).length;
+    [_coNganSach(q), _co(q, 'hoa don'), _co(q, 'muc tieu')].where((c) => c).length;
+
+/// Họ G (2026-10-04, người dùng chốt): *"hạn mức"* là chữ của ngân sách — đo
+/// Realme *"trong hạn mức còn tiêu được bao nhiêu cho di chuyển"* đi phiên sáu
+/// tool, mô hình chọn gợi ý hạn mức và không nói số còn lại. Một định nghĩa cho
+/// mọi luật hỏi "câu này nói về ngân sách không". ⚠️ Hạn mức THẺ TÍN DỤNG không
+/// phải ngân sách của app.
+bool _coNganSach(String q) =>
+    _co(q, 'ngan sach') || (_co(q, 'han muc') && !_co(q, 'tin dung'));
 
 /// H2 cổng F lần 2 (B2): *"mỗi tháng tôi cần để dành bao nhiêu cho MuaXe"* — mô
 /// hình gọi `goi_y_han_muc` với danh_muc = tên mục tiêu rồi bị từ chối. Chữ
@@ -667,11 +675,11 @@ bool _coMot(String q, String ds) => ds.split('|').any((t) => _co(q, t));
 const String _tuNenDat = 'nen dat|nen de|nen la|la du|la vua|hop ly';
 
 bool _laCauGoiYHanMuc(String q) =>
-    (_co(q, 'ngan sach') && _coMot(q, _tuNenDat)) ||
+    (_coNganSach(q) && _coMot(q, _tuNenDat)) ||
     (_co(q, 'trung binh moi thang') && !_coMot(q, 'thu nhap|thu|luong'));
 
 bool _laCauNganSach(String q) =>
-    _co(q, 'ngan sach') &&
+    _coNganSach(q) &&
     !_coMot(q, _tuNenDat) &&
     _coMot(q, 'nao|con|sap het|bao nhieu|chua dung|vuot');
 
@@ -700,7 +708,7 @@ String? congCuTheoCauHoi(String cauHoi) {
   // Họ B2: tầng 2 của dự báo mang chữ "ngân sách" — xét trước khối ngân sách.
   if (_mauDuBaoTheoNganSach.hasMatch(q)) return kTenCongCuDuBao;
   final haiLoai = _soLoaiDoiTuong(q) >= 2;
-  if (_co(q, 'ngan sach')) {
+  if (_coNganSach(q)) {
     // Họ E: ngân sách + hoá đơn / mục tiêu → câu hai tool, phiên sáu tool.
     if (haiLoai) return null;
     // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
@@ -713,8 +721,8 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_laCauGoiYHanMuc(q)) return kTenCongCuGoiYHanMuc;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauCanTich.hasMatch(q)) return kTenCongCuMucTieu;
-  // Họ G: "hạn mức" là chữ của ngân sách — "trong hạn mức còn tiêu được" không
-  // phải câu dự báo.
+  // Họ G: câu "hạn mức" của app đã rẽ vào khối ngân sách ở trên; tới đây chỉ còn
+  // hạn mức THẺ TÍN DỤNG — không phải câu dự báo.
   if (!_co(q, 'han muc') && _mauDuBao.any((m) => m.hasMatch(q))) {
     return kTenCongCuDuBao;
   }
