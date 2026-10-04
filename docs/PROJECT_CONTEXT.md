@@ -1185,7 +1185,9 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). ✅ **Họ D và G xong tối cùng ngày**
   (`b9d32d6`, cuối mục 9.45 `AI_EDGE_FEATURE.md`): câu định nghĩa chung → `chuDeBiChan` từ chối ngay (đo Realme: hết câu
   lạc đề 45 s); *"hạn mức"* đọc như *"ngân sách"* (`_coNganSach`, trừ thẻ tín dụng) — 11 câu bộ huấn luyện `null` → đúng,
-  không câu nào khác đổi đường. Đo Realme 5 câu: D ✅ · D2 (câu số liệu *"là gì"*) ✅ lọt · G ✅ · G2 ◐ · B2 ✅. Còn một
+  không câu nào khác đổi đường. Đo Realme 5 câu: D ✅ · D2 (câu số liệu *"là gì"*) ✅ lọt · G ✅ · G2 ◐ · B2 ✅. ✅ **G2 sửa cùng tối** (`4064b8a`):
+  *"sắp hết"* = ngưỡng cảnh báo riêng `isNearLimit` (cùng luật thông báo *Sắp vượt*) + đã vượt, mã nội bộ `kChonSapHet`
+  (không vào enum gửi mô hình); đo lại Realme G2 và A3 ✅ *"…chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức"*. Còn một
   ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một tool để rút tiếp thời gian chờ.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.

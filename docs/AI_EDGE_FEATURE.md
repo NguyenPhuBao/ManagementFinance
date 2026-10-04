@@ -3657,6 +3657,17 @@ sang tool giao dịch; thêm lối ấy đổi đường C15 / C20 đã đo).
 ⚠️ Ghi lại, chưa sửa: ở câu G mô hình (phiên một tool ngân sách) chọn `chon: chua_dat` cho câu *"hạn mức"* — mô tả mã
 `chua_dat` có lẽ kéo nó; bộ chỉnh luật 10 đã gỡ nên câu hiện ra đúng.
 
+✅ **G2 sửa cùng tối (`4064b8a`, người dùng chọn)**: *"ngân sách / hạn mức nào sắp hết"* từng nhận ngân sách dùng **nhiều
+nhất** (`chon=nhieu_nhat`) — Ăn uống 2 % được kể như sắp hết. Người dùng chốt *"sắp hết"* = **ngưỡng cảnh báo riêng** của
+từng ngân sách (`BudgetEntity.isNearLimit` — số tiền còn lại hoặc % người dùng đặt, mặc định 90 %; **cùng luật thông báo
+*Sắp vượt***), cộng mọi ngân sách đã vượt (`isNearLimit` trả `false` cho chúng — phải hỏi cả `isOverBudget`). Bộ chỉnh đặt
+mã **nội bộ** `kChonSapHet` (`chon.dart`) cho *"sắp hết / vượt"*; mã **không** nằm trong `kChon` nên enum gửi mô hình và
+`tools_json` đo trên Realme không đổi. Không cái nào khớp → kết luận *"chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức"*,
+chỉ mẫu câu (khuôn H3 của `can_doi`). ⚠️ Bản đầu viết *"…sắp hết hay vượt hạn mức"* và **`kiemGiong` chặn chính mẫu câu**:
+*"vượt hạn mức"* là cụm báo động, chữ *"chưa"* đứng xa hơn ba từ nên không tính là phủ định. Đo Realme (debug `96da31b8…`):
+*han muc nao sap het* và A3 *ngan sach nao sap het* → ✅ *"Tổng còn lại: 1.840.000 đ; Số ngân sách: 4 — chưa ngân sách nào
+sắp hết, cũng chưa vượt hạn mức."*, 19–23 s.
+
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 
 Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
