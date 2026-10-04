@@ -3353,6 +3353,30 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Backend Operations & AIOps Test Suites: **100% PASS**.
   - Production Build (Vite): Thành công 100% với 0 lỗi cú pháp.
 
+### 11.61. Khắc Phục Triệt Để Các Lỗ Hổng Logic Làn Ưu Tiên Admin & Chặn IP (2026-10-04)
+- **1. Xóa Bỏ Hoàn Toàn Làn Ưu Tiên Dựa Trên Dữ Liệu Client Tự Khai:**
+  - Nguyên tắc cốt lõi (Data_Security.md): **Quyền ưu tiên chỉ được cấp dựa trên điều Server tự kiểm chứng được**. Thứ client tự gửi chỉ dùng làm nhãn phục vụ thống kê/telemetry (`req.isAdminWebClient`).
+  - `src/Backend/middleware/admin-priority.middleware.js`: Bỏ hoàn toàn nhánh cấp `req.isAdmin = true` cho `/auth/login` và `/auth/refresh` khi client gửi header `x-client-platform: admin-web` hoặc Origin/Referer chứa domain admin.
+- **2. Xóa Bỏ Hoàn Toàn Fast-Lane 2 Bỏ Qua Kiểm Tra IP Bị Cách Ly Trong AIOps:**
+  - `src/Backend/modules/aiops/aiops.quarantine.js`: Xóa trọn khối Fast-lane 2 (trước đây bỏ qua kiểm tra IP bị cách ly nếu `username` chứa `"admin"`, `email === 'admin'` hoặc `isAdminWebClient`).
+  - Mọi request từ IP đang bị phong tỏa khi gửi tới `/api/auth/login` đều bị chặn đứng với HTTP 403 `AIOPS_QUARANTINED`, vô hiệu hóa nguy cơ kẻ tấn công từ IP bị cách ly tiếp tục brute-force tài khoản admin hoặc tài khoản thường chứa chuỗi "admin" (như `badminton99`).
+- **3. Chuyển Đổi Sang Xác Thực Chữ Ký Số JWT Thật Sự (`jwt.verify`):**
+  - Trong `admin-priority.middleware.js` và `rate-limiter.js`: Thay thế hoàn toàn `jwt.decode` bằng `jwt.verify(token, secret)` với secret thật từ cấu hình server. Các token giả mạo mang payload `{ role: "admin" }` không ký hoặc ký sai secret bị loại bỏ 100%.
+  - Khóa khẩn cấp `x-emergency-admin-key`: Chuyển phép so sánh chuỗi sang `crypto.timingSafeEqual` với kiểm tra độ dài buffer chống tấn công Timing Attack.
+- **4. Cơ Chế Đăng Nhập Quản Trị Viên Khi Hệ Thống Bảo Trì / Quá Tải:**
+  - `src/Backend/middleware/maintenance.middleware.js`: Cho phép route `/api/auth/login` đi qua lớp bảo trì để tiếp nhận thông tin xác thực.
+  - `src/Backend/modules/auth/auth.service.js`: Trong hàm `login`, sau khi đã xác thực mật khẩu bcrypt thành công: Nếu hệ thống đang bật chế độ bảo trì và tài khoản KHÔNG PHẢI là Quản trị viên (`idrole !== 1` và `rolename !== 'admin'`), server ném lỗi HTTP 503 `MAINTENANCE_MODE`. Chỉ tài khoản Quản trị viên đã kiểm tra credentials trong CSDL mới được cấp token và đăng nhập để cứu hộ hệ thống.
+- **5. Gắn Bộ Giới Hạn Tần Suất Đăng Nhập (`authLimiter`):**
+  - `src/Backend/api/auth.routes.js`: Gắn trực tiếp middleware `authLimiter` (50 request / 15 phút) vào toàn bộ 8 endpoint xác thực công khai: `/register/send-otp`, `/register/verify-otp`, `/register`, `/login`, `/refresh`, `/forgot-password`, `/verify-otp`, `/reset-password`.
+  - `src/Backend/middleware/rate-limiter.js`: Xóa bỏ các kẽ hở trong hàm `skip` của `authLimiter` (không còn bỏ qua theo `req.isAdmin` hay `req.originalUrl.includes('/admin')` dễ bị bypass bằng query string). `generalLimiter` chỉ miễn trừ khi token có chữ ký hợp lệ do server phát hành.
+- **6. Nghiệm Thu & Kiểm Thử TDD Khép Kín:**
+  - `src/Backend/tests/unit/aiops.quarantine.test.js`: Đảo ngược ca 10 (IP cách ly mang `isAdminWebClient` bị chặn 403), bổ sung ca 9 (IP cách ly gửi username admin bị chặn 403), ca 11 (Admin có server-verified credentials được qua): **12/12 tests PASS 100%**.
+  - `src/Backend/tests/unit/admin.priority.maintenance.test.js`: Kiểm thử token giả mạo, token thật ký đúng, header tự khai không cấp isAdmin, khóa khẩn cấp timingSafeEqual, route login qua lớp bảo trì: **17/17 tests PASS 100%**.
+  - Toàn bộ suite AIOps (Collector, Detector, Service): **27/27 tests PASS 100%**.
+  - Toàn bộ suite v2 (Multi-vector, Resilience, Auth lifecycle, Admin operations, Sync engine, Core scheduler): **58/58 tests PASS 100%**.
+  - Admin-web Vitest: **57/57 tests PASS 100%**.
+  - Cập nhật tài liệu: Chuyển `SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md` sang `docs/superpowers/backend/DA-XONG/` với trạng thái hoàn tất vá lỗi toàn diện.
+
 
 
 

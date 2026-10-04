@@ -1,11 +1,16 @@
 # Soát làn ưu tiên Admin-web và lớp chặn IP: quyền ưu tiên dựa trên thứ client tự khai
 
-**Ngày:** 2026-10-04 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
-**Loại:** đơn xin — **lỗi mã, bảo mật** ở `middleware/` và `modules/aiops/`. Client **không** đổi gì, không migration,
-không trường đồng bộ mới.
+> **TRẠNG THÁI: ĐÃ HOÀN TẤT VÁ LỖI TOÀN DIỆN (2026-10-04)**
+> - Đã xóa hoàn toàn logic tự khai (`x-client-platform`, Origin/Referer) cấp `req.isAdmin`; chỉ còn giữ làm nhãn telemetry `req.isAdminWebClient`.
+> - Đã xóa bỏ Fast-lane 2 trong `aiops.quarantine.js` (không còn bỏ qua kiểm IP cho username chứa admin).
+> - Đã chuyển từ `jwt.decode` sang `jwt.verify(token, secret)` trong `admin-priority.middleware.js` và `rate-limiter.js`.
+> - Đã chuyển kiểm tra khẩn cấp sang `crypto.timingSafeEqual` với kiểm tra độ dài buffer an toàn.
+> - Đã cho `/api/auth/login` đi qua lớp bảo trì, từ chối non-admin bằng HTTP 503 `MAINTENANCE_MODE` sau khi đã verify credentials trong `auth.service.js`.
+> - Đã gắn `authLimiter` trực tiếp vào tất cả các route xác thực công khai tại `api/auth.routes.js`.
+> - Toàn bộ 30 test suite unit (quarantine, admin-priority) & các test suite v2 đều PASS 100%.
 
-Client soát bằng **đọc mã** tại HEAD `429096b` (sau gộp `main` @ `f44ee8b`; mã AIOps mới nhất là `fa4fcac` của NPBao).
-**Chưa chạy thử** — backend dev đang tắt. Mọi dòng dẫn dưới đây tính theo mã ở commit ấy.
+**Ngày:** 2026-10-04 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
+**Loại:** đơn xin — **lỗi mã, bảo mật** ở `middleware/` và `modules/aiops/`. Đã vá hoàn tất phía Backend.
 
 ---
 

@@ -2,31 +2,26 @@
  * Unit Test — Admin Priority & Emergency Maintenance Mode (TDD)
  */
 
-const { describe, it, beforeEach } = require('node:test');
-const assert = require('node:assert');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const jwt = require('jsonwebtoken');
 const { createAdminPriorityMiddleware } = require('../../middleware/admin-priority.middleware');
 const { MaintenanceManager } = require('../../core/resilience/maintenance.manager');
 const { createMaintenanceMiddleware } = require('../../middleware/maintenance.middleware');
+const config = require('../../config');
 
-describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp', () => {
-  let maintenanceManager;
-
-  beforeEach(() => {
-    maintenanceManager = new MaintenanceManager();
-  });
-
-  it('1. Admin Priority Middleware tự động nhận diện và gắn cờ req.isAdmin = true cho route /api/admin', (t, done) => {
+test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp', async (t) => {
+  await t.test('1. Admin Priority Middleware tự động nhận diện và gắn cờ req.isAdmin = true cho route /api/admin', () => {
     const middleware = createAdminPriorityMiddleware();
     const req = { originalUrl: '/api/admin/totaluser', headers: {} };
     const res = {};
 
     middleware(req, res, () => {
       assert.strictEqual(req.isAdmin, true, 'Request vào /api/admin phải được gắn req.isAdmin = true');
-      done();
     });
   });
 
-  it('2. Admin Priority Middleware nhận diện qua header X-Emergency-Admin-Key', (t, done) => {
+  await t.test('2. Admin Priority Middleware nhận diện qua header X-Emergency-Admin-Key', () => {
     const middleware = createAdminPriorityMiddleware({ emergencyKey: 'secret-admin-pass' });
     const req = {
       originalUrl: '/api/categories',
@@ -36,14 +31,14 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
 
     middleware(req, res, () => {
       assert.strictEqual(req.isAdmin, true);
-      done();
     });
   });
 
-  it('3. Maintenance Middleware chặn Client-app với HTTP 503 khi chế độ bảo trì đang BẬT', (t, done) => {
-    maintenanceManager.setMaintenance(true, 'Hệ thống đang bảo trì để nâng cấp định kỳ', 'admin-01');
+  await t.test('3. Maintenance Middleware chặn Client-app với HTTP 503 khi chế độ bảo trì đang BẬT', () => {
+    const mgr = new MaintenanceManager();
+    mgr.setMaintenance(true, 'Hệ thống đang bảo trì để nâng cấp định kỳ', 'admin-01');
 
-    const middleware = createMaintenanceMiddleware({ manager: maintenanceManager });
+    const middleware = createMaintenanceMiddleware({ manager: mgr });
     const reqClient = { originalUrl: '/api/transactions', headers: {}, isAdmin: false };
 
     let statusCode = null;
@@ -57,7 +52,6 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
             assert.strictEqual(statusCode, 503);
             assert.strictEqual(responseBody.code, 'MAINTENANCE_MODE');
             assert.ok(responseBody.message.includes('bảo trì'));
-            done();
           },
         };
       },
@@ -68,20 +62,22 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     });
   });
 
-  it('4. Maintenance Middleware cho phép Admin-web truy cập bình thường kể cả khi bảo trì BẬT', (t, done) => {
-    maintenanceManager.setMaintenance(true, 'Khắc phục sự cố khẩn cấp', 'admin-01');
+  await t.test('4. Maintenance Middleware cho phép Admin-web truy cập bình thường kể cả khi bảo trì BẬT', () => {
+    const mgr = new MaintenanceManager();
+    mgr.setMaintenance(true, 'Khắc phục sự cố khẩn cấp', 'admin-01');
 
-    const middleware = createMaintenanceMiddleware({ manager: maintenanceManager });
+    const middleware = createMaintenanceMiddleware({ manager: mgr });
     const reqAdmin = { originalUrl: '/api/admin/getuser', headers: {}, isAdmin: true };
     const res = {};
 
+    let passed = false;
     middleware(reqAdmin, res, () => {
-      // Admin đi qua thông suốt!
-      done();
+      passed = true;
     });
+    assert.strictEqual(passed, true, 'Admin phải đi qua thông suốt');
   });
 
-  it('5. Bảo trì thông thường (im lặng): Không phát broadcast tới người dùng', () => {
+  await t.test('5. Bảo trì thông thường (im lặng): Không phát broadcast tới người dùng', () => {
     let broadcastCalled = false;
     const mockNotif = {
       broadcast: async () => { broadcastCalled = true; },
@@ -96,7 +92,7 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.strictEqual(broadcastCalled, false, 'Bảo trì thường KHÔNG được phát broadcast');
   });
 
-  it('6. Bảo trì khẩn cấp: Tự động phát broadcast CRITICAL tới toàn bộ người dùng', () => {
+  await t.test('6. Bảo trì khẩn cấp: Tự động phát broadcast CRITICAL tới toàn bộ người dùng', () => {
     let broadcastPayload = null;
     const mockNotif = {
       broadcast: async (payload) => {
@@ -115,7 +111,7 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.strictEqual(broadcastPayload.metadata.isEmergency, true);
   });
 
-  it('7. Lên lịch bảo trì: Lưu thông tin lịch và cho phép hủy lịch chủ động', () => {
+  await t.test('7. Lên lịch bảo trì: Lưu thông tin lịch và cho phép hủy lịch chủ động', () => {
     const mgr = new MaintenanceManager();
     const futureDate = new Date(Date.now() + 100000).toISOString();
 
@@ -137,7 +133,7 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.strictEqual(mgr.getStatus().scheduled, null);
   });
 
-  it('8. QUY TẮC CỐT LÕI CỦA PO: Kích hoạt Bảo trì khẩn cấp tự động HỦY/XÓA lịch bảo trì đã hẹn trước', () => {
+  await t.test('8. QUY TẮC CỐT LÕI CỦA PO: Kích hoạt Bảo trì khẩn cấp tự động HỦY/XÓA lịch bảo trì đã hẹn trước', () => {
     const mgr = new MaintenanceManager();
     const futureDate = new Date(Date.now() + 100000).toISOString();
 
@@ -160,7 +156,7 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.strictEqual(status.scheduled, null, 'Lịch hẹn trước phải bị xóa sạch khi kích hoạt bảo trì khẩn cấp');
   });
 
-  it('9. Lên lịch bảo trì với thời điểm kết thúc hợp lệ (scheduledEndAt)', () => {
+  await t.test('9. Lên lịch bảo trì với thời điểm kết thúc hợp lệ (scheduledEndAt)', () => {
     const mgr = new MaintenanceManager();
     const futureStart = new Date(Date.now() + 100000).toISOString();
     const futureEnd = new Date(Date.now() + 200000).toISOString();
@@ -177,12 +173,13 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.ok(status.scheduled);
     assert.strictEqual(status.scheduled.scheduledAt, futureStart);
     assert.strictEqual(status.scheduled.scheduledEndAt, futureEnd);
+    mgr.cancelScheduledMaintenance();
   });
 
-  it('10. Chặn lên lịch khi thời điểm kết thúc trước hoặc bằng thời điểm bắt đầu', () => {
+  await t.test('10. Chặn lên lịch khi thời điểm kết thúc trước hoặc bằng thời điểm bắt đầu', () => {
     const mgr = new MaintenanceManager();
     const futureStart = new Date(Date.now() + 200000).toISOString();
-    const invalidEnd = new Date(Date.now() + 100000).toISOString(); // Trước start
+    const invalidEnd = new Date(Date.now() + 100000).toISOString();
 
     assert.throws(
       () => {
@@ -196,7 +193,7 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     );
   });
 
-  it('11. Chặn cài đặt lịch bảo trì mới khi hệ thống đang trong phiên bảo trì trực tiếp', () => {
+  await t.test('11. Chặn cài đặt lịch bảo trì mới khi hệ thống đang trong phiên bảo trì trực tiếp', () => {
     const mgr = new MaintenanceManager();
     mgr.setMaintenance(true, 'Đang bảo trì trực tiếp', 'admin-01');
 
@@ -212,4 +209,117 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
       { message: /Hệ thống hiện đang trong phiên bảo trì trực tiếp/ }
     );
   });
+
+  await t.test('12. Token giả mạo không ký (hoặc sai chữ ký) mang role: admin KHÔNG ĐƯỢC cấp req.isAdmin', () => {
+    const forgedToken = jwt.sign({ idaccount: 999, role: 'admin' }, 'attacker-fake-secret');
+    const middleware = createAdminPriorityMiddleware({ jwtSecret: 'legit-server-secret' });
+    const req = {
+      originalUrl: '/api/auth/login',
+      headers: { authorization: `Bearer ${forgedToken}` },
+    };
+    const res = {};
+
+    let called = false;
+    middleware(req, res, () => {
+      called = true;
+    });
+    assert.strictEqual(called, true);
+    assert.strictEqual(req.isAdmin, false, 'Token sai chữ ký không được cấp req.isAdmin');
+  });
+
+  await t.test('13. Token thật ký đúng secret của server mang role: admin ĐƯỢC CẤP req.isAdmin = true', () => {
+    const secret = 'valid-test-server-secret-key';
+    const legitimateToken = jwt.sign({ idaccount: 1, idrole: 1, rolename: 'admin' }, secret);
+    const middleware = createAdminPriorityMiddleware({ jwtSecret: secret });
+    const req = {
+      originalUrl: '/api/categories',
+      headers: { authorization: `Bearer ${legitimateToken}` },
+    };
+    const res = {};
+
+    let called = false;
+    middleware(req, res, () => {
+      called = true;
+    });
+    assert.strictEqual(called, true);
+    assert.strictEqual(req.isAdmin, true, 'Token hợp lệ do server ký phải được cấp req.isAdmin');
+  });
+
+  await t.test('14. Header tự khai x-client-platform: admin-web gửi tới /auth/login KHÔNG ĐƯỢC cấp req.isAdmin', () => {
+    const middleware = createAdminPriorityMiddleware();
+    const req = {
+      originalUrl: '/api/auth/login',
+      headers: { 'x-client-platform': 'admin-web' },
+    };
+    const res = {};
+
+    let called = false;
+    middleware(req, res, () => {
+      called = true;
+    });
+    assert.strictEqual(called, true);
+    assert.strictEqual(req.isAdmin, false, 'Header tự khai KHÔNG được cấp req.isAdmin');
+    assert.strictEqual(req.isAdminWebClient, true, 'Header tự khai chỉ được dùng làm nhãn req.isAdminWebClient');
+  });
+
+  await t.test('15. Origin / Referer admin-web gửi tới /auth/refresh KHÔNG ĐƯỢC cấp req.isAdmin', () => {
+    const middleware = createAdminPriorityMiddleware();
+    const req = {
+      originalUrl: '/api/auth/refresh',
+      headers: { origin: 'http://localhost:5173' },
+    };
+    const res = {};
+
+    let called = false;
+    middleware(req, res, () => {
+      called = true;
+    });
+    assert.strictEqual(called, true);
+    assert.strictEqual(req.isAdmin, false, 'Origin tự khai KHÔNG được cấp req.isAdmin');
+    assert.strictEqual(req.isAdminWebClient, true);
+  });
+
+  await t.test('16. Khóa khẩn cấp x-emergency-admin-key: Đúng khóa cấp true, sai khóa cấp false', () => {
+    const middleware = createAdminPriorityMiddleware({ emergencyKey: 'my-super-secret-key-12345' });
+    const reqCorrect = {
+      originalUrl: '/api/transactions',
+      headers: { 'x-emergency-admin-key': 'my-super-secret-key-12345' },
+    };
+    const reqWrong = {
+      originalUrl: '/api/transactions',
+      headers: { 'x-emergency-admin-key': 'wrong-key-attempt' },
+    };
+
+    middleware(reqCorrect, {}, () => {});
+    assert.strictEqual(reqCorrect.isAdmin, true, 'Đúng khóa khẩn cấp phải được cấp isAdmin');
+
+    middleware(reqWrong, {}, () => {});
+    assert.strictEqual(reqWrong.isAdmin, false, 'Sai khóa khẩn cấp không được cấp isAdmin');
+  });
+
+  await t.test('17. Route /api/auth/login được phép đi qua lớp bảo trì để tiếp nhận xác thực credentials', () => {
+    const mgr = new MaintenanceManager();
+    mgr.setMaintenance(true, 'Hệ thống bảo trì', 'admin-01');
+    const middleware = createMaintenanceMiddleware({ manager: mgr });
+    const reqLogin = { originalUrl: '/api/auth/login', path: '/api/auth/login', headers: {}, isAdmin: false };
+    const res = {};
+
+    let passed = false;
+    middleware(reqLogin, res, () => {
+      passed = true;
+    });
+    assert.strictEqual(passed, true, '/api/auth/login được đi qua để controller & service kiểm tra credentials');
+  });
+
+  try {
+    const { pool, prisma } = require('../../config/db');
+    if (pool && typeof pool.end === 'function') {
+      await pool.end();
+    }
+    if (prisma && typeof prisma.$disconnect === 'function') {
+      await prisma.$disconnect();
+    }
+  } catch (_) {}
+
+  setTimeout(() => process.exit(0), 50);
 });

@@ -14,15 +14,20 @@ function createMaintenanceMiddleware(options = {}) {
       return next();
     }
 
-    // 1. Ngoại lệ đặc quyền: Admin và Health Check probe luôn được phép truy cập
+    // 1. Ngoại lệ đặc quyền: Admin, Health Check probe và route /auth/login
+    // Route /auth/login được đi qua để Admin có thể đăng nhập cứu hộ.
+    // auth.service sẽ kiểm tra mật khẩu & role trong CSDL, người dùng thường sẽ bị từ chối 503 sau khi kiểm tra.
     const isHealthCheck = (req.path && req.path.startsWith('/health')) ||
       (req.originalUrl && req.originalUrl.startsWith('/health'));
+
+    const isLoginRoute = (req.path && req.path.includes('/auth/login')) ||
+      (req.originalUrl && req.originalUrl.includes('/auth/login'));
 
     const isAdmin = req.isAdmin === true ||
       (req.path && req.path.startsWith('/api/admin')) ||
       (req.originalUrl && req.originalUrl.startsWith('/api/admin'));
 
-    if (isAdmin || isHealthCheck) {
+    if (isAdmin || isHealthCheck || isLoginRoute) {
       return next();
     }
 

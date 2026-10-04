@@ -298,20 +298,8 @@ class AIOpsQuarantine {
    */
   createMiddleware() {
     return (req, res, next) => {
-      // Fast-lane 1: Miễn trừ tuyệt đối 100% cho Admin-web và các route /api/admin
+      // Fast-lane: Miễn trừ cho request đã được SERVER XÁC THỰC là Admin thật (Token hợp lệ, Khóa khẩn cấp)
       if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) {
-        return next();
-      }
-
-      // Fast-lane 2: Cho phép request POST /api/auth/login đi tiếp nếu đang đăng nhập tài khoản admin hoặc từ Admin-web
-      const isLoginRoute = (req.originalUrl && req.originalUrl.includes('/auth/login')) || 
-                           (req.path && req.path.includes('/auth/login'));
-      const isTryingAdmin = req.body && (
-        req.body.username === 'admin' || 
-        req.body.email === 'admin' ||
-        (typeof req.body.username === 'string' && req.body.username.toLowerCase().includes('admin'))
-      );
-      if (isLoginRoute && (isTryingAdmin || req.isAdminWebClient)) {
         return next();
       }
 

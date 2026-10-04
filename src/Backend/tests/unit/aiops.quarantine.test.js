@@ -154,12 +154,12 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.strictEqual(q.isQuarantined(ip).quarantined, false);
   });
 
-  await t.test('9. POST /api/auth/login with admin username bypasses quarantine so credentials can be verified', () => {
+  await t.test('9. POST /api/auth/login with admin username from quarantined IP MUST BE BLOCKED (HTTP 403)', () => {
     const q = new AIOpsQuarantine();
     const mw = q.createMiddleware();
     const ip = '14.161.22.33';
 
-    q.quarantine(ip, 'Accidentally quarantined IP');
+    q.quarantine(ip, 'Quarantined Brute-Force IP');
 
     const req = {
       ip,
@@ -171,13 +171,61 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
       isAdmin: false,
     };
 
-    let nextCalled = false;
-    mw(req, {}, () => { nextCalled = true; });
+    let statusCode = null;
+    let jsonBody = null;
+    const res = {
+      status: (code) => {
+        statusCode = code;
+        return {
+          json: (body) => { jsonBody = body; },
+        };
+      },
+    };
 
-    assert.strictEqual(nextCalled, true, 'Admin login attempt must NOT be rejected by quarantine shield');
+    let nextCalled = false;
+    mw(req, res, () => { nextCalled = true; });
+
+    assert.strictEqual(nextCalled, false, 'Quarantined IP cannot bypass quarantine by guessing admin username');
+    assert.strictEqual(statusCode, 403);
+    assert.strictEqual(jsonBody.code, 'AIOPS_QUARANTINED');
   });
 
-  await t.test('10. Requests with req.isAdminWebClient = true bypass quarantine', () => {
+  await t.test('10. Requests with req.isAdminWebClient = true from quarantined IP MUST BE BLOCKED (HTTP 403)', () => {
+    const q = new AIOpsQuarantine();
+    const mw = q.createMiddleware();
+    const ip = '14.161.22.33';
+
+    q.quarantine(ip, 'Quarantined IP');
+
+    const req = {
+      ip,
+      headers: { 'x-client-platform': 'admin-web' },
+      method: 'POST',
+      originalUrl: '/api/auth/login',
+      isAdminWebClient: true,
+      isAdmin: false,
+    };
+
+    let statusCode = null;
+    let jsonBody = null;
+    const res = {
+      status: (code) => {
+        statusCode = code;
+        return {
+          json: (body) => { jsonBody = body; },
+        };
+      },
+    };
+
+    let nextCalled = false;
+    mw(req, res, () => { nextCalled = true; });
+
+    assert.strictEqual(nextCalled, false, 'Client self-declared header must NOT bypass quarantine');
+    assert.strictEqual(statusCode, 403);
+    assert.strictEqual(jsonBody.code, 'AIOPS_QUARANTINED');
+  });
+
+  await t.test('11. Requests with server-verified req.isAdmin = true ARE ALLOWED to pass quarantine', () => {
     const q = new AIOpsQuarantine();
     const mw = q.createMiddleware();
     const ip = '14.161.22.33';
@@ -189,13 +237,12 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
       headers: {},
       method: 'POST',
       originalUrl: '/api/auth/login',
-      isAdminWebClient: true,
-      isAdmin: false,
+      isAdmin: true, // Verified by server
     };
 
     let nextCalled = false;
     mw(req, {}, () => { nextCalled = true; });
 
-    assert.strictEqual(nextCalled, true, 'Admin-web client must bypass quarantine');
+    assert.strictEqual(nextCalled, true, 'Server-verified admin must pass quarantine');
   });
 });
