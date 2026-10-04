@@ -59,6 +59,7 @@ library;
 import '../../../core/category/category_name.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/so_bang_chu.dart';
+import 'chon.dart';
 import 'cong_cu.dart';
 import 'hang_muc_tieu.dart';
 import 'hang_tong_quan.dart';
@@ -841,7 +842,10 @@ bool _coCaHaiChieu(String q0) {
 final List<String> _tuDuoiNua =
     'chua dung den mot nua|duoi nua|chua den nua|duoi mot nua|chua toi nua'.split('|');
 final List<String> _tuTrenNua = 'qua nua|hon nua|tren nua'.split('|');
-final List<String> _tuNganSachCang = 'sap het|cang nhat|dung nhieu nhat|vuot'.split('|');
+final List<String> _tuNganSachCang = 'cang nhat|dung nhieu nhat'.split('|');
+/// G2 (Realme 2026-10-04): *"sắp hết / vượt"* hỏi ngưỡng cảnh báo, không hỏi ngân
+/// sách dùng nhiều nhất — mã nội bộ [kChonSapHet].
+final List<String> _tuNganSachSapHet = 'sap het|vuot'.split('|');
 final List<String> _tuNganSachRong = 'it dung nhat|con nhieu nhat|dung it nhat'.split('|');
 /// Lát 3 Task 11: hỏi CHUYỂN tiền giữa các ngân sách → `can_doi`, xét trước mọi
 /// mã khác (F15 *"nên chuyển bớt ngân sách nào sang ngân sách nào"* không có chữ
@@ -867,6 +871,8 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
     chon = 'duoi_nua';
   } else if (_tuTrenNua.any((t) => _co(q, t))) {
     chon = 'tren_nua';
+  } else if (_tuNganSachSapHet.any((t) => _co(q, t))) {
+    chon = kChonSapHet;
   } else if (_tuNganSachCang.any((t) => _co(q, t))) {
     chon = 'nhieu_nhat';
   } else if (_tuNganSachRong.any((t) => _co(q, t))) {

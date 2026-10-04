@@ -317,10 +317,15 @@ void main() {
   });
 
   group('chinhThamSoNganSach', () {
-    test('⭐ E18 "chua dung den mot nua" → duoi_nua; "qua nua" → tren_nua; "sap het" → nhieu_nhat; không từ khoá → giữ', () {
+    test('⭐ E18 "chua dung den mot nua" → duoi_nua; "qua nua" → tren_nua; "sap het" / "vuot" → sap_het; "dung nhieu nhat" → nhieu_nhat; không từ khoá → giữ', () {
       expect(chinhThamSoNganSach('ngan sach nao toi chua dung den mot nua', {}).args['chon'], 'duoi_nua');
       expect(chinhThamSoNganSach('ngan sach nao da qua nua', {}).args['chon'], 'tren_nua');
-      expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'nhieu_nhat');
+      // G2 (Realme 2026-10-04, người dùng chốt): "sắp hết" là NGƯỠNG CẢNH BÁO của từng
+      // ngân sách, không phải "ngân sách dùng nhiều nhất" — Ăn uống 2 % từng được kể.
+      expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('han muc nao sap het', {'chon': 'can_doi'}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('ngan sach nao bi vuot', {}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('ngan sach nao dung nhieu nhat', {}).args['chon'], 'nhieu_nhat');
       expect(chinhThamSoNganSach('ngan sach nao it dung nhat', {}).args['chon'], 'it_nhat');
       expect(chinhThamSoNganSach('con bao nhieu tien ngan sach', {'chon': 'duoi_nua'}).args.containsKey('chon'), isFalse,
           reason: 'luật 10 (E10 cổng E): mô hình điền duoi_nua cho "ngân sách ăn uống còn lại bao nhiêu" — không bằng chứng → gỡ');
@@ -346,7 +351,7 @@ void main() {
     ]) {
       expect(chinhThamSoNganSach(cau, {'chon': 'nhieu_nhat'}).args['chon'], 'can_doi', reason: cau);
     }
-    expect(chinhThamSoNganSach('ngan sach nao sap het', {}).args['chon'], 'nhieu_nhat',
+    expect(chinhThamSoNganSach('ngan sach nao sap het', {}).args['chon'], 'sap_het',
         reason: 'phản ví dụ: hỏi tỉ lệ, không hỏi chuyển');
   });
 
