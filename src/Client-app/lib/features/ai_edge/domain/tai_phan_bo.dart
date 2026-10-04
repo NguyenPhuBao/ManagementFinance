@@ -19,6 +19,7 @@ import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_history.dart';
 import '../../analytics/domain/du_bao_dong_tien.dart' show buocTron;
 import '../../budget/domain/budget_pace.dart';
+import '../../budget/domain/nhip_chi.dart';
 import '../../analytics/domain/nguong_co_nghia.dart';
 
 // `nguongCoNghia` và hằng sàn dời về `analytics/domain` (B3, 2026-09-29) — xuất
@@ -80,14 +81,23 @@ double buocLamTron(double thuNhapMoiThang) =>
 /// Dự phóng chi cuối kỳ (B4 + B5). `null` khi kỳ rỗng hoặc dưới
 /// [kNgayKhoaDuPhong] ngày mà không có [mucThang] — khi ấy người gọi chỉ được
 /// dùng số đã chi, tức chỉ báo khi **đã** vượt.
+///
+/// Có [nhipChi] (dự án C việc hai) thì dự phóng = đã chi + phần MỌI KHI còn chi
+/// từ thời điểm này tới cuối kỳ — không nhân tốc độ kỳ này, nên tiền nhà trả đầu
+/// tháng hay một món lớn đầu kỳ không bị phóng lên. `null` = chưa biết nhịp →
+/// phép cũ.
 double? duPhongCua(
   BudgetView v, {
   required DateTime now,
   required double? mucThang,
+  NhipChi? nhipChi,
 }) {
   final b = v.budget;
   final nhip = budgetPaceOf(b, now);
   if (nhip.daysTotal <= 0) return null;
+  if (nhipChi != null) {
+    return b.spent + nhipChi.conChiMoiKhi(nhip.phanThoiGian);
+  }
   final daQua = nhip.daysTotal - nhip.daysLeft;
   if (daQua >= kNgayKhoaDuPhong) return b.spent * nhip.daysTotal / daQua;
   if (mucThang == null) return null;
@@ -175,6 +185,8 @@ bool daBiCatHaiKyLienTruoc(
 
 /// Kế hoạch cho ngân sách thâm hụt lớn nhất trong [dangChay], hoặc `null` khi
 /// không ngân sách nào thâm hụt. [coDinh] là tập **categoryId** có cờ Cố định.
+/// [nhipTheoNganSach] là nhịp chi đã học theo **id ngân sách** — thiếu khoá hay
+/// `null` thì ngân sách ấy dự phóng theo phép cũ (`duPhongCua`).
 KeHoachTaiPhanBo? taiPhanBoCua({
   required List<BudgetView> dangChay,
   required DateTime now,
@@ -182,6 +194,7 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   required double thuNhapMoiThang,
   required Map<String, double?> mucThangTheoNganSach,
   required List<PhanHoiCu> phanHoi,
+  Map<String, NhipChi?> nhipTheoNganSach = const {},
 }) {
   final ungVien = [
     for (final v in dangChay)
@@ -195,7 +208,12 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   final buoc = buocLamTron(thuNhapMoiThang);
 
   double duPhong(BudgetView v) =>
-      duPhongCua(v, now: now, mucThang: mucThangTheoNganSach[v.budget.id]) ??
+      duPhongCua(
+        v,
+        now: now,
+        mucThang: mucThangTheoNganSach[v.budget.id],
+        nhipChi: nhipTheoNganSach[v.budget.id],
+      ) ??
       v.budget.spent;
 
   // ── Thâm hụt lớn nhất ────────────────────────────────────────────────────

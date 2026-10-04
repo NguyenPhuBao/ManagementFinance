@@ -5,7 +5,10 @@ library;
 
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../budget/domain/nhip_chi_mau.dart';
 
 final _now = DateTime(2026, 9, 21);
 
@@ -276,6 +279,73 @@ void main() {
           reason: '25 % = 308.641,75, bước 10.000');
       expect(_kh([hut, le], thuNhapMoiThang: 12000000)!.dong.single.soTien, 300000,
           reason: 'cùng 308.641,75 nhưng bước 25.000');
+    });
+  });
+
+  group('dự phóng theo nhịp riêng (dự án C việc hai)', () {
+    final nhaO = _v('nha', amount: 5000000, spent: 4200000, ten: 'Nhà ở');
+    final anUong = _v('an', amount: 3000000, spent: 2100000, ten: 'Ăn uống');
+    final muaSam = _v('mua', amount: 2000000, spent: 1500000, ten: 'Mua sắm');
+
+    test('⭐ Nhà ở: đã chi + phần mọi khi còn chi = 4.800.000 (hôm nay 25.200.000)',
+        () {
+      expect(duPhongCua(nhaO, now: mocMau, mucThang: null),
+          closeTo(25200000, 1));
+      expect(
+          duPhongCua(nhaO, now: mocMau, mucThang: null, nhipChi: nhipNhaO()),
+          closeTo(4800000, 1e-6));
+    });
+
+    test('Mua sắm: món lớn đầu kỳ KHÔNG bị nhân lên — 2.400.000 (hôm nay 9.000.000)',
+        () {
+      expect(duPhongCua(muaSam, now: mocMau, mucThang: null),
+          closeTo(9000000, 1));
+      expect(
+          duPhongCua(muaSam,
+              now: mocMau, mucThang: null, nhipChi: nhipMuaSam()),
+          closeTo(2400000, 1e-6));
+    });
+
+    test('nhịp thắng cả mức tháng (không rơi vào nhánh dưới 5 ngày)', () {
+      final dauKy = DateTime(2026, 11, 3);
+      expect(
+          duPhongCua(anUong,
+              now: dauKy, mucThang: 2800000, nhipChi: nhipAnUong()),
+          closeTo(2100000 + nhipAnUong().conChiMoiKhi(2 / 30), 1e-6));
+    });
+
+    KeHoachTaiPhanBo? ke(Map<String, NhipChi?> nhip) => taiPhanBoCua(
+          dangChay: [nhaO, anUong, muaSam],
+          now: mocMau,
+          coDinh: const {},
+          thuNhapMoiThang: 0,
+          mucThangTheoNganSach: const {},
+          phanHoi: const [],
+          nhipTheoNganSach: nhip,
+        );
+
+    test('⭐ không nhịp: kế hoạch nhắm NHẦM Nhà ở (thâm hụt 20,2 triệu) — báo động oan hôm nay',
+        () {
+      final kh = ke(const {})!;
+      expect(kh.thieu.budget.id, 'nha');
+      expect(kh.thamHut, closeTo(20200000, 1));
+    });
+
+    test('⭐ có nhịp: nhắm đúng Ăn uống (1.300.000), Nhà ở thành NGUỒN BÙ', () {
+      final kh =
+          ke({'nha': nhipNhaO(), 'an': nhipAnUong(), 'mua': nhipMuaSam()})!;
+      expect(kh.thieu.budget.id, 'an');
+      expect(kh.thamHut, closeTo(1300000, 1e-6));
+      expect(kh.dong.map((d) => d.nguon.budget.id), ['nha'],
+          reason: 'Nhà ở dư địa 5.000.000 − 4.800.000 = 200.000 ≥ sàn 100.000; '
+              'Mua sắm đang thâm hụt.');
+      expect(kh.dong.single.soTien,
+          lamTronBuoc(0.25 * 200000, buocLamTron(0)));
+    });
+
+    test('nhịp null cho một ngân sách → ngân sách ấy đi phép cũ', () {
+      final kh = ke({'nha': null, 'an': nhipAnUong(), 'mua': nhipMuaSam()})!;
+      expect(kh.thieu.budget.id, 'nha');
     });
   });
 }
