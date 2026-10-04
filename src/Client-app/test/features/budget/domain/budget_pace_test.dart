@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
 
+import 'nhip_chi_mau.dart';
+
 void main() {
   BudgetEntity nganSach({
     required DateTime start,
@@ -157,6 +159,54 @@ void main() {
       expect(pace.daysLeft, 0);
       expect(pace.suggestedPerDay, 0);
       expect(pace.status, BudgetPaceStatus.onTrack);
+    });
+  });
+
+  group('nhịp riêng (dự án C việc hai)', () {
+    // Nhà ở 5.000.000, đã chi 4.200.000 lúc trưa 06/11 (spec mục 1.2 / 3.3).
+    final nhaO = nganSach(
+        start: DateTime(2026, 8, 1), amount: 5000000, spent: 4200000);
+
+    test('⭐ không nhịp → từng con số y như trước (giả định chi đều)', () {
+      final p = budgetPaceOf(nhaO, mocMau);
+      expect(p.theoNhipRieng, isFalse);
+      expect(p.phanThoiGian, closeTo(5.5 / 30, 1e-9));
+      expect(p.expectedSpent, closeTo(5000000 * 5.5 / 30, 1e-6));
+      expect(p.status, BudgetPaceStatus.fast,
+          reason: 'Đây là báo động oan hôm nay: tiền nhà trả ngày 1 nên 84 % '
+              'vào ngày 6 là bình thường.');
+    });
+
+    test('⭐ có nhịp: đáng lẽ đã chi = hạn mức × phần mọi khi; chip theo nhịp → đúng nhịp',
+        () {
+      final p = budgetPaceOf(nhaO, mocMau, nhipChi: nhipNhaO());
+      expect(p.theoNhipRieng, isTrue);
+      expect(p.expectedSpent, closeTo(5000000 * 4000000 / 4600000, 1e-6));
+      expect(p.status, BudgetPaceStatus.onTrack,
+          reason: '0,84 so với 0,8696 — lệch 3 điểm, trong biên ±5.');
+    });
+
+    test('nhịp KHÔNG đổi số ngày, nên chi mỗi ngày, phần thời gian', () {
+      final a = budgetPaceOf(nhaO, mocMau);
+      final b = budgetPaceOf(nhaO, mocMau, nhipChi: nhipNhaO());
+      expect(b.daysTotal, a.daysTotal);
+      expect(b.daysLeft, a.daysLeft);
+      expect(b.suggestedPerDay, a.suggestedPerDay);
+      expect(b.phanThoiGian, a.phanThoiGian);
+    });
+
+    test('chi nhanh hơn mọi khi vẫn là nhanh — Ăn uống 70 % ngày 6', () {
+      final anUong = nganSach(
+          start: DateTime(2026, 8, 1), amount: 3000000, spent: 2100000);
+      expect(budgetPaceOf(anUong, mocMau, nhipChi: nhipAnUong()).status,
+          BudgetPaceStatus.fast);
+    });
+
+    test('kỳ rỗng (chưa tới ngày bắt đầu) → empty kể cả khi có nhịp', () {
+      final chuaToi = nganSach(start: DateTime(2026, 12, 1));
+      final p = budgetPaceOf(chuaToi, mocMau, nhipChi: nhipNhaO());
+      expect(p.daysTotal, 0);
+      expect(p.theoNhipRieng, isFalse);
     });
   });
 }
