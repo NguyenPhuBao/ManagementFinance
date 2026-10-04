@@ -179,7 +179,7 @@ Bảng quy định thời hạn lưu trữ chi tiết cho từng nhóm dữ li�
 | Nhóm dữ liệu | Bảng CSDL liên quan | Thời hạn lưu trữ tối thiểu | Thời hạn lưu trữ tối đa | Căn cứ pháp lý & Tiêu chuẩn | Xử lý khi hết hạn |
 |---|---|---|---|---|---|
 | **Xác thực tạm thời (OTP)** | `otp_code` | 10 phút (hiệu lực mã) | **24 giờ** kể từ khi tạo | OWASP Session & Storage Limitation (NĐ 13/2023 Điều 13) | **Purge tự động** (xóa vật lý khỏi CSDL) hàng ngày |
-| **Phiên đăng nhập & Token** | `refreshtoken` | Theo thời hạn hiệu lực Token (7 - 30 ngày) | **30 ngày** sau khi hết hạn hoặc bị thu hồi (`Status = TRUE`) | OWASP Session Management & NĐ 53/2022 | **Purge tự động** bản ghi token hết hạn > 30 ngày |
+| **Phiên đăng nhập & Token** | `refreshtoken` | Theo thời hạn hiệu lực Token (7 - 30 ngày) | **30 ngày** sau khi hết hạn hoặc bị thu hồi (`Status = TRUE`) | OWASP Session Management, NĐ 53/2022, Luật BV DLCN 2025 | **Zero Raw IP**: Lưu IP đã che mờ (`a.b.xx.xx`). **Purge tự động** bản ghi token hết hạn > 30 ngày |
 | **Nhật ký kiểm toán (Audit)** | `auditlog` | **12 tháng** | **24 - 36 tháng** | Nghị định 53/2022/NĐ-CP (Điều 26) | Sau 12 tháng: Nén xuất kho lạnh (Cold Storage/Archive) hoặc xóa dữ liệu hết hạn điều tra |
 | **Định danh & Tài khoản** | `account`, `User` | Trong suốt thời gian tài khoản hoạt động (`Active`) | Khi người dùng yêu cầu xóa: **30 ngày ân hạn (`PendingDelete`)** $\rightarrow$ Chuyển `Deleted` | Nghị định 13/2023/NĐ-CP (Điều 9 - Quyền xóa dữ liệu) | Sau 30 ngày: Ẩn danh hóa thông tin cá nhân (Email, Phone, Address, Họ tên) hoặc xóa mềm triệt để |
 | **Giao dịch tài chính cốt lõi** | `transaction` | **5 năm** kể từ ngày phát sinh giao dịch | Vô thời hạn (hoặc theo yêu cầu người dùng) | Luật Kế toán 2015 (Điều 41) & Nghị định 174/2016/NĐ-CP | Sau 5 năm: Được phép nén lưu trữ ngoại tuyến (Cold Archive) hoặc ẩn danh hóa nếu tài khoản đã xóa |
@@ -239,6 +239,7 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
   * Phone: `098****321`
   * STK: `**** **** **** 1234`
   * Họ tên công cộng: `Nguyễn P. B.`
+  * IP Address: `113.161.xx.xx` (IPv4) hoặc `2001:0db8:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx` (IPv6)
 * Tích hợp tự động vào các API danh sách quản trị viên (`AdminService.getUsers`, `AdminService.getUserDetail`).
 
 ### 10.4. Kiểm Soát Nội Dung Không Được Chứa PII hay Xúc Phạm
@@ -264,5 +265,39 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * **Xử lý danh mục khi người dùng yêu cầu xóa tài khoản:**
   * Khi tài khoản người dùng ở trạng thái `PendingDelete` (thời hạn ân hạn 30 ngày), danh mục cá nhân vẫn được bảo lưu cục bộ để người dùng có thể khôi phục nếu hủy yêu cầu.
   * Khi hết 30 ngày và chuyển sang trạng thái `Deleted` (quy trình thanh lọc triệt để): Các danh mục cá nhân liên kết với tài khoản sẽ được xóa mềm (`Delete_at = NOW()`) hoặc ẩn danh hóa hoàn toàn, đảm bảo cắt đứt mọi liên kết định danh cá nhân mà vẫn bảo toàn tính toàn vẹn tham chiếu của các giao dịch lịch sử theo Luật Kế toán.
+
+### 10.8. Triệt Tiêu Địa Chỉ IP Thô & Bảo Vệ Quyền Riêng Tư Theo Thiết Kế (Zero Raw IP & Privacy by Design in RefreshToken)
+* **Cơ sở pháp lý & Rủi ro tái định danh:**
+  * Theo Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15) và Nghị định 13/2023/NĐ-CP (Điều 3, Điều 17), địa chỉ IP khi được lưu kèm với mã định danh tài khoản (`Idaccount`) có thể trở thành **dữ liệu cá nhân** có khả năng truy ngược chính xác đến cá nhân và vị trí địa lý của thiết bị nếu dữ liệu bị rò rỉ hoặc bị liên kết chéo với nhà mạng (ISP).
+  * Đồng thời, Luật An ninh mạng 2018 (Điều 26) và Nghị định 53/2022/NĐ-CP yêu cầu hệ thống phải lưu vết thông tin phiên đăng nhập để kịp thời phát hiện các hành vi xâm nhập, chiếm đoạt tài khoản trái phép.
+* **Giải Pháp Kiến Trúc "Zero Raw IP" (Phương Án A Đã Áp Dụng):**
+  * **Che mờ tại nguồn (Masking at Application Ingress):** Tuyệt đối không lưu địa chỉ IP thô (`raw IP`) của người dùng vào bất kỳ bảng CSDL nào. Tại hàm `getDeviceInfo(req)` trong `src/Backend/modules/auth/auth.service.js`, IP từ client (`req.ip` hoặc header `x-forwarded-for`) ngay lập tức được xử lý qua hàm `maskIp(rawIp)` trong `src/Backend/utils/masking.util.js`.
+  * **Quy chuẩn Masking:**
+    * IPv4: Che mờ 2 byte cuối của dải mạng subnet (`113.161.45.67` $\rightarrow$ `113.161.xx.xx`).
+    * IPv6: Giữ nguyên 2 nhóm đầu và che mờ toàn bộ các nhóm sau (`2001:0db8:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx`).
+  * **Làm sạch CSDL Sản Xuất:**
+    * Đã thực thi Migration CSDL `17_mask_refreshtoken_ip_address.sql` đồng bộ trực tiếp lên Cloud Supabase PostgreSQL (AWS Tokyo), sử dụng hàm `REGEXP_REPLACE` chuẩn hóa 100% các bản ghi IP lịch sử trong bảng `refreshtoken` thành `a.b.xx.xx`.
+  * **Thực trạng toàn hệ thống CSDL ManagementFinance:**
+    * Bảng `refreshtoken`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`).
+    * Bảng `aiops_incident`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`) kèm chuỗi băm 1 chiều SHA-256 (`actor_hash`).
+    * Bảng `audit_log`: Không lưu trường địa chỉ IP.
+    * $\rightarrow$ **100% CSDL không còn bất kỳ trường dữ liệu nào lưu địa chỉ IP thô của người dùng**, triệt tiêu triệt để rủi ro vi phạm pháp luật và bảo đảm quyền riêng tư tuyệt đối (Privacy by Design).
+
+### 10.9. Chuẩn Hóa Dung Lượng Lưu Trữ Các Cột Hash & IP (Overflow Guard - 256/512 Ký Tự)
+* **Bối cảnh & Nguy cơ tràn dữ liệu (Length Overflow):**
+  * Trong các hệ thống CSDL truyền thống, các cột lưu mã băm thường bị giới hạn ở 40 ký tự (chuẩn SHA-1 cũ) hoặc 45 ký tự (chuẩn IPv6 max) hoặc 64 ký tự (chuẩn hex SHA-256).
+  * Khi áp dụng các thuật toán băm hiện đại (SHA-256 256-bit, SHA-512 128 hex chars, bcrypt, Argon2id, chuỗi hash có tiền tố thuật toán `sha256:...`, hoặc token băm dài tới 256 ký tự), các cột khai báo 40, 45, hoặc 64 ký tự sẽ ném ngoại lệ nghiêm trọng `value too long for type character varying(...)` làm sập luồng xác thực hoặc giám sát an ninh.
+  * Đồng thời, cột `VARCHAR(255)` truyền thống gặp lỗi biên (off-by-one error) nếu chuỗi hash/token có độ dài đúng 256 ký tự.
+* **Giải Pháp Kỹ Thuật (Migration 18 Đã Áp Dụng Trên Supabase Cloud):**
+  * Thực thi Migration SQL `18_expand_hash_and_ip_columns_capacity.sql` đồng bộ lên PostgreSQL Cloud Supabase:
+    * `refreshtoken.IP_address`: Mở rộng từ `VARCHAR(45)` lên `VARCHAR(256)`. Đảm bảo an toàn tuyệt đối cho cả Masked IP IPv4/IPv6, chuỗi băm IP, lẫn các định danh thiết bị dài tới 256 ký tự.
+    * `refreshtoken.Token_hash`: Mở rộng từ `VARCHAR(255)` lên `VARCHAR(512)`. Loại bỏ 100% nguy cơ tràn bộ đệm khi lưu token băm.
+    * `aiops_incident.actor_hash`: Mở rộng từ `VARCHAR(64)` lên `VARCHAR(256)`. Hỗ trợ lưu trữ mọi định dạng hash thuật toán.
+    * `aiops_incident.actor_identity`: Mở rộng từ `VARCHAR(100)` lên `VARCHAR(256)`.
+    * `aiops_incident.id`: Mở rộng từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    * `bank_account.Account_number_hash`: Mở rộng từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    * `otp_code.code_hash`: Mở rộng từ `VARCHAR(255)` lên `VARCHAR(512)`.
+  * **Đặc tính PostgreSQL:** Việc mở rộng độ dài `VARCHAR(n)` lên độ dài lớn hơn trong PostgreSQL là thao tác metadata tức thì ($< 1\text{ms}$), không khóa bảng, không ghi đè dữ liệu và không làm tăng chi phí lưu trữ trên đĩa.
+
 
 

@@ -23,17 +23,15 @@ async function bootstrap() {
     // 2. Verify Redis connection (non-blocking)
     logger.info('Connecting to Redis...');
     const redisOk = await verifyRedisConnection();
-    if (!redisOk) {
-      logger.warn('Redis unavailable — running without cache/queues');
+    if (redisOk) {
       // 2b. Start workers (BullMQ) — chỉ khi Redis available
       logger.info('Starting AI Worker...');
       require('./workers/ai.worker');
-      
-      logger.info('Starting Bank Worker...');
-      require('./workers/bank.worker');
 
       logger.info('Starting Notification Worker...');
       require('./workers/notification.worker');
+    } else {
+      logger.warn('Redis unavailable — running without cache/queues');
     }
 
 
@@ -65,7 +63,7 @@ async function bootstrap() {
         const aiopsStatus = defaultAIOpsService.getStatus() || {};
         const lastSample = aiopsStatus.sample || {};
         const uptimeSec = Math.floor(process.uptime());
-        
+
         const memRssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
         const totalMemMb = Math.round(os.totalmem() / 1024 / 1024);
         const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
@@ -81,6 +79,10 @@ async function bootstrap() {
           requestsPerMin: lastSample.requestsPerMin || 0,
           threatScore: aiopsStatus.threatScore ?? 5,
           threatStatus: aiopsStatus.status || 'NORMAL',
+          vectorScores: aiopsStatus.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
+          vectorDefenses: aiopsStatus.vectorDefenses || {},
+          recommendedAction: aiopsStatus.recommendedAction || null,
+          targetConcurrency: aiopsStatus.targetConcurrency || 1000,
           activeQuarantines: aiopsStatus.quarantinedCount || 0,
           maintenance: defaultMaintenanceManager.getStatus(),
           dbPool: defaultDbBulkhead.getStats(),

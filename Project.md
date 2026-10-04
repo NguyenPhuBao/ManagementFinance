@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ 4 công cụ giám sát vận hành: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF (hoạt động 100% kể cả khi API đo tải hệ thống 404/lỗi); (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io; (3) System Broadcast UI phát realtime qua Socket.io; (4) Cloud Alert giám sát RAM > 85% & tỉ lệ lỗi > 10% tự động cảnh báo admin room. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng). Xem chi tiết tại `docs/Admin-web/`. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -119,7 +119,7 @@ ModuleName/
 
 > **Lưu ý**: SMS parsing chạy **offline trên Mobile** (không qua backend). Sync xử lý **đồng bộ qua REST API** (`/api/sync/push`), không cần queue.
 
-- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (Gemini 2.5 Flash).
+- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (Gemini 3.8 Flash).
 > **Lưu ý cài đặt Backend**: Khi kéo mã nguồn mới nhất từ Git, cần chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói: `@google/generative-ai`, `ioredis`, `express-rate-limit`.
 
 #### 3.2.4 Database — PostgreSQL (PersonFinance)
@@ -1084,7 +1084,7 @@ Real-time Socket.IO:
 | STT | Chức năng | Location | Actor |
 |-----|-----------|----------|-------|
 | 1 | Lắng nghe sự kiện bóc tách hóa đơn OCR hoàn tất (`ocr.completed`) & trùng lặp (`ocr.duplicate`) | Backend + Mobile | User |
-| 2 | Nhận thông báo giao dịch ngân hàng mới (`bank_transaction.pending`) | Backend + Mobile | User |
+| 2 | Nhận thông báo giao dịch ngân hàng mới (`bank_transaction.pending`) *(Đã dừng Module Bank - Phía Mobile đã gỡ bỏ)* | Backend (đóng băng) | User |
 | 3 | Nhận tín hiệu hoàn tất đồng bộ dữ liệu (`sync.completed`) | Backend + Mobile | User |
 | 4 | Cảnh báo đếm ngược ngừng hoạt động tài khoản chờ xóa (`account.countdown`) | Backend + Mobile | User |
 | 5 | Cảnh báo quá tải hệ thống (`system.overload` / Load Shedding) & DB Bulkhead | Backend + Admin | Admin |
@@ -1640,16 +1640,16 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 
 | STT | Tên Chức Năng | Nơi Triển Khai | Trách Nhiệm Kỹ Thuật & Cơ Chế Phối Hợp | Trạng Thái |
 |:---:|---|:---:|---|:---:|
-| **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v24. T2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning), có lọc PII Masking. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 có ở Backend, Client chưa gọi |
-| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 2.0 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
-| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (trên máy)<br>+<br>**Backend** (OCR) | • **Client-app:** Gộp trùng tin biến động số dư đọc trên máy — SMS và thông báo app ngân hàng qua `NotificationListenerService` — và nhắc khi sổ đã có khoản cùng số tiền trong ngày. Chống quét trùng biên lai sẽ đặc tả cùng spec OCR phía client. Kênh liên kết ngân hàng và SMS server vẫn dừng.<br>• **Backend:** Giữ mã `dedup.service.js` phục vụ OCR nội bộ. | ⬜ **Chưa làm tại Client**<br>*(Đang thiết kế tính năng đọc biến động số dư trên máy)*<br>• Backend đã có cho OCR |
-| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Gemini 2.5 Flash + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 7 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
+| **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v27. T2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning), có lọc PII Masking. Phía Client-app hiện phân loại tại chỗ, không bắt buộc gọi Backend. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 sẵn sàng ở Backend |
+| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 3.8 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
+| **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (trên máy)<br>+<br>**Backend** (OCR) | • **Client-app:** Gộp trùng tin biến động số dư đọc trên máy — thông báo app ngân hàng/ví điện tử (**MB Bank**, **MoMo**, **ZaloPay** - không đọc SMS) qua `NotificationListenerService` — cùng **ảnh biên lai người dùng chủ động chia sẻ** (bóc tách chữ qua ML Kit 100% on-device), và nhắc khi sổ đã có khoản cùng số tiền trong ngày. Kênh liên kết ngân hàng (Module Bank) và SMS server đã dừng hoàn toàn, không liên quan đến cơ chế chia sẻ biên lai cục bộ.<br>• **Backend:** Giữ mã `dedup.service.js` phục vụ OCR nội bộ. | 🟢 **Đã hoàn thành (Client-app, 2026-09-30 & 2026-10-02)**<br>*(Nghiệm thu trên máy thật)*<br>• Backend đã có cho OCR |
+| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Gemini 3.8 Flash + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 9 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
 | **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20, lưu đệm Redis TTL 120s. Cung cấp qua API `GET /api/ai/chatbot/snapshot`. | 🟢 **Đã hoàn thành (Backend + Admin-web)** |
 | **8** | **Phát Hiện Chi Tiêu Bất Thường** *(Anomaly Detection)* | **Client-app** (100%) | Chạy 100% tại Client-app. Phát hiện chi tiêu đột biến qua ngưỡng người dùng đặt `nguongChiLon` và bộ luật `notification_rules.dart`. | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v24 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi 7 tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app** *(7 tool chỉ đọc offline)* |
+| **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v27 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành** *(Client-app)* |
+| **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi 9 tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app** *(9 tool chỉ đọc offline)* |
 
 #### 8.5.2. Nguyên tắc phân chia kiến trúc giữa Client-app & Backend
 - **Đưa các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) lên Client-app:** Tốc độ phản hồi tức thì ($< 15\text{ms}$), không phụ thuộc mạng, bảo vệ quyền riêng tư 100% offline (F1 & Nghị định 13/2023/NĐ-CP), tối đa hóa trải nghiệm người dùng (UX).
@@ -2390,7 +2390,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Module OCR đóng vai trò Tầng Thị Giác Máy Tính (Vision & Extraction Layer): Nhận diện hình ảnh chứng từ, bóc tách cấu trúc, tự phục hồi dữ liệu thị giác (Self-Healing), gán nhãn Provider (`'ORC'` | `'BankSync'` | `'SMS'`), trích xuất mã `bank_tran_id` chống trùng, chuyển giao cho Classify phân loại 2 cấp, đóng gói DTO và phát sự kiện Realtime Notification lên Client-app.
   - Xây dựng tích hợp hệ thống Notification: EventBus publish sự kiện `ocr.completed`, Socket.io `emitOcrCompleted` gửi thông báo trực tiếp vào phòng riêng `account_<idaccount>`.
 - **Tập Tin Triển Khai**:
-  - `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js`: Trích xuất đa phương thức bằng Gemini 2.0 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output. Hỗ trợ 3 loại chứng từ (`RECEIPT`, `BANK_TRANSFER`, `SMS_BANKING`).
+  - `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js`: Trích xuất đa phương thức bằng Gemini 3.8 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output. Hỗ trợ 3 loại chứng từ (`RECEIPT`, `BANK_TRANSFER`, `SMS_BANKING`).
   - `src/Backend/modules/ai/features/ocr/ocr.service.js`: Triển khai Self-Healing (cộng dồn `items` khi thiếu `total_amount`, fallback ngày giờ), bắt lỗi HTTP 422 `OCR_PARSE_FAILED` khi ảnh mờ, gán Provider, điều phối gọi `classifyExtractedReceipt`, đóng gói DTO theo 3 kịch bản chuẩn và phát sự kiện `ocr.completed`.
   - `src/Backend/modules/ai/features/ocr/ocr.controller.js` & `ocr.routes.js`: Định tuyến API `POST /api/ai/ocr/parse`.
   - `src/Backend/api/ai.routes.js`: Mount router `/ocr`.
@@ -2727,7 +2727,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Nguyên tắc thực thi:**
   1. **Không xóa bỏ chức năng/code đã có:** Giữ nguyên trạng toàn bộ mã nguồn `src/Backend/modules/bank/`, `src/Backend/workers/bank.worker.js`, các bảng migration CSDL liên quan đến `bank_account`, và tài liệu kỹ thuật đã viết.
   2. **Loại khỏi phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện hệ thống sắp tới, Module Bank sẽ **không còn nằm trong lộ trình triển khai, kiểm thử hay đánh giá nghiệm thu**.
-  3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 2.0 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
+  3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 3.8 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
 
 ### 11.41. Chuẩn Hóa Thuật Ngữ Edge AI, Kiến Trúc Cloud AI & Bảo Mật Dữ Liệu Phân Tầng (2026-09-22)
 - **Thống nhất tên gọi Edge AI:**
@@ -2752,16 +2752,16 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Toàn bộ các chức năng không thuần AI (thuật toán, thống kê, hệ chuyên gia, máy học on-device) có tốc độ xử lý nhanh được đưa lên **Client-app (Mobile)** nhằm giảm triệt để độ trễ mạng, chạy offline mượt mà, bảo vệ dữ liệu cá nhân theo cam kết F1 và tối đa hóa trải nghiệm người dùng (UX).
   - Backend đóng vai trò AI Gateway giữ bí mật `GEMINI_API_KEY` (không đưa lên mobile) và chỉ đảm nhận các chức năng thuần AI và gọi Cloud LLM.
 - **Bảng phân định phạm vi & trạng thái 10 chức năng AI:**
-  1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
-  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 2.0 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
-  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (SMS & thông báo app ngân hàng qua `NotificationListenerService`) và nhắc khi sổ đã có khoản cùng số tiền trong ngày; chống quét trùng biên lai đi kèm spec OCR phía Client. Kênh ngân hàng và SMS server vẫn dừng. Backend giữ `dedup.service.js` phục vụ OCR nội bộ $\rightarrow$ ⬜ *Chưa làm tại Client (đang thiết kế tính năng đọc biến động số dư trên máy)* • Backend đã có cho OCR.
+  1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite v27; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
+  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 3.8 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
+  3. **Khử trùng lặp giao dịch (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (thông báo app ngân hàng/ví điện tử MB Bank, MoMo, ZaloPay - không đọc SMS) và ảnh biên lai người dùng chủ động chia sẻ (bóc tách ML Kit 100% on-device), nhắc khi sổ đã có khoản cùng số tiền trong ngày; chống quét trùng biên lai đi kèm spec OCR phía Client. Kênh ngân hàng và SMS server vẫn dừng. Backend giữ `dedup.service.js` phục vụ OCR nội bộ $\rightarrow$ 🟢 *Đã hoàn thành (Client-app, 2026-09-30 & 2026-10-02)* • Backend đã có cho OCR.
   4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán chỉ số FHS thang điểm 100, quy tắc 50/30/20, quỹ khẩn cấp từ PostgreSQL, cấp qua API `GET /api/ai/chatbot/financial-health` và nhúng thẳng vào Snapshot của Chatbot) $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   8. **Phát hiện chi tiêu bất thường (Spending Anomaly Detection):** Đẩy qua Client-app (ngưỡng `nguongChiLon` & `notification_rules.dart`) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7 trên SQLite) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị phục vụ màn Trợ lý AI (offline, 7 tool chỉ đọc trên SQLite) $\rightarrow$ 🟢 *Đang chạy tại Client-app*.
+  9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7 trên SQLite v27) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
+  10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị phục vụ màn Trợ lý AI (offline, 9 tool chỉ đọc trên SQLite v27) $\rightarrow$ 🟢 *Đang chạy tại Client-app*.
 - **Nguyên tắc bảo tồn 100% mã nguồn Backend làm cơ sở đối chiếu:**
   - Các chức năng được chuyển giao hoặc đưa lên Client-app (như T1 Keyword Matcher, T2 NLP Matcher, Bộ khử trùng Deduplication Engine `dedup.service.js`...) **HIỆN TẠI VẪN ĐƯỢC GIỮ LẠI NGUYÊN VẸN TRONG BACKEND**, làm cơ sở chuẩn hóa (ground truth baseline) cho đội ngũ Client-app đối soát, kế thừa và xây dựng tiếp.
   - **QUY TẮC CỐT LÕI: TUYỆT ĐỐI KHÔNG TỰ Ý XÓA BỎ BẤT KỲ MÃ NGUỒN HAY TÀI LIỆU NÀO ĐÃ LÀM TẠI BACKEND.**
@@ -3010,6 +3010,353 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `09-aiops-sentinel-and-quarantine.md`: Hệ thống AI giám sát bất thường In-process, mô hình học máy EWMA Baseline 24h ($\alpha = 0.15$), Multivariate Threat Scorer (0 - 100), chống đầu độc mô hình Anti-Poisoning, và Tường lửa chủ động (Active Quarantine Shield) tự động chặn đứng nguồn IP tấn công với HTTP 403 `AIOPS_QUARANTINED`.
   - `10-ai-copilot-and-financial-health.md`: Trợ lý tài chính thông minh SSE Streaming (`ReadableStream`), RAG Hybrid Search, PII Masking, và Thẻ chấm điểm sức khỏe tài chính FHS 50/30/20 vĩ mô.
   - `11-full-realtime-architecture.md`: Trục điều phối sự kiện tập trung qua kênh bảo mật `admin_room`, bảng đối soát 9 sự kiện Socket.io, gói tin Micro-payload $< 450$ bytes, độ trễ $< 50\text{ms}$, và cơ chế dọn dẹp listener chống rò rỉ bộ nhớ.
+
+### 11.53. Tái Thiết Toàn Diện Bộ Test Suite V2 Cho Backend & Admin-Web Chuẩn Hóa Theo Chức Năng Thực Tế (2026-10-03)
+- **1. Mục Tiêu & Chủ Trương (PO Directive):**
+  - Khảo sát toàn diện hệ thống mã nguồn Backend và Admin-web, xây dựng lại bộ test suite v2 độc lập bám sát 100% các chức năng thực tế đã triển khai, thay thế hoàn toàn các bộ test cũ bị lệch lạc.
+  - Tuân thủ nghiêm ngặt nguyên tắc bảo mật `Data_Security.md` (Zero PII, hash IP, scoping theo userId/idaccount), giữ nguyên tình trạng đóng băng Module Bank, và áp dụng Karpathy Simplicity Guidelines.
+- **2. Kết Quả Triển Khai Backend V2 Test Suites (Node Native Test Runner — 42/42 tests PASS 100% trong 1.8s):**
+  - Khắc phục lỗi đảo ngược logic BullMQ worker trong `src/Backend/index.js` (chỉ khởi chạy workers khi `redisOk === true`).
+  - Xây dựng test runner độc lập đa nền tảng `src/Backend/tests/run-v2.js` với lệnh chạy `rtk npm run test:v2`:
+    + `sync.engine.test.js` (9 tests): Batch & Operation validation (6 entities: wallet, transaction, budget, bill, goal, category), FK dependency ordering (Create: Category -> Wallet -> Budget -> Transaction; Delete: Transaction -> Sub-entities -> Wallet -> Category), LWW Conflict resolution.
+    + `auth.lifecycle.test.js` (8 tests): Cặp Username-Password validation, Vòng đời xóa tài khoản (PendingDelete 30 ngày ân hạn & Hủy xóa), Chuẩn hóa Audit Log request status (Pass, Accepted, Rejected, Fail, Interrupted).
+    + `admin.operations.test.js` (7 tests): Bảo vệ quyền riêng tư người dùng (Cấm sửa/xóa danh mục cá nhân), Unique tên danh mục hệ thống, Bảo vệ tài khoản Admin & PendingDelete, Capping Audit Log tối đa 200 items.
+    + `aiops.multivector.test.js` (7 tests): Phân rã 4 vectơ rủi ro độc lập (auth, traffic, exploit, resource), Hành động phòng vệ riêng từng vectơ, Dynamic CCU scaling (100 - 50,000 CCU), Active Quarantine Shield với Zero Raw IP (IP Masking).
+    + `resilience.pipeline.test.js` (7 tests): DB Bulkhead (80% Client / 20% Admin headroom), Intelligent Load Shedding (HTTP 503 khi lag > 100ms, Admin bypass), Retry Storm Guard (chặn từ lần 4 với HTTP 429), Request Timeout ceiling (30s, bỏ qua SSE).
+    + `core.scheduler.test.js` (4 tests): Giờ nửa đêm Việt Nam (GMT+7), Daily OTP purge (>24h), Daily refresh token purge (>30d), Scheduler lifecycle an toàn không rò rỉ timer.
+- **3. Kết Quả Triển Khai Admin-Web Test Suites (Vitest v1.6.1 + React Testing Library + JSDOM — 35/35 tests PASS 100% trong 2.9s):**
+  - Cài đặt hạ tầng kiểm thử chuẩn hóa cho Vite 5.4 tại `src/Admin-web`: `vitest.config.js`, `src/tests/setup.js` và lệnh chạy `rtk npm test`:
+    + `components.test.jsx` (6 tests): ConfirmModal, Pagination (smart page numbers, prev/next disable), EmptyState & Loading spinner.
+    + `auth.page.test.jsx` (4 tests): Form đăng nhập, Toggle ẩn/hiện mật khẩu, Gọi `login()` & điều hướng `/dashboard`, Xử lý lỗi API.
+    + `categories.page.test.jsx` (5 tests): Tải danh mục mặc định (`is_default = true`), Nút "Làm mới" đồng bộ thủ công không dùng socket (theo PO), Che mờ danh mục cá nhân (`***`), Pre-validation chống trùng tên, Thêm danh mục hệ thống.
+    + `users.page.test.jsx` (5 tests): Hiển thị danh sách, Badge `PendingDelete` kèm đếm ngược ngày và khóa thao tác "Chỉ xem", Vô hiệu hóa bắt buộc lý do, Kích hoạt tài khoản, Lắng nghe Socket `admin.user_status_changed`.
+    + `audit.page.test.jsx` (4 tests): Tải bảng audit logs, Lọc trạng thái (Pass, Fail, Rejected...), Chèn log thời gian thực qua Socket `audit_activity`, Capping query $\le 200$ items.
+    + `aiops.page.test.jsx` (5 tests): 4 Vectơ Rủi Ro độc lập & Threat Score Gauge, Quarantine Shield với Zero Raw IP, Gỡ chặn IP với hash, Thông điệp phòng vệ riêng cho từng vector, Luồng nhịp tim Socket `admin.metrics_stream`.
+    + `broadcast.page.test.jsx` (6 tests): 2 chế độ bảo trì (Kỹ thuật im lặng vs Khẩn cấp phát cảnh báo), Tắt bảo trì khôi phục hệ thống, Form phát thông báo toàn mạng (Info/Warning/Critical), Cập nhật Realtime qua Socket `admin.maintenance_changed`.
+- **4. Tổng Kết Toàn Diện:**
+  - **77/77 tests PASS 100% (Backend: 42, Admin-web: 35)**.
+  - Mã nguồn kiểm thử sạch sẽ, không phụ thuộc ngoại cảnh, chạy tốc độ cao (< 5 giây tổng thời gian).
+
+### 11.54. Chuyển Dịch Toàn Diện Hệ Thống Cloud Sang Môi Trường Production & Chuẩn Hóa Biến Môi Trường (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương (PO Directive):**
+  - Chính thức kích hoạt môi trường **Production** (`NODE_ENV=production`) cho toàn bộ hệ thống Cloud: **Backend (Render)** và **Admin-web (Vercel)**, chấm dứt giai đoạn chạy tạm ở chế độ development trên Cloud.
+  - Vận hành hệ thống theo tiêu chuẩn an ninh sản xuất cao nhất: Kích hoạt mã hóa At-Rest 256-bit chuẩn Nghị định 13/2023/NĐ-CP & PCI-DSS v4.0, ẩn giấu toàn bộ stack trace lỗi 500 (`error-handler.js`), khóa triệt để cờ mock input (`ALLOW_MOCK_INPUT=false`), và tắt toàn bộ log truy vấn SQL thô trên Cloud (`PRISMA_LOG_QUERY=false`).
+- **2. Tối Ưu Hóa & Khắc Phục Triệt Để Hiện Tượng Log Cloud:**
+  - **Giải mã lệnh `prisma:query DEALLOCATE ALL`:** Xác định đây là cơ chế dọn dẹp prepared statements tiêu chuẩn của Prisma ORM khi dùng chung socket connection pool với PgBouncer (cổng 6543 Supabase), hoàn toàn không phải lỗi (HTTP 200 OK 0.709ms).
+  - **Phân tách cờ log Prisma (`src/Backend/config/db.js`):** Tách biệt việc in log truy vấn CSDL khỏi `NODE_ENV === 'development'`, chuyển thành `process.env.PRISMA_LOG_QUERY === 'true'`. Trên Cloud Render, đặt `PRISMA_LOG_QUERY=false` giúp luồng log sạch 100%, không bị spam câu lệnh SQL và bảo vệ dữ liệu nhạy cảm.
+  - **Loại trừ nhiễu Audit Log định kỳ (`src/Backend/middleware/audit-log.middleware.js`):** Bổ sung các route giám sát tự động (`/admin/aiops`, `/admin/system/health`, `/admin/maintenance/status`, `/admin/audit-logs`) vào danh sách loại trừ ghi audit log. Chấm dứt hiện tượng nạp hàng loạt bản ghi `INSERT INTO audit_log` và bắn socket `audit_activity` giả mạo khi Admin-web thực hiện polling giám sát.
+- **3. Cập Nhật Nguồn Sự Thật Triển Khai Cloud (`docs/Deploy/CloudDeploy.md`):**
+  - Bổ sung 10 nhóm biến môi trường Production bí mật bắt buộc trên Render Dashboard: Core runtime, PostgreSQL Supabase Pooler (`DATABASE_URL`, `DIRECT_URL`), Upstash Redis TLS (`REDIS_URL`), Chuẩn mã hóa At-Rest (`DATA_ENCRYPTION_KEY`, `BLIND_INDEX_SECRET`), JWT Authentication kép (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`), Quản trị cứu hộ (`ADMIN_EMERGENCY_KEY`, `ADMIN_ALERT_EMAIL`), CORS & Rate Limit (`CORS_ORIGIN`, `RATE_LIMIT_ENABLED`), Trí tuệ nhân tạo Gemini (`GEMINI_API_KEY`, `GEMINI_MODEL`), Mail SMTP, và Khóa Mock Input (`ALLOW_MOCK_INPUT=false`).
+  - Cung cấp sẵn các lệnh 1-line Node.js Crypto Generator giúp PO/DevOps sinh bộ khóa 256-bit an toàn chỉ trong 1 thao tác.
+  - Cập nhật hướng dẫn Manual Redeploy (Clear build cache & deploy) và bảng chỉ số đối soát giữa Development Local và Production Cloud.
+- **4. Kiểm Định Chất Lượng:**
+  - Backend Test Suites V2: **42/42 tests PASS 100%**.
+  - Admin-web Test Suites: **35/35 tests PASS 100%**.
+  - Toàn hệ thống: **77/77 tests PASS 100%**, sẵn sàng vận hành sản xuất ổn định, an toàn.
+
+### 11.55. AIOps Root Cause Analysis (RCA): Nhật Ký Sự Cố CSDL Bền Vững (PostgreSQL), Định Danh Đối Tượng Vi Phạm Hợp Pháp & Phân Trang Server-Side (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khẳng định tính pháp lý của việc định danh đối tượng vi phạm:** Việc ghi nhận danh tính đối tượng (Actor Identity) thực hiện hành vi bất thường là **100% hợp pháp và bắt buộc** theo Luật An ninh mạng 2018 (Điều 26), Nghị định 53/2022/NĐ-CP (lưu vết sự cố an ninh mạng tối thiểu 12 tháng) và Nghị định 13/2023/NĐ-CP (Điều 17 - Xử lý dữ liệu cá nhân không cần sự đồng ý trong trường hợp khẩn cấp bảo vệ an ninh quốc gia, trật tự an toàn xã hội, phòng chống gian lận). Tuân thủ nghiêm ngặt chuẩn `Data_Security.md`: IP được che bớt an toàn (`113.161.xx.xx`), băm SHA-256 (`actor_hash`), User-Agent, Username/UserID (nếu đã xác thực), và Endpoint mục tiêu; tuyệt đối không thu thập hoặc lưu trữ mật khẩu, OTP hay số thẻ ngân hàng.
+  - **Chuyển dịch sang Nhật Ký CSDL Bền Vững (Persistent Journal):** Chấm dứt cơ chế bảng tạm snapshot trong RAM (tắt trình duyệt hoặc restart server là mất). Toàn bộ các trường hợp bất thường phải được lưu trữ vĩnh viễn vào CSDL PostgreSQL phục vụ điều tra truy vết sau này.
+  - **Tích hợp Phân Trang & Bộ Lọc Nâng Cao:** Triển khai phân trang Server-side linh hoạt và giao diện `Pagination.jsx` kèm các bộ lọc vector, trạng thái, ô tìm kiếm giúp Admin quản trị lịch sử sự cố dễ dàng.
+- **2. Kiến Trúc CSDL & Triển Khai Backend:**
+  - **Tạo bảng CSDL `aiops_incident` (PostgreSQL):** Migration SQL `15_create_aiops_incident_table.sql` và Prisma schema model `aiops_incident` với 22 trường dữ liệu chi tiết và 5 chỉ mục tối ưu hóa tốc độ truy vấn (`idx_aiops_incidents_status`, `idx_aiops_incidents_vector`, `idx_aiops_incidents_detected_at`, `idx_aiops_incidents_actor_hash`, `idx_aiops_incidents_code`).
+  - **AIOps Incident Repository (`src/Backend/modules/aiops/aiops.repository.js`):** Xây dựng tầng truy xuất dữ liệu độc lập hỗ trợ `initTable()` tự động tạo bảng khi khởi động, `upsertIncident()` cộng dồn số lần lặp (`hits`) và gia hạn `last_seen_at`, `markMitigated()`, `autoMitigateStaleIncidents(60)` tự động đánh dấu giảm thiểu khi sự cố chấm dứt > 60s, `getIncidents()` hỗ trợ phân trang SQL và tìm kiếm full-text, `clearIncidents()` dọn dẹp CSDL khi nghiệm thu, kèm cơ chế tự động chuyển đổi Fallback bộ nhớ in-memory khi CSDL ngoại tuyến.
+  - **Bộ Thu Thập Đặc Trưng & Phát Hiện Bất Thường Giàu Ngữ Cảnh:**
+    + `FeatureCollector`: Bổ sung hàm che giấu IP `_maskIp()`, băm SHA-256 đối tượng, thu thập User-Agent, Target Endpoint, Username/UserID từ JWT payload, và trích xuất danh sách nghi phạm `suspectActors`.
+    + `AnomalyDetector`: Làm giàu 100% các bất thường của cả 4 vectơ (Auth, Traffic, Exploit, Resource) với thông tin đối tượng vi phạm, đơn vị đo lường, chẩn đoán nguyên nhân gốc rễ (Root Cause Diagnosis) và hành động phòng vệ tự động đã thực hiện.
+  - **Dịch Vụ AIOps & API Tuyến Quản Trị:**
+    + `AIOpsService`: Tích hợp Repository, tự động ghi nhận sự cố vào PostgreSQL mỗi chu kỳ nhịp tim (tick), phát sự kiện Socket.io `admin.anomaly_detected` theo thời gian thực tới `admin_room`.
+    + Tuyến API mới: `GET /api/admin/aiops/incidents` (phân trang & bộ lọc), `POST /api/admin/aiops/incidents/clear` (làm sạch CSDL nghiệm thu).
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Client API (`src/Admin-web/src/api/aiops.api.js`):** Bổ sung `getIncidents(params)` hỗ trợ URLSearchParams linh hoạt và `clearIncidents()`.
+  - **Tái Cấu Trúc Khối 4 Trang AIOps (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    + Header thông minh với huy hiệu đếm tổng số sự cố từ CSDL (`{incidentTotal} sự cố ghi nhận trong CSDL`) và nút "Làm sạch CSDL".
+    + Thanh công cụ điều khiển: Nút lọc nhanh 4 Vectơ (Xác thực, Lưu lượng, Khai thác, Tài nguyên), Nút lọc Trạng thái (Đang diễn ra `ACTIVE`, Đã giảm thiểu `MITIGATED`), và Ô tìm kiếm đa năng (IP, Hash, User, Endpoint, Mã).
+    + Bảng dữ liệu 6 cột toàn diện: Thời điểm & Trạng thái (đếm số lần lặp `hits`, vệt nhấp nháy đỏ), Đối tượng vi phạm (Actor Identity - Masked IP, SHA-256 Hash tag `#...`, User badge, Endpoint mục tiêu, User-Agent), Vector & Mã bất thường, Chỉ số đo được vs Ngưỡng (kèm tỷ lệ vượt ngưỡng `Vượt X.Xx`), Bóc tách nguyên nhân & Hành động xử lý, và Trạng thái cô lập Shield.
+    + Tích hợp linh kiện phân trang chuẩn `Pagination.jsx` với các tùy chọn 5, 10, 20, 50 sự cố/trang.
+    + Tích hợp hộp thoại xác nhận an toàn `ConfirmModal.jsx` trước khi thực hiện thao tác xóa sạch CSDL.
+    + Lắng nghe sự kiện Socket.io `admin.anomaly_detected` cập nhật ngay lập tức các sự cố mới vào danh sách mà không làm gián đoạn hoặc mất dữ liệu cũ.
+- **4. Kiểm Thử & Nghiệm Thu Toàn Diện:**
+  - **Backend Test Suite:** **45/45 tests PASS 100%** (Section 4 mới bổ sung 3 tests kiểm thử trọn vẹn vòng đời lưu trữ, định danh actor và phân trang server-side).
+  - **Admin-web Test Suite:** **39/39 tests PASS 100%** (bổ sung 4 tests mới 5.6 - 5.9 kiểm thử render RCA CSDL, bộ lọc vector/trạng thái, realtime socket injection, và clear modal).
+  - **Tổng toàn hệ thống:** **84/84 tests PASS 100%**.
+  - **Vite Production Build:** Thành công trong 1.84s với 0 cảnh báo lỗi cú pháp.
+
+### 11.56. AIOps Target Concurrency Scaler: Cơ Chế Lưu Cứng 2 Lớp (PostgreSQL Supabase & Browser LocalStorage) Bảo Đảm Tính Ổn Định Tuyệt Đối Của Hệ Thống (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khắc phục triệt để hiện tượng nhảy số 100 CCU:** Giá trị "Số người dùng đồng thời" (Target Concurrency) không được phép phụ thuộc đơn thuần vào bộ nhớ tạm in-memory RAM của tiến trình máy chủ. Giá trị này phải được **lưu cứng (hard-persisted)** bền vững, không tự ý thay đổi khi tải lại trang, đăng nhập lại tài khoản, hoặc khi máy chủ (Render Cloud) tự động khởi động lại / scale up.
+  - **Mục tiêu tính ổn định:** Bảo đảm hệ thống luôn duy trì đúng quy mô vận hành chuẩn kỳ vọng (mặc định 1,000 CCU, hoặc giá trị Admin đã thiết lập), giữ vững trần bảo vệ DoS, ngưỡng cách ly IP và chỉ số Baseline RPM an toàn theo thời gian thực.
+- **2. Kiến Trúc CSDL & Triển Khai Backend:**
+  - **Tạo bảng CSDL `aiops_setting` (PostgreSQL):** Migration SQL `16_create_aiops_setting_table.sql` và Prisma schema model `aiops_setting` (`key VARCHAR(64) PRIMARY KEY`, `value TEXT NOT NULL`, `updated_at TIMESTAMP(6)`). Bảng này đã được đồng bộ trực tiếp lên CSDL Cloud Supabase (PostgreSQL AWS Tokyo) với giá trị mặc định khởi tạo `target_concurrency = '1000'`.
+  - **AIOps Setting Repository (`src/Backend/modules/aiops/aiops.repository.js`):** Bổ sung các phương thức `getSetting(key, defaultValue)` và `setSetting(key, value)` với câu lệnh `INSERT ... ON CONFLICT (key) DO UPDATE` (UPSERT) cùng bộ nhớ đệm `_settingsFallback` bảo đảm hoạt động thông suốt cả khi CSDL tạm ngắt kết nối.
+  - **AIOps Service Khôi Phục Tham Số Khi Khởi Động (`src/Backend/modules/aiops/aiops.service.js`):** Phương thức `loadPersistedSettings()` được gọi ngay trong hàm `start()`, tự động đọc giá trị `target_concurrency` đã lưu trong CSDL để tái nạp vào mô hình chịu tải của `AnomalyDetector` và `FeatureCollector`.
+  - **AIOps Controller & Tuyến API Cập Nhật Quy Mô:** Cập nhật hàm `setScale(req, res)` thành async để chờ `setConcurrencyScale()` hoàn tất việc ghi cứng giá trị mới vào CSDL PostgreSQL trước khi phản hồi thành công về cho Admin-web.
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Lớp Lưu Cứng Cục Bộ Tức Thì (`localStorage`):** Trong `AIOpsPage.jsx`, các state `selectedConcurrency` và `customConcurrency` sử dụng hàm khởi tạo lười (lazy initializer) đọc trực tiếp từ `localStorage.getItem('aiops_target_concurrency')` (mặc định 1,000 CCU), loại bỏ 100% hiện tượng giật số hoặc hiển thị 100 CCU trước khi API round-trip hoàn tất.
+  - **Đồng Bộ Hai Chiều An Toàn:** Khi API `getStatus()` trả về `targetConcurrency` từ Server, Admin-web cập nhật đồng bộ vào `localStorage`. Khi Admin nhấn nút "Áp Dụng" hoặc chọn nút mẫu nhanh (500, 1,000, 2,000, 5,000 người), giá trị được ghi ngay vào `localStorage` và gửi API `POST /api/admin/aiops/scale` lưu vào CSDL.
+  - **Bảo Vệ Luồng Socket.io (`admin.metrics_stream`):** Kiểm tra chặt chẽ giá trị `metrics.targetConcurrency` từ Socket stream; nếu giá trị rỗng/không hợp lệ hoặc nhỏ hơn 1, hệ thống từ chối cập nhật đè lên cấu hình đang áp dụng.
+- **4. Kiểm Thử & Nghiệm Thu Hoàn Hảo:**
+  - **Backend Test Suite:** **46/46 tests PASS 100%** (bổ sung test 4.4 kiểm thử kiểm chứng khôi phục scale từ CSDL qua vòng đời service mới).
+  - **Admin-web Test Suite:** **40/40 tests PASS 100%** (bổ sung test 5.10 kiểm thử duy trì giá trị CCU từ LocalStorage và ghi nhớ khi apply).
+  - **Tổng toàn hệ thống:** **86/86 tests PASS 100%**, build production Vite hoàn tất sạch sẽ không một lỗi.
+
+### 11.57. AIOps Root Cause Analysis (RCA): Tích Hợp Nút Phong Tỏa IP Thủ Công & Gỡ Chặn Tức Thì Trực Tiếp Tại Bảng Sự Cố (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Trao quyền can thiệp chủ động cho Quản Trị Viên (Admin):** Tại bảng Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA), ngoài việc chờ đợi thuật toán Sentinel tự động kích hoạt cách ly khi đủ ngưỡng, Admin có toàn quyền chủ động bấm nút **"Phong Tỏa IP"** để chặn đứng ngay lập tức bất kỳ nguồn request khả nghi nào (Brute-force, SQLi injection probe, DoS burst).
+  - **Mở khóa linh hoạt:** Nếu một IP đã bị đưa vào danh sách cô lập, hệ thống cho phép Admin bấm nút **"Gỡ chặn"** để mở khóa tức thì ngay trên cùng một hàng sự cố mà không cần chuyển qua bảng Blacklist khác.
+- **2. Kiến Trúc Backend & Khiên Chắn Cách Ly Đa Chiều (Dual-Index Shield):**
+  - **Nâng cấp `AIOpsQuarantine` (`src/Backend/modules/aiops/aiops.quarantine.js`):** Bổ sung cấu trúc lưu trữ `_byHash` song hành cùng `_map`. Phương thức `quarantineActor({ rawIp, ipHash, maskedIp, reason, durationMs })` cho phép phong tỏa an toàn qua `actor_hash` đạt chuẩn `Data_Security.md`. Khi request gửi đến máy chủ, middleware tính `hashIp(clientIp)` và đối chiếu $O(1)$ với cả `_map` và `_byHash`, lập tức ngắt kết nối với mã lỗi HTTP 403 Forbidden. Phương thức `unblock` giải phóng phong tỏa đồng thời trên cả hai chỉ mục.
+  - **Tuyến API Quản Trị Mới:** Khai báo route `POST /api/admin/aiops/quarantine` (yêu cầu phân quyền Admin) xử lý bởi `aiopsController.quarantineActor`, tự động ghi Audit Log an ninh (`req.auditActionName = 'Phong tỏa IP thủ công (...)`) và phát sự kiện Socket.io `admin.security_blocked` tới tất cả Admin clients.
+- **3. Triển Khai Giao Diện Quản Trị Admin-Web:**
+  - **Client API (`src/Admin-web/src/api/aiops.api.js`):** Bổ sung hàm `quarantineActor(payload)`.
+  - **Cột Thao Tác & Phòng Vệ (`AIOpsPage.jsx`):**
+    + Nếu IP đã bị phong tỏa (`isQuarantined`): Hiển thị huy hiệu `Đã phong tỏa Shield` màu đỏ kèm nút `Gỡ chặn` (underline nhỏ gọn).
+    + Nếu là sự cố tài nguyên nội bộ (`vector === 'resource'` hoặc `actor = 'Hệ thống'`): Hiển thị huy hiệu `Nội bộ hệ thống` (ngăn Admin thao tác phong tỏa nhầm máy chủ).
+    + Nếu là nguồn IP ngoại vi chưa bị phong tỏa: Hiển thị nút **"Phong Tỏa IP"** (đỏ cảnh báo `bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 active:scale-95`).
+    + Tích hợp hộp thoại xác nhận an toàn `ConfirmModal`: hiển thị rõ Masked IP, SHA-256 Hash, thời hạn 15 phút và cảnh báo HTTP 403. Sau khi xác nhận, tự động cập nhật danh sách phong tỏa và hiển thị Toast thông báo thành công.
+- **4. Kiểm Thử & Nghiệm Thu Hoàn Hảo:**
+  - **Backend Test Suite:** **47/47 tests PASS 100%** (test 3.4 kiểm thử phong tỏa qua hash và chặn 403 thành công).
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** (test 5.11 kiểm thử click nút Phong Tỏa IP, mở modal và gọi API).
+  - **Tổng toàn hệ thống:** **88/88 tests PASS 100%**, build production Vite hoàn tất sạch sẽ trong 3.80s.
+
+### 11.58. Cơ Chế Triệt Tiêu IP Thô (Zero Raw IP) & Bảo Vệ Quyền Riêng Tư Theo Thiết Kế Cho Phiên Đăng Nhập RefreshToken (2026-10-03)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO (Áp Dụng Phương Án A):**
+  - **Khảo sát rủi ro pháp lý:** Bảng `refreshtoken` trước đây ghi nhận địa chỉ IP của thiết bị khi đăng nhập kèm với `Idaccount`. Dù việc lưu vết IP phiên đăng nhập là hợp pháp theo Luật An ninh mạng 2018 (Điều 26) và Nghị định 53/2022/NĐ-CP (lưu vết phiên tối thiểu 12 tháng phục vụ an ninh/chống chiếm đoạt tài khoản), việc lưu trữ IP thô (`raw IP`) gắn chặt với mã tài khoản người dùng vẫn tiềm ẩn rủi ro tái định danh thiết bị/vị trí chính xác của cá nhân nếu CSDL bị rò rỉ, có nguy cơ vi phạm Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15) và Nghị định 13/2023/NĐ-CP.
+  - **PO phê duyệt thực thi Phương Án A (Zero Raw IP):** Triệt tiêu hoàn toàn IP thô trong CSDL bằng cách áp dụng cơ chế mặt nạ hóa (IP Masking) ngay tại tầng ứng dụng trước khi lưu vào CSDL, đồng thời làm sạch toàn bộ dữ liệu lịch sử trên CSDL Cloud Supabase.
+- **2. Kiến Trúc Kỹ Thuật & Triển Khai Backend:**
+  - **Tiện ích Mặt nạ hóa IP (`src/Backend/utils/masking.util.js`):**
+    + Bổ sung hàm `maskIp(rawIp)`: Với IPv4, tự động che mờ 2 byte cuối thành `a.b.xx.xx` (ví dụ `113.161.45.67` $\rightarrow$ `113.161.xx.xx`); với IPv6, giữ 2 nhóm đầu và che mờ các nhóm còn lại (`2001:0db8:xxxx:xxxx:...`); xử lý an toàn giá trị rỗng/null.
+  - **Áp dụng tại Cổng Xác Thực (`src/Backend/modules/auth/auth.service.js`):**
+    + Tích hợp `maskIp()` trực tiếp vào hàm `getDeviceInfo(req)`. Mọi phiên đăng nhập mới (`login`) khi tạo bản ghi vào bảng `refreshtoken` đều được tự động lưu trữ dưới dạng IP đã che mờ (`a.b.xx.xx`).
+  - **Migration CSDL & Đồng Bộ Cloud Supabase (`AWS Tokyo`):**
+    + Viết mã Migration SQL `src/Backend/database/17_mask_refreshtoken_ip_address.sql` sử dụng hàm `REGEXP_REPLACE` chuẩn hóa toàn bộ các bản ghi `refreshtoken` cũ có dạng IPv4 về `\1.\2.xx.xx`.
+    + Chạy tập lệnh đồng bộ `src/Backend/sync_to_supabase.js`, cập nhật thành công 100% bản ghi trên CSDL Cloud Supabase PostgreSQL (`aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres`), xác nhận qua Prisma client toàn bộ IP đều ở định dạng `127.0.xx.xx` hoặc `a.b.xx.xx`.
+- **3. Hiện Trạng An Toàn Tuyệt Đối Của Toàn Bộ CSDL:**
+  - Bảng `refreshtoken`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`).
+  - Bảng `aiops_incident`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`) và mã băm SHA-256 đối tượng vi phạm.
+  - Bảng `audit_log`: Hoàn toàn không lưu trường địa chỉ IP.
+  - $\rightarrow$ **100% CSDL không còn bất kỳ trường nào lưu địa chỉ IP thô của người dùng.** Vừa giữ vững khả năng nhận diện vùng mạng lạ của phiên đăng nhập để cảnh báo an ninh, vừa bảo đảm tuân thủ pháp luật tối đa (Privacy by Design).
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`src/Backend/tests/v2/auth.lifecycle.test.js`):** Bổ sung trọn vẹn Suite 4 gồm 3 tests kiểm thử chuyên sâu:
+    + Test 4.1: Che mờ IPv4 chuẩn xác (`113.161.45.67` $\rightarrow$ `113.161.xx.xx`).
+    + Test 4.2: Che mờ IPv6 và xử lý header chuỗi IP `x-forwarded-for`.
+    + Test 4.3: Xử lý an toàn khi IP không xác định / null.
+    + Kết quả: **50/50 tests PASS 100%** trong 1.94s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** trong 2.92s.
+  - **Tổng toàn hệ thống:** **91/91 tests PASS 100%**.
+
+### 11.59. Nâng Cấp Dung Lượng Các Cột Hash & IP (Overflow Guard 256/512 Ký Tự) Loại Bỏ Nguy Cơ Tràn Dữ Liệu CSDL (2026-10-04)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Khảo sát rủi ro kỹ thuật:** Rà soát toàn bộ cấu trúc bảng CSDL phát hiện các cột lưu mã băm hoặc địa chỉ IP có dung lượng hẹp như `refreshtoken.IP_address` (`VARCHAR(45)`), `aiops_incident.actor_hash` (`VARCHAR(64)`), `bank_account.Account_number_hash` (`VARCHAR(64)`), hay các bẫy giới hạn biên `VARCHAR(255)` (`refreshtoken.Token_hash`, `otp_code.code_hash`).
+  - **PO chỉ đạo:** Đảm bảo CSDL lưu trữ an toàn các giá trị băm (Hash), triệt tiêu hoàn toàn nguy cơ khai báo cột chỉ có 40 hoặc 45 ký tự trong khi chuỗi hash/token có thể dài tới 256 ký tự (như SHA-256 kèm tiền tố thuật toán, SHA-512, hoặc token bảo mật 256 ký tự), ngăn ngừa triệt để lỗi ngoại lệ `value too long for type character varying(...)` trong môi trường sản xuất.
+- **2. Kiến Trúc CSDL & Triển Khai Migration 18:**
+  - **Tạo Migration SQL `18_expand_hash_and_ip_columns_capacity.sql`:**
+    + `refreshtoken.IP_address`: Nâng cấp từ `VARCHAR(45)` lên `VARCHAR(256)`. Dung lượng này đảm bảo an toàn 100% cho mọi định dạng: IPv4, IPv6, Masked IP (`a.b.xx.xx`), chuỗi băm IP SHA-256 lẫn định danh thiết bị.
+    + `refreshtoken.Token_hash`: Nâng cấp từ `VARCHAR(255)` lên `VARCHAR(512)`. Loại trừ hoàn toàn bẫy 255/256 ký tự đối với token băm.
+    + `aiops_incident.actor_hash`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`. Chứa được mọi định dạng băm có tiền tố (như `sha256:...`, SHA-512 128 chars).
+    + `aiops_incident.actor_identity`: Nâng cấp từ `VARCHAR(100)` lên `VARCHAR(256)`.
+    + `aiops_incident.id`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    + `bank_account.Account_number_hash`: Nâng cấp từ `VARCHAR(64)` lên `VARCHAR(256)`.
+    + `otp_code.code_hash`: Nâng cấp từ `VARCHAR(255)` lên `VARCHAR(512)`.
+  - **Đồng Bộ Cloud Supabase PostgreSQL (AWS Tokyo):**
+    + Cập nhật và thực thi qua `sync_to_supabase.js`. CSDL Supabase PostgreSQL đã cập nhật thành công 100% metadata cho toàn bộ 7 cột trên mà không gây downtime hay khóa bảng.
+  - **Đồng Bộ Prisma ORM & Mã Nguồn Tầng Dữ Liệu:**
+    + Cập nhật các trường tương ứng trong `src/Backend/prisma/schema.prisma` và chạy `rtk npx prisma generate` sinh lại Client.
+    + Cập nhật hàm `initTable()` trong `src/Backend/modules/aiops/aiops.repository.js` đồng bộ định nghĩa `VARCHAR(256)`.
+- **3. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`src/Backend/tests/v2/auth.lifecycle.test.js`):** Bổ sung test 4.4 kiểm chứng cơ chế chống tràn dữ liệu hash 256 ký tự và token hash 512 ký tự:
+    + **51/51 tests PASS 100%** trong 1.99s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%** trong 7.60s.
+  - **Tổng toàn hệ thống:** **92/92 tests PASS 100%**.
+
+### 11.60. Giải Quyết Cảnh Báo Prisma Deprecation, Khởi Động Grace Period & Tinh Chỉnh Nới Rộng 4 Vector Rủi Ro AIOps (2026-10-04)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Vấn đề 1 (Prisma Deprecation Warning trên Render Cloud):** Log build Cloud báo cảnh báo `warn The configuration property 'package.json#prisma' is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file`. PO yêu cầu xử lý triệt để cảnh báo lỗi thời, chuẩn hóa cấu hình Prisma hiện đại.
+  - **Vấn đề 2 (Báo động giả nghiêm trọng khi vừa khởi động Cloud & Siết quá chặt 4 Vector):** Vừa khởi động backend trên Render, hệ thống đã kích hoạt Load Shedding (`lagMs: 197`) và Sentinel báo động `Threat Score: 75 | Status: CRITICAL {"anomaliesCount": 1, "action": "EMERGENCY_MAINTENANCE"}`. PO chỉ đạo: nới rộng các điểm của cả 4 vector rủi ro ra, không siết quá chặt; người dùng vô tình nhập sai mật khẩu vài lần, hoặc mở 2 tab trình duyệt gây trùng token, hoặc máy chủ vừa khởi động bị trễ event loop tức thời thì tuyệt đối không được báo động đỏ hay phong tỏa tài khoản/IP.
+- **2. Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA):**
+  - **Cơ chế Load Shedding quá nhạy cảm khi Cold-Start:** Ngưỡng lag mặc định trước đây là 100ms mà không có thời gian ân hạn khởi động (Grace Period). Render gửi request thăm dò sức khỏe `HEAD /` ngay lúc Node.js đang nạp các module nặng (Prisma, BullMQ, Redis) gây lag thoáng qua 197ms, khiến request bị từ chối với HTTP 503.
+  - **Lỗ hổng tính tỷ lệ lỗi 5xx không có cỡ mẫu tối thiểu:** Cửa sổ 10s chỉ có đúng 1 request (từ Render health check) và request đó bị 503, khiến Sentinel tính `errorRate5xx = 1.0 (100%)`.
+  - **Ngưỡng 4 Vector bị siết quá chặt:**
+    + Vector Auth trước đây: Chỉ cần 1 lần token reuse (`tokenReuseAttacks >= 1`) hoặc 8 lần đăng nhập sai đã kích hoạt báo động. Trong thực tế, người dùng mở song song 2 tab trình duyệt hoặc F5 nhanh dễ gây ra token reuse 1-2 lần hoàn toàn vô hại.
+    + Vector Exploit: Chỉ 3 malformed requests đã kích hoạt cách ly IP.
+    + Hành động khẩn cấp: Chỉ cần 1 chỉ số chạm 75 điểm đã vội vàng đề xuất `EMERGENCY_MAINTENANCE`.
+- **3. Kiến Trúc Kỹ Thuật & Giải Pháp Triển Khai Toàn Diện:**
+  - **Chuẩn hóa cấu hình Prisma (`src/Backend/package.json`):**
+    + Loại bỏ hoàn toàn khối cấu hình lỗi thời `"prisma": { "seed": "node prisma/seed.js" }` trong `package.json`. Chuyển sang định dạng script chuẩn `"prisma:seed": "node prisma/seed.js"`.
+    + Chạy `rtk npx prisma generate` xác nhận Prisma Client (`v6.19.3`) biên dịch sạch sẽ 100%, không còn bất kỳ cảnh báo deprecation nào.
+  - **Cơ chế Cold-Start Warmup & Miễn Trừ Kiểm Tra Sức Khỏe Máy Chủ (`src/Backend/middleware/load-shedding.middleware.js`):**
+    + Bổ sung thời gian ân hạn khởi động (`warmupMs = 45,000ms` / 45s trong môi trường production): Trong 45s đầu tiên, Event Loop Monitor ghi nhận độ trễ nhưng Load Shedding không từ chối request của hệ thống.
+    + Thêm chốt chặn Bypass cho request gốc (`path === '/'` với method `HEAD` hoặc `GET` từ Render/AWS Health Checker): Các request thăm dò sức khỏe sống còn này luôn được thông suốt, đảm bảo container backend cloud luôn đạt trạng thái `Healthy/Live`.
+    + Nâng ngưỡng ngắt tải mặc định từ 100ms lên 250ms trong `src/Backend/core/resilience/event-loop-monitor.js`.
+  - **Tinh chỉnh nới rộng & Chống Báo Động Giả Toàn Diện Cho 4 Vector Rủi Ro:**
+    + **Bộ thu thập đặc trưng (`src/Backend/modules/aiops/feature.collector.js`):**
+      * Thêm cơ chế Warmup 45s cho `_getEventLoopLag()`: khống chế điểm lag tối đa 10ms trong 45s đầu khởi động máy chủ.
+      * Nới rộng ngưỡng cách ly IP chủ động:
+        - `failedLogins`: Tối thiểu $\ge 15$ lần liên tiếp từ 1 IP duy nhất mới đưa vào diện nghi vấn (thay vì 5 lần). Người dùng gõ nhầm 1-14 lần hoàn toàn không bị ảnh hưởng.
+        - `tokenReuse`: Tối thiểu $\ge 5$ lần lặp lại từ 1 IP mới nghi vấn đánh cắp token (thay vì chỉ 1 lần). Chống tuyệt đối tình trạng mở 2 tab trình duyệt bị chặn.
+        - `malformed`: Tối thiểu $\ge 8$ requests mang payload độc hại (thay vì 3 lần).
+    + **Mô hình đánh giá bất thường (`src/Backend/modules/aiops/anomaly.detector.js`):**
+      * **Vector 1 (Auth):** `bruteForceThreshold = Math.max(25, Math.round(N * 0.025))`. Với $< 25$ lần lỗi: chỉ tính điểm thông thường (tối đa 15 điểm), tuyệt đối không báo động đỏ. `tokenReuseAttacks` chỉ báo động khi $\ge 5$ lần; 1-4 lần chỉ tính điểm nhẹ 5-20 điểm.
+      * **Vector 2 (Traffic):** Yêu cầu cả 2 điều kiện: lưu lượng tuyệt đối $\ge 300$ req/phút VÀ tỷ lệ tăng vọt $\ge 3.5\times$ đường chuẩn baseline mới đánh giá rủi ro DDoS.
+      * **Vector 3 (Exploit):** Ngưỡng cảnh báo nâng lên $\ge 8$ mẫu độc hại; 1-7 mẫu chỉ cho tối đa 25 điểm an toàn.
+      * **Vector 4 (Resource):** Nới rộng ngưỡng trễ Event Loop lên $\ge 250$ms (nghiêm trọng khi $\ge 400$ms). Đặc biệt: áp dụng bẫy cỡ mẫu tối thiểu `minRequestsFor5xx = 10` trước khi tính tỷ lệ lỗi 5xx, triệt tiêu 100% bẫy 1 request lỗi khiến tỷ lệ thành 100%.
+      * **Điều kiện kích hoạt Bảo Trì Khẩn Cấp (EMERGENCY_MAINTENANCE):** Áp dụng nguyên tắc khủng hoảng đa trụ cột (`severeResourceCrisis`): Chỉ đề xuất khi `resourceScore >= 85` VÀ có sự sụp đổ đồng thời của ít nhất 2 trụ cột tài nguyên cốt lõi (Lag $\ge 70$ và 5xx $\ge 70$, hoặc Lag $\ge 70$ và RAM $\ge 70$, hoặc RAM $\ge 70$ và 5xx $\ge 70$).
+      * **Phân cấp Composite Tier nới rộng:** $< 40$: NORMAL (Bình thường); $40 - 69$: ELEVATED (Giám sát nội bộ, người dùng không bị can thiệp); $70 - 84$: WARNING; $\ge 85$: CRITICAL.
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`test:v2`):** **51/51 tests PASS 100%** trong 1.98s.
+  - **Backend Unit Test Suite (`tests/unit/*.test.js`):** **28/28 tests PASS 100%** trong 1.10s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%**.
+  - **Tổng toàn hệ thống:** **120/120 tests PASS 100%**.
+
+### 11.61. Thẻ Tình Trạng Vận Hành Hệ Thống Tại AIOps, Nút Kết Thúc Bảo Trì & Quản Lý Lịch Trình Chống Xung Đột Tại Broadcast (2026-10-04)
+- **1. Quyết Định Chiến Lược & Yêu Cầu Cốt Lõi Của PO:**
+  - **Yêu cầu 1 (AIOps Sentinel - Thẻ Tình Trạng Hệ Thống):** Thêm 1 thẻ/tab trực tiếp phía trên tab *Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải (Target Concurrency Scaler)* hiển thị tình trạng thực tế của toàn hệ thống:
+    * Khi hệ thống hoạt động ổn định: Hiển thị trạng thái **"Đang hoạt động"** với **Badge màu xanh lá nhạt** (`bg-emerald-100 text-emerald-800 border-emerald-300`).
+    * Khi hệ thống đang trong phiên bảo trì: Hiển thị trạng thái **"Đang bảo trì"** (kèm huy hiệu phân loại Khẩn cấp/Kỹ thuật, lý do bảo trì, thời điểm kích hoạt và nút điều hướng tới trang Điều Hành Bảo Trì).
+  - **Yêu cầu 2 (Broadcast - Nút Kết Thúc Bảo Trì, Giờ Kết Thúc Dự Kiến & Chống Xung Đột Lịch Trình):**
+    * Tab *Kích Hoạt Bảo Trì Tức Thì*: Khi hệ thống đang ở chế độ bảo trì, bổ sung nút nổi bật **"Kết Thúc Bảo Trì — Khôi Phục Hệ Thống"**, đồng thời ẩn hoàn toàn các nút bật bảo trì để tránh thao tác vô lý hoặc gây xung đột.
+    * Tab *Lên Lịch Thời Điểm Bảo Trì*: Bổ sung input chọn **"Thời điểm kết thúc bảo trì (Dự kiến)"** (`scheduledEndAt`).
+    * Cơ chế đồng bộ & Chống xung đột trạng thái (State-Aware Conflict Prevention): Khi hệ thống đang trong phiên bảo trì trực tiếp (`active === true`), giao diện Admin-web tự động khóa form lên lịch mới để tránh tình trạng cài đặt phiên bảo trì chồng chéo, xung đột với phiên đang diễn ra; Backend kiểm tra tính hợp lệ `scheduledEndAt > scheduledAt`, từ chối nhận lịch khi đang bảo trì, và tự động kích hoạt bộ hẹn giờ kết thúc (`_autoEndTimer`) khi tới giờ hẹn.
+- **2. Kiến Trúc Kỹ Thuật & Giải Pháp Triển Khai Backend:**
+  - **Nâng cấp `MaintenanceManager` (`src/Backend/core/resilience/maintenance.manager.js`):**
+    * Mở rộng hàm `scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency, createdBy })`:
+      - Chặn xung đột: `if (this.active) throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');`
+      - Kiểm định thời gian: Bắt buộc `new Date(scheduledEndAt) > new Date(scheduledAt)` nếu có cung cấp `scheduledEndAt`.
+      - Lưu trữ `scheduledEndAt` trong payload trạng thái `this.scheduled`.
+      - Tự động kết thúc bảo trì thông minh (`_autoEndTimer`): Khi bộ hẹn giờ `_scheduledTimer` kích hoạt phiên bảo trì tại `scheduledAt`, hệ thống tự động lập timer `_autoEndTimer` căn theo `scheduledEndAt`. Khi hết thời gian bảo trì dự kiến, hệ thống tự động gọi `this.setMaintenance(false, ...)` mở lại hệ thống cho người dùng mà không đòi hỏi thao tác thủ công của kỹ sư trực.
+      - Hủy timer tự động kết thúc nếu Admin chủ động tắt bảo trì hoặc hủy lịch hẹn sớm.
+  - **Controller & API Routes (`src/Backend/modules/admin/admin.controller.js`):**
+    * Tiếp nhận và truyền tham số `scheduledEndAt` an toàn từ `req.body` xuống `scheduleMaintenance()`.
+- **3. Kiến Trúc Giao Diện & Trải Nghiệm Admin-web:**
+  - **AIOps Sentinel (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    * Quản lý state `maintenanceStatus`, nạp trạng thái song song qua `adminApi.getMaintenanceStatus()`.
+    * Lắng nghe sự kiện Socket.io `admin.maintenance_changed` và `system.maintenance_changed` cập nhật tức thời thời gian thực (Zero-refresh).
+    * Thẻ Tình Trạng Hệ Thống đặt nổi bật ngay trên khối Target Concurrency Scaler:
+      - Khi bình thường: Badge xanh lá nhạt chuẩn nhận diện PO `bg-emerald-100 text-emerald-800 border-emerald-300`, hiển thị "Tình Trạng Hệ Thống: Đang hoạt động".
+      - Khi bảo trì: Badge màu hổ phách/đỏ "Đang bảo trì", hiển thị lý do, thời điểm bắt đầu và liên kết nhanh sang `/broadcast`.
+  - **Điều Hành Bảo Trì & Phát Thông Báo (`src/Admin-web/src/pages/system/BroadcastPage.jsx`):**
+    * Cột Trái ("Kích Hoạt Bảo Trì Tức Thì"):
+      - Khi `active === false`: Hiển thị form nhập lý do, checkbox khẩn cấp và nút Bật Bảo Trì.
+      - Khi `active === true`: Ẩn toàn bộ nút bật bảo trì, hiển thị thẻ thông tin phiên bảo trì đang diễn ra và nút hành động đơn nhất **"Kết Thúc Bảo Trì — Khôi Phục Hệ Thống"** (`bg-emerald-600 hover:bg-emerald-700`).
+    * Cột Phải ("Lên Lịch Thời Điểm Bảo Trì"):
+      - Khi `active === true`: Thay thế form bằng hộp cảnh báo màu hổ phách "Chế độ bảo trì đang kích hoạt", ngăn chặn tạo lịch trùng lặp và hướng dẫn kết thúc phiên bảo trì trước.
+      - Khi `active === false`: Lưới 2 cột cho phép chọn *Thời điểm bắt đầu* và *Thời điểm kết thúc (Dự kiến)*, kèm ràng buộc `min` datetime và xác thực `end > start`.
+      - Khi đã có lịch hẹn: Hiển thị đầy đủ cả thời điểm bắt đầu và thời điểm kết thúc dự kiến kèm nút hủy lịch.
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Unit Tests (`src/Backend/tests/unit/admin.priority.maintenance.test.js`):** Bổ sung 3 test cases (9, 10, 11) kiểm tra `scheduledEndAt`, thời gian hợp lệ và chặn xung đột khi bảo trì trực tiếp $\rightarrow$ **11/11 tests PASS 100%**.
+  - **Backend Multi-Vector Tests (`src/Backend/tests/v2/aiops.multivector.test.js`):** **12/12 tests PASS 100%**.
+  - **Admin-web Test Suite (`src/Admin-web/src/tests/`):** 7 file kiểm thử với **45/45 tests PASS 100%** (trong đó `aiops.page.test.jsx` đạt 13/13 tests và `broadcast.page.test.jsx` đạt 8/8 tests).
+  - **Tổng toàn hệ thống:** **68/68 tests PASS 100%** không một lỗi hồi quy.
+
+### 11.62. Bật/Tắt Từng Vector Rủi Ro Kèm Popup Xác Nhận & Bộ Lọc Thời Gian Xu Hướng Đa Mức Ưu Tiên Tuyệt Đối Tại AIOps Sentinel (2026-10-04)
+- **1. Quyết Định Chiến Lược & Yêu Cầu Cốt Lõi Của PO:**
+  - **Yêu cầu 1 (Khối 4 Vector Rủi Ro):**
+    * Bổ sung nút BẬT/TẮT độc lập cho từng vector trong 4 vector rủi ro (`auth`, `traffic`, `exploit`, `resource`).
+    * **Nguyên tắc khi TẮT (Measure Only — Zero Impact):** Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG và hiển thị sub-score độc lập của vector đó trên UI để Admin quan sát, nhưng **tuyệt đối KHÔNG tính vector bị tắt vào Threat Score tổng hợp** (Threat Score chỉ tính trên các vector đang bật) và **KHÔNG kích hoạt các biện pháp phòng vệ tự động** (như chặn IP, rate limit hay đề xuất bảo trì khẩn cấp) của vector đó.
+    * **Quy tắc Popup xác nhận (Always Confirm):** Bắt buộc phải luôn xuất hiện Popup (`ConfirmModal`) cảnh báo và yêu cầu xác nhận trước khi thực hiện chuyển đổi trạng thái BẬT hoặc TẮT bất kỳ vector nào.
+  - **Yêu cầu 2 (Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập):**
+    * **Bộ select thời gian nhanh (Presets):** Cho phép quan sát xu hướng theo năm (12 tháng qua), tháng (30 ngày qua), ngày (24 giờ qua), và thời gian thực (10 phút — 60 mẫu gần nhất).
+    * **Bộ lọc khoảng thời gian tùy biến chi tiết (Precision Range Picker):** Cho phép người dùng chọn chi tiết chính xác từ năm đến năm, từ tháng đến tháng, từ ngày đến ngày.
+    * **Quy tắc Ưu Tiên Cốt Lõi (PO Priority Rule):** Phải **ƯU TIÊN BỘ LỌC CHỌN CHÍNH XÁC THAY VÌ BỘ SELECT** nếu cả 2 bộ lọc đều được áp dụng đồng thời. Khi bộ lọc chính xác đang kích hoạt, dữ liệu biểu đồ và tham số truy vấn backend bắt buộc lấy theo khoảng thời gian chính xác `from` $\rightarrow$ `to`, bộ select nhanh tạm thời được bỏ qua kèm chỉ dẫn trực quan cho Admin.
+- **2. Kiến Trúc Kỹ Thuật Backend:**
+  - **Anomaly Detector (`src/Backend/modules/aiops/anomaly.detector.js`):**
+    * Bổ sung state `vectorConfig = { auth: true, traffic: true, exploit: true, resource: true }`.
+    * Cung cấp các phương thức `setVectorEnabled(vectorName, isEnabled)` và `setVectorConfig(newConfig)`.
+    * Trong `evaluate(sample)`:
+      - Tính toán điểm số thô độc lập cho cả 4 vector để phục vụ đo lường.
+      - Composite `threatScore`: Chỉ lấy giá trị lớn nhất trong số các vector có trạng thái `this.vectorConfig[v] === true`. Nếu tất cả vector bị tắt, `threatScore` trả về mức an toàn tối thiểu (5 điểm).
+      - `vectorDefenses`: Khi vector bị tắt, tự động đặt `disabled: true`, `defenseAction: 'MONITOR'`, và `status: 'NORMAL'`.
+      - Ràng buộc khủng hoảng tài nguyên (`severeResourceCrisis`): Bắt buộc kiểm tra `this.vectorConfig.resource === true` mới được đề xuất bảo trì khẩn cấp.
+      - Trả về trường `vectorConfig` trong kết quả đánh giá để đồng bộ luồng Stream.
+  - **AIOps Service (`src/Backend/modules/aiops/aiops.service.js`):**
+    * Lưu trữ cấu hình `vector_toggles` bền vững vào CSDL PostgreSQL qua `AIOpsRepository.setSetting/getSetting`.
+    * `toggleVector(vectorName, isEnabled)`: Cập nhật Detector, lưu vào CSDL, và phát sóng sự kiện thời gian thực `admin.vector_config_changed` qua Socket.io.
+    * `getHistory({ range, from, to })`: Hỗ trợ đa dạng khung thời gian (`realtime`, `day`, `month`, `year`) kết hợp bộ nội suy toán học `interpolateTimeline`, và thực thi nghiêm ngặt PO Priority Rule: Nếu có `from` và `to` thì ưu tiên truy vấn theo khoảng chính xác, bỏ qua `range`.
+  - **Controller & Routes (`src/Backend/modules/aiops/aiops.controller.js` & `src/Backend/api/admin.routes.js`):**
+    * `GET /api/admin/aiops/vectors`: Trả về trạng thái cấu hình hiện tại của 4 vector.
+    * `POST /api/admin/aiops/vectors/toggle`: Tiếp nhận payload `{ vector, enabled }` để bật/tắt vector.
+    * Nâng cấp `GET /api/admin/aiops/history`: Tiếp nhận các query params `range`, `from`, `to`.
+- **3. Kiến Trúc Giao Diện & Trải Nghiệm Admin-web:**
+  - **AIOps API Client (`src/Admin-web/src/api/aiops.api.js`):**
+    * Bổ sung các hàm `getVectorConfig()`, `toggleVector(vector, enabled)`.
+    * Nâng cấp `getHistory(params)` tự động chuyển tiếp `range`, `from`, `to` qua `URLSearchParams`.
+  - **AIOps Sentinel Page (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    * **Khối 4 Vector Rủi Ro:**
+      - Mỗi thẻ vector trang bị Toggle Switch kèm nhãn trạng thái và accessibility role (`data-testid="toggle-vector-<key>"`).
+      - Khi click toggle: Luôn mở `ConfirmModal` xác nhận hành động BẬT hoặc TẮT, giải thích rõ nguyên tắc "Vẫn đo lường nhưng không tính vào Threat Score".
+      - Khi vector TẮT: Hiển thị Banner cảnh báo màu vàng nhạt `Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score`, thanh tiến trình chuyển màu xám và huy hiệu phòng vệ hiển thị `Đã tắt phòng vệ — Chỉ đo lường`.
+    * **Khối Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro:**
+      - Tiêu đề biểu đồ động tự thích ứng theo khung thời gian đang chọn (Thời gian thực, 24 giờ qua, 30 ngày qua, 12 tháng qua, hoặc Tùy biến chính xác).
+      - Hàng 1 (Presets): 4 nút chọn nhanh `Thời gian thực (10 phút)`, `Ngày (24 giờ qua)`, `Tháng (30 ngày qua)`, `Năm (12 tháng qua)`.
+      - Hàng 2 (Precision Range Picker): Bộ chọn chế độ (Theo Ngày, Theo Tháng, Theo Năm), 2 input `Từ` và `Đến` kèm các loại input tương ứng (`date`, `month`, `number`), nút `Lọc Chính Xác` và nút `Xóa bộ lọc`.
+      - **Banner Ưu Tiên Bộ Lọc Chính Xác:** Khi áp dụng khoảng thời gian chi tiết, banner màu vàng hổ phách nổi bật khẳng định quyền ưu tiên tuyệt đối của bộ lọc chính xác, làm mờ các nút preset và cung cấp nút 1-click quay lại dùng bộ select nhanh.
+      - Lắng nghe Socket.io `admin.vector_config_changed` đồng bộ trạng thái toggle tức thời giữa nhiều phiên Admin đang mở.
+- **5. Hoàn Thiện 5 Yêu Cầu Cốt Lõi Về Biểu Đồ Xu Hướng & Dữ Liệu Thực Tế 100% (AIOps Sentinel):**
+  - **Dữ Liệu Thật 100% — Loại bỏ triệt để mọi cơ chế Fake/Synthetic Data (Yêu cầu 2 của PO):**
+    * Backend Service (`src/Backend/modules/aiops/aiops.service.js`): Xóa bỏ hoàn toàn các hàm sinh dữ liệu giả lập (`_generateDayHistory`, `_generateMonthHistory`, `_generateYearHistory`, `_generateCustomRangeHistory`). Viết lại hàm `getHistory({ range, from, to })` chỉ lọc đúng các mẫu thực tế đã được hệ thống ghi nhận (`this._history`).
+    * Nếu trong khoảng thời gian người dùng chọn không có mẫu thực tế nào (hoặc hệ thống chưa chạy thời điểm đó), Backend trả về `[]`.
+    * Frontend (`src/Admin-web/src/pages/system/AIOpsPage.jsx`): Tích hợp Empty State trung thực, thông báo rõ ràng "Không có dữ liệu đo lường trong khoảng thời gian đã chọn (Hệ thống cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo giả lập)", kèm nút 1-click quay về thời gian thực.
+  - **Tooltip Chi Tiết Ngày Tháng Năm Giờ Phút Giây (Yêu cầu 1 của PO):**
+    * Thêm tiện ích `formatFullDateTime` (`src/Admin-web/src/utils/format.js`) xuất chuỗi chuẩn hóa `DD/MM/YYYY HH:mm:ss` theo múi giờ `Asia/Ho_Chi_Minh`.
+    * Cập nhật Tooltip SVG: Hiển thị đầy đủ ngày tháng năm giờ phút giây khi rê chuột vào từng điểm mẫu.
+  - **Trục X Hiển Thị Số Liệu Rõ Ràng & Độc Lập (Yêu cầu 3 của PO):**
+    * Thiết kế `xAxisConfig` useMemo tự động tính toán các mốc phân chia trục X:
+      + Bộ chọn nhanh (Presets): Thời gian thực (`1 -> 30 Mẫu`), Ngày (`1 -> 24 Giờ`), Tháng (`1 -> 30 Ngày`), Năm (`1 -> 12 Tháng`).
+      + Bộ lọc chính xác (Precision Range): Theo Ngày (`1 -> diffDays Ngày`), Theo Tháng (`1 -> diffMonths Tháng`), Theo Năm (`fromYear -> toYear`).
+    * Vẽ đường trục hoành, các vạch tick nhỏ (`x1={t.x} y1="155" x2={t.x} y2="161"`), text nhãn số liệu (`y="174"`), gridlines dọc mờ định vị thời gian và nhãn đơn vị ở góc phải biểu đồ.
+  - **Nút "Làm Mới" Bộ Lọc Chính Xác (Yêu cầu 4 của PO):**
+    * Bổ sung nút "Làm mới" (`data-testid="refresh-custom-range-btn"`) ngay cạnh nút "Lọc Chính Xác". Khi click, xóa sạch input `Từ/Đến`, hủy trạng thái applied và tự động đồng bộ lại preset đang chọn.
+  - **Loại Bỏ Hoàn Toàn Chữ Thừa `_toggle_drop_down` (Yêu cầu 5 của PO):**
+    * Thay thế mã icon Material Symbols bị lỗi ligature font (`history_toggle_drop_down`) bằng icon chuẩn quốc tế `schedule`, loại bỏ 100% tình trạng font fallback hiển thị text `_TOGGLE_DROP_DOWN`.
+  - **Kiểm Thử Toàn Diện Sau Nâng Cấp:**
+    * Backend unit tests: **7/7 tests PASS 100%** (bao gồm test lọc dữ liệu thật và trả về rỗng khi không có mẫu).
+    * Backend multivector integration tests: **12/12 tests PASS 100%**.
+    * Admin-web unit tests: **52/52 tests PASS 100%** (bổ sung tests 5.19 & 5.20 kiểm tra nút Làm Mới, vạch Trục X và icon schedule).
+    * Toàn bộ hệ thống: **95/95 tests PASS 100%**.
+
+- **6. Hệ Thống Global Floating Alert Toast Trong Admin-web & Bảo Toàn Icon Chuông Thông Báo (🔔):**
+  - **Chuyển Đổi Toàn Bộ Thông Báo Về Dạng Alert Nổi (Floating Toast Alert):**
+    * Tạo `AlertContext` & `AlertProvider` (`src/Admin-web/src/store/alert.context.jsx`): Cung cấp các tiện ích `showAlert`, `success`, `error`, `warning`, `info`, `removeAlert`, `clearAllAlerts`, tự động dọn timer và hỗ trợ hook `useAlertSafe` tránh lỗi khi chạy unit test.
+    * Tạo Component `AlertToast` & `AlertContainer` (`src/Admin-web/src/components/common/AlertToast.jsx`): Hiển thị cố định tại góc trên bên phải màn hình (`fixed top-20 right-6 z-[9999]`). Thẻ AlertItem trang bị icon tương ứng theo 4 cấp độ, hiệu ứng trượt mượt mà (`slide-in-from-right-6`), nút đóng nhanh "x" và thanh tiến trình thời gian (progress bar) tự đóng sau 4.5-6 giây.
+    * Tích hợp ở cấp ứng dụng cao nhất (`src/Admin-web/src/App.jsx`): Bọc `<AlertProvider>` và `<AlertContainer />` bên ngoài RouterProvider để mọi trang, mọi route đều hiển thị Alert nổi bất kể người dùng cuộn ở đầu trang, giữa trang hay đáy trang.
+  - **Liên Kết Alert Toast Trên Các Trang Chức Năng:**
+    * `AIOpsPage.jsx`: Chuyển đổi toàn bộ phản hồi thao tác (`feedback`) và socket chặn đứng tấn công sang `alert.success` / `alert.error`.
+    * `BroadcastPage.jsx`: Chuyển đổi toàn bộ phản hồi bật/tắt bảo trì khẩn cấp, lên lịch và phát thông báo sang `alert.success` / `alert.error`.
+    * `CategoryPage.jsx`: Thay thế các popup thô `window.alert` bằng các thông báo Alert Toast sang trọng, hiển thị Alert khi lưu/xóa/đồng bộ danh mục.
+    * `UserListPage.jsx`: Kích hoạt Alert Toast khi vô hiệu hóa, kích hoạt hoặc xóa tài khoản người dùng.
+  - **Bảo Toàn Nguyên Vẹn Hoạt Động Của Icon Chuông Thông Báo (🔔) Trên Header:**
+    * Chiếc chuông thông báo trên Header (`src/Admin-web/src/components/layout/Header.jsx`) giữ nguyên vẹn 100% tính năng: Badge đếm số đỏ chưa đọc (như số 14), dropdown xem danh sách cảnh báo từ CSDL, nút làm mới danh sách, và đánh dấu đã đọc.
+    * Đồng bộ thời gian thực: Khi Socket.io nhận sự kiện `admin.notification` hoặc `admin.security_alert`, hệ thống vừa tăng badge số đếm trên chuông, vừa bắn Alert Toast nổi trên màn hình để Admin nắm bắt tức thời.
+  - **Kiểm Thử Toàn Diện Hệ Thống Alert:**
+    * Tạo bộ test mới `src/Admin-web/src/tests/alert.system.test.jsx`: Kiểm thử đầy đủ 5 trường hợp (bắn success, error/warning/info xếp chồng, bấm 'x' đóng thủ công, tự đóng sau duration, và kiểm tra tính ổn định của icon chuông cùng badge 14).
+    * Toàn bộ Admin-web Test Suite: **57/57 tests PASS 100%** trên cả 8 file kiểm thử.
+    * Toàn bộ hệ thống: **100/100 tests PASS 100%**.
+
+### 11.60. Tối Ưu Hóa Trải Nghiệm & Tính Minh Bạch AIOps Sentinel & Nhật Ký Kiểm Toán (2026-10-04)
+- **1. Thiết Kế Lại Toàn Diện Popup Xác Nhận (ConfirmModal):**
+  - Khắc phục triệt để lỗi nút "Xác nhận" bị tàng hình do phụ thuộc CSS variable không tồn tại trong Tailwind CSS 4.
+  - Thiết kế lại `src/Admin-web/src/components/common/ConfirmModal.jsx` theo phong cách hiện đại: Hộp thoại bo góc mềm mại (`rounded-2xl bg-white shadow-2xl border border-slate-200`), badge icon tròn theo ngữ nghĩa (Xanh Emerald cho BẬT/kích hoạt, Đỏ cho TẮT/nguy hiểm), nút Close (x) ở góc trên, hộp thông điệp bo góc dễ đọc và 2 nút "Hủy bỏ" & "Xác nhận..." cân đối, rõ ràng, hỗ trợ phím Escape và hiệu ứng loading spinner.
+- **2. Điều Tra & Khắc Phục Triệt Để Bất Thường Đăng Nhập 30 lần thất bại/10s (Auth Brute-force):**
+  - **Nguyên nhân gốc rễ (Root Cause):** Bộ kiểm thử `src/Backend/tests/unit/aiops.service.test.js` khi giả lập 30 lần `collector.recordFailedLogin()` đã không mock repository, dẫn đến việc instance test kết nối thẳng vào CSDL PostgreSQL thật qua `defaultAIOpsIncidentRepository`. Mỗi lần chạy test suite, hệ thống tự động ghi thêm bản ghi sự cố `AUTH_BRUTE_FORCE` (30 lần thất bại/10s) vào bảng CSDL `aiops_incident`. Khi PO đăng nhập thật và mở trang AIOps, bảng RCA truy vấn CSDL và hiển thị lại toàn bộ các bản ghi giả lập này.
+  - **Khắc phục triệt để:** Cách ly hoàn toàn test suite bằng mock repository in-memory, tuyệt đối không chạm CSDL thật; đồng thời thực hiện dọn sạch các bản ghi giả lập rác trong CSDL và bổ sung logic ghi nhận tên tài khoản mục tiêu (`req.body?.username || req.body?.email`) khi có tấn công dò mật khẩu thật.
+- **3. Bổ Sung Alert Toast Thông Báo Khi Nhấn Nút "Làm Mới" AIOps:**
+  - Trong `AIOpsPage.jsx`, xây dựng hàm `handleManualRefresh` kích hoạt tải lại dữ liệu AIOps và sự cố CSDL đồng thời phát Alert Toast `alert.success('Đã làm mới dữ liệu AIOps Sentinel thành công!')` giúp Quản trị viên nhận biết phản hồi hệ thống tức thì.
+- **4. Bảng Nhật Ký Kiểm Toán (Audit Log) Hiển Thị Tài Khoản Kèm IP Tương Ứng:**
+  - Backend: Cập nhật `queryAuditLogs` trong `admin.repository.js` lấy địa chỉ IP mới nhất từ bảng `refreshtoken` (`account.refreshtoken.ip_address`), đồng thời truyền `ip` qua middleware và sự kiện Socket.io `audit_activity`.
+  - Frontend: Trong `AuditLogPage.jsx`, cột **TÀI KHOẢN** hiển thị tên tài khoản, UID và địa chỉ IP (`IP: 127.0.0.1`) với icon router nổi bật, định dạng font mono chuyên nghiệp.
+- **5. Bảng RCA Hiển Thị Đối Tượng Vi Phạm Kèm Cả IP Và Tên Tài Khoản Vi Phạm:**
+  - Backend: `feature.collector.js` khi bắt lỗi 401 trên route login trích xuất tài khoản mục tiêu đưa vào `ipStat.targetAccount` và map vào `suspectActors`.
+  - Frontend: Bảng RCA trong `AIOpsPage.jsx` tại cột 2 "Đối tượng vi phạm (Actor)" giờ đây hiển thị rõ ràng địa chỉ IP vi phạm (`IP: 127.0.0.1`), đi kèm huy hiệu tên tài khoản (`TK: admin` hoặc `Khách vãng lai / Ẩn danh`) và endpoint mục tiêu.
+- **6. Nghiệm Thu & Kiểm Thử:**
+  - Admin-web Test Suite: **57/57 tests PASS 100%**.
+  - Backend Operations & AIOps Test Suites: **100% PASS**.
+  - Production Build (Vite): Thành công 100% với 0 lỗi cú pháp.
+
+
+
+
+
 
 
 

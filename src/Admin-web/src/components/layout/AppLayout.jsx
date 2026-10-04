@@ -19,11 +19,12 @@ const AppLayout = () => {
   const toggleSidebar = () => setSidebarCollapsed(prev => !prev);
 
   // Kiểm tra trạng thái AIOps ban đầu và định kỳ
+  // CHỈ hiện Báo động đỏ toàn hệ thống khi HẠ TẦNG gặp nguy cơ sập dây chuyền (EMERGENCY_MAINTENANCE / Resource >= 85)
   const checkThreatStatus = async () => {
     try {
       const res = await aiopsApi.getStatus();
       const data = res?.data || res;
-      if (data && data.threatScore >= 85) {
+      if (data && (data.recommendedAction === 'EMERGENCY_MAINTENANCE' || data.vectorScores?.resource >= 85)) {
         setThreatAlert(data);
       } else {
         setThreatAlert(null);
@@ -45,7 +46,7 @@ const AppLayout = () => {
     if (!socket) return;
 
     const handleSocketAlert = (data) => {
-      if (data && data.threatScore >= 85) {
+      if (data && (data.recommendedAction === 'EMERGENCY_MAINTENANCE' || data.vectorScores?.resource >= 85)) {
         setThreatAlert(data);
         setDismissed(false);
       } else if (data && data.threatScore < 70) {
@@ -73,7 +74,7 @@ const AppLayout = () => {
       setMitigating(true);
       await adminApi.setMaintenanceStatus({
         active: true,
-        reason: 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện xâm nhập/quá tải',
+        reason: 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện sập dây chuyền hạ tầng',
         isEmergency: true,
       });
       setMitigatedSuccess(true);
@@ -85,11 +86,11 @@ const AppLayout = () => {
     }
   };
 
-  const isAlertVisible = threatAlert && threatAlert.threatScore >= 85 && !dismissed;
+  const isAlertVisible = threatAlert && (threatAlert.recommendedAction === 'EMERGENCY_MAINTENANCE' || threatAlert.vectorScores?.resource >= 85) && !dismissed;
 
   return (
     <div className="min-h-screen relative">
-      {/* ─── GLOBAL AIOPS CRITICAL THREAT BANNER ─── */}
+      {/* ─── GLOBAL AIOPS CRITICAL THREAT BANNER (Chỉ kích hoạt khi HẠ TẦNG quá tải nghiêm trọng) ─── */}
       {isAlertVisible && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 border-b-2 border-red-800 text-xs">
           <div className="flex items-center gap-2.5">
@@ -98,10 +99,10 @@ const AppLayout = () => {
             </span>
             <div>
               <span className="font-extrabold uppercase tracking-wide mr-1.5">
-                🚨 BÁO ĐỘNG ĐỎ AIOPS SENTINEL:
+                🚨 BÁO ĐỘNG ĐỎ HẠ TẦNG AIOPS SENTINEL:
               </span>
               <span>
-                Phát hiện nguy cơ an ninh / sự cố nghiêm trọng! Threat Score: <b>{threatAlert.threatScore}/100</b>
+                Phát hiện nguy cơ sập dây chuyền tài nguyên máy chủ! Điểm tài nguyên: <b>{(threatAlert.vectorScores?.resource ?? threatAlert.threatScore)}/100</b>
                 {threatAlert.anomalies?.length > 0 && ` (${threatAlert.anomalies[0].code})`}
               </span>
             </div>

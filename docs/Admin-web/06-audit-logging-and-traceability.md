@@ -144,3 +144,26 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 ### Socket.io Events
 - **Phát tán (`Server -> admin_room`):**
   - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res }` mỗi khi một request được hoàn tất.
+
+---
+
+## ⚖️ 9. ĐÁNH GIÁ TÍNH PHÁP LÝ & BẢO VỆ DỮ LIỆU CÁ NHÂN (LEGAL COMPLIANCE)
+
+> **Phản hồi chính thức tới PO:** Yêu cầu duy trì trang Audit Log kỹ thuật của PO **HOÀN TOÀN HỢP PHÁP VÀ ĐÚNG CHUẨN MỰC BẢO MẬT**, không hề vi phạm pháp luật về quyền riêng tư, căn cứ trên các cơ sở pháp lý và kiến trúc sau:
+
+### 9.1. Tuân Thủ Luật An Toàn Thông Tin Mạng 2015 (Điều 17 & Điều 20)
+- **Quy định bắt buộc:** Pháp luật Việt Nam yêu cầu các hệ thống cung cấp dịch vụ trực tuyến bắt buộc phải thiết lập hệ thống ghi nhận nhật ký máy chủ (Server Access Logs) và lưu trữ nhật ký tối thiểu một khoảng thời gian nhất định nhằm phục vụ công tác phát hiện tấn công, khắc phục sự cố và cung cấp bằng chứng cho cơ quan thẩm quyền khi có điều tra tội phạm mạng.
+- **Tính chất dữ liệu:** Việc ghi nhận HTTP Method, Route API, Mã trạng thái (Status Code), Thời gian xử lý (Latency) và Địa chỉ IP kết nối thuộc về **Nhật ký kỹ thuật vận hành máy chủ (Technical Operational Logs)**, không phải là hành vi theo dõi đời tư cá nhân.
+
+### 9.2. Tuân Thủ Nghị Định 13/2023/NĐ-CP Về Bảo Vệ Dữ Liệu Cá Nhân
+1. **Nguyên Tắc Tối Thiểu Hóa Dữ Liệu (Data Minimization - Điều 3):**
+   - Bảng `audit_log` tuyệt đối **KHÔNG lưu trữ** bất kỳ thông tin tài chính nhạy cảm nào: không có số dư, không có chi tiết thu chi, không có ghi chú cá nhân, không có mật khẩu hay mã OTP.
+2. **Cơ Chế Làm Sạch Dữ Liệu (`sanitizeAuditReason`):**
+   - Mọi thông báo lỗi đều được làm sạch trước khi ghi nhận, ngăn chặn việc rò rỉ token hoặc tham số nhạy cảm ra ngoài giao diện quản trị.
+3. **Phân Định Giới Tuyến Quyền Hạn (Zero PII Exposure):**
+   - Quản trị viên chỉ quan sát được tần suất và tình trạng xử lý của máy chủ tại Gateway, hoàn toàn không thể xem hoặc can thiệp vào tài sản/sổ sách của người dùng.
+
+### 9.3. Kiến Trúc Ngoại Tuyến (Offline-First) Của Mobile App Củng Cố Tính Riêng Tư
+- Ứng dụng di động Client-app hoạt động độc lập với CSDL SQLite trên thiết bị người dùng.
+- Client-app chỉ phát sinh request về Backend khi thực sự cần thiết (Đăng nhập, Đồng bộ danh mục hệ thống, Hỏi đáp AI, Webhook số dư).
+- Do đó, khối lượng request tại Server là tối thiểu và phản ánh đúng bản chất kỹ thuật, khẳng định tính toàn vẹn và hợp pháp của trang Quản lý Nhật ký Truy vết.

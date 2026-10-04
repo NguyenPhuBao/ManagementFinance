@@ -36,10 +36,32 @@ async function callAIOps(method, path, data = null) {
 
 const aiopsApi = {
   getStatus: () => callAIOps('get', '/admin/aiops/status'),
-  getHistory: () => callAIOps('get', '/admin/aiops/history'),
+  getHistory: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.range) qs.append('range', params.range);
+    if (params.from) qs.append('from', params.from);
+    if (params.to) qs.append('to', params.to);
+    const queryString = qs.toString();
+    return callAIOps('get', `/admin/aiops/history${queryString ? `?${queryString}` : ''}`);
+  },
+  getVectorConfig: () => callAIOps('get', '/admin/aiops/vectors'),
+  toggleVector: (vector, enabled) => callAIOps('post', '/admin/aiops/vectors/toggle', { vector, enabled }),
   calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),
+  setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
+  getIncidents: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.append('page', params.page);
+    if (params.limit) qs.append('limit', params.limit);
+    if (params.vector && params.vector !== 'all') qs.append('vector', params.vector);
+    if (params.status && params.status !== 'all') qs.append('status', params.status);
+    if (params.search) qs.append('search', params.search);
+    const queryString = qs.toString();
+    return callAIOps('get', `/admin/aiops/incidents${queryString ? `?${queryString}` : ''}`);
+  },
+  clearIncidents: () => callAIOps('post', '/admin/aiops/incidents/clear'),
+  quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
 };
 
 export default aiopsApi;

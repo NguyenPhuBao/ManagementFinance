@@ -11,7 +11,10 @@
 
 **Bảng Điều Khiển & Động Cơ Phân Tích Thống Kê (Dashboard & Analytics Engine)** là giao diện trung tâm đầu tiên mà quản trị viên tiếp cận sau khi đăng nhập. Chức năng cung cấp bức tranh toàn cảnh vĩ mô (360-degree overview) về quy mô người dùng, tốc độ tăng trưởng, lưu lượng truy cập hệ thống và nhật ký hoạt động thực tế.
 
-Toàn bộ dữ liệu hiển thị trên Dashboard được **thống kê và tổng hợp 100% từ cơ sở dữ liệu PostgreSQL**, kết hợp luồng cập nhật **Real-Time qua Socket.io Event Bus**, loại bỏ hoàn toàn việc sử dụng dữ liệu tĩnh hoặc dữ liệu giả lập (mockup).
+Toàn bộ dữ liệu hiển thị trên Dashboard được **thống kê và tổng hợp 100% từ cơ sở dữ liệu PostgreSQL** theo mô hình lai (Hybrid Architecture) tối ưu theo quyết định của PO:
+- **Chu kỳ Polling 10 giây (10s Polling):** Định kỳ quét và cập nhật ngầm (silent background update) các chỉ số vĩ mô: Tổng số user, Tổng danh mục, Người dùng mới, Biểu đồ tần suất đăng nhập và Biểu đồ lưu lượng request mà không gây giật lag hay block giao diện người dùng.
+- **Thời gian thực tuyệt đối (Real-Time Socket.io):** Giữ nguyên kết nối Socket.io cho danh mục **Hoạt động gần đây (Audit-log)** qua sự kiện `audit_activity` để chèn ngay lập tức thao tác mới nhất lên đầu bảng phân trang.
+- **Server Health & Resilience:** Uptime và tình trạng máy chủ được cập nhật định kỳ mỗi 10 giây.
 
 ---
 
@@ -41,23 +44,20 @@ graph TD
     end
 
     A1 -->|INSERT user| B1
-    A1 -->|emitUserRegistered| B4
     A2 -->|INSERT audit_log| B2
-    A2 -->|emitUserLoggedIn| B4
     A3 -->|INSERT audit_log| B2
 
     B1 -->|Query countUsers & countUsersByRange| B3
     B2 -->|Query getLoginLogsByRange & getRequestLogsByRange| B3
 
-    B3 -->|REST API Response| C1
-    B3 -->|REST API Response| C2
-    B3 -->|REST API Response| C3
-    B3 -->|REST API Response| C4
-    B3 -->|REST API Response| C5
+    B3 -->|Polling 10s ngầm| C1
+    B3 -->|Polling 10s ngầm| C2
+    B3 -->|Polling 10s ngầm| C3
+    B3 -->|Polling 10s ngầm| C4
+    B3 -->|REST API Initial & Pagination| C5
 
-    B4 -.->|admin.user_registered: +1 count| C1
-    B4 -.->|admin.user_logged_in: Nảy cột giờ| C3
-    B4 -.->|audit_activity: Chèn dòng đầu| C5
+    A3 -.->|socket.js emit audit_activity| B4
+    B4 -.->|Real-time Socket: Chèn dòng đầu tức thì| C5
 ```
 
 ### 2.1. Động cơ phân tích theo ngữ cảnh thời gian (Contextual Time Filter Engine)
@@ -166,8 +166,6 @@ for (const log of logs) {
 | `GET` | `/api/admin/request-stats` | Lấy chuỗi dữ liệu biểu đồ request theo bộ lọc | Admin |
 | `GET` | `/api/auth/recent-activities` | Lấy danh sách nhật ký hoạt động có phân trang | Admin |
 
-### Socket.io Events Lắng Nghe
-- `admin.user_registered`: Tự động cộng 1 vào `totalUsers` và `newUsers`.
-- `admin.user_logged_in`: Tự động nảy số lượng trên biểu đồ đăng nhập theo giờ hiện tại.
-- `admin.category_updated`: Tự động đồng bộ số đếm `totalCategories`.
-- `audit_activity`: Tự động chèn bản ghi mới lên dòng đầu tiên của bảng Hoạt động.
+### Chu Kỳ Polling & Socket.io Events Lắng Nghe
+- **Polling ngầm 10s (`setInterval`):** Đồng bộ `totalUsers`, `totalCategories`, `newUsers`, `loginStats`, `requestStats` và `getSystemHealth` (Uptime) định kỳ mà không giật lag màn hình.
+- **Socket.io Real-time Event (`audit_activity`):** Lắng nghe trực tiếp luồng audit log từ server để chèn ngay lập tức thao tác mới lên dòng đầu của bảng "Hoạt động gần đây" và tăng `total` bản ghi phân trang theo thời gian thực.

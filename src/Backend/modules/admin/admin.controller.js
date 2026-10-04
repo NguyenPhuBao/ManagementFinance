@@ -168,7 +168,7 @@ const adminController = {
 
   setMaintenanceStatus(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    const { active, reason, isEmergency, scheduledAt } = req.body || {};
+    const { active, reason, isEmergency, scheduledAt, scheduledEndAt } = req.body || {};
     const adminUser = req.user?.username || req.user?.fullname || 'admin';
 
     // 1. Xử lý lên lịch bảo trì trong tương lai
@@ -176,6 +176,7 @@ const adminController = {
       try {
         const status = defaultMaintenanceManager.scheduleMaintenance({
           scheduledAt,
+          scheduledEndAt,
           reason,
           isEmergency,
           createdBy: adminUser,

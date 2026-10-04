@@ -39,7 +39,11 @@ function auditLogMiddleware(req, res, next) {
         path.includes('/admin/totalcategories') ||
         path.includes('/admin/getusertotime') ||
         path.includes('/admin/login-stats') ||
-        path.includes('/admin/request-stats')
+        path.includes('/admin/request-stats') ||
+        path.includes('/admin/aiops') ||
+        path.includes('/admin/system/health') ||
+        path.includes('/admin/maintenance/status') ||
+        path.includes('/admin/audit-logs')
       ) {
         return;
       }
@@ -90,6 +94,7 @@ function auditLogMiddleware(req, res, next) {
             time_req,
             time_res,
             userDetails,
+            ip: clientIp,
           });
         } catch (err) {
           logger.error('[AuditLog] Error saving log', { error: err.message, path });

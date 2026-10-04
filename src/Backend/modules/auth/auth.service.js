@@ -7,6 +7,7 @@ const authRepository = require("./auth.repository");
 const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
+const { maskIp } = require("../../utils/masking.util");
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -73,8 +74,9 @@ function generateTokens(payload, idrole) {
 function getDeviceInfo(req) {
   const headers = (req && req.headers) ? req.headers : {};
   const userAgent = headers["user-agent"] || null;
+  const rawIp = (req && req.ip) || (headers['x-forwarded-for']?.split(',')[0]?.trim()) || (req && req.socket?.remoteAddress) || null;
   return {
-    ip_address: (req && req.ip) || null,
+    ip_address: maskIp(rawIp),
     user_agent: userAgent,
     device_name: (userAgent || "").substring(0, 100),
   };
@@ -377,6 +379,17 @@ const authService = {
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
+    // Tự động gỡ phong tỏa IP khi đăng nhập thành công với quyền Quản trị viên (Admin Fast-Lane Recovery)
+    if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {
+      try {
+        const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
+        const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+        if (clientIp) {
+          defaultAIOpsQuarantine.unquarantine(clientIp);
+        }
+      } catch (_) {}
+    }
+
     try {
       const { emitUserLoggedIn } = require('../../core/socket');
       emitUserLoggedIn({
@@ -415,6 +428,9 @@ const authService = {
     // CSDL mới: Status = true nghĩa là token ĐÃ bị thu hồi
     if (!storedToken || storedToken.status === true) {
       if (storedToken && storedToken.status === true) {
+        // Đánh dấu cờ phát hiện tấn công tái sử dụng token đã thu hồi (Token Reuse Attack)
+        if (req) req.tokenReuseDetected = true;
+
         // Thu hồi toàn bộ token của tài khoản nếu phát hiện dùng lại token đã revoke (Token Reuse Detection)
         await prisma.refreshtoken.updateMany({
           where: { idaccount: storedToken.idaccount, status: false },
@@ -858,6 +874,8 @@ const authService = {
         id: log.idlog,
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
+        username: data.userDetails?.username || null,
+        ip: data.ip || '127.0.0.1',
         action: data.request,
         reason: data.reason || null,
         status: reqStatus,
@@ -902,6 +920,7 @@ const authService = {
       },
     };
   },
+  getDeviceInfo,
 };
 
 module.exports = authService;

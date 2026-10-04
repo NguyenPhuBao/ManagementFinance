@@ -37,10 +37,10 @@ graph TD
     subgraph "Các Thành Phần Nhận Dữ Liệu Tức Thời (Admin-web Consumers)"
         P1[Header: Chuông cảnh báo an ninh & Đếm chưa đọc]
         P2[AppLayout: Banner Báo Động Đỏ Threat >= 85]
-        P3[Dashboard: Thẻ đếm User, Category, Biểu đồ Đăng nhập, Bảng Hoạt động]
+        P3[Dashboard: Bảng Hoạt Động recentActivities & Nhịp Tim Server Health]
         P4[Server Health Panel: Nhịp tim CPU, RAM, Event Loop Lag mỗi 3s]
         P5[User Management: Tự nạp User mới, Nhảy Badge trạng thái]
-        P6[Category Management: Đồng bộ bảng danh mục từ tab khác]
+        P6[Category Management: Nút 'Làm mới' thủ công REST API]
         P7[Audit Log: Stream nhật ký request mới nhất lên đầu bảng]
         P8[Broadcast & Bảo Trì: Đồng bộ công tắc & Lịch hẹn bảo trì]
         P9[AIOps Sentinel: Đồng hồ Threat Score & Danh sách chặn phong tỏa]
@@ -51,12 +51,10 @@ graph TD
     GW -->|Toàn bộ người dùng| BC
 
     AR -->|admin.metrics_stream| P3 & P4 & P9
-    AR -->|admin.user_registered| P3 & P5
-    AR -->|admin.user_logged_in| P3
+    AR -->|admin.user_registered| P5
     AR -->|admin.user_status_changed| P5
-    AR -->|admin.category_updated| P3 & P6
     AR -->|audit_activity| P3 & P7
-    AR -->|admin.maintenance_changed| P3 & P8
+    AR -->|admin.maintenance_changed| P4 & P8
     AR -->|admin.security_alert| P1 & P2 & P9
     AR -->|admin.security_blocked| P2 & P9
     BC -->|system.maintenance_changed| P8
@@ -85,10 +83,8 @@ graph TD
 | Tên sự kiện Socket.io | Kênh truyền | Dữ liệu phát tải (Payload) | Thành phần tiếp nhận trên Admin-web | Hành vi phản ứng trên giao diện |
 |---|:---:|---|---|---|
 | **`admin.metrics_stream`** | `admin_room` | `{ uptimeSeconds, eventLoopLagMs, cpuPercent, ramPercent, ramRssMb, threatScore, threatStatus, dbPool }` | `ServerHealthPanel`, `DashboardPage`, `AIOpsPage` | Cập nhật kim đo, chỉ số CPU/RAM, Uptime và Threat Score sau mỗi **3 giây/lần** (Bỏ hoàn toàn polling cũ). |
-| **`admin.user_registered`** | `admin_room` | `{ iduser, idaccount, username, fullname, email, created_at }` | `DashboardPage`, `UserListPage` | • Dashboard: Tự tăng `totalUsers` và `newUsers` (+1).<br>• UserList: Chèn tài khoản mới vào đầu bảng có highlight viền xanh lá. |
-| **`admin.user_logged_in`** | `admin_room` | `{ idaccount, username, timestamp }` | `DashboardPage` | Tự động tăng số lượt đăng nhập và nảy cột khung giờ tương ứng trên biểu đồ `loginStats`. |
+| **`admin.user_registered`** | `admin_room` | `{ iduser, idaccount, username, fullname, email, created_at }` | `UserListPage` | UserList: Chèn tài khoản mới vào đầu bảng có highlight viền xanh lá (Dashboard cập nhật qua Polling 10s). |
 | **`admin.user_status_changed`** | `admin_room` | `{ iduser, idaccount, status, reason_inactive }` | `UserListPage` | Cập nhật trực tiếp Badge trạng thái (`Active`, `Inactive`, `PendingDelete`) của dòng tài khoản mà không cần reload trang. |
-| **`admin.category_updated`** | `admin_room` | `{ action: 'create'\|'update'\|'delete', category }` | `DashboardPage`, `CategoryPage` | • Dashboard: Tăng/giảm thẻ `totalCategories`.<br>• CategoryPage: Tự nạp lại bảng danh mục hệ thống. |
 | **`audit_activity`** | `admin_room` | `{ id, idaccount, user, action, status, reason, time_req }` | `DashboardPage`, `AuditLogPage` | Chèn request mới nhất lên đầu bảng hoạt động người dùng khi đang ở Trang 1. |
 | **`admin.maintenance_changed`** | `admin_room` | `{ active, isEmergency, reason, activatedBy, scheduled }` | `BroadcastPage`, `ServerHealthPanel` | Tự động chuyển công tắc bảo trì (Thường/Khẩn cấp) và cập nhật/xóa Card lịch hẹn bảo trì ngay khi có biến động. |
 | **`system.maintenance_changed`** | `broadcast` | `{ active, isEmergency, reason }` | `BroadcastPage` | Đồng bộ trạng thái bảo trì cho toàn mạng. |
