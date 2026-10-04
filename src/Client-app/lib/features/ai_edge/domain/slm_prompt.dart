@@ -7,6 +7,8 @@
 /// một con số, và `kiemSo` khớp được.
 library;
 
+import 'dart:convert';
+
 import 'cong_cu.dart';
 import 'goi_so.dart';
 import 'nhan_xet.dart';
@@ -225,3 +227,21 @@ const String _dienThamSoGiaoDich =
     'nhất", "lần cuối", "gần đây" thì ky=moi_luc và sap_xep=moi_nhat, không dùng hom_nay; '
     '"lần cuối nạp tiền cho mục tiêu" thì $kTenCongCuTruyVan với ky=moi_luc và tu_khoa '
     'là tên mục tiêu.';
+
+/// Đường nhanh (spec 2026-10-02 §5): lời dặn cho lượt Gemma CHỈ VIẾT CÂU từ kết quả
+/// tool giao dịch đã chạy — một tin, không few-shot, không tool; cùng các ý của
+/// phần "Khi trả lời" trong [kPromptHeThongCongCu]. Kết quả là đúng khối JSON phiên
+/// có tool nhận qua `traKetQua`. ⚠️ Chỉ dẫn không chứa chữ số (ca test canh).
+String promptVietCau(String cauHoi, Map<String, dynamic> ketQua) =>
+    '$_chiDanVietCau\n'
+    'Kết quả tra cứu:\n${jsonEncode(ketQua)}\n'
+    'Câu hỏi: $cauHoi\n'
+    'Trả lời:';
+
+const String _chiDanVietCau =
+    'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Ứng dụng đã tra sổ giao dịch của '
+    'người dùng cho câu hỏi dưới đây; kết quả nằm ở phần Kết quả tra cứu. Trả lời câu '
+    'hỏi bằng tiếng Việt, ngắn gọn, một hoặc hai câu. Chỉ dùng tên và số có trong kết '
+    'quả, chép nguyên chuỗi số và ngày tháng (kể cả "đ", dấu phẩy và dấu gạch chéo), '
+    'nêu tên đối tượng trước con số, không tự tính toán hay suy đoán. Kết quả không có '
+    'giao dịch nào thì nói rõ là không có.';

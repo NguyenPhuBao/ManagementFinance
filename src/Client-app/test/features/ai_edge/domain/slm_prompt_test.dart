@@ -263,6 +263,29 @@ void main() {
     });
   });
 
+  // Đường nhanh (spec 2026-10-02 §5): Gemma chỉ VIẾT CÂU từ kết quả tool đã chạy.
+  group('promptVietCau — lượt viết câu của đường nhanh (spec §5)', () {
+    test('⭐ chỉ dẫn KHÔNG chứa chữ số', () {
+      expect(RegExp(r'\d').hasMatch(promptVietCau('tháng này tôi chi gì', const {})), isFalse,
+          reason: 'số trong lời dặn là số mô hình có thể chép vào câu mà không gói nào có');
+    });
+    test('mang kết quả dạng JSON và câu hỏi, kết bằng "Trả lời:"', () {
+      final p = promptVietCau('tháng này tôi chi gì', const {'Tổng chi': '800.000 đ'});
+      expect(p, contains('Kết quả tra cứu:\n{"Tổng chi":"800.000 đ"}'));
+      expect(p, contains('Câu hỏi: tháng này tôi chi gì'));
+      expect(p, endsWith('Trả lời:'));
+    });
+    test('cùng luật trả lời của bậc tool; không nhắc tên tool nào', () {
+      final p = promptVietCau('x', const {});
+      for (final luat in ['chép nguyên', 'nêu tên', 'không tự tính', 'tiếng Việt']) {
+        expect(p, contains(luat), reason: luat);
+      }
+      for (final ten in [kTenCongCuTruyVan, kTenCongCuNganSach]) {
+        expect(p, isNot(contains(ten)));
+      }
+    });
+  });
+
   group('kPromptHeThongCongCu (bậc tool, chặng 4b)', () {
     test('bảo gọi công cụ TRƯỚC khi trả lời và chép nguyên chuỗi số', () {
       expect(kPromptHeThongCongCu, contains('công cụ'));
