@@ -6,9 +6,9 @@ import '../../data/models/budget_entity.dart';
 
 /// Bốn mức sức khoẻ của một ngân sách đang chạy.
 ///
-/// Màu là **cách duy nhất** người dùng biết mình sắp vượt hạn mức: ứng dụng
-/// không gửi thông báo đẩy và không chặn ghi giao dịch. Vì vậy các mốc phải nằm
-/// đúng một chỗ, có test canh, chứ không rải trong widget.
+/// Màu là cách người dùng thấy NGAY mình đã dùng bao nhiêu hạn mức (thông báo
+/// *Sắp vượt* và *Đề xuất cân đối* là đường thứ hai, theo luật riêng). Vì vậy các
+/// mốc phải nằm đúng một chỗ, có test canh, chứ không rải trong widget.
 enum BudgetHealth {
   /// Dưới 70% hạn mức — xanh lá.
   safe,
