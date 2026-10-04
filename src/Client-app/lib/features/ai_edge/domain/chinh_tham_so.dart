@@ -105,6 +105,15 @@ final List<String> _tuGopVi = 'vi nao|theo vi'.split('|');
 final List<String> _tuChuyenTien =
     'chuyen tien|chuyen sang|chuyen khoan|chuyen vi|chuyen qua|chuyen den|chuyen vao'
         .split('|');
+
+/// Đường nhanh §4 (2026-10-04): *"chuyển … sang / vào / qua / đến ví"* — cụm chuyển
+/// KHÔNG liền (*"chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm"*, câu bộ đo khoá).
+/// [_tuChuyenTien] chỉ nhận cụm liền, nên câu ấy từng bị GỠ `chuyen_vi` Gemma điền đúng.
+final RegExp _mauChuyenSangVi =
+    RegExp(r'(?<![a-z0-9])chuyen(?![a-z0-9]).*(?<![a-z0-9])(?:sang|vao|qua|den) vi(?![a-z0-9])');
+
+bool _coChuyenTien(String q) =>
+    _tuChuyenTien.any((t) => _co(q, t)) || _mauChuyenSangVi.hasMatch(q);
 final List<String> _tuMoiNhat = 'lan gan nhat|lan cuoi|gan day|moi nhat|gan nhat'.split('|');
 /// Chữ kỳ — có cả *"đầu năm / đầu tháng / đầu tuần"* (E5 cổng E: *"kể từ đầu
 /// năm"* từng bị đọc là không nêu kỳ → `moi_luc`).
@@ -274,6 +283,16 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       ghi.add('câu hỏi nêu ví → vi=$w');
     }
   }
+  // 2d. Đường nhanh §4 (DC3): "danh mục X" mà X không phải tên thật, ô danh mục
+  // trống → điền X để tool TỪ CHỐI đúng lý do. Bỏ qua thì tool trả mọi khoản chi
+  // như thể câu không nêu danh mục.
+  if (_chuoi(a['danh_muc']) == null) {
+    final la = _tenSauDanhMuc(q);
+    if (la != null && _khop(la, bangDm) == null) {
+      a['danh_muc'] = la;
+      ghi.add('câu hỏi nêu danh mục lạ → danh_muc=$la');
+    }
+  }
   // 2c. G2 cổng F (C13): MẢNH của cụm ví trong câu ("vi tien" của "ví tiền
   // mặt") lọt vào danh_muc / tu_khoa, ô ví đã có tên thật → gỡ mảnh. Tên lạ
   // không phải mảnh ví ("abc", DC3) thì để tool từ chối như cũ.
@@ -290,7 +309,7 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       }
     }
   }
-  final coChuyenTien = _tuChuyenTien.any((t) => _co(q, t));
+  final coChuyenTien = _coChuyenTien(q);
   if (a['chieu'] == 'chuyen_vi' && !coChuyenTien) {
     final theoDongTu = _chieuTheoDongTu(q);
     if (theoDongTu != null) {
@@ -308,6 +327,11 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       a['chieu'] = c;
       ghi.add('câu hỏi nói chiều → chieu=$c');
     }
+  }
+  // 3b. Đường nhanh §4 (C11): câu chuyển tiền mà chiều vẫn trống → chuyen_vi.
+  if (_chuoi(a['chieu']) == null && coChuyenTien) {
+    a['chieu'] = 'chuyen_vi';
+    ghi.add('câu hỏi chuyển tiền → chieu=chuyen_vi');
   }
 
   // 4. Ngưỡng của câu hỏi thắng.
@@ -1027,6 +1051,37 @@ final List<String> _cumKhongPhaiDongTu = 'muc tieu|tieu de|chi tiet'.split('|');
 final RegExp _mauGhiChu = RegExp(r'(?<![a-z0-9])ghi chu\s+(.+)$');
 final RegExp _duoiCauHoi =
     RegExp(r'\s+(khong|nao|la gi|gi|la|thang|tuan|nam|quy|hom|trong|cua)(\s.*)?$');
+
+/// Chữ đứng ngay sau "danh mục" (tối đa ba âm tiết; dừng ở chữ chức năng / kỳ /
+/// chiều / chữ số) — `null` khi không có (*"danh mục nào"*, *"theo danh mục"*).
+/// ⚠️ Tên chỉ nhận khi đứng CUỐI câu hoặc ngay trước chữ kỳ / "của": bản đầu đọc
+/// "thế" của *"danh mục thế nào"* thành tên lạ, và luật chạy ở cả đường cũ nên câu
+/// hợp lệ bị tool từ chối. Hai chuỗi tách lúc chạy (test quét 14).
+final Set<String> _dungSauDanhMuc = ('nao|gi|cua|cho|trong|tu|den|thang|tuan|nam|quy|hom|nay|'
+        'khong|la|co|duoc|nhieu|it|lon|nho|nhat|chi|thu|tieu|khoan|vi|ma|va|hay|thi|'
+        'the|nhu|sao|ra|khac|do|ay|kia|moi|bao|nhung|cac|tat|ca')
+    .split('|')
+    .toSet();
+final Set<String> _chuSauTenDanhMuc =
+    'thang|tuan|nam|quy|hom|tu|den|trong|nay|cua'.split('|').toSet();
+
+String? _tenSauDanhMuc(String q) {
+  final m = RegExp(r'(?<![a-z0-9])danh muc\s+(.+)$').firstMatch(q);
+  if (m == null) return null;
+  final tu = [
+    for (final t in m.group(1)!.split(RegExp(r'\s+')))
+      if (t.replaceAll(RegExp(r'[^a-z0-9]'), '').isNotEmpty) t.replaceAll(RegExp(r'[^a-z0-9]'), ''),
+  ];
+  final ten = <String>[];
+  var i = 0;
+  for (; i < tu.length && ten.length < 3; i++) {
+    if (_dungSauDanhMuc.contains(tu[i]) || RegExp(r'^\d').hasMatch(tu[i])) break;
+    ten.add(tu[i]);
+  }
+  if (ten.isEmpty) return null;
+  if (i < tu.length && !_chuSauTenDanhMuc.contains(tu[i])) return null;
+  return ten.join(' ');
+}
 
 /// Chữ đứng sau "ghi chú" trong câu hỏi (đã bỏ dấu), cắt bỏ đuôi câu hỏi
 /// ("… hoa don khong" → "hoa don"); `null` khi câu không nói ghi chú.

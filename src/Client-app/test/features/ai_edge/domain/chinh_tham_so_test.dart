@@ -1069,4 +1069,46 @@ void main() {
       expect(chinh('quy nay toi chi bao nhieu', {})['ky'], 'quy_nay');
     });
   });
+
+  group('25. đường nhanh §4 — chiều chuyển ví, tên lạ sau "danh mục"', () {
+    test('⭐ C11: câu chuyển tiền, chiều trống → chuyen_vi', () {
+      expect(chinh('thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao', {})['chieu'],
+          'chuyen_vi');
+    });
+    // ⚠️ Lệch spec có chủ ý: spec mục 4 dựa trên cụm chuyển LIỀN (`_tuChuyenTien`), mà
+    // câu bộ đo khoá này không có cụm liền nào — luật như spec viết không chữa được nó.
+    test('⭐ "chuyển … sang ví" (cụm không liền) là chuyển tiền — Gemma điền chuyen_vi thì GIỮ', () {
+      const cau = 'Tôi đã chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm trong tháng này?';
+      expect(chinh(cau, {})['chieu'], 'chuyen_vi');
+      expect(chinh(cau, {'chieu': 'chuyen_vi'})['chieu'], 'chuyen_vi',
+          reason: 'bản cũ gỡ chuyen_vi vì không thấy cụm chuyển tiền liền');
+    });
+    test('phản ví dụ: động từ chiều đứng trước — trả qua chuyển khoản vẫn là chi', () {
+      expect(chinh('thang nay toi chi bao nhieu qua chuyen khoan', {})['chieu'], 'khoan_chi');
+    });
+    test('⭐ DC3: "danh mục abc" không phải tên thật → danh_muc=abc (tool từ chối đúng lý do)', () {
+      expect(chinh('cac khoan chi cho danh muc abc thang nay', {})['danh_muc'], 'abc');
+    });
+    test('phản ví dụ: "danh mục nào", "theo danh mục", tên thật — không điền bừa', () {
+      expect(chinh('Thang nay toi chi nhieu nhat vao danh muc nao?', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('cac danh muc thu nhap cua toi', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('liet ke theo danh muc thang nay', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('cac khoan chi cho danh muc an uong thang nay', {})['danh_muc'], 'Ăn uống');
+    });
+    // Bản đầu đọc "thế" của "thế nào" thành tên danh mục lạ — câu hợp lệ bị tool từ
+    // chối ở CẢ đường cũ (luật chạy sau Gemma). Tên lạ chỉ nhận khi đứng cuối câu hoặc
+    // ngay trước chữ kỳ / "của".
+    test('phản ví dụ: chữ hỏi / chữ chỉ định sau "danh mục" không phải tên', () {
+      for (final c in [
+        'thang nay chi theo danh muc the nao',
+        'chi tieu theo danh muc nhu the nao',
+        'cac danh muc khac thang nay chi bao nhieu',
+        'danh muc ton nhieu tien nhat thang nay',
+      ]) {
+        expect(chinh(c, {}).containsKey('danh_muc'), isFalse, reason: c);
+      }
+      expect(chinh('cac khoan chi cho danh muc qua tang', {})['danh_muc'], 'qua tang',
+          reason: 'tên lạ đứng cuối câu vẫn nhận');
+    });
+  });
 }
