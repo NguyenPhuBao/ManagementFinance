@@ -159,4 +159,57 @@ describe('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn c�
     assert.strictEqual(status.isEmergency, true);
     assert.strictEqual(status.scheduled, null, 'Lịch hẹn trước phải bị xóa sạch khi kích hoạt bảo trì khẩn cấp');
   });
+
+  it('9. Lên lịch bảo trì với thời điểm kết thúc hợp lệ (scheduledEndAt)', () => {
+    const mgr = new MaintenanceManager();
+    const futureStart = new Date(Date.now() + 100000).toISOString();
+    const futureEnd = new Date(Date.now() + 200000).toISOString();
+
+    mgr.scheduleMaintenance({
+      scheduledAt: futureStart,
+      scheduledEndAt: futureEnd,
+      reason: 'Nâng cấp máy chủ từ 2h đến 3h',
+      isEmergency: false,
+      createdBy: 'admin-lead',
+    });
+
+    const status = mgr.getStatus();
+    assert.ok(status.scheduled);
+    assert.strictEqual(status.scheduled.scheduledAt, futureStart);
+    assert.strictEqual(status.scheduled.scheduledEndAt, futureEnd);
+  });
+
+  it('10. Chặn lên lịch khi thời điểm kết thúc trước hoặc bằng thời điểm bắt đầu', () => {
+    const mgr = new MaintenanceManager();
+    const futureStart = new Date(Date.now() + 200000).toISOString();
+    const invalidEnd = new Date(Date.now() + 100000).toISOString(); // Trước start
+
+    assert.throws(
+      () => {
+        mgr.scheduleMaintenance({
+          scheduledAt: futureStart,
+          scheduledEndAt: invalidEnd,
+          reason: 'Lỗi thứ tự thời gian',
+        });
+      },
+      { message: /Thời điểm kết thúc bảo trì phải sau thời điểm bắt đầu/ }
+    );
+  });
+
+  it('11. Chặn cài đặt lịch bảo trì mới khi hệ thống đang trong phiên bảo trì trực tiếp', () => {
+    const mgr = new MaintenanceManager();
+    mgr.setMaintenance(true, 'Đang bảo trì trực tiếp', 'admin-01');
+
+    const futureStart = new Date(Date.now() + 100000).toISOString();
+
+    assert.throws(
+      () => {
+        mgr.scheduleMaintenance({
+          scheduledAt: futureStart,
+          reason: 'Cố tình lên lịch trùng',
+        });
+      },
+      { message: /Hệ thống hiện đang trong phiên bảo trì trực tiếp/ }
+    );
+  });
 });

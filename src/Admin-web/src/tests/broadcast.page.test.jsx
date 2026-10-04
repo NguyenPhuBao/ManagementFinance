@@ -219,7 +219,73 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
 
     await waitFor(() => {
       expect(screen.getByText('Tắt Bảo Trì & Mở Lại Hệ Thống')).toBeInTheDocument();
-      expect(screen.getByText('Sự cố khẩn cấp từ Sentinel')).toBeInTheDocument();
+      expect(screen.getByText('Kết Thúc Bảo Trì — Khôi Phục Hệ Thống')).toBeInTheDocument();
+      expect(screen.getAllByText('Sự cố khẩn cấp từ Sentinel').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('6.7. Lên lịch bảo trì với thời điểm bắt đầu và kết thúc dự kiến', async () => {
+    adminApi.setMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: false,
+        scheduled: {
+          scheduledAt: '2026-10-05T02:00:00.000Z',
+          scheduledEndAt: '2026-10-05T04:00:00.000Z',
+          reason: 'Bảo trì hạ tầng định kỳ',
+          isEmergency: false,
+          createdBy: 'admin',
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    render(<BroadcastPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
+    });
+
+    const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
+    const endDatetimeInput = screen.getByLabelText(/Thời điểm kết thúc \(Dự kiến\)/i);
+    const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
+
+    fireEvent.change(startDatetimeInput, { target: { value: '2026-10-05T02:00' } });
+    fireEvent.change(endDatetimeInput, { target: { value: '2026-10-05T04:00' } });
+    fireEvent.change(reasonInput, { target: { value: 'Bảo trì hạ tầng định kỳ' } });
+
+    const scheduleBtn = screen.getByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i });
+    fireEvent.click(scheduleBtn);
+
+    await waitFor(() => {
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason: 'Bảo trì hạ tầng định kỳ',
+          isEmergency: false,
+        })
+      );
+    });
+  });
+
+  it('6.8. Khi hệ thống đang bảo trì trực tiếp, giao diện chặn form lên lịch và hướng dẫn kết thúc bảo trì', async () => {
+    adminApi.getMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: true,
+        isEmergency: false,
+        reason: 'Nâng cấp máy chủ',
+        activatedBy: 'admin',
+        activatedAt: new Date().toISOString(),
+        scheduled: null,
+      },
+    });
+
+    render(<BroadcastPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chế độ bảo trì đang kích hoạt')).toBeInTheDocument();
+      expect(screen.getByText(/Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian/i)).toBeInTheDocument();
+      expect(screen.getByText(/Kết Thúc Bảo Trì — Khôi Phục Hệ Thống/i)).toBeInTheDocument();
+      // Form lên lịch không xuất hiện
+      expect(screen.queryByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i })).not.toBeInTheDocument();
     });
   });
 });

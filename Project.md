@@ -3170,6 +3170,142 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Admin-web Test Suite:** **41/41 tests PASS 100%** trong 7.60s.
   - **Tổng toàn hệ thống:** **92/92 tests PASS 100%**.
 
+### 11.60. Giải Quyết Cảnh Báo Prisma Deprecation, Khởi Động Grace Period & Tinh Chỉnh Nới Rộng 4 Vector Rủi Ro AIOps (2026-10-04)
+- **1. Quyết Định Chiến Lược & Chủ Trương Của PO:**
+  - **Vấn đề 1 (Prisma Deprecation Warning trên Render Cloud):** Log build Cloud báo cảnh báo `warn The configuration property 'package.json#prisma' is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file`. PO yêu cầu xử lý triệt để cảnh báo lỗi thời, chuẩn hóa cấu hình Prisma hiện đại.
+  - **Vấn đề 2 (Báo động giả nghiêm trọng khi vừa khởi động Cloud & Siết quá chặt 4 Vector):** Vừa khởi động backend trên Render, hệ thống đã kích hoạt Load Shedding (`lagMs: 197`) và Sentinel báo động `Threat Score: 75 | Status: CRITICAL {"anomaliesCount": 1, "action": "EMERGENCY_MAINTENANCE"}`. PO chỉ đạo: nới rộng các điểm của cả 4 vector rủi ro ra, không siết quá chặt; người dùng vô tình nhập sai mật khẩu vài lần, hoặc mở 2 tab trình duyệt gây trùng token, hoặc máy chủ vừa khởi động bị trễ event loop tức thời thì tuyệt đối không được báo động đỏ hay phong tỏa tài khoản/IP.
+- **2. Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA):**
+  - **Cơ chế Load Shedding quá nhạy cảm khi Cold-Start:** Ngưỡng lag mặc định trước đây là 100ms mà không có thời gian ân hạn khởi động (Grace Period). Render gửi request thăm dò sức khỏe `HEAD /` ngay lúc Node.js đang nạp các module nặng (Prisma, BullMQ, Redis) gây lag thoáng qua 197ms, khiến request bị từ chối với HTTP 503.
+  - **Lỗ hổng tính tỷ lệ lỗi 5xx không có cỡ mẫu tối thiểu:** Cửa sổ 10s chỉ có đúng 1 request (từ Render health check) và request đó bị 503, khiến Sentinel tính `errorRate5xx = 1.0 (100%)`.
+  - **Ngưỡng 4 Vector bị siết quá chặt:**
+    + Vector Auth trước đây: Chỉ cần 1 lần token reuse (`tokenReuseAttacks >= 1`) hoặc 8 lần đăng nhập sai đã kích hoạt báo động. Trong thực tế, người dùng mở song song 2 tab trình duyệt hoặc F5 nhanh dễ gây ra token reuse 1-2 lần hoàn toàn vô hại.
+    + Vector Exploit: Chỉ 3 malformed requests đã kích hoạt cách ly IP.
+    + Hành động khẩn cấp: Chỉ cần 1 chỉ số chạm 75 điểm đã vội vàng đề xuất `EMERGENCY_MAINTENANCE`.
+- **3. Kiến Trúc Kỹ Thuật & Giải Pháp Triển Khai Toàn Diện:**
+  - **Chuẩn hóa cấu hình Prisma (`src/Backend/package.json`):**
+    + Loại bỏ hoàn toàn khối cấu hình lỗi thời `"prisma": { "seed": "node prisma/seed.js" }` trong `package.json`. Chuyển sang định dạng script chuẩn `"prisma:seed": "node prisma/seed.js"`.
+    + Chạy `rtk npx prisma generate` xác nhận Prisma Client (`v6.19.3`) biên dịch sạch sẽ 100%, không còn bất kỳ cảnh báo deprecation nào.
+  - **Cơ chế Cold-Start Warmup & Miễn Trừ Kiểm Tra Sức Khỏe Máy Chủ (`src/Backend/middleware/load-shedding.middleware.js`):**
+    + Bổ sung thời gian ân hạn khởi động (`warmupMs = 45,000ms` / 45s trong môi trường production): Trong 45s đầu tiên, Event Loop Monitor ghi nhận độ trễ nhưng Load Shedding không từ chối request của hệ thống.
+    + Thêm chốt chặn Bypass cho request gốc (`path === '/'` với method `HEAD` hoặc `GET` từ Render/AWS Health Checker): Các request thăm dò sức khỏe sống còn này luôn được thông suốt, đảm bảo container backend cloud luôn đạt trạng thái `Healthy/Live`.
+    + Nâng ngưỡng ngắt tải mặc định từ 100ms lên 250ms trong `src/Backend/core/resilience/event-loop-monitor.js`.
+  - **Tinh chỉnh nới rộng & Chống Báo Động Giả Toàn Diện Cho 4 Vector Rủi Ro:**
+    + **Bộ thu thập đặc trưng (`src/Backend/modules/aiops/feature.collector.js`):**
+      * Thêm cơ chế Warmup 45s cho `_getEventLoopLag()`: khống chế điểm lag tối đa 10ms trong 45s đầu khởi động máy chủ.
+      * Nới rộng ngưỡng cách ly IP chủ động:
+        - `failedLogins`: Tối thiểu $\ge 15$ lần liên tiếp từ 1 IP duy nhất mới đưa vào diện nghi vấn (thay vì 5 lần). Người dùng gõ nhầm 1-14 lần hoàn toàn không bị ảnh hưởng.
+        - `tokenReuse`: Tối thiểu $\ge 5$ lần lặp lại từ 1 IP mới nghi vấn đánh cắp token (thay vì chỉ 1 lần). Chống tuyệt đối tình trạng mở 2 tab trình duyệt bị chặn.
+        - `malformed`: Tối thiểu $\ge 8$ requests mang payload độc hại (thay vì 3 lần).
+    + **Mô hình đánh giá bất thường (`src/Backend/modules/aiops/anomaly.detector.js`):**
+      * **Vector 1 (Auth):** `bruteForceThreshold = Math.max(25, Math.round(N * 0.025))`. Với $< 25$ lần lỗi: chỉ tính điểm thông thường (tối đa 15 điểm), tuyệt đối không báo động đỏ. `tokenReuseAttacks` chỉ báo động khi $\ge 5$ lần; 1-4 lần chỉ tính điểm nhẹ 5-20 điểm.
+      * **Vector 2 (Traffic):** Yêu cầu cả 2 điều kiện: lưu lượng tuyệt đối $\ge 300$ req/phút VÀ tỷ lệ tăng vọt $\ge 3.5\times$ đường chuẩn baseline mới đánh giá rủi ro DDoS.
+      * **Vector 3 (Exploit):** Ngưỡng cảnh báo nâng lên $\ge 8$ mẫu độc hại; 1-7 mẫu chỉ cho tối đa 25 điểm an toàn.
+      * **Vector 4 (Resource):** Nới rộng ngưỡng trễ Event Loop lên $\ge 250$ms (nghiêm trọng khi $\ge 400$ms). Đặc biệt: áp dụng bẫy cỡ mẫu tối thiểu `minRequestsFor5xx = 10` trước khi tính tỷ lệ lỗi 5xx, triệt tiêu 100% bẫy 1 request lỗi khiến tỷ lệ thành 100%.
+      * **Điều kiện kích hoạt Bảo Trì Khẩn Cấp (EMERGENCY_MAINTENANCE):** Áp dụng nguyên tắc khủng hoảng đa trụ cột (`severeResourceCrisis`): Chỉ đề xuất khi `resourceScore >= 85` VÀ có sự sụp đổ đồng thời của ít nhất 2 trụ cột tài nguyên cốt lõi (Lag $\ge 70$ và 5xx $\ge 70$, hoặc Lag $\ge 70$ và RAM $\ge 70$, hoặc RAM $\ge 70$ và 5xx $\ge 70$).
+      * **Phân cấp Composite Tier nới rộng:** $< 40$: NORMAL (Bình thường); $40 - 69$: ELEVATED (Giám sát nội bộ, người dùng không bị can thiệp); $70 - 84$: WARNING; $\ge 85$: CRITICAL.
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Test Suite (`test:v2`):** **51/51 tests PASS 100%** trong 1.98s.
+  - **Backend Unit Test Suite (`tests/unit/*.test.js`):** **28/28 tests PASS 100%** trong 1.10s.
+  - **Admin-web Test Suite:** **41/41 tests PASS 100%**.
+  - **Tổng toàn hệ thống:** **120/120 tests PASS 100%**.
+
+### 11.61. Thẻ Tình Trạng Vận Hành Hệ Thống Tại AIOps, Nút Kết Thúc Bảo Trì & Quản Lý Lịch Trình Chống Xung Đột Tại Broadcast (2026-10-04)
+- **1. Quyết Định Chiến Lược & Yêu Cầu Cốt Lõi Của PO:**
+  - **Yêu cầu 1 (AIOps Sentinel - Thẻ Tình Trạng Hệ Thống):** Thêm 1 thẻ/tab trực tiếp phía trên tab *Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải (Target Concurrency Scaler)* hiển thị tình trạng thực tế của toàn hệ thống:
+    * Khi hệ thống hoạt động ổn định: Hiển thị trạng thái **"Đang hoạt động"** với **Badge màu xanh lá nhạt** (`bg-emerald-100 text-emerald-800 border-emerald-300`).
+    * Khi hệ thống đang trong phiên bảo trì: Hiển thị trạng thái **"Đang bảo trì"** (kèm huy hiệu phân loại Khẩn cấp/Kỹ thuật, lý do bảo trì, thời điểm kích hoạt và nút điều hướng tới trang Điều Hành Bảo Trì).
+  - **Yêu cầu 2 (Broadcast - Nút Kết Thúc Bảo Trì, Giờ Kết Thúc Dự Kiến & Chống Xung Đột Lịch Trình):**
+    * Tab *Kích Hoạt Bảo Trì Tức Thì*: Khi hệ thống đang ở chế độ bảo trì, bổ sung nút nổi bật **"Kết Thúc Bảo Trì — Khôi Phục Hệ Thống"**, đồng thời ẩn hoàn toàn các nút bật bảo trì để tránh thao tác vô lý hoặc gây xung đột.
+    * Tab *Lên Lịch Thời Điểm Bảo Trì*: Bổ sung input chọn **"Thời điểm kết thúc bảo trì (Dự kiến)"** (`scheduledEndAt`).
+    * Cơ chế đồng bộ & Chống xung đột trạng thái (State-Aware Conflict Prevention): Khi hệ thống đang trong phiên bảo trì trực tiếp (`active === true`), giao diện Admin-web tự động khóa form lên lịch mới để tránh tình trạng cài đặt phiên bảo trì chồng chéo, xung đột với phiên đang diễn ra; Backend kiểm tra tính hợp lệ `scheduledEndAt > scheduledAt`, từ chối nhận lịch khi đang bảo trì, và tự động kích hoạt bộ hẹn giờ kết thúc (`_autoEndTimer`) khi tới giờ hẹn.
+- **2. Kiến Trúc Kỹ Thuật & Giải Pháp Triển Khai Backend:**
+  - **Nâng cấp `MaintenanceManager` (`src/Backend/core/resilience/maintenance.manager.js`):**
+    * Mở rộng hàm `scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency, createdBy })`:
+      - Chặn xung đột: `if (this.active) throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');`
+      - Kiểm định thời gian: Bắt buộc `new Date(scheduledEndAt) > new Date(scheduledAt)` nếu có cung cấp `scheduledEndAt`.
+      - Lưu trữ `scheduledEndAt` trong payload trạng thái `this.scheduled`.
+      - Tự động kết thúc bảo trì thông minh (`_autoEndTimer`): Khi bộ hẹn giờ `_scheduledTimer` kích hoạt phiên bảo trì tại `scheduledAt`, hệ thống tự động lập timer `_autoEndTimer` căn theo `scheduledEndAt`. Khi hết thời gian bảo trì dự kiến, hệ thống tự động gọi `this.setMaintenance(false, ...)` mở lại hệ thống cho người dùng mà không đòi hỏi thao tác thủ công của kỹ sư trực.
+      - Hủy timer tự động kết thúc nếu Admin chủ động tắt bảo trì hoặc hủy lịch hẹn sớm.
+  - **Controller & API Routes (`src/Backend/modules/admin/admin.controller.js`):**
+    * Tiếp nhận và truyền tham số `scheduledEndAt` an toàn từ `req.body` xuống `scheduleMaintenance()`.
+- **3. Kiến Trúc Giao Diện & Trải Nghiệm Admin-web:**
+  - **AIOps Sentinel (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    * Quản lý state `maintenanceStatus`, nạp trạng thái song song qua `adminApi.getMaintenanceStatus()`.
+    * Lắng nghe sự kiện Socket.io `admin.maintenance_changed` và `system.maintenance_changed` cập nhật tức thời thời gian thực (Zero-refresh).
+    * Thẻ Tình Trạng Hệ Thống đặt nổi bật ngay trên khối Target Concurrency Scaler:
+      - Khi bình thường: Badge xanh lá nhạt chuẩn nhận diện PO `bg-emerald-100 text-emerald-800 border-emerald-300`, hiển thị "Tình Trạng Hệ Thống: Đang hoạt động".
+      - Khi bảo trì: Badge màu hổ phách/đỏ "Đang bảo trì", hiển thị lý do, thời điểm bắt đầu và liên kết nhanh sang `/broadcast`.
+  - **Điều Hành Bảo Trì & Phát Thông Báo (`src/Admin-web/src/pages/system/BroadcastPage.jsx`):**
+    * Cột Trái ("Kích Hoạt Bảo Trì Tức Thì"):
+      - Khi `active === false`: Hiển thị form nhập lý do, checkbox khẩn cấp và nút Bật Bảo Trì.
+      - Khi `active === true`: Ẩn toàn bộ nút bật bảo trì, hiển thị thẻ thông tin phiên bảo trì đang diễn ra và nút hành động đơn nhất **"Kết Thúc Bảo Trì — Khôi Phục Hệ Thống"** (`bg-emerald-600 hover:bg-emerald-700`).
+    * Cột Phải ("Lên Lịch Thời Điểm Bảo Trì"):
+      - Khi `active === true`: Thay thế form bằng hộp cảnh báo màu hổ phách "Chế độ bảo trì đang kích hoạt", ngăn chặn tạo lịch trùng lặp và hướng dẫn kết thúc phiên bảo trì trước.
+      - Khi `active === false`: Lưới 2 cột cho phép chọn *Thời điểm bắt đầu* và *Thời điểm kết thúc (Dự kiến)*, kèm ràng buộc `min` datetime và xác thực `end > start`.
+      - Khi đã có lịch hẹn: Hiển thị đầy đủ cả thời điểm bắt đầu và thời điểm kết thúc dự kiến kèm nút hủy lịch.
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Unit Tests (`src/Backend/tests/unit/admin.priority.maintenance.test.js`):** Bổ sung 3 test cases (9, 10, 11) kiểm tra `scheduledEndAt`, thời gian hợp lệ và chặn xung đột khi bảo trì trực tiếp $\rightarrow$ **11/11 tests PASS 100%**.
+  - **Backend Multi-Vector Tests (`src/Backend/tests/v2/aiops.multivector.test.js`):** **12/12 tests PASS 100%**.
+  - **Admin-web Test Suite (`src/Admin-web/src/tests/`):** 7 file kiểm thử với **45/45 tests PASS 100%** (trong đó `aiops.page.test.jsx` đạt 13/13 tests và `broadcast.page.test.jsx` đạt 8/8 tests).
+  - **Tổng toàn hệ thống:** **68/68 tests PASS 100%** không một lỗi hồi quy.
+
+### 11.62. Bật/Tắt Từng Vector Rủi Ro Kèm Popup Xác Nhận & Bộ Lọc Thời Gian Xu Hướng Đa Mức Ưu Tiên Tuyệt Đối Tại AIOps Sentinel (2026-10-04)
+- **1. Quyết Định Chiến Lược & Yêu Cầu Cốt Lõi Của PO:**
+  - **Yêu cầu 1 (Khối 4 Vector Rủi Ro):**
+    * Bổ sung nút BẬT/TẮT độc lập cho từng vector trong 4 vector rủi ro (`auth`, `traffic`, `exploit`, `resource`).
+    * **Nguyên tắc khi TẮT (Measure Only — Zero Impact):** Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG và hiển thị sub-score độc lập của vector đó trên UI để Admin quan sát, nhưng **tuyệt đối KHÔNG tính vector bị tắt vào Threat Score tổng hợp** (Threat Score chỉ tính trên các vector đang bật) và **KHÔNG kích hoạt các biện pháp phòng vệ tự động** (như chặn IP, rate limit hay đề xuất bảo trì khẩn cấp) của vector đó.
+    * **Quy tắc Popup xác nhận (Always Confirm):** Bắt buộc phải luôn xuất hiện Popup (`ConfirmModal`) cảnh báo và yêu cầu xác nhận trước khi thực hiện chuyển đổi trạng thái BẬT hoặc TẮT bất kỳ vector nào.
+  - **Yêu cầu 2 (Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập):**
+    * **Bộ select thời gian nhanh (Presets):** Cho phép quan sát xu hướng theo năm (12 tháng qua), tháng (30 ngày qua), ngày (24 giờ qua), và thời gian thực (10 phút — 60 mẫu gần nhất).
+    * **Bộ lọc khoảng thời gian tùy biến chi tiết (Precision Range Picker):** Cho phép người dùng chọn chi tiết chính xác từ năm đến năm, từ tháng đến tháng, từ ngày đến ngày.
+    * **Quy tắc Ưu Tiên Cốt Lõi (PO Priority Rule):** Phải **ƯU TIÊN BỘ LỌC CHỌN CHÍNH XÁC THAY VÌ BỘ SELECT** nếu cả 2 bộ lọc đều được áp dụng đồng thời. Khi bộ lọc chính xác đang kích hoạt, dữ liệu biểu đồ và tham số truy vấn backend bắt buộc lấy theo khoảng thời gian chính xác `from` $\rightarrow$ `to`, bộ select nhanh tạm thời được bỏ qua kèm chỉ dẫn trực quan cho Admin.
+- **2. Kiến Trúc Kỹ Thuật Backend:**
+  - **Anomaly Detector (`src/Backend/modules/aiops/anomaly.detector.js`):**
+    * Bổ sung state `vectorConfig = { auth: true, traffic: true, exploit: true, resource: true }`.
+    * Cung cấp các phương thức `setVectorEnabled(vectorName, isEnabled)` và `setVectorConfig(newConfig)`.
+    * Trong `evaluate(sample)`:
+      - Tính toán điểm số thô độc lập cho cả 4 vector để phục vụ đo lường.
+      - Composite `threatScore`: Chỉ lấy giá trị lớn nhất trong số các vector có trạng thái `this.vectorConfig[v] === true`. Nếu tất cả vector bị tắt, `threatScore` trả về mức an toàn tối thiểu (5 điểm).
+      - `vectorDefenses`: Khi vector bị tắt, tự động đặt `disabled: true`, `defenseAction: 'MONITOR'`, và `status: 'NORMAL'`.
+      - Ràng buộc khủng hoảng tài nguyên (`severeResourceCrisis`): Bắt buộc kiểm tra `this.vectorConfig.resource === true` mới được đề xuất bảo trì khẩn cấp.
+      - Trả về trường `vectorConfig` trong kết quả đánh giá để đồng bộ luồng Stream.
+  - **AIOps Service (`src/Backend/modules/aiops/aiops.service.js`):**
+    * Lưu trữ cấu hình `vector_toggles` bền vững vào CSDL PostgreSQL qua `AIOpsRepository.setSetting/getSetting`.
+    * `toggleVector(vectorName, isEnabled)`: Cập nhật Detector, lưu vào CSDL, và phát sóng sự kiện thời gian thực `admin.vector_config_changed` qua Socket.io.
+    * `getHistory({ range, from, to })`: Hỗ trợ đa dạng khung thời gian (`realtime`, `day`, `month`, `year`) kết hợp bộ nội suy toán học `interpolateTimeline`, và thực thi nghiêm ngặt PO Priority Rule: Nếu có `from` và `to` thì ưu tiên truy vấn theo khoảng chính xác, bỏ qua `range`.
+  - **Controller & Routes (`src/Backend/modules/aiops/aiops.controller.js` & `src/Backend/api/admin.routes.js`):**
+    * `GET /api/admin/aiops/vectors`: Trả về trạng thái cấu hình hiện tại của 4 vector.
+    * `POST /api/admin/aiops/vectors/toggle`: Tiếp nhận payload `{ vector, enabled }` để bật/tắt vector.
+    * Nâng cấp `GET /api/admin/aiops/history`: Tiếp nhận các query params `range`, `from`, `to`.
+- **3. Kiến Trúc Giao Diện & Trải Nghiệm Admin-web:**
+  - **AIOps API Client (`src/Admin-web/src/api/aiops.api.js`):**
+    * Bổ sung các hàm `getVectorConfig()`, `toggleVector(vector, enabled)`.
+    * Nâng cấp `getHistory(params)` tự động chuyển tiếp `range`, `from`, `to` qua `URLSearchParams`.
+  - **AIOps Sentinel Page (`src/Admin-web/src/pages/system/AIOpsPage.jsx`):**
+    * **Khối 4 Vector Rủi Ro:**
+      - Mỗi thẻ vector trang bị Toggle Switch kèm nhãn trạng thái và accessibility role (`data-testid="toggle-vector-<key>"`).
+      - Khi click toggle: Luôn mở `ConfirmModal` xác nhận hành động BẬT hoặc TẮT, giải thích rõ nguyên tắc "Vẫn đo lường nhưng không tính vào Threat Score".
+      - Khi vector TẮT: Hiển thị Banner cảnh báo màu vàng nhạt `Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score`, thanh tiến trình chuyển màu xám và huy hiệu phòng vệ hiển thị `Đã tắt phòng vệ — Chỉ đo lường`.
+    * **Khối Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro:**
+      - Tiêu đề biểu đồ động tự thích ứng theo khung thời gian đang chọn (Thời gian thực, 24 giờ qua, 30 ngày qua, 12 tháng qua, hoặc Tùy biến chính xác).
+      - Hàng 1 (Presets): 4 nút chọn nhanh `Thời gian thực (10 phút)`, `Ngày (24 giờ qua)`, `Tháng (30 ngày qua)`, `Năm (12 tháng qua)`.
+      - Hàng 2 (Precision Range Picker): Bộ chọn chế độ (Theo Ngày, Theo Tháng, Theo Năm), 2 input `Từ` và `Đến` kèm các loại input tương ứng (`date`, `month`, `number`), nút `Lọc Chính Xác` và nút `Xóa bộ lọc`.
+      - **Banner Ưu Tiên Bộ Lọc Chính Xác:** Khi áp dụng khoảng thời gian chi tiết, banner màu vàng hổ phách nổi bật khẳng định quyền ưu tiên tuyệt đối của bộ lọc chính xác, làm mờ các nút preset và cung cấp nút 1-click quay lại dùng bộ select nhanh.
+      - Lắng nghe Socket.io `admin.vector_config_changed` đồng bộ trạng thái toggle tức thời giữa nhiều phiên Admin đang mở.
+- **4. Kiểm Định Chất Lượng Toàn Diện:**
+  - **Backend Unit Tests (`src/Backend/tests/unit/`):**
+    * `aiops.detector.test.js`: Thêm test 10 & 11 kiểm tra vector disabled loại khỏi threat score và tắt `severeResourceCrisis` $\rightarrow$ **12/12 tests PASS 100%**.
+    * `aiops.service.test.js`: Thêm test 6 & 7 kiểm tra `toggleVector`, lưu CSDL, phát socket và ưu tiên lọc `from/to` $\rightarrow$ **7/7 tests PASS 100%**.
+    * `admin.priority.maintenance.test.js`: **12/12 tests PASS 100%**.
+    * **Tổng Backend Unit Tests:** **31/31 tests PASS 100%**.
+  - **Backend Integration Tests (`src/Backend/tests/v2/aiops.multivector.test.js`):** **12/12 tests PASS 100%**.
+  - **Admin-web Unit Tests (`src/Admin-web/src/tests/`):**
+    * `aiops.page.test.jsx`: Bổ sung 5 test cases chuyên sâu (5.14, 5.15, 5.16, 5.17, 5.18) kiểm định popup xác nhận bật/tắt vector, badge chỉ đo lường, bộ select presets, quy tắc ưu tiên lọc chính xác và socket đồng bộ $\rightarrow$ **18/18 tests PASS 100%**.
+    * **Tổng Admin-web Test Suite:** **50/50 tests PASS 100%** trên toàn bộ 7 file kiểm thử.
+  - **Toàn bộ hệ thống:** **93/93 tests PASS 100%** không có bất kỳ xung đột hay lỗi hồi quy nào.
+
+
+
 
 
 

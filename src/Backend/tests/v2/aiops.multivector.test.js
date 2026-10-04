@@ -25,8 +25,8 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
         requestsPerMin: 120,
         errorRate4xx: 0.02,
         errorRate5xx: 0.00,
-        failedLogins: 20, // Tấn công Brute-force mạnh
-        tokenReuseAttacks: 2, // Tấn công cướp quyền Token
+        failedLogins: 35, // Tấn công Brute-force thực sự vượt ngưỡng nới rộng 25
+        tokenReuseAttacks: 6, // Tấn công cướp quyền Token thực sự vượt ngưỡng 5
         malformedRequests: 0,
         eventLoopLagMs: 8,
         cpuPercent: 25,
@@ -225,7 +225,7 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
         requestsPerMin: 60,
         errorRate4xx: 0.1,
         errorRate5xx: 0.0,
-        failedLogins: 15,
+        failedLogins: 30,
         tokenReuseAttacks: 0,
         malformedRequests: 0,
         eventLoopLagMs: 10,
@@ -244,7 +244,7 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
             username: 'Khách vãng lai',
             userAgent: 'python-requests/2.31.0',
             targetEndpoint: '/api/auth/login',
-            failedLogins: 15,
+            failedLogins: 30,
           },
         ],
       };

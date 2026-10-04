@@ -6,7 +6,7 @@
 class EventLoopMonitor {
   constructor(options = {}) {
     this.intervalMs = options.intervalMs || 500;
-    this.thresholdMs = options.thresholdMs || 100; // Ngưỡng quá tải: 100ms
+    this.thresholdMs = options.thresholdMs || 250; // Ngưỡng quá tải: 250ms (tránh giật cục cold-start/GC)
     this.currentLag = 0;
     this.running = false;
     this.timer = null;

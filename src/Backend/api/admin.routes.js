@@ -11,6 +11,8 @@ router.use(authenticate, authorize('admin'));
 // AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
+router.get('/aiops/vectors', aiopsController.getVectorConfig);
+router.post('/aiops/vectors/toggle', aiopsController.toggleVector);
 router.get('/aiops/incidents', aiopsController.getIncidents);
 router.post('/aiops/incidents/clear', aiopsController.clearIncidents);
 router.post('/aiops/calibrate', aiopsController.calibrate);

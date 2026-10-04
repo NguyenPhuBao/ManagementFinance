@@ -16,21 +16,28 @@ const _shedResetTimer = setInterval(() => { _shedCount = 0; }, 24 * 60 * 60 * 10
 if (_shedResetTimer.unref) _shedResetTimer.unref();
 function getLoadSheddingCount() { return _shedCount; }
 
+const _STARTUP_TIME = Date.now();
+
 function createLoadSheddingMiddleware(options = {}) {
 
   const monitor = options.monitor || defaultEventLoopMonitor;
   const retryAfterSeconds = options.retryAfterSeconds || 5;
+  const warmupMs = options.warmupMs !== undefined ? options.warmupMs : (process.env.NODE_ENV === 'test' ? 0 : 45000);
 
   return function loadSheddingMiddleware(req, res, next) {
     // 1. Kiểm tra nếu request thuộc về Admin-web hoặc Health Check (Bypass hoàn toàn)
-    const isHealthCheck = (req.path && req.path.startsWith('/health')) ||
-      (req.originalUrl && req.originalUrl.startsWith('/health'));
+    const p = req.path || req.originalUrl || '';
+    const isHealthCheck = p.startsWith('/health') || (p === '/' && (req.method === 'HEAD' || req.method === 'GET'));
 
     const isAdmin = req.isAdmin === true || 
-      (req.path && req.path.startsWith('/api/admin')) ||
-      (req.originalUrl && req.originalUrl.startsWith('/api/admin'));
+      p.startsWith('/api/admin');
 
     if (isAdmin || isHealthCheck) {
+      return next();
+    }
+
+    // 2. Warmup Grace Period: Bỏ qua cắt tải trong thời gian nạp ban đầu máy chủ (tránh lỗi 503 khi cold-start)
+    if (Date.now() - _STARTUP_TIME < warmupMs) {
       return next();
     }
 

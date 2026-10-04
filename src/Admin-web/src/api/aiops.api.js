@@ -36,7 +36,16 @@ async function callAIOps(method, path, data = null) {
 
 const aiopsApi = {
   getStatus: () => callAIOps('get', '/admin/aiops/status'),
-  getHistory: () => callAIOps('get', '/admin/aiops/history'),
+  getHistory: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.range) qs.append('range', params.range);
+    if (params.from) qs.append('from', params.from);
+    if (params.to) qs.append('to', params.to);
+    const queryString = qs.toString();
+    return callAIOps('get', `/admin/aiops/history${queryString ? `?${queryString}` : ''}`);
+  },
+  getVectorConfig: () => callAIOps('get', '/admin/aiops/vectors'),
+  toggleVector: (vector, enabled) => callAIOps('post', '/admin/aiops/vectors/toggle', { vector, enabled }),
   calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),

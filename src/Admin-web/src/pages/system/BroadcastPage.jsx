@@ -33,6 +33,7 @@ const BroadcastPage = () => {
 
   // Form Lên lịch bảo trì
   const [scheduleDatetime, setScheduleDatetime] = useState('');
+  const [scheduleEndDatetime, setScheduleEndDatetime] = useState('');
   const [scheduleReason, setScheduleReason] = useState('');
   const [scheduleEmergency, setScheduleEmergency] = useState(false);
 
@@ -109,7 +110,7 @@ const BroadcastPage = () => {
         ok: true,
         msg: nextActive
           ? (instantEmergency ? 'Đã kích hoạt BẢO TRÌ KHẨN CẤP & phát cảnh báo toàn hệ thống!' : 'Đã kích hoạt bảo trì kỹ thuật (im lặng).')
-          : 'Đã tắt bảo trì, hệ thống hoạt động bình thường trở lại.',
+          : 'Đã kết thúc bảo trì, hệ thống hoạt động bình thường trở lại.',
       });
       if (!nextActive) {
         setInstantReason('');
@@ -128,13 +129,31 @@ const BroadcastPage = () => {
   // Xử lý Lên lịch bảo trì
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
+    if (maintenance.active) {
+      setMaintenanceFeedback({
+        ok: false,
+        msg: 'Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.',
+      });
+      return;
+    }
     if (!scheduleDatetime) return;
+
+    if (scheduleEndDatetime) {
+      if (new Date(scheduleEndDatetime).getTime() <= new Date(scheduleDatetime).getTime()) {
+        setMaintenanceFeedback({
+          ok: false,
+          msg: 'Thời điểm kết thúc bảo trì phải diễn ra sau thời điểm bắt đầu bảo trì!',
+        });
+        return;
+      }
+    }
 
     setActionLoading(true);
     setMaintenanceFeedback(null);
     try {
       const payload = {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
+        scheduledEndAt: scheduleEndDatetime ? new Date(scheduleEndDatetime).toISOString() : null,
         reason: scheduleReason.trim() || 'Bảo trì hệ thống theo lịch trình.',
         isEmergency: Boolean(scheduleEmergency),
       };
@@ -144,9 +163,10 @@ const BroadcastPage = () => {
       setMaintenance(data);
       setMaintenanceFeedback({
         ok: true,
-        msg: `Đã lên lịch bảo trì thành công vào lúc ${formatDateTime(scheduleDatetime)}`,
+        msg: `Đã lên lịch bảo trì thành công vào lúc ${formatDateTime(scheduleDatetime)}${scheduleEndDatetime ? ` đến ${formatDateTime(scheduleEndDatetime)}` : ''}`,
       });
       setScheduleDatetime('');
+      setScheduleEndDatetime('');
       setScheduleReason('');
       setScheduleEmergency(false);
     } catch (err) {
@@ -417,13 +437,27 @@ const BroadcastPage = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="p-6 text-center space-y-2">
-                    <span className="material-symbols-outlined text-[48px] text-orange-500 animate-bounce">
-                      build
-                    </span>
-                    <p className="font-bold text-sm text-on-surface">Chế độ bảo trì đang được kích hoạt</p>
-                    <p className="text-xs text-on-surface-variant">
-                      Hệ thống đang chặn toàn bộ request từ người dùng thông thường để phục vụ công tác bảo trì kỹ thuật.
+                  <div className="p-4 rounded-xl border border-orange-200 bg-orange-50/70 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-xs text-orange-950 uppercase">
+                        <span className="material-symbols-outlined text-[20px] text-orange-600 animate-spin">build</span>
+                        <span>Phiên bảo trì đang diễn ra</span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        maintenance.isEmergency ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'
+                      }`}>
+                        {maintenance.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-orange-950">
+                      <p>• Lý do: <b className="text-orange-900">{maintenance.reason || 'Bảo trì hệ thống'}</b></p>
+                      {maintenance.activatedBy && <p>• Người kích hoạt: <b>{maintenance.activatedBy}</b></p>}
+                      {maintenance.activatedAt && <p>• Bắt đầu lúc: <b>{formatDateTime(maintenance.activatedAt)}</b></p>}
+                    </div>
+
+                    <p className="text-[11px] text-orange-800/90 pt-1.5 border-t border-orange-200/60 leading-relaxed">
+                      Toàn bộ kết nối người dùng Client-app đang bị chặn (HTTP 503) để phục vụ bảo trì an toàn.
                     </p>
                   </div>
                 )}
@@ -457,8 +491,8 @@ const BroadcastPage = () => {
                     disabled={actionLoading}
                     className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    <span>{actionLoading ? 'Đang xử lý...' : 'Tắt Bảo Trì — Khôi Phục Hệ Thống'}</span>
+                    <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+                    <span>{actionLoading ? 'Đang xử lý...' : 'Kết Thúc Bảo Trì — Khôi Phục Hệ Thống'}</span>
                   </button>
                 )}
               </div>
@@ -492,8 +526,13 @@ const BroadcastPage = () => {
 
                     <div className="space-y-1 text-xs text-blue-950">
                       <p>
-                        • Thời điểm: <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledAt)}</b>
+                        • Bắt đầu: <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledAt)}</b>
                       </p>
+                      {maintenance.scheduled.scheduledEndAt && (
+                        <p>
+                          • Kết thúc (dự kiến): <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledEndAt)}</b>
+                        </p>
+                      )}
                       <p>• Lý do dự kiến: <b>{maintenance.scheduled.reason}</b></p>
                       <p className="text-[11px] text-blue-800/80">
                         • Người lên lịch: <b>{maintenance.scheduled.createdBy}</b> ({formatDateTime(maintenance.scheduled.createdAt)})
@@ -502,7 +541,7 @@ const BroadcastPage = () => {
 
                     <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between gap-2">
                       <span className="text-[11px] text-blue-800 italic">
-                        Đúng giờ, hệ thống sẽ tự động kích hoạt bảo trì.
+                        Đúng giờ, hệ thống sẽ tự động kích hoạt và kết thúc bảo trì.
                       </span>
                       <button
                         onClick={handleCancelSchedule}
@@ -514,28 +553,60 @@ const BroadcastPage = () => {
                       </button>
                     </div>
                   </div>
+                ) : maintenance.active ? (
+                  <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/80 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                      <span className="material-symbols-outlined text-[20px] text-amber-600">block</span>
+                      Chế độ bảo trì đang kích hoạt
+                    </div>
+                    <p className="text-xs text-amber-950 leading-relaxed">
+                      Hệ thống hiện đang trong phiên bảo trì trực tiếp ({maintenance.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'}). 
+                      Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian hoặc chồng chéo lịch trình.
+                    </p>
+                    <p className="text-[11px] text-amber-800 italic pt-1 border-t border-amber-200">
+                      👉 Vui lòng nhấn nút <b>"Kết Thúc Bảo Trì"</b> ở cột bên trái trước khi cài đặt lịch trình bảo trì mới.
+                    </p>
+                  </div>
                 ) : (
                   <form onSubmit={handleSaveSchedule} className="space-y-3.5">
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                        Thời điểm bắt đầu bảo trì <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        min={currentLocalIso}
-                        value={scheduleDatetime}
-                        onChange={(e) => setScheduleDatetime(e.target.value)}
-                        required
-                        className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                      <p className="text-[11px] text-on-surface-variant mt-1">Tính theo múi giờ Việt Nam (Asia/Ho_Chi_Minh GMT+7)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="schedule-start-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+                          Thời điểm bắt đầu <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="schedule-start-at"
+                          type="datetime-local"
+                          min={currentLocalIso}
+                          value={scheduleDatetime}
+                          onChange={(e) => setScheduleDatetime(e.target.value)}
+                          required
+                          className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="schedule-end-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+                          Thời điểm kết thúc (Dự kiến)
+                        </label>
+                        <input
+                          id="schedule-end-at"
+                          type="datetime-local"
+                          min={scheduleDatetime || currentLocalIso}
+                          value={scheduleEndDatetime}
+                          onChange={(e) => setScheduleEndDatetime(e.target.value)}
+                          className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
                     </div>
+                    <p className="text-[11px] text-on-surface-variant -mt-1">Tính theo múi giờ Việt Nam (Asia/Ho_Chi_Minh GMT+7)</p>
 
                     <div>
-                      <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+                      <label htmlFor="schedule-reason" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
                         Nội dung / Lý do bảo trì
                       </label>
                       <input
+                        id="schedule-reason"
                         type="text"
                         value={scheduleReason}
                         onChange={(e) => setScheduleReason(e.target.value)}

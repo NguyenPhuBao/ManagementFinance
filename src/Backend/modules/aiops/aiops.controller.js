@@ -15,10 +15,37 @@ const aiopsController = {
 
   getHistory(req, res) {
     try {
-      const history = defaultAIOpsService.getHistory();
+      const { range, from, to } = req.query;
+      const history = defaultAIOpsService.getHistory({ range, from, to });
       return ResponseHandler.success(res, history, 'Lịch sử chỉ số AIOps Sentinel');
     } catch (error) {
       logger.error('[AIOpsController] getHistory failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async toggleVector(req, res) {
+    try {
+      const { vector, enabled } = req.body;
+      if (!vector || !['auth', 'traffic', 'exploit', 'resource'].includes(vector)) {
+        return ResponseHandler.error(res, 'Vui lòng cung cấp tên vector hợp lệ (auth, traffic, exploit, resource)', 400);
+      }
+      const isEnabled = enabled !== undefined ? Boolean(enabled) : true;
+      const result = await defaultAIOpsService.toggleVector(vector, isEnabled);
+      req.auditActionName = `${isEnabled ? 'Bật' : 'Tắt'} tính rủi ro vector AIOps [${vector}]`;
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      logger.error('[AIOpsController] toggleVector failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  getVectorConfig(req, res) {
+    try {
+      const config = defaultAIOpsService.getVectorConfig();
+      return ResponseHandler.success(res, config, 'Cấu hình bật tắt 4 vector rủi ro');
+    } catch (error) {
+      logger.error('[AIOpsController] getVectorConfig failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
     }
   },
