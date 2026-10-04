@@ -126,34 +126,57 @@ test('AIOps Service Suite', async (t) => {
     assert.strictEqual(detector.vectorConfig.exploit, true);
   });
 
-  await t.test('6. getHistory() supports ranges: realtime, day, month, year, and custom date range with strict priority', async () => {
+  await t.test('6. getHistory() filters strictly on real recorded data without generating synthetic points', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();
     const service = new AIOpsService({ collector, detector });
 
-    // Default / realtime
-    const realtimeHist = await service.getHistory({ range: 'realtime' });
-    assert.ok(Array.isArray(realtimeHist));
+    const now = Date.now();
+    // Tạo 3 mẫu thực tế: 1 mẫu vừa xong (5 phút trước), 1 mẫu 2 ngày trước, 1 mẫu 40 ngày trước
+    service._history = [
+      {
+        timestamp: new Date(now - 5 * 60 * 1000).toISOString(),
+        vectorScores: { auth: 10, traffic: 15, exploit: 0, resource: 20 },
+        threatScore: 20,
+      },
+      {
+        timestamp: new Date(now - 2 * 24 * 3600 * 1000).toISOString(),
+        vectorScores: { auth: 12, traffic: 18, exploit: 5, resource: 25 },
+        threatScore: 25,
+      },
+      {
+        timestamp: new Date(now - 40 * 24 * 3600 * 1000).toISOString(),
+        vectorScores: { auth: 8, traffic: 10, exploit: 0, resource: 15 },
+        threatScore: 15,
+      },
+    ];
 
-    // Day range: 24 points
-    const dayHist = await service.getHistory({ range: 'day' });
-    assert.strictEqual(dayHist.length, 24);
-    assert.ok(dayHist[0].timestamp);
-    assert.ok(dayHist[0].vectorScores);
+    // Realtime (10 phút qua): chỉ có 1 mẫu trong 5 phút trước
+    const realtimeHist = service.getHistory({ range: 'realtime' });
+    assert.strictEqual(realtimeHist.length, 1);
 
-    // Month range: 30 points
-    const monthHist = await service.getHistory({ range: 'month' });
-    assert.strictEqual(monthHist.length, 30);
+    // Day (24 giờ qua): chỉ có 1 mẫu trong 24 giờ qua
+    const dayHist = service.getHistory({ range: 'day' });
+    assert.strictEqual(dayHist.length, 1);
 
-    // Year range: 12 points
-    const yearHist = await service.getHistory({ range: 'year' });
-    assert.strictEqual(yearHist.length, 12);
+    // Month (30 ngày qua): có 2 mẫu (5 phút trước và 2 ngày trước), không có mẫu 40 ngày trước
+    const monthHist = service.getHistory({ range: 'month' });
+    assert.strictEqual(monthHist.length, 2);
+
+    // Year (12 tháng qua): có cả 3 mẫu
+    const yearHist = service.getHistory({ range: 'year' });
+    assert.strictEqual(yearHist.length, 3);
 
     // Custom date range (Priority over range parameter)
-    const from = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-    const to = new Date().toISOString();
-    const customHist = await service.getHistory({ range: 'year', from, to });
-    assert.ok(Array.isArray(customHist));
-    assert.ok(customHist.length >= 7);
+    // Lọc chỉ từ 3 ngày trước đến 1 ngày trước -> chỉ có đúng 1 mẫu (2 ngày trước)
+    const from = new Date(now - 3 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const to = new Date(now - 1 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const customHist = service.getHistory({ range: 'year', from, to });
+    assert.strictEqual(customHist.length, 1);
+    assert.strictEqual(customHist[0].threatScore, 25);
+
+    // Lọc một khoảng thời gian trong quá khứ không có dữ liệu thật (năm ngoái) -> Trả về mảng rỗng []
+    const emptyHist = service.getHistory({ from: '2024-01-01', to: '2024-06-01' });
+    assert.strictEqual(emptyHist.length, 0);
   });
 });

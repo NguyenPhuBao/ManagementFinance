@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, formatFullDateTime } from '../../utils/format';
 import Pagination from '../../components/common/Pagination';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import { useAlertSafe } from '../../store/alert.context';
 
 const VECTOR_LABELS = {
   auth: '1. Xác Thực & Danh Tính',
@@ -14,13 +15,26 @@ const VECTOR_LABELS = {
 };
 
 const AIOpsPage = () => {
+  const alert = useAlertSafe();
   const [statusData, setStatusData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [quarantineList, setQuarantineList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [calibrating, setCalibrating] = useState(false);
   const [unblockingHash, setUnblockingHash] = useState(null);
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, _setFeedback] = useState(null);
+
+  // Wrapper kích hoạt Global Floating Alert toast đồng thời lưu feedback
+  const setFeedback = (fb) => {
+    _setFeedback(fb);
+    if (fb && alert) {
+      if (fb.ok) {
+        alert.success(fb.msg, 'AIOps Sentinel');
+      } else {
+        alert.error(fb.msg, 'Cảnh Báo AIOps');
+      }
+    }
+  };
 
   // System Maintenance Status state
   const [maintenanceStatus, setMaintenanceStatus] = useState({
@@ -259,6 +273,13 @@ const AIOpsPage = () => {
   const handleClearCustomRange = () => {
     setCustomRange({ from: '', to: '', applied: false });
     fetchHistoryFiltered({ customApplied: false, preset: timePreset });
+  };
+
+  // Xử lý làm mới bộ lọc chính xác (Yêu cầu 4: Nút làm mới bên cạnh lọc chính xác)
+  const handleResetCustomRange = () => {
+    setCustomRange({ from: '', to: '', applied: false });
+    fetchHistoryFiltered({ customApplied: false, preset: timePreset });
+    setFeedback({ ok: true, msg: 'Đã làm mới bộ lọc chính xác về trạng thái ban đầu.' });
   };
 
   const fetchIncidents = async (
@@ -649,7 +670,7 @@ const AIOpsPage = () => {
     };
   }, [threatScore]);
 
-  // Chuẩn bị đường vẽ SVG độc lập cho 4 Vectơ Rủi Ro (60 mẫu gần nhất — 10 phút)
+  // Chuẩn bị đường vẽ SVG độc lập cho 4 Vectơ Rủi Ro
   const chartSvgPaths = useMemo(() => {
     if (!historyData || historyData.length === 0) {
       return {
@@ -663,16 +684,16 @@ const AIOpsPage = () => {
     }
     const width = 800;
     const height = 180;
-    const padding = 25;
+    const padding = 35;
 
     const maxVal = 100;
     const minVal = 0;
     const count = historyData.length;
-    const stepX = count > 1 ? (width - 2 * padding) / (count - 1) : width;
+    const stepX = count > 1 ? (width - 2 * padding) / (count - 1) : 0;
 
     // Trích xuất điểm số của 4 vector cho từng mẫu lịch sử
     const samples = historyData.map((d, i) => {
-      const x = padding + i * stepX;
+      const x = count === 1 ? width / 2 : padding + i * stepX;
       const vs = d.vectorScores || {};
       
       const authScore = vs.auth !== undefined ? vs.auth : (d.failedLogins ? Math.min(100, d.failedLogins * 10) : 0);
@@ -681,7 +702,7 @@ const AIOpsPage = () => {
       const resourceScore = vs.resource !== undefined ? vs.resource : (d.cpuPercent || d.ramPercent ? Math.max(d.cpuPercent || 0, d.ramPercent || 0) : 0);
       const compScore = d.threatScore ?? Math.max(authScore, trafficScore, exploitScore, resourceScore);
 
-      const getY = (val) => height - padding - ((Math.min(100, Math.max(0, val)) - minVal) / (maxVal - minVal)) * (height - 2 * padding);
+      const getY = (val) => height - 25 - ((Math.min(100, Math.max(0, val)) - minVal) / (maxVal - minVal)) * 130;
 
       return {
         index: i,
@@ -756,6 +777,159 @@ const AIOpsPage = () => {
       },
     };
   }, [historyData]);
+
+  // Cấu hình và tính toán vạch số liệu trục X (Yêu cầu 3 của PO)
+  const xAxisConfig = useMemo(() => {
+    const width = 800;
+    const padding = 35;
+    const usableWidth = width - 2 * padding;
+
+    // A. Nếu người dùng áp dụng Bộ Lọc Chính Xác (Custom Precision Range)
+    if (customRange.applied && customRange.from && customRange.to) {
+      if (customFilterType === 'date') {
+        const d1 = new Date(customRange.from);
+        const d2 = new Date(customRange.to);
+        const diffMs = Math.abs(d2.getTime() - d1.getTime());
+        const diffDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+
+        let ticks = [];
+        if (diffDays === 1) {
+          ticks = [{ x: width / 2, label: 'Ngày 1' }];
+        } else if (diffDays <= 12) {
+          ticks = Array.from({ length: diffDays }, (_, i) => ({
+            x: padding + (i / (diffDays - 1)) * usableWidth,
+            label: `${i + 1}`,
+          }));
+        } else {
+          const numTicks = 7;
+          ticks = Array.from({ length: numTicks }, (_, i) => {
+            const dayNum = Math.round(1 + (i / (numTicks - 1)) * (diffDays - 1));
+            return {
+              x: padding + (i / (numTicks - 1)) * usableWidth,
+              label: `${dayNum}`,
+            };
+          });
+        }
+        return {
+          title: `Theo Ngày (1 -> ${diffDays} ngày)`,
+          unit: 'Ngày',
+          ticks,
+        };
+      }
+
+      if (customFilterType === 'month') {
+        const [y1, m1] = customRange.from.split('-').map(Number);
+        const [y2, m2] = customRange.to.split('-').map(Number);
+        const diffMonths = Math.max(1, (y2 - y1) * 12 + (m2 - m1) + 1);
+
+        let ticks = [];
+        if (diffMonths === 1) {
+          ticks = [{ x: width / 2, label: 'Tháng 1' }];
+        } else if (diffMonths <= 12) {
+          ticks = Array.from({ length: diffMonths }, (_, i) => ({
+            x: padding + (i / (diffMonths - 1)) * usableWidth,
+            label: `${i + 1}`,
+          }));
+        } else {
+          const numTicks = 7;
+          ticks = Array.from({ length: numTicks }, (_, i) => {
+            const mNum = Math.round(1 + (i / (numTicks - 1)) * (diffMonths - 1));
+            return {
+              x: padding + (i / (numTicks - 1)) * usableWidth,
+              label: `${mNum}`,
+            };
+          });
+        }
+        return {
+          title: `Theo Tháng (1 -> ${diffMonths} tháng)`,
+          unit: 'Tháng',
+          ticks,
+        };
+      }
+
+      if (customFilterType === 'year') {
+        const y1 = parseInt(customRange.from, 10);
+        const y2 = parseInt(customRange.to, 10);
+        const diffYears = Math.max(1, y2 - y1 + 1);
+
+        let ticks = [];
+        if (diffYears === 1) {
+          ticks = [{ x: width / 2, label: `${y1}` }];
+        } else if (diffYears <= 8) {
+          ticks = Array.from({ length: diffYears }, (_, i) => ({
+            x: padding + (i / (diffYears - 1)) * usableWidth,
+            label: `${y1 + i}`,
+          }));
+        } else {
+          const numTicks = 6;
+          ticks = Array.from({ length: numTicks }, (_, i) => {
+            const yr = Math.round(y1 + (i / (numTicks - 1)) * (diffYears - 1));
+            return {
+              x: padding + (i / (numTicks - 1)) * usableWidth,
+              label: `${yr}`,
+            };
+          });
+        }
+        return {
+          title: `Theo Năm (${y1} -> ${y2})`,
+          unit: 'Năm',
+          ticks,
+        };
+      }
+    }
+
+    // B. Bộ Chọn Thời Gian Quan Sát (Presets):
+    // Thời gian thực: 1 -> 30 mẫu
+    // Ngày: 1 -> 24 giờ
+    // Tháng: 1 -> 30 ngày
+    // Năm: 1 -> 12 tháng
+    if (timePreset === 'day') {
+      const keyHours = [1, 4, 8, 12, 16, 20, 24];
+      return {
+        title: 'Ngày (1 -> 24 Giờ)',
+        unit: 'Giờ',
+        ticks: keyHours.map((h) => ({
+          x: padding + ((h - 1) / 23) * usableWidth,
+          label: `${h}`,
+        })),
+      };
+    }
+
+    if (timePreset === 'month') {
+      const keyDays = [1, 5, 10, 15, 20, 25, 30];
+      return {
+        title: 'Tháng (1 -> 30 Ngày)',
+        unit: 'Ngày',
+        ticks: keyDays.map((d) => ({
+          x: padding + ((d - 1) / 29) * usableWidth,
+          label: `${d}`,
+        })),
+      };
+    }
+
+    if (timePreset === 'year') {
+      const months = Array.from({ length: 12 }, (_, i) => i + 1);
+      return {
+        title: 'Năm (1 -> 12 Tháng)',
+        unit: 'Tháng',
+        ticks: months.map((m) => ({
+          x: padding + ((m - 1) / 11) * usableWidth,
+          label: `${m}`,
+        })),
+      };
+    }
+
+    // Mặc định: realtime (1 -> 30 Mẫu)
+    const keySamples = [1, 5, 10, 15, 20, 25, 30];
+    return {
+      title: 'Thời gian thực (1 -> 30 Mẫu)',
+      unit: 'Mẫu',
+      ticks: keySamples.map((s) => ({
+        x: padding + ((s - 1) / 29) * usableWidth,
+        label: `${s}`,
+      })),
+    };
+  }, [timePreset, customRange, customFilterType]);
 
   // Fallback tương thích ngược
   const chartSvgPath = chartSvgPaths.composite;
@@ -1815,7 +1989,7 @@ const AIOpsPage = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-primary">history_toggle_drop_down</span>
+                <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
                 <span>Bộ chọn thời gian quan sát:</span>
               </span>
               {[
@@ -1965,6 +2139,17 @@ const AIOpsPage = () => {
                 <span>Lọc Chính Xác</span>
               </button>
 
+              <button
+                type="button"
+                data-testid="refresh-custom-range-btn"
+                onClick={handleResetCustomRange}
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
+                title="Làm mới bộ lọc chính xác về mặc định"
+              >
+                <span className="material-symbols-outlined text-[14px]">refresh</span>
+                <span>Làm mới</span>
+              </button>
+
               {customRange.applied && (
                 <button
                   type="button"
@@ -2064,10 +2249,10 @@ const AIOpsPage = () => {
 
         {/* SVG Multi-Vector Chart Container */}
         <div className="w-full overflow-x-auto">
-          <div className="min-w-[640px] h-[210px] relative select-none">
+          <div className="min-w-[640px] h-[230px] relative select-none">
             <svg
               className="w-full h-full"
-              viewBox="0 0 800 180"
+              viewBox="0 0 800 190"
               preserveAspectRatio="none"
               onMouseLeave={() => setHoveredPointIndex(null)}
             >
@@ -2092,32 +2277,82 @@ const AIOpsPage = () => {
 
               {/* Ngưỡng 85 (Critical line) */}
               <line
-                x1="25"
+                x1="35"
                 y1={180 - 25 - (85 / 100) * 130}
-                x2="775"
+                x2="765"
                 y2={180 - 25 - (85 / 100) * 130}
                 stroke="#ef4444"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
                 strokeOpacity="0.7"
               />
-              <text x="780" y={180 - 21 - (85 / 100) * 130} fill="#ef4444" fontSize="10" fontWeight="bold">85</text>
+              <text x="770" y={180 - 21 - (85 / 100) * 130} fill="#ef4444" fontSize="10" fontWeight="bold">85</text>
 
               {/* Ngưỡng 70 (Warning line) */}
               <line
-                x1="25"
+                x1="35"
                 y1={180 - 25 - (70 / 100) * 130}
-                x2="775"
+                x2="765"
                 y2={180 - 25 - (70 / 100) * 130}
                 stroke="#f59e0b"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
                 strokeOpacity="0.7"
               />
-              <text x="780" y={180 - 21 - (70 / 100) * 130} fill="#f59e0b" fontSize="10" fontWeight="bold">70</text>
+              <text x="770" y={180 - 21 - (70 / 100) * 130} fill="#f59e0b" fontSize="10" fontWeight="bold">70</text>
 
-              {/* Baseline 0 */}
-              <line x1="25" y1="155" x2="775" y2="155" stroke="#cbd5e1" strokeWidth="1" />
+              {/* Gridlines dọc tương ứng với các mốc trên trục X */}
+              {xAxisConfig.ticks.map((t, idx) => (
+                <line
+                  key={`x-grid-${idx}`}
+                  x1={t.x}
+                  y1="20"
+                  x2={t.x}
+                  y2="155"
+                  stroke="#f1f5f9"
+                  strokeWidth="1"
+                  strokeDasharray="2 3"
+                />
+              ))}
+
+              {/* Baseline 0 (Đường trục hoành) */}
+              <line x1="35" y1="155" x2="765" y2="155" stroke="#cbd5e1" strokeWidth="1.2" />
+
+              {/* Vạch ticks và số liệu hiển thị trên trục X (Yêu cầu 3 của PO) */}
+              {xAxisConfig.ticks.map((t, idx) => (
+                <g key={`x-tick-group-${idx}`}>
+                  <line
+                    x1={t.x}
+                    y1="155"
+                    x2={t.x}
+                    y2="161"
+                    stroke="#94a3b8"
+                    strokeWidth="1.2"
+                  />
+                  <text
+                    x={t.x}
+                    y="174"
+                    fill="#64748b"
+                    fontSize="10"
+                    fontWeight="600"
+                    textAnchor="middle"
+                  >
+                    {t.label}
+                  </text>
+                </g>
+              ))}
+
+              {/* Đơn vị đo trục X ở góc phải */}
+              <text
+                x="775"
+                y="174"
+                fill="#475569"
+                fontSize="10"
+                fontWeight="bold"
+                textAnchor="end"
+              >
+                ({xAxisConfig.unit})
+              </text>
 
               {/* 1. Đường & Vùng phủ Vectơ Xác thực (Amber) */}
               {(activeVectorTab === 'all' || activeVectorTab === 'auth') && chartSvgPaths.auth.path && (
@@ -2286,18 +2521,51 @@ const AIOpsPage = () => {
               ))}
             </svg>
 
-            {/* Tooltip Card hiển thị chi tiết khi rê chuột */}
+            {/* Trạng thái rỗng (Empty State) khi khoảng thời gian không có mẫu thật (Yêu cầu 2 của PO) */}
+            {(!historyData || historyData.length === 0) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-[1px] rounded-xl z-10 p-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-2">
+                  <span className="material-symbols-outlined text-[24px]">query_stats</span>
+                </div>
+                <p className="text-xs font-bold text-slate-800">
+                  Không có dữ liệu đo lường trong khoảng thời gian đã chọn
+                </p>
+                <p className="text-[11px] text-slate-500 max-w-md mt-1 leading-relaxed">
+                  Hệ thống cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo giả lập. Dữ liệu chỉ hiển thị khi có các mẫu ghi nhận thực từ máy chủ.
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTimePreset('realtime')}
+                    className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
+                  >
+                    Quay lại Thời gian thực
+                  </button>
+                  {customRange.applied && (
+                    <button
+                      type="button"
+                      onClick={handleClearCustomRange}
+                      className="px-3 py-1 bg-white border border-slate-300 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                    >
+                      Bỏ bộ lọc chính xác
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tooltip Card hiển thị chi tiết khi rê chuột (Yêu cầu 1 của PO: Ngày tháng năm giờ phút giây) */}
             {hoveredPointIndex !== null && chartSvgPaths.samples[hoveredPointIndex] && (() => {
               const hs = chartSvgPaths.samples[hoveredPointIndex];
-              const timeStr = hs.time ? new Date(hs.time).toLocaleTimeString('vi-VN') : 'Mẫu vừa xong';
+              const timeStr = hs.time ? formatFullDateTime(hs.time) : 'Mẫu vừa xong';
               const leftPercent = Math.min(85, Math.max(15, (hs.x / 800) * 100));
               return (
                 <div
-                  className="absolute top-1 pointer-events-none z-20 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl border border-slate-700 text-[11px] space-y-1.5 backdrop-blur-xs min-w-[210px] transform -translate-x-1/2 transition-transform duration-75"
+                  className="absolute top-1 pointer-events-none z-20 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl border border-slate-700 text-[11px] space-y-1.5 backdrop-blur-xs min-w-[230px] transform -translate-x-1/2 transition-transform duration-75"
                   style={{ left: `${leftPercent}%` }}
                 >
                   <div className="flex items-center justify-between border-b border-slate-700 pb-1">
-                    <span className="font-semibold text-slate-300 flex items-center gap-1">
+                    <span className="font-semibold text-slate-200 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-primary">schedule</span>
                       {timeStr}
                     </span>
@@ -2350,21 +2618,22 @@ const AIOpsPage = () => {
 
         {/* Chân biểu đồ & Nguyên tắc bảo vệ */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 px-2 pt-2 border-t border-slate-100 gap-2">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="font-semibold text-slate-700 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px] text-indigo-600">straighten</span>
+              <span>Trục X: <strong>{xAxisConfig.title}</strong></span>
+            </span>
+
             {historyData && historyData.length > 0 ? (
               <>
-                <span>🕒 Mẫu đầu: {historyData[0]?.timestamp ? formatDateTime(historyData[0].timestamp) : '10 phút trước'}</span>
+                <span>🕒 Mẫu đầu: {historyData[0]?.timestamp ? formatFullDateTime(historyData[0].timestamp) : '10 phút trước'}</span>
                 {historyData.length > 2 && (
-                  <span>🕒 Giữa kỳ: {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5 phút trước'}</span>
+                  <span>🕒 Giữa kỳ: {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatFullDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5 phút trước'}</span>
                 )}
-                <span className="font-semibold text-slate-700">🕒 Mẫu mới nhất: {historyData[historyData.length - 1]?.timestamp ? formatDateTime(historyData[historyData.length - 1].timestamp) : 'Hiện tại'}</span>
+                <span className="font-semibold text-slate-700">🕒 Mẫu mới nhất: {historyData[historyData.length - 1]?.timestamp ? formatFullDateTime(historyData[historyData.length - 1].timestamp) : 'Hiện tại'}</span>
               </>
             ) : (
-              <>
-                <span>🕒 10 phút trước</span>
-                <span>🕒 5 phút trước</span>
-                <span className="font-semibold text-slate-700">🕒 Hiện tại</span>
-              </>
+              <span className="text-slate-400 italic">Chưa có mẫu dữ liệu trong khung thời gian này</span>
             )}
           </div>
 

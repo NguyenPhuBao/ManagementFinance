@@ -606,5 +606,56 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(toggleTraffic.getAttribute('aria-checked')).toBe('false');
     });
   });
+
+  it('5.19. Nút "Làm Mới" bên cạnh nút "Lọc Chính Xác" reset input và trả về preset mặc định', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('refresh-custom-range-btn')).toBeInTheDocument();
+    });
+
+    const fromInput = screen.getByTestId('filter-from-date');
+    const toInput = screen.getByTestId('filter-to-date');
+    fireEvent.change(fromInput, { target: { value: '2026-09-01' } });
+    fireEvent.change(toInput, { target: { value: '2026-10-04' } });
+    expect(fromInput.value).toBe('2026-09-01');
+    expect(toInput.value).toBe('2026-10-04');
+
+    // Bấm Làm Mới
+    const refreshBtn = screen.getByTestId('refresh-custom-range-btn');
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(fromInput.value).toBe('');
+      expect(toInput.value).toBe('');
+      expect(screen.getByText(/Đã làm mới bộ lọc chính xác về trạng thái ban đầu/i)).toBeInTheDocument();
+    });
+  });
+
+  it('5.20. Trục X hiển thị số liệu phân mốc rõ ràng và không có chữ thừa _toggle_drop_down', async () => {
+    render(<AIOpsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Trục X:/i)).toBeInTheDocument();
+    });
+
+    // Mặc định là Realtime 1 -> 30 Mẫu
+    expect(screen.getByText(/Thời gian thực \(1 -> 30 Mẫu\)/i)).toBeInTheDocument();
+
+    // Không được chứa chuỗi lỗi ligature _toggle_drop_down
+    expect(screen.queryByText(/_toggle_drop_down/i)).toBeNull();
+
+    // Chuyển sang Preset Day (24 giờ qua)
+    fireEvent.click(screen.getByTestId('preset-day'));
+    await waitFor(() => {
+      expect(screen.getByText(/Ngày \(1 -> 24 Giờ\)/i)).toBeInTheDocument();
+    });
+
+    // Chuyển sang Preset Year (12 tháng qua)
+    fireEvent.click(screen.getByTestId('preset-year'));
+    await waitFor(() => {
+      expect(screen.getByText(/Năm \(1 -> 12 Tháng\)/i)).toBeInTheDocument();
+    });
+  });
 });
 

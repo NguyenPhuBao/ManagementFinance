@@ -4,8 +4,10 @@ import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import UserDetailModal from '../../components/common/UserDetailModal';
 import Pagination from '../../components/common/Pagination';
+import { useAlertSafe } from '../../store/alert.context';
 
 const UserListPage = () => {
+  const alert = useAlertSafe();
   const socket = useSocket();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
@@ -177,6 +179,7 @@ const UserListPage = () => {
         status: 'Inactive',
         reason_inactive: inactivateReason.trim(),
       });
+      const userName = userToBlock.name || userToBlock.email || 'người dùng';
       setUsers(prev => prev.map(u =>
         u.id === userToBlock.id
           ? { ...u, status: 'inactive', reason_inactive: inactivateReason.trim() }
@@ -185,9 +188,12 @@ const UserListPage = () => {
       setUserToBlock(null);
       setInactivateReason('');
       toggleModal('inactivateModal', false);
+      if (alert) alert.success(`Đã vô hiệu hóa tài khoản "${userName}" thành công!`);
     } catch (err) {
       console.error('Lỗi vô hiệu hóa tài khoản:', err);
-      setInactivateError(err.response?.data?.message || err.message || 'Lỗi khi vô hiệu hóa tài khoản');
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi khi vô hiệu hóa tài khoản';
+      setInactivateError(errMsg);
+      if (alert) alert.error(errMsg, 'Vô Hiệu Hóa Thất Bại');
     } finally {
       setUpdatingStatus(false);
     }
@@ -203,6 +209,7 @@ const UserListPage = () => {
     setUpdatingStatus(true);
     try {
       await adminApi.updateUserStatus(userToBlock.id, { status: 'Active' });
+      const userName = userToBlock.name || userToBlock.email || 'người dùng';
       setUsers(prev => prev.map(u =>
         u.id === userToBlock.id
           ? { ...u, status: 'active', reason_inactive: null }
@@ -210,8 +217,11 @@ const UserListPage = () => {
       ));
       setUserToBlock(null);
       toggleModal('activateModal', false);
+      if (alert) alert.success(`Đã kích hoạt lại tài khoản "${userName}" thành công!`);
     } catch (err) {
       console.error('Lỗi kích hoạt tài khoản:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi khi kích hoạt tài khoản';
+      if (alert) alert.error(errMsg, 'Kích Hoạt Thất Bại');
     } finally {
       setUpdatingStatus(false);
     }
@@ -228,12 +238,16 @@ const UserListPage = () => {
     setDeletingUser(true);
     try {
       await adminApi.deleteUser(userToDelete.id);
+      const userName = userToDelete.name || userToDelete.email || 'người dùng';
       // Loại bỏ user đã xóa mềm khỏi danh sách hiển thị
       setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
       setUserToDelete(null);
       toggleModal('deleteAlert', false);
+      if (alert) alert.success(`Đã xóa tài khoản "${userName}" thành công!`);
     } catch (err) {
       console.error('Lỗi xóa người dùng:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi khi xóa người dùng';
+      if (alert) alert.error(errMsg, 'Xóa Người Dùng Thất Bại');
     } finally {
       setDeletingUser(false);
     }

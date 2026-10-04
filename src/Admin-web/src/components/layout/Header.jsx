@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
+import { useAlertSafe } from '../../store/alert.context';
 
 const Header = ({ onMenuToggle }) => {
+  const alert = useAlertSafe();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -39,6 +41,13 @@ const Header = ({ onMenuToggle }) => {
     const handleAdminNotification = (newAlert) => {
       setNotifications((prev) => [newAlert, ...prev.slice(0, 9)]);
       setUnreadCount((prev) => prev + 1);
+
+      // Kích hoạt Alert Toast nổi song song với icon chuông
+      if (alert && newAlert?.message) {
+        if (newAlert.level === 'critical') alert.error(newAlert.message, newAlert.title || 'Cảnh Báo Khẩn');
+        else if (newAlert.level === 'warning') alert.warning(newAlert.message, newAlert.title || 'Cảnh Báo Hệ Thống');
+        else alert.info(newAlert.message, newAlert.title || 'Thông Báo');
+      }
     };
 
     const handleSecurityAlert = (alertData) => {
@@ -53,6 +62,16 @@ const Header = ({ onMenuToggle }) => {
       };
       setNotifications((prev) => [formatted, ...prev.slice(0, 9)]);
       setUnreadCount((prev) => prev + 1);
+
+      // Kích hoạt Alert Toast nổi cảnh báo an ninh
+      if (alert) {
+        const alertMsg = alertData.anomalies?.map(a => a.message).join(' | ') || `Threat Score ${alertData.threatScore}/100`;
+        if (alertData.status === 'CRITICAL') {
+          alert.error(alertMsg, `🚨 AIOps: ${alertData.status}`);
+        } else {
+          alert.warning(alertMsg, `⚠️ AIOps: ${alertData.status}`);
+        }
+      }
     };
 
     socket.on('admin.notification', handleAdminNotification);

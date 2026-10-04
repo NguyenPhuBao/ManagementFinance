@@ -3,11 +3,13 @@ import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import { normalizeCategoryName, normalizeVietnameseUnaccent } from '../../utils/string';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
+import { useAlertSafe } from '../../store/alert.context';
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
 
 const CategoryPage = () => {
+  const alert = useAlertSafe();
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
@@ -118,7 +120,9 @@ const CategoryPage = () => {
       (!editingCategory || c.id !== editingCategory.id)
     );
     if (dupDefault) {
-      alert(`Danh mục hệ thống "${dupDefault.name}" đã tồn tại trong hệ thống. Không được phép tạo/đổi trùng tên!`);
+      const msg = `Danh mục hệ thống "${dupDefault.name}" đã tồn tại trong hệ thống. Không được phép tạo/đổi trùng tên!`;
+      if (alert) alert.warning(msg, 'Trùng Tên Danh Mục');
+      else window.alert(msg);
       return;
     }
 
@@ -136,15 +140,19 @@ const CategoryPage = () => {
         await adminApi.updateCategory(editingCategory.id, payload);
         toggleModal('edit', false);
         setEditingCategory(null);
+        if (alert) alert.success(`Đã cập nhật danh mục "${trimmedName}" thành công!`);
       } else {
         await adminApi.createCategory(payload);
         toggleModal('add', false);
+        if (alert) alert.success(`Đã tạo mới danh mục "${trimmedName}" thành công!`);
       }
       setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
       await fetchCategories();
     } catch (err) {
       console.error('Lỗi lưu danh mục:', err);
-      alert(err.response?.data?.message || err.message || 'Lỗi lưu danh mục');
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi lưu danh mục';
+      if (alert) alert.error(errMsg, 'Lỗi Lưu Danh Mục');
+      else window.alert(errMsg);
     } finally {
       setProcessing({ isProcessing: false, text: '' });
     }
@@ -152,7 +160,9 @@ const CategoryPage = () => {
 
   const openDeleteModal = (cat) => {
     if (cat.isUserCategory || !cat.isDefault) {
-      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
+      const msg = 'Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!';
+      if (alert) alert.error(msg, 'Bảo Vệ Quyền Riêng Tư');
+      else window.alert(msg);
       return;
     }
     setCategoryToDelete(cat);
@@ -162,7 +172,9 @@ const CategoryPage = () => {
   const confirmDelete = async () => {
     if (!categoryToDelete || processing.isProcessing) return; // Chặn bấm xóa nhiều lần
     if (categoryToDelete.isUserCategory || !categoryToDelete.isDefault) {
-      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
+      const msg = 'Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!';
+      if (alert) alert.error(msg, 'Bảo Vệ Quyền Riêng Tư');
+      else window.alert(msg);
       toggleModal('deleteAlert', false);
       setCategoryToDelete(null);
       return;
@@ -171,12 +183,16 @@ const CategoryPage = () => {
     setProcessing({ isProcessing: true, text: 'Đang xóa danh mục...' });
     try {
       await adminApi.deleteCategory(categoryToDelete.id);
+      const deletedName = categoryToDelete.name;
       toggleModal('deleteAlert', false);
       setCategoryToDelete(null);
       await fetchCategories();
+      if (alert) alert.success(`Đã xóa danh mục hệ thống "${deletedName}" thành công!`);
     } catch (err) {
       console.error('Lỗi xóa danh mục:', err);
-      alert(err.response?.data?.message || err.message || 'Lỗi khi xóa danh mục hệ thống');
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi khi xóa danh mục hệ thống';
+      if (alert) alert.error(errMsg, 'Lỗi Xóa Danh Mục');
+      else window.alert(errMsg);
     } finally {
       setProcessing({ isProcessing: false, text: '' });
     }
@@ -184,7 +200,9 @@ const CategoryPage = () => {
 
   const openEditModal = (cat) => {
     if (cat.isUserCategory || !cat.isDefault) {
-      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng!');
+      const msg = 'Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng!';
+      if (alert) alert.error(msg, 'Bảo Vệ Quyền Riêng Tư');
+      else window.alert(msg);
       return;
     }
     setEditingCategory(cat);
@@ -210,9 +228,11 @@ const CategoryPage = () => {
     try {
       await fetchCategories();
       setSyncToast('Đã đồng bộ và làm mới danh mục hệ thống thành công!');
+      if (alert) alert.success('Đã đồng bộ và làm mới danh mục hệ thống thành công!');
       setTimeout(() => setSyncToast(null), 3500);
     } catch (err) {
       console.error('Lỗi đồng bộ danh mục:', err);
+      if (alert) alert.error('Lỗi khi đồng bộ danh mục hệ thống', 'Đồng Bộ Thất Bại');
     } finally {
       setProcessing({ isProcessing: false, text: '' });
     }
