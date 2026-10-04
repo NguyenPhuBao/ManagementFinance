@@ -92,20 +92,47 @@ class AnomalyDetector {
     // ─────────────────────────────────────────────────────────────
     // VECTOR 1: RỦI RO XÁC THỰC & DANH TÍNH (AUTH & IDENTITY)
     // ─────────────────────────────────────────────────────────────
+    const suspects = sample.suspectActors || [];
+    const systemActor = {
+      type: 'SYSTEM_INTERNAL',
+      identity: 'Hạ tầng máy chủ (Node.js & Database)',
+      maskedIp: '127.0.0.1 (Internal)',
+      ipHash: 'system_core',
+      username: 'System Core Engine',
+      userAgent: `Node.js runtime / PostgreSQL Pooler`,
+      targetEndpoint: 'Background Event Loop & Connection Pool',
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // VECTOR 1: RỦI RO XÁC THỰC & DANH TÍNH (AUTH & IDENTITY)
+    // ─────────────────────────────────────────────────────────────
     let authScore = 0;
     // Ngưỡng phát hiện Brute-Force: tối thiểu 8 lần, hoặc 1.5% số lượng active users
     const bruteForceThreshold = Math.max(8, Math.round(N * 0.015));
     if (sample.failedLogins >= bruteForceThreshold) {
       const isSevere = sample.failedLogins >= bruteForceThreshold * 2;
       authScore = isSevere ? 80 : 70;
+      const authActor = suspects.find((s) => s.failedLogins > 0) || {
+        type: 'IP_SOURCE',
+        identity: 'Nhiều nguồn IP phân tán',
+        maskedIp: 'xx.xx.xx.xx',
+        ipHash: 'auth_multi_ip',
+        userAgent: 'Automated Script / Botnet',
+        targetEndpoint: '/api/auth/login',
+      };
       anomalies.push({
         code: 'AUTH_BRUTE_FORCE',
         vector: 'auth',
         metric: 'failedLogins',
         current: sample.failedLogins,
         threshold: bruteForceThreshold,
+        baseline: 0,
+        unit: 'lần thất bại/10s',
         severity: 'HIGH',
+        actor: authActor,
         message: `Tần suất đăng nhập thất bại tăng vọt (${sample.failedLogins} lần/10s, ngưỡng an toàn: ${bruteForceThreshold}) — Dấu hiệu dò quét mật khẩu (Brute-Force).`,
+        rootCauseDiagnosis: `Phát hiện ${sample.failedLogins} lần đăng nhập sai dồn dập từ nguồn ${authActor.identity} sử dụng ${authActor.userAgent}.`,
+        mitigationTaken: 'Hệ thống kích hoạt Rate Limiter và đưa IP vào Khiên Chắn Active Quarantine nếu vượt ngưỡng vi phạm.',
       });
     } else if (sample.failedLogins > 0) {
       authScore = Math.min(25, Math.round((sample.failedLogins / bruteForceThreshold) * 25));
@@ -114,13 +141,27 @@ class AnomalyDetector {
     if (sample.tokenReuseAttacks >= 1) {
       const isMultiple = sample.tokenReuseAttacks >= 2;
       authScore = Math.max(authScore, isMultiple ? 85 : 75);
+      const tokenActor = suspects.find((s) => s.tokenReuse > 0) || {
+        type: 'AUTHENTICATED_USER',
+        identity: 'Phiên làm việc bị thu hồi',
+        maskedIp: 'xx.xx.xx.xx',
+        ipHash: 'token_reuse_hash',
+        userAgent: 'Web / Mobile Client',
+        targetEndpoint: '/api/auth/refresh',
+      };
       anomalies.push({
         code: 'TOKEN_HIJACKING_ATTACK',
         vector: 'auth',
         metric: 'tokenReuseAttacks',
         current: sample.tokenReuseAttacks,
+        threshold: 1,
+        baseline: 0,
+        unit: 'lần vi phạm',
         severity: 'HIGH',
+        actor: tokenActor,
         message: `Phát hiện tái sử dụng Refresh Token đã bị thu hồi (${sample.tokenReuseAttacks} lần) — Dấu hiệu đánh cắp hoặc tái tạo phiên xác thực trái phép.`,
+        rootCauseDiagnosis: `Token đã bị thu hồi nhưng vẫn tiếp tục được gửi lên từ nguồn ${tokenActor.identity}.`,
+        mitigationTaken: 'Đã ngay lập tức thu hồi toàn bộ Token Family của tài khoản và ngắt phiên đăng nhập.',
       });
     }
 
@@ -144,14 +185,27 @@ class AnomalyDetector {
 
       if (isDdosIndicator) {
         trafficScore = Math.min(100, Math.round(50 + (trafficRatio - 2.5) * 20));
+        const trafficActor = suspects.find((s) => s.reqCount >= 50) || {
+          type: 'IP_SOURCE',
+          identity: `${sample.distinctIpsCount} địa chỉ IP tập trung`,
+          maskedIp: 'traffic_cluster_ip',
+          ipHash: 'traffic_flood_hash',
+          userAgent: 'DDoS Cluster / HTTP Flooder',
+          targetEndpoint: '/api/*',
+        };
         anomalies.push({
           code: 'TRAFFIC_ANOMALY_FLOOD',
           vector: 'traffic',
           metric: 'requestsPerMin',
           current: sample.requestsPerMin,
           baseline: baseline.requestsPerMin,
+          threshold: Math.round(expectedRpm * 2.5),
+          unit: 'req/phút',
           severity: 'HIGH',
+          actor: trafficActor,
           message: `Lưu lượng tăng vọt bất thường (${sample.requestsPerMin} req/phút, gấp ${trafficRatio.toFixed(1)}x) với dấu hiệu phân tán IP thấp (${sample.distinctIpsCount} IPs) — Nghi vấn tấn công từ chối dịch vụ (DDoS/Scraping).`,
+          rootCauseDiagnosis: `Lưu lượng tăng vọt gấp ${trafficRatio.toFixed(1)}x đường chuẩn trung bình (${sample.requestsPerMin} vs ${baseline.requestsPerMin} RPM).`,
+          mitigationTaken: 'Hệ thống đã kích hoạt Token-Bucket Rate Limiter và Load Shedding cắt tải các request vượt ngưỡng.',
         });
       } else {
         // Tăng trưởng tự nhiên lành mạnh từ người dùng thật (Flash Sale / Giờ cao điểm)
@@ -167,13 +221,27 @@ class AnomalyDetector {
     let exploitScore = 0;
     if (sample.malformedRequests >= 3) {
       exploitScore = Math.min(100, Math.round(sample.malformedRequests * 12));
+      const exploitActor = suspects.find((s) => s.malformed > 0) || {
+        type: 'IP_SOURCE',
+        identity: 'Nguồn thăm dò lỗ hổng',
+        maskedIp: 'xx.xx.xx.xx',
+        ipHash: 'exploit_probe_hash',
+        userAgent: 'Scanner / Vulnerability Probe (sqlmap/curl)',
+        targetEndpoint: 'Injection URL Probes',
+      };
       anomalies.push({
         code: 'MALICIOUS_REQUEST_PROBES',
         vector: 'exploit',
         metric: 'malformedRequests',
         current: sample.malformedRequests,
+        threshold: 3,
+        baseline: 0,
+        unit: 'mẫu độc hại',
         severity: 'HIGH',
+        actor: exploitActor,
         message: `Phát hiện các mẫu request độc hại chứa cú pháp SQLi/Path Traversal/XSS (${sample.malformedRequests} mẫu) từ bên ngoài.`,
+        rootCauseDiagnosis: `Phát hiện ${sample.malformedRequests} request mang payload nguy hiểm (../, ..%2f, UNION SELECT, <script>) từ nguồn ${exploitActor.identity}.`,
+        mitigationTaken: 'Đã tự động ngắt kết nối và cô lập IP độc hại vào Khiên Chắn Active Quarantine 30 phút.',
       });
     } else if (sample.malformedRequests > 0) {
       exploitScore = sample.malformedRequests * 10;
@@ -191,8 +259,14 @@ class AnomalyDetector {
         vector: 'resource',
         metric: 'eventLoopLagMs',
         current: sample.eventLoopLagMs,
+        threshold: 120,
+        baseline: 15,
+        unit: 'ms lag',
         severity: isSevereLag ? 'HIGH' : 'MEDIUM',
+        actor: systemActor,
         message: `Event Loop bị trễ nghiêm trọng (${sample.eventLoopLagMs}ms lag) — Tiến trình Node.js đang bị nghẽn CPU hoặc I/O treo.`,
+        rootCauseDiagnosis: `Độ trễ Event Loop đạt ${sample.eventLoopLagMs}ms (ngưỡng an toàn < 120ms). Tiến trình đang chịu tải tính toán nặng hoặc I/O bị chặn.`,
+        mitigationTaken: 'Load Shedding kích hoạt: Tự động trả HTTP 503 cho request khách vãng lai để giải tỏa CPU máy chủ.',
       });
     }
 
@@ -204,8 +278,14 @@ class AnomalyDetector {
         vector: 'resource',
         metric: 'ramPercent',
         current: sample.ramPercent,
+        threshold: 90,
+        baseline: 50,
+        unit: '% RAM',
         severity: 'HIGH',
+        actor: systemActor,
         message: `Bộ nhớ RAM tiêu thụ đã chạm ${sample.ramPercent}% — Nguy cơ rò rỉ bộ nhớ (Memory Leak) hoặc sập tiến trình (OOM).`,
+        rootCauseDiagnosis: `Bộ nhớ RAM đã vượt ngưỡng nguy hiểm (${sample.ramPercent}% > 90%). Cần giám sát rò rỉ bộ nhớ hoặc scale up tài nguyên.`,
+        mitigationTaken: 'Cảnh báo tài nguyên hệ thống phát ra tới Quản trị viên để chuẩn bị mở rộng hạ tầng.',
       });
     }
 
@@ -217,8 +297,14 @@ class AnomalyDetector {
         vector: 'resource',
         metric: 'errorRate5xx',
         current: sample.errorRate5xx,
+        threshold: 0.15,
+        baseline: 0.01,
+        unit: '% lỗi',
         severity: 'HIGH',
+        actor: systemActor,
         message: `Tỷ lệ lỗi máy chủ 5xx tăng bất thường (${Math.round(sample.errorRate5xx * 100)}% yêu cầu) — Dấu hiệu database hoặc service phụ thuộc tê liệt.`,
+        rootCauseDiagnosis: `Tỷ lệ lỗi HTTP 500 đạt ${Math.round(sample.errorRate5xx * 100)}%. Cơ sở dữ liệu hoặc phụ thuộc ngoài không phản hồi kịp thời.`,
+        mitigationTaken: 'DB Bulkhead tự động bảo lưu 20% kết nối cho luồng Quản trị viên (Fast-Lane) để cứu hộ.',
       });
     }
 

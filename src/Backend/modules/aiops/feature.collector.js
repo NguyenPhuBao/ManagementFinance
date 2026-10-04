@@ -37,6 +37,23 @@ class FeatureCollector {
     return crypto.createHash('sha256').update(`${this._salt}:${ip}`).digest('hex').substring(0, 16);
   }
 
+  /**
+   * Che bớt thông tin IP để tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
+   */
+  _maskIp(rawIp) {
+    if (!rawIp) return 'xx.xx.xx.xx';
+    const clean = rawIp.replace(/^::ffff:/, '').trim();
+    const v4Parts = clean.split('.');
+    if (v4Parts.length === 4) {
+      return `${v4Parts[0]}.${v4Parts[1]}.xx.xx`;
+    }
+    const v6Parts = clean.split(':');
+    if (v6Parts.length > 2) {
+      return `${v6Parts[0]}:${v6Parts[1]}:xxxx:xxxx`;
+    }
+    return 'xx.xx.xx.xx';
+  }
+
   recordFailedLogin() {
     this._failedLogins += 1;
   }
@@ -66,10 +83,27 @@ class FeatureCollector {
         // Theo dõi hành vi từng IP trong window 10s
         let ipStat = this._ipStats.get(clientIp);
         if (!ipStat) {
-          ipStat = { count: 0, malformed: 0, failedLogins: 0 };
+          ipStat = {
+            count: 0,
+            malformed: 0,
+            failedLogins: 0,
+            tokenReuse: 0,
+            userAgent: req.headers['user-agent'] || 'Unknown Client',
+            targetEndpoint: req.originalUrl || req.url || '/',
+            userId: req.user?.idaccount || null,
+            username: req.user?.username || null,
+          };
           this._ipStats.set(clientIp, ipStat);
         }
         ipStat.count += 1;
+        if (req.user?.idaccount) {
+          ipStat.userId = req.user.idaccount;
+          ipStat.username = req.user.username;
+        }
+        if (req.headers['user-agent']) {
+          ipStat.userAgent = req.headers['user-agent'];
+        }
+        ipStat.targetEndpoint = req.originalUrl || req.url || '/';
 
         // Heuristic 1: Phát hiện DoS Request Burst từ 1 nguồn đơn lẻ theo ngưỡng quy mô
         const burstThreshold = this._getBurstThreshold();
@@ -232,6 +266,32 @@ class FeatureCollector {
     const errorRate4xx = totalReq > 0 ? Number((this._errors4xx / totalReq).toFixed(2)) : 0;
     const errorRate5xx = totalReq > 0 ? Number((this._errors5xx / totalReq).toFixed(2)) : 0;
 
+    const burstThreshold = this._getBurstThreshold();
+    const suspectActors = [];
+    for (const [ip, ipStat] of this._ipStats.entries()) {
+      if (
+        ipStat.failedLogins > 0 ||
+        ipStat.malformed > 0 ||
+        ipStat.tokenReuse > 0 ||
+        ipStat.count > burstThreshold
+      ) {
+        suspectActors.push({
+          type: ipStat.userId ? 'AUTHENTICATED_USER' : 'IP_SOURCE',
+          identity: this._maskIp(ip),
+          maskedIp: this._maskIp(ip),
+          ipHash: this._hashIp(ip),
+          userId: ipStat.userId || null,
+          username: ipStat.username || (ipStat.userId ? `User #${ipStat.userId}` : 'Khách vãng lai (Ẩn danh)'),
+          userAgent: ipStat.userAgent || 'Unknown Client',
+          targetEndpoint: ipStat.targetEndpoint || '/',
+          failedLogins: ipStat.failedLogins || 0,
+          malformed: ipStat.malformed || 0,
+          tokenReuse: ipStat.tokenReuse || 0,
+          reqCount: ipStat.count || 0,
+        });
+      }
+    }
+
     const sample = {
       timestamp: new Date().toISOString(),
       requestsPerMin,
@@ -246,6 +306,7 @@ class FeatureCollector {
       dbPoolActive: this._getDbPoolActive(),
       loadSheddingCount: this._getLoadSheddingCount(),
       distinctIpsCount: this._ipHashes.size,
+      suspectActors,
     };
 
     // Reset window counters cho chu kỳ kế tiếp

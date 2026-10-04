@@ -11,9 +11,12 @@ router.use(authenticate, authorize('admin'));
 // AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
+router.get('/aiops/incidents', aiopsController.getIncidents);
+router.post('/aiops/incidents/clear', aiopsController.clearIncidents);
 router.post('/aiops/calibrate', aiopsController.calibrate);
 router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
+router.post('/aiops/quarantine', aiopsController.quarantineActor);
 router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
 
 // Dashboard — thống kê

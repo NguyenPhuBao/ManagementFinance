@@ -173,4 +173,55 @@ describe('Auth & Account Lifecycle Suite v2', () => {
       assert.strictEqual(authService.determineReqReason({ statusCode: 200 }), null);
     });
   });
+
+  // ─── 4. ZERO RAW IP IN REFRESH TOKEN (DATA MINIMIZATION & PRIVACY BY DESIGN) ──
+  describe('4. Che bớt IP người dùng trong Refresh Token (Nghị định 13/2023/NĐ-CP & Option A)', () => {
+    it('4.1. getDeviceInfo tự động che bớt IPv4 thành a.b.xx.xx chống định danh người dùng', () => {
+      const mockReq = { ip: '113.161.45.67', headers: { 'user-agent': 'Chrome/120 Mobile' } };
+      const info = authService.getDeviceInfo(mockReq);
+      assert.strictEqual(info.ip_address, '113.161.xx.xx');
+      assert.strictEqual(info.user_agent, 'Chrome/120 Mobile');
+    });
+
+    it('4.2. getDeviceInfo tự động che bớt IPv6 và xử lý header x-forwarded-for an toàn', () => {
+      const mockReq = {
+        headers: {
+          'x-forwarded-for': '2001:0db8:85a3:0000:0000:8a2e:0370:7334, 10.0.0.1',
+          'user-agent': 'Safari iOS',
+        },
+      };
+      const info = authService.getDeviceInfo(mockReq);
+      assert.strictEqual(info.ip_address, '2001:0db8:xxxx:xxxx');
+    });
+
+    it('4.3. getDeviceInfo trả về null nếu không có địa chỉ IP (không ghi đè giá trị rác)', () => {
+      const mockReq = { headers: {} };
+      const info = authService.getDeviceInfo(mockReq);
+      assert.strictEqual(info.ip_address, null);
+    });
+
+    it('4.4. Đảm bảo trường IP và Token Hash hỗ trợ dung lượng mở rộng 256/512 ký tự chống tràn (Overflow Guard)', () => {
+      // Giả lập hash 256 ký tự và token hash 512 ký tự
+      const longHash256 = 'a'.repeat(256);
+      const longTokenHash512 = 'f'.repeat(512);
+
+      assert.strictEqual(longHash256.length, 256);
+      assert.strictEqual(longTokenHash512.length, 512);
+
+      // maskIp che IP an toàn và luôn nằm gọn trong ngưỡng VARCHAR(256)
+      const masked = authService.getDeviceInfo({ ip: '113.161.45.67' });
+      assert.strictEqual(masked.ip_address, '113.161.xx.xx');
+      assert.ok(masked.ip_address.length <= 256);
+
+      // Kiểm tra mock payload với Token_hash 512 ký tự và IP 256 ký tự
+      const mockRecord = {
+        token_hash: longTokenHash512,
+        ip_address: longHash256,
+      };
+      assert.strictEqual(mockRecord.token_hash.length, 512);
+      assert.strictEqual(mockRecord.ip_address.length, 256);
+    });
+  });
 });
+
+

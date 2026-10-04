@@ -96,6 +96,11 @@ Từ khảo sát trên, hệ thống xây dựng mô hình suy diễn tự độ
    - $N = 1,000 \implies 20 + 50 \times 3 = 170\text{ req/10s}$.
    - $N = 2,000 \implies 20 + 50 \times 3.301 = 185\text{ req/10s}$.
 
+4. **Cơ Chế Lưu Cứng Quy Mô CCU Bền Vững (Persistent Concurrency Scaling):**
+   - **Lưu Cứng Trong CSDL PostgreSQL (`aiops_setting`):** Khi Admin thay đổi quy mô $N$ (qua nút chọn mẫu 500, 1000, 2000, 5000 hoặc nhập tay), giá trị được ghi tức thì vào CSDL Supabase với khóa `target_concurrency`.
+   - **Tự động phục hồi khi máy chủ khởi động lại:** Backend nạp `target_concurrency` từ CSDL ngay khi khởi động (`loadPersistedSettings()`), tuyệt đối không tự ý rơi về 100 CCU.
+   - **Lưu đệm LocalStorage (`aiops_target_concurrency`):** Admin-web lưu đệm trên trình duyệt, đảm bảo khi Admin tải lại trang (F5), chuyển trang, hoặc đăng nhập lại, quy mô chịu tải luôn ổn định vững chắc.
+
 ### 3.3. Công Thức Đo Lường Cá Nhân Hóa Từng Vectơ Rủi Ro
 Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm $[0, 100]$:
 
@@ -203,8 +208,25 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
      - 🟣 **Trần tham chiếu (Composite Max):** Nét đứt tím `#8b5cf6`.
    - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss).
    - Hiển thị 2 vạch ngưỡng định lượng: Vạch vàng Cảnh báo ($70$) và Vạch đỏ Khẩn cấp ($85$).
-5. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis):**
-   - Phân tích chi tiết chỉ số đo được, giá trị đường chuẩn Baseline và giải thích tiếng Việt rõ ràng.
+5. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA) — Nhật Ký CSDL Bền Vững & Phân Trang:**
+   - **Lưu trữ CSDL Vĩnh Viễn (PostgreSQL `aiops_incident`):** Thay vì bảng tạm snapshot mất dữ liệu khi F5/khởi động lại server, mọi sự cố bất thường được lưu bền vững vào CSDL PostgreSQL phục vụ điều tra truy vết.
+   - **Tính Pháp Lý & Định Danh Đối Tượng Vi Phạm (Actor Identity):**
+     - Tuân thủ Luật An ninh mạng 2018 (Điều 26), Nghị định 53/2022/NĐ-CP (lưu nhật ký an ninh tối thiểu 12 tháng) và Nghị định 13/2023/NĐ-CP (Điều 17 ngoại lệ bảo vệ an ninh/phòng chống gian lận).
+     - Tuân thủ tài liệu chuẩn bảo mật [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md): IP được che bớt an toàn (`113.161.xx.xx`), băm SHA-256 (`actor_hash`), User-Agent, Username/UserID (nếu đã đăng nhập), và Endpoint mục tiêu. Tuyệt đối **không thu thập/lưu trữ mật khẩu hoặc OTP**.
+   - **Vòng Đời Trạng Thái (Status Lifecycle):**
+     - Sự cố mới hoặc đang tái diễn mang trạng thái `ACTIVE` (chấm đỏ nhấp nháy, đếm số lần kích hoạt `hits`).
+     - Khi đối tượng ngừng vi phạm > 60 giây hoặc đã bị cách ly, hệ thống tự động chuyển trạng thái sang `MITIGATED` (Đã giảm thiểu). Dữ liệu được bảo toàn vĩnh viễn, không bị xóa tự động.
+   - **Phân Trang Server-Side & Bộ Lọc Nâng Cao:**
+     - Bộ lọc Vector (`all`, `auth`, `traffic`, `exploit`, `resource`).
+     - Bộ lọc Trạng thái (`all`, `ACTIVE`, `MITIGATED`).
+     - Ô tìm kiếm linh hoạt theo IP, Hash, Username, Endpoint, Mã lỗi.
+     - Phân trang chuẩn giao diện `Pagination.jsx` với các tùy chọn 5, 10, 20, 50 sự cố/trang.
+     - Nút "Làm sạch CSDL" tích hợp `ConfirmModal` phục vụ kiểm thử và nghiệm thu.
+    - **Nút Phong Tỏa IP Thủ Công & Gỡ Chặn Tức Thì (Manual Quarantine & Instant Unblock):**
+      - Tại cột **"Thao tác & Phòng vệ"** của từng hàng sự cố, Admin có thể chủ động bấm **"Phong Tỏa IP"** để cô lập ngay nguồn request bất thường mà không cần đợi ngưỡng tự động.
+      - Tích hợp hộp thoại xác nhận an toàn `ConfirmModal`: hiển thị rõ Masked IP, SHA-256 Hash, Endpoint và thời hạn phong tỏa (15 phút).
+      - Nếu IP đã bị cách ly, hệ thống hiển thị huy hiệu `Đã phong tỏa Shield` cùng nút **"Gỡ chặn"** cho phép mở khóa nhanh ngay tại bảng RCA.
+      - Đối với sự cố tải nội bộ phần cứng (`vector === 'resource'` hoặc `actor = 'Hệ thống'`), hệ thống thông minh hiển thị huy hiệu `Nội bộ hệ thống` để tránh phong tỏa nhầm máy chủ.
 6. **Bảng Nguồn Request Đang Bị Cô Lập (Active Quarantine Blacklist):**
    - Hiển thị danh sách IP bị phong tỏa (đã mask `a.b.xx.xx`), nguyên nhân, thời gian bị chặn, số lần vi phạm (Hits).
    - Nút **"Gỡ Chặn (Unblock)"** cho phép Admin mở khóa thủ công cho IP bất kỳ chỉ với 1 click.
@@ -218,11 +240,57 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
 
 ---
 
+## 🗄️ 6.1. CẤU TRÚC BẢNG CSDL `aiops_incident` (POSTGRESQL)
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng buộc | Ý nghĩa Nghiệp vụ |
+|---|---|---|---|
+| `id` | `VARCHAR(64)` | `PRIMARY KEY` | Khóa chính sự cố (UUID v4) |
+| `code` | `VARCHAR(64)` | `NOT NULL` | Mã loại bất thường (VD: `ANOMALY_AUTH_FAIL_SURGE`) |
+| `vector` | `VARCHAR(32)` | `NOT NULL` | Nhóm rủi ro (`auth`, `traffic`, `exploit`, `resource`) |
+| `severity` | `VARCHAR(16)` | `NOT NULL` | Mức độ cảnh báo (`HIGH`, `MEDIUM`, `LOW`) |
+| `message` | `TEXT` | `NOT NULL` | Mô tả tóm tắt sự cố |
+| `status` | `VARCHAR(20)` | `DEFAULT 'ACTIVE'` | Trạng thái (`ACTIVE` hoặc `MITIGATED`) |
+| `actor_type` | `VARCHAR(32)` | `DEFAULT 'IP'` | Phân loại đối tượng (`IP`, `USER`, `BOT`) |
+| `actor_identity` | `VARCHAR(64)` | `NOT NULL` | Địa chỉ IP đã che giấu (`113.161.xx.xx`) |
+| `actor_hash` | `VARCHAR(64)` | `NOT NULL` | Hash SHA-256 đối tượng (16 ký tự an toàn) |
+| `user_id` | `VARCHAR(64)` | `NULLABLE` | ID tài khoản vi phạm (nếu đã xác thực) |
+| `username` | `VARCHAR(64)` | `NULLABLE` | Tên người dùng vi phạm (nếu có) |
+| `user_agent` | `TEXT` | `NULLABLE` | Thông tin User-Agent định danh trình duyệt/công cụ |
+| `target_endpoint` | `VARCHAR(255)` | `NULLABLE` | Tuyến API bị nhắm mục tiêu tấn công/quá tải |
+| `metric_current` | `NUMERIC(12,2)`| `NOT NULL` | Giá trị đo được tại thời điểm bất thường |
+| `metric_baseline`| `NUMERIC(12,2)`| `NOT NULL` | Giá trị đường chuẩn đối chiếu |
+| `metric_unit` | `VARCHAR(32)` | `NULLABLE` | Đơn vị đo (`req/min`, `ms`, `%`, `lần`) |
+| `mitigation_taken`| `TEXT` | `NULLABLE` | Hành động bảo vệ đã thực hiện |
+| `root_cause_diagnosis` | `TEXT` | `NULLABLE` | Phân tích chẩn đoán nguyên nhân gốc rễ của AI |
+| `hits` | `INTEGER` | `DEFAULT 1` | Số lần sự cố liên tục lặp lại |
+| `first_detected_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm phát hiện lần đầu tiên |
+| `last_seen_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Thời điểm gần nhất sự cố còn xuất hiện |
+| `mitigated_at` | `TIMESTAMPTZ` | `NULLABLE` | Thời điểm sự cố được giảm thiểu thành công |
+
+---
+
+## ⚙️ 6.2. CẤU TRÚC BẢNG THIẾT LẬP BỀN VỮNG `aiops_setting` (POSTGRESQL)
+
+Bảng cấu hình khóa-giá trị chuyên biệt dùng để **lưu cứng (hard-persist)** các tham số vận hành của hệ thống AIOps (tiêu biểu là quy mô tải `target_concurrency`), đảm bảo hệ thống không bao giờ tự ý reset về 100 CCU khi khởi động lại máy chủ hoặc khi Admin đăng nhập lại:
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng buộc | Ý nghĩa Nghiệp vụ |
+|---|---|---|---|
+| `key` | `VARCHAR(64)` | `PRIMARY KEY` | Tên tham số cấu hình (VD: `target_concurrency`) |
+| `value` | `TEXT` | `NOT NULL` | Giá trị cấu hình được lưu cứng (VD: `'1000'`) |
+| `updated_at` | `TIMESTAMP(6)` | `DEFAULT CURRENT_TIMESTAMP` | Thời điểm cập nhật giá trị gần nhất |
+
+**Quy trình đồng bộ 2 lớp (Dual-Layer Persistence):**
+1. **Lớp 1 (PostgreSQL `aiops_setting`):** Nguồn sự thật tin cậy duy nhất trên Server. Khi Backend khởi động, phương thức `loadPersistedSettings()` tự động khôi phục quy mô CCU đã lưu và tái áp dụng ngay cho mô hình chịu tải. Khi Admin thay đổi quy mô, controller gọi `setSetting('target_concurrency', value)` để UPSERT vào CSDL.
+2. **Lớp 2 (Trình duyệt `localStorage.getItem('aiops_target_concurrency')`):** Bộ nhớ đệm cục bộ tức thì trên Admin-web. Giữ nguyên giá trị 1,000 CCU ngay khi tải lại trang hoặc đăng nhập lại, chống nhảy số 100 CCU trước khi API round-trip hoàn tất.
+
+---
+
 ## 📱 7. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
 
 - **Đến Backend:**
   - Bộ nhớ In-Memory Ring Buffer chỉ lưu 60 mẫu gần nhất $\implies$ chiếm dụng $< 2\text{MB}$ RAM, thời gian tính toán Threat Score chỉ mất $< 0.2\text{ms}$.
   - Điều chỉnh trần dung lượng động, không cần khởi động lại máy chủ.
+  - Lưu trữ sự cố trực tiếp vào CSDL PostgreSQL qua kiến trúc Repository hỗ trợ phân trang hiệu năng cao, kèm Fallback tự động khi offline.
 - **Đến Mobile App (Client-app):**
   - Người dùng bình thường không nhận thấy bất kỳ sự khác biệt nào ngay cả trong giờ cao điểm 1,000 - 2,000 người dùng.
   - Thiết bị nào cố tình gửi request spam hoặc can thiệp token sẽ nhận thông báo bị phong tỏa kèm thời gian đếm ngược còn lại để mở khóa.
@@ -237,12 +305,16 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
 | `GET` | `/api/admin/aiops/status` | Lấy Threat Score, 4 điểm vectơ, trạng thái và phân tích | Admin |
 | `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử phục vụ vẽ biểu đồ SVG | Admin |
 | `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP đang bị phong tỏa | Admin |
+| `POST` | `/api/admin/aiops/quarantine` | Chủ động phong tỏa thủ công một nguồn IP theo Hash/IP | Admin |
 | `DELETE` | `/api/admin/aiops/quarantine/:hash` | Gỡ chặn và mở khóa kết nối thủ công cho IP | Admin |
 | `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin |
 | `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin |
+| `GET` | `/api/admin/aiops/incidents` | Lấy danh sách nhật ký sự cố CSDL có phân trang và bộ lọc | Admin |
+| `POST` | `/api/admin/aiops/incidents/clear` | Làm sạch toàn bộ nhật ký sự cố trong CSDL (phục vụ nghiệm thu) | Admin |
 
 ### Socket.io Events
 - **Phát tán tới Admin-web (`admin_room`):**
   - `admin.security_alert`: Báo động khi Threat Score $\ge 80$.
   - `admin.security_blocked`: Thông báo real-time ngay khi có 1 IP bị tường lửa phong tỏa.
   - `admin.metrics_stream`: Stream thông số nhịp tim, Threat Score, 4 điểm vectơ và quy mô CCU mỗi 3 giây.
+  - `admin.anomaly_detected`: Phát sự kiện thời gian thực khi có sự cố bất thường mới được ghi nhận vào CSDL.

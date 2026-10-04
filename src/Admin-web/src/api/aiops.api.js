@@ -41,6 +41,18 @@ const aiopsApi = {
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),
   setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
+  getIncidents: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.append('page', params.page);
+    if (params.limit) qs.append('limit', params.limit);
+    if (params.vector && params.vector !== 'all') qs.append('vector', params.vector);
+    if (params.status && params.status !== 'all') qs.append('status', params.status);
+    if (params.search) qs.append('search', params.search);
+    const queryString = qs.toString();
+    return callAIOps('get', `/admin/aiops/incidents${queryString ? `?${queryString}` : ''}`);
+  },
+  clearIncidents: () => callAIOps('post', '/admin/aiops/incidents/clear'),
+  quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
 };
 
 export default aiopsApi;
