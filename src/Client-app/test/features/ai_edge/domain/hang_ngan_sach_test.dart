@@ -13,6 +13,8 @@ import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/domain/budget_pace.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../budget/domain/nhip_chi_mau.dart';
+
 BudgetView _ns({
   String id = 'b1',
   String ten = 'Giáo dục',
@@ -281,5 +283,18 @@ void main() {
       expect(kiemCauTraLoi('Ăn uống dự kiến vượt 600.000 đ, bạn có thể chuyển 500.000 đ từ Mua sắm và 100.000 đ từ Giải trí.', [g]), isTrue);
       expect(kiemCauTraLoi('Bạn có thể chuyển 400.000 đ từ Mua sắm sang Ăn uống.', [g]), isFalse);
     });
+  });
+
+  test('nhịp riêng: Giáo dục 90 % ở x = 0,7 là "đúng nhịp" (chi đều thì "tiêu nhanh")',
+      () {
+    final gd = _ns(id: 'gd', ten: 'Giáo dục', amount: 50000, spent: 45000);
+    expect(hangNganSach([gd], now: now).hang.single.trangThai, 'tiêu nhanh');
+    expect(
+      hangNganSach([gd], now: now, nhipTheoNganSach: {'gd': nhipGiaoDuc()})
+          .hang
+          .single
+          .trangThai,
+      'đúng nhịp',
+    );
   });
 }
