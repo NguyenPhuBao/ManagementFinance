@@ -75,7 +75,7 @@ function createDbBulkheadMiddleware(options = {}) {
       return next();
     }
 
-    const role = (req.isAdmin || url.startsWith('/api/admin')) ? 'admin' : 'client';
+    const role = (req.isAdmin === true) ? 'admin' : 'client';
 
     if (!bulkhead.canAcquire(role)) {
       return res.status(503).json({

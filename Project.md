@@ -3401,6 +3401,100 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Toàn bộ test suite Backend: **220/220 tests PASS 100%**.
   - Toàn bộ test suite Admin-web: **57/57 tests PASS 100%**.
 
+### 11.64. Thiết Lập DB Safety Guard, Tách Biệt Test Integration & Thẩm Tra Tính Toàn Vẹn CSDL Supabase (2026-10-05)
+- **1. Thẩm tra thực tế CSDL PostgreSQL Supabase Cloud:**
+  - Kết nối trực tiếp và kiểm tra `pg_indexes` cùng `information_schema.triggers` trên Supabase Tokyo pooler.
+  - **Kết quả: 100% CSDL an toàn, nguyên vẹn, chưa hề bị ảnh hưởng.** Toàn bộ 7 Partial Indexes (`account_Email_key`, `user_Email_key`, `uq_category_default_name`, `uq_category_owner_name`, `idx_bill_previous_bill`, `idx_transaction_bill`, `idx_transaction_goal`) có mệnh đề `WHERE` và 4 Triggers bảo mật (`trg_protect_auditlog`, `trg_protect_transaction`, `trg_check_phone_encrypted`, `trg_check_bank_account_encrypted`) đều đang hoạt động tốt.
+- **2. Thiết lập DB Safety Guard & Ràng buộc quy tắc (Rule 10):**
+  - Xây dựng `src/Backend/scripts/db-guard.js`: Chặn đứng với Exit code 1 nếu kỹ sư chạy `prisma migrate dev` hoặc `prisma db push` trên CSDL Supabase Cloud hoặc môi trường production, nhằm ngăn ngừa việc Prisma xóa bỏ các Partial Unique Indexes và Triggers.
+  - Xây dựng `src/Backend/scripts/verify-db-indexes.js`: Script kiểm tra sức khỏe và tính toàn vẹn của chỉ mục định kỳ (`npm run db:verify-indexes`).
+  - Cập nhật `.agents/AGENTS.md` (RULE 10) và `docs/Rule_Project/Rule_project.md` (mục 12.9).
+- **3. Chuẩn hóa & Tách biệt Test Suite Backend cho CI/CD:**
+  - Tách bài test gọi trực tiếp Google Gemini streaming (`tests/integration/chatbot.api.test.js`) sang script riêng `"test:integration"`.
+  - Cấu hình `"test": "node --test tests/unit/**/*.test.js tests/v2/**/*.test.js"` chạy hoàn toàn độc lập/mocked nội bộ: **217/217 tests PASS 100% trong 3.9 giây**, đảm bảo tính ổn định và tốc độ tối ưu cho pipeline CI/CD.
+- **4. Đồng bộ Flutter SDK cho Client-app:**
+  - Nâng cấp Flutter SDK trên máy trạm từ `3.44.5` lên `3.47.6` (Dart SDK `>= 3.13.0`) để tương thích với `background_downloader: ^9.6.2` (Edge AI Gemma 4 E2B).
+
+### 11.65. Hoàn Tất Đơn 36 (SOAT_SAU_GOP_B38367E): Tăng Cường Bảo Mật, Vá Lách Lớp Bảo Trì & Chuẩn Hóa Cấu Hình Backend (2026-10-05)
+- **1. Bối cảnh & Đề xuất từ Client-app:**
+  - Sau khi gộp commit `b38367e` (hoàn tất đơn 35), Client-app đã tiến hành rà soát chéo và phát hiện 6 điểm kỹ thuật cần củng cố ở Backend: 1 điểm mức vừa (lách bảo trì bằng query string) và 5 điểm nhẹ về bảo mật cấu hình, cắt tải, CORS và unit test.
+- **2. Chi tiết giải pháp kỹ thuật đã triển khai:**
+  - **Điểm 1 (Vá lách bảo trì qua query string):** Trong `src/Backend/middleware/maintenance.middleware.js`, tách bỏ triệt để query string `(req.originalUrl || req.path || '').split('?')[0]` và chỉ miễn trừ khi phương thức đúng là `req.method === 'POST'` và đường dẫn là `/api/auth/login`. Chặn hoàn toàn các request bypass như `/api/sync/push?x=/auth/login`.
+  - **Điểm 2 (Loại bỏ fallback 'secret' & chốt chặn khởi động):** Xóa bỏ hoàn toàn chuỗi fallback `'secret'` trong `admin-priority.middleware.js` và `rate-limiter.js`. Tại `src/Backend/config/index.js`, thêm cơ chế fail-fast `process.exit(1)` khi khởi động môi trường `production` nếu thiếu biến `JWT_ACCESS_SECRET` hoặc `JWT_REFRESH_SECRET`.
+  - **Điểm 3 (Loại bỏ đặc quyền chưa xác thực theo URL path):** Xóa bỏ việc gán `req.isAdmin = true` chỉ dựa vào tiền tố URL `/api/admin/*` tại `admin-priority.middleware.js`. Đồng bộ toàn bộ các tầng (`rate-limiter.js`, `load-shedding.middleware.js`, `retry-guard.middleware.js`, `db-bulkhead.js`, `aiops.quarantine.js`, `feature.collector.js`) kiểm tra nghiêm ngặt `req.isAdmin === true` sau khi đã giải mã token hoặc qua emergency key.
+  - **Điểm 4 (Chuẩn hóa nhận diện test của Load Shedding):** Sửa `load-shedding.middleware.js`, loại bỏ vế `process.argv.some(a => a.includes('test'))`, chỉ dựa vào `NODE_ENV === 'test' || Boolean(NODE_TEST_CONTEXT)` nhằm ngăn chặn việc tắt nhầm cơ chế warmup 45s khi mã nguồn nằm trong thư mục có chữ "test".
+  - **Điểm 5 (Siết chặt CORS):** Sửa `src/Backend/config/cors.js`, ràng buộc regex cho phép `localhost` và `127.0.0.1` chỉ có hiệu lực ở môi trường `development` (`process.env.NODE_ENV !== 'production'`).
+  - **Điểm 6 (Bổ sung Unit Test bảo trì):** Bổ sung 3 ca test (ca 18, 19, 20) trong `tests/unit/admin.priority.maintenance.test.js` kiểm tra toàn diện nhánh bảo trì của `auth.service.login`: User thường bị từ chối với 503 `MAINTENANCE_MODE`, Admin được phép đăng nhập lấy token, và mật khẩu sai trả về 401 không lộ trạng thái bảo trì.
+- **3. Đo lường & Nghiệm thu:**
+  - `node --test tests/unit/admin.priority.maintenance.test.js`: **20/20 PASS 100%**.
+  - Toàn bộ test suite Backend (`rtk npm test`): **220/220 tests PASS 100%** (0 failure).
+  - Grep kiểm tra chuỗi `'secret'` trong middleware: **0 kết quả**.
+  - Grep kiểm tra `process.argv` trong load-shedding: **0 kết quả**.
+  - Chuyển `SOAT_SAU_GOP_B38367E.md` sang `docs/superpowers/backend/DA-XONG/` (tổng cộng 54 tệp hoàn tất trong `DA-XONG/`). Thư mục `CAN-LAM/` ghi nhận 0 mục chờ Backend.
+
+### 11.66. Xây Dựng Hoàn Chỉnh Module Payment (PayOS) & Vòng Đời Gói Premium (2026-10-05)
+- **1. Bối cảnh & Nghiệp vụ:**
+  - Người dùng cuối khi đăng ký tài khoản thành công luôn mặc định là gói `Basic`.
+  - Cung cấp tính năng nâng cấp lên tài khoản `Premium` (mặc định 49,000 VNĐ / 30 ngày) thông qua cổng thanh toán PayOS (VietQR / Ngân hàng).
+  - Ngăn chặn triệt để mọi hành vi sửa đổi bất hợp pháp loại tài khoản tại CSDL: Không có API công khai nào cho phép cập nhật `type` hay `premium_expires_at`. Việc kích hoạt quyền Premium hoàn toàn do Webhook PayOS đảm nhiệm sau khi đã xác thực chữ ký số HMAC-SHA256 và đối soát nguyên tử qua Prisma `$transaction`.
+- **2. Chi tiết kỹ thuật đã triển khai:**
+  - **Migration CSDL DDL (`database/19_create_payment_subscription_tables.sql`):** Bổ sung cột `premium_expires_at` tại bảng `account`; tạo 2 bảng `payment_order` (lưu đơn hàng, orderCode, trạng thái PENDING/PAID, checkoutUrl) và `payment_transaction` (nhật ký giao dịch đối soát, hash SHA-256 webhook). Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)** và **Data_Security.md** (không lưu số thẻ, CVV).
+  - **Prisma Schema (`schema.prisma`):** Bổ sung 2 model `payment_order`, `payment_transaction` và cập nhật quan hệ tại `account`. Chạy `prisma generate` an toàn.
+  - **Thư viện `@payos/node` & Config:** Cài đặt `@payos/node`; nạp cấu hình `clientId`, `apiKey`, `checksumKey`, `premiumPriceVnd` tại `src/Backend/config/index.js`.
+  - **Micro-module Payment (`src/Backend/modules/payment/`):**
+    - `payos.client.js`: Singleton bọc PayOS SDK, sinh `orderCode` an toàn dạng số nguyên $\le 2^{53}-1$, tạo link thanh toán VietQR và thẩm tra chữ ký số Webhook HMAC-SHA256 (`verifyWebhookData`).
+    - `payment.repository.js`: Thực thi các truy vấn CSDL, sanitize BigInt an toàn JSON, xử lý kích hoạt atomic Prisma `$transaction`.
+    - `payment.service.js`: Xử lý tạo đơn hàng, chống Replay Attack (Idempotency), cộng dồn thời hạn 30 ngày (Stacking: nếu tài khoản còn hạn Premium thì `newExpiry = current_expiry + 30 days`), xóa cache xác thực `invalidateAccountCache` và phát sự kiện qua EventBus + Socket.IO realtime.
+    - `payment.controller.js`: Xử lý các request/response theo chuẩn `ResponseHandler`.
+  - **API Endpoints (`src/Backend/api/payment.routes.js` mounted at `/api/payment`):**
+    - `POST /api/payment/create-order` (JWT): Tạo đơn hàng & lấy link thanh toán.
+    - `GET /api/payment/order-status/:orderCode` (JWT): Kiểm tra trạng thái đơn hàng.
+    - `GET /api/payment/subscription-info` (JWT): Lấy thông tin gói, ngày hết hạn và số ngày còn lại.
+    - `GET /api/payment/history` (JWT): Lịch sử mua gói có phân trang.
+    - `POST /api/payment/webhook` (Public - PayOS): Tiếp nhận webhook thanh toán, verify HMAC-SHA256.
+  - **Cơ chế Lập lịch Daily Hygiene (00:00:00 UTC+7):**
+    - Mở rộng `src/Backend/core/scheduler.service.js` với hàm `runDailyPremiumExpirationTask`:
+      1. Tự động cảnh báo trước 3 ngày qua EventBus (`payment.expiring_soon`).
+      2. Tự động chuyển về `Basic` khi `premium_expires_at <= now`, xóa cache bộ nhớ và phát sự kiện `payment.expired` + Socket.IO hạ cấp.
+  - **Tài liệu đặc tả:** Lưu trữ đầy đủ tại [`docs/Payment/PAYMENT_PAYOS_SPEC.md`](docs/Payment/PAYMENT_PAYOS_SPEC.md) và [`docs/Payment/README.md`](docs/Payment/README.md).
+- **3. Đo lường & Kiểm thử:**
+  - 4 bộ unit test độc lập: `payment.config.test.js`, `payos.client.test.js`, `payment.repository.test.js`, `payment.service.test.js`, `payment.api.test.js`, `payment.scheduler.test.js`.
+  - Toàn bộ test suite Backend (`rtk npm test`): **243/243 tests PASS 100%** (0 failure).
+
+### 11.67. Cập Nhật CSDL PostgreSQL Thật (Supabase Tokyo) & Hướng Dẫn Cấu Hình Cổng PayOS Thực Tế (2026-10-05)
+- **1. Hoàn tất Cập nhật CSDL PostgreSQL Supabase Thật (100% Real Data):**
+  - Thực thi an toàn script `src/Backend/database/19_create_payment_subscription_tables.sql` thông qua `src/Backend/scripts/apply_migration_19.js` kết nối trực tiếp Supabase Cloud (`DIRECT_URL`).
+  - Thẩm tra cấu trúc CSDL thực tế:
+    - Bảng `account`: Đã có cột `premium_expires_at` (`timestamp without time zone`, NULL).
+    - Tạo mới 2 bảng: `payment_order` và `payment_transaction`.
+    - Tạo thành công 6 chỉ mục hiệu năng: `idx_account_premium_expires`, `idx_payment_order_account`, `idx_payment_order_status`, `idx_payment_order_code`, `idx_payment_transaction_order`, `idx_payment_transaction_account`.
+  - Chạy thẩm tra chỉ mục và triggers (`rtk npm run db:verify-indexes`): **100% Partial Indexes (Soft-delete) và Triggers bảo mật (`trg_protect_auditlog`, `trg_protect_transaction`, `trg_check_phone_encrypted`, `trg_check_bank_account_encrypted`) đều an toàn nguyên vẹn.**
+- **2. Kiểm Thử Tích Hợp CSDL Thật Không Mockup (Real Database Integration Test):**
+  - Xây dựng bài test tích hợp `src/Backend/tests/integration/payment.db.integration.test.js`:
+    1. Tạo đơn hàng `payment_order` thật trên PostgreSQL Supabase.
+    2. Truy vấn đơn hàng bằng mã `order_code` thật (BigInt).
+    3. Kích hoạt giao dịch nâng cấp tài khoản nguyên tử qua Prisma `$transaction` thật: Cập nhật đơn hàng thành `PAID`, lưu nhật ký `payment_transaction` và chuyển `account.type` sang `'Premium'` kèm thời hạn `premium_expires_at`.
+    4. Thẩm tra truy vấn gói và phân trang lịch sử giao dịch.
+    5. Tự động rollback và dọn dẹp dữ liệu test an toàn.
+  - Kết quả kiểm thử: **4/4 integration tests PASS 100%** trên Supabase Cloud.
+- **3. Hướng Dẫn Cấu Hình & Công Cụ Chẩn Đoán Kết Nối PayOS:**
+  - Ban hành tài liệu chi tiết từng bước: [`docs/Payment/PAYOS_SETUP_GUIDE.md`](docs/Payment/PAYOS_SETUP_GUIDE.md).
+  - Cập nhật biến môi trường PayOS trong `.env.example` và `.env` (`PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`).
+  - Xây dựng công cụ kiểm tra kết nối PayOS tự động: `src/Backend/scripts/test_payos_connection.js` (lệnh `rtk npm run payos:test`).
+  - Xây dựng công cụ đăng ký & xác nhận Webhook URL với PayOS API: `src/Backend/scripts/confirm_payos_webhook.js` (lệnh `rtk npm run payos:confirm-webhook <url>`).
+- **4. Ban Hành Tài Liệu Hướng Dẫn Tích Hợp Dành Cho Client-App:**
+  - Ban hành tài liệu: [`docs/Payment/CLIENT_INTEGRATION_GUIDE.md`](docs/Payment/CLIENT_INTEGRATION_GUIDE.md).
+  - Cung cấp:
+    1. Checklist 8 hạng mục Client-app cần làm (Profile badge, Màn hình Paywall, Gọi API, 2 Phương án hiển thị thanh toán, Lắng nghe Realtime, Màn hình Chúc mừng, Lịch sử mua gói, Banner cảnh báo hết hạn).
+    2. Chi tiết 5 API contract endpoints (kèm ví dụ request/response).
+    3. Hướng dẫn 2 phương án hiển thị VietQR và nút "Mở ứng dụng ngân hàng" (Deep link).
+    4. Code mẫu tham khảo cho Flutter (Dart) và React Native / React Web (TypeScript/Axios).
+
+
+
+
+
+
 
 
 

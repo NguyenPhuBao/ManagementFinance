@@ -18,7 +18,7 @@ describe('ChatbotService — Streaming & Reasoning Integration', () => {
     assert.ok(snapshot.liquidityAndObligations);
   });
 
-  it('2. chatStream: Phản hồi stream qua callback onMeta, onChunk, onDone', async () => {
+  it('2. chatStream: Phản hồi stream qua callback onMeta, onChunk, onDone', { timeout: 60000 }, async () => {
     let metaReceived = false;
     let chunksReceived = 0;
     let doneReceived = false;

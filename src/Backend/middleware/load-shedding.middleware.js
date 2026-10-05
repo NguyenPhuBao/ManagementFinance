@@ -22,7 +22,7 @@ function createLoadSheddingMiddleware(options = {}) {
 
   const monitor = options.monitor || defaultEventLoopMonitor;
   const retryAfterSeconds = options.retryAfterSeconds || 5;
-  const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some(a => a.includes('test'));
+  const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.NODE_TEST_CONTEXT);
   const warmupMs = options.warmupMs !== undefined ? options.warmupMs : (isTestEnv ? 0 : 45000);
 
   return function loadSheddingMiddleware(req, res, next) {
@@ -30,8 +30,7 @@ function createLoadSheddingMiddleware(options = {}) {
     const p = req.path || req.originalUrl || '';
     const isHealthCheck = p.startsWith('/health') || (p === '/' && (req.method === 'HEAD' || req.method === 'GET'));
 
-    const isAdmin = req.isAdmin === true || 
-      p.startsWith('/api/admin');
+    const isAdmin = req.isAdmin === true;
 
     if (isAdmin || isHealthCheck) {
       return next();
