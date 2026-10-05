@@ -185,7 +185,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 7. MẠNG, CORS & ĐIỀU TIẾT TẢI (NETWORK & RATE LIMITING)
    # ========================================================
    # Khai báo chính xác domain Vercel của Admin-web và domain local
-   CORS_ORIGIN=https://managementfinance-admin.vercel.app,http://localhost:5173,http://localhost:3000
+   CORS_ORIGIN=https://management-finance-gamma.vercel.app,https://managementfinance-admin.vercel.app,http://localhost:5173,http://localhost:3000
    RATE_LIMIT_ENABLED=true
    RATE_LIMIT_WINDOW_MS=900000
    RATE_LIMIT_MAX=1000
@@ -272,8 +272,17 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    }
    ```
    *Tác dụng:* 
-   - Điều hướng toàn bộ request `/api/...` về Render mà không bị lỗi CORS.
+   - Điều hướng toàn bộ request `/api/...` về Render mà không bị lỗi CORS (khi chưa cấu hình biến môi trường).
    - Hỗ trợ React Router điều hướng trang mượt mà, khi người dùng F5 tải lại trang không bị lỗi 404.
+
+3. **Cấu hình biến môi trường trên Vercel (Project Settings → Environment Variables):**
+   - `VITE_API_BASE_URL`: `https://managementfinance.onrender.com/api` (Giúp trình duyệt gọi trực tiếp Render, giảm 1 chặng proxy trung gian của Vercel).
+   - `VITE_SOCKET_URL`: `https://managementfinance.onrender.com` (Bắt buộc cho WebSockets/Socket.IO kết nối trực tiếp đến Render vì Vercel rewrites không hỗ trợ giao thức Upgrade WebSocket).
+
+4. **Lưu ý về Hiệu Năng Gói Free Render:**
+   - **Hiện tượng ngủ đông (Spin-down):** Sau 15 phút không hoạt động, Render tắt container. Lần truy cập tiếp theo mất 30–50s để khởi động lại.
+   - **Tài nguyên 0.1 CPU & 512MB RAM:** Tránh mở đồng thời quá nhiều tab Admin-web cùng lúc để không bị bóp nghẽn CPU.
+   - **CORS thông minh:** Backend đã hỗ trợ bộ lọc tự động nhận diện domain `management-finance*.vercel.app` và `managementfinance*.vercel.app`.
 
 ---
 

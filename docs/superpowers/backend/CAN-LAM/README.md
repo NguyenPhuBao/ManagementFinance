@@ -1,24 +1,26 @@
-# Backend — HOÀN TẤT TOÀN BỘ (Mục 1–33 đã hoàn tất 100%; 0 đơn tồn đọng)
+# Backend & Client — DANH SÁCH CẦN LÀM (1 mục đang triển khai tại Client-app)
 
-**Cập nhật:** 2026-10-03 (Backend hoàn tất xử lý và nghiệm thu toàn diện 3 đơn 31, 32, 33 theo phê duyệt trực tiếp của Product Owner). Thư mục `CAN-LAM/` hiện hoàn toàn sạch sẽ — 0 đơn tồn đọng.
+**Cập nhật:** 2026-10-04 (Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế và đang lưu tại `CAN-LAM/` để Client-app xây dựng chức năng trên thiết bị).
 
-> 🎉 **CẬP NHẬT 2026-10-03 — 3 ĐƠN 31, 32, 33 ĐÃ HOÀN TẤT 100% THEO LỆNH CỦA PO:**
-> - **Mục 31 (`SOAT_SAU_GOP_A7C03B7.md`):** Đã sửa triệt để 2 lỗi mã FHS: (1) `allExpenses` xét chuẩn chiều tiền `Vay/no` (tiền âm mới là trả nợ; loại trừ Cho vay / thu nợ khỏi DTI; tiền dương vay nợ không tính vào tiết kiệm 50/30/20); (2) `trendVsLastMonth` trả `null` minh bạch khi kỳ trước bằng 0, không bịa fake `+100%`, bổ sung đầy đủ test suite; (3) Khử sạch UTF-8 BOM khỏi `database/14_fix_grab_keyword_category.sql` và cập nhật danh sách áp trong `CloudDeploy.md`; (4) Sửa toàn bộ văn bản lệch: `Project.md`, `LogicBusinessAI.md`, `Classify.md`, `ChatbotAI_Moblie.md`, `AI_ARCHITECTURE_DIAGRAM.md`, `Notification_Client-app.md` (SQLite v27, 9 tools, Gemini 3.8 Flash, chuông badge số đếm).
-> - **Mục 32 (`CLIENT_CHIA_SE_BIEN_LAI.md`):** Module Bank đã dừng hoàn toàn độc lập và không liên quan đến biên lai. Cập nhật `LogicBusinessAI.md` và `Project.md` bổ sung nguồn *"biên lai người dùng chia sẻ, đọc chữ trên máy qua Google ML Kit Text Recognition"* cạnh thông báo biến động số dư. Áp dụng cơ chế chia sẻ chủ động, 100% on-device offline, không gửi ra ngoài, không cần màn xin quyền riêng.
-> - **Mục 33 (`SOAT_SAU_GOP_29E9A89.md`):** Khắc phục dứt điểm 4 điểm tồn tại của AIOps Quarantine: (1) Heuristic 4 chỉ kích hoạt khi thực sự có hành vi tái sử dụng token (`req.tokenReuseDetected`), không chặn các ca 401 thông thường; (2) IP lấy chuẩn xác qua `req.ip || req.socket?.remoteAddress` tuân thủ `trust proxy`, loại bỏ nguy cơ spoofing; (3) Miễn trừ loopback dev `127.0.0.1`, `::1`, `localhost` khi `NODE_ENV=development` bảo vệ môi trường test máy thật / adb reverse; (4) Thân HTTP 403 bổ sung chuẩn `code: 'AIOPS_QUARANTINED'`.
-
----
-
-## 0. Còn phải làm (Hiện tại: **0** mục tồn đọng)
-
-> Toàn bộ 33 mục yêu cầu kỹ thuật và soát xét đã được giải quyết triệt để và lưu trữ tại [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md). Thư mục `CAN-LAM/` hiện không còn tài liệu tồn đọng nào cần giải quyết.
+> 📌 **HIỆN TRẠNG 2026-10-04:**
+> - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** Phía Client-app hỏi ý kiến thiết kế tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (`PACKAGE_USAGE_STATS`). PO đã phê duyệt: đồng ý với Client (100% on-device offline, không đòi thêm NĐ 13, bổ sung nguồn 3 vào tài liệu). Tệp nằm tại `CAN-LAM/` để Client-app tiến hành xây dựng và nghiệm thu chức năng trên máy.
+> - **Mục 35 (`SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md`):** Đã vá triệt để 5 điểm yếu bảo mật logic phía Backend, vượt qua 30 unit tests và lưu trữ tại `DA-XONG/`.
 
 ---
 
-## 1. Trạng thái các mục đã xử lý (Gần nhất)
+## 0. Còn phải làm (Hiện tại: **1** mục đang triển khai tại Client-app)
+
+| # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
+|---|---|---|---|---|
+| **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật); Client-app đang triển khai tính năng trên máy. | ⏳ Đang làm tại Client-app |
+
+---
+
+## 1. Trạng thái các mục Backend đã xử lý (Gần nhất)
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
+| **35** | [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](../DA-XONG/SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | Xóa bỏ ưu tiên tự khai header, xóa Fast-lane 2 AIOps, chuyển sang jwt.verify, timingSafeEqual, bảo trì login, authLimiter chuẩn. Test PASS 100%. | ✅ Đã xong 100% |
 | **31** | [SOAT_SAU_GOP_A7C03B7.md](../DA-XONG/SOAT_SAU_GOP_A7C03B7.md) | Sửa dứt điểm 2 lỗi mã FHS (`allExpenses` chiều tiền Vay/no, `trendVsLastMonth` null), khử BOM file SQL 14, cập nhật CloudDeploy.md, chuẩn hóa toàn diện tài liệu (v27, 9 tools, Gemini 3.8 Flash). Test FHS PASS 100%. | ✅ Đã xong 100% |
 | **32** | [CLIENT_CHIA_SE_BIEN_LAI.md](../DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md) | Module Bank đã dừng độc lập, cập nhật tài liệu ăn khớp với cơ chế chia sẻ biên lai on-device ML Kit của Client-app. | ✅ Đã xong 100% |
 | **33** | [SOAT_SAU_GOP_29E9A89.md](../DA-XONG/SOAT_SAU_GOP_29E9A89.md) | Khắc phục dứt điểm AIOps Quarantine: Heuristic 4 lọc đúng tokenReuseDetected, IP an toàn qua req.ip, miễn trừ loopback dev, chuẩn hóa code HTTP 403. Test PASS 100%. | ✅ Đã xong 100% |
@@ -33,7 +35,7 @@
 
 ## 2. Trạng thái toàn bộ tài liệu kỹ thuật (Đã lưu trữ tại `DA-XONG/`)
 
-**48** tài liệu (đếm bằng máy 2026-10-03, không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
+**52** tài liệu (đếm bằng máy 2026-10-04, không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
 
 ---
 

@@ -123,7 +123,21 @@ Ba tài liệu này đã được giải quyết triệt để và chuyển sang
 | [CLIENT_CHIA_SE_BIEN_LAI.md](./CLIENT_CHIA_SE_BIEN_LAI.md) | ✅ Module Bank đã dừng độc lập. Ghi nhận thêm nguồn biên lai chia sẻ (ML Kit on-device) cho chức năng 3 trong `LogicBusinessAI.md` và `Project.md`. Không áp lệnh cấm, không cần màn đồng ý riêng do người dùng chủ động bấm chia sẻ từng lần. |
 | [SOAT_SAU_GOP_29E9A89.md](./SOAT_SAU_GOP_29E9A89.md) | ✅ Khắc phục 4 điểm tồn tại của AIOps Quarantine: (1) Heuristic 4 chỉ chặn khi `req.tokenReuseDetected`; (2) Lấy IP chuẩn xác qua `req.ip` tuân thủ `trust proxy`; (3) Miễn trừ loopback dev `127.0.0.1`, `::1`, `localhost` khi `NODE_ENV=development`; (4) Bổ sung chuẩn `code: 'AIOPS_QUARANTINED'` trong HTTP 403. 11/11 tests PASS. |
 
-Thư mục này nay **51** tệp + mục lục (đếm bằng máy 2026-10-03).
+Thư mục này đợt trước có 51 tệp + mục lục.
+
+---
+
+## 4d. Đóng trong đợt backend 2026-10-04 (Hoàn tất mục 35 — PO phê duyệt & nghiệm thu)
+
+Tài liệu này đã được giải quyết triệt để và chuyển sang `DA-XONG/` ngày 2026-10-04:
+
+| Tài liệu | Kết quả xử lý |
+|---|---|
+| [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](./SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | ✅ Đã vá triệt để 5 điểm yếu bảo mật logic: (1) Xóa bỏ logic tự khai `x-client-platform` / Origin cấp `req.isAdmin`; (2) Xóa bỏ Fast-lane 2 trong AIOps Quarantine; (3) Chuyển `jwt.decode` sang `jwt.verify(token, secret)` trong `admin-priority.middleware.js` và `rate-limiter.js`; (4) Dùng `crypto.timingSafeEqual` an toàn; (5) Bắt `/auth/login` qua chế độ bảo trì và gắn trực tiếp `authLimiter` vào route xác thực công khai. Đã gỡ bypass trong `authLimiter.skip`. 30/30 tests PASS. |
+
+*(Lưu ý: Mục 34 [`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) là đơn tư vấn thiết kế cho chức năng phía Client-app; PO đã duyệt và tài liệu được lưu tại `CAN-LAM/` để Client-app tiến hành xây dựng trên máy).*
+
+Thư mục này nay **52** tệp + mục lục (đếm bằng máy 2026-10-04).
 
 ---
 

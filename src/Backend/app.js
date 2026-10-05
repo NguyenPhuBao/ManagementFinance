@@ -18,8 +18,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS
+const { createCorsOriginValidator } = require('./config/cors');
 app.use(cors({
-  origin: config.cors.origin,
+  origin: createCorsOriginValidator(config.cors.origin),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-client-platform', 'x-emergency-admin-key'],

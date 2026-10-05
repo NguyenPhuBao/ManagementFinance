@@ -22,7 +22,8 @@ function createLoadSheddingMiddleware(options = {}) {
 
   const monitor = options.monitor || defaultEventLoopMonitor;
   const retryAfterSeconds = options.retryAfterSeconds || 5;
-  const warmupMs = options.warmupMs !== undefined ? options.warmupMs : (process.env.NODE_ENV === 'test' ? 0 : 45000);
+  const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.NODE_TEST_CONTEXT) || process.argv.some(a => a.includes('test'));
+  const warmupMs = options.warmupMs !== undefined ? options.warmupMs : (isTestEnv ? 0 : 45000);
 
   return function loadSheddingMiddleware(req, res, next) {
     // 1. Kiểm tra nếu request thuộc về Admin-web hoặc Health Check (Bypass hoàn toàn)

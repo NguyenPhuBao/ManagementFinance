@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../modules/auth/auth.controller');
 const validate = require('../middleware/validator');
 const { authenticate } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rate-limiter');
 const { 
   loginSchema, refreshSchema, registerSchema,
   sendRegisterOtpSchema, verifyRegisterOtpSchema,
@@ -12,19 +13,19 @@ const {
 
 // === REGISTER OTP FLOW (MỚI) ===
 // POST /api/auth/register/send-otp — Gửi mã OTP xác thực đăng ký về email
-router.post('/register/send-otp', validate(sendRegisterOtpSchema), authController.sendRegisterOtp);
+router.post('/register/send-otp', authLimiter, validate(sendRegisterOtpSchema), authController.sendRegisterOtp);
 
 // POST /api/auth/register/verify-otp — Xác thực OTP, tạo tài khoản và trả token đăng nhập
-router.post('/register/verify-otp', validate(verifyRegisterOtpSchema), authController.verifyRegisterOtp);
+router.post('/register/verify-otp', authLimiter, validate(verifyRegisterOtpSchema), authController.verifyRegisterOtp);
 
 // POST /api/auth/register — DEPRECATED (Giữ tương thích ngược)
-router.post('/register', validate(registerSchema), authController.register);
+router.post('/register', authLimiter, validate(registerSchema), authController.register);
 
-// POST /api/auth/login — public
-router.post('/login', validate(loginSchema), authController.login);
+// POST /api/auth/login — public (chống brute-force bằng authLimiter)
+router.post('/login', authLimiter, validate(loginSchema), authController.login);
 
 // POST /api/auth/refresh — public
-router.post('/refresh', validate(refreshSchema), authController.refresh);
+router.post('/refresh', authLimiter, validate(refreshSchema), authController.refresh);
 
 // GET /api/auth/me — yeu cau token JWT
 router.get('/me', authenticate, authController.me);
@@ -34,9 +35,9 @@ router.post('/logout', authenticate, authController.logout);
 
 // === PASSWORD MANAGEMENT ===
 router.patch('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword);
-router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
-router.post('/verify-otp', validate(verifyOtpSchema), authController.verifyOtp);
-router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/verify-otp', authLimiter, validate(verifyOtpSchema), authController.verifyOtp);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
 // === ACCOUNT MANAGEMENT ===
 router.delete('/account', authenticate, validate(deleteAccountSchema), authController.deleteAccount);
