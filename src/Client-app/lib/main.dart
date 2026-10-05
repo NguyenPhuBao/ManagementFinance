@@ -29,6 +29,7 @@ import 'core/sync/sync_engine.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
 import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'features/wallet/data/services/vi_trung_ten_resolver.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -60,6 +61,10 @@ void main() async {
   // cùng một khoản chi.
   sl<BillPaymentConflictResolver>()
       .batDauNghe(sl<SyncEngine>().pushResultStream);
+
+  // G63: ví bị server từ chối vì trùng tên thì đặt cờ — engine giữ nó lại, màn
+  // Quản lý ví hỏi Gộp / Đổi tên. Nối MỘT lần, cùng lý do với khối trên.
+  sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)

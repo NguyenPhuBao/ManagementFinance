@@ -52,6 +52,7 @@ import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -171,6 +172,11 @@ Future<void> setupDependencies() async {
   // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
   sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
+  // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
+  // `batDauNghe` gọi MỘT lần ở `main.dart`, cùng lý do với bộ nghe hoá đơn.
+  sl.registerLazySingleton<ViTrungTenResolver>(
+    () => ViTrungTenResolver(db: sl()),
+  );
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
