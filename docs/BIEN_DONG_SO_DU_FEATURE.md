@@ -97,8 +97,10 @@ App ngân hàng / ví hiện thông báo
   (`StatusBarNotification.key`, băm 12 hex, deeplink `kt`) khác nhau thì KHÔNG trùng; cùng khoá hoặc hàng cũ không có
   khoá thì trùng khi cách ≤ **10 giây**. Khoá trùng của tin không mã, không vân tay tính tới **giây**. Cửa sổ 5 phút
   giữ cho hai KÊNH (SMS + app) và cho biên lai ↔ tin (`dauBienDong(…, tuTin: false)`; hàng có `doc` đọc ngược là
-  biên lai). ⚠️ Nguyên nhân suy từ mã, **chưa đo trên máy** — chưa biết MoMo dùng id thông báo riêng cho từng tin hay
-  dùng lại một id; luật đúng cho cả hai trừ hai lần nhận cùng tiền cách < 10 giây khi id bị dùng lại.
+  biên lai). ✅ **Đo OnePlus 13R cùng ngày** (bản debug, log `BienDongThu` nay in thêm `id=… tag=…`): MoMo đăng mọi
+  tin với `id=0` nhưng **tag riêng từng tin** (mốc thời gian + mã), nên khoá thông báo luôn khác nhau giữa hai giao
+  dịch — kể cả cách < 10 giây. Hai lần nhận 10.000 đ cách 31 giây → **hai** mục chờ ghi (người dùng xác nhận).
+  Bản tóm tắt nhóm của MoMo mang tag `…|g:Aggregate_AlertingSection` và nội dung rỗng — bộ lọc thô đã bỏ.
 - **Gợi ý cho phép chạy nền** (Stitch `2ff589c7…`, người dùng duyệt): hàng *"Tin có thể đến trễ khi app chạy nền"* +
   *Mở cài đặt* → trang thông tin ứng dụng. Chỉ hiện khi đang đọc **và** `isIgnoringBatteryOptimizations` = false; đọc
   lại khi quay về. Không dùng hộp thoại xin miễn tối ưu pin (quyền Play giới hạn). Câu chữ theo tên mục thật trên Realme
@@ -272,7 +274,8 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
   39.000đ được điền **5.000.000**): biên lai MoMo không có nhãn số tiền, và bước cũ *"số có đơn vị LỚN NHẤT"* chọn câu
   quảng cáo *"Liệu đã tới 5.000.000đ?"* bên dưới. Nay thứ tự là: nhãn số tiền → **số có đơn vị đầu tiên trên hàng
   "… thành công" hoặc hai hàng kế** → số có đơn vị lớn nhất; hai bước sau bỏ hàng phí / số dư và hàng **câu hỏi**
-  (kết thúc bằng `?`). Ca test dựng lại hình dạng biên lai ấy bằng tên và số giả. ⚠️ Chưa đo lại trên máy thật.
+  (kết thúc bằng `?`). Ca test dựng lại hình dạng biên lai ấy bằng tên và số giả. ✅ Đo OnePlus 13R 2026-10-05
+  (bản debug): biên lai Bách Hóa Xanh ra 39.000 đ chi, biên lai nhận tiền QR ra +10.000 đ **thu** — người dùng xác nhận.
 - **Không đọc ra số tiền vẫn giữ làm khoản chờ ghi** (người dùng chốt): hàng *"Biên lai chưa đọc được · ‹nguồn›"*, form
   số tiền trống, 16 phím hiện, ảnh để nhìn mà gõ.
 - **Chia sẻ lặp nhận ra bằng GIỜ IN TRÊN BIÊN LAI (`blt`), không bằng cửa sổ 5 phút** — hai lần chuyển cùng số tiền

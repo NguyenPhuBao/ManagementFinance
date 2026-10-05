@@ -199,7 +199,9 @@ class BienDongListenerService : NotificationListenerService() {
         val tieuDe = e.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val noiDung = (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT))
             ?.toString() ?: ""
-        Log.d(TAG_THU, "${sbn.packageName} | ${che(tieuDe)} | ${che(noiDung)}")
+        // id + tag của thông báo (không phải dữ liệu tài chính): để biết một app dùng id riêng cho từng tin hay dùng lại
+        // một id — quyết định luật gộp trùng `kCuaSoCungTin` (báo lỗi MoMo 2026-10-05).
+        Log.d(TAG_THU, "${sbn.packageName} | id=${sbn.id} tag=${sbn.tag} | ${che(tieuDe)} | ${che(noiDung)}")
     }
 
     /**
