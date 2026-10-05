@@ -6,10 +6,10 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('schema là v28', () async {
+  test('schema từ v28 trở lên', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 28);
+    expect(db.schemaVersion, greaterThanOrEqualTo(28));
   });
 
   test('bảng wallets có cột bi_tu_choi_trung_ten', () async {

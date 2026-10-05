@@ -28,9 +28,9 @@ void main() {
 
   // Con số là phiên bản HIỆN TẠI của lược đồ — tăng theo mỗi migration mới. v25 (2026-09-29, B1) thêm bảng phản hồi
   // thẻ gợi ý danh mục, v26 (2026-09-29, B5a) thêm bảng nhật ký thông báo, v27 (cùng ngày, B2) thêm bảng phản hồi gợi ý
-  // hoá đơn, v28 (2026-10-05, G63) thêm cột cục bộ `wallets.bi_tu_choi_trung_ten` — không đụng hai thứ của v24 mà tệp
-  // này canh.
-  test('schema hiện tại là v28 (v24 còn nguyên)', () => expect(db.schemaVersion, 28));
+  // hoá đơn, v28 (2026-10-05, G63) thêm cột cục bộ `wallets.bi_tu_choi_trung_ten`, v29 (cùng ngày, dự án C việc ba) thêm hai
+  // bảng cục bộ thứ tự khối — không đụng hai thứ của v24 mà tệp này canh.
+  test('schema hiện tại là v29 (v24 còn nguyên)', () => expect(db.schemaVersion, 29));
 
   test('categories có cột ai_co_dinh, mặc định false', () async {
     final cols = await db.customSelect("PRAGMA table_info('categories')").get();

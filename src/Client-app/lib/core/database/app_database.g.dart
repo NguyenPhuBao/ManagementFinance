@@ -10009,6 +10009,585 @@ class GoiYHoaDonPhanHoisCompanion extends UpdateCompanion<GoiYHoaDonPhanHoi> {
   }
 }
 
+class $PhanTichGiayXemsTable extends PhanTichGiayXems
+    with TableInfo<$PhanTichGiayXemsTable, PhanTichGiayXem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PhanTichGiayXemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _ngayMeta = const VerificationMeta('ngay');
+  @override
+  late final GeneratedColumn<String> ngay = GeneratedColumn<String>(
+      'ngay', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _cumMeta = const VerificationMeta('cum');
+  @override
+  late final GeneratedColumn<String> cum = GeneratedColumn<String>(
+      'cum', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _giayMeta = const VerificationMeta('giay');
+  @override
+  late final GeneratedColumn<int> giay = GeneratedColumn<int>(
+      'giay', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [idaccount, ngay, cum, giay];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'phan_tich_giay_xems';
+  @override
+  VerificationContext validateIntegrity(Insertable<PhanTichGiayXem> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('ngay')) {
+      context.handle(
+          _ngayMeta, ngay.isAcceptableOrUnknown(data['ngay']!, _ngayMeta));
+    } else if (isInserting) {
+      context.missing(_ngayMeta);
+    }
+    if (data.containsKey('cum')) {
+      context.handle(
+          _cumMeta, cum.isAcceptableOrUnknown(data['cum']!, _cumMeta));
+    } else if (isInserting) {
+      context.missing(_cumMeta);
+    }
+    if (data.containsKey('giay')) {
+      context.handle(
+          _giayMeta, giay.isAcceptableOrUnknown(data['giay']!, _giayMeta));
+    } else if (isInserting) {
+      context.missing(_giayMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {idaccount, ngay, cum};
+  @override
+  PhanTichGiayXem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PhanTichGiayXem(
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      ngay: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ngay'])!,
+      cum: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}cum'])!,
+      giay: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}giay'])!,
+    );
+  }
+
+  @override
+  $PhanTichGiayXemsTable createAlias(String alias) {
+    return $PhanTichGiayXemsTable(attachedDatabase, alias);
+  }
+}
+
+class PhanTichGiayXem extends DataClass implements Insertable<PhanTichGiayXem> {
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này.
+  final int idaccount;
+  final String ngay;
+  final String cum;
+  final int giay;
+  const PhanTichGiayXem(
+      {required this.idaccount,
+      required this.ngay,
+      required this.cum,
+      required this.giay});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['idaccount'] = Variable<int>(idaccount);
+    map['ngay'] = Variable<String>(ngay);
+    map['cum'] = Variable<String>(cum);
+    map['giay'] = Variable<int>(giay);
+    return map;
+  }
+
+  PhanTichGiayXemsCompanion toCompanion(bool nullToAbsent) {
+    return PhanTichGiayXemsCompanion(
+      idaccount: Value(idaccount),
+      ngay: Value(ngay),
+      cum: Value(cum),
+      giay: Value(giay),
+    );
+  }
+
+  factory PhanTichGiayXem.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PhanTichGiayXem(
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      ngay: serializer.fromJson<String>(json['ngay']),
+      cum: serializer.fromJson<String>(json['cum']),
+      giay: serializer.fromJson<int>(json['giay']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'idaccount': serializer.toJson<int>(idaccount),
+      'ngay': serializer.toJson<String>(ngay),
+      'cum': serializer.toJson<String>(cum),
+      'giay': serializer.toJson<int>(giay),
+    };
+  }
+
+  PhanTichGiayXem copyWith(
+          {int? idaccount, String? ngay, String? cum, int? giay}) =>
+      PhanTichGiayXem(
+        idaccount: idaccount ?? this.idaccount,
+        ngay: ngay ?? this.ngay,
+        cum: cum ?? this.cum,
+        giay: giay ?? this.giay,
+      );
+  PhanTichGiayXem copyWithCompanion(PhanTichGiayXemsCompanion data) {
+    return PhanTichGiayXem(
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      ngay: data.ngay.present ? data.ngay.value : this.ngay,
+      cum: data.cum.present ? data.cum.value : this.cum,
+      giay: data.giay.present ? data.giay.value : this.giay,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PhanTichGiayXem(')
+          ..write('idaccount: $idaccount, ')
+          ..write('ngay: $ngay, ')
+          ..write('cum: $cum, ')
+          ..write('giay: $giay')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(idaccount, ngay, cum, giay);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PhanTichGiayXem &&
+          other.idaccount == this.idaccount &&
+          other.ngay == this.ngay &&
+          other.cum == this.cum &&
+          other.giay == this.giay);
+}
+
+class PhanTichGiayXemsCompanion extends UpdateCompanion<PhanTichGiayXem> {
+  final Value<int> idaccount;
+  final Value<String> ngay;
+  final Value<String> cum;
+  final Value<int> giay;
+  final Value<int> rowid;
+  const PhanTichGiayXemsCompanion({
+    this.idaccount = const Value.absent(),
+    this.ngay = const Value.absent(),
+    this.cum = const Value.absent(),
+    this.giay = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PhanTichGiayXemsCompanion.insert({
+    required int idaccount,
+    required String ngay,
+    required String cum,
+    required int giay,
+    this.rowid = const Value.absent(),
+  })  : idaccount = Value(idaccount),
+        ngay = Value(ngay),
+        cum = Value(cum),
+        giay = Value(giay);
+  static Insertable<PhanTichGiayXem> custom({
+    Expression<int>? idaccount,
+    Expression<String>? ngay,
+    Expression<String>? cum,
+    Expression<int>? giay,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (idaccount != null) 'idaccount': idaccount,
+      if (ngay != null) 'ngay': ngay,
+      if (cum != null) 'cum': cum,
+      if (giay != null) 'giay': giay,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PhanTichGiayXemsCompanion copyWith(
+      {Value<int>? idaccount,
+      Value<String>? ngay,
+      Value<String>? cum,
+      Value<int>? giay,
+      Value<int>? rowid}) {
+    return PhanTichGiayXemsCompanion(
+      idaccount: idaccount ?? this.idaccount,
+      ngay: ngay ?? this.ngay,
+      cum: cum ?? this.cum,
+      giay: giay ?? this.giay,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (ngay.present) {
+      map['ngay'] = Variable<String>(ngay.value);
+    }
+    if (cum.present) {
+      map['cum'] = Variable<String>(cum.value);
+    }
+    if (giay.present) {
+      map['giay'] = Variable<int>(giay.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PhanTichGiayXemsCompanion(')
+          ..write('idaccount: $idaccount, ')
+          ..write('ngay: $ngay, ')
+          ..write('cum: $cum, ')
+          ..write('giay: $giay, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PhanTichThuTuPhanHoisTable extends PhanTichThuTuPhanHois
+    with TableInfo<$PhanTichThuTuPhanHoisTable, PhanTichThuTuPhanHoi> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PhanTichThuTuPhanHoisTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _cumMeta = const VerificationMeta('cum');
+  @override
+  late final GeneratedColumn<String> cum = GeneratedColumn<String>(
+      'cum', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _ketQuaMeta = const VerificationMeta('ketQua');
+  @override
+  late final GeneratedColumn<String> ketQua = GeneratedColumn<String>(
+      'ket_qua', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, idaccount, cum, ketQua, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'phan_tich_thu_tu_phan_hois';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<PhanTichThuTuPhanHoi> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('cum')) {
+      context.handle(
+          _cumMeta, cum.isAcceptableOrUnknown(data['cum']!, _cumMeta));
+    } else if (isInserting) {
+      context.missing(_cumMeta);
+    }
+    if (data.containsKey('ket_qua')) {
+      context.handle(_ketQuaMeta,
+          ketQua.isAcceptableOrUnknown(data['ket_qua']!, _ketQuaMeta));
+    } else if (isInserting) {
+      context.missing(_ketQuaMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PhanTichThuTuPhanHoi map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PhanTichThuTuPhanHoi(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      cum: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}cum'])!,
+      ketQua: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ket_qua'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $PhanTichThuTuPhanHoisTable createAlias(String alias) {
+    return $PhanTichThuTuPhanHoisTable(attachedDatabase, alias);
+  }
+}
+
+class PhanTichThuTuPhanHoi extends DataClass
+    implements Insertable<PhanTichThuTuPhanHoi> {
+  final String id;
+  final int idaccount;
+
+  /// `CumKhoi.ma`; chuỗi rỗng với `ve_mac_dinh`.
+  final String cum;
+  final String ketQua;
+  final DateTime createdAt;
+  const PhanTichThuTuPhanHoi(
+      {required this.id,
+      required this.idaccount,
+      required this.cum,
+      required this.ketQua,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['cum'] = Variable<String>(cum);
+    map['ket_qua'] = Variable<String>(ketQua);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PhanTichThuTuPhanHoisCompanion toCompanion(bool nullToAbsent) {
+    return PhanTichThuTuPhanHoisCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      cum: Value(cum),
+      ketQua: Value(ketQua),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PhanTichThuTuPhanHoi.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PhanTichThuTuPhanHoi(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      cum: serializer.fromJson<String>(json['cum']),
+      ketQua: serializer.fromJson<String>(json['ketQua']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'cum': serializer.toJson<String>(cum),
+      'ketQua': serializer.toJson<String>(ketQua),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PhanTichThuTuPhanHoi copyWith(
+          {String? id,
+          int? idaccount,
+          String? cum,
+          String? ketQua,
+          DateTime? createdAt}) =>
+      PhanTichThuTuPhanHoi(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        cum: cum ?? this.cum,
+        ketQua: ketQua ?? this.ketQua,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  PhanTichThuTuPhanHoi copyWithCompanion(PhanTichThuTuPhanHoisCompanion data) {
+    return PhanTichThuTuPhanHoi(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      cum: data.cum.present ? data.cum.value : this.cum,
+      ketQua: data.ketQua.present ? data.ketQua.value : this.ketQua,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PhanTichThuTuPhanHoi(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('cum: $cum, ')
+          ..write('ketQua: $ketQua, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, idaccount, cum, ketQua, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PhanTichThuTuPhanHoi &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.cum == this.cum &&
+          other.ketQua == this.ketQua &&
+          other.createdAt == this.createdAt);
+}
+
+class PhanTichThuTuPhanHoisCompanion
+    extends UpdateCompanion<PhanTichThuTuPhanHoi> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> cum;
+  final Value<String> ketQua;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PhanTichThuTuPhanHoisCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.cum = const Value.absent(),
+    this.ketQua = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PhanTichThuTuPhanHoisCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String cum,
+    required String ketQua,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        cum = Value(cum),
+        ketQua = Value(ketQua),
+        createdAt = Value(createdAt);
+  static Insertable<PhanTichThuTuPhanHoi> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? cum,
+    Expression<String>? ketQua,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (cum != null) 'cum': cum,
+      if (ketQua != null) 'ket_qua': ketQua,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PhanTichThuTuPhanHoisCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? cum,
+      Value<String>? ketQua,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return PhanTichThuTuPhanHoisCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      cum: cum ?? this.cum,
+      ketQua: ketQua ?? this.ketQua,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (cum.present) {
+      map['cum'] = Variable<String>(cum.value);
+    }
+    if (ketQua.present) {
+      map['ket_qua'] = Variable<String>(ketQua.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PhanTichThuTuPhanHoisCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('cum: $cum, ')
+          ..write('ketQua: $ketQua, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10032,6 +10611,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AppNotificationEventsTable(this);
   late final $GoiYHoaDonPhanHoisTable goiYHoaDonPhanHois =
       $GoiYHoaDonPhanHoisTable(this);
+  late final $PhanTichGiayXemsTable phanTichGiayXems =
+      $PhanTichGiayXemsTable(this);
+  late final $PhanTichThuTuPhanHoisTable phanTichThuTuPhanHois =
+      $PhanTichThuTuPhanHoisTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -10049,6 +10632,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final NotificationEventDao notificationEventDao =
       NotificationEventDao(this as AppDatabase);
   late final GoiYHoaDonDao goiYHoaDonDao = GoiYHoaDonDao(this as AppDatabase);
+  late final ThuTuKhoiDao thuTuKhoiDao = ThuTuKhoiDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10067,6 +10651,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         goiYDanhMucPhanHois,
         appNotificationEvents,
         goiYHoaDonPhanHois,
+        phanTichGiayXems,
+        phanTichThuTuPhanHois,
         idxAppnotifFeed
       ];
 }
@@ -14538,6 +15124,345 @@ typedef $$GoiYHoaDonPhanHoisTableProcessedTableManager = ProcessedTableManager<
     ),
     GoiYHoaDonPhanHoi,
     PrefetchHooks Function()>;
+typedef $$PhanTichGiayXemsTableCreateCompanionBuilder
+    = PhanTichGiayXemsCompanion Function({
+  required int idaccount,
+  required String ngay,
+  required String cum,
+  required int giay,
+  Value<int> rowid,
+});
+typedef $$PhanTichGiayXemsTableUpdateCompanionBuilder
+    = PhanTichGiayXemsCompanion Function({
+  Value<int> idaccount,
+  Value<String> ngay,
+  Value<String> cum,
+  Value<int> giay,
+  Value<int> rowid,
+});
+
+class $$PhanTichGiayXemsTableFilterComposer
+    extends Composer<_$AppDatabase, $PhanTichGiayXemsTable> {
+  $$PhanTichGiayXemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ngay => $composableBuilder(
+      column: $table.ngay, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cum => $composableBuilder(
+      column: $table.cum, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get giay => $composableBuilder(
+      column: $table.giay, builder: (column) => ColumnFilters(column));
+}
+
+class $$PhanTichGiayXemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PhanTichGiayXemsTable> {
+  $$PhanTichGiayXemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ngay => $composableBuilder(
+      column: $table.ngay, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cum => $composableBuilder(
+      column: $table.cum, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get giay => $composableBuilder(
+      column: $table.giay, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PhanTichGiayXemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PhanTichGiayXemsTable> {
+  $$PhanTichGiayXemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get ngay =>
+      $composableBuilder(column: $table.ngay, builder: (column) => column);
+
+  GeneratedColumn<String> get cum =>
+      $composableBuilder(column: $table.cum, builder: (column) => column);
+
+  GeneratedColumn<int> get giay =>
+      $composableBuilder(column: $table.giay, builder: (column) => column);
+}
+
+class $$PhanTichGiayXemsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PhanTichGiayXemsTable,
+    PhanTichGiayXem,
+    $$PhanTichGiayXemsTableFilterComposer,
+    $$PhanTichGiayXemsTableOrderingComposer,
+    $$PhanTichGiayXemsTableAnnotationComposer,
+    $$PhanTichGiayXemsTableCreateCompanionBuilder,
+    $$PhanTichGiayXemsTableUpdateCompanionBuilder,
+    (
+      PhanTichGiayXem,
+      BaseReferences<_$AppDatabase, $PhanTichGiayXemsTable, PhanTichGiayXem>
+    ),
+    PhanTichGiayXem,
+    PrefetchHooks Function()> {
+  $$PhanTichGiayXemsTableTableManager(
+      _$AppDatabase db, $PhanTichGiayXemsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PhanTichGiayXemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PhanTichGiayXemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PhanTichGiayXemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> idaccount = const Value.absent(),
+            Value<String> ngay = const Value.absent(),
+            Value<String> cum = const Value.absent(),
+            Value<int> giay = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PhanTichGiayXemsCompanion(
+            idaccount: idaccount,
+            ngay: ngay,
+            cum: cum,
+            giay: giay,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required int idaccount,
+            required String ngay,
+            required String cum,
+            required int giay,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PhanTichGiayXemsCompanion.insert(
+            idaccount: idaccount,
+            ngay: ngay,
+            cum: cum,
+            giay: giay,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PhanTichGiayXemsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PhanTichGiayXemsTable,
+    PhanTichGiayXem,
+    $$PhanTichGiayXemsTableFilterComposer,
+    $$PhanTichGiayXemsTableOrderingComposer,
+    $$PhanTichGiayXemsTableAnnotationComposer,
+    $$PhanTichGiayXemsTableCreateCompanionBuilder,
+    $$PhanTichGiayXemsTableUpdateCompanionBuilder,
+    (
+      PhanTichGiayXem,
+      BaseReferences<_$AppDatabase, $PhanTichGiayXemsTable, PhanTichGiayXem>
+    ),
+    PhanTichGiayXem,
+    PrefetchHooks Function()>;
+typedef $$PhanTichThuTuPhanHoisTableCreateCompanionBuilder
+    = PhanTichThuTuPhanHoisCompanion Function({
+  required String id,
+  required int idaccount,
+  required String cum,
+  required String ketQua,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$PhanTichThuTuPhanHoisTableUpdateCompanionBuilder
+    = PhanTichThuTuPhanHoisCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> cum,
+  Value<String> ketQua,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$PhanTichThuTuPhanHoisTableFilterComposer
+    extends Composer<_$AppDatabase, $PhanTichThuTuPhanHoisTable> {
+  $$PhanTichThuTuPhanHoisTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cum => $composableBuilder(
+      column: $table.cum, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ketQua => $composableBuilder(
+      column: $table.ketQua, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$PhanTichThuTuPhanHoisTableOrderingComposer
+    extends Composer<_$AppDatabase, $PhanTichThuTuPhanHoisTable> {
+  $$PhanTichThuTuPhanHoisTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cum => $composableBuilder(
+      column: $table.cum, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ketQua => $composableBuilder(
+      column: $table.ketQua, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PhanTichThuTuPhanHoisTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PhanTichThuTuPhanHoisTable> {
+  $$PhanTichThuTuPhanHoisTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get cum =>
+      $composableBuilder(column: $table.cum, builder: (column) => column);
+
+  GeneratedColumn<String> get ketQua =>
+      $composableBuilder(column: $table.ketQua, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PhanTichThuTuPhanHoisTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PhanTichThuTuPhanHoisTable,
+    PhanTichThuTuPhanHoi,
+    $$PhanTichThuTuPhanHoisTableFilterComposer,
+    $$PhanTichThuTuPhanHoisTableOrderingComposer,
+    $$PhanTichThuTuPhanHoisTableAnnotationComposer,
+    $$PhanTichThuTuPhanHoisTableCreateCompanionBuilder,
+    $$PhanTichThuTuPhanHoisTableUpdateCompanionBuilder,
+    (
+      PhanTichThuTuPhanHoi,
+      BaseReferences<_$AppDatabase, $PhanTichThuTuPhanHoisTable,
+          PhanTichThuTuPhanHoi>
+    ),
+    PhanTichThuTuPhanHoi,
+    PrefetchHooks Function()> {
+  $$PhanTichThuTuPhanHoisTableTableManager(
+      _$AppDatabase db, $PhanTichThuTuPhanHoisTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PhanTichThuTuPhanHoisTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PhanTichThuTuPhanHoisTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PhanTichThuTuPhanHoisTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> cum = const Value.absent(),
+            Value<String> ketQua = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PhanTichThuTuPhanHoisCompanion(
+            id: id,
+            idaccount: idaccount,
+            cum: cum,
+            ketQua: ketQua,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String cum,
+            required String ketQua,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PhanTichThuTuPhanHoisCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            cum: cum,
+            ketQua: ketQua,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PhanTichThuTuPhanHoisTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $PhanTichThuTuPhanHoisTable,
+        PhanTichThuTuPhanHoi,
+        $$PhanTichThuTuPhanHoisTableFilterComposer,
+        $$PhanTichThuTuPhanHoisTableOrderingComposer,
+        $$PhanTichThuTuPhanHoisTableAnnotationComposer,
+        $$PhanTichThuTuPhanHoisTableCreateCompanionBuilder,
+        $$PhanTichThuTuPhanHoisTableUpdateCompanionBuilder,
+        (
+          PhanTichThuTuPhanHoi,
+          BaseReferences<_$AppDatabase, $PhanTichThuTuPhanHoisTable,
+              PhanTichThuTuPhanHoi>
+        ),
+        PhanTichThuTuPhanHoi,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14570,4 +15495,8 @@ class $AppDatabaseManager {
       $$AppNotificationEventsTableTableManager(_db, _db.appNotificationEvents);
   $$GoiYHoaDonPhanHoisTableTableManager get goiYHoaDonPhanHois =>
       $$GoiYHoaDonPhanHoisTableTableManager(_db, _db.goiYHoaDonPhanHois);
+  $$PhanTichGiayXemsTableTableManager get phanTichGiayXems =>
+      $$PhanTichGiayXemsTableTableManager(_db, _db.phanTichGiayXems);
+  $$PhanTichThuTuPhanHoisTableTableManager get phanTichThuTuPhanHois =>
+      $$PhanTichThuTuPhanHoisTableTableManager(_db, _db.phanTichThuTuPhanHois);
 }
