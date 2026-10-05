@@ -24,7 +24,7 @@ nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến n�
 (**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**
 · **C3** lệnh tạo hoá đơn / mục tiêu / ngân sách, bản luật rồi bản đọc bằng AI (**9.42–9.43**) · spike **C4** giọng nói + chụp
 hoá đơn, còn dở (**9.44**) · dự án huấn luyện **A** — spike tra cứu (**10.6**) · ✅ dự án **B** — bộ định tuyến HỌC: câu giao
-dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02).
+dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02) · ✅ **đường nhanh** câu giao dịch — tool chạy trước, Gemma chỉ viết câu, lưới kể tên C6; chờ ~28 → 3,9 s, 35/35 không tụt (**9.46**, 2026-10-05).
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -3697,7 +3697,64 @@ debug `96da31b8…`, sau = `e7d9be66…`):
 
 Trung bình: lượt sinh đầu **13,1 → 7,0 s**, tổng **19,3 → 13,3 s (−6,1 s)**; tám câu theo luật **−5,3 → −8,5 s** mỗi câu. Mở
 phiên không đổi (~2,9 s). Nội dung 9/9 giữ hoặc tốt hơn, không câu nào tụt. Câu giao dịch chỉ bớt 150 ký tự nên chỉ −1,5 s — chỗ
-đáng làm tiếp cho nó là **đường nhanh** (spec chờ đọc lại), không phải cắt thêm lời.
+đáng làm tiếp cho nó là **đường nhanh** (spec chờ đọc lại), không phải cắt thêm lời. → ✅ làm xong 2026-10-05, mục **9.46**.
+
+### 9.46 Đường nhanh câu giao dịch — tool chạy TRƯỚC, Gemma chỉ viết câu (2026-10-04 → 10-05) — ✅ xong, đo Realme 35/35 không tụt · SAI 0 · chờ ~28 → 3,9 s
+
+Spec `docs/superpowers/specs/2026-10-02-duong-nhanh-cau-giao-dich-design.md` (bản viết duyệt 2026-10-04), kế hoạch
+`…/plans/2026-10-04-duong-nhanh-cau-giao-dich.md` (gitignore). Commit `1d19c96` → `b8bd682` (Task 1–6), `6b1724a` (lời dặn
+v2), `91d7666` (lưới kể tên C6).
+
+**Vấn đề.** Câu giao dịch đã định tuyến vẫn mở phiên có tool, và lượt Gemma *điền tham số* chiếm ~20 s / 26 s của một câu trên
+Realme CPU — trong khi bộ chỉnh tham số theo câu hỏi (`chinh_tham_so.dart`) vốn đã sửa lại gần hết tham số ấy.
+
+**Luồng** (`hoiBangCongCu`, xét **trước** `moPhien` nên máy đã tắt bậc tool — canary 1b — vẫn đi được):
+1. Đích định tuyến là `truy_van_giao_dich` **và** `docDuThamSoGiaoDich(cauHoi)` → chạy tool với `{}` (bộ chỉnh trong tool điền
+   tham số từ câu hỏi); log `đường nhanh: luật đọc đủ → …`.
+2. Tool **từ chối** → bỏ lời từ chối, đi **đường cũ** (mở phiên một tool): luật đọc sai thì Gemma còn cơ hội.
+3. Cổng hiện chữ đóng (0 khoản theo bộ lọc, tool đòi mẫu câu) → **mẫu câu ngay**, không gọi Gemma (~0,1 s).
+4. Còn lại `_vietCauDuongNhanh`: Gemma viết câu từ JSON kết quả bằng `promptVietCau`, gác theo câu như mọi lượt; chưa câu
+   nào qua kiểm → mẫu câu (L2).
+
+**Bốn điều kiện "luật đọc đủ"** (`docDuThamSoGiaoDich`) và **ba luật vá** của bộ chỉnh viết cho nó: kỳ *"… trước"* / *"đầu
+…"* (`_kyNeuTrongCau`, luật 15) · chiều chuyển ví (luật 3b) · tên lạ sau *"danh mục"* (luật 2d — chỉ nhận khi đứng cuối câu /
+trước chữ kỳ / trước *"của"*: bản đầu đọc *"thế"* của *"thế nào"* thành tên). ⚠️ **Lệch spec có chủ ý**: `_coChuyenTien` thêm
+mẫu *"chuyển … sang / vào / qua / đến ví"* — câu bộ đo B9 không có cụm chuyển liền nào, luật cũ còn **gỡ** `chuyen_vi` mà
+Gemma điền đúng. Task 6 ghim vế **luật** trên bảng 72 câu (34/37 đủ; C12, C20, E6 không) chứ không ghim 32 câu như kế hoạch
+— vế mô hình đổi theo mỗi lần huấn luyện lại.
+
+**Lời dặn `promptVietCau`.** v1 cho 4 câu tụt (C6 kể 1/2 khoản · C17 kể thiếu dòng · E5 hỏi tổng mà chỉ kể dòng · E13 không
+nói *"ít hơn"*) → v2 (`6b1724a`): *trả lời đúng trọng tâm câu hỏi, số tổng đứng trước các dòng* — đo lại C17 E5 E13 ✅, C6
+vẫn ◐.
+
+**C6 — lưới kể tên** (`ai_edge/domain/ke_du_ten.dart`, người dùng chọn 2026-10-05 *"Gemma viết + lưới kiểm đủ dòng"* thay vì
+luôn mẫu câu — giữ nguyên tắc *tính năng AI phải dùng mô hình*): câu hỏi **kể tên** (`cauHoiKeTen`: *"khoản … nào"*,
+*"giao dịch nào"*, *"những / các khoản"*, *"liệt kê"*, *"N khoản"*) mà tool trả **≥ 2 hàng** → **giữ** các câu đã qua kiểm
+tới hết lượt sinh, rồi `tenChuaNeu` (so bỏ dấu, trọn từ) xét câu có nêu tên mọi hàng không; thiếu → **mẫu câu đủ dòng** thay
+vào, log `câu kể tên thiếu k/n hàng → mẫu câu (C6)`. ⚠️ Câu đã hiện thì không gỡ được, nên loại câu này **mất hiện chữ dần**
+(3–10 s chờ trọn). Không cùng việc với `cauHoiLietKe` (ép mẫu câu từ tool cho *"những lần / N khoản"*, cổng F H1). Đo Realme
+C6: Gemma lại kể 1/2 khoản → lưới bắt → màn hiện đủ *Tien nha T9* 3.000.000 đ + *An toi lien hoan* 1.500.000 đ, 4,6–9 s.
+
+📊 **Đo Realme RMX2205 (CPU), debug `a4c7c2fb…` = `91d7666` trỏ `127.0.0.1`, 2026-10-05 sáng.** ⚠️ Lịch đã sang **thứ Hai
+05/10** so với lượt TRƯỚC (04/10): *"tuần này"* nay rỗng, *"tuần trước"* = 28/09–04/10 — câu theo tuần khác do lịch, không
+phải tụt. Chấm theo **câu hiện ra** (ảnh chụp từng câu — `uiautomator` hỏng vì dịch vụ trợ năng EasyTouch của người dùng,
+*"null root node"*).
+
+| | Lượt TRƯỚC (04/10, `e7d9be66`) | Sau (05/10, `a4c7c2fb`) |
+|---|---|---|
+| 35 câu: đi đường nhanh | 0 | **32** (C12, C20, E6 đường cũ; DC3 tool từ chối → đường cũ) |
+| Chờ trung bình | ~28 s mọi câu | **3,9 s** ở 31 câu đường nhanh (19 câu Gemma viết: 6,3 s, tối đa 15,7 s · 12 câu mẫu câu: < 0,2 s); đường cũ 28–34 s như trước |
+| Đúng | **1 SAI** (F3 *chênh 6.841.000* thay vì 6.831.000) | **35/35** — F3 nay đúng *chênh 6.831.000 đ*; C6, C17, E5, E13 đủ |
+| Tụt so với TRƯỚC | — | **0** |
+
+18 câu **bộ đo khoá** (`cau18.tsv`; đường nhanh 11 câu 0,05–12,4 s, đường cũ 7 câu 42–52 s vì định tuyến bỏ → phiên sáu tool):
+**15 ✅ · 2 ◐ · 1 không chấm được · SAI 0** — B8 *"3 khoản thu mới nhất"* ◐ mẫu câu in 4 khoản (trần 4 dòng, đường cũ, có từ
+trước); B14 *"tháng này tiêu nhiều hơn tháng trước không"* ◐ đưa hai tổng mà không nói *"ít hơn"* (cùng họ E13 v1 — lời dặn v2
+chưa phủ kiểu hỏi *"… không"*); B15 bàn phím Telex gõ *"Momo"* thành *"Môm"* (bẫy 4.41) → app trả lời trung thực *không có ví
+tên "Môm"*.
+
+Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
+`do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

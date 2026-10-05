@@ -1,9 +1,19 @@
 # Đường nhanh cho câu giao dịch ở màn Trợ lý AI — tool chạy trước, Gemma chỉ viết câu — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** ✅ **bản viết được duyệt 2026-10-04** — qua bản tóm tắt trong chat (người dùng
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ **THI CÔNG XONG 2026-10-05** — đo Realme 35/35 không tụt, SAI 0, chờ ~28 → 3,9 s; bộ đo khoá 18 câu 15 ✅ · 2 ◐ · SAI 0 (mục 9.46 `docs/AI_EDGE_FEATURE.md`). Xem khối *"Chỗ bản thi công khác bản viết"* ngay dưới. Trước đó: ✅ **bản viết được duyệt 2026-10-04** — qua bản tóm tắt trong chat (người dùng
 chọn *"Duyệt, đo đủ như spec"*), sau khi ba chỗ lỗi thời được sửa (số đo câu giao dịch, mã bản trên Realme, mục 10). Trước
 đó: thiết kế duyệt trong chat 2026-10-02 (ba lượt AskUserQuestion); phiên kế cùng ngày người dùng đáp *"chưa đọc, để
 sau"* và chốt thêm hai chỗ (hàng 5–6 mục 2).
+
+> **Chỗ bản thi công khác bản viết** (2026-10-05):
+> 1. **Mẫu chuyển ví không liền** — `_coChuyenTien` nhận thêm *"chuyển … sang / vào / qua / đến ví"*: câu bộ đo B9 không có
+>    cụm chuyển liền nào, luật theo bản viết còn **gỡ** `chuyen_vi` mà Gemma điền đúng.
+> 2. **Luật 2d** (tên lạ sau *"danh mục"*) chỉ nhận khi tên đứng cuối câu / trước chữ kỳ / trước *"của"* — bản đầu đọc
+>    *"thế"* của *"thế nào"* thành tên.
+> 3. **Task 6** ghim vế **luật** trên bảng 72 câu (34/37 đủ) chứ không ghim 32 câu — vế mô hình đổi theo mỗi lần huấn luyện.
+> 4. **Lời dặn v2** (`6b1724a`): *trả lời đúng trọng tâm, số tổng trước các dòng* — v1 làm tụt C6 C17 E5 E13 (mục 5 cho phép).
+> 5. ⭐ **Lưới kể tên** (`ke_du_ten.dart`, người dùng chọn 2026-10-05): câu hỏi kể tên + ≥ 2 hàng → giữ câu của Gemma tới hết
+>    lượt sinh, thiếu tên hàng nào thì mẫu câu đủ dòng thay vào. Bản viết không có — thêm vì C6 vẫn kể 1/2 khoản sau lời dặn v2.
 
 Đi tiếp từ dự án B (mục 9.45 `docs/AI_EDGE_FEATURE.md`). Người dùng hỏi sau lượt đo Realme: *"có cách nào để giảm
 thời gian phản hồi không vì hiện tại đang quá lâu"*.

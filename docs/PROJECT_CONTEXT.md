@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-04)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-05)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -1191,9 +1191,10 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   thống theo phiên** cùng tối (người dùng duyệt): `heThongCho(tenDich)` — phiên sáu tool giữ đúng 2.679 ký tự, phiên giao
   dịch 2.529 (bỏ hai ví dụ tool ngân sách không được khai), tám phiên còn lại 618 (chỉ phần chung). A/B Realme 9 câu: tổng chờ
   TB **19,3 → 13,3 s**, tám câu theo luật −5,3 → −8,5 s mỗi câu, nội dung 9/9 giữ hoặc tốt hơn (cuối mục 9.45).
-  🚧 **Đường nhanh câu giao dịch** (spec `2026-10-02-duong-nhanh…`, duyệt bản viết cùng tối): mã Task 1–6 xong
-  (`1d19c96` → `b8bd682`, lời dặn v2 `6b1724a`), đo Realme 32/35 câu 20–42 s → 0,1–10,4 s, SAI 0, còn C6 tụt — chưa
-  ghi mục 9.46. Bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-04-duong-nhanh-dang-do.md`.
+  ✅ **Đường nhanh câu giao dịch — XONG 2026-10-05** (spec `2026-10-02-duong-nhanh…`, mục **9.46** `AI_EDGE_FEATURE.md`;
+  `1d19c96` → `91d7666`): câu giao dịch luật đọc đủ → tool chạy trước, Gemma chỉ viết câu; C6 (kể thiếu khoản) chữa bằng
+  **lưới kể tên** `ke_du_ten.dart` (người dùng chọn *"Gemma viết + lưới kiểm đủ dòng"*). Đo Realme CPU 05/10: 35/35 không
+  tụt, SAI 0, chờ TB ~28 → **3,9 s** ở 31 câu đường nhanh; bộ đo khoá 18 câu 15 ✅ · 2 ◐ · SAI 0.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
 Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`
