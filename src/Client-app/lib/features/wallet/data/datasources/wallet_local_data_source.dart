@@ -189,9 +189,19 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   @override
   Future<void> update(WalletEntity wallet) async {
     try {
-      await _kiemRangBuocServer(wallet);
+      // G63 (spec 2026-10-05 mục 4.5): chốt trùng tên chỉ chạy khi tên THẬT SỰ
+      // đổi — cùng luật với danh mục (quy tắc 7 CLAUDE.md). Lưu lại một ví mà
+      // không đổi tên không sinh thêm cặp trùng nào; chặn nó là khoá cứng CẢ HAI
+      // ví khi máy có hai ví cùng tên kéo về từ hai máy.
+      final cu = await _db.walletDao.getById(wallet.id);
+      final doiTen =
+          cu == null || chuanHoaTenVi(cu.name) != chuanHoaTenVi(wallet.name);
+      if (doiTen) await _kiemRangBuocServer(wallet);
       _kiemViMacDinhConDung(wallet);
       await _db.walletDao.update_(_toCompanion(wallet));
+      // Đổi tên là lối thoát của ví bị server từ chối vì trùng tên: gỡ cờ và mốc
+      // chặn để ví lên server ở chu kỳ kế (spec mục 7, bẫy 1).
+      if (doiTen) await _db.walletDao.goCoTrungTen(wallet.id);
       await _giuMotViMacDinh(wallet);
     } catch (e) {
       if (e is CacheException) rethrow;
