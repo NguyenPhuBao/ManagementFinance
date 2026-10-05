@@ -2,8 +2,9 @@
 /// `2026-10-02-chia-se-bien-lai-design.md` mục 5). Hàm thuần, không bao giờ ném.
 ///
 /// `vanBan` là đầu ra của `ghepDongTheoHang` (`core/ocr/dong_ocr.dart`) — mỗi HÀNG của ảnh một dòng chữ. Mẫu riêng theo
-/// nguồn đi trước; không khớp thì luật chung. Luật chung luôn cho chiều `chi`: biên lai là của khoản người dùng vừa
-/// chuyển; `thu` chỉ khi một mẫu riêng nhận ra biên lai nhận tiền.
+/// nguồn đi trước; không khớp thì luật chung. Luật chung mặc định chiều `chi` (biên lai thường là của khoản người dùng
+/// vừa chuyển); `thu` khi số tiền mang dấu `+` hoặc một hàng MỞ ĐẦU bằng *"Nhận tiền / Nhận chuyển khoản"* (biên lai
+/// nhận tiền MoMo, người dùng gửi 2026-10-05 — bản cũ ghi thành chi).
 ///
 /// ⚠️ Biên lai chỉ mang tài khoản của người NHẬN, nên [BienLaiDoc.duoiTaiKhoan] (khoá của bảng *nguồn + đuôi → ví*)
 /// luôn `null` trừ khi một mẫu riêng tìm được tài khoản NGUỒN.
@@ -132,7 +133,7 @@ BienLaiDoc _chung(List<String> dong, List<String> bo, DateTime luc) {
   final tien = _tienChung(dong, bo);
   return BienLaiDoc(
     soTien: tien,
-    chieu: 'chi',
+    chieu: _chieuChung(bo),
     thoiGian: _thoiGian(dong) ?? luc,
     maGiaoDich: _sauNhan(dong, bo, _nhanMa, lay: (s) => _ma.firstMatch(s)?.group(0)),
     noiDung: _sauNhan(dong, bo, _nhanNoiDung, lay: (s) => s.isEmpty ? null : s) ?? '',
@@ -145,6 +146,24 @@ double? _hopLe(int? v) => (v == null || v <= 0 || v >= _tranTien) ? null : v.toD
 int? _lonNhat(String d) => tienTrenDong(d).fold<int?>(null, (a, b) => a == null || b > a ? b : a);
 
 final RegExp _tieuDeThanhCong = RegExp(r'\bthanh cong\b');
+
+/// Số tiền có đơn vị mang dấu `+` / `-` ngay trước (xét trên chữ đã bỏ dấu). `+3 Xu` không có đơn vị tiền nên không
+/// tính; `08:48 - 05/10/2026` có dấu cách giữa nhưng sau số là `/` chứ không phải đơn vị.
+final RegExp _tienCoDau = RegExp(r'(?:^|\s)([+\-])\s?\d[\d.,]*\s?(?:₫|d\b|vnd\b|dong\b)');
+
+/// Hàng MỞ ĐẦU bằng *"Nhận tiền / Nhận chuyển khoản"* — tiêu đề biên lai tiền vào. Neo đầu hàng để *"Người nhận"*,
+/// *"Tài khoản nhận"* của biên lai chuyển đi không lọt vào.
+final RegExp _tieuDeNhan = RegExp(r'^nhan (?:tien|chuyen khoan)\b');
+
+/// Dấu trên số tiền thắng (hàng phí / số dư bỏ qua); không dấu thì tiêu đề nhận tiền → `thu`; còn lại `chi`.
+String _chieuChung(List<String> bo) {
+  for (final d in bo) {
+    if (_nhanLoai.hasMatch(d)) continue;
+    final m = _tienCoDau.firstMatch(d);
+    if (m != null) return m.group(1) == '+' ? 'thu' : 'chi';
+  }
+  return bo.any(_tieuDeNhan.hasMatch) ? 'thu' : 'chi';
+}
 
 /// Hàng là một CÂU HỎI — chữ quảng cáo / gợi ý của app (*"Liệu đã tới 5.000.000đ?"*), không phải trường của biên lai.
 final RegExp _cauHoi = RegExp(r'\?\s*$');
