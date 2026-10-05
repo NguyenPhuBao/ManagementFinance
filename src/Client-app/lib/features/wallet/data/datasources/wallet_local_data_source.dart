@@ -6,6 +6,7 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_status.dart';
 import '../models/wallet_entity.dart';
+import '../services/tha_vi_bi_giu.dart';
 
 /// Abstract — cho phép mock trong test
 abstract class WalletLocalDataSource {
@@ -199,9 +200,11 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
       if (doiTen) await _kiemRangBuocServer(wallet);
       _kiemViMacDinhConDung(wallet);
       await _db.walletDao.update_(_toCompanion(wallet));
-      // Đổi tên là lối thoát của ví bị server từ chối vì trùng tên: gỡ cờ và mốc
-      // chặn để ví lên server ở chu kỳ kế (spec mục 7, bẫy 1).
-      if (doiTen) await _db.walletDao.goCoTrungTen(wallet.id);
+      // Đổi tên là lối thoát của ví bị server từ chối vì trùng tên: THẢ nó —
+      // gỡ cờ + mốc chặn để ví lên server ở chu kỳ kế (spec mục 7, bẫy 1), và
+      // làm mới giờ sửa của bản ghi từng bị giữ để máy khác kéo được (xem
+      // `ThaViBiGiu`).
+      if (doiTen) await ThaViBiGiu(db: _db).tha(wallet.id);
       await _giuMotViMacDinh(wallet);
     } catch (e) {
       if (e is CacheException) rethrow;

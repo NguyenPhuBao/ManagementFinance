@@ -22,6 +22,8 @@ class _NguonGia implements ViTrungTenNguon {
               idViMayNay: 'r$i', idViDaDongBo: 'p$i', ten: 'Ví $i', soDuMayNay: 0, soDuDaDongBo: 0, soGiaoDich: 0),
       ]);
   @override
+  Future<Set<String>> viCanTha(int idaccount) async => {};
+  @override
   Future<Set<String>> viDangBiGiu(int idaccount) async => {};
 }
 

@@ -10,6 +10,11 @@ abstract class ViTrungTenNguon {
   /// Id các ví đang bị giữ (R) của [idaccount].
   Future<Set<String>> viDangBiGiu(int idaccount);
 
+  /// Id các ví mang cờ trùng tên mà **không còn** bị giữ — ví cùng tên kia đã
+  /// bị xoá / đổi tên (thường ở máy khác). Engine thả chúng (`ThaViBiGiu`) để
+  /// giờ ghi cũ không làm máy khác bỏ sót chúng khi kéo về.
+  Future<Set<String>> viCanTha(int idaccount);
+
   /// Các cặp trùng của [idaccount], phát lại mỗi khi bảng ví đổi (cờ vừa đặt,
   /// ví vừa gộp / đổi tên) — thẻ ở Quản lý ví và dòng nhắc ở Trang chủ nghe.
   Stream<List<CapViHienThi>> theoDoi(int idaccount);
@@ -60,6 +65,16 @@ class ViTrungTenNguonImpl implements ViTrungTenNguon {
   Future<Set<String>> viDangBiGiu(int idaccount) async =>
       idViBiGiu(xetTuHang(await _db.walletDao.getAll(idaccount)));
 
+  @override
+  Future<Set<String>> viCanTha(int idaccount) async {
+    final xet = xetTuHang(await _db.walletDao.getAll(idaccount));
+    final biGiu = idViBiGiu(xet);
+    return {
+      for (final v in xet)
+        if (v.biTuChoi && !v.daXoa && !biGiu.contains(v.id)) v.id,
+    };
+  }
+
   /// Nghe `watchAll` — cũng MỌI ví chưa xoá, kể cả lưu trữ (cùng tập với
   /// [viDangBiGiu]).
   @override
@@ -88,6 +103,36 @@ class ViTrungTenNguonImpl implements ViTrungTenNguon {
     }
     return ra;
   }
+
+  /// Hàng Drift **đang chờ đẩy** → `banGhiBiGiu`. Một phép quy đổi cho engine
+  /// (giữ khỏi lô) và `ThaViBiGiu` (làm mới giờ sửa khi thả).
+  static BanGhiBiGiu banGhiBiGiuTuHang({
+    required Set<String> viBiGiu,
+    required Iterable<Bill> hoaDon,
+    required Iterable<Goal> mucTieu,
+    required Iterable<Transaction> giaoDich,
+  }) =>
+      banGhiBiGiu(
+        viBiGiu: viBiGiu,
+        hoaDon: [
+          for (final b in hoaDon)
+            (id: b.id, walletId: b.walletId, truocDo: b.generatedFromBillId),
+        ],
+        mucTieu: [
+          for (final g in mucTieu)
+            (id: g.id, walletId: g.walletId, viNguonTrich: g.autoDepositWalletId),
+        ],
+        giaoDich: [
+          for (final t in giaoDich)
+            (
+              id: t.id,
+              walletId: t.walletId,
+              viNhan: t.walletTransfer,
+              billId: t.billId,
+              goalId: t.goalId,
+            ),
+        ],
+      );
 
   /// Hàng Drift → phần phép tìm cặp cần.
   static List<ViXetTrung> xetTuHang(Iterable<Wallet> vi) => [

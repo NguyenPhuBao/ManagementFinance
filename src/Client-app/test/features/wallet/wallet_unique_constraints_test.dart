@@ -175,6 +175,21 @@ void main() {
       expect(r.syncBlockedUntil, isNull);
     });
 
+    test('⭐ đổi tên làm mới giờ sửa của giao dịch đang chờ của ví (máy kia mới kéo được — nghiệm thu 2026-10-05)',
+        () async {
+      await haiViCungTen();
+      await db.walletDao.danhDauTrungTen('r');
+      final cu = DateTime(2026, 10, 5, 7, 43);
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 't-r', walletId: 'r', idaccount: 7, amount: 1000, type: 'chi', date: cu, updatedAt: cu));
+      final truoc = DateTime.now().subtract(const Duration(seconds: 2));
+
+      await dataSource.update(vi('r', name: 'Ví MB Bank (2)'));
+
+      expect((await db.transactionDao.getById('t-r'))!.updatedAt.isAfter(truoc), isTrue,
+          reason: 'giờ ghi lúc offline nằm dưới mốc kéo về của máy kia — không làm mới là máy kia không bao giờ thấy');
+    });
+
     test('lưu lại mà không đổi tên thì GIỮ cờ — ví vẫn trùng, vẫn phải chờ', () async {
       await haiViCungTen();
       await db.walletDao.danhDauTrungTen('r');

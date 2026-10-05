@@ -34,6 +34,9 @@ class _Online implements Connectivity {
 class _Adapter implements HttpClientAdapter {
   final daDay = <String>[];
 
+  /// `updated_at` của từng thao tác trong lô, theo `localId`.
+  final gioSua = <String, String?>{};
+
   @override
   Future<ResponseBody> fetch(RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
     const json = {
@@ -45,6 +48,10 @@ class _Adapter implements HttpClientAdapter {
     if (o.path.contains('/sync/push')) {
       final ops = (o.data as Map<String, dynamic>)['operations'] as List<dynamic>;
       daDay.addAll(ops.map((op) => op['localId'] as String));
+      for (final op in ops) {
+        final pl = op['payload'] as Map<String, dynamic>? ?? const {};
+        gioSua[op['localId'] as String] = (pl['updated_at'] ?? pl['update_at'])?.toString();
+      }
       return ResponseBody.fromString(
         jsonEncode({
           'status': 'success',
@@ -122,8 +129,10 @@ void main() {
         updatedAt: ngay,
       ));
 
+  late _Adapter adapterCuoi;
+
   Future<List<String>> chayMotChuKy() async {
-    final a = _Adapter();
+    final a = adapterCuoi = _Adapter();
     final engine = SyncEngine(dioClient: _Client(a), db: db, connectivity: _Online());
     final xong = engine.statusStream.where((s) => s.isTerminal).first;
     unawaited(engine.start(idaccount: acc));
@@ -197,6 +206,25 @@ void main() {
     final daDay = await chayMotChuKy();
 
     expect(daDay, containsAll([idR, 't-r']));
+  });
+
+  test('⭐ cờ mà không còn ví cùng tên → ví được THẢ: giờ sửa của ví và giao dịch của nó là giờ MỚI (nghiệm thu 2026-10-05)',
+      () async {
+    // Ví kia bị xoá / đổi tên ở máy khác: ví này thôi bị giữ. Giờ ghi lúc offline của nó nằm dưới mốc kéo về của máy
+    // khác — đẩy nguyên giờ cũ là máy khác không bao giờ kéo được.
+    await vi(idR, 'Ví MB Bank');
+    await db.walletDao.danhDauTrungTen(idR);
+    await db.walletDao.markSyncBlocked(idR, DateTime.now().add(const Duration(hours: 1)), 'trùng tên');
+    await gd('t-r', idR);
+    final truoc = DateTime.now().toUtc().subtract(const Duration(seconds: 2));
+
+    final daDay = await chayMotChuKy();
+
+    expect(daDay, containsAll([idR, 't-r']), reason: 'mốc chặn của lần bị từ chối cũng phải gỡ (bẫy 1)');
+    for (final id in [idR, 't-r']) {
+      final gio = DateTime.parse(adapterCuoi.gioSua[id]!);
+      expect(gio.isAfter(truoc), isTrue, reason: '$id đẩy với giờ $gio — giờ ghi cũ');
+    }
   });
 
   test('hai ví cùng tên mà KHÔNG mang cờ → ví được đẩy như thường', () async {

@@ -20,6 +20,8 @@ class _NguonGia implements ViTrungTenNguon {
   @override
   Stream<List<CapViHienThi>> theoDoi(int idaccount) => Stream.value(ds);
   @override
+  Future<Set<String>> viCanTha(int idaccount) async => {};
+  @override
   Future<Set<String>> viDangBiGiu(int idaccount) async => {for (final c in ds) c.idViMayNay};
 }
 

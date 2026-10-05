@@ -8,8 +8,8 @@ import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/data/services/tha_vi_bi_giu.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
-import '../../features/wallet/domain/vi_trung_ten.dart';
 import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
@@ -1168,29 +1168,22 @@ class SyncEngine {
     // mọi chu kỳ, kéo chậm cả dữ liệu khác — nên giữ lại tới khi người dùng Gộp
     // hoặc Đổi tên. Luật: `wallet/domain/vi_trung_ten.dart`; spec 2026-10-05
     // mục 4.4.
+    //
+    // Ví mang cờ mà không còn cặp (ví kia bị xoá / đổi tên ở máy khác) thì THẢ
+    // trước khi đọc hàng chờ: gỡ cờ + mốc chặn, làm mới giờ sửa của nó và bản
+    // ghi từng bị giữ — giờ ghi cũ nằm dưới mốc kéo về của máy khác, đẩy nguyên
+    // là máy khác không bao giờ kéo được (nghiệm thu 2026-10-05).
+    for (final id in await _viTrungTen.viCanTha(idaccount)) {
+      await ThaViBiGiu(db: _db).tha(id);
+    }
     final pendingGoals = await _db.goalDao.getPending(idaccount);
     final pendingBills = await _db.billDao.getPending(idaccount);
     final pendingTx = await _db.transactionDao.getPending(idaccount);
-    final giu = banGhiBiGiu(
+    final giu = ViTrungTenNguonImpl.banGhiBiGiuTuHang(
       viBiGiu: await _viTrungTen.viDangBiGiu(idaccount),
-      hoaDon: [
-        for (final b in pendingBills)
-          (id: b.id, walletId: b.walletId, truocDo: b.generatedFromBillId),
-      ],
-      mucTieu: [
-        for (final g in pendingGoals)
-          (id: g.id, walletId: g.walletId, viNguonTrich: g.autoDepositWalletId),
-      ],
-      giaoDich: [
-        for (final t in pendingTx)
-          (
-            id: t.id,
-            walletId: t.walletId,
-            viNhan: t.walletTransfer,
-            billId: t.billId,
-            goalId: t.goalId,
-          ),
-      ],
+      hoaDon: pendingBills,
+      mucTieu: pendingGoals,
+      giaoDich: pendingTx,
     );
 
     // ── 1. Categories (phải đứng TRƯỚC transactions/budgets/bills) ────────────
