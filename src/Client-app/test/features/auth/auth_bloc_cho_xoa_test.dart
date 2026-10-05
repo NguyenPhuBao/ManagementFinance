@@ -8,6 +8,7 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flowmoney/features/wallet/presentation/an_nhac_vi_trung_ten.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 UserModel _user({String status = 'Active', int? countdown}) => UserModel(
@@ -112,6 +113,18 @@ void main() {
     await xong.timeout(const Duration(seconds: 5));
     expect(anThe.value, isFalse,
         reason: 'Người đăng nhập sau không được thừa hưởng lựa chọn "Để sau" của người trước.');
+  });
+
+  test('G63 — đăng nhập thành công đặt lại ✕ của dòng nhắc ví trùng tên', () async {
+    final an = AnNhacViTrungTen()..value = true;
+    sl.registerSingleton<AnNhacViTrungTen>(an);
+    final repo = _RepoGia(_user());
+    final bloc = AuthBloc(authRepository: repo);
+    addTearDown(bloc.close);
+    final xong = bloc.stream.firstWhere((s) => s is AuthSuccess);
+    bloc.add(const LoginSubmitted(email: 'dat', password: 'mat-khau-thu'));
+    await xong.timeout(const Duration(seconds: 5));
+    expect(an.value, isFalse, reason: 'Người đăng nhập sau không được thừa hưởng lựa chọn ẩn của người trước.');
   });
 
   test(

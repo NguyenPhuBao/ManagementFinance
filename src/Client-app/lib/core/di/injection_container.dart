@@ -55,6 +55,7 @@ import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/services/gop_vi_service.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
+import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -194,6 +195,9 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<ViTrungTenNguon>(
     () => ViTrungTenNguonImpl(db: sl()),
   );
+  // ✕ của dòng nhắc ví trùng tên ở Trang chủ — trong bộ nhớ, sống theo phiên
+  // app; AuthBloc đặt lại khi đăng nhập.
+  sl.registerLazySingleton<AnNhacViTrungTen>(AnNhacViTrungTen.new);
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );

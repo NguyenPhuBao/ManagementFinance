@@ -25,6 +25,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
+import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -59,6 +60,11 @@ class HomePage extends StatelessWidget {
                   authState.user != null &&
                   authState.user!.dangChoXoa)
                 TheChoXoaTrangChu(user: authState.user!),
+              // G63 — dòng nhắc ví trùng tên (spec mục 5.5). Khoảng 24 phía
+              // trên nằm trong widget: không có gì để nhắc thì không còn khoảng
+              // trống.
+              if (currentUserId != null)
+                DongNhacViTrungTen(idaccount: currentUserId),
               // Slogan hai dòng và nút hero "Thêm giao dịch" đã bỏ ngày
               // 2026-09-19 (nhóm D, D10+D11): slogan chiếm ~120dp đầu màn mà
               // không nói gì về tiền của người dùng, còn hero là lối vào thứ
