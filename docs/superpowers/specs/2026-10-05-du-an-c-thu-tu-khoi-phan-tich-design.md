@@ -3,7 +3,12 @@
 **Ngày:** 2026-10-05. **Trạng thái:** thiết kế người dùng duyệt trong chat (bốn lượt AskUserQuestion: cách áp dụng điều
 học được, phần 1 — thứ người dùng thấy, phần 2 — luật học, phần 3 — cấu trúc và nghiệm thu); bản viết người dùng duyệt cùng
 ngày (*"ok duyệt"*); **kế hoạch 9 task** `docs/superpowers/plans/2026-10-05-du-an-c-thu-tu-khoi-phan-tich.md` (gitignore,
-khối 🔧 *"làm rõ lúc lập kế hoạch"* thắng chỗ tương ứng ở đây) — **chưa có mã**.
+khối 🔧 *"làm rõ lúc lập kế hoạch"* thắng chỗ tương ứng ở đây).
+
+> 🚧 **Đang thi công — dừng sau Task 6 / 9 (2026-10-05 khuya)** theo lời người dùng: luật thuần, bộ đếm giây, schema v29,
+> nguồn + cubit + DI, `TheoDoiXem`, thẻ + dòng theo màn Stitch **`e081fc951e474cb1bc1b4ed655f5a026`** (người dùng xác nhận) —
+> có test; **trang Phân tích chưa nối** (Task 8), nghiệm thu + tài liệu (Task 9) chưa làm. Chỗ khác bản viết: Nhật ký
+> thi công cuối kế hoạch (thẻ có thêm nút × cùng nghĩa Bỏ qua; khoảng cách thẻ → khối kế 12).
 
 Dự án C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người*. Việc đầu (gợi ý danh mục theo số tiền)
 xong 2026-10-02, việc hai (nhịp chi ngân sách) xong 2026-10-04. Đây là việc thứ ba; việc còn lại sau nó là *thông báo
