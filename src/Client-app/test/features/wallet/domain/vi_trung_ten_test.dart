@@ -1,6 +1,7 @@
 /// G63 — định nghĩa duy nhất của "cặp trùng" và "bản ghi bị giữ" (spec 2026-10-05 mục 4.2, 4.4).
 library;
 
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/domain/vi_trung_ten.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -116,6 +117,33 @@ void main() {
       );
       expect(g.giaoDich, {'t1', 't2', 't3', 't4'});
       expect(g.vi, {'R'});
+    });
+  });
+
+  group('tenGoiYKhiTrung', () {
+    test('⭐ "(2)", rồi số kế tiếp còn trống', () {
+      expect(tenGoiYKhiTrung('Ví MB Bank', ['Ví MB Bank']), 'Ví MB Bank (2)');
+      expect(tenGoiYKhiTrung('Ví MB Bank', ['Ví MB Bank', 'ví mb bank (2)']), 'Ví MB Bank (3)');
+    });
+
+    test('tên quá dài thì cắt phần gốc để cả chuỗi vừa độ rộng cột', () {
+      final dai = 'A' * 100;
+      final goiY = tenGoiYKhiTrung(dai, [dai]);
+      expect(goiY.runes.length, lessThanOrEqualTo(DoRongCot.tenVi));
+      expect(goiY.endsWith(' (2)'), isTrue);
+    });
+  });
+
+  group('loiTenViMoi', () {
+    WalletEntity w(String id, String ten) =>
+        WalletEntity(id: id, idaccount: 7, name: ten, type: 'bank', balance: 0, updatedAt: DateTime(2026, 10, 5));
+
+    test('rỗng → lỗi', () => expect(loiTenViMoi('   ', [w('p', 'Ví MB Bank')], boQuaId: 'r'), isNotNull));
+    test('⭐ trùng ví khác (kể cả khác hoa thường) → lỗi', () {
+      expect(loiTenViMoi('ví mb bank', [w('p', 'Ví MB Bank'), w('r', 'Ví MB Bank')], boQuaId: 'r'), isNotNull);
+    });
+    test('tên mới không trùng → null', () {
+      expect(loiTenViMoi('Ví MB Bank (2)', [w('p', 'Ví MB Bank'), w('r', 'Ví MB Bank')], boQuaId: 'r'), isNull);
     });
   });
 }

@@ -7,6 +7,7 @@
 /// viết lại vế so tên ở một chỗ là bốn nơi đếm trên bốn tập (spec mục 8, bẫy 9).
 library;
 
+import '../../../core/utils/gioi_han_do_dai.dart';
 import '../data/models/wallet_entity.dart';
 import 'rang_buoc_vi.dart';
 
@@ -169,4 +170,36 @@ BanGhiBiGiu banGhiBiGiu({
   };
 
   return BanGhiBiGiu(vi: viBiGiu, hoaDon: hd, mucTieu: mt, giaoDich: gd);
+}
+
+/// Tên gợi ý cho hộp Đổi tên (spec mục 5.4): "‹tên› (2)", rồi (3), (4)… tới số
+/// đầu tiên chưa ví nào dùng. Phần gốc bị cắt khi cả chuỗi vượt độ rộng cột tên
+/// ví (đếm theo code point, như `GioiHanDoRong`).
+String tenGoiYKhiTrung(String ten, Iterable<String> tenDaCo) {
+  final daCo = {for (final t in tenDaCo) chuanHoaTenVi(t)};
+  final goc = ten.trim();
+  for (var n = 2;; n++) {
+    final duoi = ' ($n)';
+    final toiDa = DoRongCot.tenVi - duoi.runes.length;
+    final than = goc.runes.length <= toiDa
+        ? goc
+        : String.fromCharCodes(goc.runes.take(toiDa)).trimRight();
+    final ung = '$than$duoi';
+    if (!daCo.contains(chuanHoaTenVi(ung))) return ung;
+  }
+}
+
+/// Câu lỗi cho tên mới trong hộp Đổi tên, hoặc `null` khi dùng được. Cùng luật
+/// trùng tên của datasource (`viTrungTen`) — datasource vẫn kiểm lại lúc lưu.
+String? loiTenViMoi(
+  String ten,
+  Iterable<WalletEntity> viHienCo, {
+  String? boQuaId,
+}) {
+  final gon = ten.trim();
+  if (gon.isEmpty) return 'Hãy nhập tên ví.';
+  if (viTrungTen(viHienCo, gon, boQuaId: boQuaId) != null) {
+    return thongBaoTrungTen(gon);
+  }
+  return null;
 }

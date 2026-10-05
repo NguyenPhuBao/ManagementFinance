@@ -2,6 +2,10 @@
 /// `c5a2cecebc9f4959966346b3e99b4d47`). Dựng bằng `AppTheme.lightTheme` (bẫy 4.11) và thử 360 dp (bẫy 12).
 library;
 
+import 'package:flowmoney/core/errors/app_exceptions.dart';
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
+import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/data/vi_trung_ten_nguon.dart';
 import 'package:flowmoney/features/wallet/presentation/widgets/the_vi_trung_ten.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -16,6 +20,26 @@ class _NguonGia implements ViTrungTenNguon {
   @override
   Future<Set<String>> viDangBiGiu(int idaccount) async => {for (final c in ds) c.idViMayNay};
 }
+
+class _RepoGia implements WalletRepository {
+  _RepoGia(this.vi);
+  final WalletEntity vi;
+  WalletEntity? daCapNhat;
+  Object? nem;
+  @override
+  Future<WalletEntity?> getById(String id) async => id == vi.id ? vi : null;
+  @override
+  Future<void> updateWallet(WalletEntity wallet) async {
+    if (nem != null) throw nem!;
+    daCapNhat = wallet;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+WalletEntity _e(String id, String ten, {bool tuChoi = false}) => WalletEntity(
+    id: id, idaccount: 7, name: ten, type: 'bank', balance: 0, biTuChoiTrungTen: tuChoi, updatedAt: DateTime(2026, 10, 5));
 
 CapViHienThi capMau({String id = 'r', String ten = 'Ví MB Bank', String? lyDo}) => CapViHienThi(
       idViMayNay: id,
@@ -78,5 +102,83 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('2 ví'), findsOneWidget);
     expect(find.text('Ví MoMo'), findsOneWidget);
+  });
+
+  group('Đổi tên', () {
+    testWidgets('⭐ Đổi tên → hộp điền sẵn "(2)" → Lưu → updateWallet tên mới, thông báo, gọi nạp lại', (tester) async {
+      final r = _e('r', 'Ví MB Bank', tuChoi: true);
+      final repo = _RepoGia(r);
+      final tb = ThongBaoNhanh();
+      final cau = <String>[];
+      final sub = tb.stream.listen(cau.add);
+      addTearDown(sub.cancel);
+      var soLanNap = 0;
+
+      await dungThe(
+        tester,
+        TheViTrungTen(
+          idaccount: 7,
+          nguon: _NguonGia([capMau()]),
+          viHienCo: [_e('p', 'Ví MB Bank'), r],
+          viRepo: repo,
+          thongBao: tb,
+          onDaXuLy: () => soLanNap++,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('vi-trung-doi-ten-r')));
+      await tester.pumpAndSettle();
+      expect(find.text('Ví MB Bank (2)'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nut-luu-ten-vi')));
+      await tester.pumpAndSettle();
+
+      expect(repo.daCapNhat?.name, 'Ví MB Bank (2)');
+      expect(repo.daCapNhat?.id, 'r', reason: 'đổi tên ví TRÊN MÁY NÀY, không phải ví đã đồng bộ');
+      expect(cau, ['Đã đổi tên ví.']);
+      expect(soLanNap, 1);
+    });
+
+    testWidgets('Hủy → không ghi gì, không nạp lại', (tester) async {
+      final r = _e('r', 'Ví MB Bank', tuChoi: true);
+      final repo = _RepoGia(r);
+      var soLanNap = 0;
+      await dungThe(
+        tester,
+        TheViTrungTen(
+          idaccount: 7,
+          nguon: _NguonGia([capMau()]),
+          viHienCo: [_e('p', 'Ví MB Bank'), r],
+          viRepo: repo,
+          thongBao: ThongBaoNhanh(),
+          onDaXuLy: () => soLanNap++,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('vi-trung-doi-ten-r')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy'));
+      await tester.pumpAndSettle();
+      expect(repo.daCapNhat, isNull);
+      expect(soLanNap, 0);
+    });
+
+    testWidgets('datasource từ chối (CacheException) → nói đúng câu lỗi', (tester) async {
+      final r = _e('r', 'Ví MB Bank', tuChoi: true);
+      final repo = _RepoGia(r)..nem = const CacheException('Đã có ví tên "Ví MB Bank (2)". Hãy đặt tên khác.');
+      final tb = ThongBaoNhanh();
+      final cau = <String>[];
+      final sub = tb.stream.listen(cau.add);
+      addTearDown(sub.cancel);
+
+      await dungThe(
+        tester,
+        TheViTrungTen(
+            idaccount: 7, nguon: _NguonGia([capMau()]), viHienCo: [_e('p', 'Ví MB Bank'), r], viRepo: repo, thongBao: tb),
+      );
+      await tester.tap(find.byKey(const ValueKey('vi-trung-doi-ten-r')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nut-luu-ten-vi')));
+      await tester.pumpAndSettle();
+
+      expect(cau, ['Đã có ví tên "Ví MB Bank (2)". Hãy đặt tên khác.']);
+    });
   });
 }

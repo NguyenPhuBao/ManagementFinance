@@ -147,7 +147,12 @@ class _WalletListView extends StatelessWidget {
               children: [
                 // G63 — thẻ "VÍ TRÙNG TÊN" đứng trên cùng vì đây là việc cần
                 // xử lý; không có cặp nào thì không chiếm chỗ.
-                TheViTrungTen(idaccount: idaccount),
+                TheViTrungTen(
+                  idaccount: idaccount,
+                  viHienCo: wallets,
+                  onDaXuLy: () =>
+                      context.read<WalletCubit>().loadWallets(idaccount),
+                ),
                 _buildOverviewCard(totalBalance, soViLuuTru),
                 const SizedBox(height: 16),
                 // Khối Nhận xét (Edge-SLM, chặng 1.5) — đứng NGAY DƯỚI thẻ
