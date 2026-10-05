@@ -65,6 +65,24 @@ class Wallets extends Table {
   BoolColumn get allowNegative =>
       boolean().named('allow_negative').withDefault(const Constant(false))();
 
+  /// G63 (2026-10-05): server từ chối ví này vì **trùng tên** với một ví đã có
+  /// trên tài khoản (`WALLET_NAME_DUPLICATE` / `UNIQUE_VIOLATION`). Đặt bởi
+  /// `ViTrungTenResolver`; gỡ khi ví được đổi tên, được gộp, hoặc lên được
+  /// server (`WalletDao.markSynced`).
+  ///
+  /// Cờ một mình **không** giữ ví lại: "đang bị giữ" là cờ **và** trên máy còn
+  /// một ví sống khác cùng tên — định nghĩa duy nhất ở
+  /// `wallet/domain/vi_trung_ten.dart` (`capViTrungTen`).
+  ///
+  /// ## ⚠️ CỘT CỤC BỘ — KHÔNG đi qua đồng bộ
+  ///
+  /// Cùng lý do với [allowNegative]: PostgreSQL không có cột tương ứng; payload
+  /// ví vẫn **13 trường**, nhánh kéo về không đọc nó. Test quét
+  /// `test/features/wallet/vi_trung_ten_cuc_bo_test.dart` canh.
+  BoolColumn get biTuChoiTrungTen => boolean()
+      .named('bi_tu_choi_trung_ten')
+      .withDefault(const Constant(false))();
+
   /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
   BoolColumn get includeInTotal  => boolean().withDefault(const Constant(true))();
   

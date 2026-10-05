@@ -91,6 +91,16 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("allow_negative" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _biTuChoiTrungTenMeta =
+      const VerificationMeta('biTuChoiTrungTen');
+  @override
+  late final GeneratedColumn<bool> biTuChoiTrungTen = GeneratedColumn<bool>(
+      'bi_tu_choi_trung_ten', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("bi_tu_choi_trung_ten" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _includeInTotalMeta =
       const VerificationMeta('includeInTotal');
   @override
@@ -167,6 +177,7 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         isDefault,
         isDeleted,
         allowNegative,
+        biTuChoiTrungTen,
         includeInTotal,
         bankCassoId,
         status,
@@ -237,6 +248,12 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
           _allowNegativeMeta,
           allowNegative.isAcceptableOrUnknown(
               data['allow_negative']!, _allowNegativeMeta));
+    }
+    if (data.containsKey('bi_tu_choi_trung_ten')) {
+      context.handle(
+          _biTuChoiTrungTenMeta,
+          biTuChoiTrungTen.isAcceptableOrUnknown(
+              data['bi_tu_choi_trung_ten']!, _biTuChoiTrungTenMeta));
     }
     if (data.containsKey('include_in_total')) {
       context.handle(
@@ -317,6 +334,8 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       allowNegative: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}allow_negative'])!,
+      biTuChoiTrungTen: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}bi_tu_choi_trung_ten'])!,
       includeInTotal: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}include_in_total'])!,
       bankCassoId: attachedDatabase.typeMapping
@@ -394,6 +413,22 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   /// ba chỗ gọi hỏi đúng **một** câu.
   final bool allowNegative;
 
+  /// G63 (2026-10-05): server từ chối ví này vì **trùng tên** với một ví đã có
+  /// trên tài khoản (`WALLET_NAME_DUPLICATE` / `UNIQUE_VIOLATION`). Đặt bởi
+  /// `ViTrungTenResolver`; gỡ khi ví được đổi tên, được gộp, hoặc lên được
+  /// server (`WalletDao.markSynced`).
+  ///
+  /// Cờ một mình **không** giữ ví lại: "đang bị giữ" là cờ **và** trên máy còn
+  /// một ví sống khác cùng tên — định nghĩa duy nhất ở
+  /// `wallet/domain/vi_trung_ten.dart` (`capViTrungTen`).
+  ///
+  /// ## ⚠️ CỘT CỤC BỘ — KHÔNG đi qua đồng bộ
+  ///
+  /// Cùng lý do với [allowNegative]: PostgreSQL không có cột tương ứng; payload
+  /// ví vẫn **13 trường**, nhánh kéo về không đọc nó. Test quét
+  /// `test/features/wallet/vi_trung_ten_cuc_bo_test.dart` canh.
+  final bool biTuChoiTrungTen;
+
   /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
   final bool includeInTotal;
   final String? bankCassoId;
@@ -416,6 +451,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       required this.isDefault,
       required this.isDeleted,
       required this.allowNegative,
+      required this.biTuChoiTrungTen,
       required this.includeInTotal,
       this.bankCassoId,
       required this.status,
@@ -439,6 +475,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     map['is_default'] = Variable<bool>(isDefault);
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['allow_negative'] = Variable<bool>(allowNegative);
+    map['bi_tu_choi_trung_ten'] = Variable<bool>(biTuChoiTrungTen);
     map['include_in_total'] = Variable<bool>(includeInTotal);
     if (!nullToAbsent || bankCassoId != null) {
       map['bank_casso_id'] = Variable<String>(bankCassoId);
@@ -472,6 +509,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       isDefault: Value(isDefault),
       isDeleted: Value(isDeleted),
       allowNegative: Value(allowNegative),
+      biTuChoiTrungTen: Value(biTuChoiTrungTen),
       includeInTotal: Value(includeInTotal),
       bankCassoId: bankCassoId == null && nullToAbsent
           ? const Value.absent()
@@ -507,6 +545,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       allowNegative: serializer.fromJson<bool>(json['allowNegative']),
+      biTuChoiTrungTen: serializer.fromJson<bool>(json['biTuChoiTrungTen']),
       includeInTotal: serializer.fromJson<bool>(json['includeInTotal']),
       bankCassoId: serializer.fromJson<String?>(json['bankCassoId']),
       status: serializer.fromJson<String>(json['status']),
@@ -534,6 +573,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'isDefault': serializer.toJson<bool>(isDefault),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'allowNegative': serializer.toJson<bool>(allowNegative),
+      'biTuChoiTrungTen': serializer.toJson<bool>(biTuChoiTrungTen),
       'includeInTotal': serializer.toJson<bool>(includeInTotal),
       'bankCassoId': serializer.toJson<String?>(bankCassoId),
       'status': serializer.toJson<String>(status),
@@ -558,6 +598,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           bool? isDefault,
           bool? isDeleted,
           bool? allowNegative,
+          bool? biTuChoiTrungTen,
           bool? includeInTotal,
           Value<String?> bankCassoId = const Value.absent(),
           String? status,
@@ -579,6 +620,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
         isDefault: isDefault ?? this.isDefault,
         isDeleted: isDeleted ?? this.isDeleted,
         allowNegative: allowNegative ?? this.allowNegative,
+        biTuChoiTrungTen: biTuChoiTrungTen ?? this.biTuChoiTrungTen,
         includeInTotal: includeInTotal ?? this.includeInTotal,
         bankCassoId: bankCassoId.present ? bankCassoId.value : this.bankCassoId,
         status: status ?? this.status,
@@ -606,6 +648,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       allowNegative: data.allowNegative.present
           ? data.allowNegative.value
           : this.allowNegative,
+      biTuChoiTrungTen: data.biTuChoiTrungTen.present
+          ? data.biTuChoiTrungTen.value
+          : this.biTuChoiTrungTen,
       includeInTotal: data.includeInTotal.present
           ? data.includeInTotal.value
           : this.includeInTotal,
@@ -640,6 +685,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('allowNegative: $allowNegative, ')
+          ..write('biTuChoiTrungTen: $biTuChoiTrungTen, ')
           ..write('includeInTotal: $includeInTotal, ')
           ..write('bankCassoId: $bankCassoId, ')
           ..write('status: $status, ')
@@ -654,27 +700,29 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      idaccount,
-      name,
-      type,
-      balance,
-      currency,
-      icon,
-      colour,
-      isDefault,
-      isDeleted,
-      allowNegative,
-      includeInTotal,
-      bankCassoId,
-      status,
-      syncStatus,
-      syncRetryCount,
-      syncError,
-      syncBlockedUntil,
-      updatedAt,
-      deletedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        idaccount,
+        name,
+        type,
+        balance,
+        currency,
+        icon,
+        colour,
+        isDefault,
+        isDeleted,
+        allowNegative,
+        biTuChoiTrungTen,
+        includeInTotal,
+        bankCassoId,
+        status,
+        syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
+        updatedAt,
+        deletedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -690,6 +738,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.isDefault == this.isDefault &&
           other.isDeleted == this.isDeleted &&
           other.allowNegative == this.allowNegative &&
+          other.biTuChoiTrungTen == this.biTuChoiTrungTen &&
           other.includeInTotal == this.includeInTotal &&
           other.bankCassoId == this.bankCassoId &&
           other.status == this.status &&
@@ -713,6 +762,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<bool> isDefault;
   final Value<bool> isDeleted;
   final Value<bool> allowNegative;
+  final Value<bool> biTuChoiTrungTen;
   final Value<bool> includeInTotal;
   final Value<String?> bankCassoId;
   final Value<String> status;
@@ -735,6 +785,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.allowNegative = const Value.absent(),
+    this.biTuChoiTrungTen = const Value.absent(),
     this.includeInTotal = const Value.absent(),
     this.bankCassoId = const Value.absent(),
     this.status = const Value.absent(),
@@ -758,6 +809,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.allowNegative = const Value.absent(),
+    this.biTuChoiTrungTen = const Value.absent(),
     this.includeInTotal = const Value.absent(),
     this.bankCassoId = const Value.absent(),
     this.status = const Value.absent(),
@@ -784,6 +836,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<bool>? isDefault,
     Expression<bool>? isDeleted,
     Expression<bool>? allowNegative,
+    Expression<bool>? biTuChoiTrungTen,
     Expression<bool>? includeInTotal,
     Expression<String>? bankCassoId,
     Expression<String>? status,
@@ -807,6 +860,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (isDefault != null) 'is_default': isDefault,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (allowNegative != null) 'allow_negative': allowNegative,
+      if (biTuChoiTrungTen != null) 'bi_tu_choi_trung_ten': biTuChoiTrungTen,
       if (includeInTotal != null) 'include_in_total': includeInTotal,
       if (bankCassoId != null) 'bank_casso_id': bankCassoId,
       if (status != null) 'status': status,
@@ -832,6 +886,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       Value<bool>? isDefault,
       Value<bool>? isDeleted,
       Value<bool>? allowNegative,
+      Value<bool>? biTuChoiTrungTen,
       Value<bool>? includeInTotal,
       Value<String?>? bankCassoId,
       Value<String>? status,
@@ -854,6 +909,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       isDefault: isDefault ?? this.isDefault,
       isDeleted: isDeleted ?? this.isDeleted,
       allowNegative: allowNegative ?? this.allowNegative,
+      biTuChoiTrungTen: biTuChoiTrungTen ?? this.biTuChoiTrungTen,
       includeInTotal: includeInTotal ?? this.includeInTotal,
       bankCassoId: bankCassoId ?? this.bankCassoId,
       status: status ?? this.status,
@@ -903,6 +959,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (allowNegative.present) {
       map['allow_negative'] = Variable<bool>(allowNegative.value);
     }
+    if (biTuChoiTrungTen.present) {
+      map['bi_tu_choi_trung_ten'] = Variable<bool>(biTuChoiTrungTen.value);
+    }
     if (includeInTotal.present) {
       map['include_in_total'] = Variable<bool>(includeInTotal.value);
     }
@@ -950,6 +1009,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('allowNegative: $allowNegative, ')
+          ..write('biTuChoiTrungTen: $biTuChoiTrungTen, ')
           ..write('includeInTotal: $includeInTotal, ')
           ..write('bankCassoId: $bankCassoId, ')
           ..write('status: $status, ')
@@ -8988,10 +9048,12 @@ class GoiYDanhMucPhanHoi extends DataClass
   /// Lúc người dùng phân xử — luật mở lại đếm giao dịch có ngày SAU mốc này.
   final DateTime createdAt;
 
-  /// `hoc` | `tu_khoa`.
+  /// `hoc` | `tu_khoa` | `de_xuat_tu_khoa` | `so_tien` (dự án C, 2026-10-02 — thẻ gợi ý theo số tiền).
   final String nguon;
 
-  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`), hoặc từ khoá khớp (nguồn `tu_khoa`).
+  /// Cụm âm tiết đã bỏ dấu (nguồn `hoc`, và cụm được đề xuất làm từ khoá — nguồn `de_xuat_tu_khoa`), từ khoá khớp
+  /// (nguồn `tu_khoa`), hoặc **mã bậc tiền** như `20000-50000` (nguồn `so_tien`). Tên cột giữ nguyên: nó là "khoá của
+  /// luật thôi gợi ý", mỗi nguồn một kiểu khoá.
   final String amTietChinh;
   final String goiYCategoryId;
 
@@ -10021,6 +10083,7 @@ typedef $$WalletsTableCreateCompanionBuilder = WalletsCompanion Function({
   Value<bool> isDefault,
   Value<bool> isDeleted,
   Value<bool> allowNegative,
+  Value<bool> biTuChoiTrungTen,
   Value<bool> includeInTotal,
   Value<String?> bankCassoId,
   Value<String> status,
@@ -10044,6 +10107,7 @@ typedef $$WalletsTableUpdateCompanionBuilder = WalletsCompanion Function({
   Value<bool> isDefault,
   Value<bool> isDeleted,
   Value<bool> allowNegative,
+  Value<bool> biTuChoiTrungTen,
   Value<bool> includeInTotal,
   Value<String?> bankCassoId,
   Value<String> status,
@@ -10116,6 +10180,10 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<bool> get allowNegative => $composableBuilder(
       column: $table.allowNegative, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get biTuChoiTrungTen => $composableBuilder(
+      column: $table.biTuChoiTrungTen,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get includeInTotal => $composableBuilder(
       column: $table.includeInTotal,
@@ -10212,6 +10280,10 @@ class $$WalletsTableOrderingComposer
       column: $table.allowNegative,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get biTuChoiTrungTen => $composableBuilder(
+      column: $table.biTuChoiTrungTen,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get includeInTotal => $composableBuilder(
       column: $table.includeInTotal,
       builder: (column) => ColumnOrderings(column));
@@ -10284,6 +10356,9 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<bool> get allowNegative => $composableBuilder(
       column: $table.allowNegative, builder: (column) => column);
+
+  GeneratedColumn<bool> get biTuChoiTrungTen => $composableBuilder(
+      column: $table.biTuChoiTrungTen, builder: (column) => column);
 
   GeneratedColumn<bool> get includeInTotal => $composableBuilder(
       column: $table.includeInTotal, builder: (column) => column);
@@ -10368,6 +10443,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> allowNegative = const Value.absent(),
+            Value<bool> biTuChoiTrungTen = const Value.absent(),
             Value<bool> includeInTotal = const Value.absent(),
             Value<String?> bankCassoId = const Value.absent(),
             Value<String> status = const Value.absent(),
@@ -10391,6 +10467,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             isDefault: isDefault,
             isDeleted: isDeleted,
             allowNegative: allowNegative,
+            biTuChoiTrungTen: biTuChoiTrungTen,
             includeInTotal: includeInTotal,
             bankCassoId: bankCassoId,
             status: status,
@@ -10414,6 +10491,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> allowNegative = const Value.absent(),
+            Value<bool> biTuChoiTrungTen = const Value.absent(),
             Value<bool> includeInTotal = const Value.absent(),
             Value<String?> bankCassoId = const Value.absent(),
             Value<String> status = const Value.absent(),
@@ -10437,6 +10515,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             isDefault: isDefault,
             isDeleted: isDeleted,
             allowNegative: allowNegative,
+            biTuChoiTrungTen: biTuChoiTrungTen,
             includeInTotal: includeInTotal,
             bankCassoId: bankCassoId,
             status: status,

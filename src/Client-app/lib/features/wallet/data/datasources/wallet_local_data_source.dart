@@ -43,6 +43,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     includeInTotal: w.includeInTotal,
     status:         w.status,
     allowNegative:  w.allowNegative,
+    biTuChoiTrungTen: w.biTuChoiTrungTen,
     syncStatus:     w.syncStatus,
     updatedAt:      w.updatedAt,
   );
@@ -65,6 +66,9 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     // Cùng lý do với `status` ngay trên: thiếu cột này thì mỗi lần người
     // dùng sửa tên ví là cờ 'cho phép âm' tự tắt — im lặng.
     allowNegative:  Value(e.allowNegative),
+    // Cố ý KHÔNG mang `biTuChoiTrungTen` (G63): form Sửa ví không sửa cờ ấy, và
+    // mang nó ở đây là mỗi lần lưu ví ghi đè cờ bằng giá trị entity đọc lúc mở
+    // trang. Ba chỗ ghi ở `WalletDao`: danhDauTrungTen · goCoTrungTen · markSynced.
     syncStatus:     Value(e.syncStatus),
     updatedAt:      Value(e.updatedAt),
   );

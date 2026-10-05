@@ -65,6 +65,7 @@ Wallet makeWallet({
       updatedAt: DateTime(2026, 8, 21),
     
       allowNegative: false,
+      biTuChoiTrungTen: false,
     );
 
 class FakeCategoryRepository implements CategoryManagementRepository {

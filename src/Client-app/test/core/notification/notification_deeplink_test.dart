@@ -192,6 +192,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         
           allowNegative: false,
+          biTuChoiTrungTen: false,
         );
 
     /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **mọi loại nó có thể

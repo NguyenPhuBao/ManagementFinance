@@ -128,6 +128,9 @@ void main() {
             INSERT INTO goi_y_danh_muc_phan_hois VALUES
               ('p-7', 7, 1790656434, 'hoc', 'grab', 'move', 'bo_qua', NULL)
           ''');
+          // Bước v28 (G63) thêm một cột vào `wallets` — CSDL thật luôn có bảng ấy
+          // (từ v1), nên fixture tối thiểu cũng phải có.
+          database.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
           database.execute('PRAGMA user_version = 25');
         },
       ));

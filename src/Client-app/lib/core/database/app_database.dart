@@ -72,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration {
@@ -502,6 +502,12 @@ class AppDatabase extends _$AppDatabase {
           // B2 (spec 2026-09-28): phản hồi thẻ gợi ý hoá đơn từ khoản lặp — CỤC
           // BỘ, không đi qua đồng bộ (test quét thứ 15 canh).
           await m.createTable(goiYHoaDonPhanHois);
+        }
+        if (from < 28) {
+          // G63 (spec 2026-10-05 mục 4.1): cờ "server từ chối vì trùng tên" —
+          // CỤC BỘ, không đi qua đồng bộ (test quét `vi_trung_ten_cuc_bo_test`).
+          // Không điền dữ liệu cũ: mặc định `false` chính là hành vi trước bản này.
+          await m.addColumn(wallets, wallets.biTuChoiTrungTen);
         }
       },
       beforeOpen: (details) async {

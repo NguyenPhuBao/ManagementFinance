@@ -27,7 +27,7 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema là v27', () => expect(db.schemaVersion, 27));
+  test('schema từ v27 trở lên', () => expect(db.schemaVersion, greaterThanOrEqualTo(27)));
 
   test('bảng goi_y_hoa_don_phan_hois có đủ cột và KHÔNG có cột đồng bộ', () async {
     final cols = await db.customSelect("PRAGMA table_info('goi_y_hoa_don_phan_hois')").get();
@@ -83,6 +83,9 @@ void main() {
             INSERT INTO app_notification_events VALUES
               ('e-7', 7, 'billDue:b1:2026-10-06:1', 'dat_lich', 1791219600, 1102803428)
           ''');
+          // Bước v28 (G63) thêm một cột vào `wallets` — CSDL thật luôn có bảng ấy
+          // (từ v1), nên fixture tối thiểu cũng phải có.
+          database.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
           database.execute('PRAGMA user_version = 26');
         },
       ));
