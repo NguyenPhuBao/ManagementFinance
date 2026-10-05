@@ -495,6 +495,46 @@ void main() {
       expect(rt.soLanMoPhien, 1);
     });
 
+    // C6 (người dùng chọn 2026-10-05): câu hỏi KỂ TÊN + ≥ 2 hàng → câu Gemma phải nêu tên mọi hàng, thiếu → mẫu câu.
+    KetQuaCongCu haiKhoan() => KetQuaCongCu(
+          hang: [
+            HangSoLieu(ten: 'Tien nha T9', trangThai: 'khoản chi', canhBao: false,
+                soLieu: [soTien('Số tiền', 3000000, ten: 'Tien nha T9')]),
+            HangSoLieu(ten: 'An toi lien hoan', trangThai: 'khoản chi', canhBao: false,
+                soLieu: [soTien('Số tiền', 1500000, ten: 'An toi lien hoan')]),
+          ],
+          tongHop: [soDem('Số giao dịch', 2), soTien('Tổng chi', 4500000)],
+          soLieuBoLoc: [soTien('Từ', 1000000)],
+          boLoc: const ['khoản chi', 'từ 1.000.000 đ'],
+          chuThem: const {'ky': 'tháng trước'},
+        );
+    const cauC6 = 'thang truoc toi co khoan chi nao tren 1 trieu khong';
+
+    test('⭐ C6: câu kể tên mà Gemma kể THIẾU một khoản → mẫu câu đủ dòng thay vào, câu thiếu không hiện', () async {
+      final (sk, goi, rt) = await hoi(cauC6,
+          ketQua: haiKhoan(), chu: ['Có khoản chi: Tien nha T9 với Số tiền: 3.000.000 đ.']);
+      expect(rt.promptSinhDan, hasLength(1), reason: 'Gemma vẫn được gọi viết câu');
+      expect(sk.whereType<CauQua>().map((c) => c.cau), [goi.mauCau().cau]);
+      expect(goi.mauCau().cau, allOf(contains('Tien nha T9'), contains('An toi lien hoan')));
+      expect(log.any((l) => l.contains('thiếu 1/2')), isTrue);
+    });
+
+    test('⭐ C6: Gemma kể ĐỦ mọi khoản → câu Gemma hiện (mọi câu, đúng thứ tự)', () async {
+      final (sk, _, _) = await hoi(cauC6, ketQua: haiKhoan(), chu: [
+        'Tháng trước bạn có hai khoản chi. ',
+        'Đó là Tien nha T9 3.000.000 đ và An toi lien hoan 1.500.000 đ.',
+      ]);
+      expect(sk.whereType<CauQua>().map((c) => c.cau), [
+        'Tháng trước bạn có hai khoản chi.',
+        'Đó là Tien nha T9 3.000.000 đ và An toi lien hoan 1.500.000 đ.',
+      ]);
+    });
+
+    test('câu hỏi TỔNG (không kể tên) với hai khoản → câu Gemma hiện dù không nêu tên từng khoản', () async {
+      final (sk, _, _) = await hoi(cauDu, ketQua: haiKhoan(), chu: ['Tháng trước bạn đã chi 4.500.000 đ.']);
+      expect(sk.whereType<CauQua>().map((c) => c.cau), ['Tháng trước bạn đã chi 4.500.000 đ.']);
+    });
+
     test('⭐ máy đã tắt bậc tool (canary 1b) vẫn đi đường nhanh', () async {
       final (sk, _, rt) = await hoi(cauDu, chu: [cauDung], loiMoPhien: const BacCongCuDaTat());
       expect(sk.whereType<KhongTraCuu>(), isEmpty);

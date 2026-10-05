@@ -52,6 +52,7 @@ import '../domain/dinh_tuyen.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
 import '../domain/hang_so_lieu.dart';
+import '../domain/ke_du_ten.dart';
 import '../domain/kiem_cau_tra_loi.dart';
 import '../domain/slm_prompt.dart';
 import 'bo_cong_cu.dart';
@@ -288,6 +289,11 @@ Stream<SuKienGac> _vietCauDuongNhanh(
     return;
   }
   yield const DangTraCuu(null);
+  // C6 (người dùng chọn 2026-10-05): câu hỏi KỂ TÊN mà có ≥ 2 hàng → GIỮ các câu đã qua kiểm tới hết lượt sinh, rồi
+  // xét câu trả lời có nêu tên mọi hàng không; thiếu thì mẫu câu đủ dòng thay vào. Câu đã hiện thì không gỡ được,
+  // nên phải giữ lại trước — riêng loại câu này mất hiện chữ dần (3–10 s).
+  final keDu = kq.hang.length >= 2 && cauHoiKeTen(cauHoi);
+  final daGiu = <CauQua>[];
   var soCau = 0;
   await for (final sk in gacTheoCau(
     runtime.sinhDan(promptVietCau(cauHoi, kq.json), tranToken: 300),
@@ -295,7 +301,21 @@ Stream<SuKienGac> _vietCauDuongNhanh(
     huy: runtime.huy,
   )) {
     if (sk is CauQua) soCau++;
-    yield sk;
+    if (keDu && sk is CauQua) {
+      daGiu.add(sk);
+    } else {
+      yield sk;
+    }
+  }
+  if (keDu && soCau > 0) {
+    final thieu = tenChuaNeu(daGiu.map((c) => c.cau).join(' '), kq.hang.map((h) => h.ten));
+    if (thieu.isEmpty) {
+      yield* Stream.fromIterable(daGiu);
+    } else {
+      log('[SLM][tool] đường nhanh: câu kể tên thiếu ${thieu.length}/${{...kq.hang.map((h) => h.ten)}.length} '
+          'hàng → mẫu câu (C6)');
+      yield CauQua(goi.mauCau().cau);
+    }
   }
   if (soCau == 0) {
     log('[SLM][tool] đường nhanh: chưa câu nào qua kiểm → mẫu câu (L2)');
