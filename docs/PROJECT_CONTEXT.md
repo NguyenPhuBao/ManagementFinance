@@ -1080,6 +1080,10 @@ tài khoản dùng trên hai máy) → **G63 hoãn**, kèm phác thảo lối s�
 (xoá 7 giao dịch thử + hai ví trùng của Realme), đo lại: server còn đúng một ví mỗi loại, Realme đồng bộ sạch. Mục G63
 `CLIENT_APP_KNOWN_GAPS.md`.
 
+📝 **2026-10-05 — G63 hết hoãn:** người dùng chọn làm. Thiết kế duyệt trong chat (phạm vi **chỉ ví**; cờ mặc định **bản
+server thắng**; dòng nhắc Trang chủ có ✕), spec `docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md`
+— **bản viết chờ người dùng đọc, chưa có kế hoạch, chưa có mã**. Khối trên là ảnh chụp của ngày 03/10.
+
 ### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
 
 Người dùng cắm OnePlus 13R, nối backend dev qua `adb reverse tcp:3000` + bản debug trỏ `127.0.0.1` (dòng địa chỉ sửa
