@@ -1082,7 +1082,11 @@ tài khoản dùng trên hai máy) → **G63 hoãn**, kèm phác thảo lối s�
 
 📝 **2026-10-05 — G63 hết hoãn:** người dùng chọn làm. Thiết kế duyệt trong chat (phạm vi **chỉ ví**; cờ mặc định **bản
 server thắng**; dòng nhắc Trang chủ có ✕), spec `docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md`
-— **bản viết chờ người dùng đọc, chưa có kế hoạch, chưa có mã**. Khối trên là ảnh chụp của ngày 03/10.
+— người dùng duyệt bản viết; kế hoạch 14 task (gitignore). **Chiều cùng ngày: Task 1–8 xong** (`f2a2f52` → `6a68d86`):
+schema **v28** (cột cục bộ `wallets.bi_tu_choi_trung_ten`), `ViTrungTenResolver` (bộ nghe thứ hai của `pushResultStream`),
+`_collectPendingOps` có mục 0 *bản ghi bị giữ*, Sửa ví chỉ kiểm trùng tên khi tên đổi, kéo về chỉ còn một ví mặc định,
+`GopViService`. **Còn Task 9–13** (thẻ Gộp / Đổi tên, dòng nhắc Trang chủ, nghiệm thu hai máy, đóng G63). Khối trên là ảnh
+chụp của ngày 03/10.
 
 ### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
 

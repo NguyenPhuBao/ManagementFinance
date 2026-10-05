@@ -1,7 +1,9 @@
 # G63 — Ví trùng tên giữa hai máy cùng tài khoản — thiết kế
 
 **Ngày:** 2026-10-05. **Trạng thái:** thiết kế người dùng duyệt trong chat (sáu lượt AskUserQuestion: phạm vi · cờ mặc
-định · bốn phần thiết kế); **bản viết chờ người dùng đọc**; chưa có kế hoạch, **chưa có mã**.
+định · bốn phần thiết kế); bản viết **người dùng duyệt** cùng ngày; kế hoạch 14 task
+`docs/superpowers/plans/2026-10-05-g63-vi-trung-ten-hai-may.md` (gitignore — khối 🔧 đầu tệp có **năm chỗ kế hoạch thắng
+spec này**); **Task 1–8 xong** (`f2a2f52` → `6a68d86`), còn Task 9–13 (giao diện, nghiệm thu, tài liệu).
 
 Mục **G63** của `docs/CLIENT_APP_KNOWN_GAPS.md` mở ngày 2026-10-03 và hoãn cùng ngày; ngày 2026-10-05 người dùng chọn
 làm. Bản này thi hành *phác thảo lối sửa* mà người dùng đã chọn từng điểm ở cuối mục ấy, và chốt những chỗ phác thảo còn
