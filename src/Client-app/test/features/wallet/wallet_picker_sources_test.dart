@@ -60,6 +60,10 @@ void main() {
     'features/budget/data/datasources/budget_local_data_source.dart':
         '`getWallets` chỉ nuôi `BudgetRepositoryImpl.lookupFor`, tức lại là '
             'một bảng tra tên chứ không phải bộ chọn ví.',
+    'features/wallet/data/vi_trung_ten_nguon.dart':
+        'Tìm cặp ví trùng tên (G63) phải thấy cả ví lưu trữ: index '
+            '`uq_wallet_account_name_active` của server không nhìn `Status`, nên '
+            'ví lưu trữ vẫn giữ chỗ tên.',
   };
 
   /// Các tệp là **bộ chọn ví** — chúng phải gọi `getActive`/`watchActive`.
