@@ -417,6 +417,17 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     );
   }
 
+  /// Cập nhật CHỈ những cột có mặt trong [entry] — cùng lý do với
+  /// `BillDao.updateFields`: [insert] là `insertOrReplace`, thay nguyên hàng.
+  /// Nơi gọi: `GopViService` (G63) đổi ví của mục tiêu.
+  Future<void> updateFields(GoalsCompanion entry) async {
+    if (!entry.id.present) {
+      throw ArgumentError('GoalsCompanion phải có id để biết cập nhật hàng nào');
+    }
+    await (update(goals)..where((t) => t.id.equals(entry.id.value)))
+        .write(entry);
+  }
+
   Future<void> softDelete(String id) async {
     final now = DateTime.now();
     await (update(goals)..where((t) => t.id.equals(id))).write(

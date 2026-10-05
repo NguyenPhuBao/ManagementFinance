@@ -53,6 +53,7 @@ import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
+import '../../features/wallet/data/services/gop_vi_service.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -176,6 +177,16 @@ Future<void> setupDependencies() async {
   // `batDauNghe` gọi MỘT lần ở `main.dart`, cùng lý do với bộ nghe hoá đơn.
   sl.registerLazySingleton<ViTrungTenResolver>(
     () => ViTrungTenResolver(db: sl()),
+  );
+  // G63: gộp ví trùng tên (spec 2026-10-05 mục 6). `ViTheoNguonStore` đăng ký
+  // ở khối D1 phía dưới — lazy nên chỉ cần có mặt lúc gọi lần đầu.
+  sl.registerLazySingleton<GopViService>(
+    () => GopViService(
+      db: sl(),
+      soDuVi: sl(),
+      viTheoNguon: sl<ViTheoNguonStore>(),
+      henDongBo: () => sl<SyncEngine>().scheduleSync(),
+    ),
   );
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),

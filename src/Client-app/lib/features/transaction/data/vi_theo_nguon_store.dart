@@ -32,6 +32,9 @@ abstract class ViTheoNguonStore {
   /// Ví của cả NGUỒN, không kèm đuôi — dòng nhắc sau khi dùng app ngân hàng (2026-10-03) không có số tài khoản. Cặp
   /// `<nguồn>|` (đuôi trống) đã nhớ → ví ấy; không có thì mọi cặp `<nguồn>|*` trỏ về MỘT ví → ví ấy; còn lại `null`.
   Future<String?> docTheoNguon(int idaccount, String nguon);
+
+  /// G63 — gộp ví: mọi cặp đang trỏ [tuVi] chuyển sang [sangVi].
+  Future<void> doiVi(int idaccount, String tuVi, String sangVi);
 }
 
 class SecureStorageViTheoNguonStore implements ViTheoNguonStore {
@@ -73,6 +76,18 @@ class SecureStorageViTheoNguonStore implements ViTheoNguonStore {
       // Bỏ qua — xem chú thích đầu tệp.
     }
   }
+
+  @override
+  Future<void> doiVi(int idaccount, String tuVi, String sangVi) async {
+    try {
+      final bang = await _bang(idaccount);
+      if (!bang.containsValue(tuVi)) return;
+      bang.updateAll((_, v) => v == tuVi ? sangVi : v);
+      await _storage.write(key: _khoa(idaccount), value: jsonEncode(bang));
+    } catch (_) {
+      // Bỏ qua — xem chú thích đầu tệp.
+    }
+  }
 }
 
 class InMemoryViTheoNguonStore implements ViTheoNguonStore {
@@ -88,4 +103,8 @@ class InMemoryViTheoNguonStore implements ViTheoNguonStore {
   @override
   Future<void> ghi(int idaccount, String nguon, String? duoi, String walletId) async =>
       (values[idaccount] ??= {})[_cap(nguon, duoi)] = walletId;
+
+  @override
+  Future<void> doiVi(int idaccount, String tuVi, String sangVi) async =>
+      values[idaccount]?.updateAll((_, v) => v == tuVi ? sangVi : v);
 }

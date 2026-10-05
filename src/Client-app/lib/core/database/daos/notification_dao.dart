@@ -161,6 +161,24 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
         .write(AppNotificationsCompanion(dismissedAt: Value(DateTime.now())));
   }
 
+  /// Gỡ (xoá mềm) mọi hàng còn hiện của một đối tượng. Trả số hàng đã gỡ.
+  ///
+  /// G63: ví bị gộp vào ví khác thì thông báo số dư của nó trỏ vào một ví không
+  /// còn tồn tại. `BadgeUpdater` nghe bảng và huỷ thông báo tương ứng trên khay.
+  Future<int> goTheoDoiTuong(
+    int idaccount, {
+    required String subjectType,
+    required String subjectId,
+  }) {
+    return (update(appNotifications)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.subjectType.equals(subjectType) &
+              t.subjectId.equals(subjectId) &
+              t.dismissedAt.isNull()))
+        .write(AppNotificationsCompanion(dismissedAt: Value(DateTime.now())));
+  }
+
   /// Gỡ cờ xoá mềm — đường quay lại cho một cú vuốt lỡ tay.
   ///
   /// Cần thiết vì hàng đã xoá **vẫn nằm trong bảng** để chặn trùng: lượt quét
