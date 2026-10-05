@@ -251,6 +251,11 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
   bao giờ thành ghi chú.
 - **MoMo, ZaloPay và mọi app khác: luật chung** (nhãn *số tiền* → số có đơn vị đ / VND; không nhãn và không đơn vị thì
   để trống), form ghi *"Đọc từ ảnh — hãy kiểm lại"*. Mẫu riêng cho hai ví thêm khi có biên lai thật.
+  ✅ **2026-10-05 — luật chung thêm bước *tiêu đề thành công*** (người dùng báo: biên lai MoMo thanh toán cửa hàng
+  39.000đ được điền **5.000.000**): biên lai MoMo không có nhãn số tiền, và bước cũ *"số có đơn vị LỚN NHẤT"* chọn câu
+  quảng cáo *"Liệu đã tới 5.000.000đ?"* bên dưới. Nay thứ tự là: nhãn số tiền → **số có đơn vị đầu tiên trên hàng
+  "… thành công" hoặc hai hàng kế** → số có đơn vị lớn nhất; hai bước sau bỏ hàng phí / số dư và hàng **câu hỏi**
+  (kết thúc bằng `?`). Ca test dựng lại hình dạng biên lai ấy bằng tên và số giả. ⚠️ Chưa đo lại trên máy thật.
 - **Không đọc ra số tiền vẫn giữ làm khoản chờ ghi** (người dùng chốt): hàng *"Biên lai chưa đọc được · ‹nguồn›"*, form
   số tiền trống, 16 phím hiện, ảnh để nhìn mà gõ.
 - **Chia sẻ lặp nhận ra bằng GIỜ IN TRÊN BIÊN LAI (`blt`), không bằng cửa sổ 5 phút** — hai lần chuyển cùng số tiền
