@@ -156,6 +156,39 @@ void main() {
         reason: 'Gửi bất cứ thứ gì dính tới ví bị giữ là vỡ khoá ngoại ở MỌI chu kỳ — đúng vòng lặp G63.');
   });
 
+  test('⭐ bước 1b KHÔNG gửi kèm danh mục của giao dịch bị giữ (vòng đồng bộ nóng, nghiệm thu 2026-10-05)', () async {
+    // Nghiệm thu hai máy ảo: giao dịch của ví bị giữ nằm `pending` vô thời hạn, bước 1b gửi kèm danh mục của chúng ở
+    // MỌI chu kỳ → server trả xung đột (bản server mới hơn) → không lỗi nên không giãn cách, mà mỗi `/sync/push` lại
+    // phát `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại: 291 chu kỳ trong 5 giây.
+    const catGiu = 'cccccccc-0000-4000-8000-000000000001';
+    const catP = 'cccccccc-0000-4000-8000-000000000002';
+    for (final (id, ten) in [(catGiu, 'Thưởng'), (catP, 'Ăn uống')]) {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: id,
+        idaccount: acc,
+        name: ten,
+        classify: 'chi',
+        syncStatus: const Value('synced'),
+        updatedAt: ngay,
+      ));
+    }
+    await vi(idP, 'Ví MB Bank', sync: 'synced');
+    await vi(idR, 'Ví MB Bank');
+    await db.walletDao.danhDauTrungTen(idR);
+    await gd('t-r', idR);
+    await gd('t-p', idP);
+    await (db.update(db.transactions)..where((t) => t.id.equals('t-r')))
+        .write(const TransactionsCompanion(categoryId: Value(catGiu)));
+    await (db.update(db.transactions)..where((t) => t.id.equals('t-p')))
+        .write(const TransactionsCompanion(categoryId: Value(catP)));
+
+    final daDay = await chayMotChuKy();
+
+    expect(daDay, isNot(contains(catGiu)),
+        reason: 'Danh mục chỉ được kéo vào lô vì một giao dịch bị giữ — lô không có giao dịch ấy thì không cần nó.');
+    expect(daDay, containsAll([catP, 't-p']), reason: 'Đối chứng: 1b vẫn gửi kèm danh mục cho giao dịch lên lô.');
+  });
+
   test('cờ mà KHÔNG còn ví cùng tên → ví được đẩy (bẫy 2)', () async {
     await vi(idR, 'Ví MB Bank');
     await db.walletDao.danhDauTrungTen(idR);

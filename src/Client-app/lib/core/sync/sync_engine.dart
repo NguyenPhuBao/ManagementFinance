@@ -1290,6 +1290,12 @@ class SyncEngine {
     final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTxForCatCheck) {
       if (t.categoryId == null) continue;
+      // G63: giao dịch bị giữ không lên lô, nên danh mục của nó cũng không cần
+      // đi kèm. Thiếu dòng này là vòng đồng bộ NÓNG (nghiệm thu 2026-10-05):
+      // giao dịch bị giữ nằm `pending` vô thời hạn → danh mục bị gửi lại ở mọi
+      // chu kỳ → xung đột (không lỗi, nên không giãn cách) → server phát
+      // `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại.
+      if (giu.giaoDich.contains(t.id)) continue;
       final resolvedId = await _resolveCategoryId(t.categoryId);
       if (resolvedId == null) continue;
       if (alreadyInBatch.contains(resolvedId)) continue;
