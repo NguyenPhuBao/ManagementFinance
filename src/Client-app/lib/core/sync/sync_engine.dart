@@ -609,6 +609,19 @@ class SyncEngine {
               );
             }).toList();
             await _db.walletDao.upsertAll(companions);
+            // G63 (spec 2026-10-05 mục 4.6): ví mặc định server gửi xuống là
+            // ví mặc định DUY NHẤT trên máy — người dùng chốt "bản server thắng".
+            // `upsertAll` ghi đúng cờ cho hàng kéo về nhưng không đụng hàng chỉ
+            // có trên máy, nên máy từng mang HAI ví mặc định (Realme 2026-10-03).
+            // Chỉ khi lô kéo về CÓ ví mặc định: pull là tăng dần, "không thấy"
+            // không có nghĩa "server không có" (bẫy 8).
+            final idMacDinhServer = _idViMacDinhTrongLo(wallets);
+            if (idMacDinhServer != null) {
+              await _db.walletDao.clearDefaultExcept(
+                idaccount: accountId,
+                keepId: idMacDinhServer,
+              );
+            }
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${wallets.length} wallets into SQLite local.');
           }
@@ -1840,6 +1853,20 @@ class SyncEngine {
   /// Lưu ý tên cột không nhất quán ở backend: bảng `transaction` dùng
   /// `deleted_at`, các bảng còn lại dùng `delete_at` — nơi gọi phải truyền đúng
   /// khoá, hàm này không tự đoán.
+  /// Id ví mặc định (chưa xoá) trong lô ví vừa kéo về, hoặc `null`. Server giữ
+  /// nhiều nhất một (`uq_wallet_default_active`); lô xếp `update_at` tăng dần
+  /// nên có hơn một thì hàng cuối là ý định mới nhất.
+  static String? _idViMacDinhTrongLo(List<dynamic> wallets) {
+    String? id;
+    for (final w in wallets) {
+      if (w is! Map) continue;
+      if (w['delete_at'] != null) continue;
+      if (!doiSangBool(w['is_default'])) continue;
+      id = (w['idwallet'] ?? w['id']).toString();
+    }
+    return id;
+  }
+
   static DateTime? _deletedAtFrom(dynamic raw) {
     if (raw == null) return null;
     return DateTime.tryParse(raw.toString()) ?? DateTime.now();
