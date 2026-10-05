@@ -1,6 +1,10 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (1 mục đang triển khai tại Client-app)
+# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
 
-**Cập nhật:** 2026-10-04 (Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế và đang lưu tại `CAN-LAM/` để Client-app xây dựng chức năng trên thiết bị).
+**Cập nhật:** 2026-10-05 (Client-app soát mục 35 sau gộp `main` @ `b38367e`: đạt cả bốn mục, đặt **mục 36** cho một lỗi lách lớp bảo trì + bốn chỗ nhẹ; mục 34 Client-app đã làm xong). Trước đó 2026-10-04: Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế.
+
+> 📌 **HIỆN TRẠNG 2026-10-05:**
+> - **Mục 36 (`SOAT_SAU_GOP_B38367E.md`) — MỚI, chờ Backend:** Client-app soát mã sau gộp `b38367e` (`node --test tests/unit/*.test.js` 166/166). Mục 35 đạt; còn **một lỗi mức vừa** — `maintenance.middleware.js` cho qua mọi URL **chứa** `/auth/login` kể cả trong query string (đo: `/api/sync/push?x=/auth/login` lọt khi bảo trì BẬT) — và bốn chỗ nhẹ (khoá dự phòng `'secret'`, `/api/admin/*` ưu tiên trước xác thực, cắt tải nhận môi trường test theo đường dẫn chứa `test`, CORS mở cho mọi project Vercel cùng tiền tố). Client-app không phải sửa gì.
+> - **Mục 34:** Client-app đã **làm xong** tính năng nhắc ghi (2026-10-03, nghiệm thu Realme bản debug + release) — có thể chuyển sang `DA-XONG/`.
 
 > 📌 **HIỆN TRẠNG 2026-10-04:**
 > - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** Phía Client-app hỏi ý kiến thiết kế tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (`PACKAGE_USAGE_STATS`). PO đã phê duyệt: đồng ý với Client (100% on-device offline, không đòi thêm NĐ 13, bổ sung nguồn 3 vào tài liệu). Tệp nằm tại `CAN-LAM/` để Client-app tiến hành xây dựng và nghiệm thu chức năng trên máy.
@@ -8,11 +12,12 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **1** mục đang triển khai tại Client-app)
+## 0. Còn phải làm (Hiện tại: **1** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật); Client-app đang triển khai tính năng trên máy. | ⏳ Đang làm tại Client-app |
+| **36** | [SOAT_SAU_GOP_B38367E.md](./SOAT_SAU_GOP_B38367E.md) | Backend | Lớp bảo trì cho qua URL chứa `/auth/login` trong query (mức vừa, có lệnh đo lại ở mục 1 của đơn); khoá dự phòng `'secret'` + kiểm `JWT_ACCESS_SECRET` lúc khởi động; bỏ ưu tiên `/api/admin/*` trước xác thực; bỏ vế `process.argv` ở lớp cắt tải; thu hẹp CORS Vercel (tuỳ chọn); thêm test nhánh bảo trì của `auth.service`. | ⏳ Chờ Backend |
+| **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật). Client-app **đã làm xong** 2026-10-03 (10 task, nghiệm thu Realme debug + release). | ✅ Client xong — chờ chuyển `DA-XONG/` |
 
 ---
 
@@ -35,7 +40,7 @@
 
 ## 2. Trạng thái toàn bộ tài liệu kỹ thuật (Đã lưu trữ tại `DA-XONG/`)
 
-**52** tài liệu (đếm bằng máy 2026-10-04, không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
+**53** tài liệu (đếm bằng máy 2026-10-05 sau gộp `b38367e` — mục 35 đã chuyển sang; không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
 
 ---
 
