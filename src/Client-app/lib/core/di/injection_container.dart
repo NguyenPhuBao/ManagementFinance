@@ -54,6 +54,7 @@ import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/services/gop_vi_service.dart';
+import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -187,6 +188,11 @@ Future<void> setupDependencies() async {
       viTheoNguon: sl<ViTheoNguonStore>(),
       henDongBo: () => sl<SyncEngine>().scheduleSync(),
     ),
+  );
+  // G63: chỗ đọc ví trùng tên cho thẻ ở Quản lý ví và dòng nhắc ở Trang chủ.
+  // (SyncEngine tự dựng bản của nó — lớp này không giữ trạng thái.)
+  sl.registerLazySingleton<ViTrungTenNguon>(
+    () => ViTrungTenNguonImpl(db: sl()),
   );
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
