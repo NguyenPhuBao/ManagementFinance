@@ -401,6 +401,30 @@ void main() {
       expect(find.text('+0 đ'), findsNothing);
     });
 
+    testWidgets(
+        '⭐ tiêu đề DÀI của khoản chi lớn nhất xuống dòng (≤ 2 dòng, "…") chứ không bị co thành chữ tí hon',
+        (t) async {
+      // Ảnh người dùng gửi 2026-10-05: ghi chú tự sinh của một khoản quẹt thẻ dài ~80 ký tự, ô đặt trong
+      // `FittedBox(scaleDown)` một dòng nên chữ co tới mức không đọc được.
+      const dai = 'RetailVisa-409211-111.11-USD-627508184636-CUA HANG A SUB-The 107408787';
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(ngay: DateTime(2026, 9, 5), soTien: 2887752, tieuDe: dai),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      await cuonToi(t, find.text('KHOẢN CHI LỚN NHẤT'));
+      final o = find.descendant(
+          of: find.ancestor(of: find.text('KHOẢN CHI LỚN NHẤT'), matching: find.byType(Column)).first,
+          matching: find.text(dai));
+      expect(o, findsOneWidget);
+      expect(find.ancestor(of: o, matching: find.byType(FittedBox)), findsNothing,
+          reason: 'FittedBox một dòng co chữ dài tới mức không đọc được');
+      final text = t.widget<Text>(o);
+      expect(text.maxLines, 2);
+      expect(text.overflow, TextOverflow.ellipsis);
+      expect(t.takeException(), isNull);
+    });
+
     testWidgets('số liệu nhanh hiện chi trung bình mỗi ngày', (t) async {
       khoDienThoai(t);
       await t.pumpWidget(duoi(dungBaoCao([

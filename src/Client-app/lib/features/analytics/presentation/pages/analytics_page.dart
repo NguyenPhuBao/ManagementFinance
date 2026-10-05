@@ -2463,6 +2463,7 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
           _o(
             'KHOẢN CHI LỚN NHẤT',
             s.khoanChiLonNhat?.tieuDe ?? '—',
+            chu: true,
             phu: s.khoanChiLonNhat == null
                 ? null
                 : CurrencyFormatter.format(s.khoanChiLonNhat!.soTien),
@@ -2472,7 +2473,8 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
     );
   }
 
-  Widget _o(String nhan, String giaTri, {String? phu}) => Column(
+  Widget _o(String nhan, String giaTri, {String? phu, bool chu = false}) =>
+      Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -2487,6 +2489,20 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
+          // Ô mang CHỮ (tiêu đề giao dịch) thì xuống dòng: co một dòng dài ~80 ký tự cho vừa là chữ tí hon không đọc
+          // được (ảnh người dùng gửi 2026-10-05). Ô mang SỐ thì giữ một dòng, co lại khi chật.
+          if (chu)
+            Text(
+              giaTri,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            )
+          else
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,

@@ -670,6 +670,13 @@ tiền ở đâu    bao nhiêu   ra sao      tiêu thế nào     đi vào đâu
 `dungBaoCao`; nay là hàm thuần ở `bao_cao_xuat.dart`: `soLieuNhanhCua`,
 `phanBoTheoVi`, `topKhoanChi`, `dongTienCua`.
 
+✅ **2026-10-05 — ô *Khoản chi lớn nhất* xuống dòng thay vì co chữ** (người dùng báo trên trang Xem trước báo cáo):
+ô số liệu nhanh đặt giá trị trong `FittedBox(scaleDown)` một dòng, đúng cho **số** nhưng sai cho **tiêu đề giao
+dịch** — ghi chú tự sinh của một khoản quẹt thẻ (~80 ký tự) co thành chữ tí hon không đọc được. Nay ô nhận cờ
+`chu: true` → `Text` tối đa **2 dòng**, cắt bằng `…`; cả trang Xem trước (`_oSoLieu`) lẫn trang Phân tích (`_o`).
+Ca test ở `report_preview_page_test.dart` (bản sai gỡ cờ thì đỏ). Tệp PDF/CSV không đổi mã: một ca ở
+`xuat_tep_test.dart` canh rằng PDF vẫn sinh được với tiêu đề dài ấy — cách dàn trang của nó **chưa xem bằng mắt**.
+
 ⚠️ **Đừng gọi `dungBaoCao` từ trang Phân tích.** Nó tính thêm cả chuỗi biểu đồ,
 bảng danh mục và phép gom theo ngày — thứ trang này đã có hoặc không cần — và
 stream của trang phát lại sau **mọi** chu kỳ đồng bộ nền. Cùng lý lẽ với "một
