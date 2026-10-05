@@ -210,7 +210,8 @@ class NhapBienLai {
         duoiTaiKhoan: b.duoiTaiKhoan,
         maGiaoDich: b.maGiaoDich,
       );
-      final dau = dauBienDong(t);
+      // `tuTin: false`: biên lai so với tin bằng cửa sổ của HAI KÊNH (giờ in trên ảnh lệch giờ tin vài phút).
+      final dau = dauBienDong(t, tuTin: false);
 
       // 1) Chia sẻ LẠI cùng một biên lai (đã thành hàng, hoặc đã gắn vào một hàng tin) → ảnh này thừa.
       final lapLai = co.any((c) => c.gioBienLai != null && _cungBienLai(c.dau, c.gioBienLai!, dau)) ||

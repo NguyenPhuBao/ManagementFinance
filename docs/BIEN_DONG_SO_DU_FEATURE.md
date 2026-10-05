@@ -41,8 +41,9 @@ App ngân hàng / ví hiện thông báo
       → notify(ID 20260930, kênh flowmoney_bien_dong, tóm tắt không số, extra bien_dong=1)
   → NotificationScanner.start / resumed → NhapBienDong.nhap(idaccount)   (Dart)
       datBat(docBienDong của tài khoản) → rename .dang_nhap → docTinBienDong theo nguồn
-      → gộp trùng (mã GD | vân tay số dư khác → KHÔNG trùng | cùng tiền + chiều ≤ 5 phút)
-      → AppNotifications loại 20 (deeplink /add?…&vt=…&khoa=…)
+      → gộp trùng (mã GD | vân tay số dư khác → KHÔNG trùng | hai TIN cùng app không phân biệt được: khoá thông báo
+        khác → KHÔNG trùng, cùng khoá ≤ 10 giây → trùng | còn lại cùng tiền + chiều ≤ 5 phút)
+      → AppNotifications loại 20 (deeplink /add?…&vt=…&kt=…&khoa=…)
       → xoá tệp (kể cả khi cờ tắt) → huyTomTat()
   → Sổ giao dịch: TheBienDongChuaGhi (watchDemBienDong) → /notifications?nhom=bienDong
   → MoTuTomTatBienDong (main.dart): moTuThongBao() lúc start + resumed → cùng route, chờ phiên nếu chưa đăng nhập
@@ -88,6 +89,16 @@ App ngân hàng / ví hiện thông báo
   **mất im lặng**. SMS + app của **cùng** giao dịch mang cùng số dư nên vẫn gộp được. Vân tay cũng vào `dedupeKey` (hai
   giao dịch cùng phút không đè khoá) và `deeplink` (`vt`, để so hàng đã có). ⚠️ Không lưu con số (quy tắc §13.6), nhưng
   cũng **không** phải bảo vệ mật mã — không gian số dư nhỏ, dò ngược được. MoMo / ZaloPay không mang số dư → luật cũ.
+- ✅ **2026-10-05 — hai TIN của CÙNG app không phân biệt được (MoMo, ZaloPay) thôi dùng cửa sổ 5 phút** (người dùng
+  báo: hai khoản MoMo đến liên tiếp, app chỉ bắt được một). Tin MoMo không mang mã GD lẫn số dư, nên hai lần nhận
+  cùng số tiền cách vài phút bị gộp; và khoá trùng tính tới **phút** nên hai tin cùng phút còn bị `insertAllIfAbsent`
+  bỏ thêm lần nữa. Luật mới (`trungBienDong`, `kCuaSoCungTin`): hai bên đều là **tin** (không phải biên lai), cùng
+  nguồn, không cùng vân tay → trùng chỉ khi là **cùng thông báo app đăng lại** — khoá thông báo Android
+  (`StatusBarNotification.key`, băm 12 hex, deeplink `kt`) khác nhau thì KHÔNG trùng; cùng khoá hoặc hàng cũ không có
+  khoá thì trùng khi cách ≤ **10 giây**. Khoá trùng của tin không mã, không vân tay tính tới **giây**. Cửa sổ 5 phút
+  giữ cho hai KÊNH (SMS + app) và cho biên lai ↔ tin (`dauBienDong(…, tuTin: false)`; hàng có `doc` đọc ngược là
+  biên lai). ⚠️ Nguyên nhân suy từ mã, **chưa đo trên máy** — chưa biết MoMo dùng id thông báo riêng cho từng tin hay
+  dùng lại một id; luật đúng cho cả hai trừ hai lần nhận cùng tiền cách < 10 giây khi id bị dùng lại.
 - **Gợi ý cho phép chạy nền** (Stitch `2ff589c7…`, người dùng duyệt): hàng *"Tin có thể đến trễ khi app chạy nền"* +
   *Mở cài đặt* → trang thông tin ứng dụng. Chỉ hiện khi đang đọc **và** `isIgnoringBatteryOptimizations` = false; đọc
   lại khi quay về. Không dùng hộp thoại xin miễn tối ưu pin (quyền Play giới hạn). Câu chữ theo tên mục thật trên Realme
@@ -251,6 +262,12 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
   bao giờ thành ghi chú.
 - **MoMo, ZaloPay và mọi app khác: luật chung** (nhãn *số tiền* → số có đơn vị đ / VND; không nhãn và không đơn vị thì
   để trống), form ghi *"Đọc từ ảnh — hãy kiểm lại"*. Mẫu riêng cho hai ví thêm khi có biên lai thật.
+  ✅ **2026-10-05 — luật chung đọc CHIỀU tiền** (người dùng báo: biên lai MoMo *"Nhận tiền qua mã QR từ …"* +10.000đ
+  được ghi thành **chi** — luật chung khi ấy luôn cho `chi`): dấu `+` / `-` trên số tiền có đơn vị thắng (bỏ hàng phí /
+  số dư; `+3 Xu` không có đơn vị nên không tính); không dấu thì một hàng **mở đầu** bằng *"Nhận tiền / Nhận chuyển
+  khoản"* → `thu` (neo đầu hàng để *"Người nhận"* của biên lai chuyển đi không lọt); còn lại `chi`. Đi kèm: biên lai
+  thu nay ghép được vào hàng tin MoMo *"Nhận chuyển khoản"* của cùng giao dịch (trước đó lệch chiều nên thành hàng thứ
+  hai).
   ✅ **2026-10-05 — luật chung thêm bước *tiêu đề thành công*** (người dùng báo: biên lai MoMo thanh toán cửa hàng
   39.000đ được điền **5.000.000**): biên lai MoMo không có nhãn số tiền, và bước cũ *"số có đơn vị LỚN NHẤT"* chọn câu
   quảng cáo *"Liệu đã tới 5.000.000đ?"* bên dưới. Nay thứ tự là: nhãn số tiền → **số có đơn vị đầu tiên trên hàng
