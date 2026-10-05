@@ -6,7 +6,9 @@ import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
+import 'package:flowmoney/features/wallet/data/services/gop_vi_service.dart';
 import 'package:flowmoney/features/wallet/data/vi_trung_ten_nguon.dart';
+import 'package:flowmoney/features/wallet/domain/gop_vi.dart';
 import 'package:flowmoney/features/wallet/presentation/widgets/the_vi_trung_ten.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +42,31 @@ class _RepoGia implements WalletRepository {
 
 WalletEntity _e(String id, String ten, {bool tuChoi = false}) => WalletEntity(
     id: id, idaccount: 7, name: ten, type: 'bank', balance: 0, biTuChoiTrungTen: tuChoi, updatedAt: DateTime(2026, 10, 5));
+
+class _GopGia implements GopViService {
+  _GopGia(this.kh);
+  final KeHoachGop kh;
+  int soLanGop = 0;
+  Object? nem;
+  @override
+  Future<KeHoachGop> lapKeHoach({required String idViBo, required String idViGiu}) async => kh;
+  @override
+  Future<void> gop(KeHoachGop k) async {
+    if (nem != null) throw nem!;
+    soLanGop++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+KeHoachGop khDon() => keHoachGop(
+      viBo: const ViChoGop(id: 'r', loai: 'bank', soDu: 0, tongSo: 0),
+      viGiu: const ViChoGop(id: 'p', loai: 'bank', soDu: 0, tongSo: 0),
+      giaoDich: const [],
+      hoaDon: const [],
+      mucTieu: const [],
+    );
 
 CapViHienThi capMau({String id = 'r', String ten = 'Ví MB Bank', String? lyDo}) => CapViHienThi(
       idViMayNay: id,
@@ -179,6 +206,84 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(cau, ['Đã có ví tên "Ví MB Bank (2)". Hãy đặt tên khác.']);
+    });
+  });
+
+  group('Gộp', () {
+    testWidgets('⭐ Gộp → hộp → xác nhận → gop chạy, thông báo, nạp lại', (tester) async {
+      final svc = _GopGia(khDon());
+      final tb = ThongBaoNhanh();
+      final cau = <String>[];
+      final sub = tb.stream.listen(cau.add);
+      addTearDown(sub.cancel);
+      var soLanNap = 0;
+
+      await dungThe(
+        tester,
+        TheViTrungTen(
+            idaccount: 7, nguon: _NguonGia([capMau()]), gopVi: svc, thongBao: tb, onDaXuLy: () => soLanNap++),
+      );
+      await tester.tap(find.byKey(const ValueKey('vi-trung-gop-r')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nut-xac-nhan-gop')));
+      await tester.pumpAndSettle();
+
+      expect(svc.soLanGop, 1);
+      expect(cau, ['Đã gộp ví.']);
+      expect(soLanNap, 1);
+    });
+
+    testWidgets('Hủy trong hộp → không gộp, không nạp lại', (tester) async {
+      final svc = _GopGia(khDon());
+      var soLanNap = 0;
+      await dungThe(
+        tester,
+        TheViTrungTen(
+            idaccount: 7,
+            nguon: _NguonGia([capMau()]),
+            gopVi: svc,
+            thongBao: ThongBaoNhanh(),
+            onDaXuLy: () => soLanNap++),
+      );
+      await tester.tap(find.byKey(const ValueKey('vi-trung-gop-r')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy'));
+      await tester.pumpAndSettle();
+      expect(svc.soLanGop, 0);
+      expect(soLanNap, 0);
+    });
+
+    testWidgets('kế hoạch cũ → nói câu của KeHoachGopCuException', (tester) async {
+      final svc = _GopGia(khDon())..nem = const KeHoachGopCuException();
+      final tb = ThongBaoNhanh();
+      final cau = <String>[];
+      final sub = tb.stream.listen(cau.add);
+      addTearDown(sub.cancel);
+      await dungThe(tester, TheViTrungTen(idaccount: 7, nguon: _NguonGia([capMau()]), gopVi: svc, thongBao: tb));
+      await tester.tap(find.byKey(const ValueKey('vi-trung-gop-r')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nut-xac-nhan-gop')));
+      await tester.pumpAndSettle();
+      expect(cau, [const KeHoachGopCuException().toString()]);
+    });
+
+    testWidgets('⭐ không gộp được → không có nút Gộp, có dòng lý do; nút Đổi tên vẫn còn', (tester) async {
+      await dungThe(
+        tester,
+        TheViTrungTen(
+            idaccount: 7,
+            nguon: _NguonGia([capMau(lyDo: 'Ví kia là ví liên kết ngân hàng nên không gộp được.')])),
+      );
+      expect(find.byKey(const ValueKey('vi-trung-gop-r')), findsNothing);
+      expect(find.text('Ví kia là ví liên kết ngân hàng nên không gộp được.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('vi-trung-doi-ten-r')), findsOneWidget);
+    });
+
+    testWidgets('360 dp: hai nút trên một hàng không tràn', (tester) async {
+      await dungThe(tester, TheViTrungTen(idaccount: 7, nguon: _NguonGia([capMau()])), kho: const Size(360, 800));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('vi-trung-gop-r')), findsOneWidget);
+      expect(find.byKey(const ValueKey('vi-trung-doi-ten-r')), findsOneWidget);
     });
   });
 }
