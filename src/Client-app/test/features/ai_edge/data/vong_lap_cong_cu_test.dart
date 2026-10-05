@@ -535,6 +535,34 @@ void main() {
       expect(sk.whereType<CauQua>().map((c) => c.cau), ['Tháng trước bạn đã chi 4.500.000 đ.']);
     });
 
+    // B14 (2026-10-05, cùng khuôn C6): câu hỏi so hai kỳ → câu Gemma phải nói đúng hướng tool đã rút.
+    KetQuaCongCu soHaiKy() => KetQuaCongCu(
+          hang: const [],
+          tongHop: [
+            soTien('Tổng chi', 10000),
+            soTien('Tổng chi tháng trước', 6841000),
+            soTien('Chênh lệch chi', 6831000, nhanKhac: const ['Chi ít hơn', 'Chi giảm', 'Chi kém']),
+          ],
+          boLoc: const ['khoản chi', 'so với tháng trước'],
+          chuThem: const {'ky': 'tháng này', 'so_sanh_chi': 'chi ít hơn tháng trước'},
+        );
+    const cauB14 = 'thang nay tieu nhieu hon thang truoc khong';
+
+    test('⭐ B14: câu so sánh chỉ đưa hai con số, không nói "ít hơn" → mẫu câu (in kết luận)', () async {
+      final (sk, goi, rt) = await hoi(cauB14,
+          ketQua: soHaiKy(), chu: ['Tổng chi tháng này là 10.000 đ, tổng chi tháng trước là 6.841.000 đ.']);
+      expect(rt.promptSinhDan, hasLength(1));
+      expect(sk.whereType<CauQua>().map((c) => c.cau), [goi.mauCau().cau]);
+      expect(goi.mauCau().cau, contains('chi ít hơn tháng trước'));
+      expect(log.any((l) => l.contains('(B14)')), isTrue);
+    });
+
+    test('B14: câu nói đúng "ít hơn" → câu Gemma hiện', () async {
+      final (sk, _, _) = await hoi(cauB14,
+          ketQua: soHaiKy(), chu: ['Không, tháng này bạn chi ít hơn tháng trước 6.831.000 đ.']);
+      expect(sk.whereType<CauQua>().map((c) => c.cau), ['Không, tháng này bạn chi ít hơn tháng trước 6.831.000 đ.']);
+    });
+
     test('⭐ máy đã tắt bậc tool (canary 1b) vẫn đi đường nhanh', () async {
       final (sk, _, rt) = await hoi(cauDu, chu: [cauDung], loiMoPhien: const BacCongCuDaTat());
       expect(sk.whereType<KhongTraCuu>(), isEmpty);

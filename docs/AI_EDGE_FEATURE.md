@@ -3753,6 +3753,16 @@ trước); B14 *"tháng này tiêu nhiều hơn tháng trước không"* ◐ đ�
 chưa phủ kiểu hỏi *"… không"*); B15 bàn phím Telex gõ *"Momo"* thành *"Môm"* (bẫy 4.41) → app trả lời trung thực *không có ví
 tên "Môm"*.
 
+✅ **B14 — lưới "nói đúng kết luận" (2026-10-05, cùng khuôn lưới kể tên)** (`ai_edge/domain/ket_luan_so_sanh.dart`):
+câu hỏi so hai kỳ → tool đã rút hướng vào `chuThem['so_sanh_*']`; `huongCanNoi` đọc hướng, `cauNoiDungHuong` đòi câu Gemma
+nêu **đúng** hướng (nhận từ đồng nghĩa: *ít hơn · giảm · thấp hơn · nhỏ hơn · kém hơn* / *nhiều hơn · tăng · cao hơn · lớn
+hơn · vượt* / *bằng · như nhau · không đổi* / *không có dữ liệu*) và **không** nêu hướng khác; thiếu hoặc ngược → mẫu câu (luôn
+in kết luận), log `câu so sánh không nói đúng hướng → mẫu câu (B14)`. Dùng chung cơ chế giữ câu với lưới kể tên. ⚠️ Không
+có *"kém"* trần — bỏ dấu trùng *"kèm"*. Đo Realme (debug `53d08cb6…`): B14 ✅ (Gemma viết hai câu, câu có *"ít hơn"* bị
+`kiemNhan` chặn vì thiếu chữ *"chi"*, câu còn lại không kết luận → lưới thay mẫu câu) · E13 ✅ (Gemma nói **ngược** *"nhiều
+hơn 6.831.000 đ"* → lớp chắn sẵn có chặn → mẫu câu) · F3 ✅ câu Gemma *"chi ít hơn tháng trước, chênh lệch chi: 6.831.000 đ"*.
+Bộ 18 câu sau bản này: **16 ✅ · 1 ◐ (B8) · 1 không chấm (B15)**.
+
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
 
