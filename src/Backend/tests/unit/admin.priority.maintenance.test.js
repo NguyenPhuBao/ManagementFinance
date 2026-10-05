@@ -5,19 +5,22 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { createAdminPriorityMiddleware } = require('../../middleware/admin-priority.middleware');
 const { MaintenanceManager } = require('../../core/resilience/maintenance.manager');
 const { createMaintenanceMiddleware } = require('../../middleware/maintenance.middleware');
+const authService = require('../../modules/auth/auth.service');
+const authRepository = require('../../modules/auth/auth.repository');
 const config = require('../../config');
 
 test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp', async (t) => {
-  await t.test('1. Admin Priority Middleware tự động nhận diện và gắn cờ req.isAdmin = true cho route /api/admin', () => {
+  await t.test('1. Admin Priority Middleware KHÔNG tự động gắn cờ req.isAdmin = true cho route /api/admin khi chưa xác thực token', () => {
     const middleware = createAdminPriorityMiddleware();
     const req = { originalUrl: '/api/admin/totaluser', headers: {} };
     const res = {};
 
     middleware(req, res, () => {
-      assert.strictEqual(req.isAdmin, true, 'Request vào /api/admin phải được gắn req.isAdmin = true');
+      assert.strictEqual(req.isAdmin, false, 'Request vào /api/admin chưa xác thực token thì req.isAdmin phải là false');
     });
   });
 
@@ -297,18 +300,143 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     assert.strictEqual(reqWrong.isAdmin, false, 'Sai khóa khẩn cấp không được cấp isAdmin');
   });
 
-  await t.test('17. Route /api/auth/login được phép đi qua lớp bảo trì để tiếp nhận xác thực credentials', () => {
+  await t.test('17. Route POST /api/auth/login được phép đi qua lớp bảo trì; query string x=/auth/login hay method GET bị chặn 503', () => {
     const mgr = new MaintenanceManager();
     mgr.setMaintenance(true, 'Hệ thống bảo trì', 'admin-01');
     const middleware = createMaintenanceMiddleware({ manager: mgr });
-    const reqLogin = { originalUrl: '/api/auth/login', path: '/api/auth/login', headers: {}, isAdmin: false };
-    const res = {};
 
+    // 17a. POST /api/auth/login -> Được qua
+    const reqLogin = { originalUrl: '/api/auth/login', path: '/api/auth/login', method: 'POST', headers: {}, isAdmin: false };
     let passed = false;
-    middleware(reqLogin, res, () => {
-      passed = true;
-    });
-    assert.strictEqual(passed, true, '/api/auth/login được đi qua để controller & service kiểm tra credentials');
+    middleware(reqLogin, {}, () => { passed = true; });
+    assert.strictEqual(passed, true, 'POST /api/auth/login được đi qua');
+
+    // 17b. GET /api/auth/login -> Bị chặn 503
+    let getBlocked = false;
+    middleware({ originalUrl: '/api/auth/login', path: '/api/auth/login', method: 'GET', isAdmin: false }, {
+      setHeader: () => {},
+      status: (code) => {
+        if (code === 503) getBlocked = true;
+        return { json: () => {} };
+      }
+    }, () => {});
+    assert.strictEqual(getBlocked, true, 'GET /api/auth/login phải bị chặn 503');
+
+    // 17c. Query string lách bảo trì -> Bị chặn 503
+    let bypassBlocked = false;
+    middleware({ originalUrl: '/api/sync/push?x=/auth/login', path: '/api/sync/push', method: 'GET', isAdmin: false }, {
+      setHeader: () => {},
+      status: (code) => {
+        if (code === 503) bypassBlocked = true;
+        return { json: () => {} };
+      }
+    }, () => {});
+    assert.strictEqual(bypassBlocked, true, 'Lách query string ?x=/auth/login phải bị chặn 503');
+  });
+
+  await t.test('18. auth.service.login: Bảo trì BẬT + tài khoản User thường đúng mật khẩu -> Từ chối với 503 MAINTENANCE_MODE', async () => {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    defaultMaintenanceManager.setMaintenance(true, 'Bảo trì khẩn cấp', 'admin');
+    const hashed = await bcrypt.hash('CorrectPass123!', 4);
+    const userAcc = {
+      idaccount: 101,
+      username: 'test_user',
+      password: hashed,
+      status: 'Active',
+      idrole: 2,
+      role: { idrole: 2, rolename: 'user' },
+      User: { iduser: 101, fullname: 'Test User', email: 'test@example.com' },
+      delete_at: null,
+      countdown: null,
+    };
+
+    const origFind = authRepository.findAccountsByUsername;
+    authRepository.findAccountsByUsername = async () => [userAcc];
+
+    try {
+      await assert.rejects(
+        async () => {
+          await authService.login('test_user', 'CorrectPass123!');
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 503);
+          assert.strictEqual(err.code, 'MAINTENANCE_MODE');
+          return true;
+        }
+      );
+    } finally {
+      authRepository.findAccountsByUsername = origFind;
+      defaultMaintenanceManager.setMaintenance(false);
+    }
+  });
+
+  await t.test('19. auth.service.login: Bảo trì BẬT + tài khoản Admin đúng mật khẩu -> Cho phép đăng nhập thành công', async () => {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    defaultMaintenanceManager.setMaintenance(true, 'Bảo trì khẩn cấp', 'admin');
+    const hashed = await bcrypt.hash('CorrectPass123!', 4);
+    const adminAcc = {
+      idaccount: 1,
+      username: 'test_admin',
+      password: hashed,
+      status: 'Active',
+      idrole: 1,
+      role: { idrole: 1, rolename: 'admin' },
+      User: { iduser: 1, fullname: 'Test Admin', email: 'admin@example.com' },
+      delete_at: null,
+      countdown: null,
+    };
+
+    const origFind = authRepository.findAccountsByUsername;
+    const origSave = authRepository.saveRefreshToken;
+    authRepository.findAccountsByUsername = async () => [adminAcc];
+    authRepository.saveRefreshToken = async () => ({ idtoken: 1 });
+
+    try {
+      const res = await authService.login('test_admin', 'CorrectPass123!');
+      assert.ok(res.accessToken, 'Phải trả về accessToken cho Admin');
+      assert.ok(res.refreshToken, 'Phải trả về refreshToken cho Admin');
+      assert.strictEqual(res.user.idaccount, 1);
+      assert.strictEqual(res.user.rolename, 'admin');
+    } finally {
+      authRepository.findAccountsByUsername = origFind;
+      authRepository.saveRefreshToken = origSave;
+      defaultMaintenanceManager.setMaintenance(false);
+    }
+  });
+
+  await t.test('20. auth.service.login: Bảo trì BẬT + sai mật khẩu -> Trả về 401 (không làm lộ trạng thái bảo trì trước khi xác thực)', async () => {
+    const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    defaultMaintenanceManager.setMaintenance(true, 'Bảo trì khẩn cấp', 'admin');
+    const hashed = await bcrypt.hash('CorrectPass123!', 4);
+    const userAcc = {
+      idaccount: 101,
+      username: 'test_user',
+      password: hashed,
+      status: 'Active',
+      idrole: 2,
+      role: { idrole: 2, rolename: 'user' },
+      User: { iduser: 101, fullname: 'Test User', email: 'test@example.com' },
+      delete_at: null,
+      countdown: null,
+    };
+
+    const origFind = authRepository.findAccountsByUsername;
+    authRepository.findAccountsByUsername = async () => [userAcc];
+
+    try {
+      await assert.rejects(
+        async () => {
+          await authService.login('test_user', 'WrongPass!');
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 401);
+          return true;
+        }
+      );
+    } finally {
+      authRepository.findAccountsByUsername = origFind;
+      defaultMaintenanceManager.setMaintenance(false);
+    }
   });
 
   try {

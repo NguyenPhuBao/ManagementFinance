@@ -30,7 +30,7 @@ function createRetryGuardMiddleware(options = {}) {
 
   return function retryGuardMiddleware(req, res, next) {
     const url = req.originalUrl || req.path || '';
-    const isAdmin = req.isAdmin === true || url.startsWith('/api/admin');
+    const isAdmin = req.isAdmin === true;
     const isHealth = url.startsWith('/health');
     const isBankWebhook = url.startsWith('/api/bank/webhook');
 

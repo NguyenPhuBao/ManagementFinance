@@ -348,7 +348,7 @@ const authService = {
       }
       // Vẫn trong thời hạn 30 ngày → Cho phép đăng nhập và sử dụng tiếp
       logger.info("PendingDelete account logged in during grace period", { username: account.username, countdown: account.countdown });
-    } else if (account.status === 'Deleted' || account.delete_at !== null) {
+    } else if (account.status === 'Deleted' || Boolean(account.delete_at)) {
       throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), {
         statusCode: 403,
         code: 'ACCOUNT_DELETED',

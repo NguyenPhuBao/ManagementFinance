@@ -175,3 +175,23 @@ một ca **mật khẩu sai** lúc bảo trì → vẫn 401 (không lộ ra là 
 - **Admin-web:** sửa mục 3 thì đường `/api/admin/*` chỉ còn được ưu tiên khi kèm token admin hợp lệ — Admin-web vốn
   luôn gửi token, nên không đổi hành vi. Sửa mục 5 thì tên miền Vercel đang dùng phải nằm trong `CORS_ORIGIN`.
 - Client **không** đụng `src/Backend` — đơn này chỉ báo và đề nghị; backend chọn cách sửa.
+
+---
+
+## 9. Kết quả nghiệm thu thực tế (2026-10-05)
+
+Backend đã hoàn tất khắc phục trọn vẹn cả 6 điểm theo đúng đề xuất và vượt qua toàn bộ các tiêu chí kiểm tra:
+
+1. **Điểm 1 (Vá lách bảo trì):** Sửa `middleware/maintenance.middleware.js`, dùng `(req.originalUrl || req.path || '').split('?')[0]` và kiểm tra phương thức `req.method === 'POST'`. Lệnh đo CLI xác nhận chặn 503 thành công cho các URL có query string (`?x=/auth/login`).
+2. **Điểm 2 (Loại bỏ fallback `'secret'`):** Xóa bỏ triệt để chuỗi fallback `|| 'secret'` trong `admin-priority.middleware.js` và `rate-limiter.js`. Bổ sung kiểm tra `process.exit(1)` khi khởi động production thiếu `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` tại `config/index.js`.
+3. **Điểm 3 (Loại bỏ ưu tiên theo đường dẫn `/api/admin/*`):** Xóa bỏ gán `req.isAdmin = true` chưa xác thực tại `admin-priority.middleware.js`. Đồng bộ toàn bộ các middleware/core (`rate-limiter.js`, `load-shedding.middleware.js`, `retry-guard.middleware.js`, `db-bulkhead.js`, `aiops.quarantine.js`, `feature.collector.js`) kiểm tra chặt chẽ `req.isAdmin === true`.
+4. **Điểm 4 (Cắt tải không nhận diện nhầm test qua đường dẫn):** Bỏ kiểm tra `process.argv` tại `load-shedding.middleware.js`, chỉ dựa vào `NODE_ENV === 'test' || Boolean(NODE_TEST_CONTEXT)`.
+5. **Điểm 5 (Siết chặt CORS):** Giới hạn regex `localhost` / `127.0.0.1` chỉ có hiệu lực ở môi trường `NODE_ENV !== 'production'`.
+6. **Điểm 6 (Bổ sung Unit Test):** Đã bổ sung ca 18, 19, 20 cho `auth.service.login` trong `tests/unit/admin.priority.maintenance.test.js`.
+7. **Kết quả kiểm thử tự động:**
+   - `node --test tests/unit/admin.priority.maintenance.test.js`: **20/20 PASS** (toàn bộ 20 ca).
+   - `rtk npm test`: **220/220 PASS 100%**, 0 failed.
+   - `grep -rn "'secret'" middleware --include=*.js`: **0 dòng**.
+   - `grep -n "process.argv" middleware/load-shedding.middleware.js`: **0 dòng**.
+   - Chuyển trạng thái: **ĐÃ XONG 100%**.
+

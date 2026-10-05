@@ -726,5 +726,20 @@ Hệ thống thiết lập cơ chế bảo mật 2 đầu: **Đầu 1 (Tầng �
   * Backend sử dụng tiện ích `storage.util.js` sinh **Pre-Signed URL** có chữ ký bảo mật HMAC kèm thời hạn ngắn (15 - 30 phút).
   * URL sau khi hết thời hạn (TTL) sẽ tự động vô hiệu hóa, bảo vệ tuyệt đối chứng từ tài chính khỏi việc bị sao chép hoặc rò rỉ công khai.
 
+### 12.9. Bảo vệ Cấu Trúc CSDL PostgreSQL Supabase & Quy Trình Migration An Toàn (DB Safety Guard)
+* **CẤM TUYỆT ĐỐI** chạy các lệnh `prisma migrate dev` hoặc `prisma db push` trên CSDL Cloud Supabase hoặc môi trường Production.
+* **Nguyên nhân kỹ thuật cốt lõi:**
+  * Prisma Schema hiện tại không có cú pháp native hỗ trợ mệnh đề **Partial Index Filter** (ví dụ: `WHERE ("Delete_at" IS NULL)`).
+  * Khi chạy `prisma migrate dev` hoặc `prisma db push`, Prisma sẽ coi các index có điều kiện là sai lệch với schema, tự động chạy lệnh `DROP INDEX` và `CREATE UNIQUE INDEX` không có điều kiện `WHERE`. Điều này làm phá vỡ hoàn toàn cơ chế Soft-Delete (không thể tái sử dụng email/danh mục đã xóa mềm) và có thể làm rơi rụng các Triggers bảo mật (`trg_protect_auditlog`, `trg_protect_transaction`, `trg_check_phone_encrypted`, `trg_check_bank_account_encrypted`).
+* **Hàng rào bảo vệ kỹ thuật tự động (`db-guard.js`):**
+  * Toàn bộ các script Prisma trong `package.json` (`npm run prisma:migrate`, `npm run prisma:push`) đã được bọc qua script `src/Backend/scripts/db-guard.js`.
+  * Nếu phát hiện kết nối trỏ tới Supabase Cloud (`*.supabase.co`, `*.supabase.com`) hoặc `NODE_ENV === 'production'`, script sẽ lập tức chặn đứng với mã lỗi `1` và in ra hướng dẫn an toàn.
+* **Quy trình Migration chuẩn khi thay đổi Schema:**
+  1. Viết file script SQL DDL thuần vào thư mục `database/` hoặc `scripts/`.
+  2. Chạy migration an toàn trực tiếp qua Supabase Dashboard SQL Editor hoặc script thực thi có kiểm soát.
+  3. Cập nhật `prisma/schema.prisma` cho khớp với CSDL thực tế, sau đó chạy `rtk npm run prisma:generate` để cập nhật Prisma Client cho Backend.
+  4. Chạy `rtk npm run db:verify-indexes` để kiểm tra sức khỏe và tính toàn vẹn của toàn bộ Partial Indexes cùng Triggers.
+
+
 
 

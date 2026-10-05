@@ -68,6 +68,28 @@ const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
   },
+
+  payos: {
+    clientId: process.env.PAYOS_CLIENT_ID,
+    apiKey: process.env.PAYOS_API_KEY,
+    checksumKey: process.env.PAYOS_CHECKSUM_KEY,
+    returnUrl: process.env.PAYOS_RETURN_URL || 'https://management-finance.app/payment/success',
+    cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://management-finance.app/payment/cancel',
+  },
+
+  payment: {
+    premiumPriceVnd: parseInt(process.env.PREMIUM_PRICE_VND, 10) || 49000,
+    packageDurationDays: parseInt(process.env.PREMIUM_PACKAGE_DAYS, 10) || 30,
+  },
 };
+
+// Chốt chặn an ninh số (Data_Security.md & SOAT_SAU_GOP_B38367E):
+// Trong môi trường production, bắt buộc phải có JWT_ACCESS_SECRET và JWT_REFRESH_SECRET
+if (config.env === 'production') {
+  if (!config.jwt.accessSecret || !config.jwt.refreshSecret) {
+    console.error('\x1b[31m[SECURITY CRITICAL] Thiếu JWT_ACCESS_SECRET hoặc JWT_REFRESH_SECRET trong môi trường production. Từ chối khởi động.\x1b[0m');
+    process.exit(1);
+  }
+}
 
 module.exports = config;

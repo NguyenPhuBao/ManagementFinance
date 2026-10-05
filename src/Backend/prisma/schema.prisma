@@ -29,6 +29,7 @@ model account {
   type            String           @default("Basic") @db.VarChar(7) @map("Type")
   reason_inactive String?          @db.Text @map("Reason_Inactive")
   countdown       Int?             @map("Countdown")
+  premium_expires_at DateTime?        @db.Timestamp(6) @map("premium_expires_at")
   create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
@@ -45,6 +46,8 @@ model account {
   bill         bill[]
   goal         goal[]
   transaction  transaction[]
+  payment_order payment_order[]
+  payment_transaction payment_transaction[]
 
   @@index([idrole], map: "idx_account_role")
   @@index([username], map: "idx_account_username")
@@ -394,4 +397,49 @@ model aiops_setting {
   updated_at DateTime @default(now()) @db.Timestamp(6) @map("updated_at")
 
   @@map("aiops_setting")
+}
+
+/// Bảng đơn hàng thanh toán gói dịch vụ (2.14)
+model payment_order {
+  id                  String                @id @db.VarChar(36) @map("id")
+  idaccount           Int                   @map("idaccount")
+  order_code          BigInt                @unique @map("order_code")
+  package_type        String                @default("PREMIUM_1_MONTH") @db.VarChar(30) @map("package_type")
+  amount              Decimal               @default(49000.00) @db.Decimal(15, 2) @map("amount")
+  currency            String                @default("VND") @db.VarChar(3) @map("currency")
+  status              String                @default("PENDING") @db.VarChar(20) @map("status")
+  checkout_url        String?               @db.Text @map("checkout_url")
+  payment_link_id     String?               @db.VarChar(100) @map("payment_link_id")
+  created_at          DateTime              @default(now()) @db.Timestamp(6) @map("created_at")
+  paid_at             DateTime?             @db.Timestamp(6) @map("paid_at")
+  expired_at          DateTime?             @db.Timestamp(6) @map("expired_at")
+
+  account             account               @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_account")
+  payment_transaction payment_transaction[]
+
+  @@index([idaccount], map: "idx_payment_order_account")
+  @@index([status], map: "idx_payment_order_status")
+  @@index([order_code], map: "idx_payment_order_code")
+  @@map("payment_order")
+}
+
+/// Bảng nhật ký giao dịch đối soát Webhook PayOS (2.15)
+model payment_transaction {
+  id                   String        @id @db.VarChar(36) @map("id")
+  order_id             String        @db.VarChar(36) @map("order_id")
+  idaccount            Int           @map("idaccount")
+  payos_transaction_id String?       @db.VarChar(100) @map("payos_transaction_id")
+  amount               Decimal       @db.Decimal(15, 2) @map("amount")
+  bank_code            String?       @db.VarChar(50) @map("bank_code")
+  transaction_time     DateTime      @default(now()) @db.Timestamp(6) @map("transaction_time")
+  signature_verified   Boolean       @default(true) @map("signature_verified")
+  raw_webhook_hash     String?       @db.VarChar(256) @map("raw_webhook_hash")
+  created_at           DateTime      @default(now()) @db.Timestamp(6) @map("created_at")
+
+  order                payment_order @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_order")
+  account              account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_account")
+
+  @@index([order_id], map: "idx_payment_transaction_order")
+  @@index([idaccount], map: "idx_payment_transaction_account")
+  @@map("payment_transaction")
 }
