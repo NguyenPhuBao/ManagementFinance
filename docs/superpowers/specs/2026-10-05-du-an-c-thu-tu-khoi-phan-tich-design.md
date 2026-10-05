@@ -1,8 +1,9 @@
 # Dự án C, việc thứ ba — thứ tự khối trang Phân tích theo thói quen xem (mức *học*) — thiết kế
 
 **Ngày:** 2026-10-05. **Trạng thái:** thiết kế người dùng duyệt trong chat (bốn lượt AskUserQuestion: cách áp dụng điều
-học được, phần 1 — thứ người dùng thấy, phần 2 — luật học, phần 3 — cấu trúc và nghiệm thu); **bản viết chờ người dùng
-đọc lại — chưa có kế hoạch, chưa có mã**.
+học được, phần 1 — thứ người dùng thấy, phần 2 — luật học, phần 3 — cấu trúc và nghiệm thu); bản viết người dùng duyệt cùng
+ngày (*"ok duyệt"*); **kế hoạch 9 task** `docs/superpowers/plans/2026-10-05-du-an-c-thu-tu-khoi-phan-tich.md` (gitignore,
+khối 🔧 *"làm rõ lúc lập kế hoạch"* thắng chỗ tương ứng ở đây) — **chưa có mã**.
 
 Dự án C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người*. Việc đầu (gợi ý danh mục theo số tiền)
 xong 2026-10-02, việc hai (nhịp chi ngân sách) xong 2026-10-04. Đây là việc thứ ba; việc còn lại sau nó là *thông báo
