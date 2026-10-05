@@ -5,6 +5,20 @@
 `docs/superpowers/plans/2026-10-05-g63-vi-trung-ten-hai-may.md` (gitignore — khối 🔧 đầu tệp có **năm chỗ kế hoạch thắng
 spec này**); **Task 1–8 xong** (`f2a2f52` → `6a68d86`), còn Task 9–13 (giao diện, nghiệm thu, tài liệu).
 
+> ✅ **THI CÔNG XONG 2026-10-05 tối — G63 ĐÓNG** (`f2a2f52` → `614634f` + `2274a1f`, `3544cc4`). Nghiệm thu mục 10 trên
+> **hai máy ảo** cùng tài khoản thử 27 (người dùng chọn thay cặp máy thật) — đạt cả bốn bước. **Chỗ bản thi công khác bản
+> viết** (ngoài năm chỗ 🔧 của kế hoạch):
+> 1. **Stitch thắng bản nháp** (bốn màn người dùng xác nhận: thẻ `c5a2cece…`, hộp Gộp `303d12a1…`, hộp Đổi tên `5fea1834…`,
+>    dòng nhắc `5dd90541…`): mỗi cặp trùng nằm trong **hộp con** có nút Đổi tên / Gộp; số tiền in đậm; chấm đỏ `!` trên biểu
+>    tượng ví bị giữ; hộp Gộp có dấu "•", dòng *Số dư sau gộp* đậm, dòng cuối màu lỗi. Bo góc giữ quy ước sẵn của trang.
+> 2. Hàng tên + nhãn trên dòng ví là **`Wrap`**, không phải `Flexible` (mục 5.2 / bẫy 12): hai nhãn đã tràn 31 px ở 360 dp.
+> 3. **Bước 1b của `_collectPendingOps` cũng phải bỏ bản ghi bị giữ** (mục 4.4 chỉ nói các bước gửi bản ghi): thiếu là vòng
+>    đồng bộ nóng — 1b gửi kèm danh mục của giao dịch bị giữ ở mọi chu kỳ, xung đột không giãn cách, `sync.completed` đánh
+>    thức lại chính máy ấy (291 chu kỳ / 5 giây trên máy ảo).
+> 4. **Thả ví bị giữ phải làm mới giờ sửa** (mục 7 chỉ nói gỡ cờ + mốc chặn): `ThaViBiGiu` — gọi ở Đổi tên và ở engine cho
+>    ví mang cờ mà không còn cặp (`ViTrungTenNguon.viCanTha`). Thiếu là máy kia **không bao giờ kéo** bản ghi ghi lúc
+>    offline (giờ ghi cũ hơn mốc kéo về của nó). Ca chung → G67, đơn backend CAN-LAM 37.
+
 Mục **G63** của `docs/CLIENT_APP_KNOWN_GAPS.md` mở ngày 2026-10-03 và hoãn cùng ngày; ngày 2026-10-05 người dùng chọn
 làm. Bản này thi hành *phác thảo lối sửa* mà người dùng đã chọn từng điểm ở cuối mục ấy, và chốt những chỗ phác thảo còn
 để ngỏ.

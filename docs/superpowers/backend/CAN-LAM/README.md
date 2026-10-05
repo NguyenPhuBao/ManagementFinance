@@ -1,8 +1,9 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
+# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
 
-**Cập nhật:** 2026-10-05 (Client-app soát mục 35 sau gộp `main` @ `b38367e`: đạt cả bốn mục, đặt **mục 36** cho một lỗi lách lớp bảo trì + bốn chỗ nhẹ; mục 34 Client-app đã làm xong). Trước đó 2026-10-04: Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế.
+**Cập nhật:** 2026-10-05 tối (Client-app đặt **mục 37** — kéo về bỏ sót bản ghi đẩy muộn, đo khi nghiệm thu G63 trên hai máy ảo). Trước đó cùng ngày (Client-app soát mục 35 sau gộp `main` @ `b38367e`: đạt cả bốn mục, đặt **mục 36** cho một lỗi lách lớp bảo trì + bốn chỗ nhẹ; mục 34 Client-app đã làm xong). Trước đó 2026-10-04: Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế.
 
 > 📌 **HIỆN TRẠNG 2026-10-05:**
+> - **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`) — MỚI, chờ Backend, mức cao:** `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi lên server **muộn hơn giờ ghi** (máy offline lâu) rơi dưới mốc của máy khác và **không bao giờ** được kéo. Xin cột giờ-server riêng cho việc kéo; không đổi LWW.
 > - **Mục 36 (`SOAT_SAU_GOP_B38367E.md`) — MỚI, chờ Backend:** Client-app soát mã sau gộp `b38367e` (`node --test tests/unit/*.test.js` 166/166). Mục 35 đạt; còn **một lỗi mức vừa** — `maintenance.middleware.js` cho qua mọi URL **chứa** `/auth/login` kể cả trong query string (đo: `/api/sync/push?x=/auth/login` lọt khi bảo trì BẬT) — và bốn chỗ nhẹ (khoá dự phòng `'secret'`, `/api/admin/*` ưu tiên trước xác thực, cắt tải nhận môi trường test theo đường dẫn chứa `test`, CORS mở cho mọi project Vercel cùng tiền tố). Client-app không phải sửa gì.
 > - **Mục 34:** Client-app đã **làm xong** tính năng nhắc ghi (2026-10-03, nghiệm thu Realme bản debug + release) — có thể chuyển sang `DA-XONG/`.
 
@@ -12,10 +13,11 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **1** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
+## 0. Còn phải làm (Hiện tại: **2** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
+| **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](./KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Backend | Thêm cột giờ-server (`Server_update_at`, đặt `now()` ở mọi lần ghi) cho sáu bảng đồng bộ; `/sync/pull` lọc và trả theo cột ấy; giữ `update_at` cho LWW. Đo: máy A thiếu hai giao dịch của máy B (server có đủ). Client đổi mốc kéo về sau khi backend xong. | ⏳ Chờ Backend |
 | **36** | [SOAT_SAU_GOP_B38367E.md](./SOAT_SAU_GOP_B38367E.md) | Backend | Lớp bảo trì cho qua URL chứa `/auth/login` trong query (mức vừa, có lệnh đo lại ở mục 1 của đơn); khoá dự phòng `'secret'` + kiểm `JWT_ACCESS_SECRET` lúc khởi động; bỏ ưu tiên `/api/admin/*` trước xác thực; bỏ vế `process.argv` ở lớp cắt tải; thu hẹp CORS Vercel (tuỳ chọn); thêm test nhánh bảo trì của `auth.service`. | ⏳ Chờ Backend |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật). Client-app **đã làm xong** 2026-10-03 (10 task, nghiệm thu Realme debug + release). | ✅ Client xong — chờ chuyển `DA-XONG/` |
 

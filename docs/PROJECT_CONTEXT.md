@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-05)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-05 tối)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -1070,6 +1070,34 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
   `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
+### ✅ G63 đóng — ví trùng tên giữa hai máy (2026-10-05 tối)
+
+Trọn 14 task của kế hoạch (`f2a2f52` → `614634f`) + hai bản sửa do nghiệm thu bắt (`2274a1f`, `3544cc4`). Spec
+`docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md` (banner *thi công xong* + chỗ bản thi công khác bản
+viết); mục G63 `CLIENT_APP_KNOWN_GAPS.md`.
+
+- **Lõi** (Task 1–8): schema **v28** — cột **cục bộ** `wallets.bi_tu_choi_trung_ten` (payload ví vẫn 13 trường);
+  `ViTrungTenResolver` là bộ nghe thứ **hai** của `pushResultStream` (đặt cờ khi `WALLET_NAME_DUPLICATE` /
+  `UNIQUE_VIOLATION` trên ví); *bị giữ* = cờ ∧ còn ví sống khác cùng tên không mang cờ — **một** định nghĩa `capViTrungTen`
+  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon`; `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
+  mục tiêu / giao dịch dính tới nó; Sửa ví chỉ kiểm trùng tên khi tên đổi; kéo về có ví mặc định → máy chỉ còn một;
+  `GopViService` + kế hoạch thuần `keHoachGop` (một nguồn cho hộp xác nhận và thi hành).
+- **Giao diện** (Task 9–12, bốn màn Stitch người dùng xác nhận): thẻ **"VÍ TRÙNG TÊN"** đầu màn Quản lý ví
+  (`c5a2cece…`) — mỗi cặp một hộp con với **Đổi tên** (hộp `5fea1834…`, gợi ý *"‹tên› (2)"*) và **Gộp** (hộp `303d12a1…`,
+  in đúng dòng của kế hoạch); nhãn **CHƯA ĐỒNG BỘ** + chấm đỏ trên dòng ví — hàng tên + nhãn nay là **`Wrap`** (Stitch
+  cũng `flex-wrap`; `Flexible` không đủ, hai nhãn đã tràn 31 px ở 360 dp với font test); dòng nhắc Trang chủ có ✕
+  (`5dd90541…`), cờ ẩn `AnNhacViTrungTen` trong bộ nhớ, `AuthBloc` đặt lại khi đăng nhập.
+- **Nghiệm thu hai máy ảo** (`FlowMoney_16G` × 2, `-read-only`; tài khoản thử **27** `thug63` tạo qua `POST
+  /api/auth/register`; người dùng chọn) — đạt cả bốn bước spec mục 10. ⚠️ **Hai lỗi 5820 ca test mù:** (1) **vòng đồng bộ
+  nóng** — bước **1b** gửi kèm danh mục của giao dịch **bị giữ** ở mọi chu kỳ → xung đột (không lỗi, không giãn cách) →
+  `sync.completed` về chính máy ấy → `syncNow` → chạy bù: 291 chu kỳ / 5 giây; sửa: 1b bỏ giao dịch bị giữ. (2) **máy kia
+  kéo thiếu sau Đổi tên** — bản ghi ghi lúc offline rồi bị giữ lên server với giờ ghi cũ hơn mốc kéo về của máy kia; sửa
+  phần G63 bằng **`ThaViBiGiu`** (`wallet/data/services/tha_vi_bi_giu.dart`: gỡ cờ + mốc chặn, làm mới giờ sửa của ví và
+  bản ghi từng bị giữ — gọi ở Đổi tên và ở engine bước 0 cho ví mang cờ mà không còn cặp, `ViTrungTenNguon.viCanTha`).
+  Ca chung → **G67**, đơn backend **CAN-LAM 37** `KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`.
+- ⚠️ Bẫy đo: `uiautomator dump` gọi qua Git Bash cần `MSYS_NO_PATHCONV=1` — thiếu thì `/sdcard/ui.xml` thành đường dẫn
+  Windows và dump ra **rỗng, im lặng**. Hai máy ảo cùng một AVD chạy song song bằng `-read-only` (không lưu gì khi tắt).
+
 ### 🧹 Dọn ví trùng tên trên Realme + mở G63 (2026-10-03)
 
 Lượt đồng bộ đầu sau 11 ngày (đăng nhập lại khi nghiệm thu chia sẻ biên lai) báo **10 lỗi** — *"10 failed"* ghi từ 28/09.
@@ -1085,7 +1113,7 @@ server thắng**; dòng nhắc Trang chủ có ✕), spec `docs/superpowers/spec
 — người dùng duyệt bản viết; kế hoạch 14 task (gitignore). **Chiều cùng ngày: Task 1–8 xong** (`f2a2f52` → `6a68d86`):
 schema **v28** (cột cục bộ `wallets.bi_tu_choi_trung_ten`), `ViTrungTenResolver` (bộ nghe thứ hai của `pushResultStream`),
 `_collectPendingOps` có mục 0 *bản ghi bị giữ*, Sửa ví chỉ kiểm trùng tên khi tên đổi, kéo về chỉ còn một ví mặc định,
-`GopViService`. **Còn Task 9–13** (thẻ Gộp / Đổi tên, dòng nhắc Trang chủ, nghiệm thu hai máy, đóng G63). Khối trên là ảnh
+`GopViService`. **Còn Task 9–13** (thẻ Gộp / Đổi tên, dòng nhắc Trang chủ, nghiệm thu hai máy, đóng G63) — ✅ **xong tối cùng ngày**, khối *✅ G63 đóng* phía trên. Khối trên là ảnh
 chụp của ngày 03/10.
 
 ### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
