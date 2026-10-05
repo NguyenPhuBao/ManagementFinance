@@ -59,6 +59,7 @@ library;
 import '../../../core/category/category_name.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/so_bang_chu.dart';
+import 'chon.dart';
 import 'cong_cu.dart';
 import 'hang_muc_tieu.dart';
 import 'hang_tong_quan.dart';
@@ -104,6 +105,15 @@ final List<String> _tuGopVi = 'vi nao|theo vi'.split('|');
 final List<String> _tuChuyenTien =
     'chuyen tien|chuyen sang|chuyen khoan|chuyen vi|chuyen qua|chuyen den|chuyen vao'
         .split('|');
+
+/// Đường nhanh §4 (2026-10-04): *"chuyển … sang / vào / qua / đến ví"* — cụm chuyển
+/// KHÔNG liền (*"chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm"*, câu bộ đo khoá).
+/// [_tuChuyenTien] chỉ nhận cụm liền, nên câu ấy từng bị GỠ `chuyen_vi` Gemma điền đúng.
+final RegExp _mauChuyenSangVi =
+    RegExp(r'(?<![a-z0-9])chuyen(?![a-z0-9]).*(?<![a-z0-9])(?:sang|vao|qua|den) vi(?![a-z0-9])');
+
+bool _coChuyenTien(String q) =>
+    _tuChuyenTien.any((t) => _co(q, t)) || _mauChuyenSangVi.hasMatch(q);
 final List<String> _tuMoiNhat = 'lan gan nhat|lan cuoi|gan day|moi nhat|gan nhat'.split('|');
 /// Chữ kỳ — có cả *"đầu năm / đầu tháng / đầu tuần"* (E5 cổng E: *"kể từ đầu
 /// năm"* từng bị đọc là không nêu kỳ → `moi_luc`).
@@ -273,6 +283,16 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       ghi.add('câu hỏi nêu ví → vi=$w');
     }
   }
+  // 2d. Đường nhanh §4 (DC3): "danh mục X" mà X không phải tên thật, ô danh mục
+  // trống → điền X để tool TỪ CHỐI đúng lý do. Bỏ qua thì tool trả mọi khoản chi
+  // như thể câu không nêu danh mục.
+  if (_chuoi(a['danh_muc']) == null) {
+    final la = _tenSauDanhMuc(q);
+    if (la != null && _khop(la, bangDm) == null) {
+      a['danh_muc'] = la;
+      ghi.add('câu hỏi nêu danh mục lạ → danh_muc=$la');
+    }
+  }
   // 2c. G2 cổng F (C13): MẢNH của cụm ví trong câu ("vi tien" của "ví tiền
   // mặt") lọt vào danh_muc / tu_khoa, ô ví đã có tên thật → gỡ mảnh. Tên lạ
   // không phải mảnh ví ("abc", DC3) thì để tool từ chối như cũ.
@@ -289,7 +309,7 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       }
     }
   }
-  final coChuyenTien = _tuChuyenTien.any((t) => _co(q, t));
+  final coChuyenTien = _coChuyenTien(q);
   if (a['chieu'] == 'chuyen_vi' && !coChuyenTien) {
     final theoDongTu = _chieuTheoDongTu(q);
     if (theoDongTu != null) {
@@ -307,6 +327,11 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
       a['chieu'] = c;
       ghi.add('câu hỏi nói chiều → chieu=$c');
     }
+  }
+  // 3b. Đường nhanh §4 (C11): câu chuyển tiền mà chiều vẫn trống → chuyen_vi.
+  if (_chuoi(a['chieu']) == null && coChuyenTien) {
+    a['chieu'] = 'chuyen_vi';
+    ghi.add('câu hỏi chuyển tiền → chieu=chuyen_vi');
   }
 
   // 4. Ngưỡng của câu hỏi thắng.
@@ -382,10 +407,10 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
   }
 
   // 15. H3 cổng F lần 2 (E19): kỳ tương đối NÊU TRONG CÂU ("quý này") thắng ky của
-  // mô hình — cùng lý lẽ luật 4: câu hỏi là nguồn sự thật. Chỉ các mã "… này":
-  // câu nêu chúng thì không còn cách đọc nào khác.
+  // mô hình — cùng lý lẽ luật 4: câu hỏi là nguồn sự thật. Mã "… này", kỳ "trước"
+  // và "đầu …" (đường nhanh §4): câu nêu chúng thì không còn cách đọc nào khác.
   if (kyTuDo == null && soSanh == null && !tuongLai) {
-    final neu = _kyGocNeu(q);
+    final neu = _kyNeuTrongCau(q);
     if (neu != null && a['ky'] != neu) {
       a['ky'] = neu;
       ghi.add('câu hỏi nêu kỳ → ky=$neu');
@@ -621,7 +646,15 @@ final RegExp _mauDuBaoTheoNganSach = RegExp(
 /// Họ E (2026-10-04): số LOẠI đối tượng câu nhắc trong ngân sách / hoá đơn / mục
 /// tiêu. Từ hai trở lên là câu cần hai tool — luật một loại chỉ trả lời nửa câu.
 int _soLoaiDoiTuong(String q) =>
-    ['ngan sach', 'hoa don', 'muc tieu'].where((t) => _co(q, t)).length;
+    [_coNganSach(q), _co(q, 'hoa don'), _co(q, 'muc tieu')].where((c) => c).length;
+
+/// Họ G (2026-10-04, người dùng chốt): *"hạn mức"* là chữ của ngân sách — đo
+/// Realme *"trong hạn mức còn tiêu được bao nhiêu cho di chuyển"* đi phiên sáu
+/// tool, mô hình chọn gợi ý hạn mức và không nói số còn lại. Một định nghĩa cho
+/// mọi luật hỏi "câu này nói về ngân sách không". ⚠️ Hạn mức THẺ TÍN DỤNG không
+/// phải ngân sách của app.
+bool _coNganSach(String q) =>
+    _co(q, 'ngan sach') || (_co(q, 'han muc') && !_co(q, 'tin dung'));
 
 /// H2 cổng F lần 2 (B2): *"mỗi tháng tôi cần để dành bao nhiêu cho MuaXe"* — mô
 /// hình gọi `goi_y_han_muc` với danh_muc = tên mục tiêu rồi bị từ chối. Chữ
@@ -667,11 +700,11 @@ bool _coMot(String q, String ds) => ds.split('|').any((t) => _co(q, t));
 const String _tuNenDat = 'nen dat|nen de|nen la|la du|la vua|hop ly';
 
 bool _laCauGoiYHanMuc(String q) =>
-    (_co(q, 'ngan sach') && _coMot(q, _tuNenDat)) ||
+    (_coNganSach(q) && _coMot(q, _tuNenDat)) ||
     (_co(q, 'trung binh moi thang') && !_coMot(q, 'thu nhap|thu|luong'));
 
 bool _laCauNganSach(String q) =>
-    _co(q, 'ngan sach') &&
+    _coNganSach(q) &&
     !_coMot(q, _tuNenDat) &&
     _coMot(q, 'nao|con|sap het|bao nhieu|chua dung|vuot');
 
@@ -700,7 +733,7 @@ String? congCuTheoCauHoi(String cauHoi) {
   // Họ B2: tầng 2 của dự báo mang chữ "ngân sách" — xét trước khối ngân sách.
   if (_mauDuBaoTheoNganSach.hasMatch(q)) return kTenCongCuDuBao;
   final haiLoai = _soLoaiDoiTuong(q) >= 2;
-  if (_co(q, 'ngan sach')) {
+  if (_coNganSach(q)) {
     // Họ E: ngân sách + hoá đơn / mục tiêu → câu hai tool, phiên sáu tool.
     if (haiLoai) return null;
     // G4 cổng F (F15): câu CHUYỂN tiền giữa các ngân sách → tool ngân sách, phiên
@@ -713,8 +746,8 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_laCauGoiYHanMuc(q)) return kTenCongCuGoiYHanMuc;
   if (_laCauTrichMucTieu(q)) return kTenCongCuMucTieu;
   if (_mauCanTich.hasMatch(q)) return kTenCongCuMucTieu;
-  // Họ G: "hạn mức" là chữ của ngân sách — "trong hạn mức còn tiêu được" không
-  // phải câu dự báo.
+  // Họ G: câu "hạn mức" của app đã rẽ vào khối ngân sách ở trên; tới đây chỉ còn
+  // hạn mức THẺ TÍN DỤNG — không phải câu dự báo.
   if (!_co(q, 'han muc') && _mauDuBao.any((m) => m.hasMatch(q))) {
     return kTenCongCuDuBao;
   }
@@ -804,6 +837,23 @@ String? _kyGocNeu(String q) {
   return null;
 }
 
+/// Đường nhanh §4 (spec 2026-10-02, thi công 2026-10-04): kỳ tương đối NÊU trong
+/// câu cho luật 15 — mã "… này" của [_kyGocNeu] trước, rồi kỳ "trước", rồi "đầu …".
+/// Đường nhanh chạy tool với `{}`, nên kỳ chỉ còn đến từ đây: thiếu mã là tool từ
+/// chối "thiếu kỳ". ⚠️ Không dùng cho kỳ GỐC của câu so sánh (12b) — ở đó "tháng
+/// trước" là kỳ đem ra so, không phải kỳ đang hỏi.
+String? _kyNeuTrongCau(String q) {
+  final nay = _kyGocNeu(q);
+  if (nay != null) return nay;
+  for (final ma in ['hom_qua', 'tuan_truoc', 'thang_truoc']) {
+    if (_co(q, ma)) return ma;
+  }
+  for (final (cum, ma) in [('dau nam', 'nam_nay'), ('dau thang', 'thang_nay'), ('dau tuan', 'tuan_nay')]) {
+    if (_co(q, cum)) return ma;
+  }
+  return null;
+}
+
 /// Phép chọn trong câu: "nhiều / lớn / cao … nhất" → `nhieu_nhat` (thắng khi câu
 /// có cả hai); "ít / nhỏ / thấp … nhất" → `it_nhat`, TRỪ khi ngay sau là một số
 /// tiền — *"ít nhất 200k"* là ngưỡng của luật 4, không phải chọn.
@@ -833,7 +883,10 @@ bool _coCaHaiChieu(String q0) {
 final List<String> _tuDuoiNua =
     'chua dung den mot nua|duoi nua|chua den nua|duoi mot nua|chua toi nua'.split('|');
 final List<String> _tuTrenNua = 'qua nua|hon nua|tren nua'.split('|');
-final List<String> _tuNganSachCang = 'sap het|cang nhat|dung nhieu nhat|vuot'.split('|');
+final List<String> _tuNganSachCang = 'cang nhat|dung nhieu nhat'.split('|');
+/// G2 (Realme 2026-10-04): *"sắp hết / vượt"* hỏi ngưỡng cảnh báo, không hỏi ngân
+/// sách dùng nhiều nhất — mã nội bộ [kChonSapHet].
+final List<String> _tuNganSachSapHet = 'sap het|vuot'.split('|');
 final List<String> _tuNganSachRong = 'it dung nhat|con nhieu nhat|dung it nhat'.split('|');
 /// Lát 3 Task 11: hỏi CHUYỂN tiền giữa các ngân sách → `can_doi`, xét trước mọi
 /// mã khác (F15 *"nên chuyển bớt ngân sách nào sang ngân sách nào"* không có chữ
@@ -859,6 +912,8 @@ KetQuaChinhThamSo chinhThamSoNganSach(String cauHoi, Map<String, dynamic> args) 
     chon = 'duoi_nua';
   } else if (_tuTrenNua.any((t) => _co(q, t))) {
     chon = 'tren_nua';
+  } else if (_tuNganSachSapHet.any((t) => _co(q, t))) {
+    chon = kChonSapHet;
   } else if (_tuNganSachCang.any((t) => _co(q, t))) {
     chon = 'nhieu_nhat';
   } else if (_tuNganSachRong.any((t) => _co(q, t))) {
@@ -997,6 +1052,37 @@ final RegExp _mauGhiChu = RegExp(r'(?<![a-z0-9])ghi chu\s+(.+)$');
 final RegExp _duoiCauHoi =
     RegExp(r'\s+(khong|nao|la gi|gi|la|thang|tuan|nam|quy|hom|trong|cua)(\s.*)?$');
 
+/// Chữ đứng ngay sau "danh mục" (tối đa ba âm tiết; dừng ở chữ chức năng / kỳ /
+/// chiều / chữ số) — `null` khi không có (*"danh mục nào"*, *"theo danh mục"*).
+/// ⚠️ Tên chỉ nhận khi đứng CUỐI câu hoặc ngay trước chữ kỳ / "của": bản đầu đọc
+/// "thế" của *"danh mục thế nào"* thành tên lạ, và luật chạy ở cả đường cũ nên câu
+/// hợp lệ bị tool từ chối. Hai chuỗi tách lúc chạy (test quét 14).
+final Set<String> _dungSauDanhMuc = ('nao|gi|cua|cho|trong|tu|den|thang|tuan|nam|quy|hom|nay|'
+        'khong|la|co|duoc|nhieu|it|lon|nho|nhat|chi|thu|tieu|khoan|vi|ma|va|hay|thi|'
+        'the|nhu|sao|ra|khac|do|ay|kia|moi|bao|nhung|cac|tat|ca')
+    .split('|')
+    .toSet();
+final Set<String> _chuSauTenDanhMuc =
+    'thang|tuan|nam|quy|hom|tu|den|trong|nay|cua'.split('|').toSet();
+
+String? _tenSauDanhMuc(String q) {
+  final m = RegExp(r'(?<![a-z0-9])danh muc\s+(.+)$').firstMatch(q);
+  if (m == null) return null;
+  final tu = [
+    for (final t in m.group(1)!.split(RegExp(r'\s+')))
+      if (t.replaceAll(RegExp(r'[^a-z0-9]'), '').isNotEmpty) t.replaceAll(RegExp(r'[^a-z0-9]'), ''),
+  ];
+  final ten = <String>[];
+  var i = 0;
+  for (; i < tu.length && ten.length < 3; i++) {
+    if (_dungSauDanhMuc.contains(tu[i]) || RegExp(r'^\d').hasMatch(tu[i])) break;
+    ten.add(tu[i]);
+  }
+  if (ten.isEmpty) return null;
+  if (i < tu.length && !_chuSauTenDanhMuc.contains(tu[i])) return null;
+  return ten.join(' ');
+}
+
 /// Chữ đứng sau "ghi chú" trong câu hỏi (đã bỏ dấu), cắt bỏ đuôi câu hỏi
 /// ("… hoa don khong" → "hoa don"); `null` khi câu không nói ghi chú.
 String? _sauGhiChu(String q) {
@@ -1074,3 +1160,18 @@ bool _coSoTien(String q) {
 bool _cuoi(String chuoi, String cum) =>
     RegExp('(?<![a-z0-9])${RegExp.escape(cum)}\$').hasMatch(chuoi);
 
+
+/// Đường nhanh (spec 2026-10-02 §3.2): luật đọc ĐỦ tham số để chạy tool giao dịch
+/// không cần Gemma điền — khi luật biết CHIỀU: động từ chiều, câu nói cả thu lẫn
+/// chi, câu chuyển tiền, hoặc câu tự nói trung tính bằng chữ "giao dịch". Kỳ không
+/// nằm trong điều kiện: không nêu kỳ → mọi thời gian; kỳ chưa tới thì tool từ chối
+/// và vòng lặp về đường cũ. ⚠️ "khoản" trơn KHÔNG đủ (đứng cả trong "khoản thu",
+/// "khoản vay"); động từ lạ ("ngốn", "xài", "trả") → `false` — để Gemma điền.
+bool docDuThamSoGiaoDich(String cauHoi) {
+  final q = _bo(cauHoi);
+  if (q.isEmpty) return false;
+  return _chieuTheoDongTu(q) != null ||
+      _coCaHaiChieu(q) ||
+      _coChuyenTien(q) ||
+      _co(q, 'giao dich');
+}

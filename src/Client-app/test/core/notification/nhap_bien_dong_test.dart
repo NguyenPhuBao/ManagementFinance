@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 String? _nguonGia(String goi) => switch (goi) {
       'goi.mb' => kNguonMb,
       'goi.bidv' => kNguonBidv,
+      'goi.momo' => kNguonMomo,
       _ => null,
     };
 
@@ -66,20 +67,63 @@ void main() {
   });
 
   group('khoá trùng và phép gộp', () {
-    test('có mã GD → bienDong:<mã>; không mã → bienDong:<nguồn>|<tiền>|<chiều>|<phút>', () {
+    test('có mã GD → bienDong:<mã>; không mã, không vân tay → bienDong:<nguồn>|<tiền>|<chiều>|<giây>', () {
       expect(dedupeKeyBienDong(_tin(ma: 'ACSP/ 9l191181')), 'bienDong:ACSP/ 9l191181');
-      expect(dedupeKeyBienDong(_tin()), 'bienDong:MB Bank|1200000|thu|2026-09-02T15:33');
+      expect(dedupeKeyBienDong(_tin()), 'bienDong:MB Bank|1200000|thu|2026-09-02T15:33:00');
     });
-    test('⭐ cùng mã → trùng; cùng tiền + chiều cách ≤ 5 phút → trùng; 6 phút / khác chiều → không', () {
+    test('⭐ hai tin MoMo CÙNG PHÚT, cùng số tiền → hai khoá khác nhau (insertAllIfAbsent không bỏ hàng thứ hai)', () {
+      final a = dedupeKeyBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48, 10)));
+      final b = dedupeKeyBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48, 40)));
+      expect(a, isNot(b));
+    });
+    test('deeplink mang khoá thông báo đã băm (kt) và dauTuDeeplink đọc ngược nguồn, khoá, loại hàng', () {
+      final d = deeplinkBienDong(_tin(nguon: kNguonMomo), dedupeKey: 'k', khoaTin: '0|goi.momo|7|null|0');
+      final kt = Uri.parse(d).queryParameters['kt'];
+      expect(kt, isNotNull);
+      expect(kt, isNot(contains('goi.momo')), reason: 'khoá thông báo được băm, không nằm trần trong CSDL');
+      final dau = dauTuDeeplink(d, maGiaoDich: null)!;
+      expect((dau.nguon, dau.khoaTin, dau.tuTin), (kNguonMomo, kt, true));
+      final bienLai = dauTuDeeplink('$d&doc=chung', maGiaoDich: null)!;
+      expect(bienLai.tuTin, isFalse, reason: '`doc` có mặt ⇔ số liệu của hàng đọc từ ẢNH biên lai');
+    });
+    test('⭐ cùng mã → trùng; HAI KÊNH cùng tiền + chiều cách ≤ 5 phút → trùng; 6 phút / khác chiều → không', () {
       final a = dauBienDong(_tin(ma: 'M1'));
       expect(trungBienDong(a, dauBienDong(_tin(soTien: 5, chieu: 'chi', ma: 'M1'))), isTrue,
           reason: 'mã GD thắng mọi trường khác');
+      // Cửa sổ 5 phút là để gộp HAI KÊNH báo cùng một giao dịch (SMS + app) — nên bên kia là nguồn khác.
       final goc = dauBienDong(_tin(luc: DateTime(2026, 9, 2, 15, 33)));
-      expect(trungBienDong(goc, dauBienDong(_tin(luc: DateTime(2026, 9, 2, 15, 38)))), isTrue);
-      expect(trungBienDong(goc, dauBienDong(_tin(luc: DateTime(2026, 9, 2, 15, 28)))), isTrue, reason: 'hai chiều');
-      expect(trungBienDong(goc, dauBienDong(_tin(luc: DateTime(2026, 9, 2, 15, 39)))), isFalse);
-      expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi'))), isFalse);
-      expect(trungBienDong(goc, dauBienDong(_tin(soTien: 1200001))), isFalse);
+      DauBienDong sms({DateTime? luc, String chieu = 'thu', double soTien = 1200000}) =>
+          dauBienDong(_tin(nguon: kNguonSms, luc: luc, chieu: chieu, soTien: soTien));
+      expect(trungBienDong(goc, sms(luc: DateTime(2026, 9, 2, 15, 38))), isTrue);
+      expect(trungBienDong(goc, sms(luc: DateTime(2026, 9, 2, 15, 28))), isTrue, reason: 'hai chiều');
+      expect(trungBienDong(goc, sms(luc: DateTime(2026, 9, 2, 15, 39))), isFalse);
+      expect(trungBienDong(goc, sms(chieu: 'chi')), isFalse);
+      expect(trungBienDong(goc, sms(soTien: 1200001)), isFalse);
+    });
+    test('⭐ hai TIN của CÙNG app, không mã, không số dư (MoMo) → hai giao dịch, trừ khi là cùng thông báo đăng lại',
+        () {
+      // Người dùng báo 2026-10-05: hai khoản MoMo đến liên tiếp, app chỉ bắt được một. Tin MoMo không mang mã GD
+      // lẫn số dư, nên cửa sổ 5 phút (dành cho hai KÊNH) gộp hai lần nhận tiền cùng số tiền làm một.
+      DauBienDong momo(DateTime luc, {String? khoa}) =>
+          dauBienDong(_tin(nguon: kNguonMomo, luc: luc), khoaTin: khoa);
+      final goc = momo(DateTime(2026, 10, 5, 8, 48, 10), khoa: 'k1');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 49, 30), khoa: 'k2')), isFalse,
+          reason: 'hai thông báo khác nhau của cùng app cách 80 giây là hai giao dịch thật');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 48, 15), khoa: 'k2')), isFalse,
+          reason: 'khoá thông báo khác nhau → hai thông báo → hai giao dịch, dù chỉ cách 5 giây');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 48, 14), khoa: 'k1')), isTrue,
+          reason: 'cùng khoá trong vài giây = app đăng lại / cập nhật chính thông báo ấy');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 50, 10), khoa: 'k1')), isFalse,
+          reason: 'app dùng lại một id thông báo cho mọi tin thì cùng khoá chưa đủ — cách 2 phút là giao dịch mới');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 48, 15))), isTrue,
+          reason: 'hàng cũ không mang khoá → chỉ cửa sổ ngắn');
+      expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 49, 10))), isFalse);
+    });
+    test('biên lai (không phải tin) so với tin cùng nguồn vẫn dùng cửa sổ 5 phút — để ghép ảnh vào hàng tin', () {
+      final tin = dauBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48, 37)), khoaTin: 'k1');
+      final bienLai = dauBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48)), tuTin: false);
+      expect(trungBienDong(tin, bienLai), isTrue);
+      expect(trungBienDong(bienLai, tin), isTrue);
     });
     test('⭐ vân tay số dư KHÁC nhau → không trùng dù cùng tiền + chiều cách 4 phút; cùng vân tay → trùng', () {
       final goc = dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 17), vt: 'aaa'));
@@ -88,7 +132,10 @@ void main() {
           reason: 'đo Realme 2026-09-30: hai lần chuyển −10.000 đ thật, khoản 19:21 bị gộp vào 19:17 và MẤT');
       expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 18), vt: 'aaa'))),
           isTrue, reason: 'cùng số dư sau GD = cùng giao dịch (SMS + app)');
-      expect(trungBienDong(goc, dauBienDong(_tin(chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 19)))), isTrue,
+      expect(
+          trungBienDong(
+              goc, dauBienDong(_tin(nguon: kNguonSms, chieu: 'chi', luc: DateTime(2026, 9, 30, 19, 19)))),
+          isTrue,
           reason: 'một bên không có số dư (nguồn khác khuôn) → giữ luật cửa sổ 5 phút');
     });
     test('⭐ khoá không mã GD mang vân tay khi có → hai giao dịch CÙNG PHÚT khác số dư không đè nhau', () {
@@ -206,6 +253,24 @@ void main() {
       expect(await nhap.nhap(7), 3);
       expect((await hang()).map((h) => h.title).toList(),
           everyElement(anyOf('+1.200.000 đ · MB Bank', '+50.000 đ · MB Bank')));
+    });
+
+    test('⭐ báo lỗi 2026-10-05: hai lần nhận 10.000 đ qua MoMo liên tiếp → HAI hàng, cả trong lô lẫn khác lượt',
+        () async {
+      String momo(DateTime luc, String khoa) => _dong(
+          goi: 'goi.momo',
+          tieuDe: 'Nhận chuyển khoản từ NGUYEN VAN A',
+          noiDung: 'Số tiền 10.000 ₫ đã được chuyển vào Ví. Lời nhắn: "chuyen tien"',
+          luc: luc,
+          khoa: khoa);
+      await ghiTep([momo(DateTime(2026, 9, 2, 15, 48, 10), '0|goi.momo|1|null|0'),
+        momo(DateTime(2026, 9, 2, 15, 48, 40), '0|goi.momo|2|null|0')]);
+      expect(await nhap.nhap(7), 2, reason: 'cùng tiền, cùng chiều, cùng phút — nhưng hai thông báo khác nhau');
+      await ghiTep([momo(DateTime(2026, 9, 2, 15, 50), '0|goi.momo|3|null|0')]);
+      expect(await nhap.nhap(7), 1, reason: 'khác lượt nhập: so với hàng đã có cũng không được gộp');
+      await ghiTep([momo(DateTime(2026, 9, 2, 15, 50, 3), '0|goi.momo|3|null|0')]);
+      expect(await nhap.nhap(7), 0, reason: 'cùng thông báo app đăng lại vài giây sau → một giao dịch');
+      expect((await hang()).length, 3);
     });
 
     test('⭐ sự cố Realme 2026-09-30: hai lần chuyển −10.000 đ khác số dư → HAI hàng, cả trong lô lẫn khác lượt',

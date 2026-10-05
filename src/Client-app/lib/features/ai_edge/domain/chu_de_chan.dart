@@ -7,8 +7,10 @@
 /// chủ đề ấy gây thiệt hại thật.
 ///
 /// ⚠️ So **có dấu** (quy tắc 7 `CLAUDE.md`): bỏ dấu gộp "đầu tư" với "đầu
-/// tuần" và từ chối một câu hỏi hợp lệ.
+/// tuần" và từ chối một câu hỏi hợp lệ. (Ngoại lệ có lý do: câu định nghĩa, họ D.)
 library;
+
+import '../../../core/category/category_name.dart';
 
 const String kCauTuChoi =
     'Mình chỉ nhận xét được trên số liệu của bạn trong app.';
@@ -54,7 +56,34 @@ const List<String> _tuKhoaChanKhongDau = [
   'bong da',
 ];
 
+/// Họ D (2026-10-04, người dùng chốt): câu ĐỊNH NGHĨA / CÁCH TÍNH chung — *"dòng
+/// tiền tự do là gì"*, *"thuế thu nhập cá nhân tính thế nào"*. Đo Realme: không
+/// tool nào nhận nó, mô hình không gọi tool, bậc 1 trả lời lạc đề sau 45 s.
+///
+/// ⚠️ Đuôi *"là gì"* một mình KHÔNG đủ: *"khoản chi lớn nhất tháng này là gì"*
+/// (C18) là câu số liệu. Nên phần TRƯỚC đuôi phải không mang dấu hiệu số liệu
+/// riêng nào. Chữ số cố ý không tính — *"quy tắc 50 30 20"* là quy tắc chung.
+/// So KHÔNG dấu được ở đây (khác danh sách trên) vì cụm đuôi bỏ dấu vẫn một
+/// nghĩa, và người dùng gõ không dấu.
+final RegExp _mauDuoiDinhNghia = RegExp(
+    r'(?<![a-z0-9])(?:nghia la gi|la gi|tinh nhu the nao|tinh the nao|cach tinh)'
+    r'(?: (?:vay|the|a|nhi|ha))?$');
+
+final RegExp _mauSoLieuRieng = RegExp(
+    r'(?<![a-z0-9])(?:toi|minh|thang|tuan|nam nay|nam ngoai|hom|ngay|nhat|khoan'
+    r'|giao dich|nao|sap toi)(?![a-z0-9])');
+
+bool _laCauDinhNghiaChung(String cauHoi) {
+  final q = removeVietnameseTones(normalizeCategoryName(cauHoi))
+      .replaceAll(RegExp(r'[?!.]+\s*$'), '')
+      .trim();
+  final m = _mauDuoiDinhNghia.firstMatch(q);
+  return m != null && !_mauSoLieuRieng.hasMatch(q.substring(0, m.start));
+}
+
 bool chuDeBiChan(String cauHoi) {
   final s = cauHoi.toLowerCase();
-  return _tuKhoaChan.any(s.contains) || _tuKhoaChanKhongDau.any(s.contains);
+  return _tuKhoaChan.any(s.contains) ||
+      _tuKhoaChanKhongDau.any(s.contains) ||
+      _laCauDinhNghiaChung(cauHoi);
 }

@@ -317,10 +317,15 @@ void main() {
   });
 
   group('chinhThamSoNganSach', () {
-    test('⭐ E18 "chua dung den mot nua" → duoi_nua; "qua nua" → tren_nua; "sap het" → nhieu_nhat; không từ khoá → giữ', () {
+    test('⭐ E18 "chua dung den mot nua" → duoi_nua; "qua nua" → tren_nua; "sap het" / "vuot" → sap_het; "dung nhieu nhat" → nhieu_nhat; không từ khoá → giữ', () {
       expect(chinhThamSoNganSach('ngan sach nao toi chua dung den mot nua', {}).args['chon'], 'duoi_nua');
       expect(chinhThamSoNganSach('ngan sach nao da qua nua', {}).args['chon'], 'tren_nua');
-      expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'nhieu_nhat');
+      // G2 (Realme 2026-10-04, người dùng chốt): "sắp hết" là NGƯỠNG CẢNH BÁO của từng
+      // ngân sách, không phải "ngân sách dùng nhiều nhất" — Ăn uống 2 % từng được kể.
+      expect(chinhThamSoNganSach('ngan sach nao sap het', {'chon': 'it_nhat'}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('han muc nao sap het', {'chon': 'can_doi'}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('ngan sach nao bi vuot', {}).args['chon'], 'sap_het');
+      expect(chinhThamSoNganSach('ngan sach nao dung nhieu nhat', {}).args['chon'], 'nhieu_nhat');
       expect(chinhThamSoNganSach('ngan sach nao it dung nhat', {}).args['chon'], 'it_nhat');
       expect(chinhThamSoNganSach('con bao nhieu tien ngan sach', {'chon': 'duoi_nua'}).args.containsKey('chon'), isFalse,
           reason: 'luật 10 (E10 cổng E): mô hình điền duoi_nua cho "ngân sách ăn uống còn lại bao nhiêu" — không bằng chứng → gỡ');
@@ -346,7 +351,7 @@ void main() {
     ]) {
       expect(chinhThamSoNganSach(cau, {'chon': 'nhieu_nhat'}).args['chon'], 'can_doi', reason: cau);
     }
-    expect(chinhThamSoNganSach('ngan sach nao sap het', {}).args['chon'], 'nhieu_nhat',
+    expect(chinhThamSoNganSach('ngan sach nao sap het', {}).args['chon'], 'sap_het',
         reason: 'phản ví dụ: hỏi tỉ lệ, không hỏi chuyển');
   });
 
@@ -1008,6 +1013,165 @@ void main() {
           isNot(kTenCongCuDuBao));
       // phản ví dụ: "còn tiêu được" không nhắc hạn mức vẫn là dự báo
       expect(congCuTheoCauHoi('thang nay toi con tieu duoc bao nhieu'), kTenCongCuDuBao);
+    });
+
+    // Người dùng chốt 2026-10-04: "hạn mức" là chữ của ngân sách. Đo Realme câu
+    // "trong hạn mức … còn tiêu được bao nhiêu cho di chuyển" đi phiên sáu tool, mô
+    // hình chọn goi_y_han_muc và không nói số còn lại.
+    test('G: "hạn mức" đọc như "ngân sách" — cùng hai luật ngân sách / gợi ý hạn mức', () {
+      for (final c in [
+        'trong han muc toi con tieu duoc bao nhieu cho di chuyen',
+        'han muc nao sap het',
+        'han muc an uong con lai bao nhieu',
+        'Hạn mức giải trí còn lại là bao nhiêu?',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuNganSach, reason: c);
+      }
+      for (final c in [
+        'toi nen dat han muc bao nhieu cho y te',
+        'han muc hop ly cho an uong la bao nhieu',
+      ]) {
+        expect(congCuTheoCauHoi(c), kTenCongCuGoiYHanMuc, reason: c);
+      }
+      // phản ví dụ: hạn mức + hoá đơn là câu hai loại (họ E) → phiên sáu tool
+      expect(congCuTheoCauHoi('han muc va hoa don cua toi the nao'), isNull);
+      // phản ví dụ: hạn mức THẺ TÍN DỤNG không phải ngân sách của app
+      expect(congCuTheoCauHoi('han muc the tin dung cua toi con bao nhieu'),
+          isNot(kTenCongCuNganSach));
+    });
+  });
+
+  // Đường nhanh §4 (spec 2026-10-02): tool chạy với {} nên kỳ chỉ còn đến từ bộ chỉnh.
+  // A9 · C2 · C5 · C6 · E5 từng để trống ky → tool từ chối "thiếu kỳ".
+  group('24. đường nhanh §4 — kỳ "trước" và "đầu …" nêu trong câu (luật 15)', () {
+    test('⭐ args rỗng: câu nêu kỳ "trước" → mã kỳ ấy', () {
+      expect(chinh('hom qua toi da chi nhung gi', {})['ky'], 'hom_qua'); // C2
+      expect(chinh('tuan truoc toi da tieu nhung khoan nao', {})['ky'], 'tuan_truoc'); // C5
+      expect(chinh('Thang truoc toi chi bao nhieu?', {})['ky'], 'thang_truoc'); // A9
+      expect(chinh('thang truoc toi co khoan chi nao tren 1 trieu khong', {})['ky'], 'thang_truoc'); // C6
+    });
+    test('⭐ "đầu năm / đầu tháng / đầu tuần" → kỳ "… này"', () {
+      expect(chinh('Ke tu dau nam toi da chi cho giai tri tong cong bao nhieu?', {})['ky'], 'nam_nay'); // E5
+      expect(chinh('chi tieu dau thang the nao', {})['ky'], 'thang_nay');
+      expect(chinh('chi tieu dau tuan the nao', {})['ky'], 'tuan_nay');
+    });
+    test('kỳ nêu trong câu thắng kỳ mô hình điền', () {
+      expect(chinh('hom qua toi da chi nhung gi', {'ky': 'hom_nay'})['ky'], 'hom_qua');
+    });
+    test('phản ví dụ: câu SO SÁNH giữ luật 12 — kỳ gốc "tháng này", "tháng trước" đi so_voi', () {
+      final r = chinh('thang nay chi nhieu hon hay it hon thang truoc', {});
+      expect(r['ky'], 'thang_nay');
+      expect(r['so_voi'], 'ky_truoc');
+    });
+    test('phản ví dụ: kỳ cụ thể (luật 11) và "… này" như cũ', () {
+      expect(chinh('tu 1/9 den 15/9 toi chi nhung gi', {})['ky'], 'tuy_chon');
+      expect(chinh('dau thang nay toi chi bao nhieu', {})['ky'], 'thang_nay');
+      expect(chinh('quy nay toi chi bao nhieu', {})['ky'], 'quy_nay');
+    });
+  });
+
+  group('25. đường nhanh §4 — chiều chuyển ví, tên lạ sau "danh mục"', () {
+    test('⭐ C11: câu chuyển tiền, chiều trống → chuyen_vi', () {
+      expect(chinh('thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao', {})['chieu'],
+          'chuyen_vi');
+    });
+    // ⚠️ Lệch spec có chủ ý: spec mục 4 dựa trên cụm chuyển LIỀN (`_tuChuyenTien`), mà
+    // câu bộ đo khoá này không có cụm liền nào — luật như spec viết không chữa được nó.
+    test('⭐ "chuyển … sang ví" (cụm không liền) là chuyển tiền — Gemma điền chuyen_vi thì GIỮ', () {
+      const cau = 'Tôi đã chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm trong tháng này?';
+      expect(chinh(cau, {})['chieu'], 'chuyen_vi');
+      expect(chinh(cau, {'chieu': 'chuyen_vi'})['chieu'], 'chuyen_vi',
+          reason: 'bản cũ gỡ chuyen_vi vì không thấy cụm chuyển tiền liền');
+    });
+    test('phản ví dụ: động từ chiều đứng trước — trả qua chuyển khoản vẫn là chi', () {
+      expect(chinh('thang nay toi chi bao nhieu qua chuyen khoan', {})['chieu'], 'khoan_chi');
+    });
+    test('⭐ DC3: "danh mục abc" không phải tên thật → danh_muc=abc (tool từ chối đúng lý do)', () {
+      expect(chinh('cac khoan chi cho danh muc abc thang nay', {})['danh_muc'], 'abc');
+    });
+    test('phản ví dụ: "danh mục nào", "theo danh mục", tên thật — không điền bừa', () {
+      expect(chinh('Thang nay toi chi nhieu nhat vao danh muc nao?', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('cac danh muc thu nhap cua toi', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('liet ke theo danh muc thang nay', {}).containsKey('danh_muc'), isFalse);
+      expect(chinh('cac khoan chi cho danh muc an uong thang nay', {})['danh_muc'], 'Ăn uống');
+    });
+    // Bản đầu đọc "thế" của "thế nào" thành tên danh mục lạ — câu hợp lệ bị tool từ
+    // chối ở CẢ đường cũ (luật chạy sau Gemma). Tên lạ chỉ nhận khi đứng cuối câu hoặc
+    // ngay trước chữ kỳ / "của".
+    test('phản ví dụ: chữ hỏi / chữ chỉ định sau "danh mục" không phải tên', () {
+      for (final c in [
+        'thang nay chi theo danh muc the nao',
+        'chi tieu theo danh muc nhu the nao',
+        'cac danh muc khac thang nay chi bao nhieu',
+        'danh muc ton nhieu tien nhat thang nay',
+      ]) {
+        expect(chinh(c, {}).containsKey('danh_muc'), isFalse, reason: c);
+      }
+      expect(chinh('cac khoan chi cho danh muc qua tang', {})['danh_muc'], 'qua tang',
+          reason: 'tên lạ đứng cuối câu vẫn nhận');
+    });
+  });
+
+  // Spec §3.2: đúng khi luật biết CHIỀU — động từ chiều, cả thu lẫn chi, chuyển
+  // tiền, hoặc chữ "giao dịch". "khoản" trơn KHÔNG đủ (người dùng chốt 2026-10-02).
+  group('26. docDuThamSoGiaoDich — luật đọc đủ cho đường nhanh (spec §3.2)', () {
+    test('⭐ bảng 72: 32 câu giao dịch đủ', () {
+      for (final c in [
+        'Thang nay toi chi nhieu nhat vao danh muc nao?', 'Thang truoc toi chi bao nhieu?',
+        'Thang nay toi chi bao nhieu?', 'thang nay toi tieu gi tren 500k', 'hom qua toi da chi nhung gi',
+        'hom nay toi co giao dich nao khong', 'tuan nay co khoan chi nao duoi 100 nghin khong',
+        'tuan truoc toi da tieu nhung khoan nao', 'thang truoc toi co khoan chi nao tren 1 trieu khong',
+        'cac khoan chi hon nua trieu trong quy nay', 'nam nay toi co khoan thu nao tu 5 trieu tro len khong',
+        'liet ke cac khoan chi tu 200k den 1 trieu thang nay', 'thang nay toi nhan duoc nhung khoan thu nao',
+        'thang nay toi da chuyen tien sang vi tiet kiem nhung lan nao', 'vi tien mat thang nay chi nhung gi',
+        'thang nay toi chi gi cho mua sam tu vi tien mat', 'lan gan nhat toi chi cho di chuyen la ngay nao',
+        '5 khoan chi gan day nhat cua toi', 'tim cac giao dich co ghi chu hoa don',
+        'khoan chi lon nhat thang nay la gi', 'cac khoan chi cho giao duc tu vi test',
+        'cac khoan chi cho danh muc abc thang nay', 'Thang 9 toi da tieu het bao nhieu tien?',
+        'Co khoan chi nao khong qua 30 nghin trong thang nay khong?',
+        'Ke tu dau nam toi da chi cho giai tri tong cong bao nhieu?',
+        'Thang nay toi chi nhieu hon hay it hon thang truoc?', 'Khoan thu lon nhat nam nay la gi?',
+        'Tuan nay toi co tieu gi khong?', 'Trong quy nay khoan chi nao lon nhat?', 'thang 8 toi chi bao nhieu',
+        'tu 1/9 den 15/9 toi chi nhung gi', 'thang nay chi nhieu hon hay it hon thang truoc',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isTrue, reason: c);
+      }
+    });
+    test('⭐ bảng 72 ở đường cũ: "khoản" trơn (C12), "nạp tiền" (C20, E6)', () {
+      for (final c in [
+        'liet ke cac khoan an uong thang nay',
+        'lan cuoi toi nap tien cho muc tieu muaxe la ngay nao',
+        'Nhung lan toi nap tien vao muc tieu MuaDT',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isFalse, reason: c);
+      }
+    });
+    // 18 câu giao dịch của bộ đo khoá — chép nguyên văn; KHÔNG đọc tệp bộ đo lúc chạy.
+    test('bộ đo khoá: 13 câu đủ', () {
+      for (final c in [
+        'Tuần này tôi đã tiêu những gì?', 'hom qua co khoan thu nao khong',
+        'Tháng 7 tôi chi cho ăn uống hết bao nhiêu?', 'cho toi xem cac giao dich tren 2 trieu trong nam nay',
+        'Lần gần đây nhất tôi mua sắm là khi nào?', '3 khoan thu moi nhat',
+        'Tôi đã chuyển bao nhiêu tiền từ ví MB sang ví tiết kiệm trong tháng này?',
+        'co giao dich nao ghi chu cafe khong', 'tu 10/9 den 20/9 toi nhan duoc nhung khoan nao',
+        'Khoản chi nhỏ nhất tháng này là gì?', 'thang nay tieu nhieu hon thang truoc khong',
+        'hom nay toi da chi bao nhieu tien', 'Năm nay tôi nhận lương mấy lần?',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isTrue, reason: c);
+      }
+    });
+    test('bộ đo khoá: 5 câu không đủ — động từ lạ, "khoản" trơn, "tiền đi cho"', () {
+      for (final c in [
+        'tien di cho y te thang nay la bao nhieu', 'Quý này danh mục nào ngốn nhiều tiền nhất?',
+        'Tuần trước tôi xài tổng cộng bao nhiêu?', 'Từ ví Momo tôi đã trả những khoản gì trong tuần này?',
+        'cac khoan duoi 50k thang nay',
+      ]) {
+        expect(docDuThamSoGiaoDich(c), isFalse, reason: c);
+      }
+    });
+    test('câu nói cả thu lẫn chi (E15) đủ; câu rỗng không', () {
+      expect(docDuThamSoGiaoDich('Toi da cho vay bao nhieu va thu ve duoc bao nhieu?'), isTrue);
+      expect(docDuThamSoGiaoDich('  '), isFalse);
     });
   });
 }

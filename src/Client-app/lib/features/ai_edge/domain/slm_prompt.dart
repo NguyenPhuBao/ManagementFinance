@@ -7,6 +7,8 @@
 /// một con số, và `kiemSo` khớp được.
 library;
 
+import 'dart:convert';
+
 import 'cong_cu.dart';
 import 'goi_so.dart';
 import 'nhan_xet.dart';
@@ -146,7 +148,32 @@ String promptHoiDap(String cauHoi, List<GoiSo> goi) =>
 /// để đổi tên là test đỏ. Không mang con số nào ngoài giới hạn độ dài — một số ở
 /// đây là một số mô hình có thể chép vào câu mà không gói nào có (ca test canh);
 /// vì thế ngưỡng tiền trong ví dụ viết bằng chữ.
-const String kPromptHeThongCongCu =
+///
+/// ⚠️ Từ 2026-10-04 lời ghép từ năm KHỐI và [heThongCho] chọn theo phiên; ghép
+/// đúng thứ tự cũ nên phiên sáu tool nhận lời y từng ký tự (ca test canh 2.679).
+const String kPromptHeThongCongCu = _khoiChung +
+    _viDuGiaoDichMot +
+    _viDuNganSachDuoiNua +
+    _viDuGiaoDichHai +
+    _viDuNganSachChuaDat +
+    _dienThamSoGiaoDich;
+
+/// Lời hệ thống cho phiên mở theo [tenDich] (2026-10-04, người dùng duyệt):
+/// - `null` — phiên sáu tool (câu không định tuyến): [kPromptHeThongCongCu],
+///   nguyên lời đã đo cổng F.
+/// - tool giao dịch — phần chung + ví dụ và luật điền tham số của chính nó; BỎ
+///   hai ví dụ tool ngân sách: phiên ấy không khai tool ngân sách, và ví dụ trỏ
+///   tới tool không được khai là dạy mô hình gọi tool bịa.
+/// - tám tool còn lại — chỉ phần chung: mọi ví dụ trong lời cũ thuộc tool khác,
+///   và tham số của chúng bộ chỉnh đã sửa theo câu hỏi.
+String heThongCho(String? tenDich) => switch (tenDich) {
+      null => kPromptHeThongCongCu,
+      kTenCongCuTruyVan =>
+        _khoiChung + _viDuGiaoDichMot + _viDuGiaoDichHai + _dienThamSoGiaoDich,
+      _ => _khoiChung.trimRight(),
+    };
+
+const String _khoiChung =
     'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Bạn KHÔNG có sẵn số liệu nào '
     'của người dùng: muốn biết bất kỳ con số hay tên nào (ngân sách, hoá đơn, ví, '
     'chi tiêu, mục tiêu, gợi ý hạn mức, từng giao dịch), hãy gọi công cụ phù hợp '
@@ -154,7 +181,9 @@ const String kPromptHeThongCongCu =
     'lời ấy, chưa trả lời. Khi trả lời: chỉ dùng tên và số mà công cụ trả về, chép '
     'nguyên chuỗi số và ngày tháng (kể cả "đ", dấu phẩy và dấu gạch chéo), nêu tên '
     'đối tượng trước con số, không tự tính toán hay suy đoán. Công cụ báo không có '
-    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. '
+    'dữ liệu thì nói rõ là không có. Trả lời bằng tiếng Việt, ngắn gọn, dưới 60 từ. ';
+
+const String _viDuGiaoDichMot =
     'Ví dụ chọn công cụ: "tháng này tôi tiêu gì trên nửa triệu", "các khoản chi hơn '
     'một số tiền trong quý này", "liệt kê các khoản chi từ một số tiền đến một số '
     'tiền" → $kTenCongCuTruyVan với ky, chieu=khoan_chi, so_tien_tu hoặc so_tien_den '
@@ -167,18 +196,26 @@ const String kPromptHeThongCongCu =
     '$kTenCongCuTruyVan với ky. "tháng này chi nhiều nhất vào danh mục nào" → '
     '$kTenCongCuTruyVan với gop=danh_muc, chon=nhieu_nhat. "danh mục nào tôi ít tiêu '
     'nhất" → gop=danh_muc, chon=it_nhat. "tôi đã cho vay bao nhiêu và thu về bao nhiêu" '
-    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. "ngân sách nào chưa dùng đến nửa" '
-    '→ $kTenCongCuNganSach với chon=duoi_nua. '
+    '→ chieu=tat_ca và danh_muc là tên nêu trong câu. ';
+
+const String _viDuNganSachDuoiNua =
+    '"ngân sách nào chưa dùng đến nửa" → $kTenCongCuNganSach với chon=duoi_nua. ';
+
+const String _viDuGiaoDichHai =
     // Lát 1 spec mở rộng tool (2026-09-27). Không nêu tháng bằng chữ số: số trong
     // lời hệ thống là số mô hình có thể chép vào câu.
     '"một tháng, quý, năm cụ thể tôi chi bao nhiêu", "từ ngày này đến ngày kia tôi '
     'chi những gì" → $kTenCongCuTruyVan với ky=tuy_chon, tu_ngay và den_ngay. "tháng '
     'này chi nhiều hơn hay ít hơn tháng trước" → $kTenCongCuTruyVan với ky=thang_nay, '
-    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. "danh '
-    'mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. '
-    // ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
-    // phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
-    // không được khai là dạy mô hình gọi tool bịa.
+    'so_voi=ky_truoc; "so với cùng kỳ năm ngoái" → so_voi=cung_ky_nam_truoc. ';
+
+const String _viDuNganSachChuaDat =
+    '"danh mục nào chưa đặt ngân sách" → $kTenCongCuNganSach với chon=chua_dat. ';
+
+// ⚠️ KHÔNG có ví dụ cho ba tool chỉ đi qua định tuyến (`kCongCuChiQuaDinhTuyen`):
+// phiên của câu không định tuyến không khai chúng, và ví dụ trỏ tới một tool
+// không được khai là dạy mô hình gọi tool bịa.
+const String _dienThamSoGiaoDich =
     // Lần đo 10: tool đã 18/20 nhưng tham số 9/20 — ba họ lỗi (thiếu chieu · tên
     // danh mục/ví nhét vào tu_khoa · ngưỡng và kỳ) — mỗi họ một câu mẫu, không chữ số.
     'Điền tham số: câu nói chi, tiêu, mua thì chieu=khoan_chi; nói thu, nhận, lương '
@@ -190,3 +227,34 @@ const String kPromptHeThongCongCu =
     'nhất", "lần cuối", "gần đây" thì ky=moi_luc và sap_xep=moi_nhat, không dùng hom_nay; '
     '"lần cuối nạp tiền cho mục tiêu" thì $kTenCongCuTruyVan với ky=moi_luc và tu_khoa '
     'là tên mục tiêu.';
+
+/// Đường nhanh (spec 2026-10-02 §5): lời dặn cho lượt Gemma CHỈ VIẾT CÂU từ kết quả
+/// tool giao dịch đã chạy — một tin, không few-shot, không tool; cùng các ý của
+/// phần "Khi trả lời" trong [kPromptHeThongCongCu]. Kết quả là khối JSON phiên có
+/// tool nhận qua `traKetQua`, nhưng số TỔNG HỢP đứng trước các dòng (`hang`).
+/// ⚠️ Chỉ dẫn không chứa chữ số (ca test canh).
+///
+/// Câu chữ chốt ở lượt đo Realme 2026-10-04 (spec §5 để ngỏ): bản đầu dặn "một hoặc
+/// hai câu" và để `hang` đầu khối — bốn câu tụt: E5 hỏi tổng mà chỉ kể dòng, C6 ·
+/// C17 kể thiếu dòng, E13 không nói nhiều hơn hay ít hơn.
+String promptVietCau(String cauHoi, Map<String, dynamic> ketQua) {
+  final khoi = {
+    for (final e in ketQua.entries)
+      if (e.key != 'hang') e.key: e.value,
+    if (ketQua.containsKey('hang')) 'hang': ketQua['hang'],
+  };
+  return '$_chiDanVietCau\n'
+      'Kết quả tra cứu:\n${jsonEncode(khoi)}\n'
+      'Câu hỏi: $cauHoi\n'
+      'Trả lời:';
+}
+
+const String _chiDanVietCau =
+    'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Ứng dụng đã tra sổ giao dịch của '
+    'người dùng cho câu hỏi dưới đây; kết quả nằm ở phần Kết quả tra cứu. Trả lời đúng '
+    'điều câu hỏi hỏi, bằng tiếng Việt, ngắn gọn: hỏi tổng hay bao nhiêu thì nêu số tổng '
+    'trong kết quả; hỏi những khoản nào hay có khoản nào thì kể đủ các dòng trong kết '
+    'quả; hỏi nhiều hơn hay ít hơn thì nói rõ nhiều hơn hay ít hơn và mức chênh lệch. '
+    'Chỉ dùng tên và số có trong kết quả, chép nguyên chuỗi số và ngày tháng (kể cả "đ", '
+    'dấu phẩy và dấu gạch chéo), nêu tên đối tượng trước con số, không tự tính toán hay '
+    'suy đoán. Kết quả không có giao dịch nào thì nói rõ là không có.';

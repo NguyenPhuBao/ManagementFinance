@@ -21,6 +21,14 @@ const List<String> kChon = [
 ];
 const List<String> kChonGiaoDich = ['nhieu_nhat', 'it_nhat'];
 
+/// `sap_het` (G2 Realme 2026-10-04, người dùng chốt): ngân sách chạm NGƯỠNG CẢNH
+/// BÁO riêng (`isNearLimit` — cùng luật thông báo *Sắp vượt*) hoặc đã vượt. Mã
+/// NỘI BỘ: chỉ bộ chỉnh tham số đặt khi câu hỏi nói *"sắp hết / vượt"*; cố ý
+/// KHÔNG nằm trong [kChon] để enum gửi mô hình — và `tools_json` đã đo trên
+/// Realme — không đổi.
+const String kChonSapHet = 'sap_het';
+const String kChuChonSapHet = 'sắp hết hoặc vượt hạn mức';
+
 /// Chữ kèm cho mô hình — không chữ số (số ở đây không có trong gói và làm câu
 /// chép nó bị chặn).
 const Map<String, String> kChuChon = {

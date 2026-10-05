@@ -1,8 +1,9 @@
 # Đường nhanh cho câu giao dịch ở màn Trợ lý AI — tool chạy trước, Gemma chỉ viết câu — thiết kế
 
-**Ngày:** 2026-10-02. **Trạng thái:** 📝 người dùng **duyệt thiết kế trong chat** (ba lượt AskUserQuestion); bản viết này
-chờ người dùng đọc lại — hỏi lại ở phiên kế cùng ngày, người dùng đáp *"chưa đọc, để sau"* và chốt thêm hai chỗ
-(hàng 5–6 mục 2). Chưa có kế hoạch, chưa có dòng mã nào.
+**Ngày:** 2026-10-02. **Trạng thái:** ✅ **bản viết được duyệt 2026-10-04** — qua bản tóm tắt trong chat (người dùng
+chọn *"Duyệt, đo đủ như spec"*), sau khi ba chỗ lỗi thời được sửa (số đo câu giao dịch, mã bản trên Realme, mục 10). Trước
+đó: thiết kế duyệt trong chat 2026-10-02 (ba lượt AskUserQuestion); phiên kế cùng ngày người dùng đáp *"chưa đọc, để
+sau"* và chốt thêm hai chỗ (hàng 5–6 mục 2).
 
 Đi tiếp từ dự án B (mục 9.45 `docs/AI_EDGE_FEATURE.md`). Người dùng hỏi sau lượt đo Realme: *"có cách nào để giảm
 thời gian phản hồi không vì hiện tại đang quá lâu"*.
@@ -21,7 +22,9 @@ thời gian phản hồi không vì hiện tại đang quá lâu"*.
 | Gemma viết câu trả lời | 2–12 s | đo |
 
 Ba dòng *ước* suy tuyến tính từ hai điểm đo (phiên 6 tool: 9.659 ký tự → 41,0 s; phiên 1 tool: 5.957 ký tự → 29,1 s),
-chỉ đúng về độ lớn. Điều chắc chắn: **~29 s trôi qua trước khi app chạm vào dữ liệu**, chỉ để Gemma điền tham số — thứ
+chỉ đúng về độ lớn. ⚠️ **Đo lại 2026-10-04** sau *lời hệ thống theo phiên* (`f139a82` — phiên một tool giao dịch nay nhận
+2.529 ký tự, không còn hai ví dụ tool ngân sách): *"khoan chi lon nhat thang nay la gi"* — lượt sinh đầu (Gemma điền tham
+số) **20,4 s**, tổng **26,2 s**; lời rút ngắn chỉ bớt ~1,5 s cho câu giao dịch, nên đòn bẩy còn lại vẫn là bỏ hẳn lượt ấy. Điều chắc chắn: **~29 s trôi qua trước khi app chạm vào dữ liệu**, chỉ để Gemma điền tham số — thứ
 mà bộ chỉnh tham số theo câu hỏi (`chinhThamSoTimGiaoDich`) sau đó vẫn sửa lại ở phần lớn các câu.
 
 **Phép đo ngoài máy** (2026-10-02, không đổi app): cho bộ chỉnh tự điền tham số từ `{}` rồi so với tham số cuối app đã
@@ -165,7 +168,7 @@ chế phiên có tool. Ca đường nhanh dùng bộ định tuyến giả trả
 1. `flutter test` trọn bộ xanh, `flutter analyze` giữ mức nền 26. Mỗi ca canh thử bằng bản sai có chủ ý.
 2. Bảng 72: 31 câu theo luật và 4 câu ngoài phạm vi không đổi đường; cột *đường nhanh?* của 37 câu giao dịch ghim.
 3. **Đo máy đang cắm** (Realme nếu cắm — máy lợi nhiều nhất), trước / sau cùng buổi, cùng dữ liệu. Bản *trước* = HEAD
-   chưa có đường nhanh (`e57753f8…` đang trên Realme).
+   chưa có đường nhanh (từ 2026-10-04 Realme mang debug `e7d9be66…` = `f139a82`; bản `e57753f8…` ghi lúc viết đã cũ).
    - **35 câu đổi đường** của dự án B, trước và sau. Cổng: **không câu nào tụt, SAI 0**; ghi thời gian từng câu.
    - **18 câu giao dịch của bộ đo khoá**, chỉ đo **sau**, chấm tuyệt đối theo dữ liệu trên máy — phép thử trên câu bộ
      chỉnh chưa từng được mài. Ghi nguyên; câu sai thì ghi và hỏi người dùng.
@@ -190,7 +193,8 @@ liệu là các câu nêu tháng 9, tháng trước, năm nay, mọi thời gian
 
 ## 10. Ngoài phạm vi
 
-Tám tool còn lại · hiện thẻ số liệu trước câu (đổi giao diện) · rút lời hệ thống cho phiên một tool · nạp sẵn phiên
+Tám tool còn lại · hiện thẻ số liệu trước câu (đổi giao diện) · ~~rút lời hệ thống cho phiên một tool~~ (✅ làm riêng
+2026-10-04, `f139a82` — không đụng đường nhanh: lượt viết câu dùng `promptVietCau`, không dùng lời hệ thống) · nạp sẵn phiên
 khi mở màn · thêm động từ mới vào danh sách chiều (*"ngốn", "xài", "trả"*) · sửa luật `congCuTheoCauHoi` lệch nhãn
 (việc mở của dự án B) · hạ ngưỡng bộ định tuyến học.
 

@@ -171,4 +171,23 @@ void main() {
       print('[72] ở lại phiên sáu tool ${khong.length}/${cau.length}: ${khong.join(' · ')}');
     });
   });
+
+  // ĐƯỜNG NHANH (spec 2026-10-02 §7, thi công 2026-10-04): câu giao dịch đi đường
+  // nhanh khi đường ghép định tuyến về tool giao dịch VÀ luật đọc đủ tham số. Ghim
+  // vế LUẬT — đổi luật là đổi đường của câu đã đo; vế mô hình đổi theo mỗi lần huấn
+  // luyện lại (không phải lỗi) nên chỉ in, như ca bên trên.
+  test('⭐ đường nhanh: luật đọc đủ 34/37 câu giao dịch — C12 ("khoản" trơn), C20 · E6 ("nạp tiền") thì không', () {
+    final cau = kBang72Cau.entries.where((e) => e.value.$2 == null && e.value.$3 == kTenCongCuTruyVan);
+    final khongDu = {
+      for (final e in cau)
+        if (!docDuThamSoGiaoDich(e.value.$1)) e.key,
+    };
+    expect(khongDu, {'C12', 'C20', 'E6'});
+    final nhanh = [
+      for (final e in cau)
+        if (dinhTuyenCauHoi(e.value.$1).ten == kTenCongCuTruyVan && docDuThamSoGiaoDich(e.value.$1)) e.key,
+    ];
+    // ignore: avoid_print
+    print('[72] đi đường nhanh ${nhanh.length}/${cau.length}: ${nhanh.join(' · ')}');
+  });
 }

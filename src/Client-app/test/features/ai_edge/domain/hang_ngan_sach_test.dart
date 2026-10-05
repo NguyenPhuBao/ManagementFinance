@@ -21,6 +21,7 @@ BudgetView _ns({
   required double amount,
   required double spent,
   DateTime? start,
+  double? nguongPhanTram,
 }) {
   final s = start ?? DateTime(2026, 9, 1);
   return BudgetView(
@@ -34,6 +35,7 @@ BudgetView _ns({
       recurrence: true,
       timeRecurrence: BudgetRecurrence.month,
       updatedAt: s,
+      thresholdWarningPercent: nguongPhanTram,
     ),
     categoryName: ten,
   );
@@ -155,6 +157,54 @@ void main() {
       final kq = hangNganSach(bon, now: now, chon: 'x');
       expect(kq.loi, contains('duoi_nua'));
       expect(kq.hang, isEmpty);
+    });
+  });
+
+  // G2 (Realme 2026-10-04): "hạn mức nào sắp hết" từng nhận ngân sách dùng NHIỀU NHẤT
+  // (Ăn uống 2 %) như thể nó sắp hết. Người dùng chốt: "sắp hết" là ngưỡng cảnh báo
+  // riêng của từng ngân sách — `isNearLimit`, cùng luật thông báo "Sắp vượt" — cộng mọi
+  // ngân sách đã vượt; không cái nào thì nói thẳng.
+  group('chon=sap_het — mã NỘI BỘ của bộ chỉnh (G2 Realme 2026-10-04)', () {
+    test('⭐ chỉ ngân sách chạm ngưỡng cảnh báo hoặc đã vượt; 79 % chưa chạm 90 % mặc định thì không', () {
+      final kq = hangNganSach([
+        _ns(id: 'gd', ten: 'Giáo dục', amount: 50000, spent: 45000), // 90 %
+        _ns(id: 'dc', ten: 'Di chuyển', amount: 450000, spent: 355000), // 79 %
+        _ns(id: 'gt', ten: 'Giải trí', amount: 100000, spent: 130000), // vượt
+        _ns(id: 'au', ten: 'Ăn uống', amount: 500000, spent: 10000), // 2 %
+      ], now: now, chon: 'sap_het');
+      expect(kq.hang.map((h) => h.ten).toList(), ['Giải trí', 'Giáo dục']);
+      expect(kq.json['Số ngân sách khớp'], '2');
+      expect(kq.json['Số ngân sách'], '4');
+      expect(kq.boLoc, ['sắp hết hoặc vượt hạn mức']);
+      expect(kq.rongTheoBoLoc, isFalse);
+      expect(kq.chiMauCau, isFalse);
+    });
+
+    test('ngưỡng RIÊNG của ngân sách thắng mốc mặc định (70 % đặt tay → 79 % là sắp hết)', () {
+      final kq = hangNganSach([
+        _ns(id: 'dc', ten: 'Di chuyển', amount: 450000, spent: 355000, nguongPhanTram: 70),
+      ], now: now, chon: 'sap_het');
+      expect(kq.hang.single.ten, 'Di chuyển');
+    });
+
+    test('⭐ không ngân sách nào sắp hết → nói thẳng, chỉ mẫu câu, không đọc như lỗi tìm kiếm', () {
+      final kq = hangNganSach([
+        _ns(id: 'au', ten: 'Ăn uống', amount: 500000, spent: 10000),
+        _ns(id: 'dc', ten: 'Di chuyển', amount: 450000, spent: 0),
+      ], now: now, chon: 'sap_het');
+      expect(kq.hang, isEmpty);
+      expect(kq.rongTheoBoLoc, isFalse);
+      expect(kq.chiMauCau, isTrue);
+      expect(kq.chuThem['ket_qua'], 'chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức');
+      final g = GoiSoTraCuu()..them('danh_sach_ngan_sach', kq);
+      final cau = g.mauCau().cau;
+      expect(cau, contains('chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức'));
+      expect(cau, isNot(contains('khớp')));
+      expect(kiemCauTraLoi(cau, [g]), isTrue, reason: cau);
+    });
+
+    test('sap_het KHÔNG nằm trong kChon — enum gửi mô hình (tools_json đã đo trên Realme) không đổi', () {
+      expect(kChon, isNot(contains('sap_het')));
     });
   });
 

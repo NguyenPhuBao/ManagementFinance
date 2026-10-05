@@ -407,6 +407,14 @@ void main() {
       expect(b.length, greaterThan(1000));
     });
 
+    test('tiêu đề giao dịch DÀI (ghi chú tự sinh ~80 ký tự, một cụm 50 ký tự liền) vẫn sinh được tệp', () async {
+      // Ảnh người dùng gửi 2026-10-05: khoản chi lớn nhất mang ghi chú quẹt thẻ dài. Ô trên màn đã sửa thành xuống
+      // dòng; ca này canh rằng bảng PDF (Số liệu nhanh · Top 5) chịu được chuỗi ấy chứ không ném khi dàn trang.
+      const dai = 'RetailVisa-409211-111.11-USD-627508184636-CUA HANG A SUB-The 107408787';
+      final b = await pdf(baoCao([g(ngay: DateTime(2026, 9, 5), soTien: 2887752, tieuDe: dai)]));
+      expect(String.fromCharCodes(b.take(5)), '%PDF-');
+    });
+
     test('KHÔNG rơi về font mặc định Helvetica', () async {
       final b = await pdf(baoCao([g(ngay: DateTime(2026, 9, 5))]));
       final tho = String.fromCharCodes(b);

@@ -210,6 +210,103 @@ void main() {
         returnsNormally);
   });
 
+  // 2026-10-04 (người dùng duyệt): phiên MỘT tool từng nhận nguyên lời 2.679 ký tự
+  // viết cho phiên sáu tool — ¾ là ví dụ của tool giao dịch, cộng hai ví dụ trỏ tool
+  // ngân sách mà phiên ấy không khai ("ví dụ trỏ tới tool không được khai là dạy mô
+  // hình gọi tool bịa").
+  group('heThongCho — lời hệ thống theo phiên', () {
+    const tamToolKhac = [
+      kTenCongCuNganSach,
+      kTenCongCuHoaDon,
+      kTenCongCuVi,
+      kTenCongCuMucTieu,
+      kTenCongCuGoiYHanMuc,
+      kTenCongCuDuBao,
+      kTenCongCuTongQuan,
+      kTenCongCuDanhMuc,
+    ];
+    const moiTenTool = [...tamToolKhac, kTenCongCuTruyVan];
+
+    test('⭐ phiên sáu tool (không định tuyến) nhận ĐÚNG lời cũ — 2.679 ký tự đã đo cổng F', () {
+      expect(heThongCho(null), kPromptHeThongCongCu);
+      expect(kPromptHeThongCongCu.length, 2679,
+          reason: 'lời của phiên sáu tool đã đo trên Realme — đổi nó là phải đo lại cả cổng F');
+    });
+
+    test('⭐ phiên một tool KHÔNG phải giao dịch: chỉ phần chung, không tên tool nào', () {
+      for (final t in tamToolKhac) {
+        final ht = heThongCho(t);
+        for (final luat in ['TRƯỚC', 'chép nguyên', '"loi"', 'gọi lại ngay', 'ngày tháng', 'tiếng Việt']) {
+          expect(ht, contains(luat), reason: '$t thiếu "$luat"');
+        }
+        for (final ten in moiTenTool) {
+          expect(ht, isNot(contains(ten)), reason: '$t nhắc $ten');
+        }
+        expect(ht.length, lessThan(1000), reason: t);
+      }
+    });
+
+    test('⭐ phiên một tool giao dịch: giữ ví dụ giao dịch + điền tham số, BỎ ví dụ tool ngân sách', () {
+      final ht = heThongCho(kTenCongCuTruyVan);
+      for (final vd in ['gop=danh_muc', 'so_voi=ky_truoc', 'ky=tuy_chon', 'Điền tham số', '"loi"']) {
+        expect(ht, contains(vd), reason: vd);
+      }
+      expect(ht, isNot(contains(kTenCongCuNganSach)));
+      expect(ht.length, lessThan(kPromptHeThongCongCu.length));
+    });
+
+    test('mọi lời theo phiên chỉ mang con số giới hạn độ dài', () {
+      for (final t in [null, ...moiTenTool]) {
+        expect(RegExp(r'\d+').allMatches(heThongCho(t)).map((m) => m.group(0)).toList(), ['60'],
+            reason: '$t');
+      }
+    });
+  });
+
+  // Đường nhanh (spec 2026-10-02 §5): Gemma chỉ VIẾT CÂU từ kết quả tool đã chạy.
+  group('promptVietCau — lượt viết câu của đường nhanh (spec §5)', () {
+    test('⭐ chỉ dẫn KHÔNG chứa chữ số', () {
+      expect(RegExp(r'\d').hasMatch(promptVietCau('tháng này tôi chi gì', const {})), isFalse,
+          reason: 'số trong lời dặn là số mô hình có thể chép vào câu mà không gói nào có');
+    });
+    test('mang kết quả dạng JSON và câu hỏi, kết bằng "Trả lời:"', () {
+      final p = promptVietCau('tháng này tôi chi gì', const {'Tổng chi': '800.000 đ'});
+      expect(p, contains('Kết quả tra cứu:\n{"Tổng chi":"800.000 đ"}'));
+      expect(p, contains('Câu hỏi: tháng này tôi chi gì'));
+      expect(p, endsWith('Trả lời:'));
+    });
+    // Đo Realme 2026-10-04 (35 câu đổi đường): bốn câu tụt vì Gemma trả lời lệch
+    // trọng tâm — E5 hỏi "tổng cộng bao nhiêu" mà chỉ kể bốn dòng, C6 · C17 kể thiếu
+    // dòng, E13 hỏi "nhiều hơn hay ít hơn" mà không nói. Spec §5: câu chữ lời dặn chốt
+    // ở lượt đo máy.
+    test('⭐ dặn trả lời đúng điều câu hỏi hỏi: số tổng · kể đủ các dòng · nhiều hơn hay ít hơn', () {
+      final p = promptVietCau('x', const {});
+      for (final y in ['số tổng', 'kể đủ', 'nhiều hơn hay ít hơn']) {
+        expect(p, contains(y), reason: y);
+      }
+      expect(p, isNot(contains('một hoặc hai câu')), reason: 'lời dặn ấy làm Gemma cắt bớt dòng');
+    });
+    test('⭐ số tổng hợp đứng TRƯỚC các dòng trong khối kết quả', () {
+      final p = promptVietCau('x', const {
+        'hang': [
+          {'ten': 'Di choi', 'Số tiền': '300.000 đ'},
+        ],
+        'Tổng chi': '880.000 đ',
+      });
+      expect(p.indexOf('"Tổng chi"'), lessThan(p.indexOf('"hang"')),
+          reason: 'E5: Gemma kể các dòng đầu khối và bỏ số tổng nằm sau');
+    });
+    test('cùng luật trả lời của bậc tool; không nhắc tên tool nào', () {
+      final p = promptVietCau('x', const {});
+      for (final luat in ['chép nguyên', 'nêu tên', 'không tự tính', 'tiếng Việt']) {
+        expect(p, contains(luat), reason: luat);
+      }
+      for (final ten in [kTenCongCuTruyVan, kTenCongCuNganSach]) {
+        expect(p, isNot(contains(ten)));
+      }
+    });
+  });
+
   group('kPromptHeThongCongCu (bậc tool, chặng 4b)', () {
     test('bảo gọi công cụ TRƯỚC khi trả lời và chép nguyên chuỗi số', () {
       expect(kPromptHeThongCongCu, contains('công cụ'));

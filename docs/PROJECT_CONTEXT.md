@@ -1000,7 +1000,7 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   học được 5 kỳ; dự phóng 1.048.709 → 930.000, chip *chậm* → *đúng nhịp*. Nghiệm thu Realme 360 dp đạt cả hai chiều.
 - **Lỗi có từ trước lộ khi nghiệm thu**: ở 360 dp dòng *"Theo …: X"* cùng hàng chip dài bị cắt "…" — người dùng chọn đưa xuống
   **hàng riêng dưới chip** (`8eb5b93`). Trang chi tiết ngân sách chưa có màn Stitch; lượt `generate_screen_from_text` trả
-  `timeout`, chờ người dùng xem.
+  `timeout` — ✅ người dùng xác nhận tối cùng ngày: màn **có**, `414e3e01cd43401ea7be9217b5cb09f5`.
 - `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
 
 ### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
@@ -1182,9 +1182,18 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   lịch sang tháng mới: mốc 72 câu đo ngày 28/09, khi *"tháng 9"* còn là *"tháng này"*.
 - 📌 **Việc mở, người dùng chốt làm SAU dự án B:** luật `congCuTheoCauHoi` lệch nhãn — 3/18 câu nó bắt trên bộ đo,
   18/201 trên bộ huấn luyện (danh sách ở cuối mục 9.45). ✅ **Sửa 2026-10-04** (`645a7e3`, luật lệch 18 → 0; đo Realme
-  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). Còn **họ D và G** người dùng đã chọn
-  hướng mà chưa làm — cuối mục 9.45 `AI_EDGE_FEATURE.md`. Và một ý chưa hỏi: lời hệ thống riêng, ngắn hơn cho phiên một
-  tool để rút tiếp thời gian chờ.
+  cùng ngày; kèm `516d6e8` — `kiemTen` chặn oan câu *"…ngân sách, bạn sẽ thiếu…"*). ✅ **Họ D và G xong tối cùng ngày**
+  (`b9d32d6`, cuối mục 9.45 `AI_EDGE_FEATURE.md`): câu định nghĩa chung → `chuDeBiChan` từ chối ngay (đo Realme: hết câu
+  lạc đề 45 s); *"hạn mức"* đọc như *"ngân sách"* (`_coNganSach`, trừ thẻ tín dụng) — 11 câu bộ huấn luyện `null` → đúng,
+  không câu nào khác đổi đường. Đo Realme 5 câu: D ✅ · D2 (câu số liệu *"là gì"*) ✅ lọt · G ✅ · G2 ◐ · B2 ✅. ✅ **G2 sửa cùng tối** (`4064b8a`):
+  *"sắp hết"* = ngưỡng cảnh báo riêng `isNearLimit` (cùng luật thông báo *Sắp vượt*) + đã vượt, mã nội bộ `kChonSapHet`
+  (không vào enum gửi mô hình); đo lại Realme G2 và A3 ✅ *"…chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức"*. ✅ **Lời hệ
+  thống theo phiên** cùng tối (người dùng duyệt): `heThongCho(tenDich)` — phiên sáu tool giữ đúng 2.679 ký tự, phiên giao
+  dịch 2.529 (bỏ hai ví dụ tool ngân sách không được khai), tám phiên còn lại 618 (chỉ phần chung). A/B Realme 9 câu: tổng chờ
+  TB **19,3 → 13,3 s**, tám câu theo luật −5,3 → −8,5 s mỗi câu, nội dung 9/9 giữ hoặc tốt hơn (cuối mục 9.45).
+  🚧 **Đường nhanh câu giao dịch** (spec `2026-10-02-duong-nhanh…`, duyệt bản viết cùng tối): mã Task 1–6 xong
+  (`1d19c96` → `b8bd682`, lời dặn v2 `6b1724a`), đo Realme 32/35 câu 20–42 s → 0,1–10,4 s, SAI 0, còn C6 tụt — chưa
+  ghi mục 9.46. Bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-04-duong-nhanh-dang-do.md`.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
 Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`

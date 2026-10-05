@@ -15,6 +15,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -31,6 +32,12 @@ const String kTepBienDongCho = 'bien_dong_cho.jsonl';
 /// Hai tin cùng số tiền, cùng chiều, cách nhau không quá chừng này là **một** giao dịch (SMS và
 /// thông báo app của cùng ngân hàng bắn cách nhau vài giây; đơn gốc mục 2, backend duyệt).
 const Duration kCuaSoGopTrung = Duration(minutes: 5);
+
+/// Hai TIN của CÙNG một app, không mã GD, không phân biệt được bằng số dư (MoMo, ZaloPay): chỉ là một giao dịch khi là
+/// CÙNG thông báo được app đăng lại / cập nhật — cùng khoá thông báo (khi biết) và cách nhau không quá chừng này. Cửa
+/// sổ [kCuaSoGopTrung] dành cho HAI KÊNH; áp nó cho một kênh là gộp hai lần nhận cùng số tiền cách vài phút làm một
+/// (người dùng báo 2026-10-05: hai khoản MoMo đến liên tiếp, app chỉ bắt được một).
+const Duration kCuaSoCungTin = Duration(seconds: 10);
 
 /// Thân thông báo cắt ở đây — dòng thông báo là lời mời, không phải bản sao tin.
 const int _kToiDaThan = 140;
@@ -63,32 +70,70 @@ DongBienDong? docDongBienDong(String dong) {
 
 /// Dấu hiệu để gộp trùng — rút từ một tin mới ([dauBienDong]) hoặc từ một hàng loại 20 đang có
 /// ([dauTuDeeplink]), để hai phía so bằng CÙNG một phép ([trungBienDong]).
-typedef DauBienDong = ({double soTien, String chieu, DateTime thoiGian, String? ma, String? vanTay});
+///
+/// [nguon] `null` = không biết (hàng cũ thiếu tham số). [khoaTin] = khoá thông báo Android đã băm ([bamKhoaTin]),
+/// `null` với hàng ghi trước 2026-10-05 và với biên lai. [tuTin] = dấu hiệu rút từ một THÔNG BÁO (không phải ảnh biên
+/// lai) — chỉ hai tin mới so bằng cửa sổ [kCuaSoCungTin].
+typedef DauBienDong = ({
+  double soTien,
+  String chieu,
+  DateTime thoiGian,
+  String? ma,
+  String? vanTay,
+  String? nguon,
+  String? khoaTin,
+  bool tuTin,
+});
 
-DauBienDong dauBienDong(TinBienDong t) =>
-    (soTien: t.soTien, chieu: t.chieu, thoiGian: t.thoiGian, ma: t.maGiaoDich, vanTay: t.vanTaySoDu);
+/// [khoaTin] là khoá THÔ (`StatusBarNotification.key`); hàm tự băm.
+DauBienDong dauBienDong(TinBienDong t, {String? khoaTin, bool tuTin = true}) => (
+      soTien: t.soTien,
+      chieu: t.chieu,
+      thoiGian: t.thoiGian,
+      ma: t.maGiaoDich,
+      vanTay: t.vanTaySoDu,
+      nguon: t.nguon,
+      khoaTin: khoaTin == null ? null : bamKhoaTin(khoaTin),
+      tuTin: tuTin,
+    );
+
+/// Khoá thông báo (`0|<gói>|<id>|<tag>|<uid>`) → 12 ký tự hex đầu của SHA-256. Chỉ để SO BẰNG; không để tên gói và id
+/// nằm trần trong CSDL.
+String bamKhoaTin(String khoa) => sha256.convert(utf8.encode('flowmoney-kt:$khoa')).toString().substring(0, 12);
 
 /// Cùng mã giao dịch → trùng. Hai bên cùng mang vân tay số dư mà KHÁC nhau → không trùng: hai lần chuyển cùng
 /// tiền, cùng chiều cách vài phút là hai giao dịch thật, số dư sau là thứ duy nhất phân biệt chúng (đo Realme
-/// 2026-09-30 — khoản thứ hai từng bị gộp và MẤT). Còn lại: cùng số tiền + cùng chiều và cách ≤ [kCuaSoGopTrung].
+/// 2026-09-30 — khoản thứ hai từng bị gộp và MẤT). Hai TIN cùng nguồn không phân biệt được bằng số dư → chỉ trùng khi
+/// là cùng thông báo đăng lại ([kCuaSoCungTin]). Còn lại (hai kênh, hoặc biên lai với tin): cùng số tiền + cùng chiều
+/// và cách ≤ [kCuaSoGopTrung].
 bool trungBienDong(DauBienDong a, DauBienDong b) {
   if (a.ma != null && b.ma != null) return a.ma == b.ma;
   if (a.vanTay != null && b.vanTay != null && a.vanTay != b.vanTay) return false;
-  return a.soTien == b.soTien &&
-      a.chieu == b.chieu &&
-      a.thoiGian.difference(b.thoiGian).abs() <= kCuaSoGopTrung;
+  if (a.soTien != b.soTien || a.chieu != b.chieu) return false;
+  final cach = a.thoiGian.difference(b.thoiGian).abs();
+  final cungVanTay = a.vanTay != null && a.vanTay == b.vanTay;
+  if (a.tuTin && b.tuTin && a.nguon != null && a.nguon == b.nguon && !cungVanTay) {
+    if (a.khoaTin != null && b.khoaTin != null && a.khoaTin != b.khoaTin) return false;
+    return cach <= kCuaSoCungTin;
+  }
+  return cach <= kCuaSoGopTrung;
 }
 
 String _phut(DateTime d) => d.toIso8601String().substring(0, 16);
+String _giay(DateTime d) => d.toIso8601String().substring(0, 19);
 
 /// `bienDong:<mã GD>`, không mã thì `bienDong:<nguồn>|<tiền>|<chiều>|<phút>[|<vân tay số dư>]`. Cố ý **không**
 /// mang nội dung tin hay con số số dư: khoá đi vào nhật ký B5a và payload thông báo, hai chỗ sống lâu hơn hàng.
 /// Vân tay có mặt thì hai giao dịch CÙNG PHÚT khác số dư không trùng khoá — trùng khoá là `insertAllIfAbsent`
 /// bỏ hàng thứ hai, im lặng.
+///
+/// Không mã, không vân tay (MoMo, ZaloPay) thì mốc tính tới GIÂY: hai lần nhận cùng số tiền trong cùng một phút là
+/// hai hàng (báo lỗi 2026-10-05) — [trungBienDong] đã lọc thông báo đăng lại trước khi tới đây.
 String dedupeKeyBienDong(TinBienDong t) => t.maGiaoDich != null
     ? 'bienDong:${t.maGiaoDich}'
-    : 'bienDong:${t.nguon}|${t.soTien.toInt()}|${t.chieu}|${_phut(t.thoiGian)}'
-        '${t.vanTaySoDu == null ? '' : '|${t.vanTaySoDu}'}';
+    : t.vanTaySoDu != null
+        ? 'bienDong:${t.nguon}|${t.soTien.toInt()}|${t.chieu}|${_phut(t.thoiGian)}|${t.vanTaySoDu}'
+        : 'bienDong:${t.nguon}|${t.soTien.toInt()}|${t.chieu}|${_giay(t.thoiGian)}';
 
 /// `/add?amount=…&huong=…&date=…&note=…&nguon=…&duoi=…&khoa=…` — route `/add` nằm ngoài shell, `push`
 /// được (như deeplink `ghiChep`). `khoa` = dedupeKey để form xoá hàng khi Lưu / Bỏ qua (Task 7).
@@ -102,6 +147,7 @@ String deeplinkBienDong(
   required String dedupeKey,
   String? anh,
   String? cachDoc,
+  String? khoaTin,
 }) =>
     Uri(
       path: '/add',
@@ -114,6 +160,8 @@ String deeplinkBienDong(
         if (t.duoiTaiKhoan != null) 'duoi': t.duoiTaiKhoan!,
         // Vân tay số dư — chỉ để [dauTuDeeplink] so hàng ĐÃ CÓ với tin mới; form không đọc nó.
         if (t.vanTaySoDu != null) 'vt': t.vanTaySoDu!,
+        // Khoá thông báo đã băm — để [dauTuDeeplink] nhận ra cùng một thông báo được app đăng lại. Form không đọc.
+        if (khoaTin != null) 'kt': bamKhoaTin(khoaTin),
         if (anh != null) 'anh': anh,
         if (anh != null) 'blt': t.thoiGian.toIso8601String(),
         if (cachDoc != null) 'doc': cachDoc,
@@ -177,7 +225,17 @@ DauBienDong? dauTuDeeplink(String deeplink, {required String? maGiaoDich}) {
   final chieu = q['huong'];
   final ngay = DateTime.tryParse(q['date'] ?? '');
   if (tien == null || chieu == null || ngay == null) return null;
-  return (soTien: tien, chieu: chieu, thoiGian: ngay, ma: maGiaoDich, vanTay: q['vt']);
+  return (
+    soTien: tien,
+    chieu: chieu,
+    thoiGian: ngay,
+    ma: maGiaoDich,
+    vanTay: q['vt'],
+    nguon: q['nguon'],
+    khoaTin: q['kt'],
+    // `doc` có mặt ⇔ số liệu của hàng đọc từ ảnh biên lai (hàng tin được gắn ảnh thì không có `doc`).
+    tuTin: q['doc'] == null,
+  );
 }
 
 class NhapBienDong {
@@ -269,7 +327,7 @@ class NhapBienDong {
         if (h.kind == NotificationKind.bienDongSoDu.name && h.deeplink != null)
           if (dauTuDeeplink(h.deeplink!, maGiaoDich: h.subjectId) case final d?) d,
     ];
-    final ghi = <TinBienDong>[];
+    final ghi = <({TinBienDong tin, String khoa})>[];
     for (final d in dong) {
       final r = docDongBienDong(d.trim());
       if (r == null) continue;
@@ -277,16 +335,16 @@ class NhapBienDong {
       if (nguon == null) continue;
       final t = docTinBienDong(nguon: nguon, tieuDe: r.tieuDe, noiDung: r.noiDung, luc: r.luc);
       if (t == null) continue;
-      final dau = dauBienDong(t);
+      final dau = dauBienDong(t, khoaTin: r.khoa);
       if (daCo.any((c) => trungBienDong(c, dau))) continue;
-      if (ghi.any((g) => trungBienDong(dauBienDong(g), dau))) continue;
-      ghi.add(t);
+      if (ghi.any((g) => trungBienDong(dauBienDong(g.tin, khoaTin: g.khoa), dau))) continue;
+      ghi.add((tin: t, khoa: r.khoa));
     }
-    final moi = await dao.insertAllIfAbsent([for (final t in ghi) _companion(t, idaccount)]);
+    final moi = await dao.insertAllIfAbsent([for (final g in ghi) _companion(g.tin, idaccount, khoaTin: g.khoa)]);
     return moi.length;
   }
 
-  AppNotificationsCompanion _companion(TinBienDong t, int idaccount) {
+  AppNotificationsCompanion _companion(TinBienDong t, int idaccount, {String? khoaTin}) {
     final khoa = dedupeKeyBienDong(t);
     final than = t.noiDung.length <= _kToiDaThan ? t.noiDung : '${t.noiDung.substring(0, _kToiDaThan - 1)}…';
     return AppNotificationsCompanion.insert(
@@ -299,7 +357,7 @@ class NhapBienDong {
       severity: NotificationSeverity.info.name,
       subjectType: const Value('bienDong'),
       subjectId: Value(t.maGiaoDich),
-      deeplink: Value(deeplinkBienDong(t, dedupeKey: khoa)),
+      deeplink: Value(deeplinkBienDong(t, dedupeKey: khoa, khoaTin: khoaTin)),
       // Mốc của SỰ KIỆN (giờ trong tin), không phải mốc nhập — cùng nếp `NotificationCandidate.createdAt`.
       createdAt: t.thoiGian,
     );

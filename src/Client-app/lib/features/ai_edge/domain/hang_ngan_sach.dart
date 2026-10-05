@@ -8,7 +8,8 @@
 /// lệ đã dùng — `duoi_nua` / `tren_nua` giữ mọi hàng thoả, `nhieu_nhat` /
 /// `it_nhat` giữ một hàng. Tổng hợp vẫn cộng MỌI ngân sách đang chạy; "Số ngân
 /// sách khớp" chỉ có khi lọc, và 0 khớp là `rongTheoBoLoc` (không phải "không
-/// có ngân sách").
+/// có ngân sách"). Mã nội bộ `kChonSapHet` (G2, 2026-10-04): ngân sách chạm ngưỡng
+/// cảnh báo riêng hoặc đã vượt; 0 khớp là KẾT LUẬN (`ket_qua` + chỉ mẫu câu).
 ///
 /// [ten] (G2 cổng F, E10): tên ngân sách câu hỏi nêu (`tenNeuTrongCau` — tên
 /// lấy từ chính [dangChay]) → chỉ hàng ấy, và BỎ "Tổng còn lại" của mọi ngân sách.
@@ -40,7 +41,7 @@ KetQuaCongCu hangNganSach(
   String? ten,
   Map<String, NhipChi?> nhipTheoNganSach = const {},
 }) {
-  if (chon != null && !kChon.contains(chon)) {
+  if (chon != null && chon != kChonSapHet && !kChon.contains(chon)) {
     return tuChoiGiaTri('chon', chon, kChon);
   }
   // `chua_dat` / `can_doi` không phải phép lọc trên ngân sách đang chạy — tool
@@ -61,8 +62,14 @@ KetQuaCongCu hangNganSach(
     'it_nhat' => sap.isEmpty ? <BudgetView>[] : [sap.last],
     'duoi_nua' => [for (final v in sap) if (v.budget.rawPercentSpent < 0.5) v],
     'tren_nua' => [for (final v in sap) if (v.budget.rawPercentSpent >= 0.5) v],
+    // G2: ngưỡng cảnh báo riêng — `isNearLimit` trả false cho ngân sách đã vượt,
+    // nên hỏi cả hai.
+    kChonSapHet => [for (final v in sap) if (v.budget.isNearLimit || v.budget.isOverBudget) v],
     _ => sap,
   };
+  // G2: không ngân sách nào sắp hết là một CÂU TRẢ LỜI, không phải lỗi tìm kiếm
+  // (cùng lý do H3 / F15 của `can_doi`).
+  final khongSapHet = chon == kChonSapHet && khop.isEmpty;
 
   var tongConLai = 0.0;
   for (final v in dangChay) {
@@ -96,11 +103,19 @@ KetQuaCongCu hangNganSach(
       // đọc tổng ấy (E10: "tổng còn lại 1.340.000" cho câu hỏi ngân sách ăn uống).
       if (ten == null) soTien('Tổng còn lại', tongConLai),
       soDem('Số ngân sách', dangChay.length),
-      if (chon != null) soDem('Số ngân sách khớp', khop.length),
+      if (chon != null && !khongSapHet) soDem('Số ngân sách khớp', khop.length),
     ],
-    boLoc: [if (chon != null) kChuChon[chon]!],
-    rongTheoBoLoc: chon != null && khop.isEmpty,
+    chuThem: {
+      // ⚠️ "chưa" phải đứng trong ba từ trước "vượt hạn mức" — cụm báo động của
+      // `kiemGiong`; "chưa ngân sách nào sắp hết hay vượt hạn mức" bị chính mẫu câu chặn.
+      if (khongSapHet) 'ket_qua': 'chưa ngân sách nào sắp hết, cũng chưa vượt hạn mức',
+    },
+    boLoc: [
+      if (chon != null && !khongSapHet) chon == kChonSapHet ? kChuChonSapHet : kChuChon[chon]!,
+    ],
+    rongTheoBoLoc: chon != null && khop.isEmpty && !khongSapHet,
     doiTuongRong: 'ngân sách',
+    chiMauCau: khongSapHet,
   );
 }
 

@@ -2,8 +2,9 @@
 /// `2026-10-02-chia-se-bien-lai-design.md` mục 5). Hàm thuần, không bao giờ ném.
 ///
 /// `vanBan` là đầu ra của `ghepDongTheoHang` (`core/ocr/dong_ocr.dart`) — mỗi HÀNG của ảnh một dòng chữ. Mẫu riêng theo
-/// nguồn đi trước; không khớp thì luật chung. Luật chung luôn cho chiều `chi`: biên lai là của khoản người dùng vừa
-/// chuyển; `thu` chỉ khi một mẫu riêng nhận ra biên lai nhận tiền.
+/// nguồn đi trước; không khớp thì luật chung. Luật chung mặc định chiều `chi` (biên lai thường là của khoản người dùng
+/// vừa chuyển); `thu` khi số tiền mang dấu `+` hoặc một hàng MỞ ĐẦU bằng *"Nhận tiền / Nhận chuyển khoản"* (biên lai
+/// nhận tiền MoMo, người dùng gửi 2026-10-05 — bản cũ ghi thành chi).
 ///
 /// ⚠️ Biên lai chỉ mang tài khoản của người NHẬN, nên [BienLaiDoc.duoiTaiKhoan] (khoá của bảng *nguồn + đuôi → ví*)
 /// luôn `null` trừ khi một mẫu riêng tìm được tài khoản NGUỒN.
@@ -87,7 +88,8 @@ BienLaiDoc docBienLai({required String vanBan, required String? nguon, required 
 /// Mẫu riêng theo nguồn. `null` = không khớp mẫu (app đổi giao diện biên lai, hoặc nguồn chưa có mẫu) → luật chung.
 ///
 /// ⚠️ CHỈ nguồn đã ĐO trên biên lai thật (nếp *"không đoán"* của D1). MoMo và ZaloPay chưa có biên lai nào được thu
-/// (2026-10-02) → đi luật chung; thêm mẫu khi có hình dạng thật.
+/// (2026-10-02) → đi luật chung; thêm mẫu khi có hình dạng thật. Biên lai MoMo đầu tiên (người dùng gửi 2026-10-05,
+/// thanh toán cửa hàng) đọc đúng bằng bước *tiêu đề thành công* của luật chung — chưa cần mẫu riêng.
 BienLaiDoc? _theoNguon(String? nguon, List<String> dong, List<String> bo, DateTime luc) => switch (nguon) {
       kNguonMb => _mb(dong, bo, luc),
       _ => null,
@@ -131,7 +133,7 @@ BienLaiDoc _chung(List<String> dong, List<String> bo, DateTime luc) {
   final tien = _tienChung(dong, bo);
   return BienLaiDoc(
     soTien: tien,
-    chieu: 'chi',
+    chieu: _chieuChung(bo),
     thoiGian: _thoiGian(dong) ?? luc,
     maGiaoDich: _sauNhan(dong, bo, _nhanMa, lay: (s) => _ma.firstMatch(s)?.group(0)),
     noiDung: _sauNhan(dong, bo, _nhanNoiDung, lay: (s) => s.isEmpty ? null : s) ?? '',
@@ -143,6 +145,32 @@ double? _hopLe(int? v) => (v == null || v <= 0 || v >= _tranTien) ? null : v.toD
 
 int? _lonNhat(String d) => tienTrenDong(d).fold<int?>(null, (a, b) => a == null || b > a ? b : a);
 
+final RegExp _tieuDeThanhCong = RegExp(r'\bthanh cong\b');
+
+/// Số tiền có đơn vị mang dấu `+` / `-` ngay trước (xét trên chữ đã bỏ dấu). `+3 Xu` không có đơn vị tiền nên không
+/// tính; `08:48 - 05/10/2026` có dấu cách giữa nhưng sau số là `/` chứ không phải đơn vị.
+final RegExp _tienCoDau = RegExp(r'(?:^|\s)([+\-])\s?\d[\d.,]*\s?(?:₫|d\b|vnd\b|dong\b)');
+
+/// Hàng MỞ ĐẦU bằng *"Nhận tiền / Nhận chuyển khoản"* — tiêu đề biên lai tiền vào. Neo đầu hàng để *"Người nhận"*,
+/// *"Tài khoản nhận"* của biên lai chuyển đi không lọt vào.
+final RegExp _tieuDeNhan = RegExp(r'^nhan (?:tien|chuyen khoan)\b');
+
+/// Dấu trên số tiền thắng (hàng phí / số dư bỏ qua); không dấu thì tiêu đề nhận tiền → `thu`; còn lại `chi`.
+String _chieuChung(List<String> bo) {
+  for (final d in bo) {
+    if (_nhanLoai.hasMatch(d)) continue;
+    final m = _tienCoDau.firstMatch(d);
+    if (m != null) return m.group(1) == '+' ? 'thu' : 'chi';
+  }
+  return bo.any(_tieuDeNhan.hasMatch) ? 'thu' : 'chi';
+}
+
+/// Hàng là một CÂU HỎI — chữ quảng cáo / gợi ý của app (*"Liệu đã tới 5.000.000đ?"*), không phải trường của biên lai.
+final RegExp _cauHoi = RegExp(r'\?\s*$');
+
+/// Hàng có thể mang số tiền giao dịch khi không có nhãn: có đơn vị tiền, không phải phí / số dư, không phải câu hỏi.
+bool _coTheLaTien(String dong, String bo) => _donVi.hasMatch(bo) && !_nhanLoai.hasMatch(bo) && !_cauHoi.hasMatch(dong);
+
 double? _tienChung(List<String> dong, List<String> bo) {
   // 1) Hàng mang nhãn số tiền (không phải phí / số dư / bằng chữ): số trên hàng ấy, không có thì hàng kế.
   for (var i = 0; i < dong.length; i++) {
@@ -151,10 +179,21 @@ double? _tienChung(List<String> dong, List<String> bo) {
         (i + 1 < dong.length && !_nhanLoai.hasMatch(bo[i + 1]) ? _lonNhat(dong[i + 1]) : null);
     if (v != null) return _hopLe(v);
   }
-  // 2) Không nhãn: số có đơn vị đ / ₫ / VND lớn nhất, bỏ hàng phí / số dư.
+  // 2) Không nhãn, có tiêu đề "… thành công": số có đơn vị ĐẦU TIÊN trên chính hàng ấy hoặc hai hàng kế. Biên lai ví
+  //    điện tử in số tiền ngay dưới tiêu đề rồi mới tới khối quảng cáo của app — quảng cáo có thể mang số to hơn
+  //    (*"Liệu đã tới 5.000.000đ?"*, ảnh người dùng gửi 2026-10-05: bản cũ điền 5.000.000 cho khoản 39.000).
+  for (var i = 0; i < dong.length; i++) {
+    if (!_tieuDeThanhCong.hasMatch(bo[i])) continue;
+    for (var j = i; j < dong.length && j <= i + 2; j++) {
+      if (!_coTheLaTien(dong[j], bo[j])) continue;
+      final v = _lonNhat(dong[j]);
+      if (v != null) return _hopLe(v);
+    }
+  }
+  // 3) Không nhãn, không tiêu đề: số có đơn vị đ / ₫ / VND lớn nhất, bỏ hàng phí / số dư / câu hỏi.
   int? ra;
   for (var i = 0; i < dong.length; i++) {
-    if (_nhanLoai.hasMatch(bo[i]) || !_donVi.hasMatch(bo[i])) continue;
+    if (!_coTheLaTien(dong[i], bo[i])) continue;
     final v = _lonNhat(dong[i]);
     if (v != null && (ra == null || v > ra)) ra = v;
   }

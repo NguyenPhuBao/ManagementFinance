@@ -48,6 +48,96 @@ void main() {
       expect(b.soTien, 250000);
     });
 
+    // Hình dạng biên lai ví điện tử (ảnh người dùng gửi 2026-10-05, dựng lại bằng số và tên GIẢ): tiêu đề "… thành
+    // công" + số tiền ngay dưới, rồi các hàng thông tin, rồi khối QUẢNG CÁO của app mang một con số to hơn kèm "đ".
+    // Bản cũ lấy số có đơn vị LỚN NHẤT → điền 5.000.000 thay vì 39.000.
+    const viDienTu = '''
+17:48
+Kết quả giao dịch
+Giao dịch thành công
+Chia sẻ
+39.000đ
+Dịch vụ/ Cửa hàng CUA HANG A
+Thời gian giao dịch 17:48 - 04/10/2026
+Thưởng xu +3 Xu
+Mã giao dịch 150000000001
+Cửa Hàng A
+308.4K người theo dõi Đã theo dõi
+Quản lý chi tiêu Chợ, siêu thị
+Tháng 10 biến động, An đã chi bao tiền?
+Liệu đã tới 5.000.000đ?
+Xem lại ngay
+''';
+
+    test('⭐ số tiền ngay dưới tiêu đề "… thành công" thắng số to hơn của khối quảng cáo bên dưới', () {
+      final b = docBienLai(vanBan: viDienTu, nguon: null, luc: _luc);
+      expect(b.soTien, 39000,
+          reason: 'biên lai không có nhãn "Số tiền": số đầu tiên có đơn vị ngay sau tiêu đề thành công là số tiền '
+              'giao dịch; số to hơn ở dưới là câu quảng cáo của app');
+      expect(b.thoiGian, DateTime(2026, 10, 4, 17, 48));
+      expect(b.maGiaoDich, '150000000001');
+      expect(b.cachDoc, kCachDocChung);
+    });
+
+    test('tiêu đề thành công và số tiền CÙNG hàng (OCR gộp) cũng nhận; hàng phí ngay dưới tiêu đề bị bỏ', () {
+      expect(docBienLai(vanBan: 'Giao dịch thành công 39.000đ\nLiệu đã tới 5.000.000đ?', nguon: null, luc: _luc)
+          .soTien, 39000);
+      expect(
+          docBienLai(vanBan: 'Thanh toán thành công\nPhí 2.000đ\n45.000đ\nƯu đãi tới 1.000.000đ', nguon: null,
+                  luc: _luc)
+              .soTien,
+          45000);
+    });
+
+    test('⭐ không tiêu đề thành công: hàng là CÂU HỎI ("…5.000.000đ?") không phải số tiền giao dịch', () {
+      expect(docBienLai(vanBan: 'Thanh toán\n39.000đ\nLiệu đã tới 5.000.000đ?', nguon: null, luc: _luc).soTien,
+          39000);
+    });
+
+    // Biên lai NHẬN tiền của ví điện tử (ảnh người dùng gửi 2026-10-05, dựng lại bằng số và tên GIẢ): số tiền mang dấu
+    // "+", tiêu đề "Nhận tiền qua mã QR…". Bản cũ: luật chung LUÔN cho chiều chi.
+    const nhanTien = '''
+8:49
+Chi Tiết Giao Dịch
+NHẬN TIỀN QUA MÃ QR TỪ
+NGAN HANG A
++10.000đ
+Trạng thái Thành công
+Thời gian 08:48 - 05/10/2026
+Mã giao dịch 150000000002
+Tài khoản/thẻ Túi A *
+Tổng phí Miễn phí
+Danh mục Trợ cấp
+Quản lý chi tiêu
+Tính vào thu nhập
+Số tiền ghi nhận +10.000đ
+Tần suất Không lặp lại
+''';
+
+    test('⭐ biên lai NHẬN tiền (số mang dấu "+") → chiều thu, đúng số tiền, giờ, mã GD', () {
+      final b = docBienLai(vanBan: nhanTien, nguon: null, luc: _luc);
+      expect(b.chieu, 'thu', reason: 'dấu "+" trước số tiền và tiêu đề "Nhận tiền" — đây là khoản tiền VÀO');
+      expect(b.soTien, 10000);
+      expect(b.thoiGian, DateTime(2026, 10, 5, 8, 48));
+      expect(b.maGiaoDich, '150000000002');
+    });
+
+    test('chiều thu khi chỉ có tiêu đề "nhận tiền" / "nhận chuyển khoản" mà số không mang dấu', () {
+      expect(docBienLai(vanBan: 'Nhận tiền thành công\n25.000đ', nguon: null, luc: _luc).chieu, 'thu');
+      expect(docBienLai(vanBan: 'Nhận chuyển khoản\nSố tiền 25.000 VND', nguon: null, luc: _luc).chieu, 'thu');
+    });
+
+    test('⭐ dấu "-" trước số tiền thắng chữ "nhận" ở chỗ khác; "Người nhận" / "Tài khoản nhận" không phải tiền vào',
+        () {
+      expect(docBienLai(vanBan: 'Chuyển tiền thành công\n-25.000đ\nNgười nhận tiền NGUYEN VAN A', nguon: null,
+              luc: _luc)
+          .chieu, 'chi');
+      expect(_bienLaiChung.contains('Người nhận'), isTrue, reason: 'tiền đề: biên lai chuyển đi có chữ "nhận"');
+      expect(docBienLai(vanBan: _bienLaiChung, nguon: null, luc: _luc).chieu, 'chi');
+      expect(docBienLai(vanBan: 'Thanh toán thành công\n39.000đ\nThưởng xu +3 Xu', nguon: null, luc: _luc).chieu,
+          'chi', reason: '"+3 Xu" không phải số tiền');
+    });
+
     test('⭐ không nhãn VÀ không đơn vị → không phải số tiền (mã đơn 1.234.567 trông y như một số tiền)', () {
       final b = docBienLai(vanBan: 'Giao dịch thành công\nMã đơn 1.234.567\nĐiểm thưởng 2.500', nguon: null, luc: _luc);
       expect(b.soTien, isNull, reason: 'điền một con số không chắc là tiền thì tệ hơn để trống kèm ảnh');
