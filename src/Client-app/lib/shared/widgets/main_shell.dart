@@ -72,15 +72,20 @@ class MainShell extends StatelessWidget {
             ),
           ],
         ),
+        // ⚠️ G68 (2026-10-06): bốn tab là `Expanded`, KHÔNG ô rộng cố định.
+        // Bản cũ là năm ô 72dp cộng lại ĐÚNG 360dp — vừa khít ở khổ thường và
+        // tràn ngay khi màn hẹp hơn: ColorOS phóng cỡ hiển thị bằng cách đổi
+        // mật độ (480 → 540 dpi đưa 1080px còn 320dp), sọc "RIGHT OVERFLOWED
+        // BY 40 PIXELS" và tab Cá nhân bị đẩy khỏi màn ở mọi trang.
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavItem(context, 'Trang chủ', Icons.home_outlined, 0, uiIndex),
             _buildNavItem(context, 'Phân tích', Icons.analytics_outlined, 1, uiIndex),
-            const SizedBox(width: 72), // Space for FAB
-            // ⚠️ Nhãn "Giao dịch" chứ KHÔNG "Sổ giao dịch": ô nhãn rộng CỐ
-            // ĐỊNH 72dp (xem `_buildNavItem`) và mọi nhãn vừa được đều ≤ 9 ký
-            // tự — "Sổ giao dịch" là 12. Tên đầy đủ vẫn ở tiêu đề trang.
+            const SizedBox(width: 72), // chỗ cho nút + (FAB 56dp + lề)
+            // ⚠️ Nhãn "Giao dịch" chứ KHÔNG "Sổ giao dịch": ô nhãn rộng TỐI
+            // ĐA 72dp (xem `_buildNavItem`) và mọi nhãn vừa được đều ≤ 9 ký
+            // tự — "Sổ giao dịch" là 12, sẽ bị co nhỏ khó đọc. Tên đầy đủ vẫn
+            // ở tiêu đề trang.
             //
             // Icon `list_alt` chứ không `receipt_long`: `receipt_long` đã là
             // "Hóa đơn & Dịch vụ" trong drawer, và một glyph mang hai nghĩa
@@ -97,33 +102,46 @@ class MainShell extends StatelessWidget {
   Widget _buildNavItem(BuildContext context, String label, IconData icon, int itemIndex, int currentIndex) {
     final isSelected = itemIndex == currentIndex;
 
-    return GestureDetector(
-      onTap: () => _onItemTapped(itemIndex, context),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 72,
-        height: 64,
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surfaceContainerHigh : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+    // Ô chiếm phần của nó trong hàng; nền tô chọn rộng TỐI ĐA 72dp như bản
+    // Stitch nhưng co được khi màn hẹp. Nhãn MỘT dòng, `FittedBox.scaleDown`
+    // chỉ co khi không vừa: ở chữ hệ thống ×1,5 bản cũ để "Trang chủ" xuống
+    // hai dòng và tràn đáy ô cao 64dp (G68, vế dọc).
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onItemTapped(itemIndex, context),
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 72),
+            height: 64,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.surfaceContainerHigh : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -171,16 +171,18 @@ void main() {
       // (đo được: cao 34px trong test). Bản đầu của ca này đo `size.height`
       // và đỏ ngay ở "Trang chủ" — một phép đo vô nghĩa ở khổ test.
       //
-      // Cùng lối mà nhãn quý `Q3 2026` đã dùng: ô nhãn rộng CỐ ĐỊNH 72dp, và
+      // Cùng lối mà nhãn quý `Q3 2026` đã dùng: ô nhãn rộng TỐI ĐA 72dp, và
       // ba nhãn 9 ký tự đã chứng minh vừa trên máy thật, nên luật là **không
-      // nhãn nào được dài hơn 9 ký tự**. "Sổ giao dịch" là 12 — trượt.
+      // nhãn nào được dài hơn 9 ký tự**. "Sổ giao dịch" là 12 — trượt. (Từ
+      // G68 nhãn một dòng co bằng `FittedBox`, nên dài hơn không còn ngắt
+      // dòng mà bị THU NHỎ khó đọc — luật vẫn giữ.)
       const daiNhatVuaDuoc = 9; // 'Trang chủ', 'Phân tích', 'Ngân sách'
       for (final n in ['Trang chủ', 'Phân tích', 'Giao dịch', 'Cá nhân']) {
         expect(find.text(n), findsOneWidget);
         expect(n.length, lessThanOrEqualTo(daiNhatVuaDuoc),
-            reason: 'Nhãn "$n" dài ${n.length} ký tự. Ô rộng cố định 72dp và '
+            reason: 'Nhãn "$n" dài ${n.length} ký tự. Ô rộng tối đa 72dp và '
                 'chỉ 9 ký tự đã được chứng minh vừa trên máy 411dp; dài hơn '
-                'thì nhãn ngắt hai dòng — IM LẶNG, không sọc vàng, '
+                'thì nhãn bị thu nhỏ khó đọc — IM LẶNG, không sọc vàng, '
                 '`takeException()` trả null.');
       }
       expect(tester.takeException(), isNull);
