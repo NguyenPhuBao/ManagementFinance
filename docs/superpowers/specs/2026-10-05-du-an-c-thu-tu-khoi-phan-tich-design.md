@@ -5,10 +5,15 @@ học được, phần 1 — thứ người dùng thấy, phần 2 — luật h�
 ngày (*"ok duyệt"*); **kế hoạch 9 task** `docs/superpowers/plans/2026-10-05-du-an-c-thu-tu-khoi-phan-tich.md` (gitignore,
 khối 🔧 *"làm rõ lúc lập kế hoạch"* thắng chỗ tương ứng ở đây).
 
-> 🚧 **Đang thi công — dừng sau Task 6 / 9 (2026-10-05 khuya)** theo lời người dùng: luật thuần, bộ đếm giây, schema v29,
-> nguồn + cubit + DI, `TheoDoiXem`, thẻ + dòng theo màn Stitch **`e081fc951e474cb1bc1b4ed655f5a026`** (người dùng xác nhận) —
-> có test; **trang Phân tích chưa nối** (Task 8), nghiệm thu + tài liệu (Task 9) chưa làm. Chỗ khác bản viết: Nhật ký
-> thi công cuối kế hoạch (thẻ có thêm nút × cùng nghĩa Bỏ qua; khoảng cách thẻ → khối kế 12).
+> ✅ **Mã xong 2026-10-06 — Task 1–8 / 9** (`fce6b00` → `6c5f7e2`), tài liệu cập nhật (mục 3.36 `ANALYTICS_FEATURE.md`);
+> 🛑 **chưa nghiệm thu máy thật** (Task 9 Step 3 — mục 7 dưới đây). `flutter test` 5898 pass / 9 skip, `flutter analyze` 26.
+> Màn Stitch **`e081fc951e474cb1bc1b4ed655f5a026`** (người dùng xác nhận). **Chỗ bản thi công khác bản viết:**
+> (1) năm điểm *làm rõ* của kế hoạch — sau thao tác thẻ không tính lại tới lần trang hiện lại; không đăng ký cubit ⇒ trang y
+> hệt cũ; mỗi cụm `KeyedSubtree(GlobalKey)` > `Column(ValueKey)`; "trang đang hiện" có **ba** vế (thêm
+> `ModalRoute.isCurrent`); bộ đếm giây là lớp thuần riêng `bo_dem_giay.dart`; (2) `TheoDoiXem` công khai (không `_`), dùng
+> `TickerMode.getValuesNotifier` (`getNotifier` deprecated); (3) thẻ có thêm nút × cùng nghĩa Bỏ qua, khoảng thẻ → cụm đầu
+> **12** (Stitch `gap-3`); (4) `ThuTuKhoiNguon.doc` trả `KetQuaThuTu` chứ không record; tỉ lệ thắng so số nguyên
+> `thang * 10 >= soNgay * 6` (hằng `kTiLeThangPhanMuoi = 6`) thay vì `0.6`.
 
 Dự án C (mục 10.3 `docs/AI_EDGE_FEATURE.md`): *app học trên máy của từng người*. Việc đầu (gợi ý danh mục theo số tiền)
 xong 2026-10-02, việc hai (nhịp chi ngân sách) xong 2026-10-04. Đây là việc thứ ba; việc còn lại sau nó là *thông báo

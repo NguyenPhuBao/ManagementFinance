@@ -3856,8 +3856,9 @@ tự khối trang Phân tích · thông báo theo phản ứng. 📝 **Việc th
 `plans/2026-10-04-du-an-c-nhip-chi-ngan-sach.md` (gitignore). Hình dạng đổi so với tên việc — xem 11.5 (3).
 Lượt lập kế hoạch lộ ra **G66** (lỗi có sẵn của lưới kỳ ngân sách, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ người dùng chọn sửa
 **trước**, đóng cùng ngày (`02d46ca`: `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ). ✅ **Việc thứ hai XONG
-2026-10-04** (`3e827dc` → `8eb5b93`, nghiệm thu Realme cùng ngày) — chi tiết ở 11.5 (3). **Hai việc còn lại** của dự án C:
-thứ tự khối trang Phân tích (phần *học*) · thông báo theo phản ứng.
+2026-10-04** (`3e827dc` → `8eb5b93`, nghiệm thu Realme cùng ngày) — chi tiết ở 11.5 (3). ✅ **Việc thứ ba — thứ tự khối
+trang Phân tích (phần *học*) — mã xong 2026-10-06** (`17d79dd` → Task 8, schema v29; 🛑 **chưa nghiệm thu máy thật**) — chi
+tiết ở 11.5 (4) và mục 3.36 `ANALYTICS_FEATURE.md`. **Việc còn lại** của dự án C: thông báo theo phản ứng.
 
 ✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
 trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
@@ -4300,6 +4301,12 @@ với mọi người. Người không có mục tiêu tiết kiệm vẫn cuộn
 Hai mức: **rẻ** — soát lại khối nào chưa tự ẩn khi không có dữ liệu (nhiều khối đã ẩn);
 **học** — đếm khối nào người dùng hay cuộn tới rồi dừng, đưa lên trên. Trang chủ đã làm
 một phần: `pickHomeBudget` chọn ngân sách **căng nhất** thay vì ngân sách đầu tiên.
+
+> ✅ **Mức rẻ xong 2026-09-21** (mục 3.34 `ANALYTICS_FEATURE.md`). ✅ **Mức học — mã xong 2026-10-06** (dự án C việc ba,
+> mục **3.36** `ANALYTICS_FEATURE.md`; 🛑 chưa nghiệm thu máy thật). Hình dạng **đổi** so với câu trên lúc brainstorm:
+> **không** đưa lên tự động — người dùng chọn *học rồi ĐỀ XUẤT* (một thẻ, bấm **Đưa lên** mới đổi, giữ nguyên từ đó), vì
+> giao diện tự xếp lại phá trí nhớ vị trí. Đơn vị đổi chỗ là **cụm** (chín cụm), không khối lẻ; thứ đo là **giây đứng yên**
+> trên cụm, không phải lượt cuộn tới. Không mô hình nào ngoài phép đếm — cụm thắng ≥ 60 % của ≥ 5 ngày đã qua.
 
 #### (5) Tần suất thông báo theo phản ứng
 

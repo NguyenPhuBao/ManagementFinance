@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-05 tối)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-06)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -1069,6 +1069,21 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
 - ⚠️ **Dev:** một máy dính 401 ở `/auth/refresh` là mọi máy bị 403 `AIOPS_QUARANTINED` 15 phút; danh sách trong bộ nhớ —
   khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
   `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
+
+### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
+
+Spec `docs/superpowers/specs/2026-10-05-du-an-c-thu-tu-khoi-phan-tich-design.md` (duyệt); kế hoạch 9 task
+`…/plans/2026-10-05-du-an-c-thu-tu-khoi-phan-tich.md` (gitignore). Task 1–8 xong (`fce6b00` → `6c5f7e2`), chi tiết ở mục
+**3.36** `ANALYTICS_FEATURE.md`. Người dùng chọn **học rồi đề xuất**: trang đo giây đứng yên trên từng cụm (chín cụm),
+đủ ≥ 5 ngày đã qua mà một cụm thắng ≥ 60 % thì hiện **một** thẻ *"Bạn hay xem ‹cụm› — đưa lên đầu trang?"*; bấm **Đưa
+lên** mới đổi thứ tự và giữ nguyên; dòng *Về mặc định* cuối trang khi thứ tự khác mặc định. Schema **v29** — hai bảng
+**cục bộ** `PhanTichGiayXems` · `PhanTichThuTuPhanHois` (test quét 15). `ThuTuKhoiCubit` riêng; **không đăng ký thì trang
+y hệt cũ**. `flutter test` **5898** pass / 9 skip (ca skip thứ chín là công cụ `test/tool/bom_giay_xem_test.dart`),
+`flutter analyze` 26.
+
+🛑 **Việc còn lại — nghiệm thu máy thật** (Task 9 Step 3; 2026-10-06 không máy nào cắm, người dùng chọn làm tài liệu trước):
+ba vế "trang đang hiện" của `TheoDoiXem` (sang tab khác, route chồng, tắt màn — giây **không** được tăng) là vùng
+`flutter test` mù; rồi bơm 5 ngày → thẻ → Đưa lên / Về mặc định / Bỏ qua; 360 dp đưa *Xu hướng* lên đầu không tràn.
 
 ### ✅ G63 đóng — ví trùng tên giữa hai máy (2026-10-05 tối)
 
