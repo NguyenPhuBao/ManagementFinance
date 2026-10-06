@@ -45,11 +45,12 @@ const BroadcastPage = () => {
   const [instantReason, setInstantReason] = useState('');
   const [instantEmergency, setInstantEmergency] = useState(false);
 
-  // Form Lên lịch bảo trì
   const [scheduleDatetime, setScheduleDatetime] = useState('');
   const [scheduleEndDatetime, setScheduleEndDatetime] = useState('');
   const [scheduleReason, setScheduleReason] = useState('');
-  const [scheduleEmergency, setScheduleEmergency] = useState(false);
+  const [scheduleNotify, setScheduleNotify] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
 
   // --- State Phát Thông Báo ---
   const [title, setTitle] = useState('');
@@ -169,7 +170,7 @@ const BroadcastPage = () => {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
         scheduledEndAt: scheduleEndDatetime ? new Date(scheduleEndDatetime).toISOString() : null,
         reason: scheduleReason.trim() || 'Bảo trì hệ thống theo lịch trình.',
-        isEmergency: Boolean(scheduleEmergency),
+        isEmergency: Boolean(scheduleNotify),
       };
 
       const res = await adminApi.setMaintenanceStatus(payload);
@@ -182,7 +183,7 @@ const BroadcastPage = () => {
       setScheduleDatetime('');
       setScheduleEndDatetime('');
       setScheduleReason('');
-      setScheduleEmergency(false);
+      setScheduleNotify(false);
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
@@ -215,6 +216,27 @@ const BroadcastPage = () => {
       setActionLoading(false);
     }
   };
+
+  // Xử lý Làm mới trạng thái & Đặt lại biểu mẫu lên lịch bảo trì
+  const handleResetScheduleFormAndRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      setScheduleDatetime('');
+      setScheduleEndDatetime('');
+      setScheduleReason('');
+      setScheduleNotify(false);
+      setMaintenanceFeedback({
+        ok: true,
+        msg: 'Đã làm mới trạng thái và xóa trắng biểu mẫu lên lịch thành công.',
+      });
+      await fetchMaintenance();
+    } catch (err) {
+      console.error('[BroadcastPage] Lỗi làm mới biểu mẫu lên lịch', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
 
   // Xử lý Phát Thông Báo Thủ Công
   const handleSendBroadcast = async (e) => {
@@ -632,14 +654,19 @@ const BroadcastPage = () => {
                       />
                     </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-xs text-on-surface">
+                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-on-surface">
                       <input
                         type="checkbox"
-                        checked={scheduleEmergency}
-                        onChange={(e) => setScheduleEmergency(e.target.checked)}
-                        className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                        checked={scheduleNotify}
+                        onChange={(e) => setScheduleNotify(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
                       />
-                      <span>Kèm chế độ khẩn cấp (Tự động phát thông báo khi tới giờ hẹn)</span>
+                      <div>
+                        <span className="font-medium">Tự động phát thông báo cho Client & Admin khi tới giờ hẹn</span>
+                        <p className="text-[11px] text-on-surface-variant mt-0.5">
+                          Khi tới giờ hẹn, hệ thống sẽ tự động phát sóng thông báo realtime qua Socket.IO tới toàn bộ người dùng và quản trị viên thay vì bảo trì im lặng.
+                        </p>
+                      </div>
                     </label>
 
                     <button
@@ -665,15 +692,18 @@ const BroadcastPage = () => {
                 </div>
               </div>
 
-              <div className="text-[11px] text-on-surface-variant flex items-center justify-between border-t border-outline-variant/60 pt-3">
-                <span>Cổng kiểm tra bảo trì: <code>/health/admin</code></span>
+              <div className="flex items-center justify-end border-t border-outline-variant/60 pt-3">
                 <button
                   type="button"
-                  onClick={fetchMaintenance}
-                  className="text-primary hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                  onClick={handleResetScheduleFormAndRefresh}
+                  disabled={isRefreshing}
+                  className="text-primary hover:underline flex items-center gap-1.5 cursor-pointer font-medium text-xs disabled:opacity-50"
+                  title="Xóa trắng biểu mẫu đang nhập và làm mới trạng thái từ hệ thống"
                 >
-                  <span className="material-symbols-outlined text-[14px]">refresh</span>
-                  Làm mới trạng thái
+                  <span className={`material-symbols-outlined text-[16px] ${isRefreshing ? 'animate-spin' : ''}`}>
+                    refresh
+                  </span>
+                  <span>{isRefreshing ? 'Đang làm mới...' : 'Làm mới & Đặt lại biểu mẫu'}</span>
                 </button>
               </div>
             </div>
