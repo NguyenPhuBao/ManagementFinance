@@ -1070,6 +1070,23 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
   `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
+### 🔀 Gộp `main` @ `872462f` (2026-10-06, commit gộp `f088b2a`) — module thanh toán PayOS, backend đóng đơn 36
+
+Hai commit NPBao (`0a118af`, `872462f`) cộng ba commit gộp: module `payment` (PayOS — tạo link, webhook, gói đăng ký,
+scheduler hết hạn), `database/19_create_payment_subscription_tables.sql` (**chưa áp** lên CSDL dev — không có câu cho phép
+đích danh), `schema.prisma` thêm model; cộng sửa đơn **36** (vá lách query bảo trì, bỏ `'secret'`, bỏ `isAdmin` theo URL,
+CORS) và chuyển nó sang `DA-XONG/` (đếm bằng máy: **53** tệp). Phía client: hai chỗ dọn cảnh báo (`change_password_page.dart`
+bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutter analyze` 26 → **21**; test liên quan xanh.
+
+- **Xung đột duy nhất:** `CAN-LAM/README.md` — README của backend viết lại từ bản chưa có **đơn 37** nên làm rơi nó; bản gộp
+  giữ cả hai (36 ✅, 37 ⏳).
+- 🛑 **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS. **Chưa
+  nhận** — chờ người dùng quyết.
+- ⚠️ **Backend dev KHÔNG khởi động được sau gộp** cho tới khi chạy `npm install` ở `src/Backend`: gói mới **`@payos/node`**
+  chưa có trong `node_modules`, và `modules/payment/payos.client.js:1` nạp nó ngay khi `api/index.js` nạp routes — đo
+  2026-10-06: `MODULE_NOT_FOUND '@payos/node'`. Client **chưa chạy** `npm install` (đụng `src/Backend`, cần cho phép đích
+  danh — như lần gói Gemini 2026-09-27). Module thanh toán còn cần biến PayOS trong `.env`.
+
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 
 Spec `docs/superpowers/specs/2026-10-05-du-an-c-thu-tu-khoi-phan-tich-design.md` (duyệt); kế hoạch 9 task
