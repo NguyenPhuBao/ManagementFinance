@@ -11,8 +11,8 @@ import '../../domain/don_thanh_toan.dart';
 import '../../domain/dong_lich_su.dart';
 
 /// Màn Lịch sử mua `/premium/lich-su` (spec Premium 9.4) — chỉ đọc, trang 1
-/// (20 dòng, không phân trang vô hạn). Màn Stitch: lượt gọi 2026-10-06 trả
-/// `timeout`, id ghi ở Nhật ký kế hoạch khi người dùng xác nhận.
+/// (20 dòng, không phân trang vô hạn). Màn Stitch *"Lịch sử mua Premium -
+/// FlowMoney"* `e7d6609536224c4fbd2e2a94f4623e36` (chờ người dùng xác nhận).
 class LichSuMuaPage extends StatefulWidget {
   const LichSuMuaPage({super.key, this.api});
 

@@ -31,8 +31,9 @@ String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
 }
 
 /// Màn Nâng cấp `/premium` — ngoài shell, `push` từ mọi nơi (spec 9.1). Màn
-/// Stitch: lượt gọi 2026-10-06 trả `timeout`, id ghi ở Nhật ký kế hoạch khi
-/// người dùng xác nhận.
+/// Stitch *"Nâng cấp Premium - FlowMoney"* `c999da970da94cb4ab4331fc44230884`
+/// (lượt gọi 2026-10-06 trả `timeout` nhưng màn vẫn được tạo — chờ người dùng
+/// xác nhận).
 class NangCapPage extends StatefulWidget {
   const NangCapPage({super.key, this.tran, this.api, this.goi, this.clock});
 

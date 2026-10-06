@@ -8,6 +8,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../../../premium/presentation/widgets/the_goi_tai_khoan.dart';
 import '../widgets/noi_dung_cai_dat.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -43,6 +44,11 @@ class ProfilePage extends StatelessWidget {
         child: Column(
           children: [
             _buildProfileHeader(),
+            // Thẻ "Gói của bạn" — điểm vào có chủ ý duy nhất của /premium (spec
+            // Premium 2026-10-06 mục 10; drawer không thêm mục). Không có
+            // GoiCubit trong cây (test cũ) thì thẻ tự ẩn, chỉ còn 16 px trống.
+            const SizedBox(height: 16),
+            const TheGoiTaiKhoan(),
             const SizedBox(height: 32),
             // Nhóm "QUẢN LÝ TÀI KHOẢN" (Hóa đơn, Mục tiêu, Ví, Danh mục) đã
             // bỏ hẳn ngày 2026-09-19 (nhóm D): bốn mục ấy lặp lại đúng drawer,

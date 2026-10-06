@@ -866,7 +866,8 @@ class _AiChatPageState extends State<AiChatPage> {
       );
 
   /// Băng khoá — một câu + một nút theo lý do ([lyDoKhoa]). Basic → *Nâng cấp*
-  /// (spec Premium 8.1); hai lý do cũ → *Cài đặt AI* như trước.
+  /// (spec Premium 8.1; màn Stitch *"Trợ lý AI - Khoá Premium (Basic)"*
+  /// `2b3fa0f69486498584fdf3a243f30147`); hai lý do cũ → *Cài đặt AI* như trước.
   Widget _dongKhoa(LyDoKhoaHoiDap ly) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         child: Row(
