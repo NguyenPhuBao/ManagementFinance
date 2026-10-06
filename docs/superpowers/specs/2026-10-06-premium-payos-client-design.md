@@ -2,8 +2,8 @@
 
 **Ngày:** 2026-10-06. **Trạng thái:** thiết kế người dùng duyệt trong chat (tám câu hỏi · hướng kiến trúc · năm phần,
 mười bốn lượt AskUserQuestion qua hai phiên — bàn giao `flowmoney-handoff-2026-10-06-payos-brainstorm.md` §3 ghi hai câu
-đầu); bản viết **chờ người dùng duyệt**; **chưa có kế hoạch, chưa có mã**. Kế hoạch sẽ ở
-`docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore).
+đầu); bản viết **người dùng duyệt cùng ngày** (giữ trần **3 ví** dù tài khoản mới có sẵn 2 — điểm 1 khối dưới);
+**chưa có mã**. Kế hoạch ở `docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore).
 
 Backend (NPBao) dựng module thanh toán PayOS, gộp `main` @ `872462f` ngày 2026-10-06 (commit gộp `f088b2a`); hướng dẫn
 cho client ở `docs/Payment/CLIENT_INTEGRATION_GUIDE.md` (= `docs/superpowers/backend/CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`).
