@@ -86,8 +86,10 @@ void main() {
     DateTime? silenceBefore,
     int nguongSoDuThap = 0,
     Set<String>? viDaDung,
+    Map<String, String>? dotAm,
   }) {
     return buildNotificationCandidates(NotificationRuleInput(
+      dotAm: dotAm,
       now: at ?? now,
       goals: goals,
       wallets: wallets,
@@ -424,7 +426,23 @@ void main() {
               'quét một thông báo là hàng chục thông báo trong một ngày.');
     });
 
-    test('sang ngày mới thì nhắc lại được', () {
+    test('⭐ E6: biết đợt âm → khoá theo giao dịch mở đợt, KHÔNG theo ngày (ví âm 4 ngày = 1 thông báo)', () {
+      final v = vi(soDu: -50000);
+      final homNay = chay(wallets: [v], dotAm: {'vi1': 'gd-a'}).single.dedupeKey;
+      final homSau = chay(wallets: [v], at: DateTime(2026, 9, 18), dotAm: {'vi1': 'gd-a'}).single.dedupeKey;
+      expect(homNay, 'walletNeg:vi1:gd-a');
+      expect(homSau, homNay,
+          reason: 'UX 2026-09-19 E6: trung tâm thông báo có 4 bản "Số dư ví đang âm" cho cùng một ví');
+      final dotMoi = chay(wallets: [v], at: DateTime(2026, 9, 25), dotAm: {'vi1': 'gd-d'}).single.dedupeKey;
+      expect(dotMoi == homNay, isFalse, reason: 'hồi rồi âm lại là đợt mới — phải báo lại');
+    });
+
+    test('không biết đợt (không nạp sổ / ví không có trong bản đồ) → khoá theo ngày như cũ', () {
+      final v = vi(soDu: -50000);
+      expect(chay(wallets: [v], dotAm: {'vi-khac': 'x'}).single.dedupeKey, startsWith('walletNeg:vi1:2026-'));
+    });
+
+    test('sang ngày mới thì nhắc lại được (ví âm: chỉ khi KHÔNG biết đợt — xem ca E6)', () {
       final v = vi(soDu: -50000);
       final homNay = chay(wallets: [v]).single.dedupeKey;
       final homSau =
@@ -675,6 +693,37 @@ void main() {
           reason: 'không biết ví → không đoán');
       expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
           reason: 'ngưỡng 0 = tính năng tắt: không có căn cứ để nói "đã hồi"');
+    });
+  });
+
+  group('hàng "ví âm" tự gỡ khi ví đã hồi (E6)', () {
+    AppNotification hang(String id, {String kind = 'walletNegative', String? vi, DateTime? daGo}) => AppNotification(
+          id: id,
+          idaccount: 7,
+          kind: kind,
+          dedupeKey: 'k$id',
+          title: 't',
+          body: 'b',
+          severity: 'critical',
+          subjectType: 'wallet',
+          subjectId: vi,
+          createdAt: now,
+          dismissedAt: daGo,
+        );
+
+    test('⭐ ví về 0 / dương, hoặc đã đánh dấu cho phép âm → hàng ví âm được chọn để gỡ', () {
+      expect(hangAmDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 0)]), ['a']);
+      expect(hangAmDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 5000)]), ['a']);
+      expect(hangAmDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -5000, choPhepAm: true)]), ['a'],
+          reason: 'ví được phép âm thì không sinh cảnh báo — hàng cũ cũng thôi đúng');
+    });
+
+    test('ví vẫn âm / hàng đã gỡ / loại khác / ví không còn → không chọn', () {
+      expect(hangAmDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -1)]), isEmpty);
+      expect(hangAmDaHoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 5000)]), isEmpty);
+      expect(hangAmDaHoi([hang('a', kind: 'walletLowBalance', vi: 'v1')], [vi(id: 'v1', soDu: 5000)]), isEmpty);
+      expect(hangAmDaHoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 5000)]), isEmpty,
+          reason: 'không biết ví → không đoán');
     });
   });
 

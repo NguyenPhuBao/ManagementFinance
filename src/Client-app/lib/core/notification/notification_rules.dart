@@ -187,6 +187,11 @@ class NotificationRuleInput {
   /// khi [lowBalanceThreshold] > 0.
   final Set<String>? viDaDung;
 
+  /// Ví đang âm → id giao dịch mở đợt âm hiện tại (`giaoDichMoDotAm`, E6 2026-10-06). Khoá của
+  /// `walletNegative` theo mốc ấy thì mỗi đợt âm báo **một** lần; ví vắng khỏi bản đồ (hoặc `null` — bộ quét
+  /// không nạp) thì giữ khoá theo NGÀY như cũ: không biết đợt thì không được im.
+  final Map<String, String>? dotAm;
+
   /// Tuần **vừa khép lại** có ít nhất một giao dịch không.
   ///
   /// Là `bool` chứ không phải tổng thu/chi, cùng kỷ luật thu hẹp đầu vào với
@@ -239,6 +244,7 @@ class NotificationRuleInput {
     this.defaultBillLeadDays = mocNhacMacDinh,
     this.lowBalanceThreshold = 0,
     this.viDaDung,
+    this.dotAm,
     this.tuanQuaCoGiaoDich = false,
     this.chiLon = const [],
     this.nguongChiLon = 0,
@@ -880,6 +886,23 @@ List<String> hangSapCanDaHoi(Iterable<AppNotification> hang, List<Wallet> wallet
   ];
 }
 
+/// Id các hàng **"ví âm"** chưa gỡ mà ví của chúng nay đã hết âm (≥ 0) hoặc được đánh dấu cho phép âm — bộ
+/// quét gỡ chúng, cùng khuôn [hangSapCanDaHoi] (E6, 2026-10-06). Gỡ là điều kiện để "mỗi đợt âm một lần" báo
+/// lại ở đợt sau: hàng đã gỡ vẫn giữ khoá của đợt CŨ, đợt mới mang khoá khác. Ví không còn thì không đoán.
+List<String> hangAmDaHoi(Iterable<AppNotification> hang, List<Wallet> wallets) {
+  final heAm = {
+    for (final v in wallets)
+      if (!v.isDeleted) v.id: v.balance >= 0 || v.allowNegative,
+  };
+  return [
+    for (final h in hang)
+      if (h.kind == NotificationKind.walletNegative.name &&
+          h.dismissedAt == null &&
+          (heAm[h.subjectId] ?? false))
+        h.id,
+  ];
+}
+
 List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
@@ -941,10 +964,15 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
     // Số dư âm cũng thoả điều kiện "dưới ngưỡng". `continue` ở nhánh trên là
     // thứ giữ cho mỗi ví chỉ ra MỘT thông báo — không có nó thì mỗi ví âm đẻ
     // hai thông báo nói cùng một chuyện.
+    // E6 (2026-10-06): gộp theo ĐỢT âm — giao dịch làm ví tụt dưới 0. Khoá theo
+    // ngày từng cho bốn dòng "đang âm" cho một ví âm bốn ngày; ví hồi thì
+    // `hangAmDaHoi` gỡ hàng cũ, âm lại là mốc mới. Không biết đợt → theo ngày.
+    final dot = input.dotAm?[v.id];
     ra.add(NotificationCandidate(
       kind: NotificationKind.walletNegative,
-      // Gộp theo NGÀY: ví ở trạng thái âm cho tới khi người dùng nạp tiền.
-      dedupeKey: 'walletNeg:${v.id}:${_ngayGon(_dauNgay(input.now))}',
+      dedupeKey: dot != null
+          ? 'walletNeg:${v.id}:$dot'
+          : 'walletNeg:${v.id}:${_ngayGon(_dauNgay(input.now))}',
       title: 'Số dư ví đang âm',
       body: '${v.name} đang âm ${_tien(-v.balance)}. '
           'Có thể một giao dịch đã bị ghi nhầm.',

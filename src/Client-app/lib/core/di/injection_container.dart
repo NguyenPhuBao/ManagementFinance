@@ -66,6 +66,7 @@ import '../../features/premium/presentation/an_nhac_het_han.dart';
 import '../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
+import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
@@ -529,6 +530,14 @@ Future<void> setupDependencies() async {
       // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
       loadViDaDung: (idaccount) =>
           sl<AppDatabase>().transactionDao.viDaDung(idaccount),
+      // E6: "ví âm" báo mỗi ĐỢT một lần — mốc là giao dịch làm ví tụt dưới 0.
+      loadDotAm: (idaccount, viAm) async {
+        final dao = sl<AppDatabase>().transactionDao;
+        return {
+          for (final id in viAm)
+            if (giaoDichMoDotAm(await dao.bienDongTheoVi(id)) case final moc?) id: moc,
+        };
+      },
       // Tổng kết tuần chỉ cần biết tuần vừa khép CÓ giao dịch hay không —
       // không tổng, không gom danh mục. Câu chữ đã chốt không nêu số nào.
       loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
