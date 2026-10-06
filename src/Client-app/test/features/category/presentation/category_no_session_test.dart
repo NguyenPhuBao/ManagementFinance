@@ -23,6 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'category_test_fakes.dart';
 
+import '../../../helpers/bat_thong_bao.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -70,6 +72,7 @@ void main() {
 
   testWidgets('màn Thêm danh mục không ghi gì khi chưa có phiên đăng nhập',
       (tester) async {
+    final bat = batThongBao();
     final repository = await dungChuaDangNhap(
         tester, (r) => CategoryAddPage(repository: r));
 
@@ -83,8 +86,7 @@ void main() {
     expect(repository.savedChild, isNull,
         reason: 'Getter cũ ghi danh mục này dưới `idaccount = 1` — tài khoản '
             'admin thật.');
-    expect(find.textContaining('Chưa xác định được tài khoản đăng nhập'),
-        findsOneWidget);
+    expect(bat.cau.single, contains('Chưa xác định được tài khoản đăng nhập'));
     expect(repository.accountIdsDoc, isEmpty,
         reason: 'Lượt nạp màn (cây danh mục để chọn nhóm cha) cũng là một '
             'đường đọc.');
@@ -92,6 +94,7 @@ void main() {
 
   testWidgets('màn Nhóm danh mục không ghi gì khi chưa có phiên đăng nhập',
       (tester) async {
+    final bat = batThongBao();
     final repository = await dungChuaDangNhap(
         tester, (r) => CategoryGroupPage(repository: r));
 
@@ -106,8 +109,7 @@ void main() {
     expect(repository.savedGroup, isNull,
         reason: 'Getter cũ ghi nhóm này dưới `idaccount = 1` — tài khoản admin '
             'thật.');
-    expect(find.textContaining('Chưa xác định được tài khoản đăng nhập'),
-        findsOneWidget);
+    expect(bat.cau.single, contains('Chưa xác định được tài khoản đăng nhập'));
     expect(repository.accountIdsDoc, isEmpty,
         reason: 'Lượt nạp danh mục con để gộp vào nhóm cũng là một đường đọc.');
   });

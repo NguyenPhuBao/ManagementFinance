@@ -594,7 +594,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-04)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-06)
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -1070,6 +1070,141 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
   `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
+### 🔀 Gộp `main` @ `872462f` (2026-10-06, commit gộp `f088b2a`) — module thanh toán PayOS, backend đóng đơn 36
+
+Hai commit NPBao (`0a118af`, `872462f`) cộng ba commit gộp: module `payment` (PayOS — tạo link, webhook, gói đăng ký,
+scheduler hết hạn), `database/19_create_payment_subscription_tables.sql` (lúc gộp **chưa áp** lên CSDL dev; ✅ **áp tối
+2026-10-06** theo cho phép đích danh + `prisma generate` — gạch cuối khối này), `schema.prisma` thêm model; cộng sửa đơn **36** (vá lách query bảo trì, bỏ `'secret'`, bỏ `isAdmin` theo URL,
+CORS) và chuyển nó sang `DA-XONG/` (đếm bằng máy: **53** tệp). Phía client: hai chỗ dọn cảnh báo (`change_password_page.dart`
+bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutter analyze` 26 → **21**; test liên quan xanh.
+
+- **Xung đột duy nhất:** `CAN-LAM/README.md` — README của backend viết lại từ bản chưa có **đơn 37** nên làm rơi nó; bản gộp
+  giữ cả hai (36 ✅, 37 ⏳).
+- ✅ **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS —
+  **client đã tích hợp cùng ngày**, xem khối *Premium qua PayOS* ngay dưới. Hướng dẫn lệch mã ở **năm** chỗ (client theo mã):
+  `payment.success` → sự kiện thật `account.upgraded`; return URL sang web Admin; `localhost:10000` → 3000; `http` → Dio;
+  `/subscription-info` trả `accountType` không phải `type` — gom vào đơn **38** `CAN-LAM/CLIENT_PREMIUM_PAYOS.md`.
+- ⚠️ **Backend dev KHÔNG khởi động được sau gộp** cho tới khi chạy `npm install` ở `src/Backend`: gói mới **`@payos/node`**
+  chưa có trong `node_modules`, và `modules/payment/payos.client.js:1` nạp nó ngay khi `api/index.js` nạp routes — đo
+  2026-10-06: `MODULE_NOT_FOUND '@payos/node'`. Client **chưa chạy** `npm install` (đụng `src/Backend`, cần cho phép đích
+  danh — như lần gói Gemini 2026-09-27). Module thanh toán còn cần biến PayOS trong `.env`.
+  ✅ **`npm install` đã chạy cùng ngày** theo cho phép của người dùng (*"ok hãy chạy backend đi"*) — backend dev chạy lại
+  (`npm run dev`, cổng 3000, Redis vắng như mọi lần).
+- ⚠️ **Bẫy do chính `npm install` sinh ra:** `package.json` có `"postinstall": "prisma generate"`, nên cài gói là **tự sinh
+  lại Prisma client** theo `schema.prisma` mới — client ấy đòi cột `account.premium_expires_at` mà CSDL dev chưa có
+  (`database/19` chưa áp), và **mọi** truy vấn bảng `account` vỡ `P2022`, kể cả đăng nhập (đo bằng `account.findFirst`).
+  Đã sinh lại client từ `schema.prisma` của `3ef5db7` (trước gộp) — đo lại chạy. Hệ quả: `/api/payment/*` **chưa dùng
+  được trên dev** (client không có model `payment_order`) tới khi áp `database/19` **và** `prisma generate` — cần cho phép
+  đích danh. Lỡ chạy lại `npm install` thì khôi phục bằng `git show 3ef5db7:src/Backend/prisma/schema.prisma > prisma/schema.truoc_gop.prisma && npx prisma generate --schema prisma/schema.truoc_gop.prisma && rm prisma/schema.truoc_gop.prisma` (chạy trong `src/Backend`).
+- ✅ **Áp `database/19` tối 2026-10-06** — người dùng cho phép đích danh (chọn *"Cho phép áp database/19"*). Một giao tác
+  `pg` từ `src/Backend`, tệp không BOM, backend tắt sẵn. Đo trước/sau: `account` 19 hàng không đổi, thêm cột
+  `premium_expires_at`, bảng `payment_order` + `payment_transaction`, sáu chỉ mục. `npx prisma generate` theo
+  `schema.prisma` **hiện tại**: `account.findFirst` chạy, `payment_order.count()` = 0 — **lệnh khôi phục ngay trên thôi cần**
+  (nay `npm install` sinh client khớp CSDL dev). Còn thiếu khoá PayOS trong `.env` (đếm 0).
+
+### ✅ Premium qua PayOS — phía client (mã xong 2026-10-06 chiều, 15/17 task; 🚧 Task 16 nghiệm thu sandbox chờ người dùng)
+
+Spec `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (brainstorm 8 câu + kiến trúc + 5 phần, người dùng
+duyệt; khối *"Chỗ thêm lúc viết"* có 6 điểm); kế hoạch 17 task `plans/2026-10-06-premium-payos-client.md` (gitignore, *Nhật
+ký* cuối tệp); tài liệu `docs/PREMIUM_FEATURE.md`; đơn backend **38** `CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (không chặn client).
+Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trước Task 4 để `GoiRepository` biên dịch).
+
+- **Chốt của người dùng:** bốn đặc quyền — Basic **3 ví · 3 ngân sách · 3 mục tiêu** đang hoạt động (bằng trần là vượt; hạ
+  cấp thì giữ nguyên, chỉ không tạo thêm) + **Trợ lý AI & Nhập nhanh** khoá cho Basic (kể cả lệnh tạo C3); **đồng bộ không
+  tách**; cache hạn theo tài khoản **so giờ máy** (lùi giờ máy khi offline kéo dài được — chấp nhận); **client thi hành,
+  server quyết con số** (`limits`); mở `checkoutUrl` **ngoài app** (`url_launcher`, người dùng duyệt gói); nghiệm thu bằng
+  **sandbox PayOS**; kiến trúc A — mô-đun `features/premium/`, một `conTaoDuoc`, **một cửa chặn** ở `redirect` ba route tạo.
+- **Mô-đun:** `TrangThaiGoi` / `TranGoi` / `conTaoDuoc` thuần · `GoiStore` secure storage `goi_tai_khoan_<id>` ·
+  `PaymentApi` Dio · `GoiRepository` (kho thắng `type`, `lamMoi` không ném, resumed giãn 5 phút, socket hỏi ngay) ·
+  `NguonDemDangHoatDong` · `redirectTaoTheoGoi` · `GoiCubit` singleton ở gốc cây · ba màn `/premium`,
+  `/premium/cho-thanh-toan` (poll 3 s khi đang hiện, PAID → lamMoi → Thành công → pop hai lớp), `/premium/lich-su` · thẻ Gói
+  tab Cá nhân · dòng nhắc Trang chủ ≤ 3 ngày · băng khoá Trợ lý AI (Basic xét trước) · ô Nhập nhanh khoá.
+  `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, tín hiệu, không toast, không kéo đồng bộ); `UserModel.loaiTaiKhoan`.
+  **Không đổi schema, không trường đồng bộ.** `flutter test` **6023/6023** / 9 skip; analyze **21**; build `--release` đạt.
+- ⚠️ **Bẫy lượt thi công bắt được, test mù:** `BlocProvider.of` bọc `ProviderNotFoundException` thành `FlutterError` (dùng
+  `context.read`); hàng chữ cạnh vòng xoay tràn 155 px, khối chữ trong `Wrap` tràn 47 px ở 360 dp; không `pumpAndSettle`
+  khi vòng xoay quay; xoá mềm là `deletedAt`; ngân sách không lặp hết hạn ở cuối kỳ đầu; Kotlin daemon rơi về biên dịch
+  thường in stack trace mà build vẫn đạt — đọc `√ Built`.
+- **Stitch:** 8 màn/khối tạo xong (5 lượt trả `timeout` nhưng màn có thật) — id ở `PREMIUM_FEATURE.md` mục 5, ✅ **người
+  dùng xác nhận tối 2026-10-06**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
+  ngrok hoặc webhook tự ký, 10 bước spec mục 13).
+
+### ✅ E4 — SnackBar thành toast (2026-10-06 tối; mã xong, CHƯA nghiệm thu máy thật)
+
+Người dùng chọn E4 của lượt UX 2026-09-19 và duyệt thiết kế trong chat (bounded, không spec). Đếm bằng máy: **88**
+`SnackBar` ở **31** tệp (con số 176 của kế hoạch UX đếm cả lời gọi `showSnackBar(`), **một** có `action` (*Hoàn tác* ở
+trung tâm thông báo).
+
+- **Kênh** `ThongBaoNhanh.hien(cau, loai:, hanhDong:)` + hàm gọn **`baoNhanh(...)`** (`core/ui/thong_bao_nhanh.dart`):
+  `LoaiThongBao` **lỗi** (vòng đỏ `expense`) · **xong** (xanh `income`, ✓) · **thông tin** (đen); `HanhDongToast` là nút
+  chữ bên phải viên. Chưa đăng ký DI (widget test trần) thì bỏ qua.
+- **`AppToast`**: câu phản hồi bậc **cao nhất** `_Bac.phanHoi` — người dùng chọn *"câu phản hồi thắng"* (đè mất mạng /
+  đồng bộ lỗi, toast nền tới sau không đè nó); viên có nút mới nhận chạm (`IgnorePointer` theo `hanhDong`), bấm thì chạy
+  rồi ẩn, không bấm vẫn **tự ẩn** (hết bẫy `persist` của SnackBar có `action`); bàn phím mở thì viên nổi **12 dp trên
+  bàn phím** (trước nằm cố định trên thanh tab — sau bàn phím); câu tối đa **3** dòng.
+- **Gán loại**: *"Vui lòng…"*, lỗi bắt được, câu chặn thao tác → lỗi; *"Đã…"*, *"…thành công"*, `*OperationSuccess` →
+  xong; lưu giao dịch **kèm cảnh báo ngân sách** → thông tin; *"Đã đánh dấu…"*, *"đang phát triển"*, *"hệ điều hành
+  đang chặn"* → thông tin.
+- **Test**: helper `test/helpers/bat_thong_bao.dart` — `batThongBao()` gom câu trên kênh (kiểm câu + loại thay vì tìm chữ
+  trên màn), `bocToast(bat)` dựng `AppToast` thật cho ca cần bấm *Hoàn tác*. **Test quét `lib/` thứ 19**
+  `core/ui/khong_snackbar_test.dart` cấm `SnackBar` / `ScaffoldMessenger` mới. ⚠️ Đo vị trí viên phải bơm **ba** nhịp:
+  ticker của `AnimatedSlide` bắt đầu ở khung SAU khung dựng — hai nhịp thì viên còn lệch nửa chiều cao (25 dp).
+- **Stitch** `fb68baba5ad04368918911cbf987725b` *"Thông báo nổi (toast) - Ba biến thể"* — lượt gọi trả `timeout`, màn
+  xuất hiện sau (✅ người dùng xác nhận tối 2026-10-06). Đối chiếu ra bốn chỗ lệch; người dùng chọn **chép cả bốn**
+  (`719293c`): ① viên neo **trên bàn phím SỐ tự vẽ** của Thêm giao dịch — `BaoCheDayToast` (`core/ui/`) bọc 16 phím,
+  đo khoảng đáy bị che, báo vào `cheDayToast`; `AppToast` nổi 12 dp trên đó (hệ điều hành không báo `viewInsets` cho
+  bàn phím tự vẽ, nên bản trước đè hai hàng phím dưới). ⚠️ Rời cây thì trả 0 qua **microtask + quyền sở hữu kênh**
+  — gán thẳng trong `dispose` là setState lúc cây khoá, và có thể xoá số của vùng mới dựng cùng khung. ② **Vuốt ngang**
+  > 60 dp hoặc nhanh → viên bay ra rồi ẩn, **không** chạy Hoàn tác; kéo ngắn trượt về; viên nhận chạm chỉ trong đúng
+  hình viên (`Center` không nhận chạm ở phần trống). ③ **Mọi toast tự ẩn sau 3 giây** (trước 4). ④ Viên lỗi dấu **"!"**
+  (`Icons.priority_high`); câu mang biểu tượng riêng `bieuTuong` — thùng rác cho *"Đã xoá thông báo"*.
+- Commit `7667ba6` (kênh + AppToast) · `acaa2a7` (88 chỗ + test) · `bbd378a` (dòng import) · `719293c` (theo Stitch).
+  `flutter test` **6049/6049** / 9 skip, analyze 21. **Còn**: nghiệm thu máy thật — viên trên bàn phím hệ thống và trên
+  16 phím số ở 360 dp, vuốt tắt, nút Hoàn tác bấm được.
+
+### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
+
+Spec `docs/superpowers/specs/2026-10-05-du-an-c-thu-tu-khoi-phan-tich-design.md` (duyệt); kế hoạch 9 task
+`…/plans/2026-10-05-du-an-c-thu-tu-khoi-phan-tich.md` (gitignore). Task 1–8 xong (`fce6b00` → `6c5f7e2`), chi tiết ở mục
+**3.36** `ANALYTICS_FEATURE.md`. Người dùng chọn **học rồi đề xuất**: trang đo giây đứng yên trên từng cụm (chín cụm),
+đủ ≥ 5 ngày đã qua mà một cụm thắng ≥ 60 % thì hiện **một** thẻ *"Bạn hay xem ‹cụm› — đưa lên đầu trang?"*; bấm **Đưa
+lên** mới đổi thứ tự và giữ nguyên; dòng *Về mặc định* cuối trang khi thứ tự khác mặc định. Schema **v29** — hai bảng
+**cục bộ** `PhanTichGiayXems` · `PhanTichThuTuPhanHois` (test quét 15). `ThuTuKhoiCubit` riêng; **không đăng ký thì trang
+y hệt cũ**. `flutter test` **5898** pass / 9 skip (ca skip thứ chín là công cụ `test/tool/bom_giay_xem_test.dart`),
+`flutter analyze` 26.
+
+🛑 **Việc còn lại — nghiệm thu máy thật** (Task 9 Step 3; 2026-10-06 không máy nào cắm, người dùng chọn làm tài liệu trước):
+ba vế "trang đang hiện" của `TheoDoiXem` (sang tab khác, route chồng, tắt màn — giây **không** được tăng) là vùng
+`flutter test` mù; rồi bơm 5 ngày → thẻ → Đưa lên / Về mặc định / Bỏ qua; 360 dp đưa *Xu hướng* lên đầu không tràn.
+
+### ✅ G63 đóng — ví trùng tên giữa hai máy (2026-10-05 tối)
+
+Trọn 14 task của kế hoạch (`f2a2f52` → `614634f`) + hai bản sửa do nghiệm thu bắt (`2274a1f`, `3544cc4`). Spec
+`docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md` (banner *thi công xong* + chỗ bản thi công khác bản
+viết); mục G63 `CLIENT_APP_KNOWN_GAPS.md`.
+
+- **Lõi** (Task 1–8): schema **v28** — cột **cục bộ** `wallets.bi_tu_choi_trung_ten` (payload ví vẫn 13 trường);
+  `ViTrungTenResolver` là bộ nghe thứ **hai** của `pushResultStream` (đặt cờ khi `WALLET_NAME_DUPLICATE` /
+  `UNIQUE_VIOLATION` trên ví); *bị giữ* = cờ ∧ còn ví sống khác cùng tên không mang cờ — **một** định nghĩa `capViTrungTen`
+  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon`; `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
+  mục tiêu / giao dịch dính tới nó; Sửa ví chỉ kiểm trùng tên khi tên đổi; kéo về có ví mặc định → máy chỉ còn một;
+  `GopViService` + kế hoạch thuần `keHoachGop` (một nguồn cho hộp xác nhận và thi hành).
+- **Giao diện** (Task 9–12, bốn màn Stitch người dùng xác nhận): thẻ **"VÍ TRÙNG TÊN"** đầu màn Quản lý ví
+  (`c5a2cece…`) — mỗi cặp một hộp con với **Đổi tên** (hộp `5fea1834…`, gợi ý *"‹tên› (2)"*) và **Gộp** (hộp `303d12a1…`,
+  in đúng dòng của kế hoạch); nhãn **CHƯA ĐỒNG BỘ** + chấm đỏ trên dòng ví — hàng tên + nhãn nay là **`Wrap`** (Stitch
+  cũng `flex-wrap`; `Flexible` không đủ, hai nhãn đã tràn 31 px ở 360 dp với font test); dòng nhắc Trang chủ có ✕
+  (`5dd90541…`), cờ ẩn `AnNhacViTrungTen` trong bộ nhớ, `AuthBloc` đặt lại khi đăng nhập.
+- **Nghiệm thu hai máy ảo** (`FlowMoney_16G` × 2, `-read-only`; tài khoản thử **27** `thug63` tạo qua `POST
+  /api/auth/register`; người dùng chọn) — đạt cả bốn bước spec mục 10. ⚠️ **Hai lỗi 5820 ca test mù:** (1) **vòng đồng bộ
+  nóng** — bước **1b** gửi kèm danh mục của giao dịch **bị giữ** ở mọi chu kỳ → xung đột (không lỗi, không giãn cách) →
+  `sync.completed` về chính máy ấy → `syncNow` → chạy bù: 291 chu kỳ / 5 giây; sửa: 1b bỏ giao dịch bị giữ. (2) **máy kia
+  kéo thiếu sau Đổi tên** — bản ghi ghi lúc offline rồi bị giữ lên server với giờ ghi cũ hơn mốc kéo về của máy kia; sửa
+  phần G63 bằng **`ThaViBiGiu`** (`wallet/data/services/tha_vi_bi_giu.dart`: gỡ cờ + mốc chặn, làm mới giờ sửa của ví và
+  bản ghi từng bị giữ — gọi ở Đổi tên và ở engine bước 0 cho ví mang cờ mà không còn cặp, `ViTrungTenNguon.viCanTha`).
+  Ca chung → **G67**, đơn backend **CAN-LAM 37** `KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`.
+- ⚠️ Bẫy đo: `uiautomator dump` gọi qua Git Bash cần `MSYS_NO_PATHCONV=1` — thiếu thì `/sdcard/ui.xml` thành đường dẫn
+  Windows và dump ra **rỗng, im lặng**. Hai máy ảo cùng một AVD chạy song song bằng `-read-only` (không lưu gì khi tắt).
+
 ### 🧹 Dọn ví trùng tên trên Realme + mở G63 (2026-10-03)
 
 Lượt đồng bộ đầu sau 11 ngày (đăng nhập lại khi nghiệm thu chia sẻ biên lai) báo **10 lỗi** — *"10 failed"* ghi từ 28/09.
@@ -1079,6 +1214,14 @@ ví mặc định), giao dịch trong ví bị từ chối gửi lại mọi chu
 tài khoản dùng trên hai máy) → **G63 hoãn**, kèm phác thảo lối sửa đã duyệt một nửa; dữ liệu Realme **dọn qua giao diện**
 (xoá 7 giao dịch thử + hai ví trùng của Realme), đo lại: server còn đúng một ví mỗi loại, Realme đồng bộ sạch. Mục G63
 `CLIENT_APP_KNOWN_GAPS.md`.
+
+📝 **2026-10-05 — G63 hết hoãn:** người dùng chọn làm. Thiết kế duyệt trong chat (phạm vi **chỉ ví**; cờ mặc định **bản
+server thắng**; dòng nhắc Trang chủ có ✕), spec `docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md`
+— người dùng duyệt bản viết; kế hoạch 14 task (gitignore). **Chiều cùng ngày: Task 1–8 xong** (`f2a2f52` → `6a68d86`):
+schema **v28** (cột cục bộ `wallets.bi_tu_choi_trung_ten`), `ViTrungTenResolver` (bộ nghe thứ hai của `pushResultStream`),
+`_collectPendingOps` có mục 0 *bản ghi bị giữ*, Sửa ví chỉ kiểm trùng tên khi tên đổi, kéo về chỉ còn một ví mặc định,
+`GopViService`. **Còn Task 9–13** (thẻ Gộp / Đổi tên, dòng nhắc Trang chủ, nghiệm thu hai máy, đóng G63) — ✅ **xong tối cùng ngày**, khối *✅ G63 đóng* phía trên. Khối trên là ảnh
+chụp của ngày 03/10.
 
 ### 🔧 Hai sửa theo báo của người dùng trên OnePlus (2026-10-02) — ô OTP tràn (G62), đồng bộ xong thì im
 
@@ -1191,9 +1334,10 @@ Chi tiết ở mục **9.45** `AI_EDGE_FEATURE.md`; spec `specs/2026-10-02-du-an
   thống theo phiên** cùng tối (người dùng duyệt): `heThongCho(tenDich)` — phiên sáu tool giữ đúng 2.679 ký tự, phiên giao
   dịch 2.529 (bỏ hai ví dụ tool ngân sách không được khai), tám phiên còn lại 618 (chỉ phần chung). A/B Realme 9 câu: tổng chờ
   TB **19,3 → 13,3 s**, tám câu theo luật −5,3 → −8,5 s mỗi câu, nội dung 9/9 giữ hoặc tốt hơn (cuối mục 9.45).
-  🚧 **Đường nhanh câu giao dịch** (spec `2026-10-02-duong-nhanh…`, duyệt bản viết cùng tối): mã Task 1–6 xong
-  (`1d19c96` → `b8bd682`, lời dặn v2 `6b1724a`), đo Realme 32/35 câu 20–42 s → 0,1–10,4 s, SAI 0, còn C6 tụt — chưa
-  ghi mục 9.46. Bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-04-duong-nhanh-dang-do.md`.
+  ✅ **Đường nhanh câu giao dịch — XONG 2026-10-05** (spec `2026-10-02-duong-nhanh…`, mục **9.46** `AI_EDGE_FEATURE.md`;
+  `1d19c96` → `91d7666`): câu giao dịch luật đọc đủ → tool chạy trước, Gemma chỉ viết câu; C6 (kể thiếu khoản) chữa bằng
+  **lưới kể tên** `ke_du_ten.dart` (người dùng chọn *"Gemma viết + lưới kiểm đủ dòng"*). Đo Realme CPU 05/10: 35/35 không
+  tụt, SAI 0, chờ TB ~28 → **3,9 s** ở 31 câu đường nhanh; bộ đo khoá 18 câu 15 ✅ · 2 ◐ · SAI 0.
 
 `flutter test` **5297/5297** (6 skip — ca thứ sáu là công cụ chấm bộ đo `do_bo_do_test.dart`), `flutter analyze` 26.
 Schema, payload, `pubspec`, `tools_json`, lời hệ thống không đổi. Bản trên Realme: debug + `SPIKE_C4` `e57753f8…`

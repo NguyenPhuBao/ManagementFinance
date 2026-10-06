@@ -31,6 +31,12 @@ import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
+import '../../features/premium/data/chan_theo_goi.dart';
+import '../../features/premium/domain/don_thanh_toan.dart';
+import '../../features/premium/domain/tran_goi.dart';
+import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
+import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
+import '../../features/premium/presentation/pages/nang_cap_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
@@ -243,8 +249,12 @@ class AppRouter {
             path: '/wallets',
             builder: (_, __) => const WalletListPage(),
           ),
+          // Cửa chặn trần Basic (spec Premium 2026-10-06 mục 7.1): đủ 3 ví đang
+          // hoạt động thì sang /premium?tran=vi. Một cửa cho mọi lối vào form.
           GoRoute(
-              path: '/wallets/add', builder: (_, __) => const WalletAddPage()),
+              path: '/wallets/add',
+              redirect: redirectTaoTheoGoi(LoaiTran.vi),
+              builder: (_, __) => const WalletAddPage()),
           GoRoute(
             path: '/wallets/:id/edit',
             builder: (_, s) => WalletEditPage(id: s.pathParameters['id']!),
@@ -264,8 +274,11 @@ class AppRouter {
           // `?category=<id>&amount=<số>` = tạo mới đã điền sẵn, từ thẻ "Chưa
           // đặt ngân sách". `amount` hỏng thì `tryParse` trả `null` và ô hạn mức
           // để trống — một đường dẫn bị sửa tay không được làm đổ cả trang.
+          // `?id` là SỬA — `chuyenHuongTheoGoi` tự cho qua; không `?id` là tạo và
+          // bị trần Basic chặn (kể cả từ thẻ "Chưa đặt ngân sách", lệnh tạo C3).
           GoRoute(
               path: '/budget/rules',
+              redirect: redirectTaoTheoGoi(LoaiTran.nganSach),
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
                     danhMucChonSan: state.uri.queryParameters['category'],
@@ -387,6 +400,8 @@ class AppRouter {
           GoRoute(path: '/goals', builder: (_, __) => const GoalPage()),
           GoRoute(
               path: '/goals/add',
+              // Cửa chặn trần Basic (spec Premium 7.1): đủ 3 mục tiêu chưa đạt thì sang /premium.
+              redirect: redirectTaoTheoGoi(LoaiTran.mucTieu),
               // `?name&target&deadline` = điền sẵn từ lệnh tạo ở màn Trợ lý AI (C3); hỏng thì bỏ đúng trường ấy.
               builder: (_, s) => GoalAddPage(dienSan: dienSanMucTieuTuQuery(s.uri.queryParameters))),
           // Đặt TRƯỚC '/goals/:id' cho khớp với thứ tự của '/goals/add': đường
@@ -419,6 +434,25 @@ class AppRouter {
             path: '/ai-settings',
             builder: (_, __) => const CaiDatAiPage(),
           ),
+          // Premium (spec 2026-10-06 mục 9): ba route NGOÀI shell, không ở
+          // `nhanhThanhTab` — push từ mọi nơi (cửa chặn, băng khoá, thẻ Cá nhân).
+          // `?tran=vi|ngan_sach|muc_tieu` = đến từ cửa chặn, màn mở đầu bằng câu trần.
+          GoRoute(
+            path: '/premium',
+            builder: (_, state) => NangCapPage(
+                tran: loaiTranTuMa(state.uri.queryParameters['tran'])),
+          ),
+          GoRoute(
+            path: '/premium/cho-thanh-toan',
+            // Thiếu extra (deeplink tay, dựng lại sau khi app bị giết) → về Nâng cấp.
+            redirect: (_, state) =>
+                state.extra is DonThanhToan ? null : '/premium',
+            builder: (_, state) =>
+                ChoThanhToanPage(don: state.extra as DonThanhToan),
+          ),
+          GoRoute(
+              path: '/premium/lich-su',
+              builder: (_, __) => const LichSuMuaPage()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
               path: '/settings/change-password',

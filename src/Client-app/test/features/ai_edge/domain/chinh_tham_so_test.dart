@@ -837,6 +837,22 @@ void main() {
         expect(cauHoiLietKe(c), isFalse, reason: c);
       }
     });
+    test('⭐ B8: soDongYeuCau đọc N của "<N> khoản / giao dịch" — chữ số hoặc chữ', () {
+      expect(soDongYeuCau('3 khoản thu mới nhất'), 3,
+          reason: 'B8 bộ đo khoá (Realme 2026-10-05): hỏi 3 khoản, mẫu câu in 4');
+      expect(soDongYeuCau('3 khoan thu moi nhat'), 3);
+      expect(soDongYeuCau('5 giao dịch gần đây nhất'), 5);
+      expect(soDongYeuCau('ba khoản chi lớn nhất tháng này'), 3);
+      expect(soDongYeuCau('hai giao dich moi nhat'), 2);
+      expect(soDongYeuCau('khoản chi mới nhất'), isNull);
+      expect(soDongYeuCau('tôi có bao nhiêu khoản chi trên 500k'), isNull,
+          reason: 'câu ĐẾM, không phải câu xin N dòng');
+      expect(soDongYeuCau('tháng 3 khoản chi nào lớn nhất'), isNull,
+          reason: '"tháng 3" không phải số dòng — số phải đứng NGAY trước khoản / giao dịch'
+              ' và không bị chữ đứng trước dính vào');
+      expect(soDongYeuCau('0 khoản'), isNull);
+      expect(soDongYeuCau(''), isNull);
+    });
   });
 
   group('16. nhomTongQuanTheoCauHoi', () {

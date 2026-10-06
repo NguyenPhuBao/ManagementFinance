@@ -32,6 +32,9 @@ import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_add_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+import '../../helpers/bat_thong_bao.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -224,12 +227,14 @@ void main() {
 
   testWidgets('trùng tên thì báo ngay, không gọi thêm ví, không rời trang',
       (tester) async {
+    final bat = batThongBao();
     final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
     await _moTrang(tester, repo);
 
     await _dienTenVaLuu(tester, 'tiền mặt');
 
-    expect(find.text(thongBaoTrungTen('tiền mặt')), findsOneWidget);
+    expect(bat.cau, [thongBaoTrungTen('tiền mặt')]);
+    expect(bat.cuoi!.loai, LoaiThongBao.loi);
     expect(repo.luoiGoiThem, isEmpty);
     expect(find.text('Thêm Ví Mới'), findsOneWidget,
         reason: 'Rời trang là mất hết những gì người dùng vừa điền.');
@@ -237,12 +242,13 @@ void main() {
 
   testWidgets('datasource từ chối thì lỗi hiện ra và trang ở lại',
       (tester) async {
+    final bat = batThongBao();
     final repo = _RepoGia([])..loiKhiThem = const CacheException('Bị từ chối');
     await _moTrang(tester, repo);
 
     await _dienTenVaLuu(tester, 'Ví mới');
 
-    expect(find.textContaining('Bị từ chối'), findsOneWidget,
+    expect(bat.cau.single, contains('Bị từ chối'),
         reason: 'Cubit của trang này không có ai nghe `WalletError`. Trước '
             'bản này mọi lỗi thêm ví đều im lặng: trang pop, ví không có.');
     expect(find.text('Thêm Ví Mới'), findsOneWidget);

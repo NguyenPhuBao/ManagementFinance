@@ -12,6 +12,7 @@ import '../../data/models/budget_entity.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../bloc/budget_cubit.dart';
 import 'budget_tabs_view.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class BudgetPage extends StatelessWidget {
   const BudgetPage({super.key});
@@ -56,13 +57,7 @@ class _BudgetPageContent extends StatelessWidget {
           _ => null,
         };
         if (message == null) return;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text(message),
-            backgroundColor:
-                state is BudgetError ? AppColors.error : AppColors.primary,
-          ));
+        baoNhanh(message, loai: state is BudgetError ? LoaiThongBao.loi : LoaiThongBao.xong);
       },
       buildWhen: (_, s) =>
           s is BudgetLoaded || s is BudgetLoading || s is BudgetError,

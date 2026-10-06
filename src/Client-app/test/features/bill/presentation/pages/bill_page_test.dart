@@ -25,6 +25,9 @@ import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+import '../../../../helpers/bat_thong_bao.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -437,6 +440,7 @@ void main() {
   });
 
   testWidgets('báo lỗi KHÔNG được làm trắng cả trang', (tester) async {
+    final bat = batThongBao();
     await dungTrang(tester, [
       _bill(
           id: 'b',
@@ -453,8 +457,7 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Hoàn tác'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SnackBar), findsOneWidget,
-        reason: 'Lý do phải hiện ra.');
+    expect(bat.cuoi?.loai, LoaiThongBao.loi, reason: 'Lý do phải hiện ra.');
     expect(
       find.text('Da tra'),
       findsOneWidget,

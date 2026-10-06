@@ -12,7 +12,8 @@
 > **§2.9 chuyển ví** (người dùng báo giữa phiên: câu *"chuyển 500k từ tiền mặt sang tiết kiệm"* bị điền thành khoản chi)
 > và luật ngày mới ở **§2.3**. Câu **§8** nào đã chốt thì ghi ngay tại câu ấy. **Đo Realme lượt 3** (14 câu, cuối mục
 > 9.41): gọi AI 4/14, số tiền 14/14, chuyển ví ✅; 🛑 hai chỗ lộ ra chờ người dùng — *"quẹt thẻ …"* nhận ví Tiền mặt AI
-> chọn (lớp kiểm ví §2.8), *"cuối tháng"* gọi AI 14 s mà không thêm gì.
+> chọn (lớp kiểm ví §2.8), *"cuối tháng"* gọi AI 14 s mà không thêm gì (✅ sửa 2026-10-06: *cuối tháng (này / sau)*
+> trơn không còn là câu nhắc ngày — §2.3 nói *"để AI lấp"* nay lỗi thời ở đúng cụm ấy; mục 9.41 `AI_EDGE_FEATURE.md`).
 > 📝 **Soát thân spec với mã 2026-09-30 (phiên soát tài liệu sau C2):** chữ ký §2, tên hàm §2.3–2.6, lớp kiểm §2.8 (không
 > có hàm `hopNhatAi` — kiểm nằm trong `docCauGiaoDich(ai:)`; `cachDocSoTien` không có `n × 1.000.000`) và tình trạng Stitch
 > §3 đã sửa theo mã `ea12588`. Chỗ sửa ghi *"(soát 30/09)"*.

@@ -6,6 +6,7 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_status.dart';
 import '../models/wallet_entity.dart';
+import '../services/tha_vi_bi_giu.dart';
 
 /// Abstract — cho phép mock trong test
 abstract class WalletLocalDataSource {
@@ -43,6 +44,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     includeInTotal: w.includeInTotal,
     status:         w.status,
     allowNegative:  w.allowNegative,
+    biTuChoiTrungTen: w.biTuChoiTrungTen,
     syncStatus:     w.syncStatus,
     updatedAt:      w.updatedAt,
   );
@@ -65,6 +67,9 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     // Cùng lý do với `status` ngay trên: thiếu cột này thì mỗi lần người
     // dùng sửa tên ví là cờ 'cho phép âm' tự tắt — im lặng.
     allowNegative:  Value(e.allowNegative),
+    // Cố ý KHÔNG mang `biTuChoiTrungTen` (G63): form Sửa ví không sửa cờ ấy, và
+    // mang nó ở đây là mỗi lần lưu ví ghi đè cờ bằng giá trị entity đọc lúc mở
+    // trang. Ba chỗ ghi ở `WalletDao`: danhDauTrungTen · goCoTrungTen · markSynced.
     syncStatus:     Value(e.syncStatus),
     updatedAt:      Value(e.updatedAt),
   );
@@ -185,9 +190,21 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   @override
   Future<void> update(WalletEntity wallet) async {
     try {
-      await _kiemRangBuocServer(wallet);
+      // G63 (spec 2026-10-05 mục 4.5): chốt trùng tên chỉ chạy khi tên THẬT SỰ
+      // đổi — cùng luật với danh mục (quy tắc 7 CLAUDE.md). Lưu lại một ví mà
+      // không đổi tên không sinh thêm cặp trùng nào; chặn nó là khoá cứng CẢ HAI
+      // ví khi máy có hai ví cùng tên kéo về từ hai máy.
+      final cu = await _db.walletDao.getById(wallet.id);
+      final doiTen =
+          cu == null || chuanHoaTenVi(cu.name) != chuanHoaTenVi(wallet.name);
+      if (doiTen) await _kiemRangBuocServer(wallet);
       _kiemViMacDinhConDung(wallet);
       await _db.walletDao.update_(_toCompanion(wallet));
+      // Đổi tên là lối thoát của ví bị server từ chối vì trùng tên: THẢ nó —
+      // gỡ cờ + mốc chặn để ví lên server ở chu kỳ kế (spec mục 7, bẫy 1), và
+      // làm mới giờ sửa của bản ghi từng bị giữ để máy khác kéo được (xem
+      // `ThaViBiGiu`).
+      if (doiTen) await ThaViBiGiu(db: _db).tha(wallet.id);
       await _giuMotViMacDinh(wallet);
     } catch (e) {
       if (e is CacheException) rethrow;

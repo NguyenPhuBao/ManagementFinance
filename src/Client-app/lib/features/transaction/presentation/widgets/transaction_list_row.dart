@@ -5,6 +5,7 @@ import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
 import 'transaction_row_content.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Một dòng trong sổ giao dịch: vuốt trái để xoá.
 ///
@@ -50,16 +51,12 @@ class TransactionListRow extends StatelessWidget {
       confirmDismiss: (_) async {
         final lyDo = lyDoKhongXoaTaiSo(transactionOwnerOf(tx));
         if (lyDo == null) return true;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(lyDo)),
-        );
+        baoNhanh(lyDo, loai: LoaiThongBao.loi);
         return false;
       },
       onDismissed: (_) {
         onDelete();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa giao dịch')),
-        );
+        baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
       },
       child: InkWell(
         onTap: onTap,

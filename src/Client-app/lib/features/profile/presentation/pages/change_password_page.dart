@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -38,12 +39,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         _newPasswordController.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      baoNhanh('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.', loai: LoaiThongBao.xong);
       context.go('/login');
     } catch (e) {
       setState(() {

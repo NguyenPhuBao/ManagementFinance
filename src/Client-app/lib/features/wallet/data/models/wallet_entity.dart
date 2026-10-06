@@ -35,6 +35,11 @@ class WalletEntity extends Equatable {
   /// loại ví, và vì sao không có hàm thuần dùng chung.
   final bool allowNegative;
 
+  /// G63 — server từ chối ví này vì trùng tên. **Chỉ đọc** ở tầng này: datasource
+  /// không ghi nó qua `_toCompanion` (form Sửa ví không sửa cờ này); ba chỗ ghi ở
+  /// `WalletDao`. Cột cục bộ — xem `Wallets.biTuChoiTrungTen`.
+  final bool biTuChoiTrungTen;
+
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -52,6 +57,7 @@ class WalletEntity extends Equatable {
     this.includeInTotal = true,
     this.status = 'active',
     this.allowNegative = false,
+    this.biTuChoiTrungTen = false,
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
@@ -73,6 +79,7 @@ class WalletEntity extends Equatable {
     bool? includeInTotal,
     String? status,
     bool? allowNegative,
+    bool? biTuChoiTrungTen,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -90,6 +97,7 @@ class WalletEntity extends Equatable {
       includeInTotal: includeInTotal ?? this.includeInTotal,
       status: status ?? this.status,
       allowNegative: allowNegative ?? this.allowNegative,
+      biTuChoiTrungTen: biTuChoiTrungTen ?? this.biTuChoiTrungTen,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -110,6 +118,7 @@ class WalletEntity extends Equatable {
         includeInTotal,
         status,
         allowNegative,
+        biTuChoiTrungTen,
         syncStatus,
         updatedAt
       ];

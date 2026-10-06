@@ -98,10 +98,14 @@ void main() {
     final choGoi = <String>[];
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
-      // Bỏ chính tệp định nghĩa: `void batDauNghe(` ở đó cũng khớp chuỗi, và
-      // đếm nó vào là test tự xanh mà chẳng chứng minh điều gì.
-      if (f.path.replaceAll(r'\', '/').endsWith(
-          'features/bill/data/services/bill_payment_conflict_resolver.dart')) {
+      // Bỏ các tệp ĐỊNH NGHĨA bộ nghe: `void batDauNghe(` ở đó cũng khớp chuỗi,
+      // và đếm nó vào là test tự xanh mà chẳng chứng minh điều gì. Từ 2026-10-05
+      // có bộ nghe thứ hai (G63, `ViTrungTenResolver`) — nó có test nối riêng ở
+      // `test/features/wallet/vi_trung_ten_resolver_wiring_test.dart`.
+      final p = f.path.replaceAll(r'\', '/');
+      if (p.endsWith(
+              'features/bill/data/services/bill_payment_conflict_resolver.dart') ||
+          p.endsWith('features/wallet/data/services/vi_trung_ten_resolver.dart')) {
         continue;
       }
       if (f.readAsStringSync().contains('batDauNghe(')) choGoi.add(f.path);

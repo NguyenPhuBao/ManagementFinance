@@ -190,6 +190,32 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         syncRetryCount: Value(0),
         syncError: Value(null),
         syncBlockedUntil: Value(null),
+        // G63: ví đã lên được server thì không còn bị từ chối vì trùng tên.
+        biTuChoiTrungTen: Value(false),
+      ),
+    );
+  }
+
+  /// G63 — server vừa từ chối ví [id] vì trùng tên. Cột CỤC BỘ; xem
+  /// `Wallets.biTuChoiTrungTen`. Không đổi `syncStatus`: ví vẫn chờ đẩy.
+  Future<void> danhDauTrungTen(String id) async {
+    await (update(wallets)..where((t) => t.id.equals(id)))
+        .write(const WalletsCompanion(biTuChoiTrungTen: Value(true)));
+  }
+
+  /// G63 — gỡ cờ trùng tên, và gỡ **luôn** mốc chặn theo giờ của lần bị từ
+  /// chối (spec 2026-10-05 mục 8, bẫy 1).
+  ///
+  /// Thiếu vế sau thì ví vẫn bị chặn tới 60 phút trong khi giao dịch của nó đã
+  /// được thả ra — chúng lên trước ví, vỡ khoá ngoại, và quay lại đúng vòng lặp
+  /// G63 cho tới khi mốc hết hạn.
+  Future<void> goCoTrungTen(String id) async {
+    await (update(wallets)..where((t) => t.id.equals(id))).write(
+      const WalletsCompanion(
+        biTuChoiTrungTen: Value(false),
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
       ),
     );
   }

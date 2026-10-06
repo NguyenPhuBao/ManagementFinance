@@ -10,6 +10,7 @@ import 'tables/ai_feedback_table.dart';
 import 'tables/goi_y_phan_hoi_table.dart';
 import 'tables/notification_event_table.dart';
 import 'tables/goi_y_hoa_don_phan_hoi_table.dart';
+import 'tables/phan_tich_thu_tu_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
@@ -19,6 +20,7 @@ import 'daos/ai_feedback_dao.dart';
 import 'daos/goi_y_phan_hoi_dao.dart';
 import 'daos/notification_event_dao.dart';
 import 'daos/goi_y_hoa_don_dao.dart';
+import 'daos/thu_tu_khoi_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -52,6 +54,8 @@ part 'app_database.g.dart';
     GoiYDanhMucPhanHois,
     AppNotificationEvents,
     GoiYHoaDonPhanHois,
+    PhanTichGiayXems,
+    PhanTichThuTuPhanHois,
   ],
   daos: [
     WalletDao,
@@ -65,6 +69,7 @@ part 'app_database.g.dart';
     GoiYPhanHoiDao,
     NotificationEventDao,
     GoiYHoaDonDao,
+    ThuTuKhoiDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -72,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration {
@@ -503,6 +508,19 @@ class AppDatabase extends _$AppDatabase {
           // BỘ, không đi qua đồng bộ (test quét thứ 15 canh).
           await m.createTable(goiYHoaDonPhanHois);
         }
+        if (from < 28) {
+          // G63 (spec 2026-10-05 mục 4.1): cờ "server từ chối vì trùng tên" —
+          // CỤC BỘ, không đi qua đồng bộ (test quét `vi_trung_ten_cuc_bo_test`).
+          // Không điền dữ liệu cũ: mặc định `false` chính là hành vi trước bản này.
+          await m.addColumn(wallets, wallets.biTuChoiTrungTen);
+        }
+        if (from < 29) {
+          // Dự án C việc ba (spec 2026-10-05 mục 4.2): giây xem + phản hồi thứ
+          // tự khối trang Phân tích — CỤC BỘ, không đi qua đồng bộ (test quét
+          // thứ 15 canh). Chỉ tạo bảng; không có dữ liệu cũ để điền.
+          await m.createTable(phanTichGiayXems);
+          await m.createTable(phanTichThuTuPhanHois);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -596,11 +614,18 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(goiYHoaDonPhanHois)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Giây xem + phản hồi thứ tự khối trang Phân tích (v29) — cùng lý lẽ.
+      removed += await (delete(phanTichGiayXems)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(phanTichThuTuPhanHois)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
   }
 
-  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười ba bảng mà
+  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười lăm bảng mà
   /// [purgeDataForOtherAccounts] đụng tới, cùng thứ tự con → cha.
   ///
   /// Dùng khi server nói tài khoản này **đã bị xoá**: bên kia đã ẩn danh hoá
@@ -658,6 +683,12 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
       removed += await (delete(goiYHoaDonPhanHois)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(phanTichGiayXems)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(phanTichThuTuPhanHois)
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });

@@ -30,6 +30,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
@@ -52,6 +53,8 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../../premium/presentation/cubit/goi_cubit.dart';
+import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
 import '../../spike/spike_sql.dart';
@@ -85,6 +88,32 @@ const String kCongTacDangTat =
 /// nhìn màn thật trên máy ảo, `flutter test` thì mù vì nó chỉ dựng một nhánh.
 String cauKhoaHoiDap({required bool coTep}) =>
     coTep ? kCongTacDangTat : kChuaCoMoHinh;
+
+const String kGoiBasic =
+    'Trợ lý AI là tính năng Premium. Nâng cấp để hỏi về số liệu của bạn.';
+
+/// Ba lý do ô nhập bị khoá (spec Premium 2026-10-06 mục 8.1).
+enum LyDoKhoaHoiDap { goiBasic, chuaCoMoHinh, congTacTat }
+
+/// ⚠️ Basic xét TRƯỚC: không mời người không dùng được đi tải 2,41 GB. Hai lý
+/// do còn lại giữ nguyên bài học ở [cauKhoaHoiDap] (hai câu khác nhau, không
+/// gộp). `null` = không khoá.
+LyDoKhoaHoiDap? lyDoKhoa({
+  required bool laPremium,
+  required bool coTep,
+  required bool congTacBat,
+}) {
+  if (!laPremium) return LyDoKhoaHoiDap.goiBasic;
+  if (!coTep) return LyDoKhoaHoiDap.chuaCoMoHinh;
+  if (!congTacBat) return LyDoKhoaHoiDap.congTacTat;
+  return null;
+}
+
+String cauKhoa(LyDoKhoaHoiDap ly) => switch (ly) {
+      LyDoKhoaHoiDap.goiBasic => kGoiBasic,
+      LyDoKhoaHoiDap.chuaCoMoHinh => kChuaCoMoHinh,
+      LyDoKhoaHoiDap.congTacTat => kCongTacDangTat,
+    };
 
 /// ⚠️ Câu này là **nhánh lùi khi bộ kiểm số chặn**, và nó cố ý **không** nói
 /// câu mô hình vừa viết. Hiện ra kèm lời cảnh báo thì người đọc vẫn nhớ con số
@@ -155,11 +184,17 @@ class AiChatPage extends StatefulWidget {
     this.doTrangThai,
     this.nguonLenhTao,
     this.docLenh,
+    this.laPremium,
   });
 
   /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
   /// **không chạm DI**, để widget test dựng được cả hai trạng thái.
   final bool? coMoHinh;
+
+  /// Trợ lý AI là đặc quyền Premium (spec Premium 2026-10-06 mục 8.1). `null` =
+  /// đọc `GoiCubit` qua `context`; **không có provider thì coi là Premium** —
+  /// chỉ test cũ gặp ca ấy, app thật luôn có `GoiCubit` ở gốc cây.
+  final bool? laPremium;
 
   /// Khe tiêm cho test: thay cả đường sinh câu — từ chặng 4b là **vòng lặp
   /// tool** — bằng một luồng sự kiện **đã gác** (`CauQua` / `BiChan`, cộng
@@ -214,7 +249,28 @@ class _AiChatPageState extends State<AiChatPage> {
   /// Đã bấm Huỷ, engine chưa dừng: dòng chỉ báo đổi thành [kDangHuyLenh] và nút Huỷ biến mất.
   bool _dangHuyLenh = false;
 
-  bool get _coMoHinh => _coTep && _batCongTac;
+  /// Premium? Tiêm cho test, hoặc đọc `GoiCubit` (đã `watch` trong `build` để
+  /// gói lên giữa phiên — socket `account.upgraded` — là ô mở ngay).
+  bool get _laPremium {
+    final t = widget.laPremium;
+    if (t != null) return t;
+    try {
+      // `context.read` (provider) ném `ProviderNotFoundException`;
+      // `BlocProvider.of` bọc nó thành `FlutterError` — không bắt được.
+      return context.read<GoiCubit>().laPremium;
+    } on ProviderNotFoundException {
+      return true;
+    }
+  }
+
+  LyDoKhoaHoiDap? get _lyDoKhoa =>
+      lyDoKhoa(laPremium: _laPremium, coTep: _coTep, congTacBat: _batCongTac);
+
+  /// Chỉ Basic khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
+  /// cũ vẫn để ô mở cho lệnh tạo (chốt 2026-09-30).
+  bool get _khoaCaO => _lyDoKhoa == LyDoKhoaHoiDap.goiBasic;
+
+  bool get _coMoHinh => _lyDoKhoa == null;
 
   @override
   void initState() {
@@ -277,7 +333,8 @@ class _AiChatPageState extends State<AiChatPage> {
   Future<void> _hoi(String cauHoi) async {
     final c = cauHoi.trim();
     // Ô nhập mở cả khi chưa có mô hình (C3, người dùng chốt 2026-09-30): lệnh tạo chỉ luật.
-    if (c.isEmpty || _dangHoi) return;
+    // Basic thì khoá cả ô — kể cả lệnh tạo (spec Premium 8.1); hết hạn giữa phiên lộ ở đây, câu đang sinh không bị cắt.
+    if (c.isEmpty || _dangHoi || _khoaCaO) return;
 
     setState(() {
       _tinNhan.add(_TinNhan.cuaToi(c));
@@ -553,6 +610,15 @@ class _AiChatPageState extends State<AiChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Nghe GoiCubit để gói đổi giữa phiên (lên Premium qua socket, hết hạn khi
+    // app quay lại) là dựng lại ngay. Không provider (test cũ) thì bỏ qua.
+    if (widget.laPremium == null) {
+      try {
+        context.watch<GoiCubit>();
+      } on ProviderNotFoundException {
+        // Không có GoiCubit trong cây — coi là Premium, xem [AiChatPage.laPremium].
+      }
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _thanhTren(context),
@@ -578,7 +644,7 @@ class _AiChatPageState extends State<AiChatPage> {
               },
             ),
           ),
-          if (!_coMoHinh) _dongChuaCoMoHinh(),
+          if (_lyDoKhoa case final ly?) _dongKhoa(ly),
           _thanhNhap(),
         ],
       ),
@@ -799,24 +865,35 @@ class _AiChatPageState extends State<AiChatPage> {
         ],
       );
 
-  Widget _dongChuaCoMoHinh() => Padding(
+  /// Băng khoá — một câu + một nút theo lý do ([lyDoKhoa]). Basic → *Nâng cấp*
+  /// (spec Premium 8.1; màn Stitch *"Trợ lý AI - Khoá Premium (Basic)"*
+  /// `2b3fa0f69486498584fdf3a243f30147`); hai lý do cũ → *Cài đặt AI* như trước.
+  Widget _dongKhoa(LyDoKhoaHoiDap ly) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         child: Row(
           children: [
-            const Icon(Icons.info_outline,
-                size: 16, color: AppColors.onSurfaceVariant),
+            Icon(
+              ly == LyDoKhoaHoiDap.goiBasic
+                  ? Icons.workspace_premium_outlined
+                  : Icons.info_outline,
+              size: 16,
+              color: AppColors.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                cauKhoaHoiDap(coTep: _coTep),
+                cauKhoa(ly),
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.onSurfaceVariant),
               ),
             ),
-            TextButton(
-              onPressed: _moCaiDatAi,
-              child: const Text('Cài đặt AI'),
-            ),
+            if (ly == LyDoKhoaHoiDap.goiBasic)
+              const NutNangCap()
+            else
+              TextButton(
+                onPressed: _moCaiDatAi,
+                child: const Text('Cài đặt AI'),
+              ),
           ],
         ),
       );
@@ -947,7 +1024,8 @@ class _AiChatPageState extends State<AiChatPage> {
             Expanded(
               child: TextField(
                 controller: _oNhap,
-                enabled: !_dangHoi,
+                // Basic khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
+                enabled: !_dangHoi && !_khoaCaO,
                 maxLines: 4,
                 minLines: 1,
                 textInputAction: TextInputAction.send,
@@ -956,7 +1034,11 @@ class _AiChatPageState extends State<AiChatPage> {
                     fontSize: 16, color: AppColors.onSurface),
                 decoration: InputDecoration(
                   // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
-                  hintText: _coMoHinh ? 'Hỏi về số liệu của bạn…' : 'VD: tạo hoá đơn Netflix 100k',
+                  hintText: _khoaCaO
+                      ? 'Tính năng Premium'
+                      : _coMoHinh
+                          ? 'Hỏi về số liệu của bạn…'
+                          : 'VD: tạo hoá đơn Netflix 100k',
                   hintStyle: const TextStyle(color: AppColors.outline),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -966,13 +1048,16 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
             Container(
               decoration: BoxDecoration(
-                color: !_dangHoi ? AppColors.primary : AppColors.outline,
+                color: !_dangHoi && !_khoaCaO
+                    ? AppColors.primary
+                    : AppColors.outline,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
                 tooltip: 'Gửi',
                 icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: !_dangHoi ? () => _hoi(_oNhap.text) : null,
+                onPressed:
+                    !_dangHoi && !_khoaCaO ? () => _hoi(_oNhap.text) : null,
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(10),
               ),

@@ -52,6 +52,8 @@ import '../domain/dinh_tuyen.dart';
 import '../domain/gac_cau.dart';
 import '../domain/goi_so_tra_cuu.dart';
 import '../domain/hang_so_lieu.dart';
+import '../domain/ke_du_ten.dart';
+import '../domain/ket_luan_so_sanh.dart';
 import '../domain/kiem_cau_tra_loi.dart';
 import '../domain/slm_prompt.dart';
 import 'bo_cong_cu.dart';
@@ -288,6 +290,15 @@ Stream<SuKienGac> _vietCauDuongNhanh(
     return;
   }
   yield const DangTraCuu(null);
+  // C6 (người dùng chọn 2026-10-05): câu hỏi KỂ TÊN mà có ≥ 2 hàng → GIỮ các câu đã qua kiểm tới hết lượt sinh, rồi
+  // xét câu trả lời có nêu tên mọi hàng không; thiếu thì mẫu câu đủ dòng thay vào. Câu đã hiện thì không gỡ được,
+  // nên phải giữ lại trước — riêng loại câu này mất hiện chữ dần (3–10 s).
+  // B14 (cùng khuôn, 2026-10-05): câu hỏi so hai kỳ → câu phải nói đúng HƯỚNG tool đã rút (`so_sanh_*`); thiếu hoặc
+  // ngược → mẫu câu (mẫu câu luôn in kết luận).
+  final keDu = kq.hang.length >= 2 && cauHoiKeTen(cauHoi);
+  final huong = huongCanNoi(kq.chuThem);
+  final giu = keDu || huong.isNotEmpty;
+  final daGiu = <CauQua>[];
   var soCau = 0;
   await for (final sk in gacTheoCau(
     runtime.sinhDan(promptVietCau(cauHoi, kq.json), tranToken: 300),
@@ -295,7 +306,25 @@ Stream<SuKienGac> _vietCauDuongNhanh(
     huy: runtime.huy,
   )) {
     if (sk is CauQua) soCau++;
-    yield sk;
+    if (giu && sk is CauQua) {
+      daGiu.add(sk);
+    } else {
+      yield sk;
+    }
+  }
+  if (giu && soCau > 0) {
+    final vanBan = daGiu.map((c) => c.cau).join(' ');
+    final thieu = keDu ? tenChuaNeu(vanBan, kq.hang.map((h) => h.ten)) : const <String>[];
+    if (thieu.isNotEmpty) {
+      log('[SLM][tool] đường nhanh: câu kể tên thiếu ${thieu.length}/${{...kq.hang.map((h) => h.ten)}.length} '
+          'hàng → mẫu câu (C6)');
+      yield CauQua(goi.mauCau().cau);
+    } else if (!cauNoiDungHuong(vanBan, huong)) {
+      log('[SLM][tool] đường nhanh: câu so sánh không nói đúng hướng → mẫu câu (B14)');
+      yield CauQua(goi.mauCau().cau);
+    } else {
+      yield* Stream.fromIterable(daGiu);
+    }
   }
   if (soCau == 0) {
     log('[SLM][tool] đường nhanh: chưa câu nào qua kiểm → mẫu câu (L2)');

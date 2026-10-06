@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -68,12 +69,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : null,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cập nhật thông tin thành công!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      baoNhanh('Cập nhật thông tin thành công!', loai: LoaiThongBao.xong);
       context.pop();
     } catch (e) {
       if (!mounted) return;

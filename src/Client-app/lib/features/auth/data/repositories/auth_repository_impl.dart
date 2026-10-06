@@ -316,8 +316,23 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> _dongBoTrangThai(Map<String, dynamic> profile) async {
     final statusServer = profile['status'];
     if (statusServer is! String || statusServer.isEmpty) return;
-    final user = await getCurrentUser();
+    var user = await getCurrentUser();
     if (user == null) return;
+    // Premium (spec 2026-10-06 mục 6.6): `type` của hồ sơ là nhánh rơi về của
+    // `GoiRepository` — ghi lại khi đổi, TRƯỚC các nhánh countdown bên dưới vì
+    // chúng `return` sớm. `voiTrangThai` giữ loại cho các lần ghi sau.
+    final loaiServer = profile['type'];
+    if (loaiServer is String &&
+        loaiServer.isNotEmpty &&
+        loaiServer != user.loaiTaiKhoan) {
+      user = user.voiTrangThai(
+        status: user.status,
+        countdown: user.countdown,
+        countdownNhanLuc: user.countdownNhanLuc,
+        loaiTaiKhoan: loaiServer,
+      );
+      await _ghiNguoiDung(user);
+    }
     final serverChoXoa = statusServer.toLowerCase() == 'pendingdelete';
     final countdownServer = profile['countdown'];
     if (serverChoXoa && countdownServer is num) {

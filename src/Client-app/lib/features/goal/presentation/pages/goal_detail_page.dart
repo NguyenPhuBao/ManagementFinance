@@ -22,6 +22,7 @@ import '../widgets/goal_progress.dart';
 import '../widgets/goal_progress_chart.dart';
 import '../widgets/goal_stats_card.dart';
 import '../widgets/nhan_tu_dong.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class GoalDetailPage extends StatefulWidget {
   final String id;
@@ -238,11 +239,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         : await sl<AppDatabase>().walletDao.getActive(accountId);
     if (!mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     if (wallets.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Chưa có ví nào để chọn.')),
-      );
+      baoNhanh('Chưa có ví nào để chọn.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -267,9 +265,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 if (w.id == _goal!.walletId) return;
                 await _goalRepository.changeWallet(widget.id, w.id);
                 if (!mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Ví tích lũy nay là "${w.name}".')),
-                );
+                baoNhanh('Ví tích lũy nay là "${w.name}".', loai: LoaiThongBao.xong);
                 _loadGoal();
               },
               child: Row(
@@ -339,14 +335,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         : await db.walletDao.getActive(accountId);
     if (!mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     final viTichLuy =
         wallets.where((w) => w.id == _goal!.walletId).firstOrNull;
     if (accountId == null || viTichLuy == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-            content: Text('Mục tiêu này chưa có ví tích lũy để rút.')),
-      );
+      baoNhanh('Mục tiêu này chưa có ví tích lũy để rút.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -355,12 +347,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       viNhan: viTichLuy.id,
     );
     if (idNhanMacDinh == null) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Cần thêm một ví khác "${viTichLuy.name}" để nhận '
-              'tiền rút ra.'),
-        ),
-      );
+      baoNhanh('Cần thêm một ví khác "${viTichLuy.name}" để nhận '
+              'tiền rút ra.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -482,16 +470,12 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       amountController.text.replaceAll(RegExp(r'[^\d]'), '');
                   final soTien = double.tryParse(raw) ?? 0.0;
                   if (soTien <= 0) {
-                    messenger.showSnackBar(const SnackBar(
-                        content: Text('Vui lòng nhập số tiền hợp lệ')));
+                    baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
                     return;
                   }
                   if (soTien > _goal!.currentAmount) {
-                    messenger.showSnackBar(SnackBar(
-                      content: Text('Mục tiêu chỉ đang giữ '
-                          '${CurrencyFormatter.format(_goal!.currentAmount)}.'),
-                      backgroundColor: Colors.red,
-                    ));
+                    baoNhanh('Mục tiêu chỉ đang giữ '
+                          '${CurrencyFormatter.format(_goal!.currentAmount)}.', loai: LoaiThongBao.loi);
                     return;
                   }
 
@@ -506,19 +490,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   } catch (e) {
                     // Repository còn một trần nữa mà giao diện không thấy: số
                     // dư THẬT của ví tích lũy, vốn có thể thấp hơn tiến độ.
-                    messenger.showSnackBar(SnackBar(
-                      content: Text(e is StateError ? e.message : '$e'),
-                      backgroundColor: Colors.red,
-                    ));
+                    baoNhanh(e is StateError ? e.message : '$e', loai: LoaiThongBao.loi);
                     return;
                   }
 
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (!mounted) return;
-                  messenger.showSnackBar(SnackBar(
-                    content: Text('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
-                        'tiêu về "${selectedTargetWallet.name}".'),
-                  ));
+                  baoNhanh('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
+                        'tiêu về "${selectedTargetWallet.name}".', loai: LoaiThongBao.xong);
                   _loadGoal();
                 },
                 style: ElevatedButton.styleFrom(
@@ -550,9 +529,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng tạo ít nhất 1 ví trước khi gửi tiết kiệm.')),
-      );
+      baoNhanh('Vui lòng tạo ít nhất 1 ví trước khi gửi tiết kiệm.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -562,12 +539,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         .where((w) => w.id == _goal!.walletId)
         .firstOrNull;
     if (viNhan == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mục tiêu này chưa có ví nhận tiền tích lũy. '
-              'Bấm biểu tượng đổi ví ở góc trên để chọn.'),
-        ),
-      );
+      baoNhanh('Mục tiêu này chưa có ví nhận tiền tích lũy. '
+              'Bấm biểu tượng đổi ví ở góc trên để chọn.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -579,24 +552,11 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       viNhan: viNhan.id,
     );
     if (idNguonMacDinh == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cần thêm một ví khác "${viNhan.name}" để làm ví '
-              'nguồn chuyển tiền.'),
-        ),
-      );
+      baoNhanh('Cần thêm một ví khác "${viNhan.name}" để làm ví '
+              'nguồn chuyển tiền.', loai: LoaiThongBao.loi);
       return;
     }
 
-    // Giữ sẵn messenger TRƯỚC khi mở phiếu.
-    //
-    // Bên trong phiếu, `context` của `StatefulBuilder` là context của tấm
-    // phiếu, còn `mounted` lại là của trang. Sau `Navigator.pop(ctx)` thì phiếu
-    // đã bị huỷ nhưng `mounted` của trang vẫn `true`, nên phép kiểm `if
-    // (!mounted) return` KHÔNG canh được việc dùng context ấy — đúng hai cảnh
-    // báo `use_build_context_synchronously` mà analyzer chỉ ra. Cầm sẵn
-    // messenger thì không còn cần context nào sau khoảng chờ nữa.
-    final messenger = ScaffoldMessenger.of(context);
 
     final amountController = TextEditingController();
     // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
@@ -779,23 +739,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       final raw = amountController.text.replaceAll(RegExp(r'[^\d]'), '');
                       final deposit = double.tryParse(raw) ?? 0.0;
                       if (deposit <= 0) {
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
-                        );
+                        baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
                         return;
                       }
 
                       // Kiểm tra số dư ví nguồn
                       if (deposit > selectedSourceWallet.balance) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Số dư ví "${selectedSourceWallet.name}" không đủ. '
-                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        baoNhanh('Số dư ví "${selectedSourceWallet.name}" không đủ. '
+                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}', loai: LoaiThongBao.loi);
                         return;
                       }
 
@@ -823,12 +774,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       // nhận một instance riêng. Trang danh sách ví tự tạo
                       // cubit của nó và `loadWallets` ngay khi dựng, nên số dư
                       // vẫn đúng khi người dùng mở lại trang ấy.
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!'),
-                          backgroundColor: AppColors.income,
-                        ),
-                      );
+                      baoNhanh('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!', loai: LoaiThongBao.xong);
                       _loadGoal();
                     },
                     style: ElevatedButton.styleFrom(
@@ -908,12 +854,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               tooltip: 'Đã tích tiền nên không đổi được ví',
               icon: Icon(Icons.swap_horiz,
                   color: AppColors.onSurfaceVariant.withValues(alpha: .4)),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mục tiêu đã tích được tiền trong ví hiện tại '
-                      'nên không đổi ví được. Tiền đang nằm thật trong ví đó.'),
-                ),
-              ),
+              onPressed: () => baoNhanh('Mục tiêu đã tích được tiền trong ví hiện tại '
+                      'nên không đổi ví được. Tiền đang nằm thật trong ví đó.', loai: LoaiThongBao.loi),
             ),
           IconButton(
             tooltip: 'Xoá',
@@ -1418,22 +1360,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
     if (dongY != true || !mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await _goalRepository.batDauVongMoi(goal.id);
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Đã bắt đầu vòng tích luỹ mới.'),
-          backgroundColor: AppColors.income,
-        ),
-      );
+      baoNhanh('Đã bắt đầu vòng tích luỹ mới.', loai: LoaiThongBao.xong);
       _loadGoal();
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
+      baoNhanh(e.toString(), loai: LoaiThongBao.loi);
     }
   }
 

@@ -8,6 +8,8 @@ import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/data/services/tha_vi_bi_giu.dart';
+import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
@@ -50,6 +52,10 @@ class SyncEngine {
 
   /// Nơi duy nhất ghi `wallets.balance`. Dùng ở cuối mỗi lần kéo về.
   final SoDuViService _soDuVi;
+
+  /// Ví nào đang bị giữ vì trùng tên (G63). Engine KHÔNG đọc cột cờ trực tiếp —
+  /// test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
+  final ViTrungTenNguon _viTrungTen;
   final AppDatabase _db;
   final Connectivity _connectivity;
 
@@ -244,7 +250,9 @@ class SyncEngine {
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
     SoDuViService? soDuVi,
+    ViTrungTenNguon? viTrungTen,
   })  : _soDuVi = soDuVi ?? SoDuViService(db: db),
+        _viTrungTen = viTrungTen ?? ViTrungTenNguonImpl(db: db),
         _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
@@ -601,6 +609,19 @@ class SyncEngine {
               );
             }).toList();
             await _db.walletDao.upsertAll(companions);
+            // G63 (spec 2026-10-05 mục 4.6): ví mặc định server gửi xuống là
+            // ví mặc định DUY NHẤT trên máy — người dùng chốt "bản server thắng".
+            // `upsertAll` ghi đúng cờ cho hàng kéo về nhưng không đụng hàng chỉ
+            // có trên máy, nên máy từng mang HAI ví mặc định (Realme 2026-10-03).
+            // Chỉ khi lô kéo về CÓ ví mặc định: pull là tăng dần, "không thấy"
+            // không có nghĩa "server không có" (bẫy 8).
+            final idMacDinhServer = _idViMacDinhTrongLo(wallets);
+            if (idMacDinhServer != null) {
+              await _db.walletDao.clearDefaultExcept(
+                idaccount: accountId,
+                keepId: idMacDinhServer,
+              );
+            }
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${wallets.length} wallets into SQLite local.');
           }
@@ -1141,6 +1162,30 @@ class SyncEngine {
     final ops = <SyncOperation>[];
     final now = DateTime.now();
 
+    // ── 0. Bản ghi bị GIỮ vì ví trùng tên (G63) ───────────────────────────────
+    // Ví mà server từ chối vì trùng tên với một ví đã kéo về thì CHƯA lên được
+    // server, và mọi thứ trỏ vào nó vỡ khoá ngoại. Gửi chúng là vòng lặp lỗi ở
+    // mọi chu kỳ, kéo chậm cả dữ liệu khác — nên giữ lại tới khi người dùng Gộp
+    // hoặc Đổi tên. Luật: `wallet/domain/vi_trung_ten.dart`; spec 2026-10-05
+    // mục 4.4.
+    //
+    // Ví mang cờ mà không còn cặp (ví kia bị xoá / đổi tên ở máy khác) thì THẢ
+    // trước khi đọc hàng chờ: gỡ cờ + mốc chặn, làm mới giờ sửa của nó và bản
+    // ghi từng bị giữ — giờ ghi cũ nằm dưới mốc kéo về của máy khác, đẩy nguyên
+    // là máy khác không bao giờ kéo được (nghiệm thu 2026-10-05).
+    for (final id in await _viTrungTen.viCanTha(idaccount)) {
+      await ThaViBiGiu(db: _db).tha(id);
+    }
+    final pendingGoals = await _db.goalDao.getPending(idaccount);
+    final pendingBills = await _db.billDao.getPending(idaccount);
+    final pendingTx = await _db.transactionDao.getPending(idaccount);
+    final giu = ViTrungTenNguonImpl.banGhiBiGiuTuHang(
+      viBiGiu: await _viTrungTen.viDangBiGiu(idaccount),
+      hoaDon: pendingBills,
+      mucTieu: pendingGoals,
+      giaoDich: pendingTx,
+    );
+
     // ── 1. Categories (phải đứng TRƯỚC transactions/budgets/bills) ────────────
     // Transaction.idcategory, Budget.idcategory, Bill.idcategory đều FK → category
     // Nếu categories push sau thì backend báo FK constraint violation.
@@ -1201,6 +1246,7 @@ class SyncEngine {
     final pendingWallets = await _db.walletDao.getPending(idaccount);
     for (final w in pendingWallets) {
       if (_isSyncBlocked(w.syncBlockedUntil)) continue;
+      if (giu.vi.contains(w.id)) continue;
       final validId = _toValidUuid(w.id);
       ops.add(SyncOperation(
         localId: w.id,
@@ -1237,6 +1283,12 @@ class SyncEngine {
     final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTxForCatCheck) {
       if (t.categoryId == null) continue;
+      // G63: giao dịch bị giữ không lên lô, nên danh mục của nó cũng không cần
+      // đi kèm. Thiếu dòng này là vòng đồng bộ NÓNG (nghiệm thu 2026-10-05):
+      // giao dịch bị giữ nằm `pending` vô thời hạn → danh mục bị gửi lại ở mọi
+      // chu kỳ → xung đột (không lỗi, nên không giãn cách) → server phát
+      // `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại.
+      if (giu.giaoDich.contains(t.id)) continue;
       final resolvedId = await _resolveCategoryId(t.categoryId);
       if (resolvedId == null) continue;
       if (alreadyInBatch.contains(resolvedId)) continue;
@@ -1290,8 +1342,9 @@ class SyncEngine {
     // từ chối vì mục tiêu chưa tồn tại — đúng ca người dùng tạo mục tiêu rồi nạp
     // tiền trong lúc offline, cả hai cùng nằm chờ trong một lô. Cùng lý do khiến
     // categories phải đứng trước transactions. Có test canh thứ tự này.
-    for (final g in await _db.goalDao.getPending(idaccount)) {
+    for (final g in pendingGoals) {
       if (_isSyncBlocked(g.syncBlockedUntil)) continue;
+      if (giu.mucTieu.contains(g.id)) continue;
       final validId = _toValidUuid(g.id);
       ops.add(SyncOperation(
         localId: g.id,
@@ -1347,8 +1400,9 @@ class SyncEngine {
     // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
     // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
     // bổ sung — đây là việc ngoài phạm vi sync engine.
-    for (final bill in await _db.billDao.getPending(idaccount)) {
+    for (final bill in pendingBills) {
       if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
+      if (giu.hoaDon.contains(bill.id)) continue;
       final validId = _toValidUuid(bill.id);
       final validWalletId =
           bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
@@ -1411,9 +1465,10 @@ class SyncEngine {
     }
 
     // ── 5. Transactions (sau category + wallet + goal + bill vì FK → cả 4) ───
-    final pendingTx = await _db.transactionDao.getPending(idaccount);
+    // `pendingTx` đọc ở mục 0 — trước mọi lần ghi, cùng ảnh chụp với phép giữ.
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
+      if (giu.giaoDich.contains(t.id)) continue;
       final validId = _toValidUuid(t.id);
       final validWalletId = _toValidUuid(t.walletId);
       // Khoản chuyển ví không có danh mục — payload bỏ `categoryId` cho loại
@@ -1797,6 +1852,20 @@ class SyncEngine {
   /// Lưu ý tên cột không nhất quán ở backend: bảng `transaction` dùng
   /// `deleted_at`, các bảng còn lại dùng `delete_at` — nơi gọi phải truyền đúng
   /// khoá, hàm này không tự đoán.
+  /// Id ví mặc định (chưa xoá) trong lô ví vừa kéo về, hoặc `null`. Server giữ
+  /// nhiều nhất một (`uq_wallet_default_active`); lô xếp `update_at` tăng dần
+  /// nên có hơn một thì hàng cuối là ý định mới nhất.
+  static String? _idViMacDinhTrongLo(List<dynamic> wallets) {
+    String? id;
+    for (final w in wallets) {
+      if (w is! Map) continue;
+      if (w['delete_at'] != null) continue;
+      if (!doiSangBool(w['is_default'])) continue;
+      id = (w['idwallet'] ?? w['id']).toString();
+    }
+    return id;
+  }
+
   static DateTime? _deletedAtFrom(dynamic raw) {
     if (raw == null) return null;
     return DateTime.tryParse(raw.toString()) ?? DateTime.now();

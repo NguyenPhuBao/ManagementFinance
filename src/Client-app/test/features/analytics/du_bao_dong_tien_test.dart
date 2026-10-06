@@ -47,6 +47,7 @@ Wallet vi(
       updatedAt: DateTime(2026, 1, 1),
     
       allowNegative: false,
+      biTuChoiTrungTen: false,
     );
 
 Bill hoaDon(

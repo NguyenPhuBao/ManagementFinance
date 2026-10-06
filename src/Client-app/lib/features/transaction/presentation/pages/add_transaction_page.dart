@@ -34,6 +34,8 @@ import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
 import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
+import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../../../features/premium/presentation/widgets/nut_nang_cap.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -41,6 +43,8 @@ import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
+import '../../../../core/ui/bao_che_day_toast.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
 /// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
@@ -129,6 +133,12 @@ class AddTransactionPage extends StatefulWidget {
   /// để đối chiếu, và xoá tệp khi Lưu / Bỏ qua. `null` → `sl<KhoBienLai>()` nếu đã đăng ký.
   final KhoBienLai? khoBienLai;
 
+  /// Ô Nhập nhanh là đặc quyền Premium — Basic khoá CẢ ô (spec Premium 2026-10-06 mục 8.2, người dùng chốt; màn Stitch
+  /// *"Thêm giao dịch - Nhập nhanh khoá (Basic)"* `21790848a0dc4e98970c0a591b88f44e`). `null` =
+  /// đọc `GoiCubit` qua `context`; **không có provider thì không khoá** — chỉ test cũ gặp ca ấy. Chỉ khoá giao diện:
+  /// `DocCauBangAi`, `docCauGiaoDich` không đổi; điền sẵn từ D1 / biên lai / C3 không đi qua ô này.
+  final bool? laPremium;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -150,6 +160,7 @@ class AddTransactionPage extends StatefulWidget {
     this.khoanTrongSo,
     this.hangBienDongCho,
     this.khoBienLai,
+    this.laPremium,
   });
 
   @override
@@ -157,6 +168,18 @@ class AddTransactionPage extends StatefulWidget {
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
+  /// Premium? Tiêm cho test, hoặc đọc `GoiCubit` (`context.read` — `BlocProvider.of` bọc lỗi thiếu provider thành
+  /// `FlutterError`, không bắt được). Xem [AddTransactionPage.laPremium].
+  bool get _laPremium {
+    final t = widget.laPremium;
+    if (t != null) return t;
+    try {
+      return context.read<GoiCubit>().laPremium;
+    } on ProviderNotFoundException {
+      return true;
+    }
+  }
+
   /// Đoạn đang chọn trên thanh đầu màn: `'chi'` | `'thu'` | `'transfer'` —
   /// theo màn Stitch "Chi tiêu · Thu nhập · Chuyển khoản" (UX 2026-09-19, C3).
   ///
@@ -1477,34 +1500,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // số tiền hợp lệ" cho một con số người dùng vừa gõ đúng.
     final amount = ketQuaBieuThuc(_amountString);
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
-      );
+      baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
       return;
     }
     if (_selectedWallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ví thanh toán')),
-      );
+      baoNhanh('Vui lòng chọn ví thanh toán', loai: LoaiThongBao.loi);
       return;
     }
     if (!_isTransfer && _selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn danh mục')),
-      );
+      baoNhanh('Vui lòng chọn danh mục', loai: LoaiThongBao.loi);
       return;
     }
     if (_isTransfer && _destinationWallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ví đích')),
-      );
+      baoNhanh('Vui lòng chọn ví đích', loai: LoaiThongBao.loi);
       return;
     }
     final type = _resolvedType;
     if (type == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn chiều tiền')),
-      );
+      baoNhanh('Vui lòng chọn chiều tiền', loai: LoaiThongBao.loi);
       return;
     }
     // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi
@@ -1515,10 +1528,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // đã mang sẵn chủ sở hữu, nên đường ấy không cần chốt.
     final accountId = _editing?.idaccount ?? _accountId();
     if (accountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Chưa xác định được tài khoản đăng nhập')),
-      );
+      baoNhanh('Chưa xác định được tài khoản đăng nhập', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -1642,6 +1652,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Nghe GoiCubit để gói đổi giữa lúc form mở (lên Premium qua socket) là ô Nhập nhanh mở ngay. Không provider
+    // (test cũ) thì bỏ qua — xem [AddTransactionPage.laPremium].
+    if (widget.laPremium == null) {
+      try {
+        context.watch<GoiCubit>();
+      } on ProviderNotFoundException {
+        // Không có GoiCubit trong cây.
+      }
+    }
     final content = BlocConsumer<TransactionBloc, TransactionState>(
       listener: (context, state) {
         if (state is TransactionLoadedState) {
@@ -1650,13 +1669,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             // không con số (banner tạm thời tối giản theo ý người dùng).
             final impactText = budgetImpactSnackText(_pendingImpact);
             _pendingImpact = null;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(impactText ??
-                    (_isEditing
-                        ? 'Đã lưu thay đổi'
-                        : 'Thêm giao dịch thành công!')),
-              ),
+            // Lưu kèm cảnh báo ngân sách ("Đã lưu. Ngân sách X đã vượt hạn mức.") là
+            // THÔNG TIN, không phải xong trơn.
+            baoNhanh(
+              impactText ?? (_isEditing ? 'Đã lưu thay đổi' : 'Thêm giao dịch thành công!'),
+              loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
             );
             final d = _bienDong;
             final id = _accountId();
@@ -1676,9 +1693,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             context.pop(true);
           } else if (state.actionSuccess == false &&
               state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Lỗi: ${state.errorMessage}')),
-            );
+            baoNhanh('Lỗi: ${state.errorMessage}', loai: LoaiThongBao.loi);
           }
         }
       },
@@ -1783,10 +1798,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
                 // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
                 // Từ 2026-09-30 còn ẩn khi màn đã có số tiền ([_hienBanPhimSo]); ✓ khi ấy ở thanh tiêu đề.
+                // 2026-10-06 (Stitch `fb68baba…`): 16 phím do app tự vẽ, hệ điều hành
+                // không báo `viewInsets` — báo chiều cao cho AppToast để viên lỗi lúc
+                // bấm ✓ nổi TRÊN bàn phím thay vì đè hai hàng phím dưới.
                 if (coBanPhimSo)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
+                  BaoCheDayToast(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
+                    ),
                   ),
               ],
             ),
@@ -2354,41 +2374,55 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     key: const Key('nhap-nhanh-o'),
                     controller: _nhapNhanhController,
                     focusNode: _nhapNhanhFocus,
+                    // Basic khoá cả ô — spec Premium 8.2.
+                    enabled: _laPremium,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _dienTuCau(),
                     style: const TextStyle(fontSize: 15, color: AppColors.primary),
                     // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
                     // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
                     // trong khung xám (nghiệm thu Realme 2026-09-30).
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       filled: false,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      hintText: 'VD: hôm qua ăn phở 45k tiền mặt',
-                      hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
-                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      disabledBorder: InputBorder.none,
+                      hintText: _laPremium ? 'VD: hôm qua ăn phở 45k tiền mặt' : 'Tính năng Premium',
+                      hintStyle: const TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
-                ElevatedButton(
-                  key: const Key('nhap-nhanh-dien'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: _dangDocAi ? null : _dienTuCau,
-                  child: const Text('Điền'),
-                ),
+                if (_laPremium)
+                  ElevatedButton(
+                    key: const Key('nhap-nhanh-dien'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: _dangDocAi ? null : _dienTuCau,
+                    child: const Text('Điền'),
+                  )
+                else
+                  const NutNangCap(),
               ],
             ),
           ),
+          if (!_laPremium)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Nâng cấp để đọc câu bằng AI',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
           if (_dangDocAi)
             Padding(
               padding: const EdgeInsets.only(top: 8),

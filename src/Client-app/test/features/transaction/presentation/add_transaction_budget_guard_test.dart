@@ -17,6 +17,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../category/presentation/category_test_fakes.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+import '../../../helpers/bat_thong_bao.dart';
+
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
 
@@ -184,6 +187,7 @@ void main() {
 
   testWidgets('ngân sách Cảnh báo + khoản làm vượt → ghi luôn, báo chung chung',
       (tester) async {
+    final bat = batThongBao();
     final repo = FakeTransactionRepository();
     await tester.pumpWidget(app(
       transactionRepository: repo,
@@ -191,18 +195,14 @@ void main() {
     ));
     await tester.pumpAndSettle();
     await dienForm(tester);
-    // SnackBar treo trên ScaffoldMessenger gốc nên còn đó sau khi trang pop;
-    // hẹn giờ tự tắt không phải animation nên `pumpAndSettle` không chờ nó.
     await luu(tester);
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(repo.added, hasLength(1));
-    final snack = tester.widget<Text>(
-      find.descendant(
-          of: find.byType(SnackBar), matching: find.byType(Text)),
-    );
-    expect(snack.data, contains('vượt'));
-    expect(snack.data, isNot(matches(RegExp(r'\d'))),
+    expect(bat.cau.single, contains('vượt'));
+    expect(bat.cuoi!.loai, LoaiThongBao.thongTin,
+        reason: 'lưu kèm cảnh báo ngân sách là THÔNG TIN, không phải "xong" trơn');
+    expect(bat.cau.single, isNot(matches(RegExp(r'\d'))),
         reason: 'Banner tạm thời không nêu số liệu — con số ở trang ngân sách.');
   });
 }

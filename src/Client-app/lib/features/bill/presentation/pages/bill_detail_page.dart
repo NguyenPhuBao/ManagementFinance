@@ -16,6 +16,7 @@ import '../bloc/bill_bloc.dart';
 import '../bloc/bill_state.dart';
 import '../widgets/bill_actions.dart';
 import '../widgets/bill_status_visuals.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Trang chi tiết một hoá đơn (`/bills/:id`), mở khi chạm một dòng chưa trả.
 ///
@@ -109,9 +110,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     return BlocListener<BillBloc, BillState>(
       listener: (context, state) {
         if (state is BillOperationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          baoNhanh(state.message, loai: LoaiThongBao.xong);
           // Xoá xong thì không còn gì để xem — quay về danh sách.
           if (state.message.startsWith('Xóa')) {
             final nav = Navigator.of(context);
@@ -120,9 +119,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
           }
           _nap();
         } else if (state is BillError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
+          baoNhanh(state.message, loai: LoaiThongBao.loi);
         }
       },
       child: Scaffold(

@@ -6,6 +6,9 @@ import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/auth/presentation/pages/login_page.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+
+import '../../helpers/bat_thong_bao.dart';
 
 class _SuccessfulRegistrationRepository implements AuthRepository {
   int sendOtpCalls = 0;
@@ -107,6 +110,7 @@ void main() {
   testWidgets(
       'OTP completion shows feedback, returns to blank login, and keeps protected routes private',
       (tester) async {
+    final bat = batThongBao();
     _useTallSurface(tester);
     final bloc = AuthBloc(authRepository: _SuccessfulRegistrationRepository());
     final router = AppRouter.createRouter('/register', bloc);
@@ -156,8 +160,8 @@ void main() {
     await completion;
     await tester.pumpAndSettle();
 
-    expect(
-        find.text('Đăng ký thành công. Vui lòng đăng nhập.'), findsOneWidget);
+    expect(bat.cau, contains('Đăng ký thành công. Vui lòng đăng nhập.'));
+    expect(bat.cuoi!.loai, LoaiThongBao.xong);
     expect(router.routeInformationProvider.value.uri.path, '/login');
     expect(find.byType(LoginPage), findsOneWidget);
     final loginFields =
@@ -175,6 +179,7 @@ void main() {
 
   testWidgets('resending OTP does not push a second OTP route', (tester) async {
     _useTallSurface(tester);
+    final bat = batThongBao();
     final repository = _SuccessfulRegistrationRepository();
     final bloc = AuthBloc(authRepository: repository);
     final router = AppRouter.createRouter('/register', bloc);
@@ -212,12 +217,8 @@ void main() {
     await tester.pump();
 
     expect(repository.sendOtpCalls, 2);
-    // findsAtLeastNWidgets chứ không phải findsOneWidget: SnackBar cũ có thể
-    // chưa biến mất hẳn khi SnackBar mới hiện ra, nên trong một nhịp pump có
-    // thể thấy hai bản. Điều cần khẳng định chỉ là phản hồi "đã gửi lại" có
-    // xuất hiện.
-    expect(find.text('Đã gửi lại mã OTP. Kiểm tra email của bạn.'),
-        findsAtLeastNWidgets(1));
+    // Điều cần khẳng định chỉ là phản hồi "đã gửi lại" có xuất hiện (E4: trên kênh ThongBaoNhanh).
+    expect(bat.cau, contains('Đã gửi lại mã OTP. Kiểm tra email của bạn.'));
 
     // Chỉ có ĐÚNG MỘT trang OTP trên stack: pop một lần là về lại trang đăng
     // ký. Nếu "gửi lại" lỡ push thêm route thứ hai thì sau pop vẫn còn trang

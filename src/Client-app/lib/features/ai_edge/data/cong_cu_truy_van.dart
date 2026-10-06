@@ -245,6 +245,12 @@ class CongCuTruyVan implements CongCu {
       sapXep: sapXep,
     );
     final canTron = gop != 'khong' || chon != null;
+    // B8: câu xin N dòng ("3 khoản thu mới nhất") → đúng N hàng; trên trần thì vẫn trần.
+    // Chỉ cắt danh sách — `Số giao dịch` vẫn đếm trọn tập (`soKhop`).
+    final soDong = canTron ? null : soDongYeuCau(cauHoi);
+    final toiDa = canTron
+        ? _kKhongTran
+        : (soDong != null && soDong < kToiDaMucMoiGoi ? soDong : kToiDaMucMoiGoi);
     final lookup = await nganSach.lookupFor(idaccount);
     final kq = timGiaoDich(
       trongKy: await giaoDich.watchKhoang(idaccount, ky.from, ky.to).first,
@@ -253,7 +259,7 @@ class CongCuTruyVan implements CongCu {
       danhMucSong: dsDm,
       tieuChi: tieuChi,
       now: now,
-      toiDa: canTron ? _kKhongTran : kToiDaMucMoiGoi,
+      toiDa: toiDa,
     );
     if (kq.loi != null) {
       return hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);

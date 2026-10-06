@@ -24,6 +24,7 @@ import '../widgets/transaction_filter_bar.dart';
 import '../widgets/the_chua_gan_danh_muc.dart';
 import '../widgets/transaction_list_row.dart';
 import 'add_transaction_page.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class TransactionPage extends StatefulWidget {
   /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
@@ -367,9 +368,7 @@ class _TransactionPageState extends State<TransactionPage> {
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();
           blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
-          ScaffoldMessenger.of(blocContext).showSnackBar(
-            const SnackBar(content: Text('Đã xóa giao dịch')),
-          );
+          baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
         },
       ),
     );

@@ -57,6 +57,20 @@ void main() {
         await store.ghi(7, 'MB', '5555', 'w-mb2');
         expect(await store.docTheoNguon(7, 'MB'), 'w-mb2', reason: 'tiền tố "MB|" không ăn sang "MB Bank|"');
       });
+
+      test('G63 — doiVi: mọi cặp trỏ ví bị gộp chuyển sang ví giữ lại; cặp khác và tài khoản khác giữ nguyên', () async {
+        await store.ghi(7, 'MB Bank', '1234', 'vi-bo');
+        await store.ghi(7, 'MB Bank', null, 'vi-bo');
+        await store.ghi(7, 'MoMo', null, 'vi-khac');
+        await store.ghi(8, 'MB Bank', '1234', 'vi-bo');
+
+        await store.doiVi(7, 'vi-bo', 'vi-giu');
+
+        expect(await store.doc(7, 'MB Bank', '1234'), 'vi-giu');
+        expect(await store.doc(7, 'MB Bank', null), 'vi-giu');
+        expect(await store.doc(7, 'MoMo', null), 'vi-khac');
+        expect(await store.doc(8, 'MB Bank', '1234'), 'vi-bo');
+      });
     });
   }
 

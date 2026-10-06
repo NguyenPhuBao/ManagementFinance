@@ -533,4 +533,17 @@ void main() {
     expect((await hoi('5 khoan chi gan day nhat cua toi')).chiMauCau, isTrue);
     expect((await hoi('thang nay toi chi bao nhieu')).chiMauCau, isFalse);
   });
+
+  test('⭐ B8 — câu xin N dòng (N < trần) → đúng N hàng; Số giao dịch vẫn đếm trọn tập', () async {
+    hoi(String cau) => cc.chay({'ky': 'thang_nay', 'sap_xep': 'moi_nhat'},
+        idaccount: 10, now: now, cauHoi: cau);
+    final ba = await hoi('3 giao dịch mới nhất');
+    expect(ba.hang, hasLength(3),
+        reason: 'B8 bộ đo khoá (Realme 2026-10-05): "3 khoản thu mới nhất" → mẫu câu in 4 khoản');
+    expect(ba.json['Số giao dịch'], '5', reason: 'tổng hợp đếm trọn tập, không đếm phần đã cắt');
+    expect((await hoi('hai giao dich moi nhat')).hang, hasLength(2));
+    expect((await hoi('10 giao dịch mới nhất')).hang, hasLength(4),
+        reason: 'N lớn hơn trần thì vẫn trần — trần là giới hạn độ dài prompt');
+    expect((await hoi('giao dịch mới nhất của tôi')).hang, hasLength(4));
+  });
 }

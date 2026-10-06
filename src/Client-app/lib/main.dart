@@ -29,6 +29,10 @@ import 'core/sync/sync_engine.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
 import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'features/wallet/data/services/vi_trung_ten_resolver.dart';
+import 'features/premium/data/goi_repository.dart';
+import 'features/premium/presentation/cubit/goi_cubit.dart';
+import 'features/premium/presentation/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -61,6 +65,10 @@ void main() async {
   sl<BillPaymentConflictResolver>()
       .batDauNghe(sl<SyncEngine>().pushResultStream);
 
+  // G63: ví bị server từ chối vì trùng tên thì đặt cờ — engine giữ nó lại, màn
+  // Quản lý ví hỏi Gộp / Đổi tên. Nối MỘT lần, cùng lý do với khối trên.
+  sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)
   // → Không token = chưa đăng nhập hoặc đã đăng xuất → bắt buộc online login
@@ -75,6 +83,15 @@ void main() async {
   // đăng ký `NhatKyThongBao` ở `injection_container.dart`.
   sl<NhatKyThongBao>()
       .datNguonPhien(() => idaccountTuTrangThai(authBloc.state));
+
+  // Premium (spec 2026-10-06 mục 6.4): gói đọc phiên từ ĐÚNG bloc của app
+  // (AuthBloc là factory), làm mới khi app quay lại (giãn 5 phút) và khi socket
+  // báo `account.upgraded` (tín hiệu, không đọc payload). Nối MỘT lần cho cả
+  // vòng đời app, cùng lý do với ba khối trên.
+  sl<GoiRepository>()
+    ..noiPhien(authBloc.stream.map(phienGoiTu))
+    ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
+    ..noiSuKien(sl<RealtimeChannel>().events);
 
   // Restore auth state từ token đã lưu → GoRouter redirect guard hoạt động đúng ngay từ đầu
   if (hasToken) {
@@ -185,6 +202,8 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       providers: [
         // Dùng .value vì instance đã được tạo sẵn trong main()
         BlocProvider<AuthBloc>.value(value: widget.authBloc),
+        // Trạng thái gói Premium — singleton của DI, một cho cả app.
+        BlocProvider<GoiCubit>.value(value: sl<GoiCubit>()),
       ],
       child: MaterialApp.router(
         title: 'FlowMoney',

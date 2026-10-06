@@ -788,6 +788,13 @@ nâng Flutter 3.47, SnackBar có `action` mặc định **không tự ẩn** —
 (nghiệm thu Realme: hơn 7 phút, đè lên nút ở Sổ giao dịch). Đây là
 `SnackBarAction` duy nhất của app; thêm cái thứ hai thì nhớ dòng này.
 
+✅ **Từ 2026-10-06 (E4) không còn SnackBar nào**: "Đã xoá thông báo · Hoàn tác"
+là viên toast của `AppToast` qua `baoNhanh(..., hanhDong: HanhDongToast('Hoàn
+tác', …), bieuTuong: Icons.delete_outline)` — viên tự ẩn sau **3** giây (Stitch
+`fb68baba…`) kể cả khi có nút, vuốt ngang để tắt (không chạy Hoàn tác), nên bẫy
+`persist` hết chỗ vấp. Test dựng `AppToast` thật bằng `bocToast(batThongBao())`
+(`test/helpers/bat_thong_bao.dart`). Khối E4 mục 14 `PROJECT_CONTEXT.md`.
+
 ⚠️ `NotificationCenterPage` nay nhận `idaccount` từ **route**, không tự hỏi
 `AuthBloc` — cùng mẫu `NotificationSettingsPage`. Bản đầu viết
 `idaccount ?? currentAccountIdOrNull(context)` và đó là lỗi thật: `null` khi ấy

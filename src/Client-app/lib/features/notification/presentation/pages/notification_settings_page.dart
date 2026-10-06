@@ -16,6 +16,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'dong_y_bien_dong_page.dart';
 import 'dong_y_nhac_sau_ngan_hang_page.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
 ///
@@ -397,14 +398,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
     await _ghi(_prefs.copyWith(osBat: duoc));
 
     if (!duoc && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Hệ điều hành đang chặn thông báo của FlowMoney. '
-            'Bật lại trong Cài đặt của máy.',
-          ),
-        ),
-      );
+      baoNhanh('Hệ điều hành đang chặn thông báo của FlowMoney. '
+            'Bật lại trong Cài đặt của máy.');
     }
   }
 

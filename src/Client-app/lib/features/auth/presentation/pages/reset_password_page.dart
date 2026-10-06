@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String resetToken;
@@ -46,12 +47,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       );
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      baoNhanh('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.', loai: LoaiThongBao.xong);
       context.go('/login');
     } catch (e) {
       if (!mounted) return;

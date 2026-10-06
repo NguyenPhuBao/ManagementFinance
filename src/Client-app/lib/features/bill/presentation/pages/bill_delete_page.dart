@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class BillDeletePage extends StatelessWidget {
   final String id;
@@ -236,9 +237,7 @@ class BillDeletePage extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã xóa hóa đơn thành công')),
-                  );
+                  baoNhanh('Đã xóa hóa đơn thành công', loai: LoaiThongBao.xong);
                   if (Navigator.canPop(context)) {
                     Navigator.pop(context);
                   }

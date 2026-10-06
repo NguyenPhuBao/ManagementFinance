@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/errors/app_exceptions.dart';
@@ -125,6 +126,77 @@ void main() {
             '`uq_wallet_account_name_active` vẫn còn trên server.',
       );
       expect((await db.walletDao.getAll(idaccount)).length, 1);
+    });
+  });
+
+  group('G63 — chốt trùng tên chỉ khi tên ĐỔI (spec mục 4.5)', () {
+    // Hai ví cùng tên chỉ tới được máy qua đường kéo về — chèn thẳng qua DAO,
+    // không qua chốt của datasource.
+    Future<void> haiViCungTen() async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+          id: 'p',
+          idaccount: idaccount,
+          name: 'Ví MB Bank',
+          syncStatus: const Value('synced'),
+          updatedAt: DateTime(2026, 9, 30)));
+      await db.walletDao.insert(WalletsCompanion.insert(
+          id: 'r', idaccount: idaccount, name: 'Ví MB Bank', updatedAt: DateTime(2026, 9, 30)));
+    }
+
+    test('⭐ lưu lại ví mà KHÔNG đổi tên thì được, dù máy có ví khác cùng tên — cả hai ví', () async {
+      await haiViCungTen();
+
+      await dataSource.update(vi('r', name: 'Ví MB Bank').copyWith(icon: 'bank'));
+      await dataSource.update(vi('p', name: 'Ví MB Bank').copyWith(icon: 'bank'));
+
+      expect((await db.walletDao.getById('r'))!.icon, 'bank');
+      expect((await db.walletDao.getById('p'))!.icon, 'bank',
+          reason: 'Triệu chứng thứ hai của G63: trang Sửa ví từng không lưu được GÌ cho cả hai ví, kể cả '
+              'đổi biểu tượng — chốt trùng tên chạy ở mọi lần lưu.');
+    });
+
+    test('đổi sang một tên vẫn trùng thì vẫn bị chặn', () async {
+      await haiViCungTen();
+      await dataSource.insert(vi('q', name: 'Ví MoMo'));
+
+      await expectLater(dataSource.update(vi('q', name: 'ví mb bank')), throwsA(isA<CacheException>()));
+    });
+
+    test('⭐ đổi tên gỡ cờ trùng tên VÀ mốc chặn theo giờ (spec mục 7, bẫy 1)', () async {
+      await haiViCungTen();
+      await db.walletDao.danhDauTrungTen('r');
+      await db.walletDao.markSyncBlocked('r', DateTime(2026, 10, 5, 12), 'Tên ví đã tồn tại');
+
+      await dataSource.update(vi('r', name: 'Ví MB Bank (2)'));
+
+      final r = (await db.walletDao.getById('r'))!;
+      expect(r.name, 'Ví MB Bank (2)');
+      expect(r.biTuChoiTrungTen, isFalse);
+      expect(r.syncBlockedUntil, isNull);
+    });
+
+    test('⭐ đổi tên làm mới giờ sửa của giao dịch đang chờ của ví (máy kia mới kéo được — nghiệm thu 2026-10-05)',
+        () async {
+      await haiViCungTen();
+      await db.walletDao.danhDauTrungTen('r');
+      final cu = DateTime(2026, 10, 5, 7, 43);
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 't-r', walletId: 'r', idaccount: 7, amount: 1000, type: 'chi', date: cu, updatedAt: cu));
+      final truoc = DateTime.now().subtract(const Duration(seconds: 2));
+
+      await dataSource.update(vi('r', name: 'Ví MB Bank (2)'));
+
+      expect((await db.transactionDao.getById('t-r'))!.updatedAt.isAfter(truoc), isTrue,
+          reason: 'giờ ghi lúc offline nằm dưới mốc kéo về của máy kia — không làm mới là máy kia không bao giờ thấy');
+    });
+
+    test('lưu lại mà không đổi tên thì GIỮ cờ — ví vẫn trùng, vẫn phải chờ', () async {
+      await haiViCungTen();
+      await db.walletDao.danhDauTrungTen('r');
+
+      await dataSource.update(vi('r', name: 'Ví MB Bank').copyWith(icon: 'bank'));
+
+      expect((await db.walletDao.getById('r'))!.biTuChoiTrungTen, isTrue);
     });
   });
 }

@@ -39,7 +39,7 @@ void main() {
     goiHeThong = [];
     thongBao = [];
     final nhanh = ThongBaoNhanh();
-    nhanh.stream.listen(thongBao.add);
+    nhanh.stream.listen((t) => thongBao.add(t.cau));
     sl.registerSingleton<ThongBaoNhanh>(nhanh);
   });
   tearDown(() async {

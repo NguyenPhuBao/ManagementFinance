@@ -17,6 +17,7 @@ import '../an_the_cho_xoa.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import '../../../wallet/presentation/an_nhac_vi_trung_ten.dart';
 
 export 'auth_event.dart';
 export 'auth_state.dart';
@@ -365,6 +366,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // đăng nhập kế tiếp không được thừa hưởng nó (spec §5.2).
       if (sl.isRegistered<AnTheChoXoa>()) {
         sl<AnTheChoXoa>().value = false;
+      }
+      // G63: ✕ của dòng nhắc ví trùng tên cũng chỉ sống trong một phiên app.
+      if (sl.isRegistered<AnNhacViTrungTen>()) {
+        sl<AnNhacViTrungTen>().value = false;
       }
       emit(AuthSuccess(user: user));
     } catch (e) {

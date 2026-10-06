@@ -71,6 +71,7 @@ void main() {
       syncRetryCount: 0,
       includeInTotal: true,
       allowNegative: choPhepAm,
+      biTuChoiTrungTen: false,
       syncStatus: 'synced',
       updatedAt: DateTime(2026, 9, 1),
     );

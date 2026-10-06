@@ -90,6 +90,10 @@ void main() {
             INSERT INTO ai_rebalancing_feedbacks VALUES
               ('f-7', 7, 1758240000, 'an', 'ms', 'c-ms', 500000, 500000, 'accepted', 1756684800, 1759276800)
           ''');
+          // Bước v28 (G63) thêm một cột vào `wallets` — CSDL thật luôn có bảng ấy
+          // (từ v1), nên fixture tối thiểu cũng phải có, nếu không chuỗi di trú
+          // dừng ở "no such table: wallets".
+          database.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
           database.execute('PRAGMA user_version = 24');
         },
       ));

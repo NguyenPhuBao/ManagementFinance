@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -34,18 +35,11 @@ class _RegisterPageState extends State<RegisterPage> {
         fullname.isEmpty ||
         email.isEmpty ||
         password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin')),
-      );
+      baoNhanh('Vui lòng điền đầy đủ thông tin', loai: LoaiThongBao.loi);
       return;
     }
     if (password != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mật khẩu xác nhận không khớp'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      baoNhanh('Mật khẩu xác nhận không khớp', loai: LoaiThongBao.loi);
       return;
     }
     // Gửi event bước 1: yêu cầu gửi OTP về email
@@ -68,12 +62,7 @@ class _RegisterPageState extends State<RegisterPage> {
           // OTP đã gửi thành công → chuyển sang trang nhập OTP
           context.push('/register/verify-otp', extra: state);
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
+          baoNhanh(state.message, loai: LoaiThongBao.loi);
         }
         if (mounted) setState(() => _isLoading = state is AuthLoading);
       },

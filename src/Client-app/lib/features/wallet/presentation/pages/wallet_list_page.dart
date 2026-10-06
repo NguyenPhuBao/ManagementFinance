@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/vi_trung_ten.dart';
 import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
+import '../widgets/the_vi_trung_ten.dart';
 import '../widgets/wallet_type_icon.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
@@ -15,6 +17,7 @@ import '../bloc/wallet_cubit.dart';
 import '../../data/models/wallet_entity.dart';
 import '../../../ai_edge/domain/goi_so_vi.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
@@ -72,26 +75,12 @@ class _WalletListView extends StatelessWidget {
       body: BlocConsumer<WalletCubit, WalletState>(
         listener: (context, state) {
           if (state is WalletOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.income,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            baoNhanh(state.message, loai: LoaiThongBao.xong);
           } else if (state is WalletError) {
             final cleanMsg = state.message
                 .replaceAll('CacheException: ', '')
                 .replaceAll('Exception: ', '');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(cleanMsg),
-                backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 4),
-              ),
-            );
+            baoNhanh(cleanMsg, loai: LoaiThongBao.loi);
             context.read<WalletCubit>().loadWallets(idaccount);
           }
         },
@@ -129,6 +118,10 @@ class _WalletListView extends StatelessWidget {
     final viLuuTru =
         wallets.where((w) => !WalletStatus.laHoatDong(w.status)).toList();
     final soViLuuTru = viLuuTru.length;
+    // G63: nhãn "CHƯA ĐỒNG BỘ" tính từ CHÍNH danh sách trang đã nạp (mọi ví,
+    // kể cả lưu trữ — index trùng tên của server không nhìn `Status`), qua
+    // định nghĩa duy nhất `capViTrungTen` (spec mục 5.2, bẫy 9).
+    final biGiu = idViBiGiu(wallets.map(ViXetTrung.tuEntity));
 
     return Stack(
       children: [
@@ -139,6 +132,14 @@ class _WalletListView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // G63 — thẻ "VÍ TRÙNG TÊN" đứng trên cùng vì đây là việc cần
+                // xử lý; không có cặp nào thì không chiếm chỗ.
+                TheViTrungTen(
+                  idaccount: idaccount,
+                  viHienCo: wallets,
+                  onDaXuLy: () =>
+                      context.read<WalletCubit>().loadWallets(idaccount),
+                ),
                 _buildOverviewCard(totalBalance, soViLuuTru),
                 const SizedBox(height: 16),
                 // Khối Nhận xét (Edge-SLM, chặng 1.5) — đứng NGAY DƯỚI thẻ
@@ -152,12 +153,13 @@ class _WalletListView extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildWalletListHeader(),
                 const SizedBox(height: 12),
-                _buildWalletList(context, viHoatDong),
+                _buildWalletList(context, viHoatDong, biGiu),
                 if (viLuuTru.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   _MucLuuTru(
                     vi: viLuuTru,
                     idaccount: idaccount,
+                    biGiu: biGiu,
                   ),
                 ],
                 const SizedBox(height: 32),
@@ -259,7 +261,11 @@ class _WalletListView extends StatelessWidget {
     );
   }
 
-  Widget _buildWalletList(BuildContext context, List<WalletEntity> wallets) {
+  Widget _buildWalletList(
+    BuildContext context,
+    List<WalletEntity> wallets,
+    Set<String> biGiu,
+  ) {
     return Column(
       children: [
         ...wallets.map((w) {
@@ -267,6 +273,7 @@ class _WalletListView extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: _WalletItem(
               wallet: w,
+              chuaDongBo: biGiu.contains(w.id),
               onTap: () async {
                 final result = await context.push('/wallets/${w.id}/edit');
                 if (result == true && context.mounted) {
@@ -417,10 +424,17 @@ Future<void> doiLuuTru(
 /// Mở sẵn khi vào trang, theo thiết kế Stitch: người dùng mở màn này để LÀM gì
 /// đó với ví, và thứ họ hay tìm nhất ở đây là đường bỏ lưu trữ.
 class _MucLuuTru extends StatefulWidget {
-  const _MucLuuTru({required this.vi, required this.idaccount});
+  const _MucLuuTru({
+    required this.vi,
+    required this.idaccount,
+    required this.biGiu,
+  });
 
   final List<WalletEntity> vi;
   final int idaccount;
+
+  /// Ví đang bị giữ vì trùng tên (G63) — ví lưu trữ cũng có thể là R.
+  final Set<String> biGiu;
 
   @override
   State<_MucLuuTru> createState() => _MucLuuTruState();
@@ -466,6 +480,7 @@ class _MucLuuTruState extends State<_MucLuuTru> {
               padding: const EdgeInsets.only(bottom: 12),
               child: _WalletItem(
                 wallet: w,
+                chuaDongBo: widget.biGiu.contains(w.id),
                 // Cố ý KHÔNG truyền `onDelete`: menu ở đây chỉ có "Chỉnh
                 // sửa" và "Bỏ lưu trữ". Ví lưu trữ vẫn xoá được — đóng
                 // băng nói về việc ghi chép mới, không phải về quyền quản
@@ -510,8 +525,12 @@ class _WalletItem extends StatelessWidget {
   /// không phải về quyền đọc lịch sử cũ.
   final VoidCallback? onXemGiaoDich;
 
+  /// G63 — ví này bị server từ chối vì trùng tên và đang bị giữ khỏi đồng bộ.
+  final bool chuaDongBo;
+
   const _WalletItem({
     required this.wallet,
+    this.chuaDongBo = false,
     this.onTap,
     this.onDelete,
     this.onArchive,
@@ -578,15 +597,36 @@ class _WalletItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _iconBg,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(_iconData, color: _iconColor, size: 22),
+            // Icon — ví bị giữ vì trùng tên (G63) mang thêm chấm đỏ "!" ở
+            // góc, theo màn Stitch `c5a2cece…`.
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_iconData, color: _iconColor, size: 22),
+                ),
+                if (chuaDongBo)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.priority_high,
+                          size: 11, color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 14),
             // Title + Badge + Balance
@@ -594,10 +634,20 @@ class _WalletItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  // `Wrap` chứ không `Row` (G63, bẫy 12 của spec; màn Stitch
+                  // `c5a2cece…` cũng `flex-wrap`): tên dài cộng tới ba nhãn
+                  // (MẶC ĐỊNH · LƯU TRỮ · CHƯA ĐỒNG BỘ) không vừa một hàng ở
+                  // 360 dp — `Row` tràn, còn ở đây tên một dòng cắt "…" và
+                  // nhãn xuống dòng, luôn còn trên màn.
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         wallet.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -605,7 +655,6 @@ class _WalletItem extends StatelessWidget {
                         ),
                       ),
                       if (wallet.isDefault) ...[
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -624,7 +673,6 @@ class _WalletItem extends StatelessWidget {
                         ),
                       ],
                       if (_daLuuTru) ...[
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -638,6 +686,25 @@ class _WalletItem extends StatelessWidget {
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (chuaDongBo) ...[
+                        Container(
+                          key: const ValueKey('nhan-chua-dong-bo'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'CHƯA ĐỒNG BỘ',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.onErrorContainer,
                             ),
                           ),
                         ),

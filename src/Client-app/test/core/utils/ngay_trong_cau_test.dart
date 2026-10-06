@@ -182,7 +182,9 @@ void main() {
         'tháng trước đóng học 2tr',
         'tuần rồi đi chơi 500k',
         'năm ngoái mua xe',
-        'cuối tháng đóng tiền nhà',
+        'cuối tháng rồi đóng tiền nhà',
+        'cuối tháng 9 đóng tiền nhà',
+        'cuoi thang truoc dong hoc',
         'đầu tuần đổ xăng 50k',
         'mấy ngày trước mua áo',
         'ngày 15 đóng học phí',
@@ -214,6 +216,21 @@ void main() {
       ]) {
         expect(cauNhacNgay(c), isFalse, reason: c);
       }
+    });
+    test('⭐ "cuối tháng" / "cuối tháng này" / "cuối tháng sau" trơn KHÔNG là nhắc — ngày ấy là hôm nay hoặc tương lai', () {
+      for (final c in [
+        'cuối tháng đóng tiền nhà 3tr',
+        'cuoi thang dong tien nha 3tr',
+        'cuối tháng này đóng học 2tr',
+        'cuối tháng sau đóng học',
+        'tiền nhà cuối tháng',
+      ]) {
+        expect(cauNhacNgay(c), isFalse,
+            reason: '$c — Realme 2026-09-30 câu 11: gọi AI 14 s mà không thêm gì (ngày cuối tháng này là hôm nay hoặc '
+                'tương lai, lớp kiểm ngày của AI bỏ hôm nay)');
+      }
+      expect(cauNhacNgay('cuối tháng đóng tiền nhà, hôm qua quên'), isTrue,
+          reason: 'chỉ gỡ đúng cụm "cuối tháng" — cụm nhắc khác trong câu vẫn tính');
     });
   });
 

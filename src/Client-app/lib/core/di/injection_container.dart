@@ -11,11 +11,13 @@ import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../features/analytics/data/analytics_repository.dart';
 import '../../features/analytics/data/analytics_repository_impl.dart';
+import '../../features/analytics/data/thu_tu_khoi_nguon.dart';
 import '../../features/analytics/data/bao_cao_repository.dart';
 import '../../features/analytics/data/bao_cao_repository_impl.dart';
 import '../../features/analytics/data/xuat_tep_service.dart';
 import '../../features/analytics/data/xuat_tep_service_impl.dart';
 import '../../features/analytics/presentation/bloc/analytics_cubit.dart';
+import '../../features/analytics/presentation/bloc/thu_tu_khoi_cubit.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
@@ -52,6 +54,16 @@ import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
+import '../../features/wallet/data/services/gop_vi_service.dart';
+import '../../features/wallet/data/vi_trung_ten_nguon.dart';
+import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import '../../features/premium/data/dem_dang_hoat_dong.dart';
+import '../../features/premium/data/goi_repository.dart';
+import '../../features/premium/data/goi_store.dart';
+import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/presentation/an_nhac_het_han.dart';
+import '../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -171,6 +183,29 @@ Future<void> setupDependencies() async {
   // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
   sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
+  // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
+  // `batDauNghe` gọi MỘT lần ở `main.dart`, cùng lý do với bộ nghe hoá đơn.
+  sl.registerLazySingleton<ViTrungTenResolver>(
+    () => ViTrungTenResolver(db: sl()),
+  );
+  // G63: gộp ví trùng tên (spec 2026-10-05 mục 6). `ViTheoNguonStore` đăng ký
+  // ở khối D1 phía dưới — lazy nên chỉ cần có mặt lúc gọi lần đầu.
+  sl.registerLazySingleton<GopViService>(
+    () => GopViService(
+      db: sl(),
+      soDuVi: sl(),
+      viTheoNguon: sl<ViTheoNguonStore>(),
+      henDongBo: () => sl<SyncEngine>().scheduleSync(),
+    ),
+  );
+  // G63: chỗ đọc ví trùng tên cho thẻ ở Quản lý ví và dòng nhắc ở Trang chủ.
+  // (SyncEngine tự dựng bản của nó — lớp này không giữ trạng thái.)
+  sl.registerLazySingleton<ViTrungTenNguon>(
+    () => ViTrungTenNguonImpl(db: sl()),
+  );
+  // ✕ của dòng nhắc ví trùng tên ở Trang chủ — trong bộ nhớ, sống theo phiên
+  // app; AuthBloc đặt lại khi đăng nhập.
+  sl.registerLazySingleton<AnNhacViTrungTen>(AnNhacViTrungTen.new);
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
@@ -309,6 +344,14 @@ Future<void> setupDependencies() async {
   sl.registerFactory<AnalyticsCubit>(
     () => AnalyticsCubit(repository: sl<AnalyticsRepository>()),
   );
+  // Thứ tự khối trang Phân tích theo thói quen xem (dự án C việc ba) — hai
+  // bảng cục bộ v29. Không đăng ký thì trang y hệt trước (thứ tự mặc định).
+  sl.registerLazySingleton<ThuTuKhoiNguon>(
+    () => ThuTuKhoiNguonDrift(dao: sl<AppDatabase>().thuTuKhoiDao),
+  );
+  sl.registerFactory<ThuTuKhoiCubit>(
+    () => ThuTuKhoiCubit(nguon: sl<ThuTuKhoiNguon>()),
+  );
   // Trang Xuất báo cáo đọc thẳng repository (không cubit): màn Xem trước là
   // một ảnh chụp theo bộ lọc, không phải luồng dữ liệu sống.
   sl.registerLazySingleton<XuatTepService>(() => XuatTepServiceImpl());
@@ -339,6 +382,21 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<RealtimeChannel>(
     () => RealtimeChannel(secureStorage: sl<FlutterSecureStorage>()),
   );
+
+  // ── Features — Premium (spec 2026-10-06) ─────────────────────────────────
+  // Trạng thái gói là MỘT cho cả app → GoiCubit singleton, cung cấp ở gốc cây
+  // (`main.dart`). Ba nguồn làm mới (phiên, vòng đời, socket) nối ở `main.dart`
+  // vì AuthBloc là factory. Đếm đăng ký theo mặt cắt để router tiêm bản giả.
+  sl.registerLazySingleton<PaymentApi>(
+      () => DioPaymentApi(sl<DioClient>().dio));
+  sl.registerLazySingleton<GoiStore>(
+      () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
+  sl.registerLazySingleton<GoiRepository>(
+      () => GoiRepository(api: sl(), kho: sl()));
+  sl.registerLazySingleton<NguonDemDangHoatDong>(
+      () => DemDangHoatDong(db: sl()));
+  sl.registerLazySingleton<GoiCubit>(() => GoiCubit(sl()));
+  sl.registerLazySingleton<AnNhacHetHan>(AnNhacHetHan.new);
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 

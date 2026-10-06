@@ -29,6 +29,7 @@ void main() {
         updatedAt: DateTime(2026, 9, 1),
       
         allowNegative: false,
+        biTuChoiTrungTen: false,
       );
 
   Bill hoaDon({

@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/bat_thong_bao.dart';
+
 class _RepoGia implements AuthRepository {
   int huyCalls = 0;
   Object? loiHuy;
@@ -117,19 +119,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('"Huỷ yêu cầu xoá": gọi huỷ và đọc lại trạng thái; lỗi thì SnackBar', (tester) async {
+  testWidgets('"Huỷ yêu cầu xoá": gọi huỷ và đọc lại trạng thái; lỗi thì toast', (tester) async {
+    final bat = batThongBao();
     await dung(tester, _user(status: 'PendingDelete', countdown: 30));
     await tester.tap(find.text('Huỷ yêu cầu xoá'));
     await tester.pumpAndSettle();
     expect(repo.huyCalls, 1);
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
-    expect(find.byType(SnackBar), findsNothing);
+    expect(bat.cau, isEmpty);
     expect(tester.takeException(), isNull);
 
     repo.loiHuy = Exception('Không có kết nối mạng');
     await tester.tap(find.text('Huỷ yêu cầu xoá'));
     await tester.pumpAndSettle();
-    expect(find.text('Không có kết nối mạng'), findsOneWidget);
+    expect(bat.cau, ['Không có kết nối mạng']);
     expect(tester.takeException(), isNull);
   });
 

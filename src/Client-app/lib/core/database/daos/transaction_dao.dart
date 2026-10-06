@@ -156,6 +156,17 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return row.read(bien) ?? 0;
   }
 
+  /// Giao dịch còn sống dính tới [walletId] theo **mọi vai** — danh sách của
+  /// [demGiaoDichLienQuan]. Nơi gọi: `GopViService` (G63) lập kế hoạch gộp ví.
+  Future<List<Transaction>> giaoDichLienQuan(String walletId) {
+    return (select(transactions)
+          ..where((t) =>
+              (t.walletId.equals(walletId) |
+                  t.walletTransfer.equals(walletId)) &
+              t.deletedAt.isNull()))
+        .get();
+  }
+
   /// Id các ví đã có ít nhất một giao dịch còn sống của [idaccount], theo **bất kỳ vai** nào: ví nguồn
   /// (`walletId`) **hoặc** ví đích của khoản chuyển (`walletTransfer`) — cùng lý lẽ với
   /// [demGiaoDichLienQuan]: ví chỉ nhận tiền chuyển vào vẫn là ví đã dùng.

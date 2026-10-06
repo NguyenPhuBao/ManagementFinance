@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/category_tree.dart';
 import '../../data/repositories/category_management_repository.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class CategoryGroupPage extends StatefulWidget {
   const CategoryGroupPage({
@@ -161,8 +162,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
     }
   }
 
-  void _message(String message) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  void _message(String message) => baoNhanh(message, loai: LoaiThongBao.loi);
 
   @override
   Widget build(BuildContext context) => Scaffold(

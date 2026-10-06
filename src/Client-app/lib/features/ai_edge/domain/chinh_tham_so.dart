@@ -683,6 +683,24 @@ final RegExp _mauLietKe = RegExp(
 
 bool cauHoiLietKe(String cauHoi) => _mauLietKe.hasMatch(_bo(cauHoi));
 
+/// B8 (bộ đo khoá, Realme 2026-10-05): *"3 khoản thu mới nhất"* in 4 khoản — tool cắt ở
+/// trần chung mà không đọc N của câu. Số đứng NGAY trước *khoản / giao dịch*, chữ số hoặc
+/// chữ (một tới năm); số ngay sau *tháng · ngày · tuần · quý · năm* là mốc thời gian, không
+/// phải số dòng (*"tháng 3 khoản chi nào"*). `null` = câu không xin số dòng cụ thể.
+final RegExp _mauSoDong = RegExp(
+    r'(?:^|(\S+) )(\d+|mot|hai|ba|bon|nam) (?:khoan|giao dich)(?![a-z0-9])');
+const Map<String, int> _soChu = {'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'nam': 5};
+const Set<String> _tuMocThoiGian = {'thang', 'ngay', 'tuan', 'quy', 'nam'};
+
+int? soDongYeuCau(String cauHoi) {
+  for (final m in _mauSoDong.allMatches(_bo(cauHoi))) {
+    if (_tuMocThoiGian.contains(m.group(1))) continue;
+    final so = _soChu[m.group(2)] ?? int.tryParse(m.group(2)!);
+    if (so != null && so > 0) return so;
+  }
+  return null;
+}
+
 /// A2 (2026-09-29): năm họ câu cũ về phiên MỘT tool. Số đo cổng F lần 1 trên
 /// Realme: lượt sinh đầu 41,1 s ở phiên sáu tool, 15,6 s ở phiên một tool — và
 /// ở mốc 72 câu mô hình đã tự chọn đúng tool đích này cho cả 18 câu của năm họ.

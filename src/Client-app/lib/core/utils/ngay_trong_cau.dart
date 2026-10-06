@@ -124,8 +124,18 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
 ///
 /// Chữ gõ không dấu chỉ nhận dạng không lẫn được (*hom, tuan, thang, trua, chieu*; *dau · giua · cuoi* chỉ trước *tuan ·
 /// thang*): *toi* còn là *tôi*, *dem* là *đem*, *nam* là tên *Nam*.
+///
+/// ⚠️ *cuối tháng · cuối tháng này · cuối tháng sau / tới* trơn **không** là nhắc (người dùng chọn 2026-10-06): ngày ấy
+/// là hôm nay hoặc tương lai, mà lớp kiểm ngày của AI bỏ hôm nay — Realme 2026-09-30 câu 11 gọi AI 14 s không thêm gì.
+/// *cuối tháng rồi / trước / qua* và *cuối tháng 9* vẫn là nhắc.
 bool cauNhacNgay(String cau) {
-  final goc = unorm.nfc(cau).toLowerCase();
+  var goc = unorm.nfc(cau).toLowerCase();
+  final boDau = removeVietnameseTones(goc);
+  if (boDau.length == goc.length) {
+    for (final m in _mauCuoiThangTron.allMatches(boDau)) {
+      goc = goc.replaceRange(m.start, m.end, ' ' * (m.end - m.start));
+    }
+  }
   final tu = [for (final m in _tuChu.allMatches(goc)) m.group(0)!];
   for (var i = 0; i + 1 < tu.length; i++) {
     final a = tu[i];
@@ -159,6 +169,8 @@ const Set<String> _moc = {'đầu', 'giữa', 'cuối', 'dau', 'giua', 'cuoi'};
 const Set<String> _kyMoc = {'tuần', 'tháng', 'năm', 'tuan', 'thang'};
 const Set<String> _sauNgay = {'truoc', 'roi', 'kia'};
 final RegExp _mauNgaySo = RegExp(r'(?<![a-z0-9])(ngay|mung|mong)\s+\d{1,2}(?![\d/.,])');
+final RegExp _mauCuoiThangTron = RegExp(
+    r'(?<![a-z0-9])cuoi\s+thang(?:\s+(?:nay|sau|toi))?(?![a-z0-9])(?!\s+(?:truoc|roi|qua|ngoai|kia|\d))');
 
 final RegExp _mauTuan = RegExp(r'^\s+tuan\s+(truoc|nay)(?![a-z0-9])');
 
