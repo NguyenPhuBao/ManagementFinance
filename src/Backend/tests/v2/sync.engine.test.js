@@ -221,4 +221,48 @@ describe('Sync Engine v2 — Validation, Dependency Ordering & Conflict Resoluti
       }
     });
   });
+
+  // ─── 5. SERVER_UPDATE_AT DELTA PULL (MỤC 37 FIX) ────────────────────────
+  describe('5. Delta Pull Sync với Server_update_at (Khắc phục bỏ sót bản ghi đẩy muộn)', () => {
+    it('5.1. processPull tính maxSince dựa trên server_update_at lớn nhất của batch', async () => {
+      const syncRepo = require('../../modules/sync/sync.repository');
+      const origGetWallets = syncRepo.getWalletsByAccount;
+
+      const serverTime1 = new Date('2026-10-05T07:45:00.000Z');
+      const serverTime2 = new Date('2026-10-05T07:45:32.000Z');
+
+      syncRepo.getWalletsByAccount = async (idaccount, since) => [
+        { idwallet: validUUID1, name: 'Ví 1', update_at: new Date('2026-10-05T07:43:00.000Z'), server_update_at: serverTime1 },
+        { idwallet: validUUID2, name: 'Ví 2', update_at: new Date('2026-10-05T07:43:30.000Z'), server_update_at: serverTime2 },
+      ];
+
+      try {
+        const pullRes = await syncService.processPull(1, '2026-10-05T07:44:00.000Z', ['wallet']);
+        assert.strictEqual(pullRes.data.wallets.length, 2);
+        assert.strictEqual(pullRes.maxSince.wallet, serverTime2);
+      } finally {
+        syncRepo.getWalletsByAccount = origGetWallets;
+      }
+    });
+
+    it('5.2. getWalletsByAccount lọc theo server_update_at thay vì update_at', async () => {
+      const { prisma } = require('../../config/db');
+      let capturedQuery = null;
+      const origFindMany = prisma.wallet.findMany;
+      prisma.wallet.findMany = async (args) => {
+        capturedQuery = args;
+        return [];
+      };
+
+      try {
+        const syncRepo = require('../../modules/sync/sync.repository');
+        await syncRepo.getWalletsByAccount(10, '2026-10-05T07:44:27.000Z');
+        assert.ok(capturedQuery.where.server_update_at, 'Query phải lọc theo server_update_at');
+        assert.strictEqual(capturedQuery.where.update_at, undefined, 'Query không được lọc theo update_at');
+        assert.deepStrictEqual(capturedQuery.orderBy, { server_update_at: 'asc' });
+      } finally {
+        prisma.wallet.findMany = origFindMany;
+      }
+    });
+  });
 });
