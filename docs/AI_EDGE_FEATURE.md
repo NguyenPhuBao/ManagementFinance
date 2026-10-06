@@ -2851,7 +2851,7 @@ một tool lượt sinh đầu ~17 s (F14, F15) so với ~42 s ở phiên sáu t
 | **H3** | E19 | Luật **15** bộ chỉnh: kỳ *"… này"* nêu trong câu thắng `ky` của mô hình (cùng lý lẽ luật 4 — câu hỏi là nguồn sự thật); không áp khi đã có kỳ tự do, so sánh, hay kỳ tương lai | `chinh_tham_so.dart` |
 | **H3** | F15 | `hangCanDoiNganSach(null)` → `ket_qua` *"không ngân sách nào cần cân đối"*, `chiMauCau`, **thôi** `rongTheoBoLoc` — bản trước in *"Cần cân đối — không có ngân sách nào khớp"*, đọc như một lỗi tìm kiếm trong khi đó là câu trả lời | `hang_ngan_sach.dart` |
 
-**Chưa sửa: C4** (*"dưới 100 nghìn"* — biên `so_tien_den` bao gồm): phải đổi `KhoangTien` của mảng giao dịch, chờ
+**Chưa sửa: C4** (✅ **sửa 2026-10-06** — cuối mục 9, khối *C4*, bằng cách đọc câu chứ không đổi `KhoangTien`) (*"dưới 100 nghìn"* — biên `so_tien_den` bao gồm): phải đổi `KhoangTien` của mảng giao dịch, chờ
 người dùng quyết. TDD, bản sai có chủ ý cho `chiMauCau` mục tiêu và luật kỳ; hai ca cũ **viết lại** vì mã hoá chính hành
 vi F15 vừa đổi (`hang_ngan_sach_test`, `bo_cong_cu_test`). `flutter test` **4158/4158** (3 skip, +12 ca, 2 phút 32 giây),
 `flutter analyze` 26. `tools_json`, lời hệ thống, schema, payload không đổi.
@@ -3774,6 +3774,19 @@ luôn cắt ở trần chung `kToiDaMucMoiGoi` mà không đọc N của câu. N
 quý · năm* là mốc thời gian, không phải số dòng — và tool cắt hàng ở `min(N, trần)` khi không gộp / không chọn. Chỉ cắt
 danh sách: `Số giao dịch` vẫn đếm trọn tập. Áp cho cả đường nhanh lẫn đường cũ (cùng một tool). Ca canh ở
 `chinh_tham_so_test` và `cong_cu_truy_van_test` (bản sai bỏ nối `toiDa` → ca đỏ).
+
+✅ **C4 — *"dưới / trên X"* là mốc LOẠI TRỪ (2026-10-06, chưa đo máy thật)**: *"tuần này có khoản chi nào dưới 100 nghìn"*
+từng kể cả khoản đúng 100.000 đ vì `so_tien_den` đi vào `KhoangTien.chua`, phép so **bao gồm** của Sổ giao dịch. Người
+dùng chọn sửa ở **cách đọc câu**, không đụng `KhoangTien`: `_nguongTrongCau` báo thêm mốc nào là mốc ngắt (*trên · hơn ·
+lớn hơn* · *dưới · nhỏ hơn · thấp hơn · ít hơn*; còn *từ · trở lên · ít nhất · tối thiểu* và *không quá · đến · tới · tối
+đa* vẫn bao gồm), `KetQuaChinhThamSo.tuLoaiTru / denLoaiTru` mang nó tới tool (**không** qua args — `tools_json`, lời hệ
+thống không đổi), `TieuChiTim` cùng hai cờ và `timGiaoDich` bỏ khoản bằng mốc (dung sai nửa đồng như `chua`), lượt rỗng
+in *"dưới 100.000 đ"* thay vì *"đến …"*. Cờ chỉ bật khi giá trị cuối **là** mốc của câu — mô hình tự điền ngưỡng mà câu
+không có chữ ngưỡng thì vẫn bao gồm. ⚠️ Kèm một lỗi **có từ trước**, lộ khi đọc mã: *"ít hơn / nhỏ hơn / thấp hơn 50k"*
+từng thành **`so_tien_tu`** vì chữ *"hơn"* của ngưỡng dưới khớp trước — nay **cụm dài nhất thắng**. ⚠️ Đổi theo cả
+chiều *"trên"*: *"trên 30 nghìn"* thôi gồm khoản đúng 30.000 đ — câu đo nào có khoản đúng bằng mốc sẽ đổi đáp án. Ca
+canh ở `chinh_tham_so_test`, `cong_cu_truy_van_test`, `tim_giao_dich_test` (hai bản sai — bỏ phép loại trừ, bỏ luật cụm
+dài nhất — làm 4 ca đỏ).
 
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).

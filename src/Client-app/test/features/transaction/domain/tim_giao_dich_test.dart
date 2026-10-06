@@ -168,6 +168,23 @@ void main() {
         reason: '500.000 là nửa chi dạng cũ mx — không còn là khoản chi (2026-09-29)');
   });
 
+  test('mốc LOẠI TRỪ (C4): khoản đúng bằng mốc rơi ra; KhoangTien.chua vẫn bao gồm', () {
+    const kt = KhoangTien(tu: 200000, den: 800000);
+    expect(tim(const TieuChiTim(chieu: ChieuTim.chi, khoangTien: kt)).dong.map((d) => d.soTien),
+        contains(800000));
+    expect(
+        tim(const TieuChiTim(chieu: ChieuTim.chi, khoangTien: kt, denLoaiTru: true))
+            .dong
+            .map((d) => d.soTien),
+        isNot(contains(800000)));
+    expect(
+        tim(const TieuChiTim(
+                chieu: ChieuTim.chi, khoangTien: KhoangTien(tu: 800000), tuLoaiTru: true))
+            .dong,
+        isEmpty);
+    expect(kt.chua(800000), isTrue, reason: 'bộ lọc Sổ giao dịch không đổi');
+  });
+
   test('từ khoá không dấu, không phân biệt hoa thường', () {
     expect(tim(const TieuChiTim(tuKhoa: 'hoa don')).dong.single.tieuDe, 'Thanh toán hóa đơn: Điện');
   });

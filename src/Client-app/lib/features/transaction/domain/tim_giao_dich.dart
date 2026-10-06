@@ -33,10 +33,19 @@ class TieuChiTim {
     this.tenVi,
     this.tuKhoa = '',
     this.sapXep = SapXepTim.soTien,
+    this.tuLoaiTru = false,
+    this.denLoaiTru = false,
   });
 
   final ChieuTim chieu;
   final KhoangTien? khoangTien;
+
+  /// Mốc của [khoangTien] là mốc LOẠI TRỪ (C4, 2026-10-06): câu *"trên 500k"*,
+  /// *"dưới 100 nghìn"* không gồm khoản đúng bằng mốc. `KhoangTien.chua` của Sổ
+  /// giao dịch bao gồm cả hai mốc và **giữ nguyên** — hai ô "Từ / Đến" ở đó là
+  /// bao gồm; phép loại trừ chỉ áp ở đây, sau bộ lọc chung.
+  final bool tuLoaiTru;
+  final bool denLoaiTru;
   final String? tenDanhMuc;
   final String? tenVi;
   final String tuKhoa;
@@ -177,18 +186,21 @@ KetQuaTimGiaoDich timGiaoDich({
               )) &&
           // 4. Việc chưa xảy ra (khoản trích mục tiêu hẹn trước) — không bao giờ
           //    là "lần gần nhất" (spec mục 1.2 hàng 11).
-          !t.date.isAfter(now))
+          !t.date.isAfter(now) &&
+          // 5. Mốc loại trừ — "bằng mốc" theo cùng dung sai nửa đồng của `chua`.
+          !_bangMoc(t.amount, tieuChi.khoangTien?.tu, tieuChi.tuLoaiTru) &&
+          !_bangMoc(t.amount, tieuChi.khoangTien?.den, tieuChi.denLoaiTru))
         t,
   ];
 
-  // 5. Tổng trên MỌI khoản còn lại.
+  // 6. Tổng trên MỌI khoản còn lại.
   final tong = summarizeTransactions(con);
   var tongChuyen = 0.0;
   for (final t in con) {
     if (t.type == 'transfer') tongChuyen += t.amount;
   }
 
-  // 6. Xếp, cắt, tra tên.
+  // 7. Xếp, cắt, tra tên.
   final xep = [...con]
     ..sort(tieuChi.sapXep == SapXepTim.soTien ? _lonTruoc : _moiTruoc);
   return KetQuaTimGiaoDich(
@@ -241,6 +253,9 @@ int _moiTruoc(TransactionEntity a, TransactionEntity b) {
   final c = b.date.compareTo(a.date);
   return c != 0 ? c : b.amount.compareTo(a.amount);
 }
+
+bool _bangMoc(double soTien, double? moc, bool loaiTru) =>
+    loaiTru && moc != null && (soTien - moc).abs() <= kDungSaiTien;
 
 DongTimThay _dong(TransactionEntity t, TransactionLookup lookup) {
   final tenDm = lookup.category(t.categoryId)?.name;
