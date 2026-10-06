@@ -694,6 +694,53 @@ void main() {
       expect(find.text('Chưa rõ số tiền — bạn điền trong form'), findsOneWidget);
     });
   });
+
+  // Spec Premium 2026-10-06 mục 8.1: Trợ lý AI là đặc quyền Premium (người dùng chốt câu 3). Basic: màn vẫn mở,
+  // ô nhập khoá CẢ lệnh tạo, chip không bấm, băng khoá có nút Nâng cấp — và Basic xét TRƯỚC hai lý do cũ.
+  group('Premium — Basic bị khoá', () {
+    testWidgets('Basic: băng khoá có nút Nâng cấp, ô nhập tắt, chip không bấm, KHÔNG mời tải mô hình', (t) async {
+      await t.pumpWidget(boc(const AiChatPage(coMoHinh: true, laPremium: false)));
+      await t.pumpAndSettle();
+      expect(find.text(kGoiBasic), findsOneWidget);
+      expect(find.byKey(const Key('nut-nang-cap')), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Cài đặt AI'), findsNothing,
+          reason: 'Basic không bị mời tải 2,41 GB cho thứ không dùng được');
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+      final chip = t.widget<InkWell>(
+          find.ancestor(of: find.text('Chi tiêu tháng này'), matching: find.byType(InkWell)).first);
+      expect(chip.onTap, isNull, reason: 'ô nhập đã khoá mà chip vẫn hỏi được là một đường vòng quanh cái khoá');
+    });
+
+    testWidgets('Basic chưa có mô hình: vẫn là băng Premium (Basic xét trước)', (t) async {
+      await t.pumpWidget(boc(const AiChatPage(coMoHinh: false, laPremium: false)));
+      await t.pumpAndSettle();
+      expect(find.text(kGoiBasic), findsOneWidget);
+      expect(find.text(kChuaCoMoHinh), findsNothing);
+    });
+
+    testWidgets('Premium có mô hình: không băng, ô mở', (t) async {
+      await t.pumpWidget(boc(const AiChatPage(coMoHinh: true, laPremium: true)));
+      await t.pumpAndSettle();
+      expect(find.text(kGoiBasic), findsNothing);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
+
+    testWidgets('Premium chưa có mô hình: băng cũ "chưa tải" như trước, ô vẫn mở cho lệnh tạo', (t) async {
+      await t.pumpWidget(boc(const AiChatPage(coMoHinh: false, laPremium: true)));
+      await t.pumpAndSettle();
+      expect(find.text(kChuaCoMoHinh), findsOneWidget);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
+
+    testWidgets('360 × 640: băng Premium không tràn', (t) async {
+      t.view.physicalSize = const Size(360, 640);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(boc(const AiChatPage(coMoHinh: true, laPremium: false)));
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+    });
+  });
 }
 
 /// Bản giả của phiên AI lệnh tạo. [treo]: lượt không tự xong — chỉ `huy()` mới thả, và khi ấy trả `null` như bản thật.
