@@ -24,9 +24,12 @@ function isOriginAllowed(origin, configuredOrigins) {
   // 1. Khớp chính xác với danh sách được cấu hình
   if (allowedList.includes(origin)) return true;
 
-  // 2. Khớp môi trường dev cục bộ (localhost hoặc 127.0.0.1 ở bất kỳ port nào)
-  if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
-    return true;
+  // 2. Khớp môi trường dev cục bộ (localhost hoặc 127.0.0.1 ở bất kỳ port nào) — CHỈ bật khi không phải production
+  const isDevOrTest = process.env.NODE_ENV !== 'production';
+  if (isDevOrTest) {
+    if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+      return true;
+    }
   }
 
   // 3. Khớp các tên miền Vercel của dự án (cả production lẫn preview/branch deployments)

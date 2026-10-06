@@ -17,18 +17,10 @@ const config = require('../config');
 
 function createAdminPriorityMiddleware(options = {}) {
   const emergencyKey = options.emergencyKey || process.env.ADMIN_EMERGENCY_KEY;
-  const jwtSecret = options.jwtSecret || (config.jwt && (config.jwt.accessSecret || config.jwt.secret)) || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'secret';
+  const jwtSecret = options.jwtSecret || (config.jwt && config.jwt.accessSecret) || process.env.JWT_ACCESS_SECRET;
 
   return function adminPriorityMiddleware(req, res, next) {
-    const url = req.originalUrl || req.path || '';
-
-    // 1. Nhận diện qua URL path Admin nội bộ
-    if (url.startsWith('/api/admin') || url.startsWith('/health/admin')) {
-      req.isAdmin = true;
-      return next();
-    }
-
-    // 2. Nhận diện qua Khóa khẩn cấp (Emergency Admin Key) với so khớp Timing-Safe
+    // 1. Nhận diện qua Khóa khẩn cấp (Emergency Admin Key) với so khớp Timing-Safe
     const reqEmergencyKey = req.headers && req.headers['x-emergency-admin-key'];
     if (emergencyKey && reqEmergencyKey && typeof reqEmergencyKey === 'string') {
       try {
@@ -54,9 +46,9 @@ function createAdminPriorityMiddleware(options = {}) {
       req.isAdminWebClient = true;
     }
 
-    // 4. Nhận diện sớm qua Authorization Bearer Token ĐƯỢC SERVER XÁC THỰC CHỮ KÝ (jwt.verify)
+    // 3. Nhận diện sớm qua Authorization Bearer Token ĐƯỢC SERVER XÁC THỰC CHỮ KÝ (jwt.verify)
     const authHeader = req.headers && (req.headers.authorization || req.headers['authorization']);
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (jwtSecret && authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       try {
         const decoded = jwt.verify(token, jwtSecret);

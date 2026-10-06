@@ -238,7 +238,7 @@ void main() {
     expect(pendingWalletsAfter, isEmpty);
     expect(pendingTxAfter, isEmpty);
     expect(walletLocal?.syncStatus, equals('synced'));
-    expect(txLocal?.syncStatus, equals('synced'));
+    expect(txLocal.syncStatus, equals('synced'));
     expect(
       dioClient.adapter.pushedOperations
           .map((operation) => operation['localId']),
@@ -267,7 +267,7 @@ void main() {
     print(
         '   - Wallet in SQLite sau Sync: ID = ${walletLocal?.id}, Status = ${walletLocal?.syncStatus}');
     print(
-        '   - Transaction in SQLite sau Sync: ID = ${txLocal?.id}, Status = ${txLocal?.syncStatus}');
+        '   - Transaction in SQLite sau Sync: ID = ${txLocal.id}, Status = ${txLocal.syncStatus}');
     print(
         '----------------------------------------------------------------------\n');
   });

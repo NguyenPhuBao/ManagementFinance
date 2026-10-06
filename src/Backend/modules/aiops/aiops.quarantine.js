@@ -299,7 +299,7 @@ class AIOpsQuarantine {
   createMiddleware() {
     return (req, res, next) => {
       // Fast-lane: Miễn trừ cho request đã được SERVER XÁC THỰC là Admin thật (Token hợp lệ, Khóa khẩn cấp)
-      if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) {
+      if (req.isAdmin === true) {
         return next();
       }
 

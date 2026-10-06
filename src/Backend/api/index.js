@@ -67,6 +67,7 @@ router.use('/ai', require('./ai.routes'));
 router.use('/bank', require('./bank.routes'));
 router.use('/sync', require('./sync.routes'));
 router.use('/notifications', require('./notification.routes'));
+router.use('/payment', require('./payment.routes'));
 
 module.exports = router;
 

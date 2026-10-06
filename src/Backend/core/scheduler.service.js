@@ -253,6 +253,85 @@ async function runDailyRefreshTokenPurgeTask() {
 }
 
 /**
+ * Tác vụ kiểm tra vòng đời gói cước Premium chạy mỗi ngày vào 00:00:00 UTC+7:
+ * 1. Cảnh báo trước 3 ngày cho tài khoản sắp hết hạn
+ * 2. Hạ cấp các tài khoản đã quá hạn về Basic và phát sự kiện thông báo
+ * @returns {Promise<{ warnedCount: number, downgradedCount: number }>}
+ */
+async function runDailyPremiumExpirationTask() {
+  logger.info('=== BẮT ĐẦU CHẠY DAILY PREMIUM EXPIRATION TASK (0h00 UTC+7) ===');
+  let warnedCount = 0;
+  let downgradedCount = 0;
+
+  try {
+    const paymentRepository = require('../modules/payment/payment.repository');
+    const eventBus = require('./event-bus');
+
+    // 1. Quét tài khoản sắp hết hạn trong 3 ngày tới để phát cảnh báo
+    const now = new Date();
+    const expiringAccounts = await paymentRepository.findExpiringPremiumAccounts(3);
+    for (const acc of expiringAccounts) {
+      if (acc.premium_expires_at) {
+        const diffMs = new Date(acc.premium_expires_at).getTime() - now.getTime();
+        const daysRemaining = Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+
+        try {
+          eventBus.publish('payment.expiring_soon', {
+            idaccount: acc.idaccount,
+            username: acc.username,
+            email: acc.email,
+            daysRemaining,
+            premiumExpiresAt: acc.premium_expires_at,
+            title: 'Gói Premium sắp hết hạn',
+            message: `Gói Premium của bạn sẽ hết hạn sau ${daysRemaining} ngày. Hãy gia hạn ngay để không bị gián đoạn tính năng!`,
+          });
+          warnedCount++;
+        } catch (_) {}
+      }
+    }
+    logger.info(`Đã phát cảnh báo sắp hết hạn Premium cho ${warnedCount} tài khoản`);
+
+    // 2. Hạ cấp các tài khoản đã quá hạn về Basic
+    const downgradedAccounts = await paymentRepository.downgradeExpiredPremiumAccounts(now);
+    downgradedCount = downgradedAccounts.length;
+
+    for (const acc of downgradedAccounts) {
+      // Xóa cache xác thực
+      try {
+        const { invalidateAccountCache } = require('../middleware/auth');
+        invalidateAccountCache(acc.idaccount);
+      } catch (_) {}
+
+      // Phát sự kiện qua EventBus
+      try {
+        eventBus.publish('payment.expired', {
+          idaccount: acc.idaccount,
+          username: acc.username,
+          email: acc.email,
+          title: 'Gói Premium đã hết hạn',
+          message: 'Gói Premium của bạn đã hết thời hạn sử dụng. Tài khoản đã được chuyển về gói Basic.',
+        });
+      } catch (_) {}
+
+      // Phát socket realtime
+      try {
+        const { emitToAccount } = require('./socket');
+        emitToAccount(acc.idaccount, 'account.downgraded', {
+          type: 'Basic',
+          message: 'Gói Premium đã hết hạn, tài khoản chuyển về gói Basic',
+        });
+      } catch (_) {}
+    }
+    logger.info(`Đã hạ cấp thành công ${downgradedCount} tài khoản Premium hết hạn về Basic`);
+
+    return { warnedCount, downgradedCount };
+  } catch (error) {
+    logger.error('Lỗi khi thực thi runDailyPremiumExpirationTask', { error: error.message });
+    throw error;
+  }
+}
+
+/**
  * Chu trình bảo trì tổng hợp chạy tự động mỗi ngày vào 00:00:00 UTC+7
  */
 async function runDailyMaintenanceRoutine() {
@@ -273,6 +352,12 @@ async function runDailyMaintenanceRoutine() {
     await runDailyRefreshTokenPurgeTask();
   } catch (err) {
     logger.error('Lỗi trong runDailyRefreshTokenPurgeTask:', { error: err.message });
+  }
+
+  try {
+    await runDailyPremiumExpirationTask();
+  } catch (err) {
+    logger.error('Lỗi trong runDailyPremiumExpirationTask:', { error: err.message });
   }
   logger.info('=== HOÀN TẤT CHU TRÌNH BẢO TRÌ HÀNG NGÀY ===');
 }
@@ -330,6 +415,7 @@ module.exports = {
   runDailyCountdownTask,
   runDailyOtpPurgeTask,
   runDailyRefreshTokenPurgeTask,
+  runDailyPremiumExpirationTask,
   runDailyMaintenanceRoutine,
   processFullSoftDelete,
   initScheduler,

@@ -108,7 +108,7 @@ class FeatureCollector {
 
         // Heuristic 1: Phát hiện DoS Request Burst từ 1 nguồn đơn lẻ theo ngưỡng quy mô
         const burstThreshold = this._getBurstThreshold();
-        if (ipStat.count > burstThreshold && !req.isAdmin && (!req.originalUrl || !req.originalUrl.startsWith('/api/admin'))) {
+        if (ipStat.count > burstThreshold && !req.isAdmin) {
           defaultAIOpsQuarantine.quarantine(
             clientIp,
             `Tấn công DoS Request Burst dồn dập (${ipStat.count} req/10s, ngưỡng: ${burstThreshold})`,

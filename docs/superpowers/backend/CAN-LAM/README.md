@@ -1,24 +1,19 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
+# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
 
-**Cập nhật:** 2026-10-05 tối (Client-app đặt **mục 37** — kéo về bỏ sót bản ghi đẩy muộn, đo khi nghiệm thu G63 trên hai máy ảo). Trước đó cùng ngày (Client-app soát mục 35 sau gộp `main` @ `b38367e`: đạt cả bốn mục, đặt **mục 36** cho một lỗi lách lớp bảo trì + bốn chỗ nhẹ; mục 34 Client-app đã làm xong). Trước đó 2026-10-04: Backend hoàn tất 100% mục 35 vá lỗ hổng logic; Mục 34 đã được PO trả lời/duyệt thiết kế.
+**Cập nhật:** 2026-10-06 (Client-app gộp `main` @ `872462f`: Backend đã đóng **mục 36** và chuyển sang `DA-XONG/`; **mục 37** của Client-app vẫn chờ — bản README của lượt `872462f` viết lại từ bản chưa có mục 37 nên làm rơi nó, Client-app thêm lại lúc gộp). Trước đó 2026-10-05: Backend hoàn thành 100% **Mục 36** — xử lý trọn gói 6 điểm bảo mật, cấu hình và kiểm thử; Client-app đặt **mục 37** (kéo về bỏ sót bản ghi đẩy muộn, đo khi nghiệm thu G63 trên hai máy ảo); mục 34 Client-app đã làm xong.
 
-> 📌 **HIỆN TRẠNG 2026-10-05:**
-> - **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`) — MỚI, chờ Backend, mức cao:** `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi lên server **muộn hơn giờ ghi** (máy offline lâu) rơi dưới mốc của máy khác và **không bao giờ** được kéo. Xin cột giờ-server riêng cho việc kéo; không đổi LWW.
-> - **Mục 36 (`SOAT_SAU_GOP_B38367E.md`) — MỚI, chờ Backend:** Client-app soát mã sau gộp `b38367e` (`node --test tests/unit/*.test.js` 166/166). Mục 35 đạt; còn **một lỗi mức vừa** — `maintenance.middleware.js` cho qua mọi URL **chứa** `/auth/login` kể cả trong query string (đo: `/api/sync/push?x=/auth/login` lọt khi bảo trì BẬT) — và bốn chỗ nhẹ (khoá dự phòng `'secret'`, `/api/admin/*` ưu tiên trước xác thực, cắt tải nhận môi trường test theo đường dẫn chứa `test`, CORS mở cho mọi project Vercel cùng tiền tố). Client-app không phải sửa gì.
+> 📌 **HIỆN TRẠNG 2026-10-06:**
+> - **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`) — chờ Backend, mức cao:** `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi lên server **muộn hơn giờ ghi** (máy offline lâu) rơi dưới mốc của máy khác và **không bao giờ** được kéo. Xin cột giờ-server riêng cho việc kéo; không đổi LWW.
+> - **Mục 36 (`DA-XONG/SOAT_SAU_GOP_B38367E.md`) — ĐÃ HOÀN THÀNH 100%:** Backend đã khắc phục trọn vẹn: vá lách query string bảo trì, loại bỏ fallback `'secret'`, bỏ gán `req.isAdmin` theo URL path trước xác thực, sửa nhận diện test load-shedding, siết CORS, bổ sung 3 ca test bảo trì auth. Toàn bộ 220/220 unit tests PASS 100%.
 > - **Mục 34:** Client-app đã **làm xong** tính năng nhắc ghi (2026-10-03, nghiệm thu Realme bản debug + release) — có thể chuyển sang `DA-XONG/`.
-
-> 📌 **HIỆN TRẠNG 2026-10-04:**
-> - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** Phía Client-app hỏi ý kiến thiết kế tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (`PACKAGE_USAGE_STATS`). PO đã phê duyệt: đồng ý với Client (100% on-device offline, không đòi thêm NĐ 13, bổ sung nguồn 3 vào tài liệu). Tệp nằm tại `CAN-LAM/` để Client-app tiến hành xây dựng và nghiệm thu chức năng trên máy.
-> - **Mục 35 (`SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md`):** Đã vá triệt để 5 điểm yếu bảo mật logic phía Backend, vượt qua 30 unit tests và lưu trữ tại `DA-XONG/`.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **2** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
+## 0. Còn phải làm (Hiện tại: **1** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
 | **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](./KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Backend | Thêm cột giờ-server (`Server_update_at`, đặt `now()` ở mọi lần ghi) cho sáu bảng đồng bộ; `/sync/pull` lọc và trả theo cột ấy; giữ `update_at` cho LWW. Đo: máy A thiếu hai giao dịch của máy B (server có đủ). Client đổi mốc kéo về sau khi backend xong. | ⏳ Chờ Backend |
-| **36** | [SOAT_SAU_GOP_B38367E.md](./SOAT_SAU_GOP_B38367E.md) | Backend | Lớp bảo trì cho qua URL chứa `/auth/login` trong query (mức vừa, có lệnh đo lại ở mục 1 của đơn); khoá dự phòng `'secret'` + kiểm `JWT_ACCESS_SECRET` lúc khởi động; bỏ ưu tiên `/api/admin/*` trước xác thực; bỏ vế `process.argv` ở lớp cắt tải; thu hẹp CORS Vercel (tuỳ chọn); thêm test nhánh bảo trì của `auth.service`. | ⏳ Chờ Backend |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật). Client-app **đã làm xong** 2026-10-03 (10 task, nghiệm thu Realme debug + release). | ✅ Client xong — chờ chuyển `DA-XONG/` |
 
 ---
@@ -27,6 +22,7 @@
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
+| **36** | [SOAT_SAU_GOP_B38367E.md](../DA-XONG/SOAT_SAU_GOP_B38367E.md) | Vá lách query bảo trì, loại bỏ fallback 'secret', bỏ req.isAdmin theo URL path, chuẩn hóa load-shedding test env, siết CORS, bổ sung 3 ca test login bảo trì. Test PASS 220/220 (100%). | ✅ Đã xong 100% |
 | **35** | [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](../DA-XONG/SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | Xóa bỏ ưu tiên tự khai header, xóa Fast-lane 2 AIOps, chuyển sang jwt.verify, timingSafeEqual, bảo trì login, authLimiter chuẩn. Test PASS 100%. | ✅ Đã xong 100% |
 | **31** | [SOAT_SAU_GOP_A7C03B7.md](../DA-XONG/SOAT_SAU_GOP_A7C03B7.md) | Sửa dứt điểm 2 lỗi mã FHS (`allExpenses` chiều tiền Vay/no, `trendVsLastMonth` null), khử BOM file SQL 14, cập nhật CloudDeploy.md, chuẩn hóa toàn diện tài liệu (v27, 9 tools, Gemini 3.8 Flash). Test FHS PASS 100%. | ✅ Đã xong 100% |
 | **32** | [CLIENT_CHIA_SE_BIEN_LAI.md](../DA-XONG/CLIENT_CHIA_SE_BIEN_LAI.md) | Module Bank đã dừng độc lập, cập nhật tài liệu ăn khớp với cơ chế chia sẻ biên lai on-device ML Kit của Client-app. | ✅ Đã xong 100% |
@@ -42,7 +38,7 @@
 
 ## 2. Trạng thái toàn bộ tài liệu kỹ thuật (Đã lưu trữ tại `DA-XONG/`)
 
-**53** tài liệu (đếm bằng máy 2026-10-05 sau gộp `b38367e` — mục 35 đã chuyển sang; không tính `README.md`) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
+**53** tài liệu (đếm bằng máy 2026-10-06 sau gộp `872462f` — mục 36 đã chuyển sang; không tính `README.md`. Mốc cũ ghi 53 cho lượt `b38367e` là đếm lệch một — bản trước gộp này có 52) đã được chuyển sang [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/README.md) và được kiểm chứng qua các bộ kiểm thử tự động, lệnh kiểm tra văn bản và đối soát mã nguồn.
 
 ---
 

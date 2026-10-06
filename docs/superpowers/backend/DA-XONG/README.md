@@ -135,9 +135,19 @@ Tài liệu này đã được giải quyết triệt để và chuyển sang `D
 |---|---|
 | [SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md](./SOAT_UU_TIEN_ADMIN_VA_CHAN_IP.md) | ✅ Đã vá triệt để 5 điểm yếu bảo mật logic: (1) Xóa bỏ logic tự khai `x-client-platform` / Origin cấp `req.isAdmin`; (2) Xóa bỏ Fast-lane 2 trong AIOps Quarantine; (3) Chuyển `jwt.decode` sang `jwt.verify(token, secret)` trong `admin-priority.middleware.js` và `rate-limiter.js`; (4) Dùng `crypto.timingSafeEqual` an toàn; (5) Bắt `/auth/login` qua chế độ bảo trì và gắn trực tiếp `authLimiter` vào route xác thực công khai. Đã gỡ bypass trong `authLimiter.skip`. 30/30 tests PASS. |
 
-*(Lưu ý: Mục 34 [`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) là đơn tư vấn thiết kế cho chức năng phía Client-app; PO đã duyệt và tài liệu được lưu tại `CAN-LAM/` để Client-app tiến hành xây dựng trên máy).*
+---
 
-Thư mục này nay **52** tệp + mục lục (đếm bằng máy 2026-10-04).
+## 4e. Đóng trong đợt backend 2026-10-05 (Hoàn tất mục 36 — Xử lý trọn gói 6 điểm bảo mật, cấu hình và kiểm thử)
+
+Tài liệu này đã được giải quyết trọn vẹn và chuyển sang `DA-XONG/` ngày 2026-10-05:
+
+| Tài liệu | Kết quả xử lý |
+|---|---|
+| [SOAT_SAU_GOP_B38367E.md](./SOAT_SAU_GOP_B38367E.md) | ✅ Hoàn thành trọn gói 6 điểm: (1) Vá lách URL query string trong `maintenance.middleware.js` bằng cách tách query string và kiểm tra `POST` chuẩn xác; (2) Loại bỏ fallback `'secret'` trong `admin-priority.middleware.js` và `rate-limiter.js`, thêm kiểm tra biến môi trường JWT lúc khởi động production; (3) Loại bỏ gán `req.isAdmin = true` theo URL path trước xác thực; (4) Chuẩn hóa nhận diện test trong `load-shedding.middleware.js` (bỏ `process.argv`); (5) Siết CORS dev/production; (6) Bổ sung 3 unit tests cho nhánh bảo trì trong `auth.service.login`. 220/220 unit tests PASS 100%. |
+
+*(Lưu ý: Mục 34 [`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) là đơn tư vấn thiết kế cho chức năng phía Client-app; PO đã duyệt và Client-app đã làm xong ngày 2026-10-03).*
+
+Thư mục này nay **54** tệp + mục lục (đếm bằng máy 2026-10-05).
 
 ---
 

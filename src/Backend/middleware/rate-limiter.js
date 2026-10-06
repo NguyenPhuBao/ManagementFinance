@@ -13,7 +13,7 @@ const generalLimiter = isRateLimitDisabled
       standardHeaders: true,
       skip: (req) => {
         // 0. Miễn rate limit tuyệt đối cho Admin-web đã được server xác thực (Fast-Lane)
-        if (req.isAdmin || (req.originalUrl && req.originalUrl.startsWith('/api/admin'))) return true;
+        if (req.isAdmin === true) return true;
 
         // 1. Luôn bỏ qua preflight OPTIONS của CORS (tránh nghẽn rate limit khi gọi từ Vercel)
         if (req.method === 'OPTIONS') return true;
@@ -26,7 +26,8 @@ const generalLimiter = isRateLimitDisabled
         if (authHeader && authHeader.startsWith('Bearer ')) {
           const token = authHeader.split(' ')[1];
           try {
-            const secret = (config.jwt && (config.jwt.accessSecret || config.jwt.secret)) || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'secret';
+            const secret = (config.jwt && config.jwt.accessSecret) || process.env.JWT_ACCESS_SECRET;
+            if (!secret) return false;
             jwt.verify(token, secret);
             return true;
           } catch (_) {
