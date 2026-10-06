@@ -26,8 +26,8 @@ import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_list_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
-
 import '../../helpers/bat_thong_bao.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

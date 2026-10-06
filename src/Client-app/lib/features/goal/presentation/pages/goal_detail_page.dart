@@ -22,8 +22,8 @@ import '../widgets/goal_progress.dart';
 import '../widgets/goal_progress_chart.dart';
 import '../widgets/goal_stats_card.dart';
 import '../widgets/nhan_tu_dong.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 class GoalDetailPage extends StatefulWidget {
   final String id;
   const GoalDetailPage({super.key, required this.id});

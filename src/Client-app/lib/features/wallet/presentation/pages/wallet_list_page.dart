@@ -17,8 +17,8 @@ import '../bloc/wallet_cubit.dart';
 import '../../data/models/wallet_entity.dart';
 import '../../../ai_edge/domain/goi_so_vi.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
   const WalletListPage({super.key});

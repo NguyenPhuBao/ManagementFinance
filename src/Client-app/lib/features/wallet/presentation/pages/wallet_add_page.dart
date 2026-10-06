@@ -12,8 +12,8 @@ import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
 import '../widgets/o_so_du_vi.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 class WalletAddPage extends StatelessWidget {
   const WalletAddPage({super.key});
 

@@ -5,8 +5,8 @@ import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
 import 'transaction_row_content.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Một dòng trong sổ giao dịch: vuốt trái để xoá.
 ///
 /// Khoản thuộc mục tiêu hay hoá đơn thì `confirmDismiss` trả `false` — hàng

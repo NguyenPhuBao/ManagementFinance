@@ -7,8 +7,8 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import 'bill_payment_sheet.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Ba luồng thao tác trên một hoá đơn, dùng chung cho trang danh sách và
 /// trang chi tiết. Đều bắn sự kiện vào `BillBloc` của [context]; nơi gọi tự
 /// lắng `BillOperationSuccess`/`BillError` để báo và nạp lại.

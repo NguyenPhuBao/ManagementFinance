@@ -43,8 +43,8 @@ import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
 /// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
 /// `/add`.

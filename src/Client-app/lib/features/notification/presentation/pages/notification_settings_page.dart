@@ -16,8 +16,8 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'dong_y_bien_dong_page.dart';
 import 'dong_y_nhac_sau_ngan_hang_page.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Trang cài đặt thông báo — `/settings/notifications`.
 ///
 /// Bố cục bám kiểu thẻ đang dùng ở `settings_page.dart` (thẻ trắng bo 12, tiêu

@@ -14,8 +14,8 @@ import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Trung tâm thông báo — màn "Xem tất cả" từ panel trên trang chủ.
 ///
 /// Thiết kế Stitch chưa vẽ màn này (chỉ có panel rút gọn trên Home), nên bố cục

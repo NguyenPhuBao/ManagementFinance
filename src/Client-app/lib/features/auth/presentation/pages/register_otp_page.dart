@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/hang_o_otp.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Màn hình nhập OTP trong luồng đăng ký mới.
 ///
 /// Nhận [RegisterOtpSent] state qua route extra, dispatch:

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 class BillDeletePage extends StatelessWidget {
   final String id;
   const BillDeletePage({super.key, required this.id});

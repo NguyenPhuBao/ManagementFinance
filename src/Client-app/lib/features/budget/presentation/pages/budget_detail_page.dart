@@ -15,8 +15,8 @@ import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart'
 import '../bloc/budget_detail_cubit.dart';
 import '../../domain/budget_locking.dart';
 import 'budget_detail_view.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Trang chi tiết một ngân sách — `/budget/detail/:id`.
 ///
 /// Chỉ nối cubit với [BudgetDetailView]; bố cục và quy tắc hiển thị nằm ở

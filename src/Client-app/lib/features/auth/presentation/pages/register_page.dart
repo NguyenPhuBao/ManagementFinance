@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 

@@ -23,8 +23,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'category_test_fakes.dart';
 
-
 import '../../../helpers/bat_thong_bao.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

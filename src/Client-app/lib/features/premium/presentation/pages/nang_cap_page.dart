@@ -12,8 +12,8 @@ import '../../domain/don_thanh_toan.dart';
 import '../../domain/tran_goi.dart';
 import '../../domain/trang_thai_goi.dart';
 import '../cubit/goi_cubit.dart';
-
 import '../../../../core/ui/thong_bao_nhanh.dart';
+
 /// Bốn đặc quyền người dùng chốt (spec Premium 2026-10-06 câu 1–4b). Cố ý KHÔNG
 /// có "đồng bộ đa thiết bị tức thì": đồng bộ không tách theo gói (câu 4), không
 /// hứa thứ không khác.
