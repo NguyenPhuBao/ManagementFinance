@@ -368,6 +368,19 @@ class _Header extends StatelessWidget {
   final AnalyticsState state;
   const _Header({required this.state});
 
+  /// Tỉ lệ chia chỗ trống của hàng ngang — tiêu đề : ô kỳ.
+  static const int _flexTieuDe = 2;
+  static const int _flexOKy = 3;
+
+  /// Nút tải gọn: 40px thay vì 48px mặc định.
+  static const double _rongNut = 40;
+
+  static const TextStyle _kieuTieuDe = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: AppColors.primary,
+  );
+
   @override
   Widget build(BuildContext context) {
     // Trái co, phải giữ: ở 411dp thì "Thống kê" + nút xuất + ô chọn tháng
@@ -376,46 +389,106 @@ class _Header extends StatelessWidget {
     // Không có icon menu: bản trước vẽ một `Icon` trần trông hệt hamburger mở
     // drawer của Trang chủ, mà trang này không có drawer và icon không bọc nút
     // nào — bấm không xảy ra gì (UX 2026-09-19, A2).
-    return Row(
-      children: [
-        // Tỉ lệ 1:2, KHÔNG phải Expanded + Flexible bằng nhau: flex chia chỗ
-        // trống theo hệ số bất kể con cần bao nhiêu, nên bản đầu cho tiêu đề
-        // một nửa trong khi nó chỉ cần ~95px — và ô tháng bị cắt thành
-        // "Tháng này (…" trên máy thật dù test 411dp xanh (font test khác
-        // font thật, bẫy 4.4 `ANALYTICS_FEATURE.md`).
-        const Flexible(
-          flex: 2,
-          child: Text(
-            // Một đích một tên (D4, 2026-09-19): tab gọi là "Phân tích" nên
-            // tiêu đề trang cũng thế. Drawer đã thôi có mục "Thống kê", nên
-            // không còn chỗ thứ hai nào gọi trang này bằng tên khác.
-            // Đúng 9 ký tự như tên cũ, nên phép đo bề rộng ở chú thích ngay
-            // trên không đổi.
-            'Phân tích',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
+    //
+    // G2 (2026-10-06): cỡ chữ hệ thống lớn thì hàng ngang hết chỗ — đo font
+    // thật (Roboto) ở 360dp ×1,3: "Phân tích" lẫn "Tháng này (T9 2026)" bị cắt.
+    // Khi ấy ô kỳ xuống hàng thứ hai, rộng hết khung (Stitch `7f05fccd…`). Chữ
+    // thường vẫn MỘT hàng như Stitch gốc — phép chọn đo bề rộng thật, không đoán
+    // theo hệ số cỡ chữ.
+    return LayoutBuilder(builder: (context, rang) {
+      if (_vuaMotHang(context, rang.maxWidth)) {
+        return Row(
+          children: [
+            // Tỉ lệ 2:3, KHÔNG phải Expanded + Flexible bằng nhau: flex chia chỗ
+            // trống theo hệ số bất kể con cần bao nhiêu, nên bản đầu cho tiêu đề
+            // một nửa trong khi nó chỉ cần ~95px — và ô tháng bị cắt thành
+            // "Tháng này (…" trên máy thật dù test 411dp xanh (font test khác
+            // font thật, bẫy 4.4 `ANALYTICS_FEATURE.md`).
+            const Flexible(flex: _flexTieuDe, child: _TieuDeTrang()),
+            const _NutXuat(),
+            Flexible(flex: _flexOKy, child: _ChonPhamVi(state: state)),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Expanded(child: _TieuDeTrang()),
+              _NutXuat(),
+            ],
           ),
-        ),
-        // Nút gọn 40px thay vì 48px mặc định: ở 411dp thật, tiêu đề 24px +
-        // nút + nhãn tháng đầy đủ thiếu đúng vài chục px, và flex chia kiểu gì
-        // cũng phải cắt một trong hai chữ. Bớt chỗ chiếm cố định mới là cách.
-        IconButton(
-          icon: const Icon(Icons.download, color: AppColors.primary),
-          onPressed: () => context.push('/analytics/export'),
-          tooltip: 'Xuất Báo cáo',
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        ),
-        Flexible(flex: 3, child: _ChonPhamVi(state: state)),
-      ],
-    );
+          const SizedBox(height: 8),
+          _ChonPhamVi(state: state, rongHet: true),
+        ],
+      );
+    });
   }
+
+  /// Hàng ngang đủ chỗ cho cả hai chữ ở cỡ chữ ĐANG DÙNG không. Mỗi bên chỉ
+  /// được phần của nó theo flex, nên so từng bên với phần ấy — tổng vừa mà một
+  /// bên vượt phần mình thì `Flexible` vẫn cắt bên đó.
+  bool _vuaMotHang(BuildContext context, double rong) {
+    final conLai = rong - _rongNut;
+    const tong = _flexTieuDe + _flexOKy;
+    final rongTieuDe = _doChu(context, _TieuDeTrang.chu, _kieuTieuDe);
+    final rongOKy = _ChonPhamVi.rongCan(context, _ChonPhamVi.nhanCua(state));
+    // Nửa điểm ảnh dung sai cho phép làm tròn của TextPainter.
+    return rongTieuDe <= conLai * _flexTieuDe / tong + 0.5 &&
+        rongOKy <= conLai * _flexOKy / tong + 0.5;
+  }
+}
+
+/// Bề rộng một dòng chữ như `Text` sẽ vẽ: cùng kiểu kế thừa và cùng cỡ chữ
+/// hệ thống của [context].
+double _doChu(BuildContext context, String chu, TextStyle kieu) {
+  final tp = TextPainter(
+    text: TextSpan(text: chu, style: DefaultTextStyle.of(context).style.merge(kieu)),
+    textScaler: MediaQuery.textScalerOf(context),
+    textDirection: Directionality.of(context),
+    maxLines: 1,
+  )..layout();
+  final rong = tp.width;
+  tp.dispose();
+  return rong;
+}
+
+class _TieuDeTrang extends StatelessWidget {
+  const _TieuDeTrang();
+
+  // Một đích một tên (D4, 2026-09-19): tab gọi là "Phân tích" nên tiêu đề
+  // trang cũng thế. Drawer đã thôi có mục "Thống kê", nên không còn chỗ thứ
+  // hai nào gọi trang này bằng tên khác.
+  static const String chu = 'Phân tích';
+
+  @override
+  Widget build(BuildContext context) => const Text(
+        chu,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _Header._kieuTieuDe,
+      );
+}
+
+/// Nút gọn 40px thay vì 48px mặc định: ở 411dp thật, tiêu đề 24px + nút + nhãn
+/// tháng đầy đủ thiếu đúng vài chục px, và flex chia kiểu gì cũng phải cắt một
+/// trong hai chữ. Bớt chỗ chiếm cố định mới là cách.
+class _NutXuat extends StatelessWidget {
+  const _NutXuat();
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        icon: const Icon(Icons.download, color: AppColors.primary),
+        onPressed: () => context.push('/analytics/export'),
+        tooltip: 'Xuất Báo cáo',
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(
+          minWidth: _Header._rongNut,
+          minHeight: _Header._rongNut,
+        ),
+      );
 }
 
 /// Ô chọn phạm vi. Nhãn "Tháng này (T9 2026)" chỉ khi kỳ đang xem chứa hôm nay;
@@ -428,20 +501,44 @@ class _Header extends StatelessWidget {
 /// của hàng header.
 class _ChonPhamVi extends StatelessWidget {
   final AnalyticsState state;
-  const _ChonPhamVi({required this.state});
+
+  /// Ô rộng hết khung, mũi tên dạt phải — khi header xuống hai hàng (G2).
+  final bool rongHet;
+  const _ChonPhamVi({required this.state, this.rongHet = false});
+
+  static const TextStyle _kieuNhan = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: AppColors.textSecondary,
+  );
+
+  /// Đệm ngang 10 × 2 + viền 1 × 2 + khoảng 6 + mũi tên 16.
+  static const double _phanCoDinh = 10 * 2 + 1 * 2 + 6 + 16;
+
+  static String nhanCua(AnalyticsState state) => switch (state) {
+        AnalyticsLoaded(:final thongKe, :final moc) => nhanOChon(thongKe.ky, moc),
+        AnalyticsLoading(:final ky) => ky.nhanNgan,
+        _ => 'Tháng này',
+      };
+
+  /// Bề rộng ô cần để nhãn [nhan] không bị cắt ở cỡ chữ đang dùng.
+  static double rongCan(BuildContext context, String nhan) =>
+      _doChu(context, nhan, _kieuNhan) + _phanCoDinh;
 
   @override
   Widget build(BuildContext context) {
-    final (nhan, ky, moc) = switch (state) {
-      AnalyticsLoaded(:final thongKe, :final moc) => (
-          nhanOChon(thongKe.ky, moc),
-          thongKe.ky,
-          moc,
-        ),
-      AnalyticsLoading(:final ky) => (ky.nhanNgan, null, null),
-      _ => ('Tháng này', null, null),
+    final nhan = nhanCua(state);
+    final (ky, moc) = switch (state) {
+      AnalyticsLoaded(:final thongKe, :final moc) => (thongKe.ky, moc),
+      _ => (null, null),
     };
 
+    final chu = Text(
+      nhan,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: _kieuNhan,
+    );
     final o = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -449,20 +546,9 @@ class _ChonPhamVi extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: rongHet ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          Flexible(
-            child: Text(
-              nhan,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
+          if (rongHet) Expanded(child: chu) else Flexible(child: chu),
           const SizedBox(width: 6),
           const Icon(Icons.expand_more, size: 16, color: AppColors.textSecondary),
         ],
@@ -873,7 +959,7 @@ class _KhoiXuHuong extends StatelessWidget {
             width: double.infinity,
             child: Text(
               tieuDeXuHuong(tk.ky.donVi),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 18,
@@ -1287,7 +1373,7 @@ Widget _tieuDeKhoi(String chu) => SizedBox(
       width: double.infinity,
       child: Text(
         chu,
-        maxLines: 1,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           fontSize: 18,
@@ -1346,7 +1432,7 @@ class _KhoiDongTienTuDo extends StatelessWidget {
             width: double.infinity,
             child: Text(
               tieuDeDongTienTuDo(tk.ky.donVi),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 18,
@@ -3388,7 +3474,7 @@ class _KhoiDonut extends StatelessWidget {
             width: double.infinity,
             child: Text(
               'Cơ cấu theo danh mục',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 18,

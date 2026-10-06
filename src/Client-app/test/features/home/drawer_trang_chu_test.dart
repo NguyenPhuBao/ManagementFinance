@@ -125,7 +125,9 @@ void main() {
     final nguon = File(
             'lib/features/analytics/presentation/pages/analytics_page.dart')
         .readAsStringSync();
-    expect(nguon.contains("            'Phân tích',"), isTrue,
+    // Từ G2 (2026-10-06) tiêu đề là hằng của `_TieuDeTrang` — header có hai
+    // bố cục (một hàng / hai hàng) dùng chung một chữ.
+    expect(nguon.contains("static const String chu = 'Phân tích';"), isTrue,
         reason: 'Tiêu đề `AppBar` phải là "Phân tích" cho khớp nhãn tab. Ba '
             'chỗ "Thống kê" còn lại trong tệp là CHÚ THÍCH nhắc tên màn '
             'Stitch — đổi chúng là làm hỏng đường lần về bản thiết kế.');

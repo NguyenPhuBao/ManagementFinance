@@ -2213,6 +2213,35 @@ bằng bản sai có chủ ý. Công cụ chạy tay `test/tool/bom_giay_xem_tes
 pixel vàng thuần = 0. Vế (1) là vế `flutter test` mù — đừng coi tính năng là xong trước khi đo nó.
 
 
+### 3.37 Cỡ chữ hệ thống lớn — G2 của lượt UX (2026-10-06)
+
+🚧 **Mã xong, chưa nghiệm thu máy thật.** Người dùng đặt chữ phóng to trong cài đặt điện thoại (`textScaler`) thì header
+trang này bị cắt. Đo bằng **font thật** — helper mới `test/helpers/font_that.dart` nạp Roboto của `assets/fonts/` vào đúng
+các họ `Inter_regular · Inter_500 · … · Inter_800` mà `google_fonts` sinh ra; thiếu nó thì mọi chữ là Ahem (rộng gần gấp
+đôi chữ thật, bẫy 4.4) và đo ×1,3 báo tràn khắp nơi. ⚠️ Roboto hẹp hơn Inter vài phần trăm — phép đo hơi lạc quan.
+
+| Khổ · cỡ chữ | Bị cắt "…" trước khi sửa |
+|---|---|
+| 360 dp × 1,0 · 411 dp × 1,0 | không |
+| 360 dp × 1,3 | *Phân tích* · *Tháng này (T9 2026)* · *Tổng tài sản 6 tháng gần đây* |
+| 411 dp × 1,3 | *Tháng này (T9 2026)* |
+| × 1,5 – 2,0 | thêm *Dòng tiền tự do 6 tháng* · *Xu hướng 6 tháng* · *Lịch chi tiêu* |
+
+Phạm vi G2 của kế hoạch UX còn **ba thẻ Trang chủ** và **sheet chọn phạm vi**: đo cùng cách, **không vỡ** ở ×1,3 (thẻ Trang
+chủ tự co số từ B2 — không cắt cả ở ×2,5; sheet chỉ cắt nhãn ở ×2,5) — không sửa.
+
+Sửa (người dùng chọn): **header xuống hai hàng chỉ khi chật** — hàng 1 *Phân tích* + nút tải, hàng 2 ô kỳ rộng hết khung
+(Stitch `7f05fccd83fd4aa78499f3bedb7e5a47` *"Phân tích - Header khi cỡ chữ lớn"*). Chữ thường vẫn **một** hàng như cũ.
+Phép chọn `_Header._vuaMotHang` **đo** bề rộng thật của hai chữ (`TextPainter` với `DefaultTextStyle` + `textScaler` của
+context) và so **từng bên với phần flex của nó** (2 : 3 sau khi trừ nút 40px) — so tổng là sai, vì tổng vừa mà một bên vượt
+phần mình thì `Flexible` vẫn cắt bên ấy. Không đoán theo hệ số cỡ chữ. Tiêu đề khối (`_tieuDeKhoi`, *Xu hướng*, *Dòng tiền tự
+do*, *Cơ cấu theo danh mục*) nay **`maxLines: 2`** thay vì cắt. ⚠️ Lệch Stitch có chủ ý: màn Stitch vẽ thêm biểu tượng lịch
+trong ô kỳ hai hàng — bản thi công giữ ô y như ô một hàng để hai trạng thái nhìn cùng một thứ.
+
+Ca canh: nhóm `G2` ở **cuối** `analytics_page_test.dart` (360 × 1,3 · 411 × 1,3 · 360 × 2,0 không cắt và ô kỳ nằm dưới tiêu
+đề; 411 × 1,0 vẫn một hàng). ⚠️ **Nhóm ấy phải đứng cuối tệp**: `FontLoader` nạp cho cả isolate, mọi ca chạy sau nó đo bằng
+Roboto thay vì Ahem. ⚠️ Tiêu đề trang nay là hằng `_TieuDeTrang.chu` — `drawer_trang_chu_test` đọc mã nguồn tìm đúng dòng ấy.
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
