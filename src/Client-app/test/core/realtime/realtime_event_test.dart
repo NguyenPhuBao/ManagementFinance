@@ -83,4 +83,16 @@ void main() {
             'dải kết quả riêng ở bậc cao nhất (spec socket §6.3), nên sự kiện '
             'này chỉ kéo về, không hiện gì.');
   });
+
+  test('account.upgraded → taiKhoanNangCap: tín hiệu im, không kéo đồng bộ',
+      () {
+    expect(realtimeEventFromName('account.upgraded'),
+        RealtimeEvent.taiKhoanNangCap);
+    expect(RealtimeEvent.taiKhoanNangCap.canDongBoLai, isFalse,
+        reason: 'Lên gói không sinh dữ liệu đồng bộ mới — kéo về là một vòng '
+            'mạng thừa; GoiRepository gọi lại /payment/subscription-info.');
+    expect(RealtimeEvent.taiKhoanNangCap.loiNhan, isNull,
+        reason: 'Máy vừa trả đã có màn Thành công; máy khác đổi thẻ ở tab Cá '
+            'nhân là đủ. Payload là hộp đen nên không đọc hạn từ đây.');
+  });
 }

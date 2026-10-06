@@ -1,4 +1,4 @@
-/// Ba sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// Bốn sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
 /// backend phát tới room `account_<idaccount>`.
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
@@ -34,6 +34,14 @@ enum RealtimeEvent {
   /// nói sai trên đúng máy vừa ghi, sau mỗi lần ghi. Kết quả đồng bộ đã có dải
   /// riêng ở bậc cao nhất (spec socket §6.3).
   dongBoXong,
+
+  /// `account.upgraded` — backend phát khi webhook PayOS xác nhận đã trả
+  /// (`payment.service.js:167-171`, `emitToAccount`). **Tín hiệu**: client
+  /// không đọc payload, `GoiRepository` gọi lại `/payment/subscription-info`
+  /// (spec Premium 2026-10-06 mục 6.5). Im — máy vừa trả có màn Thành công;
+  /// máy khác đổi thẻ ở tab Cá nhân. Không kéo đồng bộ: lên gói không sinh
+  /// dữ liệu đồng bộ mới.
+  taiKhoanNangCap,
 }
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
@@ -49,6 +57,8 @@ RealtimeEvent? realtimeEventFromName(String name) {
       return RealtimeEvent.ocrTrung;
     case 'sync.completed':
       return RealtimeEvent.dongBoXong;
+    case 'account.upgraded':
+      return RealtimeEvent.taiKhoanNangCap;
     default:
       return null;
   }
@@ -58,8 +68,10 @@ extension RealtimeEventX on RealtimeEvent {
   /// Sự kiện này có nghĩa "server vừa có dữ liệu mới" hay không.
   ///
   /// `ocr.duplicate` nói đúng điều ngược lại — không có gì được tạo — nên kéo
-  /// dữ liệu về sau nó là một vòng mạng thừa.
-  bool get canDongBoLai => this != RealtimeEvent.ocrTrung;
+  /// dữ liệu về sau nó là một vòng mạng thừa. `account.upgraded` cũng không:
+  /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi.
+  bool get canDongBoLai =>
+      this != RealtimeEvent.ocrTrung && this != RealtimeEvent.taiKhoanNangCap;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
   ///
@@ -72,6 +84,8 @@ extension RealtimeEventX on RealtimeEvent {
       case RealtimeEvent.ocrTrung:
         return 'Hoá đơn này đã được ghi nhận trước đó';
       case RealtimeEvent.dongBoXong:
+        return null;
+      case RealtimeEvent.taiKhoanNangCap:
         return null;
     }
   }
