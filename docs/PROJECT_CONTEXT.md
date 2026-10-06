@@ -1080,12 +1080,22 @@ bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutt
 
 - **Xung đột duy nhất:** `CAN-LAM/README.md` — README của backend viết lại từ bản chưa có **đơn 37** nên làm rơi nó; bản gộp
   giữ cả hai (36 ✅, 37 ⏳).
-- 🛑 **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS. **Chưa
-  nhận** — chờ người dùng quyết.
+- 🛑 **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS. 📝 **Người
+  dùng NHẬN 2026-10-06 — đang brainstorm** (bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-06-payos-brainstorm.md`; đã chốt:
+  Premium theo **đúng** đặc quyền backend ghi — giới hạn ví, ngân sách, AI chuyên sâu, đồng bộ tức thì; Basic tối đa
+  **3 ví · 3 ngân sách**, người đã vượt giữ nguyên, chỉ không tạo thêm).
 - ⚠️ **Backend dev KHÔNG khởi động được sau gộp** cho tới khi chạy `npm install` ở `src/Backend`: gói mới **`@payos/node`**
   chưa có trong `node_modules`, và `modules/payment/payos.client.js:1` nạp nó ngay khi `api/index.js` nạp routes — đo
   2026-10-06: `MODULE_NOT_FOUND '@payos/node'`. Client **chưa chạy** `npm install` (đụng `src/Backend`, cần cho phép đích
   danh — như lần gói Gemini 2026-09-27). Module thanh toán còn cần biến PayOS trong `.env`.
+  ✅ **`npm install` đã chạy cùng ngày** theo cho phép của người dùng (*"ok hãy chạy backend đi"*) — backend dev chạy lại
+  (`npm run dev`, cổng 3000, Redis vắng như mọi lần).
+- ⚠️ **Bẫy do chính `npm install` sinh ra:** `package.json` có `"postinstall": "prisma generate"`, nên cài gói là **tự sinh
+  lại Prisma client** theo `schema.prisma` mới — client ấy đòi cột `account.premium_expires_at` mà CSDL dev chưa có
+  (`database/19` chưa áp), và **mọi** truy vấn bảng `account` vỡ `P2022`, kể cả đăng nhập (đo bằng `account.findFirst`).
+  Đã sinh lại client từ `schema.prisma` của `3ef5db7` (trước gộp) — đo lại chạy. Hệ quả: `/api/payment/*` **chưa dùng
+  được trên dev** (client không có model `payment_order`) tới khi áp `database/19` **và** `prisma generate` — cần cho phép
+  đích danh. Lỡ chạy lại `npm install` thì khôi phục bằng `git show 3ef5db7:src/Backend/prisma/schema.prisma > prisma/schema.truoc_gop.prisma && npx prisma generate --schema prisma/schema.truoc_gop.prisma && rm prisma/schema.truoc_gop.prisma` (chạy trong `src/Backend`).
 
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 
