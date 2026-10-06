@@ -1125,8 +1125,8 @@ Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trướ
   `context.read`); hàng chữ cạnh vòng xoay tràn 155 px, khối chữ trong `Wrap` tràn 47 px ở 360 dp; không `pumpAndSettle`
   khi vòng xoay quay; xoá mềm là `deletedAt`; ngân sách không lặp hết hạn ở cuối kỳ đầu; Kotlin daemon rơi về biên dịch
   thường in stack trace mà build vẫn đạt — đọc `√ Built`.
-- **Stitch:** 8 màn/khối tạo xong (5 lượt trả `timeout` nhưng màn có thật) — id ở `PREMIUM_FEATURE.md` mục 5, **chờ người
-  dùng xác nhận**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
+- **Stitch:** 8 màn/khối tạo xong (5 lượt trả `timeout` nhưng màn có thật) — id ở `PREMIUM_FEATURE.md` mục 5, ✅ **người
+  dùng xác nhận tối 2026-10-06**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
   ngrok hoặc webhook tự ký, 10 bước spec mục 13).
 
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)

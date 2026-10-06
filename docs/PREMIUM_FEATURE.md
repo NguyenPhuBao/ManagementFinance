@@ -88,7 +88,7 @@ Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc
 13. Hết hạn giữa phiên **không có hẹn giờ** — đổi ở lần đọc kế (`laPremium(now)` mỗi lần hỏi).
 14. **`DateTime ==` đòi cùng múi giờ** — kho ghi UTC; so khoảnh khắc bằng `isAtSameMomentAs`.
 
-## 5. Màn Stitch (lượt gọi 2026-10-06 — năm lượt trả `timeout` nhưng màn vẫn được tạo; **chờ người dùng xác nhận**)
+## 5. Màn Stitch (lượt gọi 2026-10-06 — năm lượt trả `timeout` nhưng màn vẫn được tạo; ✅ **người dùng xác nhận tối 2026-10-06**)
 
 | Màn / khối | id |
 |---|---|
