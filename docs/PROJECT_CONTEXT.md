@@ -1129,6 +1129,31 @@ Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trướ
   dùng xác nhận tối 2026-10-06**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
   ngrok hoặc webhook tự ký, 10 bước spec mục 13).
 
+### ✅ E4 — SnackBar thành toast (2026-10-06 tối; mã xong, CHƯA nghiệm thu máy thật)
+
+Người dùng chọn E4 của lượt UX 2026-09-19 và duyệt thiết kế trong chat (bounded, không spec). Đếm bằng máy: **88**
+`SnackBar` ở **31** tệp (con số 176 của kế hoạch UX đếm cả lời gọi `showSnackBar(`), **một** có `action` (*Hoàn tác* ở
+trung tâm thông báo).
+
+- **Kênh** `ThongBaoNhanh.hien(cau, loai:, hanhDong:)` + hàm gọn **`baoNhanh(...)`** (`core/ui/thong_bao_nhanh.dart`):
+  `LoaiThongBao` **lỗi** (vòng đỏ `expense`) · **xong** (xanh `income`, ✓) · **thông tin** (đen); `HanhDongToast` là nút
+  chữ bên phải viên. Chưa đăng ký DI (widget test trần) thì bỏ qua.
+- **`AppToast`**: câu phản hồi bậc **cao nhất** `_Bac.phanHoi` — người dùng chọn *"câu phản hồi thắng"* (đè mất mạng /
+  đồng bộ lỗi, toast nền tới sau không đè nó); viên có nút mới nhận chạm (`IgnorePointer` theo `hanhDong`), bấm thì chạy
+  rồi ẩn, không bấm vẫn **tự ẩn** (hết bẫy `persist` của SnackBar có `action`); bàn phím mở thì viên nổi **12 dp trên
+  bàn phím** (trước nằm cố định trên thanh tab — sau bàn phím); câu tối đa **3** dòng.
+- **Gán loại**: *"Vui lòng…"*, lỗi bắt được, câu chặn thao tác → lỗi; *"Đã…"*, *"…thành công"*, `*OperationSuccess` →
+  xong; lưu giao dịch **kèm cảnh báo ngân sách** → thông tin; *"Đã đánh dấu…"*, *"đang phát triển"*, *"hệ điều hành
+  đang chặn"* → thông tin.
+- **Test**: helper `test/helpers/bat_thong_bao.dart` — `batThongBao()` gom câu trên kênh (kiểm câu + loại thay vì tìm chữ
+  trên màn), `bocToast(bat)` dựng `AppToast` thật cho ca cần bấm *Hoàn tác*. **Test quét `lib/` thứ 19**
+  `core/ui/khong_snackbar_test.dart` cấm `SnackBar` / `ScaffoldMessenger` mới. ⚠️ Đo vị trí viên phải bơm **ba** nhịp:
+  ticker của `AnimatedSlide` bắt đầu ở khung SAU khung dựng — hai nhịp thì viên còn lệch nửa chiều cao (25 dp).
+- **Stitch**: lượt tạo màn ba biến thể (lỗi · xong · có Hoàn tác · trên bàn phím) trả `timeout`, kiểm hai lần chưa thấy
+  (112 màn) — **chờ người dùng xác nhận**, đừng gọi lại.
+- Commit `7667ba6` (kênh + AppToast) · `acaa2a7` (88 chỗ + test) · `bbd378a` (dòng import). `flutter test` **6040/6040**
+  / 9 skip, analyze 21. **Còn**: nghiệm thu máy thật — viên trên bàn phím ở 360 dp, nút Hoàn tác bấm được.
+
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 
 Spec `docs/superpowers/specs/2026-10-05-du-an-c-thu-tu-khoi-phan-tich-design.md` (duyệt); kế hoạch 9 task

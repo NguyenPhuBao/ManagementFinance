@@ -1666,7 +1666,8 @@ giao dịch, đè lên nút. Người dùng: *"fix trước phần thông báo h
   `flutter test`. Đây là `SnackBarAction` **duy nhất** của app (`_xoaCoHoanTac`, `notification_center_page.dart`).
 - **Sửa:** `persist: false` (`c18e095`). Ca `dải "Đã xoá thông báo" TỰ ẨN…` ở `notification_center_page_test.dart`
   đỏ trên mã cũ. Đo lại trên Realme: dải hiện ở giây 1, mất ở giây 7.
-- Thêm `SnackBarAction` mới thì nhớ `persist: false` (mục 5c `NOTIFICATION_FEATURE.md`).
+- Thêm `SnackBarAction` mới thì nhớ `persist: false` (mục 5c `NOTIFICATION_FEATURE.md`). *(Từ 2026-10-06 — E4 — app
+  không còn SnackBar nào; nút Hoàn tác là `HanhDongToast` trên viên toast, tự ẩn. Test quét thứ 19 cấm SnackBar mới.)*
 
 ---
 
