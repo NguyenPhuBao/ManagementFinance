@@ -8,6 +8,7 @@ import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import 'bill_payment_sheet.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Ba luồng thao tác trên một hoá đơn, dùng chung cho trang danh sách và
 /// trang chi tiết. Đều bắn sự kiện vào `BillBloc` của [context]; nơi gọi tự
 /// lắng `BillOperationSuccess`/`BillError` để báo và nạp lại.
@@ -28,10 +29,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
   if (!context.mounted) return;
 
   if (accountId == null || wallets.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.')),
-    );
+    baoNhanh('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.', loai: LoaiThongBao.loi);
     return;
   }
 

@@ -21,6 +21,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+
+import '../../../helpers/bat_thong_bao.dart';
 class _ApiGia implements PaymentApi {
   int soLanTao = 0;
   bool nem = false;
@@ -178,13 +181,15 @@ void main() {
     expect(find.text('CHỜ 200370869'), findsOneWidget);
   });
 
-  testWidgets('tạo đơn hỏng: SnackBar câu ngắn, ở lại màn, nút mở lại',
+  testWidgets('tạo đơn hỏng: toast câu ngắn, ở lại màn, nút mở lại',
       (tester) async {
+    final bat = batThongBao();
     final api = _ApiGia()..nem = true;
     await dung(tester, premium: false, api: api);
     await tester.tap(find.text('Thanh toán'));
     await tester.pumpAndSettle();
-    expect(find.text('Máy chủ chưa phản hồi. Thử lại sau.'), findsOneWidget);
+    expect(bat.cau, ['Máy chủ chưa phản hồi. Thử lại sau.']);
+    expect(bat.cuoi!.loai, LoaiThongBao.loi);
     expect(find.text('Gói hiện tại: Basic'), findsOneWidget);
     expect(
         tester

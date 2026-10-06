@@ -18,6 +18,7 @@ import '../../data/models/wallet_entity.dart';
 import '../../../ai_edge/domain/goi_so_vi.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
   const WalletListPage({super.key});
@@ -74,26 +75,12 @@ class _WalletListView extends StatelessWidget {
       body: BlocConsumer<WalletCubit, WalletState>(
         listener: (context, state) {
           if (state is WalletOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.income,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            baoNhanh(state.message, loai: LoaiThongBao.xong);
           } else if (state is WalletError) {
             final cleanMsg = state.message
                 .replaceAll('CacheException: ', '')
                 .replaceAll('Exception: ', '');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(cleanMsg),
-                backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 4),
-              ),
-            );
+            baoNhanh(cleanMsg, loai: LoaiThongBao.loi);
             context.read<WalletCubit>().loadWallets(idaccount);
           }
         },

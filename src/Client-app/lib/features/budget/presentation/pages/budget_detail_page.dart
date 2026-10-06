@@ -16,6 +16,7 @@ import '../bloc/budget_detail_cubit.dart';
 import '../../domain/budget_locking.dart';
 import 'budget_detail_view.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Trang chi tiết một ngân sách — `/budget/detail/:id`.
 ///
 /// Chỉ nối cubit với [BudgetDetailView]; bố cục và quy tắc hiển thị nằm ở
@@ -125,9 +126,7 @@ class _BudgetDetailContent extends StatelessWidget {
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();
           blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
-          ScaffoldMessenger.of(blocContext).showSnackBar(
-            const SnackBar(content: Text('Đã xóa giao dịch')),
-          );
+          baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
         },
       ),
     );

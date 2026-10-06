@@ -17,6 +17,9 @@ import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/report_preview_page.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+
+import '../../helpers/bat_thong_bao.dart';
 class _DichVuGia implements XuatTepService {
   final goi = <String>[];
   Object? loi;
@@ -247,13 +250,13 @@ void main() {
 
   testWidgets('lưu xong thì nói RÕ tệp nằm ở đâu', (t) async {
     khoDienThoai(t);
+    final bat = batThongBao();
     await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
 
     await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
     await t.pumpAndSettle();
 
-    expect(find.textContaining('Tải về/BaoCao_01-09-2026_30-09-2026.pdf'),
-        findsOneWidget,
+    expect(bat.cau.single, contains('Tải về/BaoCao_01-09-2026_30-09-2026.pdf'),
         reason: 'Tệp lưu vào bộ nhớ chung thì người dùng phải biết đường mà '
             'tìm. "Đã lưu" trống không thì họ vẫn phải đi lục cả máy.');
   });
@@ -261,23 +264,26 @@ void main() {
   testWidgets('máy không lưu thẳng được thì KHÔNG nói dối là đã lưu', (t) async {
     khoDienThoai(t);
     dichVu.noiLuu = null; // Android 9 trở xuống: chỉ mở được sheet chia sẻ.
+    final bat = batThongBao();
     await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
 
     await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
     await t.pumpAndSettle();
 
-    expect(find.textContaining('Đã lưu'), findsNothing);
+    expect(bat.cau.where((c) => c.contains('Đã lưu')), isEmpty);
   });
 
   testWidgets('xuất tệp hỏng thì NÓI RA, không nuốt lỗi', (t) async {
     khoDienThoai(t);
     dichVu.loi = Exception('hết chỗ trống');
+    final bat = batThongBao();
     await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
 
     await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
     await t.pumpAndSettle();
 
-    expect(find.textContaining('Không xuất được'), findsOneWidget,
+    expect(bat.cau.single, contains('Không xuất được'));
+    expect(bat.cuoi!.loai, LoaiThongBao.loi,
         reason: 'Bấm "Tải xuống" mà không thấy gì thì người dùng sẽ bấm tiếp '
             'mãi; im lặng là kiểu hỏng tệ nhất ở đây.');
   });

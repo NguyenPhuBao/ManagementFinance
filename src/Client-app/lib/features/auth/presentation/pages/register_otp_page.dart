@@ -6,6 +6,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/hang_o_otp.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Màn hình nhập OTP trong luồng đăng ký mới.
 ///
 /// Nhận [RegisterOtpSent] state qua route extra, dispatch:
@@ -102,11 +103,7 @@ class _RegisterOtpPageState extends State<RegisterOtpPage> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is RegistrationCompleted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đăng ký thành công. Vui lòng đăng nhập.'),
-            ),
-          );
+          baoNhanh('Đăng ký thành công. Vui lòng đăng nhập.', loai: LoaiThongBao.xong);
           context.go('/login');
         } else if (state is RegisterOtpSent) {
           // Gửi lại OTP thành công → thông báo và reset input
@@ -115,12 +112,7 @@ class _RegisterOtpPageState extends State<RegisterOtpPage> {
             _isLoading = false;
           });
           _clearOtp();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã gửi lại mã OTP. Kiểm tra email của bạn.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          baoNhanh('Đã gửi lại mã OTP. Kiểm tra email của bạn.', loai: LoaiThongBao.xong);
         } else if (state is RegisterOtpError) {
           setState(() {
             _errorMessage = state.message;

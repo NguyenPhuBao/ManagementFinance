@@ -15,6 +15,8 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
+import '../../helpers/bat_thong_bao.dart';
+
 void main() {
   const accountId = 7;
 
@@ -91,8 +93,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   }
 
+  /// E4: viên "Đã xoá thông báo · Hoàn tác" là toast của `AppToast` (ở `MaterialApp.builder` của app thật) — dựng
+  /// nó thật quanh trang để còn BẤM được nút.
   Future<void> moTrang(WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
+      builder: bocToast(batThongBao()),
       home: NotificationCenterPage(
         idaccount: accountId,
         dao: db.notificationDao,
@@ -134,11 +139,10 @@ void main() {
     await tester.drag(
         find.text('Số dư ví đang âm'), const Offset(-600, 0));
     await nhip(tester);
-    // SnackBar TRƯỢT LÊN từ dưới đáy. Màn hình test chỉ cao 600px, nên chạm
-    // vào nó giữa chừng hoạt ảnh sẽ rơi ra ngoài cây dựng hình và `tap()` chỉ
-    // báo một dòng cảnh báo rồi đi tiếp — test đỏ ở một chỗ hoàn toàn khác.
-    // Cộng thêm: `_xoaCoHoanTac` ghi CSDL xong mới gọi `showSnackBar`, nên
-    // hoạt ảnh bắt đầu muộn hơn cú vuốt.
+    // Viên toast TRƯỢT LÊN từ đáy — chạm vào nó giữa chừng hoạt ảnh thì `tap()`
+    // chỉ báo một dòng cảnh báo rồi đi tiếp, test đỏ ở một chỗ khác hẳn. Cộng
+    // thêm: `_xoaCoHoanTac` ghi CSDL xong mới gọi `baoNhanh`, nên hoạt ảnh bắt
+    // đầu muộn hơn cú vuốt.
     await tester.pump(const Duration(milliseconds: 500));
   }
 
@@ -181,8 +185,8 @@ void main() {
         reason: 'Nghiệm thu Realme 2026-10-03: dải này đứng yên HƠN 7 PHÚT và đi '
             'theo qua mọi màn (Sổ giao dịch, chi tiết giao dịch), đè lên nút. '
             'Flutter mới giữ SnackBar có `action` tới khi người dùng chạm '
-            '(`persist` mặc định theo `action`) — dải ở đây chỉ để báo việc vừa '
-            'xảy ra, nên phải tự ẩn.');
+            '(`persist` mặc định theo `action`). Từ E4 (2026-10-06) đây là viên '
+            'toast — vẫn phải tự ẩn.');
     await dongTrang(tester);
   });
 
@@ -258,6 +262,7 @@ void main() {
     testWidgets('⭐ vuốt hàng loại 20 → xoá CỨNG; Hoàn tác chèn lại đúng hàng', (tester) async {
       await themBienDong();
       await tester.pumpWidget(MaterialApp(
+        builder: bocToast(batThongBao()),
         home: NotificationCenterPage(
           idaccount: accountId,
           dao: db.notificationDao,

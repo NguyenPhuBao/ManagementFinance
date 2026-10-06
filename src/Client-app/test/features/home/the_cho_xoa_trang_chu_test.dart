@@ -12,6 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+
+import '../../helpers/bat_thong_bao.dart';
 class _RepoGia implements AuthRepository {
   int huyCalls = 0;
   Object? loiHuy;
@@ -154,23 +157,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('"Huỷ xoá" thành công: gọi huỷ, đọc lại trạng thái, không SnackBar', (tester) async {
+  testWidgets('"Huỷ xoá" thành công: gọi huỷ, đọc lại trạng thái, không thông báo', (tester) async {
+    final bat = batThongBao();
     await dung(tester, _choXoa());
     await tester.tap(find.text('Huỷ xoá'));
     await tester.pumpAndSettle();
     expect(repo.huyCalls, 1);
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
-    expect(find.byType(SnackBar), findsNothing,
-        reason: 'Thẻ biến mất chính là phản hồi (spec §5.2).');
+    expect(bat.cau, isEmpty, reason: 'Thẻ biến mất chính là phản hồi (spec §5.2).');
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('"Huỷ xoá" lỗi: SnackBar mang lời lỗi, vẫn đọc lại trạng thái', (tester) async {
+  testWidgets('"Huỷ xoá" lỗi: toast mang lời lỗi, vẫn đọc lại trạng thái', (tester) async {
+    final bat = batThongBao();
     repo.loiHuy = Exception('Không có kết nối mạng');
     await dung(tester, _choXoa());
     await tester.tap(find.text('Huỷ xoá'));
     await tester.pumpAndSettle();
-    expect(find.text('Không có kết nối mạng'), findsOneWidget);
+    expect(bat.cau, ['Không có kết nối mạng']);
+    expect(bat.cuoi!.loai, LoaiThongBao.loi);
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
     expect(tester.takeException(), isNull);
   });

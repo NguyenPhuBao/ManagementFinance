@@ -34,6 +34,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../category/presentation/category_test_fakes.dart';
 
+
+import '../../../helpers/bat_thong_bao.dart';
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
 
@@ -139,6 +141,7 @@ void main() {
 
   testWidgets('không có phiên thì nói rõ lý do, không im lặng',
       (tester) async {
+    final bat = batThongBao();
     await tester
         .pumpWidget(trangKhongPhien(danhMuc(), FakeTransactionRepository()));
     await tester.pumpAndSettle();
@@ -148,7 +151,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.check)); // ✓ là nút lưu từ 2026-09-19
     await tester.pump();
 
-    expect(find.text('Chưa xác định được tài khoản đăng nhập'), findsOneWidget,
+    expect(bat.cau, ['Chưa xác định được tài khoản đăng nhập'],
         reason: 'Chặn mà không nói gì là người dùng bấm Lưu nhiều lần rồi '
             'tưởng app hỏng. Cùng khuôn với G35 ở ba màn quản lý danh mục.');
   });

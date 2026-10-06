@@ -26,6 +26,8 @@ import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_list_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+
+import '../../helpers/bat_thong_bao.dart';
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -290,6 +292,7 @@ void main() {
 
   testWidgets('chốt chặn của tầng dưới hiện ra màn hình, không nuốt lặng',
       (tester) async {
+    final bat = batThongBao();
     final repo = _RepoBoNho([_vi('w1', 'Tiền mặt', isDefault: true)])
       ..loiKhiLuuTru = Exception('Ví "Tiền mặt" đang là ví mặc định.');
     await _moTrang(tester, repo);
@@ -301,7 +304,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Lưu trữ'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('ví mặc định'), findsWidgets,
+    expect(bat.cau.any((c) => c.contains('ví mặc định')), isTrue,
         reason: 'Hai chốt chặn ở datasource ném CacheException. Nuốt lặng là '
             'người dùng bấm "Lưu trữ" mà không có gì xảy ra và không lời giải '
             'thích nào.');

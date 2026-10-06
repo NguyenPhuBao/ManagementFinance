@@ -22,6 +22,7 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
 ///
 /// Một biểu mẫu cho cả hai chế độ, theo đúng lối mà thiết kế Stitch đặt ra cho
@@ -344,15 +345,11 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     final targetAmount = double.tryParse(rawAmount) ?? 0.0;
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên mục tiêu')),
-      );
+      baoNhanh('Vui lòng nhập tên mục tiêu', loai: LoaiThongBao.loi);
       return;
     }
     if (targetAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền mục tiêu hợp lệ')),
-      );
+      baoNhanh('Vui lòng nhập số tiền mục tiêu hợp lệ', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -364,20 +361,12 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
 
     if (_autoDeposit) {
       if (soTienTrich <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nhập số tiền trích mỗi kỳ, hoặc tắt công tắc '
-                '"Tự động trích tiền định kỳ".'),
-          ),
-        );
+        baoNhanh('Nhập số tiền trích mỗi kỳ, hoặc tắt công tắc '
+                '"Tự động trích tiền định kỳ".', loai: LoaiThongBao.loi);
         return;
       }
       if (_selectedSourceWallet == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Chọn ví nguồn để app biết trích tiền từ đâu.'),
-          ),
-        );
+        baoNhanh('Chọn ví nguồn để app biết trích tiền từ đâu.', loai: LoaiThongBao.loi);
         return;
       }
       // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả trong khi tiến độ
@@ -385,12 +374,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       // trích chạy nền — chặn ngay tại form thì người dùng còn sửa được.
       final viNhanId = _idViTichLuy;
       if (viNhanId != null && _selectedSourceWallet!.id == viNhanId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ví nguồn phải khác ví tích lũy — chuyển tiền sang '
-                'chính nó không làm số dư đổi mà tiến độ vẫn tăng.'),
-          ),
-        );
+        baoNhanh('Ví nguồn phải khác ví tích lũy — chuyển tiền sang '
+                'chính nó không làm số dư đổi mà tiến độ vẫn tăng.', loai: LoaiThongBao.loi);
         return;
       }
     }
@@ -427,17 +412,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           .then((loi) {
         if (!mounted) return;
         if (loi != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(loi), backgroundColor: Colors.red),
-          );
+          baoNhanh(loi, loai: LoaiThongBao.loi);
           return;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã cập nhật mục tiêu.'),
-            backgroundColor: AppColors.income,
-          ),
-        );
+        baoNhanh('Đã cập nhật mục tiêu.', loai: LoaiThongBao.xong);
         context.pop();
       });
       return;
@@ -446,12 +424,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     // Ví nhận là BẮT BUỘC: mỗi lần nạp tiền sau này sẽ chuyển thẳng vào ví
     // này, nên mục tiêu không có ví thì phiếu nạp không biết đưa tiền đi đâu.
     if (_selectedSavingsWallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn ví tích lũy — tiền gửi vào mục tiêu '
-              'sẽ được chuyển vào ví này.'),
-        ),
-      );
+      baoNhanh('Vui lòng chọn ví tích lũy — tiền gửi vào mục tiêu '
+              'sẽ được chuyển vào ví này.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -459,12 +433,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     // "không ai"), và `?? 1` thì còn tệ hơn — ghi vào tài khoản admin thật.
     final idaccount = currentAccountIdOrNull(context);
     if (idaccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chưa xác định được tài khoản đăng nhập. '
-              'Vui lòng đăng nhập lại trước khi tạo mục tiêu.'),
-        ),
-      );
+      baoNhanh('Chưa xác định được tài khoản đăng nhập. '
+              'Vui lòng đăng nhập lại trước khi tạo mục tiêu.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -492,17 +462,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       // sửa lại chỗ sai. Bản trước đóng trang và báo "thành công" bất kể kết
       // quả, nên một mục tiêu bị từ chối biến mất cùng mọi thứ vừa gõ.
       if (loi != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(loi), backgroundColor: Colors.red),
-        );
+        baoNhanh(loi, loai: LoaiThongBao.loi);
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tạo mục tiêu tiết kiệm thành công!'),
-          backgroundColor: AppColors.income,
-        ),
-      );
+      baoNhanh('Tạo mục tiêu tiết kiệm thành công!', loai: LoaiThongBao.xong);
       context.pop();
     });
   }
@@ -732,12 +695,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     return BlocListener<GoalCubit, GoalState>(
       listener: (context, state) {
         if (state is GoalError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Lỗi: ${state.message}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          baoNhanh('Lỗi: ${state.message}', loai: LoaiThongBao.loi);
         }
       },
       child: BlocBuilder<WalletCubit, WalletState>(

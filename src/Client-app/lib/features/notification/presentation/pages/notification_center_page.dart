@@ -15,6 +15,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Trung tâm thông báo — màn "Xem tất cả" từ panel trên trang chủ.
 ///
 /// Thiết kế Stitch chưa vẽ màn này (chỉ có panel rút gọn trên Home), nên bố cục
@@ -510,7 +511,6 @@ Future<void> _doiTrangThaiDoc(
   NotificationDao dao,
   AppNotification item,
 ) async {
-  final thanh = ScaffoldMessenger.of(context);
   final daDoc = item.readAt != null;
 
   if (daDoc) {
@@ -519,11 +519,7 @@ Future<void> _doiTrangThaiDoc(
     await dao.markRead(item.id);
   }
 
-  thanh.hideCurrentSnackBar();
-  thanh.showSnackBar(SnackBar(
-    content: Text(daDoc ? 'Đã đánh dấu chưa đọc' : 'Đã đánh dấu đã đọc'),
-    duration: const Duration(seconds: 2),
-  ));
+  baoNhanh(daDoc ? 'Đã đánh dấu chưa đọc' : 'Đã đánh dấu đã đọc');
 }
 
 /// Xoá mềm kèm một lối quay lại.
@@ -539,7 +535,6 @@ Future<void> _xoaCoHoanTac(
   NhatKyThongBao? nhatKy,
   int idaccount,
 ) async {
-  final thanh = ScaffoldMessenger.of(context);
   // D1: hàng biến động số dư — vuốt là *Bỏ qua*, xoá CỨNG (spec D1 §3.3: nội dung tin ngân hàng không nằm lại dưới
   // dạng hàng gạt mềm). Hoàn tác chèn lại đúng hàng đã chụp, nên vuốt nhầm vẫn lấy lại được.
   final laBienDong = item.kind == NotificationKind.bienDongSoDu.name;
@@ -552,30 +547,21 @@ Future<void> _xoaCoHoanTac(
     unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.gatBo, idaccount: idaccount));
   }
 
-  // Nội dung chung chung và tự ẩn sau vài giây: dải tạm thời là để báo việc
-  // vừa xảy ra, không phải để đọc lại chi tiết.
-  thanh.hideCurrentSnackBar();
-  thanh.showSnackBar(
-    SnackBar(
-      content: const Text('Đã xoá thông báo'),
-      duration: const Duration(seconds: 4),
-      // ⚠️ BẮT BUỘC: Flutter mới giữ SnackBar có `action` tới khi người dùng chạm (`persist` mặc định theo
-      // `action`) — thiếu dòng này dải đứng yên hàng phút và đi theo qua mọi màn (nghiệm thu Realme 2026-10-03).
-      persist: false,
-      action: SnackBarAction(
-        label: 'Hoàn tác',
-        onPressed: () {
-          if (laBienDong) {
-            dao.insertIfAbsent(item.toCompanion(true));
-          } else {
-            dao.khoiPhuc(item.id);
-          }
-          if (nhatKy != null) {
-            unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
-          }
-        },
-      ),
-    ),
+  // Nội dung chung chung và tự ẩn sau vài giây: viên tạm thời là để báo việc
+  // vừa xảy ra, không phải để đọc lại chi tiết. E4 (2026-10-06): viên toast có
+  // nút — tự ẩn như mọi viên (bẫy `persist` của SnackBar có `action` không còn).
+  baoNhanh(
+    'Đã xoá thông báo',
+    hanhDong: HanhDongToast('Hoàn tác', () {
+      if (laBienDong) {
+        dao.insertIfAbsent(item.toCompanion(true));
+      } else {
+        dao.khoiPhuc(item.id);
+      }
+      if (nhatKy != null) {
+        unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
+      }
+    }),
   );
 }
 

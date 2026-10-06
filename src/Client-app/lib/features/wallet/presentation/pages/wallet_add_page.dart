@@ -13,6 +13,7 @@ import '../bloc/wallet_cubit.dart';
 import '../widgets/o_so_du_vi.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 class WalletAddPage extends StatelessWidget {
   const WalletAddPage({super.key});
 
@@ -89,13 +90,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   }
 
   void _baoLoi(String thongBao) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(thongBao),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    baoNhanh(thongBao, loai: LoaiThongBao.loi);
   }
 
   @override

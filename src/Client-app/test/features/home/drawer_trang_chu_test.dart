@@ -23,6 +23,8 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+
+import '../../helpers/bat_thong_bao.dart';
 class _RepoGia implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -149,7 +151,8 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('chạm một mục thì báo đúng đường, không SnackBar', (tester) async {
+  testWidgets('chạm một mục thì báo đúng đường, không thông báo', (tester) async {
+    final bat = batThongBao();
     final daChon = <String>[];
     await bom(tester, onChon: daChon.add, onDangXuat: () {});
 
@@ -157,8 +160,7 @@ void main() {
     await tester.pump();
 
     expect(daChon, ['/export-report']);
-    expect(find.byType(SnackBar), findsNothing,
-        reason: 'Không còn "đang phát triển": tính năng đã có.');
+    expect(bat.cau, isEmpty, reason: 'Không còn "đang phát triển": tính năng đã có.');
   });
 
   testWidgets('có "Đăng xuất" ở đáy và chạm thì hỏi xác nhận', (tester) async {

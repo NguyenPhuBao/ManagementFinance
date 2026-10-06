@@ -23,6 +23,8 @@ import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.da
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_edit_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+
+import '../../helpers/bat_thong_bao.dart';
 class _RepoGhiLai implements WalletRepository {
   _RepoGhiLai(this.vi);
 
@@ -156,6 +158,7 @@ void main() {
 
   testWidgets('chốt chặn chặn được từ màn Sửa ví, và nói ra lý do',
       (tester) async {
+    final bat = batThongBao();
     final repo = _RepoGhiLai(_vi())
       ..loiKhiLuuTru =
           const CacheException('Ví "Tiền mặt" đang là ví mặc định.');
@@ -164,7 +167,7 @@ void main() {
     await _chamSauKhiCuon(tester, find.byType(Switch).last);
     await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
 
-    expect(find.textContaining('ví mặc định'), findsWidgets,
+    expect(bat.cau.any((c) => c.contains('ví mặc định')), isTrue,
         reason: 'Chốt chặn ném lỗi mà màn hình nuốt lặng thì người dùng bấm '
             'Lưu, trang đóng lại, và ví vẫn nguyên như cũ — không lời giải '
             'thích nào.');

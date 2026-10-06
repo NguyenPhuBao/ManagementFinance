@@ -26,6 +26,7 @@ import '../widgets/bill_status_visuals.dart';
 import '../widgets/the_khoan_lap.dart';
 import '../../data/de_xuat_hoa_don_nguon.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 class BillPage extends StatefulWidget {
   /// Thời điểm dùng để xếp trạng thái từng hoá đơn. Tiêm được để test không
   /// phụ thuộc ngày chạy — cùng lối với `BudgetTabsView`.
@@ -153,14 +154,9 @@ class _BillPageState extends State<BillPage> {
             state is! BillOperationSuccess && state is! BillError,
         listener: (context, state) {
           if (state is BillOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            baoNhanh(state.message, loai: LoaiThongBao.xong);
           } else if (state is BillError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(state.message), backgroundColor: Colors.red),
-            );
+            baoNhanh(state.message, loai: LoaiThongBao.loi);
           }
         },
         builder: (context, state) {
@@ -705,13 +701,8 @@ class _BillPageState extends State<BillPage> {
         },
         onDelete: () {
           Navigator.of(sheetContext).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Khoản chi của hoá đơn không xoá tay được. Dùng nút Hoàn tác '
-                  'trên hoá đơn.'),
-            ),
-          );
+          baoNhanh('Khoản chi của hoá đơn không xoá tay được. Dùng nút Hoàn tác '
+                  'trên hoá đơn.', loai: LoaiThongBao.loi);
         },
       ),
     );

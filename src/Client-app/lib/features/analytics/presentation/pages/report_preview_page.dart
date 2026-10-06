@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/xuat_tep_service.dart';
 import '../../domain/bao_cao_xuat.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Màn **Xem trước báo cáo** — tờ báo cáo của một khoảng đã chốt.
 ///
 /// Bố cục theo màn Stitch "Xem trước báo cáo - FlowMoney"
@@ -1200,17 +1201,13 @@ class _NutTaiXuongState extends State<_NutTaiXuong> {
       // `null` nghĩa là tệp đi qua sheet chia sẻ chứ chưa nằm ở đâu cả — nói
       // "đã lưu" khi ấy là nói dối, và người dùng sẽ đi tìm một tệp không có.
       if (noiLuu != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã lưu vào $noiLuu')),
-        );
+        baoNhanh('Đã lưu vào $noiLuu', loai: LoaiThongBao.xong);
       }
     } catch (e) {
       if (!mounted) return;
       // NÓI RA. Bấm "Tải xuống" mà không thấy gì thì người dùng sẽ bấm tiếp
       // mãi — im lặng là kiểu hỏng tệ nhất ở đây.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không xuất được tệp: $e')),
-      );
+      baoNhanh('Không xuất được tệp: $e', loai: LoaiThongBao.loi);
     } finally {
       if (mounted) setState(() => _dangXuat = false);
     }

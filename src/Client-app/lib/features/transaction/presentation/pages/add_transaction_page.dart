@@ -44,6 +44,7 @@ import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
 /// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
 /// `/add`.
@@ -1498,34 +1499,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // số tiền hợp lệ" cho một con số người dùng vừa gõ đúng.
     final amount = ketQuaBieuThuc(_amountString);
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
-      );
+      baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
       return;
     }
     if (_selectedWallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ví thanh toán')),
-      );
+      baoNhanh('Vui lòng chọn ví thanh toán', loai: LoaiThongBao.loi);
       return;
     }
     if (!_isTransfer && _selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn danh mục')),
-      );
+      baoNhanh('Vui lòng chọn danh mục', loai: LoaiThongBao.loi);
       return;
     }
     if (_isTransfer && _destinationWallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ví đích')),
-      );
+      baoNhanh('Vui lòng chọn ví đích', loai: LoaiThongBao.loi);
       return;
     }
     final type = _resolvedType;
     if (type == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn chiều tiền')),
-      );
+      baoNhanh('Vui lòng chọn chiều tiền', loai: LoaiThongBao.loi);
       return;
     }
     // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi
@@ -1536,10 +1527,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // đã mang sẵn chủ sở hữu, nên đường ấy không cần chốt.
     final accountId = _editing?.idaccount ?? _accountId();
     if (accountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Chưa xác định được tài khoản đăng nhập')),
-      );
+      baoNhanh('Chưa xác định được tài khoản đăng nhập', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -1680,13 +1668,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             // không con số (banner tạm thời tối giản theo ý người dùng).
             final impactText = budgetImpactSnackText(_pendingImpact);
             _pendingImpact = null;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(impactText ??
-                    (_isEditing
-                        ? 'Đã lưu thay đổi'
-                        : 'Thêm giao dịch thành công!')),
-              ),
+            // Lưu kèm cảnh báo ngân sách ("Đã lưu. Ngân sách X đã vượt hạn mức.") là
+            // THÔNG TIN, không phải xong trơn.
+            baoNhanh(
+              impactText ?? (_isEditing ? 'Đã lưu thay đổi' : 'Thêm giao dịch thành công!'),
+              loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
             );
             final d = _bienDong;
             final id = _accountId();
@@ -1706,9 +1692,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             context.pop(true);
           } else if (state.actionSuccess == false &&
               state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Lỗi: ${state.errorMessage}')),
-            );
+            baoNhanh('Lỗi: ${state.errorMessage}', loai: LoaiThongBao.loi);
           }
         }
       },

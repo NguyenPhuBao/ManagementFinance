@@ -11,6 +11,8 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
+import '../../helpers/bat_thong_bao.dart';
+
 void main() {
   const accountId = 7;
   late AppDatabase db;
@@ -51,6 +53,8 @@ void main() {
 
   Future<void> moTrang(WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(
+      // E4: "Hoàn tác" là nút trên viên toast của AppToast — dựng thật.
+      builder: bocToast(batThongBao()),
       home: NotificationCenterPage(
         idaccount: accountId,
         dao: db.notificationDao,
@@ -78,7 +82,7 @@ void main() {
     await moTrang(tester);
     await tester.drag(find.text('Tiêu đề n1'), const Offset(-600, 0));
     await nhip(tester);
-    // SnackBar trượt lên từ đáy — chạm giữa hoạt ảnh là `tap()` rơi ra ngoài và chỉ cảnh báo (xem `vuotXoa` ở
+    // Viên toast trượt lên từ đáy — chạm giữa hoạt ảnh là `tap()` rơi ra ngoài và chỉ cảnh báo (xem `vuotXoa` ở
     // `notification_center_page_test.dart`).
     await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.text('Hoàn tác'));

@@ -12,6 +12,7 @@ import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 class WalletEditPage extends StatefulWidget {
   final String id;
   const WalletEditPage({super.key, required this.id});
@@ -127,13 +128,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
     if (_wallet == null) return;
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên ví'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      baoNhanh('Vui lòng nhập tên ví', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -194,12 +189,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
       if (mounted) context.pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi cập nhật ví: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        baoNhanh('Lỗi khi cập nhật ví: $e', loai: LoaiThongBao.loi);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -214,12 +204,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
       if (mounted) context.pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi xóa ví: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        baoNhanh('Lỗi khi xóa ví: $e', loai: LoaiThongBao.loi);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

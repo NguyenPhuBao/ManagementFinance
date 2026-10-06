@@ -8,6 +8,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../bloc/budget_cubit.dart';
 import 'budget_form.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Tạo hoặc sửa một ngân sách.
 ///
 /// `?id=<uuid>` trên đường dẫn nghĩa là sửa; không có thì là tạo mới.
@@ -80,18 +81,11 @@ class _BudgetRulesContent extends StatelessWidget {
         if (state is BudgetError) {
           // Ví dụ: danh mục đã có ngân sách đang chạy. Ở lại form để người dùng
           // đổi lựa chọn thay vì đóng trang và mất hết những gì vừa nhập.
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ));
+          baoNhanh(state.message, loai: LoaiThongBao.loi);
           return;
         }
         if (state is! BudgetSaved) return;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(state.message)));
+        baoNhanh(state.message, loai: LoaiThongBao.xong);
         context.pop();
       },
       buildWhen: (_, s) =>

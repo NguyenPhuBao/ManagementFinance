@@ -4,6 +4,9 @@ import 'package:flowmoney/features/transaction/presentation/widgets/transaction_
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
+
+import '../../../helpers/bat_thong_bao.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 /// Hàng trong sổ giao dịch: vuốt trái để xoá, NHƯNG khoản thuộc mục tiêu hay
@@ -24,7 +27,11 @@ void main() {
         updatedAt: DateTime(2026, 9, 6),
       );
 
+  /// Câu phản hồi đi qua `ThongBaoNhanh` (E4) — gom ở [bat].
+  late BatThongBao bat;
+
   Future<int> vuotXoa(WidgetTester tester, TransactionEntity transaction) async {
+    bat = batThongBao();
     var deleted = 0;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -34,8 +41,7 @@ void main() {
         ),
       ),
     ));
-    // Tìm theo key chứ không theo kiểu: SnackBar của Material cũng là một
-    // Dismissible, nên sau khi báo lỗi thì `byType` thấy hai.
+    // Tìm theo key chứ không theo kiểu (từ hồi SnackBar — cũng là một Dismissible).
     await tester.drag(find.byKey(Key(transaction.id)), const Offset(-600, 0));
     await tester.pumpAndSettle();
     return deleted;
@@ -45,7 +51,8 @@ void main() {
     final deleted = await vuotXoa(tester, tx(note: 'Cà phê'));
 
     expect(deleted, 1);
-    expect(find.text('Đã xóa giao dịch'), findsOneWidget);
+    expect(bat.cau, ['Đã xóa giao dịch']);
+    expect(bat.cuoi!.loai, LoaiThongBao.xong);
   });
 
   testWidgets('khoản của mục tiêu: KHÔNG xoá, hàng bật lại, chỉ sang trang mục tiêu',
@@ -58,8 +65,8 @@ void main() {
             'nên tiến độ và lịch sử nói ngược nhau.');
     expect(find.byKey(Key(khoanNap.id)), findsOneWidget,
         reason: 'confirmDismiss trả false thì hàng phải còn đó.');
-    expect(find.textContaining('mục tiêu'), findsWidgets);
-    expect(find.text('Đã xóa giao dịch'), findsNothing);
+    expect(bat.cau.single, contains('mục tiêu'));
+    expect(bat.cuoi!.loai, LoaiThongBao.loi);
   });
 
   testWidgets('khoản trả hoá đơn: KHÔNG xoá, báo lý do', (tester) async {
@@ -70,7 +77,7 @@ void main() {
         reason: 'Trả hoá đơn là bốn bước trong một transaction (Payed, giao '
             'dịch, trừ ví, kỳ kế tiếp); xoá một bước thì ba bước kia còn nguyên.');
     expect(find.byKey(Key(khoanTra.id)), findsOneWidget);
-    expect(find.textContaining('hoá đơn'), findsWidgets);
+    expect(bat.cau.single, contains('hoá đơn'));
   });
 
   testWidgets('hàng không ghi chú hiện nhãn theo loại', (tester) async {

@@ -16,6 +16,7 @@ import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 class BillEditPage extends StatefulWidget {
   final String id;
   final Bill? bill;
@@ -115,16 +116,12 @@ class _BillEditPageState extends State<BillEditPage> {
     final amount = double.tryParse(amountText);
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên dịch vụ/hóa đơn')),
-      );
+      baoNhanh('Vui lòng nhập tên dịch vụ/hóa đơn', loai: LoaiThongBao.loi);
       return;
     }
 
     if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ (> 0)')),
-      );
+      baoNhanh('Vui lòng nhập số tiền hợp lệ (> 0)', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -132,12 +129,8 @@ class _BillEditPageState extends State<BillEditPage> {
     // thái đăng nhập chưa sẵn sàng, tức chuyển hoá đơn sang tài khoản admin.
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chưa xác định được tài khoản đăng nhập. '
-              'Vui lòng đăng nhập lại trước khi sửa hoá đơn.'),
-        ),
-      );
+      baoNhanh('Chưa xác định được tài khoản đăng nhập. '
+              'Vui lòng đăng nhập lại trước khi sửa hoá đơn.', loai: LoaiThongBao.loi);
       return;
     }
 
@@ -145,23 +138,18 @@ class _BillEditPageState extends State<BillEditPage> {
     // thiếu, vì đó chính là thứ khiến hoá đơn kẹt vĩnh viễn trong hàng đợi đẩy.
     final wallet = _selectedWallet;
     if (wallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ví thanh toán.')),
-      );
+      baoNhanh('Vui lòng chọn ví thanh toán.', loai: LoaiThongBao.loi);
       return;
     }
     final category = _selectedCategory;
     if (category == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn danh mục cho hoá đơn.')),
-      );
+      baoNhanh('Vui lòng chọn danh mục cho hoá đơn.', loai: LoaiThongBao.loi);
       return;
     }
 
     final loiNgay = _lich.dateError;
     if (loiNgay != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(loiNgay)));
+      baoNhanh(loiNgay, loai: LoaiThongBao.loi);
       return;
     }
 

@@ -6,6 +6,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/hop_thoai_bi_day_ra.dart';
 
+import '../../../../core/ui/thong_bao_nhanh.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -67,12 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         if (state is AuthSuccess) {
           context.go('/home');
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
+          baoNhanh(state.message, loai: LoaiThongBao.loi);
         }
         if (state is AuthUnauthenticated && state.thongBao != null) {
           _hienHopThoai(state.thongBao!);
