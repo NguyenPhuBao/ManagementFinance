@@ -32,7 +32,9 @@ import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/premium/data/chan_theo_goi.dart';
+import '../../features/premium/domain/don_thanh_toan.dart';
 import '../../features/premium/domain/tran_goi.dart';
+import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/nang_cap_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
@@ -438,6 +440,14 @@ class AppRouter {
             path: '/premium',
             builder: (_, state) => NangCapPage(
                 tran: loaiTranTuMa(state.uri.queryParameters['tran'])),
+          ),
+          GoRoute(
+            path: '/premium/cho-thanh-toan',
+            // Thiếu extra (deeplink tay, dựng lại sau khi app bị giết) → về Nâng cấp.
+            redirect: (_, state) =>
+                state.extra is DonThanhToan ? null : '/premium',
+            builder: (_, state) =>
+                ChoThanhToanPage(don: state.extra as DonThanhToan),
           ),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
