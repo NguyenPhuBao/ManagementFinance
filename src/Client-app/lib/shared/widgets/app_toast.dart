@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/network/connection_monitor.dart';
 import '../../core/realtime/realtime_event.dart';
 import '../../core/sync/sync_models.dart';
+import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
 
 /// Toast nổi ở đáy màn hình, báo tình trạng kết nối, kết quả đồng bộ, và các
@@ -68,7 +69,7 @@ class AppToast extends StatefulWidget {
     required this.connectionEvents,
     required this.pushResults,
     required this.realtimeEvents,
-    this.thongBaoNhanh = const Stream<String>.empty(),
+    this.thongBaoNhanh = const Stream<ThongDiepNhanh>.empty(),
     this.tuAnSau = const Duration(seconds: 4),
   });
 
@@ -77,9 +78,11 @@ class AppToast extends StatefulWidget {
   final Stream<SyncResult> pushResults;
   final Stream<RealtimeEvent> realtimeEvents;
 
-  /// Câu tự do một dòng từ `ThongBaoNhanh` (2026-09-19) — ví dụ "Nhấn lần nữa
-  /// để thoát". Bậc thấp nhất: không được đè lên tin về dữ liệu.
-  final Stream<String> thongBaoNhanh;
+  /// Câu tự do từ `ThongBaoNhanh` (2026-09-19) — "Nhấn lần nữa để thoát", và từ
+  /// E4 (2026-10-06) mọi câu phản hồi của các trang ("Vui lòng chọn danh mục",
+  /// "Đã xoá giao dịch"). Bậc CAO NHẤT — người dùng chọn: phản hồi cho cú bấm vừa
+  /// xong thắng toast nền, kẻo bấm Lưu mà không thấy vì sao không lưu được.
+  final Stream<ThongDiepNhanh> thongBaoNhanh;
 
   /// Bao lâu thì toast tự biến mất. Áp dụng cho **mọi** toast, kể cả mất kết nối.
   final Duration tuAnSau;
@@ -92,7 +95,7 @@ class _AppToastState extends State<AppToast> {
   StreamSubscription<ConnectionEvent>? _subKetNoi;
   StreamSubscription<SyncResult>? _subDay;
   StreamSubscription<RealtimeEvent>? _subRealtime;
-  StreamSubscription<String>? _subNhanh;
+  StreamSubscription<ThongDiepNhanh>? _subNhanh;
   Timer? _dongHoAn;
   Timer? _dongHoDon;
 
@@ -208,17 +211,28 @@ class _AppToastState extends State<AppToast> {
     );
   }
 
-  /// Câu tự do: bậc thấp nhất, nguồn riêng — nó chỉ thay thế chính nó.
-  void _khiCoNhanh(String cau) {
+  /// Câu phản hồi: bậc cao nhất, nguồn riêng — câu mới thay câu cũ cùng nguồn.
+  void _khiCoNhanh(ThongDiepNhanh t) {
+    final (mau, icon) = switch (t.loai) {
+      LoaiThongBao.loi => (AppColors.expense, Icons.error_outline),
+      LoaiThongBao.xong => (AppColors.income, Icons.check),
+      LoaiThongBao.thongTin => (AppColors.primary, Icons.info_outline),
+    };
     _hien(
       _NoiDungToast(
-        chu: cau,
-        mau: AppColors.primary,
-        icon: Icons.info_outline,
-        bac: _Bac.ketNoi,
+        chu: t.cau,
+        mau: mau,
+        icon: icon,
+        bac: _Bac.phanHoi,
         nguon: _Nguon.nhanh,
+        hanhDong: t.hanhDong,
       ),
     );
+  }
+
+  void _bamHanhDong(HanhDongToast h) {
+    h.chay();
+    _an();
   }
 
   void _hien(_NoiDungToast noiDung) {
@@ -271,6 +285,14 @@ class _AppToastState extends State<AppToast> {
   Widget build(BuildContext context) {
     final dai = _dai;
 
+    // E4: bàn phím mở thì viên nổi 12 dp TRÊN bàn phím — đa số câu lỗi ("Vui lòng
+    // nhập…") hiện đúng lúc form đang mở bàn phím, mà chỗ cố định trên thanh tab
+    // thì nằm sau bàn phím.
+    final mq = MediaQuery.of(context);
+    final day = mq.viewInsets.bottom > 0
+        ? mq.viewInsets.bottom + 12
+        : _cachDay + mq.viewPadding.bottom;
+
     // `Stack` chứ không `Column`: toast nổi không được chạm vào bố cục trang.
     return Material(
       color: Colors.transparent,
@@ -280,8 +302,11 @@ class _AppToastState extends State<AppToast> {
           Positioned(
             left: 16,
             right: 16,
-            bottom: _cachDay + MediaQuery.of(context).viewPadding.bottom,
+            bottom: day,
+            // Chỉ viên có nút mới nhận chạm — viên thường không được chặn trang
+            // bên dưới. Viên đang trượt ra cũng thôi nhận chạm.
             child: IgnorePointer(
+              ignoring: dai?.hanhDong == null || !_dangHien,
               child: AnimatedSlide(
                 duration: thoiGianHieuUngToast,
                 curve: Curves.easeOutCubic,
@@ -291,7 +316,7 @@ class _AppToastState extends State<AppToast> {
                   opacity: _dangHien ? 1 : 0,
                   child: dai == null
                       ? const SizedBox.shrink()
-                      : Center(child: _Vien(noiDung: dai)),
+                      : Center(child: _Vien(noiDung: dai, khiBam: _bamHanhDong)),
                 ),
               ),
             ),
@@ -304,13 +329,16 @@ class _AppToastState extends State<AppToast> {
 
 /// Viên thuốc nổi — thu gọn theo nội dung, không kéo hết bề ngang.
 class _Vien extends StatelessWidget {
-  const _Vien({required this.noiDung});
+  const _Vien({required this.noiDung, required this.khiBam});
 
   final _NoiDungToast noiDung;
+  final void Function(HanhDongToast) khiBam;
 
   @override
   Widget build(BuildContext context) {
+    final hanhDong = noiDung.hanhDong;
     return Container(
+      key: const Key('toast-vien'),
       constraints: BoxConstraints(
         minHeight: 48,
         maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -333,6 +361,7 @@ class _Vien extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
+            key: const Key('toast-vong'),
             width: 36,
             height: 36,
             decoration: BoxDecoration(
@@ -344,10 +373,11 @@ class _Vien extends StatelessWidget {
           const SizedBox(width: 10),
           // `Flexible` + `ellipsis`: câu dài phải co lại chứ không được tràn.
           // Máy thật rộng 411dp, bộ test mặc định 800dp.
+          // E4: 3 dòng — câu lỗi của các trang dài hơn câu nền.
           Flexible(
             child: Text(
               noiDung.chu,
-              maxLines: 2,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 13,
@@ -356,6 +386,24 @@ class _Vien extends StatelessWidget {
               ),
             ),
           ),
+          if (hanhDong != null) ...[
+            const SizedBox(width: 12),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => khiBam(hanhDong),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  hanhDong.nhan,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -376,9 +424,15 @@ enum _Bac {
   /// Sự kiện thời gian thực: một việc vừa xảy ra với tiền của người dùng.
   realtime,
 
-  /// Kết quả đồng bộ, và cả việc mất mạng — cao nhất. Cả hai nói về cùng một
-  /// nỗi lo: dữ liệu vừa ghi đã an toàn chưa.
+  /// Kết quả đồng bộ, và cả việc mất mạng. Cả hai nói về cùng một nỗi lo: dữ
+  /// liệu vừa ghi đã an toàn chưa.
   dongBo,
+
+  /// Phản hồi cho cú bấm của người dùng (`ThongBaoNhanh`) — cao nhất từ E4
+  /// (2026-10-06, người dùng chọn). Trước đó câu tự do ở bậc thấp nhất vì chỉ có
+  /// "Nhấn lần nữa để thoát"; nay nó mang cả "Vui lòng chọn danh mục" — bị toast
+  /// nền nuốt là bấm Lưu mà không biết vì sao không lưu được.
+  phanHoi,
 }
 
 /// Ai phát ra thông báo. Dùng để cho một nguồn được cập nhật chính nó bất kể
@@ -392,6 +446,7 @@ class _NoiDungToast {
     required this.icon,
     required this.bac,
     required this.nguon,
+    this.hanhDong,
   });
 
   final String chu;
@@ -399,4 +454,5 @@ class _NoiDungToast {
   final IconData icon;
   final _Bac bac;
   final _Nguon nguon;
+  final HanhDongToast? hanhDong;
 }

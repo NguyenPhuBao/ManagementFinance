@@ -139,7 +139,7 @@ void main() {
       final repo = _RepoGia(r);
       final tb = ThongBaoNhanh();
       final cau = <String>[];
-      final sub = tb.stream.listen(cau.add);
+      final sub = tb.stream.listen((t) => cau.add(t.cau));
       addTearDown(sub.cancel);
       var soLanNap = 0;
 
@@ -194,7 +194,7 @@ void main() {
       final repo = _RepoGia(r)..nem = const CacheException('Đã có ví tên "Ví MB Bank (2)". Hãy đặt tên khác.');
       final tb = ThongBaoNhanh();
       final cau = <String>[];
-      final sub = tb.stream.listen(cau.add);
+      final sub = tb.stream.listen((t) => cau.add(t.cau));
       addTearDown(sub.cancel);
 
       await dungThe(
@@ -216,7 +216,7 @@ void main() {
       final svc = _GopGia(khDon());
       final tb = ThongBaoNhanh();
       final cau = <String>[];
-      final sub = tb.stream.listen(cau.add);
+      final sub = tb.stream.listen((t) => cau.add(t.cau));
       addTearDown(sub.cancel);
       var soLanNap = 0;
 
@@ -259,7 +259,7 @@ void main() {
       final svc = _GopGia(khDon())..nem = const KeHoachGopCuException();
       final tb = ThongBaoNhanh();
       final cau = <String>[];
-      final sub = tb.stream.listen(cau.add);
+      final sub = tb.stream.listen((t) => cau.add(t.cau));
       addTearDown(sub.cancel);
       await dungThe(tester, TheViTrungTen(idaccount: 7, nguon: _NguonGia([capMau()]), gopVi: svc, thongBao: tb));
       await tester.tap(find.byKey(const ValueKey('vi-trung-gop-r')));

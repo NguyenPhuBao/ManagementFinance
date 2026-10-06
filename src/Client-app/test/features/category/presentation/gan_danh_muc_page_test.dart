@@ -62,7 +62,7 @@ void main() {
     final tb = ThongBaoNhanh();
     sl.registerSingleton<ThongBaoNhanh>(tb);
     toast = [];
-    tb.stream.listen(toast.add);
+    tb.stream.listen((t) => toast.add(t.cau));
   });
   tearDown(() => sl.reset());
 
