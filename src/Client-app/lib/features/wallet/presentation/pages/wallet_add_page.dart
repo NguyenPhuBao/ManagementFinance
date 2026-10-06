@@ -332,8 +332,10 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
               ),
+              // G73 (2026-10-06): bốn ô còn lại CHIA ĐỀU phần còn lại thay vì
+              // rộng cố định 40dp + lề 12dp — tổng cũ 256dp tràn 40px khi
+              // ColorOS phóng cỡ hiển thị (màn 320dp). Cùng họ G68.
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                    Container(
                       width: 48,
@@ -347,24 +349,22 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                         color: Colors.white,
                       ),
                     ),
-                    Row(
-                      children: List.generate(_iconOptions.length, (index) {
-                        return index == _selectedIconIndex 
-                          ? const SizedBox.shrink()
-                          : GestureDetector(
+                    const SizedBox(width: 8),
+                    for (var index = 0; index < _iconOptions.length; index++)
+                      if (index != _selectedIconIndex)
+                        Expanded(
+                          child: GestureDetector(
                             onTap: () => setState(() => _selectedIconIndex = index),
-                            child: Container(
-                              width: 40,
+                            behavior: HitTestBehavior.opaque,
+                            child: SizedBox(
                               height: 40,
-                              margin: const EdgeInsets.only(left: 12.0),
                               child: Icon(
                                 _iconOptions[index],
                                 color: AppColors.outlineVariant,
                               ),
                             ),
-                          );
-                      }),
-                    ),
+                          ),
+                        ),
                 ],
               ),
             ),

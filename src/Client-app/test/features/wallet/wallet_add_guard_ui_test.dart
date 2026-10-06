@@ -110,7 +110,7 @@ Future<void> _chamSauKhiCuon(WidgetTester tester, Finder f) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _moTrang(WidgetTester tester, _RepoGia repo) async {
+Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411}) async {
   if (sl.isRegistered<WalletRepository>()) {
     await sl.unregister<WalletRepository>();
   }
@@ -139,7 +139,7 @@ Future<void> _moTrang(WidgetTester tester, _RepoGia repo) async {
     ),
   ));
 
-  tester.view.physicalSize = const Size(411 * 3, 900 * 3);
+  tester.view.physicalSize = Size(rong * 3, 900 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
@@ -188,6 +188,22 @@ void main() {
   // ví mới là âm thầm cướp vai mặc định của ví cũ — ví chọn sẵn khi ghi giao
   // dịch đổi theo mà người dùng không hề gạt gì. Người dùng chốt: tắt, trừ khi
   // tài khoản chưa có ví nào đang hoạt động (ví đầu tiên nên là mặc định).
+  // G73 (2026-10-06): hàng "CHỌN BIỂU TƯỢNG" là biểu tượng đang chọn 48dp + bốn ô
+  // CỐ ĐỊNH 40dp kèm lề 12dp = 256dp, không ô nào co — Realme để cỡ hiển thị ColorOS
+  // một nấc (mật độ 540 → màn 320dp) hiện sọc "RIGHT OVERFLOWED BY 40 PIXELS". Cùng
+  // họ G68.
+  for (final rong in [360.0, 320.0, 300.0]) {
+    testWidgets('G73: $rong dp — hàng chọn biểu tượng không tràn, vẫn chọn được', (tester) async {
+      final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
+      await _moTrang(tester, repo, rong: rong);
+      expect(tester.takeException(), isNull, reason: 'G73: hàng biểu tượng tràn ở màn hẹp');
+      await _chamSauKhiCuon(tester, find.byIcon(Icons.account_balance));
+      expect(tester.takeException(), isNull);
+      expect(find.byIcon(Icons.account_balance), findsOneWidget,
+          reason: 'chọn biểu tượng ngân hàng thì nó thành biểu tượng lớn bên trái');
+    });
+  }
+
   group('G70 — công tắc ví mặc định', () {
     testWidgets('đã có ví đang hoạt động → mặc định TẮT', (tester) async {
       final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);

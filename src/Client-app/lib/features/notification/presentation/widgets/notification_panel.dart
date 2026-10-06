@@ -17,7 +17,11 @@ class NotificationPanel extends StatelessWidget {
   /// Cho phép test bơm dữ liệu mà không cần dựng DI.
   final Stream<List<AppNotification>>? feed;
 
-  const NotificationPanel({super.key, required this.idaccount, this.feed});
+  /// Đồng hồ cho "10 phút trước" — test ghim mốc; bỏ trống là giờ thật. Thiếu nó
+  /// thì ca test thời gian tương đối đỏ khi chạy trong 00:00–00:10 ("Hôm qua").
+  final DateTime Function()? clock;
+
+  const NotificationPanel({super.key, required this.idaccount, this.feed, this.clock});
 
   static const int _soMucHienThi = 3;
 
@@ -82,7 +86,7 @@ class NotificationPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              for (final item in items) _Muc(item: item),
+              for (final item in items) _Muc(item: item, clock: clock),
             ],
           ),
         );
@@ -93,7 +97,8 @@ class NotificationPanel extends StatelessWidget {
 
 class _Muc extends StatelessWidget {
   final AppNotification item;
-  const _Muc({required this.item});
+  final DateTime Function()? clock;
+  const _Muc({required this.item, this.clock});
 
   Color get _mau => switch (item.severity) {
         'critical' => AppColors.error,
@@ -141,7 +146,7 @@ class _Muc extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  relativeTimeVi(item.createdAt),
+                  relativeTimeVi(item.createdAt, now: clock?.call()),
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.outline,
