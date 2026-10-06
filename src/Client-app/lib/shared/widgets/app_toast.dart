@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/connection_monitor.dart';
 import '../../core/realtime/realtime_event.dart';
 import '../../core/sync/sync_models.dart';
+import '../../core/ui/bao_che_day_toast.dart';
 import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
 
@@ -70,7 +72,8 @@ class AppToast extends StatefulWidget {
     required this.pushResults,
     required this.realtimeEvents,
     this.thongBaoNhanh = const Stream<ThongDiepNhanh>.empty(),
-    this.tuAnSau = const Duration(seconds: 4),
+    this.tuAnSau = const Duration(seconds: 3),
+    this.cheDay,
   });
 
   final Widget child;
@@ -85,7 +88,12 @@ class AppToast extends StatefulWidget {
   final Stream<ThongDiepNhanh> thongBaoNhanh;
 
   /// Bao lâu thì toast tự biến mất. Áp dụng cho **mọi** toast, kể cả mất kết nối.
+  /// 3 giây từ 2026-10-06 (Stitch `fb68baba…`, người dùng chọn; trước là 4).
   final Duration tuAnSau;
+
+  /// Khoảng đáy màn đang bị một vùng TỰ VẼ che (16 phím số ở Thêm giao dịch) —
+  /// `null` → `cheDayToast` mà `BaoCheDayToast` báo vào. Test truyền kênh riêng.
+  final ValueListenable<double>? cheDay;
 
   @override
   State<AppToast> createState() => _AppToastState();
@@ -106,6 +114,11 @@ class _AppToastState extends State<AppToast> {
   /// Tách khỏi [_dai] vì nội dung phải sống thêm đúng [thoiGianHieuUngToast]
   /// sau khi ẩn — bỏ nó đi ngay thì toast biến mất phụt, không có hiệu ứng ra.
   bool _dangHien = false;
+
+  /// Vuốt ngang để tắt (Stitch `fb68baba…`, người dùng chọn 2026-10-06): độ lệch
+  /// ngang đang kéo; trong lúc kéo viên bám ngón tay (không hiệu ứng).
+  double _keo = 0;
+  bool _dangKeo = false;
 
   @override
   void initState() {
@@ -214,7 +227,8 @@ class _AppToastState extends State<AppToast> {
   /// Câu phản hồi: bậc cao nhất, nguồn riêng — câu mới thay câu cũ cùng nguồn.
   void _khiCoNhanh(ThongDiepNhanh t) {
     final (mau, icon) = switch (t.loai) {
-      LoaiThongBao.loi => (AppColors.expense, Icons.error_outline),
+      // Dấu "!" như Stitch `fb68baba…` (người dùng chọn 2026-10-06).
+      LoaiThongBao.loi => (AppColors.expense, Icons.priority_high),
       LoaiThongBao.xong => (AppColors.income, Icons.check),
       LoaiThongBao.thongTin => (AppColors.primary, Icons.info_outline),
     };
@@ -222,7 +236,7 @@ class _AppToastState extends State<AppToast> {
       _NoiDungToast(
         chu: t.cau,
         mau: mau,
-        icon: icon,
+        icon: t.bieuTuong ?? icon,
         bac: _Bac.phanHoi,
         nguon: _Nguon.nhanh,
         hanhDong: t.hanhDong,
@@ -233,6 +247,25 @@ class _AppToastState extends State<AppToast> {
   void _bamHanhDong(HanhDongToast h) {
     h.chay();
     _an();
+  }
+
+  /// Thả tay: kéo đủ xa (> 60 dp) hoặc vuốt nhanh thì viên bay ra theo hướng vuốt
+  /// rồi ẩn — KHÔNG chạy hành động; kéo ngắn thì trượt về chỗ cũ.
+  void _thaKeo(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (_keo.abs() > 60 || v.abs() > 500) {
+      final huong = (_keo != 0 ? _keo : v).sign;
+      setState(() {
+        _dangKeo = false;
+        _keo = huong * MediaQuery.sizeOf(context).width;
+      });
+      _an();
+    } else {
+      setState(() {
+        _dangKeo = false;
+        _keo = 0;
+      });
+    }
   }
 
   void _hien(_NoiDungToast noiDung) {
@@ -263,6 +296,8 @@ class _AppToastState extends State<AppToast> {
     setState(() {
       _dai = noiDung;
       _dangHien = true;
+      _keo = 0;
+      _dangKeo = false;
     });
 
     _dongHoAn = Timer(widget.tuAnSau, _an);
@@ -277,7 +312,10 @@ class _AppToastState extends State<AppToast> {
     // Giữ nội dung tới hết hiệu ứng ra, nếu không nó biến mất phụt.
     _dongHoDon = Timer(thoiGianHieuUngToast, () {
       if (!mounted) return;
-      setState(() => _dai = null);
+      setState(() {
+        _dai = null;
+        _keo = 0;
+      });
     });
   }
 
@@ -288,10 +326,14 @@ class _AppToastState extends State<AppToast> {
     // E4: bàn phím mở thì viên nổi 12 dp TRÊN bàn phím — đa số câu lỗi ("Vui lòng
     // nhập…") hiện đúng lúc form đang mở bàn phím, mà chỗ cố định trên thanh tab
     // thì nằm sau bàn phím.
+    // 2026-10-06: vùng đáy do app TỰ VẼ (16 phím số) cũng đẩy viên lên — hệ điều
+    // hành không báo `viewInsets` cho nó (Stitch `fb68baba…`).
     final mq = MediaQuery.of(context);
-    final day = mq.viewInsets.bottom > 0
-        ? mq.viewInsets.bottom + 12
-        : _cachDay + mq.viewPadding.bottom;
+    double dayTheo(double che) {
+      if (mq.viewInsets.bottom > 0) return mq.viewInsets.bottom + 12;
+      if (che > 0) return che + 12;
+      return _cachDay + mq.viewPadding.bottom;
+    }
 
     // `Stack` chứ không `Column`: toast nổi không được chạm vào bố cục trang.
     return Material(
@@ -299,24 +341,46 @@ class _AppToastState extends State<AppToast> {
       child: Stack(
         children: [
           Positioned.fill(child: widget.child),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: day,
-            // Chỉ viên có nút mới nhận chạm — viên thường không được chặn trang
-            // bên dưới. Viên đang trượt ra cũng thôi nhận chạm.
-            child: IgnorePointer(
-              ignoring: dai?.hanhDong == null || !_dangHien,
-              child: AnimatedSlide(
-                duration: thoiGianHieuUngToast,
-                curve: Curves.easeOutCubic,
-                offset: _dangHien ? Offset.zero : const Offset(0, 0.5),
-                child: AnimatedOpacity(
+          ValueListenableBuilder<double>(
+            valueListenable: widget.cheDay ?? cheDayToast,
+            builder: (context, che, _) => Positioned(
+              left: 16,
+              right: 16,
+              bottom: dayTheo(che),
+              // Viên nhận chạm (nút Hoàn tác, vuốt ngang để tắt) — chỉ trong đúng hình
+              // viên: `Center` không nhận chạm ở phần trống, nên ngoài viên vẫn rơi
+              // xuống trang. Viên đang trượt ra thì thôi nhận chạm.
+              child: IgnorePointer(
+                ignoring: !_dangHien,
+                child: AnimatedSlide(
                   duration: thoiGianHieuUngToast,
-                  opacity: _dangHien ? 1 : 0,
-                  child: dai == null
-                      ? const SizedBox.shrink()
-                      : Center(child: _Vien(noiDung: dai, khiBam: _bamHanhDong)),
+                  curve: Curves.easeOutCubic,
+                  offset: _dangHien ? Offset.zero : const Offset(0, 0.5),
+                  child: AnimatedOpacity(
+                    duration: thoiGianHieuUngToast,
+                    opacity: _dangHien ? 1 : 0,
+                    child: dai == null
+                        ? const SizedBox.shrink()
+                        : Center(
+                            child: GestureDetector(
+                              onHorizontalDragStart: (_) =>
+                                  setState(() => _dangKeo = true),
+                              onHorizontalDragUpdate: (d) =>
+                                  setState(() => _keo += d.delta.dx),
+                              onHorizontalDragEnd: _thaKeo,
+                              child: AnimatedContainer(
+                                duration: _dangKeo
+                                    ? Duration.zero
+                                    : thoiGianHieuUngToast,
+                                curve: Curves.easeOutCubic,
+                                transform:
+                                    Matrix4.translationValues(_keo, 0, 0),
+                                child:
+                                    _Vien(noiDung: dai, khiBam: _bamHanhDong),
+                              ),
+                            ),
+                          ),
+                  ),
                 ),
               ),
             ),

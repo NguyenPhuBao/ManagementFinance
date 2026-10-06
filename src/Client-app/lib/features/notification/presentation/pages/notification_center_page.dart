@@ -552,6 +552,7 @@ Future<void> _xoaCoHoanTac(
   // nút — tự ẩn như mọi viên (bẫy `persist` của SnackBar có `action` không còn).
   baoNhanh(
     'Đã xoá thông báo',
+    bieuTuong: Icons.delete_outline, // Stitch `fb68baba…`
     hanhDong: HanhDongToast('Hoàn tác', () {
       if (laBienDong) {
         dao.insertIfAbsent(item.toCompanion(true));

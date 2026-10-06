@@ -12,6 +12,7 @@
 /// 4. Bàn phím ẩn thì dưới số tiền là *"Chạm để sửa số tiền"* — không có nó thì không ai biết con số chạm được.
 library;
 
+import 'package:flowmoney/core/ui/bao_che_day_toast.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -91,6 +92,23 @@ void main() {
     expect(luuTieuDe, findsNothing, reason: 'hai nút lưu cùng lúc là hai chỗ để bấm cho một việc');
     expect(find.byIcon(Icons.check), findsOneWidget);
     expect(find.text(goiY), findsNothing);
+  });
+
+  testWidgets('⭐ 16 phím hiện → báo chiều cao cho toast; ẩn → về 0 (Stitch fb68baba…)', (tester) async {
+    await suaKhoan(tester);
+    await tester.pump();
+    expect(cheDayToast.value, 0, reason: 'bàn phím ẩn — không che gì');
+
+    await tester.tap(soTien);
+    await tester.pumpAndSettle();
+    final banPhimRect = tester.getRect(banPhim);
+    final cao = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(cheDayToast.value, greaterThanOrEqualTo(cao - banPhimRect.top - 0.5),
+        reason: 'viên lỗi lúc bấm ✓ phải nổi TRÊN 16 phím, không đè hai hàng dưới (000 · 0 · ⌫)');
+
+    await tester.tap(soTien);
+    await tester.pumpAndSettle();
+    expect(cheDayToast.value, 0);
   });
 
   testWidgets('⭐ sửa giao dịch: bàn phím ẨN, ✓ ở thanh tiêu đề lưu được thật', (tester) async {

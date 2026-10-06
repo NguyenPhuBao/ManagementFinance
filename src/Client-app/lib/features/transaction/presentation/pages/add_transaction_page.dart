@@ -43,6 +43,7 @@ import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
+import '../../../../core/ui/bao_che_day_toast.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
@@ -1797,10 +1798,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
                 // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
                 // Từ 2026-09-30 còn ẩn khi màn đã có số tiền ([_hienBanPhimSo]); ✓ khi ấy ở thanh tiêu đề.
+                // 2026-10-06 (Stitch `fb68baba…`): 16 phím do app tự vẽ, hệ điều hành
+                // không báo `viewInsets` — báo chiều cao cho AppToast để viên lỗi lúc
+                // bấm ✓ nổi TRÊN bàn phím thay vì đè hai hàng phím dưới.
                 if (coBanPhimSo)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                    child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
+                  BaoCheDayToast(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
+                    ),
                   ),
               ],
             ),

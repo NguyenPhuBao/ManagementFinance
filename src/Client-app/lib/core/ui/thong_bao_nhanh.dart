@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../di/injection_container.dart';
 
@@ -24,8 +24,8 @@ class ThongBaoNhanh {
 
   Stream<ThongDiepNhanh> get stream => _ctl.stream;
 
-  void hien(String cau, {LoaiThongBao loai = LoaiThongBao.thongTin, HanhDongToast? hanhDong}) {
-    if (!_ctl.isClosed) _ctl.add(ThongDiepNhanh(cau, loai: loai, hanhDong: hanhDong));
+  void hien(String cau, {LoaiThongBao loai = LoaiThongBao.thongTin, HanhDongToast? hanhDong, IconData? bieuTuong}) {
+    if (!_ctl.isClosed) _ctl.add(ThongDiepNhanh(cau, loai: loai, hanhDong: hanhDong, bieuTuong: bieuTuong));
   }
 
   Future<void> dispose() => _ctl.close();
@@ -37,7 +37,7 @@ enum LoaiThongBao { thongTin, loi, xong }
 
 /// Nút chữ ở bên phải viên. Bấm → chạy [chay] rồi viên ẩn; không bấm thì viên
 /// vẫn tự ẩn như mọi viên khác (khác `SnackBar` có `action` — Flutter giữ nó tới
-/// khi người dùng chạm).
+/// khi người dùng chạm). Vuốt ngang để tắt viên KHÔNG chạy [chay].
 @immutable
 class HanhDongToast {
   const HanhDongToast(this.nhan, this.chay);
@@ -48,16 +48,22 @@ class HanhDongToast {
 
 @immutable
 class ThongDiepNhanh {
-  const ThongDiepNhanh(this.cau, {this.loai = LoaiThongBao.thongTin, this.hanhDong});
+  const ThongDiepNhanh(this.cau, {this.loai = LoaiThongBao.thongTin, this.hanhDong, this.bieuTuong});
 
   final String cau;
   final LoaiThongBao loai;
   final HanhDongToast? hanhDong;
+
+  /// Thay biểu tượng của [loai] — Stitch `fb68baba…` vẽ thùng rác cho "Đã xoá thông báo · Hoàn tác". Màu vòng vẫn
+  /// theo [loai].
+  final IconData? bieuTuong;
 }
 
 /// Lối gọn cho các trang: đẩy [cau] vào kênh đăng ký ở DI. Chưa đăng ký (vài
 /// widget test dựng trang trần) thì bỏ qua — test nào cần kiểm câu thì đăng ký
 /// một [ThongBaoNhanh] rồi nghe `stream`.
-void baoNhanh(String cau, {LoaiThongBao loai = LoaiThongBao.thongTin, HanhDongToast? hanhDong}) {
-  if (sl.isRegistered<ThongBaoNhanh>()) sl<ThongBaoNhanh>().hien(cau, loai: loai, hanhDong: hanhDong);
+void baoNhanh(String cau, {LoaiThongBao loai = LoaiThongBao.thongTin, HanhDongToast? hanhDong, IconData? bieuTuong}) {
+  if (sl.isRegistered<ThongBaoNhanh>()) {
+    sl<ThongBaoNhanh>().hien(cau, loai: loai, hanhDong: hanhDong, bieuTuong: bieuTuong);
+  }
 }
