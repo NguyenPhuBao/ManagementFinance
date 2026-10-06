@@ -3232,6 +3232,11 @@ Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm g
 tiêu đề, dưới số tiền là *"Chạm để sửa số tiền"* — việc còn lại là soát thẻ form, không gõ số (người dùng chốt; mục 6
 `BIEN_DONG_SO_DU_FEATURE.md`). Câu không đọc ra số tiền thì bàn phím giữ nguyên.
 
+✅ **"cuối tháng" thôi gọi AI (2026-10-06, người dùng chọn; chưa đo máy thật):** *cuối tháng · cuối tháng này · cuối
+tháng sau / tới* trơn **không** còn là câu nhắc ngày (`cauNhacNgay` gỡ cụm ấy — `_mauCuoiThangTron`), nên ô ngày không
+thiếu và câu điền ngay, ngày giữ hôm nay. Lý do: ngày ấy là hôm nay hoặc tương lai, mà `_ngayAiHopLe` bỏ hôm nay — câu
+11 ở trên tốn 14 s không thêm gì. *cuối tháng rồi / trước / qua* và *cuối tháng 9* vẫn là nhắc (AI lấp hoặc luật đọc).
+
 ### 9.42 C3 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI (2026-09-30) — chỉ luật, không mô hình
 
 Spec `docs/superpowers/specs/2026-09-28-c3-lenh-tao-hoa-don-muc-tieu-ngan-sach-design.md` (banner *soát lần hai*).

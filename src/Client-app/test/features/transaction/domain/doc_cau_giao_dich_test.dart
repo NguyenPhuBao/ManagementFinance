@@ -417,9 +417,9 @@ void main() {
     });
 
     test('ngày: AI trả HÔM NAY khi luật không đọc được = AI không biết ngày → không tuyên bố gì', () {
-      expect(docAi('cuối tháng đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, isNull,
+      expect(docAi('cuối tháng rồi đóng học phí 2tr', const KetQuaAi(ngay: '30/09/2026')).ngay, isNull,
           reason: 'Realme 2026-09-30: AI trả hôm nay cho "đầu tháng" (nay luật đọc được) — dòng tóm tắt nói "Hôm nay" '
-              'là sai; "cuối tháng" vẫn mơ hồ nên vẫn là ca của lớp kiểm này');
+              'là sai; "cuối tháng rồi" luật chưa đọc nên vẫn là ca của lớp kiểm này');
     });
 
     test('ghi chú: AI được BỚT chữ, không được THÊM chữ', () {
@@ -509,7 +509,7 @@ void main() {
     });
 
     test('ngày thiếu: luật không đọc được mà câu có chữ thời gian; "tôi" không phải chữ thời gian', () {
-      expect(luat('cuối tháng đóng học phí 2tr').oThieu, {OThieu.ngay});
+      expect(luat('cuối tháng rồi đóng học phí 2tr').oThieu, {OThieu.ngay});
       expect(luat('tôi ăn phở 45k').oThieu, isEmpty);
     });
 
@@ -592,7 +592,11 @@ void main() {
       ]) {
         expect(luat(c).oThieu, isEmpty, reason: c);
       }
-      expect(luat('cuối tháng này đóng học 2tr').oThieu, {OThieu.ngay}, reason: '"cuối tháng" là cụm mơ hồ → AI lấp');
+      for (final c in ['cuối tháng này đóng học 2tr', 'cuối tháng đóng tiền nhà 3tr']) {
+        expect(luat(c).oThieu, isEmpty,
+            reason: '$c — người dùng chọn 2026-10-06 bỏ chờ AI vô ích: Realme 2026-09-30 câu 11 gọi AI 14 s, AI trả hôm '
+                'nay (lớp kiểm bỏ) — ngày cuối tháng này là hôm nay hoặc tương lai, AI không lấp được gì');
+      }
     });
 
     test('ngày: câu chỉ nêu KỲ thì AI không được đổi ngày ("tiền điện tháng 9" không thành 01/09)', () {
