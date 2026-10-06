@@ -58,6 +58,12 @@ import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/services/gop_vi_service.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import '../../features/premium/data/dem_dang_hoat_dong.dart';
+import '../../features/premium/data/goi_repository.dart';
+import '../../features/premium/data/goi_store.dart';
+import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/presentation/an_nhac_het_han.dart';
+import '../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -376,6 +382,21 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<RealtimeChannel>(
     () => RealtimeChannel(secureStorage: sl<FlutterSecureStorage>()),
   );
+
+  // ── Features — Premium (spec 2026-10-06) ─────────────────────────────────
+  // Trạng thái gói là MỘT cho cả app → GoiCubit singleton, cung cấp ở gốc cây
+  // (`main.dart`). Ba nguồn làm mới (phiên, vòng đời, socket) nối ở `main.dart`
+  // vì AuthBloc là factory. Đếm đăng ký theo mặt cắt để router tiêm bản giả.
+  sl.registerLazySingleton<PaymentApi>(
+      () => DioPaymentApi(sl<DioClient>().dio));
+  sl.registerLazySingleton<GoiStore>(
+      () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
+  sl.registerLazySingleton<GoiRepository>(
+      () => GoiRepository(api: sl(), kho: sl()));
+  sl.registerLazySingleton<NguonDemDangHoatDong>(
+      () => DemDangHoatDong(db: sl()));
+  sl.registerLazySingleton<GoiCubit>(() => GoiCubit(sl()));
+  sl.registerLazySingleton<AnNhacHetHan>(AnNhacHetHan.new);
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
