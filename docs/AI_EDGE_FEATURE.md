@@ -3788,6 +3788,13 @@ chiều *"trên"*: *"trên 30 nghìn"* thôi gồm khoản đúng 30.000 đ — 
 canh ở `chinh_tham_so_test`, `cong_cu_truy_van_test`, `tim_giao_dich_test` (hai bản sai — bỏ phép loại trừ, bỏ luật cụm
 dài nhất — làm 4 ca đỏ).
 
+✅ **Mẫu câu mục tiêu thôi in thừa *"Đang theo đuổi / Đã hoàn thành"* (2026-10-06, chưa đo máy thật)**: B1, B2, F14 của
+cổng F lần 3 đúng nhưng kết bằng *"…; Đang theo đuổi: 2; Đã hoàn thành: 0."* — số của các mục tiêu **khác**. `hangMucTieu`
+nay chỉ đếm cả nhóm khi câu hỏi nói về cả nhóm (`ten == null && nhomSo == null`); câu nêu tên hay hỏi một số đích thì
+`tongHop` không có hai số ấy, nên cả JSON gửi mô hình lẫn mẫu câu đều gọn. Mẫu câu sau sửa: *"MuaXe đúng kế hoạch: Còn
+thiếu 899.000 đ, Còn 551 ngày, Theo nhịp hiện tại cần thêm 19 ngày."* Ca canh ở `hang_muc_tieu_test` (đỏ trên bản cũ).
+⚠️ Còn thô: F14 (*"kỳ trích tiếp của MuaDT"*) vẫn in đủ tám số trước kết luận *"MuaDT không bật trích tự động"* — chưa sửa.
+
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
 

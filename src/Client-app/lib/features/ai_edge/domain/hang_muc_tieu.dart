@@ -141,8 +141,13 @@ KetQuaCongCu hangMucTieu(
         _hang(g, now, vn, hienTrich: hienTrich, nhomSo: nhomSo),
     ],
     tongHop: [
-      soDem('Đang theo đuổi', nhom.dangTheoDuoi.length),
-      soDem('Đã hoàn thành', nhom.daHoanThanh.length),
+      // Đếm cả nhóm chỉ khi câu hỏi nói về cả nhóm. Câu về MỘT mục tiêu (nêu
+      // tên, hay hỏi một số đích) thì hai số này là của mục tiêu khác — mẫu câu
+      // B1/B2/F14 cổng F lần 3 từng kết bằng "Đang theo đuổi: 2; Đã hoàn thành: 0".
+      if (ten == null && nhomSo == null) ...[
+        soDem('Đang theo đuổi', nhom.dangTheoDuoi.length),
+        soDem('Đã hoàn thành', nhom.daHoanThanh.length),
+      ],
       if (chon != null) soDem('Số mục tiêu khớp', khop.length),
       // Nhãn KHÔNG mở đầu bằng "Ví": `kiemTen` đọc chữ sau "ví" là tên ví, và
       // "Ví thiếu để trích: 1" của kế hoạch làm chính mẫu câu bị chặn.
