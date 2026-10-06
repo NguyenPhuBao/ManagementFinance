@@ -177,6 +177,9 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(basicInfo.accountType, 'Basic');
     assert.strictEqual(basicInfo.daysRemaining, 0);
     assert.strictEqual(basicInfo.isExpired, true);
+    assert.deepStrictEqual(basicInfo.limits, { wallets: 3, budgets: 3, goals: 3 });
+    assert.strictEqual(basicInfo.price, 49000);
+    assert.strictEqual(basicInfo.packageDays, 30);
 
     // Ca 2: Tài khoản Premium còn 15 ngày
     const futureDate = new Date(Date.now() + 15 * 86400000);
@@ -189,6 +192,9 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(premiumInfo.accountType, 'Premium');
     assert.strictEqual(premiumInfo.daysRemaining, 15);
     assert.strictEqual(premiumInfo.isExpired, false);
+    assert.deepStrictEqual(premiumInfo.limits, { wallets: 3, budgets: 3, goals: 3 });
+    assert.strictEqual(premiumInfo.price, 49000);
+    assert.strictEqual(premiumInfo.packageDays, 30);
 
     paymentRepository.findAccountSubscription = origFind;
   });

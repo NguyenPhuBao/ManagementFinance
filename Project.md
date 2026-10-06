@@ -3490,6 +3490,46 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     3. Hướng dẫn 2 phương án hiển thị VietQR và nút "Mở ứng dụng ngân hàng" (Deep link).
     4. Code mẫu tham khảo cho Flutter (Dart) và React Native / React Web (TypeScript/Axios).
 
+### 11.68. Tinh Chỉnh Giao Diện & Hành Vi Tính Năng Lên Lịch Bảo Trì (Admin-web Broadcast) (2026-10-06)
+- **1. Chuẩn hóa Checkbox Phát Thông Báo:**
+  - Loại bỏ nhãn "Kèm chế độ khẩn cấp" ở cột Lên lịch hẹn giờ bảo trì (tránh chồng chéo với chức năng Bảo trì tức thì ở cột trái).
+  - Thay bằng checkbox: **"Tự động phát thông báo cho Client & Admin khi tới giờ hẹn"** kèm mô tả giải thích phát sóng realtime qua Socket.IO.
+  - Refactor state từ `scheduleEmergency` sang `scheduleNotify`.
+- **2. Tinh Gọn Giao Diện:**
+  - Xóa bỏ hoàn toàn dòng thông tin kỹ thuật nội bộ `Cổng kiểm tra bảo trì: /health/admin`.
+  - Căn chỉnh thanh footer của thẻ card gọn gàng sang góc phải.
+- **3. Khắc Phục Nút Làm Mới Trạng Thái & Reset Biểu Mẫu:**
+  - Xây dựng hàm `handleResetScheduleFormAndRefresh` thực hiện đồng thời:
+    1. Xóa sạch dữ liệu đang nhập dở tại form (`scheduleDatetime = ''`, `scheduleEndDatetime = ''`, `scheduleReason = ''`, `scheduleNotify = false`).
+    2. Xóa thông báo phản hồi cũ (`setMaintenanceFeedback`).
+    3. Thêm cờ `isRefreshing` kích hoạt hiệu ứng xoay icon `animate-spin` tạo phản hồi thị giác rõ ràng.
+    4. Gọi `fetchMaintenance()` tải lại trạng thái bảo trì mới nhất từ Backend.
+    5. Hiển thị thông báo phản hồi: *"Đã làm mới trạng thái và xóa trắng biểu mẫu lên lịch thành công."*
+- **4. Kiểm Thử & Đo Lường:**
+  - Cập nhật và bổ sung 3 test cases mới (6.9, 6.10, 6.11) trong `src/Admin-web/src/tests/broadcast.page.test.jsx`: **11/11 tests PASS 100%**.
+  - Toàn bộ test suite của Admin-web: **60/60 tests PASS 100%** (0 failure).
+  - Đóng gói Vite production build (`rtk npm run build`): Thành công không lỗi.
+
+### 11.69. Hoàn Tất Toàn Bộ Tồn Đọng CAN-LAM (Mục 37 Đồng Bộ Offline Đẩy Muộn & Mục 38 PayOS Premium Client) (2026-10-06)
+- **1. Xử Lý Dứt Điểm Bỏ Sót Bản Ghi Đẩy Muộn Khi Đồng Bộ Offline (Mục 37):**
+  - **Căn nguyên kỹ thuật:** `sync.repository.js` trước đây dùng chung 1 cột `update_at` cho cả hai cơ chế: phân xử Last-Write-Wins LWW (cần giờ ghi trên máy) và lọc delta incremental pull `GET /api/sync/pull` (cần giờ ghi nhận trên server). Khi máy B offline ghi giao dịch lúc 14:43, máy A kéo lúc 14:44 (`since = 14:44`), sau đó lúc 14:45 máy B mới online đẩy lên server thì máy A vĩnh viễn không bao giờ kéo được giao dịch này vì điều kiện `update_at > since` (14:43 < 14:44) không thỏa mãn.
+  - **Kiến trúc giải pháp Dual Timestamp:**
+    1. Áp dụng Migration 20 (`database/20_add_server_update_at_sync_tables.sql` qua `scripts/apply_migration_20.js`): Thêm cột `Server_update_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP`, 6 chỉ mục hiệu năng `(Idaccount, Server_update_at)` và 6 triggers `trg_set_server_update_at_*` cho 6 bảng đồng bộ (`category`, `wallet`, `budget`, `bill`, `goal`, `transaction`).
+    2. Cập nhật `schema.prisma` và tái tạo Prisma Client tương thích an toàn theo Rule 10 DB Guard.
+    3. Cập nhật `sync.repository.js`: Toàn bộ 6 hàm `get*ByAccount` chuyển sang lọc `server_update_at: since ? { gt: new Date(since) } : undefined` và sắp xếp `orderBy: { server_update_at: 'asc' }`. Tất cả thao tác `create`, `update`, `softDelete` gán `server_update_at: new Date()`.
+    4. Cập nhật `sync.service.js`: Checkpoint `maxSince` ưu tiên lấy `server_update_at` lớn nhất của batch (fallback `update_at`).
+    5. **Bảo toàn 100% LWW**: Giữ nguyên `update_at` làm khóa so sánh LWW (`if (new Date(mapped.update_at) > new Date(existing.update_at))`).
+- **2. Mở Rộng API Subscription Info & Khớp Nối Module PayOS Phía Client (Mục 38):**
+  - `src/Backend/modules/payment/payment.service.js`: Bổ sung 3 trường cấu hình `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30` vào API `GET /api/payment/subscription-info`, cho phép Client-app tự thi hành đặc quyền Basic/Premium mà không cần hardcode hay chờ cập nhật ứng dụng.
+  - Đính chính 5 điểm tài liệu `docs/Payment/CLIENT_INTEGRATION_GUIDE.md` và bản sao trong CAN-LAM (socket event `account.upgraded`, URL Admin, base URL 3000, Dio/url_launcher, `accountType`); bỏ cụm từ "đồng bộ đa thiết bị tức thì".
+- **3. Đóng & Lưu Trữ Danh Sách Cần Làm:**
+  - Lưu trữ các mục 34, 37, 38 sang `docs/superpowers/backend/DA-XONG/` (tổng cộng 57 tài liệu lưu trữ).
+  - Cập nhật `docs/superpowers/backend/CAN-LAM/README.md`: 0 mục tồn đọng (Sạch sẽ 100%).
+- **4. Kiểm Thử Tự Động & Thẩm Tra CSDL:**
+  - Bộ kiểm thử tự động Backend: **245/245 tests PASS 100%** (bao gồm 2 test mới cho `server_update_at` delta pull và test mở rộng cho `limits, price, packageDays`).
+  - Thẩm tra chỉ mục CSDL (`npm run db:verify-indexes`): Toàn bộ Partial Indexes và Triggers an toàn 100%.
+
+
 
 
 
