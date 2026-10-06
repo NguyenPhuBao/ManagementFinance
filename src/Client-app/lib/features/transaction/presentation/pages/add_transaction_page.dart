@@ -34,6 +34,8 @@ import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
 import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
+import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../../../features/premium/presentation/widgets/nut_nang_cap.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -129,6 +131,11 @@ class AddTransactionPage extends StatefulWidget {
   /// để đối chiếu, và xoá tệp khi Lưu / Bỏ qua. `null` → `sl<KhoBienLai>()` nếu đã đăng ký.
   final KhoBienLai? khoBienLai;
 
+  /// Ô Nhập nhanh là đặc quyền Premium — Basic khoá CẢ ô (spec Premium 2026-10-06 mục 8.2, người dùng chốt). `null` =
+  /// đọc `GoiCubit` qua `context`; **không có provider thì không khoá** — chỉ test cũ gặp ca ấy. Chỉ khoá giao diện:
+  /// `DocCauBangAi`, `docCauGiaoDich` không đổi; điền sẵn từ D1 / biên lai / C3 không đi qua ô này.
+  final bool? laPremium;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -150,6 +157,7 @@ class AddTransactionPage extends StatefulWidget {
     this.khoanTrongSo,
     this.hangBienDongCho,
     this.khoBienLai,
+    this.laPremium,
   });
 
   @override
@@ -157,6 +165,18 @@ class AddTransactionPage extends StatefulWidget {
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
+  /// Premium? Tiêm cho test, hoặc đọc `GoiCubit` (`context.read` — `BlocProvider.of` bọc lỗi thiếu provider thành
+  /// `FlutterError`, không bắt được). Xem [AddTransactionPage.laPremium].
+  bool get _laPremium {
+    final t = widget.laPremium;
+    if (t != null) return t;
+    try {
+      return context.read<GoiCubit>().laPremium;
+    } on ProviderNotFoundException {
+      return true;
+    }
+  }
+
   /// Đoạn đang chọn trên thanh đầu màn: `'chi'` | `'thu'` | `'transfer'` —
   /// theo màn Stitch "Chi tiêu · Thu nhập · Chuyển khoản" (UX 2026-09-19, C3).
   ///
@@ -1642,6 +1662,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Nghe GoiCubit để gói đổi giữa lúc form mở (lên Premium qua socket) là ô Nhập nhanh mở ngay. Không provider
+    // (test cũ) thì bỏ qua — xem [AddTransactionPage.laPremium].
+    if (widget.laPremium == null) {
+      try {
+        context.watch<GoiCubit>();
+      } on ProviderNotFoundException {
+        // Không có GoiCubit trong cây.
+      }
+    }
     final content = BlocConsumer<TransactionBloc, TransactionState>(
       listener: (context, state) {
         if (state is TransactionLoadedState) {
@@ -2354,41 +2383,55 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     key: const Key('nhap-nhanh-o'),
                     controller: _nhapNhanhController,
                     focusNode: _nhapNhanhFocus,
+                    // Basic khoá cả ô — spec Premium 8.2.
+                    enabled: _laPremium,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _dienTuCau(),
                     style: const TextStyle(fontSize: 15, color: AppColors.primary),
                     // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
                     // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
                     // trong khung xám (nghiệm thu Realme 2026-09-30).
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       filled: false,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      hintText: 'VD: hôm qua ăn phở 45k tiền mặt',
-                      hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
-                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      disabledBorder: InputBorder.none,
+                      hintText: _laPremium ? 'VD: hôm qua ăn phở 45k tiền mặt' : 'Tính năng Premium',
+                      hintStyle: const TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
-                ElevatedButton(
-                  key: const Key('nhap-nhanh-dien'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: _dangDocAi ? null : _dienTuCau,
-                  child: const Text('Điền'),
-                ),
+                if (_laPremium)
+                  ElevatedButton(
+                    key: const Key('nhap-nhanh-dien'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: _dangDocAi ? null : _dienTuCau,
+                    child: const Text('Điền'),
+                  )
+                else
+                  const NutNangCap(),
               ],
             ),
           ),
+          if (!_laPremium)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Nâng cấp để đọc câu bằng AI',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
           if (_dangDocAi)
             Padding(
               padding: const EdgeInsets.only(top: 8),
