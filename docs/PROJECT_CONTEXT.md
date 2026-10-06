@@ -1149,10 +1149,18 @@ trung tâm thông báo).
   trên màn), `bocToast(bat)` dựng `AppToast` thật cho ca cần bấm *Hoàn tác*. **Test quét `lib/` thứ 19**
   `core/ui/khong_snackbar_test.dart` cấm `SnackBar` / `ScaffoldMessenger` mới. ⚠️ Đo vị trí viên phải bơm **ba** nhịp:
   ticker của `AnimatedSlide` bắt đầu ở khung SAU khung dựng — hai nhịp thì viên còn lệch nửa chiều cao (25 dp).
-- **Stitch**: lượt tạo màn ba biến thể (lỗi · xong · có Hoàn tác · trên bàn phím) trả `timeout`, kiểm hai lần chưa thấy
-  (112 màn) — **chờ người dùng xác nhận**, đừng gọi lại.
-- Commit `7667ba6` (kênh + AppToast) · `acaa2a7` (88 chỗ + test) · `bbd378a` (dòng import). `flutter test` **6040/6040**
-  / 9 skip, analyze 21. **Còn**: nghiệm thu máy thật — viên trên bàn phím ở 360 dp, nút Hoàn tác bấm được.
+- **Stitch** `fb68baba5ad04368918911cbf987725b` *"Thông báo nổi (toast) - Ba biến thể"* — lượt gọi trả `timeout`, màn
+  xuất hiện sau (✅ người dùng xác nhận tối 2026-10-06). Đối chiếu ra bốn chỗ lệch; người dùng chọn **chép cả bốn**
+  (`719293c`): ① viên neo **trên bàn phím SỐ tự vẽ** của Thêm giao dịch — `BaoCheDayToast` (`core/ui/`) bọc 16 phím,
+  đo khoảng đáy bị che, báo vào `cheDayToast`; `AppToast` nổi 12 dp trên đó (hệ điều hành không báo `viewInsets` cho
+  bàn phím tự vẽ, nên bản trước đè hai hàng phím dưới). ⚠️ Rời cây thì trả 0 qua **microtask + quyền sở hữu kênh**
+  — gán thẳng trong `dispose` là setState lúc cây khoá, và có thể xoá số của vùng mới dựng cùng khung. ② **Vuốt ngang**
+  > 60 dp hoặc nhanh → viên bay ra rồi ẩn, **không** chạy Hoàn tác; kéo ngắn trượt về; viên nhận chạm chỉ trong đúng
+  hình viên (`Center` không nhận chạm ở phần trống). ③ **Mọi toast tự ẩn sau 3 giây** (trước 4). ④ Viên lỗi dấu **"!"**
+  (`Icons.priority_high`); câu mang biểu tượng riêng `bieuTuong` — thùng rác cho *"Đã xoá thông báo"*.
+- Commit `7667ba6` (kênh + AppToast) · `acaa2a7` (88 chỗ + test) · `bbd378a` (dòng import) · `719293c` (theo Stitch).
+  `flutter test` **6049/6049** / 9 skip, analyze 21. **Còn**: nghiệm thu máy thật — viên trên bàn phím hệ thống và trên
+  16 phím số ở 360 dp, vuốt tắt, nút Hoàn tác bấm được.
 
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 
