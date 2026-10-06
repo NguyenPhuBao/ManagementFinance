@@ -145,9 +145,19 @@ Tài liệu này đã được giải quyết trọn vẹn và chuyển sang `DA
 |---|---|
 | [SOAT_SAU_GOP_B38367E.md](./SOAT_SAU_GOP_B38367E.md) | ✅ Hoàn thành trọn gói 6 điểm: (1) Vá lách URL query string trong `maintenance.middleware.js` bằng cách tách query string và kiểm tra `POST` chuẩn xác; (2) Loại bỏ fallback `'secret'` trong `admin-priority.middleware.js` và `rate-limiter.js`, thêm kiểm tra biến môi trường JWT lúc khởi động production; (3) Loại bỏ gán `req.isAdmin = true` theo URL path trước xác thực; (4) Chuẩn hóa nhận diện test trong `load-shedding.middleware.js` (bỏ `process.argv`); (5) Siết CORS dev/production; (6) Bổ sung 3 unit tests cho nhánh bảo trì trong `auth.service.login`. 220/220 unit tests PASS 100%. |
 
-*(Lưu ý: Mục 34 [`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`](../CAN-LAM/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) là đơn tư vấn thiết kế cho chức năng phía Client-app; PO đã duyệt và Client-app đã làm xong ngày 2026-10-03).*
+---
 
-Thư mục này nay **54** tệp + mục lục (đếm bằng máy 2026-10-05).
+## 4f. Đóng trong đợt backend 2026-10-06 (Hoàn tất mục 34, 37, 38 — Toàn bộ tồn đọng được giải quyết dứt điểm)
+
+Các tài liệu sau đây đã được giải quyết trọn vẹn và chuyển sang `DA-XONG/` ngày 2026-10-06:
+
+| Tài liệu | Kết quả xử lý |
+|---|---|
+| [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](./KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | ✅ **Mục 37:** Áp dụng Migration 20 bổ sung cột `Server_update_at`, 6 chỉ mục `(Idaccount, Server_update_at)` và trigger `trg_set_server_update_at_*` cho 6 bảng đồng bộ (`category`, `wallet`, `budget`, `bill`, `goal`, `transaction`). Cập nhật `sync.repository.js` lọc `/sync/pull` theo `server_update_at`, và `sync.service.js` checkpoint `maxSince` theo `server_update_at`. Giữ nguyên LWW theo `update_at`. Khắc phục dứt điểm lỗi bỏ sót bản ghi đẩy muộn khi offline. Test PASS 100%. |
+| [CLIENT_PREMIUM_PAYOS.md](./CLIENT_PREMIUM_PAYOS.md) | ✅ **Mục 38:** Bổ sung `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30` vào API `GET /api/payment/subscription-info`; đính chính 5 điểm lệch mã trong `CLIENT_INTEGRATION_GUIDE.md` (socket event `account.upgraded`, URL Admin, base URL 3000, Dio/url_launcher, `accountType`); bỏ cụm từ "đồng bộ đa thiết bị tức thì". Test PASS 100%. |
+| [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | ✅ **Mục 34:** Client-app hoàn tất tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (100% on-device offline, tuân thủ Nghị định 13/2023/NĐ-CP và Data Minimization). Đã nghiệm thu và chuyển lưu trữ. |
+
+Thư mục này nay **57** tệp + mục lục (đếm bằng máy 2026-10-06).
 
 ---
 
