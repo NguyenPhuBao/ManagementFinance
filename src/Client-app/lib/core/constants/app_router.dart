@@ -31,6 +31,8 @@ import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
+import '../../features/premium/data/chan_theo_goi.dart';
+import '../../features/premium/domain/tran_goi.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
@@ -243,8 +245,12 @@ class AppRouter {
             path: '/wallets',
             builder: (_, __) => const WalletListPage(),
           ),
+          // Cửa chặn trần Basic (spec Premium 2026-10-06 mục 7.1): đủ 3 ví đang
+          // hoạt động thì sang /premium?tran=vi. Một cửa cho mọi lối vào form.
           GoRoute(
-              path: '/wallets/add', builder: (_, __) => const WalletAddPage()),
+              path: '/wallets/add',
+              redirect: redirectTaoTheoGoi(LoaiTran.vi),
+              builder: (_, __) => const WalletAddPage()),
           GoRoute(
             path: '/wallets/:id/edit',
             builder: (_, s) => WalletEditPage(id: s.pathParameters['id']!),
@@ -264,8 +270,11 @@ class AppRouter {
           // `?category=<id>&amount=<số>` = tạo mới đã điền sẵn, từ thẻ "Chưa
           // đặt ngân sách". `amount` hỏng thì `tryParse` trả `null` và ô hạn mức
           // để trống — một đường dẫn bị sửa tay không được làm đổ cả trang.
+          // `?id` là SỬA — `chuyenHuongTheoGoi` tự cho qua; không `?id` là tạo và
+          // bị trần Basic chặn (kể cả từ thẻ "Chưa đặt ngân sách", lệnh tạo C3).
           GoRoute(
               path: '/budget/rules',
+              redirect: redirectTaoTheoGoi(LoaiTran.nganSach),
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
                     danhMucChonSan: state.uri.queryParameters['category'],
@@ -387,6 +396,8 @@ class AppRouter {
           GoRoute(path: '/goals', builder: (_, __) => const GoalPage()),
           GoRoute(
               path: '/goals/add',
+              // Cửa chặn trần Basic (spec Premium 7.1): đủ 3 mục tiêu chưa đạt thì sang /premium.
+              redirect: redirectTaoTheoGoi(LoaiTran.mucTieu),
               // `?name&target&deadline` = điền sẵn từ lệnh tạo ở màn Trợ lý AI (C3); hỏng thì bỏ đúng trường ấy.
               builder: (_, s) => GoalAddPage(dienSan: dienSanMucTieuTuQuery(s.uri.queryParameters))),
           // Đặt TRƯỚC '/goals/:id' cho khớp với thứ tự của '/goals/add': đường
