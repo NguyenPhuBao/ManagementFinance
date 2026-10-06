@@ -1326,7 +1326,11 @@ Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi 
 
 ## 5k. "Số dư ví đang âm" — mỗi đợt âm một lần (E6, 2026-10-06)
 
-🚧 **Mã xong, chưa nghiệm thu máy thật.** Lượt đánh giá UX 2026-09-19 (E6) đo trung tâm thông báo có **bốn** dòng *"Số dư ví
+✅ **Nghiệm thu máy thật 2026-10-06 tối** (Realme): bản mới vừa cài sinh khoá theo đợt cho hai ví vốn âm từ 02/10
+(mỗi ví thêm **một** dòng lúc nâng cấp — cái giá một lần của việc đổi khoá); ví thử *"Vi thu E6"*: chi 50.000 → **một**
+thông báo khoá `…:300dc250…` ✅ · chi thêm 2.000 → bộ quét *"0 hàng mới"* ✅ · nạp 100.000 → hàng âm **gỡ** lúc 22:12:27 ✅ ·
+chi 60.000 → âm lại, khoá mới `…:926e97ad…` ✅. Dọn sau đo: bốn khoản thử xoá mềm, ví thử xoá mềm, Tiền mặt đặt lại mặc định.
+⚠️ Lượt đo lộ **G70** (form Thêm ví bật sẵn *ví mặc định*) và **G71** (thông báo của ví đã xoá không tự gỡ). Lượt đánh giá UX 2026-09-19 (E6) đo trung tâm thông báo có **bốn** dòng *"Số dư ví
 đang âm"* cho cùng một ví — khoá gộp theo NGÀY nên ví âm bao nhiêu ngày là bấy nhiêu dòng. Người dùng chọn **mỗi đợt âm
 một lần** (không chọn *hằng tuần* hay *hằng ngày giữ dòng mới*).
 

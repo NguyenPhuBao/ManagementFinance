@@ -1129,7 +1129,12 @@ Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trướ
   dùng xác nhận tối 2026-10-06**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
   ngrok hoặc webhook tự ký, 10 bước spec mục 13).
 
-### ✅ E4 — SnackBar thành toast (2026-10-06 tối; mã xong, CHƯA nghiệm thu máy thật)
+### ✅ E4 — SnackBar thành toast (2026-10-06 tối; ✅ nghiệm thu máy thật cùng tối)
+
+✅ **Realme 360 dp**: bấm ✓ thiếu danh mục khi 16 phím số hiện → viên đỏ "!" *"Vui lòng chọn danh mục"* nổi **trên** bàn
+phím số, không che *000 · 0 · ⌫* · vuốt ngang → tắt sau 0,5 s · trung tâm thông báo vuốt xoá → viên thùng rác *"Đã xoá thông
+báo · Hoàn tác"*, bấm Hoàn tác thẻ trở lại. ⚠️ Lần bấm đầu **hụt** vì toast sống 3 s mà lệnh adb chụp-kéo-bấm mất hơn thế —
+thông báo cũ *"Đồng bộ chưa thành công"* bị xoá thật (vô hại). Đo bằng adb thì chạm Hoàn tác trong **cùng** lệnh `adb shell`.
 
 Người dùng chọn E4 của lượt UX 2026-09-19 và duyệt thiết kế trong chat (bounded, không spec). Đếm bằng máy: **88**
 `SnackBar` ở **31** tệp (con số 176 của kế hoạch UX đếm cả lời gọi `showSnackBar(`), **một** có `action` (*Hoàn tác* ở

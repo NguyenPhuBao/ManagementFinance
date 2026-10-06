@@ -3232,7 +3232,7 @@ Mô hình không dọn được ghi chú ở câu duy nhất đo; lớp kiểm g
 tiêu đề, dưới số tiền là *"Chạm để sửa số tiền"* — việc còn lại là soát thẻ form, không gõ số (người dùng chốt; mục 6
 `BIEN_DONG_SO_DU_FEATURE.md`). Câu không đọc ra số tiền thì bàn phím giữ nguyên.
 
-✅ **"cuối tháng" thôi gọi AI (2026-10-06, người dùng chọn; chưa đo máy thật):** *cuối tháng · cuối tháng này · cuối
+✅ **"cuối tháng" thôi gọi AI (2026-10-06, người dùng chọn; ✅ đo máy thật cùng tối — *"cuoi thang dong tien nha 3tr"* điền 3.000.000 đ · Nhà cửa · ngày hôm nay sau 1,2 s, dòng nguồn *"Đọc bằng luật"*, không một dòng `[SLM]`):** *cuối tháng · cuối tháng này · cuối
 tháng sau / tới* trơn **không** còn là câu nhắc ngày (`cauNhacNgay` gỡ cụm ấy — `_mauCuoiThangTron`), nên ô ngày không
 thiếu và câu điền ngay, ngày giữ hôm nay. Lý do: ngày ấy là hôm nay hoặc tương lai, mà `_ngayAiHopLe` bỏ hôm nay — câu
 11 ở trên tốn 14 s không thêm gì. *cuối tháng rồi / trước / qua* và *cuối tháng 9* vẫn là nhắc (AI lấp hoặc luật đọc).
@@ -3768,14 +3768,14 @@ có *"kém"* trần — bỏ dấu trùng *"kèm"*. Đo Realme (debug `53d08cb6�
 hơn 6.831.000 đ"* → lớp chắn sẵn có chặn → mẫu câu) · F3 ✅ câu Gemma *"chi ít hơn tháng trước, chênh lệch chi: 6.831.000 đ"*.
 Bộ 18 câu sau bản này: **16 ✅ · 1 ◐ (B8) · 1 không chấm (B15)**.
 
-✅ **B8 — câu xin N dòng (2026-10-06, chưa đo máy thật)**: *"3 khoản thu mới nhất"* in 4 khoản vì `truy_van_giao_dich`
+✅ **B8 — câu xin N dòng (2026-10-06; ✅ đo máy thật cùng tối — tool trả đúng 3 hàng khớp đáp án tính từ CSDL máy; ◐ câu không được định tuyến (mô hình p=0,63 < 0,76) nên đi phiên sáu tool, **58 s**, và mẫu câu dài vì tiêu đề khoản là nguyên văn tin ngân hàng — chưa sửa)**: *"3 khoản thu mới nhất"* in 4 khoản vì `truy_van_giao_dich`
 luôn cắt ở trần chung `kToiDaMucMoiGoi` mà không đọc N của câu. Nay `soDongYeuCau` (`chinh_tham_so.dart`, cạnh
 `cauHoiLietKe`) đọc số đứng ngay trước *khoản / giao dịch* — chữ số hoặc *một … năm*; số ngay sau *tháng · ngày · tuần ·
 quý · năm* là mốc thời gian, không phải số dòng — và tool cắt hàng ở `min(N, trần)` khi không gộp / không chọn. Chỉ cắt
 danh sách: `Số giao dịch` vẫn đếm trọn tập. Áp cho cả đường nhanh lẫn đường cũ (cùng một tool). Ca canh ở
 `chinh_tham_so_test` và `cong_cu_truy_van_test` (bản sai bỏ nối `toiDa` → ca đỏ).
 
-✅ **C4 — *"dưới / trên X"* là mốc LOẠI TRỪ (2026-10-06, chưa đo máy thật)**: *"tuần này có khoản chi nào dưới 100 nghìn"*
+✅ **C4 — *"dưới / trên X"* là mốc LOẠI TRỪ (2026-10-06; ✅ đo máy thật cùng tối — tuần này chỉ có Netflix đúng 100.000 đ; *"tuan nay co khoan chi nao duoi 100 nghin khong"* → *"Tuần này, khoản chi, dưới 100.000 đ — không có giao dịch nào khớp."*, thẻ *Dưới 100.000 đ*, đường nhanh 0,4 s)**: *"tuần này có khoản chi nào dưới 100 nghìn"*
 từng kể cả khoản đúng 100.000 đ vì `so_tien_den` đi vào `KhoangTien.chua`, phép so **bao gồm** của Sổ giao dịch. Người
 dùng chọn sửa ở **cách đọc câu**, không đụng `KhoangTien`: `_nguongTrongCau` báo thêm mốc nào là mốc ngắt (*trên · hơn ·
 lớn hơn* · *dưới · nhỏ hơn · thấp hơn · ít hơn*; còn *từ · trở lên · ít nhất · tối thiểu* và *không quá · đến · tới · tối
@@ -3788,7 +3788,7 @@ chiều *"trên"*: *"trên 30 nghìn"* thôi gồm khoản đúng 30.000 đ — 
 canh ở `chinh_tham_so_test`, `cong_cu_truy_van_test`, `tim_giao_dich_test` (hai bản sai — bỏ phép loại trừ, bỏ luật cụm
 dài nhất — làm 4 ca đỏ).
 
-✅ **Mẫu câu mục tiêu thôi in thừa *"Đang theo đuổi / Đã hoàn thành"* (2026-10-06, chưa đo máy thật)**: B1, B2, F14 của
+✅ **Mẫu câu mục tiêu thôi in thừa *"Đang theo đuổi / Đã hoàn thành"* (2026-10-06; ✅ đo máy thật cùng tối — B1 *"MuaXe đúng kế hoạch: Còn thiếu 899.000 đ, Còn 569 ngày, Theo nhịp hiện tại cần thêm 26 ngày."* 14,7 s; F14 đúng một câu *"MuaDT không bật trích tự động."* 10,7 s)**: B1, B2, F14 của
 cổng F lần 3 đúng nhưng kết bằng *"…; Đang theo đuổi: 2; Đã hoàn thành: 0."* — số của các mục tiêu **khác**. `hangMucTieu`
 nay chỉ đếm cả nhóm khi câu hỏi nói về cả nhóm (`ten == null && nhomSo == null`); câu nêu tên hay hỏi một số đích thì
 `tongHop` không có hai số ấy, nên cả JSON gửi mô hình lẫn mẫu câu đều gọn. Mẫu câu sau sửa: *"MuaXe đúng kế hoạch: Còn
