@@ -5,6 +5,10 @@
 /// tiền → hai thẻ Tổng thu / Tổng chi → một biểu đồ) bằng thanh xám, để mắt
 /// biết sắp có gì và trang không "nhảy" từ trống sang đầy.
 ///
+/// Hình dạng chép Stitch `6408b0bd4da845d59092c1760c7725e8` *"Phân tích - Đang tải (khung chờ)"*,
+/// hai chỗ lệch có chủ ý: bo góc 16 như thẻ thật (Stitch 8) và **không** lấp lánh (Stitch
+/// có — người dùng chọn đứng yên, 2026-10-06).
+///
 /// Ba chốt:
 /// - **Không chữ, không số** — một con số giả trên màn tải là một con số người
 ///   dùng có thể đọc nhầm là thật.
@@ -91,25 +95,64 @@ class _Thanh extends StatelessWidget {
       );
 }
 
+/// Tiêu đề thẻ: thanh bên trái, chấm giữ chỗ biểu tượng bên phải (Stitch).
+class _HangTieuDe extends StatelessWidget {
+  const _HangTieuDe({required this.tieuDe, required this.cham});
+  final Widget tieuDe;
+  final Widget cham;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(child: tieuDe),
+          const SizedBox(width: 12),
+          cham,
+        ],
+      );
+}
+
+class _Cham extends StatelessWidget {
+  const _Cham({this.rong = 16, this.cao = 16});
+  final double rong;
+  final double cao;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: rong,
+        height: cao,
+        decoration: BoxDecoration(
+          color: AppColors.outlineVariant,
+          borderRadius: BorderRadius.circular(cao / 2),
+        ),
+      );
+}
+
 class _TheDongTien extends StatelessWidget {
   const _TheDongTien();
+
+  /// Bề rộng (phần của nửa thẻ) nhãn trái · số phải từng hàng — dài ngắn khác
+  /// nhau như Stitch `6408b0bd…` (1/4 · 1/3 · 1/5 và 1/3 · 2/5 · 1/4 của thẻ).
+  static const _hang = [(0.5, 0.67), (0.67, 0.8), (0.4, 0.5)];
 
   @override
   Widget build(BuildContext context) => _The(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _Thanh(tiLe: 0.4, cao: 16),
-            for (var i = 0; i < 3; i++) ...[
+            const _HangTieuDe(
+              tieuDe: _Thanh(tiLe: 0.45, cao: 18),
+              cham: _Cham(),
+            ),
+            for (final (trai, phai) in _hang) ...[
               const SizedBox(height: 16),
-              const Row(
+              Row(
                 children: [
-                  Expanded(child: _Thanh(tiLe: 0.6)),
-                  SizedBox(width: 24),
+                  Expanded(child: _Thanh(tiLe: trai, cao: 14)),
+                  const SizedBox(width: 24),
                   Expanded(
                     child: Align(
                       alignment: Alignment.centerRight,
-                      child: _Thanh(tiLe: 0.7),
+                      child: _Thanh(tiLe: phai, cao: 16),
                     ),
                   ),
                 ],
@@ -128,9 +171,12 @@ class _TheTong extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Thanh(tiLe: 0.5, cao: 10),
-            SizedBox(height: 12),
-            _Thanh(tiLe: 0.9, cao: 20),
+            _HangTieuDe(
+              tieuDe: _Thanh(tiLe: 0.5, cao: 12),
+              cham: _Cham(rong: 14, cao: 14),
+            ),
+            SizedBox(height: 18),
+            _Thanh(tiLe: 0.8, cao: 24),
           ],
         ),
       );
@@ -144,25 +190,62 @@ class _TheBieuDo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _Thanh(tiLe: 0.45, cao: 16),
-            const SizedBox(height: 16),
+            const _HangTieuDe(
+              tieuDe: _Thanh(tiLe: 0.55, cao: 18),
+              cham: _Cham(rong: 32),
+            ),
+            const SizedBox(height: 14),
             Container(
               height: 160,
               decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
+                color: AppColors.outlineVariant,
                 borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+                child: CustomPaint(painter: _LuoiNetDut(), size: Size.infinite),
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                for (var i = 0; i < 6; i++) ...[
-                  if (i > 0) const SizedBox(width: 12),
-                  const Expanded(child: _Thanh(cao: 8)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (var i = 0; i < 6; i++)
+                    Container(
+                      width: 20,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: AppColors.outlineVariant,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
                 ],
-              ],
+              ),
             ),
           ],
         ),
       );
+}
+
+/// Ba vạch kẻ ngang nét đứt mờ trong vùng biểu đồ — gợi ý lưới, không số.
+class _LuoiNetDut extends CustomPainter {
+  const _LuoiNetDut();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final but = Paint()
+      ..color = const Color(0xFFB8B8B0).withValues(alpha: 0.3)
+      ..strokeWidth = 1;
+    for (var i = 0; i < 3; i++) {
+      final y = size.height * i / 2;
+      for (var x = 0.0; x < size.width; x += 7) {
+        canvas.drawLine(Offset(x, y), Offset((x + 4).clamp(0, size.width), y), but);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LuoiNetDut oldDelegate) => false;
 }

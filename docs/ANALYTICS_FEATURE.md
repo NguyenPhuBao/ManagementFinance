@@ -2244,7 +2244,7 @@ Roboto thay vì Ahem. ⚠️ Tiêu đề trang nay là hằng `_TieuDeTrang.chu`
 
 ### 3.38 Khung chờ lúc tải — E1 của lượt UX (2026-10-06)
 
-🚧 **Mã xong, chưa nghiệm thu máy thật; màn Stitch chưa xác nhận.** Lúc `AnalyticsInitial` / `AnalyticsLoading`, thân trang
+🚧 **Mã xong, chưa nghiệm thu máy thật.** Stitch `6408b0bd4da845d59092c1760c7725e8` *"Phân tích - Đang tải (khung chờ)"* — người dùng xác nhận có trên Stitch (2026-10-06). Lúc `AnalyticsInitial` / `AnalyticsLoading`, thân trang
 từng là một `CircularProgressIndicator` giữa khoảng trống — thứ người dùng thấy mỗi lần mở tab. Nay header thật vẫn hiện, dưới
 nó là **`KhungChoPhanTich`** (`presentation/widgets/khung_cho_phan_tich.dart`): hình dạng ba khối đầu của thứ tự **mặc định**
 — thẻ Dòng tiền (tiêu đề + ba hàng), hai thẻ Tổng thu / Tổng chi, một thẻ biểu đồ — bằng thanh `AppColors.outlineVariant`
@@ -2255,9 +2255,11 @@ không hoạt ảnh lặp (trang tải trong vài trăm mili giây; hoạt ảnh
 thái tải treo); và **không** theo thứ tự cụm riêng của người dùng (mục 3.36) — lúc tải chưa đọc xong thứ tự ấy. Trình đọc màn
 hình nghe một nhãn *"Đang tải số liệu"* (`ExcludeSemantics` cho từng thanh).
 
-Stitch: lượt gọi `generate_screen_from_text` *"Phân tích - Đang tải (khung chờ)"* trả **timeout** — không gọi lại; chưa thấy
-màn trong `list_screens` (danh sách cũng chưa có màn `7f05fccd…` của mục 3.37 dù lượt ấy trả thành công — danh sách đang
-trễ). Chờ người dùng xác nhận trên Stitch. Ca canh: `khung_cho_phan_tich_test.dart` (360 / 411 dp không tràn, không chữ, đứng
+Stitch: lượt gọi trả **timeout** (không gọi lại) mà màn vẫn được tạo, cùng màn `7f05fccd…` của mục 3.37 — cả hai chỉ hiện
+trong `list_screens` sau khi người dùng xác nhận. Chép theo màn: chấm giữ chỗ biểu tượng ở góc tiêu đề thẻ, ba hàng Dòng
+tiền dài ngắn khác nhau, vạch kẻ ngang nét đứt mờ trong vùng biểu đồ, sáu thanh nhãn trục cố định. **Hai chỗ lệch có chủ ý**:
+bo góc **16** như thẻ thật của trang (Stitch 8), và **không lấp lánh** (Stitch có hoạt ảnh `shimmer` 1,8 s — người dùng chọn
+đứng yên). Ca canh: `khung_cho_phan_tich_test.dart` (360 / 411 dp không tràn, không chữ, đứng
 yên, nhãn trình đọc màn hình) và ca *E1* ở `analytics_page_test.dart` (đang tải → khung chờ, không vòng xoay; có số liệu → khung
 chờ biến mất).
 
