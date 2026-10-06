@@ -28,7 +28,10 @@ import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/domain/tong_tai_san.dart';
 import 'package:flowmoney/features/analytics/domain/uoc_tinh_chi_tuy_y.dart';
+import 'package:flowmoney/features/analytics/data/thu_tu_khoi_nguon.dart';
+import 'package:flowmoney/features/analytics/domain/thu_tu_khoi.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
+import 'package:flowmoney/features/analytics/presentation/bloc/thu_tu_khoi_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
@@ -71,6 +74,26 @@ class _RepoGia implements AnalyticsRepository {
   void phat(ThongKeKy tk) => _c!.add(tk);
 
   Future<void> dong() async => _c?.close();
+}
+
+/// Nguồn thứ tự khối giả (dự án C việc ba). Thao tác thì xoá đề xuất — như
+/// nguồn thật: luật đề xuất không đề xuất cụm vừa được trả lời.
+class _NguonThuTuGia implements ThuTuKhoiNguon {
+  CumKhoi? deXuat;
+  final phanHoi = <PhanHoiThuTu>[];
+  @override
+  Future<KetQuaThuTu> doc(int idaccount, DateTime now) async =>
+      KetQuaThuTu(thuTu: thuTuTu(phanHoi), deXuat: deXuat);
+  @override
+  Future<void> ghiPhanHoi(
+      int idaccount, String ketQua, CumKhoi? cum, DateTime luc) async {
+    phanHoi.add(PhanHoiThuTu(ketQua: ketQua, cum: cum, luc: luc));
+    deXuat = null;
+  }
+
+  @override
+  Future<void> congGiay(
+      int idaccount, DateTime ngay, Map<CumKhoi, int> giay) async {}
 }
 
 DongDanhMuc _dm(
@@ -2289,6 +2312,161 @@ void main() {
       expect(find.textContaining('Tổng tài sản'), findsNothing,
           reason: 'Không điểm nào thì không có thang đo — bỏ khối, đừng vẽ '
               'một khung rỗng.');
+    });
+  });
+
+  // ─── Dự án C việc ba — thứ tự khối theo thói quen xem ───────────────────
+
+  double dinhCum(WidgetTester tester, String ma) =>
+      tester.getTopLeft(find.byKey(ValueKey('cum-$ma'))).dy;
+
+  testWidgets('⚠️ KHÔNG đăng ký ThuTuKhoiCubit → thứ tự mặc định, không thẻ',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 6000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await moTrang(tester);
+    await phat(tester, _tk());
+    expect(dinhCum(tester, 'tong'), lessThan(dinhCum(tester, 'xu_huong')));
+    expect(dinhCum(tester, 'xu_huong'),
+        lessThan(dinhCum(tester, 'chi_theo_ngay')));
+    expect(dinhCum(tester, 'chi_theo_ngay'),
+        lessThan(dinhCum(tester, 'co_cau')));
+    expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsNothing);
+    expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsNothing);
+  });
+
+  group('thứ tự khối (đăng ký cubit)', () {
+    late _NguonThuTuGia nguon;
+    setUp(() async {
+      nguon = _NguonThuTuGia();
+      if (sl.isRegistered<ThuTuKhoiCubit>()) {
+        await sl.unregister<ThuTuKhoiCubit>();
+      }
+      sl.registerFactory<ThuTuKhoiCubit>(
+          () => ThuTuKhoiCubit(nguon: nguon, clock: () => now));
+    });
+    tearDown(() async {
+      if (sl.isRegistered<ThuTuKhoiCubit>()) {
+        await sl.unregister<ThuTuKhoiCubit>();
+      }
+    });
+
+    Future<void> moCao(WidgetTester tester, {double rong = 411}) async {
+      tester.view.physicalSize = Size(rong, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, _tk());
+      await tester.pump();
+    }
+
+    testWidgets(
+        'chưa phản hồi + không đề xuất → y hệt mặc định, không dòng Về mặc định',
+        (tester) async {
+      await moCao(tester);
+      expect(dinhCum(tester, 'tong'), lessThan(dinhCum(tester, 'co_cau')));
+      expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsNothing);
+      expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsNothing);
+    });
+
+    testWidgets(
+        'thẻ hiện → Đưa lên: Cơ cấu lên đầu, thẻ tắt, có dòng Về mặc định',
+        (tester) async {
+      nguon.deXuat = CumKhoi.coCau;
+      await moCao(tester);
+      expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('thu-tu-dua-len')));
+      await tester.pump();
+      await tester.pump();
+      expect(dinhCum(tester, 'co_cau'), lessThan(dinhCum(tester, 'tong')),
+          reason: 'Đưa lên là cụm ấy lên ĐẦU, trên cả thẻ tổng.');
+      expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsNothing);
+      expect(nguon.phanHoi.single.ketQua, kThuTuDuaLen);
+      expect(tester.takeException(), isNull);
+
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')));
+      await tester.tap(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')));
+      await tester.pump();
+      await tester.pump();
+      expect(dinhCum(tester, 'tong'), lessThan(dinhCum(tester, 'co_cau')));
+      expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsNothing);
+    });
+
+    testWidgets('Bỏ qua: thẻ tắt, thứ tự giữ nguyên', (tester) async {
+      nguon.deXuat = CumKhoi.coCau;
+      await moCao(tester);
+      await tester.tap(find.byKey(const ValueKey('thu-tu-bo-qua')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsNothing);
+      expect(dinhCum(tester, 'tong'), lessThan(dinhCum(tester, 'co_cau')));
+      expect(nguon.phanHoi.single.ketQua, kThuTuBoQua);
+      expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsNothing,
+          reason: 'Bỏ qua không đổi thứ tự, nên không có gì để về mặc định.');
+    });
+
+    testWidgets('thẻ cách khối đầu tiên 12 (Stitch e081fc95… gap-3)',
+        (tester) async {
+      nguon.deXuat = CumKhoi.coCau;
+      await moCao(tester);
+      final the =
+          tester.getRect(find.byKey(const ValueKey('the-de-xuat-thu-tu')));
+      // `_tk()` mặc định không có dòng tiền → cụm đầu là thẻ tổng.
+      expect(find.byKey(const ValueKey('cum-dong_tien')), findsNothing);
+      expect(dinhCum(tester, 'tong') - the.bottom, 12);
+    });
+
+    testWidgets('kỳ rỗng → không thẻ dù có đề xuất', (tester) async {
+      nguon.deXuat = CumKhoi.coCau;
+      tester.view.physicalSize = const Size(411, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, _tk(thu: 0, chi: 0));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('the-de-xuat-thu-tu')), findsNothing);
+    });
+
+    testWidgets('các cụm liền kề cách nhau 24, y như danh sách cũ',
+        (tester) async {
+      await moCao(tester);
+      final cum = [
+        for (final c in kThuTuCumMacDinh)
+          if (find.byKey(ValueKey('cum-${c.ma}')).evaluate().isNotEmpty) c.ma,
+      ];
+      expect(cum.length, greaterThanOrEqualTo(4));
+      for (var i = 1; i < cum.length; i++) {
+        final truoc = tester.getRect(find.byKey(ValueKey('cum-${cum[i - 1]}')));
+        final sau = tester.getRect(find.byKey(ValueKey('cum-${cum[i]}')));
+        expect(sau.top - truoc.bottom, 24,
+            reason: '${cum[i - 1]} → ${cum[i]}');
+      }
+      // Bên TRONG cụm: hai khối liền kề vẫn cách 24 như danh sách cũ.
+      for (final ma in cum) {
+        final con =
+            tester.widget<Column>(find.byKey(ValueKey('cum-$ma'))).children;
+        for (var i = 1; i < con.length; i += 2) {
+          final kc = con[i];
+          expect(kc is SizedBox && kc.height == 24 && kc.child == null, isTrue,
+              reason: 'Cụm $ma: phần tử $i phải là khoảng 24, gặp $kc.');
+        }
+        expect(con.length.isOdd, isTrue,
+            reason: 'Cụm $ma phải là khối · khoảng · khối …');
+      }
+    });
+
+    testWidgets('360 dp: Xu hướng (cụm cao nhất) đưa lên đầu không tràn',
+        (tester) async {
+      nguon.phanHoi.add(PhanHoiThuTu(
+          ketQua: kThuTuDuaLen,
+          cum: CumKhoi.xuHuong,
+          luc: DateTime(2026, 9, 1)));
+      await moCao(tester, rong: 360);
+      expect(dinhCum(tester, 'xu_huong'), lessThan(dinhCum(tester, 'tong')));
+      expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

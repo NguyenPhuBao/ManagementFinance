@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:intl/intl.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
@@ -27,10 +28,14 @@ import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thac_nuoc.dart';
 import '../../domain/thong_ke_thang.dart';
+import '../../domain/thu_tu_khoi.dart';
 import '../../domain/tong_tai_san.dart';
 import '../../domain/uoc_tinh_chi_tuy_y.dart';
 import '../bloc/analytics_cubit.dart';
+import '../bloc/thu_tu_khoi_cubit.dart';
 import '../widgets/chon_pham_vi_sheet.dart';
+import '../widgets/the_de_xuat_thu_tu.dart';
+import '../widgets/theo_doi_xem.dart';
 
 /// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
 /// *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14).
@@ -55,10 +60,20 @@ class AnalyticsPage extends StatelessWidget {
     context.watch<AuthBloc>();
     final idaccount = currentAccountIdOrNull(context);
 
+    // Thứ tự khối theo thói quen xem (dự án C việc ba) là **phần phụ**: không
+    // đăng ký cubit thì trang y hệt trước việc ấy — không thẻ, không đo, thứ
+    // tự mặc định (kế hoạch, làm rõ 2).
+    final coThuTu = sl.isRegistered<ThuTuKhoiCubit>();
+    final noiDung = _NoiDung(coThuTu: coThuTu);
     return BlocProvider<AnalyticsCubit>(
       key: ValueKey(idaccount),
       create: (_) => sl<AnalyticsCubit>()..xem(idaccount),
-      child: const _NoiDung(),
+      child: coThuTu
+          ? BlocProvider<ThuTuKhoiCubit>(
+              create: (_) => sl<ThuTuKhoiCubit>()..nap(idaccount),
+              child: noiDung,
+            )
+          : noiDung,
     );
   }
 }
@@ -81,7 +96,10 @@ Color _mauCua(DongDanhMuc? d) {
 const int _soDongToiDa = 5;
 
 class _NoiDung extends StatelessWidget {
-  const _NoiDung();
+  const _NoiDung({required this.coThuTu});
+
+  /// `ThuTuKhoiCubit` có trong cây không (kế hoạch, làm rõ 2).
+  final bool coThuTu;
 
   @override
   Widget build(BuildContext context) {
@@ -90,19 +108,23 @@ class _NoiDung extends StatelessWidget {
       body: SafeArea(
         child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
           builder: (context, state) {
-            return SingleChildScrollView(
-              // Đệm đáy 96 chứ không 8: FAB của MainShell đè lên dòng cuối
-              // (thấy trên máy thật — chú giải "Khác" nằm dưới nút cộng).
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Header(state: state),
-                  const SizedBox(height: 24),
-                  ..._than(context, state),
-                  const SizedBox(height: 32),
-                ],
-              ),
+            if (!coThuTu) {
+              return _cuon(
+                  context, state, const ThuTuKhoiState(), null, null, null);
+            }
+            return BlocBuilder<ThuTuKhoiCubit, ThuTuKhoiState>(
+              builder: (context, tt) {
+                final cubit = context.read<ThuTuKhoiCubit>();
+                // Chỉ đo khi trang có thân thật — kỳ rỗng không có cụm nào để
+                // xem, đo nó là đếm giây cho trạng thái "chưa có gì".
+                return TheoDoiXem(
+                  dangDo: state is AnalyticsLoaded && !state.thongKe.rong,
+                  onHienLai: cubit.napLai,
+                  onGhi: cubit.ghiGiay,
+                  builder: (context, scroll, khoaCua) =>
+                      _cuon(context, state, tt, cubit, scroll, khoaCua),
+                );
+              },
             );
           },
         ),
@@ -110,7 +132,55 @@ class _NoiDung extends StatelessWidget {
     );
   }
 
-  List<Widget> _than(BuildContext context, AnalyticsState state) {
+  Widget _cuon(
+    BuildContext context,
+    AnalyticsState state,
+    ThuTuKhoiState tt,
+    ThuTuKhoiCubit? cubit,
+    ScrollController? scroll,
+    GlobalKey Function(CumKhoi)? khoaCua,
+  ) {
+    final coThan = state is AnalyticsLoaded && !state.thongKe.rong;
+    final deXuat = tt.deXuat;
+    return SingleChildScrollView(
+      controller: scroll,
+      // Đệm đáy 96 chứ không 8: FAB của MainShell đè lên dòng cuối
+      // (thấy trên máy thật — chú giải "Khác" nằm dưới nút cộng).
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Header(state: state),
+          const SizedBox(height: 24),
+          if (coThan && cubit != null && deXuat != null) ...[
+            TheDeXuatThuTu(
+              cum: deXuat,
+              onDuaLen: () => cubit.duaLen(deXuat),
+              onBoQua: () => cubit.boQua(deXuat),
+            ),
+            const SizedBox(height: 12), // Stitch e081fc95… `gap-3`
+          ],
+          ..._than(context, state, tt.thuTu, khoaCua),
+          // Chỉ khi thứ tự KHÁC mặc định — không thì "Về mặc định" là một
+          // lối ra dẫn về đúng chỗ người dùng đang đứng.
+          if (coThan &&
+              cubit != null &&
+              !listEquals(tt.thuTu, kThuTuCumMacDinh)) ...[
+            const SizedBox(height: 24),
+            DongVeMacDinh(onVeMacDinh: cubit.veMacDinh),
+          ],
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _than(
+    BuildContext context,
+    AnalyticsState state,
+    List<CumKhoi> thuTu,
+    GlobalKey Function(CumKhoi)? khoaCua,
+  ) {
     switch (state) {
       case AnalyticsLoaded(
           :final thongKe,
@@ -133,99 +203,11 @@ class _NoiDung extends StatelessWidget {
             ],
           ];
         }
-        // Thứ tự khối chép đúng trang Xuất báo cáo (P2, 2026-09-15) — hai
-        // trang cùng dữ liệu thì phải kể cùng một câu chuyện, theo cùng một
-        // trình tự. Thứ tự câu hỏi vẫn đọc ra được: tiền ở đâu → bao nhiêu →
-        // xu hướng ra sao → tiêu thế nào → đi vào đâu → từ ví nào → khoản nào.
-        return [
-          if (thongKe.dongTien != null) ...[
-            _KhoiDongTien(dt: thongKe.dongTien!),
-            const SizedBox(height: 24),
-            // Thác nước đứng ngay sau khối dòng tiền: nó kể **chi tiết** đúng
-            // hai con số mà khối trên vừa nêu — đầu kỳ và cuối kỳ — nên tách
-            // hai khối ra xa nhau là bắt người đọc nhớ số rồi cuộn đi tìm.
-            _KhoiThacNuoc(tk: thongKe),
-            const SizedBox(height: 24),
-          ],
-          _KhoiTong(tk: thongKe, mocSoSanh: mocSoSanh),
-          const SizedBox(height: 24),
-          // Ngay sau thẻ tổng: "còn tiêu được 30 ngày tới" đứng cạnh "số dư
-          // còn lại" của kỳ — hiện tại rồi tới tương lai, mắt đọc liền mạch.
-          // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
-          if (thongKe.duBao != null) ...[
-            _KhoiDuBao(
-              duBao: thongKe.duBao,
-              uocTinh: thongKe.uocTinhChiTuyY,
-            ),
-            const SizedBox(height: 24),
-          ],
-          _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
-          const SizedBox(height: 24),
-          // Đứng ngay sau khối Xu hướng: cùng dạng đường, cùng sáu kỳ, và nó
-          // trả lời tiếp đúng câu hỏi khối trên vừa đặt — "thu về bấy nhiêu thì
-          // thực sự còn lại bao nhiêu".
-          _KhoiDongTienTuDo(tk: thongKe),
-          const SizedBox(height: 24),
-          // Đường thứ BA của bộ sáu kỳ, đứng ngay sau hai đường kia: cùng dạng
-          // biểu đồ, cùng trục hoành, cùng số kỳ — mắt học trục một lần rồi đọc
-          // được cả ba. Nó cũng khép lại mạch mà hai khối trên mở ra: "thu về
-          // bấy nhiêu → thực còn bấy nhiêu → dồn lại thì tài sản đi về đâu".
-          //
-          // Chốt lớp thứ nhất: chuỗi rỗng thì không dựng. Lớp thứ hai nằm
-          // trong chính widget; bản sai phải phá cả hai mới làm test đỏ.
-          if (thongKe.taiSan.isNotEmpty) ...[
-            _KhoiTongTaiSan(tk: thongKe),
-            const SizedBox(height: 24),
-          ],
-          _KhoiSoLieuNhanh(tk: thongKe),
-          // Lịch chi tiêu đứng ngay sau Số liệu nhanh: nó kể **chi tiết** đúng
-          // con số mà khối trên vừa nêu — "ngày chi nhiều nhất" — và hai khối
-          // đọc chung một phép gom theo ngày.
-          //
-          // ⚠️ Chốt lớp thứ nhất: chỉ hiện khi đơn vị là **Tháng**. Lớp thứ hai
-          // nằm trong chính widget; bản sai phải phá cả hai mới làm test đỏ.
-          if (thongKe.ky.donVi == DonViKy.thang) ...[
-            const SizedBox(height: 24),
-            _KhoiLich(tk: thongKe),
-          ],
-          const SizedBox(height: 24),
-          _KhoiDonut(tk: thongKe, phanLoaiDangXem: phanLoaiDangXem),
-          const SizedBox(height: 24),
-          _DanhSachDanhMuc(tk: thongKe, phanLoai: phanLoaiDangXem),
-          if (thongKe.theoVi.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _KhoiTheoVi(ds: thongKe.theoVi),
-          ],
-          if (thongKe.topChi.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _KhoiTopChi(ds: thongKe.topChi),
-          ],
-          // Hai biểu đồ vay/nợ đứng CUỐI: phần lớn người dùng không ghi khoản
-          // vay/nợ nào, và khi ấy chúng không hiện — đặt ở giữa trang thì mỗi
-          // lần cuộn qua là một khoảng trống không giải thích được.
-          if (coVayNo(thongKe.chuoiVayNo, chieuRa: true)) ...[
-            const SizedBox(height: 24),
-            _KhoiVayNo(
-              tieuDe: 'Cho vay & Thu nợ',
-              ds: thongKe.chuoiVayNo,
-              sau: _CotVayNo.choVay,
-              truoc: _CotVayNo.thuNo,
-            ),
-          ],
-          if (coVayNo(thongKe.chuoiVayNo, chieuRa: false)) ...[
-            const SizedBox(height: 24),
-            _KhoiVayNo(
-              tieuDe: 'Đi vay & Trả nợ',
-              ds: thongKe.chuoiVayNo,
-              sau: _CotVayNo.diVay,
-              truoc: _CotVayNo.traNo,
-            ),
-          ],
-          if (thongKe.chuoiVayNo.any((d) => d.khacRa > 0 || d.khacVao > 0)) ...[
-            const SizedBox(height: 24),
-            _KhoiVayNoKhac(ds: thongKe.chuoiVayNo),
-          ],
-        ];
+        return _xepCum(
+          _cacCum(thongKe, phanLoaiDangXem, danhMucXuHuong, mocSoSanh),
+          thuTu,
+          khoaCua,
+        );
       case AnalyticsError(:final message):
         return [
           Padding(
@@ -242,6 +224,122 @@ class _NoiDung extends StatelessWidget {
           ),
         ];
     }
+  }
+
+  /// Mỗi cụm → các khối của nó, đúng widget và đúng chốt ẩn/hiện như trước
+  /// (spec 2.1). Cụm không có khối nào thì **vắng** khỏi bản đồ.
+  ///
+  /// Thứ tự **mặc định** (`kThuTuCumMacDinh`) chép đúng trang Xuất báo cáo
+  /// (P2, 2026-09-15) — hai trang cùng dữ liệu thì phải kể cùng một câu
+  /// chuyện, theo cùng một trình tự: tiền ở đâu → bao nhiêu → xu hướng ra sao
+  /// → tiêu thế nào → đi vào đâu → từ ví nào → khoản nào. Người dùng đổi được
+  /// thứ tự **CỤM** qua thẻ đề xuất (dự án C việc ba, mục 3.36
+  /// `ANALYTICS_FEATURE.md`); khối bên trong một cụm thì không đổi chỗ, vì
+  /// chúng kể tiếp nhau (chú thích từng cụm).
+  Map<CumKhoi, List<Widget>> _cacCum(
+    ThongKeKy thongKe,
+    String phanLoaiDangXem,
+    Set<String> danhMucXuHuong,
+    MocSoSanh mocSoSanh,
+  ) {
+    List<Widget> giua(List<Widget> ds) => [
+          for (var i = 0; i < ds.length; i++) ...[
+            if (i > 0) const SizedBox(height: 24),
+            ds[i],
+          ],
+        ];
+    return {
+      if (thongKe.dongTien != null)
+        // Thác nước đứng ngay sau khối dòng tiền: nó kể **chi tiết** đúng
+        // hai con số mà khối trên vừa nêu — đầu kỳ và cuối kỳ — nên tách
+        // hai khối ra xa nhau là bắt người đọc nhớ số rồi cuộn đi tìm.
+        CumKhoi.dongTien: giua([
+          _KhoiDongTien(dt: thongKe.dongTien!),
+          _KhoiThacNuoc(tk: thongKe),
+        ]),
+      CumKhoi.tong: [_KhoiTong(tk: thongKe, mocSoSanh: mocSoSanh)],
+      // Mặc định ngay sau thẻ tổng: "còn tiêu được 30 ngày tới" đứng cạnh
+      // "số dư còn lại" của kỳ — hiện tại rồi tới tương lai.
+      // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
+      if (thongKe.duBao != null)
+        CumKhoi.duBao: [
+          _KhoiDuBao(duBao: thongKe.duBao, uocTinh: thongKe.uocTinhChiTuyY),
+        ],
+      // Ba đường cùng dạng biểu đồ, cùng sáu kỳ, cùng trục hoành — mắt học
+      // trục một lần rồi đọc được cả ba: "thu về bấy nhiêu → thực còn bấy
+      // nhiêu → dồn lại thì tài sản đi về đâu".
+      CumKhoi.xuHuong: giua([
+        _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
+        _KhoiDongTienTuDo(tk: thongKe),
+        // Chốt lớp thứ nhất: chuỗi rỗng thì không dựng. Lớp thứ hai nằm
+        // trong chính widget; bản sai phải phá cả hai mới làm test đỏ.
+        if (thongKe.taiSan.isNotEmpty) _KhoiTongTaiSan(tk: thongKe),
+      ]),
+      // Lịch chi tiêu đứng ngay sau Số liệu nhanh: nó kể **chi tiết** đúng
+      // con số mà khối trên vừa nêu — "ngày chi nhiều nhất" — và hai khối
+      // đọc chung một phép gom theo ngày.
+      CumKhoi.chiTheoNgay: giua([
+        _KhoiSoLieuNhanh(tk: thongKe),
+        // ⚠️ Chốt lớp thứ nhất: chỉ hiện khi đơn vị là **Tháng**. Lớp thứ
+        // hai nằm trong chính widget; bản sai phải phá cả hai.
+        if (thongKe.ky.donVi == DonViKy.thang) _KhoiLich(tk: thongKe),
+      ]),
+      // Donut và danh sách danh mục đi theo cùng một chip phân loại.
+      CumKhoi.coCau: giua([
+        _KhoiDonut(tk: thongKe, phanLoaiDangXem: phanLoaiDangXem),
+        _DanhSachDanhMuc(tk: thongKe, phanLoai: phanLoaiDangXem),
+      ]),
+      if (thongKe.theoVi.isNotEmpty)
+        CumKhoi.theoVi: [_KhoiTheoVi(ds: thongKe.theoVi)],
+      if (thongKe.topChi.isNotEmpty)
+        CumKhoi.topChi: [_KhoiTopChi(ds: thongKe.topChi)],
+      // Hai biểu đồ vay/nợ đứng CUỐI mặc định: phần lớn người dùng không ghi
+      // khoản vay/nợ nào, và khi ấy chúng không hiện — đặt ở giữa trang thì
+      // mỗi lần cuộn qua là một khoảng trống không giải thích được.
+      CumKhoi.vayNo: giua([
+        if (coVayNo(thongKe.chuoiVayNo, chieuRa: true))
+          _KhoiVayNo(
+            tieuDe: 'Cho vay & Thu nợ',
+            ds: thongKe.chuoiVayNo,
+            sau: _CotVayNo.choVay,
+            truoc: _CotVayNo.thuNo,
+          ),
+        if (coVayNo(thongKe.chuoiVayNo, chieuRa: false))
+          _KhoiVayNo(
+            tieuDe: 'Đi vay & Trả nợ',
+            ds: thongKe.chuoiVayNo,
+            sau: _CotVayNo.diVay,
+            truoc: _CotVayNo.traNo,
+          ),
+        if (thongKe.chuoiVayNo.any((d) => d.khacRa > 0 || d.khacVao > 0))
+          _KhoiVayNoKhac(ds: thongKe.chuoiVayNo),
+      ]),
+    }..removeWhere((_, v) => v.isEmpty);
+  }
+
+  /// Xếp cụm theo [thuTu], cách nhau 24 như danh sách cũ. Khi đang đo, mỗi
+  /// cụm là `KeyedSubtree(GlobalKey)` — GlobalKey vừa để `TheoDoiXem` đo
+  /// khung, vừa giữ state khối (lịch, chip) khi cụm đổi chỗ — bọc một
+  /// `Column(ValueKey('cum-‹mã›'))` để test tìm cụm (kế hoạch, làm rõ 3).
+  List<Widget> _xepCum(
+    Map<CumKhoi, List<Widget>> cum,
+    List<CumKhoi> thuTu,
+    GlobalKey Function(CumKhoi)? khoaCua,
+  ) {
+    final ra = <Widget>[];
+    for (final c in thuTu) {
+      final ds = cum[c];
+      if (ds == null) continue;
+      if (ra.isNotEmpty) ra.add(const SizedBox(height: 24));
+      final cot = Column(
+        key: ValueKey('cum-${c.ma}'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: ds,
+      );
+      ra.add(khoaCua == null ? cot : KeyedSubtree(key: khoaCua(c), child: cot));
+    }
+    return ra;
   }
 }
 
