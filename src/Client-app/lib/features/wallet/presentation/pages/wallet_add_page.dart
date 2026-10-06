@@ -6,6 +6,7 @@ import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_type.dart';
+import '../../domain/wallet_status.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -63,7 +64,15 @@ class _WalletAddFormState extends State<_WalletAddForm> {
     const Color(0xFF00ACC1),
   ];
 
-  bool _isDefault = true;
+  /// G70 (2026-10-06): TẮT sẵn. Bản trước bật sẵn nên tạo một ví mới là âm
+  /// thầm cướp vai mặc định của ví cũ — ví chọn sẵn khi ghi giao dịch đổi theo
+  /// mà người dùng không gạt gì. Riêng tài khoản chưa có ví nào đang hoạt động
+  /// thì `_napViHienCo` bật lại: ví đầu tiên nên là ví mặc định.
+  bool _isDefault = false;
+
+  /// Người dùng đã tự gạt công tắc mặc định — lượt nạp ví về muộn không được
+  /// đè lựa chọn ấy.
+  bool _daGatMacDinh = false;
   bool _includeInTotal = true;
 
   /// G27 — mặc định TẮT: `false` chính là hành vi trước bản này.
@@ -83,7 +92,14 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   Future<void> _napViHienCo() async {
     try {
       final vi = await sl<WalletRepository>().getAll(widget.idaccount);
-      if (mounted) setState(() => _viHienCo = vi);
+      if (!mounted) return;
+      setState(() {
+        _viHienCo = vi;
+        if (!_daGatMacDinh &&
+            !vi.any((v) => !v.isDeleted && WalletStatus.laHoatDong(v.status))) {
+          _isDefault = true;
+        }
+      });
     } catch (_) {
       // Không nạp được thì vẫn cho dùng form: datasource là chốt chặn thật.
     }
@@ -429,7 +445,10 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             title: 'Đặt làm Ví mặc định',
             subtitle: 'Tự động chọn khi ghi chép giao dịch',
             value: _isDefault,
-            onChanged: (val) => setState(() => _isDefault = val),
+            onChanged: (val) => setState(() {
+              _isDefault = val;
+              _daGatMacDinh = true;
+            }),
           ),
           const Divider(height: 1, color: AppColors.borderSubtle, indent: 20, endIndent: 20),
           _buildSwitchTile(

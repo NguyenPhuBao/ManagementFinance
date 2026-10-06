@@ -227,6 +227,7 @@ void main() {
     void Function()? onNapViDaDung,
     Map<String, String>? dotAm,
     void Function(List<String> viAm)? onNapDotAm,
+    Set<String>? viDaXoa,
     // Mỗi bộ quét đếm id lại từ 0 — hai bộ cùng ghi vào một CSDL thì trùng khoá chính và hàng sau bị bỏ qua.
     String tienToId = 'id',
   }) {
@@ -252,6 +253,7 @@ void main() {
               onNapDotAm?.call(viAm);
               return dotAm;
             },
+      loadViDaXoa: viDaXoa == null ? null : (id) async => viDaXoa,
       syncStatus: syncStatus.stream,
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
@@ -1036,6 +1038,25 @@ void main() {
               budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-d'}, tienToId: 'lan3')
           .scan(accountId);
       expect(moi, 1, reason: 'âm lại là đợt mới (giao dịch mở đợt khác) — phải báo lại');
+    });
+
+    test('⭐ G71: xoá ví → hàng "ví âm" của nó bị GỠ, kể cả khi đó là ví duy nhất', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      // Ví đã xoá mềm: `walletDao.getAll` không trả nó nữa — danh sách ví RỖNG.
+      await dungScanner(budgets: const [], wallets: const [], viDaXoa: const {'vi1'}, tienToId: 'lan2')
+          .scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletNegative');
+      expect(h.dismissedAt, isNotNull,
+          reason: 'G71 (Realme 2026-10-06): thông báo của ví đã xoá treo trong trung tâm và trên khay');
+    });
+
+    test('G71: ví vắng mặt mà KHÔNG chắc đã xoá → giữ nguyên (không đoán)', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      await dungScanner(budgets: const [], wallets: const [], viDaXoa: const {'khac'}, tienToId: 'lan2')
+          .scan(accountId);
+      await dungScanner(budgets: const [], wallets: const [], tienToId: 'lan3').scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletNegative');
+      expect(h.dismissedAt, isNull);
     });
 
     test('không đặt ngưỡng thì ví còn ít tiền vẫn im', () async {

@@ -727,6 +727,38 @@ void main() {
     });
   });
 
+  group('G71 — hàng của ví ĐÃ XOÁ được gỡ', () {
+    AppNotification hang(String id, {String kind = 'walletNegative', String subjectType = 'wallet', String? vi, DateTime? daGo}) =>
+        AppNotification(
+          id: id,
+          idaccount: 7,
+          kind: kind,
+          dedupeKey: 'k$id',
+          title: 't',
+          body: 'b',
+          severity: 'warning',
+          subjectType: subjectType,
+          subjectId: vi,
+          createdAt: now,
+          dismissedAt: daGo,
+        );
+
+    test('⭐ cả "ví âm" lẫn "sắp cạn" của ví đã xoá được chọn để gỡ', () {
+      expect(
+        hangCuaViDaXoa([hang('a', vi: 'v1'), hang('b', kind: 'walletLowBalance', vi: 'v1'), hang('c', vi: 'v2')], {'v1'}),
+        ['a', 'b'],
+        reason: 'đo Realme 2026-10-06: "Vi thu E6 chỉ còn 48 nghìn" treo sau khi xoá ví',
+      );
+    });
+
+    test('hàng đã gỡ / đối tượng không phải ví / tập rỗng → không chọn', () {
+      expect(hangCuaViDaXoa([hang('a', vi: 'v1', daGo: now)], {'v1'}), isEmpty);
+      expect(hangCuaViDaXoa([hang('a', kind: 'goalCompleted', subjectType: 'goal', vi: 'v1')], {'v1'}), isEmpty,
+          reason: 'trùng id ngẫu nhiên giữa hai loại đối tượng không được gỡ nhầm');
+      expect(hangCuaViDaXoa([hang('a', vi: 'v1')], const {}), isEmpty);
+    });
+  });
+
   group('đồng bộ hỏng', () {
     test('báo khi đồng bộ kết thúc ở trạng thái lỗi', () {
       final ra = chay(dongBoHong: true).single;

@@ -530,6 +530,8 @@ Future<void> setupDependencies() async {
       // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
       loadViDaDung: (idaccount) =>
           sl<AppDatabase>().transactionDao.viDaDung(idaccount),
+      // G71: thông báo số dư của ví đã xoá tự gỡ.
+      loadViDaXoa: (idaccount) => sl<AppDatabase>().walletDao.idDaXoa(idaccount),
       // E6: "ví âm" báo mỗi ĐỢT một lần — mốc là giao dịch làm ví tụt dưới 0.
       loadDotAm: (idaccount, viAm) async {
         final dao = sl<AppDatabase>().transactionDao;

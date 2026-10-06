@@ -889,6 +889,21 @@ List<String> hangSapCanDaHoi(Iterable<AppNotification> hang, List<Wallet> wallet
 /// Id các hàng **"ví âm"** chưa gỡ mà ví của chúng nay đã hết âm (≥ 0) hoặc được đánh dấu cho phép âm — bộ
 /// quét gỡ chúng, cùng khuôn [hangSapCanDaHoi] (E6, 2026-10-06). Gỡ là điều kiện để "mỗi đợt âm một lần" báo
 /// lại ở đợt sau: hàng đã gỡ vẫn giữ khoá của đợt CŨ, đợt mới mang khoá khác. Ví không còn thì không đoán.
+/// Id các hàng thông báo **của ví** (`subjectType == 'wallet'` — "sắp cạn", "ví âm") chưa gỡ mà ví ấy nằm
+/// trong [viDaXoa] — bộ quét gỡ chúng (G71, 2026-10-06).
+///
+/// Vì sao cần tập riêng thay vì "ví vắng khỏi danh sách": bộ quét đọc ví qua `walletDao.getAll`, vốn lọc bỏ
+/// ví có `deletedAt`, nên ví đã xoá chỉ đơn giản là **biến mất** — và [hangSapCanDaHoi] / [hangAmDaHoi] cố ý
+/// không đoán khi không thấy ví. [viDaXoa] là id ví mà CSDL **ghi rõ** đã xoá mềm (xoá trên máy này hoặc kéo
+/// về từ máy khác), nên gỡ ở đây là chắc chứ không đoán.
+List<String> hangCuaViDaXoa(Iterable<AppNotification> hang, Set<String> viDaXoa) {
+  if (viDaXoa.isEmpty) return const [];
+  return [
+    for (final h in hang)
+      if (h.subjectType == 'wallet' && h.dismissedAt == null && viDaXoa.contains(h.subjectId)) h.id,
+  ];
+}
+
 List<String> hangAmDaHoi(Iterable<AppNotification> hang, List<Wallet> wallets) {
   final heAm = {
     for (final v in wallets)

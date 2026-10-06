@@ -90,6 +90,9 @@ typedef WalletsLoader = Future<List<Wallet>> Function(
 /// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).
 typedef ViDaDungLoader = Future<Set<String>> Function(int idaccount);
 
+/// Id các ví đã xoá mềm của tài khoản (G71) — để gỡ thông báo số dư của chúng.
+typedef ViDaXoaLoader = Future<Set<String>> Function(int idaccount);
+
 /// Ví đang âm → id giao dịch mở đợt âm (E6). Nhận đúng các ví đang âm để chỉ đọc sổ của chúng.
 typedef DotAmLoader = Future<Map<String, String>> Function(int idaccount, List<String> viAm);
 
@@ -121,6 +124,10 @@ class NotificationScanner {
 
   /// Bỏ trống thì luật "ví âm" khoá theo NGÀY như cũ. Chỉ gọi khi có ví đang âm (E6).
   final DotAmLoader? loadDotAm;
+
+  /// Bỏ trống thì thông báo số dư của ví đã xoá **không** tự gỡ (hành vi trước G71). Chỉ đọc khi còn hàng
+  /// thông báo ví chưa gỡ.
+  final ViDaXoaLoader? loadViDaXoa;
 
   /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
   /// `loadWallets`.
@@ -263,6 +270,7 @@ class NotificationScanner {
     this.loadWallets,
     this.loadViDaDung,
     this.loadDotAm,
+    this.loadViDaXoa,
     this.loadWeekActivity,
     this.loadChiLon,
     this.loadKeHoach,
@@ -584,9 +592,17 @@ class NotificationScanner {
 
       // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
       // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
-      if (wallets.isNotEmpty) {
+      // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
+      final docViDaXoa = loadViDaXoa;
+      if (wallets.isNotEmpty || docViDaXoa != null) {
         final hang = await dao.getAll(idaccount);
-        for (final id in [...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap), ...hangAmDaHoi(hang, wallets)]) {
+        final conHangVi = hang.any((h) => h.subjectType == 'wallet' && h.dismissedAt == null);
+        final viDaXoa = (docViDaXoa != null && conHangVi) ? await docViDaXoa(idaccount) : const <String>{};
+        for (final id in {
+          ...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap),
+          ...hangAmDaHoi(hang, wallets),
+          ...hangCuaViDaXoa(hang, viDaXoa),
+        }) {
           await dao.dismiss(id);
         }
       }

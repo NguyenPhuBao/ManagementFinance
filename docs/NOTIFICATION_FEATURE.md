@@ -1352,6 +1352,8 @@ Ca canh: `dot_am_test.dart` (mốc đứng yên khi chi thêm, mốc mới khi �
 `dungScanner` của test bộ quét đếm id lại từ `id-0` mỗi lần gọi — hai bộ quét ghi cùng CSDL thì hàng sau **trùng khoá
 chính** và bị bỏ qua im lặng; nay có `tienToId`.
 
+✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll`, vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanDaHoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG

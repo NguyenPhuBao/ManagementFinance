@@ -144,6 +144,14 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .write(entry);
   }
 
+  /// Id các ví **đã xoá mềm** của [idaccount] — bộ quét thông báo gỡ cảnh báo số dư của chúng (G71).
+  Future<Set<String>> idDaXoa(int idaccount) async {
+    final q = selectOnly(wallets)
+      ..addColumns([wallets.id])
+      ..where(wallets.idaccount.equals(idaccount) & (wallets.deletedAt.isNotNull() | wallets.isDeleted.equals(true)));
+    return {for (final r in await q.get()) r.read(wallets.id)!};
+  }
+
   /// Xoá mềm ví — set deletedAt (DB v2) & isDeleted (backward compat)
   Future<void> softDelete(String id) async {
     final now = DateTime.now();
