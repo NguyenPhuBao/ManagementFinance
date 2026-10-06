@@ -3763,6 +3763,13 @@ có *"kém"* trần — bỏ dấu trùng *"kèm"*. Đo Realme (debug `53d08cb6�
 hơn 6.831.000 đ"* → lớp chắn sẵn có chặn → mẫu câu) · F3 ✅ câu Gemma *"chi ít hơn tháng trước, chênh lệch chi: 6.831.000 đ"*.
 Bộ 18 câu sau bản này: **16 ✅ · 1 ◐ (B8) · 1 không chấm (B15)**.
 
+✅ **B8 — câu xin N dòng (2026-10-06, chưa đo máy thật)**: *"3 khoản thu mới nhất"* in 4 khoản vì `truy_van_giao_dich`
+luôn cắt ở trần chung `kToiDaMucMoiGoi` mà không đọc N của câu. Nay `soDongYeuCau` (`chinh_tham_so.dart`, cạnh
+`cauHoiLietKe`) đọc số đứng ngay trước *khoản / giao dịch* — chữ số hoặc *một … năm*; số ngay sau *tháng · ngày · tuần ·
+quý · năm* là mốc thời gian, không phải số dòng — và tool cắt hàng ở `min(N, trần)` khi không gộp / không chọn. Chỉ cắt
+danh sách: `Số giao dịch` vẫn đếm trọn tập. Áp cho cả đường nhanh lẫn đường cũ (cùng một tool). Ca canh ở
+`chinh_tham_so_test` và `cong_cu_truy_van_test` (bản sai bỏ nối `toiDa` → ca đỏ).
+
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
 
