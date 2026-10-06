@@ -284,7 +284,7 @@ void main() {
       final muaDT = _mt(id: 'dt', ten: 'MuaDT', current: 500000);
       final kq = hangMucTieu([tr(), muaDT], now: now, viNguon: {'w-tm': vi(20000)}, ten: 'MuaDT');
       expect(kq.hang.map((h) => h.ten).toList(), ['MuaDT']);
-      expect(kq.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
+      expect(kq.hang.single.trangThai, 'không bật trích tự động');
       expect(kq.json.containsKey('Không đủ tiền trích'), isFalse,
           reason: 'đếm ví thiếu là của MuaXe — không thuộc câu hỏi về MuaDT');
       final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', kq);
@@ -356,11 +356,13 @@ void main() {
 
     test('⭐ F14: hỏi trích của mục tiêu KHÔNG bật trích → chiMauCau, mẫu câu nói thẳng', () {
       final r = hangMucTieu(hai, now: now, viNguon: const {}, ten: 'MuaDT');
-      expect(r.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
       expect(r.chiMauCau, isTrue,
           reason: 'Realme 2026-09-28: mô hình bỏ qua ket_qua, đáp "cần thêm 115 ngày"');
       final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
-      expect(g.mauCau().cau, contains('MuaDT không bật trích tự động'));
+      expect(g.mauCau().cau, 'MuaDT không bật trích tự động.',
+          reason: 'cổng F lần 3: tám con số (tiến độ, đã tích, …) đứng trước kết luận — câu hỏi chỉ hỏi kỳ trích');
+      expect(r.hang.single.soLieu, isEmpty);
+      expect(r.chuThem.containsKey('ket_qua'), isFalse, reason: 'kết luận đã là trạng thái của hàng — không lặp');
       expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
     });
 

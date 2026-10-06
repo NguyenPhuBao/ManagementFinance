@@ -137,7 +137,8 @@ void main() {
     final kq = await CongCuMucTieu(_MucTieu(trich: true, coMuaDT: true), vi: _Vi(20000), log: (_) {})
         .chay({'chon': 'dung_ke_hoach'}, idaccount: 10, now: now, cauHoi: 'ky trich tiep theo cua MuaDT la khi nao');
     expect(kq.hang.map((h) => h.ten).toList(), ['MuaDT']);
-    expect(kq.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
+    expect(kq.hang.single.trangThai, 'không bật trích tự động');
+    expect(kq.hang.single.soLieu, isEmpty);
   });
 
   test('ví nguồn lưu trữ / đã xoá → trích không chạy được (khớp GoalAutoDepositRunner)', () async {

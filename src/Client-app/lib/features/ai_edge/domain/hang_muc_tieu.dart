@@ -53,6 +53,10 @@ const Map<String, String> kChuChonMucTieu = {
   'vi_khong_du': 'ví không đủ để trích',
 };
 
+/// Trạng thái của hàng khi câu hỏi trích của một mục tiêu không bật trích —
+/// mẫu câu đọc thành *"MuaDT không bật trích tự động."*
+const String kChuKhongBatTrich = 'không bật trích tự động';
+
 /// Nhóm số theo CÂU HỎI (H1 cổng F lần 2): hàng chỉ mang số của câu đang hỏi và
 /// lượt là `chiMauCau`. Realme 2026-09-28: hàng đủ mười số thì mô hình đáp B1
 /// *"khi nào đạt"* bằng *"Bạn có thể đặt mục tiêu MuaXe khi…"* — không số nào
@@ -138,7 +142,12 @@ KetQuaCongCu hangMucTieu(
   return KetQuaCongCu(
     hang: [
       for (final g in khop.take(kToiDaMucMoiGoi))
-        _hang(g, now, vn, hienTrich: hienTrich, nhomSo: nhomSo),
+        // Câu hỏi trích của mục tiêu KHÔNG bật trích: kết luận LÀ câu trả lời —
+        // tám con số đứng trước nó (F14 cổng F lần 3) là của câu khác.
+        if (khongBatTrich)
+          HangSoLieu(ten: g.name, trangThai: kChuKhongBatTrich, canhBao: false, soLieu: const [])
+        else
+          _hang(g, now, vn, hienTrich: hienTrich, nhomSo: nhomSo),
     ],
     tongHop: [
       // Đếm cả nhóm chỉ khi câu hỏi nói về cả nhóm. Câu về MỘT mục tiêu (nêu
@@ -155,11 +164,13 @@ KetQuaCongCu hangMucTieu(
     ],
     chuThem: {
       if (ketLuanTrich) 'ket_qua': ketQua,
-      if (khongBatTrich) 'ket_qua': '$ten không bật trích tự động',
     },
     tenLienQuan: [
       for (final g in phamVi)
         if (_viNguonCua(g, vn) case final vi?) vi.ten,
+      // Hàng không số liệu thì tên không nằm trên `SoLieu` nào — khai ở đây như
+      // hàng danh mục, kẻo `kiemTen` chặn "mục tiêu MuaDT …".
+      if (khongBatTrich) for (final g in khop) g.name,
     ],
     boLoc: [if (chon != null) kChuChonMucTieu[chon]!],
     rongTheoBoLoc: chon != null && khop.isEmpty,

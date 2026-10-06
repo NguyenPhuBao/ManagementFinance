@@ -3793,7 +3793,11 @@ cổng F lần 3 đúng nhưng kết bằng *"…; Đang theo đuổi: 2; Đã h
 nay chỉ đếm cả nhóm khi câu hỏi nói về cả nhóm (`ten == null && nhomSo == null`); câu nêu tên hay hỏi một số đích thì
 `tongHop` không có hai số ấy, nên cả JSON gửi mô hình lẫn mẫu câu đều gọn. Mẫu câu sau sửa: *"MuaXe đúng kế hoạch: Còn
 thiếu 899.000 đ, Còn 551 ngày, Theo nhịp hiện tại cần thêm 19 ngày."* Ca canh ở `hang_muc_tieu_test` (đỏ trên bản cũ).
-⚠️ Còn thô: F14 (*"kỳ trích tiếp của MuaDT"*) vẫn in đủ tám số trước kết luận *"MuaDT không bật trích tự động"* — chưa sửa.
+✅ **F14 gọn lại cùng khuya**: câu hỏi trích của mục tiêu **không bật trích** từng in đủ tám số (tiến độ, đã tích, mục
+tiêu, …) rồi mới tới kết luận. Nay hàng chỉ còn tên + trạng thái `kChuKhongBatTrich`, không số liệu, và `ket_qua` thôi lặp
+lại → mẫu câu đúng một câu *"MuaDT không bật trích tự động."* ⚠️ Hàng không số thì tên không nằm trên `SoLieu` nào —
+phải khai qua `tenLienQuan` (khuôn hàng danh mục), thiếu là `kiemTen` chặn oan câu *"Mục tiêu MuaDT không bật trích tự
+động."* (bản đầu vấp đúng chỗ này, ca G4 bắt được).
 
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
