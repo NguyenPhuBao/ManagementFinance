@@ -1,18 +1,20 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
+# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ Backend · 1 mục Client đã xong, chờ đóng)
 
-**Cập nhật:** 2026-10-06 (Client-app gộp `main` @ `872462f`: Backend đã đóng **mục 36** và chuyển sang `DA-XONG/`; **mục 37** của Client-app vẫn chờ — bản README của lượt `872462f` viết lại từ bản chưa có mục 37 nên làm rơi nó, Client-app thêm lại lúc gộp). Trước đó 2026-10-05: Backend hoàn thành 100% **Mục 36** — xử lý trọn gói 6 điểm bảo mật, cấu hình và kiểm thử; Client-app đặt **mục 37** (kéo về bỏ sót bản ghi đẩy muộn, đo khi nghiệm thu G63 trên hai máy ảo); mục 34 Client-app đã làm xong.
+**Cập nhật:** 2026-10-06 chiều — Client-app đặt **mục 38** `CLIENT_PREMIUM_PAYOS.md` (mức thấp, **không chặn client**): thông báo client thi hành đặc quyền Premium ở client; xin `limits · price · packageDays` trong `/payment/subscription-info` (có mặc định); năm chỗ `CLIENT_INTEGRATION_GUIDE.md` lệch mã (`payment.success` → `account.upgraded`, return URL sang web Admin, `localhost:10000`, `http` → Dio, `type` → `accountType`); xin bỏ chữ *đồng bộ tức thì*. Sáng cùng ngày: Client-app gộp `main` @ `872462f` (Backend đóng **mục 36**, chuyển `DA-XONG/`; **mục 37** vẫn chờ — README lượt `872462f` làm rơi nó, Client-app thêm lại). Trước đó 2026-10-05: Backend hoàn thành **Mục 36**; Client-app đặt **mục 37**; mục 34 Client-app đã làm xong.
 
 > 📌 **HIỆN TRẠNG 2026-10-06:**
+> - **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`) — chờ Backend, mức thấp:** client đã tích hợp PayOS theo MÃ (không theo hướng dẫn ở năm chỗ lệch); xin ba trường nhỏ có mặc định và sửa chữ hướng dẫn. Không chặn client.
 > - **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`) — chờ Backend, mức cao:** `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi lên server **muộn hơn giờ ghi** (máy offline lâu) rơi dưới mốc của máy khác và **không bao giờ** được kéo. Xin cột giờ-server riêng cho việc kéo; không đổi LWW.
 > - **Mục 36 (`DA-XONG/SOAT_SAU_GOP_B38367E.md`) — ĐÃ HOÀN THÀNH 100%:** Backend đã khắc phục trọn vẹn: vá lách query string bảo trì, loại bỏ fallback `'secret'`, bỏ gán `req.isAdmin` theo URL path trước xác thực, sửa nhận diện test load-shedding, siết CORS, bổ sung 3 ca test bảo trì auth. Toàn bộ 220/220 unit tests PASS 100%.
 > - **Mục 34:** Client-app đã **làm xong** tính năng nhắc ghi (2026-10-03, nghiệm thu Realme bản debug + release) — có thể chuyển sang `DA-XONG/`.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **1** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
+## 0. Còn phải làm (Hiện tại: **2** mục chờ Backend · **1** mục Client đã xong, chờ đóng)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
+| **38** | [CLIENT_PREMIUM_PAYOS.md](./CLIENT_PREMIUM_PAYOS.md) | Backend (nhẹ) | Client thi hành đặc quyền Premium (3 ví · 3 ngân sách · 3 mục tiêu · Trợ lý AI + Nhập nhanh) ở client — backend không cần chặn. Xin `limits · price · packageDays` trong `/payment/subscription-info` (client có mặc định, không chờ); sửa năm chỗ `CLIENT_INTEGRATION_GUIDE.md` lệch mã; bỏ chữ *đồng bộ tức thì*. Tuỳ chọn: trang "quay lại app" cho return URL. | ⏳ Chờ Backend (không chặn) |
 | **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](./KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Backend | Thêm cột giờ-server (`Server_update_at`, đặt `now()` ở mọi lần ghi) cho sáu bảng đồng bộ; `/sync/pull` lọc và trả theo cột ấy; giữ `update_at` cho LWW. Đo: máy A thiếu hai giao dịch của máy B (server có đủ). Client đổi mốc kéo về sau khi backend xong. | ⏳ Chờ Backend |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Client-app | PO đã duyệt câu hỏi thiết kế (100% on-device offline, đồng bộ nguồn 3 vào Nguồn sự thật). Client-app **đã làm xong** 2026-10-03 (10 task, nghiệm thu Realme debug + release). | ✅ Client xong — chờ chuyển `DA-XONG/` |
 

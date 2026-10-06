@@ -1080,10 +1080,10 @@ bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutt
 
 - **Xung đột duy nhất:** `CAN-LAM/README.md` — README của backend viết lại từ bản chưa có **đơn 37** nên làm rơi nó; bản gộp
   giữ cả hai (36 ✅, 37 ⏳).
-- 🛑 **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS. 📝 **Người
-  dùng NHẬN 2026-10-06 — đang brainstorm** (bàn giao `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-06-payos-brainstorm.md`; đã chốt:
-  Premium theo **đúng** đặc quyền backend ghi — giới hạn ví, ngân sách, AI chuyên sâu, đồng bộ tức thì; Basic tối đa
-  **3 ví · 3 ngân sách**, người đã vượt giữ nguyên, chỉ không tạo thêm).
+- ✅ **`CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`** (cũng ở `docs/Payment/`): backend giao client tích hợp thanh toán PayOS —
+  **client đã tích hợp cùng ngày**, xem khối *Premium qua PayOS* ngay dưới. Hướng dẫn lệch mã ở **năm** chỗ (client theo mã):
+  `payment.success` → sự kiện thật `account.upgraded`; return URL sang web Admin; `localhost:10000` → 3000; `http` → Dio;
+  `/subscription-info` trả `accountType` không phải `type` — gom vào đơn **38** `CAN-LAM/CLIENT_PREMIUM_PAYOS.md`.
 - ⚠️ **Backend dev KHÔNG khởi động được sau gộp** cho tới khi chạy `npm install` ở `src/Backend`: gói mới **`@payos/node`**
   chưa có trong `node_modules`, và `modules/payment/payos.client.js:1` nạp nó ngay khi `api/index.js` nạp routes — đo
   2026-10-06: `MODULE_NOT_FOUND '@payos/node'`. Client **chưa chạy** `npm install` (đụng `src/Backend`, cần cho phép đích
@@ -1096,6 +1096,33 @@ bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutt
   Đã sinh lại client từ `schema.prisma` của `3ef5db7` (trước gộp) — đo lại chạy. Hệ quả: `/api/payment/*` **chưa dùng
   được trên dev** (client không có model `payment_order`) tới khi áp `database/19` **và** `prisma generate` — cần cho phép
   đích danh. Lỡ chạy lại `npm install` thì khôi phục bằng `git show 3ef5db7:src/Backend/prisma/schema.prisma > prisma/schema.truoc_gop.prisma && npx prisma generate --schema prisma/schema.truoc_gop.prisma && rm prisma/schema.truoc_gop.prisma` (chạy trong `src/Backend`).
+
+### ✅ Premium qua PayOS — phía client (mã xong 2026-10-06 chiều, 15/17 task; 🚧 Task 16 nghiệm thu sandbox chờ người dùng)
+
+Spec `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (brainstorm 8 câu + kiến trúc + 5 phần, người dùng
+duyệt; khối *"Chỗ thêm lúc viết"* có 6 điểm); kế hoạch 17 task `plans/2026-10-06-premium-payos-client.md` (gitignore, *Nhật
+ký* cuối tệp); tài liệu `docs/PREMIUM_FEATURE.md`; đơn backend **38** `CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (không chặn client).
+Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trước Task 4 để `GoiRepository` biên dịch).
+
+- **Chốt của người dùng:** bốn đặc quyền — Basic **3 ví · 3 ngân sách · 3 mục tiêu** đang hoạt động (bằng trần là vượt; hạ
+  cấp thì giữ nguyên, chỉ không tạo thêm) + **Trợ lý AI & Nhập nhanh** khoá cho Basic (kể cả lệnh tạo C3); **đồng bộ không
+  tách**; cache hạn theo tài khoản **so giờ máy** (lùi giờ máy khi offline kéo dài được — chấp nhận); **client thi hành,
+  server quyết con số** (`limits`); mở `checkoutUrl` **ngoài app** (`url_launcher`, người dùng duyệt gói); nghiệm thu bằng
+  **sandbox PayOS**; kiến trúc A — mô-đun `features/premium/`, một `conTaoDuoc`, **một cửa chặn** ở `redirect` ba route tạo.
+- **Mô-đun:** `TrangThaiGoi` / `TranGoi` / `conTaoDuoc` thuần · `GoiStore` secure storage `goi_tai_khoan_<id>` ·
+  `PaymentApi` Dio · `GoiRepository` (kho thắng `type`, `lamMoi` không ném, resumed giãn 5 phút, socket hỏi ngay) ·
+  `NguonDemDangHoatDong` · `redirectTaoTheoGoi` · `GoiCubit` singleton ở gốc cây · ba màn `/premium`,
+  `/premium/cho-thanh-toan` (poll 3 s khi đang hiện, PAID → lamMoi → Thành công → pop hai lớp), `/premium/lich-su` · thẻ Gói
+  tab Cá nhân · dòng nhắc Trang chủ ≤ 3 ngày · băng khoá Trợ lý AI (Basic xét trước) · ô Nhập nhanh khoá.
+  `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, tín hiệu, không toast, không kéo đồng bộ); `UserModel.loaiTaiKhoan`.
+  **Không đổi schema, không trường đồng bộ.** `flutter test` **6023/6023** / 9 skip; analyze **21**; build `--release` đạt.
+- ⚠️ **Bẫy lượt thi công bắt được, test mù:** `BlocProvider.of` bọc `ProviderNotFoundException` thành `FlutterError` (dùng
+  `context.read`); hàng chữ cạnh vòng xoay tràn 155 px, khối chữ trong `Wrap` tràn 47 px ở 360 dp; không `pumpAndSettle`
+  khi vòng xoay quay; xoá mềm là `deletedAt`; ngân sách không lặp hết hạn ở cuối kỳ đầu; Kotlin daemon rơi về biên dịch
+  thường in stack trace mà build vẫn đạt — đọc `√ Built`.
+- **Stitch:** 8 màn/khối tạo xong (5 lượt trả `timeout` nhưng màn có thật) — id ở `PREMIUM_FEATURE.md` mục 5, **chờ người
+  dùng xác nhận**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env`, phép áp `database/19` + `generate`, ngrok hoặc
+  webhook tự ký, 10 bước spec mục 13).
 
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 

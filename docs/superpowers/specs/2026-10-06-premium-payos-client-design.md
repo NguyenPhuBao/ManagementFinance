@@ -3,7 +3,21 @@
 **Ngày:** 2026-10-06. **Trạng thái:** thiết kế người dùng duyệt trong chat (tám câu hỏi · hướng kiến trúc · năm phần,
 mười bốn lượt AskUserQuestion qua hai phiên — bàn giao `flowmoney-handoff-2026-10-06-payos-brainstorm.md` §3 ghi hai câu
 đầu); bản viết **người dùng duyệt cùng ngày** (giữ trần **3 ví** dù tài khoản mới có sẵn 2 — điểm 1 khối dưới);
-**chưa có mã**. Kế hoạch ở `docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore).
+kế hoạch 17 task `docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore, *Nhật ký* cuối tệp).
+
+> ✅ **MÃ XONG 2026-10-06 chiều — 15/17 task** (`b37b389` → `f94221b`; Task 5 làm trước Task 4). Còn **Task 16 nghiệm thu
+> sandbox** (chờ người dùng dán khoá PayOS + cho phép áp `database/19`) và Task 17 tài liệu (đã làm phần lớn: `docs/PREMIUM_FEATURE.md`,
+> đơn CAN-LAM 38, `CLAUDE.md`, `PROJECT_CONTEXT.md`). **Chỗ bản thi công KHÁC bản viết:**
+> 1. Mục 8.1: giữ `cauKhoaHoiDap(coTep:)` cũ (test cũ dùng), `lyDoKhoa` / `cauKhoa` đặt bên trên; hai lý do cũ vẫn để ô mở
+>    cho lệnh tạo (chốt 2026-09-30), chỉ `goiBasic` khoá cả ô.
+> 2. Mục 6.3 / 7.1: đếm đi qua mặt cắt **`NguonDemDangHoatDong`** (để router test tiêm bản giả) — DI đăng ký mặt cắt này.
+> 3. Mục 8.1 / 8.2: đọc cubit bằng **`context.read<GoiCubit>()`** — `BlocProvider.of` bọc `ProviderNotFoundException` thành
+>    `FlutterError`, không bắt được.
+> 4. Mục 10: thẻ Gói dùng `Row` + `Expanded` cho khối chữ (bản `Wrap` tràn 47 px ở 360 dp); hàng chữ cạnh vòng xoay ở màn
+>    Đang chờ cần `Flexible` (tràn 155 px).
+> 5. Mục 9.1: màn Nâng cấp **Premium** cũng có nút *Lịch sử mua*, và nút Thanh toán/Gia hạn hiện vòng xoay thay chữ khi đang tạo đơn.
+> 6. Mục 9.3: `_khiCo` giữ `_bo.dung()` **trước** `await lamMoi()`; Stitch vẽ thêm danh sách đặc quyền ở màn Thành công — không chép.
+> 7. Mục 12: `flutter test` **6023/6023** / 9 skip (+125 ca), analyze 21; build `--release` đạt với `url_launcher ^6.3.3`.
 
 Backend (NPBao) dựng module thanh toán PayOS, gộp `main` @ `872462f` ngày 2026-10-06 (commit gộp `f088b2a`); hướng dẫn
 cho client ở `docs/Payment/CLIENT_INTEGRATION_GUIDE.md` (= `docs/superpowers/backend/CAN-LAM/CLIENT_INTEGRATION_GUIDE.md`).
