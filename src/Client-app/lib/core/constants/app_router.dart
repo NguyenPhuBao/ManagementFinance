@@ -33,6 +33,7 @@ import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/premium/data/chan_theo_goi.dart';
 import '../../features/premium/domain/tran_goi.dart';
+import '../../features/premium/presentation/pages/nang_cap_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
@@ -429,6 +430,14 @@ class AppRouter {
           GoRoute(
             path: '/ai-settings',
             builder: (_, __) => const CaiDatAiPage(),
+          ),
+          // Premium (spec 2026-10-06 mục 9): ba route NGOÀI shell, không ở
+          // `nhanhThanhTab` — push từ mọi nơi (cửa chặn, băng khoá, thẻ Cá nhân).
+          // `?tran=vi|ngan_sach|muc_tieu` = đến từ cửa chặn, màn mở đầu bằng câu trần.
+          GoRoute(
+            path: '/premium',
+            builder: (_, state) => NangCapPage(
+                tran: loaiTranTuMa(state.uri.queryParameters['tran'])),
           ),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
