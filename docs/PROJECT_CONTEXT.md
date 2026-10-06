@@ -1073,8 +1073,8 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
 ### 🔀 Gộp `main` @ `872462f` (2026-10-06, commit gộp `f088b2a`) — module thanh toán PayOS, backend đóng đơn 36
 
 Hai commit NPBao (`0a118af`, `872462f`) cộng ba commit gộp: module `payment` (PayOS — tạo link, webhook, gói đăng ký,
-scheduler hết hạn), `database/19_create_payment_subscription_tables.sql` (**chưa áp** lên CSDL dev — không có câu cho phép
-đích danh), `schema.prisma` thêm model; cộng sửa đơn **36** (vá lách query bảo trì, bỏ `'secret'`, bỏ `isAdmin` theo URL,
+scheduler hết hạn), `database/19_create_payment_subscription_tables.sql` (lúc gộp **chưa áp** lên CSDL dev; ✅ **áp tối
+2026-10-06** theo cho phép đích danh + `prisma generate` — gạch cuối khối này), `schema.prisma` thêm model; cộng sửa đơn **36** (vá lách query bảo trì, bỏ `'secret'`, bỏ `isAdmin` theo URL,
 CORS) và chuyển nó sang `DA-XONG/` (đếm bằng máy: **53** tệp). Phía client: hai chỗ dọn cảnh báo (`change_password_page.dart`
 bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutter analyze` 26 → **21**; test liên quan xanh.
 
@@ -1096,6 +1096,11 @@ bỏ import thừa, `e2e_sqlite_to_backend_sync_test.dart` bỏ `?.`) — `flutt
   Đã sinh lại client từ `schema.prisma` của `3ef5db7` (trước gộp) — đo lại chạy. Hệ quả: `/api/payment/*` **chưa dùng
   được trên dev** (client không có model `payment_order`) tới khi áp `database/19` **và** `prisma generate` — cần cho phép
   đích danh. Lỡ chạy lại `npm install` thì khôi phục bằng `git show 3ef5db7:src/Backend/prisma/schema.prisma > prisma/schema.truoc_gop.prisma && npx prisma generate --schema prisma/schema.truoc_gop.prisma && rm prisma/schema.truoc_gop.prisma` (chạy trong `src/Backend`).
+- ✅ **Áp `database/19` tối 2026-10-06** — người dùng cho phép đích danh (chọn *"Cho phép áp database/19"*). Một giao tác
+  `pg` từ `src/Backend`, tệp không BOM, backend tắt sẵn. Đo trước/sau: `account` 19 hàng không đổi, thêm cột
+  `premium_expires_at`, bảng `payment_order` + `payment_transaction`, sáu chỉ mục. `npx prisma generate` theo
+  `schema.prisma` **hiện tại**: `account.findFirst` chạy, `payment_order.count()` = 0 — **lệnh khôi phục ngay trên thôi cần**
+  (nay `npm install` sinh client khớp CSDL dev). Còn thiếu khoá PayOS trong `.env` (đếm 0).
 
 ### ✅ Premium qua PayOS — phía client (mã xong 2026-10-06 chiều, 15/17 task; 🚧 Task 16 nghiệm thu sandbox chờ người dùng)
 
@@ -1121,8 +1126,8 @@ Commit `b37b389` → `f94221b` (15 commit, một mỗi task; Task 5 làm trướ
   khi vòng xoay quay; xoá mềm là `deletedAt`; ngân sách không lặp hết hạn ở cuối kỳ đầu; Kotlin daemon rơi về biên dịch
   thường in stack trace mà build vẫn đạt — đọc `√ Built`.
 - **Stitch:** 8 màn/khối tạo xong (5 lượt trả `timeout` nhưng màn có thật) — id ở `PREMIUM_FEATURE.md` mục 5, **chờ người
-  dùng xác nhận**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env`, phép áp `database/19` + `generate`, ngrok hoặc
-  webhook tự ký, 10 bước spec mục 13).
+  dùng xác nhận**. **Việc còn:** Task 16 (sandbox: dán khoá PayOS vào `.env` — `database/19` + `generate` ✅ xong tối 2026-10-06 —
+  ngrok hoặc webhook tự ký, 10 bước spec mục 13).
 
 ### 🚧 Dự án C việc ba — thứ tự khối trang Phân tích theo thói quen xem (mã xong 2026-10-06, CHƯA nghiệm thu máy thật)
 

@@ -1,7 +1,7 @@
 # Premium qua PayOS — phía client
 
 **Trạng thái (2026-10-06):** mã **xong** 15/17 task của kế hoạch `docs/superpowers/plans/2026-10-06-premium-payos-client.md`
-(gitignore) — còn **Task 16 nghiệm thu máy thật** (sandbox PayOS, cần người dùng dán khoá + cho phép áp `database/19`)
+(gitignore) — còn **Task 16 nghiệm thu máy thật** (sandbox PayOS, chờ người dùng dán khoá; `database/19` ✅ đã áp tối 2026-10-06)
 và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
 Đơn backend: `docs/superpowers/backend/CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (38, không chặn client).
 
@@ -104,9 +104,14 @@ Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc
 ## 6. Nghiệm thu máy thật — 🚧 CHƯA LÀM (Task 16)
 
 Điều kiện: người dùng tạo kênh PayOS *Thử nghiệm* và dán `PAYOS_CLIENT_ID / API_KEY / CHECKSUM_KEY` vào
-`src/Backend/.env`; áp `database/19` + `prisma generate` (**cần cho phép đích danh**; ⚠️ không `npm install` —
-`postinstall` tự `generate`); webhook qua ngrok hoặc tự ký HMAC POST `localhost:3000/api/payment/webhook`. Mười bước ở
-spec mục 13; ghi kết quả vào đây khi đo.
+`src/Backend/.env`; áp `database/19` + `prisma generate` (⚠️ không `npm install` — `postinstall` tự `generate`); webhook
+qua ngrok hoặc tự ký HMAC POST `localhost:3000/api/payment/webhook`. Mười bước ở spec mục 13; ghi kết quả vào đây khi đo.
+
+- ✅ **`database/19` đã áp lên CSDL dev tối 2026-10-06** theo cho phép đích danh của người dùng — một giao tác `pg`, tệp
+  không có BOM. Đo trước/sau: `account` vẫn 19 hàng, thêm cột `premium_expires_at`, hai bảng `payment_order` /
+  `payment_transaction`, sáu chỉ mục. Rồi `npx prisma generate` theo `schema.prisma` hiện tại (backend tắt sẵn);
+  `account.findFirst` chạy (hết `P2022`), `payment_order.count()` = 0. Bản client Prisma sinh từ `3ef5db7` thôi cần.
+- ⏳ Khoá PayOS: `grep -c '^PAYOS_' src/Backend/.env` = **0** lúc áp — chờ người dùng dán.
 
 ## 7. Giới hạn cố ý
 
