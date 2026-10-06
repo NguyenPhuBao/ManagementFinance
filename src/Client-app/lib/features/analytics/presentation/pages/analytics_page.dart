@@ -515,7 +515,8 @@ class _ChonPhamVi extends StatelessWidget {
 
   static String nhanCua(AnalyticsState state) => switch (state) {
         AnalyticsLoaded(:final thongKe, :final moc) => nhanOChon(thongKe.ky, moc),
-        AnalyticsLoading(:final ky) => ky.nhanNgan,
+        // Cùng nhãn với lúc có số liệu — khác nhãn là header nhảy hàng (G69).
+        AnalyticsLoading(:final ky, :final moc) => nhanOChon(ky, moc),
         _ => 'Tháng này',
       };
 

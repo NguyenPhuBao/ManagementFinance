@@ -2527,5 +2527,27 @@ void main() {
       expect(o.left, greaterThan(tieuDe.right));
       expect(biCat(tester), isEmpty);
     });
+
+    testWidgets('⭐ G69: 360 dp chữ thường — header KHÔNG nhảy hàng lúc tải xong', (tester) async {
+      await napFontThat();
+      tester.view.physicalSize = const Size(360, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+
+      // Lúc tải ô kỳ phải nói CÙNG nhãn với lúc có số liệu: bản cũ hiện "T9 2026"
+      // (vừa một hàng) rồi tải xong thành "Tháng này (T9 2026)" (không vừa →
+      // hai hàng), nên cả trang giật xuống ~50 px đúng lúc số liệu hiện ra.
+      expect(find.text('Tháng này (T9 2026)'), findsOneWidget,
+          reason: 'G69 (Realme 2026-10-06): nhãn lúc tải ngắn hơn nhãn lúc có số liệu');
+      final truoc = khung(tester, 'Tháng này (T9 2026)');
+      final tieuDeTruoc = khung(tester, 'Phân tích');
+
+      await phat(tester, _tk());
+      expect(khung(tester, 'Tháng này (T9 2026)'), truoc,
+          reason: 'ô kỳ phải đứng yên khi số liệu về (G69)');
+      expect(khung(tester, 'Phân tích'), tieuDeTruoc);
+      expect(biCat(tester), isEmpty);
+    });
   });
 }
