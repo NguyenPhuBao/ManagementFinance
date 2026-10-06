@@ -34,6 +34,7 @@ import '../../domain/uoc_tinh_chi_tuy_y.dart';
 import '../bloc/analytics_cubit.dart';
 import '../bloc/thu_tu_khoi_cubit.dart';
 import '../widgets/chon_pham_vi_sheet.dart';
+import '../widgets/khung_cho_phan_tich.dart';
 import '../widgets/the_de_xuat_thu_tu.dart';
 import '../widgets/theo_doi_xem.dart';
 
@@ -217,12 +218,9 @@ class _NoiDung extends StatelessWidget {
           ),
         ];
       default:
-        return const [
-          Padding(
-            padding: EdgeInsets.all(48),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        ];
+        // E1 (2026-10-06): hình dạng các khối đầu thay vì vòng xoay giữa
+        // khoảng trống — `khung_cho_phan_tich.dart`.
+        return const [KhungChoPhanTich()];
     }
   }
 

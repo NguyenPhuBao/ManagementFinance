@@ -2242,6 +2242,25 @@ Ca canh: nhóm `G2` ở **cuối** `analytics_page_test.dart` (360 × 1,3 · 411
 đề; 411 × 1,0 vẫn một hàng). ⚠️ **Nhóm ấy phải đứng cuối tệp**: `FontLoader` nạp cho cả isolate, mọi ca chạy sau nó đo bằng
 Roboto thay vì Ahem. ⚠️ Tiêu đề trang nay là hằng `_TieuDeTrang.chu` — `drawer_trang_chu_test` đọc mã nguồn tìm đúng dòng ấy.
 
+### 3.38 Khung chờ lúc tải — E1 của lượt UX (2026-10-06)
+
+🚧 **Mã xong, chưa nghiệm thu máy thật; màn Stitch chưa xác nhận.** Lúc `AnalyticsInitial` / `AnalyticsLoading`, thân trang
+từng là một `CircularProgressIndicator` giữa khoảng trống — thứ người dùng thấy mỗi lần mở tab. Nay header thật vẫn hiện, dưới
+nó là **`KhungChoPhanTich`** (`presentation/widgets/khung_cho_phan_tich.dart`): hình dạng ba khối đầu của thứ tự **mặc định**
+— thẻ Dòng tiền (tiêu đề + ba hàng), hai thẻ Tổng thu / Tổng chi, một thẻ biểu đồ — bằng thanh `AppColors.outlineVariant`
+trên thẻ trắng bo 16 như `_theTrang`.
+
+Ba chốt: **không chữ, không số** (một con số giả trên màn tải đọc nhầm được là thật — ca test đòi 0 `Text`); **đứng yên**,
+không hoạt ảnh lặp (trang tải trong vài trăm mili giây; hoạt ảnh vô hạn làm `pumpAndSettle` của mọi widget test chạm trạng
+thái tải treo); và **không** theo thứ tự cụm riêng của người dùng (mục 3.36) — lúc tải chưa đọc xong thứ tự ấy. Trình đọc màn
+hình nghe một nhãn *"Đang tải số liệu"* (`ExcludeSemantics` cho từng thanh).
+
+Stitch: lượt gọi `generate_screen_from_text` *"Phân tích - Đang tải (khung chờ)"* trả **timeout** — không gọi lại; chưa thấy
+màn trong `list_screens` (danh sách cũng chưa có màn `7f05fccd…` của mục 3.37 dù lượt ấy trả thành công — danh sách đang
+trễ). Chờ người dùng xác nhận trên Stitch. Ca canh: `khung_cho_phan_tich_test.dart` (360 / 411 dp không tràn, không chữ, đứng
+yên, nhãn trình đọc màn hình) và ca *E1* ở `analytics_page_test.dart` (đang tải → khung chờ, không vòng xoay; có số liệu → khung
+chờ biến mất).
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`

@@ -34,6 +34,7 @@ import 'package:flowmoney/features/analytics/domain/thu_tu_khoi.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/thu_tu_khoi_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:flowmoney/features/analytics/presentation/widgets/khung_cho_phan_tich.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -2471,6 +2472,16 @@ void main() {
       expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets('⭐ E1: đang tải → khung chờ dưới header, không còn vòng xoay giữa khoảng trống', (tester) async {
+    await moTrang(tester);
+    expect(find.byType(KhungChoPhanTich), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing,
+        reason: 'UX 2026-09-19 E1: mỗi lần mở tab là một vòng xoay giữa trang trống');
+    expect(find.text('Phân tích'), findsOneWidget, reason: 'header vẫn là header thật');
+    await phat(tester, _tk());
+    expect(find.byType(KhungChoPhanTich), findsNothing, reason: 'có số liệu thì khung chờ biến mất');
   });
 
   // ⚠️ NHÓM NÀY PHẢI ĐỨNG CUỐI TỆP: `napFontThat` nạp Roboto vào các họ `Inter_*`
