@@ -3775,6 +3775,20 @@ quý · năm* là mốc thời gian, không phải số dòng — và tool cắt
 danh sách: `Số giao dịch` vẫn đếm trọn tập. Áp cho cả đường nhanh lẫn đường cũ (cùng một tool). Ca canh ở
 `chinh_tham_so_test` và `cong_cu_truy_van_test` (bản sai bỏ nối `toiDa` → ca đỏ).
 
+✅ **B8 ◐ → ✅ (2026-10-07, người dùng chọn sửa cả hai phần; đo Realme 360 dp cùng tối)**: (1) **định tuyến** — câu
+xin N khoản / giao dịch (`soDongYeuCau != null`) nay do **luật** `congCuTheoCauHoi` đưa về `truy_van_giao_dich`, đặt
+SAU khối ngân sách / mục tiêu / hoá đơn (*"3 khoản chi của ngân sách ăn uống"*, *"3 khoản nạp vào mục tiêu"* giữ
+đường cũ); mô hình học chỉ được p=0,63 cho *"3 khoản thu mới nhất"*. Bảng 72 câu: **C16** sang cột luật (32 luật ·
+36 giao dịch, đường nhanh 31/36) — C16 vốn đã về tool giao dịch qua mô hình (định tuyến mềm), nay tool được ép chạy.
+(2) **tên ngắn** — `tenNganGiaoDich` (`ai_edge/domain/ten_ngan_giao_dich.dart`, chỉ ở `hangGiaoDich` /
+`hangTongQuan`; Sổ giao dịch giữ `tieuDeGiaoDich` nguyên văn): bỏ MÃ (đoạn tách theo khoảng trắng / `-` dài ≥ 8 có
+chữ số, hoặc ≥ 10 ký tự liền), còn > 40 ký tự thì cắt ở khoảng trắng **hoặc** `-` (chỉ khoảng trắng thì ra
+*"…chuyen tien qua"* và mẫu câu thành *"qua khoản thu"* — lượt đo đầu bắt được). Đo: *"3 khoan thu moi nhat"* →
+luật → đường nhanh, **453 ms** (trước 58 s), ba khoản 30/09 khớp CSDL, tên *"TRAN QUANG DAT chuyen tien qua MoMo"* ·
+*"MOMO-CASHOUT"*; C16 *"5 khoan chi gan day nhat cua toi"* → đường nhanh **130 ms**, bốn khoản đúng thứ tự — vẫn
+**4/5** vì trần chung 4 dòng (giới hạn "trần 4 hàng" đã ghi, chưa chọn hướng). Ca canh: nhóm 25 `chinh_tham_so_test`,
+`ten_ngan_giao_dich_test`, ca ⭐ B8 ở `hang_giao_dich_test`.
+
 ✅ **C4 — *"dưới / trên X"* là mốc LOẠI TRỪ (2026-10-06; ✅ đo máy thật cùng tối — tuần này chỉ có Netflix đúng 100.000 đ; *"tuan nay co khoan chi nao duoi 100 nghin khong"* → *"Tuần này, khoản chi, dưới 100.000 đ — không có giao dịch nào khớp."*, thẻ *Dưới 100.000 đ*, đường nhanh 0,4 s)**: *"tuần này có khoản chi nào dưới 100 nghìn"*
 từng kể cả khoản đúng 100.000 đ vì `so_tien_den` đi vào `KhoangTien.chua`, phép so **bao gồm** của Sổ giao dịch. Người
 dùng chọn sửa ở **cách đọc câu**, không đụng `KhoangTien`: `_nguongTrongCau` báo thêm mốc nào là mốc ngắt (*trên · hơn ·

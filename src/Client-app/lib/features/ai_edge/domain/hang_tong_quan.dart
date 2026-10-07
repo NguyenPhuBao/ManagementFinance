@@ -21,6 +21,7 @@ import '../../analytics/domain/tong_tai_san.dart';
 import '../../analytics/domain/vai_vay_no.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
+import 'ten_ngan_giao_dich.dart';
 
 const String kChuVayNoMoiLuc = 'vay nợ tính mọi thời gian';
 const String kChuTaiSanChuaBiet = 'chưa đủ dữ liệu để biết tài sản tăng hay giảm';
@@ -86,12 +87,13 @@ KetQuaCongCu hangTongQuan(
     hang: [
       if (lonNhat != null)
         HangSoLieu(
-          ten: lonNhat.tieuDe,
+          // B8 ◐: cùng tên ngắn với tool giao dịch (`ten_ngan_giao_dich.dart`).
+          ten: tenNganGiaoDich(lonNhat.tieuDe),
           trangThai: 'khoản chi lớn nhất · ${lonNhat.tenDanhMuc} · ${lonNhat.tenVi}',
           canhBao: false,
           soLieu: [
-            soTien('Số tiền', lonNhat.soTien, ten: lonNhat.tieuDe),
-            soNgayThang('Ngày', lonNhat.ngay, ten: lonNhat.tieuDe, now: now),
+            soTien('Số tiền', lonNhat.soTien, ten: tenNganGiaoDich(lonNhat.tieuDe)),
+            soNgayThang('Ngày', lonNhat.ngay, ten: tenNganGiaoDich(lonNhat.tieuDe), now: now),
           ],
         ),
     ],
