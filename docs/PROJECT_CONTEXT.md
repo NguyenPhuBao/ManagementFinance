@@ -1070,6 +1070,24 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   khởi động lại backend là sạch. ✅ **Hết từ gộp `f44ee8b`** (2026-10-04): đơn 33 đóng, loopback được miễn khi
   `NODE_ENV=development` — khối 🔀 `f44ee8b` phía trên.
 
+### 🔀 Gộp `main` @ `1edab22` (2026-10-07, commit gộp `6b07033`) — backend đóng đơn 34, 37, 38; áp `database/20`
+
+- Sáu commit backend: **migration 20** `Server_update_at` cho sáu bảng đồng bộ (đơn 37 — `/sync/pull` lọc, sắp và trả
+  `maxSince` theo giờ server; LWW vẫn theo `update_at`), `/payment/subscription-info` trả thêm `limits · price ·
+  packageDays` (đơn 38 — client đã đọc khi có, không đổi mã), sửa `CLIENT_INTEGRATION_GUIDE.md`, chuyển 34/37/38 sang
+  `DA-XONG/` (**56** tệp). Xung đột duy nhất ở `CAN-LAM/README.md` (README của main viết trước đơn 39 — client thêm lại).
+  Cây `src/Client-app` không đổi.
+- ✅ **Áp `database/20` lên CSDL dev 2026-10-07** — người dùng cho phép đích danh (*"ok bạn hãy thực hiện"* sau câu hỏi
+  gọi tên việc). Một giao tác `pg` từ `src/Backend`, tệp không BOM, backend dev không chạy. Đo trước/sau: 507 hàng sáu
+  bảng không đổi, `Server_update_at = Update_at` ở mọi hàng cũ, đủ sáu cột `NOT NULL` · sáu chỉ mục · sáu trigger.
+  `npx prisma generate`: `account.findFirst` chạy; `node --test tests/v2/sync.engine.test.js` **11/11**.
+- 🛑 **Đo thấy cột mang HAI đồng hồ** (giao tác ROLLBACK, không để lại dữ liệu): giờ phiên PostgreSQL là
+  `Asia/Bangkok`; Prisma `create` lưu UTC (`11:27:04`), Prisma `update` bị trigger `set_server_update_at()` ghi đè thành
+  `CURRENT_TIMESTAMP` theo giờ phiên (`18:26:46` cho giá trị gửi `11:26:46Z`) — lệch **+7 tiếng**. Đơn **40**
+  `CAN-LAM/SERVER_UPDATE_AT_HAI_DONG_HO.md` (mức cao). Hệ quả với client **hiện nay** chỉ là kéo lại thừa hàng vừa sửa
+  trong 7 tiếng (mốc vẫn theo `update_at`); nhưng **G67 chưa đóng được** — client chỉ đổi mốc sang `maxSince` sau khi
+  backend sửa đồng hồ (mục G67 `CLIENT_APP_KNOWN_GAPS.md`).
+
 ### 🔀 Gộp `main` @ `872462f` (2026-10-06, commit gộp `f088b2a`) — module thanh toán PayOS, backend đóng đơn 36
 
 Hai commit NPBao (`0a118af`, `872462f`) cộng ba commit gộp: module `payment` (PayOS — tạo link, webhook, gói đăng ký,
