@@ -2097,7 +2097,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     key: const Key('ghi-chu-giao-dich'),
                     controller: _noteController,
                     decoration: const InputDecoration(
-                      hintText: 'Thêm ghi chú cho giao dịch...',
+                      // G83: câu dài cũ bị cắt ở 320 dp — người dùng chọn rút gọn.
+                      hintText: 'Thêm ghi chú…',
                       hintStyle: TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
                       border: InputBorder.none,
