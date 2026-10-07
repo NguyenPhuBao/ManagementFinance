@@ -175,6 +175,10 @@ void main() {
     final yThe = tester.getTopLeft(find.byType(TheKeHoach)).dy;
     expect(yThe, greaterThan(yKhoi),
         reason: 'Thẻ đứng NGAY DƯỚI câu nhận xét đã nhắc tới nó.');
+    // G78: tiêu đề thẻ được xuống hai dòng — với font test rộng, nút có thể
+    // nằm dưới mép khung 914 dp.
+    await tester.ensureVisible(find.text('Xem kế hoạch'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Xem kế hoạch'));
     expect(identical(nhan, kh), isTrue,
         reason: 'Trang mở sheet với ĐÚNG kế hoạch của state, không tính lại.');

@@ -1945,13 +1945,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
-            ? '${_selectedWallet!.name} • ${CurrencyFormatter.format(_selectedWallet!.balance)}'
+            ? '${_selectedWallet!.name} • ${CurrencyFormatter.formatLienKhoi(_selectedWallet!.balance)}'
             : 'Chọn ví');
 
     final destWalletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_destinationWallet != null
-            ? '${_destinationWallet!.name} • ${CurrencyFormatter.format(_destinationWallet!.balance)}'
+            ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatLienKhoi(_destinationWallet!.balance)}'
             : 'Chọn ví đích');
 
     return Container(

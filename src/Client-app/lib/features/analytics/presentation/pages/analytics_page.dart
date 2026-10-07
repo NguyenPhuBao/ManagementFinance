@@ -1228,7 +1228,8 @@ class _ChonDanhMucXuHuong extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(
           'Chọn tối đa $kToiDaDuongXuHuong danh mục · Bỏ chọn hết để xem Thu/Chi',
-          maxLines: 1,
+          // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…" — nay xuống tối đa hai dòng.
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
@@ -2609,7 +2610,10 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
         children: [
           _tieuDeKhoi('Số liệu nhanh'),
           const SizedBox(height: 16),
+          // Canh MÉP TRÊN: nhãn "NGÀY CHI NHIỀU NHẤT" xuống hai dòng ở màn hẹp
+          // (G78) thì ô bên cạnh không bị đẩy xuống giữa.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child:
@@ -2649,7 +2653,8 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
         children: [
           Text(
             nhan,
-            maxLines: 1,
+            // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…" — nay xuống tối đa hai dòng.
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 10,

@@ -44,9 +44,9 @@ void main() {
     );
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Ví số 0 • 100.000 đ'));
+    await tester.ensureVisible(find.text('Ví số 0 • 100.000\u00A0đ'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Ví số 0 • 100.000 đ'));
+    await tester.tap(find.text('Ví số 0 • 100.000\u00A0đ'));
     await tester.pumpAndSettle();
     expect(find.text('Chọn ví thanh toán'), findsOneWidget, reason: 'tiền đề: bảng đã mở');
   }
@@ -67,7 +67,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Ví số 4'));
       await tester.pumpAndSettle();
-      expect(find.text('Ví số 4 • 100.000 đ'), findsOneWidget, reason: 'ví cuối phải chọn được');
+      expect(find.text('Ví số 4 • 100.000\u00A0đ'), findsOneWidget, reason: 'ví cuối phải chọn được');
     });
   }
 
@@ -81,6 +81,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ví số 11'));
     await tester.pumpAndSettle();
-    expect(find.text('Ví số 11 • 100.000 đ'), findsOneWidget);
+    expect(find.text('Ví số 11 • 100.000\u00A0đ'), findsOneWidget);
   });
 }

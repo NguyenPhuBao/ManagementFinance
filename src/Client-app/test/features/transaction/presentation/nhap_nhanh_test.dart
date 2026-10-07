@@ -180,14 +180,14 @@ void main() {
   testWidgets('⭐ "hôm qua ăn phở 45k tiền mặt" → số tiền, ngày, ví, ghi chú và dòng tóm tắt', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'tiền đề: ví mặc định');
+    expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget, reason: 'tiền đề: ví mặc định');
 
     await dien(tester, 'hôm qua ăn phở 45k tiền mặt');
 
     final homQua = DateTime.now().subtract(const Duration(days: 1));
     expect(find.text('45.000 đ'), findsOneWidget, reason: 'con số lớn đầu màn');
     expect(find.text(ngayForm(homQua)), findsOneWidget);
-    expect(find.text('Tiền mặt • 100.000 đ'), findsOneWidget);
+    expect(find.text('Tiền mặt • 100.000\u00A0đ'), findsOneWidget);
     expect(ghiChu(tester), 'ăn phở');
     expect(tomTat(tester), 'Đã điền: 45.000 đ · Hôm qua · Tiền mặt');
   });
@@ -209,7 +209,7 @@ void main() {
     await dien(tester, '45k');
 
     expect(find.text('45.000 đ'), findsOneWidget);
-    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget);
+    expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget);
     expect(find.text(ngayForm(DateTime.now())), findsOneWidget);
     expect(ghiChu(tester), 'ghi chú cũ', reason: 'câu không để lại chữ nào cho ghi chú — ô ấy "không đọc được"');
   });
@@ -222,7 +222,7 @@ void main() {
 
     expect(tomTat(tester), kCauChuaDocDuoc);
     expect(find.text('0 đ'), findsOneWidget);
-    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget);
+    expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget);
     expect(ghiChu(tester), '');
   });
 
@@ -234,7 +234,7 @@ void main() {
     await dien(tester, '45k tiền mặt ăn uống');
 
     expect(find.text('Ăn uống'), findsOneWidget, reason: 'tiền đề: danh mục đọc được từ tên trong câu');
-    expect(find.text('Tiền mặt • 100.000 đ'), findsOneWidget);
+    expect(find.text('Tiền mặt • 100.000\u00A0đ'), findsOneWidget);
   });
 
   testWidgets('⚠️ đang có danh mục CHI mà câu nói khoản thu → danh mục chi bị bỏ (đi qua _chonHuong)', (tester) async {
@@ -326,13 +326,13 @@ void main() {
       'nó)', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'tiền đề: ví nguồn mặc định là Techcombank');
+    expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget, reason: 'tiền đề: ví nguồn mặc định là Techcombank');
 
     await dien(tester, 'chuyển 500k vào techcombank');
 
     expect(tomTat(tester), 'Đã điền: 500.000 đ · Chuyển ví · sang Techcombank');
     expect(find.text('Chọn ví'), findsOneWidget, reason: 'ví nguồn');
-    expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'ví đích');
+    expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget, reason: 'ví đích');
   });
 
   testWidgets('màn SỬA giao dịch không có ô Nhập nhanh', (tester) async {
@@ -453,11 +453,11 @@ void main() {
         (tester) async {
       await tester.pumpWidget(app(docAi: aiTraVe({'so_tien': 45000, 'loai': 'chi', 'vi': 'Techcombank'})));
       await tester.pumpAndSettle();
-      expect(find.text('Techcombank • 100.000 đ'), findsOneWidget, reason: 'tiền đề: ví đang chọn');
+      expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget, reason: 'tiền đề: ví đang chọn');
 
       await dien(tester, 'quẹt thẻ ăn phở 45k');
 
-      expect(find.text('Techcombank • 100.000 đ'), findsOneWidget);
+      expect(find.text('Techcombank • 100.000\u00A0đ'), findsOneWidget);
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng luật');
     });
 

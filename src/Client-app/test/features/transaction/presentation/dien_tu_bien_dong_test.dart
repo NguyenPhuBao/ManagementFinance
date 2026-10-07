@@ -136,7 +136,7 @@ void main() {
       (tester) async {
     await store.ghi(1, kNguonMb, '7777', 'mb');
     await mo(tester);
-    expect(find.text('MB • 100.000 đ'), findsOneWidget);
+    expect(find.text('MB • 100.000\u00A0đ'), findsOneWidget);
 
     await store.ghi(1, kNguonMb, '7777', 'vi-da-luu-tru');
     await mo(tester);
@@ -147,7 +147,7 @@ void main() {
   testWidgets('Lưu khi đã có ví nhớ → không ghi đè bảng nguồn → ví', (tester) async {
     await store.ghi(1, kNguonMb, '7777', 'mb');
     await mo(tester);
-    await tester.tap(find.text('MB • 100.000 đ'));
+    await tester.tap(find.text('MB • 100.000\u00A0đ'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tiền mặt').last);
     await tester.pumpAndSettle();

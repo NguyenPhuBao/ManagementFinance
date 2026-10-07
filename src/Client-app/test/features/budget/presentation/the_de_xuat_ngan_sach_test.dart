@@ -105,9 +105,9 @@ void main() {
     expect(find.text('CHƯA ĐẶT NGÂN SÁCH'), findsOneWidget);
     expect(find.text('3 nhóm'), findsOneWidget);
     expect(find.text('Giải trí'), findsOneWidget);
-    expect(find.text('khoảng 450.000 đ mỗi tháng'), findsOneWidget);
-    expect(find.text('khoảng 320.000 đ mỗi tháng'), findsOneWidget);
-    expect(find.text('khoảng 280.000 đ mỗi tháng'), findsOneWidget);
+    expect(find.text('khoảng 450.000\u00A0đ mỗi tháng'), findsOneWidget);
+    expect(find.text('khoảng 320.000\u00A0đ mỗi tháng'), findsOneWidget);
+    expect(find.text('khoảng 280.000\u00A0đ mỗi tháng'), findsOneWidget);
     expect(find.text('Tạo'), findsNWidgets(3));
 
     await tester.tap(find.byKey(const ValueKey('de-xuat-tao-c-chi-khac')));

@@ -61,7 +61,8 @@ class TheKeHoach extends StatelessWidget {
                   _thieu
                       ? 'ĐỀ XUẤT CÂN ĐỐI · KHÔNG ĐỦ DƯ ĐỊA'
                       : 'ĐỀ XUẤT CÂN ĐỐI',
-                  maxLines: 1,
+                  // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…" — nay xuống tối đa hai dòng.
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
