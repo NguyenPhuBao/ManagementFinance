@@ -55,6 +55,12 @@ class CurrencyFormatter {
     return '$dau${_nguyen.format(amount.abs())} $kyHieu';
   }
 
+  /// Như [format] nhưng số và `đ` **dính liền** (khoảng trắng không ngắt
+  /// U+00A0) — cho dòng chữ được phép xuống dòng ở màn hẹp, để chỗ ngắt không
+  /// rơi vào giữa `"500.000 ⏎ đ"` (G75, 2026-10-07). Nhìn y hệt [format].
+  static String formatLienKhoi(num amount) =>
+      format(amount).replaceAll(' ', '\u00A0');
+
   /// `1234567.5` → `"1.234.567,50 đ"`. Luôn hiện đúng hai chữ số thập phân,
   /// ngăn bằng **dấu phẩy**.
   ///

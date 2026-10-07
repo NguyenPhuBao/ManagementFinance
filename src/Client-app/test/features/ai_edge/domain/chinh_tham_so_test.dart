@@ -178,6 +178,43 @@ void main() {
       expect(chinh('khoản chi hơn một triệu rưỡi', {'ky': 'thang_nay'})['so_tien_tu'], 1500000);
     });
 
+    test('⭐ C4: "dưới / trên" là mốc LOẠI TRỪ; "không quá / đến / từ / trở lên" là mốc BAO GỒM', () {
+      KetQuaChinhThamSo r(String cau) =>
+          chinhThamSoTimGiaoDich(cau, {'ky': 'tuan_nay'}, tenDanhMuc: danhMuc, tenVi: vi, now: now);
+      final duoi = r('tuần này có khoản chi nào dưới 100 nghìn không');
+      expect(duoi.args['so_tien_den'], 100000);
+      expect(duoi.denLoaiTru, isTrue,
+          reason: 'C4 cổng F (Realme 2026-09-28): "dưới 100 nghìn" từng kể cả khoản đúng 100.000 đ');
+      expect(duoi.tuLoaiTru, isFalse);
+      expect(r('khoản chi không quá 100k').denLoaiTru, isFalse);
+      expect(r('khoản chi tối đa 100k').denLoaiTru, isFalse);
+      final tren = r('thang nay toi tieu gi tren 500k');
+      expect(tren.args['so_tien_tu'], 500000);
+      expect(tren.tuLoaiTru, isTrue);
+      expect(r('khoản chi hơn một triệu').tuLoaiTru, isTrue);
+      expect(r('năm nay có khoản thu nào từ 5 triệu trở lên không').tuLoaiTru, isFalse);
+      expect(r('khoản chi ít nhất 200k').tuLoaiTru, isFalse);
+      final khoang = r('cac khoan chi tu 200k den 1 trieu');
+      expect((khoang.tuLoaiTru, khoang.denLoaiTru), (false, false));
+    });
+
+    test('⭐ "ít hơn / nhỏ hơn / thấp hơn X" là ngưỡng TRÊN — chữ "hơn" của ngưỡng dưới từng khớp trước', () {
+      for (final cau in ['khoản chi ít hơn 50k', 'khoản chi nhỏ hơn 50 nghìn', 'khoan chi thap hon 50k']) {
+        final r = chinhThamSoTimGiaoDich(cau, {'ky': 'thang_nay'},
+            tenDanhMuc: danhMuc, tenVi: vi, now: now);
+        expect(r.args['so_tien_den'], 50000, reason: cau);
+        expect(r.args.containsKey('so_tien_tu'), isFalse, reason: '$cau — trước 2026-10-06 thành so_tien_tu');
+        expect(r.denLoaiTru, isTrue, reason: cau);
+      }
+      expect(chinh('khoản chi lớn hơn 50k', {'ky': 'thang_nay'})['so_tien_tu'], 50000);
+    });
+
+    test('mô hình tự điền ngưỡng mà câu không có chữ ngưỡng → không loại trừ', () {
+      final r = chinhThamSoTimGiaoDich('các khoản 100k tháng này', {'ky': 'thang_nay', 'so_tien_den': 100000},
+          tenDanhMuc: danhMuc, tenVi: vi, now: now);
+      expect(r.denLoaiTru, isFalse);
+    });
+
     test('⭐ ngưỡng viết bằng chữ HÀNG CHỤC (C2 task 1, 2026-09-29 — đo trước lượt ấy: không ngưỡng nào)', () {
       expect(chinh('các khoản chi dưới năm mươi nghìn tháng này', {'ky': 'thang_nay'})['so_tien_den'], 50000);
       expect(chinh('cac khoan chi tren hai muoi lam nghin', {'ky': 'thang_nay'})['so_tien_tu'], 25000);

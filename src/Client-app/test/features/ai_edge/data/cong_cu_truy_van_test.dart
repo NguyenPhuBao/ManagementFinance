@@ -534,6 +534,26 @@ void main() {
     expect((await hoi('thang nay toi chi bao nhieu')).chiMauCau, isFalse);
   });
 
+  test('⭐ C4 — "dưới 50 nghìn" KHÔNG gồm khoản đúng 50.000; "không quá" thì gồm', () async {
+    hoi(String cau) => cc.chay({'ky': 'thang_nay', 'chieu': 'khoan_chi'},
+        idaccount: 10, now: now, cauHoi: cau);
+    final duoi = await hoi('các khoản chi dưới 50 nghìn tháng này');
+    expect(duoi.json['Số giao dịch'], '2',
+        reason: 'C4 cổng F: "dưới" từng gồm cả mốc — khoản Cơm 50.000 đ lọt vào');
+    expect((await hoi('các khoản chi không quá 50 nghìn tháng này')).json['Số giao dịch'], '3');
+    expect((await hoi('các khoản chi trên 30 nghìn tháng này')).json['Số giao dịch'], '2',
+        reason: 'Phim 30.000 đ không "trên" 30.000');
+    expect((await hoi('các khoản chi từ 30 nghìn trở lên tháng này')).json['Số giao dịch'], '3');
+  });
+
+  test('C4 — lượt rỗng in "dưới X" chứ không "đến X" (mốc loại trừ phải nói đúng chữ)', () async {
+    final kq = await cc.chay({'ky': 'thang_nay', 'chieu': 'khoan_chi'},
+        idaccount: 10, now: now, cauHoi: 'các khoản chi dưới 20 nghìn tháng này');
+    expect(kq.rongTheoBoLoc, isTrue);
+    expect(kq.boLoc.join(' · '), contains('dưới 20.000 đ'));
+    expect(kq.boLoc.join(' · '), isNot(contains('đến')));
+  });
+
   test('⭐ B8 — câu xin N dòng (N < trần) → đúng N hàng; Số giao dịch vẫn đếm trọn tập', () async {
     hoi(String cau) => cc.chay({'ky': 'thang_nay', 'sap_xep': 'moi_nhat'},
         idaccount: 10, now: now, cauHoi: cau);

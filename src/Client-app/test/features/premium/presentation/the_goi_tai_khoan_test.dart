@@ -62,7 +62,9 @@ void main() {
   testWidgets('Premium: "Premium" + còn N ngày · đến dd/MM/yyyy + Gia hạn', (tester) async {
     final c = await cubit(
         kho: TrangThaiGoi(loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now));
-    await tester.pumpWidget(boc(const TheGoiTaiKhoan(), c: c));
+    // Truyền `clock`: thiếu nó thì thẻ đếm ngày theo đồng hồ THẬT và ca này đỏ
+    // ngay khi máy chạy test qua nửa đêm 07/10 ("Còn 29 ngày").
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
     expect(find.text('Premium'), findsOneWidget);
     expect(find.text('Còn 30 ngày · đến 05/11/2026'), findsOneWidget);
     expect(find.text('Gia hạn'), findsOneWidget);
@@ -87,7 +89,7 @@ void main() {
     addTearDown(tester.view.reset);
     final c = await cubit(
         kho: TrangThaiGoi(loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 25, 8), nhanLuc: now));
-    await tester.pumpWidget(boc(const TheGoiTaiKhoan(), c: c));
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
     expect(tester.takeException(), isNull);
   });
 }

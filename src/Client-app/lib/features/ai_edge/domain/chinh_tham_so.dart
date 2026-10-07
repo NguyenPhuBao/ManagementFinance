@@ -18,6 +18,9 @@
 /// 4. **Ngưỡng của câu hỏi thắng** tham số mô hình: số + đơn vị (*500k, 1 triệu*)
 ///    hay số chữ (*nửa triệu, một triệu rưỡi*) kèm từ định hướng (*trên / hơn / từ
 ///    … trở lên* → `so_tien_tu`; *dưới / không quá / đến / tới* → `so_tien_den`).
+///    Cụm DÀI nhất thắng: *"ít hơn"* là ngưỡng trên dù kết thúc bằng *"hơn"*.
+///    *trên / hơn / lớn hơn* và *dưới / nhỏ hơn / thấp hơn / ít hơn* là mốc LOẠI
+///    TRỪ (C4) — báo qua `tuLoaiTru` / `denLoaiTru`, không qua args.
 /// 5. **Sắp xếp và kỳ**: *lần gần nhất / lần cuối / gần đây / mới nhất* →
 ///    `sap_xep=moi_nhat`; câu không có chữ kỳ nào → `ky=moi_luc`.
 /// 11. **Kỳ nêu cụ thể** (spec mở rộng tool 2026-09-27 §3.1): *tháng 8, quý 2,
@@ -76,11 +79,19 @@ class KetQuaChinhThamSo {
   /// `ky=tuy_chon`. Tool đưa chữ vào `boLoc`, tên vào `tenLienQuan`.
   final String? chuKy;
   final List<String> tenKy;
+
+  /// Mốc `so_tien_tu` / `so_tien_den` là mốc LOẠI TRỪ — câu nói *"trên X"*,
+  /// *"dưới X"* (C4, 2026-10-06). Không đi qua args: tham số ấy không có trong
+  /// `tools_json`, nên mô hình không bao giờ thấy nó.
+  final bool tuLoaiTru;
+  final bool denLoaiTru;
   const KetQuaChinhThamSo(
     this.args,
     this.ghiChu, {
     this.chuKy,
     this.tenKy = const [],
+    this.tuLoaiTru = false,
+    this.denLoaiTru = false,
   });
 }
 
@@ -122,6 +133,11 @@ final List<String> _tuKy =
         .split('|');
 final List<String> _tuTu = 'tren|hon|tu|it nhat|toi thieu|lon hon'.split('|');
 final List<String> _tuDen = 'duoi|khong qua|den|toi|toi da|nho hon|thap hon|it hon'.split('|');
+
+/// Mốc LOẠI TRỪ (C4): *"trên 500k"* không gồm 500.000, *"dưới 100 nghìn"* không
+/// gồm 100.000. Phần còn lại của [_tuTu] / [_tuDen] bao gồm mốc.
+final Set<String> _tuNgat =
+    'tren|hon|lon hon|duoi|nho hon|thap hon|it hon'.split('|').toSet();
 
 const Map<String, double> _donVi = {
   'k': 1000, 'nghin': 1000, 'ngan': 1000, 'tr': 1000000, 'trieu': 1000000,
@@ -468,6 +484,10 @@ KetQuaChinhThamSo chinhThamSoTimGiaoDich(
     ghi,
     chuKy: kyTuDo?.chu,
     tenKy: kyTuDo?.ten ?? const [],
+    // Chỉ khi giá trị cuối là chính mốc của câu — mô hình tự điền ngưỡng mà câu
+    // không có chữ ngưỡng thì không có bằng chứng loại trừ.
+    tuLoaiTru: nguong.tuNgat && nguong.tu != null && a['so_tien_tu'] == nguong.tu,
+    denLoaiTru: nguong.denNgat && nguong.den != null && a['so_tien_den'] == nguong.den,
   );
 }
 
@@ -1121,9 +1141,11 @@ String? _chieuTheoDongTu(String q0) {
   return thu ? 'khoan_thu' : 'khoan_chi';
 }
 
-({int? tu, int? den}) _nguongTrongCau(String q) {
+({int? tu, int? den, bool tuNgat, bool denNgat}) _nguongTrongCau(String q) {
   int? tu;
   int? den;
+  var tuNgat = false;
+  var denNgat = false;
   final khoang = <(int, int, double)>[];
   for (final m in _mauSoDonVi.allMatches(q)) {
     final tho = m.group(1)!;
@@ -1150,13 +1172,27 @@ String? _chieuTheoDongTu(String q0) {
     final sau = q.substring(kt).trim();
     final baTruoc = truoc.length <= 3 ? truoc.join(' ') : truoc.sublist(truoc.length - 3).join(' ');
     final v = gia.round();
-    if (sau.startsWith('tro len') || _tuTu.any((t) => _cuoi(baTruoc, t))) {
+    if (sau.startsWith('tro len')) {
       tu = v;
-    } else if (_tuDen.any((t) => _cuoi(baTruoc, t))) {
+      tuNgat = false;
+      continue;
+    }
+    // Cụm DÀI nhất thắng: "it hon" kết thúc bằng "hon" của ngưỡng dưới — xét
+    // "hon" trước thì "ít hơn 50k" thành so_tien_tu (có từ trước C4).
+    String? cum;
+    for (final t in [..._tuTu, ..._tuDen]) {
+      if (_cuoi(baTruoc, t) && (cum == null || t.length > cum.length)) cum = t;
+    }
+    if (cum == null) continue;
+    if (_tuDen.contains(cum)) {
       den = v;
+      denNgat = _tuNgat.contains(cum);
+    } else {
+      tu = v;
+      tuNgat = _tuNgat.contains(cum);
     }
   }
-  return (tu: tu, den: den);
+  return (tu: tu, den: den, tuNgat: tuNgat, denNgat: denNgat);
 }
 
 /// Câu có SỐ TIỀN không: số kèm đơn vị (*500k, 1 triệu*), số chữ (*nửa triệu*),

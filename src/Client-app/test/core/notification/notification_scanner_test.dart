@@ -225,6 +225,11 @@ void main() {
     NotificationEventDao? eventDao,
     Set<String>? viDaDung,
     void Function()? onNapViDaDung,
+    Map<String, String>? dotAm,
+    void Function(List<String> viAm)? onNapDotAm,
+    Set<String>? viDaXoa,
+    // Mỗi bộ quét đếm id lại từ 0 — hai bộ cùng ghi vào một CSDL thì trùng khoá chính và hàng sau bị bỏ qua.
+    String tienToId = 'id',
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -242,6 +247,13 @@ void main() {
               onNapViDaDung?.call();
               return viDaDung;
             },
+      loadDotAm: dotAm == null
+          ? null
+          : (id, viAm) async {
+              onNapDotAm?.call(viAm);
+              return dotAm;
+            },
+      loadViDaXoa: viDaXoa == null ? null : (id) async => viDaXoa,
       syncStatus: syncStatus.stream,
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
@@ -263,7 +275,7 @@ void main() {
       nhatKy: nhatKy,
       eventDao: eventDao,
       clock: () => now,
-      idGenerator: () => 'id-${soId++}',
+      idGenerator: () => '$tienToId-${soId++}',
     );
   }
 
@@ -997,6 +1009,93 @@ void main() {
       final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletLowBalance');
       expect(h.dismissedAt, isNotNull,
           reason: 'đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" treo trên khay sau khi ví đã có 10.000 đ');
+    });
+
+    test('⭐ E6: ví âm mà biết đợt → khoá theo giao dịch mở đợt; chỉ hỏi sổ cho ví ĐANG âm', () async {
+      final hoi = <List<String>>[];
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, onNapDotAm: hoi.add)
+          .scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).single;
+      expect(h.dedupeKey, 'walletNeg:vi1:gd-a');
+      expect(hoi, [
+        ['vi1']
+      ]);
+    });
+
+    test('không ví nào âm → KHÔNG đọc sổ tìm đợt âm', () async {
+      var soLan = 0;
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 5000)], dotAm: const {}, onNapDotAm: (_) => soLan++)
+          .scan(accountId);
+      expect(soLan, 0, reason: 'đọc sổ mọi lượt quét là trả giá cho một kết quả không dùng tới');
+    });
+
+    test('⭐ E6: hàng "ví âm" bị GỠ khi ví đã hồi — đợt sau báo lại', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 20000)], dotAm: const {}).scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletNegative');
+      expect(h.dismissedAt, isNotNull, reason: 'ví đã nạp tiền — cảnh báo âm cũ không còn đúng');
+      final moi = await dungScanner(
+              budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-d'}, tienToId: 'lan3')
+          .scan(accountId);
+      expect(moi, 1, reason: 'âm lại là đợt mới (giao dịch mở đợt khác) — phải báo lại');
+    });
+
+    test('⭐ E6 ◐: âm lại CÙNG đợt sau khi hàng đã tự gỡ (xoá khoản nạp) → BÁO LẠI', () async {
+      // Ví âm vì gd-a → báo. Nạp tiền → ví dương → hàng tự gỡ. Xoá khoản nạp → ví
+      // âm lại, và theo sổ đợt âm vẫn mở từ gd-a: CÙNG khoá. Hàng cũ đã tự gỡ thì
+      // khoá ấy phải được nhả — người dùng vừa thấy cảnh báo biến mất.
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 20000)], dotAm: const {}, tienToId: 'lan2')
+          .scan(accountId);
+      final moi = await dungScanner(
+              budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, tienToId: 'lan3')
+          .scan(accountId);
+      expect(moi, 1, reason: 'E6 ◐ (Realme 2026-10-06): xoá khoản nạp làm ví âm lại mà không báo lại');
+      final hang = (await db.notificationDao.getAll(accountId)).where((n) => n.kind == 'walletNegative').toList();
+      expect(hang.where((n) => n.dismissedAt == null).single.dedupeKey, 'walletNeg:vi1:gd-a',
+          reason: 'hàng mới mang đúng khoá của đợt');
+      expect(hang.length, 2, reason: 'hàng cũ GIỮ lại (đã gỡ) — không xoá cứng, chỉ nhả khoá');
+    });
+
+    test('E6 ◐: người dùng TỰ ✕ thông báo "ví âm" (ví vẫn âm) → KHÔNG báo lại', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).single;
+      await db.notificationDao.dismiss(h.id);
+      final moi = await dungScanner(
+              budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, tienToId: 'lan2')
+          .scan(accountId);
+      expect(moi, 0, reason: 'nhả khoá CHỈ khi hàng tự gỡ vì ví hồi — người dùng đã gạt đi thì thôi');
+    });
+
+    test('E6 ◐: tự gỡ vì ví hồi → huỷ thông báo trên khay theo KHOÁ GỐC trước khi nhả khoá', () async {
+      final os = OsNotifierGia();
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, osNotifier: os)
+          .scan(accountId);
+      await dungScanner(
+              budgets: const [], wallets: [vi(soDu: 20000)], dotAm: const {}, osNotifier: os, tienToId: 'lan2')
+          .scan(accountId);
+      expect(os.daHuy, contains(osScheduledId('walletNeg:vi1:gd-a')),
+          reason: 'BadgeUpdater huỷ theo osScheduledId(dedupeKey) — đổi khoá rồi thì nó không còn tìm được '
+              'thông báo cũ trên khay');
+    });
+
+    test('⭐ G71: xoá ví → hàng "ví âm" của nó bị GỠ, kể cả khi đó là ví duy nhất', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      // Ví đã xoá mềm: `walletDao.getAll` không trả nó nữa — danh sách ví RỖNG.
+      await dungScanner(budgets: const [], wallets: const [], viDaXoa: const {'vi1'}, tienToId: 'lan2')
+          .scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletNegative');
+      expect(h.dismissedAt, isNotNull,
+          reason: 'G71 (Realme 2026-10-06): thông báo của ví đã xoá treo trong trung tâm và trên khay');
+    });
+
+    test('G71: ví vắng mặt mà KHÔNG chắc đã xoá → giữ nguyên (không đoán)', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      await dungScanner(budgets: const [], wallets: const [], viDaXoa: const {'khac'}, tienToId: 'lan2')
+          .scan(accountId);
+      await dungScanner(budgets: const [], wallets: const [], tienToId: 'lan3').scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).singleWhere((n) => n.kind == 'walletNegative');
+      expect(h.dismissedAt, isNull);
     });
 
     test('không đặt ngưỡng thì ví còn ít tiền vẫn im', () async {

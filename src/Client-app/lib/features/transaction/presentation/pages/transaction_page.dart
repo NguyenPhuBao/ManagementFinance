@@ -25,6 +25,7 @@ import '../widgets/the_chua_gan_danh_muc.dart';
 import '../widgets/transaction_list_row.dart';
 import 'add_transaction_page.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../../core/ui/do_chu.dart';
 
 class TransactionPage extends StatefulWidget {
   /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
@@ -235,7 +236,8 @@ class _TransactionPageState extends State<TransactionPage> {
                     child: BlocBuilder<TransactionBloc, TransactionState>(
                       builder: (context, state) {
                         if (state is TransactionLoadingState) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
 
                         if (state is TransactionLoadedState) {
@@ -266,7 +268,8 @@ class _TransactionPageState extends State<TransactionPage> {
                                       wallets: walletList,
                                       onChanged: (f) =>
                                           setState(() => _filter = f),
-                                      pickCategory: () => context.push<Category>(
+                                      pickCategory: () =>
+                                          context.push<Category>(
                                         '/add/category',
                                         extra: kCategoryClassifies.first,
                                       ),
@@ -406,6 +409,15 @@ class _TransactionPageState extends State<TransactionPage> {
     );
   }
 
+  static const _kieuNhanKy = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: AppColors.primary,
+  );
+
+  /// Biểu tượng lịch 20 + khe 8 đứng trước nhãn kỳ.
+  static const _rongLichVaKhe = 20.0 + 8;
+
   Widget _buildKySelector(BuildContext blocContext) {
     return Container(
       color: Colors.white,
@@ -429,26 +441,35 @@ class _TransactionPageState extends State<TransactionPage> {
               borderRadius: BorderRadius.circular(8),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.calendar_month,
-                        color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        nhanRong(_ky, DateTime.now()),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                // G77 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn)
+                // "Tháng này (T10 2026)" cụt thành "Tháng này (T10 20…" — mất
+                // NĂM. ĐO bề rộng: không vừa thì lùi về `nhanNgan` ("T10
+                // 2026") — bỏ chữ "Tháng này" chứ không bỏ năm. Cùng lối header
+                // trang Phân tích (G2).
+                child: LayoutBuilder(builder: (context, rang) {
+                  final rong = nhanRong(_ky, DateTime.now());
+                  final choChu = rang.maxWidth - _rongLichVaKhe;
+                  final nhan =
+                      doRongChu(context, rong, _kieuNhanKy) <= choChu + 0.5
+                          ? rong
+                          : _ky.nhanNgan;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.calendar_month,
+                          color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          nhan,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _kieuNhanKy,
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                }),
               ),
             ),
           ),
@@ -487,10 +508,22 @@ class _TransactionPageState extends State<TransactionPage> {
           // `formatCoDau` chứ không `formatIncome`/`formatExpense`: kỳ rỗng là
           // ca THƯỜNG từ khi trang xem được năm đơn vị, và số 0 không mang dấu
           // (cột "Thu net" ngay bên cạnh vốn đã theo luật ấy).
-          _buildSummaryColumn('Thu nhập', CurrencyFormatter.formatCoDau(totalIncome, thu: true), AppColors.income),
-          Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-          _buildSummaryColumn('Chi tiêu', CurrencyFormatter.formatCoDau(totalExpense, thu: false), AppColors.error),
-          Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+          _buildSummaryColumn(
+              'Thu nhập',
+              CurrencyFormatter.formatCoDau(totalIncome, thu: true),
+              AppColors.income),
+          Container(
+              width: 1,
+              height: 36,
+              color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+          _buildSummaryColumn(
+              'Chi tiêu',
+              CurrencyFormatter.formatCoDau(totalExpense, thu: false),
+              AppColors.error),
+          Container(
+              width: 1,
+              height: 36,
+              color: AppColors.outlineVariant.withValues(alpha: 0.4)),
           _buildSummaryColumn(
             'Thu net',
             CurrencyFormatter.formatCoDau(net, thu: net >= 0),
@@ -588,76 +621,80 @@ class _TransactionPageState extends State<TransactionPage> {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       sliver: SliverList.builder(
-      itemCount: sortedDates.length,
-      itemBuilder: (context, dateIndex) {
-        final dateStr = sortedDates[dateIndex];
-        final dayTxs = grouped[dateStr]!;
-        final dateObj = DateTime.parse(dateStr);
-        final formattedDateHeader = DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(dateObj);
+        itemCount: sortedDates.length,
+        itemBuilder: (context, dateIndex) {
+          final dateStr = sortedDates[dateIndex];
+          final dayTxs = grouped[dateStr]!;
+          final dateObj = DateTime.parse(dateStr);
+          final formattedDateHeader =
+              DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(dateObj);
 
-        // Tổng của nhóm ngày: CÙNG hàm với thẻ tổng (`khoanVaoThongKe` — bỏ khoản điều chỉnh số dư / mở sổ). Vòng cộng
-        // thô theo `type` từng nằm ở đây: trên Realme một ngày chỉ có khoản điều chỉnh hiện "+10.000 đ" trong khi thẻ
-        // tổng không cộng nó (2026-09-29, sau G49).
-        final dayNet = summarizeTransactions(dayTxs).net;
+          // Tổng của nhóm ngày: CÙNG hàm với thẻ tổng (`khoanVaoThongKe` — bỏ khoản điều chỉnh số dư / mở sổ). Vòng cộng
+          // thô theo `type` từng nằm ở đây: trên Realme một ngày chỉ có khoản điều chỉnh hiện "+10.000 đ" trong khi thẻ
+          // tổng không cộng nó (2026-09-29, sau G49).
+          final dayNet = summarizeTransactions(dayTxs).net;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Day Header
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: AppColors.surfaceContainerHigh,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      formattedDateHeader,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Text(
-                      CurrencyFormatter.formatCoDau(dayNet, thu: dayNet >= 0),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: dayNet >= 0 ? AppColors.income : AppColors.error,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Day Items — vuốt xoá; khoản của mục tiêu/hoá đơn bị chặn
-              // ngay trong widget (xem `TransactionListRow`).
-              ...dayTxs.map((tx) => TransactionListRow(
-                    transaction: tx,
-                    lookup: lookup,
-                    onTap: () => _showDetail(blocContext, tx, lookup),
-                    onDelete: () => blocContext.read<TransactionBloc>().add(
-                          DeleteTransactionEvent(tx),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Day Header
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceContainerHigh,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formattedDateHeader,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
-                  )),
-            ],
-          ),
-        );
-      },
+                      ),
+                      Text(
+                        CurrencyFormatter.formatCoDau(dayNet, thu: dayNet >= 0),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              dayNet >= 0 ? AppColors.income : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Day Items — vuốt xoá; khoản của mục tiêu/hoá đơn bị chặn
+                // ngay trong widget (xem `TransactionListRow`).
+                ...dayTxs.map((tx) => TransactionListRow(
+                      transaction: tx,
+                      lookup: lookup,
+                      onTap: () => _showDetail(blocContext, tx, lookup),
+                      onDelete: () => blocContext.read<TransactionBloc>().add(
+                            DeleteTransactionEvent(tx),
+                          ),
+                    )),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -12,6 +12,9 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/notification/presentation/widgets/notification_panel.dart';
 
 void main() {
+  // Mốc GHIM: ca "10 phút trước" từng đọc giờ thật và đỏ trong 00:00–00:10.
+  final now = DateTime(2026, 10, 6, 10);
+
   AppNotification mau(String id, {String body = 'Sắp vượt ngân sách Ăn uống'}) {
     return AppNotification(
       id: id,
@@ -22,7 +25,7 @@ void main() {
       body: body,
       severity: 'warning',
       subjectType: 'budget',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
+      createdAt: now.subtract(const Duration(minutes: 10)),
     );
   }
 
@@ -32,6 +35,7 @@ void main() {
         body: NotificationPanel(
           idaccount: 7,
           feed: Stream.value(items),
+          clock: () => now,
         ),
       ),
     ));

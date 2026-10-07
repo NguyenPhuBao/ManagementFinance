@@ -284,7 +284,7 @@ void main() {
       final muaDT = _mt(id: 'dt', ten: 'MuaDT', current: 500000);
       final kq = hangMucTieu([tr(), muaDT], now: now, viNguon: {'w-tm': vi(20000)}, ten: 'MuaDT');
       expect(kq.hang.map((h) => h.ten).toList(), ['MuaDT']);
-      expect(kq.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
+      expect(kq.hang.single.trangThai, 'không bật trích tự động');
       expect(kq.json.containsKey('Không đủ tiền trích'), isFalse,
           reason: 'đếm ví thiếu là của MuaXe — không thuộc câu hỏi về MuaDT');
       final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', kq);
@@ -356,11 +356,13 @@ void main() {
 
     test('⭐ F14: hỏi trích của mục tiêu KHÔNG bật trích → chiMauCau, mẫu câu nói thẳng', () {
       final r = hangMucTieu(hai, now: now, viNguon: const {}, ten: 'MuaDT');
-      expect(r.chuThem['ket_qua'], 'MuaDT không bật trích tự động');
       expect(r.chiMauCau, isTrue,
           reason: 'Realme 2026-09-28: mô hình bỏ qua ket_qua, đáp "cần thêm 115 ngày"');
       final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
-      expect(g.mauCau().cau, contains('MuaDT không bật trích tự động'));
+      expect(g.mauCau().cau, 'MuaDT không bật trích tự động.',
+          reason: 'cổng F lần 3: tám con số (tiến độ, đã tích, …) đứng trước kết luận — câu hỏi chỉ hỏi kỳ trích');
+      expect(r.hang.single.soLieu, isEmpty);
+      expect(r.chuThem.containsKey('ket_qua'), isFalse, reason: 'kết luận đã là trạng thái của hàng — không lặp');
       expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
     });
 
@@ -368,6 +370,25 @@ void main() {
       final r = hangMucTieu(hai, now: now, noiTrich: false);
       expect(r.chiMauCau, isFalse);
       expect(_so(r.hang.first).containsKey('Tiến độ'), isTrue);
+    });
+
+    test('⭐ câu về MỘT mục tiêu (nêu tên, hoặc một số đích) → không đếm cả nhóm', () {
+      // Cổng F lần 3 (Realme 2026-09-28): B1, B2, F14 đúng nhưng mẫu câu kết bằng
+      // "Đang theo đuổi: 2; Đã hoàn thành: 0" — số của các mục tiêu KHÁC.
+      for (final r in [
+        hangMucTieu(hai, now: now, noiTrich: false, ten: 'MuaXe', nhomSo: kNhomMucTieuKhiNao),
+        hangMucTieu(hai, now: now, noiTrich: false, ten: 'MuaXe', nhomSo: kNhomMucTieuMoiKy),
+        hangMucTieu(hai, now: now, viNguon: const {}, ten: 'MuaDT'),
+        hangMucTieu(hai, now: now, noiTrich: false, nhomSo: kNhomMucTieuKhiNao),
+      ]) {
+        expect(r.json.containsKey('Đang theo đuổi'), isFalse);
+        expect(r.json.containsKey('Đã hoàn thành'), isFalse);
+        final g = GoiSoTraCuu()..them('danh_sach_muc_tieu', r);
+        expect(g.mauCau().cau, isNot(contains('theo đuổi')), reason: g.mauCau().cau);
+        expect(kiemCauTraLoi(g.mauCau().cau, [g]), isTrue, reason: g.mauCau().cau);
+      }
+      final chung = hangMucTieu(hai, now: now, noiTrich: false);
+      expect(chung.json['Đang theo đuổi'], '2', reason: 'câu về cả nhóm vẫn đếm');
     });
   });
 

@@ -91,4 +91,17 @@ void main() {
     expect(await db.transactionDao.tongTheoVi(viA), 1000);
     expect(await db.transactionDao.tongTheoVi(viB), 500);
   });
+
+  test('⭐ bienDongTheoVi (E6): mỗi khoản một biến động có dấu, cộng lại ĐÚNG bằng tongTheoVi', () async {
+    await them(id: 't1', vi: viA, loai: 'thu', soTien: 1000);
+    await them(id: 't2', vi: viA, loai: 'chi', soTien: 300);
+    await them(id: 't3', vi: viA, loai: 'transfer', soTien: 400, viDich: viB);
+    await them(id: 't4', vi: viB, loai: 'transfer', soTien: 50, viDich: viA);
+    await them(id: 't5', vi: viA, loai: 'transfer', soTien: 70);
+    await them(id: 't6', vi: viA, loai: 'chi', soTien: 9, xoa: true);
+    final bd = await db.transactionDao.bienDongTheoVi(viA);
+    expect({for (final b in bd) b.id: b.soTien}, {'t1': 1000.0, 't2': -300.0, 't3': -400.0, 't4': 50.0},
+        reason: 'chuyển thiếu ví đích (t5) và khoản đã xoá (t6) không phải biến động — cùng luật tongTheoVi');
+    expect(bd.fold<double>(0, (a, b) => a + b.soTien), await db.transactionDao.tongTheoVi(viA));
+  });
 }

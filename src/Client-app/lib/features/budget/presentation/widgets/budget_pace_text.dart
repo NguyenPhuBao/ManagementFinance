@@ -9,11 +9,15 @@ import '../../domain/budget_pace.dart';
 ///
 /// `null` khi không còn ngày nào (hết hạn, hoặc chưa tới ngày bắt đầu): không
 /// có gì để chia, và một dòng "còn 0 ngày" chỉ gây hoang mang.
+///
+/// Các cụm tiền và *"còn N ngày"* dính liền bằng khoảng trắng không ngắt
+/// (U+00A0): ở màn hẹp dòng này xuống hai dòng, và chỗ ngắt phải rơi sau `·`
+/// chứ không giữa *"còn 25 ⏎ ngày"* (G75, 2026-10-07). Nhìn y hệt dấu cách.
 String? budgetPaceLine(BudgetPace pace) {
   if (pace.daysLeft <= 0) return null;
-  final ngay = 'còn ${pace.daysLeft} ngày';
+  final ngay = 'còn\u00A0${pace.daysLeft}\u00A0ngày';
   if (pace.suggestedPerDay <= 0) return 'Đã vượt hạn mức · $ngay';
-  return 'Nên chi ${CurrencyFormatter.format(pace.suggestedPerDay)}/ngày · '
+  return 'Nên chi ${CurrencyFormatter.formatLienKhoi(pace.suggestedPerDay)}/ngày · '
       '$ngay';
 }
 

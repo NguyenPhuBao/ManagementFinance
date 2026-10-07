@@ -55,8 +55,10 @@ List<String> boLocTimGiaoDich(KetQuaTimGiaoDich kq, TieuChiTim tieuChi) {
     if (kq.tenDanhMucKhop != null) 'danh mục "${kq.tenDanhMucKhop}"',
     if (kq.tenViKhop != null) 'ví "${kq.tenViKhop}"',
     if (tuKhoa.isNotEmpty) 'ghi chú chứa "$tuKhoa"',
-    if (kt?.tu != null) 'từ ${soTien('Từ', kt!.tu!).chuoi}',
-    if (kt?.den != null) 'đến ${soTien('Đến', kt!.den!).chuoi}',
+    // C4: mốc loại trừ nói đúng chữ của câu — "đến 100.000 đ" cho câu "dưới
+    // 100 nghìn" là nói sai bộ lọc vừa áp.
+    if (kt?.tu != null) '${tieuChi.tuLoaiTru ? 'trên' : 'từ'} ${soTien('Từ', kt!.tu!).chuoi}',
+    if (kt?.den != null) '${tieuChi.denLoaiTru ? 'dưới' : 'đến'} ${soTien('Đến', kt!.den!).chuoi}',
     if (tieuChi.sapXep == SapXepTim.moiNhat) 'mới nhất trước',
   ];
 }
@@ -65,8 +67,8 @@ List<String> boLocTimGiaoDich(KetQuaTimGiaoDich kq, TieuChiTim tieuChi) {
 List<SoLieu> soLieuBoLocTimGiaoDich(TieuChiTim tieuChi) {
   final kt = tieuChi.khoangTien;
   return [
-    if (kt?.tu != null) soTien('Từ', kt!.tu!),
-    if (kt?.den != null) soTien('Đến', kt!.den!),
+    if (kt?.tu != null) soTien(tieuChi.tuLoaiTru ? 'Trên' : 'Từ', kt!.tu!),
+    if (kt?.den != null) soTien(tieuChi.denLoaiTru ? 'Dưới' : 'Đến', kt!.den!),
   ];
 }
 

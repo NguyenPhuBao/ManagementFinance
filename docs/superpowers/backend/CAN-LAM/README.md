@@ -1,20 +1,23 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (0 mục chờ Backend · 0 mục chờ Client — SẠCH SẼ 100%)
+# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ Backend / Admin-web)
 
-**Cập nhật:** 2026-10-06 tối — Backend đã hoàn thành toàn bộ các mục tồn đọng:
-- **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`):** ĐÃ XONG 100%. Áp dụng Migration 20 bổ sung cột `Server_update_at`, chỉ mục hiệu năng và triggers tự động gán giờ server cho 6 bảng đồng bộ (`category`, `wallet`, `budget`, `bill`, `goal`, `transaction`). Cập nhật `sync.repository.js` và `sync.service.js` lọc `/sync/pull` và checkpoint `maxSince` theo `Server_update_at`. Giữ nguyên LWW theo `update_at`. Test Pass 100%.
-- **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`):** ĐÃ XONG 100%. Mở rộng API `GET /api/payment/subscription-info` trả thêm `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30`. Đính chính 5 điểm lệch mã và bỏ cụm từ *đồng bộ tức thì* trong `CLIENT_INTEGRATION_GUIDE.md`. Test Pass 100%.
-- **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** ĐÃ ĐÓNG & LƯU TRỮ. Client-app đã nghiệm thu 2026-10-03, PO duyệt 100% on-device offline. Đã chuyển sang `DA-XONG/`.
+**Cập nhật:** 2026-10-07 tối — Client-app đặt **mục 40** `SERVER_UPDATE_AT_HAI_DONG_HO.md` (mức cao): áp `database/20` lên CSDL dev xong thì đo thấy cột `Server_update_at` mang **hai đồng hồ** — đường INSERT ghi UTC, đường UPDATE bị trigger ghi giờ `Asia/Bangkok` (+7 tiếng); chặn việc client chuyển mốc kéo về sang `maxSince`. Trước đó cùng ngày — Client-app gộp `main` @ `1edab22`: Backend đã đóng **mục 34, 37, 38** (2026-10-06 tối) và chuyển sang `DA-XONG/`. README của lượt ấy viết trước khi có **mục 39** (Client-app đặt 2026-10-07) nên ghi *"0 mục"* — Client-app thêm lại mục 39.
+- **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`):** ĐÃ XONG. Migration 20 bổ sung cột `Server_update_at`, chỉ mục và trigger tự gán giờ server cho 6 bảng đồng bộ (`category`, `wallet`, `budget`, `bill`, `goal`, `transaction`). `/sync/pull` và checkpoint `maxSince` lọc theo `Server_update_at`; giữ LWW theo `update_at`.
+- **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`):** ĐÃ XONG. `GET /api/payment/subscription-info` trả thêm `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30`; đính chính 5 điểm lệch mã và bỏ cụm *đồng bộ tức thì* trong `CLIENT_INTEGRATION_GUIDE.md`.
+- **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** ĐÃ ĐÓNG & LƯU TRỮ (`DA-XONG/`).
 
-> 📌 **HIỆN TRẠNG 2026-10-06 (TỐI):**
-> - **CAN-LAM hiện tại: 0 mục tồn đọng.** Toàn bộ các yêu cầu giữa Backend và Client-app đều đã được giải quyết trọn vẹn, không còn nợ kỹ thuật.
+> 📌 **HIỆN TRẠNG 2026-10-07:**
+> - **Mục 40 (`SERVER_UPDATE_AT_HAI_DONG_HO.md`) — chờ Backend, mức cao:** trigger `set_server_update_at()` gán `CURRENT_TIMESTAMP` vào cột `timestamp` không múi giờ, nên đổi theo giờ phiên `Asia/Bangkok`, trong khi Prisma ghi UTC. Đo (rollback): update lưu `18:26` cho giá trị gửi `11:26Z`. Xin một đồng hồ UTC cho mọi đường ghi; ba lối để Backend chọn.
+> - **Mục 39 (`PHAN_QUYEN_THEO_GOI_KHAO_SAT.md`) — chờ Backend / Admin-web, đầu vào cho bước 3–4 (không chặn client):** bốn loại chức năng; bảng phân quyền đang chạy ở client (3 ví · 3 ngân sách · 3 mục tiêu · Trợ lý AI + Nhập nhanh khoá với Basic); đề xuất trả `limits` + `features` ở `/payment/subscription-info`; năm câu hỏi có mặc định.
+> - `CLIENT_INTEGRATION_GUIDE.md` trong thư mục này là **hướng dẫn** của Backend, không phải đơn xin.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **0** mục)
+## 0. Còn phải làm (Hiện tại: **2** mục)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| — | *(Hiện tại không có mục nào đang chờ xử lý)* | — | Hệ thống đồng bộ và thanh toán hoạt động trơn tru | ✅ Tất cả đã xong |
+| **40** | [SERVER_UPDATE_AT_HAI_DONG_HO.md](./SERVER_UPDATE_AT_HAI_DONG_HO.md) | Backend | `Server_update_at` (migration 20) mang hai đồng hồ: INSERT qua Prisma = UTC, UPDATE qua trigger = giờ phiên `Asia/Bangkok` (+7h). Hệ quả: kéo lại thừa 7 tiếng; thứ tự `maxSince` sai; client dùng `maxSince` sẽ **mất** hàng chèn (G67 tái hiện). Xin một đồng hồ UTC (sửa trigger + DEFAULT, hoặc timezone phiên, hoặc `timestamptz`). | ⏳ Chờ Backend (**chặn** client đóng G67) |
+| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Backend + Admin-web | Bước 1–2 của phân quyền chức năng động theo loại tài khoản: khảo sát đặc trưng chức năng (bốn loại), bảng phân quyền (giới hạn số lượng / khoá / không phân quyền), đề xuất hợp đồng `limits` + `features`, đường vòng qua trần, năm câu hỏi có mặc định. Bước 3 (CSDL) và 4 (Admin-web) do Backend thiết kế. | ⏳ Chờ Backend (không chặn) |
 
 ---
 

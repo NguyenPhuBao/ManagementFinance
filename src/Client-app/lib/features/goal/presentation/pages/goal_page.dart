@@ -17,6 +17,7 @@ import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../core/ui/do_chu.dart';
 
 class GoalPage extends StatelessWidget {
   const GoalPage({super.key});
@@ -386,8 +387,8 @@ class _GoalPageContent extends StatelessWidget {
                                 context.read<GoalCubit>().loadGoals(idaccount);
                               }
                             },
-                            icon: const Icon(Icons.restart_alt_rounded,
-                                size: 18),
+                            icon:
+                                const Icon(Icons.restart_alt_rounded, size: 18),
                             label: const Text('Bắt đầu vòng mới'),
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.income,
@@ -507,7 +508,8 @@ class _GoalPageContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+          border: Border.all(
+              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -567,42 +569,10 @@ class _GoalPageContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      currentAmount,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      targetAmount,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  goalPercentLabel(goal),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.income,
-                  ),
-                ),
-              ],
+            _HangTienMucTieu(
+              daCo: currentAmount,
+              dich: targetAmount,
+              phanTram: goalPercentLabel(goal),
             ),
             const SizedBox(height: 8),
             GoalProgressBar(goal: goal),
@@ -612,5 +582,101 @@ class _GoalPageContent extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Hàng "đã có / đích ··· phần trăm" của thẻ mục tiêu.
+///
+/// G76 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn) hàng
+/// `Row(spaceBetween)` hết chỗ, khoảng cách về 0 — *"2.000.000 đ55.0%"* dính
+/// sát; ở 300 dp thì tràn. Khi ĐO thấy một hàng không vừa (`doRongChu`), đích
+/// xuống dòng dưới số đã có, phần trăm vẫn to ở bên phải (người dùng chọn); màn
+/// đủ chỗ giữ dáng cũ.
+class _HangTienMucTieu extends StatelessWidget {
+  const _HangTienMucTieu({
+    required this.daCo,
+    required this.dich,
+    required this.phanTram,
+  });
+
+  final String daCo;
+  final String dich;
+  final String phanTram;
+
+  static const _kieuDaCo = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: AppColors.primary,
+  );
+  static const _kieuDich = TextStyle(
+    fontSize: 16,
+    color: AppColors.textSecondary,
+  );
+  static const _kieuPhanTram = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: AppColors.income,
+  );
+
+  /// Khe giữa "đã có" và "/ đích"; khe tối thiểu trước phần trăm.
+  static const _kheTien = 4.0;
+  static const _khePhanTram = 8.0;
+
+  bool _vuaMotHang(BuildContext context, double rong) =>
+      doRongChu(context, daCo, _kieuDaCo) +
+          _kheTien +
+          doRongChu(context, dich, _kieuDich) +
+          _khePhanTram +
+          doRongChu(context, phanTram, _kieuPhanTram) <=
+      rong + 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final phanTramChu = Text(phanTram, style: _kieuPhanTram);
+    return LayoutBuilder(builder: (context, rang) {
+      if (_vuaMotHang(context, rang.maxWidth)) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(daCo, style: _kieuDaCo),
+                const SizedBox(width: _kheTien),
+                Text(dich, style: _kieuDich),
+              ],
+            ),
+            phanTramChu,
+          ],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Vẫn ellipsis: số 13 chữ số ở màn hẹp nhất không vừa nổi một
+                // dòng riêng, và nó không được tràn khỏi thẻ.
+                Text(daCo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _kieuDaCo),
+                Text(dich,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _kieuDich),
+              ],
+            ),
+          ),
+          const SizedBox(width: _khePhanTram),
+          phanTramChu,
+        ],
+      );
+    });
   }
 }

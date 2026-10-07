@@ -18,10 +18,17 @@ class AnalyticsInitial extends AnalyticsState {
 class AnalyticsLoading extends AnalyticsState {
   final Ky ky;
 
-  const AnalyticsLoading({required this.ky});
+  /// Cùng số đọc `clock` mà `AnalyticsLoaded.moc` sắp mang. Ô chọn kỳ trên
+  /// header cần nó để nói CÙNG nhãn ở hai pha (`nhanOChon` — "Tháng này (T9
+  /// 2026)"): bản trước lúc tải chỉ có `ky.nhanNgan` ("T9 2026"), ngắn hơn, nên
+  /// ở 360dp header vừa một hàng lúc tải rồi nhảy xuống hai hàng khi số liệu về
+  /// (G69, 2026-10-06).
+  final DateTime moc;
+
+  const AnalyticsLoading({required this.ky, required this.moc});
 
   @override
-  List<Object?> get props => [ky];
+  List<Object?> get props => [ky, moc];
 }
 
 class AnalyticsLoaded extends AnalyticsState {

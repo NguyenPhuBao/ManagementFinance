@@ -54,7 +54,7 @@ class _RepoGia implements WalletRepository {
   /// Lỗi mà `addWallet` ném, nếu ca test dựng đường lỗi của datasource.
   Object? loiKhiThem;
 
-  final List<({String name, String type})> luoiGoiThem = [];
+  final List<({String name, String type, bool isDefault})> luoiGoiThem = [];
 
   @override
   Future<List<WalletEntity>> getAll(int idaccount) async => viHienCo;
@@ -76,7 +76,7 @@ class _RepoGia implements WalletRepository {
     bool allowNegative = false,
   }) async {
     if (loiKhiThem != null) throw loiKhiThem!;
-    luoiGoiThem.add((name: name, type: type));
+    luoiGoiThem.add((name: name, type: type, isDefault: isDefault));
     return WalletEntity(
       id: 'moi',
       idaccount: idaccount,
@@ -91,12 +91,14 @@ class _RepoGia implements WalletRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-WalletEntity _vi(String id, {required String name, String type = 'cash'}) =>
+WalletEntity _vi(String id,
+        {required String name, String type = 'cash', String status = 'active'}) =>
     WalletEntity(
       id: id,
       idaccount: 10,
       name: name,
       type: type,
+      status: status,
       balance: 0,
       updatedAt: DateTime(2026, 9, 10),
     );
@@ -108,7 +110,7 @@ Future<void> _chamSauKhiCuon(WidgetTester tester, Finder f) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _moTrang(WidgetTester tester, _RepoGia repo) async {
+Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411}) async {
   if (sl.isRegistered<WalletRepository>()) {
     await sl.unregister<WalletRepository>();
   }
@@ -137,7 +139,7 @@ Future<void> _moTrang(WidgetTester tester, _RepoGia repo) async {
     ),
   ));
 
-  tester.view.physicalSize = const Size(411 * 3, 900 * 3);
+  tester.view.physicalSize = Size(rong * 3, 900 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
@@ -182,6 +184,63 @@ Future<void> _dienTenVaLuu(WidgetTester tester, String ten) async {
 }
 
 void main() {
+  // G70 (2026-10-06): công tắc "Đặt làm Ví mặc định" từng BẬT sẵn, nên tạo một
+  // ví mới là âm thầm cướp vai mặc định của ví cũ — ví chọn sẵn khi ghi giao
+  // dịch đổi theo mà người dùng không hề gạt gì. Người dùng chốt: tắt, trừ khi
+  // tài khoản chưa có ví nào đang hoạt động (ví đầu tiên nên là mặc định).
+  // G73 (2026-10-06): hàng "CHỌN BIỂU TƯỢNG" là biểu tượng đang chọn 48dp + bốn ô
+  // CỐ ĐỊNH 40dp kèm lề 12dp = 256dp, không ô nào co — Realme để cỡ hiển thị ColorOS
+  // một nấc (mật độ 540 → màn 320dp) hiện sọc "RIGHT OVERFLOWED BY 40 PIXELS". Cùng
+  // họ G68.
+  for (final rong in [360.0, 320.0, 300.0]) {
+    testWidgets('G73: $rong dp — hàng chọn biểu tượng không tràn, vẫn chọn được', (tester) async {
+      final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
+      await _moTrang(tester, repo, rong: rong);
+      expect(tester.takeException(), isNull, reason: 'G73: hàng biểu tượng tràn ở màn hẹp');
+      await _chamSauKhiCuon(tester, find.byIcon(Icons.account_balance));
+      expect(tester.takeException(), isNull);
+      expect(find.byIcon(Icons.account_balance), findsOneWidget,
+          reason: 'chọn biểu tượng ngân hàng thì nó thành biểu tượng lớn bên trái');
+    });
+  }
+
+  group('G70 — công tắc ví mặc định', () {
+    testWidgets('đã có ví đang hoạt động → mặc định TẮT', (tester) async {
+      final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
+      await _moTrang(tester, repo);
+      await _dienTenVaLuu(tester, 'Ví mới');
+      expect(repo.luoiGoiThem.single.isDefault, isFalse,
+          reason: 'G70: không gạt gì mà ví mới cướp vai mặc định của "Tiền mặt"');
+    });
+
+    testWidgets('chưa có ví nào → mặc định BẬT', (tester) async {
+      final repo = _RepoGia([]);
+      await _moTrang(tester, repo);
+      await _dienTenVaLuu(tester, 'Ví đầu tiên');
+      expect(repo.luoiGoiThem.single.isDefault, isTrue,
+          reason: 'ví đầu tiên của tài khoản nên là ví mặc định');
+    });
+
+    testWidgets('chỉ có ví lưu trữ → mặc định BẬT', (tester) async {
+      final repo = _RepoGia([_vi('a', name: 'Cũ', status: 'inactive')]);
+      await _moTrang(tester, repo);
+      await _dienTenVaLuu(tester, 'Ví mới');
+      expect(repo.luoiGoiThem.single.isDefault, isTrue,
+          reason: 'ví lưu trữ không làm mặc định được, nên ví mới là ví dùng được duy nhất');
+    });
+
+    testWidgets('đã có ví nhưng người dùng tự bật → BẬT', (tester) async {
+      final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
+      await _moTrang(tester, repo);
+      final hang = find.ancestor(
+          of: find.text('Đặt làm Ví mặc định'), matching: find.byType(Row));
+      await _chamSauKhiCuon(
+          tester, find.descendant(of: hang.first, matching: find.byType(Switch)));
+      await _dienTenVaLuu(tester, 'Ví mới');
+      expect(repo.luoiGoiThem.single.isDefault, isTrue);
+    });
+  });
+
   group('ô "Tiết kiệm"', () {
     testWidgets('đã có ví Tiết kiệm vẫn chọn được ô Tiết kiệm — G30',
         (tester) async {

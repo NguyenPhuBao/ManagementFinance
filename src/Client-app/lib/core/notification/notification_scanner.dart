@@ -90,6 +90,12 @@ typedef WalletsLoader = Future<List<Wallet>> Function(
 /// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).
 typedef ViDaDungLoader = Future<Set<String>> Function(int idaccount);
 
+/// Id các ví đã xoá mềm của tài khoản (G71) — để gỡ thông báo số dư của chúng.
+typedef ViDaXoaLoader = Future<Set<String>> Function(int idaccount);
+
+/// Ví đang âm → id giao dịch mở đợt âm (E6). Nhận đúng các ví đang âm để chỉ đọc sổ của chúng.
+typedef DotAmLoader = Future<Map<String, String>> Function(int idaccount, List<String> viAm);
+
 /// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
 typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
 
@@ -115,6 +121,13 @@ class NotificationScanner {
   /// Bỏ trống thì bộ luật nhận `viDaDung: null` = **không biết** → luật "sắp cạn" giữ cách cũ (báo theo số
   /// dư, kể cả ví mới tạo 0 đ). Chỉ gọi khi ngưỡng số dư thấp > 0.
   final ViDaDungLoader? loadViDaDung;
+
+  /// Bỏ trống thì luật "ví âm" khoá theo NGÀY như cũ. Chỉ gọi khi có ví đang âm (E6).
+  final DotAmLoader? loadDotAm;
+
+  /// Bỏ trống thì thông báo số dư của ví đã xoá **không** tự gỡ (hành vi trước G71). Chỉ đọc khi còn hàng
+  /// thông báo ví chưa gỡ.
+  final ViDaXoaLoader? loadViDaXoa;
 
   /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
   /// `loadWallets`.
@@ -256,6 +269,8 @@ class NotificationScanner {
     this.loadGoals,
     this.loadWallets,
     this.loadViDaDung,
+    this.loadDotAm,
+    this.loadViDaXoa,
     this.loadWeekActivity,
     this.loadChiLon,
     this.loadKeHoach,
@@ -517,6 +532,17 @@ class NotificationScanner {
         viDaDung = await docViDaDung(idaccount);
       }
 
+      // E6: chỉ đọc sổ khi có ví đang âm — phần lớn lượt quét không có ví nào.
+      Map<String, String>? dotAm;
+      final docDotAm = loadDotAm;
+      final viAm = [
+        for (final v in wallets)
+          if (!v.isDeleted && !v.allowNegative && v.balance < 0) v.id,
+      ];
+      if (docDotAm != null && viAm.isNotEmpty) {
+        dotAm = await docDotAm(idaccount, viAm);
+      }
+
       var chiLon = const <KhoanChiLon>[];
       final docChi = loadChiLon;
       if (docChi != null && prefs.nguongChiLon > 0) {
@@ -553,6 +579,7 @@ class NotificationScanner {
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
           viDaDung: viDaDung,
+          dotAm: dotAm,
           tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
           chiLon: chiLon,
           nguongChiLon: prefs.nguongChiLon,
@@ -565,9 +592,26 @@ class NotificationScanner {
 
       // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
       // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
-      if (wallets.isNotEmpty) {
-        for (final id in hangSapCanDaHoi(await dao.getAll(idaccount), wallets, prefs.nguongSoDuThap)) {
-          await dao.dismiss(id);
+      // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
+      final docViDaXoa = loadViDaXoa;
+      if (wallets.isNotEmpty || docViDaXoa != null) {
+        final hang = await dao.getAll(idaccount);
+        final conHangVi = hang.any((h) => h.subjectType == 'wallet' && h.dismissedAt == null);
+        final viDaXoa = (docViDaXoa != null && conHangVi) ? await docViDaXoa(idaccount) : const <String>{};
+        // E6 ◐ (2026-10-07): hàng "ví âm" tự gỡ vì ví HỒI thì NHẢ khoá — ví âm lại cùng đợt (người dùng
+        // xoá khoản nạp) phải báo lại. Huỷ thông báo trên khay theo khoá CŨ trước khi đổi khoá.
+        final amDaHoi = hangAmDaHoi(hang, wallets).toSet();
+        final theoId = {for (final h in hang) h.id: h};
+        for (final id in amDaHoi) {
+          final khoa = theoId[id]!.dedupeKey;
+          await osNotifier?.cancel(osScheduledId(khoa));
+          await dao.goVaNhaKhoa(id, khoa);
+        }
+        for (final id in {
+          ...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap),
+          ...hangCuaViDaXoa(hang, viDaXoa),
+        }) {
+          if (!amDaHoi.contains(id)) await dao.dismiss(id);
         }
       }
 

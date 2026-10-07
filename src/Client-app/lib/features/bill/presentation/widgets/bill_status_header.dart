@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/ui/do_chu.dart';
+
 /// Hàng đầu của thẻ hoá đơn: tên + hạn trả bên trái, chip trạng thái bên phải.
 ///
 /// Tách khỏi `bill_page.dart` để **test được ở nhiều bề rộng màn hình**. Nó
@@ -42,95 +44,125 @@ class BillStatusHeader extends StatelessWidget {
   /// người dùng cần biết trước khi bấm Thanh toán.
   final String? meta;
 
+  static const _kieuTen = TextStyle(fontSize: 14, fontWeight: FontWeight.w600);
+  static const _kieuHan = TextStyle(fontSize: 14, color: Color(0xFF46464C));
+  static const _kieuChip =
+      TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2);
+
+  /// Bề rộng cố định quanh cột chữ: ô biểu tượng 36 + khe 12, khe 8 trước chip,
+  /// lề trong chip 8 × 2, và dấu ✓ 14 + khe 4 của chip "đã trả".
+  double get _rongBieuTuong => icon != null ? 36 + 12 : 0;
+  double get _phanCoDinhChip => 8 + 16 + (isPaid ? 14 + 4 : 0);
+
+  /// Một hàng có đủ chỗ cho cột chữ **và** chip không — đo bề rộng thật ở cỡ
+  /// chữ đang dùng (G74, 2026-10-07). Cột chữ cần chỗ cho dòng **dài nhất**
+  /// của tên và hạn trả; dòng "danh mục • ví" được `ellipsis` nên không tính.
+  bool _vuaMotHang(BuildContext context, double rong) {
+    var cot = doRongChu(context, title, _kieuTen);
+    for (final dong in subtitle.split('\n')) {
+      final r = doRongChu(context, dong, _kieuHan);
+      if (r > cot) cot = r;
+    }
+    final chip = doRongChu(context, status, _kieuChip) + _phanCoDinhChip;
+    // Nửa điểm ảnh dung sai cho phép làm tròn của TextPainter.
+    return _rongBieuTuong + cot + chip <= rong + 0.5;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (icon != null) ...[
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: (iconColor ?? titleColor).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+    // G74 (2026-10-07): ở màn hẹp (Realme để cỡ hiển thị lớn — mật độ 540,
+    // 320 dp) chip "CHƯA THANH TOÁN" chiếm 110 dp, cột chữ còn 68 dp trong khi
+    // "Hạn 25/09/2026" cần 107: ngày gãy hai dòng, tên cụt. Khi ĐO thấy không
+    // vừa, chip xuống dưới cột chữ (người dùng chọn); màn đủ chỗ giữ dáng cũ.
+    return LayoutBuilder(builder: (context, rang) {
+      final motHang = _vuaMotHang(context, rang.maxWidth);
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: (iconColor ?? titleColor).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: iconColor ?? titleColor),
             ),
-            child: Icon(icon, size: 18, color: iconColor ?? titleColor),
-          ),
-          const SizedBox(width: 12),
-        ],
-        // `Expanded` là thứ chặn tràn: phần chữ nhận đúng chỗ còn lại sau khi
-        // chip lấy phần của nó, và `ellipsis` cắt gọn thay vì đẩy chip ra rìa.
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: titleColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                // Dòng đã trả mang hai dòng "Hạn…" / "Trả…" (xem bill_page).
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF46464C),
-                ),
-              ),
-              if (meta != null && meta!.isNotEmpty) ...[
-                const SizedBox(height: 2),
+            const SizedBox(width: 12),
+          ],
+          // `Expanded` là thứ chặn tràn: phần chữ nhận đúng chỗ còn lại sau khi
+          // chip lấy phần của nó, và `ellipsis` cắt gọn thay vì đẩy chip ra rìa.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  meta!,
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B6B72),
+                  style: _kieuTen.copyWith(color: titleColor),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  // Dòng đã trả mang hai dòng "Hạn…" / "Trả…" (xem bill_page).
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: _kieuHan,
+                ),
+                if (meta != null && meta!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    meta!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6B6B72),
+                    ),
                   ),
-                ),
+                ],
+                if (!motHang) ...[
+                  const SizedBox(height: 8),
+                  _chip(),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: statusBg,
-            borderRadius: BorderRadius.circular(16),
+          if (motHang) ...[
+            const SizedBox(width: 8),
+            _chip(),
+          ],
+        ],
+      );
+    });
+  }
+
+  Widget _chip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        // Chip chỉ rộng bằng nội dung của nó; không có dòng này thì trong
+        // một Row cha đã chật, chip lại đòi chiếm hết chỗ còn lại.
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isPaid) ...[
+            Icon(Icons.check_circle, color: statusColor, size: 14),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            status,
+            maxLines: 1,
+            style: _kieuChip.copyWith(color: statusColor),
           ),
-          child: Row(
-            // Chip chỉ rộng bằng nội dung của nó; không có dòng này thì trong
-            // một Row cha đã chật, chip lại đòi chiếm hết chỗ còn lại.
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isPaid) ...[
-                Icon(Icons.check_circle, color: statusColor, size: 14),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                status,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: statusColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

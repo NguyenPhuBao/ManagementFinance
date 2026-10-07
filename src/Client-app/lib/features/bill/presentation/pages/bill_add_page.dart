@@ -20,6 +20,7 @@ import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../../core/ui/do_chu.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key, this.dienSan});
@@ -44,6 +45,7 @@ class _BillAddPageState extends State<BillAddPage> {
     timeRecurrence: kBillCycleMonth,
     repeat: true,
   );
+
   /// Bật/tắt nhắc trước hạn. Tắt thì ghi `timeNotification = null`.
   bool _pushNotificationsEnabled = true;
   String _selectedReminderDay = '3';
@@ -69,8 +71,9 @@ class _BillAddPageState extends State<BillAddPage> {
       // Ô tiền đọc chữ thô bằng `double.tryParse` (xem `_submit`) — điền đúng
       // dạng ấy, không qua `CurrencyFormatter`.
       if (tien != null) {
-        _amountController.text =
-            tien == tien.roundToDouble() ? tien.toInt().toString() : tien.toString();
+        _amountController.text = tien == tien.roundToDouble()
+            ? tien.toInt().toString()
+            : tien.toString();
       }
       // Ngày bắt đầu = lần gần nhất của khoản lặp: kỳ đầu kết thúc đúng ở lần
       // lặp KẾ TIẾP. Cộng thêm một chu kỳ là người dùng lỡ lần nhắc đầu tiên.
@@ -148,8 +151,10 @@ class _BillAddPageState extends State<BillAddPage> {
     // trạng thái đăng nhập chưa sẵn sàng — tức ghi hoá đơn vào tài khoản admin.
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) {
-      baoNhanh('Chưa xác định được tài khoản đăng nhập. '
-              'Vui lòng đăng nhập lại trước khi tạo hoá đơn.', loai: LoaiThongBao.loi);
+      baoNhanh(
+          'Chưa xác định được tài khoản đăng nhập. '
+          'Vui lòng đăng nhập lại trước khi tạo hoá đơn.',
+          loai: LoaiThongBao.loi);
       return;
     }
 
@@ -185,8 +190,7 @@ class _BillAddPageState extends State<BillAddPage> {
       timeRecurrence: _lich.storedTimeRecurrence,
       // Ngày gốc đi cùng ngày bắt đầu — xem `Bills.anchorDay`.
       anchorDay: _lich.anchorDayHieuLuc,
-      timeNotification:
-          _pushNotificationsEnabled ? _selectedReminderDay : null,
+      timeNotification: _pushNotificationsEnabled ? _selectedReminderDay : null,
       note: _noteController.text.trim(),
       autoPayEnabled: _autoPayEnabled,
     );
@@ -221,6 +225,12 @@ class _BillAddPageState extends State<BillAddPage> {
     setState(() => _lich = _lich.copyWith(timeRecurrence: value));
   }
 
+  static const _kieuTieuDe = TextStyle(
+    color: AppColors.primary,
+    fontWeight: FontWeight.bold,
+    fontSize: 20,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -233,17 +243,25 @@ class _BillAddPageState extends State<BillAddPage> {
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Thêm Hóa Đơn Định Kỳ',
-          style: TextStyle(
-            color: AppColors.primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
+        // G77 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn) tiêu đề chung
+        // hàng với mũi tên và nút Lưu chỉ còn ~160 dp, "Thêm Hóa Đơn Định Kỳ"
+        // cần ~215 — cụt thành "Thêm Hóa Đơn …". ĐO bề rộng: không vừa thì
+        // rút ngắn (người dùng chọn), giữ cỡ chữ; màn đủ chỗ giữ tên đầy đủ.
+        title: LayoutBuilder(builder: (context, rang) {
+          const day = 'Thêm Hóa Đơn Định Kỳ';
+          final vua =
+              doRongChu(context, day, _kieuTieuDe) <= rang.maxWidth + 0.5;
+          return Text(
+            vua ? day : 'Thêm Hóa Đơn',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _kieuTieuDe,
+          );
+        }),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 12.0, bottom: 12.0),
+            padding:
+                const EdgeInsets.only(right: 16.0, top: 12.0, bottom: 12.0),
             child: ElevatedButton(
               onPressed: _submit,
               style: ElevatedButton.styleFrom(
@@ -443,7 +461,8 @@ class _BillAddPageState extends State<BillAddPage> {
               ),
               Switch(
                 value: _pushNotificationsEnabled,
-                onChanged: (val) => setState(() => _pushNotificationsEnabled = val),
+                onChanged: (val) =>
+                    setState(() => _pushNotificationsEnabled = val),
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppColors.secondary,
               ),
@@ -577,7 +596,8 @@ class _BillAddPageState extends State<BillAddPage> {
               style: const TextStyle(fontSize: 16, color: AppColors.primary),
               decoration: InputDecoration(
                 hintText: placeholder,
-                hintStyle: const TextStyle(color: AppColors.outlineVariant, fontSize: 16),
+                hintStyle: const TextStyle(
+                    color: AppColors.outlineVariant, fontSize: 16),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -597,7 +617,8 @@ class _BillAddPageState extends State<BillAddPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Icon(Icons.account_balance_wallet_outlined, color: AppColors.outline, size: 24),
+          const Icon(Icons.account_balance_wallet_outlined,
+              color: AppColors.outline, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
@@ -617,7 +638,8 @@ class _BillAddPageState extends State<BillAddPage> {
                 items: _wallets.map<DropdownMenuItem<Wallet>>((Wallet wallet) {
                   return DropdownMenuItem<Wallet>(
                     value: wallet,
-                    child: Text('${wallet.name} - ${CurrencyFormatter.format(wallet.balance)}'),
+                    child: Text(
+                        '${wallet.name} - ${CurrencyFormatter.format(wallet.balance)}'),
                   );
                 }).toList(),
               ),
@@ -637,7 +659,8 @@ class _BillAddPageState extends State<BillAddPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Icon(Icons.category_outlined, color: AppColors.outline, size: 24),
+          const Icon(Icons.category_outlined,
+              color: AppColors.outline, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
@@ -799,8 +822,10 @@ class _BillAddPageState extends State<BillAddPage> {
         child: InkWell(
           onTap: _submit,
           borderRadius: BorderRadius.circular(12),
+          // G77 (2026-10-07): lề NGANG 16 — thiếu nó, chữ đã co (`FittedBox`)
+          // vẫn chạm sát mép bo tròn và trông như bị xén ở 320 dp.
           child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

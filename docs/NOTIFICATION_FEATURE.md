@@ -1324,6 +1324,45 @@ Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi 
   *Biến động* đứng cuối dải, ở 411 dp nằm ngoài mép phải (đo OnePlus 2026-09-30).
 - **Ngoại lệ xoá cứng** — mục 4.3.
 
+## 5k. "Số dư ví đang âm" — mỗi đợt âm một lần (E6, 2026-10-06)
+
+✅ **E6 ◐ đóng 2026-10-07** — ca biên lượt nghiệm thu để lại: ví âm (đợt mở từ giao dịch X) → báo → nạp tiền, ví dương →
+hàng **tự gỡ** → xoá khoản nạp → ví âm lại, và theo sổ đợt vẫn mở từ X → **cùng khoá** → `insertIfAbsent` bỏ qua → cảnh
+báo vừa tự biến mất **không quay lại**. Người dùng chọn *báo lại, giữ lịch sử*: hàng "ví âm" mà bộ quét tự gỡ vì ví
+hồi nay đi qua **`NotificationDao.goVaNhaKhoa`** — đánh dấu gỡ **và** đổi khoá thành `<khoá cũ>#go:<mốc>`, nên khoá gốc
+được nhả, lần âm lại sinh hàng mới; hàng cũ **giữ** trong bảng (không xoá cứng). ⚠️ Hai chốt: (1) chỉ hàng **app tự gỡ**
+mới nhả khoá — người dùng tự ✕ vẫn `dismiss` (giữ khoá), ví còn âm thì **không** báo lại; (2) **huỷ thông báo trên khay
+theo khoá CŨ trước** khi đổi khoá — `BadgeUpdater` huỷ theo `osScheduledId(dedupeKey)`, đổi khoá rồi nó không tìm ra
+thông báo cũ. Ba ca ở `notification_scanner_test.dart` (nhóm *"E6 ◐"*). Chưa đo máy thật.
+
+✅ **Nghiệm thu máy thật 2026-10-06 tối** (Realme): bản mới vừa cài sinh khoá theo đợt cho hai ví vốn âm từ 02/10
+(mỗi ví thêm **một** dòng lúc nâng cấp — cái giá một lần của việc đổi khoá); ví thử *"Vi thu E6"*: chi 50.000 → **một**
+thông báo khoá `…:300dc250…` ✅ · chi thêm 2.000 → bộ quét *"0 hàng mới"* ✅ · nạp 100.000 → hàng âm **gỡ** lúc 22:12:27 ✅ ·
+chi 60.000 → âm lại, khoá mới `…:926e97ad…` ✅. Dọn sau đo: bốn khoản thử xoá mềm, ví thử xoá mềm, Tiền mặt đặt lại mặc định.
+⚠️ Lượt đo lộ **G70** (form Thêm ví bật sẵn *ví mặc định*) và **G71** (thông báo của ví đã xoá không tự gỡ). Lượt đánh giá UX 2026-09-19 (E6) đo trung tâm thông báo có **bốn** dòng *"Số dư ví
+đang âm"* cho cùng một ví — khoá gộp theo NGÀY nên ví âm bao nhiêu ngày là bấy nhiêu dòng. Người dùng chọn **mỗi đợt âm
+một lần** (không chọn *hằng tuần* hay *hằng ngày giữ dòng mới*).
+
+- **Mốc của khoá** là giao dịch làm ví tụt dưới 0 lần gần nhất — `giaoDichMoDotAm` (`wallet/domain/dot_am.dart`, hàm
+  thuần): cộng dồn sổ của ví theo **ngày** giao dịch (cùng ngày thì theo id), số dư cuối không âm → `null`. Ví còn âm
+  (chi thêm) thì mốc đứng yên — không nhắc lại; hồi lên rồi âm lại thì mốc mới — báo lại.
+- **Sổ của ví** đi qua **`TransactionDao.bienDongTheoVi`** — từng khoản kèm số tiền đã mang dấu theo vai của ví; từ nay
+  `tongTheoVi` **cộng chính danh sách ấy**, nên luật số dư (G37) vẫn một định nghĩa (chuyển thiếu ví đích, khoản xoá mềm
+  đều không phải biến động).
+- **Bộ quét** chỉ đọc sổ khi có ví **đang âm** (bỏ ví xoá mềm, ví cho phép âm) — `DotAmLoader`, `NotificationRuleInput.dotAm`
+  (ví → mốc). Ví vắng khỏi bản đồ hoặc không nạp → **khoá theo ngày như cũ**: không biết đợt thì không được im.
+- **Ví đã hồi** (≥ 0, hoặc vừa được đánh dấu cho phép âm): **`hangAmDaHoi`** chọn hàng *"ví âm"* chưa gỡ để bộ quét
+  `dismiss` ở mọi lượt quét — cùng khuôn `hangSapCanDaHoi`. Hàng đã gỡ vẫn giữ khoá của đợt **cũ**, nên đợt mới (khoá
+  khác) báo lại được; không gỡ thì trung tâm vẫn treo một cảnh báo không còn đúng.
+
+Ca canh: `dot_am_test.dart` (mốc đứng yên khi chi thêm, mốc mới khi âm lại, xếp theo ngày), `transaction_tong_theo_vi_test`
+(biến động cộng lại đúng `tongTheoVi`), `notification_rules_goal_wallet_test` (khoá theo đợt; không biết đợt → theo ngày;
+`hangAmDaHoi`), `notification_scanner_test` (chỉ đọc sổ cho ví đang âm; gỡ khi hồi rồi đợt sau báo lại). ⚠️ Bộ dựng
+`dungScanner` của test bộ quét đếm id lại từ `id-0` mỗi lần gọi — hai bộ quét ghi cùng CSDL thì hàng sau **trùng khoá
+chính** và bị bỏ qua im lặng; nay có `tienToId`.
+
+✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll`, vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanDaHoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG
@@ -1432,7 +1471,7 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 | `goalMilestone` | `goalMilestone:<id>:<startDate>:<25\|50\|75>` | **một lần mỗi mốc, mỗi vòng** | Hai đoạn đuôi phục vụ hai việc khác nhau: `<mốc>` giữ ba mốc không nuốt nhau, còn `<startDate>` là thứ khiến mục tiêu **lặp lại** được báo lại từ vòng hai — cùng khuôn `goalCycle:`, cố ý KHÁC khuôn `goalDone:` |
 | `goalAutoDeposited` | `goalAuto:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Quét chạy sau mọi lần đồng bộ; thiếu đơn vị lặp là mỗi lần mở app thêm một "Đã trích" cho việc chỉ xảy ra một lần. Hai kỳ khác nhau vẫn phải ra hai thông báo — trích bù hai tháng là hai lần tiền rời ví |
 | `goalAutoDepositFailed` | `goalAutoFail:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Như trên |
-| `walletNegative` | `walletNeg:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví âm cho tới khi người dùng nạp tiền |
+| `walletNegative` | ~~`walletNeg:<id>:<yyyy-MM-dd>`~~ → **`walletNeg:<id>:<id giao dịch mở đợt âm>`** từ 2026-10-06 (E6, mục **5k**); không biết đợt thì vẫn theo ngày | ~~mỗi ngày~~ **mỗi đợt âm** | Ví âm cho tới khi người dùng nạp tiền |
 | `walletLowBalance` | `walletLow:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví cạn cho tới khi người dùng nạp tiền — cùng lý lẽ (thêm 2026-09-07). Từ 2026-09-30 hàng tự **gỡ** khi ví lên lại trên ngưỡng (`hangSapCanDaHoi`) |
 | `syncFailed` | `syncFailed:<yyyy-MM-dd>` | mỗi ngày | Mất mạng là hỏng ở **mọi** chu kỳ đồng bộ |
 

@@ -69,8 +69,7 @@ class TheDeXuatNganSach extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(999),
@@ -112,8 +111,8 @@ class _Dong extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mau = categoryColorFrom(deXuat.colour,
-        fallback: AppColors.textSecondary);
+    final mau =
+        categoryColorFrom(deXuat.colour, fallback: AppColors.textSecondary);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -147,9 +146,10 @@ class _Dong extends StatelessWidget {
                 Text(
                   // "khoảng" chứ không phải một con số chắc chắn: đây là mức
                   // suy ra, không phải mức người dùng đặt.
-                  'khoảng ${CurrencyFormatter.format(deXuat.mucThang)} '
+                  'khoảng ${CurrencyFormatter.formatLienKhoi(deXuat.mucThang)} '
                   'mỗi tháng',
-                  maxLines: 1,
+                  // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…" — nay xuống tối đa hai dòng.
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 12,

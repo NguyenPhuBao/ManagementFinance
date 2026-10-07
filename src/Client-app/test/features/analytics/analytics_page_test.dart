@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -33,9 +34,12 @@ import 'package:flowmoney/features/analytics/domain/thu_tu_khoi.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/thu_tu_khoi_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:flowmoney/features/analytics/presentation/widgets/khung_cho_phan_tich.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+
+import '../../helpers/font_that.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -2467,6 +2471,83 @@ void main() {
       expect(dinhCum(tester, 'xu_huong'), lessThan(dinhCum(tester, 'tong')));
       expect(find.byKey(const ValueKey('thu-tu-ve-mac-dinh')), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('⭐ E1: đang tải → khung chờ dưới header, không còn vòng xoay giữa khoảng trống', (tester) async {
+    await moTrang(tester);
+    expect(find.byType(KhungChoPhanTich), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing,
+        reason: 'UX 2026-09-19 E1: mỗi lần mở tab là một vòng xoay giữa trang trống');
+    expect(find.text('Phân tích'), findsOneWidget, reason: 'header vẫn là header thật');
+    await phat(tester, _tk());
+    expect(find.byType(KhungChoPhanTich), findsNothing, reason: 'có số liệu thì khung chờ biến mất');
+  });
+
+  // ⚠️ NHÓM NÀY PHẢI ĐỨNG CUỐI TỆP: `napFontThat` nạp Roboto vào các họ `Inter_*`
+  // cho CẢ isolate — mọi ca chạy sau nó đo bằng font thật thay vì Ahem.
+  group('G2 — cỡ chữ hệ thống lớn (textScaler), font thật', () {
+    Future<void> dung(WidgetTester tester, double rong, double coChu) async {
+      await napFontThat();
+      tester.view.physicalSize = Size(rong, 900);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = coChu;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await moTrang(tester);
+      await phat(tester, _tk());
+    }
+
+    List<String> biCat(WidgetTester tester) => [
+          for (final e in find.byType(RichText).evaluate())
+            if ((e.renderObject! as RenderParagraph).didExceedMaxLines)
+              (e.renderObject! as RenderParagraph).text.toPlainText(),
+        ];
+
+    Rect khung(WidgetTester tester, String chu) => tester.getRect(find.text(chu));
+
+    for (final (rong, coChu) in [(360.0, 1.3), (411.0, 1.3), (360.0, 2.0)]) {
+      testWidgets('⭐ $rong dp, chữ ×$coChu: header và tiêu đề khối không bị cắt "…"', (tester) async {
+        await dung(tester, rong, coChu);
+        expect(biCat(tester), isEmpty,
+            reason: 'G2 (đo 2026-10-06, Roboto): ở 360 dp ×1,3 "Phân tích", "Tháng này (T9 2026)" '
+                'và "Tổng tài sản 6 tháng gần đây" từng bị cắt; ở 411 dp ×1,3 ô kỳ bị cắt');
+        expect(tester.takeException(), isNull);
+        expect(khung(tester, 'Tháng này (T9 2026)').top,
+            greaterThan(khung(tester, 'Phân tích').bottom - 1),
+            reason: 'hàng ngang không đủ chỗ → ô kỳ xuống hàng thứ hai (Stitch 7f05fccd…)');
+      });
+    }
+
+    testWidgets('chữ thường 411 dp: header vẫn MỘT hàng như Stitch gốc', (tester) async {
+      await dung(tester, 411, 1.0);
+      final tieuDe = khung(tester, 'Phân tích');
+      final o = khung(tester, 'Tháng này (T9 2026)');
+      expect(o.top, lessThan(tieuDe.bottom), reason: 'đủ chỗ thì không xuống hàng');
+      expect(o.left, greaterThan(tieuDe.right));
+      expect(biCat(tester), isEmpty);
+    });
+
+    testWidgets('⭐ G69: 360 dp chữ thường — header KHÔNG nhảy hàng lúc tải xong', (tester) async {
+      await napFontThat();
+      tester.view.physicalSize = const Size(360, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+
+      // Lúc tải ô kỳ phải nói CÙNG nhãn với lúc có số liệu: bản cũ hiện "T9 2026"
+      // (vừa một hàng) rồi tải xong thành "Tháng này (T9 2026)" (không vừa →
+      // hai hàng), nên cả trang giật xuống ~50 px đúng lúc số liệu hiện ra.
+      expect(find.text('Tháng này (T9 2026)'), findsOneWidget,
+          reason: 'G69 (Realme 2026-10-06): nhãn lúc tải ngắn hơn nhãn lúc có số liệu');
+      final truoc = khung(tester, 'Tháng này (T9 2026)');
+      final tieuDeTruoc = khung(tester, 'Phân tích');
+
+      await phat(tester, _tk());
+      expect(khung(tester, 'Tháng này (T9 2026)'), truoc,
+          reason: 'ô kỳ phải đứng yên khi số liệu về (G69)');
+      expect(khung(tester, 'Phân tích'), tieuDeTruoc);
+      expect(biCat(tester), isEmpty);
     });
   });
 }

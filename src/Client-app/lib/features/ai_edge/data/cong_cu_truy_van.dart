@@ -243,6 +243,8 @@ class CongCuTruyVan implements CongCu {
       tenVi: thamSoTen(a['vi']),
       tuKhoa: tuKhoa ?? '',
       sapXep: sapXep,
+      tuLoaiTru: chinh.tuLoaiTru,
+      denLoaiTru: chinh.denLoaiTru,
     );
     final canTron = gop != 'khong' || chon != null;
     // B8: câu xin N dòng ("3 khoản thu mới nhất") → đúng N hàng; trên trần thì vẫn trần.

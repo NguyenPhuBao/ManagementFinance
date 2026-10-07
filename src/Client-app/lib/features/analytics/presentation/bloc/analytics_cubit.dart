@@ -63,7 +63,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     // GIỮ: "so với năm ngoái" là một cách NHÌN, không phải câu hỏi của riêng
     // một kỳ.
     _phanLoaiDangXem = 'chi';
-    emit(AnalyticsLoading(ky: ky));
+    emit(AnalyticsLoading(ky: ky, moc: now));
     // Huỷ đăng ký cũ TRƯỚC. Không huỷ là hai stream cùng phát và cái tới sau
     // thắng — không có gì bảo đảm đó là tháng người dùng vừa chọn. Bản sai có
     // chủ ý bỏ dòng này đã làm đúng test ấy đỏ.

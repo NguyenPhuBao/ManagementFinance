@@ -26,6 +26,7 @@ import '../widgets/bill_status_visuals.dart';
 import '../widgets/the_khoan_lap.dart';
 import '../../data/de_xuat_hoa_don_nguon.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../../core/ui/do_chu.dart';
 
 class BillPage extends StatefulWidget {
   /// Thời điểm dùng để xếp trạng thái từng hoá đơn. Tiêm được để test không
@@ -180,91 +181,89 @@ class _BillPageState extends State<BillPage> {
                   // Nhận xét từng làm trạng thái rỗng tràn 73 px, thẻ khoản
                   // lặp ba dòng làm cả trang tràn 219 px ở 360 × 640.
                   NestedScrollView(
-                    headerSliverBuilder: (ctx, _) => [
-                      SliverToBoxAdapter(
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                              child: _buildSummaryCard(
-                                totalAmountStr: CurrencyFormatter.format(
-                                    state.summary.unpaidAmount),
-                                unpaidCount: state.summary.unpaidCount,
-                                progress: state.summary.progress,
-                              ),
-                            ),
-                            // Khối Nhận xét (Edge-SLM, chặng 1.3) — màn Stitch
-                            // `179dbd70…`: đứng GIỮA thẻ tổng quan và hàng
-                            // tab, vì nó nói về **cả kỳ**, đúng phạm vi thẻ
-                            // ngay trên nó. Đặt dưới hàng tab là nó rơi vào
-                            // một trong hai danh sách và trông như nhận xét
-                            // riêng của tab ấy.
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              child: KhoiNhanXet(
-                                goi: GoiSoHoaDon.tu(state.bills, now: now),
-                              ),
-                            ),
-                            // Gợi ý tạo hoá đơn từ khoản lặp (B2) — màn Stitch
-                            // `e8b460b4…`, giữa khối Nhận xét và hàng tab. Tự
-                            // ẩn khi không có gì để gợi ý: luật ẩn ở
-                            // `chonDeXuatHoaDon`.
-                            if (idKhoanLap != null && nguonKhoanLap != null)
-                              TheKhoanLap(
-                                  idaccount: idKhoanLap, nguon: nguonKhoanLap),
-                          ],
-                        ),
-                      ),
-                      // Absorber ở đây + injector ở từng tab: hàng tab GHIM
-                      // vẫn vẽ đè lên đầu vùng thân — thiếu cặp này là hoá đơn
-                      // đầu danh sách nằm khuất dưới hàng tab.
-                      SliverOverlapAbsorber(
-                        handle:
-                            NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
-                        sliver: SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _HangTabGhim(
-                            TabBar(
-                              labelColor: AppColors.primary,
-                              unselectedLabelColor: AppColors.textSecondary,
-                              indicatorColor: AppColors.primary,
-                              tabs: [
-                                Tab(
-                                    text:
-                                        'Cần thanh toán (${sections.chuaDong.length})'),
-                                // "Lịch sử" chứ không phải "Đã thanh toán":
-                                // từ 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
-                                // chưa hề được trả đồng nào.
-                                Tab(text: 'Lịch sử (${sections.daDong.length})'),
-                              ],
-                            ),
+                headerSliverBuilder: (ctx, _) => [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                          child: _buildSummaryCard(
+                            totalAmountStr: CurrencyFormatter.format(
+                                state.summary.unpaidAmount),
+                            unpaidCount: state.summary.unpaidCount,
+                            progress: state.summary.progress,
                           ),
                         ),
-                      ),
-                    ],
-                    body: TabBarView(
-                      children: [
-                        _danhSach(
-                          context,
-                          sections.chuaDong,
-                          now: now,
-                          dateFormatter: dateFormatter,
-                          khiTrong: 'Không còn hoá đơn nào phải trả.',
-                          payments: state.payments,
+                        // Khối Nhận xét (Edge-SLM, chặng 1.3) — màn Stitch
+                        // `179dbd70…`: đứng GIỮA thẻ tổng quan và hàng
+                        // tab, vì nó nói về **cả kỳ**, đúng phạm vi thẻ
+                        // ngay trên nó. Đặt dưới hàng tab là nó rơi vào
+                        // một trong hai danh sách và trông như nhận xét
+                        // riêng của tab ấy.
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: KhoiNhanXet(
+                            goi: GoiSoHoaDon.tu(state.bills, now: now),
+                          ),
                         ),
-                        _danhSach(
-                          context,
-                          sections.daDong,
-                          now: now,
-                          dateFormatter: dateFormatter,
-                          khiTrong: 'Chưa có kỳ nào đã đóng.',
-                          payments: state.payments,
-                        ),
+                        // Gợi ý tạo hoá đơn từ khoản lặp (B2) — màn Stitch
+                        // `e8b460b4…`, giữa khối Nhận xét và hàng tab. Tự
+                        // ẩn khi không có gì để gợi ý: luật ẩn ở
+                        // `chonDeXuatHoaDon`.
+                        if (idKhoanLap != null && nguonKhoanLap != null)
+                          TheKhoanLap(
+                              idaccount: idKhoanLap, nguon: nguonKhoanLap),
                       ],
                     ),
                   ),
+                  // Absorber ở đây + injector ở từng tab: hàng tab GHIM
+                  // vẫn vẽ đè lên đầu vùng thân — thiếu cặp này là hoá đơn
+                  // đầu danh sách nằm khuất dưới hàng tab.
+                  SliverOverlapAbsorber(
+                    handle:
+                        NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
+                    sliver: SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _HangTabGhim(
+                        TabBar(
+                          labelColor: AppColors.primary,
+                          unselectedLabelColor: AppColors.textSecondary,
+                          indicatorColor: AppColors.primary,
+                          tabs: [
+                            Tab(
+                                text:
+                                    'Cần thanh toán (${sections.chuaDong.length})'),
+                            // "Lịch sử" chứ không phải "Đã thanh toán":
+                            // từ 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
+                            // chưa hề được trả đồng nào.
+                            Tab(text: 'Lịch sử (${sections.daDong.length})'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                body: TabBarView(
+                  children: [
+                    _danhSach(
+                      context,
+                      sections.chuaDong,
+                      now: now,
+                      dateFormatter: dateFormatter,
+                      khiTrong: 'Không còn hoá đơn nào phải trả.',
+                      payments: state.payments,
+                    ),
+                    _danhSach(
+                      context,
+                      sections.daDong,
+                      now: now,
+                      dateFormatter: dateFormatter,
+                      khiTrong: 'Chưa có kỳ nào đã đóng.',
+                      payments: state.payments,
+                    ),
+                  ],
+                ),
+              ),
             );
           }
 
@@ -321,7 +320,9 @@ class _BillPageState extends State<BillPage> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => _dongHoaDon(context, bills[i],
-                      now: now, dateFormatter: dateFormatter, payments: payments),
+                      now: now,
+                      dateFormatter: dateFormatter,
+                      payments: payments),
                   childCount: bills.length,
                 ),
               ),
@@ -514,11 +515,17 @@ class _BillPageState extends State<BillPage> {
                   color: AppColors.outlineVariant, style: BorderStyle.solid)
               : Border.all(color: const Color(0xFFE0E0DB)),
         ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
+        // Vạch màu trạng thái là `Positioned` cao bằng thẻ trong một `Stack`,
+        // KHÔNG còn `IntrinsicHeight` + `Row(stretch)`: G74 (2026-10-07) đặt
+        // `LayoutBuilder` trong thân thẻ để đo chỗ, mà `LayoutBuilder` không
+        // trả được kích thước nội tại — bọc `IntrinsicHeight` là lỗi ở mọi khung.
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
                 key: ValueKey('bill-accent-${bill.id}'),
                 width: 4,
                 decoration: BoxDecoration(
@@ -527,148 +534,38 @@ class _BillPageState extends State<BillPage> {
                       const BorderRadius.horizontal(left: Radius.circular(12)),
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      BillStatusHeader(
-                        title: title,
-                        subtitle: subtitle,
-                        meta: meta,
-                        icon: icon,
-                        iconColor: iconColor,
-                        status: status,
-                        statusColor: statusColor,
-                        statusBg: statusBg,
-                        titleColor: isPaid
-                            ? AppColors.textSecondary
-                            : AppColors.primary,
-                        isPaid: isPaid,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // ⚠️ G51 (2026-09-29): số tiền + bút + thùng rác nằm
-                          // trong MỘT `Expanded`, số tiền là `Flexible` DUY NHẤT
-                          // của hàng con. Bản trước đặt `Flexible(số tiền)` và
-                          // `Spacer()` cùng hàng, cả hai `flex: 1`, nên chúng
-                          // CHIA ĐÔI chỗ trống — số tiền bị trần ở một nửa dù
-                          // Spacer co được về 0, và ở 360 dp mọi thẻ in
-                          // "10.0…". Vẫn ellipsis: số tiền lớn (hoặc cỡ chữ hệ
-                          // thống to) không được đẩy nút "Thanh toán" ra ngoài
-                          // mép thẻ.
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    amount,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: isPaid
-                                          ? AppColors.textSecondary
-                                          : AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                InkWell(
-                                  onTap: () => context.push(
-                                      '/bills/${bill.id}/edit',
-                                      extra: bill),
-                                  child: Icon(
-                                    Icons.edit,
-                                    size: 16,
-                                    color: isPaid
-                                        ? AppColors.textSecondary
-                                            .withValues(alpha: 0.5)
-                                        : AppColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                InkWell(
-                                  onTap: () => hoiXoaHoaDon(context, bill.id),
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    size: 16,
-                                    color: isPaid
-                                        ? const Color(0xFFF1453B)
-                                            .withValues(alpha: 0.5)
-                                        : const Color(0xFFF1453B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (isPaid)
-                            TextButton.icon(
-                              key: ValueKey('bill-undo-${bill.id}'),
-                              onPressed: () => hoiHoanTacHoaDon(context, bill),
-                              icon: const Icon(Icons.undo, size: 16),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text('Hoàn tác'),
-                              ),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                minimumSize: const Size(0, 36),
-                              ),
-                            ),
-                          if (daBoQua)
-                            TextButton.icon(
-                              key: ValueKey('bill-undo-skip-${bill.id}'),
-                              onPressed: () => hoiHoanTacBoQua(context, bill),
-                              icon: const Icon(Icons.undo, size: 16),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text('Hoàn tác'),
-                              ),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
-                                minimumSize: const Size(0, 36),
-                              ),
-                            ),
-                          if (!isPaid && !daBoQua)
-                            ElevatedButton(
-                              onPressed: () =>
-                                  moBangThanhToanHoaDon(context, bill),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                minimumSize: const Size(0, 36),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Thanh toán',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    BillStatusHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      meta: meta,
+                      icon: icon,
+                      iconColor: iconColor,
+                      status: status,
+                      statusColor: statusColor,
+                      statusBg: statusBg,
+                      titleColor:
+                          isPaid ? AppColors.textSecondary : AppColors.primary,
+                      isPaid: isPaid,
+                    ),
+                    const SizedBox(height: 16),
+                    _HangSoTien(
+                      bill: bill,
+                      amount: amount,
+                      isPaid: isPaid,
+                      daBoQua: daBoQua,
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -701,8 +598,10 @@ class _BillPageState extends State<BillPage> {
         },
         onDelete: () {
           Navigator.of(sheetContext).pop();
-          baoNhanh('Khoản chi của hoá đơn không xoá tay được. Dùng nút Hoàn tác '
-                  'trên hoá đơn.', loai: LoaiThongBao.loi);
+          baoNhanh(
+              'Khoản chi của hoá đơn không xoá tay được. Dùng nút Hoàn tác '
+              'trên hoá đơn.',
+              loai: LoaiThongBao.loi);
         },
       ),
     );
@@ -751,10 +650,199 @@ class _HangTabGhim extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
+  Widget build(
+          BuildContext context, double shrinkOffset, bool overlapsContent) =>
       ColoredBox(color: AppColors.background, child: tabBar);
 
   // Nhãn tab mang số đếm — đổi sau mỗi lần danh sách đổi.
   @override
   bool shouldRebuild(_HangTabGhim oldDelegate) => oldDelegate.tabBar != tabBar;
+}
+
+/// Hàng dưới của thẻ hoá đơn: số tiền · bút · thùng rác · nút (Thanh toán hoặc
+/// Hoàn tác).
+///
+/// G74 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn) nút Thanh toán lấy
+/// 128 dp và số tiền chỉ còn 58 dp — *"100.0…"*, mất con số chính. Khi ĐO thấy
+/// một hàng không đủ, số tiền lên dòng riêng (người dùng chọn); màn đủ chỗ giữ
+/// đúng dáng G51.
+class _HangSoTien extends StatelessWidget {
+  const _HangSoTien({
+    required this.bill,
+    required this.amount,
+    required this.isPaid,
+    required this.daBoQua,
+  });
+
+  final Bill bill;
+  final String amount;
+  final bool isPaid;
+  final bool daBoQua;
+
+  static const _kieuSoTien =
+      TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
+  static const _kieuNutThanhToan =
+      TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
+
+  /// Bút 16 + thùng rác 16, mỗi cái đứng sau một khe 12; rồi khe 8 trước nút.
+  static const _rongButXoa = 12 + 16 + 12 + 16 + 8;
+
+  bool get _laThanhToan => !isPaid && !daBoQua;
+
+  /// Bề rộng tự nhiên của nút: `Row` dựng con không co giãn trước, nên nút
+  /// luôn lấy đủ phần này và số tiền nhận phần còn lại.
+  double _rongNut(BuildContext context) {
+    if (_laThanhToan) {
+      // Lề 24 × 2, cỡ chữ 16 của theme nút.
+      return 48 + doRongChu(context, 'Thanh toán', _kieuNutThanhToan);
+    }
+    // TextButton.icon: lề 12 × 2, biểu tượng 16, khe 8.
+    final nhan =
+        Theme.of(context).textTheme.labelLarge ?? const TextStyle(fontSize: 14);
+    return 24 + 16 + 8 + doRongChu(context, 'Hoàn tác', nhan);
+  }
+
+  bool _vuaMotHang(BuildContext context, double rong) =>
+      doRongChu(context, amount, _kieuSoTien) +
+          _rongButXoa +
+          _rongNut(context) <=
+      rong + 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final soTien = Text(
+      amount,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: _kieuSoTien.copyWith(
+        color: isPaid ? AppColors.textSecondary : AppColors.primary,
+      ),
+    );
+    return LayoutBuilder(builder: (context, rang) {
+      if (_vuaMotHang(context, rang.maxWidth)) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // ⚠️ G51 (2026-09-29): số tiền + bút + thùng rác nằm trong MỘT
+            // `Expanded`, số tiền là `Flexible` DUY NHẤT của hàng con. Bản
+            // trước đặt `Flexible(số tiền)` và `Spacer()` cùng hàng, cả hai
+            // `flex: 1`, nên chúng CHIA ĐÔI chỗ trống — số tiền bị trần ở một
+            // nửa dù Spacer co được về 0, và ở 360 dp mọi thẻ in "10.0…". Vẫn
+            // ellipsis: số tiền lớn không được đẩy nút ra ngoài mép thẻ.
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(child: soTien),
+                  const SizedBox(width: 12),
+                  _butXoa(context),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            _nut(context),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vẫn ellipsis: số tiền 13 chữ số ở màn hẹp nhất không vừa nổi một
+          // dòng riêng, và nó không được tràn khỏi thẻ.
+          soTien,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _butXoa(context),
+              const Spacer(),
+              _nut(context),
+            ],
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _butXoa(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () => context.push('/bills/${bill.id}/edit', extra: bill),
+          child: Icon(
+            Icons.edit,
+            size: 16,
+            color: isPaid
+                ? AppColors.textSecondary.withValues(alpha: 0.5)
+                : AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        InkWell(
+          onTap: () => hoiXoaHoaDon(context, bill.id),
+          child: Icon(
+            Icons.delete_outline,
+            size: 16,
+            color: isPaid
+                ? const Color(0xFFF1453B).withValues(alpha: 0.5)
+                : const Color(0xFFF1453B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _nut(BuildContext context) {
+    if (isPaid) {
+      return TextButton.icon(
+        key: ValueKey('bill-undo-${bill.id}'),
+        onPressed: () => hoiHoanTacHoaDon(context, bill),
+        icon: const Icon(Icons.undo, size: 16),
+        label: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Hoàn tác'),
+        ),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(0, 36),
+        ),
+      );
+    }
+    if (daBoQua) {
+      return TextButton.icon(
+        key: ValueKey('bill-undo-skip-${bill.id}'),
+        onPressed: () => hoiHoanTacBoQua(context, bill),
+        icon: const Icon(Icons.undo, size: 16),
+        label: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Hoàn tác'),
+        ),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.textSecondary,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(0, 36),
+        ),
+      );
+    }
+    return ElevatedButton(
+      onPressed: () => moBangThanhToanHoaDon(context, bill),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: const FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          'Thanh toán',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
 }

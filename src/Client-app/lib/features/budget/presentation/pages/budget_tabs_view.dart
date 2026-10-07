@@ -92,9 +92,13 @@ class BudgetTabsView extends StatelessWidget {
             indicatorSize: TabBarIndicatorSize.tab,
             labelStyle:
                 const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            // G76 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn) hai ô
+            // chia đôi bề ngang, "Đang hoạt động (4" mất dấu đóng ngoặc. Nhãn
+            // co nhẹ khi chật (cùng cách G68 cho thanh điều hướng); màn đủ chỗ
+            // giữ nguyên cỡ.
             tabs: [
-              Tab(text: 'Đang hoạt động (${state.active.length})'),
-              Tab(text: 'Đã hết hạn (${state.expired.length})'),
+              Tab(child: _NhanTab('Đang hoạt động (${state.active.length})')),
+              Tab(child: _NhanTab('Đã hết hạn (${state.expired.length})')),
             ],
           ),
         ),
@@ -122,6 +126,22 @@ class BudgetTabsView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Nhãn một ô tab: co nhẹ (`scaleDown`) khi ô hẹp hơn chữ, không bao giờ phóng.
+/// Kiểu chữ lấy từ `DefaultTextStyle` mà `TabBar` đặt (labelStyle).
+class _NhanTab extends StatelessWidget {
+  const _NhanTab(this.chu);
+
+  final String chu;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(chu, maxLines: 1),
     );
   }
 }

@@ -375,6 +375,18 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   /// lại — dài hơn, và chỗ nào sai thì im lặng. Cỡ dữ liệu của app này là vài
   /// chục tới vài nghìn hàng mỗi ví.
   Future<double> tongTheoVi(String walletId) async {
+    var tong = 0.0;
+    for (final b in await bienDongTheoVi(walletId)) {
+      tong += b.soTien;
+    }
+    return tong;
+  }
+
+  /// Từng khoản của sổ ví [walletId] kèm số tiền **đã mang dấu** theo vai của ví
+  /// — chính các vế mà [tongTheoVi] cộng lại, nên hai hàm không thể lệch nhau.
+  /// Thêm ngày 2026-10-06 cho E6 (đợt âm của ví, `wallet/domain/dot_am.dart`).
+  Future<List<({String id, DateTime ngay, double soTien})>> bienDongTheoVi(
+      String walletId) async {
     final rows = await (select(transactions)
           ..where((t) =>
               t.deletedAt.isNull() &
@@ -382,20 +394,22 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
                   t.walletTransfer.equals(walletId))))
         .get();
 
-    var tong = 0.0;
+    final ra = <({String id, DateTime ngay, double soTien})>[];
+    void them(Transaction t, double soTien) =>
+        ra.add((id: t.id, ngay: t.date, soTien: soTien));
     for (final t in rows) {
       switch (t.type) {
         case 'thu':
-          if (t.walletId == walletId) tong += t.amount;
+          if (t.walletId == walletId) them(t, t.amount);
         case 'chi':
-          if (t.walletId == walletId) tong -= t.amount;
+          if (t.walletId == walletId) them(t, -t.amount);
         case 'transfer':
           if (t.walletTransfer == null) continue;
-          if (t.walletId == walletId) tong -= t.amount;
-          if (t.walletTransfer == walletId) tong += t.amount;
+          if (t.walletId == walletId) them(t, -t.amount);
+          if (t.walletTransfer == walletId) them(t, t.amount);
       }
     }
-    return tong;
+    return ra;
   }
 
   Future<void> insert(TransactionsCompanion entry) async {
