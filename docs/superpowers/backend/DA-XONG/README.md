@@ -157,7 +157,15 @@ Các tài liệu sau đây đã được giải quyết trọn vẹn và chuyể
 | [CLIENT_PREMIUM_PAYOS.md](./CLIENT_PREMIUM_PAYOS.md) | ✅ **Mục 38:** Bổ sung `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30` vào API `GET /api/payment/subscription-info`; đính chính 5 điểm lệch mã trong `CLIENT_INTEGRATION_GUIDE.md` (socket event `account.upgraded`, URL Admin, base URL 3000, Dio/url_launcher, `accountType`); bỏ cụm từ "đồng bộ đa thiết bị tức thì". Test PASS 100%. |
 | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](./CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | ✅ **Mục 34:** Client-app hoàn tất tính năng nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (100% on-device offline, tuân thủ Nghị định 13/2023/NĐ-CP và Data Minimization). Đã nghiệm thu và chuyển lưu trữ. |
 
-Thư mục này nay **57** tệp + mục lục (đếm bằng máy 2026-10-06).
+---
+
+## 4g. Đóng trong đợt backend 2026-10-07 (Hoàn tất mục 40 — Đồng nhất Server_update_at về UTC)
+
+| Tài liệu | Kết quả xử lý |
+|---|---|
+| [SERVER_UPDATE_AT_HAI_DONG_HO.md](./SERVER_UPDATE_AT_HAI_DONG_HO.md) | ✅ **Mục 40:** Áp dụng Migration 21 sửa trigger function `set_server_update_at()` và DEFAULT của 6 cột `Server_update_at` sang `(now() AT TIME ZONE 'UTC')`. Triệt tiêu hoàn toàn độ lệch 7 giờ giữa trigger/default và Prisma ORM (đo thực tế độ lệch = 0 ms). Chuẩn hóa câu trả lời mục 5 cho Client-app: Client giữ 1 mốc `min(maxSince)` chung là an toàn và chuẩn xác. Test PASS 246/246 tests (100%). |
+
+Thư mục này nay **58** tệp + mục lục (đếm bằng máy 2026-10-07).
 
 ---
 

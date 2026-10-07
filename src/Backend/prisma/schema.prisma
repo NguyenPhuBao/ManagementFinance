@@ -454,4 +454,37 @@ model payment_transaction {
   @@index([order_id], map: "idx_payment_transaction_order")
   @@index([idaccount], map: "idx_payment_transaction_account")
   @@map("payment_transaction")
+}
+
+/// Bảng danh mục chức năng hệ thống (2.16)
+model feature {
+  id              String                    @id @db.VarChar(50) @map("id")
+  name            String                    @db.VarChar(100) @map("name")
+  description     String?                   @db.Text @map("description")
+  type            String                    @default("TOGGLE") @db.VarChar(20) @map("type")
+  category_group  String                    @default("Chức năng") @db.VarChar(50) @map("category_group")
+  default_limit   Int?                      @map("default_limit")
+  default_enabled Boolean                   @default(true) @map("default_enabled")
+  created_at      DateTime                  @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at      DateTime                  @default(now()) @db.Timestamp(6) @map("updated_at")
+  permissions     account_type_permission[]
+
+  @@map("feature")
+}
+
+/// Bảng phân quyền tính năng theo loại tài khoản (2.17)
+model account_type_permission {
+  id           Int      @id @default(autoincrement()) @map("id")
+  account_type String   @db.VarChar(20) @map("account_type")
+  feature_id   String   @db.VarChar(50) @map("feature_id")
+  is_enabled   Boolean  @default(true) @map("is_enabled")
+  limit_value  Int?     @map("limit_value")
+  created_at   DateTime @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at   DateTime @default(now()) @db.Timestamp(6) @map("updated_at")
+
+  feature      feature  @relation(fields: [feature_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_perm_feature")
+
+  @@unique([account_type, feature_id], map: "uq_account_type_feature")
+  @@index([account_type], map: "idx_perm_account_type")
+  @@map("account_type_permission")
 }

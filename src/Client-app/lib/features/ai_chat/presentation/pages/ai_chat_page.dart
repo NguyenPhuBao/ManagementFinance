@@ -257,7 +257,7 @@ class _AiChatPageState extends State<AiChatPage> {
     try {
       // `context.read` (provider) ném `ProviderNotFoundException`;
       // `BlocProvider.of` bọc nó thành `FlutterError` — không bắt được.
-      return context.read<GoiCubit>().laPremium;
+      return context.read<GoiCubit>().duocDungAiAssistant;
     } on ProviderNotFoundException {
       return true;
     }

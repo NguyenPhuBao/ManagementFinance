@@ -58,6 +58,7 @@ RealtimeEvent? realtimeEventFromName(String name) {
     case 'sync.completed':
       return RealtimeEvent.dongBoXong;
     case 'account.upgraded':
+    case 'account.permissions_updated':
       return RealtimeEvent.taiKhoanNangCap;
     default:
       return null;

@@ -23,6 +23,7 @@ class TrangThaiGoi {
     required this.nhanLuc,
     this.gia = kGiaPremium,
     this.soNgayGoi = kSoNgayGoi,
+    this.quyenTinhNang = const {},
   });
 
   final LoaiGoi loai;
@@ -35,11 +36,23 @@ class TrangThaiGoi {
   final int gia;
   final int soNgayGoi;
 
+  /// Bảng phân quyền tính năng động (TOGGLE: ai_assistant, ai_quick_input...)
+  final Map<String, bool> quyenTinhNang;
+
   static TrangThaiGoi basicMacDinh(DateTime nhanLuc) =>
       TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: nhanLuc);
 
   bool laPremium(DateTime now) =>
       loai == LoaiGoi.premium && (hetHan == null || hetHan!.isAfter(now));
+
+  /// Kiểm tra quyền được dùng của một tính năng cụ thể.
+  /// Ưu tiên cấu hình động trong [quyenTinhNang], fallback theo [fallback] hoặc [laPremium].
+  bool duocDung(String maTinhNang, {bool Function()? fallback}) {
+    if (quyenTinhNang.containsKey(maTinhNang)) {
+      return quyenTinhNang[maTinhNang] == true;
+    }
+    return fallback != null ? fallback() : laPremium(DateTime.now());
+  }
 
   /// Số ngày LỊCH còn lại (giờ địa phương); `0` = hết hạn trong hôm nay.
   /// `null` khi không còn Premium hoặc chưa biết hạn — không bao giờ âm.
@@ -60,6 +73,7 @@ class TrangThaiGoi {
         'nhanLuc': nhanLuc.toUtc().toIso8601String(),
         'gia': gia,
         'soNgayGoi': soNgayGoi,
+        'quyenTinhNang': quyenTinhNang,
       };
 
   /// Đọc lại từ kho. Rác / thiếu `nhanLuc` → `null` (hàng hỏng, kho coi như
@@ -72,6 +86,10 @@ class TrangThaiGoi {
     final hetHan = json['hetHan'];
     final gia = json['gia'];
     final ngay = json['soNgayGoi'];
+    final rawQuyen = json['quyenTinhNang'];
+    final Map<String, bool> quyen = rawQuyen is Map
+        ? rawQuyen.map((k, v) => MapEntry(k.toString(), v == true))
+        : const {};
     return TrangThaiGoi(
       loai: json['loai'] == 'premium' ? LoaiGoi.premium : LoaiGoi.basic,
       hetHan: hetHan is String ? DateTime.tryParse(hetHan) : null,
@@ -79,6 +97,7 @@ class TrangThaiGoi {
       nhanLuc: moc,
       gia: gia is num && gia > 0 ? gia.toInt() : kGiaPremium,
       soNgayGoi: ngay is num && ngay > 0 ? ngay.toInt() : kSoNgayGoi,
+      quyenTinhNang: quyen,
     );
   }
 }
@@ -97,6 +116,10 @@ TrangThaiGoi trangThaiTuJson(
   final hetHan = hetHanTho is String ? DateTime.tryParse(hetHanTho) : null;
   final gia = json['price'];
   final ngay = json['packageDays'];
+  final rawFeatures = json['features'] ?? json['quyenTinhNang'];
+  final Map<String, bool> quyen = rawFeatures is Map
+      ? rawFeatures.map((k, v) => MapEntry(k.toString(), v == true))
+      : const {};
   return TrangThaiGoi(
     loai: loai,
     hetHan: loai == LoaiGoi.premium ? hetHan : null,
@@ -104,6 +127,7 @@ TrangThaiGoi trangThaiTuJson(
     nhanLuc: nhanLuc,
     gia: gia is num && gia > 0 ? gia.toInt() : kGiaPremium,
     soNgayGoi: ngay is num && ngay > 0 ? ngay.toInt() : kSoNgayGoi,
+    quyenTinhNang: quyen,
   );
 }
 

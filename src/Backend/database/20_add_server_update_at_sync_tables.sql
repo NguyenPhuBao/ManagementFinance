@@ -6,30 +6,30 @@
 
 -- 1. Thêm cột Server_update_at (nếu chưa có)
 ALTER TABLE IF EXISTS "category"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 ALTER TABLE IF EXISTS "wallet"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 ALTER TABLE IF EXISTS "budget"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 ALTER TABLE IF EXISTS "bill"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 ALTER TABLE IF EXISTS "goal"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 ALTER TABLE IF EXISTS "transaction"
-  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "Server_update_at" TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC');
 
 -- 2. Đồng bộ giá trị ban đầu cho các bản ghi cũ từ Update_at
-UPDATE "category" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
-UPDATE "wallet" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
-UPDATE "budget" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
-UPDATE "bill" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
-UPDATE "goal" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
-UPDATE "transaction" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = CURRENT_TIMESTAMP AND "Update_at" IS NOT NULL;
+UPDATE "category" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
+UPDATE "wallet" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
+UPDATE "budget" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
+UPDATE "bill" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
+UPDATE "goal" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
+UPDATE "transaction" SET "Server_update_at" = "Update_at" WHERE "Server_update_at" = (now() AT TIME ZONE 'UTC') AND "Update_at" IS NOT NULL;
 
 -- 3. Tạo chỉ mục hỗ trợ truy vấn kéo delta theo account và Server_update_at
 CREATE INDEX IF NOT EXISTS "idx_category_server_updated" ON "category" ("Create_by", "Server_update_at");
@@ -39,11 +39,11 @@ CREATE INDEX IF NOT EXISTS "idx_bill_server_updated" ON "bill" ("Idaccount", "Se
 CREATE INDEX IF NOT EXISTS "idx_goal_server_updated" ON "goal" ("Idaccount", "Server_update_at");
 CREATE INDEX IF NOT EXISTS "idx_transaction_server_updated" ON "transaction" ("Idaccount", "Server_update_at");
 
--- 4. Tạo Trigger Function tự động gán Server_update_at = CURRENT_TIMESTAMP khi bản ghi được UPDATE
+-- 4. Tạo Trigger Function tự động gán Server_update_at = UTC khi bản ghi được UPDATE
 CREATE OR REPLACE FUNCTION set_server_update_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW."Server_update_at" = CURRENT_TIMESTAMP;
+  NEW."Server_update_at" = (now() AT TIME ZONE 'UTC');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

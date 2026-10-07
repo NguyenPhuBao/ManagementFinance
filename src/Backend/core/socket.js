@@ -346,6 +346,51 @@ function emitSystemMetricsStream(metrics) {
 }
 
 /**
+ * Phát sự kiện tùy ý tới phòng riêng của một tài khoản (account_<idaccount>)
+ * @param {number|string} idaccount 
+ * @param {string} event 
+ * @param {Object} data 
+ */
+function emitToAccount(idaccount, event, data) {
+  if (!io) {
+    logger.warn(`[Socket] Attempted to emit ${event} to account ${idaccount} before Socket.io initialized`);
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit(event, data);
+    logger.info(`[Socket] Emitted ${event} to room ${room}`);
+  } catch (error) {
+    logger.error(`[Socket] Failed to emit ${event} to account ${idaccount}`, { error: error.message });
+  }
+}
+
+/**
+ * Phát sự kiện ma trận phân quyền tính năng thay đổi tới tất cả client
+ * @param {Array<Object>} updates 
+ */
+function emitPermissionsUpdated(updates) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit permissions updated before Socket.io initialized');
+    return;
+  }
+  try {
+    io.emit('account.permissions_updated', {
+      updates,
+      timestamp: new Date().toISOString(),
+    });
+    // Đồng thời phát account.upgraded để kích hoạt làm mới trên client
+    io.emit('account.upgraded', {
+      reason: 'PERMISSIONS_MATRIX_UPDATED',
+      updates,
+    });
+    logger.info('[Socket] Emitted account.permissions_updated & account.upgraded to all connected clients');
+  } catch (error) {
+    logger.error('[Socket] Failed to emit permissions updated', { error: error.message });
+  }
+}
+
+/**
  * Helper hỗ trợ mock IO trong unit test
  */
 function _setMockIO(mockInstance) {
@@ -370,6 +415,8 @@ module.exports = {
   emitCategoryUpdated,
   emitMaintenanceChanged,
   emitSystemMetricsStream,
+  emitToAccount,
+  emitPermissionsUpdated,
 };
 
 

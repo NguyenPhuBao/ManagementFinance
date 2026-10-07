@@ -84,9 +84,11 @@ void main() {
             'này chỉ kéo về, không hiện gì.');
   });
 
-  test('account.upgraded → taiKhoanNangCap: tín hiệu im, không kéo đồng bộ',
+  test('account.upgraded & account.permissions_updated → taiKhoanNangCap: tín hiệu im, không kéo đồng bộ',
       () {
     expect(realtimeEventFromName('account.upgraded'),
+        RealtimeEvent.taiKhoanNangCap);
+    expect(realtimeEventFromName('account.permissions_updated'),
         RealtimeEvent.taiKhoanNangCap);
     expect(RealtimeEvent.taiKhoanNangCap.canDongBoLai, isFalse,
         reason: 'Lên gói không sinh dữ liệu đồng bộ mới — kéo về là một vòng '
