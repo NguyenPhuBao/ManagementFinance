@@ -1,7 +1,7 @@
 # Chức năng Hoá đơn & Dịch vụ (Bill)
 
 > **Dự án:** FlowMoney (ManagementFinance)
-> **Cập nhật:** 2026-09-29 tối (**G57** — nút tạo hoá đơn lên thanh tiêu đề theo Stitch, mục **6.9**) · trước đó 2026-09-29 (mục **6.9** mới — **gợi ý tạo hoá đơn từ khoản lặp**, B2, schema **v27**; trang Hoá đơn nay **cả trang cuộn, hàng tab ghim** — bẫy 4 ở 7c; `/bills/add` nhận query điền sẵn, form `pop(true)` khi đã gửi) · trước đó 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
+> **Cập nhật:** 2026-10-07 (**G74** — thẻ hoá đơn xếp chồng khi đo thấy chật, mục **6.9**) · trước đó 2026-09-29 tối (**G57** — nút tạo hoá đơn lên thanh tiêu đề theo Stitch, mục **6.9**) · trước đó 2026-09-29 (mục **6.9** mới — **gợi ý tạo hoá đơn từ khoản lặp**, B2, schema **v27**; trang Hoá đơn nay **cả trang cuộn, hàng tab ghim** — bẫy 4 ở 7c; `/bills/add` nhận query điền sẵn, form `pop(true)` khi đã gửi) · trước đó 2026-09-13 (**bước 12** — `auto_pay` đi qua đồng bộ, và mục **6.8** mới: gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối, kèm bốn chốt mà nghiệm thu hai máy ảo phát hiện; 6.3 nay là `undoPayment({billId, transactionId})`); 2026-09-12 tối muộn (gộp `main` @ `7779999` — backend đặt chốt trả hai lần ở `upsertTransaction`, ba chỗ ở 5, 6.5 và bảng "còn mở" ghi theo); 2026-09-12 (**bỏ qua kỳ** — mục 6.7 mới, và các chỗ đụng tới nó
 > ở 6.6, bảng "còn mở", mục 9) · bản trước 2026-09-11 · schema Drift toàn
 > dự án nay là **v27** (2026-09-29; v27 là bảng phản hồi gợi ý hoá đơn của B2,
 > v22–v26 không đụng bảng `Bills`; câu cũ ở đây ghi **v21** — mốc của
@@ -938,6 +938,11 @@ khi cuộn. Lượt ấy bắt lỗi dòng phụ bị cắt (đã sửa) và m�
 số tiền trên thẻ hoá đơn bị cắt ở 360 dp (**G51**, `CLIENT_APP_KNOWN_GAPS.md`) — ✅ đóng cùng ngày: `Flexible(số
 tiền)` và `Spacer` cùng `flex: 1` từng chia đôi chỗ trống; nay [số tiền · bút · thùng rác] nằm trong một `Expanded`
 (ca canh `bill_page_so_tien_test.dart`).
+✅ **G74 (2026-10-07)** — G51 chỉ đo ở 360 dp, nơi số tiền vừa **khít** 74/74 dp; ở 320 dp (Realme để cỡ
+hiển thị lớn) số tiền cụt *"100.0…"* và ngày hạn gãy hai dòng. Nay thẻ **đo bề rộng thật** (`doRongChu`,
+`core/ui/do_chu.dart`): không vừa một hàng thì chip trạng thái xuống dưới cột chữ và số tiền lên dòng riêng
+trên hàng [bút · thùng rác · nút]; màn đủ chỗ giữ dáng cũ. Vạch màu bên trái nay là `Positioned` trong
+`Stack` — **đừng bọc lại `IntrinsicHeight`**: `LayoutBuilder` không trả được kích thước nội tại.
 
 **Giới hạn nói trước:** tài khoản thật (giao dịch đầu 02/09/2026) sẽ **im** với
 khoản lặp tháng tới khoảng tháng 11/2026 — đúng hành vi; người không ghi chú
@@ -1162,6 +1167,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/presentation/the_khoan_lap_test.dart` | *(B2)* Thẻ ẩn không chiếm chỗ; chu kỳ là một `Text` **riêng**; Bỏ qua / Tạo gọi đúng khoá, `da_tao` chỉ khi form trả `true`; 360 × 640 không tràn — dựng bằng `AppTheme.lightTheme` (bẫy 4.11) |
 | `test/features/bill/presentation/pages/bill_page_khoan_lap_test.dart` | *(B2)* Thẻ đứng giữa Nhận xét và hàng tab; 360 × 640 có / không hoá đơn không tràn (bố cục cũ tràn 219 / 44 px); cuộn hết phần đầu → hàng tab ghim dưới app bar, hoá đơn đầu **không** khuất dưới nó |
 | `test/features/bill/presentation/pages/bill_page_so_tien_test.dart` | *(G51)* Số tiền trên thẻ không bị cắt khi còn chỗ (đo ở 500 / 600 vì font test rộng gấp đôi); bút đứng cách **chữ** số tiền 12 px (đo bề rộng chữ, không đo hộp); nút sát mép phải; số 13 chữ số ở 411 vẫn ellipsis, không tràn |
+| `test/features/bill/presentation/pages/bill_page_hep_test.dart` | *(G74)* Font **thật** ở 300 / 320 dp: số tiền, tên, ngày hạn, chip vẽ trọn (chưa trả và đã trả); 320 dp xếp chồng (chip dưới cột chữ, số tiền trên hàng nút); 360 dp giữ dáng cũ; số 13 chữ số ở 300 vẫn ellipsis |
 | `test/core/database/schema_v27_test.dart` | *(B2)* Bảng phản hồi v27 không cột đồng bộ; đọc theo tài khoản; hai hàm purge; migration v26 → v27 giữ nhật ký thông báo |
 | `test/core/sync/sync_push_result_truoc_pull_test.dart` | *(ngoài thư mục bill)* `SyncEngine` phát kết quả đẩy **TRƯỚC** bước Pull — nếu không, phép hoàn tiền cộng vào số dư đã bị server đè lên |
 

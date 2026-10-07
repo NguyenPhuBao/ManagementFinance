@@ -37,6 +37,7 @@ import '../widgets/chon_pham_vi_sheet.dart';
 import '../widgets/khung_cho_phan_tich.dart';
 import '../widgets/the_de_xuat_thu_tu.dart';
 import '../widgets/theo_doi_xem.dart';
+import '../../../../core/ui/do_chu.dart';
 
 /// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
 /// *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14).
@@ -430,26 +431,12 @@ class _Header extends StatelessWidget {
   bool _vuaMotHang(BuildContext context, double rong) {
     final conLai = rong - _rongNut;
     const tong = _flexTieuDe + _flexOKy;
-    final rongTieuDe = _doChu(context, _TieuDeTrang.chu, _kieuTieuDe);
+    final rongTieuDe = doRongChu(context, _TieuDeTrang.chu, _kieuTieuDe);
     final rongOKy = _ChonPhamVi.rongCan(context, _ChonPhamVi.nhanCua(state));
     // Nửa điểm ảnh dung sai cho phép làm tròn của TextPainter.
     return rongTieuDe <= conLai * _flexTieuDe / tong + 0.5 &&
         rongOKy <= conLai * _flexOKy / tong + 0.5;
   }
-}
-
-/// Bề rộng một dòng chữ như `Text` sẽ vẽ: cùng kiểu kế thừa và cùng cỡ chữ
-/// hệ thống của [context].
-double _doChu(BuildContext context, String chu, TextStyle kieu) {
-  final tp = TextPainter(
-    text: TextSpan(text: chu, style: DefaultTextStyle.of(context).style.merge(kieu)),
-    textScaler: MediaQuery.textScalerOf(context),
-    textDirection: Directionality.of(context),
-    maxLines: 1,
-  )..layout();
-  final rong = tp.width;
-  tp.dispose();
-  return rong;
 }
 
 class _TieuDeTrang extends StatelessWidget {
@@ -522,7 +509,7 @@ class _ChonPhamVi extends StatelessWidget {
 
   /// Bề rộng ô cần để nhãn [nhan] không bị cắt ở cỡ chữ đang dùng.
   static double rongCan(BuildContext context, String nhan) =>
-      _doChu(context, nhan, _kieuNhan) + _phanCoDinh;
+      doRongChu(context, nhan, _kieuNhan) + _phanCoDinh;
 
   @override
   Widget build(BuildContext context) {
