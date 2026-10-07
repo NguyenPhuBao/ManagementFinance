@@ -1333,7 +1333,7 @@ hồi nay đi qua **`NotificationDao.goVaNhaKhoa`** — đánh dấu gỡ **và*
 được nhả, lần âm lại sinh hàng mới; hàng cũ **giữ** trong bảng (không xoá cứng). ⚠️ Hai chốt: (1) chỉ hàng **app tự gỡ**
 mới nhả khoá — người dùng tự ✕ vẫn `dismiss` (giữ khoá), ví còn âm thì **không** báo lại; (2) **huỷ thông báo trên khay
 theo khoá CŨ trước** khi đổi khoá — `BadgeUpdater` huỷ theo `osScheduledId(dedupeKey)`, đổi khoá rồi nó không tìm ra
-thông báo cũ. Ba ca ở `notification_scanner_test.dart` (nhóm *"E6 ◐"*). Chưa đo máy thật.
+thông báo cũ. Ba ca ở `notification_scanner_test.dart` (nhóm *"E6 ◐"*). ✅ **Đo Realme tối 2026-10-07** (bản debug `e1ce2b38…`, ví *test* vốn âm −100.000): nạp 100.000 → hàng *"test đang âm"* tự gỡ · xoá mềm khoản nạp → hàng mới *"Vừa xong"* (báo lại) · ✕ tay khi còn âm → lượt quét kế (logcat *"0 hàng mới"*) không báo lại. ⚠️ Khi ví hồi về đúng 0 thì sinh hàng *"Số dư ví sắp cạn — chỉ còn 0 đồng"*, và hàng ấy **vẫn treo** khi ví âm lại (hai hàng cùng nói về một ví, hàng sắp cạn mang số cũ) — chưa sửa.
 
 ✅ **Nghiệm thu máy thật 2026-10-06 tối** (Realme): bản mới vừa cài sinh khoá theo đợt cho hai ví vốn âm từ 02/10
 (mỗi ví thêm **một** dòng lúc nâng cấp — cái giá một lần của việc đổi khoá); ví thử *"Vi thu E6"*: chi 50.000 → **một**
