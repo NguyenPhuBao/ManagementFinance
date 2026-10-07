@@ -868,32 +868,37 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 
 // ── Ví ───────────────────────────────────────────────────────────────────────
 
-/// Id các hàng **"sắp cạn"** chưa gỡ mà ví của chúng nay đã lên **trên** [nguong] — bộ quét gỡ chúng
-/// (`dismiss`), rồi `BadgeUpdater` huỷ thông báo tương ứng trên khay.
+/// Id các hàng **"sắp cạn"** chưa gỡ đã **lỗi thời** — bộ quét gỡ chúng (`dismiss`), rồi `BadgeUpdater` huỷ
+/// thông báo tương ứng trên khay. Lỗi thời là một trong hai:
 ///
-/// Khoá gộp theo NGÀY nên hàng không tự mất trong ngày: đo Realme 2026-09-30, "Ví MB Bank chỉ còn 0 đồng" vẫn
-/// nằm trên khay sau khi ví đã nhận 10.000 đ. Chỉ loại `walletLowBalance`; ví không còn trong [wallets] thì
-/// không đoán; [nguong] ≤ 0 là tính năng tắt — không có căn cứ để nói "đã hồi".
-List<String> hangSapCanDaHoi(Iterable<AppNotification> hang, List<Wallet> wallets, int nguong) {
-  if (nguong <= 0) return const [];
+/// - ví đã lên **trên** [nguong] (đã hồi). Khoá gộp theo NGÀY nên hàng không tự mất trong ngày: đo Realme
+///   2026-09-30, "Ví MB Bank chỉ còn 0 đồng" vẫn nằm trên khay sau khi ví đã nhận 10.000 đ. [nguong] ≤ 0 là tính
+///   năng tắt — không có căn cứ để nói "đã hồi";
+/// - ví đã **âm** (G81, 2026-10-07): hàng "đang âm" thay nó; giữ lại là hai hàng cùng nói về một ví, hàng sắp
+///   cạn mang con số cũ (Realme: "test chỉ còn 0 đồng" treo cạnh "test đang âm 100 nghìn"). Ví âm không đi qua
+///   luật sắp cạn nên hàng không sinh lại.
+///
+/// Chỉ loại `walletLowBalance`; ví không còn trong [wallets] thì không đoán.
+List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<Wallet> wallets, int nguong) {
   final soDu = {for (final v in wallets) if (!v.isDeleted) v.id: v.balance};
+  bool loiThoi(double? s) => s != null && (s < 0 || (nguong > 0 && s > nguong));
   return [
     for (final h in hang)
       if (h.kind == NotificationKind.walletLowBalance.name &&
           h.dismissedAt == null &&
-          (soDu[h.subjectId] ?? double.negativeInfinity) > nguong)
+          loiThoi(soDu[h.subjectId]))
         h.id,
   ];
 }
 
 /// Id các hàng **"ví âm"** chưa gỡ mà ví của chúng nay đã hết âm (≥ 0) hoặc được đánh dấu cho phép âm — bộ
-/// quét gỡ chúng, cùng khuôn [hangSapCanDaHoi] (E6, 2026-10-06). Gỡ là điều kiện để "mỗi đợt âm một lần" báo
+/// quét gỡ chúng, cùng khuôn [hangSapCanLoiThoi] (E6, 2026-10-06). Gỡ là điều kiện để "mỗi đợt âm một lần" báo
 /// lại ở đợt sau: hàng đã gỡ vẫn giữ khoá của đợt CŨ, đợt mới mang khoá khác. Ví không còn thì không đoán.
 /// Id các hàng thông báo **của ví** (`subjectType == 'wallet'` — "sắp cạn", "ví âm") chưa gỡ mà ví ấy nằm
 /// trong [viDaXoa] — bộ quét gỡ chúng (G71, 2026-10-06).
 ///
 /// Vì sao cần tập riêng thay vì "ví vắng khỏi danh sách": bộ quét đọc ví qua `walletDao.getAll`, vốn lọc bỏ
-/// ví có `deletedAt`, nên ví đã xoá chỉ đơn giản là **biến mất** — và [hangSapCanDaHoi] / [hangAmDaHoi] cố ý
+/// ví có `deletedAt`, nên ví đã xoá chỉ đơn giản là **biến mất** — và [hangSapCanLoiThoi] / [hangAmDaHoi] cố ý
 /// không đoán khi không thấy ví. [viDaXoa] là id ví mà CSDL **ghi rõ** đã xoá mềm (xoá trên máy này hoặc kéo
 /// về từ máy khác), nên gỡ ở đây là chắc chứ không đoán.
 List<String> hangCuaViDaXoa(Iterable<AppNotification> hang, Set<String> viDaXoa) {

@@ -27,7 +27,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
-| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật. ⚠️ Từ 2026-09-29 (**G55**) biểu đồ này cắt **trên/dưới** (`FlClipData.vertical()`), không cắt trái/phải — `all()` cắt mất nửa chấm của khoản đầu và điểm cuối |
+| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật. ⚠️ Từ 2026-10-07 (**G79**) biểu đồ này cắt `all()` và **nới trục ngang** (`trucNgangCoCham`); nhãn biên kẹp về ngày đầu/cuối thật. `FlClipData.vertical()` mà G55 (2026-09-29) dùng **vẫn cắt** nửa chấm khoản đầu/điểm cuối trong fl_chart 1.2.0 |
 
 ---
 

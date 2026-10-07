@@ -590,7 +590,7 @@ class NotificationScanner {
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
       ).where((c) => prefs.chapNhan(c.kind)).toList();
 
-      // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
+      // Gỡ hàng "sắp cạn" đã lỗi thời (ví đã hồi, hoặc đã âm — G81) — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
       // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
       // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
       final docViDaXoa = loadViDaXoa;
@@ -608,7 +608,7 @@ class NotificationScanner {
           await dao.goVaNhaKhoa(id, khoa);
         }
         for (final id in {
-          ...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap),
+          ...hangSapCanLoiThoi(hang, wallets, prefs.nguongSoDuThap),
           ...hangCuaViDaXoa(hang, viDaXoa),
         }) {
           if (!amDaHoi.contains(id)) await dao.dismiss(id);

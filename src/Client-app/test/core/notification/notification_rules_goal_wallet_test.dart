@@ -676,7 +676,7 @@ void main() {
         );
 
     test('⭐ ví đã lên TRÊN ngưỡng → hàng sắp cạn của nó được chọn để gỡ (kể cả đã đọc — gỡ khỏi trung tâm)', () {
-      final ids = hangSapCanDaHoi(
+      final ids = hangSapCanLoiThoi(
         [hang('a', vi: 'v1'), hang('b', vi: 'v1', daDoc: now)],
         [vi(id: 'v1', soDu: 150000)],
         100000,
@@ -684,14 +684,24 @@ void main() {
       expect(ids, ['a', 'b']);
     });
 
+    test('⭐ G81 — ví đã ÂM → hàng sắp cạn của nó được chọn để gỡ (hàng "đang âm" thay nó)', () {
+      // Realme 2026-10-07: ví "test" về đúng 0 → "chỉ còn 0 đồng"; xoá khoản nạp → ví −100.000 và hàng
+      // "đang âm" hiện, nhưng hàng sắp cạn vẫn treo với con số cũ — hai hàng cùng nói về một ví.
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -100000)], 100000), ['a']);
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -100000)], 0), ['a'],
+          reason: 'ngưỡng 0 chỉ chặn vế "đã hồi"; ví âm thì sắp cạn sai ở mọi ngưỡng');
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 0)], 100000), isEmpty,
+          reason: 'đúng 0 vẫn là "sắp cạn", chưa âm');
+    });
+
     test('ví vẫn trong ngưỡng / hàng đã gỡ / loại khác / ví không còn / ngưỡng 0 → không chọn', () {
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 50000)], 100000), isEmpty);
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty);
-      expect(hangSapCanDaHoi([hang('a', kind: 'walletNegative', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 100000),
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 50000)], 100000), isEmpty);
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty);
+      expect(hangSapCanLoiThoi([hang('a', kind: 'walletNegative', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 100000),
           isEmpty, reason: 'chỉ loại "sắp cạn" — việc của lỗi này');
-      expect(hangSapCanDaHoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty,
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty,
           reason: 'không biết ví → không đoán');
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
           reason: 'ngưỡng 0 = tính năng tắt: không có căn cứ để nói "đã hồi"');
     });
   });

@@ -37,6 +37,7 @@ import '../widgets/chon_pham_vi_sheet.dart';
 import '../widgets/khung_cho_phan_tich.dart';
 import '../widgets/the_de_xuat_thu_tu.dart';
 import '../widgets/theo_doi_xem.dart';
+import '../../../../core/ui/bieu_do_cham.dart';
 import '../../../../core/ui/do_chu.dart';
 
 /// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
@@ -975,8 +976,9 @@ class _KhoiXuHuong extends StatelessWidget {
             height: 180,
             child: LineChart(
               LineChartData(
-                minX: 0,
-                maxX: (chuoi.length - 1).toDouble(),
+                // Nới hai đầu để chấm kỳ đầu/cuối nằm trọn trong vùng vẽ (G79).
+                minX: trucNgangCoCham(0, (chuoi.length - 1).toDouble()).min,
+                maxX: trucNgangCoCham(0, (chuoi.length - 1).toDouble()).max,
                 minY: 0,
                 maxY: maxY,
                 gridData: FlGridData(
@@ -1025,8 +1027,9 @@ class _KhoiXuHuong extends StatelessWidget {
                       reservedSize: 26,
                       getTitlesWidget: (v, meta) {
                         final i = v.round();
-                        // fl_chart hỏi cả những mốc ngoài dải khi vẽ lưới.
-                        if (i < 0 || i >= chuoi.length) {
+                        // fl_chart hỏi cả những mốc ngoài dải khi vẽ lưới, và
+                        // hai biên đã nới (số lẻ) — bỏ cả hai (G79).
+                        if (!laMocChiSo(v) || i < 0 || i >= chuoi.length) {
                           return const SizedBox.shrink();
                         }
                         // Tháng đang xem là điểm cuối — in đậm để biết mình
@@ -1079,10 +1082,9 @@ class _KhoiXuHuong extends StatelessWidget {
                 // fl_chart là `FlClipData.none()` và đường tràn khỏi thẻ
                 // (bẫy 4.17 `ANALYTICS_FEATURE.md`, chỉ lộ trên máy thật).
                 // Đường danh mục có dải hẹp hơn nên dễ vấp hơn bản hai đường.
-                // Chỉ cắt TRÊN/DƯỚI (G55): cắt trái/phải là mất nửa chấm của
-                // kỳ đầu và kỳ cuối, mà trục ngang không thể thoát khung vì
-                // `minX`/`maxX` là đúng chỉ số đầu/cuối.
-                clipData: const FlClipData.vertical(),
+                // Cắt cả bốn mép; chấm kỳ đầu/cuối không mất nửa nhờ trục
+                // ngang đã nới (G79 — `vertical()` của G55 vẫn cắt trái/phải).
+                clipData: const FlClipData.all(),
                 lineBarsData: theoThuChi
                     ? [
                         _duong(
@@ -1459,8 +1461,9 @@ class _KhoiDongTienTuDo extends StatelessWidget {
             height: 180,
             child: LineChart(
               LineChartData(
-                minX: 0,
-                maxX: (ds.length - 1).toDouble(),
+                // Nới hai đầu để chấm kỳ đầu/cuối nằm trọn trong vùng vẽ (G79).
+                minX: trucNgangCoCham(0, (ds.length - 1).toDouble()).min,
+                maxX: trucNgangCoCham(0, (ds.length - 1).toDouble()).max,
                 minY: san,
                 maxY: maxY,
                 gridData: FlGridData(
@@ -1522,8 +1525,9 @@ class _KhoiDongTienTuDo extends StatelessWidget {
                       reservedSize: 26,
                       getTitlesWidget: (v, meta) {
                         final i = v.round();
-                        // fl_chart hỏi cả mốc ngoài dải khi vẽ lưới.
-                        if (i < 0 || i >= ds.length) {
+                        // fl_chart hỏi cả mốc ngoài dải khi vẽ lưới, và hai
+                        // biên đã nới (số lẻ) — bỏ cả hai (G79).
+                        if (!laMocChiSo(v) || i < 0 || i >= ds.length) {
                           return const SizedBox.shrink();
                         }
                         final cuoi = i == ds.length - 1;
@@ -1566,9 +1570,9 @@ class _KhoiDongTienTuDo extends StatelessWidget {
                   ),
                 ),
                 // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
-                // fl_chart là `FlClipData.none()` (bẫy 4.17). Chỉ cắt
-                // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
-                clipData: const FlClipData.vertical(),
+                // fl_chart là `FlClipData.none()` (bẫy 4.17). Cắt cả bốn mép;
+                // chấm kỳ đầu/cuối không mất nửa nhờ trục ngang đã nới (G79).
+                clipData: const FlClipData.all(),
                 lineBarsData: [
                   LineChartBarData(
                     spots: [
@@ -4031,8 +4035,9 @@ class _BieuDoTaiSan extends StatelessWidget {
 
     return LineChart(
       LineChartData(
-        minX: 0,
-        maxX: cuoi.toDouble(),
+        // Nới hai đầu để chấm kỳ đầu/cuối nằm trọn trong vùng vẽ (G79).
+        minX: trucNgangCoCham(0, cuoi.toDouble()).min,
+        maxX: trucNgangCoCham(0, cuoi.toDouble()).max,
         minY: san,
         maxY: maxY,
         gridData: FlGridData(
@@ -4086,7 +4091,10 @@ class _BieuDoTaiSan extends StatelessWidget {
               reservedSize: 26,
               getTitlesWidget: (v, meta) {
                 final i = v.round();
-                if (i < 0 || i > cuoi) return const SizedBox.shrink();
+                // Hai biên đã nới là số lẻ — bỏ (G79).
+                if (!laMocChiSo(v) || i < 0 || i > cuoi) {
+                  return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -4119,9 +4127,9 @@ class _BieuDoTaiSan extends StatelessWidget {
             ],
           ),
         ),
-        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17). Chỉ cắt
-        // trên/dưới: cắt trái/phải là mất nửa chấm kỳ đầu/cuối (G55).
-        clipData: const FlClipData.vertical(),
+        // Điểm ngoài dải vẫn được VẼ nếu không cắt (bẫy 4.17). Cắt cả bốn
+        // mép; chấm kỳ đầu/cuối không mất nửa nhờ trục ngang đã nới (G79).
+        clipData: const FlClipData.all(),
         lineBarsData: [
           LineChartBarData(
             spots: [

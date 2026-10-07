@@ -790,7 +790,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `52450ac5…` (bản A8 #10 lệch Stitch không ghi lý do), đầu phải neo tâm cột, cắt ở 72 dp; Realme bản release
   `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ.
 - ✅ **Rồi ba chỗ nhỏ có từ trước, người dùng chọn sửa trước B4** (hỏi bằng câu chọn, mỗi chỗ một lối): **G55** — chấm kỳ
-  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (giữ phòng thủ bẫy 4.17 cho
+  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (⚠️ không có tác dụng — sửa thật ở G79, 2026-10-07; giữ phòng thủ bẫy 4.17 cho
   trục dọc — chấm giá trị 0 ở đáy khối Xu hướng vẫn cắt nửa, cố ý); **G56** — *"chi vượt thu nhập 26360,0%"* → từ 2 lần
   thu nhập nói *"chi gấp N lần thu nhập"*, một hàm `soLanChiGapThuNhap` cho thẻ Số dư còn lại, khối Nhận xét và tool
   tổng quan, loại số mới `LoaiSo.soLan` cho `kiemSo`; **G57** — nút rộng *"Tạo hóa đơn lặp lại mới"* đè hàng tab ở 360 dp

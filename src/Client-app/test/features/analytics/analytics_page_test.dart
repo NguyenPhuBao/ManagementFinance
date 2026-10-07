@@ -290,26 +290,36 @@ void _nhanTrucTungKhongChong(
       reason: 'Hai mốc khác nhau không được in cùng một chuỗi.');
 }
 
-/// Mọi `LineChart` có vẽ CHẤM chỉ được cắt trên/dưới, không cắt trái/phải (G55).
+/// Mọi `LineChart` có vẽ CHẤM phải NỚI trục ngang để chấm đầu/cuối nằm trọn
+/// trong vùng vẽ, và giữ cắt cả bốn mép (G79, thay luật G55).
 ///
-/// `FlClipData.all()` cắt đúng theo mép vùng vẽ, nên chấm của kỳ đầu và kỳ cuối
-/// — nằm đúng `minX`/`maxX` — mất một nửa (Realme 2026-09-29, chấm T4). Trục
-/// ngang không thể thoát khỏi khung vì `minX`/`maxX` là đúng chỉ số đầu/cuối;
-/// trục dọc giữ lớp phòng thủ của bẫy 4.17 (người dùng chọn). Trả số biểu đồ có
-/// chấm đã kiểm, để nơi gọi đòi đủ số — không thì một bản sai giấu hết chấm
-/// cũng xanh.
+/// G55 đặt `FlClipData.vertical()` để khỏi cắt trái/phải, nhưng trong fl_chart
+/// 1.2.0 nó vẫn cắt nửa chấm mép — chấm T5/T10 vẫn mất nửa trên Realme
+/// (2026-10-07); ca canh cũ chỉ đọc cấu hình nên xanh. Phép đo bằng ảnh nằm ở
+/// `test/core/ui/bieu_do_cham_test.dart`; ở đây canh mọi biểu đồ của trang đi
+/// qua `trucNgangCoCham`. Trả số biểu đồ có chấm đã kiểm, để nơi gọi đòi đủ số
+/// — không thì một bản sai giấu hết chấm cũng xanh.
 int kiemCatKhungBieuDoCoCham(WidgetTester tester) {
   var soCoCham = 0;
   for (final e in find.byType(LineChart).evaluate()) {
     final data = (e.widget as LineChart).data;
     if (!data.lineBarsData.any((b) => b.dotData.show)) continue;
     soCoCham++;
+    final xs = [
+      for (final b in data.lineBarsData)
+        for (final s in b.spots) s.x,
+    ];
+    final dau = xs.reduce((a, b) => a < b ? a : b);
+    final cuoi = xs.reduce((a, b) => a > b ? a : b);
+    expect(data.minX, lessThan(dau),
+        reason: 'Chấm kỳ đầu nằm đúng minX là mất nửa chấm (G79): `vertical()` '
+            'của fl_chart 1.2.0 vẫn cắt mép trái/phải.');
+    expect(data.maxX, greaterThan(cuoi),
+        reason: 'Chấm kỳ cuối nằm đúng maxX là mất nửa chấm (G79).');
     final c = data.clipData;
-    expect((c.left, c.right), (false, false),
-        reason: 'Cắt trái/phải là mất nửa chấm của kỳ đầu và kỳ cuối (G55).');
-    expect((c.top, c.bottom), (true, true),
-        reason: 'Trục dọc giữ phòng thủ của bẫy 4.17: điểm ngoài dải vẫn được '
-            'VẼ nếu không cắt, và từng tràn khỏi thẻ (2026-09-09).');
+    expect((c.left, c.right, c.top, c.bottom), (true, true, true, true),
+        reason: 'Giữ phòng thủ của bẫy 4.17: điểm ngoài dải vẫn được VẼ nếu '
+            'không cắt, và từng tràn khỏi thẻ (2026-09-09).');
   }
   return soCoCham;
 }
@@ -367,7 +377,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('⚠️ biểu đồ đường có chấm không cắt mép trái/phải (G55)',
+  testWidgets('⚠️ biểu đồ đường có chấm nới trục, chấm mép không mất nửa (G79)',
       (tester) async {
     tester.view.physicalSize = const Size(411, 6000);
     tester.view.devicePixelRatio = 1.0;

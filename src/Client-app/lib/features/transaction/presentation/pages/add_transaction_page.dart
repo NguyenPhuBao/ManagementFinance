@@ -1721,12 +1721,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   color: AppColors.primary, size: 28),
               onPressed: () => context.pop(),
             ),
-            title: Text(
-              _isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch',
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 20,
+            // Co chữ khi chật (G80): ở 320 dp, ✓ và ⋮ (thêm "Bỏ qua" khi mở
+            // từ biến động) chiếm chỗ và tiêu đề từng bị cắt "Thêm giao dị…".
+            // Màn rộng thì FittedBox ôm khít chữ — cỡ gốc không đổi.
+            title: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch',
+                maxLines: 1,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                ),
               ),
             ),
             actions: [
