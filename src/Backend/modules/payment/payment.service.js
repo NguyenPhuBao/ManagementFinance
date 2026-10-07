@@ -236,6 +236,13 @@ async function getSubscriptionInfo(idaccount) {
     premiumExpiresAt: account.premium_expires_at,
     daysRemaining,
     isExpired,
+    limits: {
+      wallets: 3,
+      budgets: 3,
+      goals: 3,
+    },
+    price: config.payment.premiumPriceVnd || 49000,
+    packageDays: config.payment.packageDurationDays || 30,
   };
 }
 

@@ -229,8 +229,8 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       data: {
         active: false,
         scheduled: {
-          scheduledAt: '2026-10-05T02:00:00.000Z',
-          scheduledEndAt: '2026-10-05T04:00:00.000Z',
+          scheduledAt: '2026-10-20T02:00:00.000Z',
+          scheduledEndAt: '2026-10-20T04:00:00.000Z',
           reason: 'Bảo trì hạ tầng định kỳ',
           isEmergency: false,
           createdBy: 'admin',
@@ -249,12 +249,12 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     const endDatetimeInput = screen.getByLabelText(/Thời điểm kết thúc \(Dự kiến\)/i);
     const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
 
-    fireEvent.change(startDatetimeInput, { target: { value: '2026-10-05T02:00' } });
-    fireEvent.change(endDatetimeInput, { target: { value: '2026-10-05T04:00' } });
+    fireEvent.change(startDatetimeInput, { target: { value: '2026-10-20T02:00' } });
+    fireEvent.change(endDatetimeInput, { target: { value: '2026-10-20T04:00' } });
     fireEvent.change(reasonInput, { target: { value: 'Bảo trì hạ tầng định kỳ' } });
 
-    const scheduleBtn = screen.getByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i });
-    fireEvent.click(scheduleBtn);
+    const form = startDatetimeInput.closest('form');
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(
@@ -288,4 +288,98 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       expect(screen.queryByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i })).not.toBeInTheDocument();
     });
   });
+
+  it('6.9. Nút "Làm mới & Đặt lại biểu mẫu" xóa sạch toàn bộ input đang nhập và tải lại trạng thái', async () => {
+    render(<BroadcastPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
+    });
+
+    const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
+    const endDatetimeInput = screen.getByLabelText(/Thời điểm kết thúc \(Dự kiến\)/i);
+    const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
+    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo cho Client & Admin/i });
+
+    // Điền dữ liệu vào form
+    fireEvent.change(startDatetimeInput, { target: { value: '2026-10-25T10:00' } });
+    fireEvent.change(endDatetimeInput, { target: { value: '2026-10-25T12:00' } });
+    fireEvent.change(reasonInput, { target: { value: 'Nội dung đang soạn dở...' } });
+    fireEvent.click(notifyCheckbox);
+
+    expect(startDatetimeInput.value).toBe('2026-10-25T10:00');
+    expect(endDatetimeInput.value).toBe('2026-10-25T12:00');
+    expect(reasonInput.value).toBe('Nội dung đang soạn dở...');
+    expect(notifyCheckbox.checked).toBe(true);
+
+    // Bấm nút Làm mới & Đặt lại biểu mẫu
+    const refreshBtn = screen.getByRole('button', { name: /Làm mới & Đặt lại biểu mẫu/i });
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      // Xác nhận toàn bộ input đã được xóa trắng
+      expect(startDatetimeInput.value).toBe('');
+      expect(endDatetimeInput.value).toBe('');
+      expect(reasonInput.value).toBe('');
+      expect(notifyCheckbox.checked).toBe(false);
+      // Xác nhận gọi lại API lấy trạng thái
+      expect(adminApi.getMaintenanceStatus).toHaveBeenCalledTimes(2);
+      // Xác nhận thông báo phản hồi hiển thị
+      expect(screen.getByText(/Đã làm mới trạng thái và xóa trắng biểu mẫu lên lịch thành công/i)).toBeInTheDocument();
+    });
+  });
+
+  it('6.10. Tuyệt đối không còn hiển thị dòng thông tin kỹ thuật /health/admin', async () => {
+    render(<BroadcastPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Cổng kiểm tra bảo trì/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\/health\/admin/i)).not.toBeInTheDocument();
+  });
+
+  it('6.11. Lên lịch bảo trì với tùy chọn Tự động phát thông báo (isEmergency = true)', async () => {
+    adminApi.setMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: false,
+        scheduled: {
+          scheduledAt: '2026-10-20T02:00:00.000Z',
+          scheduledEndAt: null,
+          reason: 'Bảo trì hệ thống diện rộng có phát thông báo',
+          isEmergency: true,
+          createdBy: 'admin',
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    render(<BroadcastPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
+    });
+
+    const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
+    const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
+    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo cho Client & Admin/i });
+
+    fireEvent.change(startDatetimeInput, { target: { value: '2026-10-20T02:00' } });
+    fireEvent.change(reasonInput, { target: { value: 'Bảo trì hệ thống diện rộng có phát thông báo' } });
+    fireEvent.click(notifyCheckbox);
+
+    const form = startDatetimeInput.closest('form');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason: 'Bảo trì hệ thống diện rộng có phát thông báo',
+          isEmergency: true,
+        })
+      );
+    });
+  });
 });
+

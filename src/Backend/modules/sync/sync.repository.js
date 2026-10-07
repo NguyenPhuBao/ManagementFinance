@@ -174,6 +174,7 @@ const syncRepository = {
           icon: mapped.icon || null,
           color: mapped.color || null,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -196,6 +197,7 @@ const syncRepository = {
           color: mapped.color !== undefined ? mapped.color : existing.color,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -213,7 +215,7 @@ const syncRepository = {
           { is_default: true },
           { create_by: idaccount },
         ],
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       select: {
         idcategory: true,
@@ -228,8 +230,9 @@ const syncRepository = {
         color: true,
         delete_at: true,
         update_at: true,
+        server_update_at: true,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
   },
 
@@ -253,6 +256,7 @@ const syncRepository = {
           icon: mapped.icon || 'wallet',
           color: mapped.color || '#4CAF50',
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -272,6 +276,7 @@ const syncRepository = {
           color: mapped.color ?? existing.color,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -282,9 +287,9 @@ const syncRepository = {
     return prisma.wallet.findMany({
       where: {
         idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
   },
 
@@ -331,6 +336,7 @@ const syncRepository = {
           images: cleanStorageKey(mapped.images) || null,
           date_transaction: mapped.date_transaction || new Date(),
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
           deleted_at: mapped.deleted_at || null,
         },
       });
@@ -358,6 +364,7 @@ const syncRepository = {
           date_transaction: mapped.date_transaction ?? existing.date_transaction,
           deleted_at: mapped.deleted_at !== undefined ? mapped.deleted_at : existing.deleted_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -368,9 +375,9 @@ const syncRepository = {
     const list = await prisma.transaction.findMany({
       where: {
         idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
     return list.map((item) => ({
       ...item,
@@ -402,6 +409,7 @@ const syncRepository = {
           nexttime_recurrence: mapped.nexttime_recurrence || null,
           note: prepareSafeNote(mapped.note, null),
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -424,6 +432,7 @@ const syncRepository = {
           note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -434,9 +443,9 @@ const syncRepository = {
     const list = await prisma.budget.findMany({
       where: {
         idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
     return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
@@ -468,6 +477,7 @@ const syncRepository = {
           auto_pay: mapped.auto_pay ?? false,
           anchor_day: mapped.anchor_day ?? null,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -494,6 +504,7 @@ const syncRepository = {
           note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -504,9 +515,9 @@ const syncRepository = {
     const list = await prisma.bill.findMany({
       where: {
         idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
     return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
@@ -539,6 +550,7 @@ const syncRepository = {
           color: mapped.color || '#4CAF50',
           note: prepareSafeNote(mapped.note, null),
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -566,6 +578,7 @@ const syncRepository = {
           note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
+          server_update_at: new Date(),
         },
       });
     }
@@ -576,9 +589,9 @@ const syncRepository = {
     const list = await prisma.goal.findMany({
       where: {
         idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
+        server_update_at: since ? { gt: new Date(since) } : undefined,
       },
-      orderBy: { update_at: 'asc' },
+      orderBy: { server_update_at: 'asc' },
     });
     return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
@@ -645,12 +658,12 @@ const syncRepository = {
       if (cat.is_group) {
         await prisma.category.updateMany({
           where: { idgroup: id },
-          data: { idgroup: null, update_at: new Date() },
+          data: { idgroup: null, update_at: new Date(), server_update_at: new Date() },
         });
       }
       await prisma.category.update({
         where: { idcategory: id },
-        data: { delete_at: new Date(), update_at: new Date() },
+        data: { delete_at: new Date(), update_at: new Date(), server_update_at: new Date() },
       });
       return { id, deleted: true };
     }
@@ -660,7 +673,7 @@ const syncRepository = {
       if (!existing) return null;
       return prisma.transaction.update({
         where: { idtran: id },
-        data: { deleted_at: new Date(), update_at: new Date() },
+        data: { deleted_at: new Date(), update_at: new Date(), server_update_at: new Date() },
       });
     }
 
@@ -678,7 +691,7 @@ const syncRepository = {
 
     return def.model.update({
       where: { [def.pk]: id },
-      data: { delete_at: new Date(), update_at: new Date() },
+      data: { delete_at: new Date(), update_at: new Date(), server_update_at: new Date() },
     });
   },
 };

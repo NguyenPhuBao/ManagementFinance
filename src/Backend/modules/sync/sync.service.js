@@ -268,9 +268,10 @@ const syncService = {
       data[key] = records;
       totalRecords += records.length;
 
-      // Track max update_at per entity for client checkpoint (CSDL mới: update_at)
+      // Track max server_update_at per entity for client checkpoint (ưu tiên server_update_at, fallback update_at)
       if (records.length > 0) {
-        maxSince[entity] = records[records.length - 1].update_at;
+        const lastRecord = records[records.length - 1];
+        maxSince[entity] = lastRecord.server_update_at || lastRecord.update_at;
       }
     }
 

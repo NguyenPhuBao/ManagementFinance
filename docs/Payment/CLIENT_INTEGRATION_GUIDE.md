@@ -5,7 +5,7 @@
 > **Phiên bản:** 1.0.0 · **Ngày ban hành:** 2026-10-05  
 > **Tuân thủ:** `docs/Rule_Project/Data_Security.md` & Nghị định 13/2023/NĐ-CP  
 > **Backend Base URL:**  
-> - Localhost: `http://localhost:10000`  
+> - Localhost: `http://localhost:3000`  
 > - Production: `https://managementfinance.onrender.com`
 
 ---
@@ -46,7 +46,7 @@ Phía **Client-app** cần triển khai các hạng mục sau:
   - Nếu là `Premium`: Hiển thị ngày hết hạn và số ngày còn lại (ví dụ: *"Còn lại 28 ngày"*).
   - Nút bấm *"Nâng cấp tài khoản"* hoặc *"Gia hạn Premium"*.
 - [ ] **2. Màn hình Nâng cấp gói Premium (Subscription / Paywall Screen):**
-  - Giới thiệu các đặc quyền của gói Premium (Không giới hạn ví, báo cáo tài chính AI chuyên sâu, không giới hạn ngân sách, đồng bộ đa thiết bị tức thì).
+  - Giới thiệu các đặc quyền của gói Premium (Không giới hạn ví, báo cáo tài chính AI chuyên sâu, không giới hạn ngân sách).
   - Hiển thị giá gói dịch vụ: **49.000 VNĐ / 30 ngày**.
   - Nút bấm: *"Thanh toán ngay qua VietQR / Chuyển khoản"*.
 - [ ] **3. Gọi API tạo đơn hàng (`POST /api/payment/create-order`):**
@@ -55,7 +55,7 @@ Phía **Client-app** cần triển khai các hạng mục sau:
 - [ ] **4. Màn hình Thanh toán (Payment Sheet / In-App WebView):**
   - Chọn 1 trong 2 phương án: Mở trang `checkoutUrl` của PayOS hoặc hiển thị mã VietQR động ngay trong ứng dụng.
 - [ ] **5. Cơ chế phát hiện thanh toán thành công (Instant Sync):**
-  - Lắng nghe Socket.IO event `payment.success` từ server.
+  - Lắng nghe Socket.IO event `account.upgraded` từ server (room `account_<idaccount>`).
   - (Dự phòng) Polling API `GET /api/payment/order-status/:orderCode` mỗi 3 giây.
 - [ ] **6. Màn hình chúc mừng thành công (Success Celebration):**
   - Hiệu ứng chúc mừng (Confetti / Bắn pháo hoa), thông báo: *"Chúc mừng bạn đã nâng cấp thành công gói Premium!"*.
@@ -85,7 +85,7 @@ flowchart TD
     H --> I[PayOS bắn Webhook tới Backend]
     I --> J[Backend kiểm tra chữ ký & Kích hoạt Premium CSDL]
     
-    J -->|Socket.IO| K[Server phát sự kiện 'payment.success' tới Client]
+    J -->|Socket.IO| K[Server phát sự kiện 'account.upgraded' tới Client]
     K --> L[Client hiển thị màn hình chúc mừng & Cập nhật giao diện Premium!]
 ```
 
@@ -169,15 +169,21 @@ Authorization: Bearer <ACCESS_TOKEN_CUA_USER>
     "success": true,
     "message": "Lấy thông tin gói cước thành công",
     "data": {
-      "type": "Premium",
-      "isPremium": true,
+      "accountType": "Premium",
       "premiumExpiresAt": "2026-11-04T18:40:15.000Z",
       "daysRemaining": 30,
-      "isExpired": false
+      "isExpired": false,
+      "limits": {
+        "wallets": 3,
+        "budgets": 3,
+        "goals": 3
+      },
+      "price": 49000,
+      "packageDays": 30
     }
   }
   ```
-  *(Nếu là tài khoản Basic: `type: "Basic"`, `isPremium: false`, `premiumExpiresAt: null`, `daysRemaining: 0`)*
+  *(Nếu là tài khoản Basic: `accountType: "Basic"`, `premiumExpiresAt: null`, `daysRemaining: 0`, `isExpired: true`, `limits: { "wallets": 3, "budgets": 3, "goals": 3 }`, `price: 49000`, `packageDays: 30`)*
 
 ---
 
@@ -219,7 +225,7 @@ Authorization: Bearer <ACCESS_TOKEN_CUA_USER>
   - Không cần mất công code giao diện vẽ QR hay deep link.
   - Trên điện thoại di động, PayOS **tự động hiển thị nút "Mở ứng dụng ngân hàng"**. Khách hàng chỉ việc ấn nút $\rightarrow$ Chọn App ngân hàng $\rightarrow$ App tự động bật lên và điền sẵn tiền lẫn nội dung!
   - Trên máy tính, PayOS tự động hiển thị mã VietQR to rõ và bộ đếm ngược thời gian thanh toán.
-  - Sau khi khách hàng thanh toán xong, PayOS tự động chuyển hướng về `PAYOS_RETURN_URL`.
+  - Sau khi khách hàng thanh toán xong, PayOS chuyển hướng về `PAYOS_RETURN_URL` (trang xác nhận web Admin / deep link). Người dùng app tự quay lại hoặc app tự phát hiện qua resumed / socket / polling.
 
 ---
 
@@ -256,13 +262,13 @@ const socket = io('https://managementfinance.onrender.com', {
 });
 
 // Lắng nghe sự kiện kích hoạt Premium thành công
-socket.on('payment.success', (data) => {
-  console.log('Thanh toán thành công!', data);
-  // data gồm: { orderCode, newExpiresAt, message }
+socket.on('account.upgraded', (data) => {
+  console.log('Tài khoản đã nâng cấp thành công!', data);
+  // data gồm: { type, premiumExpiresAt }
   
-  // Hiển thị màn hình chúc mừng và cập nhật User State
+  // Hiển thị màn hình chúc mừng và làm mới trạng thái tài khoản
   showCongratulationPopup();
-  updateUserRoleToPremium(data.newExpiresAt);
+  refreshSubscriptionInfo();
 });
 ```
 
@@ -285,35 +291,29 @@ setTimeout(() => clearInterval(timer), 15 * 60 * 1000);
 
 ## 7. MẪU CODE TÍCH HỢP THAM KHẢO (CLIENT CODE SNIPPETS)
 
-### Ví dụ 1: Flutter / Dart (Mobile App)
+### Ví dụ 1: Flutter / Dart (Mobile App - Dùng Dio & url_launcher)
 ```dart
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-Future<void> upgradeToPremium(String accessToken) async {
-  final url = Uri.parse('https://managementfinance.onrender.com/api/payment/create-order');
-  
-  final response = await http.post(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $accessToken',
-    },
-    body: jsonEncode({'packageType': 'PREMIUM_1_MONTH'}),
-  );
+Future<void> upgradeToPremium(Dio dio) async {
+  try {
+    final response = await dio.post(
+      '/api/payment/create-order',
+      data: {'packageType': 'PREMIUM_1_MONTH'},
+    );
 
-  if (response.statusCode == 201) {
-    final body = jsonDecode(response.body);
-    final checkoutUrl = body['data']['checkoutUrl'];
-    
-    // Mở trang thanh toán PayOS (có sẵn VietQR và nút Mở App Ngân Hàng)
-    final uri = Uri.parse(checkoutUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (response.statusCode == 201) {
+      final checkoutUrl = response.data['data']['checkoutUrl'];
+      
+      // Mở trang thanh toán PayOS (có sẵn VietQR và nút Mở App Ngân Hàng)
+      final uri = Uri.parse(checkoutUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     }
-  } else {
-    print('Lỗi tạo đơn: ${response.body}');
+  } catch (e) {
+    print('Lỗi tạo đơn: $e');
   }
 }
 ```
