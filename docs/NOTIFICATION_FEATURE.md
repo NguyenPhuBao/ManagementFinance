@@ -1326,6 +1326,15 @@ Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi 
 
 ## 5k. "Số dư ví đang âm" — mỗi đợt âm một lần (E6, 2026-10-06)
 
+✅ **E6 ◐ đóng 2026-10-07** — ca biên lượt nghiệm thu để lại: ví âm (đợt mở từ giao dịch X) → báo → nạp tiền, ví dương →
+hàng **tự gỡ** → xoá khoản nạp → ví âm lại, và theo sổ đợt vẫn mở từ X → **cùng khoá** → `insertIfAbsent` bỏ qua → cảnh
+báo vừa tự biến mất **không quay lại**. Người dùng chọn *báo lại, giữ lịch sử*: hàng "ví âm" mà bộ quét tự gỡ vì ví
+hồi nay đi qua **`NotificationDao.goVaNhaKhoa`** — đánh dấu gỡ **và** đổi khoá thành `<khoá cũ>#go:<mốc>`, nên khoá gốc
+được nhả, lần âm lại sinh hàng mới; hàng cũ **giữ** trong bảng (không xoá cứng). ⚠️ Hai chốt: (1) chỉ hàng **app tự gỡ**
+mới nhả khoá — người dùng tự ✕ vẫn `dismiss` (giữ khoá), ví còn âm thì **không** báo lại; (2) **huỷ thông báo trên khay
+theo khoá CŨ trước** khi đổi khoá — `BadgeUpdater` huỷ theo `osScheduledId(dedupeKey)`, đổi khoá rồi nó không tìm ra
+thông báo cũ. Ba ca ở `notification_scanner_test.dart` (nhóm *"E6 ◐"*). Chưa đo máy thật.
+
 ✅ **Nghiệm thu máy thật 2026-10-06 tối** (Realme): bản mới vừa cài sinh khoá theo đợt cho hai ví vốn âm từ 02/10
 (mỗi ví thêm **một** dòng lúc nâng cấp — cái giá một lần của việc đổi khoá); ví thử *"Vi thu E6"*: chi 50.000 → **một**
 thông báo khoá `…:300dc250…` ✅ · chi thêm 2.000 → bộ quét *"0 hàng mới"* ✅ · nạp 100.000 → hàng âm **gỡ** lúc 22:12:27 ✅ ·

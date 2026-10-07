@@ -161,6 +161,28 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
         .write(AppNotificationsCompanion(dismissedAt: Value(DateTime.now())));
   }
 
+  /// Gỡ (xoá mềm) một hàng **và nhả khoá** của nó: khoá đổi thành
+  /// `<khoá cũ>#go:<mốc>` để cùng sự kiện ấy sinh được hàng MỚI về sau.
+  ///
+  /// E6 ◐ (2026-10-07): "ví âm" khoá theo đợt âm (`walletNeg:<ví>:<giao dịch mở
+  /// đợt>`). Ví hồi thì bộ quét gỡ hàng; người dùng xoá khoản nạp thì ví âm lại
+  /// **cùng đợt** — cùng khoá — và `insertIfAbsent` bỏ qua, nên cảnh báo vừa tự
+  /// biến mất không quay lại. Chỉ dùng cho hàng app **tự** gỡ: người dùng tự ✕
+  /// thì vẫn [dismiss] (giữ khoá), và ví còn âm thì không báo lại. Hàng cũ GIỮ
+  /// trong bảng (không xoá cứng).
+  ///
+  /// ⚠️ Người gọi phải huỷ thông báo trên khay theo khoá CŨ trước: `BadgeUpdater`
+  /// huỷ theo `osScheduledId(dedupeKey)`, đổi khoá rồi thì nó không còn tìm ra.
+  Future<void> goVaNhaKhoa(String id, String khoaCu) async {
+    final luc = DateTime.now();
+    await (update(appNotifications)..where((t) => t.id.equals(id))).write(
+      AppNotificationsCompanion(
+        dismissedAt: Value(luc),
+        dedupeKey: Value('$khoaCu#go:${luc.microsecondsSinceEpoch}'),
+      ),
+    );
+  }
+
   /// Gỡ (xoá mềm) mọi hàng còn hiện của một đối tượng. Trả số hàng đã gỡ.
   ///
   /// G63: ví bị gộp vào ví khác thì thông báo số dư của nó trỏ vào một ví không

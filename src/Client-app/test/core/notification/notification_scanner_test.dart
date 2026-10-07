@@ -1040,6 +1040,45 @@ void main() {
       expect(moi, 1, reason: 'âm lại là đợt mới (giao dịch mở đợt khác) — phải báo lại');
     });
 
+    test('⭐ E6 ◐: âm lại CÙNG đợt sau khi hàng đã tự gỡ (xoá khoản nạp) → BÁO LẠI', () async {
+      // Ví âm vì gd-a → báo. Nạp tiền → ví dương → hàng tự gỡ. Xoá khoản nạp → ví
+      // âm lại, và theo sổ đợt âm vẫn mở từ gd-a: CÙNG khoá. Hàng cũ đã tự gỡ thì
+      // khoá ấy phải được nhả — người dùng vừa thấy cảnh báo biến mất.
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      await dungScanner(budgets: const [], wallets: [vi(soDu: 20000)], dotAm: const {}, tienToId: 'lan2')
+          .scan(accountId);
+      final moi = await dungScanner(
+              budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, tienToId: 'lan3')
+          .scan(accountId);
+      expect(moi, 1, reason: 'E6 ◐ (Realme 2026-10-06): xoá khoản nạp làm ví âm lại mà không báo lại');
+      final hang = (await db.notificationDao.getAll(accountId)).where((n) => n.kind == 'walletNegative').toList();
+      expect(hang.where((n) => n.dismissedAt == null).single.dedupeKey, 'walletNeg:vi1:gd-a',
+          reason: 'hàng mới mang đúng khoá của đợt');
+      expect(hang.length, 2, reason: 'hàng cũ GIỮ lại (đã gỡ) — không xoá cứng, chỉ nhả khoá');
+    });
+
+    test('E6 ◐: người dùng TỰ ✕ thông báo "ví âm" (ví vẫn âm) → KHÔNG báo lại', () async {
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
+      final h = (await db.notificationDao.getAll(accountId)).single;
+      await db.notificationDao.dismiss(h.id);
+      final moi = await dungScanner(
+              budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, tienToId: 'lan2')
+          .scan(accountId);
+      expect(moi, 0, reason: 'nhả khoá CHỈ khi hàng tự gỡ vì ví hồi — người dùng đã gạt đi thì thôi');
+    });
+
+    test('E6 ◐: tự gỡ vì ví hồi → huỷ thông báo trên khay theo KHOÁ GỐC trước khi nhả khoá', () async {
+      final os = OsNotifierGia();
+      await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}, osNotifier: os)
+          .scan(accountId);
+      await dungScanner(
+              budgets: const [], wallets: [vi(soDu: 20000)], dotAm: const {}, osNotifier: os, tienToId: 'lan2')
+          .scan(accountId);
+      expect(os.daHuy, contains(osScheduledId('walletNeg:vi1:gd-a')),
+          reason: 'BadgeUpdater huỷ theo osScheduledId(dedupeKey) — đổi khoá rồi thì nó không còn tìm được '
+              'thông báo cũ trên khay');
+    });
+
     test('⭐ G71: xoá ví → hàng "ví âm" của nó bị GỠ, kể cả khi đó là ví duy nhất', () async {
       await dungScanner(budgets: const [], wallets: [vi()], dotAm: const {'vi1': 'gd-a'}).scan(accountId);
       // Ví đã xoá mềm: `walletDao.getAll` không trả nó nữa — danh sách ví RỖNG.

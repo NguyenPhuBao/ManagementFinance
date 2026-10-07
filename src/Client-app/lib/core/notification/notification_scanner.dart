@@ -598,12 +598,20 @@ class NotificationScanner {
         final hang = await dao.getAll(idaccount);
         final conHangVi = hang.any((h) => h.subjectType == 'wallet' && h.dismissedAt == null);
         final viDaXoa = (docViDaXoa != null && conHangVi) ? await docViDaXoa(idaccount) : const <String>{};
+        // E6 ◐ (2026-10-07): hàng "ví âm" tự gỡ vì ví HỒI thì NHẢ khoá — ví âm lại cùng đợt (người dùng
+        // xoá khoản nạp) phải báo lại. Huỷ thông báo trên khay theo khoá CŨ trước khi đổi khoá.
+        final amDaHoi = hangAmDaHoi(hang, wallets).toSet();
+        final theoId = {for (final h in hang) h.id: h};
+        for (final id in amDaHoi) {
+          final khoa = theoId[id]!.dedupeKey;
+          await osNotifier?.cancel(osScheduledId(khoa));
+          await dao.goVaNhaKhoa(id, khoa);
+        }
         for (final id in {
           ...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap),
-          ...hangAmDaHoi(hang, wallets),
           ...hangCuaViDaXoa(hang, viDaXoa),
         }) {
-          await dao.dismiss(id);
+          if (!amDaHoi.contains(id)) await dao.dismiss(id);
         }
       }
 
