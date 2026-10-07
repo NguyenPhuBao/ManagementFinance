@@ -6,6 +6,7 @@ import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/domain/budget_pace.dart';
 import '../../../budget/presentation/widgets/budget_pace_text.dart';
 import '../../../budget/presentation/widgets/budget_visuals.dart';
+import '../../../../core/ui/do_chu.dart';
 
 /// Ngân sách đáng chú ý nhất để đưa lên trang chủ: ngân sách **đang chạy** có
 /// tỉ lệ đã chi cao nhất. So theo tỉ lệ chứ không theo số tiền — 150% của
@@ -80,6 +81,9 @@ class HomeBudgetCard extends StatelessWidget {
 }
 
 class _BudgetBody extends StatelessWidget {
+  static const _kieuDaDung =
+      TextStyle(fontSize: 13, color: AppColors.textSecondary);
+
   final BudgetView view;
   final DateTime now;
   const _BudgetBody({required this.view, required this.now});
@@ -125,14 +129,25 @@ class _BudgetBody extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    'Đã dùng ${CurrencyFormatter.format(b.spent)} / '
-                    '${CurrencyFormatter.format(b.amount)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary),
-                  ),
+                  // G75 (2026-10-07): ở 320 dp (Realme để cỡ hiển thị lớn)
+                  // dòng này cụt thành "Đã dùng 10.000 đ / 50…" — mất hạn mức.
+                  // Không vừa một dòng (ĐO bề rộng thật) thì xuống hai dòng,
+                  // ngắt ngay trước "/". Không trông vào bộ ngắt dòng: Unicode
+                  // cấm ngắt TRƯỚC "/" kể cả sau dấu cách, nên cả cụm
+                  // "10.000 đ / 500.000 đ" thành một khối và bị cắt ở số lớn.
+                  LayoutBuilder(builder: (context, rang) {
+                    final daDung = CurrencyFormatter.formatLienKhoi(b.spent);
+                    final hanMuc = CurrencyFormatter.formatLienKhoi(b.amount);
+                    final motDong = 'Đã dùng $daDung / $hanMuc';
+                    final vua = doRongChu(context, motDong, _kieuDaDung) <=
+                        rang.maxWidth + 0.5;
+                    return Text(
+                      vua ? motDong : 'Đã dùng $daDung\n/ $hanMuc',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: _kieuDaDung,
+                    );
+                  }),
                 ],
               ),
             ),
@@ -161,7 +176,8 @@ class _BudgetBody extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             paceLine,
-            maxLines: 1,
+            // G75: hai dòng ở màn hẹp, ngắt sau "·" (xem `budgetPaceLine`).
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style:
                 const TextStyle(fontSize: 13, color: AppColors.textSecondary),

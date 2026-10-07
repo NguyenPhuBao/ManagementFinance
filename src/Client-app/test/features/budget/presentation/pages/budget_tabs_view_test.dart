@@ -92,7 +92,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(Dismissible),
-            matching: find.textContaining('còn 16 ngày')),
+            matching: find.textContaining(RegExp(r'còn\s16\sngày'))),
         findsOneWidget);
   });
 

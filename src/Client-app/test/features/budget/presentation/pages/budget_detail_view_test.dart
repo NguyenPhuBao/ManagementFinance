@@ -112,7 +112,7 @@ void main() {
     await dung(tester, loaded());
 
     expect(find.textContaining('Nên chi'), findsOneWidget);
-    expect(find.textContaining('còn 16 ngày'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'còn\s16\sngày')), findsOneWidget);
     for (var i = 0; i < 6; i++) {
       expect(find.byKey(ValueKey('budget-history-bar-$i')), findsOneWidget,
           reason: 'Mỗi kỳ một cột, kể cả kỳ hiện tại.');
