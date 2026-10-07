@@ -658,7 +658,7 @@ void main() {
 
   // Đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" vẫn nằm trên khay sau khi ví đã nhận 10.000 đ — khoá
   // gộp theo NGÀY nên hàng không tự mất, và không ai gỡ nó.
-  group('hàng "sắp cạn" tự gỡ khi ví đã hồi', () {
+  group('hàng "sắp cạn" lỗi thời tự gỡ (ví đã hồi, hoặc đã âm — G81)', () {
     AppNotification hang(String id, {String kind = 'walletLowBalance', String? vi, DateTime? daGo, DateTime? daDoc}) =>
         AppNotification(
           id: id,
