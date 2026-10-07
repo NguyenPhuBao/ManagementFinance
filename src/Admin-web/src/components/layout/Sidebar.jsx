@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { key: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { key: '/aiops', icon: 'security', label: 'AIOps Sentinel' },
   { key: '/users', icon: 'group', label: 'User Management' },
+  { key: '/permissions', icon: 'admin_panel_settings', label: 'Phân quyền gói cước' },
   { key: '/categories', icon: 'category', label: 'Category Management' },
   { key: '/audit-logs', icon: 'fact_check', label: 'Audit Log' },
   { key: '/broadcast', icon: 'campaign', label: 'Bảo trì & Thông báo' },

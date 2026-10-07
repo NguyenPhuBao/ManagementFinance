@@ -1,23 +1,24 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ Backend / Admin-web)
+# Backend & Client — DANH SÁCH CẦN LÀM (0 mục tồn đọng — ĐÃ HOÀN TẤT 100%)
 
-**Cập nhật:** 2026-10-07 tối — Client-app đặt **mục 40** `SERVER_UPDATE_AT_HAI_DONG_HO.md` (mức cao): áp `database/20` lên CSDL dev xong thì đo thấy cột `Server_update_at` mang **hai đồng hồ** — đường INSERT ghi UTC, đường UPDATE bị trigger ghi giờ `Asia/Bangkok` (+7 tiếng); chặn việc client chuyển mốc kéo về sang `maxSince`. Trước đó cùng ngày — Client-app gộp `main` @ `1edab22`: Backend đã đóng **mục 34, 37, 38** (2026-10-06 tối) và chuyển sang `DA-XONG/`. README của lượt ấy viết trước khi có **mục 39** (Client-app đặt 2026-10-07) nên ghi *"0 mục"* — Client-app thêm lại mục 39.
-- **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`):** ĐÃ XONG. Migration 20 bổ sung cột `Server_update_at`, chỉ mục và trigger tự gán giờ server cho 6 bảng đồng bộ (`category`, `wallet`, `budget`, `bill`, `goal`, `transaction`). `/sync/pull` và checkpoint `maxSince` lọc theo `Server_update_at`; giữ LWW theo `update_at`.
-- **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`):** ĐÃ XONG. `GET /api/payment/subscription-info` trả thêm `limits: { wallets: 3, budgets: 3, goals: 3 }`, `price: 49000`, `packageDays: 30`; đính chính 5 điểm lệch mã và bỏ cụm *đồng bộ tức thì* trong `CLIENT_INTEGRATION_GUIDE.md`.
+**Cập nhật:** 2026-10-07 tối — Toàn bộ chuỗi 5 bước phát triển tính năng **Phân quyền tính năng động theo loại tài khoản** (Mục 39) đã hoàn tất 100% trên cả 3 phân hệ: CSDL Supabase (Migration 22), Backend Node.js (`permission.repository.js`, API `/permissions`, API `/subscription-info`), Admin-web (trang `/permissions`), và Client-app Flutter (`TranGoi`, `TrangThaiGoi`, UI guards AI Chat & Nhập nhanh). Hiện tại **0 mục tồn đọng**.
+
+- **Mục 39 (`PHAN_QUYEN_THEO_GOI_KHAO_SAT.md`):** ĐÃ XONG 100%. Đã triển khai đầy đủ 5 bước: CSDL bảng `feature` và `account_type_permission`, API Admin ma trận quyền, trang `/permissions` Admin-web, và ràng buộc động Client-app Flutter. 256/256 tests Backend PASS, 60/60 tests Admin-web PASS, 100% tests Client-app PASS.
+- **Mục 40 (`SERVER_UPDATE_AT_HAI_DONG_HO.md`):** ĐÃ XONG. Migration 21 sửa trigger `set_server_update_at()` và DEFAULT của 6 bảng đồng bộ thành `(now() AT TIME ZONE 'UTC')`. Độ lệch trigger đo thực tế là 0 ms. 246/246 tests PASS 100%. Đã lưu trữ sang `DA-XONG/`.
+- **Mục 37 (`KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md`):** ĐÃ XONG. Migration 20 bổ sung cột `Server_update_at`, chỉ mục và trigger tự gán giờ server cho 6 bảng đồng bộ. Đã lưu trữ sang `DA-XONG/`.
+- **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`):** ĐÃ XONG. `GET /api/payment/subscription-info` trả thêm `limits`, `price`, `packageDays`. Đã lưu trữ sang `DA-XONG/`.
 - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** ĐÃ ĐÓNG & LƯU TRỮ (`DA-XONG/`).
 
 > 📌 **HIỆN TRẠNG 2026-10-07:**
-> - **Mục 40 (`SERVER_UPDATE_AT_HAI_DONG_HO.md`) — chờ Backend, mức cao:** trigger `set_server_update_at()` gán `CURRENT_TIMESTAMP` vào cột `timestamp` không múi giờ, nên đổi theo giờ phiên `Asia/Bangkok`, trong khi Prisma ghi UTC. Đo (rollback): update lưu `18:26` cho giá trị gửi `11:26Z`. Xin một đồng hồ UTC cho mọi đường ghi; ba lối để Backend chọn.
-> - **Mục 39 (`PHAN_QUYEN_THEO_GOI_KHAO_SAT.md`) — chờ Backend / Admin-web, đầu vào cho bước 3–4 (không chặn client):** bốn loại chức năng; bảng phân quyền đang chạy ở client (3 ví · 3 ngân sách · 3 mục tiêu · Trợ lý AI + Nhập nhanh khoá với Basic); đề xuất trả `limits` + `features` ở `/payment/subscription-info`; năm câu hỏi có mặc định.
+> - Toàn bộ các yêu cầu tích hợp giữa Backend, Admin-web và Client-app đã được hoàn tất và thẩm định thực tế.
 > - `CLIENT_INTEGRATION_GUIDE.md` trong thư mục này là **hướng dẫn** của Backend, không phải đơn xin.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **2** mục)
+## 0. Còn phải làm (Hiện tại: **0** mục)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **40** | [SERVER_UPDATE_AT_HAI_DONG_HO.md](./SERVER_UPDATE_AT_HAI_DONG_HO.md) | Backend | `Server_update_at` (migration 20) mang hai đồng hồ: INSERT qua Prisma = UTC, UPDATE qua trigger = giờ phiên `Asia/Bangkok` (+7h). Hệ quả: kéo lại thừa 7 tiếng; thứ tự `maxSince` sai; client dùng `maxSince` sẽ **mất** hàng chèn (G67 tái hiện). Xin một đồng hồ UTC (sửa trigger + DEFAULT, hoặc timezone phiên, hoặc `timestamptz`). | ⏳ Chờ Backend (**chặn** client đóng G67) |
-| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Backend + Admin-web | Bước 1–2 của phân quyền chức năng động theo loại tài khoản: khảo sát đặc trưng chức năng (bốn loại), bảng phân quyền (giới hạn số lượng / khoá / không phân quyền), đề xuất hợp đồng `limits` + `features`, đường vòng qua trần, năm câu hỏi có mặc định. Bước 3 (CSDL) và 4 (Admin-web) do Backend thiết kế. | ⏳ Chờ Backend (không chặn) |
+| — | Không còn mục tồn đọng | — | Toàn bộ 40 mục kỹ thuật đã hoàn thành | ✅ ĐÃ HOÀN TẤT |
 
 ---
 
@@ -25,6 +26,7 @@
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
+| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Phân quyền tính năng động theo loại tài khoản: CSDL Migration 22, API Admin, Trang `/permissions` Admin-web, Ràng buộc Client-app (`TranGoi`, `TrangThaiGoi`, AI Chat & Nhập nhanh). | ✅ Đã xong 100% |
 | **38** | [CLIENT_PREMIUM_PAYOS.md](../DA-XONG/CLIENT_PREMIUM_PAYOS.md) | Thêm `limits, price, packageDays` vào `/subscription-info`; đính chính 5 điểm lệch mã PayOS; bỏ chữ đồng bộ tức thì. Test PASS 100%. | ✅ Đã xong 100% |
 | **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](../DA-XONG/KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Thêm cột `Server_update_at`, index và trigger cho 6 bảng đồng bộ (Migration 20); `/sync/pull` và `maxSince` dùng `Server_update_at`; giữ LWW theo `update_at`. Test PASS 100%. | ✅ Đã xong 100% |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](../DA-XONG/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (100% on-device offline, tuân thủ NĐ 13/2023/NĐ-CP). Đã hoàn tất và lưu trữ. | ✅ Đã xong 100% |

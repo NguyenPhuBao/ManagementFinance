@@ -177,7 +177,14 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(basicInfo.accountType, 'Basic');
     assert.strictEqual(basicInfo.daysRemaining, 0);
     assert.strictEqual(basicInfo.isExpired, true);
-    assert.deepStrictEqual(basicInfo.limits, { wallets: 3, budgets: 3, goals: 3 });
+    assert.strictEqual(basicInfo.limits.wallets, 3);
+    assert.strictEqual(basicInfo.limits.budgets, 3);
+    assert.strictEqual(basicInfo.limits.goals, 3);
+    assert.strictEqual(basicInfo.limits.bills, 3);
+    assert.strictEqual(basicInfo.limits.custom_categories, 5);
+    assert.strictEqual(basicInfo.features.ai_assistant, false);
+    assert.strictEqual(basicInfo.features.ai_quick_input, false);
+    assert.strictEqual(basicInfo.features.ocr_receipt, true);
     assert.strictEqual(basicInfo.price, 49000);
     assert.strictEqual(basicInfo.packageDays, 30);
 
@@ -192,9 +199,32 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(premiumInfo.accountType, 'Premium');
     assert.strictEqual(premiumInfo.daysRemaining, 15);
     assert.strictEqual(premiumInfo.isExpired, false);
-    assert.deepStrictEqual(premiumInfo.limits, { wallets: 3, budgets: 3, goals: 3 });
+    assert.strictEqual(premiumInfo.limits.wallets, null);
+    assert.strictEqual(premiumInfo.limits.budgets, null);
+    assert.strictEqual(premiumInfo.limits.goals, null);
+    assert.strictEqual(premiumInfo.limits.bills, null);
+    assert.strictEqual(premiumInfo.features.ai_assistant, true);
+    assert.strictEqual(premiumInfo.features.ai_quick_input, true);
+    assert.strictEqual(premiumInfo.features.export_reports, true);
     assert.strictEqual(premiumInfo.price, 49000);
     assert.strictEqual(premiumInfo.packageDays, 30);
+
+    // Ca 3: Tài khoản Premium nhưng đã hết hạn (phân quyền fallback về Basic)
+    const pastDate = new Date(Date.now() - 5 * 86400000);
+    paymentRepository.findAccountSubscription = async () => ({
+      idaccount: 10,
+      type: 'Premium',
+      premium_expires_at: pastDate,
+    });
+    const expiredInfo = await paymentService.getSubscriptionInfo(10);
+    assert.strictEqual(expiredInfo.accountType, 'Premium');
+    assert.strictEqual(expiredInfo.daysRemaining, 0);
+    assert.strictEqual(expiredInfo.isExpired, true);
+    assert.strictEqual(expiredInfo.limits.wallets, 3);
+    assert.strictEqual(expiredInfo.limits.budgets, 3);
+    assert.strictEqual(expiredInfo.limits.goals, 3);
+    assert.strictEqual(expiredInfo.features.ai_assistant, false);
+    assert.strictEqual(expiredInfo.features.ai_quick_input, false);
 
     paymentRepository.findAccountSubscription = origFind;
   });

@@ -14,10 +14,12 @@ void main() {
       loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5), nhanLuc: now);
 
   group('TranGoi', () {
-    test('mặc định 3/3/3', () {
+    test('mặc định 3/3/3/3/5', () {
       expect(TranGoi.macDinh.cua(LoaiTran.vi), 3);
       expect(TranGoi.macDinh.cua(LoaiTran.nganSach), 3);
       expect(TranGoi.macDinh.cua(LoaiTran.mucTieu), 3);
+      expect(TranGoi.macDinh.cua(LoaiTran.hoaDon), 3);
+      expect(TranGoi.macDinh.cua(LoaiTran.danhMucRieng), 5);
     });
 
     test('tuJson đọc limits của server, ô thiếu/rác/âm về mặc định', () {
@@ -29,8 +31,15 @@ void main() {
       expect(TranGoi.tuJson('rac'), TranGoi.macDinh);
     });
 
+    test('tuJson hỗ trợ giá trị null (không giới hạn / vô hạn)', () {
+      final t = TranGoi.tuJson({'wallets': null, 'budgets': 5, 'goals': null});
+      expect(t.vi, isNull);
+      expect(t.nganSach, 5);
+      expect(t.mucTieu, isNull);
+    });
+
     test('toJson ↔ tuJson', () {
-      const t = TranGoi(vi: 4, nganSach: 6, mucTieu: 2);
+      const t = TranGoi(vi: 4, nganSach: 6, mucTieu: 2, hoaDon: 3, danhMucRieng: 5);
       expect(TranGoi.tuJson(t.toJson()), t);
     });
   });
@@ -38,17 +47,18 @@ void main() {
   group('conTaoDuoc', () {
     for (final loai in LoaiTran.values) {
       test('Basic $loai: dưới trần được, BẰNG trần vượt, trên trần vượt', () {
-        expect(conTaoDuoc(loai: loai, dangCo: 2, goi: basic, now: now),
+        final tran = basic.tran.cua(loai)!;
+        expect(conTaoDuoc(loai: loai, dangCo: tran - 1, goi: basic, now: now),
             isA<Duoc>());
-        final bang = conTaoDuoc(loai: loai, dangCo: 3, goi: basic, now: now);
+        final bang = conTaoDuoc(loai: loai, dangCo: tran, goi: basic, now: now);
         expect(bang, isA<Vuot>(),
-            reason: '3/3 thì không tạo cái thứ tư — spec 5.2');
-        expect((bang as Vuot).tran, 3);
-        expect(bang.dangCo, 3);
+            reason: 'Bằng trần thì không tạo cái tiếp theo — spec 5.2');
+        expect((bang as Vuot).tran, tran);
+        expect(bang.dangCo, tran);
         expect(bang.loai, loai);
-        expect(conTaoDuoc(loai: loai, dangCo: 5, goi: basic, now: now),
+        expect(conTaoDuoc(loai: loai, dangCo: tran + 2, goi: basic, now: now),
             isA<Vuot>(),
-            reason: 'người bị hạ cấp đang có 5 — vẫn chỉ chặn tạo');
+            reason: 'người bị hạ cấp đang có nhiều hơn — vẫn chỉ chặn tạo');
       });
     }
 
@@ -74,6 +84,15 @@ void main() {
       expect(
           conTaoDuoc(loai: LoaiTran.nganSach, dangCo: 3, goi: goi, now: now),
           isA<Vuot>());
+    });
+
+    test('trần null (không giới hạn) → luôn được tạo', () {
+      final goi = TrangThaiGoi(
+          loai: LoaiGoi.basic,
+          nhanLuc: now,
+          tran: const TranGoi(vi: null, nganSach: 3, mucTieu: 3));
+      expect(conTaoDuoc(loai: LoaiTran.vi, dangCo: 999, goi: goi, now: now),
+          isA<Duoc>());
     });
   });
 

@@ -48,4 +48,8 @@ router.post('/addcategory', adminController.addCategory);
 router.put('/updatecategory/:id', adminController.updateCategory);
 router.delete('/deletecategory/:id', adminController.deleteCategory);
 
+// Phân quyền gói cước theo loại tài khoản (Dynamic Feature Permissions)
+router.get('/permissions', adminController.getPermissions);
+router.put('/permissions', adminController.updatePermissions);
+
 module.exports = router;

@@ -264,5 +264,35 @@ describe('Sync Engine v2 — Validation, Dependency Ordering & Conflict Resoluti
         prisma.wallet.findMany = origFindMany;
       }
     });
+
+    it('5.3. Đảm bảo mọi bản ghi đồng bộ gán server_update_at chuẩn thời gian UTC', async () => {
+      const syncRepo = require('../../modules/sync/sync.repository');
+      const { prisma } = require('../../config/db');
+      let capturedCreate = null;
+      const origCreate = prisma.wallet.create;
+      prisma.wallet.create = async (args) => {
+        capturedCreate = args;
+        return { ...args.data, idwallet: validUUID1 };
+      };
+
+      try {
+        const before = new Date();
+        await syncRepo.upsertWallet({
+          idwallet: validUUID1,
+          idaccount: 1,
+          name: 'Ví UTC Test',
+          balance: 100000,
+          updatedAt: '2026-10-07T12:00:00.000Z',
+        });
+        const after = new Date();
+
+        assert.ok(capturedCreate, 'Phải thực hiện prisma.wallet.create');
+        assert.ok(capturedCreate.data.server_update_at instanceof Date, 'server_update_at phải là Date object');
+        const diffMs = Math.abs(capturedCreate.data.server_update_at.getTime() - before.getTime());
+        assert.ok(diffMs < 5000, 'server_update_at phải là giờ hiện tại chuẩn UTC, không bị cộng dồn múi giờ');
+      } finally {
+        prisma.wallet.create = origCreate;
+      }
+    });
   });
 });

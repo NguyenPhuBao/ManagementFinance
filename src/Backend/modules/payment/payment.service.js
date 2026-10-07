@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const config = require('../../config');
 const logger = require('../../core/logger');
 const paymentRepository = require('./payment.repository');
+const permissionRepository = require('./permission.repository');
 const payosClient = require('./payos.client');
 
 /**
@@ -231,16 +232,16 @@ async function getSubscriptionInfo(idaccount) {
     daysRemaining = Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
   }
 
+  const effectiveType = (!isExpired && isPremium) ? 'Premium' : 'Basic';
+  const { limits, features } = await permissionRepository.getPermissionsByAccountType(effectiveType);
+
   return {
     accountType: account.type,
     premiumExpiresAt: account.premium_expires_at,
     daysRemaining,
     isExpired,
-    limits: {
-      wallets: 3,
-      budgets: 3,
-      goals: 3,
-    },
+    limits,
+    features,
     price: config.payment.premiumPriceVnd || 49000,
     packageDays: config.payment.packageDurationDays || 30,
   };

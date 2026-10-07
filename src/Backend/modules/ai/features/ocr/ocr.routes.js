@@ -8,9 +8,10 @@
 const express = require('express');
 const router = express.Router();
 const ocrController = require('./ocr.controller');
+const { requireFeature } = require('../../../../middleware/feature-permission.middleware');
 
-// Routes
-router.post('/parse', ocrController.handleParseReceipt);
-router.post('/', ocrController.handleParseReceipt);
+// Routes (Bảo vệ bởi phân quyền tính năng OCR)
+router.post('/parse', requireFeature('ocr_receipt'), ocrController.handleParseReceipt);
+router.post('/', requireFeature('ocr_receipt'), ocrController.handleParseReceipt);
 
 module.exports = router;
