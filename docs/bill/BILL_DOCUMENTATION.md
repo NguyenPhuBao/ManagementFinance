@@ -943,6 +943,9 @@ hiển thị lớn) số tiền cụt *"100.0…"* và ngày hạn gãy hai dòn
 `core/ui/do_chu.dart`): không vừa một hàng thì chip trạng thái xuống dưới cột chữ và số tiền lên dòng riêng
 trên hàng [bút · thùng rác · nút]; màn đủ chỗ giữ dáng cũ. Vạch màu bên trái nay là `Positioned` trong
 `Stack` — **đừng bọc lại `IntrinsicHeight`**: `LayoutBuilder` không trả được kích thước nội tại.
+✅ **G77 (2026-10-07)** — form **Thêm hoá đơn** ở màn hẹp: tiêu đề đo bề rộng, không vừa thì rút thành
+*"Thêm Hóa Đơn"* (giữ cỡ 20); nút *"Tạo Hóa Đơn & Đăng Ký Nhắc Nhở"* có lề ngang 16 (thiếu nó chữ chạm mép
+bo tròn, trông như bị xén). Ca canh `bill_add_hep_test.dart`.
 
 **Giới hạn nói trước:** tài khoản thật (giao dịch đầu 02/09/2026) sẽ **im** với
 khoản lặp tháng tới khoảng tháng 11/2026 — đúng hành vi; người không ghi chú
