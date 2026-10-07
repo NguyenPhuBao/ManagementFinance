@@ -2096,7 +2096,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   child: TextField(
                     key: const Key('ghi-chu-giao-dich'),
                     controller: _noteController,
+                    // G84: hàng phẳng như Danh mục / Ngày (Stitch `8afdfe11…`) — tắt nền và ba loại viền
+                    // của theme, như ô Nhập nhanh; `border: none` một mình không che được.
                     decoration: const InputDecoration(
+                      filled: false,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      // Theme đệm ngang 16 — bỏ để chữ thẳng cột với "Chọn danh mục" / "Ngày".
+                      contentPadding: EdgeInsets.symmetric(vertical: 16),
                       // G83: câu dài cũ bị cắt ở 320 dp — người dùng chọn rút gọn.
                       hintText: 'Thêm ghi chú…',
                       hintStyle: TextStyle(
@@ -2397,7 +2405,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
-                      hintText: _laPremium ? 'VD: hôm qua ăn phở 45k tiền mặt' : 'Tính năng Premium',
+                      // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
+                      hintText: _laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium',
                       hintStyle: const TextStyle(fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),

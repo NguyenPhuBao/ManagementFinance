@@ -306,7 +306,7 @@ dẫn sang Nâng cấp cho tới khi số đang hoạt động < trần. Không 
 
 ### 8.2 Ô Nhập nhanh (màn Thêm giao dịch)
 
-- Basic: `TextField` `nhap-nhanh-o` `enabled: false`, chữ gợi ý *"Tính năng Premium"*; dưới ô một dòng *"Nâng cấp để
+- Basic: `TextField` `nhap-nhanh-o` `enabled: false`, chữ gợi ý *"Tính năng Premium"* (⚠️ từ 2026-10-07 là *"Chỉ Premium"* — câu cũ bị cắt ở 320 dp, G84 `CLIENT_APP_KNOWN_GAPS.md`); dưới ô một dòng *"Nâng cấp để
   đọc câu bằng AI"* có nút → `push('/premium')`. Nút *Điền* không hiện.
 - Phần còn lại của form (bàn phím số, danh mục, ví, ghi chú, thẻ gợi ý B1 / theo số tiền, đề xuất từ khoá) **không đổi**.
 - Điền sẵn từ D1 / biên lai / thẻ hoá đơn / C3 **không** qua ô này → không ảnh hưởng.

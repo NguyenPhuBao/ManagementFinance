@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
     final o = oNhapNhanh(tester);
     expect(o.enabled, isFalse);
-    expect(o.decoration?.hintText, 'Tính năng Premium');
+    expect(o.decoration?.hintText, 'Chỉ Premium');
     expect(find.byKey(const Key('nhap-nhanh-dien')), findsNothing);
     expect(find.byKey(const Key('nut-nang-cap')), findsOneWidget);
     expect(find.text('Nâng cấp để đọc câu bằng AI'), findsOneWidget);
