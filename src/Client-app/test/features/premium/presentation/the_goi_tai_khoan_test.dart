@@ -5,6 +5,7 @@ library;
 import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/widgets/the_goi_tai_khoan.dart';
@@ -57,6 +58,17 @@ void main() {
     expect(find.text('Gia hạn'), findsNothing);
     await tester.tap(find.text('Nâng cấp'));
     expect(mo, 1);
+  });
+
+  testWidgets('Basic: dòng phụ kể MỌI trần server trả (2026-10-08), không tràn ở 360 dp', (tester) async {
+    final c = await cubit(
+        kho: TrangThaiGoi(
+            loai: LoaiGoi.basic,
+            nhanLuc: now,
+            tran: const TranGoi(vi: 3, nganSach: 3, mucTieu: 3, hoaDon: 3, danhMucRieng: 5)));
+    await tester.pumpWidget(boc(const TheGoiTaiKhoan(), c: c, khung: const Size(328, 200)));
+    expect(find.text('3\u00A0ví · 3\u00A0ngân\u00A0sách · 3\u00A0mục\u00A0tiêu · 3\u00A0hoá\u00A0đơn · 5\u00A0danh\u00A0mục\u00A0riêng'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Premium: "Premium" + còn N ngày · đến dd/MM/yyyy + Gia hạn', (tester) async {

@@ -119,13 +119,22 @@ void main() {
     return router;
   }
 
-  testWidgets('Basic: bốn đặc quyền, giá qua CurrencyFormatter, Thanh toán; KHÔNG chữ đồng bộ',
+  testWidgets('Basic: đặc quyền theo bảng (mặc định: 3 trần + 3 quyền AI), giá qua CurrencyFormatter, Thanh toán; KHÔNG chữ đồng bộ',
       (tester) async {
     await dung(tester, premium: false);
     expect(find.text('Gói hiện tại: Basic'), findsOneWidget);
-    for (final d in kDacQuyen) {
-      expect(find.text(d), findsOneWidget);
+    for (final d in [
+      'Không giới hạn ví',
+      'Không giới hạn ngân sách',
+      'Không giới hạn mục tiêu tiết kiệm',
+      MaQuyen.aiAssistant.ten,
+      MaQuyen.aiQuickInput.ten,
+      MaQuyen.aiEdgeModel.ten,
+    ]) {
+      expect(find.text(d), findsOneWidget, reason: d);
     }
+    expect(find.text(MaQuyen.exportReports.ten), findsNothing,
+        reason: 'thiếu khoá = mở với Basic → không phải đặc quyền');
     expect(find.textContaining('49.000 đ'), findsOneWidget);
     expect(find.textContaining('đồng bộ'), findsNothing,
         reason: 'câu 4: không hứa thứ không khác');

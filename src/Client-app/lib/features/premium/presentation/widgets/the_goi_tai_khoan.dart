@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/tran_goi.dart';
 import '../../domain/trang_thai_goi.dart';
 import '../cubit/goi_cubit.dart';
 import 'nut_nang_cap.dart';
@@ -37,7 +38,7 @@ class TheGoiTaiKhoan extends StatelessWidget {
         ? (hetHan == null || conLai == null
             ? null
             : 'Còn $conLai ngày · đến ${DateFormat('dd/MM/yyyy').format(hetHan.toLocal())}')
-        : '${goi.tran.vi} ví · ${goi.tran.nganSach} ngân sách · ${goi.tran.mucTieu} mục tiêu';
+        : tomTatTran(goi.tran);
 
     return Container(
       key: const Key('the-goi-tai-khoan'),

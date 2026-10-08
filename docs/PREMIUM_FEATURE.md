@@ -235,5 +235,9 @@ Tài khoản Basic **mới** `thuquyen1` (idaccount 28, tạo qua `POST /api/aut
 | Gạt lại `false` | ✅ khoá lại trong ≤ 3 s; ma trận Basic về đúng như trước lượt đo |
 
 Chưa đo trên máy: dòng khoá **chi bất thường** (cần ≥ 4 tháng dữ liệu đã đóng mới có bất thường để khoá — widget test
-canh). Ghi nhận, chưa sửa: danh sách *Đặc quyền Premium* ở màn Nâng cấp vẫn kể 4 mục của 2026-10-06; thẻ Gói ở tab
-Cá nhân chỉ ghi *"3 ví · 3 ngân sách · 3 mục tiêu"* (không nhắc trần hoá đơn / danh mục riêng).
+canh). Hai chỗ chữ lượt đo ghi nhận — ✅ **sửa cùng đêm, người dùng chọn**, đo lại OnePlus đạt: danh sách *Đặc quyền
+Premium* ở màn Nâng cấp nay là **`dacQuyenPremium(goi)`** (`quyen_tinh_nang.dart`) — đúng những thứ Basic đang thiếu theo
+bảng server (mỗi trần có số + mỗi quyền tắt; bảng là của Premium thì mặc định 3 trần + 3 AI), Basic dev nay thấy 14 dòng,
+không có Quét / Đọc biến động; thẻ Gói tab Cá nhân nay **`tomTatTran`** (`tran_goi.dart`) — mọi trần có số, `null` bỏ
+(trước đó Basic có trần `null` sẽ in *"null ví"*), trong mỗi mục là dấu cách không ngắt nên chỉ xuống dòng ở `·`.
+`kDacQuyen` (danh sách cố định) **bỏ**. ⚠️ Danh sách dài ra so với màn Stitch `c999da97…` (4 dòng) — chưa đưa lên Stitch.

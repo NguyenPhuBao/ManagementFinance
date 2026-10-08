@@ -456,8 +456,8 @@ hỏi được (dùng lại mô hình đang nạp, không nạp lại, không s�
 phán đoán của C2, không phải lỗi mới). **Bản `--release`** (225,3 MB, R8 qua): ÙA TEA điền sẵn 158.000, MAXIDI hai chip
 — như bản debug. ⚠️ Bản release vẫn in `[Quet][Gemma] … tong=…` và `[Quet][danhMuc]` ra logcat (số tiền hoá đơn, không
 chữ ảnh) — ✅ **sửa 2026-10-08 tối**: tổng chỉ in ở bản debug; `[Quet][danhMuc]` đi qua `PhienMotLoiGoi` — lớp dùng chung với Nhập nhanh (C2) và lệnh tạo (C3), nên dòng ấy từng in cả số tiền + ghi chú câu người dùng gõ ở bản release — nay bản release chỉ in thời gian + tên tool, tham số chỉ ở bản debug. Ba giao dịch thử đã xoá mềm qua giao diện, ví về
-đúng mốc. 🚧 Còn mở trên OnePlus: (d) chụp bằng máy ảnh hệ thống, ảnh dọc (cần hoá đơn giấy thật trước máy) · (f) Basic
-(phải đăng nhập tài khoản Basic — `purgeDataForOtherAccounts` dọn SQLite của tài khoản 10 trên máy) · (a) biên lai MB
+đúng mốc. 🚧 Còn mở trên OnePlus: (d) chụp bằng máy ảnh hệ thống, ảnh dọc (cần hoá đơn giấy thật trước máy) · ~~(f) Basic~~
+✅ **đạt 2026-10-08 khuya** (tài khoản Basic mới `thuquyen1`, hoá đơn ÙA TEA từ thư viện: logcat chỉ `[Quet][luat] tong=158000`, **0** dòng Gemma; form 158.000 đ · 02/10/2026 14:26 · ghi chú điền sẵn, không chip, không danh mục AI; Bỏ qua → `anh_quet/` rỗng; màn *Đang đọc ảnh…* qua nhanh hơn 0,5 s, không chụp được) · (a) biên lai MB
 (thư viện OnePlus chưa có).
 
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**

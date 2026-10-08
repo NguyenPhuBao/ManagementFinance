@@ -15,16 +15,6 @@ import '../../domain/trang_thai_goi.dart';
 import '../cubit/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
-/// Bốn đặc quyền người dùng chốt (spec Premium 2026-10-06 câu 1–4b). Cố ý KHÔNG
-/// có "đồng bộ đa thiết bị tức thì": đồng bộ không tách theo gói (câu 4), không
-/// hứa thứ không khác.
-const List<String> kDacQuyen = [
-  'Không giới hạn ví',
-  'Không giới hạn ngân sách',
-  'Không giới hạn mục tiêu tiết kiệm',
-  'Trợ lý AI & Nhập nhanh bằng AI',
-];
-
 /// Câu mở đầu khi đến từ cửa chặn (`/premium?tran=`): *"Bạn đã dùng 3/3 ví của
 /// gói Basic."* — số lấy từ trần đang có hiệu lực, không ghi cứng.
 String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
@@ -133,7 +123,7 @@ class _NangCapPageState extends State<NangCapPage> {
                     color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
-              _theDacQuyen(),
+              _theDacQuyen(goi),
               const SizedBox(height: 24),
               Text(
                 '${CurrencyFormatter.format(goi.gia.toDouble())} / ${goi.soNgayGoi} ngày',
@@ -266,10 +256,12 @@ class _NangCapPageState extends State<NangCapPage> {
         ),
       );
 
-  Widget _theDacQuyen() => _the(
+  /// Đặc quyền theo bảng của server (`dacQuyenPremium`, 2026-10-08) — thôi danh sách cố định 4 dòng của 06/10. Cố ý
+  /// KHÔNG có "đồng bộ đa thiết bị tức thì": đồng bộ không tách theo gói (spec Premium câu 4).
+  Widget _theDacQuyen(TrangThaiGoi goi) => _the(
         child: Column(
           children: [
-            for (final d in kDacQuyen)
+            for (final d in dacQuyenPremium(goi))
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(

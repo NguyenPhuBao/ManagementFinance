@@ -5,6 +5,7 @@
 /// `/permissions`, server trả ở `features` của `/payment/subscription-info`.
 library;
 
+import 'tran_goi.dart';
 import 'trang_thai_goi.dart';
 
 /// 11 quyền bật/tắt (`financial_health_fhs` bỏ: app không có màn FHS). [macDinhKhiThieu] là giá trị khi server
@@ -51,4 +52,21 @@ bool duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now) {
   final v = goi.quyenTinhNang[ma.maServer];
   if (bangCuaBasic && v != null) return v;
   return ma.macDinhKhiThieu;
+}
+
+/// Danh sách *"Đặc quyền Premium"* ở màn Nâng cấp — đúng những thứ Basic đang THIẾU theo bảng server (người dùng chốt
+/// 2026-10-08 sau nghiệm thu: danh sách cố định từng kể 4 dòng của 06/10, còn quyền thật do admin đặt). Bảng đã lưu là
+/// của Basic (cùng phép xét với [duocDung]) → mỗi trần có số + mỗi quyền Basic bị tắt; bảng là của Premium (người đang
+/// Premium mở màn này) → mặc định: [TranGoi.macDinh] + quyền có `macDinhKhiThieu == false`.
+List<String> dacQuyenPremium(TrangThaiGoi goi) {
+  final bangCuaBasic = !goi.laPremium(goi.nhanLuc);
+  final tran = bangCuaBasic ? goi.tran : TranGoi.macDinh;
+  bool basicCo(MaQuyen m) =>
+      bangCuaBasic ? (goi.quyenTinhNang[m.maServer] ?? m.macDinhKhiThieu) : m.macDinhKhiThieu;
+  return [
+    for (final l in LoaiTran.values)
+      if (tran.cua(l) != null) 'Không giới hạn ${tenTran(l)}',
+    for (final m in MaQuyen.values)
+      if (!basicCo(m)) m.ten,
+  ];
 }

@@ -135,3 +135,18 @@ String tenTran(LoaiTran loai) => switch (loai) {
       LoaiTran.hoaDon => 'hóa đơn định kỳ',
       LoaiTran.danhMucRieng => 'danh mục riêng',
     };
+
+/// Dòng phụ của thẻ Gói (tab Cá nhân): mọi trần có số, `null` (không giới hạn) bị bỏ — *"3 ví · 3 ngân sách · 3 mục
+/// tiêu · 3 hoá đơn · 5 danh mục riêng"*. Tên ngắn hơn [tenTran] vì thẻ chật; trong mỗi mục là dấu cách KHÔNG
+/// ngắt nên chữ chỉ xuống dòng ở dấu `·` (nghiệm thu OnePlus: *"3 mục / tiêu"*).
+String tomTatTran(TranGoi tran) => [
+      for (final l in LoaiTran.values)
+        if (tran.cua(l) case final n?)
+          '$n ${switch (l) {
+            LoaiTran.vi => 'ví',
+            LoaiTran.nganSach => 'ngân sách',
+            LoaiTran.mucTieu => 'mục tiêu',
+            LoaiTran.hoaDon => 'hoá đơn',
+            LoaiTran.danhMucRieng => 'danh mục riêng',
+          }}'.replaceAll(' ', '\u00A0'),
+    ].join(' · ');
