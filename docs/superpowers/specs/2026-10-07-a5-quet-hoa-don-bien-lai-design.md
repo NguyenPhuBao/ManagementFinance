@@ -202,10 +202,11 @@ Test viết trước, mỗi chốt kiểm bằng bản sai có chủ ý:
 QR / VietQR; quét nhiều ảnh một lần (hàng chờ ghi); AI đọc thẳng ảnh (lối B của spike C4 — 24,5 s, RAM 2,9 GB); gỡ màn
 đo spike C4; **giọng nói** (spec riêng ngay sau A5 — mục 1).
 
-**Đọc từng dòng món hàng → A5b**, làm **sau** bảng đo ≥ 5 hoá đơn thật của mục 9 (người dùng chốt 2026-10-08: *"tay
-trước, tự động sau"*). A5b đọc tên + thành tiền từng món, gợi ý danh mục từng món, rồi **điền sẵn khối tách của mục
-11** — không dựng giao diện thứ hai. Lý do hoãn: chưa có ảnh hoá đơn thật nào; tên món trên hoá đơn nhiệt viết tắt,
-không dấu (*"SUA TUOI VNM 180ML"*); dòng giảm giá / VAT làm tổng các món lệch tổng hoá đơn. Đối chiếu thị trường
+**Gợi ý danh mục từng món → A5b**, làm **sau** bảng đo ≥ 5 hoá đơn thật của mục 9 (người dùng chốt 2026-10-08: *"tay
+trước, tự động sau"*). **Đọc danh sách món thì nằm TRONG A5** (mục 11.2b — người dùng chọn *chạm từng món để gán*); A5b
+chỉ thêm việc đoán sẵn danh mục cho từng món (từ khoá / B1 / AI) rồi **điền sẵn khối tách của mục 11** — không dựng
+giao diện thứ hai. Lý do hoãn: chưa có ảnh hoá đơn thật nào; tên món trên hoá đơn nhiệt viết tắt, không dấu (*"SUA
+TUOI VNM 180ML"*) nên chưa biết từ khoá / B1 đoán được bao nhiêu. Đối chiếu thị trường
 (2026-10-08): gắn danh mục **từng món tự động** hiếm — phần lớn app một danh mục cho cả hoá đơn hoặc để người dùng tự
 tách (Veryfi: nút Split, gán tay từng dòng; EasyExpense: yêu cầu tính năng còn "In Review"); không xác nhận được Money
 Lover / Sổ Thu Chi MISA có tách.
@@ -213,7 +214,9 @@ Lover / Sổ Thu Chi MISA có tách.
 ## 11. Tách theo danh mục (thêm 2026-10-08)
 
 Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh mục thì tách thành nhiều giao dịch thế nào. Chốt
-(AskUserQuestion, 2026-10-08): **tách tay trước** (mục này), tự đọc món sau (A5b, mục 10).
+(AskUserQuestion, 2026-10-08): **tách tay trước** (mục này), app đoán danh mục từng món sau (A5b, mục 10). Cùng ngày
+người dùng hỏi *"làm sao để chọn các món hàng cho từng danh mục"* và chọn **chạm từng món để gán** (mục 11.2b): app đọc
+danh sách món từ ảnh hoá đơn, người dùng tự gán — không đoán.
 
 ### 11.1 Quyết định người dùng
 
@@ -223,6 +226,7 @@ Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh m
    `tổng − Σ các phần`; chặn Lưu khi phần ấy ≤ 0.
 3. Không trùng danh mục giữa các phần (kể cả với danh mục chính).
 4. Các phần **không nối với nhau** — không cột mới, không schema mới.
+5. Ảnh quét loại hoá đơn → **chạm từng món để gán** (mục 11.2b); app **không** đoán danh mục món (việc của A5b).
 
 ### 11.2 Giao diện và luồng
 
@@ -240,9 +244,37 @@ Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh m
   **một** lần như đường lưu một giao dịch.
 - A5b (sau) điền sẵn chính khối này.
 
+### 11.2b Chọn món (form mở từ ảnh quét loại **hoá đơn**)
+
+**Đọc danh sách món** — hàm thuần `transaction/domain/doc_mon_hang.dart` (mới), `List<MonHang> docMonHang(List<String>
+hang)` trên đầu ra `ghepDongTheoHang`; `MonHang { id, ten, soTien }` (`id` = chỉ số dòng, ổn định trong một ảnh):
+
+- **Dòng món** = dòng có chữ cái và **kết thúc** bằng một số tiền có ngăn nghìn, giá trị tuyệt đối ≥ 1.000.
+- **Món hai dòng**: dòng chỉ có chữ (tên) đứng ngay trên dòng chỉ có số (*SL × đơn giá = thành tiền*) → **một** món,
+  tên của dòng trên, tiền = **số cuối** dòng dưới.
+- **Dừng** ở dòng tổng đầu tiên (nhãn `_nhanTong` của `doc_hoa_don.dart`, dùng chung — không chép danh sách thứ hai).
+- **Bỏ**: dòng nhãn `_nhanLoai` (*khách đưa · tiền thối …*); dòng ngày / giờ; dòng có dãy ≥ 9 chữ số liền không ngăn
+  (số điện thoại, mã hoá đơn, mã số thuế).
+- **Số âm**: dòng chứa *giảm giá · KM · khuyến mãi · chiết khấu* hoặc số mang dấu `-` → `soTien` âm.
+- **VAT** vẫn là một món (người dùng để nguyên thì nó về phần chính).
+- Ảnh loại **biên lai**, form gõ tay, biến động, biên lai chia sẻ → **không** có danh sách món.
+
+**Đưa sang form** — `KhoAnhQuet` lưu kèm `<tên ảnh>.mon.json` cạnh ảnh (cùng vòng đời: xoá cùng ảnh ở mọi chỗ mục 5.5);
+form khoá `quet:` đọc tệp ấy. Không qua `extra` của router (mất khi màn dựng lại). Tệp hỏng / thiếu → coi như không có
+món (chỉ nhập số).
+
+**Sheet *"Thêm phần"* khi có món** — chọn danh mục, rồi **danh sách món có ô tick**:
+- Dòng đáy *"Đã chọn N món · X đ"*; tiền của phần = Σ món đã tick (có thể ra số âm / 0 → nút *Xong* tắt).
+- Món đã thuộc phần **khác** hiện mờ kèm tên danh mục của phần ấy, **không** tick được — muốn chuyển thì bỏ ở phần kia.
+- Link *"Nhập số tiền"* chuyển sang ô số (khi đọc sai); phần nhập số thì `monIds` rỗng.
+- Chạm một phần trên form → mở lại sheet với các món đã tick.
+- **Phần chính** nhận phần còn lại = món chưa gán + VAT / giảm giá để nguyên + lệch giữa Σ món và tổng hoá đơn → tổng
+  luôn khớp hoá đơn (luật mục 11.1 ý 2 không đổi).
+
 ### 11.3 Tầng thuần — `transaction/domain/tach_giao_dich.dart` (mới)
 
-- `PhanTach { categoryId, soTien }`.
+- `PhanTach { categoryId, soTien, monIds }` — `monIds` rỗng khi phần nhập số; một món chỉ thuộc **một** phần
+  (kiểm hợp lệ).
 - `conLai(tong, phan)` = `tong − Σ phan.soTien`.
 - Kiểm hợp lệ: còn lại > 0 (ngưỡng **nửa đồng** `kDungSaiTien` như `KhoangTien`, vì `amount` là `double`); mỗi phần
   > 0; không trùng danh mục; số phần ≥ 1 mới gọi là tách.
@@ -270,8 +302,12 @@ Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh m
 
 ### 11.6 Kiểm thử (viết trước, mỗi chốt bản sai có chủ ý)
 
-- `tach_giao_dich_test` — còn lại; chặn ≤ 0 (cả đuôi lẻ `double`); trùng danh mục; gộp khi đổi danh mục chính; N hàng id
-  khác nhau, trường chung đúng.
+- `tach_giao_dich_test` — còn lại; chặn ≤ 0 (cả đuôi lẻ `double`); trùng danh mục; một món hai phần bị chặn; gộp khi
+  đổi danh mục chính; N hàng id khác nhau, trường chung đúng.
+- `doc_mon_hang_test` — món một dòng; món hai dòng; dừng ở dòng tổng; bỏ khách đưa / tiền thối, ngày giờ, số điện
+  thoại / mã HĐ; giảm giá âm; VAT là món. Chữ OCR **giả lập** trước, thêm chữ OCR hoá đơn thật khi có (mục 9).
+- `kho_anh_quet_test` — `.mon.json` xoá cùng ảnh; tệp hỏng → không món.
+- Widget sheet — tick món → tiền phần = Σ; món của phần khác mờ, không tick được; *"Nhập số tiền"*; mở lại phần giữ tick.
 - Repository `addTransactions` — hỏng ở hàng thứ hai → **0** hàng, số dư ví không đổi; thành công → số dư = tổng; neo
   đặt một lần.
 - Bloc — một `actionSuccess` cho N giao dịch.
@@ -284,10 +320,12 @@ Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh m
 
 Một lượt gọi: *"Thêm giao dịch - Tách theo danh mục"* (khối tách trên form + sheet *Thêm phần*). `timeout` thì **không
 gọi lại**, chờ người dùng xác nhận. Lượt gọi 2026-10-08 trả `timeout`; lượt kiểm ngay sau (01:40 UTC) **chưa thấy** màn.
+Lượt gọi thứ hai (sau khi thêm 11.2b): *"Thêm phần - Chọn món"* (sheet danh sách món có ô tick).
 
 ### 11.8 Nghiệm thu Realme
 
-Chụp hoá đơn siêu thị thật → form từ ảnh quét → tách 3 phần → Lưu: số dư ví giảm đúng tổng; Sổ giao dịch có 3 hàng
+Bảng mục 9 (b) thêm cột **số món đọc đúng / tổng số món** mỗi hoá đơn. Chụp hoá đơn siêu thị thật → form từ ảnh quét →
+tách 3 phần bằng **tick món** → Lưu: số dư ví giảm đúng tổng; Sổ giao dịch có 3 hàng
 cùng ngày giờ + ghi chú; sau đồng bộ PostgreSQL có 3 hàng. Thêm một lượt gõ tay (không ảnh) tách 2 phần. Ở cỡ hiển thị
 320 dp và 360 dp.
 
