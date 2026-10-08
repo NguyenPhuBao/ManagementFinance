@@ -161,6 +161,9 @@ class AppRouter {
                     GoRoute(
                       path: 'export',
                       parentNavigatorKey: _rootNavigatorKey,
+                      // Lối thứ hai tới trang Xuất báo cáo (nút tải trang Phân tích) — cùng cửa quyền với
+                      // `/export-report`; thiếu nó là Basic bị tắt quyền vẫn vào (nghiệm thu OnePlus 2026-10-08).
+                      redirect: redirectTheoQuyen(MaQuyen.exportReports),
                       builder: (_, __) => const ExportReportPage(),
                     ),
                   ],
