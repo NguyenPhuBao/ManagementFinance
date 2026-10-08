@@ -25,6 +25,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/ocr/doc_chu_anh.dart';
 import '../../../../core/ocr/dong_ocr.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
+import '../../../../core/ocr/tep_tam_chon_anh.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
@@ -103,7 +104,8 @@ class QuetAnhPage extends StatefulWidget {
     this.now,
   });
 
-  /// Ảnh vừa chụp / chọn (tệp tạm của `image_picker`) — được CHÉP vào kho, không đụng tệp gốc.
+  /// Ảnh vừa chụp / chọn (tệp tạm của `image_picker`) — được CHÉP vào kho; bản tạm trong `cache/` bị xoá khi màn đóng
+  /// ([xoaTepTamChonAnh]).
   final String duongDanAnh;
 
   /// `null` → `sl<…>()` nếu đã đăng ký.
@@ -166,14 +168,45 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     }
   }
 
+  /// `_chay` đã kết thúc nhưng lúc ấy có màn khác đè lên (form trống của nút +, deeplink thông báo) — màn này chờ tới
+  /// khi người dùng quay về tới nó rồi tự đóng. Nghiệm thu OnePlus 2026-10-08: thiếu cờ này `/quet` nằm lại dưới form,
+  /// Huỷ / Back không làm gì nữa, người dùng kẹt ở "Đang đọc bằng AI…".
+  var _xong = false;
+
   @override
   void initState() {
     super.initState();
     unawaited(_chay());
   }
 
+  @override
+  void dispose() {
+    // Bản sao image_picker để lại trong cache (ảnh nền mờ của màn này dùng nó tới lúc đóng). Kho đã chép ảnh riêng.
+    xoaTepTamChonAnh(widget.duongDanAnh);
+    super.dispose();
+  }
+
+  /// `true` khi chưa gắn vào route nào (test dựng trần) — coi như đang ở trên cùng.
+  bool get _oTrenCung => ModalRoute.isCurrentOf(context) ?? true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // `isCurrentOf` đăng ký phụ thuộc: route thành trên cùng trở lại thì hàm này chạy lại. Gọi TRƯỚC `_xong` — đặt sau
+    // thì lần đầu (`_xong` còn false) không đăng ký gì và màn không bao giờ biết mình được quay về.
+    final trenCung = _oTrenCung;
+    if (_xong && trenCung) WidgetsBinding.instance.addPostFrameCallback((_) => _ve());
+  }
+
+  /// Rời màn này. `context.pop()` đóng màn TRÊN CÙNG, nên chỉ gọi khi chính nó ở trên cùng; không thì chờ quay về.
   void _ve() {
-    if (mounted) context.pop();
+    if (!mounted) return;
+    if (_oTrenCung) {
+      _xong = false;
+      context.pop();
+    } else {
+      _xong = true;
+    }
   }
 
   Future<void> _chay() async {
@@ -237,11 +270,22 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     } else if (kq.soTien == null && chon.isEmpty) {
       baoNhanh(kCauChuaDocTien);
     }
-    // Thay CHÍNH màn này bằng form: Back từ form về Trang chủ, không về màn "Đang đọc ảnh…".
-    context.pushReplacement(deeplinkQuet(kq, anh: ten, luaChonTien: chon, danhMucAi: _huyAi ? null : danhMuc));
+    final link = deeplinkQuet(kq, anh: ten, luaChonTien: chon, danhMucAi: _huyAi ? null : danhMuc);
+    if (_oTrenCung) {
+      // Thay CHÍNH màn này bằng form: Back từ form về Trang chủ, không về màn "Đang đọc ảnh…".
+      context.pushReplacement(link);
+    } else {
+      // `pushReplacement` thay màn TRÊN CÙNG — màn người dùng vừa mở. Mở form lên trên, màn này tự đóng khi quay về.
+      _xong = true;
+      unawaited(context.push(link));
+    }
   }
 
   void _bamHuy() {
+    if (_xong) {
+      _ve();
+      return;
+    }
     if (_pha == _Pha.ai) {
       // Lượt sinh trả null → `_chay` mở form với kết quả luật.
       _huyAi = true;

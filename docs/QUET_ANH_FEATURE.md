@@ -59,6 +59,16 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
    D1 là ví trống ở mọi lần quét. Gợi ý chuyển khoản và nhắc trùng của D1 cũng bỏ (spec 5.6).
 2. **Ảnh xoá trong `dispose()` của form** — một chỗ cho mọi đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong`
    với khoá `quet:` chỉ xoá ảnh, **không** gọi `xoaBienDong` (không có hàng loại 20).
+2b. **Bản sao `image_picker` trong `cache/` xoá trong `dispose()` của `/quet`** (`xoaTepTamChonAnh`,
+   `core/ocr/tep_tam_chon_anh.dart`): `cache/scaled_<tên>` + bản chép `cache/<uuid>/<tên>` — gói không tự dọn
+   (nghiệm thu OnePlus 2026-10-08: 45 thư mục, 13 MB). Chỉ xoá tệp nằm thẳng trong thư mục tên `cache`. Bản sao từ
+   trước bản sửa vẫn nằm đó cho tới khi quét lại đúng ảnh ấy hoặc hệ điều hành dọn cache.
+2c. ⚠️ **`/quet` chỉ `pushReplacement` / `pop` khi chính nó ở TRÊN CÙNG** — cả hai lệnh tác động lên màn trên cùng. Có
+   màn khác đè lên trong lúc đọc (nút + bấm nhanh sau trình chọn ảnh, deeplink thông báo) thì form được `push` lên trên
+   và `/quet` đặt `_xong`, tự đóng khi người dùng quay về tới nó (`ModalRoute.isCurrentOf` trong
+   `didChangeDependencies` — phải gọi TRƯỚC khi xét `_xong`, kẻo lần đầu không đăng ký phụ thuộc). Thiếu chốt này
+   (nghiệm thu OnePlus 2026-10-08): form thay mất màn người dùng, `/quet` nằm lại dưới form với Huỷ / Back chết — kẹt ở
+   *"Đang đọc bằng AI…"*, phải tắt app.
 3. **`anh_quet/` tách khỏi `bien_lai/`** — `KhoBienLai.donMoCoi` xoá ảnh không có hàng loại 20 ở mỗi lượt nhập.
 4. **AI chỉ chạm SỐ TIỀN** (ngày, cửa hàng là của luật — người dùng chốt). Số AI không in trên ảnh thì bỏ (4/5 lần
    Gemma CPU sai là loại ấy); chỉ điền sẵn khi khớp số luật, lệch thì hỏi bằng chip (`DienSanBienDong.luaChonTien`,

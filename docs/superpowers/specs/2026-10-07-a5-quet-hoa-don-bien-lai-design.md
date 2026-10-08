@@ -443,6 +443,15 @@ số là 0). Đo lại hai tờ trên máy: BHX luật 55.500 khớp Gemma → �
 *thanh toán* rồi mượn số dòng kế; MAXIDI OCR đọc *12,127* (chip đỡ được). 🚧 **Realme (Mali, CPU) chưa chạy `/quet`
 thật** — 8/8 là số của GPU OnePlus.
 
+**Nghiệm thu OnePlus tiếp (2026-10-08 chiều muộn, người dùng dặn tập trung OnePlus):** Lưu thật ÙA TEA 158.000 →
+Trang chủ trừ đúng, PostgreSQL có hàng −158.000 *Ăn uống* ngày 02/10 14:26, ví khớp ✅ · MAXIDI chọn chip 72.127 →
+tách *Mua sắm* 20.000 → "Lưu 2 giao dịch" → hai hàng −52.127 / −20.000 trên PostgreSQL, ví khớp ✅ · Huỷ pha AI → form
+kết quả luật, không *"Đọc bằng AI"*, không gọi lần chọn danh mục ✅ · Huỷ pha luật: OCR < 1 s, adb không chạm kịp
+(widget test canh) · ảnh `anh_quet/` xoá sau Lưu / Quay lại ✅. **Hai lỗi lộ ra, đã sửa** (chốt 2b, 2c
+`QUET_ANH_FEATURE.md`): bản sao `image_picker` nằm lại trong `cache/`; màn khác đè lên `/quet` lúc đang đọc làm
+`pushReplacement` thay nhầm màn ấy và để `/quet` kẹt không lối ra — đo lại trên máy sau sửa: cache sạch; form quét →
+form người dùng → Trang chủ. RAM khi mô hình có ảnh ở lại: PSS 1,11 GB (+0,4 GB swap).
+
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
   **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi

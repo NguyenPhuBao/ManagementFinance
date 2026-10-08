@@ -127,6 +127,7 @@ void main() {
           ),
         ),
         GoRoute(path: '/add', builder: (_, s) => Scaffold(body: Text('FORM ${s.uri}'))),
+        GoRoute(path: '/khac', builder: (_, __) => const Scaffold(body: Text('MAN KHAC'))),
       ],
     );
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -271,6 +272,51 @@ void main() {
     final u = form()!;
     expect(u.queryParameters['amount'], '165000');
     expect(u.queryParameters.containsKey('ai'), isFalse);
+  });
+
+  // Nghiệm thu OnePlus 2026-10-08: một màn khác (form trống của nút +, deeplink thông báo) mở ĐÈ lên `/quet` trong lúc
+  // Gemma đọc. `pushReplacement` thay màn TRÊN CÙNG — tức màn của người dùng — còn `/quet` nằm lại bên dưới, `_chay` đã
+  // xong nên Huỷ / Back không làm gì: người dùng kẹt ở "Đang đọc bằng AI…", phải tắt app.
+  testWidgets('⭐ màn khác đè lên lúc đang đọc → form mở TRÊN màn ấy (không thay nó); quay về tới /quet thì nó tự đóng',
+      (tester) async {
+    final c = Completer<KetQuaGemmaAnh?>();
+    final router = await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: _GemmaGia(null, cho: c));
+    await cho(tester);
+    expect(find.text('Đang đọc bằng AI…'), findsOneWidget);
+    unawaited(router.push('/khac'));
+    await cho(tester);
+    c.complete(const KetQuaGemmaAnh(tong: 165000));
+    await cho(tester);
+    expect(form()?.queryParameters['amount'], '165000', reason: 'kết quả quét vẫn tới tay người dùng');
+    router.pop();
+    await cho(tester);
+    expect(find.text('MAN KHAC'), findsOneWidget, reason: 'màn người dùng mở không bị form thay mất');
+    router.pop();
+    await cho(tester);
+    // Hai lần đóng màn liền nhau (màn khác, rồi /quet tự đóng) — chờ hết hai hiệu ứng chuyển cảnh.
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Đang đọc bằng AI…'), findsNothing, reason: '/quet đã xong thì không được nằm lại trong ngăn xếp');
+    expect(find.text('Trang trước'), findsOneWidget);
+  });
+
+  testWidgets('⭐ Huỷ ở pha luật rồi màn khác đè lên trước khi OCR xong → KHÔNG đóng nhầm màn ấy; quay về thì /quet tự đóng',
+      (tester) async {
+    final c = Completer<void>();
+    final router = await mo(tester, docChu: _DocChuGia(_hoaDon, cho: c));
+    await cho(tester);
+    await tester.tap(find.byKey(const Key('quet-huy')));
+    await tester.pump();
+    unawaited(router.push('/khac'));
+    await cho(tester);
+    c.complete();
+    await cho(tester);
+    expect(find.text('MAN KHAC'), findsOneWidget, reason: 'context.pop() của /quet sẽ đóng màn trên cùng — màn của người dùng');
+    expect(form(), isNull);
+    router.pop();
+    await cho(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('Đang'), findsNothing);
+    expect(find.text('Trang trước'), findsOneWidget);
   });
 
   testWidgets('ảnh không chữ → form vẫn mở + toast "Chưa đọc được ảnh"; không tiền → toast "Chưa đọc được số tiền"',
