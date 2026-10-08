@@ -16,6 +16,11 @@ import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RepoGia implements AuthRepository {
@@ -45,8 +50,16 @@ void main() {
     sl.registerSingleton<AppDatabase>(db);
     if (sl.isRegistered<BillBloc>()) await sl.unregister<BillBloc>();
     sl.registerFactory<BillBloc>(() => BillBloc(repository: _BillRepoGia()));
+    // `/bills/add` nay có cửa chặn trần hoá đơn (spec phân quyền 2026-10-08) đọc `sl<GoiRepository>` lúc chạy. Chưa
+    // có phiên (`idaccount == null`) → cửa cho qua, đúng như app trước khi đăng nhập.
+    if (sl.isRegistered<GoiRepository>()) await sl.unregister<GoiRepository>();
+    sl.registerSingleton<GoiRepository>(GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore()));
+    if (sl.isRegistered<NguonDemDangHoatDong>()) await sl.unregister<NguonDemDangHoatDong>();
+    sl.registerSingleton<NguonDemDangHoatDong>(_DemKhong());
   });
   tearDown(() async {
+    await sl.unregister<GoiRepository>();
+    await sl.unregister<NguonDemDangHoatDong>();
     await sl.unregister<BillBloc>();
     await sl.unregister<AppDatabase>();
     await db.close();
@@ -83,4 +96,20 @@ void main() {
     await mo(tester, '/bills/add');
     expect(tester.widget<BillAddPage>(find.byType(BillAddPage)).dienSan, isNull);
   });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
+}
+
+class _DemKhong implements NguonDemDangHoatDong {
+  @override
+  Future<int> dem(LoaiTran loai, int idaccount) async => 0;
 }

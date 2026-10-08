@@ -35,6 +35,7 @@ import '../../data/doc_danh_muc_bang_ai.dart';
 import '../../domain/chot_tong_quet.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_anh_quet.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
 
 enum NguonAnh { mayAnh, thuVien }
 
@@ -162,7 +163,7 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     final t = widget.laPremium;
     if (t != null) return t;
     try {
-      return context.read<GoiCubit>().laPremium;
+      return context.read<GoiCubit>().coQuyen(MaQuyen.aiEdgeModel);
     } on ProviderNotFoundException {
       return true;
     }

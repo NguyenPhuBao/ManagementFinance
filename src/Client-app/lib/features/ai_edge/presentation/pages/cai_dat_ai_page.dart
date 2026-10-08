@@ -22,6 +22,9 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/cong_tac_ai.dart';
 import '../../data/mo_hinh_tai_ve.dart';
 import '../../domain/hoi_dung_4g.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Dung lượng theo GiB, dấu **phẩy** thập phân.
 ///
@@ -250,7 +253,13 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: SingleChildScrollView(
+      // Quyền `ai_edge_model` (spec phân quyền 2026-10-08): không có → không tải, không công tắc; chỉ thẻ khoá.
+      body: !context.coQuyen(MaQuyen.aiEdgeModel)
+          ? const Padding(
+              padding: EdgeInsets.all(16),
+              child: TheKhoaQuyen(ma: MaQuyen.aiEdgeModel),
+            )
+          : SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

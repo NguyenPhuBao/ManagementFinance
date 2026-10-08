@@ -69,7 +69,10 @@ class GoiSoPhanTich extends GoiSo {
   final List<SoLieu> _theoKy;
   final SoLieu? _soKyTruoc;
 
-  factory GoiSoPhanTich.tu(ThongKeKy tk, {String? chuKy}) {
+  /// [boChiBatThuong] — tài khoản không có quyền `anomaly_spending_insights` (spec phân quyền 2026-10-08): gói bỏ hẳn
+  /// mục chi bất thường, trang Phân tích hiện dòng khoá thay vào.
+  factory GoiSoPhanTich.tu(ThongKeKy tk,
+      {String? chuKy, bool boChiBatThuong = false}) {
     final pt = phanTramSoVoi(tk.tong.chi, tk.tongTruoc.chi);
     // Đúng biểu thức của `_TheConLai` (analytics_page.dart): chuỗi vay/nợ rỗng
     // thì bỏ qua chứ không coi như không có vay/nợ.
@@ -121,7 +124,7 @@ class GoiSoPhanTich extends GoiSo {
     // `analytics/domain/chi_bat_thuong.dart`); lớp này chỉ CHÉP số của dòng
     // đầu, không tính gì (test quét 14). Nhãn chứa chữ "chi" nên khai cùng
     // xung đột "Thu" với mục Chi theo danh mục (bẫy 4.42).
-    final bt = tk.chiBatThuong ?? const [];
+    final bt = boChiBatThuong ? const <DongChiBatThuong>[] : (tk.chiBatThuong ?? const []);
     final dau = bt.isEmpty ? null : bt.first;
     final chiBtS = dau == null
         ? null

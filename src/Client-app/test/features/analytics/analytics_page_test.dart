@@ -14,6 +14,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flowmoney/features/analytics/domain/chi_bat_thuong.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -144,6 +150,7 @@ ThongKeKy _tk({
   Map<DateTime, NgayChiTieu> lich = const {},
   List<DiemTaiSan>? taiSan,
   DateTime? giaoDichDauTien,
+  List<DongChiBatThuong>? chiBatThuong,
 }) =>
     ThongKeKy(
       ky: ky ?? Ky.thang(nam, thang),
@@ -190,6 +197,7 @@ ThongKeKy _tk({
             now: DateTime(nam, thang, 8, 12),
           ),
       giaoDichDauTien: giaoDichDauTien,
+      chiBatThuong: chiBatThuong,
       // ⚠️ Mặc định phải **cùng số kỳ** với `chuoi`, không phải rỗng: hai chuỗi
       // luôn được repository dựng từ cùng một `ky` và cùng `kSoKyXuHuong`, nên
       // một `ThongKeKy` có sáu điểm thu/chi mà không điểm vay/nợ nào là trạng
@@ -359,14 +367,24 @@ void main() {
     await repo.dong();
   });
 
-  Future<void> moTrang(WidgetTester tester) async {
+  /// [quyen] khác `null` → bọc `GoiCubit` Basic mang bảng quyền ấy (spec phân quyền 2026-10-08); `null` → không
+  /// provider, tức không khoá (mọi ca cũ).
+  Future<void> moTrang(WidgetTester tester, {Map<String, bool>? quyen}) async {
     final auth = _FixedAuthBloc();
     addTearDown(auth.close);
+    Widget cay = const MaterialApp(home: AnalyticsPage());
+    if (quyen != null) {
+      final goiRepo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+      final goi = GoiCubit(goiRepo);
+      goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+      addTearDown(() async {
+        await goi.close();
+        await goiRepo.dispose();
+      });
+      cay = BlocProvider<GoiCubit>.value(value: goi, child: cay);
+    }
     await tester.pumpWidget(
-      BlocProvider<AuthBloc>.value(
-        value: auth,
-        child: const MaterialApp(home: AnalyticsPage()),
-      ),
+      BlocProvider<AuthBloc>.value(value: auth, child: cay),
     );
     await tester.pump();
   }
@@ -2049,6 +2067,26 @@ void main() {
       _camKet('Tiền điện', DateTime(2026, 10, 8), 800000, laKyChieu: true),
     ];
 
+    testWidgets('không có quyền cashflow_forecast → thẻ khoá thay khối, không con số dự báo', (tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester, quyen: const {'cashflow_forecast': false});
+      await phat(tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
+      expect(find.byKey(const Key('the-khoa-cashflow_forecast')), findsOneWidget);
+      expect(find.text('Còn tiêu được'), findsNothing);
+      expect(find.text('7.130.000 đ'), findsNothing);
+    });
+
+    testWidgets('Basic thiếu khoá cashflow_forecast → khối hiện (mặc định mở)', (tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester, quyen: const {});
+      await phat(tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
+      expect(find.text('Còn tiêu được'), findsOneWidget);
+    });
+
     testWidgets('khối hiện tiêu đề, ba con số và có LineChart', (tester) async {
       await moCaoVaPhat(
           tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
@@ -2560,4 +2598,41 @@ void main() {
       expect(biCat(tester), isEmpty);
     });
   });
+
+  group('Quyền anomaly_spending_insights (spec phân quyền 2026-10-08)', () {
+    DongChiBatThuong bt(String ten, double chi, double thuongLe) => (
+          d: ChiBatThuong(categoryId: 'c-$ten', chi: chi, thuongLe: thuongLe, soThangMau: 6),
+          ten: ten,
+        );
+
+    testWidgets('không có quyền, CÓ bất thường → dòng khoá trong khối Nhận xét, câu không nêu số', (tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester, quyen: const {'anomaly_spending_insights': false});
+      await phat(tester, _tk(chiBatThuong: [bt('Ăn uống', 2400000, 900000)]));
+      expect(find.byKey(const Key('dong-khoa-bat-thuong')), findsOneWidget);
+      expect(find.textContaining('thường lệ'), findsNothing);
+    });
+
+    testWidgets('không có quyền, KHÔNG bất thường → không dòng khoá (không quảng cáo suông)', (tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester, quyen: const {'anomaly_spending_insights': false});
+      await phat(tester, _tk(chiBatThuong: const []));
+      expect(find.byKey(const Key('dong-khoa-bat-thuong')), findsNothing);
+    });
+  });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
 }

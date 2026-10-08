@@ -25,6 +25,9 @@ import '../../domain/lich_chi_tieu.dart';
 import '../../domain/moc_so_sanh.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thac_nuoc.dart';
 import '../../domain/thong_ke_thang.dart';
@@ -199,9 +202,13 @@ class _NoiDung extends StatelessWidget {
             // biết 30 ngày tới có gì phải trả.
             if (thongKe.duBao != null) ...[
               const SizedBox(height: 24),
-              _KhoiDuBao(
-                duBao: thongKe.duBao,
-                uocTinh: thongKe.uocTinhChiTuyY,
+              // Quyền `cashflow_forecast` (spec phân quyền 2026-10-08): không có → thẻ khoá giữ chỗ khối.
+              KhoaTheoQuyen(
+                ma: MaQuyen.cashflowForecast,
+                child: _KhoiDuBao(
+                  duBao: thongKe.duBao,
+                  uocTinh: thongKe.uocTinhChiTuyY,
+                ),
               ),
             ],
           ];
@@ -263,7 +270,10 @@ class _NoiDung extends StatelessWidget {
       // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
       if (thongKe.duBao != null)
         CumKhoi.duBao: [
-          _KhoiDuBao(duBao: thongKe.duBao, uocTinh: thongKe.uocTinhChiTuyY),
+          KhoaTheoQuyen(
+            ma: MaQuyen.cashflowForecast,
+            child: _KhoiDuBao(duBao: thongKe.duBao, uocTinh: thongKe.uocTinhChiTuyY),
+          ),
         ],
       // Ba đường cùng dạng biểu đồ, cùng sáu kỳ, cùng trục hoành — mắt học
       // trục một lần rồi đọc được cả ba: "thu về bấy nhiêu → thực còn bấy
@@ -652,7 +662,22 @@ class _KhoiTong extends StatelessWidget {
         // Khối Nhận xét (Edge-SLM P2, A6): gói số đọc `tk` qua đúng các hàm
         // ba thẻ trên đang dùng, nên câu khớp con số của thẻ.
         const SizedBox(height: 16),
-        KhoiNhanXet(goi: GoiSoPhanTich.tu(tk)),
+        // Quyền `anomaly_spending_insights`: không có → gói bỏ câu chi bất thường; khi THẬT có bất thường thì một dòng
+        // khoá trong khối thay vào (không có thì im — không quảng cáo suông).
+        Builder(builder: (context) {
+          final khoaBt = !context.coQuyen(MaQuyen.anomalySpendingInsights);
+          final coBt = tk.chiBatThuong?.isNotEmpty ?? false;
+          return KhoiNhanXet(
+            goi: GoiSoPhanTich.tu(tk, boChiBatThuong: khoaBt),
+            chanDuoi: khoaBt && coBt
+                ? const DongKhoaQuyen(
+                    key: Key('dong-khoa-bat-thuong'),
+                    ma: MaQuyen.anomalySpendingInsights,
+                    cau: 'Có khoản chi bất thường kỳ này — dành cho Premium',
+                  )
+                : null,
+          );
+        }),
       ],
     );
   }

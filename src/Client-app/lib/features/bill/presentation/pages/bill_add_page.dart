@@ -21,6 +21,9 @@ import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/ui/do_chu.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key, this.dienSan});
@@ -542,12 +545,17 @@ class _BillAddPageState extends State<BillAddPage> {
             Switch(
               key: const ValueKey('bill-autopay-switch'),
               value: _autoPayEnabled,
-              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              // Quyền `bill_auto_pay` (spec phân quyền 2026-10-08): không có → công tắc khoá, băng Nâng cấp dưới.
+              onChanged: context.coQuyen(MaQuyen.billAutoPay)
+                  ? (val) => setState(() => _autoPayEnabled = val)
+                  : null,
               activeThumbColor: Colors.white,
               activeTrackColor: AppColors.primary,
             ),
           ],
         ),
+        if (!context.coQuyen(MaQuyen.billAutoPay))
+          DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _autoPayEnabled),
         if (_autoPayEnabled) ...[
           const SizedBox(height: 8),
           const Text(

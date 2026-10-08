@@ -16,6 +16,9 @@ import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillEditPage extends StatefulWidget {
   final String id;
@@ -412,10 +415,16 @@ class _BillEditPageState extends State<BillEditPage> {
                         Switch(
                           key: const ValueKey('bill-autopay-switch'),
                           value: _tuTra,
-                          onChanged: (v) => setState(() => _tuTra = v),
+                          // Quyền `bill_auto_pay`: không có → khoá; giá trị đang lưu GIỮ NGUYÊN khi Lưu (chốt "dừng
+                          // chạy, giữ công tắc").
+                          onChanged: context.coQuyen(MaQuyen.billAutoPay)
+                              ? (v) => setState(() => _tuTra = v)
+                              : null,
                         ),
                       ],
                     ),
+                    if (!context.coQuyen(MaQuyen.billAutoPay))
+                      DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _tuTra),
                     if (_tuTra) ...[
                       const SizedBox(height: 4),
                       const Text(

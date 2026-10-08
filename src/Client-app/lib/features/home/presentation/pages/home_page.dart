@@ -28,6 +28,9 @@ import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 import '../../../premium/presentation/widgets/dong_nhac_het_han.dart';
 import '../../../transaction/presentation/pages/quet_anh_page.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -381,6 +384,11 @@ class HomePage extends StatelessWidget {
             // Spike C4: bản build có `--dart-define=SPIKE_C4=true` mở màn đo; bản thường giữ nguyên hành vi cũ.
             if (kSpikeC4) {
               context.push('/spike-c4');
+              return;
+            }
+            // Quyền `ocr_receipt` (spec phân quyền 2026-10-08): không có → màn Nâng cấp mở đầu bằng tên tính năng.
+            if (!context.coQuyenDoc(MaQuyen.ocrReceipt)) {
+              context.push(duongNangCap(quyen: MaQuyen.ocrReceipt));
               return;
             }
             // A5: chụp / chọn ảnh hoá đơn hoặc biên lai → form điền sẵn.

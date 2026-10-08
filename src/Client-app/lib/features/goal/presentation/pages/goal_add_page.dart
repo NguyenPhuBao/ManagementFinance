@@ -22,6 +22,9 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
 ///
@@ -142,6 +145,21 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   GoalEntity? _goalDangSua;
   bool _dangNapGoal = false;
   String? _loiNapGoal;
+
+  bool _daXetQuyenTrich = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mục tiêu MỚI mà không có quyền trích tự động → công tắc tắt sẵn (mặc định của form là bật). Mục tiêu đang sửa
+    // giữ giá trị đã lưu (`_napGoalDeSua`). Xét một lần — đọc trong `didChangeDependencies` vì `initState` chưa có
+    // `context` để đọc `GoiCubit`.
+    if (_daXetQuyenTrich) return;
+    _daXetQuyenTrich = true;
+    if (!_isEdit && !context.coQuyenDoc(MaQuyen.goalAutoDeposit)) {
+      _autoDeposit = false;
+    }
+  }
 
   @override
   void initState() {
@@ -1025,13 +1043,19 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               ),
                               Switch(
                                 value: _autoDeposit,
-                                onChanged: (val) {
-                                  setState(() => _autoDeposit = val);
-                                },
+                                // Quyền `goal_auto_deposit` (spec phân quyền 2026-10-08).
+                                onChanged: context.coQuyen(MaQuyen.goalAutoDeposit)
+                                    ? (val) {
+                                        setState(() => _autoDeposit = val);
+                                      }
+                                    : null,
                                 activeThumbColor: AppColors.income,
                               ),
                             ],
                           ),
+                          if (!context.coQuyen(MaQuyen.goalAutoDeposit))
+                            DongKhoaCongTac(
+                                ma: MaQuyen.goalAutoDeposit, dangBat: _autoDeposit),
                           if (_autoDeposit) ...[
                             const SizedBox(height: 16),
                             _buildLabel('SỐ TIỀN TRÍCH MỖI KỲ (VNĐ)'),
