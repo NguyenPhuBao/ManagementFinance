@@ -103,6 +103,7 @@ import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
 import '../notification/prefs/notification_prefs_store.dart';
+import '../ocr/kho_anh_quet.dart';
 import '../ocr/doc_chu_anh.dart';
 import '../ocr/doc_chu_anh_mlkit.dart';
 
@@ -491,6 +492,9 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
   // Thư mục ảnh biên lai (`filesDir/bien_lai/` phía Kotlin) — form Thêm giao dịch cũng dùng để hiện và xoá ảnh.
   sl.registerLazySingleton<KhoBienLai>(() => KhoBienLai(thuMuc: getApplicationSupportDirectory));
+  // A5 — ảnh người dùng QUÉT (nút Quét Trang chủ): thư mục RIÊNG `anh_quet/`, tách khỏi `bien_lai/` vì
+  // `KhoBienLai.donMoCoi` xoá ảnh không có hàng loại 20 trỏ tới (spec A5 mục 5.5).
+  sl.registerLazySingleton<KhoAnhQuet>(() => KhoAnhQuet(thuMuc: getApplicationSupportDirectory));
 
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.

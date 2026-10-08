@@ -15,6 +15,7 @@ import '../../../../core/realtime/realtime_channel.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../an_the_cho_xoa.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
+import '../../../../core/ocr/kho_anh_quet.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../../wallet/presentation/an_nhac_vi_trung_ten.dart';
@@ -131,6 +132,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     if (sl.isRegistered<RealtimeChannel>()) {
       await sl<RealtimeChannel>().stop();
+    }
+    // A5: ảnh quét đang mở trên form (người dùng chưa Lưu) không được sống sang phiên sau.
+    if (sl.isRegistered<KhoAnhQuet>()) {
+      await sl<KhoAnhQuet>().xoaHet();
     }
   }
 
