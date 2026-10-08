@@ -27,7 +27,7 @@ import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 import '../../../premium/presentation/widgets/dong_nhac_het_han.dart';
-import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../transaction/presentation/pages/quet_anh_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -374,7 +374,7 @@ class HomePage extends StatelessWidget {
         ),
         _buildActionItem(
           context: context,
-          icon: Icons.qr_code_scanner,
+          icon: Icons.document_scanner_outlined,
           label: 'Quét',
           isDark: false,
           onTap: () {
@@ -383,7 +383,8 @@ class HomePage extends StatelessWidget {
               context.push('/spike-c4');
               return;
             }
-            baoNhanh('Tính năng Quét QR đang phát triển');
+            // A5: chụp / chọn ảnh hoá đơn hoặc biên lai → form điền sẵn.
+            moQuet(context);
           },
         ),
       ],

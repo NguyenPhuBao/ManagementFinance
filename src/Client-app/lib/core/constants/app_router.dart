@@ -16,6 +16,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/domain/dien_san_bien_dong.dart';
+import '../../features/transaction/presentation/pages/quet_anh_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
 import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
@@ -422,6 +423,14 @@ class AppRouter {
           // `--dart-define=SPIKE_C4=true`; bản thường không có route này.
           if (kSpikeC4)
             GoRoute(path: '/spike-c4', builder: (_, __) => const SpikeC4Page()),
+
+          // A5 — màn "Đang đọc ảnh…" (navigator gốc, ngoài shell — từ Trang chủ phải push). `extra` = đường dẫn ảnh vừa
+          // chụp / chọn; thiếu (màn dựng lại từ URL) thì về Trang chủ.
+          GoRoute(
+            path: '/quet',
+            redirect: (_, s) => s.extra is String ? null : '/home',
+            builder: (_, s) => QuetAnhPage(duongDanAnh: s.extra! as String),
+          ),
 
           // Cài đặt của mảng AI trên máy: tải / xoá mô hình, công tắc dùng nó.
           //
