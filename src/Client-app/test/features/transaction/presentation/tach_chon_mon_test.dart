@@ -1,5 +1,8 @@
 /// A5 mục 11.2b — form mở từ ảnh quét loại HOÁ ĐƠN: sheet *Thêm phần* cho tick từng món (Stitch `98133eb8…`); tiền
 /// của phần = Σ món đã tick; món đã thuộc phần khác mờ, không tick được; phần chính nhận phần còn lại.
+///
+/// ⚠️ Tick món **tạm TẮT** từ 2026-10-08 (`kChonMonTuAnhQuet = false`, đo 6 hoá đơn thật): các ca ở đây bật nó qua
+/// `choTickMon: true` để giữ đường mã sống cho A5b; ca cuối canh rằng MẶC ĐỊNH không hiện danh sách món.
 library;
 
 import 'dart:io';
@@ -66,7 +69,8 @@ void main() {
         anh: 'a1b2c3d4.jpg',
       )).queryParameters)!;
 
-  Future<void> mo(WidgetTester tester, {DienSanBienDong? bienDong, List<MonHang> mon = _mon}) async {
+  Future<void> mo(WidgetTester tester,
+      {DienSanBienDong? bienDong, List<MonHang> mon = _mon, bool choTickMon = true}) async {
     final bloc = TransactionBloc(transactionRepository: repo);
     CategoryTree cay(List<Category> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
@@ -94,6 +98,7 @@ void main() {
                 budgetLookup: (_, __) async => null,
                 bienDong: bienDong,
                 khoAnhQuet: _KhoGia(mon),
+                choTickMon: choTickMon,
                 xoaBienDong: (_, __) async {},
                 khoanTrongSo: (_) async => const [],
               ),
@@ -200,6 +205,13 @@ void main() {
 
   testWidgets('form gõ tay (không ảnh) → sheet đi thẳng ô số, không danh sách món', (tester) async {
     await mo(tester);
+    await moSheet(tester);
+    expect(find.text('CHỌN MÓN TỪ HOÁ ĐƠN'), findsNothing);
+    expect(find.byKey(const Key('phan-so-tien')), findsOneWidget);
+  });
+
+  testWidgets('⭐ MẶC ĐỊNH (tick món tạm tắt) → form ảnh quét có món vẫn chỉ nhập số', (tester) async {
+    await mo(tester, bienDong: quet(), choTickMon: false);
     await moSheet(tester);
     expect(find.text('CHỌN MÓN TỪ HOÁ ĐƠN'), findsNothing);
     expect(find.byKey(const Key('phan-so-tien')), findsOneWidget);

@@ -18,6 +18,7 @@ final List<RegExp> kNhanDungMon = [
     'subtotal',
   ])
     RegExp('\\b$n\\b'),
+  kNhanTongDocNham,
 ];
 
 /// Dòng bỏ qua khi đọc món: tiền khách đưa / thối lại… Giảm giá và chiết khấu KHÔNG bỏ — trong vùng món chúng là món
@@ -51,6 +52,13 @@ class MonHang {
 final RegExp _tienNgan = RegExp(r'^-?\d{1,3}(?:[.,]\d{3})+$');
 final RegExp _coChu = RegExp(r'\p{L}', unicode: true);
 final RegExp _maDai = RegExp(r'\b\d{8,}\b');
+/// Mã thuế in SAU số tiền (*V08*, *VO8*, *A*) — nghiệm thu 2026-10-08: mọi dòng món của hoá đơn MAXIDI kết thúc bằng
+/// nó, nên luật "số cuối là tiền" loại hết. Chữ HOA đứng đầu, tối đa 3 ký tự.
+final RegExp _maThue = RegExp(r'^[A-Z][A-Z0-9]{0,2}$');
+
+/// Số lượng in ĐẦU dòng (*"1 Mì Siuka …"*).
+final RegExp _soLuongDau = RegExp(r'^\d{1,3}$');
+
 final RegExp _amTu = RegExp(r'\b(giam|km|khuyen mai|chiet khau)\b');
 
 /// Token đuôi dòng thuộc phần số: số, `x`, `=`, `@`, `%`… (SL × đơn giá = thành tiền).
@@ -68,7 +76,11 @@ String _tenTu(List<String> tok) {
   while (n > 0 && _tokSo.hasMatch(tok[n - 1])) {
     n--;
   }
-  return tok.take(n).join(' ').replaceAll(_maDai, '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  var dau = 0;
+  while (dau < n - 1 && _soLuongDau.hasMatch(tok[dau])) {
+    dau++;
+  }
+  return tok.sublist(dau, n).join(' ').replaceAll(_maDai, '').replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 List<MonHang> docMonHang(String vanBan) {
@@ -78,7 +90,10 @@ List<MonHang> docMonHang(String vanBan) {
     final bo = boDauHoaDon(dong[i]);
     if (kNhanDungMon.any((r) => r.hasMatch(bo))) break;
     if (_nhanBoMon.any(bo.contains)) continue;
-    final tok = dong[i].split(RegExp(r'\s+'));
+    var tok = dong[i].split(RegExp(r'\s+'));
+    while (tok.length > 1 && _maThue.hasMatch(tok.last)) {
+      tok = tok.sublist(0, tok.length - 1);
+    }
     final tien = _tienCuoi(tok);
     if (tien == null) continue;
     var ten = _tenTu(tok);

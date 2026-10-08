@@ -102,14 +102,26 @@ LoaiAnhQuet loaiAnhQuet(List<String> hang) {
 }
 
 /// `dd/MM/yyyy` + `HH:mm` → ngày giờ; ngày không có thật (31/02 trôi sang tháng sau) → `null`.
-DateTime? _ngayGio(String? ngay, String? gio) {
+///
+/// Ngày ở TƯƠNG LAI so với [luc] (nghiệm thu 2026-10-08: hoá đơn MAXIDI in *9/11/2026* khi hôm nay là 08/10 — máy POS
+/// in tháng trước ngày) → thử ĐẢO ngày/tháng; đảo ra ngày có thật và không ở tương lai thì nhận (người dùng chốt), không
+/// thì `null` (form dùng lúc quét).
+DateTime? _ngayGio(String? ngay, String? gio, DateTime luc) {
   if (ngay == null) return null;
   try {
     final p = ngay.split('/');
     final g = gio?.split(':');
-    final ngayThu = int.parse(p[0]), thang = int.parse(p[1]);
-    final d = DateTime(int.parse(p[2]), thang, ngayThu, g == null ? 0 : int.parse(g[0]), g == null ? 0 : int.parse(g[1]));
-    return d.day == ngayThu && d.month == thang ? d : null;
+    final nam = int.parse(p[2]), a = int.parse(p[0]), b = int.parse(p[1]);
+    final h = g == null ? 0 : int.parse(g[0]), phut = g == null ? 0 : int.parse(g[1]);
+    DateTime? dung(int ngayThu, int thang) {
+      final d = DateTime(nam, thang, ngayThu, h, phut);
+      return d.day == ngayThu && d.month == thang ? d : null;
+    }
+
+    final d = dung(a, b);
+    if (d != null && !d.isAfter(luc)) return d;
+    final dao = dung(b, a);
+    return dao != null && !dao.isAfter(luc) ? dao : null;
   } catch (_) {
     return null;
   }
@@ -120,7 +132,7 @@ KetQuaAnhQuet docAnhQuet({required String vanBan, required DateTime luc}) {
     final hang = [for (final d in vanBan.split('\n')) if (d.trim().isNotEmpty) d.trim()];
     if (loaiAnhQuet(hang) == LoaiAnhQuet.hoaDon) {
       final hd = docHoaDonTuChu(vanBan);
-      final t = _ngayGio(hd.ngay, hd.gio);
+      final t = _ngayGio(hd.ngay, hd.gio, luc);
       final ghi = hd.cuaHang ?? '';
       return KetQuaAnhQuet(
         loai: LoaiAnhQuet.hoaDon,

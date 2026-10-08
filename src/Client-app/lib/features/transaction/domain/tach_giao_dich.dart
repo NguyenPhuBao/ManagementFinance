@@ -26,6 +26,11 @@ class PhanTach {
       );
 }
 
+/// A5 mục 11.2b — **tạm TẮT** (người dùng chốt 2026-10-08 sau đo 6 hoá đơn thật trên OnePlus): danh sách món đọc từ
+/// ảnh đúng trọn chỉ 1–2/6 hoá đơn — cả luật lẫn Gemma nhìn ảnh; MAXIDI #1 còn ra Σ món KHỚP tổng mà tên lệch hàng với
+/// giá, nên phép kiểm Σ không đủ chặn. Mã chọn món giữ nguyên (A5b bật lại khi có cách đọc món đáng tin).
+const bool kChonMonTuAnhQuet = false;
+
 enum LoiTach { conLaiKhongDuong, phanKhongDuong, trungDanhMuc, monHaiPhan }
 
 double conLai(double tong, List<PhanTach> phan) => phan.fold(tong, (s, p) => s - p.soTien);

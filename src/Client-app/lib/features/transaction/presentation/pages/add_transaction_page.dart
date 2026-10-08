@@ -142,6 +142,10 @@ class AddTransactionPage extends StatefulWidget {
   /// khi đóng. `null` → `sl<KhoAnhQuet>()` nếu đã đăng ký.
   final KhoAnhQuet? khoAnhQuet;
 
+  /// A5 11.2b — sheet *Thêm phần* cho tick món của ảnh quét. Mặc định [kChonMonTuAnhQuet] (đang TẮT); test bật để giữ
+  /// đường mã ấy sống.
+  final bool choTickMon;
+
   /// Ô Nhập nhanh là đặc quyền Premium — Basic khoá CẢ ô (spec Premium 2026-10-06 mục 8.2, người dùng chốt; màn Stitch
   /// *"Thêm giao dịch - Nhập nhanh khoá (Basic)"* `21790848a0dc4e98970c0a591b88f44e`). `null` =
   /// đọc `GoiCubit` qua `context`; **không có provider thì không khoá** — chỉ test cũ gặp ca ấy. Chỉ khoá giao diện:
@@ -170,6 +174,7 @@ class AddTransactionPage extends StatefulWidget {
     this.hangBienDongCho,
     this.khoBienLai,
     this.khoAnhQuet,
+    this.choTickMon = kChonMonTuAnhQuet,
     this.laPremium,
   });
 
@@ -370,7 +375,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       unawaited((_laQuet ? _khoAnhQuet?.duongDan(anh) : _khoBienLai?.duongDan(anh))?.then((p) {
         if (mounted && p != null) setState(() => _duongDanAnh = p);
       }));
-      if (_laQuet) {
+      if (_laQuet && widget.choTickMon) {
         unawaited(_khoAnhQuet?.docMon(anh).then((m) {
           if (mounted) setState(() => _monQuet = m);
         }));

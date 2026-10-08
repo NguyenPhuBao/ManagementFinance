@@ -61,7 +61,20 @@ const List<String> kNhanLoaiHoaDon = [
   'tong sl',
   'subtotal',
   'tam tinh',
+  // Nghiệm thu 2026-10-08 (hoá đơn MAXIDI): dòng THANH TOÁN — số tiền khách đưa, lớn hơn tổng.
+  'tien mat',
 ];
+
+/// *"Tổng"* bị OCR đọc nhầm một nguyên âm (*"Teng"*, *"Tung"*) — ảnh nhăn, nghiệm thu 2026-10-08. Một TỪ trọn 4 chữ;
+/// cố ý không nhận *"tang"* (*tầng / tăng* hay có trong địa chỉ).
+final RegExp kNhanTongDocNham = RegExp(r'\bt[eouy]ng\b');
+
+/// Thứ hạng nhãn tổng của một dòng (bỏ dấu); `-1` = không phải dòng tổng. Nhãn đọc nhầm xếp cùng hạng *"tong"*.
+int hangNhanTong(String bo) {
+  final h = kNhanTongHoaDon.indexWhere(bo.contains);
+  if (h >= 0) return h;
+  return kNhanTongDocNham.hasMatch(bo) ? kNhanTongHoaDon.indexOf('tong') : -1;
+}
 
 final RegExp _ngay = RegExp(r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})\b');
 final RegExp _gio = RegExp(r'\b(\d{1,2}):(\d{2})(?::\d{2})?\b');
@@ -89,7 +102,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
   var hang = kNhanTongHoaDon.length;
   for (var i = 0; i < dong.length; i++) {
     if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
-    final h = kNhanTongHoaDon.indexWhere(bo[i].contains);
+    final h = hangNhanTong(bo[i]);
     if (h < 0 || h > hang) continue;
     var tien = tienTrenDong(dong[i]);
     var nguon = dong[i];
@@ -114,7 +127,8 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     }
   }
 
-  final cuaHang = dong.where((d) => RegExp(r'\p{L}{3,}', unicode: true).hasMatch(d)).firstOrNull;
+  // ≥ 4 chữ cái liền: dòng đầu có thể là chữ lạc trong khung ảnh (nhãn dán *"intel"* → *"tel"*, nghiệm thu 2026-10-08).
+  final cuaHang = dong.where((d) => RegExp(r'\p{L}{4,}', unicode: true).hasMatch(d)).firstOrNull;
   final n = _ngay.firstMatch(vanBan);
   return KetQuaHoaDon(
     tong: tong,
