@@ -1,9 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/sync/sync_payload_normalizer.dart';
+import '../../domain/ban_sao_mac_dinh.dart';
 
 /// Tạo cho mỗi tài khoản một **bản sao riêng** của bộ danh mục mặc định.
 ///
@@ -113,18 +112,6 @@ class DefaultCategorySeeder {
   /// So **cả tên lẫn `classify`**: hai thứ cùng tên khác loại là hai khái niệm
   /// khác nhau, và `uq_category_owner_name_classify` phía CSDL cũng cho chúng
   /// cùng tồn tại.
-  bool _daCoBanSao(List<Category> daCo, Category mau) {
-    final ten = normalizeCategoryName(mau.name);
-    for (final c in daCo) {
-      if (normalizeCategoryName(c.name) != ten) continue;
-      if (!SyncPayloadNormalizer.sameCategoryClassify(
-        c.classify,
-        mau.classify,
-      )) {
-        continue;
-      }
-      return true;
-    }
-    return false;
-  }
+  bool _daCoBanSao(List<Category> daCo, Category mau) =>
+      daCo.any((c) => laBanSaoMacDinh(c, [mau]));
 }
