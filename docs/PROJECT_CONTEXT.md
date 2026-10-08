@@ -596,6 +596,20 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-08)
 
+### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, chờ nghiệm thu)
+
+Bước 5 của đơn 39. Spec `docs/superpowers/specs/2026-10-08-phan-quyen-tinh-nang-client-design.md` (người dùng duyệt),
+kế hoạch 10 task (gitignore), tài liệu **`docs/PREMIUM_FEATURE.md` mục 8**. Client nay thi hành đủ **11 quyền + 5 trần**
+của `/payment/subscription-info` (bản backend viết sẵn: 2 quyền, 3 trần, ba lỗi). Một định nghĩa **`duocDung`**
+(`premium/domain/quyen_tinh_nang.dart`, `enum MaQuyen`): Premium còn hạn → mở; bảng là của Basic
+(`!laPremium(nhanLuc)` — ⚠️ **không** xét `loai`, server trả gói gốc) và có khoá → theo khoá; còn lại → mặc định
+(**mở**, trừ ba quyền AI). Bốn cửa: `GoiCubit.coQuyen` / `context.coQuyen` trong cây widget; `coQuyenNen` cho bộ chạy
+nền + cửa nhập (bỏ lượt, không ghi gì); `redirectTaoTheoGoi` thêm `/bills/add`, `/categories/*/new`;
+`redirectTheoQuyen` ở `/export-report`; màn Nâng cấp nhận `?quyen=`. Widget khoá `the_khoa_quyen.dart` theo ba màn
+Stitch người dùng xác nhận. Ba lỗi đóng: bảng không xét hạn offline · đếm danh mục riêng tính 13 bản sao mặc định
+(`laBanSaoMacDinh`) · đếm hoá đơn tính kỳ `Skipped` (`conPhaiTra`). Test quét `lib/` thứ **21**. Không đổi schema,
+không đổi payload. Còn **Task 10 — nghiệm thu OnePlus** với tài khoản Basic mới.
+
 ### 🔀 Gộp `main` @ `0eb4a05f` · áp `database/21–23` · G67 mốc theo giờ-server (2026-10-08 tối)
 
 - Gộp PR #127 không xung đột (backend đóng đơn 39 — phân quyền tính năng động, và đơn 40 — migration 21). Backend tự sửa
