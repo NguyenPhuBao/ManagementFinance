@@ -47,7 +47,9 @@ class DocAnhBangGemma {
       });
       if (luot != _luot) return null;
       final kq = docJsonGemmaAnh(tho);
-      debugPrint('[Quet][Gemma] ${dongHo.elapsedMilliseconds} ms: tong=${kq?.tong} · ${kq?.mon.length ?? 0} món'
+      // Tổng tiền hoá đơn chỉ in ở bản debug (cùng luật `[Quet][OCR]`).
+      debugPrint('[Quet][Gemma] ${dongHo.elapsedMilliseconds} ms:${kDebugMode ? ' tong=${kq?.tong} ·' : ''}'
+          ' ${kq?.mon.length ?? 0} món'
           '${kq == null ? ' · chữ không phải JSON' : ''}');
       return kq;
     } catch (e) {

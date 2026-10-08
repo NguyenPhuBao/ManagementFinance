@@ -142,7 +142,7 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 
 `8027b781…` sheet chọn nguồn · `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
 `98133eb8…` sheet chọn món (spec mục 7, 11.7). Khối hai chip: màn `bd764b70…` *"Thêm giao dịch - Từ ảnh quét - Hai số
-khác nhau"* xuất hiện sau lượt gọi `timeout` — **chờ người dùng xác nhận**.
+khác nhau"* xuất hiện sau lượt gọi `timeout` — ✅ **người dùng xác nhận 2026-10-08**.
 
 ## 7. Nghiệm thu máy thật (Realme) — CHƯA LÀM
 

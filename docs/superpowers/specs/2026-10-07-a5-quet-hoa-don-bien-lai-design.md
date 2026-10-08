@@ -455,7 +455,7 @@ hỏi được (dùng lại mô hình đang nạp, không nạp lại, không s�
 **quét lại** được → **Nhập nhanh** gọi AI được (250.000 đ đúng; danh mục mô hình chọn *Ăn uống* cho "mua quà sinh nhật" —
 phán đoán của C2, không phải lỗi mới). **Bản `--release`** (225,3 MB, R8 qua): ÙA TEA điền sẵn 158.000, MAXIDI hai chip
 — như bản debug. ⚠️ Bản release vẫn in `[Quet][Gemma] … tong=…` và `[Quet][danhMuc]` ra logcat (số tiền hoá đơn, không
-chữ ảnh) — ứng viên gác sau `kDebugMode` như `[Quet][OCR]`, chưa sửa. Ba giao dịch thử đã xoá mềm qua giao diện, ví về
+chữ ảnh) — ✅ **sửa 2026-10-08 tối**: tổng chỉ in ở bản debug; `[Quet][danhMuc]` đi qua `PhienMotLoiGoi` — lớp dùng chung với Nhập nhanh (C2) và lệnh tạo (C3), nên dòng ấy từng in cả số tiền + ghi chú câu người dùng gõ ở bản release — nay bản release chỉ in thời gian + tên tool, tham số chỉ ở bản debug. Ba giao dịch thử đã xoá mềm qua giao diện, ví về
 đúng mốc. 🚧 Còn mở trên OnePlus: (d) chụp bằng máy ảnh hệ thống, ảnh dọc (cần hoá đơn giấy thật trước máy) · (f) Basic
 (phải đăng nhập tài khoản Basic — `purgeDataForOtherAccounts` dọn SQLite của tài khoản 10 trên máy) · (a) biên lai MB
 (thư viện OnePlus chưa có).

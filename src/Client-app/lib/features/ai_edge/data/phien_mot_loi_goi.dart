@@ -95,7 +95,8 @@ class PhienMotLoiGoi {
             .cast<GoiCongCu>()
             .first
             .timeout(thoiHan);
-        debugPrint('$nhan ${dongHo.elapsedMilliseconds} ms: ${goi.ten} ${goi.args}');
+        // Tham số mang dữ liệu người dùng (số tiền, ghi chú, danh mục) — bản release chỉ in thời gian + tên tool.
+        debugPrint('$nhan ${dongHo.elapsedMilliseconds} ms: ${goi.ten}${kDebugMode ? ' ${goi.args}' : ''}');
         return luot == _luot ? goi : null;
       } finally {
         await phien.huy();
