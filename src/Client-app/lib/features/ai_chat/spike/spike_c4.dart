@@ -15,6 +15,7 @@ import '../../transaction/domain/doc_hoa_don.dart';
 // và test của spike gọi như cũ.
 export '../../../core/ocr/dong_ocr.dart';
 // Luật đọc hoá đơn (lối A) nâng sang `transaction/domain/doc_hoa_don.dart` ngày 2026-10-08 (A5) — xuất lại.
+export '../../transaction/domain/doc_anh_gemma.dart' show kPromptMonTong;
 export '../../transaction/domain/doc_hoa_don.dart' show KetQuaHoaDon, docHoaDonTuChu;
 
 /// Bật bằng `flutter build apk --debug --dart-define=SPIKE_C4=true`.
@@ -38,11 +39,8 @@ const String kPromptMonHoaDon = 'Đây là ảnh một hoá đơn bán hàng. Li
     'nguyên đồng>, "cua_hang": "<tên cửa hàng>", "ngay": "<dd/MM/yyyy hoặc rỗng>", "gio": "<HH:mm hoặc rỗng>"}. '
     'Không giải thích.';
 
-/// A5 (2026-10-08) — bản ĐẦU của [kPromptMonHoaDon]: chỉ hỏi món + tổng (đo OnePlus: tổng 6/6; thêm cửa hàng / ngày /
-/// giờ thì tụt 5/6). Dùng cho phép đo "AI đọc món + tổng, luật đọc phần còn lại".
-const String kPromptMonTong = 'Đây là ảnh một hoá đơn bán hàng. Liệt kê MỌI món hàng in trên hoá đơn. Trả về DUY '
-    'NHẤT một JSON: {"mon": [{"ten": "<tên món>", "tien": <thành tiền, số nguyên đồng>}], "tong": <tổng phải trả, số '
-    'nguyên đồng>}. Không giải thích.';
+// `kPromptMonTong` (bản đầu của [kPromptMonHoaDon], chỉ món + tổng) nâng sang `transaction/domain/doc_anh_gemma.dart`.
+
 
 /// Điểm dấu hiệu của [loaiAnhQuet] (chép từ `doc_anh_quet.dart`, spike thôi) — để LỌC ảnh hoá đơn trong cả thư viện.
 (int hoaDon, int bienLai) diemLoaiAnh(List<String> hang) {

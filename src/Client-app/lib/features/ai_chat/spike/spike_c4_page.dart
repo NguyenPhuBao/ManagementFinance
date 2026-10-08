@@ -28,7 +28,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../ai_edge/data/slm_runtime.dart';
 import '../../category/data/repositories/category_management_repository.dart';
-import '../../transaction/data/doc_anh_bang_ai.dart';
 import '../../transaction/domain/doc_anh_quet.dart';
 import '../../transaction/domain/doc_cau_giao_dich.dart';
 import '../../transaction/domain/doc_mon_hang.dart';
@@ -270,32 +269,6 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
         }
       });
 
-  /// A5 (2026-10-08, người dùng hỏi "có nên cho AI đọc hết"): ML Kit → ghép hàng → Gemma đọc CHỮ (không ảnh), MỌI ô —
-  /// để so với lối A (luật) và lối B (Gemma nhìn ảnh) trên cùng một ảnh.
-  Future<void> _chupAi() => _chay('CHỤP-AI', () async {
-        final p = _anh;
-        if (p == null) return _ghi('CHỤP-AI chưa có ảnh');
-        final d = Stopwatch()..start();
-        final tr = TextRecognizer(script: TextRecognitionScript.latin);
-        String hang;
-        try {
-          final rt = await tr.processImage(InputImage.fromFilePath(p));
-          hang = ghepDongTheoHang([
-            for (final b in rt.blocks)
-              for (final l in b.lines)
-                DongOcr(l.text,
-                    trai: l.boundingBox.left, tren: l.boundingBox.top, phai: l.boundingBox.right, duoi: l.boundingBox.bottom),
-          ]);
-        } finally {
-          await tr.close();
-        }
-        final tOcr = d.elapsedMilliseconds;
-        final ai = await sl<DocAnhBangAi>().doc(hang, now: DateTime.now());
-        final t = d.elapsedMilliseconds;
-        _ghi('CHỤP-AI | so_tien=${ai?.soTien} | ngay=${ai?.ngay} | noi_dung=${ai?.noiDung} | OCR $tOcr ms, tổng $t ms'
-            '${ai == null ? ' | AI KHÔNG TRẢ' : ''}');
-      });
-
   /// A5 (2026-10-08): Gemma nhìn ảnh, liệt kê MÓN — đo xem mô hình đọc món có hơn luật không.
   Future<void> _monB() => _chay('MÓN-B', () async {
         final p = _anh;
@@ -456,7 +429,6 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
             OutlinedButton(onPressed: ban ? null : _anhTuTep, child: const Text('Tệp .jpg')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupA, child: const Text('Đọc — lối A')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupB, child: const Text('Đọc — lối B')),
-            ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupAi, child: const Text('Đọc — AI trên chữ')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _monB, child: const Text('Món — Gemma nhìn ảnh')),
             ElevatedButton(onPressed: ban ? null : _lo, child: const Text('Lô — cả thư mục <mã>/')),
           ]),

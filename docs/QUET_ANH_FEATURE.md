@@ -6,8 +6,10 @@
 > (`kChonMonTuAnhQuet = false`), ngày tương lai đảo ngày/tháng, luật sửa theo OCR thật (`367cefbd`). Người dùng chốt
 > **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — **CHƯA THI CÔNG**. Bảng đo 6 hoá đơn ở
 > spec mục 13.
-> ✅ **Luật sửa theo 15 hoá đơn thật trên Realme (2026-10-08 chiều)** — chốt 9–12 ở mục 3; hàm thuần
-> `chot_tong_quet.dart` (chốt số AI / luật) **xong nhưng CHƯA NỐI** vào `/quet`, chờ đường Gemma nhìn ảnh.
+> ✅ **Luật sửa theo 15 hoá đơn thật trên Realme (2026-10-08 chiều)** — chốt 9–12 ở mục 3.
+> ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test; 🚧 chưa nghiệm thu máy thật)**: hoá đơn + Premium → Gemma NHÌN
+> ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
+> trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
 > Spec: `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (mục 1–9 quét, 10 ngoài phạm vi / A5b,
 > 11 tách + 11.2b chọn món).
 
@@ -19,8 +21,10 @@ hệ thống, `maxWidth 1280`) → màn `/quet` *"Đang đọc ảnh…"* (`Quet
 1. Chép ảnh vào `KhoAnhQuet` (`filesDir/anh_quet/`, xoá ảnh cũ trước — mỗi lúc một ảnh).
 2. ML Kit qua `DocChuAnh` → `ghepDongTheoHang` → `docAnhQuet` (luật): nhận loại ảnh (`loaiAnhQuet`), đọc
    hoá đơn (`docHoaDonTuChu` + `docMonHang`) hoặc biên lai (`docBienLai`).
-3. Còn ô thiếu (`oThieu`) + **Premium** + mô hình + công tắc AI → *"Đang đọc bằng AI…"*: `DocAnhBangAi` (phiên một tool
-   `dien_anh_quet`) → lưới `lapTuAi`.
+3. **Hoá đơn** + **Premium** + mô hình + công tắc AI → *"Đang đọc bằng AI…"*: `DocAnhBangGemma` (Gemma nhìn ảnh,
+   câu hỏi `kPromptMonTong` — chỉ món + tổng) → `chotTongQuet(luat, ai, vanBan)`: số AI chỉ dùng khi có in trên ảnh
+   hoặc khác số luật đúng một chữ số; khớp ≤ 1% → điền số AI; lệch → ô số tiền trống + query `chon=<AI>,<luật>`.
+   Biên lai chỉ luật (Gemma chưa đo biên lai). Gemma CPU (Mali) 21–42 s / ảnh, GPU 4–11 s; trần 90 s.
 4. `pushReplacement('/add?khoa=quet:<ảnh>&…')` (`deeplinkQuet`) — form Thêm giao dịch điền sẵn, dải *"Từ ảnh quét ·
    dd/MM HH:mm"* (+ *"· Đọc bằng AI"*). Không ghi gì cho tới khi người dùng bấm Lưu.
 
@@ -33,9 +37,10 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 |---|---|
 | `transaction/domain/doc_hoa_don.dart` | Luật hoá đơn giấy (tổng, cửa hàng, ngày, **giờ**) — nâng từ spike C4; spike giữ bí danh qua `export` |
 | `transaction/domain/doc_mon_hang.dart` | `MonHang`, `docMonHang` — danh sách món |
-| `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số); khớp luật ≤ 1% → điền, lệch → hai chip. **Chưa nối** |
-| `transaction/domain/doc_anh_quet.dart` | `loaiAnhQuet`, `docAnhQuet`, `KetQuaAnhQuet`, `KetQuaAiAnh`, `chuGuiMoHinh`, `lapTuAi` |
-| `transaction/data/doc_anh_bang_ai.dart` | `DocAnhBangAi` — chỗ DUY NHẤT ảnh quét gọi mô hình |
+| `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số); khớp luật ≤ 1% → điền, lệch → hai chip |
+| `transaction/domain/doc_anh_quet.dart` | `loaiAnhQuet`, `docAnhQuet`, `KetQuaAnhQuet` (`voiSoTien` đặt số đã chốt, kể cả `null`) |
+| `transaction/domain/doc_anh_gemma.dart` | `kPromptMonTong` (câu hỏi ĐÃ ĐO — đổi là đo lại), `docJsonGemmaAnh` (số `"75,700"` và `39,000` không ngoặc) |
+| `transaction/data/doc_anh_bang_gemma.dart` | `DocAnhBangGemma` — chỗ DUY NHẤT ảnh quét gọi mô hình; đi qua `SlmDocAnh` (`slm_runtime.dart`: nạp lại bản có ảnh, ĐÓNG sau khi đọc) |
 | `core/ocr/kho_anh_quet.dart` | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
 | `transaction/domain/dien_san_bien_dong.dart` | khoá `quet:`, `kNguonAnhQuet`, `DienSanBienDong.laQuet/ai`, `deeplinkQuet` |
 | `transaction/presentation/pages/quet_anh_page.dart` | `moQuet`, `QuetAnhPage` — tệp DUY NHẤT import `image_picker` |
@@ -49,14 +54,18 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 2. **Ảnh xoá trong `dispose()` của form** — một chỗ cho mọi đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong`
    với khoá `quet:` chỉ xoá ảnh, **không** gọi `xoaBienDong` (không có hàng loại 20).
 3. **`anh_quet/` tách khỏi `bien_lai/`** — `KhoBienLai.donMoCoi` xoá ảnh không có hàng loại 20 ở mỗi lượt nhập.
-4. **AI chỉ lấp ô trong `oThieu`**, mỗi ô một chốt: số tiền phải là số tiền có trên ảnh (`tienTrenDong`), ngày phải in
-   trên ảnh và không ở tương lai, nội dung là chuỗi con của chữ. Không tham số danh mục.
+4. **AI chỉ chạm SỐ TIỀN** (ngày, cửa hàng là của luật — người dùng chốt). Số AI không in trên ảnh thì bỏ (4/5 lần
+   Gemma CPU sai là loại ấy); chỉ điền sẵn khi khớp số luật, lệch thì hỏi bằng chip (`DienSanBienDong.luaChonTien`,
+   khối `khoi-chon-so-tien` dưới dải nguồn, chạm chip đi qua `themPhimSoTien`).
+4b. **`docAnh` đóng mô hình sau khi đọc** → `PhienMotLoiGoi.chuanBi` (Nhập nhanh, lệnh tạo) phải nạp lại khi
+   `!runtime.dangSan` — trước đây nó nhớ "đã nạp" mãi và Nhập nhanh âm thầm thôi dùng AI sau một lần quét.
 5. **Nhãn dừng đọc món ≠ nhãn tổng**: bỏ `thanh tien · so tien · thanh toan` (tiêu đề cột), thêm `tam tinh · subtotal`,
    so theo **từ trọn** — chuỗi con là món *"BANH TONGHOP"* cắt cụt danh sách.
 6. **Dòng món đòi số cuối có ngăn nghìn** — loại ngày / giờ / năm (`2026` ≥ 1.000 mà `tienTrenDong` vẫn nhận).
 7. **`TransactionDao.insert` là `insertOrReplace`** — trùng id KHÔNG làm hỏng giao tác; test "ghi hết hoặc không" dùng
    khoá ngoại ví (`PRAGMA foreign_keys = ON`).
-8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`.
+8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`. Sheet chọn nguồn mở bằng
+   `useRootNavigator: true` — trong navigator nhánh thì thanh dưới + nút + đè lên và che nút Huỷ.
 9. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
    Nhãn không có số thì dòng TRÊN chỉ-có-số thắng dòng dưới (BHX / MAXIDI in số cao hơn nhãn). Chữ *"tổng"* OCR đọc
    méo (*Téng, Töng*) được thay bằng *tong* TRƯỚC khi xếp hạng nhãn (`hangNhanTong`), nên *"Téng tiên"* thắng
@@ -69,7 +78,6 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     *"Ngày 19 tháng 09 năm 2026"*.
 12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
     cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
-    `lapTuAi` dùng **cùng** chốt (`khongPhaiTenCuaHang`) — không thì AI (Premium) điền lại đúng dòng luật vừa bỏ.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.

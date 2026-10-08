@@ -1,5 +1,6 @@
-/// A5 mục 3, 5.7 — màn `/quet` ("Đang đọc ảnh…"): luật trước, AI chỉ khi Premium + còn ô thiếu, Huỷ hai pha, thay
-/// chính nó bằng form (Back từ form về trang trước, không về màn chờ).
+/// A5 mục 3, 5.7, 13 — màn `/quet` ("Đang đọc ảnh…"): luật trước; hoá đơn + Premium → Gemma NHÌN ẢNH đọc món + tổng,
+/// số chốt bằng `chotTongQuet` (khớp → điền, lệch → hai chip); Huỷ hai pha; thay chính nó bằng form (Back từ form về
+/// trang trước, không về màn chờ).
 ///
 /// ⚠️ Không `pumpAndSettle` khi vòng xoay còn quay — dùng [_cho].
 library;
@@ -10,8 +11,10 @@ import 'dart:io';
 import 'package:flowmoney/core/ocr/doc_chu_anh.dart';
 import 'package:flowmoney/core/ocr/dong_ocr.dart';
 import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
-import 'package:flowmoney/features/transaction/data/doc_anh_bang_ai.dart';
-import 'package:flowmoney/features/transaction/domain/doc_anh_quet.dart';
+import 'dart:typed_data';
+
+import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
+import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/quet_anh_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,15 +36,15 @@ class _DocChuGia implements DocChuAnh {
   }
 }
 
-class _AiGia implements DocAnhBangAi {
-  _AiGia(this.kq, {this.cho});
-  final KetQuaAiAnh? kq;
-  final Completer<KetQuaAiAnh?>? cho;
+class _GemmaGia implements DocAnhBangGemma {
+  _GemmaGia(this.kq, {this.cho});
+  final KetQuaGemmaAnh? kq;
+  final Completer<KetQuaGemmaAnh?>? cho;
   int soLanDoc = 0;
   int soLanHuy = 0;
 
   @override
-  Future<KetQuaAiAnh?> doc(String vanBan, {required DateTime now}) async {
+  Future<KetQuaGemmaAnh?> doc(Uint8List anh) async {
     soLanDoc++;
     if (cho != null) return cho!.future;
     return kq;
@@ -65,8 +68,7 @@ const _hoaDon = [
   'TONG CONG 165.000',
 ];
 
-/// Biên lai không nhãn nội dung → `oThieu = {ghiChu}` → AI được gọi (Premium).
-const _bienLaiThieuNoiDung = ['Giao dịch thành công', 'Số tiền 150.000 VND', 'Thời gian 02/10/2026 18:45'];
+const _bienLai = ['Giao dịch thành công', 'Số tiền 150.000 VND', 'Thời gian 02/10/2026 18:45'];
 
 void main() {
   late Directory goc;
@@ -84,7 +86,7 @@ void main() {
   Future<GoRouter> mo(
     WidgetTester tester, {
     required DocChuAnh docChu,
-    DocAnhBangAi? ai,
+    DocAnhBangGemma? gemma,
     bool laPremium = true,
   }) async {
     final router = GoRouter(
@@ -97,7 +99,7 @@ void main() {
             duongDanAnh: s.extra! as String,
             docChu: docChu,
             kho: kho,
-            docAi: ai,
+            docGemma: gemma,
             laPremium: laPremium,
             now: () => now,
           ),
@@ -123,16 +125,19 @@ void main() {
     return Uri.parse((t.single.widget as Text).data!.substring(5));
   }
 
-  testWidgets('⭐ hoá đơn, luật đủ → KHÔNG gọi AI, thay bằng form có khoá quet:, tiền; Back về trang trước',
+  testWidgets('⭐ Basic: luật → form có khoá quet:, tiền; KHÔNG gọi Gemma, không chữ "AI"; Back về trang trước',
       (tester) async {
-    final ai = _AiGia(null);
-    final router = await mo(tester, docChu: _DocChuGia(_hoaDon), ai: ai);
+    final g = _GemmaGia(const KetQuaGemmaAnh(tong: 165000));
+    final router = await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, laPremium: false);
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.textContaining('AI'), findsNothing);
     await cho(tester);
     final u = form();
     expect(u, isNotNull);
     expect(u!.queryParameters['khoa'], startsWith('quet:'));
     expect(u.queryParameters['amount'], '165000');
-    expect(ai.soLanDoc, 0, reason: 'luật đọc đủ ba ô → không có ô nào cho AI lấp');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(g.soLanDoc, 0);
     router.pop();
     await cho(tester);
     expect(find.text('Trang trước'), findsOneWidget, reason: 'màn "Đang đọc ảnh…" đã bị thay, không nằm trong ngăn xếp');
@@ -145,27 +150,47 @@ void main() {
     expect((await kho.docMon(ten)).map((m) => m.soTien), [120000, 45000]);
   });
 
-  testWidgets('còn ô thiếu + Premium → AI một lần, chữ "Đang đọc bằng AI…" trong lúc chờ, form có ai=1',
+  testWidgets('⭐ hoá đơn + Premium → Gemma MỘT lần dù luật đã đủ, "Đang đọc bằng AI…" lúc chờ; khớp luật → điền, ai=1',
       (tester) async {
-    final c = Completer<KetQuaAiAnh?>();
-    final ai = _AiGia(null, cho: c);
-    await mo(tester, docChu: _DocChuGia(_bienLaiThieuNoiDung), ai: ai);
+    final c = Completer<KetQuaGemmaAnh?>();
+    final g = _GemmaGia(null, cho: c);
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g);
     await cho(tester);
     expect(find.text('Đang đọc bằng AI…'), findsOneWidget);
-    c.complete(const KetQuaAiAnh(noiDung: 'Giao dịch thành công'));
+    c.complete(const KetQuaGemmaAnh(tong: 165000));
     await cho(tester);
-    expect(ai.soLanDoc, 1);
-    expect(form()!.queryParameters['ai'], '1');
+    expect(g.soLanDoc, 1);
+    final u = form()!;
+    expect(u.queryParameters['amount'], '165000');
+    expect(u.queryParameters['ai'], '1');
+    expect(u.queryParameters.containsKey('chon'), isFalse);
   });
 
-  testWidgets('Basic → KHÔNG gọi AI, không chữ "AI" nào', (tester) async {
-    final ai = _AiGia(const KetQuaAiAnh(noiDung: 'Giao dịch thành công'));
-    await mo(tester, docChu: _DocChuGia(_bienLaiThieuNoiDung), ai: ai, laPremium: false);
-    await tester.pump(const Duration(milliseconds: 1));
-    expect(find.textContaining('AI'), findsNothing);
+  testWidgets('⭐ Gemma ra một số CÓ trên ảnh nhưng lệch luật > 1% → không amount, hai chip (AI trước), ai=1',
+      (tester) async {
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 120000)));
     await cho(tester);
-    expect(ai.soLanDoc, 0);
-    expect(form()!.queryParameters.containsKey('ai'), isFalse);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters['chon'], '120000,165000');
+    expect(u.queryParameters['ai'], '1');
+  });
+
+  testWidgets('Gemma ra số KHÔNG in trên ảnh → bỏ, số luật, không ai=1, không chip', (tester) async {
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 83500)));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters['amount'], '165000');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(u.queryParameters.containsKey('chon'), isFalse);
+  });
+
+  testWidgets('biên lai → KHÔNG gọi Gemma (câu hỏi đo trên hoá đơn giấy), dù Premium', (tester) async {
+    final g = _GemmaGia(const KetQuaGemmaAnh(tong: 150000));
+    await mo(tester, docChu: _DocChuGia(_bienLai), gemma: g);
+    await cho(tester);
+    expect(g.soLanDoc, 0);
+    expect(form()!.queryParameters['amount'], '150000');
   });
 
   testWidgets('Huỷ ở pha luật → về trang trước, ảnh trong kho bị xoá, không mở form', (tester) async {
@@ -184,15 +209,15 @@ void main() {
   });
 
   testWidgets('Huỷ ở pha AI → dừng lượt sinh, mở form với kết quả luật (không ai=1)', (tester) async {
-    final c = Completer<KetQuaAiAnh?>();
-    final ai = _AiGia(null, cho: c);
-    await mo(tester, docChu: _DocChuGia(_bienLaiThieuNoiDung), ai: ai);
+    final c = Completer<KetQuaGemmaAnh?>();
+    final g = _GemmaGia(null, cho: c);
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g);
     await cho(tester);
     await tester.tap(find.byKey(const Key('quet-huy')));
     await cho(tester);
-    expect(ai.soLanHuy, 1);
+    expect(g.soLanHuy, 1);
     final u = form()!;
-    expect(u.queryParameters['amount'], '150000');
+    expect(u.queryParameters['amount'], '165000');
     expect(u.queryParameters.containsKey('ai'), isFalse);
   });
 
@@ -211,6 +236,23 @@ void main() {
     await cho(tester);
     expect(form()!.queryParameters.containsKey('amount'), isFalse);
     expect(bat.cau, contains(kCauChuaDocTien));
+  });
+
+  testWidgets('⭐ moQuet mở sheet trên navigator GỐC — không nằm dưới thanh điều hướng + nút + của shell', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute(
+            builder: (ctx) => TextButton(onPressed: () => moQuet(ctx), child: const Text('Q')),
+          ),
+        ),
+      ),
+    ));
+    final goc = tester.state<NavigatorState>(find.byType(Navigator).first);
+    await tester.tap(find.text('Q'));
+    await tester.pumpAndSettle();
+    expect(Navigator.of(tester.element(find.text('Chụp ảnh'))), same(goc),
+        reason: 'nghiệm thu OnePlus 2026-10-08: sheet trong navigator nhánh bị thanh dưới đè, nút Huỷ khuất');
   });
 
   testWidgets('moQuet: sheet hai nguồn; huỷ máy ảnh → không đi đâu; chọn ảnh → push /quet', (tester) async {

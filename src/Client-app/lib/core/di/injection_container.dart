@@ -70,7 +70,7 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
-import '../../features/transaction/data/doc_anh_bang_ai.dart';
+import '../../features/transaction/data/doc_anh_bang_gemma.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -731,10 +731,12 @@ Future<void> setupDependencies() async {
     ),
   );
 
-  // A5 mục 5.4 — ảnh quét: AI lấp ô luật không đọc ra. Điều kiện Premium nằm ở màn /quet; ở đây là tệp đủ + công tắc.
-  sl.registerLazySingleton<DocAnhBangAi>(
-    () => DocAnhBangAi(
-      runtime: sl<SlmRuntime>(),
+  // A5 mục 13 — ảnh quét hoá đơn: Gemma NHÌN ẢNH đọc món + tổng. Điều kiện Premium nằm ở màn /quet; ở đây là tệp đủ +
+  // công tắc. CÙNG một runtime với đường chữ (một mô hình mỗi lúc — `docAnh` đóng nó sau khi đọc).
+  sl.registerLazySingleton<SlmDocAnh>(() => sl<SlmRuntime>() as SlmDocAnh);
+  sl.registerLazySingleton<DocAnhBangGemma>(
+    () => DocAnhBangGemma(
+      moHinh: sl<SlmDocAnh>(),
       sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),
     ),

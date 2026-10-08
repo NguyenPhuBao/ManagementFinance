@@ -413,6 +413,13 @@ bỏ dấu ảnh, đọc *Sep 28, 2026* và *Ngày … tháng … năm*; kèm t�
 · **0 sai im lặng**, cửa hàng 8 đúng · 3 trống · 4 tạm được; chốt AI + luật **13/15 điền sẵn đều đúng, 2 tờ hỏi chip**
 (số đúng có trong chip). ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
 
+**Nối vào `/quet` (2026-10-08 tối — mã + test, 🚧 chưa nghiệm thu máy thật):** `SlmDocAnh.docAnh` (runtime nạp lại
+bản có ảnh, đóng sau khi đọc) → `DocAnhBangGemma` (trần 90 s, Huỷ) → `docJsonGemmaAnh` → `chotTongQuet` → query `chon`
+→ khối hai chip trên form. Chỉ hoá đơn, chỉ Premium. `DocAnhBangAi` / `lapTuAi` bỏ. Sheet `moQuet` `useRootNavigator`.
+Lỗi kèm: `PhienMotLoiGoi.chuanBi` nhớ "đã nạp" mãi — sau một lần quét đóng mô hình, Nhập nhanh âm thầm thôi dùng AI (đã
+sửa). Màn Stitch khối chip: gọi 2026-10-08, lượt gọi `timeout` — chờ hiện. Chưa làm: nâng `maxWidth`, dùng món của AI
+(tick món vẫn tắt).
+
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
   **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi

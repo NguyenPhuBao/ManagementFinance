@@ -38,6 +38,7 @@ class DienSanBienDong {
     this.cachDoc,
     this.phien,
     this.ai = false,
+    this.luaChonTien = const [],
   });
 
   /// `dedupeKey` của hàng loại 20 — xoá cứng hàng ấy khi Lưu / Bỏ qua.
@@ -72,6 +73,10 @@ class DienSanBienDong {
   /// A5 — ít nhất một ô do AI lấp (chỉ có nghĩa với khoá `quet:`).
   final bool ai;
 
+  /// A5 mục 13 — ảnh quét mà số AI và số luật LỆCH nhau: các số cho người dùng chạm chọn (số AI trước), ô số tiền để
+  /// trống. Rỗng với mọi khoá khác `quet:`.
+  final List<double> luaChonTien;
+
   /// Form mở từ ảnh quét (A5) — không gắn nguồn ngân hàng, không hàng loại 20.
   bool get laQuet => khoa.startsWith(kTienToKhoaQuet);
 }
@@ -101,11 +106,20 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
     duoi: duoi.isEmpty ? null : duoi,
     phien: DateTime.tryParse(q['phien'] ?? ''),
     ai: khoa.startsWith(kTienToKhoaQuet) && q['ai'] == '1',
+    luaChonTien: !khoa.startsWith(kTienToKhoaQuet)
+        ? const []
+        : [
+            for (final x in (q['chon'] ?? '').split(','))
+              if (double.tryParse(x) case final v? when v > 0 && v < 1e13) v,
+          ],
   );
 }
 
 /// A5 — query mở form từ ảnh quét. Khoá mang tên ảnh: mỗi lần quét một khoá khác.
-String deeplinkQuet(KetQuaAnhQuet kq, {required String anh}) => Uri(path: '/add', queryParameters: {
+///
+/// [luaChonTien] — số AI và số luật lệch nhau (`chotTongQuet`): form hiện chip chọn, ô số tiền trống.
+String deeplinkQuet(KetQuaAnhQuet kq, {required String anh, List<double> luaChonTien = const []}) =>
+    Uri(path: '/add', queryParameters: {
       'khoa': '$kTienToKhoaQuet$anh',
       'nguon': kNguonAnhQuet,
       'anh': anh,
@@ -114,6 +128,7 @@ String deeplinkQuet(KetQuaAnhQuet kq, {required String anh}) => Uri(path: '/add'
       'note': kq.ghiChu,
       if (kq.soTien != null) 'amount': kq.soTien!.toStringAsFixed(0),
       if (kq.aiLap) 'ai': '1',
+      if (luaChonTien.isNotEmpty) 'chon': [for (final v in luaChonTien) v.toStringAsFixed(0)].join(','),
     }).toString();
 
 String _hai(int n) => n.toString().padLeft(2, '0');

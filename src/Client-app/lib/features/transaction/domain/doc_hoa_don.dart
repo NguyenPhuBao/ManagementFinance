@@ -226,9 +226,8 @@ final RegExp _thanHoaDon =
 
 final RegExp _tuChu = RegExp(r'\p{L}+', unicode: true);
 
-/// Một dòng chắc KHÔNG phải tên cửa hàng: chữ trên đồ vật phía sau, địa chỉ / liên hệ, tiêu đề chứng từ. Lưới của AI
-/// (`lapTuAi`) dùng chung — mô hình được phép chọn một chuỗi con của chữ OCR, kể cả đúng dòng luật vừa bỏ.
-bool khongPhaiTenCuaHang(String dong) {
+/// Một dòng chắc KHÔNG phải tên cửa hàng: chữ trên đồ vật phía sau, địa chỉ / liên hệ, tiêu đề chứng từ.
+bool _khongPhaiTenCuaHang(String dong) {
   final b = boDauHoaDon(dong);
   return _chuDoVat.hasMatch(b) || _diaChi.hasMatch(b) || _tieuDe.hasMatch(b);
 }
@@ -242,7 +241,7 @@ String? _cuaHang(List<String> dong, List<String> bo) {
     if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) return null;
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
-    if (khongPhaiTenCuaHang(dong[i])) continue;
+    if (_khongPhaiTenCuaHang(dong[i])) continue;
     return dong[i];
   }
   return null;

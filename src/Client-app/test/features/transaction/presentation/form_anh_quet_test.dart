@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/font_that.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 class KhoAnhQuetGia implements KhoAnhQuet {
@@ -46,10 +47,11 @@ void main() {
   final mb = makeWallet(id: 'mb', name: 'MB').copyWith(type: 'bank', isDefault: false);
   const anh = 'a1b2c3d4.jpg';
 
-  DienSanBienDong dienSan({bool ai = false}) => dienSanBienDongTuQuery(Uri.parse(deeplinkQuet(
+  DienSanBienDong dienSan({bool ai = false, List<double> chon = const []}) =>
+      dienSanBienDongTuQuery(Uri.parse(deeplinkQuet(
         KetQuaAnhQuet(
           loai: LoaiAnhQuet.hoaDon,
-          soTien: 191862,
+          soTien: chon.isEmpty ? 191862 : null,
           chieu: 'chi',
           thoiGian: DateTime(2026, 9, 28, 18, 42),
           ghiChu: 'PHO 24',
@@ -58,6 +60,7 @@ void main() {
           aiLap: ai,
         ),
         anh: anh,
+        luaChonTien: chon,
       )).queryParameters)!;
 
   late FakeTransactionRepository repo;
@@ -72,7 +75,7 @@ void main() {
     luotDocSo = 0;
   });
 
-  Widget app({bool ai = false}) {
+  Widget app({bool ai = false, List<double> chon = const []}) {
     final bloc = TransactionBloc(transactionRepository: repo);
     CategoryTree cay(List<Category> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
@@ -97,7 +100,7 @@ void main() {
                 wallets: [tienMat, mb],
                 idaccount: 1,
                 budgetLookup: (_, __) async => null,
-                bienDong: dienSan(ai: ai),
+                bienDong: dienSan(ai: ai, chon: chon),
                 khoAnhQuet: kho,
                 xoaBienDong: (id, k) async => daXoaHang.add((id, k)),
                 khoanTrongSo: (_) async {
@@ -113,8 +116,8 @@ void main() {
     return MaterialApp.router(routerConfig: router);
   }
 
-  Future<void> mo(WidgetTester tester, {bool ai = false}) async {
-    await tester.pumpWidget(app(ai: ai));
+  Future<void> mo(WidgetTester tester, {bool ai = false, List<double> chon = const []}) async {
+    await tester.pumpWidget(app(ai: ai, chon: chon));
     await tester.pumpAndSettle();
   }
 
@@ -163,5 +166,54 @@ void main() {
   testWidgets('ai=1 → dải nói "Đọc bằng AI"', (tester) async {
     await mo(tester, ai: true);
     expect(find.text('Từ ảnh quét · 28/09 18:42 · Đọc bằng AI'), findsOneWidget);
+  });
+
+  group('A5 mục 13 — số AI và số luật lệch nhau → ô số tiền trống + hai chip', () {
+    testWidgets('⭐ khối "Đọc ra hai số khác nhau" với hai chip theo thứ tự AI trước; ô số tiền TRỐNG', (tester) async {
+      await mo(tester, ai: true, chon: const [16588, 79243]);
+      expect(find.text('Đọc ra hai số khác nhau — chọn số đúng:'), findsOneWidget);
+      final chip = find.byKey(const Key('chon-so-tien-0'));
+      expect(find.descendant(of: chip, matching: find.text('16.588 đ')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('chon-so-tien-1')), matching: find.text('79.243 đ')),
+          findsOneWidget);
+      expect(find.text('16.588 đ'), findsOneWidget, reason: 'chưa chọn — số chỉ nằm trên chip, ô số tiền trống');
+    });
+
+    testWidgets('⭐ chạm chip → điền ô số tiền, chip ấy được chọn; Lưu ghi đúng số chip', (tester) async {
+      await mo(tester, ai: true, chon: const [16588, 79243]);
+      await tester.tap(find.byKey(const Key('chon-so-tien-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('79.243 đ'), findsNWidgets(2), reason: 'ô số tiền + chip');
+      expect(tester.widget<ChoiceChip>(find.byKey(const Key('chon-so-tien-1'))).selected, isTrue);
+      expect(tester.widget<ChoiceChip>(find.byKey(const Key('chon-so-tien-0'))).selected, isFalse);
+      await tester.tap(find.byIcon(Icons.check));
+      await tester.pumpAndSettle();
+      expect(repo.added.single.transaction.amount, 79243);
+    });
+
+    testWidgets('chạm chip kia → đổi số', (tester) async {
+      await mo(tester, ai: true, chon: const [16588, 79243]);
+      await tester.tap(find.byKey(const Key('chon-so-tien-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('chon-so-tien-0')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(find.byKey(const Key('chon-so-tien-0'))).selected, isTrue);
+      expect(find.text('16.588 đ'), findsNWidgets(2));
+    });
+
+    testWidgets('320 dp, font thật: khối hai chip không tràn', (tester) async {
+      await napFontThat();
+      tester.view.physicalSize = const Size(960, 2100);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await mo(tester, ai: true, chon: const [1234567890, 9876543210]);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('chon-so-tien-1')), findsOneWidget);
+    });
+
+    testWidgets('không có lựa chọn → không có khối', (tester) async {
+      await mo(tester);
+      expect(find.text('Đọc ra hai số khác nhau — chọn số đúng:'), findsNothing);
+    });
   });
 }

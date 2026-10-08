@@ -49,6 +49,34 @@ void main() {
     expect(d.ai, isFalse);
   });
 
+  test('⭐ hai số lệch (A5 mục 13) → query mang chon=AI,luật, đọc lại đúng thứ tự; không amount', () {
+    final u = Uri.parse(deeplinkQuet(
+      KetQuaAnhQuet(
+          loai: LoaiAnhQuet.hoaDon,
+          soTien: null,
+          chieu: 'chi',
+          thoiGian: DateTime(2026, 9, 6),
+          ghiChu: '',
+          mon: const [],
+          oThieu: const {},
+          aiLap: true),
+      anh: 'a1b2c3d4.jpg',
+      luaChonTien: const [16588, 79243],
+    ));
+    expect(u.queryParameters['chon'], '16588,79243');
+    final d = dienSanBienDongTuQuery(u.queryParameters)!;
+    expect(d.soTien, isNull);
+    expect(d.luaChonTien, [16588, 79243]);
+  });
+
+  test('chon hỏng / số quá trần / khoá không phải quet: → bỏ', () {
+    expect(dienSanBienDongTuQuery({'khoa': 'quet:a', 'nguon': kNguonAnhQuet, 'chon': 'abc,0,-5'})!.luaChonTien,
+        isEmpty);
+    expect(dienSanBienDongTuQuery({'khoa': 'quet:a', 'nguon': kNguonAnhQuet, 'chon': '10000000000000'})!.luaChonTien,
+        isEmpty);
+    expect(dienSanBienDongTuQuery({'khoa': 'bienDong:x', 'nguon': 'MB', 'chon': '1000,2000'})!.luaChonTien, isEmpty);
+  });
+
   test('dải nguồn: "Từ ảnh quét · 28/09 18:42", thêm " · Đọc bằng AI" khi ai', () {
     final d = dienSanBienDongTuQuery(Uri.parse(deeplinkQuet(kq, anh: 'a1b2c3d4.jpg')).queryParameters)!;
     expect(dongNguonBienDong(d), 'Từ ảnh quét · 28/09 18:42 · Đọc bằng AI');

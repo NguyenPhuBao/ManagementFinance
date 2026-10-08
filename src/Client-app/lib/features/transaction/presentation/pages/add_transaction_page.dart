@@ -1941,6 +1941,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         if (_bienDong case final d?) ...[
                           _buildDaiNguon(d),
                           const SizedBox(height: 12),
+                          if (d.luaChonTien.isNotEmpty) ...[
+                            _buildChonSoTien(d.luaChonTien),
+                            const SizedBox(height: 12),
+                          ],
                           if (_goiYChuyen case final gy? when !_isTransfer) ...[
                             _buildGoiYChuyen(gy),
                             const SizedBox(height: 12),
@@ -2389,6 +2393,59 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ],
         ),
       );
+
+  /// A5 mục 13 — ảnh quét mà số AI (Gemma nhìn ảnh) và số luật LỆCH > 1%: ô số tiền để trống, người dùng chạm một chip
+  /// để điền (hoặc gõ số khác). Chip đang khớp ô số tiền được tô chọn. Người dùng chốt 2026-10-08.
+  Widget _buildChonSoTien(List<double> ds) {
+    final dang = ketQuaBieuThuc(_amountString);
+    return Container(
+      key: const Key('khoi-chon-so-tien'),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: const Border(left: BorderSide(color: AppColors.warning, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Đọc ra hai số khác nhau — chọn số đúng:',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < ds.length; i++)
+                ChoiceChip(
+                  key: Key('chon-so-tien-$i'),
+                  label: Text(CurrencyFormatter.format(ds[i]), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  selected: (ds[i] - dang).abs() < 0.5,
+                  onSelected: (_) => _dienSoTienChon(ds[i]),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Hoặc nhập số khác bằng bàn phím',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Điền số của chip — đi qua `themPhimSoTien` như mọi đường điền khác (cùng trần số chữ số).
+  void _dienSoTienChon(double v) => setState(() {
+        var a = '0';
+        for (final c in v.toInt().toString().split('')) {
+          a = themPhimSoTien(a, c);
+        }
+        _amountString = a;
+        _hienBanPhimSo = false;
+      });
 
   /// Thẻ gợi ý Chuyển khoản (spec 2026-09-30 §4, Stitch *"Thêm giao dịch - Gợi ý chuyển khoản từ biến động"*).
   Widget _buildGoiYChuyen(GoiYChuyenKhoan gy) => Container(

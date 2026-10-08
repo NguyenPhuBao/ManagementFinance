@@ -49,7 +49,19 @@ abstract class SlmRuntime {
   Future<void> dong();
 }
 
-class SlmRuntimeThat implements SlmRuntime {
+/// Mô hình NHÌN ẢNH (A5 mục 13 — đọc hoá đơn). Giao diện riêng, không gộp vào [SlmRuntime]: chỉ màn Quét cần, và bản
+/// giả của [SlmRuntime] trong test không phải mang thêm một hàm.
+abstract class SlmDocAnh {
+  /// Sinh MỘT câu từ [prompt] kèm [anh]. Nạp lại mô hình có cờ ảnh nếu đang nạp bản không ảnh, và ĐÓNG mô hình sau khi
+  /// đọc: bản có ảnh nặng hơn (PSS đỉnh 2,93 GB trên Realme), đường chữ thường tự nạp lại bản không cờ. Ném khi máy
+  /// không chạy được.
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh);
+
+  /// Dừng lượt đọc đang chạy — lượt ấy trả về phần chữ đã sinh (thường rỗng).
+  Future<void> huy();
+}
+
+class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
   /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
   final CanaryGpu? canary;
 
@@ -100,6 +112,35 @@ class SlmRuntimeThat implements SlmRuntime {
     debugPrint('[SLM][C4] sinh xong sau ${dongHo.elapsedMilliseconds} ms '
         '(${canAnh ? 'ảnh ${anh.length} byte' : canAm ? 'âm ${wav.length} byte' : 'chữ'} → ${cau.length} ký tự)');
     return cau;
+  }
+
+  @override
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh) async {
+    try {
+      if (_model == null || !_coAnh || _coAm) {
+        await dong();
+        await _nap(duongTep, anh: true);
+      }
+      final dongHo = Stopwatch()..start();
+      // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
+      final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+      _chatDangSinh = chat;
+      await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
+      final cau = StringBuffer();
+      try {
+        // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
+        await for (final r in chat.generateChatResponseAsync()) {
+          if (r is TextResponse) cau.write(r.token);
+        }
+      } finally {
+        _chatDangSinh = null;
+      }
+      debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
+      return cau.toString().trim();
+    } finally {
+      await dong();
+    }
   }
 
   Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {

@@ -1,8 +1,10 @@
 /// A5 — nút **Quét** ở Trang chủ (spec `2026-10-07-a5-quet-hoa-don-bien-lai-design.md` mục 3, 5.7): bottom sheet chọn
 /// nguồn ảnh → màn *"Đang đọc ảnh…"* (Stitch `353934f2…`) → form Thêm giao dịch điền sẵn (`/add?khoa=quet:…`).
 ///
-/// Luật trước (ML Kit qua `DocChuAnh` → `ghepDongTheoHang` → `docAnhQuet`), AI chỉ lấp ô thiếu khi Premium + mô hình +
-/// công tắc (`DocAnhBangAi` → lưới `lapTuAi`). Không ghi gì — người dùng bấm Lưu trên form (bất biến ④).
+/// Luật trước (ML Kit qua `DocChuAnh` → `ghepDongTheoHang` → `docAnhQuet`). Hoá đơn + Premium + mô hình + công tắc →
+/// Gemma NHÌN ẢNH đọc món + tổng (`DocAnhBangGemma`, spec A5 mục 13 — người dùng chốt: AI đọc món và tổng, luật đọc phần
+/// còn lại); số tiền chốt bằng `chotTongQuet`: khớp → điền, lệch → ô trống + hai chip trên form. Biên lai chỉ luật
+/// (Gemma chưa đo trên biên lai). Không ghi gì — người dùng bấm Lưu trên form (bất biến ④).
 ///
 /// ⚠️ Tệp DUY NHẤT của `lib/` (ngoài màn spike C4) import `image_picker` — test quét thứ 20
 /// (`chi_mot_noi_import_image_picker_test.dart`).
@@ -23,7 +25,8 @@ import '../../../../core/ocr/dong_ocr.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
-import '../../data/doc_anh_bang_ai.dart';
+import '../../data/doc_anh_bang_gemma.dart';
+import '../../domain/chot_tong_quet.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_anh_quet.dart';
 
@@ -45,9 +48,13 @@ Future<String?> _chonAnhThat(NguonAnh n) async {
 }
 
 /// Bottom sheet hai dòng (Stitch `8027b781…`) → chụp / chọn → `push('/quet')`. Đóng sheet / huỷ máy ảnh = không gì.
+///
+/// ⚠️ `useRootNavigator`: nút Quét nằm trong nhánh của shell, sheet mở ở navigator nhánh thì thanh điều hướng + nút +
+/// đè lên nó và che nút Huỷ (nghiệm thu OnePlus 2026-10-08).
 Future<void> moQuet(BuildContext context, {ChonAnh? chonAnh}) async {
   final nguon = await showModalBottomSheet<NguonAnh>(
     context: context,
+    useRootNavigator: true,
     builder: (ctx) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -84,7 +91,7 @@ class QuetAnhPage extends StatefulWidget {
     required this.duongDanAnh,
     this.docChu,
     this.kho,
-    this.docAi,
+    this.docGemma,
     this.laPremium,
     this.now,
   });
@@ -95,7 +102,7 @@ class QuetAnhPage extends StatefulWidget {
   /// `null` → `sl<…>()` nếu đã đăng ký.
   final DocChuAnh? docChu;
   final KhoAnhQuet? kho;
-  final DocAnhBangAi? docAi;
+  final DocAnhBangGemma? docGemma;
 
   /// `null` → `GoiCubit` qua `context`; không có provider thì coi như Premium (chỉ test cũ gặp).
   final bool? laPremium;
@@ -113,7 +120,8 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
 
   DocChuAnh? get _docChu => widget.docChu ?? (sl.isRegistered<DocChuAnh>() ? sl<DocChuAnh>() : null);
   KhoAnhQuet? get _kho => widget.kho ?? (sl.isRegistered<KhoAnhQuet>() ? sl<KhoAnhQuet>() : null);
-  DocAnhBangAi? get _docAi => widget.docAi ?? (sl.isRegistered<DocAnhBangAi>() ? sl<DocAnhBangAi>() : null);
+  DocAnhBangGemma? get _docGemma =>
+      widget.docGemma ?? (sl.isRegistered<DocAnhBangGemma>() ? sl<DocAnhBangGemma>() : null);
 
   bool get _laPremium {
     final t = widget.laPremium;
@@ -156,26 +164,33 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     final luc = (widget.now ?? DateTime.now)();
     var kq = docAnhQuet(vanBan: van, luc: luc);
     if (kq.mon.isNotEmpty) await kho.luuMon(ten, kq.mon);
-    final ai = _docAi;
-    if (van.trim().isNotEmpty && kq.oThieu.isNotEmpty && ai != null && _laPremium) {
+    var chon = const <double>[];
+    final g = _docGemma;
+    if (van.trim().isNotEmpty && kq.loai == LoaiAnhQuet.hoaDon && g != null && duong != null && _laPremium) {
       setState(() => _pha = _Pha.ai);
-      final a = await ai.doc(van, now: luc);
-      if (a != null) kq = lapTuAi(kq, a, vanBan: van, now: luc);
+      // Đọc ĐỒNG BỘ: ảnh đã thu về rộng ≤ 1280 (vài trăm KB); I/O bất đồng bộ không chạy dưới FakeAsync của widget
+      // test (cùng lý do `KhoBienLai.xoa`).
+      final a = await g.doc(File(duong).readAsBytesSync());
+      if (a?.tong case final tong?) {
+        final c = chotTongQuet(luat: kq.soTien, ai: tong, vanBan: van);
+        kq = kq.voiSoTien(c.soTien, aiLap: c.luaChon.isNotEmpty || c.soTien == tong.toDouble());
+        chon = c.luaChon;
+      }
     }
     if (!mounted) return;
     if (van.trim().isEmpty) {
       baoNhanh(kCauChuaDocAnh);
-    } else if (kq.soTien == null) {
+    } else if (kq.soTien == null && chon.isEmpty) {
       baoNhanh(kCauChuaDocTien);
     }
     // Thay CHÍNH màn này bằng form: Back từ form về Trang chủ, không về màn "Đang đọc ảnh…".
-    context.pushReplacement(deeplinkQuet(kq, anh: ten));
+    context.pushReplacement(deeplinkQuet(kq, anh: ten, luaChonTien: chon));
   }
 
   void _bamHuy() {
     if (_pha == _Pha.ai) {
       // Lượt sinh trả null → `_chay` mở form với kết quả luật.
-      unawaited(_docAi?.huy());
+      unawaited(_docGemma?.huy());
       return;
     }
     setState(() => _huyLuat = true);

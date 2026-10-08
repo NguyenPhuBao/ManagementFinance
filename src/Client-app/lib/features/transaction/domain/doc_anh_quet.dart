@@ -6,8 +6,6 @@
 /// ⚠️ Ở `transaction/`, không ở `ai_edge/`: trả chiều `'thu'` / `'chi'`, mà test quét 14 cấm chúng trong `ai_edge/`.
 library;
 
-import '../../../core/category/category_name.dart';
-import '../../../core/ocr/so_tien_tren_anh.dart';
 import 'doc_bien_lai.dart';
 import 'doc_hoa_don.dart';
 import 'doc_mon_hang.dart';
@@ -16,7 +14,7 @@ export 'doc_mon_hang.dart' show MonHang;
 
 enum LoaiAnhQuet { bienLai, hoaDon }
 
-/// Ô luật KHÔNG đọc ra — AI (Premium) chỉ được lấp những ô này.
+/// Ô luật KHÔNG đọc ra — form để trống / dùng lúc quét cho người dùng sửa.
 enum OAnhQuet { soTien, thoiGian, ghiChu }
 
 class KetQuaAnhQuet {
@@ -49,8 +47,20 @@ class KetQuaAnhQuet {
   final List<MonHang> mon;
   final Set<OAnhQuet> oThieu;
 
-  /// Ít nhất một ô do AI lấp (dải nguồn trên form nói *"Đọc bằng AI"*).
+  /// Số tiền đến từ mô hình nhìn ảnh, hoặc có chip chọn giữa số AI và số luật (dải nguồn trên form nói *"Đọc bằng AI"*).
   final bool aiLap;
+
+  /// Đặt số tiền đã CHỐT (A5 mục 13, `chotTongQuet`) — kể cả `null` (hai số lệch, ô để trống cho chip chọn).
+  KetQuaAnhQuet voiSoTien(double? v, {required bool aiLap}) => KetQuaAnhQuet(
+        loai: loai,
+        soTien: v,
+        chieu: chieu,
+        thoiGian: thoiGian,
+        ghiChu: ghiChu,
+        mon: mon,
+        oThieu: {...oThieu.where((o) => o != OAnhQuet.soTien), if (v == null) OAnhQuet.soTien},
+        aiLap: aiLap || this.aiLap,
+      );
 
   KetQuaAnhQuet copyWith({double? soTien, DateTime? thoiGian, String? ghiChu, Set<OAnhQuet>? oThieu, bool? aiLap}) =>
       KetQuaAnhQuet(
@@ -181,89 +191,4 @@ KetQuaAnhQuet docAnhQuet({required String vanBan, required DateTime luc}) {
       oThieu: OAnhQuet.values.toSet(),
     );
   }
-}
-
-// ── A5 mục 5.4: AI lấp ô thiếu ─────────────────────────────────────────────────────────────────────────────────────
-
-/// Các ô THÔ mô hình trả (tool `dien_anh_quet`) — chưa qua lưới, chỉ [lapTuAi] được dùng chúng.
-class KetQuaAiAnh {
-  const KetQuaAiAnh({this.soTien, this.ngay, this.noiDung});
-  final int? soTien;
-
-  /// `dd/mm/yyyy` như mô hình viết.
-  final String? ngay;
-  final String? noiDung;
-
-  static KetQuaAiAnh tuThamSo(Map<String, Object?> a) {
-    final st = a['so_tien'];
-    String? chu(Object? v) => v is String && v.trim().isNotEmpty ? v.trim() : null;
-    return KetQuaAiAnh(
-      soTien: st is num && st > 0 ? st.round() : null,
-      ngay: chu(a['ngay']),
-      noiDung: chu(a['noi_dung']),
-    );
-  }
-}
-
-/// Phần chữ gửi mô hình (bẫy 4.51 — prompt dài làm hỏng chuỗi số; trần `maxTokens` là trần TỔNG). Giữ: 3 dòng đầu (tên
-/// cửa hàng), dòng có chữ số, và dòng NHÃN tổng / loại đứng riêng (OCR hay tách *"Tổng thanh toán"* khỏi số ở dòng
-/// kế). Trần 1.200 ký tự.
-String chuGuiMoHinh(String vanBan) {
-  final dong = [for (final d in vanBan.split('\n')) if (d.trim().isNotEmpty) d.trim()];
-  bool nhan(String d) {
-    final b = boDauHoaDon(d);
-    return kNhanTongHoaDon.any(b.contains) || kNhanLoaiHoaDon.any(b.contains);
-  }
-
-  final giu = [
-    for (var i = 0; i < dong.length; i++)
-      if (i < 3 || RegExp(r'\d').hasMatch(dong[i]) || nhan(dong[i])) dong[i],
-  ];
-  final s = giu.join('\n');
-  return s.length <= 1200 ? s : s.substring(0, 1200);
-}
-
-final RegExp _ngayChu = RegExp(r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b');
-
-/// Lưới kiểm: luật thắng mọi ô đã điền; AI chỉ lấp ô trong [KetQuaAnhQuet.oThieu], mỗi ô một chốt —
-/// số tiền phải là một số tiền CÓ trên ảnh (AI chọn, không viết); ngày phải in trên ảnh và không ở tương lai; nội dung
-/// phải là chuỗi con (đã chuẩn hoá) của chữ trên ảnh.
-KetQuaAnhQuet lapTuAi(KetQuaAnhQuet luat, KetQuaAiAnh ai, {required String vanBan, required DateTime now}) {
-  var r = luat;
-  var lap = false;
-  final thieu = {...luat.oThieu};
-  if (ai.soTien case final st? when thieu.contains(OAnhQuet.soTien)) {
-    final coTrongChu = vanBan.split('\n').expand(tienTrenDong).any((v) => (v - st).abs() <= 0.5);
-    if (coTrongChu && st < 1e13) {
-      r = r.copyWith(soTien: st.toDouble());
-      thieu.remove(OAnhQuet.soTien);
-      lap = true;
-    }
-  }
-  if (ai.ngay case final n? when thieu.contains(OAnhQuet.thoiGian)) {
-    final m = _ngayChu.firstMatch(n);
-    if (m != null) {
-      final ngay = int.parse(m.group(1)!), thang = int.parse(m.group(2)!), nam = int.parse(m.group(3)!);
-      final d = DateTime(nam, thang, ngay);
-      final coThat = d.day == ngay && d.month == thang;
-      final trongChu = _ngayChu.allMatches(vanBan).any((x) =>
-          int.parse(x.group(1)!) == ngay && int.parse(x.group(2)!) == thang && int.parse(x.group(3)!) == nam);
-      if (coThat && trongChu && !d.isAfter(DateTime(now.year, now.month, now.day))) {
-        r = r.copyWith(thoiGian: d);
-        thieu.remove(OAnhQuet.thoiGian);
-        lap = true;
-      }
-    }
-  }
-  if (ai.noiDung case final nd? when thieu.contains(OAnhQuet.ghiChu)) {
-    final c = normalizeCategoryName(nd);
-    // Hoá đơn: tên cửa hàng — cùng chốt với luật, kẻo AI điền lại đúng dòng địa chỉ / nhãn laptop luật vừa bỏ.
-    final boQua = luat.loai == LoaiAnhQuet.hoaDon && khongPhaiTenCuaHang(nd);
-    if (!boQua && c.length >= 2 && normalizeCategoryName(vanBan).contains(c)) {
-      r = r.copyWith(ghiChu: nd);
-      thieu.remove(OAnhQuet.ghiChu);
-      lap = true;
-    }
-  }
-  return r.copyWith(oThieu: thieu, aiLap: lap || luat.aiLap);
 }

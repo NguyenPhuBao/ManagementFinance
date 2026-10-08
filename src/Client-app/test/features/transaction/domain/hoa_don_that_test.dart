@@ -118,20 +118,6 @@ void main() {
       });
     }
 
-    test('⭐ AI (Premium) cũng không được điền lại dòng địa chỉ / nhãn laptop vào ô cửa hàng luật để trống', () {
-      for (final (ma, nd) in [('R14', 'Chợ Minh Phat, Quận 12, HCM'), ('R13', 'CORE')]) {
-        final luat = doc(ma).copyWith(ghiChu: '', oThieu: {...doc(ma).oThieu, OAnhQuet.ghiChu});
-        final kq = lapTuAi(luat, KetQuaAiAnh(noiDung: nd), vanBan: kHoaDonThat[ma]!, now: luc);
-        expect(kq.ghiChu, '', reason: ma);
-      }
-    });
-
-    test('AI vẫn lấp được tên cửa hàng thật khi luật để trống', () {
-      final luat = doc('R10');
-      final kq = lapTuAi(luat, const KetQuaAiAnh(noiDung: '14 Feb'), vanBan: kHoaDonThat['R10']!, now: luc);
-      expect(kq.ghiChu, '14 Feb');
-    });
-
     test('R15 — không lấy nhãn dán laptop ("el IRIS", "CORe")', () {
       expect(doc('R15').ghiChu, isNot(anyOf(contains('IRIS'), contains('CORe'))));
     });
