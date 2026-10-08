@@ -356,3 +356,43 @@ lập.
 6. **Tách chỉ khi `type == 'chi'`** ở đường lưu (lưới thứ hai cạnh việc bỏ hết phần khi đổi sang Thu / Chuyển).
 7. Toast có ngân sách *Cảnh báo* bị vượt chỉ nêu **một** ngân sách (cái đầu) — cùng nếp `budgetImpactSnackText`.
 8. Tên danh mục dài trong khối tách **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
+
+## 13. Đổi sau nghiệm thu OnePlus 2026-10-08 — AI làm chính, luật dự phòng (CHƯA THI CÔNG)
+
+**Số đo** (OnePlus 13R GPU, 6 hoá đơn thật người dùng chọn từ thư viện: MAXIDI #1 nhăn + ảnh nén 720 px, QA TEA, Starbucks,
+eco-shop, MAXIDI #2, ÙA TEA có chiết khấu; đáp án chấm bằng mắt trên ảnh; màn đo spike C4):
+
+| Đường | Tổng đúng | Món đúng trọn | Thời gian | Ghi chú |
+|---|---|---|---|---|
+| Luật (sau các sửa của `367cefbd`) | 4/6 (2 lần lệch vài đồng do OCR đọc nhầm chữ số) | 2/6 | 0,2–0,4 s | MAXIDI #1: Σ món tình cờ khớp tổng mà tên lệch giá |
+| AI đọc chữ OCR (`DocAnhBangAi`) | = luật (chữ OCR sai thì AI sai theo) | — | ~5 s | ghi chú *"Tiền mặt"*, ngày bịa (hôm nay) |
+| Gemma nhìn ảnh, prompt chỉ hỏi tổng/cửa hàng/ngày | MAXIDI #1 ra **757.000** (gấp 10) | — | 2,6 s | |
+| Gemma nhìn ảnh, prompt **đọc món** (`kPromptMonHoaDon` bản đầu) | **6/6**, lặp lại y hệt 3/3 lần mỗi ảnh | 1/6 | 3,7–11 s | |
+| Gemma nhìn ảnh, prompt đọc món **+ cửa hàng / ngày / giờ** | **5/6** (MAXIDI #2 ra 59.100, đúng 72.127) | — | 4,7–16,6 s | cửa hàng 3/6, ngày 3/6 (năm *2020*), giờ 3/6 |
+
+Kết luận: Gemma **tất định** nhưng **rất nhạy với câu hỏi** — thêm ba trường là tổng tụt; AI không đáng tin cho ngày /
+cửa hàng. Vì sao OCR đọc sai số: ảnh độ phân giải thấp (720 × 1280, ảnh đã nén), giấy nhăn làm hàng chữ cong — ML Kit
+ghép chữ hai hàng kề, nhầm 0↔6, 5↔6, chấm↔phẩy, *"Tổng"* → *"Teng"*; `image_picker` còn thu ảnh máy ảnh về
+`maxWidth: 1280`.
+
+**Quyết định người dùng (2026-10-08, AskUserQuestion):**
+1. **Tick món tạm TẮT** (`kChonMonTuAnhQuet = false`, đã làm `367cefbd`) — A5b.
+2. **Ngày in ở tương lai → đảo ngày/tháng** nếu ra quá khứ, không thì lúc quét (đã làm).
+3. **AI làm chính, luật dự phòng**: Premium + có mô hình → Gemma nhìn ảnh; Basic / chưa tải mô hình / AI lỗi / Huỷ →
+   luật. Người dùng hỏi *"nếu luật đọc sai thì sao"* → khi có CẢ HAI tổng mà lệch **> 1%** → ô số tiền TRỐNG + dòng
+   *"Đọc ra hai số khác nhau — chọn số đúng:"* + **hai chip** (số AI · số luật), chạm là điền; lệch ≤ 1% → số AI.
+4. Người dùng từng hỏi *"bỏ hẳn luật, AI đọc hết"* — đã trình hệ quả (Basic không đọc được gì, chậm, không lưới kiểm,
+   biên lai chưa đo) và họ chọn hướng 3.
+
+**Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
+- Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
+  **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi
+  chốt; đo thêm biên lai MB (Gemma chưa đo biên lai lần nào).
+- `SlmRuntime` thêm hàm chính thức đọc ảnh (thay `spikeDaPhuongThuc`) — nạp lại mô hình `supportImage`, đóng sau khi
+  đọc (RAM). Lớp gọi (`transaction/data/`, khuôn `DocCauBangAi`), parse JSON chịu số dạng `"75,700"` (chuỗi có phẩy).
+- Hàm thuần chốt tổng (luật / AI / lệch → hai lựa chọn); query `/add` mang hai lựa chọn; form hiện dải chip (Stitch:
+  gọi một lần). Bỏ `DocAnhBangAi` (AI đọc chữ OCR) khỏi luồng `/quet`.
+- Nâng `maxWidth` ảnh máy ảnh (1280 → 2048 hoặc bỏ) — đo OCR trước/sau.
+- Lỗi lượt nghiệm thu chưa sửa: **sheet chọn nguồn ảnh bị thanh dưới + nút + đè** (nút *Huỷ* khuất) — `moQuet` cần
+  `showModalBottomSheet(useRootNavigator: true)`.
+- Luật ngày chưa đọc dạng tiếng Anh *"Sep 28, 2026 2:19PM"* (Starbucks); giờ có thể lấy nhầm dấu ảnh *"Shot on … 08:15"*.
