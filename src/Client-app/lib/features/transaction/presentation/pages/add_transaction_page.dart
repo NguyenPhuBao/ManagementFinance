@@ -20,8 +20,11 @@ import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
+import '../../domain/tach_giao_dich.dart';
 import '../../data/doc_cau_bang_ai.dart';
 import '../../data/vi_theo_nguon_store.dart';
+import '../widgets/khoi_tach.dart';
+import '../widgets/sheet_them_phan.dart';
 import '../widgets/so_tien_lon.dart';
 import '../widgets/xem_anh_bien_lai.dart';
 import '../../../budget/domain/budget_impact.dart';
@@ -376,6 +379,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// A5 — form mở từ ảnh quét (khoá `quet:`): không nguồn ngân hàng, không hàng loại 20.
   bool get _laQuet => _bienDong?.laQuet ?? false;
 
+  /// A5 mục 11 — các phần TÁCH khỏi khoản chi (ngoài phần chính = danh mục đang chọn, nhận phần còn lại).
+  List<PhanTach> _phanTach = const [];
+
+  /// Danh mục chi chọn được — tra tên / màu cho khối tách; nạp khi mở sheet *Thêm phần*.
+  Map<String, Category> _dmTheoId = const {};
+
+  /// Số giao dịch của lần Lưu đang chờ `actionSuccess` — toast *"Đã lưu N giao dịch"*.
+  int _soGiaoDichVuaLuu = 1;
+
+  /// Dòng *"Tách theo danh mục"* chỉ khi TẠO MỚI một khoản CHI (spec 11.1 ý 1).
+  bool get _choTach => !_isEditing && _huong == 'chi';
+
   /// Đường dẫn ảnh biên lai của hàng đang mở; `null` = không có ảnh (hoặc chưa tìm xong).
   String? _duongDanAnh;
 
@@ -710,6 +725,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _chonDanhMuc(Category category) {
     setState(() {
       _selectedCategory = category;
+      // A5 11.2: danh mục chính mới trùng một phần đang tách → phần ấy gộp vào phần chính.
+      _phanTach = gopKhiDoiDanhMucChinh(category.id, _phanTach);
       _apDungViHayDung(category);
       _suggestion = null;
       final laVayNo = isDebtClassify(category.classify);
@@ -822,6 +839,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _chonHuong(String huong) {
     setState(() {
       _huong = huong;
+      // Tách chỉ cho khoản chi (spec 11.1 ý 1).
+      if (huong != 'chi') _phanTach = const [];
       _suggestion = null;
       _choPhanXu = null;
       final cat = _selectedCategory;
@@ -1578,6 +1597,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
     final bloc = context.read<TransactionBloc>();
 
+    // A5 mục 11 — khoản chi đã TÁCH: N giao dịch, ghi hết hoặc không gì, một toast.
+    if (_phanTach.isNotEmpty && editing == null && type == 'chi') {
+      await _luuTach(context, tx, amount);
+      return;
+    }
+
     // Ngân sách của danh mục: "Chặn" thì hỏi trước khi ghi khoản làm vượt,
     // "Cảnh báo" thì ghi luôn rồi báo. Đây là nơi DUY NHẤT đọc `OverSpending`.
     final impact = await _budgetImpactFor(tx, editing);
@@ -1592,7 +1617,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       bloc.add(UpdateTransactionEvent(before: editing, after: tx));
       return;
     }
-    // B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+    _ghiPhanHoiKhiLuu();
+    bloc.add(AddTransactionEvent(
+      transaction: tx,
+      destinationWalletId: tx.walletTransfer,
+    ));
+  }
+
+  /// B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+  /// Khoản đã tách: chỉ cho DANH MỤC CHÍNH (thẻ gợi ý hiện cho nó; phần chọn tay không ghi — spec 11.5).
+  void _ghiPhanHoiKhiLuu() {
     final choPhanXu = _choPhanXu;
     final daChon = _selectedCategory;
     if (choPhanXu != null && daChon != null && !_isTransfer) {
@@ -1603,10 +1637,85 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       );
       _choPhanXu = null;
     }
-    bloc.add(AddTransactionEvent(
-      transaction: tx,
-      destinationWalletId: tx.walletTransfer,
-    ));
+  }
+
+  /// A5 mục 11.4–11.5 — lưu khoản đã tách: kiểm hợp lệ, ngân sách TỪNG phần (một hộp cho cả lô nếu có ngân sách
+  /// *Chặn* bị vượt), rồi MỘT `AddTransactionsEvent`.
+  Future<void> _luuTach(BuildContext context, TransactionEntity tx, double tong) async {
+    final loi = kiemTach(tong: tong, chinh: tx.categoryId, phan: _phanTach);
+    if (loi != null) {
+      baoNhanh(
+        switch (loi) {
+          LoiTach.conLaiKhongDuong => 'Phần còn lại phải lớn hơn 0',
+          LoiTach.phanKhongDuong => 'Mỗi phần phải lớn hơn 0',
+          LoiTach.trungDanhMuc => 'Mỗi danh mục chỉ một phần',
+          LoiTach.monHaiPhan => 'Một món chỉ thuộc một phần',
+        },
+        loai: LoaiThongBao.loi,
+      );
+      return;
+    }
+    final ds = dungGiaoDichTach(mau: tx, phan: _phanTach);
+    final impacts = <BudgetImpact>[];
+    for (final t in ds) {
+      final i = await _budgetImpactFor(t, null);
+      if (i != null) impacts.add(i);
+    }
+    if (!context.mounted) return;
+    final chan = [for (final i in impacts) if (i.requiresConfirmation) i];
+    if (chan.isNotEmpty) {
+      final ok = await _xacNhanVuotNhieu(context, chan);
+      if (ok != true || !context.mounted) return;
+    }
+    _pendingImpact = impacts.where((i) => i.exceeds || i.nearLimitAfter).firstOrNull;
+    _soGiaoDichVuaLuu = ds.length;
+    _ghiPhanHoiKhiLuu();
+    context.read<TransactionBloc>().add(AddTransactionsEvent(transactions: ds));
+  }
+
+  Future<bool?> _xacNhanVuotNhieu(BuildContext context, List<BudgetImpact> chan) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Vượt ngân sách'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final i in chan)
+                Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(budgetImpactDialogText(i))),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Huỷ')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Vẫn ghi')),
+          ],
+        ),
+      );
+
+  /// Mở sheet *Thêm phần* (thêm mới, hoặc sửa [sua]). Danh mục chọn được: danh mục CHI hợp lệ; sheet bỏ danh mục chính
+  /// và danh mục của phần khác.
+  Future<void> _themPhan([PhanTach? sua]) async {
+    final (chonDuoc, _) = await _napDanhMucVaTuKhoa();
+    if (!mounted) return;
+    final hopLe = hopLeTheoChieu('chi', chonDuoc);
+    final chi = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];
+    setState(() => _dmTheoId = {for (final c in chi) c.id: c});
+    final p = await moSheetThemPhan(
+      context,
+      chonDuoc: chi,
+      daDung: {
+        if (_selectedCategory != null) _selectedCategory!.id,
+        for (final x in _phanTach) x.categoryId,
+      },
+      dangSua: sua,
+    );
+    if (p == null || !mounted) return;
+    setState(() {
+      _phanTach = [
+        for (final x in _phanTach) if (x != sua) x,
+        p,
+      ];
+    });
   }
 
   Future<BudgetImpact?> _budgetImpactFor(
@@ -1688,12 +1797,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           if (state.actionSuccess == true) {
             // Lời nhắn về ngân sách thay lời nhắn mặc định — chung chung,
             // không con số (banner tạm thời tối giản theo ý người dùng).
-            final impactText = budgetImpactSnackText(_pendingImpact);
+            final soGd = _soGiaoDichVuaLuu;
+            _soGiaoDichVuaLuu = 1;
+            final impactGoc = budgetImpactSnackText(_pendingImpact);
+            final impactText = soGd > 1 ? impactGoc?.replaceFirst('Đã lưu.', 'Đã lưu $soGd giao dịch.') : impactGoc;
             _pendingImpact = null;
             // Lưu kèm cảnh báo ngân sách ("Đã lưu. Ngân sách X đã vượt hạn mức.") là
             // THÔNG TIN, không phải xong trơn.
             baoNhanh(
-              impactText ?? (_isEditing ? 'Đã lưu thay đổi' : 'Thêm giao dịch thành công!'),
+              impactText ??
+                  (_isEditing ? 'Đã lưu thay đổi' : (soGd > 1 ? 'Đã lưu $soGd giao dịch' : 'Thêm giao dịch thành công!')),
               loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
             );
             final d = _bienDong;
@@ -1727,7 +1840,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ? null
             : IconButton(
                 key: const Key('luu-thanh-tieu-de'),
-                tooltip: 'Lưu giao dịch',
+                tooltip: _phanTach.isEmpty ? 'Lưu giao dịch' : 'Lưu ${_phanTach.length + 1} giao dịch',
                 icon: const Icon(Icons.check, color: AppColors.primary),
                 onPressed: isSubmitting ? null : () => _saveTransaction(context),
               );
@@ -1815,6 +1928,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           const SizedBox(height: 12),
                         ],
                         _buildFormCard(context),
+                        if (_choTach && _phanTach.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          KhoiTach(
+                            chinh: _selectedCategory,
+                            tong: ketQuaBieuThuc(_amountString),
+                            phan: _phanTach,
+                            danhMuc: _dmTheoId,
+                            onSua: _themPhan,
+                            onBo: (p) => setState(() => _phanTach = [for (final x in _phanTach) if (x != p) x]),
+                            onThem: _themPhan,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -2018,7 +2143,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 color: AppColors.outlineVariant.withValues(alpha: 0.3)),
             _buildFormRow(
               icon: Icons.category,
-              label: 'Danh mục',
+              label: _phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
               valueWidget: Text(
                 _selectedCategory != null
                     ? _selectedCategory!.name
@@ -2045,6 +2170,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 if (selected != null) _chonDanhMuc(selected);
               },
             ),
+            if (_choTach && _phanTach.isEmpty) ...[
+              Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              KeyedSubtree(
+                key: const Key('dong-tach'),
+                child: _buildFormRow(
+                  icon: Icons.call_split,
+                  label: 'Tách theo danh mục',
+                  valueWidget: const Text(
+                    'Chia khoản chi cho nhiều danh mục',
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                  showArrow: true,
+                  onTap: _themPhan,
+                ),
+              ),
+            ],
             if (_deXuat != null || _daThemTuKhoa != null) _buildDeXuatTuKhoa(),
             if (showDebtDirection) ...[
               Divider(
