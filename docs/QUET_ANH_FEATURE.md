@@ -61,8 +61,11 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 4. **AI chỉ chạm SỐ TIỀN** (ngày, cửa hàng là của luật — người dùng chốt). Số AI không in trên ảnh thì bỏ (4/5 lần
    Gemma CPU sai là loại ấy); chỉ điền sẵn khi khớp số luật, lệch thì hỏi bằng chip (`DienSanBienDong.luaChonTien`,
    khối `khoi-chon-so-tien` dưới dải nguồn, chạm chip đi qua `themPhimSoTien`).
-4b. **`docAnh` đóng mô hình sau khi đọc** → `PhienMotLoiGoi.chuanBi` (Nhập nhanh, lệnh tạo) phải nạp lại khi
-   `!runtime.dangSan` — trước đây nó nhớ "đã nạp" mãi và Nhập nhanh âm thầm thôi dùng AI sau một lần quét.
+4b. ⚠️ **`docAnh` KHÔNG đóng mô hình sau khi đọc** — OnePlus 13R (Adreno, GPU) 2026-10-08 **sập native** (SIGSEGV
+   `gl_release_context` ← `LiteRtDestroyEnvironment`) ở lần ĐÓNG thứ hai trong một tiến trình: quét 1 nạp bản ảnh rồi
+   đóng → chọn danh mục nạp bản chữ → quét 2 đóng bản chữ → sập. Nay bản có ảnh được GIỮ, phiên chữ (chọn danh mục,
+   Nhập nhanh, Trợ lý) dùng luôn nó; chỉ đóng khi bản đang nạp là bản chữ. Đo lại sau sửa: 3 lần quét liên tiếp không
+   sập. `PhienMotLoiGoi.chuanBi` vẫn nạp lại khi `!runtime.dangSan` (sửa cùng ngày — giữ làm lưới).
 5. **Nhãn dừng đọc món ≠ nhãn tổng**: bỏ `thanh tien · so tien · thanh toan` (tiêu đề cột), thêm `tam tinh · subtotal`,
    so theo **từ trọn** — chuỗi con là món *"BANH TONGHOP"* cắt cụt danh sách.
 6. **Dòng món đòi số cuối có ngăn nghìn** — loại ngày / giờ / năm (`2026` ≥ 1.000 mà `tienTrenDong` vẫn nhận).

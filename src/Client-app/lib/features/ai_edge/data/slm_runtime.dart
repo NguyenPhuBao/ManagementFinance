@@ -52,9 +52,9 @@ abstract class SlmRuntime {
 /// Mô hình NHÌN ẢNH (A5 mục 13 — đọc hoá đơn). Giao diện riêng, không gộp vào [SlmRuntime]: chỉ màn Quét cần, và bản
 /// giả của [SlmRuntime] trong test không phải mang thêm một hàm.
 abstract class SlmDocAnh {
-  /// Sinh MỘT câu từ [prompt] kèm [anh]. Nạp lại mô hình có cờ ảnh nếu đang nạp bản không ảnh, và ĐÓNG mô hình sau khi
-  /// đọc: bản có ảnh nặng hơn (PSS đỉnh 2,93 GB trên Realme), đường chữ thường tự nạp lại bản không cờ. Ném khi máy
-  /// không chạy được.
+  /// Sinh MỘT câu từ [prompt] kèm [anh]. Nạp lại mô hình có cờ ảnh nếu đang nạp bản không ảnh, rồi GIỮ bản ấy (các
+  /// đường chữ dùng luôn — đóng / nạp lại nhiều lần làm driver GPU sập native, xem thân hàm). Ném khi máy không chạy
+  /// được.
   Future<String> docAnh(String duongTep, String prompt, Uint8List anh);
 
   /// Dừng lượt đọc đang chạy — lượt ấy trả về phần chữ đã sinh (thường rỗng).
@@ -116,31 +116,32 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
 
   @override
   Future<String> docAnh(String duongTep, String prompt, Uint8List anh) async {
-    try {
-      if (_model == null || !_coAnh || _coAm) {
-        await dong();
-        await _nap(duongTep, anh: true);
-      }
-      final dongHo = Stopwatch()..start();
-      // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
-      final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
-      _chatDangSinh = chat;
-      await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
-      final cau = StringBuffer();
-      try {
-        // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
-        await for (final r in chat.generateChatResponseAsync()) {
-          if (r is TextResponse) cau.write(r.token);
-        }
-      } finally {
-        _chatDangSinh = null;
-      }
-      debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
-          '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
-      return cau.toString().trim();
-    } finally {
-      await dong();
+    // ⚠️ KHÔNG đóng mô hình sau khi đọc: OnePlus 13R (Adreno, GPU) 2026-10-08 SẬP NATIVE (SIGSEGV trong
+    // `gl_release_context` ← `LiteRtDestroyEnvironment`) ở lần ĐÓNG thứ hai trong cùng một tiến trình — quét lần 1
+    // nạp bản ảnh rồi đóng, lần chọn danh mục nạp bản chữ, quét lần 2 đóng bản chữ để nạp bản ảnh → sập. Nên bản có
+    // ảnh được GIỮ: lần chọn danh mục (phiên chữ có tool) và các đường chữ khác dùng luôn nó; một tiến trình đóng
+    // nhiều nhất một lần (khi bản đang nạp là bản chữ của Trợ lý / Nhập nhanh).
+    if (_model == null || !_coAnh || _coAm) {
+      if (_model != null) await dong();
+      await _nap(duongTep, anh: true);
     }
+    final dongHo = Stopwatch()..start();
+    // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
+    final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
+    final cau = StringBuffer();
+    try {
+      // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) cau.write(r.token);
+      }
+    } finally {
+      _chatDangSinh = null;
+    }
+    debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
+    return cau.toString().trim();
   }
 
   Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {
