@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-08)
 
-### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, chờ nghiệm thu)
+### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, nghiệm thu OnePlus đạt)
 
 Bước 5 của đơn 39. Spec `docs/superpowers/specs/2026-10-08-phan-quyen-tinh-nang-client-design.md` (người dùng duyệt),
 kế hoạch 10 task (gitignore), tài liệu **`docs/PREMIUM_FEATURE.md` mục 8**. Client nay thi hành đủ **11 quyền + 5 trần**
@@ -608,7 +608,7 @@ nền + cửa nhập (bỏ lượt, không ghi gì); `redirectTaoTheoGoi` thêm 
 `redirectTheoQuyen` ở `/export-report`; màn Nâng cấp nhận `?quyen=`. Widget khoá `the_khoa_quyen.dart` theo ba màn
 Stitch người dùng xác nhận. Ba lỗi đóng: bảng không xét hạn offline · đếm danh mục riêng tính 13 bản sao mặc định
 (`laBanSaoMacDinh`) · đếm hoá đơn tính kỳ `Skipped` (`conPhaiTra`). Test quét `lib/` thứ **21**. Không đổi schema,
-không đổi payload. Còn **Task 10 — nghiệm thu OnePlus** với tài khoản Basic mới.
+không đổi payload. ✅ **Nghiệm thu OnePlus đạt** (tài khoản Basic mới `thuquyen1`, bảng mục 8.7 `PREMIUM_FEATURE.md`): trần hoá đơn / danh mục riêng, sáu chỗ khoá, admin gạt `cashflow_forecast` → khối mở trong ≤ 2 s qua socket, gạt lại khoá trong ≤ 3 s. Lượt đo bắt **hai lỗi, đã sửa**: nút tải trang Phân tích đi route thứ hai `/analytics/export` không có cửa quyền (`7b180f8d`), thẻ khoá giãn hết màn ở Cài đặt AI (`154f3963`).
 
 ### 🔀 Gộp `main` @ `0eb4a05f` · áp `database/21–23` · G67 mốc theo giờ-server (2026-10-08 tối)
 

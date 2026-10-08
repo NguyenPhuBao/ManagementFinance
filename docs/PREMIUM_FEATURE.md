@@ -5,7 +5,7 @@
 và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
 Đơn backend: `docs/superpowers/backend/CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (38, không chặn client).
 
-**Phân quyền tính năng theo gói (2026-10-08):** mã xong Task 1–8 của kế hoạch `…/plans/2026-10-08-phan-quyen-tinh-nang-client.md`
+**Phân quyền tính năng theo gói (2026-10-08):** ✅ mã xong + nghiệm thu OnePlus đạt (mục 8.7) — trọn 10 task của kế hoạch `…/plans/2026-10-08-phan-quyen-tinh-nang-client.md`
 (gitignore), spec `docs/superpowers/specs/2026-10-08-phan-quyen-tinh-nang-client-design.md` (người dùng duyệt) — **mục 8**
 dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
 Admin-web `/permissions`.
@@ -213,6 +213,27 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 | Băng khoá công tắc (form hoá đơn) | `68593384…` |
 | Nâng cấp mở từ tính năng bị khoá | `9db35f88…` |
 
-### 8.7 Nghiệm thu máy thật — 🚧 chưa làm (Task 10)
+### 8.7 Nghiệm thu máy thật — ✅ đạt (OnePlus 13R, 2026-10-08 khuya, bản debug trỏ `127.0.0.1` + `adb reverse`)
 
-OnePlus, tài khoản Basic mới (`POST /api/auth/register`). Kịch bản ở spec mục 8; kết quả ghi vào đây.
+Tài khoản Basic **mới** `thuquyen1` (idaccount 28, tạo qua `POST /api/auth/register`); `/subscription-info` trả trần
+3/3/3/3/5 và bảng quyền Basic của CSDL dev (tắt: hai AI, `ai_edge_model`, `export_reports`, `cashflow_forecast`,
+`anomaly_spending_insights`, `smart_budget_rebalancing`, `bill_auto_pay`, `goal_auto_deposit`).
+
+| Kịch bản | Kết quả |
+|---|---|
+| Hoá đơn thứ 4 (sau 3 hoá đơn mở) | ✅ màn Nâng cấp *"Bạn đã dùng 3/3 hóa đơn định kỳ của gói Basic."* |
+| Danh mục riêng thứ 6 (sau 5 danh mục tự tạo; 13 bản sao mặc định **không** bị đếm) | ✅ *"Bạn đã dùng 5/5 danh mục riêng của gói Basic."* |
+| Khối Dự báo 30 ngày tới (kỳ rỗng và kỳ có dữ liệu) | ✅ thẻ khoá; *Nâng cấp* → *"Dự báo 30 ngày tới là tính năng Premium."* |
+| Xuất báo cáo — drawer **và** nút tải trang Phân tích | ❌ → ✅ nút tải mở được trang: route thứ hai `/analytics/export` thiếu cửa (sửa `7b180f8d`); đo lại → *"Xuất báo cáo là tính năng Premium."* |
+| Thẻ Đề xuất cân đối (ngân sách Ăn uống 100.000 đ vượt 300 %, Mua sắm 2.000.000 đ làm nguồn) | ✅ thẻ khoá, câu Nhận xét không mời xem kế hoạch; trung tâm thông báo chỉ có *"Đã vượt ngân sách"*, **không** có thông báo cân đối |
+| Công tắc Tự trả (form Thêm hoá đơn) | ✅ chạm không đổi (ảnh trước / sau trùng byte), dòng *"Cần Premium"* + Nâng cấp |
+| Công tắc Trích tự động (mục tiêu **mới**) | ✅ tắt sẵn, khoá, *"Cần Premium"* |
+| Cài đặt AI | ✅ chỉ thẻ khoá *AI trên máy*; ❌ → ✅ thẻ giãn hết chiều cao màn (`Column` `max`, sửa `154f3963`) |
+| Trợ lý AI · Nhập nhanh | ✅ khoá |
+| Nút Quét · công tắc Đọc biến động số dư (Basic **có** hai quyền này) | ✅ mở bình thường — sheet Chụp / Chọn ảnh; công tắc D1 không có dòng khoá |
+| Admin bật `cashflow_forecast` cho Basic qua `PUT /api/admin/permissions` | ✅ khối Dự báo **tự mở trong ≤ 2 s** trên máy đang để ở trang Phân tích, không chạm máy (socket → `lamMoi`) |
+| Gạt lại `false` | ✅ khoá lại trong ≤ 3 s; ma trận Basic về đúng như trước lượt đo |
+
+Chưa đo trên máy: dòng khoá **chi bất thường** (cần ≥ 4 tháng dữ liệu đã đóng mới có bất thường để khoá — widget test
+canh). Ghi nhận, chưa sửa: danh sách *Đặc quyền Premium* ở màn Nâng cấp vẫn kể 4 mục của 2026-10-06; thẻ Gói ở tab
+Cá nhân chỉ ghi *"3 ví · 3 ngân sách · 3 mục tiêu"* (không nhắc trần hoá đơn / danh mục riêng).
