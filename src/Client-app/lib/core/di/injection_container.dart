@@ -58,10 +58,12 @@ import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/services/gop_vi_service.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
 import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/presentation/an_nhac_het_han.dart';
 import '../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -514,16 +516,24 @@ Future<void> setupDependencies() async {
           ),
       // Trích tiền tự động chạy trong chính vòng quét, không phải một bộ lập
       // lịch nền riêng. Xem chú thích ở `GoalAutoDepositRunner`.
-      runAutoDeposits: (idaccount, now) => GoalAutoDepositRunner(
-        db: sl<AppDatabase>(),
-        repository: sl<GoalRepository>(),
-      ).chay(idaccount, now: now),
+      //
+      // Quyền `goal_auto_deposit` / `bill_auto_pay` (spec phân quyền 2026-10-08): không có thì BỎ LƯỢT — không trích,
+      // không đổi mốc, công tắc người dùng giữ nguyên; lên lại Premium thì lượt kế chạy như cũ.
+      runAutoDeposits: (idaccount, now) async =>
+          coQuyenNen(MaQuyen.goalAutoDeposit)
+              ? GoalAutoDepositRunner(
+                  db: sl<AppDatabase>(),
+                  repository: sl<GoalRepository>(),
+                ).chay(idaccount, now: now)
+              : const <GoalAutoDepositEvent>[],
       // Tự động thanh toán hoá đơn, cùng khuôn: chạy trong vòng quét, đi qua
       // `payBill` hiện có. Xem chú thích ở `BillAutoPayRunner`.
-      runAutoPays: (idaccount, now) => BillAutoPayRunner(
-        db: sl<AppDatabase>(),
-        repository: sl<BillRepository>(),
-      ).chay(idaccount, now: now),
+      runAutoPays: (idaccount, now) async => coQuyenNen(MaQuyen.billAutoPay)
+          ? BillAutoPayRunner(
+              db: sl<AppDatabase>(),
+              repository: sl<BillRepository>(),
+            ).chay(idaccount, now: now)
+          : const <BillAutoPayEvent>[],
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.
@@ -587,6 +597,9 @@ Future<void> setupDependencies() async {
       // `budgets` đến từ chính lượt quét đang chạy chứ không đọc lại — xem
       // `KeHoachTaiPhanBoLoader`.
       loadKeHoach: (idaccount, budgets, now) async {
+        // Quyền `smart_budget_rebalancing`: không có → không dựng kế hoạch, không sinh thông báo (và không trả giá
+        // một lượt đọc toàn bộ sổ).
+        if (!coQuyenNen(MaQuyen.smartBudgetRebalancing)) return null;
         final dangChay = [
           for (final v in budgets)
             if (!v.budget.isExpired(now)) v,
@@ -631,8 +644,10 @@ Future<void> setupDependencies() async {
         thuMuc: getApplicationSupportDirectory,
         dao: sl<AppDatabase>().notificationDao,
         nguonCuaGoi: nguonCuaGoi,
+        // Công tắc của tài khoản VÀ quyền `bank_notification_parser` của gói.
         batBienDong: (id) async =>
-            (await sl<NotificationPrefsStore>().read(id)).docBienDong,
+            (await sl<NotificationPrefsStore>().read(id)).docBienDong &&
+            coQuyenNen(MaQuyen.bankNotificationParser),
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         datBat: (bat) => sl<KenhBienDong>().datBat(bat),
       ),
@@ -646,6 +661,7 @@ Future<void> setupDependencies() async {
         docChu: sl<DocChuAnh>(),
         kho: sl<KhoBienLai>(),
         nguonCuaGoi: nguonCuaGoi,
+        coQuyen: () => coQuyenNen(MaQuyen.ocrReceipt),
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
         thuMau: kDebugMode

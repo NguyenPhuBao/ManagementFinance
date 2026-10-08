@@ -108,9 +108,11 @@ class NhapBienLai {
     required this.nguonCuaGoi,
     this.huyTomTat,
     this.thuMau,
+    bool Function()? coQuyen,
     DateTime Function()? clock,
     String Function()? idGenerator,
-  })  : clock = clock ?? DateTime.now,
+  })  : coQuyen = coQuyen ?? (() => true),
+        clock = clock ?? DateTime.now,
         idGenerator = idGenerator ?? (() => const Uuid().v4());
 
   /// Thư mục Kotlin ghi: `filesDir` ↔ `getApplicationSupportDirectory()`.
@@ -128,6 +130,10 @@ class NhapBienLai {
 
   /// Chế độ thu mẫu — chỉ bản debug (DI nối khi `kDebugMode`): in hình dạng đã che TRƯỚC khi hàng chờ bị tiêu.
   final Future<void> Function()? thuMau;
+
+  /// Quyền `ocr_receipt` của gói (spec phân quyền 2026-10-08). Không có → lượt này không nhập gì và GIỮ NGUYÊN hàng
+  /// chờ + ảnh: biên lai người dùng đã chia sẻ được nhập khi có quyền lại, không bị vứt.
+  final bool Function() coQuyen;
   final DateTime Function() clock;
   final String Function() idGenerator;
 
@@ -137,6 +143,7 @@ class NhapBienLai {
   /// vào hàng ấy thay vì đẻ hàng thứ hai. Hàng chờ gắn MÁY, nhập vào tài khoản đang đăng nhập — `NhanBienLaiActivity`
   /// chỉ nhận ảnh khi máy có phiên, và [donKhiDangXuat] xoá sạch lúc hết phiên.
   Future<int> nhap(int idaccount) async {
+    if (!coQuyen()) return 0;
     try {
       final dir = await thuMuc();
       final goc = File('${dir.path}/$kTepBienLaiCho');
