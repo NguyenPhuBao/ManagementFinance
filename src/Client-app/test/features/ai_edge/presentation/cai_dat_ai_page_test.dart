@@ -37,6 +37,10 @@ void main() {
         value: goi, child: boc(const CaiDatAiPage(daCoMoHinh: false))));
     expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
     expect(find.text('Tải mô hình'), findsNothing);
+    // Nghiệm thu OnePlus 2026-10-08: thân Scaffold truyền ràng buộc CHẶT nên thẻ từng giãn hết chiều cao màn — một
+    // thẻ trắng khổng lồ với ổ khoá lơ lửng giữa. Thẻ phải cao theo nội dung.
+    final cao = t.getSize(find.byKey(const Key('the-khoa-ai_edge_model'))).height;
+    expect(cao, lessThan(300), reason: 'thẻ khoá giãn theo màn ($cao px) thay vì cao theo nội dung');
   });
 
   testWidgets('chưa tải: hiện dung lượng và nút Tải, KHÔNG có nút Xoá',

@@ -35,7 +35,10 @@ class TheKhoaQuyen extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.outlineVariant),
       ),
+      // `min`: thẻ cao theo nội dung (tối thiểu 140). Để `max` mặc định thì đặt làm thân trang (Cài đặt AI) là thẻ
+      // giãn hết chiều cao màn — nghiệm thu OnePlus 2026-10-08.
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
