@@ -11,6 +11,7 @@ import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/don_thanh_toan.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
@@ -85,6 +86,7 @@ void main() {
     WidgetTester tester, {
     required bool premium,
     LoaiTran? tran,
+    MaQuyen? quyen,
     _ApiGia? api,
     DateTime? hetHan,
   }) async {
@@ -93,7 +95,11 @@ void main() {
       GoRoute(
         path: '/premium',
         builder: (_, __) => NangCapPage(
-            tran: tran, api: api ?? _ApiGia(), goi: cubit, clock: () => now),
+            tran: tran,
+            quyen: quyen,
+            api: api ?? _ApiGia(),
+            goi: cubit,
+            clock: () => now),
       ),
       GoRoute(
         path: '/premium/cho-thanh-toan',
@@ -125,6 +131,13 @@ void main() {
         reason: 'câu 4: không hứa thứ không khác');
     expect(find.widgetWithText(ElevatedButton, 'Thanh toán'), findsOneWidget);
     expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsNothing);
+  });
+
+  testWidgets('?quyen=cashflow_forecast: câu mở đầu nêu tên tính năng (spec phân quyền 4.4)',
+      (tester) async {
+    await dung(tester, premium: false, quyen: MaQuyen.cashflowForecast);
+    expect(find.text('Dự báo 30 ngày tới là tính năng Premium.'), findsOneWidget);
+    expect(find.byKey(const Key('nang-cap-cau-quyen')), findsOneWidget);
   });
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {

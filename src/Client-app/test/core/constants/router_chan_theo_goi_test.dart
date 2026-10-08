@@ -12,7 +12,9 @@ import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
 import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -40,12 +42,23 @@ class _ApiIm implements PaymentApi {
 void main() {
   late GoRouter router;
 
-  Future<void> dung(WidgetTester tester, {required int dangCo}) async {
+  Future<void> dung(WidgetTester tester,
+      {required int dangCo,
+      Map<String, Object?>? tran,
+      Map<String, bool> quyen = const {}}) async {
     if (sl.isRegistered<GoiRepository>()) await sl.unregister<GoiRepository>();
     if (sl.isRegistered<NguonDemDangHoatDong>()) {
       await sl.unregister<NguonDemDangHoatDong>();
     }
-    final repo = GoiRepository(api: _ApiIm(), kho: InMemoryGoiStore());
+    final kho = InMemoryGoiStore();
+    await kho.ghi(
+        10,
+        TrangThaiGoi(
+            loai: LoaiGoi.basic,
+            nhanLuc: DateTime.now(),
+            tran: TranGoi.tuJson(tran),
+            quyenTinhNang: quyen));
+    final repo = GoiRepository(api: _ApiIm(), kho: kho);
     await repo.datTaiKhoan(10);
     sl.registerSingleton<GoiRepository>(repo);
     sl.registerSingleton<NguonDemDangHoatDong>(_DemGia(dangCo));
@@ -72,9 +85,27 @@ void main() {
           redirect: redirectTaoTheoGoi(LoaiTran.mucTieu),
           builder: (_, __) => const Scaffold(body: Text('FORM MT'))),
       GoRoute(
+          path: '/bills/add',
+          redirect: redirectTaoTheoGoi(LoaiTran.hoaDon),
+          builder: (_, __) => const Scaffold(body: Text('FORM HĐ'))),
+      GoRoute(
+          path: '/bills/:id/edit',
+          builder: (_, __) => const Scaffold(body: Text('SỬA HĐ'))),
+      GoRoute(
+          path: '/categories/add',
+          redirect: (_, __) => '/categories/child/new'),
+      GoRoute(
+          path: '/categories/child/new',
+          redirect: redirectTaoTheoGoi(LoaiTran.danhMucRieng),
+          builder: (_, __) => const Scaffold(body: Text('FORM DM'))),
+      GoRoute(
+          path: '/export-report',
+          redirect: redirectTheoQuyen(MaQuyen.exportReports),
+          builder: (_, __) => const Scaffold(body: Text('XUẤT'))),
+      GoRoute(
           path: '/premium',
           builder: (_, s) => Scaffold(
-              body: Text('NÂNG CẤP ${s.uri.queryParameters['tran']}'))),
+              body: Text('NÂNG CẤP ${s.uri.queryParameters['tran'] ?? s.uri.queryParameters['quyen']}'))),
     ]);
     addTearDown(router.dispose);
 
@@ -111,5 +142,54 @@ void main() {
     router.push('/budget/rules?category=c1&amount=5');
     await tester.pumpAndSettle();
     expect(find.text('NÂNG CẤP ngan_sach'), findsOneWidget);
+  });
+
+  // ── Spec phân quyền client 2026-10-08 mục 4.3 ──
+  const tranServer = {
+    'wallets': 3,
+    'budgets': 3,
+    'goals': 3,
+    'bills': 3,
+    'custom_categories': 5,
+  };
+
+  testWidgets('hoá đơn 3/3 (trần server) → Nâng cấp tran=hoa_don; sửa hoá đơn vẫn mở',
+      (tester) async {
+    await dung(tester, dangCo: 3, tran: tranServer);
+    router.push('/bills/add?name=Dien');
+    await tester.pumpAndSettle();
+    expect(find.text('NÂNG CẤP hoa_don'), findsOneWidget);
+    router.push('/bills/b1/edit');
+    await tester.pumpAndSettle();
+    expect(find.text('SỬA HĐ'), findsOneWidget);
+  });
+
+  testWidgets('trần hoá đơn server không trả → không giới hạn', (tester) async {
+    await dung(tester, dangCo: 50, tran: const {'wallets': 3});
+    router.push('/bills/add');
+    await tester.pumpAndSettle();
+    expect(find.text('FORM HĐ'), findsOneWidget);
+  });
+
+  testWidgets('danh mục riêng 5/5 → /categories/add (qua redirect) cũng bị chặn',
+      (tester) async {
+    await dung(tester, dangCo: 5, tran: tranServer);
+    router.push('/categories/add');
+    await tester.pumpAndSettle();
+    expect(find.text('NÂNG CẤP danh_muc_rieng'), findsOneWidget);
+  });
+
+  testWidgets('/export-report bị tắt → Nâng cấp quyen=export_reports', (tester) async {
+    await dung(tester, dangCo: 0, quyen: const {'export_reports': false});
+    router.push('/export-report');
+    await tester.pumpAndSettle();
+    expect(find.text('NÂNG CẤP export_reports'), findsOneWidget);
+  });
+
+  testWidgets('/export-report Basic thiếu khoá → mở', (tester) async {
+    await dung(tester, dangCo: 0);
+    router.push('/export-report');
+    await tester.pumpAndSettle();
+    expect(find.text('XUẤT'), findsOneWidget);
   });
 }

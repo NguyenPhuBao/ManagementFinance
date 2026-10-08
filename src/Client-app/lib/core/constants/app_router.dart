@@ -34,6 +34,7 @@ import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/premium/data/chan_theo_goi.dart';
 import '../../features/premium/domain/don_thanh_toan.dart';
+import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
 import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
@@ -206,6 +207,8 @@ class AppRouter {
           // Analytics & Report Export standalone routes
           GoRoute(
             path: '/export-report',
+            // Quyền `export_reports` (spec phân quyền 2026-10-08) — mọi lối vào (drawer, thông báo Tổng kết tuần).
+            redirect: redirectTheoQuyen(MaQuyen.exportReports),
             // `?from=&to=` đặt sẵn phạm vi — đường mà thông báo Tổng kết tuần
             // đi vào. Tham số qua QUERY STRING chứ không qua `extra`: cú chạm
             // vào thông báo có thể xảy ra ở **cold start**, và `extra` không
@@ -307,6 +310,8 @@ class AppRouter {
               redirect: (_, __) => '/categories/group/new'),
           GoRoute(
             path: '/categories/child/new',
+            // Trần danh mục riêng — `/categories/add` redirect về đây nên cũng bị chặn.
+            redirect: redirectTaoTheoGoi(LoaiTran.danhMucRieng),
             builder: (_, __) => const CategoryAddPage(),
           ),
           GoRoute(
@@ -317,6 +322,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/categories/group/new',
+            redirect: redirectTaoTheoGoi(LoaiTran.danhMucRieng),
             builder: (_, __) => const CategoryGroupPage(),
           ),
           GoRoute(
@@ -343,6 +349,9 @@ class AppRouter {
           ),
           GoRoute(
             path: '/bills/add',
+            // Trần hoá đơn theo gói (spec phân quyền 2026-10-08): mọi lối tạo — nút +, thẻ khoản lặp (B2), lệnh tạo
+            // C3, deeplink — đều qua đây. `/bills/:id/edit` là sửa, không chặn.
+            redirect: redirectTaoTheoGoi(LoaiTran.hoaDon),
             // Query điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — hỏng thì bỏ
             // đúng trường ấy, không có thì form trống như cũ.
             builder: (_, s) => BlocProvider<BillBloc>(
@@ -449,7 +458,8 @@ class AppRouter {
           GoRoute(
             path: '/premium',
             builder: (_, state) => NangCapPage(
-                tran: loaiTranTuMa(state.uri.queryParameters['tran'])),
+                tran: loaiTranTuMa(state.uri.queryParameters['tran']),
+                quyen: maQuyenTuServer(state.uri.queryParameters['quyen'])),
           ),
           GoRoute(
             path: '/premium/cho-thanh-toan',

@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/don_thanh_toan.dart';
+import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
 import '../../domain/trang_thai_goi.dart';
 import '../cubit/goi_cubit.dart';
@@ -31,15 +32,22 @@ String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
   return 'Bạn đã dùng $n/$n ${tenTran(tran)} của gói Basic.';
 }
 
+/// Câu mở đầu khi đến từ một tính năng bị khoá (`/premium?quyen=`) — spec phân quyền 2026-10-08 mục 4.4.
+String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
+
 /// Màn Nâng cấp `/premium` — ngoài shell, `push` từ mọi nơi (spec 9.1). Màn
 /// Stitch *"Nâng cấp Premium - FlowMoney"* `c999da970da94cb4ab4331fc44230884`
 /// (lượt gọi 2026-10-06 trả `timeout` nhưng màn vẫn được tạo — chờ người dùng
 /// xác nhận).
 class NangCapPage extends StatefulWidget {
-  const NangCapPage({super.key, this.tran, this.api, this.goi, this.clock});
+  const NangCapPage(
+      {super.key, this.tran, this.quyen, this.api, this.goi, this.clock});
 
   /// Loại trần vừa chạm (từ query `?tran=`); `null` = mở từ thẻ Cá nhân / băng khoá.
   final LoaiTran? tran;
+
+  /// Tính năng bị khoá vừa chạm (query `?quyen=`); `tran` khác `null` thì câu trần thắng.
+  final MaQuyen? quyen;
 
   /// `null` → `sl<PaymentApi>()`; test tiêm bản giả.
   final PaymentApi? api;
@@ -110,6 +118,10 @@ class _NangCapPageState extends State<NangCapPage> {
               if (!premium && widget.tran != null) ...[
                 const SizedBox(height: 12),
                 _dongTran(cauMoDau(widget.tran!, goi.tran)),
+              ] else if (!premium && widget.quyen != null) ...[
+                const SizedBox(height: 12),
+                _dongTran(cauMoDauQuyen(widget.quyen!),
+                    key: const Key('nang-cap-cau-quyen')),
               ],
               const SizedBox(height: 24),
               const Text(
@@ -233,8 +245,9 @@ class _NangCapPageState extends State<NangCapPage> {
     );
   }
 
-  Widget _dongTran(String cau) => Container(
-        key: const Key('nang-cap-cau-tran'),
+  Widget _dongTran(String cau, {Key key = const Key('nang-cap-cau-tran')}) =>
+      Container(
+        key: key,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFFFFF3E0),
