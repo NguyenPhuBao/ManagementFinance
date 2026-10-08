@@ -361,9 +361,9 @@ void main() {
       };
       await runSync();
 
-      expect(client.adapter.lastPullSince, '2026-10-08T07:40:00.001Z',
-          reason: 'Nhỏ nhất giữa các bảng (07:40), không phải lớn nhất (07:45) '
-              'hay update_at của hàng (07:49).');
+      expect(client.adapter.lastPullSince, '2026-10-08T07:45:00.001Z',
+          reason: 'Lớn nhất giữa các bảng theo GIỜ-SERVER (07:45), không phải '
+              'update_at của hàng (07:49 — giờ ghi của máy).');
     });
   });
 }

@@ -318,7 +318,7 @@ Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quy�
 
 ### Mốc đồng bộ (checkpoint)
 
-Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó. ⚠️ **Đổi từ G67 (2026-10-08):** server (migration 20 + 21) lọc theo giờ-server `Server_update_at` và trả `maxSince` từng bảng; mốc nay là `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) — **nhỏ nhất** giữa các bảng, kẹp về `pulledAt − 2 phút` khi còn nóng, +1 ms khi đã nguội (giờ-server lưu µs, JSON mang ms). `update_at` lớn nhất chỉ còn là đường lùi khi phản hồi không có khoá `maxSince`. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ đúng một lần (hàng G67 từng bỏ sót nằm dưới mốc cũ).
+Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó. ⚠️ **Đổi từ G67 (2026-10-08):** server (migration 20 + 21) lọc theo giờ-server `Server_update_at` và trả `maxSince` từng bảng; mốc nay là `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) — **lớn nhất** giữa các bảng, kẹp về `pulledAt − 2 phút` khi còn nóng, +1 ms khi đã nguội (giờ-server lưu µs, JSON mang ms). `update_at` lớn nhất chỉ còn là đường lùi khi phản hồi không có khoá `maxSince`. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ đúng một lần (hàng G67 từng bỏ sót nằm dưới mốc cũ).
 
 ### `_resolveCategoryId(categoryId)` — logic quan trọng
 ```
@@ -602,8 +602,10 @@ src/Backend/
   7 tệp `src/Client-app` (Premium: trần hoá đơn / danh mục riêng, `quyenTinhNang`, `GoiCubit.duocDung…`); chi tiết ở
   hàng *Việc thuộc backend* `CLAUDE.md`.
 - CSDL dev áp `database/21–23` (cho phép đích danh) + `prisma generate`; `/subscription-info` trả `limits` + `features`.
-- **G67:** mốc kéo về nay từ `maxSince` của server (`core/sync/moc_keo_ve.dart`), khoá lưu `sync_last_pull_v2_<id>` ép
-  kéo toàn bộ một lần. **Chưa nghiệm thu hai máy** — mục G67 `CLIENT_APP_KNOWN_GAPS.md`.
+- ✅ **G67 đóng:** mốc kéo về nay từ `maxSince` của server (`core/sync/moc_keo_ve.dart`), khoá lưu
+  `sync_last_pull_v2_<id>` ép kéo toàn bộ một lần. Nghiệm thu hai máy ảo (tài khoản 27) đạt hai lượt; lượt một lộ mốc
+  "nhỏ nhất" neo vào bảng lâu không đổi (đổi sang lớn nhất + kẹp) và **G85** — vá neo sau khi ghi sổ làm neo nuốt giao
+  dịch của máy kia ở ví seed (nay vá trước). Mục G67, G85 `CLIENT_APP_KNOWN_GAPS.md`.
 - Bản release thôi in số tiền / tham số mô hình ra logcat (`[Quet][Gemma]`, `PhienMotLoiGoi`).
 
 ### 📷 A5 — nút Quét đọc hoá đơn / biên lai + tách khoản chi theo danh mục (2026-10-08, mã xong, chờ nghiệm thu)

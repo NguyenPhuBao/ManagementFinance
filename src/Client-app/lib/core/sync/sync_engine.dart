@@ -537,8 +537,8 @@ class SyncEngine {
                   as List<dynamic>? ??
               [];
 
-          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo ở cuối
-          // hàm — xem lý do ở đó.
+          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo — xem
+          // `viDungToi` ngay trước khi ghi giao dịch.
           final viDaCoTruocPull = {
             for (final w in await _db.walletDao.getAll(accountId)) w.id,
           };
@@ -631,6 +631,35 @@ class SyncEngine {
           final transactions = (payloadData['transactions'] ??
                   payloadData['transaction']) as List<dynamic>? ??
               [];
+          // Ví mà lượt kéo này đụng tới: ví vừa về, ví của giao dịch vừa về, và
+          // ví ĐÍCH của khoản chuyển vừa về (`tongTheoVi` cộng khoản chuyển đến).
+          final viDungToi = <String>{
+            for (final t in transactions)
+              if (t is Map) ...[
+                if ((t['idwallet'] ?? t['wallet_id']) != null)
+                  (t['idwallet'] ?? t['wallet_id']).toString(),
+                if ((t['idwallet_transfer'] ?? t['wallet_transfer']) != null)
+                  (t['idwallet_transfer'] ?? t['wallet_transfer']).toString(),
+              ],
+            for (final w in wallets)
+              if (w is Map && (w['idwallet'] ?? w['id']) != null)
+                (w['idwallet'] ?? w['id']).toString(),
+          };
+          // Vá neo cho ví đã có trên máy nhưng chưa có khoản mở sổ (ví tạo bằng
+          // bản app trước 2026-09-13, **và ví server tự tạo khi đăng ký** — hai
+          // ví seed không bao giờ có neo) — **TRƯỚC khi ghi giao dịch vừa kéo
+          // vào sổ**. Neo tính bằng `balance − Σ sổ`; vá SAU khi ghi là neo nuốt
+          // luôn giao dịch của máy kia, đúng bẫy "thời điểm đặt neo" của G37.
+          // Đo thật hai máy ảo 2026-10-08 (nghiệm thu G67): ví Tiết kiệm seed,
+          // B −11.000 offline, kéo về −22.000 của A → neo +22.000, số dư cả hai
+          // máy −11.000 thay vì −33.000.
+          //
+          // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Ví vừa
+          // INSERT mang `balance = 0` (nhánh trên thôi đọc cột ấy) trong khi sổ
+          // của nó đầy đủ; vá nó là sinh một khoản chi bằng cả tổng sổ (đo thật
+          // 2026-09-13: ví 2.000.000 hiện thành `Total balance: 0đ`). Neo của ví
+          // vừa về — nếu có — là một giao dịch, về cùng lượt.
+          await _soDuVi.datNeoNhieuVi(viDungToi.intersection(viDaCoTruocPull));
           if (transactions.isNotEmpty) {
             final companions = transactions.map((t) {
               return TransactionsCompanion(
@@ -1059,8 +1088,8 @@ class SyncEngine {
 
           // Mốc mới — **G67**. Server từ migration 20 trả `maxSince` (giờ-server
           // `Server_update_at` lớn nhất từng bảng) và lọc theo chính cột ấy, nên
-          // mốc lấy từ đó (`mocTuMaxSince`: nhỏ nhất giữa các bảng, lùi trước
-          // `pulledAt`). KHÔNG lấy `update_at` của từng hàng: đó là giờ ghi của
+          // mốc lấy từ đó (`mocTuMaxSince`: lớn nhất giữa các bảng, kẹp về
+          // `pulledAt − 2 phút`). KHÔNG lấy `update_at` của từng hàng: đó là giờ ghi của
           // MÁY, và bản ghi lên server muộn hơn giờ ghi (máy offline lâu) rơi dưới
           // mốc ấy mãi mãi. Server cũ (không có khoá `maxSince`) thì rơi về
           // `update_at` lớn nhất như trước. Không nhận được bản ghi nào thì giữ
@@ -1089,29 +1118,9 @@ class SyncEngine {
           //
           // Gồm cả ví MỚI về: neo của chúng cũng là một giao dịch, cũng vừa
           // được kéo về, nên tổng sổ ra đúng số dù cột `balance` khởi tạo bằng 0.
-          final viCanTinhLai = <String>{
-            for (final t in transactions)
-              if (t is Map && t['idwallet'] != null) t['idwallet'].toString(),
-            for (final w in wallets)
-              if (w is Map && (w['idwallet'] ?? w['id']) != null)
-                (w['idwallet'] ?? w['id']).toString(),
-          };
-          if (viCanTinhLai.isNotEmpty) {
-            // Vá neo cho ví tạo bằng bản app trước 2026-09-13 — và **chỉ**
-            // cho ví đã có trên máy này TRƯỚC lượt kéo về.
-            //
-            // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Neo
-            // tính bằng `balance − Σ sổ`, mà ví vừa INSERT mang `balance = 0`
-            // (nhánh trên thôi đọc cột ấy) trong khi sổ của nó đã đầy đủ. Vá
-            // nó là sinh một khoản **chi** đúng bằng cả tổng sổ, và số dư về
-            // 0. Đo thật trên hai máy ảo ngày 2026-09-13: ví 2.000.000 hiện
-            // thành `Total balance: 0đ` ngay sau lần pull đầu.
-            //
-            // Ví vừa về **không cần vá**: neo của nó là một giao dịch, do máy
-            // tạo ví sinh ra, nên nó cũng vừa được kéo về cùng lượt.
-            await _soDuVi
-                .datNeoNhieuVi(viCanTinhLai.intersection(viDaCoTruocPull));
-            await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
+          // Neo đã vá ở trên, TRƯỚC khi ghi sổ — xem `viDungToi`.
+          if (viDungToi.isNotEmpty) {
+            await _soDuVi.tinhLaiNhieuVi(viDungToi);
           }
           // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi
           // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên
