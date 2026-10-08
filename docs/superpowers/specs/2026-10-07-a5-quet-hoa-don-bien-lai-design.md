@@ -325,8 +325,9 @@ Lượt gọi thứ hai (sau khi thêm 11.2b): *"Thêm phần - Chọn món"* (s
 ✅ **Người dùng xác nhận đã có 2026-10-08** (các lượt gọi đều `timeout` / `ECONNRESET`, người dùng xin gọi lại một lần):
 - `98133eb8d35f425dbaba1b73cd230c3f` *Thêm phần - Chọn món*.
 - `01f8cdc65e6d49a4b7aac6a0d54e24e5` *Thêm giao dịch - Tách theo danh mục - FlowMoney Mobile* và
-  `7aca2eb47fb84e8badea38796ec4bde1` *… - FlowMoney* — **hai** bản do hai lượt gọi; bản lượt sau vẽ *"2 món ·
-  165.000 đ"*, phần còn lại *247.000 đ*, *"Lưu 2 giao dịch"* (khớp 11.2b). Cả ba mang `deviceType: DESKTOP`.
+  `7aca2eb47fb84e8badea38796ec4bde1` *… - FlowMoney* — **hai** bản do hai lượt gọi. **Dùng `01f8cdc6…`** (đọc HTML
+  2026-10-08: *"2 món · 165.000 đ"*, còn lại *247.000 đ*, *"Lưu 2 giao dịch"* — khớp 11.2b); `7aca2eb4…` là bản lượt
+  đầu (ba phần nhập số, *"Lưu 3"*, chưa có chọn món). Cả ba mang `deviceType: DESKTOP`.
 
 ### 11.8 Nghiệm thu Realme
 
