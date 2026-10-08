@@ -18,6 +18,7 @@ import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
+import '../../domain/doc_mon_hang.dart';
 import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
@@ -365,10 +366,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (_bienDong != null) unawaited(Future.wait([napVi, napHoc]).then((_) => _dienTuBienDong()));
     // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
     if (_bienDong?.anh case final anh?) {
-      // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`).
+      // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`), kèm danh sách món (mục 11.2b).
       unawaited((_laQuet ? _khoAnhQuet?.duongDan(anh) : _khoBienLai?.duongDan(anh))?.then((p) {
         if (mounted && p != null) setState(() => _duongDanAnh = p);
       }));
+      if (_laQuet) {
+        unawaited(_khoAnhQuet?.docMon(anh).then((m) {
+          if (mounted) setState(() => _monQuet = m);
+        }));
+      }
     }
   }
 
@@ -378,6 +384,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// A5 — form mở từ ảnh quét (khoá `quet:`): không nguồn ngân hàng, không hàng loại 20.
   bool get _laQuet => _bienDong?.laQuet ?? false;
+
+  /// A5 mục 11.2b — danh sách món của ảnh quét loại hoá đơn (rỗng: biên lai, gõ tay, đọc hỏng) — sheet *Thêm phần*
+  /// cho tick món thay vì gõ số.
+  List<MonHang> _monQuet = const [];
 
   /// A5 mục 11 — các phần TÁCH khỏi khoản chi (ngoài phần chính = danh mục đang chọn, nhận phần còn lại).
   List<PhanTach> _phanTach = const [];
@@ -1708,6 +1718,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         for (final x in _phanTach) x.categoryId,
       },
       dangSua: sua,
+      mon: _monQuet,
+      // Món đã thuộc phần KHÁC (không phải phần đang sửa) → mờ, không tick được.
+      monCuaPhanKhac: {
+        for (final x in _phanTach)
+          if (x != sua)
+            for (final id in x.monIds) id: _dmTheoId[x.categoryId]?.name ?? 'Phần khác',
+      },
     );
     if (p == null || !mounted) return;
     setState(() {
