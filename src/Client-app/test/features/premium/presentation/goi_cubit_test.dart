@@ -49,4 +49,19 @@ void main() {
     await cubit.close();
     await repo.dispose();
   });
+
+  test('GoiCubit phản ánh duocDungAiAssistant và duocDungAiQuickInput theo quyenTinhNang',
+      () async {
+    final now = DateTime(2026, 10, 6, 10);
+    final repo = GoiRepository(
+        api: _ApiGia(), kho: InMemoryGoiStore(), clock: () => now);
+    final cubit = GoiCubit(repo, clock: () => now);
+
+    // Mặc định ban đầu (Basic không có map) → false
+    expect(cubit.duocDungAiAssistant, isFalse);
+    expect(cubit.duocDungAiQuickInput, isFalse);
+
+    await cubit.close();
+    await repo.dispose();
+  });
 }

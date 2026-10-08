@@ -189,7 +189,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final t = widget.laPremium;
     if (t != null) return t;
     try {
-      return context.read<GoiCubit>().laPremium;
+      return context.read<GoiCubit>().duocDungAiQuickInput;
     } on ProviderNotFoundException {
       return true;
     }

@@ -7,6 +7,7 @@ import UserDetailPage from '../pages/users/UserDetailPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import BroadcastPage from '../pages/system/BroadcastPage';
 import AIOpsPage from '../pages/system/AIOpsPage';
+import PermissionManagementPage from '../pages/system/PermissionManagementPage';
 
 const routes = [
   // Public routes
@@ -36,6 +37,10 @@ const routes = [
   {
     path: '/users/:id',
     element: <UserDetailPage />,
+  },
+  {
+    path: '/permissions',
+    element: <PermissionManagementPage />,
   },
   {
     path: '/audit-logs',

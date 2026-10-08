@@ -33,6 +33,12 @@ class DemDangHoatDong implements NguonDemDangHoatDong {
       case LoaiTran.mucTieu:
         final rows = await db.goalDao.getAll(idaccount); // đã lọc deletedAt
         return rows.where((r) => !GoalEntity.fromDrift(r).daHoanThanh).length;
+      case LoaiTran.hoaDon:
+        final rows = await db.billDao.getAll(idaccount); // đã lọc deletedAt
+        return rows.where((r) => !r.isPaid && r.payStatus != 'Payed').length;
+      case LoaiTran.danhMucRieng:
+        final rows = await db.categoryDao.getAll(idaccount);
+        return rows.where((r) => !r.isDefault && r.idaccount == idaccount).length;
     }
   }
 }

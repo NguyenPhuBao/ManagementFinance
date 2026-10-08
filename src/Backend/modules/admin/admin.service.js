@@ -1,4 +1,5 @@
 const adminRepository = require('./admin.repository');
+const permissionRepository = require('../payment/permission.repository');
 const os = require('os');
 const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
 const { defaultDbBulkhead } = require('../../core/resilience/db-bulkhead');
@@ -596,6 +597,76 @@ const adminService = {
     const page = Math.max(parseInt(params.page, 10) || 1, 1);
     const result = await adminRepository.queryAuditLogs({ ...params, limit, page });
     return { ...result, page, limit };
+  },
+
+  /**
+   * Lấy ma trận phân quyền tính năng theo loại tài khoản (Basic / Premium)
+   */
+  async getPermissionsMatrix() {
+    const features = await permissionRepository.getAllFeatures();
+    const rawPerms = await permissionRepository.getAllAccountPermissions();
+
+    const permissions = {
+      Basic: {},
+      Premium: {},
+    };
+
+    for (const p of rawPerms) {
+      if (!permissions[p.account_type]) {
+        permissions[p.account_type] = {};
+      }
+      permissions[p.account_type][p.feature_id] = {
+        is_enabled: Boolean(p.is_enabled),
+        limit_value: p.limit_value !== undefined ? p.limit_value : null,
+      };
+    }
+
+    return { features, permissions };
+  },
+
+  /**
+   * Cập nhật hàng loạt cấu hình phân quyền tính năng
+   * @param {Array<{ account_type: string, feature_id: string, is_enabled: boolean, limit_value: number|null }>} updates
+   */
+  async updatePermissionsMatrix(updates = [], adminUser = null) {
+    if (!Array.isArray(updates) || updates.length === 0) {
+      const err = new Error('Danh sách cập nhật không được rỗng');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const results = [];
+    for (const item of updates) {
+      const { account_type, feature_id, is_enabled, limit_value } = item;
+      if (!['Basic', 'Premium'].includes(account_type)) {
+        const err = new Error(`Loại tài khoản không hợp lệ: ${account_type}`);
+        err.statusCode = 400;
+        throw err;
+      }
+      if (!feature_id) {
+        const err = new Error('Thiếu mã tính năng (feature_id)');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const updated = await permissionRepository.updatePermission(account_type, feature_id, {
+        is_enabled: is_enabled !== undefined ? Boolean(is_enabled) : true,
+        limit_value: limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,
+      });
+      results.push(updated);
+    }
+
+    // Phát Socket.IO realtime thông báo phân quyền thay đổi tới toàn bộ client
+    try {
+      const { emitPermissionsUpdated } = require('../../core/socket');
+      if (typeof emitPermissionsUpdated === 'function') {
+        emitPermissionsUpdated(results);
+      }
+    } catch (socketErr) {
+      logger.warn('[AdminService] Không thể phát socket permissions updated:', socketErr.message);
+    }
+
+    return { updatedCount: results.length, updates: results };
   },
 };
 

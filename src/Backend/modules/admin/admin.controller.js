@@ -220,6 +220,28 @@ const adminController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  async getPermissions(req, res) {
+    try {
+      const result = await adminService.getPermissionsMatrix();
+      return ResponseHandler.success(res, result, 'Ma trận phân quyền tính năng');
+    } catch (error) {
+      logger.error('getPermissions failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async updatePermissions(req, res) {
+    try {
+      const { updates } = req.body;
+      const result = await adminService.updatePermissionsMatrix(updates, req.user);
+      return ResponseHandler.success(res, result, 'Cập nhật phân quyền tính năng thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('updatePermissions failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = adminController;

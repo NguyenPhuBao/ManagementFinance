@@ -33,6 +33,10 @@ const adminApi = {
 
   // Audit Logs
   getAuditLogs: (params = {}) => axiosClient.get('/admin/audit-logs', { params }),
+
+  // Dynamic Feature Permissions
+  getPermissions: () => axiosClient.get('/admin/permissions'),
+  updatePermissions: (updates) => axiosClient.put('/admin/permissions', { updates }),
 };
 
 export default adminApi;

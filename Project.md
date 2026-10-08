@@ -3529,6 +3529,159 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Bộ kiểm thử tự động Backend: **245/245 tests PASS 100%** (bao gồm 2 test mới cho `server_update_at` delta pull và test mở rộng cho `limits, price, packageDays`).
   - Thẩm tra chỉ mục CSDL (`npm run db:verify-indexes`): Toàn bộ Partial Indexes và Triggers an toàn 100%.
 
+### 11.70. Khắc Phục Lệch Hai Đồng Hồ 7 Giờ Trong Server_update_at Bằng Migration 21 (2026-10-07)
+- **1. Vấn Đề Kỹ Thuật (Mục 40 CAN-LAM):**
+  - **Hiện tượng:** Cột `Server_update_at` trên 6 bảng đồng bộ có kiểu `TIMESTAMP(6) WITHOUT TIME ZONE`. Khi PostgreSQL chạy với múi giờ phiên `Asia/Bangkok` hoặc `Asia/Ho_Chi_Minh` (UTC+7), mệnh đề `CURRENT_TIMESTAMP` gán vào cột tự động đổi sang giờ phiên (+7h), trong khi Prisma ORM (`new Date()`) luôn gửi giờ chuẩn UTC.
+  - **Hệ quả:** Hàng INSERT mang giờ UTC, hàng UPDATE qua trigger `set_server_update_at()` nhảy trước 7 tiếng, khiến `/sync/pull` trả lặp lại thừa trong 7 tiếng và làm sai checkpoint `maxSince` của Client-app.
+- **2. Giải Pháp Triển Khai (Migration 21):**
+  - Áp dụng Migration 21 (`database/21_fix_server_update_at_utc.sql` qua `scripts/apply_migration_21.js`):
+    1. Sửa Trigger function `set_server_update_at()`: `NEW."Server_update_at" = (now() AT TIME ZONE 'UTC');`.
+    2. Sửa `DEFAULT` của 6 cột `Server_update_at` trên 6 bảng đồng bộ thành `(now() AT TIME ZONE 'UTC')`.
+    3. Cập nhật file nguồn `database/20_add_server_update_at_sync_tables.sql` để đồng bộ.
+- **3. Thẩm Tra Thực Tế & Kiểm Định:**
+  - Script `scripts/verify_utc_clock.js` giả lập `SET timezone = 'Asia/Bangkok'`: Độ lệch giữa trigger `Server_update_at` và `(now() AT TIME ZONE 'UTC')` đạt **0 ms** (triệt tiêu hoàn toàn độ lệch 7 giờ).
+  - Bổ sung regression test 5.3 trong `tests/v2/sync.engine.test.js`. Toàn bộ Backend test suite đạt **246/246 tests PASS 100%**.
+  - Đóng và lưu trữ mục 40 sang `docs/superpowers/backend/DA-XONG/SERVER_UPDATE_AT_HAI_DONG_HO.md` (đạt 58 tài liệu lưu trữ). Xác nhận phản hồi cho Client-app: giữ 1 mốc chung `min(maxSince)` là chuẩn xác và an toàn nhất.
+
+### 11.71. Triển Khai CSDL Phân Quyền Tính Năng Động Theo Loại Tài Khoản (Bước 3) (2026-10-07)
+- **1. Mục Tiêu & Yêu Cầu Nghiệp Vụ:**
+  - Chuyển đổi mô hình phân quyền tính năng từ hardcoded tĩnh sang cấu hình động hoàn toàn trong CSDL (Database-Driven Dynamic Feature Permissions).
+  - Phù hợp với kết quả khảo sát từ Client-app (`docs/superpowers/backend/CAN-LAM/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md`).
+  - Hỗ trợ 2 dạng đặc trưng tính năng:
+    + `LIMIT` (giới hạn số lượng bản ghi cục bộ): ví dụ `wallets`, `budgets`, `goals` (Basic = 3; Premium = null/không giới hạn).
+    + `TOGGLE` (bật/tắt phân quyền chức năng đặc biệt): ví dụ `ai_assistant`, `ai_quick_input` (Basic = false; Premium = true).
+  - Cung cấp nền tảng CSDL sẵn sàng cho Admin-web chỉnh sửa cấu hình phân quyền (Bước 4) và Client-app thực thi ràng buộc (Bước 5).
+- **2. Kiến Trúc CSDL & DDL (Migration 22):**
+  - **Bảng `feature`:**
+    + `id` (VARCHAR(50), PK): Định danh tính năng dạng slug (ví dụ: `wallets`, `budgets`, `goals`, `ai_assistant`, `ai_quick_input`).
+    + `name` (VARCHAR(100)): Tên hiển thị tiếng Việt.
+    + `description` (TEXT): Mô tả chi tiết chức năng.
+    + `type` (VARCHAR(20)): Kiểu phân quyền (`LIMIT` hoặc `TOGGLE`).
+    + `category_group` (VARCHAR(50)): Nhóm hiển thị (ví dụ: `core`, `ai`).
+    + `default_limit` (INT): Giá trị giới hạn mặc định.
+    + `default_enabled` (BOOLEAN): Trạng thái kích hoạt mặc định.
+    + `created_at`, `updated_at`: Dấu vết thời gian chuẩn UTC.
+  - **Bảng `account_type_permission`:**
+    + `id` (VARCHAR(36), PK): UUID bản ghi phân quyền.
+    + `account_type` (VARCHAR(20)): Loại tài khoản (`Basic`, `Premium`).
+    + `feature_id` (VARCHAR(50), FK trỏ `feature.id` ON DELETE CASCADE).
+    + `is_enabled` (BOOLEAN): Cờ bật/tắt quyền (dành cho loại `TOGGLE`).
+    + `limit_value` (INT): Hạn mức tối đa (dành cho loại `LIMIT`, null biểu thị không giới hạn).
+    + `created_at`, `updated_at`: Dấu vết thời gian chuẩn UTC.
+    + Ràng buộc Unique `(account_type, feature_id)` ngăn trùng lặp.
+  - Áp dụng thành công lên Supabase Cloud qua `database/22_create_feature_permission_tables.sql` và script an toàn `scripts/apply_migration_22.js`.
+  - Seed đầy đủ 5 tính năng cốt lõi và 10 bản ghi phân quyền ban đầu cho cả 2 loại tài khoản `Basic` và `Premium`.
+- **3. Cập Nhật Prisma ORM & Backend Layer:**
+  - Khai báo model `feature` và `account_type_permission` trong `prisma/schema.prisma`.
+  - Chạy `npx prisma generate` sinh type an toàn.
+  - Xây dựng `permissionRepository` (`src/Backend/modules/payment/permission.repository.js`) với hàm `getPermissionsByAccountType(accountType)` hỗ trợ cấu chế fallback an toàn `DEFAULT_PERMISSIONS` khi database offline.
+  - Tích hợp động vào API `getSubscriptionInfo(idaccount)` trong `payment.service.js`: trả về đồng thời `limits` và `features` linh hoạt theo trạng thái hiệu lực gói cước của người dùng (tự động hạ cấp về Basic nếu Premium hết hạn).
+- **4. Kiểm Thử & Thẩm Tra:**
+  - Viết suite kiểm thử unit test `permission.repository.test.js` (4 tests) và cập nhật `payment.service.test.js` (5 tests).
+  - Toàn bộ Backend test suite đạt **251/251 tests PASS 100%**.
+  - Sẵn sàng bước vào Bước 4: Xây dựng UI & API phân quyền động trên Admin-web.
+
+### 11.72. Triển Khai Tính Năng Phân Quyền Động Tại Admin-Web (Bước 4) (2026-10-07)
+- **1. Mục Tiêu & Đặc Trưng Nghiệp Vụ:**
+  - Xây dựng giao diện và hệ thống API quản trị cho phép Admin cấu hình phân quyền tính năng động theo loại tài khoản (`Basic` và `Premium`).
+  - Hỗ trợ trực quan hóa theo từng **Nhóm chức năng** (`category_group`: Tài nguyên, Trí tuệ nhân tạo).
+  - Áp dụng chuẩn kiểm soát đầu vào:
+    + Tính năng có số lượng (`LIMIT`): Ô nhập số (Number Input) cho phép chỉnh sửa giới hạn cụ thể, đi kèm Checkbox "Không giới hạn" (unlimited, lưu `null` vào CSDL).
+    + Tính năng logic (`TOGGLE`): Checkbox trực quan (Check = Bật/Cho phép, Not check = Tắt/Khóa).
+- **2. Triển Khai Backend Admin API:**
+  - **`GET /api/admin/permissions`**: Trả về danh sách tính năng và ma trận phân quyền của các loại tài khoản (`Basic`, `Premium`).
+  - **`PUT /api/admin/permissions`**: Nhận danh sách thay đổi `{ updates: [...] }`, validate tham số và lưu vết qua `permissionRepository.updatePermission`.
+  - Bổ sung methods `getPermissionsMatrix` và `updatePermissionsMatrix` trong `admin.service.js` và `admin.controller.js`.
+  - Đăng ký routes bảo vệ bởi middleware `authenticate` và `authorize('admin')` trong `src/Backend/api/admin.routes.js`.
+- **3. Triển Khai Frontend Admin-Web:**
+  - API Client Layer: Bổ sung `getPermissions` và `updatePermissions` trong `src/Admin-web/src/api/admin.api.js`.
+  - Giao diện người dùng: Tạo trang `src/Admin-web/src/pages/system/PermissionManagementPage.jsx`:
+    + Trình bày phân nhóm theo Accordion/Card Table rõ ràng.
+    + Cơ chế phát hiện thay đổi chưa lưu (dirty state tracker) và nút "Lưu tất cả thay đổi" nổi bật kèm số lượng pending updates.
+    + Hỗ trợ nút "Khôi phục / Làm mới" và thông báo Toast Alert thành công/thất bại.
+  - Điều hướng: Đăng ký route `/permissions` trong `src/Admin-web/src/router/routes.jsx` và thêm mục "Phân quyền gói cước" vào `src/Admin-web/src/components/layout/Sidebar.jsx`.
+- **4. Kiểm Thử & Xác Thực Toàn Diện:**
+  - Viết suite unit test `src/Backend/tests/unit/admin.permission.test.js` (5 tests PASS 100%).
+  - Chạy toàn bộ test suite Backend: **256/256 tests PASS 100%**.
+  - Kiểm thử đóng gói giao diện: Vite build production thành công trong 7.33s không có lỗi.
+  - Sẵn sàng bước vào Bước 5: Áp dụng ràng buộc phân quyền cho từng tính năng tại Client-app.
+
+### 11.73. Áp Dụng Ràng Buộc Phân Quyền Tính Năng Động Tại Client-App (Bước 5) (2026-10-07)
+- **1. Mục Tiêu & Cơ Chế Thực Thi:**
+  - Hoàn tất bước cuối cùng trong chuỗi 5 bước phát triển tính năng phân quyền động theo loại tài khoản: kết nối trực tiếp Client-app Flutter với CSDL Backend và giao diện cấu hình Admin-web.
+  - Xóa bỏ hoàn toàn cơ chế kiểm tra tĩnh cứng (hardcode 3/3/3 và cờ `laPremium` cố định).
+  - Tự động áp dụng mọi thay đổi phân quyền do Admin thiết lập ngay khi người dùng đăng nhập, khi ứng dụng hoạt động trở lại sau nền, hoặc khi có sự kiện thời gian thực từ Socket.IO.
+- **2. Nâng Cấp Tầng Domain Phân Quyền (`lib/features/premium/domain/`):**
+  - **`TranGoi` (Tài nguyên có hạn mức `LIMIT`):**
+    + Chuyển đổi các trường `vi`, `nganSach`, `mucTieu` sang kiểu `int?` (`null` = không giới hạn).
+    + `TranGoi.tuJson` nhận diện rõ ràng giá trị `null` từ Backend (`limits: { wallets: null, ... }`) là không giới hạn, đồng thời duy trì giá trị dự phòng 3 khi server không truyền key.
+    + Cập nhật logic `conTaoDuoc`: Nếu `tran == null` hoặc tài khoản là Premium còn hạn thì luôn cho phép tạo mới (`Duoc()`). Nếu có hạn mức cụ thể, kiểm tra `dangCo >= tran`.
+  - **`TrangThaiGoi` (Tính năng logic `TOGGLE`):**
+    + Bổ sung trường `quyenTinhNang: Map<String, bool>` để lưu cấu hình tính năng động từ trường `features` của API `/payment/subscription-info`.
+    + Cung cấp phương thức `duocDung(String maTinhNang, {bool Function()? fallback})`: ưu tiên đọc cấu hình động, tự động fallback an toàn nếu không tìm thấy.
+    + Cập nhật serialization/deserialization trong `toJson` và `tuJsonKho` bảo đảm đồng bộ bền vững ngoại tuyến trong local storage.
+- **3. Nâng Cấp State Management (`GoiCubit`):**
+  - Cung cấp hai getters tiện ích thời gian thực:
+    + `duocDungAiAssistant`: Kiểm tra quyền sử dụng Trợ lý AI (hỏi đáp và lệnh tạo).
+    + `duocDungAiQuickInput`: Kiểm tra quyền sử dụng Nhập nhanh giao dịch bằng câu nói/văn bản.
+  - Tự động phát trạng thái (emit) cho toàn bộ cây widget khi cấu hình phân quyền thay đổi.
+- **4. Áp Dụng Ràng Buộc Trực Tiếp Vào Giao Diện:**
+  - **Màn hình Trợ Lý AI (`ai_chat_page.dart`):**
+    + Đọc cờ `duocDungAiAssistant` từ `context.watch<GoiCubit>()`.
+    + Khi bị khóa: vô hiệu hóa ô nhập chat, làm mờ chip gợi ý câu hỏi, và hiển thị băng thông báo kèm nút "Nâng cấp Premium" trực quan.
+  - **Màn hình Nhập Nhanh Giao Dịch (`add_transaction_page.dart`):**
+    + Đọc cờ `duocDungAiQuickInput` từ `context.watch<GoiCubit>()`.
+    + Khi bị khóa: vô hiệu hóa ô nhập nhanh, chuyển nút "Điền" thành nút "Nâng cấp", hiển thị dòng gợi ý "Nâng cấp để đọc câu bằng AI".
+  - **Ràng Buộc Giới Hạn Tài Nguyên (`app_router.dart`):**
+    + Tự động áp dụng trần động mới qua `redirectTaoTheoGoi` và `conTaoDuoc` cho cả 3 tuyến đường tạo Ví (`/wallets/add`), Ngân sách (`/budget/rules`), và Mục tiêu (`/goals/add`).
+- **5. Kiểm Thử & Xác Thực Toàn Diện:**
+  - 112/112 tests của module Premium trên Client-app PASS 100%.
+  - 47/47 tests tầng Domain phân quyền PASS 100%.
+  - Unit tests cho `GoiCubit` và `ly_do_khoa_test.dart` PASS 100%.
+  - Toàn bộ chuỗi 5 bước phân quyền động theo loại tài khoản đã hoàn tất trọn vẹn và nhất quán trên cả 3 phân hệ: CSDL Supabase, Admin-web, và Client-app Flutter.
+
+### 11.74. Triển Khai Toàn Diện Hệ Thống Phân Quyền Động 17 Tính Năng & Real-Time Toàn Hệ Thống (2026-10-07)
+- **1. Quy Mô & Kiến Trúc Tổng Thể:**
+  - Hoàn thiện và nâng cấp toàn bộ hệ thống phân quyền động từ 5 tính năng cốt lõi lên **toàn bộ 17 tính năng** trên cả 3 phân hệ (CSDL Supabase Cloud, Backend Node.js, Admin-web ReactJS, Client-app Flutter).
+  - Phân loại rõ ràng thành 4 nhóm nghiệp vụ:
+    + **Nhóm 1 - Tài nguyên có hạn mức (`LIMIT`):** `wallets` (3), `budgets` (3), `goals` (3), `bills` (3), `custom_categories` (5).
+    + **Nhóm 2 - Trí tuệ nhân tạo (`TOGGLE`):** `ai_assistant` (Chatbot AI), `ai_quick_input` (Nhập nhanh), `ocr_receipt` (Quét hóa đơn), `ai_edge_model` (Mô hình SLM On-device), `smart_budget_rebalancing` (Tái phân bổ ngân sách thông minh).
+    + **Nhóm 3 - Báo cáo & Phân tích (`TOGGLE`):** `financial_health_fhs` (Điểm sức khỏe tài chính), `export_reports` (Xuất báo cáo PDF/Excel), `cashflow_forecast` (Dự báo dòng tiền), `anomaly_spending_insights` (Phát hiện chi tiêu bất thường).
+    + **Nhóm 4 - Tự động hóa & Tiện ích (`TOGGLE`):** `bill_auto_pay` (Tự động thanh toán hóa đơn), `goal_auto_deposit` (Tự động trích quỹ mục tiêu), `bank_notification_parser` (Đọc thông báo biến động số dư ngân hàng).
+- **2. CSDL PostgreSQL Supabase Cloud:**
+  - Tạo và thực thi script migration an toàn: `src/Backend/database/23_seed_all_features_permissions.sql`.
+  - Nạp đầy đủ 17 tính năng vào bảng `feature` và 34 bản ghi ma trận quyền vào bảng `account_type_permission` (cho cả 2 loại tài khoản: Standard/Basic và Premium).
+  - Áp dụng cơ chế Idempotent (`ON CONFLICT (code) DO UPDATE`, `ON CONFLICT (idaccount_type, idfeature) DO UPDATE`) bảo đảm toàn vẹn dữ liệu, không ảnh hưởng đến trigger bảo vệ và soft-delete.
+- **3. Backend Node.js — Chặn Cứng & Real-Time Đẩy Sự Kiện:**
+  - **Middleware Chặn Cứng (`requireFeature(featureId)`):**
+    + Chặn đứng các truy cập API không được cấp quyền bằng mã lỗi HTTP 403 Forbidden (`code: FEATURE_DISABLED`).
+    + Tự động bypass cho tài khoản Quản trị viên (`idrole = 1`).
+    + Gắn vào các tuyến đường quan trọng: Chatbot AI (`/chat`, `/chat/stream`, `/financial-health`), OCR Quét hóa đơn (`/ocr/parse`, `/ocr/`).
+  - **Cơ Chế Real-Time Socket.IO (`socket.js`):**
+    + Bổ sung hàm `emitToAccount(idaccount, event, data)` và `emitPermissionsUpdated(updates)`.
+    + Phát cả hai sự kiện `account.permissions_updated` và `account.upgraded` tới các socket đang kết nối của user ngay khi Admin bấm "Lưu" thay đổi ma trận quyền.
+  - **Fallback An Toàn (`permission.repository.js`):**
+    + Cập nhật `DEFAULT_PERMISSIONS` bao quát toàn bộ 17 tính năng giúp hệ thống luôn hoạt động ổn định kể cả khi mất kết nối CSDL tạm thời.
+  - **Kiểm thử Backend:** **262/262 tests PASS 100%**.
+- **4. Admin-Web — Giao Diện Quản Trị Trực Quan & Thao Tác Tức Thì:**
+  - Nâng cấp `src/Admin-web/src/pages/system/PermissionManagementPage.jsx`:
+    + Bổ sung icon và nhãn tiếng Việt chi tiết cho toàn bộ 17 tính năng và 4 nhóm nghiệp vụ.
+    + Nhập số cho các tính năng `LIMIT` (0 = vô hiệu hóa, bỏ trống = không giới hạn), toggle checkbox cho các tính năng `TOGGLE`.
+    + Lưu ma trận quyền hàng loạt qua API `PUT /api/admin/permissions/matrix` và nhận phản hồi tức thời.
+  - **Kiểm thử Admin-web:** Vitest **60/60 tests PASS 100%**, Vite build production thành công trong 3.72s.
+- **5. Client-App Flutter — Đồng Bộ Nhẹ & Ràng Buộc Thời Gian Thực:**
+  - **Real-Time Event Mapping (`realtime_event.dart`):**
+    + Ánh xạ sự kiện `account.permissions_updated` từ Socket.IO thành `RealtimeEvent.taiKhoanNangCap`.
+    + Client-app phản ứng tức thời bằng cách gọi nhẹ API `/payment/subscription-info` (~300 bytes JSON), cập nhật bộ nhớ cục bộ `FlutterSecureStorage` và phát trạng thái qua `GoiCubit`. Tuyệt đối không ép chạy full sync SQLite, tiết kiệm pin và băng thông.
+  - **Mở Rộng Hạn Mức Động (`tran_goi.dart` & `dem_dang_hoat_dong.dart`):**
+    + Mở rộng `TranGoi` và `LoaiTran` hỗ trợ thêm `hoaDon` và `danhMucRieng`.
+    + Bổ sung bộ đếm `DemDangHoatDong` cho hóa đơn đang theo dõi và danh mục tùy chỉnh của người dùng (`isDefault = false`).
+  - **State Management & UI Getters (`goi_cubit.dart`):**
+    + Cung cấp đầy đủ getters: `duocOcrReceipt`, `duocDungEdgeAi`, `duocXuatBaoCao`, `duocDuBaoDongTien`, `duocTuDongTraHoaDon`, `duocTuDongTrichMucTieu`.
+  - **Kiểm thử Client-app:** Toàn bộ **116/116 tests** trong `test/features/premium/` và **80/80 tests** trong `test/features/ai_chat/` PASS 100%.
+- **6. Kết Luận & Nguồn Sự Thật:** Toàn bộ hệ thống quản lý phân quyền tính năng động theo loại tài khoản đã hoàn tất 100%, bảo đảm tính nhất quán, bảo mật (chặn 2 đầu Client & Backend) và cập nhật thời gian thực tức thời.
+
+
 
 
 

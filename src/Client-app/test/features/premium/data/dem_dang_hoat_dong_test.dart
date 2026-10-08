@@ -85,6 +85,64 @@ void main() {
     expect(await dem().dem(LoaiTran.mucTieu, 10), 1);
   });
 
+  test('hóa đơn: chưa xoá và chưa trả; đã trả / tài khoản khác không đếm', () async {
+    await db.billDao.insert(BillsCompanion.insert(
+      id: 'b_chua',
+      idaccount: 10,
+      name: 'Điện',
+      amount: 100,
+      dueDate: now,
+      updatedAt: now,
+    ));
+    await db.billDao.insert(BillsCompanion.insert(
+      id: 'b_da_tra',
+      idaccount: 10,
+      name: 'Nước',
+      amount: 50,
+      dueDate: now,
+      isPaid: const Value(true),
+      payStatus: const Value('Payed'),
+      updatedAt: now,
+    ));
+    await db.billDao.insert(BillsCompanion.insert(
+      id: 'b_khac',
+      idaccount: 99,
+      name: 'Internet',
+      amount: 200,
+      dueDate: now,
+      updatedAt: now,
+    ));
+    expect(await dem().dem(LoaiTran.hoaDon, 10), 1);
+  });
+
+  test('danh mục riêng: chỉ đếm danh mục của user (isDefault = false)', () async {
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'cat_1',
+      idaccount: 10,
+      name: 'Mặc định ăn uống',
+      classify: 'chi',
+      isDefault: const Value(true),
+      updatedAt: now,
+    ));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'cat_2',
+      idaccount: 10,
+      name: 'Riêng: Nuôi mèo',
+      classify: 'chi',
+      isDefault: const Value(false),
+      updatedAt: now,
+    ));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'cat_3',
+      idaccount: 99,
+      name: 'Riêng tài khoản khác',
+      classify: 'chi',
+      isDefault: const Value(false),
+      updatedAt: now,
+    ));
+    expect(await dem().dem(LoaiTran.danhMucRieng, 10), 1);
+  });
+
   test('DemDangHoatDong là một NguonDemDangHoatDong (để router tiêm bản giả)',
       () {
     expect(dem(), isA<NguonDemDangHoatDong>());
