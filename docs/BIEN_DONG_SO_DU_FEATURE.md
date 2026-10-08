@@ -107,7 +107,9 @@ App ngân hàng / ví hiện thông báo
   Luật mới: hai nguồn đều chỉ một tài khoản cụ thể (MB Bank, MoMo, ZaloPay…) và khác nhau → KHÔNG trùng; *SMS* và
   *Biên lai* (app gửi không rõ) là nguồn **chung** (`_nguonChung`) nên vẫn gộp với tin ngân hàng trong 5 phút. Cùng
   lượt đo: biên lai chia sẻ từ app MB cho lần MB → MoMo (MB không báo khi chuyển trong app) thành hàng −10.000 kèm
-  ảnh ✅. Chưa đo lại trên máy sau bản sửa (cần một lần chuyển thật nữa).
+  ảnh ✅. ✅ **Đo lại trên OnePlus 2026-10-08 tối** (bản debug `5df0537a…`): MoMo → MB 10.000 (MB báo +10.000 lúc 21:01)
+  rồi MB → MoMo 10.000 (MoMo báo +10.000 lúc 21:02:02, cách 47 giây) → **hai** mục chờ ghi riêng, `bienDong:MB Bank|…` và
+  `bienDong:MoMo|…` — đạt.
 - **Gợi ý cho phép chạy nền** (Stitch `2ff589c7…`, người dùng duyệt): hàng *"Tin có thể đến trễ khi app chạy nền"* +
   *Mở cài đặt* → trang thông tin ứng dụng. Chỉ hiện khi đang đọc **và** `isIgnoringBatteryOptimizations` = false; đọc
   lại khi quay về. Không dùng hộp thoại xin miễn tối ưu pin (quyền Play giới hạn). Câu chữ theo tên mục thật trên Realme
