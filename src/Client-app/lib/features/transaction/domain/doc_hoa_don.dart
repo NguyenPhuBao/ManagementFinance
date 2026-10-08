@@ -18,9 +18,13 @@ class KetQuaHoaDon {
   /// `HH:mm` in trên hoá đơn (A5 — giờ giao dịch đi cùng ngày).
   final String? gio;
 
+  /// Ngày in đủ hai chữ số cả ngày lẫn tháng (*02/10/2026*) — chắc là ngày/tháng. `false` khi in thiếu số 0 (*9/2/2026*):
+  /// máy POS MAXIDI in THÁNG/NGÀY kiểu ấy (nghiệm thu Realme 2026-10-08), nên thứ tự là chưa chắc.
+  final bool ngayDuHaiSo;
+
   /// Dòng mà luật lấy tổng từ đó — để người chấm thấy vì sao.
   final String? canCu;
-  const KetQuaHoaDon({this.tong, this.cuaHang, this.ngay, this.gio, this.canCu});
+  const KetQuaHoaDon({this.tong, this.cuaHang, this.ngay, this.gio, this.canCu, this.ngayDuHaiSo = true});
 
   @override
   String toString() =>
@@ -28,7 +32,12 @@ class KetQuaHoaDon {
 }
 
 /// Chữ thường, bỏ dấu, gom khoảng trắng — phép so nhãn của mọi luật đọc ảnh hoá đơn.
-String boDauHoaDon(String s) => removeVietnameseTones(normalizeCategoryName(s));
+///
+/// Kèm chữ Latin có dấu mà OCR hay đọc nhầm từ chữ Việt (*"Töng"*, *"nåm"* — Realme 2026-10-08).
+String boDauHoaDon(String s) =>
+    removeVietnameseTones(normalizeCategoryName(s)).replaceAllMapped(RegExp('[äåöüëïÿ]'), (m) => _latin[m[0]!]!);
+
+const Map<String, String> _latin = {'ä': 'a', 'å': 'a', 'ö': 'o', 'ü': 'u', 'ë': 'e', 'ï': 'i', 'ÿ': 'y'};
 
 /// Nhãn của dòng tổng, theo thứ tự ƯU TIÊN (đứng trước thắng). So trên chữ bỏ dấu.
 const List<String> kNhanTongHoaDon = [
@@ -37,6 +46,8 @@ const List<String> kNhanTongHoaDon = [
   'phai thanh toan',
   'khach phai tra',
   'phai tra',
+  // Realme 2026-10-08 (Dookki): *"Payment Amount"* là số thực trả (đã VAT); *"Total"* là trước VAT.
+  'payment',
   'tong cong',
   'tong tien',
   'thanh tien',
@@ -70,22 +81,67 @@ const List<String> kNhanLoaiHoaDon = [
 final RegExp kNhanTongDocNham = RegExp(r'\bt[eouy]ng\b');
 
 /// Thứ hạng nhãn tổng của một dòng (bỏ dấu); `-1` = không phải dòng tổng. Nhãn đọc nhầm xếp cùng hạng *"tong"*.
-int hangNhanTong(String bo) {
-  final h = kNhanTongHoaDon.indexWhere(bo.contains);
-  if (h >= 0) return h;
-  return kNhanTongDocNham.hasMatch(bo) ? kNhanTongHoaDon.indexOf('tong') : -1;
-}
+///
+/// Từ đọc nhầm được thay bằng *"tong"* TRƯỚC khi so, nên nó xếp đúng hạng ở mọi nhãn ghép (Realme 2026-10-08, ÙA TEA:
+/// *"Téng tiên: 217.500"* là *"Tổng tiền"*, phải thắng *"Thành tiền: 246.000"* trước chiết khấu).
+int hangNhanTong(String bo) => kNhanTongHoaDon.indexWhere(bo.replaceAll(kNhanTongDocNham, 'tong').contains);
 
 final RegExp _ngay = RegExp(r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})\b');
-final RegExp _gio = RegExp(r'\b(\d{1,2}):(\d{2})(?::\d{2})?\b');
+final RegExp _gio = RegExp(r'\b(\d{1,2}):(\d{2})(?::\d{2})?(?:\s?([AaPp])[Mm]\b|\b)');
+
+/// *"Sep 28, 2026"* (Starbucks) — so trên chữ bỏ dấu.
+final RegExp _ngayAnh = RegExp(r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? (\d{1,2}),? (\d{4})\b');
+const List<String> _thangAnh = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/// *"Ngày 19 tháng 09 năm 2026"* (KiotViet) — so trên chữ bỏ dấu; OCR hay méo chữ *tháng* / *năm*.
+final RegExp _ngayChu = RegExp(r'\bngay (\d{1,2}) th\S* (\d{1,2}) n\S* (\d{4})\b');
+
+/// Dòng dấu ảnh của máy chụp (*"realme Shot on Q3 Pro 5G 2026 10 02 14:46"*) — giờ trên đó là giờ CHỤP, không phải
+/// giờ mua (Realme 2026-10-08).
+bool _laDauAnh(String bo) => bo.contains('shot on');
+
+String _hai(int v) => v.toString().padLeft(2, '0');
 
 String? _docGio(String vanBan) {
   for (final m in _gio.allMatches(vanBan)) {
-    final h = int.parse(m.group(1)!), p = int.parse(m.group(2)!);
-    if (h < 24 && p < 60) return '${h.toString().padLeft(2, '0')}:${m.group(2)}';
+    var h = int.parse(m.group(1)!);
+    final p = int.parse(m.group(2)!);
+    final ap = m.group(3)?.toLowerCase();
+    if (ap != null && h >= 1 && h <= 12) h = ap == 'p' ? h % 12 + 12 : h % 12;
+    if (h < 24 && p < 60) return '${_hai(h)}:${m.group(2)}';
   }
   return null;
 }
+
+/// Ngày in trên hoá đơn → (`dd/MM/yyyy`, in đủ hai chữ số). Dạng số trước, rồi tiếng Anh, rồi chữ.
+(String, bool)? _docNgay(String vanBan) {
+  final n = _ngay.firstMatch(vanBan);
+  if (n != null) {
+    final nam = n.group(3)!.length == 2 ? '20${n.group(3)}' : n.group(3)!;
+    return (
+      '${n.group(1)!.padLeft(2, '0')}/${n.group(2)!.padLeft(2, '0')}/$nam',
+      n.group(1)!.length == 2 && n.group(2)!.length == 2,
+    );
+  }
+  final bo = boDauHoaDon(vanBan);
+  final a = _ngayAnh.firstMatch(bo);
+  if (a != null) {
+    return ('${_hai(int.parse(a.group(2)!))}/${_hai(_thangAnh.indexOf(a.group(1)!) + 1)}/${a.group(3)}', true);
+  }
+  final c = _ngayChu.firstMatch(bo);
+  if (c != null) return ('${_hai(int.parse(c.group(1)!))}/${_hai(int.parse(c.group(2)!))}/${c.group(3)}', true);
+  return null;
+}
+
+/// Dòng đưa cho bộ tìm số tiền: bỏ ngày / giờ (*"20/08/2026 16:43 Thành Tiền"* của Pharmacity từng cho tổng 2026), và
+/// chữ *O* dính sau chữ số là số 0 OCR đọc nhầm (*"300,24O"*, Dookki).
+String _dongTien(String d) => d
+    .replaceAll(_ngay, ' ')
+    .replaceAll(_gio, ' ')
+    .replaceAllMapped(RegExp(r'(?<=\d)[Oo](?![A-Za-z])'), (_) => '0');
+
+/// Dòng chỉ có một số tiền (kèm đơn vị) — OCR hay để số ở dòng NGAY TRÊN nhãn tổng (*"79.243"* rồi *"Tong tien:"*).
+final RegExp _chiSoTien = RegExp(r'^[\d.,\s]+(đ|d|vnd|₫)?$', caseSensitive: false);
 
 /// Chữ OCR (mỗi dòng một dòng) → tổng tiền + tên cửa hàng + ngày + giờ.
 ///
@@ -104,10 +160,16 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
     final h = hangNhanTong(bo[i]);
     if (h < 0 || h > hang) continue;
-    var tien = tienTrenDong(dong[i]);
+    var tien = tienTrenDong(_dongTien(dong[i]));
     var nguon = dong[i];
+    // Nhãn không có số: dòng TRÊN chỉ có số thắng dòng dưới (BHX, MAXIDI in số cao hơn nhãn một chút; dòng dưới là
+    // dòng kế — điểm, chuyển khoản — Realme 2026-10-08).
+    if (tien.isEmpty && i > 0 && _chiSoTien.hasMatch(dong[i - 1])) {
+      tien = tienTrenDong(dong[i - 1]);
+      nguon = '${dong[i - 1]} ⏎ ${dong[i]}';
+    }
     if (tien.isEmpty && i + 1 < dong.length && !kNhanLoaiHoaDon.any(bo[i + 1].contains)) {
-      tien = tienTrenDong(dong[i + 1]);
+      tien = tienTrenDong(_dongTien(dong[i + 1]));
       nguon = '${dong[i]} ⏎ ${dong[i + 1]}';
     }
     if (tien.isEmpty) continue;
@@ -118,7 +180,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
   if (tong == null) {
     for (var i = 0; i < dong.length; i++) {
       if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
-      for (final v in tienTrenDong(dong[i])) {
+      for (final v in tienTrenDong(_dongTien(dong[i]))) {
         if (tong == null || v > tong) {
           tong = v;
           canCu = '(không nhãn — số lớn nhất) ${dong[i]}';
@@ -127,17 +189,48 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     }
   }
 
-  // ≥ 4 chữ cái liền: dòng đầu có thể là chữ lạc trong khung ảnh (nhãn dán *"intel"* → *"tel"*, nghiệm thu 2026-10-08).
-  final cuaHang = dong.where((d) => RegExp(r'\p{L}{4,}', unicode: true).hasMatch(d)).firstOrNull;
-  final n = _ngay.firstMatch(vanBan);
+  final chuNgay = [for (var i = 0; i < dong.length; i++) if (!_laDauAnh(bo[i])) dong[i]].join('\n');
+  final ngay = _docNgay(chuNgay);
   return KetQuaHoaDon(
     tong: tong,
-    cuaHang: cuaHang,
-    ngay: n == null
-        ? null
-        : '${n.group(1)!.padLeft(2, '0')}/${n.group(2)!.padLeft(2, '0')}/'
-            '${n.group(3)!.length == 2 ? '20${n.group(3)}' : n.group(3)}',
-    gio: _docGio(vanBan),
+    cuaHang: _cuaHang(dong, bo),
+    ngay: ngay?.$1,
+    ngayDuHaiSo: ngay?.$2 ?? true,
+    gio: _docGio(chuNgay),
     canCu: canCu,
   );
+}
+
+/// Chữ trên đồ vật phía sau tờ hoá đơn (nhãn laptop, dấu ảnh) — Realme 2026-10-08 lấy *"ASUS Vivobook"*, *"CORE"*,
+/// *"el IRIS"* làm tên cửa hàng.
+final RegExp _chuDoVat =
+    RegExp(r'\b(intel|core|iris|asus|vivobook|sonicmaster|realme|lenovo|macbook|thinkpad)\b|shot on');
+
+/// Dòng địa chỉ / liên hệ.
+final RegExp _diaChi = RegExp(
+    r'^(dia ch|dc\b)|\bhcm\b|ha noi|\bquan \d|\bq\. ?\d|\bphuong\b|sdt|hotline|dien thoai|website|www|\bmst\b|^\d+/\d+');
+
+/// Dòng chỉ là TIÊU ĐỀ chứng từ (*"BIÊN LAI"*, *"HÓA ĐƠN THANH TOÁN"*).
+final RegExp _tieuDe =
+    RegExp(r'^\W*(hoa don( thanh toan| ban hang)?|bien lai|phieu (thanh toan|tinh tien)|receipt)\W*$');
+
+/// Dòng bắt đầu phần thân hoá đơn — tên cửa hàng chỉ nằm TRƯỚC nó.
+final RegExp _thanHoaDon =
+    RegExp(r'^(sl|stt)\b|\b(so hd|so bien lai|ma hd|order number|ten mon|mat hang|hang hoa|don gia)\b');
+
+final RegExp _tuChu = RegExp(r'\p{L}+', unicode: true);
+
+/// Tên cửa hàng: dòng có chữ đầu tiên TRƯỚC thân hoá đơn (dòng có số tiền, mã HĐ, tiêu đề cột), bỏ chữ trên đồ vật
+/// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Không thấy →
+/// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ).
+String? _cuaHang(List<String> dong, List<String> bo) {
+  for (var i = 0; i < dong.length; i++) {
+    final b = bo[i];
+    if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) return null;
+    final tu = _tuChu.allMatches(dong[i]).toList();
+    if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
+    if (_chuDoVat.hasMatch(b) || _diaChi.hasMatch(b) || _tieuDe.hasMatch(b)) continue;
+    return dong[i];
+  }
+  return null;
 }

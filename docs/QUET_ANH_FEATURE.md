@@ -6,6 +6,8 @@
 > (`kChonMonTuAnhQuet = false`), ngày tương lai đảo ngày/tháng, luật sửa theo OCR thật (`367cefbd`). Người dùng chốt
 > **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — **CHƯA THI CÔNG**. Bảng đo 6 hoá đơn ở
 > spec mục 13.
+> ✅ **Luật sửa theo 15 hoá đơn thật trên Realme (2026-10-08 chiều)** — chốt 9–12 ở mục 3; hàm thuần
+> `chot_tong_quet.dart` (chốt số AI / luật) **xong nhưng CHƯA NỐI** vào `/quet`, chờ đường Gemma nhìn ảnh.
 > Spec: `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (mục 1–9 quét, 10 ngoài phạm vi / A5b,
 > 11 tách + 11.2b chọn món).
 
@@ -31,6 +33,7 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 |---|---|
 | `transaction/domain/doc_hoa_don.dart` | Luật hoá đơn giấy (tổng, cửa hàng, ngày, **giờ**) — nâng từ spike C4; spike giữ bí danh qua `export` |
 | `transaction/domain/doc_mon_hang.dart` | `MonHang`, `docMonHang` — danh sách món |
+| `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số); khớp luật ≤ 1% → điền, lệch → hai chip. **Chưa nối** |
 | `transaction/domain/doc_anh_quet.dart` | `loaiAnhQuet`, `docAnhQuet`, `KetQuaAnhQuet`, `KetQuaAiAnh`, `chuGuiMoHinh`, `lapTuAi` |
 | `transaction/data/doc_anh_bang_ai.dart` | `DocAnhBangAi` — chỗ DUY NHẤT ảnh quét gọi mô hình |
 | `core/ocr/kho_anh_quet.dart` | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
@@ -54,6 +57,18 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 7. **`TransactionDao.insert` là `insertOrReplace`** — trùng id KHÔNG làm hỏng giao tác; test "ghi hết hoặc không" dùng
    khoá ngoại ví (`PRAGMA foreign_keys = ON`).
 8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`.
+9. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
+   Nhãn không có số thì dòng TRÊN chỉ-có-số thắng dòng dưới (BHX / MAXIDI in số cao hơn nhãn). Chữ *"tổng"* OCR đọc
+   méo (*Téng, Töng*) được thay bằng *tong* TRƯỚC khi xếp hạng nhãn (`hangNhanTong`), nên *"Téng tiên"* thắng
+   *"Thành tiền"* trước chiết khấu. *"Payment"* đứng trên *"Total"* (thực trả đã VAT).
+10. **Ngày in thiếu số 0 (`ngayDuHaiSo = false`) thì chọn cách đọc gần lúc quét nhất** — máy POS MAXIDI in tháng/ngày
+    (*9/2/2026* = 02/09); ngày in đủ hai chữ số vẫn đọc ngày/tháng trước (*05/03* không thành *03/05*).
+11. **Dòng dấu ảnh *"Shot on …"* bị bỏ khi tìm ngày giờ** — giờ trên đó là giờ chụp. Đọc thêm *"Sep 28, 2026 2:19PM"* và
+    *"Ngày 19 tháng 09 năm 2026"*.
+12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
+    cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
+    Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
+    ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không.
 
 ## 3b. Tách theo danh mục (mục 11 spec)
 

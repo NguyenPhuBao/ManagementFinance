@@ -405,6 +405,14 @@ Thời gian: OCR 0,4–0,9 s; Gemma CPU **21–42 s/ảnh**. ⚠️ **CPU khác 
 tổng 6/6, CPU 3/6 (ÙA TEA #1, MAXIDI #1, MAXIDI #2 sai) — "tổng 6/6" ở trên là số của GPU, không phải của mọi máy. OCR cũng
 đổi theo ảnh: MAXIDI #1 luật nay 75.700 ✅ (OnePlus 75.706), ÙA TEA #2 nay 246.000 ❌ (OnePlus 217.500).
 
+**Sửa sau lượt đo Realme (2026-10-08 chiều, người dùng duyệt ba việc):** (1) hàm thuần `chotTongQuet` — số AI chỉ
+dùng khi có trên ảnh hoặc khác số luật đúng một chữ số; khớp ≤ 1% → điền, lệch → hai chip; (2) luật tổng: bỏ ngày / giờ
+khỏi dòng, số ở dòng trên nhãn, *"tổng"* đọc méo, *Payment* trên *Total*; (3) ngày: in thiếu số 0 → gần lúc quét nhất,
+bỏ dấu ảnh, đọc *Sep 28, 2026* và *Ngày … tháng … năm*; kèm tên cửa hàng (bỏ chữ trên đồ vật phía sau, trống thay vì
+đoán). Trên chính 15 tờ ấy: luật tổng **15/15** (R15 tính *Tổng tiền* 32.160), ngày 9 đúng cả giờ + 2 đúng ngày (giờ không đọc ra) · 4 không đọc ra
+· **0 sai im lặng**, cửa hàng 8 đúng · 3 trống · 4 tạm được; chốt AI + luật **13/15 điền sẵn đều đúng, 2 tờ hỏi chip**
+(số đúng có trong chip). ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
+
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
   **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi

@@ -106,7 +106,12 @@ LoaiAnhQuet loaiAnhQuet(List<String> hang) {
 /// Ngày ở TƯƠNG LAI so với [luc] (nghiệm thu 2026-10-08: hoá đơn MAXIDI in *9/11/2026* khi hôm nay là 08/10 — máy POS
 /// in tháng trước ngày) → thử ĐẢO ngày/tháng; đảo ra ngày có thật và không ở tương lai thì nhận (người dùng chốt), không
 /// thì `null` (form dùng lúc quét).
-DateTime? _ngayGio(String? ngay, String? gio, DateTime luc) {
+///
+/// Ngày in THIẾU số 0 (*9/2/2026* — [KetQuaHoaDon.ngayDuHaiSo] `false`): thứ tự chưa chắc, vì máy POS MAXIDI in
+/// tháng/ngày (Realme 2026-10-08: *9/2/2026* là 02/09, *10/1/2026* là 01/10 — luật cũ nhận 09/02 và 10/01, sai im
+/// lặng). Khi ấy chọn cách đọc GẦN lúc quét nhất mà không ở tương lai — người ta quét hoá đơn vừa mua. Ngày in đủ hai
+/// chữ số (*05/03/2026*) vẫn đọc ngày/tháng trước.
+DateTime? _ngayGio(String? ngay, String? gio, DateTime luc, {bool duHaiSo = true}) {
   if (ngay == null) return null;
   try {
     final p = ngay.split('/');
@@ -119,9 +124,11 @@ DateTime? _ngayGio(String? ngay, String? gio, DateTime luc) {
     }
 
     final d = dung(a, b);
-    if (d != null && !d.isAfter(luc)) return d;
     final dao = dung(b, a);
-    return dao != null && !dao.isAfter(luc) ? dao : null;
+    bool qua(DateTime? x) => x != null && !x.isAfter(luc);
+    if (!duHaiSo && qua(d) && qua(dao)) return d!.isAfter(dao!) ? d : dao;
+    if (qua(d)) return d;
+    return qua(dao) ? dao : null;
   } catch (_) {
     return null;
   }
@@ -132,7 +139,7 @@ KetQuaAnhQuet docAnhQuet({required String vanBan, required DateTime luc}) {
     final hang = [for (final d in vanBan.split('\n')) if (d.trim().isNotEmpty) d.trim()];
     if (loaiAnhQuet(hang) == LoaiAnhQuet.hoaDon) {
       final hd = docHoaDonTuChu(vanBan);
-      final t = _ngayGio(hd.ngay, hd.gio, luc);
+      final t = _ngayGio(hd.ngay, hd.gio, luc, duHaiSo: hd.ngayDuHaiSo);
       final ghi = hd.cuaHang ?? '';
       return KetQuaAnhQuet(
         loai: LoaiAnhQuet.hoaDon,
