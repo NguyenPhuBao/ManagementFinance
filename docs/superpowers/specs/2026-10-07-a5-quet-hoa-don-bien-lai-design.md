@@ -450,7 +450,15 @@ kết quả luật, không *"Đọc bằng AI"*, không gọi lần chọn danh 
 (widget test canh) · ảnh `anh_quet/` xoá sau Lưu / Quay lại ✅. **Hai lỗi lộ ra, đã sửa** (chốt 2b, 2c
 `QUET_ANH_FEATURE.md`): bản sao `image_picker` nằm lại trong `cache/`; màn khác đè lên `/quet` lúc đang đọc làm
 `pushReplacement` thay nhầm màn ấy và để `/quet` kẹt không lối ra — đo lại trên máy sau sửa: cache sạch; form quét →
-form người dùng → Trang chủ. RAM khi mô hình có ảnh ở lại: PSS 1,11 GB (+0,4 GB swap).
+form người dùng → Trang chủ. RAM khi mô hình có ảnh ở lại: PSS 1,11 GB (+0,4 GB swap). Sau khi quét: **Trợ lý AI**
+hỏi được (dùng lại mô hình đang nạp, không nạp lại, không sập; câu mô hình hỏng chuỗi số → mẫu câu — bẫy 4.51 cũ) →
+**quét lại** được → **Nhập nhanh** gọi AI được (250.000 đ đúng; danh mục mô hình chọn *Ăn uống* cho "mua quà sinh nhật" —
+phán đoán của C2, không phải lỗi mới). **Bản `--release`** (225,3 MB, R8 qua): ÙA TEA điền sẵn 158.000, MAXIDI hai chip
+— như bản debug. ⚠️ Bản release vẫn in `[Quet][Gemma] … tong=…` và `[Quet][danhMuc]` ra logcat (số tiền hoá đơn, không
+chữ ảnh) — ứng viên gác sau `kDebugMode` như `[Quet][OCR]`, chưa sửa. Ba giao dịch thử đã xoá mềm qua giao diện, ví về
+đúng mốc. 🚧 Còn mở trên OnePlus: (d) chụp bằng máy ảnh hệ thống, ảnh dọc (cần hoá đơn giấy thật trước máy) · (f) Basic
+(phải đăng nhập tài khoản Basic — `purgeDataForOtherAccounts` dọn SQLite của tài khoản 10 trên máy) · (a) biên lai MB
+(thư viện OnePlus chưa có).
 
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
