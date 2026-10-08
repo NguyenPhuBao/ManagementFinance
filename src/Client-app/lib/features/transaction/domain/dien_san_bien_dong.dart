@@ -11,11 +11,19 @@ import '../../../core/database/app_database.dart';
 import '../../../core/notification/ten_tep_bien_lai.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
+import 'doc_anh_quet.dart';
 import 'doc_cau_giao_dich.dart';
 
 /// Tiền tố `dedupeKey` của hàng loại 20 (`dedupeKeyBienDong`). Chỉ khoá mang tiền tố này mới mở đường
 /// Lưu / Bỏ qua → xoá cứng hàng.
 const String kTienToKhoaBienDong = 'bienDong:';
+
+/// A5 — khoá của form mở từ ẢNH QUÉT (nút Quét Trang chủ): `quet:<tên ảnh>`. Không có hàng loại 20 nào đi kèm — Lưu /
+/// Bỏ qua chỉ xoá ảnh trong `KhoAnhQuet`.
+const String kTienToKhoaQuet = 'quet:';
+
+/// Nguồn hiển thị của form mở từ ảnh quét.
+const String kNguonAnhQuet = 'Ảnh quét';
 
 class DienSanBienDong {
   const DienSanBienDong({
@@ -29,6 +37,7 @@ class DienSanBienDong {
     this.anh,
     this.cachDoc,
     this.phien,
+    this.ai = false,
   });
 
   /// `dedupeKey` của hàng loại 20 — xoá cứng hàng ấy khi Lưu / Bỏ qua.
@@ -59,13 +68,20 @@ class DienSanBienDong {
   /// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): giờ RỜI app ngân hàng của phiên đang nhắc. Có mặt ⇔ hàng là dòng
   /// nhắc (không số tiền, không chiều — [thoiGian] là giờ mở app).
   final DateTime? phien;
+
+  /// A5 — ít nhất một ô do AI lấp (chỉ có nghĩa với khoá `quet:`).
+  final bool ai;
+
+  /// Form mở từ ảnh quét (A5) — không gắn nguồn ngân hàng, không hàng loại 20.
+  bool get laQuet => khoa.startsWith(kTienToKhoaQuet);
 }
 
 /// `null` khi query không phải của một hàng biến động số dư — form mở như thường.
 DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
   final khoa = q['khoa'];
   final nguon = q['nguon']?.trim() ?? '';
-  if (khoa == null || !khoa.startsWith(kTienToKhoaBienDong) || nguon.isEmpty) return null;
+  if (khoa == null || nguon.isEmpty) return null;
+  if (!khoa.startsWith(kTienToKhoaBienDong) && !khoa.startsWith(kTienToKhoaQuet)) return null;
   final tien = double.tryParse(q['amount'] ?? '');
   final chieu = q['huong'];
   final duoi = q['duoi']?.trim() ?? '';
@@ -84,8 +100,21 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
     thoiGian: DateTime.tryParse(q['date'] ?? ''),
     duoi: duoi.isEmpty ? null : duoi,
     phien: DateTime.tryParse(q['phien'] ?? ''),
+    ai: khoa.startsWith(kTienToKhoaQuet) && q['ai'] == '1',
   );
 }
+
+/// A5 — query mở form từ ảnh quét. Khoá mang tên ảnh: mỗi lần quét một khoá khác.
+String deeplinkQuet(KetQuaAnhQuet kq, {required String anh}) => Uri(path: '/add', queryParameters: {
+      'khoa': '$kTienToKhoaQuet$anh',
+      'nguon': kNguonAnhQuet,
+      'anh': anh,
+      'huong': kq.chieu,
+      'date': kq.thoiGian.toIso8601String(),
+      'note': kq.ghiChu,
+      if (kq.soTien != null) 'amount': kq.soTien!.toStringAsFixed(0),
+      if (kq.aiLap) 'ai': '1',
+    }).toString();
 
 String _hai(int n) => n.toString().padLeft(2, '0');
 
@@ -95,15 +124,18 @@ String _hai(int n) => n.toString().padLeft(2, '0');
 /// app gửi không rõ (nguồn là [kNguonBienLai]) thì chỉ *"Từ biên lai · …"* — không lặp chữ.
 String dongNguonBienDong(DienSanBienDong d) {
   final t = d.thoiGian;
-  final dau = d.phien != null
-      ? 'Dùng ${d.nguon}'
-      : d.cachDoc == null
-          ? 'Từ thông báo ${d.nguon}'
-          : (d.nguon == kNguonBienLai ? 'Từ biên lai' : 'Từ biên lai ${d.nguon}');
+  final dau = d.laQuet
+      ? 'Từ ảnh quét'
+      : d.phien != null
+          ? 'Dùng ${d.nguon}'
+          : d.cachDoc == null
+              ? 'Từ thông báo ${d.nguon}'
+              : (d.nguon == kNguonBienLai ? 'Từ biên lai' : 'Từ biên lai ${d.nguon}');
   return [
     dau,
     if (d.duoi != null) 'TK ••${d.duoi}',
     if (t != null) '${_hai(t.day)}/${_hai(t.month)} ${_hai(t.hour)}:${_hai(t.minute)}',
+    if (d.laQuet && d.ai) 'Đọc bằng AI',
   ].join(' · ');
 }
 
@@ -129,13 +161,19 @@ KetQuaDocCau ketQuaTuBienDong(
   final chieu = d.chieu;
   final hopLe = chieu != null
       ? hopLeTheoChieu(chieu, chonDuoc)
-      : {for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.id};
+      : {
+          for (final c in chonDuoc)
+            if (!c.isDeleted && !c.isGroup) c.id
+        };
   final dm = d.ghiChu.isEmpty
       ? null
       : doanDanhMucTuGhiChu(
           cauTimTen: d.ghiChu,
           ghiChu: d.ghiChu,
-          chonDuoc: [for (final c in chonDuoc) if (hopLe.contains(c.id)) c],
+          chonDuoc: [
+            for (final c in chonDuoc)
+              if (hopLe.contains(c.id)) c
+          ],
           mo: mo,
           tatCap: tatCap,
           tuKhoa: tuKhoa,
