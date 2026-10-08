@@ -2,7 +2,10 @@
 
 > **Trạng thái (2026-10-08):** **mã xong cả hai phần** — Quét (Task 1–8) và Tách theo danh mục + chọn món
 > (Task 10–13) của kế hoạch `docs/superpowers/plans/2026-10-08-a5-quet-va-tach-danh-muc.md` (gitignore).
-> 🚧 **Chưa nghiệm thu máy thật** (Task 14 — cần người dùng chụp ≥ 5 hoá đơn giấy, mục 7).
+> 🚧 **Nghiệm thu OnePlus 2026-10-08 lật một phần thiết kế** — spec mục **13**: tick món TẠM TẮT
+> (`kChonMonTuAnhQuet = false`), ngày tương lai đảo ngày/tháng, luật sửa theo OCR thật (`367cefbd`). Người dùng chốt
+> **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — **CHƯA THI CÔNG**. Bảng đo 6 hoá đơn ở
+> spec mục 13.
 > Spec: `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (mục 1–9 quét, 10 ngoài phạm vi / A5b,
 > 11 tách + 11.2b chọn món).
 
