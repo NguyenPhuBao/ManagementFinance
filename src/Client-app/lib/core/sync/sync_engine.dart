@@ -16,6 +16,7 @@ import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
+import 'moc_keo_ve.dart';
 import 'sync_payload_normalizer.dart';
 import '../../features/goal/domain/uu_tien_hop_le.dart';
 
@@ -1056,17 +1057,24 @@ class SyncEngine {
                 '[SyncEngine] Pulled & Saved ${goals.length} goals into SQLite local.');
           }
 
-          // Mốc mới = `update_at` LỚN NHẤT trong dữ liệu vừa nhận, KHÔNG phải
-          // DateTime.now() của client: backend lọc `update_at > since` theo
-          // đồng hồ của nó, nên lấy giờ client sẽ bỏ sót bản ghi khi hai đồng
-          // hồ lệch nhau. Không nhận được bản ghi nào thì giữ nguyên mốc cũ
-          // (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
-          // Kẹp về hiện tại: chỉ cần MỘT hàng mang `update_at` tương lai là
-          // mốc bị đẩy vọt lên, và vì mốc chỉ tiến chứ không lùi nên tài khoản
-          // ấy không nhận được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng
-          // hoàn toàn im lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất
-          // cả những gì server có tính tới lúc này.
-          final newest = _kepVeHienTai(_newestUpdateAt(payloadData));
+          // Mốc mới — **G67**. Server từ migration 20 trả `maxSince` (giờ-server
+          // `Server_update_at` lớn nhất từng bảng) và lọc theo chính cột ấy, nên
+          // mốc lấy từ đó (`mocTuMaxSince`: nhỏ nhất giữa các bảng, lùi trước
+          // `pulledAt`). KHÔNG lấy `update_at` của từng hàng: đó là giờ ghi của
+          // MÁY, và bản ghi lên server muộn hơn giờ ghi (máy offline lâu) rơi dưới
+          // mốc ấy mãi mãi. Server cũ (không có khoá `maxSince`) thì rơi về
+          // `update_at` lớn nhất như trước. Không nhận được bản ghi nào thì giữ
+          // nguyên mốc cũ (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
+          // Kẹp về hiện tại: chỉ cần MỘT hàng mang giờ tương lai là mốc bị đẩy
+          // vọt lên, và vì mốc chỉ tiến chứ không lùi nên tài khoản ấy không nhận
+          // được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng hoàn toàn im
+          // lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất cả những gì
+          // server có tính tới lúc này.
+          final newest = _kepVeHienTai(
+              topData != null && topData.containsKey('maxSince')
+                  ? mocTuMaxSince(topData['maxSince'],
+                      pulledAt: topData['pulledAt'])
+                  : _newestUpdateAt(payloadData));
           if (newest != null) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
@@ -1140,6 +1148,9 @@ class SyncEngine {
   }
 
   /// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
+  ///
+  /// Chỉ còn là đường lùi cho server **chưa** trả `maxSince` (trước migration 20)
+  /// — xem [mocTuMaxSince] và G67.
   static DateTime? _newestUpdateAt(Map<String, dynamic> payloadData) {
     DateTime? newest;
     for (final value in payloadData.values) {
@@ -1171,8 +1182,10 @@ class SyncEngine {
     //
     // Ví mang cờ mà không còn cặp (ví kia bị xoá / đổi tên ở máy khác) thì THẢ
     // trước khi đọc hàng chờ: gỡ cờ + mốc chặn, làm mới giờ sửa của nó và bản
-    // ghi từng bị giữ — giờ ghi cũ nằm dưới mốc kéo về của máy khác, đẩy nguyên
-    // là máy khác không bao giờ kéo được (nghiệm thu 2026-10-05).
+    // ghi từng bị giữ. Lý do gốc (nghiệm thu 2026-10-05): khi mốc kéo về còn
+    // theo giờ ghi của máy, giờ ghi cũ nằm dưới mốc của máy khác và không bao giờ
+    // được kéo. Từ G67 (2026-10-08) mốc theo giờ-server nên ca ấy đã hết; việc
+    // làm mới giờ sửa vẫn giữ — với server chưa có `maxSince` nó vẫn cần.
     for (final id in await _viTrungTen.viCanTha(idaccount)) {
       await ThaViBiGiu(db: _db).tha(id);
     }

@@ -72,7 +72,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G64**~~ | ✅ **Mở rồi ĐÓNG 2026-10-03** — mục *Đăng xuất* ở drawer Trang chủ hiện hộp thoại nhưng bấm xác nhận **không làm gì** (context của drawer bị gỡ khi drawer đóng; có sẵn từ 2026-09-19). Nay drawer tự đóng + tự hỏi bằng context của Scaffold (`c2d6985`); nghiệm thu Realme. Mục chi tiết bên dưới |
 > | ~~**G65**~~ | ✅ **Mở rồi ĐÓNG 2026-10-03** — dải *"Đã xoá thông báo · Hoàn tác"* **không tự ẩn**, đi theo qua mọi màn (Flutter 3.47 giữ SnackBar có `action`). Nay `persist: false` (`c18e095`); nghiệm thu Realme. Mục chi tiết bên dưới |
 > | ~~**G66**~~ | ✅ **Mở rồi ĐÓNG 2026-10-04** — ngân sách bắt đầu ngày **29–31** trôi hẳn về ngày đã kẹp **từ kỳ thứ hai** (31/01 → 28/02 → 28/03 → 28/04…), vì mọi kỳ sau nhảy từ mốc neo **đã kẹp**. Nay **`BudgetEntity.mocKy(s)`** là định nghĩa duy nhất của lưới kỳ, nhảy `s + 1` chu kỳ **từ ngày bắt đầu** (`02d46ca`): 28/02 → 31/03 → 30/04. Dữ liệu thật không có ngân sách nào dính. Mục chi tiết bên dưới |
-> | **G67** | ⏳ **CHỜ BACKEND (mở 2026-10-05, đơn mục 37 — backend đóng 2026-10-06; nay chờ đơn mục **40** `CAN-LAM/SERVER_UPDATE_AT_HAI_DONG_HO.md`: cột giờ-server mang hai đồng hồ, +7h ở đường UPDATE)** — **kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi của nó**: `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi của một máy offline lâu rồi đẩy muộn rơi dưới mốc của máy khác và **không bao giờ** được kéo — im lặng, không tự lành. Đo trong nghiệm thu G63. Ca G63 đã chữa ở client (`ThaViBiGiu`); ca chung cần backend. Mục chi tiết bên dưới |
+> | **G67** | 🧪 **MÃ XONG 2026-10-08, CHỜ NGHIỆM THU HAI MÁY** (đơn 37 + 40 backend đóng; CSDL dev áp `database/21`; client lấy mốc từ `maxSince` qua `mocTuMaxSince`, khoá lưu `_v2` ép kéo toàn bộ một lần) — **kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi của nó**: `/sync/pull` lọc `update_at > since` mà `update_at` là giờ ghi **của máy** (cũng là khoá LWW), nên bản ghi của một máy offline lâu rồi đẩy muộn rơi dưới mốc của máy khác và **không bao giờ** được kéo — im lặng, không tự lành. Đo trong nghiệm thu G63. Ca G63 đã chữa ở client (`ThaViBiGiu`); ca chung cần backend. Mục chi tiết bên dưới |
 > | ~~**G68**~~ | ✅ **Mở rồi ĐÓNG 2026-10-06 khuya** — thanh điều hướng dưới tràn *"RIGHT OVERFLOWED BY 40 PIXELS"*, tab **Cá nhân** bị đẩy khỏi màn ở mọi trang khi nâng cỡ chữ/hiển thị ColorOS. **Gốc: không phải chữ to** — năm ô rộng CỐ ĐỊNH 72 dp (bốn tab + chỗ nút +) cộng **đúng 360 dp**, và ColorOS phóng bằng cách đổi **mật độ** (`wm density` đo: *Override density 540*, `font_scale` vẫn 1.0) → 1080 px còn **320 dp**, thiếu đúng 40. Vế tiềm ẩn cùng họ: chữ ×1,5 làm nhãn xuống hai dòng, tràn đáy ô 64 dp 16 px. Sửa `main_shell.dart`: bốn tab `Expanded`, nền chọn **tối đa** 72 dp, nhãn một dòng `FittedBox.scaleDown`; luật nhãn ≤ 9 ký tự giữ (dài hơn bị thu nhỏ). Test `test/shared/widgets/main_shell_thanh_duoi_hep_test.dart` (6 ca: 360/320/300 dp × chữ 1,0/1,3/1,5, font thật — mã cũ đỏ đúng 40 và 60 px). Nghiệm thu Realme 320 dp: đủ bốn tab, bấm được *Cá nhân* / *Phân tích*. ⚠️ ColorOS chặn cả `wm density` (`WRITE_SECURE_SETTINGS`) — đổi cỡ hiển thị phải nhờ người dùng |
 > | ~~**G69**~~ | ✅ **Mở rồi ĐÓNG 2026-10-06 khuya** — header Phân tích **nhảy từ một lên hai hàng** lúc tải xong ở 360 dp: ô kỳ lúc tải nói `ky.nhanNgan` (*"T10 2026"*, vừa một hàng) còn tải xong nói `nhanOChon` (*"Tháng này (T10 2026)"*, không vừa → hai hàng). Gốc: `AnalyticsLoading` không mang mốc nên không dựng được nhãn thật. Nay nó mang **`moc`** (cùng `now` mà `AnalyticsLoaded` sẽ mang) và ô kỳ dùng `nhanOChon` ở cả hai pha. Ca `⭐ G69` cuối nhóm G2 `analytics_page_test.dart` (font thật, so khung ô kỳ trước/sau). Nghiệm thu Realme: khung chờ đã hiện đúng *"Tháng này (T10 2026)"*, header đứng yên |
 > | ~~**G70**~~ | ✅ **Mở rồi ĐÓNG 2026-10-06 khuya** — form **Thêm ví bật sẵn *"ví mặc định"*** nên tạo ví mới âm thầm cướp vai mặc định của ví cũ. Người dùng chốt: **tắt sẵn, trừ khi tài khoản chưa có ví nào đang hoạt động** (ví đầu tiên / chỉ còn ví lưu trữ → bật). `wallet_add_page.dart`: `_isDefault = false`, `_napViHienCo` bật lại khi không ví nào `!isDeleted && WalletStatus.laHoatDong`; `_daGatMacDinh` để lượt nạp muộn không đè lựa chọn của người dùng. Nhóm `G70` ở `wallet_add_guard_ui_test.dart` (4 ca). Nghiệm thu Realme: công tắc tắt sẵn |
@@ -1615,7 +1615,7 @@ khoản 10 đổi theo (người dùng dặn bỏ qua phần chat AI ở lượt
 
 ---
 
-### G67 — Kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi của nó · ⏳ CHỜ BACKEND (mở 2026-10-05)
+### G67 — Kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi của nó · 🧪 MÃ XONG, CHỜ NGHIỆM THU HAI MÁY (mở 2026-10-05)
 
 **Lộ ra khi:** nghiệm thu G63 trên hai máy ảo cùng tài khoản thử 27 (2026-10-05 tối), bước 4 — Đổi tên.
 
@@ -1644,6 +1644,24 @@ G67 tái hiện với nguyên nhân khác. Đơn mới `CAN-LAM/SERVER_UPDATE_AT
 đồng hồ → client lấy mốc từ `maxSince` của phản hồi (không từ `update_at` hay `server_update_at` của từng hàng), có test
 canh → nghiệm thu lại hai máy như G63 → đóng G67. Trong lúc chờ, client **không đổi gì**: mốc vẫn theo `update_at`, nên
 hệ quả duy nhất là hàng vừa sửa bị kéo lại thừa trong 7 tiếng.
+
+**2026-10-08 — backend sửa đồng hồ, client đổi mốc, CHƯA đóng:** gộp `main` @ `0eb4a05f` (đơn 40 đóng bằng migration
+**21**: trigger + DEFAULT `Server_update_at` về `(now() AT TIME ZONE 'UTC')`). CSDL dev **áp 21–23** cùng ngày (cho phép
+đích danh): 4 hàng mang mốc "tương lai" kéo về; thử UPDATE rollback lệch trigger **0 s** so với UTC. Client:
+
+- Mốc mới là **`mocTuMaxSince`** (`core/sync/moc_keo_ve.dart`) đọc `maxSince` + `pulledAt` của phản hồi — **nhỏ nhất**
+  giữa các bảng (server kéo sáu bảng tuần tự, không giao tác: hàng ghi xen giữa hai truy vấn nằm dưới mốc của bảng sau),
+  kẹp về `pulledAt − 2 phút` khi dữ liệu còn nóng (hàng commit muộn hơn giờ ghi, bảng 0 hàng không có khoá), +1 ms khi đã
+  nguội (giờ-server lưu µs, JSON mang ms — không cộng thì hàng cuối bị kéo lại mọi chu kỳ). Phản hồi không có khoá
+  `maxSince` (server cũ) → `_newestUpdateAt` như trước. Vẫn qua `_kepVeHienTai`.
+- Khoá lưu đổi `sync_last_pull_<id>` → **`sync_last_pull_v2_<id>`**: hàng G67 từng bỏ sót mang giờ-server cũ (migration
+  20 chép `Update_at` sang), nằm dưới mốc cũ — chỉ đổi luật thì chúng vẫn không về. Khoá mới làm mốc cũ vô hình →
+  kéo toàn bộ **một lần** mỗi tài khoản mỗi máy.
+- `ThaViBiGiu` vẫn làm mới giờ sửa (lưới cho server cũ); chú thích sửa lý do.
+- Test: `moc_keo_ve_test` (7), bốn ca G67 ở `sync_checkpoint_test`, `sync_checkpoint_store_v2_test` (3); ba bản sai có
+  chủ ý (lấy lớn nhất · mốc theo `update_at` · khoá cũ) đều đỏ.
+
+Còn: **nghiệm thu hai máy như G63** (máy B ghi offline → lên server muộn → máy A phải kéo được) rồi mới đóng.
 
 ### ~~G66 — Ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày đã kẹp từ kỳ thứ hai~~ · ✅ ĐÓNG (2026-10-04, mở và đóng trong cùng ngày)
 

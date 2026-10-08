@@ -318,7 +318,7 @@ Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quy�
 
 ### Mốc đồng bộ (checkpoint)
 
-Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó.
+Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó. ⚠️ **Đổi từ G67 (2026-10-08):** server (migration 20 + 21) lọc theo giờ-server `Server_update_at` và trả `maxSince` từng bảng; mốc nay là `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) — **nhỏ nhất** giữa các bảng, kẹp về `pulledAt − 2 phút` khi còn nóng, +1 ms khi đã nguội (giờ-server lưu µs, JSON mang ms). `update_at` lớn nhất chỉ còn là đường lùi khi phản hồi không có khoá `maxSince`. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ đúng một lần (hàng G67 từng bỏ sót nằm dưới mốc cũ).
 
 ### `_resolveCategoryId(categoryId)` — logic quan trọng
 ```
@@ -595,6 +595,16 @@ src/Backend/
 ---
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-08)
+
+### 🔀 Gộp `main` @ `0eb4a05f` · áp `database/21–23` · G67 mốc theo giờ-server (2026-10-08 tối)
+
+- Gộp PR #127 không xung đột (backend đóng đơn 39 — phân quyền tính năng động, và đơn 40 — migration 21). Backend tự sửa
+  7 tệp `src/Client-app` (Premium: trần hoá đơn / danh mục riêng, `quyenTinhNang`, `GoiCubit.duocDung…`); chi tiết ở
+  hàng *Việc thuộc backend* `CLAUDE.md`.
+- CSDL dev áp `database/21–23` (cho phép đích danh) + `prisma generate`; `/subscription-info` trả `limits` + `features`.
+- **G67:** mốc kéo về nay từ `maxSince` của server (`core/sync/moc_keo_ve.dart`), khoá lưu `sync_last_pull_v2_<id>` ép
+  kéo toàn bộ một lần. **Chưa nghiệm thu hai máy** — mục G67 `CLIENT_APP_KNOWN_GAPS.md`.
+- Bản release thôi in số tiền / tham số mô hình ra logcat (`[Quet][Gemma]`, `PhienMotLoiGoi`).
 
 ### 📷 A5 — nút Quét đọc hoá đơn / biên lai + tách khoản chi theo danh mục (2026-10-08, mã xong, chờ nghiệm thu)
 
@@ -4116,7 +4126,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - `repairPendingTransactionsCategoryId` (cat_food → UUID) — **chạy TRƯỚC** dedup
 - **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`)
 - **Pull không còn ghi đè nguyên hàng**: cả 6 DAO dùng `insertAllOnConflictUpdate`
-- **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất
+- **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất *(từ G67, 2026-10-08: theo `maxSince` giờ-server)*
 - **Đồng bộ định kỳ 15 phút**
 - **Phân loại lỗi đẩy dữ liệu** + phát hiện phiên chết
 - **Dọn dữ liệu tài khoản khác chạy cả khi khôi phục phiên** *(G6)*
