@@ -74,6 +74,9 @@ const List<String> kNhanLoaiHoaDon = [
   'tam tinh',
   // Nghiệm thu 2026-10-08 (hoá đơn MAXIDI): dòng THANH TOÁN — số tiền khách đưa, lớn hơn tổng.
   'tien mat',
+  // Tiêu đề chứng từ mang chữ "thanh toán" — không phải nhãn tổng, kẻo lấy số ở dòng kế (BHX: *"Phiếu thanh toán"*).
+  'phieu thanh toan',
+  'hoa don thanh toan',
   // Có nhãn 'payment' trong [kNhanTongHoaDon] thì *"Payment Method: Cash"* rồi *"Cash 150,000"* thành tổng — dòng phương
   // thức trả, tiền khách đưa, tiền thối tiếng Anh đều loại.
   'method',
@@ -84,7 +87,9 @@ const List<String> kNhanLoaiHoaDon = [
 
 /// *"Tổng"* bị OCR đọc nhầm một nguyên âm (*"Teng"*, *"Tung"*) — ảnh nhăn, nghiệm thu 2026-10-08. Một TỪ trọn 4 chữ;
 /// cố ý không nhận *"tang"* (*tầng / tăng* hay có trong địa chỉ).
-final RegExp kNhanTongDocNham = RegExp(r'\bt[eouy]ng\b');
+///
+/// MẤT nguyên âm cũng nhận (*"Tng tien: 79.243"*, BHX nhoè trên OnePlus 2026-10-08).
+final RegExp kNhanTongDocNham = RegExp(r'\bt[eouy]?ng\b');
 
 /// Thứ hạng nhãn tổng của một dòng (bỏ dấu); `-1` = không phải dòng tổng. Nhãn đọc nhầm xếp cùng hạng *"tong"*.
 ///
@@ -146,6 +151,8 @@ String _dongTien(String d) => d
     .replaceAll(_gio, ' ')
     .replaceAllMapped(RegExp(r'(?<=\d)[Oo](?![A-Za-z])'), (_) => '0');
 
+final RegExp _soCoNgan = RegExp(r'\d{1,3}(?:[.,]\d{3})+');
+
 /// Dòng chỉ có một số tiền (kèm đơn vị) — OCR hay để số ở dòng NGAY TRÊN nhãn tổng (*"79.243"* rồi *"Tong tien:"*).
 final RegExp _chiSoTien = RegExp(r'^[\d.,\s]+(đ|d|vnd|₫)?$', caseSensitive: false);
 
@@ -184,14 +191,22 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     canCu = nguon;
   }
   if (tong == null) {
-    for (var i = 0; i < dong.length; i++) {
-      if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
-      for (final v in tienTrenDong(_dongTien(dong[i]))) {
-        if (tong == null || v > tong) {
-          tong = v;
-          canCu = '(không nhãn — số lớn nhất) ${dong[i]}';
+    // Số có NGĂN NGHÌN trước: số trần 5–8 chữ số trên hoá đơn thường là mã (nhân viên *"NV:99184"*, quầy, hoá đơn) —
+    // BHX trên OnePlus 2026-10-08 lấy mã nhân viên 99.184 làm tổng. Không có số nào có ngăn nghìn thì mới nhận số trần.
+    for (final coNgan in [true, false]) {
+      for (var i = 0; i < dong.length; i++) {
+        if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
+        final d = _dongTien(dong[i]);
+        final soCoNgan = {for (final m in _soCoNgan.allMatches(d)) docSoTrenAnh(m[0]!)};
+        for (final v in tienTrenDong(d)) {
+          if (coNgan && !soCoNgan.contains(v)) continue;
+          if (tong == null || v > tong) {
+            tong = v;
+            canCu = '(không nhãn — số lớn nhất) ${dong[i]}';
+          }
         }
       }
+      if (tong != null) break;
     }
   }
 

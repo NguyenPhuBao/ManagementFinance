@@ -14,6 +14,7 @@ import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
 import 'dart:typed_data';
 
 import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
+import 'package:flowmoney/features/transaction/data/doc_danh_muc_bang_ai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/quet_anh_page.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +61,24 @@ class _GemmaGia implements DocAnhBangGemma {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _DanhMucGia implements DocDanhMucBangAi {
+  _DanhMucGia(this.tra);
+  final String? tra;
+  final List<({String cuaHang, List<String> mon, List<String> ten})> daHoi = [];
+
+  @override
+  Future<String?> chon({required String cuaHang, required List<String> mon, required List<String> tenDanhMuc}) async {
+    daHoi.add((cuaHang: cuaHang, mon: mon, ten: tenDanhMuc));
+    return tra;
+  }
+
+  @override
+  Future<void> huy() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 const _hoaDon = [
   'CO.OPMART NGUYEN TRAI',
   'Ngay: 28/09/2026 18:42',
@@ -87,6 +106,7 @@ void main() {
     WidgetTester tester, {
     required DocChuAnh docChu,
     DocAnhBangGemma? gemma,
+    DocDanhMucBangAi? danhMuc,
     bool laPremium = true,
   }) async {
     final router = GoRouter(
@@ -100,6 +120,8 @@ void main() {
             docChu: docChu,
             kho: kho,
             docGemma: gemma,
+            docDanhMuc: danhMuc,
+            tenDanhMucChi: () async => const ['Ăn uống', 'Mua sắm'],
             laPremium: laPremium,
             now: () => now,
           ),
@@ -185,6 +207,34 @@ void main() {
     expect(u.queryParameters.containsKey('chon'), isFalse);
   });
 
+  testWidgets('⭐ hoá đơn + Premium → Gemma lần hai chọn danh mục từ cửa hàng + MÓN Gemma đọc; query dm', (tester) async {
+    final dm = _DanhMucGia('Ăn uống');
+    await mo(tester,
+        docChu: _DocChuGia(_hoaDon),
+        gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 165000, mon: [(ten: 'OMO 3KG', soTien: 120000)])),
+        danhMuc: dm);
+    await cho(tester);
+    expect(dm.daHoi.single.cuaHang, 'CO.OPMART NGUYEN TRAI');
+    expect(dm.daHoi.single.mon, ['OMO 3KG']);
+    expect(dm.daHoi.single.ten, ['Ăn uống', 'Mua sắm']);
+    expect(form()!.queryParameters['dm'], 'Ăn uống');
+  });
+
+  testWidgets('Gemma ảnh không đọc ra món → dùng món LUẬT đọc cho câu hỏi danh mục', (tester) async {
+    final dm = _DanhMucGia(null);
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: _GemmaGia(null), danhMuc: dm);
+    await cho(tester);
+    expect(dm.daHoi.single.mon, ['OMO 3KG', 'GIAY VS']);
+    expect(form()!.queryParameters.containsKey('dm'), isFalse);
+  });
+
+  testWidgets('Basic → KHÔNG hỏi danh mục', (tester) async {
+    final dm = _DanhMucGia('Ăn uống');
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: _GemmaGia(null), danhMuc: dm, laPremium: false);
+    await cho(tester);
+    expect(dm.daHoi, isEmpty);
+  });
+
   testWidgets('biên lai → KHÔNG gọi Gemma (câu hỏi đo trên hoá đơn giấy), dù Premium', (tester) async {
     final g = _GemmaGia(const KetQuaGemmaAnh(tong: 150000));
     await mo(tester, docChu: _DocChuGia(_bienLai), gemma: g);
@@ -211,11 +261,13 @@ void main() {
   testWidgets('Huỷ ở pha AI → dừng lượt sinh, mở form với kết quả luật (không ai=1)', (tester) async {
     final c = Completer<KetQuaGemmaAnh?>();
     final g = _GemmaGia(null, cho: c);
-    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g);
+    final dmHuy = _DanhMucGia('Ăn uống');
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, danhMuc: dmHuy);
     await cho(tester);
     await tester.tap(find.byKey(const Key('quet-huy')));
     await cho(tester);
     expect(g.soLanHuy, 1);
+    expect(dmHuy.daHoi, isEmpty, reason: 'đã Huỷ — không gọi mô hình lần hai');
     final u = form()!;
     expect(u.queryParameters['amount'], '165000');
     expect(u.queryParameters.containsKey('ai'), isFalse);

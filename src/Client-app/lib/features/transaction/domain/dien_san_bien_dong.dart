@@ -7,6 +7,7 @@
 /// query từ URL (khuôn `dienSanTuQuery` của B2).
 library;
 
+import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/notification/ten_tep_bien_lai.dart';
 import '../../category/domain/gan_hang_loat.dart';
@@ -39,6 +40,7 @@ class DienSanBienDong {
     this.phien,
     this.ai = false,
     this.luaChonTien = const [],
+    this.danhMucAi,
   });
 
   /// `dedupeKey` của hàng loại 20 — xoá cứng hàng ấy khi Lưu / Bỏ qua.
@@ -77,6 +79,10 @@ class DienSanBienDong {
   /// trống. Rỗng với mọi khoá khác `quet:`.
   final List<double> luaChonTien;
 
+  /// A5 mục 13 — TÊN danh mục chi Gemma chọn từ cửa hàng + các món (người dùng chốt 2026-10-08). Form tra tên trong
+  /// danh mục chọn được; không thấy thì đoán bằng từ khoá như cũ. `null` với mọi khoá khác `quet:`.
+  final String? danhMucAi;
+
   /// Form mở từ ảnh quét (A5) — không gắn nguồn ngân hàng, không hàng loại 20.
   bool get laQuet => khoa.startsWith(kTienToKhoaQuet);
 }
@@ -112,13 +118,14 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
             for (final x in (q['chon'] ?? '').split(','))
               if (double.tryParse(x) case final v? when v > 0 && v < 1e13) v,
           ],
+    danhMucAi: khoa.startsWith(kTienToKhoaQuet) && (q['dm']?.trim().isNotEmpty ?? false) ? q['dm']!.trim() : null,
   );
 }
 
 /// A5 — query mở form từ ảnh quét. Khoá mang tên ảnh: mỗi lần quét một khoá khác.
 ///
 /// [luaChonTien] — số AI và số luật lệch nhau (`chotTongQuet`): form hiện chip chọn, ô số tiền trống.
-String deeplinkQuet(KetQuaAnhQuet kq, {required String anh, List<double> luaChonTien = const []}) =>
+String deeplinkQuet(KetQuaAnhQuet kq, {required String anh, List<double> luaChonTien = const [], String? danhMucAi}) =>
     Uri(path: '/add', queryParameters: {
       'khoa': '$kTienToKhoaQuet$anh',
       'nguon': kNguonAnhQuet,
@@ -129,6 +136,7 @@ String deeplinkQuet(KetQuaAnhQuet kq, {required String anh, List<double> luaChon
       if (kq.soTien != null) 'amount': kq.soTien!.toStringAsFixed(0),
       if (kq.aiLap) 'ai': '1',
       if (luaChonTien.isNotEmpty) 'chon': [for (final v in luaChonTien) v.toStringAsFixed(0)].join(','),
+      if (danhMucAi != null) 'dm': danhMucAi,
     }).toString();
 
 String _hai(int n) => n.toString().padLeft(2, '0');
@@ -180,7 +188,13 @@ KetQuaDocCau ketQuaTuBienDong(
           for (final c in chonDuoc)
             if (!c.isDeleted && !c.isGroup) c.id
         };
-  final dm = d.ghiChu.isEmpty
+  // A5 mục 13: danh mục Gemma chọn (ảnh quét) THẮNG từ khoá ghi chú — người dùng chọn "AI chọn danh mục"; tên phải là
+  // một danh mục chọn được, đúng chiều, không thì đoán bằng từ khoá như cũ.
+  final ai = d.danhMucAi == null ? null : normalizeCategoryName(d.danhMucAi!);
+  final dmAi = ai == null
+      ? null
+      : chonDuoc.where((c) => hopLe.contains(c.id) && normalizeCategoryName(c.name) == ai).firstOrNull;
+  final dm = dmAi != null || d.ghiChu.isEmpty
       ? null
       : doanDanhMucTuGhiChu(
           cauTimTen: d.ghiChu,
@@ -199,7 +213,7 @@ KetQuaDocCau ketQuaTuBienDong(
     loai: chieu,
     ngay: t == null ? null : DateTime(t.year, t.month, t.day),
     walletId: walletId,
-    categoryId: dm?.categoryId,
+    categoryId: dmAi?.id ?? dm?.categoryId,
     doan: dm?.doan,
     lyDoDanhMuc: dm?.lyDo,
     goiY: dm?.goiY,

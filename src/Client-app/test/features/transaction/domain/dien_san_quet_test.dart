@@ -5,6 +5,8 @@ import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_quet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../category/presentation/category_test_fakes.dart';
+
 void main() {
   final kq = KetQuaAnhQuet(
     loai: LoaiAnhQuet.hoaDon,
@@ -69,6 +71,14 @@ void main() {
     expect(d.luaChonTien, [16588, 79243]);
   });
 
+  test('⭐ danh mục AI chọn → query dm=<tên>, đọc lại; khoá không phải quet: → bỏ', () {
+    final u = Uri.parse(deeplinkQuet(kq, anh: 'a1b2c3d4.jpg', danhMucAi: 'Ăn uống'));
+    expect(dienSanBienDongTuQuery(u.queryParameters)!.danhMucAi, 'Ăn uống');
+    expect(dienSanBienDongTuQuery(Uri.parse(deeplinkQuet(kq, anh: 'a1b2c3d4.jpg')).queryParameters)!.danhMucAi,
+        isNull);
+    expect(dienSanBienDongTuQuery({'khoa': 'bienDong:x', 'nguon': 'MB', 'dm': 'Ăn uống'})!.danhMucAi, isNull);
+  });
+
   test('chon hỏng / số quá trần / khoá không phải quet: → bỏ', () {
     expect(dienSanBienDongTuQuery({'khoa': 'quet:a', 'nguon': kNguonAnhQuet, 'chon': 'abc,0,-5'})!.luaChonTien,
         isEmpty);
@@ -92,5 +102,38 @@ void main() {
   test('khoá lạ → null; tên ảnh hỏng → không ảnh', () {
     expect(dienSanBienDongTuQuery({'khoa': 'xyz:1', 'nguon': 'A'}), isNull);
     expect(dienSanBienDongTuQuery({'khoa': 'quet:1', 'nguon': kNguonAnhQuet, 'anh': '../x'})!.anh, isNull);
+  });
+
+  group('danh mục AI chọn (A5 mục 13)', () {
+    final anUong = makeCategory(id: 'food', name: 'Ăn uống');
+    final muaSam = makeCategory(id: 'shop', name: 'Mua sắm');
+    final luong = makeCategory(id: 'luong', name: 'Lương', classify: 'thu');
+    final chonDuoc = [anUong, muaSam, luong];
+    DienSanBienDong d(String? dm, {String note = 'PHO 24'}) => dienSanBienDongTuQuery(
+        Uri.parse(deeplinkQuet(kq.copyWith(ghiChu: note), anh: 'a1b2c3d4.jpg', danhMucAi: dm)).queryParameters)!;
+
+    test('⭐ tên AI có trong danh mục chọn được → chọn nó, THẮNG từ khoá ghi chú', () {
+      final k = ketQuaTuBienDong(d('Mua sắm'), chonDuoc: chonDuoc, tuKhoa: const {
+        'food': ['pho'],
+      });
+      expect(k.categoryId, 'shop');
+    });
+
+    test('tên AI khớp sau chuẩn hoá', () {
+      expect(ketQuaTuBienDong(d(' ăn UỐNG'), chonDuoc: chonDuoc).categoryId, 'food');
+    });
+
+    test('tên AI không có / sai chiều (danh mục thu cho khoản chi) → từ khoá như cũ', () {
+      const tk = {
+        'food': ['pho'],
+      };
+      expect(ketQuaTuBienDong(d('Cà phê'), chonDuoc: chonDuoc, tuKhoa: tk).categoryId, 'food');
+      expect(ketQuaTuBienDong(d('Lương'), chonDuoc: chonDuoc, tuKhoa: tk).categoryId, 'food');
+    });
+
+    test('ghi chú (tên cửa hàng) không khớp từ khoá nào → danh mục chỉ đến từ AI', () {
+      expect(ketQuaTuBienDong(d('Ăn uống', note: 'ỦA TEA'), chonDuoc: chonDuoc).categoryId, 'food');
+      expect(ketQuaTuBienDong(d(null, note: 'ỦA TEA'), chonDuoc: chonDuoc).categoryId, isNull);
+    });
   });
 }

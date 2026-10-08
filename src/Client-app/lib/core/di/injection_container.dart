@@ -71,6 +71,7 @@ import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
 import '../../features/transaction/data/doc_anh_bang_gemma.dart';
+import '../../features/transaction/data/doc_danh_muc_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -734,6 +735,14 @@ Future<void> setupDependencies() async {
   // A5 mục 13 — ảnh quét hoá đơn: Gemma NHÌN ẢNH đọc món + tổng. Điều kiện Premium nằm ở màn /quet; ở đây là tệp đủ +
   // công tắc. CÙNG một runtime với đường chữ (một mô hình mỗi lúc — `docAnh` đóng nó sau khi đọc).
   sl.registerLazySingleton<SlmDocAnh>(() => sl<SlmRuntime>() as SlmDocAnh);
+  // A5 mục 13 — Gemma lần hai chọn danh mục chi từ cửa hàng + các món (người dùng chốt "AI chọn danh mục").
+  sl.registerLazySingleton<DocDanhMucBangAi>(
+    () => DocDanhMucBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
   sl.registerLazySingleton<DocAnhBangGemma>(
     () => DocAnhBangGemma(
       moHinh: sl<SlmDocAnh>(),

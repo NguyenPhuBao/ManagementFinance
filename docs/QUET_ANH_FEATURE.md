@@ -25,6 +25,9 @@ hệ thống, `maxWidth 1280`) → màn `/quet` *"Đang đọc ảnh…"* (`Quet
    câu hỏi `kPromptMonTong` — chỉ món + tổng) → `chotTongQuet(luat, ai, vanBan)`: số AI chỉ dùng khi có in trên ảnh
    hoặc khác số luật đúng một chữ số; khớp ≤ 1% → điền số AI; lệch → ô số tiền trống + query `chon=<AI>,<luật>`.
    Biên lai chỉ luật (Gemma chưa đo biên lai). Gemma CPU (Mali) 21–42 s / ảnh, GPU 4–11 s; trần 90 s.
+   Rồi **Gemma lần hai chọn danh mục** (`DocDanhMucBangAi`, người dùng chốt "AI chọn danh mục"): tên cửa hàng + các
+   món (của Gemma, không có thì của luật) → tool `chon_danh_muc` với enum danh mục CHI của tài khoản → query `dm=<tên>`
+   → `ketQuaTuBienDong` chọn nó, THẮNG từ khoá ghi chú; tên không có / sai chiều → từ khoá như cũ. Huỷ thì không gọi.
 4. `pushReplacement('/add?khoa=quet:<ảnh>&…')` (`deeplinkQuet`) — form Thêm giao dịch điền sẵn, dải *"Từ ảnh quét ·
    dd/MM HH:mm"* (+ *"· Đọc bằng AI"*). Không ghi gì cho tới khi người dùng bấm Lưu.
 
@@ -40,6 +43,7 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 | `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số); khớp luật ≤ 1% → điền, lệch → hai chip |
 | `transaction/domain/doc_anh_quet.dart` | `loaiAnhQuet`, `docAnhQuet`, `KetQuaAnhQuet` (`voiSoTien` đặt số đã chốt, kể cả `null`) |
 | `transaction/domain/doc_anh_gemma.dart` | `kPromptMonTong` (câu hỏi ĐÃ ĐO — đổi là đo lại), `docJsonGemmaAnh` (số `"75,700"` và `39,000` không ngoặc) |
+| `transaction/data/doc_danh_muc_bang_ai.dart` | `DocDanhMucBangAi` — Gemma lần hai (chữ) chọn MỘT danh mục chi; tên soát lại với danh sách |
 | `transaction/data/doc_anh_bang_gemma.dart` | `DocAnhBangGemma` — chỗ DUY NHẤT ảnh quét gọi mô hình; đi qua `SlmDocAnh` (`slm_runtime.dart`: nạp lại bản có ảnh, ĐÓNG sau khi đọc) |
 | `core/ocr/kho_anh_quet.dart` | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
 | `transaction/domain/dien_san_bien_dong.dart` | khoá `quet:`, `kNguonAnhQuet`, `DienSanBienDong.laQuet/ai`, `deeplinkQuet` |
@@ -66,7 +70,10 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
    khoá ngoại ví (`PRAGMA foreign_keys = ON`).
 8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`. Sheet chọn nguồn mở bằng
    `useRootNavigator: true` — trong navigator nhánh thì thanh dưới + nút + đè lên và che nút Huỷ.
-9. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
+9. Nghiệm thu OnePlus 2026-10-08 (BHX nhoè, ảnh Google Photos): OCR đọc *"Tổng tiền"* thành *"Tng tien"* (mất
+   nguyên âm — `kNhanTongDocNham` nhận `t[eouy]?ng`), không nhãn thì luật lấy mã nhân viên *99.184* — rơi về số lớn
+   nhất nay ưu tiên số có NGĂN NGHÌN; tiêu đề *"Phiếu thanh toán"* là nhãn loại. Cùng tờ ấy OCR trên Realme khác hẳn.
+9a. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
    Nhãn không có số thì dòng TRÊN chỉ-có-số thắng dòng dưới (BHX / MAXIDI in số cao hơn nhãn). Chữ *"tổng"* OCR đọc
    méo (*Téng, Töng*) được thay bằng *tong* TRƯỚC khi xếp hạng nhãn (`hangNhanTong`), nên *"Téng tiên"* thắng
    *"Thành tiền"* trước chiết khấu. *"Payment"* đứng trên *"Total"* (thực trả đã VAT) — nên dòng phương thức trả / tiền khách đưa / tiền thối

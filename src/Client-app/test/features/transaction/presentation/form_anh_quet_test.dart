@@ -47,20 +47,21 @@ void main() {
   final mb = makeWallet(id: 'mb', name: 'MB').copyWith(type: 'bank', isDefault: false);
   const anh = 'a1b2c3d4.jpg';
 
-  DienSanBienDong dienSan({bool ai = false, List<double> chon = const []}) =>
+  DienSanBienDong dienSan({bool ai = false, List<double> chon = const [], String? dm, String note = 'PHO 24'}) =>
       dienSanBienDongTuQuery(Uri.parse(deeplinkQuet(
         KetQuaAnhQuet(
           loai: LoaiAnhQuet.hoaDon,
           soTien: chon.isEmpty ? 191862 : null,
           chieu: 'chi',
           thoiGian: DateTime(2026, 9, 28, 18, 42),
-          ghiChu: 'PHO 24',
+          ghiChu: note,
           mon: const [],
           oThieu: const {},
           aiLap: ai,
         ),
         anh: anh,
         luaChonTien: chon,
+        danhMucAi: dm,
       )).queryParameters)!;
 
   late FakeTransactionRepository repo;
@@ -75,7 +76,7 @@ void main() {
     luotDocSo = 0;
   });
 
-  Widget app({bool ai = false, List<double> chon = const []}) {
+  Widget app({bool ai = false, List<double> chon = const [], String? dm, String note = 'PHO 24'}) {
     final bloc = TransactionBloc(transactionRepository: repo);
     CategoryTree cay(List<Category> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
@@ -100,7 +101,7 @@ void main() {
                 wallets: [tienMat, mb],
                 idaccount: 1,
                 budgetLookup: (_, __) async => null,
-                bienDong: dienSan(ai: ai, chon: chon),
+                bienDong: dienSan(ai: ai, chon: chon, dm: dm, note: note),
                 khoAnhQuet: kho,
                 xoaBienDong: (id, k) async => daXoaHang.add((id, k)),
                 khoanTrongSo: (_) async {
@@ -116,8 +117,9 @@ void main() {
     return MaterialApp.router(routerConfig: router);
   }
 
-  Future<void> mo(WidgetTester tester, {bool ai = false, List<double> chon = const []}) async {
-    await tester.pumpWidget(app(ai: ai, chon: chon));
+  Future<void> mo(WidgetTester tester,
+      {bool ai = false, List<double> chon = const [], String? dm, String note = 'PHO 24'}) async {
+    await tester.pumpWidget(app(ai: ai, chon: chon, dm: dm, note: note));
     await tester.pumpAndSettle();
   }
 
@@ -215,5 +217,15 @@ void main() {
       await mo(tester);
       expect(find.text('Đọc ra hai số khác nhau — chọn số đúng:'), findsNothing);
     });
+  });
+
+  testWidgets('⭐ danh mục AI chọn ("ỦA TEA" không khớp từ khoá nào) → form chọn sẵn danh mục ấy', (tester) async {
+    await mo(tester, ai: true, dm: 'Ăn uống', note: 'ỦA TEA');
+    expect(find.text('Ăn uống'), findsOneWidget);
+  });
+
+  testWidgets('không có danh mục AI, ghi chú không khớp từ khoá → ô danh mục trống như cũ', (tester) async {
+    await mo(tester, note: 'ỦA TEA');
+    expect(find.text('Ăn uống'), findsNothing);
   });
 }

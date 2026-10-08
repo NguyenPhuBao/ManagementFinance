@@ -14,18 +14,23 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ocr/doc_chu_anh.dart';
 import '../../../../core/ocr/dong_ocr.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../category/domain/gan_hang_loat.dart';
 import '../../data/doc_anh_bang_gemma.dart';
+import '../../data/doc_danh_muc_bang_ai.dart';
 import '../../domain/chot_tong_quet.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_anh_quet.dart';
@@ -92,6 +97,8 @@ class QuetAnhPage extends StatefulWidget {
     this.docChu,
     this.kho,
     this.docGemma,
+    this.docDanhMuc,
+    this.tenDanhMucChi,
     this.laPremium,
     this.now,
   });
@@ -103,6 +110,12 @@ class QuetAnhPage extends StatefulWidget {
   final DocChuAnh? docChu;
   final KhoAnhQuet? kho;
   final DocAnhBangGemma? docGemma;
+
+  /// A5 mục 13 — Gemma lần hai chọn danh mục (người dùng chốt "AI chọn danh mục").
+  final DocDanhMucBangAi? docDanhMuc;
+
+  /// Tên các danh mục CHI chọn được của tài khoản. `null` → đọc qua `CategoryManagementRepository`.
+  final Future<List<String>> Function()? tenDanhMucChi;
 
   /// `null` → `GoiCubit` qua `context`; không có provider thì coi như Premium (chỉ test cũ gặp).
   final bool? laPremium;
@@ -122,6 +135,26 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
   KhoAnhQuet? get _kho => widget.kho ?? (sl.isRegistered<KhoAnhQuet>() ? sl<KhoAnhQuet>() : null);
   DocAnhBangGemma? get _docGemma =>
       widget.docGemma ?? (sl.isRegistered<DocAnhBangGemma>() ? sl<DocAnhBangGemma>() : null);
+  DocDanhMucBangAi? get _docDanhMuc =>
+      widget.docDanhMuc ?? (sl.isRegistered<DocDanhMucBangAi>() ? sl<DocDanhMucBangAi>() : null);
+
+  /// Bấm Huỷ ở pha AI: lượt đang chạy trả `null`, và KHÔNG gọi mô hình lần hai.
+  var _huyAi = false;
+
+  Future<List<String>> _tenDanhMucChi() async {
+    final f = widget.tenDanhMucChi;
+    if (f != null) return f();
+    final id = currentAccountIdOrNull(context);
+    if (id == null || !sl.isRegistered<CategoryManagementRepository>()) return const [];
+    try {
+      final ds = await sl<CategoryManagementRepository>().selectableChildrenAll(accountId: id);
+      final hopLe = hopLeTheoChieu('chi', ds);
+      return [for (final c in ds) if (hopLe.contains(c.id)) c.name];
+    } catch (e) {
+      debugPrint('[Quet][danhMuc] đọc danh mục lỗi: $e');
+      return const [];
+    }
+  }
 
   bool get _laPremium {
     final t = widget.laPremium;
@@ -163,8 +196,19 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     final van = ghepDongTheoHang(dong);
     final luc = (widget.now ?? DateTime.now)();
     var kq = docAnhQuet(vanBan: van, luc: luc);
+    // Bản debug: chữ OCR + kết quả luật — để nghiệm thu máy thật đối chiếu (ảnh khác máy thì OCR khác). Bản release
+    // không in chữ ảnh của người dùng.
+    if (kDebugMode) {
+      for (final h in van.split('\n')) {
+        // ignore: avoid_print
+        print('[Quet][OCR] $h');
+      }
+      // ignore: avoid_print
+      print('[Quet][luat] tong=${kq.soTien} | ghi="${kq.ghiChu}" | luc=${kq.thoiGian} | thieu=${kq.oThieu}');
+    }
     if (kq.mon.isNotEmpty) await kho.luuMon(ten, kq.mon);
     var chon = const <double>[];
+    String? danhMuc;
     final g = _docGemma;
     if (van.trim().isNotEmpty && kq.loai == LoaiAnhQuet.hoaDon && g != null && duong != null && _laPremium) {
       setState(() => _pha = _Pha.ai);
@@ -176,6 +220,16 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
         kq = kq.voiSoTien(c.soTien, aiLap: c.luaChon.isNotEmpty || c.soTien == tong.toDouble());
         chon = c.luaChon;
       }
+      final hoiDm = _docDanhMuc;
+      if (hoiDm != null && !_huyAi && mounted) {
+        final mon = [for (final m in a?.mon ?? const <({String ten, double soTien})>[]) m.ten];
+        danhMuc = await hoiDm.chon(
+          cuaHang: kq.ghiChu,
+          mon: mon.isNotEmpty ? mon : [for (final m in kq.mon) if (m.soTien > 0) m.ten],
+          tenDanhMuc: await _tenDanhMucChi(),
+        );
+        if (danhMuc != null) kq = kq.copyWith(aiLap: true);
+      }
     }
     if (!mounted) return;
     if (van.trim().isEmpty) {
@@ -184,13 +238,15 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
       baoNhanh(kCauChuaDocTien);
     }
     // Thay CHÍNH màn này bằng form: Back từ form về Trang chủ, không về màn "Đang đọc ảnh…".
-    context.pushReplacement(deeplinkQuet(kq, anh: ten, luaChonTien: chon));
+    context.pushReplacement(deeplinkQuet(kq, anh: ten, luaChonTien: chon, danhMucAi: _huyAi ? null : danhMuc));
   }
 
   void _bamHuy() {
     if (_pha == _Pha.ai) {
       // Lượt sinh trả null → `_chay` mở form với kết quả luật.
+      _huyAi = true;
       unawaited(_docGemma?.huy());
+      unawaited(_docDanhMuc?.huy());
       return;
     }
     setState(() => _huyLuat = true);

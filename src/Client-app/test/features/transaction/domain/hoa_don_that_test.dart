@@ -52,6 +52,14 @@ void main() {
     expect(docHoaDonTuChu('Quan A\nTong tien 100.000\nPhuong thuc thanh toan:\nTien mat 150.000').tong, 100000);
   });
 
+  test('⭐ "Tổng" OCR đọc MẤT nguyên âm ("Tng tien:", BHX trên OnePlus 2026-10-08) vẫn là nhãn tổng', () {
+    expect(docHoaDonTuChu('PHIEU THANH TOAN BACH HOA XANH\ndua hau do 16.588\nTng tien: 79.243').tong, 79243);
+  });
+
+  test('⭐ không nhãn tổng nào: số có NGĂN NGHÌN thắng số trần 5 chữ số (mã nhân viên "NV:99184")', () {
+    expect(docHoaDonTuChu('BACH HOA XANH\n29/08/2026 18:37 - NV:99184\nkhoai tay 3.802\nxyz 79.243').tong, 79243);
+  });
+
   group('ngày giờ — luật', () {
     const coNgay = {
       'R01': (2026, 9, 28, 14, 19), // ⭐ "Sep 28, 2026 2:19PM" — tiếng Anh, giờ chiều
