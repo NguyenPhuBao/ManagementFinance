@@ -29,6 +29,7 @@ import '../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../ai_edge/data/slm_runtime.dart';
 import '../../category/data/repositories/category_management_repository.dart';
 import '../../transaction/data/doc_anh_bang_ai.dart';
+import '../../transaction/domain/doc_anh_quet.dart';
 import '../../transaction/domain/doc_cau_giao_dich.dart';
 import '../../transaction/domain/doc_mon_hang.dart';
 import 'spike_c4.dart';
@@ -307,6 +308,72 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
         _ghi('MÓN-B | ${d.elapsedMilliseconds} ms | thô="${chu.replaceAll('\n', ' ')}"');
       });
 
+  /// A5 (2026-10-08, người dùng: "kiểm với tất cả hoá đơn có trên máy") — chạy cả LÔ ảnh trong `spike_c4/<mã>/`.
+  /// Mã bắt đầu bằng `loc` → chỉ OCR + điểm dấu hiệu (lọc ảnh nào là hoá đơn, không in chữ ảnh); mã khác → mỗi ảnh:
+  /// luật `docAnhQuet` (ô nào ra gì) + chữ OCR từng hàng + Gemma nhìn ảnh với [kPromptMonTong].
+  Future<void> _lo() => _chay('LÔ', () async {
+        final ma = _ma.text.trim();
+        final thu = Directory('${await _thuMuc()}/$ma');
+        if (!thu.existsSync()) return _ghi('LÔ không thấy thư mục $ma');
+        final tep = thu
+            .listSync()
+            .whereType<File>()
+            .where((f) => RegExp(r'\.(jpe?g|png)$', caseSensitive: false).hasMatch(f.path))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
+        final chiLoc = ma.startsWith('loc');
+        _ghi('LÔ bắt đầu: ${tep.length} ảnh, ${chiLoc ? 'chỉ lọc' : 'đo đủ'}');
+        final tr = TextRecognizer(script: TextRecognitionScript.latin);
+        SlmRuntimeThat? rt;
+        try {
+          for (final f in tep) {
+            final ten = f.uri.pathSegments.last;
+            final d = Stopwatch()..start();
+            String hang;
+            try {
+              final r = await tr.processImage(InputImage.fromFilePath(f.path));
+              hang = ghepDongTheoHang([
+                for (final b in r.blocks)
+                  for (final l in b.lines)
+                    DongOcr(l.text,
+                        trai: l.boundingBox.left,
+                        tren: l.boundingBox.top,
+                        phai: l.boundingBox.right,
+                        duoi: l.boundingBox.bottom),
+              ]);
+            } catch (e) {
+              // ignore: avoid_print
+              print('[C4][LO] $ten | OCR lỗi $e');
+              continue;
+            }
+            final dong = [for (final x in hang.split('\n')) if (x.trim().isNotEmpty) x.trim()];
+            final (hd, bl) = diemLoaiAnh(dong);
+            final kq = docAnhQuet(vanBan: hang, luc: DateTime.now());
+            // ignore: avoid_print
+            print('[C4][LO] $ten | hd=$hd bl=$bl | loai=${kq.loai.name} | tien=${kq.soTien?.toStringAsFixed(0)} | '
+                'OCR ${d.elapsedMilliseconds} ms');
+            if (chiLoc) continue;
+            // ignore: avoid_print
+            print('[C4][LO-LUAT] $ten | tong=${kq.soTien?.toStringAsFixed(0)} | ghi="${kq.ghiChu}" | '
+                'luc=${kq.thoiGian} | thieu=${kq.oThieu.map((o) => o.name).join(',')} | mon=${kq.mon.length}');
+            for (final h in dong) {
+              // ignore: avoid_print
+              print('[C4][LO-OCR] $ten | $h');
+            }
+            rt ??= await _runtime();
+            if (rt == null) continue;
+            final g = Stopwatch()..start();
+            final chu = await rt.spikeDaPhuongThuc(await sl<MoHinhTaiVe>().duongTep(), kPromptMonTong,
+                anh: await f.readAsBytes());
+            // ignore: avoid_print
+            print('[C4][LO-AI] $ten | ${g.elapsedMilliseconds} ms | thô="${chu.replaceAll('\n', ' ')}"');
+          }
+        } finally {
+          await tr.close();
+        }
+        _ghi('LÔ xong');
+      });
+
   Future<void> _chupB() => _chay('CHỤP-B', () async {
         final p = _anh;
         if (p == null) return _ghi('CHỤP-B chưa có ảnh');
@@ -387,6 +454,7 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupB, child: const Text('Đọc — lối B')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupAi, child: const Text('Đọc — AI trên chữ')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _monB, child: const Text('Món — Gemma nhìn ảnh')),
+            ElevatedButton(onPressed: ban ? null : _lo, child: const Text('Lô — cả thư mục <mã>/')),
           ]),
           if (_anh != null) Padding(padding: const EdgeInsets.only(top: 8), child: Image.file(File(_anh!), height: 160)),
           if (_dangChay) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),

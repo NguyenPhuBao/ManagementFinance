@@ -384,6 +384,27 @@ ghép chữ hai hàng kề, nhầm 0↔6, 5↔6, chấm↔phẩy, *"Tổng"* →
 4. Người dùng từng hỏi *"bỏ hẳn luật, AI đọc hết"* — đã trình hệ quả (Basic không đọc được gì, chậm, không lưới kiểm,
    biên lai chưa đo) và họ chọn hướng 3.
 
+**Đo lại trên Realme RMX2205 (2026-10-08 trưa) — "AI đọc món + tổng, luật đọc phần còn lại".** Người dùng: *"kiểm với
+tất cả hoá đơn có trên máy"*, *"lấy những ảnh hoá đơn hoặc biên lai thôi"*. Máy tự lọc 248 ảnh thư viện (OCR + điểm dấu
+hiệu, nút *Lô* của màn spike, mã `loc…`) → 36 ảnh có dấu hiệu → xem ảnh thu nhỏ: **16 hoá đơn** (2 ảnh Pharmacity trùng
+nhau → 15 hoá đơn khác nhau), **0 biên lai chuyển khoản** (hai ảnh máy chấm "biên lai" là ảnh chụp màn FlowMoney). Ảnh
+máy ảnh thu về rộng 1280 như `image_picker` của `/quet`. Gemma chạy **CPU** (Mali, canary GPU), prompt `kPromptMonTong`
+(chỉ món + tổng). Đáp án chấm bằng mắt; R15 tính *số tiền thực trả* (30.000 sau trừ điểm). Log: `[C4][LO-*]`.
+
+| | Đúng | Ghi chú |
+|---|---|---|
+| Tổng — Gemma CPU | **10/15** | sai: lấy giá gạch (83.500), lấy một dòng món (16.588, 17.800), 78.000, 55.000 |
+| Tổng — luật | 9/15 | sai: năm in làm tiền (2026), tổng trước chiết khấu / trước VAT, 9.243, 72.121, điểm 2.160 |
+| Hai bên khớp nhau | 6/15 | **cả 6 đều đúng** |
+| Hai bên lệch → hai chip | 9/15 | 7 có số đúng trong chip · 2 không chip nào đúng (BHX nhòe, MAXIDI #2) |
+| Món — Gemma CPU đúng trọn | 3/15 | chỉ hoá đơn 1 món + Starbucks; còn lại sót dòng / lấy đơn giá thay thành tiền |
+| Cửa hàng — luật | 4 ✅ · 3 ◐ · 8 ❌ | 4/8 ❌ là nhãn dán laptop phía sau (ASUS, CORE, IRIS, "rtel"); 2 là địa chỉ |
+| Ngày — luật | 7 ✅ · **2 sai im lặng** · 6 lúc quét | MAXIDI in **tháng/ngày**: *9/2/2026* → 09/02, *10/1/2026* → 10/01 (đúng là 02/09, 01/10) |
+
+Thời gian: OCR 0,4–0,9 s; Gemma CPU **21–42 s/ảnh**. ⚠️ **CPU khác GPU**: cả 6 hoá đơn của bộ OnePlus đều có trên Realme — GPU đúng
+tổng 6/6, CPU 3/6 (ÙA TEA #1, MAXIDI #1, MAXIDI #2 sai) — "tổng 6/6" ở trên là số của GPU, không phải của mọi máy. OCR cũng
+đổi theo ảnh: MAXIDI #1 luật nay 75.700 ✅ (OnePlus 75.706), ÙA TEA #2 nay 246.000 ❌ (OnePlus 217.500).
+
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
   **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi

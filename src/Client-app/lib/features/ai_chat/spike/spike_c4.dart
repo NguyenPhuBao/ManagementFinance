@@ -38,6 +38,31 @@ const String kPromptMonHoaDon = 'Đây là ảnh một hoá đơn bán hàng. Li
     'nguyên đồng>, "cua_hang": "<tên cửa hàng>", "ngay": "<dd/MM/yyyy hoặc rỗng>", "gio": "<HH:mm hoặc rỗng>"}. '
     'Không giải thích.';
 
+/// A5 (2026-10-08) — bản ĐẦU của [kPromptMonHoaDon]: chỉ hỏi món + tổng (đo OnePlus: tổng 6/6; thêm cửa hàng / ngày /
+/// giờ thì tụt 5/6). Dùng cho phép đo "AI đọc món + tổng, luật đọc phần còn lại".
+const String kPromptMonTong = 'Đây là ảnh một hoá đơn bán hàng. Liệt kê MỌI món hàng in trên hoá đơn. Trả về DUY '
+    'NHẤT một JSON: {"mon": [{"ten": "<tên món>", "tien": <thành tiền, số nguyên đồng>}], "tong": <tổng phải trả, số '
+    'nguyên đồng>}. Không giải thích.';
+
+/// Điểm dấu hiệu của [loaiAnhQuet] (chép từ `doc_anh_quet.dart`, spike thôi) — để LỌC ảnh hoá đơn trong cả thư viện.
+(int hoaDon, int bienLai) diemLoaiAnh(List<String> hang) {
+  final hd = [
+    RegExp(r'don gia'), RegExp(r'so luong|\bsl\b'), RegExp(r'thanh tien'), RegExp(r'khach dua'),
+    RegExp(r'tien (thoi|thua)'), RegExp(r'tong cong'), RegExp(r'tam tinh'), RegExp(r'\bvat\b'), RegExp(r'hoa don'),
+  ];
+  final bl = [
+    RegExp(r'thanh cong'), RegExp(r'nguoi nhan'), RegExp(r'tai khoan nhan'), RegExp(r'\bma (giao dich|gd)\b'),
+    RegExp(r'noi dung'), RegExp(r'chuyen (khoan|tien)'), RegExp(r'^nhan (tien|chuyen khoan)'),
+  ];
+  var a = 0, b = 0;
+  for (final h in hang) {
+    final s = boDauHoaDon(h);
+    if (hd.any((r) => r.hasMatch(s))) a++;
+    if (bl.any((r) => r.hasMatch(s))) b++;
+  }
+  return (a, b);
+}
+
 /// Tên cũ của `docSoTrenAnh` (`core/ocr/so_tien_tren_anh.dart`) — màn đo và test của spike còn gọi.
 int? docSoHoaDon(String s) => docSoTrenAnh(s);
 
