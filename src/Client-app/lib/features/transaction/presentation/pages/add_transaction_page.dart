@@ -13,6 +13,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/kho_bien_lai.dart';
+import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ban_phim_so_tien.dart';
@@ -133,6 +134,10 @@ class AddTransactionPage extends StatefulWidget {
   /// để đối chiếu, và xoá tệp khi Lưu / Bỏ qua. `null` → `sl<KhoBienLai>()` nếu đã đăng ký.
   final KhoBienLai? khoBienLai;
 
+  /// A5 — kho ảnh QUÉT (`filesDir/anh_quet/`): form mở từ khoá `quet:` hiện ảnh + đọc danh sách món từ đây, và xoá ảnh
+  /// khi đóng. `null` → `sl<KhoAnhQuet>()` nếu đã đăng ký.
+  final KhoAnhQuet? khoAnhQuet;
+
   /// Ô Nhập nhanh là đặc quyền Premium — Basic khoá CẢ ô (spec Premium 2026-10-06 mục 8.2, người dùng chốt; màn Stitch
   /// *"Thêm giao dịch - Nhập nhanh khoá (Basic)"* `21790848a0dc4e98970c0a591b88f44e`). `null` =
   /// đọc `GoiCubit` qua `context`; **không có provider thì không khoá** — chỉ test cũ gặp ca ấy. Chỉ khoá giao diện:
@@ -160,6 +165,7 @@ class AddTransactionPage extends StatefulWidget {
     this.khoanTrongSo,
     this.hangBienDongCho,
     this.khoBienLai,
+    this.khoAnhQuet,
     this.laPremium,
   });
 
@@ -356,13 +362,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (_bienDong != null) unawaited(Future.wait([napVi, napHoc]).then((_) => _dienTuBienDong()));
     // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
     if (_bienDong?.anh case final anh?) {
-      unawaited(_khoBienLai?.duongDan(anh).then((p) {
+      // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`).
+      unawaited((_laQuet ? _khoAnhQuet?.duongDan(anh) : _khoBienLai?.duongDan(anh))?.then((p) {
         if (mounted && p != null) setState(() => _duongDanAnh = p);
       }));
     }
   }
 
   KhoBienLai? get _khoBienLai => widget.khoBienLai ?? (sl.isRegistered<KhoBienLai>() ? sl<KhoBienLai>() : null);
+
+  KhoAnhQuet? get _khoAnhQuet => widget.khoAnhQuet ?? (sl.isRegistered<KhoAnhQuet>() ? sl<KhoAnhQuet>() : null);
+
+  /// A5 — form mở từ ảnh quét (khoá `quet:`): không nguồn ngân hàng, không hàng loại 20.
+  bool get _laQuet => _bienDong?.laQuet ?? false;
 
   /// Đường dẫn ảnh biên lai của hàng đang mở; `null` = không có ảnh (hoặc chưa tìm xong).
   String? _duongDanAnh;
@@ -383,7 +395,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (d == null || !mounted) return;
     final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
     String? viId;
-    if (id != null) {
+    // A5: ảnh quét không gắn nguồn ngân hàng → không bảng "nguồn → ví"; giữ ví mặc định đã chọn sẵn.
+    if (id != null && !_laQuet) {
       try {
         // Dòng nhắc (không đuôi TK) thì thử thêm ví của cả NGUỒN — chỉ khi nó chắc (một ví duy nhất).
         final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi) ??
@@ -402,12 +415,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       // Lần đầu của cặp nguồn + đuôi: ví TRỐNG, không phải ví mặc định — để ví mặc định là để bảng nguồn → ví học nhầm
       // nó ở lần Lưu đầu, rồi chọn sẵn sai mãi.
-      if (viId == null) _selectedWallet = null;
+      if (viId == null && !_laQuet) _selectedWallet = null;
       // `_dienKetQua` chỉ đổi phần ngày; giờ trong tin là giờ giao dịch (spec §3.3).
       final t = d.thoiGian;
       if (t != null) _selectedDate = t;
     });
-    if (id == null) return;
+    // A5 (spec 5.6): gợi ý chuyển khoản và nhắc trùng của D1 không áp cho ảnh quét.
+    if (id == null || _laQuet) return;
     unawaited(_tinhGoiYChuyen(d, id));
     try {
       final so = await (widget.khoanTrongSo ?? _khoanTrongSoMacDinh)(id);
@@ -492,6 +506,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
   /// gọi: màn có thể đã `pop`. Không bao giờ ném.
   Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
+    // A5: form từ ảnh quét — không hàng loại 20, không bảng nguồn → ví; chỉ xoá ảnh (dispose cũng xoá — luỹ đẳng).
+    if (d.laQuet) {
+      await _khoAnhQuet?.xoa(d.anh);
+      return;
+    }
     final store = _viTheoNguon;
     try {
       if (nhoVi && viDaLuu != null) await store?.ghi(id, d.nguon, d.duoi, viDaLuu);
@@ -611,6 +630,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _noteController.dispose();
     _nhapNhanhController.dispose();
     _nhapNhanhFocus.dispose();
+    // A5: ảnh quét chỉ sống tới khi form đóng — MỘT chỗ cho mọi đường thoát (Lưu, Bỏ qua, Back hệ thống, nút ←).
+    if (_laQuet) unawaited(_khoAnhQuet?.xoa(_bienDong?.anh));
     super.dispose();
   }
 
@@ -2179,7 +2200,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
               )
             else
-              Icon(d.cachDoc == null ? Icons.account_balance : Icons.receipt_long_outlined,
+              Icon(d.laQuet ? Icons.document_scanner_outlined : d.cachDoc == null ? Icons.account_balance : Icons.receipt_long_outlined,
                   size: 18, color: AppColors.textSecondary),
             const SizedBox(width: 10),
             Expanded(
