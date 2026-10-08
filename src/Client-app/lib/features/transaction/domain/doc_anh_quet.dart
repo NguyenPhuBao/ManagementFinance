@@ -257,7 +257,9 @@ KetQuaAnhQuet lapTuAi(KetQuaAnhQuet luat, KetQuaAiAnh ai, {required String vanBa
   }
   if (ai.noiDung case final nd? when thieu.contains(OAnhQuet.ghiChu)) {
     final c = normalizeCategoryName(nd);
-    if (c.length >= 2 && normalizeCategoryName(vanBan).contains(c)) {
+    // Hoá đơn: tên cửa hàng — cùng chốt với luật, kẻo AI điền lại đúng dòng địa chỉ / nhãn laptop luật vừa bỏ.
+    final boQua = luat.loai == LoaiAnhQuet.hoaDon && khongPhaiTenCuaHang(nd);
+    if (!boQua && c.length >= 2 && normalizeCategoryName(vanBan).contains(c)) {
       r = r.copyWith(ghiChu: nd);
       thieu.remove(OAnhQuet.ghiChu);
       lap = true;

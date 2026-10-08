@@ -310,9 +310,12 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
 
   /// A5 (2026-10-08, người dùng: "kiểm với tất cả hoá đơn có trên máy") — chạy cả LÔ ảnh trong `spike_c4/<mã>/`.
   /// Mã bắt đầu bằng `loc` → chỉ OCR + điểm dấu hiệu (lọc ảnh nào là hoá đơn, không in chữ ảnh); mã khác → mỗi ảnh:
-  /// luật `docAnhQuet` (ô nào ra gì) + chữ OCR từng hàng + Gemma nhìn ảnh với [kPromptMonTong].
+  /// luật `docAnhQuet` (ô nào ra gì) + chữ OCR từng hàng + Gemma nhìn ảnh với [kPromptMonTong]. Mã `luat:<thư mục>`
+  /// → như đo đủ nhưng bỏ Gemma (kiểm lại luật nhanh).
   Future<void> _lo() => _chay('LÔ', () async {
-        final ma = _ma.text.trim();
+        final nhap = _ma.text.trim();
+        final chiLuat = nhap.startsWith('luat:');
+        final ma = chiLuat ? nhap.substring(5) : nhap;
         final thu = Directory('${await _thuMuc()}/$ma');
         if (!thu.existsSync()) return _ghi('LÔ không thấy thư mục $ma');
         final tep = thu
@@ -360,6 +363,7 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
               // ignore: avoid_print
               print('[C4][LO-OCR] $ten | $h');
             }
+            if (chiLuat) continue;
             rt ??= await _runtime();
             if (rt == null) continue;
             final g = Stopwatch()..start();

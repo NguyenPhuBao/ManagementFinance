@@ -74,6 +74,12 @@ const List<String> kNhanLoaiHoaDon = [
   'tam tinh',
   // Nghiệm thu 2026-10-08 (hoá đơn MAXIDI): dòng THANH TOÁN — số tiền khách đưa, lớn hơn tổng.
   'tien mat',
+  // Có nhãn 'payment' trong [kNhanTongHoaDon] thì *"Payment Method: Cash"* rồi *"Cash 150,000"* thành tổng — dòng phương
+  // thức trả, tiền khách đưa, tiền thối tiếng Anh đều loại.
+  'method',
+  'phuong thuc',
+  'cash',
+  'change',
 ];
 
 /// *"Tổng"* bị OCR đọc nhầm một nguyên âm (*"Teng"*, *"Tung"*) — ảnh nhăn, nghiệm thu 2026-10-08. Một TỪ trọn 4 chữ;
@@ -220,6 +226,13 @@ final RegExp _thanHoaDon =
 
 final RegExp _tuChu = RegExp(r'\p{L}+', unicode: true);
 
+/// Một dòng chắc KHÔNG phải tên cửa hàng: chữ trên đồ vật phía sau, địa chỉ / liên hệ, tiêu đề chứng từ. Lưới của AI
+/// (`lapTuAi`) dùng chung — mô hình được phép chọn một chuỗi con của chữ OCR, kể cả đúng dòng luật vừa bỏ.
+bool khongPhaiTenCuaHang(String dong) {
+  final b = boDauHoaDon(dong);
+  return _chuDoVat.hasMatch(b) || _diaChi.hasMatch(b) || _tieuDe.hasMatch(b);
+}
+
 /// Tên cửa hàng: dòng có chữ đầu tiên TRƯỚC thân hoá đơn (dòng có số tiền, mã HĐ, tiêu đề cột), bỏ chữ trên đồ vật
 /// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Không thấy →
 /// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ).
@@ -229,7 +242,7 @@ String? _cuaHang(List<String> dong, List<String> bo) {
     if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) return null;
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
-    if (_chuDoVat.hasMatch(b) || _diaChi.hasMatch(b) || _tieuDe.hasMatch(b)) continue;
+    if (khongPhaiTenCuaHang(dong[i])) continue;
     return dong[i];
   }
   return null;

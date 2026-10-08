@@ -10,6 +10,7 @@ library;
 
 import 'package:flowmoney/features/transaction/domain/chot_tong_quet.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_quet.dart';
+import 'package:flowmoney/features/transaction/domain/doc_hoa_don.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'hoa_don_that_du_lieu.dart';
@@ -41,6 +42,14 @@ void main() {
     for (final e in dapAn.entries) {
       test('${e.key} → ${e.value}', () => expect(doc(e.key).soTien, e.value.toDouble()));
     }
+  });
+
+  test('⭐ "Payment Method: Cash" không phải dòng tổng — không lấy tiền khách đưa / tiền thối', () {
+    expect(docHoaDonTuChu('Cafe A\nTotal 100,000\nPayment Method: Cash\nCash 150,000\nChange 50,000').tong, 100000);
+  });
+
+  test('"Phương thức thanh toán:" rồi "Tiền mặt 150.000" không phải dòng tổng', () {
+    expect(docHoaDonTuChu('Quan A\nTong tien 100.000\nPhuong thuc thanh toan:\nTien mat 150.000').tong, 100000);
   });
 
   group('ngày giờ — luật', () {
@@ -108,6 +117,20 @@ void main() {
         expect(doc(ma).oThieu, contains(OAnhQuet.ghiChu));
       });
     }
+
+    test('⭐ AI (Premium) cũng không được điền lại dòng địa chỉ / nhãn laptop vào ô cửa hàng luật để trống', () {
+      for (final (ma, nd) in [('R14', 'Chợ Minh Phat, Quận 12, HCM'), ('R13', 'CORE')]) {
+        final luat = doc(ma).copyWith(ghiChu: '', oThieu: {...doc(ma).oThieu, OAnhQuet.ghiChu});
+        final kq = lapTuAi(luat, KetQuaAiAnh(noiDung: nd), vanBan: kHoaDonThat[ma]!, now: luc);
+        expect(kq.ghiChu, '', reason: ma);
+      }
+    });
+
+    test('AI vẫn lấp được tên cửa hàng thật khi luật để trống', () {
+      final luat = doc('R10');
+      final kq = lapTuAi(luat, const KetQuaAiAnh(noiDung: '14 Feb'), vanBan: kHoaDonThat['R10']!, now: luc);
+      expect(kq.ghiChu, '14 Feb');
+    });
 
     test('R15 — không lấy nhãn dán laptop ("el IRIS", "CORe")', () {
       expect(doc('R15').ghiChu, isNot(anyOf(contains('IRIS'), contains('CORe'))));

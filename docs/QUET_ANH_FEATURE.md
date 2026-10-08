@@ -60,15 +60,20 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 9. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
    Nhãn không có số thì dòng TRÊN chỉ-có-số thắng dòng dưới (BHX / MAXIDI in số cao hơn nhãn). Chữ *"tổng"* OCR đọc
    méo (*Téng, Töng*) được thay bằng *tong* TRƯỚC khi xếp hạng nhãn (`hangNhanTong`), nên *"Téng tiên"* thắng
-   *"Thành tiền"* trước chiết khấu. *"Payment"* đứng trên *"Total"* (thực trả đã VAT).
+   *"Thành tiền"* trước chiết khấu. *"Payment"* đứng trên *"Total"* (thực trả đã VAT) — nên dòng phương thức trả / tiền khách đưa / tiền thối
+   (`method · phuong thuc · cash · change`) phải nằm trong `kNhanLoaiHoaDon`, kẻo *"Payment Method: Cash"* rồi *"Cash
+   150,000"* thành tổng.
 10. **Ngày in thiếu số 0 (`ngayDuHaiSo = false`) thì chọn cách đọc gần lúc quét nhất** — máy POS MAXIDI in tháng/ngày
     (*9/2/2026* = 02/09); ngày in đủ hai chữ số vẫn đọc ngày/tháng trước (*05/03* không thành *03/05*).
 11. **Dòng dấu ảnh *"Shot on …"* bị bỏ khi tìm ngày giờ** — giờ trên đó là giờ chụp. Đọc thêm *"Sep 28, 2026 2:19PM"* và
     *"Ngày 19 tháng 09 năm 2026"*.
 12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
     cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
+    `lapTuAi` dùng **cùng** chốt (`khongPhaiTenCuaHang`) — không thì AI (Premium) điền lại đúng dòng luật vừa bỏ.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
-    ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không.
+    ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
+    *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
+    Đo lại trên Realme bằng nút *Lô* mã `luat:do1` (bản spike, chỉ luật): khớp đúng dữ liệu test.
 
 ## 3b. Tách theo danh mục (mục 11 spec)
 
