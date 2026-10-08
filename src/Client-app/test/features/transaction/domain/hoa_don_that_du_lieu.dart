@@ -473,3 +473,84 @@ pIEM 0
 Cảm on và hẹn gäp lai!
 Powered by KIOTVIET.''',
 };
+
+/// Chữ OCR THẬT của ba tờ trong [kHoaDonThat] quét lại trên OnePlus 13R qua `/quet` (2026-10-08, Google Photos →
+/// `image_picker`). Cùng tờ mà OCR khác máy: *"Tổng tiền"* thành *"Tbng tiễn"* (P04), ngày *"3O/08/2026"* (P05).
+const Map<String, String> kHoaDonOnePlus = {
+  // Bách Hoá Xanh 55.500 (= R04)
+  'P04': r'''
+DHIÊU THANH TON BÁCH HÓA XANH
+OV130393609036281
+CT:
+06/09/29 9/2326 18:29 - SV:215224
+Giá bán (VAT) Thành tiễn
+tiêu đen xay dh foods 45g*48
+27.500 (VAT:8%) 27.500
+táo gala mini,tũi 800gr
+s6-000 28.000 (VAT:5%) 28.000
+55.500
+Tbng tiễn:
+Chayåa khoan (Tiêt kiệm: 28.000a) 55.500
+Kh mua tạl sibu thị và thanh toán tin mặt, y& tin 10 duới
+2006 đuợc lâm tròn xubng. trân 700d làm tròn lên.
+cứu: 8k4DD1036%
+D VNT Chi xut trong ngay. Gp i 18001067 (aikn phiS
+CAa a quý kh ah đa dng ch nb sch dâ 1141 cA chân taii w.baehhoaxant. Dom
+CAM ƠN QUỸ KHÁCH ĐÃ CHOR BÁCH HOẢ XANA
+MUA SÂM TIỂT KIỆM MOI NGAY !
+Hóa đon tích điem cho SĐT *****276 sau 24h.''',
+  // eco-shop 57.000 (= R05)
+  'P05': r'''
+eco-shop Invoice
+DONG MART (V69LVTA) MST. 0318641693
+326 Lé Van Khuong Tho1 An, Cuạn 12, Thanh phỏ Hó Chi Minh
+Só HD #* 121023427
+Ngay 3O/08/2026 21 33 37 Nguyen Van A
+Hang hóa SL Thanh tien
+F6
+6406840019-Bot giat Rosot 600g-8 00 19.000
+3223840038-3C KTYT FAMAPRO 3 19,00u Fi1
+80150132-Loat đô choi bong bu 19 000
+Töng cộng 57.000
+Tông cong bao gm VAT 5 57.000
+EWallet(VNPAY OR). 67000 00
+TRID SPOS26974781
+Y
+VATbantotat
+Thuể suát Tièr hang Tiên thuê
+VAT-S 6 6% 36,190 1810
+VAT-S 8 8% 17,693 407
+DO Quy khach uon xuât Hóa đon VAT
+H thuc hiện
+1 Quet má QR bên trai tim don hang
+2 Nhap thông tin Auat hóa don truroC
+23 gio cung ngay mua háng
+Hloa a don đuoc qün theo email đà chập
+Cháp nhận doi hang trorng vong 24 gio'
+Sau khi đã nhập thong tin, CQuý kiàch
+có thể quét mã QR bên phái dé lra cuu,
+download hóa đon''',
+  // Bách Hoá Xanh nhoè 79.243 (= R11)
+  'P07': r'''
+PHIỀU THANH TOÁN BẢCH HÔA XANH
+88 ce Ov230393608037369
+29/08/2326 18137 - NYL99184
+Giả bån (VAT) Thảnh t.iển
+dua håu đo
+16.588
+2,552 3.00e 6.300 (VAT: 58)
+khoai tây
+D,33802.1.250 (VAT:5%} 3.802 acks
+bi xarat
+0,356G60 10.000 (VAT:5%) 3.580
+böng čE Xanh nk (kg}
+0,772S46 26.009 (VAT: 5%) 20.072
+táo gala aini túi 800gr
+440B 35.200 (VAT:58) 35.200
+Tng tien: 79.243
+Chaye: ktoen (Tiết Kign: S2 8424} "i9.243
+CAM ON QUỸ KHÁCH EÃ CHON BACH HOẢ XANH
+MUA SAM TIẾT KICM MOI NGAY!
+Hba đon tich dim oha ShT *******685 8au 24h.
+Ctrl''',
+};

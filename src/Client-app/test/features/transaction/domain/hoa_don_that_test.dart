@@ -217,4 +217,24 @@ void main() {
       expect(c.luaChon, isEmpty);
     });
   });
+
+  group('cùng tờ, OCR OnePlus (nghiệm thu /quet 2026-10-08)', () {
+    KetQuaAnhQuet op(String ma) => docAnhQuet(vanBan: kHoaDonOnePlus[ma]!, luc: luc);
+
+    test('⭐ P04 — "Tbng tiễn:" (OCR đọc "ổ" thành "b") là nhãn tổng; số ở dòng TRÊN → 55.500, không lấy "2006" của '
+        'dòng làm tròn dưới câu "…thanh toán tin mặt"', () {
+      expect(op('P04').soTien, 55500);
+    });
+
+    test('⭐ P05 — ngày "3O/08/2026" (chữ O thay số 0) vẫn đọc ra 30/08/2026', () {
+      final t = op('P05').thoiGian;
+      expect((t.year, t.month, t.day), (2026, 8, 30));
+      expect(op('P05').oThieu, isNot(contains(OAnhQuet.thoiGian)));
+    });
+
+    test('P05 tổng 57.000 · P07 "Tng tien: 79.243" vẫn đúng', () {
+      expect(op('P05').soTien, 57000);
+      expect(op('P07').soTien, 79243);
+    });
+  });
 }

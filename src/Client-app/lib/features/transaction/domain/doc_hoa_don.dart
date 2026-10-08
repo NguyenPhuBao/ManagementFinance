@@ -88,8 +88,9 @@ const List<String> kNhanLoaiHoaDon = [
 /// *"Tổng"* bị OCR đọc nhầm một nguyên âm (*"Teng"*, *"Tung"*) — ảnh nhăn, nghiệm thu 2026-10-08. Một TỪ trọn 4 chữ;
 /// cố ý không nhận *"tang"* (*tầng / tăng* hay có trong địa chỉ).
 ///
-/// MẤT nguyên âm cũng nhận (*"Tng tien: 79.243"*, BHX nhoè trên OnePlus 2026-10-08).
-final RegExp kNhanTongDocNham = RegExp(r'\bt[eouy]?ng\b');
+/// MẤT nguyên âm cũng nhận (*"Tng tien: 79.243"*, BHX nhoè trên OnePlus 2026-10-08), và nguyên âm đọc thành PHỤ ÂM
+/// (*"Tbng tiễn:"*, BHX 55.500 trên OnePlus cùng ngày) — mọi chữ trừ *a*.
+final RegExp kNhanTongDocNham = RegExp(r'\bt(?!a)[a-z]?ng\b');
 
 /// Thứ hạng nhãn tổng của một dòng (bỏ dấu); `-1` = không phải dòng tổng. Nhãn đọc nhầm xếp cùng hạng *"tong"*.
 ///
@@ -126,7 +127,8 @@ String? _docGio(String vanBan) {
 
 /// Ngày in trên hoá đơn → (`dd/MM/yyyy`, in đủ hai chữ số). Dạng số trước, rồi tiếng Anh, rồi chữ.
 (String, bool)? _docNgay(String vanBan) {
-  final n = _ngay.firstMatch(vanBan);
+  // Chữ O sát chữ số là số 0 OCR đọc nhầm (*"Ngay 3O/08/2026"*, eco-shop trên OnePlus 2026-10-08).
+  final n = _ngay.firstMatch(vanBan.replaceAll(RegExp(r'(?<=\d)[Oo]|[Oo](?=\d)'), '0'));
   if (n != null) {
     final nam = n.group(3)!.length == 2 ? '20${n.group(3)}' : n.group(3)!;
     return (

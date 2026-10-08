@@ -420,6 +420,29 @@ Lỗi kèm: `PhienMotLoiGoi.chuanBi` nhớ "đã nạp" mãi — sau một lần
 sửa). Màn Stitch khối chip: gọi 2026-10-08, lượt gọi `timeout` — chờ hiện. Chưa làm: nâng `maxWidth`, dùng món của AI
 (tick món vẫn tắt).
 
+**Nghiệm thu OnePlus 13R trọn 8 tờ (2026-10-08 chiều, GPU, ảnh Google Photos, bản có `7d44b159`):**
+
+| Tờ | Luật | Gemma (ảnh) | Form hiện | Gemma · danh mục |
+|---|---|---|---|---|
+| ÙA TEA 158.000 | ✅ | ✅ | điền sẵn · Ăn uống | 9,5–12,6 s · 3,7–4,2 s (ba tờ đầu) |
+| ÙA TEA 217.500 | ✅ | ✅ | điền sẵn · Ăn uống | ″ |
+| Starbucks 262.000 | ✅ | ✅ | điền sẵn · Ăn uống | ″ |
+| BHX 55.500 | ❌ 2.006 → ✅ sau sửa | ✅ | hai chip → **điền sẵn** sau sửa · Ăn uống | 5,3 s · 4,0 s |
+| MAXIDI 72.127 | ❌ 12.127 | ✅ | hai chip (đúng đứng trước) · Ăn uống | 9,8 s · 3,6 s |
+| eco-shop 57.000 | ✅ | ✅ | điền sẵn · Mua sắm | 4,4 s · 3,7 s |
+| BHX nhoè 79.243 | ✅ | ❌ 16.588 | hai chip (đúng đứng sau) · Ăn uống | 3,6 s · 3,6 s |
+| Dookki 300.240 | ✅ | ✅ | điền sẵn · Ăn uống | 3,9 s · 3,7 s |
+
+**Không tờ nào điền sẵn số sai**; ba tờ lệch đều có số đúng trong chip. Chín lần quét liên tiếp không sập (bản sửa
+`7d44b159` giữ). Chạm chip *55.500 đ*: số điền vào, chip tô xanh kèm ✓, bàn phím ẩn, ✓ lên thanh tiêu đề (không bấm
+Lưu — tài khoản thật). Ngày: 4/5 tờ sau rơi về lúc quét vì OCR OnePlus hỏng năm (*202b*, *2326*, *912/2026*,
+*06/09/29 9/2326*) — đúng luật đã định. **Hai sửa luật từ chữ OCR OnePlus** (dữ liệu `kHoaDonOnePlus` P04 · P05 · P07):
+*"Tbng tiễn"* là nhãn tổng (`kNhanTongDocNham` nhận mọi chữ trừ *a* giữa *t* và *ng*); ngày *"3O/08/2026"* (O sát chữ
+số là 0). Đo lại hai tờ trên máy: BHX luật 55.500 khớp Gemma → điền sẵn; eco-shop ngày 30/08/2026, giờ 00:00 (in
+*"21 33 37"* không dấu hai chấm — như R05). Chưa sửa (ứng viên): câu văn xuôi *"…và thanh toán tin mặt"* khớp nhãn
+*thanh toán* rồi mượn số dòng kế; MAXIDI OCR đọc *12,127* (chip đỡ được). 🚧 **Realme (Mali, CPU) chưa chạy `/quet`
+thật** — 8/8 là số của GPU OnePlus.
+
 **Việc phiên sau (chưa làm, chưa có trong kế hoạch):**
 - Chọn PROMPT bằng số đo: prompt đọc món bản đầu (chỉ `mon` + `tong`) đúng tổng 6/6; thêm trường là tụt. Đề xuất: lấy
   **chỉ tổng** từ Gemma bằng prompt bản đầu; ngày / cửa hàng vẫn do luật (AI đúng ~một nửa). Đo lại 6 ảnh trước khi

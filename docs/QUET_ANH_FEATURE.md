@@ -7,7 +7,9 @@
 > **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — **CHƯA THI CÔNG**. Bảng đo 6 hoá đơn ở
 > spec mục 13.
 > ✅ **Luật sửa theo 15 hoá đơn thật trên Realme (2026-10-08 chiều)** — chốt 9–12 ở mục 3.
-> ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test; 🚧 chưa nghiệm thu máy thật)**: hoá đơn + Premium → Gemma NHÌN
+> ✅ **Nghiệm thu OnePlus (GPU) trọn 8 tờ 2026-10-08** — không tờ nào điền sẵn số sai, ba tờ lệch hỏi bằng chip, chạm
+> chip đạt; bảng ở spec mục 13. 🚧 Realme (CPU) chưa chạy `/quet` thật.
+> ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
 > Spec: `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (mục 1–9 quét, 10 ngoài phạm vi / A5b,
@@ -74,7 +76,8 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`. Sheet chọn nguồn mở bằng
    `useRootNavigator: true` — trong navigator nhánh thì thanh dưới + nút + đè lên và che nút Huỷ.
 9. Nghiệm thu OnePlus 2026-10-08 (BHX nhoè, ảnh Google Photos): OCR đọc *"Tổng tiền"* thành *"Tng tien"* (mất
-   nguyên âm — `kNhanTongDocNham` nhận `t[eouy]?ng`), không nhãn thì luật lấy mã nhân viên *99.184* — rơi về số lớn
+   nguyên âm), *"Tbng tiễn"* (nguyên âm thành phụ âm) — `kNhanTongDocNham` nhận `t(?!a)[a-z]?ng`, cố ý không *tang*;
+   ngày *"3O/08/2026"* — chữ O sát chữ số là 0 khi tìm ngày; không nhãn thì luật lấy mã nhân viên *99.184* — rơi về số lớn
    nhất nay ưu tiên số có NGĂN NGHÌN; tiêu đề *"Phiếu thanh toán"* là nhãn loại. Cùng tờ ấy OCR trên Realme khác hẳn.
 9a. **Tìm số tổng trên dòng đã bỏ ngày / giờ** (`_dongTien`) — *"20/08/2026 16:43 Thành Tiền"* từng cho tổng **2026**.
    Nhãn không có số thì dòng TRÊN chỉ-có-số thắng dòng dưới (BHX / MAXIDI in số cao hơn nhãn). Chữ *"tổng"* OCR đọc
@@ -128,7 +131,8 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 ## 6. Stitch
 
 `8027b781…` sheet chọn nguồn · `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
-`98133eb8…` sheet chọn món (spec mục 7, 11.7).
+`98133eb8…` sheet chọn món (spec mục 7, 11.7). Khối hai chip: màn `bd764b70…` *"Thêm giao dịch - Từ ảnh quét - Hai số
+khác nhau"* xuất hiện sau lượt gọi `timeout` — **chờ người dùng xác nhận**.
 
 ## 7. Nghiệm thu máy thật (Realme) — CHƯA LÀM
 
