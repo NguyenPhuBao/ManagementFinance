@@ -1,7 +1,9 @@
 # A5 — Nút "Quét": chụp / chọn ảnh hoá đơn hoặc biên lai → form Thêm giao dịch điền sẵn
 
-**Ngày:** 2026-10-07 · **Trạng thái:** thiết kế duyệt trong chat (ba phần), bản viết chờ người dùng đọc · **Mục UX:** A5
-(`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`) · **Stitch:** chưa có — ba màn ở mục 7, chờ xác nhận.
+**Ngày:** 2026-10-07 · **Trạng thái:** bản viết **duyệt 2026-10-08**; cùng ngày thêm **mục 11 — tách theo danh mục**
+(thiết kế duyệt trong chat, ba phần), bản viết mục 11 chờ người dùng đọc · **Mục UX:** A5
+(`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`) · **Stitch:** ba màn mục 7 **đã có** (kiểm 2026-10-08),
+chờ người dùng xác nhận; màn của mục 11 ở 11.7.
 
 ## 1. Bối cảnh
 
@@ -160,9 +162,14 @@ không hiện chữ "AI" ở luồng quét.
 
 ## 7. Stitch (vẽ sau khi spec duyệt, chờ người dùng xác nhận)
 
-1. Trang chủ — bottom sheet *"Quét"* hai dòng (Chụp ảnh · Chọn ảnh có sẵn).
-2. Màn *"Đang đọc ảnh…"* (ảnh mờ nền, vòng xoay, nút Huỷ; biến thể *"Đang đọc bằng AI…"*).
-3. Form Thêm giao dịch mở từ ảnh quét (dải *"Từ ảnh quét · …"*, ảnh thu nhỏ) — chỉnh từ `805cd430…`.
+1. Trang chủ — bottom sheet *"Quét"* hai dòng (Chụp ảnh · Chọn ảnh có sẵn) — `8027b781b73444cd99c370b35e150be2`
+   (Stitch tự thêm nút *Huỷ* đáy sheet).
+2. Màn *"Đang đọc ảnh…"* (ảnh mờ nền, vòng xoay, nút Huỷ; biến thể *"Đang đọc bằng AI…"*) —
+   `353934f28e754647b41823a69311930e` (dạng bảng trình bày `DESKTOP`, hai biến thể, có ✕ góc).
+3. Form Thêm giao dịch mở từ ảnh quét (dải *"Từ ảnh quét · …"*, ảnh thu nhỏ) — chỉnh từ `805cd430…` —
+   `14d9a41758bf4d24bf02519fa04bf357` (khổ 1280 như `805cd430…`; Stitch sinh kèm ảnh minh hoạ hoá đơn `ae61d07d…`).
+
+Cả ba lượt gọi trả `timeout` ngày 2026-10-07; màn thứ ba chỉ thấy ở lượt kiểm 2026-10-08.
 
 ## 8. Kiểm thử
 
@@ -192,5 +199,99 @@ Test viết trước, mỗi chốt kiểm bằng bản sai có chủ ý:
 
 ## 10. Ngoài phạm vi
 
-QR / VietQR; quét nhiều ảnh một lần (hàng chờ ghi); đọc từng dòng món hàng; AI đọc thẳng ảnh (lối B của spike C4 —
-24,5 s, RAM 2,9 GB); gỡ màn đo spike C4; **giọng nói** (spec riêng ngay sau A5 — mục 1).
+QR / VietQR; quét nhiều ảnh một lần (hàng chờ ghi); AI đọc thẳng ảnh (lối B của spike C4 — 24,5 s, RAM 2,9 GB); gỡ màn
+đo spike C4; **giọng nói** (spec riêng ngay sau A5 — mục 1).
+
+**Đọc từng dòng món hàng → A5b**, làm **sau** bảng đo ≥ 5 hoá đơn thật của mục 9 (người dùng chốt 2026-10-08: *"tay
+trước, tự động sau"*). A5b đọc tên + thành tiền từng món, gợi ý danh mục từng món, rồi **điền sẵn khối tách của mục
+11** — không dựng giao diện thứ hai. Lý do hoãn: chưa có ảnh hoá đơn thật nào; tên món trên hoá đơn nhiệt viết tắt,
+không dấu (*"SUA TUOI VNM 180ML"*); dòng giảm giá / VAT làm tổng các món lệch tổng hoá đơn. Đối chiếu thị trường
+(2026-10-08): gắn danh mục **từng món tự động** hiếm — phần lớn app một danh mục cho cả hoá đơn hoặc để người dùng tự
+tách (Veryfi: nút Split, gán tay từng dòng; EasyExpense: yêu cầu tính năng còn "In Review"); không xác nhận được Money
+Lover / Sổ Thu Chi MISA có tách.
+
+## 11. Tách theo danh mục (thêm 2026-10-08)
+
+Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh mục thì tách thành nhiều giao dịch thế nào. Chốt
+(AskUserQuestion, 2026-10-08): **tách tay trước** (mục này), tự đọc món sau (A5b, mục 10).
+
+### 11.1 Quyết định người dùng
+
+1. **Mọi khoản chi mới** — dòng tách có trên form Thêm giao dịch khi **tạo mới** và chiều **Chi**, bất kể form mở từ
+   đâu (gõ tay, ảnh quét, biến động số dư, biên lai). **Không** khi sửa giao dịch cũ, Thu, Chuyển ví.
+2. **Phần chính tự nhận phần còn lại** — ô số tiền trên cùng vẫn là **tổng**; danh mục đang chọn trên form nhận
+   `tổng − Σ các phần`; chặn Lưu khi phần ấy ≤ 0.
+3. Không trùng danh mục giữa các phần (kể cả với danh mục chính).
+4. Các phần **không nối với nhau** — không cột mới, không schema mới.
+
+### 11.2 Giao diện và luồng
+
+- Dòng *"Tách theo danh mục"* ngay dưới ô Danh mục (điều kiện mục 11.1 ý 1).
+- Chạm → bottom sheet *"Thêm phần"*: bảng chọn danh mục chi (loại danh mục đã có trong khối tách, kể cả danh mục chính)
+  + ô số tiền bàn phím số hệ thống, `GioiHanSoChuSo(kSoChuSoToiDaSoTien)` (test quét `lib/` thứ tám canh).
+- Có ≥ 1 phần → **khối tách** trên form: dòng đầu là danh mục chính + số *còn lại* (tự tính, không sửa tay); mỗi phần
+  một dòng — chạm để sửa (mở lại sheet), ✕ để bỏ; *"+ Thêm phần"* cuối khối. Bỏ hết phần → form như cũ.
+- Đổi **tổng** (bàn phím 16 phím, Nhập nhanh, điền sẵn từ ảnh) → còn lại tính lại. Đổi **danh mục chính** → còn lại đi
+  theo danh mục mới; nếu danh mục mới trùng một phần đang tách → phần ấy **gộp** vào phần chính (bỏ dòng ấy).
+- Nút Lưu (✓ thanh tiêu đề và nút đáy nếu đang hiện) mang nhãn *"Lưu N giao dịch"* khi có phần. Phần chính ≤ 0 →
+  toast lỗi *"Phần còn lại phải lớn hơn 0"*, không lưu.
+- Ví, ngày giờ, ghi chú **dùng chung** cho mọi phần.
+- Lưu xong: **một** toast *"Đã lưu N giao dịch"*, form đóng **một** lần; ảnh quét / hàng loại 20 / ảnh biên lai dọn
+  **một** lần như đường lưu một giao dịch.
+- A5b (sau) điền sẵn chính khối này.
+
+### 11.3 Tầng thuần — `transaction/domain/tach_giao_dich.dart` (mới)
+
+- `PhanTach { categoryId, soTien }`.
+- `conLai(tong, phan)` = `tong − Σ phan.soTien`.
+- Kiểm hợp lệ: còn lại > 0 (ngưỡng **nửa đồng** `kDungSaiTien` như `KhoangTien`, vì `amount` là `double`); mỗi phần
+  > 0; không trùng danh mục; số phần ≥ 1 mới gọi là tách.
+- `gopKhiDoiDanhMucChinh(chinh, phan)` — bỏ phần trùng danh mục chính mới.
+- `dungGiaoDichTach(mau, chinh, phan)` → `List<TransactionEntity>`: phần chính đứng **đầu**, mỗi hàng `Uuid().v4()`
+  riêng, chung `walletId · idaccount · type 'chi' · note · date`, `syncStatus 'pending'`.
+- Đặt ở `transaction/` (không `ai_edge/`) — so chiều `'chi'` (test quét 14).
+
+### 11.4 Lưu — tất cả hoặc không
+
+- `TransactionRepository.addTransactions(List<TransactionEntity>)`: `soDuVi.datNeoNhieuVi(hợp các ví)` **một** lần →
+  chèn cả N hàng trong **một** giao tác Drift (datasource thêm `addTransactions`) → `tinhLaiNhieuVi` **một** lần →
+  `scheduleSync()`. Hỏng giữa chừng → không hàng nào được ghi. ⚠️ Giữ thứ tự **neo trước khi ghi sổ** (chú thích
+  `addTransaction`: đặt sau là neo hấp thụ giao dịch vừa ghi).
+- Bloc: `AddTransactionsEvent(List<TransactionEntity>)` → phát **một** `actionSuccess` (cùng khuôn `_onAddTransaction`).
+- Không đổi schema (vẫn v29), không đổi payload đồng bộ — mỗi phần là một giao dịch thường.
+
+### 11.5 Ngân sách và gợi ý
+
+- `_budgetImpactFor` chạy cho **từng** phần (danh mục của chính nó). Có phần `requiresConfirmation` (ngân sách *Chặn*) →
+  **một** hộp *"Vượt ngân sách"* liệt kê từng danh mục bị vượt (mỗi dòng một `budgetImpactDialogText`), *Huỷ* / *Vẫn ghi*
+  cho cả lô. Chỉ *Cảnh báo* → toast sau lưu *"Đã lưu N giao dịch"* kèm tên ngân sách bị vượt.
+- Phản hồi gợi ý B1 (`_ghiPhanHoi`) chỉ cho **danh mục chính** — thẻ gợi ý hiện cho nó; phần chọn tay không ghi.
+- Tách không dùng AI → mở cho **cả Basic**.
+
+### 11.6 Kiểm thử (viết trước, mỗi chốt bản sai có chủ ý)
+
+- `tach_giao_dich_test` — còn lại; chặn ≤ 0 (cả đuôi lẻ `double`); trùng danh mục; gộp khi đổi danh mục chính; N hàng id
+  khác nhau, trường chung đúng.
+- Repository `addTransactions` — hỏng ở hàng thứ hai → **0** hàng, số dư ví không đổi; thành công → số dư = tổng; neo
+  đặt một lần.
+- Bloc — một `actionSuccess` cho N giao dịch.
+- Widget — dòng tách chỉ khi tạo mới + Chi; sheet loại danh mục đã dùng; đổi tổng → còn lại đổi; một toast, đóng một
+  lần; hộp ngân sách nhiều danh mục; form từ ảnh quét / biến động có tách → dọn ảnh / hàng loại 20 đúng một lần.
+- **Bố cục 320 dp và 360 dp, font thật** (`test/helpers/font_that.dart`) — họ lỗi G74–G84; số tiền 13 chữ số trong
+  dòng phần không cắt / không tràn.
+
+### 11.7 Stitch
+
+Một lượt gọi: *"Thêm giao dịch - Tách theo danh mục"* (khối tách trên form + sheet *Thêm phần*). `timeout` thì **không
+gọi lại**, chờ người dùng xác nhận.
+
+### 11.8 Nghiệm thu Realme
+
+Chụp hoá đơn siêu thị thật → form từ ảnh quét → tách 3 phần → Lưu: số dư ví giảm đúng tổng; Sổ giao dịch có 3 hàng
+cùng ngày giờ + ghi chú; sau đồng bộ PostgreSQL có 3 hàng. Thêm một lượt gõ tay (không ảnh) tách 2 phần. Ở cỡ hiển thị
+320 dp và 360 dp.
+
+### 11.9 Thứ tự thi công
+
+Cùng **một** kế hoạch với A5: phần quét (mục 3–9) trước, tách (mục 11) sau. Tách không phụ thuộc OCR nên kiểm được độc
+lập.
