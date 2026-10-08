@@ -1,7 +1,8 @@
 # A5 — Nút "Quét": chụp / chọn ảnh hoá đơn hoặc biên lai → form Thêm giao dịch điền sẵn
 
 **Ngày:** 2026-10-07 · **Trạng thái:** bản viết **duyệt 2026-10-08**; cùng ngày thêm **mục 11 — tách theo danh mục**
-(thiết kế duyệt trong chat, ba phần), bản viết mục 11 chờ người dùng đọc · **Mục UX:** A5
+(thiết kế duyệt trong chat, ba phần + 11.2b chọn món), người dùng duyệt kế hoạch và **thi công trọn mã 2026-10-08**
+(`a0e068b`, chờ nghiệm thu Realme — chỗ bản thi công khác bản viết: mục 12) · **Mục UX:** A5
 (`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`) · **Stitch:** ba màn mục 7 **đã có** và người dùng
 **xác nhận** 2026-10-08; màn của mục 11 ở 11.7.
 
@@ -340,3 +341,18 @@ cùng ngày giờ + ghi chú; sau đồng bộ PostgreSQL có 3 hàng. Thêm m�
 
 Cùng **một** kế hoạch với A5: phần quét (mục 3–9) trước, tách (mục 11) sau. Tách không phụ thuộc OCR nên kiểm được độc
 lập.
+
+## 12. Chỗ bản thi công KHÁC bản viết (2026-10-08)
+
+1. **Không nút *"Lưu N giao dịch"* ở đáy** (11.2, Stitch `01f8cdc6…`): form chỉ lưu bằng ✓ (thanh tiêu đề / phím ✓ của 16
+   phím). ✓ giữ nguyên, tooltip nói *"Lưu N giao dịch"*, chân khối tách nói *"Sẽ lưu N giao dịch"*. Chip đầu khối nói
+   *"Tổng: …"* thay *"Khớp: …"*.
+2. **Ảnh quét xoá trong `dispose()` của form** — một chỗ cho mọi đường thoát (Lưu, Bỏ qua, ←, Back hệ thống) thay vì
+   viết ở từng nút (5.6).
+3. **Nhãn dừng đọc món ≠ nhãn tổng** (11.2b): bỏ *thanh tien · so tien · thanh toan* (tiêu đề cột / nhãn từng món),
+   thêm *tam tinh · subtotal*. Dùng nguyên nhãn tổng thì dòng *"SL Đơn giá Thành tiền"* dừng đọc trước món đầu.
+4. **So nhãn dừng theo TỪ trọn** (`\btong\b`) — chuỗi con thì món *"BANH TONGHOP"* cắt cụt danh sách.
+5. **Dòng món đòi số cuối có ngăn nghìn** — loại ngày / giờ / năm mà không cần luật ngày riêng.
+6. **Tách chỉ khi `type == 'chi'`** ở đường lưu (lưới thứ hai cạnh việc bỏ hết phần khi đổi sang Thu / Chuyển).
+7. Toast có ngân sách *Cảnh báo* bị vượt chỉ nêu **một** ngân sách (cái đầu) — cùng nếp `budgetImpactSnackText`.
+8. Tên danh mục dài trong khối tách **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
