@@ -10,6 +10,9 @@ abstract class TransactionLocalDataSource {
     DateTime to,
   );
   Future<void> addTransaction(TransactionEntity entity);
+
+  /// A5 mục 11.4 — N hàng trong MỘT giao tác: hỏng giữa chừng thì không hàng nào được ghi.
+  Future<void> addTransactions(List<TransactionEntity> entities);
   Future<void> updateTransaction(TransactionEntity entity);
   Future<void> deleteTransaction(String id);
 }
@@ -34,6 +37,13 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   Future<void> addTransaction(TransactionEntity entity) async {
     await db.transactionDao.insert(entity.toCompanion());
   }
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> entities) => db.transaction(() async {
+        for (final e in entities) {
+          await db.transactionDao.insert(e.toCompanion());
+        }
+      });
 
   @override
   Future<void> updateTransaction(TransactionEntity entity) async {

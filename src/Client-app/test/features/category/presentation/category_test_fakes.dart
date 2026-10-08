@@ -241,6 +241,17 @@ class FakeTransactionRepository implements TransactionRepository {
         (transaction: transaction, destinationWalletId: destinationWalletId));
   }
 
+  /// A5 mục 11.4 — số giao dịch của mỗi lượt `addTransactions` (một lượt = một lần Lưu khoản đã tách).
+  final List<int> luotThemNhieu = [];
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> transactions) async {
+    luotThemNhieu.add(transactions.length);
+    for (final t in transactions) {
+      added.add((transaction: t, destinationWalletId: null));
+    }
+  }
+
   @override
   Future<void> deleteTransaction(
     TransactionEntity transaction, {

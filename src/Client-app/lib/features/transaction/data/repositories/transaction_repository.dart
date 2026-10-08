@@ -21,6 +21,10 @@ abstract class TransactionRepository {
     String? destinationWalletId,
   });
 
+  /// A5 mục 11.4 — một khoản chi đã TÁCH theo danh mục: ghi cả N giao dịch hoặc không giao dịch nào (một giao tác),
+  /// số dư tính lại một lần. Chỉ cho khoản thu / chi (không chuyển ví).
+  Future<void> addTransactions(List<TransactionEntity> transactions);
+
   /// Sửa một giao dịch đã lưu: hoàn hệ quả của [before] lên ví, áp hệ quả của
   /// [after], ghi [after] đè lên hàng cũ (cùng `id`) và đánh dấu đẩy lại.
   Future<void> updateTransaction(
@@ -78,6 +82,18 @@ class TransactionRepositoryImpl implements TransactionRepository {
     // ghi và số dư đứng im.
     await soDuVi.datNeoNhieuVi(vi);
     await localDataSource.addTransaction(banGhi);
+    await soDuVi.tinhLaiNhieuVi(vi);
+    syncEngine.scheduleSync();
+  }
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> transactions) async {
+    if (transactions.isEmpty) return;
+    final vi = {for (final t in transactions) ..._viBiAnhHuong(t)};
+    // ⚠️ Neo TRƯỚC khi ghi sổ (xem `addTransaction`) — một lần cho cả lô. Ghi sổ hỏng thì neo vẫn đúng: neo là
+    // `balance − Σ sổ`, sổ không đổi nên số dư không đổi.
+    await soDuVi.datNeoNhieuVi(vi);
+    await localDataSource.addTransactions(transactions);
     await soDuVi.tinhLaiNhieuVi(vi);
     syncEngine.scheduleSync();
   }
