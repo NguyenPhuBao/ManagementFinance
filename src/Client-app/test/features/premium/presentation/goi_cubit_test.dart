@@ -6,6 +6,7 @@ import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,16 +51,23 @@ void main() {
     await repo.dispose();
   });
 
-  test('GoiCubit phản ánh duocDungAiAssistant và duocDungAiQuickInput theo quyenTinhNang',
+  test('coQuyen: Basic chưa có bảng → AI khoá, Dự báo mở; Basic có bảng → theo bảng',
       () async {
     final now = DateTime(2026, 10, 6, 10);
     final repo = GoiRepository(
         api: _ApiGia(), kho: InMemoryGoiStore(), clock: () => now);
     final cubit = GoiCubit(repo, clock: () => now);
 
-    // Mặc định ban đầu (Basic không có map) → false
-    expect(cubit.duocDungAiAssistant, isFalse);
-    expect(cubit.duocDungAiQuickInput, isFalse);
+    expect(cubit.coQuyen(MaQuyen.aiAssistant), isFalse);
+    expect(cubit.coQuyen(MaQuyen.aiQuickInput), isFalse);
+    expect(cubit.coQuyen(MaQuyen.cashflowForecast), isTrue,
+        reason: 'thiếu khoá = mở (spec phân quyền 2026-10-08 mục 2 #1)');
+
+    cubit.emit(TrangThaiGoi(
+        loai: LoaiGoi.basic,
+        nhanLuc: now,
+        quyenTinhNang: const {'cashflow_forecast': false}));
+    expect(cubit.coQuyen(MaQuyen.cashflowForecast), isFalse);
 
     await cubit.close();
     await repo.dispose();

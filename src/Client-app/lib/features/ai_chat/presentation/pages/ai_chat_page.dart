@@ -53,6 +53,7 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/cubit/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
@@ -257,7 +258,7 @@ class _AiChatPageState extends State<AiChatPage> {
     try {
       // `context.read` (provider) ném `ProviderNotFoundException`;
       // `BlocProvider.of` bọc nó thành `FlutterError` — không bắt được.
-      return context.read<GoiCubit>().duocDungAiAssistant;
+      return context.read<GoiCubit>().coQuyen(MaQuyen.aiAssistant);
     } on ProviderNotFoundException {
       return true;
     }

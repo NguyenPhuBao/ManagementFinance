@@ -39,6 +39,7 @@ import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
 import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
+import '../../../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../../../features/premium/presentation/widgets/nut_nang_cap.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -189,7 +190,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final t = widget.laPremium;
     if (t != null) return t;
     try {
-      return context.read<GoiCubit>().duocDungAiQuickInput;
+      return context.read<GoiCubit>().coQuyen(MaQuyen.aiQuickInput);
     } on ProviderNotFoundException {
       return true;
     }

@@ -20,14 +20,9 @@ class TranGoi {
   final int? hoaDon;
   final int? danhMucRieng;
 
-  /// 3/3/3/3/5 — Server đè bằng `limits` của `/payment/subscription-info`.
-  static const macDinh = TranGoi(
-    vi: 3,
-    nganSach: 3,
-    mucTieu: 3,
-    hoaDon: 3,
-    danhMucRieng: 5,
-  );
+  /// 3/3/3 — server đè bằng `limits` của `/payment/subscription-info`. Hoá đơn và danh mục riêng: thiếu khoá = không
+  /// giới hạn (spec phân quyền 2026-10-08 mục 2 #1 — server cũ không trả hai khoá ấy thì giữ chốt 06/10 *"Mở"*).
+  static const macDinh = TranGoi(vi: 3, nganSach: 3, mucTieu: 3);
 
   int? cua(LoaiTran loai) => switch (loai) {
         LoaiTran.vi => vi,
