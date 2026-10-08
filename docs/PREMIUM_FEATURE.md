@@ -20,6 +20,7 @@ Tài khoản có hai gói: **Basic** (mặc định) và **Premium** (49.000 đ 
 | Không giới hạn ngân sách | tối đa **3** đang hoạt động (chưa xoá, chưa hết hạn) |
 | Không giới hạn mục tiêu tiết kiệm | tối đa **3** đang hoạt động (chưa xoá, chưa đạt) |
 | Trợ lý AI & Nhập nhanh bằng AI | màn Trợ lý AI mở nhưng ô nhập + chip khoá (kể cả lệnh tạo C3), băng *"Trợ lý AI là tính năng Premium…"* + nút Nâng cấp; ô Nhập nhanh ở màn Thêm giao dịch mờ, nút Điền thay bằng Nâng cấp |
+| AI lấp ô thiếu khi **Quét** ảnh (A5, 2026-10-08) | nút Quét + phần luật (ML Kit) mở cho mọi người; Basic không gọi mô hình, màn *"Đang đọc ảnh…"* không có chữ "AI" (`quet_anh_page.dart`, `_laPremium`) — `docs/QUET_ANH_FEATURE.md` |
 
 **Không** khác theo gói (người dùng chốt): đồng bộ (cả 5 nguồn kích hoạt, kể cả socket `sync.completed`), khối Nhận
 xét, gợi ý danh mục, xuất báo cáo, OCR biên lai, đọc biến động số dư, thông báo. Màn Nâng cấp **không** hứa *đồng bộ

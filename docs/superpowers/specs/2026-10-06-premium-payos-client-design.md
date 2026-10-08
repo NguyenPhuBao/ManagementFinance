@@ -83,7 +83,7 @@ bản này theo **mã**.
 |---|---|---|
 | 1 | Premium khác Basic ở đâu | *Theo đúng đặc quyền backend ghi* — rồi đo từng đặc quyền ở câu 3–4 |
 | 2 | Trần Basic | **3 ví · 3 ngân sách đang hoạt động**; người đã vượt **giữ nguyên**, chỉ **không tạo thêm**; đủ trần thì nút Tạo dẫn sang màn Nâng cấp |
-| 3 | "Báo cáo tài chính AI chuyên sâu" là gì | **Màn Trợ lý AI** (kể cả lệnh tạo C3 — cùng ô nhập) **và ô Nhập nhanh** của màn Thêm giao dịch (khoá cả ô). Khối Nhận xét (luật + mẫu câu), gợi ý danh mục, xuất báo cáo, OCR biên lai, D1 **giữ cho mọi người** |
+| 3 | "Báo cáo tài chính AI chuyên sâu" là gì | **Màn Trợ lý AI** (kể cả lệnh tạo C3 — cùng ô nhập) **và ô Nhập nhanh** của màn Thêm giao dịch (khoá cả ô). Khối Nhận xét (luật + mẫu câu), gợi ý danh mục, xuất báo cáo, OCR biên lai, D1 **giữ cho mọi người**. *(Thêm 2026-10-08, A5: nút **Quét** — phần luật mở cho mọi người, AI lấp ô thiếu chỉ Premium; spec `2026-10-07-a5-quet-hoa-don-bien-lai-design.md` mục 5.9.)* |
 | 4 | "Đồng bộ đa thiết bị tức thì" | **Không tách gì** — đồng bộ giữ nguyên cho mọi tài khoản; màn Nâng cấp **không quảng cáo** đặc quyền này; xin backend sửa chữ |
 | 4b | Số đặc quyền | **Bốn**: thêm **mục tiêu tiết kiệm Basic ≤ 3 đang hoạt động**, cùng khuôn ví / ngân sách |
 | 5 | Premium khi offline | **Cache hạn theo tài khoản, so giờ máy**; làm mới khi đăng nhập · mở app · socket · sau khi trả; `/payment/*` hỏng thì rơi về `type` của phiên. Lùi giờ máy khi offline kéo dài được Premium — **chấp nhận** |
