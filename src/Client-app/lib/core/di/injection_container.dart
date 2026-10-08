@@ -70,6 +70,7 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/transaction/data/doc_anh_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -724,6 +725,15 @@ Future<void> setupDependencies() async {
   // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
   sl.registerLazySingleton<DocCauBangAi>(
     () => DocCauBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+
+  // A5 mục 5.4 — ảnh quét: AI lấp ô luật không đọc ra. Điều kiện Premium nằm ở màn /quet; ở đây là tệp đủ + công tắc.
+  sl.registerLazySingleton<DocAnhBangAi>(
+    () => DocAnhBangAi(
       runtime: sl<SlmRuntime>(),
       sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),
