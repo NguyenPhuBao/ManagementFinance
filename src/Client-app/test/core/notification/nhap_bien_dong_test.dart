@@ -10,6 +10,7 @@ import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/core/notification/ten_tep_bien_lai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,6 +120,25 @@ void main() {
           reason: 'hàng cũ không mang khoá → chỉ cửa sổ ngắn');
       expect(trungBienDong(goc, momo(DateTime(2026, 10, 5, 8, 49, 10))), isFalse);
     });
+    test('⭐ hai TÀI KHOẢN khác nhau (MB Bank · MoMo) cùng tiền + chiều cách 90 giây → KHÔNG trùng; SMS / biên lai '
+        'không rõ app vẫn gộp với tin ngân hàng', () {
+      // Nghiệm thu OnePlus 2026-10-08: MoMo → MB 10.000 (MB báo +10.000 lúc 16:53), rồi MB → MoMo 10.000 (MoMo báo
+      // nhận +10.000 lúc 16:54:40) — cửa sổ 5 phút của "hai kênh" gộp tin MoMo vào hàng MB, khoản vào MoMo MẤT.
+      final mb = dauBienDong(_tin(soTien: 10000, luc: DateTime(2026, 10, 8, 16, 53)), khoaTin: 'k-mb');
+      final momo =
+          dauBienDong(_tin(soTien: 10000, nguon: kNguonMomo, luc: DateTime(2026, 10, 8, 16, 54, 40)), khoaTin: 'k-momo');
+      expect(trungBienDong(mb, momo), isFalse);
+      expect(trungBienDong(momo, mb), isFalse);
+      final bienLaiMomo =
+          dauBienDong(_tin(soTien: 10000, nguon: kNguonMomo, luc: DateTime(2026, 10, 8, 16, 54)), tuTin: false);
+      expect(trungBienDong(mb, bienLaiMomo), isFalse, reason: 'biên lai của app MoMo không phải giao dịch của tài khoản MB');
+      final sms = dauBienDong(_tin(soTien: 10000, nguon: kNguonSms, luc: DateTime(2026, 10, 8, 16, 55)));
+      expect(trungBienDong(mb, sms), isTrue, reason: 'SMS là KÊNH, không chỉ một tài khoản — vẫn là hai kênh của một GD');
+      final bienLaiChung =
+          dauBienDong(_tin(soTien: 10000, nguon: kNguonBienLai, luc: DateTime(2026, 10, 8, 16, 54)), tuTin: false);
+      expect(trungBienDong(mb, bienLaiChung), isTrue, reason: 'biên lai từ app không rõ — giữ cửa sổ ghép ảnh');
+    });
+
     test('biên lai (không phải tin) so với tin cùng nguồn vẫn dùng cửa sổ 5 phút — để ghép ảnh vào hàng tin', () {
       final tin = dauBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48, 37)), khoaTin: 'k1');
       final bienLai = dauBienDong(_tin(nguon: kNguonMomo, luc: DateTime(2026, 10, 5, 8, 48)), tuTin: false);
@@ -271,6 +291,21 @@ void main() {
       await ghiTep([momo(DateTime(2026, 9, 2, 15, 50, 3), '0|goi.momo|3|null|0')]);
       expect(await nhap.nhap(7), 0, reason: 'cùng thông báo app đăng lại vài giây sau → một giao dịch');
       expect((await hang()).length, 3);
+    });
+
+    test('⭐ nghiệm thu OnePlus 2026-10-08: MB nhận 10.000 rồi MoMo nhận 10.000 sau 100 giây → HAI hàng', () async {
+      await ghiTep([
+        _dong(noiDung: _mb(tien: '10,000', gio: '15:53', nd: 'MOMO-CASHOUT', sd: '30,000'),
+            luc: DateTime(2026, 9, 2, 15, 53), khoa: '0|goi.mb|1|null|0'),
+        _dong(
+            goi: 'goi.momo',
+            tieuDe: 'Nhận chuyển khoản từ TRAN VAN B',
+            noiDung: 'Số tiền 10.000 ₫ đã được chuyển vào Ví. Lời nhắn: "chuyen tien"',
+            luc: DateTime(2026, 9, 2, 15, 54, 40),
+            khoa: '0|goi.momo|7|null|0'),
+      ]);
+      expect(await nhap.nhap(7), 2, reason: 'hai tài khoản khác nhau — không bao giờ là một giao dịch');
+      expect([for (final h in await hang()) h.title]..sort(), ['+10.000 đ · MB Bank', '+10.000 đ · MoMo']);
     });
 
     test('⭐ sự cố Realme 2026-09-30: hai lần chuyển −10.000 đ khác số dư → HAI hàng, cả trong lô lẫn khác lượt',
