@@ -28,7 +28,9 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../ai_edge/data/slm_runtime.dart';
 import '../../category/data/repositories/category_management_repository.dart';
+import '../../transaction/data/doc_anh_bang_ai.dart';
 import '../../transaction/domain/doc_cau_giao_dich.dart';
+import '../../transaction/domain/doc_mon_hang.dart';
 import 'spike_c4.dart';
 
 class SpikeC4Page extends StatefulWidget {
@@ -219,11 +221,12 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
   Future<void> _layAnh(ImageSource nguon) async {
     final x = await ImagePicker().pickImage(source: nguon, maxWidth: 1280, imageQuality: 85);
     if (x == null) return;
-    // Chép vào thư mục spike để đo lại được cùng một ảnh.
-    final dich = '${await _thuMuc()}/${_ma.text.trim()}.jpg';
+    // Chép vào thư mục spike để đo lại được cùng một ảnh. ⚠️ Tên MỚI mỗi lần (2026-10-08): ghi đè cùng một tệp thì
+    // `Image.file` hiện ảnh cũ từ bộ nhớ đệm (khoá theo đường dẫn) — người dùng tưởng chọn ảnh khác không được.
+    final dich = '${await _thuMuc()}/${_ma.text.trim()}_${DateTime.now().millisecondsSinceEpoch}.jpg';
     await File(x.path).copy(dich);
     setState(() => _anh = dich);
-    _ghi('ẢNH đã lấy (${File(dich).lengthSync()} byte)');
+    _ghi('ẢNH đã lấy (${File(dich).lengthSync()} byte, nguồn ${x.path.split('/').last})');
   }
 
   /// Dùng tệp `spike_c4/<mã>.jpg` có sẵn (đẩy bằng adb + run-as trên bản debug).
@@ -252,9 +255,56 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
           final hang = ghepDongTheoHang(dong);
           final kq = docHoaDonTuChu(hang);
           _ghi('CHỤP-A | $kq | $t ms | OCR ${dong.length} dòng → ${hang.split('\n').length} hàng, ${hang.length} ký tự');
+          // A5 (2026-10-08): chữ OCR từng hàng + danh sách món luật đọc — để đối chiếu khi sửa luật. Bản spike thôi.
+          for (final h in hang.split('\n')) {
+            // ignore: avoid_print
+            print('[C4][OCR] ${_ma.text.trim()} | $h');
+          }
+          final mon = docMonHang(hang);
+          final tongMon = mon.fold<double>(0, (s, m) => s + m.soTien);
+          _ghi('CHỤP-A-MÓN | ${mon.length} món, Σ ${tongMon.toStringAsFixed(0)} | '
+              '${mon.map((m) => '${m.ten}=${m.soTien.toStringAsFixed(0)}').join('; ')}');
         } finally {
           await tr.close();
         }
+      });
+
+  /// A5 (2026-10-08, người dùng hỏi "có nên cho AI đọc hết"): ML Kit → ghép hàng → Gemma đọc CHỮ (không ảnh), MỌI ô —
+  /// để so với lối A (luật) và lối B (Gemma nhìn ảnh) trên cùng một ảnh.
+  Future<void> _chupAi() => _chay('CHỤP-AI', () async {
+        final p = _anh;
+        if (p == null) return _ghi('CHỤP-AI chưa có ảnh');
+        final d = Stopwatch()..start();
+        final tr = TextRecognizer(script: TextRecognitionScript.latin);
+        String hang;
+        try {
+          final rt = await tr.processImage(InputImage.fromFilePath(p));
+          hang = ghepDongTheoHang([
+            for (final b in rt.blocks)
+              for (final l in b.lines)
+                DongOcr(l.text,
+                    trai: l.boundingBox.left, tren: l.boundingBox.top, phai: l.boundingBox.right, duoi: l.boundingBox.bottom),
+          ]);
+        } finally {
+          await tr.close();
+        }
+        final tOcr = d.elapsedMilliseconds;
+        final ai = await sl<DocAnhBangAi>().doc(hang, now: DateTime.now());
+        final t = d.elapsedMilliseconds;
+        _ghi('CHỤP-AI | so_tien=${ai?.soTien} | ngay=${ai?.ngay} | noi_dung=${ai?.noiDung} | OCR $tOcr ms, tổng $t ms'
+            '${ai == null ? ' | AI KHÔNG TRẢ' : ''}');
+      });
+
+  /// A5 (2026-10-08): Gemma nhìn ảnh, liệt kê MÓN — đo xem mô hình đọc món có hơn luật không.
+  Future<void> _monB() => _chay('MÓN-B', () async {
+        final p = _anh;
+        if (p == null) return _ghi('MÓN-B chưa có ảnh');
+        final rt = await _runtime();
+        if (rt == null) return;
+        final anh = await File(p).readAsBytes();
+        final d = Stopwatch()..start();
+        final chu = await rt.spikeDaPhuongThuc(await sl<MoHinhTaiVe>().duongTep(), kPromptMonHoaDon, anh: anh);
+        _ghi('MÓN-B | ${d.elapsedMilliseconds} ms | thô="${chu.replaceAll('\n', ' ')}"');
       });
 
   Future<void> _chupB() => _chay('CHỤP-B', () async {
@@ -335,6 +385,8 @@ class _SpikeC4PageState extends State<SpikeC4Page> {
             OutlinedButton(onPressed: ban ? null : _anhTuTep, child: const Text('Tệp .jpg')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupA, child: const Text('Đọc — lối A')),
             ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupB, child: const Text('Đọc — lối B')),
+            ElevatedButton(onPressed: (ban || _anh == null) ? null : _chupAi, child: const Text('Đọc — AI trên chữ')),
+            ElevatedButton(onPressed: (ban || _anh == null) ? null : _monB, child: const Text('Món — Gemma nhìn ảnh')),
           ]),
           if (_anh != null) Padding(padding: const EdgeInsets.only(top: 8), child: Image.file(File(_anh!), height: 160)),
           if (_dangChay) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),

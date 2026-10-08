@@ -32,6 +32,12 @@ const String kPromptHoaDon = 'Đây là ảnh một hoá đơn hoặc biên lai.
     '{"tong": <tổng tiền phải trả, số nguyên đồng>, "cua_hang": "<tên cửa hàng>", "ngay": "<dd/MM/yyyy hoặc rỗng>"}. '
     'Không giải thích.';
 
+/// A5 (2026-10-08) — Gemma nhìn ảnh, liệt kê món.
+const String kPromptMonHoaDon = 'Đây là ảnh một hoá đơn bán hàng. Liệt kê MỌI món hàng in trên hoá đơn. Trả về DUY '
+    'NHẤT một JSON: {"mon": [{"ten": "<tên món>", "tien": <thành tiền, số nguyên đồng>}], "tong": <tổng phải trả, số '
+    'nguyên đồng>, "cua_hang": "<tên cửa hàng>", "ngay": "<dd/MM/yyyy hoặc rỗng>", "gio": "<HH:mm hoặc rỗng>"}. '
+    'Không giải thích.';
+
 /// Tên cũ của `docSoTrenAnh` (`core/ocr/so_tien_tren_anh.dart`) — màn đo và test của spike còn gọi.
 int? docSoHoaDon(String s) => docSoTrenAnh(s);
 
