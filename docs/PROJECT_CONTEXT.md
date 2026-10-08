@@ -594,7 +594,19 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-06)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-08)
+
+### 📷 A5 — nút Quét đọc hoá đơn / biên lai + tách khoản chi theo danh mục (2026-10-08, mã xong, chờ nghiệm thu)
+
+Spec `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (người dùng duyệt; thêm mục 11 tách +
+11.2b chọn món cùng ngày), kế hoạch 14 task `plans/2026-10-08-a5-quet-va-tach-danh-muc.md` (gitignore), tài liệu
+`docs/QUET_ANH_FEATURE.md`. Nút **Quét** Trang chủ (thôi toast *đang phát triển*) → sheet Chụp / Chọn ảnh
+(`image_picker`, gói chính thức) → màn `/quet` *Đang đọc ảnh…* (ML Kit → `docAnhQuet`, AI lấp ô thiếu khi Premium) →
+form điền sẵn khoá `quet:`. Form Thêm giao dịch có thêm **tách khoản chi theo danh mục** (mọi khoản chi mới) và, với
+ảnh hoá đơn, **tick từng món**; Lưu ghi N giao dịch trong **một** giao tác, một toast. Không đổi schema (v29), không đổi
+payload. Test quét `lib/` thứ **20** (`image_picker` một nơi). Bản `--release` dựng được (224,9 MB). Còn: nghiệm thu
+Realme với ≥ 5 hoá đơn giấy người dùng chụp (Task 14); A5b (app đoán danh mục từng món) sau bảng đo.
+
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 

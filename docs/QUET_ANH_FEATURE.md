@@ -1,8 +1,8 @@
 # Quét ảnh hoá đơn / biên lai (A5) — và tách khoản chi theo danh mục
 
-> **Trạng thái (2026-10-08):** phần **Quét** — mã xong (Task 1–8 của kế hoạch
-> `docs/superpowers/plans/2026-10-08-a5-quet-va-tach-danh-muc.md`, gitignore), **chưa nghiệm thu máy thật**.
-> Phần **Tách theo danh mục + chọn món** — tầng thuần + tầng lưu xong (Task 10–11), **giao diện chưa làm** (Task 12–13).
+> **Trạng thái (2026-10-08):** **mã xong cả hai phần** — Quét (Task 1–8) và Tách theo danh mục + chọn món
+> (Task 10–13) của kế hoạch `docs/superpowers/plans/2026-10-08-a5-quet-va-tach-danh-muc.md` (gitignore).
+> 🚧 **Chưa nghiệm thu máy thật** (Task 14 — cần người dùng chụp ≥ 5 hoá đơn giấy, mục 7).
 > Spec: `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (mục 1–9 quét, 10 ngoài phạm vi / A5b,
 > 11 tách + 11.2b chọn món).
 
@@ -51,6 +51,28 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 7. **`TransactionDao.insert` là `insertOrReplace`** — trùng id KHÔNG làm hỏng giao tác; test "ghi hết hoặc không" dùng
    khoá ngoại ví (`PRAGMA foreign_keys = ON`).
 8. Test quét `lib/` thứ **20**: `chi_mot_noi_import_image_picker_test.dart`.
+
+## 3b. Tách theo danh mục (mục 11 spec)
+
+Form Thêm giao dịch, **tạo mới + Chi** (gõ tay, ảnh quét, biến động, biên lai đều có): dòng *"Tách theo danh mục"*
+dưới ô Danh mục → sheet *Thêm phần* (`sheet_them_phan.dart`: danh mục chi khác danh mục chính, rồi tick món nếu form
+từ ảnh quét loại hoá đơn, không thì nhập số) → khối *TÁCH THEO DANH MỤC* (`khoi_tach.dart`). Ô số tiền trên cùng vẫn là
+**tổng**; danh mục chính (*"Danh mục chính"*) nhận phần còn lại.
+
+Chốt:
+1. **Ghi hết hoặc không gì** — `addTransactions` một giao tác Drift; neo số dư đặt một lần TRƯỚC khi ghi sổ.
+2. **Một `actionSuccess`** — `AddTransactionsEvent`; hai lượt là form pop hai lần. Toast *"Đã lưu N giao dịch"*
+   (`_soGiaoDichVuaLuu`), kèm tên ngân sách khi có ngân sách *Cảnh báo* bị vượt.
+3. **Ngân sách từng phần**, ngân sách *Chặn* bị vượt → **một** hộp liệt kê mọi phần, *Huỷ* / *Vẫn ghi* cho cả lô.
+4. Đổi danh mục chính sang danh mục đang tách → phần ấy **gộp**; đổi sang Thu / Chuyển → bỏ hết phần; đường lưu chỉ
+   tách khi `type == 'chi'` (lưới thứ hai).
+5. Món một phần (`kiemTach` → `monHaiPhan`); món của phần khác mờ, không tick được.
+6. Phản hồi gợi ý B1 chỉ cho danh mục chính (`_ghiPhanHoiKhiLuu`).
+7. Tên danh mục dài **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
+8. Các phần không nối với nhau — không cột, không schema mới; payload đồng bộ không đổi.
+
+Khác Stitch có chủ ý: không nút *"Lưu N giao dịch"* ở đáy (form chỉ lưu bằng ✓) — chân khối nói *"Sẽ lưu N giao
+dịch"*, tooltip ✓ nói *"Lưu N giao dịch"*; chip đầu khối nói *"Tổng: …"* thay *"Khớp: …"*.
 
 ## 4. Premium
 
