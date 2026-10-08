@@ -2,8 +2,8 @@
 
 **Ngày:** 2026-10-07 · **Trạng thái:** bản viết **duyệt 2026-10-08**; cùng ngày thêm **mục 11 — tách theo danh mục**
 (thiết kế duyệt trong chat, ba phần), bản viết mục 11 chờ người dùng đọc · **Mục UX:** A5
-(`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`) · **Stitch:** ba màn mục 7 **đã có** (kiểm 2026-10-08),
-chờ người dùng xác nhận; màn của mục 11 ở 11.7.
+(`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`) · **Stitch:** ba màn mục 7 **đã có** và người dùng
+**xác nhận** 2026-10-08; màn của mục 11 ở 11.7.
 
 ## 1. Bối cảnh
 
@@ -169,7 +169,7 @@ không hiện chữ "AI" ở luồng quét.
 3. Form Thêm giao dịch mở từ ảnh quét (dải *"Từ ảnh quét · …"*, ảnh thu nhỏ) — chỉnh từ `805cd430…` —
    `14d9a41758bf4d24bf02519fa04bf357` (khổ 1280 như `805cd430…`; Stitch sinh kèm ảnh minh hoạ hoá đơn `ae61d07d…`).
 
-Cả ba lượt gọi trả `timeout` ngày 2026-10-07; màn thứ ba chỉ thấy ở lượt kiểm 2026-10-08.
+Cả ba lượt gọi trả `timeout` ngày 2026-10-07; màn thứ ba chỉ thấy ở lượt kiểm 2026-10-08. Người dùng xác nhận cả ba 2026-10-08.
 
 ## 8. Kiểm thử
 
@@ -283,7 +283,7 @@ Người dùng hỏi: hoá đơn siêu thị nhiều món thuộc nhiều danh m
 ### 11.7 Stitch
 
 Một lượt gọi: *"Thêm giao dịch - Tách theo danh mục"* (khối tách trên form + sheet *Thêm phần*). `timeout` thì **không
-gọi lại**, chờ người dùng xác nhận.
+gọi lại**, chờ người dùng xác nhận. Lượt gọi 2026-10-08 trả `timeout`; lượt kiểm ngay sau (01:40 UTC) **chưa thấy** màn.
 
 ### 11.8 Nghiệm thu Realme
 
