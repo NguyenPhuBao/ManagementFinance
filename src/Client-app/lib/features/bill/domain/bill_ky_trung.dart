@@ -14,6 +14,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import 'bill_chain.dart';
 import 'bill_pay_status.dart';
 
 bool _song(Bill b) => !b.isDeleted && b.deletedAt == null;
@@ -21,16 +22,12 @@ bool _song(Bill b) => !b.isDeleted && b.deletedAt == null;
 /// Gốc chuỗi của [bill]: đi ngược `generatedFromBillId` qua [theoId] — gồm cả hàng **đã xoá** (cha của một kỳ có
 /// thể đã bị gỡ). Cha chưa có trên máy thì id cha ấy là gốc; lượt Pull sau sẽ mang nó về và mọi máy hội tụ.
 String _gocCua(Bill bill, Map<String, Bill> theoId) {
-  var id = bill.id;
-  var cha = bill.generatedFromBillId;
-  final daQua = <String>{id};
-  while (cha != null && daQua.add(cha)) {
-    final hang = theoId[cha];
-    if (hang == null) return cha;
-    id = hang.id;
-    cha = hang.generatedFromBillId;
-  }
-  return id;
+  final truoc = kyTruocCua(bill, theoId);
+  final dinh = truoc.isEmpty ? bill : truoc.last;
+  // Đỉnh còn trỏ tới một cha không có trên máy → id cha ấy là gốc (khác `chuoiKyCua`, nơi đỉnh là kỳ cuối nhìn thấy):
+  // hai kỳ anh em mà cha chưa kéo về vẫn phải rơi vào cùng một nhóm.
+  final cha = dinh.generatedFromBillId;
+  return (cha != null && !theoId.containsKey(cha)) ? cha : dinh.id;
 }
 
 /// Khoá gộp: gốc chuỗi + ngày hạn (so theo NGÀY — cùng quy ước `markOverdue`). Gộp theo **cha** là sai: năm kỳ

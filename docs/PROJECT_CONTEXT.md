@@ -2017,7 +2017,8 @@ phải lỗi của mã P3** — chúng nằm sẵn trong dự án từ trước 
 2. Thông báo lỗi tải in **nguyên URL ký hàng nghìn ký tự** → hàm thuần `cauLoiTai`.
 3. ⭐ Câu *"Mô hình trên máy không chạy được"* hiện ra **khi mô hình hoàn toàn bình thường** —
    nguyên nhân thật là `AuthBloc` chưa vào `AuthSuccess` (vì `verifySession()` là lời gọi mạng,
-   phải đợi hết timeout 30 s). Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
+   phải đợi hết timeout 30 s — ✅ hết từ G86, 2026-10-09: `AuthSuccess` nay phát trước `verifySession()`).
+   Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
    `kChuaSanSangPhien` và `debugPrint` ở cả hai nhánh — trước đó `catch` nuốt lỗi **không log gì**.
 4. Tải 2,41 GB **không resume, không chạy nền** — hạng mục riêng, người dùng chốt làm sau P3.
 

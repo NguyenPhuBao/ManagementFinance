@@ -147,7 +147,7 @@ Cả hai đường vào và cả hai đường ra đều **đã có sẵn** tron
 | Chỗ | Việc thêm |
 |---|---|
 | `_onLoginSubmitted` | `start()` cạnh `NotificationScanner.start(idAcc)` |
-| `_onAuthCheckRequested` | `start()` cạnh `NotificationScanner.start(idAcc)` |
+| `_onAuthCheckRequested` | `start()` cạnh `NotificationScanner.start(idAcc)` *(từ 2026-10-09 — G86: bộ quét chạy trước `AuthSuccess`, còn kênh này khởi động SAU `verifySession()` cùng SyncEngine)* |
 | `_onLogoutRequested` | `stop()` cạnh `NotificationScanner.stop()` |
 | `_onSessionInvalidated` | `stop()` cạnh `NotificationScanner.stop()` |
 
