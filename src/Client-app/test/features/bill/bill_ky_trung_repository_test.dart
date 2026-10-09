@@ -11,10 +11,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
+
+class _SyncDem implements SyncEngine {
+  int soLan = 0;
+  @override
+  void scheduleSync() => soLan++;
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
 
 void main() {
   late AppDatabase db;
@@ -116,5 +125,19 @@ void main() {
         reason: 'server chỉ chặn trả hai lần CÙNG Idbill — kỳ trùng mang id khác nên chốt phải ở client');
     expect(await db.billDao.getGeneratedFrom('k2'), isNull);
     expect((await db.billDao.getById('k2'))!.isPaid, isFalse);
+  });
+
+  test('gopKyTrung có gỡ thì HẸN ĐỒNG BỘ; không gỡ gì thì không', () async {
+    // Nghiệm thu Realme 2026-10-09: lượt gộp đánh dấu xoá đúng bốn kỳ nhưng lệnh xoá nằm chờ tới lần đồng bộ kế
+    // tiếp (tới 15 phút) — trong lúc ấy máy khác vẫn thấy và có thể tự trả các kỳ trùng.
+    final dem = _SyncDem();
+    final r = BillRepositoryImpl(dataSource: BillLocalDataSource(db), db: db, syncEngine: dem);
+    await netflixTruoc0810();
+
+    await r.gopKyTrung(tk);
+    expect(dem.soLan, 1);
+
+    await r.gopKyTrung(tk);
+    expect(dem.soLan, 1, reason: 'không gỡ gì thì không hẹn — tránh vòng đồng bộ thừa sau mỗi lượt quét');
   });
 }

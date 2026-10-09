@@ -181,6 +181,8 @@ class BillRepositoryImpl implements BillRepository {
     for (final id in go) {
       await dataSource.softDeleteBill(id);
     }
+    // Đẩy lệnh xoá NGAY: để chờ chu kỳ kế (tới 15 phút) là máy khác vẫn thấy — và có thể tự trả — các kỳ trùng.
+    if (go.isNotEmpty) syncEngine?.scheduleSync();
     return go.length;
   }
 
