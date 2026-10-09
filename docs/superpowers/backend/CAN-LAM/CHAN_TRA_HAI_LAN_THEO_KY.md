@@ -125,9 +125,10 @@ có khoản chi nào. Nên client cần phân biệt hai ca, và chỉ mã mới
 
 **Hợp đồng phía client** khi nhận `BILL_PERIOD_ALREADY_PAID` (client làm, không phải việc của backend): gỡ khoản trả và
 hoàn tiền về ví ở máy này, cho khoản chi thoát hàng đợi (server chưa từng có nó), **để hoá đơn ở trạng thái còn phải
-trả** — lượt gộp kỳ trùng sau lần kéo về kế tiếp sẽ xoá mềm nó và đẩy lệnh xoá lên. ⚠️ Client sẽ thêm mã vào danh sách
-lỗi vĩnh viễn **trước** khi bản backend này lên môi trường nào; nếu đổi tên mã, xin ghi lại tên cuối cùng vào chính tệp
-này.
+trả** — lượt gộp kỳ trùng sau lần kéo về kế tiếp sẽ xoá mềm nó và đẩy lệnh xoá lên. ✅ **Client đã làm phần này cùng
+ngày 2026-10-09**, trước khi backend lên: mã nằm trong danh sách lỗi vĩnh viễn (`SyncEngine._permanentCodes`) và
+`BillPaymentConflictResolver.maKyTrungDaTra` xử lý đúng hợp đồng trên (có test). Backend triển khai lúc nào cũng được;
+nếu đổi tên mã, xin ghi lại tên cuối cùng vào chính tệp này — client sẽ phải đổi theo.
 
 ## 4. Kiểm lại
 
