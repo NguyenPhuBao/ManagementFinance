@@ -539,6 +539,11 @@ class NotificationPrefs {
       other.nhacGhiChepBat == nhacGhiChepBat &&
       other.gioNhacGhiChep == gioNhacGhiChep &&
       other.phutNhacGhiChep == phutNhacGhiChep &&
+      // Bốn trường Tổng kết tuần từng vắng mặt ở cả `==` lẫn `hashCode` (2026-10-09).
+      other.tongKetTuanBat == tongKetTuanBat &&
+      other.thuTongKet == thuTongKet &&
+      other.gioTongKet == gioTongKet &&
+      other.phutTongKet == phutTongKet &&
       other.docBienDong == docBienDong &&
       other.dongYBienDong == dongYBienDong &&
       other.nhacSauNganHang == nhacSauNganHang &&
@@ -547,7 +552,9 @@ class NotificationPrefs {
       other.nhomTat.containsAll(nhomTat);
 
   @override
-  int get hashCode => Object.hash(
+  // `Object.hashAll`, không `Object.hash`: trần 20 đối số của nó đã chạm từ khi có
+  // bốn trường Tổng kết tuần.
+  int get hashCode => Object.hashAll([
         osBat,
         gioNhac,
         phutNhac,
@@ -560,12 +567,16 @@ class NotificationPrefs {
         nhacGhiChepBat,
         gioNhacGhiChep,
         phutNhacGhiChep,
+        tongKetTuanBat,
+        thuTongKet,
+        gioTongKet,
+        phutTongKet,
         docBienDong,
         dongYBienDong,
         nhacSauNganHang,
         dongYNhacSauNganHang,
         Object.hashAllUnordered(nhomTat),
-      );
+      ]);
 
   @override
   String toString() => 'NotificationPrefs(osBat: $osBat, nhomTat: '

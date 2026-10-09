@@ -29,29 +29,6 @@ void main() {
         updatedAt: DateTime(2026, 9, 8),
       );
 
-  group('viTriThaThucTe', () {
-    test('kéo XUỐNG thì trừ một, vì Flutter đếm trước khi gỡ', () {
-      expect(viTriThaThucTe(cu: 0, moi: 3), 2,
-          reason: '`ReorderableListView.onReorder` trả `newIndex` tính trên '
-              'danh sách CÒN NGUYÊN phần tử đang kéo. Dùng thẳng con số ấy '
-              'thì mục tiêu rơi lệch một ô — không ném, không log, chỉ là thứ '
-              'tự sai đi một bậc so với chỗ người dùng vừa thả tay.');
-    });
-
-    test('kéo LÊN thì giữ nguyên', () {
-      expect(viTriThaThucTe(cu: 3, moi: 1), 1,
-          reason: 'Kéo lên thì phần tử đang kéo nằm SAU vị trí đích, nên việc '
-              'gỡ nó ra không làm đích dịch đi. Trừ một ở cả hai chiều là lỗi '
-              'đối xứng của việc không trừ gì.');
-    });
-
-    test('thả lại đúng chỗ cũ ra chính nó', () {
-      expect(viTriThaThucTe(cu: 2, moi: 2), 2);
-      expect(viTriThaThucTe(cu: 2, moi: 3), 2,
-          reason: 'Thả ngay dưới chính mình cũng là không đổi gì.');
-    });
-  });
-
   group('uuTienSauKhiKeo', () {
     test('lần kéo đầu tiên đánh số lại cả danh sách, cách nhau 100', () {
       final ra = uuTienSauKhiKeo(

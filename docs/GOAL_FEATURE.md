@@ -732,6 +732,8 @@ sách chứ không lùi xuống `0`.
 NGUYÊN phần tử đang kéo**, nên kéo **xuống** thì con số ấy lớn hơn vị trí cuối
 cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó — dùng thẳng
 `newIndex` là mục tiêu rơi lệch một ô, im lặng. Kéo **lên** thì không trừ gì.
+✅ *(2026-10-09: trang dùng `onReorderItem` của Flutter 3.47 — SDK tự trừ một khi kéo xuống và bỏ qua lần thả không đổi
+chỗ, đúng phép của `viTriThaThucTe`, nên hàm ấy và nhóm test của nó đã bỏ. Quay về `onReorder` là phải tự trừ lại.)*
 
 **Chỉ tab "Đang theo đuổi" dùng ưu tiên.** Tab "Đã hoàn thành" giữ nguyên thứ
 tự cũ (mới đạt lên đầu): đã xong rồi thì "quan trọng hơn" không còn nghĩa gì,
@@ -1295,7 +1297,7 @@ hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã
 | `goal_history_filter_test.dart` | **Mục 3.24.** Ba bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, `tongKet` phải tính trên danh sách đã lọc, và **khoản rút thuộc "Tay"** — ca duy nhất bắt được bản đảo nghĩa hai chip nguồn |
 | `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, dải nguồn **chỉ hiện khi có khoản tự động** (ca này phải ép đỏ bằng bản luôn-hiện, vì trước khi có dải nó xanh oan), và khổ 411dp với đủ **ba dải** + chip "Tự động" cạnh số tiền dài — máy ảo không kiểm hộ được vì chưa mục tiêu nào có khoản tự động lẫn đủ 6 khoản để mở bảng. ⚠️ Đếm nhãn theo `find.byType(NhanTuDong)`, không theo chữ: "Tự động" nay còn là nhãn chip |
 | `presentation/pages/goal_detail_live_test.dart` | **Bẫy 4.5** — trang đăng ký với dòng dữ liệu và cập nhật theo. Từ 2026-09-08 canh thêm **mục 3.25** trên chính trang chi tiết: chỉ khoản tự động mang nhãn, và tiêu đề dòng **không lặp lại** chữ "(tự động)" |
-| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
+| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném *(nhóm `viTriThaThucTe` bỏ 2026-10-09 — `onReorderItem` của SDK đã chỉnh chỉ số)* |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |

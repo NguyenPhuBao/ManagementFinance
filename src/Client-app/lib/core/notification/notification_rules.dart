@@ -968,8 +968,12 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
         // Gộp theo NGÀY, cùng lý lẽ với ví âm: ví ở trạng thái cạn cho tới khi
         // người dùng nạp tiền.
         dedupeKey: 'walletLow:${v.id}:${_ngayGon(_dauNgay(input.now))}',
-        title: 'Số dư ví sắp cạn',
-        body: '${v.name} chỉ còn ${_tien(v.balance)}.',
+        // Về đúng 0 thì "chỉ còn 0 đ" vừa lủng củng vừa ngược tiêu đề "sắp cạn"
+        // (nợ nhỏ lộ trình 30/09). Ngưỡng nửa đồng cho đuôi lẻ của `double`.
+        title: v.balance < 0.5 ? 'Ví đã hết tiền' : 'Số dư ví sắp cạn',
+        body: v.balance < 0.5
+            ? '${v.name} đã hết tiền.'
+            : '${v.name} chỉ còn ${_tien(v.balance)}.',
         // Cảnh báo, không phải nghiêm trọng: ví cạn là chuyện còn kịp xử lý,
         // chỉ ví ÂM mới là dấu hiệu có gì đó đã sai.
         severity: NotificationSeverity.warning,

@@ -228,6 +228,31 @@ void main() {
     });
   });
 
+  test('⭐ MỌI trường vào == và hashCode — bốn trường Tổng kết tuần từng bị bỏ quên (2026-10-09)', () {
+    // Mỗi biến thể chỉ khác bản mặc định đúng MỘT trường. Thêm trường mới mà quên
+    // `==` thì ca này phải được thêm một dòng — và đỏ cho tới khi `==` có nó.
+    const m = NotificationPrefs.macDinh;
+    final bienThe = <String, NotificationPrefs>{
+      'osBat': m.copyWith(osBat: !m.osBat),
+      'gioNhac': m.copyWith(gioNhac: (m.gioNhac + 1) % 24),
+      'phutNhac': m.copyWith(phutNhac: (m.phutNhac + 1) % 60),
+      'soNgayNhacHoaDon': m.copyWith(soNgayNhacHoaDon: m.soNgayNhacHoaDon + 1),
+      'imLangBat': m.copyWith(imLangBat: !m.imLangBat),
+      'nguongSoDuThap': m.copyWith(nguongSoDuThap: m.nguongSoDuThap + 1000),
+      'nguongChiLon': m.copyWith(nguongChiLon: m.nguongChiLon + 1000),
+      'tongKetTuanBat': m.copyWith(tongKetTuanBat: !m.tongKetTuanBat),
+      'thuTongKet': m.copyWith(thuTongKet: m.thuTongKet == 1 ? 2 : 1),
+      'gioTongKet': m.copyWith(gioTongKet: (m.gioTongKet + 1) % 24),
+      'phutTongKet': m.copyWith(phutTongKet: (m.phutTongKet + 1) % 60),
+      'docBienDong': m.copyWith(docBienDong: !m.docBienDong),
+      'nhacSauNganHang': m.copyWith(nhacSauNganHang: !m.nhacSauNganHang),
+    };
+    for (final e in bienThe.entries) {
+      expect(e.value == m, isFalse, reason: '${e.key} thiếu trong ==');
+      expect(e.value.hashCode == m.hashCode, isFalse, reason: '${e.key} thiếu trong hashCode');
+    }
+  });
+
   group('ánh xạ loại thông báo sang nhóm', () {
     test('mỗi loại thuộc đúng một nhóm', () {
       expect(nhomCua(NotificationKind.billDueSoon), NotificationGroup.bill);

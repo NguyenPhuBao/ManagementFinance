@@ -640,6 +640,18 @@ void main() {
           reason: 'tiêu về đúng 0 là "đã cạn" thật — luật mới chỉ im ví chưa từng dùng');
     });
 
+    test('⭐ về đúng 0 đ → "Ví đã hết tiền", không "chỉ còn 0 đ" (nợ nhỏ, 2026-10-09)', () {
+      final c = chay(wallets: [vi(id: 'cu', soDu: 0)], nguongSoDuThap: 100000, viDaDung: {'cu'}).single;
+      expect(c.title, 'Ví đã hết tiền');
+      expect(c.body, isNot(contains('còn 0')));
+      expect(c.body, endsWith('đã hết tiền.'));
+      final con = chay(wallets: [vi(id: 'cu', soDu: 1000)], nguongSoDuThap: 100000, viDaDung: {'cu'}).single;
+      expect(con.title, 'Số dư ví sắp cạn');
+      expect(con.body, contains('chỉ còn 1 nghìn'));
+      expect(c.dedupeKey, con.dedupeKey,
+          reason: 'cùng một trạng thái "cạn" trong ngày — đổi chữ không được đẻ hàng thứ hai');
+    });
+
     test('viDaDung null (nơi gọi không biết) → giữ luật cũ, không tắt tính năng im lặng', () {
       expect(chay(wallets: [vi(soDu: 0)], nguongSoDuThap: 100000), hasLength(1));
     });
