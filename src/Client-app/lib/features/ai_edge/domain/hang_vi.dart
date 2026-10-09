@@ -53,5 +53,7 @@ KetQuaCongCu hangVi(List<ViChoGoiSo> vis) {
   return KetQuaCongCu(
     hang: hang,
     tongHop: [soTien('Tổng tài sản', tong), soDem('Số ví', soTrong)],
+    soChuaKe: conSong.length - hang.length,
+    danhTuChuaKe: 'ví',
   );
 }

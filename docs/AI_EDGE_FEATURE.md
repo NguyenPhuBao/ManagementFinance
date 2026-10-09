@@ -1092,7 +1092,7 @@ theo máy), nên hai ca ấy được canh bằng unit test dựng lại **đún
 
 ⚠️ **Điều đo được mà chưa sửa, để người dùng quyết:** (1) câu chào trên Realme mất **~23 s** rồi
 nhận một câu tổng hợp số — giá của L1 (vứt câu mô hình, sinh lại ở bậc 1); (2) ĐC1 không bao giờ
-nói *"không có dữ liệu lãi suất"* — nó luôn tìm tool gần nhất; (3) canary cho phiên có tool
+nói *"không có dữ liệu lãi suất"* — nó luôn tìm tool gần nhất *(✅ (1) và (2) đóng — mục 9.47, 2026-10-09)*; (3) canary cho phiên có tool
 (bẫy 4.33) vẫn **chưa làm** — ✅ **làm xong 2026-09-23 tối**, bước **1b** của thứ tự mới (mục
 **9.15**). (1) và (2) vẫn chờ người dùng gọi tên.
 
@@ -2979,7 +2979,7 @@ thời gian của app). Tool mà mô hình gọi ở từng câu (tham số **g�
 nguồn cho bảng `kBang72Cau` của kế hoạch A2 Task 4.
 
 **Ba chỗ còn thô, chưa chọn hướng:** trần 4 hàng làm câu liệt kê hụt (C16 hiện 4/5) và làm con số tổng đọc nhầm thành
-tổng các hàng đang hiện (F11); C9 cụt ở dấu hai chấm (có từ lần 1); mẫu câu mục tiêu in thừa *Đang theo đuổi / Đã hoàn
+tổng các hàng đang hiện (F11); C9 cụt ở dấu hai chấm (có từ lần 1) *(✅ C9, F11 đóng — mục 9.47: câu "Còn N … khác chưa kể")*; mẫu câu mục tiêu in thừa *Đang theo đuổi / Đã hoàn
 thành* ở câu một số đích (B1, B2).
 
 ### 9.38 Nhóm A sau cổng F — A3 · A4 · A2 (2026-09-29) — mã xong, đo Realme: 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s; ⚠️ F12 tụt, cổng ra CHƯA trọn
@@ -3815,6 +3815,36 @@ phải khai qua `tenLienQuan` (khuôn hàng danh mục), thiếu là `kiemTen` c
 
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
+
+### 9.47 Bốn chỗ còn thô của Trợ lý AI — đo lại, sửa hai (2026-10-09, OnePlus 13R GPU, tài khoản 10)
+
+Đo lại bằng bản cài sáng 09/10 trước khi sửa:
+
+| Câu | Trước | Sau |
+|---|---|---|
+| ĐC1 *lai suat tiet kiem cua toi la bao nhieu* | ✅ **đã hết thô từ vòng H2** (*lãi suất* vào `chuDeBiChan`): 0 s, *"Mình chỉ nhận xét được trên số liệu của bạn trong app."* | không đổi |
+| *xin chao ban* | ✗ 15 s, phiên sáu tool, mô hình gọi nhầm `truy_van_giao_dich`, đáp *"Tôi đã tìm thấy các giao dịch trong kỳ tháng này."* | ✅ 8 s (4,2 s là nạp mô hình), *"Chào bạn, mình là trợ lý tài chính của FlowMoney đây. Bạn có thể hỏi mình về chi tiêu, ngân sách, hóa đơn, mục tiêu tiết kiệm hoặc ví của bạn nhé!"*; *cam on ban nhe* 3 s |
+| C9 *liet ke cac khoan chi tu 50k den 1 trieu thang truoc* | ◐ hết cụt (đường nhanh + mẫu câu từ 05/10) nhưng kể **4/13** khoản, không nói còn 9 | ✅ mẫu câu kết *"…Còn 9 giao dịch khác chưa kể."* |
+| F11 *thang toi toi phai tra hoa don nao* | ◐ kể 4 hoá đơn (cộng 3.155.000) rồi *"Tổng cộng còn phải trả là 3.720.000 đ"* — đọc như cộng sai | ✅ câu Gemma giữ nguyên, nối *"Còn 10 hoá đơn khác chưa kể."* (kỳ tới gồm cả kỳ dự kiến của hoá đơn lặp tuần) |
+
+**Còn N mục chưa kể** (người dùng chọn *"nói rõ còn N mục"*, không nới trần 4 hàng): `KetQuaCongCu.soChuaKe` +
+`danhTuChuaKe` — năm tool danh sách (giao dịch lẻ · hoá đơn · ví · mục tiêu · ngân sách) báo số đối tượng **khớp** mà trần
+cắt mất; câu xin N dòng (B8) thì "khớp" là tối đa N; câu `chon` / `gop` không báo (phần còn lại không phải thứ bị cắt).
+`GoiSoTraCuu.cauChuaKe` dựng câu, mẫu câu kết bằng nó, vòng lặp và đường nhanh nối nó sau câu của mô hình. ⚠️ **N không
+vào JSON** gửi mô hình: mô hình không biết N nên không tự nói, câu nối không bao giờ lặp. ⚠️ **`cauNoiThem` KHÔNG gồm câu
+chưa kể** — vòng lặp đọc `null` ở đó là "rơi về mẫu câu"; gộp vào là biến ca ấy thành một câu "còn N mục" trơ trọi (bản
+đầu vấp, sửa trước khi chạy test).
+
+**Câu chào** (người dùng chọn *"mô hình đáp, không tra cứu"* — đúng nguyên tắc tính năng AI phải dùng mô hình):
+`laCauChao` (`ai_edge/domain/cau_chao.dart`) nhận câu chỉ gồm cụm lõi (*chào · hello · hi · alo · cảm ơn · thanks · tạm
+biệt · bạn là ai · giúp được gì*) cộng từ đệm — một từ nội dung nào (*chi, tháng, ví…*) là câu đi vòng lặp tool như cũ;
+màn rẽ nó **trước** vòng lặp tool: một lượt `sinhDan(promptTroChuyen)` không tool, bộ kiểm `kiemCauChao` (chỉ chặn chữ
+số), không câu nào qua thì `kCauChaoDuPhong`. ⚠️ **Hai lỗi nghiệm thu bắt, bộ test mù:** `sinhDan` ném *"Mô hình chưa
+nạp"* khi câu chào là câu đầu của phiên (đường bậc 1 cũng gọi thẳng `sinhDan` nhưng chỉ chạy **sau** vòng lặp tool, khi
+mô hình đã nạp) — `_luongChao` nay nạp như `_luongThat`; và `kiemCauTraLoi` trên gói rỗng **chặn oan** câu gợi ý không
+số vì `kiemTen` đọc *"mục tiêu tiết kiệm"*, *"ví của bạn"* là tên lạ — nên câu chào có bộ kiểm riêng chỉ xét số.
+
+Script đo: scratchpad phiên `570ec24b…` (`hoi_op.sh`, OnePlus, ô nhập 540 2581). Chưa đo Realme (CPU).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

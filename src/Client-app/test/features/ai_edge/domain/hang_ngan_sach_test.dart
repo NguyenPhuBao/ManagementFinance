@@ -347,4 +347,15 @@ void main() {
       'đúng nhịp',
     );
   });
+
+  test('quá trần 4 ngân sách → báo số ngân sách chưa kể (2026-10-09)', () {
+    final ds = [
+      for (var i = 1; i <= 5; i++) _ns(id: 'n$i', ten: 'NS $i', amount: 100000, spent: i * 10000.0),
+    ];
+    final kq = hangNganSach(ds, now: now);
+    expect(kq.hang, hasLength(4));
+    expect(kq.soChuaKe, 1);
+    expect(kq.danhTuChuaKe, 'ngân sách');
+    expect(hangNganSach([ds.first], now: now).soChuaKe, 0);
+  });
 }
