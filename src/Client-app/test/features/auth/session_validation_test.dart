@@ -152,14 +152,15 @@ void main() {
     await db.close();
   });
 
+  /// Trạng thái CUỐI của lượt mở app. Từ 2026-10-09 lượt ấy phát `AuthSuccess`
+  /// từ bộ nhớ đệm TRƯỚC khi hỏi server, nên chờ `AuthSuccess` đầu tiên là đọc
+  /// trạng thái giữa chừng — đợi hàng sự kiện cạn rồi mới đọc.
   Future<AuthState> checkAuth(_FakeAuthRepository repo) async {
     final bloc = AuthBloc(authRepository: repo);
     addTearDown(bloc.close);
-    final done = bloc.stream
-        .where((s) => s is AuthSuccess || s is AuthUnauthenticated)
-        .first;
     bloc.add(AuthCheckRequested());
-    return done.timeout(const Duration(seconds: 5));
+    await pumpEventQueue();
+    return bloc.state;
   }
 
   group('Khôi phục phiên lúc mở app', () {
@@ -490,4 +491,114 @@ void main() {
       expect(await db.purgeDataForOtherAccounts(-1), 0);
     });
   });
+
+  // ── Mở app không chờ mạng (2026-10-09) ──────────────────────────────────
+  // Trước đây mọi trang đợi `verifySession()` (GET /auth/profile, trần 30 s)
+  // xong mới có `AuthSuccess`: server chậm / Render đang ngủ / Wi-Fi không ra
+  // Internet là 30 s vòng xoay, còn Trang chủ in "0 đ" và "Người dùng". Người
+  // dùng chọn: hiện dữ liệu trên máy ngay, hỏi server ở nền.
+  group('Mở app không chờ mạng', () {
+    test('server chưa trả lời → AuthSuccess từ bộ nhớ đệm ĐÃ phát, đồng bộ CHƯA khởi động',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state, isA<AuthSuccess>(),
+          reason: 'dữ liệu nằm sẵn trong SQLite — không được đợi một lượt gọi mạng');
+      expect((bloc.state as AuthSuccess).user!.id, '10');
+      expect(sync.startedWith, isEmpty,
+          reason: 'chốt cũ giữ nguyên: không khởi động đồng bộ trước khi biết phiên còn sống');
+
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect(sync.startedWith, [10]);
+      expect(bloc.state, isA<AuthSuccess>());
+    });
+
+    test('server trả lời phiên chết SAU khi đã hiện dữ liệu → đăng xuất, không đồng bộ',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      final states = <AuthState>[];
+      final sub = bloc.stream.listen(states.add);
+      addTearDown(sub.cancel);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      cho.complete(SessionStatus.invalid);
+      await pumpEventQueue();
+
+      expect(states.map((s) => s.runtimeType).toList(),
+          [AuthChecking, AuthSuccess, AuthUnauthenticated]);
+      expect(repo.logoutCalls, 1);
+      expect(sync.startedWith, isEmpty);
+    });
+
+    test('đăng xuất trong lúc chờ server → server trả lời hợp lệ cũng KHÔNG khởi động gì',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      bloc.add(LogoutRequested());
+      await pumpEventQueue();
+      expect(bloc.state, isA<AuthUnauthenticated>());
+
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect(bloc.state, isA<AuthUnauthenticated>(),
+          reason: 'lượt mở app về muộn không được phát lại AuthSuccess đè lên đăng xuất');
+      expect(sync.startedWith, isEmpty,
+          reason: 'đồng bộ cho phiên vừa đăng xuất là ghi dữ liệu dưới danh nghĩa người đã rời đi');
+    });
+
+    test('server báo tài khoản đang chờ xoá → phát lại AuthSuccess mang trạng thái mới',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      expect((bloc.state as AuthSuccess).user!.dangChoXoa, isFalse);
+
+      // verifySession đồng bộ `status` từ /auth/profile vào bộ nhớ đệm.
+      repo.cached = _user('10').voiTrangThai(status: 'PendingDelete');
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect((bloc.state as AuthSuccess).user!.dangChoXoa, isTrue,
+          reason: 'thẻ "chờ xoá" ở Trang chủ phải theo câu trả lời của server');
+    });
+  });
+}
+
+/// `verifySession` treo tới khi test `complete()` — mô phỏng server chậm.
+class _RepoCho implements AuthRepository {
+  _RepoCho(this.cho, this.cached);
+
+  final Completer<SessionStatus> cho;
+  UserModel? cached;
+  int logoutCalls = 0;
+
+  @override
+  Future<bool> checkAuthStatus() async => true;
+
+  @override
+  Future<UserModel?> getCurrentUser() async => cached;
+
+  @override
+  Future<SessionStatus> verifySession() => cho.future;
+
+  @override
+  Future<void> logout() async => logoutCalls++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
