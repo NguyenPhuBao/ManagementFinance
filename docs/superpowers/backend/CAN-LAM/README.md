@@ -5,7 +5,11 @@
 > (khác `Idbill`) và bộ tự trả trừ tiền cho từng kỳ — đo CSDL dev: tài khoản 10 bị trừ **3 × 100.000 đ** cho kỳ 05/10;
 > tài khoản 17 và 19 đang có kỳ trùng bật tự trả, hạn 13/10. Xin mở rộng chốt sang **kỳ anh em** (cùng
 > `Previous_bill_id` + `Due_date`) với mã riêng `BILL_PERIOD_ALREADY_PAID`. Không đổi lược đồ, payload, LWW.
-> `DA-XONG/` đếm bằng máy 2026-10-09: **57** tệp + mục lục.
+> `DA-XONG/` đếm bằng máy 2026-10-09: **58** tệp + mục lục.
+>
+> ✅ **Client soát mục 39 bằng mã 2026-10-09 và chuyển sang `DA-XONG/`** (mục 4h mục lục): năm yêu cầu hợp đồng đều có
+> trong mã backend; đường vòng qua trần (§5 của đơn) phía client cố ý chưa chặn. `ls CAN-LAM/` nay: **41** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
 
 
 **Cập nhật:** 2026-10-07 tối — Toàn bộ chuỗi 5 bước phát triển tính năng **Phân quyền tính năng động theo loại tài khoản** (Mục 39) đã hoàn tất 100% trên cả 3 phân hệ: CSDL Supabase (Migration 22), Backend Node.js (`permission.repository.js`, API `/permissions`, API `/subscription-info`), Admin-web (trang `/permissions`), và Client-app Flutter (`TranGoi`, `TrangThaiGoi`, UI guards AI Chat & Nhập nhanh). Hiện tại **0 mục tồn đọng**.
@@ -35,7 +39,7 @@
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Client thêm mã vào danh sách lỗi vĩnh viễn + bộ xử lý riêng trước khi bản backend lên. | ⏳ Chờ backend |
+| **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Phía client **đã sẵn** (2026-10-09): mã nằm trong danh sách lỗi vĩnh viễn + bộ xử lý riêng — backend triển khai lúc nào cũng được. | ⏳ Chờ backend |
 
 ---
 
@@ -43,7 +47,7 @@
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
-| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Phân quyền tính năng động theo loại tài khoản: CSDL Migration 22, API Admin, Trang `/permissions` Admin-web, Ràng buộc Client-app (`TranGoi`, `TrangThaiGoi`, AI Chat & Nhập nhanh). | ✅ Đã xong 100% |
+| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](../DA-XONG/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Phân quyền tính năng động theo loại tài khoản: CSDL Migration 22, API Admin, Trang `/permissions` Admin-web, Ràng buộc Client-app (`TranGoi`, `TrangThaiGoi`, AI Chat & Nhập nhanh). | ✅ Đã xong 100% |
 | **38** | [CLIENT_PREMIUM_PAYOS.md](../DA-XONG/CLIENT_PREMIUM_PAYOS.md) | Thêm `limits, price, packageDays` vào `/subscription-info`; đính chính 5 điểm lệch mã PayOS; bỏ chữ đồng bộ tức thì. Test PASS 100%. | ✅ Đã xong 100% |
 | **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](../DA-XONG/KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Thêm cột `Server_update_at`, index và trigger cho 6 bảng đồng bộ (Migration 20); `/sync/pull` và `maxSince` dùng `Server_update_at`; giữ LWW theo `update_at`. Test PASS 100%. | ✅ Đã xong 100% |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](../DA-XONG/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (100% on-device offline, tuân thủ NĐ 13/2023/NĐ-CP). Đã hoàn tất và lưu trữ. | ✅ Đã xong 100% |

@@ -1,5 +1,25 @@
 # Mục 39 — Phân quyền chức năng theo loại tài khoản: khảo sát chức năng và bảng phân quyền
 
+> ✅ **ĐÓNG — client soát bằng mã 2026-10-09, client chuyển sang `DA-XONG/`.** Năm bước đều xong: bước 3–4 backend
+> (`main` @ `0eb4a05f`, gộp 2026-10-08; `database/22–23` đã áp CSDL dev), bước 5 client (2026-10-08, nghiệm thu OnePlus
+> đạt — `docs/PREMIUM_FEATURE.md` mục 8). Đối chiếu mục 4 với mã backend:
+>
+> | Yêu cầu mục 4 | Mã backend | |
+> |---|---|---|
+> | 1. Mã quyền ổn định | `feature.id` (khoá chính) — đủ `wallets · budgets · goals · bills · custom_categories` + 12 quyền bật/tắt; admin đổi `account_type_permission.is_enabled` / `limit_value`, không đổi khoá | ✅ |
+> | 2. Giá trị đã áp cho chính tài khoản | `payment.service.js` `getSubscriptionInfo`: `effectiveType` = Premium chỉ khi còn hạn, rồi `getPermissionsByAccountType(effectiveType)` | ✅ |
+> | 3. Thiếu trường = mặc định client | CSDL không có hàng nào → `DEFAULT_PERMISSIONS` của `permission.repository.js`; client vẫn rơi về mặc định khi thiếu khoá | ✅ |
+> | 4. "Không giới hạn" viết rõ | `null` (Premium mặc định `null` cả năm trần); client đọc `int?` | ✅ |
+> | 5. Tín hiệu khi admin đổi cấu hình | `core/socket.js:378` phát `account.permissions_updated` **và** `account.upgraded` tới mọi client đang nối | ✅ |
+>
+> Mục 3.3 quy tắc 3 giữ đúng: `requireFeature` chỉ gắn ở route chatbot trực tuyến và OCR server, **không** ở `/sync/push`.
+> Câu hỏi mục 6 — backend chọn: hai gói (bảng quyền nhận `account_type` tới 20 ký tự nhưng `account.Type` vẫn
+> `varchar(7)`); quyền theo **gói**, không ghi đè theo tài khoản; trả ở `/payment/subscription-info`; Premium **có thể** bị
+> admin đặt trần (client đã theo — trần `int?`); **chốt** `bills` (Basic 3) và `custom_categories` (Basic 5). Mục 5 (đường
+> vòng qua trần) là việc client và **cố ý chưa chặn** — spec `specs/2026-10-08-phan-quyen-tinh-nang-client-design.md`
+> dòng 176 xếp nó vào *không làm*; ba đường vẫn mở như mục 5 tả (soát mã 2026-10-09). Câu *"chưa có trong mã"* ở mục 3.1 và *"chưa trả `limits`"* ở mục
+> 0 / 1.1 là ảnh chụp 2026-10-07.
+
 **Người viết:** Client-app · **Ngày:** 2026-10-07 · **Mức:** thông tin đầu vào — **không chặn client**.
 
 **Gửi Backend + Admin-web:** tài liệu này trả lời bước 1 và bước 2 của việc *phân quyền chức năng động theo loại tài

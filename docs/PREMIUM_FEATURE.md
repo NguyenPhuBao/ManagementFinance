@@ -131,7 +131,7 @@ tạo ví thứ 3 → 4 ví, vẫn dùng, không tạo thêm · return URL sang 
 
 ## 8. Phân quyền tính năng theo gói (2026-10-08)
 
-Bước 5 của đơn 39 (`CAN-LAM/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md`). Backend (gộp `main` @ `0eb4a05f`) thêm bảng `feature` +
+Bước 5 của đơn 39 (`DA-XONG/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md` — client soát và chuyển 2026-10-09). Backend (gộp `main` @ `0eb4a05f`) thêm bảng `feature` +
 `account_type_permission` và trang Admin-web `/permissions`; `/payment/subscription-info` trả `limits` (5 trần) và
 `features` (12 quyền) **của gói đang hiệu lực**; admin đổi xong backend phát socket `account.permissions_updated`, client
 nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
