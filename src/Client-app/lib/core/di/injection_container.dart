@@ -530,6 +530,7 @@ Future<void> setupDependencies() async {
       // `payBill` hiện có. Xem chú thích ở `BillAutoPayRunner`.
       // G87: gỡ kỳ hoá đơn trùng trước bộ tự trả — không gác quyền (vệ sinh dữ liệu).
       gopKyTrung: (idaccount) => sl<BillRepository>().gopKyTrung(idaccount),
+      soLanKeoVe: () => sl<SyncEngine>().soLanKeoVeXong,
       runAutoPays: (idaccount, now) async => coQuyenNen(MaQuyen.billAutoPay)
           ? BillAutoPayRunner(
               db: sl<AppDatabase>(),

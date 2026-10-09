@@ -875,9 +875,14 @@ thay đổi số dư cục bộ thua một lần xung đột đều biến mất
 > (`domain/bill_ky_trung.dart`) gộp kỳ theo **gốc chuỗi + ngày hạn** — không theo cha — có kỳ đã đóng thì gỡ mọi kỳ còn
 > phải trả, chưa kỳ nào đóng thì giữ id nhỏ nhất (máy thấy một phần nhóm không bao giờ gỡ min toàn cục → các máy hội
 > tụ); kỳ đã trả **không bao giờ** bị gỡ. (2) `BillRepository.gopKyTrung` xoá mềm chúng (`pending` → lên server), gọi ở
-> **đầu** mỗi lượt quét `NotificationScanner.scan`, trước `markOverdue` và bộ tự trả, không gác quyền gói — nên lệnh
-> xoá bị Pull nuốt thì lượt quét ngay sau xoá lại. (3) `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã
-> đóng (`kyCungKyDaDong`). Khoản chi đã trả thừa **không** tự gỡ — người dùng bấm Hoàn tác, kỳ ấy về còn phải trả và lượt
+> **đầu** lượt quét `NotificationScanner.scan`, trước `markOverdue` và bộ tự trả, không gác quyền gói — nên lệnh
+> xoá bị Pull nuốt thì lượt quét ngay sau xoá lại. ⚠️ **Chỉ khi vừa kéo về thành công** (`SyncEngine.soLanKeoVeXong`
+> tăng — Pull nuốt lỗi nên trạng thái "chu kỳ xong" không đủ): lượt quét lúc mở app chạy trước khi kéo về, và Realme
+> lúc ấy giữ hai kỳ trùng ở *Quá hạn* trong khi server đã *Đã trả* — gộp trên dữ liệu ấy là xoá hai hoá đơn đã trả, lệnh
+> xoá mới hơn nên thắng trên server (bản đầu của G87 có lỗ này; bắt được lúc tính trước kết quả nghiệm thu). (3)
+> `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã đóng (`kyCungKyDaDong`), và `BillAutoPayRunner` bỏ
+> qua kỳ ấy **im lặng** (không sự kiện *"không tự trả được"*). Giới hạn còn lại: một máy kéo về xong rồi mới tới lượt
+> máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo. Khoản chi đã trả thừa **không** tự gỡ — người dùng bấm Hoàn tác, kỳ ấy về còn phải trả và lượt
 > gộp sau gỡ nó.
 
 ### 6.9. Gợi ý tạo hoá đơn từ khoản lặp (B2) — 2026-09-29

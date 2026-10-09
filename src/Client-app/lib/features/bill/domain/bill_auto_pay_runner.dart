@@ -1,6 +1,7 @@
 import '../../../core/database/app_database.dart';
 import '../data/repositories/bill_repository.dart';
 import 'bill_auto_pay.dart';
+import 'bill_ky_trung.dart';
 import '../../wallet/domain/wallet_status.dart';
 
 /// Kết quả của **một** kỳ tự trả, để nơi gọi dựng thông báo.
@@ -78,6 +79,11 @@ class BillAutoPayRunner {
     final denLuot = (await db.billDao.getAll(idaccount))
         .where((b) => denLuotTuTra(b, at))
         .toList();
+
+    // G87: kỳ có kỳ TRÙNG đã trả / bỏ qua thì bỏ qua IM LẶNG — lượt quét lúc mở app chạy trước khi kéo về nên máy có
+    // thể giữ kỳ trùng ở "chưa trả". `payBill` cũng từ chối nó, nhưng để nó ném thì bộ chạy báo "không tự trả được".
+    final tatCa = await db.billDao.getTatCaKeCaDaXoa(idaccount);
+    denLuot.removeWhere((b) => kyCungKyDaDong(b, tatCa));
 
     for (final bill in denLuot) {
       // Mỗi hoá đơn độc lập: một cấu hình hỏng không được chặn những hoá đơn

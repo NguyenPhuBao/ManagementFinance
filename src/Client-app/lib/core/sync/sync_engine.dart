@@ -240,6 +240,12 @@ class SyncEngine {
   /// liệu trả về, nên tài khoản mới toanh sẽ mãi trông như chưa pull lần nào.
   bool get hasCompletedPull => _hasCompletedPull;
 
+  /// Số lần kéo về THÀNH CÔNG trong đời engine này. Bước Pull nuốt lỗi nên trạng thái "chu kỳ xong" không nói được
+  /// dữ liệu đã mới chưa; `NotificationScanner` đọc con số này để chỉ gộp kỳ hoá đơn trùng (G87) trên dữ liệu vừa
+  /// làm mới — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
+  int get soLanKeoVeXong => _soLanKeoVeXong;
+  int _soLanKeoVeXong = 0;
+
   /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
   /// như hành vi cũ.
   final SyncCheckpointStore? _checkpointStore;
@@ -1126,6 +1132,7 @@ class SyncEngine {
           // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
           _hasCompletedPull = true;
+          _soLanKeoVeXong++;
         }
       }
     } catch (e) {

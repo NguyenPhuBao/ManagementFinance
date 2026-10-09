@@ -612,7 +612,7 @@ lối B Gemma nghe; xem bàn giao.
 - **G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn bị cắt ở 360 dp (chip cùng hàng); nay trải rộng dưới chip.
 - **G87** — kỳ hoá đơn trùng (cùng gốc chuỗi, cùng hạn) sống lại sau xung đột `BILL_ALREADY_PAID` vì Pull cùng chu kỳ
   ghi đè lệnh xoá; bộ tự trả trừ tiền từng kỳ trùng (Netflix 05/10 trừ 3 lần trên server dev). Nay `gopKyTrung` chạy
-  đầu mỗi lượt quét + chốt trong `payBill`. Mục 6.8 `BILL_DOCUMENTATION.md`.
+  đầu lượt quét **chỉ sau một lần kéo về thành công** (`soLanKeoVeXong`) + chốt trong `payBill` + bộ tự trả bỏ qua kỳ trùng. Mục 6.8 `BILL_DOCUMENTATION.md`.
 
 
 ### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, nghiệm thu OnePlus đạt)

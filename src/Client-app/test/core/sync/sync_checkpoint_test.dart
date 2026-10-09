@@ -52,10 +52,14 @@ class _Adapter implements HttpClientAdapter {
   /// nằm trong `data` của `ResponseHandler`. `null` = server cũ (chỉ `pullData`).
   Map<String, dynamic>? pullMoi;
 
+  /// G87: server trả 500 cho `/sync/pull` (Pull nuốt lỗi, chu kỳ vẫn kết thúc).
+  bool loiPull = false;
+
   @override
   Future<ResponseBody> fetch(
       RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
     if (o.path.contains('/sync/pull')) {
+      if (loiPull) return ResponseBody.fromString('{}', 500);
       lastPullSince = o.queryParameters['since']?.toString();
       return ResponseBody.fromString(
           jsonEncode({'success': true, 'data': pullMoi ?? pullData}), 200,
@@ -364,6 +368,25 @@ void main() {
       expect(client.adapter.lastPullSince, '2026-10-08T07:45:00.001Z',
           reason: 'Lớn nhất giữa các bảng theo GIỜ-SERVER (07:45), không phải '
               'update_at của hàng (07:49 — giờ ghi của máy).');
+    });
+  });
+
+  // G87 (2026-10-09): bước Pull NUỐT lỗi, nên "chu kỳ xong" không nói được dữ liệu đã mới chưa. Lượt quét chỉ gộp kỳ
+  // hoá đơn trùng khi con đếm này vừa tăng — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
+  group('soLanKeoVeXong', () {
+    test('kéo về thành công → tăng một', () async {
+      await seedWallet();
+      expect(engine.soLanKeoVeXong, 0);
+      await runSync();
+      expect(engine.soLanKeoVeXong, 1);
+    });
+
+    test('kéo về lỗi (chu kỳ vẫn kết thúc) → KHÔNG tăng', () async {
+      await seedWallet();
+      client.adapter.loiPull = true;
+      await runSync();
+      expect(engine.soLanKeoVeXong, 0,
+          reason: 'chu kỳ kết thúc ở trạng thái cuối dù Pull hỏng — chỉ con đếm này mới nói dữ liệu đã mới');
     });
   });
 }

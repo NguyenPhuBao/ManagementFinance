@@ -149,6 +149,13 @@ class NotificationScanner {
   /// bị gỡ trước khi bộ tự trả kịp trừ tiền cho nó. KHÔNG gác bằng quyền gói — đây là vệ sinh dữ liệu.
   final Future<int> Function(int idaccount)? gopKyTrung;
 
+  /// Số lần kéo về thành công (`SyncEngine.soLanKeoVeXong`). `gopKyTrung` chỉ chạy khi con số này **vừa tăng**: lượt
+  /// quét lúc mở app chạy TRƯỚC khi kéo về, dữ liệu có thể cũ — đo Realme 2026-10-09: máy giữ hai kỳ trùng ở "Quá hạn"
+  /// trong khi server đã "Đã trả"; gộp lúc ấy là xoá hai hoá đơn đã trả, lệnh xoá mới hơn nên thắng trên server.
+  /// Bỏ trống thì không bao giờ gộp.
+  final int Function()? soLanKeoVe;
+  int _daGopOLanKeoVe = 0;
+
   /// Chạy các kỳ trích tiền tự động đã tới hạn, trả về những gì vừa xảy ra.
   ///
   /// Là closure chứ không phải cả `GoalAutoDepositRunner`, cùng lý do với
@@ -283,6 +290,7 @@ class NotificationScanner {
     this.appLifecycle,
     this.markOverdue,
     this.gopKyTrung,
+    this.soLanKeoVe,
     this.osNotifier,
     this.badgeUpdater,
     this.prefsStore,
@@ -472,11 +480,16 @@ class NotificationScanner {
     try {
       final at = now ?? clock();
 
-      // G87: gỡ kỳ trùng TRƯỚC mọi thứ — xem `gopKyTrung`. Nuốt lỗi: vệ sinh dữ liệu hỏng không được chặn lượt quét.
-      try {
-        await gopKyTrung?.call(idaccount);
-      } catch (_) {
-        // Bỏ qua có chủ ý.
+      // G87: gỡ kỳ trùng TRƯỚC mọi thứ, chỉ trên dữ liệu vừa kéo về — xem `gopKyTrung`, `soLanKeoVe`. Nuốt lỗi: vệ
+      // sinh dữ liệu hỏng không được chặn lượt quét.
+      final lanKeoVe = soLanKeoVe?.call() ?? 0;
+      if (gopKyTrung != null && lanKeoVe > _daGopOLanKeoVe) {
+        _daGopOLanKeoVe = lanKeoVe;
+        try {
+          await gopKyTrung!(idaccount);
+        } catch (_) {
+          // Bỏ qua có chủ ý.
+        }
       }
 
       // Chạy TRƯỚC khi nạp: hoá đơn đọc lên phải mang trạng thái mới nhất, nếu
