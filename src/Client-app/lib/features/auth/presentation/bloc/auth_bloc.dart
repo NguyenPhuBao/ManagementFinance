@@ -280,6 +280,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
         // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
         await personal?.convertLegacyRows(idAcc);
+        // Bộ quét chỉ chạm SQLite và lịch của máy: nhập hàng chờ biến động số
+        // dư / biên lai / phiên ngân hàng (D1), số trên chuông, nhắc lịch, quá
+        // hạn, tự trả, tự trích. Chạy TRƯỚC `AuthSuccess` (người dùng chọn
+        // 2026-10-09): `MoTuTomTatBienDong` điều hướng ngay khi thấy
+        // `AuthSuccess`, và danh sách chờ ghi phải đủ lúc ấy — kể cả khi server
+        // không tới được. Phiên chết thì `_dungMoiThuCuaPhien` dừng nó (huỷ lịch).
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
       }
       emit(AuthSuccess(user: user));
 
@@ -298,6 +307,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (!_vanLaPhien(user)) return;
 
       if (session == SessionStatus.invalid) {
+        await _dungMoiThuCuaPhien(); // bộ quét đã chạy từ phần không chạm mạng
         await authRepository.logout();
         _phatChuaDangNhap(emit);
         return; // KHÔNG khởi động SyncEngine với phiên đã chết
@@ -322,11 +332,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Bám đúng vòng đời của SyncEngine. Cố ý KHÔNG gắn ở home_page.dart —
         // chỗ đó gọi start() ngay trong build(), tức mỗi lần Home rebuild là
         // một lời gọi nữa.
-        if (sl.isRegistered<NotificationScanner>()) {
-          await sl<NotificationScanner>().start(idAcc);
-        }
         // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
-        // như bộ quét thông báo ngay trên.
+        // như bộ quét thông báo (khởi động ở phần không chạm mạng bên trên).
         if (sl.isRegistered<RealtimeChannel>()) {
           await sl<RealtimeChannel>().start(idaccount: idAcc);
         }

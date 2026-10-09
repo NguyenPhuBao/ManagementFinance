@@ -594,7 +594,23 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-08)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-09)
+
+### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 (2026-10-09, nghiệm thu Realme)
+
+C4 giọng nói **hoãn** (người dùng: *"làm phần khác trước đi"*) — ba lối còn treo: đo 20 câu trước · lối A Android ·
+lối B Gemma nghe; xem bàn giao.
+
+- **G86** — người dùng báo *"khi vào phải đợi vài giây mới hiện thông tin"*. `AuthBloc._onAuthCheckRequested` nay chạy
+  phần **không chạm mạng** trước (người dùng đã lưu → `idaccount` → dọn tài khoản khác → `cat_*` → **bộ quét thông báo**,
+  gồm nhập hàng chờ D1 / biên lai / phiên ngân hàng, chuông, quá hạn, tự trả, tự trích) rồi **phát `AuthSuccess`**; sau đó
+  mới `verifySession()`: phiên chết → `_dungMoiThuCuaPhien` + đăng xuất; hợp lệ / không rõ → đọc lại người dùng (thẻ chờ
+  xoá, phát lại khi đổi) → socket → SyncEngine. Sau mỗi `await` kiểm `_vanLaPhien(user)` (lỗi có sẵn: đăng xuất lúc đang
+  chờ server bị đè lại). ⚠️ Đổi so với trước: phiên chết vẫn **dọn dữ liệu tài khoản khác** và **chạy một lượt quét cục
+  bộ** trước khi bị đẩy ra (trước đây không làm gì) — người dùng chấp nhận. Nhánh `verifySession` ở các spec viết trước
+  2026-10-09 (vd. §4.3 / dòng *"Mở app"* spec cưỡng chế đăng xuất) tả thứ tự cũ: *xác minh rồi mới `AuthSuccess`*.
+- **G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn bị cắt ở 360 dp (chip cùng hàng); nay trải rộng dưới chip.
+
 
 ### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, nghiệm thu OnePlus đạt)
 

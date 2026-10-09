@@ -18,6 +18,7 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/api/interceptors/auth_interceptor.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
@@ -519,6 +520,30 @@ void main() {
       expect(bloc.state, isA<AuthSuccess>());
     });
 
+    test(
+        'bộ quét cục bộ (nhập biến động D1, chuông, nhắc, tự trả) chạy NGAY, không đợi '
+        'server; phiên chết thì bị dừng', () async {
+      final scanner = _SpyScanner(db);
+      sl.registerSingleton<NotificationScanner>(scanner);
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+
+      expect(scanner.startedWith, [10],
+          reason: 'chạm thông báo "Có N biến động số dư mới" lúc mất mạng phải thấy đủ '
+              'mục chờ ghi ngay — người dùng chọn 2026-10-09');
+      expect(sync.startedWith, isEmpty, reason: 'đồng bộ vẫn đợi server');
+
+      cho.complete(SessionStatus.invalid);
+      await pumpEventQueue();
+      expect(scanner.stopCalls, greaterThan(0),
+          reason: 'phiên chết: dừng bộ quét (stop() huỷ cả lịch nhắc trong AlarmManager)');
+      expect(bloc.state, isA<AuthUnauthenticated>());
+    });
+
     test('server trả lời phiên chết SAU khi đã hiện dữ liệu → đăng xuất, không đồng bộ',
         () async {
       final cho = Completer<SessionStatus>();
@@ -601,4 +626,23 @@ class _RepoCho implements AuthRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _SpyScanner extends NotificationScanner {
+  _SpyScanner(AppDatabase db)
+      : super(
+          dao: db.notificationDao,
+          loadBudgets: (id, at) async => [],
+          loadBills: (id, at) async => [],
+          syncStatus: const Stream.empty(),
+        );
+
+  final List<int> startedWith = [];
+  int stopCalls = 0;
+
+  @override
+  Future<void> start(int idaccount) async => startedWith.add(idaccount);
+
+  @override
+  Future<void> stop() async => stopCalls++;
 }
