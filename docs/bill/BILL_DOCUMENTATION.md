@@ -882,7 +882,10 @@ thay đổi số dư cục bộ thua một lần xung đột đều biến mất
 > xoá mới hơn nên thắng trên server (bản đầu của G87 có lỗ này; bắt được lúc tính trước kết quả nghiệm thu). (3)
 > `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã đóng (`kyCungKyDaDong`), và `BillAutoPayRunner` bỏ
 > qua kỳ ấy **im lặng** (không sự kiện *"không tự trả được"*). Giới hạn còn lại: một máy kéo về xong rồi mới tới lượt
-> máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo. `gopKyTrung` gọi `scheduleSync()` khi có gỡ (bản đầu để lệnh
+> máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo; ✉️ client xin backend đóng nó ở server (2026-10-09, **đơn 41**
+> `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`: chặn khoản chi cho kỳ anh em cùng `Previous_bill_id` + `Due_date`, mã riêng
+> `BILL_PERIOD_ALREADY_PAID` — client phải thêm mã ấy vào `_permanentCodes` và một bộ xử lý **khác** `_hoanTac` (không
+> `danhDauDaTra`) **trước** khi bản backend lên; đo CSDL dev cùng ngày: tài khoản 17, 19 cũng có kỳ trùng bật tự trả). `gopKyTrung` gọi `scheduleSync()` khi có gỡ (bản đầu để lệnh
 > xoá nằm chờ tới 15 phút). ✅ **Nghiệm thu 2026-10-09** (Realme rồi OnePlus, cả hai nối backend dev): server xoá mềm đúng
 > bốn kỳ 12/10 trùng, giữ `65ece89a`; kỳ 05/10 đã trả và khoản chi không đổi; OnePlus tự tính ra cùng tập với Realme. Khoản chi đã trả thừa **không** tự gỡ — người dùng bấm Hoàn tác, kỳ ấy về còn phải trả và lượt
 > gộp sau gỡ nó.

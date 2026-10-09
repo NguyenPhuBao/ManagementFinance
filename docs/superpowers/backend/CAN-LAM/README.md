@@ -1,4 +1,12 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (0 mục tồn đọng — ĐÃ HOÀN TẤT 100%)
+# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ backend — mục 41)
+
+> ✉️ **Client đặt mục 41, 2026-10-09:** [`CHAN_TRA_HAI_LAN_THEO_KY.md`](./CHAN_TRA_HAI_LAN_THEO_KY.md) — mức **cao**.
+> Chốt `chanTraHaiLan` chỉ chặn khoản chi thứ hai cùng `Idbill`; hai máy cùng trả một kỳ thì sinh hai **kỳ con trùng**
+> (khác `Idbill`) và bộ tự trả trừ tiền cho từng kỳ — đo CSDL dev: tài khoản 10 bị trừ **3 × 100.000 đ** cho kỳ 05/10;
+> tài khoản 17 và 19 đang có kỳ trùng bật tự trả, hạn 13/10. Xin mở rộng chốt sang **kỳ anh em** (cùng
+> `Previous_bill_id` + `Due_date`) với mã riêng `BILL_PERIOD_ALREADY_PAID`. Không đổi lược đồ, payload, LWW.
+> `DA-XONG/` đếm bằng máy 2026-10-09: **57** tệp + mục lục.
+
 
 **Cập nhật:** 2026-10-07 tối — Toàn bộ chuỗi 5 bước phát triển tính năng **Phân quyền tính năng động theo loại tài khoản** (Mục 39) đã hoàn tất 100% trên cả 3 phân hệ: CSDL Supabase (Migration 22), Backend Node.js (`permission.repository.js`, API `/permissions`, API `/subscription-info`), Admin-web (trang `/permissions`), và Client-app Flutter (`TranGoi`, `TrangThaiGoi`, UI guards AI Chat & Nhập nhanh). Hiện tại **0 mục tồn đọng**.
 
@@ -23,11 +31,11 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **0** mục)
+## 0. Còn phải làm (Hiện tại: **1** mục — đếm bằng `ls` 2026-10-09)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| — | Không còn mục tồn đọng | — | Toàn bộ 40 mục kỹ thuật đã hoàn thành | ✅ ĐÃ HOÀN TẤT |
+| **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Client thêm mã vào danh sách lỗi vĩnh viễn + bộ xử lý riêng trước khi bản backend lên. | ⏳ Chờ backend |
 
 ---
 
