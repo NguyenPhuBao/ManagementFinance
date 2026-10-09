@@ -122,6 +122,12 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
         .get();
   }
 
+  /// Mọi hàng hoá đơn của tài khoản, **kể cả hàng đã xoá mềm** — để lần ngược gốc chuỗi kỳ
+  /// (`kyTrungCanGo`, G87): cha của một kỳ có thể đã bị gỡ.
+  Future<List<Bill>> getTatCaKeCaDaXoa(int idaccount) {
+    return (select(bills)..where((t) => t.idaccount.equals(idaccount))).get();
+  }
+
   Stream<List<Bill>> watchAll(int idaccount) {
     return (select(bills)
           ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())

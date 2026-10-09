@@ -147,6 +147,13 @@ abstract class BillRepository {
   /// PostgreSQL ngày 2026-09-13.
   Future<void> undoPayment({required String billId, String? transactionId});
 
+  /// Xoá mềm các kỳ TRÙNG (cùng gốc chuỗi, cùng ngày hạn) theo `kyTrungCanGo` — G87. Trả số kỳ đã gỡ.
+  ///
+  /// Gọi ở đầu mỗi lượt quét (`NotificationScanner.scan`, TRƯỚC bộ tự trả): đó là chỗ chạy sau mọi chu kỳ đồng bộ,
+  /// nên lệnh xoá của bộ gỡ xung đột bị bước Pull cùng chu kỳ nuốt mất thì được xoá lại ở đây. Hàng gỡ ra mang
+  /// `pending` để lệnh xoá lên server và tới các máy khác.
+  Future<int> gopKyTrung(int idaccount);
+
   /// Bỏ qua kỳ [billId]: đánh dấu `Skipped`, **không** sinh khoản chi và
   /// **không** trừ ví, nhưng vẫn sinh kỳ kế tiếp như [payBill] để chuỗi hoá
   /// đơn lặp không đứt.

@@ -862,6 +862,24 @@ chi hợp lệ nhưng số dư ví lại là con số của server, vốn **khô
 thay đổi số dư cục bộ thua một lần xung đột đều biến mất như vậy, không riêng hoá
 đơn. Xem `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
+> 🛑 **Kỳ kế tiếp của máy thua KHÔNG được gỡ trên thực tế — G87, mở và đóng 2026-10-09.** Câu *"`undoPayment` gỡ kỳ
+> kế tiếp"* đúng trên máy, sai trên server: hoá đơn đẩy **trước** giao dịch (khoá ngoại), nên kỳ con máy thua tự sinh
+> **lên server trót lọt** rồi khoản chi mới bị từ chối; bộ gỡ xoá mềm kỳ con ở máy, nhưng bước **Pull ngay sau trong
+> cùng chu kỳ** ghi đè lệnh xoá bằng bản sống của server (`billDao.upsertAll` không xét hàng đang chờ đẩy) và gắn
+> `synced` — lệnh xoá không bao giờ lên. Đo trên PostgreSQL dev (tài khoản 10, Netflix tự trả tuần): kỳ 20/9 có **ba**
+> kỳ con 05/10 (mốc khoản chi bị gỡ trên Realme 02:06:54 UTC, kỳ con vào server 02:06:55); OnePlus tự trả nốt hai kỳ
+> trùng ngày 08/10 — kỳ 05/10 **trừ 3 × 100.000 đ** (`chanTraHaiLan` chỉ chặn cùng `Idbill`) — và đẻ **năm** kỳ 12/10
+> dưới ba cha. *Ba máy offline cùng tự trả kỳ 20/9 là **suy luận** từ dấu vết (log đã trôi); hai mốc thời gian là đo được.*
+>
+> Sửa (người dùng chọn): **không** đổi luật Pull cho mọi bảng. Thay vào đó (1) hàm thuần `kyTrungCanGo`
+> (`domain/bill_ky_trung.dart`) gộp kỳ theo **gốc chuỗi + ngày hạn** — không theo cha — có kỳ đã đóng thì gỡ mọi kỳ còn
+> phải trả, chưa kỳ nào đóng thì giữ id nhỏ nhất (máy thấy một phần nhóm không bao giờ gỡ min toàn cục → các máy hội
+> tụ); kỳ đã trả **không bao giờ** bị gỡ. (2) `BillRepository.gopKyTrung` xoá mềm chúng (`pending` → lên server), gọi ở
+> **đầu** mỗi lượt quét `NotificationScanner.scan`, trước `markOverdue` và bộ tự trả, không gác quyền gói — nên lệnh
+> xoá bị Pull nuốt thì lượt quét ngay sau xoá lại. (3) `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã
+> đóng (`kyCungKyDaDong`). Khoản chi đã trả thừa **không** tự gỡ — người dùng bấm Hoàn tác, kỳ ấy về còn phải trả và lượt
+> gộp sau gỡ nó.
+
 ### 6.9. Gợi ý tạo hoá đơn từ khoản lặp (B2) — 2026-09-29
 
 Spec `docs/superpowers/specs/2026-09-28-b2-khoan-lap-goi-y-hoa-don-design.md`

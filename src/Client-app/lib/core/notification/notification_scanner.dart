@@ -144,6 +144,11 @@ class NotificationScanner {
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
+  /// Gỡ kỳ hoá đơn TRÙNG (cùng gốc chuỗi, cùng hạn — `BillRepository.gopKyTrung`, G87). Chạy ĐẦU lượt quét, trước
+  /// `markOverdue` và bộ tự trả: lượt quét chạy sau mọi chu kỳ đồng bộ, nên kỳ trùng mà bước Pull vừa làm sống lại
+  /// bị gỡ trước khi bộ tự trả kịp trừ tiền cho nó. KHÔNG gác bằng quyền gói — đây là vệ sinh dữ liệu.
+  final Future<int> Function(int idaccount)? gopKyTrung;
+
   /// Chạy các kỳ trích tiền tự động đã tới hạn, trả về những gì vừa xảy ra.
   ///
   /// Là closure chứ không phải cả `GoalAutoDepositRunner`, cùng lý do với
@@ -277,6 +282,7 @@ class NotificationScanner {
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
+    this.gopKyTrung,
     this.osNotifier,
     this.badgeUpdater,
     this.prefsStore,
@@ -465,6 +471,13 @@ class NotificationScanner {
     _dangQuet = true;
     try {
       final at = now ?? clock();
+
+      // G87: gỡ kỳ trùng TRƯỚC mọi thứ — xem `gopKyTrung`. Nuốt lỗi: vệ sinh dữ liệu hỏng không được chặn lượt quét.
+      try {
+        await gopKyTrung?.call(idaccount);
+      } catch (_) {
+        // Bỏ qua có chủ ý.
+      }
 
       // Chạy TRƯỚC khi nạp: hoá đơn đọc lên phải mang trạng thái mới nhất, nếu
       // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.

@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-09)
 
-### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 (2026-10-09, nghiệm thu Realme)
+### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 · kỳ hoá đơn trùng — G87 (2026-10-09)
 
 C4 giọng nói **hoãn** (người dùng: *"làm phần khác trước đi"*) — ba lối còn treo: đo 20 câu trước · lối A Android ·
 lối B Gemma nghe; xem bàn giao.
@@ -610,6 +610,9 @@ lối B Gemma nghe; xem bàn giao.
   bộ** trước khi bị đẩy ra (trước đây không làm gì) — người dùng chấp nhận. Nhánh `verifySession` ở các spec viết trước
   2026-10-09 (vd. §4.3 / dòng *"Mở app"* spec cưỡng chế đăng xuất) tả thứ tự cũ: *xác minh rồi mới `AuthSuccess`*.
 - **G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn bị cắt ở 360 dp (chip cùng hàng); nay trải rộng dưới chip.
+- **G87** — kỳ hoá đơn trùng (cùng gốc chuỗi, cùng hạn) sống lại sau xung đột `BILL_ALREADY_PAID` vì Pull cùng chu kỳ
+  ghi đè lệnh xoá; bộ tự trả trừ tiền từng kỳ trùng (Netflix 05/10 trừ 3 lần trên server dev). Nay `gopKyTrung` chạy
+  đầu mỗi lượt quét + chốt trong `payBill`. Mục 6.8 `BILL_DOCUMENTATION.md`.
 
 
 ### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, nghiệm thu OnePlus đạt)
