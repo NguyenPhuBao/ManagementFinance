@@ -34,14 +34,18 @@ backend).
 
 ### 3.1 Hẹn giờ (Dart)
 
-Hàm thuần mới **`mocNenKeTiep(...)`** (đặt ở `core/notification/`, cạnh `ReminderScheduler`) trả mốc nền gần nhất hoặc
-`null`:
+Hàm thuần mới **`lichNenKeTiep(...)`** (`lib/core/nen/lich_nen.dart`) trả `({DateTime? moc, bool coTuDong})`:
 
-- Hoá đơn: mọi hàng mà `denLuotTuTra` **sẽ** đúng — bật tự trả, `conPhaiTra`, có ví và danh mục, chưa xoá. Mốc =
-  `DateTime(due.y, due.m, due.d, gioNhac, phutNhac)`; mốc đã qua → **ngay** (`now`).
-- Mục tiêu: bật trích, chưa hoàn thành, còn thiếu > 0 → `kyKeTiep(mocNeo:, lanChayGanNhat:, chuKy:, now:)` (hàm sẵn có
-  mà `ReminderScheduler` đang dùng — **không** chép lại phép tính kỳ).
-- Không còn gì → `null`.
+- `coTuDong` — còn ít nhất một hoá đơn bật tự trả còn phải trả, hoặc một mục tiêu bật trích chưa xong. Quyết định có
+  giữ lượt **định kỳ** hay không.
+- `moc` — mốc **ở tương lai** gần nhất:
+  - Hoá đơn (bật tự trả, `conPhaiTra`, có ví và danh mục, chưa xoá): `DateTime(due.y, due.m, due.d, gioNhac, phutNhac)`,
+    chỉ khi **sau** `now`.
+  - Mục tiêu (bật trích, chưa hoàn thành, còn thiếu > 0): `kyKeTiep(mocNeo:, lanChayGanNhat:, chuKy:, now:)` — hàm sẵn
+    có, vốn chỉ trả mốc **sau** `now`; **không** chép lại phép tính kỳ.
+  - Kỳ đã tới hạn mà lượt quét vừa rồi chưa làm xong (ví không đủ tiền) **không** được hẹn "ngay": hẹn ngay thì lượt
+    một-lần tự hẹn lại ngay, vòng lặp tốn pin. Chúng chờ lượt **định kỳ 6 giờ** hoặc lần mở app.
+- Không quyền gói tương ứng (`coQuyenNen`) → loại khỏi cả hai vế: Basic không cần đánh thức máy.
 
 `ReminderScheduler.resync` (chạy cuối mỗi lượt quét) tính mốc. **Chỉ engine của app** gửi nó qua kênh Kotlin sẵn có
 (`MainActivity`) — lệnh **`henNen(mocMs)`** — và **chỉ khi mốc đổi** so với mốc đã hẹn lần trước (nhớ trong bộ nhớ;
@@ -53,8 +57,7 @@ WorkManager huỷ nó giữa chừng (luồng `doWork` bị ngắt, engine bị 
   `setInitialDelay(moc − now)` (âm → 0).
 - WorkManager **định kỳ 6 giờ**, tên `tu_chuyen_tien_dinh_ky`, `ExistingPeriodicWorkPolicy.KEEP` — dự phòng khi lượt
   một-lần bị Android lùi hay bỏ.
-- `mocMs == null` (không hoá đơn / mục tiêu nào bật tự động) → huỷ cả hai. Còn bất cứ thứ gì bật thì mốc luôn khác
-  `null` (kỳ kế nằm ở tương lai), nên không có trạng thái *"giữ định kỳ mà bỏ một-lần"*.
+- Lệnh mang cả `coTuDong`: `moc == null` → huỷ lượt một-lần; `coTuDong == false` → huỷ cả lượt định kỳ.
 
 `NotificationScanner.stop()` (đăng xuất, phiên chết) gọi **`huyNen()`** — huỷ cả hai, cùng khuôn `huyNhac` của nhắc ghi.
 Không ai đăng nhập thì không ai đã uỷ quyền chuyển tiền.
@@ -99,7 +102,7 @@ hạn của hãng (CLAUDE.md, mục "Chạy trên MÁY THẬT"), ghi vào tài l
    được tự trả / tự trích ở nền — lọt cửa quyền, im lặng. Không gọi `lamMoi()` (mạng); bảng gói đã lưu là đủ.
 6. Lấy **khoá thuê** (mục 3.4). Không lấy được → bỏ hai bộ chạy (vẫn đồng bộ).
 7. Đồng bộ (mục 4.1) → `NotificationScanner.scan(idaccount)` → đẩy.
-8. Nhả khoá, báo `nenXong(mocNenKeTiep(...))`. Mọi bước bọc `try/finally`: Dart ném lỗi vẫn phải báo xong, nếu không
+8. Nhả khoá, báo `nenXong(lichNenKeTiep(...))` (mốc + `coTuDong`). Mọi bước bọc `try/finally`: Dart ném lỗi vẫn phải báo xong, nếu không
    worker chờ hết 3 phút.
 
 Lệnh **`quetNgay`** ở engine của app: gọi `sl<NotificationScanner>().scan(id)` với phiên hiện tại rồi
@@ -199,8 +202,9 @@ Không có màn mới → không cần Stitch. Câu ở ô giờ trích có th�
 
 TDD, viết trước:
 
-- `mocNenKeTiep`: hoá đơn → giờ nhắc chung ngày đến hạn · đến hạn đã qua → `now` · mục tiêu dùng `kyKeTiep` · lấy
-  **sớm nhất** · không gì → `null` · hoá đơn ngày 31 tháng ngắn (anchorDay) · tắt tự trả / đã trả / thiếu ví → bỏ.
+- `lichNenKeTiep`: hoá đơn → giờ nhắc chung ngày đến hạn · mốc đã qua → **không** hẹn nhưng `coTuDong` vẫn `true` ·
+  mục tiêu dùng `kyKeTiep` · lấy **sớm nhất** · không gì → `(null, false)` · tắt tự trả / đã trả / thiếu ví → bỏ ·
+  không quyền gói → bỏ.
 - `idKhoanTrichTuDong`: cùng (mục tiêu, kỳ) cùng id · khác kỳ khác id · cùng mốc tuyệt đối ở hai múi giờ cùng id ·
   không trùng `idKhoanMoSo`.
 - Bộ trích: id đã có → không trừ tiền, đẩy mốc, **không sinh sự kiện** · id đã xoá mềm → như trên · `depositToGoal` ném
