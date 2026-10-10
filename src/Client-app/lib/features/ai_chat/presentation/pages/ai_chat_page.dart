@@ -58,7 +58,6 @@ import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
-import '../../spike/spike_sql.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.
@@ -350,14 +349,6 @@ class _AiChatPageState extends State<AiChatPage> {
     _oNhap.clear();
     _cuonXuong();
 
-    // Spike "E2B tự viết SQL" (mục 9.29): chỉ có trong bản build với
-    // `--dart-define=SPIKE_SQL=true`; bản thường hằng là `false` nên nhánh này
-    // bị loại lúc biên dịch. Đi thẳng, không qua chặn chủ đề lẫn bậc tool.
-    if (kSpikeSql && c.toLowerCase().startsWith(kTienToSpikeSql)) {
-      await _spikeSql(c.substring(kTienToSpikeSql.length).trim());
-      return;
-    }
-
     // C3 §8 — cổng rộng TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, phiên sáu tool): có mô hình thì AI đọc và luật
     // kiểm từng ô; không thì bộ luật dự phòng. Kết quả là thẻ mở form điền sẵn — không lưu gì.
     if (coVeLenhTao(c, now: DateTime.now())) {
@@ -424,29 +415,6 @@ class _AiChatPageState extends State<AiChatPage> {
       // 9) vấp đúng thế: câu ấy hiện lên sau khi cài đè APK, logcat sạch
       // trơn, và phải sửa mã rồi cài lại mới biết chuyện gì xảy ra.
       debugPrint('[SLM] hỏi đáp hỏng: $e\n$st');
-      _themCuaAi(const _TinNhan.cuaAi(_kHong));
-    }
-  }
-
-  /// Đường đo tạm của spike SQL — xem `spike/spike_sql.dart`.
-  Future<void> _spikeSql(String cauHoi) async {
-    try {
-      final id = currentAccountIdOrNull(context);
-      final moHinh = sl<MoHinhTaiVe>();
-      if (id == null || id <= 0 || !await moHinh.daCo()) {
-        _themCuaAi(const _TinNhan.cuaAi(kChuaSanSangPhien));
-        return;
-      }
-      final runtime = sl<SlmRuntime>();
-      if (!runtime.dangSan) await runtime.moHinhSan(await moHinh.duongTep());
-      final chu = await chaySpikeSql(
-        cauHoi,
-        runtime: runtime,
-        idaccount: id,
-      );
-      _themCuaAi(_TinNhan.cuaAi(chu));
-    } catch (e, st) {
-      debugPrint('[SLM][spike] hỏng: $e\n$st');
       _themCuaAi(const _TinNhan.cuaAi(_kHong));
     }
   }

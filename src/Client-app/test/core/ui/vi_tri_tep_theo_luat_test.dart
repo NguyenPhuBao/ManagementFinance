@@ -44,13 +44,8 @@ const mienTru = <String, String>{
 };
 
 /// Luật 1–4 và 6: vi phạm còn chờ dọn (đường dẫn tương đối `src/Client-app`). Điền từ lượt chạy đỏ; rút dần theo nhóm.
-const conCho = <String>{
-  // Luật 6 — test ở gốc, thư mục không soi gương (Task 9).
-  'test/e2e_sqlite_to_backend_sync_test.dart',
-  'test/transaction_repository_test.dart',
-  'test/widget_test.dart',
-  'test/features/layout',
-};
+// Rỗng từ 2026-10-10 — thêm vào đây là mở lại một nợ, phải có lý do và ngày.
+const conCho = <String>{};
 
 /// Luật 5: tệp hạ tầng `core` còn import `features/` → số dòng tối đa. Chỉ được giảm — ngoại lệ duy nhất ghi rõ tại chỗ.
 /// Đo 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.

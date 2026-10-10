@@ -2104,13 +2104,13 @@ thẳng SQLite*; người dùng chốt đo trước khi chọn. Máy tính khôn
 `llama_cpp`, không GPU) nên spike chạy **trên chính app**, cùng mô hình, cùng máy, cùng bản lượng tử hoá với đường tool.
 
 **Cách dựng** (người dùng chốt ba điều: giữ trong repo sau cờ build · prompt có lược đồ + luật ngầm + hai ví dụ · đo 7 câu
-chưa đạt + 5 câu đạt tiêu biểu): `lib/features/ai_chat/spike/spike_sql.dart`, chỉ sống khi build
+chưa đạt + 5 câu đạt tiêu biểu): `lib/features/ai_chat/spike/spike_sql.dart` *(mã đo **đã gỡ 2026-10-10**, đợt dọn vị trí tệp — xem lại bằng `git log --all -- src/Client-app/lib/features/ai_chat/spike/spike_sql.dart`; bảng đo dưới đây vẫn là kết luận)*, chỉ sống khi build
 `--dart-define=SPIKE_SQL=true` (hằng `kSpikeSql`, bản thường loại cả nhánh lúc biên dịch); câu bắt đầu `sql:` trong chat
 đi thẳng — không chặn chủ đề, không bậc tool, không lớp chắn — vào `SlmRuntime.sinh(prompt)`; chữ trả về qua hàng rào
 chỉ-đọc `trichSelect` (bỏ rào markdown, lấy từ `SELECT`, từ chối câu thứ hai sau `;` và mọi từ khoá ghi / `PRAGMA` /
 `pragma_`, ép `LIMIT 20`), rồi `AppDatabase.customSelect` và hiện nguyên hàng. Prompt ~2.500 ký tự: sáu bảng với đúng tên cột
 Drift, luật `amount` luôn dương / chiều ở `type` / bỏ điều chỉnh số dư / epoch giây, **mốc kỳ tính sẵn** (hôm nay, tuần,
-tháng, tháng trước, quý, năm), hai ví dụ (tổng chi tháng này, số dư một ví). 6 ca đơn vị ở `test/features/ai_chat/spike_sql_test.dart`.
+tháng, tháng trước, quý, năm), hai ví dụ (tổng chi tháng này, số dư một ví). 6 ca đơn vị từng ở `test/features/ai_chat/spike_sql_test.dart` (gỡ cùng mã).
 APK `14bb5668…`, 15:58–16:07, mỗi câu **10–21 s** (nhanh hơn đường tool 27–37 s vì chỉ một lượt sinh, không có lượt tool).
 
 | # | Câu | SQL mô hình viết (rút gọn) | Kết quả | Chấm |

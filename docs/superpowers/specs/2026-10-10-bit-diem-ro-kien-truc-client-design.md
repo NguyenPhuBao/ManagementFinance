@@ -144,7 +144,7 @@ Mục tiêu / Cá nhân đọc qua `sl<ThongBaoNguon>()`. Đây là cổng mỏn
   `hopLeTheoChieu` ở `domain` không đổi.
 - **Phản hồi kế hoạch cân đối.** `TaiPhanBoNguon` (đã có interface + `TaiPhanBoNguonImpl` cầm `db`) thêm `ghiPhanHoi`;
   `budget_page` truyền `sl<TaiPhanBoNguon>().ghiPhanHoi`. Bốn lớp giả `implements TaiPhanBoNguon` thêm stub.
-- **Spike SQL.** `chaySpikeSql` bỏ tham số `db`, tự lấy `sl<AppDatabase>()` bên trong `ai_chat/spike/spike_sql.dart`
+- **Spike SQL.** `chaySpikeSql` bỏ tham số `db`, tự lấy `sl<AppDatabase>()` bên trong `ai_chat/spike/spike_sql.dart` *(📍 spike_sql gỡ 2026-10-10 — spec dọn vị trí tệp.)*
   (thư mục `spike/` không phải `presentation`). Mã này chỉ sống sau `--dart-define=SPIKE_SQL=true`.
 
 ### 4.6 Chi phí thật: 3 lớp giả ở 2 tệp (đo lại 2026-10-10)
