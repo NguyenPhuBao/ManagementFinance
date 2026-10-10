@@ -97,6 +97,8 @@ import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
 import '../notification/kenh_phien_ngan_hang.dart';
+import '../nen/kenh_tu_chuyen_tien.dart';
+import '../nen/lich_nen.dart';
 import '../notification/kho_bien_lai.dart';
 import '../notification/moc_phien_store.dart';
 import '../notification/nhap_bien_dong.dart';
@@ -496,6 +498,35 @@ Future<void> setupDependencies() async {
           ? const KenhPhienNganHangAndroid()
           : const KenhPhienNganHangTrong());
 
+  // Tự chuyển tiền chạy nền (spec 2026-10-10): kênh tới `TuChuyenTien.kt` — chỉ
+  // Android; nơi khác bản trống.
+  sl.registerLazySingleton<KenhTuChuyenTien>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhTuChuyenTienAndroid()
+          : const KenhTuChuyenTienTrong());
+  // Lịch lượt nền: hoá đơn đọc TOÀN BỘ (không cửa sổ 30 ngày như lịch nhắc —
+  // hạn xa hơn vẫn là thứ phải giữ lượt định kỳ), gác bằng quyền gói.
+  sl.registerLazySingleton<LichNen>(
+    () => LichNen(
+      kenh: sl<KenhTuChuyenTien>(),
+      tinh: (idaccount, now) async {
+        final prefs = await sl<NotificationPrefsStore>().read(idaccount);
+        return lichNenKeTiep(
+          bills: await sl<AppDatabase>().billDao.getAll(idaccount),
+          goals: [
+            for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+              GoalEntity.fromDrift(g),
+          ],
+          now: now,
+          gioNhac: prefs.gioNhac,
+          phutNhac: prefs.phutNhac,
+          traDuoc: coQuyenNen(MaQuyen.billAutoPay),
+          trichDuoc: coQuyenNen(MaQuyen.goalAutoDeposit),
+        );
+      },
+    ),
+  );
+
   // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
   // Thư mục ảnh biên lai (`filesDir/bien_lai/` phía Kotlin) — form Thêm giao dịch cũng dùng để hiện và xoá ảnh.
@@ -546,6 +577,9 @@ Future<void> setupDependencies() async {
       layKhoa: () =>
           sl<AppDatabase>().khoaTuChuyenTienDao.lay(_chuKhoa, DateTime.now()),
       nhaKhoa: () => sl<AppDatabase>().khoaTuChuyenTienDao.nha(_chuKhoa),
+      // Lịch lượt nền (spec tự chuyển tiền chạy nền mục 3.1).
+      henLichNen: (id) => sl<LichNen>().henNeuDoi(id),
+      huyLichNen: () => sl<LichNen>().huy(),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.

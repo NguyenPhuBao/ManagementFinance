@@ -178,6 +178,14 @@ class NotificationScanner {
   final Future<bool> Function()? layKhoa;
   final Future<void> Function()? nhaKhoa;
 
+  /// Hẹn lượt nền kế tiếp (Android — `LichNen.henNeuDoi`, spec tự chuyển tiền
+  /// chạy nền mục 3.1). Chạy CUỐI mỗi lượt quét: bộ tự trả / trích vừa đổi kỳ.
+  /// Bỏ trống ở engine nền (lượt nền trả mốc qua `nenXong`), trên test và web.
+  final Future<void> Function(int idaccount)? henLichNen;
+
+  /// Huỷ lượt nền khi đăng xuất / phiên chết.
+  final Future<void> Function()? huyLichNen;
+
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
 
@@ -288,6 +296,8 @@ class NotificationScanner {
     this.runAutoPays,
     this.layKhoa,
     this.nhaKhoa,
+    this.henLichNen,
+    this.huyLichNen,
     this.loadGoals,
     this.loadWallets,
     this.loadViDaDung,
@@ -475,6 +485,10 @@ class NotificationScanner {
     // đăng nhập sau không được thấy biên lai của người trước.
     try {
       await nhapBienLai?.donKhiDangXuat(id);
+    } catch (_) {}
+    // Tự chuyển tiền chạy nền: không ai đăng nhập thì không ai uỷ quyền chuyển tiền.
+    try {
+      await huyLichNen?.call();
     } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
@@ -676,6 +690,7 @@ class NotificationScanner {
         // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không
         // sinh thông báo nào nhưng vẫn phải gỡ lịch của nó.
         await _dongBoLich(idaccount);
+        await _henLichNen(idaccount);
         _ghiNhat(idaccount, 0);
         return 0;
       }
@@ -696,6 +711,7 @@ class NotificationScanner {
         await _banRaHeDieuHanh(moi, idaccount);
       }
       await _dongBoLich(idaccount);
+      await _henLichNen(idaccount);
 
       _ghiNhat(idaccount, moi.length);
       return moi.length;
@@ -722,6 +738,16 @@ class NotificationScanner {
   Future<void> _dongBoLich(int idaccount) async {
     try {
       await resyncLich?.call(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// Hẹn lượt nền kế tiếp. Nuốt lỗi: lịch nền hỏng không được giết trung tâm
+  /// thông báo.
+  Future<void> _henLichNen(int idaccount) async {
+    try {
+      await henLichNen?.call(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý — xem chú thích trên.
     }
