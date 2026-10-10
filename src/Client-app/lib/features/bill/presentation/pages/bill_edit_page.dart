@@ -85,8 +85,8 @@ class _BillEditPageState extends State<BillEditPage> {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
     final wallets = await sl<WalletRepository>().getActiveRows(accountId);
-    final categories = await sl<CategoryManagementRepository>()
-        .selectableChildren(accountId: accountId, classify: 'chi');
+    final categories =
+        await sl<CategoryManagementRepository>().getCategoryRows(accountId: accountId, classify: 'chi');
     if (!mounted) return;
     setState(() {
       _wallets = wallets;

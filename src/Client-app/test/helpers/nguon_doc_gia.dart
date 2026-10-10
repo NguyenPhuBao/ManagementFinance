@@ -50,6 +50,9 @@ class DanhMucRowsGia implements CategoryManagementRepository {
   @override
   Future<Category?> getRowById(String id) => db.categoryDao.getById(id);
   @override
+  Future<List<Category>> getCategoryRows({required int accountId, required String classify}) =>
+      db.categoryDao.getCategoryRows(accountId, classify);
+  @override
   Future<List<Category>> selectableChildren({required int accountId, required String classify}) =>
       db.categoryDao.getCategoryRows(accountId, classify).then((ds) => ds.where((c) => !c.isGroup).toList());
   @override

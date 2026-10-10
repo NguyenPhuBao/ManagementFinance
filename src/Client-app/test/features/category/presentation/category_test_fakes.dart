@@ -75,6 +75,9 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   Stream<List<Category>> watchAllRows({required int accountId}) => throw UnimplementedError();
   @override
   Future<Category?> getRowById(String id) => throw UnimplementedError();
+  @override
+  Future<List<Category>> getCategoryRows({required int accountId, required String classify}) =>
+      throw UnimplementedError();
 
   FakeCategoryRepository(
       {CategoryTree? tree,

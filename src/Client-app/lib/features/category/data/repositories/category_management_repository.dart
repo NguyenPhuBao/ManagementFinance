@@ -67,6 +67,10 @@ abstract class CategoryManagementRepository {
 
   /// Một hàng, kể cả đã xoá mềm — tên danh mục trên bảng thanh toán hoá đơn. `categoryDao.getById`.
   Future<Category?> getRowById(String id);
+
+  /// Danh sách phẳng theo phân loại, GỒM cả hàng nhóm, khử trùng theo tên — `categoryDao.getCategoryRows`. Cho form
+  /// hoá đơn (dropdown phẳng), giữ đúng hành vi trước 2026-10-10; bộ chọn danh mục khác dùng `selectableChildren`.
+  Future<List<Category>> getCategoryRows({required int accountId, required String classify});
 }
 
 class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
@@ -393,6 +397,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   Stream<List<Category>> watchAllRows({required int accountId}) => db.categoryDao.watchAll(accountId);
   @override
   Future<Category?> getRowById(String id) => db.categoryDao.getById(id);
+  @override
+  Future<List<Category>> getCategoryRows({required int accountId, required String classify}) =>
+      db.categoryDao.getCategoryRows(accountId, classify);
 
   @override
   Future<List<Category>> selectableChildrenAll({required int accountId}) async {

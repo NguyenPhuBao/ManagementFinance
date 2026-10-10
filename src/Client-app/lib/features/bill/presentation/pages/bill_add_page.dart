@@ -108,8 +108,7 @@ class _BillAddPageState extends State<BillAddPage> {
     // sách. `getCategoryRows` gồm cả danh mục mặc định (idaccount = 0).
     final categories = accountId == null
         ? <Category>[]
-        : await sl<CategoryManagementRepository>()
-            .selectableChildren(accountId: accountId, classify: 'chi');
+        : await sl<CategoryManagementRepository>().getCategoryRows(accountId: accountId, classify: 'chi');
     if (mounted) {
       // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
       // đã xoá hoặc đã lưu trữ thì rơi về lựa chọn mặc định như khi mở thường.
