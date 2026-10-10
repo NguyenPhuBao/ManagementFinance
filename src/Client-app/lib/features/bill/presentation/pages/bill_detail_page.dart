@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
-import '../../../../core/bill/bill_recurrence.dart';
+import '../../domain/bill_recurrence.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';

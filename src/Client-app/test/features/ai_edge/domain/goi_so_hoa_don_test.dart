@@ -10,7 +10,7 @@ import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Bill _bill({

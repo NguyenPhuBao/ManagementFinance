@@ -4,7 +4,7 @@
 library;
 
 import 'package:drift/drift.dart' show Value;
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_cu_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';

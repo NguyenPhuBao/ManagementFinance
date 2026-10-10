@@ -3,7 +3,7 @@
 /// để một hàm mới lỡ gọi thêm sẽ ném thay vì im lặng (nếp `nguon_goi_so_test`).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';

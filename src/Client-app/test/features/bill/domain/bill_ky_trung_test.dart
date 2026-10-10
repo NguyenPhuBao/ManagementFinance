@@ -6,7 +6,7 @@
 /// kỳ 12/10 dưới BA cha khác nhau. Nên khoá gộp là GỐC CHUỖI + ngày, không phải cha.
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_ky_trung.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';

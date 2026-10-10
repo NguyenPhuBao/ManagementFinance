@@ -4,7 +4,7 @@
 /// rộng vô hạn, nút trần trong `Row` làm trắng cả trang (bẫy 4.11).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/utils/currency_formatter.dart';
 import 'package:flowmoney/features/bill/data/de_xuat_hoa_don_nguon.dart';

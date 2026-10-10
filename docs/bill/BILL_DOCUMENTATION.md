@@ -10,7 +10,7 @@
 > (v20 thu loại ví về ba, không đụng gì tới hoá đơn; cột `Bills.anchorDay` của
 > hoá đơn vào ở **v18**; v19 là cột `priority` của
 > mục tiêu, không đụng bảng `Bills`)
-> **Phạm vi:** `src/Client-app/lib/features/bill` + phần bill của `core/sync`, `core/database`, `core/bill`
+> **Phạm vi:** `src/Client-app/lib/features/bill` + phần bill của `core/sync`, `core/database`
 
 > ✅ **Tài liệu này ĐÃ nằm trong repo từ 2026-09-21.** Trước đó thư mục
 > `docs/bill/` bị `.gitignore` chặn và tệp chỉ có trên máy đã dựng — trong khi
@@ -59,15 +59,13 @@ Những gì **chưa** làm được nằm ở mục 8 — đọc trước khi h�
 ## 2. Cấu trúc mã nguồn
 
 ```
-lib/core/bill/
-└── bill_recurrence.dart        # Chu kỳ lặp: nextBillDueDate + quy đổi hai
-                                # cách biểu diễn. Đặt ở core (không phải
-                                # features) vì sync_engine cũng dùng — một
-                                # định nghĩa duy nhất, giống
-                                # core/category/category_name.dart
-
 lib/features/bill/
 ├── domain/
+│   ├── bill_recurrence.dart    # Chu kỳ lặp: nextBillDueDate + quy đổi hai
+│   │                           # cách biểu diễn. Từ 2026-10-10 ở domain của
+│   │                           # mảng (trước đó ở core/bill/); sync_engine
+│   │                           # import nó như bill_pay_status — một định
+│   │                           # nghĩa duy nhất
 │   ├── bill_draft.dart         # Giá trị form → BillsCompanion.
 │   │                           # Tách khỏi widget để test được
 │   ├── bill_schedule.dart      # Hai trục chu kỳ + hai mốc ngày; suy ngược
@@ -289,7 +287,7 @@ bản mặc định còn sống là **thao tác dữ liệu**, xem mục 8. Cùn
 
 ## 5. Chu kỳ lặp
 
-`core/bill/bill_recurrence.dart` giữ **định nghĩa duy nhất**.
+`features/bill/domain/bill_recurrence.dart` giữ **định nghĩa duy nhất**.
 
 ```dart
 DateTime nextBillDueDate(DateTime current, String timeRecurrence)
@@ -1156,7 +1154,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 
 | Tệp | Canh chừng điều gì |
 |---|---|
-| `test/core/bill/bill_recurrence_test.dart` | Kẹp ngày cuối tháng, năm nhuận, chu kỳ quý, vắt qua năm, giữ giờ/phút, quy đổi hai cách biểu diễn |
+| `test/features/bill/domain/bill_recurrence_test.dart` | Kẹp ngày cuối tháng, năm nhuận, chu kỳ quý, vắt qua năm, giữ giờ/phút, quy đổi hai cách biểu diễn |
 | `test/core/database/bill_overdue_test.dart` | Cờ `Overdue` **hai chiều**; đến hạn hôm nay chưa quá hạn; gỡ cờ cũng đánh dấu `pending`; đã trả không bị lôi về; **chạy hai lần thì lần hai không đổi gì** (chống vòng lặp đẩy); không đụng tài khoản khác |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái |
 | `test/features/bill/domain/bill_schedule_test.dart` | Ngày đến hạn suy từ chu kỳ ở cả bốn chu kỳ; bất biến bắt đầu < đến hạn; công tắc lặp lại không đụng cách tính hạn; `fromBill` phát hiện hạn cũ lệch và cảnh báo |

@@ -14,12 +14,12 @@
 ///   thêm. Hàng cũ (`periodEnd` NULL) thì hai mốc trùng nhau.
 /// - **Ngày gốc** (`anchorDay`) đi theo cả chuỗi và **không cộng dồn**: kỳ
 ///   31/01 kẹp về 28/02 rồi bước tiếp *từ 28* là nhịp tụt xuống 28 vĩnh viễn.
-///   Xem `core/bill/bill_recurrence.dart`.
+///   Xem `features/bill/domain/bill_recurrence.dart`.
 library;
 
 import 'package:drift/drift.dart' show Value;
 
-import '../../../core/bill/bill_recurrence.dart';
+import 'bill_recurrence.dart';
 import '../../../core/database/app_database.dart';
 import 'bill_an_han.dart';
 

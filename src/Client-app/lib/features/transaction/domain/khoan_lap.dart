@@ -14,7 +14,7 @@ library;
 
 import 'dart:math' as math;
 
-import '../../../core/bill/bill_recurrence.dart';
+import '../../bill/domain/bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
 import '../../analytics/domain/khoan_vao_thong_ke.dart';

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/bill/bill_recurrence.dart';
+import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';

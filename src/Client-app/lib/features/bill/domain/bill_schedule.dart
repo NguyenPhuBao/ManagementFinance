@@ -1,5 +1,5 @@
 import 'package:intl/intl.dart';
-import '../../../core/bill/bill_recurrence.dart';
+import 'bill_recurrence.dart';
 import '../../../core/database/app_database.dart';
 import 'bill_an_han.dart';
 

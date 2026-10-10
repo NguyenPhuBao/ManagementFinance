@@ -45,8 +45,6 @@ const mienTru = <String, String>{
 
 /// Luật 1–4 và 6: vi phạm còn chờ dọn (đường dẫn tương đối `src/Client-app`). Điền từ lượt chạy đỏ; rút dần theo nhóm.
 const conCho = <String>{
-  // Luật 4 — chủ đề core ngoài danh sách (Task 7).
-  'lib/core/bill',
   // Luật 6 — test ở gốc, thư mục không soi gương (Task 9).
   'test/e2e_sqlite_to_backend_sync_test.dart',
   'test/transaction_repository_test.dart',
@@ -58,7 +56,9 @@ const conCho = <String>{
 /// Đo 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
   'lib/core/notification/notification_rules.dart': 10,
-  'lib/core/sync/sync_engine.dart': 6,
+  // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
+  // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status). Lần tăng DUY NHẤT.
+  'lib/core/sync/sync_engine.dart': 7,
   'lib/core/notification/notification_scanner.dart': 5,
   'lib/core/nen/lich_nen.dart': 3,
   'lib/core/sync/sync_payload_normalizer.dart': 2,

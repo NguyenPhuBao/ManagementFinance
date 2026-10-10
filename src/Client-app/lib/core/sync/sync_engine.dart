@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 
 import '../api/dio_client.dart';
-import '../bill/bill_recurrence.dart';
+import '../../features/bill/domain/bill_recurrence.dart';
 import '../database/app_database.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/services/tha_vi_bi_giu.dart';

@@ -5,7 +5,7 @@ import '../../domain/bill_ky_ke_tiep.dart';
 import '../../domain/bill_ky_trung.dart';
 import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
-import '../../../../core/bill/bill_recurrence.dart';
+import '../../domain/bill_recurrence.dart';
 import '../../domain/bill_note.dart';
 import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/bill_local_datasource.dart';

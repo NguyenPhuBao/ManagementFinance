@@ -22,7 +22,7 @@
 /// nên tổng hợp đi theo và bỏ *Cố định mỗi tháng* (số của mọi hoá đơn).
 library;
 
-import '../../../core/bill/bill_recurrence.dart';
+import '../../bill/domain/bill_recurrence.dart';
 import '../../../core/database/app_database.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';

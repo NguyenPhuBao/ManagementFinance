@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/bill/bill_recurrence.dart';
+import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';

@@ -7,7 +7,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 
 void main() {

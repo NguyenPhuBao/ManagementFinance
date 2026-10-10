@@ -3,7 +3,7 @@
 /// tập hoá đơn (bẫy của gói hoá đơn 1.3).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';

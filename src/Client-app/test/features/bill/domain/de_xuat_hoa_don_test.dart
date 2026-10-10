@@ -5,7 +5,7 @@
 /// mục 2 (hoá đơn trùng tên), 3 (phản hồi), 4 (chọn).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flowmoney/features/bill/domain/de_xuat_hoa_don.dart';

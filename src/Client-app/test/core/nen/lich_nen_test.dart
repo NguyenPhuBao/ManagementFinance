@@ -1,7 +1,7 @@
 /// Mốc lượt nền kế tiếp của hai bộ tự chuyển tiền (spec 2026-10-10-tu-chuyen-tien-chay-nen-design.md mục 3.1).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/nen/kenh_tu_chuyen_tien.dart';
 import 'package:flowmoney/core/nen/lich_nen.dart';

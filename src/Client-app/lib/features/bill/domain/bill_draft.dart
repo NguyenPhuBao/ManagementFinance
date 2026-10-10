@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import '../../../core/bill/bill_recurrence.dart';
+import 'bill_recurrence.dart';
 import '../../../core/database/app_database.dart';
 
 /// Giá trị người dùng nhập trên form hoá đơn.
