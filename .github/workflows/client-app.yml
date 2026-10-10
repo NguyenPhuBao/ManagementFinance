@@ -44,4 +44,109 @@ jobs:
           echo "issues=$N muc_nen=$MUC_NEN"
           test "$N" -le "$MUC_NEN"
 
-      - run: flutter test --reporter compact
+      - name: flutter test (đầu ra người đọc + tệp JSON cho bước in annotation)
+        id: test
+        run: flutter test --reporter compact --file-reporter json:test-results.json
+
+      # Log job cần đăng nhập để đọc; annotation thì đọc được công khai.
+      # Bước này chỉ chạy khi bước test đỏ, và luôn thoát 0 (job vẫn đỏ nhờ bước test).
+      - name: In test đỏ thành annotation
+        if: failure() && steps.test.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          import json, os
+
+          ARQ = 'test-results.json'
+          GOC = 'src/Client-app/'
+          TOI_DA_RIENG = 9
+
+
+          def esc(s, prop=False):
+              s = s.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              if prop:
+                  s = s.replace(':', '%3A').replace(',', '%2C')
+              return s
+
+
+          def cell(s):
+              return s.replace('|', '\\|').replace('\r', ' ').replace('\n', ' ')
+
+
+          def dong_dau(err):
+              for d in (err or '').splitlines():
+                  if d.strip():
+                      return d.strip()[:300]
+              return ''
+
+
+          def doc():
+              suites, tests, errors, results = {}, {}, {}, {}
+              with open(ARQ, encoding='utf-8') as f:
+                  for dong in f:
+                      dong = dong.strip()
+                      if not dong:
+                          continue
+                      try:
+                          ev = json.loads(dong)
+                      except ValueError:
+                          continue
+                      kind = ev.get('type')
+                      if kind == 'suite':
+                          s = ev['suite']
+                          suites[s['id']] = s.get('path', '')
+                      elif kind == 'testStart':
+                          t = ev['test']
+                          tests[t['id']] = {'name': t.get('name', ''), 'suite': t.get('suiteID')}
+                      elif kind == 'error':
+                          errors.setdefault(ev.get('testID'), []).append(ev.get('error') or '')
+                      elif kind == 'testDone':
+                          if ev.get('hidden'):
+                              continue
+                          results[ev.get('testID')] = ev.get('result')
+              loi = []
+              for tid, kq in results.items():
+                  if kq not in ('failure', 'error'):
+                      continue
+                  t = tests.get(tid, {'name': '(test id %s)' % tid, 'suite': None})
+                  chuoi = errors.get(tid) or ['']
+                  loi.append({
+                      'path': suites.get(t['suite'], ''),
+                      'name': t['name'],
+                      'err': chuoi[0][:300],
+                      'dong': dong_dau(chuoi[0]),
+                  })
+              loi.sort(key=lambda x: (x['path'], x['name']))
+              return loi
+
+
+          def main():
+              if not os.path.exists(ARQ):
+                  print('::warning title=Không có %s::Bước test không ghi tệp JSON; xem log bước test.' % ARQ)
+                  return
+              loi = doc()
+              n = len(loi)
+              if n == 0:
+                  print('::error title=flutter test đỏ nhưng không đọc được test nào::'
+                        'Không có testDone result failure/error trong %s; xem log bước test.' % ARQ)
+                  return
+              dong_tong = ['%s — %s' % (x['path'], x['name']) for x in loi]
+              print('::error title=%s::%s' % (esc('Test đỏ (%d)' % n, True), esc('\n'.join(dong_tong))))
+              for x in loi[:TOI_DA_RIENG]:
+                  thuoc_tinh = []
+                  if x['path']:
+                      thuoc_tinh.append('file=' + esc(GOC + x['path'], True))
+                  thuoc_tinh.append('title=' + esc(x['name'][:100], True))
+                  print('::error %s::%s' % (','.join(thuoc_tinh), esc(x['err'])))
+              tom = os.environ.get('GITHUB_STEP_SUMMARY')
+              if tom:
+                  with open(tom, 'a', encoding='utf-8') as f:
+                      f.write('### Test đỏ (%d)\n\n| Suite | Test | Lỗi (dòng đầu) |\n|---|---|---|\n' % n)
+                      for x in loi:
+                          f.write('| `%s` | %s | %s |\n' % (cell(x['path']), cell(x['name']), cell(x['dong'])))
+
+
+          try:
+              main()
+          except Exception as e:
+              print('::warning title=Không in được annotation::%s' % esc(repr(e)))
+          PY
