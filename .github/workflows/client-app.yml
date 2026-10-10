@@ -15,6 +15,10 @@ jobs:
   kiem:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # Bộ test giả định giờ hệ thống = giờ Việt Nam như máy dev và điện thoại người dùng;
+    # lượt CI đầu đỏ đúng một ca os_notifier_native_test vì runner ở UTC (2026-10-10).
+    env:
+      TZ: Asia/Ho_Chi_Minh
     defaults:
       run:
         working-directory: src/Client-app
