@@ -594,7 +594,37 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-09)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-10)
+
+### ⚡ Tự chuyển tiền chạy nền — mở lại G22 (2026-10-10)
+
+Người dùng mở lại G22: **tự trả hoá đơn và trích mục tiêu chạy cả khi app đóng** (Android), lượt nền **đồng bộ** luôn.
+Spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md` (duyệt từng phần); kế hoạch 10 task
+`plans/2026-10-10-tu-chuyen-tien-chay-nen.md` (gitignore). Giao dịch vốn đã ghi theo mốc kỳ, nên thứ người dùng thấy
+khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
+
+- **Luồng:** cuối mỗi lượt quét, `LichNen.henNeuDoi` (`lib/core/nen/lich_nen.dart`) tính `lichNenKeTiep` — mốc **tương
+  lai** gần nhất (hoá đơn tự trả: ngày đến hạn lúc **giờ nhắc chung**; kỳ trích: `kyKeTiep`) + cờ `coTuDong` — và chỉ khi
+  lịch **đổi** mới gửi `henNen` qua kênh `flowmoney/tu_chuyen_tien`. `TuChuyenTien.kt` hẹn WorkManager một-lần (theo mốc)
+  + định kỳ 6 giờ. `TuChuyenTienWorker`: app đang mở → `quetNgay` vào engine của app và **chờ**; app đóng → `FlutterEngine`
+  headless chạy `chayNenTuChuyenTien` (`main.dart`, `@pragma`) → `chayNen()` (`lib/core/nen/chay_nen.dart`) →
+  `setupDependencies(cheDoNen: true)` → `LuotNen` (gói → nhật ký → `syncMotLuot` → `scan` → `syncMotLuot`) → `nenXong`
+  kèm mốc kế; worker hẹn lượt kế bằng **APPEND_OR_REPLACE**.
+- **Năm chốt hỏng im lặng:** (1) `GoiRepository.datTaiKhoan` **trước** khi quét ở nền — `coQuyenNen` trả `true` khi gói
+  chưa có tài khoản, thiếu là Basic được tự trả; (2) lượt nền **không tự `henNen`** — `REPLACE` lên chính công việc
+  đang chạy là WorkManager huỷ nó; (3) `noiBoNgheKetQuaDay()` (`lib/core/sync/`) gọi ở **cả** `main.dart` lẫn
+  `chay_nen.dart` — thiếu ở nền là `BILL_ALREADY_PAID` về không ai gỡ; (4) ở nền `AuthInterceptor(cheDoNen: true)`
+  **không** làm mới / xoá token — app và nền cùng làm mới một refresh token là backend đếm dùng lại token; (5) khoá thuê
+  `khoa_tu_chuyen_tiens` (schema **v30**, cục bộ) lấy bằng **một câu `UPDATE`** — khoá tệp không chặn hai isolate cùng
+  tiến trình; `busy_timeout = 5000` ở `connection/native.dart`.
+- **Hai máy cùng trích một kỳ:** khoản trích mang id tất định `idKhoanTrichTuDong` (UUID v5 của mục tiêu + mốc **UTC**)
+  → server một hàng; hàng cùng id đã có (kể cả xoá mềm) → `KyDaTrichException`, không trừ tiền, không sự kiện, chỉ đẩy
+  mốc. `autoDepositLastRun` nay ghi **cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`). Không cần backend.
+- **Chữ (chỉ Android, `coChayNen`):** bỏ lời nhắc *"Đến kỳ trích tự động… Mở app"*; nhắc tự trả *"…sẽ được tự trả"*;
+  `goiYTuTra(chayNen:)` thay hằng `kBillAutoPayHint`; ô giờ trích *"Tiền được chuyển gần giờ này; máy đang ngủ sâu thì
+  có thể muộn hơn"*. iOS giữ nguyên.
+- **Giới hạn:** giờ không chính xác tới phút; Realme force-stop huỷ WorkManager; ca *trích phần còn thiếu* ở hai máy có
+  số liệu khác nhau → LWW giữ một số tiền.
 
 ### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 · kỳ hoá đơn trùng — G87 (2026-10-09)
 

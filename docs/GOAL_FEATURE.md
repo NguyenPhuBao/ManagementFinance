@@ -278,7 +278,32 @@ Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đ
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
 như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 
-### 3.12 Trích tiền tự động: chạy trong vòng quét, không phải bộ lập lịch nền
+### 3.12 Trích tiền tự động: chạy trong vòng quét — và từ 2026-10-10 cả từ engine nền
+
+> ✅ **2026-10-10 — chạy nền (Android), mở lại G22** (spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`).
+> Vòng quét bên dưới vẫn là **nơi duy nhất** chạy bộ trích; cái mới là **ai gọi vòng quét**: WorkManager hẹn một lượt
+> vào kỳ trích kế (`lichNenKeTiep` ở `lib/core/nen/lich_nen.dart`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
+> `NotificationScanner.scan()` trong engine headless khi app đóng (`lib/core/nen/chay_nen.dart`), hoặc trong engine của
+> app khi app đang mở (`quetNgay`). Lượt nền **đồng bộ** trước và sau khi quét (`SyncEngine.syncMotLuot`, không làm mới
+> token). **Năm chốt, phá cái nào cũng hỏng im lặng:**
+>
+> 1. **Khoá thuê** `khoa_tu_chuyen_tiens` (schema v30) — engine nền và engine app có thể cùng tiến trình; `_dangQuet`
+>    chỉ chặn trong một isolate, khoá tệp không chặn hai isolate cùng tiến trình. Lấy khoá là **một câu `UPDATE`**.
+> 2. **Id tất định** `idKhoanTrichTuDong(goalId, kỳ)` (UUID v5 của mốc **UTC**) — hai máy cùng trích kỳ 08:00 chỉ ra
+>    **một** hàng trên server. Hàng cùng id đã có (kể cả **xoá mềm**) → `KyDaTrichException`: không trừ tiền, **không
+>    sự kiện** (báo "Đã trích…" cho việc máy kia làm là nói dối), chỉ đẩy mốc.
+> 3. **`autoDepositLastRun` ghi cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`) — trước đó ghi rời sau
+>    vòng lặp, app sập giữa vòng thì kỳ đã trích bị trích lại.
+> 4. **Gói đặt TRƯỚC khi quét** ở nền (`GoiRepository.datTaiKhoan`) — `coQuyenNen` trả `true` khi gói chưa có tài
+>    khoản, thiếu bước này là Basic được tự trích ở nền.
+> 5. Kỳ đã quá hạn mà ví không đủ **không** được hẹn "ngay" — lượt một-lần tự hẹn lại ngay là vòng lặp tốn pin; nó chờ
+>    lượt định kỳ.
+>
+> ⚠️ Giới hạn: hai máy có số liệu khác nhau trước kỳ (khoản nạp tay chưa đồng bộ) rồi cùng rơi vào ca **trích phần
+> còn thiếu** với hai số tiền khác → server giữ một số tiền theo LWW, tiến độ một máy lệch tới lượt kéo về sau. Khoản
+> trích có từ trước (id v4) không đổi. Giờ chạy không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); Realme
+> force-stop khi vuốt Recents huỷ WorkManager. **iOS** không có lượt nền — đoạn dưới vẫn đúng ở đó.
+
 
 Trước bản này, khối "Tự động trích tiền định kỳ" thu **ba** thông tin và lưu
 đúng **một**: chu kỳ vào `cycle_take_money`, còn số tiền mỗi kỳ chỉ dùng để tính
@@ -338,10 +363,11 @@ dùng sang máy khác, **trạng thái thi hành** (số tiền, ví nguồn, đ
 | `timeCycleTakeMoney` | **nhịp** — kỳ rơi vào lúc nào | Lựa chọn của người dùng không có tác dụng nào, im lặng |
 | `autoDepositLastRun` | **sàn** — đã trích tới đâu | Chọn "ngày 1" vào ngày 5 sẽ trích bù ngay cho mùng 1 vừa qua |
 
-⚠️ **Giờ chỉ giữ được MỘT chiều.** Bộ trích chạy khi app mở (mục 3.12), nên đặt
-08:00 nghĩa là *không bao giờ sớm hơn 08:00* — nhưng nếu 21 giờ mới mở app thì
-nó trích lúc 21 giờ. Biểu mẫu nói thẳng điều này ngay dưới ô chọn giờ thay vì để
-người dùng tự phát hiện.
+⚠️ **Giờ chỉ giữ được MỘT chiều — trên iOS.** Ở đó bộ trích chạy khi app mở
+(mục 3.12), nên đặt 08:00 nghĩa là *không bao giờ sớm hơn 08:00* — nhưng nếu 21
+giờ mới mở app thì nó trích lúc 21 giờ. **Android từ 2026-10-10 có lượt nền**:
+tiền chuyển gần 08:00 kể cả khi app đóng (WorkManager có thể lùi khi máy ngủ
+sâu). Biểu mẫu nói đúng câu của từng nền tảng ngay dưới ô chọn giờ (`coChayNen`).
 
 ✅ **Nhịp neo vào mốc gốc, không trôi** (sửa 2026-09-08). Mốc rơi vào ngày 31 bị
 kẹp về 28/02 ở tháng ngắn — đúng — nhưng kỳ sau **quay lại ngày 31**:
@@ -364,6 +390,10 @@ này**. Hai bên trôi khác nhau là điện thoại nhắc một ngày còn ti
 ngày khác.
 
 ### Lời nhắc khi app đóng
+
+> ✅ **Từ 2026-10-10 đoạn này chỉ còn đúng trên iOS.** Android có lượt nền (mục 3.12) nên
+> `ReminderScheduler(chayNen: true)` **không** đặt lời nhắc kỳ trích nữa — lượt nền bắn thẳng
+> *"Đã trích…"* bằng cùng khoá.
 
 Bộ trích chỉ chạy khi app mở, nên tới đúng mốc kỳ mà app đang đóng thì **không
 có đồng nào rời ví lúc đó** — kỳ ấy được trích bù ở lần mở kế tiếp.
@@ -392,7 +422,9 @@ hình **lẫn mốc kỳ gần nhất**, nên nó không trích lại kỳ vừa
 ⚠️ Đúng một khe hở còn lại: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp kéo
 `last_run` của nhau thì vẫn trích hai lần. Hẹp, vì trích chỉ chạy khi app mở và
 `Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai. Vá
-triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`.
+triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`. ✅ **2026-10-10:** chạy nền làm khe ấy thành ca thường (hai máy cùng tự chạy lúc 08:00), nên nó được vá ở client
+bằng **id tất định** `idKhoanTrichTuDong` (UUID v5 của mục tiêu + mốc kỳ UTC): hai máy cùng trích một kỳ thì server chỉ
+có **một** hàng (LWW), máy thấy hàng cùng id đã có thì không trừ tiền. Không cần khoá phía máy chủ.
 
 Đây cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
 nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
@@ -1225,7 +1257,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Việc | Ghi chú |
 |---|---|
 | ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
-| Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
+| ~~Không có bộ **lập lịch nền**~~ | ✅ **Làm 2026-10-10 (Android)** — người dùng mở lại G22; WorkManager chạy vòng quét khi app đóng, mục 3.12. iOS vẫn chỉ trích khi mở app |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15. ✅ **Người dùng chốt GIỮ NGUYÊN (2026-10-10)** — đừng viết đơn CAN-LAM xin unique index: hai máy offline cùng tạo một tên thì mục tiêu của một máy kẹt hàng đợi đẩy vĩnh viễn, đúng họ `WALLET_NAME_DUPLICATE` / G63 |
 | ~~**Ưu tiên mục tiêu** chưa có~~ | ✅ **Xong 2026-09-08** — schema v19, kéo thả ở tab "Đang theo đuổi", đồng bộ đủ hai chiều. Mục **3.22** |
 

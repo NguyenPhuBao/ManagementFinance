@@ -1675,6 +1675,14 @@ khi khoản trích chạy xong, thông báo kia **thay chỗ** lời nhắc thay
 nó. Hai thông báo cho một sự việc là thứ người dùng đọc thành "app trích hai
 lần".
 
+✅ **Từ 2026-10-10 lời nhắc kỳ trích CHỈ còn trên iOS** (`ReminderScheduler.chayNen`
+= `coChayNen`). Trên Android lượt nền của WorkManager tự trích gần đúng mốc kỳ và
+bắn thẳng *"Đã trích…"* / *"Chưa trích được"* bằng cùng khoá — lời nhắc *"Mở app để
+tiền được chuyển"* thành nói sai. Cùng lý do, câu nhắc hoá đơn **tự trả** trên
+Android thôi bảo "Mở app": *"…còn N ngày tới hạn, sẽ được tự trả vào ngày đó."* /
+*"…đến hạn hôm nay, sẽ được tự trả."* Spec
+`docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`.
+
 ⚠️ Hai loại `goalAuto*` lấy **mốc của KỲ TRÍCH** làm `createdAt`, không phải lúc
 quét. Lấy lúc quét thì `silenceBefore` (cửa sổ 30 ngày) không loại được những kỳ
 trích bù từ nửa năm trước, và lần mở app đầu tiên sẽ đổ ra cả chục thông báo

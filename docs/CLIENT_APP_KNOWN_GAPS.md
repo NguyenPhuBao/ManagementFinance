@@ -29,7 +29,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
 > | ~~**G24**~~ | ✅ **Đóng 2026-09-11** — client đổi `colour` → `color` ở `categoryForPush` và đọc `c['color']` khi kéo về; server nhận màu (kiểm trên máy ảo: `category.Color = #FF5722`). Danh mục đã `synced` từ trước chỉ lên màu khi được **lưu lại**. ⚠️ Dòng này từng ghi *không có cột, chặn ở backend*, rồi *lỗi phía client, chưa sửa* — đúng tới trước khi gộp `main` và trước bản sửa |
 > | ~~**G21**~~ | ✅ **Đóng 2026-09-07** — backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G21 bên dưới; sửa 2026-09-08. Còn đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ |
-> | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
+> | ~~**G22**~~ | ✅ **MỞ LẠI VÀ LÀM 2026-10-10** (người dùng chọn) — trích mục tiêu và tự trả hoá đơn chạy nền qua WorkManager trên Android, đồng bộ trong lượt nền; spec `specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`. Giờ vẫn không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); iOS giữ hành vi cũ. Trước đó: *không phải lỗi — giờ trong mốc neo chỉ giữ được một chiều* |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | ~~**G26**~~ | ✅ **ĐÓNG 2026-09-18 bằng quyết định sản phẩm** — nhóm **bỏ hẳn** liên kết ngân hàng, nên màn duyệt giao dịch ngân hàng không còn là việc thiếu. Phần client đã gỡ cùng ngày (màn mockup, thẻ ở Quản lý ví, hai route, `RealtimeEvent.giaoDichNganHang`). ⚠️ Đừng viện mục này để mở `status`/`provider` vào hợp đồng đồng bộ — hai cột ấy ở lại ngoài. Trước đó: hoãn có chủ ý vì đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | ~~**G27**~~ ✅ **ĐÓNG 2026-09-17** (cờ `allowNegative`, schema v23) — trước đó: không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
@@ -619,11 +619,26 @@ và `Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ kh�
 Vá triệt để cần một khoá phía máy chủ trên `(Idgoal, kỳ trích)` — phụ thuộc
 `transaction.Idgoal`, cột đã có và client đẩy/đọc từ 2026-09-07 (xem **G18**);
 còn khoá phía máy chủ ấy thì chưa có (đo 2026-09-11: bảng `goal` không có ràng buộc
-duy nhất nào ngoài khoá chính).
+duy nhất nào ngoài khoá chính). ✅ **2026-10-10:** chạy nền làm khe ấy thành ca thường (hai máy cùng tự chạy lúc 08:00), nên nó được vá ở client
+bằng **id tất định** `idKhoanTrichTuDong` (UUID v5 của mục tiêu + mốc kỳ UTC): hai máy cùng trích một kỳ thì server chỉ
+có **một** hàng (LWW), máy thấy hàng cùng id đã có thì không trừ tiền. Không cần khoá phía máy chủ.
 
 ---
 
-### G22 — Giờ trong mốc trích chỉ giữ được MỘT chiều · ✅ CỐ Ý (2026-09-05)
+### ~~G22 — Giờ trong mốc trích chỉ giữ được MỘT chiều~~ · ✅ MỞ LẠI VÀ LÀM (2026-10-10; trước đó ✅ CỐ Ý 2026-09-05)
+
+> ✅ **2026-10-10 — người dùng mở lại quyết định dưới đây** sau khi được nêu rõ người dùng thấy khác ở đâu: giao dịch
+> vốn đã ghi theo **mốc kỳ** nên sổ và số dư không đổi; thứ đổi là **thông báo đúng lúc** và **máy khác thấy ngay** (lượt
+> nền đồng bộ). Spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`. Trên **Android**:
+> `TuChuyenTienWorker` (WorkManager, lượt một-lần theo mốc + định kỳ 6 giờ) — app đang mở thì gọi `quetNgay` vào engine
+> của app, app đóng thì dựng engine headless chạy `chayNenTuChuyenTien`. Rủi ro "kết nối SQLite thứ hai" dưới đây được
+> trả lời bằng ba chốt: **khoá thuê** `khoa_tu_chuyen_tiens` (một câu `UPDATE` nguyên tử — khoá tệp không chặn hai
+> isolate cùng tiến trình), `busy_timeout`, và `autoDepositLastRun` ghi **cùng giao tác** với khoản nạp. Hai **máy**
+> cùng trích một kỳ: id tất định `idKhoanTrichTuDong` (UUID v5) → server một hàng. Hoá đơn tự trả chạy lúc **giờ nhắc
+> chung** ngày đến hạn. Còn đúng: giờ không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); Realme/ColorOS
+> force-stop khi vuốt Recents **huỷ** WorkManager (giới hạn hãng); **iOS** giữ nguyên hành vi dưới đây. Đoạn dưới giữ
+> làm lịch sử.
+
 
 Ghi ở đây để người sau **không "sửa"** nó, và không hứa với người dùng nhiều hơn
 những gì app làm được.

@@ -571,11 +571,19 @@ trích tiền mục tiêu, mục 3.12–3.14 `GOAL_FEATURE.md`). Thiết kế đ
 `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`; đây là bản tóm
 tắt và các bẫy.
 
+> ✅ **Từ 2026-10-10 tự trả chạy cả khi app đóng (Android)** — spec
+> `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`. WorkManager hẹn một
+> lượt vào **ngày đến hạn lúc giờ nhắc chung** (`prefs.gioNhac:phutNhac`, `lichNenKeTiep`) cộng một
+> lượt định kỳ 6 giờ; lượt ấy chạy chính `NotificationScanner.scan()` (bộ chạy bên dưới không đổi)
+> rồi đồng bộ, nên máy thắng cuộc đua trả hai lần đẩy sớm hơn. Ngày đến hạn đã qua mà chưa trả (ví
+> không đủ) **không** hẹn lại "ngay" — chờ lượt định kỳ. Câu nhắc và `goiYTuTra(chayNen:)` (thay
+> hằng `kBillAutoPayHint`) thôi bảo "Mở app" trên Android; iOS giữ câu cũ.
+
 | Phần | Ở đâu |
 |---|---|
 | Cột `bills.autoPayEnabled` (bool, mặc định false) — ✅ **đồng bộ** từ 2026-09-13, khoá `auto_pay` | `other_tables.dart`, migration `from < 17` không bật cho hoá đơn cũ |
 | Gỡ khoản trả bị server từ chối (`BILL_ALREADY_PAID`) | `data/services/bill_payment_conflict_resolver.dart` — mục **6.8** |
-| Quyết định thuần: `denLuotTuTra`, `quyetDinhTuTra`, `khoaKyTuTra`, `tranKyTuTraMoiLuot = 3`, `kBillAutoPayHint` | `domain/bill_auto_pay.dart` |
+| Quyết định thuần: `denLuotTuTra`, `quyetDinhTuTra`, `khoaKyTuTra`, `tranKyTuTraMoiLuot = 3`, `goiYTuTra` (2026-10-10, thay `kBillAutoPayHint`) | `domain/bill_auto_pay.dart` |
 | Bộ chạy `BillAutoPayRunner.chay(idaccount, now)` → `List<BillAutoPayEvent>` | `domain/bill_auto_pay_runner.dart`, gọi từ `NotificationScanner.scan()` qua closure `runAutoPays` (DI); **bỏ qua im lặng** kỳ có kỳ trùng đã đóng, và lượt quét gọi `gopKyTrung` **trước** nó (G87, mục 6.8) |
 | Hai loại thông báo `billAutoPaid` / `billAutoPayFailed`, nhóm `bill` | `notification_rules.dart`, `notification_prefs.dart` |
 | Lịch nhắc hệ điều hành đổi thân câu ("Mở app để hoá đơn được tự trả"), **cùng khoá** | `reminder_scheduler.dart` |
