@@ -43,8 +43,11 @@ Hàm thuần mới **`mocNenKeTiep(...)`** (đặt ở `core/notification/`, c�
   mà `ReminderScheduler` đang dùng — **không** chép lại phép tính kỳ).
 - Không còn gì → `null`.
 
-`ReminderScheduler.resync` (chạy cuối mỗi lượt quét) gọi nó rồi gửi qua kênh Kotlin sẵn có (`MainActivity`) — lệnh
-**`henNen(mocMs)`**:
+`ReminderScheduler.resync` (chạy cuối mỗi lượt quét) tính mốc. **Chỉ engine của app** gửi nó qua kênh Kotlin sẵn có
+(`MainActivity`) — lệnh **`henNen(mocMs)`** — và **chỉ khi mốc đổi** so với mốc đã hẹn lần trước (nhớ trong bộ nhớ;
+`resync` chạy sau mọi chu kỳ đồng bộ 15 phút). Lượt **nền** không gọi `henNen`: nó trả mốc kế trong payload của
+`nenXong`, và worker hẹn lượt mới **sau khi `doWork` trả về** — gọi `REPLACE` lên chính công việc đang chạy là
+WorkManager huỷ nó giữa chừng (luồng `doWork` bị ngắt, engine bị huỷ khi Dart còn đang đồng bộ):
 
 - WorkManager **một-lần**, tên duy nhất `tu_chuyen_tien_mot_lan`, `ExistingWorkPolicy.REPLACE`,
   `setInitialDelay(moc − now)` (âm → 0).
@@ -64,12 +67,15 @@ hạn của hãng (CLAUDE.md, mục "Chạy trên MÁY THẬT"), ghi vào tài l
 `TuChuyenTienWorker : Worker` — hai nhánh:
 
 - **App đang mở** — `MainActivity` giữ một tham chiếu tĩnh tới engine của nó (gán ở `configureFlutterEngine`, xoá ở
-  `cleanUpFlutterEngine`). Còn engine → gửi **`quetNgay`** qua kênh tới engine ấy, trả `Result.success()`. Không khởi
-  engine thứ hai, nên SQLite chỉ có **một** kết nối và stream Drift của màn hình tự cập nhật.
+  `cleanUpFlutterEngine`). Còn engine → gửi **`quetNgay`** qua kênh tới engine ấy và **chờ `quetXong`** (cùng
+  `CountDownLatch` + trần 3 phút như nhánh dưới) rồi mới trả `Result.success()` — trả ngay là WorkManager thả tiến
+  trình và Android có thể đóng băng app đang ở nền **giữa lượt quét**. Không khởi engine thứ hai, nên SQLite chỉ có
+  **một** kết nối và stream Drift của màn hình tự cập nhật.
 - **App đóng** — dựng `FlutterEngine` headless, `GeneratedPluginRegistrant.registerWith(engine)` (secure storage, local
   notifications, connectivity, path_provider…), chạy entrypoint Dart **`chayNenTuChuyenTien`**, chờ Dart báo
-  **`nenXong`** qua kênh riêng của engine ấy (`CountDownLatch`, trần **3 phút**), `engine.destroy()`, trả
-  `Result.success()`. Hết trần → vẫn `success` (lượt định kỳ sẽ thử lại; `retry` dễ thành vòng lặp tốn pin).
+  **`nenXong(mocKeTiepMs)`** qua kênh riêng của engine ấy (`CountDownLatch`, trần **3 phút**), `engine.destroy()`,
+  hẹn lượt một-lần theo `mocKeTiepMs` (mục 3.1), trả `Result.success()`. Hết trần → vẫn `success` (lượt định kỳ sẽ thử
+  lại; `retry` dễ thành vòng lặp tốn pin).
 
 ### 3.3 Lượt nền (Dart)
 
@@ -83,26 +89,42 @@ hạn của hãng (CLAUDE.md, mục "Chạy trên MÁY THẬT"), ghi vào tài l
    `ViTrungTenResolver` vào `SyncEngine.pushResultStream`. `main.dart` gọi **cùng** hàm này. Không nối ở nền thì
    `BILL_ALREADY_PAID` về mà không ai gỡ khoản trả — khoản chi lỗi vĩnh viễn.
 4. Đọc phiên từ bộ nhớ đệm (đường G86 — `AuthLocalDataSource`). Không có phiên → báo `nenXong`, dừng. **Quy tắc 2:**
-   `idaccount` chỉ từ phiên, không bao giờ suy từ SQLite.
+   `idaccount` chỉ từ phiên, không bao giờ suy từ SQLite. Gắn luôn `sl<NhatKyThongBao>().datNguonPhien(() => id)` —
+   `main.dart` gắn nó từ `AuthBloc`; ở nền không có bloc, thiếu bước này thì nhật ký B5a ghi lịch/bắn với tài khoản
+   rỗng. *(Đã kiểm: `OsNotifierNative.show` tự gọi `init()`, nên engine headless bắn được thông báo mà không cần bước
+   khởi tạo riêng.)*
 5. **`await sl<GoiRepository>().datTaiKhoan(idaccount, loaiPhien: …)`** — bắt buộc, TRƯỚC khi quét. Hai bộ chạy xét
    quyền qua `coQuyenNen` (`injection_container.dart`), mà hàm ấy **trả `true` khi `GoiRepository.idaccount == null`**
    (*"không phiên → mở"*, dành cho cửa nhập). Ở nền không ai gọi `noiPhien`, nên thiếu bước này thì tài khoản **Basic**
    được tự trả / tự trích ở nền — lọt cửa quyền, im lặng. Không gọi `lamMoi()` (mạng); bảng gói đã lưu là đủ.
 6. Lấy **khoá thuê** (mục 3.4). Không lấy được → bỏ hai bộ chạy (vẫn đồng bộ).
 7. Đồng bộ (mục 4.1) → `NotificationScanner.scan(idaccount)` → đẩy.
-8. Nhả khoá, báo `nenXong`. Mọi bước bọc `try/finally`: Dart ném lỗi vẫn phải báo xong, nếu không worker chờ hết 3 phút.
+8. Nhả khoá, báo `nenXong(mocNenKeTiep(...))`. Mọi bước bọc `try/finally`: Dart ném lỗi vẫn phải báo xong, nếu không
+   worker chờ hết 3 phút.
 
 Lệnh **`quetNgay`** ở engine của app: gọi `sl<NotificationScanner>().scan(id)` với phiên hiện tại rồi
-`sl<SyncEngine>().syncNow()`; không có phiên thì bỏ qua.
+`sl<SyncEngine>().syncNow()`, cuối cùng báo `quetXong`; không có phiên thì báo `quetXong` ngay.
+
+**Đồng bộ ở nền không đi qua `start()`/`syncNow()`.** `syncNow()` dựa vào `_currentIdaccount` do `start()` đặt, mà
+`start()` còn dựng hẹn giờ 15 phút và bộ nghe mạng — thứ lượt nền không được để lại; và test quét thứ tư
+(`sync_engine_start_owner_test`) chỉ cho `auth_bloc.dart` gọi `.start(idaccount:)`. Nên `SyncEngine` thêm
+**`syncMotLuot(int idaccount)`**: đọc mốc kéo về đã lưu của tài khoản (như `start()`), chạy `_runSync` một lần, không
+hẹn giờ, không nghe mạng, không đụng `_currentIdaccount`. Test quét thứ tư giữ nguyên.
 
 ### 3.4 Chặn chạy chồng
 
 Khe còn lại: người dùng mở app **đúng lúc** engine headless đang chạy → hai kết nối SQLite cùng tiến trình. `_dangQuet`
 chỉ chặn trong một isolate; khoá tệp (`RandomAccessFile.lock`, fcntl) **không** chặn được hai isolate cùng tiến trình.
 
-**Khoá thuê trong SQLite**: bảng cục bộ mới `KhoaTuChuyenTiens` (schema **v30**, một hàng: `ten` PK, `chuSoHuu`,
-`hetHan`). Lấy bằng một giao tác ghi: hàng không có hoặc `hetHan < now` → ghi `chuSoHuu = <id lượt>`, `hetHan = now +
-2 phút` → lấy được. SQLite tuần tự hoá người ghi giữa các kết nối nên hai lượt không cùng thắng. **Cả** `scan()` của app
+**Khoá thuê trong SQLite**: bảng cục bộ mới `KhoaTuChuyenTiens` (schema **v30**, một hàng: `ten` PK, `chuSoHuu`
+nullable, `hetHan`). Hàng được gieo sẵn lúc di trú. Lấy khoá là **một câu** `UPDATE … SET chuSoHuu = ?, hetHan = now + 2
+phút WHERE ten = ? AND (chuSoHuu IS NULL OR hetHan < now)` rồi đọc **số hàng bị ảnh hưởng** (1 = lấy được) — một câu
+ghi là nguyên tử giữa các kết nối; **không** viết dạng đọc-rồi-ghi (trong WAL hai giao tác trì hoãn cùng đọc "chưa có
+khoá"). Nhả: `UPDATE … SET chuSoHuu = NULL WHERE chuSoHuu = <id lượt>`.
+
+**`PRAGMA busy_timeout = 5000`** ở `core/database/connection/native.dart` (`NativeDatabase.createInBackground(…,
+setup:)`). Đây là lần đầu dự án **cố ý** cho hai kết nối cùng sống; mặc định 0 là mọi lần ghi trùng nhịp — kể cả UI
+ghi thông báo đúng lúc headless commit — ném `SQLITE_BUSY` **ngay**. **Cả** `scan()` của app
 lẫn lượt nền đi qua khoá này cho đoạn chạy hai bộ chuyển tiền; lượt không lấy được khoá **bỏ qua hai bộ chạy**, vẫn
 làm phần thông báo. Bảng cục bộ: **không** vào `SyncEntityType` (test quét 15).
 
@@ -113,7 +135,7 @@ vòng — app sập giữa vòng thì kỳ đã trích bị trích lại).
 
 ### 4.1 Thứ tự
 
-`syncNow()` (đẩy + kéo về) → `scan()` → `syncNow()` (đẩy).
+`syncMotLuot(id)` (đẩy + kéo về) → `scan()` → `syncMotLuot(id)` (đẩy những gì vừa ghi; lượt kéo về đi kèm là rẻ).
 
 - Lượt **trước** kéo về khoản của máy kia → bộ chạy thấy kỳ đã trả/đã trích, tránh phần lớn cuộc đua; `gopKyTrung`
   (G87) chỉ chạy khi `soLanKeoVeXong` vừa tăng, nên cũng được dữ liệu mới.
@@ -137,12 +159,15 @@ mô hình AI · `ConnectionMonitor`.
 
 ## 5. Khoản trích có id tất định
 
-Hàm thuần **`idKhoanTrichTuDong(goalId, ky)`** = UUID **v5** (namespace riêng) của `'$goalId|${ky.toIso8601String()}'`
-— cùng khuôn `idKhoanMoSo` (`wallet/domain/so_du_mo_so.dart`). `depositToGoal` nhận tham số `transactionId` (nạp tay
-vẫn v4). Trong **cùng** giao tác, trước khi ghi:
+Hàm thuần **`idKhoanTrichTuDong(goalId, ky)`** = UUID **v5** (namespace riêng) của
+`'$goalId|${ky.toUtc().millisecondsSinceEpoch}'` — băm **mốc tuyệt đối**, không băm chuỗi giờ địa phương (hai máy khác
+múi giờ ra hai id). Cùng khuôn `idKhoanMoSo` (`wallet/domain/so_du_mo_so.dart`). `depositToGoal` nhận tham số
+`transactionId` (nạp tay vẫn v4). Trong **cùng** giao tác, trước khi ghi:
 
 - Đã có hàng mang id ấy — **kể cả xoá mềm** → kỳ coi như đã trích: không trừ tiền, chỉ đẩy `autoDepositLastRun`. Hàng
   xoá mềm là người dùng đã chủ động xoá khoản ấy; trích lại là đi ngược ý họ.
+- Kỳ ấy **không sinh `GoalAutoDepositEvent`** (`depositToGoal` báo lại *"đã có"* cho bộ trích). Phát sự kiện thường là
+  máy B báo *"Đã trích 500 nghìn từ ví X"* cho việc máy A làm.
 
 Hệ quả khi hai máy cùng trích kỳ 08:00: **cùng id** → server nhận hàng thứ hai là sửa cùng hàng (LWW), sổ chỉ **một**
 khoản; số dư ví suy từ sổ (G37) nên chỉ trừ một lần; tiến độ mục tiêu hai máy cùng là *cũ + số tiền kỳ*.
@@ -164,6 +189,10 @@ là đơn 41.
 | `kBillAutoPayHint` (form hoá đơn) | *"Khi bạn mở app vào ngày đến hạn, hoá đơn được trả…"* | *"Vào ngày đến hạn, hoá đơn được trả…"* (phần còn lại giữ) |
 | Ô giờ trích (form mục tiêu) | *"Không trích trước giờ này. App chưa mở thì trích ở lần mở kế tiếp"* | *"Tiền được chuyển gần giờ này; máy đang ngủ sâu thì có thể muộn hơn"* |
 
+**Chỉ Android.** Dự án có thư mục `ios/` nhưng phần chạy nền là Kotlin + WorkManager. Trên iOS mọi chữ ở bảng trên
+**giữ như cũ** và lời nhắc kỳ trích **vẫn đặt** — gác bằng `Platform.isAndroid` ở `ReminderScheduler` và ở hai hằng câu
+chữ; iOS không có gì thay thế, bỏ lời nhắc ở đó là mất hẳn thông tin.
+
 Không có màn mới → không cần Stitch. Câu ở ô giờ trích có thể dài hơn câu cũ — kiểm 360 dp (font thật).
 
 ## 7. Kiểm thử
@@ -172,10 +201,15 @@ TDD, viết trước:
 
 - `mocNenKeTiep`: hoá đơn → giờ nhắc chung ngày đến hạn · đến hạn đã qua → `now` · mục tiêu dùng `kyKeTiep` · lấy
   **sớm nhất** · không gì → `null` · hoá đơn ngày 31 tháng ngắn (anchorDay) · tắt tự trả / đã trả / thiếu ví → bỏ.
-- `idKhoanTrichTuDong`: cùng (mục tiêu, kỳ) cùng id · khác kỳ khác id · không trùng `idKhoanMoSo`.
-- Bộ trích: id đã có → không trừ tiền, đẩy mốc · id đã xoá mềm → như trên · `depositToGoal` ném giữa vòng → kỳ trước đó
-  đã ghi mốc (cùng giao tác).
-- Khoá thuê: lượt hai bị từ chối khi còn hạn · lấy được khi đã hết hạn · nhả đúng chủ.
+- `idKhoanTrichTuDong`: cùng (mục tiêu, kỳ) cùng id · khác kỳ khác id · cùng mốc tuyệt đối ở hai múi giờ cùng id ·
+  không trùng `idKhoanMoSo`.
+- Bộ trích: id đã có → không trừ tiền, đẩy mốc, **không sinh sự kiện** · id đã xoá mềm → như trên · `depositToGoal` ném
+  giữa vòng → kỳ trước đó đã ghi mốc (cùng giao tác).
+- Khoá thuê: lượt hai bị từ chối khi còn hạn · lấy được khi đã hết hạn · nhả đúng chủ · **hai kết nối thật** tới cùng
+  tệp SQLite tạm (không chỉ hai lời gọi một kết nối).
+- `SyncEngine.syncMotLuot`: chạy một lượt, không đặt `_currentIdaccount`, không hẹn giờ.
+- `henNen` chỉ gọi khi mốc đổi · lượt nền không gọi `henNen`.
+- iOS (`Platform.isAndroid == false` qua khe tiêm): lời nhắc kỳ trích vẫn đặt, câu cũ giữ nguyên.
 - `AuthInterceptor` `cheDoNen`: 401 → không gọi `/auth/refresh`, token còn nguyên, không phát phiên chết.
 - `chayNenTuChuyenTien`: không phiên → không gọi `scan` · có phiên → thứ tự đồng bộ → quét → đồng bộ · lỗi giữa chừng
   vẫn báo xong · ⭐ **tài khoản Basic (gói đã lưu) → hai bộ chạy không chạy** — ca này đỏ nếu quên `datTaiKhoan`.
