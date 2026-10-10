@@ -2,13 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
-import 'package:timezone/timezone.dart' as tz;
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_localization.dart';
 import 'core/constants/app_router.dart';
@@ -25,11 +23,14 @@ import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
+import 'core/sync/noi_bo_nghe_ket_qua_day.dart';
 import 'core/sync/sync_engine.dart';
+import 'core/nen/chay_nen.dart';
+import 'core/nen/kenh_tu_chuyen_tien.dart';
+import 'core/nen/mui_gio.dart';
+import 'core/notification/notification_scanner.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
-import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
-import 'features/wallet/data/services/vi_trung_ten_resolver.dart';
 import 'features/premium/data/goi_repository.dart';
 import 'features/premium/presentation/cubit/goi_cubit.dart';
 import 'features/premium/presentation/phien_goi_tu_auth.dart';
@@ -42,7 +43,7 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
-  await _khoiTaoMuiGio();
+  await khoiTaoMuiGio();
   await setupDependencies();
   // Bắt đầu theo dõi kết nối ngay: nó đọc trạng thái hiện tại trước để không
   // báo "đã kết nối lại" cho một sự cố chưa từng xảy ra.
@@ -57,17 +58,10 @@ void main() async {
     dongBoNgay: () => sl<SyncEngine>().syncNow(),
   );
 
-  // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` (máy khác đã trả
-  // hoá đơn ấy trước). Cũng đăng ký MỘT lần cho cả vòng đời app, cùng lý do với
-  // khối trên: `pushResultStream` là broadcast và singleton, nên nối lại ở mỗi
-  // lần đăng nhập chỉ tạo subscription trùng — tức hoàn tác chạy hai lượt cho
-  // cùng một khoản chi.
-  sl<BillPaymentConflictResolver>()
-      .batDauNghe(sl<SyncEngine>().pushResultStream);
-
-  // G63: ví bị server từ chối vì trùng tên thì đặt cờ — engine giữ nó lại, màn
-  // Quản lý ví hỏi Gộp / Đổi tên. Nối MỘT lần, cùng lý do với khối trên.
-  sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+  // Gỡ khoản trả mà server từ chối (máy khác đã trả hoá đơn ấy trước) và đặt
+  // cờ ví trùng tên (G63). Đăng ký MỘT lần cho cả vòng đời app, cùng lý do với
+  // khối trên — và engine nền của WorkManager gọi CÙNG hàm này (`chay_nen.dart`).
+  noiBoNgheKetQuaDay();
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)
@@ -93,6 +87,18 @@ void main() async {
     ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
     ..noiSuKien(sl<RealtimeChannel>().events);
 
+  // Tự chuyển tiền chạy nền (spec 2026-10-10 mục 3.2): worker tới giờ mà app
+  // đang mở → quét trong CHÍNH engine này (không mở kết nối SQLite thứ hai).
+  // Kotlin chờ lời gọi trả về rồi mới kết thúc worker.
+  const MethodChannel(kKenhTuChuyenTien).setMethodCallHandler((call) async {
+    if (call.method != 'quetNgay') return null;
+    final id = idaccountTuTrangThai(authBloc.state);
+    if (id == null) return null;
+    await sl<NotificationScanner>().scan(id);
+    await sl<SyncEngine>().syncNow();
+    return null;
+  });
+
   // Restore auth state từ token đã lưu → GoRouter redirect guard hoạt động đúng ngay từ đầu
   if (hasToken) {
     authBloc.add(AuthCheckRequested());
@@ -109,24 +115,10 @@ void main() async {
   }
 }
 
-/// Nạp bảng múi giờ và đặt múi giờ địa phương.
-///
-/// **Phải chạy TRƯỚC `setupDependencies()`** vì `ReminderScheduler` dựng
-/// `TZDateTime` ngay khi đặt lịch. Thiếu bước này thì `zonedSchedule` neo vào
-/// UTC và nhắc hoá đơn lệch 7 tiếng ở Việt Nam — **không có lỗi nào báo ra**
-/// (bẫy 7.3 của `docs/NOTIFICATION_FEATURE.md`).
-///
-/// Nuốt lỗi và lùi về UTC: không đọc được múi giờ của máy thì nhắc sai giờ,
-/// còn ném ở đây thì app không khởi động được. Hỏng nhẹ hơn hẳn.
-Future<void> _khoiTaoMuiGio() async {
-  tzdata.initializeTimeZones();
-  try {
-    final info = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(info.identifier));
-  } catch (_) {
-    // Giữ nguyên mặc định của gói (UTC).
-  }
-}
+/// Entrypoint của engine NỀN — `TuChuyenTienWorker.kt` chạy theo tên ([kEntrypointNen]). Phải nằm ở thư viện gốc
+/// (`main.dart`) và mang `@pragma` để bản release không bỏ nó (spec tự chuyển tiền chạy nền mục 3.3).
+@pragma('vm:entry-point')
+Future<void> chayNenTuChuyenTien() => chayNen();
 
 /// ⚠️ **StatefulWidget có lý do**, đừng đổi ngược lại.
 ///

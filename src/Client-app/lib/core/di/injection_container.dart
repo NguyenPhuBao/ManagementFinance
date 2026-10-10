@@ -122,7 +122,11 @@ String _chuKhoa = 'app';
 
 /// Khởi động toàn bộ dependency injection graph.
 /// Gọi một lần trong `main()` trước khi `runApp()`.
-Future<void> setupDependencies() async {
+/// [cheDoNen] — engine nền của WorkManager (spec tự chuyển tiền chạy nền mục
+/// 3.3): chủ khoá thuê là `'nen'`, `AuthInterceptor` không làm mới token, và
+/// vòng quét không tự hẹn lượt nền (lượt nền trả mốc qua `nenXong`).
+Future<void> setupDependencies({bool cheDoNen = false}) async {
+  _chuKhoa = cheDoNen ? 'nen' : 'app';
   // ── 1. External packages ──────────────────────────────────────────────────
   const secureStorage = FlutterSecureStorage();
   sl.registerLazySingleton<FlutterSecureStorage>(() => secureStorage);
@@ -134,7 +138,7 @@ Future<void> setupDependencies() async {
   // AuthInterceptor đăng ký riêng: AuthBloc cần nghe `sessionExpiredStream`
   // của ĐÚNG instance đang nằm trên đường request.
   sl.registerLazySingleton<AuthInterceptor>(
-    () => AuthInterceptor(secureStorage: sl()),
+    () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
   );
   sl.registerLazySingleton<DioClient>(
     () => DioClient(secureStorage: sl(), authInterceptor: sl()),
@@ -578,8 +582,10 @@ Future<void> setupDependencies() async {
           sl<AppDatabase>().khoaTuChuyenTienDao.lay(_chuKhoa, DateTime.now()),
       nhaKhoa: () => sl<AppDatabase>().khoaTuChuyenTienDao.nha(_chuKhoa),
       // Lịch lượt nền (spec tự chuyển tiền chạy nền mục 3.1).
-      henLichNen: (id) => sl<LichNen>().henNeuDoi(id),
-      huyLichNen: () => sl<LichNen>().huy(),
+      // Engine nền KHÔNG tự hẹn: `REPLACE` lên chính công việc đang chạy là
+      // WorkManager huỷ nó giữa chừng — mốc kế đi trong `nenXong`.
+      henLichNen: cheDoNen ? null : (id) => sl<LichNen>().henNeuDoi(id),
+      huyLichNen: cheDoNen ? null : () => sl<LichNen>().huy(),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.
