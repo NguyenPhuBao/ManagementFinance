@@ -1226,7 +1226,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 |---|---|
 | ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
-| Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
+| Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15. ✅ **Người dùng chốt GIỮ NGUYÊN (2026-10-10)** — đừng viết đơn CAN-LAM xin unique index: hai máy offline cùng tạo một tên thì mục tiêu của một máy kẹt hàng đợi đẩy vĩnh viễn, đúng họ `WALLET_NAME_DUPLICATE` / G63 |
 | ~~**Ưu tiên mục tiêu** chưa có~~ | ✅ **Xong 2026-09-08** — schema v19, kéo thả ở tab "Đang theo đuổi", đồng bộ đủ hai chiều. Mục **3.22** |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
