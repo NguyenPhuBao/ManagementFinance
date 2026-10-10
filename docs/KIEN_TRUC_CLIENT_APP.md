@@ -2,7 +2,7 @@
 
 > Viết 2026-10-10, sau đợt **bịt điểm rò kiến trúc** (spec `docs/superpowers/specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md`);
 > cập nhật cùng ngày (khuya) sau đợt **dọn vị trí tệp** (spec `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`)
-> — mục 3, 4, 6, 8, 9, 10.
+> — mục 3, 4, 6, 7, 8, 9, 10.
 > Tệp do **client** sở hữu — được sửa, và phải khớp mã. Mọi con số ở đây đếm bằng lệnh ngày **2026-10-10** trên
 > `src/Client-app` (lệnh ghi cạnh số); **đừng cộng dồn, hãy đếm lại** khi cập nhật.
 
@@ -237,8 +237,8 @@ kênh đứng sau một lớp Dart riêng; `tu_chuyen_tien_nen` dùng chung tệ
 
 Bảng này là luật cho mọi tệp; **test quét 25** (`test/core/ui/vi_tri_tep_theo_luat_test.dart`) canh phần máy canh được
 (sáu luật, spec dọn vị trí tệp 2026-10-10 mục 4). Đợt dọn 2026-10-10 (`docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`)
-đưa cây về khớp bảng — G88 gạch 7 đóng; miễn trừ duy nhất `ai_chat/spike/` tới khi C4 chốt lối. Máy canh **có** nằm trong
-một trong bốn thư mục `bloc/` · `pages/` · `widgets/` · `state/` (không tệp rời ngay dưới `presentation/`); còn **thư mục nào**
+đưa cây về khớp bảng — G88 gạch 7 đóng; miễn trừ duy nhất `ai_chat/spike/` tới khi C4 chốt lối. Máy **có** canh việc mọi tệp dưới
+`presentation/` nằm trong một trong bốn thư mục `bloc/` · `pages/` · `widgets/` · `state/` (không tệp rời); còn **thư mục nào**
 trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng core cần"*, là luật **đọc** — máy không canh.
 
 | Loại tệp | Thư mục |

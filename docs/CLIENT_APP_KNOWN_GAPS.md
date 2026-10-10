@@ -1677,7 +1677,7 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    (kiểu thuần bốn tệp hạ tầng dùng — thành hàng luật); hai repository gộp (`transaction_repository`,
    `category_management_repository`) tách `_impl`; 5 repository (analytics 4, premium 1) về `data/repositories/`; bảy tệp
    rời dưới `presentation/` (⚠️ chỉ **ba** là trạng thái thật — `an_the_cho_xoa`, `an_nhac_het_han`, `an_nhac_vi_trung_ten`
-   → `state/`; `current_account`, `co_quyen`, `phien_goi_tu_auth` là hàm đọc Bloc → `bloc/`; `xac_nhan_dang_xuat`,
+   → `state/`; `co_quyen`, `phien_goi_tu_auth` là hàm đọc Bloc → `bloc/`; `xac_nhan_dang_xuat`,
    `huy_yeu_cau_xoa` là hộp thoại / hành động → `widgets/`); `premium/presentation/cubit/` → `bloc/`; `core/bill` →
    `bill/domain/` (quyết định người dùng; `sync_engine` import features 6 → 7); `category_classify` → `category/domain/`,
    `category_visuals` (import Flutter) → `category/presentation/widgets/`; router → `core/router/`; `spike_sql` gỡ,

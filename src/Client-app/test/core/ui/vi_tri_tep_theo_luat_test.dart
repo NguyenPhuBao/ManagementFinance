@@ -47,7 +47,7 @@ const mienTru = <String, String>{
 // Rỗng từ 2026-10-10 — thêm vào đây là mở lại một nợ, phải có lý do và ngày.
 const conCho = <String>{};
 
-/// Luật 5: tệp hạ tầng `core` còn import `features/` → số dòng tối đa. Chỉ được giảm — ngoại lệ duy nhất ghi rõ tại chỗ.
+/// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm — ngoại lệ duy nhất ghi rõ tại chỗ.
 /// Đo 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
   'lib/core/notification/notification_rules.dart': 10,
@@ -167,7 +167,10 @@ void main() {
   });
 
   test('luật 5: core chỉ import features/ ở điểm ghép; hạ tầng còn lại rút dần', () {
-    final importFeatures = RegExp(r"^import '[^']*features/");
+    // `import` HOẶC `export`, nháy đơn HOẶC kép, và dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó).
+    // Dựng BOM bằng mã ký tự, không gõ ký tự thật vào mã nguồn.
+    final importFeatures =
+        RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"][^\'"]*features/');
     final thay = <String, int>{};
     for (final f in Directory('lib/core').listSync(recursive: true).whereType<File>()) {
       final d = _duong(f);
@@ -186,7 +189,7 @@ void main() {
       if (diemGhep.contains(e.key)) continue;
       final tran = conChoCoreImport[e.key];
       if (tran == null) {
-        loi.add('${e.key}: ${e.value} dòng import features/ — hạ tầng core không được biết mảng (mục 4 kiến trúc); '
+        loi.add('${e.key}: ${e.value} dòng import/export features/ — hạ tầng core không được biết mảng (mục 4 kiến trúc); '
             'dời luật về features/<x>/ hoặc nhận hook qua DI.');
       } else if (e.value > tran) {
         loi.add('${e.key}: ${e.value} dòng, danh sách cho phép $tran — chỉ được giảm.');
