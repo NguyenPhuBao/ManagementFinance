@@ -262,11 +262,11 @@ không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đ�
 | Thước đo (cùng cách đếm, 2026-10-10) | Trước đợt | Sau đợt |
 |---|---|---|
 | `sl<AppDatabase>` trong `presentation/` | 29 chỗ / 17 tệp | **0** |
-| `auth_bloc.dart` | 560 dòng · 23 `sl<` | **370** dòng · **0** |
+| `auth_bloc.dart` | 560 dòng · 23 `sl<` | **377** dòng (370 + 7 dòng docstring đầu lớp) · **0** |
 | `analytics_page.dart` | 4.208 dòng | **339** + 14 tệp `widgets/phan_tich/` |
 | `add_transaction_page.dart` | 3.107 dòng | **2.007** + 7 tệp `widgets/them_giao_dich/` |
 | Tệp `presentation` > 1.200 dòng | 6 | **5** (danh sách miễn trừ quét 23) |
-| `flutter test` | 6.587 (+9 skip) | xem mốc cuối ở `CLAUDE.md` |
+| `flutter test` · `flutter analyze` | 6.587 (+9 skip) · 20 | **6.614** (+9 skip) · **20** |
 | Workflow CI | 0 | **1** |
 
 ## 10. Cách nói khi trình bày

@@ -424,21 +424,33 @@ Backend `mapEntityFields()` chuyển từ camelCase payload → DB field names:
 
 ## 9. Flutter App Structure
 
-### Features
+> **Tài liệu kiến trúc đầy đủ: `docs/KIEN_TRUC_CLIENT_APP.md`** (2026-10-10 — cây có số tệp, ba tầng, tám luồng, ba
+> chữ ký, bảng test quét, **luật vị trí tệp**). Mục này chỉ giữ bản tóm tắt; số đếm 2026-10-10.
+
+### Features (14 mảng, 402 tệp)
 ```
 features/
-├── auth/           ← Đăng nhập / đăng ký
+├── auth/           ← Đăng nhập / đăng ký; AuthBloc CHỈ giữ trạng thái + thứ tự emit
 ├── home/           ← Dashboard (tổng quan tài chính)
-├── transaction/    ← Thêm/sửa/xóa giao dịch
+├── transaction/    ← Thêm/sửa/xóa giao dịch; presentation/widgets/them_giao_dich/ (7 khối của trang Thêm giao dịch)
 ├── wallet/         ← Quản lý ví
 ├── budget/         ← Ngân sách
 ├── bill/           ← Hóa đơn định kỳ
 ├── goal/           ← Mục tiêu tiết kiệm
-├── category/       ← Quản lý danh mục
-├── analytics/      ← Báo cáo & thống kê
-├── ai_chat/        ← Chat với AI
+├── category/       ← Quản lý danh mục; data/gan_danh_muc_nguon.dart (lớp GanDanhMucNguon cho màn Gắn danh mục)
+├── analytics/      ← Báo cáo & thống kê; presentation/widgets/phan_tich/ (14 tệp khối của trang Phân tích)
+├── ai_edge/        ← AI trên máy: luật + gói số, tool, SLM runtime, lớp chắn
+├── ai_chat/        ← Màn Trợ lý AI (+ spike/ — mã đo sau cờ dart-define)
+├── notification/   ← Giao diện thông báo (luật nằm ở core/notification — nợ G88)
+├── premium/        ← Gói, quyền theo gói, thanh toán PayOS
 └── profile/        ← Hồ sơ người dùng
 ```
+
+`core/` (129 tệp) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/constants/app_router.dart`,
+`core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
+phiên, nhận hook hàm nên không import `features/`). `core/notification/thong_bao_nguon.dart` là cổng đọc / ghi bảng
+thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng
+trừ năm tệp miễn trừ (quét 23).
 
 ### DI (GetIt)
 File: `core/di/injection_container.dart`
@@ -452,7 +464,9 @@ Các singleton quan trọng:
 1. Login → nhận `accessToken` + `refreshToken` → lưu vào `FlutterSecureStorage`
 2. `DioClient` tự động đính kèm `Authorization: Bearer <token>` vào mọi request
 3. Khi token hết hạn → auto-refresh qua `/api/auth/refresh` (⚠️ 2026-09-11: theo mã backend sau gộp `main` @ `cc65f4f`, endpoint này từ chối mọi tài khoản nên người dùng bị đăng xuất khi access token hết hạn — CAN-LAM 17 A; ✅ backend sửa, gộp `cbbeeb4` 2026-09-12 — đo đầu-cuối chiều cùng ngày: 200 kèm token mới; sau khi khoá tài khoản thử → 401 + `code: ACCOUNT_INACTIVE` ở cấp gốc)
-4. `AuthBloc` quản lý trạng thái đăng nhập
+4. `AuthBloc` quản lý trạng thái đăng nhập; từ 2026-10-10 mọi thứ sống theo phiên (dọn tài khoản khác, bộ quét thông
+   báo, socket, đồng bộ, seed) đi qua `PhienDieuPhoi` — `moPhienCucBo` trước `AuthSuccess`, rồi `batThoiGianThuc` · kiểm
+   `_vanLaPhien` · `batDongBo`; `dongPhien` / `xoaDuLieu` khi đăng xuất. `auth_bloc.dart` không gọi service locator (quét 24).
 
 ---
 
@@ -595,6 +609,38 @@ src/Backend/
 ---
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-10)
+
+### 🧱 Bịt điểm rò kiến trúc Client-app (2026-10-10, 15 task xong, chưa push)
+
+Sau bản đánh giá kiến trúc cùng ngày, người dùng chọn **giữ** feature-first ba tầng + hàm thuần + test quét và chỉ bịt bốn
+chỗ méo đo được. Spec `docs/superpowers/specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md` (duyệt từng phần);
+kế hoạch 15 task `plans/2026-10-10-bit-diem-ro-kien-truc-client.md` (gitignore), thi công bằng **agent con mỗi task**
+(người dùng chọn), sổ theo dõi `.superpowers/sdd/2026-10-10-bit-diem-ro-kien-truc-client/progress.md` (gitignore, các
+phán quyết R1–R16). **Người dùng không thấy gì khác** — so ảnh 23 màn trước/sau trên máy ảo: 18 ảnh khác 0 px, phần còn
+lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus chưa đo. Tài liệu mới: **`docs/KIEN_TRUC_CLIENT_APP.md`**.
+
+| Việc | Đã làm | Chốt bằng |
+|---|---|---|
+| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (12 lối chuyển tiếp `*Rows` / `getById` / `getCategoryRows` / `ghiPhanHoi`), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
+| 2. Tách hai trang | `analytics_page` 4.208 → **339** dòng + 14 tệp `widgets/phan_tich/`; `add_transaction_page` 3.107 → **2.007** + 7 tệp `widgets/them_giao_dich/` (spec ước ~1.800 — R15) | **test quét 23** `tep_presentation_khong_qua_dai_test.dart`, trần 1.200, `mienTru` 5 tệp chỉ giảm |
+| 3. Rút điều phối phiên | `PhienDieuPhoi` / `PhienDieuPhoiThat` (`core/auth/`, hook hàm); `AuthBloc` 560 → **377** dòng (kể docstring đầu lớp), `sl<` 23 → **0**; bỏ tham số `defaultAccountDataInitializer` (R3) | **test quét 24** `test/features/auth/auth_bloc_khong_sl_test.dart`; chủ sở hữu `start()` (quét 4) chuyển sang `phien_dieu_phoi_that.dart` |
+| 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
+
+Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentation/` **29 → 0**; tệp `presentation` > 1.200 dòng
+**6 → 5**; `flutter test` **6587 → 6614** (+9 skip), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
+`features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)).
+
+- ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai
+  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp, cộng **3** tệp cùng khuôn không đánh số; bảng đủ ở mục 6
+  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **25** trở đi, và đếm lại bảng.
+- ⚠️ **Trang đọc ví phải viết trên một dòng** `sl<WalletRepository>().getActiveRows(…)` / `.getAllRows(` /
+  `.watchAllRows(` — `wallet_picker_sources_test` nhận diện theo chuỗi; gán repository vào biến là lọt phép phân loại.
+- ⚠️ **Test dựng trang có đọc qua DI** phải gọi `dangKyNguonDocGia(db)` (`test/helpers/nguon_doc_gia.dart`); test AuthBloc
+  muốn kiểm thứ tự mở phiên phải dựng `PhienDieuPhoiThat` (helper `phien()`), `AuthBloc` trần = không điều phối gì.
+- ⚠️ Form hoá đơn **giữ** danh sách danh mục gồm cả hàng **nhóm** (R8, lối `getCategoryRows`) — chờ người dùng quyết có
+  phải lỗi sẵn có không (G88).
+- Còn mở: nghiệm thu OnePlus của đợt; minor hoãn ghi trong sổ theo dõi (thứ tự import, `ignore_for_file:
+  use_key_in_widget_constructors` ở 14 tệp `phan_tich/` — R13, regex quét 22/24 không bắt `GetIt.I`).
 
 ### ⚡ Tự chuyển tiền chạy nền — mở lại G22 (2026-10-10)
 
