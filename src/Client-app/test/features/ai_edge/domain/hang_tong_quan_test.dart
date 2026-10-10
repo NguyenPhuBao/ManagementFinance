@@ -4,7 +4,7 @@
 /// thu` để hai con số không lẫn được.
 library;
 
-import 'package:flowmoney/core/category/category_classify.dart';
+import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';

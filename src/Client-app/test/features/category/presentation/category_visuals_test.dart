@@ -1,4 +1,4 @@
-import 'package:flowmoney/core/category/category_visuals.dart';
+import 'package:flowmoney/features/category/presentation/widgets/category_visuals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

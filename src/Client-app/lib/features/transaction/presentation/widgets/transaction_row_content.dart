@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
-import '../../../../core/category/category_visuals.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/tieu_de_giao_dich.dart';

@@ -10,7 +10,7 @@
 /// đây (test quét 14).
 library;
 
-import '../../../core/category/category_classify.dart';
+import '../../category/domain/category_classify.dart';
 import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
 import 'goi_so.dart';

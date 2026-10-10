@@ -4,8 +4,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../../core/category/category_classify.dart';
-import '../../../../../core/category/category_visuals.dart';
+import '../../../../category/domain/category_classify.dart';
+import '../../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/repositories/analytics_repository.dart';
 import '../../../domain/phan_loai_dong_tien.dart';

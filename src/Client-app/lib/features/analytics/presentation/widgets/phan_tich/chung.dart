@@ -4,7 +4,7 @@ library;
 
 import '../../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
-import '../../../../../core/category/category_visuals.dart';
+import '../../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/repositories/analytics_repository.dart';
 

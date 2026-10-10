@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/category/category_visuals.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/budget_entity.dart';
 
@@ -57,7 +57,7 @@ Color budgetHealthColour(BudgetHealth health) => switch (health) {
 
 /// Chuyển tên biểu tượng và mã màu do danh mục lưu thành thứ vẽ được.
 ///
-/// Từ 2026-09-06 chỉ uỷ quyền về `core/category/category_visuals.dart` — định
+/// Từ 2026-09-06 chỉ uỷ quyền về `features/category/presentation/widgets/category_visuals.dart` — định
 /// nghĩa duy nhất, hiểu cả tên Material lẫn tên seed backend (`food`,
 /// `bill`…). Giữ hai hàm này để chỗ gọi trong feature ngân sách không đổi.
 IconData budgetIconFor(String? icon) => categoryIconFor(icon);

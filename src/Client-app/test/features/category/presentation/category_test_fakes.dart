@@ -5,7 +5,7 @@
 /// cùng bộ này nên tách ra để hai bên không chép lại nhau.
 library;
 
-import 'package:flowmoney/core/category/category_classify.dart';
+import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';

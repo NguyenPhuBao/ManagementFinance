@@ -22,7 +22,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/presentation/pages/add_transaction_page.dart'
     show EditTransactionArgs;
 import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart';
-import '../../../../core/category/category_visuals.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
 import '../widgets/bill_actions.dart';
 import '../widgets/bill_status_visuals.dart';
 import '../widgets/the_khoan_lap.dart';

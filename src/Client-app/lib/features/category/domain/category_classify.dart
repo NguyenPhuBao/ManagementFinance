@@ -1,4 +1,4 @@
-import 'category_name.dart';
+import '../../../core/category/category_name.dart';
 
 /// Ba phân loại danh mục, theo đúng thứ tự tab ở mọi màn hình: trang quản lý
 /// danh mục, bảng chọn danh mục khi tạo giao dịch, form tạo danh mục/nhóm.

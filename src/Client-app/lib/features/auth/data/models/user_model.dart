@@ -15,7 +15,7 @@ class UserModel {
   final int? countdown;
 
   /// Lúc client nhận [countdown]. **Cục bộ**, server không có. Số ngày còn lại
-  /// tính bằng `soNgayConLai` ở `core/auth/dem_nguoc_xoa.dart`.
+  /// tính bằng `soNgayConLai` ở `features/auth/domain/dem_nguoc_xoa.dart`.
   final DateTime? countdownNhanLuc;
 
   /// Loại tài khoản theo server: `Basic` | `Premium` — `type` của

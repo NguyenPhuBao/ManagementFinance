@@ -1,7 +1,7 @@
 /// Số ngày chờ xoá còn lại — spec cưỡng chế đăng xuất §4.2 và §7.1.
 library;
 
-import 'package:flowmoney/core/auth/dem_nguoc_xoa.dart';
+import 'package:flowmoney/features/auth/domain/dem_nguoc_xoa.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

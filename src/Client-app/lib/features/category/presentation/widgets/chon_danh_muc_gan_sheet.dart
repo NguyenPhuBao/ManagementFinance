@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/category/category_visuals.dart';
+import '../../domain/category_classify.dart';
+import 'category_visuals.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/theme/app_colors.dart';
 

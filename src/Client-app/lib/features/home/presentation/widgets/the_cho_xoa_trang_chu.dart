@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/auth/dem_nguoc_xoa.dart';
+import '../../../auth/domain/dem_nguoc_xoa.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/models/user_model.dart';

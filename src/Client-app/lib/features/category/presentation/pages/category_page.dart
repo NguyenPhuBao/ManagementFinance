@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/bloc/current_account.dart';
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/category/category_visuals.dart';
+import '../../domain/category_classify.dart';
+import '../widgets/category_visuals.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/category/category_classify.dart';
+import '../../../category/domain/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../../core/di/injection_container.dart';

@@ -1,4 +1,4 @@
-import 'package:flowmoney/core/category/category_classify.dart';
+import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
