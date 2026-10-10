@@ -88,6 +88,7 @@ import '../../features/category/data/repositories/category_management_repository
 import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../../features/category/data/gan_danh_muc_nguon.dart';
 import '../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
@@ -323,6 +324,15 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
   sl.registerLazySingleton<GoiYPhanHoiStore>(
     () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
+  );
+  // C1 — nguồn màn Gắn danh mục nhanh gom phụ thuộc, để trang không cầm AppDatabase (spec bịt điểm rò mục 4.5).
+  sl.registerLazySingleton<GanDanhMucNguon>(
+    () => GanDanhMucNguon(
+      db: sl<AppDatabase>(),
+      danhMuc: sl<CategoryManagementRepository>(),
+      giaoDich: sl<TransactionRepository>(),
+      phanHoi: sl<GoiYPhanHoiStore>(),
+    ),
   );
 
   // ── 10. Features — Budget ─────────────────────────────────────────────────

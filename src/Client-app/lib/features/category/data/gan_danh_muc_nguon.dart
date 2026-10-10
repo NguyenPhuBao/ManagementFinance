@@ -104,3 +104,20 @@ Future<void> ghiPhanHoiGan({
     chonCategoryId: chonCategoryId,
   );
 }
+
+/// Lớp bọc cho tầng giao diện (spec bịt điểm rò 2026-10-10, mục 4.5): trang `GanDanhMucPage` cầm đúng lớp này qua DI
+/// thay cho `AppDatabase`. Hai hàm tự do ở trên giữ nguyên để test gọi thẳng; lớp chỉ gom phụ thuộc.
+class GanDanhMucNguon {
+  GanDanhMucNguon({required this.db, required this.danhMuc, required this.giaoDich, this.phanHoi});
+
+  final AppDatabase db;
+  final CategoryManagementRepository danhMuc;
+  final TransactionRepository giaoDich;
+  final GoiYPhanHoiStore? phanHoi;
+
+  Future<DuLieuGanDanhMuc> tai(int idaccount) =>
+      taiDuLieuGan(db: db, danhMuc: danhMuc, phanHoi: phanHoi, idaccount: idaccount);
+
+  Future<void> apDung(DongGanDanhMuc dong, String categoryId) =>
+      apDungGan(db: db, repo: giaoDich, dong: dong, categoryId: categoryId);
+}
