@@ -1650,18 +1650,23 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    giao diện đã sang `widgets/them_giao_dich/`; phần còn lại là trạng thái 61 trường và logic chọn ví / gợi ý / chiều tiền.
    Hạ thêm cần **controller hoặc Cubit riêng** (hướng B người dùng để lại) — spec ước ~1.800, số thật 2.007 (phán quyết R15).
    📝 **2026-10-11 người dùng chốt: làm ngay sau nghiệm thu OnePlus, TRƯỚC C4** — C4 giọng nói sẽ chạm đúng màn này (như C2,
-   C3, A5, D1 đã chạm). Bốn trang lớn còn lại của gạch 2 làm khi có dịp.
+   C3, A5, D1 đã chạm). Bốn trang lớn còn lại của gạch 2 có lịch riêng (dưới).
 2. **Năm tệp trong danh sách miễn trừ của test quét 23** (trần 1.200 dòng; trần riêng chỉ giảm): `add_transaction_page`
    2.007 · `notification_settings_page` 1.615 · `goal_add_page` 1.570 · `goal_detail_page` 1.480 · `report_preview_page`
    1.270. Tách tệp nào xong thì rút tên khỏi `mienTru`. ✅ Nợ kèm đã trả 2026-10-10: 14 tệp `analytics/presentation/widgets/phan_tich/` từng mang
    `// ignore_for_file: use_key_in_widget_constructors` (phán quyết R13) — nay mọi constructor widget công khai nhận `super.key`,
    dòng ignore đã gỡ (commit `752d4ad0`; `flutter analyze` vẫn 20, 0 info `use_key_in_widget_constructors`).
+   📝 **2026-10-11 xếp lịch: bốn trang còn lại (trừ Thêm giao dịch — gạch 1) là một đợt, SAU C4 và TRƯỚC thống nhất Entity**
+   — việc cùng loại đợt bịt điểm rò (tách widget theo khối, dời nguyên văn, giữ `Key` và chữ), làm trước Entity để đợt ấy
+   sửa tệp nhỏ thay vì tệp 1.270–1.615 dòng; sau C4 để không trì hoãn tính năng. Thứ tự trong đợt: Thêm + Chi tiết mục tiêu
+   (cùng mảng) → Cài đặt thông báo → Xem trước báo cáo.
 3. **UI cầm kiểu hàng Drift; Entity mới có ở 4/14 mảng** (ví, giao dịch, mục tiêu, ngân sách). Lối thoát của đợt là
    **11 lối chuyển tiếp** ở repository / nguồn — 10 trả hàng Drift (`WalletRepository.getActiveRows` · `getAllRows` ·
    `watchAllRows` · `getRowById`; `TransactionRepository.getAllRows` · `watchAllRows`;
    `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById`; `BillRepository.getById`)
    cộng `TaiPhanBoNguon.ghiPhanHoi`. Đó là **lối tạm**: trang không còn cầm DAO, nhưng kiểu Drift vẫn lan tới widget.
-   📝 **2026-10-11 người dùng chốt thống nhất về Entity (hướng A)** — làm **sau** nghiệm thu OnePlus và C4: giao diện không
+   📝 **2026-10-11 người dùng chốt thống nhất về Entity (hướng A)** — làm **sau** nghiệm thu OnePlus, tách Thêm giao dịch, C4
+   và tách bốn trang lớn (gạch 1, 2): giao diện không
    cầm hàng Drift, từng mảng một đợt (Hoá đơn → Giao dịch + Ví → Danh mục → Thông báo), kèm test quét cấm `presentation/`
    dùng kiểu Drift với danh sách chờ chỉ-được-giảm. Đo 2026-10-11 (tệp trang / widget cầm hàng Drift): `Category` 18 ·
    `Wallet` 12 · `Bill` 9 · `Transaction` 5 · `AppNotification` 2 · `Goal` 1. Hướng B (bỏ 4 Entity, ~1.000 dòng) đã loại —
