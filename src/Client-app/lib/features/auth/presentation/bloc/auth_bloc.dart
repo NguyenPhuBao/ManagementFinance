@@ -12,9 +12,11 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/notification/notification_scanner.dart';
 import '../../../../core/realtime/realtime_channel.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../an_the_cho_xoa.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
+import '../../../../core/ocr/kho_anh_quet.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../../wallet/presentation/an_nhac_vi_trung_ten.dart';
@@ -132,6 +134,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (sl.isRegistered<RealtimeChannel>()) {
       await sl<RealtimeChannel>().stop();
     }
+    // A5: ảnh quét đang mở trên form (người dùng chưa Lưu) không được sống sang phiên sau.
+    if (sl.isRegistered<KhoAnhQuet>()) {
+      await sl<KhoAnhQuet>().xoaHet();
+    }
   }
 
   /// Server nói tài khoản này không được dùng nữa — spec §3.5.
@@ -247,21 +253,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      // Hỏi server xem phiên còn trỏ tới tài khoản CÓ THẬT không.
-      // Trước đây bước này không tồn tại: client chỉ thấy "có chuỗi token" là
-      // coi như đăng nhập hợp lệ. Nếu tài khoản đã bị xoá khỏi CSDL mà JWT còn
-      // hạn, SyncEngine vẫn khởi động và mọi lần đẩy dữ liệu đều vỡ khoá ngoại
-      // fk_category_account / fk_transaction_account — lặp lại vô hạn.
-      final session = await authRepository.verifySession();
-      if (session == SessionStatus.invalid) {
-        await authRepository.logout();
-        _phatChuaDangNhap(emit);
-        return; // KHÔNG khởi động SyncEngine với phiên đã chết
-      }
-      // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
-
-      // Đọc người dùng SAU khi xác minh: `verifySession` đồng bộ `status` chờ xoá
-      // từ `/auth/profile` vào bộ nhớ đệm (spec cưỡng chế đăng xuất §4.3).
+      // ── Phần không chạm mạng: hiện dữ liệu trên máy NGAY (2026-10-09). ──
+      // Trước đây `AuthSuccess` chỉ phát sau `verifySession()` (GET
+      // /auth/profile, trần 30 s): server chậm, Render đang ngủ, Wi-Fi không ra
+      // Internet là mọi trang quay vòng tới 30 s và Trang chủ in "0 đ" /
+      // "Người dùng" — trong khi dữ liệu nằm sẵn trong SQLite (offline-first).
       final user = await authRepository.getCurrentUser();
 
       // Không còn fallback `?? 1`: id hỏng mà mặc định thành 1 nghĩa là ghi dữ
@@ -284,20 +280,64 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
         // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
         await personal?.convertLegacyRows(idAcc);
+        // Bộ quét chỉ chạm SQLite và lịch của máy: nhập hàng chờ biến động số
+        // dư / biên lai / phiên ngân hàng (D1), số trên chuông, nhắc lịch, quá
+        // hạn, tự trả, tự trích. Chạy TRƯỚC `AuthSuccess` (người dùng chọn
+        // 2026-10-09): `MoTuTomTatBienDong` điều hướng ngay khi thấy
+        // `AuthSuccess`, và danh sách chờ ghi phải đủ lúc ấy — kể cả khi server
+        // không tới được. Phiên chết thì `_dungMoiThuCuaPhien` dừng nó (huỷ lịch).
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
+      }
+      emit(AuthSuccess(user: user));
+
+      // ── Phần chạm mạng: hỏi server xem phiên còn trỏ tới tài khoản CÓ THẬT. ──
+      // Trước khi có bước này client chỉ thấy "có chuỗi token" là coi như đăng
+      // nhập hợp lệ. Nếu tài khoản đã bị xoá khỏi CSDL mà JWT còn hạn,
+      // SyncEngine vẫn khởi động và mọi lần đẩy dữ liệu đều vỡ khoá ngoại
+      // fk_category_account / fk_transaction_account — lặp lại vô hạn.
+      final session = await authRepository.verifySession();
+
+      // Trong lúc chờ, các handler khác chạy đồng thời (mặc định của
+      // flutter_bloc): người dùng đã đăng xuất, bị cưỡng chế đăng xuất, hoặc
+      // phiên bị báo chết — lượt mở app về muộn KHÔNG được khởi động gì, cũng
+      // không được phát lại AuthSuccess đè lên (ca test "đăng xuất trong lúc
+      // chờ server" — lỗi có sẵn trước bản này).
+      if (!_vanLaPhien(user)) return;
+
+      if (session == SessionStatus.invalid) {
+        await _dungMoiThuCuaPhien(); // bộ quét đã chạy từ phần không chạm mạng
+        await authRepository.logout();
+        _phatChuaDangNhap(emit);
+        return; // KHÔNG khởi động SyncEngine với phiên đã chết
+      }
+      // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
+
+      // Đọc lại SAU khi xác minh: `verifySession` đồng bộ `status` chờ xoá từ
+      // `/auth/profile` vào bộ nhớ đệm (spec cưỡng chế đăng xuất §4.3).
+      final moi = await authRepository.getCurrentUser();
+      if (!_vanLaPhien(user)) return;
+      // `UserModel` không có `==`: so bằng dạng lưu, chỉ phát khi thật sự đổi.
+      if (moi != null &&
+          moi.id == user!.id &&
+          !mapEquals(moi.toJson(), user.toJson())) {
+        emit(AuthSuccess(user: moi));
+      }
+
+      if (sl.isRegistered<SyncEngine>()) {
         final engine = sl<SyncEngine>();
         // Không await ở đường mở app: chờ một vòng mạng ở đây làm màn hình đầu
         // tiên đứng hình. Nối phần tạo danh mục vào sau bằng `then`.
         // Bám đúng vòng đời của SyncEngine. Cố ý KHÔNG gắn ở home_page.dart —
         // chỗ đó gọi start() ngay trong build(), tức mỗi lần Home rebuild là
         // một lời gọi nữa.
-        if (sl.isRegistered<NotificationScanner>()) {
-          await sl<NotificationScanner>().start(idAcc);
-        }
         // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
-        // như bộ quét thông báo ngay trên.
+        // như bộ quét thông báo (khởi động ở phần không chạm mạng bên trên).
         if (sl.isRegistered<RealtimeChannel>()) {
           await sl<RealtimeChannel>().start(idaccount: idAcc);
         }
+        if (!_vanLaPhien(user)) return;
         unawaited(engine.start(idaccount: idAcc).then((_) async {
           // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
           // Bộ mặc định của backend chưa chắc đã về, mà thiếu nó thì không có
@@ -306,10 +346,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await _taoBanSaoDanhMuc(idAcc);
         }));
       }
-      emit(AuthSuccess(user: user));
     } catch (e) {
       _phatChuaDangNhap(emit);
     }
+  }
+
+  /// Bloc còn đang ở phiên của [user] không — sau mỗi `await` của lượt mở app.
+  bool _vanLaPhien(UserModel? user) {
+    final s = state;
+    return s is AuthSuccess && s.user?.id == user?.id;
   }
 
   Future<void> _onLoginSubmitted(

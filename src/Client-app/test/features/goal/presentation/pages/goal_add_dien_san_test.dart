@@ -22,6 +22,11 @@ import 'package:flowmoney/features/goal/presentation/pages/goal_add_page.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 class _StubAuthRepository implements AuthRepository {
@@ -150,7 +155,7 @@ void main() {
     if (sl.isRegistered<WalletCubit>()) await sl.unregister<WalletCubit>();
   });
 
-  Future<void> dung(WidgetTester tester, GoalAddPage trang) async {
+  Future<void> dung(WidgetTester tester, GoalAddPage trang, {Map<String, bool>? quyen}) async {
     tester.view.physicalSize = const Size(1600, 3200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -158,12 +163,35 @@ void main() {
       user: UserModel(id: '10', username: 'dat', name: 'Đạt', email: 'dat@example.com'),
     ));
     addTearDown(auth.close);
-    await tester.pumpWidget(BlocProvider<AuthBloc>.value(
-      value: auth,
-      child: MaterialApp(theme: AppTheme.lightTheme, home: trang),
-    ));
+    Widget cay = MaterialApp(theme: AppTheme.lightTheme, home: trang);
+    if (quyen != null) {
+      final goiRepo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+      final goi = GoiCubit(goiRepo);
+      goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+      addTearDown(() async {
+        await goi.close();
+        await goiRepo.dispose();
+      });
+      cay = BlocProvider<GoiCubit>.value(value: goi, child: cay);
+    }
+    await tester.pumpWidget(BlocProvider<AuthBloc>.value(value: auth, child: cay));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('quyền goal_auto_deposit tắt → mục tiêu MỚI: công tắc trích tắt sẵn, khoá, "Cần Premium"',
+      (tester) async {
+    debugNetworkImageHttpClientProvider = _HttpClientGia.new;
+    try {
+      await dung(tester, const GoalAddPage(dienSan: (ten: 'mua xe', soTienDich: 50000000, han: null)),
+          quyen: const {'goal_auto_deposit': false});
+      final sw = tester.widget<Switch>(find.byType(Switch).first);
+      expect(sw.value, isFalse, reason: 'mặc định form là bật — Basic không có quyền thì tạo mục tiêu không trích');
+      expect(sw.onChanged, isNull);
+      expect(find.text('Cần Premium'), findsOneWidget);
+    } finally {
+      debugNetworkImageHttpClientProvider = null;
+    }
+  });
 
   String oTen(WidgetTester tester) => tester
       .widget<TextField>(find.byWidgetPredicate(
@@ -205,4 +233,15 @@ void main() {
       debugNetworkImageHttpClientProvider = null;
     }
   });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
 }

@@ -31,6 +31,7 @@ void main() {
     repository = TransactionRepositoryImpl(
       localDataSource: localDataSource,
       walletDao: db.walletDao,
+      transactionDao: db.transactionDao,
       syncEngine: syncEngine,
       soDuVi: SoDuViService(db: db),
     );
@@ -291,4 +292,56 @@ void main() {
     });
   });
 
+  // A5 mục 11.4 — khoản chi đã TÁCH theo danh mục: N giao dịch trong MỘT giao tác.
+  group('addTransactions — tất cả hoặc không', () {
+    TransactionEntity chi(String id, double tien) => TransactionEntity(
+          id: id,
+          walletId: 'w1',
+          idaccount: 1,
+          categoryId: 'c$id',
+          amount: tien,
+          type: 'chi',
+          note: 'BHX',
+          date: DateTime.now(),
+          images: const [],
+          syncStatus: 'pending',
+          isDeleted: false,
+          updatedAt: DateTime.now(),
+        );
+
+    test('⭐ ghi đủ N hàng, số dư trừ đúng tổng, hẹn đồng bộ', () async {
+      await repository.addTransactions([chi('a', 250000), chi('b', 120000), chi('c', 42000)]);
+      expect((await db.walletDao.getById('w1'))!.balance, 1000000 - 412000);
+      expect((await db.transactionDao.getAll(1)).where((t) => t.note == 'BHX').length, 3);
+      expect(syncEngine.syncScheduled, isTrue);
+    });
+
+    test('⭐ hỏng ở hàng thứ hai (ví không tồn tại — khoá ngoại) → KHÔNG hàng nào, số dư không đổi', () async {
+      // ⚠️ Trùng id KHÔNG làm hỏng: `TransactionDao.insert` là insertOrReplace. Khoá ngoại walletId → Wallets thì có
+      // (`PRAGMA foreign_keys = ON` ở beforeOpen).
+      final hong = TransactionEntity(
+        id: 'b',
+        walletId: 'khong_co',
+        idaccount: 1,
+        categoryId: 'cb',
+        amount: 2000,
+        type: 'chi',
+        note: 'BHX',
+        date: DateTime.now(),
+        images: const [],
+        syncStatus: 'pending',
+        isDeleted: false,
+        updatedAt: DateTime.now(),
+      );
+      await expectLater(repository.addTransactions([chi('a', 1000), hong]), throwsA(anything));
+      expect((await db.transactionDao.getAll(1)).where((t) => t.note == 'BHX'), isEmpty,
+          reason: 'hàng thứ nhất không được ở lại một mình — số dư sẽ lệch nửa chừng');
+      expect((await db.walletDao.getById('w1'))!.balance, 1000000);
+    });
+
+    test('danh sách rỗng → không làm gì', () async {
+      await repository.addTransactions(const []);
+      expect(syncEngine.syncScheduled, isFalse);
+    });
+  });
 }

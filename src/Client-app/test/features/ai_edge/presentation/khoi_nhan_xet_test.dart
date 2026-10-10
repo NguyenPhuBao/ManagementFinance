@@ -88,6 +88,34 @@ void main() {
     expect(bo.soLanGoi, 1);
   });
 
+  testWidgets(
+      '⭐ G82 — chip của mục mang TÊN in tên đối tượng, cùng quy ước thẻ Trợ lý AI',
+      (tester) async {
+    // Realme 2026-10-07: trang Ngân sách hiện ba chip "Tỉ lệ 0,0%" giống hệt
+    // nhau (ba ngân sách khác nhau), trang Hoá đơn bốn chip "Đã quá hạn …" —
+    // không đọc được chip nào nói về cái gì. Gói số mang đủ `ten`, chỉ chip bỏ.
+    final g = _Gia('Ăn uống: đã dùng 10.000 đ.', [
+      soTien('Đã chi', 10000),
+      soPhanTram('Tỉ lệ', 2, ten: 'Ăn uống'),
+      soPhanTram('Tỉ lệ', 0, ten: 'Giáo dục'),
+      soPhanTram('Tỉ lệ', 0, ten: 'Di chuyển'),
+    ]);
+    await tester.pumpWidget(_app(KhoiNhanXet(goi: g)));
+    await tester.pumpAndSettle();
+    final the = find.byType(TheSoLieu);
+    String chip(String ten) => tester
+        .widgetList<RichText>(find.descendant(of: the, matching: find.byType(RichText)))
+        .map((r) => r.text.toPlainText())
+        .firstWhere((t) => t.contains(ten), orElse: () => '');
+    expect(chip('Giáo dục'), 'Giáo dục · Tỉ lệ 0,0%');
+    expect(chip('Di chuyển'), 'Di chuyển · Tỉ lệ 0,0%');
+    expect(chip('Ăn uống'), 'Ăn uống · Tỉ lệ 2,0%');
+    expect(
+        find.descendant(of: the, matching: find.textContaining('Đã chi 10.000 đ', findRichText: true)),
+        findsOneWidget,
+        reason: 'mục không tên giữ nguyên "nhãn chuỗi"');
+  });
+
   testWidgets('thiếu dữ liệu: câu hiện, KHÔNG có thẻ số liệu', (tester) async {
     final rong = _Gia('Chưa đủ dữ liệu tháng này để nhận xét.', const [],
         muc: MucNhanXet.thieuDuLieu);

@@ -361,4 +361,16 @@ void main() {
       expect(g.mauCau().cau, 'Mọi kỳ, tự trả — không có hoá đơn nào khớp.');
     });
   });
+
+  test('quá trần 4 hoá đơn → báo số hoá đơn chưa kể (F11, 2026-10-09)', () {
+    final ds = [
+      for (var i = 1; i <= 6; i++)
+        _bill(id: 'h$i', ten: 'HĐ $i', dueDate: DateTime(2026, 9, 10 + i)),
+    ];
+    final kq = hangHoaDon(ds, now: now);
+    expect(kq.hang, hasLength(4));
+    expect(kq.soChuaKe, 2);
+    expect(kq.danhTuChuaKe, 'hoá đơn');
+    expect(hangHoaDon([dien, kiem], now: now).soChuaKe, 0);
+  });
 }

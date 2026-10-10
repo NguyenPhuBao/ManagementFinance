@@ -50,8 +50,18 @@ class AuthInterceptor extends Interceptor {
   /// interceptor này (tránh vòng lặp). Test tiêm một Dio có adapter giả.
   final Dio _refreshDio;
 
-  AuthInterceptor({required this.secureStorage, Dio? dioLamMoi})
-      : _refreshDio = dioLamMoi ??
+  /// Lượt nền của WorkManager (spec tự chuyển tiền chạy nền mục 4.2): 401 → trả
+  /// lỗi lên, KHÔNG làm mới token, KHÔNG xoá token, KHÔNG phát gì. App và nền
+  /// cùng làm mới một refresh token là backend đếm *dùng lại token* (AIOps);
+  /// một lượt nền gặp sự cố cũng không được đăng xuất người dùng trong im lặng.
+  /// App mở lần sau tự xử lý.
+  final bool cheDoNen;
+
+  AuthInterceptor({
+    required this.secureStorage,
+    Dio? dioLamMoi,
+    this.cheDoNen = false,
+  }) : _refreshDio = dioLamMoi ??
             Dio(
               BaseOptions(
                 baseUrl: AppConstants.baseUrl,
@@ -91,6 +101,9 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode != 401) {
       return handler.next(err);
     }
+
+    // Lượt nền: không làm mới, không xoá, không phát — xem [cheDoNen].
+    if (cheDoNen) return handler.next(err);
 
     // §3.3 chỗ 1 — 401 của một request thường mang mã trạng thái tài khoản.
     // Làm mới token lúc này là vô ích (server đã thu hồi refresh token ở

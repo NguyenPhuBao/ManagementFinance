@@ -11,6 +11,7 @@ import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/don_thanh_toan.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
@@ -85,6 +86,7 @@ void main() {
     WidgetTester tester, {
     required bool premium,
     LoaiTran? tran,
+    MaQuyen? quyen,
     _ApiGia? api,
     DateTime? hetHan,
   }) async {
@@ -93,7 +95,11 @@ void main() {
       GoRoute(
         path: '/premium',
         builder: (_, __) => NangCapPage(
-            tran: tran, api: api ?? _ApiGia(), goi: cubit, clock: () => now),
+            tran: tran,
+            quyen: quyen,
+            api: api ?? _ApiGia(),
+            goi: cubit,
+            clock: () => now),
       ),
       GoRoute(
         path: '/premium/cho-thanh-toan',
@@ -113,18 +119,34 @@ void main() {
     return router;
   }
 
-  testWidgets('Basic: bốn đặc quyền, giá qua CurrencyFormatter, Thanh toán; KHÔNG chữ đồng bộ',
+  testWidgets('Basic: đặc quyền theo bảng (mặc định: 3 trần + 3 quyền AI), giá qua CurrencyFormatter, Thanh toán; KHÔNG chữ đồng bộ',
       (tester) async {
     await dung(tester, premium: false);
     expect(find.text('Gói hiện tại: Basic'), findsOneWidget);
-    for (final d in kDacQuyen) {
-      expect(find.text(d), findsOneWidget);
+    for (final d in [
+      'Không giới hạn ví',
+      'Không giới hạn ngân sách',
+      'Không giới hạn mục tiêu tiết kiệm',
+      MaQuyen.aiAssistant.ten,
+      MaQuyen.aiQuickInput.ten,
+      MaQuyen.aiEdgeModel.ten,
+    ]) {
+      expect(find.text(d), findsOneWidget, reason: d);
     }
+    expect(find.text(MaQuyen.exportReports.ten), findsNothing,
+        reason: 'thiếu khoá = mở với Basic → không phải đặc quyền');
     expect(find.textContaining('49.000 đ'), findsOneWidget);
     expect(find.textContaining('đồng bộ'), findsNothing,
         reason: 'câu 4: không hứa thứ không khác');
     expect(find.widgetWithText(ElevatedButton, 'Thanh toán'), findsOneWidget);
     expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsNothing);
+  });
+
+  testWidgets('?quyen=cashflow_forecast: câu mở đầu nêu tên tính năng (spec phân quyền 4.4)',
+      (tester) async {
+    await dung(tester, premium: false, quyen: MaQuyen.cashflowForecast);
+    expect(find.text('Dự báo 30 ngày tới là tính năng Premium.'), findsOneWidget);
+    expect(find.byKey(const Key('nang-cap-cau-quyen')), findsOneWidget);
   });
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {

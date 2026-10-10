@@ -27,7 +27,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
-| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật. ⚠️ Từ 2026-09-29 (**G55**) biểu đồ này cắt **trên/dưới** (`FlClipData.vertical()`), không cắt trái/phải — `all()` cắt mất nửa chấm của khoản đầu và điểm cuối |
+| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật. ⚠️ Từ 2026-10-07 (**G79**) biểu đồ này cắt `all()` và **nới trục ngang** (`trucNgangCoCham`); nhãn biên kẹp về ngày đầu/cuối thật. `FlClipData.vertical()` mà G55 (2026-09-29) dùng **vẫn cắt** nửa chấm khoản đầu/điểm cuối trong fl_chart 1.2.0 |
 
 ---
 
@@ -278,7 +278,32 @@ Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đ
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
 như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 
-### 3.12 Trích tiền tự động: chạy trong vòng quét, không phải bộ lập lịch nền
+### 3.12 Trích tiền tự động: chạy trong vòng quét — và từ 2026-10-10 cả từ engine nền
+
+> ✅ **2026-10-10 — chạy nền (Android), mở lại G22** (spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`).
+> Vòng quét bên dưới vẫn là **nơi duy nhất** chạy bộ trích; cái mới là **ai gọi vòng quét**: WorkManager hẹn một lượt
+> vào kỳ trích kế (`lichNenKeTiep` ở `lib/core/nen/lich_nen.dart`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
+> `NotificationScanner.scan()` trong engine headless khi app đóng (`lib/core/nen/chay_nen.dart`), hoặc trong engine của
+> app khi app đang mở (`quetNgay`). Lượt nền **đồng bộ** trước và sau khi quét (`SyncEngine.syncMotLuot`, không làm mới
+> token). **Năm chốt, phá cái nào cũng hỏng im lặng:**
+>
+> 1. **Khoá thuê** `khoa_tu_chuyen_tiens` (schema v30) — engine nền và engine app có thể cùng tiến trình; `_dangQuet`
+>    chỉ chặn trong một isolate, khoá tệp không chặn hai isolate cùng tiến trình. Lấy khoá là **một câu `UPDATE`**.
+> 2. **Id tất định** `idKhoanTrichTuDong(goalId, kỳ)` (UUID v5 của mốc **UTC**) — hai máy cùng trích kỳ 08:00 chỉ ra
+>    **một** hàng trên server. Hàng cùng id đã có (kể cả **xoá mềm**) → `KyDaTrichException`: không trừ tiền, **không
+>    sự kiện** (báo "Đã trích…" cho việc máy kia làm là nói dối), chỉ đẩy mốc.
+> 3. **`autoDepositLastRun` ghi cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`) — trước đó ghi rời sau
+>    vòng lặp, app sập giữa vòng thì kỳ đã trích bị trích lại.
+> 4. **Gói đặt TRƯỚC khi quét** ở nền (`GoiRepository.datTaiKhoan`) — `coQuyenNen` trả `true` khi gói chưa có tài
+>    khoản, thiếu bước này là Basic được tự trích ở nền.
+> 5. Kỳ đã quá hạn mà ví không đủ **không** được hẹn "ngay" — lượt một-lần tự hẹn lại ngay là vòng lặp tốn pin; nó chờ
+>    lượt định kỳ.
+>
+> ⚠️ Giới hạn: hai máy có số liệu khác nhau trước kỳ (khoản nạp tay chưa đồng bộ) rồi cùng rơi vào ca **trích phần
+> còn thiếu** với hai số tiền khác → server giữ một số tiền theo LWW, tiến độ một máy lệch tới lượt kéo về sau. Khoản
+> trích có từ trước (id v4) không đổi. Giờ chạy không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); Realme
+> force-stop khi vuốt Recents huỷ WorkManager. **iOS** không có lượt nền — đoạn dưới vẫn đúng ở đó.
+
 
 Trước bản này, khối "Tự động trích tiền định kỳ" thu **ba** thông tin và lưu
 đúng **một**: chu kỳ vào `cycle_take_money`, còn số tiền mỗi kỳ chỉ dùng để tính
@@ -338,10 +363,11 @@ dùng sang máy khác, **trạng thái thi hành** (số tiền, ví nguồn, đ
 | `timeCycleTakeMoney` | **nhịp** — kỳ rơi vào lúc nào | Lựa chọn của người dùng không có tác dụng nào, im lặng |
 | `autoDepositLastRun` | **sàn** — đã trích tới đâu | Chọn "ngày 1" vào ngày 5 sẽ trích bù ngay cho mùng 1 vừa qua |
 
-⚠️ **Giờ chỉ giữ được MỘT chiều.** Bộ trích chạy khi app mở (mục 3.12), nên đặt
-08:00 nghĩa là *không bao giờ sớm hơn 08:00* — nhưng nếu 21 giờ mới mở app thì
-nó trích lúc 21 giờ. Biểu mẫu nói thẳng điều này ngay dưới ô chọn giờ thay vì để
-người dùng tự phát hiện.
+⚠️ **Giờ chỉ giữ được MỘT chiều — trên iOS.** Ở đó bộ trích chạy khi app mở
+(mục 3.12), nên đặt 08:00 nghĩa là *không bao giờ sớm hơn 08:00* — nhưng nếu 21
+giờ mới mở app thì nó trích lúc 21 giờ. **Android từ 2026-10-10 có lượt nền**:
+tiền chuyển gần 08:00 kể cả khi app đóng (WorkManager có thể lùi khi máy ngủ
+sâu). Biểu mẫu nói đúng câu của từng nền tảng ngay dưới ô chọn giờ (`coChayNen`).
 
 ✅ **Nhịp neo vào mốc gốc, không trôi** (sửa 2026-09-08). Mốc rơi vào ngày 31 bị
 kẹp về 28/02 ở tháng ngắn — đúng — nhưng kỳ sau **quay lại ngày 31**:
@@ -364,6 +390,10 @@ này**. Hai bên trôi khác nhau là điện thoại nhắc một ngày còn ti
 ngày khác.
 
 ### Lời nhắc khi app đóng
+
+> ✅ **Từ 2026-10-10 đoạn này chỉ còn đúng trên iOS.** Android có lượt nền (mục 3.12) nên
+> `ReminderScheduler(chayNen: true)` **không** đặt lời nhắc kỳ trích nữa — lượt nền bắn thẳng
+> *"Đã trích…"* bằng cùng khoá.
 
 Bộ trích chỉ chạy khi app mở, nên tới đúng mốc kỳ mà app đang đóng thì **không
 có đồng nào rời ví lúc đó** — kỳ ấy được trích bù ở lần mở kế tiếp.
@@ -392,7 +422,9 @@ hình **lẫn mốc kỳ gần nhất**, nên nó không trích lại kỳ vừa
 ⚠️ Đúng một khe hở còn lại: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp kéo
 `last_run` của nhau thì vẫn trích hai lần. Hẹp, vì trích chỉ chạy khi app mở và
 `Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai. Vá
-triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`.
+triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`. ✅ **2026-10-10:** chạy nền làm khe ấy thành ca thường (hai máy cùng tự chạy lúc 08:00), nên nó được vá ở client
+bằng **id tất định** `idKhoanTrichTuDong` (UUID v5 của mục tiêu + mốc kỳ UTC): hai máy cùng trích một kỳ thì server chỉ
+có **một** hàng (LWW), máy thấy hàng cùng id đã có thì không trừ tiền. Không cần khoá phía máy chủ.
 
 Đây cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
 nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
@@ -732,6 +764,8 @@ sách chứ không lùi xuống `0`.
 NGUYÊN phần tử đang kéo**, nên kéo **xuống** thì con số ấy lớn hơn vị trí cuối
 cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó — dùng thẳng
 `newIndex` là mục tiêu rơi lệch một ô, im lặng. Kéo **lên** thì không trừ gì.
+✅ *(2026-10-09: trang dùng `onReorderItem` của Flutter 3.47 — SDK tự trừ một khi kéo xuống và bỏ qua lần thả không đổi
+chỗ, đúng phép của `viTriThaThucTe`, nên hàm ấy và nhóm test của nó đã bỏ. Quay về `onReorder` là phải tự trừ lại.)*
 
 **Chỉ tab "Đang theo đuổi" dùng ưu tiên.** Tab "Đã hoàn thành" giữ nguyên thứ
 tự cũ (mới đạt lên đầu): đã xong rồi thì "quan trọng hơn" không còn nghĩa gì,
@@ -1223,8 +1257,8 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Việc | Ghi chú |
 |---|---|
 | ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
-| Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
-| Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
+| ~~Không có bộ **lập lịch nền**~~ | ✅ **Làm 2026-10-10 (Android)** — người dùng mở lại G22; WorkManager chạy vòng quét khi app đóng, mục 3.12. iOS vẫn chỉ trích khi mở app |
+| Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15. ✅ **Người dùng chốt GIỮ NGUYÊN (2026-10-10)** — đừng viết đơn CAN-LAM xin unique index: hai máy offline cùng tạo một tên thì mục tiêu của một máy kẹt hàng đợi đẩy vĩnh viễn, đúng họ `WALLET_NAME_DUPLICATE` / G63 |
 | ~~**Ưu tiên mục tiêu** chưa có~~ | ✅ **Xong 2026-09-08** — schema v19, kéo thả ở tab "Đang theo đuổi", đồng bộ đủ hai chiều. Mục **3.22** |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
@@ -1295,7 +1329,7 @@ hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã
 | `goal_history_filter_test.dart` | **Mục 3.24.** Ba bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, `tongKet` phải tính trên danh sách đã lọc, và **khoản rút thuộc "Tay"** — ca duy nhất bắt được bản đảo nghĩa hai chip nguồn |
 | `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, dải nguồn **chỉ hiện khi có khoản tự động** (ca này phải ép đỏ bằng bản luôn-hiện, vì trước khi có dải nó xanh oan), và khổ 411dp với đủ **ba dải** + chip "Tự động" cạnh số tiền dài — máy ảo không kiểm hộ được vì chưa mục tiêu nào có khoản tự động lẫn đủ 6 khoản để mở bảng. ⚠️ Đếm nhãn theo `find.byType(NhanTuDong)`, không theo chữ: "Tự động" nay còn là nhãn chip |
 | `presentation/pages/goal_detail_live_test.dart` | **Bẫy 4.5** — trang đăng ký với dòng dữ liệu và cập nhật theo. Từ 2026-09-08 canh thêm **mục 3.25** trên chính trang chi tiết: chỉ khoản tự động mang nhãn, và tiêu đề dòng **không lặp lại** chữ "(tự động)" |
-| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
+| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném *(nhóm `viTriThaThucTe` bỏ 2026-10-09 — `onReorderItem` của SDK đã chỉnh chỉ số)* |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |

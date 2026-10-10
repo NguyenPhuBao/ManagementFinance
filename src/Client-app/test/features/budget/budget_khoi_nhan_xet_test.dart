@@ -8,6 +8,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/ai_edge/presentation/widgets/khoi_nhan_xet.dart';
@@ -40,12 +46,13 @@ Future<void> _dung(
   WidgetTester tester, {
   List<BudgetView> active = const [],
   KeHoachTaiPhanBo? keHoach,
+  Map<String, bool>? quyen,
 }) async {
   tester.view.physicalSize = const Size(411, 914);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(MaterialApp(
+  final trang = MaterialApp(
     theme: AppTheme.lightTheme,
     home: BudgetTabsView(
       now: DateTime(2026, 9, 15, 12),
@@ -61,7 +68,10 @@ Future<void> _dung(
       onDelete: (_) async => false,
       onShowDetail: (_) {},
     ),
-  ));
+  );
+  await tester.pumpWidget(quyen == null
+      ? trang
+      : BlocProvider<GoiCubit>.value(value: _goiBasic(quyen), child: trang));
   await tester.pumpAndSettle();
 }
 
@@ -98,6 +108,28 @@ void main() {
         reason: '`pickHomeBudget` chọn ngân sách căng nhất; hai chỗ (Trang chủ '
             'và đây) không được nói về hai ngân sách khác nhau.');
     expect(find.textContaining('Ăn uống: đã dùng'), findsNothing);
+  });
+
+  testWidgets('quyền smart_budget_rebalancing tắt → thẻ khoá thay thẻ kế hoạch; câu không mời cân đối',
+      (tester) async {
+    final thieu = _view(id: 'b1', amount: 3000000, spent: 2800000);
+    final nguon = _view(id: 'b2', amount: 2000000, spent: 200000, tenDanhMuc: 'Mua sắm');
+    await _dung(
+      tester,
+      active: [thieu, nguon],
+      keHoach: KeHoachTaiPhanBo(
+        thieu: thieu,
+        duPhong: 4200000,
+        thamHut: 1200000,
+        dong: [DongTaiPhanBo(nguon: nguon, duDia: 1800000, soTien: 500000)],
+        trangThai: TrangThaiKeHoach.duNguonBu,
+        soThieu: 0,
+      ),
+      quyen: const {'smart_budget_rebalancing': false},
+    );
+    expect(find.byType(TheKeHoach), findsNothing);
+    expect(find.byKey(const Key('the-khoa-smart_budget_rebalancing')), findsOneWidget);
+    expect(find.textContaining('Bớt từ 1 ngân sách khác?'), findsNothing);
   });
 
   testWidgets('có kế hoạch → câu nối thêm tóm tắt kế hoạch', (tester) async {
@@ -213,4 +245,27 @@ void main() {
         reason: 'Tab rỗng đã có `_InlineEmpty` nói "Chưa có ngân sách nào đang '
             'chạy"; thêm một thẻ Nhận xét nói y hệt là hai thẻ cùng một câu.');
   });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
+}
+
+/// `GoiCubit` Basic mang bảng quyền [quyen] — spec phân quyền 2026-10-08.
+GoiCubit _goiBasic(Map<String, bool> quyen) {
+  final repo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+  final goi = GoiCubit(repo);
+  goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+  addTearDown(() async {
+    await goi.close();
+    await repo.dispose();
+  });
+  return goi;
 }

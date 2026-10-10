@@ -347,4 +347,48 @@ void main() {
     expect((await hoaDon()).length, 1,
         reason: 'Kỳ sau do lần tự trả sinh ra cũng bị gỡ.');
   });
+
+  // G87 (2026-10-09): máy chưa kéo về (lượt quét lúc mở app) có thể giữ một kỳ trùng ở "chưa trả" trong khi kỳ trùng
+  // của nó đã trả. Bộ tự trả phải BỎ QUA nó, im lặng: trả là trừ tiền lần hai; báo "không tự trả được" là báo sai.
+  test('G87 · kỳ có kỳ trùng đã trả → bỏ qua, không trừ tiền, không sự kiện', () async {
+    await seedBill(id: 'g', due: DateTime(2025, 8, 20));
+    await repository.payBill(
+      bill: (await db.billDao.getById('g'))!,
+      walletId: walletId,
+      idaccount: accountId,
+      occurredAt: DateTime(2025, 8, 20),
+    );
+    final kyCon = (await db.billDao.getGeneratedFrom('g'))!;
+    await repository.payBill(
+      bill: kyCon,
+      walletId: walletId,
+      idaccount: accountId,
+      occurredAt: kyCon.dueDate,
+    );
+    // Kỳ trùng của kyCon: cùng cha, cùng hạn, còn phải trả.
+    await db.billDao.insert(BillsCompanion.insert(
+      id: 'trung',
+      idaccount: accountId,
+      walletId: const Value(walletId),
+      categoryId: const Value('c1'),
+      name: 'Tiền điện',
+      amount: 200000,
+      startDate: Value(kyCon.startDate),
+      dueDate: kyCon.dueDate,
+      isRecurrence: const Value(true),
+      timeRecurrence: const Value(kBillCycleMonth),
+      recurrence: const Value('monthly'),
+      autoPayEnabled: const Value(true),
+      generatedFromBillId: const Value('g'),
+      syncStatus: const Value('synced'),
+      updatedAt: DateTime(2025, 1, 1),
+    ));
+    final truoc = await soDu();
+
+    final ra = await runner.chay(accountId, now: kyCon.dueDate.add(const Duration(days: 1)));
+
+    expect(ra.where((e) => e.billId == 'trung'), isEmpty);
+    expect(await soDu(), truoc);
+    expect((await db.billDao.getById('trung'))!.isPaid, isFalse);
+  });
 }

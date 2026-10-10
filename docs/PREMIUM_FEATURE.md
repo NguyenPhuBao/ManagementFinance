@@ -5,6 +5,11 @@
 và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
 Đơn backend: `docs/superpowers/backend/CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (38, không chặn client).
 
+**Phân quyền tính năng theo gói (2026-10-08):** ✅ mã xong + nghiệm thu OnePlus đạt (mục 8.7) — trọn 10 task của kế hoạch `…/plans/2026-10-08-phan-quyen-tinh-nang-client.md`
+(gitignore), spec `docs/superpowers/specs/2026-10-08-phan-quyen-tinh-nang-client-design.md` (người dùng duyệt) — **mục 8**
+dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
+Admin-web `/permissions`.
+
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 
 ---
@@ -20,10 +25,15 @@ Tài khoản có hai gói: **Basic** (mặc định) và **Premium** (49.000 đ 
 | Không giới hạn ngân sách | tối đa **3** đang hoạt động (chưa xoá, chưa hết hạn) |
 | Không giới hạn mục tiêu tiết kiệm | tối đa **3** đang hoạt động (chưa xoá, chưa đạt) |
 | Trợ lý AI & Nhập nhanh bằng AI | màn Trợ lý AI mở nhưng ô nhập + chip khoá (kể cả lệnh tạo C3), băng *"Trợ lý AI là tính năng Premium…"* + nút Nâng cấp; ô Nhập nhanh ở màn Thêm giao dịch mờ, nút Điền thay bằng Nâng cấp |
+| AI lấp ô thiếu khi **Quét** ảnh (A5, 2026-10-08) | nút Quét + phần luật (ML Kit) mở cho mọi người; Basic không gọi mô hình, màn *"Đang đọc ảnh…"* không có chữ "AI" (`quet_anh_page.dart`, `_laPremium` — từ 2026-10-08 đọc quyền `ai_edge_model`, nút Quét đọc `ocr_receipt`, mục 8) — `docs/QUET_ANH_FEATURE.md` |
 
 **Không** khác theo gói (người dùng chốt): đồng bộ (cả 5 nguồn kích hoạt, kể cả socket `sync.completed`), khối Nhận
-xét, gợi ý danh mục, xuất báo cáo, OCR biên lai, đọc biến động số dư, thông báo. Màn Nâng cấp **không** hứa *đồng bộ
-tức thì*. Người bị hạ cấp **giữ nguyên** mọi thứ đang có, chỉ không tạo thêm.
+xét, gợi ý danh mục, thông báo. Màn Nâng cấp **không** hứa *đồng bộ tức thì*. Người bị hạ cấp **giữ nguyên** mọi thứ
+đang có, chỉ không tạo thêm.
+
+⚠️ *(Câu trên từng kể thêm "xuất báo cáo, OCR biên lai, đọc biến động số dư" — đúng tới 2026-10-08. Từ phân quyền tính
+năng (mục 8) ba thứ ấy, cùng Dự báo, chi bất thường, cân đối ngân sách, tự trả, tự trích và AI trên máy, đi theo bảng
+quyền của server; khi server không trả khoá thì chúng **mở**, nên tài khoản không cấu hình gì vẫn thấy như cũ.)*
 
 ## 2. Quyết định kèm lý do (8 câu người dùng chốt 2026-10-06)
 
@@ -118,3 +128,116 @@ qua ngrok hoặc tự ký HMAC POST `localhost:3000/api/payment/webhook`. Mườ
 Lùi giờ máy khi offline · kho thắng `type` · hết hạn giữa phiên không hẹn giờ · app bị giết khi đang chờ trả thì không
 lưu đơn (lần mở kế `lamMoi()` thấy Premium) · tài khoản mới có 2 ví seed → Basic tạo thêm 1 · hai máy Basic cùng offline
 tạo ví thứ 3 → 4 ví, vẫn dùng, không tạo thêm · return URL sang web Admin (đơn 38 mục 4 xin trang trung lập, tuỳ chọn).
+
+## 8. Phân quyền tính năng theo gói (2026-10-08)
+
+Bước 5 của đơn 39 (`DA-XONG/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md` — client soát và chuyển 2026-10-09). Backend (gộp `main` @ `0eb4a05f`) thêm bảng `feature` +
+`account_type_permission` và trang Admin-web `/permissions`; `/payment/subscription-info` trả `limits` (5 trần) và
+`features` (12 quyền) **của gói đang hiệu lực**; admin đổi xong backend phát socket `account.permissions_updated`, client
+nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
+
+### 8.1 Quyết định người dùng
+
+1. **Theo bảng của server; thiếu khoá thì MỞ** — trừ `ai_assistant` · `ai_quick_input` · `ai_edge_model`, khoá với Basic
+   (giữ chốt 2026-10-06). Premium còn hạn → mở hết, bỏ qua bảng.
+2. Tính năng bị tắt **hiện khoá + Nâng cấp**, không ẩn.
+3. Đã bật tự trả / tự trích rồi về Basic → **dừng chạy, giữ công tắc** (không sửa dữ liệu; lên lại Premium chạy tiếp).
+4. Quyền chỉ chặn việc **tạo / bật mới** — dữ liệu đang có giữ nguyên.
+
+### 8.2 Bảng quyền ↔ chỗ trong app
+
+| Mã server | Chỗ thi hành | Thiếu khoá thì |
+|---|---|---|
+| `wallets` · `budgets` · `goals` (trần) | `redirectTaoTheoGoi` ở `/wallets/add`, `/budget/rules` (không `?id`), `/goals/add` | 3 |
+| `bills` (trần) | `redirectTaoTheoGoi(LoaiTran.hoaDon)` ở `/bills/add` — phủ cả thẻ *Có vẻ là khoản lặp* (B2), lệnh tạo C3, deeplink | không giới hạn |
+| `custom_categories` (trần) | `redirectTaoTheoGoi(LoaiTran.danhMucRieng)` ở `/categories/child/new`, `/categories/group/new` | không giới hạn |
+| `export_reports` | cửa route `redirectTheoQuyen` ở `/export-report` | mở |
+| `cashflow_forecast` | khối *Dự báo 30 ngày tới* (hai chỗ dựng `_KhoiDuBao`) → thẻ khoá | mở |
+| `anomaly_spending_insights` | câu *chi bất thường* ở khối Nhận xét Phân tích: `GoiSoPhanTich.tu(boChiBatThuong:)` bỏ câu, `KhoiNhanXet.chanDuoi` = dòng 🔒 **chỉ khi thật có bất thường** | mở |
+| `smart_budget_rebalancing` | thẻ *Đề xuất cân đối* (trang Ngân sách) → thẻ khoá, câu Nhận xét bỏ kế hoạch; thông báo `budgetRebalance` thôi sinh (`loadKeHoach` trả `null`) | mở |
+| `bill_auto_pay` | công tắc *Tự trả* (form thêm / sửa hoá đơn) → công tắc khoá; `runAutoPays` bỏ lượt | mở |
+| `goal_auto_deposit` | công tắc *Trích tự động* → khoá; mục tiêu **mới** không quyền thì tắt sẵn; `runAutoDeposits` bỏ lượt | mở |
+| `ai_edge_model` | màn *Cài đặt AI* → chỉ thẻ khoá (không nút tải, không công tắc); phần Gemma của `/quet` | **khoá với Basic** |
+| `ocr_receipt` | nút *Quét* Trang chủ → `/premium?quyen=ocr_receipt`; `NhapBienLai` bỏ lượt (**hàng chờ + ảnh giữ nguyên**) | mở |
+| `bank_notification_parser` | công tắc *Đọc biến động số dư* (D1) → khoá; `NhapBienDong` không bật đọc | mở |
+| `ai_assistant` · `ai_quick_input` | `lyDoKhoa` màn Trợ lý AI; ô Nhập nhanh — đọc qua `coQuyen` | **khoá với Basic** |
+| `financial_health_fhs` | **bỏ qua** — app không có màn FHS | — |
+
+*Nhắc ghi sau khi dùng app ngân hàng* không thuộc quyền nào — để mở.
+
+### 8.3 Một định nghĩa, bốn cửa
+
+- **`duocDung(MaQuyen, TrangThaiGoi, now)`** (`premium/domain/quyen_tinh_nang.dart`) là định nghĩa duy nhất: Premium còn
+  hạn → `true`; bảng đã lưu là **của Basic** (`!goi.laPremium(goi.nhanLuc)`) và có khoá → theo khoá; còn lại →
+  `MaQuyen.macDinhKhiThieu`. `enum MaQuyen` mang `maServer`, `ten` (chữ trên thẻ khoá và màn Nâng cấp), `macDinhKhiThieu`.
+- **Trong cây widget:** `GoiCubit.coQuyen(MaQuyen)`, extension `context.coQuyen` (watch) / `context.coQuyenDoc` (read)
+  ở `premium/presentation/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
+  `premium/presentation/widgets/the_khoa_quyen.dart`: `TheKhoaQuyen` (thẻ 🔒 + `NutNangCap(quyen:)`), `KhoaTheoQuyen`
+  (bọc con), `DongKhoaQuyen` (dòng khoá trong khối Nhận xét), `DongKhoaCongTac` (*"Cần Premium"* / *"Tạm dừng — cần
+  Premium"* khi giá trị đang lưu là bật).
+- **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
+  phiên → `true`. DI bọc `runAutoPays` · `runAutoDeposits` · `loadKeHoach` · `NhapBienDong.batBienDong` ·
+  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**.
+- **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
+  màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số.
+
+### 8.4 Ba lỗi của mã backend viết sẵn — đã đóng
+
+Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `TrangThaiGoi.quyenTinhNang`, tám getter
+`GoiCubit.duoc…`) nhưng chỉ hai getter có chỗ gọi, và:
+
+1. `TrangThaiGoi.duocDung` đọc bảng **không xét hạn** — Premium hết hạn lúc offline giữ bảng Premium, mở mọi tính năng.
+   → `duocDung` xét `laPremium(now)` và `laPremium(nhanLuc)`; getter cũ **bỏ hết**.
+2. Đếm danh mục riêng tính cả **13 bản sao mặc định** do seeder tạo (`isDefault: false`) — trần 5 thì Basic không tạo được
+   danh mục nào. → `laBanSaoMacDinh` (`category/domain/ban_sao_mac_dinh.dart`), seeder dùng lại cùng hàm.
+3. Đếm hoá đơn tính cả kỳ **`Skipped`**. → đếm qua `conPhaiTra` (`bill/domain/bill_pay_status.dart`).
+
+### 8.5 Bẫy
+
+1. ⚠️ **Đừng xét bảng bằng `goi.loai`.** Server trả `accountType` là gói **gốc** (`'Premium'` cả khi đã hết hạn) còn
+   `features` / `limits` là của gói **hiệu lực** (`payment.service.js`, `effectiveType`).
+2. **Test quét `lib/` thứ 21** — `test/features/premium/quyen_tinh_nang_mot_noi_test.dart`: `quyenTinhNang` chỉ được đọc ở
+   `quyen_tinh_nang.dart` (và kho ở `trang_thai_goi.dart`); chuỗi mã quyền server chỉ nằm ở `MaQuyen`.
+3. `redirectTaoTheoGoi` đọc `sl<GoiRepository>()` **và** `sl<NguonDemDangHoatDong>()` lúc chạy — test dựng `AppRouter`
+   thật rồi đi qua route tạo (nay thêm `/bills/add`, `/categories/*/new`) phải đăng ký cả hai.
+4. `context.watch<GoiCubit>()` — một `emit` cần **hai** nhịp `pump` mới tới widget trong test.
+5. Mục tiêu **mới** không quyền trích: tắt sẵn đặt ở `didChangeDependencies` lần đầu (cờ `_daXetQuyenTrich` — xét đúng
+   một lần, xét lại ở mỗi lần dựng là đè lựa chọn người dùng vừa gạt). Mục tiêu đang sửa giữ giá trị đã lưu.
+6. Nút Quét Trang chủ **chưa có widget test** (khung test Trang chủ nặng) — nghiệm thu máy thay.
+
+### 8.6 Màn Stitch (người dùng xác nhận 2026-10-08; cả ba lượt gọi `timeout`, màn hiện sau ~10 phút)
+
+| Màn / khối | id |
+|---|---|
+| Thẻ khoá trong trang + dòng khoá chi bất thường | `595529bf…` |
+| Băng khoá công tắc (form hoá đơn) | `68593384…` |
+| Nâng cấp mở từ tính năng bị khoá | `9db35f88…` |
+
+### 8.7 Nghiệm thu máy thật — ✅ đạt (OnePlus 13R, 2026-10-08 khuya, bản debug trỏ `127.0.0.1` + `adb reverse`)
+
+Tài khoản Basic **mới** `thuquyen1` (idaccount 28, tạo qua `POST /api/auth/register`); `/subscription-info` trả trần
+3/3/3/3/5 và bảng quyền Basic của CSDL dev (tắt: hai AI, `ai_edge_model`, `export_reports`, `cashflow_forecast`,
+`anomaly_spending_insights`, `smart_budget_rebalancing`, `bill_auto_pay`, `goal_auto_deposit`).
+
+| Kịch bản | Kết quả |
+|---|---|
+| Hoá đơn thứ 4 (sau 3 hoá đơn mở) | ✅ màn Nâng cấp *"Bạn đã dùng 3/3 hóa đơn định kỳ của gói Basic."* |
+| Danh mục riêng thứ 6 (sau 5 danh mục tự tạo; 13 bản sao mặc định **không** bị đếm) | ✅ *"Bạn đã dùng 5/5 danh mục riêng của gói Basic."* |
+| Khối Dự báo 30 ngày tới (kỳ rỗng và kỳ có dữ liệu) | ✅ thẻ khoá; *Nâng cấp* → *"Dự báo 30 ngày tới là tính năng Premium."* |
+| Xuất báo cáo — drawer **và** nút tải trang Phân tích | ❌ → ✅ nút tải mở được trang: route thứ hai `/analytics/export` thiếu cửa (sửa `7b180f8d`); đo lại → *"Xuất báo cáo là tính năng Premium."* |
+| Thẻ Đề xuất cân đối (ngân sách Ăn uống 100.000 đ vượt 300 %, Mua sắm 2.000.000 đ làm nguồn) | ✅ thẻ khoá, câu Nhận xét không mời xem kế hoạch; trung tâm thông báo chỉ có *"Đã vượt ngân sách"*, **không** có thông báo cân đối |
+| Công tắc Tự trả (form Thêm hoá đơn) | ✅ chạm không đổi (ảnh trước / sau trùng byte), dòng *"Cần Premium"* + Nâng cấp |
+| Công tắc Trích tự động (mục tiêu **mới**) | ✅ tắt sẵn, khoá, *"Cần Premium"* |
+| Cài đặt AI | ✅ chỉ thẻ khoá *AI trên máy*; ❌ → ✅ thẻ giãn hết chiều cao màn (`Column` `max`, sửa `154f3963`) |
+| Trợ lý AI · Nhập nhanh | ✅ khoá |
+| Nút Quét · công tắc Đọc biến động số dư (Basic **có** hai quyền này) | ✅ mở bình thường — sheet Chụp / Chọn ảnh; công tắc D1 không có dòng khoá |
+| Admin bật `cashflow_forecast` cho Basic qua `PUT /api/admin/permissions` | ✅ khối Dự báo **tự mở trong ≤ 2 s** trên máy đang để ở trang Phân tích, không chạm máy (socket → `lamMoi`) |
+| Gạt lại `false` | ✅ khoá lại trong ≤ 3 s; ma trận Basic về đúng như trước lượt đo |
+
+Chưa đo trên máy: dòng khoá **chi bất thường** (cần ≥ 4 tháng dữ liệu đã đóng mới có bất thường để khoá — widget test
+canh). Hai chỗ chữ lượt đo ghi nhận — ✅ **sửa cùng đêm, người dùng chọn**, đo lại OnePlus đạt: danh sách *Đặc quyền
+Premium* ở màn Nâng cấp nay là **`dacQuyenPremium(goi)`** (`quyen_tinh_nang.dart`) — đúng những thứ Basic đang thiếu theo
+bảng server (mỗi trần có số + mỗi quyền tắt; bảng là của Premium thì mặc định 3 trần + 3 AI), Basic dev nay thấy 14 dòng,
+không có Quét / Đọc biến động; thẻ Gói tab Cá nhân nay **`tomTatTran`** (`tran_goi.dart`) — mọi trần có số, `null` bỏ
+(trước đó Basic có trần `null` sẽ in *"null ví"*), trong mỗi mục là dấu cách không ngắt nên chỉ xuống dòng ở `·`.
+`kDacQuyen` (danh sách cố định) **bỏ**. ⚠️ Danh sách dài ra so với màn Stitch `c999da97…` (4 dòng) — chưa đưa lên Stitch.

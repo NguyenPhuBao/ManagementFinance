@@ -708,6 +708,26 @@ void main() {
       );
     });
 
+    test('Mã BILL_PERIOD_ALREADY_PAID là lỗi vĩnh viễn (đơn 41, thêm TRƯỚC '
+        'khi backend lên)', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'BILL_PERIOD_ALREADY_PAID',
+        message: 'Kỳ hoá đơn này đã được thanh toán ở một kỳ trùng',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Đơn 41 (`CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`) xin server từ '
+            'chối khoản chi cho kỳ trùng bằng mã này. Tập mã vĩnh viễn là danh '
+            'sách trắng: backend lên trước mà client chưa biết mã thì khoản chi '
+            'bị gửi lại ở MỌI chu kỳ, và ví máy này bị trừ mà không ai hoàn.',
+      );
+    });
+
     test('Mã BILL_ALREADY_PAID là lỗi vĩnh viễn', () async {
       await seedPendingCategory();
 

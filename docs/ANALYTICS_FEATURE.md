@@ -488,7 +488,8 @@ khác dropdown, không có mục nào tự nói lên trạng thái rỗng.
 4. **`FlClipData` mặc định là `none()`** (bẫy **4.17**) — nhiều đường cùng lúc
    có dải hẹp hơn bản hai đường nên dễ tràn khỏi thẻ hơn. Đã đặt
    `FlClipData.all()` — 🔄 từ 2026-09-29 là `FlClipData.vertical()` (G55: `all()`
-   cắt mất nửa chấm kỳ đầu/cuối; bẫy 4.17 ngoại lệ).
+   cắt mất nửa chấm kỳ đầu/cuối; bẫy 4.17 ngoại lệ) — 🔄 từ 2026-10-07 lại là
+   `all()` kèm **trục ngang nới** (G79: `vertical()` vẫn cắt trái/phải).
 
 #### Một lượt duyệt cho `chuoiTheoDanhMuc`
 
@@ -2417,7 +2418,14 @@ thư viện — kể cả test đã hỏi `takeException()` vẫn xanh.
 thứ hai chứ không thay được việc kẹp dữ liệu ở tầng thuần: cắt hình chỉ giấu
 điểm sai đi, còn tầng thuần mới quyết định điểm ấy **đáng lẽ là bao nhiêu**.
 
-🔄 **Ngoại lệ từ 2026-09-29 (G55):** biểu đồ đường **có vẽ chấm** dùng
+🔄 **Từ 2026-10-07 (G79) — thay đoạn G55 ngay dưới:** biểu đồ đường có chấm giữ
+`FlClipData.all()` và **nới trục ngang** 5 % dải hai đầu (`trucNgangCoCham`,
+`core/ui/bieu_do_cham.dart`), nhãn kỳ bỏ mốc lẻ (`laMocChiSo`). Đo bằng ảnh
+(`toImage`, `test/core/ui/bieu_do_cham_test.dart`): `vertical()` của fl_chart 1.2.0
+**vẫn cắt nửa chấm mép trái** — G55 chọn theo tên hằng, ca canh của nó chỉ đọc cấu
+hình nên xanh suốt, Realme 320 dp mới lộ (2026-10-07). Đoạn dưới giữ làm lịch sử.
+
+~~**Ngoại lệ từ 2026-09-29 (G55):**~~ biểu đồ đường **có vẽ chấm** dùng
 `FlClipData.vertical()` — cắt trên/dưới, **không** cắt trái/phải. `all()` cắt đúng
 mép vùng vẽ nên chấm của kỳ đầu và kỳ cuối (nằm đúng `minX`/`maxX`) mất một nửa —
 thấy trên Realme ở bốn biểu đồ (Xu hướng, Dòng tiền tự do, Tổng tài sản, Tiến độ

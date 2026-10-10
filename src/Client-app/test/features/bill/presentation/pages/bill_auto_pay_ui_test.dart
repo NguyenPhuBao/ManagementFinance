@@ -25,6 +25,11 @@ import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_edit_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -119,7 +124,7 @@ void main() {
   });
 
   Future<void> dung(WidgetTester tester, Widget trang,
-      {required BillBloc bloc, double cao = 2400}) async {
+      {required BillBloc bloc, double cao = 2400, Map<String, bool>? quyen}) async {
     tester.view.physicalSize = Size(411, cao);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -135,10 +140,21 @@ void main() {
     addTearDown(auth.close);
     addTearDown(bloc.close);
 
+    GoiCubit? goi;
+    if (quyen != null) {
+      final goiRepo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+      goi = GoiCubit(goiRepo);
+      goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+      addTearDown(() async {
+        await goi!.close();
+        await goiRepo.dispose();
+      });
+    }
     await tester.pumpWidget(MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>.value(value: auth),
         BlocProvider<BillBloc>.value(value: bloc),
+        if (goi != null) BlocProvider<GoiCubit>.value(value: goi),
       ],
       child: MaterialApp(home: trang),
     ));
@@ -186,6 +202,38 @@ void main() {
           reason: 'Câu cũ phải biến mất hẳn, không chỉ bị câu mới che đi.');
       expect(tester.takeException(), isNull,
           reason: 'Dòng phụ dài không được làm tràn ở 411dp.');
+    });
+  });
+
+  group('quyền bill_auto_pay (spec phân quyền 2026-10-08)', () {
+    const tat = {'bill_auto_pay': false};
+
+    testWidgets('form Thêm, không có quyền → công tắc khoá + "Cần Premium"', (tester) async {
+      await dung(tester, const BillAddPage(),
+          bloc: BillBloc(repository: _GhiLaiRepository()), quyen: tat);
+      expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(find.text('Cần Premium'), findsOneWidget);
+    });
+
+    testWidgets('form Sửa hoá đơn ĐANG tự trả, không có quyền → "Tạm dừng — cần Premium"; Lưu giữ nguyên cờ bật',
+        (tester) async {
+      final repo = _GhiLaiRepository();
+      await dung(tester, BillEditPage(id: 'b1', bill: _hoaDon(tuTra: true)),
+          bloc: BillBloc(repository: repo), quyen: tat);
+      expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
+      await tester.tap(find.text('Cập nhật'));
+      await tester.pumpAndSettle();
+      tester.takeException(); // pop không có GoRouter — như ca Sửa ở dưới
+      expect(repo.daSua!.autoPayEnabled.value, isTrue,
+          reason: 'chốt "dừng chạy, giữ công tắc" — hạ cấp không sửa dữ liệu người dùng');
+    });
+
+    testWidgets('Basic thiếu khoá → công tắc mở như cũ', (tester) async {
+      await dung(tester, const BillAddPage(),
+          bloc: BillBloc(repository: _GhiLaiRepository()), quyen: const {});
+      expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNotNull);
+      expect(find.text('Cần Premium'), findsNothing);
     });
   });
 
@@ -249,4 +297,15 @@ void main() {
       expect(find.textContaining('Tự trả'), findsNothing);
     });
   });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
 }

@@ -640,6 +640,18 @@ void main() {
           reason: 'tiêu về đúng 0 là "đã cạn" thật — luật mới chỉ im ví chưa từng dùng');
     });
 
+    test('⭐ về đúng 0 đ → "Ví đã hết tiền", không "chỉ còn 0 đ" (nợ nhỏ, 2026-10-09)', () {
+      final c = chay(wallets: [vi(id: 'cu', soDu: 0)], nguongSoDuThap: 100000, viDaDung: {'cu'}).single;
+      expect(c.title, 'Ví đã hết tiền');
+      expect(c.body, isNot(contains('còn 0')));
+      expect(c.body, endsWith('đã hết tiền.'));
+      final con = chay(wallets: [vi(id: 'cu', soDu: 1000)], nguongSoDuThap: 100000, viDaDung: {'cu'}).single;
+      expect(con.title, 'Số dư ví sắp cạn');
+      expect(con.body, contains('chỉ còn 1 nghìn'));
+      expect(c.dedupeKey, con.dedupeKey,
+          reason: 'cùng một trạng thái "cạn" trong ngày — đổi chữ không được đẻ hàng thứ hai');
+    });
+
     test('viDaDung null (nơi gọi không biết) → giữ luật cũ, không tắt tính năng im lặng', () {
       expect(chay(wallets: [vi(soDu: 0)], nguongSoDuThap: 100000), hasLength(1));
     });
@@ -658,7 +670,7 @@ void main() {
 
   // Đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" vẫn nằm trên khay sau khi ví đã nhận 10.000 đ — khoá
   // gộp theo NGÀY nên hàng không tự mất, và không ai gỡ nó.
-  group('hàng "sắp cạn" tự gỡ khi ví đã hồi', () {
+  group('hàng "sắp cạn" lỗi thời tự gỡ (ví đã hồi, hoặc đã âm — G81)', () {
     AppNotification hang(String id, {String kind = 'walletLowBalance', String? vi, DateTime? daGo, DateTime? daDoc}) =>
         AppNotification(
           id: id,
@@ -676,7 +688,7 @@ void main() {
         );
 
     test('⭐ ví đã lên TRÊN ngưỡng → hàng sắp cạn của nó được chọn để gỡ (kể cả đã đọc — gỡ khỏi trung tâm)', () {
-      final ids = hangSapCanDaHoi(
+      final ids = hangSapCanLoiThoi(
         [hang('a', vi: 'v1'), hang('b', vi: 'v1', daDoc: now)],
         [vi(id: 'v1', soDu: 150000)],
         100000,
@@ -684,14 +696,24 @@ void main() {
       expect(ids, ['a', 'b']);
     });
 
+    test('⭐ G81 — ví đã ÂM → hàng sắp cạn của nó được chọn để gỡ (hàng "đang âm" thay nó)', () {
+      // Realme 2026-10-07: ví "test" về đúng 0 → "chỉ còn 0 đồng"; xoá khoản nạp → ví −100.000 và hàng
+      // "đang âm" hiện, nhưng hàng sắp cạn vẫn treo với con số cũ — hai hàng cùng nói về một ví.
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -100000)], 100000), ['a']);
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: -100000)], 0), ['a'],
+          reason: 'ngưỡng 0 chỉ chặn vế "đã hồi"; ví âm thì sắp cạn sai ở mọi ngưỡng');
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 0)], 100000), isEmpty,
+          reason: 'đúng 0 vẫn là "sắp cạn", chưa âm');
+    });
+
     test('ví vẫn trong ngưỡng / hàng đã gỡ / loại khác / ví không còn / ngưỡng 0 → không chọn', () {
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 50000)], 100000), isEmpty);
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty);
-      expect(hangSapCanDaHoi([hang('a', kind: 'walletNegative', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 100000),
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 50000)], 100000), isEmpty);
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1', daGo: now)], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty);
+      expect(hangSapCanLoiThoi([hang('a', kind: 'walletNegative', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 100000),
           isEmpty, reason: 'chỉ loại "sắp cạn" — việc của lỗi này');
-      expect(hangSapCanDaHoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty,
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v9')], [vi(id: 'v1', soDu: 150000)], 100000), isEmpty,
           reason: 'không biết ví → không đoán');
-      expect(hangSapCanDaHoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
+      expect(hangSapCanLoiThoi([hang('a', vi: 'v1')], [vi(id: 'v1', soDu: 150000)], 0), isEmpty,
           reason: 'ngưỡng 0 = tính năng tắt: không có căn cứ để nói "đã hồi"');
     });
   });

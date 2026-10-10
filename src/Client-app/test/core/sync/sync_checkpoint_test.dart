@@ -48,12 +48,21 @@ class _Adapter implements HttpClientAdapter {
   Map<String, dynamic> pullData = const {};
   String? lastPullSince;
 
+  /// Phản hồi đúng dạng server từ migration 20: `{pulledAt, maxSince, data}`
+  /// nằm trong `data` của `ResponseHandler`. `null` = server cũ (chỉ `pullData`).
+  Map<String, dynamic>? pullMoi;
+
+  /// G87: server trả 500 cho `/sync/pull` (Pull nuốt lỗi, chu kỳ vẫn kết thúc).
+  bool loiPull = false;
+
   @override
   Future<ResponseBody> fetch(
       RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
     if (o.path.contains('/sync/pull')) {
+      if (loiPull) return ResponseBody.fromString('{}', 500);
       lastPullSince = o.queryParameters['since']?.toString();
-      return ResponseBody.fromString(jsonEncode({'data': pullData}), 200,
+      return ResponseBody.fromString(
+          jsonEncode({'success': true, 'data': pullMoi ?? pullData}), 200,
           headers: {
             Headers.contentTypeHeader: ['application/json']
           });
@@ -269,5 +278,115 @@ void main() {
     await runSync();
 
     expect(store.values[accountId], DateTime.utc(2026, 8, 20, 8));
+  });
+
+  // ── G67 — mốc theo giờ-server `maxSince` (2026-10-08) ────────────────────
+  //
+  // Đo được trong nghiệm thu G63: máy B ghi hai giao dịch lúc offline (14:43),
+  // máy A kéo về lúc 14:44; hai giao dịch lên server lúc 14:45 nhưng mang GIỜ GHI
+  // 14:43 → A không bao giờ nhận. Mốc phải theo giờ server nhận bản ghi.
+  group('G67 — mốc lấy từ maxSince của server', () {
+    Map<String, dynamic> viMoi(String updateAt) => {
+          'idwallet': '99999999-9999-4999-8999-999999999999',
+          'idaccount': accountId,
+          'name': 'Ví từ máy B',
+          'balance': 0,
+          'update_at': updateAt,
+        };
+
+    test('⭐ hàng mang update_at MỚI hơn giờ-server: mốc theo giờ-server', () async {
+      await seedWallet();
+      client.adapter.pullMoi = {
+        'pulledAt': '2026-10-08T07:50:00.000Z',
+        'maxSince': {'wallet': '2026-10-08T07:45:32.000Z'},
+        'data': {
+          'wallets': [viMoi('2026-10-08T07:46:00.000Z')],
+        },
+      };
+
+      await runSync();
+
+      expect(store.values[accountId], DateTime.utc(2026, 10, 8, 7, 45, 32, 1),
+          reason: 'Giờ ghi của máy (update_at) không nói gì về lúc server nhận. '
+              'Lấy 07:46 là bỏ sót mọi bản ghi server nhận trong (07:45:32, 07:46] '
+              'mà giờ ghi cũ hơn — đúng G67.');
+    });
+
+    test('⭐ hàng mang update_at CŨ hơn giờ-server: mốc vẫn theo giờ-server', () async {
+      await seedWallet();
+      client.adapter.pullMoi = {
+        'pulledAt': '2026-10-08T07:50:00.000Z',
+        'maxSince': {'wallet': '2026-10-08T07:45:32.000Z'},
+        'data': {
+          'wallets': [viMoi('2026-10-08T07:43:31.000Z')],
+        },
+      };
+
+      await runSync();
+
+      expect(store.values[accountId], DateTime.utc(2026, 10, 8, 7, 45, 32, 1),
+          reason: 'Mốc 07:43:31 không sai dữ liệu nhưng kéo lại thừa; điều quan '
+              'trọng là hai đường cho cùng một mốc theo server.');
+    });
+
+    test('maxSince rỗng (không bảng nào có hàng) → giữ nguyên mốc cũ', () async {
+      await seedWallet();
+      store.values[accountId] = DateTime.utc(2026, 10, 8, 7);
+      client.adapter.pullMoi = {
+        'pulledAt': '2026-10-08T07:50:00.000Z',
+        'maxSince': <String, dynamic>{},
+        'data': <String, dynamic>{},
+      };
+
+      await runSync();
+
+      expect(store.values[accountId], DateTime.utc(2026, 10, 8, 7));
+    });
+
+    test('lượt kéo sau gửi đúng mốc theo giờ-server', () async {
+      await seedWallet();
+      client.adapter.pullMoi = {
+        'pulledAt': '2026-10-08T07:50:00.000Z',
+        'maxSince': {
+          'wallet': '2026-10-08T07:40:00.000Z',
+          'transaction': '2026-10-08T07:45:00.000Z',
+        },
+        'data': {
+          'wallets': [viMoi('2026-10-08T07:49:00.000Z')],
+        },
+      };
+      await runSync();
+      engine.stop();
+
+      client.adapter.pullMoi = {
+        'pulledAt': '2026-10-08T07:55:00.000Z',
+        'maxSince': <String, dynamic>{},
+        'data': <String, dynamic>{},
+      };
+      await runSync();
+
+      expect(client.adapter.lastPullSince, '2026-10-08T07:45:00.001Z',
+          reason: 'Lớn nhất giữa các bảng theo GIỜ-SERVER (07:45), không phải '
+              'update_at của hàng (07:49 — giờ ghi của máy).');
+    });
+  });
+
+  // G87 (2026-10-09): bước Pull NUỐT lỗi, nên "chu kỳ xong" không nói được dữ liệu đã mới chưa. Lượt quét chỉ gộp kỳ
+  // hoá đơn trùng khi con đếm này vừa tăng — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
+  group('soLanKeoVeXong', () {
+    test('kéo về thành công → tăng một', () async {
+      await seedWallet();
+      expect(engine.soLanKeoVeXong, 0);
+      await runSync();
+      expect(engine.soLanKeoVeXong, 1);
+    });
+
+    test('kéo về lỗi (chu kỳ vẫn kết thúc) → KHÔNG tăng', () async {
+      await seedWallet();
+      client.adapter.loiPull = true;
+      await runSync();
+      expect(engine.soLanKeoVeXong, 0,
+          reason: 'chu kỳ kết thúc ở trạng thái cuối dù Pull hỏng — chỉ con đếm này mới nói dữ liệu đã mới');
+    });
   });
 }

@@ -50,6 +50,22 @@ void main() {
     expect(r.hang.every((h) => !h.canhBao), isTrue);
   });
 
+  test('⭐ B8 ◐: tên hàng là tên NGẮN — tin ngân hàng bỏ mã giao dịch (mọi số liệu mang cùng tên)', () {
+    final tin = KetQuaTimGiaoDich(
+      dong: [
+        DongTimThay(
+          tieuDe: 'MOMO-CASHOUT-0373155262-OQCONTBBHMXJ-149311742276', tenDanhMuc: null,
+          tenVi: 'Ví MB Bank', tenViDich: null,
+          soTien: 20000, chieu: ChieuTim.thu, ngay: DateTime(2026, 9, 30),
+        ),
+      ],
+      soKhop: 1, tongChi: 0, tongThu: 20000, tongChuyen: 0, tenViKhop: null,
+    );
+    final r = hangGiaoDich(tin, tieuChi: const TieuChiTim(), chuKy: 'tháng này', now: now);
+    expect(r.hang.single.ten, 'MOMO-CASHOUT');
+    expect(r.hang.single.soLieu.every((s) => s.ten == 'MOMO-CASHOUT'), isTrue);
+  });
+
   test('⭐ hàng khai nhãn XUNG ĐỘT theo chiều: chi ↔ Thu, thu ↔ Chi, chuyển không (bẫy 4.42)', () {
     final coThu = KetQuaTimGiaoDich(
       dong: [

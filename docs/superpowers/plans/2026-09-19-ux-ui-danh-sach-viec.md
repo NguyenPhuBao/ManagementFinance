@@ -22,7 +22,7 @@ phải đưa lên Stitch trước rồi mới sửa Flutter. ❓ = cần ngườ
 | A12 ✅ | Phím `.` sinh thập phân mà `_saveTransaction` strip dấu chấm → **12.5 thành 125**, im lặng. Người dùng chốt **bỏ phím** (2026-09-19); ô ấy nay là `00`. ⚠️ Lỗi có **hai cửa** — chế độ sửa nạp chuỗi có dấu chấm từ `editing.amount.toString()`, nên chốt thật ở `_saveTransaction`; số lẻ cũng thôi in chuỗi thô, đi qua `formatCoLe` | 4 ca `so_tien_thap_phan_test.dart` (tệp mới) + 4 ca `ban_phim_so_tien_test.dart` | S |
 | A3 ✅ | Công tắc "Giao diện" sáng/tối chỉ là hình vẽ, app không có `darkTheme` — người dùng chốt **gỡ** (2026-09-19). Rút khỏi danh sách chờ chốt của `khong_co_nut_chet_test.dart`; `_ProfileItem.trailing` gỡ theo vì hết chỗ gọi (analyze lên 26, mức nền 25) | 2 ca `profile_page_menu_test.dart` | S |
 | A4 ✅ | Drawer "Xuất báo cáo" báo "đang phát triển" dù trang đã có từ 2026-09-09 — nay trỏ `/export-report`; drawer tách thành `DrawerTrangChu`, test đối chiếu mọi đường với router thật | `home_page.dart:344` | S |
-| A5 | Nút "Quét" ở Trang chủ là stub SnackBar | `home_page.dart:471-475` | ❓ giữ (làm OCR/QR) hoặc gỡ |
+| A5 | Nút "Quét" ở Trang chủ là stub SnackBar | `home_page.dart:471-475` | ✅ **mã xong 2026-10-08** — làm thật: chụp / chọn ảnh hoá đơn hoặc biên lai → form điền sẵn, kèm tách khoản chi theo danh mục + tick món (`docs/QUET_ANH_FEATURE.md`); 🚧 chờ nghiệm thu Realme |
 | A6 ✅ | Thẻ "Insight AI · Mới" là chữ tĩnh, lỗi chính tả "Thêm thêm" — **thay bằng khối Nhận xét** nền tối đọc `GoiSoTrangChu` (Edge-SLM P2 Task 14, 2026-09-19); thẻ cũ xoá hẳn, có test quét nguồn `home_khoi_nhan_xet_test.dart` | `home_page.dart` `_buildNhanXet` | S |
 | A7 ✅ | Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" `onTap` rỗng — đã gỡ, cùng nút "hỗ trợ" rỗng trên cùng trang | `settings_page.dart:210`, `:217` | S (gỡ) |
 | A8 ✅ | Widget `AppBottomNavBar` chết — đã xoá (0 chỗ gọi), mang nhãn khác bản chạy | `shared/widgets/bottom_nav_bar.dart` | S (xoá) |
@@ -77,12 +77,12 @@ mục 14 `PROJECT_CONTEXT.md`.
 
 | # | Việc | Bằng chứng | Cỡ |
 |---|---|---|---|
-| E1 ⏸ | Skeleton cho tab Phân tích — **chưa làm**: trạng thái tải là một khối giao diện mới, theo nếp phải vẽ vào Stitch (màn `c8567243…`) trước | ảnh `05_analytics.png`; trang 3874 dòng, 7 nguồn stream | M |
-| E2 | Mục lục / tab con hoặc thu gọn khối cho trang Phân tích (15 loại khối, cuộn rất dài — đếm bằng máy 2026-09-21; con số 13 ghi ban đầu là đếm bằng mắt) | `analytics_page.dart` | ⚑ ❓ L |
+| E1 ✅ 2026-10-06 (mục 3.38 `ANALYTICS_FEATURE.md`; Stitch chờ xác nhận, chưa đo máy) | Skeleton cho tab Phân tích — **chưa làm**: trạng thái tải là một khối giao diện mới, theo nếp phải vẽ vào Stitch (màn `c8567243…`) trước | ảnh `05_analytics.png`; trang 3874 dòng, 7 nguồn stream | M |
+| E2 ✅ 2026-10-07 — người dùng chốt **không làm thêm**: trang đã tự xếp khối hay xem lên đầu (dự án C việc ba, mục 3.36 `ANALYTICS_FEATURE.md`) | Mục lục / tab con hoặc thu gọn khối cho trang Phân tích (15 loại khối, cuộn rất dài — đếm bằng máy 2026-09-21; con số 13 ghi ban đầu là đếm bằng mắt) | `analytics_page.dart` | ⚑ ❓ L |
 | E3 ✅ | Chặn Back ở Trang chủ thoát app ngay: "Nhấn lần nữa để thoát" — `ThoatHaiLan` bọc `MainShell`, tab khác về Trang chủ; toast qua kênh mới `ThongBaoNhanh` (nguồn thứ tư của `AppToast`, nền cho E4). ⚠️ Máy ảo lật thêm: predictive back (targetSdk 36) làm Back ở tab Phân tích đóng activity — tắt bằng `enableOnBackInvokedCallback="false"`, test GoRouter thật `main_shell_back_test.dart` | `grep PopScope` = 0 | S |
-| E4 ⏸ | Thay 176 `SnackBar` bằng toast — **kênh đã có** (`ThongBaoNhanh` → `AppToast`, từ E3); phần thay dần chưa làm vì đụng hàng trăm khẳng định `find.byType(SnackBar)`/`find.text` trong test (goal 54, bill 36, transaction 22…) | `grep SnackBar` = 176 | M (một widget chung + thay dần) |
+| E4 ✅ | **2026-10-06 tối** (`7667ba6` · `acaa2a7` · `bbd378a`): 88 `SnackBar` thật ở 31 tệp (176 là đếm cả `showSnackBar(`) → `baoNhanh(cau, loai:, hanhDong:)`; viên lỗi/xong/thông tin, nút Hoàn tác, nổi trên bàn phím, câu phản hồi bậc cao nhất; 20 tệp test sang kênh (`test/helpers/bat_thong_bao.dart`), test quét thứ 19. Chưa nghiệm thu máy thật; màn Stitch chờ xác nhận. Khối E4 mục 14 `PROJECT_CONTEXT.md` | `grep SnackBar lib` = 0 (ngoài chú thích) | M |
 | E5 ✅ | Thẻ tổng tab Ngân sách tô thanh **xanh** ở 90% trong khi thẻ danh mục ngay dưới tô **đỏ** cùng con số — nay cùng thang qua `budgetHealthOfRatio` | ảnh `08_budget.png`; `budget_tabs_view.dart` | S |
-| E6 ❓ | Trung tâm thông báo lặp "Số dư ví đang âm" cho cùng ví mỗi ngày (4 bản) — khoá `walletNeg:<ví>:<ngày>` là **quyết định có chủ ý** ("ví ở trạng thái âm cho tới khi nạp tiền"), và khoá chống trùng sống 90 ngày nên bỏ ngày là im 90 ngày kể cả khi ví âm lại. Cần chốt: giữ nhắc hằng ngày, đổi sang hằng tuần, hay chỉ báo khi *chuyển* sang âm | ảnh `17_notifications.png`; luật `walletNegative` | S (khoá theo ví, không theo ngày) |
+| E6 ✅ 2026-10-06 — người dùng chọn *mỗi đợt âm một lần* (mục 5k `NOTIFICATION_FEATURE.md`), chưa đo máy | Trung tâm thông báo lặp "Số dư ví đang âm" cho cùng ví mỗi ngày (4 bản) — khoá `walletNeg:<ví>:<ngày>` là **quyết định có chủ ý** ("ví ở trạng thái âm cho tới khi nạp tiền"), và khoá chống trùng sống 90 ngày nên bỏ ngày là im 90 ngày kể cả khi ví âm lại. Cần chốt: giữ nhắc hằng ngày, đổi sang hằng tuần, hay chỉ báo khi *chuyển* sang âm | ảnh `17_notifications.png`; luật `walletNegative` | S (khoá theo ví, không theo ngày) |
 | E7 ✅ (½) | Trang Danh mục: tiêu đề lặp đã bỏ theo Stitch `583f8232…`; FAB đè hàng cuối **để nguyên** (Stitch cũng FAB nổi; padding đáy chỉ có tác dụng khi cuộn tới cuối) | ảnh `16_categories.png` | S |
 | E8 ✅ | Hoá đơn hiện "Danh mục đã xoá" cho 2/3 hoá đơn — **lỗi thật, G47** (mở và đóng cùng ngày): `categoryDao.getAll` thay vì `getBangTraTen` ở BillPage, BillDetailPage và bảng tra của ngân sách | ảnh `13_bills.png` | S (kiểm) |
 
@@ -100,7 +100,7 @@ mục 14 `PROJECT_CONTEXT.md`.
 | # | Việc | Bằng chứng | Cỡ |
 |---|---|---|---|
 | G1 ✅ (phần `IconButton`) | 45 `IconButton` thiếu `tooltip` — đã chèn theo icon, test quét `lib/` thứ mười hai canh; nút dựng qua `GestureDetector`/`NotificationBell` chưa có `Semantics` | `grep Semantics\|tooltip:` = 0 | M |
-| G2 | Kiểm bố cục với cỡ chữ hệ thống lớn (`textScaler` 1.3): ba thẻ Trang chủ, header Phân tích, sheet chọn phạm vi | `grep textScaler` = 0 | M |
+| G2 | Kiểm bố cục với cỡ chữ hệ thống lớn (`textScaler` 1.3): ba thẻ Trang chủ, header Phân tích, sheet chọn phạm vi | `grep textScaler` = 0 | M | ✅ 2026-10-06 — header Phân tích hai hàng khi chật + tiêu đề khối 2 dòng; thẻ Trang chủ và sheet không vỡ ở ×1,3 (mục 3.37 `ANALYTICS_FEATURE.md`), chưa đo máy thật |
 
 ## Cần người dùng chốt trước khi làm
 
@@ -143,14 +143,13 @@ Cần người dùng chốt trước (đừng tự quyết):
 4. **E6** nhắc "ví âm" hằng ngày — giữ hằng ngày / đổi hằng tuần / chỉ báo khi
    *chuyển* sang âm. Khoá chống trùng sống 90 ngày, nên bỏ ngày khỏi khoá là im
    90 ngày kể cả khi ví âm lại.
-5. **E2** mục lục hoặc tab con cho trang Phân tích (15 loại khối — đếm bằng máy 2026-09-21) — đụng bố cục,
-   **vẽ Stitch trước** (màn `c8567243…`), brainstorming trước.
+5. ~~**E2** mục lục hoặc tab con cho trang Phân tích (15 loại khối — đếm bằng máy 2026-09-21) — đụng bố cục,
+   **vẽ Stitch trước** (màn `c8567243…`), brainstorming trước.~~ ✅ 2026-10-07 — không làm thêm (người dùng chốt).
 
 Không bị chặn, chỉ chưa làm:
 
 6. **E1** skeleton tải cho tab Phân tích — vẽ Stitch trước.
-7. **E4** thay 176 `SnackBar` bằng toast — kênh `ThongBaoNhanh → AppToast` đã có
-   từ E3; phần thay dần đụng hàng trăm khẳng định test.
+7. ~~**E4** thay 176 `SnackBar` bằng toast~~ ✅ 2026-10-06 (88 chỗ thật).
 8. **G2** kiểm bố cục với `textScaler` 1.3.
 
 Việc của người dùng, không phải của agent: ẩn/xoá màn Stitch cũ

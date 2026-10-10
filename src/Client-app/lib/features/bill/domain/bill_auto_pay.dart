@@ -23,8 +23,12 @@ import 'bill_pay_status.dart';
 
 /// Dòng phụ hiện dưới công tắc khi bật, dùng chung cho form Thêm và Sửa.
 ///
-/// Ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc nào (bộ
-/// chạy chỉ chạy khi app mở), và chuyện gì xảy ra khi họ dùng nhiều máy.
+/// Ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc nào, và
+/// chuyện gì xảy ra khi họ dùng nhiều máy.
+///
+/// [chayNen] (`coChayNen` — Android, spec 2026-10-10-tu-chuyen-tien-chay-nen
+/// mục 6): lượt nền tự trả vào ngày đến hạn kể cả khi app đóng. Nơi khác bộ tự
+/// trả chỉ chạy khi app mở — câu cũ.
 ///
 /// ⚠️ Câu cuối đổi ngày **2026-09-13** (bước 12). Bản trước dặn *"Chỉ nên bật
 /// trên một thiết bị"* vì hai lý do nay đã hết:
@@ -37,8 +41,9 @@ import 'bill_pay_status.dart';
 ///
 /// Điều người dùng thật sự cần biết nay là **chuyện gì xảy ra** khi hai máy
 /// cùng trả, chứ không phải một lời dặn họ không thi hành được.
-const String kBillAutoPayHint =
-    'Khi bạn mở app vào ngày đến hạn, hoá đơn được trả từ ví thanh toán ở '
+String goiYTuTra({required bool chayNen}) =>
+    '${chayNen ? 'Vào ngày đến hạn' : 'Khi bạn mở app vào ngày đến hạn'}, '
+    'hoá đơn được trả từ ví thanh toán ở '
     'trên và ghi thành một khoản chi. Kỳ bỏ lỡ được trả bù, tối đa 3 kỳ mỗi '
     'lần. Cài đặt này áp cho hoá đơn trên mọi thiết bị; nếu hai máy cùng trả '
     'một kỳ thì chỉ một khoản chi được giữ lại.';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/nen/co_chay_nen.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,9 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
 ///
@@ -142,6 +146,21 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   GoalEntity? _goalDangSua;
   bool _dangNapGoal = false;
   String? _loiNapGoal;
+
+  bool _daXetQuyenTrich = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mục tiêu MỚI mà không có quyền trích tự động → công tắc tắt sẵn (mặc định của form là bật). Mục tiêu đang sửa
+    // giữ giá trị đã lưu (`_napGoalDeSua`). Xét một lần — đọc trong `didChangeDependencies` vì `initState` chưa có
+    // `context` để đọc `GoiCubit`.
+    if (_daXetQuyenTrich) return;
+    _daXetQuyenTrich = true;
+    if (!_isEdit && !context.coQuyenDoc(MaQuyen.goalAutoDeposit)) {
+      _autoDeposit = false;
+    }
+  }
 
   @override
   void initState() {
@@ -1025,13 +1044,19 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               ),
                               Switch(
                                 value: _autoDeposit,
-                                onChanged: (val) {
-                                  setState(() => _autoDeposit = val);
-                                },
+                                // Quyền `goal_auto_deposit` (spec phân quyền 2026-10-08).
+                                onChanged: context.coQuyen(MaQuyen.goalAutoDeposit)
+                                    ? (val) {
+                                        setState(() => _autoDeposit = val);
+                                      }
+                                    : null,
                                 activeThumbColor: AppColors.income,
                               ),
                             ],
                           ),
+                          if (!context.coQuyen(MaQuyen.goalAutoDeposit))
+                            DongKhoaCongTac(
+                                ma: MaQuyen.goalAutoDeposit, dangBat: _autoDeposit),
                           if (_autoDeposit) ...[
                             const SizedBox(height: 16),
                             _buildLabel('SỐ TIỀN TRÍCH MỖI KỲ (VNĐ)'),
@@ -1091,10 +1116,15 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   '${_gioTrich.hour.toString().padLeft(2, '0')}'
                                   ':${_gioTrich.minute.toString().padLeft(2, '0')}',
                               // Nói thẳng giới hạn thay vì để người dùng tự
-                              // phát hiện: bộ trích chạy khi app mở, nên giờ
-                              // chỉ giữ được MỘT chiều.
-                              subtitle: 'Không trích trước giờ này. App chưa mở '
-                                  'thì trích ở lần mở kế tiếp',
+                              // phát hiện. Android có lượt nền (spec 2026-10-10)
+                              // nên tiền chuyển gần giờ này kể cả khi app đóng;
+                              // nơi khác bộ trích chạy khi app mở — giờ chỉ giữ
+                              // được MỘT chiều (G22).
+                              subtitle: coChayNen
+                                  ? 'Tiền được chuyển gần giờ này; máy đang ngủ '
+                                      'sâu thì có thể muộn hơn'
+                                  : 'Không trích trước giờ này. App chưa mở '
+                                      'thì trích ở lần mở kế tiếp',
                               iconColor: AppColors.primary,
                               onTap: _chonGioTrich,
                             ),

@@ -38,6 +38,8 @@ void main() {
   NotificationScanner dung({
     required Future<List<BillAutoPayEvent>> Function(int, DateTime) runAutoPays,
     List<String>? thuTu,
+    Future<int> Function(int)? gopKyTrung,
+    int Function()? soLanKeoVe,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -55,6 +57,13 @@ void main() {
         thuTu?.add('runAutoPays');
         return runAutoPays(id, at);
       },
+      soLanKeoVe: soLanKeoVe,
+      gopKyTrung: gopKyTrung == null
+          ? null
+          : (id) {
+              thuTu?.add('gopKyTrung');
+              return gopKyTrung(id);
+            },
       syncStatus: syncStatus.stream,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
@@ -119,5 +128,75 @@ void main() {
         reason: 'Một sự cố ở chỗ chuyển tiền không được phép giết cả trung '
             'tâm thông báo — `payBill` là khối nguyên tử nên không để lại gì '
             'dở dang.');
+  });
+
+  // G87 (2026-10-09): kỳ hoá đơn trùng (cùng gốc chuỗi, cùng hạn) phải được gỡ TRƯỚC bộ tự trả — nếu không bộ tự
+  // trả trừ tiền cho từng kỳ trùng (đo trên server: kỳ Netflix 05/10 bị trừ 3 lần).
+  test('G87 · gộp kỳ trùng chạy ĐẦU TIÊN — trước markOverdue và bộ tự trả', () async {
+    final thuTu = <String>[];
+    int? nhanId;
+    final scanner = dung(
+      runAutoPays: (id, at) async => const [],
+      thuTu: thuTu,
+      gopKyTrung: (id) async {
+        nhanId = id;
+        return 0;
+      },
+      soLanKeoVe: () => 1,
+    );
+
+    await scanner.scan(accountId);
+
+    expect(thuTu, ['gopKyTrung', 'markOverdue', 'runAutoPays', 'loadBills']);
+    expect(nhanId, accountId);
+  });
+
+  test('G87 · gộp kỳ trùng ném lỗi thì lượt quét vẫn chạy (vệ sinh dữ liệu không được chặn tự trả, thông báo)',
+      () async {
+    final thuTu = <String>[];
+    final scanner = dung(
+      runAutoPays: (id, at) async => const [],
+      thuTu: thuTu,
+      gopKyTrung: (id) async => throw StateError('hỏng'),
+      soLanKeoVe: () => 1,
+    );
+
+    await scanner.scan(accountId);
+
+    expect(thuTu, ['gopKyTrung', 'markOverdue', 'runAutoPays', 'loadBills']);
+  });
+
+  test('G87 · CHƯA kéo về lần nào (lượt quét lúc mở app) → KHÔNG gộp: dữ liệu trên máy có thể cũ', () async {
+    // Realme 2026-10-09: máy giữ hai kỳ trùng ở "Quá hạn" trong khi server đã "Đã trả". Gộp trên dữ liệu ấy là xoá
+    // hai hoá đơn ĐÃ TRẢ, và lệnh xoá mang giờ mới hơn nên thắng trên server.
+    final thuTu = <String>[];
+    final scanner = dung(
+      runAutoPays: (id, at) async => const [],
+      thuTu: thuTu,
+      gopKyTrung: (id) async => 0,
+      soLanKeoVe: () => 0,
+    );
+
+    await scanner.scan(accountId);
+
+    expect(thuTu, ['markOverdue', 'runAutoPays', 'loadBills']);
+  });
+
+  test('G87 · gộp MỘT lần cho mỗi lần kéo về thành công', () async {
+    final thuTu = <String>[];
+    var lan = 1;
+    final scanner = dung(
+      runAutoPays: (id, at) async => const [],
+      thuTu: thuTu,
+      gopKyTrung: (id) async => 0,
+      soLanKeoVe: () => lan,
+    );
+
+    await scanner.scan(accountId);
+    await scanner.scan(accountId); // ví dụ quay lại app — chưa kéo về thêm
+    lan = 2;
+    await scanner.scan(accountId);
+
+    expect(thuTu.where((x) => x == 'gopKyTrung'), hasLength(2));
   });
 }

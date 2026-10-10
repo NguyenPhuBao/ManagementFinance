@@ -18,8 +18,11 @@ void main() {
       expect(TranGoi.macDinh.cua(LoaiTran.vi), 3);
       expect(TranGoi.macDinh.cua(LoaiTran.nganSach), 3);
       expect(TranGoi.macDinh.cua(LoaiTran.mucTieu), 3);
-      expect(TranGoi.macDinh.cua(LoaiTran.hoaDon), 3);
-      expect(TranGoi.macDinh.cua(LoaiTran.danhMucRieng), 5);
+      expect(TranGoi.macDinh.cua(LoaiTran.hoaDon), isNull,
+          reason: 'thiếu khoá = không giới hạn (spec phân quyền 2026-10-08 mục 2 #1)');
+      expect(TranGoi.macDinh.cua(LoaiTran.danhMucRieng), isNull);
+      expect(TranGoi.tuJson({'wallets': 3}).cua(LoaiTran.hoaDon), isNull);
+      expect(TranGoi.tuJson({'bills': 3}).cua(LoaiTran.hoaDon), 3);
     });
 
     test('tuJson đọc limits của server, ô thiếu/rác/âm về mặc định', () {
@@ -45,8 +48,22 @@ void main() {
   });
 
   group('conTaoDuoc', () {
+    // Trần như server trả cho Basic (migration 23): 3/3/3/3/5.
+    final basicServer = TrangThaiGoi(
+      loai: LoaiGoi.basic,
+      nhanLuc: now,
+      tran: TranGoi.tuJson(const {
+        'wallets': 3, 'budgets': 3, 'goals': 3, 'bills': 3, 'custom_categories': 5,
+      }),
+    );
+    test('trần null (thiếu khoá / không giới hạn) → luôn được', () {
+      expect(
+          conTaoDuoc(loai: LoaiTran.hoaDon, dangCo: 999, goi: basic, now: now),
+          isA<Duoc>());
+    });
     for (final loai in LoaiTran.values) {
       test('Basic $loai: dưới trần được, BẰNG trần vượt, trên trần vượt', () {
+        final basic = basicServer;
         final tran = basic.tran.cua(loai)!;
         expect(conTaoDuoc(loai: loai, dangCo: tran - 1, goi: basic, now: now),
             isA<Duoc>());

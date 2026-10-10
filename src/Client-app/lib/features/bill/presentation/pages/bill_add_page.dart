@@ -11,7 +11,8 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
-import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
+import '../../../../core/nen/co_chay_nen.dart';
+import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
 import '../../domain/dien_san_hoa_don.dart';
 import '../../domain/bill_schedule.dart';
@@ -21,6 +22,9 @@ import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/ui/do_chu.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key, this.dienSan});
@@ -502,7 +506,7 @@ class _BillAddPageState extends State<BillAddPage> {
   ///
   /// Công tắc **TẮT sẵn**, và có dòng phụ nói rõ ba điều người dùng cần biết
   /// trước khi uỷ quyền: trừ ví nào, lúc nào, và chuyện gì xảy ra khi họ dùng
-  /// nhiều máy — xem [kBillAutoPayHint].
+  /// nhiều máy — xem [goiYTuTra].
   Widget _buildAutoPaySwitch() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,17 +546,22 @@ class _BillAddPageState extends State<BillAddPage> {
             Switch(
               key: const ValueKey('bill-autopay-switch'),
               value: _autoPayEnabled,
-              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              // Quyền `bill_auto_pay` (spec phân quyền 2026-10-08): không có → công tắc khoá, băng Nâng cấp dưới.
+              onChanged: context.coQuyen(MaQuyen.billAutoPay)
+                  ? (val) => setState(() => _autoPayEnabled = val)
+                  : null,
               activeThumbColor: Colors.white,
               activeTrackColor: AppColors.primary,
             ),
           ],
         ),
+        if (!context.coQuyen(MaQuyen.billAutoPay))
+          DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _autoPayEnabled),
         if (_autoPayEnabled) ...[
           const SizedBox(height: 8),
-          const Text(
-            kBillAutoPayHint,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            goiYTuTra(chayNen: coChayNen),
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ],

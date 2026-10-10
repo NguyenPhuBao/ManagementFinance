@@ -12,18 +12,6 @@ import '../data/models/goal_entity.dart';
 /// mục 4. Đừng đổi con số mà không đọc mục ấy.
 const int buocUuTien = 100;
 
-/// Đổi `newIndex` của `ReorderableListView.onReorder` thành vị trí **thật**.
-///
-/// Flutter trả `newIndex` tính trên danh sách **còn nguyên** phần tử đang kéo,
-/// nên khi kéo **xuống** con số ấy lớn hơn vị trí cuối cùng đúng một đơn vị.
-/// Dùng thẳng nó thì mục tiêu rơi lệch một ô — không ném, không log, chỉ là
-/// thứ tự khác chỗ người dùng vừa thả tay.
-///
-/// Kéo **lên** thì không phải trừ: phần tử đang kéo nằm sau vị trí đích nên gỡ
-/// nó ra không làm đích dịch đi.
-int viTriThaThucTe({required int cu, required int moi}) =>
-    moi > cu ? moi - 1 : moi;
-
 /// Giá trị `priority` mới cho từng mục tiêu sau một lần kéo thả.
 ///
 /// Khoá là id mục tiêu. Trả về **map rỗng** nghĩa là không có gì để ghi.

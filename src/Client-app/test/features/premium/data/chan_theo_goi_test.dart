@@ -9,6 +9,7 @@ import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
 import 'package:flowmoney/features/premium/data/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -103,5 +104,36 @@ void main() {
         await chanTheoGoi(Uri.parse('/budget/rules?id=b1'), LoaiTran.nganSach,
             goi: r, dem: DemGia(9), clock: () => now),
         isNull);
+  });
+
+  group('chanTheoQuyen (spec phân quyền 2026-10-08 mục 4.3)', () {
+    Future<GoiRepository> repoBasic(Map<String, bool> q) async {
+      final kho = InMemoryGoiStore();
+      await kho.ghi(10, TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: now, quyenTinhNang: q));
+      final r = GoiRepository(api: ApiIm(), kho: kho, clock: () => now);
+      await r.datTaiKhoan(10);
+      return r;
+    }
+
+    test('Basic bị tắt → /premium?quyen=export_reports', () async {
+      final r = await repoBasic(const {'export_reports': false});
+      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
+          '/premium?quyen=export_reports');
+    });
+
+    test('Basic thiếu khoá → qua (mặc định mở)', () async {
+      final r = await repoBasic(const {});
+      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+    });
+
+    test('Premium → qua', () async {
+      final r = await repo(premium: true);
+      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+    });
+
+    test('chưa có phiên → qua', () {
+      final r = GoiRepository(api: ApiIm(), kho: InMemoryGoiStore(), clock: () => now);
+      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+    });
   });
 }

@@ -11,6 +11,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/kenh_bien_dong.dart';
@@ -156,13 +162,33 @@ void main() {
 
     final khoa = NotificationSettingsPage.khoaCongTacNhom(NotificationGroup.bienDong);
 
-    Future<void> moTrang(WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
+    Future<void> moTrang(WidgetTester tester, {Map<String, bool>? quyen}) async {
+      final trang = MaterialApp(
         home: NotificationSettingsPage(
             idaccount: id, store: store, osNotifier: _OsGia(), kenhBienDong: kenh),
-      ));
+      );
+      if (quyen == null) {
+        await tester.pumpWidget(trang);
+      } else {
+        final repo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+        final goi = GoiCubit(repo);
+        goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+        addTearDown(() async {
+          await goi.close();
+          await repo.dispose();
+        });
+        await tester.pumpWidget(BlocProvider<GoiCubit>.value(value: goi, child: trang));
+      }
       await tester.pumpAndSettle();
     }
+
+    testWidgets('quyền bank_notification_parser tắt → công tắc khoá + "Cần Premium" (spec phân quyền 2026-10-08)',
+        (tester) async {
+      await moTrang(tester, quyen: const {'bank_notification_parser': false});
+      await tester.ensureVisible(find.byKey(khoa));
+      expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(find.text('Cần Premium'), findsOneWidget);
+    });
 
     Future<void> gat(WidgetTester tester) async {
       await tester.ensureVisible(find.byKey(khoa));
@@ -366,4 +392,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
 }

@@ -16,6 +16,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/domain/dien_san_bien_dong.dart';
+import '../../features/transaction/presentation/pages/quet_anh_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
 import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
@@ -33,6 +34,7 @@ import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/premium/data/chan_theo_goi.dart';
 import '../../features/premium/domain/don_thanh_toan.dart';
+import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
 import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
@@ -159,6 +161,9 @@ class AppRouter {
                     GoRoute(
                       path: 'export',
                       parentNavigatorKey: _rootNavigatorKey,
+                      // Lối thứ hai tới trang Xuất báo cáo (nút tải trang Phân tích) — cùng cửa quyền với
+                      // `/export-report`; thiếu nó là Basic bị tắt quyền vẫn vào (nghiệm thu OnePlus 2026-10-08).
+                      redirect: redirectTheoQuyen(MaQuyen.exportReports),
                       builder: (_, __) => const ExportReportPage(),
                     ),
                   ],
@@ -205,6 +210,8 @@ class AppRouter {
           // Analytics & Report Export standalone routes
           GoRoute(
             path: '/export-report',
+            // Quyền `export_reports` (spec phân quyền 2026-10-08) — mọi lối vào (drawer, thông báo Tổng kết tuần).
+            redirect: redirectTheoQuyen(MaQuyen.exportReports),
             // `?from=&to=` đặt sẵn phạm vi — đường mà thông báo Tổng kết tuần
             // đi vào. Tham số qua QUERY STRING chứ không qua `extra`: cú chạm
             // vào thông báo có thể xảy ra ở **cold start**, và `extra` không
@@ -306,6 +313,8 @@ class AppRouter {
               redirect: (_, __) => '/categories/group/new'),
           GoRoute(
             path: '/categories/child/new',
+            // Trần danh mục riêng — `/categories/add` redirect về đây nên cũng bị chặn.
+            redirect: redirectTaoTheoGoi(LoaiTran.danhMucRieng),
             builder: (_, __) => const CategoryAddPage(),
           ),
           GoRoute(
@@ -316,6 +325,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/categories/group/new',
+            redirect: redirectTaoTheoGoi(LoaiTran.danhMucRieng),
             builder: (_, __) => const CategoryGroupPage(),
           ),
           GoRoute(
@@ -342,6 +352,9 @@ class AppRouter {
           ),
           GoRoute(
             path: '/bills/add',
+            // Trần hoá đơn theo gói (spec phân quyền 2026-10-08): mọi lối tạo — nút +, thẻ khoản lặp (B2), lệnh tạo
+            // C3, deeplink — đều qua đây. `/bills/:id/edit` là sửa, không chặn.
+            redirect: redirectTaoTheoGoi(LoaiTran.hoaDon),
             // Query điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — hỏng thì bỏ
             // đúng trường ấy, không có thì form trống như cũ.
             builder: (_, s) => BlocProvider<BillBloc>(
@@ -423,6 +436,14 @@ class AppRouter {
           if (kSpikeC4)
             GoRoute(path: '/spike-c4', builder: (_, __) => const SpikeC4Page()),
 
+          // A5 — màn "Đang đọc ảnh…" (navigator gốc, ngoài shell — từ Trang chủ phải push). `extra` = đường dẫn ảnh vừa
+          // chụp / chọn; thiếu (màn dựng lại từ URL) thì về Trang chủ.
+          GoRoute(
+            path: '/quet',
+            redirect: (_, s) => s.extra is String ? null : '/home',
+            builder: (_, s) => QuetAnhPage(duongDanAnh: s.extra! as String),
+          ),
+
           // Cài đặt của mảng AI trên máy: tải / xoá mô hình, công tắc dùng nó.
           //
           // ⚠️ NGOÀI `StatefulShellRoute`, và **không** có mặt trong
@@ -440,7 +461,8 @@ class AppRouter {
           GoRoute(
             path: '/premium',
             builder: (_, state) => NangCapPage(
-                tran: loaiTranTuMa(state.uri.queryParameters['tran'])),
+                tran: loaiTranTuMa(state.uri.queryParameters['tran']),
+                quyen: maQuyenTuServer(state.uri.queryParameters['quyen'])),
           ),
           GoRoute(
             path: '/premium/cho-thanh-toan',

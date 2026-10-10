@@ -106,8 +106,13 @@ String bamKhoaTin(String khoa) => sha256.convert(utf8.encode('flowmoney-kt:$khoa
 /// 2026-09-30 — khoản thứ hai từng bị gộp và MẤT). Hai TIN cùng nguồn không phân biệt được bằng số dư → chỉ trùng khi
 /// là cùng thông báo đăng lại ([kCuaSoCungTin]). Còn lại (hai kênh, hoặc biên lai với tin): cùng số tiền + cùng chiều
 /// và cách ≤ [kCuaSoGopTrung].
+///
+/// Hai nguồn là hai TÀI KHOẢN khác nhau (MB Bank · MoMo) → không trùng: cửa sổ 5 phút dành cho hai KÊNH của cùng
+/// tài khoản — SMS, hoặc biên lai từ app không rõ ([_nguonChung]). Nghiệm thu OnePlus 2026-10-08: MoMo → MB 10.000
+/// rồi MB → MoMo 10.000 cách 100 giây — tin nhận tiền của MoMo bị gộp vào hàng MB, khoản ấy MẤT.
 bool trungBienDong(DauBienDong a, DauBienDong b) {
   if (a.ma != null && b.ma != null) return a.ma == b.ma;
+  if (_haiTaiKhoan(a.nguon, b.nguon)) return false;
   if (a.vanTay != null && b.vanTay != null && a.vanTay != b.vanTay) return false;
   if (a.soTien != b.soTien || a.chieu != b.chieu) return false;
   final cach = a.thoiGian.difference(b.thoiGian).abs();
@@ -118,6 +123,12 @@ bool trungBienDong(DauBienDong a, DauBienDong b) {
   }
   return cach <= kCuaSoGopTrung;
 }
+
+/// Nguồn không chỉ ra một tài khoản: SMS (kênh của mọi ngân hàng), biên lai chia sẻ từ app không có trong danh sách.
+const Set<String> _nguonChung = {kNguonSms, kNguonBienLai};
+
+bool _haiTaiKhoan(String? a, String? b) =>
+    a != null && b != null && a != b && !_nguonChung.contains(a) && !_nguonChung.contains(b);
 
 String _phut(DateTime d) => d.toIso8601String().substring(0, 16);
 String _giay(DateTime d) => d.toIso8601String().substring(0, 19);

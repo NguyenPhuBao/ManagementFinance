@@ -33,6 +33,14 @@ class BillPaymentConflictResolver {
   /// Mã backend gắn cho khoản chi thứ hai mang cùng `Idbill`.
   static const String maDaTra = 'BILL_ALREADY_PAID';
 
+  /// Mã backend gắn cho khoản chi trả một kỳ mà **kỳ trùng** của nó (cùng
+  /// `Previous_bill_id` + `Due_date`, khác `Idbill`) đã có khoản chi — đơn 41
+  /// `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md` (G87). Gỡ khoản trả như [maDaTra],
+  /// nhưng hoá đơn **không** được đánh dấu đã trả: server không có khoản chi
+  /// cho hoá đơn NÀY, và để nó còn phải trả thì lượt gộp kỳ trùng sau lần kéo về
+  /// kế tiếp (`kyTrungCanGo`) xoá mềm nó.
+  static const String maKyTrungDaTra = 'BILL_PERIOD_ALREADY_PAID';
+
   final AppDatabase _db;
   final BillRepository _bills;
   StreamSubscription<SyncResult>? _sub;
@@ -54,12 +62,18 @@ class BillPaymentConflictResolver {
       // Mã này chỉ có nghĩa cho thao tác đẩy KHOẢN CHI. Đọc nó ở entity khác
       // là hiểu sai hợp đồng.
       if (f.entity != SyncEntityType.transaction) continue;
-      if (f.code != maDaTra) continue;
-      await _hoanTac(f.localId);
+      if (f.code == maDaTra) {
+        await _hoanTac(f.localId, daTraHoaDonNay: true);
+      } else if (f.code == maKyTrungDaTra) {
+        await _hoanTac(f.localId, daTraHoaDonNay: false);
+      }
     }
   }
 
-  Future<void> _hoanTac(String idKhoanChi) async {
+  /// [daTraHoaDonNay]: server có khoản chi cho **đúng** hoá đơn này
+  /// ([maDaTra]) hay cho một kỳ trùng của nó ([maKyTrungDaTra]).
+  Future<void> _hoanTac(String idKhoanChi,
+      {required bool daTraHoaDonNay}) async {
     // `getById` đọc CẢ hàng đã xoá mềm: một chu kỳ trước có thể đã gỡ khoản chi
     // rồi, và bỏ qua ca ấy là để hai bản ghi kẹt hàng đợi đẩy.
     final khoanChi = await _db.transactionDao.getById(idKhoanChi);
@@ -113,7 +127,13 @@ class BillPaymentConflictResolver {
     // 350.000 mỗi vòng. Và `markSynced` ngay dưới chặn luôn đường tự sửa —
     // hoá đơn trên server không đổi nữa nên chu kỳ pull sau không mang `Payed`
     // về.
-    await _db.billDao.danhDauDaTra(billId);
+    //
+    // Ca [maKyTrungDaTra] thì NGƯỢC LẠI: server có khoản chi cho một kỳ TRÙNG,
+    // không cho hoá đơn này. Đánh dấu nó đã trả là để `kyTrungCanGo` thấy hai
+    // kỳ cùng đã đóng và giữ cả hai mãi. Để nó còn phải trả: Pull ngay sau mang
+    // kỳ trùng đã trả về, bộ tự trả bỏ qua nó (`kyCungKyDaDong`), và lượt gộp
+    // sau lần kéo về ấy xoá mềm nó.
+    if (daTraHoaDonNay) await _db.billDao.danhDauDaTra(billId);
 
     // NGOÀI `try`: phải chạy cả khi `undoPayment` ném, vì hai bản ghi vẫn cần
     // thoát hàng đợi đẩy. Thiếu một trong hai là một lỗi im lặng **khác nhau**:

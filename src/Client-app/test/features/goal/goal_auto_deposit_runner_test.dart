@@ -17,6 +17,8 @@ import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.d
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/goal/domain/id_khoan_trich.dart';
+import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
@@ -329,6 +331,108 @@ void main() {
       expect((await db.goalDao.getAll(1)).single.isCompleted, isTrue,
           reason: 'Trích tự động cũng phải bật cờ hoàn thành, vì nó đi qua '
               'đúng `depositToGoal` như khoản nạp tay.');
+    });
+  });
+
+  // Spec 2026-10-10-tu-chuyen-tien-chay-nen-design.md mục 5: chạy nền làm "hai
+  // máy cùng tới kỳ" thành ca thường — id tất định là thứ giữ MỘT hàng.
+  Future<void> themKhoanMayKhac(DateTime ky, {bool daXoa = false}) =>
+      db.transactionDao.insert(TransactionsCompanion.insert(
+        id: idKhoanTrichTuDong('g1', ky),
+        idaccount: 1,
+        walletId: 'w_nguon',
+        walletTransfer: const Value('w_nhan'),
+        amount: 500000,
+        type: 'transfer',
+        goalId: const Value('g1'),
+        date: ky,
+        isDeleted: Value(daXoa),
+        updatedAt: DateTime(2025, 10, 5, 9, 1),
+      ));
+
+  group('id tất định (chạy nền, hai máy)', () {
+    test('khoản trích mang id v5 của (mục tiêu, kỳ)', () async {
+      await themMucTieu();
+      await runner.chay(1, now: DateTime(2025, 10, 6));
+      final tx = await db.transactionDao
+          .getById(idKhoanTrichTuDong('g1', DateTime(2025, 10, 5, 9)));
+      expect(tx, isNotNull, reason: 'id v4 ngẫu nhiên là hai máy cùng kỳ ra hai hàng trên server');
+      expect(tx!.amount, 500000);
+    });
+
+    test('⭐ máy kia đã trích kỳ ấy (hàng cùng id đã có) → KHÔNG trừ tiền, KHÔNG sự kiện, vẫn đẩy mốc', () async {
+      await themMucTieu();
+      final ky = DateTime(2025, 10, 5, 9);
+      await themKhoanMayKhac(ky);
+
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
+
+      expect(events, isEmpty, reason: 'báo "Đã trích…" cho việc máy kia làm là nói dối');
+      expect((await db.goalDao.getAll(1)).single.currentAmount, 0,
+          reason: 'tiến độ máy này tăng khi kéo về bản ghi mục tiêu của máy kia, không tự cộng');
+      expect((await giaoDichThat(db, 1)).length, 1, reason: 'không ghi hàng thứ hai');
+      expect((await db.goalDao.getAll(1)).single.autoDepositLastRun, ky,
+          reason: 'không đẩy mốc thì lượt sau lại thử đúng kỳ ấy, mãi mãi');
+    });
+
+    test('hàng cùng id ĐÃ XOÁ MỀM → vẫn coi là đã trích (người dùng chủ động xoá)', () async {
+      await themMucTieu();
+      await themKhoanMayKhac(DateTime(2025, 10, 5, 9), daXoa: true);
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
+      expect(events, isEmpty);
+      expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
+    });
+
+    test('kỳ 1 đã có, kỳ 2 chưa → bỏ kỳ 1, trích kỳ 2', () async {
+      await themMucTieu();
+      await themKhoanMayKhac(DateTime(2025, 10, 5, 9));
+      final events = await runner.chay(1, now: DateTime(2025, 11, 6));
+      expect(events.map((e) => e.ky), [DateTime(2025, 11, 5, 9)]);
+      expect((await db.goalDao.getAll(1)).single.autoDepositLastRun, DateTime(2025, 11, 5, 9));
+    });
+  });
+
+  group('mốc chạy ghi CÙNG giao tác với khoản nạp', () {
+    late GoalRepositoryImpl repo;
+    setUp(() => repo = GoalRepositoryImpl(
+          localDataSource: GoalLocalDataSourceImpl(db: db),
+          db: db,
+        ));
+
+    test('depositToGoal(mocChayMoi:) ghi autoDepositLastRun', () async {
+      await themMucTieu();
+      await repo.depositToGoal(
+        goalId: 'g1', goalName: 'MuaXe', depositAmount: 100000, walletId: 'w_nguon', idaccount: 1,
+        occurredAt: DateTime(2025, 10, 5, 9), mocChayMoi: DateTime(2025, 10, 5, 9),
+      );
+      expect((await db.goalDao.getAll(1)).single.autoDepositLastRun, DateTime(2025, 10, 5, 9));
+    });
+
+    test('khoản nạp bị từ chối (ví không đủ) → mốc KHÔNG đổi', () async {
+      await themMucTieu();
+      await expectLater(
+        repo.depositToGoal(
+          goalId: 'g1', goalName: 'MuaXe', depositAmount: 99000000, walletId: 'w_nguon', idaccount: 1,
+          occurredAt: DateTime(2025, 10, 5, 9), mocChayMoi: DateTime(2025, 10, 5, 9),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect((await db.goalDao.getAll(1)).single.autoDepositLastRun, batTu,
+          reason: 'đẩy mốc khi tiền chưa chuyển là kỳ ấy biến mất vĩnh viễn');
+    });
+
+    test('transactionId đã có → KyDaTrichException, không ghi gì', () async {
+      await themMucTieu();
+      final id = idKhoanTrichTuDong('g1', DateTime(2025, 10, 5, 9));
+      await themKhoanMayKhac(DateTime(2025, 10, 5, 9));
+      await expectLater(
+        repo.depositToGoal(
+          goalId: 'g1', goalName: 'MuaXe', depositAmount: 500000, walletId: 'w_nguon', idaccount: 1,
+          occurredAt: DateTime(2025, 10, 5, 9), transactionId: id, mocChayMoi: DateTime(2025, 10, 5, 9),
+        ),
+        throwsA(isA<KyDaTrichException>()),
+      );
+      expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
     });
   });
 }

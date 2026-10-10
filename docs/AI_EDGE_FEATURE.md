@@ -221,7 +221,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.9 | **Đọc SQLite máy ảo phải chép cả `-wal` và `-shm`** — tệp `flowmoney.db` chính có mốc sửa cũ hàng giờ, mọi hàng mới (kể cả bảng v24) nằm trong WAL; chép mỗi tệp chính thì `no such table: ai_rebalancing_feedbacks` trông như migration chưa chạy | cách đo: `adb exec-out "run-as com.flowmoney.flowmoney cat app_flutter/flowmoney.db"` ba lần cho ba đuôi, rồi `sqlite3` của Python | — |
 | 4.10 | **Đếm "pixel vàng" để tìm tràn bố cục phải bắt VÀNG THUẦN `#FFFF00`, không phải một dải vàng** — sọc cảnh báo của Flutter đúng màu ấy, còn một dải rộng sẽ bắt luôn emoji 💡 của khối Nhận xét (529 px), biểu tượng ⚠ của khối Dự báo (1030 px) và **ô cam trong bảng chọn màu danh mục** (4111 px, màu `(245,158,11)`) | hỏng theo **hai chiều**: dải rộng cho dương tính giả nên người đo đi tìm một cái tràn không tồn tại; mà nếu quen với những con số ấy thì một sọc tràn thật cũng chìm vào chúng. Đo 2026-09-20: 21 ảnh, dải rộng cho 6305 px, vàng thuần cho **0** | — |
 | 4.11 | **`dumpsys gfxinfo … framestats` KHÔNG đo được app Flutter** — trả `Total frames rendered: 0` dù màn đang vẽ liên tục, vì Flutter không dựng khung qua View system của Android | không báo lỗi; người đo đọc "0 khung, 0 jank" thành "mượt tuyệt đối" hoặc thành "đo hỏng" mà không biết đằng nào. Thay bằng phép đo trực tiếp: chụp 10 ảnh liên tiếp trong lúc inference chạy rồi so hash — khung đổi 7/10 lần là UI vẫn dựng | — (mục 9.4) |
-| 4.12 | **Câu "mô hình không chạy được" còn che một nguyên nhân KHÁC HẲN: chưa có `idaccount`** — `AuthBloc` chỉ vào `AuthSuccess` sau `verifySession()`, một lời gọi **mạng**; mở app lúc mất mạng thì phải đợi hết timeout 30 s | hai nguyên nhân dùng chung một câu, và `catch` của `_hoi` trước đây **nuốt lỗi không log gì** — nên trên màn hình lẫn trong logcat chúng y hệt nhau. Trớ trêu: nó rơi đúng vào ca mất mạng, ca mà AI trên máy sinh ra để phục vụ | `ai_chat_page_test.dart` nhóm *"câu phiên chưa sẵn sàng tách khỏi câu mô hình hỏng"*; cộng `debugPrint` ở **cả hai** nhánh |
+| 4.12 | **Câu "mô hình không chạy được" còn che một nguyên nhân KHÁC HẲN: chưa có `idaccount`** — `AuthBloc` chỉ vào `AuthSuccess` sau `verifySession()`, một lời gọi **mạng**; mở app lúc mất mạng thì phải đợi hết timeout 30 s *(✅ từ 2026-10-09 — G86: `AuthSuccess` phát từ bộ nhớ đệm **trước** `verifySession()`, nên ca chờ này hết; câu `kChuaSanSangPhien` giữ cho ca thật sự chưa có phiên)* | hai nguyên nhân dùng chung một câu, và `catch` của `_hoi` trước đây **nuốt lỗi không log gì** — nên trên màn hình lẫn trong logcat chúng y hệt nhau. Trớ trêu: nó rơi đúng vào ca mất mạng, ca mà AI trên máy sinh ra để phục vụ | `ai_chat_page_test.dart` nhóm *"câu phiên chưa sẵn sàng tách khỏi câu mô hình hỏng"*; cộng `debugPrint` ở **cả hai** nhánh |
 | 4.13 | **Quyền `INTERNET` chỉ có trong `debug/AndroidManifest.xml`** (Flutter tạo sẵn), nên bản release không gọi được backend nào | mọi lượt nghiệm thu máy ảo dùng bản debug → không bao giờ lộ; bản release báo *"Không có kết nối mạng"*, đúng câu dùng cho lúc rớt sóng, nên dẫn người đọc đi kiểm Wi-Fi thay vì manifest | `test/core/nhan_dien_app_test.dart` *"manifest chính khai quyền INTERNET"* |
 | 4.14 | **`kiemSo` canh SỐ, không canh NHÃN** — *"Tỉ lệ phân bổ là 85,4%"* qua hết mọi chốt vì 85,4 là số thật (`Để dành`) | mọi con số đúng nên không ca nào của bộ kiểm số đỏ; chỉ người đọc biết "tỉ lệ phân bổ" không tồn tại. Nay `kiemNhan` chặn; nhưng nó là phép lọc **từ vựng** — câu gọi đúng nhãn mà sai nghĩa vẫn lọt | `kiem_nhan_test.dart` *"⭐ câu đo trên máy thật 2026-09-22"* |
 | 4.15 | **Streaming và bộ kiểm loại trừ nhau nếu hiện từng token** — bộ kiểm chỉ có nghĩa trên câu đầy đủ | người đọc thấy con số sai **trước** khi câu bị chặn; ca test của bộ kiểm vẫn xanh vì nó không biết gì về thứ tự hiện. Chốt: `gacTheoCau` — hiện theo **câu**, trượt là `huy()` và không còn sự kiện nào sau đó | `gac_cau_test.dart` *"⭐ câu trượt: phát BiChan, huỷ đúng một lần, câu sau KHÔNG hiện"*; `ai_chat_page_test.dart` nhóm *"streaming CHẶN THEO CÂU"* |
@@ -1092,7 +1092,7 @@ theo máy), nên hai ca ấy được canh bằng unit test dựng lại **đún
 
 ⚠️ **Điều đo được mà chưa sửa, để người dùng quyết:** (1) câu chào trên Realme mất **~23 s** rồi
 nhận một câu tổng hợp số — giá của L1 (vứt câu mô hình, sinh lại ở bậc 1); (2) ĐC1 không bao giờ
-nói *"không có dữ liệu lãi suất"* — nó luôn tìm tool gần nhất; (3) canary cho phiên có tool
+nói *"không có dữ liệu lãi suất"* — nó luôn tìm tool gần nhất *(✅ (1) và (2) đóng — mục 9.47, 2026-10-09)*; (3) canary cho phiên có tool
 (bẫy 4.33) vẫn **chưa làm** — ✅ **làm xong 2026-09-23 tối**, bước **1b** của thứ tự mới (mục
 **9.15**). (1) và (2) vẫn chờ người dùng gọi tên.
 
@@ -2979,7 +2979,7 @@ thời gian của app). Tool mà mô hình gọi ở từng câu (tham số **g�
 nguồn cho bảng `kBang72Cau` của kế hoạch A2 Task 4.
 
 **Ba chỗ còn thô, chưa chọn hướng:** trần 4 hàng làm câu liệt kê hụt (C16 hiện 4/5) và làm con số tổng đọc nhầm thành
-tổng các hàng đang hiện (F11); C9 cụt ở dấu hai chấm (có từ lần 1); mẫu câu mục tiêu in thừa *Đang theo đuổi / Đã hoàn
+tổng các hàng đang hiện (F11); C9 cụt ở dấu hai chấm (có từ lần 1) *(✅ C9, F11 đóng — mục 9.47: câu "Còn N … khác chưa kể")*; mẫu câu mục tiêu in thừa *Đang theo đuổi / Đã hoàn
 thành* ở câu một số đích (B1, B2).
 
 ### 9.38 Nhóm A sau cổng F — A3 · A4 · A2 (2026-09-29) — mã xong, đo Realme: 17 ✅ · 1 ◐ · SAI 0, chờ TB 43,7 → 24,0 s; ⚠️ F12 tụt, cổng ra CHƯA trọn
@@ -3775,6 +3775,20 @@ quý · năm* là mốc thời gian, không phải số dòng — và tool cắt
 danh sách: `Số giao dịch` vẫn đếm trọn tập. Áp cho cả đường nhanh lẫn đường cũ (cùng một tool). Ca canh ở
 `chinh_tham_so_test` và `cong_cu_truy_van_test` (bản sai bỏ nối `toiDa` → ca đỏ).
 
+✅ **B8 ◐ → ✅ (2026-10-07, người dùng chọn sửa cả hai phần; đo Realme 360 dp cùng tối)**: (1) **định tuyến** — câu
+xin N khoản / giao dịch (`soDongYeuCau != null`) nay do **luật** `congCuTheoCauHoi` đưa về `truy_van_giao_dich`, đặt
+SAU khối ngân sách / mục tiêu / hoá đơn (*"3 khoản chi của ngân sách ăn uống"*, *"3 khoản nạp vào mục tiêu"* giữ
+đường cũ); mô hình học chỉ được p=0,63 cho *"3 khoản thu mới nhất"*. Bảng 72 câu: **C16** sang cột luật (32 luật ·
+36 giao dịch, đường nhanh 31/36) — C16 vốn đã về tool giao dịch qua mô hình (định tuyến mềm), nay tool được ép chạy.
+(2) **tên ngắn** — `tenNganGiaoDich` (`ai_edge/domain/ten_ngan_giao_dich.dart`, chỉ ở `hangGiaoDich` /
+`hangTongQuan`; Sổ giao dịch giữ `tieuDeGiaoDich` nguyên văn): bỏ MÃ (đoạn tách theo khoảng trắng / `-` dài ≥ 8 có
+chữ số, hoặc ≥ 10 ký tự liền), còn > 40 ký tự thì cắt ở khoảng trắng **hoặc** `-` (chỉ khoảng trắng thì ra
+*"…chuyen tien qua"* và mẫu câu thành *"qua khoản thu"* — lượt đo đầu bắt được). Đo: *"3 khoan thu moi nhat"* →
+luật → đường nhanh, **453 ms** (trước 58 s), ba khoản 30/09 khớp CSDL, tên *"TRAN QUANG DAT chuyen tien qua MoMo"* ·
+*"MOMO-CASHOUT"*; C16 *"5 khoan chi gan day nhat cua toi"* → đường nhanh **130 ms**, bốn khoản đúng thứ tự — vẫn
+**4/5** vì trần chung 4 dòng (giới hạn "trần 4 hàng" đã ghi, chưa chọn hướng). Ca canh: nhóm 25 `chinh_tham_so_test`,
+`ten_ngan_giao_dich_test`, ca ⭐ B8 ở `hang_giao_dich_test`.
+
 ✅ **C4 — *"dưới / trên X"* là mốc LOẠI TRỪ (2026-10-06; ✅ đo máy thật cùng tối — tuần này chỉ có Netflix đúng 100.000 đ; *"tuan nay co khoan chi nao duoi 100 nghin khong"* → *"Tuần này, khoản chi, dưới 100.000 đ — không có giao dịch nào khớp."*, thẻ *Dưới 100.000 đ*, đường nhanh 0,4 s)**: *"tuần này có khoản chi nào dưới 100 nghìn"*
 từng kể cả khoản đúng 100.000 đ vì `so_tien_den` đi vào `KhoangTien.chua`, phép so **bao gồm** của Sổ giao dịch. Người
 dùng chọn sửa ở **cách đọc câu**, không đụng `KhoangTien`: `_nguongTrongCau` báo thêm mốc nào là mốc ngắt (*trên · hơn ·
@@ -3801,6 +3815,36 @@ phải khai qua `tenLienQuan` (khuôn hàng danh mục), thiếu là `kiemTen` c
 
 Bộ đo, script, ảnh: scratchpad phiên `a6077e5d…` (`cau35.tsv`, `cau18.tsv`, `chay_dn.sh`, `hoi.sh`, `ui.py`,
 `do/ghep_*.png`, `do/b18_*.png`, `sau35v3_ketqua.txt`, `bodo18v3_ketqua.txt`).
+
+### 9.47 Bốn chỗ còn thô của Trợ lý AI — đo lại, sửa hai (2026-10-09, OnePlus 13R GPU, tài khoản 10)
+
+Đo lại bằng bản cài sáng 09/10 trước khi sửa:
+
+| Câu | Trước | Sau |
+|---|---|---|
+| ĐC1 *lai suat tiet kiem cua toi la bao nhieu* | ✅ **đã hết thô từ vòng H2** (*lãi suất* vào `chuDeBiChan`): 0 s, *"Mình chỉ nhận xét được trên số liệu của bạn trong app."* | không đổi |
+| *xin chao ban* | ✗ 15 s, phiên sáu tool, mô hình gọi nhầm `truy_van_giao_dich`, đáp *"Tôi đã tìm thấy các giao dịch trong kỳ tháng này."* | ✅ 8 s (4,2 s là nạp mô hình), *"Chào bạn, mình là trợ lý tài chính của FlowMoney đây. Bạn có thể hỏi mình về chi tiêu, ngân sách, hóa đơn, mục tiêu tiết kiệm hoặc ví của bạn nhé!"*; *cam on ban nhe* 3 s |
+| C9 *liet ke cac khoan chi tu 50k den 1 trieu thang truoc* | ◐ hết cụt (đường nhanh + mẫu câu từ 05/10) nhưng kể **4/13** khoản, không nói còn 9 | ✅ mẫu câu kết *"…Còn 9 giao dịch khác chưa kể."* |
+| F11 *thang toi toi phai tra hoa don nao* | ◐ kể 4 hoá đơn (cộng 3.155.000) rồi *"Tổng cộng còn phải trả là 3.720.000 đ"* — đọc như cộng sai | ✅ câu Gemma giữ nguyên, nối *"Còn 10 hoá đơn khác chưa kể."* (kỳ tới gồm cả kỳ dự kiến của hoá đơn lặp tuần) |
+
+**Còn N mục chưa kể** (người dùng chọn *"nói rõ còn N mục"*, không nới trần 4 hàng): `KetQuaCongCu.soChuaKe` +
+`danhTuChuaKe` — năm tool danh sách (giao dịch lẻ · hoá đơn · ví · mục tiêu · ngân sách) báo số đối tượng **khớp** mà trần
+cắt mất; câu xin N dòng (B8) thì "khớp" là tối đa N; câu `chon` / `gop` không báo (phần còn lại không phải thứ bị cắt).
+`GoiSoTraCuu.cauChuaKe` dựng câu, mẫu câu kết bằng nó, vòng lặp và đường nhanh nối nó sau câu của mô hình. ⚠️ **N không
+vào JSON** gửi mô hình: mô hình không biết N nên không tự nói, câu nối không bao giờ lặp. ⚠️ **`cauNoiThem` KHÔNG gồm câu
+chưa kể** — vòng lặp đọc `null` ở đó là "rơi về mẫu câu"; gộp vào là biến ca ấy thành một câu "còn N mục" trơ trọi (bản
+đầu vấp, sửa trước khi chạy test).
+
+**Câu chào** (người dùng chọn *"mô hình đáp, không tra cứu"* — đúng nguyên tắc tính năng AI phải dùng mô hình):
+`laCauChao` (`ai_edge/domain/cau_chao.dart`) nhận câu chỉ gồm cụm lõi (*chào · hello · hi · alo · cảm ơn · thanks · tạm
+biệt · bạn là ai · giúp được gì*) cộng từ đệm — một từ nội dung nào (*chi, tháng, ví…*) là câu đi vòng lặp tool như cũ;
+màn rẽ nó **trước** vòng lặp tool: một lượt `sinhDan(promptTroChuyen)` không tool, bộ kiểm `kiemCauChao` (chỉ chặn chữ
+số), không câu nào qua thì `kCauChaoDuPhong`. ⚠️ **Hai lỗi nghiệm thu bắt, bộ test mù:** `sinhDan` ném *"Mô hình chưa
+nạp"* khi câu chào là câu đầu của phiên (đường bậc 1 cũng gọi thẳng `sinhDan` nhưng chỉ chạy **sau** vòng lặp tool, khi
+mô hình đã nạp) — `_luongChao` nay nạp như `_luongThat`; và `kiemCauTraLoi` trên gói rỗng **chặn oan** câu gợi ý không
+số vì `kiemTen` đọc *"mục tiêu tiết kiệm"*, *"ví của bạn"* là tên lạ — nên câu chào có bộ kiểm riêng chỉ xét số.
+
+Script đo: scratchpad phiên `570ec24b…` (`hoi_op.sh`, OnePlus, ô nhập 540 2581). Chưa đo Realme (CPU).
 
 ## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
 

@@ -15,6 +15,9 @@ import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
 import '../widgets/the_chua_du_du_lieu.dart';
 import '../widgets/the_de_xuat_ngan_sach.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.
 ///
@@ -191,17 +194,24 @@ class _ActiveTab extends StatelessWidget {
               goi: GoiSoNganSach.tu(
                 state.active,
                 now: now ?? DateTime.now(),
-                keHoach: state.keHoach,
+                // Không có quyền cân đối → câu nhận xét không mời xem kế hoạch.
+                keHoach: context.coQuyen(MaQuyen.smartBudgetRebalancing)
+                    ? state.keHoach
+                    : null,
               ),
             ),
             // Thẻ kế hoạch tái phân bổ (Tầng 2) — đứng ngay dưới câu nhận xét
             // đã nhắc tới nó. `keHoach` chỉ khác null khi có thâm hụt.
             if (state.keHoach case final kh?) ...[
               const SizedBox(height: 12),
-              TheKeHoach(
-                keHoach: kh,
-                onXem: onXemKeHoach == null ? null : () => onXemKeHoach!(kh),
-                onXemPhanTich: onOpenAnalytics,
+              // Quyền `smart_budget_rebalancing` (spec phân quyền 2026-10-08): không có → thẻ khoá giữ chỗ.
+              KhoaTheoQuyen(
+                ma: MaQuyen.smartBudgetRebalancing,
+                child: TheKeHoach(
+                  keHoach: kh,
+                  onXem: onXemKeHoach == null ? null : () => onXemKeHoach!(kh),
+                  onXemPhanTich: onOpenAnalytics,
+                ),
               ),
             ],
           ],

@@ -237,12 +237,16 @@ class _GoalPageContent extends StatelessWidget {
                   child: _theMucTieu(context, goals[i]),
                 ),
               ),
-              onReorder: (cu, moi) {
+              // `onReorderItem` (Flutter 3.47) trả vị trí THẬT: SDK đã trừ một khi
+              // kéo xuống (danh sách ngắn đi khi gỡ phần tử ở vị trí cũ) và bỏ
+              // qua lần thả không đổi chỗ. `onReorder` cũ trả chỉ số trên danh
+              // sách còn nguyên — dùng thẳng là rơi lệch một ô, nên trước đây có
+              // hàm tự trừ `viTriThaThucTe` (bỏ 2026-10-09, cùng phép với SDK).
+              onReorderItem: (cu, moi) {
                 final ra = uuTienSauKhiKeo(
                   dangHien: goals,
                   tuViTri: cu,
-                  // ⚠️ Không dùng thẳng `moi`. Xem `viTriThaThucTe`.
-                  toiViTri: viTriThaThucTe(cu: cu, moi: moi),
+                  toiViTri: moi,
                 );
                 if (ra.isEmpty) return;
                 context.read<GoalCubit>().sapLaiUuTien(ra);

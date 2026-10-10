@@ -44,6 +44,7 @@ import '../../../ai_edge/data/nguon_goi_so.dart';
 import '../../../ai_edge/data/slm_runtime.dart';
 import '../../../ai_edge/data/vong_lap_cong_cu.dart';
 import '../../../ai_edge/domain/bo_markdown.dart';
+import '../../../ai_edge/domain/cau_chao.dart';
 import '../../../ai_edge/domain/chu_de_chan.dart';
 import '../../../ai_edge/domain/cong_cu.dart';
 import '../../../ai_edge/domain/gac_cau.dart';
@@ -53,6 +54,7 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/cubit/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
@@ -179,6 +181,7 @@ class AiChatPage extends StatefulWidget {
     this.coMoHinh,
     this.onHoi,
     this.onHoiBac1,
+    this.onChao,
     this.traLoiMau,
     this.theSoLieuMau,
     this.doTrangThai,
@@ -206,6 +209,10 @@ class AiChatPage extends StatefulWidget {
   /// Khe tiêm cho test: đường BẬC 1 (sáu gói dựng sẵn) mà màn rơi về khi vòng
   /// lặp tool phát [KhongTraCuu]. `null` = đường thật.
   final Stream<SuKienGac> Function(String cauHoi)? onHoiBac1;
+
+  /// Khe tiêm cho test: đường CÂU CHÀO (`cau_chao.dart`) — luồng đã gác. `null` =
+  /// đường thật (một lượt sinh không tool).
+  final Stream<SuKienGac> Function(String cau)? onChao;
 
   /// Khe tiêm cho test: hội thoại dựng sẵn.
   final List<String>? traLoiMau;
@@ -257,7 +264,7 @@ class _AiChatPageState extends State<AiChatPage> {
     try {
       // `context.read` (provider) ném `ProviderNotFoundException`;
       // `BlocProvider.of` bọc nó thành `FlutterError` — không bắt được.
-      return context.read<GoiCubit>().duocDungAiAssistant;
+      return context.read<GoiCubit>().coQuyen(MaQuyen.aiAssistant);
     } on ProviderNotFoundException {
       return true;
     }
@@ -385,6 +392,17 @@ class _AiChatPageState extends State<AiChatPage> {
     }
 
     try {
+      // Câu chào (2026-10-09, người dùng chọn "mô hình đáp, không tra cứu"): đo
+      // OnePlus, "xin chao ban" vào phiên sáu tool, mô hình gọi nhầm tool giao
+      // dịch và đáp "Tôi đã tìm thấy các giao dịch…" sau 15 s. Nay Gemma đáp
+      // trong một lượt sinh không tool, câu bị kiểm trên gói rỗng (mọi chữ số bị
+      // chặn); không câu nào qua thì câu dự phòng.
+      if (laCauChao(c)) {
+        final luongChao =
+            widget.onChao != null ? widget.onChao!(c) : _luongChao(c);
+        await _nhanTungCau(kemDuPhongChao(luongChao), const <GoiSo>[]);
+        return;
+      }
       final (luong, goi) = widget.onHoi != null
           ? (widget.onHoi!(c), const <GoiSo>[])
           : await _luongThat(c) ?? (null, const <GoiSo>[]);
@@ -532,6 +550,25 @@ class _AiChatPageState extends State<AiChatPage> {
         now: DateTime.now(),
       ),
       <GoiSo>[goi],
+    );
+  }
+
+  /// Câu chào: một lượt sinh KHÔNG tool; `kiemCauChao` chặn mọi câu có chữ số,
+  /// vì lời chào không được mang số liệu (`cau_chao.dart`).
+  ///
+  /// ⚠️ Phải NẠP mô hình như `_luongThat`: `sinhDan` ném *"Mô hình chưa nạp"* khi
+  /// câu chào là câu đầu tiên của phiên (nghiệm thu OnePlus 2026-10-09 — đường bậc
+  /// 1 cũng gọi thẳng `sinhDan` nhưng chỉ chạy SAU vòng lặp tool, khi mô hình đã
+  /// nạp, nên chưa từng vấp).
+  Stream<SuKienGac> _luongChao(String cau) async* {
+    final runtime = sl<SlmRuntime>();
+    if (!runtime.dangSan) {
+      await runtime.moHinhSan(await sl<MoHinhTaiVe>().duongTep());
+    }
+    yield* gacTheoCau(
+      runtime.sinhDan(promptTroChuyen(cau), tranToken: 120),
+      kiem: kiemCauChao,
+      huy: runtime.huy,
     );
   }
 

@@ -31,6 +31,16 @@ class TransactionsUpdatedEvent extends TransactionEvent {
   List<Object?> get props => [transactions, ky];
 }
 
+/// A5 mục 11.4 — khoản chi đã tách theo danh mục: N giao dịch, MỘT `actionSuccess` (form hiện một toast, đóng một lần).
+class AddTransactionsEvent extends TransactionEvent {
+  final List<TransactionEntity> transactions;
+
+  const AddTransactionsEvent({required this.transactions});
+
+  @override
+  List<Object?> get props => [transactions];
+}
+
 class AddTransactionEvent extends TransactionEvent {
   final TransactionEntity transaction;
   final String? destinationWalletId;

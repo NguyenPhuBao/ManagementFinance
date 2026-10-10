@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../notification/thong_bao_nguon.dart';
 import '../../core/realtime/realtime_channel.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
@@ -58,10 +59,12 @@ import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
 import '../../features/wallet/data/services/gop_vi_service.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
 import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/presentation/an_nhac_het_han.dart';
 import '../../features/premium/presentation/cubit/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -70,6 +73,8 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/transaction/data/doc_anh_bang_gemma.dart';
+import '../../features/transaction/data/doc_danh_muc_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -93,6 +98,9 @@ import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
 import '../notification/kenh_phien_ngan_hang.dart';
+import '../nen/co_chay_nen.dart';
+import '../nen/kenh_tu_chuyen_tien.dart';
+import '../nen/lich_nen.dart';
 import '../notification/kho_bien_lai.dart';
 import '../notification/moc_phien_store.dart';
 import '../notification/nhap_bien_dong.dart';
@@ -103,15 +111,24 @@ import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
 import '../notification/prefs/notification_prefs_store.dart';
+import '../ocr/kho_anh_quet.dart';
 import '../ocr/doc_chu_anh.dart';
 import '../ocr/doc_chu_anh_mlkit.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
 
+/// Chủ khoá thuê tự chuyển tiền của engine này — `'app'`, hoặc `'nen'` ở engine
+/// nền của WorkManager (`setupDependencies(cheDoNen: true)`).
+String _chuKhoa = 'app';
+
 /// Khởi động toàn bộ dependency injection graph.
 /// Gọi một lần trong `main()` trước khi `runApp()`.
-Future<void> setupDependencies() async {
+/// [cheDoNen] — engine nền của WorkManager (spec tự chuyển tiền chạy nền mục
+/// 3.3): chủ khoá thuê là `'nen'`, `AuthInterceptor` không làm mới token, và
+/// vòng quét không tự hẹn lượt nền (lượt nền trả mốc qua `nenXong`).
+Future<void> setupDependencies({bool cheDoNen = false}) async {
+  _chuKhoa = cheDoNen ? 'nen' : 'app';
   // ── 1. External packages ──────────────────────────────────────────────────
   const secureStorage = FlutterSecureStorage();
   sl.registerLazySingleton<FlutterSecureStorage>(() => secureStorage);
@@ -123,7 +140,7 @@ Future<void> setupDependencies() async {
   // AuthInterceptor đăng ký riêng: AuthBloc cần nghe `sessionExpiredStream`
   // của ĐÚNG instance đang nằm trên đường request.
   sl.registerLazySingleton<AuthInterceptor>(
-    () => AuthInterceptor(secureStorage: sl()),
+    () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
   );
   sl.registerLazySingleton<DioClient>(
     () => DioClient(secureStorage: sl(), authInterceptor: sl()),
@@ -176,7 +193,10 @@ Future<void> setupDependencies() async {
   );
   sl.registerLazySingleton<WalletRepository>(
     () => WalletRepositoryImpl(
-        localDataSource: sl(), syncEngine: sl(), soDuVi: sl()),
+        localDataSource: sl(),
+        syncEngine: sl(),
+        soDuVi: sl(),
+        walletDao: sl<AppDatabase>().walletDao),
   );
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
@@ -244,6 +264,7 @@ Future<void> setupDependencies() async {
     () => TransactionRepositoryImpl(
       localDataSource: sl(),
       walletDao: sl<AppDatabase>().walletDao,
+      transactionDao: sl<AppDatabase>().transactionDao,
       syncEngine: sl(),
       soDuVi: sl(),
     ),
@@ -401,6 +422,11 @@ Future<void> setupDependencies() async {
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
+  // Cổng bảng thông báo cho TRANG (spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; hạ tầng
+  // (BadgeUpdater, NotificationScanner) vẫn cầm DAO. Đăng ký cả chế độ nền (cùng `setupDependencies`, không gate
+  // theo `cheDoNen`). Đăng ký lazy — không dựng gì khi không ai gọi.
+  sl.registerLazySingleton<ThongBaoNguon>(() => ThongBaoNguonDrift(sl<AppDatabase>().notificationDao));
+
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
   // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
   // `sl<AuthBloc>()` ở đây là một bloc MỚI luôn chưa đăng nhập — đọc nó là nhật
@@ -443,6 +469,9 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<ReminderScheduler>(
     () => ReminderScheduler(
       osNotifier: sl<OsNotifier>(),
+      // Android có lượt nền tự chuyển tiền: không nhắc kỳ trích, câu tự trả
+      // thôi bảo "Mở app" (spec tự chuyển tiền chạy nền mục 6).
+      chayNen: coChayNen,
       // Lịch nhắc kỳ trích tự động đi CHUNG bộ đặt lịch với hoá đơn. Tách
       // riêng là hai bên cùng gọi `pendingIds()` rồi huỷ sạch lịch của nhau ở
       // mỗi lượt — im lặng, và chỉ lộ ra khi người dùng phàn nàn rằng nhắc
@@ -487,10 +516,42 @@ Future<void> setupDependencies() async {
           ? const KenhPhienNganHangAndroid()
           : const KenhPhienNganHangTrong());
 
+  // Tự chuyển tiền chạy nền (spec 2026-10-10): kênh tới `TuChuyenTien.kt` — chỉ
+  // Android; nơi khác bản trống.
+  sl.registerLazySingleton<KenhTuChuyenTien>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhTuChuyenTienAndroid()
+          : const KenhTuChuyenTienTrong());
+  // Lịch lượt nền: hoá đơn đọc TOÀN BỘ (không cửa sổ 30 ngày như lịch nhắc —
+  // hạn xa hơn vẫn là thứ phải giữ lượt định kỳ), gác bằng quyền gói.
+  sl.registerLazySingleton<LichNen>(
+    () => LichNen(
+      kenh: sl<KenhTuChuyenTien>(),
+      tinh: (idaccount, now) async {
+        final prefs = await sl<NotificationPrefsStore>().read(idaccount);
+        return lichNenKeTiep(
+          bills: await sl<AppDatabase>().billDao.getAll(idaccount),
+          goals: [
+            for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+              GoalEntity.fromDrift(g),
+          ],
+          now: now,
+          gioNhac: prefs.gioNhac,
+          phutNhac: prefs.phutNhac,
+          traDuoc: coQuyenNen(MaQuyen.billAutoPay),
+          trichDuoc: coQuyenNen(MaQuyen.goalAutoDeposit),
+        );
+      },
+    ),
+  );
+
   // Chia sẻ biên lai: đọc chữ trên ảnh bằng ML Kit, trên máy. Lazy — không dựng gì cho tới khi có biên lai chờ.
   sl.registerLazySingleton<DocChuAnh>(() => const DocChuAnhMlKit());
   // Thư mục ảnh biên lai (`filesDir/bien_lai/` phía Kotlin) — form Thêm giao dịch cũng dùng để hiện và xoá ảnh.
   sl.registerLazySingleton<KhoBienLai>(() => KhoBienLai(thuMuc: getApplicationSupportDirectory));
+  // A5 — ảnh người dùng QUÉT (nút Quét Trang chủ): thư mục RIÊNG `anh_quet/`, tách khỏi `bien_lai/` vì
+  // `KhoBienLai.donMoCoi` xoá ảnh không có hàng loại 20 trỏ tới (spec A5 mục 5.5).
+  sl.registerLazySingleton<KhoAnhQuet>(() => KhoAnhQuet(thuMuc: getApplicationSupportDirectory));
 
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
@@ -508,16 +569,37 @@ Future<void> setupDependencies() async {
           ),
       // Trích tiền tự động chạy trong chính vòng quét, không phải một bộ lập
       // lịch nền riêng. Xem chú thích ở `GoalAutoDepositRunner`.
-      runAutoDeposits: (idaccount, now) => GoalAutoDepositRunner(
-        db: sl<AppDatabase>(),
-        repository: sl<GoalRepository>(),
-      ).chay(idaccount, now: now),
+      //
+      // Quyền `goal_auto_deposit` / `bill_auto_pay` (spec phân quyền 2026-10-08): không có thì BỎ LƯỢT — không trích,
+      // không đổi mốc, công tắc người dùng giữ nguyên; lên lại Premium thì lượt kế chạy như cũ.
+      runAutoDeposits: (idaccount, now) async =>
+          coQuyenNen(MaQuyen.goalAutoDeposit)
+              ? GoalAutoDepositRunner(
+                  db: sl<AppDatabase>(),
+                  repository: sl<GoalRepository>(),
+                ).chay(idaccount, now: now)
+              : const <GoalAutoDepositEvent>[],
       // Tự động thanh toán hoá đơn, cùng khuôn: chạy trong vòng quét, đi qua
       // `payBill` hiện có. Xem chú thích ở `BillAutoPayRunner`.
-      runAutoPays: (idaccount, now) => BillAutoPayRunner(
-        db: sl<AppDatabase>(),
-        repository: sl<BillRepository>(),
-      ).chay(idaccount, now: now),
+      // G87: gỡ kỳ hoá đơn trùng trước bộ tự trả — không gác quyền (vệ sinh dữ liệu).
+      gopKyTrung: (idaccount) => sl<BillRepository>().gopKyTrung(idaccount),
+      soLanKeoVe: () => sl<SyncEngine>().soLanKeoVeXong,
+      runAutoPays: (idaccount, now) async => coQuyenNen(MaQuyen.billAutoPay)
+          ? BillAutoPayRunner(
+              db: sl<AppDatabase>(),
+              repository: sl<BillRepository>(),
+            ).chay(idaccount, now: now)
+          : const <BillAutoPayEvent>[],
+      // Khoá thuê (spec tự chuyển tiền chạy nền mục 3.4) — engine nền và engine
+      // app có thể quét cùng lúc trong một tiến trình.
+      layKhoa: () =>
+          sl<AppDatabase>().khoaTuChuyenTienDao.lay(_chuKhoa, DateTime.now()),
+      nhaKhoa: () => sl<AppDatabase>().khoaTuChuyenTienDao.nha(_chuKhoa),
+      // Lịch lượt nền (spec tự chuyển tiền chạy nền mục 3.1).
+      // Engine nền KHÔNG tự hẹn: `REPLACE` lên chính công việc đang chạy là
+      // WorkManager huỷ nó giữa chừng — mốc kế đi trong `nenXong`.
+      henLichNen: cheDoNen ? null : (id) => sl<LichNen>().henNeuDoi(id),
+      huyLichNen: cheDoNen ? null : () => sl<LichNen>().huy(),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.
@@ -581,6 +663,9 @@ Future<void> setupDependencies() async {
       // `budgets` đến từ chính lượt quét đang chạy chứ không đọc lại — xem
       // `KeHoachTaiPhanBoLoader`.
       loadKeHoach: (idaccount, budgets, now) async {
+        // Quyền `smart_budget_rebalancing`: không có → không dựng kế hoạch, không sinh thông báo (và không trả giá
+        // một lượt đọc toàn bộ sổ).
+        if (!coQuyenNen(MaQuyen.smartBudgetRebalancing)) return null;
         final dangChay = [
           for (final v in budgets)
             if (!v.budget.isExpired(now)) v,
@@ -625,8 +710,10 @@ Future<void> setupDependencies() async {
         thuMuc: getApplicationSupportDirectory,
         dao: sl<AppDatabase>().notificationDao,
         nguonCuaGoi: nguonCuaGoi,
+        // Công tắc của tài khoản VÀ quyền `bank_notification_parser` của gói.
         batBienDong: (id) async =>
-            (await sl<NotificationPrefsStore>().read(id)).docBienDong,
+            (await sl<NotificationPrefsStore>().read(id)).docBienDong &&
+            coQuyenNen(MaQuyen.bankNotificationParser),
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         datBat: (bat) => sl<KenhBienDong>().datBat(bat),
       ),
@@ -640,6 +727,7 @@ Future<void> setupDependencies() async {
         docChu: sl<DocChuAnh>(),
         kho: sl<KhoBienLai>(),
         nguonCuaGoi: nguonCuaGoi,
+        coQuyen: () => coQuyenNen(MaQuyen.ocrReceipt),
         huyTomTat: () => sl<KenhBienDong>().huyTomTat(),
         // Chế độ thu mẫu — CHỈ bản debug: in hình dạng đã che của chữ trên biên lai đang chờ (§13.6).
         thuMau: kDebugMode
@@ -721,6 +809,25 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<DocCauBangAi>(
     () => DocCauBangAi(
       runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+
+  // A5 mục 13 — ảnh quét hoá đơn: Gemma NHÌN ẢNH đọc món + tổng. Điều kiện Premium nằm ở màn /quet; ở đây là tệp đủ +
+  // công tắc. CÙNG một runtime với đường chữ (một mô hình mỗi lúc — `docAnh` đóng nó sau khi đọc).
+  sl.registerLazySingleton<SlmDocAnh>(() => sl<SlmRuntime>() as SlmDocAnh);
+  // A5 mục 13 — Gemma lần hai chọn danh mục chi từ cửa hàng + các món (người dùng chốt "AI chọn danh mục").
+  sl.registerLazySingleton<DocDanhMucBangAi>(
+    () => DocDanhMucBangAi(
+      runtime: sl<SlmRuntime>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+  sl.registerLazySingleton<DocAnhBangGemma>(
+    () => DocAnhBangGemma(
+      moHinh: sl<SlmDocAnh>(),
       sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),
     ),

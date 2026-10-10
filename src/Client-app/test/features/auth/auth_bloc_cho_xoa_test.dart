@@ -67,10 +67,10 @@ void main() {
   Future<AuthBloc> moApp(_RepoGia repo) async {
     final bloc = AuthBloc(authRepository: repo);
     addTearDown(bloc.close);
-    final xong = bloc.stream
-        .firstWhere((s) => s is AuthSuccess || s is AuthUnauthenticated);
     bloc.add(AuthCheckRequested());
-    await xong.timeout(const Duration(seconds: 5));
+    // Lượt mở app phát `AuthSuccess` từ bộ nhớ đệm TRƯỚC khi hỏi server
+    // (2026-10-09) — đợi hàng sự kiện cạn để đọc trạng thái CUỐI.
+    await pumpEventQueue();
     return bloc;
   }
 

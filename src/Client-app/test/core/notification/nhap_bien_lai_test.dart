@@ -153,7 +153,10 @@ void main() {
         ];
 
     var soId = 0;
-    NhapBienLai tao(Map<String, List<DongOcr>> anh, {List<bool>? huy, DocChuAnh? doc}) => NhapBienLai(
+    NhapBienLai tao(Map<String, List<DongOcr>> anh,
+            {List<bool>? huy, DocChuAnh? doc, bool coQuyen = true}) =>
+        NhapBienLai(
+          coQuyen: () => coQuyen,
           thuMuc: () async => dir,
           dao: db.notificationDao,
           docChu: doc ?? _DocGia(anh),
@@ -188,6 +191,16 @@ void main() {
     }
 
     const bienLai = 'Số tiền 150.000 VND\nThời gian 02/10/2026 18:45\nNội dung tien nha';
+
+    test('không có quyền ocr_receipt → 0 hàng, hàng chờ và ảnh GIỮ NGUYÊN (nhập khi có quyền lại)', () async {
+      choNhan('aaaa.jpg');
+      expect(await tao({'aaaa.jpg': chu(bienLai)}, coQuyen: false).nhap(1), 0);
+      expect(await hang(), isEmpty);
+      expect(File('${dir.path}/$kTepBienLaiCho').existsSync(), isTrue);
+      expect(File('${dir.path}/$kThuMucBienLai/aaaa.jpg').existsSync(), isTrue);
+      expect(await tao({'aaaa.jpg': chu(bienLai)}).nhap(1), 1,
+          reason: 'spec phân quyền 2026-10-08 mục 4.3: chỉ chặn, không vứt');
+    });
 
     test('⭐ biên lai đọc được → MỘT hàng loại 20: tiêu đề có số tiền + nguồn, deeplink có anh + doc, giờ theo ảnh', () async {
       choNhan('aaaa.jpg');

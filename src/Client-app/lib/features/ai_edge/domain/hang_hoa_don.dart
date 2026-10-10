@@ -217,5 +217,7 @@ KetQuaCongCu hangHoaDon(
     boLoc: [if (tuTra) kChuTuTra],
     rongTheoBoLoc: (chuKy != null || tuTra) && hang.isEmpty,
     doiTuongRong: 'hoá đơn',
+    soChuaKe: chonRa.length - hang.length,
+    danhTuChuaKe: 'hoá đơn',
   );
 }

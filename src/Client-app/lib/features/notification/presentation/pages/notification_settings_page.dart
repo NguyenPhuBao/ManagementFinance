@@ -17,6 +17,9 @@ import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'dong_y_bien_dong_page.dart';
 import 'dong_y_nhac_sau_ngan_hang_page.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
 ///
@@ -875,13 +878,18 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                     key: NotificationSettingsPage.khoaCongTacNhom(
                         NotificationGroup.bienDong),
                     value: bat,
-                    onChanged: _doiBienDong,
+                    // Quyền `bank_notification_parser` (spec phân quyền 2026-10-08).
+                    onChanged: context.coQuyen(MaQuyen.bankNotificationParser)
+                        ? _doiBienDong
+                        : null,
                     activeThumbColor: Colors.white,
                     activeTrackColor: const Color(0xFF006E1C),
                   ),
                 ],
               ),
-              if (bat) ...[
+              if (!context.coQuyen(MaQuyen.bankNotificationParser))
+                DongKhoaCongTac(ma: MaQuyen.bankNotificationParser, dangBat: bat)
+              else if (bat) ...[
                 const SizedBox(height: 14),
                 _dongQuyenBienDong(),
                 // Chỉ khi đang đọc thật (chưa có quyền thì chưa có tin nào để trễ) VÀ máy chưa cho chạy nền.

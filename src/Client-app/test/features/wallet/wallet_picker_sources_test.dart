@@ -29,6 +29,8 @@ void main() {
         'Chỉ là chú thích tài liệu ở đầu tệp, không phải chỗ gọi thật.',
     'core/database/daos/wallet_dao.dart':
         'Chính nó — `getActive` được dựng bằng cách lọc trên `getAll`.',
+    'features/wallet/data/repositories/wallet_repository_impl.dart':
+        'Lối chuyển tiếp getAllRows/watchAllRows cho bảng tra tên (spec bịt điểm rò 2026-10-10, mục 4.3) — chỉ chuyển tiếp, không chọn.',
     'core/sync/sync_engine.dart':
         'Đồng bộ phải đẩy và kéo cả ví lưu trữ, nếu không trạng thái ấy không '
             'bao giờ ra khỏi được máy này.',

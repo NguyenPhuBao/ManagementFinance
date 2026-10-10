@@ -11,6 +11,7 @@ import 'tables/goi_y_phan_hoi_table.dart';
 import 'tables/notification_event_table.dart';
 import 'tables/goi_y_hoa_don_phan_hoi_table.dart';
 import 'tables/phan_tich_thu_tu_table.dart';
+import 'tables/khoa_tu_chuyen_tien_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
@@ -21,6 +22,7 @@ import 'daos/goi_y_phan_hoi_dao.dart';
 import 'daos/notification_event_dao.dart';
 import 'daos/goi_y_hoa_don_dao.dart';
 import 'daos/thu_tu_khoi_dao.dart';
+import 'daos/khoa_tu_chuyen_tien_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -56,6 +58,7 @@ part 'app_database.g.dart';
     GoiYHoaDonPhanHois,
     PhanTichGiayXems,
     PhanTichThuTuPhanHois,
+    KhoaTuChuyenTiens,
   ],
   daos: [
     WalletDao,
@@ -70,6 +73,7 @@ part 'app_database.g.dart';
     NotificationEventDao,
     GoiYHoaDonDao,
     ThuTuKhoiDao,
+    KhoaTuChuyenTienDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -77,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration {
@@ -520,6 +524,11 @@ class AppDatabase extends _$AppDatabase {
           // thứ 15 canh). Chỉ tạo bảng; không có dữ liệu cũ để điền.
           await m.createTable(phanTichGiayXems);
           await m.createTable(phanTichThuTuPhanHois);
+        }
+        if (from < 30) {
+          // Tự chuyển tiền chạy nền (spec 2026-10-10 mục 3.4): khoá thuê CỤC BỘ —
+          // không đi qua đồng bộ (test quét 15). Chỉ tạo bảng.
+          await m.createTable(khoaTuChuyenTiens);
         }
       },
       beforeOpen: (details) async {

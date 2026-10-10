@@ -329,7 +329,14 @@ class CongCuTruyVan implements CongCu {
       ));
     }
     if (chon == null) {
-      return hoanTat(hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now));
+      final r = hangGiaoDich(kq, tieuChi: tieuChi, chuKy: ky.chu, now: now);
+      // Còn N khoản khớp mà trần cắt mất (C9 đo OnePlus 2026-10-09: kể 4/13). Câu
+      // xin N dòng (B8) thì "khớp" là tối đa N — xin 3 nhận 3 là đủ, không còn gì.
+      final muon = soDong == null ? kq.soKhop : (soDong < kq.soKhop ? soDong : kq.soKhop);
+      final conLai = muon - r.hang.length;
+      return hoanTat(conLai > 0
+          ? r.boSung(soChuaKeMoi: conLai, danhTuChuaKeMoi: 'giao dịch')
+          : r);
     }
     // gop=khong + chon: chọn theo TIỀN dù dòng đang xếp theo ngày; tổng hợp vẫn
     // là của trọn tập (`soKhop`, `tongChi`, …), chỉ `dong` còn một.

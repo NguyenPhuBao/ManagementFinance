@@ -44,6 +44,12 @@ import java.io.IOException
  * (vào / ra màn hình của các app trong danh sách D1), `boDen` (mốc nút "Không có
  * giao dịch"), `datBat` (cờ máy + mốc + lịch WorkManager), `huyNhac`. Xem
  * `lib/core/notification/kenh_phien_ngan_hang.dart` và `PhienNganHang.kt`.
+ *
+ * Kênh `flowmoney/tu_chuyen_tien` — tự chuyển tiền chạy nền (2026-10-10):
+ * `henNen` (lượt WorkManager một-lần theo mốc + định kỳ 6 giờ); chiều ngược lại
+ * worker gọi `quetNgay` vào engine này khi app đang mở. Engine được gắn vào
+ * [TuChuyenTien] ở `configureFlutterEngine` và GỠ ở `cleanUpFlutterEngine`.
+ * Xem `lib/core/nen/kenh_tu_chuyen_tien.dart` và `TuChuyenTien.kt`.
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
@@ -72,6 +78,26 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        TuChuyenTien.ganEngineApp(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TuChuyenTien.KENH)
+            .setMethodCallHandler { call, ket ->
+                try {
+                    when (call.method) {
+                        "henNen" -> {
+                            TuChuyenTien.hen(
+                                this,
+                                (call.argument<Number>("moc") ?: 0).toLong(),
+                                call.argument<Boolean>("coTuDong") ?: false,
+                            )
+                            ket.success(null)
+                        }
+                        else -> ket.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    ket.error("loi_tu_chuyen_tien", e.message, null)
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhBienDong)
             .setMethodCallHandler { call, ket ->
@@ -189,6 +215,12 @@ class MainActivity : FlutterActivity() {
                     ket.error("loi_doc", e.message, null)
                 }
             }
+    }
+
+    /** Engine sắp bị huỷ — worker không được gửi `quetNgay` vào engine đã chết (sẽ chờ hết 3 phút). */
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        TuChuyenTien.ganEngineApp(null)
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     /**

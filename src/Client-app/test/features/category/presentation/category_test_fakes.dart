@@ -69,6 +69,13 @@ Wallet makeWallet({
     );
 
 class FakeCategoryRepository implements CategoryManagementRepository {
+  @override
+  Future<List<Category>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
+  @override
+  Stream<List<Category>> watchAllRows({required int accountId}) => throw UnimplementedError();
+  @override
+  Future<Category?> getRowById(String id) => throw UnimplementedError();
+
   FakeCategoryRepository(
       {CategoryTree? tree,
       Map<String, CategoryTree>? trees,
@@ -217,6 +224,11 @@ class FakeCategoryRepository implements CategoryManagementRepository {
 /// Ghi lại những gì trang gửi xuống, để test kiểm được entity đã dựng ra
 /// (loại, danh mục, ví đích) thay vì chỉ kiểm giao diện.
 class FakeTransactionRepository implements TransactionRepository {
+  @override
+  Future<List<Transaction>> getAllRows(int idaccount) => throw UnimplementedError();
+  @override
+  Stream<List<Transaction>> watchAllRows(int idaccount) => throw UnimplementedError();
+
   final List<({TransactionEntity transaction, String? destinationWalletId})>
       added = [];
   final List<({TransactionEntity transaction, String? destinationWalletId})>
@@ -239,6 +251,17 @@ class FakeTransactionRepository implements TransactionRepository {
   }) async {
     added.add(
         (transaction: transaction, destinationWalletId: destinationWalletId));
+  }
+
+  /// A5 mục 11.4 — số giao dịch của mỗi lượt `addTransactions` (một lượt = một lần Lưu khoản đã tách).
+  final List<int> luotThemNhieu = [];
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> transactions) async {
+    luotThemNhieu.add(transactions.length);
+    for (final t in transactions) {
+      added.add((transaction: t, destinationWalletId: null));
+    }
   }
 
   @override

@@ -1,4 +1,6 @@
+import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/wallet_dao.dart';
+import '../../../../core/database/daos/transaction_dao.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/transaction_local_data_source.dart';
@@ -12,6 +14,13 @@ abstract class TransactionRepository {
     DateTime from,
     DateTime to,
   );
+
+  /// Mọi giao dịch của tài khoản, hàng Drift — cho Thêm giao dịch (nhắc trùng, ví hay dùng) và Trang chủ. `transactionDao.getAll`.
+  Future<List<Transaction>> getAllRows(int idaccount);
+
+  /// Như [getAllRows], dạng stream — Trang chủ và thẻ "chưa có danh mục" của Sổ giao dịch. `transactionDao.watchAll`.
+  Stream<List<Transaction>> watchAllRows(int idaccount);
+
   Future<void> addTransaction(
     TransactionEntity transaction, {
     String? destinationWalletId,
@@ -20,6 +29,10 @@ abstract class TransactionRepository {
     TransactionEntity transaction, {
     String? destinationWalletId,
   });
+
+  /// A5 mục 11.4 — một khoản chi đã TÁCH theo danh mục: ghi cả N giao dịch hoặc không giao dịch nào (một giao tác),
+  /// số dư tính lại một lần. Chỉ cho khoản thu / chi (không chuyển ví).
+  Future<void> addTransactions(List<TransactionEntity> transactions);
 
   /// Sửa một giao dịch đã lưu: hoàn hệ quả của [before] lên ví, áp hệ quả của
   /// [after], ghi [after] đè lên hàng cũ (cùng `id`) và đánh dấu đẩy lại.
@@ -32,6 +45,7 @@ abstract class TransactionRepository {
 class TransactionRepositoryImpl implements TransactionRepository {
   final TransactionLocalDataSource localDataSource;
   final WalletDao walletDao;
+  final TransactionDao transactionDao;
   final SyncEngine syncEngine;
 
   /// Nơi duy nhất ghi số dư. Xem `SoDuViService`.
@@ -40,9 +54,15 @@ class TransactionRepositoryImpl implements TransactionRepository {
   TransactionRepositoryImpl({
     required this.localDataSource,
     required this.walletDao,
+    required this.transactionDao,
     required this.syncEngine,
     required this.soDuVi,
   });
+
+  @override
+  Future<List<Transaction>> getAllRows(int idaccount) => transactionDao.getAll(idaccount);
+  @override
+  Stream<List<Transaction>> watchAllRows(int idaccount) => transactionDao.watchAll(idaccount);
 
   @override
   Stream<List<TransactionEntity>> watchKhoang(
@@ -78,6 +98,18 @@ class TransactionRepositoryImpl implements TransactionRepository {
     // ghi và số dư đứng im.
     await soDuVi.datNeoNhieuVi(vi);
     await localDataSource.addTransaction(banGhi);
+    await soDuVi.tinhLaiNhieuVi(vi);
+    syncEngine.scheduleSync();
+  }
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> transactions) async {
+    if (transactions.isEmpty) return;
+    final vi = {for (final t in transactions) ..._viBiAnhHuong(t)};
+    // ⚠️ Neo TRƯỚC khi ghi sổ (xem `addTransaction`) — một lần cho cả lô. Ghi sổ hỏng thì neo vẫn đúng: neo là
+    // `balance − Σ sổ`, sổ không đổi nên số dư không đổi.
+    await soDuVi.datNeoNhieuVi(vi);
+    await localDataSource.addTransactions(transactions);
     await soDuVi.tinhLaiNhieuVi(vi);
     syncEngine.scheduleSync();
   }

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../domain/bill_ky_ke_tiep.dart';
+import '../../domain/bill_ky_trung.dart';
 import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
@@ -86,6 +87,11 @@ class BillRepositoryImpl implements BillRepository {
     if (daBoQua(current)) {
       throw BillSkippedCannotPayException(bill.id);
     }
+    // G87: kỳ này có kỳ TRÙNG (cùng gốc chuỗi, cùng hạn) đã trả / bỏ qua → trả nữa là trừ tiền lần hai cho cùng
+    // một kỳ, mà chốt `chanTraHaiLan` của server không chặn được vì hai hàng mang hai `Idbill` khác nhau.
+    if (kyCungKyDaDong(current, await db.billDao.getTatCaKeCaDaXoa(current.idaccount))) {
+      throw BillAlreadyPaidException(bill.id);
+    }
 
     // Số tiền THẬT của kỳ này. Kiểm trước khi mở transaction: ô nhập nằm
     // ngoài khối nguyên tử nên không được tin.
@@ -167,6 +173,17 @@ class BillRepositoryImpl implements BillRepository {
     await soDuVi.tinhLaiSoDu(walletId);
 
     syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<int> gopKyTrung(int idaccount) async {
+    final go = kyTrungCanGo(await db.billDao.getTatCaKeCaDaXoa(idaccount));
+    for (final id in go) {
+      await dataSource.softDeleteBill(id);
+    }
+    // Đẩy lệnh xoá NGAY: để chờ chu kỳ kế (tới 15 phút) là máy khác vẫn thấy — và có thể tự trả — các kỳ trùng.
+    if (go.isNotEmpty) syncEngine?.scheduleSync();
+    return go.length;
   }
 
   @override
@@ -303,6 +320,9 @@ class BillRepositoryImpl implements BillRepository {
 
     syncEngine?.scheduleSync();
   }
+
+  @override
+  Future<Bill?> getById(String id) => db.billDao.getById(id);
 
   @override
   Future<void> undoSkip({required String billId}) async {

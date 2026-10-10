@@ -18,12 +18,30 @@ import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
 import 'package:flowmoney/features/ai_edge/domain/hoi_dung_4g.dart';
 import 'package:flowmoney/features/ai_edge/presentation/pages/cai_dat_ai_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
 
 void main() {
   // ⚠️ Theme thật, không `MaterialApp` trần: theme của app ép mọi
   // `ElevatedButton` rộng vô hạn, và nút trần trong `Row` làm trắng cả trang
   // mà không một dòng log nào (bẫy 4.11 `ANALYTICS_FEATURE.md`).
   Widget boc(Widget w) => MaterialApp(theme: AppTheme.lightTheme, home: w);
+
+  testWidgets('quyền ai_edge_model tắt → chỉ thẻ khoá, không nút tải (spec phân quyền 2026-10-08)', (t) async {
+    final goi = _goiBasic(const {'ai_edge_model': false});
+    await t.pumpWidget(BlocProvider<GoiCubit>.value(
+        value: goi, child: boc(const CaiDatAiPage(daCoMoHinh: false))));
+    expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
+    expect(find.text('Tải mô hình'), findsNothing);
+    // Nghiệm thu OnePlus 2026-10-08: thân Scaffold truyền ràng buộc CHẶT nên thẻ từng giãn hết chiều cao màn — một
+    // thẻ trắng khổng lồ với ổ khoá lơ lửng giữa. Thẻ phải cao theo nội dung.
+    final cao = t.getSize(find.byKey(const Key('the-khoa-ai_edge_model'))).height;
+    expect(cao, lessThan(300), reason: 'thẻ khoá giãn theo màn ($cao px) thay vì cao theo nội dung');
+  });
 
   testWidgets('chưa tải: hiện dung lượng và nút Tải, KHÔNG có nút Xoá',
       (t) async {
@@ -332,4 +350,27 @@ class _CongTacTat extends CongTacAi {
   const _CongTacTat();
   @override
   Future<bool> doc() async => false;
+}
+
+class _ApiGoiIm implements PaymentApi {
+  @override
+  Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
+}
+
+/// `GoiCubit` Basic mang bảng quyền [quyen] — spec phân quyền 2026-10-08.
+GoiCubit _goiBasic(Map<String, bool> quyen) {
+  final repo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+  final goi = GoiCubit(repo);
+  goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+  addTearDown(() async {
+    await goi.close();
+    await repo.dispose();
+  });
+  return goi;
 }

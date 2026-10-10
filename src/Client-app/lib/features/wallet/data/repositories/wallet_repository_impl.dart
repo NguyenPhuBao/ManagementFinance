@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/database/app_database.dart';
+import '../../../../core/database/daos/wallet_dao.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/wallet_local_data_source.dart';
 import '../models/wallet_entity.dart';
@@ -14,15 +16,28 @@ class WalletRepositoryImpl implements WalletRepository {
   /// Nơi duy nhất ghi số dư; ở đây chỉ dùng để đặt **khoản mở sổ** cho ví mới.
   final SoDuViService _soDuVi;
 
+  final WalletDao _walletDao;
+
   static const _uuid = Uuid();
 
   WalletRepositoryImpl({
     required WalletLocalDataSource localDataSource,
     required SyncEngine syncEngine,
     required SoDuViService soDuVi,
+    required WalletDao walletDao,
   })  : _localDataSource = localDataSource,
         _syncEngine = syncEngine,
-        _soDuVi = soDuVi;
+        _soDuVi = soDuVi,
+        _walletDao = walletDao;
+
+  @override
+  Future<List<Wallet>> getActiveRows(int idaccount) => _walletDao.getActive(idaccount);
+  @override
+  Future<List<Wallet>> getAllRows(int idaccount) => _walletDao.getAll(idaccount);
+  @override
+  Stream<List<Wallet>> watchAllRows(int idaccount) => _walletDao.watchAll(idaccount);
+  @override
+  Future<Wallet?> getRowById(String id) => _walletDao.getById(id);
 
   @override
   Future<List<WalletEntity>> getAll(int idaccount) =>

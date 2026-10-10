@@ -127,6 +127,7 @@ void main() {
     bool daTra = false,
     bool daXoa = false,
     bool boQua = false,
+    bool tuTra = false,
   }) {
     return Bill(
       id: id,
@@ -136,7 +137,9 @@ void main() {
       dueDate: denHan,
       payStatus: boQua ? 'Skipped' : (daTra ? 'Payed' : 'Pending'),
       isPaid: daTra,
-      autoPayEnabled: false,
+      autoPayEnabled: tuTra,
+      walletId: tuTra ? 'w1' : null,
+      categoryId: tuTra ? 'c1' : null,
       timeNotification: nhacTruoc,
       isRecurrence: true,
       timeRecurrence: 'Month',
@@ -587,6 +590,49 @@ void main() {
           reason: 'iOS giữ tối đa 64 lịch chờ rồi ÂM THẦM bỏ phần còn lại. '
               'Trần phải tính trên tổng hai loại, nếu không hai bên cộng lại '
               'vượt 64 mà mỗi bên đều tưởng mình còn dư chỗ.');
+    });
+
+    test('chayNen (Android): KHÔNG đặt lời nhắc kỳ trích — lượt nền bắn "Đã trích…" cùng khoá', () async {
+      await ReminderScheduler(
+        osNotifier: os,
+        loadBills: (id, at) async => const [],
+        loadGoals: (id, at) async => [mucTieu()],
+        prefsStore: prefs,
+        clock: () => now,
+        chayNen: true,
+      ).resync(accountId);
+      expect(os.lich, isEmpty,
+          reason: '"Mở app để tiền được chuyển" là nói sai khi tiền chuyển ở nền; '
+              'hai thông báo cho một kỳ là "app trích hai lần"');
+    });
+  });
+
+  // Spec tự chuyển tiền chạy nền mục 6: Android có lượt nền nên câu nhắc hoá đơn
+  // tự trả thôi bảo "Mở app"; iOS (mặc định) giữ câu cũ vì không có gì thay thế.
+  group('chữ nhắc hoá đơn tự trả theo chạy nền', () {
+    ReminderScheduler dungNen(List<Bill> bills, {bool chayNen = false}) => ReminderScheduler(
+          osNotifier: os,
+          loadBills: (id, at) async => bills,
+          prefsStore: prefs,
+          clock: () => now,
+          chayNen: chayNen,
+        );
+
+    test('Android: còn N ngày → "sẽ được tự trả vào ngày đó", không "Mở app"', () async {
+      await dungNen([hoaDon(denHan: DateTime(2026, 9, 20), tuTra: true)], chayNen: true).resync(accountId);
+      expect(os.lich.values.single.body, 'Tiền điện còn 5 ngày tới hạn, sẽ được tự trả vào ngày đó.');
+    });
+
+    test('Android: hạn hôm nay → "sẽ được tự trả"', () async {
+      await prefs.write(accountId, const NotificationPrefs(gioNhac: 20, phutNhac: 0));
+      await dungNen([hoaDon(denHan: DateTime(2026, 9, 15), nhacTruoc: '0', tuTra: true)], chayNen: true)
+          .resync(accountId);
+      expect(os.lich.values.single.body, 'Tiền điện đến hạn hôm nay, sẽ được tự trả.');
+    });
+
+    test('mặc định (iOS): câu cũ giữ nguyên', () async {
+      await dungNen([hoaDon(denHan: DateTime(2026, 9, 20), tuTra: true)]).resync(accountId);
+      expect(os.lich.values.single.body, contains('Mở app vào ngày đó'));
     });
   });
 

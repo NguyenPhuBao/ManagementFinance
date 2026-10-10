@@ -58,7 +58,10 @@ class _Client implements DioClient {
 }
 
 class _Adapter implements HttpClientAdapter {
-  _Adapter({this.giaoDichTuMayKhac});
+  _Adapter({this.giaoDichTuMayKhac, this.coVi = true});
+
+  /// `false` = lượt kéo không trả ví nào (chỉ giao dịch).
+  final bool coVi;
 
   /// Khoản chi mà "máy khác" vừa ghi, nếu có.
   final Map<String, dynamic>? giaoDichTuMayKhac;
@@ -71,14 +74,15 @@ class _Adapter implements HttpClientAdapter {
         jsonEncode({
           'data': {
             'wallets': [
-              {
-                'idwallet': idVi,
-                'idaccount': accountId,
-                'name': 'Tiền mặt',
-                'type': 'Cash',
-                'balance': soDuServer,
-                'update_at': DateTime.now().toIso8601String(),
-              }
+              if (coVi)
+                {
+                  'idwallet': idVi,
+                  'idaccount': accountId,
+                  'name': 'Tiền mặt',
+                  'type': 'Cash',
+                  'balance': soDuServer,
+                  'update_at': DateTime.now().toIso8601String(),
+                }
             ],
             if (giaoDichTuMayKhac != null)
               'transactions': [giaoDichTuMayKhac],
@@ -184,6 +188,73 @@ void main() {
     expect(neo, isNotNull,
         reason: 'Neo là một giao dịch bình thường; một chu kỳ đồng bộ không '
             'được làm gì nó. Mất neo là số dư tụt đúng bằng số dư ban đầu.');
+  });
+
+  // ── Nghiệm thu G67 trên hai máy ảo, 2026-10-08 ──────────────────────────
+  //
+  // Ví seed (server tạo khi đăng ký) KHÔNG có khoản mở sổ trên máy nào. Máy B
+  // chi 11.000 lúc offline; bật mạng, kéo về khoản 22.000 của máy A. Vá neo SAU
+  // khi ghi sổ cho neo = −11.000 − (−33.000) = +22.000: khoản chi của máy kia
+  // biến mất, cả hai máy hiện −11.000.
+  test('⭐ ví CHƯA có neo nhận giao dịch máy khác: neo không nuốt giao dịch ấy',
+      () async {
+    await (db.update(db.wallets)..where((w) => w.id.equals(idVi)))
+        .write(const WalletsCompanion(balance: Value(-11000)));
+    await db.transactionDao.insert(TransactionsCompanion.insert(
+      id: 'tx-may-nay',
+      walletId: idVi,
+      idaccount: accountId,
+      amount: 11000,
+      type: 'chi',
+      date: DateTime(2026, 10, 8),
+      syncStatus: const Value('synced'),
+      updatedAt: DateTime.now(),
+    ));
+
+    await chayMotChuKy(_Adapter(giaoDichTuMayKhac: {
+      'idtran': 'tx-may-khac',
+      'idaccount': accountId,
+      'idwallet': idVi,
+      'amount': -22000,
+      'type': 'Transaction',
+      'DateTransaction': DateTime(2026, 10, 8).toIso8601String(),
+      'update_at': DateTime.now().toIso8601String(),
+    }));
+
+    expect(await db.transactionDao.getById(idKhoanMoSo(idVi)), isNull,
+        reason: 'Sổ máy này đã khớp số dư (−11.000) trước lượt kéo — không có '
+            'số dư ban đầu nào để neo.');
+    expect((await db.walletDao.getById(idVi))!.balance, -33000.0,
+        reason: 'Vá neo sau khi ghi sổ là neo +22.000 nuốt khoản chi của máy '
+            'kia — đo thật trên hai máy ảo.');
+  });
+
+  test('khoản CHUYỂN từ máy khác về: ví ĐÍCH cũng được tính lại', () async {
+    await SoDuViService(db: db).datNeoNhieuVi({idVi});
+    await db.walletDao.insert(WalletsCompanion(
+      id: const Value('33333333-3333-4333-8333-333333333333'),
+      idaccount: const Value(accountId),
+      name: const Value('Ngân hàng'),
+      type: const Value('bank'),
+      balance: const Value(0),
+      syncStatus: const Value('synced'),
+      updatedAt: Value(DateTime.now()),
+    ));
+
+    await chayMotChuKy(_Adapter(coVi: false, giaoDichTuMayKhac: {
+      'idtran': 'tx-chuyen-den',
+      'idaccount': accountId,
+      'idwallet': '33333333-3333-4333-8333-333333333333',
+      'idwallet_transfer': idVi,
+      'amount': 100000,
+      'type': 'Transfer',
+      'DateTransaction': DateTime(2026, 10, 8).toIso8601String(),
+      'update_at': DateTime.now().toIso8601String(),
+    }));
+
+    expect((await db.walletDao.getById(idVi))!.balance, 1750000.0,
+        reason: '`tongTheoVi` cộng khoản chuyển đến, nên ví đích phải nằm trong '
+            'tập tính lại — trước đây chỉ ví nguồn được tính.');
   });
 
   test('ví MỚI về từ máy khác KHÔNG bị vá neo — nếu không số dư về 0', () async {

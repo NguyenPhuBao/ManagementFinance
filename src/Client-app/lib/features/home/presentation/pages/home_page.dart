@@ -27,7 +27,10 @@ import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 import '../../../premium/presentation/widgets/dong_nhac_het_han.dart';
-import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../transaction/presentation/pages/quet_anh_page.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -374,7 +377,7 @@ class HomePage extends StatelessWidget {
         ),
         _buildActionItem(
           context: context,
-          icon: Icons.qr_code_scanner,
+          icon: Icons.document_scanner_outlined,
           label: 'Quét',
           isDark: false,
           onTap: () {
@@ -383,7 +386,13 @@ class HomePage extends StatelessWidget {
               context.push('/spike-c4');
               return;
             }
-            baoNhanh('Tính năng Quét QR đang phát triển');
+            // Quyền `ocr_receipt` (spec phân quyền 2026-10-08): không có → màn Nâng cấp mở đầu bằng tên tính năng.
+            if (!context.coQuyenDoc(MaQuyen.ocrReceipt)) {
+              context.push(duongNangCap(quyen: MaQuyen.ocrReceipt));
+              return;
+            }
+            // A5: chụp / chọn ảnh hoá đơn hoặc biên lai → form điền sẵn.
+            moQuet(context);
           },
         ),
       ],

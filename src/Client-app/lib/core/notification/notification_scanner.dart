@@ -144,6 +144,18 @@ class NotificationScanner {
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
+  /// Gỡ kỳ hoá đơn TRÙNG (cùng gốc chuỗi, cùng hạn — `BillRepository.gopKyTrung`, G87). Chạy ĐẦU lượt quét, trước
+  /// `markOverdue` và bộ tự trả: lượt quét chạy sau mọi chu kỳ đồng bộ, nên kỳ trùng mà bước Pull vừa làm sống lại
+  /// bị gỡ trước khi bộ tự trả kịp trừ tiền cho nó. KHÔNG gác bằng quyền gói — đây là vệ sinh dữ liệu.
+  final Future<int> Function(int idaccount)? gopKyTrung;
+
+  /// Số lần kéo về thành công (`SyncEngine.soLanKeoVeXong`). `gopKyTrung` chỉ chạy khi con số này **vừa tăng**: lượt
+  /// quét lúc mở app chạy TRƯỚC khi kéo về, dữ liệu có thể cũ — đo Realme 2026-10-09: máy giữ hai kỳ trùng ở "Quá hạn"
+  /// trong khi server đã "Đã trả"; gộp lúc ấy là xoá hai hoá đơn đã trả, lệnh xoá mới hơn nên thắng trên server.
+  /// Bỏ trống thì không bao giờ gộp.
+  final int Function()? soLanKeoVe;
+  int _daGopOLanKeoVe = 0;
+
   /// Chạy các kỳ trích tiền tự động đã tới hạn, trả về những gì vừa xảy ra.
   ///
   /// Là closure chứ không phải cả `GoalAutoDepositRunner`, cùng lý do với
@@ -157,6 +169,22 @@ class NotificationScanner {
   /// xảy ra. Cùng hình dạng và cùng lý do tồn tại với [runAutoDeposits].
   final Future<List<BillAutoPayEvent>> Function(int idaccount, DateTime now)?
       runAutoPays;
+
+  /// Khoá thuê của hai bộ tự chuyển tiền (`KhoaTuChuyenTienDao`, spec tự chuyển
+  /// tiền chạy nền mục 3.4). Engine nền của WorkManager và engine của app có
+  /// thể cùng tiến trình — `_dangQuet` chỉ chặn trong MỘT isolate. Không lấy
+  /// được (hoặc lấy ném lỗi) thì bỏ qua cả hai bộ chạy, phần thông báo vẫn
+  /// chạy. Bỏ trống = luôn lấy được (test, web).
+  final Future<bool> Function()? layKhoa;
+  final Future<void> Function()? nhaKhoa;
+
+  /// Hẹn lượt nền kế tiếp (Android — `LichNen.henNeuDoi`, spec tự chuyển tiền
+  /// chạy nền mục 3.1). Chạy CUỐI mỗi lượt quét: bộ tự trả / trích vừa đổi kỳ.
+  /// Bỏ trống ở engine nền (lượt nền trả mốc qua `nenXong`), trên test và web.
+  final Future<void> Function(int idaccount)? henLichNen;
+
+  /// Huỷ lượt nền khi đăng xuất / phiên chết.
+  final Future<void> Function()? huyLichNen;
 
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
@@ -266,6 +294,10 @@ class NotificationScanner {
     required this.loadBills,
     this.runAutoDeposits,
     this.runAutoPays,
+    this.layKhoa,
+    this.nhaKhoa,
+    this.henLichNen,
+    this.huyLichNen,
     this.loadGoals,
     this.loadWallets,
     this.loadViDaDung,
@@ -277,6 +309,8 @@ class NotificationScanner {
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
+    this.gopKyTrung,
+    this.soLanKeoVe,
     this.osNotifier,
     this.badgeUpdater,
     this.prefsStore,
@@ -452,6 +486,10 @@ class NotificationScanner {
     try {
       await nhapBienLai?.donKhiDangXuat(id);
     } catch (_) {}
+    // Tự chuyển tiền chạy nền: không ai đăng nhập thì không ai uỷ quyền chuyển tiền.
+    try {
+      await huyLichNen?.call();
+    } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
       await osNotifier?.cancelAll();
@@ -466,6 +504,18 @@ class NotificationScanner {
     try {
       final at = now ?? clock();
 
+      // G87: gỡ kỳ trùng TRƯỚC mọi thứ, chỉ trên dữ liệu vừa kéo về — xem `gopKyTrung`, `soLanKeoVe`. Nuốt lỗi: vệ
+      // sinh dữ liệu hỏng không được chặn lượt quét.
+      final lanKeoVe = soLanKeoVe?.call() ?? 0;
+      if (gopKyTrung != null && lanKeoVe > _daGopOLanKeoVe) {
+        _daGopOLanKeoVe = lanKeoVe;
+        try {
+          await gopKyTrung!(idaccount);
+        } catch (_) {
+          // Bỏ qua có chủ ý.
+        }
+      }
+
       // Chạy TRƯỚC khi nạp: hoá đơn đọc lên phải mang trạng thái mới nhất, nếu
       // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.
       await markOverdue?.call(idaccount, at);
@@ -476,25 +526,45 @@ class NotificationScanner {
       // để số dư ví mà bộ trích nhìn thấy là số dư SAU khi trả hoá đơn.
       // Nuốt lỗi, cùng lý do với `runAutoDeposits` bên dưới.
       List<BillAutoPayEvent> autoPays = const [];
-      try {
-        autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
-      } catch (_) {
-        // Bỏ qua có chủ ý — xem chú thích trên.
-      }
-
-      // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
-      // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
-      // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
-      // cho đúng mục tiêu vừa được nạp đầy.
-      //
-      // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
-      // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
-      // khối nguyên tử nên hỏng thì không để lại gì dở dang.
       List<GoalAutoDepositEvent> autoDeposits = const [];
+
+      // Khoá thuê (spec tự chuyển tiền chạy nền mục 3.4): engine nền và engine
+      // của app có thể quét CÙNG LÚC. Không lấy được → bỏ qua cả hai bộ chạy;
+      // lượt đang giữ khoá làm việc này. Lấy ném lỗi cũng coi là không lấy được.
+      var coKhoa = false;
       try {
-        autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+        coKhoa = await (layKhoa?.call() ?? Future.value(true));
       } catch (_) {
-        // Bỏ qua có chủ ý — xem chú thích trên.
+        coKhoa = false;
+      }
+      if (coKhoa) {
+        try {
+          try {
+            autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+
+          // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
+          // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
+          // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
+          // cho đúng mục tiêu vừa được nạp đầy.
+          //
+          // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
+          // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
+          // khối nguyên tử nên hỏng thì không để lại gì dở dang.
+          try {
+            autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+        } finally {
+          try {
+            await nhaKhoa?.call();
+          } catch (_) {
+            // Bỏ qua có chủ ý — khoá tự hết hạn sau 2 phút.
+          }
+        }
       }
 
       final budgets = await loadBudgets(idaccount, at);
@@ -590,7 +660,7 @@ class NotificationScanner {
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
       ).where((c) => prefs.chapNhan(c.kind)).toList();
 
-      // Gỡ hàng "sắp cạn" mà ví đã hồi — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
+      // Gỡ hàng "sắp cạn" đã lỗi thời (ví đã hồi, hoặc đã âm — G81) — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
       // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
       // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
       final docViDaXoa = loadViDaXoa;
@@ -608,7 +678,7 @@ class NotificationScanner {
           await dao.goVaNhaKhoa(id, khoa);
         }
         for (final id in {
-          ...hangSapCanDaHoi(hang, wallets, prefs.nguongSoDuThap),
+          ...hangSapCanLoiThoi(hang, wallets, prefs.nguongSoDuThap),
           ...hangCuaViDaXoa(hang, viDaXoa),
         }) {
           if (!amDaHoi.contains(id)) await dao.dismiss(id);
@@ -620,6 +690,7 @@ class NotificationScanner {
         // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không
         // sinh thông báo nào nhưng vẫn phải gỡ lịch của nó.
         await _dongBoLich(idaccount);
+        await _henLichNen(idaccount);
         _ghiNhat(idaccount, 0);
         return 0;
       }
@@ -640,6 +711,7 @@ class NotificationScanner {
         await _banRaHeDieuHanh(moi, idaccount);
       }
       await _dongBoLich(idaccount);
+      await _henLichNen(idaccount);
 
       _ghiNhat(idaccount, moi.length);
       return moi.length;
@@ -666,6 +738,16 @@ class NotificationScanner {
   Future<void> _dongBoLich(int idaccount) async {
     try {
       await resyncLich?.call(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// Hẹn lượt nền kế tiếp. Nuốt lỗi: lịch nền hỏng không được giết trung tâm
+  /// thông báo.
+  Future<void> _henLichNen(int idaccount) async {
+    try {
+      await henLichNen?.call(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý — xem chú thích trên.
     }

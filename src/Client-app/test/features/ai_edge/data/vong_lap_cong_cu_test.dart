@@ -898,4 +898,74 @@ void main() {
     expect(log.any((l) => l.contains('đã tắt')), isTrue,
         reason: 'lượt đo trên máy thật phải thấy vì sao không có lời gọi tool');
   });
+
+  group('còn N mục chưa kể — nối sau câu của mô hình (C9, F11, 2026-10-09)', () {
+    KetQuaCongCu kiemBiCat() => KetQuaCongCu(
+          hang: _kiem().hang,
+          tongHop: _kiem().tongHop,
+          soChuaKe: 2,
+          danhTuChuaKe: 'hoá đơn',
+        );
+
+    test('⭐ câu mô hình được hiện → nối "Còn 2 hoá đơn khác chưa kể." ở cuối', () async {
+      tool = _CongCuGia(kTenCongCuHoaDon, kiemBiCat());
+      bo = BoCongCu([tool]);
+      final (sk, _, _, _) = await chay([
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn '), const Chu('45.000 đ.')],
+      ]);
+      expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
+        'Kiem đã quá hạn 45.000 đ.',
+        'Còn 2 hoá đơn khác chưa kể.',
+      ]);
+    });
+
+    test('rơi về mẫu câu (L2) → câu chưa kể nằm trong mẫu câu, KHÔNG lặp lần hai', () async {
+      tool = _CongCuGia(kTenCongCuHoaDon, kiemBiCat());
+      bo = BoCongCu([tool]);
+      final (sk, _, _, _) = await chay([
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn 99.000 đ. '), const Chu('Còn nữa.')],
+      ]);
+      final cau = sk.whereType<CauQua>().map((c) => c.cau).toList();
+      expect(cau, hasLength(1));
+      expect(cau.single, endsWith('Còn 2 hoá đơn khác chưa kể.'));
+    });
+
+    test('không bị cắt → không nối gì', () async {
+      final (sk, _, _, _) = await chay([
+        [goiHoaDon],
+        [const Chu('Kiem đã quá hạn '), const Chu('45.000 đ.')],
+      ]);
+      expect(sk.whereType<CauQua>(), hasLength(1));
+    });
+
+    test('đường nhanh: câu Gemma hiện → nối câu chưa kể', () async {
+      final co = _timCoHang();
+      final toolTv = _CongCuGia(
+          kTenCongCuTruyVan,
+          KetQuaCongCu(
+            hang: co.hang,
+            tongHop: co.tongHop,
+            boLoc: co.boLoc,
+            chuThem: co.chuThem,
+            tenLienQuan: co.tenLienQuan,
+            soChuaKe: 3,
+            danhTuChuaKe: 'giao dịch',
+          ));
+      final rt = _RuntimeGia(PhienCongCuGia(const [[Chu('x')]]),
+          chuSinhDan: ['Tháng này bạn đã chi ', '800.000 đ cho Cho vay.']);
+      final sk = await hoiBangCongCu('thang nay toi chi bao nhieu',
+              runtime: rt, boCongCu: BoCongCu([tool, toolTv]), goi: GoiSoTraCuu(),
+              idaccount: 10, now: now, log: log.add,
+              dinhTuyen: (_) => const KetQuaDinhTuyen(
+                  ten: kTenCongCuTruyVan, nguon: NguonDinhTuyen.moHinh,
+                  nhanMoHinh: kTenCongCuTruyVan, xacSuat: 0.99))
+          .toList();
+      expect(sk.whereType<CauQua>().map((c) => c.cau).toList(), [
+        'Tháng này bạn đã chi 800.000 đ cho Cho vay.',
+        'Còn 3 giao dịch khác chưa kể.',
+      ]);
+    });
+  });
 }

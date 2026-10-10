@@ -41,7 +41,7 @@ App ngân hàng / ví hiện thông báo
       → notify(ID 20260930, kênh flowmoney_bien_dong, tóm tắt không số, extra bien_dong=1)
   → NotificationScanner.start / resumed → NhapBienDong.nhap(idaccount)   (Dart)
       datBat(docBienDong của tài khoản) → rename .dang_nhap → docTinBienDong theo nguồn
-      → gộp trùng (mã GD | vân tay số dư khác → KHÔNG trùng | hai TIN cùng app không phân biệt được: khoá thông báo
+      → gộp trùng (mã GD | hai TÀI KHOẢN khác nhau → KHÔNG trùng | vân tay số dư khác → KHÔNG trùng | hai TIN cùng app không phân biệt được: khoá thông báo
         khác → KHÔNG trùng, cùng khoá ≤ 10 giây → trùng | còn lại cùng tiền + chiều ≤ 5 phút)
       → AppNotifications loại 20 (deeplink /add?…&vt=…&kt=…&khoa=…)
       → xoá tệp (kể cả khi cờ tắt) → huyTomTat()
@@ -101,6 +101,15 @@ App ngân hàng / ví hiện thông báo
   tin với `id=0` nhưng **tag riêng từng tin** (mốc thời gian + mã), nên khoá thông báo luôn khác nhau giữa hai giao
   dịch — kể cả cách < 10 giây. Hai lần nhận 10.000 đ cách 31 giây → **hai** mục chờ ghi (người dùng xác nhận).
   Bản tóm tắt nhóm của MoMo mang tag `…|g:Aggregate_AlertingSection` và nội dung rỗng — bộ lọc thô đã bỏ.
+- ✅ **2026-10-08 — hai TÀI KHOẢN khác nhau thôi gộp bằng cửa sổ 5 phút** (nghiệm thu OnePlus, người dùng chuyển
+  MoMo → MB 10.000 rồi MB → MoMo 10.000): MB báo +10.000 lúc 16:53, MoMo báo nhận +10.000 lúc 16:54:40 — cùng tiền,
+  cùng chiều, khác nguồn, cách 100 giây → `trungBienDong` gộp tin MoMo vào hàng MB, khoản vào MoMo **mất im lặng**.
+  Luật mới: hai nguồn đều chỉ một tài khoản cụ thể (MB Bank, MoMo, ZaloPay…) và khác nhau → KHÔNG trùng; *SMS* và
+  *Biên lai* (app gửi không rõ) là nguồn **chung** (`_nguonChung`) nên vẫn gộp với tin ngân hàng trong 5 phút. Cùng
+  lượt đo: biên lai chia sẻ từ app MB cho lần MB → MoMo (MB không báo khi chuyển trong app) thành hàng −10.000 kèm
+  ảnh ✅. ✅ **Đo lại trên OnePlus 2026-10-08 tối** (bản debug `5df0537a…`): MoMo → MB 10.000 (MB báo +10.000 lúc 21:01)
+  rồi MB → MoMo 10.000 (MoMo báo +10.000 lúc 21:02:02, cách 47 giây) → **hai** mục chờ ghi riêng, `bienDong:MB Bank|…` và
+  `bienDong:MoMo|…` — đạt.
 - **Gợi ý cho phép chạy nền** (Stitch `2ff589c7…`, người dùng duyệt): hàng *"Tin có thể đến trễ khi app chạy nền"* +
   *Mở cài đặt* → trang thông tin ứng dụng. Chỉ hiện khi đang đọc **và** `isIgnoringBatteryOptimizations` = false; đọc
   lại khi quay về. Không dùng hộp thoại xin miễn tối ưu pin (quyền Play giới hạn). Câu chữ theo tên mục thật trên Realme
