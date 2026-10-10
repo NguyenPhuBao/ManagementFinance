@@ -15,7 +15,7 @@ import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
 import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/ui/do_chu.dart';
 

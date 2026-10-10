@@ -21,7 +21,7 @@
 /// Nặng nhất là `AddTransactionPage`: đó là đường **GHI**, nên giao dịch tạo
 /// trong lúc phiên chưa sẵn sàng mang chủ sở hữu sai, rồi đẩy lên và vỡ
 /// "Ownership mismatch" — đúng kịch bản mà docstring của
-/// `core/auth/current_account.dart` mô tả khi G4 được đóng.
+/// `features/auth/presentation/bloc/current_account.dart` mô tả khi G4 được đóng.
 library;
 
 import 'package:flowmoney/features/category/data/models/category_tree.dart';

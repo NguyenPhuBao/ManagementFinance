@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';

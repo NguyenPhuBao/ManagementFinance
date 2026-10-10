@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../auth/current_account.dart';
+import '../../features/auth/presentation/bloc/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../notification/prefs/notification_prefs.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';

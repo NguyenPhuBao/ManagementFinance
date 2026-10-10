@@ -64,9 +64,8 @@ const conCho = <String>{
 };
 
 /// Luật 5: tệp hạ tầng `core` còn import `features/` → số dòng tối đa. Chỉ được giảm — ngoại lệ duy nhất ghi rõ tại chỗ.
-/// Đo 2026-10-10. `current_account` rời core ở Task 4. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
+/// Đo 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
-  'lib/core/auth/current_account.dart': 1,
   'lib/core/notification/notification_rules.dart': 10,
   'lib/core/sync/sync_engine.dart': 6,
   'lib/core/notification/notification_scanner.dart': 5,

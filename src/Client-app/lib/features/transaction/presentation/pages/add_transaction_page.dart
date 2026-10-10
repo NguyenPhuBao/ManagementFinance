@@ -709,7 +709,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// **tài khoản admin thật**. Đây là đường **GHI** giao dịch, nên hậu quả
   /// nặng nhất trong ba trang cùng lỗi: giao dịch ghi dưới danh nghĩa admin
   /// rồi đẩy lên và vỡ "Ownership mismatch" — đúng kịch bản mà docstring
-  /// `core/auth/current_account.dart` mô tả khi G4 được đóng. Nó lọt lưới quét
+  /// `features/auth/presentation/bloc/current_account.dart` mô tả khi G4 được đóng. Nó lọt lưới quét
   /// `?? 1` vì biểu thức viết là `?? widget.idaccount`.
   int? _accountId() {
     try {

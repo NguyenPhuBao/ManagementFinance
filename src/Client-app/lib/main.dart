@@ -12,7 +12,7 @@ import 'core/constants/app_localization.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
-import 'core/auth/current_account.dart';
+import 'features/auth/presentation/bloc/current_account.dart';
 import 'core/notification/cham_hdh.dart';
 import 'core/notification/nhat_ky_thong_bao.dart';
 import 'core/notification/notification_deeplink.dart';

@@ -19,7 +19,7 @@ import '../../domain/goal_auto_deposit.dart';
 import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';

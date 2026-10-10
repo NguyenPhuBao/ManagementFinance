@@ -2,7 +2,7 @@ import '../../../category/data/repositories/category_management_repository.dart'
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';

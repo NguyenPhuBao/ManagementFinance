@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -27,7 +27,7 @@ class BudgetPage extends StatelessWidget {
     context.watch<AuthBloc>();
 
     // `null` khi chưa có phiên đăng nhập dùng được. Cubit sẽ **không đọc gì**
-    // thay vì đoán một mã tài khoản — xem `core/auth/current_account.dart`.
+    // thay vì đoán một mã tài khoản — xem `features/auth/presentation/bloc/current_account.dart`.
     final idaccount = currentAccountIdOrNull(context);
 
     return BlocProvider<BudgetCubit>(

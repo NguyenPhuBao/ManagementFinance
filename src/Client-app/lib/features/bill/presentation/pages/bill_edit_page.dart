@@ -9,7 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/nen/co_chay_nen.dart';
 import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';

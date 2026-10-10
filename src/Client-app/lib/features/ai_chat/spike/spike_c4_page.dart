@@ -21,7 +21,7 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
-import '../../../core/auth/current_account.dart';
+import '../../auth/presentation/bloc/current_account.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../core/utils/currency_formatter.dart';

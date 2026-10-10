@@ -9,7 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';

@@ -52,7 +52,7 @@ void main() {
     expect(viPham, isEmpty,
         reason: 'Mã tài khoản rơi về 1 là đọc và ghi dưới danh nghĩa admin '
             'thật. Dùng `currentAccountIdOrNull` '
-            '(`core/auth/current_account.dart`) và tự xử lý `null`.');
+            '(`features/auth/presentation/bloc/current_account.dart`) và tự xử lý `null`.');
   });
 
   test('không chỗ nào trong lib/ khai mã tài khoản mặc định là `1`', () {

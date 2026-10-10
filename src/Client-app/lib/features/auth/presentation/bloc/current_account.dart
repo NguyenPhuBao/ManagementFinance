@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import 'auth_bloc.dart';
 
 /// Mã tài khoản của phiên đăng nhập hiện tại, hoặc `null` khi CHƯA có phiên
 /// dùng được.
