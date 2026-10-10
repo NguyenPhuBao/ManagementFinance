@@ -24,6 +24,14 @@ import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
+import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
+import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
+import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/category/data/services/default_category_seeder.dart';
+import 'package:flowmoney/features/category/data/services/personal_default_categories.dart';
+import 'package:flowmoney/features/wallet/data/services/default_account_data_initializer.dart';
+import 'package:flowmoney/features/wallet/presentation/an_nhac_vi_trung_ten.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 
 class _FakeDioClient implements DioClient {
@@ -241,6 +249,40 @@ void main() {
     await db.close();
   });
 
+  /// Bộ điều phối THẬT dựng từ chính các spy đang đăng ký — mỗi hook gác bằng `sl.isRegistered` y như AuthBloc cũ, nên
+  /// kỳ vọng thứ tự khởi động của các ca cũ còn nguyên giá trị. Đọc `sl` lúc DỰNG: đăng ký dịch vụ TRƯỚC khi gọi `phien()`.
+  PhienDieuPhoiThat phien() {
+    final p = PhienDieuPhoiThat(
+      dongBo: sl.isRegistered<SyncEngine>() ? sl<SyncEngine>() : null,
+      thoiGianThuc: sl.isRegistered<RealtimeChannel>() ? sl<RealtimeChannel>() : null,
+      boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
+      interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
+      donTaiKhoanKhac: db.purgeDataForOtherAccounts,
+      xoaBanSao: db.purgeDataForAccount,
+      xoaCacheSlm: () async {
+        if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
+      },
+      chuyenHangSeedCu: sl.isRegistered<PersonalDefaultCategories>()
+          ? (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id)
+          : null,
+      taoBanSaoDanhMuc: sl.isRegistered<DefaultCategorySeeder>()
+          ? (id) => sl<DefaultCategorySeeder>().seedForAccount(id)
+          : null,
+      seedTaiKhoanMoi: sl.isRegistered<DefaultAccountDataInitializer>()
+          ? (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id)
+          : null,
+      xoaAnhQuet: () async {
+        if (sl.isRegistered<KhoAnhQuet>()) await sl<KhoAnhQuet>().xoaHet();
+      },
+      datLaiCoGiaoDien: () {
+        if (sl.isRegistered<AnTheChoXoa>()) sl<AnTheChoXoa>().value = false;
+        if (sl.isRegistered<AnNhacViTrungTen>()) sl<AnNhacViTrungTen>().value = false;
+      },
+    );
+    addTearDown(p.dispose);
+    return p;
+  }
+
   Future<void> themVi(int idaccount) => db.into(db.wallets).insert(
         WalletsCompanion.insert(
           id: 'w_$idaccount',
@@ -257,7 +299,7 @@ void main() {
 
   /// Dựng bloc và đưa nó vào `AuthSuccess` qua đúng đường mở app.
   Future<AuthBloc> blocDangDangNhap(_RepoGia repo) async {
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     final xong = bloc.stream.where((s) => s is AuthSuccess).first;
     bloc.add(AuthCheckRequested());
@@ -359,7 +401,7 @@ void main() {
   test('không có phiên → bỏ qua hoàn toàn', () async {
     await themVi(11);
     final repo = _RepoGia(user: _user('11'));
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
 
     realtime.ban(_thongBaoDaXoa);
@@ -453,7 +495,7 @@ void main() {
     // state mới") — trên máy thật thứ tự là ngược.
     await themVi(11);
     final repo = _RepoGia(user: _user('11'));
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     repo.khiVerifySession = () => interceptor.ban(const ThongBaoBuocDangXuat(
           lyDo: LyDoBuocDangXuat.biKhoa,
@@ -485,7 +527,7 @@ void main() {
     // do; màn Đăng nhập đọc state ở `initState` nên không còn gì để hiện.
     await themVi(11);
     final repo = _RepoGia(user: _user('11'))..treoLogout = Completer<void>();
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     repo.khiVerifySession = () => interceptor.ban(const ThongBaoBuocDangXuat(
           lyDo: LyDoBuocDangXuat.biKhoa,
@@ -517,7 +559,7 @@ void main() {
     await themVi(11);
     final repo = _RepoGia(user: _user('11'))
       ..khiVerifySession = () {}; // invalid, nhưng chưa phát thông báo
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
 
     final cho = choDangXuat(bloc);

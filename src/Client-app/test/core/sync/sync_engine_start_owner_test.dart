@@ -8,21 +8,22 @@ import 'package:flutter_test/flutter_test.dart';
 /// chu kỳ đồng bộ thừa và một lần backoff bị xoá — nghĩa là một bản ghi kẹt lỗi
 /// vĩnh viễn được gửi lại ngay thay vì chờ hết giãn cách.
 ///
-/// Vì thế chỉ **một** chỗ được gọi nó: `AuthBloc`, đúng lúc phiên đăng nhập mở
-/// (`_onAuthCheckRequested`, `_onLoginRequested`) và đối xứng với `stop()` ở
-/// `_dungMoiThuCuaPhien`. `home_page.dart` từng gọi thêm một lần **ngay trong
+/// Vì thế chỉ **một** chỗ được gọi nó: bộ điều phối phiên (`PhienDieuPhoiThat`, từ
+/// 2026-10-10; trước đó là `AuthBloc`), đúng lúc phiên đăng nhập mở và đối xứng
+/// với `stop()` ở `dongPhien`. `home_page.dart` từng gọi thêm một lần **ngay trong
 /// `build()`** — tức mỗi lần Trang chủ dựng lại (mỗi `AuthSuccess` re-emit, mỗi
 /// lần quay về tab) là một lời gọi nữa. Chú thích ở `auth_bloc.dart` đã cảnh báo
 /// đúng chỗ ấy từ trước mà bản trùng vẫn nằm đó tới 2026-09-12: không gì đỏ khi
 /// người ta gọi start() thừa. Test này là cái đỏ ấy.
 void main() {
-  test('chỉ AuthBloc được gọi SyncEngine.start(idaccount:) trong lib/', () {
+  test('chỉ PhienDieuPhoiThat được mở phiên: SyncEngine / RealtimeChannel / NotificationScanner.start', () {
     // `sl<SyncEngine>().start(idaccount:` hay `engine.start(idaccount:` — bắt
     // theo tham số đặt tên, thứ chỉ SyncEngine và RealtimeChannel dùng
     // (NotificationScanner/BadgeUpdater dùng tham số vị trí). RealtimeChannel
-    // cũng chỉ được khởi động ở AuthBloc, nên gom một luật là đúng ý.
+    // cũng chỉ được khởi động ở bộ điều phối phiên, nên gom một luật là đúng ý.
     final goiStart = RegExp(r'\.start\(\s*idaccount\s*:');
-    const choDuocPhep = 'lib/features/auth/presentation/bloc/auth_bloc.dart';
+    final goiStartScanner = RegExp(r'NotificationScanner>\(\)\s*\.start\(');
+    const choDuocPhep = 'lib/core/auth/phien_dieu_phoi_that.dart';
 
     final viPham = <String>[];
     for (final f in Directory('lib').listSync(recursive: true)) {
@@ -35,13 +36,13 @@ void main() {
         // Ví dụ trong chú thích tài liệu (`/// sl<SyncEngine>().start(...)`) không
         // phải lời gọi.
         if (d.startsWith('//')) continue;
-        if (goiStart.hasMatch(d)) viPham.add('$duongDan:${i + 1}');
+        if (goiStart.hasMatch(d) || goiStartScanner.hasMatch(d)) viPham.add('$duongDan:${i + 1}');
       }
     }
 
     expect(viPham, isEmpty,
-        reason: 'SyncEngine/RealtimeChannel chỉ mở ở AuthBloc, đối xứng với '
-            'stop() ở _dungMoiThuCuaPhien. Gọi ở widget — nhất là trong '
+        reason: 'SyncEngine/RealtimeChannel/NotificationScanner chỉ mở ở PhienDieuPhoiThat, đối xứng với '
+            'stop() ở dongPhien. Gọi ở widget — nhất là trong '
             'build() — là mỗi lần dựng lại thêm một chu kỳ đồng bộ và xoá '
             'giãn cách lùi của bản ghi đang kẹt lỗi.');
   });

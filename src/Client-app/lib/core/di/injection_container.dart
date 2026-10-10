@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/auth/phien_dieu_phoi.dart';
+import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
 import '../notification/thong_bao_nguon.dart';
 import '../../core/realtime/realtime_channel.dart';
@@ -181,12 +183,29 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AnTheChoXoa>(AnTheChoXoa.new);
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
-  sl.registerFactory<AuthBloc>(
-    () => AuthBloc(
-      authRepository: sl(),
-      defaultAccountDataInitializer: sl(),
+  // Bộ điều phối phiên (spec bịt điểm rò 2026-10-10, mục 6): bốn dịch vụ core + hook sang các mảng. Đây là chỗ DUY NHẤT
+  // nối SlmCache / seeder / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng (test quét 24).
+  // Mọi dịch vụ dưới đây đăng ký vô điều kiện (kể cả chế độ nền) và lazy nên không cần gác `isRegistered`.
+  sl.registerLazySingleton<PhienDieuPhoi>(
+    () => PhienDieuPhoiThat(
+      dongBo: sl<SyncEngine>(),
+      thoiGianThuc: sl<RealtimeChannel>(),
+      boQuet: sl<NotificationScanner>(),
+      interceptor: sl<AuthInterceptor>(),
+      donTaiKhoanKhac: sl<AppDatabase>().purgeDataForOtherAccounts,
+      xoaBanSao: sl<AppDatabase>().purgeDataForAccount,
+      xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
+      chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
+      taoBanSaoDanhMuc: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
+      xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),
+      datLaiCoGiaoDien: () {
+        sl<AnTheChoXoa>().value = false;
+        sl<AnNhacViTrungTen>().value = false;
+      },
     ),
   );
+  sl.registerFactory<AuthBloc>(() => AuthBloc(authRepository: sl(), phien: sl<PhienDieuPhoi>()));
 
   // ── 5. Features — Wallet ──────────────────────────────────────────────────
   sl.registerLazySingleton<WalletLocalDataSource>(

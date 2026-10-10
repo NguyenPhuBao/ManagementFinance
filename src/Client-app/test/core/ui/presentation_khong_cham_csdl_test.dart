@@ -19,9 +19,7 @@ void main() {
   ];
 
   /// Tệp (tương đối `lib/`) → số dòng còn vi phạm. Điền từ lượt chạy đầu (Step 3); Task 7, 8, 10 rút về rỗng.
-  const conCho = <String, int>{
-    'features/auth/presentation/bloc/auth_bloc.dart': 3,
-  };
+  const conCho = <String, int>{};
 
   test('presentation/ và shared/ không cầm AppDatabase hay DAO, trừ danh sách rút dần', () {
     final thay = <String, int>{};
