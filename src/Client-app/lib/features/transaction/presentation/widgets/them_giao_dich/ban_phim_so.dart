@@ -8,7 +8,11 @@ import '../../../../../shared/theme/app_colors.dart';
 import '../../../domain/ban_phim_so_tien.dart';
 
 class BanPhimSo extends StatelessWidget {
-  const BanPhimSo({super.key, required this.isSubmitting, required this.onKey, required this.onLuu});
+  const BanPhimSo(
+      {super.key,
+      required this.isSubmitting,
+      required this.onKey,
+      required this.onLuu});
 
   final bool isSubmitting;
   final ValueChanged<String> onKey;
@@ -54,7 +58,8 @@ class BanPhimSo extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final keyStr = keys[index];
-        bool isOperator = keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
+        bool isOperator =
+            keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
         bool isDone = keyStr == 'done';
 
         return Material(
@@ -93,7 +98,8 @@ class BanPhimSo extends StatelessWidget {
 
   Widget _noiDungPhim(String keyStr, bool isDone) {
     if (keyStr == 'backspace') {
-      return const Icon(Icons.backspace_outlined, size: 24, color: AppColors.primary);
+      return const Icon(Icons.backspace_outlined,
+          size: 24, color: AppColors.primary);
     }
     if (keyStr == 'done') {
       return const Icon(Icons.check, size: 28, color: Colors.white);
@@ -103,12 +109,16 @@ class BanPhimSo extends StatelessWidget {
         // Dấu trừ THẬT (U+2212), cùng ký hiệu với dòng số; gạch nối ASCII ở
         // ngay trước một con số đọc như dấu âm. Giá trị nội bộ vẫn là '-'.
         keyStr == kToanTuTru ? '−' : keyStr,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal, color: AppColors.primary),
+        style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.normal,
+            color: AppColors.primary),
       );
     }
     return Text(
       keyStr,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
+      style: const TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
     );
   }
 }

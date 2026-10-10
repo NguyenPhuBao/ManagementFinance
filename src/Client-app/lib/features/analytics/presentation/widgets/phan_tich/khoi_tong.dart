@@ -67,8 +67,8 @@ class KhoiTong extends StatelessWidget {
                 // âm bằng không. Cùng luật đã áp cho bảng "Phân bổ theo ví"
                 // (2026-09-15) và thẻ tổng trang Sổ giao dịch (2026-09-21).
                 amount: CurrencyFormatter.formatCoDau(tk.tong.thu, thu: true),
-                diff: soVoiNen(
-                    phanTramSoVoi(tk.tong.thu, nen.nen.thu), nen.nhan),
+                diff:
+                    soVoiNen(phanTramSoVoi(tk.tong.thu, nen.nen.thu), nen.nhan),
                 icon: Icons.arrow_upward,
                 color: AppColors.income,
               ),
@@ -78,8 +78,8 @@ class KhoiTong extends StatelessWidget {
               child: TheTong(
                 title: 'Tổng chi',
                 amount: CurrencyFormatter.formatCoDau(tk.tong.chi, thu: false),
-                diff: soVoiNen(
-                    phanTramSoVoi(tk.tong.chi, nen.nen.chi), nen.nhan),
+                diff:
+                    soVoiNen(phanTramSoVoi(tk.tong.chi, nen.nen.chi), nen.nhan),
                 icon: Icons.arrow_downward,
                 color: AppColors.error,
               ),
@@ -263,8 +263,7 @@ class TheConLai extends StatelessWidget {
                   color: Colors.white70,
                 ),
               ),
-              Icon(Icons.account_balance_wallet,
-                  color: Colors.white, size: 20),
+              Icon(Icons.account_balance_wallet, color: Colors.white, size: 20),
             ],
           ),
           const SizedBox(height: 12),

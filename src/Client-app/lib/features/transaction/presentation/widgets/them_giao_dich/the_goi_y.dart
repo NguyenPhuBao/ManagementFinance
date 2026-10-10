@@ -32,7 +32,9 @@ class DongDeXuatTuKhoa extends StatelessWidget {
       key: const Key('de-xuat-tu-khoa'),
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12)),
       child: daThem != null || d == null
           ? Row(children: [
               const Icon(Icons.check_circle, color: AppColors.income, size: 20),
@@ -40,12 +42,15 @@ class DongDeXuatTuKhoa extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(daThem ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  child: Text(daThem ?? '',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary)),
                 ),
               ),
             ])
           : Row(children: [
-              Icon(d.tenCu == null ? Icons.add_circle : Icons.sync, color: AppColors.primary, size: 20),
+              Icon(d.tenCu == null ? Icons.add_circle : Icons.sync,
+                  color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text.rich(
@@ -65,7 +70,8 @@ class DongDeXuatTuKhoa extends StatelessWidget {
                           TextSpan(text: d.tenDanhMuc, style: dam),
                           const TextSpan(text: '?'),
                         ]),
-                  style: const TextStyle(fontSize: 13, color: AppColors.primary),
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.primary),
                 ),
               ),
               const SizedBox(width: 8),
@@ -103,40 +109,40 @@ class TheGoiYDanhMuc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gợi ý danh mục',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.primary),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              suggestion.category.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            // Lý do theo NGUỒN: học → "Bạn thường ghi “grab” cho Di chuyển (6/7 lần)."; từ khoá → câu cũ.
-            Text(
-              suggestion.lyDo,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            // `Wrap` chứ không `Row` + `Spacer`: đủ chỗ thì hai nút nằm hai đầu một hàng y như trước; chật (màn 360 dp
-            // với cỡ chữ lớn) thì nút sau XUỐNG DÒNG thay vì tràn sọc vàng. Từ dự án C thẻ này hiện cả khi 16 phím số
-            // đang mở — tức thường xuyên hơn hẳn. `SizedBox` rộng hết cỡ để `spaceBetween` có chỗ mà giãn: `Wrap` trong
-            // `Column` căn trái tự co theo nội dung, hai nút sẽ dính vào nhau.
-            SizedBox(
-              width: double.infinity,
-              child: Wrap(
+      width: double.infinity,
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Gợi ý danh mục',
+            style: TextStyle(
+                fontWeight: FontWeight.w700, color: AppColors.primary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            suggestion.category.name,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          // Lý do theo NGUỒN: học → "Bạn thường ghi “grab” cho Di chuyển (6/7 lần)."; từ khoá → câu cũ.
+          Text(
+            suggestion.lyDo,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          // `Wrap` chứ không `Row` + `Spacer`: đủ chỗ thì hai nút nằm hai đầu một hàng y như trước; chật (màn 360 dp
+          // với cỡ chữ lớn) thì nút sau XUỐNG DÒNG thay vì tràn sọc vàng. Từ dự án C thẻ này hiện cả khi 16 phím số
+          // đang mở — tức thường xuyên hơn hẳn. `SizedBox` rộng hết cỡ để `spaceBetween` có chỗ mà giãn: `Wrap` trong
+          // `Column` căn trái tự co theo nội dung, hai nút sẽ dính vào nhau.
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
               runSpacing: 4,
@@ -149,15 +155,16 @@ class TheGoiYDanhMuc extends StatelessWidget {
                 // `Row` làm trắng cả vùng form mà không một dòng log nào (bẫy 4.11). Lỗi có từ trước B1 — nghiệm thu
                 // máy ảo 2026-09-29 mới lộ, vì mọi widget test cũ dựng MaterialApp trần.
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
                   onPressed: onChon,
                   child: const Text('Chọn danh mục này'),
                 ),
               ],
-              ),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 }

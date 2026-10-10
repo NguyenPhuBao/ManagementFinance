@@ -285,7 +285,6 @@ class ChuGiaiDonut extends StatelessWidget {
   }
 }
 
-
 // ── Chi tiết danh mục ─────────────────────────────────────────────────────
 
 class DanhSachDanhMuc extends StatelessWidget {
@@ -371,8 +370,7 @@ class DanhSachDanhMuc extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            for (final d in _dong)
-              DongDanhMucTrang(d: d, phanLoai: _nhomTiLe),
+            for (final d in _dong) DongDanhMucTrang(d: d, phanLoai: _nhomTiLe),
           ],
         ),
       ),

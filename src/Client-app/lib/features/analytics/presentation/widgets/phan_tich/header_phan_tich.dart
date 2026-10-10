@@ -150,7 +150,8 @@ class ChonPhamVi extends StatelessWidget {
   static const double _phanCoDinh = 10 * 2 + 1 * 2 + 6 + 16;
 
   static String nhanCua(AnalyticsState state) => switch (state) {
-        AnalyticsLoaded(:final thongKe, :final moc) => nhanOChon(thongKe.ky, moc),
+        AnalyticsLoaded(:final thongKe, :final moc) =>
+          nhanOChon(thongKe.ky, moc),
         // Cùng nhãn với lúc có số liệu — khác nhãn là header nhảy hàng (G69).
         AnalyticsLoading(:final ky, :final moc) => nhanOChon(ky, moc),
         _ => 'Tháng này',
@@ -185,7 +186,8 @@ class ChonPhamVi extends StatelessWidget {
         children: [
           if (rongHet) Expanded(child: chu) else Flexible(child: chu),
           const SizedBox(width: 6),
-          const Icon(Icons.expand_more, size: 16, color: AppColors.textSecondary),
+          const Icon(Icons.expand_more,
+              size: 16, color: AppColors.textSecondary),
         ],
       ),
     );

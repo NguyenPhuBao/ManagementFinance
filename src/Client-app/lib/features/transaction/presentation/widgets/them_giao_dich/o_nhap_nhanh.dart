@@ -7,7 +7,13 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
 
-typedef KetQuaDien = ({String tomTat, bool docDuoc, bool quaAi, List<String> canhBao, String? lyDo});
+typedef KetQuaDien = ({
+  String tomTat,
+  bool docDuoc,
+  bool quaAi,
+  List<String> canhBao,
+  String? lyDo
+});
 
 /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
 /// do khi danh mục đến từ B1.
@@ -79,7 +85,8 @@ class ONhapNhanh extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: focusNode.hasFocus
                     ? Border.all(color: AppColors.primary, width: 2)
-                    : Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                    : Border.all(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: child,
             ),
@@ -94,7 +101,8 @@ class ONhapNhanh extends StatelessWidget {
                     enabled: laPremium,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => onDien(),
-                    style: const TextStyle(fontSize: 15, color: AppColors.primary),
+                    style:
+                        const TextStyle(fontSize: 15, color: AppColors.primary),
                     // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
                     // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
                     // trong khung xám (nghiệm thu Realme 2026-09-30).
@@ -107,7 +115,8 @@ class ONhapNhanh extends StatelessWidget {
                       disabledBorder: InputBorder.none,
                       // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
                       hintText: laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium',
-                      hintStyle: const TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      hintStyle: const TextStyle(
+                          fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -122,7 +131,8 @@ class ONhapNhanh extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                     onPressed: dangDocAi ? null : onDien,
                     child: const Text('Điền'),
@@ -155,7 +165,8 @@ class ONhapNhanh extends StatelessWidget {
                     child: Text(
                       'Đang đọc bằng AI…',
                       key: Key('nhap-nhanh-dang-doc'),
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
                   TextButton(
@@ -174,7 +185,8 @@ class ONhapNhanh extends StatelessWidget {
                 Icon(
                   kq.docDuoc ? Icons.check_circle : Icons.info_outline,
                   size: 16,
-                  color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
+                  color:
+                      kq.docDuoc ? AppColors.income : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -184,7 +196,9 @@ class ONhapNhanh extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
+                      color: kq.docDuoc
+                          ? AppColors.income
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -203,7 +217,8 @@ class ONhapNhanh extends StatelessWidget {
                   Text(
                     kq.quaAi ? 'Đọc bằng AI' : 'Đọc bằng luật',
                     key: const Key('nhap-nhanh-nguon'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -211,7 +226,9 @@ class ONhapNhanh extends StatelessWidget {
             for (final cb in kq.canhBao)
               Padding(
                 padding: const EdgeInsets.only(top: 4, left: 22),
-                child: Text(cb, style: const TextStyle(fontSize: 12, color: AppColors.expense)),
+                child: Text(cb,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.expense)),
               ),
             if (kq.lyDo != null)
               Padding(

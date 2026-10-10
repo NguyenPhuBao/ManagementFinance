@@ -332,8 +332,8 @@ class KhoiThacNuoc extends StatelessWidget {
             Text(
               'Phần đậm là chỗ vượt mức trung bình '
               '${CurrencyFormatter.format(tb)}/nhóm',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ],
@@ -369,8 +369,7 @@ class KhoiThacNuoc extends StatelessWidget {
           ? const []
           : [
               BarChartRodStackItem(day, ranh, mau),
-              BarChartRodStackItem(
-                  ranh, dinh, mau.withValues(alpha: 0.35)),
+              BarChartRodStackItem(ranh, dinh, mau.withValues(alpha: 0.35)),
             ],
     );
   }

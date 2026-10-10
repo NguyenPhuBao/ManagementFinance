@@ -15,7 +15,8 @@ import '../xem_anh_bien_lai.dart';
 
 /// D1 — dải nguồn (Stitch `52d9d2ef…`): *"Từ thông báo MB Bank · TK ••7777 · 02/09 12:01"*.
 class DaiNguonBienDong extends StatelessWidget {
-  const DaiNguonBienDong({super.key, required this.d, required this.duongDanAnh});
+  const DaiNguonBienDong(
+      {super.key, required this.d, required this.duongDanAnh});
 
   final DienSanBienDong d;
   final String? duongDanAnh;
@@ -54,7 +55,8 @@ class DaiNguonBienDong extends StatelessWidget {
                       cacheWidth: 144,
                       errorBuilder: (_, __, ___) => const ColoredBox(
                         color: AppColors.surfaceContainerHigh,
-                        child: Icon(Icons.receipt_long_outlined, size: 20, color: AppColors.textSecondary),
+                        child: Icon(Icons.receipt_long_outlined,
+                            size: 20, color: AppColors.textSecondary),
                       ),
                     ),
                   ),
@@ -62,8 +64,14 @@ class DaiNguonBienDong extends StatelessWidget {
               ),
             )
           else
-            Icon(d.laQuet ? Icons.document_scanner_outlined : d.cachDoc == null ? Icons.account_balance : Icons.receipt_long_outlined,
-                size: 18, color: AppColors.textSecondary),
+            Icon(
+                d.laQuet
+                    ? Icons.document_scanner_outlined
+                    : d.cachDoc == null
+                        ? Icons.account_balance
+                        : Icons.receipt_long_outlined,
+                size: 18,
+                color: AppColors.textSecondary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -72,14 +80,18 @@ class DaiNguonBienDong extends StatelessWidget {
               children: [
                 Text(
                   dongNguonBienDong(d),
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary),
                 ),
                 if (dongPhuBienLai(d.cachDoc) case final phu?) ...[
                   const SizedBox(height: 4),
                   Text(
                     phu,
                     key: const Key('bien-lai-dong-phu'),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.warning),
                   ),
                 ],
               ],
@@ -94,7 +106,11 @@ class DaiNguonBienDong extends StatelessWidget {
 /// A5 mục 13 — ảnh quét mà số AI (Gemma nhìn ảnh) và số luật LỆCH > 1%: ô số tiền để trống, người dùng chạm một chip
 /// để điền (hoặc gõ số khác). Chip đang khớp ô số tiền được tô chọn. Người dùng chốt 2026-10-08.
 class KhoiChonSoTien extends StatelessWidget {
-  const KhoiChonSoTien({super.key, required this.ds, required this.dangChon, required this.onChon});
+  const KhoiChonSoTien(
+      {super.key,
+      required this.ds,
+      required this.dangChon,
+      required this.onChon});
 
   final List<double> ds;
   final double dangChon;
@@ -109,14 +125,18 @@ class KhoiChonSoTien extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: const Border(left: BorderSide(color: AppColors.warning, width: 3)),
+        border:
+            const Border(left: BorderSide(color: AppColors.warning, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Đọc ra hai số khác nhau — chọn số đúng:',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -126,7 +146,8 @@ class KhoiChonSoTien extends StatelessWidget {
               for (var i = 0; i < ds.length; i++)
                 ChoiceChip(
                   key: Key('chon-so-tien-$i'),
-                  label: Text(CurrencyFormatter.format(ds[i]), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  label: Text(CurrencyFormatter.format(ds[i]),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   selected: (ds[i] - dang).abs() < 0.5,
                   onSelected: (_) => onChon(ds[i]),
                 ),
@@ -158,7 +179,12 @@ class TheGoiYChuyen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       // Nút ở hàng RIÊNG, căn phải: cùng hàng với chữ thì ở 360 dp cả hai dòng chữ ngắt đôi (đo Realme 2026-09-30).
       child: Column(
@@ -169,8 +195,11 @@ class TheGoiYChuyen extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-                child: const Icon(Icons.swap_horiz, size: 20, color: AppColors.primary),
+                decoration: const BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    shape: BoxShape.circle),
+                child: const Icon(Icons.swap_horiz,
+                    size: 20, color: AppColors.primary),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -179,12 +208,16 @@ class TheGoiYChuyen extends StatelessWidget {
                   children: [
                     const Text(
                       'Có vẻ là chuyển khoản',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Từ ${gy.nguonTu} sang ${gy.nguonDen}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -201,7 +234,8 @@ class TheGoiYChuyen extends StatelessWidget {
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary),
             ),
-            child: const Text('Ghi là chuyển khoản', style: TextStyle(fontSize: 12)),
+            child: const Text('Ghi là chuyển khoản',
+                style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -237,28 +271,36 @@ class NhacTrung extends StatelessWidget {
               children: [
                 const Text(
                   'Có thể bạn đã ghi khoản này',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${CurrencyFormatter.format(d.soTien!)} $chieu hôm '
                   '${DateFormat('dd/MM').format(d.thoiGian!)} đã có trong sổ',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
-          TextButton(onPressed: () => moKhoanTrung(context, trung), child: const Text('Xem')),
+          TextButton(
+              onPressed: () => moKhoanTrung(context, trung),
+              child: const Text('Xem')),
         ],
       ),
     );
   }
 }
 
-Future<void> moKhoanTrung(BuildContext context, List<KhoanSo> trung) => showModalBottomSheet<void>(
+Future<void> moKhoanTrung(BuildContext context, List<KhoanSo> trung) =>
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -268,7 +310,10 @@ Future<void> moKhoanTrung(BuildContext context, List<KhoanSo> trung) => showModa
             children: [
               const Text(
                 'Khoản đã có trong sổ',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary),
               ),
               const SizedBox(height: 8),
               for (final k in trung)
@@ -276,7 +321,8 @@ Future<void> moKhoanTrung(BuildContext context, List<KhoanSo> trung) => showModa
                   contentPadding: EdgeInsets.zero,
                   title: Text(k.ghiChu.isEmpty ? '(không ghi chú)' : k.ghiChu),
                   subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(k.ngay)),
-                  trailing: Text(CurrencyFormatter.formatCoDau(k.soTien, thu: k.loai == 'thu')),
+                  trailing: Text(CurrencyFormatter.formatCoDau(k.soTien,
+                      thu: k.loai == 'thu')),
                 ),
             ],
           ),

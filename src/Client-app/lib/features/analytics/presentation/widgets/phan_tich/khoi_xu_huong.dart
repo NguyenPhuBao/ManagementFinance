@@ -52,8 +52,8 @@ class KhoiXuHuong extends StatelessWidget {
     };
     String tenCua(String id) => dong[id]?.ten ?? 'Danh mục';
     final chon = dong.keys.toList()
-      ..sort((a, b) =>
-          tenCua(a).toLowerCase().compareTo(tenCua(b).toLowerCase()));
+      ..sort(
+          (a, b) => tenCua(a).toLowerCase().compareTo(tenCua(b).toLowerCase()));
     final theoThuChi = chon.isEmpty;
 
     // Một danh mục thường chỉ đi một chiều tiền, nên đường của nó vẽ tổng thu

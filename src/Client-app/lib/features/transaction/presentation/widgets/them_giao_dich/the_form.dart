@@ -177,13 +177,19 @@ class TheForm extends StatelessWidget {
               label: 'Ví thanh toán',
               valueWidget: Text(
                 walletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
               onTap: onChonVi,
             ),
             if (nhacTrung != null) nhacTrung!,
-            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            Divider(
+                height: 1,
+                indent: 64,
+                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
             HangForm(
               icon: Icons.category,
               label: nhanDanhMuc,
@@ -191,15 +197,21 @@ class TheForm extends StatelessWidget {
                 tenDanhMuc ?? 'Chọn danh mục',
                 style: TextStyle(
                   fontSize: 16,
-                  color: tenDanhMuc != null ? AppColors.primary : AppColors.outlineVariant,
-                  fontWeight: tenDanhMuc != null ? FontWeight.w500 : FontWeight.normal,
+                  color: tenDanhMuc != null
+                      ? AppColors.primary
+                      : AppColors.outlineVariant,
+                  fontWeight:
+                      tenDanhMuc != null ? FontWeight.w500 : FontWeight.normal,
                 ),
               ),
               showArrow: true,
               onTap: onChonDanhMuc,
             ),
             if (hienDongTach) ...[
-              Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              Divider(
+                  height: 1,
+                  indent: 64,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
               KeyedSubtree(
                 key: const Key('dong-tach'),
                 child: HangForm(
@@ -207,7 +219,8 @@ class TheForm extends StatelessWidget {
                   label: 'Tách theo danh mục',
                   valueWidget: const Text(
                     'Chia khoản chi cho nhiều danh mục',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
                   showArrow: true,
                   onTap: onThemPhan,
@@ -216,11 +229,17 @@ class TheForm extends StatelessWidget {
             ],
             if (deXuatTuKhoa != null) deXuatTuKhoa!,
             if (hangChieuTien != null) ...[
-              Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              Divider(
+                  height: 1,
+                  indent: 64,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
               hangChieuTien!,
             ],
             if (theGoiY != null) ...[
-              Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              Divider(
+                  height: 1,
+                  indent: 64,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
               theGoiY!,
             ],
           ] else ...[
@@ -229,24 +248,36 @@ class TheForm extends StatelessWidget {
               label: 'Ví nguồn (Từ ví)',
               valueWidget: Text(
                 walletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
               onTap: onChonVi,
             ),
-            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            Divider(
+                height: 1,
+                indent: 64,
+                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
             HangForm(
               icon: Icons.account_balance_wallet,
               label: 'Ví đích (Đến ví)',
               valueWidget: Text(
                 destWalletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
               onTap: onChonViDich,
             ),
           ],
-          Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+          Divider(
+              height: 1,
+              indent: 64,
+              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -258,7 +289,8 @@ class TheForm extends StatelessWidget {
                     color: AppColors.surfaceContainerHigh,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.notes, color: AppColors.textSecondary, size: 20),
+                  child: const Icon(Icons.notes,
+                      color: AppColors.textSecondary, size: 20),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -276,16 +308,21 @@ class TheForm extends StatelessWidget {
                       contentPadding: EdgeInsets.symmetric(vertical: 16),
                       // G83: câu dài cũ bị cắt ở 320 dp — người dùng chọn rút gọn.
                       hintText: 'Thêm ghi chú…',
-                      hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      hintStyle: TextStyle(
+                          fontSize: 14, color: AppColors.outlineVariant),
                       border: InputBorder.none,
                     ),
-                    style: const TextStyle(fontSize: 16, color: AppColors.primary),
+                    style:
+                        const TextStyle(fontSize: 16, color: AppColors.primary),
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+          Divider(
+              height: 1,
+              indent: 64,
+              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           HangForm(
             icon: Icons.calendar_today,
             label: 'Ngày',

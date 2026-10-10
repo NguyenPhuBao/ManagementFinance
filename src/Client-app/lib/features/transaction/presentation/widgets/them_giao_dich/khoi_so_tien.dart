@@ -109,13 +109,18 @@ class KhoiSoTien extends StatelessWidget {
                 SizedBox(width: 4),
                 Text(
                   'Chạm để sửa số tiền',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.outline),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.outline),
                 ),
               ],
             )
           else
             Text(
-              coPhepToan ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(chuoiSoTien))}' : 'VNĐ - VIỆT NAM ĐỒNG',
+              coPhepToan
+                  ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(chuoiSoTien))}'
+                  : 'VNĐ - VIỆT NAM ĐỒNG',
               style: const TextStyle(
                 fontSize: 12,
                 letterSpacing: 1.2,

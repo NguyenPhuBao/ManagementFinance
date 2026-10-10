@@ -51,8 +51,7 @@ class _KhoiDuBaoState extends State<KhoiDuBao> {
     final d = widget.duBao;
     if (d == null) return const SizedBox.shrink();
 
-    final hien =
-        _moHet ? d.camKet : d.camKet.take(soDongCamKetThuGon).toList();
+    final hien = _moHet ? d.camKet : d.camKet.take(soDongCamKetThuGon).toList();
     final conLai = d.camKet.length - hien.length;
 
     return Container(
@@ -281,8 +280,8 @@ class MucChuGiai extends StatelessWidget {
         NetChuGiai(mau: mau, netDut: netDut),
         const SizedBox(width: 6),
         Text(chu,
-            style: const TextStyle(
-                fontSize: 11, color: AppColors.textSecondary)),
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }

@@ -114,19 +114,19 @@ class KhoiSoLieuNhanh extends StatelessWidget {
               ),
             )
           else
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              giaTri,
-              maxLines: 1,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                giaTri,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
-          ),
           if (phu != null) ...[
             const SizedBox(height: 2),
             Text(
