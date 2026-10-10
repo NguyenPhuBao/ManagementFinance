@@ -1,7 +1,6 @@
 /// Bộ điều phối MỘT lượt nền của tự chuyển tiền (spec 2026-10-10-tu-chuyen-tien-chay-nen-design.md mục 3.3).
 library;
 
-import 'package:flowmoney/core/nen/lich_nen.dart';
 import 'package:flowmoney/core/nen/luot_nen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
