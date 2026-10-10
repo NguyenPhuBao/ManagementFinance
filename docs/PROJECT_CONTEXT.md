@@ -627,7 +627,7 @@ lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus 
 | 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
 
 Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentation/` **29 → 0**; tệp `presentation` > 1.200 dòng
-**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối; **6618** sau khi form hoá đơn thôi cho chọn nhóm danh mục), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
+**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối; **6618** sau khi form hoá đơn thôi cho chọn nhóm danh mục; **6621** sau gói dọn nợ nhỏ: +3 ca), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
 `features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)).
 
 - ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai

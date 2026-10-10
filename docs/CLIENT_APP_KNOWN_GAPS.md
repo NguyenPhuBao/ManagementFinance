@@ -1651,9 +1651,9 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    Hạ thêm cần **controller hoặc Cubit riêng** (hướng B người dùng để lại) — spec ước ~1.800, số thật 2.007 (phán quyết R15).
 2. **Năm tệp trong danh sách miễn trừ của test quét 23** (trần 1.200 dòng; trần riêng chỉ giảm): `add_transaction_page`
    2.007 · `notification_settings_page` 1.615 · `goal_add_page` 1.570 · `goal_detail_page` 1.480 · `report_preview_page`
-   1.270. Tách tệp nào xong thì rút tên khỏi `mienTru`. ⚠️ Kèm: 14 tệp `analytics/presentation/widgets/phan_tich/` mang
-   `// ignore_for_file: use_key_in_widget_constructors` (phán quyết R13 — giữ *dời nguyên văn*, thêm `{super.key}` vào ~42
-   constructor sẽ đổi mã) — nợ thêm `{super.key}` rồi gỡ dòng ignore; tới lúc ấy lint *key* bị che cho mã mới viết vào 14 tệp.
+   1.270. Tách tệp nào xong thì rút tên khỏi `mienTru`. ✅ Nợ kèm đã trả 2026-10-10: 14 tệp `analytics/presentation/widgets/phan_tich/` từng mang
+   `// ignore_for_file: use_key_in_widget_constructors` (phán quyết R13) — nay mọi constructor widget công khai nhận `super.key`,
+   dòng ignore đã gỡ (commit `752d4ad0`; `flutter analyze` vẫn 20, 0 info `use_key_in_widget_constructors`).
 3. **UI cầm kiểu hàng Drift; Entity mới có ở 4/14 mảng** (ví, giao dịch, mục tiêu, ngân sách). Lối thoát của đợt là
    **11 lối chuyển tiếp** ở repository / nguồn — 10 trả hàng Drift (`WalletRepository.getActiveRows` · `getAllRows` ·
    `watchAllRows` · `getRowById`; `TransactionRepository.getAllRows` · `watchAllRows`;
