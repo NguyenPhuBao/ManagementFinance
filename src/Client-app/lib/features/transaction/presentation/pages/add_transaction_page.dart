@@ -29,7 +29,8 @@ import '../../data/doc_cau_bang_ai.dart';
 import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/khoi_tach.dart';
 import '../widgets/sheet_them_phan.dart';
-import '../widgets/so_tien_lon.dart';
+import '../widgets/them_giao_dich/ban_phim_so.dart';
+import '../widgets/them_giao_dich/khoi_so_tien.dart';
 import '../widgets/xem_anh_bien_lai.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
@@ -1927,10 +1928,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _buildSegmentControl(),
+                  child: ThanhChonChieu(huong: _huong, onChon: _chonHuong),
                 ),
                 const SizedBox(height: 16),
-                _buildAmountDisplay(),
+                KhoiSoTien(
+                  chuoiSoTien: _amountString,
+                  chuHienThi: _getFormattedAmount(),
+                  mau: _getAmountColor(),
+                  hienBanPhimSo: _hienBanPhimSo,
+                  onCham: _chamSoTien,
+                ),
                 const SizedBox(height: 8),
                 Expanded(
                   child: SingleChildScrollView(
@@ -1987,7 +1994,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   BaoCheDayToast(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                      child: _buildNumericKeyboard(context, isSubmitting: isSubmitting),
+                      child: BanPhimSo(
+                        isSubmitting: isSubmitting,
+                        onKey: _onKeyPress,
+                        onLuu: () => _saveTransaction(context),
+                      ),
                     ),
                   ),
               ],
@@ -2008,56 +2019,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           );
   }
 
-  Widget _buildSegmentControl() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-              child: _buildSegmentButton('chi', 'Chi tiêu', AppColors.expense)),
-          Expanded(
-              child: _buildSegmentButton('thu', 'Thu nhập', AppColors.income)),
-          Expanded(
-              child: _buildSegmentButton(
-                  'transfer', 'Chuyển khoản', AppColors.primary)),
-        ],
-      ),
-    );
-  }
-
-  /// Màu đoạn đang chọn theo màn Stitch: Chi tiêu đỏ, Thu nhập xanh, Chuyển
-  /// khoản đen.
-  Widget _buildSegmentButton(String huong, String title, Color mau) {
-    final isSelected = _huong == huong;
-    final bgColor = isSelected ? mau : Colors.transparent;
-    final textColor = isSelected ? Colors.white : AppColors.textSecondary;
-
-    return GestureDetector(
-      key: Key('transaction-type-$huong'),
-      onTap: () => _chonHuong(huong),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 16 phím có trên màn không: cờ [_hienBanPhimSo] **và** bàn phím hệ thống đang đóng (G58).
   bool _coBanPhimSo(BuildContext context) => _hienBanPhimSo && MediaQuery.viewInsetsOf(context).bottom == 0;
 
@@ -2067,56 +2028,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final banPhimHeThong = MediaQuery.viewInsetsOf(context).bottom > 0;
     if (banPhimHeThong) FocusScope.of(context).unfocus();
     setState(() => _hienBanPhimSo = banPhimHeThong || !_hienBanPhimSo);
-  }
-
-  Widget _buildAmountDisplay() {
-    final coPhepToan = coPhepToanDangCho(_amountString);
-    // Gợi ý chỉ khi 16 phím ẩn THEO CỜ (Stitch `b52c0651…` — "Bàn phím ẩn khi đã có số tiền"); biểu thức gõ dở thì dòng
-    // `= tổng` quan trọng hơn — đó là chỗ duy nhất tổng hiện ra trước khi lưu.
-    final goiYCham = !_hienBanPhimSo && !coPhepToan;
-    return GestureDetector(
-      key: const Key('so-tien-cham'),
-      behavior: HitTestBehavior.opaque,
-      onTap: _chamSoTien,
-      child: Column(
-      children: [
-        // ⚠️ Không dựng `Text` trần ở đây. Ở cỡ 48 trên 411dp, con số dài nhất
-        // mà bàn phím cho gõ (`9.999.999.999.999đ`) NGẮT THÀNH HAI DÒNG và đẩy
-        // cả màn xuống — không sọc vàng, không exception, chỉ là bố cục xấu
-        // mà widget test dựng-ở-1280px không thấy. Xem `SoTienLon`.
-        SoTienLon(chu: _getFormattedAmount(), mau: _getAmountColor()),
-        const SizedBox(height: 8),
-        // ⚠️ Lưới Stitch KHÔNG có phím `=`, nên ✓ vừa rút gọn vừa lưu trong
-        // một nhịp. Dòng này là chỗ DUY NHẤT tổng hiện ra được trước khi giao
-        // dịch được ghi — thiếu nó là người dùng bấm lưu một con số chưa từng
-        // nhìn thấy. Toán tử lẻ ở cuối thì chưa có gì để rút gọn, giữ nhãn cũ.
-        if (goiYCham)
-          const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.edit_outlined, size: 14, color: AppColors.outline),
-              SizedBox(width: 4),
-              Text(
-                'Chạm để sửa số tiền',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.outline),
-              ),
-            ],
-          )
-        else
-          Text(
-            coPhepToan
-                ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(_amountString))}'
-                : 'VNĐ - VIỆT NAM ĐỒNG',
-            style: const TextStyle(
-              fontSize: 12,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
-              color: AppColors.outline,
-            ),
-          ),
-      ],
-      ),
-    );
   }
 
   Widget _buildFormCard(BuildContext context) {
@@ -2996,112 +2907,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildNumericKeyboard(BuildContext context,
-      {required bool isSubmitting}) {
-    final keys = [
-      '7',
-      '8',
-      '9',
-      'backspace',
-      '4',
-      '5',
-      '6',
-      '+',
-      '1',
-      '2',
-      '3',
-      '-',
-      // Ô này từng là phím `.` — bỏ vì nó sinh số lẻ mà đường lưu đọc sai gấp
-      // mười, và app làm tròn về đồng chẵn ở mọi chỗ hiển thị. Thay bằng `00`
-      // chứ không để trống: lưới là 4×4, thiếu một ô thì hàng cuối lệch cột.
-      '00',
-      '0',
-      '000',
-      'done'
-    ];
-
-    return GridView.builder(
-      key: const Key('ban-phim-so'),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 16,
-      // `mainAxisExtent` CỐ ĐỊNH thay vì `childAspectRatio`: bàn phím neo đáy
-      // phải cao như nhau ở mọi bề rộng — tỉ lệ ở khung test 800dp cho phím
-      // cao gấp đôi và nuốt hết chỗ của thẻ form.
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        mainAxisExtent: 50,
-      ),
-      itemBuilder: (context, index) {
-        final keyStr = keys[index];
-        bool isOperator =
-            keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
-        bool isDone = keyStr == 'done';
-
-        return Material(
-          color: isDone
-              ? AppColors.primary
-              : isOperator
-                  ? AppColors.surfaceContainer
-                  : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            // ✓ là nút lưu (từng là phím chết: `themPhimSoTien` trả nguyên
-            // chuỗi với 'done').
-            onTap: isDone
-                ? (isSubmitting ? null : () => _saveTransaction(context))
-                : () => _onKeyPress(keyStr),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  if (!isOperator && !isDone)
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                ],
-              ),
-              child: Center(
-                child: _buildKeyContent(keyStr, isDone),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildKeyContent(String keyStr, bool isDone) {
-    if (keyStr == 'backspace') {
-      return const Icon(Icons.backspace_outlined,
-          size: 24, color: AppColors.primary);
-    }
-    if (keyStr == 'done') {
-      return const Icon(Icons.check, size: 28, color: Colors.white);
-    }
-    if (keyStr == kToanTuCong || keyStr == kToanTuTru) {
-      return Text(
-        // Dấu trừ THẬT (U+2212), cùng ký hiệu với dòng số; gạch nối ASCII ở
-        // ngay trước một con số đọc như dấu âm. Giá trị nội bộ vẫn là '-'.
-        keyStr == kToanTuTru ? '−' : keyStr,
-        style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.normal,
-            color: AppColors.primary),
-      );
-    }
-    return Text(
-      keyStr,
-      style: const TextStyle(
-          fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
     );
   }
 }
