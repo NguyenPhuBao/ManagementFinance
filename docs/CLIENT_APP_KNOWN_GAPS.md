@@ -1649,6 +1649,8 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
 1. **Trang Thêm giao dịch còn 2.007 dòng** (`add_transaction_page.dart`, đếm như test quét 23; trước đợt 3.107). Bảy khối
    giao diện đã sang `widgets/them_giao_dich/`; phần còn lại là trạng thái 61 trường và logic chọn ví / gợi ý / chiều tiền.
    Hạ thêm cần **controller hoặc Cubit riêng** (hướng B người dùng để lại) — spec ước ~1.800, số thật 2.007 (phán quyết R15).
+   📝 **2026-10-11 người dùng chốt: làm ngay sau nghiệm thu OnePlus, TRƯỚC C4** — C4 giọng nói sẽ chạm đúng màn này (như C2,
+   C3, A5, D1 đã chạm). Bốn trang lớn còn lại của gạch 2 làm khi có dịp.
 2. **Năm tệp trong danh sách miễn trừ của test quét 23** (trần 1.200 dòng; trần riêng chỉ giảm): `add_transaction_page`
    2.007 · `notification_settings_page` 1.615 · `goal_add_page` 1.570 · `goal_detail_page` 1.480 · `report_preview_page`
    1.270. Tách tệp nào xong thì rút tên khỏi `mienTru`. ✅ Nợ kèm đã trả 2026-10-10: 14 tệp `analytics/presentation/widgets/phan_tich/` từng mang
@@ -1683,6 +1685,8 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
 6. **`data/services/` là tầng application chưa có tên** — ở ví (`so_du_vi_service`, `gop_vi_service`, `dieu_chinh_so_du_service`,
    `vi_trung_ten_resolver`, `tha_vi_bi_giu`, `default_account_data_initializer`), hoá đơn (`bill_payment_conflict_resolver`),
    danh mục (`default_category_seeder`, `personal_default_categories`, `category_suggestion_engine`). Nếu cần tầng thứ tư thì **đổi tên thư mục**, không thêm tầng mới (người dùng hỏi 2026-10-10, trả lời: không).
+   📝 **2026-10-11 người dùng chốt: ĐỔI TÊN thư mục** (vẫn không thêm tầng), ghép vào đợt gạch 4 + 5; tên cụ thể (vd.
+   `application/`) chốt ở spec đợt ấy — dời tệp bằng script, sửa luật mục 8 `KIEN_TRUC_CLIENT_APP.md` và test quét 25.
 7. ~~**Vị trí tệp lệch luật mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`**~~ ✅ **đóng 2026-10-10** (spec
    `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`, thi công bằng agent con mỗi task, 12 task):
    `current_account` → `auth/presentation/bloc/`; `dem_nguoc_xoa` → `auth/domain/`; `buoc_dang_xuat` **ở lại** `core/auth`
