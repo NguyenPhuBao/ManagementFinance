@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { useSettingsSafe } from './settings.context';
+import soundService from '../services/sound.service';
 
 const AlertContext = createContext(null);
 
 export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const timersRef = useRef({});
+  const settingsCtx = useSettingsSafe();
+  const settingsRef = useRef(settingsCtx?.settings);
+  settingsRef.current = settingsCtx?.settings;
 
   // Xóa 1 alert theo ID
   const removeAlert = useCallback((id) => {
@@ -16,43 +21,52 @@ export const AlertProvider = ({ children }) => {
   }, []);
 
   // Thêm mới một Alert
-  const showAlert = useCallback(({ type = 'info', title = '', message = '', duration = 4500 }) => {
+  const showAlert = useCallback(({ type = 'info', title = '', message = '', duration }) => {
+    const defaultDuration = settingsRef.current?.toastDuration !== undefined ? settingsRef.current.toastDuration : 4500;
+    const finalDuration = duration !== undefined ? duration : defaultDuration;
+
+    // Phát âm thanh nếu soundEnabled được bật
+    if (settingsRef.current?.soundEnabled) {
+      if (type === 'error') soundService.playCriticalAlarm();
+      else if (type === 'info' || type === 'success') soundService.playNotificationSound();
+    }
+
     const id = `alert-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const newAlert = {
       id,
       type, // 'success' | 'error' | 'warning' | 'info'
       title,
       message,
-      duration,
+      duration: finalDuration,
       createdAt: Date.now(),
     };
 
     setAlerts((prev) => [newAlert, ...prev.slice(0, 4)]); // Tối đa 5 alerts xếp chồng
 
-    if (duration > 0) {
+    if (finalDuration > 0) {
       timersRef.current[id] = setTimeout(() => {
         removeAlert(id);
-      }, duration);
+      }, finalDuration);
     }
 
     return id;
   }, [removeAlert]);
 
-  // Các hàm tiện ích gọi nhanh
-  const success = useCallback((message, title = 'Thành công') => {
-    return showAlert({ type: 'success', title, message });
+  // Các hàm tiện ích gọi nhanh - kế thừa hoàn toàn toastDuration người dùng cài đặt
+  const success = useCallback((message, title, duration) => {
+    return showAlert({ type: 'success', title, message, duration });
   }, [showAlert]);
 
-  const error = useCallback((message, title = 'Lỗi / Thất bại') => {
-    return showAlert({ type: 'error', title, message, duration: 6000 });
+  const error = useCallback((message, title, duration) => {
+    return showAlert({ type: 'error', title, message, duration });
   }, [showAlert]);
 
-  const warning = useCallback((message, title = 'Cảnh báo') => {
-    return showAlert({ type: 'warning', title, message, duration: 5500 });
+  const warning = useCallback((message, title, duration) => {
+    return showAlert({ type: 'warning', title, message, duration });
   }, [showAlert]);
 
-  const info = useCallback((message, title = 'Thông báo') => {
-    return showAlert({ type: 'info', title, message });
+  const info = useCallback((message, title, duration) => {
+    return showAlert({ type: 'info', title, message, duration });
   }, [showAlert]);
 
   const clearAllAlerts = useCallback(() => {

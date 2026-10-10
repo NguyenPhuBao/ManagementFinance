@@ -42,12 +42,14 @@ function auditLogMiddleware(req, res, next) {
         path.includes('/admin/request-stats') ||
         path.includes('/admin/aiops') ||
         path.includes('/admin/system/health') ||
+        (req.method === 'GET' && path.includes('/admin/system/maintenance')) ||
         path.includes('/admin/maintenance/status') ||
         path.includes('/admin/audit-logs')
       ) {
         return;
       }
 
+      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || '127.0.0.1';
       const req_status = authService.determineReqStatus(res, req);
       const reason = authService.determineReqReason(res, req);
       const actionName = authService.formatActionName(req.method, path, req);

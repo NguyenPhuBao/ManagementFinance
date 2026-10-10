@@ -657,5 +657,95 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getByText(/Năm \(1 -> 12 Tháng\)/i)).toBeInTheDocument();
     });
   });
+
+  it('5.21. Kiểm thử 2 Tầng (2-Tier Verification): Tắt Vector Resource lập tức hạ Threat Score và cập nhật UI sang trạng thái An toàn', async () => {
+    aiopsApi.toggleVector.mockResolvedValueOnce({
+      data: {
+        success: true,
+        vector: 'resource',
+        enabled: false,
+        vectorConfig: { auth: true, traffic: true, exploit: true, resource: false },
+        currentStatus: {
+          threatScore: 5,
+          status: 'NORMAL',
+          vectorScores: { auth: 0, traffic: 0, exploit: 0, resource: 85 },
+          vectorDefenses: {
+            resource: { disabled: true, status: 'NORMAL', defenseAction: 'MONITOR' },
+          },
+          anomalies: [],
+          recommendedAction: null,
+        },
+      },
+    });
+
+    render(<AIOpsPage />);
+
+    // Tầng 1: Đảm bảo giao diện hiển thị toggle vector Resource
+    await waitFor(() => {
+      expect(screen.getByTestId('toggle-vector-resource')).toBeInTheDocument();
+    });
+
+    // Thao tác: Bấm vào toggle của Vector 4 (Resource)
+    const toggleResource = screen.getByTestId('toggle-vector-resource');
+    fireEvent.click(toggleResource);
+
+    // Xác nhận Modal mở ra
+    await waitFor(() => {
+      expect(screen.getByText('Xác nhận TẮT Vector')).toBeInTheDocument();
+    });
+
+    // Click nút xác nhận
+    const confirmBtn = screen.getByRole('button', { name: /Xác nhận TẮT/i });
+    fireEvent.click(confirmBtn);
+
+    // Tầng 2: Kiểm tra System Impact & Behavioral Verification
+    await waitFor(() => {
+      // 1. API được gọi đúng tham số
+      expect(aiopsApi.toggleVector).toHaveBeenCalledWith('resource', false);
+      // 2. Toggle state chuyển sang false
+      expect(toggleResource.getAttribute('aria-checked')).toBe('false');
+      // 3. Threat Score giảm xuống 5/100 (NORMAL)
+      expect(screen.getByText(/5\/100/i)).toBeInTheDocument();
+      // 4. Modal đóng hoàn toàn
+      expect(screen.queryByText('Xác nhận TẮT Vector')).toBeNull();
+    });
+  });
+
+  it('8. [Regression Test] Biểu đồ Lịch sử render trơn tru với mẫu dữ liệu có Resource Vector mà không gặp lỗi ReferenceError', async () => {
+    // Giả lập lịch sử chứa nhiều mẫu dữ liệu khác nhau (có/không có vectorScores)
+    aiopsApi.getHistory.mockResolvedValueOnce([
+      {
+        timestamp: '2026-10-10T06:00:00.000Z',
+        threatScore: 45,
+        vectorScores: { auth: 20, traffic: 30, exploit: 10, resource: 45 },
+        cpuPercent: 40,
+        ramPercent: 45,
+      },
+      {
+        timestamp: '2026-10-10T06:01:00.000Z',
+        threatScore: 85,
+        // Thiếu vectorScores để kiểm tra fallback từ cpuPercent/ramPercent
+        cpuPercent: 85,
+        ramPercent: 70,
+        failedLogins: 5,
+        requestsPerMin: 600,
+        malformedRequests: 2,
+      },
+    ]);
+
+    expect(() => {
+      render(<AIOpsPage />);
+    }).not.toThrow();
+
+    // Tầng 1: Đảm bảo giao diện tải xong và hiển thị tiêu đề trang & biểu đồ
+    await waitFor(() => {
+      expect(screen.getByText(/AIOps Sentinel/i)).toBeInTheDocument();
+    });
+
+    // Tầng 2: Kiểm tra các thành phần biểu đồ và ngưỡng an toàn render đầy đủ không crash
+    expect(screen.getByText(/Ngưỡng Khẩn cấp/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ngưỡng Cảnh báo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trần Max/i)).toBeInTheDocument();
+  });
 });
 

@@ -81,6 +81,7 @@ async function bootstrap() {
           threatStatus: aiopsStatus.status || 'NORMAL',
           vectorScores: aiopsStatus.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
           vectorDefenses: aiopsStatus.vectorDefenses || {},
+          vectorConfig: aiopsStatus.vectorConfig || defaultAIOpsService.getVectorConfig() || {},
           recommendedAction: aiopsStatus.recommendedAction || null,
           targetConcurrency: aiopsStatus.targetConcurrency || 1000,
           activeQuarantines: aiopsStatus.quarantinedCount || 0,

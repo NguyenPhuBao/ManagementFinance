@@ -6,16 +6,20 @@ import { formatDateTime, formatFullDateTime } from '../../utils/format';
 import Pagination from '../../components/common/Pagination';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
+import { useSettingsSafe } from '../../store/settings.context';
+import { useLanguageSafe } from '../../store/language.context';
 
-const VECTOR_LABELS = {
-  auth: '1. Xác Thực & Danh Tính',
-  traffic: '2. Lưu Lượng & DoS',
-  exploit: '3. Khai Thác Lỗ Hổng',
-  resource: '4. Sức Khỏe Tài Nguyên',
+const VECTOR_KEYS = {
+  auth: 'aiops.vectors.auth',
+  traffic: 'aiops.vectors.traffic',
+  exploit: 'aiops.vectors.exploit',
+  resource: 'aiops.vectors.resource',
 };
 
 const AIOpsPage = () => {
+  const { t } = useLanguageSafe();
   const alert = useAlertSafe();
+  const settingsCtx = useSettingsSafe();
   const [statusData, setStatusData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [quarantineList, setQuarantineList] = useState([]);
@@ -29,9 +33,9 @@ const AIOpsPage = () => {
     _setFeedback(fb);
     if (fb && alert) {
       if (fb.ok) {
-        alert.success(fb.msg, 'AIOps Sentinel');
+        alert.success(fb.msg, t('aiops.alerts.sentinelTitle', 'AIOps Sentinel'));
       } else {
-        alert.error(fb.msg, 'Cảnh Báo AIOps');
+        alert.error(fb.msg, t('aiops.alerts.warningTitle', 'Cảnh Báo AIOps'));
       }
     }
   };
@@ -48,7 +52,7 @@ const AIOpsPage = () => {
   // Mitigation modal state
   const [showMitigationModal, setShowMitigationModal] = useState(false);
   const [showCalibrateModal, setShowCalibrateModal] = useState(false);
-  const [mitigationReason, setMitigationReason] = useState('Phòng vệ khẩn cấp AIOps Sentinel do phát hiện nguy cơ cao');
+  const [mitigationReason, setMitigationReason] = useState(() => t('aiops.mitigation.defaultReason', 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện nguy cơ cao'));
   const [mitigating, setMitigating] = useState(false);
 
   // Target Concurrency Scaling state (Lưu cứng vào localStorage làm bộ nhớ đệm ban đầu)
@@ -67,7 +71,7 @@ const AIOpsPage = () => {
       const parsed = parseInt(saved, 10);
       return parsed >= 100 && parsed <= 50000 ? String(parsed) : '1000';
     } catch (_) {
-      return '1000';
+      return 1000;
     }
   });
   const [savingScale, setSavingScale] = useState(false);
@@ -172,10 +176,10 @@ const AIOpsPage = () => {
     try {
       await fetchAIOpsData();
       await fetchIncidents(1);
-      setFeedback({ ok: true, msg: 'Đã làm mới dữ liệu AIOps Sentinel thành công!' });
+      setFeedback({ ok: true, msg: t('aiops.feedback.refreshSuccess', 'Đã làm mới dữ liệu AIOps Sentinel thành công!') });
     } catch (err) {
       console.error('[AIOpsPage] Error refreshing data:', err);
-      setFeedback({ ok: false, msg: 'Không thể làm mới dữ liệu AIOps Sentinel.' });
+      setFeedback({ ok: false, msg: t('aiops.feedback.refreshError', 'Không thể làm mới dữ liệu AIOps Sentinel.') });
     }
   };
 
@@ -204,7 +208,7 @@ const AIOpsPage = () => {
       }
     } catch (err) {
       console.error('[AIOpsPage] Error fetching history:', err);
-      setFeedback({ ok: false, msg: 'Không thể tải dữ liệu lịch sử xu hướng.' });
+      setFeedback({ ok: false, msg: t('aiops.feedback.historyError', 'Không thể tải dữ liệu lịch sử xu hướng.') });
     } finally {
       setFetchingHistory(false);
     }
@@ -218,7 +222,7 @@ const AIOpsPage = () => {
       open: true,
       vector: vectorKey,
       targetState: nextState,
-      vectorName: VECTOR_LABELS[vectorKey] || vectorKey,
+      vectorName: t('aiops.vectors.' + vectorKey, vectorKey),
       loading: false,
     });
   };
@@ -235,13 +239,19 @@ const AIOpsPage = () => {
         [vectorToggleModal.vector]: vectorToggleModal.targetState,
       };
       setVectorConfig(updatedConfig);
+      if (resData?.currentStatus) {
+        setStatusData((prev) => ({
+          ...prev,
+          ...resData.currentStatus,
+        }));
+      } else {
+        fetchAIOpsData();
+      }
       setFeedback({
         ok: true,
-        msg: `Đã ${vectorToggleModal.targetState ? 'BẬT' : 'TẮT'} tính điểm cho "${vectorToggleModal.vectorName}". ${
-          vectorToggleModal.targetState
-            ? 'Vector này hiện được tính vào Threat Score và các cơ chế phòng vệ tự động.'
-            : 'Vector này vẫn được đo lường hiển thị nhưng KHÔNG tính vào Threat Score chung.'
-        }`,
+        msg: vectorToggleModal.targetState
+          ? t('aiops.feedback.toggleVectorTurnedOn', { name: vectorToggleModal.vectorName })
+          : t('aiops.feedback.toggleVectorTurnedOff', { name: vectorToggleModal.vectorName }),
       });
       setVectorToggleModal({ open: false, vector: null, targetState: false, vectorName: '', loading: false });
     } catch (err) {
@@ -265,14 +275,14 @@ const AIOpsPage = () => {
     if (!customRange.from || !customRange.to) {
       setFeedback({
         ok: false,
-        msg: 'Vui lòng chọn đầy đủ thời điểm bắt đầu (Từ) và kết thúc (Đến).',
+        msg: t('aiops.feedback.fillRange', 'Vui lòng chọn đầy đủ thời điểm bắt đầu (Từ) và kết thúc (Đến).'),
       });
       return;
     }
     if (customRange.from > customRange.to) {
       setFeedback({
         ok: false,
-        msg: 'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc.',
+        msg: t('aiops.feedback.invalidRange', 'Thời điểm bắt đầu không được lớn hơn thời điểm kết thúc.'),
       });
       return;
     }
@@ -291,7 +301,7 @@ const AIOpsPage = () => {
   const handleResetCustomRange = () => {
     setCustomRange({ from: '', to: '', applied: false });
     fetchHistoryFiltered({ customApplied: false, preset: timePreset });
-    setFeedback({ ok: true, msg: 'Đã làm mới bộ lọc chính xác về trạng thái ban đầu.' });
+    setFeedback({ ok: true, msg: t('aiops.feedback.resetRange', 'Đã làm mới bộ lọc chính xác về trạng thái ban đầu.') });
   };
 
   const fetchIncidents = async (
@@ -317,13 +327,15 @@ const AIOpsPage = () => {
     fetchAIOpsData();
     fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch);
 
-    // Polling dự phòng mỗi 60 giây (luồng chính đã dùng Socket.io stream 3s/lần)
+    // Chu kỳ cập nhật theo cấu hình metricsInterval trong Settings (1s, 3s, 5s, 10s)
+    const intervalSec = settingsCtx?.settings?.metricsInterval || 3;
+    const intervalMs = Math.max(1000, intervalSec * 1000);
     const interval = setInterval(() => {
       fetchAIOpsData();
-    }, 60000);
+    }, intervalMs);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [settingsCtx?.settings?.metricsInterval]);
 
   // Gọi lại API sự cố khi thay đổi phân trang hoặc bộ lọc
   useEffect(() => {
@@ -344,9 +356,9 @@ const AIOpsPage = () => {
       setIncidentTotal(0);
       setIncidentPage(1);
       setShowClearIncidentsModal(false);
-      setFeedback({ ok: true, msg: 'Đã làm sạch toàn bộ nhật ký sự cố bất thường thành công.' });
+      setFeedback({ ok: true, msg: t('aiops.feedback.clearIncidentsSuccess', 'Đã làm sạch toàn bộ nhật ký sự cố bất thường thành công.') });
     } catch (err) {
-      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Xóa nhật ký thất bại' });
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || t('aiops.feedback.clearIncidentsError', 'Xóa nhật ký thất bại') });
     } finally {
       setClearingIncidents(false);
     }
@@ -370,14 +382,14 @@ const AIOpsPage = () => {
         hash: actorHash,
         ip: actorIdentity && !actorIdentity.includes('xx') ? actorIdentity : null,
         maskedIp: actorIdentity,
-        reason: `Admin chủ động phong tỏa từ nhật ký RCA (${code})`,
+        reason: `Admin quarantine (${code})`,
         durationMinutes: 15,
       });
 
       const resData = res?.data || res;
       setFeedback({
         ok: true,
-        msg: res?.message || `Đã kích hoạt khiên chắn phong tỏa nguồn IP ${actorIdentity || actorHash} thành công trong 15 phút.`,
+        msg: res?.message || t('aiops.feedback.quarantineSuccess', { actor: actorIdentity || actorHash }),
       });
 
       // Cập nhật ngay vào danh sách cô lập cục bộ
@@ -389,7 +401,7 @@ const AIOpsPage = () => {
             {
               hash: resData.hash || actorHash,
               maskedIp: resData.maskedIp || actorIdentity,
-              reason: resData.reason || `Admin phong tỏa từ sự cố ${code}`,
+              reason: resData.reason || `Admin quarantine (${code})`,
               bannedAt: resData.bannedAt || new Date().toISOString(),
               expiresAt: resData.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
               remainingMinutes: 15,
@@ -403,7 +415,7 @@ const AIOpsPage = () => {
     } catch (err) {
       setFeedback({
         ok: false,
-        msg: err?.response?.data?.message || err?.message || 'Phong tỏa nguồn IP thất bại.',
+        msg: err?.response?.data?.message || err?.message || t('aiops.feedback.quarantineError', 'Phong tỏa nguồn IP thất bại.'),
       });
     } finally {
       setQuarantiningActor(false);
@@ -469,7 +481,7 @@ const AIOpsPage = () => {
       console.log('[AIOps] Nguồn IP bị cô lập tự động:', blockData);
       setFeedback({
         ok: false,
-        msg: `🛡️ [AIOPS ĐÃ CHẶN ĐỨNG NGUỒN TẤN CÔNG] IP ${blockData.maskedIp} đã bị ngắt kết nối lập tức | Lý do: ${blockData.reason}`,
+        msg: t('aiops.feedback.blockedAlert', { ip: blockData.maskedIp, reason: blockData.reason }, `🛡️ [AIOPS ĐÃ CHẶN ĐỨNG NGUỒN TẤN CÔNG] IP ${blockData.maskedIp} đã bị ngắt kết nối lập tức | Lý do: ${blockData.reason}`),
       });
       setQuarantineList(prev => [blockData, ...prev.filter(x => x.hash !== blockData.hash)]);
     };
@@ -523,7 +535,7 @@ const AIOpsPage = () => {
   const handleApplyScale = async (scaleToApply) => {
     const val = parseInt(scaleToApply ?? customConcurrency, 10);
     if (!val || val < 100 || val > 50000) {
-      setFeedback({ ok: false, msg: 'Vui lòng chọn hoặc nhập số lượng người dùng từ 100 đến 50,000.' });
+      setFeedback({ ok: false, msg: t('aiops.feedback.invalidConcurrency', 'Vui lòng chọn hoặc nhập số lượng người dùng từ 100 đến 50,000.') });
       return;
     }
     try {
@@ -540,12 +552,12 @@ const AIOpsPage = () => {
       }));
       setFeedback({
         ok: true,
-        msg: res?.message || `Đã cập nhật và lưu cứng quy mô chịu tải mục tiêu: ${val.toLocaleString('vi-VN')} người dùng đồng thời!`
+        msg: res?.message || t('aiops.feedback.scaleSuccess', { count: val.toLocaleString() }, `Đã cập nhật và lưu cứng quy mô chịu tải mục tiêu: ${val.toLocaleString()} người dùng đồng thời!`)
       });
     } catch (err) {
       setFeedback({
         ok: false,
-        msg: err?.response?.data?.message || err?.message || 'Cập nhật quy mô thất bại.'
+        msg: err?.response?.data?.message || err?.message || t('aiops.feedback.scaleError', 'Cập nhật quy mô thất bại.')
       });
     } finally {
       setSavingScale(false);
@@ -554,14 +566,14 @@ const AIOpsPage = () => {
 
   // Xử lý mở khóa / gỡ chặn IP thủ công
   const handleUnblock = async (hash) => {
-    if (!window.confirm('Bạn có chắc muốn gỡ chặn và mở khóa kết nối cho IP này?')) return;
+    if (!window.confirm(t('aiops.confirmUnblockMsg', 'Bạn có chắc muốn gỡ chặn và mở khóa kết nối cho IP này?'))) return;
     try {
       setUnblockingHash(hash);
       await aiopsApi.unblockQuarantine(hash);
-      setFeedback({ ok: true, msg: 'Đã gỡ chặn và khôi phục quyền truy cập cho nguồn IP thành công.' });
+      setFeedback({ ok: true, msg: t('aiops.feedback.unblockSuccess', 'Đã gỡ chặn và khôi phục quyền truy cập cho nguồn IP thành công.') });
       setQuarantineList(prev => prev.filter(x => x.hash !== hash));
     } catch (err) {
-      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Gỡ chặn thất bại.' });
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || t('aiops.feedback.unblockError', 'Gỡ chặn thất bại.') });
     } finally {
       setUnblockingHash(null);
     }
@@ -574,17 +586,17 @@ const AIOpsPage = () => {
       setCalibrating(true);
       setFeedback(null);
       const res = await aiopsApi.calibrate();
-      setFeedback({ ok: true, msg: res?.message || 'Đã tái hiệu chuẩn mô hình máy học thành công.' });
+      setFeedback({ ok: true, msg: res?.message || t('aiops.feedback.calibrateSuccess', 'Đã tái hiệu chuẩn mô hình máy học thành công.') });
       await fetchAIOpsData();
     } catch (err) {
       const errMsg = err?.response?.data?.message || err?.message || '';
       if (errMsg.includes('Route not found')) {
         setFeedback({
           ok: false,
-          msg: '⚠️ Endpoint máy học chưa được triển khai trên máy chủ Cloud (Render). Vui lòng kết nối Backend Local (cổng 3000) hoặc chờ quá trình deploy Cloud hoàn tất.',
+          msg: t('aiops.feedback.calibrateCloudWarning', '⚠️ Endpoint máy học chưa được triển khai trên máy chủ Cloud (Render). Vui lòng kết nối Backend Local (cổng 3000) hoặc chờ quá trình deploy Cloud hoàn tất.'),
         });
       } else {
-        setFeedback({ ok: false, msg: errMsg || 'Hiệu chuẩn thất bại.' });
+        setFeedback({ ok: false, msg: errMsg || t('aiops.feedback.calibrateError', 'Hiệu chuẩn thất bại.') });
       }
     } finally {
       setCalibrating(false);
@@ -597,16 +609,16 @@ const AIOpsPage = () => {
       setMitigating(true);
       await adminApi.setMaintenanceStatus({
         active: true,
-        reason: mitigationReason.trim() || 'Phòng vệ khẩn cấp AIOps Sentinel',
+        reason: mitigationReason.trim() || t('aiops.mitigation.defaultReason', 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện nguy cơ cao'),
         isEmergency: true,
       });
       setFeedback({
         ok: true,
-        msg: '🚨 ĐÃ KÍCH HOẠT BẢO TRÌ KHẨN CẤP THÀNH CÔNG! Toàn bộ kết nối khách đã bị chặn để bảo vệ hệ thống.',
+        msg: t('aiops.feedback.mitigationSuccess', '🚨 ĐÃ KÍCH HOẠT BẢO TRÌ KHẨN CẤP THÀNH CÔNG! Toàn bộ kết nối khách đã bị chặn để bảo vệ hệ thống.'),
       });
       setShowMitigationModal(false);
     } catch (err) {
-      setFeedback({ ok: false, msg: err?.response?.data?.message || 'Kích hoạt bảo trì khẩn cấp thất bại.' });
+      setFeedback({ ok: false, msg: err?.response?.data?.message || t('aiops.feedback.mitigationError', 'Kích hoạt bảo trì khẩn cấp thất bại.') });
     } finally {
       setMitigating(false);
     }
@@ -638,10 +650,10 @@ const AIOpsPage = () => {
 
   // Hàm tiện ích lấy style theo điểm số của từng vectơ
   const getVectorTheme = (score) => {
-    if (score >= 80) return { bg: 'bg-red-500', text: 'text-red-700', badge: 'bg-red-100 text-red-800 border-red-300', label: 'Nguy cấp' };
-    if (score >= 60) return { bg: 'bg-orange-500', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-800 border-orange-300', label: 'Cảnh báo' };
-    if (score >= 30) return { bg: 'bg-amber-500', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800 border-amber-300', label: 'Theo dõi' };
-    return { bg: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', label: 'Bình thường' };
+    if (score >= 80) return { bg: 'bg-red-500', text: 'text-red-700', badge: 'bg-red-100 text-red-800 border-red-300', label: t('aiops.theme.critical', 'Nguy cấp') };
+    if (score >= 60) return { bg: 'bg-orange-500', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-800 border-orange-300', label: t('aiops.theme.warning', 'Cảnh báo') };
+    if (score >= 30) return { bg: 'bg-amber-500', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800 border-amber-300', label: t('aiops.theme.watching', 'Theo dõi') };
+    return { bg: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', label: t('aiops.theme.normal', 'Bình thường') };
   };
 
   // Tính toán màu sắc hiển thị theo Threat Score tổng hợp
@@ -650,7 +662,7 @@ const AIOpsPage = () => {
       return {
         badgeBg: 'bg-red-100 text-red-800 border-red-300',
         color: '#ef4444',
-        label: 'NGUY CẤP (CRITICAL)',
+        label: t('aiops.statusCritical', 'NGUY CẤP (CRITICAL)'),
         glow: 'ring-4 ring-red-400/40',
         border: 'border-red-400 bg-red-50/50',
       };
@@ -659,7 +671,7 @@ const AIOpsPage = () => {
       return {
         badgeBg: 'bg-orange-100 text-orange-800 border-orange-300',
         color: '#f97316',
-        label: 'CẢNH BÁO CAO (WARNING)',
+        label: t('aiops.statusWarning', 'CẢNH BÁO CAO (WARNING)'),
         glow: 'ring-4 ring-orange-400/30',
         border: 'border-orange-400 bg-orange-50/50',
       };
@@ -668,7 +680,7 @@ const AIOpsPage = () => {
       return {
         badgeBg: 'bg-amber-100 text-amber-800 border-amber-300',
         color: '#f59e0b',
-        label: 'TĂNG CAO (ELEVATED)',
+        label: t('aiops.statusElevated', 'TĂNG CAO (ELEVATED)'),
         glow: 'ring-4 ring-amber-400/20',
         border: 'border-amber-400 bg-amber-50/40',
       };
@@ -676,22 +688,22 @@ const AIOpsPage = () => {
     return {
       badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       color: '#10b981',
-      label: 'BÌNH THƯỜNG (NORMAL)',
+      label: t('aiops.statusNormal', 'BÌNH THƯỜNG (NORMAL)'),
       glow: '',
       border: 'border-emerald-300 bg-emerald-50/40',
     };
-  }, [threatScore]);
+  }, [threatScore, t]);
 
   // Chuẩn bị đường vẽ SVG độc lập cho 4 Vectơ Rủi Ro
   const chartSvgPaths = useMemo(() => {
     if (!historyData || historyData.length === 0) {
       return {
         samples: [],
-        auth: { path: '', area: '', points: [], color: '#f59e0b', name: '1. Xác Thực & Danh Tính', id: 'auth' },
-        traffic: { path: '', area: '', points: [], color: '#3b82f6', name: '2. Lưu Lượng & DoS', id: 'traffic' },
-        exploit: { path: '', area: '', points: [], color: '#f43f5e', name: '3. Khai Thác Lỗ Hổng', id: 'exploit' },
-        resource: { path: '', area: '', points: [], color: '#0d9488', name: '4. Tài Nguyên Máy Chủ', id: 'resource' },
-        composite: { path: '', area: '', points: [], color: '#8b5cf6', name: 'Điểm Tổng Hợp (Composite)', id: 'composite' },
+        auth: { path: '', area: '', points: [], color: '#f59e0b', name: t('aiops.vectors.auth', '1. Xác Thực & Danh Tính'), id: 'auth' },
+        traffic: { path: '', area: '', points: [], color: '#3b82f6', name: t('aiops.vectors.traffic', '2. Lưu Lượng & DoS'), id: 'traffic' },
+        exploit: { path: '', area: '', points: [], color: '#f43f5e', name: t('aiops.vectors.exploit', '3. Khai Thác Lỗ Hổng'), id: 'exploit' },
+        resource: { path: '', area: '', points: [], color: '#0d9488', name: t('aiops.vectors.resource', '4. Sức Khỏe Tài Nguyên'), id: 'resource' },
+        composite: { path: '', area: '', points: [], color: '#8b5cf6', name: t('aiops.vectors.composite', 'Điểm Tổng Hợp (Composite)'), id: 'composite' },
       };
     }
     const width = 800;
@@ -712,7 +724,14 @@ const AIOpsPage = () => {
       const trafficScore = vs.traffic !== undefined ? vs.traffic : (d.requestsPerMin ? Math.min(100, Math.round(d.requestsPerMin / 30)) : 0);
       const exploitScore = vs.exploit !== undefined ? vs.exploit : (d.malformedRequests ? Math.min(100, d.malformedRequests * 25) : 0);
       const resourceScore = vs.resource !== undefined ? vs.resource : (d.cpuPercent || d.ramPercent ? Math.max(d.cpuPercent || 0, d.ramPercent || 0) : 0);
-      const compScore = d.threatScore ?? Math.max(authScore, trafficScore, exploitScore, resourceScore);
+      // Điểm tổng hợp Composite: Chỉ tính max trên các vector đang BẬT
+      const activeForComp = [];
+      if (vectorConfig.auth !== false) activeForComp.push(authScore);
+      if (vectorConfig.traffic !== false) activeForComp.push(trafficScore);
+      if (vectorConfig.exploit !== false) activeForComp.push(exploitScore);
+      if (vectorConfig.resource !== false) activeForComp.push(resourceScore);
+      const fallbackComp = activeForComp.length > 0 ? Math.max(...activeForComp) : 5;
+      const compScore = d.threatScore ?? fallbackComp;
 
       const getY = (val) => height - 25 - ((Math.min(100, Math.max(0, val)) - minVal) / (maxVal - minVal)) * 130;
 
@@ -788,7 +807,7 @@ const AIOpsPage = () => {
         id: 'composite',
       },
     };
-  }, [historyData]);
+  }, [historyData, vectorConfig, t]);
 
   // Cấu hình và tính toán vạch số liệu trục X (Yêu cầu 3 của PO)
   const xAxisConfig = useMemo(() => {
@@ -823,8 +842,8 @@ const AIOpsPage = () => {
           });
         }
         return {
-          title: `Theo Ngày (1 -> ${diffDays} ngày)`,
-          unit: 'Ngày',
+          title: t('aiops.xAxis.byDay', { days: diffDays }, `Theo Ngày (1 -> ${diffDays} ngày)`),
+          unit: t('common.day', 'Ngày'),
           ticks,
         };
       }
@@ -836,7 +855,7 @@ const AIOpsPage = () => {
 
         let ticks = [];
         if (diffMonths === 1) {
-          ticks = [{ x: width / 2, label: 'Tháng 1' }];
+          ticks = [{ x: width / 2, label: '1' }];
         } else if (diffMonths <= 12) {
           ticks = Array.from({ length: diffMonths }, (_, i) => ({
             x: padding + (i / (diffMonths - 1)) * usableWidth,
@@ -853,8 +872,8 @@ const AIOpsPage = () => {
           });
         }
         return {
-          title: `Theo Tháng (1 -> ${diffMonths} tháng)`,
-          unit: 'Tháng',
+          title: t('aiops.xAxis.byMonth', { months: diffMonths }, `Theo Tháng (1 -> ${diffMonths} tháng)`),
+          unit: t('common.month', 'Tháng'),
           ticks,
         };
       }
@@ -883,8 +902,8 @@ const AIOpsPage = () => {
           });
         }
         return {
-          title: `Theo Năm (${y1} -> ${y2})`,
-          unit: 'Năm',
+          title: t('aiops.xAxis.byYear', { y1, y2 }, `Theo Năm (${y1} -> ${y2})`),
+          unit: t('common.year', 'Năm'),
           ticks,
         };
       }
@@ -898,8 +917,8 @@ const AIOpsPage = () => {
     if (timePreset === 'day') {
       const keyHours = [1, 4, 8, 12, 16, 20, 24];
       return {
-        title: 'Ngày (1 -> 24 Giờ)',
-        unit: 'Giờ',
+        title: t('aiops.xAxis.day24h', 'Ngày (1 -> 24 Giờ)'),
+        unit: t('common.hour', 'Giờ'),
         ticks: keyHours.map((h) => ({
           x: padding + ((h - 1) / 23) * usableWidth,
           label: `${h}`,
@@ -910,8 +929,8 @@ const AIOpsPage = () => {
     if (timePreset === 'month') {
       const keyDays = [1, 5, 10, 15, 20, 25, 30];
       return {
-        title: 'Tháng (1 -> 30 Ngày)',
-        unit: 'Ngày',
+        title: t('aiops.xAxis.month30d', 'Tháng (1 -> 30 Ngày)'),
+        unit: t('common.day', 'Ngày'),
         ticks: keyDays.map((d) => ({
           x: padding + ((d - 1) / 29) * usableWidth,
           label: `${d}`,
@@ -922,8 +941,8 @@ const AIOpsPage = () => {
     if (timePreset === 'year') {
       const months = Array.from({ length: 12 }, (_, i) => i + 1);
       return {
-        title: 'Năm (1 -> 12 Tháng)',
-        unit: 'Tháng',
+        title: t('aiops.xAxis.year12m', 'Năm (1 -> 12 Tháng)'),
+        unit: t('common.month', 'Tháng'),
         ticks: months.map((m) => ({
           x: padding + ((m - 1) / 11) * usableWidth,
           label: `${m}`,
@@ -934,14 +953,14 @@ const AIOpsPage = () => {
     // Mặc định: realtime (1 -> 30 Mẫu)
     const keySamples = [1, 5, 10, 15, 20, 25, 30];
     return {
-      title: 'Thời gian thực (1 -> 30 Mẫu)',
-      unit: 'Mẫu',
+      title: t('aiops.xAxis.realtimeSamples', 'Thời gian thực (1 -> 30 Mẫu)'),
+      unit: t('common.sample', 'Mẫu'),
       ticks: keySamples.map((s) => ({
         x: padding + ((s - 1) / 29) * usableWidth,
         label: `${s}`,
       })),
     };
-  }, [timePreset, customRange, customFilterType]);
+  }, [timePreset, customRange, customFilterType, t]);
 
   // Fallback tương thích ngược
   const chartSvgPath = chartSvgPaths.composite;
@@ -953,10 +972,10 @@ const AIOpsPage = () => {
         <div>
           <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight flex items-center gap-2.5">
             <span className="material-symbols-outlined text-primary text-[32px]">security</span>
-            AIOps Sentinel — Giám Sát Máy Học & Phòng Vệ Tự Động
+            {t('aiops.title', 'AIOps Sentinel — Giám Sát Máy Học & Phòng Vệ Tự Động')}
           </h1>
           <p className="font-body-md text-on-surface-variant mt-1">
-            Học baseline trực tuyến, tự động phát hiện xâm nhập & chặn đứng nguồn request bất thường từ Client-app
+            {t('aiops.subtitle', 'Học baseline trực tuyến, tự động phát hiện xâm nhập & chặn đứng nguồn request bất thường từ Client-app')}
           </p>
         </div>
 
@@ -967,17 +986,17 @@ const AIOpsPage = () => {
             className="px-3.5 py-2 bg-white hover:bg-gray-50 border border-outline-variant text-on-surface text-xs font-semibold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
           >
             <span className={`material-symbols-outlined text-[16px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
-            <span>Làm Mới</span>
+            <span>{t('common.refresh', 'Làm Mới')}</span>
           </button>
 
           <button
             onClick={() => setShowCalibrateModal(true)}
             disabled={calibrating}
             className="px-3.5 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
-            title="Nhấn để tìm hiểu công dụng và thực hiện tái hiệu chuẩn baseline máy học"
+            title={t('aiops.calibrate.btnTooltip', 'Nhấn để tìm hiểu công dụng và thực hiện tái hiệu chuẩn baseline máy học')}
           >
             <span className="material-symbols-outlined text-[16px]">tune</span>
-            <span>{calibrating ? 'Đang hiệu chuẩn...' : 'Tái Hiệu Chuẩn Baseline'}</span>
+            <span>{calibrating ? t('aiops.calibrate.calibratingBtn', 'Đang hiệu chuẩn...') : t('aiops.calibrate.btn', 'Tái Hiệu Chuẩn Baseline')}</span>
             <span className="material-symbols-outlined text-[14px] text-blue-400 hover:text-blue-600">help</span>
           </button>
 
@@ -985,10 +1004,10 @@ const AIOpsPage = () => {
             <button
               onClick={() => setShowMitigationModal(true)}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 animate-pulse"
-              title="Chỉ hiển thị khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền"
+              title={t('aiops.mitigation.emergencyTooltip', 'Chỉ hiển thị khi Vector 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền')}
             >
               <span className="material-symbols-outlined text-[18px]">emergency</span>
-              <span>1-Click Bảo Trì Khẩn Cấp</span>
+              <span>{t('aiops.mitigation.emergencyBtn', '1-Click Bảo Trì Khẩn Cấp')}</span>
             </button>
           )}
         </div>
@@ -1046,7 +1065,7 @@ const AIOpsPage = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-bold m-0 tracking-tight">
-                  Tình Trạng Hệ Thống:
+                  {t('aiops.systemStatusLabel', 'Tình Trạng Hệ Thống:')}
                 </h2>
                 {maintenanceStatus?.active ? (
                   <span
@@ -1057,25 +1076,25 @@ const AIOpsPage = () => {
                     }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    <span>Đang bảo trì</span>
+                    <span>{t('aiops.statusMaintenance', 'Đang bảo trì')}</span>
                     <span className="text-[10px] opacity-80 uppercase">
-                      ({maintenanceStatus.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'})
+                      ({maintenanceStatus.isEmergency ? t('broadcast.levels.critical', 'Khẩn cấp') : t('broadcast.banner.silentBadge', 'Kỹ thuật')})
                     </span>
                   </span>
                 ) : (
                   <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-2xs border bg-emerald-100 text-emerald-800 border-emerald-300">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Đang hoạt động</span>
+                    <span>{t('aiops.statusRunning', 'Đang hoạt động')}</span>
                   </span>
                 )}
               </div>
 
               <p className="text-xs opacity-90 mt-1 m-0">
                 {maintenanceStatus?.active
-                  ? `Hệ thống đang chặn các kết nối Client-app. Lý do: "${maintenanceStatus.reason || 'Bảo trì hệ thống'}"${
-                      maintenanceStatus.activatedAt ? ` • Từ: ${formatDateTime(maintenanceStatus.activatedAt)}` : ''
+                  ? `${t('aiops.banner.maintenanceActive', { reason: maintenanceStatus.reason || t('broadcast.feedback.maintenanceTitle', 'Bảo trì hệ thống') })}${
+                      maintenanceStatus.activatedAt ? t('aiops.banner.fromTime', { time: formatDateTime(maintenanceStatus.activatedAt) }) : ''
                     }`
-                  : 'Các tiến trình lõi, lưu lượng và kết nối Client-app & Admin-web đang vận hành trơn tru không bị giới hạn.'}
+                  : t('aiops.banner.runningActive', 'Các tiến trình lõi, lưu lượng và kết nối Client-app & Admin-web đang vận hành trơn tru không bị giới hạn.')}
               </p>
             </div>
           </div>
@@ -1087,8 +1106,8 @@ const AIOpsPage = () => {
               <b className={threatScore >= 70 ? 'text-red-600' : 'text-emerald-700'}>{threatScore}/100</b>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/80 border border-outline-variant/60 rounded-xl text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span className="text-slate-400">Quy mô:</span>
-              <b className="text-primary">{targetConcurrency.toLocaleString('vi-VN')} CCU</b>
+              <span className="text-slate-400">{t('aiops.scaler.currentApplied', 'Quy mô:')}</span>
+              <b className="text-primary">{targetConcurrency.toLocaleString()} {t('aiops.scaler.unitCcu', 'CCU')}</b>
             </div>
             {maintenanceStatus?.active && (
               <a
@@ -1096,7 +1115,7 @@ const AIOpsPage = () => {
                 className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-amber-300 text-amber-900 text-xs font-bold rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer no-underline"
               >
                 <span className="material-symbols-outlined text-[15px] text-amber-600">settings</span>
-                <span>Điều Hành Bảo Trì</span>
+                <span>{t('aiops.manageMaintenanceBtn', 'Điều Hành Bảo Trì')}</span>
               </a>
             )}
           </div>
@@ -1111,20 +1130,20 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">group</span>
-              Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải (Target Concurrency Scaler)
+              {t('aiops.scaler.title', 'Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải (Target Concurrency Scaler)')}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Admin cập nhật số lượng người dùng đồng thời kỳ vọng (1,000 - 2,000+). Hệ thống tự động hiệu chỉnh trần RPM và ngưỡng tường lửa theo thời gian thực.
+              {t('aiops.scaler.subtitle', 'Admin cập nhật số lượng người dùng đồng thời kỳ vọng (1,000 - 2,000+). Hệ thống tự động hiệu chỉnh trần RPM và ngưỡng tường lửa theo thời gian thực.')}
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-medium text-slate-500">Mẫu chọn nhanh:</span>
+            <span className="text-[11px] font-medium text-slate-500">{t('aiops.scaler.quickPresetLabel', 'Mẫu chọn nhanh:')}</span>
             {[
-              { label: '500 Người', val: 500 },
-              { label: '1,000 Người (Chuẩn)', val: 1000 },
-              { label: '2,000 Người (Cao điểm)', val: 2000 },
-              { label: '5,000 Người (Lớn)', val: 5000 },
+              { label: t('aiops.scaler.preset500', '500 Người'), val: 500 },
+              { label: t('aiops.scaler.preset1000', '1,000 Người (Chuẩn)'), val: 1000 },
+              { label: t('aiops.scaler.preset2000', '2,000 Người (Cao điểm)'), val: 2000 },
+              { label: t('aiops.scaler.preset5000', '5,000 Người (Lớn)'), val: 5000 },
             ].map((preset) => (
               <button
                 key={preset.val}
@@ -1152,7 +1171,7 @@ const AIOpsPage = () => {
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between space-y-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Số người dùng đồng thời (N)
+                {t('aiops.scaler.inputLabel', 'Số người dùng đồng thời (N)')}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -1163,7 +1182,7 @@ const AIOpsPage = () => {
                   value={customConcurrency}
                   onChange={(e) => setCustomConcurrency(e.target.value)}
                   className="w-full bg-white border border-outline-variant rounded-lg px-3 py-1.5 text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="VD: 1000, 2000"
+                  placeholder={t('aiops.scaler.inputPlaceholder', 'VD: 1000, 2000')}
                 />
                 <button
                   type="button"
@@ -1174,63 +1193,63 @@ const AIOpsPage = () => {
                   <span className={`material-symbols-outlined text-[15px] ${savingScale ? 'animate-spin' : ''}`}>
                     {savingScale ? 'sync' : 'check'}
                   </span>
-                  <span>Áp Dụng</span>
+                  <span>{t('aiops.scaler.applyBtn', 'Áp Dụng')}</span>
                 </button>
               </div>
             </div>
             <div className="text-[10px] text-slate-500">
-              Quy mô đang áp dụng: <strong className="text-primary font-mono">{targetConcurrency.toLocaleString('vi-VN')}</strong> CCU
+              {t('aiops.scaler.currentApplied', 'Quy mô đang áp dụng:')} <strong className="text-primary font-mono">{targetConcurrency.toLocaleString('vi-VN')}</strong> {t('aiops.scaler.unitCcu', 'CCU')}
             </div>
           </div>
 
           {/* Thẻ 1: Baseline RPM kỳ vọng */}
           <div className="p-3.5 rounded-xl border bg-surface-container-lowest border-outline-variant/60 flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-500">
-              <span className="text-[11px] font-medium">Baseline RPM dự kiến</span>
+              <span className="text-[11px] font-medium">{t('aiops.scaler.baselineRpmTitle', 'Baseline RPM dự kiến')}</span>
               <span className="material-symbols-outlined text-[16px] text-blue-500">trending_up</span>
             </div>
             <div className="my-1.5">
               <div className="text-xl font-bold text-on-surface font-mono">
                 {baselineRpm.toLocaleString('vi-VN')}
-                <span className="text-[11px] font-normal text-slate-500 ml-1">req/phút</span>
+                <span className="text-[11px] font-normal text-slate-500 ml-1">{t('aiops.scaler.unitRpm', 'req/phút')}</span>
               </div>
             </div>
             <div className="text-[10px] text-slate-500">
-              Công thức: <code className="font-mono text-slate-700 font-semibold">{targetConcurrency.toLocaleString()} × 10 RPM</code>
+              {t('aiops.scaler.formula', 'Công thức:')} <code className="font-mono text-slate-700 font-semibold">{targetConcurrency.toLocaleString()} × 10 RPM</code>
             </div>
           </div>
 
           {/* Thẻ 2: Safe Peak Ceiling (3x) */}
           <div className="p-3.5 rounded-xl border bg-surface-container-lowest border-outline-variant/60 flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-500">
-              <span className="text-[11px] font-medium">Trần Đỉnh An Toàn (Safe Peak)</span>
+              <span className="text-[11px] font-medium">{t('aiops.scaler.safePeakTitle', 'Trần Đỉnh An Toàn (Safe Peak)')}</span>
               <span className="material-symbols-outlined text-[16px] text-emerald-500">verified_user</span>
             </div>
             <div className="my-1.5">
               <div className="text-xl font-bold text-on-surface font-mono">
                 {safePeakRpm.toLocaleString('vi-VN')}
-                <span className="text-[11px] font-normal text-slate-500 ml-1">req/phút</span>
+                <span className="text-[11px] font-normal text-slate-500 ml-1">{t('aiops.scaler.unitRpm', 'req/phút')}</span>
               </div>
             </div>
             <div className="text-[10px] text-slate-500">
-              Trần an toàn <code className="font-mono text-slate-700 font-semibold">3× Baseline</code> (Chưa kích hoạt DoS)
+              {t('aiops.scaler.safePeakDesc', 'Trần an toàn 3× Baseline (Chưa kích hoạt DoS)')}
             </div>
           </div>
 
           {/* Thẻ 3: Ngưỡng cách ly IP đơn lẻ */}
           <div className="p-3.5 rounded-xl border bg-surface-container-lowest border-outline-variant/60 flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-500">
-              <span className="text-[11px] font-medium">Ngưỡng Chặn Tường Lửa IP</span>
+              <span className="text-[11px] font-medium">{t('aiops.scaler.firewallThresholdTitle', 'Ngưỡng Chặn Tường Lửa IP')}</span>
               <span className="material-symbols-outlined text-[16px] text-red-500">security</span>
             </div>
             <div className="my-1.5">
               <div className="text-xl font-bold text-on-surface font-mono">
                 {quarantineThreshold}
-                <span className="text-[11px] font-normal text-slate-500 ml-1">req/10s</span>
+                <span className="text-[11px] font-normal text-slate-500 ml-1">{t('aiops.scaler.unitReq10s', 'req/10s')}</span>
               </div>
             </div>
             <div className="text-[10px] text-slate-500">
-              <code className="font-mono text-slate-700 font-semibold">20 + 50×log10(N)</code> (Tự động cách ly IP càn quét)
+              {t('aiops.scaler.firewallThresholdDesc', '20 + 50×log10(N) (Tự động cách ly IP càn quét)')}
             </div>
           </div>
         </div>
@@ -1246,7 +1265,7 @@ const AIOpsPage = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface m-0 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-primary">speed</span>
-                Hệ Số Đe Dọa (Threat Score)
+                {t('aiops.threatScoreTitle', 'Hệ Số Đe Dọa (Threat Score)')}
               </h2>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${theme.badgeBg}`}>
                 {theme.label}
@@ -1291,10 +1310,10 @@ const AIOpsPage = () => {
               </svg>
 
               <div className="flex items-center justify-between w-44 text-[10px] font-semibold text-slate-500 mt-1">
-                <span>0 (An toàn)</span>
-                <span>60 (Tăng cao)</span>
-                <span>80 (Cảnh báo)</span>
-                <span>90+ (Nguy cấp)</span>
+                <span>{t('aiops.gauge.safe', '0 (An toàn)')}</span>
+                <span>{t('aiops.gauge.elevated', '60 (Tăng cao)')}</span>
+                <span>{t('aiops.gauge.warning', '80 (Cảnh báo)')}</span>
+                <span>{t('aiops.gauge.critical', '90+ (Nguy cấp)')}</span>
               </div>
             </div>
           </div>
@@ -1302,23 +1321,23 @@ const AIOpsPage = () => {
           {/* Khuyến nghị hành động */}
           <div className="pt-3 border-t border-outline-variant/60 text-xs space-y-1">
             <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>Công thức tổng hợp:</span>
-              <code className="font-mono font-semibold text-slate-700">max(Vectơ) + Bonus kết hợp</code>
+              <span>{t('aiops.gauge.compositeFormula', 'Công thức tổng hợp:')}</span>
+              <code className="font-mono font-semibold text-slate-700">{t('aiops.gauge.compositeFormulaDetail', 'max(Vectơ) + Bonus kết hợp')}</code>
             </div>
             <div>
-              <span className="font-semibold text-on-surface">Phòng vệ Sentinel: </span>
+              <span className="font-semibold text-on-surface">{t('aiops.gauge.defenseLabel', 'Phòng vệ Sentinel: ')}</span>
               <span className="font-bold text-[11px]" style={{ color: theme.color }}>
                 {isEmergencyResourceRisk
-                  ? '🚨 [TÀI NGUYÊN] NGUY CƠ SẬP DÂY CHUYỀN (Lag > 250ms & 5xx > 15%) — ĐỀ XUẤT BẢO TRÌ KHẨN CẤP'
+                  ? t('aiops.recommendations.resourceRisk', '🚨 [TÀI NGUYÊN] NGUY CƠ SẬP DÂY CHUYỀN (Lag > 250ms & 5xx > 15%) — ĐỀ XUẤT BẢO TRÌ KHẨN CẤP')
                   : vectorScores.exploit >= 70
-                  ? '⚔️ [KHAI THÁC] PHÁT HIỆN INJECTION/TRAVERSAL — ĐÃ NGẮT HTTP 403 & PHONG TỎA IP 30 PHÚT'
+                  ? t('aiops.recommendations.exploitDetected', '⚔️ [KHAI THÁC] PHÁT HIỆN INJECTION/TRAVERSAL — ĐÃ NGẮT HTTP 403 & PHONG TỎA IP 30 PHÚT')
                   : vectorScores.auth >= 70
-                  ? '🛡️ [XÁC THỰC] PHÁT HIỆN BRUTE-FORCE/TOKEN HIJACK — ĐÃ CÔ LẬP NGUỒN IP TẠI GATEWAY'
+                  ? t('aiops.recommendations.authDetected', '🛡️ [XÁC THỰC] PHÁT HIỆN BRUTE-FORCE/TOKEN HIJACK — ĐÃ CÔ LẬP NGUỒN IP TẠI GATEWAY')
                   : vectorScores.traffic >= 70
-                  ? '⚡ [LƯU LƯỢNG] LƯU LƯỢNG VƯỢT TRẦN CCU — KÍCH HOẠT ADAPTIVE RATE-LIMITING'
+                  ? t('aiops.recommendations.trafficDetected', '⚡ [LƯU LƯỢNG] LƯU LƯỢNG VƯỢT TRẦN CCU — KÍCH HOẠT ADAPTIVE RATE-LIMITING')
                   : recommendedAction === 'INVESTIGATE'
-                  ? '⚠️ PHÁT HIỆN BẤT THƯỜNG — NGUỒN ĐÃ BỊ TỰ ĐỘNG CÔ LẬP, THEO DÕI LOGS'
-                  : '✅ HỆ THỐNG AN TOÀN — CƠ CHẾ PHÒNG VỆ 4 VECTOR ĐANG HOẠT ĐỘNG ỔN ĐỊNH'}
+                  ? t('aiops.recommendations.anomalyInvestigate', '⚠️ PHÁT HIỆN BẤT THƯỜNG — NGUỒN ĐÃ BỊ TỰ ĐỘNG CÔ LẬP, THEO DÕI LOGS')
+                  : t('aiops.recommendations.safeSystem', '✅ HỆ THỐNG AN TOÀN — CƠ CHẾ PHÒNG VỆ 4 VECTOR ĐANG HOẠT ĐỘNG ỔN ĐỊNH')}
               </span>
             </div>
           </div>
@@ -1329,50 +1348,50 @@ const AIOpsPage = () => {
           <div className="flex items-center justify-between border-b border-outline-variant pb-2.5">
             <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface m-0 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[18px] text-red-500">shield_with_heart</span>
-              Tín Hiệu Xâm Nhập & Tấn Công
+              {t('aiops.signals.attackSignalsTitle', 'Tín Hiệu Xâm Nhập & Tấn Công')}
             </h2>
-            <span className="text-[10px] text-slate-500">Cửa sổ 10 giây</span>
+            <span className="text-[10px] text-slate-500">{t('aiops.signals.window10s', 'Cửa sổ 10 giây')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             {/* Failed Logins */}
             <div className={`p-3 rounded-xl border ${sample.failedLogins >= 5 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">Đăng nhập sai</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.failedLogins', 'Đăng nhập sai')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.failedLogins ?? 0}</span>
-                <span className="text-[10px] text-slate-400">lần</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.times', 'lần')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Brute-Force Auth (Auto-ban $\ge 5$)</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.failedLoginsDesc', 'Brute-Force Auth (Auto-ban ≥ 5)')}</div>
             </div>
 
             {/* Token Reuse Attacks */}
             <div className={`p-3 rounded-xl border ${sample.tokenReuseAttacks >= 1 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">Tái dùng Token thu hồi</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.tokenReuse', 'Tái dùng Token thu hồi')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.tokenReuseAttacks ?? 0}</span>
-                <span className="text-[10px] text-slate-400">lần</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.times', 'lần')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Token Hijacking (Auto-ban)</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.tokenReuseDesc', 'Token Hijacking (Auto-ban)')}</div>
             </div>
 
             {/* Malformed Requests */}
             <div className={`p-3 rounded-xl border ${sample.malformedRequests >= 3 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">Request độc hại (SQLi)</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.malformedReq', 'Request độc hại (SQLi)')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.malformedRequests ?? 0}</span>
-                <span className="text-[10px] text-slate-400">mẫu</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.samples', 'mẫu')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Injection (Auto-ban $\ge 3$)</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.malformedReqDesc', 'Injection (Auto-ban ≥ 3)')}</div>
             </div>
 
             {/* Distinct IP Count */}
             <div className="p-3 rounded-xl border bg-surface-container-lowest border-outline-variant/60">
-              <div className="text-[11px] text-slate-500 font-medium">Độ phân tán IP</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.ipDispersion', 'Độ phân tán IP')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.distinctIpsCount ?? 0}</span>
-                <span className="text-[10px] text-slate-400">IPs</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.ips', 'IPs')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">IP Entropy (Zero PII)</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.ipDispersionDesc', 'IP Entropy (Zero PII)')}</div>
             </div>
           </div>
         </div>
@@ -1382,54 +1401,52 @@ const AIOpsPage = () => {
           <div className="flex items-center justify-between border-b border-outline-variant pb-2.5">
             <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface m-0 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[18px] text-primary">memory</span>
-              Sức Chịu Tải & Phần Cứng
+              {t('aiops.signals.resilienceTitle', 'Sức Chịu Tải & Phần Cứng')}
             </h2>
-            <span className="text-[10px] text-slate-500">Node.js Engine</span>
+            <span className="text-[10px] text-slate-500">{t('aiops.signals.nodeEngine', 'Node.js Engine')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             {/* Event Loop Lag */}
             <div className={`p-3 rounded-xl border ${sample.eventLoopLagMs >= 100 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">Event Loop Lag</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.eventLoopLag', 'Event Loop Lag')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.eventLoopLagMs ?? 0}</span>
-                <span className="text-[10px] text-slate-400">ms</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.unitMs', 'ms')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Trễ vòng lặp sự kiện</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.eventLoopLagDesc', 'Trễ vòng lặp sự kiện')}</div>
             </div>
 
             {/* CPU Usage */}
             <div className={`p-3 rounded-xl border ${sample.cpuPercent >= 85 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">CPU Hệ Thống</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.cpuPercent', 'CPU Hệ Thống')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.cpuPercent ?? 0}%</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Tải đa nhân xử lý</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.cpuPercentDesc', 'Tải đa nhân xử lý')}</div>
             </div>
 
             {/* RAM Usage */}
             <div className={`p-3 rounded-xl border ${sample.ramPercent >= 90 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
-              <div className="text-[11px] text-slate-500 font-medium">Bộ nhớ RAM</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.ramPercent', 'Bộ nhớ RAM')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.ramPercent ?? 0}%</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">Nguy cơ Memory Leak</div>
+              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.ramPercentDesc', 'Nguy cơ Memory Leak')}</div>
             </div>
 
             {/* Lưu lượng Request */}
             <div className="p-3 rounded-xl border bg-surface-container-lowest border-outline-variant/60">
-              <div className="text-[11px] text-slate-500 font-medium">Lưu lượng ước tính</div>
+              <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.estimatedTraffic', 'Lưu lượng ước tính')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.requestsPerMin ?? 0}</span>
-                <span className="text-[10px] text-slate-400">req/p</span>
+                <span className="text-[10px] text-slate-400">{t('aiops.signals.unitRpmShort', 'req/p')}</span>
               </div>
               <div className="text-[10px] text-slate-500 mt-1">4xx: {Math.round((sample.errorRate4xx || 0) * 100)}% | 5xx: {Math.round((sample.errorRate5xx || 0) * 100)}%</div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* ======================================================== */}
       {/* KHỐI 1.5: 4 VECTƠ RỦI RO ĐỘC LẬP & CÁ NHÂN HÓA PHÒNG VỆ */}
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
@@ -1437,14 +1454,14 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">hub</span>
-              4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ (Multi-Vector Risk Architecture)
+              {t('aiops.multiVector.title', '4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ (Multi-Vector Risk Architecture)')}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Tách biệt hoàn toàn cơ chế tính điểm và biện pháp phòng vệ theo từng đặc trưng riêng: Danh tính, Lưu lượng, Khai thác lỗ hổng và Tài nguyên máy chủ
+              {t('aiops.multiVector.desc', 'Tách biệt hoàn toàn cơ chế tính điểm và biện pháp phòng vệ theo từng đặc trưng riêng: Danh tính, Lưu lượng, Khai thác lỗ hổng và Tài nguyên máy chủ')}
             </p>
           </div>
           <span className="text-[10px] text-slate-600 bg-slate-100 px-3 py-1 rounded-full font-medium self-start sm:self-auto">
-            4 Sub-scores độc lập [0 - 100]
+            {t('aiops.multiVector.subScores', '4 Sub-scores độc lập [0 - 100]')}
           </span>
         </div>
 
@@ -1463,11 +1480,11 @@ const AIOpsPage = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-amber-600">badge</span>
-                      1. Xác Thực & Danh Tính
+                      {t('aiops.vectors.auth', '1. Xác Thực & Danh Tính')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
                       </span>
                       <button
                         type="button"
@@ -1478,7 +1495,7 @@ const AIOpsPage = () => {
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
                         }`}
-                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Xác Thực`}
+                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -1492,13 +1509,13 @@ const AIOpsPage = () => {
                   {!isEnabled && (
                     <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
-                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                      <span>{t('aiops.multiVector.measureOnlyNotice', 'Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score')}</span>
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
-                    <span className="text-[11px] text-slate-400">/ 100 điểm</span>
+                    <span className="text-[11px] text-slate-400">{t('aiops.multiVector.pointsMax', '/ 100 điểm')}</span>
                   </div>
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -1511,12 +1528,12 @@ const AIOpsPage = () => {
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
                   <div className="flex justify-between text-slate-600">
-                    <span>Đăng nhập lỗi:</span>
-                    <strong className="font-mono">{sample.failedLogins ?? 0} lần</strong>
+                    <span>{t('aiops.multiVector.authFailures', 'Đăng nhập lỗi:')}</span>
+                    <strong className="font-mono">{sample.failedLogins ?? 0} {t('aiops.signals.times', 'lần')}</strong>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Tái dùng token hủy:</span>
-                    <strong className="font-mono">{sample.tokenReuseAttacks ?? 0} lần</strong>
+                    <span>{t('aiops.multiVector.tokenReuse', 'Tái dùng token hủy:')}</span>
+                    <strong className="font-mono">{sample.tokenReuseAttacks ?? 0} {t('aiops.signals.times', 'lần')}</strong>
                   </div>
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
@@ -1532,17 +1549,17 @@ const AIOpsPage = () => {
                       </span>
                       <span>
                         {!isEnabled
-                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          ? t('aiops.multiVector.defenseDisabled', 'Đã tắt phòng vệ — Chỉ đo lường')
                           : quarantineList.length > 0
-                          ? `Đang cô lập ${quarantineList.length} IP vi phạm`
+                          ? t('aiops.multiVector.isolatingIps', `Đang cô lập ${quarantineList.length} IP vi phạm`, { count: quarantineList.length })
                           : vScore >= 70
-                          ? 'Đã kích hoạt cô lập IP vi phạm'
-                          : 'Sẵn sàng cô lập IP vi phạm'}
+                          ? t('aiops.multiVector.isolationActivated', 'Đã kích hoạt cô lập IP vi phạm')
+                          : t('aiops.multiVector.isolationReady', 'Sẵn sàng cô lập IP vi phạm')}
                       </span>
                     </span>
                   </div>
                   <div className="mt-2 p-2 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 text-[10px] leading-relaxed">
-                    <strong>Phòng vệ:</strong> Chỉ cô lập IP Brute-Force (`/auth/login`). Tuyệt đối không ảnh hưởng khách hàng khác.
+                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.authDefenseNote', 'Chỉ cô lập IP Brute-Force (/auth/login). Tuyệt đối không ảnh hưởng khách hàng khác.')}
                   </div>
                 </div>
               </div>
@@ -1563,11 +1580,11 @@ const AIOpsPage = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-blue-600">waves</span>
-                      2. Lưu Lượng & DoS
+                      {t('aiops.vectors.traffic', '2. Lưu Lượng & DoS')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
                       </span>
                       <button
                         type="button"
@@ -1578,7 +1595,7 @@ const AIOpsPage = () => {
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
                         }`}
-                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Lưu Lượng`}
+                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -1592,13 +1609,13 @@ const AIOpsPage = () => {
                   {!isEnabled && (
                     <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
-                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                      <span>{t('aiops.multiVector.measureOnlyNotice', 'Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score')}</span>
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
-                    <span className="text-[11px] text-slate-400">/ 100 điểm</span>
+                    <span className="text-[11px] text-slate-400">{t('aiops.multiVector.pointsMax', '/ 100 điểm')}</span>
                   </div>
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -1611,12 +1628,12 @@ const AIOpsPage = () => {
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
                   <div className="flex justify-between text-slate-600">
-                    <span>Lưu lượng hiện tại:</span>
+                    <span>{t('aiops.multiVector.currentTraffic', 'Lưu lượng hiện tại:')}</span>
                     <strong className="font-mono">{sample.requestsPerMin ?? 0} RPM</strong>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Độ phân tán IP:</span>
-                    <strong className="font-mono">{sample.distinctIpsCount ?? 0} IPs</strong>
+                    <span>{t('aiops.multiVector.distinctIps', 'Độ phân tán IP:')}</span>
+                    <strong className="font-mono">{sample.distinctIpsCount ?? 0} {t('aiops.signals.ips', 'IPs')}</strong>
                   </div>
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
@@ -1632,15 +1649,15 @@ const AIOpsPage = () => {
                       </span>
                       <span>
                         {!isEnabled
-                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          ? t('aiops.multiVector.defenseDisabled', 'Đã tắt phòng vệ — Chỉ đo lường')
                           : isThrottling
-                          ? 'Đang điều tiết Adaptive Rate-Limit'
-                          : `Lưu lượng an toàn theo chuẩn ${targetConcurrency} CCU`}
+                          ? t('aiops.multiVector.adaptiveThrottling', 'Đang điều tiết Adaptive Rate-Limit')
+                          : t('aiops.multiVector.trafficSafe', `Lưu lượng an toàn theo chuẩn ${targetConcurrency} CCU`, { count: targetConcurrency })}
                       </span>
                     </span>
                   </div>
                   <div className="mt-2 p-2 rounded-lg bg-blue-50/70 border border-blue-200/60 text-blue-950 text-[10px] leading-relaxed">
-                    <strong>Phòng vệ:</strong> Phân biệt đỉnh người dùng thật qua Entropy. Kích hoạt Rate-Limit theo trần quy mô {targetConcurrency} CCU.
+                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.trafficDefenseNote', `Phân biệt đỉnh người dùng thật qua Entropy. Kích hoạt Rate-Limit theo trần quy mô ${targetConcurrency} CCU.`, { count: targetConcurrency })}
                   </div>
                 </div>
               </div>
@@ -1661,11 +1678,11 @@ const AIOpsPage = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-rose-600">bug_report</span>
-                      3. Khai Thác Lỗ Hổng
+                      {t('aiops.vectors.exploit', '3. Khai Thác Lỗ Hổng')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
                       </span>
                       <button
                         type="button"
@@ -1676,7 +1693,7 @@ const AIOpsPage = () => {
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
                         }`}
-                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Khai Thác`}
+                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -1690,13 +1707,13 @@ const AIOpsPage = () => {
                   {!isEnabled && (
                     <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
-                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                      <span>{t('aiops.multiVector.measureOnlyNotice', 'Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score')}</span>
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
-                    <span className="text-[11px] text-slate-400">/ 100 điểm</span>
+                    <span className="text-[11px] text-slate-400">{t('aiops.multiVector.pointsMax', '/ 100 điểm')}</span>
                   </div>
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -1709,12 +1726,12 @@ const AIOpsPage = () => {
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
                   <div className="flex justify-between text-slate-600">
-                    <span>Mẫu tiêm nhiễm (SQLi):</span>
-                    <strong className="font-mono">{sample.malformedRequests ?? 0} mẫu</strong>
+                    <span>{t('aiops.multiVector.injectionSamples', 'Mẫu tiêm nhiễm (SQLi):')}</span>
+                    <strong className="font-mono">{sample.malformedRequests ?? 0} {t('aiops.signals.samples', 'mẫu')}</strong>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Đường dẫn cấm/Traversal:</span>
-                    <strong className="font-mono">Tự động phát hiện</strong>
+                    <span>{t('aiops.multiVector.traversal', 'Đường dẫn cấm/Traversal:')}</span>
+                    <strong className="font-mono">{t('aiops.multiVector.autoDetected', 'Tự động phát hiện')}</strong>
                   </div>
                   {/* Badge hành động phòng vệ động */}
                   <div className="pt-1">
@@ -1730,15 +1747,15 @@ const AIOpsPage = () => {
                       </span>
                       <span>
                         {!isEnabled
-                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          ? t('aiops.multiVector.defenseDisabled', 'Đã tắt phòng vệ — Chỉ đo lường')
                           : isExploitActive
-                          ? 'Đã ngắt HTTP 403 & Blacklist 30p'
-                          : 'Sẵn sàng chặn SQLi/Payload'}
+                          ? t('aiops.multiVector.blacklisted30m', 'Đã ngắt HTTP 403 & Blacklist 30p')
+                          : t('aiops.multiVector.sqliReady', 'Sẵn sàng chặn SQLi/Payload')}
                       </span>
                     </span>
                   </div>
                   <div className="mt-2 p-2 rounded-lg bg-rose-50/70 border border-rose-200/60 text-rose-950 text-[10px] leading-relaxed">
-                    <strong>Phòng vệ:</strong> Cắt kết nối HTTP 403 tức thì với IP mang injection payload, đưa vào danh sách đen 30 phút.
+                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.exploitDefenseNote', 'Cắt kết nối HTTP 403 tức thì với IP mang injection payload, đưa vào danh sách đen 30 phút.')}
                   </div>
                 </div>
               </div>
@@ -1758,11 +1775,11 @@ const AIOpsPage = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[17px] text-teal-600">memory</span>
-                      4. Sức Khỏe Tài Nguyên
+                      {t('aiops.vectors.resource', '4. Sức Khỏe Tài Nguyên')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : 'Chỉ đo lường'}
+                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
                       </span>
                       <button
                         type="button"
@@ -1773,7 +1790,7 @@ const AIOpsPage = () => {
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                           isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
                         }`}
-                        title={`Bấm để ${isEnabled ? 'TẮT' : 'BẬT'} tính điểm vector Tài Nguyên`}
+                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -1787,13 +1804,13 @@ const AIOpsPage = () => {
                   {!isEnabled && (
                     <div className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-semibold flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px] text-amber-600">visibility</span>
-                      <span>Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score</span>
+                      <span>{t('aiops.multiVector.measureOnlyNotice', 'Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score')}</span>
                     </div>
                   )}
 
                   <div className="flex items-baseline justify-between">
                     <span className="text-2xl font-bold font-mono text-on-surface">{vScore}</span>
-                    <span className="text-[11px] text-slate-400">/ 100 điểm</span>
+                    <span className="text-[11px] text-slate-400">{t('aiops.multiVector.pointsMax', '/ 100 điểm')}</span>
                   </div>
                   {/* Progress bar */}
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -1806,11 +1823,11 @@ const AIOpsPage = () => {
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
                   <div className="flex justify-between text-slate-600">
-                    <span>Event Loop Lag:</span>
-                    <strong className="font-mono">{sample.eventLoopLagMs ?? 0} ms</strong>
+                    <span>{t('aiops.multiVector.lag', 'Event Loop Lag:')}</span>
+                    <strong className="font-mono">{sample.eventLoopLagMs ?? 0} {t('aiops.signals.unitMs', 'ms')}</strong>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>CPU / RAM:</span>
+                    <span>{t('aiops.multiVector.cpuRam', 'CPU / RAM:')}</span>
                     <strong className="font-mono">{sample.cpuPercent ?? 0}% / {sample.ramPercent ?? 0}%</strong>
                   </div>
                   {/* Badge hành động phòng vệ động */}
@@ -1829,17 +1846,17 @@ const AIOpsPage = () => {
                       </span>
                       <span>
                         {!isEnabled
-                          ? 'Đã tắt phòng vệ — Chỉ đo lường'
+                          ? t('aiops.multiVector.defenseDisabled', 'Đã tắt phòng vệ — Chỉ đo lường')
                           : isEmergencyResourceRisk
-                          ? '🚨 Đề xuất Bảo Trì Khẩn Cấp'
+                          ? t('aiops.multiVector.emergencyRecommend', '🚨 Đề xuất Bảo Trì Khẩn Cấp')
                           : vScore >= 60
-                          ? 'Đang kích hoạt Load Shedding'
-                          : 'Tài nguyên phần cứng ổn định'}
+                          ? t('aiops.multiVector.loadSheddingActive', 'Đang kích hoạt Load Shedding')
+                          : t('aiops.multiVector.hardwareStable', 'Tài nguyên phần cứng ổn định')}
                       </span>
                     </span>
                   </div>
                   <div className="mt-2 p-2 rounded-lg bg-teal-50/70 border border-teal-200/60 text-teal-950 text-[10px] leading-relaxed">
-                    <strong>Phòng vệ:</strong> Load Shedding & cảnh báo máy chủ. Chỉ kích hoạt Bảo trì nếu có sập dây chuyền (Lag &gt; 250ms &amp; 5xx &gt; 15%).
+                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.resourceDefenseNote', 'Load Shedding & cảnh báo máy chủ. Chỉ kích hoạt Bảo trì nếu có sập dây chuyền (Lag > 250ms & 5xx > 15%).')}
                   </div>
                 </div>
               </div>
@@ -1859,17 +1876,17 @@ const AIOpsPage = () => {
             </div>
             <div>
               <h2 className="text-sm font-bold text-red-950 m-0">
-                Nguồn Request Đang Bị Cô Lập & Tự Động Chặn (Active Quarantine Blacklist)
+                {t('aiops.quarantine.title', 'Nguồn Request Đang Bị Cô Lập & Tự Động Chặn (Active Quarantine Blacklist)')}
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Các nguồn IP có hành vi tấn công DoS/DDoS, Brute-Force, hoặc SQLi bị cắt kết nối tức thì (HTTP 403)
+                {t('aiops.quarantine.desc', 'Các nguồn IP có hành vi tấn công DoS/DDoS, Brute-Force, hoặc SQLi bị cắt kết nối tức thì (HTTP 403)')}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-200">
-              {quarantineList.length} nguồn bị phong tỏa
+              {t('aiops.quarantine.blockedCount', `${quarantineList.length} nguồn bị phong tỏa`, { count: quarantineList.length })}
             </span>
           </div>
         </div>
@@ -1879,12 +1896,12 @@ const AIOpsPage = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-red-100 bg-red-50/40 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3">Địa chỉ IP (Masked)</th>
-                  <th className="py-2.5 px-3">Nguyên nhân phong tỏa</th>
-                  <th className="py-2.5 px-3">Thời điểm chặn</th>
-                  <th className="py-2.5 px-3">Thời gian còn lại</th>
-                  <th className="py-2.5 px-3">Lần vi phạm (Hits)</th>
-                  <th className="py-2.5 px-3 text-right">Thao tác</th>
+                  <th className="py-2.5 px-3">{t('aiops.quarantine.colIp', 'Địa chỉ IP (Masked)')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.quarantine.colReason', 'Nguyên nhân phong tỏa')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.quarantine.colTime', 'Thời điểm chặn')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.quarantine.colRemaining', 'Thời gian còn lại')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.quarantine.colHits', 'Lần vi phạm (Hits)')}</th>
+                  <th className="py-2.5 px-3 text-right">{t('common.actions', 'Thao tác')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-red-50">
@@ -1898,11 +1915,11 @@ const AIOpsPage = () => {
                       {item.reason}
                     </td>
                     <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
-                      {item.bannedAt ? formatDateTime(item.bannedAt) : 'Vừa xong'}
+                      {item.bannedAt ? formatDateTime(item.bannedAt) : t('common.justNow', 'Vừa xong')}
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                        {item.remainingMinutes !== undefined ? `${item.remainingMinutes} phút` : 'Đang phong tỏa'}
+                        {item.remainingMinutes !== undefined ? t('aiops.quarantine.minutes', `${item.remainingMinutes} phút`, { min: item.remainingMinutes }) : t('aiops.quarantine.blocking', 'Đang phong tỏa')}
                       </span>
                     </td>
                     <td className="py-3 px-3 font-bold text-slate-700 whitespace-nowrap">
@@ -1913,10 +1930,10 @@ const AIOpsPage = () => {
                         onClick={() => handleUnblock(item.hash)}
                         disabled={unblockingHash === item.hash}
                         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
-                        title="Bấm để mở khóa và cho phép IP tiếp tục truy cập"
+                        title={t('aiops.unblockTooltip', 'Bấm để mở khóa và cho phép IP tiếp tục truy cập')}
                       >
                         <span className="material-symbols-outlined text-[15px]">lock_open</span>
-                        <span>{unblockingHash === item.hash ? 'Đang mở...' : 'Gỡ Chặn'}</span>
+                        <span>{unblockingHash === item.hash ? t('common.processing', 'Đang xử lý...') : t('aiops.unblockBtn', 'Gỡ Chặn')}</span>
                       </button>
                     </td>
                   </tr>
@@ -1927,9 +1944,9 @@ const AIOpsPage = () => {
         ) : (
           <div className="p-6 text-center rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-2">
             <span className="material-symbols-outlined text-[36px] text-emerald-600">gpp_good</span>
-            <p className="font-bold text-xs text-slate-800">Không có nguồn IP nào đang bị cô lập</p>
+            <p className="font-bold text-xs text-slate-800">{t('aiops.quarantine.emptyTitle', 'Không có nguồn IP nào đang bị cô lập')}</p>
             <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-              AIOps Sentinel liên tục theo dõi và sẵn sàng kích hoạt tường lửa tức thì nếu phát hiện nguồn bất thường.
+              {t('aiops.quarantine.emptyDesc', 'AIOps Sentinel liên tục theo dõi và sẵn sàng kích hoạt tường lửa tức thì nếu phát hiện nguồn bất thường.')}
             </p>
           </div>
         )}
@@ -1946,27 +1963,27 @@ const AIOpsPage = () => {
               <span className="material-symbols-outlined text-[18px] text-primary">show_chart</span>
               {(() => {
                 if (customRange.applied && customRange.from && customRange.to) {
-                  return `Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — Tùy Biến Chính Xác (${customRange.from} → ${customRange.to})`;
+                  return t('aiops.chart.titleCustom', `Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — Tùy Biến Chính Xác (${customRange.from} → ${customRange.to})`, { from: customRange.from, to: customRange.to });
                 }
-                if (timePreset === 'day') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 24 Giờ Qua (Theo Ngày)';
-                if (timePreset === 'month') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 30 Ngày Qua (Theo Tháng)';
-                if (timePreset === 'year') return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 12 Tháng Qua (Theo Năm)';
-                return 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)';
+                if (timePreset === 'day') return t('aiops.chart.titleDay', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 24 Giờ Qua (Theo Ngày)');
+                if (timePreset === 'month') return t('aiops.chart.titleMonth', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 30 Ngày Qua (Theo Tháng)');
+                if (timePreset === 'year') return t('aiops.chart.titleYear', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 12 Tháng Qua (Theo Năm)');
+                return t('aiops.chart.titleRealtime', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)');
               })()}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Tách biệt đường cong riêng cho từng vectơ: Xác thực, Lưu lượng, Khai thác và Tài nguyên. Loại bỏ hoàn toàn sự sai lệch do gộp chung điểm.
+              {t('aiops.chart.desc', 'Tách biệt đường cong riêng cho từng vectơ: Xác thực, Lưu lượng, Khai thác và Tài nguyên. Loại bỏ hoàn toàn sự sai lệch do gộp chung điểm.')}
             </p>
           </div>
 
           {/* Tab Filter Chuyển Đổi Vectơ */}
           <div className="flex items-center gap-1.5 flex-wrap bg-surface-container-low p-1 rounded-xl border border-outline-variant/60">
             {[
-              { id: 'all', label: 'Tất Cả 4 Vectơ', icon: 'hub', color: 'text-indigo-600' },
-              { id: 'auth', label: '1. Xác Thực', icon: 'badge', color: 'text-amber-600' },
-              { id: 'traffic', label: '2. Lưu Lượng', icon: 'waves', color: 'text-blue-600' },
-              { id: 'exploit', label: '3. Khai Thác', icon: 'bug_report', color: 'text-rose-600' },
-              { id: 'resource', label: '4. Tài Nguyên', icon: 'memory', color: 'text-teal-600' },
+              { id: 'all', label: t('aiops.tabs.all', 'Tất Cả Vectơ'), icon: 'hub', color: 'text-indigo-600' },
+              { id: 'auth', label: t('aiops.tabs.auth', '1. Xác Thực'), icon: 'badge', color: 'text-amber-600' },
+              { id: 'traffic', label: t('aiops.tabs.traffic', '2. Lưu Lượng'), icon: 'waves', color: 'text-blue-600' },
+              { id: 'exploit', label: t('aiops.tabs.exploit', '3. Khai Thác'), icon: 'bug_report', color: 'text-rose-600' },
+              { id: 'resource', label: t('aiops.tabs.resource', '4. Tài Nguyên'), icon: 'memory', color: 'text-teal-600' },
             ].map((tab) => {
               const isActive = activeVectorTab === tab.id;
               return (
@@ -2002,13 +2019,13 @@ const AIOpsPage = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
-                <span>Bộ chọn thời gian quan sát:</span>
+                <span>{t('aiops.chart.selectObsTime', 'Bộ chọn thời gian quan sát:')}</span>
               </span>
               {[
-                { id: 'realtime', label: 'Thời gian thực (10 phút)' },
-                { id: 'day', label: 'Ngày (24 giờ qua)' },
-                { id: 'month', label: 'Tháng (30 ngày qua)' },
-                { id: 'year', label: 'Năm (12 tháng qua)' },
+                { id: 'realtime', label: t('aiops.chart.presetRealtime', 'Thời gian thực (10 phút)') },
+                { id: 'day', label: t('aiops.chart.presetDay', 'Ngày (24 giờ qua)') },
+                { id: 'month', label: t('aiops.chart.presetMonth', 'Tháng (30 ngày qua)') },
+                { id: 'year', label: t('aiops.chart.presetYear', 'Năm (12 tháng qua)') },
               ].map((p) => {
                 const isSelected = timePreset === p.id && !customRange.applied;
                 return (
@@ -2024,7 +2041,7 @@ const AIOpsPage = () => {
                         ? 'bg-white/60 text-slate-400 border-slate-200 hover:bg-white hover:text-slate-700'
                         : 'bg-white text-slate-700 border-outline-variant hover:bg-slate-100'
                     }`}
-                    title={customRange.applied ? 'Click để bỏ qua bộ lọc chính xác và áp dụng preset này' : undefined}
+                    title={customRange.applied ? t('aiops.chart.reuseSelect', 'Dùng lại bộ select') : undefined}
                   >
                     {p.label}
                   </button>
@@ -2035,7 +2052,7 @@ const AIOpsPage = () => {
             {fetchingHistory && (
               <span className="text-[11px] font-semibold text-primary flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
-                <span>Đang tải dữ liệu...</span>
+                <span>{t('common.loadingData', 'Đang tải dữ liệu...')}</span>
               </span>
             )}
           </div>
@@ -2045,15 +2062,15 @@ const AIOpsPage = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px] text-indigo-600">date_range</span>
-                <span>Bộ lọc chính xác:</span>
+                <span>{t('aiops.chart.precisionFilter', 'Bộ lọc chính xác:')}</span>
               </span>
 
               {/* Loại bộ lọc: Ngày / Tháng / Năm */}
               <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white text-xs">
                 {[
-                  { id: 'date', label: 'Theo Ngày' },
-                  { id: 'month', label: 'Theo Tháng' },
-                  { id: 'year', label: 'Theo Năm' },
+                  { id: 'date', label: t('common.date', 'Theo Ngày') },
+                  { id: 'month', label: t('common.month', 'Theo Tháng') },
+                  { id: 'year', label: t('common.year', 'Theo Năm') },
                 ].map((type) => (
                   <button
                     key={type.id}
@@ -2075,7 +2092,7 @@ const AIOpsPage = () => {
 
               {/* Inputs Từ ... Đến ... */}
               <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-500 font-medium">Từ:</span>
+                <span className="text-slate-500 font-medium">{t('aiops.chart.from', 'Từ:')}</span>
                 {customFilterType === 'date' && (
                   <input
                     type="date"
@@ -2107,7 +2124,7 @@ const AIOpsPage = () => {
                   />
                 )}
 
-                <span className="text-slate-500 font-medium">Đến:</span>
+                <span className="text-slate-500 font-medium">{t('aiops.chart.to', 'Đến:')}</span>
                 {customFilterType === 'date' && (
                   <input
                     type="date"
@@ -2148,7 +2165,7 @@ const AIOpsPage = () => {
                 className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[14px]">tune</span>
-                <span>Lọc Chính Xác</span>
+                <span>{t('aiops.chart.btnApplyFilter', 'Lọc Chính Xác')}</span>
               </button>
 
               <button
@@ -2156,10 +2173,10 @@ const AIOpsPage = () => {
                 data-testid="refresh-custom-range-btn"
                 onClick={handleResetCustomRange}
                 className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
-                title="Làm mới bộ lọc chính xác về mặc định"
+                title={t('aiops.chart.refreshFilterTooltip', 'Làm mới bộ lọc chính xác về mặc định')}
               >
                 <span className="material-symbols-outlined text-[14px]">refresh</span>
-                <span>Làm mới</span>
+                <span>{t('common.refresh', 'Làm mới')}</span>
               </button>
 
               {customRange.applied && (
@@ -2170,7 +2187,7 @@ const AIOpsPage = () => {
                   className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium transition-all cursor-pointer inline-flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[14px]">close</span>
-                  <span>Xóa bộ lọc</span>
+                  <span>{t('aiops.chart.btnClearFilter', 'Xóa bộ lọc')}</span>
                 </button>
               )}
             </div>
@@ -2182,7 +2199,7 @@ const AIOpsPage = () => {
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-amber-600">verified</span>
                 <span>
-                  <strong>ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC:</strong> Dữ liệu từ <strong>{customRange.from}</strong> đến <strong>{customRange.to}</strong>. Bộ select nhanh đang tạm thời bị bỏ qua.
+                  {t('aiops.chart.priorityNotice', `ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC: Dữ liệu từ ${customRange.from} đến ${customRange.to}. Bộ select nhanh đang tạm thời bị bỏ qua.`, { from: customRange.from, to: customRange.to })}
                 </span>
               </div>
               <button
@@ -2190,7 +2207,7 @@ const AIOpsPage = () => {
                 onClick={handleClearCustomRange}
                 className="text-xs font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer whitespace-nowrap self-end sm:self-auto"
               >
-                Dùng lại bộ select
+                {t('aiops.chart.reuseSelect', 'Dùng lại bộ select')}
               </button>
             </div>
           )}
@@ -2206,7 +2223,7 @@ const AIOpsPage = () => {
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-              <span className="text-amber-900">1. Xác Thực: <strong>{vectorScores.auth ?? 0}</strong></span>
+              <span className="text-amber-900">{t('aiops.tabs.auth', '1. Xác Thực')}: <strong>{vectorScores.auth ?? 0}</strong></span>
             </span>
 
             <span
@@ -2216,7 +2233,7 @@ const AIOpsPage = () => {
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-              <span className="text-blue-900">2. Lưu Lượng: <strong>{vectorScores.traffic ?? 0}</strong></span>
+              <span className="text-blue-900">{t('aiops.tabs.traffic', '2. Lưu Lượng')}: <strong>{vectorScores.traffic ?? 0}</strong></span>
             </span>
 
             <span
@@ -2226,7 +2243,7 @@ const AIOpsPage = () => {
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-              <span className="text-rose-900">3. Khai Thác: <strong>{vectorScores.exploit ?? 0}</strong></span>
+              <span className="text-rose-900">{t('aiops.tabs.exploit', '3. Khai Thác')}: <strong>{vectorScores.exploit ?? 0}</strong></span>
             </span>
 
             <span
@@ -2236,13 +2253,13 @@ const AIOpsPage = () => {
               }`}
             >
               <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block" />
-              <span className="text-teal-900">4. Tài Nguyên: <strong>{vectorScores.resource ?? 0}</strong></span>
+              <span className="text-teal-900">{t('aiops.tabs.resource', '4. Tài Nguyên')}: <strong>{vectorScores.resource ?? 0}</strong></span>
             </span>
 
             {activeVectorTab === 'all' && (
               <span className="flex items-center gap-1.5 text-purple-700">
                 <span className="w-2.5 h-0.5 bg-purple-500 inline-block border-b border-dashed border-purple-700" />
-                <span>Trần Max: <strong>{threatScore}</strong></span>
+                <span>{t('aiops.chart.maxCeiling', 'Trần Max:')} <strong>{threatScore}</strong></span>
               </span>
             )}
           </div>
@@ -2250,11 +2267,11 @@ const AIOpsPage = () => {
           <div className="flex items-center gap-3 text-slate-500">
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 bg-red-500 inline-block" />
-              <span>Ngưỡng Khẩn cấp (85)</span>
+              <span>{t('aiops.chart.thresholdEmergency', 'Ngưỡng Khẩn cấp (85)')}</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-0.5 bg-amber-500 inline-block" />
-              <span>Ngưỡng Cảnh báo (70)</span>
+              <span>{t('aiops.chart.thresholdWarning', 'Ngưỡng Cảnh báo (70)')}</span>
             </span>
           </div>
         </div>
@@ -2540,10 +2557,10 @@ const AIOpsPage = () => {
                   <span className="material-symbols-outlined text-[24px]">query_stats</span>
                 </div>
                 <p className="text-xs font-bold text-slate-800">
-                  Không có dữ liệu đo lường trong khoảng thời gian đã chọn
+                  {t('aiops.chart.emptyTitle', 'Không có dữ liệu đo lường trong khoảng thời gian đã chọn')}
                 </p>
                 <p className="text-[11px] text-slate-500 max-w-md mt-1 leading-relaxed">
-                  Hệ thống cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo giả lập. Dữ liệu chỉ hiển thị khi có các mẫu ghi nhận thực từ máy chủ.
+                  {t('aiops.chart.emptyDesc', 'Hệ thống cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo giả lập. Dữ liệu chỉ hiển thị khi có các mẫu ghi nhận thực từ máy chủ.')}
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <button
@@ -2551,7 +2568,7 @@ const AIOpsPage = () => {
                     onClick={() => handleSelectTimePreset('realtime')}
                     className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition-all cursor-pointer shadow-xs"
                   >
-                    Quay lại Thời gian thực
+                    {t('aiops.chart.backToRealtime', 'Quay lại Thời gian thực')}
                   </button>
                   {customRange.applied && (
                     <button
@@ -2559,7 +2576,7 @@ const AIOpsPage = () => {
                       onClick={handleClearCustomRange}
                       className="px-3 py-1 bg-white border border-slate-300 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
                     >
-                      Bỏ bộ lọc chính xác
+                      {t('aiops.chart.removeFilter', 'Bỏ bộ lọc chính xác')}
                     </button>
                   )}
                 </div>
@@ -2569,7 +2586,7 @@ const AIOpsPage = () => {
             {/* Tooltip Card hiển thị chi tiết khi rê chuột (Yêu cầu 1 của PO: Ngày tháng năm giờ phút giây) */}
             {hoveredPointIndex !== null && chartSvgPaths.samples[hoveredPointIndex] && (() => {
               const hs = chartSvgPaths.samples[hoveredPointIndex];
-              const timeStr = hs.time ? formatFullDateTime(hs.time) : 'Mẫu vừa xong';
+              const timeStr = hs.time ? formatFullDateTime(hs.time) : t('common.justNow', 'Mẫu vừa xong');
               const leftPercent = Math.min(85, Math.max(15, (hs.x / 800) * 100));
               return (
                 <div
@@ -2581,14 +2598,14 @@ const AIOpsPage = () => {
                       <span className="material-symbols-outlined text-[13px] text-primary">schedule</span>
                       {timeStr}
                     </span>
-                    <span className="text-[10px] text-slate-400">Mẫu #{hoveredPointIndex + 1}</span>
+                    <span className="text-[10px] text-slate-400">{t('aiops.chart.sampleNum', 'Mẫu #{num}', { num: hoveredPointIndex + 1 })}</span>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1 text-amber-400">
                         <span className="w-2 h-2 rounded-full bg-amber-400" />
-                        1. Xác Thực:
+                        {t('aiops.tabs.auth', '1. Xác Thực')}:
                       </span>
                       <strong className="font-mono">{hs.auth.score}/100</strong>
                     </div>
@@ -2596,7 +2613,7 @@ const AIOpsPage = () => {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1 text-blue-400">
                         <span className="w-2 h-2 rounded-full bg-blue-400" />
-                        2. Lưu Lượng:
+                        {t('aiops.tabs.traffic', '2. Lưu Lượng')}:
                       </span>
                       <strong className="font-mono">{hs.traffic.score}/100</strong>
                     </div>
@@ -2604,7 +2621,7 @@ const AIOpsPage = () => {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1 text-rose-400">
                         <span className="w-2 h-2 rounded-full bg-rose-400" />
-                        3. Khai Thác:
+                        {t('aiops.tabs.exploit', '3. Khai Thác')}:
                       </span>
                       <strong className="font-mono">{hs.exploit.score}/100</strong>
                     </div>
@@ -2612,13 +2629,13 @@ const AIOpsPage = () => {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1 text-teal-400">
                         <span className="w-2 h-2 rounded-full bg-teal-400" />
-                        4. Tài Nguyên:
+                        {t('aiops.tabs.resource', '4. Tài Nguyên')}:
                       </span>
                       <strong className="font-mono">{hs.resource.score}/100</strong>
                     </div>
 
                     <div className="pt-1 border-t border-slate-700/80 flex items-center justify-between text-purple-300 font-bold">
-                      <span>Threat Score:</span>
+                      <span>{t('aiops.threatScoreTitle', 'Threat Score')}:</span>
                       <span className="font-mono">{hs.composite.score}/100</span>
                     </div>
                   </div>
@@ -2633,24 +2650,24 @@ const AIOpsPage = () => {
           <div className="flex items-center gap-4 flex-wrap">
             <span className="font-semibold text-slate-700 flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px] text-indigo-600">straighten</span>
-              <span>Trục X: <strong>{xAxisConfig.title}</strong></span>
+              <span>{t('aiops.chart.axisX', 'Trục X:')} <strong>{xAxisConfig.title}</strong></span>
             </span>
 
             {historyData && historyData.length > 0 ? (
               <>
-                <span>🕒 Mẫu đầu: {historyData[0]?.timestamp ? formatFullDateTime(historyData[0].timestamp) : '10 phút trước'}</span>
+                <span>{t('aiops.chart.firstSample', '🕒 Mẫu đầu:')} {historyData[0]?.timestamp ? formatFullDateTime(historyData[0].timestamp) : '10m'}</span>
                 {historyData.length > 2 && (
-                  <span>🕒 Giữa kỳ: {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatFullDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5 phút trước'}</span>
+                  <span>{t('aiops.chart.midSample', '🕒 Giữa kỳ:')} {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatFullDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5m'}</span>
                 )}
-                <span className="font-semibold text-slate-700">🕒 Mẫu mới nhất: {historyData[historyData.length - 1]?.timestamp ? formatFullDateTime(historyData[historyData.length - 1].timestamp) : 'Hiện tại'}</span>
+                <span className="font-semibold text-slate-700">{t('aiops.chart.latestSample', '🕒 Mẫu mới nhất:')} {historyData[historyData.length - 1]?.timestamp ? formatFullDateTime(historyData[historyData.length - 1].timestamp) : 'now'}</span>
               </>
             ) : (
-              <span className="text-slate-400 italic">Chưa có mẫu dữ liệu trong khung thời gian này</span>
+              <span className="text-slate-400 italic">{t('aiops.chart.noDataInWindow', 'Chưa có mẫu dữ liệu trong khung thời gian này')}</span>
             )}
           </div>
 
           <div className="text-[10px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-            🛡️ <strong>Nguyên tắc:</strong> Phòng vệ được kích hoạt độc lập theo từng vectơ. Tuyệt đối không dùng điểm gộp chung để ngắt kết nối hệ thống.
+            {t('aiops.chart.principleNote', '🛡️ Nguyên tắc: Phòng vệ được kích hoạt độc lập theo từng vectơ. Tuyệt đối không dùng điểm gộp chung để ngắt kết nối hệ thống.')}
           </div>
         </div>
       </div>
@@ -2664,17 +2681,17 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">troubleshoot</span>
-              Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)
+              {t('aiops.rca.title', 'Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)')}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Nhật ký sự cố lưu trữ bền vững trong CSDL (PostgreSQL) — Lưu vĩnh viễn phục vụ điều tra truy vết, tuân thủ Luật An ninh mạng & Nghị định 13/2023/NĐ-CP.
+              {t('aiops.rca.desc', 'Nhật ký sự cố lưu trữ bền vững trong CSDL (PostgreSQL) — Lưu vĩnh viễn phục vụ điều tra truy vết, tuân thủ Luật An ninh mạng & Nghị định 13/2023/NĐ-CP.')}
             </p>
           </div>
 
           <div className="flex items-center gap-2.5">
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/60 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[15px] text-primary">database</span>
-              <span>{incidentTotal} sự cố ghi nhận trong CSDL</span>
+              <span>{t('aiops.rca.incidentsInDb', `${incidentTotal} sự cố ghi nhận trong CSDL`, { count: incidentTotal })}</span>
             </span>
 
             {incidentTotal > 0 && (
@@ -2682,10 +2699,10 @@ const AIOpsPage = () => {
                 type="button"
                 onClick={() => setShowClearIncidentsModal(true)}
                 className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 border border-outline-variant/60 transition-colors flex items-center gap-1 cursor-pointer"
-                title="Làm sạch toàn bộ nhật ký sự cố trong CSDL"
+                title={t('aiops.cleanDbBtn', 'Làm sạch CSDL')}
               >
                 <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
-                <span>Làm sạch CSDL</span>
+                <span>{t('aiops.cleanDbBtn', 'Làm sạch CSDL')}</span>
               </button>
             )}
           </div>
@@ -2698,11 +2715,11 @@ const AIOpsPage = () => {
             {/* Vector Filter Pills */}
             <div className="inline-flex rounded-lg border border-outline-variant/60 p-0.5 bg-surface-container-lowest text-xs">
               {[
-                { key: 'all', label: 'Tất cả Vector' },
-                { key: 'auth', label: '🛡️ Xác thực' },
-                { key: 'traffic', label: '🌐 Lưu lượng' },
-                { key: 'exploit', label: '💉 Khai thác' },
-                { key: 'resource', label: '⚡ Tài nguyên' },
+                { key: 'all', label: t('aiops.rca.vectorAll', 'Tất cả Vector') },
+                { key: 'auth', label: t('aiops.rca.vectorAuth', '🛡️ Xác thực') },
+                { key: 'traffic', label: t('aiops.rca.vectorTraffic', '🌐 Lưu lượng') },
+                { key: 'exploit', label: t('aiops.rca.vectorExploit', '💉 Khai thác') },
+                { key: 'resource', label: t('aiops.rca.vectorResource', '⚡ Tài nguyên') },
               ].map((v) => (
                 <button
                   key={v.key}
@@ -2725,9 +2742,9 @@ const AIOpsPage = () => {
             {/* Status Filter Pills */}
             <div className="inline-flex rounded-lg border border-outline-variant/60 p-0.5 bg-surface-container-lowest text-xs">
               {[
-                { key: 'all', label: 'Mọi trạng thái' },
-                { key: 'ACTIVE', label: '🔴 Đang diễn ra' },
-                { key: 'MITIGATED', label: '🟢 Đã giảm thiểu' },
+                { key: 'all', label: t('aiops.rca.statusAll', 'Mọi trạng thái') },
+                { key: 'ACTIVE', label: t('aiops.rca.statusActive', '🔴 Đang diễn ra') },
+                { key: 'MITIGATED', label: t('aiops.rca.statusMitigated', '🟢 Đã giảm thiểu') },
               ].map((s) => (
                 <button
                   key={s.key}
@@ -2758,7 +2775,7 @@ const AIOpsPage = () => {
                 type="text"
                 value={incidentSearch}
                 onChange={(e) => setIncidentSearch(e.target.value)}
-                placeholder="Tìm IP, Hash, User, Mã..."
+                placeholder={t('aiops.rca.searchPlaceholder', 'Tìm IP, Hash, User, Mã...')}
                 className="w-full pl-8 pr-7 py-1 text-xs border border-outline-variant/80 rounded-lg focus:outline-none focus:border-primary bg-white text-slate-800 placeholder:text-slate-400"
               />
               {incidentSearch && (
@@ -2779,7 +2796,7 @@ const AIOpsPage = () => {
               type="submit"
               className="px-3 py-1 bg-slate-100 hover:bg-slate-200 border border-outline-variant/80 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer transition-colors"
             >
-              Lọc
+              {t('common.filter', 'Lọc')}
             </button>
           </form>
         </div>
@@ -2790,12 +2807,12 @@ const AIOpsPage = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/80 bg-surface-container-low/60 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3 whitespace-nowrap">Thời điểm & Trạng thái</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">Đối tượng vi phạm (Actor)</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">Vector & Mã Bất Thường</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">Chỉ số đo vs Ngưỡng</th>
-                  <th className="py-2.5 px-3">Bóc tách nguyên nhân & Xử lý</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap text-center">Thao tác & Phòng vệ</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colTimeStatus', 'Thời điểm & Trạng thái')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colActor', 'Đối tượng vi phạm (Actor)')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colVectorCode', 'Vector & Mã Bất Thường')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colMetricVsThreshold', 'Chỉ số đo vs Ngưỡng')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.rca.colDiagnosisMitigation', 'Bóc tách nguyên nhân & Xử lý')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap text-center">{t('aiops.rca.colActionsDefense', 'Thao tác & Phòng vệ')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40 bg-white">
@@ -2838,21 +2855,21 @@ const AIOpsPage = () => {
                           {status === 'ACTIVE' ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-                              ĐANG DIỄN RA
+                              {t('aiops.rca.badgeActive', 'ĐANG DIỄN RA')}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                               <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                              ĐÃ GIẢM THIỂU
+                              {t('aiops.rca.badgeMitigated', 'ĐÃ GIẢM THIỂU')}
                             </span>
                           )}
                         </div>
                         <div className="text-[10px] text-slate-500 font-medium">
-                          {hits > 1 ? `Lặp lại ${hits} lần` : 'Phát hiện lần 1'}
+                          {hits > 1 ? t('aiops.rca.repeatedTimes', `Lặp lại ${hits} lần`, { count: hits }) : t('aiops.rca.firstDetected', 'Phát hiện lần 1')}
                         </div>
                         {lastTime && lastTime !== firstTime && (
                           <div className="text-[9px] text-slate-400">
-                            Gần nhất: {formatDateTime(lastTime)}
+                            {t('aiops.rca.latestSeen', `Gần nhất: ${formatDateTime(lastTime)}`, { time: formatDateTime(lastTime) })}
                           </div>
                         )}
                       </td>
@@ -2886,7 +2903,7 @@ const AIOpsPage = () => {
                           <span>
                             TK:{' '}
                             <span className="text-primary font-bold">
-                              {username || (userId ? `UID #${userId}` : 'Khách vãng lai / Ẩn danh')}
+                              {username || (userId ? `UID #${userId}` : t('aiops.rca.anonymousUser', 'Khách vãng lai / Ẩn danh'))}
                             </span>
                           </span>
                         </div>
@@ -2894,7 +2911,7 @@ const AIOpsPage = () => {
                         {endpoint && (
                           <div
                             className="text-[10px] font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 max-w-[210px] truncate"
-                            title={`Mục tiêu: ${endpoint}`}
+                            title={`${t('aiops.rca.target', 'Mục tiêu:')} ${endpoint}`}
                           >
                             🎯 {endpoint}
                           </div>
@@ -2949,11 +2966,11 @@ const AIOpsPage = () => {
                           {metricCurrent} {metricUnit}
                         </div>
                         <div className="text-[11px] text-slate-500">
-                          Ngưỡng: {metricBaseline} {metricUnit}
+                          {t('aiops.rca.threshold', 'Ngưỡng:')} {metricBaseline} {metricUnit}
                         </div>
                         {ratio && Number(ratio) > 1 && (
                           <span className="inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-50 text-red-700 border border-red-200">
-                            Vượt {ratio}x
+                            {t('aiops.rca.exceededRatio', `Vượt ${ratio}x`, { ratio })}
                           </span>
                         )}
                       </td>
@@ -2987,7 +3004,7 @@ const AIOpsPage = () => {
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
                               <span className="material-symbols-outlined text-[13px]">block</span>
-                              Đã cách ly Shield
+                              {t('aiops.rca.quarantinedShield', 'Đã cách ly Shield')}
                             </span>
                             <div>
                               <button
@@ -2995,16 +3012,16 @@ const AIOpsPage = () => {
                                 onClick={() => handleUnblock(actorHash)}
                                 disabled={unblockingHash === actorHash}
                                 className="text-[10px] font-semibold text-slate-500 hover:text-slate-800 underline transition-colors cursor-pointer"
-                                title="Mở khóa và gỡ bỏ địa chỉ IP khỏi danh sách cô lập"
+                                title={t('aiops.unblockTooltip', 'Mở khóa và gỡ bỏ địa chỉ IP khỏi danh sách cô lập')}
                               >
-                                {unblockingHash === actorHash ? 'Đang mở...' : 'Gỡ chặn'}
+                                {unblockingHash === actorHash ? t('common.processing', 'Đang xử lý...') : t('aiops.unblockBtn', 'Gỡ chặn')}
                               </button>
                             </div>
                           </div>
                         ) : vector === 'resource' || actorHash === 'system_host' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                             <span className="material-symbols-outlined text-[13px]">tune</span>
-                            Nội bộ hệ thống
+                            {t('aiops.rca.internalSystem', 'Nội bộ hệ thống')}
                           </span>
                         ) : (
                           <div className="space-y-1">
@@ -3012,13 +3029,13 @@ const AIOpsPage = () => {
                               type="button"
                               onClick={() => handleOpenQuarantineModal(item)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 transition-all shadow-xs active:scale-95 cursor-pointer"
-                              title={`Kích hoạt khiên chắn phong tỏa IP ${actorIdentity}`}
+                              title={`${t('aiops.rca.btnQuarantine', 'Phong Tỏa IP')} ${actorIdentity}`}
                             >
                               <span className="material-symbols-outlined text-[13px]">shield</span>
-                              <span>Phong Tỏa IP</span>
+                              <span>{t('aiops.rca.btnQuarantine', 'Phong Tỏa IP')}</span>
                             </button>
                             <div className="text-[9px] text-slate-400">
-                              Sentinel giám sát
+                              {t('aiops.rca.sentinelMonitoring', 'Sentinel giám sát')}
                             </div>
                           </div>
                         )}
@@ -3040,7 +3057,7 @@ const AIOpsPage = () => {
                 setIncidentPageSize(s);
                 setIncidentPage(1);
               }}
-              itemLabel="sự cố ghi nhận"
+              itemLabel={t('aiops.rca.itemLabel', 'sự cố ghi nhận')}
             />
           </div>
         ) : (
@@ -3048,8 +3065,8 @@ const AIOpsPage = () => {
             <span className="material-symbols-outlined text-[44px] text-emerald-600">verified</span>
             <p className="font-bold text-sm text-emerald-950">
               {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all'
-                ? 'Không tìm thấy sự cố nào phù hợp với bộ lọc'
-                : 'Chưa có mối nguy hiểm hoặc bất thường nào được ghi nhận'}
+                ? t('aiops.rca.emptyFilterTitle', 'Không tìm thấy sự cố nào phù hợp với bộ lọc')
+                : t('aiops.rca.emptyAllTitle', 'Chưa có mối nguy hiểm hoặc bất thường nào được ghi nhận')}
             </p>
             <p className="text-xs text-emerald-800/80 max-w-md mx-auto">
               {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all' ? (
@@ -3064,10 +3081,10 @@ const AIOpsPage = () => {
                   }}
                   className="font-bold text-primary underline cursor-pointer"
                 >
-                  Xóa bộ lọc để xem toàn bộ sự cố trong CSDL
+                  {t('aiops.rca.emptyFilterAction', 'Xóa bộ lọc để xem toàn bộ sự cố trong CSDL')}
                 </button>
               ) : (
-                'Tất cả 12 thông số hệ thống đang hoạt động ổn định. Mọi bất thường phát sinh sẽ được ghi nhận và lưu trữ vĩnh viễn vào CSDL tại đây.'
+                t('aiops.rca.emptyAllDesc', 'Tất cả 12 thông số hệ thống đang hoạt động ổn định. Mọi bất thường phát sinh sẽ được ghi nhận và lưu trữ vĩnh viễn vào CSDL tại đây.')
               )}
             </p>
           </div>
@@ -3079,11 +3096,11 @@ const AIOpsPage = () => {
         open={showClearIncidentsModal}
         onConfirm={handleClearIncidents}
         onCancel={() => setShowClearIncidentsModal(false)}
-        title="Làm sạch Toàn bộ Nhật ký Sự cố CSDL"
-        message="Bạn có chắc chắn muốn xóa toàn bộ lịch sử sự cố AIOps trong CSDL PostgreSQL? Thao tác này chỉ dùng khi hoàn tất nghiệm thu kiểm thử hoặc bảo trì hệ thống. Hành động này không thể hoàn tác."
+        title={t('aiops.confirmCleanDbTitle', 'Làm sạch Toàn bộ Nhật ký Sự cố CSDL')}
+        message={t('aiops.confirmCleanDbMsg', 'Bạn có chắc chắn muốn xóa toàn bộ lịch sử sự cố AIOps trong CSDL PostgreSQL? Thao tác này chỉ dùng khi hoàn tất nghiệm thu kiểm thử hoặc bảo trì hệ thống. Hành động này không thể hoàn tác.')}
         confirmDanger={true}
-        confirmText="Xác nhận Xóa CSDL"
-        cancelText="Hủy bỏ"
+        confirmText={t('aiops.confirmCleanDbBtn', 'Xác nhận Xóa CSDL')}
+        cancelText={t('common.cancel', 'Hủy bỏ')}
         loading={clearingIncidents}
       />
 
@@ -3092,21 +3109,26 @@ const AIOpsPage = () => {
         open={quarantineModalTarget !== null}
         onConfirm={handleConfirmQuarantine}
         onCancel={() => setQuarantineModalTarget(null)}
-        title="Xác nhận Phong Tỏa Nguồn IP (Active Quarantine)"
+        title={t('aiops.confirmQuarantineTitle', 'Xác nhận Phong Tỏa Nguồn IP (Active Quarantine)')}
         message={
           quarantineModalTarget
-            ? `Bạn có chắc chắn muốn kích hoạt Khiên Chắn Active Quarantine cô lập kết nối từ nguồn IP [${
+            ? t('aiops.confirmQuarantineMsg', `Bạn có chắc chắn muốn kích hoạt Khiên Chắn Active Quarantine cô lập kết nối từ nguồn IP [${
                 quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || 'xx.xx.xx.xx'
               }]${
                 quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash
                   ? ` (Hash: #${(quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash).slice(0, 8)})`
                   : ''
-              } trong vòng 15 phút? Mọi request từ IP này sẽ bị ngắt kết nối với mã lỗi HTTP 403.`
+              } trong vòng 15 phút? Mọi request từ IP này sẽ bị ngắt kết nối với mã lỗi HTTP 403.`, {
+                ip: quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || 'xx.xx.xx.xx',
+                hash: quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash
+                  ? ` (Hash: #${(quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash).slice(0, 8)})`
+                  : ''
+              })
             : ''
         }
         confirmDanger={true}
-        confirmText={quarantiningActor ? 'Đang kích hoạt...' : 'Xác Nhận Phong Tỏa'}
-        cancelText="Hủy bỏ"
+        confirmText={quarantiningActor ? t('common.processing', 'Đang xử lý...') : t('aiops.confirmQuarantineBtn', 'Xác Nhận Phong Tỏa')}
+        cancelText={t('common.cancel', 'Hủy bỏ')}
         loading={quarantiningActor}
       />
 
@@ -3115,21 +3137,21 @@ const AIOpsPage = () => {
         open={vectorToggleModal.open}
         onConfirm={handleConfirmToggleVector}
         onCancel={() => setVectorToggleModal({ open: false, vector: null, targetState: false, vectorName: '', loading: false })}
-        title={`Xác nhận ${vectorToggleModal.targetState ? 'BẬT' : 'TẮT'} Vector`}
+        title={vectorToggleModal.targetState ? t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector') : t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector')}
         message={
           vectorToggleModal.targetState
-            ? `Bạn có chắc chắn muốn BẬT lại "${vectorToggleModal.vectorName}"? Vector này sẽ được tính vào Threat Score tổng hợp và kích hoạt các phản ứng phòng vệ tự động khi vượt ngưỡng an toàn.`
-            : `Bạn có chắc chắn muốn TẮT "${vectorToggleModal.vectorName}"? Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG thông số để bạn quan sát, nhưng HOÀN TOÀN KHÔNG TÍNH vào Threat Score chung và KHÔNG kích hoạt phản ứng phòng vệ cho vector này.`
+            ? t('aiops.toggleVector.messageEnable', `Bạn có chắc chắn muốn BẬT lại "${vectorToggleModal.vectorName}"? Vector này sẽ được tính vào Threat Score tổng hợp và kích hoạt các phản ứng phòng vệ tự động khi vượt ngưỡng an toàn.`, { name: vectorToggleModal.vectorName })
+            : t('aiops.toggleVector.messageDisable', `Bạn có chắc chắn muốn TẮT "${vectorToggleModal.vectorName}"? Hệ thống VẪN TIẾP TỤC ĐO LƯỜNG thông số để bạn quan sát, nhưng HOÀN TOÀN KHÔNG TÍNH vào Threat Score chung và KHÔNG kích hoạt phản ứng phòng vệ cho vector này.`, { name: vectorToggleModal.vectorName })
         }
         confirmDanger={!vectorToggleModal.targetState}
         confirmText={
           vectorToggleModal.loading
-            ? 'Đang xử lý...'
+            ? t('common.processing', 'Đang xử lý...')
             : vectorToggleModal.targetState
-            ? 'Xác nhận BẬT'
-            : 'Xác nhận TẮT'
+            ? t('aiops.toggleVector.confirmEnable', 'Xác nhận BẬT')
+            : t('aiops.toggleVector.confirmDisable', 'Xác nhận TẮT')
         }
-        cancelText="Hủy bỏ"
+        cancelText={t('common.cancel', 'Hủy bỏ')}
         loading={vectorToggleModal.loading}
       />
 
@@ -3144,16 +3166,16 @@ const AIOpsPage = () => {
                 <span className="material-symbols-outlined text-[24px]">crisis_alert</span>
               </div>
               <div>
-                <h3 className="text-base font-bold text-red-950 m-0">Xác nhận Bật Bảo Trì Khẩn Cấp</h3>
+                <h3 className="text-base font-bold text-red-950 m-0">{t('aiops.mitigation.modalTitle')}</h3>
                 <p className="text-xs text-slate-600 mt-1">
-                  Thao tác này sẽ lập tức kích hoạt mã phản hồi HTTP 503 cho toàn bộ Client-app, phát cảnh báo đỏ tới người dùng, và bảo toàn an ninh máy chủ.
+                  {t('aiops.mitigation.modalDesc')}
                 </p>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Lý do hiển thị tới người dùng
+                {t('aiops.mitigation.reasonLabel')}
               </label>
               <textarea
                 value={mitigationReason}
@@ -3170,7 +3192,7 @@ const AIOpsPage = () => {
                 disabled={mitigating}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Hủy bỏ
+                {t('common.cancel')}
               </button>
 
               <button
@@ -3180,7 +3202,7 @@ const AIOpsPage = () => {
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
               >
                 <span className="material-symbols-outlined text-[16px]">lock</span>
-                <span>{mitigating ? 'Đang kích hoạt...' : 'Khóa Hệ Thống Ngay'}</span>
+                <span>{mitigating ? t('aiops.mitigation.activating') : t('aiops.mitigation.confirmBtn')}</span>
               </button>
             </div>
           </div>
@@ -3198,9 +3220,9 @@ const AIOpsPage = () => {
                 <span className="material-symbols-outlined text-[24px]">tune</span>
               </div>
               <div>
-                <h3 className="text-base font-bold text-blue-950 m-0">Tái Hiệu Chuẩn Baseline Máy Học (Calibrate Baseline)</h3>
+                <h3 className="text-base font-bold text-blue-950 m-0">{t('aiops.calibrate.modalTitle')}</h3>
                 <p className="text-xs text-slate-600 mt-1">
-                  Đặt lại đường chuẩn thống kê cho khung giờ hiện tại dựa trên lưu lượng thực tế.
+                  {t('aiops.calibrate.modalDesc')}
                 </p>
               </div>
             </div>
@@ -3208,17 +3230,14 @@ const AIOpsPage = () => {
             <div className="rounded-xl bg-blue-50/70 border border-blue-100 p-3.5 space-y-2 text-xs text-slate-700 leading-relaxed">
               <div className="font-bold text-blue-950 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-blue-600">help</span>
-                <span>Nút này dùng để làm gì?</span>
+                <span>{t('aiops.calibrate.warningTitle')}</span>
               </div>
               <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-600">
                 <li>
-                  <strong>Học đường chuẩn (Baseline):</strong> AIOps Sentinel liên tục học mức request/phút, tỷ lệ lỗi, RAM/CPU bình thường của 24 khung giờ Việt Nam (GMT+7).
+                  {t('aiops.calibrate.point1')}
                 </li>
                 <li>
-                  <strong>Khi có sự kiện lớn:</strong> Khi doanh nghiệp mở chiến dịch khuyến mãi hoặc vừa nâng cấp máy chủ, lưu lượng hợp pháp tăng vọt. Nhấn nút này để máy học cập nhật lại ngưỡng an toàn mới, tránh hiểu nhầm là tấn công DoS.
-                </li>
-                <li>
-                  <strong>Chống đầu độc mô hình:</strong> Hệ thống tự động ngăn chặn kẻ tấn công thao túng đường chuẩn khi Threat Score $\ge 70$.
+                  {t('aiops.calibrate.point2')}
                 </li>
               </ul>
             </div>
@@ -3229,7 +3248,7 @@ const AIOpsPage = () => {
                 onClick={() => setShowCalibrateModal(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Đóng
+                {t('common.close')}
               </button>
 
               <button
@@ -3239,7 +3258,7 @@ const AIOpsPage = () => {
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
               >
                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                <span>{calibrating ? 'Đang hiệu chuẩn...' : 'Xác Nhận Tái Hiệu Chuẩn'}</span>
+                <span>{calibrating ? t('aiops.calibrate.calibratingBtn') : t('aiops.calibrate.confirmBtn')}</span>
               </button>
             </div>
           </div>

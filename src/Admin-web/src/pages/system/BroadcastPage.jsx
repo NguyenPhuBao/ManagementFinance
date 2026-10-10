@@ -4,16 +4,18 @@ import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
 import { formatDateTime } from '../../utils/format';
 import { useAlertSafe } from '../../store/alert.context';
+import { useLanguageSafe } from '../../store/language.context';
 
 const BROADCAST_LEVELS = [
-  { value: 'info', label: 'INFO — Thông báo thường', color: 'text-blue-500', icon: 'info' },
-  { value: 'warning', label: 'WARNING — Cảnh báo', color: 'text-amber-500', icon: 'warning' },
-  { value: 'critical', label: 'CRITICAL — Khẩn cấp', color: 'text-red-500', icon: 'error' },
+  { value: 'info', color: 'text-blue-500', icon: 'info' },
+  { value: 'warning', color: 'text-amber-500', icon: 'warning' },
+  { value: 'critical', color: 'text-red-500', icon: 'error' },
 ];
 
 const BroadcastPage = () => {
   const alert = useAlertSafe();
   const socket = useSocket();
+  const { t } = useLanguageSafe();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
 
   // --- State Quản trị Bảo trì ---
@@ -34,9 +36,9 @@ const BroadcastPage = () => {
     _setMaintenanceFeedback(fb);
     if (fb && alert) {
       if (fb.ok) {
-        alert.success(fb.msg, 'Quản Trị Bảo Trì');
+        alert.success(fb.msg, t('broadcast.feedback.maintenanceTitle'));
       } else {
-        alert.error(fb.msg, 'Lỗi Hệ Thống');
+        alert.error(fb.msg, t('broadcast.feedback.errorTitle'));
       }
     }
   };
@@ -114,7 +116,7 @@ const BroadcastPage = () => {
     try {
       const payload = {
         active: nextActive,
-        reason: instantReason.trim() || (instantEmergency ? 'Hệ thống đang gặp sự cố nghiêm trọng cần xử lý khẩn cấp.' : 'Hệ thống đang bảo trì kỹ thuật định kỳ.'),
+        reason: instantReason.trim() || (instantEmergency ? t('broadcast.banner.emergencyDesc') : t('broadcast.banner.silentDesc')),
         isEmergency: Boolean(instantEmergency),
       };
 
@@ -124,8 +126,8 @@ const BroadcastPage = () => {
       setMaintenanceFeedback({
         ok: true,
         msg: nextActive
-          ? (instantEmergency ? 'Đã kích hoạt BẢO TRÌ KHẨN CẤP & phát cảnh báo toàn hệ thống!' : 'Đã kích hoạt bảo trì kỹ thuật (im lặng).')
-          : 'Đã kết thúc bảo trì, hệ thống hoạt động bình thường trở lại.',
+          ? (instantEmergency ? t('broadcast.feedback.emergencyActivated') : t('broadcast.feedback.silentActivated'))
+          : t('broadcast.feedback.maintenanceRestored'),
       });
       if (!nextActive) {
         setInstantReason('');
@@ -134,7 +136,7 @@ const BroadcastPage = () => {
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
-        msg: err.response?.data?.message || 'Thao tác bảo trì thất bại. Vui lòng thử lại.',
+        msg: err.response?.data?.message || t('broadcast.feedback.operationFailed'),
       });
     } finally {
       setActionLoading(false);
@@ -147,7 +149,7 @@ const BroadcastPage = () => {
     if (maintenance.active) {
       setMaintenanceFeedback({
         ok: false,
-        msg: 'Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.',
+        msg: t('broadcast.feedback.scheduleOngoingConflict'),
       });
       return;
     }
@@ -157,7 +159,7 @@ const BroadcastPage = () => {
       if (new Date(scheduleEndDatetime).getTime() <= new Date(scheduleDatetime).getTime()) {
         setMaintenanceFeedback({
           ok: false,
-          msg: 'Thời điểm kết thúc bảo trì phải diễn ra sau thời điểm bắt đầu bảo trì!',
+          msg: t('broadcast.feedback.scheduleEndBeforeStart'),
         });
         return;
       }
@@ -169,7 +171,7 @@ const BroadcastPage = () => {
       const payload = {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
         scheduledEndAt: scheduleEndDatetime ? new Date(scheduleEndDatetime).toISOString() : null,
-        reason: scheduleReason.trim() || 'Bảo trì hệ thống theo lịch trình.',
+        reason: scheduleReason.trim() || t('broadcast.scheduleCardDesc'),
         isEmergency: Boolean(scheduleNotify),
       };
 
@@ -178,7 +180,9 @@ const BroadcastPage = () => {
       setMaintenance(data);
       setMaintenanceFeedback({
         ok: true,
-        msg: `Đã lên lịch bảo trì thành công vào lúc ${formatDateTime(scheduleDatetime)}${scheduleEndDatetime ? ` đến ${formatDateTime(scheduleEndDatetime)}` : ''}`,
+        msg: t('broadcast.feedback.scheduleSuccess', {
+          time: `${formatDateTime(scheduleDatetime)}${scheduleEndDatetime ? ` - ${formatDateTime(scheduleEndDatetime)}` : ''}`,
+        }),
       });
       setScheduleDatetime('');
       setScheduleEndDatetime('');
@@ -187,7 +191,7 @@ const BroadcastPage = () => {
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
-        msg: err.response?.data?.message || 'Lên lịch bảo trì thất bại. Kiểm tra lại thời gian.',
+        msg: err.response?.data?.message || t('broadcast.feedback.scheduleFailed'),
       });
     } finally {
       setActionLoading(false);
@@ -196,7 +200,7 @@ const BroadcastPage = () => {
 
   // Xử lý Hủy lịch bảo trì đã hẹn
   const handleCancelSchedule = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy lịch hẹn bảo trì này?')) return;
+    if (!window.confirm(t('broadcast.schedule.cancelConfirm'))) return;
     setActionLoading(true);
     setMaintenanceFeedback(null);
     try {
@@ -205,12 +209,12 @@ const BroadcastPage = () => {
       setMaintenance(data);
       setMaintenanceFeedback({
         ok: true,
-        msg: 'Đã hủy bỏ lịch hẹn bảo trì hệ thống.',
+        msg: t('broadcast.feedback.cancelSuccess'),
       });
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
-        msg: err.response?.data?.message || 'Hủy lịch thất bại. Vui lòng thử lại.',
+        msg: err.response?.data?.message || t('broadcast.feedback.cancelFailed'),
       });
     } finally {
       setActionLoading(false);
@@ -227,7 +231,7 @@ const BroadcastPage = () => {
       setScheduleNotify(false);
       setMaintenanceFeedback({
         ok: true,
-        msg: 'Đã làm mới trạng thái và xóa trắng biểu mẫu lên lịch thành công.',
+        msg: t('broadcast.feedback.formResetSuccess'),
       });
       await fetchMaintenance();
     } catch (err) {
@@ -246,15 +250,15 @@ const BroadcastPage = () => {
     setBroadcastResult(null);
     try {
       await notificationApi.broadcastToAll({ title: title.trim(), message: message.trim(), level });
-      setBroadcastResult({ ok: true, msg: 'Đã phát thông báo tới toàn bộ người dùng đang online!' });
-      if (alert) alert.success('Đã phát thông báo tới toàn bộ người dùng đang online!', 'Phát Sóng Thành Công');
+      setBroadcastResult({ ok: true, msg: t('broadcast.broadcastSuccessToast') });
+      if (alert) alert.success(t('broadcast.broadcastSuccessToast'), t('broadcast.feedback.broadcastSuccessTitle'));
       setTitle('');
       setMessage('');
       setLevel('info');
     } catch (e) {
-      const errMsg = e.response?.data?.message || 'Gửi thất bại. Thử lại sau.';
+      const errMsg = e.response?.data?.message || t('broadcast.feedback.broadcastErrorTitle');
       setBroadcastResult({ ok: false, msg: errMsg });
-      if (alert) alert.error(errMsg, 'Gửi Thất Bại');
+      if (alert) alert.error(errMsg, t('broadcast.feedback.broadcastErrorTitle'));
     } finally {
       setSending(false);
     }
@@ -272,10 +276,10 @@ const BroadcastPage = () => {
         <div>
           <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[30px]">construction</span>
-            Bảo Trì & Phát Thông Báo
+            {t('broadcast.title')}
           </h1>
           <p className="font-body-md text-on-surface-variant mt-1">
-            Trung tâm điều hành bảo trì kỹ thuật, kiểm soát sự cố khẩn cấp và phát sóng thông báo toàn hệ thống
+            {t('broadcast.subtitle')}
           </p>
         </div>
 
@@ -290,7 +294,7 @@ const BroadcastPage = () => {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">build_circle</span>
-            <span>Điều Hành Bảo Trì</span>
+            <span>{t('broadcast.tabMaintenance')}</span>
             {maintenance.active ? (
               <span className={`w-2.5 h-2.5 rounded-full ${maintenance.isEmergency ? 'bg-red-500 animate-ping' : 'bg-orange-500'}`} />
             ) : maintenance.scheduled ? (
@@ -307,7 +311,7 @@ const BroadcastPage = () => {
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">campaign</span>
-            <span>Phát Thông Báo</span>
+            <span>{t('broadcast.tabBroadcast')}</span>
           </button>
         </div>
       </div>
@@ -347,9 +351,9 @@ const BroadcastPage = () => {
                     <h2 className="text-base font-bold m-0">
                       {maintenance.active
                         ? maintenance.isEmergency
-                          ? '🚨 HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP'
-                          : '⚙️ HỆ THỐNG ĐANG BẢO TRÌ KỸ THUẬT (IM LẶNG)'
-                        : '✅ HỆ THỐNG ĐANG HOẠT ĐỘNG BÌNH THƯỜNG'}
+                          ? t('broadcast.banner.emergencyTitle')
+                          : t('broadcast.banner.silentTitle')
+                        : t('broadcast.banner.normalTitle')}
                     </h2>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase ${
@@ -360,22 +364,22 @@ const BroadcastPage = () => {
                           : 'bg-emerald-200 text-emerald-800'
                       }`}
                     >
-                      {maintenance.active ? (maintenance.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật') : 'Sẵn sàng'}
+                      {maintenance.active ? (maintenance.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')) : t('broadcast.banner.normalBadge')}
                     </span>
                   </div>
                   <p className="text-xs opacity-90 mt-1">
                     {maintenance.active
                       ? maintenance.isEmergency
-                        ? 'Toàn bộ kết nối Client-app bị chặn (HTTP 503). Đã tự động phát cảnh báo đỏ tới người dùng.'
-                        : 'Toàn bộ kết nối Client-app bị chặn (HTTP 503). Hoàn toàn KHÔNG phát cảnh báo, bảo trì thầm lặng.'
-                      : 'Các kết nối Client-app và Admin-web hoạt động bình thường không bị giới hạn.'}
+                        ? t('broadcast.banner.emergencyDesc')
+                        : t('broadcast.banner.silentDesc')
+                      : t('broadcast.banner.normalDesc')}
                   </p>
                   {maintenance.active && (
                     <div className="mt-2 text-xs flex flex-wrap gap-x-4 gap-y-1 font-medium">
-                      <span>• Lý do: <b>{maintenance.reason || 'Không có mô tả chi tiết'}</b></span>
-                      {maintenance.activatedBy && <span>• Kích hoạt bởi: <b>{maintenance.activatedBy}</b></span>}
+                      <span>• {t('broadcast.banner.reasonLabel')} <b>{maintenance.reason || t('broadcast.banner.noReason')}</b></span>
+                      {maintenance.activatedBy && <span>• {t('broadcast.banner.activatedByLabel')} <b>{maintenance.activatedBy}</b></span>}
                       {maintenance.activatedAt && (
-                        <span>• Lúc: <b>{formatDateTime(maintenance.activatedAt)}</b></span>
+                        <span>• {t('broadcast.banner.activatedAtLabel')} <b>{formatDateTime(maintenance.activatedAt)}</b></span>
                       )}
                     </div>
                   )}
@@ -390,7 +394,7 @@ const BroadcastPage = () => {
                   className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-on-surface text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start md:self-center flex-shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px] text-emerald-600">power_settings_new</span>
-                  <span>Tắt Bảo Trì & Mở Lại Hệ Thống</span>
+                  <span>{t('broadcast.turnOffBtn')}</span>
                 </button>
               )}
             </div>
@@ -428,22 +432,22 @@ const BroadcastPage = () => {
                 <div className="flex items-center justify-between border-b border-outline-variant pb-3">
                   <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
                     <span className="material-symbols-outlined text-primary text-[20px]">flash_on</span>
-                    Kích Hoạt Bảo Trì Tức Thì
+                    {t('broadcast.instantCardTitle')}
                   </h3>
-                  <span className="text-[11px] text-on-surface-variant font-medium">Tác động tức thời</span>
+                  <span className="text-[11px] text-on-surface-variant font-medium">{t('broadcast.instant.impactTag')}</span>
                 </div>
 
                 {!maintenance.active ? (
                   <>
                     <div>
                       <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                        Lý do bảo trì hệ thống
+                        {t('broadcast.reasonLabel')}
                       </label>
                       <input
                         type="text"
                         value={instantReason}
                         onChange={(e) => setInstantReason(e.target.value)}
-                        placeholder="Ví dụ: Nâng cấp máy chủ cơ sở dữ liệu định kỳ..."
+                        placeholder={t('broadcast.reasonPlaceholder')}
                         className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
@@ -459,20 +463,20 @@ const BroadcastPage = () => {
                         />
                         <div className="text-xs">
                           <span className="font-bold text-red-900 block">
-                            Bảo trì khẩn cấp (Phát thông báo khẩn cấp tới toàn bộ hệ thống)
+                            {t('broadcast.emergencyCheckbox')}
                           </span>
                           <span className="text-red-700/80 text-[11px] block mt-0.5">
-                            Khi bật, hệ thống sẽ phát cảnh báo đỏ CRITICAL qua Socket.io đến tất cả người dùng và tự động xóa mọi lịch hẹn bảo trì trước đó.
+                            {t('broadcast.emergencyHint')}
                           </span>
                         </div>
                       </label>
                     </div>
 
                     <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant text-[11px] text-on-surface-variant space-y-1">
-                      <p className="font-semibold text-on-surface">• Khi KHÔNG chọn Khẩn cấp:</p>
-                      <p className="pl-2.5">Chỉ chặn kết nối người dùng để bảo trì thầm lặng, không phát tin cảnh báo.</p>
-                      <p className="font-semibold text-on-surface">• Khi CÓ chọn Khẩn cấp:</p>
-                      <p className="pl-2.5">Phát sóng thông điệp khẩn cấp tới toàn bộ app người dùng và xóa lịch hẹn trước.</p>
+                      <p className="font-semibold text-on-surface">{t('broadcast.instant.hintNormalTitle')}</p>
+                      <p className="pl-2.5">{t('broadcast.instant.hintNormalDesc')}</p>
+                      <p className="font-semibold text-on-surface">{t('broadcast.instant.hintEmergencyTitle')}</p>
+                      <p className="pl-2.5">{t('broadcast.instant.hintEmergencyDesc')}</p>
                     </div>
                   </>
                 ) : (
@@ -480,23 +484,23 @@ const BroadcastPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 font-bold text-xs text-orange-950 uppercase">
                         <span className="material-symbols-outlined text-[20px] text-orange-600 animate-spin">build</span>
-                        <span>Phiên bảo trì đang diễn ra</span>
+                        <span>{t('broadcast.instant.sessionOngoing')}</span>
                       </div>
                       <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                         maintenance.isEmergency ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'
                       }`}>
-                        {maintenance.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'}
+                        {maintenance.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
                       </span>
                     </div>
 
                     <div className="space-y-1 text-xs text-orange-950">
-                      <p>• Lý do: <b className="text-orange-900">{maintenance.reason || 'Bảo trì hệ thống'}</b></p>
-                      {maintenance.activatedBy && <p>• Người kích hoạt: <b>{maintenance.activatedBy}</b></p>}
-                      {maintenance.activatedAt && <p>• Bắt đầu lúc: <b>{formatDateTime(maintenance.activatedAt)}</b></p>}
+                      <p>• {t('broadcast.banner.reasonLabel')} <b className="text-orange-900">{maintenance.reason || t('broadcast.banner.noReason')}</b></p>
+                      {maintenance.activatedBy && <p>• {t('broadcast.banner.activatedByLabel')} <b>{maintenance.activatedBy}</b></p>}
+                      {maintenance.activatedAt && <p>• {t('broadcast.banner.activatedAtLabel')} <b>{formatDateTime(maintenance.activatedAt)}</b></p>}
                     </div>
 
                     <p className="text-[11px] text-orange-800/90 pt-1.5 border-t border-orange-200/60 leading-relaxed">
-                      Toàn bộ kết nối người dùng Client-app đang bị chặn (HTTP 503) để phục vụ bảo trì an toàn.
+                      {t('broadcast.instant.sessionBlockedHint')}
                     </p>
                   </div>
                 )}
@@ -518,10 +522,10 @@ const BroadcastPage = () => {
                     </span>
                     <span>
                       {actionLoading
-                        ? 'Đang xử lý...'
+                        ? t('common.processing')
                         : instantEmergency
-                        ? '🚨 Bật Bảo Trì Khẩn Cấp Ngay'
-                        : '⚙️ Bật Bảo Trì Kỹ Thuật (Im Lặng)'}
+                        ? t('broadcast.turnOnEmergencyBtn')
+                        : t('broadcast.turnOnNormalBtn')}
                     </span>
                   </button>
                 ) : (
@@ -531,7 +535,7 @@ const BroadcastPage = () => {
                     className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
-                    <span>{actionLoading ? 'Đang xử lý...' : 'Kết Thúc Bảo Trì — Khôi Phục Hệ Thống'}</span>
+                    <span>{actionLoading ? t('common.processing') : t('broadcast.scheduleEndMaintGuide')}</span>
                   </button>
                 )}
               </div>
@@ -543,9 +547,9 @@ const BroadcastPage = () => {
                 <div className="flex items-center justify-between border-b border-outline-variant pb-3">
                   <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
                     <span className="material-symbols-outlined text-primary text-[20px]">calendar_clock</span>
-                    Lên Lịch Thời Điểm Bảo Trì
+                    {t('broadcast.scheduleCardTitle')}
                   </h3>
-                  <span className="text-[11px] text-on-surface-variant font-medium">Hẹn giờ tự động</span>
+                  <span className="text-[11px] text-on-surface-variant font-medium">{t('broadcast.schedule.autoTimerTag')}</span>
                 </div>
 
                 {/* Nếu đã có lịch bảo trì hẹn trước */}
@@ -554,33 +558,33 @@ const BroadcastPage = () => {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 text-blue-900 font-bold text-xs uppercase tracking-wider">
                         <span className="material-symbols-outlined text-[18px] text-blue-600">event_available</span>
-                        Lịch bảo trì sắp diễn ra
+                        {t('broadcast.schedule.upcomingTitle')}
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         maintenance.scheduled.isEmergency ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
                       }`}>
-                        {maintenance.scheduled.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'}
+                        {maintenance.scheduled.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
                       </span>
                     </div>
 
                     <div className="space-y-1 text-xs text-blue-950">
                       <p>
-                        • Bắt đầu: <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledAt)}</b>
+                        • {t('broadcast.schedule.startPrefix')} <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledAt)}</b>
                       </p>
                       {maintenance.scheduled.scheduledEndAt && (
                         <p>
-                          • Kết thúc (dự kiến): <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledEndAt)}</b>
+                          • {t('broadcast.schedule.endPrefix')} <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledEndAt)}</b>
                         </p>
                       )}
-                      <p>• Lý do dự kiến: <b>{maintenance.scheduled.reason}</b></p>
+                      <p>• {t('broadcast.schedule.reasonPrefix')} <b>{maintenance.scheduled.reason}</b></p>
                       <p className="text-[11px] text-blue-800/80">
-                        • Người lên lịch: <b>{maintenance.scheduled.createdBy}</b> ({formatDateTime(maintenance.scheduled.createdAt)})
+                        • {t('broadcast.schedule.creatorPrefix')} <b>{maintenance.scheduled.createdBy}</b> ({formatDateTime(maintenance.scheduled.createdAt)})
                       </p>
                     </div>
 
                     <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between gap-2">
                       <span className="text-[11px] text-blue-800 italic">
-                        Đúng giờ, hệ thống sẽ tự động kích hoạt và kết thúc bảo trì.
+                        {t('broadcast.schedule.autoNotice')}
                       </span>
                       <button
                         onClick={handleCancelSchedule}
@@ -588,7 +592,7 @@ const BroadcastPage = () => {
                         className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                       >
                         <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
-                        <span>Hủy lịch</span>
+                        <span>{t('broadcast.schedule.cancelBtn')}</span>
                       </button>
                     </div>
                   </div>
@@ -596,14 +600,13 @@ const BroadcastPage = () => {
                   <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/80 space-y-3">
                     <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
                       <span className="material-symbols-outlined text-[20px] text-amber-600">block</span>
-                      Chế độ bảo trì đang kích hoạt
+                      {t('broadcast.scheduleActiveNotice')}
                     </div>
                     <p className="text-xs text-amber-950 leading-relaxed">
-                      Hệ thống hiện đang trong phiên bảo trì trực tiếp ({maintenance.isEmergency ? 'Khẩn cấp' : 'Kỹ thuật'}). 
-                      Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian hoặc chồng chéo lịch trình.
+                      {t('broadcast.scheduleActiveDesc')}
                     </p>
                     <p className="text-[11px] text-amber-800 italic pt-1 border-t border-amber-200">
-                      👉 Vui lòng nhấn nút <b>"Kết Thúc Bảo Trì"</b> ở cột bên trái trước khi cài đặt lịch trình bảo trì mới.
+                      👉 Vui lòng nhấn nút <b>"{t('broadcast.scheduleEndMaintBtnName')}"</b> ở cột bên trái trước khi cài đặt lịch trình bảo trì mới.
                     </p>
                   </div>
                 ) : (
@@ -611,7 +614,7 @@ const BroadcastPage = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="schedule-start-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                          Thời điểm bắt đầu <span className="text-red-500">*</span>
+                          {t('broadcast.scheduleStartLabel')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           id="schedule-start-at"
@@ -626,7 +629,7 @@ const BroadcastPage = () => {
 
                       <div>
                         <label htmlFor="schedule-end-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                          Thời điểm kết thúc (Dự kiến)
+                          {t('broadcast.scheduleEndLabel')}
                         </label>
                         <input
                           id="schedule-end-at"
@@ -638,18 +641,18 @@ const BroadcastPage = () => {
                         />
                       </div>
                     </div>
-                    <p className="text-[11px] text-on-surface-variant -mt-1">Tính theo múi giờ Việt Nam (Asia/Ho_Chi_Minh GMT+7)</p>
+                    <p className="text-[11px] text-on-surface-variant -mt-1">{t('broadcast.schedule.timezoneNote')}</p>
 
                     <div>
                       <label htmlFor="schedule-reason" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                        Nội dung / Lý do bảo trì
+                        {t('broadcast.scheduleReasonLabel')}
                       </label>
                       <input
                         id="schedule-reason"
                         type="text"
                         value={scheduleReason}
                         onChange={(e) => setScheduleReason(e.target.value)}
-                        placeholder="Ví dụ: Nâng cấp phiên bản định kỳ 02:00 sáng..."
+                        placeholder={t('broadcast.scheduleReasonPlaceholder')}
                         className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
@@ -662,9 +665,9 @@ const BroadcastPage = () => {
                         className="w-4 h-4 mt-0.5 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
                       />
                       <div>
-                        <span className="font-medium">Tự động phát thông báo cho Client & Admin khi tới giờ hẹn</span>
+                        <span className="font-medium">{t('broadcast.schedule.autoNotifyTitle')}</span>
                         <p className="text-[11px] text-on-surface-variant mt-0.5">
-                          Khi tới giờ hẹn, hệ thống sẽ tự động phát sóng thông báo realtime qua Socket.IO tới toàn bộ người dùng và quản trị viên thay vì bảo trì im lặng.
+                          {t('broadcast.schedule.autoNotifyDesc')}
                         </p>
                       </div>
                     </label>
@@ -675,7 +678,7 @@ const BroadcastPage = () => {
                       className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                     >
                       <span className="material-symbols-outlined text-[18px]">alarm_on</span>
-                      <span>{actionLoading ? 'Đang lưu lịch...' : 'Lên Lịch Bảo Trì Hệ Thống'}</span>
+                      <span>{actionLoading ? t('common.saving') : t('broadcast.scheduleSubmitBtn')}</span>
                     </button>
                   </form>
                 )}
@@ -684,10 +687,10 @@ const BroadcastPage = () => {
                 <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-900 space-y-1">
                   <p className="font-bold flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px] text-amber-600">rule</span>
-                    Quy tắc bảo trì khẩn cấp ghi đè (PO Policy):
+                    {t('broadcast.schedule.policyTitle')}
                   </p>
                   <p>
-                    Nếu hệ thống xảy ra sự cố và Admin kích hoạt <b>"Bảo trì khẩn cấp"</b>, mọi lịch hẹn bảo trì trước đó sẽ <b>tự động bị hủy bỏ</b> để ưu tiên xử lý sự cố. Admin sẽ cần cài đặt lại lịch mới sau đó.
+                    {t('broadcast.schedule.policyDesc')}
                   </p>
                 </div>
               </div>
@@ -698,12 +701,12 @@ const BroadcastPage = () => {
                   onClick={handleResetScheduleFormAndRefresh}
                   disabled={isRefreshing}
                   className="text-primary hover:underline flex items-center gap-1.5 cursor-pointer font-medium text-xs disabled:opacity-50"
-                  title="Xóa trắng biểu mẫu đang nhập và làm mới trạng thái từ hệ thống"
+                  title={t('broadcast.schedule.resetTooltip')}
                 >
                   <span className={`material-symbols-outlined text-[16px] ${isRefreshing ? 'animate-spin' : ''}`}>
                     refresh
                   </span>
-                  <span>{isRefreshing ? 'Đang làm mới...' : 'Làm mới & Đặt lại biểu mẫu'}</span>
+                  <span>{isRefreshing ? t('broadcast.schedule.refreshing') : t('broadcast.resetFormBtn')}</span>
                 </button>
               </div>
             </div>
@@ -719,7 +722,7 @@ const BroadcastPage = () => {
           <form onSubmit={handleSendBroadcast} className="bg-white rounded-2xl border border-outline-variant shadow-sm p-6 space-y-5">
             <div>
               <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
-                Mức độ ưu tiên thông báo
+                {t('broadcast.broadcastLevelLabel')}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {BROADCAST_LEVELS.map((l) => (
@@ -738,12 +741,12 @@ const BroadcastPage = () => {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-on-surface-variant mt-1.5">{selectedBroadcastLevel?.label}</p>
+              <p className="text-xs text-on-surface-variant mt-1.5">{t('broadcast.levels.' + level)}</p>
             </div>
 
             <div>
               <label htmlFor="broadcast-title" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                Tiêu đề thông báo <span className="text-red-500">*</span>
+                {t('broadcast.broadcastTitleLabel')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="broadcast-title"
@@ -751,16 +754,18 @@ const BroadcastPage = () => {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={120}
-                placeholder="Ví dụ: Nhắc nhở nâng cấp tính năng mới hoặc tin tức nội bộ..."
+                placeholder={t('broadcast.broadcastTitlePlaceholder')}
                 className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 required
               />
-              <p className="text-[11px] text-on-surface-variant text-right mt-1">{title.length}/120 ký tự</p>
+              <p className="text-[11px] text-on-surface-variant text-right mt-1">
+                {t('broadcast.charCount', { current: title.length, max: 120 })}
+              </p>
             </div>
 
             <div>
               <label htmlFor="broadcast-message" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                Nội dung thông báo <span className="text-red-500">*</span>
+                {t('broadcast.broadcastMsgLabel')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="broadcast-message"
@@ -768,11 +773,13 @@ const BroadcastPage = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
                 maxLength={500}
-                placeholder="Mô tả chi tiết nội dung cần thông báo tới người dùng qua Socket.io..."
+                placeholder={t('broadcast.broadcastMsgPlaceholder')}
                 className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                 required
               />
-              <p className="text-[11px] text-on-surface-variant text-right mt-1">{message.length}/500 ký tự</p>
+              <p className="text-[11px] text-on-surface-variant text-right mt-1">
+                {t('broadcast.charCount', { current: message.length, max: 500 })}
+              </p>
             </div>
 
             {/* Live Preview Box */}
@@ -788,10 +795,10 @@ const BroadcastPage = () => {
               >
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-1.5 opacity-75">
                   <span className="material-symbols-outlined text-[15px]">{selectedBroadcastLevel?.icon}</span>
-                  Xem trước thông báo hiển thị trên máy người dùng
+                  {t('broadcast.previewTitle')}
                 </div>
-                <p className="font-bold text-sm mb-1">{title || 'Tiêu đề thông báo...'}</p>
-                <p className="text-xs whitespace-pre-wrap opacity-90">{message || 'Nội dung thông báo...'}</p>
+                <p className="font-bold text-sm mb-1">{title || t('broadcast.previewDefaultTitle')}</p>
+                <p className="text-xs whitespace-pre-wrap opacity-90">{message || t('broadcast.previewDefaultMsg')}</p>
               </div>
             )}
 
@@ -819,12 +826,12 @@ const BroadcastPage = () => {
               {sending ? (
                 <>
                   <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                  Đang phát sóng thông báo...
+                  {t('broadcast.sendingBroadcast')}
                 </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[16px]">send</span>
-                  Phát Sóng Thông Báo Ngay
+                  {t('broadcast.broadcastSubmitBtn')}
                 </>
               )}
             </button>
@@ -833,11 +840,11 @@ const BroadcastPage = () => {
           <div className="bg-surface-container-low border border-outline-variant/60 rounded-xl p-4 text-xs text-on-surface-variant space-y-1.5">
             <p className="font-semibold text-on-surface flex items-center gap-1">
               <span className="material-symbols-outlined text-[15px] text-amber-600">info</span>
-              Quy tắc vận hành phát thanh (System Broadcast)
+              {t('broadcast.rulesTitle')}
             </p>
-            <p>• Thông báo được gửi realtime tới các socket đang kết nối qua room chung.</p>
-            <p>• Người dùng offline sẽ nhìn thấy thông báo khi tải lại trang hoặc đăng nhập sau.</p>
-            <p>• Thông báo phát sóng sẽ được ghi vào hộp thư cảnh báo của quản trị viên.</p>
+            <p>{t('broadcast.rule1')}</p>
+            <p>{t('broadcast.rule2')}</p>
+            <p>{t('broadcast.rule3')}</p>
           </div>
         </div>
       )}

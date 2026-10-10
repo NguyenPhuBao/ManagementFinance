@@ -70,3 +70,76 @@ body {
 .keyword-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #64748b !important;
 }
+
+/* ==========================================================================
+   Table Density Rules (Comfortable vs Compact)
+   ========================================================================== */
+body[data-density="compact"] table th,
+body[data-density="compact"] table td {
+  padding-top: 0.45rem !important;
+  padding-bottom: 0.45rem !important;
+  font-size: 0.75rem !important;
+}
+
+body[data-density="compact"] table input[type="checkbox"] {
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+}
+
+body[data-density="compact"] .stat-card {
+  padding: 1rem !important;
+}
+
+/* ==========================================================================
+   Dark Theme Rules & Overrides (v2.5)
+   ========================================================================== */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0b1320 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark header {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.dark aside {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-surface-bright,
+.dark .bg-surface {
+  background-color: #0b1320 !important;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-surface-container-low,
+.dark .bg-surface-container-lowest {
+  background-color: #0f172a !important;
+}
+
+.dark .text-on-surface {
+  color: #f8fafc !important;
+}
+
+.dark .text-on-surface-variant,
+.dark .text-secondary {
+  color: #94a3b8 !important;
+}
+
+.dark .border-outline-variant {
+  border-color: #334155 !important;
+}
+
+.dark table tr:hover {
+  background-color: rgba(51, 65, 85, 0.4) !important;
+}

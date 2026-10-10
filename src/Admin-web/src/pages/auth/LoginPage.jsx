@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '../../store/auth.context';
+import { useLanguageSafe } from '../../store/language.context';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuthContext();
+  const { t, currentLang, changeLanguage } = useLanguageSafe();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +22,7 @@ const LoginPage = () => {
       await login({ username: email, password: password });
       navigate('/dashboard');
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Đăng nhập thất bại';
+      const msg = err.response?.data?.message || err.message || t('auth.login.failedToast');
       setError(msg);
     } finally {
       setLoading(false);
@@ -43,19 +45,19 @@ const LoginPage = () => {
                     <span className="font-display-sm text-display-sm font-bold tracking-tight">FinanceAdmin</span>
                 </div>
                 
-                <h1 className="font-display-lg text-display-lg font-bold mb-6 leading-tight">Quản lý tài chính thông minh & hiệu quả.</h1>
-                <p className="font-body-lg text-body-lg text-primary-container/90 mb-12">Nền tảng quản trị tập trung giúp bạn theo dõi, phân tích và kiểm soát mọi hoạt động tài chính một cách dễ dàng và bảo mật.</p>
+                <h1 className="font-display-lg text-display-lg font-bold mb-6 leading-tight">{t('auth.login.brandTitle')}</h1>
+                <p className="font-body-lg text-body-lg text-primary-container/90 mb-12">{t('auth.login.brandDesc')}</p>
                 
                 <div className="flex gap-4">
                     <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
                         <span className="material-symbols-outlined text-primary-container mb-2">monitoring</span>
-                        <h3 className="font-title-md font-bold mb-1">Báo cáo realtime</h3>
-                        <p className="font-body-sm text-primary-container/80">Dữ liệu được cập nhật liên tục 24/7</p>
+                        <h3 className="font-title-md font-bold mb-1">{t('auth.login.realtimeTitle')}</h3>
+                        <p className="font-body-sm text-primary-container/80">{t('auth.login.realtimeDesc')}</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
                         <span className="material-symbols-outlined text-primary-container mb-2">shield_locked</span>
-                        <h3 className="font-title-md font-bold mb-1">Bảo mật đa lớp</h3>
-                        <p className="font-body-sm text-primary-container/80">An toàn tuyệt đối cho mọi giao dịch</p>
+                        <h3 className="font-title-md font-bold mb-1">{t('auth.login.securityTitle')}</h3>
+                        <p className="font-body-sm text-primary-container/80">{t('auth.login.securityDesc')}</p>
                     </div>
                 </div>
             </div>
@@ -67,6 +69,32 @@ const LoginPage = () => {
 
         {/* Right Side - Login Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
+            {/* Language Switcher in top right corner */}
+            <div className="absolute top-6 right-6 flex items-center gap-1 bg-white border border-outline-variant rounded-xl p-1 shadow-2xs z-20">
+              <button
+                type="button"
+                onClick={() => changeLanguage('vi')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  currentLang === 'vi'
+                    ? 'bg-primary text-white shadow-2xs'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                VI
+              </button>
+              <button
+                type="button"
+                onClick={() => changeLanguage('en')}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  currentLang === 'en'
+                    ? 'bg-primary text-white shadow-2xs'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
             <div className="absolute top-6 left-6 lg:hidden flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
                     <span className="material-symbols-outlined text-white text-[20px]">account_balance</span>
@@ -76,8 +104,8 @@ const LoginPage = () => {
 
             <div className="w-full max-w-md">
                 <div className="mb-10 text-center lg:text-left mt-8 lg:mt-0">
-                    <h2 className="font-display-sm text-display-sm lg:text-display-md font-bold text-on-surface mb-3 tracking-tight">Đăng nhập hệ thống</h2>
-                    <p className="font-body-lg text-body-lg text-on-surface-variant">Vui lòng nhập thông tin tài khoản của bạn để tiếp tục.</p>
+                    <h2 className="font-display-sm text-display-sm lg:text-display-md font-bold text-on-surface mb-3 tracking-tight">{t('auth.login.title')}</h2>
+                    <p className="font-body-lg text-body-lg text-on-surface-variant">{t('auth.login.subtitle')}</p>
                 </div>
 
                 {error && (
@@ -89,7 +117,7 @@ const LoginPage = () => {
 
                 <form className="space-y-6" onSubmit={handleSubmit}>
                     <div>
-                        <label htmlFor="email" className="block font-label-md text-label-md text-on-surface mb-2 font-semibold">Email hoặc Tên đăng nhập</label>
+                        <label htmlFor="email" className="block font-label-md text-label-md text-on-surface mb-2 font-semibold">{t('auth.login.emailLabel')}</label>
                         <div className="relative group">
                             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">mail</span>
                             <input 
@@ -108,9 +136,9 @@ const LoginPage = () => {
 
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label htmlFor="password" className="block font-label-md text-label-md text-on-surface font-semibold">Mật khẩu</label>
+                            <label htmlFor="password" className="block font-label-md text-label-md text-on-surface font-semibold">{t('auth.login.passwordLabel')}</label>
                             <Link to="/forgot-password" className="font-label-md text-label-md text-primary hover:text-primary-container transition-colors font-semibold">
-                                Quên mật khẩu?
+                                {t('auth.login.forgotPasswordLink')}
                             </Link>
                         </div>
                         <div className="relative group">
@@ -146,11 +174,11 @@ const LoginPage = () => {
                         {loading ? (
                           <>
                             <span className="material-symbols-outlined animate-spin" style={{ fontSize: 20 }}>progress_activity</span>
-                            Đang xử lý...
+                            {t('auth.login.loadingBtn')}
                           </>
                         ) : (
                           <>
-                            Đăng nhập
+                            {t('auth.login.submitBtn')}
                             <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                           </>
                         )}
@@ -160,7 +188,7 @@ const LoginPage = () => {
                 <div className="mt-12 text-center">
                     <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center justify-center gap-1.5">
                         <span className="material-symbols-outlined text-[16px]">lock</span>
-                        Hệ thống được bảo mật bằng mã hóa 256-bit
+                        {t('auth.login.securityFooter')}
                     </p>
                 </div>
             </div>

@@ -1,6 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
+import { useLanguageSafe } from '../../store/language.context';
 
-const Loading = ({ text = 'Đang tải dữ liệu...', fullScreen = false, overlay = false }) => {
+const Loading = ({ text, fullScreen = false, overlay = false }) => {
+  const { t } = useLanguageSafe();
+  const displayText = text === null ? null : (text || t('common.loadingData', 'Đang tải dữ liệu...'));
+
   const spinner = (
     <div style={{
       display: 'flex',
@@ -26,7 +30,7 @@ const Loading = ({ text = 'Đang tải dữ liệu...', fullScreen = false, over
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
       }} />
-      {text && (
+      {displayText && (
         <p style={{
           fontSize: 12,
           fontWeight: 600,
@@ -34,7 +38,7 @@ const Loading = ({ text = 'Đang tải dữ liệu...', fullScreen = false, over
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
         }}>
-          {text}
+          {displayText}
         </p>
       )}
     </div>

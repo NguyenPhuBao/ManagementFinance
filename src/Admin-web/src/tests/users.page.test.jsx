@@ -175,4 +175,112 @@ describe('Admin-web Users Suite — UserListPage', () => {
       expect(screen.getByText('Chờ xóa (30 ngày)')).toBeInTheDocument();
     });
   });
+
+  it('3.6. [Tầng 1 - UI] Modal lọc dữ liệu: Chuyển đổi trạng thái bằng checkbox, chọn Tất cả thì toàn bộ trạng thái con được check theo, bỏ chọn 1 con thì Tất cả uncheck', async () => {
+    render(<UserListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
+    });
+
+    // Mở modal lọc
+    const filterBtn = screen.getByRole('button', { name: /bộ lọc/i });
+    fireEvent.click(filterBtn);
+
+    // Kiểm tra modal xuất hiện
+    expect(screen.getByText('Lọc dữ liệu')).toBeInTheDocument();
+
+    // Checkbox Tất cả và các checkbox trạng thái con
+    const allCheckbox = screen.getByTestId('filter-status-all');
+    const activeCheckbox = screen.getByTestId('filter-status-active');
+    const inactiveCheckbox = screen.getByTestId('filter-status-inactive');
+    const pendingDeleteCheckbox = screen.getByTestId('filter-status-pendingdelete');
+    const deletedCheckbox = screen.getByTestId('filter-status-deleted');
+
+    // Mặc định ban đầu: Tất cả đều được check
+    expect(allCheckbox).toBeChecked();
+    expect(activeCheckbox).toBeChecked();
+    expect(inactiveCheckbox).toBeChecked();
+    expect(pendingDeleteCheckbox).toBeChecked();
+    expect(deletedCheckbox).toBeChecked();
+
+    // Thao tác 1: Bỏ chọn checkbox con 'deleted'
+    fireEvent.click(deletedCheckbox);
+    expect(deletedCheckbox).not.toBeChecked();
+    // Kỳ vọng: Checkbox 'Tất cả' tự động bị uncheck
+    expect(allCheckbox).not.toBeChecked();
+    expect(activeCheckbox).toBeChecked();
+    expect(inactiveCheckbox).toBeChecked();
+    expect(pendingDeleteCheckbox).toBeChecked();
+
+    // Thao tác 2: Chọn lại checkbox 'deleted' -> Đủ tất cả 4 con -> 'Tất cả' tự động được check theo
+    fireEvent.click(deletedCheckbox);
+    expect(deletedCheckbox).toBeChecked();
+    expect(allCheckbox).toBeChecked();
+
+    // Thao tác 3: Click bỏ chọn checkbox 'Tất cả' -> Toàn bộ các trạng thái con bị uncheck theo
+    fireEvent.click(allCheckbox);
+    expect(allCheckbox).not.toBeChecked();
+    expect(activeCheckbox).not.toBeChecked();
+    expect(inactiveCheckbox).not.toBeChecked();
+    expect(pendingDeleteCheckbox).not.toBeChecked();
+    expect(deletedCheckbox).not.toBeChecked();
+
+    // Thao tác 4: Click chọn lại checkbox 'Tất cả' -> Toàn bộ các trạng thái con được check theo
+    fireEvent.click(allCheckbox);
+    expect(allCheckbox).toBeChecked();
+    expect(activeCheckbox).toBeChecked();
+    expect(inactiveCheckbox).toBeChecked();
+    expect(pendingDeleteCheckbox).toBeChecked();
+    expect(deletedCheckbox).toBeChecked();
+  });
+
+  it('3.7. [Tầng 2 - System Impact] Bộ lọc nhiều trạng thái: Lọc chính xác danh sách người dùng theo các trạng thái được check', async () => {
+    render(<UserListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
+      expect(screen.getByText('Trần Thị B')).toBeInTheDocument();
+      expect(screen.getByText('Lê Văn C')).toBeInTheDocument();
+    });
+
+    // Mở modal lọc
+    const filterBtn = screen.getByRole('button', { name: /bộ lọc/i });
+    fireEvent.click(filterBtn);
+
+    const allCheckbox = screen.getByTestId('filter-status-all');
+    const activeCheckbox = screen.getByTestId('filter-status-active');
+    const pendingDeleteCheckbox = screen.getByTestId('filter-status-pendingdelete');
+
+    // Bỏ chọn Tất cả -> Bỏ chọn hết
+    fireEvent.click(allCheckbox);
+
+    // Chỉ chọn Active và PendingDelete (chọn 2 trạng thái cùng lúc)
+    fireEvent.click(activeCheckbox);
+    fireEvent.click(pendingDeleteCheckbox);
+
+    // Nhấp nút Áp dụng
+    const applyBtn = screen.getByRole('button', { name: /^áp dụng$/i });
+    fireEvent.click(applyBtn);
+
+    // Modal đóng lại
+    expect(screen.queryByText('Lọc dữ liệu')).not.toBeInTheDocument();
+
+    // Kiểm tra tác động hệ thống:
+    // Hiển thị: Nguyễn Văn A (Active) và Lê Văn C (PendingDelete)
+    expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
+    expect(screen.getByText('Lê Văn C')).toBeInTheDocument();
+    // Ẩn hoàn toàn: Trần Thị B (Inactive)
+    expect(screen.queryByText('Trần Thị B')).not.toBeInTheDocument();
+
+    // Mở lại modal và nhấn nút "Đặt lại"
+    fireEvent.click(screen.getByRole('button', { name: /bộ lọc/i }));
+    const resetBtn = screen.getByRole('button', { name: /đặt lại/i });
+    fireEvent.click(resetBtn);
+
+    // Kiểm tra tất cả người dùng lại xuất hiện đầy đủ
+    expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
+    expect(screen.getByText('Trần Thị B')).toBeInTheDocument();
+    expect(screen.getByText('Lê Văn C')).toBeInTheDocument();
+  });
 });

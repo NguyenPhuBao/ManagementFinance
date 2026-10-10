@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAlert } from '../../store/alert.context';
+import { useLanguageSafe } from '../../store/language.context';
 
 const ALERT_CONFIG = {
   success: {
@@ -37,7 +38,9 @@ const ALERT_CONFIG = {
 };
 
 const AlertItem = ({ alert, onRemove }) => {
+  const { t } = useLanguageSafe();
   const cfg = ALERT_CONFIG[alert.type] || ALERT_CONFIG.info;
+  const defaultTitle = t(`common.alertToast.${alert.type}`, cfg.defaultTitle);
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
@@ -69,14 +72,14 @@ const AlertItem = ({ alert, onRemove }) => {
         <div className="flex-1 min-w-0 pr-1">
           <div className="flex items-center justify-between gap-2">
             <h4 className={`text-xs font-bold ${cfg.titleColor} truncate m-0`}>
-              {alert.title || cfg.defaultTitle}
+              {alert.title || defaultTitle}
             </h4>
             <button
               type="button"
               data-testid="alert-close-btn"
               onClick={() => onRemove(alert.id)}
               className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 rounded cursor-pointer"
-              title="Đóng thông báo"
+              title={t('common.alertToast.close', 'Đóng thông báo')}
             >
               <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
@@ -102,13 +105,14 @@ const AlertItem = ({ alert, onRemove }) => {
 
 export const AlertContainer = () => {
   const { alerts, removeAlert } = useAlert();
+  const { t } = useLanguageSafe();
 
   if (!alerts || alerts.length === 0) return null;
 
   return (
     <div
       aria-live="polite"
-      aria-label="Thông báo hệ thống"
+      aria-label={t('common.alertToast.ariaLabel', 'Thông báo hệ thống')}
       className="fixed top-20 right-4 md:right-6 z-[9999] flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none"
     >
       {alerts.map((alert) => (

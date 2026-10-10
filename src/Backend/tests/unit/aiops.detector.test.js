@@ -366,5 +366,7 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
     // Nhưng vì Resource bị TẮT, không được kích hoạt EMERGENCY_MAINTENANCE vào Threat Score tổng thể
     assert.notStrictEqual(result.recommendedAction, 'EMERGENCY_MAINTENANCE');
     assert.ok(result.threatScore < 50, `Threat score must ignore disabled resource vector: ${result.threatScore}`);
+    assert.strictEqual(result.anomalies.length, 0, 'Must NOT produce any anomalies when resource vector is OFF');
+    assert.strictEqual(result.isAnomaly, false, 'isAnomaly must be false when resource vector is OFF and others normal');
   });
 });

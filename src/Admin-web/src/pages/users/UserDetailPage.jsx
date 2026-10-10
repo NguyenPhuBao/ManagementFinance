@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { USER_STATUS_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
+import { useLanguageSafe } from '../../store/language.context';
 
 const UserDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguageSafe();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,19 +18,19 @@ const UserDetailPage = () => {
         const res = await adminApi.getUserById(id);
         setUser(res.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Không tìm thấy người dùng');
+        setError(err.response?.data?.message || t('users.detail.notFound'));
       } finally {
         setLoading(false);
       }
     };
     fetchUser();
-  }, [id]);
+  }, [id, t]);
 
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: 48 }}>
         <span className="material-symbols-outlined animate-spin" style={{ fontSize: 48, color: 'var(--color-primary)' }}>progress_activity</span>
-        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>Đang tải...</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>{t('common.loadingData')}</h3>
       </div>
     );
   }
@@ -37,9 +39,9 @@ const UserDetailPage = () => {
     return (
       <div style={{ textAlign: 'center', padding: 48 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 48, color: 'var(--color-outline)' }}>person_off</span>
-        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>{error || 'Không tìm thấy người dùng'}</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>{error || t('users.detail.notFound')}</h3>
         <button onClick={() => navigate('/users')} style={{ marginTop: 16, padding: '8px 16px', backgroundColor: 'var(--color-primary)', color: '#ffffff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-          Quay lại danh sách
+          {t('users.detail.backToList')}
         </button>
       </div>
     );
@@ -66,12 +68,12 @@ const UserDetailPage = () => {
         }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
-        Quay lại danh sách
+        {t('users.detail.backToList')}
       </button>
 
       <div style={{ backgroundColor: '#ffffff', border: '1px solid var(--color-outline-variant)', borderRadius: 'var(--radius-xl)', padding: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-          <h1 style={{ fontSize: 'var(--fs-headline-md)', color: 'var(--color-on-surface)' }}>Chi tiết người dùng</h1>
+          <h1 style={{ fontSize: 'var(--fs-headline-md)', color: 'var(--color-on-surface)' }}>{t('users.detail.title')}</h1>
           <span style={{
             display: 'inline-flex',
             padding: '2px 12px',
@@ -81,22 +83,22 @@ const UserDetailPage = () => {
             backgroundColor: isActive ? '#dcfce7' : '#f1f5f9',
             color: isActive ? '#166534' : '#475569',
           }}>
-            {USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status}
+            {t(`commonStatus.${user.status}`) || USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status}
           </span>
         </div>
 
         {/* Personal Info */}
         <div style={{ marginBottom: 32 }}>
           <h3 style={{ fontSize: 'var(--fs-label-md)', color: 'var(--color-outline)', textTransform: 'uppercase', marginBottom: 16 }}>
-            Thông tin cá nhân
+            {t('users.detail.personalInfo')}
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <DetailItem label="ID User" value={user.id} />
-            <DetailItem label="Họ tên" value={user.fullname} />
-            <DetailItem label="Email" value={user.email} />
-            <DetailItem label="Số điện thoại" value={user.phone || '—'} />
-            <DetailItem label="Địa chỉ" value={user.address || '—'} />
-            <DetailItem label="Mã vùng" value={user.country_code || '—'} />
+            <DetailItem label={t('users.detail.idUser')} value={user.id} />
+            <DetailItem label={t('users.detail.fullname')} value={user.fullname} />
+            <DetailItem label={t('users.detail.email')} value={user.email} />
+            <DetailItem label={t('users.detail.phone')} value={user.phone || '—'} />
+            <DetailItem label={t('users.detail.address')} value={user.address || '—'} />
+            <DetailItem label={t('users.detail.countryCode')} value={user.country_code || '—'} />
           </div>
         </div>
 
@@ -105,13 +107,13 @@ const UserDetailPage = () => {
         {/* Account Info */}
         <div>
           <h3 style={{ fontSize: 'var(--fs-label-md)', color: 'var(--color-outline)', textTransform: 'uppercase', marginBottom: 16 }}>
-            Thông tin tài khoản
+            {t('users.detail.accountInfo')}
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <DetailItem label="ID Account" value={user.id} />
-            <DetailItem label="Username" value={user.username} />
-            <DetailItem label="Trạng thái" value={USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status} />
-            <DetailItem label="Vai trò" value={user.rolename} />
+            <DetailItem label={t('users.detail.idAccount')} value={user.id} />
+            <DetailItem label={t('users.detail.username')} value={user.username} />
+            <DetailItem label={t('users.filterModal.statusLabel')} value={t(`commonStatus.${user.status}`) || USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status} />
+            <DetailItem label={t('users.detail.role')} value={user.rolename} />
           </div>
         </div>
       </div>
