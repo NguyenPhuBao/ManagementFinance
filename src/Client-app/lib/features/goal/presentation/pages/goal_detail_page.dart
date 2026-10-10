@@ -1,3 +1,4 @@
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'dart:async';
 import '../../../../core/utils/currency_formatter.dart';
 
@@ -192,10 +193,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// (cùng lý do với `walletTransfer`, bẫy 4.1) nên không có gì ở tầng CSDL
   /// bảo đảm nó còn tồn tại.
   Future<(String?, String?)> _tenCacVi(GoalEntity goal) async {
-    final db = sl<AppDatabase>();
     Future<String?> ten(String? id) async {
       if (id == null || id.isEmpty) return null;
-      final w = await db.walletDao.getById(id);
+      final w = await sl<WalletRepository>().getRowById(id);
       return w?.name;
     }
 
@@ -210,11 +210,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final viId = goal.walletId;
     if (viId == null) return null;
 
-    final db = sl<AppDatabase>();
-    final vi = await db.walletDao.getById(viId);
+    final vi = await sl<WalletRepository>().getRowById(viId);
     if (vi == null) return null;
 
-    final tatCa = await db.goalDao.getAll(goal.idaccount);
+    final tatCa = await _goalRepository.getGoals(goal.idaccount);
     final tong = tatCa
         .where((g) => g.walletId == viId)
         .fold<double>(0.0, (t, g) => t + g.currentAmount);
@@ -236,7 +235,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await sl<AppDatabase>().walletDao.getActive(accountId);
+        : await sl<WalletRepository>().getActiveRows(accountId);
     if (!mounted) return;
 
     if (wallets.isEmpty) {
@@ -328,11 +327,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// chọn ví **nhận**.
   void _showWithdrawDialog() async {
     if (_goal == null) return;
-    final db = sl<AppDatabase>();
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
+        : await sl<WalletRepository>().getActiveRows(accountId);
     if (!mounted) return;
 
     final viTichLuy =
@@ -521,11 +519,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
   void _showDepositDialog() async {
     if (_goal == null) return;
-    final db = sl<AppDatabase>();
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
+        : await sl<WalletRepository>().getActiveRows(accountId);
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {

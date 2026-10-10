@@ -1,3 +1,4 @@
+import '../../../../core/notification/thong_bao_nguon.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
 import '../../../ai_edge/domain/goi_so_muc_tieu.dart';
@@ -166,9 +166,7 @@ class _GoalPageContent extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<AppDatabase>()
-                    .notificationDao
-                    .watchUnreadCount(currentAccountIdOrNull(context)!),
+                : sl<ThongBaoNguon>().watchUnreadCount(currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),
         ],

@@ -1,3 +1,5 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -85,10 +87,9 @@ class _BillPageState extends State<BillPage> {
   /// và quay lại trang này là nạp lại. Đổi lấy: không đăng ký nào phải huỷ,
   /// nên không có `dispose` nào để quên.
   Future<void> _napTenGoi(int accountId) async {
-    final db = sl<AppDatabase>();
-    final vi = await db.walletDao.getAll(accountId);
+    final vi = await sl<WalletRepository>().getAllRows(accountId);
     // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
-    final dm = await db.categoryDao.getBangTraTen(accountId);
+    final dm = await sl<CategoryManagementRepository>().loadBangTraTen(accountId: accountId);
     if (!mounted) return;
     setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
   }

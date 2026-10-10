@@ -1,3 +1,5 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -82,9 +84,9 @@ class _BillEditPageState extends State<BillEditPage> {
   Future<void> _loadPickers() async {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
-    final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getActive(accountId);
-    final categories = await db.categoryDao.getCategoryRows(accountId, 'chi');
+    final wallets = await sl<WalletRepository>().getActiveRows(accountId);
+    final categories = await sl<CategoryManagementRepository>()
+        .selectableChildren(accountId: accountId, classify: 'chi');
     if (!mounted) return;
     setState(() {
       _wallets = wallets;

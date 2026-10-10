@@ -1,3 +1,6 @@
+import '../../data/repositories/bill_repository.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,8 +62,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
   }
 
   Future<void> _nap() async {
-    final db = sl<AppDatabase>();
-    final bill = await db.billDao.getById(widget.id);
+    final bill = await sl<BillRepository>().getById(widget.id);
     if (!mounted) return;
     if (bill == null) {
       setState(() {
@@ -77,13 +79,13 @@ class _BillDetailPageState extends State<BillDetailPage> {
     var khoanChi = <String, Transaction>{};
     var lookup = TransactionLookup.empty;
     if (accountId != null) {
-      tatCa = await db.billDao.getAll(accountId);
-      khoanChi = await db.transactionDao.getBillPayments(accountId);
-      final vi = await db.walletDao.getAll(accountId);
+      tatCa = await sl<BillRepository>().getBills(accountId);
+      khoanChi = await sl<BillRepository>().paymentsOf(accountId);
+      final vi = await sl<WalletRepository>().getAllRows(accountId);
       // Bảng TRA TÊN, không phải danh sách để chọn: giữ hàng mặc định toàn cục
       // (idaccount = 0) và hàng đã xoá mềm — cùng lỗi G41, lộ ở hoá đơn ngày
       // 2026-09-19 (E8): `getAll` làm 2/3 thẻ hiện "Danh mục đã xoá".
-      final dm = await db.categoryDao.getBangTraTen(accountId);
+      final dm = await sl<CategoryManagementRepository>().loadBangTraTen(accountId: accountId);
       lookup = TransactionLookup(wallets: vi, categories: dm);
     }
     if (!mounted) return;

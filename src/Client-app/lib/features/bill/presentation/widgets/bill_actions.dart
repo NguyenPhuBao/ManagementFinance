@@ -1,3 +1,5 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/auth/current_account.dart';
@@ -14,17 +16,16 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// lắng `BillOperationSuccess`/`BillError` để báo và nạp lại.
 
 Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
-  final db = sl<AppDatabase>();
   // Không có phiên thì không có ví nào để thanh toán bằng. Trước đây chỗ này
   // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
   // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
   final accountId = currentAccountIdOrNull(context);
   final wallets =
-      accountId == null ? <Wallet>[] : await db.walletDao.getActive(accountId);
+      accountId == null ? <Wallet>[] : await sl<WalletRepository>().getActiveRows(accountId);
   // Tên danh mục cho khối thông tin trên bảng; không có/đã xoá thì bỏ trống.
   final danhMuc = bill.categoryId == null
       ? null
-      : await db.categoryDao.getById(bill.categoryId!);
+      : await sl<CategoryManagementRepository>().getRowById(bill.categoryId!);
 
   if (!context.mounted) return;
 

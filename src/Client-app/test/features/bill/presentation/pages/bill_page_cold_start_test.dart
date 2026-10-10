@@ -10,6 +10,7 @@
 /// trang hoá đơn trống cho tới khi thoát ra vào lại.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -63,6 +64,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
   });
 
   tearDown(() async {

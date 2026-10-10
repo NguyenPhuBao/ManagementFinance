@@ -4,6 +4,7 @@
 /// nút **Tạo** của thẻ khoản lặp mở ra một form trống, im lặng.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/constants/app_router.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -48,6 +49,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     if (sl.isRegistered<BillBloc>()) await sl.unregister<BillBloc>();
     sl.registerFactory<BillBloc>(() => BillBloc(repository: _BillRepoGia()));
     // `/bills/add` nay có cửa chặn trần hoá đơn (spec phân quyền 2026-10-08) đọc `sl<GoiRepository>` lúc chạy. Chưa

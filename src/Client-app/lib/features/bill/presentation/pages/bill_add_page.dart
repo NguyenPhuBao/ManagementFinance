@@ -1,3 +1,5 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -95,19 +97,19 @@ class _BillAddPageState extends State<BillAddPage> {
 
   Future<void> _loadPickers() async {
     final accountId = currentAccountIdOrNull(context);
-    final db = sl<AppDatabase>();
     // KHÔNG còn nhánh `getAllNonDeleted()` khi danh sách rỗng: nhánh đó bỏ bộ
     // lọc tài khoản, nên một tài khoản chưa có ví lại nhìn thấy ví của tài
     // khoản khác từng đăng nhập trên cùng máy — và hoá đơn tạo ra sẽ trỏ vào
     // một ví không thuộc về mình.
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
+        : await sl<WalletRepository>().getActiveRows(accountId);
     // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi', giống trang ngân
     // sách. `getCategoryRows` gồm cả danh mục mặc định (idaccount = 0).
     final categories = accountId == null
         ? <Category>[]
-        : await db.categoryDao.getCategoryRows(accountId, 'chi');
+        : await sl<CategoryManagementRepository>()
+            .selectableChildren(accountId: accountId, classify: 'chi');
     if (mounted) {
       // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
       // đã xoá hoặc đã lưu trữ thì rơi về lựa chọn mặc định như khi mở thường.

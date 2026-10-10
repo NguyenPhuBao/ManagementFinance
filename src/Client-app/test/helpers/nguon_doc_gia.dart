@@ -62,6 +62,10 @@ class HoaDonRowsGia implements BillRepository {
   @override
   Future<Bill?> getById(String id) => db.billDao.getById(id);
   @override
+  Future<List<Bill>> getBills(int idaccount) => db.billDao.getAll(idaccount);
+  @override
+  Future<Map<String, Transaction>> paymentsOf(int idaccount) => db.transactionDao.getBillPayments(idaccount);
+  @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
@@ -75,15 +79,21 @@ class MucTieuRowsGia implements GoalRepository {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+/// Đăng ký [moi] cho kiểu [T]. Bản giả của CHÍNH helper này (đã trỏ vào một [AppDatabase] cũ, thường đã đóng khi test
+/// trước dọn) thì được thay bằng bản trỏ vào db hiện tại; bản giả riêng của test thì giữ nguyên.
+void _dat<T extends Object>(T moi, bool Function(Object) laGiaCuaHelper) {
+  if (sl.isRegistered<T>()) {
+    if (!laGiaCuaHelper(sl<T>())) return;
+    sl.unregister<T>();
+  }
+  sl.registerSingleton<T>(moi);
+}
+
 void dangKyNguonDocGia(AppDatabase db) {
-  if (!sl.isRegistered<ThongBaoNguon>()) {
-    sl.registerSingleton<ThongBaoNguon>(ThongBaoNguonDrift(db.notificationDao));
-  }
-  if (!sl.isRegistered<WalletRepository>()) sl.registerSingleton<WalletRepository>(ViRowsGia(db));
-  if (!sl.isRegistered<TransactionRepository>()) sl.registerSingleton<TransactionRepository>(GiaoDichRowsGia(db));
-  if (!sl.isRegistered<CategoryManagementRepository>()) {
-    sl.registerSingleton<CategoryManagementRepository>(DanhMucRowsGia(db));
-  }
-  if (!sl.isRegistered<BillRepository>()) sl.registerSingleton<BillRepository>(HoaDonRowsGia(db));
-  if (!sl.isRegistered<GoalRepository>()) sl.registerSingleton<GoalRepository>(MucTieuRowsGia(db));
+  _dat<ThongBaoNguon>(ThongBaoNguonDrift(db.notificationDao), (o) => o is ThongBaoNguonDrift);
+  _dat<WalletRepository>(ViRowsGia(db), (o) => o is ViRowsGia);
+  _dat<TransactionRepository>(GiaoDichRowsGia(db), (o) => o is GiaoDichRowsGia);
+  _dat<CategoryManagementRepository>(DanhMucRowsGia(db), (o) => o is DanhMucRowsGia);
+  _dat<BillRepository>(HoaDonRowsGia(db), (o) => o is HoaDonRowsGia);
+  _dat<GoalRepository>(MucTieuRowsGia(db), (o) => o is MucTieuRowsGia);
 }

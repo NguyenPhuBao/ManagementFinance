@@ -20,6 +20,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// giống cách `currency_formatter_test` quét cả `lib/` để cấm dựng
 /// `NumberFormat` ngoài một chỗ.
 ///
+/// Từ 2026-10-10 trang không cầm DAO; phép đọc đi qua `WalletRepository` với tên
+/// có hậu tố `Rows`, viết trên một dòng `sl<WalletRepository>().…` để test này
+/// nhận diện.
+///
 /// Thêm một chỗ gọi mới mà quên cập nhật danh sách này thì test đỏ, và người
 /// thêm buộc phải trả lời câu hỏi "chỗ này có được thấy ví lưu trữ không?".
 void main() {
@@ -96,6 +100,8 @@ void main() {
     final thay = {
       ...tepChua('walletDao.getAll('),
       ...tepChua('walletDao.watchAll('),
+      ...tepChua('WalletRepository>().getAllRows('),
+      ...tepChua('WalletRepository>().watchAllRows('),
     };
 
     expect(thay.difference(duocDocMoiVi.keys.toSet()), isEmpty,
@@ -112,14 +118,19 @@ void main() {
           reason: 'Tệp "$tep" không còn tồn tại — sửa lại danh sách.');
 
       final doc = noiDung[tep]!;
-      expect(doc.contains('walletDao.getActive(') ||
-              doc.contains('walletDao.watchActive('),
+      expect(
+          doc.contains('walletDao.getActive(') ||
+              doc.contains('walletDao.watchActive(') ||
+              doc.contains('WalletRepository>().getActiveRows('),
           isTrue,
           reason: 'Bộ chọn ví "$tep" không gọi getActive/watchActive, nên ví '
               'đã lưu trữ vẫn hiện ra cho người dùng chọn — và ghi được giao '
               'dịch mới vào một ví lẽ ra đã đóng băng.');
-      expect(doc.contains('walletDao.getAll(') ||
-              doc.contains('walletDao.watchAll('),
+      expect(
+          doc.contains('walletDao.getAll(') ||
+              doc.contains('walletDao.watchAll(') ||
+              doc.contains('WalletRepository>().getAllRows(') ||
+              doc.contains('WalletRepository>().watchAllRows('),
           isFalse,
           reason: 'Bộ chọn ví "$tep" còn một đường đọc MỌI ví. Hai đường song '
               'song là một trong hai chỗ sẽ lệch, im lặng.');

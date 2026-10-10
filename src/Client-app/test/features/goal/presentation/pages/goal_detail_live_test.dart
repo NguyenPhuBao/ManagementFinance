@@ -12,6 +12,7 @@
 /// nhiều hơn trước.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -79,6 +80,9 @@ class _LiveGoalRepository implements GoalRepository {
   @override
   Future<GoalEntity?> getGoalById(String id) async => hienTai;
 
+  @override
+  Future<List<GoalEntity>> getGoals(int idaccount) async => const [];
+
   /// Các hàng lịch sử trang sẽ dựng. Mặc định rỗng — chỉ nhóm test nhãn "Tự
   /// động" mới đặt giá trị.
   List<dynamic> khoanLichSu = const [];
@@ -122,6 +126,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     if (sl.isRegistered<GoalRepository>()) {
       await sl.unregister<GoalRepository>();
     }
