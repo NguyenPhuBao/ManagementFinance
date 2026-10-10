@@ -14,7 +14,7 @@ void main() {
 
   /// Tệp (tương đối `lib/`) → trần riêng. Số là số dòng đo ngày điền; không được tăng.
   const mienTru = <String, int>{
-    'features/transaction/presentation/pages/add_transaction_page.dart': 3107,
+    'features/transaction/presentation/pages/add_transaction_page.dart': 2007,
     'features/notification/presentation/pages/notification_settings_page.dart': 1615,
     'features/goal/presentation/pages/goal_add_page.dart': 1570,
     'features/goal/presentation/pages/goal_detail_page.dart': 1480,
