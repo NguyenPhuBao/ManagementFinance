@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
@@ -30,9 +29,9 @@ import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/khoi_tach.dart';
 import '../widgets/sheet_them_phan.dart';
 import '../widgets/them_giao_dich/ban_phim_so.dart';
+import '../widgets/them_giao_dich/dai_nguon_bien_dong.dart';
 import '../widgets/them_giao_dich/khoi_so_tien.dart';
 import '../widgets/them_giao_dich/the_form.dart';
-import '../widgets/xem_anh_bien_lai.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -1950,14 +1949,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       children: [
                         // D1: form đã điền từ tin — không có ô Nhập nhanh (đường điền thứ hai), thay bằng dải nguồn.
                         if (_bienDong case final d?) ...[
-                          _buildDaiNguon(d),
+                          DaiNguonBienDong(d: d, duongDanAnh: _duongDanAnh),
                           const SizedBox(height: 12),
                           if (d.luaChonTien.isNotEmpty) ...[
-                            _buildChonSoTien(d.luaChonTien),
+                            KhoiChonSoTien(
+                              ds: d.luaChonTien,
+                              dangChon: ketQuaBieuThuc(_amountString),
+                              onChon: _dienSoTienChon,
+                            ),
                             const SizedBox(height: 12),
                           ],
                           if (_goiYChuyen case final gy? when !_isTransfer) ...[
-                            _buildGoiYChuyen(gy),
+                            TheGoiYChuyen(gy: gy, onApDung: _apGoiYChuyen),
                             const SizedBox(height: 12),
                           ],
                         ] else if (!_isEditing) ...[
@@ -2070,7 +2073,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onPickDate: _pickDate,
       hienDongTach: _choTach && _phanTach.isEmpty,
       onThemPhan: _themPhan,
-      nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? _buildNhacTrung(context) : null,
+      nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _trungTrongSo) : null,
       deXuatTuKhoa: _deXuat != null || _daThemTuKhoa != null ? _buildDeXuatTuKhoa() : null,
       hangChieuTien: showDebtDirection
           ? HangChieuTien(
@@ -2085,117 +2088,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  /// D1 — dải nguồn (Stitch `52d9d2ef…`): *"Từ thông báo MB Bank · TK ••7777 · 02/09 12:01"*.
-  Widget _buildDaiNguon(DienSanBienDong d) => Container(
-        key: const Key('bien-dong-dai-nguon'),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            // Chia sẻ biên lai: hàng mang ảnh → ảnh nhỏ thay biểu tượng ngân hàng, chạm để xem to. Khung CỐ ĐỊNH
-            // 48 × 64 (biên lai dọc) để dải không nhảy chiều cao khi ảnh giải mã xong.
-            if (_duongDanAnh case final p?)
-              Semantics(
-                button: true,
-                label: 'Xem ảnh biên lai',
-                child: GestureDetector(
-                  key: const Key('bien-lai-anh-nho'),
-                  onTap: () => xemAnhBienLai(context, p),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 48,
-                      height: 64,
-                      child: Image.file(
-                        File(p),
-                        fit: BoxFit.cover,
-                        // Canh GIỮA: ảnh chia sẻ từ app ngân hàng là ảnh toàn màn, thẻ biên lai nằm giữa — canh đỉnh là
-                        // ảnh nhỏ chỉ thấy nền (đo Realme 2026-10-02, biên lai MB Bank 1080 × 2400).
-                        alignment: Alignment.center,
-                        cacheWidth: 144,
-                        errorBuilder: (_, __, ___) => const ColoredBox(
-                          color: AppColors.surfaceContainerHigh,
-                          child: Icon(Icons.receipt_long_outlined, size: 20, color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Icon(d.laQuet ? Icons.document_scanner_outlined : d.cachDoc == null ? Icons.account_balance : Icons.receipt_long_outlined,
-                  size: 18, color: AppColors.textSecondary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    dongNguonBienDong(d),
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                  if (dongPhuBienLai(d.cachDoc) case final phu?) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      phu,
-                      key: const Key('bien-lai-dong-phu'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-
-  /// A5 mục 13 — ảnh quét mà số AI (Gemma nhìn ảnh) và số luật LỆCH > 1%: ô số tiền để trống, người dùng chạm một chip
-  /// để điền (hoặc gõ số khác). Chip đang khớp ô số tiền được tô chọn. Người dùng chốt 2026-10-08.
-  Widget _buildChonSoTien(List<double> ds) {
-    final dang = ketQuaBieuThuc(_amountString);
-    return Container(
-      key: const Key('khoi-chon-so-tien'),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: const Border(left: BorderSide(color: AppColors.warning, width: 3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Đọc ra hai số khác nhau — chọn số đúng:',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var i = 0; i < ds.length; i++)
-                ChoiceChip(
-                  key: Key('chon-so-tien-$i'),
-                  label: Text(CurrencyFormatter.format(ds[i]), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  selected: (ds[i] - dang).abs() < 0.5,
-                  onSelected: (_) => _dienSoTienChon(ds[i]),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Hoặc nhập số khác bằng bàn phím',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Điền số của chip — đi qua `themPhimSoTien` như mọi đường điền khác (cùng trần số chữ số).
   void _dienSoTienChon(double v) => setState(() {
         var a = '0';
@@ -2205,130 +2097,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _amountString = a;
         _hienBanPhimSo = false;
       });
-
-  /// Thẻ gợi ý Chuyển khoản (spec 2026-09-30 §4, Stitch *"Thêm giao dịch - Gợi ý chuyển khoản từ biến động"*).
-  Widget _buildGoiYChuyen(GoiYChuyenKhoan gy) => Container(
-        key: const Key('the-goi-y-chuyen-khoan'),
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
-        // Nút ở hàng RIÊNG, căn phải: cùng hàng với chữ thì ở 360 dp cả hai dòng chữ ngắt đôi (đo Realme 2026-09-30).
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-                  child: const Icon(Icons.swap_horiz, size: 20, color: AppColors.primary),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Có vẻ là chuyển khoản',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Từ ${gy.nguonTu} sang ${gy.nguonDen}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            OutlinedButton(
-              key: const Key('goi-y-chuyen-khoan'),
-              onPressed: _apGoiYChuyen,
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-              ),
-              child: const Text('Ghi là chuyển khoản', style: TextStyle(fontSize: 12)),
-            ),
-          ],
-        ),
-      );
-
-  /// D1 — *"Có thể bạn đã ghi khoản này"* (spec §3.3): chỉ NHẮC, không chặn lưu. **Xem** liệt kê các khoản khớp.
-  Widget _buildNhacTrung(BuildContext context) {
-    final d = _bienDong!;
-    final chieu = d.chieu == 'thu' ? 'thu' : 'chi';
-    return Container(
-      key: const Key('bien-dong-nhac-trung'),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_rounded, size: 20, color: AppColors.warning),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Có thể bạn đã ghi khoản này',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${CurrencyFormatter.format(d.soTien!)} $chieu hôm '
-                  '${DateFormat('dd/MM').format(d.thoiGian!)} đã có trong sổ',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          TextButton(onPressed: () => _xemKhoanTrung(context), child: const Text('Xem')),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _xemKhoanTrung(BuildContext context) => showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Khoản đã có trong sổ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
-                ),
-                const SizedBox(height: 8),
-                for (final k in _trungTrongSo)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(k.ghiChu.isEmpty ? '(không ghi chú)' : k.ghiChu),
-                    subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(k.ngay)),
-                    trailing: Text(CurrencyFormatter.formatCoDau(k.soTien, thu: k.loai == 'thu')),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
 
   /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
   /// do khi danh mục đến từ B1.
