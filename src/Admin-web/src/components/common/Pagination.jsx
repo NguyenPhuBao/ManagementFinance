@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguageSafe } from '../../store/language.context';
 
 const Pagination = ({
   currentPage = 1,
@@ -7,8 +8,10 @@ const Pagination = ({
   pageSizeOptions = [5, 10, 20, 50],
   onPageChange,
   onPageSizeChange,
-  itemLabel = 'items',
+  itemLabel,
 }) => {
+  const { t } = useLanguageSafe();
+  const resolvedItemLabel = itemLabel || t('common.pagination.items');
   const totalPages = Math.ceil(total / pageSize) || 1;
   const currPage = Math.min(Math.max(1, currentPage), totalPages);
 
@@ -32,7 +35,7 @@ const Pagination = ({
     <div className="p-3.5 px-5 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest text-[12px] text-on-surface-variant select-none">
       {/* Left: Item Range */}
       <div>
-        <span>{startItem} - {endItem} of {total} {itemLabel}</span>
+        <span>{startItem} - {endItem} of {total} {resolvedItemLabel}</span>
       </div>
 
       {/* Right: Page Size & Pagination Buttons */}
@@ -54,7 +57,7 @@ const Pagination = ({
           >
             {pageSizeOptions.map((opt) => (
               <option key={opt} value={opt}>
-                {opt} / page
+                {opt} {t('common.pagination.itemsPerPage')}
               </option>
             ))}
           </select>
@@ -71,7 +74,7 @@ const Pagination = ({
             className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
               currPage <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
             }`}
-            title="Trang trước"
+            title={t('common.pagination.previous')}
           >
             <span className="material-symbols-outlined text-[16px]">chevron_left</span>
           </button>
@@ -108,7 +111,7 @@ const Pagination = ({
             className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
               currPage >= totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
             }`}
-            title="Trang tiếp"
+            title={t('common.pagination.next')}
           >
             <span className="material-symbols-outlined text-[16px]">chevron_right</span>
           </button>

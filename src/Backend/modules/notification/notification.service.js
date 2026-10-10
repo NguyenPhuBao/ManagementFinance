@@ -278,11 +278,23 @@ async function checkAndAlertCloudHealth() {
   const now = Date.now();
   const result = { ramAlert: false, errorRateAlert: false };
 
+  // Kiểm tra Vector Resource trong AIOps: Nếu đã tắt thì chỉ đo lường, không phát cảnh báo RAM
+  let isResourceVectorActive = true;
+  try {
+    const { defaultAIOpsService } = require('../aiops/aiops.service');
+    if (defaultAIOpsService && typeof defaultAIOpsService.getVectorConfig === 'function') {
+      const vConfig = defaultAIOpsService.getVectorConfig();
+      if (vConfig && vConfig.resource === false) {
+        isResourceVectorActive = false;
+      }
+    }
+  } catch (_) {}
+
   // Kiểm tra RAM
   const totalMem = os.totalmem();
   const usedMem = totalMem - os.freemem();
   const ramPercent = Math.round((usedMem / totalMem) * 100);
-  if (ramPercent > 85) {
+  if (isResourceVectorActive && ramPercent > 85) {
     const last = _cloudAlertDebounce.get('ram') || 0;
     if (now - last > CLOUD_ALERT_DEBOUNCE_MS) {
       _cloudAlertDebounce.set('ram', now);

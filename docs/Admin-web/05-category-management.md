@@ -122,18 +122,20 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
 
-1. **Bảng Danh Mục Hệ Thống (`CategoryPage.jsx`):**
-   - Tìm kiếm thông minh hỗ trợ tiếng Việt không dấu (`normalizeVietnameseUnaccent`).
-   - Lọc nhanh theo phân loại (Tất cả, Khoản Thu, Khoản Chi, Vay/Nợ).
-   - Lọc theo từ khóa chi tiết.
-   - Phân trang tùy chỉnh 10, 20, 50 bản ghi.
+1. **Giao Diện Quản Lý Danh Mục Chuẩn Enterprise AIOps Bento (`CategoryPage.jsx` — Cập nhật v2.5):**
+   - **Hero Header Bar:** Biểu tượng nhận diện tròn gradient, huy hiệu NLP Keywords Ready nổi bật, nút Refresh tải lại tức thì và nút Thêm mới nổi bật.
+   - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng danh mục hệ thống, Khoản chi tiêu (Expense), Khoản thu nhập (Income), Nghĩa vụ vay/nợ (Debt) (hỗ trợ bấm chuyển nhanh bộ lọc).
+   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh theo phân loại dạng viên thuốc (`Tất Cả`, `Chi Tiêu`, `Thu Nhập`, `Vay / Nợ`) hiển thị kèm số lượng thống kê theo từng nhóm.
+   - **Bảng Danh Mục Hiện Đại:** Bo góc mềm `rounded-2xl`, hiển thị icon sinh động cho từng loại giao dịch, thanh từ khóa AI NLP bo tròn tinh tế hỗ trợ select-all tiện lợi.
+   - **Cơ Chế Bảo Vệ Riêng Tư:** Danh mục cá nhân hiển thị `***` và tự động gắn badge `Cấm sửa / xóa`.
+   - **Tìm Kiếm Đa Năng:** Hỗ trợ tìm kiếm thông minh tiếng Việt không dấu (`normalizeVietnameseUnaccent`).
 2. **Modal Thêm Mới & Chỉnh Sửa:**
-   - Chọn loại phân loại bằng Selectbox trực quan.
-   - Hướng dẫn nhập từ khóa gợi ý cho AI.
+   - Chọn loại phân loại bằng Selectbox trực quan, input tên danh mục bo tròn chuẩn thiết kế Enterprise.
+   - Hướng dẫn nhập từ khóa gợi ý cho bộ máy phân loại AI tự động.
 3. **Modal Cảnh Báo Xóa An Toàn:**
-   - Cảnh báo rõ việc xóa chỉ là ẩn khỏi danh mục mặc định của hệ thống, không làm mất giao dịch cũ.
+   - Cảnh báo rõ việc xóa là Soft Delete, không làm mất giao dịch lịch sử của người dùng.
 4. **Nút 'Làm Mới' Trên Thanh Công Cụ (`Refresh Button`):**
-   - Theo quyết định của PO (Mục 05): Bỏ lắng nghe Real-time Socket.io vì danh mục hệ thống có tần suất thay đổi rất thấp; trang bị nút "Làm mới" trực tiếp trên toolbar (cạnh nút "Lọc") kèm biểu tượng xoay khi đang tải, cho phép Admin chủ động tải lại danh sách khi cần.
+   - Theo quyết định của PO (Mục 05): Bỏ lắng nghe Real-time Socket.io vì danh mục hệ thống có tần suất thay đổi rất thấp; trang bị nút "Làm mới" trực tiếp trên toolbar (`title="Làm mới danh sách danh mục"`) kèm biểu tượng xoay khi đang tải, cho phép Admin chủ động tải lại danh sách khi cần.
 
 ---
 

@@ -261,9 +261,39 @@ class AIOpsService {
 
   async toggleVector(vectorName, isEnabled, persistToDb = true) {
     const updated = this.detector.setVectorEnabled(vectorName, isEnabled);
-    if (this._currentStatus) {
+    
+    // Tái đánh giá tức thì với mẫu hiện tại để cập nhật ngay Threat Score và Trạng thái
+    const currentSample = this._currentStatus?.sample || (this.collector && typeof this.collector.getSample === 'function' ? this.collector.getSample() : null);
+    if (currentSample) {
+      const evaluation = this.detector.evaluate(currentSample);
+      this._currentStatus = {
+        ...this._currentStatus,
+        threatScore: evaluation.threatScore,
+        status: evaluation.status,
+        vectorScores: evaluation.vectorScores,
+        vectorDefenses: evaluation.vectorDefenses,
+        targetConcurrency: evaluation.targetConcurrency,
+        isAnomaly: evaluation.isAnomaly,
+        anomalies: evaluation.anomalies,
+        recommendedAction: evaluation.recommendedAction,
+        vectorConfig: { ...updated },
+        lastEvaluatedAt: evaluation.evaluatedAt,
+        sample: currentSample,
+      };
+
+      if (this._history && this._history.length > 0) {
+        const lastEntry = this._history[this._history.length - 1];
+        lastEntry.threatScore = evaluation.threatScore;
+        lastEntry.status = evaluation.status;
+        lastEntry.vectorScores = evaluation.vectorScores;
+        lastEntry.vectorDefenses = evaluation.vectorDefenses;
+        lastEntry.isAnomaly = evaluation.isAnomaly;
+        lastEntry.anomalies = evaluation.anomalies;
+      }
+    } else if (this._currentStatus) {
       this._currentStatus.vectorConfig = { ...updated };
     }
+
     if (persistToDb && this.repository && typeof this.repository.setSetting === 'function') {
       try {
         await this.repository.setSetting('vector_toggles', JSON.stringify(updated));
@@ -283,6 +313,7 @@ class AIOpsService {
       vector: vectorName,
       enabled: isEnabled,
       vectorConfig: updated,
+      currentStatus: this._currentStatus,
       message: `Đã ${isEnabled ? 'bật' : 'tắt'} tính rủi ro cho vector ${vectorName} thành công.`,
     };
   }

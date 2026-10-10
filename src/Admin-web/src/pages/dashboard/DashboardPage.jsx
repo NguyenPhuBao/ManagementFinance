@@ -4,6 +4,7 @@ import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/cons
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import ServerHealthPanel from '../../components/common/ServerHealthPanel';
+import { useLanguageSafe } from '../../store/language.context';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -57,12 +58,13 @@ const STATUS_CONFIG = {
   },
 };
 
-const getStatusBadge = (status) => {
+const getStatusBadge = (status, t) => {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pass;
+  const label = t ? t(`commonStatus.${status}`) || cfg.label : cfg.label;
   return (
     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-label-md text-[11px] font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
       <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-      {cfg.label}
+      {label}
     </span>
   );
 };
@@ -90,13 +92,14 @@ const getVnDateParts = (dateInput) => {
   return p;
 };
 
-const formatActivityTime = (item) => {
-  if (!item) return 'Vừa xong';
+const formatActivityTime = (item, t) => {
+  const defaultJustNow = t ? t('dashboard.recentActivities.justNow') : 'Vừa xong';
+  if (!item) return defaultJustNow;
   const rawTime = item.time_req || item.timeReq;
-  if (!rawTime) return item.time || 'Vừa xong';
+  if (!rawTime) return item.time || defaultJustNow;
 
   const vnParts = getVnDateParts(rawTime);
-  if (!vnParts) return item.time || 'Vừa xong';
+  if (!vnParts) return item.time || defaultJustNow;
 
   const vnNow = getVnDateParts(new Date());
   const isToday =
@@ -116,12 +119,14 @@ const InteractiveLineChart = ({
   strokeColor = '#2563eb',
   gradientFrom = '#3b82f6',
   gradientTo = '#1d4ed8',
-  unit = 'lượt',
+  unit,
   format = 'day',
   loading = false,
   height = 200,
 }) => {
+  const { t } = useLanguageSafe();
   const [hoverIndex, setHoverIndex] = useState(null);
+  const resolvedUnit = unit || t('dashboard.charts.unitHits', 'lượt');
 
   if (loading) {
     return (
@@ -134,7 +139,7 @@ const InteractiveLineChart = ({
   if (!data || data.length === 0) {
     return (
       <div className="w-full flex items-center justify-center text-on-surface-variant font-body-sm" style={{ height: `${height}px` }}>
-        Chưa có dữ liệu thống kê
+        {t('dashboard.charts.noData', 'Chưa có dữ liệu thống kê')}
       </div>
     );
   }
@@ -172,21 +177,21 @@ const InteractiveLineChart = ({
   const areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + drawHeight} L ${points[0].x} ${paddingTop + drawHeight} Z`;
 
   // Determine X-axis ticks and Unit label
-  let xUnit = 'Ngày';
+  let xUnit = t('dashboard.charts.xDay', 'Ngày');
   let xTicks = [];
 
   const isMonthFormat = format === 'month' || (data.length === 12 && data[0]?.label?.startsWith('Thg'));
   const isHourFormat = format === 'hour' || (data.length === 24 && data[0]?.label?.includes(':'));
 
   if (isMonthFormat) {
-    xUnit = 'Tháng';
+    xUnit = t('dashboard.charts.xMonth', 'Tháng');
     // Đánh số đầy đủ 01 -> 12 cho tất cả 12 tháng
     xTicks = points.map((pt, idx) => ({
       x: pt.x,
       text: (idx + 1).toString().padStart(2, '0'),
     }));
   } else if (isHourFormat) {
-    xUnit = 'Giờ';
+    xUnit = t('dashboard.charts.xHour', 'Giờ');
     // 24 giờ: hiển thị các mốc chẵn 00, 02, 04, ..., 22 và mốc cuối 23
     xTicks = points
       .filter((_, idx) => idx % 2 === 0 || idx === points.length - 1)
@@ -195,14 +200,14 @@ const InteractiveLineChart = ({
         text: pt.label.split(':')[0] || '',
       }));
   } else if (data.length <= 8) {
-    xUnit = 'Ngày';
+    xUnit = t('dashboard.charts.xDay', 'Ngày');
     // 7 ngày: hiển thị đủ cả 7 ngày
     xTicks = points.map((pt) => ({
       x: pt.x,
       text: pt.label,
     }));
   } else {
-    xUnit = 'Ngày';
+    xUnit = t('dashboard.charts.xDay', 'Ngày');
     // 30 / 31 ngày: hiển thị cách đều các ngày 01, 05, 10, 15, 20, 25, 30
     xTicks = points
       .filter((_, idx) => idx % 5 === 0 || idx === points.length - 1)
@@ -354,6 +359,7 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 
 const DashboardPage = () => {
   const socket = useSocket();
+  const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const vnNow = getVnDateParts(now) || {
@@ -381,8 +387,20 @@ const DashboardPage = () => {
   const [viewYear, setViewYear] = useState(nowYear);
   const [viewMonth, setViewMonth] = useState(nowMonth);
 
-  const MONTH_NAMES = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-                       'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+  const MONTH_NAMES = [
+    t('dashboard.filters.month1'),
+    t('dashboard.filters.month2'),
+    t('dashboard.filters.month3'),
+    t('dashboard.filters.month4'),
+    t('dashboard.filters.month5'),
+    t('dashboard.filters.month6'),
+    t('dashboard.filters.month7'),
+    t('dashboard.filters.month8'),
+    t('dashboard.filters.month9'),
+    t('dashboard.filters.month10'),
+    t('dashboard.filters.month11'),
+    t('dashboard.filters.month12'),
+  ];
 
   const isFutureDate = (d, m, y) => {
     if (y > nowYear) return true;
@@ -575,11 +593,11 @@ const DashboardPage = () => {
         setRecentActivities((items || []).map(item => ({
           key: item.id ? String(item.id) : Math.random().toString(),
           id: item.id,
-          user: item.user || 'Người dùng',
-          action: item.action || 'Yêu cầu hệ thống',
+          user: item.user || t('dashboard.recentActivities.defaultUser'),
+          action: item.action || t('dashboard.recentActivities.defaultAction'),
           reason: item.reason || null,
           status: item.status || 'Pass',
-          time: formatActivityTime(item),
+          time: formatActivityTime(item, t),
           time_req: item.time_req,
           isNew: false,
         })));
@@ -613,11 +631,11 @@ const DashboardPage = () => {
       const newActivity = {
         key: data.id ? String(data.id) : Date.now().toString(),
         id: data.id,
-        user: data.user || 'Người dùng',
-        action: data.action || 'Yêu cầu hệ thống',
+        user: data.user || t('dashboard.recentActivities.defaultUser'),
+        action: data.action || t('dashboard.recentActivities.defaultAction'),
         reason: data.reason || null,
         status: data.status || 'Pass',
-        time: formatActivityTime(data),
+        time: formatActivityTime(data, t),
         time_req: data.time_req,
         isNew: true,
       };
@@ -715,20 +733,20 @@ const DashboardPage = () => {
 
   // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, không giả lập)
   let uptimeDisplayValue = '—';
-  let uptimeBadge = 'Đang tải...';
+  let uptimeBadge = t('dashboard.kpi.loading');
   let uptimeBadgeColor = undefined;
 
   if (uptimeStatus === 'success' && uptimeData) {
     uptimeDisplayValue = `${uptimeData.uptimePercent.toFixed(3)}%`;
-    uptimeBadge = uptimeData.uptimeFormatted || 'Ổn định';
+    uptimeBadge = uptimeData.uptimeFormatted || t('dashboard.kpi.stable');
     uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
   } else if (uptimeStatus === 'unsupported') {
     uptimeDisplayValue = '—';
-    uptimeBadge = 'Chưa hỗ trợ API';
+    uptimeBadge = t('dashboard.kpi.unsupported');
     uptimeBadgeColor = 'amber';
   } else if (uptimeStatus === 'error') {
     uptimeDisplayValue = '—';
-    uptimeBadge = 'Lỗi kết nối';
+    uptimeBadge = t('dashboard.kpi.error');
     uptimeBadgeColor = 'red';
   }
 
@@ -738,7 +756,9 @@ const DashboardPage = () => {
   const endItem = Math.min(currPage * activityPagination.limit, activityPagination.total);
 
   // Filter Button Label
-  const customButtonLabel = timeFilter === 'custom' ? customFilter.label : `${MONTH_NAMES[nowMonth - 1]}/${nowYear}`;
+  const customButtonLabel = timeFilter === 'custom' 
+    ? customFilter.label 
+    : (t('dashboard.filters.monthFormat', { month: nowMonth, year: nowYear }) || `${nowMonth}/${nowYear}`);
 
   return (
     <>
@@ -751,9 +771,9 @@ const DashboardPage = () => {
           </div>
           <div className="space-y-1">
             <h4 className="font-title-md font-bold text-on-surface text-base">
-              Đang tải dữ liệu báo cáo
+              {t('dashboard.loadingOverlay.title')}
             </h4>
-            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+            <p className="font-body-sm text-on-surface-variant text-xs">{t('dashboard.loadingOverlay.wait')}</p>
           </div>
         </div>
       </div>
@@ -768,24 +788,32 @@ const DashboardPage = () => {
       {/* Header section & Global Filter */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div className="relative">
-              <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">Tổng quan hệ thống</h1>
-              <p className="font-body-lg text-on-surface-variant mt-2 max-w-xl">Dữ liệu tài chính và hoạt động được cập nhật liên tục để cung cấp cái nhìn toàn diện về hiệu suất.</p>
+              <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">{t('dashboard.title')}</h1>
+              <p className="font-body-lg text-on-surface-variant mt-2 max-w-xl">{t('dashboard.subtitle')}</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
               {/* Bộ lọc nhanh: Hôm nay, 7 Ngày, 1 Tháng, 1 Năm */}
               <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm">
-                  {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => (
-                    <button
-                        key={key}
-                        onClick={() => setTimeFilter(key)}
-                        className={`px-3 py-1.5 rounded-md font-label-md text-[13px] transition-all duration-200 cursor-pointer ${
-                          timeFilter === key ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                  ))}
+                  {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => {
+                    const localizedLabel = {
+                      today: t('dashboard.filters.today'),
+                      '7days': t('dashboard.filters.sevenDays'),
+                      '1month': t('dashboard.filters.oneMonth'),
+                      '1year': t('dashboard.filters.oneYear'),
+                    }[key] || label;
+                    return (
+                      <button
+                          key={key}
+                          onClick={() => setTimeFilter(key)}
+                          className={`px-3 py-1.5 rounded-md font-label-md text-[13px] transition-all duration-200 cursor-pointer ${
+                            timeFilter === key ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                          }`}
+                      >
+                          {localizedLabel}
+                      </button>
+                    );
+                  })}
               </div>
 
               {/* Bộ lọc chi tiết: Ngày (dd/mm/yyyy), Tháng (mm/yyyy), Năm (yyyy) */}
@@ -817,7 +845,7 @@ const DashboardPage = () => {
                             pickerTab === 'day' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Theo Ngày
+                          {t('dashboard.filters.byDay')}
                         </button>
                         <button
                           onClick={() => setPickerTab('month')}
@@ -825,7 +853,7 @@ const DashboardPage = () => {
                             pickerTab === 'month' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Theo Tháng
+                          {t('dashboard.filters.byMonth')}
                         </button>
                         <button
                           onClick={() => setPickerTab('year')}
@@ -833,7 +861,7 @@ const DashboardPage = () => {
                             pickerTab === 'year' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                           }`}
                         >
-                          Theo Năm
+                          {t('dashboard.filters.byYear')}
                         </button>
                       </div>
 
@@ -856,7 +884,7 @@ const DashboardPage = () => {
                               <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                             </button>
                             <span className="font-semibold text-[13px] text-on-surface">
-                              Tháng {viewMonth}/{viewYear}
+                              {t('dashboard.filters.monthFormat', { month: viewMonth, year: viewYear })}
                             </span>
                             <button
                               onClick={() => {
@@ -882,7 +910,13 @@ const DashboardPage = () => {
 
                           {/* Thứ trong tuần */}
                           <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-on-surface-variant mb-1">
-                            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span className="text-error">CN</span>
+                            <span>{t('dashboard.filters.mon')}</span>
+                            <span>{t('dashboard.filters.tue')}</span>
+                            <span>{t('dashboard.filters.wed')}</span>
+                            <span>{t('dashboard.filters.thu')}</span>
+                            <span>{t('dashboard.filters.fri')}</span>
+                            <span>{t('dashboard.filters.sat')}</span>
+                            <span className="text-error">{t('dashboard.filters.sun')}</span>
                           </div>
 
                           {/* Grid Ngày */}
@@ -927,7 +961,9 @@ const DashboardPage = () => {
                             >
                               <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                             </button>
-                            <span className="font-semibold text-on-surface text-[14px]">Năm {viewYear}</span>
+                            <span className="font-semibold text-on-surface text-[14px]">
+                              {t('dashboard.filters.yearFormat', { year: viewYear })}
+                            </span>
                             <button
                               onClick={() => {
                                 if (viewYear < nowYear) setViewYear(v => v + 1);
@@ -967,7 +1003,7 @@ const DashboardPage = () => {
                       {pickerTab === 'year' && (
                         <div>
                           <div className="text-center font-semibold text-on-surface text-[13px] mb-3">
-                            Chọn năm cần thống kê
+                            {t('dashboard.filters.selectYear')}
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             {[nowYear - 4, nowYear - 3, nowYear - 2, nowYear - 1, nowYear].map((year) => {
@@ -1004,16 +1040,16 @@ const DashboardPage = () => {
               <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
             </div>
           )}
-          <StatCard icon="group" title="Tổng người dùng" value={totalUsersDisplay} />
-          <StatCard icon="category" title="Tổng danh mục" value={totalCategoriesDisplay} />
+          <StatCard icon="group" title={t('dashboard.kpi.totalUsers')} value={totalUsersDisplay} />
+          <StatCard icon="category" title={t('dashboard.kpi.totalCategories')} value={totalCategoriesDisplay} />
           <StatCard
             icon="timer"
-            title="Uptime Hệ thống"
+            title={t('dashboard.kpi.systemUptime')}
             value={uptimeDisplayValue}
             badge={uptimeBadge}
             badgeColor={uptimeBadgeColor}
           />
-          <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
+          <StatCard icon="person_add" title={t('dashboard.kpi.newUsers')} value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
 
       {/* 1. Table: Hoạt động gần đây (Full-width, Phân trang 1 -> 2 -> 3, Trang 1 = mới nhất) */}
@@ -1021,7 +1057,7 @@ const DashboardPage = () => {
           <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
               <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-[22px]">history</span>
-                  Hoạt động gần đây
+                  {t('dashboard.recentActivities.title')}
               </h2>
               <div className="flex items-center gap-2">
                   {socketConnected ? (
@@ -1030,12 +1066,12 @@ const DashboardPage = () => {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
-                      Real-time
+                      {t('dashboard.recentActivities.realtime')}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-label-md text-[11px] font-medium border border-amber-200" title="Đang kết nối lại socket...">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-label-md text-[11px] font-medium border border-amber-200" title={t('dashboard.recentActivities.reconnecting')}>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                      Đang kết nối...
+                      {t('dashboard.recentActivities.connecting')}
                     </span>
                   )}
               </div>
@@ -1050,11 +1086,11 @@ const DashboardPage = () => {
               <table className="w-full text-left border-collapse min-w-[640px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Người dùng</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Hành động</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Lý do</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">Thời gian</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
@@ -1083,7 +1119,7 @@ const DashboardPage = () => {
                                     )}
                                 </td>
                                 <td className="py-3 px-5 whitespace-nowrap">
-                                    {getStatusBadge(activity.status)}
+                                    {getStatusBadge(activity.status, t)}
                                 </td>
                                 <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
                             </tr>
@@ -1091,7 +1127,7 @@ const DashboardPage = () => {
                       ) : (
                         <tr>
                             <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">
-                                Chưa có hoạt động nào được ghi nhận.
+                                {t('dashboard.recentActivities.noActivities')}
                             </td>
                         </tr>
                       )}
@@ -1122,9 +1158,9 @@ const DashboardPage = () => {
               <div>
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
-                      Đăng nhập
+                      {t('dashboard.charts.login')}
                   </h2>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất đăng nhập</p>
+                  <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.loginSubtitle')}</p>
               </div>
           </div>
           
@@ -1135,7 +1171,7 @@ const DashboardPage = () => {
                 strokeColor="#2563eb"
                 gradientFrom="#3b82f6"
                 gradientTo="#1d4ed8"
-                unit="lượt"
+                unit={t('dashboard.charts.unitHits')}
                 format={loginStats.format || 'day'}
                 loading={loadingLogin}
                 height={220}
@@ -1144,15 +1180,15 @@ const DashboardPage = () => {
           
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 pt-4 border-t border-outline-variant relative z-10">
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.average')}</p>
                   <p className="font-title-lg font-bold text-primary m-0">
-                    {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
+                    {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitHits')}</span>
                   </p>
               </div>
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.peak')}</p>
                   <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
+                    {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitHits')}</span>
                   </p>
               </div>
           </div>
@@ -1165,9 +1201,9 @@ const DashboardPage = () => {
               <div>
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                       <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
-                      Lưu lượng Request
+                      {t('dashboard.charts.request')}
                   </h2>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
+                  <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.requestSubtitle')}</p>
               </div>
               <div className="flex items-center gap-3 self-start sm:self-auto">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
@@ -1175,7 +1211,7 @@ const DashboardPage = () => {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
-                      Live Mode
+                      {t('dashboard.charts.liveMode')}
                   </span>
               </div>
           </div>
@@ -1187,7 +1223,7 @@ const DashboardPage = () => {
                 strokeColor="#0284c7"
                 gradientFrom="#38bdf8"
                 gradientTo="#0284c7"
-                unit="req"
+                unit={t('dashboard.charts.unitReq')}
                 format={requestStats.format || 'day'}
                 loading={loadingRequest}
                 height={220}
@@ -1196,21 +1232,21 @@ const DashboardPage = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-outline-variant relative z-10">
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.average')}</p>
                   <p className="font-title-lg font-bold text-primary m-0">
-                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
                   </p>
               </div>
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.peak')}</p>
                   <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
                   </p>
               </div>
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Tổng Request</p>
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.totalRequest')}</p>
                   <p className="font-title-lg font-bold text-secondary m-0">
-                    {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                    {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
                   </p>
               </div>
           </div>

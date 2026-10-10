@@ -35,4 +35,31 @@ describe('checkAndAlertCloudHealth', () => {
       prisma.auditlog.count = origCount;
     }
   });
+
+  it('2-Tier Verification: should suppress RAM alert when AIOps resource vector is toggled OFF', async () => {
+    const { defaultAIOpsService } = require('../../modules/aiops/aiops.service');
+    const { checkAndAlertCloudHealth } = require('../../modules/notification/notification.service');
+    const os = require('os');
+    const origTotal = os.totalmem;
+    const origFree = os.freemem;
+
+    // Giả lập RAM 95%
+    os.totalmem = () => 1000;
+    os.freemem = () => 50;
+
+    try {
+      // 1. Tắt Vector Resource
+      await defaultAIOpsService.toggleVector('resource', false, false);
+
+      // Gọi kiểm tra sức khỏe
+      const result = await checkAndAlertCloudHealth();
+      // Tier 2 Impact Assertion: Alert phải bị triệt tiêu hoàn toàn khi Vector bị tắt
+      assert.strictEqual(result.ramAlert, false, 'RAM alert must be suppressed when resource vector is OFF');
+    } finally {
+      // Khôi phục lại trạng thái bật
+      await defaultAIOpsService.toggleVector('resource', true, false);
+      os.totalmem = origTotal;
+      os.freemem = origFree;
+    }
+  });
 });

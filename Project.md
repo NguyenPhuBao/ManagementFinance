@@ -3681,31 +3681,120 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Kiểm thử Client-app:** Toàn bộ **116/116 tests** trong `test/features/premium/` và **80/80 tests** trong `test/features/ai_chat/` PASS 100%.
 - **6. Kết Luận & Nguồn Sự Thật:** Toàn bộ hệ thống quản lý phân quyền tính năng động theo loại tài khoản đã hoàn tất 100%, bảo đảm tính nhất quán, bảo mật (chặn 2 đầu Client & Backend) và cập nhật thời gian thực tức thời.
 
+---
 
+## 16. Quy Chuẩn Kiểm Thử 2 Tầng Bắt Buộc (2-Tier Testing Architecture)
 
+> **Cập nhật:** 2026-10-08  
+> **Nguồn sự thật:** `docs/Rule_Project/testing-guidelines.md` và `.agents/AGENTS.md` (Rule 11)  
+> **Phạm vi áp dụng:** Mọi bài test trên cả 3 module (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 
+Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao quát 2 tầng:
+1. **Tầng 1 — Hiển thị & Thao tác tại Giao diện:** Kiểm tra render đầy đủ components/controls, xử lý đúng tương tác của người dùng mà không bị crash hay throw unhandled exception.
+2. **Tầng 2 — Hoạt động Thực tế & Tác động Hệ thống:** Kiểm tra tính năng thực sự hoạt động và tạo ra tác động đo lường được (Database persistence, Root DOM attributes, Socket events, Web Audio API, Authorization enforcement, Toast timer tự đóng).
+> ⚠️ **TIÊU CHÍ SỐNG CÒN:** *"Nếu thao tác được trên giao diện nhưng không tạo ra tác động thực sự đến hệ thống như mong muốn thì bài test BẮT BUỘC ĐÁNH RỚT (FAIL)."*
 
+---
 
+## 17. Hệ Thống Chuyển Đổi Ngôn Ngữ Admin-web (Language Switcher & I18n Engine)
 
+> **Cập nhật:** 2026-10-09  
+> **Nguồn sự thật:** `src/Admin-web/src/locales/`, `src/Admin-web/src/store/language.context.jsx`, `docs/superpowers/plans/2026-04-09-admin-web-language-switcher.md`  
+> **Phạm vi áp dụng:** Toàn bộ 100% nội dung trên tất cả các màn hình của `src/Admin-web`, độc lập phía client, không ảnh hưởng API backend.
 
+### 17.1. Kiến Trúc & Triết Lý Thiết Kế
+- **Thuần React Context (Zero External Dependency):** Không cài thêm thư viện cồng kềnh (`i18next`, `react-intl`) nhằm bảo toàn kích thước gói bundle và tốc độ tải trang.
+- **Từ Điển Tập Trung & Modular:** Đặt tại `src/Admin-web/src/locales/` gồm `vi.js`, `en.js` và `index.js`, phân tách theo các namespace trực quan:
+  - `common`: Từ khóa dùng chung (Lưu, Hủy, Làm mới, Tìm kiếm, Trạng thái, Phân trang...).
+  - `nav`: Danh mục thanh điều hướng Sidebar.
+  - `header`: Thông tin thanh điều hướng trên, chuông cảnh báo, widget chuyển ngữ.
+  - `settings`: Toàn bộ các tabs cấu hình hệ thống Admin.
+  - `dashboard`: Tiêu đề, thẻ KPI, bộ lọc thời gian, biểu đồ, hoạt động gần đây.
+  - `users`: Quản lý danh sách người dùng, bộ lọc tìm kiếm, bảng dữ liệu, modal vô hiệu hóa / kích hoạt / xóa người dùng.
+  - `categories`: Quản lý danh mục mặc định, thẻ KPI, tabs phân loại, modal thêm / sửa / xóa / đồng bộ danh mục.
+  - `permissions`: Ma trận phân quyền gói cước (Basic vs Premium), hạn mức tài nguyên (LIMIT), công tắc logic (TOGGLE).
+  - `auditLogs`: Nhật ký hoạt động kiểm toán hệ thống, bộ lọc thời gian & trạng thái, bảng nhật ký request.
+  - `broadcast`: Điều hành bảo trì 2 cấp độ (Kỹ thuật / Khẩn cấp), lên lịch bảo trì và phát sóng thông báo toàn hệ thống.
+  - `auth`: Màn hình Đăng nhập (kèm widget [EN | VI] góc trên), Quên mật khẩu.
+  - `aiops`: Giám sát AIOps Sentinel, Threat Score Gauge, 4 Vector rủi ro độc lập, cách ly IP (Quarantine), làm sạch sự cố CSDL.
+  - `lockScreen`, `appLayout`, `commonStatus`.
+- **Hàm Dịch Thuật Thông Minh `t(keyPath, params)`:**
+  - Hỗ trợ cú pháp chuỗi phân cấp (Dot-notation, e.g., `'nav.dashboard'`, `'users.stats.total'`).
+  - Hỗ trợ thế tham số động (Parameter interpolation, e.g., `{count}`, `{user}`).
+  - Cơ chế an toàn với `useLanguageSafe()`: tự động fallback sang Tiếng Việt (`vi`) khi component được render ngoài context (như trong các bài test cũ), không gây lỗi runtime.
 
+### 17.2. Giao Diện & Trải Nghiệm Người Dùng (UI/UX)
+- **Header Pill Toggle:** Nút chuyển đổi dạng segmented pill bo góc tròn `[ EN | VI ]` đặt tại Header cạnh icon chuông thông báo. Trạng thái kích hoạt hiển thị nền xanh đậm `bg-blue-600 text-white font-bold`, hover hiển thị tooltip tam giác ngược `"Ngôn ngữ giao diện"` (khi ở Tiếng Việt) hoặc `"Interface language"` (khi ở Tiếng Anh).
+- **Màn hình Đăng nhập (LoginPage):** Tích hợp widget chuyển ngữ `[ EN | VI ]` tại góc trên bên phải, cho phép Admin chuyển đổi ngôn ngữ ngay trước khi đăng nhập.
+- **SettingsModal Cài Đặt 2 Chiều:** Bổ sung lựa chọn ngôn ngữ trực quan trong Tab "Giao diện & Hiển thị", đồng bộ trạng thái tức thì hai chiều với Header Pill Toggle.
 
+### 17.3. Tác Động Hệ Thống Thực Tế (Tuân Thủ Rule 11 — 2-Tier Testing)
+1. **Persistence:** Tự động lưu lựa chọn người dùng vào `localStorage` với khóa `admin_language`, tự động phục hồi ngôn ngữ khi tải lại trang (F5).
+2. **Root DOM Injection:** Tự động gắn thuộc tính `document.documentElement.lang` và `data-language` tương ứng (`vi` hoặc `en`).
+3. **Re-rendering Toàn Cục:** Re-render tức thời toàn bộ nội dung của tất cả các màn hình (Dashboard, Users, Categories, Permissions, Audit Logs, Broadcast, AIOps, Auth, Modals, Badges) sang ngôn ngữ đã chọn mà không cần reload trang.
 
+### 17.4. Lộ Trình Triển Khai Chuyển Đổi Đa Ngôn Ngữ (Implementation Phases)
+- **Giai đoạn 1 — Shared Components, Modals & Shell Layouts (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện: `ConfirmModal.jsx`, `EmptyState.jsx`, `Loading.jsx`, `AlertToast.jsx`, `ServerHealthPanel.jsx`, `AppLayout.jsx`, `LockScreenModal.jsx`, `SettingsModal.jsx`.
+  - Bộ kiểm thử 2 tầng: `phase1.i18n.test.jsx` (6/6 tests PASS).
+- **Giai đoạn 2 — Core Business Pages (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện: `DashboardPage.jsx`, `UserListPage.jsx`, `UserDetailPage.jsx`, `CategoryPage.jsx`, `PermissionManagementPage.jsx`.
+  - 100% các chuỗi hardcoded được thay thế bằng hàm `t(...)` thông qua `useLanguageSafe()`.
+  - Bộ lọc địa phương, danh mục hệ thống, thông báo xác nhận và ma trận phân quyền hỗ trợ đa ngôn ngữ hoàn hảo, đồng bộ tức thời khi chuyển đổi EN/VI.
+  - Bộ kiểm thử 2 tầng: `phase2.i18n.test.jsx` (5/5 tests PASS).
+- **Giai đoạn 3 — System & Operations Pages (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện 5 trang vận hành & an ninh số chuyên sâu: `AuditLogPage.jsx`, `BroadcastPage.jsx`, `AIOpsPage.jsx`, `LoginPage.jsx`, `ForgotPasswordPage.jsx`.
+  - Nâng cấp hàm `t(keyPath, fallbackOrParams, maybeParams)` trong `language.context.jsx` hỗ trợ đầy đủ 3 kiểu gọi:
+    + `t(keyPath, params)`
+    + `t(keyPath, fallbackString)`
+    + `t(keyPath, fallbackString, paramsObject)`: Đảm bảo nội suy chính xác các placeholder động như `{count}` ngay cả khi có truyền chuỗi fallback.
+  - Đồng bộ widget chuyển ngữ góc trên `[ EN | VI ]` cho cả `LoginPage.jsx` và `ForgotPasswordPage.jsx`.
+  - Chuẩn hóa đa ngôn ngữ 100% cho cấu hình phát thanh khẩn cấp (`BroadcastPage`), bộ lọc nhật ký hệ thống (`AuditLogPage`).
+  - **Triệt để 100% Đa Ngôn Ngữ AIOps Sentinel (`AIOpsPage.jsx`):**
+    + Loại bỏ hoàn toàn mọi chuỗi tiếng Việt hardcoded còn sót lại trong toàn bộ 5 khối giao diện.
+    + Khối 0 (Target Concurrency Scaler): Presets, inputs, 3 thẻ RPM trần & firewall threshold.
+    + Khối 1 (Threat Score Gauge & Sentinel Analysis): Nấc đo (0, 60, 80, 90+), Intrusion & Hardware Signals, Sentinel Recommendations.
+    + Khối 1.5 (4 Vector Risk Cards): Authentication, Traffic, Exploit, Resource, toggle switches, telemetry rows và mitigation notes.
+    + Khối 2 (Active Quarantine Blacklist): Masked IP, Hits, TTL countdown, nút Gỡ chặn, empty state.
+    + Khối 3 (Biểu đồ SVG Multi-Vector Trend): Observation windows, Precision Date Range filter (ngày/tháng/năm), threshold guides, dynamic tooltips và chart footer.
+    + Khối 4 (Root Cause Analysis - RCA Persistent Journal): Search bar, vector pills, status pills, metric vs threshold, actor identity, phân trang và empty state.
+    + Tất cả Action Modals: Dọn dẹp sự cố CSDL (Clean DB Modal), Cách ly IP thủ công (Quarantine Modal), Bật/Tắt Vector phòng vệ (Toggle Vector Modal).
+  - Bộ kiểm thử 2 tầng: `phase3.i18n.test.jsx` (10/10 tests PASS 100%).
 
+### 17.5. Kết Quả Kiểm Thử Toàn Cục & Build Production
+- **Bộ Test Suite Toàn Diện:** **16/16 test files PASS 100%**, tổng cộng **112/112 unit & integration tests PASS** (bảo đảm zero regression).
+- **Build Production:** `rtk npm run build` (Vite v5.4.21) thành công 100%, 168 modules transformed, sinh bundle sạch sẽ trong ~3.4s.
 
+### 17.6. Hoàn Thiện Cơ Chế Tắt/Bật 4 Vector Rủi Ro AIOps & Triệt Tiêu Cảnh Báo RAM Khẩn Cấp Khi Tắt Vector (2026-10-10)
+- **Vấn đề cốt lõi:** Khi quản trị viên tắt Vector 4 (Sức khỏe Tài nguyên), nút bật/tắt trước đây chỉ mang tính UI bề mặt; chỉ số RAM/Resource vẫn bị đẩy vào mảng tính Threat Score và hàm `checkAndAlertCloudHealth` trong `notification.service.js` vẫn gửi cảnh báo khẩn cấp `RAM_CRITICAL` mỗi 5 phút do RAM > 85%.
+- **Giải pháp triển khai toàn diện (5 Bước):**
+  1. `anomaly.detector.js`: Khi vector bị tắt (`vectorConfig[v] === false`), hệ thống vẫn tiếp tục đo lường `vectorScores[v]` để hiển thị trên UI, nhưng **hoàn toàn loại trừ** khỏi mảng `activeScores` tính Threat Score, **ngăn chặn toàn bộ việc push anomaly** (`anomalies.length = 0`), và gán cờ `vectorDefenses[v].disabled = true`.
+  2. `aiops.service.js`: Nâng cấp `toggleVector()` kích hoạt tái đánh giá tức thì với mẫu đo hiện tại, cập nhật ngay `_currentStatus` (Threat Score hạ về 5 ngay lập tức), cập nhật mẫu cuối cùng trong ring buffer lịch sử và trả về `currentStatus` mới trong phản hồi API.
+  3. `notification.service.js`: Trong `checkAndAlertCloudHealth()`, tích hợp kiểm tra `defaultAIOpsService.getVectorConfig().resource !== false`. Khi Vector Resource bị tắt, hệ thống vẫn đọc RAM bình thường nhưng **hoàn toàn triệt tiêu cảnh báo `RAM_CRITICAL`** và trả về `ramAlert: false`.
+  4. `index.js`: Bổ sung trường `vectorConfig` vào payload phát nhịp tim thời gian thực của `emitSystemMetricsStream(payload)` (3s/lần) tới `admin_room`.
+  5. `AIOpsPage.jsx`:
+     - Trong `handleConfirmToggleVector`: Cập nhật ngay `statusData` từ `resData.currentStatus` giúp Threat Score phản hồi tức thì về mức bình thường.
+     - Trong biểu đồ SVG xu hướng: Đường Composite Score loại trừ các vector bị tắt, chỉ lấy giá trị cao nhất từ các vector đang bật.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Interaction & Rendering):** Đảm bảo tất cả 4 switch toggle hoạt động, mở popup xác nhận chuẩn hóa, hiển thị badge "Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score", đóng modal mượt mà và hiển thị thông báo phản hồi.
+  - **Tầng 2 (System Impact & Behavioral Verification):** Khi Vector Resource bị TẮT, ngay cả khi RAM đạt 96% và lag 500ms, hệ thống vẫn đo lường 85 điểm Resource nhưng Threat Score tổng thể không tăng (giữ nguyên 5/100 NORMAL), không sinh Anomaly vào CSDL/Socket, và `checkAndAlertCloudHealth` triệt tiêu hoàn toàn cảnh báo RAM khẩn cấp (`ramAlert: false`).
+  - Toàn bộ test suite Backend (34/34 tests) và Admin-web (21/21 tests trong `aiops.page.test.jsx`) đạt **100% PASS**.
 
-
-
-
-
-
-
-
-
-
-
-
-
+### 17.7. Khắc Phục Triệt Để Lỗ Hổng Bypass Màn Hình Khóa & Tiêu Hủy Token JWT Khi Khóa Màn Hình (2026-10-10)
+- **Vấn đề an ninh:** Khi Admin vắng mặt quá 60 phút (theo thiết lập Auto-Lock), màn hình Admin-web bị khóa nhưng mã nguồn cũ chỉ đặt `isLocked: true` trong React memory và không xóa JWT Token khỏi `localStorage`. Kẻ xấu chỉ cần bấm F5 (Reload) hoặc mở lại trang sau khi offline là có thể bypass hoàn toàn màn hình khóa để vào Dashboard mà không cần mật khẩu.
+- **Giải pháp triển khai bảo mật toàn diện (4 Tầng):**
+  1. `constants.js`: Bổ sung 4 hằng số quản lý phiên khóa an toàn: `STORAGE_KEYS.IS_LOCKED`, `STORAGE_KEYS.LOCKED_AT`, `STORAGE_KEYS.LOCKED_USER`, `STORAGE_KEYS.LAST_ACTIVE_AT`.
+  2. `settings.context.jsx`:
+     - Khởi tạo `isLocked` và `lockedAt` trực tiếp từ `localStorage`.
+     - `lockScreen()`: Tiêu hủy 100% `ACCESS_TOKEN` và `REFRESH_TOKEN` khỏi `localStorage`, lưu cờ `IS_LOCKED = 'true'` và snapshot `LOCKED_USER`.
+     - `unlockScreen(password)`: Gửi yêu cầu đăng nhập lại tới `/api/auth/login` với mật khẩu gõ từ bàn phím. Khi thành công, nhận cặp token mới, lưu vào `localStorage`, gỡ bỏ hoàn toàn cờ `IS_LOCKED` và chuyển sang `UNLOCKED`.
+     - Inactivity & Activity Watcher: Theo dõi mốc `LAST_ACTIVE_AT` liên tục. Khi người dùng offline hoặc đóng tab rồi quay lại sau hơn 60 phút, hệ thống tự động kích hoạt khóa và xóa token ngay khi mở lại trang.
+     - `safeClearCache()`: Bảo toàn các key khóa màn hình trong `protectedKeys`.
+  3. `LockScreenModal.jsx`: Sử dụng `LOCKED_USER` để hiển thị avatar, tên và email Admin khi token đã bị xóa. Nút Mở khóa cho phép click để kích hoạt validation báo lỗi khi mật khẩu rỗng. Bấm Đăng xuất xóa sạch toàn bộ storage và chuyển về `/login`.
+  4. `ProtectedRoute.jsx` & `auth.context.jsx`: Cho phép render `AppLayout` kèm `LockScreenModal` khi `isLocked === true`, ngăn chặn tuyệt đối việc truy cập nội dung hoặc bypass.
+- **Bộ Kiểm Thử 2 Tầng (`settings.autolock.security.test.jsx`):**
+  - Đạt **9/9 tests PASS 100%** (Tầng 1: UI inputs, toggle, modal; Tầng 2: Token Destruction, F5 Reload Persistence, 60-min Offline Auto-lock, Fresh Token Issuance, Wrong Password Rejection).
+  - Toàn bộ test suite Admin-web đạt **17/17 test files PASS (122/122 tests PASS 100%)**.
 
 
 
