@@ -72,6 +72,20 @@ jobs:
               return s.replace('|', '\\|').replace('\r', ' ').replace('\n', ' ')
 
 
+          def chuan_hoa(p):
+              # JSON reporter ghi đường dẫn TUYỆT ĐỐI trên runner; đưa về dạng test/... so với src/Client-app/.
+              if not p:
+                  return ''
+              if p.startswith('/'):
+                  ws = os.environ.get('GITHUB_WORKSPACE', '').rstrip('/')
+                  if ws and p.startswith(ws + '/'):
+                      p = p[len(ws) + 1:]
+              p = p.replace('\\', '/')
+              if p.startswith(GOC):
+                  p = p[len(GOC):]
+              return p
+
+
           def dong_dau(err):
               for d in (err or '').splitlines():
                   if d.strip():
@@ -110,7 +124,7 @@ jobs:
                   t = tests.get(tid, {'name': '(test id %s)' % tid, 'suite': None})
                   chuoi = errors.get(tid) or ['']
                   loi.append({
-                      'path': suites.get(t['suite'], ''),
+                      'path': chuan_hoa(suites.get(t['suite'], '')),
                       'name': t['name'],
                       'err': chuoi[0][:300],
                       'dong': dong_dau(chuoi[0]),
