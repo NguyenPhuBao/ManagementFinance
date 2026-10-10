@@ -1,6 +1,5 @@
 /// Khối "header_phan_tich" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:flutter/material.dart';
@@ -14,7 +13,7 @@ import '../../../../../core/ui/do_chu.dart';
 
 class Header extends StatelessWidget {
   final AnalyticsState state;
-  const Header({required this.state});
+  const Header({super.key, required this.state});
 
   /// Tỉ lệ chia chỗ trống của hàng ngang — tiêu đề : ô kỳ.
   static const int _flexTieuDe = 2;
@@ -89,7 +88,7 @@ class Header extends StatelessWidget {
 }
 
 class TieuDeTrang extends StatelessWidget {
-  const TieuDeTrang();
+  const TieuDeTrang({super.key});
 
   // Một đích một tên (D4, 2026-09-19): tab gọi là "Phân tích" nên tiêu đề
   // trang cũng thế. Drawer đã thôi có mục "Thống kê", nên không còn chỗ thứ
@@ -109,7 +108,7 @@ class TieuDeTrang extends StatelessWidget {
 /// tháng đầy đủ thiếu đúng vài chục px, và flex chia kiểu gì cũng phải cắt một
 /// trong hai chữ. Bớt chỗ chiếm cố định mới là cách.
 class NutXuat extends StatelessWidget {
-  const NutXuat();
+  const NutXuat({super.key});
 
   @override
   Widget build(BuildContext context) => IconButton(
@@ -138,7 +137,7 @@ class ChonPhamVi extends StatelessWidget {
 
   /// Ô rộng hết khung, mũi tên dạt phải — khi header xuống hai hàng (G2).
   final bool rongHet;
-  const ChonPhamVi({required this.state, this.rongHet = false});
+  const ChonPhamVi({super.key, required this.state, this.rongHet = false});
 
   static const TextStyle _kieuNhan = TextStyle(
     fontSize: 13,
@@ -219,7 +218,7 @@ class ChonPhamVi extends StatelessWidget {
 
 class Rong extends StatelessWidget {
   final Ky ky;
-  const Rong({required this.ky});
+  const Rong({super.key, required this.ky});
 
   @override
   Widget build(BuildContext context) {

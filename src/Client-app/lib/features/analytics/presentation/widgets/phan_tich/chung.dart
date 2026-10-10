@@ -1,6 +1,5 @@
 /// Khối "chung" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';

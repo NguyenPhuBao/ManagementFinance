@@ -1,6 +1,5 @@
 /// Khối "khoi_co_cau" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:flutter/material.dart';
@@ -21,7 +20,7 @@ const int soDongToiDa = 5;
 class KhoiDonut extends StatelessWidget {
   final ThongKeKy tk;
   final String phanLoaiDangXem;
-  const KhoiDonut({required this.tk, required this.phanLoaiDangXem});
+  const KhoiDonut({super.key, required this.tk, required this.phanLoaiDangXem});
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +167,7 @@ class Donut extends StatelessWidget {
   final double tong;
 
   const Donut({
+    super.key,
     required this.lat,
     required this.mau,
     required this.nhan,
@@ -252,7 +252,7 @@ class Donut extends StatelessWidget {
 class ChuGiaiDonut extends StatelessWidget {
   final Color mau;
   final String nhan;
-  const ChuGiaiDonut({required this.mau, required this.nhan});
+  const ChuGiaiDonut({super.key, required this.mau, required this.nhan});
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +292,7 @@ class DanhSachDanhMuc extends StatelessWidget {
 
   /// Nhóm đang chọn ở donut — luôn có một nhóm, mức gốc đã bỏ (2026-09-14).
   final String phanLoai;
-  const DanhSachDanhMuc({required this.tk, required this.phanLoai});
+  const DanhSachDanhMuc({super.key, required this.tk, required this.phanLoai});
 
   /// Nguồn dòng: **đi theo donut** để hai khối luôn nói cùng một con số. Hai
   /// chỗ đọc hai nguồn khác nhau là donut nói 8.2M mà danh sách cộng ra 8.5M.
@@ -384,7 +384,7 @@ class DongDanhMucTrang extends StatelessWidget {
   /// Nhóm chứa dòng này; quyết định mẫu số của nhãn "% …". Mặc định `'chi'`
   /// vì đó cũng là nhóm trang mở sẵn.
   final String phanLoai;
-  const DongDanhMucTrang({required this.d, this.phanLoai = 'chi'});
+  const DongDanhMucTrang({super.key, required this.d, this.phanLoai = 'chi'});
 
   @override
   Widget build(BuildContext context) {

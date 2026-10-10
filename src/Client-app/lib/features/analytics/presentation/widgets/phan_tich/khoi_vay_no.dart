@@ -1,6 +1,5 @@
 /// Khối "khoi_vay_no" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -48,6 +47,7 @@ class KhoiVayNo extends StatelessWidget {
   final CotVayNo truoc;
 
   const KhoiVayNo({
+    super.key,
     required this.tieuDe,
     required this.ds,
     required this.sau,
@@ -205,7 +205,7 @@ class KhoiVayNo extends StatelessWidget {
 /// tổng trên hai biểu đồ nhỏ hơn tiền thật mà không ai biết vì sao.
 class KhoiVayNoKhac extends StatelessWidget {
   final List<DiemVayNo> ds;
-  const KhoiVayNoKhac({required this.ds});
+  const KhoiVayNoKhac({super.key, required this.ds});
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 /// Khối "khoi_so_lieu_nhanh" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';
@@ -13,7 +12,7 @@ import 'chung.dart';
 /// Ba con số người dùng hỏi ngay, kiểu Money Lover / MISA.
 class KhoiSoLieuNhanh extends StatelessWidget {
   final ThongKeKy tk;
-  const KhoiSoLieuNhanh({required this.tk});
+  const KhoiSoLieuNhanh({super.key, required this.tk});
 
   @override
   Widget build(BuildContext context) {

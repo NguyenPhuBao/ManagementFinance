@@ -1,6 +1,5 @@
 /// Khối "khoi_top_chi" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';
@@ -13,7 +12,7 @@ import 'chung.dart';
 /// Năm khoản chi lớn nhất của kỳ.
 class KhoiTopChi extends StatelessWidget {
   final List<DongGiaoDich> ds;
-  const KhoiTopChi({required this.ds});
+  const KhoiTopChi({super.key, required this.ds});
 
   @override
   Widget build(BuildContext context) => Container(

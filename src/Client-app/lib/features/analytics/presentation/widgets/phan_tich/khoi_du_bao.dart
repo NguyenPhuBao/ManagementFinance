@@ -1,6 +1,5 @@
 /// Khối "khoi_du_bao" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -32,7 +31,7 @@ class KhoiDuBao extends StatefulWidget {
   /// dựng ở HAI chỗ (kỳ rỗng và kỳ thường), quên truyền ở một chỗ là dòng ước
   /// tính biến mất đúng ở nhánh ấy, im lặng.
   final UocTinhChiTuyY? uocTinh;
-  const KhoiDuBao({required this.duBao, required this.uocTinh});
+  const KhoiDuBao({super.key, required this.duBao, required this.uocTinh});
 
   @override
   State<KhoiDuBao> createState() => _KhoiDuBaoState();
@@ -110,7 +109,7 @@ class _KhoiDuBaoState extends State<KhoiDuBao> {
 class BaConSoDuBao extends StatelessWidget {
   final DuBaoDongTien d;
   final UocTinhChiTuyY? uocTinh;
-  const BaConSoDuBao({required this.d, required this.uocTinh});
+  const BaConSoDuBao({super.key, required this.d, required this.uocTinh});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +176,7 @@ class BaConSoDuBao extends StatelessWidget {
 class DongSo extends StatelessWidget {
   final String nhan;
   final String giaTri;
-  const DongSo({required this.nhan, required this.giaTri});
+  const DongSo({super.key, required this.nhan, required this.giaTri});
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +207,7 @@ class DongSo extends StatelessWidget {
 
 class DongViThieu extends StatelessWidget {
   final ViThieu v;
-  const DongViThieu({required this.v});
+  const DongViThieu({super.key, required this.v});
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +241,7 @@ class DongViThieu extends StatelessWidget {
 /// hay một dự báo thứ hai.
 class ChuGiaiDuBao extends StatelessWidget {
   final bool coNganSach;
-  const ChuGiaiDuBao({required this.coNganSach});
+  const ChuGiaiDuBao({super.key, required this.coNganSach});
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +269,7 @@ class MucChuGiai extends StatelessWidget {
   final bool netDut;
   final String chu;
   const MucChuGiai(
-      {required this.mau, required this.netDut, required this.chu});
+      {super.key, required this.mau, required this.netDut, required this.chu});
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +289,7 @@ class MucChuGiai extends StatelessWidget {
 class NetChuGiai extends StatelessWidget {
   final Color mau;
   final bool netDut;
-  const NetChuGiai({required this.mau, required this.netDut});
+  const NetChuGiai({super.key, required this.mau, required this.netDut});
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +320,7 @@ class NetChuGiai extends StatelessWidget {
 /// và vùng tô chỉ kiểm được bằng mắt trên máy ảo 411dp.
 class BieuDoDuBao extends StatelessWidget {
   final DuBaoDongTien d;
-  const BieuDoDuBao({required this.d});
+  const BieuDoDuBao({super.key, required this.d});
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +496,7 @@ class BieuDoDuBao extends StatelessWidget {
 
 class DongCamKet extends StatelessWidget {
   final CamKet c;
-  const DongCamKet({required this.c});
+  const DongCamKet({super.key, required this.c});
 
   @override
   Widget build(BuildContext context) {
@@ -573,7 +572,7 @@ class DongCamKet extends StatelessWidget {
 class NhanNho extends StatelessWidget {
   final String chu;
   final Color mau;
-  const NhanNho({required this.chu, required this.mau});
+  const NhanNho({super.key, required this.chu, required this.mau});
 
   @override
   Widget build(BuildContext context) {

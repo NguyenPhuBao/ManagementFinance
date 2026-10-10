@@ -1,6 +1,5 @@
 /// Khối "khoi_xu_huong" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -34,7 +33,8 @@ class KhoiXuHuong extends StatelessWidget {
   /// Rỗng là hai đường Thu/Chi. Tối đa `kToiDaDuongXuHuong` phần tử — cubit
   /// chốt, ở đây chỉ vẽ.
   final Set<String> danhMucXuHuong;
-  const KhoiXuHuong({required this.tk, required this.danhMucXuHuong});
+  const KhoiXuHuong(
+      {super.key, required this.tk, required this.danhMucXuHuong});
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +327,8 @@ class KhoiXuHuong extends StatelessWidget {
 class ChonDanhMucXuHuong extends StatelessWidget {
   final ThongKeKy tk;
   final Set<String> dangChon;
-  const ChonDanhMucXuHuong({required this.tk, required this.dangChon});
+  const ChonDanhMucXuHuong(
+      {super.key, required this.tk, required this.dangChon});
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +404,7 @@ class ChipDanhMuc extends StatelessWidget {
   final bool dangBat;
   final VoidCallback? onChon;
   const ChipDanhMuc({
+    super.key,
     required this.chipKey,
     required this.ten,
     required this.mau,
@@ -444,7 +446,7 @@ class ChipDanhMuc extends StatelessWidget {
 class ChuGiaiDuong extends StatelessWidget {
   final Color mau;
   final String ten;
-  const ChuGiaiDuong({required this.mau, required this.ten});
+  const ChuGiaiDuong({super.key, required this.mau, required this.ten});
 
   @override
   Widget build(BuildContext context) {

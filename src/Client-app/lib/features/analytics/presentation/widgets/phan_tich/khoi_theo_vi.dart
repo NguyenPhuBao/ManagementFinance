@@ -1,6 +1,5 @@
 /// Khối "khoi_theo_vi" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';
@@ -11,7 +10,7 @@ import 'chung.dart';
 
 class KhoiTheoVi extends StatelessWidget {
   final List<DongVi> ds;
-  const KhoiTheoVi({required this.ds});
+  const KhoiTheoVi({super.key, required this.ds});
 
   @override
   Widget build(BuildContext context) => Container(

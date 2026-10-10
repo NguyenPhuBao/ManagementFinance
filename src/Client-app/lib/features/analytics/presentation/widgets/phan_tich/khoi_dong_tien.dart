@@ -1,6 +1,5 @@
 /// Khối "khoi_dong_tien" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'dart:math' as math;
@@ -24,7 +23,7 @@ import 'khoi_co_cau.dart';
 /// đầu không phải giao dịch, nên nó rơi vào số dư đầu kỳ — mục 3.16.
 class KhoiDongTien extends StatelessWidget {
   final DongTien dt;
-  const KhoiDongTien({required this.dt});
+  const KhoiDongTien({super.key, required this.dt});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -132,7 +131,7 @@ class KhoiDongTien extends StatelessWidget {
 class KhoiThacNuoc extends StatelessWidget {
   final ThongKeKy tk;
 
-  const KhoiThacNuoc({required this.tk});
+  const KhoiThacNuoc({super.key, required this.tk});
 
   /// Năm nhóm lớn nhất, phần còn lại gom thành "Khác" — chín cột là đã kịch
   /// khổ 411dp.

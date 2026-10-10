@@ -1,6 +1,5 @@
 /// Khối "khoi_tong_tai_san" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -38,7 +37,7 @@ import 'chung.dart';
 /// tooltip chỉ kiểm được bằng mắt trên máy ảo 411dp.
 class KhoiTongTaiSan extends StatelessWidget {
   final ThongKeKy tk;
-  const KhoiTongTaiSan({required this.tk});
+  const KhoiTongTaiSan({super.key, required this.tk});
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +117,7 @@ class KhoiTongTaiSan extends StatelessWidget {
 /// Đường tổng tài sản sáu kỳ.
 class BieuDoTaiSan extends StatelessWidget {
   final List<DiemTaiSan> ds;
-  const BieuDoTaiSan({required this.ds});
+  const BieuDoTaiSan({super.key, required this.ds});
 
   @override
   Widget build(BuildContext context) {

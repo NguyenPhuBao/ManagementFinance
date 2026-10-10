@@ -1,6 +1,5 @@
 /// Khối "khoi_lich" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import 'package:flutter/material.dart';
@@ -21,7 +20,7 @@ import 'chung.dart';
 /// là thêm một vùng **không test tự động được** (bẫy 4.9) mà chẳng được gì.
 class KhoiLich extends StatefulWidget {
   final ThongKeKy tk;
-  const KhoiLich({required this.tk});
+  const KhoiLich({super.key, required this.tk});
 
   @override
   State<KhoiLich> createState() => _KhoiLichState();
@@ -135,6 +134,7 @@ class OLich extends StatelessWidget {
   final VoidCallback onTap;
 
   const OLich({
+    super.key,
     required this.ngay,
     required this.muc,
     required this.trungBinh,
@@ -190,7 +190,7 @@ Color nenBac(int bac) => switch (bac) {
 /// ngày lớn nhất — nếu không, hai tháng có lưới giống hệt nhau lại là hai mức
 /// chi hoàn toàn khác.
 class ChuGiaiNhiet extends StatelessWidget {
-  const ChuGiaiNhiet();
+  const ChuGiaiNhiet({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +235,7 @@ class ChuGiaiNhiet extends StatelessWidget {
 class TomTatNgay extends StatelessWidget {
   final DateTime ngay;
   final NgayChiTieu? muc;
-  const TomTatNgay({required this.ngay, required this.muc});
+  const TomTatNgay({super.key, required this.ngay, required this.muc});
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 /// Khối "khoi_tong" của trang Phân tích — tách từ `analytics_page.dart` ngày 2026-10-10 (spec bịt điểm rò mục 5.1).
 /// Dời nguyên văn, chỉ đổi tên riêng tư → công khai; trạng thái và thứ tự cụm vẫn ở trang.
-// ignore_for_file: use_key_in_widget_constructors
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';
@@ -39,7 +38,7 @@ String soVoiNen(double? phanTram, String nhan) {
 class KhoiTong extends StatelessWidget {
   final ThongKeKy tk;
   final MocSoSanh mocSoSanh;
-  const KhoiTong({required this.tk, required this.mocSoSanh});
+  const KhoiTong({super.key, required this.tk, required this.mocSoSanh});
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +116,7 @@ class KhoiTong extends StatelessWidget {
 /// Đứng **trên** hai thẻ chứ không thêm dòng vào trong chúng: thẻ chỉ rộng
 /// chừng 180dp ở khổ 411dp, và chỗ này từng tràn 53px một lần rồi.
 class HangChipSoSanh extends StatelessWidget {
-  const HangChipSoSanh();
+  const HangChipSoSanh({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +163,7 @@ class TheTong extends StatelessWidget {
   final Color color;
 
   const TheTong({
+    super.key,
     required this.title,
     required this.amount,
     required this.diff,
@@ -219,7 +219,7 @@ class TheTong extends StatelessWidget {
 
 class TheConLai extends StatelessWidget {
   final ThongKeKy tk;
-  const TheConLai({required this.tk});
+  const TheConLai({super.key, required this.tk});
 
   @override
   Widget build(BuildContext context) {
