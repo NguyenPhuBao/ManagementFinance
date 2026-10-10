@@ -1670,6 +1670,13 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    · `reminder_scheduler` 2 · `nhap_bien_lai` 2 · `kho_anh_quet`, `nhap_bien_dong`, `wallet_dao`, `other_daos` mỗi tệp 1.
    ✅ Từ 2026-10-10 có **ratchet** ở test quét 25: 12 tệp này nằm trong `conChoCoreImport` chỉ-được-giảm (`sync_engine` 7
    vì `bill_recurrence` về `features/bill/domain`); con số nay 37.
+   📝 **2026-10-11 người dùng chốt: gạch 4 + 5 là MỘT đợt, làm sau hướng A (gạch 3).** Phân nhóm đo cùng ngày: thông báo 20
+   dòng (`notification_rules` · `notification_scanner` · `reminder_scheduler` · `nhap_bien_lai` · `nhap_bien_dong`) + `lich_nen`
+   3 → hết khi dời `core/notification` sang `features/notification/` (gạch 5); đồng bộ 11 — 6 dòng là hằng số thuần (trạng thái
+   / loại ví, trạng thái hoá đơn, chu kỳ, ưu tiên → hợp thức hoá thành luật *"core được đọc hằng số thuần của mảng"*), 5 dòng gọi
+   dịch vụ ví / hoá đơn (`so_du_vi_service`, `tha_vi_bi_giu`, `vi_trung_ten_nguon`, hai resolver ở `noi_bo_nghe_ket_qua_day` →
+   tiêm hook qua DI như `PhienDieuPhoiThat`); DAO 2 hằng số SQL (luật trên); `kho_anh_quet` 1 (dời hàm). Đợt ấy cần nghiệm thu
+   thông báo trên máy thật — vùng nhiều bẫy hỏng im lặng.
 5. **`core/notification` (35 tệp) là một mảng nghiệp vụ nằm trong `core`** — luật của 20 loại thông báo, bộ quét, nhập biến động /
    biên lai / phiên ngân hàng. Chỗ đúng là `features/notification/{data,domain}`; giao diện đã ở `features/notification/presentation`.
    Cổng `ThongBaoNguon` (đợt này) đặt tạm ở `core/notification` cùng lý do.
