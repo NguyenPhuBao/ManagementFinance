@@ -42,6 +42,13 @@ void main() {
     expect(_doc('${_kt}TuChuyenTienWorker.kt'), contains('APPEND_OR_REPLACE'));
   });
 
+  test('hai worker (một-lần + định kỳ) không cùng dựng hai engine — cờ đang chạy', () {
+    final kt = _doc('${_kt}TuChuyenTienWorker.kt');
+    expect(kt, contains('dangChay.compareAndSet(false, true)'),
+        reason: 'hai công việc khác tên chạy song song được — hai engine Dart, hai kết nối SQLite');
+    expect(kt, contains('dangChay.set(false)'), reason: 'không nhả cờ là mọi lượt sau bị bỏ qua');
+  });
+
   test('worker luôn trả success (retry dễ thành vòng lặp tốn pin)', () {
     final kt = _doc('${_kt}TuChuyenTienWorker.kt');
     expect(kt, isNot(contains('Result.retry()')));
