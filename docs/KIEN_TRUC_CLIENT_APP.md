@@ -227,8 +227,10 @@ kênh đứng sau một lớp Dart riêng; `tu_chuyen_tien_nen` dùng chung tệ
 
 ## 8. Luật vị trí tệp
 
-Bảng này là luật cho tệp **mới**. Tệp cũ lệch luật được liệt kê ở G88 (7) và để dành cho một đợt dọn riêng, có test quét
-25 canh — đừng dời lẻ tẻ trong một việc khác.
+Bảng này là luật cho tệp **mới**. Tệp cũ lệch luật được liệt kê ở G88 (7); đợt dọn riêng đã có **spec + kế hoạch 2026-10-10**
+(`docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`, **chưa thi công**) kèm test quét 25 canh — đừng dời lẻ
+tẻ trong một việc khác. Spec ấy thêm **ba hàng** (hàm đọc Bloc → `presentation/bloc/`; hộp thoại / hành động dùng chung trong
+mảng → `presentation/widgets/`; kiểu / hàm thuần mà hạ tầng `core` cần → `core/<chủ đề>/`) — vào bảng khi đợt dọn xong.
 
 | Loại tệp | Thư mục |
 |---|---|

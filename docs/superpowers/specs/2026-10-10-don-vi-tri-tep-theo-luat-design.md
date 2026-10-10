@@ -1,6 +1,8 @@
 # Dọn vị trí tệp theo luật mục 8 + test quét 25 — thiết kế
 
-**Ngày:** 2026-10-10 · **Trạng thái:** thiết kế duyệt trong chat (bốn câu hỏi, mục 0) — bản viết chờ người dùng đọc ·
+**Ngày:** 2026-10-10 · **Trạng thái:** thiết kế duyệt trong chat (bốn câu hỏi, mục 0), bản viết người dùng đã đọc; kế hoạch
+12 task ở `plans/2026-10-10-don-vi-tri-tep-theo-luat.md` (gitignore) — **chưa thi công**, cách thi công người dùng chọn ở
+phiên sau. ⚠️ Một dòng đổi sau duyệt: `category_visuals` → `presentation/widgets/` thay cho `domain/` (hàng C, mục 2) ·
 **Trả nợ:** G88 gạch 7 (`docs/CLIENT_APP_KNOWN_GAPS.md`) · **Luật:** mục 8 `docs/KIEN_TRUC_CLIENT_APP.md` ·
 **Tiền nhiệm:** spec bịt điểm rò `2026-10-10-bit-diem-ro-kien-truc-client-design.md` (đợt ấy cố ý không dời tệp).
 
@@ -46,13 +48,14 @@ Không đổi tên lớp, hàm, khoá widget. Không sửa đơn `DA-XONG/` (ả
 | B | `auth/presentation/xac_nhan_dang_xuat.dart` (`showDialog`) · `huy_yeu_cau_xoa.dart` (gọi repo + gửi event + toast) | `auth/presentation/widgets/` | 2 · 2 | hàng mới *hộp thoại / hành động dùng chung* |
 | B | `premium/presentation/cubit/goi_cubit.dart` | `premium/presentation/bloc/goi_cubit.dart` | 18 | bảy mảng kia đều `bloc/` |
 | **C** | `core/auth/dem_nguoc_xoa.dart` (hàm thuần, 0 tệp `core` dùng) | `auth/domain/dem_nguoc_xoa.dart` (thư mục **mới**) | 4 | |
-| C | `core/category/category_classify.dart` · `category_visuals.dart` (0 tệp `core` dùng) | `category/domain/` | 15 · 16 | `category_name.dart` **ở lại** — DAO + 3 util dùng |
+| C | `core/category/category_classify.dart` (0 tệp `core` dùng; chỉ import `category_name`) | `category/domain/` | 15 | `category_name.dart` **ở lại** — DAO + 3 util dùng |
+| C | `core/category/category_visuals.dart` (0 tệp `core` dùng; **import `package:flutter/material.dart`** — `IconData`/`Color`) | `category/presentation/widgets/` — tiền lệ `budget/presentation/widgets/budget_visuals.dart`; mục 4 cấm Flutter trong `domain/` | 16 | ⚠️ **sửa 2026-10-10 khuya, sau khi duyệt**: bản duyệt ghi `domain/` vì tôi chưa đo import; 16 chỗ dùng đều là trang / widget. Xác nhận lại trước Task 6 |
 | C | `core/bill/bill_recurrence.dart` | `bill/domain/bill_recurrence.dart` | 16 `lib` + 47 `test` | quyết định 4; `core/bill/` biến mất |
 | **D** | `core/constants/app_router.dart` | `core/router/app_router.dart` | 3 `lib` + 7 `test` | hai test đọc `File('lib/core/constants/app_router.dart')` (mục 6) |
 | **E** | `test/e2e_sqlite_to_backend_sync_test.dart` | `test/core/sync/` | — | |
 | E | `test/transaction_repository_test.dart` (import Impl) | `test/features/transaction/data/repositories/` | — | **sau** nhóm A |
 | E | `test/features/layout/no_overflow_test.dart` | `test/shared/no_overflow_test.dart` | — | không có `lib/features/layout` |
-| E | 8 test đi theo tệp dời — `test/core/auth/current_account_test` → `test/features/auth/` (phẳng, như 13 test sẵn có) · `test/core/auth/dem_nguoc_xoa_test` → `test/features/auth/domain/` · `test/core/bill/bill_recurrence_test` → `test/features/bill/domain/` · `test/core/category/{category_classify,category_visuals}_test` → `test/features/category/domain/` · `test/core/constants/{router_chan_theo_goi,xuat_bao_cao_co_cua_quyen}_test` → `test/core/router/` · `test/features/premium/data/goi_repository_test` → `test/features/premium/data/repositories/` | soi gương **thư mục** chỗ mới | — | `test/core/auth/khong_du_phong_admin_test` + `phien_dieu_phoi_that_test` + `buoc_dang_xuat_test` ở lại; `test/core/category/category_name_test` ở lại |
+| E | 8 test đi theo tệp dời — `test/core/auth/current_account_test` → `test/features/auth/` (phẳng, như 13 test sẵn có) · `test/core/auth/dem_nguoc_xoa_test` → `test/features/auth/domain/` · `test/core/bill/bill_recurrence_test` → `test/features/bill/domain/` · `test/core/category/category_classify_test` → `test/features/category/domain/` · `test/core/category/category_visuals_test` → `test/features/category/presentation/` · `test/core/constants/{router_chan_theo_goi,xuat_bao_cao_co_cua_quyen}_test` → `test/core/router/` · `test/features/premium/data/goi_repository_test` → `test/features/premium/data/repositories/` | soi gương **thư mục** chỗ mới | — | `test/core/auth/khong_du_phong_admin_test` + `phien_dieu_phoi_that_test` + `buoc_dang_xuat_test` ở lại; `test/core/category/category_name_test` ở lại |
 
 Tổng: **21** tệp `lib` (19 dời + 2 tách: A 5 + 2 · B 9 · C 4 · D 1), **11** tệp test dời, ≈ **250** dòng import đổi
 (đếm lại bằng script lúc làm — đừng cộng dồn).

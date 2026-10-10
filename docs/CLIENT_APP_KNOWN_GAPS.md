@@ -1677,6 +1677,14 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    `core/bill/` (một tệp miền hoá đơn) · router dưới `core/constants/` · `ai_chat/spike/` (mã đo) nằm trong `lib/` · 3 test
    ở gốc `test/` (`e2e_sqlite_to_backend_sync_test`, `transaction_repository_test`, `widget_test`). Xử lý bằng **một đợt dọn
    riêng** kèm **test quét 25** canh luật vị trí — đừng dời lẻ tẻ trong một việc khác (mỗi lần dời là đổi import ở hàng chục tệp).
+   📝 **2026-10-10 khuya — spec + kế hoạch có, CHƯA thi công:** spec `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`
+   (người dùng duyệt bốn câu: phạm vi mở thêm `core/auth/dem_nguoc_xoa`, 5 repository nằm thẳng dưới `data/` của analytics / premium,
+   2 tệp `core/category` không tệp `core` nào dùng; **`buoc_dang_xuat` ở lại `core/auth`** — bốn tệp hạ tầng dùng, thành hàng luật;
+   xoá `spike_sql`, giữ `spike_c4` miễn trừ tới sau C4; `bill_recurrence` → `features/bill/domain` theo tiền lệ `bill_pay_status`)
+   + kế hoạch 12 task `plans/2026-10-10-don-vi-tri-tep-theo-luat.md` (gitignore). Cách thi công người dùng chọn ở phiên sau.
+   ⚠️ Chữ *"7 tệp trạng thái"* ở trên **không đúng**: chỉ ba là `ValueNotifier` (→ `state/`); `current_account`, `co_quyen`,
+   `phien_goi_tu_auth` là hàm đọc Bloc (→ `bloc/`); `xac_nhan_dang_xuat`, `huy_yeu_cau_xoa` là hộp thoại / hành động (→ `widgets/`).
+   ⚠️ Và `category_visuals` import Flutter nên đích là `category/presentation/widgets/`, không `domain/` (đo sau khi duyệt — xác nhận trước Task 6).
 
 ✅ **Đã quyết 2026-10-10 (người dùng): form Thêm / Sửa hoá đơn KHÔNG cho chọn nhóm danh mục.** Đợt tái cấu trúc từng giữ
 nguyên dropdown phẳng gồm cả hàng nhóm (`isGroup`, phán quyết R8 qua lối `getCategoryRows`); người dùng chốt đó là sai —
