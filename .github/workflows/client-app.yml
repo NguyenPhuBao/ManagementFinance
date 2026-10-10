@@ -1,0 +1,47 @@
+name: Client-app
+
+on:
+  push:
+    paths: ['src/Client-app/**', '.github/workflows/client-app.yml']
+  pull_request:
+    branches: [main]
+    paths: ['src/Client-app/**', '.github/workflows/client-app.yml']
+
+concurrency:
+  group: client-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kiem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: src/Client-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'   # khớp máy dev (CLAUDE.md "Toolchain")
+          channel: stable
+          cache: true
+
+      - name: Thư viện SQLite cho Drift in-memory (140 tệp test)
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
+      - run: flutter pub get
+
+      - name: flutter analyze (info/warning không fatal — mức nền 20 cảnh báo)
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings | tee analyze.txt
+
+      - name: Số cảnh báo không vượt mức nền
+        run: |
+          MUC_NEN=20   # Giảm dần, KHÔNG tăng. Đổi cùng lúc với "mức nền" ở CLAUDE.md.
+          N=$(grep -oE '[0-9]+ issues? found' analyze.txt | grep -oE '^[0-9]+' || echo 0)
+          echo "issues=$N muc_nen=$MUC_NEN"
+          test "$N" -le "$MUC_NEN"
+
+      - run: flutter test --reporter compact
