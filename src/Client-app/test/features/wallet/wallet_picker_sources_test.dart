@@ -96,12 +96,36 @@ void main() {
   Set<String> tepChua(String mau) =>
       {for (final e in noiDung.entries) if (e.value.contains(mau)) e.key};
 
+  /// Trang giữ repository trong trường (`_vi.getAllRows(`) không viết `WalletRepository>().` nên lách được mẫu trên.
+  /// Với tệp có nhắc `WalletRepository`, bắt mọi dòng `.getAllRows(` / `.watchAllRows(` bất kể người nhận, trừ dòng
+  /// rõ ràng là repository giao dịch / danh mục. (Dương tính giả — trường giữ repo giao dịch trong tệp có cả ví — thì
+  /// phân loại tệp ấy vào `duocDocMoiVi` kèm lý do.)
+  Set<String> tepDocViQuaTruong() {
+    final mau = RegExp(r'\.(getAllRows|watchAllRows)\(');
+    return {
+      for (final e in noiDung.entries)
+        if (e.value.contains('WalletRepository') &&
+            e.value.split('\n').any((d) =>
+                !d.trimLeft().startsWith('//') &&
+                mau.hasMatch(d) &&
+                !d.contains('TransactionRepository>()') &&
+                !d.contains('CategoryManagementRepository>()')))
+          e.key
+    };
+  }
+
+  test('tiền đề: phép bắt theo trường thấy được một lối đọc ví giữ trong trường', () {
+    expect(tepDocViQuaTruong(), contains('features/bill/presentation/pages/bill_page.dart'),
+        reason: 'bill_page.dart đọc `sl<WalletRepository>().getAllRows(` — phép bắt phải thấy nó, nếu không regex hỏng.');
+  });
+
   test('không chỗ nào ngoài danh sách được đọc MỌI ví', () {
     final thay = {
       ...tepChua('walletDao.getAll('),
       ...tepChua('walletDao.watchAll('),
       ...tepChua('WalletRepository>().getAllRows('),
       ...tepChua('WalletRepository>().watchAllRows('),
+      ...tepDocViQuaTruong(),
     };
 
     expect(thay.difference(duocDocMoiVi.keys.toSet()), isEmpty,

@@ -16,6 +16,12 @@ import 'package:flutter_test/flutter_test.dart';
 /// đúng chỗ ấy từ trước mà bản trùng vẫn nằm đó tới 2026-09-12: không gì đỏ khi
 /// người ta gọi start() thừa. Test này là cái đỏ ấy.
 void main() {
+  test('tiền đề: tệp được phép vẫn khớp mẫu start(idaccount:) — regex hỏng thì test dưới xanh giả', () {
+    final noiDung = File('lib/core/auth/phien_dieu_phoi_that.dart').readAsStringSync();
+    expect(RegExp(r'\.start\(\s*idaccount\s*:').hasMatch(noiDung), isTrue,
+        reason: 'PhienDieuPhoiThat phải gọi `.start(idaccount:` — nếu không, mẫu quét không còn nhận ra lời gọi thật.');
+  });
+
   test('chỉ PhienDieuPhoiThat được mở phiên: SyncEngine / RealtimeChannel / NotificationScanner.start', () {
     // `sl<SyncEngine>().start(idaccount:` hay `engine.start(idaccount:` — bắt
     // theo tham số đặt tên, thứ chỉ SyncEngine và RealtimeChannel dùng

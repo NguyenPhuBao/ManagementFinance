@@ -260,7 +260,7 @@ Response:
 | Sau mỗi lần ghi dữ liệu | `scheduleSync()` — debounce **2 giây**, được gọi từ **19 vị trí** trong tầng feature |
 
 `start()` luôn huỷ listener/timer cũ trước khi cài mới nên gọi nhiều lần không nhân đôi trigger.
-`start(idaccount:)` được gọi từ **2** nơi, đều trong `AuthBloc`: lúc khôi phục phiên và sau đăng nhập. Chỗ thứ ba — `HomePage.build()` — **gỡ 2026-09-12**: nó chạy lại ở mỗi rebuild và mỗi lần xoá giãn cách lùi + thêm một chu kỳ đồng bộ; `test/core/sync/sync_engine_start_owner_test.dart` quét `lib/` để không ai gắn lại.
+`start(idaccount:)` được gọi từ **2** nơi, đều trong `AuthBloc`: lúc khôi phục phiên và sau đăng nhập (từ 2026-10-10: `PhienDieuPhoiThat` là chủ sở hữu duy nhất). Chỗ thứ ba — `HomePage.build()` — **gỡ 2026-09-12**: nó chạy lại ở mỗi rebuild và mỗi lần xoá giãn cách lùi + thêm một chu kỳ đồng bộ; `test/core/sync/sync_engine_start_owner_test.dart` quét `lib/` để không ai gắn lại.
 
 ### Kiến trúc
 
@@ -627,7 +627,7 @@ lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus 
 | 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
 
 Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentation/` **29 → 0**; tệp `presentation` > 1.200 dòng
-**6 → 5**; `flutter test` **6587 → 6614** (+9 skip), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
+**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
 `features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)).
 
 - ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai

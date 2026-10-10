@@ -12,11 +12,26 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // Tiền tố từng DAO (`wallet` -> `walletDao`). Ca tiền đề dưới đếm lớp DAO thật để danh sách này không cũ.
+  const tenDao = [
+    'wallet', 'transaction', 'category', 'budget', 'bill', 'goal', 'notification', 'notificationEvent', 'aiFeedback',
+    'goiYPhanHoi', 'goiYHoaDon', 'thuTuKhoi', 'khoaTuChuyenTien',
+  ];
   final cam = <RegExp>[
     RegExp(r'\bsl(\.isRegistered)?<AppDatabase>'),
-    RegExp(r'\.(wallet|transaction|category|budget|bill|goal|notification|notificationEvent|aiFeedback|'
-        r'goiYPhanHoi|goiYHoaDon|thuTuKhoi|khoaTuChuyenTien)Dao\b'),
+    // Trang nhận `AppDatabase` qua constructor / trường cũng là cầm CSDL.
+    RegExp(r'\bAppDatabase\b'),
+    RegExp('\\.(${tenDao.join('|')})Dao\\b'),
   ];
+
+  test('tiền đề: số lớp DAO thật bằng số DAO mà luật cấm liệt kê', () {
+    var soDao = 0;
+    for (final f in Directory('lib/core/database/daos').listSync().whereType<File>()) {
+      soDao += RegExp(r'extends DatabaseAccessor<AppDatabase>').allMatches(f.readAsStringSync()).length;
+    }
+    expect(soDao, tenDao.length,
+        reason: 'Thêm/bớt DAO thì phải cập nhật `tenDao`, nếu không trang gọi DAO mới lọt qua luật quét.');
+  });
 
   /// Tệp (tương đối `lib/`) → số dòng còn vi phạm. Điền từ lượt chạy đầu (Step 3); Task 7, 8, 10 rút về rỗng.
   const conCho = <String, int>{};

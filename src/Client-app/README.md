@@ -23,17 +23,16 @@ flutter pub get
 flutter run -d chrome --web-port 9090   # bản web, nhanh để thử
 flutter build apk --debug               # bản Android
 
-flutter test                            # mức nền: 1587/1587 pass, ~75 giây
-flutter analyze                         # mức nền: 25 issue, KHÔNG có error
+flutter test                            # mức nền: 6617/6617 pass (+9 skip), ~5 phút (đo 2026-10-10)
+flutter analyze                         # mức nền: 20 issue, KHÔNG có error
 
-# sau khi sửa bảng/DAO của Drift (schema hiện tại: v19)
+# sau khi sửa bảng/DAO của Drift (schema hiện tại: v30)
 dart run build_runner build --delete-conflicting-outputs
 ```
 
 ## Ba điều dễ vấp nhất
 
-1. **`.gitignore` có dòng `test/`** → tệp test mới bị git bỏ qua không báo gì.
-   Luôn `git add -f` **từng đường dẫn** (thêm cả thư mục sẽ thất bại).
+1. **`test/` đã bỏ khỏi `.gitignore` từ 2026-09-21** → tệp test mới hiện trong `git status` như mọi tệp khác (chỉ `src/Backend/Test/` còn bị chặn).
 2. **Đụng vào giao diện hoặc điều hướng thì phải chạy máy ảo Android** ở 411dp.
    Bộ test và bản web chạy ở 1280px nên không bắt được lỗi tràn bố cục.
 3. **Đừng ngắt `flutter test` giữa chừng, và đừng chạy hai lần cùng lúc.**

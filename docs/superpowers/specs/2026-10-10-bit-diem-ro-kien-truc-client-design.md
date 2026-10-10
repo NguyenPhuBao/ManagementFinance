@@ -441,7 +441,7 @@ có thay đổi payload, nên không có bước hoàn tác dữ liệu.
   `PhienDieuPhoi`, trần dòng và danh sách miễn trừ; mốc test / analyze mới; dòng CI.
 - `docs/PROJECT_CONTEXT.md` mục 9 (cấu trúc app) và mục 14 (khối *Bịt điểm rò kiến trúc 2026-10-10*).
 - `docs/CLIENT_APP_KNOWN_GAPS.md` mục 1: một mục **G88 — nợ kiến trúc còn lại sau đợt 2026-10-10**, sáu gạch đầu dòng:
-  Thêm giao dịch ~~~1.800~~ **2.007** dòng đo sau Task 13 (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
+  Thêm giao dịch ~~1.800~~ **2.007** dòng đo sau Task 13 (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
   ở 4/14 mảng; 36 dòng hạ tầng (`notification_rules`, `sync_engine`, `notification_scanner`, DAO) import `features/`;
   `core/notification` (34 tệp) là một mảng nghiệp vụ nằm trong `core`, chỗ đúng là `features/notification/{data,domain}`;
   `data/services/` ở ví, hoá đơn, danh mục thực chất là tầng application chưa có tên — nếu cần tầng thứ tư thì đổi tên

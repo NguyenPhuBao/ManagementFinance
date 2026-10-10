@@ -140,7 +140,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // ── 3. Core: DioClient ─────────────────────────────────────────────────────
-  // AuthInterceptor đăng ký riêng: AuthBloc cần nghe `sessionExpiredStream`
+  // AuthInterceptor đăng ký riêng: PhienDieuPhoiThat cần nghe `sessionExpiredStream`
   // của ĐÚNG instance đang nằm trên đường request.
   sl.registerLazySingleton<AuthInterceptor>(
     () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
@@ -204,6 +204,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         sl<AnNhacViTrungTen>().value = false;
       },
     ),
+    dispose: (p) => p.dispose(),
   );
   sl.registerFactory<AuthBloc>(() => AuthBloc(authRepository: sl(), phien: sl<PhienDieuPhoi>()));
 

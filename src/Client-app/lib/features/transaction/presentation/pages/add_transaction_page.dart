@@ -130,14 +130,14 @@ class AddTransactionPage extends StatefulWidget {
   /// Bảng *"nguồn + đuôi TK → ví"* (D1). `null` → `sl<ViTheoNguonStore>()` nếu đã đăng ký.
   final ViTheoNguonStore? viTheoNguon;
 
-  /// Xoá cứng hàng loại 20 theo `dedupeKey` (D1). `null` → `NotificationDao.xoaCung`.
+  /// Xoá cứng hàng loại 20 theo `dedupeKey` (D1). `null` → `ThongBaoNguon.xoaCung`.
   final Future<void> Function(int idaccount, String khoa)? xoaBienDong;
 
-  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionDao.getAll`.
+  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionRepository.getAllRows`.
   final Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo;
 
   /// Các hàng biến động đang chờ của tài khoản — căn cứ luật cặp của gợi ý Chuyển khoản (spec 2026-09-30). `null` →
-  /// `NotificationDao.getAll`.
+  /// `ThongBaoNguon.getAll`.
   final Future<List<DienSanBienDong>> Function(int idaccount)? hangBienDongCho;
 
   /// Chia sẻ biên lai (2026-10-02): thư mục ảnh biên lai — form hiện ảnh nhỏ của hàng đang mở ([DienSanBienDong.anh])
