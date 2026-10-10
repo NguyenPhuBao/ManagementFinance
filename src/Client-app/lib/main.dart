@@ -9,7 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_localization.dart';
-import 'core/constants/app_router.dart';
+import 'core/router/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
 import 'features/auth/presentation/bloc/current_account.dart';

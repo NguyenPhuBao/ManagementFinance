@@ -14,7 +14,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/constants/app_router.dart';
+import 'package:flowmoney/core/router/app_router.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';

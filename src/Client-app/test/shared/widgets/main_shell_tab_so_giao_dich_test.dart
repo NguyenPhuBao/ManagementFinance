@@ -46,7 +46,7 @@ void main() {
       // tệp router thay vì chép lại danh sách, nên thêm hoặc bớt một nhánh mà
       // quên hằng là đỏ ngay — và sai lệch ở đó làm thông báo chọn nhầm
       // `go`/`push`: một chiều chết màn đỏ, một chiều làm thanh tab biến mất.
-      final nguon = doc('lib/core/constants/app_router.dart');
+      final nguon = doc('lib/core/router/app_router.dart');
       final dau = nguon.indexOf('StatefulShellRoute.indexedStack');
       final cuoi =
           nguon.indexOf('// Analytics & Report Export standalone routes');
@@ -61,7 +61,7 @@ void main() {
     });
 
     test('`/budget` khai NGOÀI shell, cạnh hai route con của nó', () {
-      final nguon = doc('lib/core/constants/app_router.dart');
+      final nguon = doc('lib/core/router/app_router.dart');
       final cuoiShell =
           nguon.indexOf('// Analytics & Report Export standalone routes');
       expect(nguon.indexOf("path: '/budget'"), greaterThan(cuoiShell),

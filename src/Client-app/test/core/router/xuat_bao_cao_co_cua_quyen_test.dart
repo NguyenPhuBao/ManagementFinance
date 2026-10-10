@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('mọi GoRoute dựng ExportReportPage đều có redirectTheoQuyen(MaQuyen.exportReports)', () {
-    final nguon = File('lib/core/constants/app_router.dart')
+    final nguon = File('lib/core/router/app_router.dart')
         .readAsLinesSync()
         .where((d) => !d.trimLeft().startsWith('//'))
         .join('\n');

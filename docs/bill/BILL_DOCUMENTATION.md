@@ -121,7 +121,7 @@ Bảng và DAO: `core/database/tables/other_tables.dart` (`Bills`) và
 khoản chi cho cả trang).
 
 Route: `/bills`, `/bills/add`, `/bills/:id/edit`, `/bills/:id` (đặt SAU hai
-route trên, ngoài shell) trong `core/constants/app_router.dart`. `BillBloc` đăng ký `registerFactory` nên mỗi
+route trên, ngoài shell) trong `core/router/app_router.dart`. `BillBloc` đăng ký `registerFactory` nên mỗi
 route dựng một instance riêng.
 
 ---

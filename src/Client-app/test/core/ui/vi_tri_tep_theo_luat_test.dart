@@ -30,7 +30,7 @@ const chuDeCore = {
 /// Điểm ghép — tệp `core` được biết mọi mảng (mục 4 tài liệu kiến trúc). Không trần.
 const diemGhep = {
   'lib/core/di/injection_container.dart',
-  'lib/core/constants/app_router.dart', // Task 8 đổi sang lib/core/router/app_router.dart
+  'lib/core/router/app_router.dart',
   'lib/core/nen/chay_nen.dart',
 };
 

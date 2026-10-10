@@ -446,7 +446,7 @@ features/
 └── profile/        ← Hồ sơ người dùng
 ```
 
-`core/` (129 tệp) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/constants/app_router.dart`,
+`core/` (129 tệp) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/router/app_router.dart`,
 `core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
 phiên, nhận hook hàm nên không import `features/`). `core/notification/thong_bao_nguon.dart` là cổng đọc / ghi bảng
 thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng

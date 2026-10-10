@@ -6,7 +6,7 @@ library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
-import 'package:flowmoney/core/constants/app_router.dart';
+import 'package:flowmoney/core/router/app_router.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
