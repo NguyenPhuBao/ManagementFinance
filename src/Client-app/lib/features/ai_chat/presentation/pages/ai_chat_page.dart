@@ -34,7 +34,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../ai_edge/data/bo_cong_cu.dart';
@@ -443,7 +442,6 @@ class _AiChatPageState extends State<AiChatPage> {
       final chu = await chaySpikeSql(
         cauHoi,
         runtime: runtime,
-        db: sl<AppDatabase>(),
         idaccount: id,
       );
       _themCuaAi(_TinNhan.cuaAi(chu));

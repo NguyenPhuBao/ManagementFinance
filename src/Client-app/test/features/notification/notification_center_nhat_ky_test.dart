@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/notification/thong_bao_nguon.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
@@ -57,7 +58,7 @@ void main() {
       builder: bocToast(batThongBao()),
       home: NotificationCenterPage(
         idaccount: accountId,
-        dao: db.notificationDao,
+        nguon: ThongBaoNguonDrift(db.notificationDao),
         nhatKy: nhatKy,
       ),
     ));

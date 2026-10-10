@@ -16,6 +16,9 @@ import '../../../../core/notification/kho_bien_lai.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../data/repositories/transaction_repository.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_mon_hang.dart';
@@ -496,7 +499,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   static Future<List<DienSanBienDong>> _hangChoMacDinh(int id) async {
     final ds = <DienSanBienDong>[];
-    for (final n in await sl<AppDatabase>().notificationDao.getAll(id)) {
+    for (final n in await sl<ThongBaoNguon>().getAll(id)) {
       final link = n.deeplink;
       if (n.kind != kKindBienDongSoDu || n.dismissedAt != null || link == null) continue;
       final h = dienSanBienDongTuQuery(Uri.tryParse(link)?.queryParameters ?? const {});
@@ -529,7 +532,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   static Future<List<KhoanSo>> _khoanTrongSoMacDinh(int id) async => [
-        for (final t in await sl<AppDatabase>().transactionDao.getAll(id))
+        for (final t in await sl<TransactionRepository>().getAllRows(id))
           (id: t.id, soTien: t.amount, loai: t.type, ngay: t.date, ghiChu: t.note),
       ];
 
@@ -555,7 +558,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Xoá cứng một hàng loại 20 theo `dedupeKey` (ngoại lệ có chủ ý — spec D1 §3.3). Không bao giờ ném.
   Future<void> _xoaHangBienDong(int id, String khoa) async {
     final xoa = widget.xoaBienDong ??
-        (sl.isRegistered<AppDatabase>() ? sl<AppDatabase>().notificationDao.xoaCung : null);
+        (sl.isRegistered<ThongBaoNguon>() ? sl<ThongBaoNguon>().xoaCung : null);
     try {
       await xoa?.call(id, khoa);
     } catch (e) {
@@ -686,8 +689,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return;
     }
 
-    final db = sl<AppDatabase>();
-    final list = await db.walletDao.getActive(userIdAccount);
+    final list = await sl<WalletRepository>().getActiveRows(userIdAccount);
 
     if (mounted) {
       setState(() {
@@ -796,7 +798,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (widget.wallets != null) return;
     final userIdAccount = _accountId();
     if (userIdAccount == null) return;
-    final txs = await sl<AppDatabase>().transactionDao.getAll(userIdAccount);
+    final txs = await sl<TransactionRepository>().getAllRows(userIdAccount);
     final dangSua = _editing?.id;
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),

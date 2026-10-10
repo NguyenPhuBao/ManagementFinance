@@ -17,6 +17,7 @@ library;
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/database/app_database.dart';
+import '../../../core/di/injection_container.dart';
 import '../../ai_edge/data/slm_runtime.dart';
 
 /// Bật bằng `flutter build apk --dart-define=SPIKE_SQL=true`.
@@ -111,7 +112,7 @@ SQL:''';
 Future<String> chaySpikeSql(
   String cauHoi, {
   required SlmRuntime runtime,
-  required AppDatabase db,
+  AppDatabase? db,
   required int idaccount,
   DateTime? now,
 }) async {
@@ -130,7 +131,7 @@ Future<String> chaySpikeSql(
   }
   debugPrint('[SLM][spike] SQL: ${sql.replaceAll('\n', ' ')}');
   try {
-    final rows = await db.customSelect(sql).get();
+    final rows = await (db ?? sl<AppDatabase>()).customSelect(sql).get();
     final ds = rows
         .map((r) => r.data.entries.map((e) => '${e.key}=${e.value}').join(', '))
         .toList();

@@ -6,7 +6,7 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/tai_phan_bo_nguon.dart';
 import '../../../ai_edge/presentation/pages/ke_hoach_tai_phan_bo_sheet.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -84,7 +84,7 @@ class _BudgetPageContent extends StatelessWidget {
                 keHoach: kh,
                 idaccount: idaccount,
                 budgets: sl<BudgetRepository>(),
-                ghiPhanHoi: sl<AppDatabase>().aiFeedbackDao.ghi,
+                ghiPhanHoi: sl<TaiPhanBoNguon>().ghiPhanHoi,
               );
             },
           ),

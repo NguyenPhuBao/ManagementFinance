@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/notification_dao.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
 import '../../../../core/notification/hoc_gio_thong_bao.dart';
 import '../../../../core/notification/nhat_ky_thong_bao.dart';
@@ -24,7 +24,7 @@ class NotificationCenterPage extends StatefulWidget {
   const NotificationCenterPage({
     super.key,
     this.idaccount,
-    this.dao,
+    this.nguon,
     this.nhatKy,
     this.taiDeXuat,
     this.nhomBanDau,
@@ -50,9 +50,9 @@ class NotificationCenterPage extends StatefulWidget {
   /// ngay giữa `build`.
   final int? idaccount;
 
-  /// Bỏ trống thì lấy từ chỗ dựng phụ thuộc. Ở đây `??` là an toàn: một DAO
+  /// Cổng đọc / ghi thông báo — tiêm cho test; mặc định `sl<ThongBaoNguon>()`. Ở đây `??` là an toàn: một nguồn
   /// không bao giờ mang nghĩa "cố ý để trống".
-  final NotificationDao? dao;
+  final ThongBaoNguon? nguon;
 
   /// Nhật ký thông báo (B5a) — tiêm cho test; mặc định `sl<NhatKyThongBao>()`.
   /// Chưa đăng ký thì trang vẫn chạy, chỉ không ghi nhật ký.
@@ -132,7 +132,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   @override
   Widget build(BuildContext context) {
     final idaccount = widget.idaccount;
-    final dao = widget.dao ?? sl<AppDatabase>().notificationDao;
+    final dao = widget.nguon ?? sl<ThongBaoNguon>();
     final nhatKy = widget.nhatKy ??
         (sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null);
 
@@ -205,7 +205,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
     );
   }
 
-  Widget _danhSach(NotificationDao dao, int idaccount, NhatKyThongBao? nhatKy) {
+  Widget _danhSach(ThongBaoNguon dao, int idaccount, NhatKyThongBao? nhatKy) {
     return StreamBuilder<List<AppNotification>>(
       stream: dao.watchFeed(
         idaccount,
@@ -508,7 +508,7 @@ class _NutTaiThem extends StatelessWidget {
 /// người dùng biết vừa xảy ra chuyện gì.
 Future<void> _doiTrangThaiDoc(
   BuildContext context,
-  NotificationDao dao,
+  ThongBaoNguon dao,
   AppNotification item,
 ) async {
   final daDoc = item.readAt != null;
@@ -530,7 +530,7 @@ Future<void> _doiTrangThaiDoc(
 /// vuốt nhầm làm thông báo biến mất khỏi giao diện vĩnh viễn.
 Future<void> _xoaCoHoanTac(
   BuildContext context,
-  NotificationDao dao,
+  ThongBaoNguon dao,
   AppNotification item,
   NhatKyThongBao? nhatKy,
   int idaccount,

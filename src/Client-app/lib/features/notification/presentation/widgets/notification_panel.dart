@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
 
@@ -31,9 +32,7 @@ class NotificationPanel extends StatelessWidget {
     final stream = feed ??
         (id == null
             ? null
-            : sl<AppDatabase>()
-                .notificationDao
-                .watchFeed(id, limit: _soMucHienThi));
+            : sl<ThongBaoNguon>().watchFeed(id, limit: _soMucHienThi));
     if (stream == null) return const SizedBox.shrink();
 
     return StreamBuilder<List<AppNotification>>(

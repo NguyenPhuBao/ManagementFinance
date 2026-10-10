@@ -8,10 +8,8 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../transaction/data/repositories/transaction_repository.dart';
 import '../../data/gan_danh_muc_nguon.dart';
 import '../../data/goi_y_phan_hoi_store.dart';
-import '../../data/repositories/category_management_repository.dart';
 import '../../domain/gan_hang_loat.dart';
 import '../widgets/chon_danh_muc_gan_sheet.dart';
 
@@ -85,15 +83,9 @@ class _GanDanhMucPageState extends State<GanDanhMucPage> {
 
   GoiYPhanHoiStore? get _store => sl.isRegistered<GoiYPhanHoiStore>() ? sl<GoiYPhanHoiStore>() : null;
 
-  Future<DuLieuGanDanhMuc> _taiMacDinh(int id) => taiDuLieuGan(
-        db: sl<AppDatabase>(),
-        danhMuc: sl<CategoryManagementRepository>(),
-        phanHoi: _store,
-        idaccount: id,
-      );
+  Future<DuLieuGanDanhMuc> _taiMacDinh(int id) => sl<GanDanhMucNguon>().tai(id);
 
-  Future<void> _apDungMacDinh(DongGanDanhMuc d, String categoryId) =>
-      apDungGan(db: sl<AppDatabase>(), repo: sl<TransactionRepository>(), dong: d, categoryId: categoryId);
+  Future<void> _apDungMacDinh(DongGanDanhMuc d, String categoryId) => sl<GanDanhMucNguon>().apDung(d, categoryId);
 
   Future<void> _ghiMacDinh(DongGanDanhMuc d, String ketQua, String chon) async {
     final store = _store;

@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../core/auth/current_account.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
@@ -33,7 +33,7 @@ class ProfilePage extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<AppDatabase>().notificationDao.watchUnreadCount(
+                : sl<ThongBaoNguon>().watchUnreadCount(
                     currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),

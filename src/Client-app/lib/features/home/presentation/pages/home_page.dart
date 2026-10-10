@@ -22,6 +22,10 @@ import '../../../goal/data/repositories/goal_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../transaction/data/repositories/transaction_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
@@ -37,7 +41,6 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final db = sl<AppDatabase>();
     final authState = context.watch<AuthBloc>().state;
     // Chỉ đọc mã tài khoản để lọc dữ liệu. KHÔNG khởi động SyncEngine ở đây:
     // build() chạy lại ở mỗi AuthSuccess re-emit và mỗi lần quay về tab, mà
@@ -106,7 +109,7 @@ class HomePage extends StatelessWidget {
                   }
 
                   final walletStream = (currentUserId != null)
-                      ? db.walletDao.watchAll(currentUserId)
+                      ? sl<WalletRepository>().watchAllRows(currentUserId)
                       : Stream<List<Wallet>>.value([]);
 
                   return StreamBuilder<List<Wallet>>(
@@ -146,15 +149,15 @@ class HomePage extends StatelessWidget {
                   }
 
                   final txStream = (currentUserId != null)
-                      ? db.transactionDao.watchAll(currentUserId)
+                      ? sl<TransactionRepository>().watchAllRows(currentUserId)
                       : Stream<List<Transaction>>.value([]);
                   // Tên ví/danh mục cho "Giao dịch gần đây" — cùng nội dung
                   // dòng với sổ giao dịch (`buildTransactionRowContent`).
                   final walletStream = (currentUserId != null)
-                      ? db.walletDao.watchAll(currentUserId)
+                      ? sl<WalletRepository>().watchAllRows(currentUserId)
                       : Stream<List<Wallet>>.value(const []);
                   final categoryStream = (currentUserId != null)
-                      ? db.categoryDao.watchAll(currentUserId)
+                      ? sl<CategoryManagementRepository>().watchAllRows(accountId: currentUserId)
                       : Stream<List<Category>>.value(const []);
 
                   return StreamBuilder<List<Transaction>>(
@@ -252,7 +255,7 @@ class HomePage extends StatelessWidget {
           child: NotificationBell(
             unreadCount: idaccount == null
                 ? null
-                : sl<AppDatabase>().notificationDao.watchUnreadCount(idaccount),
+                : sl<ThongBaoNguon>().watchUnreadCount(idaccount),
             onTap: () => context.push('/notifications'),
           ),
         ),
@@ -635,12 +638,11 @@ class HomePage extends StatelessWidget {
   /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
   /// dịch.
   Widget _buildNhanXet(BuildContext context, int? idaccount) {
-    final db = sl<AppDatabase>();
     final txStream = idaccount != null
-        ? db.transactionDao.watchAll(idaccount)
+        ? sl<TransactionRepository>().watchAllRows(idaccount)
         : Stream<List<Transaction>>.value(const []);
     final walletStream = idaccount != null
-        ? db.walletDao.watchAll(idaccount)
+        ? sl<WalletRepository>().watchAllRows(idaccount)
         : Stream<List<Wallet>>.value(const []);
     final budgetStream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)

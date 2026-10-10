@@ -20,16 +20,7 @@ void main() {
 
   /// Tệp (tương đối `lib/`) → số dòng còn vi phạm. Điền từ lượt chạy đầu (Step 3); Task 7, 8, 10 rút về rỗng.
   const conCho = <String, int>{
-    'features/ai_chat/presentation/pages/ai_chat_page.dart': 1,
     'features/auth/presentation/bloc/auth_bloc.dart': 3,
-    'features/budget/presentation/pages/budget_page.dart': 1,
-    'features/category/presentation/pages/gan_danh_muc_page.dart': 2,
-    'features/home/presentation/pages/home_page.dart': 9,
-    'features/notification/presentation/pages/notification_center_page.dart': 1,
-    'features/notification/presentation/widgets/notification_panel.dart': 2,
-    'features/profile/presentation/pages/profile_page.dart': 1,
-    'features/transaction/presentation/pages/add_transaction_page.dart': 6,
-    'features/transaction/presentation/pages/transaction_page.dart': 5,
   };
 
   test('presentation/ và shared/ không cầm AppDatabase hay DAO, trừ danh sách rút dần', () {

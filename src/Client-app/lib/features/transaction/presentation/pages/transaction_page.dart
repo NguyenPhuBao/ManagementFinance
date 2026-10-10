@@ -7,12 +7,16 @@ import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
+import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
 import '../../../category/domain/gan_hang_loat.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
 import '../../domain/transaction_lookup.dart';
@@ -130,13 +134,12 @@ class _TransactionPageState extends State<TransactionPage> {
   void _ensureLookupStreams(int idaccount) {
     if (_lookupAccount == idaccount) return;
     _lookupAccount = idaccount;
-    final db = sl<AppDatabase>();
-    _wallets = db.walletDao.watchAll(idaccount);
-    _categories = db.categoryDao.watchAll(idaccount);
+    _wallets = sl<WalletRepository>().watchAllRows(idaccount);
+    _categories = sl<CategoryManagementRepository>().watchAllRows(accountId: idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
-        db.transactionDao.watchAll(idaccount).map(demChuaGan);
+        sl<TransactionRepository>().watchAllRows(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
-        db.notificationDao.watchDemBienDong(idaccount);
+        sl<ThongBaoNguon>().watchDemBienDong(idaccount);
   }
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
