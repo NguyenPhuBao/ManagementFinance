@@ -6,7 +6,7 @@ import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
-import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/transaction/data/repositories/transaction_repository_impl.dart';
 
 class DummySyncEngine implements SyncEngine {
   bool syncScheduled = false;

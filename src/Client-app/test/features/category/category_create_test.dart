@@ -12,6 +12,7 @@ import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 
 class _FakeDioClient implements DioClient {
   @override

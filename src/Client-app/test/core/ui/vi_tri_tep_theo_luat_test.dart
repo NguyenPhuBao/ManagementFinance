@@ -60,8 +60,6 @@ const conCho = <String>{
   'lib/features/analytics/data/bao_cao_repository.dart',
   'lib/features/analytics/data/bao_cao_repository_impl.dart',
   'lib/features/premium/data/goi_repository.dart',
-  'lib/features/transaction/data/repositories/transaction_repository.dart',
-  'lib/features/category/data/repositories/category_management_repository.dart',
   // Luật 4 — chủ đề core ngoài danh sách (Task 7).
   'lib/core/bill',
   // Luật 6 — test ở gốc, thư mục không soi gương (Task 9).

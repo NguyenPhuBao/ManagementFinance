@@ -17,7 +17,7 @@ import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
-import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/transaction/data/repositories/transaction_repository_impl.dart';
 import 'package:flowmoney/features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
