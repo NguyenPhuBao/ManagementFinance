@@ -1659,6 +1659,11 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    `watchAllRows` · `getRowById`; `TransactionRepository.getAllRows` · `watchAllRows`;
    `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById`; `BillRepository.getById`)
    cộng `TaiPhanBoNguon.ghiPhanHoi`. Đó là **lối tạm**: trang không còn cầm DAO, nhưng kiểu Drift vẫn lan tới widget.
+   📝 **2026-10-11 người dùng chốt thống nhất về Entity (hướng A)** — làm **sau** nghiệm thu OnePlus và C4: giao diện không
+   cầm hàng Drift, từng mảng một đợt (Hoá đơn → Giao dịch + Ví → Danh mục → Thông báo), kèm test quét cấm `presentation/`
+   dùng kiểu Drift với danh sách chờ chỉ-được-giảm. Đo 2026-10-11 (tệp trang / widget cầm hàng Drift): `Category` 18 ·
+   `Wallet` 12 · `Bill` 9 · `Transaction` 5 · `AppNotification` 2 · `Goal` 1. Hướng B (bỏ 4 Entity, ~1.000 dòng) đã loại —
+   ngược phân tầng. Bảng phụ chỉ dùng trong `data/` (phản hồi gợi ý, nhật ký xem, khoá chạy nền) không cần Entity.
 4. **37 dòng hạ tầng `core` import `features/`** (`grep -rnE "^import .*features/" lib/core` = 175; trừ điểm ghép 138 — DI
    82 · router 54 · `chay_nen` 2; đo 2026-10-10 sau đợt dọn vị trí tệp — trước đợt 172 = 136 + 36): `notification_rules` 10
    · `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · `sync_payload_normalizer` 2 · `noi_bo_nghe_ket_qua_day` 2
