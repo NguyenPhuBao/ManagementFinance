@@ -240,6 +240,8 @@ void main() {
 
 class _NguonCo implements TaiPhanBoNguon {
   _NguonCo(this.d);
+  @override
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
   final DuLieuTaiPhanBo d;
   @override
   Future<DuLieuTaiPhanBo> nap(

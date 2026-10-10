@@ -69,6 +69,13 @@ Wallet makeWallet({
     );
 
 class FakeCategoryRepository implements CategoryManagementRepository {
+  @override
+  Future<List<Category>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
+  @override
+  Stream<List<Category>> watchAllRows({required int accountId}) => throw UnimplementedError();
+  @override
+  Future<Category?> getRowById(String id) => throw UnimplementedError();
+
   FakeCategoryRepository(
       {CategoryTree? tree,
       Map<String, CategoryTree>? trees,
@@ -217,6 +224,11 @@ class FakeCategoryRepository implements CategoryManagementRepository {
 /// Ghi lại những gì trang gửi xuống, để test kiểm được entity đã dựng ra
 /// (loại, danh mục, ví đích) thay vì chỉ kiểm giao diện.
 class FakeTransactionRepository implements TransactionRepository {
+  @override
+  Future<List<Transaction>> getAllRows(int idaccount) => throw UnimplementedError();
+  @override
+  Stream<List<Transaction>> watchAllRows(int idaccount) => throw UnimplementedError();
+
   final List<({TransactionEntity transaction, String? destinationWalletId})>
       added = [];
   final List<({TransactionEntity transaction, String? destinationWalletId})>

@@ -1,3 +1,4 @@
+import '../../../../core/database/app_database.dart';
 import '../models/wallet_entity.dart';
 
 /// Repository interface — UI/Cubit chỉ biết đến interface này,
@@ -46,4 +47,20 @@ abstract class WalletRepository {
   /// nó lọc cả cờ `includeInTotal` lẫn ví đã lưu trữ (ví đã xoá thì không có
   /// mặt từ đầu).
   Future<double> getTotalBalance(int idaccount);
+
+  // ── Hàng Drift cho trang (spec 2026-10-10 bịt điểm rò, mục 4.3) ───────────
+  // Bốn lối CHUYỂN TIẾP, không luật. Trang cầm `List<Wallet>` (bộ chọn ví, bảng tra tên) nên repository trả đúng kiểu
+  // ấy; đổi sang Entity là lan kiểu sang `TransactionLookup`, `BillPaymentSheet`… — nợ ghi ở G88.
+
+  /// Ví đang hoạt động cho **bộ chọn** — `walletDao.getActive`.
+  Future<List<Wallet>> getActiveRows(int idaccount);
+
+  /// Mọi ví chưa xoá, **kể cả lưu trữ** — chỉ cho bảng tra tên. `walletDao.getAll`.
+  Future<List<Wallet>> getAllRows(int idaccount);
+
+  /// Như [getAllRows], dạng stream. `walletDao.watchAll`.
+  Stream<List<Wallet>> watchAllRows(int idaccount);
+
+  /// Một hàng ví, kể cả đã xoá mềm (tra tên cho giao dịch cũ). `walletDao.getById`.
+  Future<Wallet?> getRowById(String id);
 }

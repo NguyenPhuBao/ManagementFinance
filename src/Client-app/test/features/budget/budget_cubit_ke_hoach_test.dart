@@ -2,6 +2,7 @@
 /// thì `keHoach == null` và mọi hành vi cũ giữ nguyên.
 library;
 
+import 'package:flowmoney/core/database/app_database.dart' show AiRebalancingFeedbacksCompanion;
 import 'dart:async';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -31,6 +32,8 @@ class _Nguon implements TaiPhanBoNguon {
   final Duration tre;
   _Nguon({this.du = DuLieuTaiPhanBo.rong, this.tre = Duration.zero});
   @override
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
+  @override
   Future<DuLieuTaiPhanBo> nap(
       int idaccount, List<BudgetView> dangChay, DateTime now) async {
     soLan++;
@@ -40,6 +43,8 @@ class _Nguon implements TaiPhanBoNguon {
 }
 
 class _NguonLoi implements TaiPhanBoNguon {
+  @override
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
   @override
   Future<DuLieuTaiPhanBo> nap(
           int idaccount, List<BudgetView> dangChay, DateTime now) async =>

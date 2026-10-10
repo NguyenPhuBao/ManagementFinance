@@ -113,6 +113,8 @@ class _DanhMuc implements CategoryManagementRepository {
 class _TaiPhanBo implements TaiPhanBoNguon {
   final daHoi = <List<String>>[];
   @override
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
+  @override
   Future<DuLieuTaiPhanBo> nap(int idaccount, List<BudgetView> dangChay, DateTime now) async {
     daHoi.add([for (final v in dangChay) v.displayName]);
     return DuLieuTaiPhanBo.rong;

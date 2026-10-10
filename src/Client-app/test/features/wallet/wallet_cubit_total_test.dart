@@ -1,3 +1,4 @@
+import 'package:flowmoney/core/database/app_database.dart' show Wallet;
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -12,6 +13,15 @@ import 'package:flutter_test/flutter_test.dart';
 /// nhảy hai lần trên màn hình.
 class _RepoGia implements WalletRepository {
   _RepoGia(this._vi);
+
+  @override
+  Future<List<Wallet>> getActiveRows(int idaccount) => throw UnimplementedError();
+  @override
+  Future<List<Wallet>> getAllRows(int idaccount) => throw UnimplementedError();
+  @override
+  Stream<List<Wallet>> watchAllRows(int idaccount) => throw UnimplementedError();
+  @override
+  Future<Wallet?> getRowById(String id) => throw UnimplementedError();
 
   final List<WalletEntity> _vi;
 

@@ -166,4 +166,7 @@ abstract class BillRepository {
   /// Hoàn tác việc bỏ qua kỳ [billId]: về `Pending`, xoá mềm kỳ kế tiếp đã
   /// sinh. **Không** có bước hoàn tiền — chưa từng trừ tiền.
   Future<void> undoSkip({required String billId});
+
+  /// Một hàng hoá đơn (trang Chi tiết hoá đơn). `billDao.getById`.
+  Future<Bill?> getById(String id);
 }

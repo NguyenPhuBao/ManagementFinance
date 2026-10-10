@@ -58,6 +58,15 @@ abstract class CategoryManagementRepository {
   /// tiền suy từ danh mục được chọn chứ không từ segment, nên không còn phân
   /// loại nào để khoanh vùng trước khi tìm.
   Future<List<Category>> selectableChildrenAll({required int accountId});
+
+  /// Bảng TRA TÊN: giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8). `categoryDao.getBangTraTen`.
+  Future<List<Category>> loadBangTraTen({required int accountId});
+
+  /// Mọi danh mục của tài khoản, stream — bộ lọc Sổ giao dịch, Trang chủ. `categoryDao.watchAll`.
+  Stream<List<Category>> watchAllRows({required int accountId});
+
+  /// Một hàng, kể cả đã xoá mềm — tên danh mục trên bảng thanh toán hoá đơn. `categoryDao.getById`.
+  Future<Category?> getRowById(String id);
 }
 
 class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
@@ -377,6 +386,13 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       (await db.categoryDao.getCategoryRows(accountId, classify))
           .where((category) => !category.isGroup)
           .toList();
+
+  @override
+  Future<List<Category>> loadBangTraTen({required int accountId}) => db.categoryDao.getBangTraTen(accountId);
+  @override
+  Stream<List<Category>> watchAllRows({required int accountId}) => db.categoryDao.watchAll(accountId);
+  @override
+  Future<Category?> getRowById(String id) => db.categoryDao.getById(id);
 
   @override
   Future<List<Category>> selectableChildrenAll({required int accountId}) async {

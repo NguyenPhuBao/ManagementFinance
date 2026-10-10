@@ -63,6 +63,9 @@ abstract class TaiPhanBoNguon {
     List<BudgetView> dangChay,
     DateTime now,
   );
+
+  /// Ghi phản hồi người dùng về đề xuất cân đối (trang Ngân sách). `aiFeedbackDao.ghi`.
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e);
 }
 
 /// `nap` rồi `taiPhanBoCua` — phép ghép DUY NHẤT (2026-09-28) cho ba nơi phải nói
@@ -92,6 +95,9 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
   final BudgetRepository budgets;
 
   const TaiPhanBoNguonImpl({required this.db, required this.budgets});
+
+  @override
+  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => db.aiFeedbackDao.ghi(e);
 
   @override
   Future<DuLieuTaiPhanBo> nap(

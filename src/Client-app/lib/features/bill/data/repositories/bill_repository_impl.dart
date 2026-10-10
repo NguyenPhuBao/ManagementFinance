@@ -322,6 +322,9 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
+  Future<Bill?> getById(String id) => db.billDao.getById(id);
+
+  @override
   Future<void> undoSkip({required String billId}) async {
     final current = await dataSource.getBillById(billId);
     if (current == null) {
