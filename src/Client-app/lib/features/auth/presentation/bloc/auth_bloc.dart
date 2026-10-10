@@ -12,6 +12,13 @@ import 'auth_state.dart';
 export 'auth_event.dart';
 export 'auth_state.dart';
 
+/// Trạng thái đăng nhập của app: **chỉ trạng thái và thứ tự emit**; vòng đời phiên ở [PhienDieuPhoi].
+///
+/// Từ đợt bịt điểm rò kiến trúc 2026-10-10 Bloc không còn gọi service locator (test quét 24) và không biết tên dịch
+/// vụ nào sống theo phiên — dọn tài khoản khác, bộ quét thông báo, socket, đồng bộ, seed đều nằm sau các bước của
+/// [PhienDieuPhoi] (bản thật `PhienDieuPhoiThat`, nối ở DI). Thứ ở lại đây là quyết định về PHIÊN: thứ tự emit, các
+/// phép kiểm `_vanLaPhien` sau mỗi `await`, cờ cưỡng chế đăng xuất, và điều kiện *không xoá dữ liệu khi nguồn là
+/// `lamMoi`* (G36). `phien == null` (widget test dựng Bloc trần) nghĩa là không điều phối gì.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
   final PhienDieuPhoi? _phien;

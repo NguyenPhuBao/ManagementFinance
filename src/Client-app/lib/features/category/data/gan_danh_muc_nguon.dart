@@ -1,6 +1,9 @@
 /// C1 — nguồn dữ liệu và đường ghi mặc định của màn *Gắn danh mục nhanh* (spec
-/// `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §4–§5). Tách khỏi trang để thử được bằng CSDL bộ nhớ; trang nhận
-/// chúng qua tham số tiêm, đúng khuôn `viHayDung` / `boPhanLoai` của màn Thêm giao dịch.
+/// `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §4–§5). Tách khỏi trang để thử được bằng CSDL bộ nhớ.
+///
+/// Trang KHÔNG gọi thẳng hai hàm tự do [taiDuLieuGan] / [apDungGan] (chúng cần `AppDatabase`, mà tầng giao diện không
+/// được cầm CSDL — test quét 22): nó gọi lớp bọc [GanDanhMucNguon] đăng ký ở DI, hoặc hàm tiêm qua tham số
+/// `taiDuLieu` / `apDung` của trang khi test. Hai hàm giữ nguyên làm phần thân vì test của chúng dựng thẳng CSDL bộ nhớ (spec bịt điểm rò 2026-10-10, 4.5).
 library;
 
 import 'package:flutter/foundation.dart' show debugPrint;
