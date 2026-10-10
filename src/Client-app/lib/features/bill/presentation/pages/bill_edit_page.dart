@@ -20,7 +20,7 @@ import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillEditPage extends StatefulWidget {

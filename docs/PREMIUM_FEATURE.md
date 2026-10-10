@@ -63,7 +63,7 @@ data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dar
          (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay) · dem_dang_hoat_dong.dart
          (NguonDemDangHoatDong) · chan_theo_goi.dart (redirectTaoTheoGoi) · bo_hoi_trang_thai_don.dart (3 s) ·
          mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)
-presentation/ cubit/goi_cubit.dart (singleton, gốc cây) · phien_goi_tu_auth.dart · an_nhac_het_han.dart ·
+presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart · state/an_nhac_het_han.dart ·
          pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page · widgets/nut_nang_cap · the_goi_tai_khoan ·
          dong_nhac_het_han
 ```
@@ -171,7 +171,7 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   hạn → `true`; bảng đã lưu là **của Basic** (`!goi.laPremium(goi.nhanLuc)`) và có khoá → theo khoá; còn lại →
   `MaQuyen.macDinhKhiThieu`. `enum MaQuyen` mang `maServer`, `ten` (chữ trên thẻ khoá và màn Nâng cấp), `macDinhKhiThieu`.
 - **Trong cây widget:** `GoiCubit.coQuyen(MaQuyen)`, extension `context.coQuyen` (watch) / `context.coQuyenDoc` (read)
-  ở `premium/presentation/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
+  ở `premium/presentation/bloc/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
   `premium/presentation/widgets/the_khoa_quyen.dart`: `TheKhoaQuyen` (thẻ 🔒 + `NutNangCap(quyen:)`), `KhoaTheoQuyen`
   (bọc con), `DongKhoaQuyen` (dòng khoá trong khối Nhận xét), `DongKhoaCongTac` (*"Cần Premium"* / *"Tạm dừng — cần
   Premium"* khi giá trị đang lưu là bật).

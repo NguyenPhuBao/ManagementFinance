@@ -7,9 +7,9 @@ import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
-import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:flowmoney/features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 UserModel _user({String status = 'Active', int? countdown}) => UserModel(

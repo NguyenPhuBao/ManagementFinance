@@ -26,11 +26,11 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
-import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/category/data/services/default_category_seeder.dart';
 import 'package:flowmoney/features/category/data/services/personal_default_categories.dart';
 import 'package:flowmoney/features/wallet/data/services/default_account_data_initializer.dart';
-import 'package:flowmoney/features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 

@@ -7,7 +7,7 @@ import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _ApiGia implements PaymentApi {

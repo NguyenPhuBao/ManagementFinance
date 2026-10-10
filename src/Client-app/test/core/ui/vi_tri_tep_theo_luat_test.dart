@@ -45,15 +45,6 @@ const mienTru = <String, String>{
 
 /// Luật 1–4 và 6: vi phạm còn chờ dọn (đường dẫn tương đối `src/Client-app`). Điền từ lượt chạy đỏ; rút dần theo nhóm.
 const conCho = <String>{
-  // Luật 2 — tệp rời dưới presentation/ (kế hoạch Task 4, 5).
-  'lib/features/auth/presentation/an_the_cho_xoa.dart',
-  'lib/features/auth/presentation/huy_yeu_cau_xoa.dart',
-  'lib/features/auth/presentation/xac_nhan_dang_xuat.dart',
-  'lib/features/premium/presentation/an_nhac_het_han.dart',
-  'lib/features/premium/presentation/co_quyen.dart',
-  'lib/features/premium/presentation/phien_goi_tu_auth.dart',
-  'lib/features/wallet/presentation/an_nhac_vi_trung_ten.dart',
-  'lib/features/premium/presentation/cubit',
   // Luật 4 — chủ đề core ngoài danh sách (Task 7).
   'lib/core/bill',
   // Luật 6 — test ở gốc, thư mục không soi gương (Task 9).

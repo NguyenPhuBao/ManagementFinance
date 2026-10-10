@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_colors.dart';
 
 /// Hộp thoại xác nhận đăng xuất — một định nghĩa cho cả nút ở tab Cá nhân lẫn
 /// mục "Đăng xuất" ở drawer Trang chủ (thêm 2026-09-19 theo màn Stitch).

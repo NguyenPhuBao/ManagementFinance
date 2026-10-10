@@ -23,7 +23,7 @@ import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 
 void main() {
   // ⚠️ Theme thật, không `MaterialApp` trần: theme của app ép mọi

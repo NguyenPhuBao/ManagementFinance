@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/tran_goi.dart';
 import '../../domain/trang_thai_goi.dart';
-import '../cubit/goi_cubit.dart';
+import '../bloc/goi_cubit.dart';
 import 'nut_nang_cap.dart';
 
 /// Thẻ "Gói của bạn" ngay dưới đầu tab Cá nhân — điểm vào có chủ ý DUY NHẤT của

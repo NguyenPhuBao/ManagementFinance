@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../domain/quyen_tinh_nang.dart';
-import 'cubit/goi_cubit.dart';
+import '../../domain/quyen_tinh_nang.dart';
+import 'goi_cubit.dart';
 
 /// Hỏi quyền tính năng từ một trang (spec phân quyền 2026-10-08 mục 4.3 (2)).
 ///

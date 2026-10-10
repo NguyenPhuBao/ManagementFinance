@@ -33,7 +33,7 @@ import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 import '../../../premium/presentation/widgets/dong_nhac_het_han.dart';
 import '../../../transaction/presentation/pages/quet_anh_page.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 
 class HomePage extends StatelessWidget {

@@ -16,7 +16,7 @@ import '../../data/bo_hoi_trang_thai_don.dart';
 import '../../data/mo_lien_ket.dart';
 import '../../data/payment_api.dart';
 import '../../domain/don_thanh_toan.dart';
-import '../cubit/goi_cubit.dart';
+import '../bloc/goi_cubit.dart';
 
 /// Màn Đang chờ thanh toán `/premium/cho-thanh-toan` (spec Premium 2026-10-06
 /// mục 9.3). Màn Stitch *"Đang chờ thanh toán - FlowMoney"* `b05060e3…` (chờ)

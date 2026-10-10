@@ -9,7 +9,7 @@ import '../goi_store.dart';
 import '../payment_api.dart';
 
 /// Phiên đăng nhập nhìn từ mảng gói: mã tài khoản + `type` của `/auth/*`.
-/// Dịch từ `AuthState` ở `presentation/phien_goi_tu_auth.dart` — repository
+/// Dịch từ `AuthState` ở `presentation/bloc/phien_goi_tu_auth.dart` — repository
 /// không biết `AuthBloc`.
 typedef PhienGoi = ({int idaccount, String? loaiPhien});
 

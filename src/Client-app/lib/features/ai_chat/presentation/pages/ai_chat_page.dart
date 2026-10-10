@@ -54,7 +54,7 @@ import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/cubit/goi_cubit.dart';
+import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';

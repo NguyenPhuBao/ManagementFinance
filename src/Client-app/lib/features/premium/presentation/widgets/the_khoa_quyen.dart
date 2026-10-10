@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/quyen_tinh_nang.dart';
-import '../co_quyen.dart';
+import '../bloc/co_quyen.dart';
 import 'nut_nang_cap.dart';
 
 /// Ba dạng khoá theo quyền (spec phân quyền 2026-10-08 mục 4.3 (2); chốt *"hiện khoá + Nâng cấp"*). Màn Stitch:

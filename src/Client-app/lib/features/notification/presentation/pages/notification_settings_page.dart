@@ -18,7 +18,7 @@ import 'dong_y_bien_dong_page.dart';
 import 'dong_y_nhac_sau_ngan_hang_page.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.

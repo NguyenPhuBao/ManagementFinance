@@ -46,7 +46,7 @@ import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoC
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../features/premium/domain/quyen_tinh_nang.dart';
-import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';

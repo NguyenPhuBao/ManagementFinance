@@ -12,7 +12,7 @@ import '../../../data/repositories/analytics_repository.dart';
 import '../../../domain/dong_tien_tu_do.dart';
 import '../../../domain/moc_so_sanh.dart';
 import '../../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../../premium/presentation/co_quyen.dart';
+import '../../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../domain/thong_ke_thang.dart';
 import '../../bloc/analytics_cubit.dart';

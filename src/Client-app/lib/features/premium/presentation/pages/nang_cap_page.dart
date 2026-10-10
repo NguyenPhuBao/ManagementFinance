@@ -12,7 +12,7 @@ import '../../domain/don_thanh_toan.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
 import '../../domain/trang_thai_goi.dart';
-import '../cubit/goi_cubit.dart';
+import '../bloc/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Câu mở đầu khi đến từ cửa chặn (`/premium?tran=`): *"Bạn đã dùng 3/3 ví của

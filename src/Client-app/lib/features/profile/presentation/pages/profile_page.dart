@@ -7,7 +7,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../../../auth/presentation/widgets/xac_nhan_dang_xuat.dart';
 import '../../../premium/presentation/widgets/the_goi_tai_khoan.dart';
 import '../widgets/noi_dung_cai_dat.dart';
 

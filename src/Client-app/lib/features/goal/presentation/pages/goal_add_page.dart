@@ -24,7 +24,7 @@ import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.

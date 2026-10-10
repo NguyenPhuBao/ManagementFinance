@@ -16,7 +16,7 @@ import '../widgets/budget_visuals.dart';
 import '../widgets/the_chua_du_du_lieu.dart';
 import '../widgets/the_de_xuat_ngan_sach.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.

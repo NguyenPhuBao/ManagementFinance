@@ -2917,7 +2917,7 @@ lặng. (2) Avatar là **vòng đen trống**: chữ cái đầu tô `AppColors.
 nền `AppColors.primaryContainer` mà hai hằng ấy cùng là `#1A1A19` — nay
 `onPrimaryContainer`, có ca test đòi màu chữ **khác** màu nền. (3) Thiếu "Đăng
 xuất" ở đáy dù màn Stitch *"Home with Side Menu Drawer"* có — nay có, đi qua
-**`xacNhanDangXuat`** (`auth/presentation/xac_nhan_dang_xuat.dart`), hộp thoại
+**`xacNhanDangXuat`** (`auth/presentation/widgets/xac_nhan_dang_xuat.dart`), hộp thoại
 xác nhận tách từ tab Cá nhân để hai chỗ dùng chung một định nghĩa. 5 ca ở
 `drawer_trang_chu_test.dart`. **Schema không đổi, payload không đổi.**
 

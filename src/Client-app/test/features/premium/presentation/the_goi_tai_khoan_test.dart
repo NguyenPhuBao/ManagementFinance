@@ -7,7 +7,7 @@ import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/widgets/the_goi_tai_khoan.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
