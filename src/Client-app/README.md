@@ -5,6 +5,12 @@
 
 Flutter · Drift/SQLite · BLoC (`flutter_bloc`) · GoRouter · GetIt.
 
+## Kiến trúc
+Feature-first ba tầng `data · domain · presentation`, offline-first với SQLite là nguồn sự thật cục bộ; luật nghiệp vụ là hàm
+thuần có một định nghĩa, được 28 test quét mã nguồn canh (25 tệp mang số 1–24, số 14 cấp hai lần, cộng 3 tệp không số);
+mọi ranh giới nền tảng là cổng có bản giả. Chi tiết, cây thư mục và luật vị trí tệp:
+[`docs/KIEN_TRUC_CLIENT_APP.md`](../../docs/KIEN_TRUC_CLIENT_APP.md).
+
 > Tài liệu dự án nằm ở **[README gốc của repo](../../README.md)** và
 > **[`CLAUDE.md`](../../CLAUDE.md)**. Đọc `CLAUDE.md` trước khi sửa gì — nó ghi
 > các quy tắc mà vi phạm sẽ hỏng **âm thầm** (tên trường đồng bộ, `idaccount`,

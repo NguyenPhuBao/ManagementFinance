@@ -1,5 +1,12 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ backend — mục 41)
+# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ backend — mục 41, 42)
 
+> ✉️ **Client đặt mục 42, 2026-10-10:** [`TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) — mức
+> **thấp**, chỉ **sửa chữ**. `Project.md` §3.3 ghi *"Mỗi màn hình có BLoC riêng"* trong khi app có 3 Bloc + 7 Cubit cho
+> màn có luồng ghi, 289 `setState`, màn đọc dùng stream Drift; dòng *Repository* cũng tả nguồn local/remote không có. Đơn
+> kèm câu thay thế từng dòng, ba dòng thêm (test quét kiến trúc, cổng nền tảng, chạy nền WorkManager) và một câu hỏi có
+> mặc định (§3.3 **trỏ** sang `docs/KIEN_TRUC_CLIENT_APP.md`). Không đổi mã, lược đồ, payload. `DA-XONG/` đếm bằng máy
+> 2026-10-10: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
 > ✉️ **Client đặt mục 41, 2026-10-09:** [`CHAN_TRA_HAI_LAN_THEO_KY.md`](./CHAN_TRA_HAI_LAN_THEO_KY.md) — mức **cao**.
 > Chốt `chanTraHaiLan` chỉ chặn khoản chi thứ hai cùng `Idbill`; hai máy cùng trả một kỳ thì sinh hai **kỳ con trùng**
 > (khác `Idbill`) và bộ tự trả trừ tiền cho từng kỳ — đo CSDL dev: tài khoản 10 bị trừ **3 × 100.000 đ** cho kỳ 05/10;
@@ -35,11 +42,12 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **1** mục — đếm bằng `ls` 2026-10-09)
+## 0. Còn phải làm (Hiện tại: **2** mục — đếm bằng `ls` 2026-10-10)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
 | **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Phía client **đã sẵn** (2026-10-09): mã nằm trong danh sách lỗi vĩnh viễn + bộ xử lý riêng — backend triển khai lúc nào cũng được. | ⏳ Chờ backend |
+| **42** | [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | Backend (chữ) | Sửa bảng `Project.md` §3.3 *Kiến trúc Client-app* cho khớp mã: dòng *State Management* (3 Bloc + 7 Cubit, màn đọc dùng stream Drift, trạng thái màn trong widget), dòng *Repository* (interface ở tầng data, trả Entity hoặc hàng Drift), thêm *Test quét kiến trúc* · *Cổng nền tảng* · *Chạy nền WorkManager*. Mặc định: §3.3 trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. Không đổi mã. | ⏳ Chờ |
 
 ---
 
