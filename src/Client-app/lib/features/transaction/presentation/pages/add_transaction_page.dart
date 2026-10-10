@@ -1914,6 +1914,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Lắp [TheForm] từ trạng thái của trang: chuỗi hiển thị, các khối phụ (slot) và những lời gọi đổi trạng thái.
   Widget _theForm(BuildContext context) {
+    final s = _suggestion; // bắt một lần lúc dựng — callback không đọc lại `_suggestion` lúc chạm
     final selectedCategory = _selectedCategory;
     final showDebtDirection = selectedCategory != null && isDebtClassify(selectedCategory.classify);
     final walletDisplay = _isLoadingWallets
@@ -1969,13 +1970,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               }),
             )
           : null,
-      theGoiY: _suggestion == null
+      theGoiY: s == null
           ? null
           : TheGoiYDanhMuc(
               key: _khoaTheGoiY,
-              suggestion: _suggestion!,
+              suggestion: s,
               onBoQua: () {
-                final s = _suggestion!;
                 _ghiPhanHoi(s, kKetQuaGoiYBoQua);
                 if (s.nguon == kNguonGoiYSoTien) {
                   _boQuaSoTienLuotNay.add((s.amTietChinh, s.categoryId));
@@ -1986,7 +1986,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 });
               },
               onChon: () {
-                final s = _suggestion!;
                 _ghiPhanHoi(s, kKetQuaGoiYChon, chon: s.categoryId);
                 _choPhanXu = null;
                 _chonDanhMuc(s.category);
