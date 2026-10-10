@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../notification/thong_bao_nguon.dart';
 import '../../core/realtime/realtime_channel.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
@@ -420,6 +421,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AnNhacHetHan>(AnNhacHetHan.new);
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
+
+  // Cổng bảng thông báo cho TRANG (spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; hạ tầng
+  // (BadgeUpdater, NotificationScanner) vẫn cầm DAO. Đăng ký lazy — không dựng gì khi không ai gọi.
+  sl.registerLazySingleton<ThongBaoNguon>(() => ThongBaoNguonDrift(sl<AppDatabase>().notificationDao));
 
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
   // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
