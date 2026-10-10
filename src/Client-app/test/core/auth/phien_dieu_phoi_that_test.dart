@@ -81,12 +81,17 @@ class _SpyRealtime extends RealtimeChannel {
 }
 
 class _SpyScanner extends NotificationScanner {
-  _SpyScanner(AppDatabase db)
+  _SpyScanner(AppDatabase db, [this.chung])
       : super(dao: db.notificationDao, loadBudgets: (id, at) async => [], loadBills: (id, at) async => [],
             syncStatus: const Stream.empty());
   final goi = <String>[];
+  /// Nhật ký chung với hook của test — để canh THỨ TỰ giữa hook và bộ quét.
+  final List<String>? chung;
   @override
-  Future<void> start(int idaccount) async => goi.add('start $idaccount');
+  Future<void> start(int idaccount) async {
+    goi.add('start $idaccount');
+    chung?.add('quet $idaccount');
+  }
   @override
   Future<void> stop() async => goi.add('stop');
 }
@@ -107,8 +112,8 @@ void main() {
     sync = _SpySyncEngine(dioClient: _FakeDioClient(), db: db, connectivity: _Offline());
     interceptor = _SpyAuthInterceptor();
     realtime = _SpyRealtime();
-    scanner = _SpyScanner(db);
     hook = [];
+    scanner = _SpyScanner(db, hook);
   });
   tearDown(() async { sync.dispose(); interceptor.dispose(); realtime.dong(); await db.close(); });
 
@@ -133,11 +138,29 @@ void main() {
 
   test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → bộ quét', () async {
     await dung(daDon: 3).moPhienCucBo(10);
-    expect(hook, ['don 10', 'xoaCache', 'seedCu 10']);
+    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'quet 10']);
     expect(scanner.goi, ['start 10']);
     hook.clear(); scanner.goi.clear();
     await dung(daDon: 0).moPhienCucBo(10);
-    expect(hook, ['don 10', 'seedCu 10'], reason: 'không hàng nào bị dọn thì GIỮ cache SLM (đăng nhập lại cùng tài khoản)');
+    expect(hook, ['don 10', 'seedCu 10', 'quet 10'], reason: 'không hàng nào bị dọn thì GIỮ cache SLM (đăng nhập lại cùng tài khoản)');
+  });
+
+  test('moPhienCucBo: thứ tự trên MỘT nhật ký chung — dọn → xoá cache → hàng seed cũ → bộ quét', () async {
+    await dung(daDon: 2).moPhienCucBo(10);
+    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'quet 10'],
+        reason: 'bộ quét phải chạy SAU khi dọn dữ liệu tài khoản khác và chuyển hàng seed cũ');
+  });
+
+  test('dispose() huỷ subscription — nguồn phát tiếp thì không lỗi, luồng gộp không nhận gì', () async {
+    final p = dung();
+    final chet = <void>[]; final buoc = <ThongBaoBuocDangXuat>[];
+    p.phienCoTheChet.listen(chet.add, onError: (_) {});
+    p.buocDangXuat.listen(buoc.add, onError: (_) {});
+    await p.dispose();
+    // Bản thiếu `cancel`: các lời gọi dưới đây `add` vào controller đã đóng → StateError không ai bắt → test đỏ.
+    sync.phienChet(); interceptor.hetHan(); realtime.ban(_tb); interceptor.tuChoi(_tb);
+    await pumpEventQueue();
+    expect(chet, isEmpty); expect(buoc, isEmpty);
   });
 
   test('không có SyncEngine thì moPhienCucBo / batDongBo không làm gì — đúng khối if cũ', () async {
