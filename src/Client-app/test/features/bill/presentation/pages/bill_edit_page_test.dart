@@ -11,6 +11,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -132,6 +133,24 @@ void main() {
         reason: 'Màn Sửa là đường thứ hai ghi `bill.Name`. Chặn ở màn Thêm '
             'mà quên màn này là người dùng đổi tên thành chuỗi dài và hoá đơn '
             'kẹt hàng đợi đẩy y như cũ.');
+  });
+
+  testWidgets('danh sách danh mục KHÔNG có hàng nhóm; hoá đơn đang gắn nhóm → phải chọn lại (2026-10-10)',
+      (tester) async {
+    final moc = DateTime(2026, 9, 1);
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'c1', idaccount: 10, name: 'Dien nuoc', classify: 'chi', updatedAt: moc));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'gNha', idaccount: 10, name: 'Nha cua', classify: 'chi',
+        isGroup: const Value(true), updatedAt: moc));
+    final hd = _hoaDon();
+    await dungTrangSua(tester, bill: hd.copyWith(categoryId: const Value('gNha')));
+    final dd = tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>));
+    final ids = dd.items!.map((m) => m.value!.id).toList();
+    expect(ids, ['c1'],
+        reason: 'Người dùng chốt 2026-10-10: form hoá đơn không cho chọn nhóm danh mục.');
+    expect(dd.value, isNull,
+        reason: 'Hoá đơn cũ gắn vào nhóm: ô trống, nút Lưu đã chặn "Vui lòng chọn danh mục" — không lưu lặng lẽ.');
   });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {

@@ -31,13 +31,4 @@ void main() {
     expect((await repo.getRowById('c1'))?.name, 'Ăn uống');
     expect(await repo.getRowById('x'), isNull);
   });
-
-  test('getCategoryRows GỒM cả hàng nhóm (R8: form hoá đơn giữ danh sách cũ)', () async {
-    await db.into(db.categories).insert(CategoriesCompanion.insert(
-        id: 'g1', name: 'Nhóm sinh hoạt', idaccount: 10, classify: 'chi', isGroup: const Value(true), updatedAt: moc));
-    final ids = (await repo.getCategoryRows(accountId: 10, classify: 'chi')).map((c) => c.id);
-    expect(ids, containsAll(['c1', 'g1']),
-        reason: 'Dropdown phẳng của form hoá đơn từng gồm cả hàng nhóm; selectableChildren lọc !isGroup nên không dùng được.');
-    expect(ids, isNot(contains('c2')));
-  });
 }

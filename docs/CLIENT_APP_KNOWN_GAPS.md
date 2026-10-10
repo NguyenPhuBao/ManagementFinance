@@ -1655,9 +1655,9 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    `// ignore_for_file: use_key_in_widget_constructors` (phán quyết R13 — giữ *dời nguyên văn*, thêm `{super.key}` vào ~42
    constructor sẽ đổi mã) — nợ thêm `{super.key}` rồi gỡ dòng ignore; tới lúc ấy lint *key* bị che cho mã mới viết vào 14 tệp.
 3. **UI cầm kiểu hàng Drift; Entity mới có ở 4/14 mảng** (ví, giao dịch, mục tiêu, ngân sách). Lối thoát của đợt là
-   **12 lối chuyển tiếp** ở repository / nguồn — 11 trả hàng Drift (`WalletRepository.getActiveRows` · `getAllRows` ·
+   **11 lối chuyển tiếp** ở repository / nguồn — 10 trả hàng Drift (`WalletRepository.getActiveRows` · `getAllRows` ·
    `watchAllRows` · `getRowById`; `TransactionRepository.getAllRows` · `watchAllRows`;
-   `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById` · `getCategoryRows`; `BillRepository.getById`)
+   `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById`; `BillRepository.getById`)
    cộng `TaiPhanBoNguon.ghiPhanHoi`. Đó là **lối tạm**: trang không còn cầm DAO, nhưng kiểu Drift vẫn lan tới widget.
 4. **36 dòng hạ tầng `core` import `features/`** (`grep -rnE "^import .*features/" lib/core` = 172; trừ điểm ghép 136 — DI
    80 · router 53 · `chay_nen` 2 · `current_account` 1): `notification_rules` 10 · `sync_engine` 6 · `notification_scanner`
@@ -1678,11 +1678,11 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    ở gốc `test/` (`e2e_sqlite_to_backend_sync_test`, `transaction_repository_test`, `widget_test`). Xử lý bằng **một đợt dọn
    riêng** kèm **test quét 25** canh luật vị trí — đừng dời lẻ tẻ trong một việc khác (mỗi lần dời là đổi import ở hàng chục tệp).
 
-⚠️ **Một câu chờ người dùng quyết, không phải nợ kiến trúc:** form **Thêm / Sửa hoá đơn** cho chọn một **nhóm** danh mục
-(`isGroup`) làm danh mục hoá đơn, trong khi màn Thêm giao dịch thì không (lọc `!isGroup` qua `selectableChildren`). Đợt
-tái cấu trúc **giữ nguyên** hành vi ấy (phán quyết R8: thêm lối `CategoryManagementRepository.getCategoryRows` thay vì
-chuyển sang `selectableChildren`, vì bất biến *"người dùng không thấy gì khác"* đứng trên bản đồ của spec 4.2). Có thể là
-lỗi sẵn có; chưa mở mục G riêng vì chưa xác nhận là lỗi.
+✅ **Đã quyết 2026-10-10 (người dùng): form Thêm / Sửa hoá đơn KHÔNG cho chọn nhóm danh mục.** Đợt tái cấu trúc từng giữ
+nguyên dropdown phẳng gồm cả hàng nhóm (`isGroup`, phán quyết R8 qua lối `getCategoryRows`); người dùng chốt đó là sai —
+hai form nay đọc `selectableChildren(classify: 'chi')` như màn Thêm giao dịch, và lối `getCategoryRows` của repository
+đã gỡ. Hoá đơn cũ đang gắn vào một nhóm: mở form Sửa thì ô danh mục **trống** và nút Lưu đòi *"Vui lòng chọn danh mục"* —
+không lưu lặng lẽ (ca test ở `bill_edit_page_test`).
 
 ---
 

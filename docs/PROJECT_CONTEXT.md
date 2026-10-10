@@ -621,13 +621,13 @@ lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus 
 
 | Việc | Đã làm | Chốt bằng |
 |---|---|---|
-| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (12 lối chuyển tiếp `*Rows` / `getById` / `getCategoryRows` / `ghiPhanHoi`), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
+| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi`), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
 | 2. Tách hai trang | `analytics_page` 4.208 → **339** dòng + 14 tệp `widgets/phan_tich/`; `add_transaction_page` 3.107 → **2.007** + 7 tệp `widgets/them_giao_dich/` (spec ước ~1.800 — R15) | **test quét 23** `tep_presentation_khong_qua_dai_test.dart`, trần 1.200, `mienTru` 5 tệp chỉ giảm |
 | 3. Rút điều phối phiên | `PhienDieuPhoi` / `PhienDieuPhoiThat` (`core/auth/`, hook hàm); `AuthBloc` 560 → **377** dòng (kể docstring đầu lớp), `sl<` 23 → **0**; bỏ tham số `defaultAccountDataInitializer` (R3) | **test quét 24** `test/features/auth/auth_bloc_khong_sl_test.dart`; chủ sở hữu `start()` (quét 4) chuyển sang `phien_dieu_phoi_that.dart` |
 | 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
 
 Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentation/` **29 → 0**; tệp `presentation` > 1.200 dòng
-**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
+**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối; **6618** sau khi form hoá đơn thôi cho chọn nhóm danh mục), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
 `features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)).
 
 - ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai
@@ -637,8 +637,8 @@ Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentat
   `.watchAllRows(` — `wallet_picker_sources_test` nhận diện theo chuỗi; gán repository vào biến là lọt phép phân loại.
 - ⚠️ **Test dựng trang có đọc qua DI** phải gọi `dangKyNguonDocGia(db)` (`test/helpers/nguon_doc_gia.dart`); test AuthBloc
   muốn kiểm thứ tự mở phiên phải dựng `PhienDieuPhoiThat` (helper `phien()`), `AuthBloc` trần = không điều phối gì.
-- ⚠️ Form hoá đơn **giữ** danh sách danh mục gồm cả hàng **nhóm** (R8, lối `getCategoryRows`) — chờ người dùng quyết có
-  phải lỗi sẵn có không (G88).
+- ✅ Form hoá đơn từng **giữ** danh sách danh mục gồm cả hàng **nhóm** (R8); người dùng chốt cùng ngày: **không** cho chọn
+  nhóm — hai form đọc `selectableChildren`, lối `getCategoryRows` gỡ, hoá đơn cũ gắn nhóm phải chọn lại khi sửa.
 - Còn mở: nghiệm thu OnePlus của đợt; minor hoãn ghi trong sổ theo dõi (thứ tự import, `ignore_for_file:
   use_key_in_widget_constructors` ở 14 tệp `phan_tich/` — R13, regex quét 22/24 không bắt `GetIt.I`).
 

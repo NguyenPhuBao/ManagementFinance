@@ -13,6 +13,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -318,6 +319,25 @@ void main() {
       expect(viDangChon(tester), 'wB');
       expect(danhMucDangChon(tester), 'cNha');
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('danh sách danh mục KHÔNG có hàng nhóm — giống màn Thêm giao dịch (2026-10-10)',
+        (tester) async {
+      await gieo();
+      // Nhóm xếp ĐẦU theo tên ("A …") — nếu lọt vào danh sách, nó thành lựa chọn mặc định.
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+          id: 'gChiTieu', idaccount: 10, name: 'A nhom chi tieu', classify: 'chi',
+          isGroup: const Value(true), updatedAt: moc));
+      await dung(tester, null);
+      final ids = tester
+          .widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>))
+          .items!
+          .map((m) => m.value!.id)
+          .toList();
+      expect(ids, isNot(contains('gChiTieu')),
+          reason: 'Hoá đơn gắn vào danh mục lá; người dùng chốt 2026-10-10: form hoá đơn không cho chọn nhóm.');
+      expect(ids, containsAll(['cAn', 'cNha']));
+      expect(danhMucDangChon(tester), 'cAn');
     });
 
     testWidgets('ví / danh mục điền sẵn không tồn tại → rơi về lựa chọn mặc định, không ném',

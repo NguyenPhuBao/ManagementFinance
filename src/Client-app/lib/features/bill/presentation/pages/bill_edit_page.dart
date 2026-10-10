@@ -85,8 +85,10 @@ class _BillEditPageState extends State<BillEditPage> {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
     final wallets = await sl<WalletRepository>().getActiveRows(accountId);
+    // Chỉ danh mục LÁ (người dùng chốt 2026-10-10). Hoá đơn cũ đang gắn vào nhóm
+    // thì ô danh mục để trống và nút Lưu đòi chọn lại — không lưu lặng lẽ.
     final categories =
-        await sl<CategoryManagementRepository>().getCategoryRows(accountId: accountId, classify: 'chi');
+        await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
     if (!mounted) return;
     setState(() {
       _wallets = wallets;

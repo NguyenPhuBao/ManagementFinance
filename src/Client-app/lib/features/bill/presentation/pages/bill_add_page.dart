@@ -104,11 +104,11 @@ class _BillAddPageState extends State<BillAddPage> {
     final wallets = accountId == null
         ? <Wallet>[]
         : await sl<WalletRepository>().getActiveRows(accountId);
-    // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi', giống trang ngân
-    // sách. `getCategoryRows` gồm cả danh mục mặc định (idaccount = 0).
+    // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi'. Chỉ danh mục LÁ — hàng
+    // nhóm không chọn được, giống màn Thêm giao dịch (người dùng chốt 2026-10-10).
     final categories = accountId == null
         ? <Category>[]
-        : await sl<CategoryManagementRepository>().getCategoryRows(accountId: accountId, classify: 'chi');
+        : await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
     if (mounted) {
       // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
       // đã xoá hoặc đã lưu trữ thì rơi về lựa chọn mặc định như khi mở thường.

@@ -94,8 +94,8 @@ lib/
 
 Ba tầng **không** đối xứng như sách: interface repository khai ở `data/repositories/<x>_repository.dart` cạnh bản thi
 hành; `domain/` không biết interface nào. Một số repository trả **Entity** (ví, giao dịch, mục tiêu, ngân sách), số khác
-trả **hàng Drift** (hoá đơn, danh mục) — và từ 2026-10-10 có **12 lối chuyển tiếp** cho trang (`getActiveRows`,
-`getAllRows`, `watchAllRows`, `getRowById`, `loadBangTraTen`, `getCategoryRows`, `BillRepository.getById`,
+trả **hàng Drift** (hoá đơn, danh mục) — và từ 2026-10-10 có **11 lối chuyển tiếp** cho trang (`getActiveRows`,
+`getAllRows`, `watchAllRows`, `getRowById`, `loadBangTraTen`, `BillRepository.getById`,
 `TaiPhanBoNguon.ghiPhanHoi`…) trả đúng kiểu hàng Drift mà trang đang cầm, vì Entity cho 14 mảng là việc ngoài phạm vi
 (quyết định 10 của spec, nợ G88).
 

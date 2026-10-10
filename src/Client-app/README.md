@@ -23,7 +23,7 @@ flutter pub get
 flutter run -d chrome --web-port 9090   # bản web, nhanh để thử
 flutter build apk --debug               # bản Android
 
-flutter test                            # mức nền: 6617/6617 pass (+9 skip), ~5 phút (đo 2026-10-10)
+flutter test                            # mức nền: 6618/6618 pass (+9 skip), ~4–6 phút (đo 2026-10-10)
 flutter analyze                         # mức nền: 20 issue, KHÔNG có error
 
 # sau khi sửa bảng/DAO của Drift (schema hiện tại: v30)
