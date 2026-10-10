@@ -8,7 +8,7 @@ import '../domain/chuyen_huong_theo_goi.dart';
 import '../domain/quyen_tinh_nang.dart';
 import '../domain/tran_goi.dart';
 import 'dem_dang_hoat_dong.dart';
-import 'goi_repository.dart';
+import 'repositories/goi_repository.dart';
 
 /// Cửa chặn DUY NHẤT của trần Basic (spec Premium 2026-10-06 mục 7.1): gắn vào
 /// `redirect` của `/wallets/add` · `/budget/rules` · `/goals/add`, nên mọi lối

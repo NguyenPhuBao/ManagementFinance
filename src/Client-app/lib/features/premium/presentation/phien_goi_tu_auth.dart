@@ -1,5 +1,5 @@
 import '../../auth/presentation/bloc/auth_bloc.dart';
-import '../data/goi_repository.dart';
+import '../data/repositories/goi_repository.dart';
 
 /// Dịch trạng thái `AuthBloc` sang phiên mà `GoiRepository.noiPhien` hiểu
 /// (spec Premium 6.4). Nằm ở presentation vì nó biết `AuthState`; repository

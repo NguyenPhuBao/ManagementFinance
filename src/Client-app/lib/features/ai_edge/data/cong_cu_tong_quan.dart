@@ -6,7 +6,7 @@
 /// câu không nêu kỳ: "thu nhập mọi thời gian" không phải câu người dùng hỏi.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';

@@ -41,7 +41,7 @@ void main() {
     'core/di/injection_container.dart':
         'Vòng quét thông báo: nó cần biết cả ví lưu trữ để không nhắc về ví đã '
             'cất đi một cách sai lệch.',
-    'features/analytics/data/bao_cao_repository_impl.dart':
+    'features/analytics/data/repositories/bao_cao_repository_impl.dart':
         'Bảng tra TÊN ví cho từng dòng báo cáo — giao dịch cũ vẫn trỏ vào ví '
             'nay đã lưu trữ, và chúng phải hiện đúng tên.',
     'features/home/presentation/pages/home_page.dart':
@@ -168,7 +168,7 @@ void main() {
     // nhịp trên màn Quản lý ví (`6fd2ce9`).
     const congTongTaiSan = <String>{
       'features/home/presentation/pages/home_page.dart',
-      'features/analytics/data/bao_cao_repository_impl.dart',
+      'features/analytics/data/repositories/bao_cao_repository_impl.dart',
       'features/wallet/data/repositories/wallet_repository_impl.dart',
     };
 

@@ -13,7 +13,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../../features/auth/data/repositories/auth_repository.dart';
-import '../../features/premium/data/goi_repository.dart';
+import '../../features/premium/data/repositories/goi_repository.dart';
 import '../constants/app_constants.dart';
 import '../di/injection_container.dart';
 import '../notification/nhat_ky_thong_bao.dart';

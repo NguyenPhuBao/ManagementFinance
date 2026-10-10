@@ -5,7 +5,7 @@ library;
 
 import 'package:flowmoney/features/ai_edge/data/cong_cu_du_bao.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';

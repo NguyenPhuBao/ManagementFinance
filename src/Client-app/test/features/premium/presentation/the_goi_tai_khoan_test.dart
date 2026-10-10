@@ -2,7 +2,7 @@
 /// (spec Premium 10). Không GoiCubit trong cây (test cũ của trang) → không dựng.
 library;
 
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';

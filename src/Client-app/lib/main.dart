@@ -31,7 +31,7 @@ import 'core/nen/mui_gio.dart';
 import 'core/notification/notification_scanner.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
-import 'features/premium/data/goi_repository.dart';
+import 'features/premium/data/repositories/goi_repository.dart';
 import 'features/premium/presentation/cubit/goi_cubit.dart';
 import 'features/premium/presentation/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';

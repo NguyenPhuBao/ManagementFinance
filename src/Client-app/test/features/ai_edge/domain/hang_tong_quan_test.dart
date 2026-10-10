@@ -10,7 +10,7 @@ import 'package:flowmoney/features/ai_edge/domain/hang_so_lieu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_tong_quan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/dong_tien_tu_do.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';

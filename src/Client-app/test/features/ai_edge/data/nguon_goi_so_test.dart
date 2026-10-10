@@ -9,7 +9,7 @@ library;
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/nguon_goi_so.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';

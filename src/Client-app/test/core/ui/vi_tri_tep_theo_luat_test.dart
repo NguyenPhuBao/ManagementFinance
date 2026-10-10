@@ -54,12 +54,6 @@ const conCho = <String>{
   'lib/features/premium/presentation/phien_goi_tu_auth.dart',
   'lib/features/wallet/presentation/an_nhac_vi_trung_ten.dart',
   'lib/features/premium/presentation/cubit',
-  // Luật 3 — repository ngoài repositories/, interface gộp Impl (Task 2, 3).
-  'lib/features/analytics/data/analytics_repository.dart',
-  'lib/features/analytics/data/analytics_repository_impl.dart',
-  'lib/features/analytics/data/bao_cao_repository.dart',
-  'lib/features/analytics/data/bao_cao_repository_impl.dart',
-  'lib/features/premium/data/goi_repository.dart',
   // Luật 4 — chủ đề core ngoài danh sách (Task 7).
   'lib/core/bill',
   // Luật 6 — test ở gốc, thư mục không soi gương (Task 9).

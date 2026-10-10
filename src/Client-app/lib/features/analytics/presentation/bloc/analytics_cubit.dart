@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/analytics_repository.dart';
+import '../../data/repositories/analytics_repository.dart';
 import '../../domain/moc_so_sanh.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/thong_ke_thang.dart';

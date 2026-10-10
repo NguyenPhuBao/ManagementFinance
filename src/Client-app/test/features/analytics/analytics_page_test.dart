@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flowmoney/features/analytics/domain/chi_bat_thuong.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
@@ -25,7 +25,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/ai_edge/presentation/widgets/khoi_nhan_xet.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/lich_chi_tieu.dart';

@@ -6,7 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/analytics_repository.dart';
+import '../../../data/repositories/analytics_repository.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import '../../../domain/bao_cao_xuat.dart';
 import '../../../domain/du_bao_dong_tien.dart';

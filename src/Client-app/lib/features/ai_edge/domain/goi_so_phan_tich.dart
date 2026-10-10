@@ -7,7 +7,7 @@
 /// do câu mở đầu bằng "Kỳ này" — xem bẫy ở `docs/AI_EDGE_FEATURE.md`.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/domain/dong_tien_tu_do.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
 import 'goi_so.dart';

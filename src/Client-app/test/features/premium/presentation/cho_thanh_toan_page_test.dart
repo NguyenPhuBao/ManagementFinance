@@ -8,7 +8,7 @@ library;
 import 'dart:async';
 
 import 'package:flowmoney/core/realtime/realtime_event.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/don_thanh_toan.dart';

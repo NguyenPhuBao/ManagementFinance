@@ -59,7 +59,7 @@ domain/  trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · 
          tran_goi.dart (TranGoi.macDinh 3/3/3 · conTaoDuoc · maTran) · chuyen_huong_theo_goi.dart (?id = sửa → qua)
          don_thanh_toan.dart (DonThanhToan · TrangThaiDon, chuỗi lạ = pending) · cau_loi_thanh_toan.dart (không URL)
          nhac_het_han.dart (0..3 ngày) · dong_lich_su.dart
-data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · goi_repository.dart
+data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · repositories/goi_repository.dart
          (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay) · dem_dang_hoat_dong.dart
          (NguonDemDangHoatDong) · chan_theo_goi.dart (redirectTaoTheoGoi) · bo_hoi_trang_thai_don.dart (3 s) ·
          mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)

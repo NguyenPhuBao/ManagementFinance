@@ -26,7 +26,7 @@ import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_edit_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';

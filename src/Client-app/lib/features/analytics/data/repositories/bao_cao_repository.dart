@@ -1,4 +1,4 @@
-import '../domain/bao_cao_xuat.dart';
+import '../../domain/bao_cao_xuat.dart';
 
 /// Một lựa chọn của bộ lọc trên trang Xuất báo cáo — dùng chung cho chip ví và
 /// danh sách danh mục.

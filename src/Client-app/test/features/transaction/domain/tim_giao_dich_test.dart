@@ -4,7 +4,7 @@
 /// khớp tên không chuỗi con.
 library;
 
-import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/khoang_tien.dart';
 import 'package:flowmoney/features/transaction/domain/tim_giao_dich.dart';

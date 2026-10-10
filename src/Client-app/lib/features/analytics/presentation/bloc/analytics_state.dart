@@ -1,7 +1,7 @@
 import '../../domain/moc_so_sanh.dart';
 import 'package:equatable/equatable.dart';
 
-import '../../data/analytics_repository.dart';
+import '../../data/repositories/analytics_repository.dart';
 import '../../domain/pham_vi_ky.dart';
 
 abstract class AnalyticsState extends Equatable {
