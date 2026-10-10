@@ -88,7 +88,7 @@ lib/
 
 | Tầng | Trách nhiệm | Được phép import | Không được |
 |---|---|---|---|
-| `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, kiểu hàng Drift), `core/ui`, `shared/` | cầm `AppDatabase` / DAO (**test quét 22**); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
+| `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, nguồn), `core/` — kể `core/database` để dùng **kiểu** hàng Drift (`Wallet`, `Transaction`…), `core/di` để lấy repository qua service locator, `core/ui`, `core/utils`, `core/constants` — và `shared/` | cầm `AppDatabase` / gọi DAO (**test quét 22** — kiểu hàng thì được, lối truy cập thì không); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
 | `domain/` | Hàm thuần: luật nghiệp vụ, phép tính, định dạng câu | Dart thuần, `domain/` khác | Flutter, Drift, `sl` |
 | `data/` | Repository (interface + bản thi hành), datasource, Entity, `services/` điều phối nhiều bước | `core/database`, `core/api`, `domain/` | widget |
 
