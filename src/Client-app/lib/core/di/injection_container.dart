@@ -97,6 +97,7 @@ import '../notification/de_xuat_thong_bao_nguon.dart';
 import '../notification/hang_cho_su_kien.dart';
 import '../notification/kenh_bien_dong.dart';
 import '../notification/kenh_phien_ngan_hang.dart';
+import '../nen/co_chay_nen.dart';
 import '../nen/kenh_tu_chuyen_tien.dart';
 import '../nen/lich_nen.dart';
 import '../notification/kho_bien_lai.dart';
@@ -458,6 +459,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<ReminderScheduler>(
     () => ReminderScheduler(
       osNotifier: sl<OsNotifier>(),
+      // Android có lượt nền tự chuyển tiền: không nhắc kỳ trích, câu tự trả
+      // thôi bảo "Mở app" (spec tự chuyển tiền chạy nền mục 6).
+      chayNen: coChayNen,
       // Lịch nhắc kỳ trích tự động đi CHUNG bộ đặt lịch với hoá đơn. Tách
       // riêng là hai bên cùng gọi `pendingIds()` rồi huỷ sạch lịch của nhau ở
       // mỗi lượt — im lặng, và chỉ lộ ra khi người dùng phàn nàn rằng nhắc

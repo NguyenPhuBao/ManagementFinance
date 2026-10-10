@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/nen/co_chay_nen.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -1115,10 +1116,15 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   '${_gioTrich.hour.toString().padLeft(2, '0')}'
                                   ':${_gioTrich.minute.toString().padLeft(2, '0')}',
                               // Nói thẳng giới hạn thay vì để người dùng tự
-                              // phát hiện: bộ trích chạy khi app mở, nên giờ
-                              // chỉ giữ được MỘT chiều.
-                              subtitle: 'Không trích trước giờ này. App chưa mở '
-                                  'thì trích ở lần mở kế tiếp',
+                              // phát hiện. Android có lượt nền (spec 2026-10-10)
+                              // nên tiền chuyển gần giờ này kể cả khi app đóng;
+                              // nơi khác bộ trích chạy khi app mở — giờ chỉ giữ
+                              // được MỘT chiều (G22).
+                              subtitle: coChayNen
+                                  ? 'Tiền được chuyển gần giờ này; máy đang ngủ '
+                                      'sâu thì có thể muộn hơn'
+                                  : 'Không trích trước giờ này. App chưa mở '
+                                      'thì trích ở lần mở kế tiếp',
                               iconColor: AppColors.primary,
                               onTap: _chonGioTrich,
                             ),

@@ -8,7 +8,8 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../../../core/auth/current_account.dart';
-import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
+import '../../../../core/nen/co_chay_nen.dart';
+import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -427,9 +428,9 @@ class _BillEditPageState extends State<BillEditPage> {
                       DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _tuTra),
                     if (_tuTra) ...[
                       const SizedBox(height: 4),
-                      const Text(
-                        kBillAutoPayHint,
-                        style: TextStyle(
+                      Text(
+                        goiYTuTra(chayNen: coChayNen),
+                        style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],

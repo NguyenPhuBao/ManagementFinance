@@ -34,8 +34,15 @@ class ReminderScheduler {
     this.prefsStore,
     this.nhatKy,
     this.eventDao,
+    this.chayNen = false,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
+
+  /// Nền tảng có lượt nền tự chuyển tiền (Android — `coChayNen`, spec
+  /// 2026-10-10-tu-chuyen-tien-chay-nen-design.md mục 6): KHÔNG đặt lời nhắc kỳ
+  /// trích (lượt nền bắn "Đã trích…" bằng cùng khoá), và câu nhắc hoá đơn tự trả
+  /// thôi bảo "Mở app". Mặc định `false` = iOS / test cũ — giữ hành vi cũ.
+  final bool chayNen;
 
   final OsNotifier osNotifier;
   final BillsLoader loadBills;
@@ -176,10 +183,11 @@ class ReminderScheduler {
         if (mocNhac.isAfter(at.add(cuaSo))) continue;
         final soNgay = hanTra.difference(_dauNgay(at)).inDays;
 
-        // Hoá đơn bật tự trả: người dùng đã uỷ quyền cho app trả, nhưng bộ
-        // tự trả chỉ chạy khi app mở. Lời nhắc vì thế phải bảo họ MỞ APP chứ
-        // không bảo đi trả tay. Cùng khoá lịch — đổi công tắc không phải một
-        // sự kiện mới.
+        // Hoá đơn bật tự trả: người dùng đã uỷ quyền cho app trả. Trên
+        // Android lượt nền tự trả vào ngày đến hạn (`chayNen`), nên câu chỉ
+        // báo trước; nơi khác bộ tự trả chỉ chạy khi app mở, nên lời nhắc phải
+        // bảo họ MỞ APP chứ không bảo đi trả tay. Cùng khoá lịch — đổi công
+        // tắc không phải một sự kiện mới.
         final tuTra = b.autoPayEnabled;
         ungVien.add(_Lich(
           id: osScheduledId(khoa),
@@ -188,9 +196,14 @@ class ReminderScheduler {
           title: tuTra ? 'Hoá đơn sắp được tự trả' : 'Hoá đơn sắp đến hạn',
           body: tuTra
               ? (soNgay <= 0
-                  ? '${b.name} đến hạn hôm nay. Mở app để hoá đơn được tự trả.'
-                  : '${b.name} còn $soNgay ngày tới hạn. Mở app vào ngày đó để '
-                      'hoá đơn được tự trả.')
+                  ? (chayNen
+                      ? '${b.name} đến hạn hôm nay, sẽ được tự trả.'
+                      : '${b.name} đến hạn hôm nay. Mở app để hoá đơn được tự trả.')
+                  : (chayNen
+                      ? '${b.name} còn $soNgay ngày tới hạn, sẽ được tự trả vào '
+                          'ngày đó.'
+                      : '${b.name} còn $soNgay ngày tới hạn. Mở app vào ngày đó '
+                          'để hoá đơn được tự trả.'))
               : (soNgay <= 0
                   ? '${b.name} đến hạn hôm nay.'
                   : '${b.name} còn $soNgay ngày tới hạn.'),
@@ -203,7 +216,10 @@ class ReminderScheduler {
     // Nhóm mục tiêu tắt bật ĐỘC LẬP với nhóm hoá đơn, dù hai loại lịch dùng
     // chung một bộ đặt.
     final tai = loadGoals;
-    if (tai != null && prefs.osBat && prefs.batNhom(NotificationGroup.goal)) {
+    if (tai != null &&
+        !chayNen &&
+        prefs.osBat &&
+        prefs.batNhom(NotificationGroup.goal)) {
       for (final g in await tai(idaccount, at)) {
         if (g.isDeleted || !g.autoDepositEnabled) continue;
         if (g.isCompleted || g.remainingAmount <= 0) continue;
