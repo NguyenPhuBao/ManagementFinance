@@ -334,6 +334,27 @@ class SyncEngine {
     await _runSync();
   }
 
+  /// MỘT lượt đồng bộ cho lượt nền của WorkManager (spec tự chuyển tiền chạy
+  /// nền mục 3.3).
+  ///
+  /// Không đi qua [start]: `start()` dựng hẹn giờ 15 phút và bộ nghe mạng — thứ
+  /// lượt nền không được để lại — và chỉ `auth_bloc.dart` được gọi nó (test quét
+  /// thứ tư). Đặt `_currentIdaccount` cho riêng lượt này rồi TRẢ LẠI giá trị cũ,
+  /// nên một `scheduleSync()` sau đó không chạy nhầm cho tài khoản này.
+  Future<void> syncMotLuot(int idaccount) async {
+    final cu = _currentIdaccount;
+    _currentIdaccount = idaccount;
+    _lastPullTime ??= mocPullConDungKhong(
+      await _checkpointStore?.read(idaccount),
+      DateTime.now().toUtc(),
+    );
+    try {
+      await _runSync();
+    } finally {
+      _currentIdaccount = cu;
+    }
+  }
+
   /// Đặt lịch sync với debounce — gọi liên tiếp chỉ trigger 1 lần.
   void scheduleSync() {
     // Sau logout, `stop()` đặt _currentIdaccount = null nhưng các repository
