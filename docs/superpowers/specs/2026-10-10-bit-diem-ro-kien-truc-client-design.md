@@ -52,7 +52,7 @@ Bloc chỉ còn trạng thái, và có máy khác kiểm mã sau mỗi commit.
 | Bước | Việc | Chạm vào | Chốt bằng |
 |---|---|---|---|
 | 0 | CI | `.github/workflows/client-app.yml` | lần chạy đầu xanh trên GitHub |
-| 1 | UI thôi gọi CSDL | 17 tệp `presentation`, 4 interface + 1 nguồn, 55 lớp giả, DI | test quét 22 |
+| 1 | UI thôi gọi CSDL | 17 tệp `presentation`, 4 interface + 1 nguồn, 3 lớp giả ở 2 tệp test, DI | test quét 22 |
 | 2 | Rút điều phối phiên | `auth_bloc.dart`, `core/auth/`, DI, test auth | test quét 24 + chủ sở hữu `start` |
 | 3 | Tách hai trang | `analytics_page`, `add_transaction_page`, ~20 tệp widget mới | test quét 23, ảnh trước/sau |
 | 4 | Tài liệu | `docs/KIEN_TRUC_CLIENT_APP.md`, README, đơn CAN-LAM 42, `CLAUDE.md`, `PROJECT_CONTEXT.md`, `CLIENT_APP_KNOWN_GAPS.md` | soát chéo với mã |
@@ -147,23 +147,20 @@ Mục tiêu / Cá nhân đọc qua `sl<ThongBaoNguon>()`. Đây là cổng mỏn
 - **Spike SQL.** `chaySpikeSql` bỏ tham số `db`, tự lấy `sl<AppDatabase>()` bên trong `ai_chat/spike/spike_sql.dart`
   (thư mục `spike/` không phải `presentation`). Mã này chỉ sống sau `--dart-define=SPIKE_SQL=true`.
 
-### 4.6 Chi phí thật: 55 lớp giả
+### 4.6 Chi phí thật: 3 lớp giả ở 2 tệp (đo lại 2026-10-10)
 
-Bộ test dùng lớp giả viết tay `implements <Interface>`, nên thêm phương thức trừu tượng là mọi lớp giả **không biên dịch**
-cho tới khi có stub:
+Bộ test dùng lớp giả viết tay `implements <Interface>`. Đếm theo interface ra 55 lượt (ví 19, hoá đơn 18, giao dịch 11,
+`TaiPhanBoNguon` 4, danh mục 3) nhưng đó là **đếm trùng**: `bo_cong_cu_test` và vài tệp khác giả nhiều interface, nên
+thật ra là **49 tệp**. Trong 49 tệp ấy **47 đã có `noSuchMethod`** nên thêm phương thức trừu tượng **không** làm chúng vỡ
+biên dịch. Chỉ hai tệp cần stub:
 
-| Interface | Tệp test có lớp giả `implements` |
-|---|---|
-| `WalletRepository` | 19 |
-| `BillRepository` | 18 |
-| `TransactionRepository` | 11 |
-| `TaiPhanBoNguon` | 4 |
-| `CategoryManagementRepository` | 3 |
-| **Tổng** | **55** |
+| Tệp | Lớp giả | Phương thức cần stub |
+|---|---|---|
+| `test/features/wallet/wallet_cubit_total_test.dart` | `_Repo implements WalletRepository` | `getActiveRows`, `getAllRows`, `watchAllRows`, `getRowById` |
+| `test/features/category/presentation/category_test_fakes.dart` | `FakeCategoryRepository`, `FakeTransactionRepository` | `loadBangTraTen`, `watchAllRows`, `getRowById` · `getAllRows`, `watchAllRows` |
 
-Cách làm: một script Python đọc danh sách tệp, tìm lớp `implements <Interface>`, chèn stub `=> throw UnimplementedError()`
-cho từng phương thức mới ngay trước dấu đóng lớp, rồi `flutter analyze` bắt sót; **một commit riêng** để dễ soát. Stub
-ném lỗi là cố ý: lớp giả nào bị gọi tới phương thức mới mà không chuẩn bị thì test đỏ rõ, không im lặng.
+Stub viết tay `=> throw UnimplementedError()`, có `@override`; ném lỗi là cố ý: lớp giả nào bị gọi tới phương thức mới mà
+chưa chuẩn bị thì test đỏ rõ, không im lặng. Bài học ghi lại: **đếm tệp bằng `sort -u`**, không cộng dồn theo interface.
 
 ### 4.7 Test quét 22
 
@@ -283,10 +280,26 @@ abstract class PhienDieuPhoi {
 }
 ```
 
-Bản thi hành `PhienDieuPhoiThat` ở `lib/core/auth/phien_dieu_phoi_that.dart` nhận mọi dịch vụ qua constructor; dịch vụ
-nào hôm nay đứng sau `sl.isRegistered<...>()` thì là tham số **nullable** và bỏ qua khi `null`, giữ đúng hành vi. Hai
-stream gộp dựng bằng `StreamGroup`-tương-đương tự viết (không thêm gói): một `StreamController.broadcast` mỗi luồng,
-nghe từng nguồn, đóng ở `dispose()`.
+Bản thi hành `PhienDieuPhoiThat` ở `lib/core/auth/phien_dieu_phoi_that.dart` nhận qua constructor **bốn dịch vụ của
+`core`** (`SyncEngine?`, `RealtimeChannel?`, `NotificationScanner?`, `AuthInterceptor?`) và **hook hàm** cho mọi việc thuộc
+mảng khác, để `core/auth` **không import `features/`**:
+
+| Hook | Kiểu | DI nối tới |
+|---|---|---|
+| `donTaiKhoanKhac` | `Future<int> Function(int)` | `AppDatabase.purgeDataForOtherAccounts` |
+| `xoaBanSao` | `Future<int> Function(int)` | `AppDatabase.purgeDataForAccount` |
+| `xoaCacheSlm` | `Future<void> Function()?` | `SlmCache.xoaHet` |
+| `chuyenHangSeedCu` | `Future<void> Function(int)?` | `PersonalDefaultCategories.convertLegacyRows` |
+| `taoBanSaoDanhMuc` | `Future<int> Function(int)?` | `DefaultCategorySeeder.seedForAccount` |
+| `seedTaiKhoanMoi` | `Future<void> Function(int)?` | `DefaultAccountDataInitializer.ensureForAccount` |
+| `xoaAnhQuet` | `Future<void> Function()?` | `KhoAnhQuet.xoaHet` |
+| `datLaiCoGiaoDien` | `void Function()?` | đặt `AnTheChoXoa` và `AnNhacViTrungTen` về `false` |
+
+Dịch vụ hay hook nào hôm nay đứng sau `sl.isRegistered<...>()` thì là tham số **nullable** và bỏ qua khi `null`, giữ đúng
+hành vi. Khi `SyncEngine` là `null` thì `moPhienCucBo`, `batThoiGianThuc`, `batDongBo` và phần seed của `sauDangNhap`
+không làm gì — đúng với khối `if (sl.isRegistered<SyncEngine>())` đang bao quanh chúng. Hai stream gộp dựng bằng một
+`StreamController.broadcast` mỗi luồng, nghe từng nguồn, đóng ở `dispose()`; không thêm gói. Test bộ điều phối vì thế
+chỉ cần closure ghi nhật ký cho hook và ba lớp spy có sẵn trong test auth.
 
 ### 6.2 `AuthBloc` sau khi đổi
 
@@ -312,8 +325,8 @@ ký dịch vụ, nên **41 tệp test** đang dựng `AuthBloc(` trần không p
 tương thích; khi có `phien` thì `sauDangNhap` làm việc seed và tham số ấy bị bỏ qua (docstring nói rõ). DI đăng ký
 `PhienDieuPhoiThat` là lazy singleton rồi truyền vào `AuthBloc` (factory).
 
-`core/auth/` import dịch vụ của năm mảng (`ai_edge`, `category`, `wallet`, `auth`, `ocr`), nên hai tệp này là **điểm
-ghép** cùng loại với `injection_container.dart` và `app_router.dart`; tài liệu ghi rõ để không ai đọc nhầm thành hạ tầng.
+Nhờ hook, `core/auth/` **không import `features/`**; việc nối hook tới `SlmCache`, seeder, initializer, hai cờ giao diện
+nằm ở `injection_container.dart`, đúng chỗ điểm ghép hiện có. Số dòng `core` import `features` vì thế **giảm**, không tăng.
 
 ### 6.4 Test
 
@@ -400,7 +413,7 @@ cùng mười màn.
 
 | Rủi ro | Ứng phó |
 |---|---|
-| 55 lớp giả không biên dịch sau khi thêm phương thức | script chèn stub + `flutter analyze` bắt sót; commit riêng |
+| Lớp giả không biên dịch sau khi thêm phương thức | chỉ 2 tệp thiếu `noSuchMethod` (4.6); stub tay, `flutter analyze` bắt sót |
 | Thứ tự khởi động phiên lệch khi dời sang bộ điều phối | test AuthBloc hiện có giữ nguyên kỳ vọng, chạy qua `PhienDieuPhoiThat` dựng từ dịch vụ giả; test riêng cho thứ tự |
 | Tách widget đổi cây, lề, thứ tự con | dời nguyên văn, giữ `Key`; ảnh trước/sau là chốt |
 | Tên lớp công khai mới trùng lớp có sẵn | đã kiểm 2026-10-10: không trùng; kiểm lại bằng grep trước khi đặt tên tệp mới |
@@ -416,9 +429,12 @@ có thay đổi payload, nên không có bước hoàn tác dữ liệu.
 - `CLAUDE.md`: hàng mới *"Đụng vào **presentation** (trang, widget, Bloc)"* — ba test quét 22–24, `ThongBaoNguon`,
   `PhienDieuPhoi`, trần dòng và danh sách miễn trừ; mốc test / analyze mới; dòng CI.
 - `docs/PROJECT_CONTEXT.md` mục 9 (cấu trúc app) và mục 14 (khối *Bịt điểm rò kiến trúc 2026-10-10*).
-- `docs/CLIENT_APP_KNOWN_GAPS.md` mục 1: một mục **G88 — nợ kiến trúc còn lại sau đợt 2026-10-10**, bốn gạch đầu dòng:
-  Thêm giao dịch 1.800 dòng (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
-  ở 4/14 mảng; 36 dòng hạ tầng (`notification_rules`, `sync_engine`, `notification_scanner`, DAO) import `features/`.
+- `docs/CLIENT_APP_KNOWN_GAPS.md` mục 1: một mục **G88 — nợ kiến trúc còn lại sau đợt 2026-10-10**, sáu gạch đầu dòng:
+  Thêm giao dịch ~1.800 dòng (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
+  ở 4/14 mảng; 36 dòng hạ tầng (`notification_rules`, `sync_engine`, `notification_scanner`, DAO) import `features/`;
+  `core/notification` (34 tệp) là một mảng nghiệp vụ nằm trong `core`, chỗ đúng là `features/notification/{data,domain}`;
+  `data/services/` ở ví, hoá đơn, danh mục thực chất là tầng application chưa có tên — nếu cần tầng thứ tư thì đổi tên
+  thư mục, không thêm tầng mới (người dùng hỏi 2026-10-10, trả lời: không thêm tầng).
 - `docs/KIEN_TRUC_CLIENT_APP.md`, README Client-app, đơn CAN-LAM 42 + README `CAN-LAM/` mục 0 (mục 7.2).
 - Docstring `AuthBloc`, `NotificationCenterPage`, `gan_danh_muc_nguon.dart` sửa theo hình dạng mới.
 
