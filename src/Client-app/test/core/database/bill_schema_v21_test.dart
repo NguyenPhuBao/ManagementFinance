@@ -124,6 +124,6 @@ void main() {
     // ngày, B2) thêm bảng phản hồi gợi ý hoá đơn, cũng không đụng; v28
     // (2026-10-05, G63) thêm cột cục bộ trên `wallets`, cũng không đụng; v29
     // (cùng ngày, dự án C việc ba) thêm hai bảng cục bộ thứ tự khối, cũng không đụng.
-    expect(db.schemaVersion, 29);
+    expect(db.schemaVersion, 30);
   });
 }

@@ -16,7 +16,7 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema là v29', () => expect(db.schemaVersion, 29));
+  test('schema hiện tại là v30 (v29 còn nguyên)', () => expect(db.schemaVersion, 30));
 
   test('hai bảng KHÔNG có cột đồng bộ', () async {
     for (final bang in ['phan_tich_giay_xems', 'phan_tich_thu_tu_phan_hois']) {

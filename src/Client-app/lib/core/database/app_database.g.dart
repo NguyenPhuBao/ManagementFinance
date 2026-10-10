@@ -10588,6 +10588,243 @@ class PhanTichThuTuPhanHoisCompanion
   }
 }
 
+class $KhoaTuChuyenTiensTable extends KhoaTuChuyenTiens
+    with TableInfo<$KhoaTuChuyenTiensTable, KhoaTuChuyenTien> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $KhoaTuChuyenTiensTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _tenMeta = const VerificationMeta('ten');
+  @override
+  late final GeneratedColumn<String> ten = GeneratedColumn<String>(
+      'ten', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _chuSoHuuMeta =
+      const VerificationMeta('chuSoHuu');
+  @override
+  late final GeneratedColumn<String> chuSoHuu = GeneratedColumn<String>(
+      'chu_so_huu', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _hetHanMsMeta =
+      const VerificationMeta('hetHanMs');
+  @override
+  late final GeneratedColumn<int> hetHanMs = GeneratedColumn<int>(
+      'het_han_ms', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [ten, chuSoHuu, hetHanMs];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'khoa_tu_chuyen_tiens';
+  @override
+  VerificationContext validateIntegrity(Insertable<KhoaTuChuyenTien> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('ten')) {
+      context.handle(
+          _tenMeta, ten.isAcceptableOrUnknown(data['ten']!, _tenMeta));
+    } else if (isInserting) {
+      context.missing(_tenMeta);
+    }
+    if (data.containsKey('chu_so_huu')) {
+      context.handle(_chuSoHuuMeta,
+          chuSoHuu.isAcceptableOrUnknown(data['chu_so_huu']!, _chuSoHuuMeta));
+    }
+    if (data.containsKey('het_han_ms')) {
+      context.handle(_hetHanMsMeta,
+          hetHanMs.isAcceptableOrUnknown(data['het_han_ms']!, _hetHanMsMeta));
+    } else if (isInserting) {
+      context.missing(_hetHanMsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ten};
+  @override
+  KhoaTuChuyenTien map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return KhoaTuChuyenTien(
+      ten: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ten'])!,
+      chuSoHuu: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}chu_so_huu']),
+      hetHanMs: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}het_han_ms'])!,
+    );
+  }
+
+  @override
+  $KhoaTuChuyenTiensTable createAlias(String alias) {
+    return $KhoaTuChuyenTiensTable(attachedDatabase, alias);
+  }
+}
+
+class KhoaTuChuyenTien extends DataClass
+    implements Insertable<KhoaTuChuyenTien> {
+  final String ten;
+  final String? chuSoHuu;
+
+  /// Mili-giây epoch — số nguyên để câu `UPDATE` so trực tiếp, không qua phép đổi `DateTime` của Drift.
+  final int hetHanMs;
+  const KhoaTuChuyenTien(
+      {required this.ten, this.chuSoHuu, required this.hetHanMs});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['ten'] = Variable<String>(ten);
+    if (!nullToAbsent || chuSoHuu != null) {
+      map['chu_so_huu'] = Variable<String>(chuSoHuu);
+    }
+    map['het_han_ms'] = Variable<int>(hetHanMs);
+    return map;
+  }
+
+  KhoaTuChuyenTiensCompanion toCompanion(bool nullToAbsent) {
+    return KhoaTuChuyenTiensCompanion(
+      ten: Value(ten),
+      chuSoHuu: chuSoHuu == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chuSoHuu),
+      hetHanMs: Value(hetHanMs),
+    );
+  }
+
+  factory KhoaTuChuyenTien.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return KhoaTuChuyenTien(
+      ten: serializer.fromJson<String>(json['ten']),
+      chuSoHuu: serializer.fromJson<String?>(json['chuSoHuu']),
+      hetHanMs: serializer.fromJson<int>(json['hetHanMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ten': serializer.toJson<String>(ten),
+      'chuSoHuu': serializer.toJson<String?>(chuSoHuu),
+      'hetHanMs': serializer.toJson<int>(hetHanMs),
+    };
+  }
+
+  KhoaTuChuyenTien copyWith(
+          {String? ten,
+          Value<String?> chuSoHuu = const Value.absent(),
+          int? hetHanMs}) =>
+      KhoaTuChuyenTien(
+        ten: ten ?? this.ten,
+        chuSoHuu: chuSoHuu.present ? chuSoHuu.value : this.chuSoHuu,
+        hetHanMs: hetHanMs ?? this.hetHanMs,
+      );
+  KhoaTuChuyenTien copyWithCompanion(KhoaTuChuyenTiensCompanion data) {
+    return KhoaTuChuyenTien(
+      ten: data.ten.present ? data.ten.value : this.ten,
+      chuSoHuu: data.chuSoHuu.present ? data.chuSoHuu.value : this.chuSoHuu,
+      hetHanMs: data.hetHanMs.present ? data.hetHanMs.value : this.hetHanMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KhoaTuChuyenTien(')
+          ..write('ten: $ten, ')
+          ..write('chuSoHuu: $chuSoHuu, ')
+          ..write('hetHanMs: $hetHanMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(ten, chuSoHuu, hetHanMs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is KhoaTuChuyenTien &&
+          other.ten == this.ten &&
+          other.chuSoHuu == this.chuSoHuu &&
+          other.hetHanMs == this.hetHanMs);
+}
+
+class KhoaTuChuyenTiensCompanion extends UpdateCompanion<KhoaTuChuyenTien> {
+  final Value<String> ten;
+  final Value<String?> chuSoHuu;
+  final Value<int> hetHanMs;
+  final Value<int> rowid;
+  const KhoaTuChuyenTiensCompanion({
+    this.ten = const Value.absent(),
+    this.chuSoHuu = const Value.absent(),
+    this.hetHanMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  KhoaTuChuyenTiensCompanion.insert({
+    required String ten,
+    this.chuSoHuu = const Value.absent(),
+    required int hetHanMs,
+    this.rowid = const Value.absent(),
+  })  : ten = Value(ten),
+        hetHanMs = Value(hetHanMs);
+  static Insertable<KhoaTuChuyenTien> custom({
+    Expression<String>? ten,
+    Expression<String>? chuSoHuu,
+    Expression<int>? hetHanMs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ten != null) 'ten': ten,
+      if (chuSoHuu != null) 'chu_so_huu': chuSoHuu,
+      if (hetHanMs != null) 'het_han_ms': hetHanMs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  KhoaTuChuyenTiensCompanion copyWith(
+      {Value<String>? ten,
+      Value<String?>? chuSoHuu,
+      Value<int>? hetHanMs,
+      Value<int>? rowid}) {
+    return KhoaTuChuyenTiensCompanion(
+      ten: ten ?? this.ten,
+      chuSoHuu: chuSoHuu ?? this.chuSoHuu,
+      hetHanMs: hetHanMs ?? this.hetHanMs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ten.present) {
+      map['ten'] = Variable<String>(ten.value);
+    }
+    if (chuSoHuu.present) {
+      map['chu_so_huu'] = Variable<String>(chuSoHuu.value);
+    }
+    if (hetHanMs.present) {
+      map['het_han_ms'] = Variable<int>(hetHanMs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KhoaTuChuyenTiensCompanion(')
+          ..write('ten: $ten, ')
+          ..write('chuSoHuu: $chuSoHuu, ')
+          ..write('hetHanMs: $hetHanMs, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10615,6 +10852,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PhanTichGiayXemsTable(this);
   late final $PhanTichThuTuPhanHoisTable phanTichThuTuPhanHois =
       $PhanTichThuTuPhanHoisTable(this);
+  late final $KhoaTuChuyenTiensTable khoaTuChuyenTiens =
+      $KhoaTuChuyenTiensTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -10633,6 +10872,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       NotificationEventDao(this as AppDatabase);
   late final GoiYHoaDonDao goiYHoaDonDao = GoiYHoaDonDao(this as AppDatabase);
   late final ThuTuKhoiDao thuTuKhoiDao = ThuTuKhoiDao(this as AppDatabase);
+  late final KhoaTuChuyenTienDao khoaTuChuyenTienDao =
+      KhoaTuChuyenTienDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10653,6 +10894,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         goiYHoaDonPhanHois,
         phanTichGiayXems,
         phanTichThuTuPhanHois,
+        khoaTuChuyenTiens,
         idxAppnotifFeed
       ];
 }
@@ -15463,6 +15705,151 @@ typedef $$PhanTichThuTuPhanHoisTableProcessedTableManager
         ),
         PhanTichThuTuPhanHoi,
         PrefetchHooks Function()>;
+typedef $$KhoaTuChuyenTiensTableCreateCompanionBuilder
+    = KhoaTuChuyenTiensCompanion Function({
+  required String ten,
+  Value<String?> chuSoHuu,
+  required int hetHanMs,
+  Value<int> rowid,
+});
+typedef $$KhoaTuChuyenTiensTableUpdateCompanionBuilder
+    = KhoaTuChuyenTiensCompanion Function({
+  Value<String> ten,
+  Value<String?> chuSoHuu,
+  Value<int> hetHanMs,
+  Value<int> rowid,
+});
+
+class $$KhoaTuChuyenTiensTableFilterComposer
+    extends Composer<_$AppDatabase, $KhoaTuChuyenTiensTable> {
+  $$KhoaTuChuyenTiensTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ten => $composableBuilder(
+      column: $table.ten, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get chuSoHuu => $composableBuilder(
+      column: $table.chuSoHuu, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hetHanMs => $composableBuilder(
+      column: $table.hetHanMs, builder: (column) => ColumnFilters(column));
+}
+
+class $$KhoaTuChuyenTiensTableOrderingComposer
+    extends Composer<_$AppDatabase, $KhoaTuChuyenTiensTable> {
+  $$KhoaTuChuyenTiensTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ten => $composableBuilder(
+      column: $table.ten, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get chuSoHuu => $composableBuilder(
+      column: $table.chuSoHuu, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hetHanMs => $composableBuilder(
+      column: $table.hetHanMs, builder: (column) => ColumnOrderings(column));
+}
+
+class $$KhoaTuChuyenTiensTableAnnotationComposer
+    extends Composer<_$AppDatabase, $KhoaTuChuyenTiensTable> {
+  $$KhoaTuChuyenTiensTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ten =>
+      $composableBuilder(column: $table.ten, builder: (column) => column);
+
+  GeneratedColumn<String> get chuSoHuu =>
+      $composableBuilder(column: $table.chuSoHuu, builder: (column) => column);
+
+  GeneratedColumn<int> get hetHanMs =>
+      $composableBuilder(column: $table.hetHanMs, builder: (column) => column);
+}
+
+class $$KhoaTuChuyenTiensTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $KhoaTuChuyenTiensTable,
+    KhoaTuChuyenTien,
+    $$KhoaTuChuyenTiensTableFilterComposer,
+    $$KhoaTuChuyenTiensTableOrderingComposer,
+    $$KhoaTuChuyenTiensTableAnnotationComposer,
+    $$KhoaTuChuyenTiensTableCreateCompanionBuilder,
+    $$KhoaTuChuyenTiensTableUpdateCompanionBuilder,
+    (
+      KhoaTuChuyenTien,
+      BaseReferences<_$AppDatabase, $KhoaTuChuyenTiensTable, KhoaTuChuyenTien>
+    ),
+    KhoaTuChuyenTien,
+    PrefetchHooks Function()> {
+  $$KhoaTuChuyenTiensTableTableManager(
+      _$AppDatabase db, $KhoaTuChuyenTiensTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$KhoaTuChuyenTiensTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$KhoaTuChuyenTiensTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$KhoaTuChuyenTiensTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> ten = const Value.absent(),
+            Value<String?> chuSoHuu = const Value.absent(),
+            Value<int> hetHanMs = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              KhoaTuChuyenTiensCompanion(
+            ten: ten,
+            chuSoHuu: chuSoHuu,
+            hetHanMs: hetHanMs,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String ten,
+            Value<String?> chuSoHuu = const Value.absent(),
+            required int hetHanMs,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              KhoaTuChuyenTiensCompanion.insert(
+            ten: ten,
+            chuSoHuu: chuSoHuu,
+            hetHanMs: hetHanMs,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$KhoaTuChuyenTiensTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $KhoaTuChuyenTiensTable,
+    KhoaTuChuyenTien,
+    $$KhoaTuChuyenTiensTableFilterComposer,
+    $$KhoaTuChuyenTiensTableOrderingComposer,
+    $$KhoaTuChuyenTiensTableAnnotationComposer,
+    $$KhoaTuChuyenTiensTableCreateCompanionBuilder,
+    $$KhoaTuChuyenTiensTableUpdateCompanionBuilder,
+    (
+      KhoaTuChuyenTien,
+      BaseReferences<_$AppDatabase, $KhoaTuChuyenTiensTable, KhoaTuChuyenTien>
+    ),
+    KhoaTuChuyenTien,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15499,4 +15886,6 @@ class $AppDatabaseManager {
       $$PhanTichGiayXemsTableTableManager(_db, _db.phanTichGiayXems);
   $$PhanTichThuTuPhanHoisTableTableManager get phanTichThuTuPhanHois =>
       $$PhanTichThuTuPhanHoisTableTableManager(_db, _db.phanTichThuTuPhanHois);
+  $$KhoaTuChuyenTiensTableTableManager get khoaTuChuyenTiens =>
+      $$KhoaTuChuyenTiensTableTableManager(_db, _db.khoaTuChuyenTiens);
 }
