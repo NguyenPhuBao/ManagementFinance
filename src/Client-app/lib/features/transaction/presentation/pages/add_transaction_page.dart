@@ -31,6 +31,7 @@ import '../widgets/khoi_tach.dart';
 import '../widgets/sheet_them_phan.dart';
 import '../widgets/them_giao_dich/ban_phim_so.dart';
 import '../widgets/them_giao_dich/khoi_so_tien.dart';
+import '../widgets/them_giao_dich/the_form.dart';
 import '../widgets/xem_anh_bien_lai.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
@@ -1963,7 +1964,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           _buildNhapNhanh(),
                           const SizedBox(height: 12),
                         ],
-                        _buildFormCard(context),
+                        _theForm(context),
                         if (_choTach && _phanTach.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           KhoiTach(
@@ -2030,11 +2031,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() => _hienBanPhimSo = banPhimHeThong || !_hienBanPhimSo);
   }
 
-  Widget _buildFormCard(BuildContext context) {
-    final isTransfer = _isTransfer;
+  /// Lắp [TheForm] từ trạng thái của trang: chuỗi hiển thị, các khối phụ (slot) và những lời gọi đổi trạng thái.
+  Widget _theForm(BuildContext context) {
     final selectedCategory = _selectedCategory;
-    final showDebtDirection =
-        selectedCategory != null && isDebtClassify(selectedCategory.classify);
+    final showDebtDirection = selectedCategory != null && isDebtClassify(selectedCategory.classify);
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
@@ -2047,196 +2047,41 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatLienKhoi(_destinationWallet!.balance)}'
             : 'Chọn ví đích');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          if (!isTransfer) ...[
-            _buildFormRow(
-              icon: Icons.account_balance_wallet_outlined,
-              label: 'Ví thanh toán',
-              valueWidget: Text(
-                walletDisplay,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500),
-              ),
-              showArrow: true,
-              onTap: () =>
-                  _showWalletPickerBottomSheet(context, isDestination: false),
-            ),
-            if (_bienDong != null && _trungTrongSo.isNotEmpty) _buildNhacTrung(context),
-            Divider(
-                height: 1,
-                indent: 64,
-                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-            _buildFormRow(
-              icon: Icons.category,
-              label: _phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
-              valueWidget: Text(
-                _selectedCategory != null
-                    ? _selectedCategory!.name
-                    : 'Chọn danh mục',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: _selectedCategory != null
-                      ? AppColors.primary
-                      : AppColors.outlineVariant,
-                  fontWeight: _selectedCategory != null
-                      ? FontWeight.w500
-                      : FontWeight.normal,
-                ),
-              ),
-              showArrow: true,
-              onTap: () async {
-                // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
-                final selected = await context.push<Category>(
-                  '/add/category',
-                  // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
-                  extra: selectedCategory?.classify ??
-                      (_huong == 'thu' ? 'thu' : kCategoryClassifies.first),
-                );
-                if (selected != null) _chonDanhMuc(selected);
-              },
-            ),
-            if (_choTach && _phanTach.isEmpty) ...[
-              Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-              KeyedSubtree(
-                key: const Key('dong-tach'),
-                child: _buildFormRow(
-                  icon: Icons.call_split,
-                  label: 'Tách theo danh mục',
-                  valueWidget: const Text(
-                    'Chia khoản chi cho nhiều danh mục',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                  ),
-                  showArrow: true,
-                  onTap: _themPhan,
-                ),
-              ),
-            ],
-            if (_deXuat != null || _daThemTuKhoa != null) _buildDeXuatTuKhoa(),
-            if (showDebtDirection) ...[
-              Divider(
-                  height: 1,
-                  indent: 64,
-                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-              _buildDebtDirectionRow(),
-            ],
-            if (_suggestion != null) ...[
-              Divider(
-                  height: 1,
-                  indent: 64,
-                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-              _buildSuggestionCard(_suggestion!),
-            ],
-          ] else ...[
-            _buildFormRow(
-              icon: Icons.account_balance_wallet_outlined,
-              label: 'Ví nguồn (Từ ví)',
-              valueWidget: Text(
-                walletDisplay,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500),
-              ),
-              showArrow: true,
-              onTap: () =>
-                  _showWalletPickerBottomSheet(context, isDestination: false),
-            ),
-            Divider(
-                height: 1,
-                indent: 64,
-                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-            _buildFormRow(
-              icon: Icons.account_balance_wallet,
-              label: 'Ví đích (Đến ví)',
-              valueWidget: Text(
-                destWalletDisplay,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500),
-              ),
-              showArrow: true,
-              onTap: () =>
-                  _showWalletPickerBottomSheet(context, isDestination: true),
-            ),
-          ],
-          Divider(
-              height: 1,
-              indent: 64,
-              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.notes,
-                      color: AppColors.textSecondary, size: 20),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    key: const Key('ghi-chu-giao-dich'),
-                    controller: _noteController,
-                    // G84: hàng phẳng như Danh mục / Ngày (Stitch `8afdfe11…`) — tắt nền và ba loại viền
-                    // của theme, như ô Nhập nhanh; `border: none` một mình không che được.
-                    decoration: const InputDecoration(
-                      filled: false,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      // Theme đệm ngang 16 — bỏ để chữ thẳng cột với "Chọn danh mục" / "Ngày".
-                      contentPadding: EdgeInsets.symmetric(vertical: 16),
-                      // G83: câu dài cũ bị cắt ở 320 dp — người dùng chọn rút gọn.
-                      hintText: 'Thêm ghi chú…',
-                      hintStyle: TextStyle(
-                          fontSize: 14, color: AppColors.outlineVariant),
-                      border: InputBorder.none,
-                    ),
-                    style:
-                        const TextStyle(fontSize: 16, color: AppColors.primary),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-              height: 1,
-              indent: 64,
-              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-          _buildFormRow(
-            icon: Icons.calendar_today,
-            label: 'Ngày',
-            valueWidget: Text(
-              // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
-              DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_selectedDate),
-              style: const TextStyle(fontSize: 16, color: AppColors.primary),
-            ),
-            trailingIcon: Icons.calendar_month,
-            onTap: _pickDate,
-          ),
-        ],
-      ),
+    return TheForm(
+      isTransfer: _isTransfer,
+      walletDisplay: walletDisplay,
+      destWalletDisplay: destWalletDisplay,
+      tenDanhMuc: selectedCategory?.name,
+      nhanDanhMuc: _phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
+      noteController: _noteController,
+      // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
+      ngayHienThi: DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_selectedDate),
+      onChonVi: () => _showWalletPickerBottomSheet(context, isDestination: false),
+      onChonViDich: () => _showWalletPickerBottomSheet(context, isDestination: true),
+      onChonDanhMuc: () async {
+        // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
+        final selected = await context.push<Category>(
+          '/add/category',
+          // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
+          extra: selectedCategory?.classify ?? (_huong == 'thu' ? 'thu' : kCategoryClassifies.first),
+        );
+        if (selected != null) _chonDanhMuc(selected);
+      },
+      onPickDate: _pickDate,
+      hienDongTach: _choTach && _phanTach.isEmpty,
+      onThemPhan: _themPhan,
+      nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? _buildNhacTrung(context) : null,
+      deXuatTuKhoa: _deXuat != null || _daThemTuKhoa != null ? _buildDeXuatTuKhoa() : null,
+      hangChieuTien: showDebtDirection
+          ? HangChieuTien(
+              chieu: _debtDirection,
+              onChon: (d) => setState(() {
+                _debtDirection = d;
+                _huong = d;
+              }),
+            )
+          : null,
+      theGoiY: _suggestion != null ? _buildSuggestionCard(_suggestion!) : null,
     );
   }
 
@@ -2821,92 +2666,4 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ],
         ),
       );
-
-  /// Công tắc chiều tiền — chỉ hiện khi danh mục là vay/nợ, vì đó là phân loại
-  /// duy nhất gom cả tiền vào lẫn tiền ra (Cho vay/Trả nợ ↔ Đi vay/Thu nợ).
-  Widget _buildDebtDirectionRow() => _buildFormRow(
-        icon: Icons.swap_vert,
-        label: 'Chiều tiền',
-        valueWidget: Wrap(
-          spacing: 8,
-          children: [
-            _directionChip('chi', 'Tiền ra'),
-            _directionChip('thu', 'Tiền vào'),
-          ],
-        ),
-      );
-
-  Widget _directionChip(String direction, String label) {
-    final selected = _debtDirection == direction;
-    return ChoiceChip(
-      key: Key('debt-direction-$direction'),
-      label: Text(label),
-      selected: selected,
-      showCheckmark: false,
-      selectedColor: AppColors.primary,
-      backgroundColor: Colors.white,
-      side: const BorderSide(color: AppColors.outlineVariant),
-      labelStyle: TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.white : AppColors.primary,
-      ),
-      // Cùng giá trị với đoạn đầu màn — xem chú thích ở `_huong`.
-      onSelected: (_) => setState(() {
-        _debtDirection = direction;
-        _huong = direction;
-      }),
-    );
-  }
-
-  Widget _buildFormRow({
-    required IconData icon,
-    required String label,
-    required Widget valueWidget,
-    bool showArrow = false,
-    IconData? trailingIcon,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: AppColors.textSecondary, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  valueWidget,
-                ],
-              ),
-            ),
-            if (trailingIcon != null)
-              Icon(trailingIcon, color: AppColors.outline)
-            else if (showArrow)
-              const Icon(Icons.chevron_right, color: AppColors.outline),
-          ],
-        ),
-      ),
-    );
-  }
 }
