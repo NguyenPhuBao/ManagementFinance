@@ -423,7 +423,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
   // Cổng bảng thông báo cho TRANG (spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; hạ tầng
-  // (BadgeUpdater, NotificationScanner) vẫn cầm DAO. Đăng ký lazy — không dựng gì khi không ai gọi.
+  // (BadgeUpdater, NotificationScanner) vẫn cầm DAO. Đăng ký cả chế độ nền (cùng `setupDependencies`, không gate
+  // theo `cheDoNen`). Đăng ký lazy — không dựng gì khi không ai gọi.
   sl.registerLazySingleton<ThongBaoNguon>(() => ThongBaoNguonDrift(sl<AppDatabase>().notificationDao));
 
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
