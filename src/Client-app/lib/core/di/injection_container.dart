@@ -114,6 +114,10 @@ import '../ocr/doc_chu_anh_mlkit.dart';
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
 
+/// Chủ khoá thuê tự chuyển tiền của engine này — `'app'`, hoặc `'nen'` ở engine
+/// nền của WorkManager (`setupDependencies(cheDoNen: true)`).
+String _chuKhoa = 'app';
+
 /// Khởi động toàn bộ dependency injection graph.
 /// Gọi một lần trong `main()` trước khi `runApp()`.
 Future<void> setupDependencies() async {
@@ -537,6 +541,11 @@ Future<void> setupDependencies() async {
               repository: sl<BillRepository>(),
             ).chay(idaccount, now: now)
           : const <BillAutoPayEvent>[],
+      // Khoá thuê (spec tự chuyển tiền chạy nền mục 3.4) — engine nền và engine
+      // app có thể quét cùng lúc trong một tiến trình.
+      layKhoa: () =>
+          sl<AppDatabase>().khoaTuChuyenTienDao.lay(_chuKhoa, DateTime.now()),
+      nhaKhoa: () => sl<AppDatabase>().khoaTuChuyenTienDao.nha(_chuKhoa),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.

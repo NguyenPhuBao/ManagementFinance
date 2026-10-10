@@ -170,6 +170,14 @@ class NotificationScanner {
   final Future<List<BillAutoPayEvent>> Function(int idaccount, DateTime now)?
       runAutoPays;
 
+  /// Khoá thuê của hai bộ tự chuyển tiền (`KhoaTuChuyenTienDao`, spec tự chuyển
+  /// tiền chạy nền mục 3.4). Engine nền của WorkManager và engine của app có
+  /// thể cùng tiến trình — `_dangQuet` chỉ chặn trong MỘT isolate. Không lấy
+  /// được (hoặc lấy ném lỗi) thì bỏ qua cả hai bộ chạy, phần thông báo vẫn
+  /// chạy. Bỏ trống = luôn lấy được (test, web).
+  final Future<bool> Function()? layKhoa;
+  final Future<void> Function()? nhaKhoa;
+
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
 
@@ -278,6 +286,8 @@ class NotificationScanner {
     required this.loadBills,
     this.runAutoDeposits,
     this.runAutoPays,
+    this.layKhoa,
+    this.nhaKhoa,
     this.loadGoals,
     this.loadWallets,
     this.loadViDaDung,
@@ -502,25 +512,45 @@ class NotificationScanner {
       // để số dư ví mà bộ trích nhìn thấy là số dư SAU khi trả hoá đơn.
       // Nuốt lỗi, cùng lý do với `runAutoDeposits` bên dưới.
       List<BillAutoPayEvent> autoPays = const [];
-      try {
-        autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
-      } catch (_) {
-        // Bỏ qua có chủ ý — xem chú thích trên.
-      }
-
-      // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
-      // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
-      // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
-      // cho đúng mục tiêu vừa được nạp đầy.
-      //
-      // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
-      // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
-      // khối nguyên tử nên hỏng thì không để lại gì dở dang.
       List<GoalAutoDepositEvent> autoDeposits = const [];
+
+      // Khoá thuê (spec tự chuyển tiền chạy nền mục 3.4): engine nền và engine
+      // của app có thể quét CÙNG LÚC. Không lấy được → bỏ qua cả hai bộ chạy;
+      // lượt đang giữ khoá làm việc này. Lấy ném lỗi cũng coi là không lấy được.
+      var coKhoa = false;
       try {
-        autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+        coKhoa = await (layKhoa?.call() ?? Future.value(true));
       } catch (_) {
-        // Bỏ qua có chủ ý — xem chú thích trên.
+        coKhoa = false;
+      }
+      if (coKhoa) {
+        try {
+          try {
+            autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+
+          // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
+          // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
+          // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
+          // cho đúng mục tiêu vừa được nạp đầy.
+          //
+          // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
+          // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
+          // khối nguyên tử nên hỏng thì không để lại gì dở dang.
+          try {
+            autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+        } finally {
+          try {
+            await nhaKhoa?.call();
+          } catch (_) {
+            // Bỏ qua có chủ ý — khoá tự hết hạn sau 2 phút.
+          }
+        }
       }
 
       final budgets = await loadBudgets(idaccount, at);
