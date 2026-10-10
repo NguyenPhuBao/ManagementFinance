@@ -31,7 +31,9 @@ import '../widgets/sheet_them_phan.dart';
 import '../widgets/them_giao_dich/ban_phim_so.dart';
 import '../widgets/them_giao_dich/dai_nguon_bien_dong.dart';
 import '../widgets/them_giao_dich/khoi_so_tien.dart';
+import '../widgets/them_giao_dich/o_nhap_nhanh.dart';
 import '../widgets/them_giao_dich/the_form.dart';
+import '../widgets/them_giao_dich/the_goi_y.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -45,7 +47,6 @@ import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
-import '../../../../features/premium/presentation/widgets/nut_nang_cap.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
 import '../../domain/vi_hay_dung.dart';
@@ -294,7 +295,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   final TextEditingController _nhapNhanhController = TextEditingController();
 
   /// Kết quả lần *Điền* gần nhất, để dựng dòng tóm tắt dưới ô; `null` khi chưa điền lần nào.
-  ({String tomTat, bool docDuoc, bool quaAi, List<String> canhBao, String? lyDo})? _ketQuaDien;
+  KetQuaDien? _ketQuaDien;
   bool _dangDien = false;
 
   /// Đang chờ mô hình đọc câu (C2 §2.8) — ô hiện *"Đang đọc bằng AI…"* kèm Huỷ.
@@ -1964,7 +1965,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             const SizedBox(height: 12),
                           ],
                         ] else if (!_isEditing) ...[
-                          _buildNhapNhanh(),
+                          ONhapNhanh(
+                            controller: _nhapNhanhController,
+                            focusNode: _nhapNhanhFocus,
+                            laPremium: _laPremium,
+                            dangDocAi: _dangDocAi,
+                            ketQua: _ketQuaDien,
+                            onDien: _dienTuCau,
+                            onHuy: _huyDocAi,
+                          ),
                           const SizedBox(height: 12),
                         ],
                         _theForm(context),
@@ -2074,7 +2083,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       hienDongTach: _choTach && _phanTach.isEmpty,
       onThemPhan: _themPhan,
       nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _trungTrongSo) : null,
-      deXuatTuKhoa: _deXuat != null || _daThemTuKhoa != null ? _buildDeXuatTuKhoa() : null,
+      deXuatTuKhoa: _deXuat != null || _daThemTuKhoa != null
+          ? DongDeXuatTuKhoa(
+              daThem: _daThemTuKhoa,
+              deXuat: _deXuat,
+              onChapNhan: _chapNhanDeXuat,
+              onBoQua: _boQuaDeXuat,
+            )
+          : null,
       hangChieuTien: showDebtDirection
           ? HangChieuTien(
               chieu: _debtDirection,
@@ -2084,7 +2100,29 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               }),
             )
           : null,
-      theGoiY: _suggestion != null ? _buildSuggestionCard(_suggestion!) : null,
+      theGoiY: _suggestion == null
+          ? null
+          : TheGoiYDanhMuc(
+              key: _khoaTheGoiY,
+              suggestion: _suggestion!,
+              onBoQua: () {
+                final s = _suggestion!;
+                _ghiPhanHoi(s, kKetQuaGoiYBoQua);
+                if (s.nguon == kNguonGoiYSoTien) {
+                  _boQuaSoTienLuotNay.add((s.amTietChinh, s.categoryId));
+                }
+                setState(() {
+                  _suggestion = null;
+                  _choPhanXu = null;
+                });
+              },
+              onChon: () {
+                final s = _suggestion!;
+                _ghiPhanHoi(s, kKetQuaGoiYChon, chon: s.categoryId);
+                _choPhanXu = null;
+                _chonDanhMuc(s.category);
+              },
+            ),
     );
   }
 
@@ -2097,341 +2135,4 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _amountString = a;
         _hienBanPhimSo = false;
       });
-
-  /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
-  /// do khi danh mục đến từ B1.
-  Widget _buildNhapNhanh() {
-    final kq = _ketQuaDien;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.bolt, size: 16, color: AppColors.expense),
-              SizedBox(width: 4),
-              Text(
-                'NHẬP NHANH',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.6,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Nút Điền nằm TRONG khung ô, mép phải — màn Stitch `8afdfe11…` (C2 T5). Khung tự vẽ, nút đứng ngoài
-          // `TextField`. ⚠️ Bản dựng bằng `suffixIcon` làm ca Huỷ của `nhap_nhanh_test` trượt tay (cú chạm rơi vào lúc
-          // vùng cuộn không nhận chạm); hai phép đo tối giản (ô chưa / đã focus, chạm nút trong `suffixIcon`) không tái
-          // hiện được nên chưa lần ra nguyên nhân — đừng đổi lại khi chưa đo trên máy thật.
-          ListenableBuilder(
-            listenable: _nhapNhanhFocus,
-            builder: (context, child) => Container(
-              padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: _nhapNhanhFocus.hasFocus
-                    ? Border.all(color: AppColors.primary, width: 2)
-                    : Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
-              ),
-              child: child,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    key: const Key('nhap-nhanh-o'),
-                    controller: _nhapNhanhController,
-                    focusNode: _nhapNhanhFocus,
-                    // Basic khoá cả ô — spec Premium 8.2.
-                    enabled: _laPremium,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _dienTuCau(),
-                    style: const TextStyle(fontSize: 15, color: AppColors.primary),
-                    // ⚠️ Tắt CẢ nền và ba loại viền: theme của app đặt `filled` + `enabledBorder` / `focusedBorder` cho
-                    // mọi ô nhập, `border: none` một mình không che được — máy thật hiện một ô trắng có viền nằm
-                    // trong khung xám (nghiệm thu Realme 2026-09-30).
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: false,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
-                      hintText: _laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium',
-                      hintStyle: const TextStyle(fontSize: 14, color: AppColors.outlineVariant),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
-                if (_laPremium)
-                  ElevatedButton(
-                    key: const Key('nhap-nhanh-dien'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: _dangDocAi ? null : _dienTuCau,
-                    child: const Text('Điền'),
-                  )
-                else
-                  const NutNangCap(),
-              ],
-            ),
-          ),
-          if (!_laPremium)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Text(
-                'Nâng cấp để đọc câu bằng AI',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ),
-          if (_dangDocAi)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Đang đọc bằng AI…',
-                      key: Key('nhap-nhanh-dang-doc'),
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ),
-                  TextButton(
-                    key: const Key('nhap-nhanh-huy'),
-                    onPressed: _huyDocAi,
-                    child: const Text('Huỷ'),
-                  ),
-                ],
-              ),
-            )
-          else if (kq != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  kq.docDuoc ? Icons.check_circle : Icons.info_outline,
-                  size: 16,
-                  color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    kq.tomTat,
-                    key: const Key('nhap-nhanh-tom-tat'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: kq.docDuoc ? AppColors.income : AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 4, left: 22),
-              child: Row(
-                children: [
-                  Icon(
-                    kq.quaAi ? Icons.auto_awesome : Icons.rule,
-                    size: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    kq.quaAi ? 'Đọc bằng AI' : 'Đọc bằng luật',
-                    key: const Key('nhap-nhanh-nguon'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            for (final cb in kq.canhBao)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 22),
-                child: Text(cb, style: const TextStyle(fontSize: 12, color: AppColors.expense)),
-              ),
-            if (kq.lyDo != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 22),
-                child: Text(
-                  kq.lyDo!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Dòng đề xuất thêm / chuyển từ khoá (spec 2026-09-30, màn Stitch `8ca1338e…`).
-  Widget _buildDeXuatTuKhoa() {
-    final daThem = _daThemTuKhoa;
-    final d = _deXuat;
-    const dam = TextStyle(fontWeight: FontWeight.w700);
-    return Container(
-      key: const Key('de-xuat-tu-khoa'),
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(12)),
-      child: daThem != null || d == null
-          ? Row(children: [
-              const Icon(Icons.check_circle, color: AppColors.income, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(daThem ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                ),
-              ),
-            ])
-          : Row(children: [
-              Icon(d.tenCu == null ? Icons.add_circle : Icons.sync, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text.rich(
-                  d.tenCu == null
-                      ? TextSpan(children: [
-                          const TextSpan(text: 'Thêm '),
-                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
-                          const TextSpan(text: ' làm từ khoá của '),
-                          TextSpan(text: d.tenDanhMuc, style: dam),
-                          const TextSpan(text: '?'),
-                        ])
-                      : TextSpan(children: [
-                          TextSpan(text: '‘${d.dx.tuKhoa}’', style: dam),
-                          const TextSpan(text: ' đang là từ khoá của '),
-                          TextSpan(text: d.tenCu, style: dam),
-                          const TextSpan(text: ' — chuyển sang '),
-                          TextSpan(text: d.tenDanhMuc, style: dam),
-                          const TextSpan(text: '?'),
-                        ]),
-                  style: const TextStyle(fontSize: 13, color: AppColors.primary),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // ⚠️ `minimumSize` hữu hạn BẮT BUỘC (bẫy 4.11): theme ép ElevatedButton rộng vô hạn.
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(0, 32),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                onPressed: _chapNhanDeXuat,
-                child: Text(d.tenCu == null ? 'Thêm' : 'Chuyển'),
-              ),
-              IconButton(
-                tooltip: 'Bỏ qua đề xuất',
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: _boQuaDeXuat,
-              ),
-            ]),
-    );
-  }
-
-  Widget _buildSuggestionCard(CategorySuggestion suggestion) => Container(
-        key: _khoaTheGoiY,
-        width: double.infinity,
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gợi ý danh mục',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.primary),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              suggestion.category.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            // Lý do theo NGUỒN: học → "Bạn thường ghi “grab” cho Di chuyển (6/7 lần)."; từ khoá → câu cũ.
-            Text(
-              suggestion.lyDo,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            // `Wrap` chứ không `Row` + `Spacer`: đủ chỗ thì hai nút nằm hai đầu một hàng y như trước; chật (màn 360 dp
-            // với cỡ chữ lớn) thì nút sau XUỐNG DÒNG thay vì tràn sọc vàng. Từ dự án C thẻ này hiện cả khi 16 phím số
-            // đang mở — tức thường xuyên hơn hẳn. `SizedBox` rộng hết cỡ để `spaceBetween` có chỗ mà giãn: `Wrap` trong
-            // `Column` căn trái tự co theo nội dung, hai nút sẽ dính vào nhau.
-            SizedBox(
-              width: double.infinity,
-              child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              runSpacing: 4,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    _ghiPhanHoi(suggestion, kKetQuaGoiYBoQua);
-                    if (suggestion.nguon == kNguonGoiYSoTien) {
-                      _boQuaSoTienLuotNay.add((suggestion.amTietChinh, suggestion.categoryId));
-                    }
-                    setState(() {
-                      _suggestion = null;
-                      _choPhanXu = null;
-                    });
-                  },
-                  child: const Text('Bỏ qua'),
-                ),
-                // ⚠️ `minimumSize` hữu hạn BẮT BUỘC: theme của app ép mọi ElevatedButton rộng vô hạn, nút trần trong
-                // `Row` làm trắng cả vùng form mà không một dòng log nào (bẫy 4.11). Lỗi có từ trước B1 — nghiệm thu
-                // máy ảo 2026-09-29 mới lộ, vì mọi widget test cũ dựng MaterialApp trần.
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 40)),
-                  onPressed: () {
-                    _ghiPhanHoi(suggestion, kKetQuaGoiYChon, chon: suggestion.categoryId);
-                    _choPhanXu = null;
-                    _chonDanhMuc(suggestion.category);
-                  },
-                  child: const Text('Chọn danh mục này'),
-                ),
-              ],
-              ),
-            ),
-          ],
-        ),
-      );
 }
