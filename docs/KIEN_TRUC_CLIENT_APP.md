@@ -1,6 +1,8 @@
 # Kiến trúc Client-app (FlowMoney, Flutter)
 
-> Viết 2026-10-10, sau đợt **bịt điểm rò kiến trúc** (spec `docs/superpowers/specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md`).
+> Viết 2026-10-10, sau đợt **bịt điểm rò kiến trúc** (spec `docs/superpowers/specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md`);
+> cập nhật cùng ngày (khuya) sau đợt **dọn vị trí tệp** (spec `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`)
+> — mục 3, 4, 6, 8, 9, 10.
 > Tệp do **client** sở hữu — được sửa, và phải khớp mã. Mọi con số ở đây đếm bằng lệnh ngày **2026-10-10** trên
 > `src/Client-app` (lệnh ghi cạnh số); **đừng cộng dồn, hãy đếm lại** khi cập nhật.
 
@@ -40,18 +42,17 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **545** tệp `.dart`, **120.072** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
-và `… | xargs cat | wc -l`. `test/` có **596** tệp, **119.077** dòng.
+`lib/` có **546** tệp `.dart`, **120.022** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
+và `… | xargs cat | wc -l`. `test/` có **595** tệp, **119.347** dòng. (Đếm lại sau đợt dọn vị trí tệp; trước đợt 545 / 596.)
 
 ```
 lib/
 ├── main.dart                 điểm vào app + điểm vào engine nền (`chayNenTuChuyenTien`, @pragma)
-├── core/            129 tệp  hạ tầng + điểm ghép — KHÔNG chứa màn hình
+├── core/            124 tệp  hạ tầng + điểm ghép — KHÔNG chứa màn hình (16 chủ đề — test quét 25)
 │   ├── api/           3      DioClient, AuthInterceptor (gắn token, làm mới, dịch 401 + code)
-│   ├── auth/          5      current_account, buoc_dang_xuat, dem_nguoc_xoa, PhienDieuPhoi(+That) ← điều phối phiên
-│   ├── bill/          1      bill_recurrence (chu kỳ hoá đơn — dùng chung với đồng bộ)
-│   ├── category/      3      category_name (normalizeCategoryName), classify, visuals
-│   ├── constants/     3      app_router (GoRouter) ← điểm ghép, app_constants, app_localization
+│   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
+│   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
+│   ├── constants/     2      app_constants, app_localization
 │   ├── database/     39      AppDatabase, 10 tệp DAO, bảng, kết nối (native / web)
 │   ├── di/            1      injection_container (943 dòng) ← điểm ghép duy nhất của DI
 │   ├── errors/        1      app_exceptions
@@ -60,28 +61,30 @@ lib/
 │   ├── notification/ 35      bộ quét + 20 luật + OsNotifier (cổng) + nhắc + D1/biên lai/nhắc ghi + ThongBaoNguon
 │   ├── ocr/           7      DocChuAnh (cổng) + bản ML Kit, kho ảnh quét
 │   ├── realtime/      5      RealtimeChannel; chỉ realtime_socket.dart import socket_io_client
+│   ├── router/        1      app_router (GoRouter) ← điểm ghép
 │   ├── sync/          8      SyncEngine, normalizer, checkpoint, noiBoNgheKetQuaDay
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         7      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten…
-├── features/        402 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
+├── features/        408 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
 │   ├── ai_edge/      81      data 22 · domain 54 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
-│   ├── transaction/  54      data 8 · domain 22 · presentation 24 (widgets/them_giao_dich/ 7 tệp)
+│   ├── transaction/  55      data 9 · domain 22 · presentation 24 (widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    51      data 8 · domain 19 · presentation 24 (widgets/phan_tich/ 14 tệp)
+│   ├── bill/         33      data 5 · domain 14 · presentation 14
 │   ├── goal/         33      data 4 · domain 17 · presentation 12
-│   ├── bill/         32      data 5 · domain 13 · presentation 14
-│   ├── wallet/       32      data 11 · domain 9 · presentation 12
+│   ├── wallet/       32      data 11 · domain 9 · presentation 12 (state/ 1)
 │   ├── budget/       28      data 8 · domain 7 · presentation 13
-│   ├── premium/      27      data 8 · domain 8 · presentation 11
-│   ├── auth/         19      data 5 · presentation 14 (AuthBloc)
-│   ├── category/     18      data 8 · domain 5 · presentation 5
+│   ├── premium/      27      data 8 · domain 8 · presentation 11 (bloc/ thay cubit/; state/ 1)
+│   ├── auth/         21      data 5 · domain 1 · presentation 15 (bloc/ 4 kể AuthBloc + current_account · pages/ 6 · state/ 1 · widgets/ 4)
+│   ├── category/     21      data 9 · domain 6 · presentation 6
 │   ├── profile/       8      presentation 8
 │   ├── home/          7      domain 1 · presentation 6
 │   ├── notification/  6      presentation 6 (luật nằm ở core/notification — nợ G88)
-│   └── ai_chat/       6      data 2 · presentation 1 · spike/ 3 (mã đo, sau cờ dart-define)
+│   └── ai_chat/       5      data 2 · presentation 1 · spike/ 2 (mã đo C4 sau cờ dart-define — miễn trừ quét 25)
 └── shared/           13 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 10 (MainShell, chuông, toast…)
 ```
 
 Đếm mảng: `for d in features/*/; do find $d -name '*.dart' | wc -l; done` (và `$d/data`, `$d/domain`, `$d/presentation`).
+Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab224c`).
 `core/notification` nay **35** tệp (34 + `thong_bao_nguon.dart` của đợt này).
 
 ## 4. Ba tầng và vai trò của `core`
@@ -101,13 +104,17 @@ trả **hàng Drift** (hoá đơn, danh mục) — và từ 2026-10-10 có **11 
 
 **`core` có hai vai, cố ý tách bạch:**
 
-- **Hạ tầng** dùng chung, không biết mảng nào: CSDL, HTTP, socket, OCR, định dạng tiền, toast. Đây là phần lớn của 129 tệp.
+- **Hạ tầng** dùng chung, không biết mảng nào: CSDL, HTTP, socket, OCR, định dạng tiền, toast. Đây là phần lớn của 124 tệp.
 - **Điểm ghép** — nơi duy nhất được biết mọi mảng: `core/di/injection_container.dart` (đăng ký mọi thứ, nối hook),
-  `core/constants/app_router.dart` (mọi route), `core/nen/chay_nen.dart` (dựng DI ở chế độ nền), và
+  `core/router/app_router.dart` (mọi route), `core/nen/chay_nen.dart` (dựng DI ở chế độ nền), và
   `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác, nên chính nó
-  **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core`: **172** dòng — điểm ghép **136** (DI 80 ·
-  router 53 · `chay_nen` 2 · `current_account` 1), hạ tầng **36** (`notification_rules` 10 · `sync_engine` 6 ·
-  `notification_scanner` 5 · `lich_nen` 3 · …). 36 dòng hạ tầng là nợ có tên (G88).
+  **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
+  **175** dòng — điểm ghép **138** (DI 82 · router 54 · `chay_nen` 2), hạ tầng **37** (`notification_rules` 10 ·
+  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). 37 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Trước
+  đợt: 172 = 136 + 36. DI +2 vì `TransactionRepositoryImpl` / `CategoryManagementRepositoryImpl` tách tệp `_impl`; router
+  +1 và `current_account` −1 vì tệp ấy rời `core` về `features/auth/presentation/bloc/`; `sync_engine` 6 → 7 vì
+  `bill_recurrence` về `features/bill/domain/`.)* Từ 2026-10-10 **test quét 25** (`vi_tri_tep_theo_luat_test`) canh:
+  ngoài ba điểm ghép, tệp `core` import `features/` phải nằm trong danh sách chỉ-được-giảm (`conChoCoreImport`).
 
 ## 5. Tám luồng chính
 
@@ -163,10 +170,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–24 phủ **25
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–25 phủ **26
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số. Đếm: `grep -rlE "Directory\(['\"]lib" test` (24 tệp quét cây) cộng các tệp đọc danh
-sách tệp cố định.
+**3** tệp cùng khuôn không đánh số, tổng **29**. Đếm: `grep -rlE "Directory\(['\"]lib" test` (25 tệp quét cây, đo
+2026-10-10) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **26**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -195,11 +202,12 @@ sách tệp cố định.
 | **22** | `core/ui/presentation_khong_cham_csdl_test.dart` | `presentation/` và `shared/` không cầm `AppDatabase` / DAO; `conCho` rỗng | cây | **2026-10-10** |
 | **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; 5 tệp miễn trừ, trần riêng chỉ giảm | cây `features/` | **2026-10-10** |
 | **24** | `features/auth/auth_bloc_khong_sl_test.dart` | `auth_bloc.dart` không gọi service locator, không import `core/di` | một tệp | **2026-10-10** |
+| **25** | `core/ui/vi_tri_tep_theo_luat_test.dart` | cây `lib/` / `test/` khớp luật vị trí tệp mục 8 (sáu luật; ratchet `core` → `features` ngoài ba điểm ghép); `conCho` rỗng, miễn trừ duy nhất `ai_chat/spike/` | cây `lib/` + `test/` | **2026-10-10** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | danh sách tệp | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-Ngoài 28 tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+Ngoài 29 tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
@@ -215,22 +223,23 @@ kênh đứng sau một lớp Dart riêng; `tu_chuyen_tien_nen` dùng chung tệ
 | Mối quan tâm | Cách làm | Ở đâu |
 |---|---|---|
 | DI | get_it, một tệp đăng ký, `setupDependencies(cheDoNen:)` cho cả app lẫn engine nền; lazy singleton cho dịch vụ, factory cho Bloc | `core/di/injection_container.dart` |
-| Điều hướng | GoRouter, `StatefulShellRoute` bốn nhánh (Trang chủ · Phân tích · Giao dịch · Cá nhân), drawer cho phần còn lại; chặn theo gói ở `redirect` | `core/constants/app_router.dart`, `shared/widgets/main_shell.dart` |
+| Điều hướng | GoRouter, `StatefulShellRoute` bốn nhánh (Trang chủ · Phân tích · Giao dịch · Cá nhân), drawer cho phần còn lại; chặn theo gói ở `redirect` | `core/router/app_router.dart`, `shared/widgets/main_shell.dart` |
 | Lỗi | Lỗi đồng bộ chia vĩnh viễn / tạm thời (`_permanentCodes`), lỗi người dùng thấy đi toast; lỗi ở phần phụ (nhịp chi, gợi ý) rơi về "không có" chứ không chặn màn | `core/sync/`, `core/ui/thong_bao_nhanh.dart` |
 | Thời gian | Đồng hồ tiêm được (`now:` / `clock`) ở mọi hàm thuần; múi giờ ghim ở test và CI (`TZ=Asia/Ho_Chi_Minh`) | `core/nen/mui_gio.dart`, `.github/workflows/client-app.yml` |
 | Log | `debugPrint` / `print` có tiền tố (`[SLM]`, `[C4]`, `[RealtimeChannel]`); không thư viện logger — nợ | rải rác |
 | i18n | Một ngôn ngữ (tiếng Việt), `flutter_localizations` cho widget hệ thống | `core/constants/app_localization.dart` |
 | Theme | `AppTheme` + `AppColors`; widget test màn có nút phải dựng bằng `AppTheme.lightTheme` | `shared/theme/` |
-| Bảo mật | Token ở `FlutterSecureStorage`; `idaccount` chỉ từ phiên; không mã hoá SQLite — nợ; dữ liệu AI không rời máy | `core/api/`, `core/auth/current_account.dart` |
+| Bảo mật | Token ở `FlutterSecureStorage`; `idaccount` chỉ từ phiên; không mã hoá SQLite — nợ; dữ liệu AI không rời máy | `core/api/`, `features/auth/presentation/bloc/current_account.dart` |
 | Nền tảng | Android là đích chính (chạy nền, D1, OCR, mô hình); web chạy được với cổng stub; iOS chưa có các tính năng Android-only | `core/notification/os/`, `core/nen/co_chay_nen.dart` |
 | CI | GitHub Actions: `flutter analyze` + đếm cảnh báo ≤ `MUC_NEN` (20), `flutter test` toàn phần trên Ubuntu, test đỏ in thành annotation | `.github/workflows/client-app.yml` |
 
 ## 8. Luật vị trí tệp
 
-Bảng này là luật cho tệp **mới**. Tệp cũ lệch luật được liệt kê ở G88 (7); đợt dọn riêng đã có **spec + kế hoạch 2026-10-10**
-(`docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`, **chưa thi công**) kèm test quét 25 canh — đừng dời lẻ
-tẻ trong một việc khác. Spec ấy thêm **ba hàng** (hàm đọc Bloc → `presentation/bloc/`; hộp thoại / hành động dùng chung trong
-mảng → `presentation/widgets/`; kiểu / hàm thuần mà hạ tầng `core` cần → `core/<chủ đề>/`) — vào bảng khi đợt dọn xong.
+Bảng này là luật cho mọi tệp; **test quét 25** (`test/core/ui/vi_tri_tep_theo_luat_test.dart`) canh phần máy canh được
+(sáu luật, spec dọn vị trí tệp 2026-10-10 mục 4). Đợt dọn 2026-10-10 (`docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`)
+đưa cây về khớp bảng — G88 gạch 7 đóng; miễn trừ duy nhất `ai_chat/spike/` tới khi C4 chốt lối. Máy canh **có** nằm trong
+một trong bốn thư mục `bloc/` · `pages/` · `widgets/` · `state/` (không tệp rời ngay dưới `presentation/`); còn **thư mục nào**
+trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng core cần"*, là luật **đọc** — máy không canh.
 
 | Loại tệp | Thư mục |
 |---|---|
@@ -240,26 +249,30 @@ mảng → `presentation/widgets/`; kiểu / hàm thuần mà hạ tầng `core`
 | Bộ điều phối nhiều bước (dịch vụ ghi qua nhiều repository) | `features/<x>/data/services/` — tầng application chưa đổi tên; không thêm tầng mới |
 | Hàm thuần (luật, phép tính, câu chữ) | `features/<x>/domain/` |
 | Bloc / Cubit | `features/<x>/presentation/bloc/` |
+| Hàm đọc / dịch trạng thái Bloc–Cubit (accessor, extension `BuildContext` đọc cubit) | `features/<x>/presentation/bloc/` — cạnh Bloc nó đọc |
 | Trang (route) | `features/<x>/presentation/pages/` |
 | Widget của **một** trang | `features/<x>/presentation/widgets/<tên trang>/` (ví dụ `widgets/phan_tich/`, `widgets/them_giao_dich/`) |
 | Widget dùng chung trong mảng | `features/<x>/presentation/widgets/` |
+| Hộp thoại, hành động giao diện dùng chung trong mảng (hàm nhận `BuildContext`: `showDialog`, gọi repository rồi gửi event, báo toast) | `features/<x>/presentation/widgets/` |
 | Tệp trạng thái giao diện (cờ ẩn, `ValueNotifier` sống theo phiên) | `features/<x>/presentation/state/` |
 | Hạ tầng không biết mảng | `core/<chủ đề>/` |
+| Kiểu / hàm Dart thuần mà **hạ tầng `core` cần để chạy** (interceptor, socket, DAO, util) — `buoc_dang_xuat`, `category_name` | `core/<chủ đề>/`; thứ chỉ `SyncEngine` cần đi theo tiền lệ `bill_pay_status`: `features/<x>/domain/` |
 | Widget dùng chung toàn app, theme | `shared/widgets/`, `shared/theme/` |
-| Test | soi gương `lib/` dưới `test/`; test quét ở `test/core/ui/` hoặc cạnh mảng nó canh; helper ở `test/helpers/` |
+| Test | soi gương `lib/` dưới `test/` theo **thư mục** (quét 25); không `*_test.dart` ở gốc `test/`; test quét ở `test/core/ui/` hoặc cạnh mảng nó canh; helper ở `test/helpers/` |
 | Script đo, ảnh so sánh | scratchpad của phiên, không vào repo |
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (28 tệp test quét, CI). Ranh
-giới nền tảng thay được bằng bản giả, nên **6.614** ca test chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (29 tệp test quét, CI). Ranh
+giới nền tảng thay được bằng bản giả, nên **6.617** ca test (đo 2026-10-10 sau đợt dọn vị trí tệp, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift; Entity mới ở 4/14 mảng. `SyncEngine` 2.166 dòng một tệp.
 Trang Thêm giao dịch còn **2.007** dòng — trạng thái 61 trường ở lại trang. Luật thông báo nằm trong `core`. Không logger,
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (289 chỗ; 3 Bloc, 7 Cubit cho màn có luồng ghi).
 
-**Nợ có tên:** **G88** ở `docs/CLIENT_APP_KNOWN_GAPS.md` — bảy gạch có số đo và hướng xử lý.
+**Nợ có tên:** **G88** ở `docs/CLIENT_APP_KNOWN_GAPS.md` — bảy gạch có số đo và hướng xử lý (gạch 7 *vị trí tệp* đóng
+2026-10-10 — đợt dọn vị trí tệp, quét 25; còn gạch 1–6). Bảng dưới là trước/sau của đợt **bịt điểm rò**.
 
 | Thước đo (cùng cách đếm, 2026-10-10) | Trước đợt | Sau đợt |
 |---|---|---|
@@ -278,6 +291,6 @@ không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đ�
 2. **Gọi đúng tên.** Feature-first ba tầng, offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 545 tệp, 28 test quét, 6.614 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+4. **Con số.** 14 mảng, 546 tệp, 29 test quét, 6.617 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
 5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 4/14, `SyncEngine` một tệp, trang Thêm giao dịch 2.007 dòng — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.

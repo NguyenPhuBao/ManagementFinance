@@ -1,8 +1,10 @@
 # Dọn vị trí tệp theo luật mục 8 + test quét 25 — thiết kế
 
 **Ngày:** 2026-10-10 · **Trạng thái:** thiết kế duyệt trong chat (bốn câu hỏi, mục 0), bản viết người dùng đã đọc; kế hoạch
-12 task ở `plans/2026-10-10-don-vi-tri-tep-theo-luat.md` (gitignore) — **chưa thi công**, cách thi công người dùng chọn ở
-phiên sau. ⚠️ Một dòng đổi sau duyệt: `category_visuals` → `presentation/widgets/` thay cho `domain/` (hàng C, mục 2) ·
+12 task ở `plans/2026-10-10-don-vi-tri-tep-theo-luat.md` (gitignore) — ✅ **đã thi công 2026-10-10** bằng agent con mỗi
+task (người dùng chọn), commit `b1a8cbd7` → commit tài liệu *"docs: đợt dọn vị trí tệp xong…"*; `flutter test` 6617/6617
+(+9 skip), analyze 20. Đo sau đợt: `core` import `features/` **175** = điểm ghép **138** + hạ tầng **37** (số 172 / 135 ở
+mục 0 và mục 8 đếm thiếu hai import `_impl` của DI và import `current_account` của router). ⚠️ Một dòng đổi sau duyệt: `category_visuals` → `presentation/widgets/` thay cho `domain/` (hàng C, mục 2) ·
 **Trả nợ:** G88 gạch 7 (`docs/CLIENT_APP_KNOWN_GAPS.md`) · **Luật:** mục 8 `docs/KIEN_TRUC_CLIENT_APP.md` ·
 **Tiền nhiệm:** spec bịt điểm rò `2026-10-10-bit-diem-ro-kien-truc-client-design.md` (đợt ấy cố ý không dời tệp).
 
