@@ -177,6 +177,17 @@ abstract class GoalRepository {
     /// Đường nạp tay bật cờ này lên là dán nhãn sai lên chính thao tác người
     /// dùng vừa thực hiện.
     bool tuDong,
+
+    /// Id cố định cho khoản nạp — bộ trích tự động truyền `idKhoanTrichTuDong`
+    /// (spec tự chuyển tiền chạy nền mục 5). Bỏ trống = UUID v4 như nạp tay.
+    /// Đã có hàng mang id này (kể cả xoá mềm) → ném [KyDaTrichException], không
+    /// ghi gì.
+    String? transactionId,
+
+    /// Mốc kỳ vừa trích — ghi vào `autoDepositLastRun` **trong cùng giao tác**
+    /// với khoản nạp. Ghi rời sau vòng lặp là app sập giữa chừng thì kỳ đã
+    /// trích bị trích lại.
+    DateTime? mocChayMoi,
   });
   /// Lịch sử tích luỹ của một mục tiêu.
   ///
@@ -225,4 +236,16 @@ abstract class GoalRepository {
   Future<void> capNhatUuTien(Map<String, int> uuTienMoi);
 
   Future<void> deleteGoal(String id);
+}
+
+/// Khoản trích tự động mang id [transactionId] **đã có** trên máy — máy khác đã
+/// trích kỳ ấy và đã kéo về, hoặc người dùng đã xoá nó. Bộ trích bắt ngoại lệ
+/// này: không trừ tiền, không sự kiện, chỉ đẩy mốc.
+class KyDaTrichException implements Exception {
+  const KyDaTrichException(this.transactionId);
+
+  final String transactionId;
+
+  @override
+  String toString() => 'KyDaTrichException($transactionId)';
 }

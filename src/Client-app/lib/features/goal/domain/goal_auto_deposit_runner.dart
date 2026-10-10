@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../data/models/goal_entity.dart';
 import '../data/repositories/goal_repository.dart';
 import 'goal_auto_deposit.dart';
+import 'id_khoan_trich.dart';
 
 /// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
 ///
@@ -45,14 +46,14 @@ class GoalAutoDepositEvent {
 /// trong một `db.transaction`. Viết lại chuỗi ấy ở đây là tạo bản sao thứ hai
 /// của định nghĩa "nạp tiền là gì", và bản sao sẽ lệch đi ở lần sửa sau.
 ///
-/// ## Vì sao không có bộ lập lịch chạy nền
+/// ## Ai gọi
 ///
-/// Nơi gọi là `NotificationScanner.scan()`, tức mỗi khi một chu kỳ đồng bộ kết
-/// thúc. Các kỳ bỏ lỡ được **trích bù** theo đúng thứ tự khi app mở lại, nên
-/// không kỳ nào mất; chỉ là chúng xảy ra muộn hơn mốc lý thuyết. Đổi lại, việc
-/// chuyển tiền luôn nằm trong tiến trình chính, dùng chung một kết nối CSDL —
-/// một isolate nền mở kết nối thứ hai vào cùng tệp SQLite để chuyển tiền là
-/// loại rủi ro không đáng đánh đổi lấy vài giờ sớm hơn.
+/// `NotificationScanner.scan()` — khi app mở, VÀ từ 2026-10-10 từ engine nền
+/// của WorkManager (Android, spec `2026-10-10-tu-chuyen-tien-chay-nen-design.md`;
+/// mở lại G22). Hai lượt cùng tiến trình chặn bằng **khoá thuê** SQLite ở vòng
+/// quét; hai MÁY chặn bằng id tất định `idKhoanTrichTuDong` — cùng (mục tiêu,
+/// kỳ) thì server ghép làm một hàng. Các kỳ bỏ lỡ vẫn được **trích bù** theo
+/// đúng thứ tự, mỗi khoản mang mốc kỳ của nó.
 class GoalAutoDepositRunner {
   GoalAutoDepositRunner({
     required this.db,
@@ -132,8 +133,6 @@ class GoalAutoDepositRunner {
     }
 
     final ra = <GoalAutoDepositEvent>[];
-    DateTime? kyCuoiThanhCong;
-
     var soDu = viNguon.balance;
     var daTich = goal.currentAmount;
 
@@ -176,7 +175,19 @@ class GoalAutoDepositRunner {
           // chú — không đổi chiều tiền, không đổi cột nào khác — để lịch sử
           // nói được ai đã chuyển khoản tiền ấy.
           tuDong: true,
+          // Id tất định + mốc ghi CÙNG giao tác (spec tự chuyển tiền chạy nền
+          // mục 3.4, 5): app sập giữa vòng không trích lại kỳ đã xong, và hai
+          // máy cùng trích kỳ này chỉ ra một hàng trên server.
+          transactionId: idKhoanTrichTuDong(goal.id, ky),
+          mocChayMoi: ky,
         );
+      } on KyDaTrichException {
+        // Máy khác đã trích kỳ này (cùng id v5), hoặc người dùng đã xoá khoản
+        // ấy. Không trừ tiền, KHÔNG sự kiện (báo "Đã trích…" cho việc máy kia
+        // làm là nói dối) — chỉ đẩy mốc để lượt sau không thử lại kỳ ấy.
+        await (db.update(db.goals)..where((t) => t.id.equals(goal.id)))
+            .write(GoalsCompanion(autoDepositLastRun: Value(ky)));
+        continue;
       } catch (e) {
         // `depositToGoal` là một khối nguyên tử — hỏng thì không để lại gì. Nuốt
         // lỗi ở đây vì nơi gọi là vòng quét thông báo: ném lên sẽ giết luôn cả
@@ -194,7 +205,6 @@ class GoalAutoDepositRunner {
 
       soDu -= quyetDinh.soTien;
       daTich += quyetDinh.soTien;
-      kyCuoiThanhCong = ky;
 
       ra.add(GoalAutoDepositEvent(
         goalId: goal.id,
@@ -204,14 +214,6 @@ class GoalAutoDepositRunner {
         soTien: quyetDinh.soTien,
         tenViNguon: viNguon.name,
       ));
-    }
-
-    if (kyCuoiThanhCong != null) {
-      // KHÔNG đặt `syncStatus` ở đây: `autoDepositLastRun` là cột cục bộ, đánh
-      // dấu cần đẩy cho một thay đổi không có mặt trong payload là đẩy rỗng.
-      // `depositToGoal` đã tự đánh dấu vì nó đổi `currentAmount`.
-      await (db.update(db.goals)..where((t) => t.id.equals(goal.id)))
-          .write(GoalsCompanion(autoDepositLastRun: Value(kyCuoiThanhCong)));
     }
 
     return ra;
