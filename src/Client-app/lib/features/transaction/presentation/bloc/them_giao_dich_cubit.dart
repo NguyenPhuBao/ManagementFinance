@@ -10,11 +10,14 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/data/services/category_suggestion_engine.dart';
 import '../../../category/domain/category_classify.dart';
+import '../../../category/domain/de_xuat_tu_khoa.dart';
 import '../../../category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../category/domain/phan_loai_ghi_chu.dart';
 import '../../../category/domain/phan_loai_so_tien.dart';
@@ -48,7 +51,6 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Mã tài khoản của phiên, đọc ở MỖI lần cần (như `_accountId` của trang) — không chụp một lần lúc mở.
   final int? Function() _taiKhoan;
-  // ignore: unused_field — Task 3 (thẻ gợi ý, Nhập nhanh) dùng.
   final CategorySuggestionEngine _boGoiY;
   final TransactionEntity? _dangSua;
 
@@ -67,10 +69,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   bool get laSua => _dangSua != null;
   DienSanBienDong? get bienDong => _bienDong;
 
-  // ⏳ TẠM (trang lai): cụm gợi ý còn ở trang tới Task 3 / Task 4. Gỡ theo bảng "Mã nối tạm" của kế hoạch.
+  // ⏳ TẠM (trang lai): Nhập nhanh / D1 còn ở trang tới Task 4. Gỡ theo bảng "Mã nối tạm" của kế hoạch.
   BoPhanLoaiGhiChu? get boPhanLoai => _boPhanLoai;
-  BoPhanLoaiSoTien? get boSoTien => _boSoTien;
-  List<MauGhiChu>? get mauDeXuat => _mauDeXuat;
 
   static ThemGiaoDichState _dauTien(
       TransactionEntity? dangSua, Category? danhMuc, String? huongBanDau, DienSanBienDong? bienDong) {
@@ -105,7 +105,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Nạp mọi thứ lúc mở form. Đường tiêm sẵn (ví, lịch sử) chạy ĐỒNG BỘ — khung đầu đã có ví, như trước đợt tách.
   Future<void> moTrang() async {
-    await Future.wait([_napVi(), _napLichSu()]);
+    await Future.wait([_napVi(), _napLichSu().then((_) => _napTatCap())]);
+    unawaited(_tinhDeXuat());
   }
 
   Future<void> _napVi() async {
@@ -147,6 +148,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// chữ số (`numeric(15,2)`) phải chặn ngay trong phép gõ, kẻo giao dịch kẹt hàng đợi đẩy vĩnh viễn, im lặng.
   void goPhim(String k) {
     _phat(state.copyWith(chuoiSoTien: themPhimSoTien(state.chuoiSoTien, k)));
+    _henGoiYTheoForm();
   }
 
   /// Chạm khối số tiền. Bàn phím hệ thống đang mở (gõ ghi chú) thì 16 phím bị G58 giấu dù cờ bật — đảo cờ lúc ấy là tắt
@@ -179,7 +181,11 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
         s = s.copyWith(danhMuc: null);
       }
     }
-    _phat(s);
+    _choPhanXu = null;
+    _phat(s.copyWith(goiY: null));
+    unawaited(_tinhDeXuat());
+    // Đoạn Chi / Thu là thông tin CHIỀU duy nhất của gợi ý theo số tiền (dự án C): đổi đoạn là đổi tập mẫu được học.
+    _henGoiYTheoForm();
   }
 
   /// Đường DUY NHẤT để đặt danh mục — bảng chọn, thẻ gợi ý, điền sẵn đều qua đây, để chiều tiền vay/nợ luôn được gợi
@@ -194,7 +200,9 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       viNguon: _viHayDungCho(c) ?? state.viNguon,
       chieuNo: no,
       huong: laVayNo ? (no ?? 'chi') : (c.classify == 'thu' ? 'thu' : 'chi'),
+      goiY: null,
     ));
+    unawaited(_tinhDeXuat());
   }
 
   /// Ví người dùng HAY DÙNG cho [c] — ba cửa chặn: đang sửa (ví của giao dịch là sự thật), người dùng đã tự đặt ví
@@ -209,11 +217,314 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   void chonVi(Wallet w) {
     _nguoiDungDaChonVi = true;
     _phat(state.copyWith(viNguon: w));
+    // Ví là một tín hiệu của gợi ý theo số tiền (dự án C); ví ĐÍCH thì không.
+    _henGoiYTheoForm();
   }
 
   void chonViDich(Wallet w) => _phat(state.copyWith(viDich: w));
 
-  void chonNgay(DateTime d) => _phat(state.copyWith(ngay: d));
+  void chonNgay(DateTime d) {
+    _phat(state.copyWith(ngay: d));
+    // Nhóm thứ (ngày thường / cuối tuần) là một tín hiệu của gợi ý theo số tiền (dự án C).
+    _henGoiYTheoForm();
+  }
+
+  // ── Gợi ý danh mục (B1 · từ khoá · số tiền) và đề xuất từ khoá ──────────────────────────────────────────────────
+  Set<(String, String)> _tatCap = const {};
+  Set<(String, String)> _tatCapSoTien = const {};
+  Set<(String, String)> _tatCapTuKhoa = const {};
+
+  /// Cặp người dùng vừa *Bỏ qua* trong lượt mở màn này — thẻ số tiền tính lại ở MỖI phím số, thiếu tập này thì bấm Bỏ
+  /// qua xong gõ thêm một chữ số cùng bậc là thẻ bật lại ngay.
+  final Set<(String, String)> _boQuaSoTienLuotNay = {};
+  final Set<(String, String)> _boQuaLuotNay = {};
+
+  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện. ⚠️ Tách khỏi `state.goiY`: chọn danh mục qua
+  /// bảng xoá thẻ ngay, nhưng lựa chọn ấy CHÍNH LÀ phán xét (`khac`) — ghi lúc lưu.
+  ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
+
+  Timer? _hoanGoiY;
+  Timer? _hoanDeXuat;
+  Timer? _anDaThem;
+  static const Duration _doTreGoiY = Duration(milliseconds: 300);
+
+  /// Nguồn số tiền có dùng ở lượt mở màn này không — MỘT định nghĩa cho chỗ hẹn lẫn chỗ đoán.
+  bool get _coNguonSoTien => _boSoTien != null && !laSua && _bienDong == null;
+
+  // ⏳ TẠM (Task 3): đường điền sẵn còn ở trang tới Task 4.
+  Set<(String, String)> get tatCap => _tatCap;
+  void datChoPhanXu(CategorySuggestion goiY) => _choPhanXu = (goiY: goiY, ghiChu: state.ghiChu.trim());
+  void henGoiYTheoForm() => _henGoiYTheoForm();
+  // ⏳ TẠM (Task 3–4): lưu còn ở trang tới Task 5.
+  void ghiPhanHoiKhiLuu() => _ghiPhanHoiKhiLuu();
+
+  /// Từ `_napTatCap` của trang. Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai
+  /// từng bỏ qua.
+  Future<void> _napTatCap() async {
+    final bo = _boPhanLoai;
+    final boTien = _boSoTien;
+    final id = _taiKhoan();
+    // Hai mô hình độc lập: B1 học lỗi (`null`) không được kéo theo việc bỏ nạp tập tắt của nguồn số tiền.
+    if ((bo == null && boTien == null) || id == null) return;
+    try {
+      final phanHoi = await _nguon.docPhanHoi(id);
+      if (phanHoi == null || isClosed) return;
+      _tatCap = bo == null ? const {} : tatCapTu(phanHoi, bo.mau);
+      _tatCapTuKhoa = bo == null ? const {} : tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
+      _tatCapSoTien = boTien == null ? const {} : tatCapSoTienTu(phanHoi, boTien.mau);
+    } catch (e) {
+      debugPrint('[GoiYDanhMuc] đọc phản hồi lỗi: $e');
+    }
+  }
+
+  void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
+    final id = _taiKhoan();
+    if (id == null) return;
+    _nguon.ghiPhanHoi(idaccount: id, goiY: goiY, ketQua: ketQua, chon: chon);
+  }
+
+  /// Từ `_onNoteChanged` + `_henDeXuat` của trang. Trùng chữ (trang chép ô sau khi Cubit đặt ghi chú, hay chỉ đổi con
+  /// trỏ) thì thoát — không vòng lặp, không hoãn lại hẹn giờ.
+  void ghiChuDoi(String chu) {
+    if (chu == state.ghiChu) return;
+    _phat(state.copyWith(ghiChu: chu));
+    _hoanDeXuat?.cancel();
+    _hoanDeXuat = Timer(_doTreGoiY, () => unawaited(_tinhDeXuat()));
+    _hoanGoiY?.cancel();
+    final note = chu.trim();
+    if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
+    if (state.laChuyen || state.danhMuc != null) {
+      if (state.goiY != null) _phat(state.copyWith(goiY: null));
+      return;
+    }
+    if (note.isEmpty) {
+      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY; thẻ số tiền thì chính là của ô trống.
+      if (state.goiY != null && state.goiY!.nguon != kNguonGoiYSoTien) _phat(state.copyWith(goiY: null));
+      if (_boSoTien == null) return;
+    } else if (state.goiY?.nguon == kNguonGoiYSoTien) {
+      // Chữ đầu tiên vừa vào ô ghi chú: thẻ số tiền chỉ dành cho ô TRỐNG — gỡ NGAY.
+      _phat(state.copyWith(goiY: null));
+    }
+    _hoanGoiY = Timer(_doTreGoiY, () {
+      if (!isClosed) unawaited(_napGoiY(state.ghiChu.trim()));
+    });
+  }
+
+  /// Từ `_henGoiYTheoForm` của trang (dự án C).
+  void _henGoiYTheoForm() {
+    if (!_coNguonSoTien) return;
+    // Gợi ý số tiền đã hiện mà bậc vừa đổi: thẻ ấy nói về bậc cũ — huỷ, không phải phán xét (spec dự án C 3.4).
+    final cho = _choPhanXu;
+    if (cho != null && cho.goiY.nguon == kNguonGoiYSoTien) {
+      final x = state.soTienDangCo;
+      if (x == null || maBacCua(bacTienCua(x)) != cho.goiY.amTietChinh) _choPhanXu = null;
+    }
+    // Ghi chú có chữ thì thẻ thuộc về B1 / từ khoá — số tiền, ví, ngày, đoạn không phải tín hiệu của chúng.
+    if (state.ghiChu.trim().isNotEmpty) return;
+    _hoanGoiY?.cancel();
+    if (state.laChuyen || state.danhMuc != null) return;
+    _hoanGoiY = Timer(_doTreGoiY, () {
+      if (!isClosed) unawaited(_napGoiY(state.ghiChu.trim()));
+    });
+  }
+
+  /// Từ `_goiYSoTien` của trang — nguồn thứ ba của thẻ, CHỈ gọi khi ghi chú trống: bậc tiền + nhóm thứ + ví, chỉ danh
+  /// mục đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
+  CategorySuggestion? _goiYSoTien(List<Category> categories) {
+    final bo = _boSoTien;
+    if (bo == null || !_coNguonSoTien || state.laChuyen) return null;
+    final soTien = state.soTienDangCo;
+    if (soTien == null) return null;
+    final d = bo.doan(
+      chieu: state.huong,
+      soTien: soTien,
+      ngay: state.ngay,
+      walletId: state.viNguon?.id,
+      hopLe: hopLeTheoChieu(state.huong, categories),
+      tatCap: {..._tatCapSoTien, ..._boQuaSoTienLuotNay},
+    );
+    if (d == null) return null;
+    final cat = categories.firstWhere((c) => c.id == d.categoryId);
+    return CategorySuggestion(
+      category: cat,
+      matchedKeyword: d.maBac,
+      nguon: kNguonGoiYSoTien,
+      amTietChinh: d.maBac,
+      lyDo: cauLyDoSoTien(d, tenDanhMuc: cat.name),
+    );
+  }
+
+  /// Từ `_loadSuggestion` của trang — MỘT cửa cho cả ba nguồn của thẻ.
+  Future<void> _napGoiY(String note) async {
+    final accountId = _taiKhoan();
+    // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý danh mục của người khác.
+    if (accountId == null) return;
+    if (state.laChuyen || state.danhMuc != null) return;
+    final luc = state;
+    final categories = await _nguon.danhMucChonDuoc(accountId);
+    CategorySuggestion? suggestion;
+    if (note.isEmpty) {
+      // ⚠️ CHỈ khi ghi chú trống (người dùng chốt 2026-10-02 sau phép đo CSDL thật).
+      suggestion = _goiYSoTien(categories);
+    } else {
+      // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói → bảng
+      // từ khoá. `hopLe` = mọi danh mục chọn được, cả ba phân loại (đoạn Chi/Thu không khoanh vùng gợi ý).
+      final doan = _boPhanLoai?.doan(note, hopLe: {for (final c in categories) c.id}, tatCap: _tatCap);
+      if (doan != null) {
+        final cat = categories.firstWhere((c) => c.id == doan.categoryId);
+        suggestion = CategorySuggestion(
+          category: cat,
+          matchedKeyword: doan.cumBoDau,
+          nguon: kNguonGoiYHoc,
+          amTietChinh: doan.cumBoDau,
+          lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
+        );
+      } else {
+        // MỘT truy vấn cho cả tài khoản — trước đây mỗi danh mục một truy vấn, nhân với mỗi lần ghi chú đổi.
+        final keywordsByCategory = await _nguon.tuKhoa(accountId);
+        final candidates = <CategoryKeywordCandidate>[
+          for (final category in categories)
+            for (final keyword in keywordsByCategory[category.id] ?? const <String>[])
+              CategoryKeywordCandidate(category: category, keyword: keyword),
+        ];
+        suggestion = _boGoiY.suggest(rawText: note, candidates: candidates);
+      }
+    }
+    final s = state;
+    if (isClosed ||
+        s.huong != luc.huong ||
+        s.laChuyen ||
+        s.danhMuc != null ||
+        s.ghiChu.trim() != note ||
+        s.chuoiSoTien != luc.chuoiSoTien ||
+        s.viNguon?.id != luc.viNguon?.id ||
+        s.ngay != luc.ngay) {
+      return;
+    }
+    final truoc = s.goiY;
+    if (suggestion != null) {
+      _choPhanXu = (goiY: suggestion, ghiChu: note);
+    } else if (_choPhanXu?.goiY.nguon == kNguonGoiYSoTien) {
+      // Thẻ số tiền vừa bị thay bằng "không có gì": gợi ý cũ không còn là thứ người dùng đang nhìn — bỏ, không ghi.
+      _choPhanXu = null;
+    }
+    // Chỉ cuộn khi thẻ nguồn số tiền VỪA hiện hoặc đổi danh mục — ⚠️ KHÔNG cho thẻ B1 / từ khoá (ô ghi chú nằm DƯỚI thẻ).
+    final cuon = suggestion != null &&
+        suggestion.nguon == kNguonGoiYSoTien &&
+        (truoc?.nguon != kNguonGoiYSoTien || truoc?.category.id != suggestion.category.id);
+    emit(s.copyWith(goiY: suggestion, soLanCuonGoiY: cuon ? s.soLanCuonGoiY + 1 : s.soLanCuonGoiY));
+  }
+
+  /// Chạm *Chọn* trên thẻ. [s] là thẻ LÚC DỰNG — không đọc lại `state.goiY` lúc chạm.
+  void chonGoiY(CategorySuggestion s) {
+    _ghiPhanHoi(s, kKetQuaGoiYChon, chon: s.categoryId);
+    _choPhanXu = null;
+    chonDanhMuc(s.category);
+  }
+
+  void boQuaGoiY(CategorySuggestion s) {
+    _ghiPhanHoi(s, kKetQuaGoiYBoQua);
+    if (s.nguon == kNguonGoiYSoTien) _boQuaSoTienLuotNay.add((s.amTietChinh, s.categoryId));
+    _choPhanXu = null;
+    _phat(state.copyWith(goiY: null));
+  }
+
+  /// Từ `_tinhDeXuat` của trang — đề xuất thêm từ khoá (spec 2026-09-30), tính lại khi ghi chú hoặc danh mục đổi.
+  /// Không phiên / không mẫu học → im.
+  Future<void> _tinhDeXuat() async {
+    final cat = state.danhMuc;
+    final ghiChu = state.ghiChu.trim();
+    final mau = _mauDeXuat ?? _boPhanLoai?.mau;
+    final id = _taiKhoan();
+    if (cat == null || state.laChuyen || ghiChu.isEmpty || mau == null || id == null) {
+      if (state.deXuat != null) _phat(state.copyWith(deXuat: null));
+      return;
+    }
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(id);
+    if (isClosed || state.danhMuc?.id != cat.id || state.laChuyen || state.ghiChu.trim() != ghiChu) return;
+    final ten = {for (final c in chonDuoc) c.id: c.name};
+    final d = deXuatTuKhoa(
+      ghiChu: ghiChu,
+      categoryId: cat.id,
+      mau: mau,
+      // Chỉ danh mục còn sống: từ khoá của danh mục đã xoá không phải xung đột.
+      tuKhoa: {for (final e in tuKhoa.entries) if (ten.containsKey(e.key)) e.key: e.value},
+      tatCap: {..._tatCapTuKhoa, ..._boQuaLuotNay},
+    );
+    emit(state.copyWith(
+      deXuat: d == null ? null : (dx: d, tenDanhMuc: cat.name, tenCu: d.tuDanhMuc == null ? null : ten[d.tuDanhMuc]),
+    ));
+  }
+
+  static CategorySuggestion _goiYCua(DeXuatTuKhoa d, Category c) =>
+      CategorySuggestion(category: c, matchedKeyword: d.tuKhoa, nguon: kNguonDeXuatTuKhoa, amTietChinh: d.cumBoDau);
+
+  /// Từ `_chapNhanDeXuat` — Thêm / Chuyển GHI NGAY (spec 2026-09-30 §2.3). Chuyển bỏ ở danh mục cũ TRƯỚC: không có
+  /// khoảnh khắc cụm thuộc hai danh mục (bộ so coi hai danh mục khớp ngang nhau là hoà → thôi đoán).
+  Future<void> chapNhanDeXuat() async {
+    final d = state.deXuat;
+    final id = _taiKhoan();
+    final cat = state.danhMuc;
+    if (d == null || id == null || cat == null) return;
+    final goiY = _goiYCua(d.dx, cat);
+    _phat(state.copyWith(deXuat: null));
+    try {
+      final tuKhoa = await _nguon.tuKhoa(id);
+      final cu = d.dx.tuDanhMuc;
+      if (cu != null) {
+        await _nguon.luuTuKhoa(
+          idaccount: id,
+          categoryId: cu,
+          tuKhoa: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
+        );
+      }
+      await _nguon.luuTuKhoa(
+        idaccount: id,
+        categoryId: d.dx.categoryId,
+        tuKhoa: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
+      );
+    } catch (e) {
+      debugPrint('[DeXuatTuKhoa] ghi từ khoá lỗi: $e');
+      return;
+    }
+    _ghiPhanHoi(goiY, kKetQuaGoiYChon, chon: d.dx.categoryId);
+    if (isClosed) return;
+    // "Đã thêm / Đã chuyển …" tự ẩn sau 2 giây (người dùng chốt 2026-09-30, Stitch `8ca1338e…`).
+    emit(state.copyWith(
+      daThemTuKhoa: d.tenCu == null
+          ? 'Đã thêm ‘${d.dx.tuKhoa}’ vào ${d.tenDanhMuc}'
+          : 'Đã chuyển ‘${d.dx.tuKhoa}’ sang ${d.tenDanhMuc}',
+    ));
+    _anDaThem?.cancel();
+    _anDaThem = Timer(const Duration(seconds: 2), () => _phat(state.copyWith(daThemTuKhoa: null)));
+  }
+
+  void boQuaDeXuat() {
+    final d = state.deXuat;
+    final cat = state.danhMuc;
+    if (d == null || cat == null) return;
+    _ghiPhanHoi(_goiYCua(d.dx, cat), kKetQuaGoiYBoQua);
+    _boQuaLuotNay.add((d.dx.cumBoDau, d.dx.categoryId));
+    _phat(state.copyWith(deXuat: null));
+  }
+
+  /// B1: thẻ đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+  void _ghiPhanHoiKhiLuu() {
+    final cho = _choPhanXu;
+    final daChon = state.danhMuc;
+    if (cho != null && daChon != null && !state.laChuyen) {
+      _ghiPhanHoi(cho.goiY, daChon.id == cho.goiY.categoryId ? kKetQuaGoiYChon : kKetQuaGoiYKhac, chon: daChon.id);
+      _choPhanXu = null;
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _hoanGoiY?.cancel();
+    _hoanDeXuat?.cancel();
+    _anDaThem?.cancel();
+    return super.close();
+  }
 
   /// Danh mục cho sheet *Thêm phần*: danh mục CHI hợp lệ; nạp luôn bảng tra tên / màu cho khối tách.
   Future<List<Category>> danhMucChoTach() async {

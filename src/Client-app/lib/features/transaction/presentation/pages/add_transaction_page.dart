@@ -36,11 +36,8 @@ import '../widgets/them_giao_dich/the_goi_y.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/goi_y_phan_hoi_store.dart';
-import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
-import '../../../../features/category/domain/de_xuat_tu_khoa.dart';
-import '../../../../features/category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../features/premium/domain/quyen_tinh_nang.dart';
@@ -216,8 +213,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool get _hienBanPhimSo => _s.hienBanPhimSo;
   List<Wallet> get _wallets => _s.vi;
   BoPhanLoaiGhiChu? get _boPhanLoai => _cubit.boPhanLoai;
-  BoPhanLoaiSoTien? get _boSoTien => _cubit.boSoTien;
-  List<MauGhiChu>? get _mauDeXuat => _cubit.mauDeXuat;
+  Set<(String, String)> get _tatCap => _cubit.tatCap;
   Wallet? get _selectedWallet => _s.viNguon;
   Wallet? get _destinationWallet => _s.viDich;
   Category? get _selectedCategory => _s.danhMuc;
@@ -226,38 +222,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool get _isLoadingWallets => _s.dangNapVi;
   List<PhanTach> get _phanTach => _s.phanTach;
   Map<String, Category> get _dmTheoId => _s.dmTheoId;
-
-  /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
-  Set<(String, String)> _tatCap = const {};
-
-  /// Cặp (mã bậc, danh mục) của nguồn số tiền đang bị thôi gợi ý (`tatCapSoTienTu`).
-  Set<(String, String)> _tatCapSoTien = const {};
-
-  /// Cặp người dùng vừa bấm *Bỏ qua* trong lượt mở màn này. Thẻ nguồn số tiền tính lại ở MỖI phím số, nên thiếu tập
-  /// này thì bấm Bỏ qua xong gõ thêm một chữ số cùng bậc là thẻ bật lại ngay (cùng nếp [_boQuaLuotNay]).
-  final Set<(String, String)> _boQuaSoTienLuotNay = {};
-
-  /// Cặp (cụm, danh mục) đang bị thôi ĐỀ XUẤT TỪ KHOÁ — tập riêng của nguồn `kNguonDeXuatTuKhoa` (spec 2026-09-30 §2.4).
-  Set<(String, String)> _tatCapTuKhoa = const {};
-
-  /// Cặp người dùng vừa ✕ trong lượt này — dòng ẩn tới khi rời màn.
-  final Set<(String, String)> _boQuaLuotNay = {};
-
-  /// Đề xuất thêm / chuyển từ khoá đang hiện dưới hàng Danh mục; `tenCu` khác `null` = đề xuất chuyển.
-  ({DeXuatTuKhoa dx, String tenDanhMuc, String? tenCu})? _deXuat;
-
-  /// "Đã thêm / Đã chuyển …" — tự ẩn sau 2 giây (người dùng chốt 2026-09-30, màn Stitch `8ca1338e…`).
-  String? _daThemTuKhoa;
-  Timer? _hoanDeXuat;
-  Timer? _anDaThem;
-
-  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện.
-  ///
-  /// ⚠️ Tách khỏi [_suggestion]: [_chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH
-  /// LÀ phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
-  ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
-
-  CategorySuggestion? _suggestion;
 
   /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
   final GlobalKey _khoaTheGoiY = GlobalKey();
@@ -336,10 +300,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       if (_nhapNhanhFocus.hasFocus) unawaited(_nguon.docAi?.chuanBi());
     });
     // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
-    final napHoc = _cubit.moTrang().then((_) => _napTatCap());
-    unawaited(napHoc.then((_) => _tinhDeXuat()));
+    final mo = _cubit.moTrang();
     // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
-    if (_bienDong != null) unawaited(napHoc.then((_) => _dienTuBienDong()));
+    if (_bienDong != null) unawaited(mo.then((_) => _dienTuBienDong()));
     // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
     if (_bienDong?.anh case final anh?) {
       // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`), kèm danh sách món (mục 11.2b).
@@ -503,44 +466,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (mounted) context.pop();
   }
 
-  /// Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai từng bỏ qua.
-  Future<void> _napTatCap() async {
-    final bo = _boPhanLoai;
-    final boTien = _boSoTien;
-    final id = _accountId();
-    // Hai mô hình độc lập: B1 học lỗi (`null`) không được kéo theo việc bỏ nạp tập tắt của nguồn số tiền.
-    if ((bo == null && boTien == null) || id == null) return;
-    try {
-      final phanHoi = await _nguon.docPhanHoi(id);
-      if (phanHoi == null) return;
-      final tat = bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, bo.mau);
-      final tatTuKhoa =
-          bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
-      final tatTien = boTien == null ? const <(String, String)>{} : tatCapSoTienTu(phanHoi, boTien.mau);
-      if (mounted) {
-        setState(() {
-          _tatCap = tat;
-          _tatCapTuKhoa = tatTuKhoa;
-          _tatCapSoTien = tatTien;
-        });
-      }
-    } catch (e) {
-      debugPrint('[GoiYDanhMuc] đọc phản hồi lỗi: $e');
-    }
-  }
-
-  /// Ghi một phản hồi. `unawaited` + `catchError`: phản hồi hỏng KHÔNG được chặn việc chọn hay lưu giao dịch.
-  void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
-    final id = _accountId();
-    if (id == null) return;
-    _nguon.ghiPhanHoi(idaccount: id, goiY: goiY, ketQua: ketQua, chon: chon);
-  }
-
   @override
   void dispose() {
-    _hoanGoiY?.cancel();
-    _hoanDeXuat?.cancel();
-    _anDaThem?.cancel();
     _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
     _nhapNhanhController.dispose();
@@ -573,24 +500,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   /// Đường DUY NHẤT để đặt danh mục — cả bảng chọn lẫn thẻ gợi ý đều qua đây (Cubit lo chiều vay/nợ, đoạn đầu màn, ví hay
-  /// dùng, phần tách); trang chỉ gỡ thẻ gợi ý và tính lại đề xuất từ khoá.
-  void _chonDanhMuc(Category category) {
-    _cubit.chonDanhMuc(category);
-    setState(() => _suggestion = null);
-    unawaited(_tinhDeXuat());
-  }
+  /// dùng, phần tách, gỡ thẻ gợi ý và tính lại đề xuất từ khoá).
+  void _chonDanhMuc(Category category) => _cubit.chonDanhMuc(category);
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
-  void _chonHuong(String huong) {
-    _cubit.chonHuong(huong);
-    setState(() {
-      _suggestion = null;
-      _choPhanXu = null;
-    });
-    unawaited(_tinhDeXuat());
-    // Đoạn Chi / Thu là thông tin CHIỀU duy nhất của gợi ý theo số tiền (dự án C): đổi đoạn là đổi tập mẫu được học.
-    _henGoiYTheoForm();
-  }
+  void _chonHuong(String huong) => _cubit.chonHuong(huong);
 
   /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
   /// Bất biến ④ nhóm C: không lưu — người dùng xem lại rồi bấm ✓.
@@ -708,8 +622,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (kq.ghiChu.isNotEmpty) _noteController.text = kq.ghiChu;
     final goiY = danhMuc != null ? kq.goiY : null;
     final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
+    if (goiY != null) _cubit.datChoPhanXu(goiY);
     setState(() {
-      if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: _noteController.text.trim());
       _ketQuaDien = (
         tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
         docDuoc: true,
@@ -720,281 +634,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
     // Ô Nhập nhanh điền xong mà danh mục VÀ ghi chú còn trống (câu chỉ có số tiền) → nguồn số tiền được thử (dự án C).
     // Form biến động, hoặc câu có để lại ghi chú, thì hàm tự thoát.
-    _henGoiYTheoForm();
+    _cubit.henGoiYTheoForm();
   }
 
-  /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
-  ///
-  /// `TextEditingController` phát tín hiệu ở MỖI ký tự. Không hoãn thì một ghi
-  /// chú 30 ký tự sinh 30 lượt đọc CSDL, mỗi lượt lại đọc thêm từ khoá — và
-  /// mọi kết quả trừ cái cuối đều bị vứt đi.
-  Timer? _hoanGoiY;
-  static const Duration _doTreGoiY = Duration(milliseconds: 300);
-
-  /// Nguồn số tiền có được dùng ở lượt mở màn này không — MỘT định nghĩa cho cả chỗ hẹn lẫn chỗ đoán: đã có mô hình,
-  /// không ở chế độ sửa, không phải form biến động số dư (người dùng không chọn hai chỗ ấy cho lần này — spec mục 2
-  /// hàng 4). Hai chỗ mỗi nơi một bản chép thì bỏ một vế ở MỘT chỗ vẫn xanh (đo bằng bản sai 2026-10-02).
-  bool get _coNguonSoTien => _boSoTien != null && !_isEditing && _bienDong == null;
-
-  /// Dự án C — hẹn tính lại thẻ gợi ý khi một tín hiệu của nguồn SỐ TIỀN đổi (số tiền, ví, ngày, đoạn). Dùng CÙNG timer
-  /// với ghi chú: thẻ chỉ có một, nên chỉ một lượt tính đang chờ.
-  ///
-  /// Thoát sớm khi nguồn số tiền không dùng được ([_coNguonSoTien]) → mọi đường cũ (B1, từ khoá) không đổi một bước nào.
-  void _henGoiYTheoForm() {
-    if (!_coNguonSoTien) return;
-    // Gợi ý số tiền đã hiện mà bậc vừa đổi: thẻ ấy nói về bậc cũ — huỷ, không phải phán xét của người dùng (spec 3.4).
-    // Đặt Ở ĐÂY chứ không chỉ trong `_loadSuggestion`: khi người dùng đã chọn danh mục qua bảng rồi mới đổi số tiền,
-    // `_loadSuggestion` không chạy nữa, và gợi ý cũ sẽ bị ghi `khac` lúc lưu cho một khoản ở bậc khác hẳn.
-    final cho = _choPhanXu;
-    if (cho != null && cho.goiY.nguon == kNguonGoiYSoTien) {
-      final x = _s.soTienDangCo;
-      if (x == null || maBacCua(bacTienCua(x)) != cho.goiY.amTietChinh) _choPhanXu = null;
-    }
-    // Ghi chú có chữ thì thẻ thuộc về B1 / từ khoá, mà số tiền, ví, ngày, đoạn không phải tín hiệu của hai nguồn ấy —
-    // không hẹn gì. ⚠️ Hẹn ở đây là ĐỔI hành vi cũ: đổi đoạn Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi (và
-    // "đổi đoạn → không ghi phản hồi" dựa vào đó); hẹn lại là thẻ B1 tự bật lên sau mỗi lần chạm đoạn.
-    if (_noteController.text.trim().isNotEmpty) return;
-    _hoanGoiY?.cancel();
-    if (_s.laChuyen || _selectedCategory != null) return;
-    _hoanGoiY = Timer(_doTreGoiY, () {
-      if (mounted) unawaited(_loadSuggestion(_noteController.text.trim()));
-    });
-  }
-
-  /// Nguồn thứ ba của thẻ gợi ý (dự án C), CHỈ gọi khi ghi chú trống: đoán theo bậc tiền + nhóm thứ + ví, chỉ danh mục
-  /// đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
-  CategorySuggestion? _goiYSoTien(List<Category> categories) {
-    final bo = _boSoTien;
-    if (bo == null || !_coNguonSoTien || _s.laChuyen) return null;
-    final soTien = _s.soTienDangCo;
-    if (soTien == null) return null;
-    final d = bo.doan(
-      chieu: _huong,
-      soTien: soTien,
-      ngay: _selectedDate,
-      walletId: _selectedWallet?.id,
-      hopLe: hopLeTheoChieu(_huong, categories),
-      tatCap: {..._tatCapSoTien, ..._boQuaSoTienLuotNay},
-    );
-    if (d == null) return null;
-    final cat = categories.firstWhere((c) => c.id == d.categoryId);
-    return CategorySuggestion(
-      category: cat,
-      matchedKeyword: d.maBac,
-      nguon: kNguonGoiYSoTien,
-      amTietChinh: d.maBac,
-      lyDo: cauLyDoSoTien(d, tenDanhMuc: cat.name),
-    );
-  }
-
-  void _onNoteChanged() {
-    _henDeXuat();
-    _hoanGoiY?.cancel();
-    final note = _noteController.text.trim();
-    // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
-    if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
-    if (_s.laChuyen || _selectedCategory != null) {
-      if (_suggestion != null && mounted) {
-        setState(() => _suggestion = null);
-      }
-      return;
-    }
-    if (note.isEmpty) {
-      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY như trước dự án C; thẻ số tiền thì chính là của ô trống.
-      if (_suggestion != null && _suggestion!.nguon != kNguonGoiYSoTien && mounted) {
-        setState(() => _suggestion = null);
-      }
-      // Không có mô hình số tiền thì ghi chú trống là hết việc — đúng hành vi trước dự án C.
-      if (_boSoTien == null) return;
-    } else if (_suggestion?.nguon == kNguonGoiYSoTien && mounted) {
-      // Chữ đầu tiên vừa vào ô ghi chú: thẻ số tiền chỉ dành cho ô TRỐNG — gỡ NGAY, không chờ độ trễ; để nó đứng thêm
-      // 300 ms là người dùng thấy thẻ cãi lại chữ họ đang gõ.
-      setState(() => _suggestion = null);
-    }
-    _hoanGoiY = Timer(_doTreGoiY, () {
-      if (!mounted) return;
-      // Đọc lại từ controller thay vì dùng `note` đã bắt ở trên: trong lúc chờ
-      // người dùng có thể đã gõ tiếp, và thứ đáng gợi ý là văn bản HIỆN TẠI.
-      _loadSuggestion(_noteController.text.trim());
-    });
-  }
-
-  void _henDeXuat() {
-    _hoanDeXuat?.cancel();
-    _hoanDeXuat = Timer(_doTreGoiY, () => unawaited(_tinhDeXuat()));
-  }
-
-  /// Đề xuất thêm từ khoá (spec 2026-09-30) — tính lại khi ghi chú hoặc danh mục đổi. Mọi nguồn danh mục như nhau
-  /// (chọn tay, thẻ gợi ý, Nhập nhanh). Không phiên / không mẫu học → im.
-  Future<void> _tinhDeXuat() async {
-    final cat = _selectedCategory;
-    final ghiChu = _noteController.text.trim();
-    final mau = _mauDeXuat ?? _boPhanLoai?.mau;
-    if (cat == null || _s.laChuyen || ghiChu.isEmpty || mau == null || _accountId() == null) {
-      if (mounted && _deXuat != null) setState(() => _deXuat = null);
-      return;
-    }
-    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
-    if (!mounted || _selectedCategory?.id != cat.id || _s.laChuyen || _noteController.text.trim() != ghiChu) return;
-    final ten = {for (final c in chonDuoc) c.id: c.name};
-    final d = deXuatTuKhoa(
-      ghiChu: ghiChu,
-      categoryId: cat.id,
-      mau: mau,
-      // Chỉ danh mục còn sống: từ khoá của danh mục đã xoá không phải xung đột.
-      tuKhoa: {for (final e in tuKhoa.entries) if (ten.containsKey(e.key)) e.key: e.value},
-      tatCap: {..._tatCapTuKhoa, ..._boQuaLuotNay},
-    );
-    setState(() => _deXuat = d == null
-        ? null
-        : (dx: d, tenDanhMuc: cat.name, tenCu: d.tuDanhMuc == null ? null : ten[d.tuDanhMuc]));
-  }
-
-  CategorySuggestion _goiYCua(DeXuatTuKhoa d) => CategorySuggestion(
-        category: _selectedCategory!,
-        matchedKeyword: d.tuKhoa,
-        nguon: kNguonDeXuatTuKhoa,
-        amTietChinh: d.cumBoDau,
-      );
-
-  /// Thêm / Chuyển — GHI NGAY (spec §2.3). Chuyển bỏ ở danh mục cũ TRƯỚC: không có khoảnh khắc cụm thuộc hai danh mục
-  /// (bộ so coi hai danh mục khớp ngang nhau là hoà → thôi đoán).
-  Future<void> _chapNhanDeXuat() async {
-    final d = _deXuat;
-    final id = _accountId();
-    if (d == null || id == null || _selectedCategory == null) return;
-    final goiY = _goiYCua(d.dx);
-    setState(() => _deXuat = null);
-    try {
-      final tuKhoa = await _nguon.tuKhoa(id);
-      final cu = d.dx.tuDanhMuc;
-      if (cu != null) {
-        await _nguon.luuTuKhoa(
-          idaccount: id,
-          categoryId: cu,
-          tuKhoa: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
-        );
-      }
-      await _nguon.luuTuKhoa(
-        idaccount: id,
-        categoryId: d.dx.categoryId,
-        tuKhoa: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
-      );
-    } catch (e) {
-      debugPrint('[DeXuatTuKhoa] ghi từ khoá lỗi: $e');
-      return;
-    }
-    _ghiPhanHoi(goiY, kKetQuaGoiYChon, chon: d.dx.categoryId);
-    if (!mounted) return;
-    setState(() => _daThemTuKhoa = d.tenCu == null
-        ? 'Đã thêm ‘${d.dx.tuKhoa}’ vào ${d.tenDanhMuc}'
-        : 'Đã chuyển ‘${d.dx.tuKhoa}’ sang ${d.tenDanhMuc}');
-    _anDaThem?.cancel();
-    _anDaThem = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _daThemTuKhoa = null);
-    });
-  }
-
-  void _boQuaDeXuat() {
-    final d = _deXuat;
-    if (d == null || _selectedCategory == null) return;
-    _ghiPhanHoi(_goiYCua(d.dx), kKetQuaGoiYBoQua);
-    setState(() {
-      _boQuaLuotNay.add((d.dx.cumBoDau, d.dx.categoryId));
-      _deXuat = null;
-    });
-  }
-
-  Future<void> _loadSuggestion(String note) async {
-    final accountId = _accountId();
-    // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý
-    // danh mục của người khác.
-    if (accountId == null) return;
-    // MỘT cửa cho cả ba nguồn (dự án C): hàm này nay được hẹn cả khi số tiền / ví / ngày / đoạn đổi, không chỉ khi
-    // ghi chú đổi — nên tự nó phải chặn hai trạng thái không bao giờ có thẻ.
-    if (_s.laChuyen || _selectedCategory != null) return;
-    final requestedHuong = _huong;
-    final soTienLucHoi = _amountString;
-    final viLucHoi = _selectedWallet?.id;
-    final ngayLucHoi = _selectedDate;
-    // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba
-    // phân loại vì chiều tiền suy từ danh mục được chọn, không phải ngược lại.
-    final categories = await _nguon.danhMucChonDuoc(accountId);
-    CategorySuggestion? suggestion;
-    if (note.isEmpty) {
-      // Dự án C: ghi chú TRỐNG → đoán theo số tiền. KHÁC hai nguồn dưới, nguồn này khoanh theo đoạn Chi/Thu: số tiền
-      // không mang nghĩa chiều, đoạn đang chọn là thông tin chiều duy nhất.
-      //
-      // ⚠️ CHỈ khi ghi chú trống (người dùng chốt 2026-10-02 sau phép đo CSDL thật): bản đầu còn dùng nguồn này khi
-      // ghi chú có chữ mà B1 lẫn từ khoá đều im, và 3/4 lần thẻ sai rơi đúng vào đó — *"ca phe sang"* 10.000 → Di
-      // chuyển, thẻ nói ngược chữ người dùng vừa gõ.
-      suggestion = _goiYSoTien(categories);
-    } else {
-      // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
-      // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
-      // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" ở trên.
-      final doan = _boPhanLoai?.doan(
-        note,
-        hopLe: {for (final c in categories) c.id},
-        tatCap: _tatCap,
-      );
-      if (doan != null) {
-        final cat = categories.firstWhere((c) => c.id == doan.categoryId);
-        suggestion = CategorySuggestion(
-          category: cat,
-          matchedKeyword: doan.cumBoDau,
-          nguon: kNguonGoiYHoc,
-          amTietChinh: doan.cumBoDau,
-          lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
-        );
-      } else {
-        // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
-        // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
-        // với mỗi lần ghi chú thay đổi.
-        final keywordsByCategory = await _nguon.tuKhoa(accountId);
-        final candidates = <CategoryKeywordCandidate>[];
-        for (final category in categories) {
-          for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
-            candidates.add(
-              CategoryKeywordCandidate(category: category, keyword: keyword),
-            );
-          }
-        }
-        suggestion = widget.suggestionEngine.suggest(
-          rawText: note,
-          candidates: candidates,
-        );
-      }
-    }
-    if (!mounted ||
-        _huong != requestedHuong ||
-        _s.laChuyen ||
-        _selectedCategory != null ||
-        _noteController.text.trim() != note ||
-        _amountString != soTienLucHoi ||
-        _selectedWallet?.id != viLucHoi ||
-        _selectedDate != ngayLucHoi) {
-      return;
-    }
-    final truoc = _suggestion;
-    setState(() {
-      _suggestion = suggestion;
-      if (suggestion != null) {
-        _choPhanXu = (goiY: suggestion, ghiChu: note);
-      } else if (_choPhanXu?.goiY.nguon == kNguonGoiYSoTien) {
-        // Thẻ số tiền vừa bị thay bằng "không có gì" (bậc / ví / ngày / đoạn đổi): gợi ý cũ không còn là thứ người
-        // dùng đang nhìn — bỏ, không ghi phản hồi nào cho nó.
-        _choPhanXu = null;
-      }
-    });
-    // Chỉ khi thẻ nguồn số tiền VỪA hiện (hoặc đổi sang danh mục khác). Cùng một gợi ý được tính lại ở mỗi phím số
-    // thì không cuộn — người dùng đã cuộn đi là có chủ ý.
-    if (suggestion != null &&
-        suggestion.nguon == kNguonGoiYSoTien &&
-        (truoc?.nguon != kNguonGoiYSoTien || truoc?.category.id != suggestion.category.id)) {
-      _cuonToiTheGoiY();
-    }
-  }
+  /// Chữ ô ghi chú → Cubit (state.ghiChu, hẹn gợi ý, đề xuất từ khoá). Controller phát cả khi chỉ đổi con trỏ — Cubit so
+  /// CHỮ, trùng thì thoát.
+  void _onNoteChanged() => _cubit.ghiChuDoi(_noteController.text);
 
   /// Đưa thẻ gợi ý theo số tiền vào khung nhìn (người dùng chọn 2026-10-02).
   ///
@@ -1027,8 +672,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             _cubit.chonViDich(w);
           } else {
             _cubit.chonVi(w);
-            // Ví là một tín hiệu của gợi ý theo số tiền (dự án C); ví ĐÍCH thì không.
-            _henGoiYTheoForm();
           }
         },
       );
@@ -1041,7 +684,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// dịch **kẹt hàng đợi đẩy vĩnh viễn**, im lặng.
   void _onKeyPress(String key) {
     _cubit.goPhim(key);
-    _henGoiYTheoForm();
   }
 
   String _getFormattedAmount() {
@@ -1078,8 +720,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
     if (picked != null) {
       _cubit.chonNgay(picked);
-      // Nhóm thứ (ngày thường / cuối tuần) là một tín hiệu của gợi ý theo số tiền (dự án C).
-      _henGoiYTheoForm();
     }
   }
 
@@ -1175,26 +815,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       bloc.add(UpdateTransactionEvent(before: editing, after: tx));
       return;
     }
-    _ghiPhanHoiKhiLuu();
+    _cubit.ghiPhanHoiKhiLuu();
     bloc.add(AddTransactionEvent(
       transaction: tx,
       destinationWalletId: tx.walletTransfer,
     ));
-  }
-
-  /// B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
-  /// Khoản đã tách: chỉ cho DANH MỤC CHÍNH (thẻ gợi ý hiện cho nó; phần chọn tay không ghi — spec 11.5).
-  void _ghiPhanHoiKhiLuu() {
-    final choPhanXu = _choPhanXu;
-    final daChon = _selectedCategory;
-    if (choPhanXu != null && daChon != null && !_s.laChuyen) {
-      _ghiPhanHoi(
-        choPhanXu.goiY,
-        daChon.id == choPhanXu.goiY.categoryId ? kKetQuaGoiYChon : kKetQuaGoiYKhac,
-        chon: daChon.id,
-      );
-      _choPhanXu = null;
-    }
   }
 
   /// A5 mục 11.4–11.5 — lưu khoản đã tách: kiểm hợp lệ, ngân sách TỪNG phần (một hộp cho cả lô nếu có ngân sách
@@ -1227,7 +852,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
     _pendingImpact = impacts.where((i) => i.exceeds || i.nearLimitAfter).firstOrNull;
     _soGiaoDichVuaLuu = ds.length;
-    _ghiPhanHoiKhiLuu();
+    _cubit.ghiPhanHoiKhiLuu();
     context.read<TransactionBloc>().add(AddTransactionsEvent(transactions: ds));
   }
 
@@ -1546,15 +1171,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         },
       ),
     );
+    // Thẻ nguồn số tiền vừa hiện / đổi danh mục → cuộn thẻ vào khung nhìn (Cubit tăng `soLanCuonGoiY`).
+    final coCuon = BlocListener<ThemGiaoDichCubit, ThemGiaoDichState>(
+      bloc: _cubit,
+      listenWhen: (a, b) => a.soLanCuonGoiY != b.soLanCuonGoiY,
+      listener: (_, __) => _cuonToiTheGoiY(),
+      child: content,
+    );
     final transactionBloc = widget.transactionBloc;
     return transactionBloc == null
         ? BlocProvider<TransactionBloc>(
             create: (context) => sl<TransactionBloc>(),
-            child: content,
+            child: coCuon,
           )
         : BlocProvider<TransactionBloc>.value(
             value: transactionBloc,
-            child: content,
+            child: coCuon,
           );
   }
 
@@ -1571,7 +1203,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Lắp [TheForm] từ trạng thái của trang: chuỗi hiển thị, các khối phụ (slot) và những lời gọi đổi trạng thái.
   Widget _theForm(BuildContext context) {
-    final s = _suggestion; // bắt một lần lúc dựng — callback không đọc lại `_suggestion` lúc chạm
+    final s = _s.goiY; // bắt một lần lúc dựng — callback không đọc lại `goiY` lúc chạm
     final selectedCategory = _selectedCategory;
     final showDebtDirection = selectedCategory != null && isDebtClassify(selectedCategory.classify);
     final walletDisplay = _isLoadingWallets
@@ -1610,12 +1242,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       hienDongTach: _s.choTach && _phanTach.isEmpty,
       onThemPhan: _themPhan,
       nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _trungTrongSo) : null,
-      deXuatTuKhoa: _deXuat != null || _daThemTuKhoa != null
+      deXuatTuKhoa: _s.deXuat != null || _s.daThemTuKhoa != null
           ? DongDeXuatTuKhoa(
-              daThem: _daThemTuKhoa,
-              deXuat: _deXuat,
-              onChapNhan: _chapNhanDeXuat,
-              onBoQua: _boQuaDeXuat,
+              daThem: _s.daThemTuKhoa,
+              deXuat: _s.deXuat,
+              onChapNhan: _cubit.chapNhanDeXuat,
+              onBoQua: _cubit.boQuaDeXuat,
             )
           : null,
       hangChieuTien: showDebtDirection
@@ -1629,21 +1261,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           : TheGoiYDanhMuc(
               key: _khoaTheGoiY,
               suggestion: s,
-              onBoQua: () {
-                _ghiPhanHoi(s, kKetQuaGoiYBoQua);
-                if (s.nguon == kNguonGoiYSoTien) {
-                  _boQuaSoTienLuotNay.add((s.amTietChinh, s.categoryId));
-                }
-                setState(() {
-                  _suggestion = null;
-                  _choPhanXu = null;
-                });
-              },
-              onChon: () {
-                _ghiPhanHoi(s, kKetQuaGoiYChon, chon: s.categoryId);
-                _choPhanXu = null;
-                _chonDanhMuc(s.category);
-              },
+              onBoQua: () => _cubit.boQuaGoiY(s),
+              onChon: () => _cubit.chonGoiY(s),
             ),
     );
   }
