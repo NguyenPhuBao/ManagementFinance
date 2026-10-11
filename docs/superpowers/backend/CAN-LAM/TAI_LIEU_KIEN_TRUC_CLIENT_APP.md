@@ -37,7 +37,7 @@ SQLite (mạng là việc của `SyncEngine`), và trả hai loại kiểu khác
 | **State Management** · BLoC · *"Mỗi màn hình có BLoC riêng (loading/loaded/error)"* | BLoC + Cubit · *"BLoC + Cubit cho 10 màn có luồng ghi (3 Bloc, 7 Cubit); màn đọc dùng stream Drift; trạng thái màn trong widget"* |
 | **Repository** · Repository Pattern · *"Abstract nguồn dữ liệu (local/remote), ưu tiên đọc local"* | Repository Pattern · *"Interface ở tầng data, trả Entity (ví, giao dịch, mục tiêu, ngân sách) hoặc hàng Drift (hoá đơn, danh mục); chỉ đọc/ghi SQLite — mạng là việc của Sync Engine"* |
 | **Real-time** · Socket.IO · *"Backend push sự kiện → client cập nhật local DB + UI"* | Socket.IO · *"Sự kiện là tín hiệu: client chỉ đọc tên sự kiện rồi kéo dữ liệu qua `/sync/pull` (trừ `account.force_logout` mang lý do)"* — *đề nghị thêm, backend tự quyết* |
-| *(thêm dòng)* **Test quét kiến trúc** | Test đọc mã nguồn `lib/` · *"28 test quét (25 tệp mang số 1–24, cộng 3 không số) canh các luật một-định-nghĩa: tầng giao diện không cầm CSDL, chỉ một tệp import mỗi gói native, không fallback tài khoản admin…"* |
+| *(thêm dòng)* **Test quét kiến trúc** | Test đọc mã nguồn `lib/` · *"29 test quét (26 tệp mang số 1–25, cộng 3 không số — đếm lại 2026-10-11 sau khi thêm test quét 25) canh các luật một-định-nghĩa: tầng giao diện không cầm CSDL, chỉ một tệp import mỗi gói native, không fallback tài khoản admin…"* |
 | *(thêm dòng)* **Cổng nền tảng** | Interface + bản giả · *"OsNotifier (thông báo), DocChuAnh (OCR ML Kit), SlmRuntime (Gemma trên máy), kênh Kotlin `flowmoney/*` — mọi ranh giới nền tảng thay được bằng bản giả trong test"* |
 | *(thêm dòng)* **Chạy nền** | WorkManager (Android) · *"Tự trả hoá đơn / tự trích mục tiêu chạy cả khi app đóng: WorkManager đánh thức engine Flutter không giao diện, đồng bộ trong lượt nền (2026-10-10)"* |
 
@@ -49,10 +49,11 @@ Hai dòng bullet dưới bảng (*Trigger sync*, *Business logic*) vẫn đúng,
 |---|---|---|
 | 1 | Backend có muốn tài liệu kiến trúc client nằm **trong** `Project.md` hay chỉ **trỏ** sang `docs/KIEN_TRUC_CLIENT_APP.md`? | **Trỏ**: §3.3 giữ bảng ngắn (đã sửa theo mục 2) và thêm một dòng *"Chi tiết: `docs/KIEN_TRUC_CLIENT_APP.md`"*; client giữ tệp ấy khớp mã |
 
-## 4. Phụ lục — hai chỗ chữ lệch tên, thấy trong lượt soát (không bắt buộc)
+## 4. Phụ lục — ba chỗ chữ lệch tên, thấy trong lượt soát (không bắt buộc)
 
 | Tệp · dòng | Chữ hiện tại | Mã thật |
 |---|---|---|
+| `Project.md:1961` (gốc repo) | *"`core/constants/app_router.dart`"* | `core/router/app_router.dart` — tệp dời ngày 2026-10-10 (đợt dọn vị trí tệp theo luật mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`); `Project.md:3635` chỉ ghi `app_router.dart` không kèm đường dẫn nên không lệch |
 | `docs/Rule_Project/Rule_project.md:590` | *"điều hướng về màn hình Đăng nhập (`LoginScreen`) qua `AuthBloc`"* | không có lớp `LoginScreen`; `AuthBloc` phát `AuthUnauthenticated(thongBao:)`, router đưa về `/login`, màn Đăng nhập hiện hộp thoại lý do |
 | `docs/progress/Client-app.md:367` | *"`context.read<AuthBloc>().add(AuthLoggedOut())`"* | không có sự kiện `AuthLoggedOut`; cưỡng chế đăng xuất đi sự kiện `TaiKhoanBiBuocDangXuat` (từ socket / HTTP qua `PhienDieuPhoi.buocDangXuat`), người dùng tự đăng xuất là `LogoutRequested` |
 
