@@ -109,7 +109,7 @@ class HangChieuTien extends StatelessWidget {
         fontWeight: FontWeight.w600,
         color: selected ? Colors.white : AppColors.primary,
       ),
-      // Cùng giá trị với đoạn đầu màn — xem chú thích ở `_huong` của trang.
+      // Cùng giá trị với đoạn đầu màn — xem chú thích ở `ThemGiaoDichState.huong`.
       onSelected: (_) => onChon(direction),
     );
   }

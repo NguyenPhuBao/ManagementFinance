@@ -58,7 +58,7 @@ void main() {
         for (final c in await db.select(db.categories).get())
           if (c.idaccount == idaccount || (c.isDefault && c.idaccount == 0)) c.id: c.name,
       };
-      // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (`_loadSuggestion`): `selectableChildrenAll` + `loadAllKeywords`.
+      // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (`ThemGiaoDichCubit._napGoiY`): `selectableChildrenAll` + `loadAllKeywords`.
       // ⚠️ Bản đầu (`8bee5d7`) lấy ứng viên từ bảng tra tên ở trên, tức CẢ hàng toàn cục — mà hàng toàn cục mang
       // cùng từ khoá với bản sao của tài khoản (seed: Ăn uống ↔ `grab`), nên hai danh mục cùng khớp một từ khoá cùng độ
       // dài → bộ từ khoá coi là HOÀ và im. Đo trên Realme 2026-09-29: từ khoá "phủ 0 %" trong khi thẻ trên máy vẫn gợi ý

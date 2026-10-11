@@ -357,8 +357,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // — một biểu thức chưa phải một số tiền. Tổng hiện ở dòng ngay dưới.
     if (coToanTu(_s.chuoiSoTien)) return nhanBieuThuc(_s.chuoiSoTien);
     if (_s.chuoiSoTien == "0") return CurrencyFormatter.format(0);
-    // Chuỗi có dấu chấm chỉ tới từ chế độ sửa (`initState` đọc
-    // `editing.amount.toString()`); bàn phím hết phím `.` từ 2026-09-19.
+    // Chuỗi có dấu chấm chỉ tới từ chế độ sửa (`_dauTien` của `ThemGiaoDichCubit`
+    // đọc `editing.amount.toString()`); bàn phím hết phím `.` từ 2026-09-19.
     // ⚠️ In thẳng chuỗi thô là hiện "12.5 đ", mà khắp app dấu chấm là dấu
     // NGĂN NGHÌN — người dùng đọc ra một con số khác, ngay cạnh nút lưu.
     // `formatCoLe` ngăn phần lẻ bằng dấu phẩy, đúng thông lệ Việt Nam.

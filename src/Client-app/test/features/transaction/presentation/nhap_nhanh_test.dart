@@ -246,7 +246,7 @@ void main() {
     await dien(tester, 'được cho 500k');
 
     expect(find.text('Ăn uống'), findsNothing,
-        reason: 'gán thẳng _huong là để danh mục chi đứng dưới đoạn Thu — hai sự thật trái nhau');
+        reason: 'gán thẳng `huong` là để danh mục chi đứng dưới đoạn Thu — hai sự thật trái nhau');
     expect(find.text('Chọn danh mục'), findsOneWidget);
   });
 
@@ -279,7 +279,7 @@ void main() {
     expect(find.text('Di chuyển'), findsOneWidget);
     expect(find.text('Bạn thường ghi “grab” cho Di chuyển (5/5 lần).'), findsOneWidget);
     expect(find.text('Gợi ý danh mục'), findsNothing,
-        reason: 'ghi chú đặt SAU danh mục — _onNoteChanged thấy đã có danh mục thì không hẹn gợi ý');
+        reason: 'ghi chú đặt SAU danh mục — `ghiChuDoi` thấy đã có danh mục thì không hẹn gợi ý');
 
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();

@@ -42,8 +42,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **546** tệp `.dart`, **120.022** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
-và `… | xargs cat | wc -l`. `test/` có **595** tệp, **119.347** dòng. (Đếm lại sau đợt dọn vị trí tệp; trước đợt 545 / 596.)
+`lib/` có **549** tệp `.dart`, **120.421** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
+và `… | xargs cat | wc -l`. `test/` có **598** tệp, **120.418** dòng. (Đếm lại 2026-10-11 sau tách trang Thêm giao dịch: +3 tệp `lib/` và +3 tệp `test/`; sau đợt dọn vị trí tệp là 546 / 595, trước đợt ấy 545 / 596.)
 
 ```
 lib/
@@ -65,9 +65,9 @@ lib/
 │   ├── sync/          8      SyncEngine, normalizer, checkpoint, noiBoNgheKetQuaDay
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         7      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten…
-├── features/        408 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
+├── features/        411 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
 │   ├── ai_edge/      81      data 22 · domain 54 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
-│   ├── transaction/  55      data 9 · domain 22 · presentation 24 (widgets/them_giao_dich/ 7 tệp)
+│   ├── transaction/  58      data 10 · domain 22 · presentation 26 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    51      data 8 · domain 19 · presentation 24 (widgets/phan_tich/ 14 tệp)
 │   ├── bill/         33      data 5 · domain 14 · presentation 14
 │   ├── goal/         33      data 4 · domain 17 · presentation 12
@@ -84,7 +84,7 @@ lib/
 ```
 
 Đếm mảng: `for d in features/*/; do find $d -name '*.dart' | wc -l; done` (và `$d/data`, `$d/domain`, `$d/presentation`).
-Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab224c`).
+Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab224c`); riêng tổng `lib/` · `test/` · `features/` và mảng `transaction` đếm lại 2026-10-11 sau tách trang Thêm giao dịch (HEAD `18ae5749`).
 `core/notification` nay **35** tệp (34 + `thong_bao_nguon.dart` của đợt này).
 
 ## 4. Ba tầng và vai trò của `core`
@@ -200,7 +200,7 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | 20 | `features/transaction/chi_mot_noi_import_image_picker_test.dart` | chỉ `quet_anh_page.dart` import `image_picker` | cây | 2026-10-08 |
 | 21 | `features/premium/quyen_tinh_nang_mot_noi_test.dart` | quyền theo gói chỉ đọc qua `duocDung` | cây | 2026-10-08 |
 | **22** | `core/ui/presentation_khong_cham_csdl_test.dart` | `presentation/` và `shared/` không cầm `AppDatabase` / DAO; `conCho` rỗng | cây | **2026-10-10** |
-| **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; 5 tệp miễn trừ, trần riêng chỉ giảm | cây `features/` | **2026-10-10** |
+| **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; 4 tệp miễn trừ (rút `add_transaction_page` 2026-10-11), trần riêng chỉ giảm | cây `features/` | **2026-10-10** |
 | **24** | `features/auth/auth_bloc_khong_sl_test.dart` | `auth_bloc.dart` không gọi service locator, không import `core/di` | một tệp | **2026-10-10** |
 | **25** | `core/ui/vi_tri_tep_theo_luat_test.dart` | cây `lib/` / `test/` khớp luật vị trí tệp mục 8 (sáu luật; ratchet `core` → `features` ngoài ba điểm ghép); `conCho` rỗng, miễn trừ duy nhất `ai_chat/spike/` | cây `lib/` + `test/` | **2026-10-10** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
@@ -264,15 +264,15 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
 **Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (29 tệp test quét, CI). Ranh
-giới nền tảng thay được bằng bản giả, nên **6.617** ca test (đo 2026-10-10 sau đợt dọn vị trí tệp, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
+giới nền tảng thay được bằng bản giả, nên **6.681** ca test (đo 2026-10-11 sau tách trang Thêm giao dịch, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift; Entity mới ở 4/14 mảng. `SyncEngine` 2.166 dòng một tệp.
-Trang Thêm giao dịch còn **2.007** dòng — trạng thái 61 trường ở lại trang. Luật thông báo nằm trong `core`. Không logger,
-không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (289 chỗ; 3 Bloc, 7 Cubit cho màn có luồng ghi).
+Bốn trang còn trên 1.200 dòng (cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo). Luật thông báo nằm trong `core`. Không logger,
+không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
 **Nợ có tên:** **G88** ở `docs/CLIENT_APP_KNOWN_GAPS.md` — bảy gạch có số đo và hướng xử lý (gạch 7 *vị trí tệp* đóng
-2026-10-10 — đợt dọn vị trí tệp, quét 25; còn gạch 1–6). Bảng dưới là trước/sau của đợt **bịt điểm rò**.
+2026-10-10 — đợt dọn vị trí tệp, quét 25; gạch 1 *trang Thêm giao dịch* đóng 2026-10-11; còn gạch 2–6). Bảng dưới là trước/sau của đợt **bịt điểm rò** (2026-10-10), kèm một đoạn cập nhật sau bảng.
 
 | Thước đo (cùng cách đếm, 2026-10-10) | Trước đợt | Sau đợt |
 |---|---|---|
@@ -284,6 +284,8 @@ không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đ�
 | `flutter test` · `flutter analyze` | 6.587 (+9 skip) · 20 | **6.614** (+9 skip) · **20** |
 | Workflow CI | 0 | **1** |
 
+Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): `add_transaction_page.dart` 2.007 → **779** dòng, thêm `ThemGiaoDichCubit` **1.097** · `ThemGiaoDichState` **184** · `ThemGiaoDichNguon` **352** (đo `wc -l`); tệp `presentation` > 1.200 dòng 5 → **4**; `flutter test` 6.617 → **6.681** (+9 skip), `flutter analyze` vẫn **20**.
+
 ## 10. Cách nói khi trình bày
 
 1. **Mở bằng ràng buộc, không bằng tên mẫu.** "App phải ghi được khi không có mạng và AI không được gửi dữ liệu đi" — rồi
@@ -291,6 +293,6 @@ không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đ�
 2. **Gọi đúng tên.** Feature-first ba tầng, offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 546 tệp, 29 test quét, 6.617 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 4/14, `SyncEngine` một tệp, trang Thêm giao dịch 2.007 dòng — và nói nó
+4. **Con số.** 14 mảng, 549 tệp, 29 test quét, 6.681 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 4/14, `SyncEngine` một tệp, bốn trang còn trên 1.200 dòng — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.

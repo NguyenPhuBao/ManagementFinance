@@ -158,9 +158,9 @@ void main() {
       updatedAt: DateTime(2026, 9, 21),
     );
     // ⚠️ Bảng trỏ 'shop' chứ không 'food': ca phải ĐỔI danh mục thì mới đi qua
-    // `_apDungViHayDung`. Bản đầu của ca này chỉ mở trang rồi xem ví — nó xanh
+    // `_viHayDungCho` của `ThemGiaoDichCubit`. Bản đầu của ca này chỉ mở trang rồi xem ví — nó xanh
     // cả khi bỏ sạch hai chốt, vì ở chế độ sửa danh mục đặt thẳng trong
-    // `initState` chứ không qua `_chonDanhMuc`. Cùng họ bẫy G43.
+    // `_dauTien` của Cubit chứ không qua `_chonDanhMuc`. Cùng họ bẫy G43.
     await tester.pumpWidget(app(
       viHayDung: {'shop': 'bank'},
       initial: EditTransactionArgs(transaction: goc, category: anUong),

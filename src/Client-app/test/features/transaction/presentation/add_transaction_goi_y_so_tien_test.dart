@@ -312,7 +312,7 @@ void main() {
 
     testWidgets('⭐ thẻ B1 đang hiện → đổi đoạn Thu rồi về Chi → thẻ B1 KHÔNG tự bật lại (hành vi trước dự án C)',
         (tester) async {
-      // Số tiền / ví / ngày / đoạn không phải tín hiệu của B1: có mô hình số tiền cũng không được hẹn lại `_loadSuggestion`
+      // Số tiền / ví / ngày / đoạn không phải tín hiệu của B1: có mô hình số tiền cũng không được hẹn lại `_napGoiY`
       // cho một ghi chú có chữ — luật "đổi đoạn → thẻ bị huỷ, không ghi phản hồi" của B1 dựa vào đó.
       await mo(tester, app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMauChu)));
       await goGhiChu(tester, 'grab tối');

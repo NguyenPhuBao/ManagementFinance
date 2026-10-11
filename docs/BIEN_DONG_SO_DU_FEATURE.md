@@ -47,7 +47,7 @@ App ngân hàng / ví hiện thông báo
       → xoá tệp (kể cả khi cờ tắt) → huyTomTat()
   → Sổ giao dịch: TheBienDongChuaGhi (watchDemBienDong) → /notifications?nhom=bienDong
   → MoTuTomTatBienDong (main.dart): moTuThongBao() lúc start + resumed → cùng route, chờ phiên nếu chưa đăng nhập
-  → /add?… → dienSanBienDongTuQuery → ketQuaTuBienDong → _dienKetQua (đường điền của C2)
+  → /add?… → dienSanBienDongTuQuery → ketQuaTuBienDong → ThemGiaoDichCubit.dienKetQua (đường điền của C2)
       → Lưu / Bỏ qua → NotificationDao.xoaCung (+ nhớ ví theo nguồn ở lần Lưu đầu)
 ```
 
@@ -176,7 +176,7 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
 ## 6. Việc sau D1 (người dùng chốt 2026-09-30)
 
 1. ✅ **Bàn phím số ẩn khi màn Thêm giao dịch mở với số tiền đã có** (xong 2026-09-30 tối, Stitch `b52c0651…`, nghiệm
-   thu Realme). Cờ `_hienBanPhimSo` của `add_transaction_page.dart`: tắt khi mở với số tiền (sửa · biến động có
+   thu Realme). Cờ `hienBanPhimSo` của `ThemGiaoDichState` (trước 2026-10-11: `_hienBanPhimSo` của `add_transaction_page.dart`): tắt khi mở với số tiền (sửa · biến động có
    `soTien`) hoặc khi ô Nhập nhanh điền được số tiền; chạm khối số tiền để đảo — bàn phím **hệ thống** đang mở thì
    chạm là đóng nó và **mở** 16 phím (đảo cờ lúc ấy là tắt phím mà không thấy gì đổi). **Một luật cho nút lưu:** 16 phím
    không trên màn — theo cờ **hoặc** vì bàn phím hệ thống mở (G58) — thì ✓ ở thanh tiêu đề (*Bỏ qua · ✓* ở form biến
@@ -189,7 +189,7 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    → im) rồi nội dung (tin nhắc **đúng một** nguồn khác — `MOMO149…` nhận, `mb` trần không). Thẻ *"Có vẻ là chuyển khoản ·
    Từ MoMo sang MB Bank"* trên form biến động → bấm đổi sang Chuyển khoản, ví phía tin theo luật D1, phía kia đã nhớ →
    ví duy nhất trùng tên nguồn → trống. Lưu: nhớ ví **theo phía** (tin thu thì ví của nguồn tin là ví ĐÍCH — nhớ
-   `_selectedWallet` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
+   `viNguon` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
    chuyển **sang** MoMo không nhận ra (3/5 hàng thật được gợi ý). Ca test `goi_y_chuyen_khoan_test.dart`,
    `goi_y_chuyen_khoan_form_test.dart`.
 3. ✅ **Chia sẻ biên lai** vào FlowMoney → đọc chữ trên máy → điền sẵn — **mã xong Task 1–10, nghiệm thu Realme với

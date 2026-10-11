@@ -1,7 +1,6 @@
 # Tách trang Thêm giao dịch ra Cubit + lớp nguồn — thiết kế
 
-**Ngày:** 2026-10-11 · **Trạng thái:** thiết kế duyệt trong chat (ba phần, từng phần một), bản viết chờ người dùng đọc;
-chưa có kế hoạch, chưa có mã ·
+**Ngày:** 2026-10-11 · **Trạng thái:** ✅ **đã thi công 2026-10-11** — kế hoạch 7 task, agent con mỗi task, commit `21d4c594` → `18ae5749` + commit đóng sổ; trang 2.007 → **779** dòng, Cubit **1.097**; `flutter test` **6.681** (+9 skip; 6.617 trước đợt), `flutter analyze` **20**; máy ảo: 5 cặp ảnh 0 px khác, 11 ✅ · 1 ◐; nghiệm thu OnePlus gộp vào lượt kế. Xem khối *"Chỗ bản thi công KHÁC bản viết"* ngay dưới ·
 **Trả nợ:** G88 gạch 1 (`docs/CLIENT_APP_KNOWN_GAPS.md`) · **Luật:** mục 4 và 8 `docs/KIEN_TRUC_CLIENT_APP.md`, test quét 22–25 ·
 **Tiền nhiệm:** spec bịt điểm rò `2026-10-10-bit-diem-ro-kien-truc-client-design.md` (đợt ấy tách bảy khối giao diện sang
 `widgets/them_giao_dich/`, để lại trạng thái và logic ở trang — "hướng B" của nó chính là đợt này) ·
@@ -9,6 +8,28 @@ chưa có kế hoạch, chưa có mã ·
 
 Đợt này **không đổi hành vi**: không đổi màn hình, chữ, `Key`, schema, payload đồng bộ, `pubspec`. Người dùng app không
 thấy gì khác. Mọi số đếm trong tệp đo ngày 2026-10-11 trên `HEAD` = `f59c4769`.
+
+## Chỗ bản thi công KHÁC bản viết (ghi 2026-10-11, khi đóng sổ)
+
+Số đo thật (`wc -l` 2026-10-11, HEAD `18ae5749`): trang **779** (spec ước ~700), Cubit **1.097** (~800), state **184** (~200), nguồn **352** (~250). Cubit lớn hơn ước vì thân các hàm dời nguyên văn kèm chú thích ⚠️ (R4); vẫn dưới trần 1.200 nên không phải dùng cách lùi đã định (dời `goiYTheoSoTien` / `cauLoiTach`). Tám chỗ kế hoạch đã ghi trước ở mục *Lệch spec*:
+
+1. **Quét ô nhập tiền đổi đường dẫn ở Task 2, không ở bước 5** — Task 2 dời `goPhim` / `chonSoTien` (nơi duy nhất gọi `themPhimSoTien`) sang Cubit, nên chuỗi ấy rời trang ngay lúc đó; để tới bước 5 là quét ấy đỏ ba task liền.
+2. **Lỗi ở lớp nguồn được bắt ở chỗ gọi (Cubit), như trước** — mục 4.3 câu cuối nói *"mỗi hàm giữ đúng cách nuốt lỗi của chỗ gọi hôm nay"*; kế hoạch giữ `try/catch` + `debugPrint` ở đúng chỗ trang đang có, nên phần lớn hàm nguồn là chuyển tiếp mỏng. Bốn hàm vốn tự nuốt lỗi ở trang thì nuốt trong nguồn: `napDanhMucVaTuKhoa`, `xoaHangBienDong`, `xoaAnhBienLai`, `ghiPhanHoi`.
+3. **Ô ghi chú dùng bộ đếm `soLanDatGhiChu`** (mục 5.1 chỉ nói *"chép khi khác nhau"*): trang chỉ chép sang ô khi bộ đếm tăng — tức khi chính Cubit đặt ghi chú; nghe mọi lần `ghiChu` đổi thì một state về muộn có thể đè chữ người dùng vừa gõ thêm. Cùng cơ chế với `soLanCuonGoiY`.
+4. **`ghiChuDoi` bỏ qua lần gọi trùng chữ** — trang cũ gọi `_onNoteChanged` cả khi chỉ đổi con trỏ và nó khởi động lại hai bộ hẹn giờ; bản mới thoát sớm khi chữ không đổi. Hệ quả duy nhất: chạm đổi con trỏ không hoãn thêm 300 ms (không thấy được trên màn).
+5. **`moTrang()` có từ Task 2 và lớn dần**; nạp tập tắt (Task 3) chạy sau khi **cả** ví lẫn lịch sử nạp xong (trang cũ chỉ chờ lịch sử). Ví tiêm sẵn thì hai thứ trùng thời điểm; ví đọc SQLite thì tập tắt trễ thêm một lần đọc ví — không đường nào dùng tập tắt trước khi ví về.
+6. **Cubit nhận `dangSua` + `danhMucDangSua`, không nhận `EditTransactionArgs`** (mục 4.2) — lớp ấy ở lại `presentation/pages/`; `bloc/` import `pages/` là ngược tầng.
+7. **Cubit ~1.100 dòng, không ~800** (mục 3) — xem số đo trên.
+8. **24 tệp test không đổi cả dòng import** (mạnh hơn quyết định 2 ở mục 0) — trang `export` lại `BudgetLookup` từ tệp nguồn.
+
+Phán quyết của người điều phối trong lúc thi công:
+
+- **R1** làm tại chỗ trên nhánh `TranQuangDat`, không dùng worktree. **R2** literal `99999999999999999` trong test đổi thành `1e17` (Dart không cho literal nguyên không biểu diễn đúng làm `double`). **R3** Task 0 (ảnh "trước") người điều phối tự làm.
+- **R4** dời hàm thì giữ chú thích ⚠️ **nguyên văn**. **R5** chú thích lý do bị mất khi dời (kể cả mức Minor) vẫn vào vòng sửa (`a1fb155b`, `29eaa7b9` khôi phục chú thích ⚠️ / `initState` cũ).
+- **R6** ba chú thích trỏ định danh đã xoá (`_getFormattedAmount` → `initState` của trang, `_huong` của trang, `_saveTransaction` / `_amountString` ở `ban_phim_so_tien.dart`) và chữ trong test trỏ hàm riêng tư cũ được trỏ lại ở Task 6.
+- **R7** Task 6 tách đôi: nghiệm thu máy ảo trước, tài liệu sau; bước rút miễn trừ quét 23 đã làm ở Task 4 (trang xuống dưới 1.200 dòng ngay ở đó).
+
+Hai chỗ lệch của Task 5: nhánh tách giữ **hàm riêng `_chuanBiLuuTach`** (cấu trúc `_luuTach` cũ, để mang nguyên chú thích) thay vì gộp vào `chuanBiLuu`; chú thích A12 chỉ đổi ba định danh không còn (`_amountString` → `chuoiSoTien`, `initState` → `_dauTien`, `_getFormattedAmount` → "`_getFormattedAmount` của trang") — nội dung lý do giữ nguyên.
 
 ## 0. Bốn quyết định của người dùng (2026-10-11)
 

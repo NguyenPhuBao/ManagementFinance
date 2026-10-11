@@ -610,6 +610,16 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-11)
 
+### 🧩 Tách trang Thêm giao dịch ra Cubit + lớp nguồn — G88 gạch 1 đóng (2026-10-11 tối, 6 task xong, chưa push)
+
+Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đúng màn này, như C2, C3, A5, D1 đã chạm). Spec `docs/superpowers/specs/2026-10-11-tach-trang-them-giao-dich-cubit-design.md` (bốn quyết định ở mục 0; khối *"Chỗ bản thi công KHÁC bản viết"* ở đầu tệp); kế hoạch 7 task `plans/2026-10-11-tach-trang-them-giao-dich-cubit.md` (gitignore), thi công bằng **agent con mỗi task** (người dùng chọn), commit `21d4c594` → `18ae5749` + commit đóng sổ, sổ theo dõi `.superpowers/sdd/2026-10-11-tach-trang-them-giao-dich-cubit/` (gitignore). **Không đổi hành vi**: màn, chữ, `Key`, schema, payload, `pubspec` giữ nguyên; 24 tệp test dựng trang không sửa kỳ vọng nào (chỉ chú thích / chữ `reason:` còn trỏ tên cũ được trỏ lại).
+
+- Trạng thái 61 trường và mọi logic của form (chọn ví, gợi ý ba nguồn, đề xuất từ khoá, chiều tiền, điền sẵn, tách khoản, lưu) ở **`ThemGiaoDichCubit`** + `ThemGiaoDichState` (`presentation/bloc/`; không import `material` / `widgets`, không `BuildContext`); mọi đọc / ghi dữ liệu qua **`ThemGiaoDichNguon`** (`data/`, cổng tiêm được, bản thật dùng `sl` lúc cần — hai dòng `sl<WalletRepository>().getActiveRows(` và `sl<TransactionRepository>().getAllRows(` vẫn nằm trên **một** dòng). Trang còn ô nhập chữ và focus, hộp thoại xác nhận, mở trang chọn danh mục, toast, `pop`, nghe `TransactionBloc`.
+- **Cửa điền sẵn chung cho mọi nguồn — Nhập nhanh (C2), D1, biên lai, quét ảnh (A5) và C4 giọng nói sắp tới — là `ThemGiaoDichCubit.dienKetQua(KetQuaDocCau, chonDuoc:)`** (`dienTuCau` cho câu chữ). C4 cắm vào đó, không cắm vào trang.
+- Số đo `wc -l` 2026-10-11: trang **2.007 → 779**, Cubit **1.097**, state **184**, nguồn **352** (spec ước ~700 / ~800 / ~200 / ~250 — Cubit lớn hơn vì thân hàm dời nguyên văn kèm chú thích ⚠️, vẫn dưới trần 1.200); `mienTru` của quét 23 còn **4** tệp. Test mới **64 ca** (Cubit 52 + nguồn 12; helper `test/helpers/them_giao_dich_nguon_gia.dart`): `flutter test` **6.681** (+9 skip; 6.617 trước đợt), `flutter analyze` **20**.
+- Máy ảo `FlowMoney_16G` (APK debug SHA-1 `d3488de6…`, tài khoản 10): 5 cặp ảnh trước / sau **0 px khác**, vàng thuần 0; 12 luồng làm tay **11 ✅ · 1 ◐** — thẻ gợi ý theo số tiền ở 360 × 640 dp cuộn hết cỡ mà đầu thẻ vẫn bị cắt (giới hạn G58 có từ trước; không có APK cũ để đối chứng đúng khổ ấy; ở 360 × 800 và 411 dp thì ổn). Câu thử *"chuyen 500k tu tien mat sang techcombank"* không dựng được ví đích vì tài khoản 10 không có ví Techcombank — thay bằng ví có thật (*Tiết kiệm*), đạt. Nghiệm thu OnePlus chưa làm, gộp vào lượt nghiệm thu kế (việc 1 của thứ tự).
+- ⚠️ Các khối cũ hơn của mục 14 còn gọi hàm riêng tư của trang theo tên lúc viết. Bảng đổi tên: `_saveTransaction` + `_luuTach` → `ThemGiaoDichCubit.chuanBiLuu` · `_loadSuggestion` → `_napGoiY` · `_dienKetQua` → `dienKetQua` · `_dienTuCau` → `dienTuCau` · `_onNoteChanged` → `ghiChuDoi` · `_amountString` → `chuoiSoTien` · `_huong` → `huong` · `_selectedWallet` → `viNguon` · `_hienBanPhimSo` → `hienBanPhimSo` (đều ở `ThemGiaoDichState` / Cubit); `_henGoiYTheoForm`, `_goiYSoTien`, `_choPhanXu` giữ tên (riêng tư trong Cubit).
+
 ### 📝 Trợ lý online (hỗn hợp: có mạng hỏi backend Gemini, hỏng / mất mạng rơi về mô hình trên máy) — spec duyệt + kế hoạch viết, CHƯA thi công (2026-10-11 chiều, người dùng chốt để sau)
 
 - Đảo quyết định treo từ 2026-09-26 (🛑 *chatbot trực tuyến chưa nhận*): người dùng chốt **"kết nối AI chatbox ở backend vào, khi
@@ -1120,7 +1130,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   **4988/4988** (4 skip).
 - ✅ **Bàn phím số ẩn khi màn Thêm giao dịch đã có số tiền (2026-09-30 tối, việc sau D1 số 1)** — Stitch `b52c0651…`,
   nghiệm thu Realme 360 dp (màn 0 đ · Nhập nhanh điền · chạm hiện / ẩn · chạm lúc bàn phím hệ thống mở · form biến
-  động *Bỏ qua · ✓*). Cờ `_hienBanPhimSo` tắt khi mở với số tiền (sửa · biến động có `soTien`) hoặc khi Nhập nhanh điền
+  động *Bỏ qua · ✓*). Cờ `_hienBanPhimSo` (nay `hienBanPhimSo` của `ThemGiaoDichState`) tắt khi mở với số tiền (sửa · biến động có `soTien`) hoặc khi Nhập nhanh điền
   được số tiền; chạm khối số tiền để đảo. **Một luật cho nút lưu:** 16 phím không trên màn (theo cờ, hoặc bàn phím hệ
   thống mở — G58) thì ✓ ở thanh tiêu đề — trước đó lúc gõ ghi chú **không có nút lưu nào**. Chi tiết mục 6
   `BIEN_DONG_SO_DU_FEATURE.md`; ca test `ban_phim_so_an_test.dart`. Không đổi schema, không đổi payload. `flutter test`
@@ -3095,9 +3105,9 @@ cố định, thẻ form cuộn ở giữa, 16 phím neo đáy, ✓ là nút lư
 "Lưu giao dịch"). Bản Flutter: (1) `body` là `Column` — thanh chọn + số tiền
 **cố định**, `Expanded(SingleChildScrollView(thẻ form))`, bàn phím **neo đáy**
 với `mainAxisExtent: 50` (không `childAspectRatio`: ở khung test 800dp tỉ lệ
-cho phím cao gấp đôi, nuốt hết chỗ thẻ form); (2) phím ✓ gọi `_saveTransaction`
+cho phím cao gấp đôi, nuốt hết chỗ thẻ form); (2) phím ✓ gọi `_saveTransaction` (nay `ThemGiaoDichCubit.chuanBiLuu`)
 — **từng là phím chết**, `themPhimSoTien` trả nguyên chuỗi với `'done'`; nút
-"Lưu giao dịch" bỏ; (3) `_selectedSegment` (0/1) thành **`_huong`**
+"Lưu giao dịch" bỏ; (3) `_selectedSegment` (0/1) thành **`_huong`** (nay `ThemGiaoDichState.huong`)
 `'chi'|'thu'|'transfer'`, key `transaction-type-<huong>`, màu đoạn theo Stitch
 (đỏ/xanh/đen). ⚠️ **Luật 2026-09-05 giữ nguyên**: `type` vẫn suy từ danh mục;
 đoạn Chi/Thu chỉ là **lối vào** — đặt tab bảng danh mục mở, bỏ danh mục đang
@@ -3223,7 +3233,7 @@ B3, sửa ở lượt sau. `_amountString` là chuỗi **thô** đang gõ — ph
 chỉ áp ở `_getFormattedAmount` — nhưng `_saveTransaction` đọc nó bằng
 `double.tryParse(_amountString.replaceAll('.', ''))`, tức **coi dấu chấm là dấu
 ngăn nghìn** theo thói quen Việt Nam. Một chuỗi có dấu thập phân mất dấu chấm
-rồi đọc tiếp: `12.5` lưu xuống thành **125**, không exception, không log.
+rồi đọc tiếp: `12.5` lưu xuống thành **125**, không exception, không log. (Từ 2026-10-11 chuỗi ấy là `chuoiSoTien` của `ThemGiaoDichState`, còn `_saveTransaction` là `ThemGiaoDichCubit.chuanBiLuu`.)
 
 ⚠️ **Lỗi này có HAI cửa, và quyết định "bỏ phím `.`" chỉ đóng một.** Cửa thứ
 hai là **chế độ sửa**: `initState` điền `_amountString` bằng
@@ -3232,7 +3242,7 @@ vào được **dù bàn phím đã hết phím `.`** — và số lẻ có th�
 là `numeric(15,2)` còn `dieu_chinh_so_du_service` sinh khoản bù với ngưỡng nửa
 đồng. Cửa ấy **nặng hơn** vì nó nhân mười một khoản **đã có trong sổ**: người
 dùng mở một giao dịch cũ ra xem rồi bấm lưu là số tiền tự đổi. Nên chốt nằm ở
-**`_saveTransaction`** (`double.tryParse(_amountString)`, thôi strip), còn bỏ
+**`_saveTransaction`** (nay `ThemGiaoDichCubit.chuanBiLuu`; `double.tryParse(_amountString)`, thôi strip), còn bỏ
 phím là lớp thứ hai.
 
 Ba chỗ đổi: (1) `themPhimSoTien` giữ nhánh **vô hiệu** cho `'.'` cùng họ với
@@ -3362,10 +3372,10 @@ chuỗi thì vế trước đã ăn hết suất và vế sau bị chặn sớm 
 (2) **kết quả cũng phải kẹp trần** — hai vế 13 chữ số cộng lại ra **14**, vượt
 `numeric(15,2)`, đúng vòng lặp G31/G14/G46; trần suy thẳng từ
 `kSoChuSoToiDaSoTien` chứ không ghi cứng; (3) **hiệu được phép ÂM**, không kẹp
-về 0 — `_saveTransaction` đã có chốt `amount <= 0` báo ra màn hình, kẹp ở đây
+về 0 — `ThemGiaoDichCubit.chuanBiLuu` đã có chốt `amount <= 0` báo ra màn hình, kẹp ở đây
 thì lời nhắn ấy chẳng ăn nhập với thứ người dùng vừa gõ (phía âm **không** cần
 kẹp: hai vế đều không âm nên hiệu nhỏ nhất đúng bằng âm trần — ghi lại để đừng
-ai thêm phép kẹp thứ hai chẳng chặn được gì); (4) `_saveTransaction` phải **rút
+ai thêm phép kẹp thứ hai chẳng chặn được gì); (4) `ThemGiaoDichCubit.chuanBiLuu` phải **rút
 gọn**, vì `double.tryParse("50000+30000")` trả `null` rồi rơi về 0 và chốt
 `amount <= 0` từ chối một con số vừa gõ đúng; (5) **`coToanTu` và
 `coPhepToanDangCho` không thay nhau được** — với `"50000+"` thì cái đầu đúng,
@@ -4339,7 +4349,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách **của kỳ đang xem** (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu, và **khoảng số tiền** từ 2026-09-21); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. ⚠️ Câu này từng ghi *"danh sách tháng của bloc"* — đúng tới 2026-09-21, khi trang bỏ phép buộc-theo-tháng và nguồn dữ liệu thành `watchKhoang(from, to)` với biên `[from, to)`; xem khối đầu mục 14. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
 - **Ngân sách: nhịp chi, trang chi tiết riêng, lịch sử sáu kỳ** (2026-09-06, `0467ffd`). Thẻ trong danh sách thêm dòng "Nên chi X/ngày · còn N ngày" (`domain/budget_pace.dart`: ngày còn lại làm tròn **lên**, tối thiểu 1 khi còn trong kỳ; nhịp chi so với thời gian đã trôi, biên ±5 điểm phần trăm; mọi mốc lấy từ `currentPeriod` nên tháng ngắn và năm nhuận đúng theo). Trang **`/budget/detail/:id`** thay bottom sheet cũ: nhịp chi, sáu cột lịch sử (`domain/budget_history.dart` — `recentPeriods` đi lại đúng phép cắt của `currentPeriod`, kỳ cuối trùng kỳ hiện tại, các kỳ liền nhau không hở), và các khoản chi của kỳ dùng lại `buildTransactionRowContent` + `TransactionDetailSheet` của sổ (Sửa/Xoá đi qua `TransactionBloc`, **không** có đường xoá thứ hai). Đường dẫn là `/budget/detail/` chứ không phải `/budget/:id` vì `/budget/rules` sẽ bị tham số nuốt; đặt **ngoài** shell như trang cấu hình. Kèm sửa lỗi biên: `getExpenses` cắt `date < to` (biên **mở**) dù DAO lấy `<= to`, vì bộ chọn ngày trả 00:00 và khoản ghi ngày đầu kỳ sau từng bị đếm vào cả kỳ trước — đừng "tối ưu" bằng cách gọi DAO trực tiếp
 - **Thẻ ngân sách trang chủ đọc dữ liệu thật** (2026-09-06, `13bbd9f`) — trước là placeholder cứng "Ăn uống · Chưa thiết lập". Theo Stitch màn Home: **một** ngân sách, đã dùng / hạn mức, phần trăm, thanh bốn màu, dòng nên chi/ngày. `pickHomeBudget` (hàm thuần, test riêng) chọn ngân sách **đang chạy** có **tỉ lệ** đã chi cao nhất — so tỉ lệ chứ không so số tiền, và bỏ qua ngân sách hết hạn. Bấm thẻ `go('/budget')` vì cùng shell. `home_budget_card_test.dart` là test **đầu tiên** của feature `home`, dựng ở 411dp và bắt tràn bằng `takeException`
-- **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `_saveTransaction` của form thêm giao dịch nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
+- **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `chuanBiLuu` của `ThemGiaoDichCubit` (trước 2026-10-11: `_saveTransaction` của form) nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
 - **Gợi ý hạn mức** (2026-09-06, `f746a32`; **đổi cửa sổ 2026-09-21**) — form hiện "Bạn chi trung bình X mỗi tháng" dưới ô hạn mức sau khi chọn danh mục, nút "Dùng số này" điền số thô. `BudgetRepository.suggestAmount`: mức chi trung bình **mỗi tháng** của danh mục, suy từ `cuaSoNhinLai` (cửa sổ **cuộn** ≤ 90 ngày, ngắn lại theo tuổi dữ liệu), làm tròn lên bội 10.000; `null` khi cửa sổ không có khoản chi nào **hoặc** tài khoản trẻ hơn 14 ngày — và `null` thì **không hiện gì** vì "trung bình 0 đ" tệ hơn không gợi ý. 🛑 **Bản đầu cắt ba tháng dương lịch đã đóng, và nó CHƯA TỪNG hiện một con số nào trên dữ liệu thật**: giao dịch sớm nhất trong toàn bộ CSDL là 02/09/2026, nên cửa sổ ấy rỗng trên mọi tài khoản suốt từ 2026-09-06. ⚠️ Nhãn cũng đổi theo — nó từng nói *"3 tháng gần nhất"*, câu ấy **đúng trước** lượt sửa và thành lời nói dối ngay sau, và **không ca test nào canh** (chỉ có một ca canh vắng mặt); máy ảo bắt được trên một tài khoản 20 ngày tuổi. Nay nhãn không nêu cửa sổ cố định nào — và từ Task 6 nó còn **nói ra số ngày thật** khi cửa sổ ngắn hơn 90 ngày (*"…mỗi tháng, suy từ 19 ngày gần nhất"*), vì thẻ "Chưa đặt ngân sách" đã hứa đúng câu ấy; cả hai vế đều có ca canh. Form nhận `suggestFor` là callback (form không đọc cubit), có số thứ tự `_generation` chống hai lần tra chồng nhau; `BudgetCubit.suggestAmount` không đổi state để lỗi nhỏ không thay cả trang bằng `BudgetError`
 - **Hai giới hạn có chủ ý của đợt ngân sách 06/09:** (1) **Lịch sử kỳ dùng hạn mức HIỆN TẠI cho cả kỳ cũ** (`BudgetPeriodSummary.amount`) — không có nơi nào lưu hạn mức cũ, muốn đúng phải có bảng lịch sử hạn mức ở backend; đổi hạn mức là các cột cũ đổi vạch theo. (2) **Stitch chưa có** màn chi tiết ngân sách, và màn Home lẫn màn danh sách cũng chưa vẽ dòng "nên chi/ngày" — người dùng chọn làm theo design system trước, vẽ Stitch sau; không tạo màn Stitch bằng MCP
 - **Hoá đơn: gỡ lời hứa suông, bốn nhãn trạng thái đúng nghĩa, hai tab** (2026-09-06). Form Thêm có công tắc "Tự động tạo giao dịch — Thanh toán khi đến hạn" **bật sẵn** gắn vào một biến không lưu ở đâu: không cột, không bộ chạy nền — đã gỡ hẳn (làm thật là quyết định sản phẩm, không phải việc dọn lỗi). Danh sách sai bốn chỗ cùng lúc: hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" với vạch màu **xanh lá của khoản thu**, hoá đơn thật sự sắp đến hạn không có nhãn nào, thanh tiến độ là hằng số `0.66`, và tổng tiền gộp cả kỳ tháng sau (máy thật hiện 183.000 đ trong khi tháng này chỉ nợ 60.000 đ). Bốn trạng thái suy ở `domain/bill_status.dart`, ngưỡng "sắp đến hạn" **dùng lại `billLeadDays`** của bộ luật thông báo (⚠️ từ 2026-09-12 là **năm** — thêm `skipped`; xem khối "Bỏ qua kỳ hoá đơn" bên dưới). Thêm hai tab (mỗi kỳ là một hàng mới nên lịch sử đã trả trôi lẫn vào giữa hoá đơn đang chờ), dòng "Danh mục • Ví" kèm icon danh mục, và ví của hoá đơn được gợi sẵn khi trả

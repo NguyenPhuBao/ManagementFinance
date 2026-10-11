@@ -50,7 +50,7 @@ void main() {
         selectable: const [],
       );
 
-  /// ⚠️ Phải đi HẾT chuỗi chốt của `_saveTransaction` thì mới chạm được chốt
+  /// ⚠️ Phải đi HẾT chuỗi chốt của `chuanBiLuu` thì mới chạm được chốt
   /// tài khoản — nó đứng cuối. Bản đầu của tệp này bỏ bước chọn danh mục, nên
   /// bài kiểm dừng ở chốt "Vui lòng chọn danh mục" và **xanh vì lý do sai**.
   Future<void> dienDuForm(WidgetTester tester) async {

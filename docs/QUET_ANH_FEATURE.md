@@ -116,12 +116,12 @@ từ ảnh quét loại hoá đơn, không thì nhập số) → khối *TÁCH T
 Chốt:
 1. **Ghi hết hoặc không gì** — `addTransactions` một giao tác Drift; neo số dư đặt một lần TRƯỚC khi ghi sổ.
 2. **Một `actionSuccess`** — `AddTransactionsEvent`; hai lượt là form pop hai lần. Toast *"Đã lưu N giao dịch"*
-   (`_soGiaoDichVuaLuu`), kèm tên ngân sách khi có ngân sách *Cảnh báo* bị vượt.
+   (`_soGiaoDichVuaLuu` của `ThemGiaoDichCubit`), kèm tên ngân sách khi có ngân sách *Cảnh báo* bị vượt.
 3. **Ngân sách từng phần**, ngân sách *Chặn* bị vượt → **một** hộp liệt kê mọi phần, *Huỷ* / *Vẫn ghi* cho cả lô.
 4. Đổi danh mục chính sang danh mục đang tách → phần ấy **gộp**; đổi sang Thu / Chuyển → bỏ hết phần; đường lưu chỉ
    tách khi `type == 'chi'` (lưới thứ hai).
 5. Món một phần (`kiemTach` → `monHaiPhan`); món của phần khác mờ, không tick được.
-6. Phản hồi gợi ý B1 chỉ cho danh mục chính (`_ghiPhanHoiKhiLuu`).
+6. Phản hồi gợi ý B1 chỉ cho danh mục chính (`_ghiPhanHoiKhiLuu` của `ThemGiaoDichCubit`).
 7. Tên danh mục dài **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
 8. Các phần không nối với nhau — không cột, không schema mới; payload đồng bộ không đổi.
 

@@ -141,7 +141,7 @@ void main() {
 
     expect(repo.added.single.transaction.walletTransfer, 'mb');
     expect(store.values[1]!['$kNguonMb|262'], 'mb',
-        reason: 'nhớ `_selectedWallet` (Ví MoMo) cho MB · 262 là mọi tin MB sau đó chọn sẵn sai ví, im lặng');
+        reason: 'nhớ `viNguon` (Ví MoMo) cho MB · 262 là mọi tin MB sau đó chọn sẵn sai ví, im lặng');
   });
 
   testWidgets('tin trần "TRAN QUANG DAT chuyen tien" → không thẻ', (tester) async {

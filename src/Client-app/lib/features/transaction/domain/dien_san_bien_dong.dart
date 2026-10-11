@@ -170,7 +170,7 @@ String? dongPhuBienLai(String? cachDoc) => switch (cachDoc) {
       _ => null,
     };
 
-/// Dựng [KetQuaDocCau] cho đường điền của C2 (`_dienKetQua`). Danh mục đoán trên nội dung tin bằng ĐÚNG luật C2
+/// Dựng [KetQuaDocCau] cho đường điền của C2 (`ThemGiaoDichCubit.dienKetQua`). Danh mục đoán trên nội dung tin bằng ĐÚNG luật C2
 /// ([doanDanhMucTuGhiChu]: tên → B1 → từ khoá, không AI), chỉ trong danh mục hợp chiều ([hopLeTheoChieu]). [walletId]
 /// là ví chọn sẵn theo nguồn + đuôi TK (`ViTheoNguonStore`), `null` = chưa biết.
 KetQuaDocCau ketQuaTuBienDong(

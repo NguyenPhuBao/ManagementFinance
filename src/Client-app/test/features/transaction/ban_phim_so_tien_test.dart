@@ -100,7 +100,7 @@ void main() {
 
     test('⚠️ phím `.` KHÔNG sinh dấu thập phân nữa (A12)', () {
       expect(themPhimSoTien('12', '.'), '12',
-          reason: 'Màn hiện "12.5 đ" nhưng `_saveTransaction` strip dấu chấm '
+          reason: 'Màn hiện "12.5 đ" nhưng `chuanBiLuu` strip dấu chấm '
               'nên lưu thành 125 — sai gấp mười, im lặng. App làm tròn về '
               'đồng chẵn ở mọi chỗ hiển thị, nên phím này bị bỏ khỏi bàn '
               'phím; hàm giữ nhánh vô hiệu để phím có quay lại cũng không '
