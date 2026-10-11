@@ -628,8 +628,11 @@ src/Backend/
   SQL nào**; đo CSDL dev ngay sau `npm run dev` (chạy nền theo lựa chọn người dùng): cột và bảng **có**, 0 hàng. `schema.prisma`
   thêm `actor_role` nhưng `grep` **0** chỗ dùng `prisma.aiops_incident` (AIOps đi qua `pool`) → **không `prisma generate`**
   (người dùng chốt; client Prisma cũ thiếu một cột không ai truy vấn — vô hại).
-- ⚠️ **`.gitignore` gốc của `main` thêm lại `Test/` trần** (dòng 12; ý backend: ẩn `Test/` ở gốc repo — **28** script của
-  NPBao từ `b147feeb`, nhưng chúng **đang được theo dõi** nên ignore không có tác dụng gì với họ). Vì `core.ignorecase=true`,
+- ⚠️ **`.gitignore` gốc của `main` thêm lại `Test/` trần** (dòng 12; ý backend: ẩn `Test/` ở gốc repo — **25** script của
+  NPBao từ `b147feeb`, cộng 3 ở `scratch/` cùng commit; đếm tách bằng `git ls-tree` 2026-10-11 — nhưng chúng **đang được
+  theo dõi** nên ignore không có tác dụng gì với họ). Hai tệp AIOps lớn (`anomaly.detector` +356, `feature.collector` +121)
+  chỉ `grep` dòng chạm client: vector auth nay **loại 401 ở `/auth/refresh`** khỏi phép đếm (đường bình thường của client,
+  từng gây 403 cả bàn thử 2026-10-03); không đọc trọn. Vì `core.ignorecase=true`,
   dòng ấy khớp lại `src/Client-app/test/…` (`git check-ignore --no-index` trả `.gitignore:12:Test/`) — đúng lỗi client đã gỡ
   2026-09-21, tái phát theo đường gộp. Client neo thành **`/Test/`** cùng ngày (người dùng chốt; `scratch/` giữ nguyên) kèm
   chú thích và câu kiểm; quy tắc 6 `CLAUDE.md` cập nhật. ⚠️ Trên NTFS `src/Client-app/Test` và `test` là **một** thư mục —
