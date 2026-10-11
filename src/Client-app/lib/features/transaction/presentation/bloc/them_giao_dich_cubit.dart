@@ -106,6 +106,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final d = _bienDong;
     if (d != null) unawaited(_napAnh(d));
     await Future.wait([_napVi(), _napLichSu().then((_) => _napTatCap())]);
+    // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
     unawaited(_tinhDeXuat());
     // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
     if (d != null) await _dienTuBienDong();
