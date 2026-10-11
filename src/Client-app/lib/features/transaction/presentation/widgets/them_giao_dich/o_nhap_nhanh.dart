@@ -6,14 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
-
-typedef KetQuaDien = ({
-  String tomTat,
-  bool docDuoc,
-  bool quaAi,
-  List<String> canhBao,
-  String? lyDo
-});
+import '../../bloc/them_giao_dich_state.dart' show KetQuaDien;
 
 /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
 /// do khi danh mục đến từ B1.

@@ -88,11 +88,12 @@ void main() {
 
   test('bàn phím tự vẽ của màn giao dịch đi qua hàm thuần có trần', () {
     final man = File(
-      'lib/features/transaction/presentation/pages/add_transaction_page.dart',
+      'lib/features/transaction/presentation/bloc/them_giao_dich_cubit.dart',
     ).readAsStringSync();
 
     expect(man.contains('themPhimSoTien'), isTrue,
-        reason: 'Màn này không dùng TextField nên `inputFormatters` không với '
+        reason: '(phép gõ dời sang Cubit ngày 2026-10-11) '
+            'Màn này không dùng TextField nên `inputFormatters` không với '
             'tới. Phép gõ phải đi qua `ban_phim_so_tien.dart`, nơi trần được '
             'chặn và có test riêng.');
     expect(man.contains("_amountString += key"), isFalse,
