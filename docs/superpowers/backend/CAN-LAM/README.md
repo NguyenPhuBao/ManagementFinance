@@ -42,7 +42,7 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **2** mục — đếm bằng `ls` 2026-10-10)
+## 0. Còn phải làm (Hiện tại: **2** mục — đếm bằng `ls` 2026-10-11, sau gộp `main` @ `79e46225`: backend chưa trả lời mục nào)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|

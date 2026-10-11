@@ -608,7 +608,38 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-10)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-11)
+
+### 🔀 Gộp `main` @ `79e46225` (2026-10-11) — Admin-web v1.0.0 + chuyển ngữ, AIOps `actor_role`, `maintenance_history`; backend chưa trả lời đơn 41, 42
+
+- Commit gộp `a02d8607`, **không xung đột** (`git merge-tree` sạch; không tệp nào cả hai bên cùng đổi), cây `src/Client-app`
+  **không đổi hash** (`17adfa32…` trước và sau) → không chạy lại `flutter test`. Năm commit `main` (PR #128–#130, NPBao):
+  Admin-web **50** tệp (Version 1.0.0, chuyển ngữ EN/VI — `Project.md` §17), Backend **31** tệp, `docs/Admin-web` 6,
+  `docs/Rule_Project/testing-guidelines.md` mới. PR #129 là `origin/TranQuangDat` @ `5e4b6686` gộp vào `main`; **46 commit**
+  sau mốc ấy của nhánh này vẫn chưa push (người dùng dặn).
+- Backend, chỗ chạm client: **AIOps quarantine thôi cô lập loopback ở MỌI môi trường** (`isProtectedIp` — loopback,
+  `ADMIN_TRUSTED_IPS` ở `.env`, IP phiên admin đăng ký lúc đăng nhập; trước chỉ miễn khi `NODE_ENV=development`) → bàn
+  `adb reverse` không còn ăn 403 dù môi trường nào; `/auth/login` và `/auth/me` trả thêm **`currentClientIp`** (client không
+  đọc, bỏ qua); `maintenance.manager` ghi lịch sử bảo trì vào bảng mới và **bảo trì tức thì mặc định là KHẨN CẤP** (phát
+  broadcast tới client); `.env.example` thêm `ADMIN_TRUSTED_IPS` (có mặc định, không bắt buộc). `package.json` **không đổi**
+  → không `npm install`. Phần còn lại là AIOps (`anomaly.detector`, `feature.collector`), admin, test backend.
+- Migration **`database/24`** (`aiops_incident.actor_role`) và **`25`** (bảng `maintenance_history`): **chính backend tự áp
+  qua `initTable()` lúc khởi động** (`ALTER … ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`) — client **không chạy
+  SQL nào**; đo CSDL dev ngay sau `npm run dev` (chạy nền theo lựa chọn người dùng): cột và bảng **có**, 0 hàng. `schema.prisma`
+  thêm `actor_role` nhưng `grep` **0** chỗ dùng `prisma.aiops_incident` (AIOps đi qua `pool`) → **không `prisma generate`**
+  (người dùng chốt; client Prisma cũ thiếu một cột không ai truy vấn — vô hại).
+- ⚠️ **`.gitignore` gốc của `main` thêm lại `Test/` trần** (dòng 12; ý backend: ẩn `Test/` ở gốc repo — **28** script của
+  NPBao từ `b147feeb`, nhưng chúng **đang được theo dõi** nên ignore không có tác dụng gì với họ). Vì `core.ignorecase=true`,
+  dòng ấy khớp lại `src/Client-app/test/…` (`git check-ignore --no-index` trả `.gitignore:12:Test/`) — đúng lỗi client đã gỡ
+  2026-09-21, tái phát theo đường gộp. Client neo thành **`/Test/`** cùng ngày (người dùng chốt; `scratch/` giữ nguyên) kèm
+  chú thích và câu kiểm; quy tắc 6 `CLAUDE.md` cập nhật. ⚠️ Trên NTFS `src/Client-app/Test` và `test` là **một** thư mục —
+  `ls -d src/*/Test` in ra nó không phải thư mục lạ.
+- `Project.md`: §3.3 (dòng 377–389) **nguyên** → đơn 42 chưa trả lời, `Project.md:1961` vẫn `core/constants/app_router.dart`
+  (đã thêm vào phụ lục đơn 42 cùng ngày); §16 mới *Quy chuẩn kiểm thử 2 tầng* (nguồn `docs/Rule_Project/testing-guidelines.md`,
+  tự nhận phạm vi cả `src/Client-app`, ví dụ toàn React) — đọc, **chưa cần đổi gì** phía client; §17 i18n Admin-web. `ls CAN-LAM/`
+  vẫn **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+- Cùng ngày, trước gộp: đơn 42 sửa *28 → 29 test quét* + phụ lục ba chỗ (`3a929cb6`); xoá `src/Client-app/analyze_output.txt`
+  (`bb60b0c0`, người dùng chốt). Nghiệm thu OnePlus (việc 1 của thứ tự 2026-10-11) **chưa làm** — không máy nào cắm lúc đó.
 
 ### 🗂️ Dọn vị trí tệp theo luật mục 8 + test quét 25 (2026-10-10 khuya, 12 task xong, chưa push)
 
