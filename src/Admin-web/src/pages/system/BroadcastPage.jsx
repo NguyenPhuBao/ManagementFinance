@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/admin.api';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
@@ -21,7 +21,7 @@ const BroadcastPage = () => {
   // --- State Quản trị Bảo trì ---
   const [maintenance, setMaintenance] = useState({
     active: false,
-    isEmergency: false,
+    isEmergency: true,
     reason: '',
     activatedBy: null,
     activatedAt: null,
@@ -43,9 +43,8 @@ const BroadcastPage = () => {
     }
   };
 
-  // Form Bật/Tắt tức thì
+  // Form Bật/Tắt tức thì (MẶC ĐỊNH LUÔN LÀ BẢO TRÌ KHẨN CẤP)
   const [instantReason, setInstantReason] = useState('');
-  const [instantEmergency, setInstantEmergency] = useState(false);
 
   const [scheduleDatetime, setScheduleDatetime] = useState('');
   const [scheduleEndDatetime, setScheduleEndDatetime] = useState('');
@@ -53,6 +52,12 @@ const BroadcastPage = () => {
   const [scheduleNotify, setScheduleNotify] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // --- State Lịch Sử Bảo Trì (PostgreSQL Persistence) ---
+  const [historyData, setHistoryData] = useState([]);
+  const [historyPagination, setHistoryPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyFilterType, setHistoryFilterType] = useState('ALL');
+  const [historyFilterStatus, setHistoryFilterStatus] = useState('ALL');
 
   // --- State Phát Thông Báo ---
   const [title, setTitle] = useState('');
@@ -71,7 +76,6 @@ const BroadcastPage = () => {
         setMaintenance(data);
         if (data.reason && data.active) {
           setInstantReason(data.reason);
-          setInstantEmergency(Boolean(data.isEmergency));
         }
       }
     } catch (err) {
@@ -81,9 +85,35 @@ const BroadcastPage = () => {
     }
   };
 
+  // Tải lịch sử bảo trì từ CSDL PostgreSQL
+  const fetchHistory = useCallback(async (page = 1) => {
+    try {
+      setLoadingHistory(true);
+      const res = await adminApi.getMaintenanceHistory({
+        page,
+        limit: 10,
+        type: historyFilterType !== 'ALL' ? historyFilterType : undefined,
+        status: historyFilterStatus !== 'ALL' ? historyFilterStatus : undefined,
+      });
+      const data = res?.data?.data || res?.data || res;
+      if (data?.data && Array.isArray(data.data)) {
+        setHistoryData(data.data);
+        setHistoryPagination(data.pagination || { page, limit: 10, total: data.data.length, totalPages: 1 });
+      } else if (Array.isArray(data)) {
+        setHistoryData(data);
+        setHistoryPagination((prev) => ({ ...prev, page, total: data.length }));
+      }
+    } catch (err) {
+      console.error('[BroadcastPage] Lỗi tải lịch sử bảo trì:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [historyFilterType, historyFilterStatus]);
+
   useEffect(() => {
     fetchMaintenance();
-  }, []);
+    fetchHistory(1);
+  }, [fetchHistory]);
 
   // Lắng nghe sự kiện bảo trì Realtime qua Socket.io
   useEffect(() => {
@@ -95,8 +125,9 @@ const BroadcastPage = () => {
         setMaintenance(mState);
         if (mState.reason && mState.active) {
           setInstantReason(mState.reason);
-          setInstantEmergency(Boolean(mState.isEmergency));
         }
+        // Tự động làm mới danh sách lịch sử khi có biến động
+        fetchHistory(1);
       }
     };
 
@@ -107,17 +138,33 @@ const BroadcastPage = () => {
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
       socket.off('system.maintenance_changed', handleMaintenanceChanged);
     };
-  }, [socket]);
+  }, [socket, fetchHistory]);
 
-  // Xử lý Bật/Tắt bảo trì tức thì
+  // Hàm tính thời lượng bảo trì
+  const formatDuration = (startedAt, endedAt) => {
+    if (!startedAt) return '—';
+    const start = new Date(startedAt).getTime();
+    const end = endedAt ? new Date(endedAt).getTime() : Date.now();
+    const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+    if (!endedAt) return t('broadcast.history.ongoingText', 'Đang diễn ra...');
+    if (diffSec < 60) return `${diffSec}s`;
+    const min = Math.floor(diffSec / 60);
+    const sec = diffSec % 60;
+    if (min < 60) return `${min}m ${sec}s`;
+    const h = Math.floor(min / 60);
+    const remMin = min % 60;
+    return `${h}h ${remMin}m`;
+  };
+
+  // Xử lý Bật/Tắt bảo trì khẩn cấp
   const handleToggleMaintenance = async (nextActive) => {
     setActionLoading(true);
     setMaintenanceFeedback(null);
     try {
       const payload = {
         active: nextActive,
-        reason: instantReason.trim() || (instantEmergency ? t('broadcast.banner.emergencyDesc') : t('broadcast.banner.silentDesc')),
-        isEmergency: Boolean(instantEmergency),
+        reason: instantReason.trim() || t('broadcast.banner.emergencyDesc'),
+        isEmergency: true, // MẶC ĐỊNH 100% LUÔN LÀ BẢO TRÌ KHẨN CẤP
       };
 
       const res = await adminApi.setMaintenanceStatus(payload);
@@ -126,13 +173,13 @@ const BroadcastPage = () => {
       setMaintenanceFeedback({
         ok: true,
         msg: nextActive
-          ? (instantEmergency ? t('broadcast.feedback.emergencyActivated') : t('broadcast.feedback.silentActivated'))
+          ? t('broadcast.feedback.emergencyActivated')
           : t('broadcast.feedback.maintenanceRestored'),
       });
       if (!nextActive) {
         setInstantReason('');
-        setInstantEmergency(false);
       }
+      fetchHistory(1);
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
@@ -431,10 +478,10 @@ const BroadcastPage = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-outline-variant pb-3">
                   <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
-                    <span className="material-symbols-outlined text-primary text-[20px]">flash_on</span>
-                    {t('broadcast.instantCardTitle')}
+                    <span className="material-symbols-outlined text-red-600 text-[20px]">warning</span>
+                    {t('broadcast.instantCardTitle', 'Kích Hoạt Bảo Trì Khẩn Cấp')}
                   </h3>
-                  <span className="text-[11px] text-on-surface-variant font-medium">{t('broadcast.instant.impactTag')}</span>
+                  <span className="text-[11px] text-red-700 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{t('broadcast.instant.impactTag', 'Tác động tức thời')}</span>
                 </div>
 
                 {!maintenance.active ? (
@@ -448,35 +495,21 @@ const BroadcastPage = () => {
                         value={instantReason}
                         onChange={(e) => setInstantReason(e.target.value)}
                         placeholder={t('broadcast.reasonPlaceholder')}
-                        className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                       />
                     </div>
 
-                    {/* Checkbox Bảo trì khẩn cấp */}
-                    <div className="p-3.5 rounded-xl border border-red-200 bg-red-50/50 space-y-2">
-                      <label className="flex items-start gap-2.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={instantEmergency}
-                          onChange={(e) => setInstantEmergency(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
-                        />
-                        <div className="text-xs">
-                          <span className="font-bold text-red-900 block">
-                            {t('broadcast.emergencyCheckbox')}
-                          </span>
-                          <span className="text-red-700/80 text-[11px] block mt-0.5">
-                            {t('broadcast.emergencyHint')}
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-
-                    <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline-variant text-[11px] text-on-surface-variant space-y-1">
-                      <p className="font-semibold text-on-surface">{t('broadcast.instant.hintNormalTitle')}</p>
-                      <p className="pl-2.5">{t('broadcast.instant.hintNormalDesc')}</p>
-                      <p className="font-semibold text-on-surface">{t('broadcast.instant.hintEmergencyTitle')}</p>
-                      <p className="pl-2.5">{t('broadcast.instant.hintEmergencyDesc')}</p>
+                    <div className="bg-red-50/70 p-3 rounded-xl border border-red-200/80 text-[11px] text-red-950 space-y-1">
+                      <p className="font-bold flex items-center gap-1.5 text-red-900">
+                        <span className="material-symbols-outlined text-[14px] text-red-600">emergency</span>
+                        {t('broadcast.instant.hintNormalTitle', '• Nguyên tắc bảo trì khẩn cấp:')}
+                      </p>
+                      <p className="pl-4 text-red-800/90 leading-relaxed">{t('broadcast.instant.hintNormalDesc', 'Cắt tải toàn bộ người dùng (HTTP 503 Service Unavailable) ngay lập tức.')}</p>
+                      <p className="font-bold flex items-center gap-1.5 text-red-900 pt-1.5 border-t border-red-200/60">
+                        <span className="material-symbols-outlined text-[14px] text-red-600">campaign</span>
+                        {t('broadcast.instant.hintEmergencyTitle', '• Tác động thời gian thực (Real-time Broadcast):')}
+                      </p>
+                      <p className="pl-4 text-red-800/90 leading-relaxed">{t('broadcast.instant.hintEmergencyDesc', 'Phát còi báo động đỏ tới Client-app qua Socket.IO và tự động hủy mọi lịch hẹn trước đó để ưu tiên xử lý sự cố.')}</p>
                     </div>
                   </>
                 ) : (
@@ -486,10 +519,8 @@ const BroadcastPage = () => {
                         <span className="material-symbols-outlined text-[20px] text-orange-600 animate-spin">build</span>
                         <span>{t('broadcast.instant.sessionOngoing')}</span>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        maintenance.isEmergency ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'
-                      }`}>
-                        {maintenance.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-200 text-red-800">
+                        {t('broadcast.banner.emergencyBadge', 'Khẩn cấp')}
                       </span>
                     </div>
 
@@ -511,21 +542,13 @@ const BroadcastPage = () => {
                   <button
                     onClick={() => handleToggleMaintenance(true)}
                     disabled={actionLoading}
-                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
-                      instantEmergency
-                        ? 'bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200'
-                        : 'bg-primary hover:bg-primary/90 focus:ring-4 focus:ring-primary/20'
-                    }`}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {instantEmergency ? 'warning' : 'play_arrow'}
-                    </span>
+                    <span className="material-symbols-outlined text-[18px]">warning</span>
                     <span>
                       {actionLoading
                         ? t('common.processing')
-                        : instantEmergency
-                        ? t('broadcast.turnOnEmergencyBtn')
-                        : t('broadcast.turnOnNormalBtn')}
+                        : t('broadcast.turnOnEmergencyBtn', 'Bật Bảo Trì Khẩn Cấp')}
                     </span>
                   </button>
                 ) : (
@@ -535,7 +558,7 @@ const BroadcastPage = () => {
                     className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
-                    <span>{actionLoading ? t('common.processing') : t('broadcast.scheduleEndMaintGuide')}</span>
+                    <span>{actionLoading ? t('common.processing') : t('broadcast.turnOffEmergencyBtn', 'Tắt Bảo Trì Khẩn Cấp')}</span>
                   </button>
                 )}
               </div>
@@ -600,13 +623,13 @@ const BroadcastPage = () => {
                   <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/80 space-y-3">
                     <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
                       <span className="material-symbols-outlined text-[20px] text-amber-600">block</span>
-                      {t('broadcast.scheduleActiveNotice')}
+                      {t('broadcast.scheduleActiveNotice', 'Chế độ bảo trì đang kích hoạt')}
                     </div>
                     <p className="text-xs text-amber-950 leading-relaxed">
-                      {t('broadcast.scheduleActiveDesc')}
+                      {t('broadcast.scheduleActiveDesc', 'Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian')}
                     </p>
                     <p className="text-[11px] text-amber-800 italic pt-1 border-t border-amber-200">
-                      👉 Vui lòng nhấn nút <b>"{t('broadcast.scheduleEndMaintBtnName')}"</b> ở cột bên trái trước khi cài đặt lịch trình bảo trì mới.
+                      👉 Vui lòng nhấn nút <b>"{t('broadcast.turnOffEmergencyBtn', 'Tắt Bảo Trì Khẩn Cấp')}"</b> ở cột bên trái trước khi cài đặt lịch trình bảo trì mới.
                     </p>
                   </div>
                 ) : (
@@ -710,6 +733,194 @@ const BroadcastPage = () => {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* 1.3 BẢNG LỊCH SỬ BẢO TRÌ HỆ THỐNG (POSTGRESQL PERSISTENCE) */}
+          <div className="bg-white rounded-2xl border border-outline-variant shadow-sm p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
+                  <span className="material-symbols-outlined text-primary text-[20px]">history</span>
+                  {t('broadcast.history.title', 'Lịch Sử Các Phiên Bảo Trì Hệ Thống')}
+                  <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant">
+                    {t('broadcast.history.totalSessions', { total: historyPagination.total || historyData.length }, `Tổng: ${historyPagination.total || historyData.length} phiên`)}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-on-surface-variant mt-0.5 m-0">
+                  {t('broadcast.history.subtitle', 'Nhật ký vĩnh viễn lưu trữ tại CSDL PostgreSQL, theo dõi người kích hoạt, thời lượng và trạng thái')}
+                </p>
+              </div>
+
+              {/* Bộ lọc Type & Status & Nút Làm Mới */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={historyFilterType}
+                  onChange={(e) => setHistoryFilterType(e.target.value)}
+                  className="text-xs border border-outline-variant rounded-lg px-2.5 py-1.5 bg-surface text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="ALL">{t('broadcast.history.filterAllType', 'Tất cả loại')}</option>
+                  <option value="EMERGENCY">{t('broadcast.history.typeEmergency', 'Khẩn cấp')}</option>
+                  <option value="SCHEDULED">{t('broadcast.history.typeScheduled', 'Theo lịch')}</option>
+                </select>
+
+                <select
+                  value={historyFilterStatus}
+                  onChange={(e) => setHistoryFilterStatus(e.target.value)}
+                  className="text-xs border border-outline-variant rounded-lg px-2.5 py-1.5 bg-surface text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="ALL">{t('broadcast.history.filterAllStatus', 'Tất cả trạng thái')}</option>
+                  <option value="ONGOING">{t('broadcast.history.statusOngoing', 'Đang diễn ra')}</option>
+                  <option value="COMPLETED">{t('broadcast.history.statusCompleted', 'Đã hoàn thành')}</option>
+                  <option value="CANCELLED">{t('broadcast.history.statusCancelled', 'Đã hủy')}</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => fetchHistory(historyPagination.page)}
+                  disabled={loadingHistory}
+                  className="p-1.5 hover:bg-surface-container-highest rounded-lg text-on-surface-variant transition-colors cursor-pointer flex items-center justify-center border border-outline-variant"
+                  title={t('broadcast.history.refreshBtn', 'Làm mới')}
+                >
+                  <span className={`material-symbols-outlined text-[18px] ${loadingHistory ? 'animate-spin' : ''}`}>
+                    refresh
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bảng Dữ Liệu */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
+                    <th className="py-2.5 px-3">#</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colType', 'Loại')}</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colUser', 'Người kích hoạt')}</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colReason', 'Lý do / Thông điệp')}</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colStart', 'Bắt đầu')}</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colEnd', 'Kết thúc')}</th>
+                    <th className="py-2.5 px-3">{t('broadcast.history.colDuration', 'Thời lượng')}</th>
+                    <th className="py-2.5 px-3 text-right">{t('broadcast.history.colStatus', 'Trạng thái')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/50">
+                  {loadingHistory && historyData.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                          <span>{t('common.loading', 'Đang tải dữ liệu...')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : historyData.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className="material-symbols-outlined text-[28px] text-gray-400">event_busy</span>
+                          <span className="text-xs">{t('broadcast.history.emptyText', 'Chưa có phiên bảo trì nào được ghi nhận trong CSDL.')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    historyData.map((row, idx) => {
+                      const isEmergency = row.type === 'EMERGENCY';
+                      const isOngoing = row.status === 'ONGOING';
+                      const isCompleted = row.status === 'COMPLETED';
+
+                      return (
+                        <tr key={row.id || idx} className="hover:bg-surface-container-lowest/60 transition-colors">
+                          <td className="py-3 px-3 font-mono text-[11px] text-gray-400">
+                            {row.id || idx + 1}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                              isEmergency
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              <span className="material-symbols-outlined text-[13px]">
+                                {isEmergency ? 'warning' : 'event'}
+                              </span>
+                              <span>{isEmergency ? t('broadcast.history.typeEmergency', 'Khẩn cấp') : t('broadcast.history.typeScheduled', 'Theo lịch')}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-medium text-on-surface whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800">
+                              <span className="material-symbols-outlined text-[15px] text-slate-500">account_circle</span>
+                              {row.activated_by || 'system'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 max-w-[280px] truncate" title={row.reason}>
+                            <span className="text-on-surface">{row.reason}</span>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
+                            {row.started_at ? formatDateTime(row.started_at) : '—'}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
+                            {row.ended_at
+                              ? formatDateTime(row.ended_at)
+                              : row.scheduled_end_at
+                              ? `${formatDateTime(row.scheduled_end_at)} (Dự kiến)`
+                              : '—'}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap text-on-surface font-mono text-[11px]">
+                            {formatDuration(row.started_at, row.ended_at)}
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                              isOngoing
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
+                                : isCompleted
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-gray-100 text-gray-700 border-gray-300'
+                            }`}>
+                              <span className="material-symbols-outlined text-[13px]">
+                                {isOngoing ? 'sync' : isCompleted ? 'check_circle' : 'cancel'}
+                              </span>
+                              <span>
+                                {isOngoing
+                                  ? t('broadcast.history.statusOngoing', 'Đang diễn ra')
+                                  : isCompleted
+                                  ? t('broadcast.history.statusCompleted', 'Đã hoàn thành')
+                                  : t('broadcast.history.statusCancelled', 'Đã hủy')}
+                              </span>
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phân trang */}
+            {historyPagination.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-3 border-t border-outline-variant text-xs text-on-surface-variant">
+                <span>
+                  Trang {historyPagination.page} / {historyPagination.totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => fetchHistory(historyPagination.page - 1)}
+                    disabled={historyPagination.page <= 1}
+                    className="px-2.5 py-1 border border-outline-variant rounded-lg hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Trước
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fetchHistory(historyPagination.page + 1)}
+                    disabled={historyPagination.page >= historyPagination.totalPages}
+                    className="px-2.5 py-1 border border-outline-variant rounded-lg hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

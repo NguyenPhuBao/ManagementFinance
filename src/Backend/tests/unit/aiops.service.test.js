@@ -97,6 +97,25 @@ test('AIOps Service Suite', async (t) => {
     assert.strictEqual(detector.getBaselineMetric('requestsPerMin'), 200);
   });
 
+  await t.test('4b. calibrate() calculates real server hardware baselines and capacity assessment for N users', () => {
+    const collector = new FeatureCollector();
+    const detector = new AnomalyDetector({ targetConcurrency: 500 });
+    const service = new AIOpsService({ collector, detector });
+
+    const result = service.calibrate({ targetConcurrency: 2000 });
+    assert.strictEqual(result.success, true);
+    assert.ok(result.data, 'Phải trả về data report');
+    assert.strictEqual(result.data.targetConcurrency, 2000);
+    assert.ok(result.data.serverSpecs.cpuCores >= 1, 'Phải nhận diện số nhân CPU');
+    assert.ok(result.data.serverSpecs.totalRamMb >= 512, 'Phải nhận diện tổng RAM');
+    assert.strictEqual(result.data.calculatedMetrics.baselineRpm, 20000);
+    assert.strictEqual(result.data.calculatedMetrics.safePeakRpm, 60000);
+    assert.ok(result.data.calculatedMetrics.expectedCpuPercent >= 5);
+    assert.ok(result.data.calculatedMetrics.expectedRamPercent >= 10);
+    assert.ok(result.data.capacityAssessment.status, 'Phải có trạng thái đánh giá năng lực');
+    assert.ok(result.data.capacityAssessment.recommendation, 'Phải có khuyến nghị thực tế');
+  });
+
   await t.test('5. toggleVector() toggles vector in detector, persists to repository and emits admin.vector_config_changed', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();

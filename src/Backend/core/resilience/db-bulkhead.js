@@ -55,6 +55,8 @@ class DbBulkhead {
       adminReserved: this.adminReserved,
       activeClientConnections: this.activeClientConnections,
       activeAdminConnections: this.activeAdminConnections,
+      clientActive: this.activeClientConnections,
+      adminActive: this.activeAdminConnections,
       availableClientSlots: Math.max(0, this.clientLimit - this.activeClientConnections),
       availableAdminSlots: Math.max(0, this.maxConnections - (this.activeClientConnections + this.activeAdminConnections)),
     };

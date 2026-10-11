@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng). Xem chi tiết tại `docs/Admin-web/`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest). Xem chi tiết tại `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -3795,6 +3795,61 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
 - **Bộ Kiểm Thử 2 Tầng (`settings.autolock.security.test.jsx`):**
   - Đạt **9/9 tests PASS 100%** (Tầng 1: UI inputs, toggle, modal; Tầng 2: Token Destruction, F5 Reload Persistence, 60-min Offline Auto-lock, Fresh Token Issuance, Wrong Password Rejection).
   - Toàn bộ test suite Admin-web đạt **17/17 test files PASS (122/122 tests PASS 100%)**.
+
+### 17.8. Đo Lường Chuẩn Xác Phần Cứng CPU & RAM Thực Tế Của Máy Chủ (Host Machine), Triệt Tiêu Gán Cứng Giá Trị & Khắc Phục Tụt RAM Stream (2026-10-11)
+- **Vấn đề cốt lõi & Nguyên nhân gốc rễ:**
+  1. *CPU đo sai hoặc đứng yên*: Trước đây code sử dụng `os.cpus()` với công thức `(total - idle) / total`. Trong Node.js, `cpu.times` là tổng tick cộng dồn kể từ khi máy tính khởi động (boot), nên giá trị này chỉ là trung bình nhiều ngày/tuần, không phản ánh mức tải tức thời của server đang chạy.
+  2. *RAM trên Dashboard bị tụt về `0/100 MB`*: API `getSystemHealth` ban đầu có trả về `ram.usedMb` và `ram.totalMb`. Tuy nhiên sau đó 3 giây, luồng socket `admin.metrics_stream` chỉ gửi `ramPercent` và `ramRssMb`. Hàm `handleMetricsStream` trong `ServerHealthPanel.jsx` ghi đè `ram: { percent, rssMb }` làm mất `usedMb` và `totalMb`, khiến thanh Gauge `value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100}` lập tức hiển thị `0/100 MB`.
+- **Giải pháp triển khai đồng bộ (Backend & Frontend):**
+  1. `SystemHardwareMonitor` (`src/Backend/core/resilience/system-hardware-monitor.js`):
+     - Đo CPU thời gian thực chuẩn xác bằng kỹ thuật **Delta Ticks** giữa các lần lấy mẫu (1,000ms sliding interval):
+       $$\% \text{CPU} = \text{round}\left(100 \times \frac{\Delta \text{total} - \Delta \text{idle}}{\Delta \text{total}}\right)$$
+     - Đo RAM hệ thống thật từ `os.totalmem()` và `os.freemem()` của máy tính đang chạy: `totalMb`, `usedMb`, `freeMb`, `percent`, `rssMb`.
+  2. `admin.service.js` & `index.js`:
+     - Tích hợp `defaultSystemHardwareMonitor.getMetrics()`.
+     - API `getSystemHealth` và Socket stream nhịp tim 3s `admin.metrics_stream` gửi đầy đủ: `cpuPercent`, `cpuCores`, `ramPercent`, `ramUsedMb`, `ramTotalMb`, `ramFreeMb`, `ramRssMb`.
+  3. `feature.collector.js` & `aiops.service.js`:
+     - Tích hợp `_getHardwareMetrics()` vào `FeatureCollector.getSample()`.
+     - `getStatus()` fallback an toàn nạp `sample` ngay từ đầu, đảm bảo AIOps hiển thị thông số CPU/RAM máy thật ngay khi tải trang mà không cần đợi socket.
+  4. `ServerHealthPanel.jsx`:
+     - Bảo toàn `ramUsedMb`, `ramTotalMb`, `cpuCores` trong `handleMetricsStream`.
+     - Nâng cấp `Gauge` hiển thị `(16 cores)` và dung lượng `(7.7 GB)` trực quan.
+  5. `AIOpsPage.jsx`:
+     - Signal Cards và Vector 4 hiển thị trực quan thông số CPU cores và RAM `used / total MB`.
+- **Bộ Kiểm Thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 2 (Backend Real Host System Impact):** `tests/unit/system.hardware.monitor.test.js` (3/3 tests PASS 100%): kiểm tra cores match `os.cpus().length`, dung lượng RAM thực tế > 512MB, bảo toàn tính nhất quán toán học `totalMb ≈ usedMb + freeMb`, và tính delta ticks CPU.
+  - **Tầng 1 (Admin-web UI & Realtime Socket Stream):** `src/tests/server.health.realtime.test.jsx` (3/3 tests PASS 100%): kiểm tra UI render đúng 16 CPU cores, 7,860 MB RAM, không bao giờ bị tụt về `0/100 MB` khi nhận socket stream.
+  - Toàn bộ test suite Backend (281/281 tests PASS 100%) và Admin-web (18/18 test files PASS 100%).
+
+### 17.9. Nâng Cấp Hệ Thống Bảo Trì 2 Loại Rõ Ràng & Bảng Lịch Sử Bảo Trì Lưu Trữ PostgreSQL Vĩnh Viễn (2026-10-11)
+- **Bối cảnh & Yêu cầu của người dùng:**
+  1. *Phân chia 2 loại bảo trì rõ ràng:*
+     - **Bảo trì khẩn cấp (Emergency Maintenance):** Nút luôn màu ĐỎ (`bg-red-600`) ghi rõ "Bật Bảo Trì Khẩn Cấp" (khi tắt) và "Tắt Bảo Trì Khẩn Cấp" (khi bật). Luôn luôn cắt tải mọi người dùng di động (HTTP 503) và phát thông báo real-time qua Socket.IO tới Client-app. **Loại bỏ checkbox "Bảo trì khẩn cấp" vì bị thừa** (bảo trì tức thì luôn được hiểu là bảo trì khẩn cấp).
+     - **Bảo trì theo lịch (Scheduled Maintenance):** Cho phép lên lịch hẹn thời điểm bắt đầu và thời điểm kết thúc dự kiến kèm phát thông báo tự động.
+  2. *Bảng xem danh sách lịch sử bảo trì:* Lưu trữ trực tiếp và vĩnh viễn tại CSDL PostgreSQL (`maintenance_history`), ngoài các thông tin phiên bảo trì (loại, lý do, thời điểm bắt đầu/kết thúc, thời lượng, trạng thái), **bắt buộc phải có cột Người kích hoạt bảo trì (`activated_by`)**.
+- **Giải pháp triển khai kỹ thuật toàn diện:**
+  1. **Cơ sở dữ liệu PostgreSQL Supabase (Tuân thủ Rule 10 DB Guard):**
+     - Tạo file DDL `src/Backend/database/25_create_maintenance_history_table.sql`:
+       + Bảng `maintenance_history`: `id` (SERIAL PRIMARY KEY), `type` (EMERGENCY / SCHEDULED), `reason` (TEXT), `activated_by` (VARCHAR(100) NOT NULL), `started_at` (TIMESTAMPTZ), `ended_at` (TIMESTAMPTZ), `status` (ONGOING / COMPLETED / CANCELLED), `created_at` (TIMESTAMPTZ).
+       + 3 Index tối ưu hóa truy vấn: `idx_maintenance_history_started_at`, `idx_maintenance_history_type`, `idx_maintenance_history_status`.
+     - Thực thi an toàn qua `sync_to_supabase.js` mà không chạy `prisma migrate dev` làm hỏng Partial Indexes.
+  2. **Backend Repository & Engine (`maintenance.repository.js` & `maintenance.manager.js`):**
+     - `MaintenanceRepository`: Quản lý truy vấn đọc/ghi CSDL PostgreSQL, hỗ trợ in-memory fallback thông minh nếu xảy ra gián đoạn mạng CSDL.
+     - `MaintenanceManager`:
+       + `setMaintenance(active, reason, isEmergency, activatedBy)`: Mặc định `isEmergency = true`. Khi active: ghi nhận phiên mới vào CSDL với trạng thái `ONGOING`, tự động hủy mọi lịch hẹn trước đó. Khi deactivate: tự động cập nhật `ended_at = NOW()` và `status = 'COMPLETED'`.
+       + `scheduleMaintenance(...)`: Lưu lịch hẹn; khi timer đếm ngược tới giờ hẹn, tự động kích hoạt phiên loại `SCHEDULED`.
+       + `cancelScheduledMaintenance(...)`: Khi hủy lịch hẹn, cập nhật bản ghi thành `CANCELLED`.
+     - API Endpoint: `GET /api/admin/system/maintenance/history` hỗ trợ phân trang (`page`, `limit`) và bộ lọc (`type`, `status`).
+  3. **Admin-web UI (`BroadcastPage.jsx` & i18n):**
+     - Đã loại bỏ hoàn toàn checkbox thừa `instantEmergency`.
+     - Nút kích hoạt luôn có màu đỏ rực rỡ (`bg-red-600 hover:bg-red-700`) "Bật Bảo Trì Khẩn Cấp".
+     - Bổ sung **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống** ở cuối Tab 1 với đầy đủ các cột: Mã (#), Loại bảo trì (Badge Khẩn cấp / Theo lịch), Người kích hoạt (`activated_by`), Lý do / Thông điệp, Bắt đầu, Kết thúc, Thời lượng (tính toán động: "X phút", "Y giờ Z phút"), và Trạng thái.
+     - Hỗ trợ bộ lọc Loại (Tất cả / Khẩn cấp / Theo lịch), bộ lọc Trạng thái (Tất cả / Đang diễn ra / Đã hoàn thành / Đã hủy), và nút Làm mới dữ liệu.
+     - Đồng bộ đa ngôn ngữ 100% trong `src/Admin-web/src/locales/vi.js` và `en.js`.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Interaction & Rendering):** `src/tests/broadcast.maintenance.history.test.jsx` (3/3 tests PASS 100%) và `src/tests/broadcast.page.test.jsx` (10/10 tests PASS 100%): Kiểm tra không còn checkbox thừa, nút bấm luôn đỏ, render đúng các cột và dữ liệu từ API CSDL PostgreSQL.
+  - **Tầng 2 (System Impact & Behavioral Verification):** `src/Backend/tests/unit/admin.maintenance.history.test.js` (3/3 tests PASS 100%): Kiểm tra `setMaintenance(true)` ghi nhận vào CSDL với `isEmergency = true` và `activated_by`, `setMaintenance(false)` tự động tính toán thời gian kết thúc, phân trang và bộ lọc hoạt động chính xác.
+
 
 
 

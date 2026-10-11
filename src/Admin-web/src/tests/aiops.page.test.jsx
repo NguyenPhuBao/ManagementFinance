@@ -747,5 +747,140 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     expect(screen.getByText(/Ngưỡng Cảnh báo/i)).toBeInTheDocument();
     expect(screen.getByText(/Trần Max/i)).toBeInTheDocument();
   });
+
+  it('9. [2-Tier Test] Bảng RCA hiển thị chính xác Actor Role, bảo vệ Localhost và không có nút Phong Tỏa IP với đối tượng nội bộ', async () => {
+    aiopsApi.getIncidents.mockResolvedValue({
+      data: {
+        total: 2,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        incidents: [
+          {
+            id: 'inc_mem_1',
+            code: 'MEMORY_EXHAUSTION',
+            vector: 'resource',
+            severity: 'HIGH',
+            message: 'RAM vượt ngưỡng 92%',
+            status: 'ACTIVE',
+            actor: {
+              type: 'SYSTEM_INTERNAL',
+              identity: 'Hạ tầng máy chủ (Node.js & Database)',
+              ipHash: 'system_core',
+              username: 'System Core Engine',
+              role: 'System',
+            },
+            current: 95,
+            baseline: 50,
+            unit: '% RAM',
+          },
+          {
+            id: 'inc_traffic_admin',
+            code: 'TRAFFIC_ANOMALY_FLOOD',
+            vector: 'traffic',
+            severity: 'HIGH',
+            message: 'Lưu lượng cao từ máy local',
+            status: 'ACTIVE',
+            actor: {
+              type: 'AUTHENTICATED_USER',
+              identity: '127.0.0.1',
+              ipHash: 'loopback_hash',
+              userId: 1,
+              username: 'admin_master',
+              role: 'Admin',
+            },
+            current: 414,
+            baseline: 57,
+            unit: 'req/phút',
+          },
+        ],
+      },
+    });
+
+    render(<AIOpsPage />);
+
+    // Tầng 1: UI Rendering — Hiển thị đúng Role, Tên tài khoản, và Huy hiệu bảo vệ
+    await waitFor(() => {
+      // 1. Dòng 1 sự cố RAM: hiển thị "Nội bộ hệ thống", tài khoản "System Core Engine" và badge "Hệ thống"
+      expect(screen.getByText('System Core Engine')).toBeInTheDocument();
+      expect(screen.getByText(/⚙️ Hệ thống/i)).toBeInTheDocument();
+
+      // 2. Dòng 2 sự cố Admin local: hiển thị TK admin_master và badge Quản trị viên
+      expect(screen.getByText('admin_master')).toBeInTheDocument();
+      expect(screen.getByText(/👑 Quản trị viên/i)).toBeInTheDocument();
+
+      // 3. Cả 2 dòng sự cố nội bộ / loopback đều hiển thị nhãn an toàn được bảo vệ
+      const protectedBadges = screen.getAllByText(/An toàn tuyệt đối/i);
+      expect(protectedBadges.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Tầng 2: System Impact & Security Verification
+    // Tuyệt đối KHÔNG xuất hiện nút đỏ "Phong Tỏa IP" đối với 2 sự cố này
+    expect(screen.queryByRole('button', { name: /Phong Tỏa IP/i })).toBeNull();
+  });
+
+  test('10. (2-Tier Test) Dynamic Admin Session IP Protection — Tự nhận diện và bảo vệ IP Admin khi đổi vị trí hoặc mạng', async () => {
+    // Giả lập Admin đăng nhập từ một mạng khác (ví dụ IP công ty hoặc 4G 192.168.1.88)
+    aiopsApi.getStatus.mockResolvedValue({
+      success: true,
+      data: {
+        threatScore: 25,
+        status: 'NORMAL',
+        targetConcurrency: 1000,
+        currentClientIp: '192.168.1.88',
+        isClientProtected: true,
+        vectorScores: { auth: 10, traffic: 15, exploit: 0, resource: 20 },
+      },
+    });
+
+    aiopsApi.getIncidents.mockResolvedValue({
+      success: true,
+      data: {
+        total: 1,
+        page: 1,
+        totalPages: 1,
+        incidents: [
+          {
+            id: 'inc-dynamic-remote-admin',
+            code: 'ANOMALY_TRAFFIC_BURST',
+            vector: 'traffic',
+            severity: 'MEDIUM',
+            message: 'Tải lưu lượng lớn từ máy Admin văn phòng',
+            status: 'ACTIVE',
+            hits: 1,
+            first_detected_at: new Date().toISOString(),
+            actor: {
+              type: 'IP_SOURCE',
+              identity: '192.168.1.88',
+              ipHash: 'hash_dynamic_admin',
+              userId: 1,
+              username: 'office_admin',
+              role: 'Admin',
+            },
+            current: 250,
+            baseline: 100,
+            unit: 'req/phút',
+          },
+        ],
+      },
+    });
+
+    render(<AIOpsPage />);
+
+    // Tầng 1: UI Rendering — Giao diện tự động nhận diện IP máy bạn và hiển thị huy hiệu đặc quyền
+    await waitFor(() => {
+      // Nhận diện tài khoản và role
+      expect(screen.getByText('office_admin')).toBeInTheDocument();
+      expect(screen.getByText(/👑 Quản trị viên/i)).toBeInTheDocument();
+
+      // Cột 2 & Cột 6: Hiển thị IP Máy bạn (Đang đăng nhập) & An toàn tuyệt đối
+      expect(screen.getByText(/IP Máy bạn \(Đang đăng nhập\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/🛡️ An toàn tuyệt đối/i)).toBeInTheDocument();
+    });
+
+    // Tầng 2: System Impact & Security Verification
+    // Nút "Phong Tỏa IP" hoàn toàn bị ẩn để ngăn chặn thảm họa tự khóa IP của chính mình
+    expect(screen.queryByRole('button', { name: /Phong Tỏa IP/i })).toBeNull();
+  });
 });
 

@@ -56,6 +56,9 @@ async function bootstrap() {
     const { defaultEventLoopMonitor } = require('./core/resilience/event-loop-monitor');
     const { defaultDbBulkhead } = require('./core/resilience/db-bulkhead');
     const { defaultMaintenanceManager } = require('./core/resilience/maintenance.manager');
+    const { defaultSystemHardwareMonitor } = require('./core/resilience/system-hardware-monitor');
+    const { defaultMaintenanceRepository } = require('./modules/admin/maintenance.repository');
+    defaultMaintenanceRepository.initTable().catch(() => {});
     const os = require('os');
 
     const metricsInterval = setInterval(() => {
@@ -64,17 +67,24 @@ async function bootstrap() {
         const lastSample = aiopsStatus.sample || {};
         const uptimeSec = Math.floor(process.uptime());
 
-        const memRssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
-        const totalMemMb = Math.round(os.totalmem() / 1024 / 1024);
-        const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
-        const usedMemPct = Math.round(((totalMemMb - freeMemMb) / totalMemMb) * 100);
+        const hwMetrics = defaultSystemHardwareMonitor.getMetrics();
+        const memRssMb = hwMetrics.ram.rssMb;
+        const totalMemMb = hwMetrics.ram.totalMb;
+        const usedMemMb = hwMetrics.ram.usedMb;
+        const freeMemMb = hwMetrics.ram.freeMb;
+        const usedMemPct = hwMetrics.ram.percent;
+        const cpuPct = hwMetrics.cpu.percent;
 
         const payload = {
           uptimeSeconds: uptimeSec,
           uptimeFormatted: `${Math.floor(uptimeSec / 86400)}d ${Math.floor((uptimeSec % 86400) / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m ${uptimeSec % 60}s`,
           eventLoopLagMs: defaultEventLoopMonitor.getLag(),
-          cpuPercent: lastSample.cpuPercent || 0,
+          cpuPercent: cpuPct,
+          cpuCores: hwMetrics.cpu.cores,
           ramPercent: usedMemPct,
+          ramUsedMb: usedMemMb,
+          ramTotalMb: totalMemMb,
+          ramFreeMb: freeMemMb,
           ramRssMb: memRssMb,
           requestsPerMin: lastSample.requestsPerMin || 0,
           threatScore: aiopsStatus.threatScore ?? 5,

@@ -1,5 +1,10 @@
 const os = require('os');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+let config;
+try {
+  config = require('../../config');
+} catch (_) {}
 
 /**
  * AIOps Feature Collector
@@ -20,6 +25,28 @@ class FeatureCollector {
     this._salt = crypto.randomBytes(8).toString('hex');
     this.targetConcurrency = options.targetConcurrency || 1000;
     this._startupTime = Date.now();
+  }
+
+  /**
+   * Giải mã sớm Bearer token để bóc tách thông tin danh tính (Actor) và phân quyền (Role)
+   */
+  _extractTokenPayload(authHeader) {
+    if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+    const token = authHeader.split(' ')[1];
+    if (!token) return null;
+    const secret = (config && config.jwt && config.jwt.accessSecret) || process.env.JWT_ACCESS_SECRET;
+    try {
+      if (secret) {
+        return jwt.verify(token, secret);
+      }
+    } catch (_) {}
+    try {
+      return jwt.decode(token);
+    } catch (_) {
+      return null;
+    }
   }
 
   setTargetConcurrency(n) {
@@ -76,6 +103,17 @@ class FeatureCollector {
     return (req, res, next) => {
       this._requests += 1;
 
+      // Giải mã sớm Bearer token từ header để bắt danh tính người dùng và phân quyền (Early Token Decoder)
+      const authHeader = req.headers && (req.headers.authorization || req.headers['authorization']);
+      const tokenPayload = this._extractTokenPayload(authHeader);
+      const earlyUserId = tokenPayload?.idaccount || tokenPayload?.id || req.user?.idaccount || null;
+      const earlyUsername = tokenPayload?.username || req.user?.username || null;
+      let earlyRole = tokenPayload?.rolename || tokenPayload?.role || null;
+      if (!earlyRole && tokenPayload?.idrole === 1) earlyRole = 'Admin';
+      if (!earlyRole && tokenPayload?.idrole === 2) earlyRole = 'User';
+      if (!earlyRole && earlyUserId) earlyRole = 'User';
+      if (!earlyRole && !earlyUserId) earlyRole = 'Guest';
+
       // Thu thập IP an toàn qua req.ip (tuân thủ app.set('trust proxy', 1))
       const clientIp = req.ip || req.socket?.remoteAddress;
       if (clientIp) {
@@ -91,15 +129,28 @@ class FeatureCollector {
             tokenReuse: 0,
             userAgent: req.headers['user-agent'] || 'Unknown Client',
             targetEndpoint: req.originalUrl || req.url || '/',
-            userId: req.user?.idaccount || null,
-            username: req.user?.username || null,
+            userId: earlyUserId,
+            username: earlyUsername,
+            role: earlyRole,
           };
           this._ipStats.set(clientIp, ipStat);
         }
         ipStat.count += 1;
+        if (earlyUserId) {
+          ipStat.userId = earlyUserId;
+        }
+        if (earlyUsername) {
+          ipStat.username = earlyUsername;
+        }
+        if (earlyRole && earlyRole !== 'Guest') {
+          ipStat.role = earlyRole;
+        }
         if (req.user?.idaccount) {
           ipStat.userId = req.user.idaccount;
           ipStat.username = req.user.username;
+          if (req.user.rolename || req.user.role) {
+            ipStat.role = req.user.rolename || req.user.role;
+          }
         }
         if (req.headers['user-agent']) {
           ipStat.userAgent = req.headers['user-agent'];
@@ -108,7 +159,7 @@ class FeatureCollector {
 
         // Heuristic 1: Phát hiện DoS Request Burst từ 1 nguồn đơn lẻ theo ngưỡng quy mô
         const burstThreshold = this._getBurstThreshold();
-        if (ipStat.count > burstThreshold && !req.isAdmin) {
+        if (ipStat.count > burstThreshold && !req.isAdmin && ipStat.role !== 'Admin') {
           defaultAIOpsQuarantine.quarantine(
             clientIp,
             `Tấn công DoS Request Burst dồn dập (${ipStat.count} req/10s, ngưỡng: ${burstThreshold})`,
@@ -145,8 +196,13 @@ class FeatureCollector {
         const status = res.statusCode || 200;
         if (status >= 400 && status < 500) {
           this._errors4xx += 1;
-          const path = (req.path || '').toLowerCase();
-          if (status === 401 && path.includes('/login')) {
+          const path = (req.path || req.originalUrl || req.url || '').toLowerCase();
+          if (status === 400 && clientIp) {
+            const ipStat = this._ipStats.get(clientIp);
+            if (ipStat && (this._malformedRequests > 0 || ipStat.malformed > 0)) {
+              ipStat.malformed = Math.max(ipStat.malformed, 1);
+            }
+          } else if (status === 401 && (path.includes('/login') || (path.includes('/auth') && !path.includes('/refresh')))) {
             this.recordFailedLogin();
             if (clientIp) {
               const ipStat = this._ipStats.get(clientIp);
@@ -218,6 +274,12 @@ class FeatureCollector {
    */
   _getCpuPercent() {
     try {
+      const { defaultSystemHardwareMonitor } = require('../../core/resilience/system-hardware-monitor');
+      if (defaultSystemHardwareMonitor && typeof defaultSystemHardwareMonitor.getCpuPercent === 'function') {
+        return defaultSystemHardwareMonitor.getCpuPercent();
+      }
+    } catch (_) {}
+    try {
       const cpus = os.cpus();
       if (!cpus || cpus.length === 0) return 0;
       const totalPercent = cpus.reduce((acc, cpu) => {
@@ -236,6 +298,12 @@ class FeatureCollector {
    */
   _getRamPercent() {
     try {
+      const { defaultSystemHardwareMonitor } = require('../../core/resilience/system-hardware-monitor');
+      if (defaultSystemHardwareMonitor && typeof defaultSystemHardwareMonitor.getRamPercent === 'function') {
+        return defaultSystemHardwareMonitor.getRamPercent();
+      }
+    } catch (_) {}
+    try {
       const total = os.totalmem();
       const free = os.freemem();
       if (total <= 0) return 0;
@@ -243,6 +311,32 @@ class FeatureCollector {
     } catch (_) {
       return 0;
     }
+  }
+
+  /**
+   * Đọc chi tiết phần cứng thật từ SystemHardwareMonitor
+   */
+  _getHardwareMetrics() {
+    try {
+      const { defaultSystemHardwareMonitor } = require('../../core/resilience/system-hardware-monitor');
+      if (defaultSystemHardwareMonitor && typeof defaultSystemHardwareMonitor.getMetrics === 'function') {
+        return defaultSystemHardwareMonitor.getMetrics();
+      }
+    } catch (_) {}
+    const total = os.totalmem();
+    const free = os.freemem();
+    const used = total - free;
+    const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+    return {
+      cpu: { cores: os.cpus()?.length || 1, percent: this._getCpuPercent() },
+      ram: {
+        totalMb: Math.round(total / (1024 * 1024)),
+        freeMb: Math.round(free / (1024 * 1024)),
+        usedMb: Math.round(used / (1024 * 1024)),
+        percent,
+        rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+      },
+    };
   }
 
   /**
@@ -291,13 +385,17 @@ class FeatureCollector {
         ipStat.tokenReuse > 0 ||
         ipStat.count > burstThreshold
       ) {
+        const role = ipStat.role || (ipStat.userId ? 'User' : 'Guest');
+        const username = ipStat.username || ipStat.targetAccount || (ipStat.userId ? `User #${ipStat.userId}` : 'Khách vãng lai / Ẩn danh');
         suspectActors.push({
           type: ipStat.userId ? 'AUTHENTICATED_USER' : 'IP_SOURCE',
           identity: this._maskIp(ip),
           maskedIp: this._maskIp(ip),
+          rawIp: ip,
           ipHash: this._hashIp(ip),
           userId: ipStat.userId || null,
-          username: ipStat.username || ipStat.targetAccount || (ipStat.userId ? `User #${ipStat.userId}` : 'Chưa đăng nhập / Guest'),
+          username,
+          role,
           targetAccount: ipStat.targetAccount || null,
           userAgent: ipStat.userAgent || 'Unknown Client',
           targetEndpoint: ipStat.targetEndpoint || '/',
@@ -309,6 +407,8 @@ class FeatureCollector {
       }
     }
 
+    const hwMetrics = this._getHardwareMetrics();
+
     const sample = {
       timestamp: new Date().toISOString(),
       requestsPerMin,
@@ -318,8 +418,13 @@ class FeatureCollector {
       tokenReuseAttacks: this._tokenReuseAttacks,
       malformedRequests: this._malformedRequests,
       eventLoopLagMs: this._getEventLoopLag(),
-      cpuPercent: this._getCpuPercent(),
-      ramPercent: this._getRamPercent(),
+      cpuPercent: hwMetrics.cpu.percent,
+      cpuCores: hwMetrics.cpu.cores,
+      ramPercent: hwMetrics.ram.percent,
+      ramUsedMb: hwMetrics.ram.usedMb,
+      ramTotalMb: hwMetrics.ram.totalMb,
+      ramFreeMb: hwMetrics.ram.freeMb,
+      ramRssMb: hwMetrics.ram.rssMb,
       dbPoolActive: this._getDbPoolActive(),
       loadSheddingCount: this._getLoadSheddingCount(),
       distinctIpsCount: this._ipHashes.size,

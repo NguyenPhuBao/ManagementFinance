@@ -29,6 +29,24 @@ function normalizeIp(rawIp) {
   return rawIp.split(',')[0].replace(/^::ffff:/, '').trim();
 }
 
+function getStaticProtectedIps() {
+  const defaults = ['127.0.0.1', '::1', 'localhost', '0.0.0.0'];
+  const envIps = (process.env.ADMIN_TRUSTED_IPS || '')
+    .split(',')
+    .map((ip) => normalizeIp(ip.trim()))
+    .filter(Boolean);
+  return new Set([...defaults, ...envIps]);
+}
+
+const PROTECTED_ACTOR_HASHES = new Set([
+  hashIp('127.0.0.1'),
+  hashIp('::1'),
+  hashIp('localhost'),
+  hashIp('0.0.0.0'),
+  'system_core',
+  'system_host',
+]);
+
 /**
  * AIOps Quarantine & Active Auto-Blocking Shield
  * Quản lý danh sách IP bị cô lập trong bộ nhớ In-Memory, tự động ngắt kết nối HTTP 403
@@ -40,6 +58,99 @@ class AIOpsQuarantine {
     this.io = options.io || null;
     this._map = new Map(); // key: normalizedIp -> record
     this._byHash = new Map(); // key: hash -> record (cho phép phong tỏa theo SHA-256 Actor Hash từ RCA)
+    this._activeAdminSessions = new Map(); // key: normalizedIp -> { userId, username, expiresAt, registeredAt }
+  }
+
+  /**
+   * Đăng ký bảo vệ động cho địa chỉ IP của Quản trị viên khi đăng nhập
+   * (Dynamic Admin Session Protection)
+   */
+  registerAdminSession(rawIp, { userId = null, username = null, ttlMs = 24 * 60 * 60 * 1000 } = {}) {
+    const ip = normalizeIp(rawIp);
+    if (!ip) return false;
+
+    const expiresAt = Date.now() + (ttlMs || 24 * 60 * 60 * 1000);
+    this._activeAdminSessions.set(ip, {
+      userId,
+      username,
+      expiresAt,
+      registeredAt: Date.now(),
+    });
+
+    // Nếu IP này từng bị phong tỏa trước đó, tự động gỡ phong tỏa ngay
+    this.unquarantine(ip);
+
+    logger.info(`[AIOps Quarantine] Đăng ký bảo vệ IP Admin động cho [${username || 'Admin'}] tại IP ${maskIp(ip)} (hết hạn sau ${Math.round((ttlMs || 86400000) / 60000)}p)`);
+    return true;
+  }
+
+  /**
+   * Hủy đăng ký bảo vệ động khi Quản trị viên đăng xuất (Logout)
+   */
+  unregisterAdminSession(rawIp) {
+    const ip = normalizeIp(rawIp);
+    if (!ip) return false;
+    const deleted = this._activeAdminSessions.delete(ip);
+    if (deleted) {
+      logger.info(`[AIOps Quarantine] Đã giải phóng bảo vệ IP Admin động tại IP ${maskIp(ip)}`);
+    }
+    return deleted;
+  }
+
+  /**
+   * Lấy danh sách toàn bộ các IP Admin đang hoạt động còn hiệu lực
+   */
+  getActiveAdminIps() {
+    const now = Date.now();
+    const active = [];
+    for (const [ip, session] of this._activeAdminSessions.entries()) {
+      if (session && session.expiresAt > now) {
+        active.push({ ip, ...session });
+      } else {
+        this._activeAdminSessions.delete(ip);
+      }
+    }
+    return active;
+  }
+
+  /**
+   * Kiểm tra xem địa chỉ IP hoặc Actor Hash có thuộc vùng an toàn bất khả xâm phạm
+   * (Cấu hình .env, Phiên Admin động, Loopback, hoặc Hạ tầng Máy chủ Nội bộ) hay không.
+   */
+  isProtectedIp(rawIpOrHash) {
+    if (!rawIpOrHash) return false;
+    const str = String(rawIpOrHash).trim();
+    const clean = normalizeIp(str);
+
+    // 1. Kiểm tra IP tĩnh từ cấu hình .env (kèm fallback loopback)
+    const staticIps = getStaticProtectedIps();
+    if (staticIps.has(clean) || staticIps.has(str)) return true;
+    if (str.includes('127.0.0.1') || str.includes('::1') || str.includes('localhost') || str.includes('Internal')) return true;
+
+    // 2. Kiểm tra Actor Hash tĩnh của các IP tĩnh & hệ thống
+    for (const sip of staticIps) {
+      if (str === hashIp(sip) || clean === hashIp(sip)) return true;
+    }
+    if (PROTECTED_ACTOR_HASHES.has(str) || PROTECTED_ACTOR_HASHES.has(clean)) return true;
+
+    // 3. Kiểm tra IP động theo phiên hoạt động của Admin
+    if (clean && this._activeAdminSessions.has(clean)) {
+      const session = this._activeAdminSessions.get(clean);
+      if (session && session.expiresAt > Date.now()) {
+        return true;
+      }
+      this._activeAdminSessions.delete(clean);
+    }
+
+    // 4. Kiểm tra Actor Hash của các IP Admin động
+    for (const [adminIp, session] of this._activeAdminSessions.entries()) {
+      if (session && session.expiresAt > Date.now()) {
+        const h = hashIp(adminIp);
+        if (str === h || clean === h) return true;
+      }
+    }
+
+    return false;
   }
 
   getIO() {
@@ -60,9 +171,10 @@ class AIOpsQuarantine {
     const ip = normalizeIp(rawIp);
     if (!ip) return null;
 
-    // Trong môi trường development, không cô lập IP loopback để bảo vệ dàn máy test adb reverse
-    if (process.env.NODE_ENV === 'development' && (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost')) {
-      logger.info(`[AIOps Quarantine] Bỏ qua cô lập IP loopback ${ip} trong môi trường development`);
+    // Khóa Chống Tự Phong Tỏa (Localhost & Loopback Shield Protection):
+    // Tuyệt đối không bao giờ cô lập IP loopback/máy chủ trong mọi môi trường (kể cả dev lẫn prod)
+    if (this.isProtectedIp(ip)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập IP nội bộ/được bảo vệ: ${ip} (Lá chắn Localhost Shield)`);
       return null;
     }
 
@@ -122,12 +234,25 @@ class AIOpsQuarantine {
    * Hỗ trợ phong tỏa qua rawIp, hoặc qua ipHash + maskedIp tuân thủ Data_Security.md
    */
   quarantineActor({ rawIp = null, ipHash = null, maskedIp = null, reason = 'Admin chủ động phong tỏa từ nhật ký RCA', durationMs = null } = {}) {
+    if (rawIp && this.isProtectedIp(rawIp)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập rawIp nội bộ/được bảo vệ: ${rawIp} (Localhost Shield)`);
+      return null;
+    }
+    if (ipHash && this.isProtectedIp(ipHash)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập ipHash nội bộ/được bảo vệ: ${ipHash} (Localhost Shield)`);
+      return null;
+    }
+    if (maskedIp && this.isProtectedIp(maskedIp)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập maskedIp nội bộ/được bảo vệ: ${maskedIp} (Localhost Shield)`);
+      return null;
+    }
+
     if (rawIp && !rawIp.includes('xx')) {
       return this.quarantine(rawIp, reason, durationMs);
     }
 
     const hash = ipHash || (rawIp ? hashIp(rawIp) : null);
-    if (!hash) return null;
+    if (!hash || this.isProtectedIp(hash)) return null;
 
     const duration = durationMs !== null ? durationMs : this.defaultDurationMs;
     const now = Date.now();

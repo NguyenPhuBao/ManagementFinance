@@ -5,7 +5,7 @@ import { useLanguageSafe } from '../../store/language.context';
 
 const REFRESH_MS = 60_000;
 
-const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
+const Gauge = ({ label, value, max, unit, warnAt, critAt, icon, extra }) => {
   const pct = max > 0 ? Math.round((value / max) * 100) : value;
   const color = pct >= critAt ? 'text-red-500' : pct >= warnAt ? 'text-amber-500' : 'text-emerald-500';
   const bar = pct >= critAt ? 'bg-red-500' : pct >= warnAt ? 'bg-amber-400' : 'bg-emerald-500';
@@ -15,9 +15,10 @@ const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
         <span className="flex items-center gap-1 font-medium text-gray-700">
           <span className="material-symbols-outlined text-[14px]">{icon}</span>
           {label}
+          {extra && <span className="text-[10px] text-gray-400 font-normal ml-0.5">{extra}</span>}
         </span>
         <span className={`font-semibold ${color}`}>
-          {max > 0 ? `${value}/${max} ${unit}` : `${value}${unit}`}
+          {max > 0 ? `${Number(value).toLocaleString()}/${Number(max).toLocaleString()} ${unit} (${pct}%)` : `${value}${unit}`}
         </span>
       </div>
       <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -137,7 +138,18 @@ const ServerHealthPanel = () => {
       const res = await adminApi.getSystemHealth();
       const data = res?.data?.data || res?.data;
       if (data) {
-        setHealth(data);
+        setHealth((prev) => ({
+          ...prev,
+          ...data,
+          dbPool: data.dbPool ? {
+            ...data.dbPool,
+            clientActive: data.dbPool.clientActive ?? data.dbPool.activeClientConnections ?? 0,
+            clientLimit: data.dbPool.clientLimit ?? 16,
+            adminActive: data.dbPool.adminActive ?? data.dbPool.activeAdminConnections ?? 0,
+            adminReserved: data.dbPool.adminReserved ?? (data.dbPool.maxConnections ? data.dbPool.maxConnections - (data.dbPool.clientLimit ?? 16) : 4),
+            maxConnections: data.dbPool.maxConnections ?? 20,
+          } : prev?.dbPool,
+        }));
         setHealthError(null);
         // Đồng bộ trạng thái bảo trì nếu có kèm theo
         if (data.maintenance) {
@@ -180,10 +192,26 @@ const ServerHealthPanel = () => {
           startedAt: prev?.uptime?.startedAt || null,
           slaWindowDays: 30,
         },
-        cpu: { percent: data.cpuPercent },
-        ram: { percent: data.ramPercent, rssMb: data.ramRssMb },
+        cpu: {
+          percent: data.cpuPercent,
+          cores: data.cpuCores ?? prev?.cpu?.cores ?? 16,
+        },
+        ram: {
+          percent: data.ramPercent,
+          usedMb: data.ramUsedMb ?? prev?.ram?.usedMb ?? 0,
+          totalMb: data.ramTotalMb ?? prev?.ram?.totalMb ?? (prev?.ram?.totalMb || 7860),
+          freeMb: data.ramFreeMb ?? prev?.ram?.freeMb ?? 0,
+          rssMb: data.ramRssMb ?? prev?.ram?.rssMb ?? 0,
+        },
         eventLoop: { lagMs: data.eventLoopLagMs, overloaded: data.eventLoopLagMs > 50 },
-        dbPool: data.dbPool || prev?.dbPool,
+        dbPool: data.dbPool ? {
+          ...data.dbPool,
+          clientActive: data.dbPool.clientActive ?? data.dbPool.activeClientConnections ?? 0,
+          clientLimit: data.dbPool.clientLimit ?? 16,
+          adminActive: data.dbPool.adminActive ?? data.dbPool.activeAdminConnections ?? 0,
+          adminReserved: data.dbPool.adminReserved ?? (data.dbPool.maxConnections ? data.dbPool.maxConnections - (data.dbPool.clientLimit ?? 16) : 4),
+          maxConnections: data.dbPool.maxConnections ?? 20,
+        } : prev?.dbPool,
         loadShedding: prev?.loadShedding || { totalShed: 0 },
       }));
       setHealthLoading(false);
@@ -288,8 +316,8 @@ const ServerHealthPanel = () => {
         <>
           {/* CPU / RAM / Event Loop Gauges */}
           <div className="space-y-3">
-            <Gauge label="CPU" value={cpu?.percent ?? 0} max={100} unit="%" warnAt={70} critAt={85} icon="memory_alt" />
-            <Gauge label="RAM" value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100} unit="MB" warnAt={70} critAt={85} icon="storage" />
+            <Gauge label="CPU" value={cpu?.percent ?? 0} max={100} unit="%" warnAt={70} critAt={85} icon="memory_alt" extra={cpu?.cores ? `(${cpu.cores} cores)` : ''} />
+            <Gauge label="RAM" value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100} unit="MB" warnAt={70} critAt={85} icon="storage" extra={ram?.totalMb ? `(${(ram.totalMb / 1024).toFixed(1)} GB)` : ''} />
             <Gauge label="Event Loop" value={eventLoop?.lagMs ?? 0} max={200} unit="ms" warnAt={50} critAt={100} icon="speed" />
           </div>
 
@@ -305,13 +333,15 @@ const ServerHealthPanel = () => {
               </p>
               <div className="flex justify-between">
                 <span>{t('serverHealth.clientPool', 'Client Pool:')}</span>
-                <span className={`font-semibold ${dbPool.clientActive >= dbPool.clientLimit ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {dbPool.clientActive}/{dbPool.clientLimit}
+                <span className={`font-semibold ${(dbPool.clientActive ?? dbPool.activeClientConnections ?? 0) >= (dbPool.clientLimit || 16) ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {dbPool.clientActive ?? dbPool.activeClientConnections ?? 0}/{dbPool.clientLimit || 16}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>{t('serverHealth.adminPool', 'Admin Pool:')}</span>
-                <span className="font-semibold text-on-surface">{dbPool.adminActive}/{dbPool.maxConnections - dbPool.clientLimit}</span>
+                <span className="font-semibold text-on-surface">
+                  {dbPool.adminActive ?? dbPool.activeAdminConnections ?? 0}/{dbPool.adminReserved ?? (dbPool.maxConnections ? dbPool.maxConnections - (dbPool.clientLimit || 16) : 4)}
+                </span>
               </div>
               {loadShedding && (
                 <div className="flex justify-between text-gray-500">

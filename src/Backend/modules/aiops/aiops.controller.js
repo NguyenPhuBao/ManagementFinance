@@ -5,8 +5,20 @@ const logger = require('../../core/logger');
 const aiopsController = {
   getStatus(req, res) {
     try {
+      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
       const status = defaultAIOpsService.getStatus();
-      return ResponseHandler.success(res, status, 'Trạng thái AIOps Sentinel thời gian thực');
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const isClientProtected = defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.isProtectedIp === 'function'
+        ? defaultAIOpsQuarantine.isProtectedIp(clientIp)
+        : false;
+
+      const enrichedStatus = {
+        ...status,
+        currentClientIp: clientIp || null,
+        isClientProtected,
+      };
+
+      return ResponseHandler.success(res, enrichedStatus, 'Trạng thái AIOps Sentinel thời gian thực');
     } catch (error) {
       logger.error('[AIOpsController] getStatus failed', { error: error.message });
       return ResponseHandler.error(res, error.message);

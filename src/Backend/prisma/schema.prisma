@@ -382,6 +382,7 @@ model aiops_incident {
   actor_hash           String    @db.VarChar(256) @map("actor_hash")
   user_id              Int?      @map("user_id")
   username             String?   @db.VarChar(255) @map("username")
+  actor_role           String?   @db.VarChar(50) @map("actor_role")
   user_agent           String?   @db.Text @map("user_agent")
   target_endpoint      String?   @db.VarChar(255) @map("target_endpoint")
   metric_current       Decimal?  @db.Decimal(12, 2) @map("metric_current")

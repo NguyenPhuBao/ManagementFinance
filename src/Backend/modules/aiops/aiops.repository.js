@@ -33,6 +33,7 @@ class AIOpsIncidentRepository {
         "username" VARCHAR(255) NULL,
         "user_agent" TEXT NULL,
         "target_endpoint" VARCHAR(255) NULL,
+        "actor_role" VARCHAR(50) NULL,
         "metric_current" NUMERIC NULL,
         "metric_baseline" NUMERIC NULL,
         "metric_unit" VARCHAR(50) NULL,
@@ -43,6 +44,7 @@ class AIOpsIncidentRepository {
         "last_seen_at" TIMESTAMP(6) NOT NULL DEFAULT NOW(),
         "mitigated_at" TIMESTAMP(6) NULL
       );
+      ALTER TABLE "aiops_incident" ADD COLUMN IF NOT EXISTS "actor_role" VARCHAR(50) NULL;
       CREATE INDEX IF NOT EXISTS "idx_aiops_incident_status" ON "aiops_incident"("status");
       CREATE INDEX IF NOT EXISTS "idx_aiops_incident_vector" ON "aiops_incident"("vector");
       CREATE INDEX IF NOT EXISTS "idx_aiops_incident_detected_at" ON "aiops_incident"("first_detected_at" DESC);
@@ -84,6 +86,7 @@ class AIOpsIncidentRepository {
     const actorHash = actor.ipHash || actor.hash || '0000000000000000';
     const userId = actor.userId || null;
     const username = actor.username || null;
+    const actorRole = actor.role || actor.actor_role || (actor.userId ? 'User' : (actor.type === 'SYSTEM_INTERNAL' ? 'System' : 'Guest'));
     const userAgent = actor.userAgent || null;
     const targetEndpoint = actor.targetEndpoint || actor.endpoint || null;
 
@@ -123,20 +126,20 @@ class AIOpsIncidentRepository {
         const insertSql = `
           INSERT INTO "aiops_incident" (
             "id", "code", "vector", "severity", "message", "status",
-            "actor_type", "actor_identity", "actor_hash", "user_id", "username", "user_agent", "target_endpoint",
+            "actor_type", "actor_identity", "actor_hash", "user_id", "username", "actor_role", "user_agent", "target_endpoint",
             "metric_current", "metric_baseline", "metric_unit", "mitigation_taken", "root_cause_diagnosis",
             "hits", "first_detected_at", "last_seen_at"
           ) VALUES (
             $1, $2, $3, $4, $5, $6,
-            $7, $8, $9, $10, $11, $12, $13,
-            $14, $15, $16, $17, $18,
+            $7, $8, $9, $10, $11, $12, $13, $14,
+            $15, $16, $17, $18, $19,
             1, NOW(), NOW()
           )
           RETURNING *
         `;
         const res = await this.pool.query(insertSql, [
           id, code, vector, severity, message, status,
-          actorType, actorIdentity, actorHash, userId, username, userAgent, targetEndpoint,
+          actorType, actorIdentity, actorHash, userId, username, actorRole, userAgent, targetEndpoint,
           metricCurrent, metricBaseline, metricUnit, mitigationTaken, rootCauseDiagnosis,
         ]);
         return this._mapRow(res.rows[0]);
@@ -173,9 +176,25 @@ class AIOpsIncidentRepository {
         ipHash: actorHash,
         userId,
         username,
+        role: actorRole,
         userAgent,
         targetEndpoint,
       },
+      actorIdentity,
+      actor_identity: actorIdentity,
+      actorHash,
+      actor_hash: actorHash,
+      actorType,
+      actor_type: actorType,
+      userId,
+      user_id: userId,
+      username,
+      role: actorRole,
+      actor_role: actorRole,
+      userAgent,
+      user_agent: userAgent,
+      targetEndpoint,
+      target_endpoint: targetEndpoint,
       current: metricCurrent,
       baseline: metricBaseline,
       unit: metricUnit,
@@ -356,6 +375,7 @@ class AIOpsIncidentRepository {
 
   _mapRow(row) {
     if (!row) return null;
+    const actorRole = row.actor_role || (row.user_id ? 'User' : (row.actor_type === 'SYSTEM_INTERNAL' ? 'System' : 'Guest'));
     return {
       id: row.id,
       code: row.code,
@@ -370,9 +390,25 @@ class AIOpsIncidentRepository {
         ipHash: row.actor_hash,
         userId: row.user_id,
         username: row.username,
+        role: actorRole,
         userAgent: row.user_agent,
         targetEndpoint: row.target_endpoint,
       },
+      actorIdentity: row.actor_identity,
+      actor_identity: row.actor_identity,
+      actorHash: row.actor_hash,
+      actor_hash: row.actor_hash,
+      actorType: row.actor_type,
+      actor_type: row.actor_type,
+      userId: row.user_id,
+      user_id: row.user_id,
+      username: row.username,
+      role: actorRole,
+      actor_role: actorRole,
+      userAgent: row.user_agent,
+      user_agent: row.user_agent,
+      targetEndpoint: row.target_endpoint,
+      target_endpoint: row.target_endpoint,
       current: row.metric_current !== null ? Number(row.metric_current) : null,
       baseline: row.metric_baseline !== null ? Number(row.metric_baseline) : null,
       unit: row.metric_unit,
