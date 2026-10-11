@@ -14,6 +14,7 @@ import ServerHealthPanel from '../components/common/ServerHealthPanel';
 import SettingsModal from '../components/layout/SettingsModal';
 import LockScreenModal from '../components/layout/LockScreenModal';
 import LanguageToggle from '../components/common/LanguageToggle';
+import adminApi from '../api/admin.api';
 
 // Mock Socket
 const mockSocket = {
@@ -59,6 +60,14 @@ vi.mock('../api/admin.api', () => ({
         ram: { percent: 40, usedMb: 400, totalMb: 1000 },
         eventLoop: { lagMs: 12, overloaded: false },
         uptime: { uptimeFormatted: '5d 12h', uptimePercent: 99.98, startedAt: '2026-10-01T00:00:00Z', slaWindowDays: 30 },
+        dbPool: {
+          clientActive: 0,
+          clientLimit: 16,
+          adminActive: 0,
+          adminReserved: 4,
+          maxConnections: 20,
+        },
+        loadShedding: { shedCount24h: 0 },
       },
     }),
     setMaintenanceStatus: vi.fn().mockResolvedValue({ data: { success: true } }),
@@ -211,6 +220,60 @@ describe('Admin-web Phase 1 i18n Suite — Shared Components, Modals & Layouts',
       fireEvent.click(screen.getByTestId('lang-btn-vi'));
       expect(screen.getByText('Sức Khỏe Máy Chủ')).toBeInTheDocument();
       expect(screen.getByText('Bảo trì khẩn cấp')).toBeInTheDocument();
+    });
+
+    it('4.2. Hiển thị đầy đủ DB Pool & Bulkhead với 0/16 và 0/4 không bị khuyết số', async () => {
+      adminApi.getSystemHealth.mockResolvedValueOnce({
+        data: {
+          cpu: { percent: 10 },
+          ram: { percent: 20, usedMb: 200, totalMb: 1000 },
+          eventLoop: { lagMs: 5, overloaded: false },
+          uptime: { uptimeFormatted: '1d', uptimePercent: 99.9, startedAt: '2026-10-01T00:00:00Z', slaWindowDays: 30 },
+          dbPool: {
+            clientActive: 0,
+            clientLimit: 16,
+            adminActive: 0,
+            maxConnections: 20,
+          },
+          loadShedding: { shedCount24h: 0 },
+        },
+      });
+
+      renderWithProviders(<ServerHealthPanel />);
+
+      expect(await screen.findByText('0/16')).toBeInTheDocument();
+      expect(screen.getByText('0/4')).toBeInTheDocument();
+      expect(screen.getByText('0 lần')).toBeInTheDocument();
+    });
+
+    it('4.3. Cập nhật chính xác DB Pool từ Socket nhịp tim activeClientConnections/activeAdminConnections', async () => {
+      renderWithProviders(<ServerHealthPanel />);
+      expect(await screen.findByText('0/16')).toBeInTheDocument();
+
+      const metricsCall = mockSocket.on.mock.calls.find(call => call[0] === 'admin.metrics_stream');
+      const metricsCallback = metricsCall?.[1];
+      expect(metricsCallback).toBeDefined();
+
+      await act(async () => {
+        metricsCallback({
+          cpuPercent: 15,
+          ramPercent: 30,
+          ramRssMb: 300,
+          eventLoopLagMs: 8,
+          uptimeSeconds: 3600,
+          uptimeFormatted: '0d 1h 0m 0s',
+          dbPool: {
+            activeClientConnections: 3,
+            clientLimit: 16,
+            activeAdminConnections: 1,
+            adminReserved: 4,
+            maxConnections: 20,
+          },
+        });
+      });
+
+      expect(await screen.findByText('3/16')).toBeInTheDocument();
+      expect(screen.getByText('1/4')).toBeInTheDocument();
     });
   });
 

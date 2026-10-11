@@ -120,6 +120,7 @@ Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm 
 
 4. **Vectơ 4: Sức Khỏe Tài Nguyên Hệ Thống ($S_{\text{resource}}$)**:
    $$S_{\text{resource}} = \min(100, \text{lagFactor} + \text{ramFactor} + \text{cpuFactor} + \text{err5xxFactor})$$
+   - **Đo lường từ máy chủ thật (`SystemHardwareMonitor`):** % CPU đo bằng Delta Ticks tức thời ($1,000\text{ms}$ interval) và % RAM đo từ `os.totalmem()` / `os.freemem()` thật của máy chủ đang chạy, loại bỏ hoàn toàn việc gán cứng số giả lập.
    - Phản ánh độ trễ Event Loop ($> 100\text{ms}$), RAM ($> 90\%$), CPU ($> 85\%$) và mã lỗi HTTP 5xx ($> 5\%$).
 
 ### 3.4. Công Thức Tổng Hợp Tương Quan (Corroborated Composite Threat Score)
@@ -174,6 +175,30 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
 4. **Miễn Trừ Môi Trường Phát Triển (Dev Loopback Exemption):** Khi `NODE_ENV === 'development'`, các địa chỉ loopback (`127.0.0.1`, `::1`, `localhost`) được miễn trừ hoàn toàn khỏi lệnh cô lập, đảm bảo các thiết bị thử nghiệm thật kết nối qua `adb reverse` hoặc máy ảo không bao giờ bị khóa chùm.
 5. **Khai Thác IP Chuẩn Xác Tuân Thủ `trust proxy`:** Tuyệt đối không đọc thô phần tử đầu của `X-Forwarded-For` (vốn cho phép client giả mạo IP); hệ thống sử dụng chuẩn `req.ip || req.socket?.remoteAddress` đảm bảo tôn trọng `app.set('trust proxy', 1)`.
 6. **Phân Định Token Expired vs Token Reuse:** Hết hạn phiên làm việc thông thường chỉ trả về `401 Unauthorized` để client đăng nhập lại, tuyệt đối KHÔNG phong tỏa IP. Chỉ khi kẻ gian cố tình tái sử dụng Refresh Token đã bị thu hồi (`req.tokenReuseDetected === true`) mới kích hoạt cảnh báo Token Hijacking.
+
+### 4.4. Lá Chắn Bảo Vệ IP Admin Hybrid (Cấu Hình .env + Đăng Ký Động Theo Phiên Làm Việc)
+Hệ thống thiết lập cơ chế bảo vệ tối thượng kết hợp cả 2 tầng tĩnh và động nhằm **ngăn ngừa triệt để thảm họa tự khóa cửa nhốt mình ngoài trời (Admin Lockout Disaster)** ngay cả khi Quản trị viên thay đổi vị trí, thiết bị hoặc mạng internet (nhà riêng, văn phòng, 4G, quán cafe):
+1. **Lớp 1 — IP Tĩnh Cấu Hình Qua Biến Môi Trường (`ADMIN_TRUSTED_IPS`):**
+   - Không set cứng trong code. Hệ thống đọc danh sách IP tin cậy từ `process.env.ADMIN_TRUSTED_IPS` (phân cách bởi dấu phẩy, ví dụ: `127.0.0.1,::1,localhost,192.168.1.100`).
+   - Phù hợp cho IP tĩnh văn phòng, máy chủ nhảy cóc (Bastion Host) hoặc VPN nội bộ.
+2. **Lớp 2 — Tự Động Nhận Diện & Đăng Ký Động Khi Admin Đăng Nhập (Dynamic Admin Session Protection):**
+   - Khi Admin đăng nhập thành công (`authService.login`), Backend tự động đọc địa chỉ IP máy của Admin (`req.ip` / `req.socket.remoteAddress`) và gọi `defaultAIOpsQuarantine.registerAdminSession(clientIp, { userId, username, ttlMs })`.
+   - IP này lập tức được thêm vào danh sách bảo vệ động In-Memory. Nếu IP đó từng bị phong tỏa trước đây, hệ thống tự động giải phóng phong tỏa tức thì.
+   - Khi Admin bấm Đăng xuất (`authController.logout`): Hệ thống tự động gọi `unregisterAdminSession(clientIp)` để giải phóng bảo vệ.
+3. **Phòng Vệ Trực Quan & Động Trên Giao Diện (`AIOpsPage.jsx`):**
+   - Giao diện Admin-web nhận diện chính xác IP máy tính Admin đang ngồi (`currentClientIp` từ API status hoặc user session).
+   - Trên bảng RCA, dòng sự cố thuộc IP máy tính hiện tại sẽ hiển thị huy hiệu xanh lá: **`🛡️ IP Máy bạn (Đang đăng nhập)`** và **hoàn toàn ẩn/vô hiệu hóa nút đỏ "Phong Tỏa IP"**.
+   - Nếu đối tượng thuộc IP tĩnh hoặc nội bộ, hệ thống hiển thị huy hiệu **`🛡️ IP Được bảo vệ`** hoặc **`⚙️ Nội bộ hệ thống`**.
+
+### 4.5. Định Danh Chuẩn Xác Tác Nhân & Phân Quyền 2 Tầng (Early Token Decoder & Role Resolution)
+Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu ("Khách vãng lai / Ẩn danh" và gán nhầm IP máy chủ):
+1. **Giải mã Token sớm (Early Token Decoder):** Tầng thu thập lưu lượng (`FeatureCollector`) chủ động bóc tách JWT Bearer Token ngay từ đầu Pipeline, trích xuất tức thì `userId`, `username`, và `role` (`Admin`, `User`, `Guest`) trước khi luồng request đi sâu vào các middleware nghiệp vụ.
+2. **Chính danh cho sự cố hạ tầng máy chủ (System Actor Attribution):** Các sự cố thuộc Vectơ 4 (RAM 92%, CPU, Event Loop Lag, HTTP 5xx) là hiện tượng tài nguyên phần cứng, được định danh đích danh là `System Core Engine` (Tác nhân: `⚙️ Hệ thống`), IP hiển thị `Nội bộ hệ thống (Loopback)`, không bao giờ bị gán nhầm cho người dùng hay khách vãng lai.
+3. **Hiển thị trực quan 4 nhóm phân quyền:** Bảng RCA phân tách rõ ràng với các huy hiệu sinh động:
+   - 👑 **Quản trị viên (Admin):** Tài khoản quản trị cấp cao với đặc quyền Fast-Lane.
+   - 👤 **Khách hàng (User):** Người dùng ứng dụng mobile đã đăng nhập hợp lệ.
+   - ⚙️ **Hệ thống (System):** Tiến trình lõi máy chủ Node.js & CSDL.
+   - 🌐 **Khách vãng lai (Guest):** Client chưa định danh hoặc các luồng quét tự động chưa đăng nhập.
 
 ---
 
@@ -255,6 +280,7 @@ Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 t
 | `actor_hash` | `VARCHAR(64)` | `NOT NULL` | Hash SHA-256 đối tượng (16 ký tự an toàn) |
 | `user_id` | `VARCHAR(64)` | `NULLABLE` | ID tài khoản vi phạm (nếu đã xác thực) |
 | `username` | `VARCHAR(64)` | `NULLABLE` | Tên người dùng vi phạm (nếu có) |
+| `actor_role` | `VARCHAR(50)` | `NULLABLE` | Vai trò quyền hạn (`Admin`, `User`, `System`, `Guest`) |
 | `user_agent` | `TEXT` | `NULLABLE` | Thông tin User-Agent định danh trình duyệt/công cụ |
 | `target_endpoint` | `VARCHAR(255)` | `NULLABLE` | Tuyến API bị nhắm mục tiêu tấn công/quá tải |
 | `metric_current` | `NUMERIC(12,2)`| `NOT NULL` | Giá trị đo được tại thời điểm bất thường |

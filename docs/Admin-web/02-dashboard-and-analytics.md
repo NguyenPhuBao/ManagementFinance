@@ -167,5 +167,6 @@ for (const log of logs) {
 | `GET` | `/api/auth/recent-activities` | Lấy danh sách nhật ký hoạt động có phân trang | Admin |
 
 ### Chu Kỳ Polling & Socket.io Events Lắng Nghe
-- **Polling ngầm 10s (`setInterval`):** Đồng bộ `totalUsers`, `totalCategories`, `newUsers`, `loginStats`, `requestStats` và `getSystemHealth` (Uptime) định kỳ mà không giật lag màn hình.
+- **Polling ngầm 10s (`setInterval`):** Đồng bộ `totalUsers`, `totalCategories`, `newUsers`, `loginStats`, `requestStats` và `getSystemHealth` (Uptime & Sức khỏe phần cứng) định kỳ mà không giật lag màn hình.
 - **Socket.io Real-time Event (`audit_activity`):** Lắng nghe trực tiếp luồng audit log từ server để chèn ngay lập tức thao tác mới lên dòng đầu của bảng "Hoạt động gần đây" và tăng `total` bản ghi phân trang theo thời gian thực.
+- **Socket.io Nhịp Tim Máy Chủ (`admin.metrics_stream` - 3s/lần):** Cập nhật thời gian thực chỉ số CPU (Delta Ticks tức thời, số Cores thật) và RAM (`ramUsedMb`, `ramTotalMb`, `ramPercent`, `ramRssMb`) trực tiếp từ `SystemHardwareMonitor`, loại bỏ hoàn toàn giá trị gán cứng và bảo toàn dữ liệu không bị tụt về `0/100 MB`.

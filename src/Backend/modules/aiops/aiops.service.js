@@ -324,8 +324,10 @@ class AIOpsService {
 
   getStatus() {
     const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+    const sample = this._currentStatus?.sample || this.collector.getSample();
     return {
       ...this._currentStatus,
+      sample,
       targetConcurrency: this.detector.targetConcurrency,
       vectorScores: this._currentStatus?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
       vectorConfig: { ...this.detector.vectorConfig },
@@ -385,11 +387,13 @@ class AIOpsService {
     return realHistory;
   }
 
-  calibrate(customBaselines = {}) {
-    this.detector.calibrate(customBaselines);
+  calibrate(options = {}) {
+    const report = this.detector.calibrate(options);
+    logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng trên server ${report.serverSpecs.cpuCores} cores / ${report.serverSpecs.totalRamMb}MB RAM`);
     return {
       success: true,
-      message: 'Đã tái hiệu chuẩn tham số máy học và đường chuẩn hệ thống thành công.',
+      message: `Đã tái hiệu chuẩn thành công theo phần cứng máy chủ (${report.serverSpecs.cpuCores} Cores, ${(report.serverSpecs.totalRamMb / 1024).toFixed(1)}GB RAM) cho quy mô ${report.targetConcurrency.toLocaleString('vi-VN')} người dùng!`,
+      data: report,
     };
   }
 }

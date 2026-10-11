@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/common/ConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useSettingsSafe } from '../../store/settings.context';
 import { useLanguageSafe } from '../../store/language.context';
+import useAuth from '../../hooks/useAuth';
 
 const VECTOR_KEYS = {
   auth: 'aiops.vectors.auth',
@@ -20,7 +21,13 @@ const AIOpsPage = () => {
   const { t } = useLanguageSafe();
   const alert = useAlertSafe();
   const settingsCtx = useSettingsSafe();
+  let currentUser = null;
+  try {
+    const auth = useAuth();
+    currentUser = auth?.user || null;
+  } catch (_) {}
   const [statusData, setStatusData] = useState(null);
+  const myCurrentIp = statusData?.currentClientIp || currentUser?.currentClientIp || '';
   const [historyData, setHistoryData] = useState([]);
   const [quarantineList, setQuarantineList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +59,7 @@ const AIOpsPage = () => {
   // Mitigation modal state
   const [showMitigationModal, setShowMitigationModal] = useState(false);
   const [showCalibrateModal, setShowCalibrateModal] = useState(false);
+  const [calibrationReport, setCalibrationReport] = useState(null);
   const [mitigationReason, setMitigationReason] = useState(() => t('aiops.mitigation.defaultReason', 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện nguy cơ cao'));
   const [mitigating, setMitigating] = useState(false);
 
@@ -366,6 +374,36 @@ const AIOpsPage = () => {
 
   // Mở modal xác nhận phong tỏa IP từ bảng RCA
   const handleOpenQuarantineModal = (item) => {
+    const actorType = item.actor?.type || item.actor_type;
+    const actorIdentity = item.actor?.identity || item.actor_identity || item.actorIdentity || '';
+    const actorHash = item.actor?.ipHash || item.actor_hash || item.actorHash || '';
+    const clientIpClean = String(myCurrentIp || '').replace(/^::ffff:/, '').trim();
+    const isMyIp = Boolean(
+      clientIpClean && (
+        actorIdentity === clientIpClean ||
+        actorIdentity.includes(clientIpClean) ||
+        (clientIpClean.split('.').slice(0, 2).join('.') && actorIdentity.startsWith(clientIpClean.split('.').slice(0, 2).join('.')))
+      )
+    );
+    if (
+      actorType === 'SYSTEM_INTERNAL' ||
+      item.vector === 'resource' ||
+      actorHash === 'system_core' ||
+      actorHash === 'system_host' ||
+      isMyIp ||
+      actorIdentity.includes('127.0.0.1') ||
+      actorIdentity.includes('::1') ||
+      actorIdentity.includes('localhost') ||
+      actorIdentity.includes('Internal')
+    ) {
+      setFeedback({
+        ok: false,
+        msg: isMyIp
+          ? '🛡️ Đây là địa chỉ IP máy bạn đang đăng nhập. Không thể tự phong tỏa chính mình!'
+          : '🛡️ Đối tượng này thuộc diện bảo vệ an toàn (Hạ tầng máy chủ/Loopback). Không thể phong tỏa.',
+      });
+      return;
+    }
     setQuarantineModalTarget(item);
   };
 
@@ -374,8 +412,8 @@ const AIOpsPage = () => {
     if (!quarantineModalTarget) return;
     try {
       setQuarantiningActor(true);
-      const actorHash = quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash;
-      const actorIdentity = quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity;
+      const actorHash = quarantineModalTarget.actor?.ipHash || quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash;
+      const actorIdentity = quarantineModalTarget.actor?.identity || quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity;
       const code = quarantineModalTarget.code || 'SỰ CỐ AN NINH';
 
       const res = await aiopsApi.quarantineActor({
@@ -448,7 +486,12 @@ const AIOpsPage = () => {
           sample: {
             ...(prev?.sample || {}),
             cpuPercent: metrics.cpuPercent,
+            cpuCores: metrics.cpuCores ?? prev?.sample?.cpuCores,
             ramPercent: metrics.ramPercent,
+            ramUsedMb: metrics.ramUsedMb ?? prev?.sample?.ramUsedMb,
+            ramTotalMb: metrics.ramTotalMb ?? prev?.sample?.ramTotalMb,
+            ramFreeMb: metrics.ramFreeMb ?? prev?.sample?.ramFreeMb,
+            ramRssMb: metrics.ramRssMb ?? prev?.sample?.ramRssMb,
             eventLoopLagMs: metrics.eventLoopLagMs,
             requestsPerMin: metrics.requestsPerMin,
           },
@@ -579,13 +622,18 @@ const AIOpsPage = () => {
     }
   };
 
-  // Xử lý tái hiệu chuẩn đường chuẩn
+  // Xử lý tái hiệu chuẩn đường chuẩn theo phần cứng thực tế
   const handleCalibrate = async () => {
-    setShowCalibrateModal(false);
     try {
       setCalibrating(true);
       setFeedback(null);
-      const res = await aiopsApi.calibrate();
+      const targetVal = selectedConcurrency || 1000;
+      const res = await aiopsApi.calibrate({ targetConcurrency: targetVal });
+      const report = res?.data || res;
+      if (report?.serverSpecs) {
+        setCalibrationReport(report);
+      }
+      setShowCalibrateModal(false);
       setFeedback({ ok: true, msg: res?.message || t('aiops.feedback.calibrateSuccess', 'Đã tái hiệu chuẩn mô hình máy học thành công.') });
       await fetchAIOpsData();
     } catch (err) {
@@ -1253,6 +1301,52 @@ const AIOpsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Kết quả Tái Hiệu Chuẩn Thực Tế theo phần cứng máy chủ */}
+        {calibrationReport && (
+          <div className="mt-4 p-4 rounded-xl bg-blue-50/80 border border-blue-200/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-blue-600">tune</span>
+                <span className="text-xs font-bold text-blue-950">
+                  {t('aiops.calibrate.reportTitle', 'Báo Cáo Hiệu Chuẩn Baseline Phần Cứng Thực Tế')}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  calibrationReport.capacityAssessment?.isOverCapacity
+                    ? 'bg-red-100 text-red-700 border border-red-300'
+                    : calibrationReport.capacityAssessment?.isNearLimit
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                }`}>
+                  {calibrationReport.capacityAssessment?.status || 'OPTIMAL'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                {calibrationReport.capacityAssessment?.recommendation}
+              </p>
+              <div className="text-[10px] text-slate-500 flex items-center gap-3 pt-0.5 flex-wrap">
+                <span>💻 Máy chủ: <strong>{calibrationReport.serverSpecs?.cpuCores} Cores</strong> ({calibrationReport.serverSpecs?.platform})</span>
+                <span>🗄️ Tổng RAM: <strong>{((calibrationReport.serverSpecs?.totalRamMb || 0) / 1024).toFixed(1)} GB</strong></span>
+                <span>👥 Quy mô áp dụng: <strong>{calibrationReport.targetConcurrency?.toLocaleString('vi-VN')} CCU</strong></span>
+                <span>⏱️ Cập nhật: {new Date(calibrationReport.calibratedAt || Date.now()).toLocaleTimeString('vi-VN')}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 flex-wrap flex-shrink-0">
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 text-center shadow-2xs">
+                <div className="text-[10px] text-slate-400">CPU Kỳ Vọng</div>
+                <div className="text-xs font-bold text-slate-800">{calibrationReport.calculatedMetrics?.expectedCpuPercent}%</div>
+              </div>
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 text-center shadow-2xs">
+                <div className="text-[10px] text-slate-400">RAM Kỳ Vọng</div>
+                <div className="text-xs font-bold text-slate-800">{calibrationReport.calculatedMetrics?.expectedRamPercent}%</div>
+              </div>
+              <div className="bg-white px-3 py-1.5 rounded-lg border border-blue-100 text-center shadow-2xs">
+                <div className="text-[10px] text-slate-400">Event Loop Lag</div>
+                <div className="text-xs font-bold text-slate-800">{calibrationReport.calculatedMetrics?.expectedEventLoopLagMs} ms</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -1422,6 +1516,11 @@ const AIOpsPage = () => {
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.cpuPercent', 'CPU Hệ Thống')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.cpuPercent ?? 0}%</span>
+                {sample.cpuCores ? (
+                  <span className="text-[11px] font-mono text-slate-500 font-normal">
+                    {sample.cpuCores} cores
+                  </span>
+                ) : null}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.cpuPercentDesc', 'Tải đa nhân xử lý')}</div>
             </div>
@@ -1431,6 +1530,11 @@ const AIOpsPage = () => {
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.ramPercent', 'Bộ nhớ RAM')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.ramPercent ?? 0}%</span>
+                {sample.ramUsedMb && sample.ramTotalMb ? (
+                  <span className="text-[11px] font-mono text-slate-500 font-normal">
+                    {sample.ramUsedMb.toLocaleString()} / {sample.ramTotalMb.toLocaleString()} MB
+                  </span>
+                ) : null}
               </div>
               <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.ramPercentDesc', 'Nguy cơ Memory Leak')}</div>
             </div>
@@ -2821,12 +2925,14 @@ const AIOpsPage = () => {
                   const lastTime = item.last_seen_at || item.lastSeenAt;
                   const status = item.status || 'ACTIVE';
                   const hits = item.hits || 1;
-                  const actorIdentity = item.actor_identity || item.actorIdentity || '127.0.0.1';
-                  const actorHash = item.actor_hash || item.actorHash || '';
-                  const userId = item.user_id || item.userId;
-                  const username = item.username;
-                  const userAgent = item.user_agent || item.userAgent;
-                  const endpoint = item.target_endpoint || item.targetEndpoint;
+                  const actorIdentity = item.actor?.identity || item.actor_identity || item.actorIdentity || 'xx.xx.xx.xx';
+                  const actorHash = item.actor?.ipHash || item.actor_hash || item.actorHash || '';
+                  const actorType = item.actor?.type || item.actor_type || 'IP_SOURCE';
+                  const userId = item.actor?.userId || item.user_id || item.userId;
+                  const username = item.actor?.username || item.username;
+                  const role = item.actor?.role || item.actor_role || item.role;
+                  const userAgent = item.actor?.userAgent || item.user_agent || item.userAgent;
+                  const endpoint = item.actor?.targetEndpoint || item.target_endpoint || item.targetEndpoint;
                   const vector = item.vector || 'traffic';
                   const severity = item.severity || 'MEDIUM';
                   const metricCurrent = item.metric_current ?? item.metricCurrent ?? item.current ?? 0;
@@ -2835,6 +2941,31 @@ const AIOpsPage = () => {
                   const message = item.message || '';
                   const rootCause = item.root_cause_diagnosis || item.rootCauseDiagnosis;
                   const mitigation = item.mitigation_taken || item.mitigationTaken;
+
+                  const clientIpClean = String(myCurrentIp || '').replace(/^::ffff:/, '').trim();
+                  const clientIpPrefix = clientIpClean ? clientIpClean.split('.').slice(0, 2).join('.') : '';
+                  const isMyCurrentIp = Boolean(
+                    clientIpClean && (
+                      actorIdentity === clientIpClean ||
+                      actorIdentity.replace(/^::ffff:/, '').trim() === clientIpClean ||
+                      (clientIpPrefix && actorIdentity.startsWith(`${clientIpPrefix}.`)) ||
+                      actorIdentity.includes(clientIpClean)
+                    )
+                  );
+
+                  // Kiểm tra đối tượng có thuộc diện bảo vệ an toàn (Phiên Admin động, Internal, Loopback, hoặc Resource)
+                  const isProtectedActor =
+                    actorType === 'SYSTEM_INTERNAL' ||
+                    vector === 'resource' ||
+                    actorHash === 'system_core' ||
+                    actorHash === 'system_host' ||
+                    isMyCurrentIp ||
+                    actorIdentity === '127.0.0.1' ||
+                    actorIdentity.includes('127.0.0.1') ||
+                    actorIdentity.includes('::1') ||
+                    actorIdentity.includes('localhost') ||
+                    actorIdentity.includes('Internal') ||
+                    actorIdentity.includes('Loopback');
 
                   // Tính tỷ lệ vượt ngưỡng
                   const ratio = metricBaseline > 0 ? (Number(metricCurrent) / Number(metricBaseline)).toFixed(1) : null;
@@ -2874,38 +3005,78 @@ const AIOpsPage = () => {
                         )}
                       </td>
 
-                      {/* Cột 2: Đối tượng vi phạm (Actor Identity & Account) */}
-                      <td className="py-3 px-3 align-top space-y-1">
-                        {/* IP Đối tượng vi phạm */}
+                      {/* Cột 2: Đối tượng vi phạm (Actor Identity, Account & Role) */}
+                      <td className="py-3 px-3 align-top space-y-1.5">
+                        {/* Nguồn IP / Hạ tầng đối tượng */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="material-symbols-outlined text-[15px] text-slate-500">
-                            router
-                          </span>
-                          <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                            <span className="text-slate-400 font-normal mr-1">IP:</span>
-                            <span>{actorIdentity}</span>
-                          </span>
-                          {actorHash && (
-                            <span
-                              className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-50 text-slate-500 border border-slate-200"
-                              title={`SHA-256 IP Hash: ${actorHash}`}
-                            >
-                              #{actorHash.slice(0, 8)}
+                          {isProtectedActor ? (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                              <span className="material-symbols-outlined text-[14px] text-emerald-600">
+                                {actorType === 'SYSTEM_INTERNAL' ? 'memory' : 'verified_user'}
+                              </span>
+                              <span>
+                                {actorType === 'SYSTEM_INTERNAL'
+                                  ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
+                                  : isMyCurrentIp
+                                  ? `${actorIdentity} (Máy bạn)`
+                                  : actorIdentity}
+                              </span>
                             </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="material-symbols-outlined text-[15px] text-slate-500">
+                                router
+                              </span>
+                              <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                <span className="text-slate-400 font-normal mr-1">IP:</span>
+                                <span>{actorIdentity}</span>
+                              </span>
+                              {actorHash && (
+                                <span
+                                  className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-50 text-slate-500 border border-slate-200"
+                                  title={`SHA-256 IP Hash: ${actorHash}`}
+                                >
+                                  #{actorHash.slice(0, 8)}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
 
-                        {/* Tên tài khoản vi phạm đi kèm */}
-                        <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px] text-primary">
-                            account_circle
-                          </span>
-                          <span>
-                            TK:{' '}
-                            <span className="text-primary font-bold">
-                              {username || (userId ? `UID #${userId}` : t('aiops.rca.anonymousUser', 'Khách vãng lai / Ẩn danh'))}
+                        {/* Danh tính tài khoản & Phân quyền */}
+                        <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                          <div className="font-semibold text-slate-700 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] text-primary">
+                              {actorType === 'SYSTEM_INTERNAL' ? 'settings_suggest' : 'account_circle'}
                             </span>
-                          </span>
+                            <span>
+                              TK:{' '}
+                              <span className="text-primary font-bold">
+                                {actorType === 'SYSTEM_INTERNAL'
+                                  ? 'System Core Engine'
+                                  : (username || (userId ? `UID #${userId}` : t('aiops.rca.anonymousUser', 'Khách vãng lai / Ẩn danh')))}
+                              </span>
+                            </span>
+                          </div>
+
+                          {/* Badge phân quyền trực quan */}
+                          {actorType === 'SYSTEM_INTERNAL' ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                              ⚙️ {t('aiops.rca.roleSystem', 'Hệ thống')}
+                            </span>
+                          ) : role === 'Admin' || role === 'admin' ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              👑 {t('aiops.rca.roleAdmin', 'Quản trị viên')}
+                            </span>
+                          ) : role === 'User' || role === 'user' || userId ? (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              👤 {t('aiops.rca.roleUser', 'Khách hàng')}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                              🌐 {t('aiops.rca.roleGuest', 'Khách vãng lai')}
+                            </span>
+                          )}
                         </div>
 
                         {endpoint && (
@@ -3018,11 +3189,22 @@ const AIOpsPage = () => {
                               </button>
                             </div>
                           </div>
-                        ) : vector === 'resource' || actorHash === 'system_host' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                            <span className="material-symbols-outlined text-[13px]">tune</span>
-                            {t('aiops.rca.internalSystem', 'Nội bộ hệ thống')}
-                          </span>
+                        ) : isProtectedActor ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                              <span className="material-symbols-outlined text-[13px]">verified_user</span>
+                              <span>
+                                {actorType === 'SYSTEM_INTERNAL'
+                                  ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
+                                  : isMyCurrentIp
+                                  ? t('aiops.rca.protectedMyIp', 'IP Máy bạn (Đang đăng nhập)')
+                                  : t('aiops.rca.protectedIp', 'IP Được bảo vệ')}
+                              </span>
+                            </span>
+                            <div className="text-[9px] text-emerald-600 font-medium">
+                              🛡️ An toàn tuyệt đối
+                            </div>
+                          </div>
                         ) : (
                           <div className="space-y-1">
                             <button
@@ -3228,11 +3410,23 @@ const AIOpsPage = () => {
             </div>
 
             <div className="rounded-xl bg-blue-50/70 border border-blue-100 p-3.5 space-y-2 text-xs text-slate-700 leading-relaxed">
-              <div className="font-bold text-blue-950 flex items-center gap-1.5">
+              <div className="font-bold text-blue-950 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-blue-600">tune</span>
+                  <span>Quy mô áp dụng:</span>
+                </span>
+                <span className="font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-md text-[11px]">
+                  {selectedConcurrency.toLocaleString('vi-VN')} CCU
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                Hệ thống sẽ lấy thông số phần cứng thực tế của máy chủ đang chạy (Số nhân CPU, Tổng RAM vật lý) kết hợp với quy mô <strong>{selectedConcurrency.toLocaleString('vi-VN')} người dùng</strong> để tính toán lại chính xác đường chuẩn 24h và đánh giá năng lực chịu tải thực tế.
+              </p>
+              <div className="font-bold text-blue-950 flex items-center gap-1.5 pt-1">
                 <span className="material-symbols-outlined text-[16px] text-blue-600">help</span>
                 <span>{t('aiops.calibrate.warningTitle')}</span>
               </div>
-              <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-600">
+              <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600">
                 <li>
                   {t('aiops.calibrate.point1')}
                 </li>

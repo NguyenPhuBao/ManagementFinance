@@ -28,10 +28,11 @@ router.get('/getusertotime', adminController.getUserToTime);
 router.get('/login-stats', adminController.getLoginStats);
 router.get('/request-stats', adminController.getRequestStats);
 
-// Hệ thống & Cứu nạn khẩn cấp (Emergency Maintenance Switch)
+// Hệ thống & Cứu nạn khẩn cấp (Emergency Maintenance Switch & History)
 router.get('/system/maintenance', adminController.getMaintenanceStatus);
 router.post('/system/maintenance', adminController.setMaintenanceStatus);
 router.delete('/system/maintenance/schedule', adminController.cancelScheduledMaintenance);
+router.get('/system/maintenance/history', adminController.getMaintenanceHistory);
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
 

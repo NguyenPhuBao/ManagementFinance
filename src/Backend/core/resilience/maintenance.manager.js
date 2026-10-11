@@ -45,12 +45,14 @@ class MaintenanceManager {
 
   setMaintenance(active, reason = null, activatedBy = 'system', options = {}) {
     const isActivating = Boolean(active);
-    const isEmergency = Boolean(options.isEmergency);
+    // MẶC ĐỊNH BẢO TRÌ TỨC THÌ LUÔN LÀ BẢO TRÌ KHẨN CẤP (PO Policy)
+    const isEmergency = options.isEmergency !== undefined ? Boolean(options.isEmergency) : true;
+    const maintenanceType = options.type || (isEmergency ? 'EMERGENCY' : 'SCHEDULED');
 
     this.active = isActivating;
 
     if (this.active) {
-      this.reason = reason || this.reason || 'Hệ thống đang bảo trì kỹ thuật.';
+      this.reason = reason || this.reason || 'Hệ thống đang bảo trì khẩn cấp.';
       this.activatedBy = activatedBy;
       this.activatedAt = new Date().toISOString();
       this.isEmergency = isEmergency;
@@ -71,8 +73,24 @@ class MaintenanceManager {
         activatedAt: this.activatedAt,
       });
 
-      // RULE CỐT LÕI TỪ PO: Khi check "Bảo trì khẩn cấp" mới phát thông báo tới toàn bộ hệ thống & người dùng.
-      // Bảo trì thông thường: Không phát thông báo, chỉ chặn traffic client.
+      // Lưu lịch sử bảo trì vào CSDL PostgreSQL
+      try {
+        const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+        defaultMaintenanceRepository.createRecord({
+          type: maintenanceType,
+          reason: this.reason,
+          activated_by: this.activatedBy,
+          started_at: this.activatedAt,
+          scheduled_end_at: options.scheduled_end_at || null,
+          status: 'ONGOING',
+        }).catch((err) => {
+          logger.warn('[MAINTENANCE] Lỗi lưu lịch sử bảo trì CSDL', { error: err.message });
+        });
+      } catch (repoErr) {
+        logger.warn('[MAINTENANCE] Không thể gọi maintenance repository', { error: repoErr.message });
+      }
+
+      // Phát thông báo khẩn cấp tới toàn bộ client-app & người dùng
       if (this.isEmergency) {
         const notifService = this.getNotificationService();
         if (notifService && typeof notifService.broadcast === 'function') {
@@ -99,6 +117,20 @@ class MaintenanceManager {
       logger.info('[MAINTENANCE] TẮT chế độ bảo trì — Hệ thống trở lại bình thường', {
         deactivatedBy: activatedBy,
       });
+
+      // Cập nhật trạng thái phiên bảo trì trong CSDL thành COMPLETED
+      try {
+        const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+        defaultMaintenanceRepository.completeOngoingRecord({
+          ended_at: new Date(),
+          status: 'COMPLETED',
+        }).catch((err) => {
+          logger.warn('[MAINTENANCE] Lỗi cập nhật kết thúc lịch sử bảo trì', { error: err.message });
+        });
+      } catch (repoErr) {
+        logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi tắt', { error: repoErr.message });
+      }
+
       this.isEmergency = false;
       this.activatedBy = null;
       this.activatedAt = null;
@@ -174,7 +206,9 @@ class MaintenanceManager {
 
       if (sched) {
         this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
-          isEmergency: sched.isEmergency,
+          isEmergency: Boolean(sched.isEmergency),
+          type: 'SCHEDULED',
+          scheduled_end_at: sched.scheduledEndAt,
         });
 
         // Nếu có thời điểm kết thúc đã hẹn, thiết lập timer tự động kết thúc

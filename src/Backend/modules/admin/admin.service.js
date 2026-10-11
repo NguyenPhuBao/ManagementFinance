@@ -542,14 +542,24 @@ const adminService = {
   },
 
   async getSystemHealth() {
-    const cpus = os.cpus();
-    const cpuPercent = cpus.reduce((acc, cpu) => {
-      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-      return acc + Math.round(((total - cpu.times.idle) / total) * 100);
-    }, 0) / cpus.length;
+    let hwMetrics = null;
+    try {
+      const { defaultSystemHardwareMonitor } = require('../../core/resilience/system-hardware-monitor');
+      if (defaultSystemHardwareMonitor && typeof defaultSystemHardwareMonitor.getMetrics === 'function') {
+        hwMetrics = defaultSystemHardwareMonitor.getMetrics();
+      }
+    } catch (_) {}
 
-    const totalMem = os.totalmem();
-    const usedMem = totalMem - os.freemem();
+    const cpus = os.cpus() || [];
+    const cpuPercent = hwMetrics ? hwMetrics.cpu.percent : 0;
+    const ramInfo = hwMetrics ? hwMetrics.ram : {
+      totalMb: Math.round(os.totalmem() / 1024 / 1024),
+      usedMb: Math.round((os.totalmem() - os.freemem()) / 1024 / 1024),
+      freeMb: Math.round(os.freemem() / 1024 / 1024),
+      percent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
+      rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    };
+
     const dbStats = defaultDbBulkhead.getStats();
     const maintStatus = defaultMaintenanceManager.getStatus();
     const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
@@ -558,11 +568,13 @@ const adminService = {
     const { uptimePercent, slaWindowDays } = calcUptimePercent(uptimeSeconds);
 
     return {
-      cpu: { cores: cpus.length, percent: Math.round(cpuPercent) },
+      cpu: { cores: cpus.length, percent: cpuPercent },
       ram: {
-        usedMb: Math.round(usedMem / 1024 / 1024),
-        totalMb: Math.round(totalMem / 1024 / 1024),
-        percent: Math.round((usedMem / totalMem) * 100),
+        usedMb: ramInfo.usedMb,
+        totalMb: ramInfo.totalMb,
+        freeMb: ramInfo.freeMb,
+        percent: ramInfo.percent,
+        rssMb: ramInfo.rssMb,
       },
       eventLoop: {
         lagMs: defaultEventLoopMonitor.getLag(),

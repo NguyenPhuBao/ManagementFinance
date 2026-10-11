@@ -120,7 +120,34 @@ vi.mock('../api/aiops.api', () => ({
     }),
     getIncidents: vi.fn().mockResolvedValue({ data: { items: [], total: 0 } }),
     setScale: vi.fn().mockResolvedValue({ success: true, message: 'Scale updated' }),
-    calibrate: vi.fn().mockResolvedValue({ success: true, message: 'Calibrated' }),
+    calibrate: vi.fn().mockResolvedValue({
+      success: true,
+      message: 'Đã tái hiệu chuẩn thành công theo phần cứng máy chủ!',
+      data: {
+        targetConcurrency: 1000,
+        serverSpecs: {
+          cpuCores: 8,
+          totalRamMb: 16384,
+          freeRamMb: 8192,
+          platform: 'win32',
+          arch: 'x64',
+        },
+        calculatedMetrics: {
+          baselineRpm: 10000,
+          safePeakRpm: 30000,
+          expectedCpuPercent: 22,
+          expectedRamPercent: 18,
+          expectedEventLoopLagMs: 4,
+        },
+        capacityAssessment: {
+          status: 'OPTIMAL',
+          isOverCapacity: false,
+          isNearLimit: false,
+          recommendation: 'Hạ tầng máy chủ hoàn toàn đáp ứng trơn tru quy mô mục tiêu.',
+        },
+        calibratedAt: '2026-10-11T07:00:00.000Z',
+      },
+    }),
   },
 }));
 
@@ -392,6 +419,34 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.queryByText('4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ (Multi-Vector Risk Architecture)')).not.toBeInTheDocument();
       expect(screen.queryByText('Nguồn Request Đang Bị Cô Lập & Tự Động Chặn (Active Quarantine Blacklist)')).not.toBeInTheDocument();
       expect(screen.queryByText('Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)')).not.toBeInTheDocument();
+    });
+
+    it('7.2. Tái hiệu chuẩn Baseline theo phần cứng thực tế và hiển thị báo cáo chi tiết', async () => {
+      renderWithProviders(<AIOpsPage />);
+
+      // Tầng 1: Click nút mở Modal Tái Hiệu Chuẩn Baseline
+      const calibrateBtn = await screen.findByText('Tái Hiệu Chuẩn Baseline');
+      expect(calibrateBtn).toBeInTheDocument();
+
+      fireEvent.click(calibrateBtn);
+
+      // Modal hiển thị với thông điệp phần cứng thực tế và quy mô CCU
+      expect(await screen.findByText('Tái Hiệu Chuẩn Baseline Máy Học AIOps Sentinel')).toBeInTheDocument();
+      expect(screen.getByText('Quy mô áp dụng:')).toBeInTheDocument();
+
+      // Click Xác Nhận Tái Hiệu Chuẩn
+      const confirmBtn = screen.getByText('Xác Nhận Tái Hiệu Chuẩn');
+      await act(async () => {
+        fireEvent.click(confirmBtn);
+      });
+
+      // Tầng 2: System Impact — Card Báo cáo hiệu chuẩn phần cứng thực tế hiển thị
+      expect(await screen.findByText('Báo Cáo Hiệu Chuẩn Baseline Phần Cứng Thực Tế')).toBeInTheDocument();
+      expect(screen.getByText('OPTIMAL')).toBeInTheDocument();
+      expect(screen.getByText('22%')).toBeInTheDocument();
+      expect(screen.getByText('18%')).toBeInTheDocument();
+      expect(screen.getByText('4 ms')).toBeInTheDocument();
+      expect(screen.getByText('Hạ tầng máy chủ hoàn toàn đáp ứng trơn tru quy mô mục tiêu.')).toBeInTheDocument();
     });
   });
 });

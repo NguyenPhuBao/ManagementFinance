@@ -88,6 +88,7 @@ const authController = {
   },
 
   async me(req, res) {
+    const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
     return ResponseHandler.success(res, {
       idaccount: req.user.idaccount,
       username: req.user.username,
@@ -95,11 +96,21 @@ const authController = {
       rolename: req.user.rolename,
       type: req.user.type || 'Basic',
       status: req.user.status || 'Active',
+      currentClientIp: clientIp || null,
     }, 'Token hợp lệ');
   },
 
   async logout(req, res) {
     try {
+      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      if (req.user && (req.user.idrole === 1 || String(req.user.rolename || '').toLowerCase() === 'admin')) {
+        try {
+          const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
+          if (clientIp && defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.unregisterAdminSession === 'function') {
+            defaultAIOpsQuarantine.unregisterAdminSession(clientIp);
+          }
+        } catch (_) {}
+      }
       const count = await authService.revokeAllTokens(req.user.idaccount);
       logger.info('User logged out', { idaccount: req.user.idaccount, tokensRevoked: count });
       return ResponseHandler.success(res, { tokensRevoked: count }, 'Đăng xuất thành công');

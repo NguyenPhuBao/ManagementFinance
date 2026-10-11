@@ -12,6 +12,8 @@
  * Cơ chế Anti-Poisoning: Chỉ học dữ liệu sạch khi Threat Score < 70.
  */
 
+const os = require('os');
+
 class AnomalyDetector {
   constructor(options = {}) {
     this.alpha = options.alpha || 0.15; // Hệ số suy giảm EWMA
@@ -64,21 +66,105 @@ class AnomalyDetector {
   }
 
   /**
-   * Khởi tạo đường chuẩn 24 giờ dựa trên quy mô người dùng mục tiêu
+   * Tính toán các thông số đường chuẩn thực tế (Real-Server Hardware Baselines)
+   * dựa trên số nhân CPU thật, tổng RAM vật lý của server, và quy mô người dùng N.
+   */
+  calculateServerHardwareBaseline(targetConcurrency = null) {
+    const N = Math.max(100, Number(targetConcurrency || this.targetConcurrency || 1000));
+    const cpus = os.cpus() || [];
+    const cpuCores = Math.max(1, cpus.length || 1);
+    const totalMemMb = Math.max(512, Math.round(os.totalmem() / 1024 / 1024));
+    const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
+
+    let idleRssMb = 120;
+    try {
+      if (typeof process.memoryUsage === 'function') {
+        idleRssMb = Math.max(80, Math.round(process.memoryUsage().rss / 1024 / 1024));
+      }
+    } catch (_) {}
+
+    // 1. Lưu lượng:
+    const baseRpm = N * 10;
+    const rps = baseRpm / 60;
+
+    // 2. CPU thực tế:
+    // Mỗi request tài chính tốn trung bình ~1.8ms CPU. Tải thêm (%) = (rps * 1.8 * 100) / (cpuCores * 1000)
+    const idleCpuPct = 3;
+    const addedCpuPct = (rps * 1.8 * 100) / (cpuCores * 1000);
+    const expectedCpuDay = Math.min(95, Math.max(5, Math.round(idleCpuPct + addedCpuPct)));
+    const expectedCpuNight = Math.min(90, Math.max(3, Math.round(idleCpuPct + addedCpuPct * 0.25)));
+
+    // 3. RAM thực tế:
+    // Mỗi kết nối người dùng đồng thời tiêu hao buffer & cache trung bình 0.5 MB
+    const addedRamDayMb = Math.round(N * 0.5);
+    const expectedRamDayMb = idleRssMb + addedRamDayMb;
+    const expectedRamDay = Math.min(98, Math.max(10, Math.round((expectedRamDayMb / totalMemMb) * 100)));
+    const expectedRamNightMb = idleRssMb + Math.round(addedRamDayMb * 0.25);
+    const expectedRamNight = Math.min(95, Math.max(8, Math.round((expectedRamNightMb / totalMemMb) * 100)));
+
+    // 4. Event Loop Lag:
+    const expectedLagDay = Math.max(3, Math.round(4 + Math.max(0, (expectedCpuDay - 60) * 0.3)));
+    const expectedLagNight = 3;
+
+    // 5. Đánh giá khả năng chịu tải (Capacity Assessment):
+    const isOverCapacity = expectedCpuDay >= 85 || expectedRamDay >= 85;
+    const isNearLimit = expectedCpuDay >= 70 || expectedRamDay >= 70;
+    const capacityStatus = isOverCapacity ? 'OVER_CAPACITY' : (isNearLimit ? 'WARNING' : 'OPTIMAL');
+    let recommendation = 'Hạ tầng máy chủ hoàn toàn đáp ứng trơn tru quy mô mục tiêu.';
+    if (isOverCapacity) {
+      recommendation = `CẢNH BÁO: Với ${N.toLocaleString('vi-VN')} người dùng, máy chủ ${cpuCores} cores / ${(totalMemMb / 1024).toFixed(1)}GB RAM sẽ bị quá tải (dự kiến CPU ~${expectedCpuDay}%, RAM ~${expectedRamDay}%). Khuyến nghị mở rộng số nhân CPU hoặc tăng RAM!`;
+    } else if (isNearLimit) {
+      recommendation = `LƯU Ý: Quy mô ${N.toLocaleString('vi-VN')} người dùng tiệm cận ngưỡng cảnh báo của máy chủ (${expectedCpuDay}% CPU, ${expectedRamDay}% RAM).`;
+    }
+
+    return {
+      targetConcurrency: N,
+      serverSpecs: {
+        cpuCores,
+        totalRamMb: totalMemMb,
+        freeRamMb: freeMemMb,
+        platform: process.platform,
+        arch: process.arch,
+      },
+      calculatedMetrics: {
+        baselineRpm: baseRpm,
+        safePeakRpm: baseRpm * 3,
+        expectedCpuPercent: expectedCpuDay,
+        expectedRamPercent: expectedRamDay,
+        expectedEventLoopLagMs: expectedLagDay,
+      },
+      nightMetrics: {
+        baselineRpm: Math.round(baseRpm * 0.25),
+        expectedCpuPercent: expectedCpuNight,
+        expectedRamPercent: expectedRamNight,
+        expectedEventLoopLagMs: expectedLagNight,
+      },
+      capacityAssessment: {
+        status: capacityStatus,
+        isOverCapacity,
+        isNearLimit,
+        recommendation,
+      },
+      calibratedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Khởi tạo đường chuẩn 24 giờ dựa trên phần cứng server thật và quy mô người dùng mục tiêu
    */
   _initializeBaselines() {
+    const hwBaseline = this.calculateServerHardwareBaseline(this.targetConcurrency);
     const baselines = [];
-    const baseRpm = this.targetConcurrency ? Math.round(this.targetConcurrency * 10) : 10000;
     for (let h = 0; h < 24; h++) {
-      // Giờ thấp điểm (đêm: 0-6h: ~25% tải) vs giờ cao điểm (ngày: 7-23h: 100% tải)
       const isNight = h >= 0 && h <= 6;
+      const m = isNight ? hwBaseline.nightMetrics : hwBaseline.calculatedMetrics;
       baselines.push({
-        requestsPerMin: isNight ? Math.round(baseRpm * 0.25) : baseRpm,
+        requestsPerMin: m.baselineRpm,
         errorRate4xx: 0.02,
         errorRate5xx: 0.00,
-        eventLoopLagMs: 5,
-        cpuPercent: isNight ? 10 : 25,
-        ramPercent: 45,
+        eventLoopLagMs: m.expectedEventLoopLagMs,
+        cpuPercent: m.expectedCpuPercent,
+        ramPercent: m.expectedRamPercent,
       });
     }
     return baselines;
@@ -121,9 +207,12 @@ class AnomalyDetector {
     const systemActor = {
       type: 'SYSTEM_INTERNAL',
       identity: 'Hạ tầng máy chủ (Node.js & Database)',
-      maskedIp: '127.0.0.1 (Internal)',
+      maskedIp: 'Hệ thống nội bộ (Loopback)',
+      rawIp: '127.0.0.1',
       ipHash: 'system_core',
+      userId: null,
       username: 'System Core Engine',
+      role: 'System',
       userAgent: `Node.js runtime / PostgreSQL Pooler`,
       targetEndpoint: 'Background Event Loop & Connection Pool',
     };
@@ -511,11 +600,27 @@ class AnomalyDetector {
     };
   }
 
-  calibrate(customBaselines = {}) {
-    const hour = this._getVnHour();
-    if (this.hourlyBaselines[hour]) {
-      Object.assign(this.hourlyBaselines[hour], customBaselines);
+  calibrate(options = {}) {
+    // 1. Tự động tính toán lại đường chuẩn 24h dựa trên phần cứng server thật và N
+    const target = options.targetConcurrency || (typeof options === 'number' ? options : this.targetConcurrency);
+    this.targetConcurrency = Math.max(100, Number(target || 1000));
+    const report = this.calculateServerHardwareBaseline(this.targetConcurrency);
+    this.hourlyBaselines = this._initializeBaselines();
+
+    // 2. Nếu có customBaselines truyền vào từng giờ, merge vào
+    if (options.customBaselines) {
+      const hour = this._getVnHour();
+      if (this.hourlyBaselines[hour]) {
+        Object.assign(this.hourlyBaselines[hour], options.customBaselines);
+      }
+    } else if (typeof options === 'object' && !options.targetConcurrency) {
+      const hour = this._getVnHour();
+      if (this.hourlyBaselines[hour]) {
+        Object.assign(this.hourlyBaselines[hour], options);
+      }
     }
+
+    return report;
   }
 }
 
