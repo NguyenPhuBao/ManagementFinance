@@ -2,6 +2,8 @@
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
+import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
@@ -40,6 +42,50 @@ class _ViGia implements WalletRepository {
 class _DanhMucNem implements CategoryManagementRepository {
   @override
   dynamic noSuchMethod(Invocation i) => throw StateError('hỏng');
+}
+
+/// Store phản hồi mà MỌI lần ghi đều thất bại: `ghi` là hàm `async` nên lỗi nằm trong Future trả về (như bản Drift khi
+/// SQLite hỏng), không phải ném đồng bộ.
+class _PhanHoiNem implements GoiYPhanHoiStore {
+  int soLanGhi = 0;
+  @override
+  Future<void> ghi({
+    required int idaccount,
+    required CategorySuggestion goiY,
+    required String ketQua,
+    String? chonCategoryId,
+  }) async {
+    soLanGhi++;
+    throw StateError('ghi hỏng');
+  }
+
+  @override
+  Future<List<PhanHoiGoiY>> doc(int idaccount) async => const [];
+}
+
+/// Giao dịch mà ĐỌC GHI CHÚ thì ném — dựng đường "học mô hình lỗi" của `napLichSu` bằng dữ liệu, không thêm đường tiêm
+/// lỗi nào vào mã thật. Mọi thứ khác dùng được bình thường (bảng ví hay dùng chỉ đọc danh mục + ví).
+class _GiaoDichNemGhiChu extends Transaction {
+  _GiaoDichNemGhiChu(String id)
+      : super(
+          id: id,
+          walletId: 'w',
+          idaccount: 1,
+          categoryId: 'food',
+          amount: 30000,
+          type: 'chi',
+          status: 'completed',
+          provider: 'Manual',
+          note: '',
+          date: DateTime(2026, 9, 1),
+          images: '',
+          syncStatus: 'synced',
+          syncRetryCount: 0,
+          updatedAt: DateTime(2026, 9, 1),
+          isDeleted: false,
+        );
+  @override
+  String get note => throw StateError('đọc ghi chú hỏng');
 }
 
 Transaction _gd(String id, String cat, String wallet, String note) => Transaction(
@@ -114,6 +160,22 @@ void main() {
       expect(ls.boSoTien, isNotNull);
     });
 
+    test('học mô hình lỗi → mô hình ấy là null, bảng ví hay dùng vẫn có, KHÔNG ném (spec B1 mục 6)', () async {
+      sl.registerSingleton<TransactionRepository>(_SoGia([for (var i = 0; i < 5; i++) _GiaoDichNemGhiChu('t$i')]));
+      final ls = await ThemGiaoDichNguonThat().napLichSu(1);
+      expect(ls.boPhanLoai, isNull, reason: 'B1 học lỗi → rơi về bảng từ khoá, không toast');
+      expect(ls.boSoTien, isNull, reason: 'mô hình số tiền học lỗi → thẻ theo số tiền im');
+      expect(ls.viHayDung['food'], 'w', reason: 'bảng ví hay dùng không phụ thuộc hai mô hình');
+    });
+
+    test('mô hình học lỗi KHÔNG làm mất mô hình kia được tiêm sẵn (hai khối try/catch độc lập)', () async {
+      sl.registerSingleton<TransactionRepository>(_SoGia([for (var i = 0; i < 5; i++) _GiaoDichNemGhiChu('t$i')]));
+      final bo = BoPhanLoaiGhiChu.hoc(const []);
+      final ls = await ThemGiaoDichNguonThat(boPhanLoaiTiem: bo).napLichSu(1);
+      expect(ls.boPhanLoai, same(bo), reason: 'đã tiêm thì không học lại, nên không chạm ghi chú lỗi');
+      expect(ls.boSoTien, isNull);
+    });
+
     test('đường SỬA: mẫu đề xuất bỏ chính giao dịch đang sửa', () async {
       sl.registerSingleton<TransactionRepository>(_SoGia([_gd('a', 'food', 'w', 'cafe'), _gd('b', 'food', 'w', 'cafe')]));
       final ls = await ThemGiaoDichNguonThat().napLichSu(1, dangSua: 'a');
@@ -132,6 +194,25 @@ void main() {
   test('napDanhMucVaTuKhoa: không phiên → rỗng, không đọc', () async {
     final (ds, _) = await ThemGiaoDichNguonThat(danhMuc: _DanhMucNem()).napDanhMucVaTuKhoa(null);
     expect(ds, isEmpty);
+  });
+
+  group('bất biến 6 — phản hồi gợi ý ghi unawaited + bắt lỗi', () {
+    final goiY = CategorySuggestion(category: makeCategory(id: 'food', name: 'Ăn uống'), matchedKeyword: 'phở');
+
+    test('⭐ ghi phản hồi HỎNG → ghiPhanHoi không ném và lỗi không lọt ra ngoài (chọn / lưu không bị chặn)', () async {
+      final store = _PhanHoiNem();
+      final n = ThemGiaoDichNguonThat(phanHoi: store);
+      expect(() => n.ghiPhanHoi(idaccount: 1, goiY: goiY, ketQua: kKetQuaGoiYChon, chon: 'food'), returnsNormally);
+      // Để `catchError` chạy TRONG ca này: Future thất bại không ai bắt thì zone báo lỗi chưa xử lý và ca đỏ.
+      await pumpEventQueue();
+      expect(store.soLanGhi, 1, reason: 'ca không canh gì nếu store giả chưa từng được gọi');
+    });
+
+    test('không có store phản hồi → không làm gì, không ném', () async {
+      final n = ThemGiaoDichNguonThat();
+      expect(() => n.ghiPhanHoi(idaccount: 1, goiY: goiY, ketQua: kKetQuaGoiYChon), returnsNormally);
+      expect(await n.docPhanHoi(1), isNull);
+    });
   });
 
   test('ví theo nguồn: không store → null / không ném; có store → đọc lại được thứ đã ghi', () async {

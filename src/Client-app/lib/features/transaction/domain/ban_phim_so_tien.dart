@@ -40,9 +40,10 @@ String themPhimSoTien(String hienTai, String phim) {
   }
 
   // ⚠️ `'.'` KHÔNG đổi gì (A12, 2026-09-19). Phím ấy đã bị bỏ khỏi lưới, nhưng
-  // nhánh vô hiệu thì giữ: nó từng sinh ra một chuỗi mà `ThemGiaoDichCubit.chuanBiLuu`
-  // strip dấu chấm rồi đọc tiếp, nên `12.5` lưu thành **125** — sai gấp mười,
-  // im lặng. Giữ nhánh ở đây để phím có quay lại lưới cũng không phá được.
+  // nhánh vô hiệu thì giữ: nó từng sinh ra một chuỗi mà phép lưu cũ (`_saveTransaction`
+  // của trang, nay là `ThemGiaoDichCubit.chuanBiLuu`) strip dấu chấm rồi đọc tiếp,
+  // nên `12.5` lưu thành **125** — sai gấp mười, im lặng. Giữ nhánh ở đây để phím
+  // có quay lại lưới cũng không phá được.
   if (phim == 'done' || phim == '.') return hienTai;
 
   if (phim == kToanTuCong || phim == kToanTuTru) {

@@ -90,6 +90,14 @@ class _DocAiGia implements DocCauBangAi {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+/// Cubit cho phép ÉP state — chỉ để chạm chốt "chiều tiền" của `chuanBiLuu` mà API công khai không dẫn tới được:
+/// `suggestDebtDirection` luôn trả `chi` / `thu`, nên danh mục vay/nợ chọn qua `chonDanhMuc` luôn có `chieuNo`.
+class _CubitEpState extends ThemGiaoDichCubit {
+  _CubitEpState(NguonThemGiaoDichGia nguon)
+      : super(nguon: nguon, taiKhoan: () => 1, boGoiY: const CategorySuggestionEngine());
+  void ep(ThemGiaoDichState s) => emit(s);
+}
+
 void main() {
   group('state', () {
     test('copyWith xoá được từng trường nullable về null (không "dính")', () {
@@ -105,6 +113,8 @@ void main() {
       expect(s.loaiGhi, isNull);
       expect(s.copyWith(danhMuc: luong).loaiGhi, 'thu');
       expect(s.copyWith(danhMuc: choVay, chieuNo: 'thu').loaiGhi, 'thu');
+      expect(s.copyWith(danhMuc: choVay).loaiGhi, isNull,
+          reason: 'vay/nợ mà chưa có chiều tiền → chưa đủ dữ kiện (tiền đề của câu "Vui lòng chọn chiều tiền")');
       expect(s.copyWith(huong: 'transfer').loaiGhi, 'transfer');
     });
   });
@@ -612,6 +622,37 @@ void main() {
       final khongDm = await sanSang();
       khongDm.goPhim('5');
       expect((await khongDm.chuanBiLuu() as LoiLuu).cau, 'Vui lòng chọn danh mục');
+      // Ví đứng TRƯỚC danh mục: không có ví nào VÀ chưa chọn danh mục → câu về ví thắng.
+      final khongVi = await sanSang(nguon: NguonThemGiaoDichGia());
+      expect((await khongVi.chuanBiLuu() as LoiLuu).cau, 'Vui lòng nhập số tiền hợp lệ',
+          reason: 'số tiền đứng trước cả ví');
+      khongVi.goPhim('5');
+      expect(khongVi.state.viNguon, isNull);
+      expect(khongVi.state.danhMuc, isNull);
+      expect((await khongVi.chuanBiLuu() as LoiLuu).cau, 'Vui lòng chọn ví thanh toán',
+          reason: 'ví phải được kiểm TRƯỚC danh mục — đảo hai chốt là người dùng chưa có ví bị bảo chọn danh mục');
+    });
+
+    test('chuyển khoản mà chưa có ví đích → "Vui lòng chọn ví đích" (đứng sau chốt ví nguồn)', () async {
+      // Không `moTrang()`: `_napVi` luôn điền ví đích khi đã có ví nguồn, nên ví đích trống chỉ đến được khi người dùng
+      // chọn ví nguồn trước lúc danh sách ví về.
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb]));
+      c.chonVi(tcb);
+      c.chonHuong('transfer');
+      c.goPhim('5');
+      expect(c.state.viDich, isNull);
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Vui lòng chọn ví đích');
+      c.chonViDich(tienMat);
+      expect(await c.chuanBiLuu(), isA<SanSangLuu>(), reason: 'chọn ví đích thì qua chốt');
+    });
+
+    test('chốt chiều tiền: danh mục vay/nợ mà chưa có chiều → "Vui lòng chọn chiều tiền" (nhánh phòng thủ)', () async {
+      // Nhánh này không dẫn tới được bằng API công khai (xem `_CubitEpState`) — ép state để ghim câu chữ của chốt.
+      final c = _CubitEpState(NguonThemGiaoDichGia());
+      addTearDown(c.close);
+      c.ep(c.state.copyWith(viNguon: tcb, danhMuc: choVay, chuoiSoTien: '5'));
+      expect(c.state.chieuNo, isNull);
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Vui lòng chọn chiều tiền');
     });
 
     test('⭐ G38: có ví mà KHÔNG phiên → không dựng giao dịch nào', () async {
@@ -663,6 +704,41 @@ void main() {
       c.chonDanhMuc(anUong);
       c.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000));
       expect((await c.chuanBiLuu() as LoiLuu).cau, 'Phần còn lại phải lớn hơn 0');
+    });
+
+    group('câu lỗi của tách — ba mã còn lại', () {
+      // Khoản chi 50.000 ở danh mục chính Ăn uống; `luuPhan` không tự kiểm (chỉ `chonDanhMuc` gộp phần trùng).
+      Future<ThemGiaoDichCubit> chi50k() async {
+        final c = await sanSang();
+        for (final k in ['5', '0', '0', '0', '0']) {
+          c.goPhim(k);
+        }
+        c.chonDanhMuc(anUong);
+        return c;
+      }
+
+      test('một phần không dương → "Mỗi phần phải lớn hơn 0"', () async {
+        final c = await chi50k();
+        c.luuPhan(const PhanTach(categoryId: 'move', soTien: 0));
+        expect((await c.chuanBiLuu() as LoiLuu).cau, 'Mỗi phần phải lớn hơn 0');
+      });
+
+      test('phần trùng danh mục chính, hoặc hai phần cùng danh mục → "Mỗi danh mục chỉ một phần"', () async {
+        final c = await chi50k();
+        c.luuPhan(const PhanTach(categoryId: 'food', soTien: 10000));
+        expect((await c.chuanBiLuu() as LoiLuu).cau, 'Mỗi danh mục chỉ một phần');
+        final d = await chi50k();
+        d.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000));
+        d.luuPhan(const PhanTach(categoryId: 'move', soTien: 5000));
+        expect((await d.chuanBiLuu() as LoiLuu).cau, 'Mỗi danh mục chỉ một phần');
+      });
+
+      test('một món nằm ở hai phần → "Một món chỉ thuộc một phần"', () async {
+        final c = await chi50k();
+        c.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000, monIds: {1}));
+        c.luuPhan(const PhanTach(categoryId: 'shop', soTien: 10000, monIds: {1}));
+        expect((await c.chuanBiLuu() as LoiLuu).cau, 'Một món chỉ thuộc một phần');
+      });
     });
 
     test('daGuiLuu tạo mới ghi phản hồi thẻ gợi ý; cauSauLuu nói số giao dịch của lô tách', () async {

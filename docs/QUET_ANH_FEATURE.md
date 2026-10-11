@@ -57,8 +57,9 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 
 1. **Khoá `quet:` KHÔNG đi đường nguồn → ví của D1** — ảnh quét không gắn ngân hàng; giữ ví mặc định. Chép nhầm đường
    D1 là ví trống ở mọi lần quét. Gợi ý chuyển khoản và nhắc trùng của D1 cũng bỏ (spec 5.6).
-2. **Ảnh xoá trong `dispose()` của form** — một chỗ cho mọi đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong`
-   với khoá `quet:` chỉ xoá ảnh, **không** gọi `xoaBienDong` (không có hàng loại 20).
+2. **Ảnh xoá trong `close()` của `ThemGiaoDichCubit`** (trang gọi `close()` từ `dispose()` của nó) — một chỗ cho mọi
+   đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong` (cũng ở Cubit) với khoá `quet:` chỉ xoá ảnh, **không**
+   gọi `xoaBienDong` (không có hàng loại 20).
 2b. **Bản sao `image_picker` trong `cache/` xoá trong `dispose()` của `/quet`** (`xoaTepTamChonAnh`,
    `core/ocr/tep_tam_chon_anh.dart`): `cache/scaled_<tên>` + bản chép `cache/<uuid>/<tên>` — gói không tự dọn
    (nghiệm thu OnePlus 2026-10-08: 45 thư mục, 13 MB). Chỉ xoá tệp nằm thẳng trong thư mục tên `cache`. Bản sao từ

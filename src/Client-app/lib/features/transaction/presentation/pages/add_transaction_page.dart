@@ -232,7 +232,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   final FocusNode _nhapNhanhFocus = FocusNode();
 
   /// D1: form đang mở từ một hàng biến động số dư (đường tạo mới).
-  DienSanBienDong? get _bienDong => _isEditing ? null : widget.bienDong;
+  DienSanBienDong? get _bienDong => _cubit.bienDong;
 
   bool get _isEditing => _s.laSua;
 

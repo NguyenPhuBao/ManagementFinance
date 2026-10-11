@@ -129,10 +129,11 @@ void main() {
     expect(repo.updated, hasLength(1),
         reason: 'Bấm ✓ ở chế độ sửa phải phát UpdateTransactionEvent.');
     expect(repo.updated.single.after.amount, 12.5,
-        reason: '`chuanBiLuu` strip dấu chấm vì tưởng nó là dấu ngăn '
-            'nghìn, nên 12.5 thành 125 — người dùng mở một khoản cũ ra xem rồi '
-            'bấm lưu là số tiền tự nhân mười, im lặng. Bỏ phím `.` KHÔNG đóng '
-            'được cửa này: chuỗi có dấu chấm đến từ `_dauTien` của Cubit.');
+        reason: 'Lỗi cũ: `chuanBiLuu` (trước đây `_saveTransaction`) strip dấu '
+            'chấm vì tưởng nó là dấu ngăn nghìn, nên 12.5 thành 125 — người '
+            'dùng mở một khoản cũ ra xem rồi bấm lưu là số tiền tự nhân mười, '
+            'im lặng. Bỏ phím `.` KHÔNG đóng được cửa này: chuỗi có dấu chấm '
+            'đến từ `_dauTien` của Cubit.');
   });
 
   testWidgets('⚠️ khoản có phần lẻ hiện bằng DẤU PHẨY, qua CurrencyFormatter',

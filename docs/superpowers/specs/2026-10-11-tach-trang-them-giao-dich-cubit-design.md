@@ -22,6 +22,11 @@ Số đo thật (`wc -l` 2026-10-11, HEAD `18ae5749`): trang **779** (spec ướ
 7. **Cubit ~1.100 dòng, không ~800** (mục 3) — xem số đo trên.
 8. **24 tệp test không đổi cả dòng import** (mạnh hơn quyết định 2 ở mục 0) — trang `export` lại `BudgetLookup` từ tệp nguồn.
 
+Hai chỗ lệch nữa lộ ra ở review toàn nhánh (không có trong kế hoạch; cả hai vô hại, đã đối chiếu với trang cũ `21d4c594^`):
+
+9. **`daGuiLuu` đặt lại số giao dịch đã lưu về 1 ở đường không tách.** Trang cũ chỉ đặt `_soGiaoDichVuaLuu = ds.length` trong `_luuTach` và chỉ trả về 1 khi `actionSuccess` đã đọc nó — nên một lần lưu tách thất bại (không có `actionSuccess`) rồi một lần lưu thường thành công sẽ nói *"Đã lưu N giao dịch"*. Bản mới (`_soGiaoDichVuaLuu = r.laTach ? r.giaoDich.length : 1`) vô tình chữa lỗi tiềm ẩn ấy — trái nguyên tắc *không sửa lỗi tiện tay*; giữ lại vì vô hại.
+10. **`moTrang()` nạp bằng `Future.wait`: `_napVi` ném thì `_tinhDeXuat` không chạy.** Trang cũ chạy `_tinhDeXuat` sau `napHoc` (lịch sử + tập tắt) mà không chờ ví, nên vẫn tính đề xuất khi `_loadWallets` ném; bản mới chờ cả ví lẫn lịch sử (xem mục 5 ở trên) rồi mới tính. Cả hai bản đều để lỗi ví thoát ra không ai bắt (`_loadWallets` / `_napVi` không có `try`), nên người dùng không thấy khác gì.
+
 Phán quyết của người điều phối trong lúc thi công:
 
 - **R1** làm tại chỗ trên nhánh `TranQuangDat`, không dùng worktree. **R2** literal `99999999999999999` trong test đổi thành `1e17` (Dart không cho literal nguyên không biểu diễn đúng làm `double`). **R3** Task 0 (ảnh "trước") người điều phối tự làm.
