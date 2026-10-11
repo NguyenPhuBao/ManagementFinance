@@ -74,7 +74,7 @@ void main() {
 
   /// Các tệp là **bộ chọn ví** — chúng phải gọi `getActive`/`watchActive`.
   const laBoChonVi = <String>{
-    'features/transaction/presentation/pages/add_transaction_page.dart',
+    'features/transaction/data/them_giao_dich_nguon.dart',
     'features/bill/presentation/pages/bill_add_page.dart',
     'features/bill/presentation/pages/bill_edit_page.dart',
     'features/bill/presentation/widgets/bill_actions.dart',

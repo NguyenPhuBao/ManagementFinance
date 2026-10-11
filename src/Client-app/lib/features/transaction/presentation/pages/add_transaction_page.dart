@@ -9,15 +9,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../../category/domain/category_classify.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/kho_bien_lai.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../budget/data/models/budget_entity.dart';
-import '../../../budget/data/repositories/budget_repository.dart';
-import '../../../wallet/data/repositories/wallet_repository.dart';
-import '../../data/repositories/transaction_repository.dart';
-import '../../../../core/notification/thong_bao_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_mon_hang.dart';
@@ -25,6 +20,7 @@ import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../data/doc_cau_bang_ai.dart';
+import '../../data/them_giao_dich_nguon.dart';
 import '../../data/vi_theo_nguon_store.dart';
 import '../widgets/khoi_tach.dart';
 import '../widgets/sheet_them_phan.dart';
@@ -49,7 +45,6 @@ import '../../../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
-import '../../domain/vi_hay_dung.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -57,15 +52,12 @@ import '../bloc/transaction_state.dart';
 import '../../../../core/ui/bao_che_day_toast.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
+// `BudgetLookup` dời sang lớp nguồn; trang export lại để nơi gọi cũ (`widget.budgetLookup`, test) không đổi import.
+export '../../data/them_giao_dich_nguon.dart' show BudgetLookup;
+
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
 /// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
 /// `/add`.
-/// Xem [AddTransactionPage.budgetLookup].
-typedef BudgetLookup = Future<BudgetView?> Function(
-  int idaccount,
-  String categoryId,
-);
-
 class EditTransactionArgs {
   const EditTransactionArgs({required this.transaction, this.category});
 
@@ -263,9 +255,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// LÀ phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
   ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
 
-  GoiYPhanHoiStore? get _phanHoiStore =>
-      widget.phanHoiGoiY ?? (sl.isRegistered<GoiYPhanHoiStore>() ? sl<GoiYPhanHoiStore>() : null);
-
   /// Người dùng đã tự tay đặt ví nguồn trong lượt này chưa.
   ///
   /// ⚠️ Chốt quan trọng nhất của chặng 1.2: một phép đoán từ lịch sử **không
@@ -281,6 +270,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
   final GlobalKey _khoaTheGoiY = GlobalKey();
+
+  /// Mọi đọc / ghi dữ liệu của form (spec 2026-10-11 mục 4.3). Dựng một lần từ tham số khởi tạo.
+  late final ThemGiaoDichNguon _nguon = ThemGiaoDichNguonThat(
+    danhMuc: widget.categoryRepository,
+    viTiem: widget.wallets,
+    viHayDungTiem: widget.viHayDung,
+    boPhanLoaiTiem: widget.boPhanLoai,
+    boSoTienTiem: widget.boSoTien,
+    phanHoi: widget.phanHoiGoiY,
+    docAi: widget.docAi,
+    viTheoNguon: widget.viTheoNguon,
+    xoaBienDong: widget.xoaBienDong,
+    khoanTrongSo: widget.khoanTrongSo,
+    hangBienDongCho: widget.hangBienDongCho,
+    khoBienLai: widget.khoBienLai,
+    khoAnhQuet: widget.khoAnhQuet,
+    traNganSach: widget.budgetLookup,
+  );
 
   /// Chiều tiền người dùng chọn khi danh mục là vay/nợ: `'chi'` (tiền ra) hoặc
   /// `'thu'` (tiền vào). `null` với mọi danh mục khác. Được gợi sẵn theo tên
@@ -324,18 +331,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Gợi ý người dùng ĐÃ áp — Lưu ở đoạn Chuyển khoản thì xoá cả hàng cặp và nhớ ví hai phía (§5).
   GoiYChuyenKhoan? _goiYDaApDung;
 
-  ViTheoNguonStore? get _viTheoNguon =>
-      widget.viTheoNguon ?? (sl.isRegistered<ViTheoNguonStore>() ? sl<ViTheoNguonStore>() : null);
-
-  DocCauBangAi? get _docAi =>
-      widget.docAi ?? (sl.isRegistered<DocCauBangAi>() ? sl<DocCauBangAi>() : null);
-
   /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
   /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
   BudgetImpact? _pendingImpact;
-
-  CategoryManagementRepository get _categoryRepository =>
-      widget.categoryRepository ?? sl<CategoryManagementRepository>();
 
   TransactionEntity? get _editing => widget.initial?.transaction;
   bool get _isEditing => _editing != null;
@@ -367,7 +365,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _hienBanPhimSo = _amountString == '0' && _bienDong?.soTien == null;
     _noteController.addListener(_onNoteChanged);
     _nhapNhanhFocus.addListener(() {
-      if (_nhapNhanhFocus.hasFocus) unawaited(_docAi?.chuanBi());
+      if (_nhapNhanhFocus.hasFocus) unawaited(_nguon.docAi?.chuanBi());
     });
     final napVi = _loadWallets();
     // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
@@ -378,20 +376,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
     if (_bienDong?.anh case final anh?) {
       // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`), kèm danh sách món (mục 11.2b).
-      unawaited((_laQuet ? _khoAnhQuet?.duongDan(anh) : _khoBienLai?.duongDan(anh))?.then((p) {
+      unawaited(_nguon.duongDanAnh(_bienDong!).then((p) {
         if (mounted && p != null) setState(() => _duongDanAnh = p);
       }));
       if (_laQuet && widget.choTickMon) {
-        unawaited(_khoAnhQuet?.docMon(anh).then((m) {
+        unawaited(_nguon.docMonQuet(anh).then((m) {
           if (mounted) setState(() => _monQuet = m);
         }));
       }
     }
   }
-
-  KhoBienLai? get _khoBienLai => widget.khoBienLai ?? (sl.isRegistered<KhoBienLai>() ? sl<KhoBienLai>() : null);
-
-  KhoAnhQuet? get _khoAnhQuet => widget.khoAnhQuet ?? (sl.isRegistered<KhoAnhQuet>() ? sl<KhoAnhQuet>() : null);
 
   /// A5 — form mở từ ảnh quét (khoá `quet:`): không nguồn ngân hàng, không hàng loại 20.
   bool get _laQuet => _bienDong?.laQuet ?? false;
@@ -415,28 +409,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Đường dẫn ảnh biên lai của hàng đang mở; `null` = không có ảnh (hoặc chưa tìm xong).
   String? _duongDanAnh;
 
-  /// Xoá ảnh biên lai của hàng vừa Lưu / Bỏ qua (người dùng chốt: ảnh chỉ sống tới lúc ấy). Không bao giờ ném.
-  Future<void> _xoaAnhBienLai(DienSanBienDong d) async {
-    try {
-      await _khoBienLai?.xoa(d.anh);
-    } catch (e) {
-      debugPrint('[BienLai] xoá ảnh lỗi: ${e.runtimeType}');
-    }
-  }
-
   /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([_dienKetQua]). Không lưu.
   Future<void> _dienTuBienDong() async {
     final d = _bienDong;
     final id = _accountId();
     if (d == null || !mounted) return;
-    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
     String? viId;
     // A5: ảnh quét không gắn nguồn ngân hàng → không bảng "nguồn → ví"; giữ ví mặc định đã chọn sẵn.
     if (id != null && !_laQuet) {
       try {
         // Dòng nhắc (không đuôi TK) thì thử thêm ví của cả NGUỒN — chỉ khi nó chắc (một ví duy nhất).
-        final nho = await _viTheoNguon?.doc(id, d.nguon, d.duoi) ??
-            (d.phien != null ? await _viTheoNguon?.docTheoNguon(id, d.nguon) : null);
+        final nho = await _nguon.viTheoNguon(id, d.nguon, d.duoi) ??
+            (d.phien != null ? await _nguon.viTheoNguonChung(id, d.nguon) : null);
         // Chỉ ví HOẠT ĐỘNG (`_wallets` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
         if (nho != null && _wallets.any((w) => w.id == nho)) viId = nho;
       } catch (e) {
@@ -460,7 +445,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (id == null || _laQuet) return;
     unawaited(_tinhGoiYChuyen(d, id));
     try {
-      final so = await (widget.khoanTrongSo ?? _khoanTrongSoMacDinh)(id);
+      final so = await _nguon.khoanTrongSo(id);
       final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
       if (mounted) setState(() => _trungTrongSo = trung);
     } catch (e) {
@@ -472,11 +457,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// của tin theo luật D1 (chỉ ví đã nhớ); phía kia: đã nhớ → ví duy nhất trùng tên nguồn → trống. Lỗi → không gợi ý.
   Future<void> _tinhGoiYChuyen(DienSanBienDong d, int id) async {
     try {
-      final cho = await (widget.hangBienDongCho ?? _hangChoMacDinh)(id);
+      final cho = await _nguon.hangBienDongCho(id);
       final gy = goiYChuyenKhoan(d, cho);
       if (gy == null) return;
       Future<String?> nho(String nguon, String? duoi) async {
-        final v = await _viTheoNguon?.doc(id, nguon, duoi);
+        final v = await _nguon.viTheoNguon(id, nguon, duoi);
         return v != null && _wallets.any((w) => w.id == v) ? v : null;
       }
 
@@ -497,17 +482,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     } catch (e) {
       debugPrint('[BienDong] gợi ý chuyển khoản lỗi: $e');
     }
-  }
-
-  static Future<List<DienSanBienDong>> _hangChoMacDinh(int id) async {
-    final ds = <DienSanBienDong>[];
-    for (final n in await sl<ThongBaoNguon>().getAll(id)) {
-      final link = n.deeplink;
-      if (n.kind != kKindBienDongSoDu || n.dismissedAt != null || link == null) continue;
-      final h = dienSanBienDongTuQuery(Uri.tryParse(link)?.queryParameters ?? const {});
-      if (h != null) ds.add(h);
-    }
-    return ds;
   }
 
   /// Bấm *Ghi là chuyển khoản*: đổi đoạn qua ĐÚNG [_chonHuong], điền hai ví; ô không đoán được để TRỐNG — ví mặc định
@@ -533,39 +507,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
   }
 
-  static Future<List<KhoanSo>> _khoanTrongSoMacDinh(int id) async => [
-        for (final t in await sl<TransactionRepository>().getAllRows(id))
-          (id: t.id, soTien: t.amount, loai: t.type, ngay: t.date, ghiChu: t.note),
-      ];
-
   /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
   /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
   /// gọi: màn có thể đã `pop`. Không bao giờ ném.
   Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
     // A5: form từ ảnh quét — không hàng loại 20, không bảng nguồn → ví; chỉ xoá ảnh (dispose cũng xoá — luỹ đẳng).
     if (d.laQuet) {
-      await _khoAnhQuet?.xoa(d.anh);
+      await _nguon.xoaAnhQuet(d.anh);
       return;
     }
-    final store = _viTheoNguon;
     try {
-      if (nhoVi && viDaLuu != null) await store?.ghi(id, d.nguon, d.duoi, viDaLuu);
+      if (nhoVi && viDaLuu != null) await _nguon.nhoViTheoNguon(id, d.nguon, d.duoi, viDaLuu);
     } catch (e) {
       debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
     }
-    await _xoaHangBienDong(id, d.khoa);
-    await _xoaAnhBienLai(d);
-  }
-
-  /// Xoá cứng một hàng loại 20 theo `dedupeKey` (ngoại lệ có chủ ý — spec D1 §3.3). Không bao giờ ném.
-  Future<void> _xoaHangBienDong(int id, String khoa) async {
-    final xoa = widget.xoaBienDong ??
-        (sl.isRegistered<ThongBaoNguon>() ? sl<ThongBaoNguon>().xoaCung : null);
-    try {
-      await xoa?.call(id, khoa);
-    } catch (e) {
-      debugPrint('[BienDong] xoá hàng biến động lỗi: $e');
-    }
+    await _nguon.xoaHangBienDong(id, d.khoa);
+    await _nguon.xoaAnhBienLai(d.anh);
   }
 
   /// Lưu sau khi áp gợi ý Chuyển khoản (spec §5): nhớ ví cho CẢ HAI nguồn — mỗi phía theo phía của nó. ⚠️ Không theo
@@ -573,17 +530,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// nguồn ấy chọn sẵn sai ví, im lặng. Rồi xoá hàng đang mở và hàng cặp (còn chờ là người dùng ghi đôi). Không ném.
   Future<void> _dongChuyenKhoan(DienSanBienDong d, GoiYChuyenKhoan gy, int id,
       {String? viTu, String? viDen, required bool daNhoTu, required bool daNhoDen}) async {
-    final store = _viTheoNguon;
     try {
-      if (!daNhoTu && viTu != null) await store?.ghi(id, gy.nguonTu, gy.duoiTu, viTu);
-      if (!daNhoDen && viDen != null) await store?.ghi(id, gy.nguonDen, gy.duoiDen, viDen);
+      if (!daNhoTu && viTu != null) await _nguon.nhoViTheoNguon(id, gy.nguonTu, gy.duoiTu, viTu);
+      if (!daNhoDen && viDen != null) await _nguon.nhoViTheoNguon(id, gy.nguonDen, gy.duoiDen, viDen);
     } catch (e) {
       debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
     }
-    await _xoaHangBienDong(id, d.khoa);
-    await _xoaAnhBienLai(d);
+    await _nguon.xoaHangBienDong(id, d.khoa);
+    await _nguon.xoaAnhBienLai(d.anh);
     final cap = gy.khoaCap;
-    if (cap != null) await _xoaHangBienDong(id, cap);
+    if (cap != null) await _nguon.xoaHangBienDong(id, cap);
   }
 
   Future<void> _boQuaBienDong() async {
@@ -597,12 +553,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _napTatCap() async {
     final bo = _boPhanLoai;
     final boTien = _boSoTien;
-    final store = _phanHoiStore;
     final id = _accountId();
     // Hai mô hình độc lập: B1 học lỗi (`null`) không được kéo theo việc bỏ nạp tập tắt của nguồn số tiền.
-    if ((bo == null && boTien == null) || store == null || id == null) return;
+    if ((bo == null && boTien == null) || id == null) return;
     try {
-      final phanHoi = await store.doc(id);
+      final phanHoi = await _nguon.docPhanHoi(id);
+      if (phanHoi == null) return;
       final tat = bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, bo.mau);
       final tatTuKhoa =
           bo == null ? const <(String, String)>{} : tatCapTu(phanHoi, _mauDeXuat ?? bo.mau, nguon: kNguonDeXuatTuKhoa);
@@ -621,12 +577,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Ghi một phản hồi. `unawaited` + `catchError`: phản hồi hỏng KHÔNG được chặn việc chọn hay lưu giao dịch.
   void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
-    final store = _phanHoiStore;
     final id = _accountId();
-    if (store == null || id == null) return;
-    unawaited(store
-        .ghi(idaccount: id, goiY: goiY, ketQua: ketQua, chonCategoryId: chon)
-        .catchError((Object e) => debugPrint('[GoiYDanhMuc] ghi phản hồi lỗi: $e')));
+    if (id == null) return;
+    _nguon.ghiPhanHoi(idaccount: id, goiY: goiY, ketQua: ketQua, chon: chon);
   }
 
   /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
@@ -667,40 +620,20 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _nhapNhanhController.dispose();
     _nhapNhanhFocus.dispose();
     // A5: ảnh quét chỉ sống tới khi form đóng — MỘT chỗ cho mọi đường thoát (Lưu, Bỏ qua, Back hệ thống, nút ←).
-    if (_laQuet) unawaited(_khoAnhQuet?.xoa(_bienDong?.anh));
+    if (_laQuet) unawaited(_nguon.xoaAnhQuet(_bienDong?.anh));
     super.dispose();
   }
 
   Future<void> _loadWallets() async {
-    final configuredWallets = widget.wallets;
-    if (configuredWallets != null) {
-      setState(() {
-        _wallets = configuredWallets;
-        _apDungViChonSan();
-        _apDungViDangSua();
-        _isLoadingWallets = false;
-      });
-      return;
-    }
-    final userIdAccount = _accountId();
-    if (userIdAccount == null) {
-      // Chưa có phiên: không đọc ví của ai cả. Danh sách rỗng làm chốt
-      // "Vui lòng chọn ví thanh toán" chặn lưu, nên không có đường nào ghi
-      // giao dịch dưới danh nghĩa admin qua ngả này.
-      if (mounted) setState(() => _isLoadingWallets = false);
-      return;
-    }
-
-    final list = await sl<WalletRepository>().getActiveRows(userIdAccount);
-
-    if (mounted) {
-      setState(() {
-        _wallets = list;
-        _apDungViChonSan();
-        _apDungViDangSua();
-        _isLoadingWallets = false;
-      });
-    }
+    final r = _nguon.napViDangDung(_accountId());
+    final list = r is List<Wallet> ? r : await r;
+    if (!mounted) return;
+    setState(() {
+      _wallets = list;
+      _apDungViChonSan();
+      _apDungViDangSua();
+      _isLoadingWallets = false;
+    });
   }
 
   /// Mã tài khoản của phiên, hoặc `null` khi CHƯA có phiên dùng được.
@@ -788,71 +721,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   ///
   /// Cùng lượt đọc ấy học luôn mô hình gợi ý danh mục (B1) — MỘT lần đọc sổ cho hai bảng.
   Future<void> _loadViHayDung() async {
-    // Đặt TRƯỚC mọi nhánh thoát sớm: ca test tiêm mô hình cùng lúc tiêm `wallets`.
-    if (widget.boPhanLoai != null) _boPhanLoai = widget.boPhanLoai;
-    if (widget.boSoTien != null) _boSoTien = widget.boSoTien;
-    final tiem = widget.viHayDung;
-    if (tiem != null) {
-      _viHayDung = tiem;
-      return;
-    }
-    // Ca test tiêm sẵn `wallets`; khi ấy không đụng SQLite, đúng như đường ví.
-    if (widget.wallets != null) return;
-    final userIdAccount = _accountId();
-    if (userIdAccount == null) return;
-    final txs = await sl<TransactionRepository>().getAllRows(userIdAccount);
-    final dangSua = _editing?.id;
-    final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
-      for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
-    ]));
-    BoPhanLoaiGhiChu? bo = widget.boPhanLoai;
-    if (bo == null) {
-      try {
-        bo = BoPhanLoaiGhiChu.hoc(mauHocTu([
-          for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
-        ]));
-      } catch (e) {
-        // Học lỗi → rơi về bảng từ khoá, không toast (spec B1 mục 6).
-        debugPrint('[GoiYDanhMuc] học mô hình lỗi: $e');
-        bo = null;
-      }
-    }
-    // Dự án C: mô hình theo số tiền, học từ CÙNG lượt đọc sổ. `getAll` đã bỏ hàng có `deletedAt`; `isDeleted` là cờ
-    // xoá mềm thứ hai của bảng — mẫu học không được chứa khoản người dùng đã bỏ.
-    BoPhanLoaiSoTien? boTien = widget.boSoTien;
-    if (boTien == null) {
-      try {
-        boTien = BoPhanLoaiSoTien.hoc(mauSoTienTu([
-          for (final t in txs)
-            (
-              loai: t.type,
-              categoryId: t.categoryId,
-              ghiChu: t.note,
-              soTien: t.amount,
-              walletId: t.walletId,
-              ngay: t.date,
-              daXoa: t.isDeleted,
-            ),
-        ]));
-      } catch (e) {
-        debugPrint('[GoiYDanhMuc] học mô hình số tiền lỗi: $e');
-        boTien = null;
-      }
-    }
-    if (mounted) {
-      setState(() {
-        _viHayDung = bang;
-        _boPhanLoai = bo;
-        _boSoTien = boTien;
-        // Đường sửa: mẫu của CHÍNH giao dịch đang sửa phải ra khỏi phép đếm — hàm đề xuất cộng bản đang gõ vào.
-        _mauDeXuat = dangSua == null
-            ? null
-            : mauHocTu([
-                for (final t in txs)
-                  if (t.id != dangSua) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
-              ]);
-      });
-    }
+    final r = _nguon.napLichSu(_accountId(), dangSua: _editing?.id);
+    final ls = r is LichSuHoc ? r : await r;
+    if (!mounted) return;
+    setState(() {
+      _viHayDung = ls.viHayDung;
+      _boPhanLoai = ls.boPhanLoai;
+      _boSoTien = ls.boSoTien;
+      _mauDeXuat = ls.mauDeXuat;
+    });
   }
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
@@ -894,11 +771,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _dangDien = true;
     final luot = ++_luotDien;
     FocusScope.of(context).unfocus();
-    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
     // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
     // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
     KetQuaAi? ai;
-    final docAi = _docAi;
+    final docAi = _nguon.docAi;
     final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
     if (conThieu && docAi != null && mounted && await docAi.sanSang()) {
       if (!mounted || luot != _luotDien) return;
@@ -917,28 +794,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
   }
 
-  /// Danh mục chọn được + từ khoá của chúng (bước từ khoá của C2, người dùng chốt 2026-09-30). Lỗi đọc thì rỗng — ô
-  /// Nhập nhanh vẫn điền được mọi ô khác.
-  Future<(List<Category>, Map<String, List<String>>)> _napDanhMucVaTuKhoa() async {
-    final id = _accountId();
-    if (id == null) return (const <Category>[], const <String, List<String>>{});
-    try {
-      return (
-        await _categoryRepository.selectableChildrenAll(accountId: id),
-        await _categoryRepository.loadAllKeywords(accountId: id),
-      );
-    } catch (e) {
-      debugPrint('[NhapNhanh] đọc danh mục / từ khoá lỗi: $e');
-      return (const <Category>[], const <String, List<String>>{});
-    }
-  }
-
   /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
   Future<void> _huyDocAi() async {
     _luotDien++;
-    unawaited(_docAi?.huy());
+    unawaited(_nguon.docAi?.huy());
     final cau = _nhapNhanhController.text.trim();
-    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
     if (!mounted) return;
     setState(() {
       _dangDien = false;
@@ -1156,7 +1017,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       if (mounted && _deXuat != null) setState(() => _deXuat = null);
       return;
     }
-    final (chonDuoc, tuKhoa) = await _napDanhMucVaTuKhoa();
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
     if (!mounted || _selectedCategory?.id != cat.id || _isTransfer || _noteController.text.trim() != ghiChu) return;
     final ten = {for (final c in chonDuoc) c.id: c.name};
     final d = deXuatTuKhoa(
@@ -1188,19 +1049,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final goiY = _goiYCua(d.dx);
     setState(() => _deXuat = null);
     try {
-      final tuKhoa = await _categoryRepository.loadAllKeywords(accountId: id);
+      final tuKhoa = await _nguon.tuKhoa(id);
       final cu = d.dx.tuDanhMuc;
       if (cu != null) {
-        await _categoryRepository.saveKeywords(
-          accountId: id,
+        await _nguon.luuTuKhoa(
+          idaccount: id,
           categoryId: cu,
-          keywords: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
+          tuKhoa: [for (final k in tuKhoa[cu] ?? const <String>[]) if (!cungTuKhoa(k, d.dx.tuKhoa)) k],
         );
       }
-      await _categoryRepository.saveKeywords(
-        accountId: id,
+      await _nguon.luuTuKhoa(
+        idaccount: id,
         categoryId: d.dx.categoryId,
-        keywords: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
+        tuKhoa: [...?tuKhoa[d.dx.categoryId], d.dx.tuKhoa],
       );
     } catch (e) {
       debugPrint('[DeXuatTuKhoa] ghi từ khoá lỗi: $e');
@@ -1241,9 +1102,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final ngayLucHoi = _selectedDate;
     // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba
     // phân loại vì chiều tiền suy từ danh mục được chọn, không phải ngược lại.
-    final categories = await _categoryRepository.selectableChildrenAll(
-      accountId: accountId,
-    );
+    final categories = await _nguon.danhMucChonDuoc(accountId);
     CategorySuggestion? suggestion;
     if (note.isEmpty) {
       // Dự án C: ghi chú TRỐNG → đoán theo số tiền. KHÁC hai nguồn dưới, nguồn này khoanh theo đoạn Chi/Thu: số tiền
@@ -1275,9 +1134,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
         // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
         // với mỗi lần ghi chú thay đổi.
-        final keywordsByCategory = await _categoryRepository.loadAllKeywords(
-          accountId: accountId,
-        );
+        final keywordsByCategory = await _nguon.tuKhoa(accountId);
         final candidates = <CategoryKeywordCandidate>[];
         for (final category in categories) {
           for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
@@ -1584,7 +1441,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Mở sheet *Thêm phần* (thêm mới, hoặc sửa [sua]). Danh mục chọn được: danh mục CHI hợp lệ; sheet bỏ danh mục chính
   /// và danh mục của phần khác.
   Future<void> _themPhan([PhanTach? sua]) async {
-    final (chonDuoc, _) = await _napDanhMucVaTuKhoa();
+    final (chonDuoc, _) = await _nguon.napDanhMucVaTuKhoa(_accountId());
     if (!mounted) return;
     final hopLe = hopLeTheoChieu('chi', chonDuoc);
     final chi = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];
@@ -1623,7 +1480,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
     BudgetView? view;
     try {
-      view = await _lookupBudget(tx.idaccount, categoryId);
+      view = await _nguon.traNganSach(tx.idaccount, categoryId);
     } catch (_) {
       // Tra ngân sách hỏng không được chặn việc ghi giao dịch.
       return null;
@@ -1647,13 +1504,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       date: tx.date,
       now: now,
     );
-  }
-
-  Future<BudgetView?> _lookupBudget(int idaccount, String categoryId) {
-    final custom = widget.budgetLookup;
-    if (custom != null) return custom(idaccount, categoryId);
-    if (!sl.isRegistered<BudgetRepository>()) return Future.value(null);
-    return sl<BudgetRepository>().activeBudgetForCategory(idaccount, categoryId);
   }
 
   Future<bool?> _confirmOverBudget(BuildContext context, BudgetImpact impact) {
