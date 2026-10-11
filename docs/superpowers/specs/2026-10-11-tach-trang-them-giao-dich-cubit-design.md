@@ -26,7 +26,7 @@ Phán quyết của người điều phối trong lúc thi công:
 
 - **R1** làm tại chỗ trên nhánh `TranQuangDat`, không dùng worktree. **R2** literal `99999999999999999` trong test đổi thành `1e17` (Dart không cho literal nguyên không biểu diễn đúng làm `double`). **R3** Task 0 (ảnh "trước") người điều phối tự làm.
 - **R4** dời hàm thì giữ chú thích ⚠️ **nguyên văn**. **R5** chú thích lý do bị mất khi dời (kể cả mức Minor) vẫn vào vòng sửa (`a1fb155b`, `29eaa7b9` khôi phục chú thích ⚠️ / `initState` cũ).
-- **R6** ba chú thích trỏ định danh đã xoá (`_getFormattedAmount` → `initState` của trang, `_huong` của trang, `_saveTransaction` / `_amountString` ở `ban_phim_so_tien.dart`) và chữ trong test trỏ hàm riêng tư cũ được trỏ lại ở Task 6.
+- **R6** ba chú thích trỏ định danh đã xoá (chú thích ở `_getFormattedAmount` từng trỏ `initState` của trang; chú thích ở `the_form.dart` trỏ `_huong` của trang; `_saveTransaction` / `_amountString` ở `ban_phim_so_tien.dart`) và chữ trong test trỏ hàm riêng tư cũ được trỏ lại ở Task 6.
 - **R7** Task 6 tách đôi: nghiệm thu máy ảo trước, tài liệu sau; bước rút miễn trừ quét 23 đã làm ở Task 4 (trang xuống dưới 1.200 dòng ngay ở đó).
 
 Hai chỗ lệch của Task 5: nhánh tách giữ **hàm riêng `_chuanBiLuuTach`** (cấu trúc `_luuTach` cũ, để mang nguyên chú thích) thay vì gộp vào `chuanBiLuu`; chú thích A12 chỉ đổi ba định danh không còn (`_amountString` → `chuoiSoTien`, `initState` → `_dauTien`, `_getFormattedAmount` → "`_getFormattedAmount` của trang") — nội dung lý do giữ nguyên.
