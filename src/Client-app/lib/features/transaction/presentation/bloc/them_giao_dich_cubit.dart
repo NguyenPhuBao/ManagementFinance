@@ -230,25 +230,40 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   }
 
   // ── Gợi ý danh mục (B1 · từ khoá · số tiền) và đề xuất từ khoá ──────────────────────────────────────────────────
+  /// Cặp (cụm, danh mục) đang bị thôi gợi ý (`tatCapTu`) — nạp một lần sau khi có mô hình.
   Set<(String, String)> _tatCap = const {};
+
+  /// Cặp (mã bậc, danh mục) của nguồn số tiền đang bị thôi gợi ý (`tatCapSoTienTu`).
   Set<(String, String)> _tatCapSoTien = const {};
+
+  /// Cặp (cụm, danh mục) đang bị thôi ĐỀ XUẤT TỪ KHOÁ — tập riêng của nguồn `kNguonDeXuatTuKhoa` (spec 2026-09-30 §2.4).
   Set<(String, String)> _tatCapTuKhoa = const {};
 
-  /// Cặp người dùng vừa *Bỏ qua* trong lượt mở màn này — thẻ số tiền tính lại ở MỖI phím số, thiếu tập này thì bấm Bỏ
-  /// qua xong gõ thêm một chữ số cùng bậc là thẻ bật lại ngay.
+  /// Cặp người dùng vừa bấm *Bỏ qua* trong lượt mở màn này. Thẻ nguồn số tiền tính lại ở MỖI phím số, nên thiếu tập
+  /// này thì bấm Bỏ qua xong gõ thêm một chữ số cùng bậc là thẻ bật lại ngay (cùng nếp [_boQuaLuotNay]).
   final Set<(String, String)> _boQuaSoTienLuotNay = {};
+
+  /// Cặp người dùng vừa ✕ đề xuất từ khoá trong lượt này — dòng ẩn tới khi rời màn.
   final Set<(String, String)> _boQuaLuotNay = {};
 
-  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện. ⚠️ Tách khỏi `state.goiY`: chọn danh mục qua
-  /// bảng xoá thẻ ngay, nhưng lựa chọn ấy CHÍNH LÀ phán xét (`khac`) — ghi lúc lưu.
+  /// Gợi ý đã HIỆN mà người dùng chưa phân xử, kèm ghi chú lúc nó hiện.
+  ///
+  /// ⚠️ Tách khỏi `state.goiY`: [chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH LÀ
+  /// phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
   ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
 
+  /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
+  ///
+  /// `TextEditingController` phát tín hiệu ở MỖI ký tự. Không hoãn thì một ghi chú 30 ký tự sinh 30 lượt đọc CSDL, mỗi
+  /// lượt lại đọc thêm từ khoá — và mọi kết quả trừ cái cuối đều bị vứt đi.
   Timer? _hoanGoiY;
   Timer? _hoanDeXuat;
   Timer? _anDaThem;
   static const Duration _doTreGoiY = Duration(milliseconds: 300);
 
-  /// Nguồn số tiền có dùng ở lượt mở màn này không — MỘT định nghĩa cho chỗ hẹn lẫn chỗ đoán.
+  /// Nguồn số tiền có được dùng ở lượt mở màn này không — MỘT định nghĩa cho cả chỗ hẹn lẫn chỗ đoán: đã có mô hình,
+  /// không ở chế độ sửa, không phải form biến động số dư (người dùng không chọn hai chỗ ấy cho lần này — spec mục 2
+  /// hàng 4). Hai chỗ mỗi nơi một bản chép thì bỏ một vế ở MỘT chỗ vẫn xanh (đo bằng bản sai 2026-10-02).
   bool get _coNguonSoTien => _boSoTien != null && !laSua && _bienDong == null;
 
   // ⏳ TẠM (Task 3): đường điền sẵn còn ở trang tới Task 4.
@@ -277,6 +292,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     }
   }
 
+  /// Ghi một phản hồi. Lỗi ghi do nguồn nuốt (`unawaited` + `catchError`): phản hồi hỏng KHÔNG được chặn việc chọn hay
+  /// lưu giao dịch.
   void _ghiPhanHoi(CategorySuggestion goiY, String ketQua, {String? chon}) {
     final id = _taiKhoan();
     if (id == null) return;
@@ -292,34 +309,46 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _hoanDeXuat = Timer(_doTreGoiY, () => unawaited(_tinhDeXuat()));
     _hoanGoiY?.cancel();
     final note = chu.trim();
+    // Controller phát cả khi chỉ đổi con trỏ — so CHỮ, không coi mỗi lần phát là "đổi ghi chú".
     if (_choPhanXu != null && note != _choPhanXu!.ghiChu) _choPhanXu = null;
     if (state.laChuyen || state.danhMuc != null) {
       if (state.goiY != null) _phat(state.copyWith(goiY: null));
       return;
     }
     if (note.isEmpty) {
-      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY; thẻ số tiền thì chính là của ô trống.
+      // Thẻ B1 / từ khoá nói về chữ vừa bị xoá — gỡ NGAY như trước dự án C; thẻ số tiền thì chính là của ô trống.
       if (state.goiY != null && state.goiY!.nguon != kNguonGoiYSoTien) _phat(state.copyWith(goiY: null));
+      // Không có mô hình số tiền thì ghi chú trống là hết việc — đúng hành vi trước dự án C.
       if (_boSoTien == null) return;
     } else if (state.goiY?.nguon == kNguonGoiYSoTien) {
-      // Chữ đầu tiên vừa vào ô ghi chú: thẻ số tiền chỉ dành cho ô TRỐNG — gỡ NGAY.
+      // Chữ đầu tiên vừa vào ô ghi chú: thẻ số tiền chỉ dành cho ô TRỐNG — gỡ NGAY, không chờ độ trễ; để nó đứng thêm
+      // 300 ms là người dùng thấy thẻ cãi lại chữ họ đang gõ.
       _phat(state.copyWith(goiY: null));
     }
+    // Đọc lại từ state thay vì dùng `note` đã bắt ở trên: trong lúc chờ người dùng có thể đã gõ tiếp, và thứ đáng gợi
+    // ý là văn bản HIỆN TẠI.
     _hoanGoiY = Timer(_doTreGoiY, () {
       if (!isClosed) unawaited(_napGoiY(state.ghiChu.trim()));
     });
   }
 
-  /// Từ `_henGoiYTheoForm` của trang (dự án C).
+  /// Từ `_henGoiYTheoForm` của trang (dự án C) — hẹn tính lại thẻ gợi ý khi một tín hiệu của nguồn SỐ TIỀN đổi (số tiền,
+  /// ví, ngày, đoạn). Dùng CÙNG timer với ghi chú: thẻ chỉ có một, nên chỉ một lượt tính đang chờ.
+  ///
+  /// Thoát sớm khi nguồn số tiền không dùng được ([_coNguonSoTien]) → mọi đường cũ (B1, từ khoá) không đổi một bước nào.
   void _henGoiYTheoForm() {
     if (!_coNguonSoTien) return;
-    // Gợi ý số tiền đã hiện mà bậc vừa đổi: thẻ ấy nói về bậc cũ — huỷ, không phải phán xét (spec dự án C 3.4).
+    // Gợi ý số tiền đã hiện mà bậc vừa đổi: thẻ ấy nói về bậc cũ — huỷ, không phải phán xét của người dùng (spec 3.4).
+    // Đặt Ở ĐÂY chứ không chỉ trong `_napGoiY`: khi người dùng đã chọn danh mục qua bảng rồi mới đổi số tiền,
+    // `_napGoiY` không chạy nữa, và gợi ý cũ sẽ bị ghi `khac` lúc lưu cho một khoản ở bậc khác hẳn.
     final cho = _choPhanXu;
     if (cho != null && cho.goiY.nguon == kNguonGoiYSoTien) {
       final x = state.soTienDangCo;
       if (x == null || maBacCua(bacTienCua(x)) != cho.goiY.amTietChinh) _choPhanXu = null;
     }
-    // Ghi chú có chữ thì thẻ thuộc về B1 / từ khoá — số tiền, ví, ngày, đoạn không phải tín hiệu của chúng.
+    // Ghi chú có chữ thì thẻ thuộc về B1 / từ khoá, mà số tiền, ví, ngày, đoạn không phải tín hiệu của hai nguồn ấy —
+    // không hẹn gì. ⚠️ Hẹn ở đây là ĐỔI hành vi cũ: đổi đoạn Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi (và
+    // "đổi đoạn → không ghi phản hồi" dựa vào đó); hẹn lại là thẻ B1 tự bật lên sau mỗi lần chạm đoạn.
     if (state.ghiChu.trim().isNotEmpty) return;
     _hoanGoiY?.cancel();
     if (state.laChuyen || state.danhMuc != null) return;
@@ -328,8 +357,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     });
   }
 
-  /// Từ `_goiYSoTien` của trang — nguồn thứ ba của thẻ, CHỈ gọi khi ghi chú trống: bậc tiền + nhóm thứ + ví, chỉ danh
-  /// mục đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
+  /// Từ `_goiYSoTien` của trang — nguồn thứ ba của thẻ gợi ý (dự án C), CHỈ gọi khi ghi chú trống: đoán theo bậc tiền +
+  /// nhóm thứ + ví, chỉ danh mục đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
   CategorySuggestion? _goiYSoTien(List<Category> categories) {
     final bo = _boSoTien;
     if (bo == null || !_coNguonSoTien || state.laChuyen) return null;
@@ -359,16 +388,26 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final accountId = _taiKhoan();
     // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý danh mục của người khác.
     if (accountId == null) return;
+    // MỘT cửa cho cả ba nguồn (dự án C): hàm này nay được hẹn cả khi số tiền / ví / ngày / đoạn đổi, không chỉ khi ghi
+    // chú đổi — nên tự nó phải chặn hai trạng thái không bao giờ có thẻ.
     if (state.laChuyen || state.danhMuc != null) return;
     final luc = state;
+    // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba phân loại vì chiều tiền suy từ danh mục được
+    // chọn, không phải ngược lại.
     final categories = await _nguon.danhMucChonDuoc(accountId);
     CategorySuggestion? suggestion;
     if (note.isEmpty) {
-      // ⚠️ CHỈ khi ghi chú trống (người dùng chốt 2026-10-02 sau phép đo CSDL thật).
+      // Dự án C: ghi chú TRỐNG → đoán theo số tiền. KHÁC hai nguồn dưới, nguồn này khoanh theo đoạn Chi/Thu: số tiền
+      // không mang nghĩa chiều, đoạn đang chọn là thông tin chiều duy nhất.
+      //
+      // ⚠️ CHỈ khi ghi chú trống (người dùng chốt 2026-10-02 sau phép đo CSDL thật): bản đầu còn dùng nguồn này khi
+      // ghi chú có chữ mà B1 lẫn từ khoá đều im, và 3/4 lần thẻ sai rơi đúng vào đó — *"ca phe sang"* 10.000 → Di
+      // chuyển, thẻ nói ngược chữ người dùng vừa gõ.
       suggestion = _goiYSoTien(categories);
     } else {
-      // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói → bảng
-      // từ khoá. `hopLe` = mọi danh mục chọn được, cả ba phân loại (đoạn Chi/Thu không khoanh vùng gợi ý).
+      // B1: mô hình HỌC đi trước — nó nói từ chính các lần người dùng tự chốt danh mục. `null` = chưa đủ để nói
+      // (sổ mỏng, ghi chú lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý) → bảng từ khoá như trước B1.
+      // `hopLe` = mọi danh mục chọn được, cả ba phân loại — cùng nếp "đoạn Chi/Thu không khoanh vùng gợi ý" ở trên.
       final doan = _boPhanLoai?.doan(note, hopLe: {for (final c in categories) c.id}, tatCap: _tatCap);
       if (doan != null) {
         final cat = categories.firstWhere((c) => c.id == doan.categoryId);
@@ -380,7 +419,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
           lyDo: cauLyDoHoc(doan, ghiChuGoc: note, tenDanhMuc: cat.name),
         );
       } else {
-        // MỘT truy vấn cho cả tài khoản — trước đây mỗi danh mục một truy vấn, nhân với mỗi lần ghi chú đổi.
+        // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một lần cho mỗi danh mục, nên tài khoản có
+        // 20 danh mục là 20 truy vấn — nhân với mỗi lần ghi chú thay đổi.
         final keywordsByCategory = await _nguon.tuKhoa(accountId);
         final candidates = <CategoryKeywordCandidate>[
           for (final category in categories)
@@ -405,10 +445,14 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     if (suggestion != null) {
       _choPhanXu = (goiY: suggestion, ghiChu: note);
     } else if (_choPhanXu?.goiY.nguon == kNguonGoiYSoTien) {
-      // Thẻ số tiền vừa bị thay bằng "không có gì": gợi ý cũ không còn là thứ người dùng đang nhìn — bỏ, không ghi.
+      // Thẻ số tiền vừa bị thay bằng "không có gì" (bậc / ví / ngày / đoạn đổi): gợi ý cũ không còn là thứ người dùng
+      // đang nhìn — bỏ, không ghi phản hồi nào cho nó.
       _choPhanXu = null;
     }
-    // Chỉ cuộn khi thẻ nguồn số tiền VỪA hiện hoặc đổi danh mục — ⚠️ KHÔNG cho thẻ B1 / từ khoá (ô ghi chú nằm DƯỚI thẻ).
+    // Chỉ khi thẻ nguồn số tiền VỪA hiện (hoặc đổi sang danh mục khác) thì tăng bộ đếm cuộn. Cùng một gợi ý được tính lại
+    // ở mỗi phím số thì không cuộn — người dùng đã cuộn đi là có chủ ý. ⚠️ KHÔNG cho thẻ B1 / từ khoá: hai thẻ ấy hiện lúc
+    // người dùng đang gõ GHI CHÚ, và ô ghi chú nằm DƯỚI thẻ — kéo đáy thẻ về sát bàn phím là đẩy chính ô đang gõ ra sau
+    // bàn phím.
     final cuon = suggestion != null &&
         suggestion.nguon == kNguonGoiYSoTien &&
         (truoc?.nguon != kNguonGoiYSoTien || truoc?.category.id != suggestion.category.id);
@@ -429,8 +473,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _phat(state.copyWith(goiY: null));
   }
 
-  /// Từ `_tinhDeXuat` của trang — đề xuất thêm từ khoá (spec 2026-09-30), tính lại khi ghi chú hoặc danh mục đổi.
-  /// Không phiên / không mẫu học → im.
+  /// Từ `_tinhDeXuat` của trang — đề xuất thêm từ khoá (spec 2026-09-30), tính lại khi ghi chú hoặc danh mục đổi. Mọi
+  /// nguồn danh mục như nhau (chọn tay, thẻ gợi ý, Nhập nhanh). Không phiên / không mẫu học → im.
   Future<void> _tinhDeXuat() async {
     final cat = state.danhMuc;
     final ghiChu = state.ghiChu.trim();
@@ -508,7 +552,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _phat(state.copyWith(deXuat: null));
   }
 
-  /// B1: thẻ đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+  /// B1: thẻ gợi ý đã hiện mà người dùng chọn qua bảng rồi lưu — chọn đúng danh mục gợi ý là `chon`, khác là `khac`.
+  /// Khoản đã tách: chỉ cho DANH MỤC CHÍNH (thẻ gợi ý hiện cho nó; phần chọn tay không ghi — spec 11.5).
   void _ghiPhanHoiKhiLuu() {
     final cho = _choPhanXu;
     final daChon = state.danhMuc;
