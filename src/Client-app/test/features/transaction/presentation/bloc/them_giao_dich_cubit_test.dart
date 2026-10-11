@@ -6,8 +6,10 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart' show kKetQuaGoiYBoQua, kKetQuaGoiYChon;
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
+import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
+import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flowmoney/features/transaction/domain/tach_giao_dich.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/them_giao_dich_cubit.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/them_giao_dich_state.dart';
@@ -65,6 +67,24 @@ TransactionEntity giaoDichCu({String type = 'chi', String? categoryId = 'food', 
       isDeleted: false,
       updatedAt: DateTime(2026, 9, 3),
     );
+
+/// AI giả: `sanSang` luôn đúng, `doc` treo tới khi test trả [ketQua].
+class _DocAiGia implements DocCauBangAi {
+  final ketQua = Completer<KetQuaAi?>();
+  int soLanHuy = 0;
+  @override
+  Future<bool> Function() get sanSang => () async => true;
+  @override
+  Future<bool> chuanBi() async => true;
+  @override
+  Future<KetQuaAi?> doc(String cau,
+          {required DateTime now, required List<String> tenVi, required List<String> tenDanhMuc}) =>
+      ketQua.future;
+  @override
+  Future<void> huy() async => soLanHuy++;
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
 
 void main() {
   group('state', () {
@@ -412,6 +432,163 @@ void main() {
       expect(fa.pendingTimers, isEmpty, reason: 'close() phải huỷ cả ba hẹn giờ');
       fa.elapse(const Duration(seconds: 1));
       expect(fa.pendingTimers, isEmpty);
+    });
+  });
+
+  group('bất biến 3 — dienKetQua đi đúng đường', () {
+    test('⭐ chiều → số tiền (trần) → ví đặt cờ → danh mục → ghi chú SAU danh mục', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat, tcb.copyWith(isDefault: true)], danhMuc: [anUong, luong]);
+      final c = taoCubit(nguon);
+      await c.moTrang();
+      c.dienKetQua(
+        const KetQuaDocCau(soTien: 1e17, loai: 'thu', walletId: 'cash', categoryId: 'luong', ghiChu: 'lương tháng'),
+        chonDuoc: [anUong, luong],
+      );
+      expect(c.state.huong, 'thu');
+      expect(c.state.chuoiSoTien.length, 13);
+      expect(c.state.hienBanPhimSo, isFalse);
+      expect(c.state.viNguon?.id, 'cash');
+      expect(c.state.danhMuc?.id, 'luong');
+      expect(c.state.ghiChu, 'lương tháng');
+      expect(c.state.soLanDatGhiChu, 1, reason: 'trang chỉ chép sang ô khi bộ đếm tăng');
+      expect(c.state.ketQuaDien?.docDuoc, isTrue);
+      expect(c.state.goiY, isNull, reason: 'đã có danh mục → không hẹn thẻ gợi ý');
+    });
+
+    test('ví đọc từ câu KHÔNG bị ví hay dùng của danh mục đè', () async {
+      final nguon = NguonThemGiaoDichGia(
+        vi: [tienMat, tcb.copyWith(isDefault: true)],
+        lichSu: (viHayDung: const {'food': 'tcb'}, boPhanLoai: null, boSoTien: null, mauDeXuat: null),
+      );
+      final c = taoCubit(nguon);
+      await c.moTrang();
+      c.dienKetQua(const KetQuaDocCau(walletId: 'cash', categoryId: 'food', ghiChu: ''), chonDuoc: [anUong]);
+      expect(c.state.viNguon?.id, 'cash');
+    });
+
+    test('câu chỉ nêu ví đích trùng ví nguồn đang chọn → ví nguồn TRỐNG (§2.9)', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb.copyWith(isDefault: true)]));
+      await c.moTrang();
+      c.dienKetQua(const KetQuaDocCau(loai: 'transfer', walletToId: 'tcb', ghiChu: ''), chonDuoc: const []);
+      expect(c.state.viDich?.id, 'tcb');
+      expect(c.state.viNguon, isNull);
+    });
+
+    test('không đọc được gì → câu mời điền tay, không ô nào đổi', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true)]));
+      await c.moTrang();
+      c.dienKetQua(const KetQuaDocCau(ghiChu: 'xin chào'), chonDuoc: const []);
+      expect(c.state.ketQuaDien?.tomTat, kCauChuaDocDuoc);
+      expect(c.state.ghiChu, '');
+    });
+
+    test('⭐ ghi chú đặt SAU danh mục → KHÔNG hẹn lượt tính thẻ gợi ý (chỉ còn hẹn đề xuất từ khoá)', () {
+      fakeAsync((fa) {
+        // Dựng thẳng, không qua `taoCubit` (xem ca "close() huỷ hẹn giờ").
+        final c = ThemGiaoDichCubit(
+          nguon: NguonThemGiaoDichGia(
+            vi: [tcb.copyWith(isDefault: true)],
+            danhMuc: [luong],
+            bangTuKhoa: {'luong': ['lương']},
+          ),
+          taiKhoan: () => 1,
+          boGoiY: const CategorySuggestionEngine(),
+        );
+        c.moTrang();
+        fa.flushMicrotasks();
+        final truoc = fa.pendingTimers.length;
+        c.dienKetQua(const KetQuaDocCau(categoryId: 'luong', ghiChu: 'lương tháng'), chonDuoc: [luong]);
+        // Ghi chú thấy đã có danh mục thì chỉ hẹn đề xuất từ khoá; đặt TRƯỚC danh mục là hẹn thêm một lượt gợi ý thừa.
+        expect(fa.pendingTimers.length - truoc, 1);
+        c.close();
+        fa.elapse(const Duration(seconds: 1));
+      });
+    });
+  });
+
+  test('bất biến 4 — kết quả AI về sau khi bấm Huỷ bị BỎ, form điền bằng luật', () async {
+    final ai = _DocAiGia();
+    final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat.copyWith(isDefault: true)], danhMuc: [anUong], docAiGia: ai));
+    await c.moTrang();
+    final dien = c.dienTuCau('cà phê mất ba chục');
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.dangDocAi, isTrue, reason: 'tiền đề: câu này có ô thiếu nên đi đường AI');
+    await c.huyDocAi('cà phê mất ba chục');
+    expect(ai.soLanHuy, 1);
+    ai.ketQua.complete(KetQuaAi.tuThamSo({
+      'so_tien': 30000,
+      'loai': 'chi',
+      'ngay': '',
+      'vi': '',
+      'vi_den': '',
+      'danh_muc': '',
+      'ghi_chu': '',
+    }));
+    await dien;
+    expect(c.state.chuoiSoTien, '0', reason: 'số AI của lượt đã huỷ không được điền');
+    expect(c.state.dangDocAi, isFalse);
+  });
+
+  group('bất biến 7 — D1 / ảnh quét', () {
+    DienSanBienDong tin({String khoa = 'bienDong:a', String? anh}) => DienSanBienDong(
+          khoa: khoa,
+          nguon: 'MB Bank',
+          ghiChu: 'ck',
+          soTien: 50000,
+          chieu: 'chi',
+          duoi: '7777',
+          thoiGian: DateTime(2026, 10, 1, 12, 1),
+          anh: anh,
+        );
+
+    test('⭐ lần đầu của cặp nguồn + đuôi → ví TRỐNG (không ví mặc định)', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true)]), bienDong: tin());
+      await c.moTrang();
+      expect(c.state.viNguon, isNull);
+      expect(c.state.chuoiSoTien, '50000');
+      expect(c.state.ngay, DateTime(2026, 10, 1, 12, 1), reason: 'giờ trong tin là giờ giao dịch');
+    });
+
+    test('cặp đã nhớ ví đang dùng → chọn sẵn ví ấy; Lưu không ghi đè bảng', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true), tienMat], viNho: {'MB Bank|7777': 'cash'});
+      final c = taoCubit(nguon, bienDong: tin());
+      await c.moTrang();
+      expect(c.state.viNguon?.id, 'cash');
+      await c.dongSauLuu();
+      expect(nguon.viDaNho, isEmpty);
+      expect(nguon.hangDaXoa, ['bienDong:a']);
+    });
+
+    test('Lưu lần đầu của cặp → nhớ ví vừa lưu, xoá hàng, xoá ảnh biên lai', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true)]);
+      final c = taoCubit(nguon, bienDong: tin(anh: 'x.jpg'));
+      await c.moTrang();
+      c.chonVi(tcb);
+      await c.dongSauLuu();
+      expect(nguon.viDaNho, ['MB Bank|7777=tcb']);
+      expect(nguon.anhBienLaiDaXoa, ['x.jpg']);
+    });
+
+    test('A5 ảnh quét: không đọc bảng nguồn → ví, không nhắc trùng; close() xoá ảnh quét (bất biến 10)', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true)], so: [
+        (id: 't', soTien: 50000, loai: 'chi', ngay: DateTime(2026, 10, 1), ghiChu: ''),
+      ]);
+      final c = taoCubit(nguon, bienDong: tin(khoa: 'quet:a.jpg', anh: 'a.jpg'));
+      await c.moTrang();
+      expect(nguon.soLanDocViTheoNguon, 0);
+      expect(c.state.viNguon?.id, 'tcb', reason: 'ảnh quét giữ ví mặc định');
+      expect(c.state.trungTrongSo, isEmpty);
+      await c.close();
+      expect(nguon.anhQuetDaXoa, ['a.jpg']);
+    });
+
+    test('nhắc trùng: khoản cùng tiền + chiều + ngày trong sổ', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tcb], so: [
+        (id: 't', soTien: 50000, loai: 'chi', ngay: DateTime(2026, 10, 1, 8), ghiChu: ''),
+      ]);
+      final c = taoCubit(nguon, bienDong: tin());
+      await c.moTrang();
+      expect(c.state.trungTrongSo.map((k) => k.id), ['t']);
     });
   });
 }

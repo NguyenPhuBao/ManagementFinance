@@ -25,6 +25,8 @@ import '../../data/models/transaction_entity.dart';
 import '../../data/them_giao_dich_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
+import '../../domain/doc_cau_giao_dich.dart';
+import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../domain/vi_chon_san.dart';
 import 'them_giao_dich_state.dart';
@@ -56,7 +58,6 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// D1 / biên lai / A5 — `null` ở đường sửa.
   final DienSanBienDong? _bienDong;
-  // ignore: unused_field — Task 4 (D1 / ảnh quét) dùng.
   final bool _choTickMon;
 
   /// ⚠️ Chốt quan trọng nhất của chặng 1.2: một phép đoán từ lịch sử KHÔNG BAO GIỜ đè lựa chọn người dùng vừa làm.
@@ -68,9 +69,6 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   bool get laSua => _dangSua != null;
   DienSanBienDong? get bienDong => _bienDong;
-
-  // ⏳ TẠM (trang lai): Nhập nhanh / D1 còn ở trang tới Task 4. Gỡ theo bảng "Mã nối tạm" của kế hoạch.
-  BoPhanLoaiGhiChu? get boPhanLoai => _boPhanLoai;
 
   static ThemGiaoDichState _dauTien(
       TransactionEntity? dangSua, Category? danhMuc, String? huongBanDau, DienSanBienDong? bienDong) {
@@ -105,8 +103,12 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Nạp mọi thứ lúc mở form. Đường tiêm sẵn (ví, lịch sử) chạy ĐỒNG BỘ — khung đầu đã có ví, như trước đợt tách.
   Future<void> moTrang() async {
+    final d = _bienDong;
+    if (d != null) unawaited(_napAnh(d));
     await Future.wait([_napVi(), _napLichSu().then((_) => _napTatCap())]);
     unawaited(_tinhDeXuat());
+    // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
+    if (d != null) await _dienTuBienDong();
   }
 
   Future<void> _napVi() async {
@@ -266,10 +268,6 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// hàng 4). Hai chỗ mỗi nơi một bản chép thì bỏ một vế ở MỘT chỗ vẫn xanh (đo bằng bản sai 2026-10-02).
   bool get _coNguonSoTien => _boSoTien != null && !laSua && _bienDong == null;
 
-  // ⏳ TẠM (Task 3): đường điền sẵn còn ở trang tới Task 4.
-  Set<(String, String)> get tatCap => _tatCap;
-  void datChoPhanXu(CategorySuggestion goiY) => _choPhanXu = (goiY: goiY, ghiChu: state.ghiChu.trim());
-  void henGoiYTheoForm() => _henGoiYTheoForm();
   // ⏳ TẠM (Task 3–4): lưu còn ở trang tới Task 5.
   void ghiPhanHoiKhiLuu() => _ghiPhanHoiKhiLuu();
 
@@ -563,11 +561,326 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     }
   }
 
+  // ── Điền sẵn: Nhập nhanh (C2) · biến động / biên lai (D1) · ảnh quét (A5) · gợi ý chuyển khoản ────────────────────
+  bool _dangDien = false;
+
+  /// Mỗi lần Điền / Huỷ một số mới: kết quả AI về muộn của lượt đã huỷ thì bỏ.
+  int _luotDien = 0;
+
+  /// D1: bảng nguồn → ví đã có một ví HOẠT ĐỘNG cho cặp nguồn + đuôi này — khi ấy Lưu không ghi đè (spec §3.3: ghi ở
+  /// lần Lưu đầu của mỗi cặp).
+  bool _viNguonDaNho = false;
+
+  /// Ví đoán cho hai phía của gợi ý Chuyển khoản đang hiện; `null` = không gợi ý (spec gợi ý chuyển khoản §4).
+  ({String? tu, String? den, bool daNhoTu, bool daNhoDen})? _viGoiY;
+
+  /// Gợi ý người dùng ĐÃ áp — Lưu ở đoạn Chuyển khoản thì xoá cả hàng cặp và nhớ ví hai phía (§5).
+  GoiYChuyenKhoan? _goiYDaApDung;
+
+  bool get dangDien => _dangDien;
+
+  /// Ô Nhập nhanh có focus → nạp mô hình ngầm (người dùng chốt 2026-09-30).
+  void chuanBiAi() => unawaited(_nguon.docAi?.chuanBi());
+
+  /// Cubit tự đặt ghi chú: đi qua [ghiChuDoi] (cùng hệ quả như khi gõ) rồi tăng bộ đếm để trang chép sang ô.
+  void _datGhiChu(String chu) {
+    ghiChuDoi(chu);
+    _phat(state.copyWith(soLanDatGhiChu: state.soLanDatGhiChu + 1));
+  }
+
+  /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
+  /// Bất biến ④ nhóm C: không lưu — người dùng xem lại rồi bấm ✓. Trang đóng bàn phím trước khi gọi.
+  ///
+  /// Mỗi ô đi qua ĐÚNG đường người dùng vẫn đi, để mọi hệ quả chạy như khi chạm tay (xem [dienKetQua]).
+  Future<void> dienTuCau(String cau) async {
+    if (cau.isEmpty || _dangDien) return;
+    _dangDien = true;
+    final luot = ++_luotDien;
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_taiKhoan());
+    // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
+    // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
+    KetQuaAi? ai;
+    final docAi = _nguon.docAi;
+    final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
+    if (conThieu && docAi != null && !isClosed && await docAi.sanSang()) {
+      if (isClosed || luot != _luotDien) return;
+      emit(state.copyWith(dangDocAi: true));
+      ai = await docAi.doc(
+        cau,
+        now: DateTime.now(),
+        tenVi: [for (final w in state.vi) w.name],
+        tenDanhMuc: [for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.name],
+      );
+    }
+    // Người dùng đã bấm Huỷ — lượt ấy đã điền bằng luật.
+    if (isClosed || luot != _luotDien) return;
+    _dangDien = false;
+    if (state.dangDocAi) emit(state.copyWith(dangDocAi: false));
+    _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
+  }
+
+  /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
+  Future<void> huyDocAi(String cau) async {
+    _luotDien++;
+    unawaited(_nguon.docAi?.huy());
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_taiKhoan());
+    if (isClosed) return;
+    _dangDien = false;
+    emit(state.copyWith(dangDocAi: false));
+    if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
+  }
+
+  KetQuaDocCau _docCau(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      docCauGiaoDich(
+        cau,
+        now: DateTime.now(),
+        vi: state.vi,
+        chonDuoc: chonDuoc,
+        mo: _boPhanLoai,
+        tatCap: _tatCap,
+        ai: ai,
+        tuKhoa: tuKhoa,
+        // Dòng nguồn "Đọc bằng AI" chỉ khi AI làm ĐỔI một ô — chiều / ví đang chọn không tính (người dùng chốt 2026-09-30).
+        chieuDangChon: state.huong,
+        viDangChon: state.viNguon?.id,
+      );
+
+  /// Đọc câu rồi điền những ô đọc được vào form (xem [dienTuCau]).
+  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+      dienKetQua(_docCau(cau, chonDuoc, tuKhoa, ai: ai), chonDuoc: chonDuoc);
+
+  /// Điền một [KetQuaDocCau] đã dựng sẵn vào form — phần ÁP, tách khỏi phần đọc câu (2026-09-30, mở D1): ô Nhập nhanh
+  /// đi qua [_apDungKetQua], form điền sẵn từ tin biến động số dư (D1) dựng `KetQuaDocCau` từ query rồi gọi thẳng đây,
+  /// và giọng nói (C4) sẽ dùng chính cửa này. Mỗi ô đi đúng đường người dùng vẫn đi:
+  /// - chiều qua [chonHuong] (bỏ danh mục thuộc chiều kia) — gán thẳng `huong` là để danh mục chi dưới đoạn Thu;
+  /// - số tiền qua `themPhimSoTien` từng chữ số (cùng trần 13 chữ số, không để biểu thức dở);
+  /// - ví đọc từ câu đặt [_nguoiDungDaChonVi] — luật ví hay dùng theo danh mục không được đè lựa chọn trong câu;
+  /// - danh mục qua [chonDanhMuc] (chiều vay/nợ, đoạn Chi/Thu, xoá thẻ gợi ý);
+  /// - ghi chú đặt SAU danh mục: [ghiChuDoi] thấy đã có danh mục thì không hẹn gợi ý;
+  /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
+  void dienKetQua(KetQuaDocCau kq, {required List<Category> chonDuoc}) {
+    if (isClosed) return;
+    final now = DateTime.now();
+    if (kq.khongDocDuocGi) {
+      emit(state.copyWith(
+          ketQuaDien: (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null)));
+      return;
+    }
+
+    final loai = kq.loai;
+    if (loai != null && loai != state.huong) chonHuong(loai);
+    Wallet? vi;
+    Wallet? viDen;
+    for (final w in state.vi) {
+      if (w.id == kq.walletId) vi = w;
+      if (w.id == kq.walletToId) viDen = w;
+    }
+    var s = state;
+    final soTien = kq.soTien;
+    if (soTien != null) s = s.copyWith(chuoiSoTien: _goSo(soTien), hienBanPhimSo: false);
+    final ngay = kq.ngay;
+    if (ngay != null) s = s.copyWith(ngay: DateTime(ngay.year, ngay.month, ngay.day, s.ngay.hour, s.ngay.minute));
+    if (vi != null) {
+      s = s.copyWith(viNguon: vi);
+      _nguoiDungDaChonVi = true;
+    }
+    // Chuyển ví (§2.9). Câu chỉ nêu ví đích mà ví nguồn đang chọn lại chính là nó → để trống ví nguồn cho người dùng
+    // chọn: chuyển vào chính nó là khoản vô nghĩa, và màn không chặn lúc lưu.
+    if (viDen != null) {
+      s = s.copyWith(viDich: viDen);
+      if (vi == null && s.viNguon?.id == viDen.id) s = s.copyWith(viNguon: null);
+    }
+    emit(s);
+    Category? danhMuc;
+    if (!state.laChuyen && kq.categoryId != null) {
+      for (final c in chonDuoc) {
+        if (c.id == kq.categoryId) danhMuc = c;
+      }
+      if (danhMuc != null) chonDanhMuc(danhMuc);
+    }
+    // Rỗng = câu chỉ có số / ngày / ví: ghi chú người dùng đã gõ giữ nguyên.
+    if (kq.ghiChu.isNotEmpty) _datGhiChu(kq.ghiChu);
+    final goiY = danhMuc != null ? kq.goiY : null;
+    final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
+    if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: state.ghiChu.trim());
+    emit(state.copyWith(
+      ketQuaDien: (
+        tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
+        docDuoc: true,
+        quaAi: kq.quaAi,
+        canhBao: kq.canhBao,
+        lyDo: lyDo,
+      ),
+    ));
+    // Ô Nhập nhanh điền xong mà danh mục VÀ ghi chú còn trống (câu chỉ có số tiền) → nguồn số tiền được thử (dự án C).
+    // Form biến động, hoặc câu có để lại ghi chú, thì hàm tự thoát.
+    _henGoiYTheoForm();
+  }
+
+  /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([dienKetQua]). Không lưu.
+  Future<void> _dienTuBienDong() async {
+    final d = _bienDong;
+    final id = _taiKhoan();
+    if (d == null || isClosed) return;
+    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(id);
+    String? viId;
+    // A5: ảnh quét không gắn nguồn ngân hàng → không bảng "nguồn → ví"; giữ ví mặc định đã chọn sẵn.
+    if (id != null && !d.laQuet) {
+      try {
+        // Dòng nhắc (không đuôi TK) thì thử thêm ví của cả NGUỒN — chỉ khi nó chắc (một ví duy nhất).
+        final nho = await _nguon.viTheoNguon(id, d.nguon, d.duoi) ??
+            (d.phien != null ? await _nguon.viTheoNguonChung(id, d.nguon) : null);
+        // Chỉ ví HOẠT ĐỘNG (`state.vi` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
+        if (nho != null && state.vi.any((w) => w.id == nho)) viId = nho;
+      } catch (e) {
+        debugPrint('[BienDong] đọc ví theo nguồn lỗi: $e');
+      }
+    }
+    if (isClosed) return;
+    _viNguonDaNho = viId != null;
+    final kq = ketQuaTuBienDong(d, chonDuoc: chonDuoc, mo: _boPhanLoai, tatCap: _tatCap, tuKhoa: tuKhoa, walletId: viId);
+    dienKetQua(kq, chonDuoc: chonDuoc);
+    var s = state;
+    // Lần đầu của cặp nguồn + đuôi: ví TRỐNG, không phải ví mặc định — để ví mặc định là để bảng nguồn → ví học nhầm
+    // nó ở lần Lưu đầu, rồi chọn sẵn sai mãi.
+    if (viId == null && !d.laQuet) s = s.copyWith(viNguon: null);
+    // `dienKetQua` chỉ đổi phần ngày; giờ trong tin là giờ giao dịch (spec §3.3).
+    final t = d.thoiGian;
+    if (t != null) s = s.copyWith(ngay: t);
+    _phat(s);
+    // A5 (spec 5.6): gợi ý chuyển khoản và nhắc trùng của D1 không áp cho ảnh quét.
+    if (id == null || d.laQuet) return;
+    unawaited(_tinhGoiYChuyen(d, id));
+    try {
+      final so = await _nguon.khoanTrongSo(id);
+      final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
+      _phat(state.copyWith(trungTrongSo: trung));
+    } catch (e) {
+      debugPrint('[BienDong] đọc sổ để nhắc trùng lỗi: $e');
+    }
+  }
+
+  /// Gợi ý Chuyển khoản (spec 2026-09-30 §2–3): luật cặp trên các hàng đang chờ, rồi luật nội dung tin. Ví phía nguồn
+  /// của tin theo luật D1 (chỉ ví đã nhớ); phía kia: đã nhớ → ví duy nhất trùng tên nguồn → trống. Lỗi → không gợi ý.
+  Future<void> _tinhGoiYChuyen(DienSanBienDong d, int id) async {
+    try {
+      final cho = await _nguon.hangBienDongCho(id);
+      final gy = goiYChuyenKhoan(d, cho);
+      if (gy == null) return;
+      Future<String?> nho(String nguon, String? duoi) async {
+        final v = await _nguon.viTheoNguon(id, nguon, duoi);
+        return v != null && state.vi.any((w) => w.id == v) ? v : null;
+      }
+
+      final nhoTu = await nho(gy.nguonTu, gy.duoiTu);
+      final nhoDen = await nho(gy.nguonDen, gy.duoiDen);
+      if (isClosed) return;
+      final ds = [for (final w in state.vi) (id: w.id, ten: w.name)];
+      String? doan(String nguon, String? daNho) => daNho ?? (nguon == d.nguon ? null : viTheoTenNguon(nguon, ds));
+      _viGoiY = (
+        tu: doan(gy.nguonTu, nhoTu),
+        den: doan(gy.nguonDen, nhoDen),
+        daNhoTu: nhoTu != null,
+        daNhoDen: nhoDen != null,
+      );
+      emit(state.copyWith(goiYChuyen: gy));
+    } catch (e) {
+      debugPrint('[BienDong] gợi ý chuyển khoản lỗi: $e');
+    }
+  }
+
+  /// Bấm *Ghi là chuyển khoản*: đổi đoạn qua ĐÚNG [chonHuong], điền hai ví; ô không đoán được để TRỐNG — ví mặc định
+  /// ở đây là để bảng nguồn → ví học nhầm (D1 §3.3). Không lưu (bất biến ④ nhóm C).
+  void apGoiYChuyen() {
+    final gy = state.goiYChuyen;
+    final v = _viGoiY;
+    if (gy == null || v == null) return;
+    chonHuong('transfer');
+    _nguoiDungDaChonVi = true;
+    _goiYDaApDung = gy;
+    _phat(state.copyWith(viNguon: _timVi(state.vi, v.tu), viDich: _timVi(state.vi, v.den), goiYChuyen: null));
+  }
+
+  Future<void> _napAnh(DienSanBienDong d) async {
+    // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
+    final anh = d.anh;
+    if (anh == null) return;
+    // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`), kèm danh sách món (mục 11.2b).
+    unawaited(_nguon.duongDanAnh(d).then((p) {
+      if (p != null) _phat(state.copyWith(duongDanAnh: p));
+    }));
+    if (d.laQuet && _choTickMon) {
+      unawaited(_nguon.docMonQuet(anh).then((m) => _phat(state.copyWith(monQuet: m))));
+    }
+  }
+
+  /// D1 — xử lý xong một hàng (Lưu): xoá cứng hàng loại 20, nhớ ví ở lần Lưu đầu của cặp. ⚠️ Chạy SAU khi trang `pop`
+  /// (Cubit có thể đã đóng): mọi giá trị chốt ĐỒNG BỘ ở đầu hàm, và hàm KHÔNG `emit`. Không bao giờ ném.
+  Future<void> dongSauLuu() async {
+    final d = _bienDong;
+    final id = _taiKhoan();
+    if (d == null || id == null) return;
+    final gy = _goiYDaApDung;
+    final v = _viGoiY;
+    final s = state;
+    if (gy != null && v != null && s.laChuyen) {
+      await _dongChuyenKhoan(d, gy, id,
+          viTu: s.viNguon?.id, viDen: s.viDich?.id, daNhoTu: v.daNhoTu, daNhoDen: v.daNhoDen);
+    } else {
+      await _dongBienDong(d, id, viDaLuu: s.viNguon?.id, nhoVi: !_viNguonDaNho);
+    }
+  }
+
+  /// Bỏ qua một hàng biến động: xoá nó, không tạo giao dịch.
+  Future<void> boQuaBienDong() async {
+    final d = _bienDong;
+    final id = _taiKhoan();
+    if (d != null && id != null) await _dongBienDong(d, id);
+  }
+
+  /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
+  /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
+  /// gọi: màn có thể đã `pop`. Không bao giờ ném.
+  Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
+    // A5: form từ ảnh quét — không hàng loại 20, không bảng nguồn → ví; chỉ xoá ảnh (close cũng xoá — luỹ đẳng).
+    if (d.laQuet) {
+      await _nguon.xoaAnhQuet(d.anh);
+      return;
+    }
+    try {
+      if (nhoVi && viDaLuu != null) await _nguon.nhoViTheoNguon(id, d.nguon, d.duoi, viDaLuu);
+    } catch (e) {
+      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
+    }
+    await _nguon.xoaHangBienDong(id, d.khoa);
+    await _nguon.xoaAnhBienLai(d.anh);
+  }
+
+  /// Lưu sau khi áp gợi ý Chuyển khoản (spec §5): nhớ ví cho CẢ HAI nguồn — mỗi phía theo phía của nó. ⚠️ Không theo
+  /// ví nguồn của form: tin THU ghi thành chuyển khoản thì ví của nguồn tin là ví ĐÍCH, nhớ ví nguồn là mọi tin sau của
+  /// nguồn ấy chọn sẵn sai ví, im lặng. Rồi xoá hàng đang mở và hàng cặp (còn chờ là người dùng ghi đôi). Không ném.
+  Future<void> _dongChuyenKhoan(DienSanBienDong d, GoiYChuyenKhoan gy, int id,
+      {String? viTu, String? viDen, required bool daNhoTu, required bool daNhoDen}) async {
+    try {
+      if (!daNhoTu && viTu != null) await _nguon.nhoViTheoNguon(id, gy.nguonTu, gy.duoiTu, viTu);
+      if (!daNhoDen && viDen != null) await _nguon.nhoViTheoNguon(id, gy.nguonDen, gy.duoiDen, viDen);
+    } catch (e) {
+      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
+    }
+    await _nguon.xoaHangBienDong(id, d.khoa);
+    await _nguon.xoaAnhBienLai(d.anh);
+    final cap = gy.khoaCap;
+    if (cap != null) await _nguon.xoaHangBienDong(id, cap);
+  }
+
   @override
   Future<void> close() {
     _hoanGoiY?.cancel();
     _hoanDeXuat?.cancel();
     _anDaThem?.cancel();
+    // A5: ảnh quét chỉ sống tới khi form đóng — MỘT chỗ cho mọi đường thoát (Lưu, Bỏ qua, Back hệ thống, nút ←).
+    final d = _bienDong;
+    if (d != null && d.laQuet) unawaited(_nguon.xoaAnhQuet(d.anh));
     return super.close();
   }
 
@@ -585,22 +898,4 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       _phat(state.copyWith(phanTach: [for (final x in state.phanTach) if (x != thay) x, p]));
 
   void boPhan(PhanTach p) => _phat(state.copyWith(phanTach: [for (final x in state.phanTach) if (x != p) x]));
-
-  /// ⏳ TẠM (Task 2–3): đường điền sẵn còn ở trang ghi thẳng ô lõi, KHÔNG kèm hệ quả của các hàm chọn. Task 4 dời các
-  /// đường ấy vào Cubit rồi XOÁ hàm này.
-  void ghiOLoi({
-    Wallet? viNguon,
-    bool datViNguon = false,
-    Wallet? viDich,
-    bool datViDich = false,
-    DateTime? ngay,
-    bool? nguoiDungDaChonVi,
-  }) {
-    if (nguoiDungDaChonVi != null) _nguoiDungDaChonVi = nguoiDungDaChonVi;
-    var s = state;
-    if (datViNguon) s = s.copyWith(viNguon: viNguon);
-    if (datViDich) s = s.copyWith(viDich: viDich);
-    if (ngay != null) s = s.copyWith(ngay: ngay);
-    _phat(s);
-  }
 }

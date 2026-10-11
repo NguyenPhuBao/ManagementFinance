@@ -15,9 +15,6 @@ import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
-import '../../domain/doc_mon_hang.dart';
-import '../../domain/doc_cau_giao_dich.dart';
-import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../data/doc_cau_bang_ai.dart';
 import '../../data/them_giao_dich_nguon.dart';
@@ -212,8 +209,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   String get _amountString => _s.chuoiSoTien;
   bool get _hienBanPhimSo => _s.hienBanPhimSo;
   List<Wallet> get _wallets => _s.vi;
-  BoPhanLoaiGhiChu? get _boPhanLoai => _cubit.boPhanLoai;
-  Set<(String, String)> get _tatCap => _cubit.tatCap;
   Wallet? get _selectedWallet => _s.viNguon;
   Wallet? get _destinationWallet => _s.viDich;
   Category? get _selectedCategory => _s.danhMuc;
@@ -249,35 +244,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Ô *Nhập nhanh* (C2) — chỉ ở đường tạo mới.
   final TextEditingController _nhapNhanhController = TextEditingController();
 
-  /// Kết quả lần *Điền* gần nhất, để dựng dòng tóm tắt dưới ô; `null` khi chưa điền lần nào.
-  KetQuaDien? _ketQuaDien;
-  bool _dangDien = false;
-
-  /// Đang chờ mô hình đọc câu (C2 §2.8) — ô hiện *"Đang đọc bằng AI…"* kèm Huỷ.
-  bool _dangDocAi = false;
-
-  /// Mỗi lần Điền / Huỷ một số mới: kết quả AI về muộn của lượt đã huỷ thì bỏ.
-  var _luotDien = 0;
-
   /// Ô Nhập nhanh có focus → nạp mô hình ngầm (người dùng chốt 2026-09-30).
   final FocusNode _nhapNhanhFocus = FocusNode();
 
   /// D1: form đang mở từ một hàng biến động số dư (đường tạo mới).
   DienSanBienDong? get _bienDong => _isEditing ? null : widget.bienDong;
-
-  /// D1: bảng nguồn → ví đã có một ví HOẠT ĐỘNG cho cặp nguồn + đuôi này — khi ấy Lưu không ghi đè (spec §3.3: ghi ở
-  /// lần Lưu đầu của mỗi cặp).
-  bool _viNguonDaNho = false;
-
-  /// D1: khoản trong sổ cùng tiền + chiều + ngày với tin — dòng *"Có thể bạn đã ghi khoản này"*.
-  List<KhoanSo> _trungTrongSo = const [];
-
-  /// Gợi ý Chuyển khoản đang hiện (thẻ) và ví đoán cho hai phía; `null` = không gợi ý (spec gợi ý chuyển khoản §4).
-  GoiYChuyenKhoan? _goiYChuyen;
-  ({String? tu, String? den, bool daNhoTu, bool daNhoDen})? _viGoiY;
-
-  /// Gợi ý người dùng ĐÃ áp — Lưu ở đoạn Chuyển khoản thì xoá cả hàng cặp và nhớ ví hai phía (§5).
-  GoiYChuyenKhoan? _goiYDaApDung;
 
   /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
   /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
@@ -289,180 +260,32 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   @override
   void initState() {
     super.initState();
-    final editing = _editing;
-    if (editing != null) {
-      // Điền sẵn TRƯỚC khi gắn listener ghi chú, để lần gán text đầu không
-      // kích hoạt tra cứu gợi ý. (Phần còn lại của đường sửa do Cubit dựng sẵn.)
-      _noteController.text = editing.note;
-    }
+    // Điền sẵn TRƯỚC khi gắn listener ghi chú, để lần gán text đầu không kích hoạt tra cứu gợi ý. (Phần còn lại của
+    // đường sửa do Cubit dựng sẵn; ảnh biên lai / ảnh quét và D1 do `moTrang` nạp.)
+    _noteController.text = _s.ghiChu;
     _noteController.addListener(_onNoteChanged);
     _nhapNhanhFocus.addListener(() {
-      if (_nhapNhanhFocus.hasFocus) unawaited(_nguon.docAi?.chuanBi());
+      if (_nhapNhanhFocus.hasFocus) _cubit.chuanBiAi();
     });
-    // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
-    final mo = _cubit.moTrang();
-    // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
-    if (_bienDong != null) unawaited(mo.then((_) => _dienTuBienDong()));
-    // Chia sẻ biên lai: hàng đang mở mang ảnh → tìm tệp. Tệp đã mất thì dải nguồn dựng như không có ảnh.
-    if (_bienDong?.anh case final anh?) {
-      // A5: ảnh quét nằm ở kho RIÊNG (`anh_quet/`), kèm danh sách món (mục 11.2b).
-      unawaited(_nguon.duongDanAnh(_bienDong!).then((p) {
-        if (mounted && p != null) setState(() => _duongDanAnh = p);
-      }));
-      if (_laQuet && widget.choTickMon) {
-        unawaited(_nguon.docMonQuet(anh).then((m) {
-          if (mounted) setState(() => _monQuet = m);
-        }));
-      }
-    }
+    unawaited(_cubit.moTrang());
   }
-
-  /// A5 — form mở từ ảnh quét (khoá `quet:`): không nguồn ngân hàng, không hàng loại 20.
-  bool get _laQuet => _bienDong?.laQuet ?? false;
-
-  /// A5 mục 11.2b — danh sách món của ảnh quét loại hoá đơn (rỗng: biên lai, gõ tay, đọc hỏng) — sheet *Thêm phần*
-  /// cho tick món thay vì gõ số.
-  List<MonHang> _monQuet = const [];
 
   /// Số giao dịch của lần Lưu đang chờ `actionSuccess` — toast *"Đã lưu N giao dịch"*.
   int _soGiaoDichVuaLuu = 1;
 
-  /// Đường dẫn ảnh biên lai của hàng đang mở; `null` = không có ảnh (hoặc chưa tìm xong).
-  String? _duongDanAnh;
-
-  /// D1 — điền form từ hàng biến động số dư, qua ĐÚNG đường điền của C2 ([_dienKetQua]). Không lưu.
-  Future<void> _dienTuBienDong() async {
-    final d = _bienDong;
-    final id = _accountId();
-    if (d == null || !mounted) return;
-    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
-    String? viId;
-    // A5: ảnh quét không gắn nguồn ngân hàng → không bảng "nguồn → ví"; giữ ví mặc định đã chọn sẵn.
-    if (id != null && !_laQuet) {
-      try {
-        // Dòng nhắc (không đuôi TK) thì thử thêm ví của cả NGUỒN — chỉ khi nó chắc (một ví duy nhất).
-        final nho = await _nguon.viTheoNguon(id, d.nguon, d.duoi) ??
-            (d.phien != null ? await _nguon.viTheoNguonChung(id, d.nguon) : null);
-        // Chỉ ví HOẠT ĐỘNG (`_wallets` là `getActive`): ví đã lưu trữ / xoá thì coi như chưa nhớ.
-        if (nho != null && _wallets.any((w) => w.id == nho)) viId = nho;
-      } catch (e) {
-        debugPrint('[BienDong] đọc ví theo nguồn lỗi: $e');
-      }
-    }
-    if (!mounted) return;
-    _viNguonDaNho = viId != null;
-    final kq = ketQuaTuBienDong(d,
-        chonDuoc: chonDuoc, mo: _boPhanLoai, tatCap: _tatCap, tuKhoa: tuKhoa, walletId: viId);
-    _dienKetQua(kq, chonDuoc: chonDuoc);
-    // Lần đầu của cặp nguồn + đuôi: ví TRỐNG, không phải ví mặc định — để ví mặc định là để bảng nguồn → ví học nhầm
-    // nó ở lần Lưu đầu, rồi chọn sẵn sai mãi.
-    if (viId == null && !_laQuet) _cubit.ghiOLoi(viNguon: null, datViNguon: true);
-    // `_dienKetQua` chỉ đổi phần ngày; giờ trong tin là giờ giao dịch (spec §3.3).
-    final t = d.thoiGian;
-    if (t != null) _cubit.ghiOLoi(ngay: t);
-    // A5 (spec 5.6): gợi ý chuyển khoản và nhắc trùng của D1 không áp cho ảnh quét.
-    if (id == null || _laQuet) return;
-    unawaited(_tinhGoiYChuyen(d, id));
-    try {
-      final so = await _nguon.khoanTrongSo(id);
-      final trung = khoanCoTheDaGhi(so, soTien: d.soTien, chieu: d.chieu, ngay: d.thoiGian);
-      if (mounted) setState(() => _trungTrongSo = trung);
-    } catch (e) {
-      debugPrint('[BienDong] đọc sổ để nhắc trùng lỗi: $e');
-    }
+  /// C2 — đọc câu ô *Nhập nhanh* rồi điền sẵn (Cubit lo toàn bộ); trang chỉ đóng bàn phím trước.
+  Future<void> _dienTuCau() async {
+    final cau = _nhapNhanhController.text.trim();
+    if (cau.isEmpty || _cubit.dangDien) return;
+    FocusScope.of(context).unfocus();
+    await _cubit.dienTuCau(cau);
   }
 
-  /// Gợi ý Chuyển khoản (spec 2026-09-30 §2–3): luật cặp trên các hàng đang chờ, rồi luật nội dung tin. Ví phía nguồn
-  /// của tin theo luật D1 (chỉ ví đã nhớ); phía kia: đã nhớ → ví duy nhất trùng tên nguồn → trống. Lỗi → không gợi ý.
-  Future<void> _tinhGoiYChuyen(DienSanBienDong d, int id) async {
-    try {
-      final cho = await _nguon.hangBienDongCho(id);
-      final gy = goiYChuyenKhoan(d, cho);
-      if (gy == null) return;
-      Future<String?> nho(String nguon, String? duoi) async {
-        final v = await _nguon.viTheoNguon(id, nguon, duoi);
-        return v != null && _wallets.any((w) => w.id == v) ? v : null;
-      }
-
-      final nhoTu = await nho(gy.nguonTu, gy.duoiTu);
-      final nhoDen = await nho(gy.nguonDen, gy.duoiDen);
-      if (!mounted) return;
-      final ds = [for (final w in _wallets) (id: w.id, ten: w.name)];
-      String? doan(String nguon, String? daNho) => daNho ?? (nguon == d.nguon ? null : viTheoTenNguon(nguon, ds));
-      setState(() {
-        _goiYChuyen = gy;
-        _viGoiY = (
-          tu: doan(gy.nguonTu, nhoTu),
-          den: doan(gy.nguonDen, nhoDen),
-          daNhoTu: nhoTu != null,
-          daNhoDen: nhoDen != null,
-        );
-      });
-    } catch (e) {
-      debugPrint('[BienDong] gợi ý chuyển khoản lỗi: $e');
-    }
-  }
-
-  /// Bấm *Ghi là chuyển khoản*: đổi đoạn qua ĐÚNG [_chonHuong], điền hai ví; ô không đoán được để TRỐNG — ví mặc định
-  /// ở đây là để bảng nguồn → ví học nhầm (D1 §3.3). Không lưu (bất biến ④ nhóm C).
-  void _apGoiYChuyen() {
-    final gy = _goiYChuyen;
-    final v = _viGoiY;
-    if (gy == null || v == null) return;
-    _chonHuong('transfer');
-    Wallet? tim(String? id) {
-      for (final w in _wallets) {
-        if (w.id == id) return w;
-      }
-      return null;
-    }
-
-    _cubit.ghiOLoi(viNguon: tim(v.tu), datViNguon: true, viDich: tim(v.den), datViDich: true, nguoiDungDaChonVi: true);
-    setState(() {
-      _goiYDaApDung = gy;
-      _goiYChuyen = null;
-    });
-  }
-
-  /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
-  /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
-  /// gọi: màn có thể đã `pop`. Không bao giờ ném.
-  Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
-    // A5: form từ ảnh quét — không hàng loại 20, không bảng nguồn → ví; chỉ xoá ảnh (dispose cũng xoá — luỹ đẳng).
-    if (d.laQuet) {
-      await _nguon.xoaAnhQuet(d.anh);
-      return;
-    }
-    try {
-      if (nhoVi && viDaLuu != null) await _nguon.nhoViTheoNguon(id, d.nguon, d.duoi, viDaLuu);
-    } catch (e) {
-      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
-    }
-    await _nguon.xoaHangBienDong(id, d.khoa);
-    await _nguon.xoaAnhBienLai(d.anh);
-  }
-
-  /// Lưu sau khi áp gợi ý Chuyển khoản (spec §5): nhớ ví cho CẢ HAI nguồn — mỗi phía theo phía của nó. ⚠️ Không theo
-  /// `_selectedWallet`: tin THU ghi thành chuyển khoản thì ví của nguồn tin là ví ĐÍCH, nhớ ví nguồn là mọi tin sau của
-  /// nguồn ấy chọn sẵn sai ví, im lặng. Rồi xoá hàng đang mở và hàng cặp (còn chờ là người dùng ghi đôi). Không ném.
-  Future<void> _dongChuyenKhoan(DienSanBienDong d, GoiYChuyenKhoan gy, int id,
-      {String? viTu, String? viDen, required bool daNhoTu, required bool daNhoDen}) async {
-    try {
-      if (!daNhoTu && viTu != null) await _nguon.nhoViTheoNguon(id, gy.nguonTu, gy.duoiTu, viTu);
-      if (!daNhoDen && viDen != null) await _nguon.nhoViTheoNguon(id, gy.nguonDen, gy.duoiDen, viDen);
-    } catch (e) {
-      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
-    }
-    await _nguon.xoaHangBienDong(id, d.khoa);
-    await _nguon.xoaAnhBienLai(d.anh);
-    final cap = gy.khoaCap;
-    if (cap != null) await _nguon.xoaHangBienDong(id, cap);
-  }
+  /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
+  Future<void> _huyDocAi() => _cubit.huyDocAi(_nhapNhanhController.text.trim());
 
   Future<void> _boQuaBienDong() async {
-    final d = _bienDong;
-    final id = _accountId();
-    if (d != null && id != null) await _dongBienDong(d, id);
+    await _cubit.boQuaBienDong();
     if (mounted) context.pop();
   }
 
@@ -473,8 +296,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _nhapNhanhController.dispose();
     _nhapNhanhFocus.dispose();
     unawaited(_cubit.close());
-    // A5: ảnh quét chỉ sống tới khi form đóng — MỘT chỗ cho mọi đường thoát (Lưu, Bỏ qua, Back hệ thống, nút ←).
-    if (_laQuet) unawaited(_nguon.xoaAnhQuet(_bienDong?.anh));
     super.dispose();
   }
 
@@ -505,137 +326,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
   void _chonHuong(String huong) => _cubit.chonHuong(huong);
-
-  /// C2 — đọc câu ở ô *Nhập nhanh* (`docCauGiaoDich`) rồi ĐIỀN SẴN những ô đọc được; ô không đọc được giữ nguyên.
-  /// Bất biến ④ nhóm C: không lưu — người dùng xem lại rồi bấm ✓.
-  ///
-  /// Mỗi ô đi qua ĐÚNG đường người dùng vẫn đi, để mọi hệ quả chạy như khi chạm tay:
-  /// - chiều qua [_chonHuong] (bỏ danh mục thuộc chiều kia) — gán thẳng `_huong` là để danh mục chi dưới đoạn Thu;
-  /// - số tiền qua `themPhimSoTien` từng chữ số (cùng trần 13 chữ số, không để biểu thức dở);
-  /// - ví đọc từ câu đặt [_nguoiDungDaChonVi] — luật ví hay dùng theo danh mục không được đè lựa chọn trong câu;
-  /// - danh mục qua [_chonDanhMuc] (chiều vay/nợ, đoạn Chi/Thu, xoá thẻ gợi ý);
-  /// - ghi chú đặt SAU danh mục: [_onNoteChanged] thấy đã có danh mục thì không hẹn gợi ý;
-  /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
-  Future<void> _dienTuCau() async {
-    final cau = _nhapNhanhController.text.trim();
-    if (cau.isEmpty || _dangDien) return;
-    _dangDien = true;
-    final luot = ++_luotDien;
-    FocusScope.of(context).unfocus();
-    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
-    // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
-    // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
-    KetQuaAi? ai;
-    final docAi = _nguon.docAi;
-    final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
-    if (conThieu && docAi != null && mounted && await docAi.sanSang()) {
-      if (!mounted || luot != _luotDien) return;
-      setState(() => _dangDocAi = true);
-      ai = await docAi.doc(
-        cau,
-        now: DateTime.now(),
-        tenVi: [for (final w in _wallets) w.name],
-        tenDanhMuc: [for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.name],
-      );
-    }
-    // Người dùng đã bấm Huỷ — lượt ấy đã điền bằng luật.
-    if (!mounted || luot != _luotDien) return;
-    _dangDien = false;
-    if (_dangDocAi) setState(() => _dangDocAi = false);
-    _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
-  }
-
-  /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
-  Future<void> _huyDocAi() async {
-    _luotDien++;
-    unawaited(_nguon.docAi?.huy());
-    final cau = _nhapNhanhController.text.trim();
-    final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_accountId());
-    if (!mounted) return;
-    setState(() {
-      _dangDien = false;
-      _dangDocAi = false;
-    });
-    if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
-  }
-
-  KetQuaDocCau _docCau(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
-      docCauGiaoDich(
-        cau,
-        now: DateTime.now(),
-        vi: _wallets,
-        chonDuoc: chonDuoc,
-        mo: _boPhanLoai,
-        tatCap: _tatCap,
-        ai: ai,
-        tuKhoa: tuKhoa,
-        // Dòng nguồn "Đọc bằng AI" chỉ khi AI làm ĐỔI một ô — chiều / ví đang chọn không tính (người dùng chốt 2026-09-30).
-        chieuDangChon: _huong,
-        viDangChon: _selectedWallet?.id,
-      );
-
-  /// Đọc câu rồi điền những ô đọc được vào form (xem [_dienTuCau]).
-  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
-      _dienKetQua(_docCau(cau, chonDuoc, tuKhoa, ai: ai), chonDuoc: chonDuoc);
-
-  /// Điền một [KetQuaDocCau] đã dựng sẵn vào form — phần ÁP, tách khỏi phần đọc câu (2026-09-30, mở D1): ô Nhập nhanh
-  /// đi qua [_apDungKetQua], còn form điền sẵn từ tin biến động số dư (D1) dựng `KetQuaDocCau` từ query rồi gọi thẳng
-  /// đây. Mỗi ô đi đúng đường người dùng vẫn đi (chiều qua [_chonHuong], số tiền qua `themPhimSoTien`, danh mục qua
-  /// [_chonDanhMuc]…) — xem [_dienTuCau].
-  void _dienKetQua(KetQuaDocCau kq, {required List<Category> chonDuoc}) {
-    final now = DateTime.now();
-    if (kq.khongDocDuocGi) {
-      setState(() => _ketQuaDien =
-          (tomTat: kCauChuaDocDuoc, docDuoc: false, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: null));
-      return;
-    }
-
-    final loai = kq.loai;
-    if (loai != null && loai != _huong) _chonHuong(loai);
-    Wallet? vi;
-    Wallet? viDen;
-    for (final w in _wallets) {
-      if (w.id == kq.walletId) vi = w;
-      if (w.id == kq.walletToId) viDen = w;
-    }
-    final soTien = kq.soTien;
-    if (soTien != null) _cubit.chonSoTien(soTien);
-    final ngay = kq.ngay;
-    if (ngay != null) {
-      _cubit.ghiOLoi(ngay: DateTime(ngay.year, ngay.month, ngay.day, _selectedDate.hour, _selectedDate.minute));
-    }
-    if (vi != null) _cubit.ghiOLoi(viNguon: vi, datViNguon: true, nguoiDungDaChonVi: true);
-    // Chuyển ví (§2.9). Câu chỉ nêu ví đích mà ví nguồn đang chọn lại chính là nó → để trống ví nguồn cho người dùng
-    // chọn: chuyển vào chính nó là khoản vô nghĩa, và màn không chặn lúc lưu.
-    if (viDen != null) {
-      _cubit.ghiOLoi(viDich: viDen, datViDich: true);
-      if (vi == null && _selectedWallet?.id == viDen.id) _cubit.ghiOLoi(viNguon: null, datViNguon: true);
-    }
-    Category? danhMuc;
-    if (!_s.laChuyen && kq.categoryId != null) {
-      for (final c in chonDuoc) {
-        if (c.id == kq.categoryId) danhMuc = c;
-      }
-      if (danhMuc != null) _chonDanhMuc(danhMuc);
-    }
-    // Rỗng = câu chỉ có số / ngày / ví: ghi chú người dùng đã gõ giữ nguyên.
-    if (kq.ghiChu.isNotEmpty) _noteController.text = kq.ghiChu;
-    final goiY = danhMuc != null ? kq.goiY : null;
-    final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
-    if (goiY != null) _cubit.datChoPhanXu(goiY);
-    setState(() {
-      _ketQuaDien = (
-        tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
-        docDuoc: true,
-        quaAi: kq.quaAi,
-        canhBao: kq.canhBao,
-        lyDo: lyDo,
-      );
-    });
-    // Ô Nhập nhanh điền xong mà danh mục VÀ ghi chú còn trống (câu chỉ có số tiền) → nguồn số tiền được thử (dự án C).
-    // Form biến động, hoặc câu có để lại ghi chú, thì hàm tự thoát.
-    _cubit.henGoiYTheoForm();
-  }
 
   /// Chữ ô ghi chú → Cubit (state.ghiChu, hẹn gợi ý, đề xuất từ khoá). Controller phát cả khi chỉ đổi con trỏ — Cubit so
   /// CHỮ, trùng thì thoát.
@@ -888,7 +578,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         for (final x in _phanTach) x.categoryId,
       },
       dangSua: sua,
-      mon: _monQuet,
+      mon: _s.monQuet,
       // Món đã thuộc phần KHÁC (không phải phần đang sửa) → mờ, không tick được.
       monCuaPhanKhac: {
         for (final x in _phanTach)
@@ -984,21 +674,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   (_isEditing ? 'Đã lưu thay đổi' : (soGd > 1 ? 'Đã lưu $soGd giao dịch' : 'Thêm giao dịch thành công!')),
               loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
             );
-            final d = _bienDong;
-            final id = _accountId();
-            if (d != null && id != null) {
-              final gy = _goiYDaApDung;
-              final v = _viGoiY;
-              if (gy != null && v != null && _s.laChuyen) {
-                unawaited(_dongChuyenKhoan(d, gy, id,
-                    viTu: _selectedWallet?.id,
-                    viDen: _destinationWallet?.id,
-                    daNhoTu: v.daNhoTu,
-                    daNhoDen: v.daNhoDen));
-              } else {
-                unawaited(_dongBienDong(d, id, viDaLuu: _selectedWallet?.id, nhoVi: !_viNguonDaNho));
-              }
-            }
+            unawaited(_cubit.dongSauLuu());
             context.pop(true);
           } else if (state.actionSuccess == false &&
               state.errorMessage != null) {
@@ -1100,18 +776,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       children: [
                         // D1: form đã điền từ tin — không có ô Nhập nhanh (đường điền thứ hai), thay bằng dải nguồn.
                         if (_bienDong case final d?) ...[
-                          DaiNguonBienDong(d: d, duongDanAnh: _duongDanAnh),
+                          DaiNguonBienDong(d: d, duongDanAnh: _s.duongDanAnh),
                           const SizedBox(height: 12),
                           if (d.luaChonTien.isNotEmpty) ...[
                             KhoiChonSoTien(
                               ds: d.luaChonTien,
                               dangChon: ketQuaBieuThuc(_amountString),
-                              onChon: _dienSoTienChon,
+                              onChon: _cubit.chonSoTien,
                             ),
                             const SizedBox(height: 12),
                           ],
-                          if (_goiYChuyen case final gy? when !_s.laChuyen) ...[
-                            TheGoiYChuyen(gy: gy, onApDung: _apGoiYChuyen),
+                          if (_s.goiYChuyen case final gy? when !_s.laChuyen) ...[
+                            TheGoiYChuyen(gy: gy, onApDung: _cubit.apGoiYChuyen),
                             const SizedBox(height: 12),
                           ],
                         ] else if (!_isEditing) ...[
@@ -1119,8 +795,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             controller: _nhapNhanhController,
                             focusNode: _nhapNhanhFocus,
                             laPremium: _laPremium,
-                            dangDocAi: _dangDocAi,
-                            ketQua: _ketQuaDien,
+                            dangDocAi: _s.dangDocAi,
+                            ketQua: _s.ketQuaDien,
                             onDien: _dienTuCau,
                             onHuy: _huyDocAi,
                           ),
@@ -1178,15 +854,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       listener: (_, __) => _cuonToiTheGoiY(),
       child: content,
     );
+    final coGhiChu = BlocListener<ThemGiaoDichCubit, ThemGiaoDichState>(
+      bloc: _cubit,
+      // CHỈ khi Cubit tự đặt ghi chú (bộ đếm) — nghe mọi lần `ghiChu` đổi thì một state về muộn đè chữ vừa gõ.
+      listenWhen: (a, b) => a.soLanDatGhiChu != b.soLanDatGhiChu,
+      listener: (_, s) {
+        if (_noteController.text != s.ghiChu) _noteController.text = s.ghiChu;
+      },
+      child: coCuon,
+    );
     final transactionBloc = widget.transactionBloc;
     return transactionBloc == null
         ? BlocProvider<TransactionBloc>(
             create: (context) => sl<TransactionBloc>(),
-            child: coCuon,
+            child: coGhiChu,
           )
         : BlocProvider<TransactionBloc>.value(
             value: transactionBloc,
-            child: coCuon,
+            child: coGhiChu,
           );
   }
 
@@ -1241,7 +926,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onPickDate: _pickDate,
       hienDongTach: _s.choTach && _phanTach.isEmpty,
       onThemPhan: _themPhan,
-      nhacTrung: _bienDong != null && _trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _trungTrongSo) : null,
+      nhacTrung:
+          _bienDong != null && _s.trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _s.trungTrongSo) : null,
       deXuatTuKhoa: _s.deXuat != null || _s.daThemTuKhoa != null
           ? DongDeXuatTuKhoa(
               daThem: _s.daThemTuKhoa,
@@ -1266,7 +952,4 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ),
     );
   }
-
-  /// Điền số của chip — đi qua `themPhimSoTien` như mọi đường điền khác (cùng trần số chữ số).
-  void _dienSoTienChon(double v) => _cubit.chonSoTien(v);
 }
