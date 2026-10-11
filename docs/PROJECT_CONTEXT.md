@@ -610,6 +610,24 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-11)
 
+### 📝 Trợ lý online (hỗn hợp: có mạng hỏi backend Gemini, hỏng / mất mạng rơi về mô hình trên máy) — spec duyệt + kế hoạch viết, CHƯA thi công (2026-10-11 chiều, người dùng chốt để sau)
+
+- Đảo quyết định treo từ 2026-09-26 (🛑 *chatbot trực tuyến chưa nhận*): người dùng chốt **"kết nối AI chatbox ở backend vào, khi
+  có mạng dùng ở backend, không có thì offline"** và **"tuân thủ cấu trúc hệ thống, tránh sau này phải sửa lại"**. Brainstorm sáu phần,
+  11 quyết định (lối A *thử online từng câu, thang rơi*; mở kiến thức nhưng giữ chặn dữ liệu sống; tờ thông tin một lần; lịch sử trong
+  phiên màn; không thẻ FHS; không huy hiệu header; Dừng chỉ cho online; cờ gắn máy; bất biến số chỉ còn cho AI trên máy; không chờ
+  đồng bộ). Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` (`5e7240a7`); kế hoạch 13
+  task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore) — **0 dòng mã đổi**, thi công **để sau**, vị trí
+  trong thứ tự việc chưa xếp (sau nghiệm thu OnePlus → tách Thêm giao dịch → C4 → … theo bàn giao).
+- Vị trí tệp đã soát với bảng luật mục 8 `KIEN_TRUC_CLIENT_APP.md` và lộ trình G88 (gạch 1–6 không bị cản): datasource SSE ở
+  `ai_chat/data/datasources/`, bộ tách SSE ở `core/api/`, hàm thuần ở `ai_chat/domain` + `chuDeBiChanOnline` cạnh `chuDeBiChan`,
+  công tắc theo khuôn `CongTacAi`, thẻ lệnh tạo C3 dời ra `widgets/tro_ly_ai/` để trang < 1.200 dòng; đọc mạng qua
+  `ConnectionMonitor.coMangLucNay()` (mới), không gọi `Connectivity()` ở trang.
+- Backend đo thật cùng ngày: mô-đun chatbot đủ, route gắn, unit 28/28 + integration 3/3; `thug63` (Basic) → 403 `FEATURE_DISABLED`;
+  **`.env` dev không có `GEMINI_API_KEY` / `GEMINI_MODEL`** → mọi câu online về `done.fallback` (thang rơi phủ ca này). Khoá là việc
+  của người dùng/backend. Khi thi công: Task 0 là Stitch 3 màn; tài liệu phải đổi gồm bất biến ① ② `AI_AGENT_ARCHITECTURE.md`,
+  hàng *Bảo mật* mục 7 `KIEN_TRUC`, khối *Riêng tư* màn Cài đặt AI, đơn CAN-LAM 43 thông báo backend.
+
 ### 🔀 Gộp `main` @ `79e46225` (2026-10-11) — Admin-web v1.0.0 + chuyển ngữ, AIOps `actor_role`, `maintenance_history`; backend chưa trả lời đơn 41, 42
 
 - Commit gộp `a02d8607`, **không xung đột** (`git merge-tree` sạch; không tệp nào cả hai bên cùng đổi), cây `src/Client-app`
