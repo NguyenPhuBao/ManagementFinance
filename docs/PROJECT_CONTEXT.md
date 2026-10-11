@@ -610,6 +610,40 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-11)
 
+### 📱 Nghiệm thu Realme 2026-10-11 tối — chạy nền (Task 10), mười màn, Thêm giao dịch sau tách; mở G90
+
+Realme RMX2205 `4DRWEAHIWCW8V879` (Android 13, ColorOS, 360 × 800 dp) + máy ảo `FlowMoney_16G` cho hai ca chạy nền. APK debug
+`bd365248…` và release `26c101bc…`, dựng từ `aa95e0d3` với base URL **tạm** trỏ `127.0.0.1` (`adb reverse`), mã nguồn trả lại,
+không commit; tài khoản 10 (`dat`, Premium). OnePlus không cắm — việc *"nghiệm thu OnePlus"* của các đợt 2026-10-10/11 đo trên Realme.
+
+- **Chạy nền** — bảng đủ ở §8.1 spec `2026-10-10-tu-chuyen-tien-chay-nen-design.md`: đạt (a) Dart → Kotlin · (b) app mở,
+  tự nổ (`quetNgay`, không `[Nen]`) · (c)+(d) app đóng, tự nổ, không ép (giết bằng `am crash`) · (f) hai máy ra **một** hàng
+  v5 (⚠️ không phải đua thật — máy ảo nổ trễ 1,5 phút, kéo về trước khi quét) · (g) release R8 trên máy ảo · (h) vuốt Recents
+  lần này **không** force-stop; (e) Basic bỏ qua (người dùng chọn). Ca **hoá đơn tự trả ở nền chưa đo** — cả buổi dùng một
+  mục tiêu thử. Ghi nhận: *"Số dư ví sắp cạn"* bắn ngay khi ví đích vừa được **nạp** từ 0 lên 1.000 đ (đúng luật ngưỡng, UX
+  lạ — chưa mở mục G).
+- **Mười màn sau hai đợt tái cấu trúc 2026-10-10** (bản debug): 18 ảnh (Trang chủ đầu / cuối, Sổ, Phân tích 6 vị trí, Hoá đơn
+  danh sách / thêm / thêm-cuộn dưới, Mục tiêu danh sách / chi tiết, Ngân sách, Thông báo, Cá nhân 2) — **vàng thuần 0** cả 18,
+  xem bằng mắt không cắt chữ / chồng; Hoá đơn chi tiết, bảng thanh toán, trang sửa mở / đóng bình thường. Màn Gắn danh mục
+  không chụp — không có giao dịch chưa gắn (không tạo thêm).
+- **Form hoá đơn không cho chọn nhóm** đo trên máy: nhóm `TESTTT` (`is_group = 1`) vắng ở cả form Thêm lẫn Sửa, con `test`,
+  `test1` có (đối chiếu SQLite máy).
+- **Thêm giao dịch sau khi tách sang `ThemGiaoDichCubit`:** bàn phím `51.000 + 1.000 − 2.000` → `52.000 − 2.000 = 50.000 đ`;
+  chạm số tiền ẩn / hiện 16 phím (✓ lên thanh tiêu đề); Nhập nhanh *"chuyen 500k tu tien mat sang tiet kiem"* → *"Đã điền:
+  500.000 đ · Chuyển ví · Tiền mặt → Tiết kiệm"*, nguồn *"Đọc bằng luật"*; lưu khoản chi 1.000 đ *Giải trí* → toast *"Thêm
+  giao dịch thành công!"* + về Trang chủ, chi tháng 310k → 311k; sửa thành 10.000 đ → *"Đã lưu thay đổi"*; xoá → hộp *"Xoá
+  giao dịch? Số dư ví sẽ được hoàn lại"* → chi về 310k. Lần đẩy sau khi lưu có một xung đột danh mục (server mới hơn, LWW lấy
+  bản server — vô hại).
+- **Trợ lý AI**, câu chào *"xin chao"* (CPU): mô hình đáp tự nhiên, sinh xong **7.543 ms** (token đầu 4.435 ms) — trước ghi ~23 s.
+- **Mở G90** (máy ảo): bảng chọn giờ, chế độ gõ chữ, từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ — năm chỗ
+  `showTimePicker`, chưa sửa (`CLIENT_APP_KNOWN_GAPS.md`).
+- **Dọn** (qua giao diện): khoản chi thử xoá mềm; mục tiêu *"Thu nen"* rút 4.000 đ về *Tiết kiệm* rồi xoá (PostgreSQL
+  `Delete_at` 14:57Z) — bốn khoản trích + một khoản rút **ở lại** làm lịch sử (khoản trích mục tiêu không xoá được từ sổ);
+  thứ tự MuaXe → MuaDT khôi phục sau một cú vuốt nhầm thành kéo thả. Máy ảo đang cài bản release `26c101bc…` (trỏ
+  `127.0.0.1`), `time_12_24` trả về mặc định.
+- ⚠️ Khi nối lại backend, **phiên Realme cũ bị server từ chối** → app về màn Đăng nhập **không hộp thoại** (người dùng đăng
+  nhập lại). Chỉ ghi nhận, chưa tìm nguyên nhân.
+
 ### 🧩 Tách trang Thêm giao dịch ra Cubit + lớp nguồn — G88 gạch 1 đóng (2026-10-11 tối, 6 task xong, chưa push)
 
 Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đúng màn này, như C2, C3, A5, D1 đã chạm). Spec `docs/superpowers/specs/2026-10-11-tach-trang-them-giao-dich-cubit-design.md` (bốn quyết định ở mục 0; khối *"Chỗ bản thi công KHÁC bản viết"* ở đầu tệp); kế hoạch 7 task `plans/2026-10-11-tach-trang-them-giao-dich-cubit.md` (gitignore), thi công bằng **agent con mỗi task** (người dùng chọn), commit `21d4c594` → `18ae5749` + commit đóng sổ, sổ theo dõi `.superpowers/sdd/2026-10-11-tach-trang-them-giao-dich-cubit/` (gitignore). **Không đổi hành vi**: màn, chữ, `Key`, schema, payload, `pubspec` giữ nguyên; 24 tệp test dựng trang không sửa kỳ vọng nào (chỉ chú thích / chữ `reason:` còn trỏ tên cũ được trỏ lại).
@@ -723,7 +757,7 @@ Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentat
   muốn kiểm thứ tự mở phiên phải dựng `PhienDieuPhoiThat` (helper `phien()`), `AuthBloc` trần = không điều phối gì.
 - ✅ Form hoá đơn từng **giữ** danh sách danh mục gồm cả hàng **nhóm** (R8); người dùng chốt cùng ngày: **không** cho chọn
   nhóm — hai form đọc `selectableChildren`, lối `getCategoryRows` gỡ, hoá đơn cũ gắn nhóm phải chọn lại khi sửa.
-- Còn mở: nghiệm thu OnePlus của đợt; minor hoãn ghi trong sổ theo dõi (thứ tự import, `ignore_for_file:
+- Còn mở: ~~nghiệm thu OnePlus của đợt~~ (✅ mười màn đo trên **Realme** 2026-10-11 — khối 📱 đầu mục 14); minor hoãn ghi trong sổ theo dõi (thứ tự import, `ignore_for_file:
   use_key_in_widget_constructors` ở 14 tệp `phan_tich/` — R13, regex quét 22/24 không bắt `GetIt.I`).
 
 ### ⚡ Tự chuyển tiền chạy nền — mở lại G22 (2026-10-10)
@@ -755,6 +789,7 @@ khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
   có thể muộn hơn"*. iOS giữ nguyên.
 - **Giới hạn:** giờ không chính xác tới phút; Realme force-stop huỷ WorkManager; ca *trích phần còn thiếu* ở hai máy có
   số liệu khác nhau → LWW giữ một số tiền.
+- ✅ **Nghiệm thu Realme + máy ảo 2026-10-11** — khối 📱 đầu mục 14, bảng ở §8.1 spec.
 
 ### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 · kỳ hoá đơn trùng — G87 (2026-10-09)
 

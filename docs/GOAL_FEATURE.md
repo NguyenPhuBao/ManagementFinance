@@ -303,6 +303,12 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 > còn thiếu** với hai số tiền khác → server giữ một số tiền theo LWW, tiến độ một máy lệch tới lượt kéo về sau. Khoản
 > trích có từ trước (id v4) không đổi. Giờ chạy không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); Realme
 > force-stop khi vuốt Recents huỷ WorkManager. **iOS** không có lượt nền — đoạn dưới vẫn đúng ở đó.
+>
+> ✅ **Nghiệm thu Realme + máy ảo 2026-10-11:** đạt (a)(b)(c)(d)(f)(g)(h), (e) tài khoản Basic bỏ qua (người dùng chọn) —
+> bảng ở §8.1 spec trên. Trích tự nổ cả khi app mở lẫn khi app đóng (giết bằng `am crash`, không ép), bản release qua R8,
+> hai máy ra **một** hàng v5 (⚠️ chưa phải đua thật — máy ảo nổ trễ, kéo về trước khi quét). Vuốt Recents lần ấy **không**
+> force-stop (dịch vụ nghe thông báo D1 giữ tiến trình, job còn) — câu Realme ở trên là *có thể*, không phải *luôn*. Ca
+> hoá đơn tự trả ở nền chưa đo trên máy.
 
 
 Trước bản này, khối "Tự động trích tiền định kỳ" thu **ba** thông tin và lưu
