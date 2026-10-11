@@ -49,10 +49,11 @@ Hai dòng bullet dưới bảng (*Trigger sync*, *Business logic*) vẫn đúng,
 |---|---|---|
 | 1 | Backend có muốn tài liệu kiến trúc client nằm **trong** `Project.md` hay chỉ **trỏ** sang `docs/KIEN_TRUC_CLIENT_APP.md`? | **Trỏ**: §3.3 giữ bảng ngắn (đã sửa theo mục 2) và thêm một dòng *"Chi tiết: `docs/KIEN_TRUC_CLIENT_APP.md`"*; client giữ tệp ấy khớp mã |
 
-## 4. Phụ lục — ba chỗ chữ lệch tên, thấy trong lượt soát (không bắt buộc)
+## 4. Phụ lục — bốn chỗ chữ lệch tên, thấy trong lượt soát (không bắt buộc)
 
 | Tệp · dòng | Chữ hiện tại | Mã thật |
 |---|---|---|
+| `docs/Rule_Project/testing-guidelines.md:124–127` (§4.3, về sau gộp `main` @ `79e46225` 2026-10-11) | *"Nhận sự kiện Socket → Icon huy hiệu Premium trên AppBar đổi màu vàng"* | client **không có** huy hiệu Premium nào trên AppBar; sự kiện `account.upgraded` / `account.permissions_updated` là **tín hiệu** (client không đọc payload) gọi `GoiRepository.lamMoi()` → `/payment/subscription-info`; thứ đổi là **thẻ Gói** ở tab Cá nhân / Cài đặt và các cửa quyền (`GoiCubit.coQuyen`), lưu secure storage `goi_tai_khoan_<id>`. Câu đề nghị: *"Tầng 1: nhận socket → thẻ Gói ở tab Cá nhân đổi Basic → Premium, cửa khoá Trợ lý AI mở. Tầng 2: `GoiCubit` nhận trạng thái mới từ `/subscription-info`, lưu `goi_tai_khoan_<id>` trong `FlutterSecureStorage`."* |
 | `Project.md:1961` (gốc repo) | *"`core/constants/app_router.dart`"* | `core/router/app_router.dart` — tệp dời ngày 2026-10-10 (đợt dọn vị trí tệp theo luật mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`); `Project.md:3635` chỉ ghi `app_router.dart` không kèm đường dẫn nên không lệch |
 | `docs/Rule_Project/Rule_project.md:590` | *"điều hướng về màn hình Đăng nhập (`LoginScreen`) qua `AuthBloc`"* | không có lớp `LoginScreen`; `AuthBloc` phát `AuthUnauthenticated(thongBao:)`, router đưa về `/login`, màn Đăng nhập hiện hộp thoại lý do |
 | `docs/progress/Client-app.md:367` | *"`context.read<AuthBloc>().add(AuthLoggedOut())`"* | không có sự kiện `AuthLoggedOut`; cưỡng chế đăng xuất đi sự kiện `TaiKhoanBiBuocDangXuat` (từ socket / HTTP qua `PhienDieuPhoi.buocDangXuat`), người dùng tự đăng xuất là `LogoutRequested` |

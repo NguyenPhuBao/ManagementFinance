@@ -643,6 +643,13 @@ src/Backend/
   vẫn **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
 - Cùng ngày, trước gộp: đơn 42 sửa *28 → 29 test quét* + phụ lục ba chỗ (`3a929cb6`); xoá `src/Client-app/analyze_output.txt`
   (`bb60b0c0`, người dùng chốt). Nghiệm thu OnePlus (việc 1 của thứ tự 2026-10-11) **chưa làm** — không máy nào cắm lúc đó.
+- **Ba quyết định người dùng sau lượt soát (2026-10-11 trưa):** (1) `testing-guidelines.md` §4.3 tả client có *"huy hiệu Premium
+  trên AppBar đổi màu vàng khi nhận socket"* — **không có** trong mã → thêm **hàng thứ tư** phụ lục đơn 42 kèm câu thay thế;
+  (2) **bảo trì khẩn cấp**: backend phát `user.notification` (client cố ý không nghe từ 2026-09-30) + `system.broadcast`
+  (`io.emit` tới mọi socket, client không dịch) rồi trả **503 `code: MAINTENANCE_MODE`** + `Retry-After: 60` cho mọi request
+  người dùng (middleware không đổi ở lượt này; `/auth/login` đi qua rồi `auth.service` từ chối người dùng thường) — client hiện:
+  đăng nhập hiện đúng `message` của server, đồng bộ rơi `transportFailed` (im lặng, giãn cách), không dải báo → **để nguyên**,
+  ghi mục ngỏ **G89** `CLIENT_APP_KNOWN_GAPS.md`; (3) `Project.md` §16 kiểm thử 2 tầng → **không phản hồi**, chỉ ghi nhận.
 
 ### 🗂️ Dọn vị trí tệp theo luật mục 8 + test quét 25 (2026-10-10 khuya, 12 task xong, chưa push)
 
