@@ -12,8 +12,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
+import '../../../budget/data/models/budget_entity.dart';
+import '../../../budget/domain/budget_impact.dart';
 import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/data/services/category_suggestion_engine.dart';
 import '../../../category/domain/category_classify.dart';
@@ -30,6 +34,41 @@ import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../domain/vi_chon_san.dart';
 import 'them_giao_dich_state.dart';
+
+/// Kết quả [ThemGiaoDichCubit.chuanBiLuu].
+sealed class KetQuaChuanBiLuu {
+  const KetQuaChuanBiLuu();
+}
+
+/// Không lưu được — trang báo [cau] bằng toast lỗi.
+class LoiLuu extends KetQuaChuanBiLuu {
+  const LoiLuu(this.cau);
+  final String cau;
+}
+
+/// Sẵn sàng gửi cho `TransactionBloc`.
+class SanSangLuu extends KetQuaChuanBiLuu {
+  const SanSangLuu({
+    required this.giaoDich,
+    required this.truoc,
+    required this.laTach,
+    required this.tacDong,
+    required this.canXacNhan,
+  });
+
+  /// Một phần tử, trừ khi [laTach].
+  final List<TransactionEntity> giaoDich;
+
+  /// Giao dịch đang sửa → `UpdateTransactionEvent(before: truoc, after: giaoDich.single)`.
+  final TransactionEntity? truoc;
+  final bool laTach;
+
+  /// Tác động ngân sách cho lời nhắn sau lưu.
+  final BudgetImpact? tacDong;
+
+  /// Ngân sách *Chặn* bị vượt — rỗng = không hỏi. Tách: MỘT hộp cho cả lô.
+  final List<BudgetImpact> canXacNhan;
+}
 
 class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   ThemGiaoDichCubit({
@@ -268,9 +307,6 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// không ở chế độ sửa, không phải form biến động số dư (người dùng không chọn hai chỗ ấy cho lần này — spec mục 2
   /// hàng 4). Hai chỗ mỗi nơi một bản chép thì bỏ một vế ở MỘT chỗ vẫn xanh (đo bằng bản sai 2026-10-02).
   bool get _coNguonSoTien => _boSoTien != null && !laSua && _bienDong == null;
-
-  // ⏳ TẠM (Task 3–4): lưu còn ở trang tới Task 5.
-  void ghiPhanHoiKhiLuu() => _ghiPhanHoiKhiLuu();
 
   /// Từ `_napTatCap` của trang. Đọc phản hồi cũ → cặp đang bị thôi gợi ý. Lỗi thì bỏ qua: thẻ vẫn gợi ý như chưa ai
   /// từng bỏ qua.
@@ -560,6 +596,165 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       _ghiPhanHoi(cho.goiY, daChon.id == cho.goiY.categoryId ? kKetQuaGoiYChon : kKetQuaGoiYKhac, chon: daChon.id);
       _choPhanXu = null;
     }
+  }
+
+  // ── Lưu ──────────────────────────────────────────────────────────────────────────────────────────────────────
+  /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn sau khi lưu xong. Đặt ngay trước khi gửi
+  /// event, xoá ngay khi đã dùng. Đặt ở [daGuiLuu], đọc ở [cauSauLuu].
+  BudgetImpact? _tacDongChoLoiNhan;
+
+  /// Số giao dịch của lần Lưu đang chờ `actionSuccess` — toast *"Đã lưu N giao dịch"*.
+  int _soGiaoDichVuaLuu = 1;
+
+  /// Từ `_saveTransaction` + `_luuTach` của trang: kiểm, dựng giao dịch, tra ngân sách. Không hộp thoại, không event —
+  /// trang hỏi xác nhận ([SanSangLuu.canXacNhan]) rồi mới gửi và báo [daGuiLuu].
+  Future<KetQuaChuanBiLuu> chuanBiLuu() async {
+    final s = state;
+    // ⚠️ KHÔNG `replaceAll('.', '')` (A12, 2026-09-19). `chuoiSoTien` là chuỗi **thô** đang gõ, không phải chuỗi đã
+    // ngăn nghìn — phép ngăn nghìn chỉ áp ở `_getFormattedAmount` của trang. Coi dấu chấm là dấu ngăn nghìn thì một số
+    // lẻ bị mất dấu rồi đọc tiếp: `12.5` lưu thành **125**, sai gấp mười, không exception, không log. Bàn phím nay hết
+    // phím `.`, nhưng chuỗi có dấu chấm vẫn vào được qua chế độ sửa (`_dauTien` đọc `editing.amount.toString()`) — và số
+    // lẻ có thật, `transaction."Amount"` là `numeric(15,2)`. Nên chốt phải nằm ở ĐÂY, không chỉ ở bàn phím.
+    // ⚠️ Phải RÚT GỌN, không `double.tryParse` thẳng: từ 2026-09-19 bàn phím dựng được biểu thức (`"50000+30000"`), mà
+    // parse thẳng chuỗi ấy trả `null` rồi rơi về 0 — chốt `amount <= 0` ngay dưới sẽ báo "Vui lòng nhập số tiền hợp lệ"
+    // cho một con số người dùng vừa gõ đúng.
+    final amount = ketQuaBieuThuc(s.chuoiSoTien);
+    if (amount <= 0) return const LoiLuu('Vui lòng nhập số tiền hợp lệ');
+    final viNguon = s.viNguon;
+    if (viNguon == null) return const LoiLuu('Vui lòng chọn ví thanh toán');
+    final danhMuc = s.danhMuc;
+    if (!s.laChuyen && danhMuc == null) return const LoiLuu('Vui lòng chọn danh mục');
+    final viDich = s.viDich;
+    if (s.laChuyen && viDich == null) return const LoiLuu('Vui lòng chọn ví đích');
+    final type = s.loaiGhi;
+    if (type == null) return const LoiLuu('Vui lòng chọn chiều tiền');
+    // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi giao dịch khi chưa biết nó thuộc về ai. Trước
+    // 2026-09-14 nhánh này rơi về mã `1` — tài khoản admin thật — nên giao dịch ghi trong lúc phiên chưa sẵn sàng sẽ
+    // mang chủ sở hữu sai, rồi đẩy lên và vỡ "Ownership mismatch" mà không ai lần được từ đâu. Sửa giao dịch cũ thì
+    // `editing` đã mang sẵn chủ sở hữu, nên đường ấy không cần chốt.
+    final editing = _dangSua;
+    final accountId = editing?.idaccount ?? _taiKhoan();
+    if (accountId == null) return const LoiLuu('Chưa xác định được tài khoản đăng nhập');
+
+    final tx = TransactionEntity(
+      // Sửa thì giữ nguyên id (và những gì form không đụng tới) — tạo id mới là nhân đôi giao dịch.
+      id: editing?.id ?? const Uuid().v4(),
+      walletId: viNguon.id,
+      idaccount: accountId,
+      // Khoản chuyển KHÔNG có danh mục. Trước đây chỗ này gán 'cat_transfer' — một id chưa từng được seed — và
+      // SyncEngine hoãn đẩy hàng ấy vĩnh viễn vì không phân giải được danh mục.
+      categoryId: s.laChuyen ? null : danhMuc!.id,
+      walletTransfer: s.laChuyen ? viDich!.id : null,
+      goalId: editing?.goalId,
+      amount: amount,
+      type: type,
+      note: s.ghiChu.trim(),
+      date: s.ngay,
+      images: editing?.images ?? const [],
+      syncStatus: 'pending',
+      isDeleted: false,
+      updatedAt: DateTime.now(),
+    );
+
+    // A5 mục 11 — khoản chi đã TÁCH: N giao dịch, ghi hết hoặc không gì, một toast.
+    if (s.phanTach.isNotEmpty && editing == null && type == 'chi') {
+      return _chuanBiLuuTach(tx, amount);
+    }
+
+    // Ngân sách của danh mục: "Chặn" thì hỏi trước khi ghi khoản làm vượt, "Cảnh báo" thì ghi luôn rồi báo. Đây là nơi
+    // DUY NHẤT đọc `OverSpending`.
+    final impact = await _tacDongNganSach(tx, editing);
+    return SanSangLuu(
+      giaoDich: [tx],
+      truoc: editing,
+      laTach: false,
+      tacDong: impact,
+      canXacNhan: impact != null && impact.requiresConfirmation ? [impact] : const [],
+    );
+  }
+
+  /// A5 mục 11.4–11.5 — lưu khoản đã tách: kiểm hợp lệ, ngân sách TỪNG phần (một hộp cho cả lô nếu có ngân sách *Chặn*
+  /// bị vượt), rồi MỘT `AddTransactionsEvent`. Ở đây chỉ dựng và kiểm — event do trang gửi.
+  Future<KetQuaChuanBiLuu> _chuanBiLuuTach(TransactionEntity tx, double tong) async {
+    final phanTach = state.phanTach;
+    final loi = kiemTach(tong: tong, chinh: tx.categoryId, phan: phanTach);
+    if (loi != null) {
+      return LoiLuu(switch (loi) {
+        LoiTach.conLaiKhongDuong => 'Phần còn lại phải lớn hơn 0',
+        LoiTach.phanKhongDuong => 'Mỗi phần phải lớn hơn 0',
+        LoiTach.trungDanhMuc => 'Mỗi danh mục chỉ một phần',
+        LoiTach.monHaiPhan => 'Một món chỉ thuộc một phần',
+      });
+    }
+    final ds = dungGiaoDichTach(mau: tx, phan: phanTach);
+    final impacts = <BudgetImpact>[];
+    for (final t in ds) {
+      final i = await _tacDongNganSach(t, null);
+      if (i != null) impacts.add(i);
+    }
+    return SanSangLuu(
+      giaoDich: ds,
+      truoc: null,
+      laTach: true,
+      tacDong: impacts.where((i) => i.exceeds || i.nearLimitAfter).firstOrNull,
+      canXacNhan: [for (final i in impacts) if (i.requiresConfirmation) i],
+    );
+  }
+
+  /// Trang đã gửi event cho `TransactionBloc` (sau hộp xác nhận nếu có). Đường tạo mới ghi phản hồi thẻ gợi ý (khoản
+  /// tách: cho danh mục chính).
+  void daGuiLuu(SanSangLuu r) {
+    _tacDongChoLoiNhan = r.tacDong;
+    _soGiaoDichVuaLuu = r.laTach ? r.giaoDich.length : 1;
+    if (r.truoc == null) _ghiPhanHoiKhiLuu();
+  }
+
+  /// Câu toast sau `actionSuccess`. Đọc xong thì đặt lại.
+  ({String cau, LoaiThongBao loai}) cauSauLuu() {
+    // Lời nhắn về ngân sách thay lời nhắn mặc định — chung chung, không con số (banner tạm thời tối giản theo ý người
+    // dùng).
+    final soGd = _soGiaoDichVuaLuu;
+    _soGiaoDichVuaLuu = 1;
+    final impactGoc = budgetImpactSnackText(_tacDongChoLoiNhan);
+    final impactText = soGd > 1 ? impactGoc?.replaceFirst('Đã lưu.', 'Đã lưu $soGd giao dịch.') : impactGoc;
+    _tacDongChoLoiNhan = null;
+    return (
+      cau: impactText ?? (laSua ? 'Đã lưu thay đổi' : (soGd > 1 ? 'Đã lưu $soGd giao dịch' : 'Thêm giao dịch thành công!')),
+      // Lưu kèm cảnh báo ngân sách ("Đã lưu. Ngân sách X đã vượt hạn mức.") là THÔNG TIN, không phải xong trơn.
+      loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
+    );
+  }
+
+  /// Từ `_budgetImpactFor` của trang. Tra hỏng → `null` (không được chặn việc ghi).
+  Future<BudgetImpact?> _tacDongNganSach(TransactionEntity tx, TransactionEntity? editing) async {
+    final categoryId = tx.categoryId;
+    if (tx.type != 'chi' || categoryId == null) return null;
+
+    BudgetView? view;
+    try {
+      view = await _nguon.traNganSach(tx.idaccount, categoryId);
+    } catch (_) {
+      // Tra ngân sách hỏng không được chặn việc ghi giao dịch.
+      return null;
+    }
+    if (view == null) return null;
+
+    final now = DateTime.now();
+    // Sửa: số cũ đã nằm trong "đã chi" nếu nó cùng danh mục và cùng kỳ — phải trừ ra, không thì báo vượt oan.
+    var previous = 0.0;
+    if (editing != null &&
+        editing.type == 'chi' &&
+        editing.categoryId == categoryId &&
+        budgetPeriodContains(view.budget, editing.date, now)) {
+      previous = editing.amount;
+    }
+    return budgetImpactOf(
+      view: view,
+      amount: tx.amount,
+      previousAmount: previous,
+      date: tx.date,
+      now: now,
+    );
   }
 
   // ── Điền sẵn: Nhập nhanh (C2) · biến động / biên lai (D1) · ảnh quét (A5) · gợi ý chuyển khoản ────────────────────

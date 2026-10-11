@@ -3,8 +3,12 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
+import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
-import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart' show kKetQuaGoiYBoQua, kKetQuaGoiYChon;
+import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart'
+    show kKetQuaGoiYBoQua, kKetQuaGoiYChon, kKetQuaGoiYKhac, kNguonGoiYHoc;
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
@@ -589,6 +593,205 @@ void main() {
       final c = taoCubit(nguon, bienDong: tin());
       await c.moTrang();
       expect(c.state.trungTrongSo.map((k) => k.id), ['t']);
+    });
+  });
+
+  group('bất biến 8–9 — lưu', () {
+    Future<ThemGiaoDichCubit> sanSang({int? taiKhoan = 1, NguonThemGiaoDichGia? nguon}) async {
+      final c = taoCubit(nguon ?? NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true), tienMat]), taiKhoan: taiKhoan);
+      await c.moTrang();
+      return c;
+    }
+
+    test('thứ tự câu lỗi: số tiền → ví → danh mục', () async {
+      final c = await sanSang();
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Vui lòng nhập số tiền hợp lệ');
+      c.goPhim('5');
+      c.chonDanhMuc(anUong);
+      expect(await c.chuanBiLuu(), isA<SanSangLuu>());
+      final khongDm = await sanSang();
+      khongDm.goPhim('5');
+      expect((await khongDm.chuanBiLuu() as LoiLuu).cau, 'Vui lòng chọn danh mục');
+    });
+
+    test('⭐ G38: có ví mà KHÔNG phiên → không dựng giao dịch nào', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb]), taiKhoan: null);
+      await c.moTrang();
+      c.chonVi(tcb);
+      c.goPhim('5');
+      c.chonDanhMuc(anUong);
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Chưa xác định được tài khoản đăng nhập');
+    });
+
+    test('biểu thức "50000+30000" lưu 80.000 (A12 — không bỏ dấu chấm, không parse thẳng)', () async {
+      final c = await sanSang();
+      for (final k in ['5', '0', '0', '0', '0', '+', '3', '0', '0', '0', '0']) {
+        c.goPhim(k);
+      }
+      c.chonDanhMuc(anUong);
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      expect(r.giaoDich.single.amount, 80000);
+    });
+
+    test('đường SỬA giữ id, goalId, ảnh; truoc là giao dịch cũ', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat]), dangSua: giaoDichCu(), danhMucDangSua: anUong);
+      await c.moTrang();
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      final tx = r.giaoDich.single;
+      expect([tx.id, tx.goalId, tx.images], ['tx-cu', 'goal-1', ['a.jpg']]);
+      expect(r.truoc?.id, 'tx-cu');
+      expect(r.laTach, isFalse);
+    });
+
+    test('tách: N giao dịch một lô; tra ngân sách hỏng KHÔNG chặn lưu', () async {
+      final c = await sanSang(
+          nguon: NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true)], nganSach: (_, __) async => throw StateError('hỏng')));
+      for (final k in ['5', '0', '0', '0', '0']) {
+        c.goPhim(k);
+      }
+      c.chonDanhMuc(anUong);
+      c.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000));
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      expect(r.laTach, isTrue);
+      expect(r.giaoDich, hasLength(2));
+      expect(r.canXacNhan, isEmpty);
+    });
+
+    test('tách sai (phần còn lại ≤ 0) → câu lỗi của tách', () async {
+      final c = await sanSang();
+      c.goPhim('5');
+      c.chonDanhMuc(anUong);
+      c.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000));
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Phần còn lại phải lớn hơn 0');
+    });
+
+    test('daGuiLuu tạo mới ghi phản hồi thẻ gợi ý; cauSauLuu nói số giao dịch của lô tách', () async {
+      final c = await sanSang();
+      for (final k in ['5', '0', '0', '0', '0']) {
+        c.goPhim(k);
+      }
+      c.chonDanhMuc(anUong);
+      c.luuPhan(const PhanTach(categoryId: 'move', soTien: 10000));
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      c.daGuiLuu(r);
+      expect(c.cauSauLuu().cau, 'Đã lưu 2 giao dịch');
+      expect(c.cauSauLuu().cau, 'Thêm giao dịch thành công!', reason: 'số giao dịch đặt lại về 1 sau khi đọc');
+    });
+
+    test('đường SỬA: cauSauLuu nói "Đã lưu thay đổi", loại xong', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat]), dangSua: giaoDichCu(), danhMucDangSua: anUong);
+      await c.moTrang();
+      c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
+      final t = c.cauSauLuu();
+      expect(t.cau, 'Đã lưu thay đổi');
+      expect(t.loai, LoaiThongBao.xong);
+    });
+
+    group('ngân sách', () {
+      // Ngân sách Ăn uống 100.000 đã chi 90.000, kỳ tháng này; `kieu` quyết chặn (hỏi xác nhận) hay chỉ cảnh báo.
+      Future<BudgetView?> Function(int, String) tra(String kieu) => (_, categoryId) async {
+            if (categoryId != 'food') return null;
+            final now = DateTime.now();
+            return BudgetView(
+              budget: BudgetEntity(
+                id: 'b1',
+                idaccount: 1,
+                categoryId: 'food',
+                amount: 100000,
+                spent: 90000,
+                overSpending: kieu,
+                startDate: DateTime(now.year, now.month, 1),
+                recurrence: true,
+                updatedAt: now,
+              ),
+              categoryName: 'Ăn uống',
+            );
+          };
+
+      test('khoản làm vượt ngân sách CHẶN → canXacNhan có đúng một tác động; cảnh báo thì không hỏi', () async {
+        final chan = await sanSang(nguon: NguonThemGiaoDichGia(vi: [tienMat], nganSach: tra(BudgetOverSpending.stop)));
+        for (final k in ['2', '0', '0', '0', '0']) {
+          chan.goPhim(k);
+        }
+        chan.chonDanhMuc(anUong);
+        final r = await chan.chuanBiLuu() as SanSangLuu;
+        expect(r.canXacNhan, hasLength(1));
+        expect(r.tacDong?.exceeds, isTrue);
+
+        final canhBao = await sanSang(nguon: NguonThemGiaoDichGia(vi: [tienMat], nganSach: tra(BudgetOverSpending.over)));
+        for (final k in ['2', '0', '0', '0', '0']) {
+          canhBao.goPhim(k);
+        }
+        canhBao.chonDanhMuc(anUong);
+        final r2 = await canhBao.chuanBiLuu() as SanSangLuu;
+        expect(r2.canXacNhan, isEmpty);
+        expect(r2.tacDong?.exceeds, isTrue);
+        canhBao.daGuiLuu(r2);
+        final t = canhBao.cauSauLuu();
+        expect(t.cau, contains('đã vượt hạn mức'));
+        expect(t.loai, LoaiThongBao.thongTin, reason: 'lưu kèm cảnh báo ngân sách là THÔNG TIN, không phải xong trơn');
+        expect(canhBao.cauSauLuu().cau, 'Thêm giao dịch thành công!',
+            reason: 'tác động ngân sách xoá ngay khi đã dùng — lần lưu sau không mang lời nhắn cũ');
+      });
+
+      test('đường SỬA trừ số cũ khỏi "đã chi" — sửa khoản 45.000 giữ nguyên số không báo vượt oan', () async {
+        // Đã chi 90.000 (đã gồm khoản 45.000 đang sửa): 90.000 − 45.000 + 45.000 = 90.000 < 100.000. Không trừ số cũ
+        // thì 90.000 + 45.000 = 135.000 → báo vượt và đòi xác nhận một khoản không đổi gì.
+        final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat], nganSach: tra(BudgetOverSpending.stop)),
+            dangSua: giaoDichCu().copyWith(date: DateTime.now()), danhMucDangSua: anUong);
+        await c.moTrang();
+        final r = await c.chuanBiLuu() as SanSangLuu;
+        expect(r.canXacNhan, isEmpty);
+        expect(r.tacDong?.exceeds, isFalse);
+      });
+    });
+
+    group('phản hồi thẻ gợi ý', () {
+      test('tạo mới: thẻ hiện mà người dùng chọn danh mục KHÁC qua bảng → ghi "khac" lúc daGuiLuu', () {
+        fakeAsync((fa) {
+          final nguon = nguonSoTien();
+          final c = taoCubit(nguon);
+          c.moTrang();
+          fa.flushMicrotasks();
+          for (final k in ['3', '0', '0', '0', '0']) {
+            c.goPhim(k);
+          }
+          fa.elapse(const Duration(milliseconds: 350));
+          expect(c.state.goiY?.categoryId, 'food');
+          c.chonDanhMuc(diChuyen);
+          SanSangLuu? r;
+          c.chuanBiLuu().then((x) => r = x as SanSangLuu);
+          fa.flushMicrotasks();
+          expect(nguon.phanHoiDaGhi, isEmpty, reason: 'chuanBiLuu chưa ghi gì — chỉ khi trang đã gửi event');
+          c.daGuiLuu(r!);
+          expect(nguon.phanHoiDaGhi.single, (goiY: 'food', ketQua: kKetQuaGoiYKhac, chon: 'move'));
+        });
+      });
+
+      test('đường SỬA không ghi phản hồi (kể cả khi đang có một thẻ chờ phán xử)', () {
+        fakeAsync((fa) {
+          final nguon = nguonSoTien();
+          final c = taoCubit(nguon, dangSua: giaoDichCu(), danhMucDangSua: anUong);
+          c.moTrang();
+          fa.flushMicrotasks();
+          // Dựng thế "có thẻ chờ phán xử" bằng cửa điền sẵn (Nhập nhanh vốn không có ở đường sửa — chỉ để canh chốt
+          // `truoc == null` của daGuiLuu): không có nó thì bản bỏ chốt vẫn xanh vì đường sửa không bao giờ có thẻ.
+          c.dienKetQua(
+            KetQuaDocCau(
+              categoryId: 'food',
+              ghiChu: 'pho',
+              goiY: CategorySuggestion(
+                  category: anUong, matchedKeyword: 'pho', nguon: kNguonGoiYHoc, amTietChinh: 'pho'),
+            ),
+            chonDuoc: [anUong],
+          );
+          SanSangLuu? r;
+          c.chuanBiLuu().then((x) => r = x as SanSangLuu);
+          fa.flushMicrotasks();
+          c.daGuiLuu(r!);
+          expect(nguon.phanHoiDaGhi, isEmpty);
+        });
+      });
     });
   });
 }

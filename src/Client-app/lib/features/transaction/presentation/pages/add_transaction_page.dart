@@ -5,14 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../category/domain/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/kho_bien_lai.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
-import '../../../budget/data/models/budget_entity.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/tach_giao_dich.dart';
@@ -204,20 +202,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   ThemGiaoDichState get _s => _cubit.state;
 
-  // ⏳ Bí danh TẠM (trang lai, Task 2–4): mã chưa dời vẫn đọc tên cũ. Task 5 thay bằng `_s.…` rồi xoá khối này.
-  String get _huong => _s.huong;
-  String get _amountString => _s.chuoiSoTien;
-  bool get _hienBanPhimSo => _s.hienBanPhimSo;
-  List<Wallet> get _wallets => _s.vi;
-  Wallet? get _selectedWallet => _s.viNguon;
-  Wallet? get _destinationWallet => _s.viDich;
-  Category? get _selectedCategory => _s.danhMuc;
-  String? get _debtDirection => _s.chieuNo;
-  DateTime get _selectedDate => _s.ngay;
-  bool get _isLoadingWallets => _s.dangNapVi;
-  List<PhanTach> get _phanTach => _s.phanTach;
-  Map<String, Category> get _dmTheoId => _s.dmTheoId;
-
   /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
   final GlobalKey _khoaTheGoiY = GlobalKey();
 
@@ -250,12 +234,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// D1: form đang mở từ một hàng biến động số dư (đường tạo mới).
   DienSanBienDong? get _bienDong => _isEditing ? null : widget.bienDong;
 
-  /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
-  /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
-  BudgetImpact? _pendingImpact;
-
-  TransactionEntity? get _editing => widget.initial?.transaction;
-  bool get _isEditing => _editing != null;
+  bool get _isEditing => _s.laSua;
 
   @override
   void initState() {
@@ -269,9 +248,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
     unawaited(_cubit.moTrang());
   }
-
-  /// Số giao dịch của lần Lưu đang chờ `actionSuccess` — toast *"Đã lưu N giao dịch"*.
-  int _soGiaoDichVuaLuu = 1;
 
   /// C2 — đọc câu ô *Nhập nhanh* rồi điền sẵn (Cubit lo toàn bộ); trang chỉ đóng bàn phím trước.
   Future<void> _dienTuCau() async {
@@ -355,8 +331,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _moChonVi(BuildContext context, {required bool isDestination}) => moBangChonVi(
         context,
         isDestination: isDestination,
-        wallets: _wallets,
-        idDangChon: isDestination ? _destinationWallet?.id : _selectedWallet?.id,
+        wallets: _s.vi,
+        idDangChon: isDestination ? _s.viDich?.id : _s.viNguon?.id,
         onChon: (w) {
           if (isDestination) {
             _cubit.chonViDich(w);
@@ -379,22 +355,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   String _getFormattedAmount() {
     // Đang gõ một phép tính thì dòng số là BIỂU THỨC, không kèm ký hiệu tiền
     // — một biểu thức chưa phải một số tiền. Tổng hiện ở dòng ngay dưới.
-    if (coToanTu(_amountString)) return nhanBieuThuc(_amountString);
-    if (_amountString == "0") return CurrencyFormatter.format(0);
+    if (coToanTu(_s.chuoiSoTien)) return nhanBieuThuc(_s.chuoiSoTien);
+    if (_s.chuoiSoTien == "0") return CurrencyFormatter.format(0);
     // Chuỗi có dấu chấm chỉ tới từ chế độ sửa (`initState` đọc
     // `editing.amount.toString()`); bàn phím hết phím `.` từ 2026-09-19.
     // ⚠️ In thẳng chuỗi thô là hiện "12.5 đ", mà khắp app dấu chấm là dấu
     // NGĂN NGHÌN — người dùng đọc ra một con số khác, ngay cạnh nút lưu.
     // `formatCoLe` ngăn phần lẻ bằng dấu phẩy, đúng thông lệ Việt Nam.
-    final coLe = double.tryParse(_amountString);
-    if (_amountString.contains('.') && coLe != null) {
+    final coLe = double.tryParse(_s.chuoiSoTien);
+    if (_s.chuoiSoTien.contains('.') && coLe != null) {
       return CurrencyFormatter.formatCoLe(coLe);
     }
     try {
-      final number = int.parse(_amountString);
+      final number = int.parse(_s.chuoiSoTien);
       return CurrencyFormatter.format(number);
     } catch (_) {
-      return '$_amountString ${CurrencyFormatter.kyHieu}';
+      return '${_s.chuoiSoTien} ${CurrencyFormatter.kyHieu}';
     }
   }
 
@@ -404,7 +380,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _s.ngay,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -413,137 +389,32 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  Future<void> _saveTransaction(BuildContext context) async {
-    // ⚠️ KHÔNG `replaceAll('.', '')` (A12, 2026-09-19). `_amountString` là
-    // chuỗi **thô** đang gõ, không phải chuỗi đã ngăn nghìn — phép ngăn nghìn
-    // chỉ áp ở `_getFormattedAmount`. Coi dấu chấm là dấu ngăn nghìn thì một
-    // số lẻ bị mất dấu rồi đọc tiếp: `12.5` lưu thành **125**, sai gấp mười,
-    // không exception, không log. Bàn phím nay hết phím `.`, nhưng chuỗi có
-    // dấu chấm vẫn vào được qua chế độ sửa (`initState` đọc
-    // `editing.amount.toString()`) — và số lẻ có thật, `transaction."Amount"`
-    // là `numeric(15,2)`. Nên chốt phải nằm ở ĐÂY, không chỉ ở bàn phím.
-    // ⚠️ Phải RÚT GỌN, không `double.tryParse` thẳng: từ 2026-09-19 bàn phím
-    // dựng được biểu thức (`"50000+30000"`), mà parse thẳng chuỗi ấy trả
-    // `null` rồi rơi về 0 — chốt `amount <= 0` ngay dưới sẽ báo "Vui lòng nhập
-    // số tiền hợp lệ" cho một con số người dùng vừa gõ đúng.
-    final amount = ketQuaBieuThuc(_amountString);
-    if (amount <= 0) {
-      baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
-      return;
-    }
-    if (_selectedWallet == null) {
-      baoNhanh('Vui lòng chọn ví thanh toán', loai: LoaiThongBao.loi);
-      return;
-    }
-    if (!_s.laChuyen && _selectedCategory == null) {
-      baoNhanh('Vui lòng chọn danh mục', loai: LoaiThongBao.loi);
-      return;
-    }
-    if (_s.laChuyen && _destinationWallet == null) {
-      baoNhanh('Vui lòng chọn ví đích', loai: LoaiThongBao.loi);
-      return;
-    }
-    final type = _s.loaiGhi;
-    if (type == null) {
-      baoNhanh('Vui lòng chọn chiều tiền', loai: LoaiThongBao.loi);
-      return;
-    }
-    // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi
-    // giao dịch khi chưa biết nó thuộc về ai. Trước 2026-09-14 nhánh này rơi
-    // về mã `1` — tài khoản admin thật — nên giao dịch ghi trong lúc phiên
-    // chưa sẵn sàng sẽ mang chủ sở hữu sai, rồi đẩy lên và vỡ "Ownership
-    // mismatch" mà không ai lần được từ đâu. Sửa giao dịch cũ thì `editing`
-    // đã mang sẵn chủ sở hữu, nên đường ấy không cần chốt.
-    final accountId = _editing?.idaccount ?? _accountId();
-    if (accountId == null) {
-      baoNhanh('Chưa xác định được tài khoản đăng nhập', loai: LoaiThongBao.loi);
-      return;
-    }
-
-    final editing = _editing;
-    final tx = TransactionEntity(
-      // Sửa thì giữ nguyên id (và những gì form không đụng tới) — tạo id mới
-      // là nhân đôi giao dịch.
-      id: editing?.id ?? const Uuid().v4(),
-      walletId: _selectedWallet!.id,
-      idaccount: accountId,
-      // Khoản chuyển KHÔNG có danh mục. Trước đây chỗ này gán 'cat_transfer' —
-      // một id chưa từng được seed — và SyncEngine hoãn đẩy hàng ấy vĩnh viễn
-      // vì không phân giải được danh mục.
-      categoryId: _s.laChuyen ? null : _selectedCategory!.id,
-      walletTransfer: _s.laChuyen ? _destinationWallet!.id : null,
-      goalId: editing?.goalId,
-      amount: amount,
-      type: type,
-      note: _noteController.text.trim(),
-      date: _selectedDate,
-      images: editing?.images ?? const [],
-      syncStatus: 'pending',
-      isDeleted: false,
-      updatedAt: DateTime.now(),
-    );
-
-    final bloc = context.read<TransactionBloc>();
-
-    // A5 mục 11 — khoản chi đã TÁCH: N giao dịch, ghi hết hoặc không gì, một toast.
-    if (_phanTach.isNotEmpty && editing == null && type == 'chi') {
-      await _luuTach(context, tx, amount);
-      return;
-    }
-
-    // Ngân sách của danh mục: "Chặn" thì hỏi trước khi ghi khoản làm vượt,
-    // "Cảnh báo" thì ghi luôn rồi báo. Đây là nơi DUY NHẤT đọc `OverSpending`.
-    final impact = await _budgetImpactFor(tx, editing);
+  /// ✓ (16 phím hoặc thanh tiêu đề). Kiểm + dựng ở Cubit; hộp thoại và event ở đây.
+  Future<void> _luu(BuildContext context) async {
+    final r = await _cubit.chuanBiLuu();
     if (!context.mounted) return;
-    if (impact != null && impact.requiresConfirmation) {
-      final ok = await _confirmOverBudget(context, impact);
-      if (ok != true || !context.mounted) return;
+    switch (r) {
+      case LoiLuu(:final cau):
+        baoNhanh(cau, loai: LoaiThongBao.loi);
+      case SanSangLuu():
+        if (r.canXacNhan.isNotEmpty) {
+          final ok = r.laTach
+              ? await _xacNhanVuotNhieu(context, r.canXacNhan)
+              : await _confirmOverBudget(context, r.canXacNhan.single);
+          if (ok != true || !context.mounted) return;
+        }
+        _cubit.daGuiLuu(r);
+        final bloc = context.read<TransactionBloc>();
+        final truoc = r.truoc;
+        if (truoc != null) {
+          bloc.add(UpdateTransactionEvent(before: truoc, after: r.giaoDich.single));
+        } else if (r.laTach) {
+          bloc.add(AddTransactionsEvent(transactions: r.giaoDich));
+        } else {
+          final tx = r.giaoDich.single;
+          bloc.add(AddTransactionEvent(transaction: tx, destinationWalletId: tx.walletTransfer));
+        }
     }
-    _pendingImpact = impact;
-
-    if (editing != null) {
-      bloc.add(UpdateTransactionEvent(before: editing, after: tx));
-      return;
-    }
-    _cubit.ghiPhanHoiKhiLuu();
-    bloc.add(AddTransactionEvent(
-      transaction: tx,
-      destinationWalletId: tx.walletTransfer,
-    ));
-  }
-
-  /// A5 mục 11.4–11.5 — lưu khoản đã tách: kiểm hợp lệ, ngân sách TỪNG phần (một hộp cho cả lô nếu có ngân sách
-  /// *Chặn* bị vượt), rồi MỘT `AddTransactionsEvent`.
-  Future<void> _luuTach(BuildContext context, TransactionEntity tx, double tong) async {
-    final loi = kiemTach(tong: tong, chinh: tx.categoryId, phan: _phanTach);
-    if (loi != null) {
-      baoNhanh(
-        switch (loi) {
-          LoiTach.conLaiKhongDuong => 'Phần còn lại phải lớn hơn 0',
-          LoiTach.phanKhongDuong => 'Mỗi phần phải lớn hơn 0',
-          LoiTach.trungDanhMuc => 'Mỗi danh mục chỉ một phần',
-          LoiTach.monHaiPhan => 'Một món chỉ thuộc một phần',
-        },
-        loai: LoaiThongBao.loi,
-      );
-      return;
-    }
-    final ds = dungGiaoDichTach(mau: tx, phan: _phanTach);
-    final impacts = <BudgetImpact>[];
-    for (final t in ds) {
-      final i = await _budgetImpactFor(t, null);
-      if (i != null) impacts.add(i);
-    }
-    if (!context.mounted) return;
-    final chan = [for (final i in impacts) if (i.requiresConfirmation) i];
-    if (chan.isNotEmpty) {
-      final ok = await _xacNhanVuotNhieu(context, chan);
-      if (ok != true || !context.mounted) return;
-    }
-    _pendingImpact = impacts.where((i) => i.exceeds || i.nearLimitAfter).firstOrNull;
-    _soGiaoDichVuaLuu = ds.length;
-    _cubit.ghiPhanHoiKhiLuu();
-    context.read<TransactionBloc>().add(AddTransactionsEvent(transactions: ds));
   }
 
   Future<bool?> _xacNhanVuotNhieu(BuildContext context, List<BudgetImpact> chan) => showDialog<bool>(
@@ -574,55 +445,20 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       context,
       chonDuoc: chi,
       daDung: {
-        if (_selectedCategory != null) _selectedCategory!.id,
-        for (final x in _phanTach) x.categoryId,
+        if (_s.danhMuc != null) _s.danhMuc!.id,
+        for (final x in _s.phanTach) x.categoryId,
       },
       dangSua: sua,
       mon: _s.monQuet,
       // Món đã thuộc phần KHÁC (không phải phần đang sửa) → mờ, không tick được.
       monCuaPhanKhac: {
-        for (final x in _phanTach)
+        for (final x in _s.phanTach)
           if (x != sua)
-            for (final id in x.monIds) id: _dmTheoId[x.categoryId]?.name ?? 'Phần khác',
+            for (final id in x.monIds) id: _s.dmTheoId[x.categoryId]?.name ?? 'Phần khác',
       },
     );
     if (p == null || !mounted) return;
     _cubit.luuPhan(p, thay: sua);
-  }
-
-  Future<BudgetImpact?> _budgetImpactFor(
-    TransactionEntity tx,
-    TransactionEntity? editing,
-  ) async {
-    final categoryId = tx.categoryId;
-    if (tx.type != 'chi' || categoryId == null) return null;
-
-    BudgetView? view;
-    try {
-      view = await _nguon.traNganSach(tx.idaccount, categoryId);
-    } catch (_) {
-      // Tra ngân sách hỏng không được chặn việc ghi giao dịch.
-      return null;
-    }
-    if (view == null) return null;
-
-    final now = DateTime.now();
-    // Sửa: số cũ đã nằm trong "đã chi" nếu nó cùng danh mục và cùng kỳ —
-    // phải trừ ra, không thì báo vượt oan.
-    var previous = 0.0;
-    if (editing != null &&
-        editing.type == 'chi' &&
-        editing.categoryId == categoryId &&
-        budgetPeriodContains(view.budget, editing.date, now)) {
-      previous = editing.amount;
-    }
-    return budgetImpactOf(
-      view: view,
-      amount: tx.amount,
-      previousAmount: previous,
-      date: tx.date,
-      now: now,
-    );
   }
 
   Future<bool?> _confirmOverBudget(BuildContext context, BudgetImpact impact) {
@@ -660,20 +496,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       listener: (context, state) {
         if (state is TransactionLoadedState) {
           if (state.actionSuccess == true) {
-            // Lời nhắn về ngân sách thay lời nhắn mặc định — chung chung,
-            // không con số (banner tạm thời tối giản theo ý người dùng).
-            final soGd = _soGiaoDichVuaLuu;
-            _soGiaoDichVuaLuu = 1;
-            final impactGoc = budgetImpactSnackText(_pendingImpact);
-            final impactText = soGd > 1 ? impactGoc?.replaceFirst('Đã lưu.', 'Đã lưu $soGd giao dịch.') : impactGoc;
-            _pendingImpact = null;
-            // Lưu kèm cảnh báo ngân sách ("Đã lưu. Ngân sách X đã vượt hạn mức.") là
-            // THÔNG TIN, không phải xong trơn.
-            baoNhanh(
-              impactText ??
-                  (_isEditing ? 'Đã lưu thay đổi' : (soGd > 1 ? 'Đã lưu $soGd giao dịch' : 'Thêm giao dịch thành công!')),
-              loai: impactText == null ? LoaiThongBao.xong : LoaiThongBao.thongTin,
-            );
+            final t = _cubit.cauSauLuu();
+            baoNhanh(t.cau, loai: t.loai);
             unawaited(_cubit.dongSauLuu());
             context.pop(true);
           } else if (state.actionSuccess == false &&
@@ -693,9 +517,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ? null
             : IconButton(
                 key: const Key('luu-thanh-tieu-de'),
-                tooltip: _phanTach.isEmpty ? 'Lưu giao dịch' : 'Lưu ${_phanTach.length + 1} giao dịch',
+                tooltip: _s.phanTach.isEmpty ? 'Lưu giao dịch' : 'Lưu ${_s.phanTach.length + 1} giao dịch',
                 icon: const Icon(Icons.check, color: AppColors.primary),
-                onPressed: isSubmitting ? null : () => _saveTransaction(context),
+                onPressed: isSubmitting ? null : () => _luu(context),
               );
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -755,14 +579,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: ThanhChonChieu(huong: _huong, onChon: _chonHuong),
+                  child: ThanhChonChieu(huong: _s.huong, onChon: _chonHuong),
                 ),
                 const SizedBox(height: 16),
                 KhoiSoTien(
-                  chuoiSoTien: _amountString,
+                  chuoiSoTien: _s.chuoiSoTien,
                   chuHienThi: _getFormattedAmount(),
                   mau: _getAmountColor(),
-                  hienBanPhimSo: _hienBanPhimSo,
+                  hienBanPhimSo: _s.hienBanPhimSo,
                   onCham: _chamSoTien,
                 ),
                 const SizedBox(height: 8),
@@ -781,7 +605,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           if (d.luaChonTien.isNotEmpty) ...[
                             KhoiChonSoTien(
                               ds: d.luaChonTien,
-                              dangChon: ketQuaBieuThuc(_amountString),
+                              dangChon: ketQuaBieuThuc(_s.chuoiSoTien),
                               onChon: _cubit.chonSoTien,
                             ),
                             const SizedBox(height: 12),
@@ -803,13 +627,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           const SizedBox(height: 12),
                         ],
                         _theForm(context),
-                        if (_s.choTach && _phanTach.isNotEmpty) ...[
+                        if (_s.choTach && _s.phanTach.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           KhoiTach(
-                            chinh: _selectedCategory,
-                            tong: ketQuaBieuThuc(_amountString),
-                            phan: _phanTach,
-                            danhMuc: _dmTheoId,
+                            chinh: _s.danhMuc,
+                            tong: ketQuaBieuThuc(_s.chuoiSoTien),
+                            phan: _s.phanTach,
+                            danhMuc: _s.dmTheoId,
                             onSua: _themPhan,
                             onBo: _cubit.boPhan,
                             onThem: _themPhan,
@@ -825,7 +649,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 // biến mất, và hàng phím cuối tràn. Đóng bàn phím hệ thống thì
                 // phím số và ✓ (nút lưu) quay lại. Người dùng chọn lối này; màn
                 // Stitch `acf6f17e…` chỉ vẽ trạng thái không có bàn phím hệ thống.
-                // Từ 2026-09-30 còn ẩn khi màn đã có số tiền ([_hienBanPhimSo]); ✓ khi ấy ở thanh tiêu đề.
+                // Từ 2026-09-30 còn ẩn khi màn đã có số tiền ([ThemGiaoDichState.hienBanPhimSo]); ✓ khi ấy ở thanh tiêu đề.
                 // 2026-10-06 (Stitch `fb68baba…`): 16 phím do app tự vẽ, hệ điều hành
                 // không báo `viewInsets` — báo chiều cao cho AppToast để viên lỗi lúc
                 // bấm ✓ nổi TRÊN bàn phím thay vì đè hai hàng phím dưới.
@@ -836,7 +660,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                       child: BanPhimSo(
                         isSubmitting: isSubmitting,
                         onKey: _onKeyPress,
-                        onLuu: () => _saveTransaction(context),
+                        onLuu: () => _luu(context),
                       ),
                     ),
                   ),
@@ -875,8 +699,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           );
   }
 
-  /// 16 phím có trên màn không: cờ [_hienBanPhimSo] **và** bàn phím hệ thống đang đóng (G58).
-  bool _coBanPhimSo(BuildContext context) => _hienBanPhimSo && MediaQuery.viewInsetsOf(context).bottom == 0;
+  /// 16 phím có trên màn không: cờ [ThemGiaoDichState.hienBanPhimSo] **và** bàn phím hệ thống đang đóng (G58).
+  bool _coBanPhimSo(BuildContext context) => _s.hienBanPhimSo && MediaQuery.viewInsetsOf(context).bottom == 0;
 
   /// Chạm khối số tiền. Bàn phím hệ thống đang mở (gõ ghi chú) thì 16 phím bị G58 giấu dù cờ bật — đảo cờ lúc ấy
   /// là tắt phím đi mà người dùng không thấy gì đổi; nên đóng bàn phím hệ thống và MỞ 16 phím.
@@ -889,18 +713,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Lắp [TheForm] từ trạng thái của trang: chuỗi hiển thị, các khối phụ (slot) và những lời gọi đổi trạng thái.
   Widget _theForm(BuildContext context) {
     final s = _s.goiY; // bắt một lần lúc dựng — callback không đọc lại `goiY` lúc chạm
-    final selectedCategory = _selectedCategory;
+    final selectedCategory = _s.danhMuc;
     final showDebtDirection = selectedCategory != null && isDebtClassify(selectedCategory.classify);
-    final walletDisplay = _isLoadingWallets
+    final walletDisplay = _s.dangNapVi
         ? 'Đang tải ví...'
-        : (_selectedWallet != null
-            ? '${_selectedWallet!.name} • ${CurrencyFormatter.formatLienKhoi(_selectedWallet!.balance)}'
+        : (_s.viNguon != null
+            ? '${_s.viNguon!.name} • ${CurrencyFormatter.formatLienKhoi(_s.viNguon!.balance)}'
             : 'Chọn ví');
 
-    final destWalletDisplay = _isLoadingWallets
+    final destWalletDisplay = _s.dangNapVi
         ? 'Đang tải ví...'
-        : (_destinationWallet != null
-            ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatLienKhoi(_destinationWallet!.balance)}'
+        : (_s.viDich != null
+            ? '${_s.viDich!.name} • ${CurrencyFormatter.formatLienKhoi(_s.viDich!.balance)}'
             : 'Chọn ví đích');
 
     return TheForm(
@@ -908,10 +732,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       walletDisplay: walletDisplay,
       destWalletDisplay: destWalletDisplay,
       tenDanhMuc: selectedCategory?.name,
-      nhanDanhMuc: _phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
+      nhanDanhMuc: _s.phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
       noteController: _noteController,
       // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
-      ngayHienThi: DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_selectedDate),
+      ngayHienThi: DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_s.ngay),
       onChonVi: () => _moChonVi(context, isDestination: false),
       onChonViDich: () => _moChonVi(context, isDestination: true),
       onChonDanhMuc: () async {
@@ -919,12 +743,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         final selected = await context.push<Category>(
           '/add/category',
           // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
-          extra: selectedCategory?.classify ?? (_huong == 'thu' ? 'thu' : kCategoryClassifies.first),
+          extra: selectedCategory?.classify ?? (_s.huong == 'thu' ? 'thu' : kCategoryClassifies.first),
         );
         if (selected != null) _chonDanhMuc(selected);
       },
       onPickDate: _pickDate,
-      hienDongTach: _s.choTach && _phanTach.isEmpty,
+      hienDongTach: _s.choTach && _s.phanTach.isEmpty,
       onThemPhan: _themPhan,
       nhacTrung:
           _bienDong != null && _s.trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _s.trungTrongSo) : null,
@@ -938,7 +762,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           : null,
       hangChieuTien: showDebtDirection
           ? HangChieuTien(
-              chieu: _debtDirection,
+              chieu: _s.chieuNo,
               onChon: _cubit.chonChieuNo,
             )
           : null,
