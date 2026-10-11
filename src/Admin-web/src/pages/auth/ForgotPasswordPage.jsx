@@ -1,9 +1,38 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguageSafe } from '../../store/language.context';
 
 const ForgotPasswordPage = () => {
+  const { t, currentLang, changeLanguage } = useLanguageSafe();
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4">
+    <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4 relative">
+      {/* Language Switcher in top right corner */}
+      <div className="absolute top-6 right-6 flex items-center gap-1 bg-white border border-outline-variant rounded-xl p-1 shadow-2xs z-20">
+        <button
+          type="button"
+          onClick={() => changeLanguage('vi')}
+          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            currentLang === 'vi'
+              ? 'bg-primary text-white shadow-2xs'
+              : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          VI
+        </button>
+        <button
+          type="button"
+          onClick={() => changeLanguage('en')}
+          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            currentLang === 'en'
+              ? 'bg-primary text-white shadow-2xs'
+              : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          EN
+        </button>
+      </div>
+
       <main className="w-full max-w-md bg-white rounded-xl border border-gray-200 shadow-sm p-8 md:p-10">
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center mb-4">
@@ -12,11 +41,11 @@ const ForgotPasswordPage = () => {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">FinanceAdmin</h1>
-          <p className="text-gray-500 text-sm mt-1">Hệ thống Quản trị Viên</p>
+          <p className="text-gray-500 text-sm mt-1">{t('auth.forgotPassword.brandSub')}</p>
         </div>
         
         <div className="text-center space-y-6">
-          <h2 className="text-xl font-semibold text-gray-800">Quên mật khẩu?</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{t('auth.forgotPassword.title')}</h2>
           
           <div className="bg-amber-50 border-l-4 border-amber-400 p-4 text-left">
             <div className="flex">
@@ -27,7 +56,7 @@ const ForgotPasswordPage = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-amber-700 font-medium">
-                  Vì lý do bảo mật, tài khoản Admin không thể tự đặt lại mật khẩu.
+                  {t('auth.forgotPassword.warning')}
                 </p>
               </div>
             </div>
@@ -35,7 +64,7 @@ const ForgotPasswordPage = () => {
           
           <div className="space-y-4">
             <p className="text-gray-600 text-sm">
-              Vui lòng liên hệ Hotline hỗ trợ kỹ thuật để được cấp lại mật khẩu mới:
+              {t('auth.forgotPassword.instruction')}
             </p>
             <div className="flex items-center justify-center space-x-3 py-4 bg-gray-50 rounded-lg border border-gray-100">
               <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +82,7 @@ const ForgotPasswordPage = () => {
             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 19l-7-7m0 0l7-7m-7 7h18" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
             </svg>
-            Quay lại Đăng nhập
+            {t('auth.forgotPassword.backToLogin')}
           </Link>
         </div>
       </main>

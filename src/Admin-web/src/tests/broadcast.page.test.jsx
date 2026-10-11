@@ -1,7 +1,9 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import BroadcastPage from '../pages/system/BroadcastPage';
+import { LanguageProvider } from '../store/language.context';
 import adminApi from '../api/admin.api';
 import notificationApi from '../api/notification.api';
 import useSocket from '../hooks/useSocket';
@@ -11,6 +13,12 @@ vi.mock('../api/admin.api', () => ({
     getMaintenanceStatus: vi.fn(),
     setMaintenanceStatus: vi.fn(),
     cancelScheduledMaintenance: vi.fn(),
+    getMaintenanceHistory: vi.fn().mockResolvedValue({
+      data: {
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      },
+    }),
   },
 }));
 
@@ -38,101 +46,85 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
 
   const mockMaintenanceNormal = {
     active: false,
-    isEmergency: false,
+    isEmergency: true,
     reason: '',
     activatedBy: null,
     activatedAt: null,
     scheduled: null,
   };
 
+  const renderComponent = () => {
+    return render(
+      <BrowserRouter>
+        <LanguageProvider>
+          <BroadcastPage />
+        </LanguageProvider>
+      </BrowserRouter>
+    );
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     useSocket.mockReturnValue(mockSocket);
     adminApi.getMaintenanceStatus.mockResolvedValue({ data: mockMaintenanceNormal });
+    adminApi.getMaintenanceHistory.mockResolvedValue({
+      data: {
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+      },
+    });
   });
 
-  it('6.1. Tải và hiển thị trạng thái bảo trì mặc định (Bình thường / Chưa kích hoạt)', async () => {
-    render(<BroadcastPage />);
+  it('6.1. Tải và hiển thị trạng thái bảo trì mặc định với Nút Đỏ "Bật Bảo Trì Khẩn Cấp"', async () => {
+    renderComponent();
 
     await waitFor(() => {
       expect(adminApi.getMaintenanceStatus).toHaveBeenCalledTimes(1);
       expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
-      expect(screen.getByText('Kích Hoạt Bảo Trì Tức Thì')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Bật Bảo Trì Kỹ Thuật/i })).toBeInTheDocument();
+      expect(screen.getByText('Kích Hoạt Bảo Trì Khẩn Cấp')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
+      // Không còn checkbox khẩn cấp bị thừa
+      expect(screen.queryByRole('checkbox', { name: /Bảo trì khẩn cấp/i })).not.toBeInTheDocument();
     });
   });
 
-  it('6.2. Kích hoạt bảo trì tức thì (Chế độ thường) gọi setMaintenanceStatus với isEmergency = false', async () => {
+  it('6.2. Kích hoạt bảo trì khẩn cấp gửi isEmergency = true và cắt tải người dùng', async () => {
     adminApi.setMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: true,
-        isEmergency: false,
-        reason: 'Nâng cấp máy chủ cơ sở dữ liệu định kỳ...',
+        isEmergency: true,
+        reason: 'Sự cố nghẽn mạng khẩn cấp',
       },
     });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Bật Bảo Trì Kỹ Thuật/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
     });
 
-    const reasonInput = screen.getByPlaceholderText(/Ví dụ: Nâng cấp máy chủ/i);
-    fireEvent.change(reasonInput, { target: { value: 'Bảo trì tối ưu DB' } });
+    const reasonInput = screen.getByPlaceholderText(/hệ thống khẩn cấp/i);
+    fireEvent.change(reasonInput, { target: { value: 'Sự cố nghẽn mạng khẩn cấp' } });
 
-    const toggleBtn = screen.getByRole('button', { name: /Bật Bảo Trì Kỹ Thuật/i });
+    const toggleBtn = screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i });
+    expect(toggleBtn.className).toContain('bg-red-600');
     fireEvent.click(toggleBtn);
 
     await waitFor(() => {
       expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({
         active: true,
-        reason: 'Bảo trì tối ưu DB',
-        isEmergency: false,
+        reason: 'Sự cố nghẽn mạng khẩn cấp',
+        isEmergency: true,
       });
     });
   });
 
-  it('6.3. Kích hoạt bảo trì khẩn cấp (Emergency) gọi setMaintenanceStatus với isEmergency = true', async () => {
-    adminApi.setMaintenanceStatus.mockResolvedValueOnce({
-      data: {
-        active: true,
-        isEmergency: true,
-        reason: 'Sự cố rò rỉ bộ nhớ nghiêm trọng',
-      },
-    });
-
-    render(<BroadcastPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Bật Bảo Trì Kỹ Thuật/i })).toBeInTheDocument();
-    });
-
-    // Checkbox khẩn cấp
-    const emergencyCheckbox = screen.getByRole('checkbox', {
-      name: /Bảo trì khẩn cấp/i,
-    });
-    fireEvent.click(emergencyCheckbox);
-
-    // Nút đổi thành "🚨 Bật Bảo Trì Khẩn Cấp Ngay"
-    const emergencyBtn = screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp Ngay/i });
-    fireEvent.click(emergencyBtn);
-
-    await waitFor(() => {
-      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(
-        expect.objectContaining({
-          active: true,
-          isEmergency: true,
-        })
-      );
-    });
-  });
-
-  it('6.4. Tắt bảo trì khi hệ thống đang ở trạng thái bảo trì', async () => {
+  it('6.3. Tắt bảo trì khi hệ thống đang ở trạng thái bảo trì', async () => {
     adminApi.getMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: true,
-        isEmergency: false,
-        reason: 'Bảo trì hệ thống',
+        isEmergency: true,
+        reason: 'Bảo trì hệ thống khẩn cấp',
         activatedBy: 'admin',
         activatedAt: '2026-03-10T10:00:00Z',
       },
@@ -141,17 +133,17 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     adminApi.setMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: false,
-        isEmergency: false,
+        isEmergency: true,
       },
     });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText('Tắt Bảo Trì & Mở Lại Hệ Thống')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
     });
 
-    const turnOffBtn = screen.getByRole('button', { name: /Tắt Bảo Trì & Mở Lại Hệ Thống/i });
+    const turnOffBtn = screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i });
     fireEvent.click(turnOffBtn);
 
     await waitFor(() => {
@@ -164,7 +156,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
   it('6.5. Chuyển sang Tab Phát Thông Báo và gửi thông điệp hệ thống tới toàn bộ người dùng', async () => {
     notificationApi.broadcastToAll.mockResolvedValueOnce({ data: { success: true } });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Phát Thông Báo')).toBeInTheDocument();
@@ -198,7 +190,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
   });
 
   it('6.6. Cập nhật giao diện khi nhận sự kiện Socket admin.maintenance_changed realtime', async () => {
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
@@ -218,8 +210,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Tắt Bảo Trì & Mở Lại Hệ Thống')).toBeInTheDocument();
-      expect(screen.getByText('Kết Thúc Bảo Trì — Khôi Phục Hệ Thống')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
       expect(screen.getAllByText('Sự cố khẩn cấp từ Sentinel').length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -239,7 +230,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       },
     });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
@@ -278,19 +269,19 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       },
     });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Chế độ bảo trì đang kích hoạt')).toBeInTheDocument();
       expect(screen.getByText(/Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian/i)).toBeInTheDocument();
-      expect(screen.getByText(/Kết Thúc Bảo Trì — Khôi Phục Hệ Thống/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
       // Form lên lịch không xuất hiện
       expect(screen.queryByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i })).not.toBeInTheDocument();
     });
   });
 
   it('6.9. Nút "Làm mới & Đặt lại biểu mẫu" xóa sạch toàn bộ input đang nhập và tải lại trạng thái', async () => {
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
@@ -330,7 +321,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
   });
 
   it('6.10. Tuyệt đối không còn hiển thị dòng thông tin kỹ thuật /health/admin', async () => {
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
@@ -355,7 +346,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       },
     });
 
-    render(<BroadcastPage />);
+    renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();

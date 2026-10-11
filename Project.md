@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng). Xem chi tiết tại `docs/Admin-web/`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest). Xem chi tiết tại `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -3681,30 +3681,174 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Kiểm thử Client-app:** Toàn bộ **116/116 tests** trong `test/features/premium/` và **80/80 tests** trong `test/features/ai_chat/` PASS 100%.
 - **6. Kết Luận & Nguồn Sự Thật:** Toàn bộ hệ thống quản lý phân quyền tính năng động theo loại tài khoản đã hoàn tất 100%, bảo đảm tính nhất quán, bảo mật (chặn 2 đầu Client & Backend) và cập nhật thời gian thực tức thời.
 
+---
 
+## 16. Quy Chuẩn Kiểm Thử 2 Tầng Bắt Buộc (2-Tier Testing Architecture)
 
+> **Cập nhật:** 2026-10-08  
+> **Nguồn sự thật:** `docs/Rule_Project/testing-guidelines.md` và `.agents/AGENTS.md` (Rule 11)  
+> **Phạm vi áp dụng:** Mọi bài test trên cả 3 module (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 
+Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao quát 2 tầng:
+1. **Tầng 1 — Hiển thị & Thao tác tại Giao diện:** Kiểm tra render đầy đủ components/controls, xử lý đúng tương tác của người dùng mà không bị crash hay throw unhandled exception.
+2. **Tầng 2 — Hoạt động Thực tế & Tác động Hệ thống:** Kiểm tra tính năng thực sự hoạt động và tạo ra tác động đo lường được (Database persistence, Root DOM attributes, Socket events, Web Audio API, Authorization enforcement, Toast timer tự đóng).
+> ⚠️ **TIÊU CHÍ SỐNG CÒN:** *"Nếu thao tác được trên giao diện nhưng không tạo ra tác động thực sự đến hệ thống như mong muốn thì bài test BẮT BUỘC ĐÁNH RỚT (FAIL)."*
 
+---
 
+## 17. Hệ Thống Chuyển Đổi Ngôn Ngữ Admin-web (Language Switcher & I18n Engine)
 
+> **Cập nhật:** 2026-10-09  
+> **Nguồn sự thật:** `src/Admin-web/src/locales/`, `src/Admin-web/src/store/language.context.jsx`, `docs/superpowers/plans/2026-04-09-admin-web-language-switcher.md`  
+> **Phạm vi áp dụng:** Toàn bộ 100% nội dung trên tất cả các màn hình của `src/Admin-web`, độc lập phía client, không ảnh hưởng API backend.
 
+### 17.1. Kiến Trúc & Triết Lý Thiết Kế
+- **Thuần React Context (Zero External Dependency):** Không cài thêm thư viện cồng kềnh (`i18next`, `react-intl`) nhằm bảo toàn kích thước gói bundle và tốc độ tải trang.
+- **Từ Điển Tập Trung & Modular:** Đặt tại `src/Admin-web/src/locales/` gồm `vi.js`, `en.js` và `index.js`, phân tách theo các namespace trực quan:
+  - `common`: Từ khóa dùng chung (Lưu, Hủy, Làm mới, Tìm kiếm, Trạng thái, Phân trang...).
+  - `nav`: Danh mục thanh điều hướng Sidebar.
+  - `header`: Thông tin thanh điều hướng trên, chuông cảnh báo, widget chuyển ngữ.
+  - `settings`: Toàn bộ các tabs cấu hình hệ thống Admin.
+  - `dashboard`: Tiêu đề, thẻ KPI, bộ lọc thời gian, biểu đồ, hoạt động gần đây.
+  - `users`: Quản lý danh sách người dùng, bộ lọc tìm kiếm, bảng dữ liệu, modal vô hiệu hóa / kích hoạt / xóa người dùng.
+  - `categories`: Quản lý danh mục mặc định, thẻ KPI, tabs phân loại, modal thêm / sửa / xóa / đồng bộ danh mục.
+  - `permissions`: Ma trận phân quyền gói cước (Basic vs Premium), hạn mức tài nguyên (LIMIT), công tắc logic (TOGGLE).
+  - `auditLogs`: Nhật ký hoạt động kiểm toán hệ thống, bộ lọc thời gian & trạng thái, bảng nhật ký request.
+  - `broadcast`: Điều hành bảo trì 2 cấp độ (Kỹ thuật / Khẩn cấp), lên lịch bảo trì và phát sóng thông báo toàn hệ thống.
+  - `auth`: Màn hình Đăng nhập (kèm widget [EN | VI] góc trên), Quên mật khẩu.
+  - `aiops`: Giám sát AIOps Sentinel, Threat Score Gauge, 4 Vector rủi ro độc lập, cách ly IP (Quarantine), làm sạch sự cố CSDL.
+  - `lockScreen`, `appLayout`, `commonStatus`.
+- **Hàm Dịch Thuật Thông Minh `t(keyPath, params)`:**
+  - Hỗ trợ cú pháp chuỗi phân cấp (Dot-notation, e.g., `'nav.dashboard'`, `'users.stats.total'`).
+  - Hỗ trợ thế tham số động (Parameter interpolation, e.g., `{count}`, `{user}`).
+  - Cơ chế an toàn với `useLanguageSafe()`: tự động fallback sang Tiếng Việt (`vi`) khi component được render ngoài context (như trong các bài test cũ), không gây lỗi runtime.
 
+### 17.2. Giao Diện & Trải Nghiệm Người Dùng (UI/UX)
+- **Header Pill Toggle:** Nút chuyển đổi dạng segmented pill bo góc tròn `[ EN | VI ]` đặt tại Header cạnh icon chuông thông báo. Trạng thái kích hoạt hiển thị nền xanh đậm `bg-blue-600 text-white font-bold`, hover hiển thị tooltip tam giác ngược `"Ngôn ngữ giao diện"` (khi ở Tiếng Việt) hoặc `"Interface language"` (khi ở Tiếng Anh).
+- **Màn hình Đăng nhập (LoginPage):** Tích hợp widget chuyển ngữ `[ EN | VI ]` tại góc trên bên phải, cho phép Admin chuyển đổi ngôn ngữ ngay trước khi đăng nhập.
+- **SettingsModal Cài Đặt 2 Chiều:** Bổ sung lựa chọn ngôn ngữ trực quan trong Tab "Giao diện & Hiển thị", đồng bộ trạng thái tức thì hai chiều với Header Pill Toggle.
 
+### 17.3. Tác Động Hệ Thống Thực Tế (Tuân Thủ Rule 11 — 2-Tier Testing)
+1. **Persistence:** Tự động lưu lựa chọn người dùng vào `localStorage` với khóa `admin_language`, tự động phục hồi ngôn ngữ khi tải lại trang (F5).
+2. **Root DOM Injection:** Tự động gắn thuộc tính `document.documentElement.lang` và `data-language` tương ứng (`vi` hoặc `en`).
+3. **Re-rendering Toàn Cục:** Re-render tức thời toàn bộ nội dung của tất cả các màn hình (Dashboard, Users, Categories, Permissions, Audit Logs, Broadcast, AIOps, Auth, Modals, Badges) sang ngôn ngữ đã chọn mà không cần reload trang.
 
+### 17.4. Lộ Trình Triển Khai Chuyển Đổi Đa Ngôn Ngữ (Implementation Phases)
+- **Giai đoạn 1 — Shared Components, Modals & Shell Layouts (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện: `ConfirmModal.jsx`, `EmptyState.jsx`, `Loading.jsx`, `AlertToast.jsx`, `ServerHealthPanel.jsx`, `AppLayout.jsx`, `LockScreenModal.jsx`, `SettingsModal.jsx`.
+  - Bộ kiểm thử 2 tầng: `phase1.i18n.test.jsx` (6/6 tests PASS).
+- **Giai đoạn 2 — Core Business Pages (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện: `DashboardPage.jsx`, `UserListPage.jsx`, `UserDetailPage.jsx`, `CategoryPage.jsx`, `PermissionManagementPage.jsx`.
+  - 100% các chuỗi hardcoded được thay thế bằng hàm `t(...)` thông qua `useLanguageSafe()`.
+  - Bộ lọc địa phương, danh mục hệ thống, thông báo xác nhận và ma trận phân quyền hỗ trợ đa ngôn ngữ hoàn hảo, đồng bộ tức thời khi chuyển đổi EN/VI.
+  - Bộ kiểm thử 2 tầng: `phase2.i18n.test.jsx` (5/5 tests PASS).
+- **Giai đoạn 3 — System & Operations Pages (HOÀN THÀNH 100%):**
+  - Chuyển đổi toàn diện 5 trang vận hành & an ninh số chuyên sâu: `AuditLogPage.jsx`, `BroadcastPage.jsx`, `AIOpsPage.jsx`, `LoginPage.jsx`, `ForgotPasswordPage.jsx`.
+  - Nâng cấp hàm `t(keyPath, fallbackOrParams, maybeParams)` trong `language.context.jsx` hỗ trợ đầy đủ 3 kiểu gọi:
+    + `t(keyPath, params)`
+    + `t(keyPath, fallbackString)`
+    + `t(keyPath, fallbackString, paramsObject)`: Đảm bảo nội suy chính xác các placeholder động như `{count}` ngay cả khi có truyền chuỗi fallback.
+  - Đồng bộ widget chuyển ngữ góc trên `[ EN | VI ]` cho cả `LoginPage.jsx` và `ForgotPasswordPage.jsx`.
+  - Chuẩn hóa đa ngôn ngữ 100% cho cấu hình phát thanh khẩn cấp (`BroadcastPage`), bộ lọc nhật ký hệ thống (`AuditLogPage`).
+  - **Triệt để 100% Đa Ngôn Ngữ AIOps Sentinel (`AIOpsPage.jsx`):**
+    + Loại bỏ hoàn toàn mọi chuỗi tiếng Việt hardcoded còn sót lại trong toàn bộ 5 khối giao diện.
+    + Khối 0 (Target Concurrency Scaler): Presets, inputs, 3 thẻ RPM trần & firewall threshold.
+    + Khối 1 (Threat Score Gauge & Sentinel Analysis): Nấc đo (0, 60, 80, 90+), Intrusion & Hardware Signals, Sentinel Recommendations.
+    + Khối 1.5 (4 Vector Risk Cards): Authentication, Traffic, Exploit, Resource, toggle switches, telemetry rows và mitigation notes.
+    + Khối 2 (Active Quarantine Blacklist): Masked IP, Hits, TTL countdown, nút Gỡ chặn, empty state.
+    + Khối 3 (Biểu đồ SVG Multi-Vector Trend): Observation windows, Precision Date Range filter (ngày/tháng/năm), threshold guides, dynamic tooltips và chart footer.
+    + Khối 4 (Root Cause Analysis - RCA Persistent Journal): Search bar, vector pills, status pills, metric vs threshold, actor identity, phân trang và empty state.
+    + Tất cả Action Modals: Dọn dẹp sự cố CSDL (Clean DB Modal), Cách ly IP thủ công (Quarantine Modal), Bật/Tắt Vector phòng vệ (Toggle Vector Modal).
+  - Bộ kiểm thử 2 tầng: `phase3.i18n.test.jsx` (10/10 tests PASS 100%).
 
+### 17.5. Kết Quả Kiểm Thử Toàn Cục & Build Production
+- **Bộ Test Suite Toàn Diện:** **16/16 test files PASS 100%**, tổng cộng **112/112 unit & integration tests PASS** (bảo đảm zero regression).
+- **Build Production:** `rtk npm run build` (Vite v5.4.21) thành công 100%, 168 modules transformed, sinh bundle sạch sẽ trong ~3.4s.
 
+### 17.6. Hoàn Thiện Cơ Chế Tắt/Bật 4 Vector Rủi Ro AIOps & Triệt Tiêu Cảnh Báo RAM Khẩn Cấp Khi Tắt Vector (2026-10-10)
+- **Vấn đề cốt lõi:** Khi quản trị viên tắt Vector 4 (Sức khỏe Tài nguyên), nút bật/tắt trước đây chỉ mang tính UI bề mặt; chỉ số RAM/Resource vẫn bị đẩy vào mảng tính Threat Score và hàm `checkAndAlertCloudHealth` trong `notification.service.js` vẫn gửi cảnh báo khẩn cấp `RAM_CRITICAL` mỗi 5 phút do RAM > 85%.
+- **Giải pháp triển khai toàn diện (5 Bước):**
+  1. `anomaly.detector.js`: Khi vector bị tắt (`vectorConfig[v] === false`), hệ thống vẫn tiếp tục đo lường `vectorScores[v]` để hiển thị trên UI, nhưng **hoàn toàn loại trừ** khỏi mảng `activeScores` tính Threat Score, **ngăn chặn toàn bộ việc push anomaly** (`anomalies.length = 0`), và gán cờ `vectorDefenses[v].disabled = true`.
+  2. `aiops.service.js`: Nâng cấp `toggleVector()` kích hoạt tái đánh giá tức thì với mẫu đo hiện tại, cập nhật ngay `_currentStatus` (Threat Score hạ về 5 ngay lập tức), cập nhật mẫu cuối cùng trong ring buffer lịch sử và trả về `currentStatus` mới trong phản hồi API.
+  3. `notification.service.js`: Trong `checkAndAlertCloudHealth()`, tích hợp kiểm tra `defaultAIOpsService.getVectorConfig().resource !== false`. Khi Vector Resource bị tắt, hệ thống vẫn đọc RAM bình thường nhưng **hoàn toàn triệt tiêu cảnh báo `RAM_CRITICAL`** và trả về `ramAlert: false`.
+  4. `index.js`: Bổ sung trường `vectorConfig` vào payload phát nhịp tim thời gian thực của `emitSystemMetricsStream(payload)` (3s/lần) tới `admin_room`.
+  5. `AIOpsPage.jsx`:
+     - Trong `handleConfirmToggleVector`: Cập nhật ngay `statusData` từ `resData.currentStatus` giúp Threat Score phản hồi tức thì về mức bình thường.
+     - Trong biểu đồ SVG xu hướng: Đường Composite Score loại trừ các vector bị tắt, chỉ lấy giá trị cao nhất từ các vector đang bật.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Interaction & Rendering):** Đảm bảo tất cả 4 switch toggle hoạt động, mở popup xác nhận chuẩn hóa, hiển thị badge "Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score", đóng modal mượt mà và hiển thị thông báo phản hồi.
+  - **Tầng 2 (System Impact & Behavioral Verification):** Khi Vector Resource bị TẮT, ngay cả khi RAM đạt 96% và lag 500ms, hệ thống vẫn đo lường 85 điểm Resource nhưng Threat Score tổng thể không tăng (giữ nguyên 5/100 NORMAL), không sinh Anomaly vào CSDL/Socket, và `checkAndAlertCloudHealth` triệt tiêu hoàn toàn cảnh báo RAM khẩn cấp (`ramAlert: false`).
+  - Toàn bộ test suite Backend (34/34 tests) và Admin-web (21/21 tests trong `aiops.page.test.jsx`) đạt **100% PASS**.
 
+### 17.7. Khắc Phục Triệt Để Lỗ Hổng Bypass Màn Hình Khóa & Tiêu Hủy Token JWT Khi Khóa Màn Hình (2026-10-10)
+- **Vấn đề an ninh:** Khi Admin vắng mặt quá 60 phút (theo thiết lập Auto-Lock), màn hình Admin-web bị khóa nhưng mã nguồn cũ chỉ đặt `isLocked: true` trong React memory và không xóa JWT Token khỏi `localStorage`. Kẻ xấu chỉ cần bấm F5 (Reload) hoặc mở lại trang sau khi offline là có thể bypass hoàn toàn màn hình khóa để vào Dashboard mà không cần mật khẩu.
+- **Giải pháp triển khai bảo mật toàn diện (4 Tầng):**
+  1. `constants.js`: Bổ sung 4 hằng số quản lý phiên khóa an toàn: `STORAGE_KEYS.IS_LOCKED`, `STORAGE_KEYS.LOCKED_AT`, `STORAGE_KEYS.LOCKED_USER`, `STORAGE_KEYS.LAST_ACTIVE_AT`.
+  2. `settings.context.jsx`:
+     - Khởi tạo `isLocked` và `lockedAt` trực tiếp từ `localStorage`.
+     - `lockScreen()`: Tiêu hủy 100% `ACCESS_TOKEN` và `REFRESH_TOKEN` khỏi `localStorage`, lưu cờ `IS_LOCKED = 'true'` và snapshot `LOCKED_USER`.
+     - `unlockScreen(password)`: Gửi yêu cầu đăng nhập lại tới `/api/auth/login` với mật khẩu gõ từ bàn phím. Khi thành công, nhận cặp token mới, lưu vào `localStorage`, gỡ bỏ hoàn toàn cờ `IS_LOCKED` và chuyển sang `UNLOCKED`.
+     - Inactivity & Activity Watcher: Theo dõi mốc `LAST_ACTIVE_AT` liên tục. Khi người dùng offline hoặc đóng tab rồi quay lại sau hơn 60 phút, hệ thống tự động kích hoạt khóa và xóa token ngay khi mở lại trang.
+     - `safeClearCache()`: Bảo toàn các key khóa màn hình trong `protectedKeys`.
+  3. `LockScreenModal.jsx`: Sử dụng `LOCKED_USER` để hiển thị avatar, tên và email Admin khi token đã bị xóa. Nút Mở khóa cho phép click để kích hoạt validation báo lỗi khi mật khẩu rỗng. Bấm Đăng xuất xóa sạch toàn bộ storage và chuyển về `/login`.
+  4. `ProtectedRoute.jsx` & `auth.context.jsx`: Cho phép render `AppLayout` kèm `LockScreenModal` khi `isLocked === true`, ngăn chặn tuyệt đối việc truy cập nội dung hoặc bypass.
+- **Bộ Kiểm Thử 2 Tầng (`settings.autolock.security.test.jsx`):**
+  - Đạt **9/9 tests PASS 100%** (Tầng 1: UI inputs, toggle, modal; Tầng 2: Token Destruction, F5 Reload Persistence, 60-min Offline Auto-lock, Fresh Token Issuance, Wrong Password Rejection).
+  - Toàn bộ test suite Admin-web đạt **17/17 test files PASS (122/122 tests PASS 100%)**.
 
+### 17.8. Đo Lường Chuẩn Xác Phần Cứng CPU & RAM Thực Tế Của Máy Chủ (Host Machine), Triệt Tiêu Gán Cứng Giá Trị & Khắc Phục Tụt RAM Stream (2026-10-11)
+- **Vấn đề cốt lõi & Nguyên nhân gốc rễ:**
+  1. *CPU đo sai hoặc đứng yên*: Trước đây code sử dụng `os.cpus()` với công thức `(total - idle) / total`. Trong Node.js, `cpu.times` là tổng tick cộng dồn kể từ khi máy tính khởi động (boot), nên giá trị này chỉ là trung bình nhiều ngày/tuần, không phản ánh mức tải tức thời của server đang chạy.
+  2. *RAM trên Dashboard bị tụt về `0/100 MB`*: API `getSystemHealth` ban đầu có trả về `ram.usedMb` và `ram.totalMb`. Tuy nhiên sau đó 3 giây, luồng socket `admin.metrics_stream` chỉ gửi `ramPercent` và `ramRssMb`. Hàm `handleMetricsStream` trong `ServerHealthPanel.jsx` ghi đè `ram: { percent, rssMb }` làm mất `usedMb` và `totalMb`, khiến thanh Gauge `value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100}` lập tức hiển thị `0/100 MB`.
+- **Giải pháp triển khai đồng bộ (Backend & Frontend):**
+  1. `SystemHardwareMonitor` (`src/Backend/core/resilience/system-hardware-monitor.js`):
+     - Đo CPU thời gian thực chuẩn xác bằng kỹ thuật **Delta Ticks** giữa các lần lấy mẫu (1,000ms sliding interval):
+       $$\% \text{CPU} = \text{round}\left(100 \times \frac{\Delta \text{total} - \Delta \text{idle}}{\Delta \text{total}}\right)$$
+     - Đo RAM hệ thống thật từ `os.totalmem()` và `os.freemem()` của máy tính đang chạy: `totalMb`, `usedMb`, `freeMb`, `percent`, `rssMb`.
+  2. `admin.service.js` & `index.js`:
+     - Tích hợp `defaultSystemHardwareMonitor.getMetrics()`.
+     - API `getSystemHealth` và Socket stream nhịp tim 3s `admin.metrics_stream` gửi đầy đủ: `cpuPercent`, `cpuCores`, `ramPercent`, `ramUsedMb`, `ramTotalMb`, `ramFreeMb`, `ramRssMb`.
+  3. `feature.collector.js` & `aiops.service.js`:
+     - Tích hợp `_getHardwareMetrics()` vào `FeatureCollector.getSample()`.
+     - `getStatus()` fallback an toàn nạp `sample` ngay từ đầu, đảm bảo AIOps hiển thị thông số CPU/RAM máy thật ngay khi tải trang mà không cần đợi socket.
+  4. `ServerHealthPanel.jsx`:
+     - Bảo toàn `ramUsedMb`, `ramTotalMb`, `cpuCores` trong `handleMetricsStream`.
+     - Nâng cấp `Gauge` hiển thị `(16 cores)` và dung lượng `(7.7 GB)` trực quan.
+  5. `AIOpsPage.jsx`:
+     - Signal Cards và Vector 4 hiển thị trực quan thông số CPU cores và RAM `used / total MB`.
+- **Bộ Kiểm Thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 2 (Backend Real Host System Impact):** `tests/unit/system.hardware.monitor.test.js` (3/3 tests PASS 100%): kiểm tra cores match `os.cpus().length`, dung lượng RAM thực tế > 512MB, bảo toàn tính nhất quán toán học `totalMb ≈ usedMb + freeMb`, và tính delta ticks CPU.
+  - **Tầng 1 (Admin-web UI & Realtime Socket Stream):** `src/tests/server.health.realtime.test.jsx` (3/3 tests PASS 100%): kiểm tra UI render đúng 16 CPU cores, 7,860 MB RAM, không bao giờ bị tụt về `0/100 MB` khi nhận socket stream.
+  - Toàn bộ test suite Backend (281/281 tests PASS 100%) và Admin-web (18/18 test files PASS 100%).
 
-
-
-
-
-
-
-
-
-
+### 17.9. Nâng Cấp Hệ Thống Bảo Trì 2 Loại Rõ Ràng & Bảng Lịch Sử Bảo Trì Lưu Trữ PostgreSQL Vĩnh Viễn (2026-10-11)
+- **Bối cảnh & Yêu cầu của người dùng:**
+  1. *Phân chia 2 loại bảo trì rõ ràng:*
+     - **Bảo trì khẩn cấp (Emergency Maintenance):** Nút luôn màu ĐỎ (`bg-red-600`) ghi rõ "Bật Bảo Trì Khẩn Cấp" (khi tắt) và "Tắt Bảo Trì Khẩn Cấp" (khi bật). Luôn luôn cắt tải mọi người dùng di động (HTTP 503) và phát thông báo real-time qua Socket.IO tới Client-app. **Loại bỏ checkbox "Bảo trì khẩn cấp" vì bị thừa** (bảo trì tức thì luôn được hiểu là bảo trì khẩn cấp).
+     - **Bảo trì theo lịch (Scheduled Maintenance):** Cho phép lên lịch hẹn thời điểm bắt đầu và thời điểm kết thúc dự kiến kèm phát thông báo tự động.
+  2. *Bảng xem danh sách lịch sử bảo trì:* Lưu trữ trực tiếp và vĩnh viễn tại CSDL PostgreSQL (`maintenance_history`), ngoài các thông tin phiên bảo trì (loại, lý do, thời điểm bắt đầu/kết thúc, thời lượng, trạng thái), **bắt buộc phải có cột Người kích hoạt bảo trì (`activated_by`)**.
+- **Giải pháp triển khai kỹ thuật toàn diện:**
+  1. **Cơ sở dữ liệu PostgreSQL Supabase (Tuân thủ Rule 10 DB Guard):**
+     - Tạo file DDL `src/Backend/database/25_create_maintenance_history_table.sql`:
+       + Bảng `maintenance_history`: `id` (SERIAL PRIMARY KEY), `type` (EMERGENCY / SCHEDULED), `reason` (TEXT), `activated_by` (VARCHAR(100) NOT NULL), `started_at` (TIMESTAMPTZ), `ended_at` (TIMESTAMPTZ), `status` (ONGOING / COMPLETED / CANCELLED), `created_at` (TIMESTAMPTZ).
+       + 3 Index tối ưu hóa truy vấn: `idx_maintenance_history_started_at`, `idx_maintenance_history_type`, `idx_maintenance_history_status`.
+     - Thực thi an toàn qua `sync_to_supabase.js` mà không chạy `prisma migrate dev` làm hỏng Partial Indexes.
+  2. **Backend Repository & Engine (`maintenance.repository.js` & `maintenance.manager.js`):**
+     - `MaintenanceRepository`: Quản lý truy vấn đọc/ghi CSDL PostgreSQL, hỗ trợ in-memory fallback thông minh nếu xảy ra gián đoạn mạng CSDL.
+     - `MaintenanceManager`:
+       + `setMaintenance(active, reason, isEmergency, activatedBy)`: Mặc định `isEmergency = true`. Khi active: ghi nhận phiên mới vào CSDL với trạng thái `ONGOING`, tự động hủy mọi lịch hẹn trước đó. Khi deactivate: tự động cập nhật `ended_at = NOW()` và `status = 'COMPLETED'`.
+       + `scheduleMaintenance(...)`: Lưu lịch hẹn; khi timer đếm ngược tới giờ hẹn, tự động kích hoạt phiên loại `SCHEDULED`.
+       + `cancelScheduledMaintenance(...)`: Khi hủy lịch hẹn, cập nhật bản ghi thành `CANCELLED`.
+     - API Endpoint: `GET /api/admin/system/maintenance/history` hỗ trợ phân trang (`page`, `limit`) và bộ lọc (`type`, `status`).
+  3. **Admin-web UI (`BroadcastPage.jsx` & i18n):**
+     - Đã loại bỏ hoàn toàn checkbox thừa `instantEmergency`.
+     - Nút kích hoạt luôn có màu đỏ rực rỡ (`bg-red-600 hover:bg-red-700`) "Bật Bảo Trì Khẩn Cấp".
+     - Bổ sung **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống** ở cuối Tab 1 với đầy đủ các cột: Mã (#), Loại bảo trì (Badge Khẩn cấp / Theo lịch), Người kích hoạt (`activated_by`), Lý do / Thông điệp, Bắt đầu, Kết thúc, Thời lượng (tính toán động: "X phút", "Y giờ Z phút"), và Trạng thái.
+     - Hỗ trợ bộ lọc Loại (Tất cả / Khẩn cấp / Theo lịch), bộ lọc Trạng thái (Tất cả / Đang diễn ra / Đã hoàn thành / Đã hủy), và nút Làm mới dữ liệu.
+     - Đồng bộ đa ngôn ngữ 100% trong `src/Admin-web/src/locales/vi.js` và `en.js`.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Interaction & Rendering):** `src/tests/broadcast.maintenance.history.test.jsx` (3/3 tests PASS 100%) và `src/tests/broadcast.page.test.jsx` (10/10 tests PASS 100%): Kiểm tra không còn checkbox thừa, nút bấm luôn đỏ, render đúng các cột và dữ liệu từ API CSDL PostgreSQL.
+  - **Tầng 2 (System Impact & Behavioral Verification):** `src/Backend/tests/unit/admin.maintenance.history.test.js` (3/3 tests PASS 100%): Kiểm tra `setMaintenance(true)` ghi nhận vào CSDL với `isEmergency = true` và `activated_by`, `setMaintenance(false)` tự động tính toán thời gian kết thúc, phân trang và bộ lọc hoạt động chính xác.
 
 
 

@@ -187,10 +187,11 @@ const adminController = {
       }
     }
 
-    // 2. Kích hoạt hoặc tắt bảo trì tức thì
-    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency });
+    // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp)
+    const emergencyFlag = isEmergency !== undefined ? Boolean(isEmergency) : true;
+    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency: emergencyFlag });
     const msg = active
-      ? (isEmergency ? 'Đã kích hoạt chế độ bảo trì khẩn cấp' : 'Đã kích hoạt chế độ bảo trì kỹ thuật')
+      ? 'Đã kích hoạt chế độ bảo trì khẩn cấp'
       : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
     return ResponseHandler.success(res, status, msg);
   },
@@ -199,6 +200,17 @@ const adminController = {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
     defaultMaintenanceManager.cancelScheduledMaintenance();
     return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Đã hủy lịch bảo trì hệ thống');
+  },
+
+  async getMaintenanceHistory(req, res) {
+    const { defaultMaintenanceRepository } = require('./maintenance.repository');
+    try {
+      const result = await defaultMaintenanceRepository.getHistory(req.query);
+      return ResponseHandler.success(res, result, 'Danh sách lịch sử bảo trì hệ thống');
+    } catch (error) {
+      logger.error('getMaintenanceHistory failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
   },
 
   async getSystemHealth(req, res) {

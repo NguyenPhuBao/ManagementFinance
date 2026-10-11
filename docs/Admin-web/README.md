@@ -123,3 +123,16 @@ Toàn bộ các chức năng trong thư mục tài liệu này tuân thủ 100% 
 1. **Zero PII Exposure:** 100% thông tin nhạy cảm của người dùng (Email, SĐT, Địa chỉ, Số tài khoản ngân hàng, IP) đều được mặt nạ hóa (Masking) trước khi hiển thị trên Admin-web.
 2. **User-scoped Privacy Protection:** Admin tuyệt đối không có quyền xem, sửa hoặc xóa danh mục riêng tư của người dùng Client-app.
 3. **Audit Immutability:** Mọi thao tác quản trị viên đều được ghi nhật ký Append-only vĩnh viễn, không thể chỉnh sửa hay tẩy xóa.
+
+---
+
+## ⚙️ 5. TRUNG TÂM CÀI ĐẶT HỆ THỐNG & TRẢI NGHIỆM QUẢN TRỊ (SETTINGS CENTER)
+
+Tích hợp trực tiếp trên Header thanh điều hướng (`Header.jsx`), nằm ngay bên phải icon Thông báo hệ thống (🔔):
+- **Biểu tượng (Icon):** ⚙️ Material Symbol `settings` (title: *"Cài đặt hệ thống"*).
+- **Hộp thoại Cài Đặt (`SettingsModal.jsx`):** Thiết kế Tabbed Modal bo góc chuẩn Enterprise với 4 tab nghiệp vụ:
+  1. **Giao diện (Appearance):** Lựa chọn Chủ đề Giao diện (Sáng / Tối / Tự động theo OS), Mật độ hiển thị bảng (Rộng rãi / Tiêu chuẩn / Tối ưu thu gọn Compact).
+  2. **Cảnh báo & Âm thanh (Alerts & Sound):** Bật/tắt âm thanh cảnh báo khi có sự cố khẩn cấp (`soundAlarm`), Thời lượng hiển thị Toast thông báo (3s / 5s / 8s / 10s), Bật/tắt huy hiệu đếm chưa đọc trên icon chuông.
+  3. **Realtime & Socket.io:** Trạng thái kết nối Socket `admin_room` trực tiếp, cấu hình chu kỳ lấy mẫu nhịp tim AIOps Sentinel (1s / 3s / 5s), nút Kiểm tra độ trễ (Ping Test).
+  4. **Bảo mật & Hệ thống (Security & Storage):** Tự động khóa màn hình Admin sau thời gian rảnh rỗi (5 / 15 / 30 phút), nút Xóa bộ nhớ đệm trình duyệt cục bộ (Local Storage Cache Reset) an toàn, hiển thị Thông tin phiên bản & Môi trường runtime.
+- **Lưu trữ Cục bộ:** Mọi cấu hình cài đặt được tự động lưu bền vững vào `localStorage` với tiền tố `admin_settings_*` và có hiệu lực ngay lập tức.

@@ -1,11 +1,16 @@
-﻿import React from 'react';
+import React from 'react';
+import { useLanguageSafe } from '../../store/language.context';
 
 const EmptyState = ({
   icon = 'inbox',
-  title = 'Không có dữ liệu',
-  description = 'Chưa có mục nào để hiển thị.',
+  title,
+  description,
   action,
 }) => {
+  const { t } = useLanguageSafe();
+  const resolvedTitle = title || t('common.emptyState.title', 'Không có dữ liệu');
+  const resolvedDescription = description || t('common.emptyState.description', 'Chưa có mục nào để hiển thị.');
+
   return (
     <div style={{
       display: 'flex',
@@ -27,7 +32,7 @@ const EmptyState = ({
         color: 'var(--color-on-surface)',
         marginBottom: 8,
       }}>
-        {title}
+        {resolvedTitle}
       </h3>
       <p style={{
         fontSize: 14,
@@ -35,7 +40,7 @@ const EmptyState = ({
         marginBottom: action ? 20 : 0,
         maxWidth: 400,
       }}>
-        {description}
+        {resolvedDescription}
       </p>
       {action && action}
     </div>

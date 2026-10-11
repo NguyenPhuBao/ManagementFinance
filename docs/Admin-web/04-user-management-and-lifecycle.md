@@ -107,15 +107,20 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 1. **Bảng Danh Sách Người Dùng (`UserListPage.jsx`):**
    - Tìm kiếm linh hoạt theo Họ tên, Email hoặc Số điện thoại.
    - Bộ lọc trạng thái đa năng: Tất cả, Hoạt động (`Active`), Đã vô hiệu hóa (`Inactive`), Chờ xóa (`PendingDelete`), Đã xóa (`Deleted`).
-   - Bộ lọc địa phương theo 4 thành phố trọng điểm: TP. Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ.
-   - Phân trang tùy chọn 10, 20 hoặc 50 người dùng/trang.
+1. **Giao Diện Quản Lý Người Dùng Chuẩn Enterprise AIOps Bento (`UserListPage.jsx` — Cập nhật v2.5):**
+   - **Hero Header Bar:** Tích hợp icon nhận diện tròn gradient, huy hiệu Realtime Sync xanh lá nhấp nháy, nút Refresh tức thì.
+   - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng người dùng, Đang hoạt động, Bị vô hiệu hóa, Chờ xóa 30 ngày (hỗ trợ click trực tiếp để chuyển nhanh bộ lọc).
+   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`) kèm số lượng badge thời gian thực.
+   - **Bảng Dữ Liệu Hiện Đại:** Bo góc mềm `rounded-2xl`, avatar người dùng sinh động, badges trạng thái pastel chuẩn màu (Emerald, Slate, Amber, Rose).
+   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo 4 khu vực đô thị trọng điểm: TP. Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ.
+   - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt.
 2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
    - Hiển thị ngày tạo tài khoản, ngày cập nhật, mã vùng quốc gia, lý do khóa và số ngày đếm ngược chờ xóa.
 3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**
-   - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp.
+   - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp, nút vô hiệu hóa tự động bị khóa khi chưa nhập lý do.
 4. **Cập Nhật Real-Time Không Cần F5:**
-   - Nhận sự kiện `admin.user_registered`: Tự động chèn người dùng mới lên đầu bảng với hiệu ứng viền xanh nổi bật.
-   - Nhận sự kiện `admin.user_status_changed`: Cập nhật lại Badge màu của dòng đó ngay lập tức.
+   - Nhận sự kiện `admin.user_registered`: Tự động chèn người dùng mới lên đầu bảng với hiệu ứng hiển thị nổi bật và phát sinh Alert Toast.
+   - Nhận sự kiện `admin.user_status_changed`: Cập nhật lại Badge màu và số ngày countdown của dòng đó ngay lập tức.
 
 ---
 

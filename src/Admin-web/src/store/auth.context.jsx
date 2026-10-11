@@ -14,6 +14,19 @@ export const AuthProvider = ({ children }) => {
     let isMounted = true;
 
     const initAuth = async () => {
+      const isLocked = localStorage.getItem(STORAGE_KEYS.IS_LOCKED) === 'true';
+      if (isLocked) {
+        // Đang ở trạng thái khóa an toàn: nạp user snapshot nếu có để phục vụ LockScreenModal
+        const rawLockedUser = localStorage.getItem(STORAGE_KEYS.LOCKED_USER) || localStorage.getItem(STORAGE_KEYS.USER);
+        if (rawLockedUser && isMounted) {
+          try {
+            setUser(JSON.parse(rawLockedUser));
+          } catch (_) {}
+        }
+        if (isMounted) setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
 

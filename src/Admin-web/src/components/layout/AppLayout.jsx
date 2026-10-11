@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import AppSidebar from './Sidebar';
 import AppHeader from './Header';
+import LockScreenModal from './LockScreenModal';
 import useSocket from '../../hooks/useSocket';
 import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
+import { useLanguageSafe } from '../../store/language.context';
 
 const AppLayout = () => {
+  const { t } = useLanguageSafe();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [threatAlert, setThreatAlert] = useState(null);
   const [dismissed, setDismissed] = useState(false);
@@ -69,18 +72,18 @@ const AppLayout = () => {
 
   // Xử lý 1-click bảo trì khẩn cấp từ Banner
   const handleQuickMitigation = async () => {
-    if (!window.confirm('Bật BẢO TRÌ KHẨN CẤP ngay lập tức để ngắt kết nối khách và bảo vệ hệ thống?')) return;
+    if (!window.confirm(t('appLayout.confirmEmergency', 'Bật BẢO TRÌ KHẨN CẤP ngay lập tức để ngắt kết nối khách và bảo vệ hệ thống?'))) return;
     try {
       setMitigating(true);
       await adminApi.setMaintenanceStatus({
         active: true,
-        reason: 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện sập dây chuyền hạ tầng',
+        reason: t('appLayout.emergencyReason', 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện sập dây chuyền hạ tầng'),
         isEmergency: true,
       });
       setMitigatedSuccess(true);
       setTimeout(() => setDismissed(true), 3000);
     } catch (err) {
-      alert('Kích hoạt bảo trì thất bại: ' + (err.response?.data?.message || err.message));
+      alert(t('appLayout.activateFailed', 'Kích hoạt bảo trì thất bại: ') + (err.response?.data?.message || err.message));
     } finally {
       setMitigating(false);
     }
@@ -99,10 +102,11 @@ const AppLayout = () => {
             </span>
             <div>
               <span className="font-extrabold uppercase tracking-wide mr-1.5">
-                🚨 BÁO ĐỘNG ĐỎ HẠ TẦNG AIOPS SENTINEL:
+                {t('appLayout.threatBannerTitle', '🚨 BÁO ĐỘNG ĐỎ HẠ TẦNG AIOPS SENTINEL:')}
               </span>
               <span>
-                Phát hiện nguy cơ sập dây chuyền tài nguyên máy chủ! Điểm tài nguyên: <b>{(threatAlert.vectorScores?.resource ?? threatAlert.threatScore)}/100</b>
+                {t('appLayout.threatBannerDesc', 'Phát hiện nguy cơ sập dây chuyền tài nguyên máy chủ! Điểm tài nguyên:')}{' '}
+                <b>{(threatAlert.vectorScores?.resource ?? threatAlert.threatScore)}/100</b>
                 {threatAlert.anomalies?.length > 0 && ` (${threatAlert.anomalies[0].code})`}
               </span>
             </div>
@@ -111,7 +115,7 @@ const AppLayout = () => {
           <div className="flex items-center gap-2 flex-shrink-0">
             {mitigatedSuccess ? (
               <span className="bg-white/20 text-white px-3 py-1 rounded-lg font-bold">
-                ✓ ĐÃ KHÓA BẢO TRÌ KHẨN CẤP
+                {t('appLayout.emergencyLocked', '✓ ĐÃ KHÓA BẢO TRÌ KHẨN CẤP')}
               </span>
             ) : (
               <button
@@ -120,7 +124,7 @@ const AppLayout = () => {
                 className="bg-white text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[15px]">lock</span>
-                <span>{mitigating ? 'Đang khóa...' : '1-Click Khóa Bảo Trì'}</span>
+                <span>{mitigating ? t('appLayout.locking', 'Đang khóa...') : t('appLayout.emergencyLockBtn', '1-Click Khóa Bảo Trì')}</span>
               </button>
             )}
 
@@ -129,13 +133,13 @@ const AppLayout = () => {
               className="bg-red-700 hover:bg-red-800 text-white px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1 border border-red-500"
             >
               <span className="material-symbols-outlined text-[15px]">troubleshoot</span>
-              <span>Xem Phân Tích</span>
+              <span>{t('appLayout.viewAnalysisBtn', 'Xem Phân Tích')}</span>
             </button>
 
             <button
               onClick={() => setDismissed(true)}
               className="text-white/80 hover:text-white p-1 cursor-pointer"
-              title="Tạm ẩn cảnh báo"
+              title={t('appLayout.dismissTooltip', 'Tạm ẩn cảnh báo')}
             >
               <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
@@ -161,28 +165,33 @@ const AppLayout = () => {
           </div>
           <div className="flex-1 text-xs">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-red-400 uppercase tracking-wider">AIOps Đã Chặn Đứng Nguồn Tấn Công</span>
+              <span className="font-bold text-red-400 uppercase tracking-wider">
+                {t('appLayout.quarantineToastTitle', 'AIOps Đã Chặn Đứng Nguồn Tấn Công')}
+              </span>
               <button onClick={() => setBlockedToast(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <span className="material-symbols-outlined text-[14px]">close</span>
               </button>
             </div>
             <p className="text-slate-300 font-medium">
-              IP: <b className="text-white font-mono">{blockedToast.maskedIp}</b> đã bị cắt kết nối.
+              {t('appLayout.quarantineToastIp', { ip: blockedToast.maskedIp })}
             </p>
             <p className="text-slate-400 text-[11px] mt-0.5 line-clamp-2">
-              Lý do: {blockedToast.reason}
+              {t('appLayout.quarantineToastReason', { reason: blockedToast.reason })}
             </p>
             <div className="mt-2.5 flex items-center gap-2">
               <button
                 onClick={() => { setBlockedToast(null); navigate('/aiops'); }}
                 className="text-red-400 hover:text-red-300 font-semibold underline text-[11px] cursor-pointer"
               >
-                Xem danh sách cô lập &rarr;
+                {t('appLayout.viewQuarantineList', 'Xem danh sách cô lập →')}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ─── INACTIVITY AUTO-LOCK SCREEN OVERLAY ─── */}
+      <LockScreenModal />
     </div>
   );
 };

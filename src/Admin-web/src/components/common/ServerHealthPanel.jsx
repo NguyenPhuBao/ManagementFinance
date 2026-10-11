@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
+import { useLanguageSafe } from '../../store/language.context';
 
 const REFRESH_MS = 60_000;
 
-const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
+const Gauge = ({ label, value, max, unit, warnAt, critAt, icon, extra }) => {
   const pct = max > 0 ? Math.round((value / max) * 100) : value;
   const color = pct >= critAt ? 'text-red-500' : pct >= warnAt ? 'text-amber-500' : 'text-emerald-500';
   const bar = pct >= critAt ? 'bg-red-500' : pct >= warnAt ? 'bg-amber-400' : 'bg-emerald-500';
@@ -14,9 +15,10 @@ const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
         <span className="flex items-center gap-1 font-medium text-gray-700">
           <span className="material-symbols-outlined text-[14px]">{icon}</span>
           {label}
+          {extra && <span className="text-[10px] text-gray-400 font-normal ml-0.5">{extra}</span>}
         </span>
         <span className={`font-semibold ${color}`}>
-          {max > 0 ? `${value}/${max} ${unit}` : `${value}${unit}`}
+          {max > 0 ? `${Number(value).toLocaleString()}/${Number(max).toLocaleString()} ${unit} (${pct}%)` : `${value}${unit}`}
         </span>
       </div>
       <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -26,27 +28,17 @@ const Gauge = ({ label, value, max, unit, warnAt, critAt, icon }) => {
   );
 };
 
-/**
- * UptimeWidget — Hiển thị uptime thực tế của server.
- *
- * Công thức (tính ở backend, hiển thị ở đây):
- *   uptimePercent = uptimeSeconds / max(uptimeSeconds, slaWindow) × 100
- *   slaWindow = 30 ngày = 2,592,000 giây
- *
- * - Server chạy ≥ 30 ngày liên tục → uptimePercent = 100%
- * - Server mới khởi động (vd: 1 giờ) → uptimePercent ≈ 0.14%
- *   → phản ánh đúng thực tế, khuyến khích admin giữ server ổn định
- */
 const UptimeWidget = ({ uptime }) => {
+  const { t } = useLanguageSafe();
   if (!uptime) {
     return (
       <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant border border-outline-variant/40 flex items-center justify-between">
         <span className="flex items-center gap-1 font-semibold text-on-surface">
           <span className="material-symbols-outlined text-[14px] text-gray-400">timer</span>
-          Uptime Hệ thống
+          {t('serverHealth.uptime', 'Uptime & Tính liên tục')}
         </span>
         <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded font-medium">
-          Chờ cập nhật API
+          {t('serverHealth.awaiting', 'Đang kết nối...')}
         </span>
       </div>
     );
@@ -76,14 +68,14 @@ const UptimeWidget = ({ uptime }) => {
     <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant space-y-2 border border-outline-variant/40">
       <p className="text-on-surface font-semibold flex items-center gap-1">
         <span className="material-symbols-outlined text-[14px] text-emerald-600">timer</span>
-        Uptime Hệ thống
+        {t('serverHealth.uptime', 'Uptime & Tính liên tục')}
         <span className="ml-auto text-[10px] text-gray-400 font-normal">SLA {slaWindowDays}d</span>
       </p>
 
       {/* Thanh progress uptime */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
-          <span className="text-gray-500">Hoạt động liên tục:</span>
+          <span className="text-gray-500">{t('serverHealth.continuous', 'Khả năng sẵn sàng (SLA):')}</span>
           <span className={`font-bold text-[13px] ${textColor}`}>{pct.toFixed(3)}%</span>
         </div>
         <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -96,11 +88,11 @@ const UptimeWidget = ({ uptime }) => {
 
       {/* Chi tiết */}
       <div className="flex justify-between pt-0.5">
-        <span>Thời gian chạy:</span>
+        <span>{t('serverHealth.runtime', 'Thời gian chạy liên tục:')}</span>
         <span className="font-semibold text-on-surface">{uptimeFormatted}</span>
       </div>
       <div className="flex justify-between">
-        <span>Khởi động lúc:</span>
+        <span>{t('serverHealth.startedAt', 'Khởi động lúc:')}</span>
         <span className="font-semibold text-on-surface text-[11px]">{startedAtDisplay}</span>
       </div>
     </div>
@@ -108,6 +100,7 @@ const UptimeWidget = ({ uptime }) => {
 };
 
 const ServerHealthPanel = () => {
+  const { t } = useLanguageSafe();
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState(null);
@@ -145,22 +138,33 @@ const ServerHealthPanel = () => {
       const res = await adminApi.getSystemHealth();
       const data = res?.data?.data || res?.data;
       if (data) {
-        setHealth(data);
+        setHealth((prev) => ({
+          ...prev,
+          ...data,
+          dbPool: data.dbPool ? {
+            ...data.dbPool,
+            clientActive: data.dbPool.clientActive ?? data.dbPool.activeClientConnections ?? 0,
+            clientLimit: data.dbPool.clientLimit ?? 16,
+            adminActive: data.dbPool.adminActive ?? data.dbPool.activeAdminConnections ?? 0,
+            adminReserved: data.dbPool.adminReserved ?? (data.dbPool.maxConnections ? data.dbPool.maxConnections - (data.dbPool.clientLimit ?? 16) : 4),
+            maxConnections: data.dbPool.maxConnections ?? 20,
+          } : prev?.dbPool,
+        }));
         setHealthError(null);
         // Đồng bộ trạng thái bảo trì nếu có kèm theo
         if (data.maintenance) {
           setMaintenance(data.maintenance);
         }
       } else {
-        setHealthError('Không nhận được dữ liệu giám sát');
+        setHealthError(t('serverHealth.noData', 'Không nhận được dữ liệu giám sát'));
       }
     } catch (err) {
       console.warn('[ServerHealthPanel] Không thể tải thông số hệ thống:', err.message);
-      setHealthError('Chưa có thông số giám sát (API chưa đồng bộ)');
+      setHealthError(t('serverHealth.notSync', 'Chưa có thông số giám sát (API chưa đồng bộ)'));
     } finally {
       setHealthLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const refreshAll = useCallback(() => {
     fetchMaintenance();
@@ -169,8 +173,8 @@ const ServerHealthPanel = () => {
 
   useEffect(() => {
     refreshAll();
-    const t = setInterval(refreshAll, REFRESH_MS);
-    return () => clearInterval(t);
+    const tTimer = setInterval(refreshAll, REFRESH_MS);
+    return () => clearInterval(tTimer);
   }, [refreshAll]);
 
   // Lắng nghe luồng nhịp tim metrics_stream qua Socket.io thời gian thực (3s/lần)
@@ -188,10 +192,26 @@ const ServerHealthPanel = () => {
           startedAt: prev?.uptime?.startedAt || null,
           slaWindowDays: 30,
         },
-        cpu: { percent: data.cpuPercent },
-        ram: { percent: data.ramPercent, rssMb: data.ramRssMb },
+        cpu: {
+          percent: data.cpuPercent,
+          cores: data.cpuCores ?? prev?.cpu?.cores ?? 16,
+        },
+        ram: {
+          percent: data.ramPercent,
+          usedMb: data.ramUsedMb ?? prev?.ram?.usedMb ?? 0,
+          totalMb: data.ramTotalMb ?? prev?.ram?.totalMb ?? (prev?.ram?.totalMb || 7860),
+          freeMb: data.ramFreeMb ?? prev?.ram?.freeMb ?? 0,
+          rssMb: data.ramRssMb ?? prev?.ram?.rssMb ?? 0,
+        },
         eventLoop: { lagMs: data.eventLoopLagMs, overloaded: data.eventLoopLagMs > 50 },
-        dbPool: data.dbPool || prev?.dbPool,
+        dbPool: data.dbPool ? {
+          ...data.dbPool,
+          clientActive: data.dbPool.clientActive ?? data.dbPool.activeClientConnections ?? 0,
+          clientLimit: data.dbPool.clientLimit ?? 16,
+          adminActive: data.dbPool.adminActive ?? data.dbPool.activeAdminConnections ?? 0,
+          adminReserved: data.dbPool.adminReserved ?? (data.dbPool.maxConnections ? data.dbPool.maxConnections - (data.dbPool.clientLimit ?? 16) : 4),
+          maxConnections: data.dbPool.maxConnections ?? 20,
+        } : prev?.dbPool,
         loadShedding: prev?.loadShedding || { totalShed: 0 },
       }));
       setHealthLoading(false);
@@ -223,7 +243,7 @@ const ServerHealthPanel = () => {
   const toggle = async () => {
     const next = !maintenance.active;
     if (next && !reason.trim()) {
-      alert('Vui lòng nhập lý do trước khi kích hoạt bảo trì khẩn cấp!');
+      alert(t('serverHealth.alertReasonRequired', 'Vui lòng nhập lý do trước khi kích hoạt bảo trì khẩn cấp!'));
       return;
     }
     setToggling(true);
@@ -241,7 +261,7 @@ const ServerHealthPanel = () => {
       // Làm mới lại dữ liệu xác thực
       await fetchMaintenance();
     } catch (e) {
-      alert('Lỗi thao tác bảo trì: ' + (e.response?.data?.message || e.message));
+      alert(t('serverHealth.alertToggleError', 'Lỗi thao tác bảo trì: ') + (e.response?.data?.message || e.message));
     } finally {
       setToggling(false);
     }
@@ -261,12 +281,12 @@ const ServerHealthPanel = () => {
       <div className="flex items-center justify-between border-b border-outline-variant/50 pb-3">
         <div className="flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full ${critical ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
-          <h3 className="font-title-md font-bold text-on-surface text-sm">Server Health & Resilience</h3>
+          <h3 className="font-title-md font-bold text-on-surface text-sm">{t('serverHealth.title', 'Sức Khỏe Máy Chủ')}</h3>
         </div>
         <button
           onClick={refreshAll}
           className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer p-1 rounded-md hover:bg-surface-container-low"
-          title="Làm mới thông số"
+          title={t('common.refresh', 'Làm mới')}
         >
           <span className="material-symbols-outlined text-[18px]">refresh</span>
         </button>
@@ -276,7 +296,7 @@ const ServerHealthPanel = () => {
       {healthLoading && !health && (
         <div className="flex items-center justify-center py-6 text-on-surface-variant">
           <span className="material-symbols-outlined animate-spin text-primary text-2xl mr-2">progress_activity</span>
-          <span className="text-xs">Đang tải chỉ số hệ thống...</span>
+          <span className="text-xs">{t('common.loading', 'Đang tải...')}</span>
         </div>
       )}
 
@@ -287,7 +307,7 @@ const ServerHealthPanel = () => {
             <span>{healthError}</span>
           </div>
           <p className="text-[11px] text-amber-700/80">
-            Chức năng giám sát phần cứng và Uptime cần Backend hỗ trợ endpoint <code>/admin/system/health</code>.
+            {t('serverHealth.hardwareNotice', 'Chức năng giám sát phần cứng và Uptime cần Backend hỗ trợ endpoint')} <code>/admin/system/health</code>.
           </p>
         </div>
       )}
@@ -296,8 +316,8 @@ const ServerHealthPanel = () => {
         <>
           {/* CPU / RAM / Event Loop Gauges */}
           <div className="space-y-3">
-            <Gauge label="CPU" value={cpu?.percent ?? 0} max={100} unit="%" warnAt={70} critAt={85} icon="memory_alt" />
-            <Gauge label="RAM" value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100} unit="MB" warnAt={70} critAt={85} icon="storage" />
+            <Gauge label="CPU" value={cpu?.percent ?? 0} max={100} unit="%" warnAt={70} critAt={85} icon="memory_alt" extra={cpu?.cores ? `(${cpu.cores} cores)` : ''} />
+            <Gauge label="RAM" value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100} unit="MB" warnAt={70} critAt={85} icon="storage" extra={ram?.totalMb ? `(${(ram.totalMb / 1024).toFixed(1)} GB)` : ''} />
             <Gauge label="Event Loop" value={eventLoop?.lagMs ?? 0} max={200} unit="ms" warnAt={50} critAt={100} icon="speed" />
           </div>
 
@@ -309,23 +329,25 @@ const ServerHealthPanel = () => {
             <div className="bg-surface-container-low rounded-lg p-3 text-xs text-on-surface-variant space-y-1.5 border border-outline-variant/40">
               <p className="text-on-surface font-semibold mb-1 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">database</span>
-                DB Pool & Cắt Tải (Bulkhead)
+                {t('serverHealth.dbPool', 'DB Pool & Cắt Tải (Bulkhead)')}
               </p>
               <div className="flex justify-between">
-                <span>Client Pool:</span>
-                <span className={`font-semibold ${dbPool.clientActive >= dbPool.clientLimit ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {dbPool.clientActive}/{dbPool.clientLimit}
+                <span>{t('serverHealth.clientPool', 'Client Pool:')}</span>
+                <span className={`font-semibold ${(dbPool.clientActive ?? dbPool.activeClientConnections ?? 0) >= (dbPool.clientLimit || 16) ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {dbPool.clientActive ?? dbPool.activeClientConnections ?? 0}/{dbPool.clientLimit || 16}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Admin Pool:</span>
-                <span className="font-semibold text-on-surface">{dbPool.adminActive}/{dbPool.maxConnections - dbPool.clientLimit}</span>
+                <span>{t('serverHealth.adminPool', 'Admin Pool:')}</span>
+                <span className="font-semibold text-on-surface">
+                  {dbPool.adminActive ?? dbPool.activeAdminConnections ?? 0}/{dbPool.adminReserved ?? (dbPool.maxConnections ? dbPool.maxConnections - (dbPool.clientLimit || 16) : 4)}
+                </span>
               </div>
               {loadShedding && (
                 <div className="flex justify-between text-gray-500">
-                  <span>Load Shed (24h):</span>
+                  <span>{t('serverHealth.loadShed', 'Load Shed (24h):')}</span>
                   <span className={`font-semibold ${loadShedding.shedCount24h > 0 ? 'text-amber-600' : 'text-gray-600'}`}>
-                    {loadShedding.shedCount24h} lần
+                    {loadShedding.shedCount24h} {t('serverHealth.times', 'lần')}
                   </span>
                 </div>
               )}
@@ -342,8 +364,8 @@ const ServerHealthPanel = () => {
               construction
             </span>
             <div>
-              <p className="text-xs font-bold text-on-surface">Bảo trì khẩn cấp</p>
-              <p className="text-[10px] text-gray-400">Cắt toàn bộ Client, giữ Admin thông luồng</p>
+              <p className="text-xs font-bold text-on-surface">{t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')}</p>
+              <p className="text-[10px] text-gray-400">{t('serverHealth.emergencyMaintDesc', 'Cắt toàn bộ Client, giữ Admin thông luồng')}</p>
             </div>
           </div>
           <button
@@ -351,7 +373,7 @@ const ServerHealthPanel = () => {
             onClick={toggle}
             disabled={toggling || maintenanceLoading}
             className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors duration-200 cursor-pointer disabled:opacity-50 ${maintenance.active ? 'bg-orange-500 ring-2 ring-orange-300' : 'bg-gray-300'}`}
-            title={maintenance.active ? 'Bấm để tắt bảo trì' : 'Bấm để bật bảo trì'}
+            title={maintenance.active ? t('serverHealth.toggleOffTitle', 'Bấm để tắt bảo trì') : t('serverHealth.toggleOnTitle', 'Bấm để bật bảo trì')}
           >
             <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${maintenance.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
@@ -361,7 +383,7 @@ const ServerHealthPanel = () => {
           <div className="mt-2 space-y-1.5">
             <input
               type="text"
-              placeholder="Nhập lý do bảo trì trước khi bật..."
+              placeholder={t('serverHealth.reasonPlaceholder', 'Nhập lý do bảo trì trước khi bật...')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-full text-xs bg-white text-on-surface border border-outline-variant rounded-md px-2.5 py-1.5 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
@@ -380,14 +402,14 @@ const ServerHealthPanel = () => {
                 {maintenance.isEmergency ? 'error' : 'warning'}
               </span>
               <span>
-                {maintenance.isEmergency ? 'Bảo trì khẩn cấp: ' : 'Bảo trì kỹ thuật: '}
-                {maintenance.reason || 'Hệ thống đang bảo trì'}
+                {maintenance.isEmergency ? t('serverHealth.emergencyPrefix', 'Bảo trì khẩn cấp: ') : t('serverHealth.techPrefix', 'Bảo trì kỹ thuật: ')}
+                {maintenance.reason || t('serverHealth.systemMaintaining', 'Hệ thống đang bảo trì')}
               </span>
             </p>
             {maintenance.activatedBy && (
               <p className="opacity-80 text-[11px]">
-                Kích hoạt bởi: <b>{maintenance.activatedBy}</b>
-                {maintenance.activatedAt && ` lúc ${new Date(maintenance.activatedAt).toLocaleTimeString('vi-VN')}`}
+                {t('serverHealth.activatedBy', 'Kích hoạt bởi: ')}<b>{maintenance.activatedBy}</b>
+                {maintenance.activatedAt && `${t('serverHealth.atTime', ' lúc ')}${new Date(maintenance.activatedAt).toLocaleTimeString('vi-VN')}`}
               </p>
             )}
           </div>
@@ -397,14 +419,14 @@ const ServerHealthPanel = () => {
           <div className="text-[11px] text-blue-900 bg-blue-50 border border-blue-200 rounded-md p-2 mt-2 flex items-center justify-between">
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px] text-blue-600">event</span>
-              Lịch bảo trì: {new Date(maintenance.scheduled.scheduledAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+              {t('serverHealth.scheduledMaint', 'Lịch bảo trì: ')}{new Date(maintenance.scheduled.scheduledAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
             </span>
           </div>
         )}
 
         <div className="mt-2 text-right">
           <a href="/broadcast" className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5">
-            Quản trị & Lên lịch bảo trì &rarr;
+            {t('serverHealth.manageSchedule', 'Quản trị & Lên lịch bảo trì →')}
           </a>
         </div>
       </div>

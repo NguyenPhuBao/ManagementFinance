@@ -1,22 +1,25 @@
 import React, { useEffect } from 'react';
+import { useLanguageSafe } from '../../store/language.context';
 
 /**
  * ConfirmModal — Hộp thoại xác nhận hành động chuyên nghiệp & thân thiện
  * Hỗ trợ các hành động Cảnh báo / Nguy hiểm (Đỏ) và Xác nhận / Kích hoạt (Xanh Emerald)
- * Sử dụng 100% Tailwind CSS classes chuẩn, khắc phục triệt để lỗi CSS variables bị rỗng.
+ * Hỗ trợ đa ngôn ngữ (i18n) với fallback an toàn.
  */
 const ConfirmModal = ({
   open,
   onConfirm,
   onCancel,
-  title = 'Xác nhận',
-  message = 'Bạn có chắc chắn muốn thực hiện hành động này?',
-  confirmText = 'Xác nhận',
-  cancelText = 'Hủy bỏ',
+  title,
+  message,
+  confirmText,
+  cancelText,
   confirmDanger = false,
   icon,
   loading = false,
 }) => {
+  const { t } = useLanguageSafe();
+
   // Đóng modal khi nhấn phím Escape
   useEffect(() => {
     if (!open) return;
@@ -30,6 +33,11 @@ const ConfirmModal = ({
   }, [open, loading, onCancel]);
 
   if (!open) return null;
+
+  const resolvedTitle = title || t('common.confirmModal.title', 'Xác nhận');
+  const resolvedMessage = message || t('common.confirmModal.message', 'Bạn có chắc chắn muốn thực hiện hành động này?');
+  const resolvedConfirmText = confirmText || t('common.confirmModal.confirm', 'Xác nhận');
+  const resolvedCancelText = cancelText || t('common.confirmModal.cancel', 'Hủy bỏ');
 
   // Icon mặc định theo ngữ nghĩa
   const displayIcon = icon || (confirmDanger ? 'warning' : 'check_circle');
@@ -63,10 +71,10 @@ const ConfirmModal = ({
                 id="confirm-modal-title"
                 className="text-base font-bold text-slate-900 leading-snug m-0"
               >
-                {title}
+                {resolvedTitle}
               </h3>
               <p className="text-[11px] font-medium text-slate-500 m-0 mt-0.5">
-                Vui lòng xem kỹ thông tin trước khi tiếp tục
+                {t('common.confirmModal.reviewWarning', 'Vui lòng xem kỹ thông tin trước khi tiếp tục')}
               </p>
             </div>
           </div>
@@ -75,7 +83,7 @@ const ConfirmModal = ({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            aria-label="Đóng popup"
+            aria-label={t('common.confirmModal.closeAria', 'Đóng popup')}
             className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -84,7 +92,7 @@ const ConfirmModal = ({
 
         {/* Nội dung thông điệp chi tiết */}
         <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3.5 text-xs text-slate-700 leading-relaxed">
-          {message}
+          {resolvedMessage}
         </div>
 
         {/* Footer Actions: Hủy bỏ & Xác nhận rõ ràng */}
@@ -95,7 +103,7 @@ const ConfirmModal = ({
             disabled={loading}
             className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-xl transition-all shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            {cancelText}
+            {resolvedCancelText}
           </button>
 
           <button
@@ -111,14 +119,14 @@ const ConfirmModal = ({
             {loading ? (
               <>
                 <span className="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
-                <span>Đang xử lý...</span>
+                <span>{t('common.processing', 'Đang xử lý...')}</span>
               </>
             ) : (
               <>
                 <span className="material-symbols-outlined text-[15px]">
                   {confirmDanger ? 'check' : 'verified'}
                 </span>
-                <span>{confirmText}</span>
+                <span>{resolvedConfirmText}</span>
               </>
             )}
           </button>

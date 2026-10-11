@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import useSocket from '../../hooks/useSocket';
+import { useLanguageSafe } from '../../store/language.context';
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -16,6 +17,7 @@ const STATUS_CONFIG = {
 const STATUSES = ['', 'Pass', 'Fail', 'Rejected', 'Interrupted', 'Accepted', 'Processing', 'Pending'];
 
 const AuditLogPage = () => {
+  const { t, currentLang } = useLanguageSafe();
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,13 +79,13 @@ const AuditLogPage = () => {
         const newLog = {
           idlog: data.id || Date.now(),
           idaccount: data.idaccount,
-          request: data.action || 'Yêu cầu hệ thống',
+          request: data.action || t('auditLogs.defaultAction'),
           req_status: data.status || 'Pass',
           reason: data.reason || null,
           time_req: data.time_req || new Date().toISOString(),
           time_res: data.time_res || new Date().toISOString(),
           account: {
-            username: data.username || data.user || 'Người dùng',
+            username: data.username || data.user || t('auditLogs.defaultUser'),
             User: { fullname: data.user || null },
           },
           ip: data.ip || '127.0.0.1',
@@ -109,7 +111,7 @@ const AuditLogPage = () => {
 
   const fmt = (dt) => {
     if (!dt) return '—';
-    return new Date(dt).toLocaleString('vi-VN', {
+    return new Date(dt).toLocaleString(currentLang === 'en' ? 'en-US' : 'vi-VN', {
       timeZone: 'Asia/Ho_Chi_Minh',
       year: 'numeric',
       month: '2-digit',
@@ -135,10 +137,10 @@ const AuditLogPage = () => {
         <div>
           <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[28px]">fact_check</span>
-            Nhật Ký Hoạt Động
+            {t('auditLogs.title')}
           </h1>
           <p className="font-body-md text-on-surface-variant mt-1">
-            Audit Log — Lưu vết toàn bộ thao tác và request gửi về hệ thống (Append-only)
+            {t('auditLogs.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -148,21 +150,21 @@ const AuditLogPage = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
               </span>
-              Real-time
+              {t('auditLogs.realtime')}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title="Đang kết nối lại socket...">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title={t('auditLogs.connectingTitle')}>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-              Đang kết nối...
+              {t('auditLogs.connecting')}
             </span>
           )}
           <button
             onClick={handleResetFilters}
             className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface border border-outline-variant bg-white rounded-lg px-3 py-2 transition-colors cursor-pointer"
-            title="Xóa bộ lọc"
+            title={t('auditLogs.resetTitle')}
           >
             <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
-            Đặt lại
+            {t('auditLogs.resetBtn')}
           </button>
           <button
             id="btn-refresh-audit"
@@ -170,7 +172,7 @@ const AuditLogPage = () => {
             className="flex items-center gap-1.5 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg px-3.5 py-2 font-medium transition-colors cursor-pointer shadow-sm"
           >
             <span className="material-symbols-outlined text-[16px]">refresh</span>
-            Làm mới
+            {t('auditLogs.refreshBtn')}
           </button>
         </div>
       </div>
@@ -181,7 +183,7 @@ const AuditLogPage = () => {
           <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">search</span>
           <input
             type="text"
-            placeholder="Tìm thao tác hoặc username..."
+            placeholder={t('auditLogs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full border border-outline-variant rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface"
@@ -196,14 +198,14 @@ const AuditLogPage = () => {
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s ? `Trạng thái: ${s}` : 'Tất cả trạng thái'}
+                {s ? t('auditLogs.statusPrefix', { status: t('auditLogs.statuses.' + s) || s }) : t('auditLogs.allStatuses')}
               </option>
             ))}
           </select>
         </div>
 
         <div className="flex items-center gap-1 border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface-variant">
-          <span className="text-[11px] whitespace-nowrap">Từ:</span>
+          <span className="text-[11px] whitespace-nowrap">{t('auditLogs.dateFrom')}</span>
           <input
             type="date"
             value={dateFrom}
@@ -213,7 +215,7 @@ const AuditLogPage = () => {
         </div>
 
         <div className="flex items-center gap-1 border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface-variant">
-          <span className="text-[11px] whitespace-nowrap">Đến:</span>
+          <span className="text-[11px] whitespace-nowrap">{t('auditLogs.dateTo')}</span>
           <input
             type="date"
             value={dateTo}
@@ -229,13 +231,13 @@ const AuditLogPage = () => {
           <table className="w-full text-left border-collapse min-w-[760px] text-xs">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-outline-variant">
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] w-16">ID</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">Tài khoản</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">Thao tác (Request)</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center w-28">Trạng thái</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">Lý do</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">Thời gian gửi</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">Thời gian phản hồi</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] w-16">{t('auditLogs.colId')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colAccount')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colRequest')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center w-28">{t('auditLogs.colStatus')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colReason')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">{t('auditLogs.colTimeReq')}</th>
+                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">{t('auditLogs.colTimeRes')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
@@ -243,14 +245,14 @@ const AuditLogPage = () => {
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined animate-spin text-primary text-3xl block mx-auto mb-2">progress_activity</span>
-                    Đang tải nhật ký...
+                    {t('auditLogs.loading')}
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined text-4xl text-gray-300 block mx-auto mb-2">content_paste_off</span>
-                    Không tìm thấy bản ghi nhật ký phù hợp.
+                    {t('auditLogs.empty')}
                   </td>
                 </tr>
               ) : (
@@ -268,7 +270,7 @@ const AuditLogPage = () => {
                         <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5 font-mono">
                           <span>UID: {log.idaccount}</span>
                           <span className="text-slate-300">•</span>
-                          <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200" title="Địa chỉ IP truy cập">
+                          <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200" title={t('auditLogs.ipTitle')}>
                             <span className="material-symbols-outlined text-[11px] text-slate-400">router</span>
                             <span>{log.ip || log.ip_address || '127.0.0.1'}</span>
                           </span>
@@ -279,7 +281,7 @@ const AuditLogPage = () => {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                          {log.req_status}
+                          {t('auditLogs.statuses.' + log.req_status) || log.req_status}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant max-w-[180px] truncate" title={log.reason || ''}>
@@ -310,7 +312,7 @@ const AuditLogPage = () => {
             setPageSize(newSize);
             setPage(1);
           }}
-          itemLabel="bản ghi"
+          itemLabel={t('auditLogs.itemLabel')}
         />
       </div>
     </div>

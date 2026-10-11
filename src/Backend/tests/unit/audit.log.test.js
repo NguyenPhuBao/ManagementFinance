@@ -85,4 +85,65 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     const reason = authService.determineReqReason(res, req);
     assert.equal(reason, 'Người dùng dừng phản hồi hoặc đổi khung chat mới');
   });
+
+  it('5. Middleware trích xuất clientIp an toàn và ghi audit log không quăng ReferenceError', (t, done) => {
+    const originalRecord = authService.recordAuditLog;
+    let recordedData = null;
+    authService.recordAuditLog = async (data) => {
+      recordedData = data;
+      return { idlog: 999 };
+    };
+
+    const req = new EventEmitter();
+    req.method = 'POST';
+    req.url = '/api/v1/wallets';
+    req.baseUrl = '';
+    req.path = '/api/v1/wallets';
+    req.headers = { 'x-forwarded-for': '203.162.0.1, 10.0.0.1' };
+    req.user = { idaccount: 10, username: 'testuser' };
+
+    const res = new EventEmitter();
+    res.statusCode = 201;
+    res.writableEnded = true;
+
+    auditLogMiddleware(req, res, () => {});
+    res.emit('finish');
+
+    setTimeout(() => {
+      authService.recordAuditLog = originalRecord;
+      assert.ok(recordedData, 'recordAuditLog phải được gọi');
+      assert.equal(recordedData.ip, '203.162.0.1', 'Phải trích xuất client IP đầu tiên từ x-forwarded-for');
+      assert.equal(recordedData.idaccount, 10);
+      done();
+    }, 50);
+  });
+
+  it('6. GET /api/admin/system/maintenance bị bỏ qua để tránh spam CSDL qua polling định kỳ', (t, done) => {
+    let called = false;
+    const originalRecord = authService.recordAuditLog;
+    authService.recordAuditLog = async () => {
+      called = true;
+    };
+
+    const req = new EventEmitter();
+    req.method = 'GET';
+    req.url = '/api/admin/system/maintenance';
+    req.baseUrl = '';
+    req.path = '/api/admin/system/maintenance';
+    req.user = { idaccount: 1 };
+
+    const res = new EventEmitter();
+    res.statusCode = 200;
+    res.writableEnded = true;
+
+    auditLogMiddleware(req, res, () => {});
+    res.emit('finish');
+
+    setTimeout(() => {
+      authService.recordAuditLog = originalRecord;
+      assert.equal(called, false, 'Polling GET bảo trì không được ghi audit log');
+      done();
+    }, 50);
+  });
 });
+

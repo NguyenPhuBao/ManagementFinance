@@ -261,9 +261,39 @@ class AIOpsService {
 
   async toggleVector(vectorName, isEnabled, persistToDb = true) {
     const updated = this.detector.setVectorEnabled(vectorName, isEnabled);
-    if (this._currentStatus) {
+    
+    // Tái đánh giá tức thì với mẫu hiện tại để cập nhật ngay Threat Score và Trạng thái
+    const currentSample = this._currentStatus?.sample || (this.collector && typeof this.collector.getSample === 'function' ? this.collector.getSample() : null);
+    if (currentSample) {
+      const evaluation = this.detector.evaluate(currentSample);
+      this._currentStatus = {
+        ...this._currentStatus,
+        threatScore: evaluation.threatScore,
+        status: evaluation.status,
+        vectorScores: evaluation.vectorScores,
+        vectorDefenses: evaluation.vectorDefenses,
+        targetConcurrency: evaluation.targetConcurrency,
+        isAnomaly: evaluation.isAnomaly,
+        anomalies: evaluation.anomalies,
+        recommendedAction: evaluation.recommendedAction,
+        vectorConfig: { ...updated },
+        lastEvaluatedAt: evaluation.evaluatedAt,
+        sample: currentSample,
+      };
+
+      if (this._history && this._history.length > 0) {
+        const lastEntry = this._history[this._history.length - 1];
+        lastEntry.threatScore = evaluation.threatScore;
+        lastEntry.status = evaluation.status;
+        lastEntry.vectorScores = evaluation.vectorScores;
+        lastEntry.vectorDefenses = evaluation.vectorDefenses;
+        lastEntry.isAnomaly = evaluation.isAnomaly;
+        lastEntry.anomalies = evaluation.anomalies;
+      }
+    } else if (this._currentStatus) {
       this._currentStatus.vectorConfig = { ...updated };
     }
+
     if (persistToDb && this.repository && typeof this.repository.setSetting === 'function') {
       try {
         await this.repository.setSetting('vector_toggles', JSON.stringify(updated));
@@ -283,6 +313,7 @@ class AIOpsService {
       vector: vectorName,
       enabled: isEnabled,
       vectorConfig: updated,
+      currentStatus: this._currentStatus,
       message: `Đã ${isEnabled ? 'bật' : 'tắt'} tính rủi ro cho vector ${vectorName} thành công.`,
     };
   }
@@ -293,8 +324,10 @@ class AIOpsService {
 
   getStatus() {
     const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+    const sample = this._currentStatus?.sample || this.collector.getSample();
     return {
       ...this._currentStatus,
+      sample,
       targetConcurrency: this.detector.targetConcurrency,
       vectorScores: this._currentStatus?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
       vectorConfig: { ...this.detector.vectorConfig },
@@ -354,11 +387,13 @@ class AIOpsService {
     return realHistory;
   }
 
-  calibrate(customBaselines = {}) {
-    this.detector.calibrate(customBaselines);
+  calibrate(options = {}) {
+    const report = this.detector.calibrate(options);
+    logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng trên server ${report.serverSpecs.cpuCores} cores / ${report.serverSpecs.totalRamMb}MB RAM`);
     return {
       success: true,
-      message: 'Đã tái hiệu chuẩn tham số máy học và đường chuẩn hệ thống thành công.',
+      message: `Đã tái hiệu chuẩn thành công theo phần cứng máy chủ (${report.serverSpecs.cpuCores} Cores, ${(report.serverSpecs.totalRamMb / 1024).toFixed(1)}GB RAM) cho quy mô ${report.targetConcurrency.toLocaleString('vi-VN')} người dùng!`,
+      data: report,
     };
   }
 }

@@ -2,10 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
 import { useAlertSafe } from '../../store/alert.context';
+import { useSettingsSafe } from '../../store/settings.context';
+import { useLanguageSafe } from '../../store/language.context';
+import soundService from '../../services/sound.service';
+import SettingsModal from './SettingsModal';
+import LanguageToggle from '../common/LanguageToggle';
 
 const Header = ({ onMenuToggle }) => {
   const alert = useAlertSafe();
+  const settingsCtx = useSettingsSafe();
+  const settings = settingsCtx?.settings;
+  const { t } = useLanguageSafe();
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const [showSettings, setShowSettings] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -67,6 +77,9 @@ const Header = ({ onMenuToggle }) => {
       if (alert) {
         const alertMsg = alertData.anomalies?.map(a => a.message).join(' | ') || `Threat Score ${alertData.threatScore}/100`;
         if (alertData.status === 'CRITICAL') {
+          if (settings?.soundEnabled !== false) {
+            soundService.playCriticalAlarm();
+          }
           alert.error(alertMsg, `🚨 AIOps: ${alertData.status}`);
         } else {
           alert.warning(alertMsg, `⚠️ AIOps: ${alertData.status}`);
@@ -81,7 +94,7 @@ const Header = ({ onMenuToggle }) => {
       socket.off('admin.notification', handleAdminNotification);
       socket.off('admin.security_alert', handleSecurityAlert);
     };
-  }, [socket]);
+  }, [socket, settings?.soundEnabled]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -134,13 +147,15 @@ const Header = ({ onMenuToggle }) => {
     }
   };
 
+  const shouldShowBadge = settings?.showUnreadBadge !== false && unreadCount > 0;
+
   return (
     <header className="fixed top-0 right-0 left-0 md:left-[280px] h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-page-padding z-30">
       <div className="flex items-center gap-4">
         <button onClick={onMenuToggle} className="md:hidden text-on-surface hover:text-primary transition-colors">
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">Personal Finance Admin</div>
+        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">{t('nav.brandTitle')}</div>
       </div>
 
       <div className="flex items-center gap-2 relative" ref={dropdownRef}>
@@ -151,14 +166,26 @@ const Header = ({ onMenuToggle }) => {
             setShowNotifications(!showNotifications);
             if (!showNotifications) fetchAlerts();
           }}
-          title="Thông báo hệ thống"
+          title={t('header.notifications')}
         >
           <span className="material-symbols-outlined text-[24px]">notifications</span>
-          {unreadCount > 0 && (
+          {shouldShowBadge && (
             <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
+        </button>
+
+        {/* Component Chuyển Đổi Ngôn Ngữ Pill [ EN | VI ] */}
+        <LanguageToggle />
+
+        {/* Nút Cài đặt Hệ thống */}
+        <button 
+          className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all cursor-pointer active:opacity-80"
+          onClick={() => setShowSettings(true)}
+          title={t('header.settings')}
+        >
+          <span className="material-symbols-outlined text-[24px]">settings</span>
         </button>
         
         {/* Dropdown danh sách cảnh báo */}
@@ -166,10 +193,10 @@ const Header = ({ onMenuToggle }) => {
           <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-xl shadow-[0_12px_28px_rgba(11,28,48,0.15)] border border-outline-variant z-50 overflow-hidden">
             <div className="px-4 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-on-surface">Cảnh báo hệ thống</span>
+                <span className="font-semibold text-sm text-on-surface">{t('header.systemAlerts')}</span>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                    {unreadCount} mới
+                    {unreadCount} {t('header.newBadge')}
                   </span>
                 )}
               </div>
@@ -178,18 +205,18 @@ const Header = ({ onMenuToggle }) => {
                 className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">refresh</span>
-                Làm mới
+                {t('header.refreshAlerts')}
               </button>
             </div>
 
             <div className="max-h-[380px] overflow-y-auto divide-y divide-outline-variant">
               {loading ? (
-                <div className="p-6 text-center text-secondary text-sm">Đang tải...</div>
+                <div className="p-6 text-center text-secondary text-sm">{t('common.loading')}</div>
               ) : notifications.length === 0 ? (
                 <div className="p-8 flex flex-col items-center justify-center gap-2 text-center">
                   <span className="material-symbols-outlined text-secondary text-[36px] opacity-40">notifications_off</span>
-                  <p className="text-secondary text-sm">Hệ thống đang hoạt động ổn định</p>
-                  <p className="text-secondary text-xs opacity-75">Chưa có cảnh báo nào phát sinh</p>
+                  <p className="text-secondary text-sm">{t('header.systemStableTitle')}</p>
+                  <p className="text-secondary text-xs opacity-75">{t('header.systemStableDesc')}</p>
                 </div>
               ) : (
                 notifications.map((item) => (
@@ -228,6 +255,12 @@ const Header = ({ onMenuToggle }) => {
           </div>
         )}
       </div>
+
+      {/* Modal Cài Đặt Hệ Thống */}
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </header>
   );
 };

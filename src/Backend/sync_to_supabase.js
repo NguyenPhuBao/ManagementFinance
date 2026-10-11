@@ -76,6 +76,13 @@ async function syncToSupabase() {
     await pool.query(sqlContent18);
     console.log('✅ Đã thực thi migration 18_expand_hash_and_ip_columns_capacity.sql thành công!');
 
+    // 2.4 Thực thi Migration 25: Tạo bảng maintenance_history
+    console.log('🚀 Tiến hành chạy migration 25_create_maintenance_history_table.sql ...');
+    const sqlPath25 = path.join(__dirname, 'database', '25_create_maintenance_history_table.sql');
+    const sqlContent25 = fs.readFileSync(sqlPath25, 'utf8');
+    await pool.query(sqlContent25);
+    console.log('✅ Đã thực thi migration 25_create_maintenance_history_table.sql thành công!');
+
 
     // 3. Kiểm tra lại cấu trúc bảng aiops_incident
     const colRes = await pool.query(`

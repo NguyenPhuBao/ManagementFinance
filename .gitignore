@@ -5,6 +5,11 @@ node_modules/
 
 # Documents
 Documents/
+SRS_FinanceManagement/
+
+# Test
+scratch/
+Test/
 
 # Build output
 dist/

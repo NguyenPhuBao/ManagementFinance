@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AlertProvider, useAlert } from '../store/alert.context';
+import { SettingsProvider } from '../store/settings.context';
 import AlertContainer from '../components/common/AlertToast';
 import Header from '../components/layout/Header';
 import notificationApi from '../api/notification.api';
@@ -152,5 +153,34 @@ describe('Admin-web Global Alert & Toast System Suite', () => {
       expect(screen.getByText(/14 mới/i)).toBeInTheDocument();
       expect(screen.getByText('Cảnh báo DDoS')).toBeInTheDocument();
     });
+  });
+
+  it('6. Thời gian tự ẩn Toast áp dụng chính xác theo cài đặt toastDuration trong Settings', () => {
+    vi.useFakeTimers();
+    localStorage.setItem('admin_system_settings', JSON.stringify({ toastDuration: 3000 }));
+
+    render(
+      <SettingsProvider>
+        <AlertProvider>
+          <AlertContainer />
+          <TestAlertTrigger />
+        </AlertProvider>
+      </SettingsProvider>
+    );
+
+    fireEvent.click(screen.getByText('Bắn Success'));
+    expect(screen.getByTestId('alert-toast-success')).toBeInTheDocument();
+
+    // Tại thời điểm 2500ms vẫn còn hiển thị
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(screen.getByTestId('alert-toast-success')).toBeInTheDocument();
+
+    // Vượt qua 3000ms -> Alert tự đóng chính xác!
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(screen.queryByTestId('alert-toast-success')).toBeNull();
   });
 });

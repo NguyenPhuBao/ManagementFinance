@@ -245,4 +245,74 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
 
     assert.strictEqual(nextCalled, true, 'Server-verified admin must pass quarantine');
   });
+
+  await t.test('12. Trusted IPs configured via process.env.ADMIN_TRUSTED_IPS are protected from quarantine', () => {
+    const originalEnv = process.env.ADMIN_TRUSTED_IPS;
+    try {
+      process.env.ADMIN_TRUSTED_IPS = '192.168.1.55,10.0.0.1';
+      const q = new AIOpsQuarantine();
+
+      assert.strictEqual(q.isProtectedIp('192.168.1.55'), true, 'Configured static IP must be protected');
+      assert.strictEqual(q.isProtectedIp('10.0.0.1'), true, 'Configured static IP must be protected');
+
+      const result = q.quarantine('192.168.1.55', 'Test blocking static trusted IP');
+      assert.strictEqual(result, null, 'Must reject quarantining static trusted IP');
+      assert.strictEqual(q.isQuarantined('192.168.1.55').quarantined, false);
+    } finally {
+      process.env.ADMIN_TRUSTED_IPS = originalEnv;
+    }
+  });
+
+  await t.test('13. registerAdminSession dynamically protects active Admin IP from quarantine', () => {
+    const q = new AIOpsQuarantine();
+    const dynamicAdminIp = '118.69.123.45';
+
+    // Ban đầu chưa đăng nhập thì chưa được bảo vệ
+    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), false);
+
+    // Admin đăng nhập thành công -> Đăng ký bảo vệ động
+    const ok = q.registerAdminSession(dynamicAdminIp, { userId: 10, username: 'boss_admin', ttlMs: 60000 });
+    assert.strictEqual(ok, true);
+
+    // Bây giờ IP này đã thuộc vùng an toàn
+    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), true);
+    const activeList = q.getActiveAdminIps();
+    assert.strictEqual(activeList.length, 1);
+    assert.strictEqual(activeList[0].ip, dynamicAdminIp);
+    assert.strictEqual(activeList[0].username, 'boss_admin');
+
+    // Thử phong tỏa IP này -> Bị chặn đứng từ chối
+    const blockRes = q.quarantine(dynamicAdminIp, 'Malicious probe test');
+    assert.strictEqual(blockRes, null, 'Must reject quarantining active admin IP');
+    assert.strictEqual(q.isQuarantined(dynamicAdminIp).quarantined, false);
+  });
+
+  await t.test('14. unregisterAdminSession releases dynamic IP protection upon logout', () => {
+    const q = new AIOpsQuarantine();
+    const dynamicAdminIp = '115.75.200.10';
+
+    q.registerAdminSession(dynamicAdminIp, { userId: 10, username: 'boss_admin' });
+    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), true);
+
+    // Admin đăng xuất -> Hủy đăng ký bảo vệ động
+    const unregOk = q.unregisterAdminSession(dynamicAdminIp);
+    assert.strictEqual(unregOk, true);
+    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), false, 'IP should no longer be protected after logout');
+    assert.strictEqual(q.getActiveAdminIps().length, 0);
+  });
+
+  await t.test('15. registerAdminSession auto-unquarantines if the IP was previously quarantined', () => {
+    const q = new AIOpsQuarantine();
+    const officeIp = '14.241.11.22';
+
+    // IP này lỡ bị phong tỏa trước đó
+    q.quarantine(officeIp, 'Brute force probe from coffee wifi');
+    assert.strictEqual(q.isQuarantined(officeIp).quarantined, true);
+
+    // Admin đăng nhập thành công từ IP này -> Tự động giải phóng phong tỏa ngay lập tức
+    q.registerAdminSession(officeIp, { userId: 1, username: 'admin' });
+
+    assert.strictEqual(q.isQuarantined(officeIp).quarantined, false, 'IP must be immediately unquarantined');
+    assert.strictEqual(q.isProtectedIp(officeIp), true);
+  });
 });

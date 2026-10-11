@@ -404,12 +404,19 @@ const authService = {
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
-    // Tự động gỡ phong tỏa IP khi đăng nhập thành công với quyền Quản trị viên (Admin Fast-Lane Recovery)
+    const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+
+    // Tự động đăng ký bảo vệ IP động & gỡ phong tỏa khi đăng nhập thành công với quyền Quản trị viên (Dynamic Admin Session Protection)
     if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {
       try {
         const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
-        const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
-        if (clientIp) {
+        if (clientIp && defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.registerAdminSession === 'function') {
+          defaultAIOpsQuarantine.registerAdminSession(clientIp, {
+            userId: account.idaccount,
+            username: account.username,
+            ttlMs: 24 * 60 * 60 * 1000,
+          });
+        } else if (clientIp && defaultAIOpsQuarantine) {
           defaultAIOpsQuarantine.unquarantine(clientIp);
         }
       } catch (_) {}
@@ -439,6 +446,7 @@ const authService = {
         type: account.type || 'Basic',
         status: account.status || 'Active',
         countdown: account.countdown ?? null,
+        currentClientIp: clientIp || null,
       },
     };
   },
