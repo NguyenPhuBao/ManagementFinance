@@ -378,6 +378,7 @@ void main() {
       expect(r.soTien, 1200000);
       expect(r.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)));
       expect(r.quaAi, isFalse, reason: 'luật thắng AI ở ô luật đã đọc được');
+      expect(luat.soTienCanKiem, isTrue);
     });
 
     test('loại: AI "chi" / "thu" được dùng; câu có nợ / vay → null như luật', () {

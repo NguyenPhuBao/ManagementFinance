@@ -106,15 +106,90 @@ void main() {
   });
 
   group('"sau" không phải "sáu" khi câu có dấu', () {
-    test('"hai triệu sau khi giảm" → KHÔNG ra 2.600.000', () {
+    test('"hai triệu sau khi giảm" → luật KHÔNG điền 2.600.000 (mơ hồ → chưa rõ như trước C4; Gemma còn chọn)', () {
       final kq = doc('hai triệu sau khi giảm');
-      expect(kq.soTien, 2000000.0);
+      expect(kq.soTien, isNot(2600000.0));
+      expect(kq.soTien, isNull);
       expect(kq.soTienCanKiem, isFalse);
-      expect(cachDocSoTien('hai triệu sau khi giảm', now: now), isNot(contains(2600000.0)));
+      expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
+      expect(cachDocSoTien('hai triệu sau khi giảm', now: now), contains(2600000.0));
     });
 
     test('cả câu không dấu: "hai trieu sau" → 2.600.000', () {
       expect(doc('hai trieu sau').soTien, 2600000.0);
+    });
+  });
+
+  group('I1 — dấu câu liền sau Y', () {
+    for (final cau in ['tiền điện 1 triệu 2, hôm qua', 'tiền điện 1 triệu 2.']) {
+      test('"$cau" → 1.200.000, cần kiểm', () {
+        final kq = doc(cau);
+        expect(kq.soTien, 1200000.0);
+        expect(kq.soTienCanKiem, isTrue);
+        expect(cachDocSoTien(cau, now: now), contains(1200000.0));
+      });
+    }
+  });
+
+  group('I2 — nhiều số tiền khi trộn cụm chắc và cụm nói', () {
+    for (final (cau, so) in [
+      ('tiền điện 1 triệu 2 hôm qua và nước 300k', 300000.0),
+      ('ăn phở 45k tiền điện 1 triệu 2', 45000.0),
+    ]) {
+      test('"$cau" → có cảnh báo, cụm chắc thắng', () {
+        final kq = doc(cau);
+        expect(kq.canhBao, contains(kCanhBaoNhieuSoTien));
+        expect(kq.soTien, so);
+      });
+    }
+    test('một mình cụm nói → không cảnh báo', () {
+      expect(doc('tiền điện 1 triệu 2').canhBao, isEmpty);
+    });
+  });
+
+  group('A — hôm / thứ chỉ là chỗ của tiền khi đi với mốc ngày', () {
+    test('dạng chữ số: "nộp 2 triệu 3 hôm sau" → 2.000.000 như trước C4', () {
+      final kq = doc('nộp 2 triệu 3 hôm sau');
+      expect(kq.soTien, 2000000.0);
+      expect(kq.soTienCanKiem, isFalse);
+    });
+    for (final cau in ['trả hai triệu ba hôm trước', 'mua hai triệu ba thứ đồ']) {
+      test('"$cau" → luật không chọn N1', () {
+        final kq = doc(cau);
+        expect(kq.soTien, isNull);
+        expect(kq.soTienCanKiem, isFalse);
+      });
+    }
+    test('"mua 2 triệu 3 thứ đồ" (chữ số) → 2.000.000', () {
+      expect(doc('mua 2 triệu 3 thứ đồ').soTien, 2000000.0);
+    });
+    test('"một triệu hai thứ hai" → 1.200.000', () {
+      final kq = doc('tiền điện một triệu hai thứ hai');
+      expect(kq.soTien, 1200000.0);
+      expect(kq.soTienCanKiem, isTrue);
+    });
+    test('cả câu không dấu: "mot trieu hai hom qua" → 1.200.000', () {
+      expect(doc('mot trieu hai hom qua').soTien, 1200000.0);
+    });
+  });
+
+  group('B — câu TRỘN dấu: chữ ASCII trong câu có dấu là mơ hồ', () {
+    test('"tiền điện một triệu tu" → chưa rõ, Gemma còn chọn 1.400.000', () {
+      final kq = doc('tiền điện một triệu tu');
+      expect(kq.soTien, isNull);
+      expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
+      expect(cachDocSoTien('tiền điện một triệu tu', now: now), contains(1400000.0));
+    });
+  });
+
+  group('tỷ và C3', () {
+    test('"1 tỷ 2" → 1.200.000.000, cần kiểm', () {
+      final kq = doc('mua xe 1 tỷ 2');
+      expect(kq.soTien, 1200000000.0);
+      expect(kq.soTienCanKiem, isTrue);
+    });
+    test('chonSoTienTrongCau hưởng N1: "đặt ngân sách ăn uống 2 triệu 5" → 2.500.000', () {
+      expect(chonSoTienTrongCau('đặt ngân sách ăn uống 2 triệu 5', now: now)?.giaTri, 2500000.0);
     });
   });
 
