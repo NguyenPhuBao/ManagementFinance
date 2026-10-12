@@ -1,7 +1,8 @@
 /// Số viết bằng CHỮ trong một câu tiếng Việt — **định nghĩa duy nhất** (C2 task 1, spec
 /// `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2.6).
 ///
-/// Ba nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
+/// Bốn nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), ngày nêu trong câu (`ngay_trong_cau.dart`, qua
+/// [docSoNhoBangChu]), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
 /// số chữ cũng là con số, bẫy 4.42) và bộ chỉnh tham số (`chinh_tham_so.dart` — ngưỡng tiền của câu hỏi). Trước
 /// 2026-09-29 hai tệp sau mỗi tệp một bộ đọc riêng, và **cả hai mù hàng chục**: *"năm mươi nghìn"* ra rỗng, nên
 /// *"dưới năm mươi nghìn"* không thành ngưỡng nào trong khi *"dưới 50k"* thì có.
@@ -252,6 +253,9 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
     if (n == null || (n.loai != _Loai.so && n.loai != _Loai.soSauChuc)) return null;
     final g = n.giaTri;
     if (g.isNaN || g < 1 || g > 9 || laDonViLon(k + 1)) return null;
+    final ke = nghia(k + 1)?.loai;
+    if (ke == _Loai.chuc || ke == _Loai.muoiKhongDau) return null; // "mười hai mươi nghìn": chữ "hai" thuộc "hai mươi"
+
     return g.toInt();
   }
 
@@ -270,4 +274,12 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
     return u == null ? (g.toInt() * 10, i + 2) : (g.toInt() * 10 + u, i + 3);
   }
   return (g.toInt(), i + 1);
+}
+
+/// [tu] (một token, NFC + chữ thường) có phải ĐƠN VỊ TIỀN không: *trăm · nghìn · ngàn · triệu · tỷ · tỉ* (dạng có dấu hoặc
+/// không dấu hoàn toàn, như [timSoBangChu]) hoặc viết tắt *k · tr · củ*. Cho chỗ cần biết một con số đứng trước nó là
+/// tiền chứ không phải ngày / tháng (*"mùng 5 tháng 3 triệu"*).
+bool laTuDonViTien(String tu) {
+  final l = _nghiaCua(tu)?.loai;
+  return l == _Loai.tram || l == _Loai.bac || tu == 'k' || tu == 'tr' || tu == 'củ' || tu == 'cu';
 }

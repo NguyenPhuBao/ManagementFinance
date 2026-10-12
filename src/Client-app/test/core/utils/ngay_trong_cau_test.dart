@@ -301,6 +301,27 @@ void main() {
       expect(timNgayTrongCau('mùng 31', DateTime(2026, 11, 2)), isNull);
     });
 
+    // Vòng sửa 2: tháng không nuốt tiền; "sau" không phải số tháng; số liền chữ; mười hai mươi.
+    test('vòng sửa 2: tháng ngay trước đơn vị tiền → rơi về tháng này', () {
+      expect(timNgayTrongCau('đóng tiền nhà mùng 5 tháng 3 triệu', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('tiền nhà mùng năm tháng ba triệu', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('mùng 5 tháng 10 triệu', mot10)?.ngay, DateTime(2026, 10, 5));
+    });
+    test('vòng sửa 2: "tháng sau" không phải tháng 6', () {
+      expect(timNgayTrongCau('trả nợ mùng 5 tháng sau 2 triệu', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('mùng năm tháng sau', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('ngày 5 tháng sau', mot10), isNull);
+      expect(timNgayTrongCau('mùng năm tháng sáu', mot10)?.ngay, DateTime(2026, 6, 5));
+    });
+    test('vòng sửa 2: số liền chữ không phải ngày', () {
+      expect(timNgayTrongCau('lì xì mùng 10k', mot10), isNull);
+      expect(timNgayTrongCau('mùng 5k', mot10), isNull);
+    });
+    test('vòng sửa 2: "mười hai mươi nghìn" không phải một số', () {
+      expect(timNgayTrongCau('ngày năm tháng mười hai mươi nghìn', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('mùng mười hai mươi nghìn', mot10)?.ngay, DateTime(2026, 9, 10));
+    });
+
     // Luật lịch: tháng ngắn và năm nhuận — cùng nếp dd/mm (ngày không tồn tại → bỏ, không kẹp).
     test('tháng 30 ngày: "ngày 31 tháng 9" và "ngày ba mươi mốt tháng chín" → không phải ngày', () {
       expect(timNgayTrongCau('ngày 31 tháng 9', mot10), isNull);

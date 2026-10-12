@@ -9,10 +9,14 @@
 /// - *ngày X tháng Y* (X, Y bằng chữ hoặc số: *ngày năm tháng chín*, *ngày 5 tháng 9*) → ngày ấy của năm hiện tại; *mùng /
 ///   mồng X* → ngày X tháng này. Cùng nếp *dd/mm*: rơi vào tương lai quá 7 ngày thì lùi (năm trước / tháng trước); ngày
 ///   không tồn tại thì bỏ. Câu NÓI (C4): máy nghe trả chữ hoặc số. ⚠️ *"… năm Z"* sau tháng bị bỏ qua (Z không được đọc).
+/// - (ngày) *mùng / mồng X tháng Y* cũng đọc được. ⚠️ *mùng / mồng* chỉ nhận dạng CÓ DẤU (*mung* còn là *mừng*, *mong*,
+///   *mộng*; cùng quy ước `cauNhacNgay`); *mùng 2/9* là dd/mm (luật dd/mm thắng); số liền chữ (*mùng 5k*, *10k*) không phải
+///   ngày; số tháng ngay trước đơn vị tiền (*mùng 5 tháng 3 triệu*) là tiền, tháng rơi về tháng này; *tháng sau* không phải
+///   tháng 6 (*sáu* có dấu mới là 6).
 /// - *dd/mm* (có thể kèm *ngày* đứng trước, hoặc */yyyy* sau) → ngày ấy của năm hiện tại; không tồn tại thì bỏ; rơi vào
 ///   tương lai quá 7 ngày thì lùi một năm (gõ *30/12* hôm 3/1 là 30/12 năm ngoái).
 ///
-/// So trên chữ bỏ dấu, trọn từ — người gõ nhanh viết không dấu. ⚠️ Một ngoại lệ: *thu* không dấu còn là động từ *thu*
+/// So trên chữ bỏ dấu, trọn từ — người gõ nhanh viết không dấu (ngoại lệ *mùng / mồng* của dạng thứ tư: có dấu). ⚠️ Một ngoại lệ: *thu* không dấu còn là động từ *thu*
 /// tiền (*"thu hai triệu"*), nên chỉ *thứ* **có dấu** mới nhận dạng chữ (*thứ hai*); *thu* không dấu chỉ nhận dạng số
 /// (*thu 5*) và không được có đơn vị tiền ngay sau (*thu 2 triệu*, *thu 2tr*).
 ///
@@ -238,7 +242,7 @@ NgayTrongCau _theoTuan(String s, DateTime homNay, int thu, int bd, int kt) {
 DateTime _ganNhat(DateTime homNay, int thu) =>
     DateTime(homNay.year, homNay.month, homNay.day - (homNay.weekday - thu) % 7);
 
-final RegExp _tuNgay = RegExp(r'[\p{L}\p{M}]+|\d+', unicode: true);
+final RegExp _tuNgay = RegExp(r'[\p{L}\p{M}]+|\d+[\p{L}\p{M}]*', unicode: true);
 final RegExp _haiChuSo = RegExp(r'^\d{1,2}$');
 
 bool _laMung(String t) => t == 'mùng' || t == 'mồng';
@@ -253,5 +257,9 @@ bool _laMung(String t) => t == 'mùng' || t == 'mồng';
 /// *tháng Y* ở token [i] (Y chữ số, chữ, hoặc *tư* — tên chuẩn của tháng 4). `(tháng, token kế tiếp)` hoặc `null`.
 (int, int)? _thangSau(List<String> ws, int i) {
   if (i >= ws.length || (ws[i] != 'tháng' && ws[i] != 'thang')) return null;
-  return _soNgay(ws, i + 1, tu: true);
+  if (i + 1 < ws.length && ws[i + 1] == 'sau') return null; // "tháng sau" (kế tiếp) — không phải tháng 6 (sáu CÓ dấu)
+  final r = _soNgay(ws, i + 1, tu: true);
+  // "mùng 5 tháng 3 triệu": số liền trước đơn vị tiền là tiền, không phải tháng.
+  if (r == null || (r.$2 < ws.length && laTuDonViTien(ws[r.$2]))) return null;
+  return r;
 }

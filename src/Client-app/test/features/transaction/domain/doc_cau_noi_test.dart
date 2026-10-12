@@ -354,4 +354,22 @@ void main() {
     final c = doc('đi chơi mùng 2/9 500k');
     expect((c.ngay, c.soTien, c.ghiChu), (DateTime(2026, 9, 2), 500000.0, 'đi chơi mùng')); // y như base: dd/mm không nuốt chữ "mùng"
   });
+
+  test('vòng sửa 2: tháng không nuốt tiền, số liền chữ là tiền, ghi chú sạch', () {
+    for (final (cau, ngay, tien) in [
+      ('đóng tiền nhà mùng 5 tháng 3 triệu', DateTime(2026, 10, 5), 3000000.0),
+      ('tiền nhà mùng năm tháng ba triệu', DateTime(2026, 10, 5), 3000000.0),
+      ('mùng 5 tháng 10 triệu', DateTime(2026, 10, 5), 10000000.0),
+      ('ngày năm tháng mười hai mươi nghìn', DateTime(2026, 10, 5), 20000.0),
+      ('mùng mười hai mươi nghìn', DateTime(2026, 9, 10), 20000.0),
+    ]) {
+      final kq = doc(cau);
+      expect((kq.ngay, kq.soTien), (ngay, tien), reason: cau);
+    }
+    expect(doc('lì xì mùng 10k').ngay, isNull);
+    expect(doc('lì xì mùng 10k').soTien, 10000.0);
+    expect(doc('mùng 5k').soTien, 5000.0);
+    expect(doc('ngày mùng năm tháng chín mua sách').ghiChu, 'mua sách');
+    expect(doc('ngày mùng 5 tháng 9 mua sách').ghiChu, 'mua sách');
+  });
 }
