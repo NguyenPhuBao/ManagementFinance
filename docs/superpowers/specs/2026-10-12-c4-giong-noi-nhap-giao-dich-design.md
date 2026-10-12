@@ -8,6 +8,27 @@
 > C2 (`specs/2026-09-28-c2-nhap-giao-dich-bang-cau-design.md`), A5 (`specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md`
 > — nửa *chụp hoá đơn* của C4 đã làm ở đó). C4 nay chỉ còn **nửa giọng nói**.
 
+> 🔧 **Soát với mã lúc lập kế hoạch (2026-10-12)** — khối này THẮNG thân spec ở chỗ hai bên khác nhau:
+>
+> 1. **§4.2:** dời hai hàm đóng hàng thành **hàm thường** ở `transaction/data/dong_hang_bien_dong.dart`
+>    (`dongHangBienDong`, `dongHangChuyenKhoan` — nhận `ThemGiaoDichNguon`), không thêm phương thức vào interface: interface
+>    và bản giả `NguonThemGiaoDichGia` không đổi.
+> 2. **§3.2 N1 sửa luôn một lỗi sẵn có:** câu chữ số *"1 triệu 2"* hôm nay luật đọc **1.000.000, im lặng** —
+>    `_mauSoDonVi` khớp *"1 triệu"*, còn `_mauTrieuLe` (đọc đúng 1.200.000) chỉ nằm trong `cachDocSoTien`.
+> 3. **§3.3 chuyển ví bằng chữ:** nguyên nhân là `_sauLaChuSoChu` so trên chữ **bỏ dấu** — *"từ"* thành `tu` = *tư* (4),
+>    cả cụm *"năm trăm nghìn"* bị gạt là "chưa rõ". Sửa: so chữ số chữ **có dấu** (gõ không dấu hoàn toàn vẫn nhận).
+> 4. **§3.3 ví gọi tắt:** tên bỏ chữ *Ví* chỉ được nhận **ngay sau** *ví · bằng · qua · từ · sang · vào · đến · tới*
+>    (lookbehind), và làm ở `doc_cau_giao_dich.dart`, không ở `khop_ten.dart` — nhận ở mọi chỗ thì *"mua sách tiết kiệm"*
+>    chọn ví *Ví tiết kiệm*.
+> 5. **§3.2 N2:** chữ đứng sau con số so **có dấu** — *"quả"* bỏ dấu là `qua`, trùng *"qua"* (trả qua ví).
+> 6. **§3.3 *mùng X*:** tháng này; rơi vào tương lai > 7 ngày thì tháng trước (cùng nếp *dd/mm* lùi năm).
+> 7. **Lan sang C3:** lệnh tạo ở màn Trợ lý dùng chung `chonSoTienTrongCau` (một định nghĩa) → N1 / N2 áp luôn cho câu lệnh
+>    tạo (*"đặt ngân sách ăn uống 2 triệu 5"* → 2.500.000). Cố ý; test C3 mã hoá chỗ hụt cũ phải sửa theo.
+> 8. **§4.3:** `chepLoi` ở interface riêng **`SlmChepLoi`** (khuôn `SlmDocAnh`) — 8 bản giả `SlmRuntime` trong test không
+>    đổi. Luật nạp tách thành hàm thuần **`quyetDinhNap`** (`ai_edge/domain/nap_da_phuong_thuc.dart`) để test bốn chuỗi.
+> 9. **§2.2 *có mạng*:** thêm `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi → `true`); lớp này vốn
+>    chỉ có luồng sự kiện ổn định 3 giây.
+
 ## 1. Quyết định người dùng chốt (2026-10-12)
 
 | # | Câu hỏi | Chốt |
