@@ -12,7 +12,7 @@ import 'package:flutter/foundation.dart';
 import '../../ai_edge/data/slm_runtime.dart';
 import '../domain/chep_loi.dart';
 
-/// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần rộng gấp sáu.
+/// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần 60 s tính CẢ pha đóng + nạp bản hai cờ (CPU nạp bản chữ ≈ 27 s, bản hai cờ chưa đo) — con số phải đo trên máy.
 const Duration kThoiHanChepLoi = Duration(seconds: 60);
 
 class ChepLoiBangGemma {
@@ -60,7 +60,8 @@ class ChepLoiBangGemma {
     }
   }
 
-  /// Người dùng bấm Huỷ: lượt đang chạy trả `null`, engine thôi giải mã.
+  /// Người dùng bấm Huỷ: lượt đang chạy trả `null`; engine thôi giải mã, hoặc — nếu đang nạp mô hình — lượt ấy bị bỏ
+  /// ngay khi nạp xong (không tạo chat).
   Future<void> huy() async {
     _luot++;
     await moHinh.huy();
