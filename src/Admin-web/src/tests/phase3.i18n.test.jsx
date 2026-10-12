@@ -231,7 +231,7 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getByText('Điều Hành Bảo Trì & Phát Sóng Thông Báo')).toBeInTheDocument();
       expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
       expect(screen.getByText('Phát Thông Báo')).toBeInTheDocument();
-      expect(screen.getByText('Kích Hoạt Bảo Trì Tức Thì')).toBeInTheDocument();
+      expect(screen.getByText('Kích Hoạt Bảo Trì Khẩn Cấp')).toBeInTheDocument();
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
     });
 
