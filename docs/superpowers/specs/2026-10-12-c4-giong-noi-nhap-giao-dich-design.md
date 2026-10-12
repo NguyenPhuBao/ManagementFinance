@@ -28,6 +28,13 @@
 >    đổi. Luật nạp tách thành hàm thuần **`quyetDinhNap`** (`ai_edge/domain/nap_da_phuong_thuc.dart`) để test bốn chuỗi.
 > 9. **§2.2 *có mạng*:** thêm `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi → `true`); lớp này vốn
 >    chỉ có luồng sự kiện ổn định 3 giây.
+> 10. **§3.2 N1 — điều kiện vị trí (lượt soát kế hoạch 2026-10-12, người dùng chọn):** luật chỉ **chọn** *X đơn vị Y* khi
+>     Y đứng **chỗ của tiền** — cùng điều kiện của N2 (cuối câu, hoặc ngay trước dấu câu / chữ ví · bằng · trả · qua · từ
+>     · sang · vào · đến · tới · hôm · ngày · mùng · thứ). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai triệu năm
+>     nay"*, *"nộp hai triệu ba ngày sau"*, *"một triệu hai tiền sách"* → luật để trống, Gemma chọn (như trước C4).
+>     `cachDocSoTien` vẫn liệt kê mọi cách đọc. Cùng lượt: chữ số chữ đứng sau cụm chỉ so **không dấu** khi **cả câu**
+>     không dấu (*"hai triệu sau khi giảm"* không thành 2.600.000), và `cachDocSoTien` dùng chung phép đọc ấy; tập chữ
+>     đứng sau tiền của N2 thêm *ví · đến · tới*.
 
 ## 1. Quyết định người dùng chốt (2026-10-12)
 
