@@ -281,8 +281,39 @@ void main() {
       'ăn phở 45 ở quán',
       'trả 50 ngay',
       'đổ xăng 50 hôm sau',
+      'tiền điện tháng mười',
+      'cà phê 25 vi vu', // P19: "vi" không dấu chỉ là chữ sau tiền khi CẢ CÂU không dấu
     ]) {
       test('"$cau" → luật không đọc số tiền', () => expect(doc(cau).soTien, isNull));
+    }
+
+    for (final (cau, so) in [
+      ('do xang nam chuc', 50000.0),
+      ('an pho 45 bang tien mat', 45000.0),
+      ('chuyển 500 đến ví tiền mặt', 500000.0),
+      ('chuyển 500 tới ví tiền mặt', 500000.0),
+    ]) {
+      test('"$cau" → $so (không dấu hoàn toàn / đến · tới)', () => expect(doc(cau).soTien, so));
+    }
+
+    test('luật N2 thắng AI: "cà phê với Nam mất ba chục" → 30.000 do luật, không cần AI', () {
+      final kq = docCauGiaoDich(
+        'cà phê với Nam mất ba chục',
+        now: now,
+        vi: [tienMat],
+        chonDuoc: const [],
+        ai: const KetQuaAi(soTien: 30000),
+      );
+      expect(kq.soTien, 30000.0);
+      expect(kq.quaAi, isFalse);
+      expect(kq.oThieu, isNot(contains(OThieu.soTien)));
+    });
+
+    for (final cau in ['sửa xe hai mươi ba trăm', 'sửa xe mười ba trăm']) {
+      test('bất biến "$cau": nếu luật chọn số thì số ∈ cachDocSoTien', () {
+        final kq = doc(cau);
+        if (kq.soTien != null) expect(cachDocSoTien(cau, now: now), contains(kq.soTien), reason: 'so luat chon');
+      });
     }
 
     test('⚠️ "quả" bỏ dấu là "qua" — so chữ đứng sau CÓ DẤU', () {

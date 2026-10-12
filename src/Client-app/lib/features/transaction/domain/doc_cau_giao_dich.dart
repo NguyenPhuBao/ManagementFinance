@@ -876,8 +876,8 @@ _CumTien? _chonSoTien(
     if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue; // "năm 2026"
     final gt = double.parse(chuSo);
     if (gt < 1000) {
-      // N2 (C4): "đổ xăng 50", "sửa xe 350" → × 1.000. Không khi có "đồng" (người nói nói rõ đơn vị), số ≤ 31 sau
-      // tháng / ngày, hay đứng trước danh từ khác ("2 ly", "15 phút") — chỉ ở chỗ của tiền ([_dungChoTien]).
+      // N2 (C4): "đổ xăng 50", "sửa xe 350" → × 1.000. Không khi có "đồng" (người nói nói rõ đơn vị), số đứng sau
+      // tháng / ngày / mùng / mồng (mốc lịch), hay đứng trước danh từ khác ("2 ly", "15 phút") — chỉ ở chỗ của tiền ([_dungChoTien]).
       final coDong = m.group(0)!.length > m.group(1)!.length;
       if (gt >= 10 &&
           !coDong &&
@@ -915,13 +915,7 @@ _CumTien? _chonSoTien(
       ));
       continue;
     }
-    if (c.giaTri < 1000) {
-      // N2 (C4): "ba trăm rưỡi" = 350 → 350.000.
-      if (c.giaTri >= 10 && _dungChoTien(s, b, c.ketThuc, cauKhongDau: kd)) {
-        cum.add((batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri * 1000, lit: false, noi: true));
-      }
-      continue;
-    }
+    if (c.giaTri < 1000) continue; // < 1.000: N2 ở vòng `batBuocDonVi: false` bên dưới ("ba trăm rưỡi" = 350 cũng ở đó)
     cum.add((batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri, lit: false, noi: false));
   }
 

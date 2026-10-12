@@ -362,7 +362,8 @@ void main() {
           duongTep: () async => '/gia/gemma.litertlm',
         );
 
-    testWidgets('⭐ AI điền ô luật bỏ trống (danh mục; C4 2026-10-12: "ba chục" nay luật tự đọc) → điền, nguồn "Đọc bằng AI"', (tester) async {
+    // C4 2026-10-12: luật chọn N2 — "ba chục" nay luật tự đọc nên câu phương tiện là "45 ở quán".
+    testWidgets('⭐ luật không đọc được "45 ở quán" → AI điền, nguồn "Đọc bằng AI"', (tester) async {
       await tester.pumpWidget(app(
         docAi: aiTraVe({
           'so_tien': 45000,

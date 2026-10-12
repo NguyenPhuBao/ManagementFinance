@@ -359,7 +359,8 @@ void main() {
       expect(KetQuaAi.tuThamSo({'so_tien': 0}).soTien, isNull);
     });
 
-    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "45" (không ở chỗ của tiền; C4 2026-10-12: luật chọn N2 nên "ba chục" cuối câu đã luật tự đọc)', () {
+    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "45" (không ở chỗ của tiền)', () {
+      // C4 2026-10-12: luật chọn N2 — "ba chục" cuối câu nay luật tự đọc nên câu phương tiện là "45 ở quán".
       final r = docAi('cà phê 45 ở quán', const KetQuaAi(soTien: 45000));
       expect(r.soTien, 45000);
       expect(r.quaAi, isTrue);
@@ -506,7 +507,7 @@ void main() {
     });
 
     test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
-      expect(luat('cà phê với bạn 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu},
+      expect(luat('cà phê ba chục ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu},
           reason: 'C4 2026-10-12: luật chọn N2 — câu "mất ba chục" đổi sang "45 ở quán"; số chưa đọc được còn nằm trong ghi chú');
       // C4 2026-10-12: "một triệu hai" nay luật đọc được (N1) nên không còn là ví dụ ô thiếu; "45" trơ trọi vẫn chưa đọc.
       expect(luat('cà phê 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu});
