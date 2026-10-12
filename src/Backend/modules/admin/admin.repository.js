@@ -361,14 +361,22 @@ const adminRepository = {
     return {
       items: rows.map((l) => ({
         id: l.idlog,
+        idlog: l.idlog,
         idaccount: l.idaccount,
         username: l.account?.username || null,
+        account: {
+          username: l.account?.username || null,
+        },
         ip: l.account?.refreshtoken?.[0]?.ip_address || '127.0.0.1',
         request: l.request,
+        action: l.request,
         req_status: l.req_status,
+        status: l.req_status,
         reason: l.reason,
         timeReq: l.time_req,
         timeRes: l.time_res,
+        time_req: l.time_req,
+        time_res: l.time_res,
       })),
       total,
     };

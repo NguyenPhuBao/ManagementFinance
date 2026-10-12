@@ -901,20 +901,28 @@ const authService = {
       // Format time string theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
       const timeFormatted = formatVnTime(log.time_req || data.time_req || Date.now());
 
+      const timeReqIso = log.time_req ? log.time_req.toISOString() : (data.time_req instanceof Date ? data.time_req.toISOString() : new Date().toISOString());
+      const timeResIso = log.time_res ? log.time_res.toISOString() : (data.time_res instanceof Date ? data.time_res.toISOString() : new Date().toISOString());
+
       // Emit real-time event to Admin-web
       const { emitAuditActivity } = require('../../core/socket');
       emitAuditActivity({
         id: log.idlog,
+        idlog: log.idlog,
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
         username: data.userDetails?.username || null,
         ip: data.ip || '127.0.0.1',
         action: data.request,
+        request: data.request,
         reason: data.reason || null,
         status: reqStatus,
+        req_status: reqStatus,
         time: timeFormatted,
-        time_req: log.time_req ? log.time_req.toISOString() : new Date().toISOString(),
-        time_res: log.time_res ? log.time_res.toISOString() : new Date().toISOString(),
+        timeReq: timeReqIso,
+        timeRes: timeResIso,
+        time_req: timeReqIso,
+        time_res: timeResIso,
       });
 
       return log;

@@ -21,4 +21,18 @@ describe('getAuditLogs', () => {
     const result = await adminService.getAuditLogs({ page: 1, limit: 9999 });
     assert.ok(result.limit <= 200, 'limit should be <= 200');
   });
+
+  it('should return items with dual-compatible time and id fields', async () => {
+    const result = await adminService.getAuditLogs({ page: 1, limit: 1 });
+    if (result.items.length > 0) {
+      const item = result.items[0];
+      assert.ok('id' in item, 'Should have id');
+      assert.ok('idlog' in item, 'Should have idlog');
+      assert.ok('timeReq' in item, 'Should have timeReq');
+      assert.ok('time_req' in item, 'Should have time_req');
+      assert.ok('timeRes' in item, 'Should have timeRes');
+      assert.ok('time_res' in item, 'Should have time_res');
+    }
+  });
 });
+
