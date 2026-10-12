@@ -470,4 +470,34 @@ void main() {
       expect(doc('mua ao hai tram nghin bang MB Bank', vi: [tienMat, mb]).walletId, 'mb');
     });
   });
+
+  group('ví gọi tắt — vòng sửa 1', () {
+    final vcb = makeWallet(id: 'vcb', name: 'Ví VCB').copyWith(type: 'bank');
+    final vcbL = makeWallet(id: 'vcbl', name: 'Ví VCB Lương').copyWith(type: 'bank');
+    final mb = makeWallet(id: 'mb', name: 'Ví MB Bank').copyWith(type: 'bank');
+    final mbTran = makeWallet(id: 'mbt', name: 'MB Bank').copyWith(type: 'bank');
+    final momo = makeWallet(id: 'momo', name: 'Ví MoMo').copyWith(type: 'bank');
+    final tk = makeWallet(id: 'tk', name: 'Tiết kiệm').copyWith(type: 'saving');
+
+    test('hai tên gọi chung tiền tố: tên dài thắng, ghi chú không sót "lương", loại chi', () {
+      final kq = doc('mua áo 200k bằng VCB lương', vi: [tienMat, vcb, vcbL]);
+      expect(kq.walletId, 'vcbl');
+      expect(kq.loai, isNot('thu'));
+      expect(kq.ghiChu, 'mua áo');
+    });
+
+    test('"chuyển 500k sang tiết kiệm vì MB Bank tặng voucher" → nguồn không phải Ví MB Bank', () {
+      final kq = doc('chuyển 500k sang tiết kiệm vì MB Bank tặng voucher', vi: [tienMat, mb, tk]);
+      expect(kq.walletId, isNot('mb'));
+    });
+
+    test('"qua" của "hôm qua" không phải giới từ', () {
+      expect(doc('hôm qua MoMo giảm giá trà sữa 30k', vi: [tienMat, momo]).walletId, isNull);
+      expect(doc('hôm qua trà sữa 30k bằng MoMo', vi: [tienMat, momo]).walletId, 'momo');
+    });
+
+    test('có cả "Ví MB Bank" lẫn "MB Bank": tên đầy đủ thắng', () {
+      expect(doc('mua áo 200k bằng MB Bank', vi: [tienMat, mb, mbTran]).walletId, 'mbt');
+    });
+  });
 }

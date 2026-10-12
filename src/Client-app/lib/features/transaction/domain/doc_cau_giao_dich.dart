@@ -759,7 +759,8 @@ List<_ViNhac> _viNhacTrongCau(String s, String b, List<Wallet> dsVi, List<_Khoan
 /// Chữ đứng ngay trước TÊN GỌI TẮT của ví (C4 §3.3, khối 🔧 ý 4), so CÓ DẤU khi câu có dấu: *"vì"* bỏ dấu là *vi* —
 /// *"đi chơi vì MB Bank tặng voucher"* không nêu ví. Dạng không dấu chỉ khi CẢ CÂU không dấu ([_cauKhongDau]).
 /// Cùng giới từ với [_sauSoTienCoDau] / [_sauSoTienKhongDau] nhưng vai khác: ở đó chữ đứng SAU số tiền, ở đây đứng
-/// TRƯỚC tên ví (bỏ *hôm · ngày · mùng · mồng · thứ · trả*, thêm hai tập riêng — không dùng chung được).
+/// TRƯỚC tên ví (bỏ *hôm · ngày · mùng · mồng · thứ · trả*). Họ hàng cùng vị trí: [_tuTruocVi] (chữ ghi chú bỏ trước
+/// ví), [_gioiTuDich] / [_gioiTuNguon] (hướng chuyển ví) — tập này là hợp của chúng cộng *qua*, tách theo dấu.
 const Set<String> _truocTenGoiViCoDau = {'ví', 'bằng', 'qua', 'từ', 'sang', 'vào', 'đến', 'tới'};
 const Set<String> _truocTenGoiViKhongDau = {'vi', 'bang', 'qua', 'tu', 'sang', 'vao', 'den', 'toi'};
 
@@ -777,13 +778,22 @@ String? _tenGoiCuaVi(String ten) {
 /// [thuong] là câu chữ thường CÒN DẤU (xét giới từ), [b] là câu bỏ dấu đã bỏ các đoạn đã dùng (tìm tên) — cùng độ dài.
 List<_ViNhac> _tenGoiViTrongCau(String thuong, String b, List<Wallet> dsVi) {
   final tap = _cauKhongDau(thuong) ? _truocTenGoiViKhongDau : _truocTenGoiViCoDau;
+  // Chữ đứng trước xét trên câu ĐÃ BỎ các đoạn đã dùng (b trống ở đó): *"qua"* của *"hôm qua"* không phải giới từ.
+  final conLai = String.fromCharCodes([
+    for (var i = 0; i < thuong.length; i++)
+      b.codeUnitAt(i) == 0x20 && thuong.codeUnitAt(i) != 0x20 ? 0x20 : thuong.codeUnitAt(i),
+  ]);
+  // Tên dài trước và giữ chỗ (nếp `timCacTenTrongCau`): *"Ví VCB"* không nuốt đầu *"VCB lương"* của *"Ví VCB Lương"*.
+  final ung = <(String, Wallet)>[
+    for (final w in dsVi)
+      if (_tenGoiCuaVi(w.name) case final g?) (removeVietnameseTones(g), w),
+  ]..sort((x, y) => y.$1.length.compareTo(x.$1.length));
   final kq = <_ViNhac>[];
-  for (final w in dsVi) {
-    final goi = _tenGoiCuaVi(w.name);
-    if (goi == null) continue;
-    final than = removeVietnameseTones(goi).split(' ').map(RegExp.escape).join(r'\s+');
+  for (final (goi, w) in ung) {
+    final than = goi.split(' ').map(RegExp.escape).join(r'\s+');
     for (final m in RegExp('(?<![a-z0-9])$than(?![a-z0-9])').allMatches(b)) {
-      final truoc = _tuCuoi.firstMatch(thuong.substring(0, m.start));
+      if (kq.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
+      final truoc = _tuCuoi.firstMatch(conLai.substring(0, m.start));
       if (truoc == null || !tap.contains(truoc.group(1))) continue;
       kq.add((vi: w, batDau: m.start, ketThuc: m.end));
     }
