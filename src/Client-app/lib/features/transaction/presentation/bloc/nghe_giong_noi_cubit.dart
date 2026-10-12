@@ -14,7 +14,7 @@ import '../../domain/do_im_lang.dart';
 import 'nghe_giong_noi_state.dart';
 
 /// Hạn chót cho một lượt nghe Android: gói `speech_to_text` không callback nào nếu bộ nhận dạng bận mà không bắt đầu.
-const Duration kHanNgheAndroid = Duration(seconds: 25); // kNgheToiDa (20 s) + 5 s
+final Duration kHanNgheAndroid = kNgheToiDa + const Duration(seconds: 5);
 
 class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
   NgheGiongNoiCubit({required NguonGiongNoi nguon})
@@ -31,8 +31,7 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
   int _soMau = 0;
   Timer? _han;
 
-  /// Lượt `gemma.chep` đang chạy (đã nuốt lỗi) — lượt chép mới chờ nó xong, không chồng hai lượt lên một mô hình.
-  Future<void> _chepDangChay = Future.value();
+  Future<void>? _dong;
 
   void _phat(NgheGiongNoiState s) {
     if (!isClosed) emit(s);
@@ -108,7 +107,8 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
           if (!conLuot()) return;
           if (xong) {
             _huyHan();
-            _xong(chu);
+            final cau = chu.trim().isNotEmpty ? chu : state.chuTam;
+            _ketThucNghe(cau);
           } else {
             _phat(state.copyWith(chuTam: chu));
           }
@@ -124,19 +124,24 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
         onDung: () {
           if (!conLuot()) return;
           _huyHan();
-          final tam = state.chuTam.trim();
-          if (tam.isNotEmpty) return _xong(tam);
-          _phat(state.copyWith(trangThai: TrangThaiNghe.cho));
-          _bao(ThongBaoNghe.khongNgheRo);
+          _ketThucNghe(state.chuTam);
         },
       );
     } catch (e) {
       debugPrint('[GiongNoi] nghe Android lỗi: $e');
-      _huyHan();
       if (!conLuot()) return;
+      _huyHan();
       _phat(state.copyWith(trangThai: TrangThaiNghe.cho, chuTam: ''));
       _bao(ThongBaoNghe.loiChung);
     }
+  }
+
+  /// Một đường kết thúc lượt Android: có chữ thì thành câu, không thì "không nghe rõ".
+  void _ketThucNghe(String chu) {
+    final cau = chu.trim();
+    if (cau.isNotEmpty) return _xong(cau);
+    _phat(state.copyWith(trangThai: TrangThaiNghe.cho, chuTam: ''));
+    _bao(ThongBaoNghe.khongNgheRo);
   }
 
   Future<void> _ghiAm(int luot) async {
@@ -156,6 +161,11 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
       });
     } catch (e) {
       debugPrint('[GiongNoi] ghi âm lỗi: $e');
+      if (isClosed || luot != _luot) {
+        // Lượt cũ (đã huỷ / Cubit đóng): chỉ dọn tệp của chính nó, không đụng trạng thái lượt hiện tại.
+        await _nguon.xoaTep(tep);
+        return;
+      }
       await _don();
       _phat(state.copyWith(trangThai: TrangThaiNghe.cho));
       _bao(ThongBaoNghe.loiChung);
@@ -167,21 +177,18 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
     final luot = _luot;
     final tepLuotNay = _tep; // chỉ xoá tệp CỦA LƯỢT NÀY — lượt mới có thể đã gán `_tep` khác khi ta về muộn
     _phat(state.copyWith(trangThai: TrangThaiNghe.dangChep));
-    final p = await _nguon.ghiAm.dung() ?? tepLuotNay;
+    String? p = tepLuotNay;
+    try {
+      p = await _nguon.ghiAm.dung() ?? tepLuotNay;
+    } catch (e) {
+      debugPrint('[GiongNoi] dừng ghi âm lỗi: $e');
+    }
     final gemma = _nguon.gemma;
     String? cau;
     if (p != null && gemma != null) {
       try {
-        final wav = await _nguon.docTep(p);
-        final truoc = _chepDangChay;
-        final chep = () async {
-          try {
-            await truoc;
-          } catch (_) {}
-          return gemma.chep(wav);
-        }();
-        _chepDangChay = chep.then<void>((_) {}, onError: (_) {});
-        cau = await chep;
+        // Hàng đợi lượt chép nằm ở `ChepLoiBangGemma` (mô hình là singleton, mọi Cubit dùng chung).
+        cau = await gemma.chep(await _nguon.docTep(p));
       } catch (e) {
         debugPrint('[GiongNoi] chép lời lỗi: $e');
       }
@@ -232,9 +239,11 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
   }
 
   @override
-  Future<void> close() async {
-    if (isClosed) return;
-    await huy();
-    return super.close();
-  }
+  Future<void> close() => _dong ??= () async {
+        try {
+          await huy();
+        } finally {
+          await super.close();
+        }
+      }();
 }

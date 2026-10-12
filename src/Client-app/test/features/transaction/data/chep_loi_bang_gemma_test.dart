@@ -66,6 +66,49 @@ void main() {
     m.treo!.complete('Ăn phở 45.000');
     expect(await f, isNull);
   });
+  test('Q2: lượt hai chưa gọi mô hình cho tới khi lượt đầu xong (mô hình là singleton)', () async {
+    final m = _MoHinhGia()..treo = Completer<String>();
+    final c = tao(m);
+    final f1 = c.chep(wav);
+    await pumpEventQueue();
+    final f2 = c.chep(wav);
+    await pumpEventQueue();
+    expect(m.soLanGoi, 1, reason: 'lượt hai phải xếp hàng sau lượt đầu');
+    final dau = m.treo!;
+    m.treo = null;
+    dau.complete('một');
+    expect(await f1, 'một');
+    expect(await f2, 'Hôm qua ăn phở 45.000');
+    expect(m.soLanGoi, 2);
+  });
+  test('Q1: huy() khi lượt hai đang xếp hàng → lượt hai null, mô hình chỉ được gọi 1 lần', () async {
+    final m = _MoHinhGia()..treo = Completer<String>();
+    final c = tao(m);
+    final f1 = c.chep(wav);
+    await pumpEventQueue();
+    final f2 = c.chep(wav);
+    await pumpEventQueue();
+    await c.huy();
+    m.treo!.complete('một');
+    expect(await f1, isNull);
+    expect(await f2, isNull);
+    expect(m.soLanGoi, 1);
+  });
+  test('lượt mới sau huy() vẫn chờ lượt cũ và chạy bình thường', () async {
+    final m = _MoHinhGia()..treo = Completer<String>();
+    final c = tao(m);
+    final f1 = c.chep(wav);
+    await pumpEventQueue();
+    await c.huy();
+    final dau = m.treo!;
+    m.treo = null;
+    final f3 = c.chep(wav);
+    await pumpEventQueue();
+    expect(m.soLanGoi, 1);
+    dau.complete('x');
+    expect(await f1, isNull);
+    expect(await f3, 'Hôm qua ăn phở 45.000');
+  });
   test('sanSangChua: hàm ném → false', () async {
     final c =
         ChepLoiBangGemma(moHinh: _MoHinhGia(), sanSang: () async => throw StateError('x'), duongTep: () async => '/m');

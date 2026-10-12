@@ -30,7 +30,11 @@ class ChepLoiBangGemma {
   final Future<String> Function() duongTep;
   final Duration thoiHan;
 
-  var _luot = 0;
+  /// Tăng mỗi lần [huy] — lượt chụp giá trị này lúc vào; khác nhau nghĩa là lượt đã bị huỷ (kể cả khi còn xếp hàng).
+  var _doiHuy = 0;
+
+  /// Mô hình là MỘT (singleton) nên mọi lượt chép — dù từ Cubit nào — xếp hàng ở đây, không chồng lên nhau.
+  Future<void> _hangDoi = Future<void>.value();
 
   Future<bool> sanSangChua() async {
     try {
@@ -40,30 +44,38 @@ class ChepLoiBangGemma {
     }
   }
 
-  /// Câu chép từ [wav], hoặc `null`.
+  /// Câu chép từ [wav], hoặc `null`. Chờ lượt đang chạy xong rồi mới gọi mô hình; bị [huy] trong lúc xếp hàng thì trả
+  /// `null` mà KHÔNG gọi mô hình. [thoiHan] chỉ bao lời gọi mô hình, không bao thời gian xếp hàng.
   Future<String?> chep(Uint8List wav) async {
-    final luot = ++_luot;
+    final doi = _doiHuy;
+    final truoc = _hangDoi;
+    final xong = Completer<void>();
+    _hangDoi = xong.future;
     final dongHo = Stopwatch()..start();
     try {
-      if (!await sanSang() || luot != _luot) return null;
+      await truoc;
+      if (doi != _doiHuy) return null;
+      if (!await sanSang() || doi != _doiHuy) return null;
       final tho = await moHinh.chepLoi(await duongTep(), kPromptChepLoi, wav).timeout(thoiHan, onTimeout: () async {
         await moHinh.huy();
         throw TimeoutException('chép lời quá ${thoiHan.inSeconds} s');
       });
-      if (luot != _luot) return null;
+      if (doi != _doiHuy) return null;
       final cau = lamSachLoiChep(tho);
       debugPrint('[GiongNoi][Gemma] ${dongHo.elapsedMilliseconds} ms → ${cau.length} ký tự');
       return cau.isEmpty ? null : cau;
     } catch (e) {
       debugPrint('[GiongNoi][Gemma] không chép được sau ${dongHo.elapsedMilliseconds} ms: $e');
       return null;
+    } finally {
+      xong.complete();
     }
   }
 
   /// Người dùng bấm Huỷ: lượt đang chạy trả `null`; engine thôi giải mã, hoặc — nếu đang nạp mô hình — lượt ấy bị bỏ
   /// ngay khi nạp xong (không tạo chat).
   Future<void> huy() async {
-    _luot++;
+    _doiHuy++;
     await moHinh.huy();
   }
 }

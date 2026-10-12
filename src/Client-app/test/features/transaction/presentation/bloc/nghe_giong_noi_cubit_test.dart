@@ -51,17 +51,23 @@ class _GhiAm implements GhiAm {
   bool quyen = true;
   String? tep;
   int soLanHuy = 0;
+  bool dungNem = false, batDauNem = false;
   void Function(double)? onBienDo;
   @override
   Future<bool> coQuyen() async => quyen;
   @override
   Future<void> batDau(String duongTep, {required void Function(double dbfs) onBienDo}) async {
+    if (batDauNem) throw StateError('ghi lỗi');
     tep = duongTep;
     this.onBienDo = onBienDo;
   }
 
   @override
-  Future<String?> dung() async => tep;
+  Future<String?> dung() async {
+    if (dungNem) throw StateError('dừng lỗi');
+    return tep;
+  }
+
   @override
   Future<void> huy() async => soLanHuy++;
 }
@@ -114,7 +120,7 @@ void main() {
     teps = [];
   });
 
-  void tepis() => teps.addAll(['/tam/a.wav', '/tam/b.wav']);
+  void napHaiTep() => teps.addAll(['/tam/a.wav', '/tam/b.wav']);
 
   NgheGiongNoiCubit tao({bool coMang = true, _Gemma? gemma}) {
     final c = NgheGiongNoiCubit(
@@ -267,10 +273,10 @@ void main() {
     expect(daXoa, ['/tam/a.wav']);
   });
 
-  test('P13: close() hai lần không huỷ hai lần', () async {
+  test('P13: hai close() đồng thời không huỷ hai lần', () async {
     final c = tao();
     await c.bam();
-    await c.close();
+    unawaited(c.close());
     await c.close();
     expect(a.soLanHuy, 1);
   });
@@ -305,30 +311,8 @@ void main() {
     });
   });
 
-  test('không chồng hai lượt chép: lượt mới chờ lượt cũ xong', () async {
-    final gm = _Gemma()..treo = Completer<String?>();
-    final cu = gm.treo!;
-    tepis();
-    final c = tao(coMang: false, gemma: gm);
-    await c.bam();
-    unawaited(c.bam()); // dừng → chép (treo)
-    await pumpEventQueue();
-    expect(c.state.trangThai, TrangThaiNghe.dangChep);
-    expect(gm.soLanChep, 1);
-    await c.huy();
-    await c.bam(); // ghi lượt mới
-    expect(c.state.trangThai, TrangThaiNghe.dangGhi);
-    unawaited(c.bam()); // dừng → chép lượt hai, phải chờ
-    await pumpEventQueue();
-    expect(gm.soLanChep, 1, reason: 'lượt chép thứ hai chưa được gọi khi lượt đầu còn chạy');
-    cu.complete('cũ');
-    await pumpEventQueue();
-    expect(gm.soLanChep, 2);
-    expect(c.state.cauXong, 'Hôm qua ăn phở 45.000');
-  });
-
   test('lượt cũ về muộn không xoá tệp của lượt mới', () async {
-    tepis();
+    napHaiTep();
     final gm = _Gemma()..treo = Completer<String?>();
     final cu = gm.treo!;
     final c = tao(coMang: false, gemma: gm);
@@ -350,5 +334,35 @@ void main() {
     a.onChu('ăn phở', false);
     a.onDung();
     expect(c.state.cauXong, 'ăn phở');
+  });
+
+  test('ghiAm.dung() ném → không kẹt dangChep: dùng tệp của lượt, xoá tệp, báo không nghe rõ', () async {
+    g.dungNem = true;
+    final c = tao(coMang: false, gemma: _Gemma());
+    await c.bam();
+    await c.bam();
+    expect(c.state.trangThai, TrangThaiNghe.cho);
+    expect(daXoa, ['/tam/a.wav']);
+  });
+
+  test('ghiAm.batDau ném → loiChung, tệp xoá', () async {
+    g.batDauNem = true;
+    final c = tao(coMang: false, gemma: _Gemma());
+    await c.bam();
+    expect(c.state.thongBao, ThongBaoNghe.loiChung);
+    expect(c.state.trangThai, TrangThaiNghe.cho);
+    expect(daXoa, ['/tam/a.wav']);
+  });
+
+  test('chữ cuối rỗng → dùng chuTam; cả hai rỗng → không nghe rõ (không cauXong rỗng)', () async {
+    final c = tao();
+    await c.bam();
+    a.onChu('ăn phở', false);
+    a.onChu('  ', true);
+    expect(c.state.cauXong, 'ăn phở');
+    await c.bam();
+    a.onChu('  ', true);
+    expect(c.state.thongBao, ThongBaoNghe.khongNgheRo);
+    expect(c.state.soLanXong, 1);
   });
 }
