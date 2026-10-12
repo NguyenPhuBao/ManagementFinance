@@ -521,16 +521,17 @@ void main() {
   });
 
   test('bất biến 4 — kết quả AI về sau khi bấm Huỷ bị BỎ, form điền bằng luật', () async {
+  // C4 2026-10-12: luật chọn N2 đọc "mất ba chục" nên câu phương tiện đổi sang "45 ở quán" (luật không đọc → vẫn ô thiếu).
     final ai = _DocAiGia();
     final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat.copyWith(isDefault: true)], danhMuc: [anUong], docAiGia: ai));
     await c.moTrang();
-    final dien = c.dienTuCau('cà phê mất ba chục');
+    final dien = c.dienTuCau('cà phê 45 ở quán');
     await Future<void>.delayed(Duration.zero);
     expect(c.state.dangDocAi, isTrue, reason: 'tiền đề: câu này có ô thiếu nên đi đường AI');
-    await c.huyDocAi('cà phê mất ba chục');
+    await c.huyDocAi('cà phê 45 ở quán');
     expect(ai.soLanHuy, 1);
     ai.ketQua.complete(KetQuaAi.tuThamSo({
-      'so_tien': 30000,
+      'so_tien': 45000,
       'loai': 'chi',
       'ngay': '',
       'vi': '',

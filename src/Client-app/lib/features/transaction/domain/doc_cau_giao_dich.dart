@@ -875,7 +875,18 @@ _CumTien? _chonSoTien(
     if (chuSo.length >= 2 && chuSo.startsWith('0')) continue; // số điện thoại, mã
     if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue; // "năm 2026"
     final gt = double.parse(chuSo);
-    if (gt < 1000) continue; // số lượng: "2 ly cà phê"
+    if (gt < 1000) {
+      // N2 (C4): "đổ xăng 50", "sửa xe 350" → × 1.000. Không khi có "đồng" (người nói nói rõ đơn vị), số ≤ 31 sau
+      // tháng / ngày, hay đứng trước danh từ khác ("2 ly", "15 phút") — chỉ ở chỗ của tiền ([_dungChoTien]).
+      final coDong = m.group(0)!.length > m.group(1)!.length;
+      if (gt >= 10 &&
+          !coDong &&
+          !_truocLaMocLich.hasMatch(b.substring(0, m.start)) &&
+          _dungChoTien(s, b, m.end, cauKhongDau: kd)) {
+        cum.add((batDau: m.start, ketThuc: m.end, giaTri: gt * 1000, lit: false, noi: true));
+      }
+      continue;
+    }
     cum.add((batDau: m.start, ketThuc: m.end, giaTri: gt, lit: false, noi: false));
   }
 
@@ -904,8 +915,22 @@ _CumTien? _chonSoTien(
       ));
       continue;
     }
-    if (c.giaTri < 1000) continue;
+    if (c.giaTri < 1000) {
+      // N2 (C4): "ba trăm rưỡi" = 350 → 350.000.
+      if (c.giaTri >= 10 && _dungChoTien(s, b, c.ketThuc, cauKhongDau: kd)) {
+        cum.add((batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri * 1000, lit: false, noi: true));
+      }
+      continue;
+    }
     cum.add((batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri, lit: false, noi: false));
+  }
+
+  // N2 (C4): cụm số chữ KHÔNG đơn vị có hàng chục — "năm chục", "bốn mươi lăm" — cùng tập `cachDocSoTien` (× 1.000).
+  for (final c in timSoBangChu(s, batBuocDonVi: false)) {
+    if (c.giaTri.isNaN || c.giaTri < 10 || c.giaTri >= 1000 || trungNgay(c.batDau, c.ketThuc)) continue;
+    if (cum.any((x) => c.batDau < x.ketThuc && c.ketThuc > x.batDau)) continue;
+    if (_truocLaMocLich.hasMatch(b.substring(0, c.batDau)) || !_dungChoTien(s, b, c.ketThuc, cauKhongDau: kd)) continue;
+    cum.add((batDau: c.batDau, ketThuc: c.ketThuc, giaTri: c.giaTri * 1000, lit: false, noi: true));
   }
 
   cum.sort((x, y) => x.batDau.compareTo(y.batDau));

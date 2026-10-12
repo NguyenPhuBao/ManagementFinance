@@ -362,24 +362,24 @@ void main() {
           duongTep: () async => '/gia/gemma.litertlm',
         );
 
-    testWidgets('⭐ AI đọc được thứ luật bó tay ("ba chục") → điền, nguồn "Đọc bằng AI"', (tester) async {
+    testWidgets('⭐ AI điền ô luật bỏ trống (danh mục; C4 2026-10-12: "ba chục" nay luật tự đọc) → điền, nguồn "Đọc bằng AI"', (tester) async {
       await tester.pumpWidget(app(
         docAi: aiTraVe({
-          'so_tien': 30000,
+          'so_tien': 45000,
           'loai': 'chi',
           'ngay': '',
           'vi': '',
           'danh_muc': 'Ăn uống',
-          'ghi_chu': 'cà phê với Nam',
+          'ghi_chu': 'cà phê với bạn',
         }),
       ));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'cà phê với Nam mất ba chục');
+      await dien(tester, 'cà phê với bạn 45 ở quán');
 
-      expect(find.text('30.000 đ'), findsOneWidget);
+      expect(find.text('45.000 đ'), findsOneWidget);
       expect(find.text('Ăn uống'), findsOneWidget);
-      expect(ghiChu(tester), 'cà phê với Nam');
+      expect(ghiChu(tester), 'cà phê với bạn');
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng AI');
     });
 
@@ -389,7 +389,7 @@ void main() {
       await tester.pumpWidget(app(docAi: aiTraVe({'so_tien': 300000, 'loai': 'chi'})));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'cà phê mất ba chục');
+      await dien(tester, 'cà phê 45 ở quán');
 
       expect(find.text('300.000 đ'), findsNothing);
       expect(find.text('0 đ'), findsOneWidget);
@@ -421,17 +421,17 @@ void main() {
       expect(tester.widget<Text>(find.byKey(const Key('nhap-nhanh-nguon'))).data, 'Đọc bằng luật');
     });
 
-    testWidgets('câu còn ô thiếu ("ba chục") → mở ĐÚNG một phiên mô hình', (tester) async {
+    testWidgets('câu còn ô thiếu ("45 ở quán", C4 2026-10-12) → mở ĐÚNG một phiên mô hình', (tester) async {
       final runtime = _RuntimeGia(() => PhienCongCuGia([
-            [const GoiCongCu(kTenCongCuDienGiaoDich, {'so_tien': 30000})],
+            [const GoiCongCu(kTenCongCuDienGiaoDich, {'so_tien': 45000})],
           ]));
       await tester.pumpWidget(app(docAi: aiTraVe(const {}, runtime: runtime)));
       await tester.pumpAndSettle();
 
-      await dien(tester, 'cà phê mất ba chục');
+      await dien(tester, 'cà phê 45 ở quán');
 
       expect(runtime.soPhien, 1);
-      expect(find.text('30.000 đ'), findsOneWidget);
+      expect(find.text('45.000 đ'), findsOneWidget);
     });
 
     testWidgets('⭐ danh mục trống → hỏi AI, AI điền danh mục (người dùng: "chỗ nào không điền được thì cho AI điền")',

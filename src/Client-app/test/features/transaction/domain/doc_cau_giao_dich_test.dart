@@ -359,9 +359,9 @@ void main() {
       expect(KetQuaAi.tuThamSo({'so_tien': 0}).soTien, isNull);
     });
 
-    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "ba chục"', () {
-      final r = docAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000));
-      expect(r.soTien, 30000);
+    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "45" (không ở chỗ của tiền; C4 2026-10-12: luật chọn N2 nên "ba chục" cuối câu đã luật tự đọc)', () {
+      final r = docAi('cà phê 45 ở quán', const KetQuaAi(soTien: 45000));
+      expect(r.soTien, 45000);
       expect(r.quaAi, isTrue);
     });
 
@@ -506,8 +506,8 @@ void main() {
     });
 
     test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
-      expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien, OThieu.ghiChu},
-          reason: 'số chưa đọc được còn nằm trong ghi chú');
+      expect(luat('cà phê với bạn 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu},
+          reason: 'C4 2026-10-12: luật chọn N2 — câu "mất ba chục" đổi sang "45 ở quán"; số chưa đọc được còn nằm trong ghi chú');
       // C4 2026-10-12: "một triệu hai" nay luật đọc được (N1) nên không còn là ví dụ ô thiếu; "45" trơ trọi vẫn chưa đọc.
       expect(luat('cà phê 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
@@ -567,15 +567,15 @@ void main() {
     });
 
     test('ô thiếu tính SAU khi AI lấp: lấp được thì hết thiếu, AI bị chặn thì vẫn thiếu', () {
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).oThieu, isEmpty);
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).oThieu, {OThieu.ghiChu},
-          reason: 'AI lấp số tiền mà không dọn ghi chú — "mất ba chục" vẫn nằm đó');
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 300000)).oThieu, {OThieu.soTien, OThieu.ghiChu});
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000, ghiChu: 'cà phê với bạn')).oThieu, isEmpty);
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000)).oThieu, {OThieu.ghiChu},
+          reason: 'AI lấp số tiền mà không dọn ghi chú — "45" vẫn nằm đó');
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 450000)).oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ghi chú khi AI lấp số tiền: ghi chú AI được dùng nếu chỉ BỚT chữ (người dùng chốt §8 câu 9)', () {
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).ghiChu,
-          'cà phê với Nam');
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000, ghiChu: 'cà phê với bạn')).ghiChu,
+          'cà phê với bạn');
     });
 
     test('ngày: "đầu tháng" luật đọc được → không thiếu; AI tính lệch thì luật thắng (§8 câu 4)', () {
@@ -652,7 +652,7 @@ void main() {
 
     test('quaAi = AI THẬT SỰ lấp ít nhất một ô (dòng nguồn); AI bị chặn hết → "Đọc bằng luật"', () {
       expect(voiAi('ăn phở 45k', const KetQuaAi(soTien: 450000)).quaAi, isFalse);
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).quaAi, isTrue);
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000)).quaAi, isTrue);
       expect(voiAi('hôm qua ăn phở với bạn 45k', const KetQuaAi(ghiChu: 'ăn phở')).quaAi, isTrue,
           reason: 'ghi chú của AI được dùng');
     });

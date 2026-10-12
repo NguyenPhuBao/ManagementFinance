@@ -248,4 +248,61 @@ void main() {
       expect(soTienAiHopLe('ăn phở 45k', const KetQuaAi(soTien: 1e13), now: now), isNull);
     });
   });
+
+  group('N2 — số 10–999 không đơn vị, đứng chỗ của tiền', () {
+    for (final (cau, so) in [
+      ('đổ xăng năm chục', 50000.0),
+      ('sửa xe ba trăm rưỡi', 350000.0),
+      ('ăn phở bốn mươi lăm bằng tiền mặt', 45000.0),
+      ('đổ xăng 50', 50000.0),
+      ('sửa xe 350', 350000.0),
+      ('ăn phở 45, ngon', 45000.0),
+      ('cà phê 25 hôm qua', 25000.0),
+      ('đổ 2 lít xăng năm chục', 50000.0),
+      ('ăn phở 45 ví tiền mặt', 45000.0),
+      ('đổ xăng 50 hôm qua', 50000.0),
+      ('ăn phở 45 ngày 5/10', 45000.0),
+    ]) {
+      test('"$cau" → $so, cần kiểm', () {
+        final kq = doc(cau);
+        expect(kq.soTien, so);
+        expect(kq.soTienCanKiem, isTrue);
+        expect(kq.oThieu, isNot(contains(OThieu.soTien)));
+        expect(cachDocSoTien(cau, now: now), contains(so), reason: 'bất biến kiểm chéo');
+      });
+    }
+
+    for (final cau in [
+      'mua hai mươi quả trứng',
+      'mua 2 ly cà phê',
+      'đi xe 15 phút',
+      'tiền điện tháng 10',
+      'ăn phở 45 đồng',
+      'ăn phở 45 ở quán',
+      'trả 50 ngay',
+      'đổ xăng 50 hôm sau',
+    ]) {
+      test('"$cau" → luật không đọc số tiền', () => expect(doc(cau).soTien, isNull));
+    }
+
+    test('⚠️ "quả" bỏ dấu là "qua" — so chữ đứng sau CÓ DẤU', () {
+      expect(
+        doc('mua hai mươi quả trứng').soTien,
+        isNull,
+        reason: 'so trên chữ bỏ dấu thì "quả" = "qua" (trả qua ví) và đọc thành 20.000',
+      );
+    });
+
+    test('có cụm đơn vị thì cụm ấy thắng, không cảnh báo nhiều số tiền', () {
+      final kq = doc('mua hai mươi quả trứng ba mươi nghìn');
+      expect(kq.soTien, 30000.0);
+      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.canhBao, isNot(contains(kCanhBaoNhieuSoTien)));
+    });
+
+    test('ví vẫn đọc: "bằng tiền mặt" và "ví tiền mặt"', () {
+      expect(doc('ăn phở bốn mươi lăm bằng tiền mặt').walletId, 'cash');
+      expect(doc('ăn phở 45 ví tiền mặt').walletId, 'cash');
+    });
+  });
 }
