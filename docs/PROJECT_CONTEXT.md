@@ -612,7 +612,7 @@ src/Backend/
 
 ### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12, CHƯA kiểm thử trên máy
 
-Task 1–15 của kế hoạch xong (39 commit, `f992ecac` → `e5809642`); `flutter test` **7032** ca (+9 skip), `flutter analyze` 20, Cubit form 1.132 dòng (trần quét 23: 1.200). Tài liệu đầy đủ: **`docs/GIONG_NOI_FEATURE.md`** (người dùng thấy gì, chọn lối, luật N1/N2/ngày/ví gọi tắt, kiểm chéo, Gemma một bản hai cờ, bảng tệp + test, chốt hỏng-im-lặng, lệch Stitch, checklist đo máy). Tóm tắt: micro ở ô Nhập nhanh + nút **Nói** Trang chủ (`/add?noi=1`); **Android trước, Gemma chép lời dự phòng**; nói xong tự Điền qua `dienTuCau`; số tiền đọc bằng dạng nói mới được Gemma kiểm chéo, lệch thì hai chip. Spike gỡ hết (miễn trừ quét 25 rỗng), thêm test quét **26**. Người dùng chốt giữa chừng: N1 chỉ khi Y ở chỗ tiền (lối A, đổi thân spec §3.2); *"ngày X tháng này"* không lùi. 🚧 **Phần kiểm thử trên máy (spec mục 9) chưa làm** — chuỗi mã lỗi `speech_to_text`, ngưỡng −35 dBFS, `kChoLoiSauDone`, RAM bản hai cờ, giọng thật cả hai lối, hộp quyền ColorOS, 320 dp thật. Hai màn Stitch lệch bản thi công (`d696e81e…`, `c8f09f19…`) chờ người dùng quyết. **Chưa push.**
+Task 1–15 của kế hoạch xong (39 commit, `f992ecac` → `e5809642`); `flutter test` **7037** ca (+9 skip, sau đợt sửa review toàn nhánh 2026-10-12; mốc trước 7032), `flutter analyze` 20, Cubit form 1.132 dòng (trần quét 23: 1.200). Tài liệu đầy đủ: **`docs/GIONG_NOI_FEATURE.md`** (người dùng thấy gì, chọn lối, luật N1/N2/ngày/ví gọi tắt, kiểm chéo, Gemma một bản hai cờ, bảng tệp + test, chốt hỏng-im-lặng, lệch Stitch, checklist đo máy). Tóm tắt: micro ở ô Nhập nhanh + nút **Nói** Trang chủ (`/add?noi=1`); **Android trước, Gemma chép lời dự phòng**; nói xong tự Điền qua `dienTuCau`; số tiền đọc bằng dạng nói mới được Gemma kiểm chéo, lệch thì hai chip. Spike gỡ hết (miễn trừ quét 25 rỗng), thêm test quét **26**. Người dùng chốt giữa chừng: N1 chỉ khi Y ở chỗ tiền (lối A, đổi thân spec §3.2); *"ngày X tháng này"* không lùi. 🚧 **Phần kiểm thử trên máy (spec mục 9) chưa làm** — chuỗi mã lỗi `speech_to_text`, ngưỡng −35 dBFS, `kChoLoiSauDone`, RAM bản hai cờ, giọng thật cả hai lối, hộp quyền ColorOS, 320 dp thật. Hai màn Stitch lệch bản thi công (`d696e81e…`, `c8f09f19…`) chờ người dùng quyết. **Chưa push.**
 
 ### 📝 (lịch sử) C4 giọng nói — spec duyệt + kế hoạch 16 task (2026-10-12), nay đã thi công
 
@@ -792,8 +792,8 @@ Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentat
 `features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)). *(Sau đợt dọn vị trí tệp cùng ngày: 175 / 37 — khối 🗂️ trên.)*
 
 - ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai
-  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp (1–25 phủ **26** từ đợt dọn vị trí tệp), cộng **3** tệp cùng khuôn không đánh số; bảng đủ ở mục 6
-  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **26** trở đi (25 là `vi_tri_tep_theo_luat_test`, 2026-10-10), và đếm lại bảng.
+  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp (1–25 phủ **26** từ đợt dọn vị trí tệp; 1–26 phủ **27** từ C4), cộng **3** tệp cùng khuôn không đánh số, tổng **30**; bảng đủ ở mục 6
+  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **27** trở đi (26 là test quét C4, 25 là `vi_tri_tep_theo_luat_test`, 2026-10-10), và đếm lại bảng.
 - ⚠️ **Trang đọc ví phải viết trên một dòng** `sl<WalletRepository>().getActiveRows(…)` / `.getAllRows(` /
   `.watchAllRows(` — `wallet_picker_sources_test` nhận diện theo chuỗi; gán repository vào biến là lọt phép phân loại.
 - ⚠️ **Test dựng trang có đọc qua DI** phải gọi `dangKyNguonDocGia(db)` (`test/helpers/nguon_doc_gia.dart`); test AuthBloc

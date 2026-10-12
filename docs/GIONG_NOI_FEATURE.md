@@ -1,7 +1,7 @@
 # Giọng nói nhập giao dịch (C4)
 
 > **Trạng thái (2026-10-12):** **mã xong** — Task 1–15 của kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md`
-> (gitignore), `flutter test` toàn bộ **7032** ca (+9 `skip`), `flutter analyze` 20 (mức nền). 🚧 **CHƯA KIỂM THỬ TRÊN MÁY** —
+> (gitignore), `flutter test` toàn bộ **7037** ca (+9 `skip`, sau đợt sửa review toàn nhánh 2026-10-12), `flutter analyze` 20 (mức nền). 🚧 **CHƯA KIỂM THỬ TRÊN MÁY** —
 > người dùng dặn dừng trước phần đo trên điện thoại; mọi con số "chưa đo" bên dưới và checklist mục 9 là việc của lúc cầm máy.
 > Spec: `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 đầu tệp THẮNG thân spec).
 > Nửa *chụp hoá đơn* của C4 đã làm ở A5 — `docs/QUET_ANH_FEATURE.md`; tệp này chỉ là nửa **giọng nói**.
@@ -136,9 +136,10 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
   `huyKiemSoTien`) — chỉ có **một** mô hình, hai lượt chồng nhau là lượt AI bị cắt hoặc micro trễ.
 - **`_dungGhi` chỉ xoá tệp của lượt mình** (chụp vào biến cục bộ trước `await chep`) — đọc trường `_tep` sau `await` là xoá nhầm
   WAV của lượt mới (Gemma huỷ chậm ~5 s) → "không nghe rõ" oan.
-- **Hint ô Nhập nhanh khi có micro là `'phở 45k'`.** Đo: `'phở 45k tiền mặt'` không vừa ô có micro ở 320 / 300 dp ×1,1.
-  ⚠️ Hệ quả: hint ngắn áp ở **mọi** bề rộng khi Android Premium (luôn có micro), mất ví dụ có tên ví mà G84 sinh ra; ca G84
-  "ví dụ phải nêu ví" dựng không `giongNoi` nên xanh giả — cần quyết ở review cuối.
+- **Hint ô Nhập nhanh khi có micro là `'45k tiền mặt'`** (không micro giữ `'phở 45k tiền mặt'`). Đo (font thật ×1,1, trang
+  thật có `giongNoi`): `'phở 45k tiền mặt'` không vừa ô có micro ở 320 / 300 dp; `'45k tiền mặt'` rộng 91,1 dp, ô 120,9 dp
+  (320) / 100,9 dp (300) — vừa. Giữ nguyên tắc G84 (ví dụ nêu tên ví); ca G84 "ví dụ phải nêu ví" nay chạy cả có / không
+  micro (review toàn nhánh, I2 — bản cũ `'phở 45k'` bỏ ví ở mọi bề rộng Android Premium và ca xanh giả vì dựng không micro).
 - **`initialize` của `speech_to_text` chỉ nhận callback lần đầu** → `NgheAndroidThat` là **một đối tượng mỗi tiến trình** (DI
   singleton); dựng cái thứ hai thì callback của nó **im lặng không bao giờ gọi**.
 - **`luc` của `BoDoIm` = số mẫu × `kNhipBienDo` (100 ms)**, không phải đồng hồ tường. Bộ ghi phát mẫu chậm / dồn thì "im 2 giây"
@@ -149,11 +150,14 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
   `NgheAndroidThat` chỉ chốt ở `SpeechToText.doneStatus` (`nghe_android.dart`, `onStatus`) — đổi sang `notListening` là câu
   nói bị cụt chữ cuối, `flutter test` không thấy (bản giả).
 - **RAM bản hai cờ chưa đo** (ảnh riêng 2,93 GB, âm riêng 2,53 GB — Realme CPU): một bản mang cả hai có thể bị hệ điều hành giết.
-- **`donTepGiongNoiSot` xoá mọi `giong_noi_*.wav` ở thư mục tạm.** `NguonGiongNoi` là singleton: hai trang `/add` cùng sống
-  (deeplink đè form đang ghi lối Gemma) thì trang sau xoá WAV đang ghi của trang trước → "không nghe rõ". Chặn rẻ chưa làm:
-  chỉ xoá tệp cũ hơn `kNgheToiDa` + biên.
-- **`ChepLoiBangGemma` onTimeout chờ `moHinh.huy()` KHÔNG giới hạn** — `stopGeneration` native treo thì hàng đợi chép toàn cục
-  kẹt suốt tiến trình (đáng sửa trước gộp; hiếm).
+- ✅ **`donTepGiongNoiSot` chỉ xoá `giong_noi_*.wav` cũ hơn `kNgheToiDa` + `kThoiHanChepLoi`** (M2, review toàn nhánh) — hai
+  trang `/add` cùng sống thì WAV đang ghi của trang kia còn mới, được giữ.
+- ✅ **`stopGeneration()` có hạn `kHanDungSinh` = 2 s** ở `SlmRuntimeThat.huy` / `_PhienThat.huy` (I1): treo thì `huy()` vẫn
+  trả (nuốt lỗi + log); `ChepLoiBangGemma` onTimeout dùng `unawaited(moHinh.huy())`. Một chỗ phủ C4, C2, A5, Trợ lý.
+  Phần native không test được (chỉ ghi lý do); phần hàng đợi có ca `I1` ở `chep_loi_bang_gemma_test`.
+- ✅ **`NgheGiongNoiCubit._dungGhi` kiểm lượt ngay trước `gemma.chep`** (M1): Huỷ rơi vào khe đọc tệp không tốn lượt mô hình.
+- ⚠️ **M8:** `NguonGiongNoi` đăng ký cả iOS mà `ios/Runner/Info.plist` chưa có `NSMicrophoneUsageDescription` /
+  `NSSpeechRecognitionUsageDescription` (dự án chỉ chạy Android).
 - **`"quả"` bỏ dấu = `qua`**: chữ đứng sau con số so **có dấu** (N2). Gõ không dấu hoàn toàn vẫn nhận.
 - **Quét 23:** Cubit form 1.132 dòng (trần 1.200, còn 68) — thêm logic là phải chừa chỗ trước.
 - Chuỗi mã lỗi của gói (`kLoiMatMang`, `kLoiKhongCoGoi`…) theo **tài liệu gói, chưa đo** — sai chuỗi thì mọi lỗi rơi `loiChung`.
@@ -182,6 +186,11 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
 
 **Thêm từ lượt soát:**
 
+- [ ] **CỔNG (đứng đầu):** chạy lại Quét A5 trên OnePlus GPU và Realme CPU với bản mô hình HAI cờ (ảnh+âm), cả khởi động
+      lạnh — Quét đã nghiệm thu nay phụ thuộc bản chưa đo; nạp hai cờ hỏng thì chuỗi Nói → đóng → nạp hỏng → Trợ lý nạp bản
+      chữ → Nói lại sẽ đóng LẦN HAI (kiểu sập A5).
+- [ ] Thời gian lượt Gemma đầu tiên trên CPU (nạp chữ + đóng + nạp hai cờ + suy luận) so với trần 60 s (`kThoiHanChepLoi`).
+- [ ] `stopGeneration` có trả về trong `kHanDungSinh` (2 s) không — log `[SLM] đã huỷ lượt sinh giữa chừng` hay `huỷ lượt sinh hỏng`.
 - [ ] RAM bản hai cờ (nhắc lại ở trên, nhưng đo cả chuỗi *Trợ lý → Nói → Quét* và *Nói → Quét → Nói*, đếm số lần đóng).
 - [ ] Cờ âm thanh có **vô hại với đường chữ** (cùng một bản mô hình giờ phục vụ cả Trợ lý, Nhập nhanh, C3): tốc độ, bộ nhớ,
       chất lượng câu trả lời có tụt không.
@@ -190,6 +199,6 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
 - [ ] Ngưỡng `kNguongCoTieng` = −35 dBFS ở phòng ồn / yên; nhịp `kNhipBienDo` 100 ms của bộ ghi thật.
 - [ ] Nhịp `kChoLoiSauDone` (300 ms) đủ để lỗi thắng `done` trên máy chậm.
 - [ ] `ChepLoiBangGemma.huy()` **giữa** `record.start`; `dung()` ném lỗi thì micro có kẹt không (`ghiAm.huy()` best-effort).
-- [ ] Hai trang `/add` cùng sống (deeplink `/add?noi=1` đè form đang ghi Gemma): `donTepGiongNoiSot` có xoá WAV đang ghi không.
-- [ ] Chữ lớn ×1,3 ở 320 dp: nhãn "Thêm thu" co 0,740 có đọc được không; hint `'phở 45k'` có vừa.
+- [ ] Hai trang `/add` cùng sống (deeplink `/add?noi=1` đè form đang ghi Gemma): WAV đang ghi còn nguyên (đã chặn theo tuổi tệp, M2).
+- [ ] Chữ lớn ×1,3 ở 320 dp: nhãn "Thêm thu" co 0,740 có đọc được không; hint `'45k tiền mặt'` có vừa (đo ×1,1 đã vừa; ×1,3 chưa).
 - [ ] "Cảnh báo nhiều số tiền" có nổ oan với câu nói tự nhiên (*"ăn phở 45k quận 10"*) không.

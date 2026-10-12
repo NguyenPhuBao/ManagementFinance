@@ -89,8 +89,10 @@ Bất biến ④ nhóm C giữ nguyên: AI **điền sẵn**, chỉ ghi khi ngư
 | Android báo lỗi **mạng** giữa chừng | — | *"Mất mạng — bấm micro nói lại, lần này nghe bằng AI trên máy"* (nếu Gemma sẵn sàng); lượt sau đi Gemma. Âm thanh lượt trước không có — Android giữ micro, app không ghi song song |
 | Không lối nào dùng được | — | toast *"Cần mạng hoặc mô hình AI trên máy để nói"* + nút sang *Cài đặt AI* |
 
-*Gemma sẵn sàng* = **đúng** điều kiện mà ô Nhập nhanh dùng để gọi AI (`DocCauBangAi.sanSang` — tệp mô hình, công tắc AI,
-quyền `ai_edge_model`); không định nghĩa thứ hai. *Có mạng* đọc từ nguồn kết nối app đã có (`ConnectionMonitor` /
+*Gemma sẵn sàng* = **đúng** điều kiện mà ô Nhập nhanh dùng để gọi AI (`DocCauBangAi.sanSang` — tệp mô hình và công tắc AI;
+quyền `ai_edge_model` gác ở màn *Cài đặt AI*, nơi tải mô hình, còn `/quet` (A5) kiểm thêm `aiEdgeModel`); không định nghĩa
+thứ hai. *(Sửa sau review toàn nhánh 2026-10-12 — phán quyết ngược thân spec đã duyệt; cái giá: người dùng bị hạ gói mà đã
+tải mô hình vẫn còn lối chép lời trên máy.)* *Có mạng* đọc từ nguồn kết nối app đã có (`ConnectionMonitor` /
 `connectivity_plus` qua DI), không gọi mạng thử.
 
 ⚠️ **Mã lỗi cụ thể của `speech_to_text` cho "mất mạng" và "không có gói ngôn ngữ"** (`SpeechRecognitionError.errorMsg`,
