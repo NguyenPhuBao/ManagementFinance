@@ -18,6 +18,10 @@ import '../domain/nap_da_phuong_thuc.dart';
 import 'bo_nap_mo_hinh.dart';
 import 'phien_cong_cu.dart';
 
+/// Hạn chờ `stopGeneration()` native. Nếu nó treo, `huy()` vẫn trả về (nuốt lỗi + log) — nếu không, hàng đợi chép lời
+/// (singleton), Huỷ của Cubit và `close()` đều kẹt vĩnh viễn (review toàn nhánh C4, I1).
+const Duration kHanDungSinh = Duration(seconds: 2);
+
 /// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
 abstract class SlmRuntime {
   bool get dangSan;
@@ -311,7 +315,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     final chat = _chatDangSinh;
     if (chat == null) return;
     try {
-      await chat.stopGeneration();
+      await chat.stopGeneration().timeout(kHanDungSinh);
       debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
     } catch (e) {
       debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
@@ -382,7 +386,7 @@ class _PhienThat implements PhienCongCu {
   @override
   Future<void> huy() async {
     try {
-      await _chat.stopGeneration();
+      await _chat.stopGeneration().timeout(kHanDungSinh);
     } catch (e) {
       debugPrint('[SLM][tool] huỷ lượt sinh hỏng: $e');
     }

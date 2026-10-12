@@ -57,7 +57,8 @@ class ChepLoiBangGemma {
       if (doi != _doiHuy) return null;
       if (!await sanSang() || doi != _doiHuy) return null;
       final tho = await moHinh.chepLoi(await duongTep(), kPromptChepLoi, wav).timeout(thoiHan, onTimeout: () async {
-        await moHinh.huy();
+        // Không `await`: huỷ treo thì lượt vẫn kết thúc, hàng đợi không kẹt (I1).
+        unawaited(moHinh.huy());
         throw TimeoutException('chép lời quá ${thoiHan.inSeconds} s');
       });
       if (doi != _doiHuy) return null;

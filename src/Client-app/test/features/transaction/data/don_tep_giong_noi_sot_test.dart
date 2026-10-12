@@ -4,7 +4,9 @@ library;
 
 import 'dart:io';
 
+import 'package:flowmoney/features/transaction/data/chep_loi_bang_gemma.dart';
 import 'package:flowmoney/features/transaction/data/nguon_giong_noi.dart';
+import 'package:flowmoney/features/transaction/domain/do_im_lang.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -15,7 +17,14 @@ void main() {
     if (thuMuc.existsSync()) thuMuc.deleteSync(recursive: true);
   });
 
-  File tao(String ten) => File('${thuMuc.path}/$ten')..writeAsStringSync('x');
+  /// Tệp SÓT = cũ hơn một lượt ghi + chép dài nhất.
+  final tuoiSot = kNgheToiDa + kThoiHanChepLoi + const Duration(minutes: 1);
+
+  File tao(String ten, {bool cu = true}) {
+    final f = File('${thuMuc.path}/$ten')..writeAsStringSync('x');
+    if (cu) f.setLastModifiedSync(DateTime.now().subtract(tuoiSot));
+    return f;
+  }
 
   test('xoá giong_noi_*.wav, giữ tệp khác', () async {
     final a = tao('giong_noi_1.wav');
@@ -30,9 +39,19 @@ void main() {
   });
 
   test('tên tệp từ tepGiongNoiMoi khớp bộ dọn', () async {
-    final f = File(tepGiongNoiMoi(thuMuc.path))..writeAsStringSync('x');
+    final f = File(tepGiongNoiMoi(thuMuc.path))
+      ..writeAsStringSync('x')
+      ..setLastModifiedSync(DateTime.now().subtract(tuoiSot));
     await donTepGiongNoiSot(thuMuc);
     expect(f.existsSync(), isFalse, reason: 'một định nghĩa tiền tố/đuôi cho cả dựng tên lẫn dọn');
+  });
+
+  test('M2: tệp MỚI (đang ghi, của trang /add khác) được giữ, tệp cũ bị xoá', () async {
+    final moi = tao('giong_noi_moi.wav', cu: false);
+    final cu = tao('giong_noi_cu.wav');
+    await donTepGiongNoiSot(thuMuc);
+    expect(moi.existsSync(), isTrue, reason: 'WAV đang ghi của trang kia không được xoá');
+    expect(cu.existsSync(), isFalse);
   });
 
   test('thư mục không tồn tại → không ném', () async {

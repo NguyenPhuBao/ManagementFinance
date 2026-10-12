@@ -122,7 +122,7 @@ void main() {
 
   void napHaiTep() => teps.addAll(['/tam/a.wav', '/tam/b.wav']);
 
-  NgheGiongNoiCubit tao({bool coMang = true, _Gemma? gemma}) {
+  NgheGiongNoiCubit tao({bool coMang = true, _Gemma? gemma, Future<Uint8List> Function(String)? docTep}) {
     final c = NgheGiongNoiCubit(
       nguon: NguonGiongNoi(
         android: a,
@@ -131,7 +131,7 @@ void main() {
         coMang: () async => coMang,
         gemma: gemma,
         tepTam: () async => teps.isEmpty ? '/tam/a.wav' : teps.removeAt(0),
-        docTep: (_) async => Uint8List(4),
+        docTep: docTep ?? (_) async => Uint8List(4),
         xoaTep: (p) async => daXoa.add(p),
       ),
     );
@@ -326,6 +326,21 @@ void main() {
     await pumpEventQueue();
     expect(daXoa.contains('/tam/b.wav'), isFalse, reason: 'tệp lượt mới còn đang ghi');
     expect(c.state.trangThai, TrangThaiNghe.dangGhi);
+  });
+
+  test('M1: Huỷ rơi vào khe đọc tệp → KHÔNG gọi mô hình (không chặn hàng đợi 10–60 s)', () async {
+    final doc = Completer<Uint8List>();
+    final gm = _Gemma();
+    final c = tao(coMang: false, gemma: gm, docTep: (_) => doc.future);
+    await c.bam();
+    unawaited(c.bam());
+    await pumpEventQueue();
+    expect(c.state.trangThai, TrangThaiNghe.dangChep);
+    await c.huy();
+    doc.complete(Uint8List(4));
+    await pumpEventQueue();
+    expect(gm.soLanChep, 0, reason: 'lượt đã huỷ không được tốn lượt mô hình');
+    expect(c.state.trangThai, TrangThaiNghe.cho);
   });
 
   test('onDung sau chữ tạm vẫn lấy chuTam làm câu', () async {

@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../domain/do_im_lang.dart';
 import 'chep_loi_bang_gemma.dart';
 import 'datasources/ghi_am.dart';
 import 'datasources/kenh_micro.dart';
@@ -18,7 +19,8 @@ const String _duoiTep = '.wav';
 String tepGiongNoiMoi(String thuMuc) => '$thuMuc/$_tienToTep${DateTime.now().millisecondsSinceEpoch}$_duoiTep';
 
 /// Xoá các WAV giọng nói sót trong [thuMuc] (tiến trình bị giết giữa lượt ghi để lại giọng người dùng — spec §2.4: không
-/// lưu âm thanh). Chỉ tệp `giong_noi_*.wav`. Lượt chạy tuần tự nên không xoá nhầm tệp đang ghi. Không bao giờ ném.
+/// lưu âm thanh). Chỉ tệp `giong_noi_*.wav` **cũ hơn** [kNgheToiDa] + [kThoiHanChepLoi] (một lượt ghi + chép dài nhất):
+/// hai trang `/add` cùng sống thì WAV đang ghi của trang kia còn mới, không bị xoá (review toàn nhánh, M2). Không bao giờ ném.
 Future<void> donTepGiongNoiSot(Directory thuMuc) async {
   try {
     for (final f in thuMuc.listSync()) {
@@ -26,6 +28,7 @@ Future<void> donTepGiongNoiSot(Directory thuMuc) async {
       final ten = f.uri.pathSegments.last;
       if (!ten.startsWith(_tienToTep) || !ten.endsWith(_duoiTep)) continue;
       try {
+        if (DateTime.now().difference(f.lastModifiedSync()) < kNgheToiDa + kThoiHanChepLoi) continue;
         await f.delete();
       } catch (e) {
         debugPrint('[GiongNoi] không xoá được tệp sót: $e');

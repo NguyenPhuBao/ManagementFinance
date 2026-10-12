@@ -188,7 +188,9 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
     if (p != null && gemma != null) {
       try {
         // Hàng đợi lượt chép nằm ở `ChepLoiBangGemma` (mô hình là singleton, mọi Cubit dùng chung).
-        cau = await gemma.chep(await _nguon.docTep(p));
+        final wav = await _nguon.docTep(p);
+        // Huỷ rơi vào khe đọc tệp: đừng tốn một lượt mô hình (10–60 s) chặn hàng đợi toàn tiến trình.
+        if (!isClosed && luot == _luot) cau = await gemma.chep(wav);
       } catch (e) {
         debugPrint('[GiongNoi] chép lời lỗi: $e');
       }

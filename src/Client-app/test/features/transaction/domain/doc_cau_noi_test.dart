@@ -260,6 +260,7 @@ void main() {
       ('cà phê 25 hôm qua', 25000.0),
       ('đổ 2 lít xăng năm chục', 50000.0),
       ('ăn phở 45 ví tiền mặt', 45000.0),
+      ('ăn phở 45 bằng tiền mặt', 45000.0), // spec §5 ca thêm (dạng chữ số)
       ('đổ xăng 50 hôm qua', 50000.0),
       ('ăn phở 45 ngày 5/10', 45000.0),
     ]) {

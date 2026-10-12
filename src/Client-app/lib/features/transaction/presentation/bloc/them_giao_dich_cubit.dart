@@ -799,7 +799,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     // Lượt kiểm chéo của câu trước (nếu còn) bị bỏ — bộ đếm lượt đã tăng; mô hình thôi giải mã.
     if (state.dangKiemSoTien) unawaited(_nguon.docAi?.huy());
     if (state.dangKiemSoTien || state.luaChonTienCau.isNotEmpty) {
-      emit(state.copyWith(dangKiemSoTien: false, luaChonTienCau: const []));
+      _phat(state.copyWith(dangKiemSoTien: false, luaChonTienCau: const []));
     }
     final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_taiKhoan());
     // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn

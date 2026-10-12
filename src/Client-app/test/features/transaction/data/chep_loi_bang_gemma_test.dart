@@ -14,6 +14,7 @@ class _MoHinhGia implements SlmChepLoi {
   String tra = ' Hôm qua ăn phở 45.000. ';
   Object? nem;
   Completer<String>? treo;
+  Completer<void>? huyTreo;
   String? prompt;
   int soLanGoi = 0, soLanHuy = 0;
   @override
@@ -26,7 +27,10 @@ class _MoHinhGia implements SlmChepLoi {
   }
 
   @override
-  Future<void> huy() async => soLanHuy++;
+  Future<void> huy() async {
+    soLanHuy++;
+    if (huyTreo != null) await huyTreo!.future;
+  }
 }
 
 void main() {
@@ -56,6 +60,16 @@ void main() {
     final m = _MoHinhGia()..treo = Completer<String>();
     expect(await tao(m, thoiHan: const Duration(milliseconds: 20)).chep(wav), isNull);
     expect(m.soLanHuy, 1);
+  });
+  test('I1: stopGeneration treo vẫn không kẹt hàng đợi — lượt quá hạn trả null, lượt kế tiếp gọi được mô hình', () async {
+    final m = _MoHinhGia()
+      ..treo = Completer<String>()
+      ..huyTreo = Completer<void>();
+    final c = tao(m, thoiHan: const Duration(milliseconds: 20));
+    expect(await c.chep(wav).timeout(const Duration(seconds: 2)), isNull);
+    m.treo = null;
+    expect(await c.chep(wav).timeout(const Duration(seconds: 2)), 'Hôm qua ăn phở 45.000');
+    expect(m.soLanGoi, 2);
   });
   test('huỷ giữa chừng → lượt ấy trả null', () async {
     final m = _MoHinhGia()..treo = Completer<String>();

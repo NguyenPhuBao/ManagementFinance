@@ -126,10 +126,11 @@ class ONhapNhanh extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
                       // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
-                      // Có micro (36 dp) thì ô hẹp lại: ở 300–320 dp "phở 45k tiền mặt" bị cắt (đo vòng sửa 1, Task 14).
+                      // Có micro (36 dp) thì ô hẹp lại: ở 300–320 dp "phở 45k tiền mặt" bị cắt (đo vòng sửa 1, Task 14);
+                      // vẫn phải nêu ví (nguyên tắc G84) nên bỏ chữ "phở" chứ không bỏ ví (review toàn nhánh, I2).
                       hintText: dangThu
                           ? 'Đang nghe…'
-                          : (laPremium ? (coMicro ? 'phở 45k' : 'phở 45k tiền mặt') : 'Chỉ Premium'),
+                          : (laPremium ? (coMicro ? '45k tiền mặt' : 'phở 45k tiền mặt') : 'Chỉ Premium'),
                       hintStyle: const TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),

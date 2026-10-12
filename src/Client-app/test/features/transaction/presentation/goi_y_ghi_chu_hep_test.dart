@@ -97,16 +97,21 @@ void main() {
     }
   }
 
-  testWidgets('G84: ví dụ Nhập nhanh vẫn nêu số tiền và ví — thứ câu ví dụ sinh ra để chỉ',
-      (tester) async {
-    await dung(tester, 411);
-    final hint = tester
-        .widget<TextField>(find.byKey(const Key('nhap-nhanh-o')))
-        .decoration!
-        .hintText!;
-    expect(hint, contains('45k'), reason: 'ví dụ phải có số tiền');
-    expect(hint, contains('tiền mặt'), reason: 'ví dụ phải nêu ví');
-  });
+  for (final coMicro in [false, true]) {
+    testWidgets(
+        'G84: ví dụ Nhập nhanh vẫn nêu số tiền và ví — thứ câu ví dụ sinh ra để chỉ (${coMicro ? 'CÓ' : 'không'} micro)',
+        (tester) async {
+      // I2: Android Premium luôn có micro — cấu hình phát hành phải được đo, không chỉ cấu hình không micro.
+      await dung(tester, 411, giongNoi: coMicro ? _nguonGia() : null);
+      expect(find.byKey(const Key('nhap-nhanh-micro')), coMicro ? findsOneWidget : findsNothing);
+      final hint = tester
+          .widget<TextField>(find.byKey(const Key('nhap-nhanh-o')))
+          .decoration!
+          .hintText!;
+      expect(hint, contains('45k'), reason: 'ví dụ phải có số tiền');
+      expect(hint, contains('tiền mặt'), reason: 'ví dụ phải nêu ví');
+    });
+  }
 
   testWidgets('G84: chữ ô ghi chú thẳng cột với nhãn "Ngày" (theme đệm ngang 16)',
       (tester) async {
