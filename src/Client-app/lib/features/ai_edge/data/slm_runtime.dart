@@ -14,6 +14,7 @@ import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 import '../domain/canary_cong_cu.dart';
 import '../domain/canary_gpu.dart';
 import '../domain/cong_cu.dart';
+import '../domain/nap_da_phuong_thuc.dart';
 import 'phien_cong_cu.dart';
 
 /// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
@@ -61,7 +62,16 @@ abstract class SlmDocAnh {
   Future<void> huy();
 }
 
-class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
+/// Mô hình NGHE âm thanh (C4 — chép lời khi mất mạng). Giao diện riêng như [SlmDocAnh]: bản giả của [SlmRuntime] trong
+/// test không phải mang thêm một hàm.
+abstract class SlmChepLoi {
+  /// Chép lời [wav] (WAV 16 kHz mono) theo [prompt]. Nạp bản đa phương thức nếu cần, rồi GIỮ. Ném khi máy không chạy được.
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav);
+
+  Future<void> huy();
+}
+
+class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
   final CanaryGpu? canary;
 
@@ -79,7 +89,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
   @override
   bool get dangSan => _model != null;
 
-  /// Mô hình đang nạp có cờ ảnh / âm thanh không — luật nạp ở `quyetDinhNap` (Task 10).
+  /// Mô hình đang nạp có cờ ảnh / âm thanh không — luật nạp ở `quyetDinhNap`.
   bool _coAnh = false;
   bool _coAm = false;
 
@@ -96,10 +106,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
     // nạp bản ảnh rồi đóng, lần chọn danh mục nạp bản chữ, quét lần 2 đóng bản chữ để nạp bản ảnh → sập. Nên bản có
     // ảnh được GIỮ: lần chọn danh mục (phiên chữ có tool) và các đường chữ khác dùng luôn nó; một tiến trình đóng
     // nhiều nhất một lần (khi bản đang nạp là bản chữ của Trợ lý / Nhập nhanh).
-    if (_model == null || !_coAnh || _coAm) {
-      if (_model != null) await dong();
-      await _nap(duongTep, anh: true);
-    }
+    // Luật chung với chepLoi: `quyetDinhNap` (C4).
+    await _napDaPhuongThuc(duongTep, CanMoHinh.anh);
     final dongHo = Stopwatch()..start();
     // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
     final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
@@ -117,6 +125,34 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
     debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
         '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
     return cau.toString().trim();
+  }
+
+  @override
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav) async {
+    await _napDaPhuongThuc(duongTep, CanMoHinh.am);
+    final dongHo = Stopwatch()..start();
+    // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
+    final chat = await _model!.createChat(temperature: 0.2, supportAudio: true);
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.withAudio(text: prompt, audioBytes: wav, isUser: true));
+    final cau = StringBuffer();
+    try {
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) cau.write(r.token);
+      }
+    } finally {
+      _chatDangSinh = null;
+    }
+    debugPrint('[SLM][am] chép lời xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(âm ${wav.length} byte → ${cau.length} ký tự)');
+    return cau.toString().trim();
+  }
+
+  /// Luật nạp chung của [docAnh] / [chepLoi]: một bản CÓ CẢ HAI cờ, đóng nhiều nhất một lần mỗi tiến trình.
+  Future<void> _napDaPhuongThuc(String duongTep, CanMoHinh can) async {
+    final q = quyetDinhNap(coMoHinh: _model != null, coAnh: _coAnh, coAm: _coAm, can: can);
+    if (q.dong) await dong();
+    if (q.nap) await _nap(duongTep, anh: q.anh, am: q.am);
   }
 
   Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {
