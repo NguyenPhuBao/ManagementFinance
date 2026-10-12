@@ -217,16 +217,16 @@ final RegExp _chuCaiNgoaiAscii = RegExp(r'(?![a-zA-Z])[\p{L}\p{M}]', unicode: tr
 bool _cauKhongDau(String s) => !_chuCaiNgoaiAscii.hasMatch(s);
 
 const Set<String> _chuThatKhongDau = {'sau', 'nam', 'bay'};
-const Set<String> _chuSoChuCoDau = {'một', 'hai', 'ba', 'bốn', 'tư', 'năm', 'sáu', 'bảy', 'tám', 'chín'};
+const Set<String> _chuSoChuCoDau = {'một', 'mốt', 'hai', 'ba', 'bốn', 'tư', 'năm', 'sáu', 'bảy', 'tám', 'chín'};
 
 /// Chữ số viết bằng CHỮ ngay sau [kt] (*"một triệu **hai**"*) — [b] là câu đã bỏ dấu. Câu có dấu thì xét CÓ DẤU trên [s]:
 /// bỏ dấu thì *"từ"* thành `tu` = *tư* (số 4) và *"chuyển năm trăm nghìn **từ** MB Bank"* từng bị coi là *"năm trăm nghìn
 /// tư"* → "chưa rõ", không điền (spike C4 câu 19). [cauKhongDau] (cả câu không dấu, *"mot trieu hai"*) thì nhận.
 ///
 /// BA trạng thái: **chữ số** (`moHo` false: từ có dấu khớp [_chuSoChuCoDau], hoặc cả câu không dấu), **mơ hồ** (`moHo`
-/// true: câu có dấu mà từ ấy toàn ASCII và bỏ dấu là chữ số — *"một triệu tu"*, *"hai triệu sau"*: người gõ thiếu dấu
-/// hay đó là chữ khác?), **không** (`null`: từ có dấu khác hẳn, *"từ"*). Luật không đoán ca mơ hồ (chưa rõ như trước C4);
-/// [cachDocSoTien] vẫn liệt kê để Gemma chọn.
+/// true: câu có dấu mà từ ấy toàn ASCII và bỏ dấu là chữ số — *"một triệu tu"*: người gõ thiếu dấu hay đó là chữ
+/// khác?), **không** (`null`: từ có dấu khác hẳn, *"từ"*; hoặc [_chuThatKhongDau] — *sau · nam · bay* không dấu là chữ
+/// thật). Luật không đoán ca mơ hồ (chưa rõ như trước C4); [cachDocSoTien] vẫn liệt kê để Gemma chọn.
 ({int giaTri, int ketThuc, bool moHo})? _chuSoChuSau(String s, String b, int kt, {required bool cauKhongDau}) {
   final m = _sauLaChuSoChu.firstMatch(b.substring(kt));
   if (m == null) return null;
@@ -249,21 +249,24 @@ const Set<String> _sauSoTienLaMocNgay = {'ngày', 'ngay', 'mùng', 'mung', 'mồ
 const Set<String> _sauSoTienLaHom = {'hôm', 'hom'};
 const Set<String> _sauSoTienLaThu = {'thứ', 'thu'};
 
-/// Chữ liền sau *hôm* làm nó thành mốc ngày (*hôm qua · nay · kia*) — tập con của `_sauHom` ở `ngay_trong_cau.dart`
-/// (riêng tư ở đó): *"hai triệu ba hôm sau / hôm trước"* là ba hôm, không phải 2,3 triệu.
+/// Chữ liền sau *hôm* làm nó thành mốc ngày (*hôm qua · nay · kia*). Tập riêng, không dùng lại `_sauHom` của
+/// `ngay_trong_cau.dart` (riêng tư ở đó, và có *trước · nọ · bữa* nhưng không có *nay*): *"hai triệu ba hôm sau / hôm
+/// trước"* là ba hôm, không phải 2,3 triệu.
 const Set<String> _sauHomLaNgay = {'qua', 'nay', 'kia'};
 
-/// Thứ trong tuần sau *thứ*: chữ số, hoặc *hai · ba · tư · năm · sáu · bảy*, *chủ nhật*, *cn* (có dấu / không dấu theo câu).
+/// Thứ trong tuần sau *thứ*: chữ số, hoặc *hai · ba · tư · năm · sáu · bảy*, *chủ nhật*, *cn* (có / không dấu theo câu).
 const Set<String> _sauThuCoDau = {'hai', 'ba', 'tư', 'năm', 'sáu', 'bảy', 'chủ', 'cn'};
 const Set<String> _sauThuKhongDau = {'hai', 'ba', 'tu', 'nam', 'sau', 'bay', 'chu', 'cn'};
 final RegExp _dauCauSau = RegExp(r'^\s*[,.;!?]');
 final RegExp _sauBatDauBangSo = RegExp(r'^\s*\d');
 
-/// Vị trí [kt] (cuối cụm Y của một dạng nói, C4) có phải CHỖ CỦA TIỀN không: hết câu, dấu câu, hoặc chữ liền sau thuộc tập
-/// *đứng sau tiền* (ví · bằng · trả · qua · từ · sang · vào · đến · tới · hôm · ngày · mùng · thứ). Phép chọn của LUẬT cho
-/// dạng nói (N1 *X đơn vị Y*, N2 số 10–999 × 1.000) chỉ áp ở đây — *"hai triệu năm nay"*, *"một triệu hai tiền sách"* thì
-/// Y là chữ khác của câu. ⚠️ *ngày / mùng / mồng* chỉ tính khi liền sau là chữ SỐ (*"ngày 5"*), *hôm* chỉ trước *qua · nay · kia*, *thứ* chỉ trước chữ số / tên thứ: *"hai triệu ba ngày sau"*,
-/// *"hai triệu ba hôm sau"*, *"hai triệu ba thứ đồ"* không phải 2,3 triệu. Chữ không dấu ([_sauSoTienKhongDau]) chỉ khi [cauKhongDau]; câu có dấu so CÓ DẤU.
+/// Vị trí [kt] (cuối cụm Y của một dạng nói, C4) có phải CHỖ CỦA TIỀN không: hết câu, dấu câu, hoặc chữ liền sau
+/// thuộc tập *đứng sau tiền* (ví · bằng · trả · qua · từ · sang · vào · đến · tới · hôm · ngày · mùng · thứ). Phép
+/// chọn của LUẬT cho dạng nói (N1 *X đơn vị Y*, N2 số 10–999 × 1.000) chỉ áp ở đây — *"hai triệu năm nay"*, *"một triệu
+/// hai tiền sách"* thì Y là chữ khác của câu. ⚠️ *ngày / mùng / mồng* chỉ tính khi liền sau là chữ SỐ (*"ngày 5"*),
+/// *hôm* chỉ trước *qua · nay · kia*, *thứ* chỉ trước chữ số / tên thứ: *"hai triệu ba ngày sau"*, *"hai triệu ba hôm
+/// sau"*, *"hai triệu ba thứ đồ"* không phải 2,3 triệu. Chữ không dấu ([_sauSoTienKhongDau]) chỉ khi [cauKhongDau];
+/// câu có dấu so CÓ DẤU.
 /// [b] là câu bỏ dấu (cùng độ dài [s]). Không dùng cho [cachDocSoTien] — nó liệt kê MỌI cách đọc để Gemma còn chọn.
 bool _dungChoTien(String s, String b, int kt, {required bool cauKhongDau}) {
   final sau = b.substring(kt);
@@ -825,7 +828,8 @@ List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {
 }
 
 /// Cụm số tiền được chọn (§2.1), hoặc `null`. Hạng ưu tiên: *k / nghìn / tr / củ*, số chữ, số trần ≥ 1.000 trước;
-/// dạng nói mới học (N1 — C4) sau; *lít / xị* cuối (*"đổ 2 lít xăng 50k"* → 50.000). Còn ≥ 2 cụm cùng hạng → cụm đầu + cảnh báo.
+/// dạng nói mới học (N1 — C4) sau; *lít / xị* cuối (*"đổ 2 lít xăng 50k"* → 50.000). Lấy cụm đầu của hạng thắng; cảnh
+/// báo nhiều số tiền khi có ≥ 2 cụm chắc + nói (khác hạng cũng tính), hoặc ≥ 2 cụm lít / xị khi chỉ có chúng.
 _CumTien? _chonSoTien(
   String s,
   String b, {
