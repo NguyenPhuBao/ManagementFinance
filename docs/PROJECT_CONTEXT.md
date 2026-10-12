@@ -633,7 +633,9 @@ form, không lưu); mặt đồng hồ hiện 00–23. **Đối chứng**: dựn
 đặt → gõ `20` báo *"Nhập thời gian hợp lệ"* — chứng minh cài đặt 12 giờ tới được app; rồi dựng lại bản sửa (`bd0d16c6…`), đo
 lại `20` / `8` đạt. Hai ô giờ trả về 08:00 / 20:00, `time_12_24` trả về **chưa đặt** (như trước lượt đo). Máy ảo nay cài bản
 **debug** `bd0d16c6…` (trước là release `26c101bc…`); nó vẫn hiện mục tiêu *Thu nen* vì chưa kéo về lệnh xoá (backend tắt).
-Chưa đo trên Realme / OnePlus (không máy nào cắm). `flutter test` **6696/6696** + 9 skip, analyze **20**.
+Đo **ba trong năm** chỗ gọi; ô giờ Tổng kết tuần (`notification_settings_page.dart:508`) và hai mốc Giờ im lặng (`:1279`,
+phải bật công tắc) chưa chạm — cùng một lớp bọc, không có đường riêng. Chưa đo trên Realme / OnePlus (không máy nào cắm).
+`flutter test` **6696/6696** + 9 skip, analyze **20**.
 
 ### 📱 Nghiệm thu Realme 2026-10-11 tối — chạy nền (Task 10), mười màn, Thêm giao dịch sau tách; mở G90
 

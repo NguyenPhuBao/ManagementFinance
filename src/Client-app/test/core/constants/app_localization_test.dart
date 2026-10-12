@@ -8,7 +8,8 @@
 ///
 /// Ba hằng ở `core/constants/app_localization.dart` là định nghĩa duy nhất;
 /// `main.dart` phải nối đủ cả ba — thiếu một là hỏng im lặng (thiếu `locale`
-/// thì theo máy, máy đặt tiếng Anh là lại "Select date").
+/// thì theo máy, máy đặt tiếng Anh là lại "Select date"). Cùng tệp có hàm
+/// `bocDongHo24Gio` (G90, nhóm cuối tệp) — `main.dart` cũng phải gọi nó.
 library;
 
 import 'dart:io';
