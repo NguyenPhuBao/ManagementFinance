@@ -370,12 +370,14 @@ void main() {
       expect(docAi('mua 2 ly trà sữa', const KetQuaAi(soTien: 2000)).soTien, isNull);
     });
 
-    test('"một triệu hai": luật không điền (mơ hồ), AI chọn 1.200.000 → dùng, bỏ cảnh báo số chữ', () {
+    test('"một triệu hai": luật đọc N1 = 1.200.000, AI khớp → không cảnh báo, không đánh dấu AI', () {
+      // C4 2026-10-12: luật chọn N1 khi Y ở chỗ của tiền (trước: luật bỏ trống, AI chọn).
       final luat = docCauGiaoDich('tiền điện một triệu hai', now: now, vi: const [], chonDuoc: const []);
-      expect(luat.soTien, isNull, reason: 'tiền đề');
+      expect(luat.soTien, 1200000, reason: 'C4 2026-10-12: luật chọn N1');
       final r = docAi('tiền điện một triệu hai', const KetQuaAi(soTien: 1200000));
       expect(r.soTien, 1200000);
       expect(r.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)));
+      expect(r.quaAi, isFalse, reason: 'luật thắng AI ở ô luật đã đọc được');
     });
 
     test('loại: AI "chi" / "thu" được dùng; câu có nợ / vay → null như luật', () {
@@ -505,7 +507,8 @@ void main() {
     test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
       expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien, OThieu.ghiChu},
           reason: 'số chưa đọc được còn nằm trong ghi chú');
-      expect(luat('tiền điện một triệu hai').oThieu, {OThieu.soTien, OThieu.ghiChu});
+      // C4 2026-10-12: "một triệu hai" nay luật đọc được (N1) nên không còn là ví dụ ô thiếu; "45" trơ trọi vẫn chưa đọc.
+      expect(luat('cà phê 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ngày thiếu: luật không đọc được mà câu có chữ thời gian; "tôi" không phải chữ thời gian', () {
