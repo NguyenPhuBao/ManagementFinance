@@ -750,6 +750,36 @@ void main() {
       expect(bat.cuoi!.loai, LoaiThongBao.loi);
     });
 
+    testWidgets('Q1: đang nghe → nút Điền bị khoá (Stitch trạng thái 2); nói xong thì câu vẫn được điền', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      a.onChu('ăn phở', false);
+      await tester.pump();
+      expect(tester.widget<ElevatedButton>(find.byKey(const Key('nhap-nhanh-dien'))).onPressed, isNull,
+          reason: 'bấm Điền lúc đang nghe → _cubit.dangDien nuốt câu nói xong');
+      a.onChu('ăn phở 45k tiền mặt', true);
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(tomTat(tester), 'Đã điền: 45.000 đ · Tiền mặt', reason: 'chốt không được nuốt chính câu nói');
+      expect(tester.widget<ElevatedButton>(find.byKey(const Key('nhap-nhanh-dien'))).onPressed, isNotNull);
+    });
+
+    testWidgets('Q1: đang ghi âm (lối Gemma) → nút Điền bị khoá', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon(coMang: false, gemma: _GemmaGia())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.widget<ElevatedButton>(find.byKey(const Key('nhap-nhanh-dien'))).onPressed, isNull);
+    });
+
+    testWidgets('/add?noi=1 mà Basic → KHÔNG nghe', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon(), batDauNghe: true, laPremium: false));
+      await tester.pumpAndSettle();
+      expect(a.soLanNghe, 0);
+    });
+
     testWidgets('P9: "máy không có gói tiếng Việt" (hứa nói lại bằng AI) là toast THÔNG TIN, không phải lỗi',
         (tester) async {
       final bat = batThongBao();

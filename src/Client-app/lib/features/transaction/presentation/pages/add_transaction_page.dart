@@ -215,8 +215,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   ThemGiaoDichState get _s => _cubit.state;
 
   /// C4 — micro chỉ ở đường tạo mới thường (không sửa, không form điền từ biến động / ảnh quét — spec §2.4).
+  late final NguonGiongNoi? _nguonGiongNoi =
+      widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
+
   late final NgheGiongNoiCubit? _nghe = () {
-    final n = widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
+    final n = _nguonGiongNoi;
     return n == null || widget.initial != null || widget.bienDong != null ? null : NgheGiongNoiCubit(nguon: n);
   }();
 
@@ -273,6 +276,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _dienTuCau() async {
     final cau = _nhapNhanhController.text.trim();
     if (cau.isEmpty || _cubit.dangDien) return;
+    // Micro đang nghe / ghi / chép: không Điền chữ tạm (Điền lúc ấy nuốt câu nói xong, hoặc chồng phiên chữ lên lượt chép
+    // lời). Câu nói xong vào đây SAU khi cubit micro đã về `cho` (cùng state với `soLanXong`).
+    if (_nghe case final n? when n.state.trangThai != TrangThaiNghe.cho) return;
     FocusScope.of(context).unfocus();
     await _cubit.dienTuCau(cau);
   }
@@ -307,7 +313,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _bamMicro() async {
     final nghe = _nghe;
     if (nghe == null) return;
-    if (nghe.state.trangThai == TrangThaiNghe.cho) await _nhuongMoHinhChoMicro();
+    if (nghe.state.trangThai == TrangThaiNghe.cho) {
+      // IME đang soạn chữ với `controller.text` bị ghi mỗi lần có chữ tạm — bỏ focus trước.
+      FocusScope.of(context).unfocus();
+      await _nhuongMoHinhChoMicro();
+      if (!mounted) return;
+    }
     await nghe.bam();
   }
 
@@ -315,14 +326,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final nghe = _nghe;
     if (nghe == null || !mounted || !_laPremium) return;
     await _nhuongMoHinhChoMicro();
+    if (!mounted) return;
     await nghe.batDau();
   }
 
   void _baoNghe(ThongBaoNghe t) {
-    final n = widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
+    final n = _nguonGiongNoi;
     final hanhDong = switch (t) {
       ThongBaoNghe.biChanQuyen when n != null => HanhDongToast('Mở cài đặt', () => unawaited(n.micro.moCaiDat())),
-      ThongBaoNghe.khongCoLoi => HanhDongToast('Cài đặt AI', () => context.push('/ai-settings')),
+      ThongBaoNghe.khongCoLoi => HanhDongToast('Cài đặt AI', () {
+          if (mounted) unawaited(context.push('/ai-settings'));
+        }),
       _ => null,
     };
     // Thông báo hứa "bấm micro nói lại bằng AI trên máy" (kThuGemmaLuotSau) và "không nghe rõ" là thông tin, không lỗi.

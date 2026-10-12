@@ -126,7 +126,10 @@ class ONhapNhanh extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
                       // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
-                      hintText: dangThu ? 'Đang nghe…' : (laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium'),
+                      // Có micro (36 dp) thì ô hẹp lại: ở 300–320 dp "phở 45k tiền mặt" bị cắt (đo vòng sửa 1, Task 14).
+                      hintText: dangThu
+                          ? 'Đang nghe…'
+                          : (laPremium ? (coMicro ? 'phở 45k' : 'phở 45k tiền mặt') : 'Chỉ Premium'),
                       hintStyle: const TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -159,7 +162,8 @@ class ONhapNhanh extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),
-                    onPressed: dangDocAi ? null : onDien,
+                    // Đang nghe / ghi / chép thì khoá: Điền lúc ấy nuốt câu nói xong hoặc chồng phiên chữ lên lượt chép lời (Stitch 2).
+                    onPressed: dangDocAi || trangThaiNghe != TrangThaiNghe.cho ? null : onDien,
                     child: const Text('Điền'),
                   )
                 else
@@ -207,32 +211,32 @@ class ONhapNhanh extends StatelessWidget {
             // Tóm tắt rỗng (số luật đã rút khỏi form sau kiểm chéo) mà còn nguồn / cảnh báo: không vẽ ✓ đứng một mình.
             if (kq.tomTat.isNotEmpty)
               Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  kq.docDuoc ? Icons.check_circle : Icons.info_outline,
-                  size: 16,
-                  color:
-                      kq.docDuoc ? AppColors.income : AppColors.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    kq.tomTat,
-                    key: const Key('nhap-nhanh-tom-tat'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: kq.docDuoc
-                          ? AppColors.income
-                          : AppColors.textSecondary,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    kq.docDuoc ? Icons.check_circle : Icons.info_outline,
+                    size: 16,
+                    color:
+                        kq.docDuoc ? AppColors.income : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      kq.tomTat,
+                      key: const Key('nhap-nhanh-tom-tat'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: kq.docDuoc
+                            ? AppColors.income
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             Padding(
-              padding: const EdgeInsets.only(top: 4, left: 22),
+              padding: EdgeInsets.only(top: 4, left: kq.tomTat.isEmpty ? 0 : 22),
               child: Row(
                 children: [
                   Icon(

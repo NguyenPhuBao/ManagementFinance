@@ -566,6 +566,7 @@ void main() {
     final kq = c.state.ketQuaDien;
     expect(kq, isNotNull, reason: 'còn nguồn AI / cảnh báo thì KetQuaDien không bị bỏ');
     expect(kq!.tomTat, '', reason: 'số luật đã rút khỏi form → không còn gì để nói trong "Đã điền"');
+    expect(kq.canhBao, isNotEmpty, reason: 'cảnh báo nhiều số tiền được GIỮ khi tóm tắt rỗng');
   });
 
   group('bất biến 7 — D1 / ảnh quét', () {
