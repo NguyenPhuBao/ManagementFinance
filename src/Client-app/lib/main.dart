@@ -208,13 +208,17 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
         // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
-        // biết đến nó.
-        builder: (context, child) => AppToast(
-          connectionEvents: sl<ConnectionMonitor>().events,
-          pushResults: sl<SyncEngine>().pushResultStream,
-          realtimeEvents: sl<RealtimeChannel>().events,
-          thongBaoNhanh: sl<ThongBaoNhanh>().stream,
-          child: child ?? const SizedBox.shrink(),
+        // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
+        // (G90 — xem `bocDongHo24Gio`).
+        builder: (context, child) => bocDongHo24Gio(
+          context,
+          AppToast(
+            connectionEvents: sl<ConnectionMonitor>().events,
+            pushResults: sl<SyncEngine>().pushResultStream,
+            realtimeEvents: sl<RealtimeChannel>().events,
+            thongBaoNhanh: sl<ThongBaoNhanh>().stream,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );
