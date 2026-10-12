@@ -6,7 +6,7 @@
 /// còn lại); số tiền chốt bằng `chotTongQuet`: khớp → điền, lệch → ô trống + hai chip trên form. Biên lai chỉ luật
 /// (Gemma chưa đo trên biên lai). Không ghi gì — người dùng bấm Lưu trên form (bất biến ④).
 ///
-/// ⚠️ Tệp DUY NHẤT của `lib/` (ngoài màn spike C4) import `image_picker` — test quét thứ 20
+/// ⚠️ Tệp DUY NHẤT của `lib/` import `image_picker` — test quét thứ 20
 /// (`chi_mot_noi_import_image_picker_test.dart`).
 library;
 
