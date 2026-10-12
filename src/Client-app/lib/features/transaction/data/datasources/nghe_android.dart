@@ -66,18 +66,25 @@ class NgheAndroidThat implements NgheAndroid {
   }) async {
     _luot?.huy();
     final luot = _luot = LuotNghe(onChu: onChu, onLoi: onLoi, onDung: onDung);
-    await _stt.listen(
-      listenOptions: SpeechListenOptions(
-        localeId: 'vi_VN',
-        listenFor: kNgheToiDa,
-        pauseFor: kImDeDung,
-        onDevice: trenMay,
-        partialResults: true,
-        cancelOnError: true,
-        listenMode: ListenMode.dictation,
-      ),
-      onResult: (SpeechRecognitionResult r) => luot.chu(r.recognizedWords, r.finalResult),
-    );
+    try {
+      await _stt.listen(
+        listenOptions: SpeechListenOptions(
+          localeId: 'vi_VN',
+          listenFor: kNgheToiDa,
+          pauseFor: kImDeDung,
+          onDevice: trenMay,
+          partialResults: true,
+          cancelOnError: true,
+          listenMode: ListenMode.dictation,
+        ),
+        onResult: (SpeechRecognitionResult r) => luot.chu(r.recognizedWords, r.finalResult),
+      );
+    } catch (_) {
+      // `listen` ném thì lượt này không bao giờ bắt đầu — đừng để LuotNghe sống và hẹn `onDung` ma.
+      luot.huy();
+      if (identical(_luot, luot)) _luot = null;
+      rethrow;
+    }
   }
 
   @override
