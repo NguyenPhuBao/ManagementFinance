@@ -4,7 +4,9 @@ library;
 
 import 'dart:io';
 
+import 'package:flowmoney/core/category/category_name.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/utils/so_bang_chu.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -183,45 +185,35 @@ void main() {
     test('"hai triệu mốt" → 2.100.000', () {
       expect(doc('mua xe hai triệu mốt').soTien, 2100000.0);
     });
-    test(
-        'mọi chữ số KHÔNG DẤU mà luật nhận đều có dạng CÓ DẤU trong bảng chữ số có dấu (thêm khoá quên dạng có dấu → đỏ)',
-        () {
-      final nhan = RegExp(r'\(([a-z|]+)\)')
-          .firstMatch(File('lib/features/transaction/domain/doc_cau_giao_dich.dart')
-              .readAsStringSync()
-              .split(String.fromCharCode(10))
-              .firstWhere((l) => l.contains('_sauLaChuSoChu = RegExp')))!
-          .group(1)!
-          .split('|');
-      final coDau = {
-        'mot': ['một', 'mốt'],
-        'hai': ['hai'],
-        'ba': ['ba'],
-        'bon': ['bốn'],
-        'tu': ['tư'],
-        'nam': ['năm'],
-        'sau': ['sáu'],
-        'bay': ['bảy'],
-        'tam': ['tám'],
-        'chin': ['chín'],
-      };
-      expect(nhan.toSet(), coDau.keys.toSet(), reason: 'khoá mới trong _sauLaChuSoChu phải khai dạng có dấu ở ca này');
-      // Mỗi dạng có dấu phải được luật nhận là chữ số (không mơ hồ, không "không") trong câu có dấu.
-      for (final e in coDau.entries) {
-        for (final cd in e.value) {
-          final c = 'tiền điện đã trả một triệu $cd';
-          expect(
-            cachDocSoTien(c, now: now).any((v) => v > 1000000 && v < 2000000),
-            isTrue,
-            reason: cd,
-          );
-          final kq = doc(c);
-          if (!['sau', 'nam', 'bay'].contains(e.key) || cd == e.value.first) {
-            expect(kq.soTien, isNot(1000000.0), reason: 'dạng có dấu "$cd" bị đọc như không phải chữ số');
-          }
-        }
+    test('mọi chữ số mà `_sauLaChuSoChu` nhận đều đọc được ở mọi dạng có dấu của so_bang_chu.dart', () {
+      final nguon = File('lib/features/transaction/domain/doc_cau_giao_dich.dart').readAsStringSync();
+      final dong = nguon.split(String.fromCharCode(10)).firstWhere((l) => l.contains('_sauLaChuSoChu = RegExp'));
+      final nhan = RegExp(r'\(([a-z|]+)\)').firstMatch(dong)!.group(1)!.split('|').toSet();
+      final dangCoDau = {for (final w in chuSoDonCoDau) w};
+      final khongDauCua = {for (final w in dangCoDau) removeVietnameseTones(w): w};
+      expect(
+        nhan.difference(khongDauCua.keys.toSet()),
+        isEmpty,
+        reason: 'khoá của _sauLaChuSoChu phải là dạng bỏ dấu của một chữ số trong so_bang_chu.dart',
+      );
+      for (final w in dangCoDau.where((w) => nhan.contains(removeVietnameseTones(w)))) {
+        final c = 'tiền điện đã trả một triệu $w';
+        expect(
+          cachDocSoTien(c, now: now).any((v) => v > 1000000 && v < 2000000),
+          isTrue,
+          reason: 'cachDocSoTien thiếu cách đọc X,Y cho "$w"',
+        );
+        expect(doc(c).soTien, isNot(1000000.0), reason: 'dạng có dấu "$w" bị đọc như không phải chữ số');
       }
     });
+    for (final (cau, so) in [('tiền điện một triệu bẩy', 1700000.0), ('mua xe hai triệu bẩy', 2700000.0)]) {
+      test('"$cau" → $so (bẩy = bảy miền Bắc)', () {
+        final kq = doc(cau);
+        expect(kq.soTien, so);
+        expect(kq.soTienCanKiem, isTrue);
+        expect(cachDocSoTien(cau, now: now), contains(so));
+      });
+    }
   });
 
   group('B — câu TRỘN dấu: chữ ASCII trong câu có dấu là mơ hồ', () {

@@ -71,6 +71,15 @@ const Map<String, _Tu> _coDau = {
   'rưỡi': _Tu(_Loai.ruoi),
 };
 
+/// Mọi dạng CÓ DẤU của chữ số đơn 1–9 (*một, hai, … bẩy, bảy, … chín*) cùng chữ số đứng sau hàng chục / bậc (*mốt, tư,
+/// lăm, nhăm*) — dẫn xuất từ bảng [_coDau] (định nghĩa duy nhất) để chỗ khác không chép tay một bảng thứ hai: thêm dạng
+/// mới vào bảng thì ở đây tự có. Không gồm *nửa · vài · mấy · dăm* (không phải một chữ số xác định).
+final Set<String> chuSoDonCoDau = {
+  for (final e in _coDau.entries)
+    if ((e.value.loai == _Loai.so && e.value.giaTri >= 1 && e.value.giaTri <= 9) || e.value.loai == _Loai.soSauChuc)
+      e.key,
+};
+
 /// Dạng không dấu của [_coDau]. Hai từ trùng dạng không dấu thì từ ĐẦU thắng: *một* trước *mốt* (nên `mot` đứng đầu
 /// cụm được), và *muoi* (mười / mươi) đặt sẵn để đọc theo ngữ cảnh.
 final Map<String, _Tu> _khongDau = () {

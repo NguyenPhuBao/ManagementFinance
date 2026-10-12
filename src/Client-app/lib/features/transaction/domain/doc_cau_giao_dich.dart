@@ -217,13 +217,14 @@ final RegExp _chuCaiNgoaiAscii = RegExp(r'(?![a-zA-Z])[\p{L}\p{M}]', unicode: tr
 bool _cauKhongDau(String s) => !_chuCaiNgoaiAscii.hasMatch(s);
 
 const Set<String> _chuThatKhongDau = {'sau', 'nam', 'bay'};
-const Set<String> _chuSoChuCoDau = {'một', 'mốt', 'hai', 'ba', 'bốn', 'tư', 'năm', 'sáu', 'bảy', 'tám', 'chín'};
 
-/// Chữ số viết bằng CHỮ ngay sau [kt] (*"một triệu **hai**"*) — [b] là câu đã bỏ dấu. Câu có dấu thì xét CÓ DẤU trên [s]:
-/// bỏ dấu thì *"từ"* thành `tu` = *tư* (số 4) và *"chuyển năm trăm nghìn **từ** MB Bank"* từng bị coi là *"năm trăm nghìn
-/// tư"* → "chưa rõ", không điền (spike C4 câu 19). [cauKhongDau] (cả câu không dấu, *"mot trieu hai"*) thì nhận.
+/// Chữ số viết bằng CHỮ ngay sau [kt] (*"một triệu **hai**"*) — [b] là câu đã bỏ dấu. Câu có dấu thì xét CÓ DẤU trên
+/// [s]: bỏ dấu thì *"từ"* thành `tu` = *tư* (số 4) và *"chuyển năm trăm nghìn **từ** MB Bank"* từng bị coi là *"năm
+/// trăm nghìn tư"* → "chưa rõ", không điền (spike C4 câu 19). [cauKhongDau] (cả câu không dấu, *"mot trieu hai"*)
+/// thì nhận.
 ///
-/// BA trạng thái: **chữ số** (`moHo` false: từ có dấu khớp [_chuSoChuCoDau], hoặc cả câu không dấu), **mơ hồ** (`moHo`
+/// BA trạng thái: **chữ số** (`moHo` false: từ có dấu thuộc [chuSoDonCoDau] của `so_bang_chu.dart`, hoặc cả câu không
+/// dấu), **mơ hồ** (`moHo`
 /// true: câu có dấu mà từ ấy toàn ASCII và bỏ dấu là chữ số — *"một triệu tu"*: người gõ thiếu dấu hay đó là chữ
 /// khác?), **không** (`null`: từ có dấu khác hẳn, *"từ"*; hoặc [_chuThatKhongDau] — *sau · nam · bay* không dấu là chữ
 /// thật). Luật không đoán ca mơ hồ (chưa rõ như trước C4); [cachDocSoTien] vẫn liệt kê để Gemma chọn.
@@ -233,7 +234,7 @@ const Set<String> _chuSoChuCoDau = {'một', 'mốt', 'hai', 'ba', 'bốn', 'tư
   final ketThuc = kt + m.end;
   final goc = unorm.nfc(s.substring(ketThuc - m.group(1)!.length, ketThuc).toLowerCase());
   final giaTri = _chuSoChu[m.group(1)]!;
-  if (cauKhongDau || _chuSoChuCoDau.contains(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: false);
+  if (cauKhongDau || chuSoDonCoDau.contains(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: false);
   // sau · nam · bay viết không dấu trong câu có dấu là CHỮ THẬT (sau đó, Nam, bay), không phải chữ số gõ thiếu dấu.
   if (_chiAscii.hasMatch(goc) && !_chuThatKhongDau.contains(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: true);
   return null;
@@ -254,7 +255,7 @@ const Set<String> _sauSoTienLaThu = {'thứ', 'thu'};
 /// trước"* là ba hôm, không phải 2,3 triệu.
 const Set<String> _sauHomLaNgay = {'qua', 'nay', 'kia'};
 
-/// Thứ trong tuần sau *thứ*: chữ số, hoặc *hai · ba · tư · năm · sáu · bảy*, *chủ nhật*, *cn* (có / không dấu theo câu).
+/// Thứ trong tuần sau *thứ*: chữ số, hoặc *hai · ba · tư · năm · sáu · bảy*, *chủ nhật*, *cn* (dấu theo câu).
 const Set<String> _sauThuCoDau = {'hai', 'ba', 'tư', 'năm', 'sáu', 'bảy', 'chủ', 'cn'};
 const Set<String> _sauThuKhongDau = {'hai', 'ba', 'tu', 'nam', 'sau', 'bay', 'chu', 'cn'};
 final RegExp _dauCauSau = RegExp(r'^\s*[,.;!?]');
