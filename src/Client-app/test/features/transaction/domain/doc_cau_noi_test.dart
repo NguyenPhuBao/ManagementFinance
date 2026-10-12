@@ -106,15 +106,13 @@ void main() {
   });
 
   group('"sau" không phải "sáu" khi câu có dấu', () {
-    test('"hai triệu sau khi giảm" → luật KHÔNG điền 2.600.000 (mơ hồ → chưa rõ như trước C4; Gemma còn chọn)', () {
+    test('"hai triệu sau khi giảm" → 2.000.000, không 2.600.000 (sau · nam · bay không dấu là chữ thật)', () {
+      // Tinh chỉnh phán quyết B (điều phối 2026-10-12): trong câu có dấu, "sau" là chữ thật, không mơ hồ.
       final kq = doc('hai triệu sau khi giảm');
-      expect(kq.soTien, isNot(2600000.0));
-      expect(kq.soTien, isNull);
+      expect(kq.soTien, 2000000.0);
       expect(kq.soTienCanKiem, isFalse);
-      expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
-      expect(cachDocSoTien('hai triệu sau khi giảm', now: now), contains(2600000.0));
+      expect(cachDocSoTien('hai triệu sau khi giảm', now: now), isNot(contains(2600000.0)));
     });
-
     test('cả câu không dấu: "hai trieu sau" → 2.600.000', () {
       expect(doc('hai trieu sau').soTien, 2600000.0);
     });

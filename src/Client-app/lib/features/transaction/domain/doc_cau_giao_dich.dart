@@ -175,7 +175,7 @@ class KetQuaAi {
   }
 }
 
-const String kCanhBaoNhieuSoTien = 'Câu có nhiều số tiền — mình chỉ điền khoản đầu.';
+const String kCanhBaoNhieuSoTien = 'Câu có nhiều số tiền — mình chỉ điền một khoản, bạn kiểm tra lại nhé.';
 const String kCanhBaoSoTienQuaLon = 'Số tiền quá lớn — mình không điền.';
 const String kCanhBaoSoTienKhongHopLe = 'Số tiền không hợp lệ — mình không điền.';
 const String kCanhBaoSoChuChuaRo = 'Số tiền viết bằng chữ chưa rõ — bạn nhập tay nhé.';
@@ -216,6 +216,7 @@ final RegExp _chuCaiNgoaiAscii = RegExp(r'(?![a-zA-Z])[\p{L}\p{M}]', unicode: tr
 /// chữ / giới từ dạng không dấu (*"từ"* bỏ dấu là *tu* = *tư*, *"sáu"* và *"sau"* trùng nhau).
 bool _cauKhongDau(String s) => !_chuCaiNgoaiAscii.hasMatch(s);
 
+const Set<String> _chuThatKhongDau = {'sau', 'nam', 'bay'};
 const Set<String> _chuSoChuCoDau = {'một', 'hai', 'ba', 'bốn', 'tư', 'năm', 'sáu', 'bảy', 'tám', 'chín'};
 
 /// Chữ số viết bằng CHỮ ngay sau [kt] (*"một triệu **hai**"*) — [b] là câu đã bỏ dấu. Câu có dấu thì xét CÓ DẤU trên [s]:
@@ -233,7 +234,8 @@ const Set<String> _chuSoChuCoDau = {'một', 'hai', 'ba', 'bốn', 'tư', 'năm'
   final goc = unorm.nfc(s.substring(ketThuc - m.group(1)!.length, ketThuc).toLowerCase());
   final giaTri = _chuSoChu[m.group(1)]!;
   if (cauKhongDau || _chuSoChuCoDau.contains(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: false);
-  if (_chiAscii.hasMatch(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: true);
+  // sau · nam · bay viết không dấu trong câu có dấu là CHỮ THẬT (sau đó, Nam, bay), không phải chữ số gõ thiếu dấu.
+  if (_chiAscii.hasMatch(goc) && !_chuThatKhongDau.contains(goc)) return (giaTri: giaTri, ketThuc: ketThuc, moHo: true);
   return null;
 }
 
