@@ -1,8 +1,8 @@
 /// Số viết bằng CHỮ trong một câu tiếng Việt — **định nghĩa duy nhất** (C2 task 1, spec
 /// `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2.6).
 ///
-/// Bốn nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), ngày nêu trong câu (`ngay_trong_cau.dart`, qua
-/// [docSoNhoBangChu]), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
+/// Bốn nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), ngày nêu trong câu (`ngay_trong_cau.dart`,
+/// qua [docSoNhoBangChu]), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
 /// số chữ cũng là con số, bẫy 4.42) và bộ chỉnh tham số (`chinh_tham_so.dart` — ngưỡng tiền của câu hỏi). Trước
 /// 2026-09-29 hai tệp sau mỗi tệp một bộ đọc riêng, và **cả hai mù hàng chục**: *"năm mươi nghìn"* ra rỗng, nên
 /// *"dưới năm mươi nghìn"* không thành ngưỡng nào trong khi *"dưới 50k"* thì có.
@@ -238,9 +238,10 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
 /// *tháng* (*năm*, *mười lăm*, *hai mươi mốt*, *ba mươi*), khác [timSoBangChu] ở chỗ KHÔNG đòi đơn vị. Cùng phép khớp từ
 /// (`_nghiaCua`: có dấu hoặc không dấu hoàn toàn). Trả `(giá trị, chỉ số token kế tiếp)` hoặc `null`.
 ///
-/// ⚠️ Chữ hàng đơn vị đứng ngay sau hàng chục KHÔNG được nhận khi token kế là *trăm · nghìn · ngàn · triệu · tỷ · tỉ*:
-/// *"mười hai trăm nghìn"* là tiền — chỉ đọc *mười*. [choPhepTu]: nhận *tư* / *tu* đứng một mình là 4 (tên chuẩn của tháng
-/// 4, *"tháng tư"*); ngoài chỗ ấy *tư* chỉ là chữ số đứng sau hàng chục.
+/// ⚠️ Chữ hàng đơn vị đứng ngay sau hàng chục KHÔNG được nhận khi token kế là *trăm · nghìn · ngàn · triệu · tỷ · tỉ*
+/// hoặc *mươi / chục*: *"mười hai trăm nghìn"* là tiền, *"mười hai mươi nghìn"* là mười + hai mươi nghìn — chỉ đọc
+/// *mười*. [choPhepTu]: nhận *tư* / *tu* đứng một mình là 4 (tên chuẩn của tháng 4, *"tháng tư"*); ngoài chỗ ấy *tư*
+/// chỉ là chữ số đứng sau hàng chục.
 (int, int)? docSoNhoBangChu(List<String> tu, int i, {bool choPhepTu = false}) {
   _Tu? nghia(int k) => k < tu.length ? _nghiaCua(tu[k]) : null;
   bool laDonViLon(int k) {
@@ -274,12 +275,4 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
     return u == null ? (g.toInt() * 10, i + 2) : (g.toInt() * 10 + u, i + 3);
   }
   return (g.toInt(), i + 1);
-}
-
-/// [tu] (một token, NFC + chữ thường) có phải ĐƠN VỊ TIỀN không: *trăm · nghìn · ngàn · triệu · tỷ · tỉ* (dạng có dấu hoặc
-/// không dấu hoàn toàn, như [timSoBangChu]) hoặc viết tắt *k · tr · củ*. Cho chỗ cần biết một con số đứng trước nó là
-/// tiền chứ không phải ngày / tháng (*"mùng 5 tháng 3 triệu"*).
-bool laTuDonViTien(String tu) {
-  final l = _nghiaCua(tu)?.loai;
-  return l == _Loai.tram || l == _Loai.bac || tu == 'k' || tu == 'tr' || tu == 'củ' || tu == 'cu';
 }

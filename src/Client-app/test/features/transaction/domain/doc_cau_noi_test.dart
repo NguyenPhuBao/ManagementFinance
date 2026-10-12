@@ -372,4 +372,11 @@ void main() {
     expect(doc('ngày mùng năm tháng chín mua sách').ghiChu, 'mua sách');
     expect(doc('ngày mùng 5 tháng 9 mua sách').ghiChu, 'mua sách');
   });
+
+  test('vòng sửa 3: tháng không nuốt lít / xị; tháng sau không đọc ngày nhưng giữ tiền', () {
+    expect(doc('mùng 5 tháng 3 lít').soTien, 300000.0); // lít = 100.000
+    expect(doc('đóng tiền mùng năm tháng hai xị').ngay, DateTime(2026, 10, 5));
+    final kq = doc('trả nợ mùng 5 tháng sau 2 triệu');
+    expect((kq.ngay, kq.soTien), (null, 2000000.0));
+  });
 }

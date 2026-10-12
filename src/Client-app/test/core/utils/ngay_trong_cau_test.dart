@@ -308,8 +308,8 @@ void main() {
       expect(timNgayTrongCau('mùng 5 tháng 10 triệu', mot10)?.ngay, DateTime(2026, 10, 5));
     });
     test('vòng sửa 2: "tháng sau" không phải tháng 6', () {
-      expect(timNgayTrongCau('trả nợ mùng 5 tháng sau 2 triệu', mot10)?.ngay, DateTime(2026, 10, 5));
-      expect(timNgayTrongCau('mùng năm tháng sau', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('trả nợ mùng 5 tháng sau 2 triệu', mot10), isNull, reason: 'vòng 3');
+      expect(timNgayTrongCau('mùng năm tháng sau', mot10), isNull, reason: 'vòng 3: tháng sau → không đoán, AI hỏi');
       expect(timNgayTrongCau('ngày 5 tháng sau', mot10), isNull);
       expect(timNgayTrongCau('mùng năm tháng sáu', mot10)?.ngay, DateTime(2026, 6, 5));
     });
@@ -320,6 +320,27 @@ void main() {
     test('vòng sửa 2: "mười hai mươi nghìn" không phải một số', () {
       expect(timNgayTrongCau('ngày năm tháng mười hai mươi nghìn', mot10)?.ngay, DateTime(2026, 10, 5));
       expect(timNgayTrongCau('mùng mười hai mươi nghìn', mot10)?.ngay, DateTime(2026, 9, 10));
+    });
+
+    // Vòng sửa 3: đơn vị tiền dùng chung `_sauLaDonViTien`; tháng trước / này / tới.
+    test('vòng sửa 3: tháng ngay trước lít / xị là tiền → tháng này (hoặc không ngày với "ngày …")', () {
+      expect(timNgayTrongCau('mùng 5 tháng 3 lít', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('đóng tiền mùng năm tháng hai xị', mot10)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('ngày 5 tháng 3 lít', mot10), isNull);
+      expect(timNgayTrongCau('ngày năm tháng ba lít', mot10), isNull);
+    });
+    final hai0 = DateTime(2026, 10, 20, 9);
+    for (final (cau, ngay) in [
+      ('mùng 5 tháng trước', DateTime(2026, 9, 5)),
+      ('mùng 5 tháng này', DateTime(2026, 10, 5)),
+      ('ngày 5 tháng trước', DateTime(2026, 9, 5)),
+    ]) {
+      test('vòng sửa 3: "$cau" hôm 20/10 → $ngay', () => expect(timNgayTrongCau(cau, hai0)?.ngay, ngay));
+    }
+    test('vòng sửa 3: tháng tới / sau → không đọc ngày; mùng 31 tháng trước (tháng 9) → null', () {
+      expect(timNgayTrongCau('mùng 5 tháng tới', hai0), isNull);
+      expect(timNgayTrongCau('mùng năm tháng sau', hai0), isNull);
+      expect(timNgayTrongCau('mùng 31 tháng trước', DateTime(2026, 10, 15)), isNull);
     });
 
     // Luật lịch: tháng ngắn và năm nhuận — cùng nếp dd/mm (ngày không tồn tại → bỏ, không kẹp).
