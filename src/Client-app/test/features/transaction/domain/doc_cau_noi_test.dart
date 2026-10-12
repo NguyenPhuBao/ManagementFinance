@@ -213,7 +213,7 @@ void main() {
           expect(
             cachDocSoTien(c, now: now).any((v) => v > 1000000 && v < 2000000),
             isTrue,
-            reason: '$cd',
+            reason: cd,
           );
           final kq = doc(c);
           if (!['sau', 'nam', 'bay'].contains(e.key) || cd == e.value.first) {
