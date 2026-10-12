@@ -712,6 +712,9 @@ export default {
     ipTitle: 'Access IP Address',
     defaultUser: 'User',
     defaultAction: 'System Request',
+    newLogsBanner: '{count} new activities recorded',
+    viewNewLogs: 'View now',
+    newLogsBadge: '{count} new',
     statuses: {
       Pass: 'Pass',
       Fail: 'Fail',

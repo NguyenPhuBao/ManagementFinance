@@ -712,6 +712,9 @@ export default {
     ipTitle: 'Địa chỉ IP truy cập',
     defaultUser: 'Người dùng',
     defaultAction: 'Yêu cầu hệ thống',
+    newLogsBanner: 'Có {count} hoạt động mới vừa phát sinh',
+    viewNewLogs: 'Xem ngay',
+    newLogsBadge: '{count} mới',
     statuses: {
       Pass: 'Thành công (Pass)',
       Fail: 'Thất bại (Fail)',
