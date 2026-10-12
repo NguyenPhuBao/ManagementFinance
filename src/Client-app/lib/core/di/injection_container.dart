@@ -890,8 +890,18 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         micro: const KenhMicroAndroid(),
         coMang: sl<ConnectionMonitor>().coMangNgay,
         gemma: sl<ChepLoiBangGemma>(),
-        tepTam: () async =>
-            '${(await getTemporaryDirectory()).path}/giong_noi_${DateTime.now().millisecondsSinceEpoch}.wav',
+        tepTam: () async {
+          final thuMuc = await getTemporaryDirectory();
+          // Tiến trình bị giết giữa lượt ghi để lại giọng người dùng (spec §2.4: không lưu âm thanh) — dọn tệp sót
+          // trước khi xin tệp mới. Lượt chạy tuần tự nên không xoá nhầm tệp đang ghi. Không bao giờ ném.
+          try {
+            for (final f in thuMuc.listSync()) {
+              final ten = f.path.replaceAll(r'', '/').split('/').last;
+              if (f is File && ten.startsWith('giong_noi_') && ten.endsWith('.wav')) await f.delete();
+            }
+          } catch (_) {}
+          return '${thuMuc.path}/giong_noi_${DateTime.now().millisecondsSinceEpoch}.wav';
+        },
         docTep: (p) => File(p).readAsBytes(),
         xoaTep: (p) async {
           try {

@@ -2,6 +2,7 @@
 /// lỗi thành "không biết" — trên nền tảng không có kênh (web, test) thì `MissingPluginException` là bình thường.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 const String kKenhMicro = 'flowmoney/micro';
@@ -23,7 +24,8 @@ class KenhMicroAndroid implements KenhMicro {
   Future<bool> biChan() async {
     try {
       return await _kenh.invokeMethod<bool>('biChan') ?? false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[GiongNoi][Kenh] biChan lỗi: $e');
       return false;
     }
   }
@@ -32,6 +34,8 @@ class KenhMicroAndroid implements KenhMicro {
   Future<void> moCaiDat() async {
     try {
       await _kenh.invokeMethod<void>('moCaiDat');
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[GiongNoi][Kenh] moCaiDat lỗi: $e');
+    }
   }
 }

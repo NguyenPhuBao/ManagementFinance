@@ -14,7 +14,7 @@ void main() {
     test('chỉ $tep được import $goi', () {
       final coImport = [
         for (final f in Directory('lib').listSync(recursive: true).whereType<File>())
-          if (f.path.endsWith('.dart') && f.readAsStringSync().contains("'$goi")) f.path.replaceAll(r'\', '/'),
+          if (f.path.endsWith('.dart') && f.readAsStringSync().contains(goi)) f.path.replaceAll(r'\', '/'),
       ];
       expect(coImport, contains(tep),
           reason: 'tiền đề: phép quét phải thấy chính tệp được phép — không thấy là quét sai thư mục và xanh giả');

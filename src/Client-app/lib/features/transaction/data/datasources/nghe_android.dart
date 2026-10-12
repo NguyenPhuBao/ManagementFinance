@@ -11,13 +11,19 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../domain/do_im_lang.dart';
+import 'luot_nghe.dart';
 
 abstract class NgheAndroid {
   /// `false` = máy không có dịch vụ nhận dạng / thiếu quyền. Thành công thì giữ; thất bại thì lần sau thử lại.
   Future<bool> khoiTao();
 
-  /// Nghe tiếng Việt. Chữ tạm qua [onChu] (`xong` = false), chữ cuối một lần (`xong` = true); lỗi qua [onLoi] (mã
-  /// `error_*`); [onDung] khi lượt kết thúc (sau chữ cuối hoặc lỗi).
+  /// Nghe tiếng Việt. Hợp đồng: chữ tạm qua [onChu] (`xong` = false), rồi **ĐÚNG MỘT** kết thúc — chữ cuối
+  /// `onChu(_, true)` | [onLoi] (mã `error_*`) | [onDung] (lượt kết thúc không chữ, không lỗi). Lỗi thắng `done`
+  /// (xem [LuotNghe]).
+  ///
+  /// ⚠️ Có thể NÉM (`SpeechToTextNotInitializedException`, `ListenFailedException`) — người gọi bọc try/catch (P11).
+  /// ⚠️ Nếu bộ nhận dạng native bận và không bắt đầu, gói không ném và không callback (`listen` không trả cờ; `isListening`
+  /// đổi bất đồng bộ nên không tin được ngay) — chưa có tín hiệu tin cậy; người gọi nên có hạn chót riêng.
   Future<void> nghe({
     required bool trenMay,
     required void Function(String chu, bool xong) onChu,
@@ -32,17 +38,16 @@ abstract class NgheAndroid {
 class NgheAndroidThat implements NgheAndroid {
   final SpeechToText _stt = SpeechToText();
   bool _daKhoiTao = false;
-  void Function(String ma)? _onLoi;
-  void Function()? _onDung;
+  LuotNghe? _luot;
 
   @override
   Future<bool> khoiTao() async {
     if (_daKhoiTao) return true;
     try {
       _daKhoiTao = await _stt.initialize(
-        onError: (SpeechRecognitionError e) => _onLoi?.call(e.errorMsg),
+        onError: (SpeechRecognitionError e) => _luot?.loi(e.errorMsg),
         onStatus: (s) {
-          if (s == 'done') _onDung?.call();
+          if (s == SpeechToText.doneStatus) _luot?.done();
         },
       );
     } catch (e) {
@@ -59,8 +64,8 @@ class NgheAndroidThat implements NgheAndroid {
     required void Function(String ma) onLoi,
     required void Function() onDung,
   }) async {
-    _onLoi = onLoi;
-    _onDung = onDung;
+    _luot?.huy();
+    final luot = _luot = LuotNghe(onChu: onChu, onLoi: onLoi, onDung: onDung);
     await _stt.listen(
       listenOptions: SpeechListenOptions(
         localeId: 'vi_VN',
@@ -71,7 +76,7 @@ class NgheAndroidThat implements NgheAndroid {
         cancelOnError: true,
         listenMode: ListenMode.dictation,
       ),
-      onResult: (SpeechRecognitionResult r) => onChu(r.recognizedWords, r.finalResult),
+      onResult: (SpeechRecognitionResult r) => luot.chu(r.recognizedWords, r.finalResult),
     );
   }
 
@@ -79,5 +84,10 @@ class NgheAndroidThat implements NgheAndroid {
   Future<void> dung() => _stt.stop();
 
   @override
-  Future<void> huy() => _stt.cancel();
+  Future<void> huy() {
+    // Gỡ người nghe TRƯỚC: `cancel` phát `doneNoResult` trước khi trả về.
+    _luot?.huy();
+    _luot = null;
+    return _stt.cancel();
+  }
 }

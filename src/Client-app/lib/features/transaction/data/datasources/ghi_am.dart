@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 
 import '../../domain/do_im_lang.dart';
@@ -31,7 +32,8 @@ class GhiAmThat implements GhiAm {
   Future<bool> coQuyen() async {
     try {
       return await _r.hasPermission();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[GiongNoi][GhiAm] hasPermission lỗi: $e');
       return false;
     }
   }
@@ -45,6 +47,7 @@ class GhiAmThat implements GhiAm {
 
   @override
   Future<String?> dung() async {
+    if (_rec == null) return null;
     await _sub?.cancel();
     _sub = null;
     return _r.stop();
@@ -52,6 +55,7 @@ class GhiAmThat implements GhiAm {
 
   @override
   Future<void> huy() async {
+    if (_rec == null) return;
     await _sub?.cancel();
     _sub = null;
     await _r.cancel();

@@ -163,4 +163,17 @@ void main() {
     c.hienTai = [ConnectivityResult.mobile];
     expect(await m.coMangNgay(), isTrue);
   });
+
+  test('coMangNgay: checkConnectivity NÉM → true (lối Android tự báo lỗi mạng nếu sai)', () async {
+    final m = ConnectionMonitor(connectivity: _ConnectivityNem());
+    expect(await m.coMangNgay(), isTrue);
+  });
+}
+
+class _ConnectivityNem implements Connectivity {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => throw StateError('hỏng');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
