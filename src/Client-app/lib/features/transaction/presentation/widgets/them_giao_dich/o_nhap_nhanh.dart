@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
+import '../../bloc/nghe_giong_noi_state.dart' show TrangThaiNghe;
 import '../../bloc/them_giao_dich_state.dart' show KetQuaDien;
 import 'dong_dang_nghe.dart';
 
@@ -23,6 +24,11 @@ class ONhapNhanh extends StatelessWidget {
     required this.onHuy,
     this.dangKiemSoTien = false,
     this.onHuyKiem,
+    this.coMicro = false,
+    this.trangThaiNghe = TrangThaiNghe.cho,
+    this.giayGhi = 0,
+    this.onMicro,
+    this.onHuyNghe,
   });
 
   final TextEditingController controller;
@@ -35,9 +41,17 @@ class ONhapNhanh extends StatelessWidget {
   final bool dangKiemSoTien;
   final VoidCallback? onHuyKiem;
 
+  /// C4 — micro (Task 14). Chỉ vẽ khi [coMicro] và [laPremium].
+  final bool coMicro;
+  final TrangThaiNghe trangThaiNghe;
+  final int giayGhi;
+  final VoidCallback? onMicro;
+  final VoidCallback? onHuyNghe;
+
   @override
   Widget build(BuildContext context) {
     final kq = ketQua;
+    final dangThu = trangThaiNghe == TrangThaiNghe.dangNghe || trangThaiNghe == TrangThaiNghe.dangGhi;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
@@ -81,8 +95,8 @@ class ONhapNhanh extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
-                border: focusNode.hasFocus
-                    ? Border.all(color: AppColors.primary, width: 2)
+                border: focusNode.hasFocus || dangThu
+                    ? Border.all(color: dangThu ? AppColors.expense : AppColors.primary, width: 2)
                     : Border.all(
                         color: AppColors.outlineVariant.withValues(alpha: 0.5)),
               ),
@@ -112,13 +126,26 @@ class ONhapNhanh extends StatelessWidget {
                       focusedBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
                       // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
-                      hintText: laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium',
+                      hintText: dangThu ? 'Đang nghe…' : (laPremium ? 'phở 45k tiền mặt' : 'Chỉ Premium'),
                       hintStyle: const TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
+                if (laPremium && coMicro)
+                  IconButton(
+                    key: const Key('nhap-nhanh-micro'),
+                    tooltip: dangThu ? 'Dừng' : 'Nói',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+                    onPressed: trangThaiNghe == TrangThaiNghe.dangChep ? null : onMicro,
+                    icon: Icon(
+                      dangThu ? Icons.stop_circle : Icons.mic_none,
+                      color: dangThu ? AppColors.expense : AppColors.primary,
+                    ),
+                  ),
                 const SizedBox(width: 6),
                 // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
                 if (laPremium)
@@ -177,7 +204,9 @@ class ONhapNhanh extends StatelessWidget {
             )
           else if (kq != null) ...[
             const SizedBox(height: 8),
-            Row(
+            // Tóm tắt rỗng (số luật đã rút khỏi form sau kiểm chéo) mà còn nguồn / cảnh báo: không vẽ ✓ đứng một mình.
+            if (kq.tomTat.isNotEmpty)
+              Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
@@ -241,6 +270,21 @@ class ONhapNhanh extends StatelessWidget {
                 ),
               ),
           ],
+          if (trangThaiNghe == TrangThaiNghe.dangGhi)
+            DongDangNghe(
+              key: const Key('nhap-nhanh-dang-ghi'),
+              chamDo: true,
+              chu: 'Đang ghi âm · $giayGhi giây — nói xong ngừng 2 giây',
+              onHuy: onHuyNghe,
+              khoaHuy: const Key('nhap-nhanh-huy-nghe'),
+            )
+          else if (trangThaiNghe == TrangThaiNghe.dangChep)
+            DongDangNghe(
+              key: const Key('nhap-nhanh-dang-chep'),
+              chu: 'Đang chép lời bằng AI trên máy…',
+              onHuy: onHuyNghe,
+              khoaHuy: const Key('nhap-nhanh-huy-nghe'),
+            ),
           if (dangKiemSoTien)
             DongDangNghe(
               key: const Key('nhap-nhanh-dang-kiem'),

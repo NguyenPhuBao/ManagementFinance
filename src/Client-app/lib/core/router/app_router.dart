@@ -238,6 +238,8 @@ class AppRouter {
               // D1: `?…&khoa=bienDong:…` — mở từ một hàng biến động số dư (deeplink của
               // `NhapBienDong`). Query không phải của nó → `null`, form mở như thường.
               bienDong: dienSanBienDongTuQuery(state.uri.queryParameters),
+              // C4: nút Nói ở Trang chủ (`/add?noi=1`) — nghe ngay. Query, không `extra`: `extra is String` là chiều tiền.
+              batDauNghe: state.uri.queryParameters['noi'] == '1',
             ),
             routes: [
               GoRoute(

@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
@@ -15,17 +16,26 @@ import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
+import 'package:flowmoney/features/transaction/data/chep_loi_bang_gemma.dart';
+import 'package:flowmoney/features/transaction/data/datasources/ghi_am.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kenh_micro.dart';
+import 'package:flowmoney/features/transaction/data/datasources/nghe_android.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
+import 'package:flowmoney/features/transaction/data/nguon_giong_noi.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
+import 'package:flowmoney/features/transaction/domain/chon_loi_nghe.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
+import 'package:flowmoney/features/transaction/presentation/widgets/them_giao_dich/o_nhap_nhanh.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../helpers/bat_thong_bao.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 class _StoreGia implements GoiYPhanHoiStore {
@@ -117,6 +127,62 @@ class _AiCheo implements DocCauBangAi {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+/// C4 — bốn lớp giả cho micro (chép từ nghe_giong_noi_cubit_test).
+class _AndroidGia implements NgheAndroid {
+  int soLanNghe = 0;
+  late void Function(String, bool) onChu;
+  late void Function(String) onLoi;
+  @override
+  Future<bool> khoiTao() async => true;
+  @override
+  Future<void> nghe({
+    required bool trenMay,
+    required void Function(String chu, bool xong) onChu,
+    required void Function(String ma) onLoi,
+    required void Function() onDung,
+  }) async {
+    soLanNghe++;
+    this.onChu = onChu;
+    this.onLoi = onLoi;
+  }
+
+  @override
+  Future<void> dung() async {}
+  @override
+  Future<void> huy() async {}
+}
+
+class _GhiAmGia implements GhiAm {
+  bool quyen = true;
+  @override
+  Future<bool> coQuyen() async => quyen;
+  @override
+  Future<void> batDau(String duongTep, {required void Function(double dbfs) onBienDo}) async {}
+  @override
+  Future<String?> dung() async => '/tam/a.wav';
+  @override
+  Future<void> huy() async {}
+}
+
+class _MicroGia implements KenhMicro {
+  bool chan = false;
+  @override
+  Future<bool> biChan() async => chan;
+  @override
+  Future<void> moCaiDat() async {}
+}
+
+class _GemmaGia implements ChepLoiBangGemma {
+  @override
+  Future<bool> sanSangChua() async => true;
+  @override
+  Future<String?> chep(Uint8List wav) async => 'ăn phở 45k';
+  @override
+  Future<void> huy() async {}
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
   final diChuyen = makeCategory(id: 'move', name: 'Di chuyển', isDefault: true);
@@ -152,6 +218,9 @@ void main() {
     ThemeData? theme,
     DocCauBangAi? docAi,
     Map<String, List<String>> keywords = const {},
+    NguonGiongNoi? giongNoi,
+    bool batDauNghe = false,
+    bool? laPremium,
   }) {
     final bloc = TransactionBloc(transactionRepository: repo ?? FakeTransactionRepository());
     final router = GoRouter(
@@ -173,6 +242,9 @@ void main() {
                 boPhanLoai: boPhanLoai,
                 phanHoiGoiY: phanHoiGoiY,
                 docAi: docAi,
+                giongNoi: giongNoi,
+                batDauNghe: batDauNghe,
+                laPremium: laPremium,
                 budgetLookup: (_, __) async => null,
               ),
             ),
@@ -605,5 +677,145 @@ void main() {
     expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsNothing);
     expect(ai.soLanHuy, 1);
     expect(find.text('50.000 đ'), findsWidgets);
+  });
+
+  group('C4 micro', () {
+    late _AndroidGia a;
+    NguonGiongNoi nguon({bool coMang = true, _GemmaGia? gemma, _GhiAmGia? ghiAm, _MicroGia? micro}) => NguonGiongNoi(
+          android: a,
+          ghiAm: ghiAm ?? _GhiAmGia(),
+          micro: micro ?? _MicroGia(),
+          coMang: () async => coMang,
+          gemma: gemma,
+          tepTam: () async => '/tam/a.wav',
+          docTep: (_) async => Uint8List(4),
+          xoaTep: (_) async {},
+        );
+    setUp(() => a = _AndroidGia());
+
+    testWidgets('không có NguonGiongNoi → không micro (màn như cũ)', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('nhap-nhanh-micro')), findsNothing);
+    });
+
+    testWidgets('P14: Basic (laPremium false) → không micro dù có NguonGiongNoi', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon(), laPremium: false));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('nhap-nhanh-micro')), findsNothing);
+    });
+
+    testWidgets('⭐ nói "hôm qua ăn phở 45k tiền mặt" → chữ hiện dần trong ô, rồi form tự điền', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      a.onChu('hôm qua ăn', false);
+      await tester.pump();
+      expect(find.text('hôm qua ăn'), findsOneWidget, reason: 'chữ tạm hiện trong ô');
+      a.onChu('hôm qua ăn phở 45k tiền mặt', true);
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(find.text('45.000 đ'), findsOneWidget);
+      expect(tomTat(tester), 'Đã điền: 45.000 đ · Hôm qua · Tiền mặt');
+    });
+
+    testWidgets('mất mạng + Gemma: dòng "Đang ghi âm" + Huỷ; Huỷ thì tắt', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon(coMang: false, gemma: _GemmaGia())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('nhap-nhanh-dang-ghi')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('nhap-nhanh-huy-nghe')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('nhap-nhanh-dang-ghi')), findsNothing);
+    });
+
+    testWidgets('/add?noi=1 (batDauNghe) → nghe ngay khi mở form', (tester) async {
+      await tester.pumpWidget(app(giongNoi: nguon(), batDauNghe: true));
+      await tester.pumpAndSettle();
+      expect(a.soLanNghe, 1);
+    });
+
+    testWidgets('quyền bị chặn → toast có câu của ThongBaoNghe.biChanQuyen + nút Mở cài đặt', (tester) async {
+      final bat = batThongBao();
+      final g = _GhiAmGia()..quyen = false;
+      final m = _MicroGia()..chan = true;
+      await tester.pumpWidget(app(giongNoi: nguon(ghiAm: g, micro: m)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pumpAndSettle();
+      expect(bat.cau, contains(cauThongBaoNghe(ThongBaoNghe.biChanQuyen)));
+      expect(bat.cuoi!.hanhDong?.nhan, 'Mở cài đặt');
+      expect(bat.cuoi!.loai, LoaiThongBao.loi);
+    });
+
+    testWidgets('P9: "máy không có gói tiếng Việt" (hứa nói lại bằng AI) là toast THÔNG TIN, không phải lỗi',
+        (tester) async {
+      final bat = batThongBao();
+      await tester.pumpWidget(app(giongNoi: nguon(gemma: _GemmaGia())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      a.onLoi('error_language_unavailable');
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(bat.cau, contains(cauThongBaoNghe(ThongBaoNghe.khongCoGoiThuGemma)));
+      expect(bat.cuoi!.loai, LoaiThongBao.thongTin);
+    });
+
+    testWidgets('không chồng AI lên micro: đang "Đọc bằng AI" mà chạm micro → lượt AI bị huỷ', (tester) async {
+      final ai = _AiCheo();
+      await tester.pumpWidget(app(docAi: ai, giongNoi: nguon()));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'cà phê 45 ở quán');
+      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
+      await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('nhap-nhanh-dang-doc')), findsOneWidget, reason: 'tiền đề: đang đọc bằng AI');
+      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(ai.soLanHuy, greaterThanOrEqualTo(1), reason: 'mô hình là một: micro không được chồng lên lượt đang giải mã');
+      expect(find.byKey(const Key('nhap-nhanh-dang-doc')), findsNothing);
+    });
+
+    testWidgets('không chồng AI lên micro: đang "Kiểm số tiền" mà chạm micro → lượt kiểm bị huỷ', (tester) async {
+      final ai = _AiCheo();
+      await tester.pumpWidget(app(docAi: ai, giongNoi: nguon()));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống năm chục');
+      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
+      await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsOneWidget, reason: 'tiền đề');
+      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(ai.soLanHuy, 1);
+      expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsNothing);
+    });
+  });
+
+  testWidgets('⭐ ✓ không đứng một mình: tóm tắt rỗng mà còn cảnh báo → KHÔNG vẽ dấu check xanh', (tester) async {
+    final c = TextEditingController();
+    final f = FocusNode();
+    addTearDown(c.dispose);
+    addTearDown(f.dispose);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ONhapNhanh(
+          controller: c,
+          focusNode: f,
+          laPremium: true,
+          dangDocAi: false,
+          ketQua: (tomTat: '', docDuoc: true, quaAi: false, canhBao: const ['Câu có nhiều số tiền'], lyDo: null),
+          onDien: () {},
+          onHuy: () {},
+        ),
+      ),
+    ));
+    expect(find.byIcon(Icons.check_circle), findsNothing);
+    expect(find.text('Câu có nhiều số tiền'), findsOneWidget, reason: 'cảnh báo vẫn hiện');
+    expect(find.byKey(const Key('nhap-nhanh-nguon')), findsOneWidget, reason: 'dòng nguồn vẫn hiện');
   });
 }

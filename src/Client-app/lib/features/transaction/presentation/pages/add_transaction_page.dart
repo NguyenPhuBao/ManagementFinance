@@ -15,8 +15,12 @@ import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../data/doc_cau_bang_ai.dart';
+import '../../data/nguon_giong_noi.dart';
+import '../../domain/chon_loi_nghe.dart';
 import '../../data/them_giao_dich_nguon.dart';
 import '../../data/vi_theo_nguon_store.dart';
+import '../bloc/nghe_giong_noi_cubit.dart';
+import '../bloc/nghe_giong_noi_state.dart';
 import '../bloc/them_giao_dich_cubit.dart';
 import '../bloc/them_giao_dich_state.dart';
 import '../widgets/khoi_tach.dart';
@@ -143,6 +147,12 @@ class AddTransactionPage extends StatefulWidget {
   /// `DocCauBangAi`, `docCauGiaoDich` không đổi; điền sẵn từ D1 / biên lai / C3 không đi qua ô này.
   final bool? laPremium;
 
+  /// C4 — micro trong ô Nhập nhanh. `null` → `sl<NguonGiongNoi>()` nếu đã đăng ký; không có thì không micro.
+  final NguonGiongNoi? giongNoi;
+
+  /// `/add?noi=1` — mở form rồi nghe ngay.
+  final bool batDauNghe;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -167,6 +177,8 @@ class AddTransactionPage extends StatefulWidget {
     this.khoAnhQuet,
     this.choTickMon = kChonMonTuAnhQuet,
     this.laPremium,
+    this.giongNoi,
+    this.batDauNghe = false,
   });
 
   @override
@@ -201,6 +213,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   );
 
   ThemGiaoDichState get _s => _cubit.state;
+
+  /// C4 — micro chỉ ở đường tạo mới thường (không sửa, không form điền từ biến động / ảnh quét — spec §2.4).
+  late final NgheGiongNoiCubit? _nghe = () {
+    final n = widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
+    return n == null || widget.initial != null || widget.bienDong != null ? null : NgheGiongNoiCubit(nguon: n);
+  }();
 
   /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
   final GlobalKey _khoaTheGoiY = GlobalKey();
@@ -247,6 +265,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       if (_nhapNhanhFocus.hasFocus) _cubit.chuanBiAi();
     });
     unawaited(_cubit.moTrang());
+    // `/add?noi=1` (nút Nói ở Trang chủ): mở form rồi nghe ngay.
+    if (widget.batDauNghe) WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_batDauNgheNgay()));
   }
 
   /// C2 — đọc câu ô *Nhập nhanh* rồi điền sẵn (Cubit lo toàn bộ); trang chỉ đóng bàn phím trước.
@@ -260,6 +280,56 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.
   Future<void> _huyDocAi() => _cubit.huyDocAi(_nhapNhanhController.text.trim());
 
+  Widget _oNhapNhanh(NgheGiongNoiState? s) => ONhapNhanh(
+        controller: _nhapNhanhController,
+        focusNode: _nhapNhanhFocus,
+        laPremium: _laPremium,
+        dangDocAi: _s.dangDocAi,
+        ketQua: _s.ketQuaDien,
+        onDien: _dienTuCau,
+        onHuy: _huyDocAi,
+        dangKiemSoTien: _s.dangKiemSoTien,
+        onHuyKiem: _cubit.huyKiemSoTien,
+        coMicro: s != null,
+        trangThaiNghe: s?.trangThai ?? TrangThaiNghe.cho,
+        giayGhi: s?.giay ?? 0,
+        onMicro: () => unawaited(_bamMicro()),
+        onHuyNghe: () => unawaited(_nghe?.huy()),
+      );
+
+  /// Huỷ lượt AI đang chạy (đọc câu / kiểm số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp lại
+  /// nó dưới chân một phiên chat đang giải mã là sập native (cùng họ A5).
+  Future<void> _nhuongMoHinhChoMicro() async {
+    if (_s.dangDocAi) await _huyDocAi();
+    if (_s.dangKiemSoTien) await _cubit.huyKiemSoTien();
+  }
+
+  Future<void> _bamMicro() async {
+    final nghe = _nghe;
+    if (nghe == null) return;
+    if (nghe.state.trangThai == TrangThaiNghe.cho) await _nhuongMoHinhChoMicro();
+    await nghe.bam();
+  }
+
+  Future<void> _batDauNgheNgay() async {
+    final nghe = _nghe;
+    if (nghe == null || !mounted || !_laPremium) return;
+    await _nhuongMoHinhChoMicro();
+    await nghe.batDau();
+  }
+
+  void _baoNghe(ThongBaoNghe t) {
+    final n = widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
+    final hanhDong = switch (t) {
+      ThongBaoNghe.biChanQuyen when n != null => HanhDongToast('Mở cài đặt', () => unawaited(n.micro.moCaiDat())),
+      ThongBaoNghe.khongCoLoi => HanhDongToast('Cài đặt AI', () => context.push('/ai-settings')),
+      _ => null,
+    };
+    // Thông báo hứa "bấm micro nói lại bằng AI trên máy" (kThuGemmaLuotSau) và "không nghe rõ" là thông tin, không lỗi.
+    final thongTin = kThuGemmaLuotSau.contains(t) || t == ThongBaoNghe.khongNgheRo;
+    baoNhanh(cauThongBaoNghe(t), loai: thongTin ? LoaiThongBao.thongTin : LoaiThongBao.loi, hanhDong: hanhDong);
+  }
+
   Future<void> _boQuaBienDong() async {
     await _cubit.boQuaBienDong();
     if (mounted) context.pop();
@@ -271,6 +341,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _noteController.dispose();
     _nhapNhanhController.dispose();
     _nhapNhanhFocus.dispose();
+    unawaited(_nghe?.close());
     unawaited(_cubit.close());
     super.dispose();
   }
@@ -615,17 +686,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             const SizedBox(height: 12),
                           ],
                         ] else if (!_isEditing) ...[
-                          ONhapNhanh(
-                            controller: _nhapNhanhController,
-                            focusNode: _nhapNhanhFocus,
-                            laPremium: _laPremium,
-                            dangDocAi: _s.dangDocAi,
-                            ketQua: _s.ketQuaDien,
-                            onDien: _dienTuCau,
-                            onHuy: _huyDocAi,
-                            dangKiemSoTien: _s.dangKiemSoTien,
-                            onHuyKiem: _cubit.huyKiemSoTien,
-                          ),
+                          _nghe == null
+                              ? _oNhapNhanh(null)
+                              : BlocBuilder<NgheGiongNoiCubit, NgheGiongNoiState>(
+                                  bloc: _nghe,
+                                  builder: (_, s) => _oNhapNhanh(s),
+                                ),
                           if (_s.luaChonTienCau.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             KhoiChonSoTien(
@@ -697,15 +763,43 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       },
       child: coCuon,
     );
+    final nghe = _nghe;
+    final coNghe = nghe == null
+        ? coGhiChu
+        : MultiBlocListener(
+            listeners: [
+              // Lối Android: chữ đang nghe hiện trong ô.
+              BlocListener<NgheGiongNoiCubit, NgheGiongNoiState>(
+                bloc: nghe,
+                listenWhen: (a, b) => b.trangThai == TrangThaiNghe.dangNghe && a.chuTam != b.chuTam,
+                listener: (_, s) => _nhapNhanhController.text = s.chuTam,
+              ),
+              // Một câu xong → vào ô → Điền qua đúng đường C2 (ThemGiaoDichCubit.dienTuCau).
+              BlocListener<NgheGiongNoiCubit, NgheGiongNoiState>(
+                bloc: nghe,
+                listenWhen: (a, b) => a.soLanXong != b.soLanXong,
+                listener: (_, s) {
+                  _nhapNhanhController.text = s.cauXong ?? '';
+                  unawaited(_dienTuCau());
+                },
+              ),
+              BlocListener<NgheGiongNoiCubit, NgheGiongNoiState>(
+                bloc: nghe,
+                listenWhen: (a, b) => a.soLanThongBao != b.soLanThongBao,
+                listener: (_, s) => _baoNghe(s.thongBao!),
+              ),
+            ],
+            child: coGhiChu,
+          );
     final transactionBloc = widget.transactionBloc;
     return transactionBloc == null
         ? BlocProvider<TransactionBloc>(
             create: (context) => sl<TransactionBloc>(),
-            child: coGhiChu,
+            child: coNghe,
           )
         : BlocProvider<TransactionBloc>.value(
             value: transactionBloc,
-            child: coGhiChu,
+            child: coNghe,
           );
   }
 

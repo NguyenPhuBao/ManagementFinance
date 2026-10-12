@@ -544,6 +544,30 @@ void main() {
     expect(c.state.dangDocAi, isFalse);
   });
 
+  test('C4 kiểm chéo: câu chỉ có số tiền nói, AI khác → tóm tắt RỖNG nhưng vẫn giữ nguồn / cảnh báo (preflight Task 9→14)',
+      () async {
+    final ai = _DocAiGia();
+    final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat.copyWith(isDefault: true)], danhMuc: [anUong], docAiGia: ai));
+    await c.moTrang();
+    final dien = c.dienTuCau('tiền điện một triệu hai, tiền nhà 2 tr 5');
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    ai.ketQua.complete(KetQuaAi.tuThamSo({
+      'so_tien': 1000000,
+      'loai': 'chi',
+      'ngay': '',
+      'vi': '',
+      'vi_den': '',
+      'danh_muc': '',
+      'ghi_chu': '',
+    }));
+    await dien;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(c.state.luaChonTienCau, isNotEmpty, reason: 'tiền đề: hai chip');
+    final kq = c.state.ketQuaDien;
+    expect(kq, isNotNull, reason: 'còn nguồn AI / cảnh báo thì KetQuaDien không bị bỏ');
+    expect(kq!.tomTat, '', reason: 'số luật đã rút khỏi form → không còn gì để nói trong "Đã điền"');
+  });
+
   group('bất biến 7 — D1 / ảnh quét', () {
     DienSanBienDong tin({String khoa = 'bienDong:a', String? anh}) => DienSanBienDong(
           khoa: khoa,
