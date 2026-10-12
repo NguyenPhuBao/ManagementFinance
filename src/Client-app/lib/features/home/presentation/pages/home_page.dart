@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../widgets/hang_nut_nhanh.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
@@ -352,36 +353,29 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildActionItem(
-          context: context,
-          icon: Icons.account_balance_wallet_outlined,
-          label: 'Thêm thu',
-          isDark: true,
+  Widget _buildQuickActions(BuildContext context) => HangNutNhanh(nut: [
+        NutNhanh(
+          bieuTuong: Icons.account_balance_wallet_outlined,
+          nhan: 'Thêm thu',
+          dam: true,
           onTap: () => context.push('/add', extra: 'thu'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.payments_outlined,
-          label: 'Thêm chi',
-          isDark: true,
+        NutNhanh(
+          bieuTuong: Icons.payments_outlined,
+          nhan: 'Thêm chi',
+          dam: true,
           onTap: () => context.push('/add', extra: 'chi'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.sync_alt,
-          label: 'Chuyển',
-          isDark: false,
+        NutNhanh(
+          bieuTuong: Icons.sync_alt,
+          nhan: 'Chuyển',
+          dam: false,
           onTap: () => context.push('/add', extra: 'transfer'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.document_scanner_outlined,
-          label: 'Quét',
-          isDark: false,
+        NutNhanh(
+          bieuTuong: Icons.document_scanner_outlined,
+          nhan: 'Quét',
+          dam: false,
           onTap: () {
             // Quyền `ocr_receipt` (spec phân quyền 2026-10-08): không có → màn Nâng cấp mở đầu bằng tên tính năng.
             if (!context.coQuyenDoc(MaQuyen.ocrReceipt)) {
@@ -392,55 +386,15 @@ class HomePage extends StatelessWidget {
             moQuet(context);
           },
         ),
-      ],
-    );
-  }
-
-  Widget _buildActionItem({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? AppColors.primary : Colors.white,
-              border: isDark ? null : Border.all(color: Colors.black12),
-              gradient: isDark
-                  ? const LinearGradient(
-                      colors: [Color(0xFF1A1A19), Color(0xFF374151)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-            ),
-            child: Icon(
-              icon,
-              color: isDark ? Colors.white : AppColors.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        NutNhanh(
+          khoa: const Key('nut-nhanh-noi'),
+          bieuTuong: Icons.mic_none,
+          nhan: 'Nói',
+          dam: false,
+          // C4 §2.3: có quyền → mở form và nghe ngay; Basic → màn Nâng cấp.
+          onTap: () => context.push(duongNutNoi(coQuyen: context.coQuyenDoc(MaQuyen.aiQuickInput))),
+        ),
+      ]);
 
   Widget _buildRecentTransactions(
     BuildContext context,
