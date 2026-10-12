@@ -610,7 +610,11 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-12)
 
-### 📝 C4 giọng nói — spec duyệt + kế hoạch 16 task (2026-10-12), CHƯA thi công
+### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12, CHƯA kiểm thử trên máy
+
+Task 1–15 của kế hoạch xong (39 commit, `f992ecac` → `e5809642`); `flutter test` **7032** ca (+9 skip), `flutter analyze` 20, Cubit form 1.132 dòng (trần quét 23: 1.200). Tài liệu đầy đủ: **`docs/GIONG_NOI_FEATURE.md`** (người dùng thấy gì, chọn lối, luật N1/N2/ngày/ví gọi tắt, kiểm chéo, Gemma một bản hai cờ, bảng tệp + test, chốt hỏng-im-lặng, lệch Stitch, checklist đo máy). Tóm tắt: micro ở ô Nhập nhanh + nút **Nói** Trang chủ (`/add?noi=1`); **Android trước, Gemma chép lời dự phòng**; nói xong tự Điền qua `dienTuCau`; số tiền đọc bằng dạng nói mới được Gemma kiểm chéo, lệch thì hai chip. Spike gỡ hết (miễn trừ quét 25 rỗng), thêm test quét **26**. Người dùng chốt giữa chừng: N1 chỉ khi Y ở chỗ tiền (lối A, đổi thân spec §3.2); *"ngày X tháng này"* không lùi. 🚧 **Phần kiểm thử trên máy (spec mục 9) chưa làm** — chuỗi mã lỗi `speech_to_text`, ngưỡng −35 dBFS, `kChoLoiSauDone`, RAM bản hai cờ, giọng thật cả hai lối, hộp quyền ColorOS, 320 dp thật. Hai màn Stitch lệch bản thi công (`d696e81e…`, `c8f09f19…`) chờ người dùng quyết. **Chưa push.**
+
+### 📝 (lịch sử) C4 giọng nói — spec duyệt + kế hoạch 16 task (2026-10-12), nay đã thi công
 
 Spec `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 *Soát với mã* đầu spec thắng thân
 spec), kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md` (gitignore). Người dùng chốt: **Android

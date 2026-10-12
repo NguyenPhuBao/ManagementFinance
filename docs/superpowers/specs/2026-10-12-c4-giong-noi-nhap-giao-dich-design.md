@@ -1,5 +1,7 @@
 # C4 — Giọng nói nhập giao dịch — thiết kế
 
+> ✅ **Cập nhật 2026-10-12 (Task 16):** **mã xong** Task 1–15, `flutter test` 7032 ca; 🚧 phần kiểm thử trên máy (mục 9) **chưa làm** — xem `docs/GIONG_NOI_FEATURE.md`. Dòng *Trạng thái* dưới đây là ảnh chụp lúc viết spec.
+>
 > **Trạng thái:** thiết kế duyệt từng phần trong chat 2026-10-12 (bốn phần + năm câu chọn, mục 1). **Kế hoạch 16 task đã
 > viết** (`plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md`, gitignore); **chưa có mã** — người dùng để phiên sau thi công. **Phạm vi lần này dừng trước phần kiểm thử trên máy** (mục 9): làm spec → kế hoạch → mã kèm test tự động, rồi
 > dừng; đo trên điện thoại để dành cho lúc người dùng cầm máy.

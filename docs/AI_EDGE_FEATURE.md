@@ -3423,6 +3423,8 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 
 ### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — 🚧 màn đo chạy được cả bốn đường, CHƯA có bảng đo
 
+> ✅ **2026-10-12 — spike CHỐT LỐI, MÃ SPIKE ĐÃ GỠ.** Người dùng chốt **Android trước, Gemma chép lời dự phòng** (C4, `docs/GIONG_NOI_FEATURE.md`; spec `specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md`). Đã xoá `ai_chat/spike/`, route `/spike-c4`, nhánh `kSpikeC4`, `spikeDaPhuongThuc`, `spike_c4_test`; `chepLoi` thay `spikeDaPhuongThuc` ở `SlmRuntime` (một bản mô hình mang cả cờ ảnh lẫn âm thanh, đóng ≤ 1 lần). `speech_to_text` + `record` + `image_picker` + `google_mlkit_text_recognition` đều là gói chính thức. Bảng đo giọng thật của hai lối vẫn **chưa có** (checklist mục 9 tài liệu giọng nói). Phần mô tả bên dưới là lịch sử của spike.
+
 Kế hoạch `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore). Mục này mới ghi **chạy thử** (Bước 2b,
 2c); hai bảng đo — 20 câu **đọc thật** và 15 ảnh hoá đơn **chụp thật** — chờ người dùng (Bước 3–4). Mã spike sống
 sau `--dart-define=SPIKE_C4=true` (`ai_chat/spike/`), là mã bỏ đi.
