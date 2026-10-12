@@ -589,7 +589,8 @@ void main() {
   });
 
   testWidgets('C4 kiểm chéo ở nền: dòng "Đang kiểm…" hiện, Huỷ thì tắt và giữ số luật', (tester) async {
-    final ai = _AiCheo();await tester.pumpWidget(app(docAi: ai));
+    final ai = _AiCheo();
+    await tester.pumpWidget(app(docAi: ai));
     await tester.pumpAndSettle();
     // "ăn uống" là tên danh mục → không còn ô thiếu → điền ngay, kiểm ở nền.
     await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống năm chục');

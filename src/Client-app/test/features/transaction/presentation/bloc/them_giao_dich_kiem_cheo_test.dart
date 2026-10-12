@@ -161,6 +161,65 @@ void main() {
     ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
     await pumpEventQueue();
     expect(c.state.luaChonTienCau, isNotEmpty);
-    expect(c.state.ketQuaDien?.tomTat ?? '', isNot(contains('1.200.000')));
+    expect(c.state.ketQuaDien, isNull, reason: 'câu không có ô nào khác → không còn gì để nói');
+  });
+
+  test('P7 (có danh mục): lệch → tóm tắt còn danh mục, mất số tiền', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai, danhMuc: [anUong]);
+    await c.dienTuCau('ăn uống một triệu hai');
+    expect(c.state.ketQuaDien?.tomTat, contains('1.200.000'), reason: 'tiền đề');
+    ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
+    await pumpEventQueue();
+    expect(c.state.luaChonTienCau, isNotEmpty);
+    expect(c.state.ketQuaDien?.tomTat, 'Đã điền: Ăn uống');
+  });
+
+  test('⭐ điền câu mới khi chip còn hiện → chip bị dọn ngay', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai);
+    await c.dienTuCau('tiền điện một triệu hai');
+    ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
+    await pumpEventQueue();
+    expect(c.state.luaChonTienCau, isNotEmpty);
+    final f = c.dienTuCau('tiền điện một triệu hai');
+    expect(c.state.luaChonTienCau, isEmpty);
+    await f;
+  });
+
+  test('⭐ điền câu mới khi câu trước còn đang kiểm → huỷ mô hình, kết quả cũ về sau bị bỏ', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai);
+    await c.dienTuCau('tiền điện một triệu hai');
+    expect(c.state.dangKiemSoTien, isTrue);
+    await c.dienTuCau('tiền điện một triệu hai');
+    expect(ai.soLanHuy, 1);
+    expect(ai.luot, hasLength(2));
+    ai.luot.first.complete(const KetQuaAi(soTien: 1000000));
+    await pumpEventQueue();
+    expect(c.state.luaChonTienCau, isEmpty, reason: 'lượt cũ không được đụng form');
+    expect(c.state.dangKiemSoTien, isTrue, reason: 'lượt mới vẫn đang chờ');
+    expect(ai.luot, hasLength(2));
+  });
+
+  test('đóng Cubit khi đang kiểm → mô hình thôi giải mã, kết quả về sau không ném', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai);
+    await c.dienTuCau('tiền điện một triệu hai');
+    await c.close();
+    expect(ai.soLanHuy, 1);
+    ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
+    await pumpEventQueue();
+  });
+
+  test('Huỷ khi không có lượt kiểm nào → không đụng bộ đếm lượt (câu mới vẫn điền được)', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai);
+    final f = c.dienTuCau('tiền điện một triệu hai');
+    await c.huyKiemSoTien();
+    await f;
+    expect(c.state.soTienDangCo, 1200000.0);
+    expect(c.dangDien, isFalse);
+    expect(ai.soLanHuy, 0);
   });
 }

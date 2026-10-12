@@ -859,9 +859,16 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       final dau = 'Đã điền: ${CurrencyFormatter.format(soLuat)}';
       if (kq.tomTat.startsWith(dau)) {
         final conLai = kq.tomTat.substring(dau.length).replaceFirst(' · ', '');
-        kqMoi = conLai.isEmpty
+        // Hết chữ để nói mà còn cảnh báo / nguồn AI thì giữ KetQuaDien (tóm tắt rỗng); không còn gì thì bỏ hẳn dòng.
+        kqMoi = conLai.isEmpty && kq.canhBao.isEmpty && !kq.quaAi
             ? null
-            : (tomTat: 'Đã điền: $conLai', docDuoc: true, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: kq.lyDo);
+            : (
+                tomTat: conLai.isEmpty ? '' : 'Đã điền: $conLai',
+                docDuoc: true,
+                quaAi: kq.quaAi,
+                canhBao: kq.canhBao,
+                lyDo: kq.lyDo,
+              );
       }
     }
     _phat(state.copyWith(chuoiSoTien: '0', hienBanPhimSo: false, luaChonTienCau: c.luaChon, ketQuaDien: kqMoi));
@@ -869,6 +876,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Bấm Huỷ ở dòng *"Đang kiểm số tiền bằng AI…"*: giữ số luật.
   Future<void> huyKiemSoTien() async {
+    // Không có lượt kiểm nào thì thôi — tăng bộ đếm lúc ấy là giết nhầm một lượt Điền đang chạy.
+    if (!state.dangKiemSoTien) return;
     _luotDien++;
     unawaited(_nguon.docAi?.huy());
     _phat(state.copyWith(dangKiemSoTien: false));
@@ -1101,6 +1110,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     // A5: ảnh quét chỉ sống tới khi form đóng — MỘT chỗ cho mọi đường thoát (Lưu, Bỏ qua, Back hệ thống, nút ←).
     final d = _bienDong;
     if (d != null && d.laQuet) unawaited(_nguon.xoaAnhQuet(d.anh));
+    // C4 §3.4: lượt Gemma đang đọc / kiểm số tiền không được giải mã tiếp 12–18 s sau khi form đã đóng.
+    if (state.dangKiemSoTien || state.dangDocAi) unawaited(_nguon.docAi?.huy());
     return super.close();
   }
 
