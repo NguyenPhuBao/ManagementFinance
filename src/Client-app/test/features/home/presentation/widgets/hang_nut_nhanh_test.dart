@@ -23,14 +23,18 @@ void main() {
       NutNhanh(bieuTuong: Icons.mic_none, nhan: n, dam: i < 2, onTap: () {}, khoa: Key('nut-$i')),
   ];
 
-  for (final rong in [320.0, 360.0, 411.0]) {
-    testWidgets('$rong dp: năm nút không tràn, nhãn đủ chữ', (tester) async {
+  // Lề NGANG 24 dp = lề thật của Trang chủ (home_page.dart:59); ×1,1 bù Roboto hẹp hơn Inter (nếp G80/G83).
+  for (final (rong, co) in [(320.0, 1.0), (320.0, 1.1), (360.0, 1.0), (411.0, 1.0)]) {
+    testWidgets('$rong dp ×$co: năm nút không tràn, nhãn đủ chữ', (tester) async {
       tester.view.physicalSize = Size(rong, 800);
       tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = co;
       addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pumpWidget(MaterialApp(
         theme: AppTheme.lightTheme,
-        home: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: HangNutNhanh(nut: nut))),
+        home:
+            Scaffold(body: Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: HangNutNhanh(nut: nut))),
       ));
       expect(tester.takeException(), isNull);
       for (final n in nhan) {
@@ -38,11 +42,9 @@ void main() {
         // P17: `getSize` = kích thước tự nhiên (không co); `getRect` áp phép biến đổi của FittedBox = bề rộng vẽ thật.
         final tuNhien = tester.getSize(find.text(n)).width;
         final veThat = tester.getRect(find.text(n)).width;
-        // ignore: avoid_print
-        print('DO|$rong|$n|tu nhien ${tuNhien.toStringAsFixed(1)}|ve ${veThat.toStringAsFixed(1)}|'
-            '${(veThat / tuNhien).toStringAsFixed(3)}');
         expect(veThat / tuNhien, greaterThanOrEqualTo(_nguongCo),
-            reason: 'Nhãn "$n" ở $rong dp co dưới ${(_nguongCo * 100).round()} % bề rộng tự nhiên — chữ tí hon.');
+            reason:
+                'Nhãn "$n" ở $rong dp ×$co co còn ${(veThat / tuNhien).toStringAsFixed(3)}, dưới ${(_nguongCo * 100).round()} % bề rộng tự nhiên — chữ tí hon.');
       }
       final x = [for (var i = 0; i < 5; i++) tester.getCenter(find.byKey(Key('nut-$i'))).dx];
       for (var i = 1; i < 5; i++) {

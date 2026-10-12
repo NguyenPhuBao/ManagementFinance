@@ -68,7 +68,7 @@ void main() {
     // `presentation/widgets/hang_nut_nhanh_test.dart`; ở đây canh HomePage gọi đúng hàm đó với đúng quyền.
     expect(nguon.contains("Key('nut-nhanh-noi')"), isTrue);
     expect(
-      nguon.contains('duongNutNoi(coQuyen: context.coQuyenDoc(MaQuyen.aiQuickInput))'),
+      nguon.contains('context.push(duongNutNoi(coQuyen: context.coQuyenDoc(MaQuyen.aiQuickInput)))'),
       isTrue,
       reason: 'C4 2026-10-12: nút Nói phải xét quyền aiQuickInput (cùng quyền với ô Nhập nhanh).',
     );
