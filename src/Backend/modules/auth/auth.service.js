@@ -961,6 +961,7 @@ const authService = {
       },
     };
   },
+  formatVnTime,
   getDeviceInfo,
 };
 
