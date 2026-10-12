@@ -418,4 +418,56 @@ void main() {
     final b = doc('mùng 5 mua sách 50k');
     expect((b.ngay, b.soTien, b.ghiChu), (DateTime(2026, 10, 5), 50000.0, 'mua sách'));
   });
+
+  group('ví gọi tắt — bỏ chữ "Ví" đầu tên, chỉ ngay sau ví / bằng / qua / từ / sang / vào / đến / tới', () {
+    final mb = makeWallet(id: 'mb', name: 'Ví MB Bank').copyWith(type: 'bank');
+    final momo = makeWallet(id: 'momo', name: 'Ví MoMo').copyWith(type: 'bank');
+    final viTk = makeWallet(id: 'vitk', name: 'Ví tiết kiệm').copyWith(type: 'saving');
+    final tk = makeWallet(id: 'tk', name: 'Tiết kiệm').copyWith(type: 'saving');
+    final viA = makeWallet(id: 'a', name: 'Ví A').copyWith(type: 'bank');
+
+    test('"mua áo hai trăm nghìn bằng MB Bank" → ví Ví MB Bank, ghi chú "mua áo"', () {
+      final kq = doc('mua áo hai trăm nghìn bằng MB Bank', vi: [tienMat, mb]);
+      expect(kq.walletId, 'mb');
+      expect(kq.ghiChu, 'mua áo');
+    });
+
+    test('"trà sữa ba mươi nghìn trả bằng MoMo" → ví Ví MoMo (tên gọi 4 ký tự vẫn nhận sau "bằng")', () {
+      expect(doc('trà sữa ba mươi nghìn trả bằng MoMo', vi: [tienMat, momo]).walletId, 'momo');
+    });
+
+    test('⚠️ "mua sách tiết kiệm" KHÔNG chọn ví Ví tiết kiệm (không giới từ đứng trước)', () {
+      expect(doc('mua sách tiết kiệm', vi: [tienMat, viTk]).walletId, isNull);
+    });
+
+    test('⭐ "chuyển năm trăm nghìn từ MB Bank sang tiết kiệm" → chuyển ví MB Bank → Tiết kiệm, 500.000', () {
+      final kq = doc('chuyển năm trăm nghìn từ MB Bank sang tiết kiệm', vi: [tienMat, mb, tk]);
+      expect(kq.loai, 'transfer');
+      expect(kq.walletId, 'mb');
+      expect(kq.walletToId, 'tk');
+      expect(kq.soTien, 500000.0);
+    });
+
+    test('"chuyển 500k từ momo sang MB Bank" → nguồn MoMo, đích MB Bank', () {
+      final kq = doc('chuyển 500k từ momo sang MB Bank', vi: [tienMat, mb, momo]);
+      expect(kq.walletId, 'momo');
+      expect(kq.walletToId, 'mb');
+    });
+
+    test('tên gọi dưới 3 ký tự không dùng: "trả bằng a" không chọn ví Ví A', () {
+      expect(doc('ăn phở 45k trả bằng a', vi: [tienMat, viA]).walletId, isNull);
+    });
+
+    test('tên đầy đủ vẫn như cũ: "bằng ví MB Bank"', () {
+      expect(doc('mua áo 200k bằng ví MB Bank', vi: [tienMat, mb]).walletId, 'mb');
+    });
+
+    test('⚠️ giới từ so CÓ DẤU khi câu có dấu: "vì" ≠ "ví" — "đi chơi vì MB Bank tặng voucher 50k" không chọn ví', () {
+      expect(doc('đi chơi vì MB Bank tặng voucher 50k', vi: [tienMat, mb]).walletId, isNull);
+    });
+
+    test('cả câu không dấu thì giới từ dạng không dấu nhận: "mua ao hai tram nghin bang MB Bank"', () {
+      expect(doc('mua ao hai tram nghin bang MB Bank', vi: [tienMat, mb]).walletId, 'mb');
+    });
+  });
 }

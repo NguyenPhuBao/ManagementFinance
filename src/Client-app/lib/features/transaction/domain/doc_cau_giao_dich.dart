@@ -376,12 +376,15 @@ KetQuaDocCau docCauGiaoDich(
   } else {
     // Ví (§2.4): tên ví nêu trong câu; không có thì "tiền mặt" → ví tiền mặt duy nhất.
     final tenVi = timTenTrongCau(s, [for (final w in dsVi) w.name], tuLoai: 'ví');
-    if (tenVi != null) {
+    if (tenVi != null && !_vanVoiViThanhVi(thuong, tenVi)) {
       final trung = _cungTen(dsVi, tenVi.ten, (w) => w.name);
       if (trung.length == 1) {
         walletId = trung.single.id;
         daDung.add(_moRongTruocVi(thuong, tenVi.batDau, tenVi.ketThuc));
       }
+    } else if (_tenGoiViTrongCau(thuong, _boKhoang(b, daDung), dsVi) case [final g, ...]) {
+      walletId = g.vi.id;
+      daDung.add(_moRongTruocVi(thuong, g.batDau, g.ketThuc));
     } else {
       final m = _mauTienMat.firstMatch(b);
       final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
@@ -735,8 +738,13 @@ typedef _ViNhac = ({Wallet vi, int batDau, int ketThuc});
 List<_ViNhac> _viNhacTrongCau(String s, String b, List<Wallet> dsVi, List<_Khoang> daDung) {
   final kq = <_ViNhac>[];
   for (final t in timCacTenTrongCau(_boKhoang(s, daDung), [for (final w in dsVi) w.name], tuLoai: 'ví')) {
+    if (_vanVoiViThanhVi(s.toLowerCase(), t)) continue;
     final trung = _cungTen(dsVi, t.ten, (w) => w.name);
     if (trung.length == 1) kq.add((vi: trung.single, batDau: t.batDau, ketThuc: t.ketThuc));
+  }
+  for (final g in _tenGoiViTrongCau(s.toLowerCase(), _boKhoang(b, daDung), dsVi)) {
+    if (kq.any((k) => g.batDau < k.ketThuc && g.ketThuc > k.batDau)) continue;
+    kq.add(g);
   }
   final tienMat = [for (final w in dsVi) if (w.type == 'cash') w];
   if (tienMat.length == 1) {
@@ -747,6 +755,46 @@ List<_ViNhac> _viNhacTrongCau(String s, String b, List<Wallet> dsVi, List<_Khoan
   }
   return kq..sort((x, y) => x.batDau.compareTo(y.batDau));
 }
+
+/// Chữ đứng ngay trước TÊN GỌI TẮT của ví (C4 §3.3, khối 🔧 ý 4), so CÓ DẤU khi câu có dấu: *"vì"* bỏ dấu là *vi* —
+/// *"đi chơi vì MB Bank tặng voucher"* không nêu ví. Dạng không dấu chỉ khi CẢ CÂU không dấu ([_cauKhongDau]).
+/// Cùng giới từ với [_sauSoTienCoDau] / [_sauSoTienKhongDau] nhưng vai khác: ở đó chữ đứng SAU số tiền, ở đây đứng
+/// TRƯỚC tên ví (bỏ *hôm · ngày · mùng · mồng · thứ · trả*, thêm hai tập riêng — không dùng chung được).
+const Set<String> _truocTenGoiViCoDau = {'ví', 'bằng', 'qua', 'từ', 'sang', 'vào', 'đến', 'tới'};
+const Set<String> _truocTenGoiViKhongDau = {'vi', 'bang', 'qua', 'tu', 'sang', 'vao', 'den', 'toi'};
+
+/// Tên gọi tắt của ví: tên bỏ chữ *Ví* đầu (*Ví MB Bank* → *mb bank*), đã chuẩn hoá. `null` khi tên không mở đầu bằng
+/// *Ví*, hoặc phần còn lại dưới 3 ký tự (bỏ dấu, không khoảng trắng) — *"Ví A"* không được khớp mọi chữ *a*.
+String? _tenGoiCuaVi(String ten) {
+  final n = normalizeCategoryName(ten);
+  if (!removeVietnameseTones(n).startsWith('vi ')) return null;
+  final goi = n.substring(3).trim();
+  return removeVietnameseTones(goi).replaceAll(' ', '').length >= 3 ? goi : null;
+}
+
+/// Mọi chỗ câu nêu TÊN GỌI TẮT của một ví, chỉ ngay sau [_truocTenGoiViCoDau] (đoạn trả về KHÔNG gồm giới từ, để
+/// `_chuTruoc` của chuyển ví vẫn thấy *từ / sang*). Nhận ở mọi chỗ thì *"mua sách tiết kiệm"* chọn ví *Ví tiết kiệm*.
+/// [thuong] là câu chữ thường CÒN DẤU (xét giới từ), [b] là câu bỏ dấu đã bỏ các đoạn đã dùng (tìm tên) — cùng độ dài.
+List<_ViNhac> _tenGoiViTrongCau(String thuong, String b, List<Wallet> dsVi) {
+  final tap = _cauKhongDau(thuong) ? _truocTenGoiViKhongDau : _truocTenGoiViCoDau;
+  final kq = <_ViNhac>[];
+  for (final w in dsVi) {
+    final goi = _tenGoiCuaVi(w.name);
+    if (goi == null) continue;
+    final than = removeVietnameseTones(goi).split(' ').map(RegExp.escape).join(r'\s+');
+    for (final m in RegExp('(?<![a-z0-9])$than(?![a-z0-9])').allMatches(b)) {
+      final truoc = _tuCuoi.firstMatch(thuong.substring(0, m.start));
+      if (truoc == null || !tap.contains(truoc.group(1))) continue;
+      kq.add((vi: w, batDau: m.start, ketThuc: m.end));
+    }
+  }
+  return kq..sort((x, y) => x.batDau.compareTo(y.batDau));
+}
+
+/// Tên ví đầy đủ khớp bỏ dấu nên *"vì MB Bank"* khớp *"Ví MB Bank"* — khi câu có dấu mà đoạn khớp mở bằng *vì* (không
+/// phải *ví*) thì đó là lý do chứ không phải tên ví: bỏ.
+bool _vanVoiViThanhVi(String thuong, TenTrongCau t) =>
+    !_cauKhongDau(thuong) && thuong.substring(t.batDau, t.ketThuc).startsWith('vì ');
 
 /// Chữ đứng ngay trước ví ở [bd] mà làm nó thành ví ĐÍCH / ví NGUỒN của một khoản chuyển (§2.9).
 const Set<String> _gioiTuDich = {'sang', 'vào', 'vao', 'đến', 'den', 'tới'};
