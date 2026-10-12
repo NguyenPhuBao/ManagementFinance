@@ -374,6 +374,21 @@ void main() {
     for (final cau in ['ngày 5 tháng 3.000.000', 'ngày 5 tháng 3tr', 'ngày 5 tháng 3,5 triệu']) {
       test('vòng sửa 4: "$cau" → không ngày (ngày X, tháng là tiền)', () => expect(timNgayTrongCau(cau, hai0), isNull));
     }
+    // Vòng sửa 4 — bổ sung (a): số NGÀY của mùng / mồng dính liền . , + chữ số là một phần số tiền → không đọc ngày.
+    for (final cau in [
+      'mùng 5,5 triệu',
+      'lì xì mùng 2,5 triệu',
+      'mùng 2.500.000',
+      'mồng 2,5 triệu',
+      'ngày mùng 2,5 triệu',
+    ]) {
+      test('vòng sửa 4 (a): "$cau" → không ngày (số là tiền)', () => expect(timNgayTrongCau(cau, hai0), isNull));
+    }
+    test('vòng sửa 4 (a): dd/mm và dấu câu trần không đổi — "mùng 2/9" → 02/09, "mùng 5, mua sách" → 05/10', () {
+      expect(timNgayTrongCau('mùng 2/9', hai0)?.ngay, DateTime(2026, 9, 2));
+      expect(timNgayTrongCau('mùng 5, mua sách', hai0)?.ngay, DateTime(2026, 10, 5));
+      expect(timNgayTrongCau('mùng 5. mua sách', hai0)?.ngay, DateTime(2026, 10, 5));
+    });
     test('vòng sửa 4: dấu câu không có chữ số theo sau không dính — "mùng 5 tháng 9, mua sách" vẫn là tháng 9', () {
       expect(timNgayTrongCau('mùng 5 tháng 9, mua sách', hai0)?.ngay, DateTime(2026, 9, 5));
       expect(timNgayTrongCau('ngày 5 tháng 9. mua sách', hai0)?.ngay, DateTime(2026, 9, 5));

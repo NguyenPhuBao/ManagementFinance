@@ -13,7 +13,8 @@
 ///   2026-10-12); *… tháng sau / tới* (mọi chữ lạ sau *tháng*) → KHÔNG đọc ngày (để C2 hỏi AI). Câu NÓI (C4): máy
 ///   nghe trả chữ hoặc số. ⚠️ *"… năm Z"* sau tháng bị bỏ qua (Z không được đọc).
 ///   ⚠️ *mùng / mồng* chỉ nhận dạng CÓ DẤU (*mung* còn là *mừng*, *mong*, *mộng*; cùng quy ước `cauNhacNgay`);
-///   *mùng 2/9* là dd/mm (luật dd/mm thắng); số liền chữ (*mùng 5k*) không phải ngày; số sau *tháng* mà là TIỀN —
+///   *mùng 2/9* là dd/mm (luật dd/mm thắng); số liền chữ (*mùng 5k*) hay dính `.` `,` + chữ số (*mùng 2,5 triệu*,
+///   *mùng 2.500.000*) là tiền, không phải ngày; số sau *tháng* mà là TIỀN —
 ///   trước đơn vị tiền (*tháng 3 triệu*, *… 3 lít*), dính chữ (*tháng 3tr*), dính `.` `,` + chữ số (*tháng
 ///   3.000.000*), quá hai chữ số (*tháng 300 nghìn*) — thì như không nêu tháng (*mùng X* theo luật trên, *ngày X* bỏ).
 /// - *dd/mm* (có thể kèm *ngày* đứng trước, hoặc */yyyy* sau) → ngày ấy của năm hiện tại; không tồn tại thì bỏ; rơi
@@ -153,6 +154,7 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
       if (d == null) continue;
       final cuoiSo = tk[d.$2 - 1].end;
       if (cuoiSo < goc.length && goc[cuoiSo] == '/') continue; // "mùng 2/9" là dd/mm — luật trên đã đọc
+      if (_dinhSoTien(goc, cuoiSo)) continue; // "mùng 2,5 triệu", "mùng 2.500.000": số ấy là tiền
       final th = _veThang(goc, tk, ws, d.$2);
       if (th.loai == _LoaiThang.bo) continue; // "mùng 5 tháng sau": không đoán, để AI hỏi
       DateTime? x;
@@ -260,7 +262,11 @@ DateTime _ganNhat(DateTime homNay, int thu) =>
 final RegExp _tuNgay = RegExp(r'[\p{L}\p{M}]+|\d+[\p{L}\p{M}]*', unicode: true);
 final RegExp _haiChuSo = RegExp(r'^\d{1,2}$');
 final RegExp _chuSoDau = RegExp(r'^\d');
-final RegExp _dinhSo = RegExp(r'^[.,]\d'); // "3.000.000", "3,5": số tiền viết liền
+final RegExp _dinhSo = RegExp(r'^[.,]\d');
+
+/// Ngay sau vị trí [cuoi] của [goc] là `.` / `,` + chữ số: số kết thúc ở [cuoi] là một phần số tiền viết liền
+/// (*3.000.000*, *2,5 triệu*), không phải ngày / tháng. Dấu câu trần (*"mùng 5, mua…"*, *"tháng 9."*) không dính.
+bool _dinhSoTien(String goc, int cuoi) => cuoi + 1 < goc.length && _dinhSo.hasMatch(goc.substring(cuoi, cuoi + 2));
 
 bool _laMung(String t) => t == 'mùng' || t == 'mồng';
 
@@ -291,10 +297,7 @@ enum _LoaiThang { khongNeu, so, tuongDoi, thangNay, bo }
   if (tiep == 'sau') return (loai: _LoaiThang.bo, gia: 0, ke: i + 2);
   final (int, int) r;
   if (_chuSoDau.hasMatch(tiep)) {
-    final cuoi = tk[i + 1].end;
-    if (!_haiChuSo.hasMatch(tiep) || (cuoi + 1 < goc.length && _dinhSo.hasMatch(goc.substring(cuoi, cuoi + 2)))) {
-      return khong;
-    }
+    if (!_haiChuSo.hasMatch(tiep) || _dinhSoTien(goc, tk[i + 1].end)) return khong;
     r = (int.parse(tiep), i + 2);
   } else {
     final chu = _soNgay(ws, i + 1, tu: true);

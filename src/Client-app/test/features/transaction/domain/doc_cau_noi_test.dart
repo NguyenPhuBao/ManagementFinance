@@ -402,4 +402,20 @@ void main() {
     expect((kq.ngay, kq.soTien), (null, 3000000.0));
     expect(kq.ghiChu, isNot(contains('000')), reason: 'ghi chú "${kq.ghiChu}" còn mảnh số tiền');
   });
+
+  test('vòng sửa 4 (a): số ngày của mùng dính . , + chữ số là tiền — không ngày, tiền đọc đủ', () {
+    for (final (cau, tien) in [
+      ('mùng 5,5 triệu', 5500000.0),
+      ('lì xì mùng 2,5 triệu', 2500000.0),
+      ('mùng 2.500.000', 2500000.0),
+    ]) {
+      final kq = doc(cau);
+      expect((kq.ngay, kq.soTien), (null, tien), reason: cau);
+      expect(kq.ghiChu, isNot(matches(RegExp(r'\d'))), reason: '$cau: ghi chú "${kq.ghiChu}" còn mảnh số');
+    }
+    final a = doc('mùng 2/9');
+    expect(a.ngay, DateTime(2026, 9, 2), reason: 'dd/mm vẫn đọc');
+    final b = doc('mùng 5 mua sách 50k');
+    expect((b.ngay, b.soTien, b.ghiChu), (DateTime(2026, 10, 5), 50000.0, 'mua sách'));
+  });
 }
