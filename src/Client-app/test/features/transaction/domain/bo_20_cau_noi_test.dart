@@ -1,7 +1,7 @@
 // test/features/transaction/domain/bo_20_cau_noi_test.dart
-/// C4 — bộ 20 câu đọc của spike (soạn 2026-10-01, tên ví / danh mục tài khoản 10) chạy qua LUẬT, mỗi câu hai dạng: chữ như
-/// người nói, và chữ số như máy nghe trả về (dạng chữ số là GIẢ ĐỊNH — phần kiểm thử trên máy ghi lời chép thật; mọi dạng
-/// thật khác bảng thành ca bổ sung). Spec 2026-10-12 mục 5.
+/// C4 — bộ 20 câu đọc của spike (soạn 2026-10-01, tên ví / danh mục tài khoản 10) chạy qua LUẬT, mỗi câu hai dạng:
+/// chữ như người nói, và chữ số như máy nghe trả về (dạng chữ số là GIẢ ĐỊNH — phần kiểm thử trên máy ghi lời chép
+/// thật; mọi dạng thật khác bảng thành ca bổ sung). Spec 2026-10-12 mục 5.
 library;
 
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
@@ -156,6 +156,9 @@ void main() {
         final k = docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: dm);
         expect(k.soTien, tien);
         expect(k.soTienCanKiem, kiem);
+        if (k.soTien != null) {
+          expect(cachDocSoTien(cau, now: now), contains(k.soTien), reason: 'bất biến kiểm chéo: số luật ∈ cách đọc');
+        }
         them(k);
       });
     }

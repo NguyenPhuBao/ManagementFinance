@@ -204,11 +204,12 @@ final RegExp _truocLaNam = RegExp(r'(?<![a-z])nam\s*$');
 
 /// Số bắt đầu ở [batDau] (trên [b], cùng độ dài [s]) có đứng ngay sau chữ *năm* dương lịch (*"năm 2026"*) không. Bỏ dấu
 /// thì tên riêng *Nam* và phương *nam* cũng thành `nam` (*"thu nợ anh Nam 500.000"* mất tiền): câu có dấu chỉ chặn khi
-/// chữ ấy là *năm* CÓ DẤU; cả câu không dấu ([cauKhongDau]) thì `nam` là năm.
+/// chữ ấy là *năm* CÓ DẤU; cả câu không dấu ([cauKhongDau]) thì `nam` là năm. [s] đã NFC (hai nơi gọi đều truyền
+/// `unorm.nfc(cau)`).
 bool _sauLaNamDuongLich(String s, String b, int batDau, {required bool cauKhongDau}) {
   final m = _truocLaNam.firstMatch(b.substring(0, batDau));
   if (m == null) return false;
-  return cauKhongDau || unorm.nfc(s.substring(m.start, m.start + 3)).toLowerCase() == 'năm';
+  return cauKhongDau || s.substring(m.start, m.start + 3).toLowerCase() == 'năm';
 }
 
 /// Số ≤ 31 đứng ngay sau *tháng / ngày / mùng / mồng* là mốc lịch, không phải tiền: *"tiền điện tháng 10"* không có

@@ -501,21 +501,24 @@ void main() {
     });
   });
 
-  group('"Nam" tên riêng không phải "năm" dương lịch (Task 7)', () {
-    test('"Thu nợ anh Nam 500.000" (câu có dấu) → 500.000', () {
+  group('"Nam" tên riêng không phải "năm" dương lịch', () {
+    final now = DateTime(2026, 10, 1);
+
+    test('"Thu nợ anh Nam 500.000" (câu có dấu) → 500.000, và nằm trong cách đọc của lưới AI', () {
       expect(doc('Thu nợ anh Nam 500.000').soTien, 500000);
+      expect(cachDocSoTien('Thu nợ anh Nam 500.000', now: now), contains(500000));
     });
 
-    test('"anh Nam 500000" CẢ CÂU không dấu → nam = năm, không đọc (kết quả thật, theo luật điều phối)', () {
+    test('"anh Nam 500000" cả câu không dấu → không đọc (đánh đổi đã chấp nhận)', () {
       expect(doc('anh Nam 500000').soTien, isNull,
-          reason: 'cả câu không dấu thì "nam" là năm dương lịch (phán quyết Task 7) — ca này lệch ví dụ ban đầu của điều phối');
+          reason: 'câu không dấu hoàn toàn không phân biệt được Nam với năm: luật lẫn lưới AI đều không đọc, người dùng tự gõ số');
     });
 
     test('"năm 2026" (có dấu) và "nam 2026" (cả câu không dấu) vẫn không là tiền', () {
       expect(doc('tiền học năm 2026 2 triệu').soTien, 2000000);
       expect(doc('tien hoc nam 2026 2 trieu').soTien, 2000000);
-      expect(cachDocSoTien('tiền học năm 2026', now: DateTime(2026, 10, 1)), isNot(contains(2026000)));
-      expect(cachDocSoTien('tien hoc nam 2026', now: DateTime(2026, 10, 1)), isNot(contains(2026000)));
+      expect(cachDocSoTien('tiền học năm 2026', now: now), isNot(contains(2026)));
+      expect(cachDocSoTien('tien hoc nam 2026', now: now), isNot(contains(2026)));
     });
   });
 }
