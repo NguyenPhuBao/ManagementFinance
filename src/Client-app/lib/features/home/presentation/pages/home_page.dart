@@ -12,7 +12,6 @@ import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
 import '../../domain/thu_chi_thang.dart';
-import '../../../ai_chat/spike/spike_c4.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../budget/data/models/budget_entity.dart';
@@ -384,11 +383,6 @@ class HomePage extends StatelessWidget {
           label: 'Quét',
           isDark: false,
           onTap: () {
-            // Spike C4: bản build có `--dart-define=SPIKE_C4=true` mở màn đo; bản thường giữ nguyên hành vi cũ.
-            if (kSpikeC4) {
-              context.push('/spike-c4');
-              return;
-            }
             // Quyền `ocr_receipt` (spec phân quyền 2026-10-08): không có → màn Nâng cấp mở đầu bằng tên tính năng.
             if (!context.coQuyenDoc(MaQuyen.ocrReceipt)) {
               context.push(duongNangCap(quyen: MaQuyen.ocrReceipt));

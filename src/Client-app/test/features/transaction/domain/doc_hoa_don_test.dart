@@ -1,7 +1,8 @@
-/// A5 mục 5.1 — luật đọc hoá đơn giấy (nâng từ spike C4). Bảy ca đầu chép từ `spike_c4_test.dart` (spike vẫn giữ bản
-/// của nó — gọi qua bí danh); ca giờ là phần thêm của A5.
+/// A5 mục 5.1 — luật đọc hoá đơn giấy (nâng từ spike C4, spike gỡ 2026-10-12). Bảy ca đầu và ca ⭐ hoá đơn hai cột
+/// chép từ test của spike; ca giờ là phần thêm của A5.
 library;
 
+import 'package:flowmoney/core/ocr/dong_ocr.dart';
 import 'package:flowmoney/features/transaction/domain/doc_hoa_don.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,5 +67,32 @@ Tien thoi lai            8.138
   test('kNhanTongHoaDon / kNhanLoaiHoaDon công khai, cùng nội dung spike', () {
     expect(kNhanTongHoaDon.first, 'tong thanh toan');
     expect(kNhanLoaiHoaDon, contains('khach dua'));
+  });
+
+  test('⭐ hoá đơn hai cột: ghép theo hàng rồi mới đọc → tổng 191.862, không phải tiền khách đưa', () {
+    // Hoá đơn hai cột như ảnh thử T01 trên Realme: khối nhãn (trái) rồi mới tới khối số (phải). Hàng cao 30, cách 44.
+    DongOcr nhan(String chu, int hang) =>
+        DongOcr(chu, trai: 40, tren: 100.0 + 44 * hang, phai: 300, duoi: 130.0 + 44 * hang);
+    DongOcr so(String chu, int hang) =>
+        DongOcr(chu, trai: 500, tren: 100.0 + 44 * hang, phai: 640, duoi: 130.0 + 44 * hang);
+    final haiCot = [
+      nhan('CO.OPMART NGUYEN TRAI', 0),
+      nhan('Sau rieng Ri6', 1),
+      nhan('Nuoc suoi', 2),
+      nhan('TONG CONG', 3),
+      nhan('Tien khach dua', 4),
+      nhan('Tien thoi lai', 5),
+      so('152.000', 1),
+      so('39.862', 2),
+      so('191.862', 3),
+      so('200.000', 4),
+      so('8.138', 5),
+    ];
+    expect(docHoaDonTuChu(haiCot.map((d) => d.chu).join('\n')).tong, 200000,
+        reason:
+            'tiền đề: nối theo thứ tự ML Kit trả về thì nhãn TONG CONG không có số cạnh nó — đúng lỗi đo trên Realme');
+    final ghep = ghepDongTheoHang(haiCot);
+    expect(ghep.split('\n'), contains('TONG CONG 191.862'));
+    expect(docHoaDonTuChu(ghep).tong, 191862);
   });
 }

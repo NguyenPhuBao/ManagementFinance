@@ -1,7 +1,7 @@
 /// Dòng chữ đọc từ ảnh (OCR) và phép ghép chúng lại theo HÀNG của ảnh. Kiểu thuần — không phụ thuộc gói đọc chữ nào,
 /// để mọi luật đọc phía sau (biên lai được chia sẻ, hoá đơn của spike C4) test được bằng dữ liệu dựng tay.
 ///
-/// Dời từ `features/ai_chat/spike/spike_c4.dart` ngày 2026-10-02 khi tính năng chia sẻ biên lai dùng tới nó (spec
+/// Dời từ spike C4 (spike gỡ 2026-10-12) ngày 2026-10-02 khi tính năng chia sẻ biên lai dùng tới nó (spec
 /// `2026-10-02-chia-se-bien-lai-design.md`).
 library;
 

@@ -38,10 +38,8 @@ const diemGhep = {
 const gocTest = {'core', 'features', 'shared', 'helpers', 'tool'};
 
 /// Thư mục miễn trừ đích danh (tương đối `src/Client-app`) → lý do. Không còn tồn tại → đỏ để rút.
-const mienTru = <String, String>{
-  'lib/features/ai_chat/spike':
-      'mã đo spike C4 sau cờ --dart-define=SPIKE_C4 — gỡ khi C4 chốt lối (spec dọn vị trí tệp 2026-10-10, quyết định 3)',
-};
+// Rỗng từ 2026-10-12 (C4 chốt lối, spike gỡ).
+const mienTru = <String, String>{};
 
 /// Luật 1–4 và 6: vi phạm còn chờ dọn (đường dẫn tương đối `src/Client-app`). Điền từ lượt chạy đỏ; rút dần theo nhóm.
 // Rỗng từ 2026-10-10 — thêm vào đây là mở lại một nợ, phải có lý do và ngày.

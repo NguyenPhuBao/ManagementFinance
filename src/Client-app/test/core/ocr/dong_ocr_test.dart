@@ -1,5 +1,5 @@
-/// `ghepDongTheoHang` — ML Kit trả chữ theo CỘT, mọi luật đọc phía sau đọc theo HÀNG. Dời từ `spike_c4_test.dart`
-/// ngày 2026-10-02 cùng hàm (ca dùng luật hoá đơn của spike ở lại tệp ấy).
+/// `ghepDongTheoHang` — ML Kit trả chữ theo CỘT, mọi luật đọc phía sau đọc theo HÀNG. Dời từ test của spike C4
+/// ngày 2026-10-02 (spike gỡ 2026-10-12; ca ghép + luật hoá đơn nay ở `doc_hoa_don_test.dart`).
 library;
 
 import 'package:flowmoney/core/ocr/dong_ocr.dart';

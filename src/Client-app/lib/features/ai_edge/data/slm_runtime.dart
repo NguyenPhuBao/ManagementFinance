@@ -79,7 +79,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
   @override
   bool get dangSan => _model != null;
 
-  /// Mô hình đang nạp có cờ ảnh / âm thanh không — chỉ đường spike C4 bật ([spikeDaPhuongThuc]).
+  /// Mô hình đang nạp có cờ ảnh / âm thanh không — luật nạp ở `quyetDinhNap` (Task 10).
   bool _coAnh = false;
   bool _coAm = false;
 
@@ -87,31 +87,6 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
   Future<void> moHinhSan(String duongTep) async {
     if (_model != null) return;
     await _nap(duongTep);
-  }
-
-  /// ⚠️ SPIKE C4 (2026-10-01) — đường ĐO TẠM, chỉ màn `spike_c4_page.dart` (sau cờ `SPIKE_C4`) gọi. Nạp LẠI mô hình
-  /// với `supportImage` / `supportAudio` khi cờ đang nạp khác thứ cần (đóng mô hình cũ trước — mỗi lần một mô hình),
-  /// rồi sinh một câu từ [prompt] kèm ảnh hoặc WAV 16 kHz mono. Nằm ở đây vì tệp này là chỗ duy nhất được import gói
-  /// (test quét 16). Màn spike gọi [dong] khi rời đi để đường chữ thường nạp lại bản không cờ.
-  Future<String> spikeDaPhuongThuc(String duongTep, String prompt, {Uint8List? anh, Uint8List? wav}) async {
-    final canAnh = anh != null;
-    final canAm = wav != null;
-    if (_model == null || _coAnh != canAnh || _coAm != canAm) {
-      await dong();
-      await _nap(duongTep, anh: canAnh, am: canAm);
-    }
-    final dongHo = Stopwatch()..start();
-    final chat = await _model!.createChat(temperature: 0.2, supportImage: canAnh, supportAudio: canAm);
-    await chat.addQueryChunk(canAnh
-        ? Message.withImage(text: prompt, imageBytes: anh, isUser: true)
-        : canAm
-            ? Message.withAudio(text: prompt, audioBytes: wav, isUser: true)
-            : Message.text(text: prompt, isUser: true));
-    final r = await chat.generateChatResponse();
-    final cau = (r is TextResponse ? r.token : r.toString()).trim();
-    debugPrint('[SLM][C4] sinh xong sau ${dongHo.elapsedMilliseconds} ms '
-        '(${canAnh ? 'ảnh ${anh.length} byte' : canAm ? 'âm ${wav.length} byte' : 'chữ'} → ${cau.length} ký tự)');
-    return cau;
   }
 
   @override
@@ -190,7 +165,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh {
         // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
         maxTokens: 4096,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
-        // Spike C4: hai cờ dưới chỉ khác `null` khi màn spike gọi; đường thường giữ nguyên lời gọi cũ.
+        // Hai cờ đa phương thức chỉ khác `null` khi docAnh / chepLoi nạp; đường chữ giữ nguyên lời gọi cũ.
         supportImage: anh ? true : null,
         supportAudio: am ? true : null,
         maxNumImages: anh ? 1 : null,

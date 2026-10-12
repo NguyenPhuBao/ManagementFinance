@@ -1,8 +1,7 @@
 /// A5 mục 5.1 — luật đọc HOÁ ĐƠN GIẤY từ chữ OCR (mỗi dòng một hàng, đã `ghepDongTheoHang`): tổng tiền, tên cửa hàng,
 /// ngày, giờ. Hàm thuần.
 ///
-/// Nâng từ spike C4 (`features/ai_chat/spike/spike_c4.dart`, lối A) ngày 2026-10-08 cho nút Quét. Spike giữ bí danh
-/// gọi lại tệp này để màn đo và `spike_c4_test` không đổi.
+/// Nâng từ spike C4 (lối A) ngày 2026-10-08 cho nút Quét (spike gỡ 2026-10-12).
 library;
 
 import '../../../core/category/category_name.dart';
