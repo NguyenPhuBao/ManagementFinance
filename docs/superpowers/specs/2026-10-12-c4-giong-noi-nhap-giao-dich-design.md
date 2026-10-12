@@ -1,7 +1,7 @@
 # C4 — Giọng nói nhập giao dịch — thiết kế
 
-> **Trạng thái:** thiết kế duyệt từng phần trong chat 2026-10-12 (bốn phần + năm câu chọn, mục 1). Chưa có kế hoạch, chưa
-> có mã. **Phạm vi lần này dừng trước phần kiểm thử trên máy** (mục 9): làm spec → kế hoạch → mã kèm test tự động, rồi
+> **Trạng thái:** thiết kế duyệt từng phần trong chat 2026-10-12 (bốn phần + năm câu chọn, mục 1). **Kế hoạch 16 task đã
+> viết** (`plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md`, gitignore); **chưa có mã** — người dùng để phiên sau thi công. **Phạm vi lần này dừng trước phần kiểm thử trên máy** (mục 9): làm spec → kế hoạch → mã kèm test tự động, rồi
 > dừng; đo trên điện thoại để dành cho lúc người dùng cầm máy.
 >
 > Nguồn: spike C4 (`plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md`, gitignore; mục **9.44** `AI_EDGE_FEATURE.md`),

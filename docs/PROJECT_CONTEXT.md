@@ -610,6 +610,18 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-12)
 
+### 📝 C4 giọng nói — spec duyệt + kế hoạch 16 task (2026-10-12), CHƯA thi công
+
+Spec `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 *Soát với mã* đầu spec thắng thân
+spec), kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md` (gitignore). Người dùng chốt: **Android
+nghe trước, Gemma chép lời khi mất mạng** · micro ở **ô Nhập nhanh** + nút **Nói** ở Trang chủ (`/add?noi=1`) · luật học
+thêm dạng nói tiền (*một triệu hai*, *năm chục*, *ba trăm rưỡi* — chỉ CHỌN trong tập `cachDocSoTien`), ngày (*ngày năm tháng
+chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** · nói xong tự
+Điền qua `ThemGiaoDichCubit.dienTuCau`. Lúc lập kế hoạch lộ **ba lỗi sẵn có** cùng vùng: *"1 triệu 2"* đọc 1.000.000 im
+lặng; *"từ"* bỏ dấu thành *"tư"* (4) làm câu chuyển ví bằng chữ mất số tiền; *"quả"* bỏ dấu trùng *"qua"*. Phạm vi lần thi
+công: **dừng trước kiểm thử trên máy** (spec mục 9). Cách thi công **chưa chọn** — hỏi người dùng. Bàn giao:
+`C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-12-c4-ke-hoach.md`.
+
 ### 🕗 G90 đóng 2026-10-12 — bảng chọn giờ dùng đồng hồ 24 giờ trên máy đặt 12 giờ
 
 **Gốc lỗi** (đo bằng widget test thăm dò, rồi đối chứng trên máy ảo): bảng chọn giờ của Flutter lấy **kiểu hiển thị** từ
