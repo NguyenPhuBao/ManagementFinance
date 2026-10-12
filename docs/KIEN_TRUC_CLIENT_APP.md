@@ -42,8 +42,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **549** tệp `.dart`, **120.421** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
-và `… | xargs cat | wc -l`. `test/` có **598** tệp, **120.418** dòng. (Đếm lại 2026-10-11 sau tách trang Thêm giao dịch: +3 tệp `lib/` và +3 tệp `test/`; sau đợt dọn vị trí tệp là 546 / 595, trước đợt ấy 545 / 596.)
+`lib/` có **564** tệp `.dart`, **120.421** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
+và `… | xargs cat | wc -l`. `test/` có **615** tệp, **120.418** dòng. (Đếm lại 2026-10-11 sau tách trang Thêm giao dịch: +3 tệp `lib/` và +3 tệp `test/`; sau đợt dọn vị trí tệp là 546 / 595, trước đợt ấy 545 / 596.)
 
 ```
 lib/
@@ -65,9 +65,9 @@ lib/
 │   ├── sync/          8      SyncEngine, normalizer, checkpoint, noiBoNgheKetQuaDay
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         7      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten…
-├── features/        411 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
-│   ├── ai_edge/      81      data 22 · domain 54 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
-│   ├── transaction/  58      data 10 · domain 22 · presentation 26 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
+├── features/        426 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
+│   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
+│   ├── transaction/  72      data 17 · domain 26 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    51      data 8 · domain 19 · presentation 24 (widgets/phan_tich/ 14 tệp)
 │   ├── bill/         33      data 5 · domain 14 · presentation 14
 │   ├── goal/         33      data 4 · domain 17 · presentation 12
@@ -77,13 +77,13 @@ lib/
 │   ├── auth/         21      data 5 · domain 1 · presentation 15 (bloc/ 4 kể AuthBloc + current_account · pages/ 6 · state/ 1 · widgets/ 4)
 │   ├── category/     21      data 9 · domain 6 · presentation 6
 │   ├── profile/       8      presentation 8
-│   ├── home/          7      domain 1 · presentation 6
+│   ├── home/          8      domain 1 · presentation 7
 │   ├── notification/  6      presentation 6 (luật nằm ở core/notification — nợ G88)
 │   └── ai_chat/       3      data 2 · presentation 1 (spike C4 đã gỡ 2026-10-12)
 └── shared/           13 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 10 (MainShell, chuông, toast…)
 ```
 
-Đếm mảng: `for d in features/*/; do find $d -name '*.dart' | wc -l; done` (và `$d/data`, `$d/domain`, `$d/presentation`).
+Số tệp `lib/`/`test/`/`features/` và ba mảng `ai_edge`, `transaction`, `home` đếm lại bằng máy **2026-10-12** (sau C4; tổng dòng `lib/` giữ số cũ 2026-10-11, chưa đếm lại). Đếm mảng: `for d in features/*/; do find $d -name '*.dart' | wc -l; done` (và `$d/data`, `$d/domain`, `$d/presentation`).
 Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab224c`); riêng tổng `lib/` · `test/` · `features/` và mảng `transaction` đếm lại 2026-10-11 sau tách trang Thêm giao dịch (HEAD `18ae5749`).
 `core/notification` nay **35** tệp (34 + `thong_bao_nguon.dart` của đợt này).
 
@@ -170,10 +170,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–25 phủ **26
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–26 phủ **27
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **29**. Đếm: `grep -rlE "Directory\(['\"]lib" test` (25 tệp quét cây, đo
-2026-10-10) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **26**.
+**3** tệp cùng khuôn không đánh số, tổng **30**. Đếm: `grep -rlE "Directory\(['\"]lib" test` (26 tệp quét cây, đo
+2026-10-12) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **27**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|

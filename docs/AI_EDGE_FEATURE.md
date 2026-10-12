@@ -3421,7 +3421,7 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 - `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
   (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
 
-### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — 🚧 màn đo chạy được cả bốn đường, CHƯA có bảng đo
+### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — ✅ chốt lối 2026-10-12 (Android trước, Gemma dự phòng), mã spike đã gỡ; bảng đo giọng thật CHƯA có
 
 > ✅ **2026-10-12 — spike CHỐT LỐI, MÃ SPIKE ĐÃ GỠ.** Người dùng chốt **Android trước, Gemma chép lời dự phòng** (C4, `docs/GIONG_NOI_FEATURE.md`; spec `specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md`). Đã xoá `ai_chat/spike/`, route `/spike-c4`, nhánh `kSpikeC4`, `spikeDaPhuongThuc`, `spike_c4_test`; `chepLoi` thay `spikeDaPhuongThuc` ở `SlmRuntime` (một bản mô hình mang cả cờ ảnh lẫn âm thanh, đóng ≤ 1 lần). `speech_to_text` + `record` + `image_picker` + `google_mlkit_text_recognition` đều là gói chính thức. Bảng đo giọng thật của hai lối vẫn **chưa có** (checklist mục 9 tài liệu giọng nói). Phần mô tả bên dưới là lịch sử của spike.
 

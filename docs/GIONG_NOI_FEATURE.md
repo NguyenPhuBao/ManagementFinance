@@ -10,8 +10,8 @@
 
 - **Ô Nhập nhanh** (màn Thêm giao dịch, đường tạo mới, Premium): có biểu tượng **micro** bên trái nút *Điền*. Basic không có
   micro (ô vốn khoá — *"Chỉ Premium"*).
-- Bấm micro → (lần đầu) Android hỏi quyền Micro → **đang nghe** (lối Android: chữ hiện dần trong ô; lối Gemma: chấm đỏ + số
-  giây) → tự dừng khi im ~2 giây / bấm ■ / đủ 20 giây → lối Gemma có thêm dòng *"Đang chép lời bằng AI trên máy…"* + Huỷ →
+- Bấm micro → (lần đầu) Android hỏi quyền Micro (từ chối → toast *"Cần quyền micro để nói"*; bị chặn hẳn → toast kèm nút *Mở cài đặt*) → **đang nghe** (viền ô đổi màu, gợi ý thành *"Đang nghe…"*, micro thành nút dừng ■) (lối Android: chữ hiện dần trong ô; lối Gemma: chấm đỏ + số
+  giây) → tự dừng khi im ~2 giây / bấm ■ / đủ 20 giây / chưa nói gì sau 6 giây (`kChoTiengDau`) → lối Gemma có thêm dòng *"Đang chép lời bằng AI trên máy…"* + Huỷ →
   câu nằm trong ô và **tự Điền** qua `ThemGiaoDichCubit.dienTuCau` (đúng đường C2). Nghe sai → sửa chữ trong ô, bấm *Điền* lại.
   Không ghi gì tới khi bấm Lưu (bất biến ④ nhóm C).
 - **Kiểm chéo số tiền** khi số được đọc bằng dạng nói mới học (*năm chục · một triệu hai · ba trăm rưỡi*) và máy có Gemma: số
@@ -30,12 +30,14 @@ Người dùng chốt 2026-10-12: **Android trước, Gemma dự phòng**. Hàm 
 |---|---|
 | `uuTienGemma` (lượt trước mất mạng / thiếu gói tiếng Việt) và Gemma sẵn sàng | Gemma |
 | Có mạng, Android dùng được | Android, `onDevice: false` (giọng gửi lên dịch vụ nhận dạng của máy — như gõ bằng giọng trên bàn phím) |
+| Có mạng, Android không dùng được, Gemma sẵn sàng | Gemma (`chon_loi_nghe.dart`) |
 | Mất mạng, Gemma sẵn sàng | Gemma (ghi WAV → chép lời) |
 | Mất mạng, Gemma không sẵn sàng | Android, `onDevice: true` |
-| Không lối nào dùng được | `null` → toast *"Cần mạng hoặc mô hình AI trên máy để nói"* |
+| Không lối nào dùng được | `null` → toast *"Cần mạng hoặc mô hình AI trên máy để nói"* + nút sang *Cài đặt AI* |
 
-*Gemma sẵn sàng* = đúng điều kiện ô Nhập nhanh dùng để gọi AI (`DocCauBangAi.sanSang`: tệp mô hình + công tắc AI + quyền
-`ai_edge_model`) — không định nghĩa thứ hai. *Có mạng* = `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi →
+*Gemma sẵn sàng* = `MoHinhTaiVe.daCo() && CongTacAi.doc()` — closure `sanSang` **chép ở năm chỗ** trong
+`injection_container.dart` (~851, 863, 870, 880, 914); C4 dùng bản ~880 qua `ChepLoiBangGemma`. Quyền `ai_edge_model` chặn ở
+màn Cài đặt AI (không tải, không công tắc), **không** nằm trong `sanSang`. *Có mạng* = `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi →
 `true`; luồng sự kiện cũ có giãn cách 3 giây nên không dùng được cho việc này).
 
 ## 3. Luật đọc câu nói (khối 🔧 spec)
@@ -45,7 +47,7 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
 
 - **N1** — *X đơn vị Y* (*một triệu hai · năm nghìn hai · 1 triệu 2*) → 1.200.000 · 5.200 · 1.200.000. Chỉ chọn khi Y ở **chỗ
   của tiền** (cuối câu, hoặc ngay trước dấu câu / chữ ví · bằng · trả · qua · từ · sang · vào · đến · tới · hôm · ngày · mùng ·
-  thứ — lượt soát kế hoạch, người dùng chọn lối A, **đổi thân spec §3.2**). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai
+  thứ — lượt soát kế hoạch, người dùng chọn lối A, **đổi thân spec §3.2**). Vòng sửa Task 3 siết: *ngày / mùng / mồng* chỉ tính khi liền sau là chữ **số**; *hôm* chỉ khi liền sau là *qua / nay / kia*; *thứ* chỉ khi liền sau là số hoặc tên thứ (`_dungChoTien`, `doc_cau_giao_dich.dart`). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai
   triệu năm nay"*, *"một triệu hai tiền sách"* → luật để trống, Gemma chọn như trước C4.
 - **N2** — số **10–999** không đơn vị (*năm chục · ba trăm rưỡi · bốn mươi lăm · 45*) × 1.000, cùng điều kiện vị trí. Cụm có
   đơn vị tiền (*k · nghìn · tr · củ*) vẫn thắng N1/N2; số một chữ số vẫn là số lượng.
@@ -66,10 +68,14 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
   với *"ăn phở 45k quận 10"* (đánh đổi với *"45k, gửi xe 10"*; review cuối xét).
 - Bộ 20 câu của spec mục 5: `test/features/transaction/domain/bo_20_cau_noi_test.dart` (hai dạng: chữ như người nói, chữ số
   như máy nghe trả về); luật chi tiết: `doc_cau_noi_test.dart`, `ngay_trong_cau_test.dart`.
-- **Giới hạn đã chấp nhận (P16):** mẫu ngày chỉ phủ các dạng trên — *"mùng 2.9"* (dd.mm), *"nghỉ mùng 5,6 tháng 10"* (liệt kê hai
-  ngày), *"tháng 300"* chưa đọc/đọc lạ; hiếm. **P18:** `hasPermission()` của `record` mặc định `request: true` nên **XIN quyền**;
-  `NguonGiongNoi.biChan` giả định hộp xin quyền đã hiện một lần trước đó (kênh `flowmoney/micro` chỉ trả `biChan` đúng SAU một
-  lần bị từ chối).
+- **Giới hạn đã chấp nhận (P16):** (a) *"ngay"* không dấu mở đầu mẫu *ngày X tháng Y* (*"trả ngay 5 tháng 9…"* đọc thành
+  ngày 05/09 — `ngay_trong_cau.dart`, nhánh `t == 'ngay'`); (b) *"ngày X tháng Y năm Z"* bỏ qua Z (năm luôn theo luật hiện có).
+  Minor hoãn của Task 5 (chưa sửa, hiếm): *"mùng 2.9"* (dd.mm) không ra ngày; *"nghỉ mùng 5,6 tháng 10"* (liệt kê hai ngày)
+  → ngày null; *"tháng 300"* → 05/10 kèm ghi chú "tháng 300".
+- **Giả định P18:** `hasPermission()` của `record` mặc định `request: true` nên **XIN quyền**. `KenhMicro.biChan` (qua
+  `NguonGiongNoi.micro`) gọi **TRƯỚC** lần xin đầu thì trả **true** — chưa cấp ∧ Android chưa từng hỏi nên
+  `shouldShowRequestPermissionRationale` = false → báo "bị chặn" oan (`MainActivity.kt`, nhánh `biChan`). Cubit tránh được vì
+  gọi `ghiAm.coQuyen()` (xin quyền) trước, `biChan` chỉ sau khi bị từ chối (`nghe_giong_noi_cubit.dart`, `_batDau`).
 
 ## 4. Kiểm chéo số tiền
 
@@ -87,14 +93,14 @@ chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch
 - `SlmRuntime` giữ **một** bản mô hình mang **cả** cờ ảnh lẫn âm thanh, dùng chung cho `docAnh` (A5), `chepLoi` (C4) và đường
   chữ. Quyết định nạp là hàm thuần `quyetDinhNap` (`ai_edge/domain/nap_da_phuong_thuc.dart`); phần điều phối nạp là
   `BoNapMoHinh` (`ai_edge/data/bo_nap_mo_hinh.dart`).
-- Tuần tự hoá ở **hai** tầng: `BoNapMoHinh` tuần tự hoá **NẠP** (một `Future` dùng chung, bộ đếm huỷ → `LuotNapBiHuy`);
+- Tuần tự hoá ở **hai** tầng: `BoNapMoHinh` tuần tự hoá **NẠP** (hàng đợi nối chuỗi — mỗi lượt tính lại `quyetDinhNap` trên trạng thái mới của lượt trước; bộ đếm huỷ → `LuotNapBiHuy`; `bo_nap_mo_hinh.dart`);
   `ChepLoiBangGemma` (singleton) tuần tự hoá lượt **CHÉP** toàn cục, và `huy()` huỷ cả lượt đang xếp hàng.
 
 ## 6. Tệp và test
 
 | Tệp | Vai trò | Test |
 |---|---|---|
-| `transaction/data/datasources/nghe_android.dart` | **duy nhất** import `speech_to_text`; `NgheAndroidThat` (singleton mỗi tiến trình) | `giong_noi_noi_day_test` (đọc mã), quét 26 |
+| `transaction/data/datasources/nghe_android.dart` | **duy nhất** import `speech_to_text`; `NgheAndroidThat` (singleton mỗi tiến trình) | chỉ quét 26 — `NgheAndroidThat` chưa có test; hợp đồng một lượt canh ở `luot_nghe_test` |
 | `transaction/data/datasources/luot_nghe.dart` | chuẩn hoá một lượt nghe: chữ tạm rồi **ĐÚNG MỘT** kết thúc; lỗi thắng `done`; `kChoLoiSauDone` = 300 ms | `luot_nghe_test` |
 | `transaction/data/datasources/ghi_am.dart` | **duy nhất** import `record`; WAV 16 kHz mono vào thư mục tạm | quét 26 |
 | `transaction/data/datasources/kenh_micro.dart` + `MainActivity.kt` | kênh `flowmoney/micro`: `biChan`, `moCaiDat` | `giong_noi_noi_day_test` |
@@ -110,7 +116,7 @@ chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch
 | `transaction/presentation/widgets/them_giao_dich/o_nhap_nhanh.dart` · `dong_dang_nghe.dart` | nút micro; dòng đang nghe / chép lời / kiểm | `nhap_nhanh_test`, `nhap_nhanh_micro_hep_test` |
 | `home/presentation/widgets/hang_nut_nhanh.dart` | hàng năm nút nhanh, nút Nói | `hang_nut_nhanh_test`, `trang_chu_gon_test` |
 | `ai_edge/domain/nap_da_phuong_thuc.dart` · `ai_edge/data/bo_nap_mo_hinh.dart` | luật nạp một bản hai cờ; tuần tự hoá nạp | `nap_da_phuong_thuc_test`, `bo_nap_mo_hinh_test` |
-| `core/router/app_router.dart` | `/add?noi=1` (**query, không `extra`** — `extra is String` là chiều tiền đặt sẵn) | trong `nhap_nhanh_test` |
+| `core/router/app_router.dart` | `/add?noi=1` (**query, không `extra`** — `extra is String` là chiều tiền đặt sẵn) | `nhap_nhanh_test` có ca dựng trang với `batDauNghe`; phép đọc `queryParameters['noi']` (`app_router.dart`) chưa có ca |
 | `AndroidManifest.xml` (main) | `RECORD_AUDIO`, `<queries>` `RecognitionService` (dời từ manifest debug) | `giong_noi_noi_day_test` |
 | **Test quét 26** `transaction/chi_mot_noi_import_giong_noi_test.dart` | `speech_to_text` chỉ ở `nghe_android.dart`, `record` chỉ ở `ghi_am.dart`; có ca tiền đề | — |
 
@@ -137,8 +143,12 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
   singleton); dựng cái thứ hai thì callback của nó **im lặng không bao giờ gọi**.
 - **`luc` của `BoDoIm` = số mẫu × `kNhipBienDo` (100 ms)**, không phải đồng hồ tường. Bộ ghi phát mẫu chậm / dồn thì "im 2 giây"
   lệch thật; ngưỡng −35 dBFS chưa đo.
-- **`hasPermission()` của `record` mặc định `request: true`** (P18) → nó **XIN quyền**; `biChan` của kênh Kotlin chỉ có nghĩa
-  SAU một lần xin bị từ chối. Gọi `biChan` trước lần xin đầu → luôn "chưa chặn".
+- **`hasPermission()` của `record` mặc định `request: true`** (P18) → nó **XIN quyền**; `KenhMicro.biChan` chỉ đúng SAU một
+  lần xin bị từ chối. Gọi `biChan` trước lần xin đầu → **true** (báo "bị chặn" oan).
+- **`notListening` đến TRƯỚC chữ cuối** của `speech_to_text`: chốt lượt nghe ở đó là lấy chữ tạm thay chữ cuối. Nên
+  `NgheAndroidThat` chỉ chốt ở `SpeechToText.doneStatus` (`nghe_android.dart`, `onStatus`) — đổi sang `notListening` là câu
+  nói bị cụt chữ cuối, `flutter test` không thấy (bản giả).
+- **RAM bản hai cờ chưa đo** (ảnh riêng 2,93 GB, âm riêng 2,53 GB — Realme CPU): một bản mang cả hai có thể bị hệ điều hành giết.
 - **`donTepGiongNoiSot` xoá mọi `giong_noi_*.wav` ở thư mục tạm.** `NguonGiongNoi` là singleton: hai trang `/add` cùng sống
   (deeplink đè form đang ghi lối Gemma) thì trang sau xoá WAV đang ghi của trang trước → "không nghe rõ". Chặn rẻ chưa làm:
   chỉ xoá tệp cũ hơn `kNgheToiDa` + biên.
