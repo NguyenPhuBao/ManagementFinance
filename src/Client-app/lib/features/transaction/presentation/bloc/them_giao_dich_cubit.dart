@@ -25,6 +25,7 @@ import '../../../category/domain/de_xuat_tu_khoa.dart';
 import '../../../category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../category/domain/phan_loai_ghi_chu.dart';
 import '../../../category/domain/phan_loai_so_tien.dart';
+import '../../data/dong_hang_bien_dong.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../data/them_giao_dich_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
@@ -1020,10 +1021,10 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final v = _viGoiY;
     final s = state;
     if (gy != null && v != null && s.laChuyen) {
-      await _dongChuyenKhoan(d, gy, id,
+      await dongHangChuyenKhoan(_nguon, d, gy, id,
           viTu: s.viNguon?.id, viDen: s.viDich?.id, daNhoTu: v.daNhoTu, daNhoDen: v.daNhoDen);
     } else {
-      await _dongBienDong(d, id, viDaLuu: s.viNguon?.id, nhoVi: !_viNguonDaNho);
+      await dongHangBienDong(_nguon, d, id, viDaLuu: s.viNguon?.id, nhoVi: !_viNguonDaNho);
     }
   }
 
@@ -1031,42 +1032,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   Future<void> boQuaBienDong() async {
     final d = _bienDong;
     final id = _taiKhoan();
-    if (d != null && id != null) await _dongBienDong(d, id);
-  }
-
-  /// D1 — xử lý xong một hàng biến động (Lưu hoặc Bỏ qua): xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ
-  /// có chủ ý — spec §3.3), và khi Lưu ở lần đầu của cặp nguồn + đuôi thì nhớ ví. Mọi giá trị truyền vào đã chốt lúc
-  /// gọi: màn có thể đã `pop`. Không bao giờ ném.
-  Future<void> _dongBienDong(DienSanBienDong d, int id, {String? viDaLuu, bool nhoVi = false}) async {
-    // A5: form từ ảnh quét — không hàng loại 20, không bảng nguồn → ví; chỉ xoá ảnh (close cũng xoá — luỹ đẳng).
-    if (d.laQuet) {
-      await _nguon.xoaAnhQuet(d.anh);
-      return;
-    }
-    try {
-      if (nhoVi && viDaLuu != null) await _nguon.nhoViTheoNguon(id, d.nguon, d.duoi, viDaLuu);
-    } catch (e) {
-      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
-    }
-    await _nguon.xoaHangBienDong(id, d.khoa);
-    await _nguon.xoaAnhBienLai(d.anh);
-  }
-
-  /// Lưu sau khi áp gợi ý Chuyển khoản (spec §5): nhớ ví cho CẢ HAI nguồn — mỗi phía theo phía của nó. ⚠️ Không theo
-  /// ví nguồn của form: tin THU ghi thành chuyển khoản thì ví của nguồn tin là ví ĐÍCH, nhớ ví nguồn là mọi tin sau của
-  /// nguồn ấy chọn sẵn sai ví, im lặng. Rồi xoá hàng đang mở và hàng cặp (còn chờ là người dùng ghi đôi). Không ném.
-  Future<void> _dongChuyenKhoan(DienSanBienDong d, GoiYChuyenKhoan gy, int id,
-      {String? viTu, String? viDen, required bool daNhoTu, required bool daNhoDen}) async {
-    try {
-      if (!daNhoTu && viTu != null) await _nguon.nhoViTheoNguon(id, gy.nguonTu, gy.duoiTu, viTu);
-      if (!daNhoDen && viDen != null) await _nguon.nhoViTheoNguon(id, gy.nguonDen, gy.duoiDen, viDen);
-    } catch (e) {
-      debugPrint('[BienDong] ghi ví theo nguồn lỗi: $e');
-    }
-    await _nguon.xoaHangBienDong(id, d.khoa);
-    await _nguon.xoaAnhBienLai(d.anh);
-    final cap = gy.khoaCap;
-    if (cap != null) await _nguon.xoaHangBienDong(id, cap);
+    if (d != null && id != null) await dongHangBienDong(_nguon, d, id);
   }
 
   @override
