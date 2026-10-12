@@ -373,10 +373,33 @@ void main() {
     expect(doc('ngày mùng 5 tháng 9 mua sách').ghiChu, 'mua sách');
   });
 
-  test('vòng sửa 3: tháng không nuốt lít / xị; tháng sau không đọc ngày nhưng giữ tiền', () {
+  test('vòng sửa 3: số tháng trước lít / xị là tiền (lít: kiểm tiền; xị: chỉ kiểm ngày); tháng sau giữ tiền', () {
     expect(doc('mùng 5 tháng 3 lít').soTien, 300000.0); // lít = 100.000
-    expect(doc('đóng tiền mùng năm tháng hai xị').ngay, DateTime(2026, 10, 5));
+    expect(
+      doc('đóng tiền mùng năm tháng hai xị').ngay,
+      DateTime(2026, 10, 5),
+      reason: 'chỉ canh NGÀY: bộ đọc tiền vốn không đọc chữ + xị ("hai xị") — tháng không được nuốt "hai"',
+    );
     final kq = doc('trả nợ mùng 5 tháng sau 2 triệu');
     expect((kq.ngay, kq.soTien), (null, 2000000.0));
+  });
+
+  test('vòng sửa 4: số dính sau "tháng" là tiền — mùng 5 tháng này, tiền đủ, ghi chú không mảnh số', () {
+    for (final (cau, ngay, tien) in [
+      ('tiền nhà mùng 5 tháng 3tr', DateTime(2026, 10, 5), 3000000.0),
+      ('mùng 5 tháng 500k', DateTime(2026, 10, 5), 500000.0),
+      ('mùng 5 tháng 300 nghìn', DateTime(2026, 10, 5), 300000.0),
+      ('đóng tiền nhà mùng 5 tháng 3.000.000', DateTime(2026, 10, 5), 3000000.0),
+      ('mùng 5 tháng 3,5 triệu', DateTime(2026, 10, 5), 3500000.0),
+    ]) {
+      final kq = doc(cau);
+      expect((kq.ngay, kq.soTien), (ngay, tien), reason: cau);
+      expect(kq.ghiChu, isNot(matches(RegExp(r'\d'))), reason: '$cau: ghi chú "${kq.ghiChu}" còn mảnh số');
+    }
+    // "ngày X" không nêu tháng thì không đọc ngày (C2 hỏi AI) — chữ số "5" của ngày còn trong ghi chú là đúng; chỉ cấm
+    // mảnh của số tiền.
+    final kq = doc('ngày 5 tháng 3.000.000');
+    expect((kq.ngay, kq.soTien), (null, 3000000.0));
+    expect(kq.ghiChu, isNot(contains('000')), reason: 'ghi chú "${kq.ghiChu}" còn mảnh số tiền');
   });
 }

@@ -8,12 +8,14 @@
 ///   vào thứ Bảy không phải hôm qua.
 /// - *ngày X tháng Y* (X, Y bằng chữ hoặc số: *ngày năm tháng chín*, *ngày 5 tháng 9*) → ngày ấy của năm hiện tại;
 ///   *mùng / mồng X* → ngày X tháng này; *(ngày) mùng X tháng Y* cũng đọc. Cùng nếp *dd/mm*: rơi vào tương lai quá 7
-///   ngày thì lùi (năm trước / tháng trước); ngày không tồn tại thì bỏ. *… tháng trước* → ngày X của tháng trước;
-///   *… tháng này* → như không nêu tháng; *… tháng sau / tới* (mọi chữ lạ sau *tháng*) → KHÔNG đọc ngày (để C2 hỏi
-///   AI). Câu NÓI (C4): máy nghe trả chữ hoặc số. ⚠️ *"… năm Z"* sau tháng bị bỏ qua (Z không được đọc).
+///   ngày thì lùi (năm trước; *mùng X* không nêu tháng → tháng trước); ngày không tồn tại thì bỏ. *… tháng trước* →
+///   ngày X của tháng trước; *… tháng này* → ngày X của tháng HIỆN TẠI, KHÔNG lùi kể cả tương lai (người dùng chốt
+///   2026-10-12); *… tháng sau / tới* (mọi chữ lạ sau *tháng*) → KHÔNG đọc ngày (để C2 hỏi AI). Câu NÓI (C4): máy
+///   nghe trả chữ hoặc số. ⚠️ *"… năm Z"* sau tháng bị bỏ qua (Z không được đọc).
 ///   ⚠️ *mùng / mồng* chỉ nhận dạng CÓ DẤU (*mung* còn là *mừng*, *mong*, *mộng*; cùng quy ước `cauNhacNgay`);
-///   *mùng 2/9* là dd/mm (luật dd/mm thắng); số liền chữ (*mùng 5k*) không phải ngày; số tháng ngay trước đơn vị tiền
-///   (*mùng 5 tháng 3 triệu*, *… 3 lít*) là tiền, tháng rơi về tháng này.
+///   *mùng 2/9* là dd/mm (luật dd/mm thắng); số liền chữ (*mùng 5k*) không phải ngày; số sau *tháng* mà là TIỀN —
+///   trước đơn vị tiền (*tháng 3 triệu*, *… 3 lít*), dính chữ (*tháng 3tr*), dính `.` `,` + chữ số (*tháng
+///   3.000.000*), quá hai chữ số (*tháng 300 nghìn*) — thì như không nêu tháng (*mùng X* theo luật trên, *ngày X* bỏ).
 /// - *dd/mm* (có thể kèm *ngày* đứng trước, hoặc */yyyy* sau) → ngày ấy của năm hiện tại; không tồn tại thì bỏ; rơi
 ///   vào tương lai quá 7 ngày thì lùi một năm (gõ *30/12* hôm 3/1 là 30/12 năm ngoái).
 ///
@@ -141,7 +143,7 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
       if (j < ws.length && _laMung(ws[j])) j++; // "ngày mùng năm tháng chín"
       final d = _soNgay(ws, j);
       if (d == null) continue;
-      final th = _veThang(ws, d.$2);
+      final th = _veThang(goc, tk, ws, d.$2);
       if (th.loai == _LoaiThang.khongNeu || th.loai == _LoaiThang.bo) continue;
       final x = th.loai == _LoaiThang.so ? ngayThang(d.$1, th.gia) : ngayCuaThang(d.$1, th.gia);
       if (x != null) ungVien.add((ngay: x, batDau: tk[i].start, ketThuc: tk[th.ke - 1].end));
@@ -151,20 +153,21 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
       if (d == null) continue;
       final cuoiSo = tk[d.$2 - 1].end;
       if (cuoiSo < goc.length && goc[cuoiSo] == '/') continue; // "mùng 2/9" là dd/mm — luật trên đã đọc
-      final th = _veThang(ws, d.$2);
+      final th = _veThang(goc, tk, ws, d.$2);
       if (th.loai == _LoaiThang.bo) continue; // "mùng 5 tháng sau": không đoán, để AI hỏi
       DateTime? x;
       var ke = d.$2;
       if (th.loai == _LoaiThang.so) {
         x = ngayThang(d.$1, th.gia);
         ke = th.ke;
-      } else if (th.loai == _LoaiThang.tuongDoi) {
+      } else if (th.loai == _LoaiThang.tuongDoi || th.loai == _LoaiThang.thangNay) {
+        // "tháng này" nói RÕ tháng hiện tại → không lùi, kể cả ngày tương lai (người dùng chốt 2026-10-12).
         x = ngayCuaThang(d.$1, th.gia);
         ke = th.ke;
       } else {
+        // Không nêu tháng: tháng này, tương lai quá 7 ngày thì tháng trước (nếp dd/mm).
         x = ngayHopLe(now.year, now.month, d.$1);
         if (x != null && x.difference(homNay).inDays > 7) x = ngayCuaThang(d.$1, 1);
-        if (th.loai == _LoaiThang.thangNay) ke = th.ke;
       }
       if (x != null) ungVien.add((ngay: x, batDau: tk[i].start, ketThuc: tk[ke - 1].end));
     }
@@ -256,6 +259,8 @@ DateTime _ganNhat(DateTime homNay, int thu) =>
 
 final RegExp _tuNgay = RegExp(r'[\p{L}\p{M}]+|\d+[\p{L}\p{M}]*', unicode: true);
 final RegExp _haiChuSo = RegExp(r'^\d{1,2}$');
+final RegExp _chuSoDau = RegExp(r'^\d');
+final RegExp _dinhSo = RegExp(r'^[.,]\d'); // "3.000.000", "3,5": số tiền viết liền
 
 bool _laMung(String t) => t == 'mùng' || t == 'mồng';
 
@@ -268,11 +273,15 @@ bool _laMung(String t) => t == 'mùng' || t == 'mồng';
 
 enum _LoaiThang { khongNeu, so, tuongDoi, thangNay, bo }
 
-/// Mệnh đề tháng ở token [i]: `khongNeu` (không có *tháng*, hoặc *tháng* + số liền trước đơn vị tiền — *"tháng 3
-/// triệu"*: số ấy là tiền), `so` (tháng Y, `gia` = Y), `tuongDoi` (*tháng trước*, `gia` = 1), `thangNay` (*tháng này*),
-/// `bo` (chữ lạ sau *tháng*, nhất là *sau · tới*: không đọc ngày). `ke` = token kế tiếp mệnh đề.
+/// Mệnh đề tháng ở token [i] (của [ws] / [tk] trên câu [goc]): `khongNeu` (không có *tháng*, hoặc số sau *tháng* là
+/// TIỀN — xem dưới), `so` (tháng Y, `gia` = Y), `tuongDoi` (*tháng trước*, `gia` = 1), `thangNay` (*tháng này*), `bo`
+/// (chữ lạ sau *tháng*, nhất là *sau · tới*: không đọc ngày). `ke` = token kế tiếp mệnh đề.
 /// ⚠️ *sau* không dấu KHÔNG là số tháng (không phải 6; *sáu* có dấu mới là 6) nên phải xét trước khi đọc số.
-({_LoaiThang loai, int gia, int ke}) _veThang(List<String> ws, int i) {
+///
+/// Số sau *tháng* là tiền (tiền thắng tháng) khi: dính liền chữ (*3tr*, *500k* — `_tuNgay` gom một token), quá hai chữ
+/// số (*300 nghìn*), dính liền `.` / `,` + chữ số (*3.000.000*, *3,5 triệu*), hoặc đứng ngay trước đơn vị tiền (*3
+/// triệu*, *3 tr*, *ba lít*). Dấu câu không có chữ số theo sau (*"tháng 9, mua…"*) không dính.
+({_LoaiThang loai, int gia, int ke}) _veThang(String goc, List<RegExpMatch> tk, List<String> ws, int i) {
   const khong = (loai: _LoaiThang.khongNeu, gia: 0, ke: 0);
   if (i >= ws.length || (ws[i] != 'tháng' && ws[i] != 'thang')) return khong;
   if (i + 1 >= ws.length) return khong;
@@ -280,8 +289,18 @@ enum _LoaiThang { khongNeu, so, tuongDoi, thangNay, bo }
   if (tiep == 'trước' || tiep == 'truoc') return (loai: _LoaiThang.tuongDoi, gia: 1, ke: i + 2);
   if (tiep == 'này' || tiep == 'nay') return (loai: _LoaiThang.thangNay, gia: 0, ke: i + 2);
   if (tiep == 'sau') return (loai: _LoaiThang.bo, gia: 0, ke: i + 2);
-  final r = _soNgay(ws, i + 1, tu: true);
-  if (r == null) return (loai: _LoaiThang.bo, gia: 0, ke: i + 2);
+  final (int, int) r;
+  if (_chuSoDau.hasMatch(tiep)) {
+    final cuoi = tk[i + 1].end;
+    if (!_haiChuSo.hasMatch(tiep) || (cuoi + 1 < goc.length && _dinhSo.hasMatch(goc.substring(cuoi, cuoi + 2)))) {
+      return khong;
+    }
+    r = (int.parse(tiep), i + 2);
+  } else {
+    final chu = _soNgay(ws, i + 1, tu: true);
+    if (chu == null) return (loai: _LoaiThang.bo, gia: 0, ke: i + 2);
+    r = chu;
+  }
   // Cùng phép thử đơn vị tiền với nhánh *thu* và `cauNhacNgay` (`_sauLaDonViTien`).
   if (r.$2 < ws.length && _sauLaDonViTien.hasMatch(removeVietnameseTones(ws[r.$2]))) return khong;
   return (loai: _LoaiThang.so, gia: r.$1, ke: r.$2);

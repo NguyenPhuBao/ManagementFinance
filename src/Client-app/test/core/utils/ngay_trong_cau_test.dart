@@ -343,6 +343,42 @@ void main() {
       expect(timNgayTrongCau('mùng 31 tháng trước', DateTime(2026, 10, 15)), isNull);
     });
 
+    // Vòng sửa 4 (người dùng chốt 2026-10-12): "tháng này" = tháng HIỆN TẠI, không lùi kể cả tương lai — luật lùi chỉ
+    // cho mùng X không nêu tháng; số đứng sau "tháng" mà là tiền (dính chữ, dính . , + chữ số, ≥ 3 chữ số, trước đơn
+    // vị tiền) → coi như không nêu tháng.
+    for (final (cau, luc, ngay) in [
+      ('ngày 30 tháng này', hai0, DateTime(2026, 10, 30)),
+      ('mùng 30 tháng này', hai0, DateTime(2026, 10, 30)),
+      ('ngày 5 tháng này', hai0, DateTime(2026, 10, 5)),
+      ('mùng 31 tháng này', hai0, DateTime(2026, 10, 31)),
+      ('ngày 31 tháng này', DateTime(2026, 11, 20, 9), null), // tháng 11 có 30 ngày
+      ('mùng 31 tháng này', DateTime(2026, 11, 20, 9), null),
+    ]) {
+      test('vòng sửa 4: "$cau" hôm ${luc.day}/${luc.month} → $ngay',
+          () => expect(timNgayTrongCau(cau, luc)?.ngay, ngay, reason: 'tháng này = tháng hiện tại, không lùi'));
+    }
+    for (final cau in [
+      'tiền nhà mùng 5 tháng 3tr',
+      'mùng 5 tháng 500k',
+      'mùng 5 tháng 300 nghìn',
+      'đóng tiền nhà mùng 5 tháng 3.000.000',
+      'mùng 5 tháng 3,5 triệu',
+      'ngày mùng 5 tháng 3tr',
+    ]) {
+      test('vòng sửa 4: "$cau" → 05/10, số sau "tháng" là tiền', () {
+        final x = timNgayTrongCau(cau, hai0);
+        expect(x?.ngay, DateTime(2026, 10, 5), reason: 'số dính liền sau "tháng" là tiền → như không nêu tháng');
+        expect(cau.substring(x!.batDau, x.ketThuc), 'mùng 5', reason: 'đoạn ngày không nuốt "tháng" + tiền');
+      });
+    }
+    for (final cau in ['ngày 5 tháng 3.000.000', 'ngày 5 tháng 3tr', 'ngày 5 tháng 3,5 triệu']) {
+      test('vòng sửa 4: "$cau" → không ngày (ngày X, tháng là tiền)', () => expect(timNgayTrongCau(cau, hai0), isNull));
+    }
+    test('vòng sửa 4: dấu câu không có chữ số theo sau không dính — "mùng 5 tháng 9, mua sách" vẫn là tháng 9', () {
+      expect(timNgayTrongCau('mùng 5 tháng 9, mua sách', hai0)?.ngay, DateTime(2026, 9, 5));
+      expect(timNgayTrongCau('ngày 5 tháng 9. mua sách', hai0)?.ngay, DateTime(2026, 9, 5));
+    });
+
     // Luật lịch: tháng ngắn và năm nhuận — cùng nếp dd/mm (ngày không tồn tại → bỏ, không kẹp).
     test('tháng 30 ngày: "ngày 31 tháng 9" và "ngày ba mươi mốt tháng chín" → không phải ngày', () {
       expect(timNgayTrongCau('ngày 31 tháng 9', mot10), isNull);
