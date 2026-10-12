@@ -608,7 +608,32 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-11)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-12)
+
+### 🕗 G90 đóng 2026-10-12 — bảng chọn giờ dùng đồng hồ 24 giờ trên máy đặt 12 giờ
+
+**Gốc lỗi** (đo bằng widget test thăm dò, rồi đối chứng trên máy ảo): bảng chọn giờ của Flutter lấy **kiểu hiển thị** từ
+ngôn ngữ (`vi` = HH:mm, không có nút SA/CH) nhưng **đọc giờ gõ vào** theo `MediaQuery.alwaysUse24HourFormat`, tức cài đặt
+đồng hồ của máy. Máy 12 giờ thì hai bên lệch: ô giờ chỉ nhận 1–12 rồi ghép với SA/CH **ẩn** của giờ đang chọn. Nặng hơn mô
+tả lúc mở: ngoài lời từ chối (gõ `20`, `0` → *"Nhập thời gian hợp lệ"*) còn **hai ca sai im lặng** — từ 20:00 gõ `8` lưu
+**20:00**, từ 08:00 gõ `12` lưu **00:00**. Chế độ mặt đồng hồ không lỗi (vẽ 00–23 hai vòng).
+
+**Sửa** (`9bc57c63`): `bocDongHo24Gio` ở `core/constants/app_localization.dart` ép `alwaysUse24HourFormat: true`; `main.dart`
+gọi nó ở lớp **ngoài cùng** `builder` của `MaterialApp.router` (bọc `AppToast`). Đặt ở tầng app chứ không ở năm chỗ gọi
+`showTimePicker`: bảng chọn giờ thêm sau tự đúng, không ai phải nhớ — cùng lý lẽ với việc ghim `locale`. Không chỗ nào khác
+trong `lib/` đọc cờ ấy hay gọi `TimeOfDay.format` (đo 2026-10-12) nên không đổi gì nhìn thấy được ngoài bảng chọn giờ. Test:
+nhóm *G90* ở `test/core/constants/app_localization_test.dart` — ca tiền đề (không bọc thì máy 12 giờ từ chối `20`), bốn ca
+hành vi, ca nối dây `main.dart`. ⚠️ `platformDispatcher.alwaysUse24HourFormatTestValue = true` **không** tới được `MediaQuery`
+của `MaterialApp` trong `flutter test` (đo: vẫn `false`) — môi trường test là máy 12 giờ; trục 24 giờ nghiệm thu trên máy.
+
+**Nghiệm thu máy ảo** `FlowMoney_16G` (`time_12_24 = 12`, mở lại app; bản debug trỏ `10.0.2.2`, backend tắt — app mở từ phiên
+lưu sẵn): Cài đặt thông báo, *Giờ nhắc trong ngày* 08:00 → gõ `20` ra 20:00 · từ 20:00 gõ `8` ra 08:00 · từ 08:00 gõ `12` ra
+12:00; *Giờ nhắc* (ghi chép) 20:00 → gõ `0` ra 00:00, trả lại 20:00; form Thêm mục tiêu, giờ trích gõ `21` ra 21:00 (rời
+form, không lưu); mặt đồng hồ hiện 00–23. **Đối chứng**: dựng tạm `main.dart` của `HEAD~1` (không bọc), cùng máy cùng cài
+đặt → gõ `20` báo *"Nhập thời gian hợp lệ"* — chứng minh cài đặt 12 giờ tới được app; rồi dựng lại bản sửa (`bd0d16c6…`), đo
+lại `20` / `8` đạt. Hai ô giờ trả về 08:00 / 20:00, `time_12_24` trả về **chưa đặt** (như trước lượt đo). Máy ảo nay cài bản
+**debug** `bd0d16c6…` (trước là release `26c101bc…`); nó vẫn hiện mục tiêu *Thu nen* vì chưa kéo về lệnh xoá (backend tắt).
+Chưa đo trên Realme / OnePlus (không máy nào cắm). `flutter test` **6696/6696** + 9 skip, analyze **20**.
 
 ### 📱 Nghiệm thu Realme 2026-10-11 tối — chạy nền (Task 10), mười màn, Thêm giao dịch sau tách; mở G90
 
@@ -636,7 +661,7 @@ không commit; tài khoản 10 (`dat`, Premium). OnePlus không cắm — việc
   bản server — vô hại).
 - **Trợ lý AI**, câu chào *"xin chao"* (CPU): mô hình đáp tự nhiên, sinh xong **7.543 ms** (token đầu 4.435 ms) — trước ghi ~23 s.
 - **Mở G90** (máy ảo): bảng chọn giờ, chế độ gõ chữ, từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ — năm chỗ
-  `showTimePicker`, chưa sửa (`CLIENT_APP_KNOWN_GAPS.md`).
+  `showTimePicker`, chưa sửa (`CLIENT_APP_KNOWN_GAPS.md`) → ✅ **đóng 2026-10-12**, khối 🕗 ngay trên.
 - **Dọn** (qua giao diện): khoản chi thử xoá mềm; mục tiêu *"Thu nen"* rút 4.000 đ về *Tiết kiệm* rồi xoá (PostgreSQL
   `Delete_at` 14:57Z) — bốn khoản trích + một khoản rút **ở lại** làm lịch sử (khoản trích mục tiêu không xoá được từ sổ);
   thứ tự MuaXe → MuaDT khôi phục sau một cú vuốt nhầm thành kéo thả. Máy ảo đang cài bản release `26c101bc…` (trỏ

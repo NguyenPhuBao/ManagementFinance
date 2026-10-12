@@ -265,7 +265,7 @@ TDD, viết trước:
 - Thông báo *"Số dư ví sắp cạn — tiết kiệm mua nhà chỉ còn 1 nghìn"* bắn ngay khi ví đích vừa được **nạp** từ 0 lên 1.000 đ
   — UX lạ (ví tăng mà báo sắp cạn) nhưng đúng luật ngưỡng hiện hành; chưa mở mục G.
 - Lộ **G90** (máy ảo, khi đặt giờ trích): bảng chọn giờ chế độ gõ chữ từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ —
-  `docs/CLIENT_APP_KNOWN_GAPS.md`.
+  `docs/CLIENT_APP_KNOWN_GAPS.md`. ✅ Đóng 2026-10-12 (`9bc57c63`, ép đồng hồ 24 giờ ở `MaterialApp.builder`).
 
 **Còn chưa đo:** hoá đơn tự trả ở nền (mục 1); tài khoản Basic (e); đua thật hai máy (f) — lần đo máy sau dựng bằng cách
 **ngắt `adb reverse` của một máy** trước giờ trích để nó trích cục bộ, để máy kia trích và đẩy, rồi nối lại; OnePlus.
