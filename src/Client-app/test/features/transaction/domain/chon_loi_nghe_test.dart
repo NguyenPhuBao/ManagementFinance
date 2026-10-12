@@ -56,4 +56,15 @@ void main() {
     expect(cau.toSet(), hasLength(cau.length));
     expect(cau.every((c) => c.isNotEmpty), isTrue);
   });
+
+  test('hai thông báo "nói lại bằng AI trên máy" → lượt sau đi Gemma (kThuGemmaLuotSau)', () {
+    expect(kThuGemmaLuotSau, {ThongBaoNghe.matMangThuGemma, ThongBaoNghe.khongCoGoiThuGemma});
+  });
+
+  test('ghim nguyên văn hai câu hứa nói lại bằng AI trên máy', () {
+    expect(cauThongBaoNghe(ThongBaoNghe.khongCoGoiThuGemma),
+        'Máy không có gói tiếng Việt — bấm micro nói lại bằng AI trên máy');
+    expect(
+        cauThongBaoNghe(ThongBaoNghe.matMangThuGemma), 'Mất mạng — bấm micro nói lại, lần này nghe bằng AI trên máy');
+  });
 }

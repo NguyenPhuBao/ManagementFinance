@@ -14,8 +14,12 @@ const Set<String> kLoiKhongCoGoi = {'error_language_unavailable', 'error_languag
 const Set<String> kLoiKhongNghe = {'error_no_match', 'error_speech_timeout'};
 const Set<String> kLoiQuyen = {'error_permission', 'error_insufficient_permissions'};
 
-/// `null` = không lối nào dùng được. [uuTienGemma]: lượt trước Android vừa báo mất mạng giữa chừng — âm thanh lượt ấy
-/// không có (Android giữ micro), nên lượt này đi Gemma.
+/// Thông báo hứa "bấm micro nói lại bằng AI trên máy" ⇒ lượt sau đi Gemma (`uuTienGemma: true`). Task 13/14 dùng hằng
+/// này, không ghi cứng giá trị enum.
+const Set<ThongBaoNghe> kThuGemmaLuotSau = {ThongBaoNghe.matMangThuGemma, ThongBaoNghe.khongCoGoiThuGemma};
+
+/// `null` = không lối nào dùng được. [uuTienGemma]: lượt trước Android báo mất mạng giữa chừng hoặc máy thiếu gói tiếng
+/// Việt — âm thanh lượt ấy không có (Android giữ micro), nên lượt này đi Gemma.
 LoiNghe? chonLoiNghe({
   required bool coMang,
   required bool androidSanSang,
