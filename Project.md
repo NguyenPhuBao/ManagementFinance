@@ -3850,6 +3850,32 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - **Tầng 1 (UI Interaction & Rendering):** `src/tests/broadcast.maintenance.history.test.jsx` (3/3 tests PASS 100%) và `src/tests/broadcast.page.test.jsx` (10/10 tests PASS 100%): Kiểm tra không còn checkbox thừa, nút bấm luôn đỏ, render đúng các cột và dữ liệu từ API CSDL PostgreSQL.
   - **Tầng 2 (System Impact & Behavioral Verification):** `src/Backend/tests/unit/admin.maintenance.history.test.js` (3/3 tests PASS 100%): Kiểm tra `setMaintenance(true)` ghi nhận vào CSDL với `isEmergency = true` và `activated_by`, `setMaintenance(false)` tự động tính toán thời gian kết thúc, phân trang và bộ lọc hoạt động chính xác.
 
+### 17.10. Khắc Phục Triệt Để Lỗi Real-Time & Mất Mát Dữ Liệu Thời Gian Trong Nhật Ký Kiểm Toán (Audit Log) (2026-10-12)
+- **Bối cảnh & Nguyên nhân cốt lõi (Root Cause Analysis):**
+  1. *Lệch chuẩn tên trường thời gian (`time_req` vs `timeReq`):* Socket event đẩy lên snake_case (`time_req`, `time_res`), nhưng component `AuditLogPage.jsx` lại đọc camelCase (`log.timeReq`, `log.timeRes`). Hàm `fmt(undefined)` lập tức trả về `'—'`, làm 100% bản ghi real-time bị mất dữ liệu thời gian.
+  2. *Lỗi Deduplication & Phân mảnh ID:* REST API trả về trường `id`, socket handler gán `idlog`. Biểu thức `item.idlog !== newLog.idlog` luôn đúng với các bản ghi REST, làm vô hiệu cơ chế lọc trùng và dẫn đến trùng lặp dữ liệu.
+  3. *Vứt bỏ sự kiện Real-time âm thầm khi phân trang hoặc lọc:* Điều kiện chèn khóa cứng `if (page === 1 && !search.trim() && !statusFilter && !dateFrom && !dateTo)`. Khi Admin chuyển sang `page > 1` hoặc lọc trạng thái `Rejected`, sự kiện socket bị vứt bỏ hoàn toàn trong im lặng mà không có bất kỳ thông báo nào.
+  4. *Backend drop log khi thiếu `targetId`:* Middleware `audit-log.middleware.js` có điều kiện `if (!targetId) return;`, khiến các truy cập nặc danh (401), brute-force login sai tài khoản, hoặc request quét lỗ hổng không được phát hiện trên Dashboard thời gian thực.
+  5. *Thứ tự Middleware:* `auditLogMiddleware` nằm sau Rate Limiting, Quarantine và Maintenance, khiến các request bị chặn bởi hệ thống phòng vệ (429, 403, 503) không bao giờ kích hoạt kiểm toán.
+- **Giải pháp triển khai kỹ thuật toàn diện:**
+  1. **Chuẩn hóa DTO lưỡng tính (Dual-compatible DTO):**
+     - `admin.repository.js`: `queryAuditLogs` map và trả về song song cả `timeReq` + `time_req`, `timeRes` + `time_res`, `id` + `idlog`, `request` + `action`, `req_status` + `status`, cùng đối tượng `account.username`.
+     - `auth.service.js`: `emitAuditActivity` phát socket chứa đầy đủ cả 2 định dạng chuẩn ISO thời gian và định danh.
+     - `AuditLogPage.jsx`: Tạo `newLog` lưỡng tính, hàm render sử dụng fallback an toàn `fmt(log.timeReq || log.time_req)`, bộ lọc trùng deduplicate đa năng `(item.id || item.idlog) !== incomingId`.
+  2. **Cơ chế Real-time New Logs Sticky Banner:**
+     - Khi Admin ở `page === 1` và sự kiện mới khớp bộ lọc đang chọn: Tự động chèn lên đầu bảng và deduplicate an toàn.
+     - Khi Admin ở `page > 1` hoặc đang lọc tiêu chí khác: Tự động tăng biến đếm `newLogsCount` và hiển thị **Sticky Alert Banner** *"Có {count} hoạt động mới vừa phát sinh [Xem ngay]"*. Khi click, hệ thống tự động reset về trang 1, làm mới danh sách và xóa thông báo.
+     - Cập nhật đa ngôn ngữ trong `src/Admin-web/src/locales/vi.js` và `en.js`.
+  3. **Tối ưu vị trí Middleware & Giám sát An ninh Nặc danh:**
+     - Di chuyển `auditLogMiddleware` lên ngay sau `defaultAdminPriority` trong `app.js` để gắn `res.on('finish')` sớm nhất, bắt trọn mọi kết quả kể cả khi bị chặn bởi Quarantine, Maintenance, Load Shedding, hay Rate Limiter.
+     - Khi `!targetId` (request chưa xác thực / tài khoản không tồn tại): Không ghi CSDL PostgreSQL (bảo toàn ràng buộc NOT NULL / FK và tuân thủ Rule 10 DB Guard), nhưng **vẫn phát Socket.IO real-time event lên Admin-web** với `idaccount: null`, `user: 'Anonymous / Guest'` để Admin giám sát tức thời mọi hành vi tấn công/bất thường.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Render & Interaction):** `src/tests/audit.page.test.jsx` (8/8 tests PASS 100%): Kiểm tra thời gian hiển thị chuẩn xác (không bị `'—'`), lọc trùng an toàn giữa REST item và Socket item, hiển thị banner thông báo khi phân trang hoặc lọc.
+  - **Tầng 2 (System Impact & Backend Integration):**
+    + `src/Backend/tests/unit/admin.audit.query.test.js` (3/3 tests PASS 100%): Kiểm tra DTO lưỡng tính trả về từ Repository.
+    + `src/Backend/tests/unit/audit.log.test.js` (7/7 tests PASS 100%): Kiểm tra middleware phát Socket event ngay cả khi request không có `targetId`.
+  - **Hồi quy toàn diện:** 100% test suites Admin-web (19/19 files PASS) và Backend v2 (54/54 tests PASS).
+
 
 
 
