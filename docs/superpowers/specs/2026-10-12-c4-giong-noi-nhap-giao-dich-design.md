@@ -35,6 +35,12 @@
 >     `cachDocSoTien` vẫn liệt kê mọi cách đọc. Cùng lượt: chữ số chữ đứng sau cụm chỉ so **không dấu** khi **cả câu**
 >     không dấu (*"hai triệu sau khi giảm"* không thành 2.600.000), và `cachDocSoTien` dùng chung phép đọc ấy; tập chữ
 >     đứng sau tiền của N2 thêm *ví · đến · tới*.
+> 11. **§3.3 ngày — "tháng này" (người dùng chốt 2026-10-12, lúc soát Task 5):** *"ngày X tháng này"* / *"mùng X tháng
+>     này"* = ngày X của **tháng hiện tại**, **không** lùi kể cả khi rơi vào tương lai; tháng không có ngày X → không đọc
+>     ngày. Luật "tương lai > 7 ngày thì lùi" chỉ áp cho *ngày / mùng X* **không nêu tháng** (và *dd/mm* như cũ). Cùng
+>     lượt soát: *tháng trước* → tháng trước; *tháng sau · tháng tới* → không đọc ngày (C2 hỏi AI); số đứng sau *tháng*
+>     là số tiền (*"tháng 3 triệu"*, *"tháng 3tr"*, *"tháng 3.000.000"*) thì tiền thắng, tháng coi như không nêu; *mùng*
+>     chỉ nhận dạng có dấu; số ngày / tháng bằng chữ đọc qua `so_bang_chu.dart`.
 
 ## 1. Quyết định người dùng chốt (2026-10-12)
 
