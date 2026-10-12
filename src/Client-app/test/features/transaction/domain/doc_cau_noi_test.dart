@@ -343,4 +343,15 @@ void main() {
     expect(kq.soTien, 120000.0);
     expect(kq.ghiChu, 'mua sách');
   });
+
+  test('vòng sửa 1: số tiền không bị ngày nuốt, "mung" không dấu không phải mùng', () {
+    expect(doc('lam mong hai tram nghin').soTien, 200000.0);
+    expect(doc('lam mong hai tram nghin').ngay, isNull);
+    final a = doc('ngày năm tháng mười một trăm nghìn');
+    expect((a.ngay, a.soTien), (DateTime(2026, 10, 5), 100000.0));
+    final b = doc('mùng mười hai trăm nghìn');
+    expect((b.ngay, b.soTien), (DateTime(2026, 9, 10), 200000.0));
+    final c = doc('đi chơi mùng 2/9 500k');
+    expect((c.ngay, c.soTien, c.ghiChu), (DateTime(2026, 9, 2), 500000.0, 'đi chơi mùng')); // y như base: dd/mm không nuốt chữ "mùng"
+  });
 }

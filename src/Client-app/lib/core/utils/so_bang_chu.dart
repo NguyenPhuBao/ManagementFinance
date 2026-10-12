@@ -232,3 +232,42 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
   }
   return tot;
 }
+
+/// Số nhỏ 1–99 bằng chữ bắt đầu ở token [i] của [tu] (mỗi token một từ, đã NFC + chữ thường) — cho chỗ cần đọc *ngày* /
+/// *tháng* (*năm*, *mười lăm*, *hai mươi mốt*, *ba mươi*), khác [timSoBangChu] ở chỗ KHÔNG đòi đơn vị. Cùng phép khớp từ
+/// (`_nghiaCua`: có dấu hoặc không dấu hoàn toàn). Trả `(giá trị, chỉ số token kế tiếp)` hoặc `null`.
+///
+/// ⚠️ Chữ hàng đơn vị đứng ngay sau hàng chục KHÔNG được nhận khi token kế là *trăm · nghìn · ngàn · triệu · tỷ · tỉ*:
+/// *"mười hai trăm nghìn"* là tiền — chỉ đọc *mười*. [choPhepTu]: nhận *tư* / *tu* đứng một mình là 4 (tên chuẩn của tháng
+/// 4, *"tháng tư"*); ngoài chỗ ấy *tư* chỉ là chữ số đứng sau hàng chục.
+(int, int)? docSoNhoBangChu(List<String> tu, int i, {bool choPhepTu = false}) {
+  _Tu? nghia(int k) => k < tu.length ? _nghiaCua(tu[k]) : null;
+  bool laDonViLon(int k) {
+    final l = nghia(k)?.loai;
+    return l == _Loai.tram || l == _Loai.bac;
+  }
+
+  int? donViSau(int k) {
+    final n = nghia(k);
+    if (n == null || (n.loai != _Loai.so && n.loai != _Loai.soSauChuc)) return null;
+    final g = n.giaTri;
+    if (g.isNaN || g < 1 || g > 9 || laDonViLon(k + 1)) return null;
+    return g.toInt();
+  }
+
+  final dau = nghia(i);
+  if (dau == null) return null;
+  if (dau.loai == _Loai.muoi || dau.loai == _Loai.muoiKhongDau) {
+    final u = donViSau(i + 1);
+    return u == null ? (10, i + 1) : (10 + u, i + 2);
+  }
+  if (choPhepTu && dau.loai == _Loai.soSauChuc && dau.giaTri == 4) return (4, i + 1);
+  final g = dau.giaTri;
+  if (dau.loai != _Loai.so || g.isNaN || g < 1 || g > 9) return null;
+  final tiep = nghia(i + 1);
+  if (tiep != null && (tiep.loai == _Loai.chuc || tiep.loai == _Loai.muoiKhongDau)) {
+    final u = donViSau(i + 2);
+    return u == null ? (g.toInt() * 10, i + 2) : (g.toInt() * 10 + u, i + 3);
+  }
+  return (g.toInt(), i + 1);
+}

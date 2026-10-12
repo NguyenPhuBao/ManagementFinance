@@ -23,6 +23,7 @@ library;
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../category/category_name.dart';
+import 'so_bang_chu.dart';
 
 /// Một ngày đọc được: đầu ngày, và `[batDau, ketThuc)` trong câu **đã NFC** (câu dựng sẵn — câu gõ từ bàn phím — trùng
 /// với chính nó).
@@ -111,29 +112,45 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
     ungVien.add((ngay: x, batDau: m.start, ketThuc: m.end));
   }
 
-  // C4 (spec 2026-10-12 §3.3): "ngày năm tháng chín", "ngày 5 tháng 9", "mùng năm" — câu NÓI, máy nghe trả chữ hoặc số.
-  final tk = _tuSoNgay.allMatches(s).toList();
-  for (var i = 0; i < tk.length; i++) {
-    final t = tk[i].group(0)!;
-    final batDau = tk[i].start;
-    if (t == 'ngay' && (goc.startsWith('ngày', batDau) || _laAscii(goc, tk[i]))) {
-      final d = _soNho(tk, i + 1);
-      if (d == null || d.$2 >= tk.length || tk[d.$2].group(0) != 'thang') continue;
-      final m = _soNho(tk, d.$2 + 1);
-      if (m == null) continue;
-      var x = ngayHopLe(now.year, m.$1, d.$1);
-      if (x != null && x.difference(homNay).inDays > 7) x = ngayHopLe(now.year - 1, m.$1, d.$1);
-      if (x != null) ungVien.add((ngay: x, batDau: batDau, ketThuc: tk[m.$2 - 1].end));
-    } else if ((t == 'mung' || t == 'mong') &&
-        (goc.startsWith('mùng', batDau) || goc.startsWith('mồng', batDau) || _laAscii(goc, tk[i]))) {
-      final d = _soNho(tk, i + 1);
+  // C4 (spec 2026-10-12 §3.3): "ngày năm tháng chín", "ngày 5 tháng 9", "(ngày) mùng năm (tháng chín)" — câu NÓI, máy nghe
+  // trả chữ hoặc số. Số bằng chữ đọc qua `so_bang_chu.dart` (định nghĩa duy nhất), trên token CÓ DẤU của câu.
+  final tk = _tuNgay.allMatches(goc).toList();
+  final ws = [for (final m in tk) m.group(0)!];
+  DateTime? ngayThang(int d, int mo) {
+    var x = ngayHopLe(now.year, mo, d);
+    if (x != null && x.difference(homNay).inDays > 7) x = ngayHopLe(now.year - 1, mo, d);
+    return x;
+  }
+
+  for (var i = 0; i < ws.length; i++) {
+    final t = ws[i];
+    if (t == 'ngày' || t == 'ngay') {
+      var j = i + 1;
+      if (j < ws.length && _laMung(ws[j])) j++; // "ngày mùng năm tháng chín"
+      final d = _soNgay(ws, j);
       if (d == null) continue;
-      var x = ngayHopLe(now.year, now.month, d.$1);
-      if (x != null && x.difference(homNay).inDays > 7) {
-        final truoc = DateTime(now.year, now.month - 1, 1);
-        x = ngayHopLe(truoc.year, truoc.month, d.$1);
+      final th = _thangSau(ws, d.$2);
+      if (th == null) continue;
+      final x = ngayThang(d.$1, th.$1);
+      if (x != null) ungVien.add((ngay: x, batDau: tk[i].start, ketThuc: tk[th.$2 - 1].end));
+    } else if (_laMung(t)) {
+      // Chỉ "mùng / mồng" CÓ DẤU (cùng quy ước `cauNhacNgay`): "mung" không dấu còn là "mừng" / "mong" / "mộng".
+      final d = _soNgay(ws, i + 1);
+      if (d == null) continue;
+      final cuoiSo = tk[d.$2 - 1].end;
+      if (cuoiSo < goc.length && goc[cuoiSo] == '/') continue; // "mùng 2/9" là dd/mm — luật trên đã đọc
+      final th = _thangSau(ws, d.$2);
+      DateTime? x;
+      if (th != null) {
+        x = ngayThang(d.$1, th.$1);
+      } else {
+        x = ngayHopLe(now.year, now.month, d.$1);
+        if (x != null && x.difference(homNay).inDays > 7) {
+          final truoc = DateTime(now.year, now.month - 1, 1);
+          x = ngayHopLe(truoc.year, truoc.month, d.$1);
+        }
       }
-      if (x != null) ungVien.add((ngay: x, batDau: batDau, ketThuc: tk[d.$2 - 1].end));
+      if (x != null) ungVien.add((ngay: x, batDau: tk[i].start, ketThuc: tk[(th?.$2 ?? d.$2) - 1].end));
     }
   }
 
@@ -221,39 +238,20 @@ NgayTrongCau _theoTuan(String s, DateTime homNay, int thu, int bd, int kt) {
 DateTime _ganNhat(DateTime homNay, int thu) =>
     DateTime(homNay.year, homNay.month, homNay.day - (homNay.weekday - thu) % 7);
 
-final RegExp _tuSoNgay = RegExp(r'[a-z0-9]+');
-const Map<String, int> _donViChuNgay = {
-  'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, //
-};
+final RegExp _tuNgay = RegExp(r'[\p{L}\p{M}]+|\d+', unicode: true);
+final RegExp _haiChuSo = RegExp(r'^\d{1,2}$');
 
-/// Token [m] trên câu gốc [goc] không mang dấu nào (người gõ không dấu) — *"mừng"* bỏ dấu cũng là `mung`.
-bool _laAscii(String goc, RegExpMatch m) => RegExp(r'^[a-z0-9]+$').hasMatch(goc.substring(m.start, m.end));
+bool _laMung(String t) => t == 'mùng' || t == 'mồng';
 
-/// Số 1–31 bắt đầu ở token [i] (trên câu bỏ dấu): chữ số, hoặc chữ — *năm*, *mười lăm*, *hai mươi mốt*, *ba mươi*.
-/// Trả `(giá trị, token kế tiếp)` hoặc `null`. *muoi* đứng đầu là *mười* (10), sau chữ số là *mươi* (× 10).
-(int, int)? _soNho(List<RegExpMatch> tk, int i) {
-  if (i >= tk.length) return null;
-  final t = tk[i].group(0)!;
-  if (RegExp(r'^\d{1,2}$').hasMatch(t)) return (int.parse(t), i + 1);
-  int? donViSauChuc(int j) {
-    if (j >= tk.length) return null;
-    return switch (tk[j].group(0)!) {
-      'mot' => 1,
-      'lam' || 'nam' => 5,
-      'tu' || 'bon' => 4,
-      final u => _donViChuNgay[u],
-    };
-  }
+/// Số ngày 1–31 bắt đầu ở token [i]: chữ số, hoặc chữ qua [docSoNhoBangChu]. `(giá trị, token kế tiếp)` hoặc `null`.
+(int, int)? _soNgay(List<String> ws, int i, {bool tu = false}) {
+  if (i >= ws.length) return null;
+  if (_haiChuSo.hasMatch(ws[i])) return (int.parse(ws[i]), i + 1);
+  return docSoNhoBangChu(ws, i, choPhepTu: tu);
+}
 
-  if (t == 'muoi') {
-    final u = donViSauChuc(i + 1);
-    return u == null ? (10, i + 1) : (10 + u, i + 2);
-  }
-  final d = _donViChuNgay[t];
-  if (d == null) return null;
-  if (i + 1 < tk.length && tk[i + 1].group(0) == 'muoi') {
-    final u = donViSauChuc(i + 2);
-    return u == null ? (d * 10, i + 2) : (d * 10 + u, i + 3);
-  }
-  return (d, i + 1);
+/// *tháng Y* ở token [i] (Y chữ số, chữ, hoặc *tư* — tên chuẩn của tháng 4). `(tháng, token kế tiếp)` hoặc `null`.
+(int, int)? _thangSau(List<String> ws, int i) {
+  if (i >= ws.length || (ws[i] != 'tháng' && ws[i] != 'thang')) return null;
+  return _soNgay(ws, i + 1, tu: true);
 }

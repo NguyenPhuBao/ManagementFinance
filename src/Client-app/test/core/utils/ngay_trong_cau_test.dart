@@ -272,6 +272,35 @@ void main() {
       expect(timNgayTrongCau('mùng hai mươi', DateTime(2027, 1, 5))?.ngay, DateTime(2026, 12, 20));
     });
 
+    // Vòng sửa 1 (người soát): dd/mm thắng "mùng 2/9"; mùng + tháng; một định nghĩa số chữ; "mung" không dấu không phải mùng.
+    for (final (cau, ngay) in [
+      ('đi chơi mùng 2/9 500k', DateTime(2026, 9, 2)),
+      ('quà mùng 8/3 300k', DateTime(2026, 3, 8)),
+      ('ngày mùng 2/9', DateTime(2026, 9, 2)),
+      ('ngày mùng năm tháng chín mua sách', DateTime(2026, 9, 5)),
+      ('ngày mùng 5 tháng 9 mua sách', DateTime(2026, 9, 5)),
+      ('mùng hai tháng chín', DateTime(2026, 9, 2)),
+      ('ngày năm tháng tư', DateTime(2026, 4, 5)),
+      ('ngày 5 tháng tư', DateTime(2026, 4, 5)),
+      ('ngày hai mươi nhăm tháng chín', DateTime(2026, 9, 25)),
+      ('ngày năm tháng mười một trăm nghìn', DateTime(2026, 10, 5)), // tháng mười; "một trăm nghìn" là tiền
+      ('mùng mười hai trăm nghìn', DateTime(2026, 9, 10)),
+    ]) {
+      test('vòng sửa 1: "$cau" → $ngay', () => expect(timNgayTrongCau(cau, mot10)?.ngay, ngay));
+    }
+    for (final cau in [
+      'ngày nậm tháng chín',
+      'mùng bà',
+      'li xi mung nam moi 500k',
+      'son mong 2 lop 80k',
+      'lam mong hai tram nghin',
+    ]) {
+      test('vòng sửa 1: "$cau" → không ra ngày', () => expect(timNgayTrongCau(cau, mot10), isNull));
+    }
+    test('"mùng 31" hôm 02/11: tháng 11 chỉ có 30 ngày → bỏ, không thử tháng trước', () {
+      expect(timNgayTrongCau('mùng 31', DateTime(2026, 11, 2)), isNull);
+    });
+
     // Luật lịch: tháng ngắn và năm nhuận — cùng nếp dd/mm (ngày không tồn tại → bỏ, không kẹp).
     test('tháng 30 ngày: "ngày 31 tháng 9" và "ngày ba mươi mốt tháng chín" → không phải ngày', () {
       expect(timNgayTrongCau('ngày 31 tháng 9', mot10), isNull);
