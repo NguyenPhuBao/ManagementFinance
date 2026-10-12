@@ -1,11 +1,14 @@
 /// Ngày nêu trong một câu tiếng Việt (C2 task 2, spec `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2.3) —
 /// cho ô *Nhập nhanh* của màn Thêm giao dịch, và sau này D1 / C4 dùng chung.
 ///
-/// Ba dạng, chữ đứng **đầu câu** thắng khi có nhiều:
+/// Bốn dạng, chữ đứng **đầu câu** thắng khi có nhiều:
 /// - *hôm nay · sáng / trưa / chiều / tối nay* → hôm nay; *hôm qua* → hôm qua; *hôm kia* → hai ngày trước.
 /// - *thứ 2 … thứ 7*, *thứ hai … thứ bảy*, *chủ nhật / cn* → ngày gần nhất **đã qua hoặc hôm nay** có thứ ấy; kèm *"tuần
 ///   trước"* / *"tuần này"* thì là ngày ấy của tuần (thứ Hai → Chủ nhật) được nêu. *"thứ sáu tuần trước"* đọc vào thứ
 ///   Bảy không phải hôm qua.
+/// - *ngày X tháng Y* (X, Y bằng chữ hoặc số: *ngày năm tháng chín*, *ngày 5 tháng 9*) → ngày ấy của năm hiện tại; *mùng /
+///   mồng X* → ngày X tháng này. Cùng nếp *dd/mm*: rơi vào tương lai quá 7 ngày thì lùi (năm trước / tháng trước); ngày
+///   không tồn tại thì bỏ. Câu NÓI (C4): máy nghe trả chữ hoặc số. ⚠️ *"… năm Z"* sau tháng bị bỏ qua (Z không được đọc).
 /// - *dd/mm* (có thể kèm *ngày* đứng trước, hoặc */yyyy* sau) → ngày ấy của năm hiện tại; không tồn tại thì bỏ; rơi vào
 ///   tương lai quá 7 ngày thì lùi một năm (gõ *30/12* hôm 3/1 là 30/12 năm ngoái).
 ///
@@ -108,6 +111,32 @@ NgayTrongCau? timNgayTrongCau(String cau, DateTime now) {
     ungVien.add((ngay: x, batDau: m.start, ketThuc: m.end));
   }
 
+  // C4 (spec 2026-10-12 §3.3): "ngày năm tháng chín", "ngày 5 tháng 9", "mùng năm" — câu NÓI, máy nghe trả chữ hoặc số.
+  final tk = _tuSoNgay.allMatches(s).toList();
+  for (var i = 0; i < tk.length; i++) {
+    final t = tk[i].group(0)!;
+    final batDau = tk[i].start;
+    if (t == 'ngay' && (goc.startsWith('ngày', batDau) || _laAscii(goc, tk[i]))) {
+      final d = _soNho(tk, i + 1);
+      if (d == null || d.$2 >= tk.length || tk[d.$2].group(0) != 'thang') continue;
+      final m = _soNho(tk, d.$2 + 1);
+      if (m == null) continue;
+      var x = ngayHopLe(now.year, m.$1, d.$1);
+      if (x != null && x.difference(homNay).inDays > 7) x = ngayHopLe(now.year - 1, m.$1, d.$1);
+      if (x != null) ungVien.add((ngay: x, batDau: batDau, ketThuc: tk[m.$2 - 1].end));
+    } else if ((t == 'mung' || t == 'mong') &&
+        (goc.startsWith('mùng', batDau) || goc.startsWith('mồng', batDau) || _laAscii(goc, tk[i]))) {
+      final d = _soNho(tk, i + 1);
+      if (d == null) continue;
+      var x = ngayHopLe(now.year, now.month, d.$1);
+      if (x != null && x.difference(homNay).inDays > 7) {
+        final truoc = DateTime(now.year, now.month - 1, 1);
+        x = ngayHopLe(truoc.year, truoc.month, d.$1);
+      }
+      if (x != null) ungVien.add((ngay: x, batDau: batDau, ketThuc: tk[d.$2 - 1].end));
+    }
+  }
+
   if (ungVien.isEmpty) return null;
   ungVien.sort((a, b) => a.batDau.compareTo(b.batDau));
   return ungVien.first;
@@ -191,3 +220,40 @@ NgayTrongCau _theoTuan(String s, DateTime homNay, int thu, int bd, int kt) {
 /// Ngày gần nhất đã qua hoặc hôm nay có [thu] (`DateTime.weekday`).
 DateTime _ganNhat(DateTime homNay, int thu) =>
     DateTime(homNay.year, homNay.month, homNay.day - (homNay.weekday - thu) % 7);
+
+final RegExp _tuSoNgay = RegExp(r'[a-z0-9]+');
+const Map<String, int> _donViChuNgay = {
+  'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, //
+};
+
+/// Token [m] trên câu gốc [goc] không mang dấu nào (người gõ không dấu) — *"mừng"* bỏ dấu cũng là `mung`.
+bool _laAscii(String goc, RegExpMatch m) => RegExp(r'^[a-z0-9]+$').hasMatch(goc.substring(m.start, m.end));
+
+/// Số 1–31 bắt đầu ở token [i] (trên câu bỏ dấu): chữ số, hoặc chữ — *năm*, *mười lăm*, *hai mươi mốt*, *ba mươi*.
+/// Trả `(giá trị, token kế tiếp)` hoặc `null`. *muoi* đứng đầu là *mười* (10), sau chữ số là *mươi* (× 10).
+(int, int)? _soNho(List<RegExpMatch> tk, int i) {
+  if (i >= tk.length) return null;
+  final t = tk[i].group(0)!;
+  if (RegExp(r'^\d{1,2}$').hasMatch(t)) return (int.parse(t), i + 1);
+  int? donViSauChuc(int j) {
+    if (j >= tk.length) return null;
+    return switch (tk[j].group(0)!) {
+      'mot' => 1,
+      'lam' || 'nam' => 5,
+      'tu' || 'bon' => 4,
+      final u => _donViChuNgay[u],
+    };
+  }
+
+  if (t == 'muoi') {
+    final u = donViSauChuc(i + 1);
+    return u == null ? (10, i + 1) : (10 + u, i + 2);
+  }
+  final d = _donViChuNgay[t];
+  if (d == null) return null;
+  if (i + 1 < tk.length && tk[i + 1].group(0) == 'muoi') {
+    final u = donViSauChuc(i + 2);
+    return u == null ? (d * 10, i + 2) : (d * 10 + u, i + 3);
+  }
+  return (d, i + 1);
+}

@@ -336,4 +336,11 @@ void main() {
       expect(doc('ăn phở 45 ví tiền mặt').walletId, 'cash');
     });
   });
+
+  test('⭐ "ngày năm tháng chín mua sách một trăm hai mươi nghìn" → 05/09 + 120.000, ghi chú "mua sách"', () {
+    final kq = doc('ngày năm tháng chín mua sách một trăm hai mươi nghìn');
+    expect(kq.ngay, DateTime(2026, 9, 5));
+    expect(kq.soTien, 120000.0);
+    expect(kq.ghiChu, 'mua sách');
+  });
 }

@@ -243,4 +243,55 @@ void main() {
       expect(ngayHopLe(2026, 4, 31), isNull);
     });
   });
+
+  group('C4 — ngày X tháng Y, mùng X (câu NÓI)', () {
+    final mot10 = DateTime(2026, 10, 1, 9);
+    for (final (cau, ngay) in [
+      ('ngày năm tháng chín mua sách', DateTime(2026, 9, 5)),
+      ('ngày 5 tháng 9 mua sách', DateTime(2026, 9, 5)),
+      ('ngày hai mươi mốt tháng chín', DateTime(2026, 9, 21)),
+      ('ngày mười lăm tháng mười', DateTime(2025, 10, 15)), // tương lai > 7 ngày → năm trước
+      ('ngay nam thang chin', DateTime(2026, 9, 5)),
+      ('mùng năm', DateTime(2026, 10, 5)), // 4 ngày tới — trong hạn 7 ngày như dd/mm
+      ('mùng mười', DateTime(2026, 9, 10)), // 9 ngày tới → tháng trước
+      ('mồng 2', DateTime(2026, 10, 2)),
+    ]) {
+      test('"$cau" → $ngay', () => expect(timNgayTrongCau(cau, mot10)?.ngay, ngay));
+    }
+
+    test('đoạn dùng đúng cụm: "ngày năm tháng chín mua sách" → [0, 19)', () {
+      final x = timNgayTrongCau('ngày năm tháng chín mua sách', mot10)!;
+      expect((x.batDau, x.ketThuc), (0, 'ngày năm tháng chín'.length));
+    });
+
+    for (final cau in ['ngày ba mươi mốt tháng hai', 'ngày năm', 'mừng năm mới', 'trả ngay năm trăm nghìn']) {
+      test('"$cau" → không phải ngày', () => expect(timNgayTrongCau(cau, mot10), isNull));
+    }
+
+    test('tháng 1 lùi sang tháng 12 năm trước: "mùng hai mươi" hôm 05/01', () {
+      expect(timNgayTrongCau('mùng hai mươi', DateTime(2027, 1, 5))?.ngay, DateTime(2026, 12, 20));
+    });
+
+    // Luật lịch: tháng ngắn và năm nhuận — cùng nếp dd/mm (ngày không tồn tại → bỏ, không kẹp).
+    test('tháng 30 ngày: "ngày 31 tháng 9" và "ngày ba mươi mốt tháng chín" → không phải ngày', () {
+      expect(timNgayTrongCau('ngày 31 tháng 9', mot10), isNull);
+      expect(timNgayTrongCau('ngày ba mươi mốt tháng chín', mot10), isNull);
+    });
+    test('"mùng 31" hôm 01/10: tương lai > 7 ngày → tháng 9 không có ngày 31 → bỏ', () {
+      expect(timNgayTrongCau('mùng 31', mot10), isNull);
+    });
+    test('"mùng 30" hôm 01/03/2026: lùi về tháng 2 (28 ngày) → bỏ; hôm 01/03/2028 cũng bỏ (nhuận có 29)', () {
+      expect(timNgayTrongCau('mùng 30', DateTime(2026, 3, 1)), isNull);
+      expect(timNgayTrongCau('mùng 30', DateTime(2028, 3, 1)), isNull);
+    });
+    test('"mùng 29" hôm 01/03: tháng 2 năm nhuận có 29, năm thường không', () {
+      expect(timNgayTrongCau('mùng 29', DateTime(2028, 3, 1))?.ngay, DateTime(2028, 2, 29));
+      expect(timNgayTrongCau('mùng 29', DateTime(2026, 3, 1)), isNull);
+    });
+    test('"ngày 29 tháng 2": năm nhuận đọc được, năm thường không', () {
+      expect(timNgayTrongCau('ngày 29 tháng 2', DateTime(2028, 3, 10))?.ngay, DateTime(2028, 2, 29));
+      expect(timNgayTrongCau('ngày 29 tháng 2', DateTime(2026, 3, 10)), isNull);
+      expect(timNgayTrongCau('ngày hai mươi chín tháng hai', DateTime(2026, 3, 10)), isNull);
+    });
+  });
 }
