@@ -16,6 +16,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../category/data/models/category_suggestion.dart';
@@ -29,6 +30,7 @@ import '../../data/dong_hang_bien_dong.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../data/them_giao_dich_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
+import '../../domain/chot_so_tien_cau.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
@@ -200,7 +202,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       _phat(state.copyWith(hienBanPhimSo: banPhimHeThongMo || !state.hienBanPhimSo));
 
   /// Điền một số (chip của ảnh quét, điền sẵn) — từng chữ số qua `themPhimSoTien`, cùng trần; ẩn 16 phím.
-  void chonSoTien(double v) => _phat(state.copyWith(chuoiSoTien: _goSo(v), hienBanPhimSo: false));
+  void chonSoTien(double v) =>
+      _phat(state.copyWith(chuoiSoTien: _goSo(v), hienBanPhimSo: false, luaChonTienCau: const []));
 
   static String _goSo(double v) {
     var a = '0';
@@ -793,13 +796,21 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     if (cau.isEmpty || _dangDien) return;
     _dangDien = true;
     final luot = ++_luotDien;
+    // Lượt kiểm chéo của câu trước (nếu còn) bị bỏ — bộ đếm lượt đã tăng; mô hình thôi giải mã.
+    if (state.dangKiemSoTien) unawaited(_nguon.docAi?.huy());
+    if (state.dangKiemSoTien || state.luaChonTienCau.isNotEmpty) {
+      emit(state.copyWith(dangKiemSoTien: false, luaChonTienCau: const []));
+    }
     final (chonDuoc, tuKhoa) = await _nguon.napDanhMucVaTuKhoa(_taiKhoan());
     // Người dùng chốt 2026-09-30 (spec C2 banner "ĐỔI LẦN HAI"): luật trước — chỉ hỏi mô hình (~18 s trên Realme) khi còn
     // ô câu có nhắc mà luật không đọc được (số tiền, ngày, ví); AI về thì luật kiểm từng ô và chỉ LẤP ô luật để trống.
     KetQuaAi? ai;
     final docAi = _nguon.docAi;
-    final conThieu = _docCau(cau, chonDuoc, tuKhoa).oThieu.isNotEmpty;
-    if (conThieu && docAi != null && !isClosed && await docAi.sanSang()) {
+    final luat = _docCau(cau, chonDuoc, tuKhoa);
+    final soLuat = luat.soTien;
+    final canKiem = luat.soTienCanKiem && soLuat != null;
+    final coAi = (luat.oThieu.isNotEmpty || canKiem) && docAi != null && !isClosed && await docAi.sanSang();
+    if (luat.oThieu.isNotEmpty && coAi) {
       if (isClosed || luot != _luotDien) return;
       emit(state.copyWith(dangDocAi: true));
       ai = await docAi.doc(
@@ -814,6 +825,53 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _dangDien = false;
     if (state.dangDocAi) emit(state.copyWith(dangDocAi: false));
     _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
+    // C4 §3.4 — kiểm chéo số luật đọc bằng dạng nói. Câu còn ô thiếu thì lượt AI vừa rồi kiểm luôn — không gọi lần hai.
+    if (!canKiem || !coAi) return;
+    if (luat.oThieu.isNotEmpty) {
+      if (ai != null) _chotSoTien(cau, soLuat, ai);
+      return;
+    }
+    unawaited(_kiemSoTienNen(cau, soLuat, luot, chonDuoc));
+  }
+
+  /// C4 §3.4 — một lượt Gemma ở NỀN; form đã điền số luật. Người dùng đổi số trong lúc chờ → kết quả bị bỏ.
+  Future<void> _kiemSoTienNen(String cau, double soLuat, int luot, List<Category> chonDuoc) async {
+    final chuoiLuat = state.chuoiSoTien;
+    _phat(state.copyWith(dangKiemSoTien: true));
+    final ai = await _nguon.docAi!.doc(
+      cau,
+      now: DateTime.now(),
+      tenVi: [for (final w in state.vi) w.name],
+      tenDanhMuc: [for (final c in chonDuoc) if (!c.isDeleted && !c.isGroup) c.name],
+    );
+    if (isClosed || luot != _luotDien) return;
+    _phat(state.copyWith(dangKiemSoTien: false));
+    if (ai != null && state.chuoiSoTien == chuoiLuat) _chotSoTien(cau, soLuat, ai);
+  }
+
+  void _chotSoTien(String cau, double soLuat, KetQuaAi ai) {
+    final c = chotSoTienCau(luat: soLuat, ai: soTienAiHopLe(cau, ai, now: DateTime.now()));
+    if (c.luaChon.isEmpty) return;
+    // Ô số tiền trống: dòng "Đã điền" không được còn nói số luật đã điền (preflight P7).
+    final kq = state.ketQuaDien;
+    KetQuaDien? kqMoi = kq;
+    if (kq != null && kq.docDuoc) {
+      final dau = 'Đã điền: ${CurrencyFormatter.format(soLuat)}';
+      if (kq.tomTat.startsWith(dau)) {
+        final conLai = kq.tomTat.substring(dau.length).replaceFirst(' · ', '');
+        kqMoi = conLai.isEmpty
+            ? null
+            : (tomTat: 'Đã điền: $conLai', docDuoc: true, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: kq.lyDo);
+      }
+    }
+    _phat(state.copyWith(chuoiSoTien: '0', hienBanPhimSo: false, luaChonTienCau: c.luaChon, ketQuaDien: kqMoi));
+  }
+
+  /// Bấm Huỷ ở dòng *"Đang kiểm số tiền bằng AI…"*: giữ số luật.
+  Future<void> huyKiemSoTien() async {
+    _luotDien++;
+    unawaited(_nguon.docAi?.huy());
+    _phat(state.copyWith(dangKiemSoTien: false));
   }
 
   /// Huỷ lượt đọc bằng AI: điền ngay bằng luật, mô hình thôi giải mã.

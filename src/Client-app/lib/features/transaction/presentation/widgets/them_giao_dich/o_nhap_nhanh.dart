@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../bloc/them_giao_dich_state.dart' show KetQuaDien;
+import 'dong_dang_nghe.dart';
 
 /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
 /// do khi danh mục đến từ B1.
@@ -20,6 +21,8 @@ class ONhapNhanh extends StatelessWidget {
     required this.ketQua,
     required this.onDien,
     required this.onHuy,
+    this.dangKiemSoTien = false,
+    this.onHuyKiem,
   });
 
   final TextEditingController controller;
@@ -29,6 +32,8 @@ class ONhapNhanh extends StatelessWidget {
   final KetQuaDien? ketQua;
   final VoidCallback onDien;
   final VoidCallback onHuy;
+  final bool dangKiemSoTien;
+  final VoidCallback? onHuyKiem;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +241,13 @@ class ONhapNhanh extends StatelessWidget {
                 ),
               ),
           ],
+          if (dangKiemSoTien)
+            DongDangNghe(
+              key: const Key('nhap-nhanh-dang-kiem'),
+              chu: 'Đang kiểm số tiền bằng AI…',
+              onHuy: onHuyKiem,
+              khoaHuy: const Key('nhap-nhanh-huy-kiem'),
+            ),
         ],
       ),
     );

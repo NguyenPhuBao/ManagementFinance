@@ -623,7 +623,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             ketQua: _s.ketQuaDien,
                             onDien: _dienTuCau,
                             onHuy: _huyDocAi,
+                            dangKiemSoTien: _s.dangKiemSoTien,
+                            onHuyKiem: _cubit.huyKiemSoTien,
                           ),
+                          if (_s.luaChonTienCau.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            KhoiChonSoTien(
+                              ds: _s.luaChonTienCau,
+                              dangChon: ketQuaBieuThuc(_s.chuoiSoTien),
+                              onChon: _cubit.chonSoTien,
+                            ),
+                          ],
                           const SizedBox(height: 12),
                         ],
                         _theForm(context),

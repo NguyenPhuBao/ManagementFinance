@@ -95,6 +95,28 @@ class _PhienTreo implements PhienCongCu {
   Future<void> dong() async {}
 }
 
+/// AI giả cho kiểm chéo C4 §3.4: mỗi lời `doc` một Completer, test tự trả.
+class _AiCheo implements DocCauBangAi {
+  final luot = <Completer<KetQuaAi?>>[];
+  int soLanHuy = 0;
+  @override
+  Future<bool> Function() get sanSang => () async => true;
+  @override
+  Future<bool> chuanBi() async => true;
+  @override
+  Future<KetQuaAi?> doc(String cau,
+      {required DateTime now, required List<String> tenVi, required List<String> tenDanhMuc}) {
+    final c = Completer<KetQuaAi?>();
+    luot.add(c);
+    return c.future;
+  }
+
+  @override
+  Future<void> huy() async => soLanHuy++;
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
   final diChuyen = makeCategory(id: 'move', name: 'Di chuyển', isDefault: true);
@@ -544,5 +566,43 @@ void main() {
       expect(o.height, greaterThan(0));
       expect(o.bottom, lessThanOrEqualTo(640 - 260 + 0.5), reason: 'người dùng phải thấy chữ mình đang gõ');
     });
+  });
+
+  testWidgets('C4 kiểm chéo: Gemma đọc số khác luật → hai chip; chạm chip là điền, chip biến mất', (tester) async {
+    final ai = _AiCheo();
+    await tester.pumpWidget(app(docAi: ai));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'tiền điện một triệu hai');
+    await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
+    await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('khoi-chon-so-tien')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('chon-so-tien-1')));
+    await tester.tap(find.byKey(const Key('chon-so-tien-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('1.200.000 đ'), findsWidgets);
+    expect(find.byKey(const Key('khoi-chon-so-tien')), findsNothing);
+  });
+
+  testWidgets('C4 kiểm chéo ở nền: dòng "Đang kiểm…" hiện, Huỷ thì tắt và giữ số luật', (tester) async {
+    final ai = _AiCheo();await tester.pumpWidget(app(docAi: ai));
+    await tester.pumpAndSettle();
+    // "ăn uống" là tên danh mục → không còn ô thiếu → điền ngay, kiểm ở nền.
+    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống năm chục');
+    await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
+    await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsOneWidget);
+    expect(find.text('50.000 đ'), findsWidgets);
+    await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-huy-kiem')));
+    await tester.tap(find.byKey(const Key('nhap-nhanh-huy-kiem')));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsNothing);
+    expect(ai.soLanHuy, 1);
+    expect(find.text('50.000 đ'), findsWidgets);
   });
 }
