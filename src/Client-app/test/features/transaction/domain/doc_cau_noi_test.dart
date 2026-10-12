@@ -500,4 +500,22 @@ void main() {
       expect(doc('mua áo 200k bằng MB Bank', vi: [tienMat, mb, mbTran]).walletId, 'mbt');
     });
   });
+
+  group('"Nam" tên riêng không phải "năm" dương lịch (Task 7)', () {
+    test('"Thu nợ anh Nam 500.000" (câu có dấu) → 500.000', () {
+      expect(doc('Thu nợ anh Nam 500.000').soTien, 500000);
+    });
+
+    test('"anh Nam 500000" CẢ CÂU không dấu → nam = năm, không đọc (kết quả thật, theo luật điều phối)', () {
+      expect(doc('anh Nam 500000').soTien, isNull,
+          reason: 'cả câu không dấu thì "nam" là năm dương lịch (phán quyết Task 7) — ca này lệch ví dụ ban đầu của điều phối');
+    });
+
+    test('"năm 2026" (có dấu) và "nam 2026" (cả câu không dấu) vẫn không là tiền', () {
+      expect(doc('tiền học năm 2026 2 triệu').soTien, 2000000);
+      expect(doc('tien hoc nam 2026 2 trieu').soTien, 2000000);
+      expect(cachDocSoTien('tiền học năm 2026', now: DateTime(2026, 10, 1)), isNot(contains(2026000)));
+      expect(cachDocSoTien('tien hoc nam 2026', now: DateTime(2026, 10, 1)), isNot(contains(2026000)));
+    });
+  });
 }

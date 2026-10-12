@@ -202,6 +202,15 @@ final RegExp _mauSoTran = RegExp(
 
 final RegExp _truocLaNam = RegExp(r'(?<![a-z])nam\s*$');
 
+/// Số bắt đầu ở [batDau] (trên [b], cùng độ dài [s]) có đứng ngay sau chữ *năm* dương lịch (*"năm 2026"*) không. Bỏ dấu
+/// thì tên riêng *Nam* và phương *nam* cũng thành `nam` (*"thu nợ anh Nam 500.000"* mất tiền): câu có dấu chỉ chặn khi
+/// chữ ấy là *năm* CÓ DẤU; cả câu không dấu ([cauKhongDau]) thì `nam` là năm.
+bool _sauLaNamDuongLich(String s, String b, int batDau, {required bool cauKhongDau}) {
+  final m = _truocLaNam.firstMatch(b.substring(0, batDau));
+  if (m == null) return false;
+  return cauKhongDau || unorm.nfc(s.substring(m.start, m.start + 3)).toLowerCase() == 'năm';
+}
+
 /// Số ≤ 31 đứng ngay sau *tháng / ngày / mùng / mồng* là mốc lịch, không phải tiền: *"tiền điện tháng 10"* không có
 /// cách đọc 10.000 — không thì AI chọn nó và lớp kiểm cho qua.
 final RegExp _truocLaMocLich = RegExp(r'(?<![a-z])(?:thang|ngay|mung|mong)\s*$');
@@ -625,7 +634,7 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
     if (trungNgay(m.start, m.end) || daPhu.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
     final chuSo = m.group(1)!.replaceAll(RegExp(r'[.,]'), '');
     if (chuSo.length >= 2 && chuSo.startsWith('0')) continue;
-    if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue;
+    if (_sauLaNamDuongLich(s, b, m.start, cauKhongDau: kd)) continue;
     final n = double.parse(chuSo);
     if (n <= 31 && _truocLaMocLich.hasMatch(b.substring(0, m.start))) continue; // "tháng 10", "ngày 15"
     kq.add(n);
@@ -931,7 +940,7 @@ _CumTien? _chonSoTien(
     if (cum.any((c) => m.start < c.ketThuc && m.end > c.batDau) || trungNgay(m.start, m.end)) continue;
     final chuSo = m.group(1)!.replaceAll(RegExp(r'[.,]'), '');
     if (chuSo.length >= 2 && chuSo.startsWith('0')) continue; // số điện thoại, mã
-    if (_truocLaNam.hasMatch(b.substring(0, m.start))) continue; // "năm 2026"
+    if (_sauLaNamDuongLich(s, b, m.start, cauKhongDau: kd)) continue; // "năm 2026"
     final gt = double.parse(chuSo);
     if (gt < 1000) {
       // N2 (C4): "đổ xăng 50", "sửa xe 350" → × 1.000. Không khi có "đồng" (người nói nói rõ đơn vị), số đứng sau
