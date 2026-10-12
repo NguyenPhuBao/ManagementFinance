@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -75,7 +77,12 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/transaction/data/chep_loi_bang_gemma.dart';
+import '../../features/transaction/data/datasources/ghi_am.dart';
+import '../../features/transaction/data/datasources/kenh_micro.dart';
+import '../../features/transaction/data/datasources/nghe_android.dart';
 import '../../features/transaction/data/doc_anh_bang_gemma.dart';
+import '../../features/transaction/data/nguon_giong_noi.dart';
 import '../../features/transaction/data/doc_danh_muc_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
@@ -864,6 +871,36 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       duongTep: () => sl<MoHinhTaiVe>().duongTep(),
     ),
   );
+
+  // C4 — giọng nói nhập giao dịch (spec 2026-10-12): Android trước, Gemma chép lời khi mất mạng.
+  sl.registerLazySingleton<SlmChepLoi>(() => sl<SlmRuntime>() as SlmChepLoi);
+  sl.registerLazySingleton<ChepLoiBangGemma>(
+    () => ChepLoiBangGemma(
+      moHinh: sl<SlmChepLoi>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+  // Web không có micro: không đăng ký → trang không hiện nút micro (`sl.isRegistered<NguonGiongNoi>()`).
+  if (!kIsWeb) {
+    sl.registerLazySingleton<NguonGiongNoi>(
+      () => NguonGiongNoi(
+        android: NgheAndroidThat(),
+        ghiAm: GhiAmThat(),
+        micro: const KenhMicroAndroid(),
+        coMang: sl<ConnectionMonitor>().coMangNgay,
+        gemma: sl<ChepLoiBangGemma>(),
+        tepTam: () async =>
+            '${(await getTemporaryDirectory()).path}/giong_noi_${DateTime.now().millisecondsSinceEpoch}.wav',
+        docTep: (p) => File(p).readAsBytes(),
+        xoaTep: (p) async {
+          try {
+            await File(p).delete();
+          } catch (_) {}
+        },
+      ),
+    );
+  }
 
   // C3 §8 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI đọc bằng mô hình (người dùng chốt 2026-09-30):
   // phiên RIÊNG ba tool. Cùng hai điều kiện sẵn sàng với ô Nhập nhanh.

@@ -155,4 +155,12 @@ void main() {
         reason: 'Đăng xuất xong mà bộ theo dõi còn sống là banner của phiên cũ '
             'hiện trên màn hình phiên mới.');
   });
+
+  test('coMangNgay đọc trạng thái TỨC THỜI — không chờ ổn định 3 giây (C4 chọn lối nghe)', () async {
+    final c = _ConnectivityGia()..hienTai = [ConnectivityResult.none];
+    final m = ConnectionMonitor(connectivity: c);
+    expect(await m.coMangNgay(), isFalse);
+    c.hienTai = [ConnectivityResult.mobile];
+    expect(await m.coMangNgay(), isTrue);
+  });
 }
