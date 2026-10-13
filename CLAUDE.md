@@ -13,7 +13,7 @@
 3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
 4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
 
-**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-13-tach-bon-trang-ke-hoach.md` (tách bốn trang lớn — G88 gạch 2: spec + kế hoạch 11 task, **chưa thi công**; đầu phiên hỏi cách thi công). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
+**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-13-tach-bon-trang-ke-hoach.md` (tách bốn trang lớn — G88 gạch 2: spec + kế hoạch 11 task, **chưa thi công**; đầu phiên hỏi cách thi công; §1b tả đợt dọn chính tệp `CLAUDE.md` này cùng ngày). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
 
 **Rồi tuỳ việc:**
 
