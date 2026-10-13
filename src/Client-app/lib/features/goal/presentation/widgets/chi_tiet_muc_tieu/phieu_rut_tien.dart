@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/database/app_database.dart';
 import '../../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../../core/utils/currency_formatter.dart';
+import '../../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/goal_entity.dart';
 
@@ -75,6 +76,7 @@ void moPhieuRutTien({
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
+              inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
               autofocus: true,
               style: const TextStyle(
                 fontSize: 18,

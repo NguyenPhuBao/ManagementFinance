@@ -61,7 +61,15 @@ void main() {
         .where((f) => f.path.endsWith('.dart'))) {
       final ma = tep.readAsStringSync();
 
-      final coOTien = tenOTien.any((t) => ma.contains('controller: $t,'));
+      // Nhận cả `controller: _amountController,` (trường của State) lẫn
+      // `controller: amountController,` (tham số widget hoặc biến cục bộ). Đợt
+      // tách bốn trang lớn (spec 2026-10-13 mục 4) đưa controller vào làm tham
+      // số của widget, mà tham số Dart không có gạch dưới — so chuỗi cũ thì
+      // lưới mù im lặng, vẫn xanh trong khi không canh ô nào.
+      final coOTien = tenOTien.any((t) {
+        final ten = t.startsWith('_') ? t.substring(1) : t;
+        return RegExp('controller: _?${RegExp.escape(ten)},').hasMatch(ma);
+      });
       if (!coOTien) continue;
 
       // Hai cách chặn hợp lệ: bộ lọc của `TextField`, hoặc phép gõ thuần của
