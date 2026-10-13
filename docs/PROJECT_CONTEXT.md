@@ -1298,6 +1298,20 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   `timeout` — ✅ người dùng xác nhận tối cùng ngày: màn **có**, `414e3e01cd43401ea7be9217b5cb09f5`.
 - `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
 
+### 🔀 Gộp `main` @ `b38367e` (2026-10-05, commit gộp `9abb785`) — CORS động, sửa socket, làn ưu tiên Admin; backend đóng đơn 35
+
+> Chuyển từ `CLAUDE.md` ngày 2026-10-13 (đợt dọn `CLAUDE.md`) — trước đó khối này chỉ nằm ở hàng *Việc thuộc backend*. Chi
+> tiết soát: `docs/superpowers/backend/DA-XONG/SOAT_SAU_GOP_B38367E.md`.
+
+- **Không xung đột**, cây `src/Client-app` không đổi hash `850866c4…`. PR #119–#120: CORS động `config/cors.js`, sửa kết nối
+  socket, sửa làn ưu tiên Admin + chặn IP, bỏ ngoại lệ `isAdmin` ở `authLimiter`.
+- Backend **đóng đơn 35** và chuyển sang `DA-XONG/` — `ls CAN-LAM/` khi ấy còn **đơn 34** `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` + README.
+- Client soát cùng ngày (đọc mã + `node --test` **166/166**): đơn 35 đạt cả bốn mục, nhưng đặt **đơn 36**
+  `CAN-LAM/SOAT_SAU_GOP_B38367E.md` — lớp bảo trì cho qua mọi URL **chứa** `/auth/login` kể cả trong query (đo:
+  `/api/sync/push?x=/auth/login` lọt khi bảo trì BẬT) + bốn chỗ nhẹ (khoá dự phòng `'secret'`, `/api/admin/*` ưu tiên trước xác
+  thực, cắt tải nhận môi trường test theo đường dẫn chứa `test` — dính ở máy dev `D:\test_kltn`, CORS mọi project Vercel cùng
+  tiền tố); client không phải sửa gì; nodemon nạp lại được (`index.js` tạo lại 09:40:30), OnePlus nối lại socket ngay.
+
 ### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
 
 - Bảy PR của NPBao (#111–#117, 03–04/10): AIOps Sentinel bốn vector + nhật ký sự cố (RCA), bảo trì hai chế độ có giờ
