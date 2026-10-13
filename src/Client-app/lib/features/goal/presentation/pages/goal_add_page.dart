@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../../core/nen/co_chay_nen.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,8 +7,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
-import '../../../wallet/domain/wallet_type.dart';
-import '../../../wallet/presentation/widgets/wallet_type_icon.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
@@ -19,6 +16,9 @@ import '../../domain/goal_auto_deposit.dart';
 import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
+import '../../domain/chu_ky_muc_tieu.dart';
+import '../widgets/them_muc_tieu/bang_chon_vi_muc_tieu.dart';
+import '../widgets/them_muc_tieu/o_nhap_muc_tieu.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../domain/dien_san_muc_tieu.dart';
@@ -63,20 +63,6 @@ class GoalAddPage extends StatelessWidget {
     );
   }
 }
-
-enum DepositFrequency { daily, weekly, monthly }
-
-/// Ba chu kỳ lặp lại mục tiêu, khoá là giá trị ghi xuống `time_recurrence`.
-///
-/// Cố ý HẸP hơn `mocKeTiep` (vốn nhận thêm `'Day'` và `'Quarter'`): lặp lại một
-/// mục tiêu tiết kiệm mỗi ngày không có nghĩa gì, và mỗi lựa chọn thừa là một
-/// hàng người dùng phải đọc qua. `mocKeTiep` vẫn xử lý được giá trị lạ đến từ
-/// Admin-web hay bản app cũ, nên thu hẹp ở đây không làm hỏng dữ liệu sẵn có.
-const Map<String, String> kChuKyLapLai = {
-  'Week': 'Hàng tuần',
-  'Month': 'Hàng tháng',
-  'Year': 'Hàng năm',
-};
 
 class _GoalAddPageContent extends StatefulWidget {
   const _GoalAddPageContent({this.goalId, this.dienSan});
@@ -501,212 +487,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   String? get _idViTichLuy =>
       _isEdit ? _goalDangSua?.walletId : _selectedSavingsWallet?.id;
 
-  /// [loaiTruViId] bỏ hẳn một ví khỏi danh sách thay vì chỉ báo lỗi khi lưu:
-  /// ví nguồn trích không được trùng ví tích luỹ, và lựa chọn sai thì tốt nhất
-  /// là người dùng không nhìn thấy nó. Phép kiểm lúc lưu vẫn giữ làm lưới chắn
-  /// cuối cho những đường vào khác.
-  ///
-  /// [thongDiepRong] nói ra lý do khi việc loại trừ ấy làm danh sách cạn sạch
-  /// — tài khoản vẫn có ví, nên câu "chưa có ví nào" sẽ là một lời nói dối.
-  void _showWalletPickerBottomSheet({
-    required BuildContext mainContext,
-    required String title,
-    required List<WalletEntity> wallets,
-    required WalletEntity? selectedWallet,
-    required ValueChanged<WalletEntity> onWalletSelected,
-    String? loaiTruViId,
-    String? thongDiepRong,
-  }) {
-    final danhSach = loaiTruViId == null
-        ? wallets
-        : wallets.where((w) => w.id != loaiTruViId).toList();
-
-    showModalBottomSheet(
-      context: mainContext,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: Colors.white,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(mainContext).size.height * 0.7,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      await mainContext.push('/wallets/add');
-                      if (mainContext.mounted) {
-                        final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
-                        mainContext.read<WalletCubit>().loadWallets(idaccount);
-                      }
-                    },
-                    icon: const Icon(Icons.add, size: 18, color: AppColors.income),
-                    label: const Text(
-                      'Tạo ví mới',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.income,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (danhSach.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          wallets.isEmpty
-                              ? 'Chưa có ví nào trong hệ thống.'
-                              : (thongDiepRong ??
-                                  'Không còn ví nào dùng được ở đây.'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            await mainContext.push('/wallets/add');
-                            if (mainContext.mounted) {
-                              final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
-                              mainContext.read<WalletCubit>().loadWallets(idaccount);
-                            }
-                          },
-                          icon: const Icon(Icons.add),
-                          label: const Text('Thêm Ví Mới Ngay'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.income,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: danhSach.length + 1,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (ctx, index) {
-                      if (index == danhSach.length) {
-                        return ListTile(
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.income.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.add, color: AppColors.income),
-                          ),
-                          title: const Text(
-                            '+ Thêm ví mới ngay',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.income,
-                            ),
-                          ),
-                          subtitle: const Text(
-                            'Tạo ví mới để liên kết tích lũy',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          onTap: () async {
-                            Navigator.pop(ctx);
-                            await mainContext.push('/wallets/add');
-                            if (mainContext.mounted) {
-                              final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
-                              mainContext.read<WalletCubit>().loadWallets(idaccount);
-                            }
-                          },
-                        );
-                      }
-
-                      final wallet = danhSach[index];
-                      final isSelected = selectedWallet?.id == wallet.id;
-                      Color itemColor;
-                      try {
-                        itemColor = Color(int.parse(wallet.colour.replaceAll('#', '0xFF')));
-                      } catch (_) {
-                        itemColor = AppColors.primary;
-                      }
-
-                      return ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: itemColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            WalletType.tuKhoa(wallet.type).icon,
-                            color: itemColor,
-                          ),
-                        ),
-                        title: Text(
-                          wallet.name,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${wallet.typeLabel} • Số dư: ${CurrencyFormatter.format(wallet.balance)}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: AppColors.income)
-                            : null,
-                        onTap: () {
-                          onWalletSelected(wallet);
-                          Navigator.pop(ctx);
-                        },
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final estimatedCompletionDate = _calculateEstimatedCompletionDate();
@@ -866,9 +646,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildLabel('TÊN MỤC TIÊU TIẾT KIỆM'),
+                          const NhanMucTieu('TÊN MỤC TIÊU TIẾT KIỆM'),
                           const SizedBox(height: 4),
-                          _buildTextField(
+                          ONhapMucTieu(
                             controller: _nameController,
                             hint: 'e.g. Mua Laptop MacBook Pro',
                             inputFormatters: const [
@@ -882,9 +662,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildLabel('SỐ TIỀN MỤC TIÊU'),
+                                    const NhanMucTieu('SỐ TIỀN MỤC TIÊU'),
                                     const SizedBox(height: 4),
-                                    _buildTextField(
+                                    ONhapMucTieu(
                                       controller: _targetAmountController,
                                       hint: CurrencyFormatter.format(40000000),
                                       textColor: AppColors.income,
@@ -901,7 +681,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildLabel('HẠN ĐỊNH'),
+                                    const NhanMucTieu('HẠN ĐỊNH'),
                                     const SizedBox(height: 4),
                                     GestureDetector(
                                       onTap: _selectDate,
@@ -933,15 +713,22 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          _buildLabel('BIỂU TƯỢNG & MÀU'),
+                          const NhanMucTieu('BIỂU TƯỢNG & MÀU'),
                           const SizedBox(height: 8),
-                          _buildIconPicker(),
+                          ChonBieuTuongMucTieu(
+                            icon: _icon,
+                            colour: _colour,
+                            onChon: (v) => setState(() => _icon = v),
+                          ),
                           const SizedBox(height: 12),
-                          _buildColourPicker(),
+                          ChonMauMucTieu(
+                            colour: _colour,
+                            onChon: (v) => setState(() => _colour = v),
+                          ),
                           const SizedBox(height: 16),
-                          _buildLabel('VÍ TÍCH LŨY LIÊN KẾT'),
+                          const NhanMucTieu('VÍ TÍCH LŨY LIÊN KẾT'),
                           const SizedBox(height: 4),
-                          _buildDropdownButton(
+                          ODropdownMucTieu(
                             icon: Icons.account_balance_wallet,
                             title: _selectedSavingsWallet?.name ??
                                 (_isEdit
@@ -962,7 +749,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             onTap: _isEdit
                                 ? null
                                 : () {
-                              _showWalletPickerBottomSheet(
+                              moBangChonViMucTieu(
                                 mainContext: context,
                                 title: 'Chọn Ví Tích Lũy Liên Kết',
                                 wallets: wallets,
@@ -989,9 +776,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                           // giao dịch: nó là trường tuỳ chọn, đặt trên đầu sẽ
                           // đẩy số tiền và hạn định — hai thứ bắt buộc — xuống
                           // dưới nếp gấp màn hình.
-                          _buildLabel('GHI CHÚ (TUỲ CHỌN)'),
+                          const NhanMucTieu('GHI CHÚ (TUỲ CHỌN)'),
                           const SizedBox(height: 4),
-                          _buildTextField(
+                          ONhapMucTieu(
                             controller: _noteController,
                             hint: 'Vì sao bạn muốn đạt mục tiêu này?',
                             maxLines: 3,
@@ -1059,9 +846,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 ma: MaQuyen.goalAutoDeposit, dangBat: _autoDeposit),
                           if (_autoDeposit) ...[
                             const SizedBox(height: 16),
-                            _buildLabel('SỐ TIỀN TRÍCH MỖI KỲ (VNĐ)'),
+                            const NhanMucTieu('SỐ TIỀN TRÍCH MỖI KỲ (VNĐ)'),
                             const SizedBox(height: 4),
-                            _buildTextField(
+                            ONhapMucTieu(
                               controller: _depositAmountController,
                               hint: CurrencyFormatter.format(5000000),
                               textColor: AppColors.income,
@@ -1071,7 +858,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
                             ),
                             const SizedBox(height: 16),
-                            _buildLabel('CHU KỲ TRÍCH'),
+                            const NhanMucTieu('CHU KỲ TRÍCH'),
                             const SizedBox(height: 4),
                             // Thanh chọn dùng chung với hoá đơn và ngân sách
                             // (2026-09-06). Màu thu cho ô chọn theo Stitch
@@ -1094,12 +881,12 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            _buildLabel('MỐC TRÍCH'),
+                            const NhanMucTieu('MỐC TRÍCH'),
                             const SizedBox(height: 4),
                             // Hàng ngày thì không có "ngày trong chu kỳ" để
                             // chọn — chỉ còn giờ.
                             if (_frequency != DepositFrequency.daily) ...[
-                              _buildDropdownButton(
+                              ODropdownMucTieu(
                                 icon: Icons.event_repeat,
                                 title: nhanMocNeo(_chuKyHienTai, _mocNeo)
                                     .split(',')
@@ -1110,7 +897,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               ),
                               const SizedBox(height: 8),
                             ],
-                            _buildDropdownButton(
+                            ODropdownMucTieu(
                               icon: Icons.schedule,
                               title:
                                   '${_gioTrich.hour.toString().padLeft(2, '0')}'
@@ -1129,9 +916,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               onTap: _chonGioTrich,
                             ),
                             const SizedBox(height: 16),
-                            _buildLabel('VÍ NGUỒN TRÍCH TIỀN'),
+                            const NhanMucTieu('VÍ NGUỒN TRÍCH TIỀN'),
                             const SizedBox(height: 4),
-                            _buildDropdownButton(
+                            ODropdownMucTieu(
                               icon: Icons.account_balance,
                               title: _selectedSourceWallet?.name ?? 'Chọn ví nguồn trích',
                               subtitle: _selectedSourceWallet != null
@@ -1139,7 +926,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   : 'Bấm để chọn ví trích tiền',
                               iconColor: AppColors.primary,
                               onTap: () {
-                                _showWalletPickerBottomSheet(
+                                moBangChonViMucTieu(
                                   mainContext: context,
                                   title: 'Chọn Ví Nguồn Trích Tiền',
                                   wallets: wallets,
@@ -1222,7 +1009,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                           ),
                           if (_lapLai) ...[
                             const SizedBox(height: 16),
-                            _buildLabel('LẶP LẠI MỖI'),
+                            const NhanMucTieu('LẶP LẠI MỖI'),
                             const SizedBox(height: 4),
                             SegmentedChoice<String>(
                               keyPrefix: 'goal-repeat-cycle',
@@ -1381,187 +1168,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 },
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Bảng chọn biểu tượng.
-  ///
-  /// Cuộn ngang có chủ ý: điện thoại thật rộng 411dp chứ không phải 1280px như
-  /// Chrome trong bộ test, và một `Wrap` mười ô ở đây từng là kiểu bố cục đã
-  /// gây tràn ở những màn khác. Cuộn thì không bao giờ tràn dù thêm bao nhiêu
-  /// lựa chọn.
-  Widget _buildIconPicker() {
-    final mau = mauMucTieu(_colour);
-    // Danh sách phải chứa biểu tượng ĐANG lưu, kể cả khi nó ngoài bảng chọn —
-    // xem `danhSachBieuTuong`.
-    final danhSach = danhSachBieuTuong(_icon);
-    return SizedBox(
-      height: 52,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: danhSach.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final ten = danhSach[i];
-          final chon = ten == _icon;
-          return GestureDetector(
-            onTap: () => setState(() => _icon = ten),
-            child: Container(
-              width: 52,
-              decoration: BoxDecoration(
-                color: chon
-                    ? mau.withValues(alpha: 0.15)
-                    : AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(8),
-                border: chon ? Border.all(color: mau, width: 2) : null,
-              ),
-              child: Icon(
-                bieuTuongMucTieu(ten),
-                color: chon ? mau : AppColors.textSecondary,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildColourPicker() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: kMauMucTieu.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final hex = kMauMucTieu[i];
-          final mau = mauMucTieu(hex);
-          final chon = hex == _colour;
-          return GestureDetector(
-            onTap: () => setState(() => _colour = hex),
-            child: Container(
-              width: 36,
-              decoration: BoxDecoration(
-                color: mau,
-                shape: BoxShape.circle,
-                border: chon
-                    ? Border.all(color: AppColors.primary, width: 2)
-                    : null,
-              ),
-              child: chon
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
-                  : null,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 1.2,
-        color: AppColors.textSecondary,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    Color textColor = AppColors.primary,
-    bool isBold = false,
-    TextInputType keyboardType = TextInputType.text,
-    IconData? suffixIcon,
-    int maxLines = 1,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      inputFormatters: inputFormatters,
-      style: TextStyle(
-        fontSize: 16,
-        color: textColor,
-        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: AppColors.textSecondary.withValues(alpha: 0.5),
-        ),
-        filled: true,
-        fillColor: AppColors.surfaceContainerLow,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        suffixIcon: suffixIcon != null
-            ? Icon(suffixIcon, color: AppColors.outlineVariant, size: 20)
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildDropdownButton({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required Color iconColor,
-    VoidCallback? onTap,
-    /// Mũi tên xổ xuống là lời hứa "bấm được". Ô chỉ đọc phải bỏ nó đi, nếu
-    /// không người dùng cứ bấm mãi vào một chỗ không phản hồi.
-    bool showChevron = true,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (showChevron)
-              const Icon(Icons.expand_more, color: AppColors.outlineVariant),
           ],
         ),
       ),
