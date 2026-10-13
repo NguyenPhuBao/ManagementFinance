@@ -13,9 +13,8 @@ void main() {
   const tran = 1200;
 
   /// Tệp (tương đối `lib/`) → trần riêng. Số là số dòng đo ngày điền; không được tăng.
-  const mienTru = <String, int>{
-    'features/analytics/presentation/pages/report_preview_page.dart': 1270,
-  };
+  // Rỗng từ 2026-10-13 (G88 gạch 2 đóng): cơ chế giữ nguyên cho tệp dài sau này — đừng xoá vòng kiểm.
+  const mienTru = <String, int>{};
 
   test('tệp dưới features/*/presentation không quá $tran dòng, trừ danh sách có trần riêng', () {
     final goc = Directory('lib/features');
