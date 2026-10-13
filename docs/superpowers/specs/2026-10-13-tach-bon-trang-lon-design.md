@@ -30,14 +30,21 @@ Kế hoạch 11 task: `docs/superpowers/plans/2026-10-13-tach-bon-trang-lon.md` 
 >     thi công; **riêng một dòng bỏ bớt cặp nghiệm thu**: Task 10 **không chụp được** ba trạng thái mục 8 liệt kê — Cài đặt thông
 >     báo khi D1 bật, khối nhắc sau ngân hàng bật (cần cấp quyền hệ điều hành trên máy ảo) và dòng gợi ý giờ (máy không có) —
 >     được thay bằng `dong_y_bien_dong_test` + `nhac_sau_ngan_hang_cai_dat_test` (35 ca: 21 + 14, đếm 2026-10-13, dựng trang
->     thật ở các trạng thái bật / quyền / pin) và bản soát thứ tự token của Task 7. Nghiệm thu máy thật lần sau bật D1 sẽ bắt được.
+>     thật ở các trạng thái D1 bật và khối nhắc bật / quyền / pin), `notification_settings_de_xuat_test` (10 ca, đếm
+>     2026-10-13 — phủ dòng gợi ý giờ) và bản soát thứ tự token của Task 7. Nghiệm thu máy thật lần sau bật D1 sẽ bắt được.
+> 11. **Bất đối xứng có chủ ý của mục 8 (`docs/KIEN_TRUC_CLIENT_APP.md`)**: chuỗi của màn đồng ý dời sang
+>     `notification/domain/cau_chu_dong_y.dart` (Dart thuần, dùng chung cho `pages/` và `widgets/`); còn
+>     `ten_nhom_thong_bao.dart` (nhãn + `IconData`, cần Flutter) và các chuỗi `kTieuDeTreNen` / `kTieuDeTreNenNhac` /
+>     `kMoTaTreNen` (chỉ widget cài đặt dùng, kèm re-export cho test) **ở lại** `presentation/widgets/cai_dat_thong_bao/` —
+>     đừng "sửa cho đối xứng" bằng cách dời chúng.
 
 > ✅ **Số đo sau thi công (2026-10-13, đếm bằng `wc -l` / `ls | wc -l`):** bốn trang **1.570 / 1.480 / 1.615 / 1.270 →
 > 791 / 664 / 866 / 243** dòng (`goal_add_page` · `goal_detail_page` · `notification_settings_page` · `report_preview_page`);
 > 30 tệp widget mới (`them_muc_tieu/` 7 · `chi_tiet_muc_tieu/` 7 · `cai_dat_thong_bao/` 6 · `xem_truoc_bao_cao/` 10) + 2 tệp
 > `domain/` (`chu_ky_muc_tieu`, `cau_chu_dong_y`); 9 commit mã `ecd01990` → `c4ea8437`; `mienTru` của quét 23 **rỗng**;
 > `flutter test` 7.037 → **7.039** (+9 skip), `flutter analyze` **20**. Máy ảo: 32 cặp ảnh trước / sau **0 px khác**, vàng thuần 0 — **trừ ba trạng thái không chụp được** (D1 bật, khối nhắc sau ngân hàng bật, dòng gợi ý giờ; xem mục 10 của khối 🔧
-> trên), thay bằng 35 ca widget test.
+> trên), thay bằng widget test: 35 ca (`dong_y_bien_dong_test` + `nhac_sau_ngan_hang_cai_dat_test`) cho D1 bật và khối nhắc bật, 10 ca
+> `notification_settings_de_xuat_test` cho dòng gợi ý giờ.
 
 Đợt này đóng **G88 gạch 2** (`docs/CLIENT_APP_KNOWN_GAPS.md`): bốn tệp còn trong danh sách miễn trừ của test quét 23
 (`test/core/ui/tep_presentation_khong_qua_dai_test.dart`, trần 1.200 dòng). Cùng loại việc với đợt tách trang Phân tích

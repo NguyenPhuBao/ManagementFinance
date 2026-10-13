@@ -124,7 +124,7 @@ class HangNguongSoDu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Danh sách rời chứ không phải ô nhập tiền, cùng lý lẽ với `_hangSoNgay`:
+    // Danh sách rời chứ không phải ô nhập tiền, cùng lý lẽ với `HangSoNgay`:
     // gõ tay mở đường cho những giá trị mà `NotificationPrefs` sẽ lặng lẽ quy
     // về 0, và người dùng chỉ thấy con số của mình biến mất.
     const luaChon = [0, 50000, 100000, 200000, 500000, 1000000, 2000000];
