@@ -1,7 +1,17 @@
 # Tách bốn trang lớn còn lại của Client-app — G88 gạch 2
 
-**Ngày:** 2026-10-13 · **Nhánh:** `TranQuangDat` · **Trạng thái:** thiết kế người dùng duyệt từng phần trong chat (ba phần),
-chờ đọc lại bản viết.
+**Ngày:** 2026-10-13 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt (ba phần trong chat, rồi bản viết).
+Kế hoạch 11 task: `docs/superpowers/plans/2026-10-13-tach-bon-trang-lon.md` (gitignore).
+
+> 🔧 **Chỗ kế hoạch KHÁC bản viết** (soát với mã lúc lập kế hoạch, 2026-10-13 — kết quả cuối không đổi):
+> 1. **Phiếu Nạp / Rút dời TRƯỚC lưới ô tiền** (mục 4 và 8 ghi lưới ô tiền là commit đầu). `goal_detail_page.dart` đang ở trần
+>    riêng 1.480 của quét 23 (chỉ được giảm); thêm trần vào trang trước khi dời là +2–3 dòng → quét 23 đỏ. Nên dời phiếu trước,
+>    rồi sửa lưới và thêm trần **trong tệp phiếu** — vẫn trước khi ô tiền của Thêm mục tiêu dời.
+> 2. **`_dongQuyenBienDong` / `_dongQuyenPhien` ở lại trang** (mục 5.3 xếp chúng vào tệp widget): chúng đọc kênh nền tảng
+>    `_kenh` / `_kenhPhien`, quy tắc 3.3 cấm widget đọc dịch vụ. Trang dựng sẵn `DongQuyen(...)` / `DongTreNen(...)` rồi truyền vào.
+> 3. **Phiếu nhận getter `layMucTieu: () => _goal!`** thay vì giá trị `goal` (mục 5.2): thân phiếu đọc `_goal!` sống ở mỗi lần
+>    `StatefulBuilder` dựng lại và lúc bấm xác nhận — truyền giá trị chụp là đổi hành vi khi đồng bộ kéo về giữa chừng.
+> 4. Hàm / lớp phụ chỉ một tệp mới dùng giữ **riêng tư** trong tệp ấy (mục 3.2 ghi "lớp công khai" — áp cho khối trang gọi).
 
 Đợt này đóng **G88 gạch 2** (`docs/CLIENT_APP_KNOWN_GAPS.md`): bốn tệp còn trong danh sách miễn trừ của test quét 23
 (`test/core/ui/tep_presentation_khong_qua_dai_test.dart`, trần 1.200 dòng). Cùng loại việc với đợt tách trang Phân tích
