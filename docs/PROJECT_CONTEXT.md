@@ -870,8 +870,14 @@ không đổi payload. ✅ **Nghiệm thu OnePlus đạt** (tài khoản Basic m
 ### 🔀 Gộp `main` @ `0eb4a05f` · áp `database/21–23` · G67 mốc theo giờ-server (2026-10-08 tối)
 
 - Gộp PR #127 không xung đột (backend đóng đơn 39 — phân quyền tính năng động, và đơn 40 — migration 21). Backend tự sửa
-  7 tệp `src/Client-app` (Premium: trần hoá đơn / danh mục riêng, `quyenTinhNang`, `GoiCubit.duocDung…`); chi tiết ở
-  hàng *Việc thuộc backend* `CLAUDE.md`.
+  7 tệp `src/Client-app` (Premium: trần hoá đơn / danh mục riêng, `quyenTinhNang`, `GoiCubit.duocDung…`). Chi tiết
+  (chuyển từ hàng *Việc thuộc backend* `CLAUDE.md` khi dọn tệp ấy 2026-10-13): đơn 39 = bảng `feature` +
+  `account_type_permission`, Admin-web `/permissions`, socket `account.permissions_updated` = `RealtimeEvent.taiKhoanNangCap`;
+  đơn 40 = `database/21` (trigger + DEFAULT `Server_update_at` về UTC); `DA-XONG/` khi ấy 58 tệp. Bảy tệp backend sửa:
+  `TranGoi` thêm `hoaDon` (3) · `danhMucRieng` (5), trần thành `int?` (`null` từ server = không giới hạn);
+  `TrangThaiGoi.quyenTinhNang` đọc `features`; sáu getter `GoiCubit.duocDung…` khi ấy chưa chặn gì và `redirectTaoTheoGoi`
+  chưa có route hoá đơn / danh mục — ✅ client làm trọn khuya cùng ngày (getter bỏ hết, thay bằng `duocDung` + `MaQuyen`).
+  ⚠️ Tệp 23 ghi `created_at` / `updated_at` bảng phân quyền bằng `NOW()` = giờ phiên `Asia/Bangkok` (chỉ cột kiểm toán, vô hại).
 - CSDL dev áp `database/21–23` (cho phép đích danh) + `prisma generate`; `/subscription-info` trả `limits` + `features`.
 - ✅ **G67 đóng:** mốc kéo về nay từ `maxSince` của server (`core/sync/moc_keo_ve.dart`), khoá lưu
   `sync_last_pull_v2_<id>` ép kéo toàn bộ một lần. Nghiệm thu hai máy ảo (tài khoản 27) đạt hai lượt; lượt một lộ mốc
