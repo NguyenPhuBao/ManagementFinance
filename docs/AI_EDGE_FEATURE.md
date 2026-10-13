@@ -4453,7 +4453,7 @@ ngày."* và một thẻ số liệu cùng tên.
 
 ⚠️ **ĐÍNH CHÍNH (cùng ngày, trước khi push):** bản đầu của mục này — và commit đầu của
 chặng 1.4 — viết rằng hàm ấy *"không có một chỗ gọi nào trong `lib/`"*. **Sai.** Nó đang
-chạy ở `goal_detail_page.dart:1082`, dựng hộp *"DỰ BÁO HOÀN THÀNH: THÁNG MM/yyyy"*. Câu
+chạy ở `goal_detail_page.dart:1082` (nay `KhoiNhanDinhMucTieu`, `widgets/chi_tiet_muc_tieu/khoi_nhan_dinh_muc_tieu.dart:21`), dựng hộp *"DỰ BÁO HOÀN THÀNH: THÁNG MM/yyyy"*. Câu
 đúng là: **gói số của AI** chưa dùng nó, chứ không phải app chưa dùng. Nguồn của sai lầm:
 một lệnh `grep` trả về **rỗng** và tôi tin vào cái rỗng ấy — đúng cái bẫy mục "Ghi chú vận
 hành" `CLAUDE.md` đã ghi (*"lần trước là `grep` qua rtk"*). Bài học lặp lại: **một phép đo
@@ -4485,9 +4485,9 @@ thành **một** việc là "gói số cho `goal`". Đo bằng mã thì chúng *
 
 | Hàm | Cần gì | Trang **danh sách** có chưa | App đã dùng ở đâu |
 |---|---|---|---|
-| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → **đã làm** | `goal_detail_page.dart:1082` |
+| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → **đã làm** | `widgets/chi_tiet_muc_tieu/khoi_nhan_dinh_muc_tieu.dart:21` (đo 2026-10-13; trước đợt tách trang là `goal_detail_page.dart:1021` tại `9ff249ab`, đo `git show`; mốc `:1082` ghi lúc viết mục này) |
 | `thongKeMucTieu` | danh sách `KhoanTichLuy` | ❌ phải nghe thêm `watchGoalTransactions` | `goal_stats_card.dart:34` |
-| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mọi mục tiêu trỏ vào ví ấy | ❌ `GoalLoaded` không mang ví nào | `goal_detail_page.dart:221` |
+| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mọi mục tiêu trỏ vào ví ấy | ❌ `GoalLoaded` không mang ví nào | `goal_detail_page.dart:213` (đo 2026-10-13; trước đợt tách trang là `:221`) |
 
 ⚠️ **Cột cuối đổi hẳn ý nghĩa của việc này.** Cả ba hàm **đã là tính năng sống** trên
 trang **Chi tiết mục tiêu**. Đưa chúng vào khối Nhận xét của trang **danh sách** không

@@ -214,7 +214,9 @@ lib/shared/widgets/app_toast.dart              # Toast nổi ở đáy — mục
 lib/features/notification/presentation/
 ├── pages/notification_center_page.dart      # /notifications
 ├── pages/notification_settings_page.dart    # /settings/notifications
-└── widgets/notification_panel.dart          # Panel trên Home
+├── widgets/notification_panel.dart          # Panel trên Home
+└── widgets/cai_dat_thong_bao/               # 6 tệp khối của trang cài đặt (2026-10-13, G88 gạch 2)
+lib/features/notification/domain/cau_chu_dong_y.dart   # câu chữ dùng chung hai trang đồng ý
 ```
 
 ### 4.1 Bảng `AppNotifications` — cục bộ, không đồng bộ
@@ -1311,7 +1313,7 @@ Tài liệu chính: **`docs/BIEN_DONG_SO_DU_FEATURE.md`**. Mục này chỉ ghi 
 > mục chờ ghi"*.
 
 - **Loại 20 `bienDongSoDu`, nhóm thứ sáu `bienDong`** (chip *Biến động*). Thêm một nhóm phải sửa **sáu** chỗ: hai `switch`
-  ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `_tenNhom` / `_moTaNhom` / `_iconNhom`
+  ở `notification_prefs.dart` · `_Loc` + map của `notification_center_page.dart` · `tenNhomThongBao` / `moTaNhomThongBao` / `iconNhomThongBao` (trước 2026-10-13: `_tenNhom` / `_moTaNhom` / `_iconNhom` của trang cài đặt; nay `notification/presentation/widgets/cai_dat_thong_bao/ten_nhom_thong_bao.dart`)
   của trang Cài đặt · `loaiTuKhoa` (`nhom_tu_khoa.dart`) · nhánh `bienDong` của `deeplinkTuDedupeKey` · tập `ngoaiBoQuet`
   của `notification_deeplink_test.dart` (loại 20 không do scanner sinh).
 - **Công tắc là CỜ RIÊNG `NotificationPrefs.docBienDong`, mặc định TẮT** — không đưa nhóm vào `nhomTat`: tập ấy là tập

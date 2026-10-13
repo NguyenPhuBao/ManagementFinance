@@ -12,6 +12,32 @@ Kế hoạch 11 task: `docs/superpowers/plans/2026-10-13-tach-bon-trang-lon.md` 
 > 3. **Phiếu nhận getter `layMucTieu: () => _goal!`** thay vì giá trị `goal` (mục 5.2): thân phiếu đọc `_goal!` sống ở mỗi lần
 >    `StatefulBuilder` dựng lại và lúc bấm xác nhận — truyền giá trị chụp là đổi hành vi khi đồng bộ kéo về giữa chừng.
 > 4. Hàm / lớp phụ chỉ một tệp mới dùng giữ **riêng tư** trong tệp ấy (mục 3.2 ghi "lớp công khai" — áp cho khối trang gọi).
+> 5. **`dart format` chỉ chạy trên tệp MỚI** (mục 3.8 ghi cả tệp trang): format tệp trang kéo theo đổi dòng không thuộc phần dời.
+> 6. **`_buildHistorySection` ở lại trang dạng vỏ** (mục 5.2 xếp vào tệp mới): nó gọi `_goalRepository` (quy tắc 3.3). Trang
+>    giữ vỏ, truyền dữ liệu vào `KhoiLichSuMucTieu`; `_danhSachLichSu` sang tệp mới.
+> 7. **Ba hằng chuỗi dùng chung của hai trang đồng ý** (`kNhacThuHoiQuyen`, `kTenNhacSauNganHang`, `kNhacThuHoiQuyenSuDung`)
+>    dời nguyên văn sang `notification/domain/cau_chu_dong_y.dart` (áp mục 3.4 câu hai); hai trang đồng ý `export … show` lại
+>    để hai test giữ import.
+> 8. **Hai widget nhận thêm tham số so với bản viết:** `DaiDuDoanMucTieu` + `depositAmountController` + `frequency` (getter
+>    `_frequencyLabel` dời theo, riêng tư); `DauBaoCao` + `baoCao` + `lapNgay` (`lapNgay` lấy từ trường của trang, **không**
+>    `DateTime.now()`).
+> 9. **13 lớp công khai thiếu hậu tố theo luật đặt tên** (đếm 2026-10-13 bằng `grep -hE "^(abstract )?(class|enum|mixin) [A-Z]"`
+>    trên hai thư mục): `cai_dat_thong_bao/` **11** — `HangCongTac` · `HangBam` · `HangGioImLang` · `DongGoiY` · `HangSoNgay` ·
+>    `HangNguongSoDu` · `HangNguongChiLon` · `DongQuyen` · `DongTreNen` · `TheBienDong` · `KhoiNhacSauNganHang` (thiếu
+>    `…CaiDat` / `…ThongBao`); `them_muc_tieu/` **2** — `TheLapLai` · `TheTrichTuDong` (thiếu `…MucTieu`). Giữ tên như phần
+>    Interfaces của kế hoạch đặt đích danh (grep `-w` không trùng tên nào); đổi tên là lệch Interfaces và kéo các task sau.
+> 10. Các dòng `Ruling:` khác ở sổ `.superpowers/sdd/2026-10-13-tach-bon-trang-lon/progress.md` (gitignore) phần lớn là lời dặn
+>     thi công; **riêng một dòng bỏ bớt cặp nghiệm thu**: Task 10 **không chụp được** ba trạng thái mục 8 liệt kê — Cài đặt thông
+>     báo khi D1 bật, khối nhắc sau ngân hàng bật (cần cấp quyền hệ điều hành trên máy ảo) và dòng gợi ý giờ (máy không có) —
+>     được thay bằng `dong_y_bien_dong_test` + `nhac_sau_ngan_hang_cai_dat_test` (35 ca: 21 + 14, đếm 2026-10-13, dựng trang
+>     thật ở các trạng thái bật / quyền / pin) và bản soát thứ tự token của Task 7. Nghiệm thu máy thật lần sau bật D1 sẽ bắt được.
+
+> ✅ **Số đo sau thi công (2026-10-13, đếm bằng `wc -l` / `ls | wc -l`):** bốn trang **1.570 / 1.480 / 1.615 / 1.270 →
+> 791 / 664 / 866 / 243** dòng (`goal_add_page` · `goal_detail_page` · `notification_settings_page` · `report_preview_page`);
+> 30 tệp widget mới (`them_muc_tieu/` 7 · `chi_tiet_muc_tieu/` 7 · `cai_dat_thong_bao/` 6 · `xem_truoc_bao_cao/` 10) + 2 tệp
+> `domain/` (`chu_ky_muc_tieu`, `cau_chu_dong_y`); 9 commit mã `ecd01990` → `c4ea8437`; `mienTru` của quét 23 **rỗng**;
+> `flutter test` 7.037 → **7.039** (+9 skip), `flutter analyze` **20**. Máy ảo: 32 cặp ảnh trước / sau **0 px khác**, vàng thuần 0 — **trừ ba trạng thái không chụp được** (D1 bật, khối nhắc sau ngân hàng bật, dòng gợi ý giờ; xem mục 10 của khối 🔧
+> trên), thay bằng 35 ca widget test.
 
 Đợt này đóng **G88 gạch 2** (`docs/CLIENT_APP_KNOWN_GAPS.md`): bốn tệp còn trong danh sách miễn trừ của test quét 23
 (`test/core/ui/tep_presentation_khong_qua_dai_test.dart`, trần 1.200 dòng). Cùng loại việc với đợt tách trang Phân tích
@@ -225,6 +251,8 @@ chụp:
 - Phiếu Nạp: `hintText: 'e.g. 1.000.000'` tiếng Anh; nhãn *"(VNĐ)"* — giữ nguyên (quy tắc 3.1).
 - Bảng chọn ví của Thêm mục tiêu và của Thêm giao dịch là hai bản gần giống nhau — gộp là việc riêng, không thuộc đợt dời.
 - Đặt tên `_build…` / `_show…` tiếng Anh lẫn tiếng Việt trong các trang — giữ.
+- Lỗi có sẵn, phát hiện ở Task 1 (2026-10-13), **không sửa** vì dời nguyên văn: `TextEditingController` của hai phiếu Nạp / Rút
+  (`phieu_nap_tien.dart`, `phieu_rut_tien.dart`) không được `dispose`.
 
 ## 10. Tài liệu cập nhật khi xong
 

@@ -474,7 +474,7 @@ Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager
 | `lib/core/notification/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
 | `lib/core/notification/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
 | `lib/features/transaction/…` | `DienSanBienDong.phien`, `dongNguonBienDong`, `ViTheoNguonStore.docTheoNguon`, chữ thẻ |
-| `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · khối ở `notification_settings_page.dart` |
+| `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · `KhoiNhacSauNganHang` ở `widgets/cai_dat_thong_bao/khoi_nhac_sau_ngan_hang.dart` (trang `notification_settings_page.dart` giữ `_dongQuyenPhien`) |
 | `android/…/PhienNganHang.kt` · `NhacGhiWorker.kt` · `NhacGhiReceiver.kt` | đọc sử dụng, dựng phiên, thông báo, lịch · worker · nút |
 | `android/…/BienDongListenerService.kt` · `MainActivity.kt` · `AndroidManifest.xml` · `build.gradle.kts` | móc kiểm · kênh · quyền + receiver · `work-runtime-ktx:2.11.0` |
 

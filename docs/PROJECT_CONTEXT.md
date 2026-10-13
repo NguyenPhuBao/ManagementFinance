@@ -436,12 +436,12 @@ features/
 ├── wallet/         ← Quản lý ví
 ├── budget/         ← Ngân sách
 ├── bill/           ← Hóa đơn định kỳ
-├── goal/           ← Mục tiêu tiết kiệm
+├── goal/           ← Mục tiêu tiết kiệm; presentation/widgets/them_muc_tieu/ (7 tệp) · widgets/chi_tiet_muc_tieu/ (7 tệp)
 ├── category/       ← Quản lý danh mục; data/gan_danh_muc_nguon.dart (lớp GanDanhMucNguon cho màn Gắn danh mục)
-├── analytics/      ← Báo cáo & thống kê; presentation/widgets/phan_tich/ (14 tệp khối của trang Phân tích)
+├── analytics/      ← Báo cáo & thống kê; presentation/widgets/phan_tich/ (14 tệp khối của trang Phân tích) · widgets/xem_truoc_bao_cao/ (10 tệp khối của Xem trước báo cáo)
 ├── ai_edge/        ← AI trên máy: luật + gói số, tool, SLM runtime, lớp chắn
 ├── ai_chat/        ← Màn Trợ lý AI (+ spike/ — mã đo sau cờ dart-define)
-├── notification/   ← Giao diện thông báo (luật nằm ở core/notification — nợ G88)
+├── notification/   ← Giao diện thông báo (luật nằm ở core/notification — nợ G88); presentation/widgets/cai_dat_thong_bao/ (6 tệp) · domain/cau_chu_dong_y.dart
 ├── premium/        ← Gói, quyền theo gói, thanh toán PayOS
 └── profile/        ← Hồ sơ người dùng
 ```
@@ -450,7 +450,7 @@ features/
 `core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
 phiên, nhận hook hàm nên không import `features/`). `core/notification/thong_bao_nguon.dart` là cổng đọc / ghi bảng
 thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng
-trừ năm tệp miễn trừ (quét 23).
+(quét 23; `mienTru` rỗng từ 2026-10-13, cơ chế giữ cho tệp dài sau này).
 
 ### DI (GetIt)
 File: `core/di/injection_container.dart`
@@ -608,7 +608,18 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-12)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-13)
+
+### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
+
+Spec `docs/superpowers/specs/2026-10-13-tach-bon-trang-lon-design.md` (khối 🔧 và ✅ đầu tệp); kế hoạch 11 task `plans/2026-10-13-tach-bon-trang-lon.md` (gitignore); thi công bằng **agent con mỗi task** (người dùng chốt). Cùng loại việc với đợt tách trang Phân tích: widget theo khối, trạng thái và mọi `sl<…>` ở lại trang, dời nguyên văn, giữ `Key` và chữ.
+
+- Đo `wc -l` 2026-10-13, trước → sau: `goal_add_page` 1.570 → **791** · `goal_detail_page` 1.480 → **664** · `notification_settings_page` 1.615 → **866** · `report_preview_page` 1.270 → **243**. 30 tệp widget mới (`goal/presentation/widgets/them_muc_tieu/` 7 · `chi_tiet_muc_tieu/` 7 · `notification/presentation/widgets/cai_dat_thong_bao/` 6 · `analytics/presentation/widgets/xem_truoc_bao_cao/` 10) + 2 tệp `domain/` (`goal/domain/chu_ky_muc_tieu.dart`, `notification/domain/cau_chu_dong_y.dart`). `mienTru` của quét 23 **rỗng**.
+- **Thay đổi hành vi duy nhất:** hai ô số tiền của phiếu Nạp / Rút (Chi tiết mục tiêu) nay có **trần 13 chữ số**; lưới `o_nhap_tien_co_tran_test` (quét 8) nhận cả `controller: tên,` không gạch dưới (tham số widget) — bản cũ mù im lặng khi ô dời ra widget.
+- `flutter test` 7.037 → **7.039** (+9 skip; +2 ca `goal_detail_phieu_tran_test`), `flutter analyze` **20**. Máy ảo `FlowMoney_16G`: 32 cặp ảnh trước / sau **0 px khác**, vàng thuần 0 (APK debug SHA-1 trước `bf59ba5b…`, sau `7af9d631…`). Chưa chụp: Cài đặt thông báo khi D1 bật / khối nhắc sau ngân hàng bật (cần quyền hệ điều hành) và dòng gợi ý giờ — các ca widget test dựng trang ở trạng thái ấy xanh.
+- Chỗ khác bản viết của spec: xem khối 🔧 của spec (thứ tự phiếu Nạp / Rút trước lưới ô tiền; `_dongQuyenBienDong` / `_dongQuyenPhien` và `_buildHistorySection` ở lại trang vì đọc kênh nền tảng / repository; ba hằng chuỗi đồng ý sang `cau_chu_dong_y.dart`; `DaiDuDoanMucTieu` / `DauBaoCao` nhận thêm tham số).
+- ⚠️ Các khối lịch sử cũ hơn của mục 14 còn gọi hàm riêng tư của bốn trang theo tên lúc viết (`_showDepositDialog` → `moPhieuNapTien`, `_theBienDong` → `TheBienDong`, `_khoiDongTien` → `KhoiDongTienBaoCao`…): đọc tên mới trong thư mục `widgets/<tên trang>/`.
+- Lỗi có sẵn, không sửa: `TextEditingController` của hai phiếu Nạp / Rút không `dispose` (spec mục 9).
 
 ### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12, CHƯA kiểm thử trên máy
 
@@ -649,7 +660,7 @@ form, không lưu); mặt đồng hồ hiện 00–23. **Đối chứng**: dựn
 đặt → gõ `20` báo *"Nhập thời gian hợp lệ"* — chứng minh cài đặt 12 giờ tới được app; rồi dựng lại bản sửa (`bd0d16c6…`), đo
 lại `20` / `8` đạt. Hai ô giờ trả về 08:00 / 20:00, `time_12_24` trả về **chưa đặt** (như trước lượt đo). Máy ảo nay cài bản
 **debug** `bd0d16c6…` (trước là release `26c101bc…`); nó vẫn hiện mục tiêu *Thu nen* vì chưa kéo về lệnh xoá (backend tắt).
-Đo **ba trong năm** chỗ gọi; ô giờ Tổng kết tuần (`notification_settings_page.dart:508`) và hai mốc Giờ im lặng (`:1279`,
+Đo **ba trong năm** chỗ gọi; ô giờ Tổng kết tuần (`notification_settings_page.dart:508`, nay `:504`) và hai mốc Giờ im lặng (`:1279`, nay `HangGioImLang` ở `widgets/cai_dat_thong_bao/khung_cai_dat.dart`;
 phải bật công tắc) chưa chạm — cùng một lớp bọc, không có đường riêng. Chưa đo trên Realme / OnePlus (không máy nào cắm).
 `flutter test` **6696/6696** + 9 skip, analyze **20**.
 

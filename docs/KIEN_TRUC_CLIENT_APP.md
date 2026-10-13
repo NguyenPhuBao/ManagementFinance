@@ -42,8 +42,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **564** tệp `.dart`, **120.421** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
-và `… | xargs cat | wc -l`. `test/` có **615** tệp, **120.418** dòng. (Đếm lại 2026-10-11 sau tách trang Thêm giao dịch: +3 tệp `lib/` và +3 tệp `test/`; sau đợt dọn vị trí tệp là 546 / 595, trước đợt ấy 545 / 596.)
+`lib/` có **596** tệp `.dart`, **122.667** dòng (kể 13 tệp `.g.dart` do Drift sinh) — `find lib -name '*.dart' | wc -l`
+và `… | xargs cat | wc -l`. `test/` có **616** tệp, **123.486** dòng (đếm lại 2026-10-13 sau tách bốn trang lớn). (Đếm lại 2026-10-11 sau tách trang Thêm giao dịch: +3 tệp `lib/` và +3 tệp `test/`; sau đợt dọn vị trí tệp là 546 / 595, trước đợt ấy 545 / 596.)
 
 ```
 lib/
@@ -65,12 +65,12 @@ lib/
 │   ├── sync/          8      SyncEngine, normalizer, checkpoint, noiBoNgheKetQuaDay
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         7      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten…
-├── features/        426 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
+├── features/        458 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation
 │   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
 │   ├── transaction/  72      data 17 · domain 26 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
-│   ├── analytics/    51      data 8 · domain 19 · presentation 24 (widgets/phan_tich/ 14 tệp)
+│   ├── analytics/    61      data 8 · domain 19 · presentation 34 (widgets/phan_tich/ 14 tệp · widgets/xem_truoc_bao_cao/ 10 tệp)
 │   ├── bill/         33      data 5 · domain 14 · presentation 14
-│   ├── goal/         33      data 4 · domain 17 · presentation 12
+│   ├── goal/         48      data 4 · domain 18 · presentation 26 (widgets/them_muc_tieu/ 7 tệp · widgets/chi_tiet_muc_tieu/ 7 tệp)
 │   ├── wallet/       32      data 11 · domain 9 · presentation 12 (state/ 1)
 │   ├── budget/       28      data 8 · domain 7 · presentation 13
 │   ├── premium/      27      data 8 · domain 8 · presentation 11 (bloc/ thay cubit/; state/ 1)
@@ -78,7 +78,7 @@ lib/
 │   ├── category/     21      data 9 · domain 6 · presentation 6
 │   ├── profile/       8      presentation 8
 │   ├── home/          8      domain 1 · presentation 7
-│   ├── notification/  6      presentation 6 (luật nằm ở core/notification — nợ G88)
+│   ├── notification/ 13      domain 1 (cau_chu_dong_y) · presentation 12 (widgets/cai_dat_thong_bao/ 6 tệp; luật nằm ở core/notification — nợ G88)
 │   └── ai_chat/       3      data 2 · presentation 1 (spike C4 đã gỡ 2026-10-12)
 └── shared/           13 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 10 (MainShell, chuông, toast…)
 ```
@@ -200,7 +200,7 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | 20 | `features/transaction/chi_mot_noi_import_image_picker_test.dart` | chỉ `quet_anh_page.dart` import `image_picker` | cây | 2026-10-08 |
 | 21 | `features/premium/quyen_tinh_nang_mot_noi_test.dart` | quyền theo gói chỉ đọc qua `duocDung` | cây | 2026-10-08 |
 | **22** | `core/ui/presentation_khong_cham_csdl_test.dart` | `presentation/` và `shared/` không cầm `AppDatabase` / DAO; `conCho` rỗng | cây | **2026-10-10** |
-| **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; 4 tệp miễn trừ (rút `add_transaction_page` 2026-10-11), trần riêng chỉ giảm | cây `features/` | **2026-10-10** |
+| **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; `mienTru` **rỗng** từ 2026-10-13 (G88 gạch 2; từng 4 tệp, rút `add_transaction_page` 2026-10-11) | cây `features/` | **2026-10-10** |
 | **24** | `features/auth/auth_bloc_khong_sl_test.dart` | `auth_bloc.dart` không gọi service locator, không import `core/di` | một tệp | **2026-10-10** |
 | **25** | `core/ui/vi_tri_tep_theo_luat_test.dart` | cây `lib/` / `test/` khớp luật vị trí tệp mục 8 (sáu luật; ratchet `core` → `features` ngoài ba điểm ghép); `conCho` rỗng (miễn trừ `ai_chat/spike/` đã gỡ 2026-10-12) | cây `lib/` + `test/` | **2026-10-10** |
 | **26** | `features/transaction/chi_mot_noi_import_giong_noi_test.dart` | `speech_to_text` chỉ ở `nghe_android.dart`, `record` chỉ ở `ghi_am.dart` (có ca tiền đề) | cây `lib/` | **2026-10-12** |
@@ -269,7 +269,7 @@ giới nền tảng thay được bằng bản giả, nên **6.681** ca test (đ
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift; Entity mới ở 4/14 mảng. `SyncEngine` 2.166 dòng một tệp.
-Bốn trang còn trên 1.200 dòng (cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo). Luật thông báo nằm trong `core`. Không logger,
+Không còn tệp `presentation` nào trên 1.200 dòng (bốn trang cuối — cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo — tách xong 2026-10-13, G88 gạch 2; trang lớn nhất trong bốn trang đó nay 866 dòng). Luật thông báo nằm trong `core`. Không logger,
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
 **Nợ có tên:** **G88** ở `docs/CLIENT_APP_KNOWN_GAPS.md` — bảy gạch có số đo và hướng xử lý (gạch 7 *vị trí tệp* đóng
@@ -285,7 +285,7 @@ không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đ�
 | `flutter test` · `flutter analyze` | 6.587 (+9 skip) · 20 | **6.614** (+9 skip) · **20** |
 | Workflow CI | 0 | **1** |
 
-Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): `add_transaction_page.dart` 2.007 → **779** dòng, thêm `ThemGiaoDichCubit` **1.097** · `ThemGiaoDichState` **184** · `ThemGiaoDichNguon` **352** (đo `wc -l`); tệp `presentation` > 1.200 dòng 5 → **4**; `flutter test` 6.617 → **6.681** (+9 skip), `flutter analyze` vẫn **20**.
+Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): `add_transaction_page.dart` 2.007 → **779** dòng, thêm `ThemGiaoDichCubit` **1.097** · `ThemGiaoDichState` **184** · `ThemGiaoDichNguon` **352** (đo `wc -l`); tệp `presentation` > 1.200 dòng 5 → **4** (rồi → **0** ngày 2026-10-13, G88 gạch 2: 30 tệp widget mới + 2 tệp `domain/`, `flutter test` → **7.039**); `flutter test` 6.617 → **6.681** (+9 skip), `flutter analyze` vẫn **20**.
 
 ## 10. Cách nói khi trình bày
 
@@ -295,5 +295,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
 4. **Con số.** 14 mảng, 549 tệp, 29 test quét, 6.681 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 4/14, `SyncEngine` một tệp, bốn trang còn trên 1.200 dòng — và nói nó
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 4/14, `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.
