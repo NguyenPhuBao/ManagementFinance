@@ -37,7 +37,7 @@ Người dùng chốt 2026-10-12: **Android trước, Gemma dự phòng**. Hàm 
 
 *Gemma sẵn sàng* = `MoHinhTaiVe.daCo() && CongTacAi.doc()` — closure `sanSang` **chép ở năm chỗ** trong
 `injection_container.dart` (~851, 863, 870, 880, 914); C4 dùng bản ~880 qua `ChepLoiBangGemma`. Quyền `ai_edge_model` chặn ở
-màn Cài đặt AI (không tải, không công tắc), **không** nằm trong `sanSang`. *Có mạng* = `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi →
+màn Cài đặt AI (không tải, không công tắc), **không** nằm trong `sanSang`. ✅ **Người dùng xác nhận 2026-10-13**: giữ như mã — tài khoản bị hạ xuống Basic mà máy đã có mô hình vẫn rơi về Gemma chép lời (nút micro vẫn chỉ Premium mới có); thân spec §2.2 cũ (tính cả quyền) không áp. *Có mạng* = `ConnectionMonitor.coMangNgay()` (hỏi `checkConnectivity` ngay, lỗi →
 `true`; luồng sự kiện cũ có giãn cách 3 giây nên không dùng được cho việc này).
 
 ## 3. Luật đọc câu nói (khối 🔧 spec)
@@ -139,7 +139,7 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
 - **Hint ô Nhập nhanh khi có micro là `'45k tiền mặt'`** (không micro giữ `'phở 45k tiền mặt'`). Đo (font thật ×1,1, trang
   thật có `giongNoi`): `'phở 45k tiền mặt'` không vừa ô có micro ở 320 / 300 dp; `'45k tiền mặt'` rộng 91,1 dp, ô 120,9 dp
   (320) / 100,9 dp (300) — vừa. Giữ nguyên tắc G84 (ví dụ nêu tên ví); ca G84 "ví dụ phải nêu ví" nay chạy cả có / không
-  micro (review toàn nhánh, I2 — bản cũ `'phở 45k'` bỏ ví ở mọi bề rộng Android Premium và ca xanh giả vì dựng không micro).
+  micro (review toàn nhánh, I2 — bản cũ `'phở 45k'` bỏ ví ở mọi bề rộng Android Premium và ca xanh giả vì dựng không micro). ✅ **Người dùng xác nhận 2026-10-13**: giữ `'45k tiền mặt'`, không đổi theo bề rộng màn.
 - **`initialize` của `speech_to_text` chỉ nhận callback lần đầu** → `NgheAndroidThat` là **một đối tượng mỗi tiến trình** (DI
   singleton); dựng cái thứ hai thì callback của nó **im lặng không bao giờ gọi**.
 - **`luc` của `BoDoIm` = số mẫu × `kNhipBienDo` (100 ms)**, không phải đồng hồ tường. Bộ ghi phát mẫu chậm / dồn thì "im 2 giây"
