@@ -12,7 +12,6 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 import '../../domain/goal_deposit_wallets.dart';
-import '../../domain/goal_deposit_warning.dart';
 import '../../domain/goal_forecast.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
@@ -22,6 +21,8 @@ import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
 import '../widgets/goal_progress_chart.dart';
 import '../widgets/goal_stats_card.dart';
+import '../widgets/chi_tiet_muc_tieu/phieu_nap_tien.dart';
+import '../widgets/chi_tiet_muc_tieu/phieu_rut_tien.dart';
 import '../widgets/nhan_tu_dong.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
@@ -350,171 +351,38 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-    final amountController = TextEditingController();
-    final viNhanKhaDung =
-        wallets.where((w) => w.id != viTichLuy.id).toList();
-    Wallet selectedTargetWallet =
-        viNhanKhaDung.firstWhere((w) => w.id == idNhanMacDinh);
-
-    showModalBottomSheet(
+    moPhieuRutTien(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Rút khỏi ${_goal!.name}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Mục tiêu đang giữ ${CurrencyFormatter.format(_goal!.currentAmount)} '
-                'trong ví "${viTichLuy.name}".',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.error,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Số tiền muốn rút (VNĐ)',
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Chuyển về ví nào',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Wallet>(
-                    value: selectedTargetWallet,
-                    isExpanded: true,
-                    icon: const Icon(Icons.expand_more,
-                        color: AppColors.primary),
-                    items: viNhanKhaDung
-                        .map((w) => DropdownMenuItem<Wallet>(
-                              value: w,
-                              child: Text(
-                                '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setModalState(() => selectedTargetWallet = val);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final raw =
-                      amountController.text.replaceAll(RegExp(r'[^\d]'), '');
-                  final soTien = double.tryParse(raw) ?? 0.0;
-                  if (soTien <= 0) {
-                    baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
-                    return;
-                  }
-                  if (soTien > _goal!.currentAmount) {
-                    baoNhanh('Mục tiêu chỉ đang giữ '
-                          '${CurrencyFormatter.format(_goal!.currentAmount)}.', loai: LoaiThongBao.loi);
-                    return;
-                  }
-
-                  try {
-                    await _goalRepository.withdrawFromGoal(
-                      goalId: widget.id,
-                      goalName: _goal!.name,
-                      amount: soTien,
-                      walletId: selectedTargetWallet.id,
-                      idaccount: accountId,
-                    );
-                  } catch (e) {
-                    // Repository còn một trần nữa mà giao diện không thấy: số
-                    // dư THẬT của ví tích lũy, vốn có thể thấp hơn tiến độ.
-                    baoNhanh(e is StateError ? e.message : '$e', loai: LoaiThongBao.loi);
-                    return;
-                  }
-
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (!mounted) return;
-                  baoNhanh('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
-                        'tiêu về "${selectedTargetWallet.name}".', loai: LoaiThongBao.xong);
-                  _loadGoal();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Xác nhận rút tiền',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      ),
+      layMucTieu: () => _goal!,
+      wallets: wallets,
+      viTichLuy: viTichLuy,
+      idNhanMacDinh: idNhanMacDinh,
+      onXacNhan: (ctx, soTien, vi) => _rutTien(ctx, soTien, vi, accountId),
     );
+  }
+
+  Future<void> _rutTien(
+      BuildContext ctx, double soTien, Wallet vi, int accountId) async {
+    try {
+      await _goalRepository.withdrawFromGoal(
+        goalId: widget.id,
+        goalName: _goal!.name,
+        amount: soTien,
+        walletId: vi.id,
+        idaccount: accountId,
+      );
+    } catch (e) {
+      // Repository còn một trần nữa mà giao diện không thấy: số
+      // dư THẬT của ví tích lũy, vốn có thể thấp hơn tiến độ.
+      baoNhanh(e is StateError ? e.message : '$e', loai: LoaiThongBao.loi);
+      return;
+    }
+
+    if (ctx.mounted) Navigator.pop(ctx);
+    if (!mounted) return;
+    baoNhanh('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
+          'tiêu về "${vi.name}".', loai: LoaiThongBao.xong);
+    _loadGoal();
   }
 
   void _showDepositDialog() async {
@@ -554,246 +422,44 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-
-    final amountController = TextEditingController();
-    // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
-    final viNguonKhaDung =
-        wallets.where((w) => w.id != viNhan.id).toList();
-    Wallet selectedSourceWallet =
-        viNguonKhaDung.firstWhere((w) => w.id == idNguonMacDinh);
-
-    showModalBottomSheet(
+    moPhieuNapTien(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                top: 20,
-                left: 20,
-                right: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Gửi thêm tiền vào ${_goal!.name}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Số tiền hiện tại: ${CurrencyFormatter.format(_goal!.currentAmount)} / ${CurrencyFormatter.format(_goal!.targetAmount)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Còn thiếu ${CurrencyFormatter.format(_goal!.remainingAmount)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E6B27),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountController,
-                    onChanged: (_) => setModalState(() {}),
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.income,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Nhập số tiền muốn tích lũy thêm (VNĐ)',
-                      hintText: 'e.g. 1.000.000',
-                      filled: true,
-                      fillColor: AppColors.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Chọn ví nguồn thanh toán (Trừ tiền)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<Wallet>(
-                        value: selectedSourceWallet,
-                        isExpanded: true,
-                        icon: const Icon(Icons.expand_more, color: AppColors.primary),
-                        items: viNguonKhaDung.map((w) {
-                          return DropdownMenuItem<Wallet>(
-                            value: w,
-                            child: Text(
-                              '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val == null) return;
-                          setModalState(() => selectedSourceWallet = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Ví nhận CHỈ để xem — nó là thuộc tính của mục tiêu, đổi qua
-                  // nút "Đổi ví nhận" ở thanh trên chứ không phải mỗi lần nạp.
-                  Row(
-                    children: [
-                      const Icon(Icons.arrow_downward,
-                          size: 16, color: AppColors.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Chuyển vào ví tích lũy: ${viNhan.name}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2E6B27),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (canhBaoNapVuot(
-                        _goal!,
-                        double.tryParse(amountController.text
-                                .replaceAll(RegExp(r'[^\d]'), '')) ??
-                            0.0,
-                      ) !=
-                      null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.info_outline,
-                            size: 16, color: AppColors.onSurfaceVariant),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            canhBaoNapVuot(
-                                  _goal!,
-                                  double.tryParse(amountController.text
-                                          .replaceAll(RegExp(r'[^\d]'), '')) ??
-                                      0.0,
-                                ) ??
-                                '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final raw = amountController.text.replaceAll(RegExp(r'[^\d]'), '');
-                      final deposit = double.tryParse(raw) ?? 0.0;
-                      if (deposit <= 0) {
-                        baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
-                        return;
-                      }
-
-                      // Kiểm tra số dư ví nguồn
-                      if (deposit > selectedSourceWallet.balance) {
-                        baoNhanh('Số dư ví "${selectedSourceWallet.name}" không đủ. '
-                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}', loai: LoaiThongBao.loi);
-                        return;
-                      }
-
-                      // Nạp vượt mục tiêu KHÔNG bị chặn — tiết kiệm dư là
-                      // chuyện bình thường. Câu nhắc đã hiện ngay dưới ô nhập
-                      // từ trước khi bấm.
-                      await _goalRepository.depositToGoal(
-                        goalId: widget.id,
-                        goalName: _goal!.name,
-                        depositAmount: deposit,
-                        walletId: selectedSourceWallet.id,
-                        idaccount: accountId,
-                      );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (!mounted) return;
-                      // KHÔNG gọi `context.read<WalletCubit>().loadWallets()`
-                      // ở đây. Route `/goals/:id` không có provider nào cho
-                      // `WalletCubit`, nên lệnh ấy ném
-                      // `ProviderNotFoundError`. Mã cũ đặt nó SAU khi nạp
-                      // xong nên sự cố chỉ nổ ở đường thành công và không lộ
-                      // ra trong bộ test.
-                      //
-                      // Và kể cả khi có provider thì nó cũng vô nghĩa:
-                      // `WalletCubit` đăng ký kiểu **factory**, mỗi nơi gọi
-                      // nhận một instance riêng. Trang danh sách ví tự tạo
-                      // cubit của nó và `loadWallets` ngay khi dựng, nên số dư
-                      // vẫn đúng khi người dùng mở lại trang ấy.
-                      baoNhanh('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!', loai: LoaiThongBao.xong);
-                      _loadGoal();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Xác nhận gửi tiết kiệm',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      layMucTieu: () => _goal!,
+      wallets: wallets,
+      viNhan: viNhan,
+      idNguonMacDinh: idNguonMacDinh,
+      onXacNhan: (ctx, soTien, vi) => _napTien(ctx, soTien, vi, accountId),
     );
+  }
+
+  Future<void> _napTien(
+      BuildContext ctx, double deposit, Wallet vi, int accountId) async {
+    // Nạp vượt mục tiêu KHÔNG bị chặn — tiết kiệm dư là
+    // chuyện bình thường. Câu nhắc đã hiện ngay dưới ô nhập
+    // từ trước khi bấm.
+    await _goalRepository.depositToGoal(
+      goalId: widget.id,
+      goalName: _goal!.name,
+      depositAmount: deposit,
+      walletId: vi.id,
+      idaccount: accountId,
+    );
+    if (ctx.mounted) Navigator.pop(ctx);
+    if (!mounted) return;
+    // KHÔNG gọi `context.read<WalletCubit>().loadWallets()`
+    // ở đây. Route `/goals/:id` không có provider nào cho
+    // `WalletCubit`, nên lệnh ấy ném
+    // `ProviderNotFoundError`. Mã cũ đặt nó SAU khi nạp
+    // xong nên sự cố chỉ nổ ở đường thành công và không lộ
+    // ra trong bộ test.
+    //
+    // Và kể cả khi có provider thì nó cũng vô nghĩa:
+    // `WalletCubit` đăng ký kiểu **factory**, mỗi nơi gọi
+    // nhận một instance riêng. Trang danh sách ví tự tạo
+    // cubit của nó và `loadWallets` ngay khi dựng, nên số dư
+    // vẫn đúng khi người dùng mở lại trang ấy.
+    baoNhanh('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!', loai: LoaiThongBao.xong);
+    _loadGoal();
   }
 
   @override

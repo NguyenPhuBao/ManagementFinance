@@ -16,7 +16,6 @@ void main() {
   const mienTru = <String, int>{
     'features/notification/presentation/pages/notification_settings_page.dart': 1615,
     'features/goal/presentation/pages/goal_add_page.dart': 1570,
-    'features/goal/presentation/pages/goal_detail_page.dart': 1480,
     'features/analytics/presentation/pages/report_preview_page.dart': 1270,
   };
 
