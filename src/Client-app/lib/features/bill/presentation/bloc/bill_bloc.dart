@@ -82,7 +82,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     Emitter<BillState> emit,
   ) async {
     try {
-      await repository.addBill(event.bill);
+      await repository.addBill(event.draft, id: event.id, idaccount: event.idaccount, now: event.now);
       emit(BillOperationSuccess('Tạo hóa đơn thành công'));
     } catch (e) {
       emit(BillError('Không thể tạo hóa đơn: $e'));
@@ -94,7 +94,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     Emitter<BillState> emit,
   ) async {
     try {
-      await repository.editBill(event.bill);
+      await repository.editBill(event.draft, id: event.id, idaccount: event.idaccount, now: event.now);
       emit(BillOperationSuccess('Cập nhật hóa đơn thành công'));
     } catch (e) {
       emit(BillError('Không thể cập nhật hóa đơn: $e'));

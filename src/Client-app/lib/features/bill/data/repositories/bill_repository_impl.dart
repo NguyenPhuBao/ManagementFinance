@@ -10,6 +10,8 @@ import '../../domain/bill_recurrence.dart';
 import '../../domain/bill_note.dart';
 import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/bill_local_datasource.dart';
+import '../models/bill_draft_companion.dart';
+import '../../domain/bill_draft.dart';
 import 'bill_repository.dart';
 
 class BillRepositoryImpl implements BillRepository {
@@ -47,16 +49,16 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<void> addBill(BillsCompanion bill) async {
-    await dataSource.insertBill(bill);
+  Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async {
+    await dataSource.insertBill(companionTaoTu(draft, id: id, idaccount: idaccount, now: now));
     syncEngine?.scheduleSync();
   }
 
   @override
-  Future<void> editBill(BillsCompanion bill) async {
+  Future<void> editBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async {
     // KHÔNG dùng insertBill: nó chèn theo insertOrReplace nên thay cả hàng và
     // đưa mọi cột vắng mặt về mặc định. Xem `BillDao.updateFields`.
-    await dataSource.updateBill(bill);
+    await dataSource.updateBill(companionSuaTu(draft, id: id, idaccount: idaccount, now: now));
     syncEngine?.scheduleSync();
   }
 

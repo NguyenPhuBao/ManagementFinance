@@ -137,11 +137,11 @@ void main() {
       note: '',
     );
 
-    await repository.addBill(draft.toInsertCompanion(
+    await repository.addBill(draft,
       id: '33333333-3333-4333-8333-333333333333',
       idaccount: accountId,
       now: DateTime(2026, 9, 4),
-    ));
+    );
 
     final payload = await pushedBillPayload();
 
@@ -172,11 +172,11 @@ void main() {
       timeRecurrence: kBillCycleMonth,
       note: '',
     );
-    await repository.addBill(draft.toInsertCompanion(
+    await repository.addBill(draft,
       id: '44444444-4444-4444-8444-444444444444',
       idaccount: accountId,
       now: DateTime(2026, 9, 4),
-    ));
+    );
     final bill = (await db.billDao.getAll(accountId)).single;
     await repository.payBill(
         bill: bill, walletId: walletId, idaccount: accountId);

@@ -103,7 +103,6 @@ const conChoDomain = <String>{
   'features/bill/domain/bill_auto_pay.dart',
   'features/bill/domain/bill_auto_pay_runner.dart',
   'features/bill/domain/bill_chain.dart',
-  'features/bill/domain/bill_draft.dart',
   'features/bill/domain/bill_ky_ke_tiep.dart',
   'features/bill/domain/bill_ky_trung.dart',
   'features/bill/domain/bill_pay_status.dart',

@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_state.dart';
@@ -43,16 +45,20 @@ void main() {
     final dueDate = DateTime.now().add(const Duration(days: 3));
     bloc.add(
       AddBillEvent(
-        bill: BillsCompanion.insert(
-          id: 'b1',
-          idaccount: 1,
+        draft: BillDraft(
           name: 'Hóa đơn Internet',
           amount: 200000.0,
+          startDate: dueDate.subtract(const Duration(days: 30)),
           dueDate: dueDate,
-          recurrence: const Value('monthly'),
-          syncStatus: const Value('pending'),
-          updatedAt: DateTime.now(),
+          walletId: 'w1',
+          categoryId: 'c1',
+          isRecurring: false,
+          timeRecurrence: kBillCycleMonth,
+          note: '',
         ),
+        id: 'b1',
+        idaccount: 1,
+        now: DateTime.now(),
       ),
     );
 

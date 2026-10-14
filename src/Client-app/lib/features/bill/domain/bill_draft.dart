@@ -1,10 +1,8 @@
-import 'package:drift/drift.dart';
 import 'bill_recurrence.dart';
-import '../../../core/database/app_database.dart';
 
 /// Giá trị người dùng nhập trên form hoá đơn.
 ///
-/// Tách khỏi widget để phần dựng `BillsCompanion` — nơi từng đánh rơi
+/// Tách khỏi widget để phần dựng companion (`data/models/bill_draft_companion.dart`) — nơi từng đánh rơi
 /// `walletId`/`categoryId` và ghi chu kỳ vào sai cột — kiểm thử được mà không
 /// cần dựng cả cây widget.
 class BillDraft {
@@ -92,74 +90,4 @@ class BillDraft {
   String? get dateError => startDate.isBefore(dueDate)
       ? null
       : 'Ngày bắt đầu phải trước ngày đến hạn thanh toán';
-
-  BillsCompanion toInsertCompanion({
-    required String id,
-    required int idaccount,
-    required DateTime now,
-  }) {
-    return BillsCompanion.insert(
-      id: id,
-      idaccount: idaccount,
-      walletId: Value(walletId),
-      categoryId: Value(categoryId),
-      name: name,
-      amount: amount,
-      startDate: Value(startDate),
-      periodEnd: Value(periodEndHieuLuc),
-      dueDate: dueDate,
-      payStatus: const Value('Pending'),
-      isPaid: const Value(false),
-      isRecurrence: Value(isRecurring),
-      timeRecurrence: Value(timeRecurrence),
-      recurrence: Value(legacyRecurrence),
-      timeNotification: Value(timeNotification),
-      note: Value(note),
-      autoPayEnabled: Value(autoPayEnabled),
-      anchorDay: Value(anchorDayHieuLuc),
-      syncStatus: const Value('pending'),
-      updatedAt: now,
-    );
-  }
-
-  /// Companion cho đường SỬA — chỉ những cột form thật sự sở hữu.
-  ///
-  /// Cố ý KHÔNG đặt `isPaid`/`payStatus`/cờ xoá: form không hỏi gì về chúng,
-  /// và `BillDao.updateFields` chỉ ghi những cột có mặt, nên vắng mặt ở đây
-  /// đồng nghĩa với "giữ nguyên". `startDate` thì ngược lại — form nay có ô
-  /// riêng cho nó nên đường sửa phải ghi được.
-  ///
-  /// Vẫn ghi ví/danh mục/chu kỳ: hoá đơn do bản client cũ tạo ra mang
-  /// `walletId = null` và đang kẹt trong hàng đợi đẩy — màn Sửa là đường duy
-  /// nhất trong app để vá chúng.
-  BillsCompanion toUpdateCompanion({
-    required String id,
-    required int idaccount,
-    required DateTime now,
-  }) {
-    return BillsCompanion(
-      id: Value(id),
-      idaccount: Value(idaccount),
-      walletId: Value(walletId),
-      categoryId: Value(categoryId),
-      name: Value(name),
-      amount: Value(amount),
-      startDate: Value(startDate),
-      periodEnd: Value(periodEndHieuLuc),
-      dueDate: Value(dueDate),
-      isRecurrence: Value(isRecurring),
-      timeRecurrence: Value(timeRecurrence),
-      recurrence: Value(legacyRecurrence),
-      // Value(null) chứ không phải vắng mặt: `updateFields` chỉ ghi những cột
-      // CÓ MẶT, nên bỏ trống thì tắt nhắc nhở sẽ không có tác dụng gì.
-      timeNotification: Value(timeNotification),
-      note: Value(note),
-      // Có mặt cả khi tắt: vắng mặt là "giữ nguyên", và tắt công tắc mà app
-      // vẫn tiếp tục trừ tiền là lỗi tệ nhất ở vùng này.
-      autoPayEnabled: Value(autoPayEnabled),
-      anchorDay: Value(anchorDayHieuLuc),
-      syncStatus: const Value('pending'),
-      updatedAt: Value(now),
-    );
-  }
 }

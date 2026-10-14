@@ -22,6 +22,7 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
@@ -45,11 +46,11 @@ class _FixedAuthBloc extends AuthBloc {
   AuthState get state => _fixed;
 }
 
-/// Ghi lại companion mà form gửi lên, để test đọc được cờ.
+/// Ghi lại BillDraft mà form gửi lên, để test đọc được cờ.
 class _GhiLaiRepository implements BillRepository {
   _GhiLaiRepository([this.bills = const []]);
   final List<Bill> bills;
-  BillsCompanion? daSua;
+  BillDraft? daSua;
 
   @override
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
@@ -60,7 +61,7 @@ class _GhiLaiRepository implements BillRepository {
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   @override
-  Future<void> editBill(BillsCompanion bill) async => daSua = bill;
+  Future<void> editBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async => daSua = draft;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -228,7 +229,7 @@ void main() {
       await tester.tap(find.text('Cập nhật'));
       await tester.pumpAndSettle();
       tester.takeException(); // pop không có GoRouter — như ca Sửa ở dưới
-      expect(repo.daSua!.autoPayEnabled.value, isTrue,
+      expect(repo.daSua!.autoPayEnabled, isTrue,
           reason: 'chốt "dừng chạy, giữ công tắc" — hạ cấp không sửa dữ liệu người dùng');
     });
 
@@ -260,12 +261,11 @@ void main() {
       await tester.pumpAndSettle();
       // Form gửi sự kiện lên bloc RỒI mới `context.pop()`; harness không có
       // GoRouter nên bước pop ném assertion. Nuốt nó ở đây: thứ cần canh là
-      // companion đã tới repository, không phải điều hướng.
+      // draft đã tới repository, không phải điều hướng.
       tester.takeException();
 
       expect(repo.daSua, isNotNull, reason: 'Form phải lưu được.');
-      expect(repo.daSua!.autoPayEnabled.present, isTrue);
-      expect(repo.daSua!.autoPayEnabled.value, isFalse,
+      expect(repo.daSua!.autoPayEnabled, isFalse,
           reason: 'Form Sửa là đường DUY NHẤT để tắt. Tắt mà không ăn xuống '
               'CSDL là app tiếp tục trừ tiền — lỗi tệ nhất ở vùng này.');
     });

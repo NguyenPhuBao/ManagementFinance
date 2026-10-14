@@ -179,13 +179,7 @@ class _BillEditPageState extends State<BillEditPage> {
     );
 
     context.read<BillBloc>().add(
-          EditBillEvent(
-            bill: draft.toUpdateCompanion(
-              id: widget.id,
-              idaccount: accountId,
-              now: DateTime.now(),
-            ),
-          ),
+          EditBillEvent(draft: draft, id: widget.id, idaccount: accountId, now: DateTime.now()),
         );
     context.pop();
   }

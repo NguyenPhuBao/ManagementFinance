@@ -5,6 +5,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
@@ -77,18 +78,24 @@ void main() {
     test('không đụng tới các cột vắng mặt trong companion', () async {
       await seedBill(isPaid: true);
 
-      // Đúng companion mà bill_edit_page.dart dựng: chỉ những trường trên form.
+      // Đúng BillDraft mà bill_edit_page.dart dựng: chỉ những trường trên form.
       await repository.editBill(
-        BillsCompanion(
-          id: const Value('bill-1'),
-          idaccount: const Value(accountId),
-          name: const Value('Tiền điện tháng 9'),
-          amount: const Value(250000.0),
-          dueDate: Value(DateTime(2026, 9, 20)),
-          note: const Value('Ghi chú mới'),
-          syncStatus: const Value('pending'),
-          updatedAt: Value(DateTime.now()),
+        BillDraft(
+          name: 'Tiền điện tháng 9',
+          amount: 250000.0,
+          // Giữ đúng giá trị đã seed: ca này kiểm "cột form không hỏi (isPaid, payStatus, icon, colour) KHÔNG bị đụng".
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 9, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: 'Ghi chú mới',
         ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
       );
 
       final after = (await db.billDao.getAll(accountId)).single;
@@ -123,15 +130,21 @@ void main() {
       await repository.deleteBill('bill-1');
 
       await repository.editBill(
-        BillsCompanion(
-          id: const Value('bill-1'),
-          idaccount: const Value(accountId),
-          name: const Value('Tên mới'),
-          amount: const Value(1.0),
-          dueDate: Value(DateTime(2026, 9, 20)),
-          syncStatus: const Value('pending'),
-          updatedAt: Value(DateTime.now()),
+        BillDraft(
+          name: 'Tên mới',
+          amount: 1.0,
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 9, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: '',
         ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
       );
 
       final row = await (db.select(db.bills)

@@ -29,6 +29,7 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/domain/dien_san_hoa_don.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
@@ -53,13 +54,14 @@ class _StubBillRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// Ghi lại companion mà form gửi lên (B2 — kiểm giá trị điền sẵn đi tới CSDL).
+/// Ghi lại BillDraft mà form gửi lên (B2 — kiểm giá trị điền sẵn đi tới repository).
 class _GhiThemRepository implements BillRepository {
-  BillsCompanion? daThem;
+  BillDraft? daThem;
   @override
   Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
   @override
-  Future<void> addBill(BillsCompanion bill) async => daThem = bill;
+  Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async =>
+      daThem = draft;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -404,7 +406,7 @@ void main() {
         return (ketQua: ketQua, repo: repo);
       }
 
-      testWidgets('bấm Lưu → pop(true), companion mang đúng giá trị điền sẵn', (tester) async {
+      testWidgets('bấm Lưu → pop(true), draft mang đúng giá trị điền sẵn', (tester) async {
         final r = await quaRouter(tester);
         await tester.tap(find.text('Lưu'));
         await tester.pumpAndSettle();
@@ -412,12 +414,12 @@ void main() {
             reason: 'thẻ khoản lặp chỉ ghi da_tao khi form báo đã gửi — '
                 'pop() trần là thẻ không bao giờ ẩn');
         final c = r.repo.daThem!;
-        expect(c.name.value, 'Tiền nhà');
-        expect(c.amount.value, 3100000);
-        expect(c.walletId.value, 'wB');
-        expect(c.categoryId.value, 'cNha');
-        expect(c.anchorDay.value, 31);
-        expect(c.startDate.value, DateTime(2026, 11, 30));
+        expect(c.name, 'Tiền nhà');
+        expect(c.amount, 3100000);
+        expect(c.walletId, 'wB');
+        expect(c.categoryId, 'cNha');
+        expect(c.anchorDayHieuLuc, 31);
+        expect(c.startDate, DateTime(2026, 11, 30));
       });
 
       testWidgets('bấm Quay lại → không trả true', (tester) async {

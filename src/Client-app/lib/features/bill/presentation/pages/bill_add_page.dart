@@ -201,13 +201,7 @@ class _BillAddPageState extends State<BillAddPage> {
     );
 
     context.read<BillBloc>().add(
-          AddBillEvent(
-            bill: draft.toInsertCompanion(
-              id: const Uuid().v4(),
-              idaccount: accountId,
-              now: DateTime.now(),
-            ),
-          ),
+          AddBillEvent(draft: draft, id: const Uuid().v4(), idaccount: accountId, now: DateTime.now()),
         );
     // `true` = đã gửi `AddBillEvent` (ghi SQLite cục bộ nên đã gửi ≈ đã lưu).
     // Thẻ khoản lặp (B2) chờ đúng giá trị này mới ghi `da_tao`; nút Quay lại

@@ -1,4 +1,5 @@
 import '../../../transaction/data/models/transaction_entity.dart';
+import '../../domain/bill_draft.dart';
 import '../../../../core/database/app_database.dart';
 
 /// Ném ra khi [BillRepository.payBill] được gọi trên một hoá đơn mà CSDL đã
@@ -102,8 +103,11 @@ abstract class BillRepository {
   /// Chỉ có với khoản trả ghi từ v16 trên chính máy này; hàng kéo về từ
   /// server vắng mặt và nơi gọi phải hiện "không biết" chứ không đoán.
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount);
-  Future<void> addBill(BillsCompanion bill);
-  Future<void> editBill(BillsCompanion bill);
+  /// Tạo hoá đơn từ giá trị form. Repository tự dựng companion (`companionTaoTu`) — ánh xạ Drift không ra khỏi `data/`.
+  Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now});
+
+  /// Sửa hoá đơn [id]: chỉ ghi cột form sở hữu (`companionSuaTu`); `updateFields` giữ cột vắng mặt.
+  Future<void> editBill(BillDraft draft, {required String id, required int idaccount, required DateTime now});
   Future<void> deleteBill(String id);
 
   /// Thanh toán [bill] bằng ví [walletId].
