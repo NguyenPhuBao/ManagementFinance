@@ -81,7 +81,7 @@ class BillDraft {
   ///
   /// Hai cách biểu diễn phải được ghi CÙNG LÚC và khớp nhau: nhánh đẩy đọc cờ
   /// `isRecurrence`, còn một số đường cũ vẫn đọc chuỗi này.
-  String get _legacyRecurrence =>
+  String get legacyRecurrence =>
       isRecurring ? legacyFromTimeRecurrence(timeRecurrence) : 'once';
 
   /// Lời nhắn lỗi nếu hai mốc ngày không hợp lệ, `null` nếu hợp lệ.
@@ -112,7 +112,7 @@ class BillDraft {
       isPaid: const Value(false),
       isRecurrence: Value(isRecurring),
       timeRecurrence: Value(timeRecurrence),
-      recurrence: Value(_legacyRecurrence),
+      recurrence: Value(legacyRecurrence),
       timeNotification: Value(timeNotification),
       note: Value(note),
       autoPayEnabled: Value(autoPayEnabled),
@@ -149,7 +149,7 @@ class BillDraft {
       dueDate: Value(dueDate),
       isRecurrence: Value(isRecurring),
       timeRecurrence: Value(timeRecurrence),
-      recurrence: Value(_legacyRecurrence),
+      recurrence: Value(legacyRecurrence),
       // Value(null) chứ không phải vắng mặt: `updateFields` chỉ ghi những cột
       // CÓ MẶT, nên bỏ trống thì tắt nhắc nhở sẽ không có tác dụng gì.
       timeNotification: Value(timeNotification),
