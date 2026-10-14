@@ -48,12 +48,16 @@ const conCho = <String>{};
 /// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm — ngoại lệ duy nhất ghi rõ tại chỗ.
 /// Đo 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
-  'lib/core/notification/notification_rules.dart': 10,
+  // 11 từ 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.
+  'lib/core/notification/notification_rules.dart': 11,
   // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
-  // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status). Lần tăng DUY NHẤT.
+  // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
+  // Luật tăng (2026-10-14): chỉ khi thay một kiểu Drift bằng Entity của chính mảng tệp ấy ĐÃ import; không bao giờ vì mảng mới.
   'lib/core/sync/sync_engine.dart': 7,
-  'lib/core/notification/notification_scanner.dart': 5,
-  'lib/core/nen/lich_nen.dart': 3,
+  // 6 từ 2026-10-14 G88 gạch 3 — như notification_rules.
+  'lib/core/notification/notification_scanner.dart': 6,
+  // 4 từ 2026-10-14 G88 gạch 3 — như notification_rules.
+  'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,
   'lib/core/sync/noi_bo_nghe_ket_qua_day.dart': 2,
   'lib/core/notification/reminder_scheduler.dart': 2,
