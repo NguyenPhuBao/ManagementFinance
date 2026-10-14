@@ -28,6 +28,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<List<Transaction>> getAllRows(int idaccount) => transactionDao.getAll(idaccount);
   @override
   Stream<List<Transaction>> watchAllRows(int idaccount) => transactionDao.watchAll(idaccount);
+  @override
+  Future<List<TransactionEntity>> getAll(int idaccount) => localDataSource.getAll(idaccount);
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) => localDataSource.watchAll(idaccount);
 
   @override
   Stream<List<TransactionEntity>> watchKhoang(

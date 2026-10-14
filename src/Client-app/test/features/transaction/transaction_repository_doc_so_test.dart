@@ -1,5 +1,4 @@
-/// `getAllRows` / `watchAllRows` của `TransactionRepository` — lối chuyển tiếp `transactionDao.getAll/watchAll` cho Trang
-/// chủ, Sổ giao dịch và màn Thêm giao dịch (spec bịt điểm rò 2026-10-10, mục 4.3).
+/// `getAll` / `watchAll` của `TransactionRepository` — Entity qua datasource (spec Entity Giao dịch + Ví 2026-10-14, 4.3), cho Trang chủ, Sổ giao dịch và màn Thêm giao dịch.
 library;
 
 import 'package:drift/native.dart';
@@ -31,20 +30,26 @@ void main() {
       syncEngine: _SyncEngineGia(),
       soDuVi: SoDuViService(db: db),
     );
-    await db.into(db.wallets).insert(
-        WalletsCompanion.insert(id: 'w1', idaccount: 10, name: 'Tiền mặt', updatedAt: moc));
+    await db.into(db.wallets).insert(WalletsCompanion.insert(
+        id: 'w1', idaccount: 10, name: 'Tiền mặt', updatedAt: moc));
     for (final (id, acc) in [('t1', 10), ('t2', 10), ('t3', 11)]) {
       await db.into(db.transactions).insert(TransactionsCompanion.insert(
-        id: id, idaccount: acc, walletId: 'w1', amount: 50000, type: 'chi', date: moc, updatedAt: moc,
-      ));
+            id: id,
+            idaccount: acc,
+            walletId: 'w1',
+            amount: 50000,
+            type: 'chi',
+            date: moc,
+            updatedAt: moc,
+          ));
     }
   });
   tearDown(() => db.close());
 
-  test('getAllRows / watchAllRows lọc theo tài khoản, trả hàng Drift', () async {
-    expect((await repo.getAllRows(10)).map((t) => t.id), containsAll(['t1', 't2']));
-    expect((await repo.getAllRows(10)).length, 2);
-    expect((await repo.watchAllRows(10).first).length, 2);
-    expect(await repo.getAllRows(11), hasLength(1));
+  test('getAll / watchAll lọc theo tài khoản, trả Entity', () async {
+    expect((await repo.getAll(10)).map((t) => t.id), containsAll(['t1', 't2']));
+    expect((await repo.getAll(10)).length, 2);
+    expect((await repo.watchAll(10).first).length, 2);
+    expect(await repo.getAll(11), hasLength(1));
   });
 }

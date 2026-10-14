@@ -22,6 +22,8 @@ class _RepoGia implements WalletRepository {
   Stream<List<Wallet>> watchAllRows(int idaccount) => throw UnimplementedError();
   @override
   Future<Wallet?> getRowById(String id) => throw UnimplementedError();
+  @override
+  Future<List<WalletEntity>> getActive(int idaccount) => throw UnimplementedError();
 
   final List<WalletEntity> _vi;
 

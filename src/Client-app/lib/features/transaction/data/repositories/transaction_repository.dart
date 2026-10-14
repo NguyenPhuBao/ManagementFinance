@@ -16,6 +16,13 @@ abstract class TransactionRepository {
   /// Như [getAllRows], dạng stream — Trang chủ và thẻ "chưa có danh mục" của Sổ giao dịch. `transactionDao.watchAll`.
   Stream<List<Transaction>> watchAllRows(int idaccount);
 
+  /// Mọi giao dịch của tài khoản (bỏ hàng `deletedAt`, mới nhất trước) — cho Thêm giao dịch (nhắc trùng, ví hay dùng)
+  /// và Trang chủ. Thay cho [getAllRows] từ 2026-10-14.
+  Future<List<TransactionEntity>> getAll(int idaccount);
+
+  /// Như [getAll], dạng stream — Trang chủ và thẻ "chưa có danh mục" của Sổ giao dịch.
+  Stream<List<TransactionEntity>> watchAll(int idaccount);
+
   Future<void> addTransaction(
     TransactionEntity transaction, {
     String? destinationWalletId,

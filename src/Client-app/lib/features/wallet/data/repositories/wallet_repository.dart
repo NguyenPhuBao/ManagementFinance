@@ -48,6 +48,10 @@ abstract class WalletRepository {
   /// mặt từ đầu).
   Future<double> getTotalBalance(int idaccount);
 
+  /// Ví đang hoạt động cho **bộ chọn ví** (không ví lưu trữ, không ví đã xoá) — `walletDao.getActive` qua datasource.
+  /// Bảng tra tên, Quản lý ví, gói số: dùng [getAll] / [watchAll]. Phân loại chỗ gọi ở `wallet_picker_sources_test`.
+  Future<List<WalletEntity>> getActive(int idaccount);
+
   // ── Hàng Drift cho trang (spec 2026-10-10 bịt điểm rò, mục 4.3) ───────────
   // Bốn lối CHUYỂN TIẾP, không luật. Trang cầm `List<Wallet>` (bộ chọn ví, bảng tra tên) nên repository trả đúng kiểu
   // ấy; đổi sang Entity là lan kiểu sang `TransactionLookup`, `BillPaymentSheet`… — nợ ghi ở G88.

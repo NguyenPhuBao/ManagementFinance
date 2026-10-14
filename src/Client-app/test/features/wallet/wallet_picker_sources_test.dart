@@ -20,9 +20,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// giống cách `currency_formatter_test` quét cả `lib/` để cấm dựng
 /// `NumberFormat` ngoài một chỗ.
 ///
-/// Từ 2026-10-10 trang không cầm DAO; phép đọc đi qua `WalletRepository` với tên
-/// có hậu tố `Rows`, viết trên một dòng `sl<WalletRepository>().…` để test này
-/// nhận diện.
+/// Từ 2026-10-10 trang không cầm DAO; phép đọc đi qua `WalletRepository` viết trên một dòng
+/// `sl<WalletRepository>().…` để test này nhận diện. Từ 2026-10-14 (Entity Giao dịch + Ví) tên hàm là
+/// `getActive` / `getAll` / `watchAll`; dạng `…Rows` còn được nhận tới khi rút hẳn.
 ///
 /// Thêm một chỗ gọi mới mà quên cập nhật danh sách này thì test đỏ, và người
 /// thêm buộc phải trả lời câu hỏi "chỗ này có được thấy ví lưu trữ không?".
@@ -70,6 +70,23 @@ void main() {
         'Tìm cặp ví trùng tên (G63) phải thấy cả ví lưu trữ: index '
             '`uq_wallet_account_name_active` của server không nhìn `Status`, nên '
             'ví lưu trữ vẫn giữ chỗ tên.',
+    'features/ai_edge/data/nguon_goi_so.dart':
+        'Gói số khối Nhận xét Trang chủ (bất biến ⑤ ví): tổng tài sản lọc bằng `viTinhVaoTong`, '
+            'phải nhận MỌI ví kể cả lưu trữ để tiền ngoài tổng nói đúng.',
+    'features/ai_edge/data/cong_cu_vi.dart':
+        'Tool AI kể ví: hàng gói số đi qua `viChoGoiSoTu`, tự xét `status` / `isDeleted` — '
+            'cùng nguồn với khối Nhận xét.',
+    'features/ai_edge/data/cong_cu_muc_tieu.dart':
+        'Tra ví NGUỒN của bộ trích tự động — ví ấy có thể đã lưu trữ, tool phải thấy để nói '
+            'đúng thay vì "không có ví".',
+    'features/wallet/presentation/bloc/wallet_cubit.dart':
+        'Màn Quản lý ví phải thấy cả hai nhóm để còn bỏ lưu trữ được (cùng lý do datasource).',
+    'features/wallet/presentation/pages/wallet_add_page.dart':
+        'Nạp ví hiện có để gạt công tắc mặc định và kiểm trùng tên — ví lưu trữ vẫn giữ chỗ '
+            'tên (bất biến ②).',
+    'features/wallet/data/services/default_account_data_initializer.dart':
+        'Seed hai ví cho tài khoản mới: phải thấy ví đã lưu trữ để không seed lại ví saving / '
+            'cash đã có.',
   };
 
   /// Các tệp là **bộ chọn ví** — chúng phải gọi `getActive`/`watchActive`.
@@ -101,7 +118,7 @@ void main() {
   /// rõ ràng là repository giao dịch / danh mục. (Dương tính giả — trường giữ repo giao dịch trong tệp có cả ví — thì
   /// phân loại tệp ấy vào `duocDocMoiVi` kèm lý do.)
   Set<String> tepDocViQuaTruong() {
-    final mau = RegExp(r'\.(getAllRows|watchAllRows)\(');
+    final mau = RegExp(r'\.(getAllRows|watchAllRows|getAll|watchAll)\(');
     return {
       for (final e in noiDung.entries)
         if (e.value.contains('WalletRepository') &&
@@ -109,7 +126,9 @@ void main() {
                 !d.trimLeft().startsWith('//') &&
                 mau.hasMatch(d) &&
                 !d.contains('TransactionRepository>()') &&
-                !d.contains('CategoryManagementRepository>()')))
+                !d.contains('CategoryManagementRepository>()') &&
+                // them_giao_dich_nguon đọc hàng chờ D1 qua sl<ThongBaoNguon>().getAll( — không phải ví.
+                !d.contains('ThongBaoNguon>()')))
           e.key
     };
   }
@@ -117,6 +136,8 @@ void main() {
   test('tiền đề: phép bắt theo trường thấy được một lối đọc ví giữ trong trường', () {
     expect(tepDocViQuaTruong(), contains('features/bill/presentation/pages/bill_page.dart'),
         reason: 'bill_page.dart đọc `sl<WalletRepository>().getAllRows(` — phép bắt phải thấy nó, nếu không regex hỏng.');
+    expect(tepDocViQuaTruong(), isNot(contains('features/transaction/data/them_giao_dich_nguon.dart')),
+        reason: 'Bộ chọn ví không được bị gắn nhãn "đọc mọi ví" vì dòng sl<ThongBaoNguon>().getAll(.');
   });
 
   test('không chỗ nào ngoài danh sách được đọc MỌI ví', () {
@@ -125,6 +146,8 @@ void main() {
       ...tepChua('walletDao.watchAll('),
       ...tepChua('WalletRepository>().getAllRows('),
       ...tepChua('WalletRepository>().watchAllRows('),
+      ...tepChua('WalletRepository>().getAll('),
+      ...tepChua('WalletRepository>().watchAll('),
       ...tepDocViQuaTruong(),
     };
 
@@ -145,7 +168,8 @@ void main() {
       expect(
           doc.contains('walletDao.getActive(') ||
               doc.contains('walletDao.watchActive(') ||
-              doc.contains('WalletRepository>().getActiveRows('),
+              doc.contains('WalletRepository>().getActiveRows(') ||
+              doc.contains('WalletRepository>().getActive('),
           isTrue,
           reason: 'Bộ chọn ví "$tep" không gọi getActive/watchActive, nên ví '
               'đã lưu trữ vẫn hiện ra cho người dùng chọn — và ghi được giao '
@@ -154,7 +178,9 @@ void main() {
           doc.contains('walletDao.getAll(') ||
               doc.contains('walletDao.watchAll(') ||
               doc.contains('WalletRepository>().getAllRows(') ||
-              doc.contains('WalletRepository>().watchAllRows('),
+              doc.contains('WalletRepository>().watchAllRows(') ||
+              doc.contains('WalletRepository>().getAll(') ||
+              doc.contains('WalletRepository>().watchAll('),
           isFalse,
           reason: 'Bộ chọn ví "$tep" còn một đường đọc MỌI ví. Hai đường song '
               'song là một trong hai chỗ sẽ lệch, im lặng.');

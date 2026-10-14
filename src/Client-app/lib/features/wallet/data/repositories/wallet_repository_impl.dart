@@ -40,6 +40,10 @@ class WalletRepositoryImpl implements WalletRepository {
   Future<Wallet?> getRowById(String id) => _walletDao.getById(id);
 
   @override
+  Future<List<WalletEntity>> getActive(int idaccount) =>
+      _localDataSource.getActive(idaccount);
+
+  @override
   Future<List<WalletEntity>> getAll(int idaccount) =>
       _localDataSource.getAll(idaccount);
 

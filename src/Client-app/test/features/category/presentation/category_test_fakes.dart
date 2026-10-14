@@ -228,6 +228,10 @@ class FakeTransactionRepository implements TransactionRepository {
   Future<List<Transaction>> getAllRows(int idaccount) => throw UnimplementedError();
   @override
   Stream<List<Transaction>> watchAllRows(int idaccount) => throw UnimplementedError();
+  @override
+  Future<List<TransactionEntity>> getAll(int idaccount) => throw UnimplementedError();
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) => throw UnimplementedError();
 
   final List<({TransactionEntity transaction, String? destinationWalletId})>
       added = [];

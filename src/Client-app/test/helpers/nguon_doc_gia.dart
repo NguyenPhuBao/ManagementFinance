@@ -14,6 +14,7 @@ import 'package:flowmoney/features/category/data/repositories/category_managemen
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 
 class ViRowsGia implements WalletRepository {
@@ -28,6 +29,20 @@ class ViRowsGia implements WalletRepository {
   @override
   Future<Wallet?> getRowById(String id) => db.walletDao.getById(id);
   @override
+  Future<List<WalletEntity>> getActive(int idaccount) async =>
+      (await db.walletDao.getActive(idaccount)).map(WalletEntity.fromDrift).toList();
+  @override
+  Future<List<WalletEntity>> getAll(int idaccount) async =>
+      (await db.walletDao.getAll(idaccount)).map(WalletEntity.fromDrift).toList();
+  @override
+  Stream<List<WalletEntity>> watchAll(int idaccount) =>
+      db.walletDao.watchAll(idaccount).map((rows) => rows.map(WalletEntity.fromDrift).toList());
+  @override
+  Future<WalletEntity?> getById(String id) async {
+    final r = await db.walletDao.getById(id);
+    return r == null ? null : WalletEntity.fromDrift(r);
+  }
+  @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
@@ -38,6 +53,12 @@ class GiaoDichRowsGia implements TransactionRepository {
   Future<List<Transaction>> getAllRows(int idaccount) => db.transactionDao.getAll(idaccount);
   @override
   Stream<List<Transaction>> watchAllRows(int idaccount) => db.transactionDao.watchAll(idaccount);
+  @override
+  Future<List<TransactionEntity>> getAll(int idaccount) async =>
+      (await db.transactionDao.getAll(idaccount)).map(TransactionEntity.fromDrift).toList();
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) =>
+      db.transactionDao.watchAll(idaccount).map((rows) => rows.map(TransactionEntity.fromDrift).toList());
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
