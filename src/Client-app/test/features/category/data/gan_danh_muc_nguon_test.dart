@@ -142,7 +142,7 @@ void main() {
       await db.transactionDao.updateRow(id, const TransactionsCompanion(note: Value('grab (sửa ở máy khác)')));
       final repo = _RepoGhiLai();
 
-      await apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: anhChup), categoryId: 'c-dc');
+      await apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(anhChup)), categoryId: 'c-dc');
 
       expect(repo.lanGoi, hasLength(1));
       final (before, after) = repo.lanGoi.single;
@@ -161,7 +161,7 @@ void main() {
       final repo = _RepoGhiLai();
 
       await expectLater(
-        apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: anhChup), categoryId: 'c-dc'),
+        apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(anhChup)), categoryId: 'c-dc'),
         throwsStateError,
       );
       expect(repo.lanGoi, isEmpty, reason: 'không được đè danh mục người dùng vừa gắn ở chỗ khác');
@@ -177,7 +177,7 @@ void main() {
     await ghiPhanHoiGan(
       store: store,
       idaccount: 7,
-      dong: DongGanDanhMuc(giaoDich: gd, doan: doan, lyDo: 'x'),
+      dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(gd), doan: doan, lyDo: 'x'),
       duDoan: duDoan,
       ketQua: kKetQuaGoiYKhac,
       chonCategoryId: 'c-an',

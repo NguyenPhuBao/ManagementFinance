@@ -6,11 +6,11 @@
 library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Transaction _gd(
+TransactionEntity _gd(
   DateTime ngay,
   double tien, {
   String note = 'Tiền nhà',
@@ -22,22 +22,18 @@ Transaction _gd(
   bool xoa = false,
   String id = '',
 }) =>
-    Transaction(
+    TransactionEntity(
       id: id.isEmpty ? '${ngay.toIso8601String()}-$tien-$note-$cat' : id,
       walletId: vi,
       idaccount: 10,
       categoryId: cat,
       amount: tien,
       type: type,
-      status: 'completed',
-      provider: 'Manual',
       note: note,
       date: ngay,
-      images: '',
       goalId: goalId,
       billId: billId,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: ngay,
       isDeleted: xoa,
     );
@@ -75,7 +71,7 @@ void main() {
     expect(r.single.ngayGanNhat, DateTime(2026, 11, 5));
   });
 
-  List<Transaction> baThang({double t3 = 3000000, String note = 'Tiền nhà'}) => [
+  List<TransactionEntity> baThang({double t3 = 3000000, String note = 'Tiền nhà'}) => [
         _gd(DateTime(2026, 9, 5), 3000000, note: note),
         _gd(DateTime(2026, 10, 5), 3000000, note: note),
         _gd(DateTime(2026, 11, 5), t3, note: note),
@@ -127,7 +123,7 @@ void main() {
 
   test('loại: billId · goalId · transfer · điều chỉnh số dư · ghi chú rỗng · ngày tương lai · đã xoá',
       () {
-    List<Transaction> voi(Transaction Function(DateTime) f) =>
+    List<TransactionEntity> voi(TransactionEntity Function(DateTime) f) =>
         [f(DateTime(2026, 9, 5)), f(DateTime(2026, 10, 5)), f(DateTime(2026, 11, 5))];
     expect(timKhoanLap(voi((d) => _gd(d, 100000)), now: now), hasLength(1),
         reason: 'đối chứng: cùng ba khoản, không bị loại thì ra một nhóm');

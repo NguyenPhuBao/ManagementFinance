@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/domain/khoan_lap.dart';
 import '../domain/de_xuat_hoa_don.dart';
 import 'models/bill_entity.dart';
@@ -41,9 +42,14 @@ class DeXuatHoaDonNguon {
       final now = clock();
       final tu = DateTime(now.year, now.month, now.day)
           .subtract(const Duration(days: kCuaSoKhoanLapNgay));
-      final giaoDich = await db.transactionDao.getByDateRange(idaccount, tu, now);
+      final giaoDich = [
+        for (final t in await db.transactionDao.getByDateRange(idaccount, tu, now)) TransactionEntity.fromDrift(t),
+      ];
       final hoaDon = [for (final b in await db.billDao.getAll(idaccount)) BillEntity.fromDrift(b)];
-      final phanHoi = await db.goiYHoaDonDao.getAll(idaccount);
+      final phanHoi = [
+        for (final p in await db.goiYHoaDonDao.getAll(idaccount))
+          (khoaNhom: p.khoaNhom, ketQua: p.ketQua, createdAt: p.createdAt),
+      ];
       return chonDeXuatHoaDon(
         ds: timKhoanLap(giaoDich, now: now),
         hoaDon: hoaDon,

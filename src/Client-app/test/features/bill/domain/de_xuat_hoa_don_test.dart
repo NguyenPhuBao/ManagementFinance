@@ -7,7 +7,7 @@ library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flowmoney/features/bill/domain/de_xuat_hoa_don.dart';
 import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
@@ -58,28 +58,19 @@ BillEntity _bill(
       updatedAt: DateTime(2026, 10, 1),
     );
 
-GoiYHoaDonPhanHoi _ph(String khoa, String ketQua, DateTime luc) => GoiYHoaDonPhanHoi(
-      id: '$khoa-$ketQua-${luc.toIso8601String()}',
-      idaccount: 10,
-      khoaNhom: khoa,
-      ketQua: ketQua,
-      createdAt: luc,
-    );
+PhanHoiGoiYHoaDon _ph(String khoa, String ketQua, DateTime luc) =>
+    (khoaNhom: khoa, ketQua: ketQua, createdAt: luc);
 
-Transaction _gd(DateTime ngay, {String note = 'Tiền nhà', String cat = 'c-nha'}) => Transaction(
+TransactionEntity _gd(DateTime ngay, {String note = 'Tiền nhà', String cat = 'c-nha'}) => TransactionEntity(
       id: '${ngay.toIso8601String()}-$note',
       walletId: 'v1',
       idaccount: 10,
       categoryId: cat,
       amount: 100000,
       type: 'chi',
-      status: 'completed',
-      provider: 'Manual',
       note: note,
       date: ngay,
-      images: '',
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: ngay,
       isDeleted: false,
     );
@@ -87,8 +78,8 @@ Transaction _gd(DateTime ngay, {String note = 'Tiền nhà', String cat = 'c-nha
 List<KhoanLap>? _chon({
   List<KhoanLap>? ds,
   List<BillEntity> hoaDon = const [],
-  List<GoiYHoaDonPhanHoi> phanHoi = const [],
-  List<Transaction> giaoDich = const [],
+  List<PhanHoiGoiYHoaDon> phanHoi = const [],
+  List<TransactionEntity> giaoDich = const [],
 }) =>
     chonDeXuatHoaDon(
       ds: ds ?? [_kl('tien nha'), _kl('netflix', cat: 'c-giai')],

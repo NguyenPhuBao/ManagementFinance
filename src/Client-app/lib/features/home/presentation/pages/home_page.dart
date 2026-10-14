@@ -149,8 +149,8 @@ class HomePage extends StatelessWidget {
                   }
 
                   final txStream = (currentUserId != null)
-                      ? sl<TransactionRepository>().watchAllRows(currentUserId)
-                      : Stream<List<Transaction>>.value([]);
+                      ? sl<TransactionRepository>().watchAll(currentUserId)
+                      : Stream<List<TransactionEntity>>.value([]);
                   // Tên ví/danh mục cho "Giao dịch gần đây" — cùng nội dung
                   // dòng với sổ giao dịch (`buildTransactionRowContent`).
                   final walletStream = (currentUserId != null)
@@ -160,7 +160,7 @@ class HomePage extends StatelessWidget {
                       ? sl<CategoryManagementRepository>().watchAllRows(accountId: currentUserId)
                       : Stream<List<Category>>.value(const []);
 
-                  return StreamBuilder<List<Transaction>>(
+                  return StreamBuilder<List<TransactionEntity>>(
                     stream: txStream,
                     builder: (context, snapshot) {
                       final transactions = snapshot.data ?? [];
@@ -398,7 +398,7 @@ class HomePage extends StatelessWidget {
 
   Widget _buildRecentTransactions(
     BuildContext context,
-    List<Transaction> transactions,
+    List<TransactionEntity> transactions,
     TransactionLookup lookup,
   ) {
     return Column(
@@ -455,10 +455,7 @@ class HomePage extends StatelessWidget {
         else
           ...transactions.map((tx) {
             // Cùng nội dung dòng với sổ giao dịch: danh mục, ví, icon/màu.
-            final content = buildTransactionRowContent(
-              TransactionEntity.fromDrift(tx),
-              lookup,
-            );
+            final content = buildTransactionRowContent(tx, lookup);
             return _buildTransactionItem(
               content,
               '${content.subtitle} • ${DateFormat('dd/MM').format(tx.date)}',
@@ -587,15 +584,15 @@ class HomePage extends StatelessWidget {
   /// dịch.
   Widget _buildNhanXet(BuildContext context, int? idaccount) {
     final txStream = idaccount != null
-        ? sl<TransactionRepository>().watchAllRows(idaccount)
-        : Stream<List<Transaction>>.value(const []);
+        ? sl<TransactionRepository>().watchAll(idaccount)
+        : Stream<List<TransactionEntity>>.value(const []);
     final walletStream = idaccount != null
         ? sl<WalletRepository>().watchAllRows(idaccount)
         : Stream<List<Wallet>>.value(const []);
     final budgetStream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)
         : Stream<List<BudgetView>>.value(const []);
-    return StreamBuilder<List<Transaction>>(
+    return StreamBuilder<List<TransactionEntity>>(
       stream: txStream,
       builder: (_, tx) => StreamBuilder<List<Wallet>>(
         stream: walletStream,

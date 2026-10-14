@@ -26,7 +26,7 @@
 /// dù tổng không đổi — đó là thứ [ViThieu] đo.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../../wallet/data/models/wallet_entity.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
@@ -183,7 +183,7 @@ DuBaoDongTien? duBaoCua({
   required List<BillEntity> hoaDon,
   required List<GoalEntity> mucTieu,
   required List<BudgetView> nganSach,
-  required List<Wallet> vi,
+  required List<WalletEntity> vi,
 }) {
   final viSong = [
     for (final v in vi)
@@ -256,7 +256,7 @@ List<CamKet> _camKetHoaDon(
   List<BillEntity> hoaDon, {
   required DateTime homNay,
   required DateTime cuoi,
-  required Map<String, Wallet> viTheoId,
+  required Map<String, WalletEntity> viTheoId,
   required bool Function(String?) tinhVaoTong,
 }) {
   // Hàng đã sinh kỳ sau thì kỳ sau tự có mặt trong danh sách — chỉ chiếu từ
@@ -323,7 +323,7 @@ List<CamKet> _camKetMucTieu(
   required DateTime now,
   required DateTime homNay,
   required DateTime cuoi,
-  required Map<String, Wallet> viTheoId,
+  required Map<String, WalletEntity> viTheoId,
   required bool Function(String?) tinhVaoTong,
 }) {
   final ra = <CamKet>[];
@@ -483,7 +483,7 @@ double _nganSachConLai(
 /// Trừ `soTien` đủ (không phải `tacDongTong`): theo ví thì tiền rời ví là
 /// thật dù tổng không đổi. Khoản trích cộng vào ví nhận. Cùng ngày thì trừ
 /// TRƯỚC cộng sau — bảo thủ, thà báo thừa một ngày còn hơn giấu.
-List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
+List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, WalletEntity> viTheoId) {
   final bienDong = <String, List<(DateTime, double)>>{};
   void ghi(String viId, DateTime ngay, double delta) =>
       bienDong.putIfAbsent(viId, () => []).add((ngay, delta));

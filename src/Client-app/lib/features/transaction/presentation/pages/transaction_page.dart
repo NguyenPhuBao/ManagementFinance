@@ -137,7 +137,7 @@ class _TransactionPageState extends State<TransactionPage> {
     _wallets = sl<WalletRepository>().watchAllRows(idaccount);
     _categories = sl<CategoryManagementRepository>().watchAllRows(accountId: idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
-        sl<TransactionRepository>().watchAllRows(idaccount).map(demChuaGan);
+        sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
         sl<ThongBaoNguon>().watchDemBienDong(idaccount);
   }

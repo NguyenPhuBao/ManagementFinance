@@ -16,7 +16,7 @@ import 'dart:math' as math;
 
 import '../../bill/domain/bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
-import '../../../core/database/app_database.dart';
+import '../data/models/transaction_entity.dart';
 import '../../analytics/domain/khoan_vao_thong_ke.dart';
 
 /// Số lần tối thiểu của một chuỗi — người dùng chốt 3.
@@ -110,7 +110,7 @@ String phanGhiChuCuaKhoa(String khoaNhom) =>
 /// không phải chi, không vào thống kê (chuyển · điều chỉnh · mở sổ · nạp mục
 /// tiêu dạng cũ), đã là hoá đơn / trích mục tiêu, ở tương lai, hoặc ghi chú rỗng
 /// sau chuẩn hoá (người dùng chốt: không gộp theo danh mục).
-String? khoaNhomCua(Transaction t, {required DateTime now}) {
+String? khoaNhomCua(TransactionEntity t, {required DateTime now}) {
   if (t.isDeleted || t.deletedAt != null) return null;
   if (t.type != 'chi') return null;
   if (!khoanVaoThongKe(loai: t.type, categoryId: t.categoryId, ghiChu: t.note)) {
@@ -130,7 +130,7 @@ int _soNgayTrongThang(DateTime d) => DateTime(d.year, d.month + 1, 0).day;
 class _Lan {
   final DateTime ngay;
   double soTien;
-  Transaction ganNhat;
+  TransactionEntity ganNhat;
   final List<String> vi;
   _Lan(this.ngay, this.soTien, this.ganNhat) : vi = [ganNhat.walletId];
 }
@@ -164,7 +164,7 @@ List<_Lan>? _chuoi(List<_Lan> lan, int min, int max, int trongVong, DateTime now
 /// Mọi khoản lặp trong [ds] (giao dịch của MỘT tài khoản). Tháng xét trước
 /// tuần; một nhóm ra nhiều nhất một kết quả. Thứ tự kết quả không có nghĩa —
 /// `chonDeXuatHoaDon` tự xếp.
-List<KhoanLap> timKhoanLap(List<Transaction> ds, {required DateTime now}) {
+List<KhoanLap> timKhoanLap(List<TransactionEntity> ds, {required DateTime now}) {
   final tu = _ngay(now).subtract(const Duration(days: kCuaSoKhoanLapNgay));
   final nhom = <String, Map<DateTime, _Lan>>{};
   for (final t in ds) {

@@ -77,7 +77,6 @@ const conChoKieu = <String, Set<String>>{
     'features/transaction/presentation/widgets/transaction_filter_bar.dart',
   },
   'Transaction': {
-    'features/home/presentation/pages/home_page.dart',
     'core/notification/de_xuat_thong_bao_nguon.dart',
   },
   'AppNotification': {
@@ -97,15 +96,11 @@ const conChoKieu = <String, Set<String>>{
 const conChoDomain = <String>{
   'features/ai_edge/domain/ap_dung_ke_hoach.dart',
   'features/ai_edge/domain/hang_danh_muc.dart',
-  'features/analytics/domain/du_bao_dong_tien.dart',
-  'features/bill/domain/de_xuat_hoa_don.dart',
   'features/category/domain/ban_sao_mac_dinh.dart',
   'features/category/domain/gan_hang_loat.dart',
   'features/goal/domain/goal_auto_deposit_runner.dart',
-  'features/home/domain/thu_chi_thang.dart',
   'features/transaction/domain/dien_san_bien_dong.dart',
   'features/transaction/domain/doc_cau_giao_dich.dart',
-  'features/transaction/domain/khoan_lap.dart',
   'features/transaction/domain/transaction_lookup.dart',
 };
 

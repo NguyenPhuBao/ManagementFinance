@@ -6,11 +6,12 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../../transaction/data/models/transaction_entity.dart';
 import 'phan_loai_ghi_chu.dart';
 
 /// Một dòng của màn duyệt: giao dịch chưa phân loại, kèm dự đoán của B1 nếu có.
 class DongGanDanhMuc {
-  final Transaction giaoDich;
+  final TransactionEntity giaoDich;
 
   /// `null` = không đoán được (sổ mỏng, ghi chú rỗng/lạ, hậu nghiệm thấp, cặp đang bị thôi gợi ý…).
   final DoanDanhMuc? doan;
@@ -25,14 +26,14 @@ class DongGanDanhMuc {
 ///
 /// Khoản do máy sinh (điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn, khoản chuyển) cố ý không có danh mục
 /// — nhận dạng qua `laGhiChuMay` của B1, không viết luật thứ hai.
-bool xetGan(Transaction t) =>
+bool xetGan(TransactionEntity t) =>
     !t.isDeleted &&
     t.deletedAt == null &&
     t.categoryId == null &&
     t.type != 'transfer' &&
     !laGhiChuMay(loai: t.type, categoryId: t.categoryId, ghiChu: t.note);
 
-int demChuaGan(List<Transaction> giaoDich) => giaoDich.where(xetGan).length;
+int demChuaGan(List<TransactionEntity> giaoDich) => giaoDich.where(xetGan).length;
 
 /// Danh mục gắn được cho một khoản theo chiều tiền: `chi` → {chi, vay_no}; `thu` → {thu, vay_no}.
 ///
@@ -56,7 +57,7 @@ Set<String> hopLeTheoChieu(String loai, List<Category> chonDuoc) {
 /// Thứ tự: dòng CÓ dự đoán trước (xác suất giảm dần) — người dùng duyệt phần máy đã làm trước; rồi dòng không có
 /// (ngày mới nhất trước).
 List<DongGanDanhMuc> dungDanhSachGan({
-  required List<Transaction> giaoDich,
+  required List<TransactionEntity> giaoDich,
   required List<Category> chonDuoc,
   required BoPhanLoaiGhiChu? mo,
   required Set<(String, String)> tatCap,

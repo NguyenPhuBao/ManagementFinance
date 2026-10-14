@@ -67,7 +67,7 @@ void main() {
       giaoDich: _GiaoDichGhiDb(db),
     );
     final anhChup = (await db.transactionDao.getById('gd1'))!;
-    await nguon.apDung(DongGanDanhMuc(giaoDich: anhChup), 'c-dc');
+    await nguon.apDung(DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(anhChup)), 'c-dc');
     expect((await db.transactionDao.getById('gd1'))!.categoryId, 'c-dc',
         reason: 'lớp bọc phải đẩy đúng dòng + categoryId xuống apDungGan và repo giao dịch');
   });

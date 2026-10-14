@@ -1,6 +1,6 @@
 // C1 — gắn danh mục hàng loạt: chọn giao dịch chưa phân loại và đoán theo chiều tiền (spec
 // `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §2).
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
@@ -13,7 +13,7 @@ import '../presentation/category_test_fakes.dart';
 
 var _dem = 0;
 
-Transaction _gd(
+TransactionEntity _gd(
   String note, {
   String type = 'chi',
   String? cat,
@@ -22,20 +22,16 @@ Transaction _gd(
   DateTime? deletedAt,
 }) {
   final d = ngay ?? DateTime(2026, 9, 10);
-  return Transaction(
+  return TransactionEntity(
     id: 'gd-${_dem++}',
     walletId: 'v1',
     idaccount: 10,
     categoryId: cat,
     amount: 50000,
     type: type,
-    status: 'completed',
-    provider: 'Manual',
     note: note,
     date: d,
-    images: '',
     syncStatus: 'synced',
-    syncRetryCount: 0,
     updatedAt: d,
     isDeleted: isDeleted,
     deletedAt: deletedAt,

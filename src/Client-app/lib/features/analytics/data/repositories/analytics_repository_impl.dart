@@ -9,7 +9,9 @@ import '../../../budget/domain/cua_so_nhin_lai.dart';
 import '../../../bill/data/models/bill_entity.dart';
 import '../../../bill/domain/bill_note.dart';
 import '../../../bill/domain/de_xuat_hoa_don.dart' show kGoiYDaTao;
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/khoan_lap.dart' show khoaNhomCua;
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../../goal/data/models/goal_entity.dart';
 import '../../domain/bao_cao_xuat.dart';
@@ -74,7 +76,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     List<Transaction>? txs;
     List<Category>? cats;
     List<BudgetView>? nganSach;
-    List<Wallet>? vi;
+    List<WalletEntity>? vi;
     List<BillEntity>? hoaDon;
     List<Goal>? mucTieu;
     // Nguồn ngân sách THỨ HAI, tra tại `at` chứ không tại `mocNganSach`. Mốc
@@ -144,7 +146,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           ..where((t) => t.idaccount.equals(idaccount)))
         .watch()
         .listen((rows) {
-      vi = rows;
+      vi = rows.map(WalletEntity.fromDrift).toList();
       push();
     }, onError: controller.addError);
 
@@ -251,7 +253,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     if (t.billId != null || t.goalId != null) return true;
     if (t.note.trimLeft().startsWith(kGhiChuTraHoaDon)) return true;
     if (khoaLapDaTao.isEmpty) return false;
-    final khoa = khoaNhomCua(t, now: now);
+    final khoa = khoaNhomCua(TransactionEntity.fromDrift(t), now: now);
     return khoa != null && khoaLapDaTao.contains(khoa);
   }
 
@@ -264,7 +266,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     required List<Transaction> txs,
     required List<Category> cats,
     required List<BudgetView> nganSach,
-    required List<Wallet> vi,
+    required List<WalletEntity> vi,
     required List<BillEntity> hoaDon,
     required List<Goal> mucTieu,
     required List<BudgetView> nganSachHomNay,

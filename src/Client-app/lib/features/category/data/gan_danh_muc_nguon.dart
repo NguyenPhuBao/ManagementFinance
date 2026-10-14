@@ -36,7 +36,7 @@ Future<DuLieuGanDanhMuc> taiDuLieuGan({
   required GoiYPhanHoiStore? phanHoi,
   required int idaccount,
 }) async {
-  final txs = await db.transactionDao.getAll(idaccount);
+  final txs = [for (final t in await db.transactionDao.getAll(idaccount)) TransactionEntity.fromDrift(t)];
   final chonDuoc = await danhMuc.selectableChildrenAll(accountId: idaccount);
   BoPhanLoaiGhiChu? mo;
   try {
@@ -77,10 +77,10 @@ Future<void> apDungGan({
   required String categoryId,
 }) async {
   final hienTai = await db.transactionDao.getById(dong.giaoDich.id);
-  if (hienTai == null || !xetGan(hienTai)) {
+  final before = hienTai == null ? null : TransactionEntity.fromDrift(hienTai);
+  if (before == null || !xetGan(before)) {
     throw StateError('Giao dịch ${dong.giaoDich.id} đã đổi từ lúc mở màn');
   }
-  final before = TransactionEntity.fromDrift(hienTai);
   await repo.updateTransaction(before, before.copyWith(categoryId: categoryId));
 }
 
