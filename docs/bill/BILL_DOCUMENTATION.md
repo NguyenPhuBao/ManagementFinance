@@ -79,7 +79,8 @@ lib/features/bill/
 │   │                           # thẻ tổng — hàm thuần
 │   ├── bill_auto_pay.dart      # (06/09, v17) Quyết định thuần của tự động
 │   │                           # thanh toán: đến lượt?, trả bao nhiêu?, khoá kỳ
-│   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
+│   │                           # (bill_auto_pay_runner.dart — bộ chạy — dời về
+│   │                           # data/services/ ngày 2026-10-14)
 │   ├── bill_chain.dart         # (06/09 tối) chuoiKyCua: chuỗi kỳ theo
 │   │                           # generatedFromBillId, mới nhất đứng đầu
 │   └── bill_note.dart          # kGhiChuTraHoaDon + ghiChuTraHoaDon(tên,
@@ -582,7 +583,7 @@ tắt và các bẫy.
 | Cột `bills.autoPayEnabled` (bool, mặc định false) — ✅ **đồng bộ** từ 2026-09-13, khoá `auto_pay` | `other_tables.dart`, migration `from < 17` không bật cho hoá đơn cũ |
 | Gỡ khoản trả bị server từ chối (`BILL_ALREADY_PAID`) | `data/services/bill_payment_conflict_resolver.dart` — mục **6.8** |
 | Quyết định thuần: `denLuotTuTra`, `quyetDinhTuTra`, `khoaKyTuTra`, `tranKyTuTraMoiLuot = 3`, `goiYTuTra` (2026-10-10, thay `kBillAutoPayHint`) | `domain/bill_auto_pay.dart` |
-| Bộ chạy `BillAutoPayRunner.chay(idaccount, now)` → `List<BillAutoPayEvent>` | `domain/bill_auto_pay_runner.dart`, gọi từ `NotificationScanner.scan()` qua closure `runAutoPays` (DI); **bỏ qua im lặng** kỳ có kỳ trùng đã đóng, và lượt quét gọi `gopKyTrung` **trước** nó (G87, mục 6.8) |
+| Bộ chạy `BillAutoPayRunner.chay(idaccount, now)` → `List<BillAutoPayEvent>` | `data/services/bill_auto_pay_runner.dart` (dời từ `domain/` 2026-10-14), gọi từ `NotificationScanner.scan()` qua closure `runAutoPays` (DI); **bỏ qua im lặng** kỳ có kỳ trùng đã đóng, và lượt quét gọi `gopKyTrung` **trước** nó (G87, mục 6.8) |
 | Hai loại thông báo `billAutoPaid` / `billAutoPayFailed`, nhóm `bill` | `notification_rules.dart`, `notification_prefs.dart` |
 | Lịch nhắc hệ điều hành đổi thân câu ("Mở app để hoá đơn được tự trả"), **cùng khoá** | `reminder_scheduler.dart` |
 | Công tắc **tắt sẵn** trên form Thêm và Sửa, dòng "Tự trả" trên danh sách | ba trang |
@@ -1076,7 +1077,7 @@ hằng số `0.66`.
 `NotificationScanner`): `Pending → Overdue` khi hạn đã qua, **và**
 `Overdue → Pending` khi hạn ≥ hôm nay. Chiều thứ hai cần vì form Sửa đổi được
 ngày bắt đầu, hạn tính lại theo chu kỳ đẩy ra tương lai thì cờ ở lại vĩnh
-viễn (`toUpdateCompanion` cố ý không đụng `payStatus`). Client không lộ vì
+viễn (`companionSuaTu` — `bill/data/models/bill_draft_companion.dart`, trước 2026-10-14 là `BillDraft.toUpdateCompanion` — cố ý không đụng `payStatus`). Client không lộ vì
 danh sách tính lại từ `dueDate`, nhưng cột này **có đi đồng bộ** nên Admin-web
 đọc sai — dữ liệu thật 06/09 có hai hoá đơn như thế, và chúng tự về `Pending`
 khi bản vá chạy trên máy ảo. **Mỗi chiều vẫn giữ điều kiện trạng thái** (chỉ
@@ -1184,7 +1185,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/domain/bill_draft_auto_pay_test.dart` | Cờ mặc định tắt; companion TẠO và SỬA đều **có mặt** cờ (vắng mặt là "giữ nguyên" và tắt không có tác dụng) |
 | `test/features/bill/data/repositories/bill_pay_occurred_at_test.dart` | Kỳ sau kế thừa cờ; `occurredAt` vào `date` không vào `updatedAt`; tương lai bị chặn |
 | `test/features/bill/domain/bill_auto_pay_test.dart` | Đến lượt: đúng ngày, không sớm, đã trả (cả hai cột)/xoá/thiếu ví/danh mục bị loại; quyết định đủ/thiếu/0; khoá theo ngày; trần 3 |
-| `test/features/bill/domain/bill_auto_pay_runner_test.dart` | Trả đúng kỳ, giao dịch mang ngày hạn, sinh kỳ sau kế thừa cờ; đúng ngày bất kỳ giờ; chưa tới thì không đụng; hai lượt không trả hai lần; **trả bù đúng trần 3**, lượt sau trả tiếp; dừng ngay khi ví thiếu; ví thiếu không đổi gì và lượt sau trả được; ví bị xoá; mỗi hoá đơn độc lập; không đụng tài khoản khác; hoàn tác vẫn được |
+| `test/features/bill/data/services/bill_auto_pay_runner_test.dart` | Trả đúng kỳ, giao dịch mang ngày hạn, sinh kỳ sau kế thừa cờ; đúng ngày bất kỳ giờ; chưa tới thì không đụng; hai lượt không trả hai lần; **trả bù đúng trần 3**, lượt sau trả tiếp; dừng ngay khi ví thiếu; ví thiếu không đổi gì và lượt sau trả được; ví bị xoá; mỗi hoá đơn độc lập; không đụng tài khoản khác; hoàn tác vẫn được |
 | `test/core/notification/notification_rules_bill_auto_pay_test.dart` | Hai loại, khoá theo kỳ, câu nêu tên/số tiền/ví, cửa sổ im lặng không nuốt, nhóm `bill` |
 | `test/features/bill/domain/bill_ky_trung_test.dart` | **G87** — kỳ trùng gộp theo **gốc chuỗi + ngày hạn** (năm kỳ 12/10 dưới ba cha → giữ một); kỳ đã trả không bao giờ bị gỡ; máy thấy một phần nhóm vẫn hội tụ; lần gốc qua hàng đã xoá, cha chưa kéo về; vòng không treo; `kyCungKyDaDong` |
 | `test/features/bill/bill_ky_trung_repository_test.dart` | **G87** — `gopKyTrung` xoá mềm + `pending`; cơ chế Pull ghi đè lệnh xoá rồi lượt gộp xoá lại; `payBill` từ chối kỳ có kỳ trùng đã trả; có gỡ thì hẹn đồng bộ |

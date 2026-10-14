@@ -9,6 +9,18 @@ diện không cầm hàng Drift, từng mảng một đợt — Hoá đơn → G
 thấy gì đổi**; cái đổi là từ repository trở lên, mảng Hoá đơn chỉ còn **một** kiểu dữ liệu (`BillEntity`), và test quét 27
 giữ cho nó không quay lại.
 
+> ✅ **Số đo sau thi công (2026-10-14, HEAD `a085deb0`; đếm bằng máy, đừng cộng dồn).** Thi công xong 6 commit mã
+> (`2a912871` quét 27 + ratchet · `f0db5cc6` `BillEntity` + companion · `1299f6f4` `paymentsOf` · `bad1ff73` Thêm / Sửa chở
+> `BillDraft` · `94142dea` runner về `data/services` · `a085deb0` `Bill` → `BillEntity` mọi nơi).
+> Tệp `domain/` import `core/database`: **24 → 12** (Hoá đơn 11 → **1** — `de_xuat_hoa_don.dart` còn cần `Transaction` +
+> `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch; mục 5 spec ghi "11 → 0" là sai, xem khối 🔧 kế hoạch). `Bill` Drift ở `presentation/` + `shared/`:
+> **0**. Lối chuyển tiếp trả hàng Drift: **11 → 10**. Entity: **5/14** mảng. `flutter test` 7.047 → **7.056** (+9 skip);
+> `flutter analyze` **20**. Dòng: `bill_entity.dart` 192 · `bill_draft_companion.dart` 78 · `bill_repository_impl.dart` 426.
+> Máy ảo `FlowMoney_16G` (APK trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác,
+> bỏ qua → hoàn tác đạt. Trang Hoá đơn có **hai** tab (kế hoạch ghi ba). Thẻ B2 *"Có vẻ là khoản lặp"* không hiện ở cả hai bản →
+> không kiểm được bằng ảnh. Bằng chứng đổi bản yếu: chỉ `Success` của `adb install` + hai APK khác SHA-1, không `dumpsys`.
+> `Iterable<Bill>` ở `wallet/data/vi_trung_ten_nguon.dart` còn lại **cố ý** (mục 7).
+
 ## 1. Quyết định đã chốt (trong chat, 2026-10-14)
 
 | # | Câu hỏi | Chốt | Lý do ngắn |

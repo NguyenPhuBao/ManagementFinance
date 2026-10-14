@@ -77,7 +77,7 @@ const int kTranKyChieu = 12;
 /// theo ngày) — chỉ tính, không sinh hàng. Hai nơi dùng: dự báo 30 ngày và tool
 /// `danh_sach_hoa_don` (kỳ tới); tách ra 2026-09-28 để tool không chép vòng lặp.
 ///
-/// Mỗi vòng dựng lại một `Bill` từ kỳ vừa chiếu để `anchorDay` đi theo chuỗi —
+/// Mỗi vòng dựng lại một `BillEntity` từ kỳ vừa chiếu để `anchorDay` đi theo chuỗi —
 /// cộng dồn từ kỳ trước là "ngày 31" tụt về 28 vĩnh viễn. Hoá đơn không lặp →
 /// rỗng. ⚠️ Người gọi tự lo việc [b] có phải HÀNG CUỐI CHUỖI không (hàng đã
 /// sinh kỳ sau thì kỳ sau là hàng thật, chiếu nữa là đếm đôi).

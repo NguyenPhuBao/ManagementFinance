@@ -213,7 +213,7 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   /// **Chiều ngược lại (`Overdue → Pending`) thêm ngày 2026-09-06.** Trước đó
   /// cờ chỉ đi một chiều, trong khi form Sửa đổi được ngày bắt đầu và hạn trả
   /// tính lại theo chu kỳ — đẩy hạn ra tương lai thì cờ ở lại vĩnh viễn.
-  /// `BillDraft.toUpdateCompanion` cố ý không đụng `payStatus` (form không hỏi
+  /// `companionSuaTu` (`bill/data/models/bill_draft_companion.dart`) cố ý không đụng `payStatus` (form không hỏi
   /// gì về nó) nên đường sửa không tự chữa được. Client không lộ ra vì danh
   /// sách tính lại từ `dueDate`, nhưng cột này **có đi đồng bộ** — dữ liệu
   /// thật 06/09 có hai hoá đơn mang `'Overdue'` với hạn ở tương lai.

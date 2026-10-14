@@ -610,6 +610,17 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-14)
 
+### 🧱 Entity Hoá đơn — G88 gạch 3, đợt 1/4 ĐÓNG (2026-10-14, 6 commit mã `2a912871` → `a085deb0`, chưa push)
+
+Spec `docs/superpowers/specs/2026-10-14-entity-hoa-don-design.md` (khối ✅ *"Số đo sau thi công"* đầu tệp); kế hoạch 7 task `plans/2026-10-14-entity-hoa-don.md` (gitignore); thi công bằng **agent con mỗi task**. Thuần đổi kiểu: thân hàm domain / widget / luật thông báo không đổi.
+
+- `BillEntity` (`bill/data/models/bill_entity.dart`) là kiểu **duy nhất** từ repository trở lên — domain, Bloc, trang, và 9 tệp ngoài mảng (thông báo, Phân tích, AI Edge, `reminder_scheduler`…). Ghi qua `BillDraft` (Dart thuần) → `companionTaoTu` / `companionSuaTu` (`bill/data/models/bill_draft_companion.dart`). `BillAutoPayRunner` về `bill/data/services/`. `paymentsOf` trả `TransactionEntity`. `BillRepository` thêm `getUpcoming`, `getAllIncludingDeleted`.
+- **Test quét 27** `core/ui/presentation_domain_khong_kieu_drift_test.dart`: `presentation/` + `shared/` không nhắc kiểu hàng Drift (danh sách chờ theo kiểu, chỉ giảm — `Bill` không còn khoá); `domain/` không import `core/database` (danh sách chờ chỉ giảm). Ratchet quét 25 nâng +1 ở ba tệp thông báo (về 0 ở gạch 5). Test quét mới lấy số **28**.
+- Đo bằng máy 2026-10-14: tệp `domain/` import `core/database` **24 → 12** (Hoá đơn 11 → **1**: `de_xuat_hoa_don.dart` cần `Transaction` + `GoiYHoaDonPhanHoi` — tháo ở đợt Giao dịch); `Bill` Drift ở `presentation/` + `shared/` **0**; lối chuyển tiếp trả hàng Drift **11 → 10**; Entity **5/14**. `bill_entity.dart` 192 dòng, `bill_draft_companion.dart` 78, `bill_repository_impl.dart` 426.
+- `flutter test` 7.047 → **7.056** (+9 skip), `flutter analyze` **20**. Máy ảo `FlowMoney_16G` (APK debug trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác và bỏ qua → hoàn tác đạt. Trang Hoá đơn có **hai** tab (kế hoạch ghi ba). Thẻ *"Có vẻ là khoản lặp"* (B2) không hiện ở cả hai bản — không kiểm được bằng ảnh. Bằng chứng đổi bản chỉ là `Success` của adb + hai APK khác SHA-1.
+- ⚠️ Còn **một** `Iterable<Bill>` (hàng Drift) ở `wallet/data/vi_trung_ten_nguon.dart` — **cố ý** (spec mục 7: cổng đọc của ví, không phải sót). Đừng "dọn".
+- Đợt kế: **Giao dịch + Ví** → Danh mục → Thông báo (gạch 3 còn 3/4).
+
 ### 🩹 G91 + G92 + G93 đóng (2026-10-14, chưa push)
 
 Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang, cộng một lỗi cùng gốc tìm ra khi điều tra G92; người dùng chọn sửa cả ba (TDD). Chi tiết ở thân từng mục `CLIENT_APP_KNOWN_GAPS.md`.
@@ -622,7 +633,7 @@ Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang, cộng một
 - `flutter test` 7.039 → **7.047** (+9 skip; G91 +1, G92 +5, G93 +2), `flutter analyze` **20**.
 - **Cùng ngày, trưa — Entity Hoá đơn (G88 gạch 3, đợt 1/4): spec + kế hoạch xong, chưa thi công.** Spec
   `specs/2026-10-14-entity-hoa-don-design.md` (người dùng duyệt 6 phần, `f45e6f4f`); kế hoạch 7 task theo đơn vị biên dịch
-  (gitignore), preflight xong. Người dùng chọn bàn giao thay vì thi công ngay — phiên sau hỏi lối (agent con / inline).
+  (gitignore), preflight xong. Người dùng chọn bàn giao thay vì thi công ngay — phiên sau hỏi lối (agent con / inline). ✅ **Đã thi công và đóng cùng ngày — xem khối 🧱 Entity Hoá đơn ngay trên.**
 
 ### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
 
@@ -807,7 +818,7 @@ lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus 
 
 | Việc | Đã làm | Chốt bằng |
 |---|---|---|
-| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi`), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
+| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi` — còn **10** từ 2026-10-14, `BillRepository.getById` nay trả `BillEntity`), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
 | 2. Tách hai trang | `analytics_page` 4.208 → **339** dòng + 14 tệp `widgets/phan_tich/`; `add_transaction_page` 3.107 → **2.007** + 7 tệp `widgets/them_giao_dich/` (spec ước ~1.800 — R15) | **test quét 23** `tep_presentation_khong_qua_dai_test.dart`, trần 1.200, `mienTru` 5 tệp chỉ giảm |
 | 3. Rút điều phối phiên | `PhienDieuPhoi` / `PhienDieuPhoiThat` (`core/auth/`, hook hàm); `AuthBloc` 560 → **377** dòng (kể docstring đầu lớp), `sl<` 23 → **0**; bỏ tham số `defaultAccountDataInitializer` (R3) | **test quét 24** `test/features/auth/auth_bloc_khong_sl_test.dart`; chủ sở hữu `start()` (quét 4) chuyển sang `phien_dieu_phoi_that.dart` |
 | 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |

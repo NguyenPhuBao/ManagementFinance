@@ -84,7 +84,7 @@ class BillRepositoryImpl implements BillRepository {
     DateTime? occurredAt,
     String? note,
   }) async {
-    // UI truyền vào ảnh chụp `Bill` mà nó đang giữ; bấm nút hai lần thì lần
+    // UI truyền vào ảnh chụp `BillEntity` mà nó đang giữ; bấm nút hai lần thì lần
     // thứ hai vẫn mang isPaid = false. Trạng thái thật phải đọc lại từ CSDL.
     final current = await dataSource.getBillById(bill.id);
     if (current == null) {
