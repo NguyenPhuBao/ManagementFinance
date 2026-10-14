@@ -141,4 +141,65 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
       );
     });
   });
+
+  it('2.6. [Tầng 1 & Tầng 2] Xóa mềm danh mục: Danh mục không biến mất, hiển thị badge Đã xóa và cột hành động hiện Đã xóa', async () => {
+    adminApi.deleteCategory.mockResolvedValueOnce({ data: { success: true } });
+    adminApi.getCategories
+      .mockResolvedValueOnce({ data: mockCategories })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 1,
+            name: 'Ăn uống',
+            classify: 'Chi',
+            keyword: 'an uong, com, pho',
+            is_default: true,
+            status: 'deleted',
+            delete_at: '2026-10-14T00:00:00Z',
+            create_at: '2026-01-01T00:00:00Z',
+          },
+          {
+            id: 2,
+            name: 'Lương & Thưởng',
+            classify: 'Thu',
+            keyword: 'luong, cong ty, thuong',
+            is_default: true,
+            status: 'active',
+            delete_at: null,
+            create_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+
+    render(<CategoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ăn uống')).toBeInTheDocument();
+    });
+
+    // Bấm nút xóa trên dòng của danh mục "Ăn uống"
+    const deleteBtns = screen.getAllByTitle('Xóa danh mục hệ thống');
+    fireEvent.click(deleteBtns[0]);
+
+    // Modal xác nhận xóa xuất hiện
+    expect(screen.getByText('Xác nhận xóa danh mục')).toBeInTheDocument();
+
+    // Nhấn nút xác nhận xóa
+    const confirmBtn = screen.getByRole('button', { name: /xác nhận xóa/i });
+    fireEvent.click(confirmBtn);
+
+    // Tầng 2 (System Impact): Gọi API xóa danh mục với id 1
+    await waitFor(() => {
+      expect(adminApi.deleteCategory).toHaveBeenCalledWith(1);
+    });
+
+    // Tầng 1 (UI Rendering & Interaction):
+    // Danh mục Ăn uống KHÔNG ĐƯỢC BIẾN MẤT khỏi giao diện
+    expect(screen.getByText('Ăn uống')).toBeInTheDocument();
+
+    // Xuất hiện badge/nhãn "Đã xóa"
+    await waitFor(() => {
+      expect(screen.getAllByText('Đã xóa').length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });

@@ -19,7 +19,7 @@ class AIOpsService {
 
     this._history = [];
     this._currentStatus = {
-      threatScore: 5,
+      threatScore: 0,
       status: 'NORMAL',
       isAnomaly: false,
       anomalies: [],
@@ -337,10 +337,14 @@ class AIOpsService {
   }
 
   getHistory(options = {}) {
-    const { range = 'realtime', from, to } = options;
+    if (!options.range && !options.from && !options.to && !options.aggregate) {
+      return [...this._history];
+    }
+    const { range = '10m', from, to } = options;
 
     let startTime = 0;
     let endTime = Date.now();
+    let bucketWidthMs = 10000; // 10s mặc định
 
     // QUY TẮC CỐT LÕI CỦA PO: Ưu tiên bộ lọc khoảng thời gian tùy biến (from & to)
     if (from && to) {
@@ -349,42 +353,134 @@ class AIOpsService {
 
       const parsedTo = new Date(to);
       if (typeof to === 'string' && to.length === 10) {
-        // YYYY-MM-DD -> vét đến cuối ngày
         parsedTo.setHours(23, 59, 59, 999);
       } else if (typeof to === 'string' && to.length === 7) {
-        // YYYY-MM -> vét đến ngày cuối cùng của tháng
         const [y, m] = to.split('-').map(Number);
         const lastDay = new Date(y, m, 0).getDate();
         parsedTo.setFullYear(y, m - 1, lastDay);
         parsedTo.setHours(23, 59, 59, 999);
       } else if (typeof to === 'string' && to.length === 4) {
-        // YYYY -> vét đến 31/12
         const y = Number(to);
         parsedTo.setFullYear(y, 11, 31);
         parsedTo.setHours(23, 59, 59, 999);
       }
       endTime = parsedTo.getTime();
-    } else if (range === 'day') {
+
+      const diffMs = Math.max(1000, endTime - startTime);
+      if (diffMs <= 15 * 60 * 1000) {
+        bucketWidthMs = 10000; // 10s
+      } else if (diffMs <= 90 * 60 * 1000) {
+        bucketWidthMs = 60000; // 1 phút
+      } else if (diffMs <= 36 * 3600 * 1000) {
+        bucketWidthMs = 30 * 60 * 1000; // 30 phút
+      } else if (diffMs <= 10 * 24 * 3600 * 1000) {
+        bucketWidthMs = 4 * 3600 * 1000; // 4 giờ
+      } else {
+        bucketWidthMs = 12 * 3600 * 1000; // 12 giờ
+      }
+    } else if (range === '1h') {
+      // 1 giờ qua: 60 mẫu dàn trải trong 60 phút (1p/mẫu, lấy max 1p)
+      startTime = Date.now() - 60 * 60 * 1000;
+      bucketWidthMs = 60000;
+    } else if (range === '24h' || range === 'day') {
+      // 24 giờ qua: 48 mẫu dàn trải trong 24 giờ (30p/mẫu, lấy max 30p)
       startTime = Date.now() - 24 * 3600 * 1000;
-    } else if (range === 'month') {
+      bucketWidthMs = 30 * 60 * 1000;
+    } else if (range === '7d') {
+      // 7 ngày qua: 4 giờ lấy 1 mẫu, 6 mẫu/ngày, tổng 48 mẫu (lấy max 4 giờ)
+      startTime = Date.now() - 7 * 24 * 3600 * 1000;
+      bucketWidthMs = 4 * 3600 * 1000;
+    } else if (range === '30d' || range === 'month') {
+      // 1 tháng qua: mỗi ngày 2 mẫu (12 giờ/mẫu, lấy max 12 giờ)
       startTime = Date.now() - 30 * 24 * 3600 * 1000;
+      bucketWidthMs = 12 * 3600 * 1000;
     } else if (range === 'year') {
       startTime = Date.now() - 365 * 24 * 3600 * 1000;
+      bucketWidthMs = 24 * 3600 * 1000;
     } else {
-      // 'realtime' (10 phút gần nhất)
+      // '10m' hoặc 'realtime' (10 phút qua: 60 mẫu, 10s/mẫu, lấy max 10s)
       startTime = Date.now() - 10 * 60 * 1000;
+      bucketWidthMs = 10000;
     }
 
     // NGUYÊN TẮC TRUNG THỰC DỮ LIỆU CỦA PO:
     // Tuyệt đối không sinh dữ liệu giả lập hay nội suy điểm nhân tạo.
-    // Chỉ lọc và trả về đúng những mẫu thực tế đã được hệ thống đo lường trong khoảng thời gian này.
-    const realHistory = (this._history || []).filter((item) => {
+    // Chỉ lọc các mẫu thực tế đã được đo lường trong khoảng thời gian này.
+    const realSamples = (this._history || []).filter((item) => {
       if (!item || !item.timestamp) return false;
       const t = new Date(item.timestamp).getTime();
       return !isNaN(t) && t >= startTime && t <= endTime;
     });
 
-    return realHistory;
+    if (realSamples.length === 0) {
+      return [];
+    }
+
+    // Gom nhóm mẫu theo từng bucket thời gian và lấy giá trị MAX đo được
+    const bucketMap = new Map();
+    for (const s of realSamples) {
+      const t = new Date(s.timestamp).getTime();
+      const bIndex = Math.floor((t - startTime) / bucketWidthMs);
+      if (!bucketMap.has(bIndex)) {
+        bucketMap.set(bIndex, []);
+      }
+      bucketMap.get(bIndex).push(s);
+    }
+
+    const aggregated = [];
+    const sortedBucketIndices = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+
+    for (const bIdx of sortedBucketIndices) {
+      const items = bucketMap.get(bIdx);
+      if (!items || items.length === 0) continue;
+
+      let maxAuth = 0;
+      let maxTraffic = 0;
+      let maxExploit = 0;
+      let maxResource = 0;
+      let maxThreat = 0;
+      let maxRpm = 0;
+      let maxCpu = 0;
+      let maxRam = 0;
+      let latestTime = items[0].timestamp;
+
+      for (const it of items) {
+        const vs = it.vectorScores || {};
+        const authVal = vs.auth !== undefined ? vs.auth : (it.failedLogins ? Math.min(100, it.failedLogins * 10) : 0);
+        const trafficVal = vs.traffic !== undefined ? vs.traffic : (it.requestsPerMin ? Math.min(100, Math.round(it.requestsPerMin / 30)) : 0);
+        const exploitVal = vs.exploit !== undefined ? vs.exploit : (it.malformedRequests ? Math.min(100, it.malformedRequests * 25) : 0);
+        const resourceVal = vs.resource !== undefined ? vs.resource : (it.cpuPercent || it.ramPercent ? Math.max(it.cpuPercent || 0, it.ramPercent || 0) : 0);
+        const threatVal = it.threatScore ?? Math.max(authVal, trafficVal, exploitVal, resourceVal);
+
+        if (authVal > maxAuth) maxAuth = authVal;
+        if (trafficVal > maxTraffic) maxTraffic = trafficVal;
+        if (exploitVal > maxExploit) maxExploit = exploitVal;
+        if (resourceVal > maxResource) maxResource = resourceVal;
+        if (threatVal > maxThreat) maxThreat = threatVal;
+        if ((it.requestsPerMin || 0) > maxRpm) maxRpm = it.requestsPerMin || 0;
+        if ((it.cpuPercent || 0) > maxCpu) maxCpu = it.cpuPercent || 0;
+        if ((it.ramPercent || 0) > maxRam) maxRam = it.ramPercent || 0;
+        latestTime = it.timestamp;
+      }
+
+      aggregated.push({
+        timestamp: latestTime,
+        threatScore: maxThreat,
+        status: maxThreat >= 80 ? 'CRITICAL' : maxThreat >= 60 ? 'WARNING' : 'NORMAL',
+        vectorScores: {
+          auth: maxAuth,
+          traffic: maxTraffic,
+          exploit: maxExploit,
+          resource: maxResource,
+        },
+        requestsPerMin: maxRpm,
+        cpuPercent: maxCpu,
+        ramPercent: maxRam,
+        isAnomaly: items.some((it) => it.isAnomaly),
+      });
+    }
+
+    return aggregated;
   }
 
   calibrate(options = {}) {

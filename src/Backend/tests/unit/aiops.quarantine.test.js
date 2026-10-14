@@ -52,7 +52,7 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     const list = q.getQuarantinedList();
 
     assert.strictEqual(list.length, 1);
-    assert.strictEqual(list[0].maskedIp, '192.168.xx.xx', 'IP must be masked to respect Data Security');
+    assert.strictEqual(list[0].maskedIp, '192.168.xxx.xxx', 'IP must be masked to respect Data Security');
     assert.strictEqual(list[0].reason, 'Dò mật khẩu Brute-Force');
     assert.ok(list[0].hash, 'Hash key must exist for admin unblocking action');
   });
@@ -138,7 +138,7 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     q.quarantine('118.69.12.34', 'DDoS Attack Burst', 60000);
 
     assert.strictEqual(emittedEvent, 'admin.security_blocked');
-    assert.strictEqual(emittedData.maskedIp, '118.69.xx.xx');
+    assert.strictEqual(emittedData.maskedIp, '118.69.xxx.xxx');
     assert.strictEqual(emittedData.reason, 'DDoS Attack Burst');
   });
 

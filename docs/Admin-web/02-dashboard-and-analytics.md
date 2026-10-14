@@ -117,7 +117,7 @@ for (const log of logs) {
 1. **Ràng buộc Thời gian Tương lai (`isFutureDate`):**
    - Bộ chọn ngày trên giao diện tự động vô hiệu hóa (disabled) các ngày, tháng, năm trong tương lai, ngăn chặn việc gửi truy vấn vô nghĩa lên database.
 2. **Giới hạn số lượng bản ghi bảng hoạt động (`activityLimit`):**
-   - Mặc định phân trang 5 bản ghi/trang để tối ưu thời gian phản hồi của trang ($< 50\text{ms}$).
+   - Mặc định phân trang 10 bản ghi/trang khi tải trang (có tùy chọn [5, 10, 20, 50]), phản hồi tối ưu ($< 50\text{ms}$).
 3. **Bảo vệ Bộ nhớ Đồ họa SVG:**
    - Biểu đồ đường SVG tương tác sử dụng thuộc tính `vectorEffect="non-scaling-stroke"` và thuật toán vẽ đường cong mềm Bezier mượt mà, giới hạn tối đa 31 điểm trên một khung nhìn nhằm đảm bảo FPS luôn đạt 60fps trên mọi trình duyệt.
 
@@ -142,6 +142,11 @@ for (const log of logs) {
    - Tự động rút gọn trang bằng dấu chấm lửng `...` (ví dụ: `1, 2, 3, ..., 15`) khi số trang vượt quá 5.
 4. **Bảng Hoạt Động Người Dùng Thời Gian Thực:**
    - Hiển thị đầy đủ Badge trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`), thời gian xử lý và tên người dùng thực hiện.
+5. **Cấu Trúc Bố Cục Trực Quan Mới (Standard Dashboard Layout):**
+   - **Hàng 1:** 4 Thẻ KPI vĩ mô (Tổng người dùng, Tổng danh mục, Uptime hệ thống, Người dùng mới).
+   - **Hàng 2 (Grid 2 cột):** Bảng Hoạt động gần đây (`lg:col-span-2`) nằm ngang hàng với Box Sức khỏe máy chủ `ServerHealthPanel` (`lg:col-span-1`).
+   - **Hàng 3:** Biểu đồ Tần suất đăng nhập (Full-width).
+   - **Hàng 4:** Biểu đồ Lưu lượng Request (Full-width, đồng bộ chiều cao và tỷ lệ hiển thị với Biểu đồ Đăng nhập).
 
 ---
 

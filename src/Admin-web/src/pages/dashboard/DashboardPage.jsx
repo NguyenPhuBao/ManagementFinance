@@ -444,11 +444,11 @@ const DashboardPage = () => {
   // 3. Table Hoạt động người dùng (Trang 1 = mới nhất, phân trang 1 -> 2 -> 3...)
   const [recentActivities, setRecentActivities] = useState([]);
   const [activityPage, setActivityPage] = useState(1);
-  const [activityLimit, setActivityLimit] = useState(5);
+  const [activityLimit, setActivityLimit] = useState(10);
   const [activityPagination, setActivityPagination] = useState({
     total: 0,
     page: 1,
-    limit: 5,
+    limit: 10,
     totalPages: 1,
   });
   const [loadingActivities, setLoadingActivities] = useState(false);
@@ -1052,8 +1052,9 @@ const DashboardPage = () => {
           <StatCard icon="person_add" title={t('dashboard.kpi.newUsers')} value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
 
-      {/* 1. Table: Hoạt động gần đây (Full-width, Phân trang 1 -> 2 -> 3, Trang 1 = mới nhất) */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
+      {/* 1. Hàng 2: Hoạt động gần đây (Trái, 2 cột) + Đo lường Sức khỏe máy chủ (Phải, 1 cột) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
           <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
               <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-[22px]">history</span>
@@ -1148,9 +1149,15 @@ const DashboardPage = () => {
             }}
             itemLabel="items"
           />
+        </div>
+
+        {/* Box đo lường sức khỏe máy chủ (Nằm ngang hàng với Bảng Hoạt động gần đây) */}
+        <div className="lg:col-span-1 w-full">
+          <ServerHealthPanel />
+        </div>
       </div>
 
-      {/* 2. Biểu đồ 1: Tần suất Đăng nhập (1 Hàng riêng, Full-width) */}
+      {/* 2. Hàng 3: Biểu đồ 1: Tần suất Đăng nhập (1 Hàng riêng, Full-width) */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
           
@@ -1194,9 +1201,10 @@ const DashboardPage = () => {
           </div>
       </div>
 
-      {/* 3. Giám sát hệ thống: Lưu lượng Request + Server Health Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+      {/* 3. Hàng 4: Biểu đồ 2: Lưu lượng Request (Đẩy lên 1 box riêng, Full-width, Kích thước độ dài & độ cao chuẩn với Biểu đồ Đăng nhập) */}
+      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-colors duration-500"></div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
               <div>
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
@@ -1250,11 +1258,6 @@ const DashboardPage = () => {
                   </p>
               </div>
           </div>
-        </div>
-
-        <div className="lg:col-span-1">
-          <ServerHealthPanel />
-        </div>
       </div>
     </div>
     </>

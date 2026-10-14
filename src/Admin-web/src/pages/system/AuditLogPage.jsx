@@ -22,7 +22,7 @@ const AuditLogPage = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -355,7 +355,7 @@ const AuditLogPage = () => {
           currentPage={page}
           pageSize={pageSize}
           total={total}
-          pageSizeOptions={[20, 50, 100, 200]}
+          pageSizeOptions={[10, 20, 50, 100, 200]}
           onPageChange={(p) => setPage(p)}
           onPageSizeChange={(newSize) => {
             setPageSize(newSize);

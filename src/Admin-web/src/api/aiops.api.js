@@ -62,6 +62,21 @@ const aiopsApi = {
   },
   clearIncidents: () => callAIOps('post', '/admin/aiops/incidents/clear'),
   quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
+  temporaryBlockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-ip', payload),
+  unblockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-ip', payload),
+  permanentBanIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/permanent-ip', payload),
+  temporaryBlockAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-account', payload),
+  unblockAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-account', payload),
+  permanentBanAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/permanent-account', payload),
+  getForensics: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.ipHash) qs.append('ipHash', params.ipHash);
+    if (params.username) qs.append('username', params.username);
+    if (params.page) qs.append('page', params.page);
+    if (params.limit) qs.append('limit', params.limit);
+    const queryString = qs.toString();
+    return callAIOps('get', `/admin/aiops/quarantine/forensics${queryString ? `?${queryString}` : ''}`);
+  },
 };
 
 export default aiopsApi;

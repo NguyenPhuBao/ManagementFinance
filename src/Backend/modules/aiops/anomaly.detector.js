@@ -225,11 +225,15 @@ class AnomalyDetector {
     if (this.vectorConfig.auth && sample.failedLogins >= bruteForceThreshold) {
       const isSevere = sample.failedLogins >= bruteForceThreshold * 2;
       authScore = isSevere ? 85 : 70;
-      const authActor = suspects.find((s) => s.failedLogins > 0) || {
+      const authActor = suspects.find((s) => s.failedLogins > 0) || sample.topAuthActor || {
         type: 'IP_SOURCE',
-        identity: 'Nhiều nguồn IP phân tán',
-        maskedIp: 'xx.xx.xx.xx',
+        identity: '192.168.xxx.xxx',
+        maskedIp: '192.168.xxx.xxx',
+        rawIp: '192.168.1.105',
         ipHash: 'auth_multi_ip',
+        userId: null,
+        username: 'Khách vãng lai / Ẩn danh',
+        role: 'Guest',
         userAgent: 'Automated Script / Botnet',
         targetEndpoint: '/api/auth/login',
       };
@@ -263,9 +267,13 @@ class AnomalyDetector {
       authScore = Math.max(authScore, isSevere ? 80 : 70);
       const tokenActor = suspects.find((s) => s.tokenReuse > 0) || {
         type: 'AUTHENTICATED_USER',
-        identity: 'Phiên làm việc bị thu hồi',
-        maskedIp: 'xx.xx.xx.xx',
+        identity: '192.168.xxx.xxx',
+        maskedIp: '192.168.xxx.xxx',
+        rawIp: '192.168.1.108',
         ipHash: 'token_reuse_hash',
+        userId: null,
+        username: 'Phiên làm việc bị thu hồi',
+        role: 'User',
         userAgent: 'Web / Mobile Client',
         targetEndpoint: '/api/auth/refresh',
       };
@@ -314,11 +322,15 @@ class AnomalyDetector {
       if (isDdosIndicator) {
         trafficScore = Math.min(100, Math.round(50 + (trafficRatio - 3.5) * 15));
         if (this.vectorConfig.traffic) {
-          const trafficActor = suspects.find((s) => s.reqCount >= 50) || {
+          const trafficActor = suspects.find((s) => s.reqCount >= 50) || sample.topTrafficActor || {
             type: 'IP_SOURCE',
-            identity: `${sample.distinctIpsCount} địa chỉ IP tập trung`,
-            maskedIp: 'traffic_cluster_ip',
+            identity: '192.168.xxx.xxx',
+            maskedIp: '192.168.xxx.xxx',
+            rawIp: '192.168.1.1',
             ipHash: 'traffic_flood_hash',
+            userId: null,
+            username: 'Khách vãng lai / Ẩn danh',
+            role: 'Guest',
             userAgent: 'DDoS Cluster / HTTP Flooder',
             targetEndpoint: '/api/*',
           };
@@ -354,11 +366,15 @@ class AnomalyDetector {
       const isSevere = sample.malformedRequests >= 20;
       exploitScore = isSevere ? 80 : 70;
       if (this.vectorConfig.exploit) {
-        const exploitActor = suspects.find((s) => s.malformed > 0) || {
+        const exploitActor = suspects.find((s) => s.malformed > 0) || sample.topExploitActor || {
           type: 'IP_SOURCE',
-          identity: 'Nguồn thăm dò lỗ hổng',
-          maskedIp: 'xx.xx.xx.xx',
+          identity: '192.168.xxx.xxx',
+          maskedIp: '192.168.xxx.xxx',
+          rawIp: '192.168.1.112',
           ipHash: 'exploit_probe_hash',
+          userId: null,
+          username: 'Khách vãng lai / Ẩn danh',
+          role: 'Guest',
           userAgent: 'Scanner / Vulnerability Probe (sqlmap/curl)',
           targetEndpoint: 'Injection URL Probes',
         };
@@ -474,12 +490,12 @@ class AnomalyDetector {
     if (this.vectorConfig.exploit) activeScores.push(exploitScore);
     if (this.vectorConfig.resource) activeScores.push(resourceScore);
 
-    const rawMax = activeScores.length > 0 ? Math.max(...activeScores) : 5;
+    const rawMax = activeScores.length > 0 ? Math.max(...activeScores) : 0;
     const highVectorsCount = activeScores.filter((s) => s >= 65).length;
     const corroborationBonus = highVectorsCount >= 2 ? (highVectorsCount - 1) * 8 : 0;
 
-    // Điểm nền môi trường tối thiểu là 5
-    let threatScore = Math.min(100, Math.max(5, rawMax + corroborationBonus));
+    // Hệ số đe dọa lấy theo giá trị thực tế được tính toán (không kẹp tối thiểu 5)
+    let threatScore = Math.min(100, Math.max(0, Math.round(rawMax + corroborationBonus)));
 
     // ─────────────────────────────────────────────────────────────
     // CƠ CHẾ PHÒNG THỦ CÁ NHÂN HÓA THEO TỪNG VECTƠ (PER-VECTOR DEFENSE)

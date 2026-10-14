@@ -54,6 +54,19 @@ classifyWorker.on('failed', (job, err) => {
   logger.error('Classify job failed', { jobId: job?.id, error: err.message });
 });
 
+classifyWorker.on('error', (err) => {
+  if (err?.message?.includes('max requests limit exceeded')) {
+    logger.error('[AI Worker] Redis Upstash quota limit exceeded (500k reached). Pausing worker to avoid loop.', {
+      error: err.message,
+    });
+    try {
+      classifyWorker.pause(true);
+    } catch (_) {}
+  } else {
+    logger.error('[AI Worker] Worker connection error', { error: err.message });
+  }
+});
+
 logger.info('AI Worker started — listening on queue: ai-classify-transaction');
 
 module.exports = { classifyWorker };

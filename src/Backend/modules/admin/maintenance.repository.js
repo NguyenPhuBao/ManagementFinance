@@ -131,19 +131,85 @@ class MaintenanceRepository {
   }
 
   /**
-   * Hủy phiên bảo trì theo lịch (chuyển ONGOING hoặc SCHEDULED -> CANCELLED)
+   * Cập nhật trạng thái một bản ghi bảo trì theo ID (dùng khi chuyển SCHEDULED -> ONGOING hoặc CANCELLED)
    */
-  async cancelScheduledRecord({ cancelled_by = 'admin', reason = 'Bị hủy hoặc bị bảo trì khẩn cấp ghi đè' } = {}) {
+  async updateRecordStatus(id, { status, ended_at = null, started_at = null, reason = null } = {}) {
+    if (!id) return null;
+    const endedAtIso = ended_at ? (ended_at instanceof Date ? ended_at.toISOString() : new Date(ended_at).toISOString()) : null;
+    const startedAtIso = started_at ? (started_at instanceof Date ? started_at.toISOString() : new Date(started_at).toISOString()) : null;
+
+    if (this.pool && typeof this.pool.query === 'function') {
+      try {
+        const setClauses = ['"status" = $1'];
+        const params = [status];
+        let idx = 2;
+
+        if (endedAtIso !== null) {
+          setClauses.push(`"ended_at" = $${idx++}`);
+          params.push(endedAtIso);
+        }
+        if (startedAtIso !== null) {
+          setClauses.push(`"started_at" = $${idx++}`);
+          params.push(startedAtIso);
+        }
+        if (reason !== null) {
+          setClauses.push(`"reason" = $${idx++}`);
+          params.push(reason);
+        }
+
+        params.push(id);
+        const query = `
+          UPDATE "maintenance_history"
+          SET ${setClauses.join(', ')}
+          WHERE "id" = $${idx}
+          RETURNING *;
+        `;
+        const res = await this.pool.query(query, params);
+        return res.rows[0] || null;
+      } catch (err) {
+        logger.error('[Maintenance Repository] updateRecordStatus DB error, fallback to memory', { error: err.message });
+      }
+    }
+
+    // Memory fallback
+    const item = this._inMemoryFallback.find((x) => x.id === id);
+    if (item) {
+      if (status) item.status = status;
+      if (endedAtIso !== null) item.ended_at = endedAtIso;
+      if (startedAtIso !== null) item.started_at = startedAtIso;
+      if (reason !== null) item.reason = reason;
+      return item;
+    }
+    return null;
+  }
+
+  /**
+   * Hủy phiên bảo trì theo lịch (chuyển SCHEDULED hoặc ONGOING theo lịch -> CANCELLED)
+   */
+  async cancelScheduledRecord({ id = null, cancelled_by = 'admin', reason = 'Bị hủy hoặc bị trùng lịch bảo trì khẩn cấp' } = {}) {
     const nowIso = new Date().toISOString();
     if (this.pool && typeof this.pool.query === 'function') {
       try {
-        const query = `
-          UPDATE "maintenance_history"
-          SET "ended_at" = $1, "status" = 'CANCELLED'
-          WHERE "status" = 'ONGOING' AND "type" = 'SCHEDULED'
-          RETURNING *;
-        `;
-        const res = await this.pool.query(query, [nowIso]);
+        let query;
+        let params;
+        if (id) {
+          query = `
+            UPDATE "maintenance_history"
+            SET "ended_at" = $1, "status" = 'CANCELLED'
+            WHERE "id" = $2
+            RETURNING *;
+          `;
+          params = [nowIso, id];
+        } else {
+          query = `
+            UPDATE "maintenance_history"
+            SET "ended_at" = $1, "status" = 'CANCELLED'
+            WHERE ("status" = 'SCHEDULED' OR ("status" = 'ONGOING' AND "type" = 'SCHEDULED'))
+            RETURNING *;
+          `;
+          params = [nowIso];
+        }
+        const res = await this.pool.query(query, params);
         return res.rows;
       } catch (err) {
         logger.error('[Maintenance Repository] cancelScheduledRecord DB error', { error: err.message });
@@ -152,7 +218,11 @@ class MaintenanceRepository {
 
     const updated = [];
     for (const item of this._inMemoryFallback) {
-      if (item.status === 'ONGOING' && item.type === 'SCHEDULED') {
+      if (id && item.id === id) {
+        item.ended_at = nowIso;
+        item.status = 'CANCELLED';
+        updated.push(item);
+      } else if (!id && (item.status === 'SCHEDULED' || (item.status === 'ONGOING' && item.type === 'SCHEDULED'))) {
         item.ended_at = nowIso;
         item.status = 'CANCELLED';
         updated.push(item);

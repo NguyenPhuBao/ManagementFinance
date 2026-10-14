@@ -302,6 +302,8 @@ const adminService = {
         created_by: isUserCat ? '***' : (c.is_default ? 'Hệ thống' : 'Người dùng'),
         created_by_name: isUserCat ? '***' : (c.is_default ? 'Hệ thống' : (c.account?.User?.fullname || null)),
         is_user_category: isUserCat,
+        status: c.delete_at ? 'deleted' : 'active',
+        delete_at: c.delete_at || null,
         created_at: c.create_at,
         updated_at: c.update_at,
       };

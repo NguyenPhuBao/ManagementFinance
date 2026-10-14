@@ -194,8 +194,13 @@ const adminRepository = {
     // Tuyệt đối không query hoặc trả về danh mục riêng tư của người dùng
     const where = {
       is_default: true,
-      delete_at: null,
     };
+
+    if (filters.status === 'active') {
+      where.delete_at = null;
+    } else if (filters.status === 'deleted') {
+      where.delete_at = { not: null };
+    }
 
     if (filters.keyword && typeof filters.keyword === 'string' && filters.keyword.trim()) {
       where.OR = [
@@ -222,6 +227,7 @@ const adminRepository = {
         icon: true,
         create_at: true,
         update_at: true,
+        delete_at: true,
         account: {
           select: {
             idaccount: true,

@@ -110,7 +110,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 1. **Giao Diện Quản Lý Người Dùng Chuẩn Enterprise AIOps Bento (`UserListPage.jsx` — Cập nhật v2.5):**
    - **Hero Header Bar:** Tích hợp icon nhận diện tròn gradient, huy hiệu Realtime Sync xanh lá nhấp nháy, nút Refresh tức thì.
    - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng người dùng, Đang hoạt động, Bị vô hiệu hóa, Chờ xóa 30 ngày (hỗ trợ click trực tiếp để chuyển nhanh bộ lọc).
-   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`) kèm số lượng badge thời gian thực.
+   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`, `Đã Xóa`) kèm số lượng badge thời gian thực. Sau khi xóa mềm, tài khoản vẫn hiển thị trên danh sách kèm nhãn "Đã xóa", không bị biến mất.
    - **Bảng Dữ Liệu Hiện Đại:** Bo góc mềm `rounded-2xl`, avatar người dùng sinh động, badges trạng thái pastel chuẩn màu (Emerald, Slate, Amber, Rose).
    - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo 4 khu vực đô thị trọng điểm: TP. Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ.
    - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt.

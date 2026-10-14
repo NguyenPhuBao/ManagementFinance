@@ -369,4 +369,42 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
     assert.strictEqual(result.anomalies.length, 0, 'Must NOT produce any anomalies when resource vector is OFF');
     assert.strictEqual(result.isAnomaly, false, 'isAnomaly must be false when resource vector is OFF and others normal');
   });
+
+  await t.test('10. Threat Score phản ánh giá trị thực tế được tính toán, không bị kẹp mặc định là 5', () => {
+    const detector = new AnomalyDetector();
+
+    // Khi toàn bộ chỉ số an toàn tuyệt đối (0 vi phạm, 0 lag, 0 lỗi)
+    const zeroSample = {
+      requestsPerMin: 0,
+      errorRate5xx: 0,
+      failedLogins: 0,
+      tokenReuseAttacks: 0,
+      malformedRequests: 0,
+      eventLoopLagMs: 0,
+      cpuPercent: 0,
+      ramPercent: 0,
+      dbPoolActive: 0,
+      loadSheddingCount: 0,
+      distinctIpsCount: 0,
+    };
+    const zeroResult = detector.evaluate(zeroSample);
+    assert.strictEqual(zeroResult.threatScore, 0, 'Threat Score phải là 0 khi không có rủi ro nào, không được mặc định là 5');
+
+    // Khi chỉ có lưu lượng nhẹ (traffic score < 5, các vector khác = 0)
+    const lowSample = {
+      requestsPerMin: 8,
+      errorRate5xx: 0,
+      failedLogins: 0,
+      tokenReuseAttacks: 0,
+      malformedRequests: 0,
+      eventLoopLagMs: 0,
+      cpuPercent: 0,
+      ramPercent: 0,
+      dbPoolActive: 0,
+      loadSheddingCount: 0,
+      distinctIpsCount: 1,
+    };
+    const lowResult = detector.evaluate(lowSample);
+    assert.ok(lowResult.threatScore < 5, `Threat Score phải tính theo giá trị thực (< 5): hiện tại là ${lowResult.threatScore}`);
+  });
 });

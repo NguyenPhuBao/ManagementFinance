@@ -89,8 +89,7 @@ const AIOpsPage = () => {
   const [hoveredPointIndex, setHoveredPointIndex] = useState(null);
 
   // Time Selection & Precision Range State (Multi-Vector Trend Chart)
-  const [timePreset, setTimePreset] = useState('realtime'); // 'realtime' | 'day' | 'month' | 'year'
-  const [customFilterType, setCustomFilterType] = useState('date'); // 'date' | 'month' | 'year'
+  const [timePreset, setTimePreset] = useState('10m'); // '10m' | '1h' | '24h' | '7d' | '30d'
   const [customRange, setCustomRange] = useState({
     from: '',
     to: '',
@@ -116,7 +115,7 @@ const AIOpsPage = () => {
   // Persistent Incident Journal (CSDL) & Phân Trang State
   const [incidentsList, setIncidentsList] = useState([]);
   const [incidentPage, setIncidentPage] = useState(1);
-  const [incidentPageSize, setIncidentPageSize] = useState(10);
+  const [incidentPageSize, setIncidentPageSize] = useState(5);
   const [incidentTotal, setIncidentTotal] = useState(0);
   const [incidentVectorFilter, setIncidentVectorFilter] = useState('all');
   const [incidentStatusFilter, setIncidentStatusFilter] = useState('all');
@@ -125,6 +124,88 @@ const AIOpsPage = () => {
   const [clearingIncidents, setClearingIncidents] = useState(false);
   const [quarantineModalTarget, setQuarantineModalTarget] = useState(null);
   const [quarantiningActor, setQuarantiningActor] = useState(false);
+
+  // Hồ Sơ Điều Tra An Ninh (Security Forensics & Incident Links N-N)
+  const [forensicsModal, setForensicsModal] = useState({
+    open: false,
+    ipHash: null,
+    maskedIp: null,
+    username: null,
+    loading: false,
+    incidents: [],
+    total: 0,
+    page: 1,
+    limit: 5,
+    activeFilter: 'all',
+  });
+
+  // Phân trang danh sách Nguồn theo dõi đặc biệt (Quarantine Table)
+  const [quarantinePage, setQuarantinePage] = useState(1);
+  const [quarantinePageSize, setQuarantinePageSize] = useState(5);
+
+  // Bộ đếm thời gian thực trên Client phục vụ đếm ngược và tự động mở khóa (mỗi 5s)
+  const [currentClientTime, setCurrentClientTime] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentClientTime(Date.now());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper chuẩn hóa hiển thị Masked IP theo chuẩn PO (192.168.xxx.xxx)
+  const formatMaskedIp = (raw) => {
+    if (!raw || raw === 'N/A' || raw === '--') return '192.168.xxx.xxx';
+    const clean = String(raw).replace(/^::ffff:/, '').trim();
+
+    // Nếu là loopback / localhost
+    if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') {
+      return '127.0.xxx.xxx';
+    }
+
+    // Nếu là mockup hoàn toàn bằng x (xx.xx.xx.xx hoặc xx.xx.xxx.xxx)
+    if (clean === 'xx.xx.xx.xx' || clean === 'xx.xx.xxx.xxx' || clean.startsWith('xx.xx.')) {
+      return '192.168.xxx.xxx';
+    }
+
+    // Nếu đã có chứa định dạng che mờ xxx (ví dụ 113.161.xxx.xxx, xxx.xxx.12.34)
+    if (clean.includes('xxx')) {
+      return clean;
+    }
+
+    // Nếu có 2 octet đầu là số hợp lệ (ví dụ: 113.161.xx.xx, 42.112.xxx.xxx, 192.168.1.15)
+    const matchPrefix = clean.match(/^(\d{1,3}\.\d{1,3})\./);
+    if (matchPrefix) {
+      return `${matchPrefix[1]}.xxx.xxx`;
+    }
+
+    // Nếu là IPv6
+    if (clean.includes(':')) {
+      const parts = clean.split(':');
+      if (parts.length > 2) {
+        return `${parts[0]}:${parts[1]}:xxxx:xxxx`;
+      }
+    }
+
+    // Các trường hợp mockup / placeholder (xx.xx.xx.xx, xx.xx.xxx.xxx, '1 địa chỉ IP tập trung', 'traffic_cluster_ip')
+    return '192.168.xxx.xxx';
+  };
+
+  // Helper hiển thị thời gian tạm khóa còn lại dạng thân thiện (X giờ Y phút)
+  const formatRemainingTime = (minutes) => {
+    if (minutes === null || minutes === undefined || isNaN(minutes)) return '--';
+    const m = Math.round(Number(minutes));
+    if (m <= 0) return 'Đã hết hạn tạm khóa';
+    if (m < 60) return `${m} phút`;
+    const hours = Math.floor(m / 60);
+    const remMin = m % 60;
+    return remMin > 0 ? `${hours} giờ ${remMin} phút` : `${hours} giờ`;
+  };
+
+  // Danh sách Nguồn theo dõi đặc biệt sau phân trang
+  const paginatedQuarantineList = useMemo(() => {
+    const start = (quarantinePage - 1) * quarantinePageSize;
+    return quarantineList.slice(start, start + quarantinePageSize);
+  }, [quarantineList, quarantinePage, quarantinePageSize]);
 
   // Socket.io connection
   const socket = useSocket();
@@ -141,7 +222,7 @@ const AIOpsPage = () => {
         aiopsApi.getHistory(historyParams),
         aiopsApi.getQuarantineList(),
         adminApi.getMaintenanceStatus(),
-        typeof aiopsApi.getVectorConfig === 'function' ? aiopsApi.getVectorConfig().catch(() => null) : Promise.resolve(null),
+        typeof aiopsApi.getVectorConfig === 'function' ? Promise.resolve(aiopsApi.getVectorConfig()).catch(() => null) : Promise.resolve(null),
       ]);
 
       const sData = statusRes?.data || statusRes;
@@ -276,9 +357,10 @@ const AIOpsPage = () => {
     setTimePreset(presetKey);
     setCustomRange((prev) => ({ ...prev, applied: false }));
     fetchHistoryFiltered({ preset: presetKey, customApplied: false });
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch, presetKey, '', '');
   };
 
-  // Xử lý áp dụng bộ lọc chính xác (Từ ... Đến ...)
+  // Xử lý áp dụng bộ lọc thời gian (Từ ... Đến ...)
   const handleApplyCustomRange = () => {
     if (!customRange.from || !customRange.to) {
       setFeedback({
@@ -297,19 +379,22 @@ const AIOpsPage = () => {
 
     setCustomRange((prev) => ({ ...prev, applied: true }));
     fetchHistoryFiltered({ from: customRange.from, to: customRange.to, customApplied: true });
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch, 'custom', customRange.from, customRange.to);
   };
 
-  // Xử lý hủy bỏ bộ lọc chính xác để dùng lại bộ select nhanh
+  // Xử lý hủy bỏ bộ lọc thời gian để dùng lại bộ chọn nhanh
   const handleClearCustomRange = () => {
     setCustomRange({ from: '', to: '', applied: false });
     fetchHistoryFiltered({ customApplied: false, preset: timePreset });
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch, timePreset, '', '');
   };
 
-  // Xử lý làm mới bộ lọc chính xác (Yêu cầu 4: Nút làm mới bên cạnh lọc chính xác)
+  // Xử lý làm mới bộ lọc thời gian
   const handleResetCustomRange = () => {
     setCustomRange({ from: '', to: '', applied: false });
     fetchHistoryFiltered({ customApplied: false, preset: timePreset });
-    setFeedback({ ok: true, msg: t('aiops.feedback.resetRange', 'Đã làm mới bộ lọc chính xác về trạng thái ban đầu.') });
+    fetchIncidents(1, incidentPageSize, incidentVectorFilter, incidentStatusFilter, incidentSearch, timePreset, '', '');
+    setFeedback({ ok: true, msg: t('aiops.feedback.resetRange', 'Đã làm mới bộ lọc thời gian về trạng thái ban đầu.') });
   };
 
   const fetchIncidents = async (
@@ -317,14 +402,25 @@ const AIOpsPage = () => {
     limit = incidentPageSize,
     vector = incidentVectorFilter,
     status = incidentStatusFilter,
-    search = incidentSearch
+    search = incidentSearch,
+    preset = timePreset,
+    fromVal = customRange.applied ? customRange.from : '',
+    toVal = customRange.applied ? customRange.to : ''
   ) => {
     try {
-      const res = await aiopsApi.getIncidents({ page, limit, vector, status, search });
+      const params = { page, limit, vector, status, search };
+      if (fromVal && toVal) {
+        params.from = fromVal;
+        params.to = toVal;
+      } else if (preset) {
+        params.range = preset;
+      }
+      const res = await aiopsApi.getIncidents(params);
       const data = res?.data || res;
-      if (data && data.incidents) {
-        setIncidentsList(data.incidents);
-        setIncidentTotal(data.total || 0);
+      const list = data?.incidents || data?.data || (Array.isArray(data) ? data : null);
+      if (list !== null && Array.isArray(list)) {
+        setIncidentsList(list);
+        setIncidentTotal(data.total ?? list.length ?? 0);
       }
     } catch (err) {
       console.error('[AIOpsPage] Error fetching incidents:', err);
@@ -420,8 +516,9 @@ const AIOpsPage = () => {
         hash: actorHash,
         ip: actorIdentity && !actorIdentity.includes('xx') ? actorIdentity : null,
         maskedIp: actorIdentity,
+        vector: quarantineModalTarget.vector || 'auth',
         reason: `Admin quarantine (${code})`,
-        durationMinutes: 15,
+        durationMinutes: 240,
       });
 
       const resData = res?.data || res;
@@ -439,10 +536,11 @@ const AIOpsPage = () => {
             {
               hash: resData.hash || actorHash,
               maskedIp: resData.maskedIp || actorIdentity,
+              vector: resData.vector || quarantineModalTarget.vector || 'auth',
               reason: resData.reason || `Admin quarantine (${code})`,
               bannedAt: resData.bannedAt || new Date().toISOString(),
-              expiresAt: resData.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-              remainingMinutes: 15,
+              expiresAt: resData.expiresAt || new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+              remainingMinutes: 240,
               hits: resData.hits || 1,
             },
             ...prev,
@@ -477,7 +575,7 @@ const AIOpsPage = () => {
 
         return {
           ...prev,
-          threatScore: metrics.threatScore ?? prev?.threatScore ?? 5,
+          threatScore: metrics.threatScore ?? prev?.threatScore ?? 0,
           status: metrics.threatStatus || prev?.status || 'NORMAL',
           vectorScores: metrics.vectorScores || prev?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
           vectorDefenses: metrics.vectorDefenses || prev?.vectorDefenses || {},
@@ -555,9 +653,19 @@ const AIOpsPage = () => {
       }
     };
 
+    const handleQuarantineUpdated = () => {
+      if (typeof aiopsApi.getQuarantineList === 'function') {
+        aiopsApi.getQuarantineList().then((res) => {
+          const qData = res?.data || res;
+          if (Array.isArray(qData)) setQuarantineList(qData);
+        }).catch(() => {});
+      }
+    };
+
     socket.on('admin.metrics_stream', handleMetricsStream);
     socket.on('admin.security_alert', handleAlert);
     socket.on('admin.security_blocked', handleBlocked);
+    socket.on('admin.quarantine_updated', handleQuarantineUpdated);
     socket.on('admin.anomaly_detected', handleAnomalyDetected);
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
     socket.on('system.maintenance_changed', handleMaintenanceChanged);
@@ -567,6 +675,7 @@ const AIOpsPage = () => {
       socket.off('admin.metrics_stream', handleMetricsStream);
       socket.off('admin.security_alert', handleAlert);
       socket.off('admin.security_blocked', handleBlocked);
+      socket.off('admin.quarantine_updated', handleQuarantineUpdated);
       socket.off('admin.anomaly_detected', handleAnomalyDetected);
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
       socket.off('system.maintenance_changed', handleMaintenanceChanged);
@@ -607,19 +716,156 @@ const AIOpsPage = () => {
     }
   };
 
-  // Xử lý mở khóa / gỡ chặn IP thủ công
-  const handleUnblock = async (hash) => {
-    if (!window.confirm(t('aiops.confirmUnblockMsg', 'Bạn có chắc muốn gỡ chặn và mở khóa kết nối cho IP này?'))) return;
+  // State theo dõi hành động đang thực thi trên từng nút IP / Tài khoản
+  const [quarantineActionLoading, setQuarantineActionLoading] = useState(null);
+
+  // Xử lý tạm khóa IP (Khóa 4 tiếng)
+  const handleTemporaryBlockIp = async (ipHash, maskedIp) => {
+    if (!window.confirm(`Bạn có chắc muốn TẠM KHÓA kết nối từ IP ${maskedIp || ''} trong vòng 4 giờ?`)) return;
+    const actionKey = `temp_ip_${ipHash}`;
     try {
-      setUnblockingHash(hash);
-      await aiopsApi.unblockQuarantine(hash);
-      setFeedback({ ok: true, msg: t('aiops.feedback.unblockSuccess', 'Đã gỡ chặn và khôi phục quyền truy cập cho nguồn IP thành công.') });
-      setQuarantineList(prev => prev.filter(x => x.hash !== hash));
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.temporaryBlockIp({ ipHash });
+      setQuarantineList(prev => prev.map(item => (item.ipHash === ipHash || item.hash === ipHash) ? { ...item, ipStatus: 'temporary', ipRemainingMinutes: 240, remainingMinutes: 240 } : item));
+      setFeedback({ ok: true, msg: `Đã tạm khóa IP ${maskedIp || ''} thành công.` });
     } catch (err) {
-      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || t('aiops.feedback.unblockError', 'Gỡ chặn thất bại.') });
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Tạm khóa IP thất bại.' });
     } finally {
-      setUnblockingHash(null);
+      setQuarantineActionLoading(null);
     }
+  };
+
+  // Xử lý mở khóa IP (Đồng bộ mọi dòng có cùng IP)
+  const handleUnblockIp = async (ipHash, maskedIp) => {
+    if (!window.confirm(t('aiops.confirmUnblockMsg', `Bạn có chắc muốn gỡ chặn và mở khóa kết nối cho địa chỉ IP ${maskedIp || ''}? Tất cả các dòng có cùng địa chỉ IP này sẽ được đồng bộ mở khóa.`))) return;
+    const actionKey = `unblock_ip_${ipHash}`;
+    try {
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.unblockIp({ ipHash });
+      // Optimistic Update: Cập nhật toàn bộ các dòng có cùng ipHash thành 'unlocked' và xóa ipRemainingMinutes
+      setQuarantineList(prev => prev.map(item => (item.ipHash === ipHash || item.hash === ipHash) ? { ...item, ipStatus: 'unlocked', ipRemainingMinutes: null, ipExpiresAt: null } : item));
+      setFeedback({ ok: true, msg: `Đã mở khóa IP ${maskedIp || ''} thành công trên toàn bộ hệ thống.` });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Gỡ chặn IP thất bại.' });
+    } finally {
+      setQuarantineActionLoading(null);
+    }
+  };
+
+  // Xử lý khóa vĩnh viễn IP (Đồng bộ mọi dòng có cùng IP)
+  const handlePermanentBanIp = async (ipHash, maskedIp) => {
+    if (!window.confirm(`Bạn có chắc muốn KHÓA VĨNH VIỄN địa chỉ IP ${maskedIp || ''}? Toàn bộ kết nối từ IP này sẽ bị chặn vĩnh viễn.`)) return;
+    const actionKey = `ban_ip_${ipHash}`;
+    try {
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.permanentBanIp({ ipHash });
+      setQuarantineList(prev => prev.map(item => (item.ipHash === ipHash || item.hash === ipHash) ? { ...item, ipStatus: 'permanent', ipRemainingMinutes: null, ipExpiresAt: null } : item));
+      setFeedback({ ok: true, msg: `Đã khóa vĩnh viễn IP ${maskedIp || ''} thành công.` });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Khóa vĩnh viễn IP thất bại.' });
+    } finally {
+      setQuarantineActionLoading(null);
+    }
+  };
+
+  // Xử lý tạm khóa Tài khoản (Khóa 4 tiếng)
+  const handleTemporaryBlockAccount = async (username, idaccount) => {
+    if (!window.confirm(`Bạn có chắc muốn TẠM KHÓA tài khoản [${username || idaccount}] trong vòng 4 giờ?`)) return;
+    const actionKey = `temp_acc_${username || idaccount}`;
+    try {
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.temporaryBlockAccount({ username, idaccount });
+      setQuarantineList(prev => prev.map(item => (item.username === username || (idaccount && item.idaccount === idaccount)) ? { ...item, accountStatus: 'temporary', accountRemainingMinutes: 240, remainingMinutes: 240 } : item));
+      setFeedback({ ok: true, msg: `Đã tạm khóa tài khoản [${username || idaccount}] thành công.` });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Tạm khóa tài khoản thất bại.' });
+    } finally {
+      setQuarantineActionLoading(null);
+    }
+  };
+
+  // Xử lý mở khóa Tài khoản (Đồng bộ mọi dòng có cùng Tài khoản & CSDL)
+  const handleUnblockAccount = async (username, idaccount) => {
+    if (!window.confirm(`Bạn có chắc muốn MỞ KHÓA tài khoản [${username || idaccount}]? Mọi dòng liên quan đến tài khoản này và trạng thái tài khoản trong CSDL sẽ được kích hoạt lại.`)) return;
+    const actionKey = `unblock_acc_${username || idaccount}`;
+    try {
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.unblockAccount({ username, idaccount });
+      setQuarantineList(prev => prev.map(item => (item.username === username || (idaccount && item.idaccount === idaccount)) ? { ...item, accountStatus: 'unlocked', accountRemainingMinutes: null, accountExpiresAt: null } : item));
+      setFeedback({ ok: true, msg: `Đã mở khóa tài khoản [${username || idaccount}] thành công.` });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Mở khóa tài khoản thất bại.' });
+    } finally {
+      setQuarantineActionLoading(null);
+    }
+  };
+
+  // Xử lý khóa vĩnh viễn Tài khoản (Đồng bộ mọi dòng có cùng Tài khoản & CSDL)
+  const handlePermanentBanAccount = async (username, idaccount) => {
+    if (!window.confirm(`Bạn có chắc muốn KHÓA VĨNH VIỄN tài khoản [${username || idaccount}]? Tài khoản sẽ bị vô hiệu hóa trong CSDL và chặn đăng nhập vĩnh viễn.`)) return;
+    const actionKey = `ban_acc_${username || idaccount}`;
+    try {
+      setQuarantineActionLoading(actionKey);
+      await aiopsApi.permanentBanAccount({ username, idaccount });
+      setQuarantineList(prev => prev.map(item => (item.username === username || (idaccount && item.idaccount === idaccount)) ? { ...item, accountStatus: 'permanent', accountRemainingMinutes: null, accountExpiresAt: null } : item));
+      setFeedback({ ok: true, msg: `Đã khóa vĩnh viễn tài khoản [${username || idaccount}] thành công.` });
+    } catch (err) {
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Khóa tài khoản thất bại.' });
+    } finally {
+      setQuarantineActionLoading(null);
+    }
+  };
+
+  // Fallback tương thích ngược
+  const handleUnblock = async (hash) => {
+    return handleUnblockIp(hash, '');
+  };
+
+  // Xử lý nạp và mở Modal Hồ Sơ Điều Tra An Ninh N-N
+  const fetchForensicsLogs = async (ipHash, username, page = 1, filterType = 'all') => {
+    try {
+      setForensicsModal(prev => ({ ...prev, loading: true }));
+      const params = { page, limit: 5 };
+      if (filterType === 'ip') {
+        if (ipHash) params.ipHash = ipHash;
+      } else if (filterType === 'username') {
+        if (username && username !== 'all' && username !== 'N/A') params.username = username;
+      } else {
+        if (ipHash) params.ipHash = ipHash;
+        else if (username && username !== 'all' && username !== 'N/A') params.username = username;
+      }
+      const res = await aiopsApi.getForensics(params);
+      const data = res?.data || res || {};
+      const incidents = Array.isArray(data.incidents) ? data.incidents : (Array.isArray(data) ? data : []);
+      const total = typeof data.total === 'number' ? data.total : incidents.length;
+      setForensicsModal(prev => ({
+        ...prev,
+        loading: false,
+        incidents,
+        total,
+        page,
+        activeFilter: filterType,
+      }));
+    } catch (err) {
+      setForensicsModal(prev => ({ ...prev, loading: false }));
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Không thể tải hồ sơ điều tra an ninh.' });
+    }
+  };
+
+  const handleOpenForensics = (ipHash, maskedIp, username) => {
+    setForensicsModal({
+      open: true,
+      ipHash: ipHash || null,
+      maskedIp: maskedIp || 'IP N/A',
+      username: username || null,
+      loading: true,
+      incidents: [],
+      total: 0,
+      page: 1,
+      limit: 5,
+      activeFilter: 'all',
+    });
+    fetchForensicsLogs(ipHash, username, 1, 'all');
   };
 
   // Xử lý tái hiệu chuẩn đường chuẩn theo phần cứng thực tế
@@ -672,7 +918,7 @@ const AIOpsPage = () => {
     }
   };
 
-  const threatScore = statusData?.threatScore ?? 5;
+  const threatScore = statusData?.threatScore ?? 0;
   const currentStatus = statusData?.status || 'NORMAL';
   const targetConcurrency = statusData?.targetConcurrency || selectedConcurrency || 1000;
   const vectorScores = statusData?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 };
@@ -778,7 +1024,7 @@ const AIOpsPage = () => {
       if (vectorConfig.traffic !== false) activeForComp.push(trafficScore);
       if (vectorConfig.exploit !== false) activeForComp.push(exploitScore);
       if (vectorConfig.resource !== false) activeForComp.push(resourceScore);
-      const fallbackComp = activeForComp.length > 0 ? Math.max(...activeForComp) : 5;
+      const fallbackComp = activeForComp.length > 0 ? Math.max(...activeForComp) : 0;
       const compScore = d.threatScore ?? fallbackComp;
 
       const getY = (val) => height - 25 - ((Math.min(100, Math.max(0, val)) - minVal) / (maxVal - minVal)) * 130;
@@ -857,158 +1103,150 @@ const AIOpsPage = () => {
     };
   }, [historyData, vectorConfig, t]);
 
-  // Cấu hình và tính toán vạch số liệu trục X (Yêu cầu 3 của PO)
+  // Cấu hình và tính toán vạch số liệu trục X (Chuẩn hóa bước nhảy 5 mẫu cho 10m/1h và 4 mẫu cho 24h/7d/30d)
   const xAxisConfig = useMemo(() => {
     const width = 800;
     const padding = 35;
     const usableWidth = width - 2 * padding;
 
-    // A. Nếu người dùng áp dụng Bộ Lọc Chính Xác (Custom Precision Range)
+    // A. Ưu tiên Bộ Lọc Thời Gian (Custom Time Range)
     if (customRange.applied && customRange.from && customRange.to) {
-      if (customFilterType === 'date') {
-        const d1 = new Date(customRange.from);
-        const d2 = new Date(customRange.to);
-        const diffMs = Math.abs(d2.getTime() - d1.getTime());
-        const diffDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+      const d1 = new Date(customRange.from).getTime();
+      const d2 = new Date(customRange.to).getTime();
+      const diffMs = Math.max(1000, d2 - d1);
 
-        let ticks = [];
-        if (diffDays === 1) {
-          ticks = [{ x: width / 2, label: 'Ngày 1' }];
-        } else if (diffDays <= 12) {
-          ticks = Array.from({ length: diffDays }, (_, i) => ({
-            x: padding + (i / (diffDays - 1)) * usableWidth,
-            label: `${i + 1}`,
-          }));
-        } else {
-          const numTicks = 7;
-          ticks = Array.from({ length: numTicks }, (_, i) => {
-            const dayNum = Math.round(1 + (i / (numTicks - 1)) * (diffDays - 1));
-            return {
-              x: padding + (i / (numTicks - 1)) * usableWidth,
-              label: `${dayNum}`,
-            };
+      let unit = t('common.minute', 'Phút');
+      const ticks = [];
+
+      if (diffMs <= 90 * 60 * 1000) {
+        // <= 1.5 giờ: 60 mẫu, 5 mẫu đánh 1 lần (0 -> 5 -> 10 -> ... -> 60)
+        unit = t('common.minute', 'Phút');
+        const step = 5;
+        const totalSamples = 60;
+        for (let i = 0; i <= totalSamples; i += step) {
+          ticks.push({
+            x: padding + (i / totalSamples) * usableWidth,
+            label: String(i),
           });
         }
-        return {
-          title: t('aiops.xAxis.byDay', { days: diffDays }, `Theo Ngày (1 -> ${diffDays} ngày)`),
-          unit: t('common.day', 'Ngày'),
-          ticks,
-        };
-      }
-
-      if (customFilterType === 'month') {
-        const [y1, m1] = customRange.from.split('-').map(Number);
-        const [y2, m2] = customRange.to.split('-').map(Number);
-        const diffMonths = Math.max(1, (y2 - y1) * 12 + (m2 - m1) + 1);
-
-        let ticks = [];
-        if (diffMonths === 1) {
-          ticks = [{ x: width / 2, label: '1' }];
-        } else if (diffMonths <= 12) {
-          ticks = Array.from({ length: diffMonths }, (_, i) => ({
-            x: padding + (i / (diffMonths - 1)) * usableWidth,
-            label: `${i + 1}`,
-          }));
-        } else {
-          const numTicks = 7;
-          ticks = Array.from({ length: numTicks }, (_, i) => {
-            const mNum = Math.round(1 + (i / (numTicks - 1)) * (diffMonths - 1));
-            return {
-              x: padding + (i / (numTicks - 1)) * usableWidth,
-              label: `${mNum}`,
-            };
+      } else if (diffMs <= 36 * 3600 * 1000) {
+        // <= 36 giờ: 48 mẫu, 4 mẫu đánh 1 lần (0 -> 4 -> 8 -> ... -> 48)
+        unit = t('common.hour', 'Giờ');
+        const step = 4;
+        const totalSamples = 48;
+        for (let i = 0; i <= totalSamples; i += step) {
+          ticks.push({
+            x: padding + (i / totalSamples) * usableWidth,
+            label: String(i),
           });
         }
-        return {
-          title: t('aiops.xAxis.byMonth', { months: diffMonths }, `Theo Tháng (1 -> ${diffMonths} tháng)`),
-          unit: t('common.month', 'Tháng'),
-          ticks,
-        };
-      }
-
-      if (customFilterType === 'year') {
-        const y1 = parseInt(customRange.from, 10);
-        const y2 = parseInt(customRange.to, 10);
-        const diffYears = Math.max(1, y2 - y1 + 1);
-
-        let ticks = [];
-        if (diffYears === 1) {
-          ticks = [{ x: width / 2, label: `${y1}` }];
-        } else if (diffYears <= 8) {
-          ticks = Array.from({ length: diffYears }, (_, i) => ({
-            x: padding + (i / (diffYears - 1)) * usableWidth,
-            label: `${y1 + i}`,
-          }));
-        } else {
-          const numTicks = 6;
-          ticks = Array.from({ length: numTicks }, (_, i) => {
-            const yr = Math.round(y1 + (i / (numTicks - 1)) * (diffYears - 1));
-            return {
-              x: padding + (i / (numTicks - 1)) * usableWidth,
-              label: `${yr}`,
-            };
+      } else {
+        // > 36 giờ: 4 mẫu đánh 1 lần (0 -> 4 -> 8 -> ... -> 48)
+        unit = t('common.day', 'Ngày');
+        const step = 4;
+        const totalSamples = 48;
+        for (let i = 0; i <= totalSamples; i += step) {
+          ticks.push({
+            x: padding + (i / totalSamples) * usableWidth,
+            label: String(i),
           });
         }
-        return {
-          title: t('aiops.xAxis.byYear', { y1, y2 }, `Theo Năm (${y1} -> ${y2})`),
-          unit: t('common.year', 'Năm'),
-          ticks,
-        };
       }
+
+      return {
+        title: t('aiops.chart.title', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro'),
+        unit,
+        ticks,
+      };
     }
 
     // B. Bộ Chọn Thời Gian Quan Sát (Presets):
-    // Thời gian thực: 1 -> 30 mẫu
-    // Ngày: 1 -> 24 giờ
-    // Tháng: 1 -> 30 ngày
-    // Năm: 1 -> 12 tháng
-    if (timePreset === 'day') {
-      const keyHours = [1, 4, 8, 12, 16, 20, 24];
+    // 10 phút, 1 giờ: 5 mẫu đánh 1 lần (0 -> 5 -> 10 -> 15 -> ... -> 60)
+    // 24 giờ, 7 ngày, 1 tháng: 4 mẫu đánh 1 lần (0 -> 4 -> 8 -> 12 -> ... -> 48)
+    if (timePreset === '1h') {
+      const step = 5;
+      const totalSamples = 60;
+      const ticks = [];
+      for (let i = 0; i <= totalSamples; i += step) {
+        ticks.push({
+          x: padding + (i / totalSamples) * usableWidth,
+          label: String(i),
+        });
+      }
       return {
-        title: t('aiops.xAxis.day24h', 'Ngày (1 -> 24 Giờ)'),
+        title: t('aiops.chart.preset1h', '1 giờ qua'),
+        unit: t('common.minute', 'Phút'),
+        ticks,
+      };
+    }
+
+    if (timePreset === '24h' || timePreset === 'day') {
+      const step = 4;
+      const totalSamples = 48;
+      const ticks = [];
+      for (let i = 0; i <= totalSamples; i += step) {
+        ticks.push({
+          x: padding + (i / totalSamples) * usableWidth,
+          label: String(i),
+        });
+      }
+      return {
+        title: t('aiops.chart.preset24h', '24 giờ qua'),
         unit: t('common.hour', 'Giờ'),
-        ticks: keyHours.map((h) => ({
-          x: padding + ((h - 1) / 23) * usableWidth,
-          label: `${h}`,
-        })),
+        ticks,
       };
     }
 
-    if (timePreset === 'month') {
-      const keyDays = [1, 5, 10, 15, 20, 25, 30];
+    if (timePreset === '7d') {
+      const step = 4;
+      const totalSamples = 48;
+      const ticks = [];
+      for (let i = 0; i <= totalSamples; i += step) {
+        ticks.push({
+          x: padding + (i / totalSamples) * usableWidth,
+          label: String(i),
+        });
+      }
       return {
-        title: t('aiops.xAxis.month30d', 'Tháng (1 -> 30 Ngày)'),
+        title: t('aiops.chart.preset7d', '7 ngày qua'),
         unit: t('common.day', 'Ngày'),
-        ticks: keyDays.map((d) => ({
-          x: padding + ((d - 1) / 29) * usableWidth,
-          label: `${d}`,
-        })),
+        ticks,
       };
     }
 
-    if (timePreset === 'year') {
-      const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    if (timePreset === '30d' || timePreset === 'month') {
+      const step = 4;
+      const totalSamples = 60;
+      const ticks = [];
+      for (let i = 0; i <= totalSamples; i += step) {
+        ticks.push({
+          x: padding + (i / totalSamples) * usableWidth,
+          label: String(i),
+        });
+      }
       return {
-        title: t('aiops.xAxis.year12m', 'Năm (1 -> 12 Tháng)'),
-        unit: t('common.month', 'Tháng'),
-        ticks: months.map((m) => ({
-          x: padding + ((m - 1) / 11) * usableWidth,
-          label: `${m}`,
-        })),
+        title: t('aiops.chart.preset30d', '1 tháng qua'),
+        unit: t('common.day', 'Ngày'),
+        ticks,
       };
     }
 
-    // Mặc định: realtime (1 -> 30 Mẫu)
-    const keySamples = [1, 5, 10, 15, 20, 25, 30];
+    // Mặc định: 10 phút qua (10m / realtime: 60 mẫu, 5 mẫu đánh 1 lần)
+    const step = 5;
+    const totalSamples = 60;
+    const ticks = [];
+    for (let i = 0; i <= totalSamples; i += step) {
+      ticks.push({
+        x: padding + (i / totalSamples) * usableWidth,
+        label: String(i),
+      });
+    }
     return {
-      title: t('aiops.xAxis.realtimeSamples', 'Thời gian thực (1 -> 30 Mẫu)'),
-      unit: t('common.sample', 'Mẫu'),
-      ticks: keySamples.map((s) => ({
-        x: padding + ((s - 1) / 29) * usableWidth,
-        label: `${s}`,
-      })),
+      title: t('aiops.chart.preset10m', '10 phút qua'),
+      unit: t('common.minute', 'Phút'),
+      ticks,
     };
-  }, [timePreset, customRange, customFilterType, t]);
+  }, [timePreset, customRange, t]);
 
   // Fallback tương thích ngược
   const chartSvgPath = chartSvgPaths.composite;
@@ -1022,9 +1260,6 @@ const AIOpsPage = () => {
             <span className="material-symbols-outlined text-primary text-[32px]">security</span>
             {t('aiops.title', 'AIOps Sentinel — Giám Sát Máy Học & Phòng Vệ Tự Động')}
           </h1>
-          <p className="font-body-md text-on-surface-variant mt-1">
-            {t('aiops.subtitle', 'Học baseline trực tuyến, tự động phát hiện xâm nhập & chặn đứng nguồn request bất thường từ Client-app')}
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -1178,20 +1413,16 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">group</span>
-              {t('aiops.scaler.title', 'Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải (Target Concurrency Scaler)')}
+              {t('aiops.scaler.title', 'Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải')}
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {t('aiops.scaler.subtitle', 'Admin cập nhật số lượng người dùng đồng thời kỳ vọng (1,000 - 2,000+). Hệ thống tự động hiệu chỉnh trần RPM và ngưỡng tường lửa theo thời gian thực.')}
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-medium text-slate-500">{t('aiops.scaler.quickPresetLabel', 'Mẫu chọn nhanh:')}</span>
             {[
               { label: t('aiops.scaler.preset500', '500 Người'), val: 500 },
-              { label: t('aiops.scaler.preset1000', '1,000 Người (Chuẩn)'), val: 1000 },
-              { label: t('aiops.scaler.preset2000', '2,000 Người (Cao điểm)'), val: 2000 },
-              { label: t('aiops.scaler.preset5000', '5,000 Người (Lớn)'), val: 5000 },
+              { label: t('aiops.scaler.preset1000', '1.000 Người'), val: 1000 },
+              { label: t('aiops.scaler.preset5000', '5.000 Người'), val: 5000 },
+              { label: t('aiops.scaler.preset10000', '10.000 Người'), val: 10000 },
             ].map((preset) => (
               <button
                 key={preset.val}
@@ -1216,7 +1447,7 @@ const AIOpsPage = () => {
         {/* Form tùy chỉnh & 3 thẻ thông số suy diễn */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
           {/* Form nhập quy mô tùy biến */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-center space-y-2">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 {t('aiops.scaler.inputLabel', 'Số người dùng đồng thời (N)')}
@@ -1244,9 +1475,6 @@ const AIOpsPage = () => {
                   <span>{t('aiops.scaler.applyBtn', 'Áp Dụng')}</span>
                 </button>
               </div>
-            </div>
-            <div className="text-[10px] text-slate-500">
-              {t('aiops.scaler.currentApplied', 'Quy mô đang áp dụng:')} <strong className="text-primary font-mono">{targetConcurrency.toLocaleString('vi-VN')}</strong> {t('aiops.scaler.unitCcu', 'CCU')}
             </div>
           </div>
 
@@ -1403,36 +1631,25 @@ const AIOpsPage = () => {
                 </text>
               </svg>
 
-              <div className="flex items-center justify-between w-44 text-[10px] font-semibold text-slate-500 mt-1">
-                <span>{t('aiops.gauge.safe', '0 (An toàn)')}</span>
-                <span>{t('aiops.gauge.elevated', '60 (Tăng cao)')}</span>
-                <span>{t('aiops.gauge.warning', '80 (Cảnh báo)')}</span>
-                <span>{t('aiops.gauge.critical', '90+ (Nguy cấp)')}</span>
+              {/* Chú thích thang điểm: dạng lưới 2x2 badges gọn gàng, tránh dàn ngang chen chúc */}
+              <div className="grid grid-cols-2 gap-1.5 w-full max-w-[240px] text-[10px] font-medium text-slate-600 mt-2">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span>{t('aiops.gauge.safe', '0-59: An toàn')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span>{t('aiops.gauge.elevated', '60-79: Tăng cao')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-orange-50 text-orange-800 border border-orange-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  <span>{t('aiops.gauge.warning', '80-89: Cảnh báo')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-50 text-red-800 border border-red-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>{t('aiops.gauge.critical', '90+: Nguy cấp')}</span>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Khuyến nghị hành động */}
-          <div className="pt-3 border-t border-outline-variant/60 text-xs space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span>{t('aiops.gauge.compositeFormula', 'Công thức tổng hợp:')}</span>
-              <code className="font-mono font-semibold text-slate-700">{t('aiops.gauge.compositeFormulaDetail', 'max(Vectơ) + Bonus kết hợp')}</code>
-            </div>
-            <div>
-              <span className="font-semibold text-on-surface">{t('aiops.gauge.defenseLabel', 'Phòng vệ Sentinel: ')}</span>
-              <span className="font-bold text-[11px]" style={{ color: theme.color }}>
-                {isEmergencyResourceRisk
-                  ? t('aiops.recommendations.resourceRisk', '🚨 [TÀI NGUYÊN] NGUY CƠ SẬP DÂY CHUYỀN (Lag > 250ms & 5xx > 15%) — ĐỀ XUẤT BẢO TRÌ KHẨN CẤP')
-                  : vectorScores.exploit >= 70
-                  ? t('aiops.recommendations.exploitDetected', '⚔️ [KHAI THÁC] PHÁT HIỆN INJECTION/TRAVERSAL — ĐÃ NGẮT HTTP 403 & PHONG TỎA IP 30 PHÚT')
-                  : vectorScores.auth >= 70
-                  ? t('aiops.recommendations.authDetected', '🛡️ [XÁC THỰC] PHÁT HIỆN BRUTE-FORCE/TOKEN HIJACK — ĐÃ CÔ LẬP NGUỒN IP TẠI GATEWAY')
-                  : vectorScores.traffic >= 70
-                  ? t('aiops.recommendations.trafficDetected', '⚡ [LƯU LƯỢNG] LƯU LƯỢNG VƯỢT TRẦN CCU — KÍCH HOẠT ADAPTIVE RATE-LIMITING')
-                  : recommendedAction === 'INVESTIGATE'
-                  ? t('aiops.recommendations.anomalyInvestigate', '⚠️ PHÁT HIỆN BẤT THƯỜNG — NGUỒN ĐÃ BỊ TỰ ĐỘNG CÔ LẬP, THEO DÕI LOGS')
-                  : t('aiops.recommendations.safeSystem', '✅ HỆ THỐNG AN TOÀN — CƠ CHẾ PHÒNG VỆ 4 VECTOR ĐANG HOẠT ĐỘNG ỔN ĐỊNH')}
-              </span>
             </div>
           </div>
         </div>
@@ -1444,48 +1661,46 @@ const AIOpsPage = () => {
               <span className="material-symbols-outlined text-[18px] text-red-500">shield_with_heart</span>
               {t('aiops.signals.attackSignalsTitle', 'Tín Hiệu Xâm Nhập & Tấn Công')}
             </h2>
-            <span className="text-[10px] text-slate-500">{t('aiops.signals.window10s', 'Cửa sổ 10 giây')}</span>
+            <span className="text-[10px] text-slate-500">
+              {t('aiops.signals.windowFrequency', { n: statusData?.windowSeconds || 10 }, `Tần suất: ${statusData?.windowSeconds || 10} Giây`)}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             {/* Failed Logins */}
-            <div className={`p-3 rounded-xl border ${sample.failedLogins >= 5 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
+            <div className={`p-3 rounded-xl border flex flex-col justify-center ${sample.failedLogins >= 5 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.failedLogins', 'Đăng nhập sai')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.failedLogins ?? 0}</span>
                 <span className="text-[10px] text-slate-400">{t('aiops.signals.times', 'lần')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.failedLoginsDesc', 'Brute-Force Auth (Auto-ban ≥ 5)')}</div>
             </div>
 
             {/* Token Reuse Attacks */}
-            <div className={`p-3 rounded-xl border ${sample.tokenReuseAttacks >= 1 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
+            <div className={`p-3 rounded-xl border flex flex-col justify-center ${sample.tokenReuseAttacks >= 1 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.tokenReuse', 'Tái dùng Token thu hồi')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.tokenReuseAttacks ?? 0}</span>
                 <span className="text-[10px] text-slate-400">{t('aiops.signals.times', 'lần')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.tokenReuseDesc', 'Token Hijacking (Auto-ban)')}</div>
             </div>
 
             {/* Malformed Requests */}
-            <div className={`p-3 rounded-xl border ${sample.malformedRequests >= 3 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
+            <div className={`p-3 rounded-xl border flex flex-col justify-center ${sample.malformedRequests >= 3 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.malformedReq', 'Request độc hại (SQLi)')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.malformedRequests ?? 0}</span>
                 <span className="text-[10px] text-slate-400">{t('aiops.signals.samples', 'mẫu')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.malformedReqDesc', 'Injection (Auto-ban ≥ 3)')}</div>
             </div>
 
             {/* Distinct IP Count */}
-            <div className="p-3 rounded-xl border bg-surface-container-lowest border-outline-variant/60">
+            <div className="p-3 rounded-xl border bg-surface-container-lowest border-outline-variant/60 flex flex-col justify-center">
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.ipDispersion', 'Độ phân tán IP')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.distinctIpsCount ?? 0}</span>
                 <span className="text-[10px] text-slate-400">{t('aiops.signals.ips', 'IPs')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.ipDispersionDesc', 'IP Entropy (Zero PII)')}</div>
             </div>
           </div>
         </div>
@@ -1497,22 +1712,20 @@ const AIOpsPage = () => {
               <span className="material-symbols-outlined text-[18px] text-primary">memory</span>
               {t('aiops.signals.resilienceTitle', 'Sức Chịu Tải & Phần Cứng')}
             </h2>
-            <span className="text-[10px] text-slate-500">{t('aiops.signals.nodeEngine', 'Node.js Engine')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             {/* Event Loop Lag */}
-            <div className={`p-3 rounded-xl border ${sample.eventLoopLagMs >= 100 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
+            <div className={`p-3 rounded-xl border flex flex-col justify-center ${sample.eventLoopLagMs >= 100 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.eventLoopLag', 'Event Loop Lag')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.eventLoopLagMs ?? 0}</span>
                 <span className="text-[10px] text-slate-400">{t('aiops.signals.unitMs', 'ms')}</span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.eventLoopLagDesc', 'Trễ vòng lặp sự kiện')}</div>
             </div>
 
             {/* CPU Usage */}
-            <div className={`p-3 rounded-xl border ${sample.cpuPercent >= 85 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
+            <div className={`p-3 rounded-xl border flex flex-col justify-center ${sample.cpuPercent >= 85 ? 'bg-amber-50 border-amber-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.cpuPercent', 'CPU Hệ Thống')}</div>
               <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
                 <span>{sample.cpuPercent ?? 0}%</span>
@@ -1522,21 +1735,23 @@ const AIOpsPage = () => {
                   </span>
                 ) : null}
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.cpuPercentDesc', 'Tải đa nhân xử lý')}</div>
             </div>
 
             {/* RAM Usage */}
             <div className={`p-3 rounded-xl border ${sample.ramPercent >= 90 ? 'bg-red-50 border-red-200' : 'bg-surface-container-lowest border-outline-variant/60'}`}>
               <div className="text-[11px] text-slate-500 font-medium">{t('aiops.signals.ramPercent', 'Bộ nhớ RAM')}</div>
-              <div className="text-lg font-bold text-on-surface mt-1 flex items-baseline justify-between">
-                <span>{sample.ramPercent ?? 0}%</span>
+              <div className="text-base font-bold text-on-surface mt-1 font-mono">
                 {sample.ramUsedMb && sample.ramTotalMb ? (
-                  <span className="text-[11px] font-mono text-slate-500 font-normal">
+                  <span>
                     {sample.ramUsedMb.toLocaleString()} / {sample.ramTotalMb.toLocaleString()} MB
                   </span>
-                ) : null}
+                ) : (
+                  <span>-- / -- MB</span>
+                )}
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{t('aiops.signals.ramPercentDesc', 'Nguy cơ Memory Leak')}</div>
+              <div className="text-[10px] text-slate-500 mt-1">
+                {t('aiops.signals.memoryLeakRisk', { percent: sample.ramPercent ?? 0 }, `Nguy cơ Memory Leak: ${sample.ramPercent ?? 0}%`)}
+              </div>
             </div>
 
             {/* Lưu lượng Request */}
@@ -1560,13 +1775,7 @@ const AIOpsPage = () => {
               <span className="material-symbols-outlined text-primary text-[20px]">hub</span>
               {t('aiops.multiVector.title', '4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ (Multi-Vector Risk Architecture)')}
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {t('aiops.multiVector.desc', 'Tách biệt hoàn toàn cơ chế tính điểm và biện pháp phòng vệ theo từng đặc trưng riêng: Danh tính, Lưu lượng, Khai thác lỗ hổng và Tài nguyên máy chủ')}
-            </p>
           </div>
-          <span className="text-[10px] text-slate-600 bg-slate-100 px-3 py-1 rounded-full font-medium self-start sm:self-auto">
-            {t('aiops.multiVector.subScores', '4 Sub-scores độc lập [0 - 100]')}
-          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1586,28 +1795,23 @@ const AIOpsPage = () => {
                       <span className="material-symbols-outlined text-[17px] text-amber-600">badge</span>
                       {t('aiops.vectors.auth', '1. Xác Thực & Danh Tính')}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isEnabled}
-                        data-testid="toggle-vector-auth"
-                        onClick={() => handleOpenToggleVectorModal('auth')}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isEnabled}
+                      data-testid="toggle-vector-auth"
+                      onClick={() => handleOpenToggleVectorModal('auth')}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                      }`}
+                      title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isEnabled ? 'translate-x-4' : 'translate-x-0'
                         }`}
-                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            isEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                      />
+                    </button>
                   </div>
 
                   {!isEnabled && (
@@ -1662,9 +1866,6 @@ const AIOpsPage = () => {
                       </span>
                     </span>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-amber-50/70 border border-amber-200/60 text-amber-950 text-[10px] leading-relaxed">
-                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.authDefenseNote', 'Chỉ cô lập IP Brute-Force (/auth/login). Tuyệt đối không ảnh hưởng khách hàng khác.')}
-                  </div>
                 </div>
               </div>
             );
@@ -1686,28 +1887,23 @@ const AIOpsPage = () => {
                       <span className="material-symbols-outlined text-[17px] text-blue-600">waves</span>
                       {t('aiops.vectors.traffic', '2. Lưu Lượng & DoS')}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isEnabled}
-                        data-testid="toggle-vector-traffic"
-                        onClick={() => handleOpenToggleVectorModal('traffic')}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isEnabled}
+                      data-testid="toggle-vector-traffic"
+                      onClick={() => handleOpenToggleVectorModal('traffic')}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                      }`}
+                      title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isEnabled ? 'translate-x-4' : 'translate-x-0'
                         }`}
-                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            isEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                      />
+                    </button>
                   </div>
 
                   {!isEnabled && (
@@ -1760,9 +1956,6 @@ const AIOpsPage = () => {
                       </span>
                     </span>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-blue-50/70 border border-blue-200/60 text-blue-950 text-[10px] leading-relaxed">
-                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.trafficDefenseNote', `Phân biệt đỉnh người dùng thật qua Entropy. Kích hoạt Rate-Limit theo trần quy mô ${targetConcurrency} CCU.`, { count: targetConcurrency })}
-                  </div>
                 </div>
               </div>
             );
@@ -1784,28 +1977,23 @@ const AIOpsPage = () => {
                       <span className="material-symbols-outlined text-[17px] text-rose-600">bug_report</span>
                       {t('aiops.vectors.exploit', '3. Khai Thác Lỗ Hổng')}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isEnabled}
-                        data-testid="toggle-vector-exploit"
-                        onClick={() => handleOpenToggleVectorModal('exploit')}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isEnabled}
+                      data-testid="toggle-vector-exploit"
+                      onClick={() => handleOpenToggleVectorModal('exploit')}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                      }`}
+                      title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isEnabled ? 'translate-x-4' : 'translate-x-0'
                         }`}
-                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            isEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                      />
+                    </button>
                   </div>
 
                   {!isEnabled && (
@@ -1858,9 +2046,6 @@ const AIOpsPage = () => {
                       </span>
                     </span>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-rose-50/70 border border-rose-200/60 text-rose-950 text-[10px] leading-relaxed">
-                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.exploitDefenseNote', 'Cắt kết nối HTTP 403 tức thì với IP mang injection payload, đưa vào danh sách đen 30 phút.')}
-                  </div>
                 </div>
               </div>
             );
@@ -1881,28 +2066,23 @@ const AIOpsPage = () => {
                       <span className="material-symbols-outlined text-[17px] text-teal-600">memory</span>
                       {t('aiops.vectors.resource', '4. Sức Khỏe Tài Nguyên')}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isEnabled ? vTheme.badge : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                        {isEnabled ? vTheme.label : t('aiops.multiVector.measureOnly', 'Chỉ đo lường')}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isEnabled}
-                        data-testid="toggle-vector-resource"
-                        onClick={() => handleOpenToggleVectorModal('resource')}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isEnabled}
+                      data-testid="toggle-vector-resource"
+                      onClick={() => handleOpenToggleVectorModal('resource')}
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                      }`}
+                      title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isEnabled ? 'translate-x-4' : 'translate-x-0'
                         }`}
-                        title={isEnabled ? t('aiops.toggleVector.titleDisable', 'Xác nhận TẮT Vector') : t('aiops.toggleVector.titleEnable', 'Xác nhận BẬT Vector')}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            isEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                      />
+                    </button>
                   </div>
 
                   {!isEnabled && (
@@ -1959,9 +2139,6 @@ const AIOpsPage = () => {
                       </span>
                     </span>
                   </div>
-                  <div className="mt-2 p-2 rounded-lg bg-teal-50/70 border border-teal-200/60 text-teal-950 text-[10px] leading-relaxed">
-                    <strong>{t('aiops.multiVector.defensePrefix', 'Phòng vệ:')}</strong> {t('aiops.multiVector.resourceDefenseNote', 'Load Shedding & cảnh báo máy chủ. Chỉ kích hoạt Bảo trì nếu có sập dây chuyền (Lag > 250ms & 5xx > 15%).')}
-                  </div>
                 </div>
               </div>
             );
@@ -1970,94 +2147,7 @@ const AIOpsPage = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* KHỐI 2: DANH SÁCH NGUỒN REQUEST BỊ CÔ LẬP & TỰ ĐỘNG CHẶN */}
-      {/* ======================================================== */}
-      <div className="bg-white rounded-2xl border border-red-200 p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-red-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-[20px]">block</span>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-red-950 m-0">
-                {t('aiops.quarantine.title', 'Nguồn Request Đang Bị Cô Lập & Tự Động Chặn (Active Quarantine Blacklist)')}
-              </h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                {t('aiops.quarantine.desc', 'Các nguồn IP có hành vi tấn công DoS/DDoS, Brute-Force, hoặc SQLi bị cắt kết nối tức thì (HTTP 403)')}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-200">
-              {t('aiops.quarantine.blockedCount', `${quarantineList.length} nguồn bị phong tỏa`, { count: quarantineList.length })}
-            </span>
-          </div>
-        </div>
-
-        {quarantineList.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-red-100 bg-red-50/40 text-slate-700 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3">{t('aiops.quarantine.colIp', 'Địa chỉ IP (Masked)')}</th>
-                  <th className="py-2.5 px-3">{t('aiops.quarantine.colReason', 'Nguyên nhân phong tỏa')}</th>
-                  <th className="py-2.5 px-3">{t('aiops.quarantine.colTime', 'Thời điểm chặn')}</th>
-                  <th className="py-2.5 px-3">{t('aiops.quarantine.colRemaining', 'Thời gian còn lại')}</th>
-                  <th className="py-2.5 px-3">{t('aiops.quarantine.colHits', 'Lần vi phạm (Hits)')}</th>
-                  <th className="py-2.5 px-3 text-right">{t('common.actions', 'Thao tác')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-red-50">
-                {quarantineList.map((item, idx) => (
-                  <tr key={item.hash || idx} className="hover:bg-red-50/30 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-red-700 whitespace-nowrap flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[16px] text-red-500">lock</span>
-                      <span>{item.maskedIp}</span>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-slate-800">
-                      {item.reason}
-                    </td>
-                    <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
-                      {item.bannedAt ? formatDateTime(item.bannedAt) : t('common.justNow', 'Vừa xong')}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                        {item.remainingMinutes !== undefined ? t('aiops.quarantine.minutes', `${item.remainingMinutes} phút`, { min: item.remainingMinutes }) : t('aiops.quarantine.blocking', 'Đang phong tỏa')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-bold text-slate-700 whitespace-nowrap">
-                      {item.hits ?? 1}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => handleUnblock(item.hash)}
-                        disabled={unblockingHash === item.hash}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
-                        title={t('aiops.unblockTooltip', 'Bấm để mở khóa và cho phép IP tiếp tục truy cập')}
-                      >
-                        <span className="material-symbols-outlined text-[15px]">lock_open</span>
-                        <span>{unblockingHash === item.hash ? t('common.processing', 'Đang xử lý...') : t('aiops.unblockBtn', 'Gỡ Chặn')}</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-6 text-center rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-2">
-            <span className="material-symbols-outlined text-[36px] text-emerald-600">gpp_good</span>
-            <p className="font-bold text-xs text-slate-800">{t('aiops.quarantine.emptyTitle', 'Không có nguồn IP nào đang bị cô lập')}</p>
-            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-              {t('aiops.quarantine.emptyDesc', 'AIOps Sentinel liên tục theo dõi và sẵn sàng kích hoạt tường lửa tức thì nếu phát hiện nguồn bất thường.')}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ======================================================== */}
-      {/* KHỐI 3: BIỂU ĐỒ SVG XU HƯỚNG 4 VECTƠ RỦI RO ĐỘC LẬP THỜI GIAN THỰC */}
+      {/* KHỐI 2: BIỂU ĐỒ SVG XU HƯỚNG 4 VECTƠ RỦI RO ĐỘC LẬP THỜI GIAN THỰC */}
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
         {/* Header & Bộ lọc Tabs cho 4 Vectơ */}
@@ -2065,19 +2155,8 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">show_chart</span>
-              {(() => {
-                if (customRange.applied && customRange.from && customRange.to) {
-                  return t('aiops.chart.titleCustom', `Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — Tùy Biến Chính Xác (${customRange.from} → ${customRange.to})`, { from: customRange.from, to: customRange.to });
-                }
-                if (timePreset === 'day') return t('aiops.chart.titleDay', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 24 Giờ Qua (Theo Ngày)');
-                if (timePreset === 'month') return t('aiops.chart.titleMonth', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 30 Ngày Qua (Theo Tháng)');
-                if (timePreset === 'year') return t('aiops.chart.titleYear', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro — 12 Tháng Qua (Theo Năm)');
-                return t('aiops.chart.titleRealtime', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (60 Mẫu Gần Nhất — 10 Phút)');
-              })()}
+              <span>{t('aiops.chart.title', 'Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro')}</span>
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {t('aiops.chart.desc', 'Tách biệt đường cong riêng cho từng vectơ: Xác thực, Lưu lượng, Khai thác và Tài nguyên. Loại bỏ hoàn toàn sự sai lệch do gộp chung điểm.')}
-            </p>
           </div>
 
           {/* Tab Filter Chuyển Đổi Vectơ */}
@@ -2115,10 +2194,10 @@ const AIOpsPage = () => {
         </div>
 
         {/* ======================================================== */}
-        {/* BỘ LỌC THỜI GIAN: BỘ SELECT PRESETS VÀ BỘ LỌC CHÍNH XÁC */}
+        {/* BỘ LỌC THỜI GIAN: BỘ CHỌN PRESETS VÀ BỘ LỌC THỜI GIAN */}
         {/* ======================================================== */}
         <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-3">
-          {/* Hàng 1: Bộ Select thời gian nhanh (Presets) */}
+          {/* Hàng 1: Bộ chọn thời gian quan sát (5 Presets) */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -2126,12 +2205,18 @@ const AIOpsPage = () => {
                 <span>{t('aiops.chart.selectObsTime', 'Bộ chọn thời gian quan sát:')}</span>
               </span>
               {[
-                { id: 'realtime', label: t('aiops.chart.presetRealtime', 'Thời gian thực (10 phút)') },
-                { id: 'day', label: t('aiops.chart.presetDay', 'Ngày (24 giờ qua)') },
-                { id: 'month', label: t('aiops.chart.presetMonth', 'Tháng (30 ngày qua)') },
-                { id: 'year', label: t('aiops.chart.presetYear', 'Năm (12 tháng qua)') },
+                { id: '10m', label: t('aiops.chart.preset10m', '10 phút qua') },
+                { id: '1h', label: t('aiops.chart.preset1h', '1 giờ qua') },
+                { id: '24h', label: t('aiops.chart.preset24h', '24 giờ qua') },
+                { id: '7d', label: t('aiops.chart.preset7d', '7 ngày qua') },
+                { id: '30d', label: t('aiops.chart.preset30d', '1 tháng qua') },
               ].map((p) => {
-                const isSelected = timePreset === p.id && !customRange.applied;
+                const isSelected =
+                  (timePreset === p.id ||
+                    (p.id === '10m' && timePreset === 'realtime') ||
+                    (p.id === '24h' && timePreset === 'day') ||
+                    (p.id === '30d' && timePreset === 'month')) &&
+                  !customRange.applied;
                 return (
                   <button
                     key={p.id}
@@ -2145,7 +2230,7 @@ const AIOpsPage = () => {
                         ? 'bg-white/60 text-slate-400 border-slate-200 hover:bg-white hover:text-slate-700'
                         : 'bg-white text-slate-700 border-outline-variant hover:bg-slate-100'
                     }`}
-                    title={customRange.applied ? t('aiops.chart.reuseSelect', 'Dùng lại bộ select') : undefined}
+                    title={customRange.applied ? t('aiops.chart.reuseSelect', 'Dùng lại bộ chọn') : undefined}
                   >
                     {p.label}
                   </button>
@@ -2161,115 +2246,44 @@ const AIOpsPage = () => {
             )}
           </div>
 
-          {/* Hàng 2: Bộ lọc chọn từ ... đến ... chi tiết chính xác */}
+          {/* Hàng 2: Bộ lọc thời gian từ ... đến ... (ngày tháng năm giờ phút) */}
           <div className="pt-2 border-t border-slate-200/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px] text-indigo-600">date_range</span>
-                <span>{t('aiops.chart.precisionFilter', 'Bộ lọc chính xác:')}</span>
+                <span>{t('aiops.chart.timeFilter', 'Bộ lọc thời gian:')}</span>
               </span>
 
-              {/* Loại bộ lọc: Ngày / Tháng / Năm */}
-              <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-white text-xs">
-                {[
-                  { id: 'date', label: t('common.date', 'Theo Ngày') },
-                  { id: 'month', label: t('common.month', 'Theo Tháng') },
-                  { id: 'year', label: t('common.year', 'Theo Năm') },
-                ].map((type) => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => {
-                      setCustomFilterType(type.id);
-                      setCustomRange((prev) => ({ ...prev, from: '', to: '' }));
-                    }}
-                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                      customFilterType === type.id
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-
               {/* Inputs Từ ... Đến ... */}
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-xs flex-wrap">
                 <span className="text-slate-500 font-medium">{t('aiops.chart.from', 'Từ:')}</span>
-                {customFilterType === 'date' && (
-                  <input
-                    type="date"
-                    data-testid="filter-from-date"
-                    value={customRange.from}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
-                {customFilterType === 'month' && (
-                  <input
-                    type="month"
-                    data-testid="filter-from-month"
-                    value={customRange.from}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
-                {customFilterType === 'year' && (
-                  <input
-                    type="number"
-                    data-testid="filter-from-year"
-                    min="2020"
-                    max="2035"
-                    placeholder="2024"
-                    value={customRange.from}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
-                    className="w-20 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
+                <input
+                  type="datetime-local"
+                  data-testid="filter-from-date"
+                  value={customRange.from}
+                  onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
+                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
 
                 <span className="text-slate-500 font-medium">{t('aiops.chart.to', 'Đến:')}</span>
-                {customFilterType === 'date' && (
-                  <input
-                    type="date"
-                    data-testid="filter-to-date"
-                    value={customRange.to}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
-                {customFilterType === 'month' && (
-                  <input
-                    type="month"
-                    data-testid="filter-to-month"
-                    value={customRange.to}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
-                {customFilterType === 'year' && (
-                  <input
-                    type="number"
-                    data-testid="filter-to-year"
-                    min="2020"
-                    max="2035"
-                    placeholder="2026"
-                    value={customRange.to}
-                    onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
-                    className="w-20 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                )}
+                <input
+                  type="datetime-local"
+                  data-testid="filter-to-date"
+                  value={customRange.to}
+                  onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
+                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Nút Lọc (Icon search) & Làm mới */}
               <button
                 type="button"
                 data-testid="apply-custom-range-btn"
                 onClick={handleApplyCustomRange}
                 className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
               >
-                <span className="material-symbols-outlined text-[14px]">tune</span>
-                <span>{t('aiops.chart.btnApplyFilter', 'Lọc Chính Xác')}</span>
+                <span className="material-symbols-outlined text-[14px]">search</span>
+                <span>{t('aiops.chart.btnApplyFilter', 'Lọc')}</span>
               </button>
 
               <button
@@ -2277,7 +2291,7 @@ const AIOpsPage = () => {
                 data-testid="refresh-custom-range-btn"
                 onClick={handleResetCustomRange}
                 className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
-                title={t('aiops.chart.refreshFilterTooltip', 'Làm mới bộ lọc chính xác về mặc định')}
+                title={t('aiops.chart.refreshFilterTooltip', 'Làm mới bộ lọc thời gian về mặc định')}
               >
                 <span className="material-symbols-outlined text-[14px]">refresh</span>
                 <span>{t('common.refresh', 'Làm mới')}</span>
@@ -2367,17 +2381,6 @@ const AIOpsPage = () => {
               </span>
             )}
           </div>
-
-          <div className="flex items-center gap-3 text-slate-500">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-0.5 bg-red-500 inline-block" />
-              <span>{t('aiops.chart.thresholdEmergency', 'Ngưỡng Khẩn cấp (85)')}</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-0.5 bg-amber-500 inline-block" />
-              <span>{t('aiops.chart.thresholdWarning', 'Ngưỡng Cảnh báo (70)')}</span>
-            </span>
-          </div>
         </div>
 
         {/* SVG Multi-Vector Chart Container */}
@@ -2451,7 +2454,7 @@ const AIOpsPage = () => {
               {/* Baseline 0 (Đường trục hoành) */}
               <line x1="35" y1="155" x2="765" y2="155" stroke="#cbd5e1" strokeWidth="1.2" />
 
-              {/* Vạch ticks và số liệu hiển thị trên trục X (Yêu cầu 3 của PO) */}
+              {/* Vạch ticks và số liệu hiển thị trên trục X */}
               {xAxisConfig.ticks.map((t, idx) => (
                 <g key={`x-tick-group-${idx}`}>
                   <line
@@ -2475,11 +2478,11 @@ const AIOpsPage = () => {
                 </g>
               ))}
 
-              {/* Đơn vị đo trục X ở góc phải */}
+              {/* Đơn vị đo trục X đặt ở phía trên trục hoành để không đè lên số trục X */}
               <text
-                x="775"
-                y="174"
-                fill="#475569"
+                x="765"
+                y="148"
+                fill="#64748b"
                 fontSize="10"
                 fontWeight="bold"
                 textAnchor="end"
@@ -2748,36 +2751,10 @@ const AIOpsPage = () => {
             })()}
           </div>
         </div>
-
-        {/* Chân biểu đồ & Nguyên tắc bảo vệ */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 px-2 pt-2 border-t border-slate-100 gap-2">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="font-semibold text-slate-700 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px] text-indigo-600">straighten</span>
-              <span>{t('aiops.chart.axisX', 'Trục X:')} <strong>{xAxisConfig.title}</strong></span>
-            </span>
-
-            {historyData && historyData.length > 0 ? (
-              <>
-                <span>{t('aiops.chart.firstSample', '🕒 Mẫu đầu:')} {historyData[0]?.timestamp ? formatFullDateTime(historyData[0].timestamp) : '10m'}</span>
-                {historyData.length > 2 && (
-                  <span>{t('aiops.chart.midSample', '🕒 Giữa kỳ:')} {historyData[Math.floor(historyData.length / 2)]?.timestamp ? formatFullDateTime(historyData[Math.floor(historyData.length / 2)].timestamp) : '5m'}</span>
-                )}
-                <span className="font-semibold text-slate-700">{t('aiops.chart.latestSample', '🕒 Mẫu mới nhất:')} {historyData[historyData.length - 1]?.timestamp ? formatFullDateTime(historyData[historyData.length - 1].timestamp) : 'now'}</span>
-              </>
-            ) : (
-              <span className="text-slate-400 italic">{t('aiops.chart.noDataInWindow', 'Chưa có mẫu dữ liệu trong khung thời gian này')}</span>
-            )}
-          </div>
-
-          <div className="text-[10px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-            {t('aiops.chart.principleNote', '🛡️ Nguyên tắc: Phòng vệ được kích hoạt độc lập theo từng vectơ. Tuyệt đối không dùng điểm gộp chung để ngắt kết nối hệ thống.')}
-          </div>
-        </div>
       </div>
 
       {/* ======================================================== */}
-      {/* KHỐI 4: BẢNG PHÂN TÍCH NGUYÊN NHÂN GỐC RỄ (ROOT CAUSE ANALYSIS) - CSDL PERSISTENT JOURNAL */}
+      {/* KHỐI 3: TỔNG QUAN NGUYÊN NHÂN BẤT THƯỜNG - CSDL PERSISTENT JOURNAL */}
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
         {/* Header */}
@@ -2785,30 +2762,15 @@ const AIOpsPage = () => {
           <div>
             <h2 className="text-sm font-bold text-on-surface m-0 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary">troubleshoot</span>
-              {t('aiops.rca.title', 'Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)')}
+              <span>{t('aiops.rca.title', 'Tổng quan nguyên nhân bất thường')}</span>
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {t('aiops.rca.desc', 'Nhật ký sự cố lưu trữ bền vững trong CSDL (PostgreSQL) — Lưu vĩnh viễn phục vụ điều tra truy vết, tuân thủ Luật An ninh mạng & Nghị định 13/2023/NĐ-CP.')}
-            </p>
           </div>
 
           <div className="flex items-center gap-2.5">
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/60 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[15px] text-primary">database</span>
-              <span>{t('aiops.rca.incidentsInDb', `${incidentTotal} sự cố ghi nhận trong CSDL`, { count: incidentTotal })}</span>
+              <span>{t('aiops.rca.incidentsInDb', `${incidentTotal} sự cố`, { count: incidentTotal })}</span>
             </span>
-
-            {incidentTotal > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowClearIncidentsModal(true)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 border border-outline-variant/60 transition-colors flex items-center gap-1 cursor-pointer"
-                title={t('aiops.cleanDbBtn', 'Làm sạch CSDL')}
-              >
-                <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
-                <span>{t('aiops.cleanDbBtn', 'Làm sạch CSDL')}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -2911,12 +2873,13 @@ const AIOpsPage = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/80 bg-surface-container-low/60 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colTimeStatus', 'Thời điểm & Trạng thái')}</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colActor', 'Đối tượng vi phạm (Actor)')}</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colVectorCode', 'Vector & Mã Bất Thường')}</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colMetricVsThreshold', 'Chỉ số đo vs Ngưỡng')}</th>
-                  <th className="py-2.5 px-3">{t('aiops.rca.colDiagnosisMitigation', 'Bóc tách nguyên nhân & Xử lý')}</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap text-center">{t('aiops.rca.colActionsDefense', 'Thao tác & Phòng vệ')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colStatus', 'Tình trạng')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colActor', 'Đối tượng')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colVector', 'Vector')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.rca.colMetric', 'Chỉ số')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.rca.colRootCause', 'Nguyên nhân')}</th>
+                  <th className="py-2.5 px-3">{t('aiops.rca.colMitigation', 'Xử lý')}</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap text-center">{t('aiops.rca.colDefense', 'Phòng vệ')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40 bg-white">
@@ -2925,21 +2888,18 @@ const AIOpsPage = () => {
                   const lastTime = item.last_seen_at || item.lastSeenAt;
                   const status = item.status || 'ACTIVE';
                   const hits = item.hits || 1;
-                  const actorIdentity = item.actor?.identity || item.actor_identity || item.actorIdentity || 'xx.xx.xx.xx';
+                  const actorIdentity = item.actor?.identity || item.actor_identity || item.actorIdentity || '192.168.xxx.xxx';
                   const actorHash = item.actor?.ipHash || item.actor_hash || item.actorHash || '';
                   const actorType = item.actor?.type || item.actor_type || 'IP_SOURCE';
                   const userId = item.actor?.userId || item.user_id || item.userId;
-                  const username = item.actor?.username || item.username;
-                  const role = item.actor?.role || item.actor_role || item.role;
-                  const userAgent = item.actor?.userAgent || item.user_agent || item.userAgent;
-                  const endpoint = item.actor?.targetEndpoint || item.target_endpoint || item.targetEndpoint;
+                  const targetAccount = item.actor?.username || item.username || item.actor?.targetAccount || item.targetAccount;
+                  const username = (targetAccount && targetAccount !== 'all' && targetAccount !== 'Khách vãng lai / Ẩn danh') ? targetAccount : null;
+                  const actorTargetIp = item.actor?.maskedIp || item.actor?.rawIp || actorIdentity;
                   const vector = item.vector || 'traffic';
-                  const severity = item.severity || 'MEDIUM';
                   const metricCurrent = item.metric_current ?? item.metricCurrent ?? item.current ?? 0;
                   const metricBaseline = item.metric_baseline ?? item.metricBaseline ?? item.baseline ?? 0;
                   const metricUnit = item.metric_unit || item.metricUnit || item.unit || '';
                   const message = item.message || '';
-                  const rootCause = item.root_cause_diagnosis || item.rootCauseDiagnosis;
                   const mitigation = item.mitigation_taken || item.mitigationTaken;
 
                   const clientIpClean = String(myCurrentIp || '').replace(/^::ffff:/, '').trim();
@@ -2977,19 +2937,19 @@ const AIOpsPage = () => {
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Cột 1: Thời điểm & Trạng thái */}
+                      {/* Cột 1: Tình trạng */}
                       <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
                         <div className="font-semibold text-slate-800 text-[11px]">
                           {formatDateTime(firstTime)}
                         </div>
                         <div>
                           {status === 'ACTIVE' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
                               {t('aiops.rca.badgeActive', 'ĐANG DIỄN RA')}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
                               <span className="material-symbols-outlined text-[12px]">check_circle</span>
                               {t('aiops.rca.badgeMitigated', 'ĐÃ GIẢM THIỂU')}
                             </span>
@@ -2998,182 +2958,87 @@ const AIOpsPage = () => {
                         <div className="text-[10px] text-slate-500 font-medium">
                           {hits > 1 ? t('aiops.rca.repeatedTimes', `Lặp lại ${hits} lần`, { count: hits }) : t('aiops.rca.firstDetected', 'Phát hiện lần 1')}
                         </div>
-                        {lastTime && lastTime !== firstTime && (
-                          <div className="text-[9px] text-slate-400">
-                            {t('aiops.rca.latestSeen', `Gần nhất: ${formatDateTime(lastTime)}`, { time: formatDateTime(lastTime) })}
-                          </div>
-                        )}
                       </td>
 
-                      {/* Cột 2: Đối tượng vi phạm (Actor Identity, Account & Role) */}
-                      <td className="py-3 px-3 align-top space-y-1.5">
-                        {/* Nguồn IP / Hạ tầng đối tượng */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {isProtectedActor ? (
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                              <span className="material-symbols-outlined text-[14px] text-emerald-600">
-                                {actorType === 'SYSTEM_INTERNAL' ? 'memory' : 'verified_user'}
-                              </span>
-                              <span>
-                                {actorType === 'SYSTEM_INTERNAL'
-                                  ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
-                                  : isMyCurrentIp
-                                  ? `${actorIdentity} (Máy bạn)`
-                                  : actorIdentity}
-                              </span>
-                            </span>
-                          ) : (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="material-symbols-outlined text-[15px] text-slate-500">
-                                router
-                              </span>
-                              <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                <span className="text-slate-400 font-normal mr-1">IP:</span>
-                                <span>{actorIdentity}</span>
-                              </span>
-                              {actorHash && (
-                                <span
-                                  className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-50 text-slate-500 border border-slate-200"
-                                  title={`SHA-256 IP Hash: ${actorHash}`}
-                                >
-                                  #{actorHash.slice(0, 8)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Danh tính tài khoản & Phân quyền */}
-                        <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
-                          <div className="font-semibold text-slate-700 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px] text-primary">
-                              {actorType === 'SYSTEM_INTERNAL' ? 'settings_suggest' : 'account_circle'}
-                            </span>
-                            <span>
-                              TK:{' '}
-                              <span className="text-primary font-bold">
-                                {actorType === 'SYSTEM_INTERNAL'
-                                  ? 'System Core Engine'
-                                  : (username || (userId ? `UID #${userId}` : t('aiops.rca.anonymousUser', 'Khách vãng lai / Ẩn danh')))}
-                              </span>
-                            </span>
-                          </div>
-
-                          {/* Badge phân quyền trực quan */}
-                          {actorType === 'SYSTEM_INTERNAL' ? (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                              ⚙️ {t('aiops.rca.roleSystem', 'Hệ thống')}
-                            </span>
-                          ) : role === 'Admin' || role === 'admin' ? (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                              👑 {t('aiops.rca.roleAdmin', 'Quản trị viên')}
-                            </span>
-                          ) : role === 'User' || role === 'user' || userId ? (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                              👤 {t('aiops.rca.roleUser', 'Khách hàng')}
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                              🌐 {t('aiops.rca.roleGuest', 'Khách vãng lai')}
-                            </span>
-                          )}
-                        </div>
-
-                        {endpoint && (
-                          <div
-                            className="text-[10px] font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 max-w-[210px] truncate"
-                            title={`${t('aiops.rca.target', 'Mục tiêu:')} ${endpoint}`}
-                          >
-                            🎯 {endpoint}
-                          </div>
-                        )}
-
-                        {userAgent && (
-                          <div
-                            className="text-[9px] text-slate-400 max-w-[210px] truncate"
-                            title={`User-Agent: ${userAgent}`}
-                          >
-                            🌐 {userAgent}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Cột 3: Vector & Mã Bất Thường */}
-                      <td className="py-3 px-3 align-top whitespace-nowrap space-y-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              vector === 'auth'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                : vector === 'traffic'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : vector === 'exploit'
-                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                : 'bg-amber-100 text-amber-800 border border-amber-200'
-                            }`}
-                          >
-                            {vector}
-                          </span>
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              severity === 'HIGH'
-                                ? 'bg-red-100 text-red-800'
-                                : severity === 'MEDIUM'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-800'
-                            }`}
-                          >
-                            {severity}
-                          </span>
-                        </div>
-                        <div className="font-mono font-bold text-slate-900 text-xs">
-                          {item.code}
-                        </div>
-                      </td>
-
-                      {/* Cột 4: Chỉ số đo được vs Baseline */}
+                      {/* Cột 2: Đối tượng (Tài khoản phía trên, IP vi phạm tương ứng phía dưới) */}
                       <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
-                        <div className="font-bold text-red-600 text-xs">
+                        <div className="font-semibold text-slate-800 text-xs">
+                          <span className="text-slate-500 font-normal mr-1">TK:</span>
+                          <span className="text-primary font-bold">
+                            {vector === 'resource' || actorType === 'SYSTEM_INTERNAL'
+                              ? t('aiops.rca.internalSystemLabel', 'Hệ thống nội bộ')
+                              : (username || (userId ? `UID #${userId}` : t('aiops.rca.anonymousUser', 'Khách vãng lai / Ẩn danh')))}
+                          </span>
+                        </div>
+                        <div className="font-mono text-[11px] text-slate-600">
+                          <span className="text-slate-400 font-normal mr-1">IP:</span>
+                          <span>
+                            {vector === 'resource' || actorType === 'SYSTEM_INTERNAL'
+                              ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
+                              : isMyCurrentIp
+                              ? `${formatMaskedIp(actorTargetIp)} (${t('aiops.rca.protectedMyIpLabel', 'Máy bạn')})`
+                              : formatMaskedIp(actorTargetIp)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Cột 3: Vector */}
+                      <td className="py-3 px-3 align-top whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            vector === 'auth'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200/60'
+                              : vector === 'traffic'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                              : vector === 'exploit'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                          }`}
+                        >
+                          {vector}
+                        </span>
+                      </td>
+
+                      {/* Cột 4: Chỉ số */}
+                      <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
+                        <div className="font-bold text-rose-600 text-xs">
                           {metricCurrent} {metricUnit}
                         </div>
                         <div className="text-[11px] text-slate-500">
                           {t('aiops.rca.threshold', 'Ngưỡng:')} {metricBaseline} {metricUnit}
                         </div>
                         {ratio && Number(ratio) > 1 && (
-                          <span className="inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-50 text-red-700 border border-red-200">
+                          <span className="inline-block text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200/60">
                             {t('aiops.rca.exceededRatio', `Vượt ${ratio}x`, { ratio })}
                           </span>
                         )}
                       </td>
 
-                      {/* Cột 5: Bóc tách nguyên nhân & Hành động xử lý */}
-                      <td className="py-3 px-3 align-top space-y-1.5 max-w-sm">
+                      {/* Cột 5: Nguyên nhân */}
+                      <td className="py-3 px-3 align-top max-w-sm">
                         <div className="text-slate-800 font-medium text-xs leading-relaxed">
                           {message}
                         </div>
+                      </td>
 
-                        {rootCause && (
-                          <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-start gap-1.5 leading-relaxed">
-                            <span className="material-symbols-outlined text-[15px] text-amber-600 shrink-0 mt-0.5">
-                              psychology
-                            </span>
-                            <span>{rootCause}</span>
+                      {/* Cột 6: Xử lý */}
+                      <td className="py-3 px-3 align-top max-w-xs">
+                        {mitigation ? (
+                          <div className="text-slate-700 text-xs font-medium leading-relaxed bg-emerald-50/70 border border-emerald-200/80 p-2 rounded-lg">
+                            {mitigation}
                           </div>
-                        )}
-
-                        {mitigation && (
-                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <span className="material-symbols-outlined text-[12px]">security</span>
-                            <span>{mitigation}</span>
-                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs italic">
+                            {t('aiops.rca.noMitigation', 'Hệ thống đang theo dõi')}
+                          </span>
                         )}
                       </td>
 
-                      {/* Cột 6: Thao tác & Phòng vệ */}
+                      {/* Cột 7: Phòng vệ */}
                       <td className="py-3 px-3 align-top text-center whitespace-nowrap">
                         {isQuarantined ? (
                           <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
                               <span className="material-symbols-outlined text-[13px]">block</span>
                               {t('aiops.rca.quarantinedShield', 'Đã cách ly Shield')}
                             </span>
@@ -3190,35 +3055,24 @@ const AIOpsPage = () => {
                             </div>
                           </div>
                         ) : isProtectedActor ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                              <span className="material-symbols-outlined text-[13px]">verified_user</span>
-                              <span>
-                                {actorType === 'SYSTEM_INTERNAL'
-                                  ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
-                                  : isMyCurrentIp
-                                  ? t('aiops.rca.protectedMyIp', 'IP Máy bạn (Đang đăng nhập)')
-                                  : t('aiops.rca.protectedIp', 'IP Được bảo vệ')}
-                              </span>
-                            </span>
-                            <div className="text-[9px] text-emerald-600 font-medium">
-                              🛡️ An toàn tuyệt đối
-                            </div>
-                          </div>
+                          <span className="text-[11px] font-semibold text-emerald-700">
+                            {actorType === 'SYSTEM_INTERNAL' || vector === 'resource'
+                              ? t('aiops.rca.internalSystem', 'Nội bộ hệ thống')
+                              : isMyCurrentIp
+                              ? t('aiops.rca.protectedMyIp', 'IP Máy bạn (Đang đăng nhập)')
+                              : t('aiops.rca.protectedIp', 'IP Được bảo vệ')}
+                          </span>
                         ) : (
-                          <div className="space-y-1">
+                          <div>
                             <button
                               type="button"
                               onClick={() => handleOpenQuarantineModal(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 transition-all shadow-xs active:scale-95 cursor-pointer"
-                              title={`${t('aiops.rca.btnQuarantine', 'Phong Tỏa IP')} ${actorIdentity}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                              title={`${t('aiops.rca.btnQuarantine', 'Phong Tỏa IP')} ${formatMaskedIp(actorTargetIp)}`}
                             >
                               <span className="material-symbols-outlined text-[13px]">shield</span>
                               <span>{t('aiops.rca.btnQuarantine', 'Phong Tỏa IP')}</span>
                             </button>
-                            <div className="text-[9px] text-slate-400">
-                              {t('aiops.rca.sentinelMonitoring', 'Sentinel giám sát')}
-                            </div>
                           </div>
                         )}
                       </td>
@@ -3243,36 +3097,314 @@ const AIOpsPage = () => {
             />
           </div>
         ) : (
-          <div className="p-8 text-center rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-2">
-            <span className="material-symbols-outlined text-[44px] text-emerald-600">verified</span>
-            <p className="font-bold text-sm text-emerald-950">
-              {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all'
-                ? t('aiops.rca.emptyFilterTitle', 'Không tìm thấy sự cố nào phù hợp với bộ lọc')
-                : t('aiops.rca.emptyAllTitle', 'Chưa có mối nguy hiểm hoặc bất thường nào được ghi nhận')}
-            </p>
-            <p className="text-xs text-emerald-800/80 max-w-md mx-auto">
-              {incidentSearch || incidentVectorFilter !== 'all' || incidentStatusFilter !== 'all' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIncidentVectorFilter('all');
-                    setIncidentStatusFilter('all');
-                    setIncidentSearch('');
-                    setIncidentPage(1);
-                    fetchIncidents(1, incidentPageSize, 'all', 'all', '');
-                  }}
-                  className="font-bold text-primary underline cursor-pointer"
-                >
-                  {t('aiops.rca.emptyFilterAction', 'Xóa bộ lọc để xem toàn bộ sự cố trong CSDL')}
-                </button>
-              ) : (
-                t('aiops.rca.emptyAllDesc', 'Tất cả 12 thông số hệ thống đang hoạt động ổn định. Mọi bất thường phát sinh sẽ được ghi nhận và lưu trữ vĩnh viễn vào CSDL tại đây.')
-              )}
+          <div className="p-8 text-center rounded-xl bg-surface-container-low/40 border border-outline-variant/60">
+            <p className="text-xs font-semibold text-slate-500 m-0">
+              {t('aiops.rca.emptyCompact', 'Không tìm thấy sự cố')}
             </p>
           </div>
         )}
       </div>
 
+      {/* ======================================================== */}
+      {/* KHỐI 4: BẢNG NGUỒN THEO DÕI ĐẶC BIỆT */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[20px]">shield_with_heart</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 m-0">
+                {t('aiops.quarantine.title', 'Nguồn theo dõi đặc biệt')}
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        {quarantineList.length > 0 ? (
+          <div className="rounded-xl border border-slate-200/80 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.quarantine.colIp', 'Địa chỉ IP')}</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.quarantine.colAccount', 'Tài khoản')}</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Vector</th>
+                    <th className="py-2.5 px-3">{t('aiops.quarantine.colReason', 'Nguyên nhân phong tỏa')}</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.quarantine.colTime', 'Thời điểm chặn')}</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">{t('aiops.quarantine.colRemaining', 'Thời gian còn lại')}</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">{t('aiops.quarantine.colIpActions', 'Thao tác IP')}</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">{t('aiops.quarantine.colAccountActions', 'Thao tác Tài khoản')}</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {paginatedQuarantineList.map((item, idx) => {
+                    const targetIpHash = item.ipHash || item.hash;
+                    const targetAccount = item.username || item.idaccount;
+
+                    // Tính thời gian đếm ngược thực tế (Client countdown)
+                    const isIpTemp = item.ipStatus === 'temporary' || item.ipStatus === 'temp';
+                    const isAccountTemp = item.accountStatus === 'temporary' || item.accountStatus === 'temp';
+
+                    let isIpExpired = false;
+                    let effectiveIpMin = null;
+                    if (isIpTemp) {
+                      if (item.ipExpiresAt) {
+                        const diffMs = new Date(item.ipExpiresAt).getTime() - currentClientTime;
+                        effectiveIpMin = Math.ceil(diffMs / 60000);
+                        if (effectiveIpMin <= 0) {
+                          isIpExpired = true;
+                          effectiveIpMin = null;
+                        }
+                      } else if (item.ipRemainingMinutes !== undefined && item.ipRemainingMinutes !== null) {
+                        effectiveIpMin = item.ipRemainingMinutes;
+                        if (effectiveIpMin <= 0) {
+                          isIpExpired = true;
+                          effectiveIpMin = null;
+                        }
+                      } else if (item.remainingMinutes !== undefined && item.remainingMinutes !== null) {
+                        effectiveIpMin = item.remainingMinutes;
+                        if (effectiveIpMin <= 0) {
+                          isIpExpired = true;
+                          effectiveIpMin = null;
+                        }
+                      } else {
+                        isIpExpired = true;
+                      }
+                    }
+
+                    let isAccountExpired = false;
+                    let effectiveAccountMin = null;
+                    if (isAccountTemp) {
+                      if (item.accountExpiresAt) {
+                        const diffMs = new Date(item.accountExpiresAt).getTime() - currentClientTime;
+                        effectiveAccountMin = Math.ceil(diffMs / 60000);
+                        if (effectiveAccountMin <= 0) {
+                          isAccountExpired = true;
+                          effectiveAccountMin = null;
+                        }
+                      } else if (item.accountRemainingMinutes !== undefined && item.accountRemainingMinutes !== null) {
+                        effectiveAccountMin = item.accountRemainingMinutes;
+                        if (effectiveAccountMin <= 0) {
+                          isAccountExpired = true;
+                          effectiveAccountMin = null;
+                        }
+                      } else if (item.remainingMinutes !== undefined && item.remainingMinutes !== null) {
+                        effectiveAccountMin = item.remainingMinutes;
+                        if (effectiveAccountMin <= 0) {
+                          isAccountExpired = true;
+                          effectiveAccountMin = null;
+                        }
+                      } else {
+                        isAccountExpired = true;
+                      }
+                    }
+
+                    const isIpPermanent = item.ipStatus === 'permanent';
+                    const isIpUnlocked = item.ipStatus === 'unlocked' || isIpExpired;
+
+                    const isAccountPermanent = item.accountStatus === 'permanent';
+                    const isAccountUnlocked = item.accountStatus === 'unlocked' || isAccountExpired;
+                    const vector = item.vector || 'auth';
+                    const rowKey = `quarantine-${item.id || item.ipHash || item.hash || 'row'}-${item.username || 'acc'}-${item.bannedAt || ''}-${idx}`;
+
+                    return (
+                      <tr key={rowKey} className="hover:bg-slate-50/60 transition-colors">
+                        {/* CỘT IP */}
+                        <td className="py-3 px-3 font-mono font-medium text-slate-700 whitespace-nowrap">
+                          {formatMaskedIp(item.maskedIp || item.ip || item.raw_ip) || '192.168.xxx.xxx'}
+                        </td>
+
+                        {/* CỘT TÀI KHOẢN */}
+                        <td className="py-3 px-3 font-mono font-medium text-slate-700 whitespace-nowrap">
+                          {targetAccount || '--'}
+                        </td>
+
+                        {/* CỘT VECTOR */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            vector === 'auth'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200/60'
+                              : vector === 'exploit'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                              : 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                          }`}>
+                            {vector === 'auth' ? 'Xác thực' : vector === 'exploit' ? 'Khai thác' : 'Lưu lượng'}
+                          </span>
+                        </td>
+
+                        {/* CỘT NGUYÊN NHÂN */}
+                        <td className="py-3 px-3 text-slate-700 max-w-xs font-normal" title={item.reason}>
+                          <span className="truncate block max-w-[200px]">
+                            {item.reason || '--'}
+                          </span>
+                        </td>
+
+                        {/* CỘT THỜI ĐIỂM */}
+                        <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
+                          {item.bannedAt ? formatDateTime(item.bannedAt) : t('common.justNow', 'Vừa xong')}
+                        </td>
+
+                        {/* CỘT THỜI GIAN CÒN LẠI */}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <div className="flex flex-col gap-1 items-start text-[10px]">
+                            {/* Dòng IP */}
+                            {!isIpPermanent && !isIpUnlocked && effectiveIpMin && effectiveIpMin > 0 ? (
+                              <span className="px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-700 border border-amber-200/60 inline-flex items-center gap-1">
+                                <span className="font-semibold text-slate-500">IP:</span>
+                                <span>{formatRemainingTime(effectiveIpMin)}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium px-1">
+                                IP: --
+                              </span>
+                            )}
+
+                            {/* Dòng Tài khoản */}
+                            {targetAccount && targetAccount !== '--' ? (
+                              !isAccountPermanent && !isAccountUnlocked && effectiveAccountMin && effectiveAccountMin > 0 ? (
+                                <span className="px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-700 border border-amber-200/60 inline-flex items-center gap-1">
+                                  <span className="font-semibold text-slate-500">TK:</span>
+                                  <span>{formatRemainingTime(effectiveAccountMin)}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium px-1">
+                                  TK: --
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-slate-400 font-medium px-1">
+                                TK: --
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* CỘT THAO TÁC IP */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {isIpPermanent ? (
+                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60 inline-block">
+                              IP đã bị phong tỏa
+                            </span>
+                          ) : isIpUnlocked ? (
+                            <button
+                              type="button"
+                              onClick={() => handleTemporaryBlockIp(targetIpHash, item.maskedIp)}
+                              disabled={quarantineActionLoading === `temp_ip_${targetIpHash}`}
+                              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                            >
+                              Tạm khóa IP
+                            </button>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handlePermanentBanIp(targetIpHash, item.maskedIp)}
+                                disabled={quarantineActionLoading === `ban_ip_${targetIpHash}`}
+                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                              >
+                                Phong tỏa IP
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUnblockIp(targetIpHash, item.maskedIp)}
+                                disabled={quarantineActionLoading === `unblock_ip_${targetIpHash}`}
+                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                              >
+                                Mở khóa IP
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* CỘT THAO TÁC TÀI KHOẢN */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {targetAccount ? (
+                            isAccountPermanent ? (
+                              <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60 inline-block">
+                                Tài khoản đã bị phong tỏa
+                              </span>
+                            ) : isAccountUnlocked ? (
+                              <button
+                                type="button"
+                                onClick={() => handleTemporaryBlockAccount(item.username, item.idaccount)}
+                                disabled={quarantineActionLoading === `temp_acc_${targetAccount}`}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                              >
+                                Tạm khóa TK
+                              </button>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePermanentBanAccount(item.username, item.idaccount)}
+                                  disabled={quarantineActionLoading === `ban_acc_${targetAccount}`}
+                                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                >
+                                  Phong tỏa TK
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnblockAccount(item.username, item.idaccount)}
+                                  disabled={quarantineActionLoading === `unblock_acc_${targetAccount}`}
+                                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                >
+                                  Mở khóa TK
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-slate-400 font-normal italic">--</span>
+                          )}
+                        </td>
+
+                        {/* CỘT THAO TÁC - CON MẮT MỞ FORENSICS */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenForensics(targetIpHash, item.maskedIp, targetAccount)}
+                            className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 flex items-center justify-center transition-all cursor-pointer mx-auto shadow-2xs"
+                            title={t('aiops.quarantine.viewForensicsTitle', 'Mở hồ sơ điều tra an ninh')}
+                            data-testid={`forensics-action-btn-${targetIpHash || idx}`}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">visibility</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phân trang Nguồn theo dõi đặc biệt */}
+            <Pagination
+              currentPage={quarantinePage}
+              pageSize={quarantinePageSize}
+              total={quarantineList.length}
+              pageSizeOptions={[5, 10, 20]}
+              onPageChange={(p) => setQuarantinePage(p)}
+              onPageSizeChange={(s) => {
+                setQuarantinePageSize(s);
+                setQuarantinePage(1);
+              }}
+              itemLabel={t('aiops.quarantine.itemLabel', 'nguồn theo dõi')}
+            />
+          </div>
+        ) : (
+          <div className="p-6 text-center rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-2">
+            <span className="material-symbols-outlined text-[36px] text-emerald-600">gpp_good</span>
+            <p className="font-bold text-xs text-slate-800">{t('aiops.quarantine.emptyTitle', 'Không có nguồn nào trong danh sách theo dõi đặc biệt')}</p>
+            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              {t('aiops.quarantine.emptyDesc', 'AIOps Sentinel liên tục theo dõi và sẵn sàng kích hoạt tường lửa tức thì nếu phát hiện nguồn bất thường.')}
+            </p>
+          </div>
+        )}
+      </div>
+
+      
       {/* Modal xác nhận làm sạch CSDL Sự Cố */}
       <ConfirmModal
         open={showClearIncidentsModal}
@@ -3295,13 +3427,13 @@ const AIOpsPage = () => {
         message={
           quarantineModalTarget
             ? t('aiops.confirmQuarantineMsg', `Bạn có chắc chắn muốn kích hoạt Khiên Chắn Active Quarantine cô lập kết nối từ nguồn IP [${
-                quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || 'xx.xx.xx.xx'
+                formatMaskedIp(quarantineModalTarget.actor?.maskedIp || quarantineModalTarget.actor?.rawIp || quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || '192.168.xxx.xxx')
               }]${
                 quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash
                   ? ` (Hash: #${(quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash).slice(0, 8)})`
                   : ''
-              } trong vòng 15 phút? Mọi request từ IP này sẽ bị ngắt kết nối với mã lỗi HTTP 403.`, {
-                ip: quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || 'xx.xx.xx.xx',
+              } trong vòng 4 giờ? Mọi request từ IP này sẽ bị ngắt kết nối với mã lỗi HTTP 403.`, {
+                ip: formatMaskedIp(quarantineModalTarget.actor?.maskedIp || quarantineModalTarget.actor?.rawIp || quarantineModalTarget.actor_identity || quarantineModalTarget.actorIdentity || '192.168.xxx.xxx'),
                 hash: quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash
                   ? ` (Hash: #${(quarantineModalTarget.actor_hash || quarantineModalTarget.actorHash).slice(0, 8)})`
                   : ''
@@ -3453,6 +3585,167 @@ const AIOpsPage = () => {
               >
                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
                 <span>{calibrating ? t('aiops.calibrate.calibratingBtn') : t('aiops.calibrate.confirmBtn')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL HỒ SƠ ĐIỀU TRA AN NINH & QUAN HỆ N-N (FORENSICS) */}
+      {/* ======================================================== */}
+      {forensicsModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" data-testid="forensics-modal">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">policy</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 m-0">
+                    {t('aiops.forensics.modalTitle', 'Hồ Sơ Điều Tra An Ninh (AIOps Security Forensics)')}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5 m-0">
+                    {t('aiops.forensics.modalDesc', 'Truy vết liên kết vi phạm N-N giữa Địa chỉ IP và Danh tính Tài khoản đã được lưu trữ bền vững')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForensicsModal(prev => ({ ...prev, open: false }))}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Target Information & Filter Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1 font-mono">
+                  <span className="text-slate-500">IP:</span>
+                  <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    {forensicsModal.maskedIp || 'N/A'}
+                  </span>
+                </div>
+                {forensicsModal.username && forensicsModal.username !== 'N/A' && forensicsModal.username !== 'all' && (
+                  <div className="flex items-center gap-1 font-mono">
+                    <span className="text-slate-500">Tài khoản:</span>
+                    <span className="font-bold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200">
+                      {forensicsModal.username}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => fetchForensicsLogs(forensicsModal.ipHash, forensicsModal.username, 1, 'all')}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                    forensicsModal.activeFilter === 'all'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {t('aiops.forensics.filterAll', 'Tất cả liên kết')}
+                </button>
+                {forensicsModal.ipHash && (
+                  <button
+                    type="button"
+                    onClick={() => fetchForensicsLogs(forensicsModal.ipHash, forensicsModal.username, 1, 'ip')}
+                    className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                      forensicsModal.activeFilter === 'ip'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {t('aiops.forensics.filterIpOnly', 'Theo IP này')}
+                  </button>
+                )}
+                {forensicsModal.username && forensicsModal.username !== 'N/A' && forensicsModal.username !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => fetchForensicsLogs(forensicsModal.ipHash, forensicsModal.username, 1, 'username')}
+                    className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                      forensicsModal.activeFilter === 'username'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {t('aiops.forensics.filterUserOnly', 'Theo TK này')}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Table Incident Logs */}
+            <div className="overflow-y-auto flex-1 min-h-[200px]">
+              {forensicsModal.loading ? (
+                <div className="flex flex-col items-center justify-center h-48 space-y-2 text-slate-500">
+                  <span className="material-symbols-outlined text-[32px] animate-spin text-blue-600">sync</span>
+                  <span className="text-xs">{t('common.loading', 'Đang nạp hồ sơ điều tra an ninh...')}</span>
+                </div>
+              ) : forensicsModal.incidents.length > 0 ? (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-700 font-bold uppercase text-[10px] tracking-wider sticky top-0">
+                      <th className="py-2.5 px-3">Mã sự cố</th>
+                      <th className="py-2.5 px-3">Thời điểm phát hiện</th>
+                      <th className="py-2.5 px-3">IP Hash</th>
+                      <th className="py-2.5 px-3">Tài khoản vi phạm</th>
+                      <th className="py-2.5 px-3">Lý do & Hành vi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {forensicsModal.incidents.map((incident, idx) => (
+                      <tr key={incident.id || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-2.5 px-3 font-bold text-slate-800">
+                          {incident.incident_code || `#INC-${incident.id}`}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 font-sans">
+                          {incident.detected_at ? formatDateTime(incident.detected_at) : '--'}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-700">
+                          {incident.ip_hash ? `${incident.ip_hash.slice(0, 10)}...` : '--'}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-blue-700">
+                          {incident.username || 'N/A'}
+                        </td>
+                        <td className="py-2.5 px-3 font-sans font-medium text-slate-800">
+                          {incident.reason || '--'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200/60 space-y-2">
+                  <span className="material-symbols-outlined text-[36px] text-slate-400">inventory_2</span>
+                  <p className="font-bold text-xs text-slate-700 m-0">
+                    {t('aiops.forensics.emptyTitle', 'Chưa có nhật ký sự cố liên đới nào trong CSDL')}
+                  </p>
+                  <p className="text-[11px] text-slate-500 m-0">
+                    {t('aiops.forensics.emptyDesc', 'Hệ thống tự động ghi nhận dữ liệu liên kết N-N khi có hành vi bất thường phát sinh.')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+              <span className="text-slate-500 font-medium">
+                {t('aiops.forensics.totalCount', `Tổng số: ${forensicsModal.total} sự cố liên đới`, { count: forensicsModal.total })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setForensicsModal(prev => ({ ...prev, open: false }))}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all cursor-pointer"
+              >
+                {t('common.close', 'Đóng')}
               </button>
             </div>
           </div>

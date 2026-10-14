@@ -124,9 +124,9 @@ Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm 
    - Phản ánh độ trễ Event Loop ($> 100\text{ms}$), RAM ($> 90\%$), CPU ($> 85\%$) và mã lỗi HTTP 5xx ($> 5\%$).
 
 ### 3.4. Công Thức Tổng Hợp Tương Quan (Corroborated Composite Threat Score)
-$$S_{\text{composite}} = \min\left(100, \max\left(5, \max(S_{\text{auth}}, S_{\text{traffic}}, S_{\text{exploit}}, S_{\text{resource}}) + \text{Bonus}_{\text{corroboration}}\right)\right)$$
+$$S_{\text{composite}} = \min\left(100, \max\left(0, \max(S_{\text{auth}}, S_{\text{traffic}}, S_{\text{exploit}}, S_{\text{resource}}) + \text{Bonus}_{\text{corroboration}}\right)\right)$$
 Trong đó $\text{Bonus}_{\text{corroboration}} = (\text{Số lượng vectơ} \ge 60 - 1) \times 8$.  
-Hệ thống **không cộng dồn ngẫu nhiên**, chỉ bổ sung điểm tương quan khi phát hiện nhiều vectơ độc lập cùng bị công kích đồng thời.
+Hệ thống **không cộng dồn ngẫu nhiên** và **không kẹp sàn mặc định là 5 điểm**, mà phản ánh chính xác điểm rủi ro thực tế đo lường được ($0 - 100$). Chỉ bổ sung điểm tương quan khi phát hiện nhiều vectơ độc lập cùng bị công kích đồng thời.
 
 ### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (Anti-Poisoning Guard)
 ```javascript
@@ -200,6 +200,26 @@ Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu (
    - ⚙️ **Hệ thống (System):** Tiến trình lõi máy chủ Node.js & CSDL.
    - 🌐 **Khách vãng lai (Guest):** Client chưa định danh hoặc các luồng quét tự động chưa đăng nhập.
 
+### 4.6. Cơ Chế Tự Động Mở Khóa Khi Đếm Ngược Hoàn Thành (Auto-Expire & Real-Time Auto-Unblock)
+Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng IP hoặc Tài khoản bị giam giữ vô thời hạn sau khi đã hết thời gian phạt:
+1. **Frontend (Admin-web Client Real-Time Countdown):**
+   - Thiết lập ticker đếm ngược thời gian thực mỗi 5 giây (`setInterval(..., 5000)`).
+   - Khi thời gian còn lại đếm ngược về 0 (`diffMs <= 0` hoặc `effectiveMin <= 0`):
+     - Giao diện tự động chuyển trạng thái đối tượng sang ĐÃ MỞ KHÓA (`isIpUnlocked = true` / `isAccountUnlocked = true`).
+     - Thời gian khóa hiển thị tự động triệt tiêu và chuyển sang nhãn `--` (`IP: --` hoặc `TK: --`).
+     - Hàng thao tác tự động chuyển sang nút `Tạm khóa IP` / `Tạm khóa TK` (ẩn hoàn toàn các nút `Phong tỏa` và `Mở khóa`).
+2. **Backend Engine (`aiops.quarantine.js`):**
+   - Tích hợp bộ quét định kỳ ngầm `startAutoExpireTimer(15000)` chạy tự động mỗi 15 giây.
+   - Phương thức `sweepExpiredQuarantines()` rà soát cả RAM Cache $O(1)$ và CSDL:
+     - **Với IP hết hạn:** Chuyển `ipStatus = 'unlocked'`, `ipExpiresAt = null`, gỡ khỏi bộ nhớ chặn `_map` & `_byHash`, cập nhật trạng thái bảng CSDL `aiops_ip_quarantine` sang `UNLOCKED`.
+     - **Với Tài khoản hết hạn:** Chuyển `accountStatus = 'unlocked'`, `accountExpiresAt = null`, cập nhật CSDL `aiops_account_quarantine` sang `UNLOCKED`, đồng bộ bảng `account` Prisma về `status: 'Active', reason_inactive: null`.
+     - Tự động phát sự kiện Socket.io `admin.quarantine_updated` tới phòng `admin_room` để Admin-web đồng bộ tức thì mà không cần người dùng phải tải lại trang.
+3. **Database Repository (`aiops.quarantine.repository.js`):**
+   - Phương thức `autoExpireInDatabase()` chạy truy vấn tham số hóa giải phóng:
+     `UPDATE "aiops_ip_quarantine" SET "status" = 'UNLOCKED', "expires_at" = NULL, "unblocked_at" = NOW(), "unblocked_by" = 'AIOps Auto-Expire' WHERE "status" = 'TEMPORARY' AND "expires_at" <= NOW()` (tương tự cho bảng `aiops_account_quarantine`).
+   - Tích hợp vào `loadActiveQuarantines()` chạy giải phóng trước khi nạp dữ liệu.
+   - Phương thức `hydrateFromDatabase()`: Chỉ gán trạng thái `temporary` nếu `expires_at > nowTs`; nếu hết hạn hoặc không có bản ghi thì tự động gán `unlocked` với `expiresAt = null`, triệt tiêu hoàn toàn lỗi hiển thị thời gian còn lại của các bản ghi từ quá khứ.
+
 ---
 
 ## 💼 5. CÔNG DỤNG & GIÁ TRỊ NGHIỆP VỤ
@@ -247,14 +267,46 @@ Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu (
      - Ô tìm kiếm linh hoạt theo IP, Hash, Username, Endpoint, Mã lỗi.
      - Phân trang chuẩn giao diện `Pagination.jsx` với các tùy chọn 5, 10, 20, 50 sự cố/trang.
      - Nút "Làm sạch CSDL" tích hợp `ConfirmModal` phục vụ kiểm thử và nghiệm thu.
-    - **Nút Phong Tỏa IP Thủ Công & Gỡ Chặn Tức Thì (Manual Quarantine & Instant Unblock):**
-      - Tại cột **"Thao tác & Phòng vệ"** của từng hàng sự cố, Admin có thể chủ động bấm **"Phong Tỏa IP"** để cô lập ngay nguồn request bất thường mà không cần đợi ngưỡng tự động.
-      - Tích hợp hộp thoại xác nhận an toàn `ConfirmModal`: hiển thị rõ Masked IP, SHA-256 Hash, Endpoint và thời hạn phong tỏa (15 phút).
-      - Nếu IP đã bị cách ly, hệ thống hiển thị huy hiệu `Đã phong tỏa Shield` cùng nút **"Gỡ chặn"** cho phép mở khóa nhanh ngay tại bảng RCA.
-      - Đối với sự cố tải nội bộ phần cứng (`vector === 'resource'` hoặc `actor = 'Hệ thống'`), hệ thống thông minh hiển thị huy hiệu `Nội bộ hệ thống` để tránh phong tỏa nhầm máy chủ.
-6. **Bảng Nguồn Request Đang Bị Cô Lập (Active Quarantine Blacklist):**
-   - Hiển thị danh sách IP bị phong tỏa (đã mask `a.b.xx.xx`), nguyên nhân, thời gian bị chặn, số lần vi phạm (Hits).
-   - Nút **"Gỡ Chặn (Unblock)"** cho phép Admin mở khóa thủ công cho IP bất kỳ chỉ với 1 click.
+5. **Bảng Tổng Quan Nguyên Nhân Bất Thường (RCA & Incident Journal):**
+   - **Cột Đối tượng:**
+     - Tài khoản hiển thị rõ Username: `TK: <username>` (đối với sự cố tài nguyên ghi rõ `TK: Hệ thống nội bộ`).
+     - Địa chỉ IP hiển thị rõ ràng và che mờ nghiêm ngặt theo định dạng `192.168.xxx.xxx` (đối với sự cố tài nguyên ghi rõ `IP: Nội bộ hệ thống`).
+   - **Cột Tình trạng & Sắp xếp:**
+     - Số lần lặp lại được tính tổng hợp theo đối tượng & IP trong toàn hệ thống.
+     - Thời điểm phát hiện hiển thị mốc sớm nhất (`first_detected_at`), kèm thời điểm sát nhất (`last_seen_at`).
+     - Thứ tự log được sắp xếp từ cao xuống thấp theo thời điểm, sự cố mới nhất (`last_seen_at DESC`) xếp trên cùng.
+   - **Thông Báo Không Có Dữ Liệu (Empty State):** Khi không có sự cố nào trong CSDL hoặc không khớp với bộ lọc đang áp dụng, bảng chỉ ghi nhận súc tích: `"Không tìm thấy sự cố"`, loại bỏ hoàn toàn các icon lớn hay nút bấm rườm rà.
+    - **Phòng vệ theo phân loại nghiệp vụ:**
+     - Với sự cố tài nguyên (`resource`): xuất phát từ chính máy chủ, không ai gây ra nên không bao giờ có nút chặn IP hay tài khoản, chỉ hiển thị thông tin điều phối hạ tầng.
+     - Với sự cố xâm nhập (`auth`, `traffic`, `exploit`): cung cấp nút thao tác phong tỏa hoặc mở khóa nhanh.
+6. **Bảng Nguồn Theo Dõi Đặc Biệt (Special Monitored Sources - Tên cũ Quarantine Blacklist - Đặt Ở Dưới Cùng Trang):**
+   - Đặt ở vị trí dưới cùng trang (sau Biểu đồ xu hướng và Bảng RCA), giúp giao diện mạch lạc theo luồng: Thống kê tổng quan -> Xu hướng -> Bóc tách nguyên nhân -> Nguồn bị cô lập/giám sát.
+   - Bãi bỏ việc tính gộp IP và Tài khoản thành một "nguồn" gây hiểu nhầm.
+   - **Cấu trúc cột chuẩn hóa:**
+     1. **Địa chỉ IP:** Hiển thị dãy số IP đã che mờ (`xxx.xxx`), bỏ tick 'v', bỏ badge 'đã mở khóa' và bỏ icon điều tra khỏi cột này.
+     2. **Tài khoản:** Hiển thị tên tài khoản sạch sẽ, bỏ icon hình người, bỏ badge 'đã mở khóa'.
+     3. **Vector:** Cột mới đặt ngay sau Tài khoản, phân loại nguy cơ tổng quan (`Xác thực`, `Lưu lượng`, `Khai thác`).
+     4. **Nguyên nhân phong tỏa:** Tóm tắt súc tích, chi tiết đầy đủ nằm trong modal hồ sơ điều tra an ninh.
+     5. **Thời điểm chặn & Thời gian còn lại (Phân tách độc lập IP & TK):**
+        - Cột Thời gian còn lại hiển thị tách biệt 2 dòng: `IP: X giờ Y phút` và `TK: X giờ Y phút`.
+        - Khi IP hoặc Tài khoản đã được mở khóa (`unlocked`) hoặc bị phong tỏa vĩnh viễn (`permanent`), thời gian khóa tương ứng **không còn nữa** và hiển thị rõ ràng nhãn `--` (`IP: --` hoặc `TK: --`).
+        - Chỉ khi đối tượng ở trạng thái tạm khóa (`temporary`), hệ thống mới tính toán và hiển thị thời gian còn lại (chu kỳ tạm khóa mặc định 4 tiếng = 240 phút).
+     6. **Thao tác IP & Thao tác Tài khoản:**
+        - Nút bấm chữ thuần, không icon đi kèm.
+        - Tạm khóa: hiển thị 2 nút `Phong tỏa IP` + `Mở khóa IP` | `Phong tỏa TK` + `Mở khóa TK`.
+        - Hoạt động: hiển thị nút `Tạm khóa IP` | `Tạm khóa TK`.
+        - Phong tỏa vĩnh viễn: chỉ hiển thị text badge `IP đã bị phong tỏa` | `Tài khoản đã bị phong tỏa`, **hoàn toàn không còn hiển thị nút bấm** (không có nút Mở khóa).
+        - Màu sắc: Tone màu dịu nhẹ (`rose-50`/`rose-700`, `amber-50`/`amber-700`, `emerald-50`/`emerald-700`), màu nền badge nhạt hơn chữ.
+     7. **Thao tác (Cột cuối cùng):** Chứa icon con mắt màu xanh (`visibility`) dùng để mở modal Hồ sơ điều tra an ninh.
+     8. **Chuẩn Hóa Địa Chỉ IP & Tài Khoản Thực Tế (PO Specification):**
+        - **Bảng Tổng quan nguyên nhân bất thường (RCA Table):**
+          - **Cột Tình trạng:** Hiển thị thời điểm phát hiện lần đầu, nhãn trạng thái (`ĐANG DIỄN RA` / `ĐÃ GIẢM THIỂU`), và số lần lặp lại (`Lặp lại X lần` / `Phát hiện lần 1`). Đã loại bỏ hoàn toàn dòng hiển thị dư thừa `Gần nhất: ...`.
+          - **Cột Đối tượng:**
+          - `TK:`: Ghi nhận `username` tài khoản thật (tự động tra cứu từ bảng `account` khi có `userId`, chỉ dùng `Khách vãng lai / Ẩn danh` khi là khách vãng lai, hoặc `Hệ thống nội bộ` khi thuộc sự cố phần cứng).
+          - `IP:`: Ghi nhận IP thực tế đã được che mờ theo mẫu **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`** (giữ 2 octet mạng đầu, che 2 octet sau bằng `xxx.xxx`, loopback `127.0.xxx.xxx`). Tuyệt đối không dùng chuỗi mockup tiếng Việt (`1 địa chỉ IP tập trung`, `Nhiều nguồn IP phân tán`) hay placeholder `xx.xx.xxx.xxx`.
+        - **Bảng Nguồn theo dõi đặc biệt (Quarantine Table) > Cột Địa chỉ IP:**
+          - Ghi nhận IP thực đã che mờ mẫu chuẩn **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`**. Loại bỏ hoàn toàn các chuỗi rác `xx.xx.xx.xx`, `xx.xx.xxx.xxx` ở cả tầng Backend collector, detector, quarantine repository và Frontend formatter.
+   - **Phân trang độc lập & Hiển thị chính xác dòng:** Tích hợp bộ phân trang `Pagination` chuyên dụng, hỗ trợ tùy biến 5, 10, 20 dòng/trang. Đặt ngoài container cuộn ngang và sử dụng unique key trên từng thẻ `<tr>` kết hợp `item.id`, `item.ipHash`, `item.username`, `item.bannedAt` và index `idx` nhằm tránh xung đột key Virtual DOM, đảm bảo số dòng hiển thị luôn chính xác tuyệt đối theo bộ lọc đã chọn.
 7. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp (Chỉ Khi Sập Dây Chuyền):**
    - **Nguyên tắc bảo vệ nghiêm ngặt:** Nút kích hoạt này **CHỈ hiển thị khi Vectơ 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền** (`resourceScore >= 85` hoặc `resourceScore >= 70 && Event Loop Lag > 250ms && 5xx > 15%`).
    - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công Brute-Force mật khẩu (Vectơ 1) hay tấn công Injection (Vectơ 3) từ các IP bên ngoài.
@@ -311,6 +363,44 @@ Bảng cấu hình khóa-giá trị chuyên biệt dùng để **lưu cứng (ha
 
 ---
 
+## 🗄️ 6.3. CẤU TRÚC 3 BẢNG CSDL LƯU TRỮ PHONG TỎA N-N & ĐIỀU TRA AN NINH (POSTGRESQL)
+
+Nhằm tối ưu hóa năng lực điều tra an ninh, phục vụ yêu cầu kiểm soát bảo mật và tuân thủ Luật An ninh mạng & Nghị định 53/2022/NĐ-CP (lưu trữ dữ liệu nhật ký tối thiểu 12 tháng), hệ thống áp dụng **Mô hình 3 Bảng Quan Hệ N-N (Many-to-Many Relationship)** để quản lý Địa chỉ IP và Tài khoản vi phạm:
+
+```
+┌───────────────────────────┐         ┌──────────────────────────────────────┐         ┌─────────────────────────────────┐
+│    aiops_ip_quarantine    │ 1     N │    aiops_quarantine_incident_link    │ N     1 │    aiops_account_quarantine     │
+│───────────────────────────│─────────│──────────────────────────────────────│─────────│─────────────────────────────────│
+│ id (PK)                   │         │ id (BIGSERIAL PK)                    │         │ id (PK)                         │
+│ ip_hash (UNIQUE SHA-256)  │         │ ip_quarantine_id (FK)                │         │ username (UNIQUE lowercase)     │
+│ masked_ip                 │         │ account_quarantine_id (FK)           │         │ idaccount (INT)                 │
+│ raw_ip (optional)         │         │ ip_hash (INDEX)                      │         │ status (TEMPORARY/PERMANENT/...)│
+│ status                    │         │ username (INDEX)                     │         │ hits (INTEGER)                  │
+│ hits                      │         │ incident_code                        │         │ banned_by / unblocked_by        │
+│ banned_at / expires_at    │         │ reason                               │         │ banned_at / expires_at          │
+│ banned_by / unblocked_by  │         │ detected_at (TIMESTAMPTZ)            │         │ unblock_reason                  │
+└───────────────────────────┘         └──────────────────────────────────────┘         └─────────────────────────────────┘
+```
+
+1. **Bảng Địa Chỉ IP (`aiops_ip_quarantine`):**
+   - Quản lý trạng thái phong tỏa của nguồn mạng (`TEMPORARY`: Tạm khóa, `PERMANENT`: Khóa vĩnh viễn, `UNLOCKED`: Đã mở khóa).
+   - Bảo mật theo Rule 9: Masked IP (`xxx.xxx.xx.xx`), SHA-256 IP Hash phục vụ tra cứu $O(1)$.
+   - Ghi nhận thông tin người thực thi (`banned_by`, `unblocked_by`, `unblock_reason`).
+   - **Đồng bộ thời hạn (`expires_at`):** Khi Admin Mở khóa (`UNLOCKED`) hoặc Phong tỏa vĩnh viễn (`PERMANENT`), CSDL tự động gán `"expires_at" = NULL`. Khi Tạm khóa (`TEMPORARY`), CSDL cập nhật chính xác timestamp hết hạn mới.
+2. **Bảng Tài Khoản Người Dùng (`aiops_account_quarantine`):**
+   - Quản lý trạng thái phong tỏa danh tính (`TEMPORARY`, `PERMANENT`, `UNLOCKED`).
+   - **Đồng bộ thời hạn (`expires_at`):** Khi mở khóa hoặc phong tỏa vĩnh viễn, `"expires_at" = NULL`. Khi tạm khóa, lưu timestamp hết hạn tương ứng.
+   - **Liên kết 2 chiều với bảng `account` trong CSDL:** Khi tài khoản bị cách ly, tạm khóa hoặc khóa vĩnh viễn, hệ thống tự động cập nhật bảng `account` với `status: 'Locked'`. Khi mở khóa hoặc hết hạn tạm khóa tự động (Auto-expire), hệ thống tự động cập nhật lại bảng `account` với `status: 'Active', reason_inactive: null`.
+3. **Bảng Sự Cố Liên Kết N-N (`aiops_quarantine_incident_link`):**
+   - Lưu trữ nhật ký bất biến (Append-Only) mọi sự cố tấn công liên kết giữa IP và Tài khoản.
+   - Hỗ trợ cơ quan chức năng và Quản trị viên truy vết chéo: 1 IP đã tấn công những tài khoản nào, và 1 tài khoản đã bị tấn công/truy cập từ những IP nào.
+4. **Cơ Chế Hydration & Auto-Expire Khi Boot Server (Zero-Loss On Restart):**
+   - Khi Server khởi động, phương thức `hydrateFromDatabase()` tự động nạp tất cả IP và Tài khoản đang có hiệu lực (`PERMANENT` hoặc `TEMPORARY` chưa hết hạn) vào bộ nhớ RAM Cache.
+   - Middleware chặn request tại đầu Express Pipeline với độ phức tạp $O(1) < 1\text{ms}$, không gây tải cho PostgreSQL.
+   - Khi hết hạn tạm khóa trong RAM, hệ thống tự động bắn truy vấn cập nhật giải phóng trạng thái `UNLOCKED` và `Active` xuống CSDL.
+
+---
+
 ## 📱 7. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
 
 - **Đến Backend:**
@@ -330,9 +420,14 @@ Bảng cấu hình khóa-giá trị chuyên biệt dùng để **lưu cứng (ha
 |---|---|---|---|
 | `GET` | `/api/admin/aiops/status` | Lấy Threat Score, 4 điểm vectơ, trạng thái và phân tích | Admin |
 | `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử phục vụ vẽ biểu đồ SVG | Admin |
-| `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP đang bị phong tỏa | Admin |
-| `POST` | `/api/admin/aiops/quarantine` | Chủ động phong tỏa thủ công một nguồn IP theo Hash/IP | Admin |
-| `DELETE` | `/api/admin/aiops/quarantine/:hash` | Gỡ chặn và mở khóa kết nối thủ công cho IP | Admin |
+| `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP/Tài khoản đang bị phong tỏa | Admin |
+| `POST` | `/api/admin/aiops/quarantine` | Chủ động phong tỏa thủ công một nguồn IP/Tài khoản | Admin |
+| `DELETE` | `/api/admin/aiops/quarantine/:hash` | Gỡ chặn và mở khóa kết nối thủ công cho IP (Legacy) | Admin |
+| `POST` | `/api/admin/aiops/quarantine/unblock-ip` | Mở khóa địa chỉ IP và cập nhật CSDL `UNLOCKED` | Admin |
+| `POST` | `/api/admin/aiops/quarantine/permanent-ip` | Khóa vĩnh viễn IP và cập nhật CSDL `PERMANENT` | Admin |
+| `POST` | `/api/admin/aiops/quarantine/unblock-account` | Mở khóa tài khoản (đồng bộ CSDL account `Active`) | Admin |
+| `POST` | `/api/admin/aiops/quarantine/permanent-account` | Khóa vĩnh viễn tài khoản (đồng bộ CSDL account `Locked`) | Admin |
+| `GET` | `/api/admin/aiops/quarantine/forensics` | Truy vấn hồ sơ điều tra an ninh & liên kết N-N | Admin |
 | `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin |
 | `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin |
 | `GET` | `/api/admin/aiops/incidents` | Lấy danh sách nhật ký sự cố CSDL có phân trang và bộ lọc | Admin |
@@ -341,6 +436,7 @@ Bảng cấu hình khóa-giá trị chuyên biệt dùng để **lưu cứng (ha
 ### Socket.io Events
 - **Phát tán tới Admin-web (`admin_room`):**
   - `admin.security_alert`: Báo động khi Threat Score $\ge 80$.
-  - `admin.security_blocked`: Thông báo real-time ngay khi có 1 IP bị tường lửa phong tỏa.
+  - `admin.security_blocked`: Thông báo real-time ngay khi có 1 IP/Tài khoản bị tường lửa phong tỏa.
+  - `admin.quarantine_updated`: Thông báo cập nhật khi trạng thái phong tỏa IP/Tài khoản thay đổi.
   - `admin.metrics_stream`: Stream thông số nhịp tim, Threat Score, 4 điểm vectơ và quy mô CCU mỗi 3 giây.
   - `admin.anomaly_detected`: Phát sự kiện thời gian thực khi có sự cố bất thường mới được ghi nhận vào CSDL.

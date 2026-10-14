@@ -67,19 +67,23 @@ class FeatureCollector {
 
   /**
    * Che bớt thông tin IP để tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
+   * Định dạng chuẩn: a.b.xxx.xxx (giữ 2 octet đầu, che 2 octet cuối bằng xxx.xxx)
    */
   _maskIp(rawIp) {
-    if (!rawIp) return 'xx.xx.xx.xx';
+    if (!rawIp) return '192.168.xxx.xxx';
     const clean = rawIp.replace(/^::ffff:/, '').trim();
+    if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') {
+      return '127.0.xxx.xxx';
+    }
     const v4Parts = clean.split('.');
     if (v4Parts.length === 4) {
-      return `${v4Parts[0]}.${v4Parts[1]}.xx.xx`;
+      return `${v4Parts[0]}.${v4Parts[1]}.xxx.xxx`;
     }
     const v6Parts = clean.split(':');
     if (v6Parts.length > 2) {
       return `${v6Parts[0]}:${v6Parts[1]}:xxxx:xxxx`;
     }
-    return 'xx.xx.xx.xx';
+    return '192.168.xxx.xxx';
   }
 
   recordFailedLogin() {
@@ -214,11 +218,26 @@ class FeatureCollector {
                 }
                 // Heuristic 3: Phát hiện tấn công dò mật khẩu (Brute-force) từ 1 IP (nới rộng lên >= 15 lần để tránh người dùng gõ nhầm)
                 if (ipStat.failedLogins >= 15 && !req.isAdmin) {
-                  defaultAIOpsQuarantine.quarantine(
-                    clientIp,
-                    `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai${ipStat.targetAccount ? ` - Mục tiêu: ${ipStat.targetAccount}` : ''})`,
-                    15 * 60 * 1000
-                  );
+                  const targetUser = ipStat.targetAccount || ipStat.username || null;
+                  defaultAIOpsQuarantine.quarantinePair({
+                    ip: clientIp,
+                    username: targetUser,
+                    reason: `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai${targetUser ? ` - Mục tiêu: ${targetUser}` : ''})`,
+                    durationMs: 15 * 60 * 1000,
+                  });
+                  // Tự động tạm khóa tài khoản mục tiêu trong CSDL để chống xâm nhập
+                  if (targetUser) {
+                    try {
+                      const prisma = require('../../database/prisma');
+                      prisma.account.updateMany({
+                        where: { username: targetUser, status: 'Active' },
+                        data: {
+                          status: 'TemporarilyLocked',
+                          reason_inactive: 'AIOps Sentinel tạm khóa do phát hiện hành vi Brute-Force bất thường',
+                        },
+                      }).catch(() => {});
+                    } catch (_) {}
+                  }
                 }
               }
             }
@@ -232,11 +251,12 @@ class FeatureCollector {
                   ipStat.tokenReuse = (ipStat.tokenReuse || 0) + 1;
                   // Chỉ cách ly khi tái sử dụng lặp lại >= 5 lần từ 1 IP (tránh trường hợp người dùng mở 2 tab hoặc mạng chập chờn)
                   if (ipStat.tokenReuse >= 5 && !req.isAdmin) {
-                    defaultAIOpsQuarantine.quarantine(
-                      clientIp,
-                      `Phát hiện tái sử dụng Token đã thu hồi liên tục (${ipStat.tokenReuse} lần - Token Hijacking Attack)`,
-                      15 * 60 * 1000
-                    );
+                    defaultAIOpsQuarantine.quarantinePair({
+                      ip: clientIp,
+                      username: ipStat.username || (req.user && req.user.username) || null,
+                      reason: `Phát hiện tái sử dụng Token đã thu hồi liên tục (${ipStat.tokenReuse} lần - Token Hijacking Attack)`,
+                      durationMs: 15 * 60 * 1000,
+                    });
                   }
                 }
               }
@@ -378,7 +398,34 @@ class FeatureCollector {
 
     const burstThreshold = this._getBurstThreshold();
     const suspectActors = [];
+
+    let maxReqCount = 0;
+    let topReqIp = null;
+    let topReqStat = null;
+    let maxFailedLogins = 0;
+    let topFailedIp = null;
+    let topFailedStat = null;
+    let maxMalformed = 0;
+    let topMalformedIp = null;
+    let topMalformedStat = null;
+
     for (const [ip, ipStat] of this._ipStats.entries()) {
+      if (ipStat.count > maxReqCount) {
+        maxReqCount = ipStat.count;
+        topReqIp = ip;
+        topReqStat = ipStat;
+      }
+      if (ipStat.failedLogins > maxFailedLogins) {
+        maxFailedLogins = ipStat.failedLogins;
+        topFailedIp = ip;
+        topFailedStat = ipStat;
+      }
+      if (ipStat.malformed > maxMalformed) {
+        maxMalformed = ipStat.malformed;
+        topMalformedIp = ip;
+        topMalformedStat = ipStat;
+      }
+
       if (
         ipStat.failedLogins > 0 ||
         ipStat.malformed > 0 ||
@@ -407,6 +454,48 @@ class FeatureCollector {
       }
     }
 
+    const topTrafficActor = topReqIp ? {
+      type: topReqStat.userId ? 'AUTHENTICATED_USER' : 'IP_SOURCE',
+      identity: this._maskIp(topReqIp),
+      maskedIp: this._maskIp(topReqIp),
+      rawIp: topReqIp,
+      ipHash: this._hashIp(topReqIp),
+      userId: topReqStat.userId || null,
+      username: topReqStat.username || topReqStat.targetAccount || (topReqStat.userId ? `User #${topReqStat.userId}` : 'Khách vãng lai / Ẩn danh'),
+      role: topReqStat.role || (topReqStat.userId ? 'User' : 'Guest'),
+      userAgent: topReqStat.userAgent || 'Unknown Client',
+      targetEndpoint: topReqStat.targetEndpoint || '/',
+      reqCount: topReqStat.count || 0,
+    } : null;
+
+    const topAuthActor = topFailedIp ? {
+      type: topFailedStat.userId ? 'AUTHENTICATED_USER' : 'IP_SOURCE',
+      identity: this._maskIp(topFailedIp),
+      maskedIp: this._maskIp(topFailedIp),
+      rawIp: topFailedIp,
+      ipHash: this._hashIp(topFailedIp),
+      userId: topFailedStat.userId || null,
+      username: topFailedStat.username || topFailedStat.targetAccount || (topFailedStat.userId ? `User #${topFailedStat.userId}` : 'Khách vãng lai / Ẩn danh'),
+      role: topFailedStat.role || (topFailedStat.userId ? 'User' : 'Guest'),
+      userAgent: topFailedStat.userAgent || 'Unknown Client',
+      targetEndpoint: topFailedStat.targetEndpoint || '/api/auth/login',
+      failedLogins: topFailedStat.failedLogins || 0,
+    } : null;
+
+    const topExploitActor = topMalformedIp ? {
+      type: topMalformedStat.userId ? 'AUTHENTICATED_USER' : 'IP_SOURCE',
+      identity: this._maskIp(topMalformedIp),
+      maskedIp: this._maskIp(topMalformedIp),
+      rawIp: topMalformedIp,
+      ipHash: this._hashIp(topMalformedIp),
+      userId: topMalformedStat.userId || null,
+      username: topMalformedStat.username || topMalformedStat.targetAccount || (topMalformedStat.userId ? `User #${topMalformedStat.userId}` : 'Khách vãng lai / Ẩn danh'),
+      role: topMalformedStat.role || (topMalformedStat.userId ? 'User' : 'Guest'),
+      userAgent: topMalformedStat.userAgent || 'Unknown Client',
+      targetEndpoint: topMalformedStat.targetEndpoint || '/',
+      malformed: topMalformedStat.malformed || 0,
+    } : null;
+
     const hwMetrics = this._getHardwareMetrics();
 
     const sample = {
@@ -429,6 +518,9 @@ class FeatureCollector {
       loadSheddingCount: this._getLoadSheddingCount(),
       distinctIpsCount: this._ipHashes.size,
       suspectActors,
+      topTrafficActor,
+      topAuthActor,
+      topExploitActor,
     };
 
     // Reset window counters cho chu kỳ kế tiếp

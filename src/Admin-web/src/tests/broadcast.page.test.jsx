@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import BroadcastPage from '../pages/system/BroadcastPage';
 import { LanguageProvider } from '../store/language.context';
@@ -75,20 +75,23 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     });
   });
 
-  it('6.1. Tải và hiển thị trạng thái bảo trì mặc định với Nút Đỏ "Bật Bảo Trì Khẩn Cấp"', async () => {
+  it('6.1. Tải và hiển thị giao diện với Checkbox "Bảo trì khẩn cấp", không còn box cũ', async () => {
     renderComponent();
 
     await waitFor(() => {
       expect(adminApi.getMaintenanceStatus).toHaveBeenCalledTimes(1);
       expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
-      expect(screen.getByText('Kích Hoạt Bảo Trì Khẩn Cấp')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
-      // Không còn checkbox khẩn cấp bị thừa
-      expect(screen.queryByRole('checkbox', { name: /Bảo trì khẩn cấp/i })).not.toBeInTheDocument();
+      // Không còn box cũ
+      expect(screen.queryByText('Kích Hoạt Bảo Trì Khẩn Cấp')).not.toBeInTheDocument();
+      // Có Checkbox Tự động phát thông báo & Bảo trì khẩn cấp
+      expect(screen.getByRole('checkbox', { name: /Tự động phát thông báo/i })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i })).toBeInTheDocument();
+      // Mặc định nút là Lên lịch bảo trì
+      expect(screen.getByRole('button', { name: /Lên lịch bảo trì/i })).toBeInTheDocument();
     });
   });
 
-  it('6.2. Kích hoạt bảo trì khẩn cấp gửi isEmergency = true và cắt tải người dùng', async () => {
+  it('6.2. Tick Checkbox Bảo trì khẩn cấp đổi nút sang đỏ và mở popup xác nhận trước khi gọi API', async () => {
     adminApi.setMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: true,
@@ -100,15 +103,28 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Lên lịch bảo trì/i })).toBeInTheDocument();
     });
 
+    const emergencyCheckbox = screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i });
+    fireEvent.click(emergencyCheckbox);
+
+    // Nút đổi thành Bảo trì khẩn cấp màu đỏ
+    const emergencyBtn = screen.getByRole('button', { name: /Bảo trì khẩn cấp/i });
+    expect(emergencyBtn).toBeInTheDocument();
+    expect(emergencyBtn.className).toContain('bg-red-600');
+
+    // Nhập lý do
     const reasonInput = screen.getByPlaceholderText(/hệ thống khẩn cấp/i);
     fireEvent.change(reasonInput, { target: { value: 'Sự cố nghẽn mạng khẩn cấp' } });
 
-    const toggleBtn = screen.getByRole('button', { name: /Bật Bảo Trì Khẩn Cấp/i });
-    expect(toggleBtn.className).toContain('bg-red-600');
-    fireEvent.click(toggleBtn);
+    // Bấm nút -> Mở Popup xác nhận
+    fireEvent.click(emergencyBtn);
+    expect(await screen.findByText('Xác nhận BẢO TRÌ KHẨN CẤP')).toBeInTheDocument();
+
+    // Bấm nút xác nhận trong Popup
+    const confirmBtn = screen.getByRole('button', { name: /Xác nhận kích hoạt/i });
+    fireEvent.click(confirmBtn);
 
     await waitFor(() => {
       expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({
@@ -140,10 +156,10 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì/i })).toBeInTheDocument();
     });
 
-    const turnOffBtn = screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i });
+    const turnOffBtn = screen.getByRole('button', { name: /Tắt Bảo Trì/i });
     fireEvent.click(turnOffBtn);
 
     await waitFor(() => {
@@ -210,7 +226,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì/i })).toBeInTheDocument();
       expect(screen.getAllByText('Sự cố khẩn cấp từ Sentinel').length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -274,9 +290,9 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     await waitFor(() => {
       expect(screen.getByText('Chế độ bảo trì đang kích hoạt')).toBeInTheDocument();
       expect(screen.getByText(/Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Tắt Bảo Trì Khẩn Cấp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Tắt Bảo Trì/i })).toBeInTheDocument();
       // Form lên lịch không xuất hiện
-      expect(screen.queryByRole('button', { name: /Lên Lịch Bảo Trì Hệ Thống/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Lên Lịch Bảo Trì/i })).not.toBeInTheDocument();
     });
   });
 
@@ -290,7 +306,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
     const endDatetimeInput = screen.getByLabelText(/Thời điểm kết thúc \(Dự kiến\)/i);
     const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
-    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo cho Client & Admin/i });
+    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo/i });
 
     // Điền dữ liệu vào form
     fireEvent.change(startDatetimeInput, { target: { value: '2026-10-25T10:00' } });
@@ -303,8 +319,9 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
     expect(reasonInput.value).toBe('Nội dung đang soạn dở...');
     expect(notifyCheckbox.checked).toBe(true);
 
-    // Bấm nút Làm mới & Đặt lại biểu mẫu
-    const refreshBtn = screen.getByRole('button', { name: /Làm mới & Đặt lại biểu mẫu/i });
+    // Bấm nút Làm mới (nằm cạnh nút Lên lịch bảo trì)
+    const form = startDatetimeInput.closest('form');
+    const refreshBtn = within(form).getByRole('button', { name: /Làm mới/i });
     fireEvent.click(refreshBtn);
 
     await waitFor(() => {
@@ -354,7 +371,7 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
 
     const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
     const reasonInput = screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i);
-    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo cho Client & Admin/i });
+    const notifyCheckbox = screen.getByRole('checkbox', { name: /Tự động phát thông báo/i });
 
     fireEvent.change(startDatetimeInput, { target: { value: '2026-10-20T02:00' } });
     fireEvent.change(reasonInput, { target: { value: 'Bảo trì hệ thống diện rộng có phát thông báo' } });

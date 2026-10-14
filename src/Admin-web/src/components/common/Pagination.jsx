@@ -19,14 +19,14 @@ const Pagination = ({
   const endItem = Math.min(currPage * pageSize, total);
 
   const getPageNumbers = (curr, total) => {
-    if (total <= 5) {
+    if (total <= 6) {
       return Array.from({ length: total }, (_, i) => i + 1);
     }
-    if (curr <= 2) {
-      return [1, 2, 3, '...', total];
+    if (curr <= 3) {
+      return [1, 2, 3, 4, '...', total];
     }
-    if (curr >= total - 1) {
-      return [1, '...', total - 2, total - 1, total];
+    if (curr >= total - 2) {
+      return [1, '...', total - 3, total - 2, total - 1, total];
     }
     return [1, '...', curr - 1, curr, curr + 1, '...', total];
   };
@@ -48,8 +48,7 @@ const Pagination = ({
               const newSize = parseInt(e.target.value, 10);
               if (onPageSizeChange) {
                 onPageSizeChange(newSize);
-              }
-              if (onPageChange) {
+              } else if (onPageChange) {
                 onPageChange(1);
               }
             }}

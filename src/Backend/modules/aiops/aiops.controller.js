@@ -140,9 +140,9 @@ const aiopsController = {
 
   async getIncidents(req, res) {
     try {
-      const { page, limit, vector, status, search } = req.query;
+      const { page, limit, vector, status, search, range, from, to } = req.query;
       const { defaultAIOpsIncidentRepository } = require('./aiops.repository');
-      const result = await defaultAIOpsIncidentRepository.getIncidents({ page, limit, vector, status, search });
+      const result = await defaultAIOpsIncidentRepository.getIncidents({ page, limit, vector, status, search, range, from, to });
       return ResponseHandler.success(res, result, 'Danh sách sự cố bất thường từ CSDL');
     } catch (error) {
       logger.error('[AIOpsController] getIncidents failed', { error: error.message });
@@ -151,13 +151,186 @@ const aiopsController = {
   },
 
   async clearIncidents(req, res) {
+    return ResponseHandler.error(res, 'Chức năng làm sạch nhật ký đã bị vô hiệu hóa để bảo đảm tính toàn vẹn và bất biến của CSDL an ninh', 403);
+  },
+
+  async unblockIp(req, res) {
     try {
-      const { defaultAIOpsIncidentRepository } = require('./aiops.repository');
-      await defaultAIOpsIncidentRepository.clearIncidents();
-      req.auditActionName = 'Làm sạch nhật ký sự cố AIOps Sentinel';
-      return ResponseHandler.success(res, { cleared: true }, 'Đã xóa toàn bộ nhật ký sự cố');
+      const { ipHash, ip } = req.body;
+      const target = ipHash || ip;
+      if (!target) {
+        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần gỡ chặn', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const count = await defaultAIOpsQuarantine.unblockIp(target, { unblockedBy: adminUser });
+      req.auditActionName = `Gỡ chặn IP [${target}] (${count} liên kết)`;
+      return ResponseHandler.success(res, { count, target }, 'Đã mở khóa IP thành công cho tất cả các bản ghi');
     } catch (error) {
-      logger.error('[AIOpsController] clearIncidents failed', { error: error.message });
+      logger.error('[AIOpsController] unblockIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async permanentBanIp(req, res) {
+    try {
+      const { ipHash, ip } = req.body;
+      const target = ipHash || ip;
+      if (!target) {
+        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần khóa vĩnh viễn', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const count = await defaultAIOpsQuarantine.permanentBanIp(target, { bannedBy: adminUser });
+      req.auditActionName = `Khóa IP vĩnh viễn [${target}] (${count} liên kết)`;
+      return ResponseHandler.success(res, { count, target }, 'Đã khóa IP vĩnh viễn thành công cho tất cả các bản ghi');
+    } catch (error) {
+      logger.error('[AIOpsController] permanentBanIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async unblockAccount(req, res) {
+    try {
+      const { username, idaccount } = req.body;
+      if (!username && !idaccount) {
+        return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const target = username || idaccount;
+      const count = await defaultAIOpsQuarantine.unblockAccount(target, { unblockedBy: adminUser });
+
+      // Tác động thực tế CSDL (Tầng 2 System Impact): Kích hoạt lại tài khoản trong database
+      try {
+        const { prisma } = require('../../config/db');
+        const where = {};
+        if (username) where.username = String(username).trim();
+        if (idaccount) where.idaccount = Number(idaccount);
+        await prisma.account.updateMany({
+          where,
+          data: {
+            status: 'Active',
+            reason_inactive: null,
+          },
+        });
+      } catch (dbErr) {
+        logger.warn('[AIOpsController] Cập nhật DB khi mở khóa tài khoản gặp cảnh báo', { error: dbErr.message });
+      }
+
+      req.auditActionName = `Mở khóa tài khoản [${target}] (${count} liên kết)`;
+      return ResponseHandler.success(res, { count, target }, 'Đã mở khóa tài khoản thành công cho tất cả các bản ghi');
+    } catch (error) {
+      logger.error('[AIOpsController] unblockAccount failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async permanentBanAccount(req, res) {
+    try {
+      const { username, idaccount } = req.body;
+      if (!username && !idaccount) {
+        return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const target = username || idaccount;
+      const count = await defaultAIOpsQuarantine.permanentBanAccount(target, { bannedBy: adminUser });
+
+      // Tác động thực tế CSDL (Tầng 2 System Impact): Khóa vĩnh viễn tài khoản trong database
+      try {
+        const { prisma } = require('../../config/db');
+        const where = {};
+        if (username) where.username = String(username).trim();
+        if (idaccount) where.idaccount = Number(idaccount);
+        await prisma.account.updateMany({
+          where,
+          data: {
+            status: 'Locked',
+            reason_inactive: 'Quản trị viên khóa vĩnh viễn tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh',
+          },
+        });
+      } catch (dbErr) {
+        logger.warn('[AIOpsController] Cập nhật DB khi khóa tài khoản gặp cảnh báo', { error: dbErr.message });
+      }
+
+      req.auditActionName = `Khóa vĩnh viễn tài khoản [${target}] (${count} liên kết)`;
+      return ResponseHandler.success(res, { count, target }, 'Đã khóa vĩnh viễn tài khoản thành công cho tất cả các bản ghi');
+    } catch (error) {
+      logger.error('[AIOpsController] permanentBanAccount failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async temporaryBlockIp(req, res) {
+    try {
+      const { ipHash, ip, durationMinutes } = req.body;
+      const target = ipHash || ip;
+      if (!target) {
+        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần tạm khóa', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const durationMs = durationMinutes ? parseInt(durationMinutes, 10) * 60 * 1000 : 4 * 60 * 60 * 1000;
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const count = await defaultAIOpsQuarantine.temporaryBlockIp(target, { durationMs, blockedBy: adminUser });
+      req.auditActionName = `Tạm khóa IP [${target}] (${Math.round(durationMs / 3600000)} giờ)`;
+      return ResponseHandler.success(res, { count, target, durationMs }, `Đã tạm khóa IP thành công (${Math.round(durationMs / 3600000)} giờ)`);
+    } catch (error) {
+      logger.error('[AIOpsController] temporaryBlockIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async temporaryBlockAccount(req, res) {
+    try {
+      const { username, idaccount, durationMinutes } = req.body;
+      if (!username && !idaccount) {
+        return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
+      }
+      const adminUser = req.user?.username || req.user?.email || 'Admin';
+      const durationMs = durationMinutes ? parseInt(durationMinutes, 10) * 60 * 1000 : 4 * 60 * 60 * 1000;
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const target = username || idaccount;
+      const count = await defaultAIOpsQuarantine.temporaryBlockAccount(target, { durationMs, blockedBy: adminUser });
+
+      // Tác động thực tế CSDL (Tầng 2 System Impact): Tạm khóa tài khoản trong database
+      try {
+        const { prisma } = require('../../config/db');
+        const where = {};
+        if (username) where.username = String(username).trim();
+        if (idaccount) where.idaccount = Number(idaccount);
+        await prisma.account.updateMany({
+          where,
+          data: {
+            status: 'Locked',
+            reason_inactive: `Quản trị viên tạm khóa tài khoản (${Math.round(durationMs / 3600000)} giờ) qua AIOps Sentinel`,
+          },
+        });
+      } catch (dbErr) {
+        logger.warn('[AIOpsController] Cập nhật DB khi tạm khóa tài khoản gặp cảnh báo', { error: dbErr.message });
+      }
+
+      req.auditActionName = `Tạm khóa tài khoản [${target}] (${Math.round(durationMs / 3600000)} giờ)`;
+      return ResponseHandler.success(res, { count, target, durationMs }, `Đã tạm khóa tài khoản thành công (${Math.round(durationMs / 3600000)} giờ)`);
+    } catch (error) {
+      logger.error('[AIOpsController] temporaryBlockAccount failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async getQuarantineForensics(req, res) {
+    try {
+      const { ipHash, username, page, limit } = req.query;
+      const { defaultAIOpsQuarantineRepository } = require('./aiops.quarantine.repository');
+      const result = await defaultAIOpsQuarantineRepository.getForensicInvestigationLogs({
+        ipHash,
+        username,
+        page,
+        limit,
+      });
+      return ResponseHandler.success(res, result, 'Hồ sơ điều tra an ninh AIOps');
+    } catch (error) {
+      logger.error('[AIOpsController] getQuarantineForensics failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
     }
   },

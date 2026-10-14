@@ -89,6 +89,8 @@ const CategoryPage = () => {
           isUserCategory: isUserCat,
           keyword: isUserCat ? '***' : c.keyword || '',
           created_by: isUserCat ? '***' : 'system',
+          status: c.status || (c.delete_at ? 'deleted' : 'active'),
+          delete_at: c.delete_at || null,
           created_at: c.create_at,
         };
       });
@@ -202,6 +204,13 @@ const CategoryPage = () => {
     try {
       await adminApi.deleteCategory(categoryToDelete.id);
       const deletedName = categoryToDelete.name;
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === categoryToDelete.id
+            ? { ...c, status: 'deleted', delete_at: new Date().toISOString() }
+            : c
+        )
+      );
       toggleModal('deleteAlert', false);
       setCategoryToDelete(null);
       await fetchCategories();
@@ -617,9 +626,16 @@ const CategoryPage = () => {
                                 </div>
                               ) : (
                                 <>
-                                  <span className="font-bold text-on-surface block text-xs">
-                                    {item.name}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-bold text-on-surface block text-xs ${item.status === 'deleted' || item.delete_at ? 'line-through text-secondary' : ''}`}>
+                                      {item.name}
+                                    </span>
+                                    {(item.status === 'deleted' || item.delete_at) && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+                                        {t('categories.table.deleted') || 'Đã xóa'}
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-[10px] text-secondary">
                                     {t('categories.table.createdBySystem', { creator: (item.created_by === 'system' || item.created_by === 'Hệ thống') ? t('categories.createdBySystem') : item.created_by })}
                                   </span>
@@ -655,6 +671,10 @@ const CategoryPage = () => {
                           {item.isUserCategory ? (
                             <span className="text-xs text-rose-700 font-semibold italic bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-xl">
                               {t('categories.table.forbiddenEditDelete')}
+                            </span>
+                          ) : item.status === 'deleted' || item.delete_at ? (
+                            <span className="text-xs text-rose-700 font-medium px-2 italic">
+                              {t('categories.table.deleted') || 'Đã xóa'}
                             </span>
                           ) : (
                             <div className="flex items-center justify-end gap-1">

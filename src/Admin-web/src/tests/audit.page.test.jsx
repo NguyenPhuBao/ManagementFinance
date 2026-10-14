@@ -69,12 +69,12 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     });
   });
 
-  it('4.1. Tải và hiển thị danh sách nhật ký kiểm toán (Audit Logs) đúng cấu trúc', async () => {
+  it('4.1. Tải và hiển thị danh sách nhật ký kiểm toán (Audit Logs) đúng cấu trúc và mặc định 10 dòng/trang', async () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
       expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 50 })
+        expect.objectContaining({ page: 1, limit: 10 })
       );
       expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
       expect(screen.getByText('DELETE /api/v1/admin/categories/10')).toBeInTheDocument();
@@ -302,6 +302,33 @@ describe('Admin-web System Suite — AuditLogPage', () => {
       expect(screen.queryByTestId('new-logs-banner')).not.toBeInTheDocument();
       expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
         expect.objectContaining({ page: 1 })
+      );
+    });
+  });
+
+  it('4.8. [Tầng 2 - Pagination] Toolbar phân trang hỗ trợ tùy chọn 10/page và đổi page size thành công', async () => {
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    const selects = screen.getAllByRole('combobox');
+    const pageSizeSelect = selects.find((sel) => sel.value === '10');
+    expect(pageSizeSelect).toBeInTheDocument();
+
+    // Kiểm tra có option 10 dòng / trang
+    const options = Array.from(pageSizeSelect.options).map((opt) => opt.value);
+    expect(options).toContain('10');
+    expect(options).toContain('20');
+    expect(options).toContain('50');
+
+    // Thao tác đổi page size sang 20
+    fireEvent.change(pageSizeSelect, { target: { value: '20' } });
+
+    await waitFor(() => {
+      expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 20 })
       );
     });
   });

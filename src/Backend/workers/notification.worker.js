@@ -77,6 +77,19 @@ function createNotificationWorker(connection) {
     logger.error(`[Notification Worker] Job ${job?.id} failed`, { error: err.message });
   });
 
+  worker.on('error', (err) => {
+    if (err?.message?.includes('max requests limit exceeded')) {
+      logger.error('[Notification Worker] Redis Upstash quota limit exceeded (500k reached). Pausing worker to avoid loop.', {
+        error: err.message,
+      });
+      try {
+        worker.pause(true);
+      } catch (_) {}
+    } else {
+      logger.error('[Notification Worker] Worker connection error', { error: err.message });
+    }
+  });
+
   logger.info('Notification Worker started — listening on queue: send-notification');
   return worker;
 }
