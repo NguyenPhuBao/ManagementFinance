@@ -13,7 +13,7 @@
 3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
 4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
 
-**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-13-tach-bon-trang-xong.md` (tách bốn trang lớn — **G88 gạch 2 đóng**, 11/11 task + review toàn nhánh, `ecd01990`…`d813453d`, chưa push; **còn treo chờ người dùng gật:** hai hàng G91 / G92 thiếu ở bảng tóm tắt đầu `CLIENT_APP_KNOWN_GAPS.md`; G91 / G92 là lỗi sẵn có tìm ra trong đợt, **chưa sửa**; dữ liệu máy ảo — thứ tự mục tiêu bị kéo đổi rồi kéo trả, `priority` có thể đã ghi lại). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
+**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-14-g91-g92-xong.md` (**G91 + G92 đóng** — `95ca2ccf`, `df06daa5`, nghiệm thu máy ảo G92 đạt, chưa push; **G93 mở, chờ người dùng quyết** — lượt quét đầu mỗi phiên chạy trước khi `GoiRepository` có tài khoản nên `coQuyenNen` mở cửa cho Basic; dữ liệu máy ảo — `priority` ba mục tiêu và một lượt trích tự động 08:33 đang chờ đồng bộ). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
 
 **Rồi tuỳ việc:**
 
