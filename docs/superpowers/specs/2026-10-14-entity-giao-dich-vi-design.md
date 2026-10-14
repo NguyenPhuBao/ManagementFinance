@@ -44,7 +44,8 @@ Mọi số đếm bằng `grep` / `wc -l` / công cụ Grep, chạy từ `src/Cl
 | `mauKieu` siết (thêm `;` · `.fromJson`) bắt thêm | **0** tệp | đo trên `presentation/` + `shared/` cho cả bảy kiểu (phép đo chạy với cả `>[` · `>(` — cũng 0) |
 | Chú thích khối `/* */` trong `presentation/` + `shared/` | **0** tệp | bàn giao hẹn siết — không cần |
 | Tệp nhắc `WalletRepository` ∧ gọi `.getAll(` / `.watchAll(` | **10** | trong đó **6** chưa phân loại ở quét 2 (mục 8); DI, datasource, impl đã có; `them_giao_dich_nguon` khớp **giả** — dòng ấy là `sl<ThongBaoNguon>().getAll(` (hàng chờ D1), không phải ví |
-| Cột không có trên Entity mà tệp sắp đổi kiểu đang đọc | **1 chỗ** | `de_xuat_thong_bao_nguon.mocGhiGiaoDichTu` đọc `t.deletedAt` (mục 7). `analytics_repository_impl._laKhoanCamKet` đọc `t.billId` — tệp ấy **giữ** Drift nội bộ, chỉ map tại chỗ cho lời gọi `khoaNhomCua` |
+| Cột không có trên `TransactionEntity` mà tệp sắp đổi kiểu đang đọc | **4 chỗ / 3 tệp** | `khoan_lap.khoaNhomCua` đọc `t.deletedAt` (:114) **và `t.billId`** (:119 — khoản trả hoá đơn không là khoản lặp, luật B2); `gan_hang_loat.xetGan` đọc `t.deletedAt` (:30); `de_xuat_thong_bao_nguon.mocGhiGiaoDichTu` đọc `t.deletedAt` (:26). → **Entity thêm hai trường chỉ đọc** (mục 4.0), không bỏ vế nào. `analytics_repository_impl._laKhoanCamKet` đọc `t.billId` — tệp ấy **giữ** Drift nội bộ, map tại chỗ cho lời gọi `khoaNhomCua`. ⚠️ Lượt đo đầu (một lệnh `grep` gộp 20 tệp + ống `grep -v`) trả **0** — bị rtk cắt im lặng, đúng bẫy *"grep qua rtk"* của `CLAUDE.md`; số trên là lượt đo lại **từng tệp một lệnh** |
+| Cột không có trên `WalletEntity` mà tệp sắp đổi kiểu đang đọc | **0** | cùng lượt đo từng tệp (`deletedAt` · `bankCassoId` · ba cột sync lỗi); hai dòng `e.billId` ở `notification_rules` là của `BillAutoPayEvent` |
 | Bảng `Wallets` | **21** cột | `WalletEntity` 16 trường = 21 − 5 (`bankCassoId` · `deletedAt` · `syncRetryCount` · `syncError` · `syncBlockedUntil`) |
 | Fake `implements WalletRepository` / `TransactionRepository` trong test | **21** / **14** (hợp **32** tệp) | gồm `test/helpers/nguon_doc_gia.dart` (`ViRowsGia`, `GiaoDichRowsGia`) |
 | Tệp test dựng `Wallet(` / `Transaction(` bằng tay | **6** / **6** | phụ lục D; 84 / 43 tệp khác chỉ `WalletsCompanion` / `TransactionsCompanion` ghi CSDL thật — giữ |
@@ -58,9 +59,9 @@ Tiền lệ: `ThemGiaoDichNguon` đã là cổng tiêm được; `vi_chon_san.da
 
 ## 3. Quy tắc đổi mã
 
-1. **Đổi kiểu, không đổi thân.** `WalletEntity` và `TransactionEntity` mang đúng tên trường của hàng Drift ở mọi trường mã
-   sắp đổi đang đọc (đo mục 2) nên thân hàm, widget, luật giữ từng dòng; chỉ chữ ký, import và fixture đổi. **Hai ngoại lệ có
-   tên:** `mocGhiGiaoDichTu` bỏ vế `t.deletedAt == null` (mục 7); `de_xuat_hoa_don_nguon` dựng record (mục 4.5).
+1. **Đổi kiểu, không đổi thân.** `WalletEntity` mang đúng tên mọi trường mã sắp đổi đang đọc; `TransactionEntity` **thiếu hai**
+   (`billId`, `deletedAt` — đo mục 2) nên **thêm chúng vào Entity** (mục 4.0) thay vì sửa ba thân hàm. Thân hàm, widget, luật giữ
+   từng dòng; chỉ chữ ký, import và fixture đổi. **Một ngoại lệ có tên:** `de_xuat_hoa_don_nguon` dựng record (mục 4.5).
 2. **Ánh xạ Drift chỉ ở tầng data**: `WalletEntity.fromDrift` (mới, dời từ datasource), `TransactionEntity.fromDrift` (có sẵn).
    `domain/`, `presentation/` và `core/notification` không import `core/database` cho hai kiểu này nữa.
 3. **"Thêm trước, rút sau"** — khác đợt Hoá đơn: sáu lối `…Rows` có 20 lời gọi ở 10 tệp thuộc 5 mảng, rút ngay là commit
@@ -73,6 +74,20 @@ Tiền lệ: `ThemGiaoDichNguon` đã là cổng tiêm được; `vi_chon_san.da
    dời `_toEntity`), `vi_trung_ten_nguon`, `budget_local_data_source`, `bill_payment_conflict_resolver`.
 
 ## 4. Entity, repository, nguồn
+
+### 4.0 `TransactionEntity` thêm hai trường **chỉ đọc** `billId`, `deletedAt`
+
+Ba hàm domain sắp nhận Entity đọc `t.deletedAt` (ba chỗ) và `t.billId` (một chỗ — `khoaNhomCua` loại khoản trả hoá đơn khỏi
+phép tìm khoản lặp; bỏ vế ấy là đổi luật B2). Thêm `final String? billId; final DateTime? deletedAt;` theo đúng khuôn
+`WalletEntity.biTuChoiTrungTen` đã có: **`fromDrift` chép, `toCompanion` KHÔNG mang** (đường ghi giữ nguyên — `insert` để mặc định
+NULL như hôm nay; `updateRow` ghi bằng `write` nên cột không mang thì không đụng), `copyWith` chuyền nguyên giá trị, **không** nhận
+tham số đặt hai trường ấy. Hai cờ xoá mềm tồn tại song song trên bảng (`isDeleted` bool + `deletedAt` mốc; DAO lọc theo
+`deletedAt`), Entity nay thấy cả hai nên `xetGan` / `khoaNhomCua` / `mocGhiGiaoDichTu` giữ đúng vế đang có.
+
+Test mới `test/features/transaction/data/models/transaction_entity_test.dart` (chưa có tệp nào ở thư mục ấy): `fromDrift` chép
+`billId` và `deletedAt` (fixture khác mặc định); `toCompanion().billId.present` và `.deletedAt.present` đều **false** — ca canh khuôn
+chỉ-đọc, bản sai có chủ ý (mang `Value(billId)`) phải đỏ. Ba chỗ dựng `TransactionEntity(` trong `lib` và mọi fixture test không đổi
+(hai tham số tuỳ chọn, mặc định `null`).
 
 ### 4.1 `WalletEntity.fromDrift(Wallet)`
 
@@ -125,7 +140,7 @@ nhận cùng danh sách Entity. Thân `chonDeXuatHoaDon` giữ từng dòng (ba 
 
 | Tệp | Đổi | `conChoDomain` |
 |---|---|---|
-| `transaction/domain/khoan_lap.dart` | `khoaNhomCua(TransactionEntity)` · `KhoanLap.ganNhat` · `timKhoanLap(List<TransactionEntity>)`; import `../data/models/transaction_entity.dart` | **rút** |
+| `transaction/domain/khoan_lap.dart` | `khoaNhomCua(TransactionEntity)` · `KhoanLap.ganNhat` · `timKhoanLap(List<TransactionEntity>)`; import `../data/models/transaction_entity.dart`; hai vế `t.deletedAt` / `t.billId` **giữ** (4.0) | **rút** |
 | `transaction/domain/transaction_lookup.dart` | `Iterable<WalletEntity> wallets` · `Map<String, WalletEntity>` · `WalletEntity? wallet(id)`; **`Category` giữ Drift** | ở lại (Category) |
 | `transaction/domain/doc_cau_giao_dich.dart` | `List<WalletEntity> vi` · `KhopMot<WalletEntity>` · `_cauNhacVi(String, WalletEntity)` · `_ViNhac` · `_viNhacTrongCau` · `_tenGoiViTrongCau` · `_docChuyenVi` (10 chỗ); **`Category` giữ** | ở lại (Category) |
 | `home/domain/thu_chi_thang.dart` | `thuChiThangCua(Iterable<TransactionEntity>, now)` | **rút** |
@@ -164,11 +179,11 @@ Entity (`transaction_list_row`, `transaction_row_content`, `transaction_detail_s
 |---|---|
 | `core/notification/notification_rules.dart` | `NotificationRuleInput.wallets: List<WalletEntity>`; `hangSapCanLoiThoi(…, List<WalletEntity>, …)` · `hangAmDaHoi(…, List<WalletEntity>)` (thân đọc `isDeleted` · `id` · `balance` · `allowNegative` — giữ); +import `wallet_entity.dart` (**ratchet 11 → 12**); docstring `hangCuaViDaXoa` *"bộ quét đọc ví qua `walletDao.getAll`"* → *"qua `WalletRepository.getAll`"* |
 | `core/notification/notification_scanner.dart` | `typedef WalletsLoader = Future<List<WalletEntity>> Function(int, DateTime)` (**6 → 7**) |
-| `core/notification/de_xuat_thong_bao_nguon.dart` | `mocGhiGiaoDichTu(List<TransactionEntity>)`; **bỏ vế `t.deletedAt == null`** (Entity không có cột ấy; người gọi duy nhất nạp qua `transactionDao.getByDateRange`, SQL đã lọc `deletedAt IS NULL` — vế ấy là dòng chết; `!t.isDeleted` giữ); nguồn map `.map(TransactionEntity.fromDrift)`; +import (**mục mới `: 1`**, thêm **cùng commit** — quét 25 đỏ *"đã sạch — rút"* nếu thêm trước). Không có test gọi thẳng hàm này (đo) — thêm **một** ca thuần: hàng `isDeleted` bị bỏ, hàng ghi trong ngày được giữ |
+| `core/notification/de_xuat_thong_bao_nguon.dart` | `mocGhiGiaoDichTu(List<TransactionEntity>)` — thân giữ nguyên kể cả vế `t.deletedAt == null` (4.0); nguồn map `.map(TransactionEntity.fromDrift)`; +import (**mục mới `: 1`**, thêm **cùng commit** — quét 25 đỏ *"đã sạch — rút"* nếu thêm trước). Không có test gọi thẳng hàm này (đo) — thêm **một** ca thuần: hàng `isDeleted` / hàng `deletedAt` bị bỏ, hàng ghi trong ngày được giữ |
 | `core/di/injection_container.dart` (điểm ghép) | `loadWallets: (id, now) => sl<WalletRepository>().getAll(id)` (DI đã trong `duocDocMoiVi`); `loadViDaDung`, `loadViDaXoa`, `loadDotAm`, `loadWeekActivity` giữ DAO (trả id / mốc, không hàng) |
 | `analytics/data/repositories/analytics_repository_impl.dart` | `vi` nạp thành `List<WalletEntity>` (`.map(WalletEntity.fromDrift)`) để truyền `du_bao_dong_tien`; `_laKhoanCamKet` **giữ** `Transaction` Drift (đọc `t.billId`) và gọi `khoaNhomCua(TransactionEntity.fromDrift(t), now: now)` tại chỗ; `dungKhoan`, `_dung` giữ `List<Transaction>` |
 | `budget/data/repositories/budget_repository_impl.dart` | `lookupFor`: `wallets: (await localDataSource.getWallets(id)).map(WalletEntity.fromDrift)`; `budget_local_data_source` **không đổi** |
-| `category/data/gan_danh_muc_nguon.dart` | `apDungGan`: `xetGan(before)` với `before = TransactionEntity.fromDrift(hienTai)` đã có ngay dòng dưới — đảo hai dòng; `demChuaGan` / `DongGanDanhMuc` nhận Entity ở nơi dựng |
+| `category/data/gan_danh_muc_nguon.dart` | `apDungGan`: tách điều kiện — `hienTai == null` → ném như cũ; rồi `before = TransactionEntity.fromDrift(hienTai)` (dòng đã có); rồi `!xetGan(before)` → ném cùng `StateError`. Thứ tự kiểm `null` **trước** `fromDrift` giữ nguyên. `demChuaGan` / `DongGanDanhMuc` nhận Entity ở nơi dựng |
 | `bill/data/de_xuat_hoa_don_nguon.dart` | mục 4.5 |
 
 **Không chạm (và vì sao):** `wallet/data/vi_trung_ten_nguon.banGhiBiGiuTuHang` nhận `Iterable<Wallet>` / `Transaction` / `Bill` Drift —
@@ -180,7 +195,10 @@ Sau đợt: `lib/core` (trừ `database`, `sync`) nhắc `Wallet` / `Transaction
 ## 8. Test quét 27 · ratchet quét 25 · quét 2
 
 **Quét 27** (`test/core/ui/presentation_domain_khong_kieu_drift_test.dart`):
-- Luật 1 quét thêm `lib/core` trừ `core/database`, `core/sync`. `conChoKieu` nạp hiện trạng ở bước 1: `Wallet` +2 (`core/notification/notification_rules`,
+- Luật 1 quét thêm `lib/core` trừ `core/database`, `core/sync`. **Ba điểm ghép (`core/di`, `core/router`, `core/nen`) không được miễn
+  trừ** — khác ratchet quét 25: điểm ghép được biết mọi mảng, nhưng biết qua repository / Entity, không qua kiểu hàng Drift (đo
+  2026-10-14: cả ba = 0, và vì `conChoKieu` chỉ-được-giảm nên từ nay DI không được nêu tên kiểu hàng Drift nữa; DI gọi DAO trả id /
+  mốc thì vẫn được — mẫu chỉ bắt **tên kiểu**). `conChoKieu` nạp hiện trạng ở bước 1: `Wallet` +2 (`core/notification/notification_rules`,
   `notification_scanner`), `Transaction` +1 (`de_xuat_thong_bao_nguon`), `AppNotification` +7 (phụ lục A). Ca tiền đề thêm một khẳng
   định: phép quét thấy ≥ 1 tệp `core/`.
 - `mauKieu` thành `\b<Kiểu>(\?|>| [a-z_][A-Za-z0-9_]*\b|,|\)|;|\.fromJson)` — ca tiền đề thêm `as Wallet;` · `Wallet.fromJson(` khớp,
@@ -229,7 +247,8 @@ vào `core` — ba số ấy về 0 ở gạch 5."*
 **Thứ tự thi công** (mỗi bước một commit, toàn bộ test xanh; *"thêm trước, rút sau"*):
 
 1. Quét 27 mở rộng `core` + siết `mauKieu` / luật 2, danh sách chờ hiện trạng; ratchet +1 ×2 + câu luật mới. Bản sai thử đỏ.
-2. `WalletEntity.fromDrift` (dời `_toEntity`) + `wallet_entity_test`; `TransactionLocalDataSource.getAll` / `watchAll` + test.
+2. `TransactionEntity` + `billId` / `deletedAt` chỉ đọc + `transaction_entity_test`; `WalletEntity.fromDrift` (dời `_toEntity`) +
+   `wallet_entity_test`; `TransactionLocalDataSource.getAll` / `watchAll` + test.
 3. Hai repository **thêm** `getActive` / `getAll` / `watchAll` (giữ sáu lối Rows tạm); hai test rows **chuyển** + đổi tên; `nguon_doc_gia`;
    quét 2 nhận cả hai dạng + 6 phân loại.
 4. Domain 7 tệp (+ record 4.5) + 4 tệp `data/` map tại chỗ + fixture test domain; rút 4 tệp khỏi `conChoDomain`.
@@ -240,8 +259,8 @@ vào `core` — ba số ấy về 0 ở gạch 5."*
    docstring `them_giao_dich_nguon`, chú thích `add_transaction_page:125`, khối *"Bốn lối CHUYỂN TIẾP"* ở `wallet_repository.dart`.
 8. Tài liệu + số đo + nghiệm thu máy ảo.
 
-**Không đổi kỳ vọng ca nào**; fixture Drift đặt `deletedAt:` để tả xoá → `isDeleted: true`. `flutter test` tăng đúng số ca mới (đếm khi
-xong), `flutter analyze` **20**.
+**Không đổi kỳ vọng ca nào**; fixture Drift đặt `deletedAt:` để tả xoá (`gan_hang_loat_test` `_gd(deletedAt:)`) **giữ nguyên nghĩa** vì
+Entity nay có `deletedAt` (4.0). `flutter test` tăng đúng số ca mới (đếm khi xong), `flutter analyze` **20**.
 
 **Nghiệm thu máy ảo `FlowMoney_16G`** (`-gpu host`, bản debug, demo mode 12:00, cuộn giữ-rồi-thả, cắt 100 px thanh trạng thái):
 "trước" = bản **đang cài** (`b0164475…` = mã `a085deb0`, `lib/` chưa đổi) — không dựng lại; "sau" = bản mới. Đổi bản xác nhận bằng
@@ -262,8 +281,8 @@ lib` chỉ còn `CategoryManagementRepository`.
 - `goal/domain/goal_auto_deposit_runner.dart` cầm `AppDatabase` + `package:drift` — đợt Mục tiêu dời về `data/services/` (cùng mùi
   `BillAutoPayRunner`).
 - `analytics_repository_impl` đọc `db.transactionDao` / `db.walletDao` / `db.billDao` thẳng — mảng Phân tích, chưa có lịch.
-- `TransactionEntity` không mang `billId` / `status` / `provider` / `bankTranId` / `deletedAt` — đủ cho mọi chỗ đổi kiểu đợt này (đo); mở
-  rộng khi một chỗ đọc thật cần, không mở trước.
+- `TransactionEntity` vẫn không mang `status` / `provider` / `bankTranId` / `bankCasoId` — không chỗ đổi kiểu nào đọc (đo từng tệp); mở
+  rộng khi một chỗ đọc thật cần, không mở trước (đợt này mở đúng hai trường có chỗ đọc thật — 4.0).
 - Lối `…Rows` của Danh mục (3) + `TaiPhanBoNguon.ghiPhanHoi` — đợt Danh mục.
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift.
 
