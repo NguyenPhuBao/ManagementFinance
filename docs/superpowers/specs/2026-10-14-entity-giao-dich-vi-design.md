@@ -1,8 +1,9 @@
 # Thống nhất Entity cho mảng Giao dịch + Ví — G88 gạch 3, đợt 2/4
 
 **Ngày:** 2026-10-14 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `12b8fa0d` · **Trạng thái:** người dùng duyệt bốn chốt
-và sáu phần trong chat (cùng ngày); bản viết chờ người dùng đọc. Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-giao-dich-vi.md`
-(gitignore) — viết sau khi bản này được duyệt.
+và sáu phần trong chat, rồi **duyệt bản viết** (`c2c723cb`, cùng ngày — kể cả hai điểm đổi sau lượt soát: `TransactionEntity` thêm
+`billId` / `deletedAt` chỉ đọc; điểm ghép không miễn trừ ở luật 1 quét 27). Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-giao-dich-vi.md`
+(gitignore).
 
 Đợt **thứ hai** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`; lộ trình người dùng chốt 2026-10-11: Hoá đơn → **Giao dịch + Ví**
 → Danh mục → Thông báo). Tiền lệ trực tiếp: `specs/2026-10-14-entity-hoa-don-design.md` (đợt 1/4, thi công xong cùng ngày). Người
