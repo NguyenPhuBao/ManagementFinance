@@ -38,6 +38,7 @@ import 'package:flowmoney/core/ocr/doc_chu_anh.dart';
 import 'package:flowmoney/core/ocr/dong_ocr.dart';
 import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/database/daos/notification_event_dao.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
@@ -208,7 +209,7 @@ void main() {
     List<BudgetView>? budgets,
     List<BillEntity> bills = const [],
     List<GoalEntity> goals = const [],
-    List<Wallet> wallets = const [],
+    List<WalletEntity> wallets = const [],
     OsNotifier? osNotifier,
     NotificationPrefsStore? prefs,
     Future<void> Function(int idaccount)? onResyncLich,
@@ -926,7 +927,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    Wallet vi({double soDu = -50000}) => Wallet(
+    WalletEntity vi({double soDu = -50000}) => WalletEntity(
           id: 'vi1',
           idaccount: accountId,
           name: 'Tiền mặt',
@@ -938,7 +939,6 @@ void main() {
           isDefault: false,
           status: 'active',
           isDeleted: false,
-          syncRetryCount: 0,
           includeInTotal: true,
           syncStatus: 'synced',
           updatedAt: DateTime(2026, 9, 1),

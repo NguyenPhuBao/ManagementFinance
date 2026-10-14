@@ -21,6 +21,7 @@ import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/data/services/bill_auto_pay_runner.dart';
 import '../../features/bill/data/models/bill_entity.dart';
+import '../../features/wallet/data/models/wallet_entity.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
@@ -85,7 +86,7 @@ typedef GoalsLoader = Future<List<GoalEntity>> Function(
     int idaccount, DateTime now);
 
 /// Nạp ví của một tài khoản. Cùng lý do closure như trên.
-typedef WalletsLoader = Future<List<Wallet>> Function(
+typedef WalletsLoader = Future<List<WalletEntity>> Function(
     int idaccount, DateTime now);
 
 /// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).

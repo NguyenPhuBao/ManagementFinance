@@ -17,6 +17,7 @@ import 'package:flowmoney/core/notification/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 
 class _Os implements OsNotifier {
   bool quyen = true;
@@ -118,6 +119,21 @@ void main() {
     }
     expect((await nguon.tai(id)).where((e) => e.loai == LoaiDeXuat.gioGhiChep), isEmpty,
         reason: 'còn 19 khoản sống — dưới cửa 20');
+  });
+
+  // Ca thuần không CSDL: canh chữ ký Entity của `mocGhiGiaoDichTu`.
+  test('mocGhiGiaoDichTu: bỏ hàng isDeleted / deletedAt, giữ hàng ghi trong ngày, bỏ hàng ghi lùi ngày', () {
+    final ngay = DateTime(2026, 10, 14, 9);
+    TransactionEntity gd(String id, {DateTime? date, bool isDeleted = false, DateTime? deletedAt}) => TransactionEntity(
+        id: id, walletId: 'w', idaccount: 1, amount: 1, type: 'chi',
+        date: date ?? ngay, updatedAt: ngay, isDeleted: isDeleted, deletedAt: deletedAt);
+    final moc = mocGhiGiaoDichTu([
+      gd('a'),
+      gd('b', isDeleted: true),
+      gd('c', deletedAt: ngay),
+      gd('d', date: DateTime(2026, 10, 1)),
+    ]);
+    expect(moc, [ngay], reason: 'Chỉ khoản sống, ghi cùng ngày lịch với `date`, mới là mốc "lúc ghi" (spec B5b §2.3).');
   });
 
   test('quyền tắt → không đề xuất tắt nhóm (đọc daCoQuyen)', () async {

@@ -10,6 +10,7 @@ import '../../features/budget/presentation/widgets/budget_visuals.dart';
 import '../../features/analytics/domain/khoan_vao_thong_ke.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/bill/data/models/bill_entity.dart';
+import '../../features/wallet/data/models/wallet_entity.dart';
 import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -131,7 +132,7 @@ class NotificationRuleInput {
   final List<BudgetView> budgets;
   final List<BillEntity> bills;
   final List<GoalEntity> goals;
-  final List<Wallet> wallets;
+  final List<WalletEntity> wallets;
 
   /// Các kỳ trích tự động **vừa chạy xong** trong chính lượt quét này.
   ///
@@ -880,7 +881,7 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 ///   luật sắp cạn nên hàng không sinh lại.
 ///
 /// Chỉ loại `walletLowBalance`; ví không còn trong [wallets] thì không đoán.
-List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<Wallet> wallets, int nguong) {
+List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<WalletEntity> wallets, int nguong) {
   final soDu = {for (final v in wallets) if (!v.isDeleted) v.id: v.balance};
   bool loiThoi(double? s) => s != null && (s < 0 || (nguong > 0 && s > nguong));
   return [
@@ -898,7 +899,7 @@ List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<Wallet> wall
 /// Id các hàng thông báo **của ví** (`subjectType == 'wallet'` — "sắp cạn", "ví âm") chưa gỡ mà ví ấy nằm
 /// trong [viDaXoa] — bộ quét gỡ chúng (G71, 2026-10-06).
 ///
-/// Vì sao cần tập riêng thay vì "ví vắng khỏi danh sách": bộ quét đọc ví qua `walletDao.getAll`, vốn lọc bỏ
+/// Vì sao cần tập riêng thay vì "ví vắng khỏi danh sách": bộ quét đọc ví qua `WalletRepository.getAll`, vốn lọc bỏ
 /// ví có `deletedAt`, nên ví đã xoá chỉ đơn giản là **biến mất** — và [hangSapCanLoiThoi] / [hangAmDaHoi] cố ý
 /// không đoán khi không thấy ví. [viDaXoa] là id ví mà CSDL **ghi rõ** đã xoá mềm (xoá trên máy này hoặc kéo
 /// về từ máy khác), nên gỡ ở đây là chắc chứ không đoán.
@@ -910,7 +911,7 @@ List<String> hangCuaViDaXoa(Iterable<AppNotification> hang, Set<String> viDaXoa)
   ];
 }
 
-List<String> hangAmDaHoi(Iterable<AppNotification> hang, List<Wallet> wallets) {
+List<String> hangAmDaHoi(Iterable<AppNotification> hang, List<WalletEntity> wallets) {
   final heAm = {
     for (final v in wallets)
       if (!v.isDeleted) v.id: v.balance >= 0 || v.allowNegative,

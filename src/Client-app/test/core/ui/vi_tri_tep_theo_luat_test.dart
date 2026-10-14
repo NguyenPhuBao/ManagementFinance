@@ -58,6 +58,8 @@ const conChoCoreImport = <String, int>{
   'lib/core/sync/sync_engine.dart': 7,
   // 6 từ 2026-10-14 G88 gạch 3 — như notification_rules. 7 từ đợt 2 (WalletEntity).
   'lib/core/notification/notification_scanner.dart': 7,
+  // 1 từ 2026-10-14 G88 gạch 3 đợt 2: Transaction (Drift) → TransactionEntity (features/transaction/data/models); về 0 ở gạch 5.
+  'lib/core/notification/de_xuat_thong_bao_nguon.dart': 1,
   // 4 từ 2026-10-14 G88 gạch 3 — như notification_rules.
   'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,

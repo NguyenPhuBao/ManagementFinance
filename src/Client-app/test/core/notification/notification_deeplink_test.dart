@@ -21,7 +21,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
 import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
@@ -174,7 +174,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    Wallet vi({required String id, required double soDu}) => Wallet(
+    WalletEntity vi({required String id, required double soDu}) => WalletEntity(
           id: id,
           idaccount: 7,
           name: 'Tiền mặt',
@@ -186,11 +186,10 @@ void main() {
           isDefault: false,
           status: 'active',
           isDeleted: false,
-          syncRetryCount: 0,
           includeInTotal: true,
           syncStatus: 'synced',
           updatedAt: DateTime(2026, 9, 1),
-        
+
           allowNegative: false,
           biTuChoiTrungTen: false,
         );

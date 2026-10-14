@@ -10,6 +10,7 @@ library;
 // data class danh mục của Drift.
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../features/transaction/data/models/transaction_entity.dart';
 import '../database/app_database.dart';
 import 'hoc_gio_thong_bao.dart';
 import 'nhat_ky_thong_bao.dart';
@@ -20,7 +21,7 @@ import 'prefs/notification_prefs_store.dart';
 /// có `createdAt`**; `updatedAt` đổi cả khi sửa lẫn khi pull. Mốc thay thế:
 /// `updatedAt` của khoản **chưa xoá** mà `updatedAt` **cùng ngày lịch** với
 /// `date` — ghi trong ngày, không ghi lùi ngày.
-List<DateTime> mocGhiGiaoDichTu(List<Transaction> ds) => [
+List<DateTime> mocGhiGiaoDichTu(List<TransactionEntity> ds) => [
       for (final t in ds)
         if (!t.isDeleted &&
             t.deletedAt == null &&
@@ -57,8 +58,10 @@ class DeXuatThongBaoNguon {
       final prefs = await store.read(idaccount);
       // Chỉ HỎI quyền, không xin — cùng lý lẽ trang Cài đặt thông báo.
       final coQuyen = prefs.osBat ? await os.daCoQuyen() : true;
-      final giaoDich = await db.transactionDao
-          .getByDateRange(idaccount, now.subtract(kCuaSoHoc), now);
+      final giaoDich = [
+        for (final t in await db.transactionDao.getByDateRange(idaccount, now.subtract(kCuaSoHoc), now))
+          TransactionEntity.fromDrift(t),
+      ];
       return deXuatThongBao(
         nhatKy: await db.notificationEventDao.getAll(idaccount),
         thongBao: await db.notificationDao.getAll(idaccount),

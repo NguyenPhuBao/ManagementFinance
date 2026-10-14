@@ -12,6 +12,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
@@ -48,7 +49,7 @@ void main() {
     );
   }
 
-  Wallet vi({
+  WalletEntity vi({
     String id = 'vi1',
     String ten = 'Tiền mặt',
     double soDu = 100000,
@@ -56,7 +57,7 @@ void main() {
     String loai = 'cash',
     bool choPhepAm = false,
   }) {
-    return Wallet(
+    return WalletEntity(
       id: id,
       idaccount: 7,
       name: ten,
@@ -68,7 +69,6 @@ void main() {
       isDefault: false,
       status: 'active',
       isDeleted: daXoa,
-      syncRetryCount: 0,
       includeInTotal: true,
       allowNegative: choPhepAm,
       biTuChoiTrungTen: false,
@@ -79,7 +79,7 @@ void main() {
 
   List<NotificationCandidate> chay({
     List<GoalEntity> goals = const [],
-    List<Wallet> wallets = const [],
+    List<WalletEntity> wallets = const [],
     List<GoalAutoDepositEvent> autoDeposits = const [],
     bool dongBoHong = false,
     DateTime? at,

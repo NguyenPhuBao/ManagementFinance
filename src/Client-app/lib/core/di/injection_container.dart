@@ -641,8 +641,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
           GoalEntity.fromDrift(g),
       ],
-      loadWallets: (idaccount, now) =>
-          sl<AppDatabase>().walletDao.getAll(idaccount),
+      loadWallets: (idaccount, now) => sl<WalletRepository>().getAll(idaccount),
       // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
       loadViDaDung: (idaccount) =>
           sl<AppDatabase>().transactionDao.viDaDung(idaccount),

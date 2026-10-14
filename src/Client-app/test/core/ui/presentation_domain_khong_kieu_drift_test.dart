@@ -36,10 +36,7 @@ const companionCua = {
 
 /// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Điền từ lượt chạy đầu (Step 2); mỗi đợt Entity xoá một khoá.
 const conChoKieu = <String, Set<String>>{
-  'Wallet': {
-    'core/notification/notification_rules.dart',
-    'core/notification/notification_scanner.dart',
-  },
+  'Wallet': {},
   'Category': {
     'features/bill/presentation/pages/bill_add_page.dart',
     'features/bill/presentation/pages/bill_detail_page.dart',
@@ -61,9 +58,6 @@ const conChoKieu = <String, Set<String>>{
     'features/transaction/presentation/widgets/khoi_tach.dart',
     'features/transaction/presentation/widgets/sheet_them_phan.dart',
     'features/transaction/presentation/widgets/transaction_filter_bar.dart',
-  },
-  'Transaction': {
-    'core/notification/de_xuat_thong_bao_nguon.dart',
   },
   'AppNotification': {
     'features/notification/presentation/pages/notification_center_page.dart',
