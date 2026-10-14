@@ -21,7 +21,7 @@ chuyển tiếp `…Rows` biến mất, và test quét 27 giữ cho chúng khôn
 > **40 → 43** (`notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1); `grep -rcE "^(import|export) .*features/" lib/core`
 > = 185 = điểm ghép 142 + hạ tầng 43. Quét 2: +6 chỗ phân loại. `conChoKieu` còn `Category` 20 tệp + `AppNotification` 9 tệp.
 > `wallet_entity.dart` 147 dòng · `transaction_entity.dart` 153 · `presentation_domain_khong_kieu_drift_test.dart` 226. `flutter test`
-> 7.057 → **7.065** (+9 skip, 0 fail); `flutter analyze` **20**, 0 error. Lệch so với kế hoạch trong lúc thi công:
+> 7.057 → **7.065** (+9 skip, 0 fail; sau `692c7091`: 10 skip, tệp đo chạy tay); `flutter analyze` **20**, 0 error. Lệch so với kế hoạch trong lúc thi công:
 > `apDungGan` dùng dạng MỘT `throw` (kiểm `null` trước `fromDrift`); luật 2 quét 27 tách hàm `importCam` kèm khẳng định tiền đề;
 > `_toEntity` có 6 chỗ gọi (không phải 5); thêm hai test `gan_danh_muc_nguon_test` / `gan_danh_muc_nguon_lop_test` vào Task 4; chú thích DI
 > `loadWallets` tách hai vế (ví qua `WalletRepository.getAll`, mục tiêu vẫn DAO). 🔧 Bốn chỗ văn bản viết lệch số đo preflight đã sửa
@@ -259,7 +259,7 @@ vào `core` — ba số ấy về 0 ở gạch 5."*
 | Quét 23 (≤ 1.200 dòng) | ✓ | lớn nhất 1.132 (`them_giao_dich_cubit`, không thêm dòng) |
 | Quét 25 (vị trí tệp, soi gương test) | ✓ | hai test đổi tên ở cùng thư mục; `wallet_entity_test` ở `test/features/wallet/data/models/` |
 | Quét 2 (nguồn ví) | ✓ mở rộng | +6 phân loại; `laBoChonVi` giữ 5 tệp |
-| G88 gạch 3 | **tiến** | thống nhất **3/5** mảng có Entity (Hoá đơn, Ví, Giao dịch); còn Danh mục (chưa Entity) → Thông báo |
+| G88 gạch 3 | **tiến** | Hoá đơn, Ví, Giao dịch thống nhất (Entity là kiểu duy nhất từ repository trở lên), cộng Mục tiêu, Ngân sách vốn đã sạch → 5/5 mảng có Entity đã thống nhất; còn Danh mục → Thông báo (chưa Entity) |
 | G88 gạch 4 (`core` → `features`) | 40 → 43 tạm | gạch 5 trả |
 
 ## 10. Kiểm thử và nghiệm thu
@@ -310,7 +310,7 @@ lib` chỉ còn `CategoryManagementRepository`.
 
 Grep theo từ khoá quyết định cũ trên `docs/` + `CLAUDE.md` + chú thích `lib/`: `getActiveRows|getAllRows|watchAllRows|getRowById|lối chuyển
 tiếp|10 lối|chính mảng`. Dự kiến: `docs/KIEN_TRUC_CLIENT_APP.md` (mục 4 bảng presentation bỏ vế Ví / Giao dịch, *"10 lối"* → 4; mục 6
-mô tả quét 27 — phạm vi `core`; mục 9 *thống nhất 3/5*), `docs/CLIENT_APP_KNOWN_GAPS.md` (G88 gạch 3 đợt 2 đóng + số đo; gạch 4 số
+mô tả quét 27 — phạm vi `core`; mục 9 *5/5 mảng có Entity đã thống nhất*), `docs/CLIENT_APP_KNOWN_GAPS.md` (G88 gạch 3 đợt 2 đóng + số đo; gạch 4 số
 **43** + câu luật mới; bảng tóm tắt; dòng *Cập nhật*), `docs/PROJECT_CONTEXT.md` (mục 14 khối mới; *"10 lối"*; mốc test), `CLAUDE.md`
 (hàng *presentation*: 4 lối + chuỗi một dòng `getActive(` / `getAll(` / `watchAll(`; hàng *quản lý ví* ④ *"`getActive` cho bộ chọn"*;
 hàng *hoá đơn* câu nợ `de_xuat_hoa_don` đã trả; mốc test; dòng ⭐), spec đợt 1 (mục 5 / 11 ghi nợ đã trả), `docs/NOTIFICATION_FEATURE.md`

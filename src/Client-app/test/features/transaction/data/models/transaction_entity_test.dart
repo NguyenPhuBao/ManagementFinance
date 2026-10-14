@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final moc = DateTime(2026, 10, 14, 9, 30);
   final xoa = DateTime(2026, 10, 13, 8);
-  // Mọi trường khác mặc định — ca "chép đủ" mới nhìn thấy từng trường (bài học review đợt Hoá đơn).
+  // Mọi trường khác mặc định — fixture mang giá trị khác mặc định ở các trường được đọc để hai ca chỉ-đọc nhìn thấy trường (bài học review đợt Hoá đơn).
   final hang = Transaction(
     id: 't-1',
     walletId: 'v-1',

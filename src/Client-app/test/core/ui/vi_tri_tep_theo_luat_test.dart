@@ -46,7 +46,7 @@ const mienTru = <String, String>{};
 const conCho = <String>{};
 
 /// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm, trừ các ca tăng ghi tại chỗ theo "Luật tăng (2026-10-14)" bên dưới.
-/// Đo gốc 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
+/// Đo gốc 2026-10-10. 13 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
   // 11 từ 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.
   // 12 từ 2026-10-14 G88 gạch 3 đợt 2: Wallet (Drift, không tính) → WalletEntity (features/wallet/data/models, tính); về 0 ở gạch 5.

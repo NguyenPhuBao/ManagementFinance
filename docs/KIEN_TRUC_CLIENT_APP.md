@@ -26,7 +26,7 @@ Mục lục
 Client-app là **feature-first, ba tầng `data · domain · presentation`, offline-first** — SQLite (Drift) là nguồn sự thật
 cục bộ, server chỉ là nơi hội tụ giữa các máy. Nó **không** phải Clean Architecture đúng sách, và đó là lựa chọn có lý
 do: interface repository nằm ở tầng `data` chứ không ở `domain`, không có lớp use case, và Entity chỉ có ở 5/14 mảng
-(ví, giao dịch, mục tiêu, ngân sách, hoá đơn — hoá đơn từ 2026-10-14); thống nhất xong 3/5: Hoá đơn, Ví, Giao dịch (2026-10-14). Tầng `domain` ở đây là **hàm thuần** — luật nghiệp vụ không biết Flutter, không
+(ví, giao dịch, mục tiêu, ngân sách, hoá đơn — hoá đơn từ 2026-10-14); cả 5 mảng ấy đã thống nhất (Entity là kiểu duy nhất từ repository trở lên; quét 27: 5 trong 7 kiểu hàng Drift không còn khoá chờ — Hoá đơn, Ví, Giao dịch xong ở G88 gạch 3 ngày 2026-10-14); còn Danh mục, Thông báo chưa có Entity (hai đợt tiếp của gạch 3). Tầng `domain` ở đây là **hàm thuần** — luật nghiệp vụ không biết Flutter, không
 biết CSDL — chứ không phải nơi sở hữu interface. Bài toán (một người, một máy, dữ liệu nhỏ, phải chạy không mạng) không
 trả nổi giá của bốn tầng và một lớp ánh xạ cho mỗi kiểu; thứ nó cần là luật đúng và đúng **một chỗ**, và thứ ấy được
 canh bằng test quét mã nguồn (mục 6).
@@ -105,7 +105,7 @@ từ 2026-10-14, đợt Entity Giao dịch + Ví, đếm bằng máy: `CategoryM
 **`core` có hai vai, cố ý tách bạch:**
 
 - **Hạ tầng** dùng chung, không biết mảng nào: CSDL, HTTP, socket, OCR, định dạng tiền, toast. Đây là phần lớn của 124 tệp.
-- **Điểm ghép** — nơi duy nhất được biết mọi mảng: `core/di/injection_container.dart` (đăng ký mọi thứ, nối hook),
+- **Điểm ghép** (`core/di`, `core/router`, `core/nen`) — nơi duy nhất được biết mọi mảng, nhưng **không** được nêu tên kiểu hàng Drift (quét 27 luật 1, từ 2026-10-14): biết mảng qua repository / Entity. Gồm: `core/di/injection_container.dart` (đăng ký mọi thứ, nối hook),
   `core/router/app_router.dart` (mọi route), `core/nen/chay_nen.dart` (dựng DI ở chế độ nền), và
   `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác, nên chính nó
   **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
@@ -269,7 +269,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 giới nền tảng thay được bằng bản giả, nên **6.681** ca test (đo 2026-10-11 sau tách trang Thêm giao dịch, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
-**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift ở các mảng chưa có Entity; Entity 5/14 mảng, thống nhất 3/5 (Hoá đơn, Ví, Giao dịch — 2026-10-14). `SyncEngine` 2.166 dòng một tệp.
+**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift ở các mảng chưa có Entity; Entity 5/14 mảng (cả 5 đã thống nhất; Danh mục và Thông báo chưa có Entity — còn hai đợt của G88 gạch 3). `SyncEngine` 2.166 dòng một tệp.
 Không còn tệp `presentation` nào trên 1.200 dòng (bốn trang cuối — cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo — tách xong 2026-10-13, G88 gạch 2; trang lớn nhất trong bốn trang đó nay 866 dòng). Luật thông báo nằm trong `core`. Không logger,
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
@@ -296,5 +296,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
 4. **Con số.** 14 mảng, 549 tệp, 29 test quét, 6.681 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14, thống nhất 3/5 (2026-10-14), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14 mảng, cả 5 đã thống nhất (Danh mục, Thông báo chưa có Entity — 2026-10-14), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.
