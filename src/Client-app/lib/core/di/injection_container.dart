@@ -634,9 +634,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // WorkManager huỷ nó giữa chừng — mốc kế đi trong `nenXong`.
       henLichNen: cheDoNen ? null : (id) => sl<LichNen>().henNeuDoi(id),
       huyLichNen: cheDoNen ? null : () => sl<LichNen>().huy(),
-      // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
-      // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
-      // không kéo theo cả chuỗi cubit/repository không liên quan.
+      // Mục tiêu đọc thẳng từ DAO chứ không qua repository: scanner chỉ cần đúng
+      // một phép đọc, và thu hẹp phụ thuộc thì vòng quét không kéo theo cả chuỗi
+      // cubit/repository không liên quan. Ví đọc qua `WalletRepository.getAll`
+      // (Entity, G88 gạch 3 đợt 2 — 2026-10-14): cùng tập hàng với `walletDao.getAll`
+      // (bỏ ví `deletedAt`, gồm ví lưu trữ).
       loadGoals: (idaccount, now) async => [
         for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
           GoalEntity.fromDrift(g),
