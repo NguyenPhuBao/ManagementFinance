@@ -1,7 +1,7 @@
 # Thống nhất Entity cho mảng Hoá đơn — G88 gạch 3, đợt 1/4
 
 **Ngày:** 2026-10-14 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `2437c935` · **Trạng thái:** người dùng duyệt sáu
-phần trong chat (phạm vi, ratchet, phương án, phần 1–6), chờ duyệt bản viết. Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-hoa-don.md`
+phần trong chat (phạm vi, ratchet, phương án, phần 1–6); bản viết đã duyệt (`f45e6f4f`), thi công xong 2026-10-14 (commit `2a912871`..HEAD). Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-hoa-don.md`
 (gitignore) — viết sau khi bản này được duyệt.
 
 Đợt này là đợt **đầu** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`, người dùng chốt hướng A ngày 2026-10-11: *giao
@@ -12,9 +12,10 @@ giữ cho nó không quay lại.
 > ✅ **Số đo sau thi công (2026-10-14, HEAD `a085deb0`; đếm bằng máy, đừng cộng dồn).** Thi công xong 6 commit mã
 > (`2a912871` quét 27 + ratchet · `f0db5cc6` `BillEntity` + companion · `1299f6f4` `paymentsOf` · `bad1ff73` Thêm / Sửa chở
 > `BillDraft` · `94142dea` runner về `data/services` · `a085deb0` `Bill` → `BillEntity` mọi nơi).
+> 🔧 Sửa: mục 2 và 6 spec ghi "7 tệp giao diện Hoá đơn vẫn import `core/database`" — thực tế sau đợt là **6** (`bill_page.dart` bỏ import, phán quyết preflight P10; đếm bằng grep `presentation/`, 2026-10-14).
 > Tệp `domain/` import `core/database`: **24 → 12** (Hoá đơn 11 → **1** — `de_xuat_hoa_don.dart` còn cần `Transaction` +
 > `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch; mục 5 spec ghi "11 → 0" là sai, xem khối 🔧 kế hoạch). `Bill` Drift ở `presentation/` + `shared/`:
-> **0**. Lối chuyển tiếp trả hàng Drift: **11 → 10**. Entity: **5/14** mảng. `flutter test` 7.047 → **7.056** (+9 skip);
+> **0**. Lối chuyển tiếp trả hàng Drift: **11 → 10**. Entity: **5/14** mảng. `flutter test` 7.047 → **7.057** (+9 skip);
 > `flutter analyze` **20**. Dòng: `bill_entity.dart` 192 · `bill_draft_companion.dart` 78 · `bill_repository_impl.dart` 426.
 > Máy ảo `FlowMoney_16G` (APK trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác,
 > bỏ qua → hoàn tác đạt. Trang Hoá đơn có **hai** tab (kế hoạch ghi ba). Thẻ B2 *"Có vẻ là khoản lặp"* không hiện ở cả hai bản →
