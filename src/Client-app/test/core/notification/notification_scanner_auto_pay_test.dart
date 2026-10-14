@@ -16,7 +16,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
-import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/bill/data/services/bill_auto_pay_runner.dart';
 
 void main() {
   const accountId = 7;

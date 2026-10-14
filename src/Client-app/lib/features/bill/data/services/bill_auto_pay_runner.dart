@@ -1,8 +1,8 @@
-import '../../../core/database/app_database.dart';
-import '../data/repositories/bill_repository.dart';
-import 'bill_auto_pay.dart';
-import 'bill_ky_trung.dart';
-import '../../wallet/domain/wallet_status.dart';
+import '../../../../core/database/app_database.dart';
+import '../repositories/bill_repository.dart';
+import '../../domain/bill_auto_pay.dart';
+import '../../domain/bill_ky_trung.dart';
+import '../../../wallet/domain/wallet_status.dart';
 
 /// Kết quả của **một** kỳ tự trả, để nơi gọi dựng thông báo.
 ///
@@ -36,6 +36,8 @@ class BillAutoPayEvent {
 }
 
 /// Chạy các hoá đơn bật tự trả đã tới hạn.
+///
+/// Ở `data/services/` từ 2026-10-14 (bộ điều phối cầm `AppDatabase` — hàng mục 8 `KIEN_TRUC`).
 ///
 /// ## Vì sao đi qua `payBill` chứ không tự ghi
 ///

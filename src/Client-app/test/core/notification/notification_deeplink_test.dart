@@ -28,7 +28,7 @@ import 'package:flowmoney/core/notification/nhom_tu_khoa.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
-import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/bill/data/services/bill_auto_pay_runner.dart';
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';

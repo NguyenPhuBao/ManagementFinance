@@ -21,7 +21,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
-import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/bill/data/services/bill_auto_pay_runner.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
 

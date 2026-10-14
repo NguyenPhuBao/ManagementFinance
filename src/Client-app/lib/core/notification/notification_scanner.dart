@@ -19,7 +19,7 @@ import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
-import '../../features/bill/domain/bill_auto_pay_runner.dart';
+import '../../features/bill/data/services/bill_auto_pay_runner.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';

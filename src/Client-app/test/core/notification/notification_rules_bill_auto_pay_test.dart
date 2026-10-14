@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
-import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/bill/data/services/bill_auto_pay_runner.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 10);

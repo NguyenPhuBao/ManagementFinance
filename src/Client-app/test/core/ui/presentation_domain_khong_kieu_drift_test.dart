@@ -101,7 +101,6 @@ const conChoDomain = <String>{
   'features/analytics/domain/du_bao_dong_tien.dart',
   'features/bill/domain/bill_an_han.dart',
   'features/bill/domain/bill_auto_pay.dart',
-  'features/bill/domain/bill_auto_pay_runner.dart',
   'features/bill/domain/bill_chain.dart',
   'features/bill/domain/bill_ky_ke_tiep.dart',
   'features/bill/domain/bill_ky_trung.dart',
