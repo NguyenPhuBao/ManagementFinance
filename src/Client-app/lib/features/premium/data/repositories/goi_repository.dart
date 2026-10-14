@@ -107,13 +107,20 @@ class GoiRepository {
 
   /// `AuthSuccess` → `datTaiKhoan` + `lamMoi`; `null` → `xoaPhien`. Cùng tài
   /// khoản phát lại (AuthSuccess re-emit) thì bỏ qua — không phải lý do hỏi lại.
+  ///
+  /// So với phiên ĐÃ NỐI ở đây, không với [idaccount]: `moPhienCucBo` đặt tài
+  /// khoản trước `AuthSuccess` (G93), và bỏ qua vì trùng là mất `lamMoi` lẫn
+  /// `loaiPhien` của lần mở app ấy.
   void noiPhien(Stream<PhienGoi?> phien) {
+    int? daNoi;
     _subs.add(phien.listen((p) async {
       if (p == null) {
+        daNoi = null;
         if (_idaccount != null) xoaPhien();
         return;
       }
-      if (p.idaccount == _idaccount) return;
+      if (p.idaccount == daNoi) return;
+      daNoi = p.idaccount;
       await datTaiKhoan(p.idaccount, loaiPhien: p.loaiPhien);
       await lamMoi();
     }));

@@ -610,14 +610,16 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-14)
 
-### 🩹 G91 + G92 đóng, G93 mở (2026-10-14, chưa push)
+### 🩹 G91 + G92 + G93 đóng (2026-10-14, chưa push)
 
-Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang; người dùng chọn sửa cả hai (TDD). Chi tiết ở thân từng mục `CLIENT_APP_KNOWN_GAPS.md`.
+Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang, cộng một lỗi cùng gốc tìm ra khi điều tra G92; người dùng chọn sửa cả ba (TDD). Chi tiết ở thân từng mục `CLIENT_APP_KNOWN_GAPS.md`.
 
 - **G91** (`95ca2ccf`): `d1DangHienPin` của `KhoiNhacSauNganHang` thêm vế `context.coQuyen(MaQuyen.bankNotificationParser)` — Basic còn `docBienDong` bật không còn mất cả hai hàng gợi ý pin. Ca ⭐ G91 ở `nhac_sau_ngan_hang_cai_dat_test.dart`.
 - **G92**: `GoiRepository.choNapKho()` (future của lượt nạp kho gần nhất, không gồm `lamMoi`); `chanTheoGoi` và `chanTheoQuyen` (nay `Future`) chờ nó rồi mới đọc gói. Cửa trần chặn nhầm Premium mở lạnh deeplink; cửa quyền hỏng **chiều ngược** (Basic bị tắt `export_reports` lọt qua vì Basic mặc định thiếu khoá). 5 ca ở `chan_theo_goi_test.dart`; máy ảo `FlowMoney_16G` (APK debug `3654946f…`): mã cũ mở lạnh `/goals/add` → màn Premium, mã mới 3/3 → form, mở nóng + `/export-report` + mở thường đạt.
-- **G93 mở, chưa sửa** (đọc mã): từ G86, `moPhienCucBo` quét **trước** `AuthSuccess`, lúc `GoiRepository` chưa có tài khoản → `coQuyenNen` trả `true` → Basic có bảng `features` khoá tắt vẫn được tự trả / tự trích ở lượt quét đầu mỗi phiên. Đường nền đã chặn. Chờ người dùng.
-- `flutter test` 7.039 → **7.045** (+9 skip), `flutter analyze` **20**.
+- **G93**: từ G86, `moPhienCucBo` quét **trước** `AuthSuccess`, lúc `GoiRepository` chưa có tài khoản → `coQuyenNen` trả `true` → Basic có bảng `features` khoá tắt vẫn được tự trả / tự trích ở lượt quét đầu mỗi phiên (đường nền đã chặn từ trước). Sửa: hook `datGoi` của `PhienDieuPhoiThat` (DI → `GoiRepository.datTaiKhoan`) chạy trước bộ quét; `noiPhien` so với phiên đã nối của nó (biến `daNoi`) thay vì `idaccount`, để `AuthSuccess` vẫn `lamMoi` + áp `loaiPhien`. Bốn ca test đỏ trên mã cũ (`phien_dieu_phoi_that_test` ×3, `goi_repository_test` ×1). Không đo được trên máy (cần Basic hạ cấp); máy ảo chỉ kiểm hồi quy.
+- ⚠️ Bẫy nghiệm thu: form mở bằng `am start -n … -d` là trang gốc — mũi tên *Quay lại* đứng yên. Không phải lỗi (app không khai deeplink); người dùng chốt để nguyên.
+- Máy ảo `FlowMoney_16G` (APK debug `c71c957d…`, tài khoản Premium, backend tắt) — chỉ kiểm hồi quy: mở lạnh `/goals/add` → form; logcat có `[NotificationScanner] Quét xong` rồi 30 s sau `[Premium] lamMoi hỏng … DioException` (tức `noiPhien` vẫn làm mới ở `AuthSuccess` dù tài khoản đã đặt sẵn); mở thường → Trang chủ. Lượt `am start` ngay sau `adb install` có lần bị nuốt (không tạo tiến trình, không exit-info) — chờ vài giây sau khi cài.
+- `flutter test` 7.039 → **7.047** (+9 skip; G91 +1, G92 +5, G93 +2), `flutter analyze` **20**.
 
 ### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
 
@@ -838,7 +840,7 @@ khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
   `setupDependencies(cheDoNen: true)` → `LuotNen` (gói → nhật ký → `syncMotLuot` → `scan` → `syncMotLuot`) → `nenXong`
   kèm mốc kế; worker hẹn lượt kế bằng **APPEND_OR_REPLACE**.
 - **Năm chốt hỏng im lặng:** (1) `GoiRepository.datTaiKhoan` **trước** khi quét ở nền — `coQuyenNen` trả `true` khi gói
-  chưa có tài khoản, thiếu là Basic được tự trả; (2) lượt nền **không tự `henNen`** — `REPLACE` lên chính công việc
+  chưa có tài khoản, thiếu là Basic được tự trả (đường trong app: hook `datGoi` của `moPhienCucBo`, G93 2026-10-14); (2) lượt nền **không tự `henNen`** — `REPLACE` lên chính công việc
   đang chạy là WorkManager huỷ nó; (3) `noiBoNgheKetQuaDay()` (`lib/core/sync/`) gọi ở **cả** `main.dart` lẫn
   `chay_nen.dart` — thiếu ở nền là `BILL_ALREADY_PAID` về không ai gỡ; (4) ở nền `AuthInterceptor(cheDoNen: true)`
   **không** làm mới / xoá token — app và nền cùng làm mới một refresh token là backend đếm dùng lại token; (5) khoá thuê

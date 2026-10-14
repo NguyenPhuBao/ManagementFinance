@@ -17,6 +17,12 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
+import 'package:flowmoney/features/premium/data/co_quyen_nen.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 
 class _FakeDioClient implements DioClient {
   @override
@@ -96,6 +102,20 @@ class _SpyScanner extends NotificationScanner {
   Future<void> stop() async => goi.add('stop');
 }
 
+/// Bộ quét hỏi quyền gói NGAY lúc bắt đầu — đúng chỗ `scan` đầu tiên của phiên gọi `coQuyenNen` qua DI.
+class _ScannerHoiQuyen extends NotificationScanner {
+  _ScannerHoiQuyen(AppDatabase db, this.hoi)
+      : super(dao: db.notificationDao, loadBudgets: (id, at) async => [], loadBills: (id, at) async => [],
+            syncStatus: const Stream.empty());
+  final void Function() hoi;
+  @override
+  Future<void> start(int idaccount) async => hoi();
+  @override
+  Future<void> stop() async {}
+}
+
+class _ApiGoiIm extends Fake implements PaymentApi {}
+
 const _tb = ThongBaoBuocDangXuat(
     lyDo: LyDoBuocDangXuat.biKhoa, nguon: NguonBuocDangXuat.socket, loiNhan: 'khoá', idaccount: 10);
 
@@ -131,24 +151,47 @@ void main() {
       seedTaiKhoanMoi: (id) async => hook.add('seedMoi $id'),
       xoaAnhQuet: () async => hook.add('xoaAnh'),
       datLaiCoGiaoDien: () => hook.add('coUI'),
+      datGoi: (id) async => hook.add('goi $id'),
     );
     addTearDown(p.dispose);
     return p;
   }
 
-  test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → bộ quét', () async {
+  test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 3).moPhienCucBo(10);
-    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'quet 10']);
+    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'goi 10', 'quet 10']);
     expect(scanner.goi, ['start 10']);
     hook.clear(); scanner.goi.clear();
     await dung(daDon: 0).moPhienCucBo(10);
-    expect(hook, ['don 10', 'seedCu 10', 'quet 10'], reason: 'không hàng nào bị dọn thì GIỮ cache SLM (đăng nhập lại cùng tài khoản)');
+    expect(hook, ['don 10', 'seedCu 10', 'goi 10', 'quet 10'], reason: 'không hàng nào bị dọn thì GIỮ cache SLM (đăng nhập lại cùng tài khoản)');
   });
 
-  test('moPhienCucBo: thứ tự trên MỘT nhật ký chung — dọn → xoá cache → hàng seed cũ → bộ quét', () async {
+  test('moPhienCucBo: thứ tự trên MỘT nhật ký chung — dọn → xoá cache → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 2).moPhienCucBo(10);
-    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'quet 10'],
-        reason: 'bộ quét phải chạy SAU khi dọn dữ liệu tài khoản khác và chuyển hàng seed cũ');
+    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'goi 10', 'quet 10'],
+        reason: 'bộ quét phải chạy SAU khi dọn dữ liệu tài khoản khác, chuyển hàng seed cũ, và đặt gói (G93)');
+  });
+
+  test('⭐ G93: Basic có bill_auto_pay TẮT trong kho → lượt quét đầu của phiên thấy coQuyenNen = false', () async {
+    final kho = InMemoryGoiStore();
+    await kho.ghi(10, TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: const {'bill_auto_pay': false}));
+    final goi = GoiRepository(api: _ApiGoiIm(), kho: kho);
+    addTearDown(goi.dispose);
+    final quyenLucQuet = <bool>[];
+    final p = PhienDieuPhoiThat(
+      dongBo: sync,
+      thoiGianThuc: realtime,
+      boQuet: _ScannerHoiQuyen(db, () => quyenLucQuet.add(coQuyenNen(MaQuyen.billAutoPay, goi: goi))),
+      interceptor: interceptor,
+      donTaiKhoanKhac: (_) async => 0,
+      xoaBanSao: (_) async => 0,
+      datGoi: (id) => goi.datTaiKhoan(id),
+    );
+    addTearDown(p.dispose);
+    await p.moPhienCucBo(10);
+    expect(quyenLucQuet, [false],
+        reason: 'G93: moPhienCucBo quét TRƯỚC AuthSuccess — gói chưa có tài khoản thì coQuyenNen trả true, Basic bị tự '
+            'trả hoá đơn ở lượt quét đầu mỗi lần mở app / đăng nhập');
   });
 
   test('dispose() huỷ subscription — nguồn phát tiếp thì không lỗi, luồng gộp không nhận gì', () async {

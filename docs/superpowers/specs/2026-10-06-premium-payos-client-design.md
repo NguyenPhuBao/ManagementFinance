@@ -278,6 +278,10 @@ GoRoute(path: '/goals/add',   redirect: (_, s) => _chanTheoGoi(s.uri, LoaiTran.m
 **không đếm** (rẻ) → Basic thì `DemDangHoatDong.dem(loai)` → `conTaoDuoc` → `chuyenHuongTheoGoi`. Đếm hỏng (ném) →
 `null`, cho qua — một lỗi đọc CSDL không được biến thành một màn Nâng cấp sai chỗ.
 
+> 🔧 **Mã lệch thân spec từ 2026-10-14 (G92):** cửa (nay `chanTheoGoi` ở `premium/data/chan_theo_goi.dart`, không ở
+> `app_router.dart`) **`await goi.choNapKho()`** trước khi đọc `hienTai` — router chạy lại `redirect` lúc `AuthSuccess`, đúng
+> khi tài khoản vừa gán mà kho chưa trả lời; đọc ngay là Basic mặc định và Premium mở lạnh bị đẩy sang `/premium`.
+
 Mọi lối vào form đi qua cửa này: nút + trên ba trang danh sách, thẻ *Chưa đặt ngân sách* (`/budget/rules?category=…`),
 thẻ *Có vẻ là khoản lặp* (`/bills/add` — **hoá đơn không có trần**, không chặn), lệnh tạo C3 (mở `/budget/rules`,
 `/goals/add`), deeplink thông báo. Route **sửa** (`/wallets/:id/edit`, `/budget/rules?id=`, `/goals/:id/edit`) không chặn.

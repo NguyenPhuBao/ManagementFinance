@@ -153,6 +153,27 @@ void main() {
       await phien.close();
     });
 
+    test(
+        '⭐ G93: tài khoản đã đặt TRƯỚC AuthSuccess (moPhienCucBo) → AuthSuccess cùng tài khoản vẫn áp loaiPhien '
+        '+ làm mới đúng một lần', () async {
+      api.thongTin = null; // lamMoi hỏng → hienTai là thứ datTaiKhoan để lại
+      // Như hook `datGoi` của moPhienCucBo: chưa biết loaiPhien, kho trống → Basic.
+      await repo.datTaiKhoan(10);
+      expect(repo.hienTai.laPremium(now), isFalse);
+      final phien = StreamController<PhienGoi?>();
+      repo.noiPhien(phien.stream);
+      phien.add((idaccount: 10, loaiPhien: 'Premium'));
+      await _nghi();
+      await _nghi();
+      expect(api.soLanHoi, 1,
+          reason: 'G93: noiPhien so với idaccount thì bỏ qua AuthSuccess — không làm mới gói ở lần mở app');
+      expect(repo.hienTai.laPremium(now), isTrue, reason: 'kho trống → type của phiên (spec 6.3)');
+      phien.add((idaccount: 10, loaiPhien: 'Premium'));
+      await _nghi();
+      expect(api.soLanHoi, 1, reason: 'AuthSuccess re-emit vẫn không phải lý do hỏi lại');
+      await phien.close();
+    });
+
     test('vòng đời: resumed → lamMoiNeuCu(5 phút)', () async {
       await repo.datTaiKhoan(10);
       await repo.lamMoi();

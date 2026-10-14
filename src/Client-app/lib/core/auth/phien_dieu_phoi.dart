@@ -14,7 +14,8 @@ abstract class PhienDieuPhoi {
   /// Gộp lời từ chối mang lý do từ socket và HTTP — Bloc không hỏi lại.
   Stream<ThongBaoBuocDangXuat> get buocDangXuat;
 
-  /// Pha cục bộ, TRƯỚC `AuthSuccess`: dọn tài khoản khác (xoá cache SLM nếu có dọn), chuyển hàng seed cũ, bật bộ quét.
+  /// Pha cục bộ, TRƯỚC `AuthSuccess`: dọn tài khoản khác (xoá cache SLM nếu có dọn), chuyển hàng seed cũ, đặt gói (G93),
+  /// bật bộ quét.
   Future<void> moPhienCucBo(int idaccount);
 
   /// Bật kênh thời gian thực.

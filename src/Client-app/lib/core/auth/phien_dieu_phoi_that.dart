@@ -28,10 +28,12 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     Future<void> Function(int idaccount)? seedTaiKhoanMoi,
     Future<void> Function()? xoaAnhQuet,
     void Function()? datLaiCoGiaoDien,
+    Future<void> Function(int idaccount)? datGoi,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
         _donTaiKhoanKhac = donTaiKhoanKhac, _xoaBanSao = xoaBanSao, _xoaCacheSlm = xoaCacheSlm,
         _chuyenHangSeedCu = chuyenHangSeedCu, _taoBanSaoDanhMuc = taoBanSaoDanhMuc,
-        _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien {
+        _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
+        _datGoi = datGoi {
     final chet = dongBo?.sessionInvalidStream;
     if (chet != null) _subs.add(chet.listen(_phienChet.add));
     final hetHan = interceptor?.sessionExpiredStream;
@@ -52,6 +54,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final Future<int> Function(int)? _taoBanSaoDanhMuc;
   final Future<void> Function(int)? _seedTaiKhoanMoi;
   final Future<void> Function()? _xoaAnhQuet;
+  final Future<void> Function(int)? _datGoi;
   final void Function()? _datLaiCoGiaoDien;
 
   final _phienChet = StreamController<void>.broadcast();
@@ -70,6 +73,9 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     // Cache SLM chỉ xoá khi máy vừa đổi người dùng — đăng nhập lại cùng tài khoản thì giữ (AuthBloc cũ).
     if (daDon > 0) await _xoaCacheSlm?.call();
     await _chuyenHangSeedCu?.call(idaccount);
+    // G93: gói (kho đã lưu) phải có tài khoản TRƯỚC lượt quét đầu — pha này chạy trước `AuthSuccess`, còn gói chỉ nghe
+    // phiên qua `AuthSuccess`; thiếu bước này thì cửa quyền của bộ chạy nền trả `true` và Basic bị tự trả / tự trích.
+    await _datGoi?.call(idaccount);
     await _boQuet?.start(idaccount);
   }
 

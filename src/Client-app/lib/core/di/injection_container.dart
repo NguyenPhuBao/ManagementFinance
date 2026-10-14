@@ -212,6 +212,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         sl<AnTheChoXoa>().value = false;
         sl<AnNhacViTrungTen>().value = false;
       },
+      // G93: chờ kho gói nạp xong trước lượt quét đầu — cùng chốt "gói đặt TRƯỚC khi quét" của đường nền
+      // (`chay_nen.dart`). `loaiPhien` chưa có ở đây: kho trống thì `noiPhien` áp nó lúc `AuthSuccess`.
+      datGoi: (id) => sl<GoiRepository>().datTaiKhoan(id),
     ),
     dispose: (p) => p.dispose(),
   );

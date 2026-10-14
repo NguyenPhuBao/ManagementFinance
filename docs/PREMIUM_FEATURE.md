@@ -177,8 +177,11 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   Premium"* khi giá trị đang lưu là bật).
 - **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
   phiên → `true`. DI bọc `runAutoPays` · `runAutoDeposits` · `loadKeHoach` · `NhapBienDong.batBienDong` ·
-  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**. ⚠️ Vế *"chưa có phiên → `true`"* đúng
-  trước G86; từ đó lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, lúc gói chưa có tài khoản — **G93**, chưa sửa.
+  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**. ⚠️ Vế *"chưa có phiên → `true`"* buộc
+  **mọi** lượt quét phải đặt gói trước: đường nền qua `datGoi` của `LuotNen`; đường trong app qua hook `datGoi` của
+  `PhienDieuPhoiThat.moPhienCucBo` (**G93**, 2026-10-14 — từ G86 lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, và
+  trước khi có hook thì Basic bị tự trả / tự trích ở lượt ấy). Vì tài khoản đã đặt sẵn, `noiPhien` so với **phiên đã nối
+  của nó** chứ không với `idaccount` — không thì mất `lamMoi` và `loaiPhien` ở `AuthSuccess`.
 - **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
   màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số. Cả hai **chờ kho gói
   nạp xong** (`GoiRepository.choNapKho()`) rồi mới đọc `idaccount` + `hienTai` (G92, 2026-10-14): router chạy lại `redirect`

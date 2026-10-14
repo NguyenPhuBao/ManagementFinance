@@ -295,7 +295,8 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 > 3. **`autoDepositLastRun` ghi cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`) — trước đó ghi rời sau
 >    vòng lặp, app sập giữa vòng thì kỳ đã trích bị trích lại.
 > 4. **Gói đặt TRƯỚC khi quét** ở nền (`GoiRepository.datTaiKhoan`) — `coQuyenNen` trả `true` khi gói chưa có tài
->    khoản, thiếu bước này là Basic được tự trích ở nền.
+>    khoản, thiếu bước này là Basic được tự trích ở nền. ⚠️ Đường **trong app** cũng phải vậy: lượt quét đầu của
+>    `moPhienCucBo` chạy trước `AuthSuccess` — hook `datGoi` của `PhienDieuPhoiThat` (G93, 2026-10-14).
 > 5. Kỳ đã quá hạn mà ví không đủ **không** được hẹn "ngay" — lượt một-lần tự hẹn lại ngay là vòng lặp tốn pin; nó chờ
 >    lượt định kỳ.
 >
