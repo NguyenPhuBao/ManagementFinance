@@ -46,7 +46,7 @@ class TransactionPage extends StatefulWidget {
   final String? initialWalletId;
 
   /// Số giao dịch chưa có danh mục của tài khoản, dạng **stream** — nuôi thẻ lối vào C1. `null` → đếm bằng
-  /// `demChuaGan` trên `transactionDao.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
+  /// `demChuaGan` trên `TransactionRepository.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
   final Stream<int> Function(int idaccount)? nguonChuaGan;
 
   /// D1 — số hàng biến động số dư chưa ghi, dạng **stream** — nuôi thẻ *"Có N mục chờ ghi"*. `null` →

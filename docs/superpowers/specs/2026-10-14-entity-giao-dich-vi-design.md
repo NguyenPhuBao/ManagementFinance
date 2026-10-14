@@ -3,7 +3,7 @@
 **Ngày:** 2026-10-14 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `12b8fa0d` · **Trạng thái:** người dùng duyệt bốn chốt
 và sáu phần trong chat, rồi **duyệt bản viết** (`c2c723cb`, cùng ngày — kể cả hai điểm đổi sau lượt soát: `TransactionEntity` thêm
 `billId` / `deletedAt` chỉ đọc; điểm ghép không miễn trừ ở luật 1 quét 27). Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-giao-dich-vi.md`
-(gitignore).
+(gitignore). ✅ Thi công xong 2026-10-14 (commit `54a6efd1` → `3252db88`, tài liệu `84628ee1`, nghiệm thu: tệp đo `692c7091` + commit tài liệu kế tiếp).
 
 Đợt **thứ hai** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`; lộ trình người dùng chốt 2026-10-11: Hoá đơn → **Giao dịch + Ví**
 → Danh mục → Thông báo). Tiền lệ trực tiếp: `specs/2026-10-14-entity-hoa-don-design.md` (đợt 1/4, thi công xong cùng ngày). Người
@@ -26,7 +26,7 @@ chuyển tiếp `…Rows` biến mất, và test quét 27 giữ cho chúng khôn
 > `_toEntity` có 6 chỗ gọi (không phải 5); thêm hai test `gan_danh_muc_nguon_test` / `gan_danh_muc_nguon_lop_test` vào Task 4; chú thích DI
 > `loadWallets` tách hai vế (ví qua `WalletRepository.getAll`, mục tiêu vẫn DAO). 🔧 Bốn chỗ văn bản viết lệch số đo preflight đã sửa
 > thẳng vào thân (mục 3 quy tắc 5, mục 4.1, mục 8, phụ lục D; mục 11 bỏ `bankCasoId` — tên không tồn tại, cột thật là `bankTranId`).
-> 🚧 **Nghiệm thu máy ảo: chờ (Task 9).**
+> ✅ **Nghiệm thu máy ảo 2026-10-14 ĐẠT** (`FlowMoney_16G`, `-gpu host`, demo mode 12:00, backend dev tắt — không có máy thật cắm): bản trước `b0164475…` (`lastUpdateTime` 14:05:48) ↔ bản sau `94394e4c88b237b2010a04b7c4a82a51cc73c7d9` (HEAD `84628ee1`, `lastUpdateTime` 21:29:25); **24 cặp ảnh**, cắt 100 px thanh trạng thái: **22/24 cặp 0 px khác**, 2 cặp lệch do THỜI GIAN chứ không do mã — ngân sách chi tiết 997 px ở một dòng chữ (*"Theo thời gian đã trôi"* 22.403 → 22.416 đ: +13 đ = 11,5 phút giữa hai lượt chụp × 50.000 đ / (31 ngày × 1.440 phút) = 1,12 đ/phút) và dự báo 30 ngày 2 px nét biểu đồ (hai lượt của CÙNG bản sau cũng lệch 18 px khi căn lại độ cuộn); vàng thuần `#FFFF00` **0** trên cả 24 ảnh sau. Nhập nhanh `45k tien mat` (ví đang chọn *Ví MoMo*, bấm Điền, KHÔNG Lưu): ví chuyển về **Tiền mặt**, số tiền 45.000 đ. `fromDrift` toàn sổ (`test/tool/do_from_drift_test.dart`, `692c7091`): **92 hàng · trung vị 0,028 ms** / 20 lượt (nhỏ nhất 0,026, lớn nhất 0,652) — không đáng tối ưu. Không có thẻ *"chưa có danh mục"* nên màn Gắn danh mục (C1) không chụp được; mọi ảnh ở scratchpad, không vào repo.
 
 ## 1. Quyết định đã chốt (trong chat, 2026-10-14)
 

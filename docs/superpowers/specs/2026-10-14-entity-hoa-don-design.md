@@ -28,7 +28,7 @@ giữ cho nó không quay lại.
 | # | Câu hỏi | Chốt | Lý do ngắn |
 |---|---|---|---|
 | 1 | Ranh giới | **Domain + giao diện + 8 tệp ngoài mảng** — `BillEntity` là kiểu duy nhất từ repository trở lên | Domain nhận `Bill` Drift thì trang phải đổi ngược entity về hàng Drift trước khi gọi — vô nghĩa. Luật mục 4 `KIEN_TRUC`: domain không Drift |
-| 2 | Ratchet quét 25 (+1 ở `notification_rules`, `notification_scanner`, `lich_nen`) | **Nâng ba số đúng +1, ghi lý do**; câu *"lần tăng DUY NHẤT"* thành luật *tăng chỉ khi thay kiểu Drift bằng Entity của chính mảng đã import* | Không thêm mảng mới vào `core`; ba dòng về 0 ở gạch 5 (dời `core/notification`). Giữ thứ tự gạch 3 → 4+5 |
+| 2 | Ratchet quét 25 (+1 ở `notification_rules`, `notification_scanner`, `lich_nen`) | **Nâng ba số đúng +1, ghi lý do**; câu *"lần tăng DUY NHẤT"* thành luật *tăng chỉ khi thay kiểu Drift bằng Entity của chính mảng đã import* | Không thêm mảng mới vào `core`; ba dòng về 0 ở gạch 5 (dời `core/notification`). Giữ thứ tự gạch 3 → 4+5 *(✅ nay đợt 2 đã tăng thêm +3 — lịch sử: số +1 ở cột này là của đợt 1)* |
 | 3 | Phương án | **Repository là cửa duy nhất**: không thêm hàm `…Rows` chuyển tiếp cho Hoá đơn | Domain không "song song" được theo kiểu; hai cửa chỉ là cách 1 cộng nợ |
 | 3a | Đường Thêm / Sửa | Event và repository chở **`BillDraft`** + `id` / `idaccount` / `now`; repository tự dựng `BillsCompanion` | Form đã có `BillDraft`; đường Sửa giữ nghĩa *"chỉ ghi cột form sở hữu"*; ánh xạ Drift thuộc tầng data |
 | 3b | `bill_auto_pay_runner.dart` | **Dời về `data/services/`** (dời nguyên văn cả `BillAutoPayEvent`) | Cầm `AppDatabase` = bộ điều phối (hàng mục 8); để ở domain thì *"domain Hoá đơn không Drift"* không về 0 |
@@ -190,7 +190,7 @@ chính mảng tệp ấy đã import; không bao giờ vì một mảng mới."*
 |---|---|---|
 | Mục 8: Entity → `data/models/` | ✓ | `bill/data/models/bill_entity.dart` — thư mục mới cho mảng, cùng khuôn 4 mảng có sẵn |
 | Mục 8: bộ điều phối → `data/services/` | ✓ | runner dời; `goal_auto_deposit_runner` cùng mùi, **để đợt Mục tiêu** |
-| Mục 4: domain không Drift | ✓ (Hoá đơn, trừ 1) | 11 → 1 (`de_xuat_hoa_don` chờ đợt Giao dịch); các mảng khác vào danh sách chờ luật 2 |
+| Mục 4: domain không Drift | ✓ (Hoá đơn, trừ 1) | 11 → 1 (`de_xuat_hoa_don` chờ đợt Giao dịch — ✅ trả 2026-10-14 đợt 2, nay 0); các mảng khác vào danh sách chờ luật 2 |
 | Mục 4: `core` không import `features/` (ratchet) | ⚠️ +3, có lý do | quyết định 2; về 0 ở gạch 5 |
 | Quét 22 (presentation không DAO) | ✓ | không thêm lối DAO nào; `conCho` vẫn rỗng |
 | Quét 23 (≤ 1.200 dòng) | ✓ | lớn nhất 866 |
@@ -221,9 +221,9 @@ chính mảng tệp ấy đã import; không bao giờ vì một mảng mới."*
 
 - `goal/domain/goal_auto_deposit_runner.dart` cầm `AppDatabase` (`db.goalDao`, `db.walletDao`, `db.update(db.goals)`) —
   cùng mùi với runner Hoá đơn; đợt Mục tiêu dời.
-- `analytics/domain/du_bao_dong_tien.dart` còn `Wallet` Drift (4 chỗ); `transaction_lookup`, `thu_chi_thang`… — danh sách
+- `analytics/domain/du_bao_dong_tien.dart` còn `Wallet` Drift (4 chỗ); `transaction_lookup`, `thu_chi_thang`… (✅ trả 2026-10-14 đợt 2 — lịch sử) — danh sách
   chờ luật 2 (phụ lục B).
-- Lối `…Rows` của Ví / Danh mục / Giao dịch (10 lối) — rút ở đợt tương ứng.
+- Lối `…Rows` của Ví / Danh mục / Giao dịch (10 lối) — rút ở đợt tương ứng (✅ Ví + Giao dịch rút 2026-10-14 đợt 2: 10 → 4).
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift (mục 7).
 
 ## 12. Tài liệu cập nhật khi xong
