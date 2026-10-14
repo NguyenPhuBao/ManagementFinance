@@ -510,7 +510,9 @@ Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager
 - ⚠️ **Sự kiện dùng app là của MÁY** — mọi mốc theo tài khoản phải chặn được phiên lúc không ai đăng nhập (`8deeeb5`).
 - ⚠️ **Hằng Dart ↔ Kotlin khớp tay**; `phien_ngan_hang_noi_day_test` đọc tệp Kotlin để so.
 - ⚠️ **Không dùng `laGhiChuMay` làm bằng chứng** — nó loại chuyển khoản tự ghi (8.4).
-- ⚠️ **Hàng gợi ý pin** của D1 và của khối này cùng điều kiện — D1 đã hiện thì khối này không lặp.
+- ⚠️ **Hàng gợi ý pin** của D1 và của khối này cùng điều kiện — D1 đã hiện thì khối này không lặp. *"D1 đã hiện"* (`d1DangHienPin`)
+  phải lặp **đủ** điều kiện dựng hàng của thẻ D1, kể cả quyền gói `bank_notification_parser`: Basic còn `docBienDong` bật thì thẻ
+  D1 chỉ hiện dòng khoá, và quên vế ấy là màn không còn hàng pin nào (G91, đóng 2026-10-14).
 - ⚠️ **WorkManager chạy lượt ĐẦU ngay lúc `enqueueUniquePeriodicWork`**, không đợi 15 phút.
 - ⚠️ **Cắm cáp USB = đang sạc → Android không vào Doze** — đo tắt màn phải rút cáp.
 - ⚠️ `appops set … GET_USAGE_STATS` bị ColorOS từ chối — người dùng tự bật ở `USAGE_ACCESS_SETTINGS -d package:…`.

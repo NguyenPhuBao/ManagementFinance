@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../../transaction/domain/doc_tin_bien_dong.dart';
 import '../../../domain/cau_chu_dong_y.dart';
 
@@ -35,7 +37,12 @@ class KhoiNhacSauNganHang extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bat = prefs.nhacSauNganHang;
-    final d1DangHienPin = prefs.docBienDong && coQuyenBienDong && !duocChayNen;
+    // Lặp đúng điều kiện dựng hàng pin của `TheBienDong` — kể cả cửa quyền gói: Basic còn `docBienDong` bật thì thẻ D1
+    // chỉ hiện `DongKhoaCongTac`, không hàng pin (G91).
+    final d1DangHienPin = context.coQuyen(MaQuyen.bankNotificationParser) &&
+        prefs.docBienDong &&
+        coQuyenBienDong &&
+        !duocChayNen;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
