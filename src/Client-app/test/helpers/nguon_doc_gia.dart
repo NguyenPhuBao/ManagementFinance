@@ -1,5 +1,5 @@
 /// Đăng ký vào `sl` các nguồn đọc mà TRANG nay lấy qua repository thay cho `sl<AppDatabase>()` (spec bịt điểm rò
-/// 2026-10-10, việc 1). Mỗi lớp giả chỉ chuyển tiếp xuống DAO của chính [db] — dữ liệu y như trước khi trang đổi lối đọc
+/// 2026-10-10, việc 1). Mỗi lớp giả chỉ chuyển tiếp xuống DAO của chính [db] (map `fromDrift` cho repository trả Entity) — dữ liệu y như trước khi trang đổi lối đọc
 /// — và `noSuchMethod` cho phần còn lại. Gọi NGAY SAU `sl.registerSingleton<AppDatabase>(db)`; kiểu nào test đã đăng ký
 /// bản giả riêng thì giữ nguyên bản ấy.
 library;
@@ -17,17 +17,9 @@ import 'package:flowmoney/features/transaction/data/repositories/transaction_rep
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 
-class ViRowsGia implements WalletRepository {
-  ViRowsGia(this.db);
+class ViGia implements WalletRepository {
+  ViGia(this.db);
   final AppDatabase db;
-  @override
-  Future<List<Wallet>> getActiveRows(int idaccount) => db.walletDao.getActive(idaccount);
-  @override
-  Future<List<Wallet>> getAllRows(int idaccount) => db.walletDao.getAll(idaccount);
-  @override
-  Stream<List<Wallet>> watchAllRows(int idaccount) => db.walletDao.watchAll(idaccount);
-  @override
-  Future<Wallet?> getRowById(String id) => db.walletDao.getById(id);
   @override
   Future<List<WalletEntity>> getActive(int idaccount) async =>
       (await db.walletDao.getActive(idaccount)).map(WalletEntity.fromDrift).toList();
@@ -46,13 +38,9 @@ class ViRowsGia implements WalletRepository {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
-class GiaoDichRowsGia implements TransactionRepository {
-  GiaoDichRowsGia(this.db);
+class GiaoDichGia implements TransactionRepository {
+  GiaoDichGia(this.db);
   final AppDatabase db;
-  @override
-  Future<List<Transaction>> getAllRows(int idaccount) => db.transactionDao.getAll(idaccount);
-  @override
-  Stream<List<Transaction>> watchAllRows(int idaccount) => db.transactionDao.watchAll(idaccount);
   @override
   Future<List<TransactionEntity>> getAll(int idaccount) async =>
       (await db.transactionDao.getAll(idaccount)).map(TransactionEntity.fromDrift).toList();
@@ -120,8 +108,8 @@ void _dat<T extends Object>(T moi, bool Function(Object) laGiaCuaHelper) {
 
 void dangKyNguonDocGia(AppDatabase db) {
   _dat<ThongBaoNguon>(ThongBaoNguonDrift(db.notificationDao), (o) => o is ThongBaoNguonDrift);
-  _dat<WalletRepository>(ViRowsGia(db), (o) => o is ViRowsGia);
-  _dat<TransactionRepository>(GiaoDichRowsGia(db), (o) => o is GiaoDichRowsGia);
+  _dat<WalletRepository>(ViGia(db), (o) => o is ViGia);
+  _dat<TransactionRepository>(GiaoDichGia(db), (o) => o is GiaoDichGia);
   _dat<CategoryManagementRepository>(DanhMucRowsGia(db), (o) => o is DanhMucRowsGia);
   _dat<BillRepository>(HoaDonRowsGia(db), (o) => o is HoaDonRowsGia);
   _dat<GoalRepository>(MucTieuRowsGia(db), (o) => o is MucTieuRowsGia);

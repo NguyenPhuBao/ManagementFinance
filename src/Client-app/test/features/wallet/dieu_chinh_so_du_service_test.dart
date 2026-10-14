@@ -39,8 +39,6 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     txRepo = TransactionRepositoryImpl(
       localDataSource: TransactionLocalDataSourceImpl(db),
-      walletDao: db.walletDao,
-      transactionDao: db.transactionDao,
       syncEngine: _SyncEngineGia(),
       soDuVi: SoDuViService(db: db),
     );

@@ -222,10 +222,6 @@ class FakeCategoryRepository implements CategoryManagementRepository {
 /// (loại, danh mục, ví đích) thay vì chỉ kiểm giao diện.
 class FakeTransactionRepository implements TransactionRepository {
   @override
-  Future<List<Transaction>> getAllRows(int idaccount) => throw UnimplementedError();
-  @override
-  Stream<List<Transaction>> watchAllRows(int idaccount) => throw UnimplementedError();
-  @override
   Future<List<TransactionEntity>> getAll(int idaccount) => throw UnimplementedError();
   @override
   Stream<List<TransactionEntity>> watchAll(int idaccount) => throw UnimplementedError();

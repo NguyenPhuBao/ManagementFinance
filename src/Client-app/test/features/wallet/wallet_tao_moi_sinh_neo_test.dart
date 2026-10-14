@@ -32,7 +32,6 @@ void main() {
       localDataSource: WalletLocalDataSourceImpl(db: db),
       syncEngine: _SyncEngineGia(),
       soDuVi: SoDuViService(db: db),
-      walletDao: db.walletDao,
     );
   });
 

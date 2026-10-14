@@ -34,9 +34,8 @@ const companionCua = {
   'AppNotification': 'AppNotificationsCompanion',
 };
 
-/// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Điền từ lượt chạy đầu (Step 2); mỗi đợt Entity xoá một khoá.
+/// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Điền từ lượt chạy đầu (Step 2); mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2).
 const conChoKieu = <String, Set<String>>{
-  'Wallet': {},
   'Category': {
     'features/bill/presentation/pages/bill_add_page.dart',
     'features/bill/presentation/pages/bill_detail_page.dart',

@@ -22,7 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Từ 2026-10-10 trang không cầm DAO; phép đọc đi qua `WalletRepository` viết trên một dòng
 /// `sl<WalletRepository>().…` để test này nhận diện. Từ 2026-10-14 (Entity Giao dịch + Ví) tên hàm là
-/// `getActive` / `getAll` / `watchAll`; dạng `…Rows` còn được nhận tới khi rút hẳn.
+/// `getActive` / `getAll` / `watchAll`, viết trên một dòng `sl<WalletRepository>().…`.
 ///
 /// Thêm một chỗ gọi mới mà quên cập nhật danh sách này thì test đỏ, và người
 /// thêm buộc phải trả lời câu hỏi "chỗ này có được thấy ví lưu trữ không?".
@@ -34,7 +34,7 @@ void main() {
     'core/database/daos/wallet_dao.dart':
         'Chính nó — `getActive` được dựng bằng cách lọc trên `getAll`.',
     'features/wallet/data/repositories/wallet_repository_impl.dart':
-        'Lối chuyển tiếp getAllRows/watchAllRows cho bảng tra tên (spec bịt điểm rò 2026-10-10, mục 4.3) — chỉ chuyển tiếp, không chọn.',
+        'Bản thi hành: `getAll` / `watchAll` chuyển tiếp datasource cho bảng tra tên — chỉ chuyển tiếp, không chọn.',
     'core/sync/sync_engine.dart':
         'Đồng bộ phải đẩy và kéo cả ví lưu trữ, nếu không trạng thái ấy không '
             'bao giờ ra khỏi được máy này.',
@@ -113,12 +113,13 @@ void main() {
   Set<String> tepChua(String mau) =>
       {for (final e in noiDung.entries) if (e.value.contains(mau)) e.key};
 
-  /// Trang giữ repository trong trường (`_vi.getAllRows(`) không viết `WalletRepository>().` nên lách được mẫu trên.
-  /// Với tệp có nhắc `WalletRepository`, bắt mọi dòng `.getAllRows(` / `.watchAllRows(` bất kể người nhận, trừ dòng
-  /// rõ ràng là repository giao dịch / danh mục. (Dương tính giả — trường giữ repo giao dịch trong tệp có cả ví — thì
+  /// Trang giữ repository trong trường (`_vi.getAll(`) không viết `WalletRepository>().` nên lách được mẫu trên.
+  /// Với tệp có nhắc `WalletRepository`, bắt mọi dòng `.getAll(` / `.watchAll(` bất kể người nhận, trừ dòng
+  /// `TransactionRepository>()` · `CategoryManagementRepository>()` · `ThongBaoNguon>()` (hàng chờ D1 của
+  /// `them_giao_dich_nguon`). (Dương tính giả — trường giữ repo giao dịch trong tệp có cả ví — thì
   /// phân loại tệp ấy vào `duocDocMoiVi` kèm lý do.)
   Set<String> tepDocViQuaTruong() {
-    final mau = RegExp(r'\.(getAllRows|watchAllRows|getAll|watchAll)\(');
+    final mau = RegExp(r'\.(getAll|watchAll)\(');
     return {
       for (final e in noiDung.entries)
         if (e.value.contains('WalletRepository') &&
@@ -135,7 +136,7 @@ void main() {
 
   test('tiền đề: phép bắt theo trường thấy được một lối đọc ví giữ trong trường', () {
     expect(tepDocViQuaTruong(), contains('features/bill/presentation/pages/bill_page.dart'),
-        reason: 'bill_page.dart đọc `sl<WalletRepository>().getAllRows(` — phép bắt phải thấy nó, nếu không regex hỏng.');
+        reason: 'bill_page.dart đọc `sl<WalletRepository>().getAll(` — phép bắt phải thấy nó, nếu không regex hỏng.');
     expect(tepDocViQuaTruong(), isNot(contains('features/transaction/data/them_giao_dich_nguon.dart')),
         reason: 'Bộ chọn ví không được bị gắn nhãn "đọc mọi ví" vì dòng sl<ThongBaoNguon>().getAll(.');
   });
@@ -144,8 +145,6 @@ void main() {
     final thay = {
       ...tepChua('walletDao.getAll('),
       ...tepChua('walletDao.watchAll('),
-      ...tepChua('WalletRepository>().getAllRows('),
-      ...tepChua('WalletRepository>().watchAllRows('),
       ...tepChua('WalletRepository>().getAll('),
       ...tepChua('WalletRepository>().watchAll('),
       ...tepDocViQuaTruong(),
@@ -168,7 +167,6 @@ void main() {
       expect(
           doc.contains('walletDao.getActive(') ||
               doc.contains('walletDao.watchActive(') ||
-              doc.contains('WalletRepository>().getActiveRows(') ||
               doc.contains('WalletRepository>().getActive('),
           isTrue,
           reason: 'Bộ chọn ví "$tep" không gọi getActive/watchActive, nên ví '
@@ -177,8 +175,6 @@ void main() {
       expect(
           doc.contains('walletDao.getAll(') ||
               doc.contains('walletDao.watchAll(') ||
-              doc.contains('WalletRepository>().getAllRows(') ||
-              doc.contains('WalletRepository>().watchAllRows(') ||
               doc.contains('WalletRepository>().getAll(') ||
               doc.contains('WalletRepository>().watchAll('),
           isFalse,

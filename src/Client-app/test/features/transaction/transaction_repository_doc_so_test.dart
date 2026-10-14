@@ -25,8 +25,6 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = TransactionRepositoryImpl(
       localDataSource: TransactionLocalDataSourceImpl(db),
-      walletDao: db.walletDao,
-      transactionDao: db.transactionDao,
       syncEngine: _SyncEngineGia(),
       soDuVi: SoDuViService(db: db),
     );

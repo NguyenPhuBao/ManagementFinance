@@ -30,8 +30,6 @@ void main() {
     syncEngine = DummySyncEngine();
     repository = TransactionRepositoryImpl(
       localDataSource: localDataSource,
-      walletDao: db.walletDao,
-      transactionDao: db.transactionDao,
       syncEngine: syncEngine,
       soDuVi: SoDuViService(db: db),
     );

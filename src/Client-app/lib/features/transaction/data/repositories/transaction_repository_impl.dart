@@ -1,6 +1,3 @@
-import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/wallet_dao.dart';
-import '../../../../core/database/daos/transaction_dao.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/transaction_local_data_source.dart';
@@ -9,8 +6,6 @@ import 'transaction_repository.dart';
 
 class TransactionRepositoryImpl implements TransactionRepository {
   final TransactionLocalDataSource localDataSource;
-  final WalletDao walletDao;
-  final TransactionDao transactionDao;
   final SyncEngine syncEngine;
 
   /// Nơi duy nhất ghi số dư. Xem `SoDuViService`.
@@ -18,16 +13,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
   TransactionRepositoryImpl({
     required this.localDataSource,
-    required this.walletDao,
-    required this.transactionDao,
     required this.syncEngine,
     required this.soDuVi,
   });
 
-  @override
-  Future<List<Transaction>> getAllRows(int idaccount) => transactionDao.getAll(idaccount);
-  @override
-  Stream<List<Transaction>> watchAllRows(int idaccount) => transactionDao.watchAll(idaccount);
   @override
   Future<List<TransactionEntity>> getAll(int idaccount) => localDataSource.getAll(idaccount);
   @override
