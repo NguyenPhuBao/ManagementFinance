@@ -47,6 +47,7 @@ void main() {
     bool isRecurrence = true,
     String timeRecurrence = kBillCycleMonth,
     bool isPaid = false,
+    bool autoPayEnabled = false,
   }) async {
     await db.billDao.insert(
       BillsCompanion.insert(
@@ -69,6 +70,7 @@ void main() {
         icon: const Value('bolt'),
         colour: const Value('#FF0000'),
         note: const Value('Ghi chú cũ'),
+        autoPayEnabled: Value(autoPayEnabled),
         updatedAt: DateTime.now(),
       ),
     );
@@ -124,6 +126,35 @@ void main() {
               'rơi về mặc định.');
       expect(after.colour, '#FF0000');
       expect(after.startDate, DateTime(2026, 1, 20));
+    });
+
+    test('tắt công tắc tự trả ở màn Sửa thì autoPayEnabled xuống CSDL là false',
+        () async {
+      await seedBill(autoPayEnabled: true);
+
+      await repository.editBill(
+        BillDraft(
+          name: 'Tiền điện',
+          amount: 200000.0,
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 8, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: 'Ghi chú cũ',
+          autoPayEnabled: false,
+        ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
+      );
+
+      final row = (await db.billDao.getAll(accountId)).single;
+      expect(row.autoPayEnabled, isFalse,
+          reason: 'Tắt công tắc tự trả ở màn Sửa phải xuống CSDL; vắng cột là '
+              '"giữ nguyên" và app tiếp tục trừ tiền (lỗi tệ nhất vùng này).');
     });
 
     test('sửa hoá đơn không làm nó sống lại sau khi đã xoá mềm', () async {
