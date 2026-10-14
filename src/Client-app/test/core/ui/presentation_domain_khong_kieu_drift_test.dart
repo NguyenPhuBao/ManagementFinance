@@ -121,6 +121,11 @@ String boChuThich(String d) {
 RegExp mauKieu(String ten) =>
     RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson)');
 
+/// Dòng import mà luật 2 cấm trong features/*/domain/: core/database hoặc package:drift.
+bool importCam(String d) =>
+    d.startsWith('import ') &&
+    (d.contains('core/database') || d.contains('package:drift'));
+
 /// Companion còn bắt cả dựng (`BillsCompanion(` / `.insert(`).
 RegExp mauCompanion(String ten) =>
     RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|\\(|\\.)');
@@ -155,6 +160,10 @@ void main() {
         mauCompanion('BillsCompanion')
             .hasMatch('return BillsCompanion.insert('),
         isTrue);
+    expect(importCam("import 'package:drift/drift.dart' show Value;"), isTrue);
+    expect(importCam("import '../../../core/database/app_database.dart';"),
+        isTrue);
+    expect(importCam("import 'dart:io';"), isFalse);
     expect(boChuThich('  /// đối tượng `Bill` đang giữ'), '');
     expect(boChuThich('  final Bill bill; // ảnh chụp Bill'),
         '  final Bill bill;');
@@ -227,9 +236,7 @@ void main() {
     for (final f in _dart(Directory('lib/features'))) {
       final duong = _duong(f);
       if (!duong.contains('/domain/')) continue;
-      if (f.readAsLinesSync().any((d) =>
-          d.startsWith('import ') &&
-          (d.contains('core/database') || d.contains('package:drift')))) {
+      if (f.readAsLinesSync().any(importCam)) {
         thay.add(duong);
       }
     }
