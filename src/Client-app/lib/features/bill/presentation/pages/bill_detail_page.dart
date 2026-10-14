@@ -11,6 +11,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
@@ -35,7 +36,7 @@ class BillDetailPage extends StatefulWidget {
   final String id;
 
   /// Ảnh chụp từ danh sách, để vẽ ngay trong lúc đọc CSDL. Có thể cũ.
-  final Bill? bill;
+  final BillEntity? bill;
 
   /// Tiêm được để test không phụ thuộc ngày chạy.
   final DateTime? now;
@@ -47,8 +48,8 @@ class BillDetailPage extends StatefulWidget {
 }
 
 class _BillDetailPageState extends State<BillDetailPage> {
-  Bill? _bill;
-  List<Bill> _chuoi = const [];
+  BillEntity? _bill;
+  List<BillEntity> _chuoi = const [];
   Map<String, TransactionEntity> _khoanChi = const {};
   TransactionLookup _lookup = TransactionLookup.empty;
   bool _dangTai = true;
@@ -76,7 +77,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     // `idaccount` chỉ lấy từ phiên (quy tắc 2). Không có phiên thì vẫn vẽ
     // được hoá đơn, chỉ thiếu tên ví/danh mục và lịch sử.
     final accountId = currentAccountIdOrNull(context);
-    var tatCa = <Bill>[bill];
+    var tatCa = <BillEntity>[bill];
     var khoanChi = <String, TransactionEntity>{};
     var lookup = TransactionLookup.empty;
     if (accountId != null) {
@@ -100,7 +101,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     });
   }
 
-  Future<void> _sua(Bill b) async {
+  Future<void> _sua(BillEntity b) async {
     await context.push('/bills/${b.id}/edit', extra: b);
     if (mounted) _nap();
   }
@@ -172,7 +173,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     );
   }
 
-  Widget _noiDung(BuildContext context, Bill b, DateTime now) {
+  Widget _noiDung(BuildContext context, BillEntity b, DateTime now) {
     final status = billDisplayStatusOf(b, now);
     final danhMuc = _lookup.category(b.categoryId);
 
@@ -196,7 +197,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
         border: Border.all(color: const Color(0xFFE0E0DB)),
       );
 
-  Widget _theDauTrang(Bill b, BillDisplayStatus status, Category? danhMuc) {
+  Widget _theDauTrang(BillEntity b, BillDisplayStatus status, Category? danhMuc) {
     final mauDanhMuc =
         categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary);
     return Container(
@@ -319,7 +320,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
         ),
       );
 
-  Widget _theThongTin(Bill b, Category? danhMuc) {
+  Widget _theThongTin(BillEntity b, Category? danhMuc) {
     // Ba trạng thái danh mục, cùng cách đọc với trang danh sách.
     final tenDanhMuc = b.categoryId == null
         ? 'Chưa có danh mục'
@@ -359,7 +360,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     );
   }
 
-  Widget _theLichSu(Bill hienTai, DateTime now) {
+  Widget _theLichSu(BillEntity hienTai, DateTime now) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
       decoration: _the,
@@ -377,7 +378,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     );
   }
 
-  Widget _dongLichSu(Bill b, {required bool laHienTai, required DateTime now}) {
+  Widget _dongLichSu(BillEntity b, {required bool laHienTai, required DateTime now}) {
     final status = billDisplayStatusOf(b, now);
     final tra = _khoanChi[b.id];
     // Chữ thường, khác nhãn IN HOA ở đầu trang, để không lẫn hai thứ.
@@ -436,7 +437,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     );
   }
 
-  Widget _nutThaoTac(BuildContext context, Bill b, BillDisplayStatus status) {
+  Widget _nutThaoTac(BuildContext context, BillEntity b, BillDisplayStatus status) {
     if (status == BillDisplayStatus.paid) {
       return OutlinedButton.icon(
         key: const ValueKey('bill-detail-undo'),

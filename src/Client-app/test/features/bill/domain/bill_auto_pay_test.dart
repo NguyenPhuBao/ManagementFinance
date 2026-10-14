@@ -6,12 +6,12 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 
-Bill _hoaDon({
+BillEntity _hoaDon({
   bool autoPay = true,
   bool isPaid = false,
   String payStatus = 'Pending',
@@ -20,7 +20,7 @@ Bill _hoaDon({
   String? categoryId = 'c1',
   DateTime? dueDate,
 }) =>
-    Bill(
+    BillEntity(
       id: 'b1',
       idaccount: 7,
       walletId: walletId,
@@ -41,7 +41,6 @@ Bill _hoaDon({
       note: '',
       isDeleted: isDeleted,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2025, 8, 5),
     );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/bill_status.dart';
@@ -22,7 +23,7 @@ import 'bill_status_visuals.dart';
 /// lại sau (trả hôm qua, hôm nay mới mở app); không cho chọn tương lai —
 /// repository cũng chặn.
 class BillPaymentSheet extends StatefulWidget {
-  final Bill bill;
+  final BillEntity bill;
   final List<Wallet> wallets;
 
   /// Tên danh mục của hoá đơn để hiện trong khối thông tin; `null` = không có.
@@ -249,7 +250,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   /// 06/09: "hiện khá ít, muốn nhiều hơn"): trạng thái, đến hạn kèm còn/quá
   /// bao nhiêu ngày, khoảng kỳ, chu kỳ, danh mục, ví của hoá đơn, nhắc
   /// trước, tự động trả, ghi chú cố định của hoá đơn (khác ghi chú lần trả).
-  Widget _khoiThongTin(Bill b) {
+  Widget _khoiThongTin(BillEntity b) {
     final status = billDisplayStatusOf(b, _homNay);
     final nhac = b.timeNotification;
     String tenVi = 'Ví đã xoá';

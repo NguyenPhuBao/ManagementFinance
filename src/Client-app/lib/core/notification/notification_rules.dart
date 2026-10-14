@@ -9,6 +9,7 @@ import '../../features/bill/data/services/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 import '../../features/analytics/domain/khoan_vao_thong_ke.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
+import '../../features/bill/data/models/bill_entity.dart';
 import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -128,7 +129,7 @@ typedef KhoanChiLon = ({
 class NotificationRuleInput {
   final DateTime now;
   final List<BudgetView> budgets;
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   final List<GoalEntity> goals;
   final List<Wallet> wallets;
 
@@ -529,7 +530,7 @@ const int mocNhacMacDinh = 3;
 ///
 /// Giá trị đặt riêng cho một hoá đơn **thắng** giá trị mặc định chung: nó là
 /// lựa chọn cụ thể hơn.
-int billLeadDays(Bill bill, {int fallback = mocNhacMacDinh}) =>
+int billLeadDays(BillEntity bill, {int fallback = mocNhacMacDinh}) =>
     int.tryParse(bill.timeNotification ?? '') ?? fallback;
 
 /// Khoá chống trùng của thông báo "hoá đơn sắp đến hạn".

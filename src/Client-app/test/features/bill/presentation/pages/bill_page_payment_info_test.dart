@@ -7,6 +7,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -41,11 +42,11 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills, this.payments);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   final Map<String, Transaction> payments;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   @override
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async =>
@@ -55,7 +56,7 @@ class _FixedBillRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({required String id, required bool paid, DateTime? dueDate}) => Bill(
+BillEntity _bill({required String id, required bool paid, DateTime? dueDate}) => BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -76,7 +77,6 @@ Bill _bill({required String id, required bool paid, DateTime? dueDate}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -133,7 +133,7 @@ void main() {
 
   Future<void> dungTrang(
     WidgetTester tester,
-    List<Bill> bills,
+    List<BillEntity> bills,
     Map<String, Transaction> payments,
   ) async {
     tester.view.physicalSize = const Size(411, 2000);
@@ -227,7 +227,7 @@ void main() {
         path: '/bills/:id',
         builder: (_, s) => Scaffold(
           body: Text('chi tiết ${s.pathParameters['id']} '
-              '${(s.extra as Bill?)?.name}'),
+              '${(s.extra as BillEntity?)?.name}'),
         ),
       ),
     ]);

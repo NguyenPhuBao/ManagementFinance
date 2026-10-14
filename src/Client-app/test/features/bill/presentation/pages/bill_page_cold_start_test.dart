@@ -11,6 +11,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -42,9 +43,9 @@ class _SpyBillRepository implements BillRepository {
   final List<int> daHoi = [];
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
-    return Stream.value(const <Bill>[]);
+    return Stream.value(const <BillEntity>[]);
   }
 
   @override

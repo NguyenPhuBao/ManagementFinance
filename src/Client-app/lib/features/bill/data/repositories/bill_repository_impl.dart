@@ -11,6 +11,7 @@ import '../../domain/bill_note.dart';
 import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/bill_local_datasource.dart';
 import '../models/bill_draft_companion.dart';
+import '../models/bill_entity.dart';
 import '../../domain/bill_draft.dart';
 import 'bill_repository.dart';
 
@@ -32,15 +33,21 @@ class BillRepositoryImpl implements BillRepository {
     this.soDuVi = soDuVi ?? SoDuViService(db: db);
   }
 
-  @override
-  Stream<List<Bill>> watchBills(int idaccount) {
-    return dataSource.watchBills(idaccount);
-  }
+  List<BillEntity> _entities(List<Bill> rows) => [for (final r in rows) BillEntity.fromDrift(r)];
 
   @override
-  Future<List<Bill>> getBills(int idaccount) {
-    return dataSource.getBills(idaccount);
-  }
+  Stream<List<BillEntity>> watchBills(int idaccount) => dataSource.watchBills(idaccount).map(_entities);
+
+  @override
+  Future<List<BillEntity>> getBills(int idaccount) async => _entities(await dataSource.getBills(idaccount));
+
+  @override
+  Future<List<BillEntity>> getUpcoming(int idaccount, {required int days, required DateTime now}) async =>
+      _entities(await db.billDao.getUpcoming(idaccount, days: days, now: now));
+
+  @override
+  Future<List<BillEntity>> getAllIncludingDeleted(int idaccount) async =>
+      _entities(await db.billDao.getTatCaKeCaDaXoa(idaccount));
 
   @override
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async {
@@ -70,7 +77,7 @@ class BillRepositoryImpl implements BillRepository {
 
   @override
   Future<void> payBill({
-    required Bill bill,
+    required BillEntity bill,
     required String walletId,
     required int idaccount,
     double? amount,
@@ -83,17 +90,18 @@ class BillRepositoryImpl implements BillRepository {
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn ${bill.id}');
     }
-    if (daCoKhoanChi(current)) {
+    final hienTai = BillEntity.fromDrift(current);
+    if (daCoKhoanChi(hienTai)) {
       throw BillAlreadyPaidException(bill.id);
     }
     // Kỳ bỏ qua ĐÃ sinh kỳ kế tiếp; trả tiếp trên nó là sinh kỳ thứ hai trùng
     // hạn. Người dùng phải hoàn tác việc bỏ qua trước.
-    if (daBoQua(current)) {
+    if (daBoQua(hienTai)) {
       throw BillSkippedCannotPayException(bill.id);
     }
     // G87: kỳ này có kỳ TRÙNG (cùng gốc chuỗi, cùng hạn) đã trả / bỏ qua → trả nữa là trừ tiền lần hai cho cùng
     // một kỳ, mà chốt `chanTraHaiLan` của server không chặn được vì hai hàng mang hai `Idbill` khác nhau.
-    if (kyCungKyDaDong(current, await db.billDao.getTatCaKeCaDaXoa(current.idaccount))) {
+    if (kyCungKyDaDong(hienTai, _entities(await db.billDao.getTatCaKeCaDaXoa(hienTai.idaccount)))) {
       throw BillAlreadyPaidException(bill.id);
     }
 
@@ -164,7 +172,7 @@ class BillRepositoryImpl implements BillRepository {
       // theo nó thì hoá đơn không lặp cũng đẻ ra kỳ mới.
       if (current.isRecurrence) {
         await dataSource.insertBill(
-          _nextPeriodOf(current, now, soTien),
+          _nextPeriodOf(hienTai, now, soTien),
         );
       }
     });
@@ -181,7 +189,7 @@ class BillRepositoryImpl implements BillRepository {
 
   @override
   Future<int> gopKyTrung(int idaccount) async {
-    final go = kyTrungCanGo(await db.billDao.getTatCaKeCaDaXoa(idaccount));
+    final go = kyTrungCanGo(_entities(await db.billDao.getTatCaKeCaDaXoa(idaccount)));
     for (final id in go) {
       await dataSource.softDeleteBill(id);
     }
@@ -209,7 +217,7 @@ class BillRepositoryImpl implements BillRepository {
     // `Pending`** trước khi resolver kịp chạy. Chốt bắn ra, khoản chi thừa ở
     // lại và ví không được hoàn — đo được máy B giữ ví 2.000.000 mà sổ có hai
     // khoản chi 350.000.
-    if (transactionId == null && !daCoKhoanChi(current)) {
+    if (transactionId == null && !daCoKhoanChi(BillEntity.fromDrift(current))) {
       throw BillNotPaidException(billId);
     }
 
@@ -287,10 +295,11 @@ class BillRepositoryImpl implements BillRepository {
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn $billId');
     }
-    if (daCoKhoanChi(current)) {
+    final hienTai = BillEntity.fromDrift(current);
+    if (daCoKhoanChi(hienTai)) {
       throw BillAlreadyPaidException(billId);
     }
-    if (daBoQua(current)) {
+    if (daBoQua(hienTai)) {
       throw BillAlreadySkippedException(billId);
     }
 
@@ -317,7 +326,7 @@ class BillRepositoryImpl implements BillRepository {
         // Số tiền kế thừa số ghi trên hoá đơn: không có lần trả nào để lấy số
         // thật, và bịa một con số khác thì tệ hơn.
         await dataSource.insertBill(
-          _nextPeriodOf(current, now, current.amount),
+          _nextPeriodOf(hienTai, now, current.amount),
         );
       }
     });
@@ -326,7 +335,10 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<Bill?> getById(String id) => db.billDao.getById(id);
+  Future<BillEntity?> getById(String id) async {
+    final r = await db.billDao.getById(id);
+    return r == null ? null : BillEntity.fromDrift(r);
+  }
 
   @override
   Future<void> undoSkip({required String billId}) async {
@@ -337,7 +349,7 @@ class BillRepositoryImpl implements BillRepository {
     // Chặn cả kỳ đã TRẢ: hoàn tác lần trả phải đi qua `undoPayment`, thứ có
     // bước hoàn tiền. Đi nhầm đường này là hoá đơn về `Pending` mà tiền vẫn
     // nằm ngoài ví và khoản chi vẫn còn trong sổ.
-    if (!daBoQua(current)) {
+    if (!daBoQua(BillEntity.fromDrift(current))) {
       throw BillNotSkippedException(billId);
     }
 
@@ -378,7 +390,7 @@ class BillRepositoryImpl implements BillRepository {
   /// của trang Phân tích chiếu kỳ tương lai bằng đúng hàm ấy, nên hàng thật
   /// sinh ra ở đây không bao giờ lệch với kỳ đã dự báo. Đọc docstring của tệp
   /// ấy để biết hai bẫy nó giữ.
-  BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
+  BillsCompanion _nextPeriodOf(BillEntity current, DateTime now, double soTien) {
     final ky = kyKeTiepCua(current);
     return BillsCompanion.insert(
       id: const Uuid().v4(),

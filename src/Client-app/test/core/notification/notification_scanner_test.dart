@@ -14,6 +14,7 @@
 library;
 
 import 'dart:async';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'dart:convert';
 import 'dart:io';
 // `show` chứ không import trần: `package:flutter/widgets.dart` kéo theo
@@ -21,7 +22,6 @@ import 'dart:io';
 // `app_database.dart` phơi ra.
 import 'dart:ui' show AppLifecycleState;
 
-import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -206,7 +206,7 @@ void main() {
 
   NotificationScanner dungScanner({
     List<BudgetView>? budgets,
-    List<Bill> bills = const [],
+    List<BillEntity> bills = const [],
     List<GoalEntity> goals = const [],
     List<Wallet> wallets = const [],
     OsNotifier? osNotifier,
@@ -279,8 +279,8 @@ void main() {
     );
   }
 
-  Bill hoaDon({required DateTime denHan, String id = 'hd1'}) {
-    return Bill(
+  BillEntity hoaDon({required DateTime denHan, String id = 'hd1', String? nhacTruoc = '3'}) {
+    return BillEntity(
       id: id,
       idaccount: accountId,
       name: 'Tiền điện',
@@ -289,7 +289,7 @@ void main() {
       payStatus: 'Pending',
       isPaid: false,
       autoPayEnabled: false,
-      timeNotification: '3',
+      timeNotification: nhacTruoc,
       isRecurrence: true,
       timeRecurrence: 'Month',
       recurrence: 'monthly',
@@ -298,7 +298,6 @@ void main() {
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
   }
@@ -883,13 +882,12 @@ void main() {
           accountId, const NotificationPrefs(soNgayNhacHoaDon: 7));
 
       // Hoá đơn KHÔNG tự đặt số ngày, còn 5 ngày nữa tới hạn.
-      final hd = hoaDon(denHan: DateTime(2026, 9, 20))
-          .copyWith(timeNotification: const Value.absent());
+      final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: null);
 
       final moi = await dungScanner(
         prefs: prefs,
         budgets: const [],
-        bills: [hd.copyWith(timeNotification: const Value(null))],
+        bills: [hd],
       ).scan(accountId);
 
       expect(moi, 1,

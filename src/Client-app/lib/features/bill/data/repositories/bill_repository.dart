@@ -1,6 +1,6 @@
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../domain/bill_draft.dart';
-import '../../../../core/database/app_database.dart';
+import '../models/bill_entity.dart';
 
 /// Ném ra khi [BillRepository.payBill] được gọi trên một hoá đơn mà CSDL đã
 /// ghi nhận là đã thanh toán.
@@ -95,8 +95,8 @@ class BillSkippedCannotPayException implements Exception {
 }
 
 abstract class BillRepository {
-  Stream<List<Bill>> watchBills(int idaccount);
-  Future<List<Bill>> getBills(int idaccount);
+  Stream<List<BillEntity>> watchBills(int idaccount);
+  Future<List<BillEntity>> getBills(int idaccount);
 
   /// Khoản chi của từng hoá đơn đã trả, theo `billId`.
   ///
@@ -126,7 +126,7 @@ abstract class BillRepository {
   /// ghi chú cố định trên hoá đơn. Được nối vào SAU tiền tố `kGhiChuTraHoaDon`
   /// — tiền tố là thứ sổ giao dịch dùng để nhận diện khoản của hoá đơn.
   Future<void> payBill({
-    required Bill bill,
+    required BillEntity bill,
     required String walletId,
     required int idaccount,
     double? amount,
@@ -172,6 +172,12 @@ abstract class BillRepository {
   /// sinh. **Không** có bước hoàn tiền — chưa từng trừ tiền.
   Future<void> undoSkip({required String billId});
 
+  /// Hoá đơn tới hạn trong [days] ngày kể từ [now] — bộ quét thông báo và lịch đặt trước (`billDao.getUpcoming`).
+  Future<List<BillEntity>> getUpcoming(int idaccount, {required int days, required DateTime now});
+
+  /// Mọi hàng của tài khoản, KỂ CẢ đã xoá mềm — cho `kyTrungCanGo` / `kyCungKyDaDong` lần gốc chuỗi (`billDao.getTatCaKeCaDaXoa`).
+  Future<List<BillEntity>> getAllIncludingDeleted(int idaccount);
+
   /// Một hàng hoá đơn (trang Chi tiết hoá đơn). `billDao.getById`.
-  Future<Bill?> getById(String id);
+  Future<BillEntity?> getById(String id);
 }

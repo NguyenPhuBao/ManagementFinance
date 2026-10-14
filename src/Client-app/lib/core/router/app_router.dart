@@ -45,7 +45,7 @@ import '../../features/category/presentation/pages/category_group_page.dart';
 import '../../features/category/presentation/pages/category_add_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../di/injection_container.dart';
-import '../database/app_database.dart';
+import '../../features/bill/data/models/bill_entity.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
 import '../../features/bill/domain/dien_san_hoa_don.dart';
@@ -368,7 +368,7 @@ class AppRouter {
               create: (_) => sl<BillBloc>(),
               child: BillEditPage(
                 id: s.pathParameters['id']!,
-                bill: s.extra as Bill?,
+                bill: s.extra as BillEntity?,
               ),
             ),
           ),
@@ -382,7 +382,7 @@ class AppRouter {
               create: (_) => sl<BillBloc>(),
               child: BillDetailPage(
                 id: s.pathParameters['id']!,
-                bill: s.extra as Bill?,
+                bill: s.extra as BillEntity?,
               ),
             ),
           ),

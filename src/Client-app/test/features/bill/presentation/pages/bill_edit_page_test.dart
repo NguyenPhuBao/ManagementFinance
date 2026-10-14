@@ -11,6 +11,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -42,12 +43,12 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _StubBillRepository implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => Bill(
+BillEntity _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -69,7 +70,6 @@ Bill _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 4),
     );
 
@@ -90,7 +90,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> dungTrangSua(WidgetTester tester, {Bill? bill}) async {
+  Future<void> dungTrangSua(WidgetTester tester, {BillEntity? bill}) async {
     tester.view.physicalSize = const Size(411, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -144,7 +144,7 @@ void main() {
         id: 'gNha', idaccount: 10, name: 'Nha cua', classify: 'chi',
         isGroup: const Value(true), updatedAt: moc));
     final hd = _hoaDon();
-    await dungTrangSua(tester, bill: hd.copyWith(categoryId: const Value('gNha')));
+    await dungTrangSua(tester, bill: hd.copyWith(categoryId: 'gNha'));
     final dd = tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>));
     final ids = dd.items!.map((m) => m.value!.id).toList();
     expect(ids, ['c1'],

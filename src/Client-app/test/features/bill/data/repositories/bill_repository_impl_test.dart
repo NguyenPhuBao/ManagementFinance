@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -40,7 +41,7 @@ void main() {
   });
 
   /// Một hoá đơn đầy đủ thuộc tính như hàng kéo về từ backend.
-  Future<Bill> seedBill({
+  Future<BillEntity> seedBill({
     String id = 'bill-1',
     DateTime? dueDate,
     bool isRecurrence = true,
@@ -71,7 +72,7 @@ void main() {
         updatedAt: DateTime.now(),
       ),
     );
-    return (await db.billDao.getAll(accountId)).firstWhere((b) => b.id == id);
+    return BillEntity.fromDrift((await db.billDao.getAll(accountId)).firstWhere((b) => b.id == id));
   }
 
   group('editBill', () {
@@ -271,7 +272,7 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      final bill = (await db.billDao.getAll(accountId)).single;
+      final bill = BillEntity.fromDrift((await db.billDao.getAll(accountId)).single);
       expect(bill.recurrence, 'monthly',
           reason: 'Đây chính là trạng thái mà nhánh pull để lại.');
 

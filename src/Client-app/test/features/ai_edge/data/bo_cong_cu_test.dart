@@ -4,6 +4,7 @@
 library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';
@@ -73,13 +74,12 @@ class _Vi implements WalletRepository {
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
 
-Bill _bill(String ten, DateTime dueDate) => Bill(
+BillEntity _bill(String ten, DateTime dueDate) => BillEntity(
       id: ten, idaccount: 10, walletId: 'w1', categoryId: 'c1', name: ten, amount: 45000,
       startDate: dueDate.subtract(const Duration(days: 30)), dueDate: dueDate,
       payStatus: 'Pending', isPaid: false, autoPayEnabled: false, timeNotification: '3',
       isRecurrence: true, timeRecurrence: kBillCycleMonth, recurrence: 'monthly',
-      icon: 'receipt', colour: '#4CAF50', note: '', isDeleted: false, syncStatus: 'synced',
-      syncRetryCount: 0, updatedAt: DateTime(2026, 9, 1),
+      icon: 'receipt', colour: '#4CAF50', note: '', isDeleted: false, syncStatus: 'synced', updatedAt: DateTime(2026, 9, 1),
     );
 
 // Ba fake cho ba tool bước 2 — tệp này chỉ kiểm khai báo, không chạy chúng,
@@ -124,7 +124,7 @@ class _TaiPhanBo implements TaiPhanBoNguon {
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
     return Stream.value([_bill('Kiem', DateTime(2026, 9, 1)), _bill('Điện', DateTime(2026, 9, 25))]);
   }

@@ -13,6 +13,7 @@
 library;
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -82,8 +83,8 @@ void main() {
 
   Future<double> soDu() async => (await db.walletDao.getById(walletId))!.balance;
 
-  Future<List<Bill>> hoaDon() async =>
-      (await db.billDao.getAll(accountId)).where((b) => !b.isDeleted).toList();
+  Future<List<BillEntity>> hoaDon() async =>
+      [for (final b in await db.billDao.getAll(accountId)) if (!b.isDeleted) BillEntity.fromDrift(b)];
 
   /// Khoản **chi** còn sống — đúng nghĩa tên hàm.
   ///
@@ -353,12 +354,12 @@ void main() {
   test('G87 · kỳ có kỳ trùng đã trả → bỏ qua, không trừ tiền, không sự kiện', () async {
     await seedBill(id: 'g', due: DateTime(2025, 8, 20));
     await repository.payBill(
-      bill: (await db.billDao.getById('g'))!,
+      bill: BillEntity.fromDrift((await db.billDao.getById('g'))!),
       walletId: walletId,
       idaccount: accountId,
       occurredAt: DateTime(2025, 8, 20),
     );
-    final kyCon = (await db.billDao.getGeneratedFrom('g'))!;
+    final kyCon = BillEntity.fromDrift((await db.billDao.getGeneratedFrom('g'))!);
     await repository.payBill(
       bill: kyCon,
       walletId: walletId,

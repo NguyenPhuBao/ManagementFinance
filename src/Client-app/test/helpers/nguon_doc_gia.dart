@@ -5,6 +5,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/notification/thong_bao_nguon.dart';
@@ -61,9 +62,12 @@ class HoaDonRowsGia implements BillRepository {
   HoaDonRowsGia(this.db);
   final AppDatabase db;
   @override
-  Future<Bill?> getById(String id) => db.billDao.getById(id);
+  Future<BillEntity?> getById(String id) async {
+    final r = await db.billDao.getById(id);
+    return r == null ? null : BillEntity.fromDrift(r);
+  }
   @override
-  Future<List<Bill>> getBills(int idaccount) => db.billDao.getAll(idaccount);
+  Future<List<BillEntity>> getBills(int idaccount) async => [for (final r in await db.billDao.getAll(idaccount)) BillEntity.fromDrift(r)];
   @override
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async {
     final rows = await db.transactionDao.getBillPayments(idaccount);

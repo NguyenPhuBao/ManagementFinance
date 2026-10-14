@@ -7,6 +7,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 import '../../transaction/domain/khoan_lap.dart';
 import 'bill_pay_status.dart';
 
@@ -22,7 +23,7 @@ const int kKhoanMoiMoLai = 3;
 
 List<KhoanLap>? chonDeXuatHoaDon({
   required List<KhoanLap> ds,
-  required List<Bill> hoaDon,
+  required List<BillEntity> hoaDon,
   required List<GoiYHoaDonPhanHoi> phanHoi,
   required List<Transaction> giaoDich,
   required DateTime now,

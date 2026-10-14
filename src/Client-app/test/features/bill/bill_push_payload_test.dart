@@ -10,6 +10,7 @@
 /// SQLite → payload mà SyncEngine gửi đi.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -177,7 +178,7 @@ void main() {
       idaccount: accountId,
       now: DateTime(2026, 9, 4),
     );
-    final bill = (await db.billDao.getAll(accountId)).single;
+    final bill = BillEntity.fromDrift((await db.billDao.getAll(accountId)).single);
     await repository.payBill(
         bill: bill, walletId: walletId, idaccount: accountId);
 

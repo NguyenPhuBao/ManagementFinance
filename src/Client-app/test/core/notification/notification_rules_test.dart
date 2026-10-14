@@ -11,10 +11,10 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 10);
@@ -184,7 +184,7 @@ void main() {
   // ── Hoá đơn ────────────────────────────────────────────────────────────────
 
   group('hoá đơn', () {
-    Bill hoaDon({
+    BillEntity hoaDon({
       String id = 'hd1',
       required DateTime denHan,
       String? nhacTruoc = '3',
@@ -192,7 +192,7 @@ void main() {
       String payStatus = 'Pending',
       String ten = 'Tiền điện',
     }) {
-      return Bill(
+      return BillEntity(
         id: id,
         idaccount: 7,
         name: ten,
@@ -210,13 +210,12 @@ void main() {
         note: '',
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       );
     }
 
     List<NotificationCandidate> chayHD(
-      List<Bill> bills, {
+      List<BillEntity> bills, {
       DateTime? at,
       DateTime? imLangTruoc,
       int? nhacTruocMacDinh,

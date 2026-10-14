@@ -18,6 +18,9 @@
 library;
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
+import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -119,7 +122,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Bill hoaDon({
+  BillEntity hoaDon({
     required DateTime denHan,
     String id = 'hd1',
     String ten = 'Tiền điện',
@@ -129,7 +132,7 @@ void main() {
     bool boQua = false,
     bool tuTra = false,
   }) {
-    return Bill(
+    return BillEntity(
       id: id,
       idaccount: accountId,
       name: ten,
@@ -149,12 +152,11 @@ void main() {
       note: '',
       isDeleted: daXoa,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
   }
 
-  ReminderScheduler dung(List<Bill> bills) {
+  ReminderScheduler dung(List<BillEntity> bills) {
     return ReminderScheduler(
       osNotifier: os,
       loadBills: (id, at) async => bills,
@@ -388,7 +390,7 @@ void main() {
 
       await dung(bills).resync(accountId);
 
-      int idCua(Bill b) => osScheduledId(billDueDedupeKey(
+      int idCua(BillEntity b) => osScheduledId(billDueDedupeKey(
             billId: b.id,
             dueDate: b.dueDate,
             leadDays: 0,
@@ -431,7 +433,7 @@ void main() {
             'tài chính ra màn hình khoá.');
   });
 
-  test('dùng được với BillsCompanion thật từ CSDL', () async {
+  test('dùng được với `BillRepository.getUpcoming` thật', () async {
     // Kiểm rằng chữ ký `loadBills` khớp với `billDao.getUpcoming` thật, chứ
     // không chỉ khớp với dữ liệu tự dựng trong test.
     await db.billDao.insert(BillsCompanion.insert(
@@ -448,7 +450,7 @@ void main() {
 
     final s = ReminderScheduler(
       osNotifier: os,
-      loadBills: (id, at) => db.billDao.getUpcoming(id, days: 30, now: at),
+      loadBills: (id, at) => BillRepositoryImpl(dataSource: BillLocalDataSource(db), db: db).getUpcoming(id, days: 30, now: at),
       clock: () => now,
     );
 
@@ -489,7 +491,7 @@ void main() {
         );
 
     ReminderScheduler dungGoal(List<GoalEntity> goals,
-            {List<Bill> bills = const []}) =>
+            {List<BillEntity> bills = const []}) =>
         ReminderScheduler(
           osNotifier: os,
           loadBills: (id, at) async => bills,
@@ -610,7 +612,7 @@ void main() {
   // Spec tự chuyển tiền chạy nền mục 6: Android có lượt nền nên câu nhắc hoá đơn
   // tự trả thôi bảo "Mở app"; iOS (mặc định) giữ câu cũ vì không có gì thay thế.
   group('chữ nhắc hoá đơn tự trả theo chạy nền', () {
-    ReminderScheduler dungNen(List<Bill> bills, {bool chayNen = false}) => ReminderScheduler(
+    ReminderScheduler dungNen(List<BillEntity> bills, {bool chayNen = false}) => ReminderScheduler(
           osNotifier: os,
           loadBills: (id, at) async => bills,
           prefsStore: prefs,
@@ -885,7 +887,7 @@ void main() {
     late NhatKyThongBao nhatKy;
     setUp(() => nhatKy = NhatKyThongBao(dao: db.notificationEventDao, idaccountPhien: () => null, clock: () => now));
 
-    ReminderScheduler dungCoNhatKy(List<Bill> bills) => ReminderScheduler(
+    ReminderScheduler dungCoNhatKy(List<BillEntity> bills) => ReminderScheduler(
           osNotifier: os,
           loadBills: (id, at) async => bills,
           prefsStore: prefs,
@@ -894,7 +896,7 @@ void main() {
           eventDao: db.notificationEventDao,
         );
 
-    Bill hd() => hoaDon(denHan: DateTime(2026, 9, 20));
+    BillEntity hd() => hoaDon(denHan: DateTime(2026, 9, 20));
     final khoa = billDueDedupeKey(billId: 'hd1', dueDate: DateTime(2026, 9, 20), leadDays: 3);
 
     Future<List<AppNotificationEvent>> suKien(String ma) async => [
@@ -941,7 +943,7 @@ void main() {
   // đã chờ và vẫn được muốn" thì bỏ qua (luỹ đẳng) — lịch cũ nổ giờ cũ. Trang Cài
   // đặt gọi `resync(datLai: true)` sau khi đổi một ô giờ / thứ.
   group('đặt lại khi đổi giờ (G59)', () {
-    Bill hd() => hoaDon(denHan: DateTime(2026, 9, 20));
+    BillEntity hd() => hoaDon(denHan: DateTime(2026, 9, 20));
     final idHd = osScheduledId(
         billDueDedupeKey(billId: 'hd1', dueDate: DateTime(2026, 9, 20), leadDays: 3));
 

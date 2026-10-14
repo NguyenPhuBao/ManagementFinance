@@ -17,7 +17,7 @@
 /// `ewallet`/`debt` của bảng ví ngày trước.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 
 /// Chờ trả.
 const kBillPending = 'Pending';
@@ -38,13 +38,13 @@ const kBillSkipped = 'Skipped';
 /// Đọc một cột thôi là hỏng im lặng theo cả hai chiều.
 ///
 /// Dùng cho: hoàn tác thanh toán, dòng "Trả dd/MM", tra `transactions.billId`.
-bool daCoKhoanChi(Bill bill) => bill.isPaid || bill.payStatus == kBillPayed;
+bool daCoKhoanChi(BillEntity bill) => bill.isPaid || bill.payStatus == kBillPayed;
 
 /// Kỳ này có bị bỏ qua không.
 ///
 /// **Không** đoán rộng ra giá trị khác: một chuỗi lạ chỉ nghĩa là client chưa
 /// biết, không nghĩa là người dùng đã bỏ qua.
-bool daBoQua(Bill bill) => bill.payStatus == kBillSkipped;
+bool daBoQua(BillEntity bill) => bill.payStatus == kBillSkipped;
 
 /// Kỳ này còn là tiền phải trả không.
 ///
@@ -53,4 +53,4 @@ bool daBoQua(Bill bill) => bill.payStatus == kBillSkipped;
 ///
 /// Giá trị lạ đọc là **còn phải trả**: thà giục nhầm còn hơn im lặng giấu mất
 /// một khoản nợ thật.
-bool conPhaiTra(Bill bill) => !daCoKhoanChi(bill) && !daBoQua(bill);
+bool conPhaiTra(BillEntity bill) => !daCoKhoanChi(bill) && !daBoQua(bill);

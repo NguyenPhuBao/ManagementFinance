@@ -8,6 +8,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -45,10 +46,10 @@ class _FixedAuthBloc extends AuthBloc {
 /// Trả về đúng danh sách được giao — không cần CSDL cho một test giao diện.
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
@@ -67,7 +68,7 @@ class _FixedBillRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({
+BillEntity _bill({
   required String id,
   required DateTime dueDate,
   double amount = 100000,
@@ -76,7 +77,7 @@ Bill _bill({
   String payStatus = 'Pending',
   String? timeNotification = '3',
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -97,7 +98,6 @@ Bill _bill({
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -148,7 +148,7 @@ void main() {
 
   Future<void> dungTrang(
     WidgetTester tester,
-    List<Bill> bills, {
+    List<BillEntity> bills, {
     bool seed = false,
   }) async {
     if (seed) await gieoViVaDanhMuc();

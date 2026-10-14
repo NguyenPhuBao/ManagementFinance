@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -32,14 +33,14 @@ void main() {
         biTuChoiTrungTen: false,
       );
 
-  Bill hoaDon({
+  BillEntity hoaDon({
     String walletId = 'w1',
     DateTime? dueDate,
     String note = '',
     bool tuTra = false,
     DateTime? periodEnd,
   }) =>
-      Bill(
+      BillEntity(
         id: 'a',
         idaccount: 10,
         walletId: walletId,
@@ -62,7 +63,6 @@ void main() {
         note: note,
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       );
 
@@ -71,7 +71,7 @@ void main() {
     WidgetTester tester, {
     required void Function(Wallet, double, DateTime, String?) onConfirmed,
     List<Wallet>? wallets,
-    Bill? bill,
+    BillEntity? bill,
   }) async {
     tester.view.physicalSize = const Size(411, 1000);
     tester.view.devicePixelRatio = 1.0;

@@ -2,20 +2,20 @@
 library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/nen/kenh_tu_chuyen_tien.dart';
 import 'package:flowmoney/core/nen/lich_nen.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _hoaDon({
+BillEntity _hoaDon({
   required DateTime han,
   bool tuTra = true,
   bool daTra = false,
   String? viId = 'w1',
   bool daXoa = false,
 }) =>
-    Bill(
+    BillEntity(
       id: 'b1',
       idaccount: 7,
       walletId: viId,
@@ -36,7 +36,6 @@ Bill _hoaDon({
       note: '',
       isDeleted: daXoa,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 5),
     );
 

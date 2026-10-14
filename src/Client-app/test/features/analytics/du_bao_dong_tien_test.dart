@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -50,7 +51,7 @@ Wallet vi(
       biTuChoiTrungTen: false,
     );
 
-Bill hoaDon(
+BillEntity hoaDon(
   String id, {
   required DateTime han,
   DateTime? ketThucKy,
@@ -65,7 +66,7 @@ Bill hoaDon(
   String? sinhTu,
   String ten = 'Tiền điện',
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 1,
       walletId: vi,
@@ -89,7 +90,6 @@ Bill hoaDon(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 1, 1),
     );
 
@@ -151,7 +151,7 @@ Wallet vi_(String id, String ten, {double soDu = 10000000}) =>
     vi(id, ten, soDu: soDu);
 
 DuBaoDongTien duBao({
-  List<Bill> hoaDon = const [],
+  List<BillEntity> hoaDon = const [],
   List<GoalEntity> mucTieu = const [],
   List<BudgetView> nganSach = const [],
   List<Wallet>? vi,

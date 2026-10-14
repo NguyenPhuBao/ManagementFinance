@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
@@ -25,7 +26,7 @@ import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillEditPage extends StatefulWidget {
   final String id;
-  final Bill? bill;
+  final BillEntity? bill;
 
   const BillEditPage({
     super.key,

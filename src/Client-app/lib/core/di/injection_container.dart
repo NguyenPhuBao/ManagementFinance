@@ -524,11 +524,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       ],
       // Cùng cửa sổ với scanner, để hai đường không nói hai chuyện khác nhau
       // về việc "còn đáng nhắc hay chưa".
-      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
-            idaccount,
-            days: ReminderScheduler.cuaSo.inDays,
-            now: now,
-          ),
+      loadBills: (idaccount, now) => sl<BillRepository>().getUpcoming(idaccount, days: ReminderScheduler.cuaSo.inDays, now: now),
       // Nguồn thứ ba: lời nhắc ghi chép hằng ngày. Đi chung bộ đặt lịch vì
       // cùng lý do như mục tiêu — `resync()` huỷ mọi lịch chờ không nằm trong
       // tập nó muốn, nên một bộ đặt lịch riêng sẽ xoá sạch lịch của bộ kia.
@@ -572,7 +568,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       tinh: (idaccount, now) async {
         final prefs = await sl<NotificationPrefsStore>().read(idaccount);
         return lichNenKeTiep(
-          bills: await sl<AppDatabase>().billDao.getAll(idaccount),
+          bills: await sl<BillRepository>().getBills(idaccount),
           goals: [
             for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
               GoalEntity.fromDrift(g),
@@ -604,11 +600,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
           sl<BudgetRepository>().getBudgets(idaccount, now: now),
       // Cửa sổ 30 ngày khớp `NotificationScanner.cuaSoSuKien`: nạp rộng hơn là
       // đọc thừa, hẹp hơn là bỏ sót hoá đơn quá hạn còn đáng nhắc.
-      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
-            idaccount,
-            days: NotificationScanner.cuaSoSuKien.inDays,
-            now: now,
-          ),
+      loadBills: (idaccount, now) => sl<BillRepository>().getUpcoming(idaccount, days: NotificationScanner.cuaSoSuKien.inDays, now: now),
       // Trích tiền tự động chạy trong chính vòng quét, không phải một bộ lập
       // lịch nền riêng. Xem chú thích ở `GoalAutoDepositRunner`.
       //

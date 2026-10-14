@@ -5,7 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
@@ -277,7 +277,7 @@ class _BillPageState extends State<BillPage> {
   /// Một tab của danh sách.
   Widget _danhSach(
     BuildContext context,
-    List<Bill> bills, {
+    List<BillEntity> bills, {
     required DateTime now,
     required DateFormat dateFormatter,
     required String khiTrong,
@@ -336,7 +336,7 @@ class _BillPageState extends State<BillPage> {
   /// Một dòng hoá đơn của danh sách.
   Widget _dongHoaDon(
     BuildContext context,
-    Bill bill, {
+    BillEntity bill, {
     required DateTime now,
     required DateFormat dateFormatter,
     required Map<String, TransactionEntity> payments,
@@ -486,7 +486,7 @@ class _BillPageState extends State<BillPage> {
 
   Widget _buildBillItem({
     required BuildContext context,
-    required Bill bill,
+    required BillEntity bill,
     required String title,
     required String subtitle,
     required String amount,
@@ -674,7 +674,7 @@ class _HangSoTien extends StatelessWidget {
     required this.daBoQua,
   });
 
-  final Bill bill;
+  final BillEntity bill;
   final String amount;
   final bool isPaid;
   final bool daBoQua;

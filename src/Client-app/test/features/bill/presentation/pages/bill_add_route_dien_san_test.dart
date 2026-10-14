@@ -5,6 +5,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/router/app_router.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -38,7 +39,7 @@ class _AuthCoDinh extends AuthBloc {
 
 class _BillRepoGia implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

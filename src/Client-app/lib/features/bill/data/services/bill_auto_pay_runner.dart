@@ -1,4 +1,5 @@
 import '../../../../core/database/app_database.dart';
+import '../models/bill_entity.dart';
 import '../repositories/bill_repository.dart';
 import '../../domain/bill_auto_pay.dart';
 import '../../domain/bill_ky_trung.dart';
@@ -78,13 +79,13 @@ class BillAutoPayRunner {
     // Chỉ những hoá đơn đến lượt TẠI LÚC ĐỌC. Kỳ kế tiếp sinh ra trong lượt
     // này được xử lý ở vòng `_chayMotChuoi` chứ không lọt vào danh sách này —
     // nếu không một chuỗi sẽ bị đếm hai lần.
-    final denLuot = (await db.billDao.getAll(idaccount))
+    final denLuot = (await repository.getBills(idaccount))
         .where((b) => denLuotTuTra(b, at))
         .toList();
 
     // G87: kỳ có kỳ TRÙNG đã trả / bỏ qua thì bỏ qua IM LẶNG — lượt quét lúc mở app chạy trước khi kéo về nên máy có
     // thể giữ kỳ trùng ở "chưa trả". `payBill` cũng từ chối nó, nhưng để nó ném thì bộ chạy báo "không tự trả được".
-    final tatCa = await db.billDao.getTatCaKeCaDaXoa(idaccount);
+    final tatCa = await repository.getAllIncludingDeleted(idaccount);
     denLuot.removeWhere((b) => kyCungKyDaDong(b, tatCa));
 
     for (final bill in denLuot) {
@@ -98,12 +99,12 @@ class BillAutoPayRunner {
   }
 
   Future<List<BillAutoPayEvent>> _chayMotChuoi(
-    Bill dau,
+    BillEntity dau,
     int idaccount,
     DateTime at,
   ) async {
     final ra = <BillAutoPayEvent>[];
-    Bill? bill = dau;
+    BillEntity? bill = dau;
 
     while (bill != null && ra.length < toiDaMoiLuot) {
       // Ví không có khoá ngoại nên có thể đã bị xoá sau khi tạo hoá đơn. Kiểm
@@ -148,14 +149,14 @@ class BillAutoPayRunner {
 
       // Kỳ kế tiếp vừa sinh ra — nếu nó cũng đã tới hạn thì trả tiếp.
       final kySau = await db.billDao.getGeneratedFrom(bill.id);
-      bill = (kySau != null && denLuotTuTra(kySau, at)) ? kySau : null;
+      bill = (kySau != null && denLuotTuTra(BillEntity.fromDrift(kySau), at)) ? BillEntity.fromDrift(kySau) : null;
     }
 
     return ra;
   }
 
   BillAutoPayEvent _suKien(
-    Bill bill,
+    BillEntity bill,
     LoaiTuTra loai,
     double soTien,
     String? tenVi,

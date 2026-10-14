@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_chain.dart';
 
 /// Chuỗi kỳ của một hoá đơn lặp: mỗi kỳ là **một hàng mới**, nối với kỳ trước
 /// bằng `generatedFromBillId` (cột cục bộ v16). Trang chi tiết cần cả chuỗi để
 /// hiện "Lịch sử các kỳ" — từ kỳ đang mở lần ngược về gốc và xuôi tới kỳ mới
 /// nhất, không kể hoá đơn khác trùng tên.
-Bill _bill(String id, DateTime due, {String? tu, bool paid = false}) => Bill(
+BillEntity _bill(String id, DateTime due, {String? tu, bool paid = false}) => BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -29,7 +29,6 @@ Bill _bill(String id, DateTime due, {String? tu, bool paid = false}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

@@ -8,12 +8,12 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 
-Bill _bill({String payStatus = kBillPending, bool isPaid = false}) => Bill(
+BillEntity _bill({String payStatus = kBillPending, bool isPaid = false}) => BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -34,7 +34,6 @@ Bill _bill({String payStatus = kBillPending, bool isPaid = false}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

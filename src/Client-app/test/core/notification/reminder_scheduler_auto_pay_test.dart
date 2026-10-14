@@ -7,6 +7,7 @@
 library;
 
 import 'package:drift/native.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/cham_hdh.dart';
@@ -84,7 +85,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Bill hoaDon({required bool tuTra}) => Bill(
+  BillEntity hoaDon({required bool tuTra}) => BillEntity(
         id: 'hd1',
         idaccount: accountId,
         walletId: 'w1',
@@ -104,11 +105,10 @@ void main() {
         note: '',
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       );
 
-  Future<void> dong(List<Bill> bills) => ReminderScheduler(
+  Future<void> dong(List<BillEntity> bills) => ReminderScheduler(
         osNotifier: os,
         loadBills: (id, at) async => bills,
         prefsStore: InMemoryNotificationPrefsStore(),

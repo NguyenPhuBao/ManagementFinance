@@ -18,7 +18,7 @@
 /// - Trả bù nhiều kỳ là trả hàng này, rồi nhìn kỳ kế tiếp vừa sinh ra.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 import 'bill_pay_status.dart';
 
 /// Dòng phụ hiện dưới công tắc khi bật, dùng chung cho form Thêm và Sửa.
@@ -70,7 +70,7 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 ///
 /// Thiếu ví hoặc danh mục thì không chạy: khoản chi sinh ra sẽ bị `/sync/push`
 /// từ chối ở mọi chu kỳ và kẹt hàng đợi đẩy (quy tắc 4 `CLAUDE.md`).
-bool denLuotTuTra(Bill bill, DateTime now) {
+bool denLuotTuTra(BillEntity bill, DateTime now) {
   if (!bill.autoPayEnabled) return false;
   if (bill.isDeleted) return false;
   if (!conPhaiTra(bill)) return false;

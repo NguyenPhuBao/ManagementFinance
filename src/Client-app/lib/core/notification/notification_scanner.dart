@@ -20,6 +20,7 @@ import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/data/services/bill_auto_pay_runner.dart';
+import '../../features/bill/data/models/bill_entity.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
@@ -43,7 +44,7 @@ typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
 
 /// Nạp hoá đơn tới hạn trong cửa sổ nhắc. Cùng lý do như trên: closure thay vì
 /// cả một repository.
-typedef BillsLoader = Future<List<Bill>> Function(int idaccount, DateTime now);
+typedef BillsLoader = Future<List<BillEntity>> Function(int idaccount, DateTime now);
 
 /// Khoảng `[from, to)` có giao dịch nào không.
 ///

@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flowmoney/features/bill/domain/de_xuat_hoa_don.dart';
@@ -26,14 +27,14 @@ KhoanLap _kl(String ghiChu, {String cat = 'c-nha', int soLan = 3, DateTime? ganN
       soLan: soLan,
     );
 
-Bill _bill(
+BillEntity _bill(
   String ten, {
   String payStatus = kBillPending,
   bool isPaid = false,
   bool isRecurrence = false,
   bool xoa = false,
 }) =>
-    Bill(
+    BillEntity(
       id: 'b-$ten',
       idaccount: 10,
       walletId: 'w1',
@@ -54,7 +55,6 @@ Bill _bill(
       note: '',
       isDeleted: xoa,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 10, 1),
     );
 
@@ -86,7 +86,7 @@ Transaction _gd(DateTime ngay, {String note = 'Tiền nhà', String cat = 'c-nha
 
 List<KhoanLap>? _chon({
   List<KhoanLap>? ds,
-  List<Bill> hoaDon = const [],
+  List<BillEntity> hoaDon = const [],
   List<GoiYHoaDonPhanHoi> phanHoi = const [],
   List<Transaction> giaoDich = const [],
 }) =>

@@ -23,7 +23,7 @@
 library;
 
 import '../../bill/domain/bill_recurrence.dart';
-import '../../../core/database/app_database.dart';
+import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
@@ -58,9 +58,9 @@ String chuTrangThaiHoaDon(BillDisplayStatus s) => switch (s) {
 
 /// Một phần tử của tập: hàng thật, hoặc kỳ dự kiến (bản sao của hàng gốc mang
 /// ba mốc của kỳ chiếu — để `summarizeBills` và `conPhaiTra` đọc nó như mọi hàng).
-typedef _Muc = ({Bill b, bool duKien});
+typedef _Muc = ({BillEntity b, bool duKien});
 
-List<_Muc> _tapKyToi(List<Bill> bills, DateTime dauKyToi, DateTime dauKySauNua) {
+List<_Muc> _tapKyToi(List<BillEntity> bills, DateTime dauKyToi, DateTime dauKySauNua) {
   bool trongKy(DateTime d) => !d.isBefore(dauKyToi) && d.isBefore(dauKySauNua);
   final daSinhKySau = <String>{
     for (final b in bills)
@@ -87,7 +87,7 @@ List<_Muc> _tapKyToi(List<Bill> bills, DateTime dauKyToi, DateTime dauKySauNua) 
 /// trả sáng nay là câu trả lời của "khi nào đến hạn"). Không kỳ DỰ KIẾN: "còn phải
 /// trả bao nhiêu" (B1c) chỉ cộng kỳ thật. Không hàng nào như thế → hàng MỚI NHẤT
 /// của nó, không để mẫu câu nói "không có hoá đơn nào" về một hoá đơn có thật.
-List<Bill> _tapTheoTen(List<Bill> bills, String ten, DateTime now) {
+List<BillEntity> _tapTheoTen(List<BillEntity> bills, String ten, DateTime now) {
   final dauThang = DateTime(now.year, now.month, 1);
   final dauKySauNua = DateTime(now.year, now.month + 2, 1);
   final cua = [for (final b in bills) if (b.name == ten) b];
@@ -100,7 +100,7 @@ List<Bill> _tapTheoTen(List<Bill> bills, String ten, DateTime now) {
 }
 
 KetQuaCongCu hangHoaDon(
-  List<Bill> bills, {
+  List<BillEntity> bills, {
   required DateTime now,
   String trangThai = kTrangThaiHoaDonMacDinh,
   String ky = kKyHoaDonMacDinh,

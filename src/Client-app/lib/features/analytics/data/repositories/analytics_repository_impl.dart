@@ -6,6 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../budget/domain/cua_so_nhin_lai.dart';
+import '../../../bill/data/models/bill_entity.dart';
 import '../../../bill/domain/bill_note.dart';
 import '../../../bill/domain/de_xuat_hoa_don.dart' show kGoiYDaTao;
 import '../../../transaction/domain/khoan_lap.dart' show khoaNhomCua;
@@ -74,7 +75,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     List<Category>? cats;
     List<BudgetView>? nganSach;
     List<Wallet>? vi;
-    List<Bill>? hoaDon;
+    List<BillEntity>? hoaDon;
     List<Goal>? mucTieu;
     // Nguồn ngân sách THỨ HAI, tra tại `at` chứ không tại `mocNganSach`. Mốc
     // kia **lùi về giây cuối kỳ** khi người dùng xem kỳ đã qua, nên `spent` sẽ
@@ -149,7 +150,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     // Ba nguồn của khối Dự báo 30 ngày (2026-09-16).
     final subHoaDon = db.billDao.watchAll(idaccount).listen((rows) {
-      hoaDon = rows;
+      hoaDon = [for (final r in rows) BillEntity.fromDrift(r)];
       push();
     }, onError: controller.addError);
     final subMucTieu = db.goalDao.watchAll(idaccount).listen((rows) {
@@ -264,7 +265,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     required List<Category> cats,
     required List<BudgetView> nganSach,
     required List<Wallet> vi,
-    required List<Bill> hoaDon,
+    required List<BillEntity> hoaDon,
     required List<Goal> mucTieu,
     required List<BudgetView> nganSachHomNay,
     required Set<String> khoaLapDaTao,

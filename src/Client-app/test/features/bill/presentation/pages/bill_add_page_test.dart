@@ -13,6 +13,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _StubBillRepository implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -58,7 +59,7 @@ class _StubBillRepository implements BillRepository {
 class _GhiThemRepository implements BillRepository {
   BillDraft? daThem;
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async =>
       daThem = draft;

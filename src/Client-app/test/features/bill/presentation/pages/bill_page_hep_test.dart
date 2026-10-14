@@ -14,6 +14,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -51,17 +52,17 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
   @override
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({double amount = 100000, bool daTra = false, bool tuTra = false}) =>
-    Bill(
+BillEntity _bill({double amount = 100000, bool daTra = false, bool tuTra = false}) =>
+    BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -82,7 +83,6 @@ Bill _bill({double amount = 100000, bool daTra = false, bool tuTra = false}) =>
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -117,7 +117,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> moTrang(WidgetTester tester, Bill bill, double rong) async {
+  Future<void> moTrang(WidgetTester tester, BillEntity bill, double rong) async {
     tester.view.physicalSize = Size(rong, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);

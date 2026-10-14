@@ -5,7 +5,7 @@ library;
 import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
-import '../database/app_database.dart' show Bill;
+import '../../features/bill/data/models/bill_entity.dart';
 import 'kenh_tu_chuyen_tien.dart';
 
 /// `moc` — mốc **ở tương lai** gần nhất cho lượt một-lần (`null` = không hẹn).
@@ -24,7 +24,7 @@ typedef LichNenKeTiep = ({DateTime? moc, bool coTuDong});
 ///
 /// [traDuoc] / [trichDuoc] — quyền gói (`coQuyenNen`): không có thì loại khỏi cả hai vế, Basic không cần đánh thức máy.
 LichNenKeTiep lichNenKeTiep({
-  required List<Bill> bills,
+  required List<BillEntity> bills,
   required List<GoalEntity> goals,
   required DateTime now,
   required int gioNhac,

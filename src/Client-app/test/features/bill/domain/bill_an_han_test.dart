@@ -7,11 +7,11 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_an_han.dart';
 
-Bill _bill({DateTime? periodEnd, required DateTime dueDate}) => Bill(
+BillEntity _bill({DateTime? periodEnd, required DateTime dueDate}) => BillEntity(
       id: 'b',
       idaccount: 7,
       name: 'Tiền điện',
@@ -30,7 +30,6 @@ Bill _bill({DateTime? periodEnd, required DateTime dueDate}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

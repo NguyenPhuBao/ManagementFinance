@@ -27,6 +27,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../budget/data/models/budget_entity.dart';
@@ -179,7 +180,7 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// xoá mềm để tra tên; số dư và cảnh báo tự lọc.
 DuBaoDongTien? duBaoCua({
   required DateTime now,
-  required List<Bill> hoaDon,
+  required List<BillEntity> hoaDon,
   required List<GoalEntity> mucTieu,
   required List<BudgetView> nganSach,
   required List<Wallet> vi,
@@ -252,7 +253,7 @@ DuBaoDongTien? duBaoCua({
 // ── Hoá đơn ───────────────────────────────────────────────────────────────
 
 List<CamKet> _camKetHoaDon(
-  List<Bill> hoaDon, {
+  List<BillEntity> hoaDon, {
   required DateTime homNay,
   required DateTime cuoi,
   required Map<String, Wallet> viTheoId,

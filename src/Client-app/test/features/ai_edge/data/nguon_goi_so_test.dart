@@ -7,7 +7,7 @@
 /// một hàm mới lỡ gọi thêm sẽ ném thay vì im lặng trả rỗng.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/ai_edge/data/nguon_goi_so.dart';
 import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
@@ -104,7 +104,7 @@ class _Vi implements WalletRepository {
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
     return Stream.value(const []);
   }

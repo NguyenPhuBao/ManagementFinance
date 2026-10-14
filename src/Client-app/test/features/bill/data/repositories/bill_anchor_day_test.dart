@@ -13,6 +13,7 @@
 library;
 
 import 'package:drift/drift.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,7 +47,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<Bill> seed({
+  Future<BillEntity> seed({
     required DateTime start,
     required DateTime due,
     int? anchorDay,
@@ -68,11 +69,11 @@ void main() {
       syncStatus: const Value('synced'),
       updatedAt: DateTime(2026, 1, 1),
     ));
-    return (await db.billDao.getById(id))!;
+    return BillEntity.fromDrift((await db.billDao.getById(id))!);
   }
 
   /// Trả [soKy] kỳ liên tiếp, trả về ngày đến hạn của từng kỳ mới sinh ra.
-  Future<List<DateTime>> traNhieuKy(Bill dau, int soKy) async {
+  Future<List<DateTime>> traNhieuKy(BillEntity dau, int soKy) async {
     final ra = <DateTime>[];
     var hienTai = dau;
     for (var i = 0; i < soKy; i++) {
@@ -85,7 +86,7 @@ void main() {
       final ke = (await db.billDao.getAll(accountId))
           .firstWhere((b) => b.generatedFromBillId == hienTai.id);
       ra.add(ke.dueDate);
-      hienTai = ke;
+      hienTai = BillEntity.fromDrift(ke);
     }
     return ra;
   }

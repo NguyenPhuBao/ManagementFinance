@@ -1,5 +1,5 @@
 import '../../../transaction/data/models/transaction_entity.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../domain/bill_status.dart';
 
 abstract class BillState {}
@@ -9,7 +9,7 @@ class BillInitial extends BillState {}
 class BillLoading extends BillState {}
 
 class BillLoaded extends BillState {
-  final List<Bill> bills;
+  final List<BillEntity> bills;
 
   /// Số liệu của **kỳ này** cho thẻ tổng đầu trang — xem [summarizeBills].
   final BillSummary summary;

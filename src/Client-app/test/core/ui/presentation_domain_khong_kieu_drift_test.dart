@@ -35,16 +35,6 @@ const companionCua = {
 
 /// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Điền từ lượt chạy đầu (Step 2); mỗi đợt Entity xoá một khoá.
 const conChoKieu = <String, Set<String>>{
-  'Bill': {
-    'features/bill/presentation/bloc/bill_bloc.dart',
-    'features/bill/presentation/bloc/bill_event.dart',
-    'features/bill/presentation/bloc/bill_state.dart',
-    'features/bill/presentation/pages/bill_detail_page.dart',
-    'features/bill/presentation/pages/bill_edit_page.dart',
-    'features/bill/presentation/pages/bill_page.dart',
-    'features/bill/presentation/widgets/bill_actions.dart',
-    'features/bill/presentation/widgets/bill_payment_sheet.dart',
-  },
   'Wallet': {
     'features/bill/presentation/pages/bill_add_page.dart',
     'features/bill/presentation/pages/bill_edit_page.dart',
@@ -95,18 +85,8 @@ const conChoKieu = <String, Set<String>>{
 /// Luật 2 — tệp `domain/` (tương đối `lib/`) còn import `core/database`. Điền từ lượt chạy đầu; Task 4–6 rút Hoá đơn.
 const conChoDomain = <String>{
   'features/ai_edge/domain/ap_dung_ke_hoach.dart',
-  'features/ai_edge/domain/goi_so_hoa_don.dart',
   'features/ai_edge/domain/hang_danh_muc.dart',
-  'features/ai_edge/domain/hang_hoa_don.dart',
   'features/analytics/domain/du_bao_dong_tien.dart',
-  'features/bill/domain/bill_an_han.dart',
-  'features/bill/domain/bill_auto_pay.dart',
-  'features/bill/domain/bill_chain.dart',
-  'features/bill/domain/bill_ky_ke_tiep.dart',
-  'features/bill/domain/bill_ky_trung.dart',
-  'features/bill/domain/bill_pay_status.dart',
-  'features/bill/domain/bill_schedule.dart',
-  'features/bill/domain/bill_status.dart',
   'features/bill/domain/de_xuat_hoa_don.dart',
   'features/category/domain/ban_sao_mac_dinh.dart',
   'features/category/domain/gan_hang_loat.dart',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../bloc/bill_bloc.dart';
@@ -15,7 +16,7 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// trang chi tiết. Đều bắn sự kiện vào `BillBloc` của [context]; nơi gọi tự
 /// lắng `BillOperationSuccess`/`BillError` để báo và nạp lại.
 
-Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
+Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill) async {
   // Không có phiên thì không có ví nào để thanh toán bằng. Trước đây chỗ này
   // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
   // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
@@ -61,7 +62,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
 
 /// Hỏi trước khi hoàn tác: thao tác này trả tiền lại ví, xoá khoản chi và
 /// gỡ kỳ kế tiếp — ba hệ quả, nên phải nói rõ trước.
-void hoiHoanTacHoaDon(BuildContext context, Bill bill) {
+void hoiHoanTacHoaDon(BuildContext context, BillEntity bill) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -93,7 +94,7 @@ void hoiHoanTacHoaDon(BuildContext context, Bill bill) {
 ///
 /// Câu chữ đi theo `isRecurrence`: nói "kỳ kế tiếp vẫn được tạo" cho một hoá
 /// đơn không lặp là hứa một thứ không xảy ra.
-void hoiBoQuaKyHoaDon(BuildContext context, Bill bill) {
+void hoiBoQuaKyHoaDon(BuildContext context, BillEntity bill) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -122,7 +123,7 @@ void hoiBoQuaKyHoaDon(BuildContext context, Bill bill) {
 
 /// Hỏi trước khi hoàn tác việc bỏ qua. Không có bước hoàn tiền nào để nói —
 /// lần bỏ qua chưa từng trừ tiền.
-void hoiHoanTacBoQua(BuildContext context, Bill bill) {
+void hoiHoanTacBoQua(BuildContext context, BillEntity bill) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(

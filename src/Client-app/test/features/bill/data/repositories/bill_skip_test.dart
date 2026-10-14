@@ -15,6 +15,7 @@
 library;
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -51,7 +52,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<Bill> seedBill({
+  Future<BillEntity> seedBill({
     String id = 'bill-1',
     double amount = 200000,
     bool isRecurrence = true,
@@ -74,7 +75,7 @@ void main() {
       syncStatus: const Value('synced'),
       updatedAt: DateTime(2026, 9, 1),
     ));
-    return (await db.billDao.getById(id))!;
+    return BillEntity.fromDrift((await db.billDao.getById(id))!);
   }
 
   Future<double> soDu() async =>
@@ -169,7 +170,7 @@ void main() {
     test('từ chối trả một kỳ đã bỏ qua, TRƯỚC khi trừ ví', () async {
       final bill = await seedBill();
       await repository.skipBill(billId: bill.id);
-      final sau = (await db.billDao.getById(bill.id))!;
+      final sau = BillEntity.fromDrift((await db.billDao.getById(bill.id))!);
 
       expect(
           () => repository.payBill(

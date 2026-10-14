@@ -19,6 +19,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
@@ -134,7 +135,7 @@ void main() {
       );
     }
 
-    Bill hoaDon({required String id, required DateTime denHan}) => Bill(
+    BillEntity hoaDon({required String id, required DateTime denHan}) => BillEntity(
           id: id,
           idaccount: 7,
           name: 'Tiền điện',
@@ -152,7 +153,6 @@ void main() {
           note: '',
           isDeleted: false,
           syncStatus: 'synced',
-          syncRetryCount: 0,
           updatedAt: DateTime(2026, 9, 1),
         );
 

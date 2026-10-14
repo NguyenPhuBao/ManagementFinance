@@ -8,6 +8,7 @@
 library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -49,11 +50,11 @@ class _FixedAuthBloc extends AuthBloc {
 /// Ghi lại BillDraft mà form gửi lên, để test đọc được cờ.
 class _GhiLaiRepository implements BillRepository {
   _GhiLaiRepository([this.bills = const []]);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   BillDraft? daSua;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
@@ -67,7 +68,7 @@ class _GhiLaiRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _hoaDon({required bool tuTra, DateTime? dueDate}) => Bill(
+BillEntity _hoaDon({required bool tuTra, DateTime? dueDate}) => BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -88,7 +89,6 @@ Bill _hoaDon({required bool tuTra, DateTime? dueDate}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 4),
     );
 
