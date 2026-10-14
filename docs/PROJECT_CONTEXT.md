@@ -608,7 +608,16 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-13)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-14)
+
+### 🩹 G91 + G92 đóng, G93 mở (2026-10-14, chưa push)
+
+Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang; người dùng chọn sửa cả hai (TDD). Chi tiết ở thân từng mục `CLIENT_APP_KNOWN_GAPS.md`.
+
+- **G91** (`95ca2ccf`): `d1DangHienPin` của `KhoiNhacSauNganHang` thêm vế `context.coQuyen(MaQuyen.bankNotificationParser)` — Basic còn `docBienDong` bật không còn mất cả hai hàng gợi ý pin. Ca ⭐ G91 ở `nhac_sau_ngan_hang_cai_dat_test.dart`.
+- **G92**: `GoiRepository.choNapKho()` (future của lượt nạp kho gần nhất, không gồm `lamMoi`); `chanTheoGoi` và `chanTheoQuyen` (nay `Future`) chờ nó rồi mới đọc gói. Cửa trần chặn nhầm Premium mở lạnh deeplink; cửa quyền hỏng **chiều ngược** (Basic bị tắt `export_reports` lọt qua vì Basic mặc định thiếu khoá). 5 ca ở `chan_theo_goi_test.dart`; máy ảo `FlowMoney_16G` (APK debug `3654946f…`): mã cũ mở lạnh `/goals/add` → màn Premium, mã mới 3/3 → form, mở nóng + `/export-report` + mở thường đạt.
+- **G93 mở, chưa sửa** (đọc mã): từ G86, `moPhienCucBo` quét **trước** `AuthSuccess`, lúc `GoiRepository` chưa có tài khoản → `coQuyenNen` trả `true` → Basic có bảng `features` khoá tắt vẫn được tự trả / tự trích ở lượt quét đầu mỗi phiên. Đường nền đã chặn. Chờ người dùng.
+- `flutter test` 7.039 → **7.045** (+9 skip), `flutter analyze` **20**.
 
 ### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
 

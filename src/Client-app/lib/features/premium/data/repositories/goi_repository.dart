@@ -42,10 +42,16 @@ class GoiRepository {
   late TrangThaiGoi _hienTai;
   int? _idaccount;
   Future<void>? _dangLamMoi;
+  Future<void>? _dangNapKho;
 
   TrangThaiGoi get hienTai => _hienTai;
   Stream<TrangThaiGoi> get theoDoi => _controller.stream;
   int? get idaccount => _idaccount;
+
+  /// Lượt nạp kho của [datTaiKhoan] gần nhất. [idaccount] có ngay khi phiên mở, còn kho (secure storage) trả lời
+  /// sau — trong khoảng ấy [hienTai] vẫn là Basic mặc định. Cửa chặn route chờ cái này rồi mới đọc (G92). Chỉ KHO,
+  /// không [lamMoi] (lượt mạng, trần 30 s). Không bao giờ ném.
+  Future<void> choNapKho() => _dangNapKho ?? Future.value();
 
   void _phat(TrangThaiGoi t) {
     _hienTai = t;
@@ -53,8 +59,12 @@ class GoiRepository {
   }
 
   /// Mở phiên: nạp kho; kho trống → `type` của phiên. Không gọi mạng ở đây.
-  Future<void> datTaiKhoan(int idaccount, {String? loaiPhien}) async {
+  Future<void> datTaiKhoan(int idaccount, {String? loaiPhien}) {
     _idaccount = idaccount;
+    return _dangNapKho = _napKho(idaccount, loaiPhien);
+  }
+
+  Future<void> _napKho(int idaccount, String? loaiPhien) async {
     final kho = await _kho.doc(idaccount);
     if (_idaccount != idaccount) return; // phiên đã đổi trong lúc chờ
     _phat(kho ?? trangThaiTuLoaiPhien(loaiPhien, nhanLuc: _now()));

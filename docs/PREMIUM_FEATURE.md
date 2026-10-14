@@ -177,9 +177,14 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   Premium"* khi giá trị đang lưu là bật).
 - **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
   phiên → `true`. DI bọc `runAutoPays` · `runAutoDeposits` · `loadKeHoach` · `NhapBienDong.batBienDong` ·
-  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**.
+  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**. ⚠️ Vế *"chưa có phiên → `true`"* đúng
+  trước G86; từ đó lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, lúc gói chưa có tài khoản — **G93**, chưa sửa.
 - **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
-  màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số.
+  màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số. Cả hai **chờ kho gói
+  nạp xong** (`GoiRepository.choNapKho()`) rồi mới đọc `idaccount` + `hienTai` (G92, 2026-10-14): router chạy lại `redirect`
+  lúc `AuthSuccess`, đúng khi `noiPhien` vừa gán tài khoản mà secure storage chưa trả lời — đọc ngay là Basic mặc định.
+  Chỉ chờ **kho**, không chờ `lamMoi` (mạng). Hai chiều hỏng: cửa trần chặn nhầm Premium; cửa quyền thả Basic bị tắt quyền
+  (Basic mặc định không mang khoá → `macDinhKhiThieu` = mở).
 
 ### 8.4 Ba lỗi của mã backend viết sẵn — đã đóng
 
