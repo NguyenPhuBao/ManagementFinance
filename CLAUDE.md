@@ -13,7 +13,7 @@
 3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
 4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
 
-**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-14-entity-hoa-don.md` (**Entity Hoá đơn — G88 gạch 3 đợt 1/4 THI CÔNG XONG** `2a912871` → `db293db7`, agent con: `BillEntity` là kiểu duy nhất từ repository trở lên, test quét 27, máy ảo 15/15 ảnh trùng; 7.057 pass / 9 skip, analyze 20. Đợt kế: **Giao dịch + Ví** — chưa spec, mở bằng brainstorm; ba việc mang sang ở mục 0 bàn giao. Sổ `.superpowers/sdd/2026-10-14-entity-hoa-don/` và `D:/ft4.log` chờ người dùng duyệt xoá. Chưa push). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
+**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-14-entity-hoa-don.md` (**Entity Hoá đơn — G88 gạch 3 đợt 1/4 THI CÔNG XONG** `2a912871` → `db293db7`, agent con: `BillEntity` là kiểu duy nhất từ repository trở lên, test quét 27, máy ảo 15/15 ảnh trùng; 7.057 pass / 9 skip, analyze 20. Đợt kế: **Giao dịch + Ví** — chưa spec, mở bằng brainstorm; ba việc mang sang ở mục 0 bàn giao. Sổ thi công đợt này đã xoá; `D:/ft4.log` (nhật ký lạc của agent con) người dùng tự xoá — công cụ chặn lệnh xoá ở gốc ổ. Chưa push). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
 
 **Rồi tuỳ việc:**
 

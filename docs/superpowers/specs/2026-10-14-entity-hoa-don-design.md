@@ -1,7 +1,7 @@
 # Thống nhất Entity cho mảng Hoá đơn — G88 gạch 3, đợt 1/4
 
 **Ngày:** 2026-10-14 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `2437c935` · **Trạng thái:** người dùng duyệt sáu
-phần trong chat (phạm vi, ratchet, phương án, phần 1–6); bản viết đã duyệt (`f45e6f4f`), thi công xong 2026-10-14 (commit `2a912871`..HEAD). Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-hoa-don.md`
+phần trong chat (phạm vi, ratchet, phương án, phần 1–6); bản viết đã duyệt (`f45e6f4f`), thi công xong 2026-10-14 (commit `2a912871` → `db293db7`). Kế hoạch: `docs/superpowers/plans/2026-10-14-entity-hoa-don.md`
 (gitignore) — viết sau khi bản này được duyệt.
 
 Đợt này là đợt **đầu** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`, người dùng chốt hướng A ngày 2026-10-11: *giao
@@ -9,12 +9,13 @@ diện không cầm hàng Drift, từng mảng một đợt — Hoá đơn → G
 thấy gì đổi**; cái đổi là từ repository trở lên, mảng Hoá đơn chỉ còn **một** kiểu dữ liệu (`BillEntity`), và test quét 27
 giữ cho nó không quay lại.
 
-> ✅ **Số đo sau thi công (2026-10-14, HEAD `a085deb0`; đếm bằng máy, đừng cộng dồn).** Thi công xong 6 commit mã
+> ✅ **Số đo sau thi công (2026-10-14, HEAD `db293db7` — mã chốt ở `a085deb0`, `c7c1c9fe` thêm hai ca test; đếm bằng máy,
+> đừng cộng dồn).** Thi công xong 6 commit mã
 > (`2a912871` quét 27 + ratchet · `f0db5cc6` `BillEntity` + companion · `1299f6f4` `paymentsOf` · `bad1ff73` Thêm / Sửa chở
 > `BillDraft` · `94142dea` runner về `data/services` · `a085deb0` `Bill` → `BillEntity` mọi nơi).
-> 🔧 Sửa: mục 2 và 6 spec ghi "7 tệp giao diện Hoá đơn vẫn import `core/database`" — thực tế sau đợt là **6** (`bill_page.dart` bỏ import, phán quyết preflight P10; đếm bằng grep `presentation/`, 2026-10-14).
+> 🔧 Sửa: bản viết dự kiến "7 tệp giao diện Hoá đơn vẫn import `core/database`" — thực tế sau đợt là **6** (`bill_page.dart` bỏ import, phán quyết preflight P10; đếm bằng grep `presentation/`, 2026-10-14). Đã sửa thẳng vào thân mục 2, 6 cùng ngày.
 > Tệp `domain/` import `core/database`: **24 → 12** (Hoá đơn 11 → **1** — `de_xuat_hoa_don.dart` còn cần `Transaction` +
-> `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch; mục 5 spec ghi "11 → 0" là sai, xem khối 🔧 kế hoạch). `Bill` Drift ở `presentation/` + `shared/`:
+> `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch; bản viết dự kiến "11 → 0" — đã sửa thẳng vào thân mục 5, 8, 9 cùng ngày). `Bill` Drift ở `presentation/` + `shared/`:
 > **0**. Lối chuyển tiếp trả hàng Drift: **11 → 10**. Entity: **5/14** mảng. `flutter test` 7.047 → **7.057** (+9 skip);
 > `flutter analyze` **20**. Dòng: `bill_entity.dart` 192 · `bill_draft_companion.dart` 78 · `bill_repository_impl.dart` 426.
 > Máy ảo `FlowMoney_16G` (APK trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác,
@@ -43,7 +44,7 @@ Mọi số đếm bằng `grep` / `wc -l`, chạy từ `src/Client-app`.
 |---|---|---|
 | Tệp `bill/domain/` import `core/database` | **11 / 14** | chỉ để lấy kiểu `Bill` (`bill_draft` thêm `drift` cho `BillsCompanion`; `bill_auto_pay_runner` cầm `AppDatabase`) |
 | Tệp `presentation/` + `shared/` nhắc kiểu `Bill` | **8** | `bill_bloc` · `bill_event` · `bill_state` · `bill_page` · `bill_detail_page` · `bill_edit_page` · `bill_actions` · `bill_payment_sheet` (+ `bill_add_page` dựng `BillsCompanion`) |
-| Tệp giao diện Hoá đơn import `core/database` | **10 / 10** | 7 tệp còn cầm `Wallet` (`getActiveRows` / `getAllRows`) hoặc `Category` (`loadBangTraTen` / `getRowById`) — **ở lại** sau đợt |
+| Tệp giao diện Hoá đơn import `core/database` | **10 / 10** | 6 tệp còn cầm `Wallet` (`getActiveRows` / `getAllRows`) hoặc `Category` (`loadBangTraTen` / `getRowById`) — **ở lại** sau đợt (đo sau thi công; bản viết ghi 7 — `bill_page` hoá ra không cầm `Wallet` / `Category`) |
 | Tệp ngoài mảng nhận `List<Bill>` / gọi hàm domain Hoá đơn trên hàng Drift | **8** | `core/notification/notification_rules` · `notification_scanner` · `core/nen/lich_nen` · `ai_edge/domain/goi_so_hoa_don` · `hang_hoa_don` · `analytics/domain/du_bao_dong_tien` (6 đổi chữ ký) + `analytics/data/repositories/analytics_repository_impl` · `premium/data/dem_dang_hoat_dong` (2 map tại chỗ). `wallet/data/vi_trung_ten_nguon` cố ý ở Drift (mục 7) |
 | `core` (trừ `database`, `sync`) nhắc kiểu `Bill` | 4 tệp | ba tệp trên + `router/app_router` (`s.extra as Bill?` ×2) |
 | Ratchet quét 25 | `notification_rules` 10 · `notification_scanner` 5 · `lich_nen` 3 | import `core/database` **không** tính; import `features/bill/data/models/` **có** tính |
@@ -118,7 +119,9 @@ danh sách *"11 lối"* của `KIEN_TRUC` mục 4 không còn là lối chuyển
   `repository.payBill(bill: entity)`. Ba nơi import đổi đường (`notification_rules`, `notification_scanner`, DI) — số dòng
   ratchet không đổi. Test `bill_auto_pay_runner_test.dart` dời theo sang `test/features/bill/data/services/` (quét 25 soi
   gương thư mục).
-- **Kết quả đo:** `grep -rl core/database lib/features/bill/domain` = **0**.
+- **Kết quả đo:** `grep -rl core/database lib/features/bill/domain` = **1** (`de_xuat_hoa_don.dart` — tham số
+  `List<Transaction>` / `List<GoiYHoaDonPhanHoi>` là kiểu Drift của mảng khác; rút ở đợt Giao dịch. Bản viết dự kiến 0;
+  đo sau thi công 2026-10-14).
 
 ## 6. Giao diện Hoá đơn
 
@@ -132,7 +135,7 @@ danh sách *"11 lối"* của `KIEN_TRUC` mục 4 không còn là lối chuyển
   `_khoanChi`), `bill_actions` (4 hàm), `bill_payment_sheet.bill`.
 - **Không chạm:** `the_khoan_lap` (chỉ cầm `Category`), `bill_delete_page`, `bill_status_header`, `bill_grace_selector`,
   `bill_status_visuals`.
-- **Ở lại, cố ý:** 7 tệp vẫn import `core/database` cho `Wallet` / `Category` — vào danh sách chờ theo kiểu của quét 27
+- **Ở lại, cố ý:** 6 tệp vẫn import `core/database` cho `Wallet` / `Category` — vào danh sách chờ theo kiểu của quét 27
   (phụ lục A). Đợt Ví / Danh mục rút.
 
 ## 7. Tám tệp ngoài mảng và DI
@@ -168,8 +171,8 @@ Sau đợt: `lib/core` (trừ `database`, `sync`) nhắc kiểu `Bill` = **0**.
    đọc cả chú thích, vùng này docstring hay nhắc *"đối tượng `Bill`"*). `Bill` / `BillsCompanion`: **không có** danh sách
    chờ. Danh sách chờ theo kiểu (phụ lục A): sau đợt Wallet 14 · Category 20 · Transaction **1** (ba tệp Hoá đơn rút nhờ
    `paymentsOf`) · AppNotification 2.
-2. **`lib/features/*/domain/` không import `core/database`.** Danh sách chờ (phụ lục B): sau đợt **11** tệp (hôm nay 13
-   ngoài Hoá đơn, `ai_edge` rút 2). Hoá đơn 11 → 0.
+2. **`lib/features/*/domain/` không import `core/database`.** Danh sách chờ (phụ lục B): sau đợt **12** tệp (13 ngoài
+   Hoá đơn, `ai_edge` rút 2, cộng `de_xuat_hoa_don.dart` — đo sau thi công). Hoá đơn 11 → 1.
 
 **Cách đưa vào mà nhánh không đỏ giữa chừng:** viết test ở bước đầu với danh sách chờ gồm **cả** `Bill` (8 tệp +
 `bill_add_page` cho `BillsCompanion`) và 11 tệp `bill/domain` — xanh ngay; mỗi bước rút tệp đã sạch (quên rút là đỏ);
@@ -187,7 +190,7 @@ chính mảng tệp ấy đã import; không bao giờ vì một mảng mới."*
 |---|---|---|
 | Mục 8: Entity → `data/models/` | ✓ | `bill/data/models/bill_entity.dart` — thư mục mới cho mảng, cùng khuôn 4 mảng có sẵn |
 | Mục 8: bộ điều phối → `data/services/` | ✓ | runner dời; `goal_auto_deposit_runner` cùng mùi, **để đợt Mục tiêu** |
-| Mục 4: domain không Drift | ✓ (Hoá đơn) | 11 → 0; các mảng khác vào danh sách chờ luật 2 |
+| Mục 4: domain không Drift | ✓ (Hoá đơn, trừ 1) | 11 → 1 (`de_xuat_hoa_don` chờ đợt Giao dịch); các mảng khác vào danh sách chờ luật 2 |
 | Mục 4: `core` không import `features/` (ratchet) | ⚠️ +3, có lý do | quyết định 2; về 0 ở gạch 5 |
 | Quét 22 (presentation không DAO) | ✓ | không thêm lối DAO nào; `conCho` vẫn rỗng |
 | Quét 23 (≤ 1.200 dòng) | ✓ | lớn nhất 866 |
