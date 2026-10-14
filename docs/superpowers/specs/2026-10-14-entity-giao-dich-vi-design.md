@@ -118,7 +118,9 @@ sau này biết datasource dựa vào chúng).
 | `TransactionRepository.getAllRows` · `watchAllRows` → `Transaction` | **bỏ**; **mới** `getAll(int)` · `watchAll(int)` → Entity, qua datasource 4.2 |
 
 Hai interface **thôi import `core/database`**. Khối chú thích *"Bốn lối CHUYỂN TIẾP, không luật"* ở `wallet_repository.dart`
-xoá. Hai test `wallet_repository_rows_test.dart` / `transaction_repository_rows_test.dart` **chuyển** (không xoá) sang hàm Entity,
+xoá. **Hai bản thi hành rút DAO chết khỏi constructor** (thêm 2026-10-14 tối, sau lượt soát kế hoạch): `WalletRepositoryImpl._walletDao`
+chỉ bốn lối Rows dùng — để lại là lint `unused_field`; `TransactionRepositoryImpl.transactionDao` chỉ hai lối Rows dùng, `walletDao`
+chưa từng được đọc trong tệp (đo). Xoá trường + tham số ở cả hai, sửa DI và mọi test dựng `…RepositoryImpl(` cùng commit (Task 7). Hai test `wallet_repository_rows_test.dart` / `transaction_repository_rows_test.dart` **chuyển** (không xoá) sang hàm Entity,
 đổi tên tệp `wallet_repository_doc_vi_test.dart` / `transaction_repository_doc_so_test.dart`, giữ ba khẳng định: `getActive` chỉ ví
 hoạt động · `getAll` / `watchAll` gồm lưu trữ, bỏ xoá · `getById` trả hàng xoá mềm.
 
