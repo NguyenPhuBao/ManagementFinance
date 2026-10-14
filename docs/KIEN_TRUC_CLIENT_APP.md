@@ -26,7 +26,7 @@ Mục lục
 Client-app là **feature-first, ba tầng `data · domain · presentation`, offline-first** — SQLite (Drift) là nguồn sự thật
 cục bộ, server chỉ là nơi hội tụ giữa các máy. Nó **không** phải Clean Architecture đúng sách, và đó là lựa chọn có lý
 do: interface repository nằm ở tầng `data` chứ không ở `domain`, không có lớp use case, và Entity chỉ có ở 5/14 mảng
-(ví, giao dịch, mục tiêu, ngân sách, hoá đơn — hoá đơn từ 2026-10-14). Tầng `domain` ở đây là **hàm thuần** — luật nghiệp vụ không biết Flutter, không
+(ví, giao dịch, mục tiêu, ngân sách, hoá đơn — hoá đơn từ 2026-10-14); thống nhất xong 3/5: Hoá đơn, Ví, Giao dịch (2026-10-14). Tầng `domain` ở đây là **hàm thuần** — luật nghiệp vụ không biết Flutter, không
 biết CSDL — chứ không phải nơi sở hữu interface. Bài toán (một người, một máy, dữ liệu nhỏ, phải chạy không mạng) không
 trả nổi giá của bốn tầng và một lớp ánh xạ cho mỗi kiểu; thứ nó cần là luật đúng và đúng **một chỗ**, và thứ ấy được
 canh bằng test quét mã nguồn (mục 6).
@@ -91,16 +91,15 @@ Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab2
 
 | Tầng | Trách nhiệm | Được phép import | Không được |
 |---|---|---|---|
-| `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, nguồn), `core/` — kể `core/database` để dùng **kiểu** hàng Drift — chỉ cho mảng chưa có Entity (danh sách chờ của quét 27); Hoá đơn: `BillEntity` — `core/di` để lấy repository qua service locator, `core/ui`, `core/utils`, `core/constants` — và `shared/` | cầm `AppDatabase` / gọi DAO (**test quét 22** — kiểu hàng thì được, lối truy cập thì không); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
+| `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, nguồn), `core/` — kể `core/database` để dùng **kiểu** hàng Drift — chỉ cho mảng chưa có Entity (danh sách chờ của quét 27); Hoá đơn, Ví, Giao dịch: Entity — `core/di` để lấy repository qua service locator, `core/ui`, `core/utils`, `core/constants` — và `shared/` | cầm `AppDatabase` / gọi DAO (**test quét 22** — kiểu hàng thì được, lối truy cập thì không); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
 | `domain/` | Hàm thuần: luật nghiệp vụ, phép tính, định dạng câu | Dart thuần, `domain/` khác | Flutter, Drift, `sl` |
 | `data/` | Repository (interface + bản thi hành), datasource, Entity, `services/` điều phối nhiều bước | `core/database`, `core/api`, `domain/` | widget |
 
 Ba tầng **không** đối xứng như sách: interface repository khai ở `data/repositories/<x>_repository.dart` cạnh bản thi
 hành; `domain/` không biết interface nào. Một số repository trả **Entity** (ví, giao dịch, mục tiêu, ngân sách, hoá đơn), số khác
-trả **hàng Drift** (danh mục) — và từ 2026-10-10 có **lối chuyển tiếp** cho trang (11 lúc đầu; **10** từ 2026-10-14, khi
-`BillRepository.getById` trả `BillEntity` — `getActiveRows`,
-`getAllRows`, `watchAllRows`, `getRowById`, `loadBangTraTen`,
-`TaiPhanBoNguon.ghiPhanHoi`…) trả đúng kiểu hàng Drift mà trang đang cầm, vì Entity cho 14 mảng là việc ngoài phạm vi
+trả **hàng Drift** (danh mục) — và từ 2026-10-10 có **lối chuyển tiếp** cho trang (11 lúc đầu; 10 sau đợt Hoá đơn; còn **4**
+từ 2026-10-14, đợt Entity Giao dịch + Ví, đếm bằng máy: `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` ·
+`getRowById` + `TaiPhanBoNguon.ghiPhanHoi`) trả đúng kiểu hàng Drift mà trang đang cầm, vì Entity cho 14 mảng là việc ngoài phạm vi
 (quyết định 10 của spec, nợ G88).
 
 **`core` có hai vai, cố ý tách bạch:**
@@ -111,7 +110,7 @@ trả **hàng Drift** (danh mục) — và từ 2026-10-10 có **lối chuyển 
   `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác, nên chính nó
   **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
   **175** dòng — điểm ghép **138** (DI 82 · router 54 · `chay_nen` 2), hạ tầng **37** (`notification_rules` 10 ·
-  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* 40 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Trước
+  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* *(Đo lại 2026-10-14 sau đợt Entity Giao dịch + Ví: 185 = điểm ghép 142 + hạ tầng **43** — `notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1, ratchet +3 vì luật ví và nguồn B5b nhận `WalletEntity` / `TransactionEntity`.)* 43 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Trước
   đợt: 172 = 136 + 36. DI +2 vì `TransactionRepositoryImpl` / `CategoryManagementRepositoryImpl` tách tệp `_impl`; router
   +1 và `current_account` −1 vì tệp ấy rời `core` về `features/auth/presentation/bloc/`; `sync_engine` 6 → 7 vì
   `bill_recurrence` về `features/bill/domain/`.)* Từ 2026-10-10 **test quét 25** (`vi_tri_tep_theo_luat_test`) canh:
@@ -205,7 +204,7 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | **24** | `features/auth/auth_bloc_khong_sl_test.dart` | `auth_bloc.dart` không gọi service locator, không import `core/di` | một tệp | **2026-10-10** |
 | **25** | `core/ui/vi_tri_tep_theo_luat_test.dart` | cây `lib/` / `test/` khớp luật vị trí tệp mục 8 (sáu luật; ratchet `core` → `features` ngoài ba điểm ghép); `conCho` rỗng (miễn trừ `ai_chat/spike/` đã gỡ 2026-10-12) | cây `lib/` + `test/` | **2026-10-10** |
 | **26** | `features/transaction/chi_mot_noi_import_giong_noi_test.dart` | `speech_to_text` chỉ ở `nghe_android.dart`, `record` chỉ ở `ghi_am.dart` (có ca tiền đề) | cây `lib/` | **2026-10-12** |
-| **27** | `core/ui/presentation_domain_khong_kieu_drift_test.dart` | `presentation/` + `shared/` không nhắc kiểu hàng Drift (danh sách chờ theo kiểu, chỉ giảm); `domain/` không import `core/database` (danh sách chờ chỉ giảm) | cây `lib/` | **2026-10-14** |
+| **27** | `core/ui/presentation_domain_khong_kieu_drift_test.dart` | `presentation/` + `shared/` + `lib/core` (trừ `database`, `sync`) không nhắc kiểu hàng Drift (danh sách chờ theo kiểu, chỉ giảm); `domain/` không import `core/database` / `package:drift` (danh sách chờ chỉ giảm — còn 8 tệp, đếm 2026-10-14) | cây `lib/` | **2026-10-14** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | danh sách tệp | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
@@ -270,7 +269,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 giới nền tảng thay được bằng bản giả, nên **6.681** ca test (đo 2026-10-11 sau tách trang Thêm giao dịch, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
-**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift; Entity mới ở 5/14 mảng (Hoá đơn thêm 2026-10-14). `SyncEngine` 2.166 dòng một tệp.
+**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift ở các mảng chưa có Entity; Entity 5/14 mảng, thống nhất 3/5 (Hoá đơn, Ví, Giao dịch — 2026-10-14). `SyncEngine` 2.166 dòng một tệp.
 Không còn tệp `presentation` nào trên 1.200 dòng (bốn trang cuối — cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo — tách xong 2026-10-13, G88 gạch 2; trang lớn nhất trong bốn trang đó nay 866 dòng). Luật thông báo nằm trong `core`. Không logger,
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
@@ -297,5 +296,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
 4. **Con số.** 14 mảng, 549 tệp, 29 test quét, 6.681 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14 (2026-10-14), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14, thống nhất 3/5 (2026-10-14), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.

@@ -948,6 +948,10 @@ tài khoản xoá cả bảng này. ⚠️ *(2026-09-29, B4)* Bảng có **ngư�
 `GoiYHoaDonDao.watchAll`) coi mọi giao dịch có `khoaNhomCua` nằm trong tập `da_tao` là
 **lịch sử của một hoá đơn** và bỏ khỏi ước tính chi tuỳ ý — đổi nghĩa `da_tao` hay
 đổi khoá nhóm là đổi cả con số ấy (mục 3.27 `ANALYTICS_FEATURE.md`).
+⚠️ *(2026-10-14, đợt Entity Giao dịch + Ví)* `de_xuat_hoa_don.dart` (domain) **không còn import Drift**: nó nhận
+phản hồi bằng record `PhanHoiGoiYHoaDon` (`({String khoaNhom, String ketQua, DateTime createdAt})`) và giao dịch
+bằng `TransactionEntity`; nguồn `de_xuat_hoa_don_nguon` (`bill/data/`) đọc `GoiYHoaDonPhanHoi` rồi dựng record. Bảng vẫn
+cục bộ, không đồng bộ.
 
 **Điền sẵn — `bill/domain/dien_san_hoa_don.dart`.** `queryTuKhoanLap` / 
 `dienSanTuQuery` dịch qua lại `KhoanLap` ↔ query `name · amount · cycle · anchor ·

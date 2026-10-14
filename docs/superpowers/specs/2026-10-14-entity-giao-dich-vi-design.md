@@ -11,6 +11,23 @@ dùng app **không thấy gì đổi**; cái đổi là từ repository trở l�
 (`WalletEntity` / `TransactionEntity` — cả hai đã có sẵn ở `data/models/`, đợt này chỉ làm chúng thành kiểu duy nhất), sáu lối
 chuyển tiếp `…Rows` biến mất, và test quét 27 giữ cho chúng không quay lại.
 
+> ✅ **Số đo sau thi công (2026-10-14, HEAD `3252db88`; đếm bằng máy, đừng cộng dồn).** Thi công xong bằng agent con mỗi task, mã chốt ở
+> `3252db88`: Task 1 `54a6efd1` + `2b0922bd` (quét 27 mở rộng + `importCam`) · Task 2 `a8deac2a` (`WalletEntity.fromDrift`,
+> `TransactionEntity` + `billId` / `deletedAt`) · Task 3 `3bbb988e` (repository gộp tên) · Task 4 `d89d79c4` (domain) · Task 5 `08014289`
+> (giao diện) · Task 6 `908b99ec` + `92d39914` (`core/notification`, DI) · Task 7 `3252db88` (bỏ sáu lối `…Rows`, quét 2).
+> Tệp `domain/` import `core/database`: **12 → 8** (`conChoDomain` 8; `bill/domain` = 0). `Wallet` / `Transaction` Drift ở
+> `presentation/` + `shared/` + `lib/core` (trừ `database`, `sync`): **0**. Lối chuyển tiếp trả hàng Drift: **10 → 4**
+> (`CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById` + `TaiPhanBoNguon.ghiPhanHoi`). Ratchet quét 25 hạ tầng:
+> **40 → 43** (`notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1); `grep -rcE "^(import|export) .*features/" lib/core`
+> = 185 = điểm ghép 142 + hạ tầng 43. Quét 2: +6 chỗ phân loại. `conChoKieu` còn `Category` 20 tệp + `AppNotification` 9 tệp.
+> `wallet_entity.dart` 147 dòng · `transaction_entity.dart` 153 · `presentation_domain_khong_kieu_drift_test.dart` 226. `flutter test`
+> 7.057 → **7.065** (+9 skip, 0 fail); `flutter analyze` **20**, 0 error. Lệch so với kế hoạch trong lúc thi công:
+> `apDungGan` dùng dạng MỘT `throw` (kiểm `null` trước `fromDrift`); luật 2 quét 27 tách hàm `importCam` kèm khẳng định tiền đề;
+> `_toEntity` có 6 chỗ gọi (không phải 5); thêm hai test `gan_danh_muc_nguon_test` / `gan_danh_muc_nguon_lop_test` vào Task 4; chú thích DI
+> `loadWallets` tách hai vế (ví qua `WalletRepository.getAll`, mục tiêu vẫn DAO). 🔧 Bốn chỗ văn bản viết lệch số đo preflight đã sửa
+> thẳng vào thân (mục 3 quy tắc 5, mục 4.1, mục 8, phụ lục D; mục 11 bỏ `bankCasoId` — tên không tồn tại, cột thật là `bankTranId`).
+> 🚧 **Nghiệm thu máy ảo: chờ (Task 9).**
+
 ## 1. Quyết định đã chốt (trong chat, 2026-10-14)
 
 | # | Câu hỏi | Chốt | Lý do ngắn |
@@ -69,7 +86,7 @@ Tiền lệ: `ThemGiaoDichNguon` đã là cổng tiêm được; `vi_chon_san.da
    không biên dịch. Bước 3 **thêm** hàm Entity bên cạnh lối cũ; bước 4–6 chuyển từng tầng; bước 7 mới rút (mục 10).
 4. **Map tại chỗ** ở `data/` của mảng khác (tiền lệ `dem_dang_hoat_dong` đợt 1): tệp data đọc DAO rồi gọi hàm domain vừa đổi
    kiểu thì `.map(X.fromDrift)` ngay chỗ gọi, không mở repository mới, không đổi constructor.
-5. `dart format` **chỉ** trên tệp mới (`wallet_entity_test`, hai test datasource / repository đổi tên, test quét sửa).
+5. `dart format` **chỉ** trên tệp mới (`wallet_entity_test`, hai test datasource / repository đổi tên). *(🔧 bản viết còn ghi "test quét sửa" — hai test quét là tệp cũ, không format; sửa sau preflight 2026-10-14.)*
 6. Mỗi bước TDD, mỗi bước một commit, toàn bộ test xanh ở mỗi commit.
 7. Không đụng `core/sync/*`, `core/database/*` (trừ chú thích), `wallet/data/services/*`, `wallet/data/datasources/*` (ngoài
    dời `_toEntity`), `vi_trung_ten_nguon`, `budget_local_data_source`, `bill_payment_conflict_resolver`.
@@ -93,7 +110,7 @@ chỉ-đọc, bản sai có chủ ý (mang `Value(billId)`) phải đỏ. Ba ch�
 ### 4.1 `WalletEntity.fromDrift(Wallet)`
 
 **Dời** nguyên văn thân `WalletLocalDataSourceImpl._toEntity` (16 phép gán) thành `factory WalletEntity.fromDrift(Wallet w)` ở
-`wallet/data/models/wallet_entity.dart`; datasource gọi `WalletEntity.fromDrift` ở 5 chỗ đang gọi `_toEntity`. Tệp entity thêm
+`wallet/data/models/wallet_entity.dart`; datasource gọi `WalletEntity.fromDrift` ở **6** chỗ đang gọi `_toEntity` (🔧 bản viết ghi 5 — dòng 146 `_kiemRangBuocServer` bị sót; sửa sau preflight 2026-10-14). Tệp entity thêm
 import `core/database` — cùng khuôn `BillEntity` / `TransactionEntity` / `GoalEntity` / `BudgetEntity` (docstring hiện có *"tách
 biệt khỏi Drift"* sửa thành *"tách biệt khỏi Drift ở mọi tầng trên; phép ánh xạ ở đây là một định nghĩa"*). `_toCompanion`
 **ở lại** datasource (đường ghi; chú thích về `biTuChoiTrungTen` giữ nguyên).
@@ -202,8 +219,8 @@ Sau đợt: `lib/core` (trừ `database`, `sync`) nhắc `Wallet` / `Transaction
   trừ** — khác ratchet quét 25: điểm ghép được biết mọi mảng, nhưng biết qua repository / Entity, không qua kiểu hàng Drift (đo
   2026-10-14: cả ba = 0, và vì `conChoKieu` chỉ-được-giảm nên từ nay DI không được nêu tên kiểu hàng Drift nữa; DI gọi DAO trả id /
   mốc thì vẫn được — mẫu chỉ bắt **tên kiểu**). `conChoKieu` nạp hiện trạng ở bước 1: `Wallet` +2 (`core/notification/notification_rules`,
-  `notification_scanner`), `Transaction` +1 (`de_xuat_thong_bao_nguon`), `AppNotification` +7 (phụ lục A). Ca tiền đề thêm một khẳng
-  định: phép quét thấy ≥ 1 tệp `core/`.
+  `notification_scanner`), `Transaction` +1 (`de_xuat_thong_bao_nguon`), `AppNotification` +7 (phụ lục A). Ca luật 1 thêm khẳng định
+  `soTepCore > 20` (đo 77 tệp). *(🔧 bản viết ghi "ca tiền đề: phép quét thấy ≥ 1 tệp `core/`"; sửa sau preflight 2026-10-14.)*
 - `mauKieu` thành `\b<Kiểu>(\?|>| [a-z_][A-Za-z0-9_]*\b|,|\)|;|\.fromJson)` — ca tiền đề thêm `as Wallet;` · `Wallet.fromJson(` khớp,
   `WalletEntity.fromDrift(` không khớp. Luật 2 cấm cả dòng `import 'package:drift…'` (ca tiền đề: 2 tệp đã chờ).
 - Mỗi bước rút tệp đã sạch; bước 7 **xoá khoá** `Wallet` / `Transaction` — từ đó nhắc tới là đỏ ngay như `Bill`. `conChoDomain`
@@ -284,7 +301,7 @@ lib` chỉ còn `CategoryManagementRepository`.
 - `goal/domain/goal_auto_deposit_runner.dart` cầm `AppDatabase` + `package:drift` — đợt Mục tiêu dời về `data/services/` (cùng mùi
   `BillAutoPayRunner`).
 - `analytics_repository_impl` đọc `db.transactionDao` / `db.walletDao` / `db.billDao` thẳng — mảng Phân tích, chưa có lịch.
-- `TransactionEntity` vẫn không mang `status` / `provider` / `bankTranId` / `bankCasoId` — không chỗ đổi kiểu nào đọc (đo từng tệp); mở
+- `TransactionEntity` vẫn không mang `status` / `provider` / `bankTranId` — không chỗ đổi kiểu nào đọc (đo từng tệp); mở
   rộng khi một chỗ đọc thật cần, không mở trước (đợt này mở đúng hai trường có chỗ đọc thật — 4.0).
 - Lối `…Rows` của Danh mục (3) + `TaiPhanBoNguon.ghiPhanHoi` — đợt Danh mục.
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift.
@@ -345,4 +362,6 @@ hàng *hoá đơn* câu nợ `de_xuat_hoa_don` đã trả; mốc test; dòng ⭐
 - Fake `implements WalletRepository` / `TransactionRepository` (32 tệp, phần lớn `noSuchMethod`): bỏ override `…Rows` nếu có
   (`category_test_fakes`, `them_giao_dich_nguon_test`, `wallet_cubit_total_test`, `nguon_doc_gia`); thêm `getActive` / `getAll` /
   `watchAll` ở fake nào trang đang đi qua.
+- Lấy hàng Drift từ DAO rồi dựng `DongGanDanhMuc` (2): `category/data/gan_danh_muc_nguon_test` · `gan_danh_muc_nguon_lop_test` *(bổ sung sau preflight — thiếu thì commit Task 4 không biên dịch)*.
+- Chỉ đỏ lúc chạy, `flutter analyze` mù (2): `bill_add_page_test:303` `byType(DropdownButton<Wallet>)` · `them_giao_dich_nguon_test:119,126,127` `isA<List<Wallet>>`.
 - 27 tệp cầm `List<Wallet>` / `List<Transaction>` — đổi kiểu, kỳ vọng giữ.

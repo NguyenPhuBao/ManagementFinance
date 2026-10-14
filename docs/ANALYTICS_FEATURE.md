@@ -1246,7 +1246,7 @@ Toàn bộ phép tính ở **`analytics/domain/du_bao_dong_tien.dart`** (hàm th
   `goal_auto_deposit.dart`, kèm **ba chốt bỏ qua** của `GoalAutoDepositRunner`.
 - **Tầng 2** mượn `budgetPaceOf`: đóng góp `suggestedPerDay × min(daysLeft, 30)`
   — ngân sách quý còn 60 ngày chỉ tính nửa phần còn lại.
-- **Số dư** đọc `wallets.balance` qua `viTinhVaoTong`, cùng luật Trang chủ.
+- **Số dư** đọc `wallets.balance` qua `viTinhVaoTong`, cùng luật Trang chủ. *(Từ 2026-10-14, đợt Entity Giao dịch + Ví: nguồn ví của `watchKy` map `→ WalletEntity.fromDrift` ngay tại luồng đọc để `du_bao_dong_tien` nhận Entity; giao dịch Drift của nguồn chỉ đổi qua `TransactionEntity.fromDrift` ở chỗ gọi `khoaNhomCua` — hàm domain không biết hàng Drift.)*
 
 **Luật chuyển ví**: hoá đơn trừ ví trả; trích tự động trừ ví nguồn và **cộng**
 ví đích — nên tác động lên *tổng* thường bằng 0, trừ khi ví đích không tính vào

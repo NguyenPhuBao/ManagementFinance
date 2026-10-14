@@ -15,7 +15,7 @@ giữ cho nó không quay lại.
 > `BillDraft` · `94142dea` runner về `data/services` · `a085deb0` `Bill` → `BillEntity` mọi nơi).
 > 🔧 Sửa: bản viết dự kiến "7 tệp giao diện Hoá đơn vẫn import `core/database`" — thực tế sau đợt là **6** (`bill_page.dart` bỏ import, phán quyết preflight P10; đếm bằng grep `presentation/`, 2026-10-14). Đã sửa thẳng vào thân mục 2, 6 cùng ngày.
 > Tệp `domain/` import `core/database`: **24 → 12** (Hoá đơn 11 → **1** — `de_xuat_hoa_don.dart` còn cần `Transaction` +
-> `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch; bản viết dự kiến "11 → 0" — đã sửa thẳng vào thân mục 5, 8, 9 cùng ngày). `Bill` Drift ở `presentation/` + `shared/`:
+> `GoiYHoaDonPhanHoi`, nợ đợt Giao dịch — ✅ trả 2026-10-14 đợt 2: `bill/domain` nay 0; bản viết dự kiến "11 → 0" — đã sửa thẳng vào thân mục 5, 8, 9 cùng ngày). `Bill` Drift ở `presentation/` + `shared/`:
 > **0**. Lối chuyển tiếp trả hàng Drift: **11 → 10**. Entity: **5/14** mảng. `flutter test` 7.047 → **7.057** (+9 skip);
 > `flutter analyze` **20**. Dòng: `bill_entity.dart` 192 · `bill_draft_companion.dart` 78 · `bill_repository_impl.dart` 426.
 > Máy ảo `FlowMoney_16G` (APK trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác,
@@ -120,7 +120,7 @@ danh sách *"11 lối"* của `KIEN_TRUC` mục 4 không còn là lối chuyển
   ratchet không đổi. Test `bill_auto_pay_runner_test.dart` dời theo sang `test/features/bill/data/services/` (quét 25 soi
   gương thư mục).
 - **Kết quả đo:** `grep -rl core/database lib/features/bill/domain` = **1** (`de_xuat_hoa_don.dart` — tham số
-  `List<Transaction>` / `List<GoiYHoaDonPhanHoi>` là kiểu Drift của mảng khác; rút ở đợt Giao dịch. Bản viết dự kiến 0;
+  `List<Transaction>` / `List<GoiYHoaDonPhanHoi>` là kiểu Drift của mảng khác; rút ở đợt Giao dịch (✅ trả 2026-10-14 đợt 2: phản hồi vào domain bằng record `PhanHoiGoiYHoaDon`, đo lại = 0). Bản viết dự kiến 0;
   đo sau thi công 2026-10-14).
 
 ## 6. Giao diện Hoá đơn
@@ -182,7 +182,7 @@ canh được: trước khi commit bước đầu, thử bản sai có chủ ý 
 **Ratchet quét 25** (`conChoCoreImport`): ba số +1 kèm chú thích
 `// 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.`
 Câu *"Lần tăng DUY NHẤT"* ở chú thích `sync_engine` sửa thành luật: *"Tăng chỉ khi thay một kiểu Drift bằng Entity của
-chính mảng tệp ấy đã import; không bao giờ vì một mảng mới."*
+chính mảng tệp ấy đã import; không bao giờ vì một mảng mới."* *(Viết lại 2026-10-14 ở đợt 2: "tăng chỉ khi thay một kiểu Drift bằng Entity trong lộ trình G88 gạch 3; không bao giờ vì ghép một mảng mới vào `core`" — đợt Giao dịch + Ví tăng +3 ở mảng chưa từng import.)*
 
 ## 9. Đối chiếu luật kiến trúc và lộ trình G88
 
