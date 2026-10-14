@@ -1,3 +1,4 @@
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../../data/repositories/bill_repository.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
@@ -48,7 +49,7 @@ class BillDetailPage extends StatefulWidget {
 class _BillDetailPageState extends State<BillDetailPage> {
   Bill? _bill;
   List<Bill> _chuoi = const [];
-  Map<String, Transaction> _khoanChi = const {};
+  Map<String, TransactionEntity> _khoanChi = const {};
   TransactionLookup _lookup = TransactionLookup.empty;
   bool _dangTai = true;
 
@@ -76,7 +77,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     // được hoá đơn, chỉ thiếu tên ví/danh mục và lịch sử.
     final accountId = currentAccountIdOrNull(context);
     var tatCa = <Bill>[bill];
-    var khoanChi = <String, Transaction>{};
+    var khoanChi = <String, TransactionEntity>{};
     var lookup = TransactionLookup.empty;
     if (accountId != null) {
       tatCa = await sl<BillRepository>().getBills(accountId);

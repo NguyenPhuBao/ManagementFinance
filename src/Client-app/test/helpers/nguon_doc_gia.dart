@@ -4,6 +4,7 @@
 /// bản giả riêng thì giữ nguyên bản ấy.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/notification/thong_bao_nguon.dart';
@@ -64,7 +65,10 @@ class HoaDonRowsGia implements BillRepository {
   @override
   Future<List<Bill>> getBills(int idaccount) => db.billDao.getAll(idaccount);
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) => db.transactionDao.getBillPayments(idaccount);
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async {
+    final rows = await db.transactionDao.getBillPayments(idaccount);
+    return {for (final e in rows.entries) e.key: TransactionEntity.fromDrift(e.value)};
+  }
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }

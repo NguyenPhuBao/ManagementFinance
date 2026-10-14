@@ -1,3 +1,4 @@
+import '../../../transaction/data/models/transaction_entity.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
@@ -40,8 +41,9 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) {
-    return db.transactionDao.getBillPayments(idaccount);
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async {
+    final rows = await db.transactionDao.getBillPayments(idaccount);
+    return {for (final e in rows.entries) e.key: TransactionEntity.fromDrift(e.value)};
   }
 
   @override

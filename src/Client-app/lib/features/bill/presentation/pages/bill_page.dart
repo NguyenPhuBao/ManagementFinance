@@ -281,7 +281,7 @@ class _BillPageState extends State<BillPage> {
     required DateTime now,
     required DateFormat dateFormatter,
     required String khiTrong,
-    required Map<String, Transaction> payments,
+    required Map<String, TransactionEntity> payments,
   }) {
     // Mỗi tab là một `CustomScrollView` mở đầu bằng `SliverOverlapInjector` —
     // cặp với absorber quanh hàng tab ghim (xem `build`). `Builder` để lấy một
@@ -339,7 +339,7 @@ class _BillPageState extends State<BillPage> {
     Bill bill, {
     required DateTime now,
     required DateFormat dateFormatter,
-    required Map<String, Transaction> payments,
+    required Map<String, TransactionEntity> payments,
   }) {
     // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
     // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
@@ -578,8 +578,7 @@ class _BillPageState extends State<BillPage> {
   /// khoản chi. Dùng đúng bảng chi tiết của sổ để hai nơi không kể hai
   /// chuyện khác nhau về cùng một giao dịch. Xoá ở đây bị từ chối như ở sổ
   /// (khoản của hoá đơn) — đường đúng là nút Hoàn tác trên dòng.
-  void _moKhoanChi(BuildContext context, Transaction tx) {
-    final entity = TransactionEntity.fromDrift(tx);
+  void _moKhoanChi(BuildContext context, TransactionEntity entity) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

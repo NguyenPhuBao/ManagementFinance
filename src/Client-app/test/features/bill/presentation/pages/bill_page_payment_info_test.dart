@@ -6,6 +6,7 @@
 /// "Đã trả ngày…" và cho mở thẳng giao dịch từ hoá đơn.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -47,7 +48,8 @@ class _FixedBillRepository implements BillRepository {
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => payments;
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async =>
+      {for (final e in payments.entries) e.key: TransactionEntity.fromDrift(e.value)};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

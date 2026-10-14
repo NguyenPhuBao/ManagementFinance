@@ -10,6 +10,7 @@
 /// trang hoá đơn trống cho tới khi thoát ra vào lại.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +48,7 @@ class _SpyBillRepository implements BillRepository {
   }
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -84,9 +84,6 @@ const conChoKieu = <String, Set<String>>{
     'features/transaction/presentation/widgets/transaction_filter_bar.dart',
   },
   'Transaction': {
-    'features/bill/presentation/bloc/bill_state.dart',
-    'features/bill/presentation/pages/bill_detail_page.dart',
-    'features/bill/presentation/pages/bill_page.dart',
     'features/home/presentation/pages/home_page.dart',
   },
   'AppNotification': {

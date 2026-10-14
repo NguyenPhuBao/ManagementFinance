@@ -7,6 +7,7 @@
 /// gộp cả kỳ của tháng sau.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -52,7 +53,7 @@ class _FixedBillRepository implements BillRepository {
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   /// Luôn hỏng — để dựng được trạng thái `BillError` mà không cần CSDL.
   @override

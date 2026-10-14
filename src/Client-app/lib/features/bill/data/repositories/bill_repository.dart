@@ -1,3 +1,4 @@
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../../core/database/app_database.dart';
 
 /// Ném ra khi [BillRepository.payBill] được gọi trên một hoá đơn mà CSDL đã
@@ -100,7 +101,7 @@ abstract class BillRepository {
   ///
   /// Chỉ có với khoản trả ghi từ v16 trên chính máy này; hàng kéo về từ
   /// server vắng mặt và nơi gọi phải hiện "không biết" chứ không đoán.
-  Future<Map<String, Transaction>> paymentsOf(int idaccount);
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount);
   Future<void> addBill(BillsCompanion bill);
   Future<void> editBill(BillsCompanion bill);
   Future<void> deleteBill(String id);

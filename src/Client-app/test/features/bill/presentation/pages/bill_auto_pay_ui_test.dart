@@ -7,6 +7,7 @@
 /// dòng danh sách cho biết hoá đơn nào đang tự trả.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -56,7 +57,7 @@ class _GhiLaiRepository implements BillRepository {
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   @override
   Future<void> editBill(BillsCompanion bill) async => daSua = bill;

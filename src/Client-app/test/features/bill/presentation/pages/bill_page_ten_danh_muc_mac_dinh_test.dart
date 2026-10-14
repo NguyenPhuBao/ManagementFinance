@@ -10,6 +10,7 @@
 /// tên**. Bảng tra tên có một định nghĩa duy nhất: `CategoryDao.getBangTraTen`.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -49,7 +50,7 @@ class _FixedBillRepository implements BillRepository {
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
