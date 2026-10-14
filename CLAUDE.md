@@ -13,7 +13,7 @@
 3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
 4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
 
-**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-14-g91-g92-xong.md` (**G91 + G92 + G93 đóng** — `95ca2ccf`, `df06daa5` + commit G93 ngay sau, nghiệm thu máy ảo G92 đạt, G93 chỉ kiểm hồi quy (cần Basic hạ cấp), chưa push; nút Back form mở bằng `adb am start -d` là trang gốc — người dùng chốt để nguyên; dữ liệu máy ảo — `priority` ba mục tiêu và một lượt trích tự động 08:33 đang chờ đồng bộ). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
+**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-14-entity-hoa-don-ke-hoach.md` (**Entity Hoá đơn — G88 gạch 3 đợt 1/4: spec duyệt `f45e6f4f` + kế hoạch 7 task (gitignore) đã qua preflight, CHƯA thi công** — người dùng chọn bàn giao; mở phiên hỏi lối thi công. Sáng cùng ngày G91 + G92 + G93 đóng (`95ca2ccf`, `df06daa5`, `2437c935`). Chưa push. Kế hoạch lệch spec 5 chỗ — khối 🔧 cuối kế hoạch). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
 
 **Rồi tuỳ việc:**
 

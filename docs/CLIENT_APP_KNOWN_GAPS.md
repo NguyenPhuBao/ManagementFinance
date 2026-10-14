@@ -1869,6 +1869,11 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    dùng kiểu Drift với danh sách chờ chỉ-được-giảm. Đo 2026-10-11 (tệp trang / widget cầm hàng Drift): `Category` 18 ·
    `Wallet` 12 · `Bill` 9 · `Transaction` 5 · `AppNotification` 2 · `Goal` 1. Hướng B (bỏ 4 Entity, ~1.000 dòng) đã loại —
    ngược phân tầng. Bảng phụ chỉ dùng trong `data/` (phản hồi gợi ý, nhật ký xem, khoá chạy nền) không cần Entity.
+   📝 **2026-10-14 — đợt 1 (Hoá đơn): spec duyệt** `specs/2026-10-14-entity-hoa-don-design.md` (`f45e6f4f`) + kế hoạch 7 task
+   `plans/2026-10-14-entity-hoa-don.md` (gitignore), **chưa thi công** (người dùng chọn bàn giao). Chốt thêm trong brainstorm:
+   8 (+1 `reminder_scheduler`) tệp ngoài mảng cùng đổi; ratchet quét 25 nâng +1 ở ba tệp thông báo (về 0 ở gạch 5); test quét
+   **27** canh theo tên kiểu với danh sách chờ theo kiểu; runner về `data/services`; đo 2026-10-14: `bill/domain` 11/14 import
+   Drift, presentation cầm `Bill` 8 tệp.
 4. **37 dòng hạ tầng `core` import `features/`** (`grep -rnE "^import .*features/" lib/core` = 175; trừ điểm ghép 138 — DI
    82 · router 54 · `chay_nen` 2; đo 2026-10-10 sau đợt dọn vị trí tệp — trước đợt 172 = 136 + 36): `notification_rules` 10
    · `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · `sync_payload_normalizer` 2 · `noi_bo_nghe_ket_qua_day` 2

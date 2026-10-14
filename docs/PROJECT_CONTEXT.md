@@ -620,6 +620,9 @@ Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang, cộng một
 - ⚠️ Bẫy nghiệm thu: form mở bằng `am start -n … -d` là trang gốc — mũi tên *Quay lại* đứng yên. Không phải lỗi (app không khai deeplink); người dùng chốt để nguyên.
 - Máy ảo `FlowMoney_16G` (APK debug `c71c957d…`, tài khoản Premium, backend tắt) — chỉ kiểm hồi quy: mở lạnh `/goals/add` → form; logcat có `[NotificationScanner] Quét xong` rồi 30 s sau `[Premium] lamMoi hỏng … DioException` (tức `noiPhien` vẫn làm mới ở `AuthSuccess` dù tài khoản đã đặt sẵn); mở thường → Trang chủ. Lượt `am start` ngay sau `adb install` có lần bị nuốt (không tạo tiến trình, không exit-info) — chờ vài giây sau khi cài.
 - `flutter test` 7.039 → **7.047** (+9 skip; G91 +1, G92 +5, G93 +2), `flutter analyze` **20**.
+- **Cùng ngày, trưa — Entity Hoá đơn (G88 gạch 3, đợt 1/4): spec + kế hoạch xong, chưa thi công.** Spec
+  `specs/2026-10-14-entity-hoa-don-design.md` (người dùng duyệt 6 phần, `f45e6f4f`); kế hoạch 7 task theo đơn vị biên dịch
+  (gitignore), preflight xong. Người dùng chọn bàn giao thay vì thi công ngay — phiên sau hỏi lối (agent con / inline).
 
 ### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
 
