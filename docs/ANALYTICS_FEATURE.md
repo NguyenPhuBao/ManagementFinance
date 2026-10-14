@@ -1237,7 +1237,7 @@ chắn.
 Toàn bộ phép tính ở **`analytics/domain/du_bao_dong_tien.dart`** (hàm thuần
 `duBaoCua`); repository chỉ nối nguồn, widget chỉ vẽ.
 
-- **Kỳ tương lai của hoá đơn** mượn **`kyKeTiepCua(Bill)`** — hàm thuần **mới**
+- **Kỳ tương lai của hoá đơn** mượn **`kyKeTiepCua(BillEntity)`** — hàm thuần **mới**
   ở `features/bill/domain/bill_ky_ke_tiep.dart`, tách nguyên văn phép tính ngày
   khỏi `BillRepositoryImpl._nextPeriodOf`, và `_nextPeriodOf` **gọi lại** nó.
   Một định nghĩa, nên hàng thật sinh ra khi trả tiền không bao giờ lệch với kỳ

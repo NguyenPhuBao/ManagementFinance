@@ -828,8 +828,8 @@ Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentat
 `features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)). *(Sau đợt dọn vị trí tệp cùng ngày: 175 / 37 — khối 🗂️ trên.)*
 
 - ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai
-  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp (1–25 phủ **26** từ đợt dọn vị trí tệp; 1–26 phủ **27** từ C4), cộng **3** tệp cùng khuôn không đánh số, tổng **30**; bảng đủ ở mục 6
-  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **27** trở đi (26 là test quét C4, 25 là `vi_tri_tep_theo_luat_test`, 2026-10-10), và đếm lại bảng.
+  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp (1–25 phủ **26** từ đợt dọn vị trí tệp; 1–26 phủ **27** từ C4; 1–27 phủ **28** từ 2026-10-14), cộng **3** tệp cùng khuôn không đánh số, tổng **31** (đếm 2026-10-14); bảng đủ ở mục 6
+  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **28** trở đi (27 là `presentation_domain_khong_kieu_drift_test`, 2026-10-14; 26 là test quét C4, 25 là `vi_tri_tep_theo_luat_test`, 2026-10-10), và đếm lại bảng.
 - ⚠️ **Trang đọc ví phải viết trên một dòng** `sl<WalletRepository>().getActiveRows(…)` / `.getAllRows(` /
   `.watchAllRows(` — `wallet_picker_sources_test` nhận diện theo chuỗi; gán repository vào biến là lọt phép phân loại.
 - ⚠️ **Test dựng trang có đọc qua DI** phải gọi `dangKyNguonDocGia(db)` (`test/helpers/nguon_doc_gia.dart`); test AuthBloc

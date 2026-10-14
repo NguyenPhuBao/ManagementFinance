@@ -66,7 +66,9 @@ lib/features/bill/
 │   │                           # mảng (trước đó ở core/bill/); sync_engine
 │   │                           # import nó như bill_pay_status — một định
 │   │                           # nghĩa duy nhất
-│   ├── bill_draft.dart         # Giá trị form → BillsCompanion.
+│   ├── bill_draft.dart         # Giá trị form (Dart thuần, từ 2026-10-14 không
+│   │                           # còn import drift; companion dựng ở
+│   │                           # data/models/bill_draft_companion.dart).
 │   │                           # Tách khỏi widget để test được
 │   ├── bill_schedule.dart      # Hai trục chu kỳ + hai mốc ngày; suy ngược
 │   │                           # chế độ khi mở form Sửa
@@ -79,8 +81,8 @@ lib/features/bill/
 │   │                           # thẻ tổng — hàm thuần
 │   ├── bill_auto_pay.dart      # (06/09, v17) Quyết định thuần của tự động
 │   │                           # thanh toán: đến lượt?, trả bao nhiêu?, khoá kỳ
-│   │                           # (bill_auto_pay_runner.dart — bộ chạy — dời về
-│   │                           # data/services/ ngày 2026-10-14)
+│   │                           # (bộ chạy bill_auto_pay_runner.dart ở
+│   │                           # data/services/, dời 2026-10-14)
 │   ├── bill_chain.dart         # (06/09 tối) chuoiKyCua: chuỗi kỳ theo
 │   │                           # generatedFromBillId, mới nhất đứng đầu
 │   └── bill_note.dart          # kGhiChuTraHoaDon + ghiChuTraHoaDon(tên,
@@ -88,6 +90,15 @@ lib/features/bill/
 ├── data/
 │   ├── datasources/
 │   │   └── bill_local_datasource.dart
+│   ├── models/                 # (2026-10-14, G88 gạch 3)
+│   │   ├── bill_entity.dart    # BillEntity — kiểu DUY NHẤT từ repository trở
+│   │   │                       # lên (25 trường, đúng tên cột Drift)
+│   │   └── bill_draft_companion.dart # companionTaoTu / companionSuaTu:
+│   │                           # BillDraft → BillsCompanion (hàm công khai)
+│   ├── services/
+│   │   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
+│   │   └── bill_payment_conflict_resolver.dart # Cuộc đua hai máy (mục 6.8)
+│   ├── de_xuat_hoa_don_nguon.dart # Nguồn dữ liệu thẻ "Có vẻ là khoản lặp"
 │   └── repositories/
 │       ├── bill_repository.dart        # Interface + 4 ngoại lệ (mục 6)
 │       └── bill_repository_impl.dart   # payBill, undoPayment, _nextPeriodOf
@@ -158,7 +169,7 @@ Copilot chỉ có một mốc "đến hạn"; PocketSmith có *grace period* the
 (sau hạn vẫn chưa "quá hạn") — nên mặc định là **0** để ai không cần thì không
 phải nghĩ.
 
-⚠️ **Từ 2026-09-16 phép tính NGÀY của kỳ kế tiếp là `kyKeTiepCua(Bill)` ở
+⚠️ **Từ 2026-09-16 phép tính NGÀY của kỳ kế tiếp là `kyKeTiepCua(BillEntity)` ở
 `features/bill/domain/bill_ky_ke_tiep.dart` — định nghĩa duy nhất.**
 `_nextPeriodOf` **gọi lại** nó (và chỉ còn việc dựng `BillsCompanion`), còn khối
 **Dự báo 30 ngày tới** của trang Phân tích chiếu kỳ tương lai bằng đúng hàm ấy —
@@ -415,7 +426,7 @@ tháng Hai — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài l
 
 ### 6.2. `payBill({bill, walletId, idaccount, amount, occurredAt, note})`
 
-1. **Đọc lại hoá đơn từ CSDL** theo id. UI truyền vào ảnh chụp `Bill` nó đang
+1. **Đọc lại hoá đơn từ CSDL** theo id. UI truyền vào ảnh chụp `BillEntity` nó đang
    giữ; bấm nút hai lần thì lần thứ hai vẫn mang `isPaid = false`, nên không
    được tin tham số. CSDL nói đã trả (đọc cả hai cột) ⇒ `BillAlreadyPaidException`.
 2. **Số tiền thật của kỳ** `soTien = amount ?? current.amount`, kiểm `> 0`

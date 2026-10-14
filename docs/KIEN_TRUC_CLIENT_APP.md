@@ -111,7 +111,7 @@ trả **hàng Drift** (danh mục) — và từ 2026-10-10 có **lối chuyển 
   `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác, nên chính nó
   **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
   **175** dòng — điểm ghép **138** (DI 82 · router 54 · `chay_nen` 2), hạ tầng **37** (`notification_rules` 10 ·
-  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). 37 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Trước
+  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* 40 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Trước
   đợt: 172 = 136 + 36. DI +2 vì `TransactionRepositoryImpl` / `CategoryManagementRepositoryImpl` tách tệp `_impl`; router
   +1 và `current_account` −1 vì tệp ấy rời `core` về `features/auth/presentation/bloc/`; `sync_engine` 6 → 7 vì
   `bill_recurrence` về `features/bill/domain/`.)* Từ 2026-10-10 **test quét 25** (`vi_tri_tep_theo_luat_test`) canh:
