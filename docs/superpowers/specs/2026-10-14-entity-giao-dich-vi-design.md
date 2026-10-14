@@ -259,7 +259,7 @@ vào `core` — ba số ấy về 0 ở gạch 5."*
 | Quét 23 (≤ 1.200 dòng) | ✓ | lớn nhất 1.132 (`them_giao_dich_cubit`, không thêm dòng) |
 | Quét 25 (vị trí tệp, soi gương test) | ✓ | hai test đổi tên ở cùng thư mục; `wallet_entity_test` ở `test/features/wallet/data/models/` |
 | Quét 2 (nguồn ví) | ✓ mở rộng | +6 phân loại; `laBoChonVi` giữ 5 tệp |
-| G88 gạch 3 | **tiến** | Hoá đơn, Ví, Giao dịch thống nhất (Entity là kiểu duy nhất từ repository trở lên), cộng Mục tiêu, Ngân sách vốn đã sạch → 5/5 mảng có Entity đã thống nhất; còn Danh mục → Thông báo (chưa Entity) |
+| G88 gạch 3 | **tiến** | Hoá đơn, Ví, Giao dịch thống nhất (Entity là kiểu duy nhất từ repository trở lên, trừ `goal_auto_deposit_runner` và `watchGoalTransactions` — mục 11); Mục tiêu, Ngân sách ngoài lộ trình, chưa đo theo định nghĩa; còn Danh mục → Thông báo (chưa Entity) |
 | G88 gạch 4 (`core` → `features`) | 40 → 43 tạm | gạch 5 trả |
 
 ## 10. Kiểm thử và nghiệm thu
@@ -303,14 +303,18 @@ lib` chỉ còn `CategoryManagementRepository`.
 - `analytics_repository_impl` đọc `db.transactionDao` / `db.walletDao` / `db.billDao` thẳng — mảng Phân tích, chưa có lịch.
 - `TransactionEntity` vẫn không mang `status` / `provider` / `bankTranId` — không chỗ đổi kiểu nào đọc (đo từng tệp); mở
   rộng khi một chỗ đọc thật cần, không mở trước (đợt này mở đúng hai trường có chỗ đọc thật — 4.0).
-- Lối `…Rows` của Danh mục (3) + `TaiPhanBoNguon.ghiPhanHoi` — đợt Danh mục.
+- Lối `…Rows` của Danh mục (3) — đợt Danh mục. `TaiPhanBoNguon.ghiPhanHoi` — chưa có đợt (mảng Ngân sách / ai_edge; bảng phụ phản hồi AI, `budget/data/tai_phan_bo_nguon.dart`).
+- `GoalRepository.watchGoalTransactions` (`goal_repository.dart:214`, impl `:665`) khai `Stream<dynamic>` nhưng trả `transactionDao.watchByGoal` —
+  hàng Drift `Transaction` — lên `goal_detail_page.dart` (≈ :589, `_doiSangKhoan` đọc động `note` / `date` / `amount` / `walletId`) và
+  `khoi_lich_su_muc_tieu.dart` (`List<dynamic> txs` :38, :123). Lối chuyển tiếp thứ 5 bị giấu, có từ trước đợt (≈ 2026-08-12); quét 27 mù vì
+  kiểu là `dynamic`. Phát hiện ở lượt soát cuối 2026-10-14; người dùng chốt ghi lại, sửa ở đợt sau.
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift.
 
 ## 12. Tài liệu cập nhật khi xong
 
 Grep theo từ khoá quyết định cũ trên `docs/` + `CLAUDE.md` + chú thích `lib/`: `getActiveRows|getAllRows|watchAllRows|getRowById|lối chuyển
 tiếp|10 lối|chính mảng`. Dự kiến: `docs/KIEN_TRUC_CLIENT_APP.md` (mục 4 bảng presentation bỏ vế Ví / Giao dịch, *"10 lối"* → 4; mục 6
-mô tả quét 27 — phạm vi `core`; mục 9 *5/5 mảng có Entity đã thống nhất*), `docs/CLIENT_APP_KNOWN_GAPS.md` (G88 gạch 3 đợt 2 đóng + số đo; gạch 4 số
+mô tả quét 27 — phạm vi `core`; mục 9 *Entity 5/14; thống nhất xong Hoá đơn, Ví, Giao dịch; Mục tiêu / Ngân sách còn nợ*), `docs/CLIENT_APP_KNOWN_GAPS.md` (G88 gạch 3 đợt 2 đóng + số đo; gạch 4 số
 **43** + câu luật mới; bảng tóm tắt; dòng *Cập nhật*), `docs/PROJECT_CONTEXT.md` (mục 14 khối mới; *"10 lối"*; mốc test), `CLAUDE.md`
 (hàng *presentation*: 4 lối + chuỗi một dòng `getActive(` / `getAll(` / `watchAll(`; hàng *quản lý ví* ④ *"`getActive` cho bộ chọn"*;
 hàng *hoá đơn* câu nợ `de_xuat_hoa_don` đã trả; mốc test; dòng ⭐), spec đợt 1 (mục 5 / 11 ghi nợ đã trả), `docs/NOTIFICATION_FEATURE.md`
