@@ -269,7 +269,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 giới nền tảng thay được bằng bản giả, nên **6.681** ca test (đo 2026-10-11 sau tách trang Thêm giao dịch, +9 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
-**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift ở các mảng chưa có Entity; Entity 5/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14); Mục tiêu / Ngân sách ngoài lộ trình, còn nợ (mục 2 / G88); Danh mục → Thông báo chưa có Entity. `SyncEngine` 2.166 dòng một tệp.
+**Nhược điểm còn lại.** Giao diện vẫn cầm kiểu hàng Drift ở các mảng chưa có Entity; Entity 5/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14); Mục tiêu / Ngân sách ngoài lộ trình, còn nợ (mục 1 / G88); Danh mục → Thông báo chưa có Entity. `SyncEngine` 2.166 dòng một tệp.
 Không còn tệp `presentation` nào trên 1.200 dòng (bốn trang cuối — cài đặt thông báo, thêm mục tiêu, chi tiết mục tiêu, xem trước báo cáo — tách xong 2026-10-13, G88 gạch 2; trang lớn nhất trong bốn trang đó nay 866 dòng). Luật thông báo nằm trong `core`. Không logger,
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
@@ -296,5 +296,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
 4. **Con số.** 14 mảng, 549 tệp, 29 test quét, 6.681 ca test, CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Mục tiêu / Ngân sách ngoài lộ trình và còn nợ (xem mục 2 / G88), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 5/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Mục tiêu / Ngân sách ngoài lộ trình và còn nợ (xem mục 1 / G88), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
    nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.
