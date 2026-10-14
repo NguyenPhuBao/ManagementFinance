@@ -49,13 +49,15 @@ const conCho = <String>{};
 /// Đo gốc 2026-10-10. 12 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
 const conChoCoreImport = <String, int>{
   // 11 từ 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.
-  'lib/core/notification/notification_rules.dart': 11,
+  // 12 từ 2026-10-14 G88 gạch 3 đợt 2: Wallet (Drift, không tính) → WalletEntity (features/wallet/data/models, tính); về 0 ở gạch 5.
+  'lib/core/notification/notification_rules.dart': 12,
   // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
   // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
-  // Luật tăng (2026-10-14): chỉ khi thay một kiểu Drift bằng Entity của chính mảng tệp ấy ĐÃ import; không bao giờ vì mảng mới.
+  // Luật tăng (2026-10-14, viết lại cùng ngày ở đợt 2): tăng CHỈ khi thay một kiểu hàng Drift bằng Entity trong lộ trình
+  // G88 gạch 3; không bao giờ vì ghép một mảng mới vào core. Ba tệp thông báo về 0 ở gạch 5.
   'lib/core/sync/sync_engine.dart': 7,
-  // 6 từ 2026-10-14 G88 gạch 3 — như notification_rules.
-  'lib/core/notification/notification_scanner.dart': 6,
+  // 6 từ 2026-10-14 G88 gạch 3 — như notification_rules. 7 từ đợt 2 (WalletEntity).
+  'lib/core/notification/notification_scanner.dart': 7,
   // 4 từ 2026-10-14 G88 gạch 3 — như notification_rules.
   'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,

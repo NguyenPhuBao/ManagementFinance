@@ -1,10 +1,11 @@
 /// Test quét `lib/` thứ **27** (spec Entity Hoá đơn 2026-10-14, mục 8): giao diện và domain không cầm kiểu hàng Drift.
 ///
-/// Hai luật. (1) `presentation/` + `shared/` không nhắc tên kiểu hàng Drift — [kieuDrift] và companion tương ứng — so
+/// Hai luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả ba điểm ghép DI / router / nen, đo 2026-10-14 = 0) không nhắc tên kiểu hàng Drift — [kieuDrift] và companion tương ứng — so
 /// trên dòng đã bỏ chú thích, vì docstring vùng này hay nhắc *"đối tượng `Bill`"*. (2) `features/*/domain/` không import
-/// `core/database` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). Tệp còn vi phạm nằm trong danh sách chờ
+/// `core/database` hay `package:drift` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). Tệp còn vi phạm nằm trong danh sách chờ
 /// chỉ-được-giảm ([conChoKieu] theo kiểu, [conChoDomain]); sạch mà quên rút thì đỏ (khuôn quét 22 / 25). Kiểu KHÔNG có
 /// khoá trong [conChoKieu] là kiểu đã thống nhất Entity — không chỗ chờ, nhắc tới là đỏ ngay.
+/// Mở rộng 2026-10-14 (spec Entity Giao dịch + Ví mục 8).
 library;
 
 import 'dart:io';
@@ -50,6 +51,8 @@ const conChoKieu = <String, Set<String>>{
     'features/transaction/presentation/pages/transaction_page.dart',
     'features/transaction/presentation/widgets/them_giao_dich/bang_chon_vi.dart',
     'features/transaction/presentation/widgets/transaction_filter_bar.dart',
+    'core/notification/notification_rules.dart',
+    'core/notification/notification_scanner.dart',
   },
   'Category': {
     'features/bill/presentation/pages/bill_add_page.dart',
@@ -75,10 +78,18 @@ const conChoKieu = <String, Set<String>>{
   },
   'Transaction': {
     'features/home/presentation/pages/home_page.dart',
+    'core/notification/de_xuat_thong_bao_nguon.dart',
   },
   'AppNotification': {
     'features/notification/presentation/pages/notification_center_page.dart',
     'features/notification/presentation/widgets/notification_panel.dart',
+    'core/notification/hoc_gio_thong_bao.dart',
+    'core/notification/nhap_bien_dong.dart',
+    'core/notification/nhap_bien_lai.dart',
+    'core/notification/nhap_phien_ngan_hang.dart',
+    'core/notification/notification_rules.dart',
+    'core/notification/notification_scanner.dart',
+    'core/notification/thong_bao_nguon.dart',
   },
 };
 
@@ -105,9 +116,10 @@ String boChuThich(String d) {
   return i < 0 ? d : d.substring(0, i);
 }
 
-/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` — nhưng KHÔNG `BillBloc`, `BillEntity`, `BillRepository`.
+/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` — nhưng KHÔNG `BillBloc`,
+/// `BillEntity`, `BillRepository`, `BillEntity.fromDrift(`. (`>[` / `>(` đã bắt qua `>`.)
 RegExp mauKieu(String ten) =>
-    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\))');
+    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson)');
 
 /// Companion còn bắt cả dựng (`BillsCompanion(` / `.insert(`).
 RegExp mauCompanion(String ten) =>
@@ -133,6 +145,9 @@ void main() {
     expect(
         m.hasMatch('void moBang(BuildContext context, Bill bill) {'), isTrue);
     expect(m.hasMatch('bill: s.extra as Bill?,'), isTrue);
+    expect(m.hasMatch('final b = x as Bill;'), isTrue);
+    expect(m.hasMatch('Bill.fromJson(json)'), isTrue);
+    expect(m.hasMatch('BillEntity.fromDrift(row)'), isFalse);
     expect(m.hasMatch('class BillBloc extends Bloc<BillEvent, BillState> {'),
         isFalse);
     expect(m.hasMatch('final BillEntity bill;'), isFalse);
@@ -150,13 +165,24 @@ void main() {
       () {
     final thay = <String, Set<String>>{};
     var soTep = 0;
-    for (final goc in [Directory('lib/features'), Directory('lib/shared')]) {
+    var soTepCore = 0;
+    for (final goc in [
+      Directory('lib/features'),
+      Directory('lib/shared'),
+      Directory('lib/core'),
+    ]) {
       for (final f in _dart(goc)) {
         final duong = _duong(f);
         if (duong.startsWith('features/') &&
             !duong.contains('/presentation/')) {
           continue;
         }
+        // Hạ tầng CSDL và đồng bộ cầm hàng Drift là đúng vai; mọi tệp core khác (kể cả điểm ghép) không.
+        if (duong.startsWith('core/database/') ||
+            duong.startsWith('core/sync/')) {
+          continue;
+        }
+        if (duong.startsWith('core/')) soTepCore++;
         soTep++;
         final dong = f.readAsLinesSync().map(boChuThich).toList();
         for (final k in kieuDrift) {
@@ -171,6 +197,8 @@ void main() {
     expect(soTep, greaterThan(100),
         reason:
             'Phép quét phải thấy tệp presentation — đang quét sai thư mục.');
+    expect(soTepCore, greaterThan(20),
+        reason: 'Phép quét phải thấy lib/core ngoài database/sync — đang bỏ sót core.');
 
     final loi = <String>[];
     for (final k in kieuDrift) {
@@ -193,22 +221,22 @@ void main() {
   });
 
   test(
-      'luật 2: features/*/domain/ không import core/database, trừ danh sách chờ (chỉ được giảm)',
+      'luật 2: features/*/domain/ không import core/database hay package:drift, trừ danh sách chờ (chỉ được giảm)',
       () {
     final thay = <String>{};
     for (final f in _dart(Directory('lib/features'))) {
       final duong = _duong(f);
       if (!duong.contains('/domain/')) continue;
-      if (f
-          .readAsLinesSync()
-          .any((d) => d.startsWith('import ') && d.contains('core/database'))) {
+      if (f.readAsLinesSync().any((d) =>
+          d.startsWith('import ') &&
+          (d.contains('core/database') || d.contains('package:drift')))) {
         thay.add(duong);
       }
     }
     final loi = <String>[
       for (final t in thay)
         if (!conChoDomain.contains(t))
-          '$t: domain import core/database — nhận Entity từ data/models/ (mục 4 kiến trúc).',
+          '$t: domain import core/database / package:drift — nhận Entity từ data/models/ (mục 4 kiến trúc).',
       for (final t in conChoDomain)
         if (!thay.contains(t)) '$t: đã sạch — rút khỏi conChoDomain.',
     ];
