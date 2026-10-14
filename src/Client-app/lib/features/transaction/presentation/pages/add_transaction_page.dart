@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../category/domain/category_classify.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/kho_bien_lai.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
@@ -67,7 +68,7 @@ class AddTransactionPage extends StatefulWidget {
   /// `null` và suy từ phiên đăng nhập; xem [_AddTransactionPageState._accountId].
   final int? idaccount;
   final CategoryManagementRepository? categoryRepository;
-  final List<Wallet>? wallets;
+  final List<WalletEntity>? wallets;
   /// Bảng `categoryId → walletId` học từ lịch sử (`domain/vi_hay_dung.dart`).
   ///
   /// `null` → trang tự đọc từ SQLite. Ca test tiêm thẳng bảng để khỏi dựng CSDL,
@@ -122,7 +123,7 @@ class AddTransactionPage extends StatefulWidget {
   /// Xoá cứng hàng loại 20 theo `dedupeKey` (D1). `null` → `ThongBaoNguon.xoaCung`.
   final Future<void> Function(int idaccount, String khoa)? xoaBienDong;
 
-  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionRepository.getAllRows`.
+  /// Sổ giao dịch để nhắc *"có thể bạn đã ghi khoản này"* (D1). `null` → `TransactionRepository.getAll`.
   final Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo;
 
   /// Các hàng biến động đang chờ của tài khoản — căn cứ luật cặp của gợi ý Chuyển khoản (spec 2026-09-30). `null` →

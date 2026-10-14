@@ -5,7 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../core/database/app_database.dart';
+import '../../../../wallet/data/models/wallet_entity.dart';
 import '../../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../core/utils/gioi_han_do_dai.dart';
@@ -16,15 +16,15 @@ import '../../../data/models/goal_entity.dart';
 void moPhieuRutTien({
   required BuildContext context,
   required GoalEntity Function() layMucTieu,
-  required List<Wallet> wallets,
-  required Wallet viTichLuy,
+  required List<WalletEntity> wallets,
+  required WalletEntity viTichLuy,
   required String idNhanMacDinh,
-  required Future<void> Function(BuildContext ctx, double soTien, Wallet viNhan)
+  required Future<void> Function(BuildContext ctx, double soTien, WalletEntity viNhan)
       onXacNhan,
 }) {
   final amountController = TextEditingController();
   final viNhanKhaDung = wallets.where((w) => w.id != viTichLuy.id).toList();
-  Wallet selectedTargetWallet =
+  WalletEntity selectedTargetWallet =
       viNhanKhaDung.firstWhere((w) => w.id == idNhanMacDinh);
 
   showModalBottomSheet(
@@ -110,12 +110,12 @@ void moPhieuRutTien({
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
-                child: DropdownButton<Wallet>(
+                child: DropdownButton<WalletEntity>(
                   value: selectedTargetWallet,
                   isExpanded: true,
                   icon: const Icon(Icons.expand_more, color: AppColors.primary),
                   items: viNhanKhaDung
-                      .map((w) => DropdownMenuItem<Wallet>(
+                      .map((w) => DropdownMenuItem<WalletEntity>(
                             value: w,
                             child: Text(
                               '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',

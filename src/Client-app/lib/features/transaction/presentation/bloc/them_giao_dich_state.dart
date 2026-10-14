@@ -6,6 +6,7 @@
 library;
 
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../category/domain/de_xuat_tu_khoa.dart';
@@ -73,10 +74,10 @@ class ThemGiaoDichState {
   final String ghiChu;
 
   /// Ví đang dùng (bộ chọn ví — không ví lưu trữ).
-  final List<Wallet> vi;
+  final List<WalletEntity> vi;
   final bool dangNapVi;
-  final Wallet? viNguon;
-  final Wallet? viDich;
+  final WalletEntity? viNguon;
+  final WalletEntity? viDich;
   final Category? danhMuc;
 
   /// Chiều tiền khi danh mục là vay/nợ (`'chi'` | `'thu'`), `null` với mọi danh mục khác.
@@ -142,7 +143,7 @@ class ThemGiaoDichState {
     bool? hienBanPhimSo,
     DateTime? ngay,
     String? ghiChu,
-    List<Wallet>? vi,
+    List<WalletEntity>? vi,
     bool? dangNapVi,
     Object? viNguon = _giu,
     Object? viDich = _giu,
@@ -173,8 +174,8 @@ class ThemGiaoDichState {
         ghiChu: ghiChu ?? this.ghiChu,
         vi: vi ?? this.vi,
         dangNapVi: dangNapVi ?? this.dangNapVi,
-        viNguon: identical(viNguon, _giu) ? this.viNguon : viNguon as Wallet?,
-        viDich: identical(viDich, _giu) ? this.viDich : viDich as Wallet?,
+        viNguon: identical(viNguon, _giu) ? this.viNguon : viNguon as WalletEntity?,
+        viDich: identical(viDich, _giu) ? this.viDich : viDich as WalletEntity?,
         danhMuc: identical(danhMuc, _giu) ? this.danhMuc : danhMuc as Category?,
         chieuNo: identical(chieuNo, _giu) ? this.chieuNo : chieuNo as String?,
         goiY: identical(goiY, _giu) ? this.goiY : goiY as CategorySuggestion?,

@@ -11,6 +11,7 @@ import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
 Category makeCategory({
   required String id,
@@ -40,12 +41,12 @@ Category makeCategory({
       updatedAt: updatedAt ?? DateTime(2026, 8, 21),
     );
 
-Wallet makeWallet({
+WalletEntity makeWallet({
   String id = 'cash',
   String name = 'Tiền mặt',
   double balance = 100000,
 }) =>
-    Wallet(
+    WalletEntity(
       id: id,
       idaccount: 1,
       name: name,
@@ -56,14 +57,10 @@ Wallet makeWallet({
       colour: '#10B981',
       isDefault: true,
       isDeleted: false,
-      // Hai trường bắt buộc được thêm ở schema v5/v6 (includeInTotal, status)
-      // — thiếu chúng thì cả file test này không biên dịch được.
       includeInTotal: true,
       status: 'active',
       syncStatus: 'pending',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 8, 21),
-    
       allowNegative: false,
       biTuChoiTrungTen: false,
     );

@@ -5,7 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../core/database/app_database.dart';
+import '../../../../wallet/data/models/wallet_entity.dart';
 import '../../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../core/utils/gioi_han_do_dai.dart';
@@ -17,17 +17,17 @@ import '../../../domain/goal_deposit_warning.dart';
 void moPhieuNapTien({
   required BuildContext context,
   required GoalEntity Function() layMucTieu,
-  required List<Wallet> wallets,
-  required Wallet viNhan,
+  required List<WalletEntity> wallets,
+  required WalletEntity viNhan,
   required String idNguonMacDinh,
   required Future<void> Function(
-          BuildContext ctx, double soTien, Wallet viNguon)
+          BuildContext ctx, double soTien, WalletEntity viNguon)
       onXacNhan,
 }) {
   final amountController = TextEditingController();
   // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
   final viNguonKhaDung = wallets.where((w) => w.id != viNhan.id).toList();
-  Wallet selectedSourceWallet =
+  WalletEntity selectedSourceWallet =
       viNguonKhaDung.firstWhere((w) => w.id == idNguonMacDinh);
 
   showModalBottomSheet(
@@ -127,13 +127,13 @@ void moPhieuNapTien({
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<Wallet>(
+                    child: DropdownButton<WalletEntity>(
                       value: selectedSourceWallet,
                       isExpanded: true,
                       icon: const Icon(Icons.expand_more,
                           color: AppColors.primary),
                       items: viNguonKhaDung.map((w) {
-                        return DropdownMenuItem<Wallet>(
+                        return DropdownMenuItem<WalletEntity>(
                           value: w,
                           child: Text(
                             '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',

@@ -83,7 +83,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     if (accountId != null) {
       tatCa = await sl<BillRepository>().getBills(accountId);
       khoanChi = await sl<BillRepository>().paymentsOf(accountId);
-      final vi = await sl<WalletRepository>().getAllRows(accountId);
+      final vi = await sl<WalletRepository>().getAll(accountId);
       // Bảng TRA TÊN, không phải danh sách để chọn: giữ hàng mặc định toàn cục
       // (idaccount = 0) và hàng đã xoá mềm — cùng lỗi G41, lộ ở hoá đơn ngày
       // 2026-09-19 (E8): `getAll` làm 2/3 thẻ hiện "Danh mục đã xoá".

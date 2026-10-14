@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/hang_nut_nhanh.dart';
@@ -109,10 +110,10 @@ class HomePage extends StatelessWidget {
                   }
 
                   final walletStream = (currentUserId != null)
-                      ? sl<WalletRepository>().watchAllRows(currentUserId)
-                      : Stream<List<Wallet>>.value([]);
+                      ? sl<WalletRepository>().watchAll(currentUserId)
+                      : Stream<List<WalletEntity>>.value([]);
 
-                  return StreamBuilder<List<Wallet>>(
+                  return StreamBuilder<List<WalletEntity>>(
                     stream: walletStream,
                     builder: (context, snapshot) {
                       final wallets = snapshot.data ?? [];
@@ -154,8 +155,8 @@ class HomePage extends StatelessWidget {
                   // Tên ví/danh mục cho "Giao dịch gần đây" — cùng nội dung
                   // dòng với sổ giao dịch (`buildTransactionRowContent`).
                   final walletStream = (currentUserId != null)
-                      ? sl<WalletRepository>().watchAllRows(currentUserId)
-                      : Stream<List<Wallet>>.value(const []);
+                      ? sl<WalletRepository>().watchAll(currentUserId)
+                      : Stream<List<WalletEntity>>.value(const []);
                   final categoryStream = (currentUserId != null)
                       ? sl<CategoryManagementRepository>().watchAllRows(accountId: currentUserId)
                       : Stream<List<Category>>.value(const []);
@@ -182,7 +183,7 @@ class HomePage extends StatelessWidget {
                         children: [
                           TheSoLieuThang(thu: thang.thu, chi: thang.chi),
                           const SizedBox(height: 32),
-                          StreamBuilder<List<Wallet>>(
+                          StreamBuilder<List<WalletEntity>>(
                             stream: walletStream,
                             builder: (_, wallets) =>
                                 StreamBuilder<List<Category>>(
@@ -567,7 +568,7 @@ class HomePage extends StatelessWidget {
   /// nào được cộng vào tổng". Bản trước là `fold` trần trên mọi ví (cộng cả ví
   /// đã tắt "Tính vào tổng tài sản"), lệch với màn Quản lý ví — im lặng.
   /// Tách thành hàm vì thẻ tài sản và khối Nhận xét cùng đọc nó.
-  static double _tongTaiSan(List<Wallet> wallets) => wallets
+  static double _tongTaiSan(List<WalletEntity> wallets) => wallets
       .where((w) => viTinhVaoTong(
           includeInTotal: w.includeInTotal, status: w.status))
       .fold<double>(0.0, (sum, w) => sum + w.balance);
@@ -587,14 +588,14 @@ class HomePage extends StatelessWidget {
         ? sl<TransactionRepository>().watchAll(idaccount)
         : Stream<List<TransactionEntity>>.value(const []);
     final walletStream = idaccount != null
-        ? sl<WalletRepository>().watchAllRows(idaccount)
-        : Stream<List<Wallet>>.value(const []);
+        ? sl<WalletRepository>().watchAll(idaccount)
+        : Stream<List<WalletEntity>>.value(const []);
     final budgetStream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)
         : Stream<List<BudgetView>>.value(const []);
     return StreamBuilder<List<TransactionEntity>>(
       stream: txStream,
-      builder: (_, tx) => StreamBuilder<List<Wallet>>(
+      builder: (_, tx) => StreamBuilder<List<WalletEntity>>(
         stream: walletStream,
         builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
           stream: budgetStream,

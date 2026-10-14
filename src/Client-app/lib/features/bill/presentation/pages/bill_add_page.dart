@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -61,8 +62,8 @@ class _BillAddPageState extends State<BillAddPage> {
   /// dựa trên một lựa chọn người dùng chưa từng đưa ra.
   bool _autoPayEnabled = false;
 
-  List<Wallet> _wallets = [];
-  Wallet? _selectedWallet;
+  List<WalletEntity> _wallets = [];
+  WalletEntity? _selectedWallet;
 
   List<Category> _categories = [];
   Category? _selectedCategory;
@@ -102,8 +103,8 @@ class _BillAddPageState extends State<BillAddPage> {
     // khoản khác từng đăng nhập trên cùng máy — và hoá đơn tạo ra sẽ trỏ vào
     // một ví không thuộc về mình.
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await sl<WalletRepository>().getActiveRows(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
     // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi'. Chỉ danh mục LÁ — hàng
     // nhóm không chọn được, giống màn Thêm giao dịch (người dùng chốt 2026-10-10).
     final categories = accountId == null
@@ -626,21 +627,21 @@ class _BillAddPageState extends State<BillAddPage> {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<Wallet>(
+              child: DropdownButton<WalletEntity>(
                 value: _selectedWallet,
                 icon: const Icon(Icons.expand_more, color: AppColors.outline),
                 isExpanded: true,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
                 dropdownColor: Colors.white,
-                onChanged: (Wallet? newValue) {
+                onChanged: (WalletEntity? newValue) {
                   if (newValue != null) {
                     setState(() {
                       _selectedWallet = newValue;
                     });
                   }
                 },
-                items: _wallets.map<DropdownMenuItem<Wallet>>((Wallet wallet) {
-                  return DropdownMenuItem<Wallet>(
+                items: _wallets.map<DropdownMenuItem<WalletEntity>>((WalletEntity wallet) {
+                  return DropdownMenuItem<WalletEntity>(
                     value: wallet,
                     child: Text(
                         '${wallet.name} - ${CurrencyFormatter.format(wallet.balance)}'),

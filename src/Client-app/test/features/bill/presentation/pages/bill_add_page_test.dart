@@ -13,6 +13,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -300,7 +301,7 @@ void main() {
     }
 
     String? viDangChon(WidgetTester tester) =>
-        tester.widget<DropdownButton<Wallet>>(find.byType(DropdownButton<Wallet>)).value?.id;
+        tester.widget<DropdownButton<WalletEntity>>(find.byType(DropdownButton<WalletEntity>)).value?.id;
     String? danhMucDangChon(WidgetTester tester) =>
         tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>)).value?.id;
     final oTen = find.byWidgetPredicate(

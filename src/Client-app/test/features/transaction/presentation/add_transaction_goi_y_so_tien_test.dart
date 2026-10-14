@@ -7,6 +7,7 @@
 library;
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
@@ -150,7 +151,7 @@ void main() {
   Widget app({
     bool coMoHinhSoTien = true,
     List<MauSoTien>? mauSoTien,
-    List<Wallet>? wallets,
+    List<WalletEntity>? wallets,
     BoPhanLoaiGhiChu? boPhanLoai,
     Map<String, List<String>> keywords = const {},
     EditTransactionArgs? initial,

@@ -2,7 +2,7 @@
 /// Hàm thuần, chỉ luật: ô nào không đọc được thì `null` và form GIỮ NGUYÊN ô ấy — không bao giờ bịa số.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -197,7 +197,7 @@ void main() {
     final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
     final chinh = makeWallet(id: 'w-cash', name: 'Ví chính');
     final mb = makeWallet(id: 'w-mb', name: 'MB').copyWith(type: 'bank');
-    KetQuaDocCau docVi(String cau, List<Wallet> vi) =>
+    KetQuaDocCau docVi(String cau, List<WalletEntity> vi) =>
         docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: const []);
 
     test('tên ví nêu trong câu → ví ấy; ghi chú bỏ "ví / bằng / bằng ví" + tên', () {
@@ -247,7 +247,7 @@ void main() {
       ...mau('luong thang', 'c-luong', 3),
       ...mau('me gui', 'c-thu', 3),
     ]);
-    KetQuaDocCau docDm(String cau, {List<Wallet> vi = const [], BoPhanLoaiGhiChu? m}) =>
+    KetQuaDocCau docDm(String cau, {List<WalletEntity> vi = const [], BoPhanLoaiGhiChu? m}) =>
         docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: chonDuoc, mo: m);
 
     test('tên danh mục nêu trong câu → danh mục ấy; không phải B1; ghi chú GIỮ tên', () {
@@ -670,7 +670,7 @@ void main() {
     final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
     final an = makeCategory(id: 'c-an', name: 'Ăn uống');
     final vi = [tienMat, test_, tietKiem, muaNha, tcb];
-    KetQuaDocCau cv(String cau, {KetQuaAi? ai, List<Wallet>? dsVi}) =>
+    KetQuaDocCau cv(String cau, {KetQuaAi? ai, List<WalletEntity>? dsVi}) =>
         docCauGiaoDich(cau, now: now, vi: dsVi ?? vi, chonDuoc: [an], ai: ai);
 
     test('⭐ "chuyển 500k từ tiền mặt sang tiết kiệm" → chuyển ví Tiền mặt → Tiết kiệm, không danh mục, ghi chú rỗng', () {

@@ -1,4 +1,5 @@
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -55,7 +56,7 @@ void main() {
   Widget app({
     required FakeCategoryRepository categoryRepository,
     required FakeTransactionRepository transactionRepository,
-    List<Wallet>? wallets,
+    List<WalletEntity>? wallets,
     EditTransactionArgs? initial,
   }) {
     final bloc = TransactionBloc(transactionRepository: transactionRepository);

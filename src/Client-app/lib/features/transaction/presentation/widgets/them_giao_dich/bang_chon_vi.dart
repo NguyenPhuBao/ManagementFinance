@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../core/database/app_database.dart';
+import '../../../../wallet/data/models/wallet_entity.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../wallet/domain/wallet_type.dart';
@@ -12,9 +12,9 @@ import '../../../../wallet/domain/wallet_type.dart';
 void moBangChonVi(
   BuildContext context, {
   required bool isDestination,
-  required List<Wallet> wallets,
+  required List<WalletEntity> wallets,
   required String? idDangChon,
-  required ValueChanged<Wallet> onChon,
+  required ValueChanged<WalletEntity> onChon,
 }) {
   // `isScrollControlled` + danh sách ví trong `Flexible` / `SingleChildScrollView`: bảng cao theo số ví và CUỘN khi
   // nhiều ví hơn chỗ trống. Bản cũ là `Column` không cuộn trong trần 9/16 màn — đo trên OnePlus 13R (2026-09-30,

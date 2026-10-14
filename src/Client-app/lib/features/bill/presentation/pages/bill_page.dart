@@ -87,7 +87,7 @@ class _BillPageState extends State<BillPage> {
   /// và quay lại trang này là nạp lại. Đổi lấy: không đăng ký nào phải huỷ,
   /// nên không có `dispose` nào để quên.
   Future<void> _napTenGoi(int accountId) async {
-    final vi = await sl<WalletRepository>().getAllRows(accountId);
+    final vi = await sl<WalletRepository>().getAll(accountId);
     // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
     final dm = await sl<CategoryManagementRepository>().loadBangTraTen(accountId: accountId);
     if (!mounted) return;

@@ -3,6 +3,7 @@
 library;
 
 import 'dart:async';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -29,7 +30,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
     this.nganSach,
   }) : lichSu = lichSu ?? (viHayDung: const {}, boPhanLoai: null, boSoTien: null, mauDeXuat: null);
 
-  List<Wallet> vi;
+  List<WalletEntity> vi;
   LichSuHoc lichSu;
   List<Category> danhMuc;
   Map<String, List<String>> bangTuKhoa;
@@ -56,7 +57,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   int soLanDocViTheoNguon = 0;
 
   @override
-  FutureOr<List<Wallet>> napViDangDung(int? idaccount) => idaccount == null ? const [] : vi;
+  FutureOr<List<WalletEntity>> napViDangDung(int? idaccount) => idaccount == null ? const [] : vi;
   @override
   FutureOr<LichSuHoc> napLichSu(int? idaccount, {String? dangSua}) => lichSu;
   @override

@@ -15,6 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../budget/data/models/budget_entity.dart';
@@ -156,9 +157,9 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   Future<void> _napVi() async {
     final r = _nguon.napViDangDung(_taiKhoan());
-    final ds = r is List<Wallet> ? r : await r;
+    final ds = r is List<WalletEntity> ? r : await r;
     if (isClosed) return;
-    final chon = chonViChonSan<Wallet>(ds, laMacDinh: (w) => w.isDefault);
+    final chon = chonViChonSan<WalletEntity>(ds, laMacDinh: (w) => w.isDefault);
     var nguon = chon.nguon;
     var dich = chon.dich;
     // Ở chế độ sửa, ví của giao dịch phải thắng ví đầu danh sách.
@@ -181,7 +182,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _mauDeXuat = ls.mauDeXuat;
   }
 
-  static Wallet? _timVi(List<Wallet> ds, String? id) {
+  static WalletEntity? _timVi(List<WalletEntity> ds, String? id) {
     if (id == null) return null;
     for (final w in ds) {
       if (w.id == id) return w;
@@ -253,21 +254,21 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Ví người dùng HAY DÙNG cho [c] — ba cửa chặn: đang sửa (ví của giao dịch là sự thật), người dùng đã tự đặt ví
   /// (lựa chọn cố ý thắng phép đoán), tra không thấy (`null` = chưa biết → giữ ví đang có).
-  Wallet? _viHayDungCho(Category c) {
+  WalletEntity? _viHayDungCho(Category c) {
     if (_dangSua != null || _nguoiDungDaChonVi) return null;
     return _timVi(state.vi, _viHayDung[c.id]);
   }
 
   void chonChieuNo(String d) => _phat(state.copyWith(chieuNo: d, huong: d));
 
-  void chonVi(Wallet w) {
+  void chonVi(WalletEntity w) {
     _nguoiDungDaChonVi = true;
     _phat(state.copyWith(viNguon: w));
     // Ví là một tín hiệu của gợi ý theo số tiền (dự án C); ví ĐÍCH thì không.
     _henGoiYTheoForm();
   }
 
-  void chonViDich(Wallet w) => _phat(state.copyWith(viDich: w));
+  void chonViDich(WalletEntity w) => _phat(state.copyWith(viDich: w));
 
   void chonNgay(DateTime d) {
     _phat(state.copyWith(ngay: d));
@@ -933,8 +934,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
     final loai = kq.loai;
     if (loai != null && loai != state.huong) chonHuong(loai);
-    Wallet? vi;
-    Wallet? viDen;
+    WalletEntity? vi;
+    WalletEntity? viDen;
     for (final w in state.vi) {
       if (w.id == kq.walletId) vi = w;
       if (w.id == kq.walletToId) viDen = w;

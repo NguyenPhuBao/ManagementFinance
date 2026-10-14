@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
 import '../../../../core/notification/thong_bao_nguon.dart';
@@ -84,7 +85,7 @@ class _TransactionPageState extends State<TransactionPage> {
   // khoản và giữ lại: tạo trong build là mỗi lần đổi tháng lại đăng ký lại,
   // danh sách chớp trắng một nhịp.
   int? _lookupAccount;
-  Stream<List<Wallet>>? _wallets;
+  Stream<List<WalletEntity>>? _wallets;
   Stream<List<Category>>? _categories;
 
   /// Số khoản chưa có danh mục (C1) — cùng nếp tạo MỘT lần mỗi tài khoản như hai stream tra tên.
@@ -134,7 +135,7 @@ class _TransactionPageState extends State<TransactionPage> {
   void _ensureLookupStreams(int idaccount) {
     if (_lookupAccount == idaccount) return;
     _lookupAccount = idaccount;
-    _wallets = sl<WalletRepository>().watchAllRows(idaccount);
+    _wallets = sl<WalletRepository>().watchAll(idaccount);
     _categories = sl<CategoryManagementRepository>().watchAllRows(accountId: idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
         sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
@@ -251,14 +252,14 @@ class _TransactionPageState extends State<TransactionPage> {
                               applyTransactionFilter(state.giaoDich, _filter);
                           final summary = summarizeTransactions(txs);
 
-                          return StreamBuilder<List<Wallet>>(
+                          return StreamBuilder<List<WalletEntity>>(
                             stream: _wallets,
                             builder: (_, wallets) =>
                                 StreamBuilder<List<Category>>(
                               stream: _categories,
                               builder: (_, categories) {
                                 final walletList =
-                                    wallets.data ?? const <Wallet>[];
+                                    wallets.data ?? const <WalletEntity>[];
                                 final lookup = TransactionLookup(
                                   wallets: walletList,
                                   categories: categories.data ?? const [],

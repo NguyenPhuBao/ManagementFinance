@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -52,8 +53,8 @@ class _BillEditPageState extends State<BillEditPage> {
   /// Form Sửa là đường DUY NHẤT để tắt tự động thanh toán.
   bool _tuTra = false;
 
-  List<Wallet> _wallets = [];
-  Wallet? _selectedWallet;
+  List<WalletEntity> _wallets = [];
+  WalletEntity? _selectedWallet;
   List<Category> _categories = [];
   Category? _selectedCategory;
 
@@ -85,7 +86,7 @@ class _BillEditPageState extends State<BillEditPage> {
   Future<void> _loadPickers() async {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
-    final wallets = await sl<WalletRepository>().getActiveRows(accountId);
+    final wallets = await sl<WalletRepository>().getActive(accountId);
     // Chỉ danh mục LÁ (người dùng chốt 2026-10-10). Hoá đơn cũ đang gắn vào nhóm
     // thì ô danh mục để trống và nút Lưu đòi chọn lại — không lưu lặng lẽ.
     final categories =
@@ -434,7 +435,7 @@ class _BillEditPageState extends State<BillEditPage> {
                       ),
                     ],
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<Wallet>(
+                    DropdownButtonFormField<WalletEntity>(
                       initialValue: _selectedWallet,
                       decoration: const InputDecoration(
                         labelText: 'Ví thanh toán',

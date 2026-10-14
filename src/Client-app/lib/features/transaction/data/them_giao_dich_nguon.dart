@@ -7,7 +7,7 @@
 /// (Cubit) như trước, trừ bốn hàm vốn tự nuốt lỗi ở trang ([napDanhMucVaTuKhoa], [xoaHangBienDong], [xoaAnhBienLai],
 /// [ghiPhanHoi]).
 ///
-/// ⚠️ `sl<WalletRepository>().getActiveRows(` và `sl<TransactionRepository>().getAllRows(` phải nằm TRÊN MỘT DÒNG:
+/// ⚠️ `sl<WalletRepository>().getActive(` và `sl<TransactionRepository>().getAll(` phải nằm TRÊN MỘT DÒNG:
 /// `wallet_picker_sources_test` nhận diện lối đọc ví theo chuỗi.
 library;
 
@@ -29,6 +29,7 @@ import '../../category/data/repositories/category_management_repository.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 import '../../category/domain/phan_loai_so_tien.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
+import '../../wallet/data/models/wallet_entity.dart';
 import '../domain/dien_san_bien_dong.dart';
 import '../domain/doc_mon_hang.dart';
 import '../domain/vi_hay_dung.dart';
@@ -50,7 +51,7 @@ typedef LichSuHoc = ({
 
 abstract class ThemGiaoDichNguon {
   /// Ví đang dùng (bộ chọn ví — không ví lưu trữ). ĐỒNG BỘ khi ví tiêm sẵn hoặc không phiên.
-  FutureOr<List<Wallet>> napViDangDung(int? idaccount);
+  FutureOr<List<WalletEntity>> napViDangDung(int? idaccount);
 
   /// ĐỒNG BỘ khi tiêm sẵn bảng ví hay dùng / tiêm ví / không phiên.
   FutureOr<LichSuHoc> napLichSu(int? idaccount, {String? dangSua});
@@ -94,7 +95,7 @@ abstract class ThemGiaoDichNguon {
 class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   ThemGiaoDichNguonThat({
     CategoryManagementRepository? danhMuc,
-    List<Wallet>? viTiem,
+    List<WalletEntity>? viTiem,
     Map<String, String>? viHayDungTiem,
     BoPhanLoaiGhiChu? boPhanLoaiTiem,
     BoPhanLoaiSoTien? boSoTienTiem,
@@ -123,7 +124,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
         _traNganSachTiem = traNganSach;
 
   final CategoryManagementRepository? _danhMucTiem;
-  final List<Wallet>? _viTiem;
+  final List<WalletEntity>? _viTiem;
   final Map<String, String>? _viHayDungTiem;
   final BoPhanLoaiGhiChu? _boPhanLoaiTiem;
   final BoPhanLoaiSoTien? _boSoTienTiem;
@@ -151,13 +152,13 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
 
   /// Từ `_loadWallets` của trang.
   @override
-  FutureOr<List<Wallet>> napViDangDung(int? idaccount) {
+  FutureOr<List<WalletEntity>> napViDangDung(int? idaccount) {
     final tiem = _viTiem;
     if (tiem != null) return tiem;
     // Chưa có phiên: không đọc ví của ai cả. Danh sách rỗng làm chốt "Vui lòng chọn ví thanh toán" chặn lưu, nên không
     // có đường nào ghi giao dịch dưới danh nghĩa admin qua ngả này.
-    if (idaccount == null) return const <Wallet>[];
-    return sl<WalletRepository>().getActiveRows(idaccount);
+    if (idaccount == null) return const <WalletEntity>[];
+    return sl<WalletRepository>().getActive(idaccount);
   }
 
   /// Từ `_loadViHayDung` của trang.
@@ -175,7 +176,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   }
 
   Future<LichSuHoc> _hocTuSo(int idaccount, String? dangSua) async {
-    final txs = await sl<TransactionRepository>().getAllRows(idaccount);
+    final txs = await sl<TransactionRepository>().getAll(idaccount);
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
     ]));
@@ -301,7 +302,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     final tiem = _khoanTrongSoTiem;
     if (tiem != null) return tiem(idaccount);
     return [
-      for (final t in await sl<TransactionRepository>().getAllRows(idaccount))
+      for (final t in await sl<TransactionRepository>().getAll(idaccount))
         (id: t.id, soTien: t.amount, loai: t.type, ngay: t.date, ghiChu: t.note),
     ];
   }

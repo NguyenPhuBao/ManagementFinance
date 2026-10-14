@@ -1,14 +1,15 @@
 // test/features/transaction/data/them_giao_dich_nguon_test.dart
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/transaction/data/them_giao_dich_nguon.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,10 +18,10 @@ import '../../category/presentation/category_test_fakes.dart';
 /// Sổ giả đếm số lần đọc — `napLichSu` phải đọc sổ đúng MỘT lần cho cả bảng ví hay dùng lẫn hai mô hình.
 class _SoGia implements TransactionRepository {
   _SoGia(this.hang);
-  final List<Transaction> hang;
+  final List<TransactionEntity> hang;
   int soLanDoc = 0;
   @override
-  Future<List<Transaction>> getAllRows(int idaccount) async {
+  Future<List<TransactionEntity>> getAll(int idaccount) async {
     soLanDoc++;
     return hang;
   }
@@ -31,9 +32,9 @@ class _SoGia implements TransactionRepository {
 
 class _ViGia implements WalletRepository {
   _ViGia(this.hang);
-  final List<Wallet> hang;
+  final List<WalletEntity> hang;
   @override
-  Future<List<Wallet>> getActiveRows(int idaccount) async => hang;
+  Future<List<WalletEntity>> getActive(int idaccount) async => hang;
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
@@ -65,7 +66,7 @@ class _PhanHoiNem implements GoiYPhanHoiStore {
 
 /// Giao dịch mà ĐỌC GHI CHÚ thì ném — dựng đường "học mô hình lỗi" của `napLichSu` bằng dữ liệu, không thêm đường tiêm
 /// lỗi nào vào mã thật. Mọi thứ khác dùng được bình thường (bảng ví hay dùng chỉ đọc danh mục + ví).
-class _GiaoDichNemGhiChu extends Transaction {
+class _GiaoDichNemGhiChu extends TransactionEntity {
   _GiaoDichNemGhiChu(String id)
       : super(
           id: id,
@@ -74,13 +75,9 @@ class _GiaoDichNemGhiChu extends Transaction {
           categoryId: 'food',
           amount: 30000,
           type: 'chi',
-          status: 'completed',
-          provider: 'Manual',
           note: '',
           date: DateTime(2026, 9, 1),
-          images: '',
           syncStatus: 'synced',
-          syncRetryCount: 0,
           updatedAt: DateTime(2026, 9, 1),
           isDeleted: false,
         );
@@ -88,20 +85,16 @@ class _GiaoDichNemGhiChu extends Transaction {
   String get note => throw StateError('đọc ghi chú hỏng');
 }
 
-Transaction _gd(String id, String cat, String wallet, String note) => Transaction(
+TransactionEntity _gd(String id, String cat, String wallet, String note) => TransactionEntity(
       id: id,
       walletId: wallet,
       idaccount: 1,
       categoryId: cat,
       amount: 30000,
       type: 'chi',
-      status: 'completed',
-      provider: 'Manual',
       note: note,
       date: DateTime(2026, 9, 1),
-      images: '',
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
       isDeleted: false,
     );
@@ -116,15 +109,15 @@ void main() {
     test('ví TIÊM SẴN trả về ĐỒNG BỘ — trang dựng khung đầu đã có ví, như trước đợt tách', () {
       final vi = [makeWallet()];
       final r = ThemGiaoDichNguonThat(viTiem: vi).napViDangDung(1);
-      expect(r, isA<List<Wallet>>(), reason: 'trả Future là khung đầu hiện "Đang tải ví..." — đổi hành vi');
+      expect(r, isA<List<WalletEntity>>(), reason: 'trả Future là khung đầu hiện "Đang tải ví..." — đổi hành vi');
       expect(r, same(vi));
     });
 
     test('không phiên và không tiêm → rỗng, KHÔNG đọc ví của ai (G38)', () {
       sl.registerSingleton<WalletRepository>(_ViGia([makeWallet()]));
       final r = ThemGiaoDichNguonThat().napViDangDung(null);
-      expect(r, isA<List<Wallet>>());
-      expect(r as List<Wallet>, isEmpty);
+      expect(r, isA<List<WalletEntity>>());
+      expect(r as List<WalletEntity>, isEmpty);
     });
 
     test('có phiên → đọc ví đang dùng của phiên', () async {

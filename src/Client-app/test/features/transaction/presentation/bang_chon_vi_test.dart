@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
@@ -16,12 +17,12 @@ import 'package:go_router/go_router.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 void main() {
-  List<Wallet> vi(int n) => [
+  List<WalletEntity> vi(int n) => [
         for (var i = 0; i < n; i++)
           makeWallet(id: 'w$i', name: 'Ví số $i').copyWith(isDefault: i == 0),
       ];
 
-  Future<void> mo(WidgetTester tester, List<Wallet> ds) async {
+  Future<void> mo(WidgetTester tester, List<WalletEntity> ds) async {
     CategoryTree cay(List<Category> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(

@@ -3,7 +3,7 @@ import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -22,7 +22,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill) async 
   // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
   final accountId = currentAccountIdOrNull(context);
   final wallets =
-      accountId == null ? <Wallet>[] : await sl<WalletRepository>().getActiveRows(accountId);
+      accountId == null ? <WalletEntity>[] : await sl<WalletRepository>().getActive(accountId);
   // Tên danh mục cho khối thông tin trên bảng; không có/đã xoá thì bỏ trống.
   final danhMuc = bill.categoryId == null
       ? null

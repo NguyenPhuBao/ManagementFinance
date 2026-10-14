@@ -4,7 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -187,7 +187,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   Future<(String?, String?)> _tenCacVi(GoalEntity goal) async {
     Future<String?> ten(String? id) async {
       if (id == null || id.isEmpty) return null;
-      final w = await sl<WalletRepository>().getRowById(id);
+      final w = await sl<WalletRepository>().getById(id);
       return w?.name;
     }
 
@@ -202,7 +202,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final viId = goal.walletId;
     if (viId == null) return null;
 
-    final vi = await sl<WalletRepository>().getRowById(viId);
+    final vi = await sl<WalletRepository>().getById(viId);
     if (vi == null) return null;
 
     final tatCa = await _goalRepository.getGoals(goal.idaccount);
@@ -226,8 +226,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   void _xacNhanDoiViNhan() async {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await sl<WalletRepository>().getActiveRows(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
     if (!mounted) return;
 
     if (wallets.isEmpty) {
@@ -321,8 +321,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     if (_goal == null) return;
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await sl<WalletRepository>().getActiveRows(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
     if (!mounted) return;
 
     final viTichLuy =
@@ -353,7 +353,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   }
 
   Future<void> _rutTien(
-      BuildContext ctx, double soTien, Wallet vi, int accountId) async {
+      BuildContext ctx, double soTien, WalletEntity vi, int accountId) async {
     try {
       await _goalRepository.withdrawFromGoal(
         goalId: widget.id,
@@ -380,8 +380,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     if (_goal == null) return;
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await sl<WalletRepository>().getActiveRows(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {
@@ -424,7 +424,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   }
 
   Future<void> _napTien(
-      BuildContext ctx, double deposit, Wallet vi, int accountId) async {
+      BuildContext ctx, double deposit, WalletEntity vi, int accountId) async {
     // Nạp vượt mục tiêu KHÔNG bị chặn — tiết kiệm dư là
     // chuyện bình thường. Câu nhắc đã hiện ngay dưới ô nhập
     // từ trước khi bấm.
