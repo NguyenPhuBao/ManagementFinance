@@ -30,25 +30,6 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  WalletEntity _toEntity(Wallet w) => WalletEntity(
-    id:             w.id,
-    idaccount:      w.idaccount,
-    name:           w.name,
-    type:           w.type,
-    balance:        w.balance,
-    currency:       w.currency,
-    icon:           w.icon,
-    colour:         w.colour,
-    isDefault:      w.isDefault,
-    isDeleted:      w.isDeleted,
-    includeInTotal: w.includeInTotal,
-    status:         w.status,
-    allowNegative:  w.allowNegative,
-    biTuChoiTrungTen: w.biTuChoiTrungTen,
-    syncStatus:     w.syncStatus,
-    updatedAt:      w.updatedAt,
-  );
-
   WalletsCompanion _toCompanion(WalletEntity e) => WalletsCompanion(
     id:             Value(e.id),
     idaccount:      Value(e.idaccount),
@@ -80,7 +61,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   Future<List<WalletEntity>> getAll(int idaccount) async {
     try {
       final rows = await _db.walletDao.getAll(idaccount);
-      return rows.map(_toEntity).toList();
+      return rows.map(WalletEntity.fromDrift).toList();
     } catch (e) {
       throw CacheException('Không thể tải danh sách ví: $e');
     }
@@ -90,14 +71,14 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   Stream<List<WalletEntity>> watchAll(int idaccount) {
     return _db.walletDao
         .watchAll(idaccount)
-        .map((rows) => rows.map(_toEntity).toList());
+        .map((rows) => rows.map(WalletEntity.fromDrift).toList());
   }
 
   @override
   Future<List<WalletEntity>> getActive(int idaccount) async {
     try {
       final rows = await _db.walletDao.getActive(idaccount);
-      return rows.map(_toEntity).toList();
+      return rows.map(WalletEntity.fromDrift).toList();
     } catch (e) {
       throw CacheException('Không thể tải danh sách ví: $e');
     }
@@ -107,13 +88,13 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   @override
   Future<WalletEntity?> getById(String id) async {
     final row = await _db.walletDao.getById(id);
-    return row == null ? null : _toEntity(row);
+    return row == null ? null : WalletEntity.fromDrift(row);
   }
 
   @override
   Future<WalletEntity?> getDefault(int idaccount) async {
     final row = await _db.walletDao.getDefault(idaccount);
-    return row == null ? null : _toEntity(row);
+    return row == null ? null : WalletEntity.fromDrift(row);
   }
 
   // ── WRITE ────────────────────────────────────────────────────────────────
@@ -143,7 +124,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   /// nằm trong index của server.
   Future<void> _kiemRangBuocServer(WalletEntity wallet) async {
     final viHienCo =
-        (await _db.walletDao.getAll(wallet.idaccount)).map(_toEntity);
+        (await _db.walletDao.getAll(wallet.idaccount)).map(WalletEntity.fromDrift);
     if (viTrungTen(viHienCo, wallet.name, boQuaId: wallet.id) != null) {
       throw CacheException(thongBaoTrungTen(wallet.name));
     }

@@ -20,6 +20,17 @@ class TransactionEntity {
   /// luôn trống, nên nơi nhận diện phải kèm nhánh đọc tiền tố ghi chú
   /// (xem `transactionOwnerOf`).
   final String? goalId;
+
+  /// Hoá đơn mà khoản này là lần trả (`transactions.billId` → `idbill` ở payload); `null` với giao dịch thường.
+  ///
+  /// **CHỈ ĐỌC ở tầng này** (cùng khuôn `WalletEntity.biTuChoiTrungTen`): `fromDrift` chép, `toCompanion` KHÔNG mang —
+  /// cột do `BillRepositoryImpl.payBill` ghi thẳng qua DAO; mang ở đây là mỗi lần sửa một giao dịch dựng từ form
+  /// (`billId == null`) ghi NULL đè lên khoản trả hoá đơn. `khoaNhomCua` đọc nó để loại khoản trả hoá đơn khỏi
+  /// phép tìm khoản lặp (B2).
+  final String? billId;
+
+  /// Mốc xoá mềm thứ hai của bảng (DAO lọc theo cột này; `isDeleted` là cờ). **Chỉ đọc** — như [billId].
+  final DateTime? deletedAt;
   final double amount;
 
   /// `'chi'` (tiền ra) | `'thu'` (tiền vào) | `'transfer'` (chuyển giữa hai ví).
@@ -42,6 +53,8 @@ class TransactionEntity {
     this.categoryId,
     this.walletTransfer,
     this.goalId,
+    this.billId,
+    this.deletedAt,
     required this.amount,
     required this.type,
     this.note = '',
@@ -69,6 +82,8 @@ class TransactionEntity {
       categoryId: d.categoryId,
       walletTransfer: d.walletTransfer,
       goalId: d.goalId,
+      billId: d.billId,
+      deletedAt: d.deletedAt,
       amount: d.amount,
       type: d.type,
       note: d.note,
@@ -123,6 +138,8 @@ class TransactionEntity {
       categoryId: categoryId ?? this.categoryId,
       walletTransfer: walletTransfer ?? this.walletTransfer,
       goalId: goalId ?? this.goalId,
+      billId: billId,
+      deletedAt: deletedAt,
       amount: amount ?? this.amount,
       type: type ?? this.type,
       note: note ?? this.note,

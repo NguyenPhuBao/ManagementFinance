@@ -1,9 +1,10 @@
+import '../../../../core/database/app_database.dart';
 import '../../domain/wallet_type.dart';
 import 'package:equatable/equatable.dart';
 
 /// Domain entity Wallet — dùng trong toàn bộ business logic.
 ///
-/// Tách biệt khỏi Drift's `Wallet` data class để:
+/// Tách biệt khỏi Drift's `Wallet` data class ở mọi tầng trên repository — phép ánh xạ `fromDrift` ở đây là MỘT định nghĩa (dời từ datasource 2026-10-14) — để:
 /// 1. Business layer không phụ thuộc vào DB layer
 /// 2. Dễ mock trong test
 /// 3. Có thêm computed properties (e.g., `formattedBalance`)
@@ -61,6 +62,27 @@ class WalletEntity extends Equatable {
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
+
+  /// Dời nguyên văn từ `WalletLocalDataSourceImpl._toEntity` (2026-10-14). Không chép `bankCassoId`, `deletedAt`
+  /// và ba cột lỗi đồng bộ — `wallet_entity_test` đếm cột bảng để canh.
+  factory WalletEntity.fromDrift(Wallet w) => WalletEntity(
+        id: w.id,
+        idaccount: w.idaccount,
+        name: w.name,
+        type: w.type,
+        balance: w.balance,
+        currency: w.currency,
+        icon: w.icon,
+        colour: w.colour,
+        isDefault: w.isDefault,
+        isDeleted: w.isDeleted,
+        includeInTotal: w.includeInTotal,
+        status: w.status,
+        allowNegative: w.allowNegative,
+        biTuChoiTrungTen: w.biTuChoiTrungTen,
+        syncStatus: w.syncStatus,
+        updatedAt: w.updatedAt,
+      );
 
   /// Label hiển thị loại ví. Nhãn nằm ở `WalletType`, đây chỉ là lối tắt.
   String get typeLabel => WalletType.tuKhoa(type).nhan;
