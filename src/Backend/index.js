@@ -51,6 +51,13 @@ async function bootstrap() {
     const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
     defaultAIOpsService.start();
 
+    // 3d2. Khởi tạo 3 bảng CSDL và Hydrate dữ liệu phong tỏa còn hiệu lực vào RAM Cache (Zero-loss on restart)
+    const { defaultAIOpsQuarantine } = require('./modules/aiops/aiops.quarantine');
+    const { defaultAIOpsQuarantineRepository } = require('./modules/aiops/aiops.quarantine.repository');
+    defaultAIOpsQuarantineRepository.initTables()
+      .then(() => defaultAIOpsQuarantine.hydrateFromDatabase())
+      .catch((err) => logger.warn('[AIOps] Không thể nạp phong tỏa từ DB:', err.message));
+
     // 3e. Khởi động System Metrics Streamer (3s/lần) phát nhịp tim tới admin_room
     const { emitSystemMetricsStream } = require('./core/socket');
     const { defaultEventLoopMonitor } = require('./core/resilience/event-loop-monitor');

@@ -7,6 +7,16 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
   maxRetriesPerRequest: null,
 });
 
+connection.on('error', (err) => {
+  if (err?.message?.includes('max requests limit exceeded')) {
+    logger.error('[Redis Queue Connection] Quota limit exceeded: Upstash 500k commands limit reached.', {
+      error: err.message,
+    });
+  } else {
+    logger.error('[Redis Queue Connection] Error', { error: err.message });
+  }
+});
+
 // Queue definitions (4 queue — khớp Project.md 3.2.3)
 const queues = {
   aiClassify: new Queue('ai-classify-transaction', { connection }),

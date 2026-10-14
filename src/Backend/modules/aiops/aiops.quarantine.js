@@ -1,21 +1,25 @@
 const crypto = require('crypto');
 const logger = require('../../core/logger');
+const { defaultAIOpsQuarantineRepository } = require('./aiops.quarantine.repository');
 
 /**
  * Che bớt thông tin IP để tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
  */
 function maskIp(rawIp) {
-  if (!rawIp) return 'xx.xx.xx.xx';
+  if (!rawIp) return '192.168.xxx.xxx';
   const clean = rawIp.replace(/^::ffff:/, '').trim();
+  if (clean === '127.0.0.1' || clean === '::1' || clean === 'localhost') {
+    return '127.0.xxx.xxx';
+  }
   const v4Parts = clean.split('.');
   if (v4Parts.length === 4) {
-    return `${v4Parts[0]}.${v4Parts[1]}.xx.xx`;
+    return `${v4Parts[0]}.${v4Parts[1]}.xxx.xxx`;
   }
   const v6Parts = clean.split(':');
   if (v6Parts.length > 2) {
     return `${v6Parts[0]}:${v6Parts[1]}:xxxx:xxxx`;
   }
-  return 'xx.xx.xx.xx';
+  return '192.168.xxx.xxx';
 }
 
 function hashIp(rawIp, salt = 'aiops-quarantine-salt') {
@@ -54,11 +58,113 @@ const PROTECTED_ACTOR_HASHES = new Set([
  */
 class AIOpsQuarantine {
   constructor(options = {}) {
-    this.defaultDurationMs = options.defaultDurationMs || 15 * 60 * 1000; // 15 phút
+    this.defaultDurationMs = options.defaultDurationMs || 4 * 60 * 60 * 1000; // 4 tiếng (3-12h theo yêu cầu PO)
     this.io = options.io || null;
-    this._map = new Map(); // key: normalizedIp -> record
-    this._byHash = new Map(); // key: hash -> record (cho phép phong tỏa theo SHA-256 Actor Hash từ RCA)
+    this.repository = options.repository !== undefined ? options.repository : defaultAIOpsQuarantineRepository;
+    this._map = new Map(); // key: normalizedIp -> record (tương thích legacy)
+    this._byHash = new Map(); // key: hash -> record
+    this._pairs = new Map(); // key: `${ipHash}:::${username || 'all'}` -> pairRecord (Ma trận Cặp IP - Tài khoản)
     this._activeAdminSessions = new Map(); // key: normalizedIp -> { userId, username, expiresAt, registeredAt }
+    this._expireTimer = null;
+
+    // Tự động kích hoạt chu kỳ quét và tự động mở khóa khi hết hạn đếm ngược (mỗi 15s)
+    if (options.autoExpire !== false && process.env.NODE_ENV !== 'test') {
+      this.startAutoExpireTimer(60000);
+    }
+  }
+
+  /**
+   * Khởi động bộ quét định kỳ tự động giải phóng IP và Tài khoản hết hạn
+   */
+  startAutoExpireTimer(intervalMs = 15000) {
+    if (this._expireTimer) clearInterval(this._expireTimer);
+    this._expireTimer = setInterval(async () => {
+      try {
+        await this.sweepExpiredQuarantines();
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi quét tự động hết hạn', { error: err.message });
+      }
+    }, intervalMs);
+    if (this._expireTimer.unref) this._expireTimer.unref();
+  }
+
+  /**
+   * Dừng bộ quét định kỳ
+   */
+  stopAutoExpireTimer() {
+    if (this._expireTimer) {
+      clearInterval(this._expireTimer);
+      this._expireTimer = null;
+    }
+  }
+
+  /**
+   * Quét và tự động mở khóa toàn diện cả RAM lẫn CSDL cho các IP và Tài khoản đã hết thời gian đếm ngược
+   */
+  async sweepExpiredQuarantines() {
+    const now = Date.now();
+    let hasChanged = false;
+
+    // 1. Quét trong RAM Ma trận _pairs
+    for (const [key, record] of this._pairs.entries()) {
+      // Tự động hết hạn IP
+      if (record.ipStatus === 'temporary' && record.ipExpiresAt !== null && now >= record.ipExpiresAt) {
+        record.ipStatus = 'unlocked';
+        record.ipExpiresAt = null;
+        if (record.ip) this._map.delete(record.ip);
+        if (record.ipHash) this._byHash.delete(record.ipHash);
+        if (this.repository && typeof this.repository.updateIpStatus === 'function') {
+          this.repository.updateIpStatus({
+            ipHash: record.ipHash,
+            status: 'UNLOCKED',
+            unblockedBy: 'AIOps Sentinel Auto-Expire',
+            unblockReason: 'Tự động mở khóa do hết thời hạn tạm khóa',
+          }).catch(() => { });
+        }
+        hasChanged = true;
+        logger.info(`[AIOps Quarantine] Tự động mở khóa IP ${record.maskedIp} do hết thời gian tạm khóa.`);
+      }
+
+      // Tự động hết hạn Tài khoản
+      if (record.accountStatus === 'temporary' && record.accountExpiresAt !== null && now >= record.accountExpiresAt) {
+        record.accountStatus = 'unlocked';
+        record.accountExpiresAt = null;
+        if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+          this.repository.updateAccountStatus({
+            username: record.username,
+            idaccount: record.idaccount,
+            status: 'UNLOCKED',
+            unblockedBy: 'AIOps Sentinel Auto-Expire',
+            unblockReason: 'Tự động mở khóa do hết thời hạn tạm khóa',
+          }).catch(() => { });
+        }
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null).catch(() => { });
+        hasChanged = true;
+        logger.info(`[AIOps Quarantine] Tự động mở khóa Tài khoản [${record.username}] do hết thời gian tạm khóa.`);
+      }
+    }
+
+    // 2. Quét dọn dẹp trong CSDL PostgreSQL
+    if (this.repository && typeof this.repository.autoExpireInDatabase === 'function') {
+      try {
+        const dbResult = await this.repository.autoExpireInDatabase();
+        const expiredAccounts = dbResult?.expiredAccounts || [];
+        for (const acc of expiredAccounts) {
+          await this._syncAccountStatusToDatabase(acc.idaccount || acc.username, 'Active', null);
+          hasChanged = true;
+        }
+        if ((dbResult?.expiredIps?.length || 0) > 0) {
+          hasChanged = true;
+        }
+      } catch (err) {
+        logger.warn('[AIOps Quarantine] Lỗi quét CSDL autoExpireInDatabase', { error: err.message });
+      }
+    }
+
+    if (hasChanged) {
+      this._emitUpdatedEvent();
+    }
+    return hasChanged;
   }
 
   /**
@@ -115,7 +221,6 @@ class AIOpsQuarantine {
 
   /**
    * Kiểm tra xem địa chỉ IP hoặc Actor Hash có thuộc vùng an toàn bất khả xâm phạm
-   * (Cấu hình .env, Phiên Admin động, Loopback, hoặc Hạ tầng Máy chủ Nội bộ) hay không.
    */
   isProtectedIp(rawIpOrHash) {
     if (!rawIpOrHash) return false;
@@ -160,147 +265,585 @@ class AIOpsQuarantine {
       if (typeof getIO === 'function') {
         return getIO();
       }
-    } catch (_) {}
+    } catch (_) { }
     return null;
   }
 
   /**
-   * Đưa 1 địa chỉ IP vào danh sách cô lập và phát sự kiện Socket.io
+   * Đăng ký cách ly một cặp (Địa chỉ IP, Tài khoản) - Hỗ trợ đa liên kết (Quarantine Matrix)
+   * Mặc định ban đầu: Cả IP và Tài khoản đều bị Tạm Khóa (Temporary)
    */
-  quarantine(rawIp, reason = 'Phát hiện hành vi bất thường', durationMs = null) {
-    const ip = normalizeIp(rawIp);
-    if (!ip) return null;
-
-    // Khóa Chống Tự Phong Tỏa (Localhost & Loopback Shield Protection):
-    // Tuyệt đối không bao giờ cô lập IP loopback/máy chủ trong mọi môi trường (kể cả dev lẫn prod)
-    if (this.isProtectedIp(ip)) {
-      logger.warn(`[AIOps Quarantine] Từ chối cô lập IP nội bộ/được bảo vệ: ${ip} (Lá chắn Localhost Shield)`);
+  quarantinePair({
+    ip = null,
+    ipHash: ipHashParam = null,
+    maskedIp: maskedIpParam = null,
+    username = null,
+    idaccount = null,
+    reason = 'Phát hiện hành vi bất thường',
+    durationMs = null,
+    banType = 'temporary',
+    vector = 'auth',
+  } = {}) {
+    const rawIp = ip ? normalizeIp(ip) : null;
+    if (rawIp && this.isProtectedIp(rawIp)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập IP nội bộ/được bảo vệ: ${rawIp} (Lá chắn Localhost Shield)`);
+      return null;
+    }
+    if (ipHashParam && this.isProtectedIp(ipHashParam)) {
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập ipHash nội bộ/được bảo vệ: ${ipHashParam}`);
       return null;
     }
 
     const duration = durationMs !== null ? durationMs : this.defaultDurationMs;
     const now = Date.now();
-    const expiresAt = now + duration;
-    const ipHash = hashIp(ip);
-    const masked = maskIp(ip);
+    const expiresAt = banType === 'permanent' ? null : now + duration;
+    const ipHash = ipHashParam || (rawIp ? hashIp(rawIp) : '0000000000000000');
+    let masked = maskedIpParam || (rawIp ? maskIp(rawIp) : '192.168.xxx.xxx');
+    if (!masked || masked === 'xx.xx.xx.xx' || masked === 'xx.xx.xxx.xxx' || masked === 'traffic_cluster_ip') {
+      masked = rawIp ? maskIp(rawIp) : '192.168.xxx.xxx';
+    }
+    const cleanUser = username ? String(username).trim() : null;
 
-    let record = this._map.get(ip) || this._byHash.get(ipHash);
+    const pairKey = `${ipHash}:::${cleanUser ? cleanUser.toLowerCase() : 'all'}`;
+
+    let record = this._pairs.get(pairKey);
     if (record) {
       record.hits += 1;
-      record.expiresAt = Math.max(record.expiresAt, expiresAt);
+      if (banType === 'permanent') {
+        record.ipStatus = 'permanent';
+        record.ipExpiresAt = null;
+        record.accountStatus = 'permanent';
+        record.accountExpiresAt = null;
+        record.expiresAt = null;
+      } else {
+        if (record.ipStatus !== 'permanent') {
+          record.ipExpiresAt = record.ipExpiresAt ? Math.max(record.ipExpiresAt, expiresAt) : expiresAt;
+          record.ipStatus = 'temporary';
+        }
+        if (record.accountStatus !== 'permanent') {
+          record.accountExpiresAt = record.accountExpiresAt ? Math.max(record.accountExpiresAt, expiresAt) : expiresAt;
+          record.accountStatus = 'temporary';
+        }
+        record.expiresAt = Math.max(record.ipExpiresAt || 0, record.accountExpiresAt || 0) || null;
+      }
       record.reason = reason;
+      if (vector) record.vector = vector;
+      if (masked && masked !== '192.168.xxx.xxx') record.maskedIp = masked;
+      if (idaccount && !record.idaccount) record.idaccount = idaccount;
     } else {
       record = {
-        ip,
-        maskedIp: masked,
+        id: pairKey,
+        ip: rawIp,
         hash: ipHash,
+        ipHash,
+        maskedIp: masked,
+        idaccount: idaccount || null,
+        username: cleanUser || 'N/A',
+        vector: vector || 'auth',
+        ipStatus: banType === 'permanent' ? 'permanent' : 'temporary',
+        ipExpiresAt: banType === 'permanent' ? null : expiresAt,
+        accountStatus: banType === 'permanent' ? 'permanent' : 'temporary',
+        accountExpiresAt: banType === 'permanent' ? null : expiresAt,
+        banType,
         reason,
         bannedAt: new Date(now).toISOString(),
         expiresAt,
         hits: 1,
       };
-      this._map.set(ip, record);
-      this._byHash.set(ipHash, record);
+      this._pairs.set(pairKey, record);
     }
 
-    logger.warn(`[AIOps Quarantine] Chặn đứng nguồn IP ${masked}`, {
+    // Đồng bộ vào _map và _byHash để tương thích hoàn toàn middleware và logic cũ
+    const legacyRecord = {
+      ip: rawIp,
+      maskedIp: masked,
+      hash: ipHash,
       reason,
+      bannedAt: record.bannedAt,
+      expiresAt: record.expiresAt,
       hits: record.hits,
-      expiresAt: new Date(record.expiresAt).toISOString(),
+    };
+    if (rawIp) {
+      this._map.set(rawIp, legacyRecord);
+    }
+    this._byHash.set(ipHash, legacyRecord);
+
+    logger.warn(`[AIOps Quarantine] Cách ly cặp (IP: ${masked}, User: ${cleanUser || 'N/A'})`, {
+      reason,
+      ipStatus: record.ipStatus,
+      accountStatus: record.accountStatus,
+      hits: record.hits,
     });
 
-    // Phát sự kiện Socket.io thời gian thực tới Admin
-    const io = this.getIO();
-    if (io) {
-      try {
-        io.to('admin_room').emit('admin.security_blocked', {
-          hash: record.hash,
-          maskedIp: record.maskedIp,
-          reason: record.reason,
-          bannedAt: record.bannedAt,
-          expiresAt: new Date(record.expiresAt).toISOString(),
-          hits: record.hits,
-        });
-      } catch (err) {
-        logger.error('[AIOps Quarantine] Lỗi phát socket admin.security_blocked', { error: err.message });
-      }
+    // Ghi bất đồng bộ xuống CSDL qua repository (Write-through)
+    if (this.repository && typeof this.repository.recordQuarantinePair === 'function') {
+      record._persistPromise = this.repository.recordQuarantinePair({
+        ip: rawIp,
+        maskedIp: masked,
+        ipHash,
+        username: cleanUser,
+        idaccount,
+        reason,
+        durationMs,
+        banType,
+        vector: record.violation_vector || null,
+        threatScore: record.threat_score_at_ban || null,
+      }).catch((err) => {
+        logger.error('[AIOps Quarantine] Lỗi ghi async cặp quarantine vào CSDL', { error: err.message });
+      });
     }
 
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Khóa tài khoản trong database
+    if (cleanUser && cleanUser !== 'all' && cleanUser !== 'N/A') {
+      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Locked', reason || 'Cách ly tự động do phát hiện vi phạm an ninh').catch(() => { });
+    }
+
+    this._emitQuarantineEvents(record);
     return record;
   }
 
   /**
-   * Admin chủ động phong tỏa đối tượng khả nghi từ bảng Root Cause Analysis (RCA)
-   * Hỗ trợ phong tỏa qua rawIp, hoặc qua ipHash + maskedIp tuân thủ Data_Security.md
+   * Tự động nạp (hydrate) các bản ghi phong tỏa đang có hiệu lực từ CSDL PostgreSQL vào RAM khi Server khởi động
+   * @returns {Promise<number>} Số lượng bản ghi đã được nạp
    */
-  quarantineActor({ rawIp = null, ipHash = null, maskedIp = null, reason = 'Admin chủ động phong tỏa từ nhật ký RCA', durationMs = null } = {}) {
+  async hydrateFromDatabase() {
+    if (!this.repository || typeof this.repository.loadActiveQuarantines !== 'function') return 0;
+    try {
+      const activeData = await this.repository.loadActiveQuarantines();
+      const ips = activeData.ips || [];
+      const accounts = activeData.accounts || [];
+      const links = activeData.links || [];
+      let count = 0;
+
+      const nowTs = Date.now();
+
+      // 1. Nạp IP vào _map và _byHash để middleware chặn O(1)
+      for (const ipRec of ips) {
+        const rawIp = ipRec.raw_ip;
+        const hash = ipRec.ip_hash;
+        const rawMasked = ipRec.masked_ip;
+        const masked = (!rawMasked || rawMasked === 'xx.xx.xx.xx' || rawMasked === 'xx.xx.xxx.xxx' || rawMasked === 'traffic_cluster_ip')
+          ? (rawIp ? maskIp(rawIp) : '192.168.xxx.xxx')
+          : rawMasked;
+        const isPerm = ipRec.status === 'PERMANENT';
+        const exp = isPerm ? null : (ipRec.expires_at ? new Date(ipRec.expires_at).getTime() : null);
+        const isTempActive = ipRec.status === 'TEMPORARY' && exp && exp > nowTs;
+
+        // Chỉ nạp vào O(1) middleware nếu thực sự đang bị phong tỏa
+        if (!isPerm && !isTempActive) {
+          continue;
+        }
+
+        const rec = {
+          ip: rawIp,
+          maskedIp: masked,
+          hash,
+          reason: ipRec.reason,
+          bannedAt: ipRec.banned_at ? new Date(ipRec.banned_at).toISOString() : new Date().toISOString(),
+          expiresAt: exp,
+          hits: ipRec.hits || 1,
+        };
+        if (rawIp) this._map.set(rawIp, rec);
+        if (hash) this._byHash.set(hash, rec);
+        count += 1;
+      }
+
+      // 2. Nạp links vào _pairs (Ma trận Cặp)
+      for (const link of links) {
+        const pairKey = `${link.ip_hash}:::${link.username || 'all'}`;
+        const ipRec = ips.find((x) => x.ip_hash === link.ip_hash);
+        const accRec = accounts.find((x) => String(x.username || '').toLowerCase() === String(link.username || '').toLowerCase());
+
+        const isPermIp = ipRec?.status === 'PERMANENT';
+        const isPermAcc = accRec?.status === 'PERMANENT';
+        const isTempIp = ipRec?.status === 'TEMPORARY' && ipRec?.expires_at && new Date(ipRec.expires_at).getTime() > nowTs;
+        const isTempAcc = accRec?.status === 'TEMPORARY' && accRec?.expires_at && new Date(accRec.expires_at).getTime() > nowTs;
+
+        const ipStatus = isPermIp ? 'permanent' : (isTempIp ? 'temporary' : 'unlocked');
+        const accStatus = isPermAcc ? 'permanent' : (isTempAcc ? 'temporary' : 'unlocked');
+        const ipExpiresAt = (ipStatus === 'temporary' && ipRec?.expires_at) ? new Date(ipRec.expires_at).getTime() : null;
+        const accountExpiresAt = (accStatus === 'temporary' && accRec?.expires_at) ? new Date(accRec.expires_at).getTime() : null;
+        const exp = Math.max(ipExpiresAt || 0, accountExpiresAt || 0) || null;
+
+        const rawLinkMasked = ipRec?.masked_ip;
+        const linkMasked = (!rawLinkMasked || rawLinkMasked === 'xx.xx.xx.xx' || rawLinkMasked === 'xx.xx.xxx.xxx' || rawLinkMasked === 'traffic_cluster_ip')
+          ? (ipRec?.raw_ip ? maskIp(ipRec?.raw_ip) : '192.168.xxx.xxx')
+          : rawLinkMasked;
+
+        this._pairs.set(pairKey, {
+          id: pairKey,
+          ip: ipRec?.raw_ip || null,
+          hash: link.ip_hash,
+          ipHash: link.ip_hash,
+          maskedIp: linkMasked,
+          idaccount: accRec?.idaccount || null,
+          username: link.username || 'N/A',
+          ipStatus,
+          ipExpiresAt,
+          accountStatus: accStatus,
+          accountExpiresAt,
+          banType: (isPermIp || isPermAcc) ? 'permanent' : (isTempIp || isTempAcc ? 'temporary' : 'unlocked'),
+          reason: link.reason,
+          bannedAt: link.detected_at ? new Date(link.detected_at).toISOString() : new Date().toISOString(),
+          expiresAt: exp,
+          hits: 1,
+        });
+      }
+
+      // 3. Đảm bảo các IP active chưa có link cũng xuất hiện trong _pairs
+      for (const ipRec of ips) {
+        const isPerm = ipRec.status === 'PERMANENT';
+        const isTemp = ipRec.status === 'TEMPORARY' && ipRec.expires_at && new Date(ipRec.expires_at).getTime() > nowTs;
+        if (!isPerm && !isTemp) continue;
+
+        const pairKey = `${ipRec.ip_hash}:::all`;
+        if (!this._pairs.has(pairKey)) {
+          const ipExpiresAt = (isTemp && ipRec.expires_at) ? new Date(ipRec.expires_at).getTime() : null;
+          const rawSoloMasked = ipRec.masked_ip;
+          const soloMasked = (!rawSoloMasked || rawSoloMasked === 'xx.xx.xx.xx' || rawSoloMasked === 'xx.xx.xxx.xxx' || rawSoloMasked === 'traffic_cluster_ip')
+            ? (ipRec.raw_ip ? maskIp(ipRec.raw_ip) : '192.168.xxx.xxx')
+            : rawSoloMasked;
+
+          this._pairs.set(pairKey, {
+            id: pairKey,
+            ip: ipRec.raw_ip || null,
+            hash: ipRec.ip_hash,
+            ipHash: ipRec.ip_hash,
+            maskedIp: soloMasked,
+            idaccount: null,
+            username: 'all',
+            ipStatus: isPerm ? 'permanent' : 'temporary',
+            ipExpiresAt,
+            accountStatus: 'unlocked',
+            accountExpiresAt: null,
+            banType: isPerm ? 'permanent' : 'temporary',
+            reason: ipRec.reason,
+            bannedAt: ipRec.banned_at ? new Date(ipRec.banned_at).toISOString() : new Date().toISOString(),
+            expiresAt: ipExpiresAt,
+            hits: ipRec.hits || 1,
+          });
+        }
+      }
+
+      logger.info(`[AIOps Quarantine] Đã khôi phục thành công ${count} nguồn phong tỏa từ CSDL PostgreSQL.`);
+      return count;
+    } catch (err) {
+      logger.error('[AIOps Quarantine] Lỗi hydrate dữ liệu phong tỏa từ CSDL', { error: err.message });
+      return 0;
+    }
+  }
+
+  /**
+   * Tương thích ngược: Đưa 1 địa chỉ IP vào danh sách cô lập
+   */
+  quarantine(rawIp, reason = 'Phát hiện hành vi bất thường', durationMs = null) {
+    return this.quarantinePair({
+      ip: rawIp,
+      reason,
+      durationMs,
+    });
+  }
+
+  /**
+   * Admin chủ động phong tỏa đối tượng khả nghi từ bảng Root Cause Analysis (RCA)
+   */
+  quarantineActor({
+    rawIp = null,
+    ipHash = null,
+    maskedIp = null,
+    username = null,
+    idaccount = null,
+    reason = 'Admin chủ động phong tỏa từ nhật ký RCA',
+    durationMs = null,
+    banType = 'temporary',
+  } = {}) {
     if (rawIp && this.isProtectedIp(rawIp)) {
-      logger.warn(`[AIOps Quarantine] Từ chối cô lập rawIp nội bộ/được bảo vệ: ${rawIp} (Localhost Shield)`);
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập rawIp nội bộ/được bảo vệ: ${rawIp}`);
       return null;
     }
     if (ipHash && this.isProtectedIp(ipHash)) {
-      logger.warn(`[AIOps Quarantine] Từ chối cô lập ipHash nội bộ/được bảo vệ: ${ipHash} (Localhost Shield)`);
-      return null;
-    }
-    if (maskedIp && this.isProtectedIp(maskedIp)) {
-      logger.warn(`[AIOps Quarantine] Từ chối cô lập maskedIp nội bộ/được bảo vệ: ${maskedIp} (Localhost Shield)`);
+      logger.warn(`[AIOps Quarantine] Từ chối cô lập ipHash nội bộ/được bảo vệ: ${ipHash}`);
       return null;
     }
 
-    if (rawIp && !rawIp.includes('xx')) {
-      return this.quarantine(rawIp, reason, durationMs);
-    }
-
-    const hash = ipHash || (rawIp ? hashIp(rawIp) : null);
-    if (!hash || this.isProtectedIp(hash)) return null;
-
-    const duration = durationMs !== null ? durationMs : this.defaultDurationMs;
-    const now = Date.now();
-    const expiresAt = now + duration;
-    const masked = maskedIp || (rawIp ? maskIp(rawIp) : 'xx.xx.xx.xx');
-
-    let record = this._byHash.get(hash);
-    if (record) {
-      record.hits += 1;
-      record.expiresAt = Math.max(record.expiresAt, expiresAt);
-      record.reason = reason;
-      if (masked && masked !== 'xx.xx.xx.xx') record.maskedIp = masked;
-    } else {
-      record = {
-        ip: null,
-        maskedIp: masked,
-        hash,
-        reason,
-        bannedAt: new Date(now).toISOString(),
-        expiresAt,
-        hits: 1,
-      };
-      this._byHash.set(hash, record);
-    }
-
-    logger.warn(`[AIOps Quarantine] Admin đã chủ động phong tỏa nguồn ${masked} (Hash: #${hash.slice(0, 8)})`, {
+    return this.quarantinePair({
+      ip: rawIp,
+      ipHash,
+      maskedIp,
+      username,
+      idaccount,
       reason,
-      hits: record.hits,
-      expiresAt: new Date(record.expiresAt).toISOString(),
+      durationMs,
+      banType,
     });
+  }
 
-    const io = this.getIO();
-    if (io) {
+  /**
+   * Mở khóa IP: Đồng bộ TẤT CẢ các dòng/bản ghi có cùng địa chỉ IP và cập nhật DB
+   * @returns {Promise<number>} Số lượng bản ghi đã được mở khóa
+   */
+  async unblockIp(ipHashOrIp, { unblockedBy = null, unblockReason = null } = {}) {
+    if (!ipHashOrIp) return 0;
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ipHash === ipHashOrIp || record.ip === ipHashOrIp) {
+        record.ipStatus = 'unlocked';
+        record.ipExpiresAt = null;
+        count += 1;
+      }
+    }
+    // Gỡ khỏi _map & _byHash để middleware không chặn nữa
+    this.unblock(ipHashOrIp);
+
+    // Cập nhật CSDL qua repository
+    if (this.repository && typeof this.repository.updateIpStatus === 'function') {
       try {
-        io.to('admin_room').emit('admin.security_blocked', {
-          hash: record.hash,
-          maskedIp: record.maskedIp,
-          reason: record.reason,
-          bannedAt: record.bannedAt,
-          expiresAt: new Date(record.expiresAt).toISOString(),
-          hits: record.hits,
+        await this.repository.updateIpStatus({
+          ipHash: ipHashOrIp,
+          status: 'UNLOCKED',
+          unblockedBy,
+          unblockReason,
         });
       } catch (err) {
-        logger.error('[AIOps Quarantine] Lỗi phát socket admin.security_blocked', { error: err.message });
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status UNLOCKED IP trong DB', { error: err.message });
       }
     }
 
-    return record;
+    this._emitUpdatedEvent();
+    return count;
+  }
+
+  /**
+   * Khóa vĩnh viễn IP: Đồng bộ TẤT CẢ các dòng/bản ghi có cùng địa chỉ IP và cập nhật DB
+   * @returns {Promise<number>} Số lượng bản ghi đã được cập nhật
+   */
+  async permanentBanIp(ipHashOrIp, { bannedBy = null } = {}) {
+    if (!ipHashOrIp) return 0;
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ipHash === ipHashOrIp || record.ip === ipHashOrIp) {
+        record.ipStatus = 'permanent';
+        record.ipExpiresAt = null;
+        count += 1;
+      }
+    }
+    for (const [ip, rec] of this._map.entries()) {
+      if (rec.hash === ipHashOrIp || ip === ipHashOrIp) {
+        rec.expiresAt = null;
+      }
+    }
+
+    // Cập nhật CSDL qua repository
+    if (this.repository && typeof this.repository.updateIpStatus === 'function') {
+      try {
+        await this.repository.updateIpStatus({
+          ipHash: ipHashOrIp,
+          status: 'PERMANENT',
+          bannedBy,
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status PERMANENT IP trong DB', { error: err.message });
+      }
+    }
+
+    this._emitUpdatedEvent();
+    return count;
+  }
+
+  /**
+   * Đồng bộ trạng thái tài khoản xuống CSDL bảng account (Prisma)
+   * Đảm bảo tính toàn vẹn và tác động thực tế (Tầng 2 System Impact)
+   */
+  async _syncAccountStatusToDatabase(usernameOrId, status, reason = null) {
+    if (!usernameOrId || usernameOrId === 'all' || usernameOrId === 'N/A') return;
+    try {
+      const { prisma } = require('../../config/db');
+      if (!prisma || !prisma.account || typeof prisma.account.updateMany !== 'function') return;
+      const isNum = !isNaN(Number(usernameOrId)) && typeof usernameOrId !== 'boolean';
+      const where = isNum
+        ? { OR: [{ idaccount: Number(usernameOrId) }, { username: String(usernameOrId).trim() }] }
+        : { username: String(usernameOrId).trim() };
+
+      await prisma.account.updateMany({
+        where,
+        data: {
+          status,
+          reason_inactive: status === 'Active' ? null : reason,
+        },
+      });
+      logger.info(`[AIOps Quarantine] Đã đồng bộ CSDL bảng account -> ${status} cho [${usernameOrId}]`);
+    } catch (err) {
+      logger.warn(`[AIOps Quarantine] Cảnh báo đồng bộ CSDL bảng account cho [${usernameOrId}]`, { error: err.message });
+    }
+  }
+
+  /**
+   * Mở khóa Tài khoản: Đồng bộ TẤT CẢ các dòng/bản ghi có cùng tên Tài khoản và cập nhật DB
+   * @returns {Promise<number>} Số lượng bản ghi đã được mở khóa
+   */
+  async unblockAccount(usernameOrId, { unblockedBy = null, unblockReason = null } = {}) {
+    if (!usernameOrId) return 0;
+    const clean = String(usernameOrId).toLowerCase().trim();
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (
+        (record.username && record.username.toLowerCase() === clean) ||
+        String(record.idaccount) === String(usernameOrId)
+      ) {
+        record.accountStatus = 'unlocked';
+        record.accountExpiresAt = null;
+        count += 1;
+      }
+    }
+
+    // Cập nhật CSDL bảng aiops_account_quarantine qua repository
+    if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+      try {
+        await this.repository.updateAccountStatus({
+          username: usernameOrId,
+          status: 'UNLOCKED',
+          unblockedBy,
+          unblockReason,
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status UNLOCKED Tài khoản trong DB', { error: err.message });
+      }
+    }
+
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Kích hoạt lại tài khoản
+    await this._syncAccountStatusToDatabase(usernameOrId, 'Active', null);
+
+    this._emitUpdatedEvent();
+    return count;
+  }
+
+  /**
+   * Khóa vĩnh viễn Tài khoản: Đồng bộ TẤT CẢ các dòng/bản ghi có cùng tên Tài khoản và cập nhật DB
+   * @returns {Promise<number>} Số lượng bản ghi đã được cập nhật
+   */
+  async permanentBanAccount(usernameOrId, { bannedBy = null } = {}) {
+    if (!usernameOrId) return 0;
+    const clean = String(usernameOrId).toLowerCase().trim();
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (
+        (record.username && record.username.toLowerCase() === clean) ||
+        String(record.idaccount) === String(usernameOrId)
+      ) {
+        record.accountStatus = 'permanent';
+        record.accountExpiresAt = null;
+        count += 1;
+      }
+    }
+
+    // Cập nhật CSDL bảng aiops_account_quarantine qua repository
+    if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+      try {
+        await this.repository.updateAccountStatus({
+          username: usernameOrId,
+          status: 'PERMANENT',
+          bannedBy,
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status PERMANENT Tài khoản trong DB', { error: err.message });
+      }
+    }
+
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Khóa vĩnh viễn tài khoản
+    await this._syncAccountStatusToDatabase(
+      usernameOrId,
+      'Locked',
+      'Quản trị viên khóa vĩnh viễn tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh'
+    );
+
+    this._emitUpdatedEvent();
+    return count;
+  }
+
+  /**
+   * Tạm khóa IP (3-12 tiếng, mặc định 4 tiếng theo yêu cầu PO)
+   */
+  async temporaryBlockIp(ipHashOrIp, { durationMs = null, blockedBy = null, reason = 'Admin tạm khóa IP' } = {}) {
+    if (!ipHashOrIp) return 0;
+    const dur = durationMs || this.defaultDurationMs;
+    const exp = Date.now() + dur;
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ipHash === ipHashOrIp || record.ip === ipHashOrIp) {
+        record.ipStatus = 'temporary';
+        record.ipExpiresAt = exp;
+        record.expiresAt = exp;
+        record.reason = reason;
+        count += 1;
+      }
+    }
+    for (const [ip, rec] of this._map.entries()) {
+      if (rec.hash === ipHashOrIp || ip === ipHashOrIp) {
+        rec.expiresAt = exp;
+      }
+    }
+
+    if (this.repository && typeof this.repository.updateIpStatus === 'function') {
+      try {
+        await this.repository.updateIpStatus({
+          ipHash: ipHashOrIp,
+          status: 'TEMPORARY',
+          bannedBy: blockedBy,
+          expiresAt: new Date(exp),
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status TEMPORARY IP trong DB', { error: err.message });
+      }
+    }
+
+    this._emitUpdatedEvent();
+    return count;
+  }
+
+  /**
+   * Tạm khóa Tài khoản (3-12 tiếng, mặc định 4 tiếng theo yêu cầu PO)
+   */
+  async temporaryBlockAccount(usernameOrId, { durationMs = null, blockedBy = null, reason = 'Admin tạm khóa Tài khoản' } = {}) {
+    if (!usernameOrId) return 0;
+    const clean = String(usernameOrId).toLowerCase().trim();
+    const dur = durationMs || this.defaultDurationMs;
+    const exp = Date.now() + dur;
+    let count = 0;
+    for (const [key, record] of this._pairs.entries()) {
+      if (
+        (record.username && record.username.toLowerCase() === clean) ||
+        String(record.idaccount) === String(usernameOrId)
+      ) {
+        record.accountStatus = 'temporary';
+        record.accountExpiresAt = exp;
+        record.expiresAt = exp;
+        record.reason = reason;
+        count += 1;
+      }
+    }
+
+    if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+      try {
+        await this.repository.updateAccountStatus({
+          username: usernameOrId,
+          status: 'TEMPORARY',
+          bannedBy: blockedBy,
+          expiresAt: new Date(exp),
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi cập nhật status TEMPORARY Tài khoản trong DB', { error: err.message });
+      }
+    }
+
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Tạm khóa tài khoản
+    await this._syncAccountStatusToDatabase(
+      usernameOrId,
+      'Locked',
+      reason || `Quản trị viên tạm khóa tài khoản (${Math.round(dur / 3600000)} giờ) qua AIOps Sentinel`
+    );
+
+    this._emitUpdatedEvent();
+    return count;
   }
 
   /**
@@ -316,10 +859,44 @@ class AIOpsQuarantine {
     }
 
     const clientHash = hashIp(ip);
+    const now = Date.now();
+
+    // 1. Kiểm tra ưu tiên trong danh sách _pairs
+    let isBlocked = false;
+    let hitRecord = null;
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ip === ip || record.ipHash === clientHash) {
+        // Tự động hết hạn IP tạm khóa
+        if (record.ipStatus === 'temporary' && record.ipExpiresAt !== null && now > record.ipExpiresAt) {
+          record.ipStatus = 'unlocked';
+          record.ipExpiresAt = null;
+          if (this.repository && typeof this.repository.updateIpStatus === 'function') {
+            this.repository.updateIpStatus({ ipHash: record.ipHash, status: 'UNLOCKED' }).catch(() => { });
+          }
+        }
+        if (record.ipStatus === 'temporary' || record.ipStatus === 'permanent') {
+          isBlocked = true;
+          hitRecord = record;
+          break;
+        }
+      }
+    }
+
+    if (isBlocked && hitRecord) {
+      return {
+        quarantined: true,
+        reason: hitRecord.reason,
+        expiresAt: hitRecord.ipExpiresAt,
+        hits: hitRecord.hits,
+        maskedIp: hitRecord.maskedIp,
+      };
+    }
+
+    // 2. Fallback kiểm tra _map & _byHash nếu chưa qua pair
     let record = this._map.get(ip) || this._byHash.get(clientHash);
     if (!record) return { quarantined: false };
 
-    if (Date.now() > record.expiresAt) {
+    if (record.expiresAt !== null && now > record.expiresAt) {
       this._map.delete(ip);
       this._byHash.delete(clientHash);
       return { quarantined: false };
@@ -341,7 +918,17 @@ class AIOpsQuarantine {
     if (!ipHashOrIp) return false;
 
     let unblocked = false;
-    // Kiểm tra và xóa trong _byHash
+
+    // 1. Cập nhật giải phóng trong _pairs
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ipHash === ipHashOrIp || record.ip === ipHashOrIp) {
+        record.ipStatus = 'unlocked';
+        record.ipExpiresAt = null;
+        unblocked = true;
+      }
+    }
+
+    // 2. Kiểm tra và xóa trong _byHash
     if (this._byHash.has(ipHashOrIp)) {
       const rec = this._byHash.get(ipHashOrIp);
       this._byHash.delete(ipHashOrIp);
@@ -350,7 +937,7 @@ class AIOpsQuarantine {
       unblocked = true;
     }
 
-    // Kiểm tra và xóa trong _map
+    // 3. Kiểm tra và xóa trong _map
     for (const [ip, record] of this._map.entries()) {
       if (record.hash === ipHashOrIp || ip === ipHashOrIp) {
         this._map.delete(ip);
@@ -372,50 +959,124 @@ class AIOpsQuarantine {
   }
 
   /**
-   * Lấy danh sách các IP đang bị cô lập (đã mask IP)
+   * Lấy danh sách các cặp (IP, Tài khoản) đang bị quản lý cách ly
    */
   getQuarantinedList() {
     const now = Date.now();
-    const listMap = new Map();
+    const resultList = [];
 
-    // Duyệt qua _map
-    for (const [ip, record] of this._map.entries()) {
-      if (now > record.expiresAt) {
-        this._map.delete(ip);
-        if (record.hash) this._byHash.delete(record.hash);
-      } else {
-        listMap.set(record.hash, {
-          hash: record.hash,
-          maskedIp: record.maskedIp,
-          reason: record.reason,
-          bannedAt: record.bannedAt,
-          expiresAt: new Date(record.expiresAt).toISOString(),
-          remainingMinutes: Math.max(0, Math.ceil((record.expiresAt - now) / 60000)),
-          hits: record.hits,
-        });
+    // Duyệt qua _pairs
+    for (const [key, record] of this._pairs.entries()) {
+      if (record.ipStatus === 'temporary' && record.ipExpiresAt !== null && now > record.ipExpiresAt) {
+        record.ipStatus = 'unlocked';
+        record.ipExpiresAt = null;
+        if (this.repository && typeof this.repository.updateIpStatus === 'function') {
+          this.repository.updateIpStatus({ ipHash: record.ipHash, status: 'UNLOCKED' }).catch(() => { });
+        }
+      }
+      if (record.accountStatus === 'temporary' && record.accountExpiresAt !== null && now > record.accountExpiresAt) {
+        record.accountStatus = 'unlocked';
+        record.accountExpiresAt = null;
+        if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+          this.repository.updateAccountStatus({ username: record.username, idaccount: record.idaccount, status: 'UNLOCKED' }).catch(() => { });
+        }
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null).catch(() => { });
+      }
+
+      // Thời gian còn lại cho IP: chỉ tính khi đang tạm khóa
+      const ipRemainingMinutes = (record.ipStatus === 'temporary' && record.ipExpiresAt !== null)
+        ? Math.max(0, Math.ceil((record.ipExpiresAt - now) / 60000))
+        : null;
+
+      // Thời gian còn lại cho Tài khoản: chỉ tính khi đang tạm khóa
+      const accountRemainingMinutes = (record.accountStatus === 'temporary' && record.accountExpiresAt !== null)
+        ? Math.max(0, Math.ceil((record.accountExpiresAt - now) / 60000))
+        : null;
+
+      const remainingMinutes = ipRemainingMinutes || accountRemainingMinutes || null;
+
+      resultList.push({
+        id: record.id,
+        hash: record.ipHash, // tương thích ngược
+        ipHash: record.ipHash,
+        maskedIp: record.maskedIp,
+        username: record.username || 'N/A',
+        idaccount: record.idaccount,
+        vector: record.vector || 'auth',
+        ipStatus: record.ipStatus,
+        accountStatus: record.accountStatus,
+        reason: record.reason,
+        bannedAt: record.bannedAt,
+        ipExpiresAt: record.ipExpiresAt ? new Date(record.ipExpiresAt).toISOString() : null,
+        accountExpiresAt: record.accountExpiresAt ? new Date(record.accountExpiresAt).toISOString() : null,
+        ipRemainingMinutes,
+        accountRemainingMinutes,
+        expiresAt: (record.ipExpiresAt || record.accountExpiresAt) ? new Date(record.ipExpiresAt || record.accountExpiresAt).toISOString() : null,
+        remainingMinutes,
+        hits: record.hits,
+      });
+    }
+
+    // Nếu _pairs rỗng nhưng có bản ghi trong _map/_byHash, fallback tương thích
+    if (resultList.length === 0) {
+      for (const [ip, rec] of this._map.entries()) {
+        if (rec.expiresAt !== null && now > rec.expiresAt) {
+          this._map.delete(ip);
+          if (rec.hash) this._byHash.delete(rec.hash);
+        } else {
+          const remMin = rec.expiresAt ? Math.max(0, Math.ceil((rec.expiresAt - now) / 60000)) : null;
+          resultList.push({
+            id: rec.hash,
+            hash: rec.hash,
+            ipHash: rec.hash,
+            maskedIp: rec.maskedIp,
+            username: 'N/A',
+            idaccount: null,
+            ipStatus: 'temporary',
+            accountStatus: 'temporary',
+            reason: rec.reason,
+            bannedAt: rec.bannedAt,
+            ipExpiresAt: rec.expiresAt ? new Date(rec.expiresAt).toISOString() : null,
+            accountExpiresAt: null,
+            ipRemainingMinutes: remMin,
+            accountRemainingMinutes: null,
+            expiresAt: rec.expiresAt ? new Date(rec.expiresAt).toISOString() : null,
+            remainingMinutes: remMin,
+            hits: rec.hits,
+          });
+        }
       }
     }
 
-    // Duyệt qua _byHash (bổ sung các bản ghi phong tỏa theo hash)
-    for (const [hash, record] of this._byHash.entries()) {
-      if (now > record.expiresAt) {
-        this._byHash.delete(hash);
-        if (record.ip) this._map.delete(record.ip);
-      } else if (!listMap.has(hash)) {
-        listMap.set(hash, {
-          hash: record.hash,
-          maskedIp: record.maskedIp,
-          reason: record.reason,
-          bannedAt: record.bannedAt,
-          expiresAt: new Date(record.expiresAt).toISOString(),
-          remainingMinutes: Math.max(0, Math.ceil((record.expiresAt - now) / 60000)),
-          hits: record.hits,
-        });
-      }
-    }
+    return resultList.sort((a, b) => new Date(b.bannedAt) - new Date(a.bannedAt));
+  }
 
-    const list = Array.from(listMap.values());
-    return list.sort((a, b) => new Date(b.bannedAt) - new Date(a.bannedAt));
+  _emitQuarantineEvents(record) {
+    const io = this.getIO();
+    if (!io) return;
+    try {
+      io.to('admin_room').emit('admin.security_blocked', {
+        hash: record.ipHash,
+        maskedIp: record.maskedIp,
+        username: record.username,
+        reason: record.reason,
+        bannedAt: record.bannedAt,
+        expiresAt: record.expiresAt ? new Date(record.expiresAt).toISOString() : null,
+        hits: record.hits,
+      });
+    } catch (err) {
+      logger.error('[AIOps Quarantine] Lỗi phát socket quarantine events', { error: err.message });
+    }
+  }
+
+  _emitUpdatedEvent() {
+    const io = this.getIO();
+    if (!io) return;
+    try {
+      io.to('admin_room').emit('admin.quarantine_updated', {
+        timestamp: new Date().toISOString(),
+      });
+    } catch (_) { }
   }
 
   /**
@@ -423,7 +1084,7 @@ class AIOpsQuarantine {
    */
   createMiddleware() {
     return (req, res, next) => {
-      // Fast-lane: Miễn trừ cho request đã được SERVER XÁC THỰC là Admin thật (Token hợp lệ, Khóa khẩn cấp)
+      // Fast-lane: Miễn trừ cho request đã được SERVER XÁC THỰC là Admin thật
       if (req.isAdmin === true) {
         return next();
       }
@@ -439,7 +1100,7 @@ class AIOpsQuarantine {
           error: 'AIOPS_QUARANTINED',
           message: 'Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do hệ thống phát hiện hành vi bất thường hoặc dấu hiệu tấn công an ninh.',
           reason: check.reason,
-          quarantineExpiresAt: new Date(check.expiresAt).toISOString(),
+          quarantineExpiresAt: check.expiresAt ? new Date(check.expiresAt).toISOString() : null,
           timestamp: new Date().toISOString(),
         });
       }

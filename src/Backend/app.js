@@ -50,6 +50,9 @@ const { defaultRequestTimeout } = require('./middleware/request-timeout.middlewa
 // 1. Làn ưu tiên Admin-web (Fast-Lane Identification)
 app.use(defaultAdminPriority);
 
+// 1a. Audit log middleware (Gắn res.on('finish') sớm để bắt trọn mọi kết quả kể cả khi bị chặn bởi các guards)
+app.use(auditLogMiddleware);
+
 // 1b. AIOps Active Quarantine Shield (Chặn đứng tức thì các IP tấn công/bất thường)
 app.use(defaultAIOpsQuarantine.createMiddleware());
 
@@ -67,9 +70,6 @@ app.use(defaultRequestTimeout);
 
 // Rate limiting
 app.use('/api/', generalLimiter);
-
-// Audit log middleware
-app.use(auditLogMiddleware);
 
 // Health check (no auth required)
 app.get('/health', async (req, res) => {

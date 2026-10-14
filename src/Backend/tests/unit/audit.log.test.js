@@ -145,5 +145,45 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
       done();
     }, 50);
   });
+
+  it('7. [Tầng 2 - Real-time Security] Request nặc danh không có targetId vẫn phát Socket event audit_activity lên Dashboard', (t, done) => {
+    const socketModule = require('../../core/socket');
+    const authRepository = require('../../modules/auth/auth.repository');
+    const origEmit = socketModule.emitAuditActivity;
+    const origFind = authRepository.findAccountByUsernameOrEmail;
+    let emittedData = null;
+
+    socketModule.emitAuditActivity = (data) => {
+      emittedData = data;
+    };
+    authRepository.findAccountByUsernameOrEmail = async () => null;
+
+    const req = new EventEmitter();
+    req.method = 'POST';
+    req.url = '/api/v1/auth/login';
+    req.baseUrl = '';
+    req.path = '/api/v1/auth/login';
+    req.headers = { 'x-forwarded-for': '1.2.3.4' };
+    req.body = { username: 'unknown_hacker' };
+
+    const res = new EventEmitter();
+    res.statusCode = 401;
+    res.writableEnded = true;
+
+    auditLogMiddleware(req, res, () => {});
+    res.emit('finish');
+
+    setTimeout(() => {
+      socketModule.emitAuditActivity = origEmit;
+      authRepository.findAccountByUsernameOrEmail = origFind;
+      assert.ok(emittedData, 'Phải phát Socket event audit_activity');
+      assert.equal(emittedData.status, 'Rejected');
+      assert.equal(emittedData.username, 'unknown_hacker');
+      assert.equal(emittedData.ip, '1.2.3.4');
+      assert.ok(emittedData.timeReq, 'Phải có timeReq');
+      done();
+    }, 60);
+  });
 });
+
 

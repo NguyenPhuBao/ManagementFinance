@@ -194,8 +194,13 @@ const adminRepository = {
     // Tuyệt đối không query hoặc trả về danh mục riêng tư của người dùng
     const where = {
       is_default: true,
-      delete_at: null,
     };
+
+    if (filters.status === 'active') {
+      where.delete_at = null;
+    } else if (filters.status === 'deleted') {
+      where.delete_at = { not: null };
+    }
 
     if (filters.keyword && typeof filters.keyword === 'string' && filters.keyword.trim()) {
       where.OR = [
@@ -222,6 +227,7 @@ const adminRepository = {
         icon: true,
         create_at: true,
         update_at: true,
+        delete_at: true,
         account: {
           select: {
             idaccount: true,
@@ -361,14 +367,22 @@ const adminRepository = {
     return {
       items: rows.map((l) => ({
         id: l.idlog,
+        idlog: l.idlog,
         idaccount: l.idaccount,
         username: l.account?.username || null,
+        account: {
+          username: l.account?.username || null,
+        },
         ip: l.account?.refreshtoken?.[0]?.ip_address || '127.0.0.1',
         request: l.request,
+        action: l.request,
         req_status: l.req_status,
+        status: l.req_status,
         reason: l.reason,
         timeReq: l.time_req,
         timeRes: l.time_res,
+        time_req: l.time_req,
+        time_res: l.time_res,
       })),
       total,
     };

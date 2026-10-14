@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast UI phát realtime qua Socket.io; (4) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest). Xem chi tiết tại `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ, cơ chế chặn kích hoạt lặp khi đang active và bảo toàn lịch tương lai ngoài thời gian khẩn cấp; (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart). Xem chi tiết tại `docs/Admin-web/07-maintenance-and-resilience.md`, `02-dashboard-and-analytics.md` và `09-aiops-sentinel-and-quarantine.md`. |
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -3850,6 +3850,238 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - **Tầng 1 (UI Interaction & Rendering):** `src/tests/broadcast.maintenance.history.test.jsx` (3/3 tests PASS 100%) và `src/tests/broadcast.page.test.jsx` (10/10 tests PASS 100%): Kiểm tra không còn checkbox thừa, nút bấm luôn đỏ, render đúng các cột và dữ liệu từ API CSDL PostgreSQL.
   - **Tầng 2 (System Impact & Behavioral Verification):** `src/Backend/tests/unit/admin.maintenance.history.test.js` (3/3 tests PASS 100%): Kiểm tra `setMaintenance(true)` ghi nhận vào CSDL với `isEmergency = true` và `activated_by`, `setMaintenance(false)` tự động tính toán thời gian kết thúc, phân trang và bộ lọc hoạt động chính xác.
 
+### 17.10. Khắc Phục Triệt Để Lỗi Real-Time & Mất Mát Dữ Liệu Thời Gian Trong Nhật Ký Kiểm Toán (Audit Log) (2026-10-12)
+- **Bối cảnh & Nguyên nhân cốt lõi (Root Cause Analysis):**
+  1. *Lệch chuẩn tên trường thời gian (`time_req` vs `timeReq`):* Socket event đẩy lên snake_case (`time_req`, `time_res`), nhưng component `AuditLogPage.jsx` lại đọc camelCase (`log.timeReq`, `log.timeRes`). Hàm `fmt(undefined)` lập tức trả về `'—'`, làm 100% bản ghi real-time bị mất dữ liệu thời gian.
+  2. *Lỗi Deduplication & Phân mảnh ID:* REST API trả về trường `id`, socket handler gán `idlog`. Biểu thức `item.idlog !== newLog.idlog` luôn đúng với các bản ghi REST, làm vô hiệu cơ chế lọc trùng và dẫn đến trùng lặp dữ liệu.
+  3. *Vứt bỏ sự kiện Real-time âm thầm khi phân trang hoặc lọc:* Điều kiện chèn khóa cứng `if (page === 1 && !search.trim() && !statusFilter && !dateFrom && !dateTo)`. Khi Admin chuyển sang `page > 1` hoặc lọc trạng thái `Rejected`, sự kiện socket bị vứt bỏ hoàn toàn trong im lặng mà không có bất kỳ thông báo nào.
+  4. *Backend drop log khi thiếu `targetId`:* Middleware `audit-log.middleware.js` có điều kiện `if (!targetId) return;`, khiến các truy cập nặc danh (401), brute-force login sai tài khoản, hoặc request quét lỗ hổng không được phát hiện trên Dashboard thời gian thực.
+  5. *Thứ tự Middleware:* `auditLogMiddleware` nằm sau Rate Limiting, Quarantine và Maintenance, khiến các request bị chặn bởi hệ thống phòng vệ (429, 403, 503) không bao giờ kích hoạt kiểm toán.
+- **Giải pháp triển khai kỹ thuật toàn diện:**
+  1. **Chuẩn hóa DTO lưỡng tính (Dual-compatible DTO):**
+     - `admin.repository.js`: `queryAuditLogs` map và trả về song song cả `timeReq` + `time_req`, `timeRes` + `time_res`, `id` + `idlog`, `request` + `action`, `req_status` + `status`, cùng đối tượng `account.username`.
+     - `auth.service.js`: `emitAuditActivity` phát socket chứa đầy đủ cả 2 định dạng chuẩn ISO thời gian và định danh.
+     - `AuditLogPage.jsx`: Tạo `newLog` lưỡng tính, hàm render sử dụng fallback an toàn `fmt(log.timeReq || log.time_req)`, bộ lọc trùng deduplicate đa năng `(item.id || item.idlog) !== incomingId`.
+  2. **Cơ chế Real-time New Logs Sticky Banner:**
+     - Khi Admin ở `page === 1` và sự kiện mới khớp bộ lọc đang chọn: Tự động chèn lên đầu bảng và deduplicate an toàn.
+     - Khi Admin ở `page > 1` hoặc đang lọc tiêu chí khác: Tự động tăng biến đếm `newLogsCount` và hiển thị **Sticky Alert Banner** *"Có {count} hoạt động mới vừa phát sinh [Xem ngay]"*. Khi click, hệ thống tự động reset về trang 1, làm mới danh sách và xóa thông báo.
+     - Cập nhật đa ngôn ngữ trong `src/Admin-web/src/locales/vi.js` và `en.js`.
+  3. **Tối ưu vị trí Middleware & Giám sát An ninh Nặc danh:**
+     - Di chuyển `auditLogMiddleware` lên ngay sau `defaultAdminPriority` trong `app.js` để gắn `res.on('finish')` sớm nhất, bắt trọn mọi kết quả kể cả khi bị chặn bởi Quarantine, Maintenance, Load Shedding, hay Rate Limiter.
+     - Khi `!targetId` (request chưa xác thực / tài khoản không tồn tại): Không ghi CSDL PostgreSQL (bảo toàn ràng buộc NOT NULL / FK và tuân thủ Rule 10 DB Guard), nhưng **vẫn phát Socket.IO real-time event lên Admin-web** với `idaccount: null`, `user: 'Anonymous / Guest'` để Admin giám sát tức thời mọi hành vi tấn công/bất thường.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (UI Render & Interaction):** `src/tests/audit.page.test.jsx` (8/8 tests PASS 100%): Kiểm tra thời gian hiển thị chuẩn xác (không bị `'—'`), lọc trùng an toàn giữa REST item và Socket item, hiển thị banner thông báo khi phân trang hoặc lọc.
+  - **Tầng 2 (System Impact & Backend Integration):**
+    + `src/Backend/tests/unit/admin.audit.query.test.js` (3/3 tests PASS 100%): Kiểm tra DTO lưỡng tính trả về từ Repository.
+    + `src/Backend/tests/unit/audit.log.test.js` (7/7 tests PASS 100%): Kiểm tra middleware phát Socket event ngay cả khi request không có `targetId`.
+  - **Hồi quy toàn diện:** 100% test suites Admin-web (19/19 files PASS) và Backend v2 (54/54 tests PASS).
+
+### 17.11. Tinh Chỉnh Giao Diện AIOps Sentinel & Nâng Cấp Nghiệp Vụ Ma Trận Phong Tỏa (Quarantine Matrix) Đồng Bộ Cặp (IP, Tài Khoản) (2026-10-12)
+- **Bối cảnh & Yêu cầu của người dùng:**
+  1. *Tinh chỉnh giao diện AIOps (15 mục UI):*
+     - Bỏ phụ đề Header và Scaler ("Học baseline...", "Admin cập nhật số lượng...", "(Target Concurrency Scaler)", "Mẫu chọn nhanh:").
+     - Bỏ dòng "Quy mô đang áp dụng: 100 CCU" tại card Số người dùng đồng thời.
+     - Các nút mẫu chọn nhanh chuẩn hóa thành "500 Người", "1.000 Người", "5.000 Người", "10.000 Người" (bỏ các chú thích trong ngoặc).
+     - Đổi chú thích thang điểm Threat Score từ hàng ngang dàn trải sang lưới 2x2 badges trực quan ("0-59: An toàn", "60-79: Tăng cao", "80-89: Cảnh báo", "90+: Nguy cấp").
+     - Bỏ text công thức tổng hợp và log "Phòng vệ Sentinel: ✅ HỆ THỐNG AN TOÀN...".
+     - Sửa "Cửa sổ 10 giây" thành "Tần suất: {n} Giây". Bỏ 4 chú thích phụ dưới các chỉ số xâm nhập.
+     - Sức chịu tải phần cứng: bỏ nhãn "Node.js Engine", "Trễ vòng lặp sự kiện", "Tải đa nhân xử lý". Bộ nhớ RAM đưa số % xuống dòng: hàng trên hiển thị `X / Y MB`, hàng dưới hiển thị `Nguy cơ Memory Leak: n%`.
+     - 4 Vectơ Rủi Ro: bỏ subtitle mô tả cơ chế tính điểm, bỏ nhãn "4 Sub-scores độc lập", bỏ box trạng thái cạnh switch toggle ("Bình thường|Chỉ đo lường"), và xóa hoàn toàn 4 box log cơ chế phòng vệ nhằm bảo vệ bí mật công nghệ an ninh.
+     - Active Quarantine Blacklist: bỏ subtitle mô tả các nguồn IP tấn công.
+  2. *Nâng cấp nghiệp vụ Ma trận Phong tỏa (Quarantine Matrix) - Mục 16:*
+     - Khi phát hiện tấn công, hệ thống khóa tạm thời cả IP vi phạm và tài khoản liên quan (`(IP, Tài khoản)`).
+     - Hỗ trợ quan hệ 1-N (1 IP tấn công nhiều tài khoản hoặc 1 tài khoản bị khai thác trên nhiều IP).
+     - Phân định 2 cột thao tác độc lập:
+       + **Thao tác IP:** Nút "Mở khóa IP" (gỡ chặn tạm thời) & nút "Khóa IP" (khóa vĩnh viễn IP).
+       + **Thao tác Tài khoản:** Nút "Mở khóa TK" (kích hoạt lại tài khoản trong CSDL) & nút "Khóa TK" (vô hiệu hóa `status = 'Locked'` vĩnh viễn trong CSDL).
+     - *Tính đồng bộ dữ liệu đa dòng:* Khi admin mở khóa hoặc khóa vĩnh viễn IP $X$, toàn bộ các dòng ma trận có cùng IP $X$ được đồng bộ tức thì. Khi thao tác với Tài khoản $U$, toàn bộ các dòng có cùng $U$ được đồng bộ và cập nhật trạng thái bảng `account` trong CSDL PostgreSQL.
+- **Giải pháp triển khai kỹ thuật toàn diện:**
+  1. **Backend Engine (`aiops.quarantine.js`, `aiops.controller.js`, `admin.routes.js`, `feature.collector.js`):**
+     - Quản lý cấu trúc `_pairs` map theo khóa tổ hợp `ipHash:username` hoặc `ipHash:idaccount`.
+     - `quarantinePair({ ip, maskedIp, ipHash, username, idaccount, reason, durationMinutes })`: Tự động khóa tạm cả IP lẫn tài khoản, gọi Prisma cập nhật `account.status = 'Locked'`.
+     - `unblockIp({ ipHash })` & `permanentBanIp({ ipHash })`: Cập nhật toàn bộ các pairs có cùng `ipHash`.
+     - `unblockAccount({ username, idaccount })`: Cập nhật các pairs và ghi CSDL `account.status = 'Active'`.
+     - `permanentBanAccount({ username, idaccount })`: Cập nhật các pairs thành permanent ban và ghi CSDL `account.status = 'Locked'`.
+     - Đăng ký 4 REST endpoints trong `admin.routes.js` có phân quyền admin nghiêm ngặt.
+  2. **Admin-web UI (`AIOpsPage.jsx`, `aiops.api.js`, Locales):**
+     - Tinh chỉnh 15 mục giao diện theo chuẩn thiết kế sạch, hiện đại và cân đối bố cục.
+     - Bảng ma trận phong tỏa hiển thị rõ ràng 2 cột Thao tác IP và Thao tác Tài khoản với các badges trạng thái ("Tạm khóa", "Đã mở khóa", "Khóa vĩnh viễn").
+     - Triển khai Optimistic Update cập nhật đa dòng đồng bộ tức thời khi Admin thực hiện thao tác.
+     - Đầy đủ bản dịch trong `src/Admin-web/src/locales/vi.js` và `en.js`.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - **Tầng 1 (Admin-web UI & Layout):** `src/tests/aiops.ui.fixes.matrix.test.jsx` (14/14 tests PASS 100%) và `src/tests/aiops.page.test.jsx` (24/24 tests PASS 100%).
+  - **Tầng 2 (Backend Real System Impact & Quarantine Matrix):** `src/Backend/tests/unit/aiops.quarantine.matrix.test.js` (5/5 tests PASS 100%), `src/Backend/tests/unit/aiops.quarantine.test.js` (16/16 tests PASS 100%), và `src/Backend/tests/v2/aiops.multivector.test.js` (13/13 tests PASS 100%).
+  - Tổng cộng **72/72 tests chuyên sâu cho AIOps PASS 100%**.
+
+#### 🔄 2026-10-12 / 2026-10-13 — Hoàn Thiện & Nghiệm Thu AIOps Sentinel Theo Chuẩn PO (Bảng RCA & Nguồn Theo Dõi Đặc Biệt & Đồng Bộ CSDL)
+- **Bối cảnh & Yêu cầu PO:**
+  1. *Bảng "Tổng quan nguyên nhân bất thường" (RCA):*
+     - Cột Đối tượng: Ghi rõ `Username` (dạng `TK: <username>`); đối với sự cố tài nguyên ghi rõ `TK: Hệ thống nội bộ`.
+     - Cột IP: Ghi rõ ràng và che mờ nghiêm ngặt chuẩn `192.168.xxx.xxx`; đối với tài nguyên ghi `IP: Nội bộ hệ thống`. Tuyệt đối không bao giờ chặn IP/TK cho sự cố tài nguyên máy chủ.
+     - Cột Tình trạng: Số lần lặp lại tính tổng hợp theo đối tượng & IP trong hệ thống (`actor_total_hits`). Hiển thị mốc sớm nhất (`first_detected_at`), sắp xếp log mới nhất (`last_seen_at DESC`) lên đầu.
+  2. *Bảng "Nguồn theo dõi đặc biệt" (Đổi tên từ Active Quarantine Blacklist):*
+     - Bỏ thống kê gộp "40 nguồn đang bị phong tỏa".
+     - Cột Địa chỉ IP: Đổi tên header thành `Địa chỉ IP`, giữ dãy số IP, bỏ tick 'v', bỏ badge 'đã mở khóa' và bỏ button điều tra.
+     - Cột Tài khoản: Bỏ icon hình người, bỏ badge 'đã mở khóa', giữ tên tài khoản sạch sẽ.
+     - Cột Vector (Mới): Thêm ngay sau cột Tài khoản (`Xác thực`, `Lưu lượng`, `Khai thác`).
+     - Cột Nguyên nhân phong tỏa: Tóm tắt súc tích, chi tiết dài đưa vào modal Hồ sơ điều tra an ninh.
+     - Cột Thời gian còn lại: Phân tách độc lập 2 dòng `IP: X giờ Y phút` và `TK: X giờ Y phút`. Khi IP hoặc Tài khoản mở khóa (`unlocked`) hoặc phong tỏa vĩnh viễn (`permanent`), thời gian tương ứng triệt tiêu hiển thị `--` (`IP: --` hoặc `TK: --`), chỉ hiển thị thời gian còn lại khi ở trạng thái tạm khóa.
+     - Cột Thao tác IP & Thao tác Tài khoản: Bỏ 2 dòng log phía sau button. Tạm khóa: hiển thị 2 nút `Phong tỏa` + `Mở khóa`. Hoạt động: hiển thị nút `Tạm khóa`. Phong tỏa vĩnh viễn: chỉ hiển thị text badge `Tài khoản đã bị phong tỏa` / `IP đã bị phong tỏa`, hoàn toàn không còn hiển thị nút bấm (không còn nút Mở khóa). Bỏ toàn bộ icon trong button (chỉ để chữ). Đổi màu CSS sang gam màu phấn dịu nhẹ (`rose-50`/`rose-700`, `amber-50`/`amber-700`, `emerald-50`/`emerald-700`), màu nền badge nhạt hơn chữ.
+     - Cột Thao tác (Mới): Thêm ở cuối bảng với icon con mắt màu xanh (`visibility`) mở modal Hồ sơ điều tra an ninh.
+     - Tích hợp bộ phân trang `Pagination` chuyên dụng cho bảng Nguồn theo dõi đặc biệt.
+  3. *Đồng bộ CSDL Toàn Diện (Không chỉ sửa cục bộ tại UI):*
+     - CSDL PostgreSQL cho 3 bảng ma trận phong tỏa (`aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link`) và bảng `account` (Prisma):
+       + Khi IP/TK mở khóa (`UNLOCKED`) hoặc phong tỏa vĩnh viễn (`PERMANENT`): CSDL bắt buộc gán `"expires_at" = NULL` (triệt tiêu timestamp cũ).
+       + Khi IP/TK tạm khóa (`TEMPORARY`): CSDL ghi đè timestamp hết hạn mới (`expires_at = $expiresAt`).
+       + Tự động cập nhật bảng `account` sang `status: 'Locked'` khi có lệnh cách ly, tạm khóa, hoặc phong tỏa vĩnh viễn tài khoản.
+       + Tự động cập nhật bảng `account` sang `status: 'Active', reason_inactive: null` khi Admin mở khóa hoặc khi tạm khóa tự động hết hạn (`auto-expire`).
+- **Kết quả Kiểm thử (2-Tier Testing):**
+  - Backend Unit: **264/264 tests PASS 100%** (bao gồm `aiops.quarantine.repository.test.js` 9/9 PASS, `aiops.quarantine.matrix.test.js` 7/7 PASS, `aiops.quarantine.test.js` 16/16 PASS, `aiops.quarantine.controller.test.js` 4/4 PASS).
+#### 🔄 2026-10-13 — Tự Động Mở Khóa IP & Tài Khoản Khi Thời Gian Còn Lại Đếm Ngược Hoàn Thành (Auto-Expire & Real-Time Auto-Unblock)
+- **Bối cảnh & Yêu cầu:**
+  - Khi thời gian còn lại đếm ngược hoàn thành (về 0 / hết hạn), hệ thống phải **tự động mở khóa** đối tượng tương ứng (IP / Tài khoản).
+  - Loại bỏ hoàn toàn tình trạng các bản ghi từ quá khứ (hôm qua hoặc nửa đêm) vẫn hiển thị "IP: 4 giờ / TK: 4 giờ".
+- **Kiến trúc & Triển khai 3 Tầng:**
+  1. **Frontend UI (Admin-web - Real-Time Dynamic Ticker):**
+     - Bổ sung state `currentClientTime` và ticker 5 giây (`setInterval(..., 5000)`) để tính toán thời gian thực.
+     - Khi `diffMs <= 0` hoặc `effectiveMin <= 0`:
+       + Tự động kích hoạt cờ `isIpExpired = true` / `isAccountExpired = true`.
+       + `isIpUnlocked = item.ipStatus === 'unlocked' || isIpExpired`.
+       + `isAccountUnlocked = item.accountStatus === 'unlocked' || isAccountExpired`.
+       + Cột Thời gian còn lại tự động triệt tiêu và hiển thị nhãn `--` (`IP: --` / `TK: --`).
+       + Cột Thao tác tự động chuyển sang nút `Tạm khóa IP` / `Tạm khóa TK` (ẩn hoàn toàn các nút `Phong tỏa` và `Mở khóa`).
+  2. **Backend Engine (`aiops.quarantine.js`):**
+     - Tích hợp bộ quét định kỳ ngầm `startAutoExpireTimer(15000)` chạy mỗi 15 giây.
+     - Phương thức `sweepExpiredQuarantines()` rà soát đồng bộ:
+       + IP hết hạn: chuyển `ipStatus = 'unlocked'`, `ipExpiresAt = null`, gỡ khỏi bộ nhớ chặn `_map` & `_byHash`, cập nhật CSDL `aiops_ip_quarantine` sang `UNLOCKED`.
+       + Tài khoản hết hạn: chuyển `accountStatus = 'unlocked'`, `accountExpiresAt = null`, cập nhật CSDL `aiops_account_quarantine` sang `UNLOCKED`, đồng bộ bảng `account` Prisma về `status: 'Active', reason_inactive: null`.
+       + Phát sự kiện Socket.io `admin.quarantine_updated` tới phòng `admin_room` để Admin-web nhận diện và tự đồng bộ tức thì.
+     - Sửa phương thức `hydrateFromDatabase()`: Chỉ gán trạng thái `temporary` nếu `expires_at > nowTs`; nếu hết hạn hoặc không có bản ghi thì chuẩn hóa thành `unlocked` với `expiresAt = null`, triệt tiêu hoàn toàn bug gán nhầm `temporary` cho các bản ghi cũ từ hôm qua.
+  3. **Database Repository (`aiops.quarantine.repository.js`):**
+     - Bổ sung phương thức `autoExpireInDatabase()` chạy lệnh SQL tham số hóa giải phóng:
+       `UPDATE "aiops_ip_quarantine" SET "status" = 'UNLOCKED', "expires_at" = NULL, "unblocked_at" = NOW(), "unblocked_by" = 'AIOps Auto-Expire' WHERE "status" = 'TEMPORARY' AND "expires_at" <= NOW()` (tương tự cho `aiops_account_quarantine`).
+     - Tích hợp vào `loadActiveQuarantines()` chạy giải phóng trước khi nạp dữ liệu.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - Backend Unit: `tests/unit/aiops.quarantine.repository.test.js` (10/10 PASS), `tests/unit/aiops.quarantine.matrix.test.js` (8/8 PASS), `tests/unit/aiops.quarantine.test.js` (15/15 PASS), `tests/unit/aiops.quarantine.controller.test.js` (3/3 PASS). Toàn bộ Backend npm test: **321/321 PASS 100%**.
+  - Admin-web Vitest: `src/tests/aiops.ui.fixes.matrix.test.jsx` (18/18 PASS 100%, bao gồm test 16.9 tự động mở khóa trên UI khi thời gian đếm ngược về 0).
+
+#### 🔄 2026-10-13 — Tối Ưu Hệ Số Đe Dọa Theo Giá Trị Thực Tế & Điều Chỉnh Bố Cục Trang AIOps
+- **Yêu cầu & Triển khai:**
+  1. *Hệ số đe dọa (Threat Score) lấy theo giá trị thực được tính toán, không mặc định là 5:*
+     - `src/Backend/modules/aiops/anomaly.detector.js`: Bỏ kẹp sàn `Math.max(5, ...)` và fallback 5, chuyển thành `rawMax = activeScores.length > 0 ? Math.max(...activeScores) : 0` và `threatScore = Math.min(100, Math.max(0, Math.round(rawMax + corroborationBonus)))`. Khi toàn bộ các vectơ an toàn (0 hoặc < 5), Threat Score hiển thị chính xác giá trị thực tế đo lường được (VD: 0 hoặc 1).
+     - `src/Backend/modules/aiops/aiops.service.js`: Khởi tạo `_currentStatus.threatScore = 0` (thay vì 5).
+     - `src/Admin-web/src/pages/system/AIOpsPage.jsx`: Cập nhật các fallback điểm rủi ro `threatScore ?? 0` (thay vì 5).
+  2. *Dời bảng "Nguồn theo dõi đặc biệt" xuống dưới cùng trang:*
+     - Thay đổi thứ tự layout trong `AIOpsPage.jsx`:
+       * Khối 1: Bảng điều khiển & Ma trận 4 Vectơ Rủi ro
+       * Khối 2: Biểu Đồ SVG Xu Hướng 4 Vectơ Rủi Ro
+       * Khối 3: Bảng Tổng Quan Nguyên Nhân Bất Thường (RCA)
+       * Khối 4: Bảng Nguồn Theo Dõi Đặc Biệt (Đặt ở dưới cùng trang)
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - Backend Unit: `tests/unit/aiops.detector.test.js` (12/12 PASS, bao gồm test 10 kiểm tra Threat Score giá trị thực), `tests/unit/aiops.service.test.js` (9/9 PASS). Toàn bộ Backend npm test: **322/322 PASS 100%**.
+  - Admin-web Vitest: `src/tests/aiops.ui.fixes.matrix.test.jsx` (18/18 PASS), `src/tests/aiops.page.test.jsx` (24/24 PASS), `src/tests/aiops.trend.chart.and.rca.fixes.test.jsx` (9/9 PASS), `src/tests/aiops.quarantine.forensics.ui.test.jsx` (2/2 PASS).
+
+#### 🔄 2026-10-13 — Tối Ưu Empty State Bảng RCA & Nâng Cấp Quản Trị Bảo Trì Hệ Thống (BroadcastPage & Backend)
+- **Bối cảnh & Yêu cầu:**
+  1. *Thông báo của Bảng tổng quan nguyên nhân bất thường (RCA):*
+     - Khi không có dữ liệu (theo bộ lọc hoặc trong CSDL), chỉ cần ghi nhận súc tích `"Không tìm thấy sự cố"`. Loại bỏ icon tick lớn, nút bấm xóa bộ lọc và các mô tả dài dòng không cần thiết.
+  2. *Quản trị Bảo trì (BroadcastPage & Backend):*
+     - Bỏ các ghi chú, quy tắc không cần thiết: Xóa khối ghi chú màu đỏ (Nguyên tắc bảo trì khẩn cấp, tác động thời gian thực) bên form Kích hoạt khẩn cấp và khối quy tắc màu vàng (PO Policy) bên form Lên lịch.
+     - Bổ sung bộ phân trang chuẩn (`Pagination.jsx`) cho bảng Lịch sử các phiên bảo trì (hỗ trợ chọn 5, 10, 20, 50 phiên/trang, hiển thị item range, chuyển trang).
+     - Khi hệ thống bắt đầu và kết thúc bảo trì:
+       * Tự động phát thông báo đa kênh: Khi bắt đầu bảo trì phát Broadcast khẩn cấp (`⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP`) và Socket.IO; khi kết thúc bảo trì tự động phát Broadcast khôi phục (`✅ HỆ THỐNG ĐÃ KẾT THÚC BẢO TRÌ`) qua NotificationService và Socket.IO.
+       * Admin-web (`AppLayout`): Hiển thị Global Maintenance Mode Banner khi hệ thống đang bảo trì và hiển thị Toast xanh khi kết thúc bảo trì.
+       * Ngăn chặn thao tác ảnh hưởng hệ thống: Chặn 100% request người dùng Client-app (HTTP 503 `MAINTENANCE_MODE`); trên Admin-web, vô hiệu hóa form và nút submit lên lịch bảo trì mới để triệt tiêu nguy cơ xung đột lịch trình.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - Backend Unit: `src/Backend/tests/unit/admin.priority.maintenance.test.js` (22/22 tests PASS, bao gồm test 21 kiểm tra phát broadcast khi kết thúc bảo trì). Toàn bộ Backend npm test: **323/323 PASS 100%**.
+  - Admin-web Vitest: `src/tests/broadcast.maintenance.history.test.jsx` (7/7 PASS), `src/tests/broadcast.page.test.jsx` (10/10 PASS), `src/tests/aiops.trend.chart.and.rca.fixes.test.jsx` (10/10 PASS, bao gồm test 2.13 kiểm tra Empty state rút gọn). Toàn bộ test suite Admin-web PASS 100%. Build production bundle: **169 modules transformed, 0 errors**.
+
+#### 🔄 2026-10-13 — Tinh Chỉnh Giao Diện & Khắc Phục Triệt Để Phân Trang Trang Bảo Trì & Thông Báo (BroadcastPage)
+- **Bối cảnh & Yêu cầu:**
+  1. *Loại bỏ phụ đề trang:* Bỏ text `"Quản trị chế độ bảo trì 2 tầng (Bình thường / Khẩn cấp) & Phát tin nhắn toàn hệ thống tới Client-app"`.
+  2. *Bỏ box "HỆ THỐNG ĐANG HOẠT ĐỘNG BÌNH THƯỜNG":* Khi hệ thống ở trạng thái bình thường (`active === false`), ẩn hoàn toàn banner xanh để tiết kiệm không gian màn hình; chỉ hiển thị banner cảnh báo khi hệ thống thực sự đang kích hoạt bảo trì.
+  3. *Rút gọn checkbox hẹn giờ:* Bỏ đoạn mô tả dài dòng phía dưới và vế sau, chỉ giữ lại duy nhất nhãn `"Tự động phát thông báo"`.
+  4. *Sắp xếp lại cụm nút điều khiển:* Sửa thành `"Lên lịch bảo trì"` và `"Làm mới"`. Nút `"Làm mới"` được tích hợp ngay bên phải nút `"Lên lịch bảo trì"` trong cùng form, loại bỏ thanh footer riêng biệt bên dưới.
+  5. *Thu nhỏ card Kích hoạt bảo trì khẩn cấp:* Thêm `items-start` vào grid 2 cột và loại bỏ `justify-between` trên card bên trái, giúp nút bấm nằm gọn gàng ngay dưới ô nhập lý do, triệt tiêu toàn bộ khoảng trống trắng thừa.
+  6. *Bỏ mô tả CSDL PostgreSQL:* Xóa dòng phụ đề `"Nhật ký vĩnh viễn lưu trữ tại CSDL PostgreSQL, theo dõi người kích hoạt, thời lượng và trạng thái"` trên bảng lịch sử.
+  7. *Khắc phục lỗi đè icon dropdown bộ lọc:* Bổ sung padding-right `pr-8` cho cả 2 thẻ select Loại bảo trì và Trạng thái, chừa khoảng trống an toàn cho mũi tên trỏ xuống.
+  8. *Bỏ badge "Tổng: 5 phiên":* Loại bỏ badge đếm phiên thừa ở tiêu đề bảng lịch sử (thông tin số phiên đã được hiển thị chuẩn hóa ở thanh phân trang bên dưới).
+  9. *Khắc phục triệt để lỗi phân trang (Pagination):*
+     - Chuẩn hóa việc bóc tách payload từ API `adminApi.getMaintenanceHistory`: Đọc chính xác `data.data` (mảng dòng) và `data.pagination` (object phân trang), không bị mất `total` và `totalPages` khi `res.data.data` là một mảng.
+     - Triệt tiêu lỗi Race Condition trong `Pagination.jsx`: Thay vì gọi đồng thời cả `onPageSizeChange` và `onPageChange` gây ra 2 request bất đồng bộ đè lên nhau, chỉ gọi `onPageSizeChange(newSize)` để component cha xử lý việc reset trang và tải lại dữ liệu với `limit` mới.
+     - Bảo toàn `limit` đã chọn: Khi người dùng đổi bộ lọc Type/Status hoặc bấm nút Làm mới, `limit` hiện tại được giữ nguyên, không bị reset về 10.
+- **Kiểm thử 2 Tầng (2-Tier Testing Architecture):**
+  - Vitest Unit & Integration: `src/tests/broadcast.maintenance.history.test.jsx` (9/9 PASS, bao gồm test 8 kiểm tra giao diện và test 9 kiểm tra phân trang & tác động hệ thống), `src/tests/broadcast.page.test.jsx` (10/10 PASS). Toàn bộ 19/19 tests bảo trì & thông báo PASS 100%.
+  - Production Build: `vite build` PASS (169 modules, 0 errors).
 
 
-
+#### 🔄 2026-10-14 — Chuẩn Hóa Bảng RCA (Bỏ Dòng "Gần nhất", Username & Real Masked IP) & Cột Địa Chỉ IP Bảng Nguồn Theo Dõi Đặc Biệt
+- **Yêu cầu & Bối cảnh Nghiệp vụ (PO Specification):**
+  1. *Bảng "Tổng quan nguyên nhân bất thường" (RCA Persistent Journal):*
+     - **Cột Tình trạng:** Loại bỏ hoàn toàn dòng chữ phụ `Gần nhất: ...`, chỉ giữ lại thời điểm phát hiện lần đầu, nhãn trạng thái (`ĐANG DIỄN RA` / `ĐÃ GIẢM THIỂU`), và số lần lặp lại (`Lặp lại X lần` / `Phát hiện lần 1`).
+- **Yêu cầu & Bối cảnh Nghiệp vụ (PO Specification):**
+  1. *Bảng "Tổng quan nguyên nhân bất thường" (RCA Persistent Journal) > Cột Đối tượng:*
+     - `TK:`: Ghi nhận `username` tài khoản thật (tự động tra cứu từ bảng `account` trong CSDL khi có `userId`, ưu tiên tên đăng nhập thực tế của đối tượng vi phạm, chỉ dùng fallback `Khách vãng lai / Ẩn danh` khi là khách vãng lai, hoặc `Hệ thống nội bộ` khi là sự cố phần cứng máy chủ).
+     - `IP:`: Ghi nhận IP thực tế đã được che mờ theo mẫu **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`** (giữ 2 octet mạng đầu của IP thật, che 2 octet sau bằng `xxx.xxx`, loopback chuẩn hóa `127.0.xxx.xxx`). Tuyệt đối loại bỏ toàn bộ chuỗi mockup tiếng Việt (`1 địa chỉ IP tập trung`, `Nhiều nguồn IP phân tán`, `Nguồn thăm dò lỗ hổng`) và các chuỗi placeholder (`traffic_cluster_ip`, `xx.xx.xx.xx`, `xx.xx.xxx.xxx`).
+  2. *Bảng "Nguồn theo dõi đặc biệt" (Quarantine Table) > Cột Địa chỉ IP:*
+     - Ghi nhận IP thực tế đã che mờ mẫu chuẩn **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`** (bảo toàn 2 octet đầu của IP nguồn, ví dụ: `113.161.xxx.xxx`).
+     - Tuyệt đối không hiển thị toàn bộ dấu x (`xx.xx.xxx.xxx` hoặc `xx.xx.xx.xx`).
+- **Thực thi Kỹ thuật:**
+  1. *Backend Data Engine & Anomaly Detection:*
+     - `src/Backend/modules/aiops/feature.collector.js`: Nâng cấp `_maskIp(rawIp)` tạo định dạng `${p[0]}.${p[1]}.xxx.xxx`, quét `_ipStats` tìm IP nguồn có request cao nhất, failed logins cao nhất, probe lỗ hổng cao nhất để gán vào `topTrafficActor`, `topAuthActor`, `topExploitActor`.
+     - `src/Backend/modules/aiops/anomaly.detector.js`: Xóa bỏ 100% các chuỗi mockup tiếng Việt và `traffic_cluster_ip`, sử dụng IP thực tế từ collector hoặc fallback `192.168.xxx.xxx`.
+     - `src/Backend/modules/aiops/aiops.quarantine.js`: Cập nhật `maskIp()` tuân thủ chuẩn 3 chữ x (`xxx.xxx`), tự động sanitize các bản ghi cũ từ RAM/DB khi hydrate.
+     - `src/Backend/modules/aiops/aiops.quarantine.repository.js`: Đặt default `maskedIp = '192.168.xxx.xxx'`, bổ sung SQL update tự động các row `masked_ip LIKE '%xx.xx%'` trong `aiops_ip_quarantine` và `actor_identity` trong `aiops_incident` sang `192.168.xxx.xxx`.
+     - `src/Backend/modules/aiops/aiops.repository.js`: Trong `upsertIncident()`, tự động tra cứu `username` từ bảng `account` theo `userId` nếu chưa có username.
+  2. *Frontend Admin-web:*
+     - `src/Admin-web/src/pages/system/AIOpsPage.jsx`: Nâng cấp `formatMaskedIp()` nhận diện và giữ 2 octet đầu chuẩn (`a.b.xxx.xxx`), loopback (`127.0.xxx.xxx`), tự động khử sạch các placeholder `xx.xx.xx.xx`, `xx.xx.xxx.xxx` và text mockup tiếng Việt về `192.168.xxx.xxx`.
+     - Cập nhật Cột Đối tượng trong bảng RCA hiển thị `TK: <username>` và `IP: <formatMaskedIp>`.
+     - Cập nhật Cột Địa chỉ IP trong bảng Quarantine hiển thị `formatMaskedIp`.
+- **Kiểm thử 2 Tầng (Rule 11 Verification):**
+  - **Tầng 1 (Giao diện & Thao tác):** Tạo test suite 2 tầng `src/Admin-web/src/tests/aiops.object.and.ip.masking.test.jsx`:
+    + Test 1.1: Bảng RCA > Cột Đối tượng hiển thị đúng username tài khoản thật (`TK: attacker_victim_real`).
+    + Test 1.2: Bảng RCA > Cột Đối tượng hiển thị IP thực đã che mờ dạng `a.b.xxx.xxx` (`113.161.xxx.xxx`).
+    + Test 1.3: Bảng RCA > Loại bỏ hoàn toàn mockup `1 địa chỉ IP tập trung`, tự động chuẩn hóa về `192.168.xxx.xxx`.
+    + Test 1.4: Bảng RCA > Sự cố tài nguyên hệ thống nội bộ hiển thị `Hệ thống nội bộ` và `Nội bộ hệ thống`.
+    + Test 1.5: Bảng Quarantine > Cột Địa chỉ IP tuyệt đối không hiển thị `xx.xx.xxx.xxx`, tự động chuẩn hóa `192.168.xxx.xxx` và `113.161.xxx.xxx`.
+  - **Tầng 2 (Tác động Hệ thống Thực tế):**
+    + Test 2.1: Thao tác Phong Tỏa IP từ RCA Modal mở dialog phong tỏa chứa chính xác IP thực đã che mờ (`113.161.xxx.xxx`), không chứa `xx.xx.xx.xx`, gọi API `quarantineActor` với hash và vector thực tế của sự cố.
+  - Kết quả kiểm thử: **6/6 tests PASS 100%**. Toàn bộ test suite Admin-web (183/183 tests) và Backend (324/324 tests) PASS 100%. Build production bundle: **169 modules transformed, 0 errors**.
+
+### 7.15 Quản Lý Xóa Mềm & Duy Trì Hiển Thị Bản Ghi Đã Xóa (User & Category Soft-Delete Visibility) (🆕 2026-10-14)
+- **Bối cảnh & Yêu cầu từ PO:**
+  - Trang Quản lý người dùng (`/users`) và Quản lý danh mục (`/categories`), khi xóa thì chỉ xóa mềm (Soft Delete, cập nhật `delete_at`), không xóa cứng.
+  - Danh mục và tài khoản đã xóa **vẫn phải tiếp tục hiển thị lên màn hình danh sách** kèm trạng thái "Đã xóa", không được phép biến mất khỏi giao diện khi vừa bấm xóa hay khi reload lại trang.
+- **Thực thi Kỹ thuật Backend:**
+  - `src/Backend/modules/admin/admin.repository.js`: Trong `getAllCategories`, loại bỏ mệnh đề lọc cứng `delete_at: null` đối với Admin; bổ sung trường `delete_at` vào mệnh đề `select`. Giữ nguyên ràng buộc bảo mật `is_default: true` để bảo vệ quyền riêng tư người dùng (không trả về danh mục cá nhân).
+  - `src/Backend/modules/admin/admin.service.js`: Trong `getCategories`, bổ sung mapping `status: c.delete_at ? 'deleted' : 'active'` và `delete_at: c.delete_at || null`. Chặn các thao tác chỉnh sửa hoặc xóa tiếp trên danh mục đã bị xóa mềm.
+- **Thực thi Kỹ thuật Frontend (Admin-web):**
+  - `src/Admin-web/src/pages/users/UserListPage.jsx`:
+    + Trong hàm `confirmDelete`: Thay vì `filter` loại trừ xóa mất user khỏi mảng state, cập nhật trực tiếp user đó sang trạng thái `status: 'deleted'` và `delete_at: new Date().toISOString()`. Đồng thời mở rộng bộ lọc nếu đang ở tab khác để người dùng nhìn thấy ngay dòng đã xóa.
+    + Thống kê & Quick Pill Tabs: Bổ sung Tab `Đã Xóa` (`id: 'deleted'`, icon: `delete_sweep`) hiển thị số lượng tài khoản đã xóa mềm theo thời gian thực.
+  - `src/Admin-web/src/pages/categories/CategoryPage.jsx`:
+    + `fetchCategories`: Nhận diện `status: c.status || (c.delete_at ? 'deleted' : 'active')` và `delete_at: c.delete_at`.
+    + Cột Tên danh mục: Hiển thị badge màu đỏ pastel `Đã xóa` (`bg-rose-50 text-rose-700 border border-rose-200/80`) bên cạnh tên danh mục khi bị xóa mềm.
+    + Cột Hành động: Với danh mục đã xóa mềm, thay thế cụm nút Sửa/Xóa bằng nhãn text màu đỏ `Đã xóa` (italic), ngăn chặn thao tác trùng lặp.
+    + Trong hàm `confirmDelete`: Cập nhật trực tiếp item sang `status: 'deleted'` trên state, đồng thời gọi `fetchCategories()` đồng bộ lại với Backend.
+  - Đa ngôn ngữ (i18n): Bổ sung đầy đủ nhãn `users.tabs.deleted` và `categories.table.deleted` trong cả hai từ điển `vi.js` và `en.js`.
+- **Kiểm thử 2 Tầng (Rule 11 Verification):**
+  - Backend: Thêm 2 tests trong `src/Backend/tests/v2/admin.operations.test.js`:
+    + Test 1.4: `getCategories` trả về đầy đủ các danh mục bao gồm cả danh mục hệ thống đã bị xóa mềm, gán đúng `status: 'deleted'`.
+    + Test 1.5: Repository `getAllCategories` không lọc bỏ `delete_at: null` đối với Admin.
+  - Admin-web Users: Thêm Test 3.8 trong `src/Admin-web/src/tests/users.page.test.jsx` kiểm thử 2 tầng: sau khi xóa mềm, hàng người dùng không biến mất khỏi giao diện, hiển thị đồng thời badge đỏ và nhãn hành động "Đã xóa"; API `adminApi.deleteUser` được gọi chính xác.
+  - Admin-web Categories: Thêm Test 2.6 trong `src/Admin-web/src/tests/categories.page.test.jsx` kiểm thử 2 tầng: sau khi xóa mềm, danh mục không bị mất khỏi bảng, hiển thị nhãn "Đã xóa"; API `adminApi.deleteCategory` được kích hoạt.
+  - Kết quả kiểm thử: **100% tests PASS**. Backend: 326/326 tests PASS. Admin-web: 184/184 tests PASS. Build production: Thành công không có cảnh báo lỗi.
+
+### 7.16 Khảo Sát Toàn Diện & Thiết Lập Hợp Đồng Sự Kiện - Thông Báo Từ Admin-Web & Backend Tới Client-App (🆕 2026-10-14)
+- **Bối cảnh & Yêu cầu từ PO:**
+  - Tiến hành khảo sát toàn diện mã nguồn Backend (`src/Backend`) và Admin-web (`src/Admin-web`), nhận diện 100% các sự kiện, thông báo và chốt chặn an ninh/vận hành phát sinh từ quản trị có ảnh hưởng tới Client-app.
+  - Lập tài liệu hợp đồng giao tiếp chính thức tại [docs/Admin-web/Event-Notification-to-ClientApp.md](docs/Admin-web/Event-Notification-to-ClientApp.md) làm căn cứ kỹ thuật cho thành viên xây dựng ứng dụng di động Flutter.
+- **Quy mô Danh mục 19 Sự kiện & Tín hiệu (Đã được PO phê duyệt):**
+  1. *Kênh Thời Gian Thực (11 Socket.IO Events):* `account.force_logout` (cưỡng chế đăng xuất khi khóa/xóa), `system.maintenance_changed` (thay đổi trạng thái bảo trì), `system.broadcast` (thông báo toàn hệ thống), `account.permissions_updated` (cập nhật ma trận phân quyền 17 tính năng), `account.upgraded` (kích hoạt Premium thành công), `account.downgraded` (hạ cấp về Basic khi hết hạn gói lúc 00:00), `account.countdown` (cảnh báo đếm ngược xóa tài khoản 30 ngày), `sync.completed` (kích hoạt Delta Pull im lặng), `ocr.completed` (bóc tách hóa đơn xong), `ocr.duplicate` (cảnh báo hóa đơn trùng lặp), `user.notification` (tin nhắn thông báo trực tiếp).
+  2. *Kênh Chốt Chặn HTTP/API (8 Mã Lỗi & Signals):* HTTP 503 `MAINTENANCE_MODE` (màn hình bảo trì khẩn cấp), HTTP 503 `SERVER_OVERLOADED` (cắt tải Load Shedding), HTTP 429 `RETRY_LIMIT_EXCEEDED` (chống bão retry lặp), HTTP 403 `AIOPS_QUARANTINED` (tường lửa Sentinel phong tỏa IP), HTTP 403 `FEATURE_DISABLED` (chặn tính năng gói Basic), HTTP 401 `ACCOUNT_INACTIVE` (tài khoản bị khóa), HTTP 401 `ACCOUNT_DELETED` (tài khoản đã bị xóa mềm), Socket Handshake Error (từ chối kết nối khi mở app).
+- **Hiện trạng & Kế hoạch Thực thi Phía Client-App:**
+  - Đã xử lý tốt: `ocr.completed`, `ocr.duplicate`, `sync.completed`, `account.upgraded`, `account.permissions_updated`, `account.force_logout`, HTTP 401 (`ACCOUNT_INACTIVE`, `ACCOUNT_DELETED`).
+  - Bổ sung theo hợp đồng: `system.maintenance_changed`, `system.broadcast`, `account.downgraded`, `account.countdown`, HTTP 503 (`MAINTENANCE_MODE`, `SERVER_OVERLOADED`), HTTP 429 (`RETRY_LIMIT_EXCEEDED`), HTTP 403 (`AIOPS_QUARANTINED`, `FEATURE_DISABLED`).
+- **Nguồn sự thật:** Toàn văn đặc tả kỹ thuật và checklist code Flutter lưu tại [docs/Admin-web/Event-Notification-to-ClientApp.md](docs/Admin-web/Event-Notification-to-ClientApp.md).
+

@@ -103,6 +103,78 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
         prisma.category.findFirst = origFindFirst;
       }
     });
+
+    it('1.4. [Tầng 1 & Tầng 2] getCategories trả về đầy đủ các danh mục bao gồm cả danh mục hệ thống đã bị xóa mềm', async () => {
+      const origGetAllCategories = adminRepository.getAllCategories;
+      const mockCats = [
+        {
+          idcategory: 'cat-active-1',
+          create_by: 1,
+          name_category: 'Ăn uống',
+          classify: 'Chi',
+          is_default: true,
+          is_group: false,
+          idgroup: null,
+          keyword: 'com, pho',
+          icon: 'restaurant',
+          create_at: new Date('2026-01-01'),
+          update_at: new Date('2026-01-01'),
+          delete_at: null,
+        },
+        {
+          idcategory: 'cat-deleted-2',
+          create_by: 1,
+          name_category: 'Xăng xe',
+          classify: 'Chi',
+          is_default: true,
+          is_group: false,
+          idgroup: null,
+          keyword: 'xang, dau',
+          icon: 'local_gas_station',
+          create_at: new Date('2026-01-01'),
+          update_at: new Date('2026-10-10'),
+          delete_at: new Date('2026-10-10'),
+        },
+      ];
+
+      adminRepository.getAllCategories = async () => mockCats;
+
+      try {
+        const result = await adminService.getCategories();
+        assert.strictEqual(result.length, 2, 'Phải trả về cả 2 danh mục');
+
+        // Tầng 1: Đảm bảo trường status và delete_at được map chính xác
+        const activeCat = result.find((c) => c.id === 'cat-active-1');
+        assert.ok(activeCat, 'Tìm thấy danh mục active');
+        assert.strictEqual(activeCat.status, 'active');
+        assert.strictEqual(activeCat.delete_at, null);
+
+        const deletedCat = result.find((c) => c.id === 'cat-deleted-2');
+        assert.ok(deletedCat, 'Tìm thấy danh mục đã xóa mềm');
+        assert.strictEqual(deletedCat.status, 'deleted');
+        assert.notStrictEqual(deletedCat.delete_at, null);
+      } finally {
+        adminRepository.getAllCategories = origGetAllCategories;
+      }
+    });
+
+    it('1.5. [Tầng 2 - System Impact] Repository getAllCategories không lọc bỏ delete_at: null đối với Admin', async () => {
+      const origFindMany = prisma.category.findMany;
+      let capturedWhere = null;
+      prisma.category.findMany = async ({ where }) => {
+        capturedWhere = where;
+        return [];
+      };
+
+      try {
+        await adminRepository.getAllCategories({});
+        assert.ok(capturedWhere, 'findMany phải được gọi');
+        assert.strictEqual(capturedWhere.is_default, true, 'is_default vẫn phải là true');
+        assert.strictEqual(capturedWhere.delete_at, undefined, 'delete_at không được ép cứng thành null để không bỏ sót danh mục đã xóa');
+      } finally {
+        prisma.category.findMany = origFindMany;
+      }
+    });
   });
 
   // ─── 2. USER LIFECYCLE & PROTECTION CONSTRAINTS ──────────────────────────

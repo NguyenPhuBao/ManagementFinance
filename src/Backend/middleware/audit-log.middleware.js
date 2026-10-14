@@ -85,6 +85,31 @@ function auditLogMiddleware(req, res, next) {
           }
 
           if (!targetId) {
+            // Không ghi CSDL PostgreSQL để bảo toàn NOT NULL / FK constraint mà không vi phạm Rule 10
+            // NHƯNG PHÁT Real-time Socket Event lên Admin-web để giám sát an ninh tức thời
+            const { emitAuditActivity } = require('../core/socket');
+            const timeReqIso = time_req.toISOString();
+            const timeResIso = time_res.toISOString();
+            const timeFormatted = typeof authService.formatVnTime === 'function' ? authService.formatVnTime(time_req) : 'Vừa xong';
+
+            emitAuditActivity({
+              id: Date.now(),
+              idlog: Date.now(),
+              idaccount: null,
+              user: identifier || 'Anonymous / Guest',
+              username: identifier || 'Guest',
+              ip: clientIp,
+              action: actionName,
+              request: actionName,
+              reason: reason || (res.statusCode === 429 ? 'Vượt quá giới hạn tần suất (Rate Limit)' : res.statusCode === 401 ? 'Chưa xác thực' : null),
+              status: req_status,
+              req_status,
+              time: timeFormatted,
+              timeReq: timeReqIso,
+              timeRes: timeResIso,
+              time_req: timeReqIso,
+              time_res: timeResIso,
+            });
             return;
           }
 

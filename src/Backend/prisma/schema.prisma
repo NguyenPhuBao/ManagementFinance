@@ -488,4 +488,83 @@ model account_type_permission {
   @@unique([account_type, feature_id], map: "uq_account_type_feature")
   @@index([account_type], map: "idx_perm_account_type")
   @@map("account_type_permission")
+}
+
+/// Bảng quản lý phong tỏa địa chỉ IP AIOps Sentinel (2.18)
+model aiops_ip_quarantine {
+  id                  String                              @id @db.VarChar(64) @map("id")
+  ip_hash             String                              @unique @db.VarChar(64) @map("ip_hash")
+  masked_ip           String                              @db.VarChar(45) @map("masked_ip")
+  raw_ip              String?                             @db.VarChar(45) @map("raw_ip")
+  status              String                              @default("TEMPORARY") @db.VarChar(20) @map("status")
+  reason              String                              @db.Text @map("reason")
+  violation_vector    String?                             @db.VarChar(20) @map("violation_vector")
+  threat_score_at_ban Int?                                @map("threat_score_at_ban")
+  hits                Int                                 @default(1) @map("hits")
+  banned_at           DateTime                            @default(now()) @db.Timestamp(6) @map("banned_at")
+  expires_at          DateTime?                           @db.Timestamp(6) @map("expires_at")
+  unblocked_at        DateTime?                           @db.Timestamp(6) @map("unblocked_at")
+  banned_by           String                              @default("AIOps Sentinel") @db.VarChar(100) @map("banned_by")
+  unblocked_by        String?                             @db.VarChar(100) @map("unblocked_by")
+  unblock_reason      String?                             @db.Text @map("unblock_reason")
+  created_at          DateTime                            @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at          DateTime                            @default(now()) @db.Timestamp(6) @map("updated_at")
+
+  incident_links      aiops_quarantine_incident_link[]
+
+  @@index([status], map: "idx_aiops_ip_quarantine_status")
+  @@index([ip_hash], map: "idx_aiops_ip_quarantine_ip_hash")
+  @@index([expires_at], map: "idx_aiops_ip_quarantine_expires_at")
+  @@index([banned_at(sort: Desc)], map: "idx_aiops_ip_quarantine_banned_at")
+  @@map("aiops_ip_quarantine")
+}
+
+/// Bảng quản lý phong tỏa tài khoản AIOps Sentinel (2.19)
+model aiops_account_quarantine {
+  id                  String                              @id @db.VarChar(64) @map("id")
+  idaccount           Int?                                @map("idaccount")
+  username            String                              @db.VarChar(255) @map("username")
+  status              String                              @default("TEMPORARY") @db.VarChar(20) @map("status")
+  reason              String                              @db.Text @map("reason")
+  violation_vector    String?                             @db.VarChar(20) @map("violation_vector")
+  threat_score_at_ban Int?                                @map("threat_score_at_ban")
+  hits                Int                                 @default(1) @map("hits")
+  banned_at           DateTime                            @default(now()) @db.Timestamp(6) @map("banned_at")
+  expires_at          DateTime?                           @db.Timestamp(6) @map("expires_at")
+  unblocked_at        DateTime?                           @db.Timestamp(6) @map("unblocked_at")
+  banned_by           String                              @default("AIOps Sentinel") @db.VarChar(100) @map("banned_by")
+  unblocked_by        String?                             @db.VarChar(100) @map("unblocked_by")
+  unblock_reason      String?                             @db.Text @map("unblock_reason")
+  created_at          DateTime                            @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at          DateTime                            @default(now()) @db.Timestamp(6) @map("updated_at")
+
+  incident_links      aiops_quarantine_incident_link[]
+
+  @@index([status], map: "idx_aiops_account_quarantine_status")
+  @@index([username], map: "idx_aiops_account_quarantine_username")
+  @@index([idaccount], map: "idx_aiops_account_quarantine_idaccount")
+  @@index([banned_at(sort: Desc)], map: "idx_aiops_account_quarantine_banned_at")
+  @@map("aiops_account_quarantine")
+}
+
+/// Bảng nhật ký liên kết sự kiện vi phạm N-N & phục vụ điều tra (2.20)
+model aiops_quarantine_incident_link {
+  id                    Int                      @id @default(autoincrement()) @map("id")
+  ip_quarantine_id      String                   @db.VarChar(64) @map("ip_quarantine_id")
+  account_quarantine_id String                   @db.VarChar(64) @map("account_quarantine_id")
+  ip_hash               String                   @db.VarChar(64) @map("ip_hash")
+  username              String                   @db.VarChar(255) @map("username")
+  reason                String                   @db.Text @map("reason")
+  incident_code         String?                  @db.VarChar(50) @map("incident_code")
+  detected_at           DateTime                 @default(now()) @db.Timestamp(6) @map("detected_at")
+
+  ip_quarantine         aiops_ip_quarantine      @relation(fields: [ip_quarantine_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_link_ip_quarantine")
+  account_quarantine    aiops_account_quarantine @relation(fields: [account_quarantine_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_link_account_quarantine")
+
+  @@index([ip_quarantine_id], map: "idx_quarantine_link_ip")
+  @@index([account_quarantine_id], map: "idx_quarantine_link_account")
+  @@index([ip_hash], map: "idx_quarantine_link_ip_hash")
+  @@index([username], map: "idx_quarantine_link_username")
+  @@index([detected_at(sort: Desc)], map: "idx_quarantine_link_detected_at")
+  @@map("aiops_quarantine_incident_link")
 }

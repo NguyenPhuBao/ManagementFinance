@@ -82,10 +82,24 @@ class AIOpsIncidentRepository {
     
     const actor = data.actor || {};
     const actorType = actor.type || 'IP_SOURCE';
-    const actorIdentity = actor.identity || actor.maskedIp || 'xx.xx.xx.xx';
+    let actorIdentity = actor.identity || actor.maskedIp || '192.168.xxx.xxx';
+    if (!actorIdentity || actorIdentity.includes('xx.xx') || actorIdentity.includes('cluster') || actorIdentity.includes('địa chỉ IP') || actorIdentity.includes('Nguồn')) {
+      actorIdentity = '192.168.xxx.xxx';
+    }
     const actorHash = actor.ipHash || actor.hash || '0000000000000000';
     const userId = actor.userId || null;
-    const username = actor.username || null;
+    let username = actor.username || actor.targetAccount || null;
+    if (username === 'Khách vãng lai / Ẩn danh' || username === 'all') {
+      username = null;
+    }
+    if (userId && !username && this.pool && typeof this.pool.query === 'function') {
+      try {
+        const uRes = await this.pool.query('SELECT username FROM "account" WHERE idaccount = $1 LIMIT 1', [userId]);
+        if (uRes.rows.length > 0 && uRes.rows[0].username) {
+          username = uRes.rows[0].username;
+        }
+      } catch (_) {}
+    }
     const actorRole = actor.role || actor.actor_role || (actor.userId ? 'User' : (actor.type === 'SYSTEM_INTERNAL' ? 'System' : 'Guest'));
     const userAgent = actor.userAgent || null;
     const targetEndpoint = actor.targetEndpoint || actor.endpoint || null;
@@ -271,10 +285,32 @@ class AIOpsIncidentRepository {
   /**
    * Lấy danh sách sự cố có phân trang và bộ lọc trực tiếp từ CSDL
    */
-  async getIncidents({ page = 1, limit = 10, vector = 'all', status = 'all', search = '' } = {}) {
+  async getIncidents({ page = 1, limit = 10, vector = 'all', status = 'all', search = '', range, from, to } = {}) {
     const currentPage = Math.max(1, parseInt(page, 10) || 1);
     const pageSize = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
     const offset = (currentPage - 1) * pageSize;
+
+    let startTime = null;
+    let endTime = null;
+
+    if (from && to) {
+      startTime = new Date(from);
+      const parsedTo = new Date(to);
+      if (typeof to === 'string' && to.length === 10) {
+        parsedTo.setHours(23, 59, 59, 999);
+      }
+      endTime = parsedTo;
+    } else if (range === '1h') {
+      startTime = new Date(Date.now() - 60 * 60 * 1000);
+    } else if (range === '24h' || range === 'day') {
+      startTime = new Date(Date.now() - 24 * 3600 * 1000);
+    } else if (range === '7d') {
+      startTime = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    } else if (range === '30d' || range === 'month') {
+      startTime = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+    } else if (range === '10m' || range === 'realtime') {
+      startTime = new Date(Date.now() - 10 * 60 * 1000);
+    }
 
     try {
       if (this.pool && typeof this.pool.query === 'function') {
@@ -304,15 +340,31 @@ class AIOpsIncidentRepository {
           pIdx++;
         }
 
+        if (startTime) {
+          conditions.push(`"first_detected_at" >= $${pIdx++}`);
+          params.push(startTime);
+        }
+
+        if (endTime) {
+          conditions.push(`"first_detected_at" <= $${pIdx++}`);
+          params.push(endTime);
+        }
+
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const countSql = `SELECT COUNT(*) AS total FROM "aiops_incident" ${whereClause}`;
         const countRes = await this.pool.query(countSql, params);
         const total = parseInt(countRes.rows[0]?.total || '0', 10);
 
         const dataSql = `
-          SELECT * FROM "aiops_incident"
+          SELECT 
+            *,
+            COALESCE(
+              (SELECT SUM(sub."hits") FROM "aiops_incident" sub WHERE sub."actor_hash" = "aiops_incident"."actor_hash"),
+              "hits"
+            ) AS "actor_total_hits"
+          FROM "aiops_incident"
           ${whereClause}
-          ORDER BY "first_detected_at" DESC
+          ORDER BY "last_seen_at" DESC
           LIMIT $${pIdx++} OFFSET $${pIdx++}
         `;
         const dataRes = await this.pool.query(dataSql, [...params, pageSize, offset]);
@@ -347,6 +399,20 @@ class AIOpsIncidentRepository {
           (i.code && i.code.toLowerCase().includes(s)) ||
           (i.message && i.message.toLowerCase().includes(s))
       );
+    }
+    if (startTime) {
+      const startMs = startTime.getTime();
+      filtered = filtered.filter((i) => {
+        const t = new Date(i.first_detected_at || i.firstDetectedAt || 0).getTime();
+        return t >= startMs;
+      });
+    }
+    if (endTime) {
+      const endMs = endTime.getTime();
+      filtered = filtered.filter((i) => {
+        const t = new Date(i.first_detected_at || i.firstDetectedAt || 0).getTime();
+        return t <= endMs;
+      });
     }
 
     const total = filtered.length;
@@ -414,7 +480,7 @@ class AIOpsIncidentRepository {
       unit: row.metric_unit,
       mitigationTaken: row.mitigation_taken,
       rootCauseDiagnosis: row.root_cause_diagnosis,
-      hits: row.hits,
+      hits: row.actor_total_hits !== undefined ? Number(row.actor_total_hits) : row.hits,
       firstDetectedAt: row.first_detected_at ? new Date(row.first_detected_at).toISOString() : null,
       lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : null,
       mitigatedAt: row.mitigated_at ? new Date(row.mitigated_at).toISOString() : null,

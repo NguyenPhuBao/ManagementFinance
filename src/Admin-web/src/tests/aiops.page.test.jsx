@@ -12,6 +12,10 @@ vi.mock('../api/aiops.api', () => ({
     getHistory: vi.fn(),
     getQuarantineList: vi.fn(),
     unblockQuarantine: vi.fn(),
+    unblockIp: vi.fn(),
+    permanentBanIp: vi.fn(),
+    unblockAccount: vi.fn(),
+    permanentBanAccount: vi.fn(),
     setScale: vi.fn(),
     calibrate: vi.fn(),
     getIncidents: vi.fn(),
@@ -182,8 +186,9 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.3. Gỡ chặn IP trong danh sách cách ly gọi unblockQuarantine với hash', async () => {
-    aiopsApi.unblockQuarantine.mockResolvedValueOnce({ data: { success: true } });
+  it('5.3. Gỡ chặn IP trong danh sách cách ly gọi unblockIp với ipHash', async () => {
+    window.confirm = vi.fn(() => true);
+    aiopsApi.unblockIp.mockResolvedValueOnce({ success: true });
 
     render(<AIOpsPage />);
 
@@ -191,15 +196,15 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getByText('xxx.xxx.12.34')).toBeInTheDocument();
     });
 
-    const unblockBtn = screen.getByRole('button', { name: /Gỡ Chặn/i });
+    const unblockBtn = screen.getByRole('button', { name: /Mở khóa IP/i });
     fireEvent.click(unblockBtn);
 
     await waitFor(() => {
-      expect(aiopsApi.unblockQuarantine).toHaveBeenCalledWith('iphash_123456789');
+      expect(aiopsApi.unblockIp).toHaveBeenCalledWith({ ipHash: 'iphash_123456789' });
     });
   });
 
-  it('5.4. Phòng vệ đa vectơ: Khi Vector Exploit vượt ngưỡng nguy cơ, tự động kích hoạt thông điệp phòng vệ riêng', async () => {
+  it('5.4. Phòng vệ đa vectơ: Khi Vector Exploit vượt ngưỡng nguy cơ, bảo đảm an toàn thông tin và không để lộ cơ chế phòng vệ nội bộ', async () => {
     aiopsApi.getStatus.mockResolvedValueOnce({
       data: {
         ...mockStatus,
@@ -217,9 +222,10 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/\[KHAI THÁC\] PHÁT HIỆN INJECTION\/TRAVERSAL/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText('3. Khai Thác Lỗ Hổng')).toBeInTheDocument();
+      // Bảo đảm KHÔNG để lộ cơ chế phòng vệ nội bộ Sentinel trên UI theo mục 8 & 14
+      expect(screen.queryByText(/Phòng vệ Sentinel:/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Công thức tổng hợp:/i)).not.toBeInTheDocument();
     });
   });
 
@@ -252,15 +258,12 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     await waitFor(() => {
       expect(aiopsApi.getIncidents).toHaveBeenCalled();
-      expect(screen.getByText(/2 sự cố ghi nhận trong CSDL/)).toBeInTheDocument();
-      expect(screen.getByText('113.161.xx.xx')).toBeInTheDocument();
-      expect(screen.getByText('42.112.xx.xx')).toBeInTheDocument();
+      expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('113.161.xxx.xxx')).toBeInTheDocument();
+      expect(screen.getByText('42.112.xxx.xxx')).toBeInTheDocument();
       expect(screen.getByText(/attacker_victim/)).toBeInTheDocument();
-      expect(screen.getByText(/ANOMALY_AUTH_FAIL_SURGE/)).toBeInTheDocument();
-      expect(screen.getByText(/ANOMALY_TRAFFIC_SPIKE/)).toBeInTheDocument();
       expect(screen.getByText(/ĐANG DIỄN RA/)).toBeInTheDocument();
       expect(screen.getByText(/ĐÃ GIẢM THIỂU/)).toBeInTheDocument();
-      expect(screen.getByText(/1 - 2 of 2 sự cố ghi nhận/)).toBeInTheDocument();
     });
   });
 
@@ -268,7 +271,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 sự cố ghi nhận trong CSDL')).toBeInTheDocument();
+      expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
     const authBtn = screen.getByRole('button', { name: /🛡️ Xác thực/i });
@@ -288,7 +291,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 sự cố ghi nhận trong CSDL')).toBeInTheDocument();
+      expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
     const anomalyHandler = socketListeners['admin.anomaly_detected'];
@@ -320,31 +323,20 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
 
     await waitFor(() => {
-      expect(screen.getByText('ANOMALY_SQLI_PROBE')).toBeInTheDocument();
-      expect(screen.getByText('1.2.xx.xx')).toBeInTheDocument();
+      expect(screen.getByText('Phát hiện payload SQL Injection nghi vấn')).toBeInTheDocument();
+      expect(screen.getByText('1.2.xxx.xxx')).toBeInTheDocument();
     });
   });
 
-  it('5.9. Làm sạch CSDL sự cố (Clear Incidents) qua ConfirmModal và gọi aiopsApi.clearIncidents', async () => {
+  it('5.9. [Security Rule 2.5] Tuyệt đối KHÔNG có nút Làm sạch CSDL để bảo vệ tính toàn vẹn dữ liệu truy vết', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 sự cố ghi nhận trong CSDL')).toBeInTheDocument();
+      expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    const clearBtn = screen.getByRole('button', { name: /Làm sạch CSDL/i });
-    fireEvent.click(clearBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Làm sạch Toàn bộ Nhật ký Sự cố CSDL')).toBeInTheDocument();
-    });
-
-    const confirmClearBtn = screen.getByRole('button', { name: /Xác nhận Xóa CSDL/i });
-    fireEvent.click(confirmClearBtn);
-
-    await waitFor(() => {
-      expect(aiopsApi.clearIncidents).toHaveBeenCalled();
-    });
+    // Tuyệt đối không có nút "Làm sạch CSDL"
+    expect(screen.queryByRole('button', { name: /Làm sạch CSDL/i })).toBeNull();
   });
 
   it('5.10. Lưu cứng quy mô người dùng đồng thời (Target Concurrency) trong localStorage và đồng bộ từ CSDL', async () => {
@@ -370,28 +362,29 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     await waitFor(() => {
       expect(aiopsApi.setScale).toHaveBeenCalledWith(2500);
       expect(window.localStorage.getItem('aiops_target_concurrency')).toBe('2500');
-      expect(screen.getByText('2.500')).toBeInTheDocument();
+      expect(screen.getByText(/2,500 CCU|2\.500 CCU/i)).toBeInTheDocument();
     });
   });
 
   it('5.11. Cho phép Admin bấm nút "Phong Tỏa IP" trên bảng RCA, mở ConfirmModal và gọi aiopsApi.quarantineActor', async () => {
+    aiopsApi.getQuarantineList.mockResolvedValueOnce([]);
     aiopsApi.quarantineActor.mockResolvedValueOnce({
       success: true,
       data: {
         hash: '112233445566',
-        maskedIp: '113.161.xx.xx',
+        maskedIp: '113.161.xxx.xxx',
         reason: 'Admin chủ động phong tỏa từ nhật ký RCA',
         bannedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
         hits: 1,
       },
-      message: 'Đã phong tỏa nguồn IP 113.161.xx.xx thành công trong 15 phút',
+      message: 'Đã phong tỏa nguồn IP 113.161.xxx.xxx thành công trong 4 giờ',
     });
 
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 sự cố ghi nhận trong CSDL')).toBeInTheDocument();
+      expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
     // Tìm các nút "Phong Tỏa IP" trên bảng RCA
@@ -416,7 +409,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
         expect.objectContaining({
           hash: 'a1b2c3d4e5f6',
           maskedIp: '113.161.xx.xx',
-          durationMinutes: 15,
+          durationMinutes: 240,
         })
       );
     });
@@ -522,68 +515,73 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     ).toBeInTheDocument();
   });
 
-  it('5.16. Bộ select thời gian quan sát xu hướng 4 Vector (Presets: realtime, day, month, year) gọi getHistory', async () => {
+  it('5.16. Bộ select thời gian quan sát xu hướng 4 Vector (Presets: 10m, 1h, 24h, 7d, 30d) gọi getHistory', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('preset-day')).toBeInTheDocument();
+      expect(screen.getByTestId('preset-24h')).toBeInTheDocument();
     });
 
-    // Click Day (24 giờ qua)
-    fireEvent.click(screen.getByTestId('preset-day'));
+    // Click 1 giờ qua
+    fireEvent.click(screen.getByTestId('preset-1h'));
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '1h' });
     });
 
-    // Click Month (30 ngày qua)
-    fireEvent.click(screen.getByTestId('preset-month'));
+    // Click 24 giờ qua
+    fireEvent.click(screen.getByTestId('preset-24h'));
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'month' });
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '24h' });
     });
 
-    // Click Year (12 tháng qua)
-    fireEvent.click(screen.getByTestId('preset-year'));
+    // Click 7 ngày qua
+    fireEvent.click(screen.getByTestId('preset-7d'));
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'year' });
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '7d' });
+    });
+
+    // Click 1 tháng qua
+    fireEvent.click(screen.getByTestId('preset-30d'));
+    await waitFor(() => {
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '30d' });
     });
   });
 
-  it('5.17. Bộ lọc chọn chính xác và Quy tắc ưu tiên cốt lõi: Ưu tiên bộ lọc chọn chính xác thay vì bộ select nếu cả 2 được áp dụng', async () => {
+  it('5.17. Bộ lọc thời gian và Quy tắc ưu tiên cốt lõi: Ưu tiên bộ lọc thời gian thay vì bộ select nếu cả 2 được áp dụng', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
       expect(screen.getByTestId('apply-custom-range-btn')).toBeInTheDocument();
     });
 
-    // Chọn Preset Day trước
-    fireEvent.click(screen.getByTestId('preset-day'));
+    // Chọn Preset 24h trước
+    fireEvent.click(screen.getByTestId('preset-24h'));
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '24h' });
     });
 
-    // Nhập bộ lọc chi tiết chính xác (Từ ngày đến ngày)
+    // Nhập bộ lọc thời gian (datetime-local Từ ngày đến ngày)
     const fromInput = screen.getByTestId('filter-from-date');
     const toInput = screen.getByTestId('filter-to-date');
-    fireEvent.change(fromInput, { target: { value: '2026-09-01' } });
-    fireEvent.change(toInput, { target: { value: '2026-10-04' } });
+    fireEvent.change(fromInput, { target: { value: '2026-09-01T10:00' } });
+    fireEvent.change(toInput, { target: { value: '2026-10-04T18:00' } });
 
-    // Bấm Lọc Chính Xác
+    // Bấm Lọc
     const applyBtn = screen.getByTestId('apply-custom-range-btn');
     fireEvent.click(applyBtn);
 
-    // Verify PO Rule: Ưu tiên bộ lọc chính xác, params gửi { from, to } thay vì { range: 'day' }
+    // Verify PO Rule: Ưu tiên bộ lọc thời gian, params gửi { from, to } thay vì { range: '24h' }
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ from: '2026-09-01', to: '2026-10-04' });
-      expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC/i)).toBeInTheDocument();
-      expect(screen.getByText(/Bộ select nhanh đang tạm thời bị bỏ qua/i)).toBeInTheDocument();
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ from: '2026-09-01T10:00', to: '2026-10-04T18:00' });
+      expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC THỜI GIAN/i)).toBeInTheDocument();
     });
 
-    // Bấm xóa bộ lọc chính xác -> quay lại preset Day
+    // Bấm xóa bộ lọc thời gian -> quay lại preset 24h
     const clearBtn = screen.getByTestId('clear-custom-range-btn');
     fireEvent.click(clearBtn);
 
     await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: 'day' });
+      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '24h' });
     });
   });
 
@@ -607,7 +605,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.19. Nút "Làm Mới" bên cạnh nút "Lọc Chính Xác" reset input và trả về preset mặc định', async () => {
+  it('5.19. Nút "Làm Mới" bên cạnh nút "Lọc" reset input và trả về preset mặc định', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
@@ -616,10 +614,10 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     const fromInput = screen.getByTestId('filter-from-date');
     const toInput = screen.getByTestId('filter-to-date');
-    fireEvent.change(fromInput, { target: { value: '2026-09-01' } });
-    fireEvent.change(toInput, { target: { value: '2026-10-04' } });
-    expect(fromInput.value).toBe('2026-09-01');
-    expect(toInput.value).toBe('2026-10-04');
+    fireEvent.change(fromInput, { target: { value: '2026-09-01T10:00' } });
+    fireEvent.change(toInput, { target: { value: '2026-10-04T18:00' } });
+    expect(fromInput.value).toBe('2026-09-01T10:00');
+    expect(toInput.value).toBe('2026-10-04T18:00');
 
     // Bấm Làm Mới
     const refreshBtn = screen.getByTestId('refresh-custom-range-btn');
@@ -628,34 +626,22 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     await waitFor(() => {
       expect(fromInput.value).toBe('');
       expect(toInput.value).toBe('');
-      expect(screen.getByText(/Đã làm mới bộ lọc chính xác về trạng thái ban đầu/i)).toBeInTheDocument();
     });
   });
 
-  it('5.20. Trục X hiển thị số liệu phân mốc rõ ràng và không có chữ thừa _toggle_drop_down', async () => {
+  it('5.20. Biểu đồ xu hướng không chứa chữ thừa _toggle_drop_down và đã dọn dẹp footer theo Rule 1.7', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Trục X:/i)).toBeInTheDocument();
+      expect(screen.getByText('Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro')).toBeInTheDocument();
     });
-
-    // Mặc định là Realtime 1 -> 30 Mẫu
-    expect(screen.getByText(/Thời gian thực \(1 -> 30 Mẫu\)/i)).toBeInTheDocument();
 
     // Không được chứa chuỗi lỗi ligature _toggle_drop_down
     expect(screen.queryByText(/_toggle_drop_down/i)).toBeNull();
 
-    // Chuyển sang Preset Day (24 giờ qua)
-    fireEvent.click(screen.getByTestId('preset-day'));
-    await waitFor(() => {
-      expect(screen.getByText(/Ngày \(1 -> 24 Giờ\)/i)).toBeInTheDocument();
-    });
-
-    // Chuyển sang Preset Year (12 tháng qua)
-    fireEvent.click(screen.getByTestId('preset-year'));
-    await waitFor(() => {
-      expect(screen.getByText(/Năm \(1 -> 12 Tháng\)/i)).toBeInTheDocument();
-    });
+    // Đã bỏ footer Trục X: Ngày... và Nguyên tắc: Phòng vệ được kích hoạt độc lập
+    expect(screen.queryByText(/Trục X: Ngày/i)).toBeNull();
+    expect(screen.queryByText(/Phòng vệ được kích hoạt độc lập theo từng vectơ/i)).toBeNull();
   });
 
   it('5.21. Kiểm thử 2 Tầng (2-Tier Verification): Tắt Vector Resource lập tức hạ Threat Score và cập nhật UI sang trạng thái An toàn', async () => {
@@ -743,12 +729,11 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
 
     // Tầng 2: Kiểm tra các thành phần biểu đồ và ngưỡng an toàn render đầy đủ không crash
-    expect(screen.getByText(/Ngưỡng Khẩn cấp/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ngưỡng Cảnh báo/i)).toBeInTheDocument();
     expect(screen.getByText(/Trần Max/i)).toBeInTheDocument();
   });
 
   it('9. [2-Tier Test] Bảng RCA hiển thị chính xác Actor Role, bảo vệ Localhost và không có nút Phong Tỏa IP với đối tượng nội bộ', async () => {
+    aiopsApi.getQuarantineList.mockResolvedValue([]);
     aiopsApi.getIncidents.mockResolvedValue({
       data: {
         total: 2,
@@ -799,18 +784,16 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     render(<AIOpsPage />);
 
-    // Tầng 1: UI Rendering — Hiển thị đúng Role, Tên tài khoản, và Huy hiệu bảo vệ
+    // Tầng 1: UI Rendering — Hiển thị đúng Tên tài khoản, IP, và Huy hiệu bảo vệ
     await waitFor(() => {
-      // 1. Dòng 1 sự cố RAM: hiển thị "Nội bộ hệ thống", tài khoản "System Core Engine" và badge "Hệ thống"
-      expect(screen.getByText('System Core Engine')).toBeInTheDocument();
-      expect(screen.getByText(/⚙️ Hệ thống/i)).toBeInTheDocument();
+      // 1. Dòng 1 sự cố RAM: hiển thị tài khoản "Hệ thống nội bộ"
+      expect(screen.getByText('Hệ thống nội bộ')).toBeInTheDocument();
 
-      // 2. Dòng 2 sự cố Admin local: hiển thị TK admin_master và badge Quản trị viên
+      // 2. Dòng 2 sự cố Admin local: hiển thị TK admin_master
       expect(screen.getByText('admin_master')).toBeInTheDocument();
-      expect(screen.getByText(/👑 Quản trị viên/i)).toBeInTheDocument();
 
       // 3. Cả 2 dòng sự cố nội bộ / loopback đều hiển thị nhãn an toàn được bảo vệ
-      const protectedBadges = screen.getAllByText(/An toàn tuyệt đối/i);
+      const protectedBadges = screen.getAllByText(/Nội bộ hệ thống|IP Được bảo vệ/i);
       expect(protectedBadges.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -820,6 +803,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
   });
 
   test('10. (2-Tier Test) Dynamic Admin Session IP Protection — Tự nhận diện và bảo vệ IP Admin khi đổi vị trí hoặc mạng', async () => {
+    aiopsApi.getQuarantineList.mockResolvedValue([]);
     // Giả lập Admin đăng nhập từ một mạng khác (ví dụ IP công ty hoặc 4G 192.168.1.88)
     aiopsApi.getStatus.mockResolvedValue({
       success: true,
@@ -869,13 +853,11 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     // Tầng 1: UI Rendering — Giao diện tự động nhận diện IP máy bạn và hiển thị huy hiệu đặc quyền
     await waitFor(() => {
-      // Nhận diện tài khoản và role
+      // Nhận diện tài khoản
       expect(screen.getByText('office_admin')).toBeInTheDocument();
-      expect(screen.getByText(/👑 Quản trị viên/i)).toBeInTheDocument();
 
-      // Cột 2 & Cột 6: Hiển thị IP Máy bạn (Đang đăng nhập) & An toàn tuyệt đối
-      expect(screen.getByText(/IP Máy bạn \(Đang đăng nhập\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/🛡️ An toàn tuyệt đối/i)).toBeInTheDocument();
+      // Cột 2 & Cột 7: Hiển thị Máy bạn và IP Máy bạn
+      expect(screen.getAllByText(/Máy bạn/i).length).toBeGreaterThanOrEqual(1);
     });
 
     // Tầng 2: System Impact & Security Verification

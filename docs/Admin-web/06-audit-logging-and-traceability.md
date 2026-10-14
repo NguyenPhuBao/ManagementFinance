@@ -121,7 +121,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 2. **Luồng Cập Nhật Real-time:**
    - Kết nối Socket.io qua sự kiện `audit_activity`. Khi quản trị viên đang đứng ở Trang 1 và không bật bộ lọc, các dòng log mới phát sinh từ người dùng di động sẽ tự động chèn vào đầu bảng kèm hiệu ứng làm mới nhẹ nhàng.
 3. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
-   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (50, 100, 200).
+   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang mỗi khi tải trang.
 
 ---
 
