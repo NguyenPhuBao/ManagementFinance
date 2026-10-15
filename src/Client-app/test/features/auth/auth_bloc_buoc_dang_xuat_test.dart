@@ -28,9 +28,9 @@ import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
-import 'package:flowmoney/features/category/data/services/default_category_seeder.dart';
-import 'package:flowmoney/features/category/data/services/personal_default_categories.dart';
-import 'package:flowmoney/features/wallet/data/services/default_account_data_initializer.dart';
+import 'package:flowmoney/features/category/application/default_category_seeder.dart';
+import 'package:flowmoney/features/category/application/personal_default_categories.dart';
+import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
 import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 

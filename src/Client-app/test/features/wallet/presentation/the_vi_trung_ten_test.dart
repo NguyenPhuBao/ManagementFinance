@@ -6,7 +6,7 @@ import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
-import 'package:flowmoney/features/wallet/data/services/gop_vi_service.dart';
+import 'package:flowmoney/features/wallet/application/gop_vi_service.dart';
 import 'package:flowmoney/features/wallet/data/vi_trung_ten_nguon.dart';
 import 'package:flowmoney/features/wallet/domain/gop_vi.dart';
 import 'package:flowmoney/features/wallet/presentation/widgets/the_vi_trung_ten.dart';

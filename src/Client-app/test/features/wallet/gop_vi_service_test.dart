@@ -10,7 +10,7 @@ import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/notification/domain/notification_rules.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
-import 'package:flowmoney/features/wallet/data/services/gop_vi_service.dart';
+import 'package:flowmoney/features/wallet/application/gop_vi_service.dart';
 import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import 'package:flutter_test/flutter_test.dart';

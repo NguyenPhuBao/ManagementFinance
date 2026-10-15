@@ -9,7 +9,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const tepDinhNghia = 'features/wallet/data/services/vi_trung_ten_resolver.dart';
+  const tepDinhNghia = 'features/wallet/application/vi_trung_ten_resolver.dart';
 
   test('chỉ MỘT chỗ trong lib/ dựng ViTrungTenResolver', () {
     final choDung = <String>[];

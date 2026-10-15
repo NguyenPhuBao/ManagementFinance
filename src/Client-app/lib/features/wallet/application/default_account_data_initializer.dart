@@ -1,4 +1,4 @@
-import '../repositories/wallet_repository.dart';
+import '../data/repositories/wallet_repository.dart';
 
 /// Tạo dữ liệu ví tối thiểu cho một tài khoản chưa có đủ ví khởi tạo.
 class DefaultAccountDataInitializer {

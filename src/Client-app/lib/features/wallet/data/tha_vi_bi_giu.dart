@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../../../core/database/app_database.dart';
-import '../vi_trung_ten_nguon.dart';
+import '../../../core/database/app_database.dart';
+import 'vi_trung_ten_nguon.dart';
 
 /// "Thả" một ví khỏi trạng thái bị giữ vì trùng tên (G63): gỡ cờ + mốc chặn,
 /// và **làm mới giờ sửa** của ví cùng mọi bản ghi đang chờ từng bị giữ vì nó.

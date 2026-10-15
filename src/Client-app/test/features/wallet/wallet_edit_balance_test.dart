@@ -19,7 +19,7 @@ import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
-import 'package:flowmoney/features/wallet/data/services/dieu_chinh_so_du_service.dart';
+import 'package:flowmoney/features/wallet/application/dieu_chinh_so_du_service.dart';
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_edit_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 

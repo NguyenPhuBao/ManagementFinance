@@ -15,7 +15,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/category/data/services/default_category_seeder.dart';
+import 'package:flowmoney/features/category/application/default_category_seeder.dart';
 
 void main() {
   late AppDatabase db;

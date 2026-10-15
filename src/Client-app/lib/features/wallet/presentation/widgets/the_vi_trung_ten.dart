@@ -7,7 +7,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
-import '../../data/services/gop_vi_service.dart';
+import '../../application/gop_vi_service.dart';
 import '../../data/vi_trung_ten_nguon.dart';
 import '../../domain/vi_trung_ten.dart';
 import 'hop_doi_ten_vi.dart';

@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
-import '../models/category_entity.dart';
-import '../../domain/ban_sao_mac_dinh.dart';
+import '../../../core/database/app_database.dart';
+import '../data/models/category_entity.dart';
+import '../domain/ban_sao_mac_dinh.dart';
 
 /// Tạo cho mỗi tài khoản một **bản sao riêng** của bộ danh mục mặc định.
 ///

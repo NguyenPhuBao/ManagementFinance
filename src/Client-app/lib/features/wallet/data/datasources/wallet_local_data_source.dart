@@ -6,7 +6,7 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_status.dart';
 import '../models/wallet_entity.dart';
-import '../services/tha_vi_bi_giu.dart';
+import '../tha_vi_bi_giu.dart';
 
 /// Abstract — cho phép mock trong test
 abstract class WalletLocalDataSource {

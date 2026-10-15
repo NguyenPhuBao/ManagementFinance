@@ -84,7 +84,7 @@ void main() {
     'features/wallet/presentation/pages/wallet_add_page.dart':
         'Nạp ví hiện có để gạt công tắc mặc định và kiểm trùng tên — ví lưu trữ vẫn giữ chỗ '
             'tên (bất biến ②).',
-    'features/wallet/data/services/default_account_data_initializer.dart':
+    'features/wallet/application/default_account_data_initializer.dart':
         'Seed hai ví cho tài khoản mới: phải thấy ví đã lưu trữ để không seed lại ví saving / '
             'cash đã có.',
   };

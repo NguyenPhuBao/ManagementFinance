@@ -4,10 +4,10 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
-import '../../../notification/domain/notification_rules.dart';
-import '../../../../core/sync/sync_models.dart';
-import '../repositories/bill_repository.dart';
+import '../../../core/database/app_database.dart';
+import '../../notification/domain/notification_rules.dart';
+import '../../../core/sync/sync_models.dart';
+import '../data/repositories/bill_repository.dart';
 
 /// Gỡ khoản trả hoá đơn mà server đã từ chối bằng `BILL_ALREADY_PAID`.
 ///

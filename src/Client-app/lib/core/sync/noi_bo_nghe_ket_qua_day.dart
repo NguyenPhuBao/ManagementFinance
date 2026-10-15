@@ -1,5 +1,5 @@
-import '../../features/bill/data/services/bill_payment_conflict_resolver.dart';
-import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
+import '../../features/bill/application/bill_payment_conflict_resolver.dart';
+import '../../features/wallet/application/vi_trung_ten_resolver.dart';
 import '../di/injection_container.dart';
 import 'sync_engine.dart';
 

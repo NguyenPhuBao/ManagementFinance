@@ -76,7 +76,7 @@ void main() {
       if (!f.path.endsWith('.dart')) continue;
       // Chính tệp định nghĩa lớp thì không tính.
       if (f.path.replaceAll(r'\', '/').endsWith(
-          'features/bill/data/services/bill_payment_conflict_resolver.dart')) {
+          'features/bill/application/bill_payment_conflict_resolver.dart')) {
         continue;
       }
       final noiDung = f.readAsStringSync();
@@ -104,8 +104,8 @@ void main() {
       // `test/features/wallet/vi_trung_ten_resolver_wiring_test.dart`.
       final p = f.path.replaceAll(r'\', '/');
       if (p.endsWith(
-              'features/bill/data/services/bill_payment_conflict_resolver.dart') ||
-          p.endsWith('features/wallet/data/services/vi_trung_ten_resolver.dart')) {
+              'features/bill/application/bill_payment_conflict_resolver.dart') ||
+          p.endsWith('features/wallet/application/vi_trung_ten_resolver.dart')) {
         continue;
       }
       if (f.readAsStringSync().contains('batDauNghe(')) choGoi.add(f.path);

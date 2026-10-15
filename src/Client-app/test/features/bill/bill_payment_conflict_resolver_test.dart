@@ -17,7 +17,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
-import 'package:flowmoney/features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'package:flowmoney/features/bill/application/bill_payment_conflict_resolver.dart';
 
 /// Chỉ ghi lại lời gọi và ném thứ được dặn — đủ để đo hành vi của resolver mà
 /// không phải dựng cả `BillRepositoryImpl`.

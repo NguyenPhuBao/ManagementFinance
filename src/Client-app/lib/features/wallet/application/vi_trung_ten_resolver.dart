@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../../../core/database/app_database.dart';
-import '../../../../core/sync/sync_models.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/sync/sync_models.dart';
 
 /// Đặt cờ `bi_tu_choi_trung_ten` cho ví bị server từ chối vì **trùng tên** (G63).
 ///

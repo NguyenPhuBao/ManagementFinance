@@ -2,7 +2,7 @@
 /// mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`.
 ///
 /// Một tệp đặt sai chỗ không lỗi gì lúc chạy: trang vẫn dựng, test vẫn xanh. Nó chỉ làm người sau tìm không ra, làm
-/// `core` biết dần từng mảng, và làm cùng một loại tệp nằm hai chỗ ở hai mảng. Sáu luật ở đây là phần máy canh được
+/// `core` biết dần từng mảng, và làm cùng một loại tệp nằm hai chỗ ở hai mảng. Bảy luật ở đây (luật 7 từ 2026-10-15: chiều một hướng với `application/`) là phần máy canh được
 /// của bảng mục 8; chỗ xếp giữa `bloc/` · `widgets/` · `state/` và hàng *"hạ tầng core cần → core/<chủ đề>"* là luật
 /// đọc, không canh. 52 tệp rời dưới `data/` (`*_nguon`, `*_store`, tool AI) cố ý KHÔNG canh — bảng chưa có hàng cho chúng.
 ///
@@ -197,6 +197,26 @@ void main() {
     for (final e in conChoCoreImport.entries) {
       if (!thay.containsKey(e.key)) loi.add('${e.key}: đã sạch — rút khỏi conChoCoreImport.');
     }
+    expect(loi, isEmpty, reason: loi.join('\n'));
+  });
+
+  test('luật 7: data/ và domain/ không import application/ — chiều một hướng (spec Entity Thông báo 2026-10-15 mục 8)', () {
+    // `import` / `export`, nháy đơn / kép, BOM như luật 5. Bắt cả đường tương đối (`../application/x.dart`) lẫn `package:`.
+    final importApplication =
+        RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"][^\'"]*/application/');
+    final loi = <String>[];
+    var soTep = 0;
+    for (final f in Directory('lib/features').listSync(recursive: true).whereType<File>()) {
+      final d = _duong(f);
+      if (!d.endsWith('.dart') || !(d.contains('/data/') || d.contains('/domain/'))) continue;
+      soTep++;
+      if (f.readAsLinesSync().any(importApplication.hasMatch)) {
+        loi.add('$d: import application/ — data/ và domain/ nằm DƯỚI application (mục 4 kiến trúc); '
+            'dời luật thuần về domain/, hoặc để application gọi xuống.');
+      }
+    }
+    expect(soTep, greaterThan(150),
+        reason: 'tiền đề: phải thấy features/*/data + features/*/domain (đo 2026-10-15: 268 tệp) — đang quét sai thư mục.');
     expect(loi, isEmpty, reason: loi.join('\n'));
   });
 }

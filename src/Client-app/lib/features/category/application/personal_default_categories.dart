@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/category/category_name.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../core/category/category_name.dart';
+import '../../../core/database/app_database.dart';
 
 /// Một danh mục mà **backend không có** trong bộ mặc định, nên ở client nó
 /// thuộc về từng tài khoản thay vì là danh mục hệ thống.
