@@ -781,7 +781,33 @@ Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đ
 - Backend đo thật cùng ngày: mô-đun chatbot đủ, route gắn, unit 28/28 + integration 3/3; `thug63` (Basic) → 403 `FEATURE_DISABLED`;
   **`.env` dev không có `GEMINI_API_KEY` / `GEMINI_MODEL`** → mọi câu online về `done.fallback` (thang rơi phủ ca này). Khoá là việc
   của người dùng/backend. Khi thi công: Task 0 là Stitch 3 màn; tài liệu phải đổi gồm bất biến ① ② `AI_AGENT_ARCHITECTURE.md`,
-  hàng *Bảo mật* mục 7 `KIEN_TRUC`, khối *Riêng tư* màn Cài đặt AI, đơn CAN-LAM 43 thông báo backend.
+  hàng *Bảo mật* mục 7 `KIEN_TRUC`, khối *Riêng tư* màn Cài đặt AI, đơn CAN-LAM thông báo backend (số **kế tiếp** — 43 đã dùng
+  cho đơn soát sau gộp `cd2ee572`, 2026-10-15).
+
+### 🔀 Gộp `main` @ `cd2ee572` (2026-10-15, commit gộp `12104082`) — hợp đồng sự kiện tới client-app, PayOS VietQR + đối soát webhook, phong toả AIOps lưu CSDL; client đặt đơn 43
+
+- **Không xung đột** (`git merge-tree` sạch); 13 commit `main` (PR #131–#134, NPBao). Cây `src/Client-app` **không đổi hash**
+  (`368a28f3…` trước và sau) → không chạy lại `flutter test`; `CAN-LAM/` không đổi (backend chưa trả lời đơn 41, 42 — mã chưa có
+  `BILL_PERIOD_ALREADY_PAID`, module sync không đổi); `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart`
+  **không khớp**. `package.json` / `schema.prisma` đổi phía backend — client không `npm install`, không `prisma generate`.
+- Thứ chạm client: (1) tài liệu mới **`docs/Admin-web/Event-Notification-to-ClientApp.md`** (NPBao, *"PO đã phê duyệt"*) —
+  19 sự kiện socket / mã HTTP client phải xử lý, tự chấm client *"bỏ sót"* 11 mục. Đối chiếu mã hai phía 2026-10-15: 8 mục
+  client đã làm đúng; `user.notification` là **mã chết** phía backend; `FEATURE_DISABLED` client không chạm được (không gọi
+  `/api/ai/*`); đếm ngược chờ xoá và hạ gói theo hạn đã tự chạy ở máy; 503 quá tải / 429 đã được giãn cách ≥ 30 s phủ. Thiếu thật:
+  `connect_error` có `data.code` (client nối lại mỗi 60 s mãi mãi), `account.downgraded` (hạ gói trước hạn không thấy ngay),
+  dải bảo trì / phong toả (G89). (2) PayOS: endpoint client (`create-order`, `order-status/:orderCode`, `subscription-info`)
+  **không đổi** hình dạng; webhook thêm nhánh tự tạo đơn khi `orderCode` lạ. (3) Phong toả AIOps nay **lưu CSDL** (ba bảng
+  `aiops_*quarantine*` — `database/26`, backend tạo bằng DDL `IF NOT EXISTS` lúc khởi động; **chưa có** trên CSDL dev vì backend
+  chưa chạy từ khi gộp — đo: chỉ `aiops_incident`, `aiops_setting`) → khởi động lại backend **không còn** xoá danh sách;
+  loopback vẫn không thể bị đưa vào.
+- **Đơn 43** `CAN-LAM/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
+  có** `ck_account_status` (đo: bảng `account` 0 CHECK) nên ghi được — `auth.js` trả `ACCOUNT_DELETED` → client **xoá SQLite**
+  (mất phần chưa đồng bộ); kích hoạt bằng 15 lần đăng nhập sai cho tên của người khác. **B** webhook `orderCode` lạ → đơn gắn
+  tài khoản `idaccount` nhỏ nhất → nâng Premium nhầm. **C** 503 đăng nhập lúc bảo trì mất `code`. **D** 12 chỗ hợp đồng lệch mã.
+  Hiện CSDL dev không hàng nào mang `'Locked'` (chỉ `Active`, `Deleted`).
+- **Người dùng chốt 2026-10-15:** phần client (xét lại xoá SQLite khi `ACCOUNT_DELETED` từ request thường · `connect_error` →
+  dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói · dải bảo trì / phong toả đọc mã HTTP + `code`) làm **một lượt
+  sau khi backend đóng đơn 43**. Nhận broadcast qua socket vẫn theo quyết định 2026-09-30 (không nhận).
 
 ### 🔀 Gộp `main` @ `79e46225` (2026-10-11) — Admin-web v1.0.0 + chuyển ngữ, AIOps `actor_role`, `maintenance_history`; backend chưa trả lời đơn 41, 42
 
