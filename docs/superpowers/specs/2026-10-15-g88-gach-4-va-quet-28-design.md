@@ -98,8 +98,8 @@ quét 25 luật 7.
 - Test: **một** tệp helper `test/helpers/sync_engine_thu.dart` với ba hàm — `congSoDuViThat(db)` · `congViBiGiuThat(db)` (bản
   thật dựng trên `db`, như DI) và `taoSyncEngineThu({dioClient, db, …})` dùng hai hàm ấy làm mặc định, nhận hai cổng tuỳ chọn
   cho ca muốn tiêm bản giả. 32 chỗ dựng thẳng đổi sang `taoSyncEngineThu(`; 4 lớp con `extends SyncEngine` (không đi qua
-  factory được — `super(...)`) đổi `required super.db` thành `required AppDatabase db` + `: super(db: db, soDuVi:
-  congSoDuViThat(db), viBiGiu: congViBiGiuThat(db))`. Mặc định là **bản thật**, **không** phải no-op (mục 9). **Không ca nào
+  factory được — `super(...)`) giữ `required super.db` và thêm `: super(soDuVi: congSoDuViThat(db), viBiGiu:
+  congViBiGiuThat(db))` (đổi sang `required AppDatabase db` là 4 info `use_super_parameters` — preflight đo). Mặc định là **bản thật**, **không** phải no-op (mục 9). **Không ca nào
   đổi kỳ vọng.**
 - `test/features/wallet/vi_trung_ten_cuc_bo_test.dart` (G63 — đường đồng bộ không nhắc tên cột cờ): thêm
   `lib/core/sync/cong_vi_bi_giu.dart` vào danh sách `duongDongBo` (+1 ca) và sửa docstring dòng 4 (engine hỏi qua
