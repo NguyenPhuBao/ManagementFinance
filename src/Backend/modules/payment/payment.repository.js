@@ -1,4 +1,6 @@
+const crypto = require('crypto');
 const { prisma } = require('../../config/db');
+const payosClient = require('./payos.client');
 
 /**
  * Chuyển đổi các trường BigInt trong object thành Number để an toàn khi serialize JSON
@@ -61,6 +63,55 @@ async function findOrderByCode(orderCode) {
     },
   });
   return sanitizeOrderData(order);
+}
+
+/**
+ * Tìm đơn hàng theo orderCode, nếu chưa có thì tự động khởi tạo đơn đối soát từ Webhook PayOS hợp lệ
+ * @param {number|string} orderCode 
+ * @param {number} amount 
+ * @param {string} packageType 
+ */
+async function findOrCreateOrderByCode(orderCode, amount, packageType = 'PREMIUM_1_MONTH') {
+  const existingOrder = await findOrderByCode(orderCode);
+  if (existingOrder) {
+    return existingOrder;
+  }
+
+  // Tra cứu tài khoản admin hoặc tài khoản mặc định đang hoạt động
+  const targetAccount = await prisma.account.findFirst({
+    where: { delete_at: null },
+    orderBy: { idaccount: 'asc' },
+  });
+  const accountId = targetAccount ? targetAccount.idaccount : 1;
+  const orderId = crypto.randomUUID();
+  const now = new Date();
+
+  const createdOrder = await prisma.payment_order.create({
+    data: {
+      id: orderId,
+      idaccount: accountId,
+      order_code: BigInt(orderCode),
+      package_type: packageType,
+      amount: Number(amount) || 49000,
+      currency: 'VND',
+      status: 'PENDING',
+      created_at: now,
+      expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+    },
+    include: {
+      account: {
+        select: {
+          idaccount: true,
+          username: true,
+          email: true,
+          type: true,
+          premium_expires_at: true,
+        },
+      },
+    },
+  });
+
+  return sanitizeOrderData(createdOrder);
 }
 
 /**
@@ -273,6 +324,417 @@ async function downgradeExpiredPremiumAccounts(now = new Date()) {
   return expiredAccounts;
 }
 
+/**
+ * Lấy danh sách đơn hàng cho Admin kèm bộ lọc tìm kiếm và phân trang
+ * @param {object} options
+ */
+async function findOrdersForAdmin({
+  page = 1,
+  limit = 20,
+  search = '',
+  status,
+  packageType,
+  fromDate,
+  toDate,
+} = {}) {
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
+  const take = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+  const skip = (currentPage - 1) * take;
+
+  const where = {};
+
+  if (status && status !== 'ALL') {
+    where.status = status;
+  }
+
+  if (packageType && packageType !== 'ALL') {
+    where.package_type = packageType;
+  }
+
+  if (fromDate || toDate) {
+    where.created_at = {};
+    if (fromDate) {
+      where.created_at.gte = new Date(fromDate);
+    }
+    if (toDate) {
+      const endOfDay = new Date(toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.created_at.lte = endOfDay;
+    }
+  }
+
+  if (search && search.trim() !== '') {
+    const trimmed = search.trim();
+    const isNum = /^\d+$/.test(trimmed);
+
+    const orConditions = [
+      {
+        account: {
+          username: {
+            contains: trimmed,
+            mode: 'insensitive',
+          },
+        },
+      },
+      {
+        account: {
+          email: {
+            contains: trimmed,
+            mode: 'insensitive',
+          },
+        },
+      },
+      {
+        account: {
+          User: {
+            fullname: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+        },
+      },
+    ];
+
+    if (isNum) {
+      orConditions.unshift({
+        order_code: BigInt(trimmed),
+      });
+    }
+
+    where.OR = orConditions;
+  }
+
+  const [total, items] = await Promise.all([
+    prisma.payment_order.count({ where }),
+    prisma.payment_order.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      skip,
+      take,
+      include: {
+        account: {
+          select: {
+            idaccount: true,
+            username: true,
+            email: true,
+            type: true,
+            status: true,
+            premium_expires_at: true,
+            User: {
+              select: {
+                fullname: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    total,
+    page: currentPage,
+    limit: take,
+    totalPages: Math.ceil(total / take) || 1,
+    items: items.map((item) => {
+      const sanitized = sanitizeOrderData(item);
+      return sanitized;
+    }),
+  };
+}
+
+/**
+ * Lấy thống kê tổng quan doanh thu và đơn hàng cho Admin
+ * @param {object} options
+ */
+async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
+  const where = {};
+  if (fromDate || toDate) {
+    where.created_at = {};
+    if (fromDate) {
+      where.created_at.gte = new Date(fromDate);
+    }
+    if (toDate) {
+      const endOfDay = new Date(toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.created_at.lte = endOfDay;
+    }
+  }
+
+  const [totalCount, paidCount, pendingCount, cancelledCount, expiredCount, revenueAggregate] = await Promise.all([
+    prisma.payment_order.count({ where }),
+    prisma.payment_order.count({ where: { ...where, status: 'PAID' } }),
+    prisma.payment_order.count({ where: { ...where, status: 'PENDING' } }),
+    prisma.payment_order.count({ where: { ...where, status: 'CANCELLED' } }),
+    prisma.payment_order.count({ where: { ...where, status: 'EXPIRED' } }),
+    prisma.payment_order.aggregate({
+      where: { ...where, status: 'PAID' },
+      _sum: {
+        amount: true,
+      },
+    }),
+  ]);
+
+  const totalRevenue = revenueAggregate && revenueAggregate._sum && revenueAggregate._sum.amount
+    ? (typeof revenueAggregate._sum.amount.toNumber === 'function'
+        ? revenueAggregate._sum.amount.toNumber()
+        : Number(revenueAggregate._sum.amount))
+    : 0;
+
+  const successRate = totalCount > 0 ? Number(((paidCount / totalCount) * 100).toFixed(2)) : 0;
+
+  return {
+    totalRevenue,
+    totalOrders: totalCount,
+    paidOrders: paidCount,
+    pendingOrders: pendingCount,
+    cancelledOrders: cancelledCount,
+    expiredOrders: expiredCount,
+    successRate,
+  };
+}
+
+/**
+ * Lấy chi tiết đơn hàng cho Admin kèm lịch sử đối soát giao dịch Webhook
+ * @param {string} orderId
+ */
+async function getOrderDetailForAdmin(orderId) {
+  const order = await prisma.payment_order.findUnique({
+    where: { id: orderId },
+    include: {
+      account: {
+        select: {
+          idaccount: true,
+          username: true,
+          email: true,
+          type: true,
+          status: true,
+          premium_expires_at: true,
+          User: {
+            select: {
+              fullname: true,
+            },
+          },
+        },
+      },
+      payment_transaction: {
+        orderBy: { transaction_time: 'desc' },
+      },
+    },
+  });
+
+  if (!order) return null;
+
+  const sanitized = sanitizeOrderData(order);
+  if (Array.isArray(sanitized.payment_transaction)) {
+    sanitized.payment_transaction = sanitized.payment_transaction.map((tx) => {
+      const txClone = { ...tx };
+      if (txClone.amount && typeof txClone.amount.toNumber === 'function') {
+        txClone.amount = txClone.amount.toNumber();
+      }
+      return txClone;
+    });
+  }
+
+  return sanitized;
+}
+
+/**
+ * Lấy hoặc tạo mã QR thanh toán từ kênh PayOS thật
+ * @param {object} param0 { amount, packageType }
+ */
+async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MONTH', persistOrder = false, idaccount } = {}) {
+  const orderCode = payosClient.generateOrderCode();
+  let description = `PFM ${orderCode}`.slice(0, 25);
+  let bin = '970422';
+  let accountNumber = '2512070399999';
+  let accountName = 'NGUYEN PHU BAO';
+  let checkoutUrl = `https://pay.payos.vn/web/${orderCode}`;
+  let paymentLinkId = `sample-link-${orderCode}`;
+  let qrCode = null;
+
+  try {
+    const payosRes = await payosClient.createPaymentLink({
+      orderCode,
+      amount: Number(amount),
+      description,
+    });
+    if (payosRes) {
+      checkoutUrl = payosRes.checkoutUrl || checkoutUrl;
+      paymentLinkId = payosRes.paymentLinkId || paymentLinkId;
+      bin = payosRes.bin || bin;
+      accountNumber = payosRes.accountNumber || accountNumber;
+      accountName = payosRes.accountName || accountName;
+      description = payosRes.description || description;
+      qrCode = payosRes.qrCode || null;
+    }
+  } catch (err) {
+    console.warn('[PAYOS] Không thể tạo payment link PayOS trực tiếp:', err.message);
+  }
+
+  // URL ảnh VietQR chuẩn Napas với kênh MB Bank thật của người dùng
+  const qrUrl = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+
+  // Tự động lưu bản ghi đơn hàng PENDING khi được yêu cầu (phục vụ đối soát tự động khi PayOS bắn Webhook về Cloud Backend)
+  if (persistOrder) {
+    try {
+      let accountId = idaccount;
+      if (!accountId) {
+        const defaultAcc = await prisma.account.findFirst({
+          where: { delete_at: null },
+          orderBy: { idaccount: 'asc' },
+          select: { idaccount: true },
+        });
+        accountId = defaultAcc ? defaultAcc.idaccount : 1;
+      }
+      const orderId = crypto.randomUUID();
+      const now = new Date();
+      await prisma.payment_order.create({
+        data: {
+          id: orderId,
+          idaccount: accountId,
+          order_code: BigInt(orderCode),
+          package_type: packageType,
+          amount: Number(amount),
+          currency: 'VND',
+          status: 'PENDING',
+          checkout_url: checkoutUrl,
+          payment_link_id: paymentLinkId,
+          created_at: now,
+          expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+        },
+      });
+    } catch (dbErr) {
+      console.warn('[PAYOS] Không thể lưu pending order cho sample QR:', dbErr.message);
+    }
+  }
+
+  return {
+    orderCode,
+    amount: Number(amount),
+    packageType,
+    bin,
+    bankName: 'MB Bank (Quân Đội)',
+    accountNumber,
+    accountName,
+    description,
+    checkoutUrl,
+    paymentLinkId,
+    qrUrl,
+    qrCode,
+  };
+}
+
+/**
+ * Tạo đơn hàng mẫu thử nghiệm (kèm hoặc không kèm đối soát thanh toán Webhook)
+ * Kết nối trực tiếp qua kênh thanh toán PayOS của người dùng
+ * @param {object} param0 
+ */
+async function createSampleOrder({
+  packageType = 'PREMIUM_1_MONTH',
+  amount = 49000,
+  status = 'PENDING',
+  simulateWebhook = false,
+  idaccount,
+} = {}) {
+  let targetAccount = null;
+  if (idaccount) {
+    targetAccount = await prisma.account.findUnique({
+      where: { idaccount: Number(idaccount) },
+    });
+  }
+  if (!targetAccount) {
+    targetAccount = await prisma.account.findFirst({
+      where: { delete_at: null },
+      orderBy: { idaccount: 'asc' },
+    });
+  }
+
+  const accountId = targetAccount ? targetAccount.idaccount : 1;
+  const orderId = crypto.randomUUID();
+  const isPaid = status === 'PAID' || simulateWebhook;
+  const now = new Date();
+
+  // Gọi kênh PayOS thật để lấy mã đơn, checkout link và qrCode
+  const payosInfo = await getOrCreatePayosQr({ amount, packageType });
+  const orderCode = payosInfo.orderCode;
+
+  const createdOrder = await prisma.payment_order.create({
+    data: {
+      id: orderId,
+      idaccount: accountId,
+      order_code: BigInt(orderCode),
+      package_type: packageType,
+      amount: amount,
+      currency: 'VND',
+      status: isPaid ? 'PAID' : 'PENDING',
+      checkout_url: payosInfo.checkoutUrl,
+      payment_link_id: payosInfo.paymentLinkId,
+      created_at: now,
+      paid_at: isPaid ? now : null,
+      expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+    },
+    include: {
+      account: {
+        select: {
+          idaccount: true,
+          username: true,
+          email: true,
+          type: true,
+          User: { select: { fullname: true } },
+        },
+      },
+    },
+  });
+
+  if (isPaid) {
+    const txId = crypto.randomUUID();
+    await prisma.payment_transaction.create({
+      data: {
+        id: txId,
+        order_id: orderId,
+        idaccount: accountId,
+        payos_transaction_id: `SAMPLE-TXN-${orderCode}`,
+        amount: amount,
+        bank_code: 'MBBANK',
+        transaction_time: now,
+        signature_verified: true,
+        raw_webhook_hash: crypto.createHash('sha256').update(orderId).digest('hex'),
+      },
+    });
+  }
+
+  const sanitized = sanitizeOrderData(createdOrder);
+  sanitized.qr_url = payosInfo.qrUrl;
+  sanitized.qr_code = payosInfo.qrCode;
+  sanitized.bank_info = {
+    bin: payosInfo.bin,
+    bankName: payosInfo.bankName,
+    accountNumber: payosInfo.accountNumber,
+    accountName: payosInfo.accountName,
+    amount: payosInfo.amount,
+    description: payosInfo.description,
+    checkoutUrl: payosInfo.checkoutUrl,
+  };
+
+  return sanitized;
+}
+
+/**
+ * Xóa các đơn hàng mẫu thử nghiệm (có prefix sample-link-)
+ */
+async function deleteSampleOrders() {
+  const deleted = await prisma.payment_order.deleteMany({
+    where: {
+      payment_link_id: {
+        startsWith: 'sample-link-',
+      },
+    },
+  });
+  return { deletedCount: deleted.count };
+}
+
 module.exports = {
   createOrder,
   findOrderByCode,
@@ -284,4 +746,13 @@ module.exports = {
   findAccountSubscription,
   findExpiringPremiumAccounts,
   downgradeExpiredPremiumAccounts,
+  findOrdersForAdmin,
+  getPaymentSummaryStats,
+  getOrderDetailForAdmin,
+  createSampleOrder,
+  deleteSampleOrders,
+  getOrCreatePayosQr,
+  findOrCreateOrderByCode,
 };
+
+

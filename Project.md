@@ -80,7 +80,8 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ, cơ chế chặn kích hoạt lặp khi đang active và bảo toàn lịch tương lai ngoài thời gian khẩn cấp; (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart). Xem chi tiết tại `docs/Admin-web/07-maintenance-and-resilience.md`, `02-dashboard-and-analytics.md` và `09-aiops-sentinel-and-quarantine.md`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ, cơ chế chặn kích hoạt lặp khi đang active và bảo toàn lịch tương lai ngoài thời gian khẩn cấp; (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart); (6) Quản Lý Thanh Toán & Kênh PayOS Thật (`/payments`): Theo dõi doanh thu KPI, tra cứu lịch sử đơn hàng phân trang đa bộ lọc, đối soát webhook PayOS kèm xác thực chữ ký HMAC-SHA256, modal sinh mã QR Napas 247 thật và liên kết Checkout trực tiếp từ cổng PayOS thật (MB Bank `2512070399999` - `NGUYEN PHU BAO`) với các mức tiền thử nghiệm linh hoạt. Xem chi tiết tại `docs/Admin-web/07-maintenance-and-resilience.md`, `02-dashboard-and-analytics.md` và `09-aiops-sentinel-and-quarantine.md`. |
+
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
 
@@ -4084,4 +4085,50 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - Đã xử lý tốt: `ocr.completed`, `ocr.duplicate`, `sync.completed`, `account.upgraded`, `account.permissions_updated`, `account.force_logout`, HTTP 401 (`ACCOUNT_INACTIVE`, `ACCOUNT_DELETED`).
   - Bổ sung theo hợp đồng: `system.maintenance_changed`, `system.broadcast`, `account.downgraded`, `account.countdown`, HTTP 503 (`MAINTENANCE_MODE`, `SERVER_OVERLOADED`), HTTP 429 (`RETRY_LIMIT_EXCEEDED`), HTTP 403 (`AIOPS_QUARANTINED`, `FEATURE_DISABLED`).
 - **Nguồn sự thật:** Toàn văn đặc tả kỹ thuật và checklist code Flutter lưu tại [docs/Admin-web/Event-Notification-to-ClientApp.md](docs/Admin-web/Event-Notification-to-ClientApp.md).
+
+### 7.17 Quản Lý Lịch Sử Thanh Toán Gói Cước Dành Cho Admin (🆕 2026-10-15)
+- **Bối cảnh & Yêu cầu từ PO:**
+  - Admin cần có cơ chế quản lý và theo dõi lịch sử thanh toán của các tài khoản khi nâng cấp gói cước dịch vụ (Premium 1 tháng, 6 tháng, 1 năm).
+  - Tối ưu hóa hiệu năng, xây dựng các nội dung cốt lõi, hạn chế các ghi chú rườm rà.
+- **Tận dụng CSDL & Tuân thủ DB Guard:**
+  - Tận dụng 100% hai bảng CSDL đã có sẵn trên Supabase Tokyo: `payment_order` (đơn hàng thanh toán) và `payment_transaction` (nhật ký webhook đối soát giao dịch ngân hàng PayOS).
+  - Không chạy migration, không sửa DDL, bảo toàn toàn bộ triggers và partial indexes theo Rule 10.
+- **Thực thi Kỹ thuật Backend:**
+  - `src/Backend/modules/payment/payment.repository.js`:
+    + `findOrdersForAdmin`: Hỗ trợ tìm kiếm theo mã đơn (`order_code`), tên đăng nhập (`username`), email hoặc họ tên; lọc theo trạng thái (`status`), loại gói (`package_type`), khoảng thời gian (`fromDate`, `toDate`); join bảng `account` và `User` (`fullname`); phân trang và tự động chuyển đổi an toàn `BigInt` sang `Number`.
+    + `getPaymentSummaryStats`: Tổng hợp 4 chỉ số KPI gồm Doanh thu thực nhận (tổng amount của các đơn `PAID`), Tổng số đơn hàng, Số đơn thanh toán thành công, Tỷ lệ thành công (%).
+    + `getOrderDetailForAdmin`: Lấy chi tiết đơn hàng kèm danh sách giao dịch đối soát webhook từ bảng `payment_transaction`.
+  - `src/Backend/modules/payment/payment.service.js` & `payment.controller.js`: Cung cấp các phương thức điều hướng và xử lý phản hồi chuẩn RESTful.
+  - `src/Backend/api/admin.routes.js`: Đăng ký 3 routes bảo vệ bởi `authenticate` và `authorize('admin')`:
+    + `GET /api/admin/payments/orders`: Lấy danh sách đơn hàng có phân trang và bộ lọc.
+    + `GET /api/admin/payments/stats`: Lấy thống kê KPI doanh thu và đơn hàng.
+    + `GET /api/admin/payments/orders/:id`: Lấy chi tiết đơn và nhật ký đối soát ngân hàng.
+- **Thực thi Kỹ thuật Frontend (Admin-web):**
+  - `src/Admin-web/src/api/payment.api.js`: Module API client giao tiếp với các endpoints admin payments.
+  - `src/Admin-web/src/components/layout/Sidebar.jsx`: Bổ sung mục điều hướng `Lịch sử thanh toán` (`/payments`, icon `receipt_long`).
+  - `src/Admin-web/src/router/routes.jsx`: Khai báo route bảo vệ `/payments` trỏ tới `PaymentHistoryPage`.
+  - `src/Admin-web/src/locales/vi.js` & `en.js`: Khai báo đầy đủ nhãn `nav.payments` và namespace `payments` hỗ trợ chuyển đổi đa ngôn ngữ.
+  - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
+    + **Header & Quick Refresh:** Nút làm mới dữ liệu thời gian thực kèm thông báo phản hồi.
+    + **4 Thẻ KPI Tóm Tắt:** Doanh thu thực nhận (định dạng VNĐ), Tổng đơn hàng, Đơn thành công, Tỷ lệ thành công (%).
+    + **Thanh Bộ Lọc Đa Năng:** Ô tìm kiếm (mã đơn, user, email), Dropdown trạng thái (`PAID`, `PENDING`, `CANCELLED`, `EXPIRED`), Dropdown gói cước (`PREMIUM_1_MONTH`, `PREMIUM_6_MONTHS`, `PREMIUM_1_YEAR`), Bộ lọc ngày (`fromDate`, `toDate`), Nút đặt lại bộ lọc.
+    + **Bảng Dữ Liệu:** Hiển thị mã đơn hàng, khách hàng, gói cước, số tiền, trạng thái (badge màu chuẩn), ngày tạo, ngày thanh toán, nút xem chi tiết.
+    + **Modal Đối Soát Giao Dịch:** Hiển thị chi tiết đơn hàng, liên kết PayOS và bảng nhật ký đối soát Webhook (`bank_code`, `payos_transaction_id`, thời gian giao dịch thực, trạng thái chữ ký `signature_verified`).
+    + **Phân Trang:** Tích hợp `Pagination.jsx` với các tùy chọn 10, 20, 50, 100 bản ghi/trang.
+- **Tích Hợp Kênh Thanh Toán Thật PayOS & VietQR (Cloud Architecture):**
+  - `src/Backend/modules/payment/payment.repository.js`:
+    + `getOrCreatePayosQr`: Tạo liên kết thanh toán và mã VietQR chuẩn Napas qua kênh PayOS (MB Bank `2512070399999`, NGUYEN PHU BAO). Hỗ trợ cờ `persistOrder: true` lưu đơn `PENDING` vào Supabase để sẵn sàng đối soát khi webhook từ PayOS Cloud trả về.
+    + `findOrCreateOrderByCode`: Tự động khởi tạo đơn đối soát từ Webhook PayOS hợp lệ nếu đơn chưa có sẵn trong CSDL, đảm bảo không bao giờ thất thoát tiền đã thanh toán của người dùng.
+    + `createSampleOrder` & `deleteSampleOrders`: Cho phép tạo và dọn dẹp các đơn hàng mẫu để kiểm thử quy trình đối soát.
+  - `src/Backend/modules/payment/payment.service.js`:
+    + `handlePayOSWebhook`: Thẩm tra chữ ký HMAC-SHA256, kiểm tra idempotency, tự động fallback gọi `findOrCreateOrderByCode` khi nhận giao dịch hợp lệ, băm SHA-256 payload, cập nhật trạng thái `PAID` và ghi nhận nhật ký vào `payment_transaction`.
+  - `src/Backend/api/admin.routes.js`:
+    + `GET /api/admin/payments/payos-qr`: Cung cấp mã VietQR thật từ kênh PayOS.
+    + `POST /api/admin/payments/sample` & `DELETE /api/admin/payments/sample`: Quản trị đơn mẫu thử nghiệm.
+  - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
+    + **Modal Mã QR mẫu (Kênh PayOS):** Hiển thị mã VietQR thật với tài khoản MB Bank, các mức tiền kiểm thử (49k, 129k, 499k, 2k test), nút tạo đơn PENDING / PAID và dọn dẹp dữ liệu mẫu.
+- **Kiểm thử 2 Tầng (Rule 11 Verification):**
+  - **Backend:** Thêm bộ test `src/Backend/tests/unit/admin.payment.test.js` gồm 12 tests bao quát Tầng 1 (API HTTP contract) và Tầng 2 (Truy vấn CSDL, sinh QR PayOS, khởi tạo đơn đối soát, sanitize BigInt). Kết quả: **282/282 tests PASS (100%)**.
+  - **Admin-web:** Thêm bộ test `src/Admin-web/src/tests/payment.page.test.jsx` gồm 11 tests bao quát Tầng 1 (Render đầy đủ controls, badges, Modal QR PayOS) và Tầng 2 (Tác động hệ thống: gọi API đúng filter params, refresh dữ liệu, chuyển đổi mức tiền kiểm thử). Kết quả: **11/11 tests PASS (100%)**, `vite build` thành công không lỗi.
+
 
