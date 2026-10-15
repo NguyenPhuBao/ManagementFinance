@@ -58,6 +58,18 @@ void main() {
     expect(l.moc, DateTime(2026, 10, 10, 20));
   });
 
+  test('hai hoá đơn: mốc NHỎ NHẤT thắng dù đứng sau trong danh sách', () {
+    final l = mocTuTraNen(
+      [_hoaDon(han: DateTime(2026, 10, 20)), _hoaDon(han: DateTime(2026, 10, 12))],
+      now: now,
+      gioNhac: 8,
+      phutNhac: 30,
+    );
+    expect(l.moc, DateTime(2026, 10, 12, 8, 30),
+        reason: 'phép chọn mốc sớm nhất nằm TRONG xet (bản chép riêng của mỗi tệp, spec 3.3) — "phần tử đầu thắng" hay "mốc cuối thắng" đều sai');
+    expect(l.coTuDong, isTrue);
+  });
+
   test('tắt tự trả / đã trả / thiếu ví / đã xoá → bỏ hẳn', () {
     for (final b in [
       _hoaDon(han: DateTime(2026, 10, 11), tuTra: false),

@@ -108,6 +108,10 @@ void main() {
           reason: 'không quyền tự trả mà vẫn góp phần hoá đơn là đánh thức máy cho Basic');
       expect(RegExp(r'if \(coQuyenNen\(MaQuyen\.goalAutoDeposit\)\)\s*mocTrichNen\(').hasMatch(di), isTrue,
           reason: 'không quyền trích mục tiêu mà vẫn góp phần mục tiêu là đánh thức máy cho Basic');
+      for (final h in ['mocTuTraNen(', 'mocTrichNen(']) {
+        expect(h.allMatches(di).length, 1,
+            reason: '$h phải được gọi ĐÚNG MỘT lần trong DI (và dưới `if` quyền gói) — gọi thêm không điều kiện là phần ấy luôn góp mốc');
+      }
     });
   });
 

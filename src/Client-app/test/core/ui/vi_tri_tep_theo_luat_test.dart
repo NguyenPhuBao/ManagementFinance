@@ -82,7 +82,7 @@ String _chuan(String p) {
 
 /// Đích (tương đối `src/Client-app`) của đường [duong] trong dòng import của tệp [tep]; `null` = `dart:` / gói ngoài.
 String? _dich(String tep, String duong) {
-  if (duong.startsWith('package:flowmoney/')) return 'lib/${duong.substring('package:flowmoney/'.length)}';
+  if (duong.startsWith('package:flowmoney/')) return _chuan('lib/${duong.substring('package:flowmoney/'.length)}');
   if (duong.contains(':')) return null;
   return _chuan('${tep.substring(0, tep.lastIndexOf('/'))}/$duong');
 }

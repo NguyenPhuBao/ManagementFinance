@@ -26,10 +26,21 @@ void main() {
       if (noi.hasMatch(f.readAsStringSync())) loi.add(p);
     }
     expect(loi, isEmpty);
-    final di = File('lib/core/di/injection_container.dart').readAsStringSync();
+    final di = File('lib/core/di/injection_container.dart').readAsStringSync().replaceAll('\r\n', '\n');
+    // Phạm vi miễn trừ là THÂN hàm nối chung chứ không cả tệp DI: dời lời gọi vào một factory `registerLazySingleton` thì
+    // engine nền không ai resolve resolver → không nối (spec 2026-10-15 mục 9, rủi ro 4).
+    final dau = di.indexOf('void noiBoNgheKetQuaDay() {');
+    expect(dau, isNonNegative, reason: 'DI mất hàm nối chung noiBoNgheKetQuaDay');
+    final cuoi = di.indexOf('\n}', dau);
+    expect(cuoi, greaterThan(dau), reason: 'không thấy dấu } ở cột 0 đóng thân noiBoNgheKetQuaDay');
+    final than = di.substring(dau, cuoi);
+    final ngoai = di.substring(0, dau) + di.substring(cuoi);
     for (final r in ['BillPaymentConflictResolver', 'ViTrungTenResolver']) {
-      expect(RegExp('$r>\\(\\)\\s*\\.batDauNghe').allMatches(di).length, 1,
-          reason: '$r phải được nối ĐÚNG MỘT lần trong hàm nối chung — hai lần là hoàn tác chạy hai lượt.');
+      final mau = RegExp('$r>\\(\\)\\s*\\.batDauNghe');
+      expect(mau.allMatches(than).length, 1,
+          reason: '$r phải được nối ĐÚNG MỘT lần trong THÂN hàm nối chung — hai lần là hoàn tác chạy hai lượt.');
+      expect(mau.allMatches(ngoai).length, 0,
+          reason: '$r nối NGOÀI thân noiBoNgheKetQuaDay (vd. trong factory registerLazySingleton): engine nền không resolve nó nên không nối.');
     }
   });
 

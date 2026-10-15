@@ -39,6 +39,15 @@ void main() {
     expect(l.coTuDong, isTrue);
   });
 
+  test('hai mục tiêu: kỳ kế SỚM hơn thắng dù đứng sau trong danh sách', () {
+    final muon = _mucTieu(mocNeo: DateTime(2026, 9, 20, 7), sanChay: DateTime(2026, 9, 20, 7));
+    final som = _mucTieu(); // kỳ kế 15/10 07:00
+    final l = mocTrichNen([muon, som], now: now);
+    expect(l.moc, DateTime(2026, 10, 15, 7),
+        reason: 'phép chọn mốc sớm nhất nằm TRONG xet (bản chép riêng của mỗi tệp, spec 3.3) — "phần tử đầu thắng" hay "mốc cuối thắng" đều sai');
+    expect(l.coTuDong, isTrue);
+  });
+
   test('mục tiêu đã xong / tắt trích → bỏ', () {
     expect(mocTrichNen([_mucTieu(xong: true)], now: now), (moc: null, coTuDong: false));
     expect(mocTrichNen([_mucTieu(soTien: null)], now: now), (moc: null, coTuDong: false));
