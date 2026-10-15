@@ -5,6 +5,42 @@ gạch 6, tên tầng, cổng mảng) và **bốn phần** thiết kế trong ch
 `docs/superpowers/plans/2026-10-15-entity-thong-bao-application.md` (gitignore, viết sau khi duyệt spec). Lối thi công (inline · agent con)
 hỏi sau khi có kế hoạch (bộ nhớ *thực thi kế hoạch*).
 
+✅ **Thi công xong 2026-10-15** (bảy commit mã `73429f46` → `08effea7`).
+
+> ✅ **Số đo sau thi công (2026-10-15, HEAD `08effea7`; đếm bằng máy, đừng cộng dồn).** Thi công xong bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát),
+> mọi task qua soát không lỗi Quan trọng: Task 1 `73429f46` (quét 27: luật 4, `conChoKieu` bắt `AppNotificationEvent`) · Task 2 `362ae94a` (`NotificationEntity`, 92 dòng, 14 trường, `companionTu`) ·
+> Task 3 `2cb1c00f` (`ThongBaoRepository` 26 dòng + Impl, hai trang nhận Entity, `chenLai`) · Task 4 `5e19895d` (ba hàm `hang*`, `deXuatThongBao` nhận Entity, record `SuKienNhatKy`) ·
+> Task 5 `28d0a2f3` (hai lớp `*Event` về domain, `budget_health`, engine gợi ý, `so_du_vi_service`) · Task 6 `d95674ef` (gạch 5: 34 tệp dời, 39 test soi gương) ·
+> Task 7 `08effea7` (gạch 6: `data/services/` → `application/`, quét 25 luật 7).
+>
+> **Chỗ thi công khác văn bản kế hoạch / spec (có chủ ý, ghi để người đọc sau không tìm lệch):** (1) **lệch (a) của kế hoạch — hai lớp `*Event` thấy qua `export` từ runner — KHÔNG giữ:**
+> thi công đúng **mục 7.1 của spec** — `GoalAutoDepositEvent` / `BillAutoPayEvent` nằm ở `goal/domain/goal_auto_deposit.dart` · `bill/domain/bill_auto_pay.dart`, runner **không** `export`
+> chúng, DI · luật · bộ quét · test import thẳng tệp domain (đoạn tự soát của kế hoạch nói "qua `export`" là sai với mã); (2) **lệch (b) giữ:** dời **34** tệp (không 35: `thong_bao_nguon.dart` đã thay bằng
+> `ThongBaoRepository` ở Task 3, không dời); (3) **phán quyết preflight C2:** `tha_vi_bi_giu.dart` ở **`wallet/data/`** (datasource `wallet_local_data_source.dart` gọi nó — luật 7 cấm
+> `data/` import `application/`), nên mục 8 *"ví 5"* thành **ví 4** và `application/` có **17** tệp (thông báo 8 · ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1), không 18; (4) ratchet `conChoCoreImport`
+> đo thực **43 → 47 (Task 4, Luật tăng) → 45 (Task 5) → 18 (Task 6)** (kế hoạch dự kiến 46 ở Task 5), 7 mục.
+>
+> **Số đo:** `core/notification` **không còn** (`test -e` → không); `lib/core` **15** chủ đề; `features/notification` **48** tệp `.dart` (domain 11 · data 17 · application 8 · presentation 12);
+> `find lib/features -path "*/data/services/*"` **0**; `ThongBaoNguon` (từ trọn) **0** dòng mã — còn ba dòng chú thích *"trước là …"* (`injection_container.dart:468`, `thong_bao_repository.dart:4`,
+> test cổng `:2`); tệp `data/` · `domain/` import `application/` **0**; interface repository (**11** tệp `*_repository.dart`) không import `core/database` / Drift; `AppNotification` /
+> `AppNotificationEvent` ở `presentation/` · `domain/` · `shared/` · `lib/core` chỉ còn `core/database` (và `core/sync` không tệp); quét 27 **bốn** luật, `conChoKieu` **rỗng**
+> (`presentation_domain_khong_kieu_drift_test.dart` 276 dòng); quét 25 **bảy** luật (`vi_tri_tep_theo_luat_test.dart` 222 dòng; `tangMang` có `application`; `diemGhep` có `phien_dieu_phoi_that.dart`);
+> TOTAL `lib/core` import / export `features/` **184** (đo bằng vòng `for` từng tệp) = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18**
+> (`sync_engine` 7 · `lich_nen` 4 · `noi_bo_nghe_ket_qua_day` 2 · `sync_payload_normalizer` 2 · `other_daos` 1 · `wallet_dao` 1 · `kho_anh_quet` 1) — nợ gạch 4. `so_du_vi_service` được import ở 7 tệp
+> `lib` + 9 tệp test (+1 chuỗi đường dẫn ở `so_du_mot_noi_ghi_test`). Entity **7/14** mảng. `flutter test` 7.069 → **7.075** pass / **10** skip, `flutter analyze` **20** (`MUC_NEN` không đổi).
+> ⚠️ **Tham chiếu cũ biết và để nguyên** (Kotlin ngoài phạm vi, spec mục 3.7): chú thích `MainActivity.kt:42` · `:48` và `PhienNganHang.kt:43` còn nêu `lib/core/notification/…`; `notification_table.dart:73`
+> (chú thích cột `osScheduledId` vẫn nói *"Id đã cấp cho flutter_local_notifications"* — ngược với Entity, `core/database` ngoài phạm vi); các `*_noi_day_test` chỉ so hằng nên không hỏng im lặng.
+>
+> ✅ **Nghiệm thu máy ảo (2026-10-15, `FlowMoney_16G`, 1080×2400, `-gpu host`, demo mode 12:00).** APK trước `d3b7b908…` (`lastUpdateTime` 2026-10-15 15:51:49) ↔ sau
+> `adedaef848dfc4a321b663945e948abe023a0607` (`lastUpdateTime` 2026-10-15 19:45:37, đổi). **18 ảnh** cùng danh sách, cùng tên tệp, cắt 100 px thanh trạng thái: **11/18 cặp cùng SHA-1 (0 px)**
+> (`02` · `05` · `09`–`17`); **7** cặp lệch đều giải thích được — `01_home` 287 px (chỉ ô chuông: ảnh *trước* chụp lúc 26 vì `01` chụp trước một lần gỡ mềm, ảnh sau 25); `03` · `04` · `07` · `08` 1.367 px
+> (giờ tương đối thẻ đầu *"4 giờ trước"* → *"8 giờ trước"*); `06_tt_nhan_giu` 91.241 px (cùng giờ tương đối + toast *"Đã đánh dấu đã đọc"* chụp ở khung mờ khác); `18_them_gd_goi_y` 281.114 px
+> (cùng nội dung — 5.000 đ, ghi chú `cafe`, *"Chọn danh mục"*, **không** thẻ gợi ý từ khoá — nhưng form cuộn lệch vì toạ độ chạm ô ghi chú khác Task 0; không lệch chức năng). Vàng thuần `#FFFF00` **0**
+> trên cả 18. Logcat: `[NotificationScanner]` 3 dòng, `[BadgeUpdater] badge=` 25 → 24 → 25 → 24 → 25 (đúng theo vuốt xoá + Hoàn tác và nhấn giữ hai lần), `E/flutter` **0**. Dữ liệu tài khoản 10 không đổi
+> (hai thao tác tự hoàn tác; không *Đọc tất cả*, không đồng ý màn nào, không Lưu giao dịch).
+> ⚠️ **Lỗ nghiệm thu (máy ảo không có dữ liệu):** *Hoàn tác* xoá cứng hàng D1 (`chenLai`) → `thong_bao_repository_test` (4 ca) + `notification_entity_companion_test` (2); nhập biến động / biên lai / phiên ngân hàng →
+> `nhap_bien_dong_test` (32) · `nhap_bien_lai_test` (25) · `nhap_phien_ngan_hang_test` (16); chạy nền → `notification_scanner_lich_nen_test` (3). Ảnh / log ở scratchpad, không vào repo.
+
 Đợt **thứ tư và cuối** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`; lộ trình người dùng chốt 2026-10-11: Hoá đơn → Giao dịch + Ví →
 Danh mục → **Thông báo**), gộp **gạch 5** (`core/notification` là một mảng nghiệp vụ nằm trong `core`) và **gạch 6** (đổi tên `data/services/`,
 người dùng chốt 2026-10-11 *"ghép vào đợt gạch 4 + 5, tên chốt ở spec đợt ấy"*). Tiền lệ trực tiếp: ba spec Entity

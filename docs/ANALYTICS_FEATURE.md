@@ -634,7 +634,7 @@ lướt qua bốn đơn vị không phải đi một vòng cubit.
    dải. Xem thêm bẫy **4.22**.
 
 **Biên tuần dùng chung với thông báo Tổng kết tuần**: `bienTuan` tách khỏi thân
-`tuanTruoc` ở `core/notification/tuan_iso.dart`, và có một ca canh hai hàm không
+`tuanTruoc` ở `core/utils/tuan_iso.dart`, và có một ca canh hai hàm không
 trôi khỏi nhau. Nhờ đó số tuần đúng ở ca tuần vắt qua giao thừa (31/12/2025
 thuộc `2026-W01`).
 

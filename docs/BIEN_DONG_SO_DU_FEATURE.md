@@ -55,10 +55,10 @@ App ngân hàng / ví hiện thông báo
 |---|---|
 | `android/…/BienDongListenerService.kt` | lọc thô, hàng chờ, tóm tắt, `DANH_SACH_TRANG`, chế độ thu mẫu (debug, đã che) |
 | `android/…/MainActivity.kt` | kênh `flowmoney/bien_dong`: `coQuyen · moCaiDat · moCaiDatPin · duocChayNen · moTuThongBao · huyTomTat · datBat` |
-| `lib/core/notification/kenh_bien_dong.dart` | bọc kênh; `KenhBienDongTrong` cho web / test |
+| `lib/features/notification/data/datasources/kenh_bien_dong.dart` | bọc kênh; `KenhBienDongTrong` cho web / test |
 | `lib/features/transaction/domain/doc_tin_bien_dong.dart` | **nơi DUY NHẤT** đọc số tiền trong tin; `kNguonTheoGoi`, `nguonDangDoc` |
-| `lib/core/notification/nhap_bien_dong.dart` | nhập hàng chờ, gộp trùng, `datBat` theo tài khoản, `tatDocMay` |
-| `lib/core/notification/mo_tu_tom_tat_bien_dong.dart` | cú chạm tóm tắt Kotlin → trung tâm lọc sẵn |
+| `lib/features/notification/application/nhap_bien_dong.dart` | nhập hàng chờ, gộp trùng, `datBat` theo tài khoản, `tatDocMay` |
+| `lib/features/notification/application/mo_tu_tom_tat_bien_dong.dart` | cú chạm tóm tắt Kotlin → trung tâm lọc sẵn |
 | `lib/features/notification/presentation/pages/dong_y_bien_dong_page.dart` | màn xin đồng ý |
 | `lib/features/transaction/domain/dien_san_bien_dong.dart` | query → `KetQuaDocCau`, dòng nguồn, `khoanCoTheDaGhi` |
 | `lib/features/transaction/data/vi_theo_nguon_store.dart` | bảng *nguồn + đuôi TK → ví* (`bien_dong_vi:<id>`) |
@@ -252,10 +252,10 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 | `android/…/NhanBienLaiActivity.kt` | nhận `SEND image/*`, chép ảnh, hàng chờ, Toast, tóm tắt; log thu mẫu bản debug (gói, kiểu, kích thước, kiểu lỗi) |
 | `lib/core/ocr/` | `DongOcr` + `ghepDongTheoHang`, `tienTrenDong` (dời từ spike C4) · `DocChuAnh` + `DocChuAnhMlKit` · `cheHinhDang` |
 | `lib/features/transaction/domain/doc_bien_lai.dart` | chữ trên ảnh → `BienLaiDoc`; mẫu riêng MB Bank, luật chung cho phần còn lại |
-| `lib/core/notification/nhap_bien_lai.dart` | `docDongBienLai`, `thuMauBienLai`, lớp `NhapBienLai` |
-| `lib/core/notification/kho_bien_lai.dart` | thư mục ảnh: xoá, dọn mồ côi, xoá hết |
-| `lib/core/notification/ten_tep_bien_lai.dart` | hằng tên tệp + `tenTepBienLaiHopLe` (Dart thuần) |
-| `lib/core/notification/nhap_bien_dong.dart` | `deeplinkBienDong(anh, cachDoc)`, `deeplinkBienLaiChuaDoc`, `anhTuDeeplink`, `gioBienLaiTuDeeplink`, `themAnhVaoDeeplink` |
+| `lib/features/notification/application/nhap_bien_lai.dart` | `docDongBienLai`, `thuMauBienLai`, lớp `NhapBienLai` |
+| `lib/features/notification/data/datasources/kho_bien_lai.dart` | thư mục ảnh: xoá, dọn mồ côi, xoá hết |
+| `lib/core/ocr/ten_tep_bien_lai.dart` | hằng tên tệp + `tenTepBienLaiHopLe` (Dart thuần) |
+| `lib/features/notification/application/nhap_bien_dong.dart` | `deeplinkBienDong(anh, cachDoc)`, `deeplinkBienLaiChuaDoc`, `anhTuDeeplink`, `gioBienLaiTuDeeplink`, `themAnhVaoDeeplink` |
 | `lib/features/transaction/domain/dien_san_bien_dong.dart` | `anh`, `cachDoc`, `dongNguonBienDong`, `dongPhuBienLai` |
 | `lib/features/transaction/presentation/widgets/xem_anh_bien_lai.dart` | xem ảnh to |
 
@@ -468,11 +468,11 @@ Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager
 
 | Tệp | Vai |
 |---|---|
-| `lib/core/notification/phien_ngan_hang.dart` | hằng (khớp tay với Kotlin), `SuKienSuDung`, `phienTuSuKien`, `phienCanXet`, `mocSauKhiXet`, `phienCanNhac`, khoá / deeplink / tiêu đề — Dart thuần |
-| `lib/core/notification/kenh_phien_ngan_hang.dart` | kênh `flowmoney/phien_ngan_hang` + bản trống (web / test) |
-| `lib/core/notification/moc_phien_store.dart` | `daXetDen` theo tài khoản (`nhac_phien:<id>`) + cờ máy `nhac_phien_dang_xuat` |
-| `lib/core/notification/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
-| `lib/core/notification/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
+| `lib/features/notification/domain/phien_ngan_hang.dart` | hằng (khớp tay với Kotlin), `SuKienSuDung`, `phienTuSuKien`, `phienCanXet`, `mocSauKhiXet`, `phienCanNhac`, khoá / deeplink / tiêu đề — Dart thuần |
+| `lib/features/notification/data/datasources/kenh_phien_ngan_hang.dart` | kênh `flowmoney/phien_ngan_hang` + bản trống (web / test) |
+| `lib/features/notification/data/moc_phien_store.dart` | `daXetDen` theo tài khoản (`nhac_phien:<id>`) + cờ máy `nhac_phien_dang_xuat` |
+| `lib/features/notification/application/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
+| `lib/features/notification/application/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
 | `lib/features/transaction/…` | `DienSanBienDong.phien`, `dongNguonBienDong`, `ViTheoNguonStore.docTheoNguon`, chữ thẻ |
 | `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · `KhoiNhacSauNganHang` ở `presentation/widgets/cai_dat_thong_bao/khoi_nhac_sau_ngan_hang.dart` (trang `notification_settings_page.dart` giữ `_dongQuyenPhien`) |
 | `android/…/PhienNganHang.kt` · `NhacGhiWorker.kt` · `NhacGhiReceiver.kt` | đọc sử dụng, dựng phiên, thông báo, lịch · worker · nút |

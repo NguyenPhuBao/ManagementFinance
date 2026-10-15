@@ -1316,7 +1316,7 @@ trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM
 
 **376 test** riêng cho mục tiêu, trên tổng **1587** của dự án (đếm lại
 2026-09-08 sau đợt bộ lọc nguồn "Tay / Tự động", bằng cách chạy thật `flutter test
-test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
+test/features/goal test/features/notification/domain/notification_rules_goal_wallet_test.dart`;
 hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —
 **đừng chép lại từ trí nhớ**).
 
@@ -1339,9 +1339,9 @@ hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã
 | `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném *(nhóm `viTriThaThucTe` bỏ 2026-10-09 — `onReorderItem` của SDK đã chỉnh chỉ số)* |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
-| `data/services/goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
-| `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
-| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
+| `features/goal/application/goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
+| `features/notification/application/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
+| `features/notification/domain/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này
 

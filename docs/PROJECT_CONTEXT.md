@@ -433,22 +433,22 @@ features/
 ├── auth/           ← Đăng nhập / đăng ký; AuthBloc CHỈ giữ trạng thái + thứ tự emit
 ├── home/           ← Dashboard (tổng quan tài chính)
 ├── transaction/    ← Thêm/sửa/xóa giao dịch; presentation/widgets/them_giao_dich/ (7 khối của trang Thêm giao dịch)
-├── wallet/         ← Quản lý ví
+├── wallet/         ← Quản lý ví; application/ (gop_vi_service, vi_trung_ten_resolver, dieu_chinh_so_du_service, default_account_data_initializer), `so_du_vi_service` + `tha_vi_bi_giu` ở data/
 ├── budget/         ← Ngân sách
-├── bill/           ← Hóa đơn định kỳ
-├── goal/           ← Mục tiêu tiết kiệm; presentation/widgets/them_muc_tieu/ (7 tệp) · widgets/chi_tiet_muc_tieu/ (7 tệp)
-├── category/       ← Quản lý danh mục; data/gan_danh_muc_nguon.dart (lớp GanDanhMucNguon cho màn Gắn danh mục)
+├── bill/           ← Hóa đơn định kỳ; application/ (bill_auto_pay_runner, bill_payment_conflict_resolver)
+├── goal/           ← Mục tiêu tiết kiệm; application/goal_auto_deposit_runner.dart; presentation/widgets/them_muc_tieu/ (7 tệp) · widgets/chi_tiet_muc_tieu/ (7 tệp)
+├── category/       ← Quản lý danh mục; application/ (default_category_seeder, personal_default_categories) · domain/category_suggestion_engine.dart; data/gan_danh_muc_nguon.dart (lớp GanDanhMucNguon cho màn Gắn danh mục)
 ├── analytics/      ← Báo cáo & thống kê; presentation/widgets/phan_tich/ (14 tệp khối của trang Phân tích) · widgets/xem_truoc_bao_cao/ (10 tệp khối của Xem trước báo cáo)
 ├── ai_edge/        ← AI trên máy: luật + gói số, tool, SLM runtime, lớp chắn
 ├── ai_chat/        ← Màn Trợ lý AI (+ spike/ — mã đo sau cờ dart-define)
-├── notification/   ← Giao diện thông báo (luật nằm ở core/notification — nợ G88); presentation/widgets/cai_dat_thong_bao/ (6 tệp) · domain/cau_chu_dong_y.dart
+├── notification/   ← Mảng thông báo đủ ba tầng + application/ (từ 2026-10-15, dời từ core/notification): domain/ (20 luật, deeplink, tuỳ chọn) · data/ (NotificationEntity, ThongBaoRepository, OsNotifier, nhật ký) · application/ (bộ quét, nhắc, bộ nhập D1 / biên lai / phiên ngân hàng); presentation/widgets/cai_dat_thong_bao/ (6 tệp)
 ├── premium/        ← Gói, quyền theo gói, thanh toán PayOS
 └── profile/        ← Hồ sơ người dùng
 ```
 
-`core/` (129 tệp) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/router/app_router.dart`,
+`core/` (92 tệp, đếm 2026-10-15; 15 chủ đề) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/router/app_router.dart`,
 `core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
-phiên, nhận hook hàm nên không import `features/`). `core/notification/thong_bao_nguon.dart` là cổng đọc / ghi bảng
+phiên, nhận hook hàm nên không import `features/`). `features/notification/data/repositories/thong_bao_repository.dart` (trước là `ThongBaoNguon` ở `core/notification`) là cổng đọc / ghi bảng
 thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng
 (quét 23; `mienTru` rỗng từ 2026-10-13, cơ chế giữ cho tệp dài sau này).
 
@@ -609,6 +609,18 @@ src/Backend/
 ---
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-15)
+
+### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-15)
+
+Spec `docs/superpowers/specs/2026-10-15-entity-thong-bao-application-design.md` (khối ✅ *"Số đo sau thi công"* và *"Nghiệm thu máy ảo"* đầu tệp); kế hoạch 8 task `plans/2026-10-15-entity-thong-bao-application.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát), mọi task qua soát không lỗi Quan trọng. Một đợt xong **ba gạch** của G88: gạch 3 (Entity Thông báo — đợt cuối), gạch 5 (`core/notification` dời hết) và gạch 6 (`data/services/` → `application/`).
+
+- **Commit:** T1 `73429f46` quét 27 (luật 4: interface repository không import Drift; `conChoKieu` bắt `AppNotificationEvent`) · T2 `362ae94a` `NotificationEntity` (`notification/data/models/notification_entity.dart`, 92 dòng, 14 trường — bỏ cột chết `osScheduledId`) + `companionTu` · T3 `2cb1c00f` `ThongBaoRepository` + `ThongBaoRepositoryImpl` (`data/repositories/`) thay `ThongBaoNguon`, hai trang nhận Entity, `chenLai(Entity)` thay `insertIfAbsent(Companion)` · T4 `5e19895d` ba hàm `hang*` và `deXuatThongBao` nhận Entity, record `SuKienNhatKy` (`domain/hoc_gio_thong_bao.dart`) thay hàng sự kiện · T5 `28d0a2f3` chiều import đúng trước khi có `application/`: `GoalAutoDepositEvent` / `BillAutoPayEvent` về `goal/domain/goal_auto_deposit.dart` · `bill/domain/bill_auto_pay.dart` (**theo spec 7.1 — runner không `export` lại**), `budget_health` → `budget/domain/`, `category_suggestion_engine` → `category/domain/`, `so_du_vi_service` → `wallet/data/` · T6 `d95674ef` gạch 5: 34 tệp `core/notification` dời bằng `git mv` (31 về `features/notification/{domain, data, data/datasources, application}`, 3 về `core/nen` · `core/ocr` · `core/utils`), 39 test soi gương · T7 `08effea7` gạch 6: `data/services/` → `application/` ở ví · danh mục · hoá đơn · mục tiêu (9 tệp + 3 test), quét 25 luật 7.
+- **Cây sau đợt:** `core/notification` **không còn**; `lib/core` **15** chủ đề; `features/notification` **48** tệp (domain 11 · data 17 · application 8 · presentation 12); `features/<x>/application/` có ở **năm** mảng — **17** tệp (thông báo 8 · ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1); `tha_vi_bi_giu` ở `wallet/data/` (datasource gọi — luật 7, phán quyết preflight C2). Bảng thông báo vẫn **cục bộ** (quy tắc 9) — Entity chỉ là kiểu của repository, không đụng `SyncEntityType`.
+- **Test quét:** quét 27 **bốn** luật, `conChoKieu` **rỗng** (ba danh sách chờ đều rỗng); quét 25 **bảy** luật (luật 7: `data/` và `domain/` không import `application/`; `tangMang` có `application`; `diemGhep` có `phien_dieu_phoi_that.dart`). Ratchet `conChoCoreImport` đo **43 → 47 (T4, Luật tăng) → 45 (T5) → 18 (T6)**, 7 mục; TOTAL `lib/core` import `features/` **184** = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18** — nợ gạch 4.
+- Đo bằng máy 2026-10-15 (HEAD `08effea7`): `find lib/features -path "*/data/services/*"` **0**; `ThongBaoNguon` **0** dòng mã (ba dòng chú thích *"trước là …"*); tệp `data/` · `domain/` import `application/` **0**; 11 tệp `*_repository.dart` không import Drift; Entity **7/14** mảng. `flutter test` 7.069 → **7.075** pass / **10** skip, `flutter analyze` **20** (`MUC_NEN` không đổi).
+- ✅ **Nghiệm thu máy ảo `FlowMoney_16G`:** APK trước `d3b7b908…`, sau `adedaef848dfc4a321b663945e948abe023a0607` (`lastUpdateTime` 15:51:49 → 19:45:37); 18 ảnh, cắt 100 px thanh trạng thái: **11/18 cặp cùng SHA-1 (0 px)**, 7 cặp lệch đều giải thích được (số chuông 26 → 25 vì ảnh trước chụp trước một lần gỡ mềm; giờ tương đối thẻ đầu *"4 → 8 giờ trước"*; toast ở khung mờ khác; form Thêm giao dịch cuộn lệch do toạ độ chạm khác); vàng thuần `#FFFF00` 0; logcat 0 `E/flutter`. ⚠️ **Lỗ** (máy ảo không có dữ liệu): *Hoàn tác* xoá cứng hàng D1 (`chenLai`) · nhập biến động / biên lai / phiên ngân hàng · chạy nền — phủ bằng `thong_bao_repository_test` (4 ca) + `notification_entity_companion_test` (2) · `nhap_bien_dong_test` (32) · `nhap_bien_lai_test` (25) · `nhap_phien_ngan_hang_test` (16) · `notification_scanner_lich_nen_test` (3).
+- ⚠️ **Tham chiếu cũ biết và để nguyên:** chú thích Kotlin `MainActivity.kt:42` · `:48` và `PhienNganHang.kt:43` còn nêu `lib/core/notification/…` (các `*_noi_day_test` chỉ so hằng, không hỏng im lặng). Các khối 🧱 / 🧩 / 🗂️ bên dưới là lịch sử có ngày — đường dẫn `core/notification/…` và `data/services/…` trong chúng là đường **tại thời điểm ấy**.
+- Đợt kế của G88: **gạch 4** (18 dòng `core` → `features`).
 
 ### 🧱 Entity Danh mục — G88 gạch 3, đợt 3/4 ĐÓNG (2026-10-15, 6 commit mã `f443a647` → `811e1ea8`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 
@@ -838,7 +850,7 @@ lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus 
 
 | Việc | Đã làm | Chốt bằng |
 |---|---|---|
-| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi` — còn 10 sau đợt Hoá đơn 2026-10-14, `BillRepository.getById` nay trả `BillEntity`; còn **4** từ đợt Entity Giao dịch + Ví 2026-10-14; **0** từ đợt Entity Danh mục 2026-10-15, đếm bằng máy), cổng `ThongBaoNguon` (`core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
+| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi` — còn 10 sau đợt Hoá đơn 2026-10-14, `BillRepository.getById` nay trả `BillEntity`; còn **4** từ đợt Entity Giao dịch + Ví 2026-10-14; **0** từ đợt Entity Danh mục 2026-10-15, đếm bằng máy), cổng `ThongBaoRepository` (`features/notification/data/repositories/`; trước 2026-10-15 là `ThongBaoNguon` ở `core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
 | 2. Tách hai trang | `analytics_page` 4.208 → **339** dòng + 14 tệp `widgets/phan_tich/`; `add_transaction_page` 3.107 → **2.007** + 7 tệp `widgets/them_giao_dich/` (spec ước ~1.800 — R15) | **test quét 23** `tep_presentation_khong_qua_dai_test.dart`, trần 1.200, `mienTru` 5 tệp chỉ giảm |
 | 3. Rút điều phối phiên | `PhienDieuPhoi` / `PhienDieuPhoiThat` (`core/auth/`, hook hàm); `AuthBloc` 560 → **377** dòng (kể docstring đầu lớp), `sl<` 23 → **0**; bỏ tham số `defaultAccountDataInitializer` (R3) | **test quét 24** `test/features/auth/auth_bloc_khong_sl_test.dart`; chủ sở hữu `start()` (quét 4) chuyển sang `phien_dieu_phoi_that.dart` |
 | 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
