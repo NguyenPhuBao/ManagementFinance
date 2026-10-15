@@ -25,7 +25,7 @@ import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
-import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/category/application/default_category_seeder.dart';
 import 'package:flowmoney/features/category/application/personal_default_categories.dart';

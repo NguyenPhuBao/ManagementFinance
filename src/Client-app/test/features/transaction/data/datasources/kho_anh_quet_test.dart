@@ -3,7 +3,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'package:flowmoney/features/transaction/domain/doc_mon_hang.dart';
 import 'package:flutter_test/flutter_test.dart';
 

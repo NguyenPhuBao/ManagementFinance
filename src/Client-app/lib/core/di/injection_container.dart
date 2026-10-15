@@ -126,7 +126,7 @@ import '../../features/notification/application/notification_scanner.dart';
 import '../../features/notification/data/datasources/os_notifier.dart';
 import '../../features/notification/data/datasources/os_notifier_factory.dart';
 import '../../features/notification/data/notification_prefs_store.dart';
-import '../ocr/kho_anh_quet.dart';
+import '../../features/transaction/data/datasources/kho_anh_quet.dart';
 import '../ocr/doc_chu_anh.dart';
 import '../ocr/doc_chu_anh_mlkit.dart';
 

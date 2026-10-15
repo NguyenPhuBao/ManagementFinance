@@ -14,8 +14,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../features/transaction/domain/doc_mon_hang.dart';
-import 'ten_tep_bien_lai.dart';
+import '../../domain/doc_mon_hang.dart';
+import '../../../../core/ocr/ten_tep_bien_lai.dart';
 
 const String kThuMucAnhQuet = 'anh_quet';
 

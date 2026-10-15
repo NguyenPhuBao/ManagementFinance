@@ -20,7 +20,7 @@ import '../../../core/database/daos/notification_dao.dart' show kKindBienDongSoD
 import '../../../core/di/injection_container.dart';
 import '../../notification/data/datasources/kho_bien_lai.dart';
 import '../../notification/data/repositories/thong_bao_repository.dart';
-import '../../../core/ocr/kho_anh_quet.dart';
+import 'datasources/kho_anh_quet.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../category/data/goi_y_phan_hoi_store.dart';

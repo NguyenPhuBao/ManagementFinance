@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:flowmoney/core/ocr/doc_chu_anh.dart';
 import 'package:flowmoney/core/ocr/dong_ocr.dart';
-import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'dart:typed_data';
 
 import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';

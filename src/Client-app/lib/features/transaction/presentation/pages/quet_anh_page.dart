@@ -24,7 +24,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ocr/doc_chu_anh.dart';
 import '../../../../core/ocr/dong_ocr.dart';
-import '../../../../core/ocr/kho_anh_quet.dart';
+import '../../data/datasources/kho_anh_quet.dart';
 import '../../../../core/ocr/tep_tam_chon_anh.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';

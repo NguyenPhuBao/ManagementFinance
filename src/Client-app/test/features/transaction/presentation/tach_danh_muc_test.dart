@@ -4,7 +4,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';

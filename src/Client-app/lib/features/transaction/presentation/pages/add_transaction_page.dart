@@ -11,7 +11,7 @@ import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../notification/data/datasources/kho_bien_lai.dart';
-import '../../../../core/ocr/kho_anh_quet.dart';
+import '../../data/datasources/kho_anh_quet.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/tach_giao_dich.dart';

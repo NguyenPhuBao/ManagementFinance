@@ -48,7 +48,7 @@ const mienTru = <String, String>{};
 const conCho = <String>{};
 
 /// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm, trừ các ca tăng ghi tại chỗ theo "Luật tăng (2026-10-14)" bên dưới.
-/// Đo gốc 2026-10-10. 7 tệp / 18 dòng còn lại là nợ G88 gạch 4 (đo 2026-10-15).
+/// Đo gốc 2026-10-10. 6 tệp / 17 dòng còn lại là nợ G88 gạch 4 (đo 2026-10-15).
 const conChoCoreImport = <String, int>{
   // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
   // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
@@ -59,7 +59,6 @@ const conChoCoreImport = <String, int>{
   'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,
   'lib/core/sync/noi_bo_nghe_ket_qua_day.dart': 2,
-  'lib/core/ocr/kho_anh_quet.dart': 1,
   'lib/core/database/daos/wallet_dao.dart': 1,
   'lib/core/database/daos/other_daos.dart': 1,
 };
