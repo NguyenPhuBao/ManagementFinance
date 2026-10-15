@@ -1,5 +1,16 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (2 mục chờ backend — mục 41, 42)
+# Backend & Client — DANH SÁCH CẦN LÀM (3 mục chờ backend — mục 41, 42, 43)
 
+> ✉️ **Client đặt mục 43, 2026-10-15 (sau gộp `main` @ `cd2ee572`):** [`SOAT_SAU_GOP_CD2EE572.md`](./SOAT_SAU_GOP_CD2EE572.md)
+> — mức **cao**. Đối chiếu hợp đồng `docs/Admin-web/Event-Notification-to-ClientApp.md` với mã hai phía gặp: **(A)**
+> AIOps khoá tài khoản ghi `Status = 'Locked'` (ngoài `ck_account_status`, mà CSDL dev **không có** ràng buộc ấy — đo:
+> 0 CHECK) → `auth.js` trả `ACCOUNT_DELETED` → client **xoá dữ liệu trên máy**, kể cả phần chưa đồng bộ; ai gõ sai mật
+> khẩu 15 lần cho tên đăng nhập của người khác cũng kích hoạt được. **(B)** webhook PayOS gặp `orderCode` lạ tạo đơn cho
+> tài khoản `idaccount` nhỏ nhất và nâng Premium nhầm. **(C)** đăng nhập lúc bảo trì trả 503 **không `code`**. **(D)**
+> mười hai chỗ tài liệu hợp đồng lệch mã (đếm bằng máy) (body `FEATURE_DISABLED` phẳng, `sync.completed` `summary`, `user.notification`
+> là mã chết…) + đính chính bảng hiện trạng client. Client làm phần của mình một lượt sau khi đơn đóng (người dùng chốt).
+> `DA-XONG/` đếm bằng máy 2026-10-15: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
 > ✉️ **Client đặt mục 42, 2026-10-10:** [`TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) — mức
 > **thấp**, chỉ **sửa chữ**. `Project.md` §3.3 ghi *"Mỗi màn hình có BLoC riêng"* trong khi app có 3 Bloc + 7 Cubit cho
 > màn có luồng ghi, 289 `setState`, màn đọc dùng stream Drift; dòng *Repository* cũng tả nguồn local/remote không có. Đơn
@@ -42,12 +53,13 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **2** mục — đếm bằng `ls` 2026-10-11, sau gộp `main` @ `79e46225`: backend chưa trả lời mục nào)
+## 0. Còn phải làm (Hiện tại: **3** mục — đếm bằng `ls` 2026-10-15, sau gộp `main` @ `cd2ee572`: backend chưa trả lời mục 41, 42)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
 | **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Phía client **đã sẵn** (2026-10-09): mã nằm trong danh sách lỗi vĩnh viễn + bộ xử lý riêng — backend triển khai lúc nào cũng được. | ⏳ Chờ backend |
 | **42** | [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | Backend (chữ) | Sửa bảng `Project.md` §3.3 *Kiến trúc Client-app* cho khớp mã: dòng *State Management* (3 Bloc + 7 Cubit, màn đọc dùng stream Drift, trạng thái màn trong widget), dòng *Repository* (interface ở tầng data, trả Entity hoặc hàng Drift), thêm *Test quét kiến trúc* · *Cổng nền tảng* · *Chạy nền WorkManager*. Mặc định: §3.3 trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. Không đổi mã. | ⏳ Chờ |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status` (`database/N`). **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After`. **D (thấp)** sửa `Event-Notification-to-ClientApp.md` theo bảng của đơn. Client làm phần mình (connect_error, `account.downgraded`, dải bảo trì / phong toả) **sau khi** đơn đóng. | ⏳ Chờ backend |
 
 ---
 
