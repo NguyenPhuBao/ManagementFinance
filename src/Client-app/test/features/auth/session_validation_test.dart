@@ -18,7 +18,7 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/api/interceptors/auth_interceptor.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
-import 'package:flowmoney/core/notification/notification_scanner.dart';
+import 'package:flowmoney/features/notification/application/notification_scanner.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';

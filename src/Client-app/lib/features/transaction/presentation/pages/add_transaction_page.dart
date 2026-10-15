@@ -10,7 +10,7 @@ import '../../../category/domain/category_classify.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/notification/kho_bien_lai.dart';
+import '../../../notification/data/datasources/kho_bien_lai.dart';
 import '../../../../core/ocr/kho_anh_quet.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';

@@ -1,15 +1,15 @@
 /// D1 — điền sẵn form Thêm giao dịch từ một hàng biến động số dư (spec
 /// `2026-09-28-d1-doc-bien-dong-so-du-design.md` §3.3). Hàm thuần.
 ///
-/// Hợp đồng query là `deeplinkBienDong` / `deeplinkBienLaiChuaDoc` (`core/notification/nhap_bien_dong.dart`) và
-/// `deeplinkPhien` (`core/notification/phien_ngan_hang.dart`): `amount · huong · date · note · nguon · duoi · khoa`
+/// Hợp đồng query là `deeplinkBienDong` / `deeplinkBienLaiChuaDoc` (`features/notification/application/nhap_bien_dong.dart`) và
+/// `deeplinkPhien` (`features/notification/domain/phien_ngan_hang.dart`): `amount · huong · date · note · nguon · duoi · khoa`
 /// (+ `anh · doc · blt` của biên lai, `phien` của dòng nhắc). Query hỏng thì bỏ đúng trường ấy, không ném — route đọc
 /// query từ URL (khuôn `dienSanTuQuery` của B2).
 library;
 
 import '../../../core/category/category_name.dart';
 import '../../category/data/models/category_entity.dart';
-import '../../../core/notification/ten_tep_bien_lai.dart';
+import '../../../core/ocr/ten_tep_bien_lai.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 import 'doc_anh_quet.dart';

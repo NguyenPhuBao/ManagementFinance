@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/notification_entity.dart';
 import '../../data/repositories/thong_bao_repository.dart';
-import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
-import '../../../../core/notification/hoc_gio_thong_bao.dart';
-import '../../../../core/notification/nhat_ky_thong_bao.dart';
-import '../../../../core/notification/notification_deeplink.dart';
-import '../../../../core/notification/notification_rules.dart';
-import '../../../../core/notification/prefs/notification_prefs.dart';
+import '../../data/de_xuat_thong_bao_nguon.dart';
+import '../../domain/hoc_gio_thong_bao.dart';
+import '../../data/datasources/nhat_ky_thong_bao.dart';
+import '../../domain/notification_deeplink.dart';
+import '../../domain/notification_rules.dart';
+import '../../domain/notification_prefs.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';

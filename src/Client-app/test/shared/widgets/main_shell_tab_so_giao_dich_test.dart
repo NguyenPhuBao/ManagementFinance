@@ -29,7 +29,7 @@ library;
 import 'dart:io';
 
 import 'package:flowmoney/core/di/injection_container.dart';
-import 'package:flowmoney/core/notification/notification_deeplink.dart';
+import 'package:flowmoney/features/notification/domain/notification_deeplink.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flowmoney/shared/widgets/main_shell.dart';

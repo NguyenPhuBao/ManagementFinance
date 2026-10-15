@@ -1,5 +1,5 @@
 /// Bản thi hành [PhienDieuPhoi]: bốn dịch vụ của `core` qua constructor, mọi việc thuộc mảng khác qua HOOK hàm — nên
-/// `core/auth` không import `features/`; việc nối hook nằm ở `injection_container.dart`. Dịch vụ / hook `null` = hôm nay
+/// `core/auth` chỉ biết mảng Thông báo qua `NotificationScanner` (điểm ghép thứ tư — quét 25; bộ quét về `features/notification/application` 2026-10-15); mọi hook khác nối ở `injection_container.dart`. Dịch vụ / hook `null` = hôm nay
 /// `sl.isRegistered` trả false → bỏ qua, giữ đúng hành vi cũ (kể cả: không có SyncEngine thì không dọn, không quét).
 library;
 
@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../api/interceptors/auth_interceptor.dart';
-import '../notification/notification_scanner.dart';
+import '../../features/notification/application/notification_scanner.dart';
 import '../realtime/realtime_channel.dart';
 import '../sync/sync_engine.dart';
 import 'buoc_dang_xuat.dart';

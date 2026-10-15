@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/bloc/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
-import '../notification/prefs/notification_prefs.dart';
+import '../../features/notification/domain/notification_prefs.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -174,7 +174,7 @@ class AppRouter {
                 // một lần rồi xem lại thỉnh thoảng — đúng chỗ cho drawer.
                 //
                 // Đổi ở đây thì PHẢI đổi `nhanhThanhTab` cùng lúc
-                // (`core/notification/notification_deeplink.dart`), nếu không
+                // (`features/notification/domain/notification_deeplink.dart`), nếu không
                 // thông báo chọn nhầm `go`/`push` và một chiều là màn đỏ.
                 GoRoute(
                   // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản
@@ -442,7 +442,7 @@ class AppRouter {
           // Cài đặt của mảng AI trên máy: tải / xoá mô hình, công tắc dùng nó.
           //
           // ⚠️ NGOÀI `StatefulShellRoute`, và **không** có mặt trong
-          // `nhanhThanhTab` (`core/notification/notification_deeplink.dart`):
+          // `nhanhThanhTab` (`features/notification/domain/notification_deeplink.dart`):
           // lối vào duy nhất là nút ở màn Trợ lý AI, nên nó phải `push` để có
           // nút Back. Kéo nó vào một nhánh tab là làm mọi deeplink tới nó chết
           // màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`).

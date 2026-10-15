@@ -43,19 +43,8 @@ const companionCua = {
   'AppNotificationEvent': 'AppNotificationEventsCompanion',
 };
 
-/// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15; AppNotification + AppNotificationEvent đợt 4 2026-10-15).
-const conChoKieu = <String, Set<String>>{
-  'AppNotification': {
-    'core/notification/nhap_bien_dong.dart',
-    'core/notification/nhap_bien_lai.dart',
-    'core/notification/nhap_phien_ngan_hang.dart',
-    'core/notification/notification_scanner.dart',
-  },
-  // Bảng sự kiện B5a (v26) — `deXuatThongBao` nhận record `SuKienNhatKy` ở Task 4 đợt Thông báo; `nhat_ky_thong_bao` về `data/` ở Task 6.
-  'AppNotificationEvent': {
-    'core/notification/nhat_ky_thong_bao.dart',
-  },
-};
+/// Luật 1 — kiểu → tệp còn cầm kiểu ấy. RỖNG từ 2026-10-15 (đợt Entity Thông báo — AppNotification · AppNotificationEvent là hai khoá cuối); mọi kiểu trong [kieuDrift] nhắc ở presentation / shared / core / domain là đỏ ngay. Giữ hằng để thêm bảng mới có chỗ chờ.
+const conChoKieu = <String, Set<String>>{};
 
 /// Luật 2 — tệp `domain/` còn import `core/database` / `package:drift`. Rỗng từ 2026-10-15 (đợt Entity Danh mục); thêm tệp là đỏ ngay.
 const conChoDomain = <String>{};

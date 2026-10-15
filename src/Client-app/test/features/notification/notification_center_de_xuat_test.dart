@@ -16,8 +16,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository_impl.dart';
-import 'package:flowmoney/core/notification/hoc_gio_thong_bao.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
+import 'package:flowmoney/features/notification/domain/hoc_gio_thong_bao.dart';
+import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
 void main() {

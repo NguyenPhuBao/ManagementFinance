@@ -3,8 +3,8 @@
 /// khoản trong sổ có thể đã ghi.
 library;
 
-import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
-import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
+import 'package:flowmoney/features/notification/application/nhap_bien_dong.dart';
+import 'package:flowmoney/features/notification/domain/phien_ngan_hang.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 import 'package:flutter_test/flutter_test.dart';

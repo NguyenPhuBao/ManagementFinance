@@ -6,7 +6,7 @@
 /// 3. **Lưu / Bỏ qua xoá cứng dòng** — không thì dòng nhắc còn đó sau khi đã ghi.
 library;
 
-import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
+import 'package:flowmoney/features/notification/domain/phien_ngan_hang.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';

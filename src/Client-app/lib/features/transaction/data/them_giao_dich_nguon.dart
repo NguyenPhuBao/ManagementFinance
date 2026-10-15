@@ -18,7 +18,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import '../../category/data/models/category_entity.dart';
 import '../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../core/di/injection_container.dart';
-import '../../../core/notification/kho_bien_lai.dart';
+import '../../notification/data/datasources/kho_bien_lai.dart';
 import '../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../core/ocr/kho_anh_quet.dart';
 import '../../budget/data/models/budget_entity.dart';

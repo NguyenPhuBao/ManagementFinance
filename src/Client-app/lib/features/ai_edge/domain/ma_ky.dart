@@ -12,7 +12,7 @@
 /// `hom_qua` → [kyTuMa], không qua `timNgayTrongCau`: hai phép không trùng nhau.
 library;
 
-import '../../../core/notification/tuan_iso.dart';
+import '../../../core/utils/tuan_iso.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 

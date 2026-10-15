@@ -11,7 +11,7 @@
 /// hơn thực tế.
 library;
 
-import '../../../core/notification/tuan_iso.dart';
+import '../../../core/utils/tuan_iso.dart';
 
 enum DonViKy { tuan, thang, quy, nam, tuyChon }
 

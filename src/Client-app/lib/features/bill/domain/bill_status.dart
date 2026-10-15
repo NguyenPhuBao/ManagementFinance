@@ -8,7 +8,7 @@
 library;
 
 import '../data/models/bill_entity.dart';
-import '../../../core/notification/notification_rules.dart';
+import '../../notification/domain/notification_rules.dart';
 import 'bill_pay_status.dart';
 
 /// Năm trạng thái một hoá đơn có thể mang trên danh sách.

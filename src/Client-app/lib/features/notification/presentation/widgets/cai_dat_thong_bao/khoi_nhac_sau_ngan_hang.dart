@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../core/notification/prefs/notification_prefs.dart';
+import '../../../domain/notification_prefs.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../../premium/presentation/bloc/co_quyen.dart';

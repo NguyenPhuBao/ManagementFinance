@@ -15,15 +15,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Thư mục được phép ngay dưới `lib/features/<x>/`.
-const tangMang = {'data', 'domain', 'presentation'};
+/// Thư mục được phép ngay dưới `lib/features/<x>/` — `application/` từ 2026-10-15 (spec Entity Thông báo mục 8).
+const tangMang = {'data', 'domain', 'presentation', 'application'};
 
 /// Thư mục được phép ngay dưới `presentation/` (bảng mục 8: Bloc / Cubit · trang · widget · tệp trạng thái).
 const conPresentation = {'bloc', 'pages', 'widgets', 'state'};
 
-/// 16 chủ đề của `core/` — thêm chủ đề là một quyết định có ý thức: ghi vào đây (mục 4 tài liệu kiến trúc).
+/// 15 chủ đề của `core/` (`notification` về `features/notification` 2026-10-15) — thêm chủ đề là một quyết định có ý thức: ghi vào đây (mục 4 tài liệu kiến trúc).
 const chuDeCore = {
-  'api', 'auth', 'category', 'constants', 'database', 'di', 'errors', 'nen', 'network', 'notification', 'ocr',
+  'api', 'auth', 'category', 'constants', 'database', 'di', 'errors', 'nen', 'network', 'ocr',
   'realtime', 'router', 'sync', 'ui', 'utils',
 };
 
@@ -32,6 +32,8 @@ const diemGhep = {
   'lib/core/di/injection_container.dart',
   'lib/core/router/app_router.dart',
   'lib/core/nen/chay_nen.dart',
+  // Điểm ghép thứ tư (KIEN_TRUC mục 4): chỉ biết bộ quét thông báo qua tham số boQuet.
+  'lib/core/auth/phien_dieu_phoi_that.dart',
 };
 
 /// Thư mục cấp 1 được phép dưới `test/`; `helpers` và `tool` không soi gương `lib/`.
@@ -46,34 +48,19 @@ const mienTru = <String, String>{};
 const conCho = <String>{};
 
 /// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm, trừ các ca tăng ghi tại chỗ theo "Luật tăng (2026-10-14)" bên dưới.
-/// Đo gốc 2026-10-10. 13 tệp còn lại là nợ G88 gạch 4, không thuộc đợt này.
+/// Đo gốc 2026-10-10. 7 tệp / 18 dòng còn lại là nợ G88 gạch 4 (đo 2026-10-15).
 const conChoCoreImport = <String, int>{
-  // 11 từ 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.
-  // 12 từ 2026-10-14 G88 gạch 3 đợt 2: Wallet (Drift, không tính) → WalletEntity (features/wallet/data/models, tính); về 0 ở gạch 5.
-  // +1 2026-10-15 G88 gạch 3 đợt 4: AppNotification (Drift, không tính) → NotificationEntity (features/notification/data/models, tính); về 0 ở Task 6 (dời khỏi core).
-  // 11 từ 2026-10-15 Task 5 đợt Thông báo: −2 import runner (hai lớp Event về domain); budget_visuals → budget_health thay một đổi một; về 0 ở Task 6.
-  'lib/core/notification/notification_rules.dart': 11,
   // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
   // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
   // Luật tăng (2026-10-14, viết lại cùng ngày ở đợt 2): tăng CHỈ khi thay một kiểu hàng Drift bằng Entity trong lộ trình
-  // G88 gạch 3; không bao giờ vì ghép một mảng mới vào core. Ba tệp thông báo về 0 ở gạch 5.
+  // G88 gạch 3; không bao giờ vì ghép một mảng mới vào core. Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
   'lib/core/sync/sync_engine.dart': 7,
-  // 6 từ 2026-10-14 G88 gạch 3 — như notification_rules. 7 từ đợt 2 (WalletEntity).
-  // +1 2026-10-15 G88 gạch 3 đợt 4: AppNotification (Drift, không tính) → NotificationEntity (features/notification/data/models, tính); về 0 ở Task 6 (dời khỏi core).
-  'lib/core/notification/notification_scanner.dart': 8,
-  // 1 từ 2026-10-14 G88 gạch 3 đợt 2: Transaction (Drift) → TransactionEntity (features/transaction/data/models); về 0 ở gạch 5.
-  // +1 2026-10-15 G88 gạch 3 đợt 4: AppNotification (Drift, không tính) → NotificationEntity (features/notification/data/models, tính); về 0 ở Task 6 (dời khỏi core).
-  'lib/core/notification/de_xuat_thong_bao_nguon.dart': 2,
-  // +1 2026-10-15 G88 gạch 3 đợt 4: AppNotification (Drift, không tính) → NotificationEntity (features/notification/data/models, tính); về 0 ở Task 6 (dời khỏi core).
-  'lib/core/notification/hoc_gio_thong_bao.dart': 1,
-  // 4 từ 2026-10-14 G88 gạch 3 — như notification_rules.
+  // 4 từ 2026-10-14 G88 gạch 3 (BillEntity). Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
   'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,
   'lib/core/sync/noi_bo_nghe_ket_qua_day.dart': 2,
-  'lib/core/notification/reminder_scheduler.dart': 2,
-  'lib/core/notification/nhap_bien_lai.dart': 2,
+  // Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
   'lib/core/ocr/kho_anh_quet.dart': 1,
-  'lib/core/notification/nhap_bien_dong.dart': 1,
   'lib/core/database/daos/wallet_dao.dart': 1,
   'lib/core/database/daos/other_daos.dart': 1,
 };
@@ -112,8 +99,8 @@ void main() {
       for (final e in (mang as Directory).listSync()) {
         final d = _duong(e);
         if (mienTruChua(d)) continue;
-        if (e is File) ghi(d, 'tệp rời ngay dưới features/<x>/ — vào data/ · domain/ · presentation/');
-        if (e is Directory && !tangMang.contains(_ten(e))) ghi(d, 'thư mục ngoài data/ · domain/ · presentation/');
+        if (e is File) ghi(d, 'tệp rời ngay dưới features/<x>/ — vào data/ · domain/ · presentation/ · application/');
+        if (e is Directory && !tangMang.contains(_ten(e))) ghi(d, 'thư mục ngoài data/ · domain/ · presentation/ · application/');
       }
     }
 

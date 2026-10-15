@@ -8,7 +8,7 @@ library;
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
-import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
+import 'package:flowmoney/features/notification/application/nhap_bien_dong.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';

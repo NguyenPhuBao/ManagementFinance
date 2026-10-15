@@ -7,7 +7,7 @@ import '../../../category/domain/category_classify.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
+import '../../../notification/application/mo_tu_tom_tat_bien_dong.dart';
 import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';

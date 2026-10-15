@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../../core/notification/notification_rules.dart';
+import '../../../notification/domain/notification_rules.dart';
 import '../../../../core/sync/sync_models.dart';
 import '../repositories/bill_repository.dart';
 

@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../../core/notification/prefs/notification_prefs.dart';
+import '../../../domain/notification_prefs.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import 'khung_cai_dat.dart';
 
