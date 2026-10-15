@@ -50,6 +50,8 @@ async function processNotificationJob(job, dependencies = {}) {
   }
 }
 
+const config = require('../config');
+
 /**
  * Factory khởi tạo BullMQ Worker
  */
@@ -62,6 +64,9 @@ function createNotificationWorker(connection) {
     {
       connection,
       concurrency: 5,
+      stalledInterval: config.queue?.stalledInterval || 300000,
+      drainDelay: config.queue?.drainDelay || 5,
+      lockDuration: config.queue?.lockDuration || 60000,
       limiter: {
         max: 30,
         duration: 60000,

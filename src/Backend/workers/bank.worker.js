@@ -240,6 +240,8 @@ async function processSepayTransaction({
   return { status: 'created', transaction: { ...newTx, note: safeNote }, newBalance };
 }
 
+const config = require('../config');
+
 // BullMQ Worker instance
 const bankWorker = new Worker(
   'bank-webhook',
@@ -258,6 +260,9 @@ const bankWorker = new Worker(
   {
     connection,
     concurrency: 5,
+    stalledInterval: config.queue?.stalledInterval || 300000,
+    drainDelay: config.queue?.drainDelay || 5,
+    lockDuration: config.queue?.lockDuration || 60000,
     limiter: {
       max: 20,
       duration: 60000,
