@@ -240,7 +240,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
   sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
   // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
-  // `batDauNghe` gọi MỘT lần ở `main.dart`, cùng lý do với bộ nghe hoá đơn.
+  // `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay` (cuối tệp này), cùng lý do với bộ nghe hoá đơn.
   sl.registerLazySingleton<ViTrungTenResolver>(
     () => ViTrungTenResolver(db: sl()),
   );
@@ -326,8 +326,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     ),
   );
   // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` — máy khác đã trả
-  // hoá đơn ấy trước. Chỉ ĐĂNG KÝ ở đây; `batDauNghe` được gọi một lần lúc app
-  // khởi động (`main.dart`), vì lớp phải sống suốt vòng đời chứ không theo màn.
+  // hoá đơn ấy trước. Chỉ ĐĂNG KÝ ở đây; `batDauNghe` được gọi một lần mỗi engine qua
+  // `noiBoNgheKetQuaDay` (cuối tệp này), vì lớp phải sống suốt vòng đời chứ không theo màn.
   sl.registerLazySingleton<BillPaymentConflictResolver>(
     () => BillPaymentConflictResolver(
       db: sl<AppDatabase>(),
@@ -980,4 +980,20 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // }
 
   await sl.allReady();
+}
+
+/// Nối các bộ nghe kết quả đẩy vào `SyncEngine.pushResultStream` — gọi ĐÚNG MỘT LẦN cho mỗi engine Dart:
+/// `main.dart` (engine của app) và `core/nen/chay_nen.dart` (engine nền của WorkManager).
+///
+/// - `BillPaymentConflictResolver` gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` / `BILL_PERIOD_ALREADY_PAID`
+///   (máy khác trả trước). Lượt nền đẩy mà không nối thì khoản chi lỗi vĩnh viễn, không ai gỡ (spec tự chuyển tiền
+///   chạy nền mục 4).
+/// - `ViTrungTenResolver` (G63): ví bị từ chối vì trùng tên thì đặt cờ — engine giữ nó lại.
+///
+/// `pushResultStream` là broadcast và singleton, nên nối hai lần trong CÙNG engine là hoàn tác chạy hai lượt cho cùng
+/// một khoản chi. Ở DI (điểm ghép) từ 2026-10-15 — trước ở `core/sync/noi_bo_nghe_ket_qua_day.dart`, hạ tầng `core` phải
+/// import hai mảng (G88 gạch 4). KHÔNG gọi trong `registerLazySingleton` (chạy lại mỗi lần dựng).
+void noiBoNgheKetQuaDay() {
+  sl<BillPaymentConflictResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+  sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
 }

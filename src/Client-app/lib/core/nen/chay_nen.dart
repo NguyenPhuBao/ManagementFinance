@@ -18,7 +18,6 @@ import '../constants/app_constants.dart';
 import '../di/injection_container.dart';
 import '../../features/notification/data/datasources/nhat_ky_thong_bao.dart';
 import '../../features/notification/application/notification_scanner.dart';
-import '../sync/noi_bo_nghe_ket_qua_day.dart';
 import '../sync/sync_engine.dart';
 import 'kenh_tu_chuyen_tien.dart';
 import 'lich_nen.dart';

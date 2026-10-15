@@ -22,7 +22,7 @@ void main() {
   });
 
   test('hàm nối chung BẮT ĐẦU NGHE pushResultStream bằng ViTrungTenResolver', () {
-    final main = File('lib/core/sync/noi_bo_nghe_ket_qua_day.dart').readAsStringSync();
+    final main = File('lib/core/di/injection_container.dart').readAsStringSync();
     expect(
         RegExp(r'sl<ViTrungTenResolver>\(\)\s*\.batDauNghe\(\s*sl<SyncEngine>\(\)\.pushResultStream\s*\)')
             .hasMatch(main),

@@ -23,7 +23,6 @@ import 'features/notification/application/notification_tap_router.dart';
 import 'features/notification/data/datasources/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
-import 'core/sync/noi_bo_nghe_ket_qua_day.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/nen/chay_nen.dart';
 import 'core/nen/kenh_tu_chuyen_tien.dart';

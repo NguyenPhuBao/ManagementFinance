@@ -18,14 +18,19 @@ void main() {
 
   test('chỉ hàm nối chung gọi batDauNghe của hai resolver (nối hai lần = hoàn tác hai lượt)', () {
     final loi = <String>[];
+    final noi = RegExp(r'(BillPaymentConflictResolver|ViTrungTenResolver)>\(\)\s*\.batDauNghe');
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       final p = f.path.replaceAll(r'\', '/');
-      if (!p.endsWith('.dart') || p.endsWith('core/sync/noi_bo_nghe_ket_qua_day.dart')) continue;
-      if (RegExp(r'(BillPaymentConflictResolver|ViTrungTenResolver)>\(\)\s*\.batDauNghe').hasMatch(f.readAsStringSync())) {
-        loi.add(p);
-      }
+      // Tệp ĐỊNH NGHĨA hàm nối chung (DI, từ 2026-10-15 — G88 gạch 4) được miễn; trong nó mỗi resolver nối đúng MỘT lần (dưới).
+      if (!p.endsWith('.dart') || p.endsWith('core/di/injection_container.dart')) continue;
+      if (noi.hasMatch(f.readAsStringSync())) loi.add(p);
     }
     expect(loi, isEmpty);
+    final di = File('lib/core/di/injection_container.dart').readAsStringSync();
+    for (final r in ['BillPaymentConflictResolver', 'ViTrungTenResolver']) {
+      expect(RegExp('$r>\\(\\)\\s*\\.batDauNghe').allMatches(di).length, 1,
+          reason: '$r phải được nối ĐÚNG MỘT lần trong hàm nối chung — hai lần là hoàn tác chạy hai lượt.');
+    }
   });
 
   test('main.dart khai entrypoint nền đúng tên, có @pragma (bản release bỏ hàm không ai gọi)', () {
