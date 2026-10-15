@@ -7,6 +7,7 @@ import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_recurrence.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../models/goal_entity.dart';
 import 'goal_repository.dart';
 
@@ -662,15 +663,17 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
-  Stream<dynamic> watchGoalTransactions(
+  Stream<List<TransactionEntity>> watchGoalTransactions(
     int idaccount,
     String goalId,
     String goalName,
   ) {
     if (db != null) {
-      return db!.transactionDao.watchByGoal(idaccount, goalId, goalName);
+      return db!.transactionDao
+          .watchByGoal(idaccount, goalId, goalName)
+          .map((rows) => rows.map(TransactionEntity.fromDrift).toList());
     }
-    return Stream.value([]);
+    return Stream.value(const <TransactionEntity>[]);
   }
 
   @override

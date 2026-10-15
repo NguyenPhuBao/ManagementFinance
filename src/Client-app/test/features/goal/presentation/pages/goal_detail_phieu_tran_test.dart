@@ -18,6 +18,7 @@ import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/presentation/pages/goal_detail_page.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 
 import '../../../../helpers/nguon_doc_gia.dart';
 
@@ -56,9 +57,9 @@ class _GoalRepoGia implements GoalRepository {
   @override
   Future<List<GoalEntity>> getGoals(int idaccount) async => [_mucTieu];
   @override
-  Stream<dynamic> watchGoalTransactions(
+  Stream<List<TransactionEntity>> watchGoalTransactions(
           int idaccount, String goalId, String goalName) =>
-      Stream<List<dynamic>>.value(const []);
+      Stream.value(const <TransactionEntity>[]);
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

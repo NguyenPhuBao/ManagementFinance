@@ -9,6 +9,7 @@ import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
@@ -986,7 +987,7 @@ void main() {
 
       final lichSuCuaMua = await repository
           .watchGoalTransactions(1, 'g_mua', 'Mua')
-          .first as List;
+          .first;
 
       expect(lichSuCuaMua, isEmpty,
           reason: 'Chưa nạp đồng nào vào mục tiêu "Mua". Lịch sử phải nối bằng '
@@ -1012,15 +1013,16 @@ void main() {
 
       final cuaMuaXe = await repository
           .watchGoalTransactions(1, 'g_mua_xe', 'Mua xe')
-          .first as List;
+          .first;
       expect(cuaMuaXe.length, 1);
-      expect((cuaMuaXe.first as Transaction).amount, 3000000.0);
+      expect(cuaMuaXe, everyElement(isA<TransactionEntity>()),
+          reason: 'Lịch sử mục tiêu lên trang bằng Entity, không bằng hàng Drift giấu sau dynamic.');
+      expect(cuaMuaXe.first.amount, 3000000.0);
 
       final cuaMua =
-          await repository.watchGoalTransactions(1, 'g_mua', 'Mua').first
-              as List;
+          await repository.watchGoalTransactions(1, 'g_mua', 'Mua').first;
       expect(cuaMua.length, 1);
-      expect((cuaMua.first as Transaction).amount, 500000.0);
+      expect(cuaMua.first.amount, 500000.0);
     });
 
     test('hàng cũ không có goalId vẫn tra được bằng ghi chú', () async {
@@ -1041,7 +1043,7 @@ void main() {
 
       final cuaMuaXe = await repository
           .watchGoalTransactions(1, 'g_mua_xe', 'Mua xe')
-          .first as List;
+          .first;
       expect(cuaMuaXe.length, 1,
           reason: 'Siết sang goalId không được làm biến mất lịch sử đã có. '
               'Hàng cũ và hàng kéo về từ server đều không mang goalId.');

@@ -64,10 +64,7 @@ const conChoDomain = <String>{
 
 /// Luật 3 — tệp `features/*/data/` (tương đối `lib/`) còn khai `<dynamic>` trần ở chữ ký. Điền từ lượt chạy đầu 2026-10-15; Task 5 đợt
 /// Entity Danh mục rút cả hai (`watchGoalTransactions` → `Stream<List<TransactionEntity>>`).
-const conChoDynamic = <String>{
-  'features/goal/data/repositories/goal_repository.dart',
-  'features/goal/data/repositories/goal_repository_impl.dart',
-};
+const conChoDynamic = <String>{};
 
 /// `Stream<dynamic>` · `Future<dynamic>` · `List<dynamic>` · `Iterable<dynamic>` (kể cả `as List<dynamic>?`) — nhưng KHÔNG
 /// `Map<String, dynamic>` (JSON của `auth`, `ai_edge`). Phạm vi cố ý hẹp: không quét `core/sync` (đọc payload) và `core/router`

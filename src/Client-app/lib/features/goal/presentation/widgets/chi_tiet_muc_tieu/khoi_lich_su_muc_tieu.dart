@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../transaction/data/models/transaction_entity.dart';
 import '../../../data/models/goal_entity.dart';
 import '../../../domain/goal_history_direction.dart';
 import '../../../domain/goal_history_filter.dart';
@@ -35,7 +36,7 @@ class KhoiLichSuMucTieu extends StatelessWidget {
 
   final GoalEntity goal;
   final bool dangTai;
-  final List<dynamic> txs;
+  final List<TransactionEntity> txs;
   final List<KhoanTichLuy> khoan;
   final VoidCallback onXemTatCa;
 
@@ -120,7 +121,7 @@ class _DanhSachLichSu extends StatelessWidget {
   const _DanhSachLichSu({required this.goal, required this.txs});
 
   final GoalEntity goal;
-  final List<dynamic> txs;
+  final List<TransactionEntity> txs;
 
   @override
   Widget build(BuildContext context) {
@@ -133,16 +134,16 @@ class _DanhSachLichSu extends StatelessWidget {
       itemBuilder: (context, index) {
         final tx = hienThi[index];
         final dateStr =
-            DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
-        final amount = (tx.amount as double);
+            DateFormat('dd/MM/yyyy HH:mm').format(tx.date);
+        final amount = tx.amount;
         // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
         // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
         // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
         // Xem `goal_history_direction.dart`.
-        final ghiChu = (tx.note as String?) ?? '';
+        final ghiChu = tx.note;
         final laKhoanRut = laKhoanRutKhoiMucTieu(
           ghiChu: ghiChu,
-          viCuaHang: tx.walletId as String,
+          viCuaHang: tx.walletId,
           viTichLuy: goal.walletId,
         );
 

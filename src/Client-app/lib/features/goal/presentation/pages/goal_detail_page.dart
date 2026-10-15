@@ -8,6 +8,7 @@ import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 import '../../domain/goal_deposit_wallets.dart';
@@ -147,15 +148,15 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   ///
   /// Nhãn "tự động" đọc từ **hậu tố** cùng ghi chú ấy, qua `laKhoanTuDong` —
   /// cùng lối, cùng lý do.
-  List<KhoanTichLuy> _doiSangKhoan(List<dynamic> txs) => [
+  List<KhoanTichLuy> _doiSangKhoan(List<TransactionEntity> txs) => [
         for (final tx in txs)
-          for (final ghiChu in [(tx.note as String?) ?? ''])
+          for (final ghiChu in [tx.note])
             KhoanTichLuy(
-              ngay: tx.date as DateTime,
-              soTien: tx.amount as double,
+              ngay: tx.date,
+              soTien: tx.amount,
               laKhoanRut: laKhoanRutKhoiMucTieu(
                 ghiChu: ghiChu,
-                viCuaHang: tx.walletId as String,
+                viCuaHang: tx.walletId,
                 viTichLuy: _goal?.walletId,
               ),
               laTuDong: laKhoanTuDong(ghiChu),
@@ -585,7 +586,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
     if (accountId == null) return const SizedBox.shrink();
 
-    return StreamBuilder<dynamic>(
+    return StreamBuilder<List<TransactionEntity>>(
       stream: _goalRepository.watchGoalTransactions(
           accountId, widget.id, _goal?.name ?? ''),
       builder: (context, snapshot) {
@@ -600,7 +601,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         // hiện lại. Trông y như vừa mất dữ liệu.
         final dangTai = !snapshot.hasData &&
             snapshot.connectionState == ConnectionState.waiting;
-        final txs = (snapshot.data as List<dynamic>?) ?? [];
+        final txs = snapshot.data ?? const <TransactionEntity>[];
         // Ghi lại để nhãn phía dưới biết có nên hiện nút "Xem tất cả" không,
         // và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một dòng dữ liệu
         // thứ hai.
