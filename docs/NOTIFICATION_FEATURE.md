@@ -299,10 +299,10 @@ thay vì cài lại mốc 70/90, để màu trên thẻ và thông báo không b
 chuyện khác nhau. Có test canh chính xác điều đó ("ngưỡng theo số tiền thắng
 ngưỡng phần trăm" — ai cài lại bằng `rawPercentSpent >= 0.9` sẽ làm nó đỏ).
 
-> Lệch nhỏ so với kế hoạch: luật **có** import Flutter, vì `budgetHealthOf()`
+> ~~Lệch nhỏ so với kế hoạch: luật **có** import Flutter, vì `budgetHealthOf()`
 > nằm trong `budget_visuals.dart` (file import `material.dart`). Chấp nhận có
 > chủ ý — một định nghĩa duy nhất của ngưỡng quan trọng hơn sự thuần khiết, và
-> test vẫn chạy trong mili giây vì không chạm CSDL lẫn widget.
+> test vẫn chạy trong mili giây vì không chạm CSDL lẫn widget.~~ **Đã hết từ 2026-10-15:** `budget_health` dời về `budget/domain/budget_health.dart`, luật thông báo nay Dart thuần (không import Flutter).
 
 ### 4.5 Khi nào quét
 

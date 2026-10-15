@@ -448,7 +448,7 @@ features/
 
 `core/` (92 tệp, đếm 2026-10-15; 15 chủ đề) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/router/app_router.dart`,
 `core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
-phiên, nhận hook hàm nên không import `features/`). `features/notification/data/repositories/thong_bao_repository.dart` (trước là `ThongBaoNguon` ở `core/notification`) là cổng đọc / ghi bảng
+phiên, nhận hook hàm cho mọi mảng khác; chỉ import bộ quét thông báo — điểm ghép thứ tư, quét 25). `features/notification/data/repositories/thong_bao_repository.dart` (trước là `ThongBaoNguon` ở `core/notification`) là cổng đọc / ghi bảng
 thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng
 (quét 23; `mienTru` rỗng từ 2026-10-13, cơ chế giữ cho tệp dài sau này).
 

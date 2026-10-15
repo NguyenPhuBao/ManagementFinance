@@ -107,8 +107,8 @@ hàng Drift trang đang cầm (11 lúc đầu; 10 sau đợt Hoá đơn; 4 sau �
 - **Hạ tầng** dùng chung, không biết mảng nào: CSDL, HTTP, socket, OCR, định dạng tiền, toast. Đây là phần lớn của 92 tệp (đếm 2026-10-15).
 - **Điểm ghép** (`core/di`, `core/router`, `core/nen/chay_nen.dart`, `core/auth/phien_dieu_phoi_that.dart`; `core/nen/lich_nen.dart` là hạ tầng) — nơi duy nhất được biết mọi mảng, nhưng **không** được nêu tên kiểu hàng Drift (quét 27 luật 1, từ 2026-10-14): biết mảng qua repository / Entity. Gồm: `core/di/injection_container.dart` (đăng ký mọi thứ, nối hook),
   `core/router/app_router.dart` (mọi route), `core/nen/chay_nen.dart` (dựng DI ở chế độ nền), và
-  `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác, nên chính nó
-  **không** import `features/`. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
+  `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác; chỉ import bộ quét thông báo
+  (`notification_scanner`, điểm ghép thứ tư — quét 25), không import mảng nào khác. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
   **175** dòng — điểm ghép **138** (DI 82 · router 54 · `chay_nen` 2), hạ tầng **37** (`notification_rules` 10 ·
   `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* *(Đo lại 2026-10-14 sau đợt Entity Giao dịch + Ví: 185 = điểm ghép 142 + hạ tầng **43** — `notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1, ratchet +3 vì luật ví và nguồn B5b nhận `WalletEntity` / `TransactionEntity`.)* 43 dòng hạ tầng là nợ có tên (G88 gạch 4). *(Đo lại 2026-10-15 sau đợt Entity Thông báo bằng vòng `for` + `grep -cE "^(import|export) .*features/"` từng tệp: **184** = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18** — `sync_engine` 7 · `lich_nen` 4 · `noi_bo_nghe_ket_qua_day` 2 · `sync_payload_normalizer` 2 · `other_daos` 1 · `wallet_dao` 1 · `kho_anh_quet` 1; ratchet `conChoCoreImport` đo 43 → 47 (Task 4, Luật tăng) → 45 → **18** (Task 6, bảy mục thông báo rút hết); từ nay điểm ghép là **bốn** tệp.)* *(Trước
   đợt: 172 = 136 + 36. DI +2 vì `TransactionRepositoryImpl` / `CategoryManagementRepositoryImpl` tách tệp `_impl`; router
@@ -274,7 +274,7 @@ Không còn tệp `presentation` nào trên 1.200 dòng (bốn trang cuối — 
 không mã hoá SQLite. `setState` vẫn là cách giữ trạng thái chủ đạo (250 chỗ — `git grep -c "setState(" HEAD -- lib` cộng các tệp, 2026-10-11; trước tách trang Thêm giao dịch 289; 3 Bloc, 8 Cubit cho màn có luồng ghi).
 
 **Nợ có tên:** **G88** ở `docs/CLIENT_APP_KNOWN_GAPS.md` — bảy gạch có số đo và hướng xử lý (gạch 7 *vị trí tệp* đóng
-2026-10-10 — đợt dọn vị trí tệp, quét 25; gạch 1 *trang Thêm giao dịch* đóng 2026-10-11; còn gạch 2–6). Bảng dưới là trước/sau của đợt **bịt điểm rò** (2026-10-10), kèm một đoạn cập nhật sau bảng.
+2026-10-10 — đợt dọn vị trí tệp, quét 25; gạch 1 *trang Thêm giao dịch* đóng 2026-10-11; gạch 1–3, 5, 6 đã đóng — 2026-10-15; còn gạch 4). Bảng dưới là trước/sau của đợt **bịt điểm rò** (2026-10-10), kèm một đoạn cập nhật sau bảng.
 
 | Thước đo (cùng cách đếm, 2026-10-10) | Trước đợt | Sau đợt |
 |---|---|---|
