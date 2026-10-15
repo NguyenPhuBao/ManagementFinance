@@ -46,7 +46,11 @@ giao diện, không đổi lược đồ / payload đồng bộ. Sau đợt, **G
 
 `SyncEngine` **đã** nhận `SoDuViService? soDuVi`, `ViTrungTenNguon? viTrungTen` qua constructor (:259–262), nhưng tự dựng bản
 thật khi `null` — chính vế mặc định ấy là lý do phải import. DI (`injection_container.dart` :166) không truyền hai tham số ấy.
-Test dựng `SyncEngine(` **41** lần ở **26** tệp.
+Test dựng `SyncEngine(` (từ trọn) **32** lần ở **23** tệp, cộng **4** lớp con `_SpySyncEngine extends SyncEngine` (dùng
+`super.dioClient, super.db, super.connectivity`) ở `phien_dieu_phoi_that_test`, `auth_bloc_buoc_dang_xuat_test`,
+`session_validation_test`, `category_create_test` (đo bằng Grep 2026-10-15; con số 41 / 26 trước đó đếm lẫn chuỗi con
+`_SpySyncEngine(`). Chỉ hai chỗ dựng truyền `soDuVi:` (`sync_pull_so_du_vi_test` ×2, `transaction_repository_test` dựng
+`SoDuViService` cho dịch vụ khác — không phải engine); không chỗ nào truyền `viTrungTen:`.
 
 Năm tệp `domain` mà `core` đọc đều **thuần**: `wallet_status`, `wallet_type`, `bill_recurrence`, `uu_tien_hop_le` không import gì;
 `bill_pay_status` chỉ import `../data/models/bill_entity.dart` (vị từ `conPhaiTra(BillEntity)`).
@@ -91,10 +95,12 @@ quét 25 luật 7.
   ⚠️ Giữ cam kết G63: engine **không** nhắc tên cột cờ (`bi_tu_choi_trung_ten`) — test quét hiện có canh.
 - Constructor: `required CongSoDuVi soDuVi, required CongViBiGiu viBiGiu` — **bắt buộc**, không mặc định. Thiếu là lỗi biên dịch
   (một tham số tuỳ chọn `null` = bỏ bước sẽ là hỏng im lặng). DI (:166) truyền `sl<SoDuViService>()` và bản thi hành ví.
-- Test: **một** helper mới ở `test/helpers/` (vd. `taoSyncEngineThu({dioClient, db, …})`) — mọi chỗ dựng `SyncEngine(` trong
-  `test/` (41 chỗ ở 26 tệp, đo 2026-10-15) đi qua nó, không tệp nào tự truyền hai cổng. Helper mặc định dùng **bản thật** dựng
-  trên `db` (`SoDuViService(db:)` + bản thi hành ví) và nhận hai cổng tuỳ chọn cho ca muốn tiêm bản giả — mặc định ấy là bản
-  thật, **không** phải no-op (mục 9). **Không ca nào đổi kỳ vọng.**
+- Test: **một** tệp helper `test/helpers/sync_engine_thu.dart` với ba hàm — `congSoDuViThat(db)` · `congViBiGiuThat(db)` (bản
+  thật dựng trên `db`, như DI) và `taoSyncEngineThu({dioClient, db, …})` dùng hai hàm ấy làm mặc định, nhận hai cổng tuỳ chọn
+  cho ca muốn tiêm bản giả. 32 chỗ dựng thẳng đổi sang `taoSyncEngineThu(`; 4 lớp con `extends SyncEngine` (không đi qua
+  factory được — `super(...)`) đổi `required super.db` thành `required AppDatabase db` + `: super(db: db, soDuVi:
+  congSoDuViThat(db), viBiGiu: congViBiGiuThat(db))`. Mặc định là **bản thật**, **không** phải no-op (mục 9). **Không ca nào
+  đổi kỳ vọng.**
 - `test/features/wallet/vi_trung_ten_cuc_bo_test.dart` (G63 — đường đồng bộ không nhắc tên cột cờ): thêm
   `lib/core/sync/cong_vi_bi_giu.dart` vào danh sách `duongDongBo` (+1 ca) và sửa docstring dòng 4 (engine hỏi qua
   `CongViBiGiu`, không còn qua `ViTrungTenNguon`).
@@ -122,7 +128,11 @@ của tệp sau nhắc tên hàm, không nhắc đường — giữ. Ca 1 của 
 - DI (`tinh:` ~:568) gọi hai hàm (bỏ qua phần không có quyền — `traDuoc` / `trichDuoc` hiện là tham số, chuyển thành điều kiện ở DI)
   rồi gộp. Phép chọn mốc và hai ⚠️ trong docstring cũ (không hẹn "ngay" kỳ đã tới hạn; `coTuDong` giữ lượt định kỳ) đi theo hàm.
 - Test `test/core/nen/lich_nen_test.dart` (170 dòng): ca của từng phần dời về `test/features/{bill,goal}/domain/`, ca gộp ở lại;
-  **kỳ vọng giữ nguyên** (có thể giữ một ca tổ hợp gọi hai hàm + gộp để canh hành vi cũ).
+  **kỳ vọng giữ nguyên** (có thể giữ một ca tổ hợp gọi hai hàm + gộp để canh hành vi cũ). Ca *"không quyền gói → loại cả hai
+  vế"* (:127) không ở lại nguyên dạng được (hàm nhận `bills` / `goals` không thể nằm ở `core/nen`): viết lại trên hàm gộp
+  (danh sách phần rỗng → `(moc: null, coTuDong: false)`) + một ca **đọc nguồn** `injection_container.dart` đòi
+  `if (coQuyenNen(MaQuyen.billAutoPay))` ngay trước `mocTuTraNen(` và `if (coQuyenNen(MaQuyen.goalAutoDeposit))` ngay trước
+  `mocTrichNen(`. Điều kiện quyền ở DI vẫn **không** có test chạy thật — ghi vào biên bản nghiệm thu như một lỗ đã biết.
 - Tên tệp / hàm chốt ở kế hoạch (gợi ý: `bill/domain/moc_tu_tra_nen.dart` · `goal/domain/moc_trich_nen.dart`).
 
 ### 3.4 `kho_anh_quet` về mảng giao dịch
