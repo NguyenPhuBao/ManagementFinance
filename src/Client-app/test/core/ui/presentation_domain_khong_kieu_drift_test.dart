@@ -1,15 +1,18 @@
 /// Test quét `lib/` thứ **27** (spec Entity Hoá đơn 2026-10-14, mục 8): giao diện và domain không cầm kiểu hàng Drift.
 ///
-/// Ba luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả ba điểm ghép DI / router / nen,
+/// Bốn luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả ba điểm ghép DI / router / nen,
 /// đo 2026-10-14 = 0) + `features/*/domain/` (từ 2026-10-15) không nhắc tên kiểu hàng Drift — [kieuDrift] và companion tương ứng —
 /// so trên dòng đã bỏ chú thích, vì docstring vùng này hay nhắc *"đối tượng `Bill`"*. (2) `features/*/domain/` không import
-/// `core/database` hay `package:drift` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). (3) `features/*/data/` không khai
-/// `Stream<dynamic>` · `Future<dynamic>` · `List<dynamic>` · `Iterable<dynamic>` — `dynamic` là cách hàng Drift đi qua chữ ký mà luật 1
-/// mù (`GoalRepository.watchGoalTransactions` giấu hàng `Transaction` hai tháng, lộ ở lượt soát 2026-10-14). Tệp còn vi phạm nằm trong
-/// danh sách chờ chỉ-được-giảm ([conChoKieu] theo kiểu, [conChoDomain], [conChoDynamic]); sạch mà quên rút thì đỏ (khuôn quét 22 / 25).
-/// Kiểu KHÔNG có khoá trong [conChoKieu] là kiểu không có chỗ chờ trong phạm vi quét — nhắc tới là đỏ ngay (không có nghĩa "đã thống
-/// nhất Entity": `Goal` / `Budget` chưa đạt định nghĩa ấy, `KIEN_TRUC` mục 1).
-/// Mở rộng 2026-10-14 (spec Entity Giao dịch + Ví mục 8); 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain, luật 3.
+/// `core/database` hay `package:drift` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). (3) `features/*/data/` và
+/// `features/*/application/` (từ đợt Thông báo) không khai `Stream<dynamic>` · `Future<dynamic>` · `List<dynamic>` · `Iterable<dynamic>` —
+/// `dynamic` là cách hàng Drift đi qua chữ ký mà luật 1 mù (`GoalRepository.watchGoalTransactions` giấu hàng `Transaction` hai tháng,
+/// lộ ở lượt soát 2026-10-14). (4) Interface repository `features/*/data/repositories/*_repository.dart` không import `core/database` /
+/// `package:drift` — lối chuyển tiếp **không nêu tên kiểu** (`final hang = await dao.getAll(id)`) là thứ luật 1 mù; chốt ở chữ ký
+/// interface là chốt được (spec Entity Thông báo 2026-10-15 mục 9). Tệp còn vi phạm nằm trong danh sách chờ chỉ-được-giảm ([conChoKieu]
+/// theo kiểu, [conChoDomain], [conChoDynamic]); sạch mà quên rút thì đỏ (khuôn quét 22 / 25). Kiểu KHÔNG có khoá trong [conChoKieu] là
+/// kiểu không có chỗ chờ trong phạm vi quét — nhắc tới là đỏ ngay.
+/// Mở rộng 2026-10-14 (spec Entity Giao dịch + Ví mục 8); 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain, luật 3;
+/// 2026-10-15 (spec Entity Thông báo mục 9): `AppNotificationEvent`, luật 3 quét `application/`, luật 4, `mauKieu` bắt ` &&` / ` ||`.
 library;
 
 import 'dart:io';
@@ -24,7 +27,8 @@ const kieuDrift = [
   'Transaction',
   'Goal',
   'Budget',
-  'AppNotification'
+  'AppNotification',
+  'AppNotificationEvent'
 ];
 
 /// Companion của từng kiểu — Drift đặt theo tên BẢNG (`Bills` → `BillsCompanion`, `Categories` → `CategoriesCompanion`).
@@ -36,9 +40,10 @@ const companionCua = {
   'Goal': 'GoalsCompanion',
   'Budget': 'BudgetsCompanion',
   'AppNotification': 'AppNotificationsCompanion',
+  'AppNotificationEvent': 'AppNotificationEventsCompanion',
 };
 
-/// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15).
+/// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15; AppNotification + AppNotificationEvent đợt 4 2026-10-15).
 const conChoKieu = <String, Set<String>>{
   'AppNotification': {
     'features/notification/presentation/pages/notification_center_page.dart',
@@ -51,12 +56,17 @@ const conChoKieu = <String, Set<String>>{
     'core/notification/notification_scanner.dart',
     'core/notification/thong_bao_nguon.dart',
   },
+  // Bảng sự kiện B5a (v26) — `deXuatThongBao` nhận record `SuKienNhatKy` ở Task 4 đợt Thông báo; `nhat_ky_thong_bao` về `data/` ở Task 6.
+  'AppNotificationEvent': {
+    'core/notification/hoc_gio_thong_bao.dart',
+    'core/notification/nhat_ky_thong_bao.dart',
+  },
 };
 
 /// Luật 2 — tệp `domain/` còn import `core/database` / `package:drift`. Rỗng từ 2026-10-15 (đợt Entity Danh mục); thêm tệp là đỏ ngay.
 const conChoDomain = <String>{};
 
-/// Luật 3 — tệp `features/*/data/` (tương đối `lib/`) còn khai `<dynamic>` trần ở chữ ký. Điền từ lượt chạy đầu 2026-10-15; Task 5 đợt
+/// Luật 3 — tệp `features/*/data/` (tương đối `lib/`; từ đợt Thông báo quét cả `application/`) còn khai `<dynamic>` trần ở chữ ký. Điền từ lượt chạy đầu 2026-10-15; Task 5 đợt
 /// Entity Danh mục rút cả hai (`watchGoalTransactions` → `Stream<List<TransactionEntity>>`).
 const conChoDynamic = <String>{};
 
@@ -72,10 +82,10 @@ String boChuThich(String d) {
   return i < 0 ? d : d.substring(0, i);
 }
 
-/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` — nhưng KHÔNG `BillBloc`,
+/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` · `is Bill &&` · `is Bill ||` — nhưng KHÔNG `BillBloc`,
 /// `BillEntity`, `BillRepository`, `BillEntity.fromDrift(`. (`>[` / `>(` đã bắt qua `>`.)
 RegExp mauKieu(String ten) =>
-    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson)');
+    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|)');
 
 /// Dòng import mà luật 2 cấm trong features/*/domain/: core/database hoặc package:drift.
 bool importCam(String d) =>
@@ -108,6 +118,10 @@ void main() {
     expect(m.hasMatch('bill: s.extra as Bill?,'), isTrue);
     expect(m.hasMatch('final b = x as Bill;'), isTrue);
     expect(m.hasMatch('Bill.fromJson(json)'), isTrue);
+    expect(m.hasMatch('if (x is Bill && x.isPaid) {'), isTrue,
+        reason: 'is X && từng lọt (bàn giao đợt 3) — sau dấu cách là & chứ không phải tên biến.');
+    expect(m.hasMatch('final ok = y is Bill || z;'), isTrue);
+    expect(m.hasMatch('if (x is BillEntity && x.isPaid) {'), isFalse);
     expect(m.hasMatch('BillEntity.fromDrift(row)'), isFalse);
     expect(m.hasMatch('class BillBloc extends Bloc<BillEvent, BillState> {'),
         isFalse);
@@ -231,29 +245,49 @@ void main() {
   });
 
   test(
-      'luật 3: features/*/data/ không khai <dynamic> trần (Stream/Future/List/Iterable), trừ danh sách chờ (chỉ được giảm)',
+      'luật 3: features/*/data/ và features/*/application/ không khai <dynamic> trần (Stream/Future/List/Iterable), trừ danh sách chờ (chỉ được giảm)',
       () {
     final thay = <String>{};
     var soTep = 0;
     for (final f in _dart(Directory('lib/features'))) {
       final duong = _duong(f);
-      if (!duong.contains('/data/')) continue;
+      if (!duong.contains('/data/') && !duong.contains('/application/')) continue;
       soTep++;
       if (f.readAsLinesSync().map(boChuThich).any(mauDynamic.hasMatch)) {
         thay.add(duong);
       }
     }
-    // Đo 2026-10-15: 105 tệp .dart dưới lib/features/*/data/ (find … -path '*/data/*') — sàn 50.
+    // Đo 2026-10-15: 105 tệp .dart dưới lib/features/*/data/ (application/ chưa có — thêm ở Task 6–7 đợt Thông báo) — sàn 50.
     expect(soTep, greaterThan(50),
         reason:
             'Phép quét phải thấy features/*/data — bộ lọc luật 3 hỏng thì đỏ ở đây, không xanh im lặng (danh sách chờ đã rỗng từ 2026-10-15).');
     final loi = <String>[
       for (final t in thay)
         if (!conChoDynamic.contains(t))
-          '$t: <dynamic> trần ở tầng data — khai kiểu rõ (Entity), vì dynamic là cách hàng Drift lọt qua luật 1 (spec Entity Danh mục mục 9).',
+          '$t: <dynamic> trần ở tầng data / application — khai kiểu rõ (Entity), vì dynamic là cách hàng Drift lọt qua luật 1 (spec Entity Danh mục mục 9).',
       for (final t in conChoDynamic)
         if (!thay.contains(t)) '$t: đã sạch — rút khỏi conChoDynamic.',
     ];
+    expect(loi, isEmpty, reason: loi.join('\n'));
+  });
+
+  test(
+      'luật 4: interface repository (data/repositories/*_repository.dart) không import core/database hay package:drift',
+      () {
+    final loi = <String>[];
+    var soTep = 0;
+    for (final f in _dart(Directory('lib/features'))) {
+      final duong = _duong(f);
+      if (!duong.contains('/data/repositories/') || !duong.endsWith('_repository.dart')) continue;
+      soTep++;
+      if (f.readAsLinesSync().any(importCam)) {
+        loi.add(
+            '$duong: interface repository import core/database / package:drift — lối chuyển tiếp trả hàng Drift không nêu tên kiểu lọt qua luật 1; interface chỉ nhận / trả Entity và Dart thuần (spec Entity Thông báo 2026-10-15 mục 9).');
+      }
+    }
+    // Đo 2026-10-15: 10 interface (analytics 2 · auth · bill · budget · category · goal · goi · transaction · wallet), 11 sau đợt Thông báo.
+    expect(soTep, greaterThanOrEqualTo(10),
+        reason: 'Phép quét phải thấy các interface repository — bộ lọc hỏng thì đỏ ở đây, không xanh im lặng.');
     expect(loi, isEmpty, reason: loi.join('\n'));
   });
 }
