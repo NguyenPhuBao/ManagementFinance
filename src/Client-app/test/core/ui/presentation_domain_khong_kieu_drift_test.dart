@@ -122,6 +122,12 @@ void main() {
     expect(importCam("import 'dart:io';"), isFalse);
     expect(mauDynamic.hasMatch('  Stream<dynamic> watchGoalTransactions('), isTrue);
     expect(mauDynamic.hasMatch('final txs = (snapshot.data as List<dynamic>?) ?? [];'), isTrue);
+    expect(mauDynamic.hasMatch('  Future<dynamic> f() async => null;'), isTrue,
+        reason: 'Future<dynamic> là dạng bị cấm.');
+    expect(mauDynamic.hasMatch('  Iterable<dynamic> get xs;'), isTrue,
+        reason: 'Iterable<dynamic> là dạng bị cấm.');
+    expect(mauDynamic.hasMatch('  MyStream<dynamic> s;'), isFalse,
+        reason: r'\b phải loại tên ghép (MyStream không phải Stream).');
     expect(mauDynamic.hasMatch('  Future<Map<String, dynamic>> getProfile();'), isFalse,
         reason: 'JSON là Map<String, dynamic> — không phải lỗ hàng Drift.');
     expect(boChuThich('  /// đối tượng `Bill` đang giữ'), '');
@@ -202,13 +208,18 @@ void main() {
       'luật 2: features/*/domain/ không import core/database hay package:drift, trừ danh sách chờ (chỉ được giảm)',
       () {
     final thay = <String>{};
+    var soTep = 0;
     for (final f in _dart(Directory('lib/features'))) {
       final duong = _duong(f);
       if (!duong.contains('/domain/')) continue;
+      soTep++;
       if (f.readAsLinesSync().any(importCam)) {
         thay.add(duong);
       }
     }
+    expect(soTep, greaterThan(80),
+        reason:
+            'Phép quét phải thấy features/*/domain — bộ lọc luật 2 hỏng thì đỏ ở đây, không xanh im lặng (danh sách chờ đã rỗng từ 2026-10-15).');
     final loi = <String>[
       for (final t in thay)
         if (!conChoDomain.contains(t))
@@ -223,13 +234,19 @@ void main() {
       'luật 3: features/*/data/ không khai <dynamic> trần (Stream/Future/List/Iterable), trừ danh sách chờ (chỉ được giảm)',
       () {
     final thay = <String>{};
+    var soTep = 0;
     for (final f in _dart(Directory('lib/features'))) {
       final duong = _duong(f);
       if (!duong.contains('/data/')) continue;
+      soTep++;
       if (f.readAsLinesSync().map(boChuThich).any(mauDynamic.hasMatch)) {
         thay.add(duong);
       }
     }
+    // Đo 2026-10-15: 105 tệp .dart dưới lib/features/*/data/ (find … -path '*/data/*') — sàn 50.
+    expect(soTep, greaterThan(50),
+        reason:
+            'Phép quét phải thấy features/*/data — bộ lọc luật 3 hỏng thì đỏ ở đây, không xanh im lặng (danh sách chờ đã rỗng từ 2026-10-15).');
     final loi = <String>[
       for (final t in thay)
         if (!conChoDynamic.contains(t))

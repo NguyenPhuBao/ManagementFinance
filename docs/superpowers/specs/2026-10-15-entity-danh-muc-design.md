@@ -3,6 +3,7 @@
 **Ngày:** 2026-10-15 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `6971dfab` · **Trạng thái:** người dùng duyệt ba chốt và
 bốn phần (A–D) trong chat, rồi **duyệt bản viết** (`ec3e6e0a`, cùng ngày — kể cả lượt soát lật chốt 3: không ghi dữ liệu thử, nhận lỗ C1).
 Kế hoạch: `docs/superpowers/plans/2026-10-15-entity-danh-muc.md` (gitignore).
+✅ **Thi công xong 2026-10-15** (commit `f443a647` → `811e1ea8`, tài liệu `5a81315b` + `672210b9`).
 
 Đợt **thứ ba** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`; lộ trình người dùng chốt 2026-10-11: Hoá đơn → Giao dịch + Ví →
 **Danh mục** → Thông báo). Tiền lệ trực tiếp: `specs/2026-10-14-entity-hoa-don-design.md` (đợt 1/4) và
@@ -345,9 +346,9 @@ thuần `#FFFF00` **0**. Tool `danh_muc` / `goi_y_han_muc` của Trợ lý AI kh
 
 **Phép đo kết luận** (chạy từ `src/Client-app`):
 - `grep -rlE "\bCategory(\?|>| [a-z_]+\b|,|\)|;)" lib/features/*/presentation lib/features/*/domain lib/shared lib/core --include=*.dart`
-  = 0 ngoài `core/database`, `core/sync`.
-- `grep -rn "watchAllRows\|getRowById" lib` = 0; `grep -rln "AiRebalancingFeedbacksCompanion" lib/features` = chỉ `budget/data/tai_phan_bo_nguon.dart`.
-- `grep -rnE "(Stream|Future|List|Iterable)<dynamic>" lib/features/*/data` = 0.
+  = 0 ngoài `core/database`, `core/sync` **trên dòng mã (bỏ chú thích — thước đo thẩm quyền là quét 27 / `boChuThich`)**.
+- `grep -rn "watchAllRows\|getRowById" lib` = 0; `grep -rln "AiRebalancingFeedbacksCompanion" lib/features` = chỗ **dựng** duy nhất là `budget/data/tai_phan_bo_nguon.dart`; tên còn trong một docstring domain.
+- `grep -rnE "(Stream|Future|List|Iterable)<dynamic>" lib/features/*/data` = 0 **trên dòng mã (bỏ chú thích — thước đo thẩm quyền là quét 27 / `boChuThich`)**.
 - `grep -rlE "core/database|package:drift" lib/features/*/domain` = 0.
 - `grep -rcE "^(import|export) .*features/" lib/core` = 185 (142 điểm ghép + 43).
 

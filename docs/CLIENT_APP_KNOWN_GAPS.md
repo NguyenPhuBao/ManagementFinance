@@ -1862,7 +1862,7 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    **lối chuyển tiếp** ở repository / nguồn — 11 lúc đầu, 10 sau đợt Hoá đơn, 4 sau đợt Giao dịch + Ví, **0** sau đợt Danh mục (số **10** dưới đây là ảnh chụp sau đợt 1; đếm: 9 trả hàng Drift — `WalletRepository.getActiveRows` · `getAllRows` ·
    `watchAllRows` · `getRowById`; `TransactionRepository.getAllRows` · `watchAllRows`;
    `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById`; `BillRepository.getById` đã thôi, nay trả `BillEntity`)
-   cộng `TaiPhanBoNguon.ghiPhanHoi`. Đó là **lối tạm**: trang không còn cầm DAO, nhưng kiểu Drift vẫn lan tới widget.
+   cộng `TaiPhanBoNguon.ghiPhanHoi`. Đó **từng là lối tạm** (trang không còn cầm DAO nhưng kiểu Drift vẫn lan tới widget); đã đóng 2026-10-15 cùng đợt Danh mục, chỉ còn `AppNotification` ở đợt Thông báo.
    📝 **2026-10-11 người dùng chốt thống nhất về Entity (hướng A)** — làm **sau** nghiệm thu OnePlus, tách Thêm giao dịch, C4
    và tách bốn trang lớn (gạch 1, 2): giao diện không
    cầm hàng Drift, từng mảng một đợt (Hoá đơn → Giao dịch + Ví → Danh mục → Thông báo), kèm test quét cấm `presentation/`
