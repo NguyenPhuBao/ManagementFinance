@@ -2,7 +2,7 @@ import '../database/app_database.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
-import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/goal/data/services/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/bill/data/services/bill_auto_pay_runner.dart';

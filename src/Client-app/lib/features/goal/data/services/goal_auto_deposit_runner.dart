@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
 
-import '../../../core/database/app_database.dart';
-import '../data/models/goal_entity.dart';
-import '../data/repositories/goal_repository.dart';
-import 'goal_auto_deposit.dart';
-import 'id_khoan_trich.dart';
+import '../../../../core/database/app_database.dart';
+import '../models/goal_entity.dart';
+import '../repositories/goal_repository.dart';
+import '../../domain/goal_auto_deposit.dart';
+import '../../domain/id_khoan_trich.dart';
 
 /// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
 ///

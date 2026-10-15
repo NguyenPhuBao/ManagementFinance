@@ -40,10 +40,6 @@ const companionCua = {
 
 /// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15).
 const conChoKieu = <String, Set<String>>{
-  // Tạm tới Task 6 đợt Entity Danh mục: runner dời về goal/data/services/ (spec mục 8.2).
-  'Goal': {
-    'features/goal/domain/goal_auto_deposit_runner.dart',
-  },
   'AppNotification': {
     'features/notification/presentation/pages/notification_center_page.dart',
     'features/notification/presentation/widgets/notification_panel.dart',
@@ -57,10 +53,8 @@ const conChoKieu = <String, Set<String>>{
   },
 };
 
-/// Luật 2 — tệp `domain/` (tương đối `lib/`) còn import `core/database`. Điền từ lượt chạy đầu; Task 4–6 rút Hoá đơn.
-const conChoDomain = <String>{
-  'features/goal/domain/goal_auto_deposit_runner.dart',
-};
+/// Luật 2 — tệp `domain/` còn import `core/database` / `package:drift`. Rỗng từ 2026-10-15 (đợt Entity Danh mục); thêm tệp là đỏ ngay.
+const conChoDomain = <String>{};
 
 /// Luật 3 — tệp `features/*/data/` (tương đối `lib/`) còn khai `<dynamic>` trần ở chữ ký. Điền từ lượt chạy đầu 2026-10-15; Task 5 đợt
 /// Entity Danh mục rút cả hai (`watchGoalTransactions` → `Stream<List<TransactionEntity>>`).

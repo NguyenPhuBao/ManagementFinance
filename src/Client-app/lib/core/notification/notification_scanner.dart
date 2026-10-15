@@ -18,7 +18,7 @@ import '../sync/sync_models.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
-import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/goal/data/services/goal_auto_deposit_runner.dart';
 import '../../features/bill/data/services/bill_auto_pay_runner.dart';
 import '../../features/bill/data/models/bill_entity.dart';
 import '../../features/wallet/data/models/wallet_entity.dart';

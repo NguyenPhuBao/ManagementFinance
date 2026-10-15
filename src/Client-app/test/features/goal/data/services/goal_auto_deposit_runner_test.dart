@@ -15,7 +15,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
-import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
+import 'package:flowmoney/features/goal/data/services/goal_auto_deposit_runner.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flowmoney/features/goal/domain/id_khoan_trich.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
