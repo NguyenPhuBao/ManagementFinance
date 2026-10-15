@@ -1,8 +1,8 @@
 # Thống nhất Entity cho mảng Danh mục (+ hai nợ Mục tiêu, cụm phản hồi tái phân bổ) — G88 gạch 3, đợt 3/4
 
 **Ngày:** 2026-10-15 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `6971dfab` · **Trạng thái:** người dùng duyệt ba chốt và
-bốn phần (A–D) trong chat; **bản viết chờ duyệt**. Kế hoạch: `docs/superpowers/plans/2026-10-15-entity-danh-muc.md` (gitignore) —
-viết sau khi bản này được duyệt.
+bốn phần (A–D) trong chat, rồi **duyệt bản viết** (`ec3e6e0a`, cùng ngày — kể cả lượt soát lật chốt 3: không ghi dữ liệu thử, nhận lỗ C1).
+Kế hoạch: `docs/superpowers/plans/2026-10-15-entity-danh-muc.md` (gitignore).
 
 Đợt **thứ ba** của G88 gạch 3 (`docs/CLIENT_APP_KNOWN_GAPS.md`; lộ trình người dùng chốt 2026-10-11: Hoá đơn → Giao dịch + Ví →
 **Danh mục** → Thông báo). Tiền lệ trực tiếp: `specs/2026-10-14-entity-hoa-don-design.md` (đợt 1/4) và
