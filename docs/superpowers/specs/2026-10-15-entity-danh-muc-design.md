@@ -11,6 +11,30 @@ trên bất kỳ màn nào; cái đổi là từ repository trở lên, Danh m�
 mảng đầu tiên trong lộ trình chưa có Entity sẵn), bốn lối chuyển tiếp trả hàng Drift biến mất, danh sách chờ của luật 2 quét 27 về
 rỗng, và quét 27 học thêm hai điều từ bài học bàn giao đợt 2 (quét domain theo tên kiểu; `dynamic` ở chữ ký là lỗ).
 
+> ✅ **Số đo sau thi công (2026-10-15, HEAD `811e1ea8`; đếm bằng máy, đừng cộng dồn).** Thi công xong bằng agent con mỗi task, mọi task qua soát
+> (không lỗi Quan trọng): Task 1 `f443a647` (quét 27: luật 1 quét `domain/` theo tên kiểu + ba sàn đếm, luật 3 cấm `<dynamic>` trần) · Task 2 `34f54ec9`
+> (`CategoryEntity`, 83 dòng) · Task 3 `2e04954d` (đổi kiểu trục Danh mục, **một commit** 87 tệp: 41 `lib` + 46 `test`) · Task 4 `3cfaed55`
+> (`PhanHoiTaiPhanBo`, `ghiPhanHoi`) · Task 5 `406c20c6` (`watchGoalTransactions`, bỏ 9 phép ép + 2 `?? ''`) · Task 6 `811e1ea8` (runner dời
+> `goal/data/services/`). Lối chuyển tiếp trả hàng Drift: **4 → 0**. `conChoDomain` **rỗng**; `conChoDynamic` **rỗng**; `conChoKieu` chỉ còn
+> `AppNotification` (9 tệp). Entity **6/14** mảng. Ratchet quét 25 **43 giữ**, TOTAL import `features/` trong `core` **185**. `flutter test` 7.065 → **7.069**
+> pass / **10** skip (entity +2 · quét 27 +1 [luật 3] · test rows 2 → 3 [+1] · Companion 0 ca mới — ca cũ thay bằng ca đếm 11 cột), `flutter analyze` **20**.
+> Quét 27: `test/core/ui/presentation_domain_khong_kieu_drift_test.dart` 242 dòng. Kiểm grep: `watchAllRows|getRowById` trong `lib` = 0; `core/database|package:drift`
+> trong `features/*/domain` = 0; `<dynamic>` trong `features/*/data` = 0 chỗ mã (1 dòng là docstring lịch sử `goal_repository.dart:215`); `AiRebalancingFeedbacksCompanion`
+> trong `lib/features`: chỗ dựng duy nhất `budget/data/tai_phan_bo_nguon.dart`, tên còn trong một docstring `ai_edge/domain/ap_dung_ke_hoach.dart`; grep thô `Category`
+> trên `lib/core` ra đúng 1 dòng là chú thích DI `injection_container.dart:343` (không phải vi phạm — thước đo thẩm quyền là quét 27, có `boChuThich`, xanh).
+> `them_giao_dich_nguon.dart` thôi import `app_database` (vẫn import hằng `kKindBienDongSoDu` từ `notification_dao.dart` — không phải kiểu Drift). Test rows
+> `category_repository_rows_test.dart` được **thay bằng** `category_repository_doc_danh_muc_test.dart` (git ghi xoá + tệp mới).
+>
+> ✅ **Nghiệm thu máy ảo (2026-10-15, `FlowMoney_16G`, 1080×2400, `-gpu host`, demo mode 12:00).** APK trước `94394e4c88b237b2010a04b7c4a82a51cc73c7d9`
+> (`lastUpdateTime` 2026-10-14 21:29:25) ↔ sau `d3b7b9083a981c80110e8228eba5f200d4354562` (`lastUpdateTime` 2026-10-15 12:09:02, đổi). **29 cặp ảnh**, cắt 100 px thanh
+> trạng thái: **27/29 cặp cùng SHA-1 (0 px)**; hai cặp lệch — `17_hoa_don_them_cuon` 165.749 px và `18_hoa_don_dropdown` 80.738 px — do cuộn giữ-rồi-thả dừng lệch **1 px** theo chiều
+> dọc, nội dung giống hệt (dropdown 10 mục: Di chuyển · Giáo dục · Giải trí · Hóa đơn · Mua sắm · Nhà cửa · Y tế · test · test1 · Ăn uống, chọn sẵn Di chuyển). Vàng thuần
+> `#FFFF00` **0**. Kiểm chức năng bổ sung bản sau, không ghi dữ liệu: chip lọc danh mục ở Sổ giao dịch (*Giải trí* → 3 giao dịch, chip *Xoá lọc*) ✅; thẻ *Gợi ý danh mục*
+> ở Thêm giao dịch (78.000 đ + ghi chú `food` → *Ăn uống*, nút *Chọn danh mục này*) ✅; `pop<CategoryEntity>` của form Chọn danh mục ✅; logcat 0 dòng `FATAL` / `is not a subtype`.
+> ⚠️ **Lỗ:** (1) *Đề xuất cân đối ngân sách* (5g) không hiện — dữ liệu không đủ điều kiện, cấm ghi để tạo; (2) C1 / thẻ *"Có N giao dịch chưa có danh mục"* và màn Gắn danh mục
+> — `demChuaGan` = 0; chốt *ghi khoản thử* đã lật (`chuanBiLuu` :631 chặn lưu thiếu danh mục), nhận lỗ như đợt 2, phủ bằng `gan_danh_muc_page_test` (11 ca),
+> `gan_danh_muc_nguon_test` (5), `gan_danh_muc_nguon_lop_test` (2). Ảnh ở scratchpad, không vào repo.
+
 Đợt này **gộp thêm hai cụm ngoài mảng Danh mục** (người dùng chốt 2026-10-15, cả hai là nợ có tên ở G88 gạch 3): cụm phản hồi tái
 phân bổ (`TaiPhanBoNguon.ghiPhanHoi` — lối chuyển tiếp thứ tư, mảng Ngân sách / ai_edge) và hai nợ Mục tiêu (`watchGoalTransactions`
 `Stream<dynamic>`, `goal_auto_deposit_runner` cầm Drift ở domain). Sau đợt: lối chuyển tiếp **0**, `conChoDomain` **rỗng**, chỉ còn

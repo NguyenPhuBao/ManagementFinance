@@ -299,15 +299,15 @@ lib` chỉ còn `CategoryManagementRepository`.
 ## 11. Ngoài phạm vi — quan sát, không sửa
 
 - `goal/domain/goal_auto_deposit_runner.dart` cầm `AppDatabase` + `package:drift` — đợt Mục tiêu dời về `data/services/` (cùng mùi
-  `BillAutoPayRunner`).
+  `BillAutoPayRunner`). ✅ đã trả 2026-10-15 (spec Entity Danh mục 8.2, `811e1ea8`).
 - `analytics_repository_impl` đọc `db.transactionDao` / `db.walletDao` / `db.billDao` thẳng — mảng Phân tích, chưa có lịch.
 - `TransactionEntity` vẫn không mang `status` / `provider` / `bankTranId` — không chỗ đổi kiểu nào đọc (đo từng tệp); mở
   rộng khi một chỗ đọc thật cần, không mở trước (đợt này mở đúng hai trường có chỗ đọc thật — 4.0).
-- Lối `…Rows` của Danh mục (3) — đợt Danh mục. `TaiPhanBoNguon.ghiPhanHoi` — chưa có đợt (mảng Ngân sách / ai_edge; bảng phụ phản hồi AI, `budget/data/tai_phan_bo_nguon.dart`).
+- Lối `…Rows` của Danh mục (3) — đợt Danh mục. `TaiPhanBoNguon.ghiPhanHoi` — chưa có đợt (mảng Ngân sách / ai_edge; bảng phụ phản hồi AI, `budget/data/tai_phan_bo_nguon.dart`). ✅ đã trả 2026-10-15 (spec Entity Danh mục: lối `…Rows` của Danh mục mục 6, `ghiPhanHoi` mục 7; `3cfaed55`, `2e04954d`).
 - `GoalRepository.watchGoalTransactions` (`goal_repository.dart:214`, impl `:665`) khai `Stream<dynamic>` nhưng trả `transactionDao.watchByGoal` —
   hàng Drift `Transaction` — lên `goal_detail_page.dart` (≈ :589, `_doiSangKhoan` đọc động `note` / `date` / `amount` / `walletId`) và
   `khoi_lich_su_muc_tieu.dart` (`List<dynamic> txs` :38, :123). Lối chuyển tiếp thứ 5 bị giấu, có từ trước đợt (≈ 2026-08-12); quét 27 mù vì
-  kiểu là `dynamic`. Phát hiện ở lượt soát cuối 2026-10-14; người dùng chốt ghi lại, sửa ở đợt sau.
+  kiểu là `dynamic`. Phát hiện ở lượt soát cuối 2026-10-14; người dùng chốt ghi lại, sửa ở đợt sau. ✅ đã trả 2026-10-15 (spec Entity Danh mục 8.1, `406c20c6`).
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift.
 
 ## 12. Tài liệu cập nhật khi xong

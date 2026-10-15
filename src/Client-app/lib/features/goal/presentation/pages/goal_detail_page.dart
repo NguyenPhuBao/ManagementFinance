@@ -140,7 +140,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     });
   }
 
-  /// Đổi hàng Drift sang dạng rút gọn cho tầng lọc.
+  /// Đổi `TransactionEntity` sang dạng rút gọn cho tầng lọc.
   ///
   /// Chiều tiền đọc từ **tiền tố ghi chú** qua `laKhoanRutKhoiMucTieu` — đúng
   /// một nơi quyết định, cùng hàm mà dòng trên trang đang dùng. Tự so ví ở đây

@@ -159,6 +159,8 @@ Giữ id dạng slug thì giao dịch kẹt y như cũ, chỉ đổi nguyên nh�
 
 ## 5. Thay đổi 4 — ID cố định (✅ backend đã làm, 2026-09-07)
 
+> Từ 2026-10-15 kiểu dữ liệu danh mục từ repository trở lên là `CategoryEntity` (spec Entity Danh mục) — bốn cơ chế gợi ý / học (mục 5d–5g) nhận Entity, luật không đổi.
+
 > ✅ **Đã xong 2026-09-07.** `seed.js` nay đóng băng **13 stable UUID**, hết
 > `crypto.randomUUID()` cho danh mục; backend còn cấp thêm
 > `GET /api/sync/default-categories`. Phần dưới giữ làm hồ sơ vì nó ghi *vì sao*
