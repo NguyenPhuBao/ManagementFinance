@@ -83,11 +83,14 @@ async function handlePayOSWebhook(webhookPayload) {
     return { success: true, message: 'Webhook ping verified successfully' };
   }
 
-  // 2. Tra cứu đơn hàng theo orderCode
-  const order = await paymentRepository.findOrderByCode(orderCode);
+  // 2. Tra cứu đơn hàng theo orderCode (tự động khởi tạo nếu đơn chưa có sẵn trong CSDL để không thất thoát giao dịch)
+  let order = await paymentRepository.findOrderByCode(orderCode);
   if (!order) {
-    logger.warn('[PAYMENT_WEBHOOK] Không tìm thấy đơn hàng cho orderCode', { orderCode });
-    return { success: true, message: 'Đơn hàng không tồn tại' };
+    logger.warn('[PAYMENT_WEBHOOK] Đơn hàng chưa tồn tại trong CSDL cho orderCode, tự động khởi tạo đơn đối soát từ Webhook hợp lệ', { orderCode });
+    order = await paymentRepository.findOrCreateOrderByCode(orderCode, amount);
+    if (!order) {
+      return { success: true, message: 'Đơn hàng không tồn tại' };
+    }
   }
 
   // 3. Xử lý Idempotency - Tránh Replay Attack
@@ -256,10 +259,70 @@ async function getOrderHistory(idaccount, options) {
   return paymentRepository.findOrdersByAccount(idaccount, options);
 }
 
+/**
+ * Lấy danh sách đơn hàng cho Admin kèm bộ lọc và phân trang
+ * @param {object} options
+ */
+async function getOrdersForAdmin(options) {
+  return paymentRepository.findOrdersForAdmin(options);
+}
+
+/**
+ * Lấy thống kê tổng quan thanh toán cho Admin
+ * @param {object} options
+ */
+async function getPaymentStatsForAdmin(options) {
+  return paymentRepository.getPaymentSummaryStats(options);
+}
+
+/**
+ * Lấy chi tiết đơn hàng và lịch sử đối soát giao dịch cho Admin
+ * @param {string} orderId
+ */
+async function getOrderDetailForAdmin(orderId) {
+  const order = await paymentRepository.getOrderDetailForAdmin(orderId);
+  if (!order) {
+    const error = new Error('Không tìm thấy đơn hàng');
+    error.statusCode = 404;
+    throw error;
+  }
+  return order;
+}
+
+/**
+ * Tạo đơn hàng mẫu thử nghiệm
+ * @param {object} options
+ */
+async function createSampleOrder(options) {
+  return paymentRepository.createSampleOrder(options);
+}
+
+/**
+ * Xóa các đơn hàng mẫu thử nghiệm
+ */
+async function deleteSampleOrders() {
+  return paymentRepository.deleteSampleOrders();
+}
+
+/**
+ * Lấy hoặc sinh mã QR từ kênh thanh toán PayOS
+ */
+async function getOrCreatePayosQr(options) {
+  return paymentRepository.getOrCreatePayosQr(options);
+}
+
 module.exports = {
   createPremiumOrder,
   handlePayOSWebhook,
   getOrderStatus,
   getSubscriptionInfo,
   getOrderHistory,
+  getOrdersForAdmin,
+  getPaymentStatsForAdmin,
+  getOrderDetailForAdmin,
+  createSampleOrder,
+  deleteSampleOrders,
+  getOrCreatePayosQr,
 };
+
+

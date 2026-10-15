@@ -13,6 +13,7 @@ const Sidebar = ({ collapsed }) => {
     { key: '/aiops', icon: 'security', label: t('nav.aiops') },
     { key: '/users', icon: 'group', label: t('nav.users') },
     { key: '/permissions', icon: 'admin_panel_settings', label: t('nav.permissions') },
+    { key: '/payments', icon: 'receipt_long', label: t('nav.payments') },
     { key: '/categories', icon: 'category', label: t('nav.categories') },
     { key: '/audit-logs', icon: 'fact_check', label: t('nav.auditLogs') },
     { key: '/broadcast', icon: 'campaign', label: t('nav.broadcast') },

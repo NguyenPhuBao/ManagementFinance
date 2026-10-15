@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../modules/admin/admin.controller');
 const aiopsController = require('../modules/aiops/aiops.controller');
+const paymentController = require('../modules/payment/payment.controller');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
@@ -60,4 +61,13 @@ router.delete('/deletecategory/:id', adminController.deleteCategory);
 router.get('/permissions', adminController.getPermissions);
 router.put('/permissions', adminController.updatePermissions);
 
+// Quản lý & Theo dõi lịch sử thanh toán (Payment History & Orders)
+router.get('/payments/orders', paymentController.getOrdersForAdmin);
+router.get('/payments/stats', paymentController.getPaymentStatsForAdmin);
+router.get('/payments/orders/:id', paymentController.getOrderDetailForAdmin);
+router.get('/payments/payos-qr', paymentController.getPayosQr);
+router.post('/payments/sample', paymentController.createSampleOrder);
+router.delete('/payments/sample', paymentController.deleteSampleOrders);
+
 module.exports = router;
+
