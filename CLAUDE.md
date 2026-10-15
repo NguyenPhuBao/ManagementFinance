@@ -13,7 +13,7 @@
 3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
 4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
 
-**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-15-entity-danh-muc-ke-hoach.md` (**Entity Danh mục + hai nợ Mục tiêu + `ghiPhanHoi` — G88 gạch 3 đợt 3/4: SPEC DUYỆT + KẾ HOẠCH 7 TASK, CHƯA THI CÔNG** — spec `specs/2026-10-15-entity-danh-muc-design.md` (`ec3e6e0a`, trạng thái `df1917d8`, `c62bc372`), kế hoạch `plans/2026-10-15-entity-danh-muc.md` (gitignore); `lib/` **không đổi** từ `3252db88`. Chốt: `CategoryEntity` 13 trường chỉ đọc `Equatable`; `watchAllRows → watchAll`, `getRowById → getById`, `loadBangTraTen` giữ; `PhanHoiTaiPhanBo` lớp thuần; `watchGoalTransactions` kiểu rõ; runner dời `goal/data/services/`; quét 27 thêm luật 1 domain + luật 3 `<dynamic>`; Task 3 **một commit** (~90 tệp, chia 3a/3b khi agent con). ⚠️ Chốt *ghi khoản thử cho C1* **lật**: `chuanBiLuu` :631 chặn lưu thiếu danh mục → nhận lỗ C1. Phiên sau: **hỏi lối thi công** rồi thi công; preflight kiểm số dòng Task 3 Step 5 còn khớp HEAD. 7.065 pass / 10 skip, analyze 20. Chưa push, 206 commit). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
+**Phiên trước dừng ở đâu:** ⭐ tệp bàn giao mới nhất — `C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-15-entity-danh-muc-xong.md` (**Entity Danh mục + hai nợ Mục tiêu + `ghiPhanHoi` — G88 gạch 3 đợt 3/4: THI CÔNG XONG** bằng agent con (Fable preflight · Sonnet thực thi · Opus soát từng task + toàn nhánh) — commit `f443a647` → `811e1ea8`, tài liệu `5a81315b` + `672210b9`, sửa sau review toàn nhánh `0042086c` (quét 27 luật 2 / 3 có sàn đếm riêng vì danh sách chờ đã rỗng). Lối chuyển tiếp **0**, `conChoDomain` / `conChoDynamic` rỗng, `conChoKieu` chỉ `AppNotification`; Entity 6/14. Nghiệm thu máy ảo: 27/29 cặp 0 px, 2 lệch cuộn 1 px; lỗ còn mở *Đề xuất cân đối*, C1. Phiên sau: **đợt 4/4 Thông báo** (chưa có spec — brainstorm), mang theo hai đề xuất hoãn của review (luật *interface repository không import Drift*; `mauKieu` bắt `is X &&`). 7.069 pass / 10 skip, analyze 20 (đo ở `0042086c`). Chưa push). Mỗi tệp bàn giao tự trỏ tệp trước nó; chỉ tệp mới nhất là trạng thái hiện tại. Viết bàn giao mới thì **sửa dòng này**, đừng nối chuỗi.
 
 **Rồi tuỳ việc:**
 
@@ -111,7 +111,7 @@
 # đỏ (10 ca ở 3 tệp hoá đơn khi nâng). Sửa bằng `Material(type: MaterialType.transparency)` bọc
 # cột chứa tile, KHÔNG đổi gì nhìn thấy được. Ô mới cùng khuôn sẽ vấp lại — đọc khối ⬆️ mục 14 `PROJECT_CONTEXT.md`.
 # Test (chạy từ src/Client-app) — mốc hiện tại **7069/7069** pass, **10** ca cố ý `skip` (đo 2026-10-15, sau
-# đợt Entity Danh mục — G88 gạch 3, 3/4; +1 skip là `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
+# đợt Entity Danh mục — G88 gạch 3, 3/4; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
 # nằm ở khối tương ứng mục 14 `docs/PROJECT_CONTEXT.md` và ở commit. ⚠️ Thời gian dao động mạnh theo tải máy: ~1,5
 # phút chạy một mình, ~3,5 phút song song `flutter analyze`, tới ~5,5 phút song song build APK.
 flutter test
