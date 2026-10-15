@@ -465,7 +465,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
   // Repository của mảng Thông báo cho TRANG và nguồn Thêm giao dịch (spec Entity Thông báo 2026-10-15 mục 4.2; trước là cổng
-  // ThongBaoNguon — spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; bộ quét / BadgeUpdater / ba bộ nhập vẫn cầm DAO. Đăng ký cả
+  // ThongBaoNguon — spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; các bộ điều phối ở `application/` và nguồn B5b vẫn cầm DAO. Đăng ký cả
   // chế độ nền (cùng `setupDependencies`, không gate theo `cheDoNen`). Lazy — không dựng gì khi không ai gọi.
   sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(sl<AppDatabase>().notificationDao));
 

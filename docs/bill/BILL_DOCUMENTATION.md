@@ -95,14 +95,14 @@ lib/features/bill/
 │   │   │                       # lên (25 trường, đúng tên cột Drift)
 │   │   └── bill_draft_companion.dart # companionTaoTu / companionSuaTu:
 │   │                           # BillDraft → BillsCompanion (hàm công khai)
-│   ├── application/            # ⚠️ nay là THƯ MỤC NGANG HÀNG với data/ (bill/application/, 2026-10-15, G88 gạch 6 — trước là data/services/)
-│   │   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
-│   │   └── bill_payment_conflict_resolver.dart # Cuộc đua hai máy (mục 6.8)
 │   ├── de_xuat_hoa_don_nguon.dart # Nguồn dữ liệu thẻ "Có vẻ là khoản lặp"
 │   └── repositories/
 │       ├── bill_repository.dart        # Interface + 4 ngoại lệ (mục 6)
 │       └── bill_repository_impl.dart   # payBill, undoPayment, _nextPeriodOf
 │   └── domain/bill_ky_ke_tiep.dart      # kyKeTiepCua — ĐỊNH NGHĨA DUY NHẤT của kỳ kế tiếp
+├── application/                # (bill/application/, 2026-10-15, G88 gạch 6 — trước là data/services/)
+│   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
+│   └── bill_payment_conflict_resolver.dart # Cuộc đua hai máy (mục 6.8)
 └── presentation/
     ├── bloc/                   # BillBloc + event + state
     ├── pages/

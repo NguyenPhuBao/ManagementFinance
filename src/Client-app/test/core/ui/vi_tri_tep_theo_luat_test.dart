@@ -4,7 +4,7 @@
 /// Một tệp đặt sai chỗ không lỗi gì lúc chạy: trang vẫn dựng, test vẫn xanh. Nó chỉ làm người sau tìm không ra, làm
 /// `core` biết dần từng mảng, và làm cùng một loại tệp nằm hai chỗ ở hai mảng. Bảy luật ở đây (luật 7 từ 2026-10-15: chiều một hướng với `application/`) là phần máy canh được
 /// của bảng mục 8; chỗ xếp giữa `bloc/` · `widgets/` · `state/` và hàng *"hạ tầng core cần → core/<chủ đề>"* là luật
-/// đọc, không canh. 52 tệp rời dưới `data/` (`*_nguon`, `*_store`, tool AI) cố ý KHÔNG canh — bảng chưa có hàng cho chúng.
+/// đọc, không canh. 56 tệp rời dưới `data/` (đo 2026-10-15) (`*_nguon`, `*_store`, tool AI) cố ý KHÔNG canh — bảng chưa có hàng cho chúng.
 ///
 /// Khuôn quét 22/23: vi phạm còn chờ dọn nằm trong [conCho] (đường dẫn) và [conChoCoreImport] (tệp → số dòng); cả hai
 /// CHỈ ĐƯỢC GIẢM, sạch rồi quên rút thì test đỏ. Miễn trừ đích danh có lý do ở [mienTru]; thư mục miễn trừ không còn
@@ -55,11 +55,10 @@ const conChoCoreImport = <String, int>{
   // Luật tăng (2026-10-14, viết lại cùng ngày ở đợt 2): tăng CHỈ khi thay một kiểu hàng Drift bằng Entity trong lộ trình
   // G88 gạch 3; không bao giờ vì ghép một mảng mới vào core. Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
   'lib/core/sync/sync_engine.dart': 7,
-  // 4 từ 2026-10-14 G88 gạch 3 (BillEntity). Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
+  // 4 từ 2026-10-14 G88 gạch 3 (bill_pay_status · goal_entity · goal_auto_deposit · bill_entity).
   'lib/core/nen/lich_nen.dart': 4,
   'lib/core/sync/sync_payload_normalizer.dart': 2,
   'lib/core/sync/noi_bo_nghe_ket_qua_day.dart': 2,
-  // Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
   'lib/core/ocr/kho_anh_quet.dart': 1,
   'lib/core/database/daos/wallet_dao.dart': 1,
   'lib/core/database/daos/other_daos.dart': 1,
@@ -132,7 +131,7 @@ void main() {
       }
     }
 
-    // Luật 4 — core/ chỉ gồm 16 chủ đề, không tệp rời.
+    // Luật 4 — core/ chỉ gồm 15 chủ đề, không tệp rời.
     for (final e in Directory('lib/core').listSync()) {
       final d = _duong(e);
       if (e is File) ghi(d, 'tệp rời ở gốc core/ — vào core/<chủ đề>/');
@@ -216,7 +215,7 @@ void main() {
       }
     }
     expect(soTep, greaterThan(150),
-        reason: 'tiền đề: phải thấy features/*/data + features/*/domain (đo 2026-10-15: 268 tệp) — đang quét sai thư mục.');
+        reason: 'tiền đề: phải thấy features/*/data + features/*/domain (đo 2026-10-15 sau đợt Thông báo: 287 tệp) — đang quét sai thư mục.');
     expect(loi, isEmpty, reason: loi.join('\n'));
   });
 }

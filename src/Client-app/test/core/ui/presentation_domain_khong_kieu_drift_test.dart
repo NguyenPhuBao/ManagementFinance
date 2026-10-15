@@ -1,6 +1,6 @@
 /// Test quét `lib/` thứ **27** (spec Entity Hoá đơn 2026-10-14, mục 8): giao diện và domain không cầm kiểu hàng Drift.
 ///
-/// Bốn luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả ba điểm ghép DI / router / nen,
+/// Bốn luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả bốn điểm ghép (DI / router / nen, thêm `phien_dieu_phoi_that`),
 /// đo 2026-10-14 = 0) + `features/*/domain/` (từ 2026-10-15) không nhắc tên kiểu hàng Drift — [kieuDrift] và companion tương ứng —
 /// so trên dòng đã bỏ chú thích, vì docstring vùng này hay nhắc *"đối tượng `Bill`"*. (2) `features/*/domain/` không import
 /// `core/database` hay `package:drift` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). (3) `features/*/data/` và
@@ -70,7 +70,7 @@ String boChuThich(String d) {
 RegExp mauKieu(String ten) =>
     RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|)');
 
-/// Dòng import mà luật 2 cấm trong features/*/domain/: core/database hoặc package:drift.
+/// Dòng import mà luật 2 (features/*/domain/) và luật 4 (interface repository) cấm: core/database hoặc package:drift.
 bool importCam(String d) =>
     d.startsWith('import ') &&
     (d.contains('core/database') || d.contains('package:drift'));
@@ -240,7 +240,7 @@ void main() {
         thay.add(duong);
       }
     }
-    // Đo 2026-10-15: 105 tệp .dart dưới lib/features/*/data/ (application/ chưa có — thêm ở Task 6–7 đợt Thông báo) — sàn 50.
+    // Luật 3 quét cả features/*/data/ lẫn features/*/application/ từ 2026-10-15 (đợt Thông báo) — sàn 50.
     expect(soTep, greaterThan(50),
         reason:
             'Phép quét phải thấy features/*/data — bộ lọc luật 3 hỏng thì đỏ ở đây, không xanh im lặng (danh sách chờ đã rỗng từ 2026-10-15).');

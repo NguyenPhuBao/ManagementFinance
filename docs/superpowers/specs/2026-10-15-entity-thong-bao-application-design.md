@@ -1,11 +1,11 @@
 # Thống nhất Entity cho mảng Thông báo, dời `core/notification` về `features/notification/`, tầng `application/` — G88 gạch 3 (đợt 4/4) + gạch 5 + gạch 6
 
 **Ngày:** 2026-10-15 · **Nhánh:** `TranQuangDat` · **HEAD lúc viết:** `a4daec33` · **Trạng thái:** người dùng duyệt **bốn chốt** (phạm vi,
-gạch 6, tên tầng, cổng mảng) và **bốn phần** thiết kế trong chat cùng ngày; **bản viết chờ soát**. Kế hoạch:
+gạch 6, tên tầng, cổng mảng) và **bốn phần** thiết kế trong chat cùng ngày; rồi **duyệt bản viết** (`b8f17510` + `2c24c990`, cùng ngày). Kế hoạch:
 `docs/superpowers/plans/2026-10-15-entity-thong-bao-application.md` (gitignore, viết sau khi duyệt spec). Lối thi công (inline · agent con)
 hỏi sau khi có kế hoạch (bộ nhớ *thực thi kế hoạch*).
 
-✅ **Thi công xong 2026-10-15** (bảy commit mã `73429f46` → `08effea7`).
+✅ **Thi công xong 2026-10-15** (bảy commit mã `73429f46` → `08effea7`). Kế hoạch Task 8 thiếu bước sửa dòng ⭐ bàn giao mà spec mục 13 liệt kê — phiên chính sửa ở bàn giao đóng đợt.
 
 > ✅ **Số đo sau thi công (2026-10-15, HEAD `08effea7`; đếm bằng máy, đừng cộng dồn).** Thi công xong bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát),
 > mọi task qua soát không lỗi Quan trọng: Task 1 `73429f46` (quét 27: luật 4, `conChoKieu` bắt `AppNotificationEvent`) · Task 2 `362ae94a` (`NotificationEntity`, 92 dòng, 14 trường, `companionTu`) ·
@@ -29,7 +29,7 @@ hỏi sau khi có kế hoạch (bộ nhớ *thực thi kế hoạch*).
 > (`sync_engine` 7 · `lich_nen` 4 · `noi_bo_nghe_ket_qua_day` 2 · `sync_payload_normalizer` 2 · `other_daos` 1 · `wallet_dao` 1 · `kho_anh_quet` 1) — nợ gạch 4. `so_du_vi_service` được import ở 7 tệp
 > `lib` + 9 tệp test (+1 chuỗi đường dẫn ở `so_du_mot_noi_ghi_test`). Entity **7/14** mảng. `flutter test` 7.069 → **7.075** pass / **10** skip, `flutter analyze` **20** (`MUC_NEN` không đổi).
 > ⚠️ **Tham chiếu cũ biết và để nguyên** (Kotlin ngoài phạm vi, spec mục 3.7): chú thích `MainActivity.kt:42` · `:48` và `PhienNganHang.kt:43` còn nêu `lib/core/notification/…`; `notification_table.dart:73`
-> (chú thích cột `osScheduledId` vẫn nói *"Id đã cấp cho flutter_local_notifications"* — ngược với Entity, `core/database` ngoài phạm vi); các `*_noi_day_test` chỉ so hằng nên không hỏng im lặng.
+> (chú thích cột `osScheduledId` vẫn nói *"Id đã cấp cho flutter_local_notifications"* — ngược với Entity, `core/database` ngoài phạm vi); `docs/Notification/Notification_Client-app.md:4, 52, 291` (tài liệu backend — vùng chỉ đọc, quy tắc 1; cần đơn CAN-LAM nếu muốn sửa); các `*_noi_day_test` chỉ so hằng nên không hỏng im lặng.
 >
 > ✅ **Nghiệm thu máy ảo (2026-10-15, `FlowMoney_16G`, 1080×2400, `-gpu host`, demo mode 12:00).** APK trước `d3b7b908…` (`lastUpdateTime` 2026-10-15 15:51:49) ↔ sau
 > `adedaef848dfc4a321b663945e948abe023a0607` (`lastUpdateTime` 2026-10-15 19:45:37, đổi). **18 ảnh** cùng danh sách, cùng tên tệp, cắt 100 px thanh trạng thái: **11/18 cặp cùng SHA-1 (0 px)**

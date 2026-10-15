@@ -1,5 +1,5 @@
-/// Bản thi hành [PhienDieuPhoi]: bốn dịch vụ của `core` qua constructor, mọi việc thuộc mảng khác qua HOOK hàm — nên
-/// `core/auth` chỉ biết mảng Thông báo qua `NotificationScanner` (điểm ghép thứ tư — quét 25; bộ quét về `features/notification/application` 2026-10-15); mọi hook khác nối ở `injection_container.dart`. Dịch vụ / hook `null` = hôm nay
+/// Bản thi hành [PhienDieuPhoi]: ba dịch vụ của `core` (SyncEngine · RealtimeChannel · AuthInterceptor) và bộ quét thông báo qua constructor, mọi việc thuộc mảng khác qua HOOK hàm — nên
+/// `core/auth` chỉ biết mảng Thông báo qua `NotificationScanner` (bộ quét — điểm ghép thứ tư — quét 25; bộ quét về `features/notification/application` 2026-10-15); mọi hook khác nối ở `injection_container.dart`. Dịch vụ / hook `null` = hôm nay
 /// `sl.isRegistered` trả false → bỏ qua, giữ đúng hành vi cũ (kể cả: không có SyncEngine thì không dọn, không quét).
 library;
 

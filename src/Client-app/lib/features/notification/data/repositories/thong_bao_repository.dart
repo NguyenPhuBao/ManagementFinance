@@ -4,8 +4,9 @@ import '../models/notification_entity.dart';
 /// `ThongBaoNguon` ở `core/notification`, spec bịt điểm rò 2026-10-10 mục 4.4).
 ///
 /// Chỉ **chuyển tiếp** đúng mười hai lối giao diện và nguồn Thêm giao dịch đang dùng — không luật, không gộp. Interface chỉ nhận / trả
-/// `NotificationEntity` và Dart thuần (quét 27 luật 4): hàng Drift dừng ở `ThongBaoRepositoryImpl`. Bộ quét, `BadgeUpdater` và ba bộ nhập
-/// ở `application/` vẫn cầm `NotificationDao` — chúng là bộ điều phối, không phải trang.
+/// `NotificationEntity` và Dart thuần (quét 27 luật 4): hàng Drift dừng ở `ThongBaoRepositoryImpl`. Ngoài cổng này, chỗ còn cầm
+/// `NotificationDao` thẳng đều dưới tầng trang: bộ quét, `BadgeUpdater`, ba bộ nhập (`notification/application/`), `DeXuatThongBaoNguon`
+/// (data — dựng `SuKienNhatKy` / Entity), `BillPaymentConflictResolver` và `GopViService` (`application/` của hoá đơn, ví).
 abstract class ThongBaoRepository {
   Stream<int> watchUnreadCount(int idaccount);
   Stream<List<NotificationEntity>> watchFeed(int idaccount,
