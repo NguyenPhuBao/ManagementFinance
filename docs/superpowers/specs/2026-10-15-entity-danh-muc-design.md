@@ -118,7 +118,7 @@ Interface **thôi import `core/database`**. Impl **giữ Drift bên trong**: `_v
 nhận hàng rồi dựng cây bằng `CategoryEntity.fromDrift`; `selectableChildren*` map ở biên trả về. Chú thích docstring của ba lối cũ
 (*"`categoryDao.getBangTraTen`"*, *"bộ lọc Sổ giao dịch, Trang chủ"*, *"tên danh mục trên bảng thanh toán hoá đơn"*) giữ nguyên nội dung.
 
-Test `test/features/category/data/category_repository_rows_test.dart` **chuyển** (không xoá) sang `category_repository_doc_danh_muc_test.dart`,
+Test `test/features/category/category_repository_rows_test.dart` (ngay dưới thư mục mảng, không có `data/`) **chuyển** (không xoá) sang `category_repository_doc_danh_muc_test.dart` cùng chỗ,
 giữ ba khẳng định: `loadBangTraTen` gồm hàng xoá mềm + mặc định toàn cục · `watchAll` phát lại khi bảng đổi · `getById` trả hàng xoá mềm.
 Helper `test/helpers/nguon_doc_gia.dart`: `DanhMucRowsGia → DanhMucGia`, bốn override đổi kiểu (map từ DAO).
 
