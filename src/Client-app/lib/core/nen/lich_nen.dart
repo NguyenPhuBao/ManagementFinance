@@ -1,64 +1,27 @@
 /// Mốc lượt nền kế tiếp của hai bộ tự chuyển tiền — tự trả hoá đơn, trích mục tiêu (spec
 /// `2026-10-10-tu-chuyen-tien-chay-nen-design.md` mục 3.1).
+///
+/// Từ 2026-10-15 (G88 gạch 4) phép tính của từng phần ở mảng của nó — `mocTuTraNen` (`features/bill/domain/moc_tu_tra_nen.dart`)
+/// và `mocTrichNen` (`features/goal/domain/moc_trich_nen.dart`); DI chọn phần theo quyền gói rồi gọi [gopLichNen]. Tệp này
+/// không biết mảng nào.
 library;
 
-import '../../features/bill/domain/bill_pay_status.dart';
-import '../../features/goal/data/models/goal_entity.dart';
-import '../../features/goal/domain/goal_auto_deposit.dart';
-import '../../features/bill/data/models/bill_entity.dart';
 import 'kenh_tu_chuyen_tien.dart';
 
 /// `moc` — mốc **ở tương lai** gần nhất cho lượt một-lần (`null` = không hẹn).
 /// `coTuDong` — còn thứ gì bật tự động → giữ lượt định kỳ 6 giờ.
 typedef LichNenKeTiep = ({DateTime? moc, bool coTuDong});
 
-/// Tính lịch lượt nền.
-///
-/// - Hoá đơn (bật tự trả, còn phải trả, có ví và danh mục, chưa xoá — các điều kiện của `denLuotTuTra` trừ phép so
-///   ngày): ngày đến hạn lúc **giờ nhắc chung** [gioNhac]:[phutNhac].
-/// - Mục tiêu (bật trích, chưa xong, còn thiếu): `kyKeTiep` — hàm sẵn có, chỉ trả mốc SAU `now`; không chép lại phép
-///   tính kỳ.
-///
-/// ⚠️ Kỳ đã tới hạn mà chưa xong (ví không đủ) KHÔNG được hẹn "ngay": lượt một-lần sẽ tự hẹn lại ngay — vòng lặp tốn
-/// pin. Nó chờ lượt định kỳ hoặc lần mở app; `coTuDong` vẫn `true` để giữ lượt định kỳ.
-///
-/// [traDuoc] / [trichDuoc] — quyền gói (`coQuyenNen`): không có thì loại khỏi cả hai vế, Basic không cần đánh thức máy.
-LichNenKeTiep lichNenKeTiep({
-  required List<BillEntity> bills,
-  required List<GoalEntity> goals,
-  required DateTime now,
-  required int gioNhac,
-  required int phutNhac,
-  bool traDuoc = true,
-  bool trichDuoc = true,
-}) {
+/// Gộp lịch của các phần: mốc = SỚM NHẤT trong các mốc khác `null` (mỗi phần đã chỉ trả mốc ở tương lai), `coTuDong` = còn
+/// phần nào bật tự động. Không phần nào (không quyền gói nào) → `(null, false)` — Basic không cần đánh thức máy.
+LichNenKeTiep gopLichNen(Iterable<LichNenKeTiep> phan) {
   DateTime? moc;
   var coTuDong = false;
-  void xet(DateTime m) {
+  for (final p in phan) {
+    coTuDong = coTuDong || p.coTuDong;
+    final m = p.moc;
     final cu = moc;
-    if (m.isAfter(now) && (cu == null || m.isBefore(cu))) moc = m;
-  }
-
-  if (traDuoc) {
-    for (final b in bills) {
-      if (!b.autoPayEnabled || b.isDeleted || !conPhaiTra(b)) continue;
-      if (b.walletId == null || b.categoryId == null) continue;
-      coTuDong = true;
-      xet(DateTime(b.dueDate.year, b.dueDate.month, b.dueDate.day, gioNhac, phutNhac));
-    }
-  }
-  if (trichDuoc) {
-    for (final g in goals) {
-      if (g.isDeleted || !g.autoDepositEnabled || g.isCompleted || g.remainingAmount <= 0) continue;
-      coTuDong = true;
-      final k = kyKeTiep(
-        mocNeo: g.timeCycleTakeMoney,
-        lanChayGanNhat: g.autoDepositLastRun,
-        chuKy: g.cycleTakeMoney,
-        now: now,
-      );
-      if (k != null) xet(k);
-    }
+    if (m != null && (cu == null || m.isBefore(cu))) moc = m;
   }
   return (moc: moc, coTuDong: coTuDong);
 }

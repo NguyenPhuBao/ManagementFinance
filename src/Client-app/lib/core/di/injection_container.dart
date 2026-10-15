@@ -34,9 +34,11 @@ import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
+import '../../features/goal/domain/moc_trich_nen.dart';
 import '../../features/goal/application/goal_auto_deposit_runner.dart';
 import '../../features/bill/application/bill_auto_pay_runner.dart';
 import '../../features/bill/domain/bill_auto_pay.dart';
+import '../../features/bill/domain/moc_tu_tra_nen.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
@@ -572,18 +574,18 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       kenh: sl<KenhTuChuyenTien>(),
       tinh: (idaccount, now) async {
         final prefs = await sl<NotificationPrefsStore>().read(idaccount);
-        return lichNenKeTiep(
-          bills: await sl<BillRepository>().getBills(idaccount),
-          goals: [
-            for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
-              GoalEntity.fromDrift(g),
-          ],
-          now: now,
-          gioNhac: prefs.gioNhac,
-          phutNhac: prefs.phutNhac,
-          traDuoc: coQuyenNen(MaQuyen.billAutoPay),
-          trichDuoc: coQuyenNen(MaQuyen.goalAutoDeposit),
-        );
+        // Quyền gói chọn phần (`coQuyenNen`): không quyền thì phần ấy không góp mốc lẫn `coTuDong` — Basic không cần đánh
+        // thức máy. Ca đọc nguồn ở `test/core/nen/lich_nen_test.dart` canh hai dòng `if` dưới đây.
+        return gopLichNen([
+          if (coQuyenNen(MaQuyen.billAutoPay))
+            mocTuTraNen(await sl<BillRepository>().getBills(idaccount),
+                now: now, gioNhac: prefs.gioNhac, phutNhac: prefs.phutNhac),
+          if (coQuyenNen(MaQuyen.goalAutoDeposit))
+            mocTrichNen([
+              for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+                GoalEntity.fromDrift(g),
+            ], now: now),
+        ]);
       },
     ),
   );
