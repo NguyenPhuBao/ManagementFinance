@@ -2,12 +2,13 @@
 /// mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`.
 ///
 /// Một tệp đặt sai chỗ không lỗi gì lúc chạy: trang vẫn dựng, test vẫn xanh. Nó chỉ làm người sau tìm không ra, làm
-/// `core` biết dần từng mảng, và làm cùng một loại tệp nằm hai chỗ ở hai mảng. Bảy luật ở đây (luật 7 từ 2026-10-15: chiều một hướng với `application/`) là phần máy canh được
+/// `core` biết dần từng mảng, và làm cùng một loại tệp nằm hai chỗ ở hai mảng. Tám luật ở đây (luật 5b từ 2026-10-15: tệp core được đọc phải thuần; luật 7 từ 2026-10-15: chiều một hướng với `application/`) là phần máy canh được
 /// của bảng mục 8; chỗ xếp giữa `bloc/` · `widgets/` · `state/` và hàng *"hạ tầng core cần → core/<chủ đề>"* là luật
 /// đọc, không canh. 56 tệp rời dưới `data/` (đo 2026-10-15) (`*_nguon`, `*_store`, tool AI) cố ý KHÔNG canh — bảng chưa có hàng cho chúng.
 ///
-/// Khuôn quét 22/23: vi phạm còn chờ dọn nằm trong [conCho] (đường dẫn) và [conChoCoreImport] (tệp → số dòng); cả hai
-/// CHỈ ĐƯỢC GIẢM, sạch rồi quên rút thì test đỏ. Miễn trừ đích danh có lý do ở [mienTru]; thư mục miễn trừ không còn
+/// Khuôn quét 22/23: vi phạm còn chờ dọn nằm trong [conCho] (đường dẫn), CHỈ ĐƯỢC GIẢM, sạch rồi quên rút thì test đỏ.
+/// Luật 5 từ 2026-10-15 không còn danh sách chờ: [domainThuanChoCore] là danh sách CỐ ĐỊNH các tệp thuần core được đọc
+/// (G88 gạch 4 đóng), luật 5b canh chúng thuần. Miễn trừ đích danh có lý do ở [mienTru]; thư mục miễn trừ không còn
 /// tồn tại thì test cũng đỏ để rút dòng miễn trừ.
 library;
 
@@ -47,19 +48,44 @@ const mienTru = <String, String>{};
 // Rỗng từ 2026-10-10 — thêm vào đây là mở lại một nợ, phải có lý do và ngày.
 const conCho = <String>{};
 
-/// Luật 5: tệp hạ tầng `core` còn import / export `features/` → số dòng tối đa. Chỉ được giảm, trừ các ca tăng ghi tại chỗ theo "Luật tăng (2026-10-14)" bên dưới.
-/// Đo gốc 2026-10-10. 4 tệp / 8 dòng còn lại là nợ G88 gạch 4 (đo 2026-10-15).
-const conChoCoreImport = <String, int>{
-  // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
-  // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
-  // Luật tăng (2026-10-14, viết lại cùng ngày ở đợt 2): tăng CHỈ khi thay một kiểu hàng Drift bằng Entity trong lộ trình
-  // G88 gạch 3; không bao giờ vì ghép một mảng mới vào core. Gạch 5 đóng 2026-10-15: bảy mục thông báo đã rời core; mục này là gạch 4 còn mở.
-  // 4 từ 2026-10-15: ba dịch vụ ví rời engine qua hai cổng `core/sync/cong_*` (G88 gạch 4).
-  'lib/core/sync/sync_engine.dart': 4,
-  'lib/core/sync/sync_payload_normalizer.dart': 2,
-  'lib/core/database/daos/wallet_dao.dart': 1,
-  'lib/core/database/daos/other_daos.dart': 1,
+/// Luật 5 (viết lại 2026-10-15 — G88 gạch 4 đóng; trước đó là ratchet tệp → số dòng, đo gốc 2026-10-10 43 dòng): tệp hạ tầng
+/// `core` (ngoài [diemGhep]) chỉ được import / export `features/` khi đích nằm trong danh sách CỐ ĐỊNH này — hằng số / hàm thuần
+/// của mảng mà bộ dịch payload (`SyncEngine`, `SyncPayloadNormalizer`) và câu SQL của DAO phải đọc. Quyết định người dùng
+/// 2026-10-11 (G88 mục 4 📝): core được đọc hằng số / hàm thuần của mảng; thứ có trạng thái hay I/O đi qua cổng ở
+/// `core/<chủ đề>/` + DI truyền bản thật (tiền lệ `core/sync/cong_so_du_vi.dart`, `cong_vi_bi_giu.dart`). Thêm tệp vào đây =
+/// sửa test = có người soát; tệp trong danh sách phải THUẦN (luật 5b) và phải còn ít nhất một tệp core đọc (không thì rút).
+const domainThuanChoCore = {
+  'lib/features/wallet/domain/wallet_status.dart',
+  'lib/features/wallet/domain/wallet_type.dart',
+  'lib/features/bill/domain/bill_pay_status.dart',
+  'lib/features/bill/domain/bill_recurrence.dart',
+  'lib/features/goal/domain/uu_tien_hop_le.dart',
 };
+
+/// `import` / `export` + đường trong nháy; dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó). Dựng BOM bằng mã
+/// ký tự, không gõ ký tự thật vào mã nguồn.
+final _dongImport = RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"]([^\'"]+)[\'"]');
+
+/// Chuẩn hoá `a/b/../c` → `a/c` (dấu `/`).
+String _chuan(String p) {
+  final ra = <String>[];
+  for (final s in p.replaceAll('\\', '/').split('/')) {
+    if (s.isEmpty || s == '.') continue;
+    if (s == '..') {
+      if (ra.isNotEmpty) ra.removeLast();
+      continue;
+    }
+    ra.add(s);
+  }
+  return ra.join('/');
+}
+
+/// Đích (tương đối `src/Client-app`) của đường [duong] trong dòng import của tệp [tep]; `null` = `dart:` / gói ngoài.
+String? _dich(String tep, String duong) {
+  if (duong.startsWith('package:flowmoney/')) return 'lib/${duong.substring('package:flowmoney/'.length)}';
+  if (duong.contains(':')) return null;
+  return _chuan('${tep.substring(0, tep.lastIndexOf('/'))}/$duong');
+}
 
 String _duong(FileSystemEntity e) => e.path.replaceAll('\\', '/');
 String _ten(FileSystemEntity e) => _duong(e).split('/').last;
@@ -161,37 +187,56 @@ void main() {
     expect(loi, isEmpty, reason: loi.join('\n'));
   });
 
-  test('luật 5: core chỉ import features/ ở điểm ghép; hạ tầng còn lại rút dần', () {
-    // `import` HOẶC `export`, nháy đơn HOẶC kép, và dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó).
-    // Dựng BOM bằng mã ký tự, không gõ ký tự thật vào mã nguồn.
-    final importFeatures =
-        RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"][^\'"]*features/');
-    final thay = <String, int>{};
-    for (final f in Directory('lib/core').listSync(recursive: true).whereType<File>()) {
-      final d = _duong(f);
-      if (!d.endsWith('.dart')) continue;
-      final n = f.readAsLinesSync().where(importFeatures.hasMatch).length;
-      if (n > 0) thay[d] = n;
-    }
-    expect(thay.values.fold<int>(0, (a, b) => a + b), greaterThan(100),
-        reason: 'tiền đề: phải thấy điểm ghép (DI ~80 dòng) — đang quét sai thư mục.');
-
+  test('luật 5: core chỉ import features/ ở điểm ghép; hạ tầng còn lại chỉ đọc hằng / hàm thuần trong domainThuanChoCore', () {
+    var tong = 0;
+    final docDuoc = <String>{};
     final loi = <String>[];
     for (final g in diemGhep) {
       if (!File(g).existsSync()) loi.add('$g: điểm ghép không còn tồn tại — sửa diemGhep.');
     }
-    for (final e in thay.entries) {
-      if (diemGhep.contains(e.key)) continue;
-      final tran = conChoCoreImport[e.key];
-      if (tran == null) {
-        loi.add('${e.key}: ${e.value} dòng import/export features/ — hạ tầng core không được biết mảng (mục 4 kiến trúc); '
-            'dời luật về features/<x>/ hoặc nhận hook qua DI.');
-      } else if (e.value > tran) {
-        loi.add('${e.key}: ${e.value} dòng, danh sách cho phép $tran — chỉ được giảm.');
+    for (final f in Directory('lib/core').listSync(recursive: true).whereType<File>()) {
+      final d = _duong(f);
+      if (!d.endsWith('.dart')) continue;
+      for (final l in f.readAsLinesSync()) {
+        final m = _dongImport.firstMatch(l);
+        if (m == null || !m.group(1)!.contains('features/')) continue;
+        tong++;
+        if (diemGhep.contains(d)) continue;
+        final dich = _dich(d, m.group(1)!);
+        if (dich != null && domainThuanChoCore.contains(dich)) {
+          docDuoc.add(dich);
+        } else {
+          loi.add("$d: import '${m.group(1)}' — hạ tầng core chỉ được đọc hằng / hàm thuần trong domainThuanChoCore "
+              '(mục 4 kiến trúc); thứ có trạng thái hay I/O → cổng ở core/<chủ đề>/ + DI truyền bản thật, hoặc dời về features/<x>/.');
+        }
       }
     }
-    for (final e in conChoCoreImport.entries) {
-      if (!thay.containsKey(e.key)) loi.add('${e.key}: đã sạch — rút khỏi conChoCoreImport.');
+    expect(tong, greaterThan(100), reason: 'tiền đề: phải thấy điểm ghép (DI ~100 dòng) — đang quét sai thư mục.');
+    for (final t in domainThuanChoCore) {
+      if (!File(t).existsSync()) {
+        loi.add('$t: không còn tồn tại — sửa domainThuanChoCore.');
+      } else if (!docDuoc.contains(t)) {
+        loi.add('$t: không tệp hạ tầng core nào đọc nữa — rút khỏi domainThuanChoCore.');
+      }
+    }
+    expect(loi, isEmpty, reason: loi.join('\n'));
+  });
+
+  test('luật 5b: tệp trong domainThuanChoCore THUẦN — chỉ import dart: hoặc data/models/ của chính mảng nó', () {
+    final loi = <String>[];
+    for (final t in domainThuanChoCore) {
+      if (!File(t).existsSync()) continue; // luật 5 đã báo
+      final mang = t.split('/')[2]; // lib/features/<mang>/…
+      for (final l in File(t).readAsLinesSync()) {
+        final m = _dongImport.firstMatch(l);
+        if (m == null) continue;
+        final duong = m.group(1)!;
+        if (duong.startsWith('dart:')) continue;
+        final dich = _dich(t, duong);
+        if (dich != null && dich.startsWith('lib/features/$mang/data/models/')) continue;
+        loi.add("$t: import '$duong' — core đọc tệp này, mọi phụ thuộc của nó thành phụ thuộc của hạ tầng; giữ tệp thuần "
+            '(dart: hoặc data/models/ của mảng), dời phần nặng ra tệp khác.');
+      }
     }
     expect(loi, isEmpty, reason: loi.join('\n'));
   });
