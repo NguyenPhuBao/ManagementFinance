@@ -7,7 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../../features/bill/domain/bill_recurrence.dart';
 import '../database/app_database.dart';
-import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/data/so_du_vi_service.dart';
 import '../../features/wallet/data/services/tha_vi_bi_giu.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/domain/wallet_status.dart';

@@ -1,6 +1,6 @@
-import '../models/category_suggestion.dart';
-import '../../../../core/category/category_name.dart';
-import '../models/category_entity.dart';
+import '../data/models/category_suggestion.dart';
+import '../../../core/category/category_name.dart';
+import '../data/models/category_entity.dart';
 
 class CategorySuggestionEngine {
   const CategorySuggestionEngine();

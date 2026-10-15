@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../wallet/data/services/so_du_vi_service.dart';
+import '../../../wallet/data/so_du_vi_service.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../../domain/goal_history_direction.dart';

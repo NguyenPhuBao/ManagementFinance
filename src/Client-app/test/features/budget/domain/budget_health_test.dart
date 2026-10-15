@@ -10,7 +10,8 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
-import 'package:flowmoney/features/budget/presentation/widgets/budget_visuals.dart';
+import 'package:flowmoney/features/budget/presentation/widgets/budget_visuals.dart' show budgetHealthColour;
+import 'package:flowmoney/features/budget/domain/budget_health.dart';
 
 void main() {
   BudgetEntity nganSach({required double amount, required double spent}) {

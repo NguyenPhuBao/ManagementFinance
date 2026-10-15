@@ -37,7 +37,7 @@ import '../../../budget/domain/budget_impact.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
-import '../../../../features/category/data/services/category_suggestion_engine.dart';
+import '../../../category/domain/category_suggestion_engine.dart';
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../features/premium/domain/quyen_tinh_nang.dart';

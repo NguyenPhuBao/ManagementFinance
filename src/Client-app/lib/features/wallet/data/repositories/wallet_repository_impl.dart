@@ -5,7 +5,7 @@ import '../datasources/wallet_local_data_source.dart';
 import '../models/wallet_entity.dart';
 import '../../domain/vi_tinh_vao_tong.dart';
 import 'wallet_repository.dart';
-import '../services/so_du_vi_service.dart';
+import '../so_du_vi_service.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
   final WalletLocalDataSource _localDataSource;

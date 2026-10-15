@@ -16,7 +16,6 @@ import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
-import 'package:flowmoney/features/goal/data/services/goal_auto_deposit_runner.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 10);

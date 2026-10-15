@@ -51,7 +51,8 @@ const conChoCoreImport = <String, int>{
   // 11 từ 2026-10-14 G88 gạch 3: Bill (Drift, không tính) → BillEntity (features/bill/data/models, tính) — cùng mảng đã import; về 0 ở gạch 5.
   // 12 từ 2026-10-14 G88 gạch 3 đợt 2: Wallet (Drift, không tính) → WalletEntity (features/wallet/data/models, tính); về 0 ở gạch 5.
   // +1 2026-10-15 G88 gạch 3 đợt 4: AppNotification (Drift, không tính) → NotificationEntity (features/notification/data/models, tính); về 0 ở Task 6 (dời khỏi core).
-  'lib/core/notification/notification_rules.dart': 13,
+  // 11 từ 2026-10-15 Task 5 đợt Thông báo: −2 import runner (hai lớp Event về domain); budget_visuals → budget_health thay một đổi một; về 0 ở Task 6.
+  'lib/core/notification/notification_rules.dart': 11,
   // 7 chứ không 6 từ 2026-10-10: bill_recurrence về features/bill/domain (spec dọn vị trí tệp, quyết định 4) —
   // SyncEngine là bộ dịch payload của mọi mảng, import miền là việc của nó (tiền lệ bill_pay_status).
   // Luật tăng (2026-10-14, viết lại cùng ngày ở đợt 2): tăng CHỈ khi thay một kiểu hàng Drift bằng Entity trong lộ trình

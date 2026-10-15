@@ -4,7 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
-import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
+import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/them_giao_dich_cubit.dart';

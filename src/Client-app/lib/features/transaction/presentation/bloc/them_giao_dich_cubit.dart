@@ -21,7 +21,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../category/data/models/category_suggestion.dart';
-import '../../../category/data/services/category_suggestion_engine.dart';
+import '../../../category/domain/category_suggestion_engine.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../category/domain/de_xuat_tu_khoa.dart';
 import '../../../category/domain/gan_hang_loat.dart' show hopLeTheoChieu;

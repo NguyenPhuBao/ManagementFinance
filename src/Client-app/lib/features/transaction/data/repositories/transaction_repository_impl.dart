@@ -1,5 +1,5 @@
 import '../../../../core/sync/sync_engine.dart';
-import '../../../wallet/data/services/so_du_vi_service.dart';
+import '../../../wallet/data/so_du_vi_service.dart';
 import '../datasources/transaction_local_data_source.dart';
 import '../models/transaction_entity.dart';
 import 'transaction_repository.dart';

@@ -8,7 +8,7 @@ import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../domain/bill_note.dart';
-import '../../../wallet/data/services/so_du_vi_service.dart';
+import '../../../wallet/data/so_du_vi_service.dart';
 import '../datasources/bill_local_datasource.dart';
 import '../models/bill_draft_companion.dart';
 import '../models/bill_entity.dart';

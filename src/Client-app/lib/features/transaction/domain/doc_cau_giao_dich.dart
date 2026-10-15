@@ -26,7 +26,7 @@ import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
 import '../../category/data/models/category_suggestion.dart';
-import '../../category/data/services/category_suggestion_engine.dart';
+import '../../category/domain/category_suggestion_engine.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 

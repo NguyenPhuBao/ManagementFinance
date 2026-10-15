@@ -7,7 +7,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository_impl.dart';
-import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 
 class _SyncEngineGia implements SyncEngine {
   @override

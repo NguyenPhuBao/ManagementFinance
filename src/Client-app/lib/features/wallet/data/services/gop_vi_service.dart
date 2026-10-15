@@ -4,7 +4,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../transaction/data/vi_theo_nguon_store.dart';
 import '../../domain/gop_vi.dart';
 import '../../domain/wallet_status.dart';
-import 'so_du_vi_service.dart';
+import '../so_du_vi_service.dart';
 
 /// Kế hoạch đã cũ: tập giao dịch / hoá đơn / mục tiêu của ví đã đổi từ lúc
 /// người dùng đọc hộp xác nhận.

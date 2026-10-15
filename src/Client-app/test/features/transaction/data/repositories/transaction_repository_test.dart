@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';

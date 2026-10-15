@@ -129,3 +129,36 @@ String khoaKyTuTra(String billId, DateTime dueDate) =>
     '$billId:${dueDate.year.toString().padLeft(4, '0')}-'
     '${dueDate.month.toString().padLeft(2, '0')}-'
     '${dueDate.day.toString().padLeft(2, '0')}';
+
+/// Kết quả của **một** kỳ tự trả, để nơi gọi dựng thông báo.
+///
+/// Cố ý không mang câu chữ: nội dung thông báo nằm trọn trong
+/// `notification_rules.dart` cùng các luật còn lại — cùng lối với
+/// `GoalAutoDepositEvent`.
+///
+/// Dời từ tệp runner về domain 2026-10-15 (spec Entity Thông báo mục 7.1) để `notification_rules` ở `domain/` không import `application/`.
+class BillAutoPayEvent {
+  const BillAutoPayEvent({
+    required this.billId,
+    required this.billName,
+    required this.ky,
+    required this.loai,
+    required this.soTien,
+    this.tenVi,
+  });
+
+  final String billId;
+  final String billName;
+
+  /// Ngày đến hạn của kỳ. Đi vào khoá chống trùng của thông báo.
+  final DateTime ky;
+
+  final LoaiTuTra loai;
+
+  /// Số tiền thật sự đã trả. 0 với mọi nhánh không trả được.
+  final double soTien;
+
+  /// Tên ví đã trừ, để câu thông báo nói rõ tiền đi từ đâu. `null` khi ví
+  /// không còn.
+  final String? tenVi;
+}

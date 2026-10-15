@@ -6,7 +6,7 @@ import 'package:flowmoney/core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
-import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
+import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart'
     show kKetQuaGoiYBoQua, kKetQuaGoiYChon, kKetQuaGoiYKhac, kNguonGoiYHoc;
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';

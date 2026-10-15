@@ -6,37 +6,6 @@ import '../repositories/goal_repository.dart';
 import '../../domain/goal_auto_deposit.dart';
 import '../../domain/id_khoan_trich.dart';
 
-/// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
-///
-/// Cố ý không mang câu chữ: nội dung thông báo nằm trọn trong
-/// `notification_rules.dart` cùng bảy luật còn lại. Hai nơi cùng viết câu thông
-/// báo là hai giọng khác nhau trong cùng một trung tâm thông báo.
-class GoalAutoDepositEvent {
-  const GoalAutoDepositEvent({
-    required this.goalId,
-    required this.goalName,
-    required this.ky,
-    required this.loai,
-    required this.soTien,
-    this.tenViNguon,
-  });
-
-  final String goalId;
-  final String goalName;
-
-  /// Mốc của kỳ. Đi vào khoá chống trùng của thông báo.
-  final DateTime ky;
-
-  final LoaiTrich loai;
-
-  /// Số tiền thật sự đã chuyển. 0 với mọi nhánh không trích được.
-  final double soTien;
-
-  /// Tên ví nguồn, để câu thông báo nói rõ tiền đi từ đâu. `null` khi ví đã
-  /// không còn.
-  final String? tenViNguon;
-}
-
 /// Chạy các kỳ trích tự động đã tới hạn.
 ///
 /// ## Vì sao đi qua `depositToGoal` chứ không tự ghi

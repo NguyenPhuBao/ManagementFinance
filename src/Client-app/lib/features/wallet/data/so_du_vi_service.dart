@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 
-import '../../../../core/database/app_database.dart';
-import '../../domain/so_du_mo_so.dart';
-import '../../domain/wallet_type.dart';
+import '../../../core/database/app_database.dart';
+import '../domain/so_du_mo_so.dart';
+import '../domain/wallet_type.dart';
 
 /// Nơi **DUY NHẤT** ghi `wallets.balance`.
 ///

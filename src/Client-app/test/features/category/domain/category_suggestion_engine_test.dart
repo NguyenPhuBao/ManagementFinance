@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
-import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
+import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 
 void main() {
   const engine = CategorySuggestionEngine();
