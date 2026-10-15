@@ -5,7 +5,7 @@ library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/ai_edge/domain/ap_dung_ke_hoach.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
@@ -114,7 +114,7 @@ class _DanhMuc implements CategoryManagementRepository {
 class _TaiPhanBo implements TaiPhanBoNguon {
   final daHoi = <List<String>>[];
   @override
-  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
+  Future<void> ghiPhanHoi(PhanHoiTaiPhanBo p) => throw UnimplementedError();
   @override
   Future<DuLieuTaiPhanBo> nap(int idaccount, List<BudgetView> dangChay, DateTime now) async {
     daHoi.add([for (final v in dangChay) v.displayName]);

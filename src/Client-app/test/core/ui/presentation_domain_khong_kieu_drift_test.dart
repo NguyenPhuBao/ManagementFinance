@@ -59,7 +59,6 @@ const conChoKieu = <String, Set<String>>{
 
 /// Luật 2 — tệp `domain/` (tương đối `lib/`) còn import `core/database`. Điền từ lượt chạy đầu; Task 4–6 rút Hoá đơn.
 const conChoDomain = <String>{
-  'features/ai_edge/domain/ap_dung_ke_hoach.dart',
   'features/goal/domain/goal_auto_deposit_runner.dart',
 };
 

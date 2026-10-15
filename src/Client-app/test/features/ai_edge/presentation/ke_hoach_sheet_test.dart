@@ -4,8 +4,8 @@
 /// ghi gì**.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
+import 'package:flowmoney/features/ai_edge/domain/ap_dung_ke_hoach.dart';
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/ai_edge/presentation/pages/ke_hoach_tai_phan_bo_sheet.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -59,7 +59,7 @@ KeHoachTaiPhanBo _keHoach() => KeHoachTaiPhanBo(
 
 void main() {
   late _Repo repo;
-  late List<AiRebalancingFeedbacksCompanion> daGhi;
+  late List<PhanHoiTaiPhanBo> daGhi;
 
   setUp(() {
     repo = _Repo();
@@ -167,11 +167,11 @@ void main() {
     expect(theoId, {'giaiTri': 1700000.0, 'an': 3300000.0},
         reason: 'Nguồn bù trừ 300.000, thâm hụt cộng 300.000; dòng bỏ tick '
             'không sinh lượt cập nhật nào.');
-    final theoDonor = {for (final c in daGhi) c.donorBudgetId.value: c};
-    expect(theoDonor['giaiTri']!.action.value, 'modified');
-    expect(theoDonor['giaiTri']!.actualAmount.value, 300000);
-    expect(theoDonor['muaSam']!.action.value, 'rejected');
-    expect(theoDonor['muaSam']!.periodFrom.value, DateTime(2026, 9, 1));
+    final theoDonor = {for (final c in daGhi) c.donorBudgetId: c};
+    expect(theoDonor['giaiTri']!.action, 'modified');
+    expect(theoDonor['giaiTri']!.actualAmount, 300000);
+    expect(theoDonor['muaSam']!.action, 'rejected');
+    expect(theoDonor['muaSam']!.periodFrom, DateTime(2026, 9, 1));
     expect(find.text('Kế hoạch cân đối ngân sách'), findsNothing,
         reason: 'Áp dụng xong thì sheet đóng.');
   });
@@ -184,7 +184,7 @@ void main() {
 
     expect(repo.daCapNhat, isEmpty);
     expect(daGhi, hasLength(2));
-    expect(daGhi.every((c) => c.action.value == 'rejected'), isTrue);
+    expect(daGhi.every((c) => c.action == 'rejected'), isTrue);
     expect(find.text('Kế hoạch cân đối ngân sách'), findsNothing);
   });
 

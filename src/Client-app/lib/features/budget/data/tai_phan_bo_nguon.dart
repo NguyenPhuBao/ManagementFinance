@@ -9,6 +9,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import '../../ai_edge/domain/ap_dung_ke_hoach.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
 import '../../analytics/domain/thu_nhap_moi_thang.dart';
@@ -64,8 +65,8 @@ abstract class TaiPhanBoNguon {
     DateTime now,
   );
 
-  /// Ghi phản hồi người dùng về đề xuất cân đối (trang Ngân sách). `aiFeedbackDao.ghi`.
-  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e);
+  /// Ghi phản hồi người dùng về đề xuất cân đối (trang Ngân sách). `aiFeedbackDao.ghi` — chỗ duy nhất dựng Companion của bảng phản hồi.
+  Future<void> ghiPhanHoi(PhanHoiTaiPhanBo p);
 }
 
 /// `nap` rồi `taiPhanBoCua` — phép ghép DUY NHẤT (2026-09-28) cho ba nơi phải nói
@@ -97,7 +98,19 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
   const TaiPhanBoNguonImpl({required this.db, required this.budgets});
 
   @override
-  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => db.aiFeedbackDao.ghi(e);
+  Future<void> ghiPhanHoi(PhanHoiTaiPhanBo p) => db.aiFeedbackDao.ghi(AiRebalancingFeedbacksCompanion.insert(
+        id: p.id,
+        idaccount: p.idaccount,
+        createdAt: p.createdAt,
+        deficitBudgetId: p.deficitBudgetId,
+        donorBudgetId: p.donorBudgetId,
+        donorCategoryId: p.donorCategoryId,
+        suggestedAmount: p.suggestedAmount,
+        actualAmount: p.actualAmount,
+        action: p.action,
+        periodFrom: p.periodFrom,
+        periodTo: p.periodTo,
+      ));
 
   @override
   Future<DuLieuTaiPhanBo> nap(
