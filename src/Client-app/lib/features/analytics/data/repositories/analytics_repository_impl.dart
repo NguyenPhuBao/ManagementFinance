@@ -28,6 +28,7 @@ import '../../domain/thu_nhap_moi_thang.dart';
 import '../../domain/tong_tai_san.dart';
 import '../../domain/uoc_tinh_chi_tuy_y.dart';
 import 'analytics_repository.dart';
+import '../models/thong_ke_ky.dart';
 
 /// Gộp **tám** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
 /// (mốc kỳ đang xem), ví, hoá đơn, mục tiêu, ngân sách (mốc hôm nay), và phản

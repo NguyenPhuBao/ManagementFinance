@@ -5,7 +5,7 @@ library;
 import '../../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import 'chung.dart';
 

@@ -8,6 +8,7 @@ import 'package:flowmoney/features/ai_edge/data/cong_cu_truy_van.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/ma_ky.dart';
 import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/models/lua_chon_loc.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';

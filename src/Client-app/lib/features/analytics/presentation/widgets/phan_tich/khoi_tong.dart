@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../ai_edge/domain/goi_so_phan_tich.dart';
 import '../../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/dong_tien_tu_do.dart';
 import '../../../domain/moc_so_sanh.dart';
 import '../../../../premium/domain/quyen_tinh_nang.dart';

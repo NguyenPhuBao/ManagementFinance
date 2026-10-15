@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/lich_chi_tieu.dart';
 import '../../../domain/pham_vi_ky.dart';
 import 'chung.dart';

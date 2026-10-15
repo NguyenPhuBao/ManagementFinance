@@ -6,7 +6,7 @@ import '../../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import '../../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 
 /// Màu lát "Khác" và màu dự phòng khi danh mục không có màu.
 const Color mauKhac = Color(0xFF586062);

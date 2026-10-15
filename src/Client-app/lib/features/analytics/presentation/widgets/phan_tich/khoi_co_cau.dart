@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../category/domain/category_classify.dart';
 import '../../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/phan_loai_dong_tien.dart';
 import '../../../domain/thong_ke_thang.dart';
 import '../../bloc/analytics_cubit.dart';

@@ -18,13 +18,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Tệp domain còn vi phạm (đường tương đối `src/Client-app`). Đo gốc 2026-10-15: năm tệp — hai tệp mượn `pickHomeBudget` rút 2026-10-15
-/// (hàm về `budget/domain`); còn ba tệp mượn kiểu repository Phân tích.
-const conCho = <String>{
-  'lib/features/ai_edge/domain/goi_so_phan_tich.dart',
-  'lib/features/ai_edge/domain/hang_tong_quan.dart',
-  'lib/features/transaction/domain/tim_giao_dich.dart',
-};
+/// Tệp domain còn vi phạm (đường tương đối `src/Client-app`). RỖNG từ 2026-10-15 (đo gốc năm tệp, rút cùng ngày: hai tệp mượn
+/// `pickHomeBudget` → `budget/domain`; ba tệp mượn kiểu Phân tích → `analytics/data/models`). Thêm vào đây là mở lại một nợ —
+/// phải có lý do và ngày.
+const conCho = <String>{};
 
 /// `import` / `export` + đường trong nháy; dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó). Dựng BOM bằng mã
 /// ký tự, không gõ ký tự thật vào mã nguồn.

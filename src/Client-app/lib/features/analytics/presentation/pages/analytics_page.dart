@@ -7,7 +7,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../data/repositories/analytics_repository.dart';
+import '../../data/models/thong_ke_ky.dart';
 import '../../domain/moc_so_sanh.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';

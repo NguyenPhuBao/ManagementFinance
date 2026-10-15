@@ -5,7 +5,7 @@ library;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../data/repositories/analytics_repository.dart';
+import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/bao_cao_xuat.dart';
 import '../../../domain/dong_tien_tu_do.dart';
 import '../../../domain/du_bao_dong_tien.dart';
