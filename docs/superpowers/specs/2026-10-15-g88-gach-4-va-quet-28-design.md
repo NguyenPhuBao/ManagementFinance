@@ -6,7 +6,7 @@
 > `CongViBiGiu`, `SyncEngine` nhận bắt buộc · T7 `9f0c4960` + `e56d22ef` `mocTuTraNen` · `mocTrichNen` · `gopLichNen` · T8 `4b7740a3` quét 25 luật 5
 > → danh sách cố định `domainThuanChoCore` + luật 5b (quét 25 nay **tám** luật). Đo 2026-10-16 (HEAD `4b7740a3`): `lib/core` → `features` **178** = điểm
 > ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (trước đợt 184 = 166 + 18); domain → `presentation/` /
-> `data/` ngoài `data/models/` **0** (quét 28, `conCho` rỗng); `flutter test` 7.075 → **7.082** / 10 skip, `flutter analyze` **20**. Nghiệm thu máy
+> `data/` ngoài `data/models/` **0** (quét 28, `conCho` rỗng); `flutter test` 7.075 → **7.085** / 10 skip, `flutter analyze` **20**. Nghiệm thu máy
 > ảo: 15 cặp ảnh, 3 giống hệt, còn lại lệch giải thích được (ngày 15 → 16/10, toast đồng bộ, cuộn vài px), vàng 0, `E/flutter` 0, `SyncEngine` khởi động.
 > Lỗ: đẩy / kéo thật với máy chủ (phủ bằng test engine thật), lượt nền WorkManager thật, quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn, Trợ lý AI
 > máy ảo chưa có mô hình, cổng `datNeoNhieuVi` làm rỗng chưa ca nào bắt. Chi tiết: `CLIENT_APP_KNOWN_GAPS.md` G88 và khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`.

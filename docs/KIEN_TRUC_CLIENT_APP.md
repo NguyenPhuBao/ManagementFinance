@@ -112,7 +112,7 @@ hàng Drift trang đang cầm (11 lúc đầu; 10 sau đợt Hoá đơn; 4 sau �
   `core/auth/phien_dieu_phoi_that.dart` — bộ điều phối phiên nhận **hook hàm** cho mọi việc của mảng khác; chỉ import bộ quét thông báo
   (`notification_scanner`, điểm ghép thứ tư — quét 25), không import mảng nào khác. Đo `grep -rnE "^import .*features/" lib/core` (2026-10-10 sau đợt dọn vị trí tệp):
   **175** dòng — điểm ghép **138** (DI 82 · router 54 · `chay_nen` 2), hạ tầng **37** (`notification_rules` 10 ·
-  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* *(Đo lại 2026-10-14 sau đợt Entity Giao dịch + Ví: 185 = điểm ghép 142 + hạ tầng **43** — `notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1, ratchet +3 vì luật ví và nguồn B5b nhận `WalletEntity` / `TransactionEntity`.)* (Khi ấy) 43 dòng hạ tầng là nợ có tên (G88 gạch 4); nay 18 dòng / 7 tệp (2026-10-15). *(Đo lại 2026-10-15 sau đợt Entity Thông báo bằng vòng `for` + `grep -cE "^(import|export) .*features/"` từng tệp: **184** = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18** — `sync_engine` 7 · `lich_nen` 4 · `noi_bo_nghe_ket_qua_day` 2 · `sync_payload_normalizer` 2 · `other_daos` 1 · `wallet_dao` 1 · `kho_anh_quet` 1; ratchet `conChoCoreImport` đo 43 → 47 (Task 4, Luật tăng) → 45 → **18** (Task 6, bảy mục thông báo rút hết); từ nay điểm ghép là **bốn** tệp.)* *(Trước
+  `sync_engine` 7 · `notification_scanner` 5 · `lich_nen` 3 · …). *(Đo lại 2026-10-14 bằng `grep -rcE "^(import|export) .*features/" lib/core`: 182 = điểm ghép 142 (DI 87 · router 53 · `chay_nen` 2) + hạ tầng **40** — `notification_rules` 11 · `notification_scanner` 6 · `lich_nen` 4 do đợt Entity Hoá đơn, ratchet +1 ở ba tệp.)* *(Đo lại 2026-10-14 sau đợt Entity Giao dịch + Ví: 185 = điểm ghép 142 + hạ tầng **43** — `notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1, ratchet +3 vì luật ví và nguồn B5b nhận `WalletEntity` / `TransactionEntity`.)* (Khi ấy) 43 dòng hạ tầng là nợ có tên (G88 gạch 4); khi ấy 18 dòng / 7 tệp (2026-10-15). *(Đo lại 2026-10-15 sau đợt Entity Thông báo bằng vòng `for` + `grep -cE "^(import|export) .*features/"` từng tệp: **184** = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18** — `sync_engine` 7 · `lich_nen` 4 · `noi_bo_nghe_ket_qua_day` 2 · `sync_payload_normalizer` 2 · `other_daos` 1 · `wallet_dao` 1 · `kho_anh_quet` 1; ratchet `conChoCoreImport` đo 43 → 47 (Task 4, Luật tăng) → 45 → **18** (Task 6, bảy mục thông báo rút hết); từ nay điểm ghép là **bốn** tệp.)* *(Trước
   đợt: 172 = 136 + 36. DI +2 vì `TransactionRepositoryImpl` / `CategoryManagementRepositoryImpl` tách tệp `_impl`; router
   +1 và `current_account` −1 vì tệp ấy rời `core` về `features/auth/presentation/bloc/`; `sync_engine` 6 → 7 vì
   `bill_recurrence` về `features/bill/domain/`.)* Từ 2026-10-10 **test quét 25** (`vi_tri_tep_theo_luat_test`) canh:
@@ -172,10 +172,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–27 phủ **28
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–28 phủ **29
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **31** (cộng thêm quét 27, 2026-10-14). Đếm: `grep -rlE "Directory\(['\"]lib" test` (26 tệp quét cây, đo
-2026-10-12) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **28**.
+**3** tệp cùng khuôn không đánh số, tổng **32** (đếm bằng máy 2026-10-16, sau quét 27 và quét 28). Đếm: `grep -rlE "Directory\(['\"]lib" test` (28 tệp quét cây, đo
+2026-10-16) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **29**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -268,8 +268,8 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (31 tệp test quét, CI — đếm 2026-10-14). Ranh
-giới nền tảng thay được bằng bản giả, nên **7.082** ca test (đo 2026-10-16 sau đợt G88 gạch 4 + quét 28, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (32 tệp test quét, CI — đếm 2026-10-16). Ranh
+giới nền tảng thay được bằng bản giả, nên **7.085** ca test (đo 2026-10-16 sau đợt G88 gạch 4 + quét 28, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Entity 7/14 mảng; giao diện không còn cầm kiểu hàng Drift ở mảng nào (G88 gạch 3 xong: Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục + Thông báo 2026-10-15; gạch 5 và 6 đóng cùng đợt). Gạch 4 đóng 2026-10-16 (`core` → `features` chỉ còn năm tệp domain thuần, quét 25 luật 5 / 5b), G88 đóng. Ba lệch `domain` → `data/repositories` và hai chỗ `ai_edge/domain` → `presentation` (`pickHomeBudget`) từng nằm ở đây đã trả cùng đợt, nay canh bằng quét 28. Còn nợ có tên: vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` (xem dưới). `SyncEngine` 2.163 dòng một tệp (đo 2026-10-16).
@@ -298,6 +298,6 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 2. **Gọi đúng tên.** Feature-first ba tầng + `application/` (bộ điều phối), offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 610 tệp `lib/` (đếm 2026-10-16), 32 tệp test quét, 7.082 ca test (đo 2026-10-16), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 7/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Danh mục, Thông báo (2026-10-15); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần), còn vòng `bill_status` ↔ `notification_rules`, `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói nó
-   nằm ở G88 với hướng xử lý, tức là đã biết và có kế hoạch, không phải chưa nhìn thấy.
+4. **Con số.** 14 mảng, 610 tệp `lib/` (đếm 2026-10-16), 32 tệp test quét, 7.085 ca test (đo 2026-10-16), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 7/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Danh mục, Thông báo (2026-10-15); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần), còn vòng `bill_status` ↔ `notification_rules`, `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói vòng ấy
+   là nợ có tên ngoài G88 (G88 đóng 2026-10-16), tức là đã biết, không phải chưa nhìn thấy.
