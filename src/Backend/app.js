@@ -71,24 +71,27 @@ app.use(defaultRequestTimeout);
 // Rate limiting
 app.use('/api/', generalLimiter);
 
-// Health check (no auth required)
+// Health check (no auth required) - Tối ưu cho Render / Cloud Liveness Probes
 app.get('/health', async (req, res) => {
   const { pool } = require('./config/db');
+  let dbStatus = 'connecting';
   try {
-    const result = await pool.query('SELECT 1 AS ok');
-    res.json({
-      success: true,
-      message: 'Server is healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-    });
+    const result = await Promise.race([
+      pool.query('SELECT 1 AS ok'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+    ]);
+    if (result) dbStatus = 'connected';
   } catch (error) {
-    res.status(503).json({
-      success: false,
-      message: 'Database unavailable',
-      timestamp: new Date().toISOString(),
-    });
+    dbStatus = error.message;
   }
+
+  res.status(200).json({
+    success: true,
+    status: 'UP',
+    message: 'Server is healthy',
+    database: dbStatus,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Admin Health & Resilience Monitor (Cửa sổ tra cứu sức khỏe máy chủ siêu nhẹ)
