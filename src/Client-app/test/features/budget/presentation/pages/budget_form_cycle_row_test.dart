@@ -10,13 +10,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_form.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 
 void main() {
   final danhMuc = [
-    Category(
+    CategoryEntity(
       id: 'c-an-uong',
       idaccount: 7,
       name: 'Ăn uống',
@@ -25,11 +25,9 @@ void main() {
       colour: '#F25F5C',
       isDefault: false,
       isGroup: false,
-      isLocalOnly: false,
       aiCoDinh: false,
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     ),
   ];

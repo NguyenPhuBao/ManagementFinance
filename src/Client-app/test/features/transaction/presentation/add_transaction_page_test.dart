@@ -1,4 +1,4 @@
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
@@ -21,7 +21,7 @@ import '../../category/presentation/category_test_fakes.dart';
 /// SQLite vẫn lưu `type = chi | thu | transfer` — hợp đồng đồng bộ, DAO và
 /// thống kê không đổi. Các test ở đây kiểm đúng entity mà trang gửi xuống.
 void main() {
-  CategoryTree treeOf(List<Category> defaults) => CategoryTree(
+  CategoryTree treeOf(List<CategoryEntity> defaults) => CategoryTree(
         groups: const [],
         ungroupedChildren: const [],
         defaultChildren: defaults,
@@ -37,7 +37,7 @@ void main() {
       id: 'salary', name: 'Lương', classify: 'thu', isDefault: true);
 
   FakeCategoryRepository categories({
-    List<Category> selectable = const [],
+    List<CategoryEntity> selectable = const [],
     Map<String, List<String>> keywords = const {},
   }) =>
       FakeCategoryRepository(

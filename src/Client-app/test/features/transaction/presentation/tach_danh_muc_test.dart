@@ -4,9 +4,9 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_quet.dart';
@@ -73,7 +73,7 @@ void main() {
     List<(int, String)>? daXoaHang,
   }) {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final cats = FakeCategoryRepository(
       trees: {'chi': cay([anUong, giaDinh, muaSam]), 'thu': cay([luong]), 'vay_no': cay(const [])},

@@ -3,10 +3,10 @@
 library;
 
 import 'dart:io';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
 import 'package:flowmoney/core/category/category_name.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/utils/so_bang_chu.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +16,7 @@ import '../../category/presentation/category_test_fakes.dart';
 final now = DateTime(2026, 10, 1, 9); // thứ Năm
 final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt');
 
-KetQuaDocCau doc(String cau, {List<WalletEntity>? vi, List<Category> chonDuoc = const []}) =>
+KetQuaDocCau doc(String cau, {List<WalletEntity>? vi, List<CategoryEntity> chonDuoc = const []}) =>
     docCauGiaoDich(cau, now: now, vi: vi ?? [tienMat], chonDuoc: chonDuoc);
 
 void main() {

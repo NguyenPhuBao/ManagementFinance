@@ -2,6 +2,7 @@
 // `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §2).
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
@@ -111,7 +112,22 @@ void main() {
     });
 
     test('bỏ danh mục đã xoá và nhóm', () {
-      final xoa = makeCategory(id: 'c-xoa', name: 'Cũ').copyWith(isDeleted: true);
+      final goc = makeCategory(id: 'c-xoa', name: 'Cũ');
+      final xoa = CategoryEntity(
+        id: goc.id,
+        idaccount: goc.idaccount,
+        name: goc.name,
+        classify: goc.classify,
+        icon: goc.icon,
+        colour: goc.colour,
+        isDefault: goc.isDefault,
+        isDeleted: true,
+        parentId: goc.parentId,
+        isGroup: goc.isGroup,
+        aiCoDinh: goc.aiCoDinh,
+        syncStatus: goc.syncStatus,
+        updatedAt: goc.updatedAt,
+      );
       final nhom = makeCategory(id: 'c-nhom', name: 'Nhóm', isGroup: true);
       expect(hopLeTheoChieu('chi', [..._chonDuoc, xoa, nhom]), {'c-dc', 'c-an', 'c-vay'});
     });

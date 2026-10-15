@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/khoang_tien.dart';
@@ -28,7 +28,7 @@ class TransactionFilterBar extends StatefulWidget {
   final TransactionLookup lookup;
   final List<WalletEntity> wallets;
   final ValueChanged<TransactionFilter> onChanged;
-  final Future<Category?> Function() pickCategory;
+  final Future<CategoryEntity?> Function() pickCategory;
 
   @override
   State<TransactionFilterBar> createState() => _TransactionFilterBarState();

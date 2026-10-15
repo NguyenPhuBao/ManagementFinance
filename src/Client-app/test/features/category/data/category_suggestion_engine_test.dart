@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 
@@ -7,12 +7,12 @@ void main() {
   const engine = CategorySuggestionEngine();
   final now = DateTime(2026, 8, 21);
 
-  Category category({
+  CategoryEntity category({
     required String id,
     bool isGroup = false,
     bool isDeleted = false,
   }) =>
-      Category(
+      CategoryEntity(
         id: id,
         idaccount: 1,
         name: id,
@@ -22,10 +22,8 @@ void main() {
         isDefault: false,
         isDeleted: isDeleted,
         isGroup: isGroup,
-        isLocalOnly: true,
         aiCoDinh: false,
         syncStatus: 'pending',
-        syncRetryCount: 0,
         updatedAt: now,
       );
 

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../models/category_entity.dart';
 import '../../domain/ban_sao_mac_dinh.dart';
 
 /// Tạo cho mỗi tài khoản một **bản sao riêng** của bộ danh mục mặc định.
@@ -51,7 +52,7 @@ class DefaultCategorySeeder {
     // chưa đáng tin chính là G14.
     if (khuon.isEmpty) return 0;
 
-    final daCo = await db.categoryDao.getOwnedIncludingDeleted(idaccount);
+    final daCo = (await db.categoryDao.getOwnedIncludingDeleted(idaccount)).map(CategoryEntity.fromDrift).toList();
     var daTao = 0;
 
     for (final mau in khuon) {
@@ -112,6 +113,8 @@ class DefaultCategorySeeder {
   /// So **cả tên lẫn `classify`**: hai thứ cùng tên khác loại là hai khái niệm
   /// khác nhau, và `uq_category_owner_name_classify` phía CSDL cũng cho chúng
   /// cùng tồn tại.
-  bool _daCoBanSao(List<Category> daCo, Category mau) =>
-      daCo.any((c) => laBanSaoMacDinh(c, [mau]));
+  bool _daCoBanSao(List<CategoryEntity> daCo, Category mau) {
+    final khuon = [CategoryEntity.fromDrift(mau)];
+    return daCo.any((c) => laBanSaoMacDinh(c, khuon));
+  }
 }

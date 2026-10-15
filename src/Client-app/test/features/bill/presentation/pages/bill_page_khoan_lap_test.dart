@@ -6,6 +6,7 @@
 /// sách; khối Nhận xét từng làm trạng thái rỗng tràn 73 px.
 library;
 
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
@@ -59,7 +60,7 @@ class _NguonGia implements DeXuatHoaDonNguon {
   @override
   Future<List<KhoanLap>?> tai(int idaccount) async => ds;
   @override
-  Future<Map<String, Category>> bangDanhMuc(int idaccount) async => const {};
+  Future<Map<String, CategoryEntity>> bangDanhMuc(int idaccount) async => const {};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

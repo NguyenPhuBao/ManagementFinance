@@ -40,34 +40,6 @@ const companionCua = {
 
 /// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15).
 const conChoKieu = <String, Set<String>>{
-  'Category': {
-    'features/bill/presentation/pages/bill_add_page.dart',
-    'features/bill/presentation/pages/bill_detail_page.dart',
-    'features/bill/presentation/pages/bill_edit_page.dart',
-    'features/bill/presentation/widgets/the_khoan_lap.dart',
-    'features/budget/presentation/bloc/budget_state.dart',
-    'features/budget/presentation/pages/budget_form.dart',
-    'features/category/presentation/pages/category_add_page.dart',
-    'features/category/presentation/pages/category_group_page.dart',
-    'features/category/presentation/pages/category_page.dart',
-    'features/category/presentation/pages/gan_danh_muc_page.dart',
-    'features/category/presentation/widgets/chon_danh_muc_gan_sheet.dart',
-    'features/home/presentation/pages/home_page.dart',
-    'features/transaction/presentation/bloc/them_giao_dich_cubit.dart',
-    'features/transaction/presentation/bloc/them_giao_dich_state.dart',
-    'features/transaction/presentation/pages/add_transaction_page.dart',
-    'features/transaction/presentation/pages/choose_category_page.dart',
-    'features/transaction/presentation/pages/transaction_page.dart',
-    'features/transaction/presentation/widgets/khoi_tach.dart',
-    'features/transaction/presentation/widgets/sheet_them_phan.dart',
-    'features/transaction/presentation/widgets/transaction_filter_bar.dart',
-    'features/ai_edge/domain/hang_danh_muc.dart',
-    'features/category/domain/ban_sao_mac_dinh.dart',
-    'features/category/domain/gan_hang_loat.dart',
-    'features/transaction/domain/dien_san_bien_dong.dart',
-    'features/transaction/domain/doc_cau_giao_dich.dart',
-    'features/transaction/domain/transaction_lookup.dart',
-  },
   // Tạm tới Task 6 đợt Entity Danh mục: runner dời về goal/data/services/ (spec mục 8.2).
   'Goal': {
     'features/goal/domain/goal_auto_deposit_runner.dart',
@@ -88,13 +60,7 @@ const conChoKieu = <String, Set<String>>{
 /// Luật 2 — tệp `domain/` (tương đối `lib/`) còn import `core/database`. Điền từ lượt chạy đầu; Task 4–6 rút Hoá đơn.
 const conChoDomain = <String>{
   'features/ai_edge/domain/ap_dung_ke_hoach.dart',
-  'features/ai_edge/domain/hang_danh_muc.dart',
-  'features/category/domain/ban_sao_mac_dinh.dart',
-  'features/category/domain/gan_hang_loat.dart',
   'features/goal/domain/goal_auto_deposit_runner.dart',
-  'features/transaction/domain/dien_san_bien_dong.dart',
-  'features/transaction/domain/doc_cau_giao_dich.dart',
-  'features/transaction/domain/transaction_lookup.dart',
 };
 
 /// Luật 3 — tệp `features/*/data/` (tương đối `lib/`) còn khai `<dynamic>` trần ở chữ ký. Điền từ lượt chạy đầu 2026-10-15; Task 5 đợt

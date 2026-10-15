@@ -5,7 +5,7 @@
 /// trên ghi chú đang gõ. Bất biến ④ của nhóm C: đây chỉ là đề xuất điền sẵn — người dùng bấm *Áp dụng* mới ghi.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../data/models/category_entity.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import 'phan_loai_ghi_chu.dart';
 
@@ -40,7 +40,7 @@ int demChuaGan(List<TransactionEntity> giaoDich) => giaoDich.where(xetGan).lengt
 /// ⚠️ Thiếu bộ lọc này thì mô hình — học trên CẢ BA phân loại — gắn được *"Lương"* cho một khoản chi, tức đảo chiều
 /// tiền trong mọi thống kê. [chonDuoc] là tập `selectableChildrenAll` của màn Thêm giao dịch; vẫn bỏ hàng đã xoá và
 /// nhóm cho chắc.
-Set<String> hopLeTheoChieu(String loai, List<Category> chonDuoc) {
+Set<String> hopLeTheoChieu(String loai, List<CategoryEntity> chonDuoc) {
   final phanLoai = switch (loai) {
     'chi' => const {'chi', 'vay_no'},
     'thu' => const {'thu', 'vay_no'},
@@ -58,7 +58,7 @@ Set<String> hopLeTheoChieu(String loai, List<Category> chonDuoc) {
 /// (ngày mới nhất trước).
 List<DongGanDanhMuc> dungDanhSachGan({
   required List<TransactionEntity> giaoDich,
-  required List<Category> chonDuoc,
+  required List<CategoryEntity> chonDuoc,
   required BoPhanLoaiGhiChu? mo,
   required Set<(String, String)> tatCap,
 }) {

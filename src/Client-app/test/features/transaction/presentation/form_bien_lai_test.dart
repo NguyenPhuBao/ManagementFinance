@@ -12,10 +12,10 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/kho_bien_lai.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/core/notification/ten_tep_bien_lai.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
@@ -74,7 +74,7 @@ void main() {
 
   Widget app(DienSanBienDong d, {ThemeData? theme, InMemoryViTheoNguonStore? store}) {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
       initialLocation: '/start/add',

@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/bill_recurrence.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
@@ -65,8 +65,8 @@ class _BillAddPageState extends State<BillAddPage> {
   List<WalletEntity> _wallets = [];
   WalletEntity? _selectedWallet;
 
-  List<Category> _categories = [];
-  Category? _selectedCategory;
+  List<CategoryEntity> _categories = [];
+  CategoryEntity? _selectedCategory;
 
   @override
   void initState() {
@@ -108,7 +108,7 @@ class _BillAddPageState extends State<BillAddPage> {
     // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi'. Chỉ danh mục LÁ — hàng
     // nhóm không chọn được, giống màn Thêm giao dịch (người dùng chốt 2026-10-10).
     final categories = accountId == null
-        ? <Category>[]
+        ? <CategoryEntity>[]
         : await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
     if (mounted) {
       // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
@@ -669,20 +669,20 @@ class _BillAddPageState extends State<BillAddPage> {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<Category>(
+              child: DropdownButton<CategoryEntity>(
                 value: _selectedCategory,
                 icon: const Icon(Icons.expand_more, color: AppColors.outline),
                 isExpanded: true,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
                 dropdownColor: Colors.white,
                 hint: const Text('Chọn danh mục'),
-                onChanged: (Category? newValue) {
+                onChanged: (CategoryEntity? newValue) {
                   if (newValue != null) {
                     setState(() => _selectedCategory = newValue);
                   }
                 },
-                items: _categories.map<DropdownMenuItem<Category>>((category) {
-                  return DropdownMenuItem<Category>(
+                items: _categories.map<DropdownMenuItem<CategoryEntity>>((category) {
+                  return DropdownMenuItem<CategoryEntity>(
                     value: category,
                     child: Text(category.name),
                   );

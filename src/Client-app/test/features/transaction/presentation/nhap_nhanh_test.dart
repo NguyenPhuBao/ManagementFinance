@@ -8,11 +8,11 @@ library;
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
@@ -193,7 +193,7 @@ void main() {
   final tcb = makeWallet(id: 'tcb', name: 'Techcombank').copyWith(type: 'bank');
 
   FakeCategoryRepository categories({Map<String, List<String>> keywords = const {}}) {
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     return FakeCategoryRepository(
       trees: {'chi': cay([anUong, diChuyen]), 'thu': cay([luong]), 'vay_no': cay(const [])},

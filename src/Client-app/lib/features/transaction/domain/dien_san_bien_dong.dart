@@ -8,7 +8,7 @@
 library;
 
 import '../../../core/category/category_name.dart';
-import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../../core/notification/ten_tep_bien_lai.dart';
 import '../../category/domain/gan_hang_loat.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
@@ -175,7 +175,7 @@ String? dongPhuBienLai(String? cachDoc) => switch (cachDoc) {
 /// là ví chọn sẵn theo nguồn + đuôi TK (`ViTheoNguonStore`), `null` = chưa biết.
 KetQuaDocCau ketQuaTuBienDong(
   DienSanBienDong d, {
-  required List<Category> chonDuoc,
+  required List<CategoryEntity> chonDuoc,
   BoPhanLoaiGhiChu? mo,
   Set<(String, String)> tatCap = const {},
   Map<String, List<String>> tuKhoa = const {},

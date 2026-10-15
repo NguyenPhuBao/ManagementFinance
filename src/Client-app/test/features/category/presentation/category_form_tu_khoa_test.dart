@@ -6,7 +6,7 @@
 /// (`a5a6ecb3…`) vốn có khối từ khoá ngay dưới thẻ Cố định.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -15,7 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'category_test_fakes.dart';
 
-Category _anUong() => Category(
+CategoryEntity _anUong() => CategoryEntity(
       id: 'au',
       idaccount: 1,
       name: 'Ăn uống',
@@ -26,10 +26,8 @@ Category _anUong() => Category(
       // Bản sao riêng của tài khoản: KHÔNG phải hàng mặc định — đúng thứ người dùng thật đang có.
       isDefault: false,
       isDeleted: false,
-      isLocalOnly: false,
       aiCoDinh: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 10, 1),
     );
 

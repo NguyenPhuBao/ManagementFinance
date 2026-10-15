@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -197,7 +197,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
         border: Border.all(color: const Color(0xFFE0E0DB)),
       );
 
-  Widget _theDauTrang(BillEntity b, BillDisplayStatus status, Category? danhMuc) {
+  Widget _theDauTrang(BillEntity b, BillDisplayStatus status, CategoryEntity? danhMuc) {
     final mauDanhMuc =
         categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary);
     return Container(
@@ -320,7 +320,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
         ),
       );
 
-  Widget _theThongTin(BillEntity b, Category? danhMuc) {
+  Widget _theThongTin(BillEntity b, CategoryEntity? danhMuc) {
     // Ba trạng thái danh mục, cùng cách đọc với trang danh sách.
     final tenDanhMuc = b.categoryId == null
         ? 'Chưa có danh mục'

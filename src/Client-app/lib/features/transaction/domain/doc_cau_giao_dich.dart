@@ -19,7 +19,7 @@ library;
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import '../../../core/category/category_name.dart';
-import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../wallet/data/models/wallet_entity.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';
@@ -337,7 +337,7 @@ KetQuaDocCau docCauGiaoDich(
   String cau, {
   required DateTime now,
   required List<WalletEntity> vi,
-  required List<Category> chonDuoc,
+  required List<CategoryEntity> chonDuoc,
   BoPhanLoaiGhiChu? mo,
   Set<(String, String)> tatCap = const {},
   KetQuaAi? ai,
@@ -485,7 +485,7 @@ KetQuaDocCau docCauGiaoDich(
   // AI là bước cuối, chỉ khi câu không nêu tên danh mục nào và B1 / từ khoá đều im.
   if (!dm.thayTen && categoryId == null && ai?.danhMuc != null) {
     final k = khopTheoTen(ai!.danhMuc!, dsHopLe, (c) => c.name);
-    if (k is KhopMot<Category>) {
+    if (k is KhopMot<CategoryEntity>) {
       categoryId = k.muc.id;
       aiLap = true;
     }
@@ -533,7 +533,7 @@ KetQuaDocCau docCauGiaoDich(
 ({String? categoryId, DoanDanhMuc? doan, String? lyDo, CategorySuggestion? goiY, bool thayTen}) doanDanhMucTuGhiChu({
   required String cauTimTen,
   required String ghiChu,
-  required List<Category> chonDuoc,
+  required List<CategoryEntity> chonDuoc,
   BoPhanLoaiGhiChu? mo,
   Set<(String, String)> tatCap = const {},
   Map<String, List<String>> tuKhoa = const {},

@@ -5,7 +5,7 @@
 /// (bảng chọn thứ tràn ở màn thấp). Có từ trước D1.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -23,7 +23,7 @@ void main() {
       ];
 
   Future<void> mo(WidgetTester tester, List<WalletEntity> ds) async {
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
       initialLocation: '/add',

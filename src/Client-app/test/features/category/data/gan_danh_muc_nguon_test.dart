@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/gan_danh_muc_nguon.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
@@ -170,7 +171,7 @@ void main() {
 
   test('ghiPhanHoiGan ghi nguồn học, khoá cụm + danh mục đoán, kết quả và danh mục cuối', () async {
     final store = _StoreGhiLai();
-    final duDoan = (await db.categoryDao.getById('c-dc'))!;
+    final duDoan = CategoryEntity.fromDrift((await db.categoryDao.getById('c-dc'))!);
     const doan = DoanDanhMuc(categoryId: 'c-dc', xacSuat: 0.9, cumBoDau: 'grab', soLanCung: 6, soLanTong: 7);
     final gd = (await db.transactionDao.getById(await them('grab')))!;
 

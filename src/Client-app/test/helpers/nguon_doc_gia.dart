@@ -4,6 +4,7 @@
 /// bản giả riêng thì giữ nguyên bản ấy.
 library;
 
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -51,18 +52,26 @@ class GiaoDichGia implements TransactionRepository {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
-class DanhMucRowsGia implements CategoryManagementRepository {
-  DanhMucRowsGia(this.db);
+class DanhMucGia implements CategoryManagementRepository {
+  DanhMucGia(this.db);
   final AppDatabase db;
   @override
-  Future<List<Category>> loadBangTraTen({required int accountId}) => db.categoryDao.getBangTraTen(accountId);
+  Future<List<CategoryEntity>> loadBangTraTen({required int accountId}) async =>
+      (await db.categoryDao.getBangTraTen(accountId)).map(CategoryEntity.fromDrift).toList();
   @override
-  Stream<List<Category>> watchAllRows({required int accountId}) => db.categoryDao.watchAll(accountId);
+  Stream<List<CategoryEntity>> watchAll({required int accountId}) =>
+      db.categoryDao.watchAll(accountId).map((rows) => rows.map(CategoryEntity.fromDrift).toList());
   @override
-  Future<Category?> getRowById(String id) => db.categoryDao.getById(id);
+  Future<CategoryEntity?> getById(String id) async {
+    final r = await db.categoryDao.getById(id);
+    return r == null ? null : CategoryEntity.fromDrift(r);
+  }
   @override
-  Future<List<Category>> selectableChildren({required int accountId, required String classify}) =>
-      db.categoryDao.getCategoryRows(accountId, classify).then((ds) => ds.where((c) => !c.isGroup).toList());
+  Future<List<CategoryEntity>> selectableChildren({required int accountId, required String classify}) async =>
+      (await db.categoryDao.getCategoryRows(accountId, classify))
+          .where((c) => !c.isGroup)
+          .map(CategoryEntity.fromDrift)
+          .toList();
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
@@ -110,7 +119,7 @@ void dangKyNguonDocGia(AppDatabase db) {
   _dat<ThongBaoNguon>(ThongBaoNguonDrift(db.notificationDao), (o) => o is ThongBaoNguonDrift);
   _dat<WalletRepository>(ViGia(db), (o) => o is ViGia);
   _dat<TransactionRepository>(GiaoDichGia(db), (o) => o is GiaoDichGia);
-  _dat<CategoryManagementRepository>(DanhMucRowsGia(db), (o) => o is DanhMucRowsGia);
+  _dat<CategoryManagementRepository>(DanhMucGia(db), (o) => o is DanhMucGia);
   _dat<BillRepository>(HoaDonRowsGia(db), (o) => o is HoaDonRowsGia);
   _dat<GoalRepository>(MucTieuRowsGia(db), (o) => o is MucTieuRowsGia);
 }

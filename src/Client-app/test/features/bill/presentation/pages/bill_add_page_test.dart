@@ -13,6 +13,7 @@
 library;
 
 import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' show Value;
@@ -303,7 +304,7 @@ void main() {
     String? viDangChon(WidgetTester tester) =>
         tester.widget<DropdownButton<WalletEntity>>(find.byType(DropdownButton<WalletEntity>)).value?.id;
     String? danhMucDangChon(WidgetTester tester) =>
-        tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>)).value?.id;
+        tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>)).value?.id;
     final oTen = find.byWidgetPredicate(
         (w) => w is TextField && w.decoration?.hintText == 'e.g. Netflix Premium');
 
@@ -334,7 +335,7 @@ void main() {
           isGroup: const Value(true), updatedAt: moc));
       await dung(tester, null);
       final ids = tester
-          .widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>))
+          .widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>))
           .items!
           .map((m) => m.value!.id)
           .toList();

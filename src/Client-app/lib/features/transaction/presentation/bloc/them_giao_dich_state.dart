@@ -5,7 +5,7 @@
 /// Cố ý không kế thừa `Equatable` (nếp `BudgetDetailState`).
 library;
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/domain/category_classify.dart';
@@ -78,7 +78,7 @@ class ThemGiaoDichState {
   final bool dangNapVi;
   final WalletEntity? viNguon;
   final WalletEntity? viDich;
-  final Category? danhMuc;
+  final CategoryEntity? danhMuc;
 
   /// Chiều tiền khi danh mục là vay/nợ (`'chi'` | `'thu'`), `null` với mọi danh mục khác.
   final String? chieuNo;
@@ -107,7 +107,7 @@ class ThemGiaoDichState {
   final List<MonHang> monQuet;
 
   /// Danh mục chi chọn được — tra tên / màu cho khối tách.
-  final Map<String, Category> dmTheoId;
+  final Map<String, CategoryEntity> dmTheoId;
   final String? duongDanAnh;
 
   /// Tăng mỗi lần CHÍNH Cubit đặt ghi chú (Nhập nhanh, biến động, C4) — trang chỉ chép sang ô khi số này đổi.
@@ -160,7 +160,7 @@ class ThemGiaoDichState {
     Object? goiYChuyen = _giu,
     List<PhanTach>? phanTach,
     List<MonHang>? monQuet,
-    Map<String, Category>? dmTheoId,
+    Map<String, CategoryEntity>? dmTheoId,
     Object? duongDanAnh = _giu,
     int? soLanDatGhiChu,
     int? soLanCuonGoiY,
@@ -176,7 +176,7 @@ class ThemGiaoDichState {
         dangNapVi: dangNapVi ?? this.dangNapVi,
         viNguon: identical(viNguon, _giu) ? this.viNguon : viNguon as WalletEntity?,
         viDich: identical(viDich, _giu) ? this.viDich : viDich as WalletEntity?,
-        danhMuc: identical(danhMuc, _giu) ? this.danhMuc : danhMuc as Category?,
+        danhMuc: identical(danhMuc, _giu) ? this.danhMuc : danhMuc as CategoryEntity?,
         chieuNo: identical(chieuNo, _giu) ? this.chieuNo : chieuNo as String?,
         goiY: identical(goiY, _giu) ? this.goiY : goiY as CategorySuggestion?,
         deXuat: identical(deXuat, _giu) ? this.deXuat : deXuat as DeXuatDangHien?,

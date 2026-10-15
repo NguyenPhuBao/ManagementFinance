@@ -2,9 +2,9 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart'
@@ -33,7 +33,7 @@ ThemGiaoDichCubit taoCubit(
   NguonThemGiaoDichGia nguon, {
   int? taiKhoan = 1,
   TransactionEntity? dangSua,
-  Category? danhMucDangSua,
+  CategoryEntity? danhMucDangSua,
   String? huongBanDau,
   DienSanBienDong? bienDong,
   bool choTickMon = false,
@@ -335,7 +335,7 @@ void main() {
         fa.flushMicrotasks();
         // Giữ lượt tính đang chờ danh mục cho tới khi test thả — `elapse` chạy luôn vi tác vụ, không giữ thì lượt ấy
         // xong ngay trong `elapse` và ca không đo được gì.
-        final cho = Completer<List<Category>>();
+        final cho = Completer<List<CategoryEntity>>();
         nguon.choDanhMuc = cho;
         for (final k in ['3', '0', '0', '0', '0']) {
           c.goPhim(k);
@@ -359,7 +359,7 @@ void main() {
         final c = taoCubit(nguon);
         c.moTrang();
         fa.flushMicrotasks();
-        final cho = Completer<List<Category>>();
+        final cho = Completer<List<CategoryEntity>>();
         nguon.choDanhMuc = cho;
         c.ghiChuDoi('pho');
         fa.elapse(const Duration(milliseconds: 300));

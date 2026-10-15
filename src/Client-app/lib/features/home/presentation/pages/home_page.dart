@@ -3,7 +3,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -158,8 +158,8 @@ class HomePage extends StatelessWidget {
                       ? sl<WalletRepository>().watchAll(currentUserId)
                       : Stream<List<WalletEntity>>.value(const []);
                   final categoryStream = (currentUserId != null)
-                      ? sl<CategoryManagementRepository>().watchAllRows(accountId: currentUserId)
-                      : Stream<List<Category>>.value(const []);
+                      ? sl<CategoryManagementRepository>().watchAll(accountId: currentUserId)
+                      : Stream<List<CategoryEntity>>.value(const []);
 
                   return StreamBuilder<List<TransactionEntity>>(
                     stream: txStream,
@@ -186,7 +186,7 @@ class HomePage extends StatelessWidget {
                           StreamBuilder<List<WalletEntity>>(
                             stream: walletStream,
                             builder: (_, wallets) =>
-                                StreamBuilder<List<Category>>(
+                                StreamBuilder<List<CategoryEntity>>(
                               stream: categoryStream,
                               builder: (_, categories) =>
                                   _buildRecentTransactions(

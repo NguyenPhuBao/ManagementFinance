@@ -15,6 +15,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
@@ -43,7 +44,7 @@ class _NganSach implements BudgetRepository {
   @override
   Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async => 25;
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) async => [
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async => [
         makeCategory(id: 'c-gd', name: 'Giáo dục'),
         makeCategory(id: 'c-cv', name: 'Cho vay'),
         makeCategory(id: 'c-gt', name: 'Giải trí'),

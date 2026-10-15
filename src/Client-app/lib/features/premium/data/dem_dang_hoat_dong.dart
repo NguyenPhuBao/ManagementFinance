@@ -1,4 +1,5 @@
 import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../budget/data/models/budget_entity.dart';
@@ -43,9 +44,9 @@ class DemDangHoatDong implements NguonDemDangHoatDong {
       case LoaiTran.danhMucRieng:
         // Bản sao bộ mặc định (seeder, `isDefault: false`) KHÔNG tính — nếu không, 13 bản sao của mọi tài khoản đã
         // vượt trần 5 và Basic không tạo được danh mục nào.
-        final khuon = await db.categoryDao.getBackendDefaults();
+        final khuon = (await db.categoryDao.getBackendDefaults()).map(CategoryEntity.fromDrift).toList();
         return (await db.categoryDao.getAll(idaccount)) // đã lọc deletedAt
-            .where((r) => !r.isDefault && !r.isDeleted && !laBanSaoMacDinh(r, khuon))
+            .where((r) => !r.isDefault && !r.isDeleted && !laBanSaoMacDinh(CategoryEntity.fromDrift(r), khuon))
             .length;
     }
   }

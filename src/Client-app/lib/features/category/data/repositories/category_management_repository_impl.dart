@@ -7,6 +7,7 @@ import '../../domain/category_classify.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../models/category_entity.dart';
 import '../models/category_tree.dart';
 import 'category_management_repository.dart';
 
@@ -320,23 +321,29 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   }
 
   @override
-  Future<List<Category>> selectableChildren({
+  Future<List<CategoryEntity>> selectableChildren({
     required int accountId,
     required String classify,
   }) async =>
       (await db.categoryDao.getCategoryRows(accountId, classify))
           .where((category) => !category.isGroup)
+          .map(CategoryEntity.fromDrift)
           .toList();
 
   @override
-  Future<List<Category>> loadBangTraTen({required int accountId}) => db.categoryDao.getBangTraTen(accountId);
+  Future<List<CategoryEntity>> loadBangTraTen({required int accountId}) async =>
+      (await db.categoryDao.getBangTraTen(accountId)).map(CategoryEntity.fromDrift).toList();
   @override
-  Stream<List<Category>> watchAllRows({required int accountId}) => db.categoryDao.watchAll(accountId);
+  Stream<List<CategoryEntity>> watchAll({required int accountId}) =>
+      db.categoryDao.watchAll(accountId).map((rows) => rows.map(CategoryEntity.fromDrift).toList());
   @override
-  Future<Category?> getRowById(String id) => db.categoryDao.getById(id);
+  Future<CategoryEntity?> getById(String id) async {
+    final r = await db.categoryDao.getById(id);
+    return r == null ? null : CategoryEntity.fromDrift(r);
+  }
 
   @override
-  Future<List<Category>> selectableChildrenAll({required int accountId}) async {
+  Future<List<CategoryEntity>> selectableChildrenAll({required int accountId}) async {
     // Đi qua `selectableChildren` từng classify để hưởng đúng phép khử trùng
     // lặp theo tên của `getCategoryRows` (bản seed cũ ↔ bản UUID từ backend).
     final perClassify = await Future.wait(kCategoryClassifies.map(
@@ -357,6 +364,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
             category.idaccount == accountId &&
             category.isGroup &&
             !category.isDefault)
+        .map(CategoryEntity.fromDrift)
         .toList();
     // Danh mục mặc định KHÔNG còn có mặt ở đây: `rows` đến từ
     // `watchCategoryRows`/`getCategoryRows`, và từ 2026-09-07 hai hàm ấy chỉ
@@ -364,7 +372,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // gán nhóm nay biểu diễn được bằng `parentId` — thứ vốn đã đồng bộ lên
     // backend qua cột `Idgroup`.
     final children =
-        rows.where((category) => !category.isGroup).toList();
+        rows.where((category) => !category.isGroup).map(CategoryEntity.fromDrift).toList();
     final groupIds = groups.map((group) => group.id).toSet();
     return CategoryTree(
       groups: groups

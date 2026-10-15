@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../widgets/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -253,7 +253,7 @@ class _GanDanhMucPageState extends State<GanDanhMucPage> {
     );
   }
 
-  Widget _dong(DongGanDanhMuc d, Map<String, Category> ten) {
+  Widget _dong(DongGanDanhMuc d, Map<String, CategoryEntity> ten) {
     final t = d.giaoDich;
     final ghiChu = t.note.trim();
     final thu = t.type == 'thu';
@@ -351,7 +351,7 @@ class _GanDanhMucPageState extends State<GanDanhMucPage> {
     );
   }
 
-  Widget _chip(DongGanDanhMuc d, Category? danhMuc) {
+  Widget _chip(DongGanDanhMuc d, CategoryEntity? danhMuc) {
     final onTap = _dangApDung ? null : () => _chonDanhMuc(d);
     if (danhMuc == null) {
       return InkWell(

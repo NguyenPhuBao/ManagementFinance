@@ -1,4 +1,4 @@
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_filter.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 import 'package:flowmoney/features/transaction/presentation/widgets/transaction_filter_bar.dart';
@@ -21,7 +21,7 @@ void main() {
   Future<List<TransactionFilter>> pump(
     WidgetTester tester, {
     TransactionFilter filter = const TransactionFilter(),
-    Future<Category?> Function()? pickCategory,
+    Future<CategoryEntity?> Function()? pickCategory,
   }) async {
     final emitted = <TransactionFilter>[];
     await tester.pumpWidget(MaterialApp(

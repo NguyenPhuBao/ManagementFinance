@@ -15,7 +15,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
-import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../core/di/injection_container.dart';
 import '../../../core/notification/kho_bien_lai.dart';
@@ -62,11 +62,11 @@ abstract class ThemGiaoDichNguon {
   /// Bắn rồi quên — phản hồi hỏng không được chặn việc chọn hay lưu.
   void ghiPhanHoi({required int idaccount, required CategorySuggestion goiY, required String ketQua, String? chon});
 
-  Future<List<Category>> danhMucChonDuoc(int idaccount);
+  Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount);
   Future<Map<String, List<String>>> tuKhoa(int idaccount);
 
   /// Danh mục chọn được + từ khoá; lỗi hoặc không phiên → rỗng.
-  Future<(List<Category>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount);
+  Future<(List<CategoryEntity>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount);
   Future<void> luuTuKhoa({required int idaccount, required String categoryId, required List<String> tuKhoa});
 
   DocCauBangAi? get docAi;
@@ -246,15 +246,15 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   }
 
   @override
-  Future<List<Category>> danhMucChonDuoc(int idaccount) => _danhMuc.selectableChildrenAll(accountId: idaccount);
+  Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount) => _danhMuc.selectableChildrenAll(accountId: idaccount);
 
   @override
   Future<Map<String, List<String>>> tuKhoa(int idaccount) => _danhMuc.loadAllKeywords(accountId: idaccount);
 
   /// Từ `_napDanhMucVaTuKhoa` của trang.
   @override
-  Future<(List<Category>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount) async {
-    if (idaccount == null) return (const <Category>[], const <String, List<String>>{});
+  Future<(List<CategoryEntity>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount) async {
+    if (idaccount == null) return (const <CategoryEntity>[], const <String, List<String>>{});
     try {
       return (
         await _danhMuc.selectableChildrenAll(accountId: idaccount),
@@ -262,7 +262,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
       );
     } catch (e) {
       debugPrint('[NhapNhanh] đọc danh mục / từ khoá lỗi: $e');
-      return (const <Category>[], const <String, List<String>>{});
+      return (const <CategoryEntity>[], const <String, List<String>>{});
     }
   }
 

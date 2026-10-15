@@ -2,17 +2,17 @@
 /// ngân sách hết hạn không tính là "đã có", cửa sổ null thì không hỏi gì thêm.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_cu_goi_y_han_muc.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../category/presentation/category_test_fakes.dart';
 
 class _NganSach implements BudgetRepository {
-  _NganSach({this.cuaSo = 19, this.coDuLieu = 19, List<Category>? danhMuc})
+  _NganSach({this.cuaSo = 19, this.coDuLieu = 19, List<CategoryEntity>? danhMuc})
       : danhMuc = danhMuc ??
             [
               makeCategory(id: 'c-an', name: 'Ăn uống', idaccount: 10),
@@ -21,7 +21,7 @@ class _NganSach implements BudgetRepository {
             ];
   final int? cuaSo;
   final int? coDuLieu;
-  final List<Category> danhMuc;
+  final List<CategoryEntity> danhMuc;
   final daGoiY = <String>[];
 
   @override
@@ -29,7 +29,7 @@ class _NganSach implements BudgetRepository {
   @override
   Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now}) async => coDuLieu;
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) async => danhMuc;
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async => danhMuc;
   @override
   Future<double?> suggestAmount(int idaccount, String categoryId, {DateTime? now}) async {
     daGoiY.add(categoryId);

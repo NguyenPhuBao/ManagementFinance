@@ -5,15 +5,15 @@
 /// cùng bộ này nên tách ra để hai bên không chép lại nhau.
 library;
 
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/category_classify.dart';
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
-Category makeCategory({
+CategoryEntity makeCategory({
   required String id,
   required String name,
   int idaccount = 1,
@@ -23,7 +23,7 @@ Category makeCategory({
   String? parentId,
   DateTime? updatedAt,
 }) =>
-    Category(
+    CategoryEntity(
       id: id,
       idaccount: idaccount,
       name: name,
@@ -34,10 +34,8 @@ Category makeCategory({
       isGroup: isGroup,
       isDefault: isDefault,
       isDeleted: false,
-      isLocalOnly: !isDefault,
       aiCoDinh: false,
       syncStatus: 'pending',
-      syncRetryCount: 0,
       updatedAt: updatedAt ?? DateTime(2026, 8, 21),
     );
 
@@ -67,17 +65,17 @@ WalletEntity makeWallet({
 
 class FakeCategoryRepository implements CategoryManagementRepository {
   @override
-  Future<List<Category>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
+  Future<List<CategoryEntity>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
   @override
-  Stream<List<Category>> watchAllRows({required int accountId}) => throw UnimplementedError();
+  Stream<List<CategoryEntity>> watchAll({required int accountId}) => throw UnimplementedError();
   @override
-  Future<Category?> getRowById(String id) => throw UnimplementedError();
+  Future<CategoryEntity?> getById(String id) => throw UnimplementedError();
 
   FakeCategoryRepository(
       {CategoryTree? tree,
       Map<String, CategoryTree>? trees,
-      List<Category> selectable = const [],
-      Future<List<Category>> Function(int accountId, String classify)?
+      List<CategoryEntity> selectable = const [],
+      Future<List<CategoryEntity>> Function(int accountId, String classify)?
           selectableLoader,
       Map<String, List<String>> keywords = const {}})
       : _trees = trees ?? {'chi': tree ?? _emptyTree},
@@ -93,8 +91,8 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   );
 
   final Map<String, CategoryTree> _trees;
-  final List<Category> _selectable;
-  final Future<List<Category>> Function(int accountId, String classify)?
+  final List<CategoryEntity> _selectable;
+  final Future<List<CategoryEntity>> Function(int accountId, String classify)?
       _selectableLoader;
   final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
@@ -190,7 +188,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   }) async {}
 
   @override
-  Future<List<Category>> selectableChildren({
+  Future<List<CategoryEntity>> selectableChildren({
     required int accountId,
     required String classify,
   }) {
@@ -205,7 +203,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   }
 
   @override
-  Future<List<Category>> selectableChildrenAll({required int accountId}) async {
+  Future<List<CategoryEntity>> selectableChildrenAll({required int accountId}) async {
     // Một lượt gợi ý = MỘT lần đếm, dù bên dưới hỏi từng classify.
     accountIdsDoc.add(accountId);
     soLanDocDanhMuc++;

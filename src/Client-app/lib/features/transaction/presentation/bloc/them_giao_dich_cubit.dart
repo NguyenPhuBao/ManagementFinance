@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart' show LoaiThongBao;
 import '../../../../core/utils/currency_formatter.dart';
@@ -80,7 +80,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     required int? Function() taiKhoan,
     required CategorySuggestionEngine boGoiY,
     TransactionEntity? dangSua,
-    Category? danhMucDangSua,
+    CategoryEntity? danhMucDangSua,
     String? huongBanDau,
     DienSanBienDong? bienDong,
     bool choTickMon = false,
@@ -114,7 +114,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   DienSanBienDong? get bienDong => _bienDong;
 
   static ThemGiaoDichState _dauTien(
-      TransactionEntity? dangSua, Category? danhMuc, String? huongBanDau, DienSanBienDong? bienDong) {
+      TransactionEntity? dangSua, CategoryEntity? danhMuc, String? huongBanDau, DienSanBienDong? bienDong) {
     if (dangSua != null) {
       final a = dangSua.amount;
       final chuoi = a == a.roundToDouble() ? a.toInt().toString() : a.toString();
@@ -237,7 +237,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Đường DUY NHẤT để đặt danh mục — bảng chọn, thẻ gợi ý, điền sẵn đều qua đây, để chiều tiền vay/nợ luôn được gợi
   /// sẵn kèm theo. Danh mục là sự thật, đoạn đầu màn phản ánh nó.
-  void chonDanhMuc(Category c) {
+  void chonDanhMuc(CategoryEntity c) {
     final laVayNo = isDebtClassify(c.classify);
     final no = laVayNo ? suggestDebtDirection(c.name) : null;
     _phat(state.copyWith(
@@ -254,7 +254,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Ví người dùng HAY DÙNG cho [c] — ba cửa chặn: đang sửa (ví của giao dịch là sự thật), người dùng đã tự đặt ví
   /// (lựa chọn cố ý thắng phép đoán), tra không thấy (`null` = chưa biết → giữ ví đang có).
-  WalletEntity? _viHayDungCho(Category c) {
+  WalletEntity? _viHayDungCho(CategoryEntity c) {
     if (_dangSua != null || _nguoiDungDaChonVi) return null;
     return _timVi(state.vi, _viHayDung[c.id]);
   }
@@ -399,7 +399,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
 
   /// Từ `_goiYSoTien` của trang — nguồn thứ ba của thẻ gợi ý (dự án C), CHỈ gọi khi ghi chú trống: đoán theo bậc tiền +
   /// nhóm thứ + ví, chỉ danh mục đúng chiều của đoạn đang chọn. `null` = chưa đủ để nói.
-  CategorySuggestion? _goiYSoTien(List<Category> categories) {
+  CategorySuggestion? _goiYSoTien(List<CategoryEntity> categories) {
     final bo = _boSoTien;
     if (bo == null || !_coNguonSoTien || state.laChuyen) return null;
     final soTien = state.soTienDangCo;
@@ -540,7 +540,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     ));
   }
 
-  static CategorySuggestion _goiYCua(DeXuatTuKhoa d, Category c) =>
+  static CategorySuggestion _goiYCua(DeXuatTuKhoa d, CategoryEntity c) =>
       CategorySuggestion(category: c, matchedKeyword: d.tuKhoa, nguon: kNguonDeXuatTuKhoa, amTietChinh: d.cumBoDau);
 
   /// Từ `_chapNhanDeXuat` — Thêm / Chuyển GHI NGAY (spec 2026-09-30 §2.3). Chuyển bỏ ở danh mục cũ TRƯỚC: không có
@@ -836,7 +836,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   }
 
   /// C4 §3.4 — một lượt Gemma ở NỀN; form đã điền số luật. Người dùng đổi số trong lúc chờ → kết quả bị bỏ.
-  Future<void> _kiemSoTienNen(String cau, double soLuat, int luot, List<Category> chonDuoc) async {
+  Future<void> _kiemSoTienNen(String cau, double soLuat, int luot, List<CategoryEntity> chonDuoc) async {
     final chuoiLuat = state.chuoiSoTien;
     _phat(state.copyWith(dangKiemSoTien: true));
     final ai = await _nguon.docAi!.doc(
@@ -895,7 +895,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     if (cau.isNotEmpty) _apDungKetQua(cau, chonDuoc, tuKhoa);
   }
 
-  KetQuaDocCau _docCau(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+  KetQuaDocCau _docCau(String cau, List<CategoryEntity> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
       docCauGiaoDich(
         cau,
         now: DateTime.now(),
@@ -911,7 +911,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       );
 
   /// Đọc câu rồi điền những ô đọc được vào form (xem [dienTuCau]).
-  void _apDungKetQua(String cau, List<Category> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
+  void _apDungKetQua(String cau, List<CategoryEntity> chonDuoc, Map<String, List<String>> tuKhoa, {KetQuaAi? ai}) =>
       dienKetQua(_docCau(cau, chonDuoc, tuKhoa, ai: ai), chonDuoc: chonDuoc);
 
   /// Điền một [KetQuaDocCau] đã dựng sẵn vào form — phần ÁP, tách khỏi phần đọc câu (2026-09-30, mở D1): ô Nhập nhanh
@@ -923,7 +923,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// - danh mục qua [chonDanhMuc] (chiều vay/nợ, đoạn Chi/Thu, xoá thẻ gợi ý);
   /// - ghi chú đặt SAU danh mục: [ghiChuDoi] thấy đã có danh mục thì không hẹn gợi ý;
   /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
-  void dienKetQua(KetQuaDocCau kq, {required List<Category> chonDuoc}) {
+  void dienKetQua(KetQuaDocCau kq, {required List<CategoryEntity> chonDuoc}) {
     if (isClosed) return;
     final now = DateTime.now();
     if (kq.khongDocDuocGi) {
@@ -956,7 +956,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       if (vi == null && s.viNguon?.id == viDen.id) s = s.copyWith(viNguon: null);
     }
     emit(s);
-    Category? danhMuc;
+    CategoryEntity? danhMuc;
     if (!state.laChuyen && kq.categoryId != null) {
       for (final c in chonDuoc) {
         if (c.id == kq.categoryId) danhMuc = c;
@@ -1117,7 +1117,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   }
 
   /// Danh mục cho sheet *Thêm phần*: danh mục CHI hợp lệ; nạp luôn bảng tra tên / màu cho khối tách.
-  Future<List<Category>> danhMucChoTach() async {
+  Future<List<CategoryEntity>> danhMucChoTach() async {
     final (chonDuoc, _) = await _nguon.napDanhMucVaTuKhoa(_taiKhoan());
     final hopLe = hopLeTheoChieu('chi', chonDuoc);
     final chi = [for (final c in chonDuoc) if (hopLe.contains(c.id)) c];

@@ -5,7 +5,7 @@
 /// giành quyền khỏi tay người dùng không.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -24,7 +24,7 @@ void main() {
   final tienMat = makeWallet();
   final nganHang = makeWallet(id: 'bank', name: 'Ngân hàng');
 
-  CategoryTree treeOf(List<Category> defaults) => CategoryTree(
+  CategoryTree treeOf(List<CategoryEntity> defaults) => CategoryTree(
         groups: const [],
         ungroupedChildren: const [],
         defaultChildren: defaults,

@@ -3,9 +3,9 @@
 library;
 
 import 'dart:async';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart' show PhanHoiGoiY;
@@ -32,7 +32,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
 
   List<WalletEntity> vi;
   LichSuHoc lichSu;
-  List<Category> danhMuc;
+  List<CategoryEntity> danhMuc;
   Map<String, List<String>> bangTuKhoa;
   List<PhanHoiGoiY> phanHoi;
 
@@ -46,7 +46,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   Future<BudgetView?> Function(int idaccount, String categoryId)? nganSach;
 
   /// Khác `null` → [danhMucChonDuoc] treo tới khi test `complete` nó (ca "kết quả về muộn bị bỏ").
-  Completer<List<Category>>? choDanhMuc;
+  Completer<List<CategoryEntity>>? choDanhMuc;
 
   final phanHoiDaGhi = <({String goiY, String ketQua, String? chon})>[];
   final viDaNho = <String>[];
@@ -66,12 +66,12 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   void ghiPhanHoi({required int idaccount, required CategorySuggestion goiY, required String ketQua, String? chon}) =>
       phanHoiDaGhi.add((goiY: goiY.categoryId, ketQua: ketQua, chon: chon));
   @override
-  Future<List<Category>> danhMucChonDuoc(int idaccount) => choDanhMuc?.future ?? Future.value(danhMuc);
+  Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount) => choDanhMuc?.future ?? Future.value(danhMuc);
   @override
   Future<Map<String, List<String>>> tuKhoa(int idaccount) async => bangTuKhoa;
   @override
-  Future<(List<Category>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount) async =>
-      idaccount == null ? (const <Category>[], const <String, List<String>>{}) : (danhMuc, bangTuKhoa);
+  Future<(List<CategoryEntity>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount) async =>
+      idaccount == null ? (const <CategoryEntity>[], const <String, List<String>>{}) : (danhMuc, bangTuKhoa);
   @override
   Future<void> luuTuKhoa({required int idaccount, required String categoryId, required List<String> tuKhoa}) async =>
       tuKhoaDaLuu[categoryId] = tuKhoa;

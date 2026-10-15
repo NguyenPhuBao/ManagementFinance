@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../category/domain/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
@@ -86,7 +86,7 @@ class _TransactionPageState extends State<TransactionPage> {
   // danh sách chớp trắng một nhịp.
   int? _lookupAccount;
   Stream<List<WalletEntity>>? _wallets;
-  Stream<List<Category>>? _categories;
+  Stream<List<CategoryEntity>>? _categories;
 
   /// Số khoản chưa có danh mục (C1) — cùng nếp tạo MỘT lần mỗi tài khoản như hai stream tra tên.
   Stream<int>? _chuaGan;
@@ -136,7 +136,7 @@ class _TransactionPageState extends State<TransactionPage> {
     if (_lookupAccount == idaccount) return;
     _lookupAccount = idaccount;
     _wallets = sl<WalletRepository>().watchAll(idaccount);
-    _categories = sl<CategoryManagementRepository>().watchAllRows(accountId: idaccount);
+    _categories = sl<CategoryManagementRepository>().watchAll(accountId: idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
         sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
@@ -255,7 +255,7 @@ class _TransactionPageState extends State<TransactionPage> {
                           return StreamBuilder<List<WalletEntity>>(
                             stream: _wallets,
                             builder: (_, wallets) =>
-                                StreamBuilder<List<Category>>(
+                                StreamBuilder<List<CategoryEntity>>(
                               stream: _categories,
                               builder: (_, categories) {
                                 final walletList =
@@ -273,7 +273,7 @@ class _TransactionPageState extends State<TransactionPage> {
                                       onChanged: (f) =>
                                           setState(() => _filter = f),
                                       pickCategory: () =>
-                                          context.push<Category>(
+                                          context.push<CategoryEntity>(
                                         '/add/category',
                                         extra: kCategoryClassifies.first,
                                       ),

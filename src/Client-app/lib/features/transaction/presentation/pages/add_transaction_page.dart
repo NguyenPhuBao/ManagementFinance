@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../category/domain/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/kho_bien_lai.dart';
@@ -60,7 +60,7 @@ class EditTransactionArgs {
   const EditTransactionArgs({required this.transaction, this.category});
 
   final TransactionEntity transaction;
-  final Category? category;
+  final CategoryEntity? category;
 }
 
 class AddTransactionPage extends StatefulWidget {
@@ -384,7 +384,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// Đường DUY NHẤT để đặt danh mục — cả bảng chọn lẫn thẻ gợi ý đều qua đây (Cubit lo chiều vay/nợ, đoạn đầu màn, ví hay
   /// dùng, phần tách, gỡ thẻ gợi ý và tính lại đề xuất từ khoá).
-  void _chonDanhMuc(Category category) => _cubit.chonDanhMuc(category);
+  void _chonDanhMuc(CategoryEntity category) => _cubit.chonDanhMuc(category);
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
   void _chonHuong(String huong) => _cubit.chonHuong(huong);
@@ -859,7 +859,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onChonViDich: () => _moChonVi(context, isDestination: true),
       onChonDanhMuc: () async {
         // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
-        final selected = await context.push<Category>(
+        final selected = await context.push<CategoryEntity>(
           '/add/category',
           // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
           extra: selectedCategory?.classify ?? (_s.huong == 'thu' ? 'thu' : kCategoryClassifies.first),

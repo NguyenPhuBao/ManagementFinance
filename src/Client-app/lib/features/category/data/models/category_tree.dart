@@ -1,28 +1,28 @@
-import '../../../../core/database/app_database.dart';
+import 'category_entity.dart';
 
 class CategoryTree {
   CategoryTree({
     required List<CategoryGroupNode> groups,
-    required List<Category> ungroupedChildren,
-    required List<Category> defaultChildren,
+    required List<CategoryEntity> ungroupedChildren,
+    required List<CategoryEntity> defaultChildren,
   })  : groups = List.unmodifiable(groups),
         ungroupedChildren = List.unmodifiable(ungroupedChildren),
         defaultChildren = List.unmodifiable(defaultChildren);
 
   final List<CategoryGroupNode> groups;
-  final List<Category> ungroupedChildren;
-  final List<Category> defaultChildren;
+  final List<CategoryEntity> ungroupedChildren;
+  final List<CategoryEntity> defaultChildren;
 }
 
 class CategoryGroupNode {
   CategoryGroupNode({
-    required Category group,
-    required List<Category> children,
+    required CategoryEntity group,
+    required List<CategoryEntity> children,
   })  : group = group,
         children = List.unmodifiable(children);
 
-  final Category group;
-  final List<Category> children;
+  final CategoryEntity group;
+  final List<CategoryEntity> children;
 }
 
 class CategoryChildDraft {

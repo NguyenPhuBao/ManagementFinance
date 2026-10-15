@@ -26,7 +26,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill) async 
   // Tên danh mục cho khối thông tin trên bảng; không có/đã xoá thì bỏ trống.
   final danhMuc = bill.categoryId == null
       ? null
-      : await sl<CategoryManagementRepository>().getRowById(bill.categoryId!);
+      : await sl<CategoryManagementRepository>().getById(bill.categoryId!);
 
   if (!context.mounted) return;
 

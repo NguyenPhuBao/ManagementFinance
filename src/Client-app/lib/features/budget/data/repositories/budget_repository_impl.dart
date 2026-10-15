@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
@@ -424,7 +424,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
   }
 
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) {
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) {
     return localDataSource.getExpenseCategories(idaccount);
   }
 }

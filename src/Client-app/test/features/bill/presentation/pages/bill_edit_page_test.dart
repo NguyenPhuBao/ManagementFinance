@@ -28,6 +28,7 @@ import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_edit_page.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -145,7 +146,7 @@ void main() {
         isGroup: const Value(true), updatedAt: moc));
     final hd = _hoaDon();
     await dungTrangSua(tester, bill: hd.copyWith(categoryId: 'gNha'));
-    final dd = tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>));
+    final dd = tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>));
     final ids = dd.items!.map((m) => m.value!.id).toList();
     expect(ids, ['c1'],
         reason: 'Người dùng chốt 2026-10-10: form hoá đơn không cho chọn nhóm danh mục.');

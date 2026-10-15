@@ -1,6 +1,6 @@
 import '../models/category_suggestion.dart';
 import '../../../../core/category/category_name.dart';
-import '../../../../core/database/app_database.dart';
+import '../models/category_entity.dart';
 
 class CategorySuggestionEngine {
   const CategorySuggestionEngine();
@@ -89,7 +89,7 @@ class CategorySuggestionEngine {
 class _CandidateMatch {
   _CandidateMatch({required this.category, required this.keywords});
 
-  final Category category;
+  final CategoryEntity category;
   final Set<String> keywords;
 
   String get longestKeyword {

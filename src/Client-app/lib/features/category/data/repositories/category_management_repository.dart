@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../../../core/database/app_database.dart';
+import '../models/category_entity.dart';
 import '../models/category_tree.dart';
 
 class CategoryValidationException implements Exception {
@@ -41,7 +41,7 @@ abstract class CategoryManagementRepository {
     required String categoryId,
     required Iterable<String> keywords,
   });
-  Future<List<Category>> selectableChildren({
+  Future<List<CategoryEntity>> selectableChildren({
     required int accountId,
     required String classify,
   });
@@ -51,15 +51,15 @@ abstract class CategoryManagementRepository {
   /// Cho bộ gợi ý theo ghi chú ở trang thêm giao dịch: từ 2026-09-05 chiều
   /// tiền suy từ danh mục được chọn chứ không từ segment, nên không còn phân
   /// loại nào để khoanh vùng trước khi tìm.
-  Future<List<Category>> selectableChildrenAll({required int accountId});
+  Future<List<CategoryEntity>> selectableChildrenAll({required int accountId});
 
   /// Bảng TRA TÊN: giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8). `categoryDao.getBangTraTen`.
-  Future<List<Category>> loadBangTraTen({required int accountId});
+  Future<List<CategoryEntity>> loadBangTraTen({required int accountId});
 
   /// Mọi danh mục của tài khoản, stream — bộ lọc Sổ giao dịch, Trang chủ. `categoryDao.watchAll`.
-  Stream<List<Category>> watchAllRows({required int accountId});
+  Stream<List<CategoryEntity>> watchAll({required int accountId});
 
   /// Một hàng, kể cả đã xoá mềm — tên danh mục trên bảng thanh toán hoá đơn. `categoryDao.getById`.
-  Future<Category?> getRowById(String id);
+  Future<CategoryEntity?> getById(String id);
 
 }

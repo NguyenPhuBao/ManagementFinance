@@ -3,7 +3,7 @@ library;
 
 import 'dart:async';
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
@@ -41,7 +41,7 @@ void main() {
   final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt');
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
 
-  Future<ThemGiaoDichCubit> moi(_AiKiem ai, {List<Category> danhMuc = const []}) async {
+  Future<ThemGiaoDichCubit> moi(_AiKiem ai, {List<CategoryEntity> danhMuc = const []}) async {
     final c = ThemGiaoDichCubit(
       nguon: NguonThemGiaoDichGia(vi: [tienMat], danhMuc: danhMuc, docAiGia: ai),
       taiKhoan: () => 1,

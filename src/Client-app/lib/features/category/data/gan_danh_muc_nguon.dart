@@ -9,6 +9,7 @@ library;
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/database/app_database.dart';
+import 'models/category_entity.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../domain/gan_hang_loat.dart';
@@ -20,7 +21,7 @@ import 'repositories/category_management_repository.dart';
 /// Thứ màn duyệt cần để dựng: các dòng, danh mục chọn được (cho chip và bảng chọn), và tên ví (dòng phụ).
 class DuLieuGanDanhMuc {
   final List<DongGanDanhMuc> dong;
-  final List<Category> chonDuoc;
+  final List<CategoryEntity> chonDuoc;
   final Map<String, String> tenVi;
   const DuLieuGanDanhMuc({required this.dong, required this.chonDuoc, required this.tenVi});
 }
@@ -90,7 +91,7 @@ Future<void> ghiPhanHoiGan({
   required GoiYPhanHoiStore store,
   required int idaccount,
   required DongGanDanhMuc dong,
-  required Category duDoan,
+  required CategoryEntity duDoan,
   required String ketQua,
   required String chonCategoryId,
 }) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/category_classify.dart';
 import 'category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/category_entity.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 /// Bảng chọn danh mục của màn *Gắn danh mục nhanh* (C1) — màn Stitch `45c91102174a4b56bbd15754bb9284af`.
@@ -12,14 +12,14 @@ import '../../../../shared/theme/app_colors.dart';
 ///
 /// ⚠️ `isScrollControlled` + thân cuộn: bottom sheet mặc định chỉ cao 9/16 màn (G60), mà một tài khoản có thể có hơn
 /// mười danh mục chi.
-Future<Category?> moChonDanhMucGan(
+Future<CategoryEntity?> moChonDanhMucGan(
   BuildContext context, {
   required String loai,
   required String moTa,
-  required List<Category> ungVien,
+  required List<CategoryEntity> ungVien,
   String? dangChon,
 }) {
-  return showModalBottomSheet<Category>(
+  return showModalBottomSheet<CategoryEntity>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.white,
@@ -38,7 +38,7 @@ class _ThanBangChon extends StatelessWidget {
 
   final String loai;
   final String moTa;
-  final List<Category> ungVien;
+  final List<CategoryEntity> ungVien;
   final String? dangChon;
 
   @override
@@ -140,7 +140,7 @@ class _TieuDeNhom extends StatelessWidget {
 
 class _DongDanhMuc extends StatelessWidget {
   const _DongDanhMuc({required this.danhMuc, required this.dangChon});
-  final Category danhMuc;
+  final CategoryEntity danhMuc;
   final bool dangChon;
 
   @override

@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../domain/bill_recurrence.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
@@ -55,8 +55,8 @@ class _BillEditPageState extends State<BillEditPage> {
 
   List<WalletEntity> _wallets = [];
   WalletEntity? _selectedWallet;
-  List<Category> _categories = [];
-  Category? _selectedCategory;
+  List<CategoryEntity> _categories = [];
+  CategoryEntity? _selectedCategory;
 
   @override
   void initState() {
@@ -450,7 +450,7 @@ class _BillEditPageState extends State<BillEditPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<Category>(
+                    DropdownButtonFormField<CategoryEntity>(
                       initialValue: _selectedCategory,
                       decoration: const InputDecoration(
                         labelText: 'Danh mục',

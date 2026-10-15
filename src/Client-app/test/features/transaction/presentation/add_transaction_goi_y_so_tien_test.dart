@@ -6,7 +6,7 @@
 /// thứ là ca test đổi kết quả theo hôm chạy.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
@@ -139,7 +139,7 @@ void main() {
   final diChuyen = makeCategory(id: 'move', name: 'Di chuyển', isDefault: true);
   final luong = makeCategory(id: 'luong', name: 'Lương', classify: 'thu', isDefault: true);
 
-  CategoryTree treeOf(List<Category> c) =>
+  CategoryTree treeOf(List<CategoryEntity> c) =>
       CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
 
   FakeCategoryRepository categories({Map<String, List<String>> keywords = const {}}) => FakeCategoryRepository(

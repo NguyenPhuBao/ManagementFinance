@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../domain/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/category_tree.dart';
@@ -31,7 +31,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
   late final CategoryManagementRepository _repository;
   final _nameController = TextEditingController();
   final Set<String> _selectedChildIds = <String>{};
-  List<Category> _children = [];
+  List<CategoryEntity> _children = [];
   String _classify = 'chi';
   String _icon = 'folder';
   String _colour = '#10B981';
@@ -345,7 +345,7 @@ class _GroupIconPicker extends StatelessWidget {
 class _Preview extends StatelessWidget {
   const _Preview({required this.name, required this.children});
   final String name;
-  final List<Category> children;
+  final List<CategoryEntity> children;
 
   @override
   Widget build(BuildContext context) => Container(
