@@ -12,6 +12,7 @@
 
 const { Worker } = require('bullmq');
 const logger = require('../core/logger');
+const config = require('../config');
 
 const Redis = require('ioredis');
 
@@ -39,6 +40,9 @@ const classifyWorker = new Worker(
   {
     connection,
     concurrency: 5, // Xử lý tối đa 5 job đồng thời
+    stalledInterval: config.queue?.stalledInterval || 300000,
+    drainDelay: config.queue?.drainDelay || 5,
+    lockDuration: config.queue?.lockDuration || 60000,
     limiter: {
       max: 20,       // Tối đa 20 job trong 1 phút (tránh quá tải Redis)
       duration: 60000,

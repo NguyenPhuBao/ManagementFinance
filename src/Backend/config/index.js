@@ -81,6 +81,12 @@ const config = {
     premiumPriceVnd: parseInt(process.env.PREMIUM_PRICE_VND, 10) || 49000,
     packageDurationDays: parseInt(process.env.PREMIUM_PACKAGE_DAYS, 10) || 30,
   },
+
+  queue: {
+    stalledInterval: parseInt(process.env.BULLMQ_STALLED_INTERVAL_MS, 10) || 300000, // 5 phút (300.000ms)
+    drainDelay: parseInt(process.env.BULLMQ_DRAIN_DELAY_SEC, 10) || 5,              // 5 giây (5s)
+    lockDuration: parseInt(process.env.BULLMQ_LOCK_DURATION_MS, 10) || 60000,       // 60 giây (60.000ms)
+  },
 };
 
 // Chốt chặn an ninh số (Data_Security.md & SOAT_SAU_GOP_B38367E):

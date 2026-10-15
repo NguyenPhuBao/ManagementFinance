@@ -12,6 +12,10 @@ connection.on('error', (err) => {
     logger.error('[Redis Queue Connection] Quota limit exceeded: Upstash 500k commands limit reached.', {
       error: err.message,
     });
+    // Chủ động ngắt kết nối tạm thời để tránh ioredis/BullMQ retry liên tục làm ngập log
+    try {
+      connection.disconnect(false);
+    } catch (_) {}
   } else {
     logger.error('[Redis Queue Connection] Error', { error: err.message });
   }
