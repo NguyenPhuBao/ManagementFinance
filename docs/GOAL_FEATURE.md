@@ -282,7 +282,7 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 
 > ✅ **2026-10-10 — chạy nền (Android), mở lại G22** (spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`).
 > Vòng quét bên dưới vẫn là **nơi duy nhất** chạy bộ trích; cái mới là **ai gọi vòng quét**: WorkManager hẹn một lượt
-> vào kỳ trích kế (`lichNenKeTiep` ở `lib/core/nen/lich_nen.dart`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
+> vào kỳ trích kế (`mocTrichNen` ở `lib/features/goal/domain/moc_trich_nen.dart`, gộp với phần hoá đơn ở `gopLichNen` — `lib/core/nen/lich_nen.dart`; từ 2026-10-16, trước đó là hàm `lichNenKeTiep`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
 > `NotificationScanner.scan()` trong engine headless khi app đóng (`lib/core/nen/chay_nen.dart`), hoặc trong engine của
 > app khi app đang mở (`quetNgay`). Lượt nền **đồng bộ** trước và sau khi quét (`SyncEngine.syncMotLuot`, không làm mới
 > token). **Năm chốt, phá cái nào cũng hỏng im lặng:**

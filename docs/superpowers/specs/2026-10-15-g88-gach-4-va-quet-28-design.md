@@ -1,8 +1,17 @@
 # G88 gạch 4 (hạ tầng `core` thôi import mảng) + quét 28 (`domain` không import tầng trên) — thiết kế
 
-> **Trạng thái:** thiết kế **người dùng duyệt từng phần 2026-10-15** (phần 1 gạch 4 · phần 2 quét 28 · phần 3 thứ tự + nghiệm
-> thu). **Chưa có kế hoạch, chưa thi công** — người dùng chốt *"viết bàn giao cho phiên sau thực hiện"*; lối thi công (agent con
-> mỗi task hay inline) **chưa chọn** — phiên sau hỏi. Không bật backend dev cho đợt này (người dùng chốt).
+> ✅ **Đã thi công 2026-10-16** (agent con mỗi task: Fable preflight · Sonnet thực thi · Opus soát; nghiệm thu máy ảo đạt) — **G88 đóng**.
+> Commit: T1 `48bba881` quét 28 · T2 `592cc0f4` `pickHomeBudget` → `budget/domain` · T3 `ee05046e` kiểu Phân tích → `analytics/data/models` ·
+> T4 `62392229` `KhoAnhQuet` → `transaction/data/datasources` · T5 `8368815f` `noiBoNgheKetQuaDay` về DI · T6 `9e9df270` hai cổng `CongSoDuVi` /
+> `CongViBiGiu`, `SyncEngine` nhận bắt buộc · T7 `9f0c4960` + `e56d22ef` `mocTuTraNen` · `mocTrichNen` · `gopLichNen` · T8 `4b7740a3` quét 25 luật 5
+> → danh sách cố định `domainThuanChoCore` + luật 5b (quét 25 nay **tám** luật). Đo 2026-10-16 (HEAD `4b7740a3`): `lib/core` → `features` **178** = điểm
+> ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (trước đợt 184 = 166 + 18); domain → `presentation/` /
+> `data/` ngoài `data/models/` **0** (quét 28, `conCho` rỗng); `flutter test` 7.075 → **7.082** / 10 skip, `flutter analyze` **20**. Nghiệm thu máy
+> ảo: 15 cặp ảnh, 3 giống hệt, còn lại lệch giải thích được (ngày 15 → 16/10, toast đồng bộ, cuộn vài px), vàng 0, `E/flutter` 0, `SyncEngine` khởi động.
+> Lỗ: đẩy / kéo thật với máy chủ (phủ bằng test engine thật), lượt nền WorkManager thật, quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn, Trợ lý AI
+> máy ảo chưa có mô hình, cổng `datNeoNhieuVi` làm rỗng chưa ca nào bắt. Chi tiết: `CLIENT_APP_KNOWN_GAPS.md` G88 và khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`.
+>
+> *(Lịch sử) Trạng thái lúc viết:* thiết kế người dùng duyệt từng phần 2026-10-15, chưa kế hoạch, chưa thi công; không bật backend dev cho đợt này (người dùng chốt).
 >
 > Mọi số đo ở đây đo bằng máy ở HEAD `f06ad54e`/`fce511a1` (mã `lib/` không đổi **hành vi** từ `08effea7` — soát lại ở
 > `a2892281`: ba tệp đổi sau mốc ấy, cả ba chỉ ở dòng chú thích, commit `7d55b900`), ngày 2026-10-15. Thi công thì **đo lại**,

@@ -608,7 +608,17 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-15)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
+
+### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, tám commit mã `48bba881` → `4b7740a3`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-16)
+
+Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối ✅ đầu tệp); kế hoạch 9 task `plans/2026-10-15-g88-gach-4-va-quet-28.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát). Đợt cuối của G88: 18 dòng / 7 tệp hạ tầng `core` → `features/` còn **8** dòng / 4 tệp, cả tám trỏ vào **năm tệp domain thuần** hợp thức hoá bằng danh sách cố định.
+
+- **Commit:** T1 `48bba881` quét 28 (`core/ui/domain_khong_import_tang_tren_test.dart`) · T2 `592cc0f4` `pickHomeBudget` → `budget/domain/pick_home_budget.dart` · T3 `ee05046e` `DongDanhMuc` / `ThongKeKy` / `DongChiBatThuong` → `analytics/data/models/thong_ke_ky.dart`, `LuaChonLoc` → `analytics/data/models/lua_chon_loc.dart` · T4 `62392229` `KhoAnhQuet` → `features/transaction/data/datasources/kho_anh_quet.dart` · T5 `8368815f` `noiBoNgheKetQuaDay` về cuối `core/di/injection_container.dart` (tệp `core/sync/noi_bo_nghe_ket_qua_day.dart` xoá) · T6 `9e9df270` hai cổng `CongSoDuVi` · `CongViBiGiu` / `BanGhiGiuKhoiDay` ở `core/sync/`, bản thật `SoDuViService implements CongSoDuVi` · `ViBiGiuDongBo` (`features/wallet/data/vi_bi_giu_dong_bo.dart`), `SyncEngine` nhận hai cổng **bắt buộc**, helper test `taoSyncEngineThu` (`test/helpers/sync_engine_thu.dart`) · T7 `9f0c4960` + `e56d22ef` lịch nền tách theo mảng: `mocTuTraNen` (`bill/domain`), `mocTrichNen` (`goal/domain`), `gopLichNen` (`core/nen/lich_nen.dart`, thay `lichNenKeTiep`), DI chọn phần theo quyền gói · T8 `4b7740a3` quét 25 luật 5 từ ratchet `conChoCoreImport` → danh sách cố định `domainThuanChoCore` (`wallet_status` · `wallet_type` · `bill_pay_status` · `bill_recurrence` · `uu_tien_hop_le`) + luật 5b canh chúng thuần.
+- **Test quét:** quét 25 nay **tám** luật; **quét 28** mới (hai luật: `features/*/domain/` không import `presentation/`; đường `data/` phải là `data/models/`; `conCho` rỗng); số quét kế tiếp **29**.
+- **Đo bằng máy 2026-10-16 (HEAD `4b7740a3`):** `lib/core` import `features/` **178** = điểm ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (`sync_engine` 4 · `sync_payload_normalizer` 2 · `wallet_dao` 1 · `other_daos` 1); trước đợt 184 = 166 + 18. Domain → `presentation/` / `data/` ngoài `data/models/` **0**; 178 tệp domain. `flutter test` 7.075 → **7.082** pass / **10** skip, `flutter analyze` **20**.
+- ✅ **Nghiệm thu máy ảo** (APK `006ea8b0…`, `lastUpdateTime` 2026-10-16 01:06:11; 15 ảnh trước/sau, cắt 100 px thanh trạng thái): 3 cặp giống hệt (01 · 08 · 10), phần còn lại lệch giải thích được — ngày 15 → 16/10 (số ngày còn lại, nhịp chi, ngày hoá đơn, danh sách cam kết 30 ngày), toast đồng bộ khi backend tắt (09), cuộn lệch vài px, con trỏ nhấp nháy (11); vàng `#FFFF00` **0** ở 15 ảnh; `E/flutter` **0**; `SyncEngine` khởi động (17 dòng); app không chết lúc mở. ⚠️ **Lỗ:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về *"Chưa có mô hình"* (gói số `hang_tong_quan` phủ bằng test); cổng `datNeoNhieuVi` làm rỗng chưa ca nào bắt (lỗ có từ trước).
+- **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
 
 ### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 
@@ -904,8 +914,8 @@ Spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md` (duy�
 `plans/2026-10-10-tu-chuyen-tien-chay-nen.md` (gitignore). Giao dịch vốn đã ghi theo mốc kỳ, nên thứ người dùng thấy
 khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
 
-- **Luồng:** cuối mỗi lượt quét, `LichNen.henNeuDoi` (`lib/core/nen/lich_nen.dart`) tính `lichNenKeTiep` — mốc **tương
-  lai** gần nhất (hoá đơn tự trả: ngày đến hạn lúc **giờ nhắc chung**; kỳ trích: `kyKeTiep`) + cờ `coTuDong` — và chỉ khi
+- **Luồng:** cuối mỗi lượt quét, `LichNen.henNeuDoi` (`lib/core/nen/lich_nen.dart`) tính lịch kế — từ 2026-10-16 (G88 gạch 4) **gộp** hai phần bằng `gopLichNen`: `mocTuTraNen` (`features/bill/domain/moc_tu_tra_nen.dart`; hoá đơn tự trả: ngày đến hạn lúc **giờ nhắc chung**) và `mocTrichNen` (`features/goal/domain/moc_trich_nen.dart`; kỳ trích: `kyKeTiep`), DI chọn phần theo quyền gói; trước đó là một hàm `lichNenKeTiep` ở `core/nen` — mốc **tương
+  lai** gần nhất (sớm nhất giữa các phần) + cờ `coTuDong` — và chỉ khi
   lịch **đổi** mới gửi `henNen` qua kênh `flowmoney/tu_chuyen_tien`. `TuChuyenTien.kt` hẹn WorkManager một-lần (theo mốc)
   + định kỳ 6 giờ. `TuChuyenTienWorker`: app đang mở → `quetNgay` vào engine của app và **chờ**; app đóng → `FlutterEngine`
   headless chạy `chayNenTuChuyenTien` (`main.dart`, `@pragma`) → `chayNen()` (`lib/core/nen/chay_nen.dart`) →
@@ -913,7 +923,7 @@ khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
   kèm mốc kế; worker hẹn lượt kế bằng **APPEND_OR_REPLACE**.
 - **Năm chốt hỏng im lặng:** (1) `GoiRepository.datTaiKhoan` **trước** khi quét ở nền — `coQuyenNen` trả `true` khi gói
   chưa có tài khoản, thiếu là Basic được tự trả (đường trong app: hook `datGoi` của `moPhienCucBo`, G93 2026-10-14); (2) lượt nền **không tự `henNen`** — `REPLACE` lên chính công việc
-  đang chạy là WorkManager huỷ nó; (3) `noiBoNgheKetQuaDay()` (`lib/core/sync/`) gọi ở **cả** `main.dart` lẫn
+  đang chạy là WorkManager huỷ nó; (3) `noiBoNgheKetQuaDay()` (nay ở cuối `lib/core/di/injection_container.dart`, từ 2026-10-16; trước đó `lib/core/sync/`) gọi ở **cả** `main.dart` lẫn
   `chay_nen.dart` — thiếu ở nền là `BILL_ALREADY_PAID` về không ai gỡ; (4) ở nền `AuthInterceptor(cheDoNen: true)`
   **không** làm mới / xoá token — app và nền cùng làm mới một refresh token là backend đếm dùng lại token; (5) khoá thuê
   `khoa_tu_chuyen_tiens` (schema **v30**, cục bộ) lấy bằng **một câu `UPDATE`** — khoá tệp không chặn hai isolate cùng
@@ -1618,7 +1628,7 @@ viết); mục G63 `CLIENT_APP_KNOWN_GAPS.md`.
 - **Lõi** (Task 1–8): schema **v28** — cột **cục bộ** `wallets.bi_tu_choi_trung_ten` (payload ví vẫn 13 trường);
   `ViTrungTenResolver` là bộ nghe thứ **hai** của `pushResultStream` (đặt cờ khi `WALLET_NAME_DUPLICATE` /
   `UNIQUE_VIOLATION` trên ví); *bị giữ* = cờ ∧ còn ví sống khác cùng tên không mang cờ — **một** định nghĩa `capViTrungTen`
-  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon`; `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
+  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon` (engine hỏi qua cổng `CongViBiGiu` → `ViBiGiuDongBo` từ 2026-10-16); `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
   mục tiêu / giao dịch dính tới nó; Sửa ví chỉ kiểm trùng tên khi tên đổi; kéo về có ví mặc định → máy chỉ còn một;
   `GopViService` + kế hoạch thuần `keHoachGop` (một nguồn cho hộp xác nhận và thi hành).
 - **Giao diện** (Task 9–12, bốn màn Stitch người dùng xác nhận): thẻ **"VÍ TRÙNG TÊN"** đầu màn Quản lý ví

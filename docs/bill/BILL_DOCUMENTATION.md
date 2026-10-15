@@ -583,7 +583,7 @@ tắt và các bẫy.
 
 > ✅ **Từ 2026-10-10 tự trả chạy cả khi app đóng (Android)** — spec
 > `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`. WorkManager hẹn một
-> lượt vào **ngày đến hạn lúc giờ nhắc chung** (`prefs.gioNhac:phutNhac`, `lichNenKeTiep`) cộng một
+> lượt vào **ngày đến hạn lúc giờ nhắc chung** (`prefs.gioNhac:phutNhac`, `mocTuTraNen` ở `lib/features/bill/domain/moc_tu_tra_nen.dart`, gộp ở `gopLichNen` — từ 2026-10-16, trước đó là hàm `lichNenKeTiep`) cộng một
 > lượt định kỳ 6 giờ; lượt ấy chạy chính `NotificationScanner.scan()` (bộ chạy bên dưới không đổi)
 > rồi đồng bộ, nên máy thắng cuộc đua trả hai lần đẩy sớm hơn. Ngày đến hạn đã qua mà chưa trả (ví
 > không đủ) **không** hẹn lại "ngay" — chờ lượt định kỳ. Câu nhắc và `goiYTuTra(chayNen:)` (thay
