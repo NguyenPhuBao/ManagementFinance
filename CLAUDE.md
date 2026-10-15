@@ -111,7 +111,7 @@
 # đỏ (10 ca ở 3 tệp hoá đơn khi nâng). Sửa bằng `Material(type: MaterialType.transparency)` bọc
 # cột chứa tile, KHÔNG đổi gì nhìn thấy được. Ô mới cùng khuôn sẽ vấp lại — đọc khối ⬆️ mục 14 `PROJECT_CONTEXT.md`.
 # Test (chạy từ src/Client-app) — mốc hiện tại **7085/7085** pass, **10** ca cố ý `skip` (đo 2026-10-16, sau
-# đợt G88 gạch 4 + quét 28 — G88 đóng, HEAD `4b7740a3`; trước đợt 7075 đo 2026-10-15; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
+# đợt G88 gạch 4 + quét 28 — G88 đóng, đo ở `36180d62` (sau lượt sửa review toàn nhánh); trước đợt 7075 đo 2026-10-15; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
 # nằm ở khối tương ứng mục 14 `docs/PROJECT_CONTEXT.md` và ở commit. ⚠️ Thời gian dao động mạnh theo tải máy: ~1,5
 # phút chạy một mình, ~3,5 phút song song `flutter analyze`, tới ~5,5 phút song song build APK.
 flutter test

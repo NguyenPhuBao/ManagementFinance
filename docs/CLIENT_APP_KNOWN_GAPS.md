@@ -2057,11 +2057,12 @@ năm tệp) · Task 2 `592cc0f4` `pickHomeBudget` → `budget/domain/pick_home_b
 luật 5 từ ratchet `conChoCoreImport` → danh sách cố định `domainThuanChoCore` (`wallet_status` · `wallet_type` · `bill_pay_status` · `bill_recurrence` · `uu_tien_hop_le`) + luật 5b canh
 chúng thuần; quét 25 nay **tám** luật. Đo bằng máy 2026-10-16 (HEAD `4b7740a3`): `lib/core` import `features/` **178** = điểm ghép **170** (DI 111 · router 54 · `chay_nen` 4 ·
 `phien_dieu_phoi_that` 1) + hạ tầng **8** (`sync_engine` 4 · `sync_payload_normalizer` 2 · `wallet_dao` 1 · `other_daos` 1), trước đợt 184 = 166 + 18; `features/*/domain` import `presentation/` /
-`data/` ngoài `data/models/` **0** (quét 28, `conCho` rỗng; 178 tệp domain). `flutter test` 7.075 → **7.085** pass / **10** skip, `flutter analyze` **20** (không đổi).
+`data/` ngoài `data/models/` **0** (quét 28, `conCho` rỗng; 178 tệp domain). `flutter test` 7.075 → **7.085** pass / **10** skip (đo ở `36180d62` — lượt sửa sau review toàn nhánh
+thêm 3 ca; tại `4b7740a3` là 7.082), `flutter analyze` **20** (không đổi).
 **Nghiệm thu máy ảo ✅ đạt** (15 cặp ảnh trước/sau): 3 cặp giống hệt, phần còn lại lệch giải thích được (ngày 15 → 16/10 đổi số ngày còn lại và nhịp chi, toast đồng bộ khi backend tắt, cuộn lệch vài px),
 vàng `#FFFF00` = 0, `E/flutter` = 0, `SyncEngine` khởi động, app không chết lúc mở. **Lỗ nghiệm thu:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền
-WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về "Chưa có mô hình" (gói số `hang_tong_quan` phủ bằng test); cổng `datNeoNhieuVi` làm
-rỗng chưa ca nào bắt (lỗ có từ trước). **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở.
+WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về "Chưa có mô hình" (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng
+`datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test`). **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở.
 
 ---
 
