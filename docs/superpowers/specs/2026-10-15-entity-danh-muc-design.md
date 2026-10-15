@@ -22,7 +22,7 @@ phân bổ (`TaiPhanBoNguon.ghiPhanHoi` — lối chuyển tiếp thứ tư, m�
 |---|---|---|---|
 | 1 | Gộp cụm phản hồi tái phân bổ (bảng *Đề xuất cân đối*, trang Ngân sách) vào đợt Danh mục? | **Gộp** — một task cuối đợt | Đây là lối chuyển tiếp thứ tư và tệp domain `ap_dung_ke_hoach` còn import `drift`; làm cùng thì lối chuyển tiếp về 0 chứ không 1. Không phải Danh mục — ghi rõ ở tên spec |
 | 2 | Hai nợ Mục tiêu (`watchGoalTransactions` · `goal_auto_deposit_runner`) xếp đâu? | **Gộp cả hai** — hai task cuối đợt | Sau đợt `conChoDomain` rỗng, luật 2 không còn danh sách chờ; runner chỉ dời tệp, không sửa thân |
-| 3 | Ghi dữ liệu thử trên máy nghiệm thu để chụp màn Gắn danh mục (C1)? | **Ghi một khoản thử qua giao diện** trên bản *trước*, xoá mềm qua giao diện cuối lượt; không bấm *Áp dụng* ở C1 | Đợt 2 không chụp được C1 vì `demChuaGan` = 0; một khoản chi không danh mục có ghi chú tự gõ là đủ, và xoá qua giao diện là xoá mềm (quy tắc 5) |
+| 3 | Ghi dữ liệu thử trên máy nghiệm thu để chụp màn Gắn danh mục (C1)? | Chốt đầu *"ghi một khoản thử qua giao diện"* **bị lật khi soát**: `ThemGiaoDichCubit.chuanBiLuu` :631 từ chối lưu thu / chi thiếu danh mục, form Sửa đi cùng cubit — app không có lối tay nào sinh khoản không danh mục. **Chốt lại: nhận lỗ như đợt 2** — C1 do widget test phủ, không ghi dữ liệu | Hai lối còn lại (INSERT thẳng SQLite máy ảo — hàng sẽ đẩy lên backend dev; hoãn tới máy thật) người dùng không chọn; ghi lỗ vào biên bản nghiệm thu |
 | A1 | `loadBangTraTen` đổi tên theo chốt *gộp tên* đợt 2? | **Giữ tên**; chỉ `watchAllRows → watchAll`, `getRowById → getById` | Tên mang nghĩa G41 (bảng tra gồm hàng xoá mềm + mặc định) — khác `getAll` của ví / giao dịch |
 | A2 | `CategoryEntity` chép đủ 18 cột hay chỉ cột có chỗ đọc? | **13 trường** = 18 − 5 (mục 4.1) | Cùng khuôn `WalletEntity` / `BillEntity`: bỏ cột lỗi đồng bộ; mở rộng khi có chỗ đọc thật (tiền lệ 4.0 đợt 2) |
 | B1 | Kiểu trả của `phanHoiTu` (ai_edge/domain) | **Lớp Dart thuần `PhanHoiTaiPhanBo` 11 trường** cùng tệp; nguồn dựng Companion | Record 11 trường quá dài để đọc; đợt 2 dùng record vì chỉ 3 trường |
@@ -47,6 +47,7 @@ Mọi số đếm bằng `grep` / `find` / công cụ Grep, chạy từ `src/Cli
 | `conChoDomain` (tệp `domain/` import `core/database` / `package:drift`) | **8 → 0** | 6 trên + `ai_edge/domain/ap_dung_ke_hoach` + `goal/domain/goal_auto_deposit_runner` |
 | Lối chuyển tiếp trả hàng Drift (`KIEN_TRUC` mục 4) | **4 → 0** | `CategoryManagementRepository.loadBangTraTen` · `watchAllRows` · `getRowById` + `TaiPhanBoNguon.ghiPhanHoi` |
 | Chỗ gọi ba lối của Danh mục ở giao diện | **5** | `bill_detail_page` :90 · `bill_page` :92 → `loadBangTraTen` (giữ); `bill_actions` :29 → `getRowById`; `home_page` :161 · `transaction_page` :139 → `watchAllRows` |
+| Lối tay sinh khoản thu / chi **không** danh mục | **0** | `them_giao_dich_cubit.dart` :631 `if (!s.laChuyen && danhMuc == null) return const LoiLuu('Vui lòng chọn danh mục')` — Thêm và Sửa cùng cubit; màn C1 chỉ có hàng khi dữ liệu cũ / kéo về (G18). Lật chốt 3 |
 | Bảng `Categories` | **18** cột (`grep -cE "Column\s+get"` trên khối bảng) | Entity **13** trường = 18 − 5: `isLocalOnly` · `deletedAt` · `syncRetryCount` · `syncError` · `syncBlockedUntil` — không tệp nào ngoài `core/database`, `core/sync`, impl đọc chúng |
 | Trường giao diện / domain đang đọc trên `Category` | **11** | `id · idaccount · name · classify · icon · colour · isDefault · isDeleted · parentId · isGroup · aiCoDinh` — đo bằng `grep -nE "\.(isLocalOnly\|syncRetryCount\|…)"` từng tệp rồi lọc theo biến kiểu `Category` (lượt đo thô lẫn `t.` / `w.` / `budget.`) |
 | Interface / nguồn phải đổi chữ ký | **7** | mục 4.2 (`CategoryManagementRepository`), 4.3 (`CategorySuggestionEngine` qua model), 4.4 (`BudgetRepository.getExpenseCategories` · `BudgetLocalDataSource.getExpenseCategories` / `getAllCategories` · `ThemGiaoDichNguon` 2 hàm · `GanDanhMucNguon` · `DeXuatHoaDonNguon.bangDanhMuc`) |
@@ -173,7 +174,10 @@ Sau bước này `conChoDomain` rút 6 tệp; `ap_dung_ke_hoach` rút ở mục 
 
 Đổi tên hai hàm ở **3** chỗ gọi: `home_page` :161 · `transaction_page` :139 → `.watchAll(`; `bill_actions` :29 → `.getById(`.
 `bill_detail_page` :90 · `bill_page` :92 giữ `.loadBangTraTen(`. Router `app_router.dart`: `ChooseCategoryPage(classify: state.extra as String?)`
-— không có `extra as Category`, **không đụng**. `category_visuals.dart` nhận chuỗi `icon` / `colour`, không đụng.
+— không có `extra as Category`, **không đụng**. `category_visuals.dart` nhận chuỗi `icon` / `colour`, không đụng. ⚠️ Hai lời gọi
+`sl<CategoryManagementRepository>().watchAll(` phải **nằm trên một dòng**: quét 2 (`tepDocViQuaTruong`, đọc 2026-10-15) đếm mọi dòng
+`.getAll(` / `.watchAll(` trong tệp có nhắc `WalletRepository` là đọc ví, trừ khi **chính dòng ấy** chứa `CategoryManagementRepository>()`
+— tách dòng là dương tính giả ở `home_page` / `transaction_page`.
 
 `conChoKieu` **xoá khoá `Category`**. Trang lớn nhất bị chạm: `them_giao_dich_cubit` 1.132 dòng (trần 1.200, quét 23) — đổi kiểu không
 thêm dòng. Test giao diện: `makeCategory` của `category_test_fakes.dart` trả `CategoryEntity` (bỏ `isLocalOnly`, `syncRetryCount`,
@@ -250,7 +254,8 @@ JSON `as List<dynamic>?`), `core/router` (`GoRouterRefreshStream(Stream<dynamic>
 **Chữ** (0.2c): docstring :7 *"Kiểu KHÔNG có khoá trong [conChoKieu] là kiểu đã thống nhất Entity"* và thông điệp :193 *"kiểu này đã
 thống nhất Entity"* → *"kiểu này không có chỗ chờ trong phạm vi quét — nhắc tới là đỏ"*. Lý do: `Goal` / `Budget` cũng không có khoá mà
 hai mảng ấy chưa đạt trọn định nghĩa thống nhất (`KIEN_TRUC` mục 1); test không được nói hơn tài liệu. Docstring đầu tệp thêm dòng
-*"Mở rộng 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain; luật 3"*.
+*"Mở rộng 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain; luật 3"*; docstring `kieuDrift` :15 *"Kiểu hàng Drift mà giao
+diện từng cầm"* → *"… mà giao diện, domain hay `core` từng cầm"*.
 
 ## 10. Đối chiếu luật kiến trúc và lộ trình G88
 
@@ -263,7 +268,9 @@ hai mảng ấy chưa đạt trọn định nghĩa thống nhất (`KIEN_TRUC` m
   (hàng *Hàm thuần*).
 - **Quét 22** (presentation không cầm `sl<AppDatabase>` / `.xxxDao`): không đụng — không trang nào mở DAO. **Quét 23**: không tệp nào
   thêm dòng. **Quét 25**: ratchet `conChoCoreImport` **43 không đổi** (dự kiến — `core` không import `category_entity`; runner dời
-  giữ số dòng); vị trí tệp khớp bảng. **Quét 2**: nhận diện `CategoryManagementRepository>()` để loại khỏi phép đếm ví — không đổi.
+  giữ số dòng); vị trí tệp khớp bảng. **Quét 2** (đọc `tepDocViQuaTruong` 2026-10-15): tệp nhắc `WalletRepository` có dòng `.getAll(` /
+  `.watchAll(` bị đếm là đọc ví trừ khi dòng ấy chứa `CategoryManagementRepository>()` — hai lời gọi đổi tên ở `home_page` /
+  `transaction_page` giữ trên một dòng (mục 6) thì quét 2 không đổi; đo lại khi xong.
   **Quét 14 / 15**: `PhanHoiTaiPhanBo` không thêm phép tính; `aiCoDinh` lên Entity không chạm `SyncEntityType` / `categoryForPush`.
   **Quét 21**: không đụng quyền. **Quét 27**: mục 9.
 - **Quy tắc 7 / 8 `CLAUDE.md`:** `_hasDuplicateName` / `getNamesInUse` / `normalizeCategoryName` không đụng; seeder vẫn đọc
@@ -286,6 +293,11 @@ hai mảng ấy chưa đạt trọn định nghĩa thống nhất (`KIEN_TRUC` m
    5 fake `CategoryManagementRepository` + 1 `BudgetLocalDataSource` + 2 `DeXuatHoaDonNguon` + 1 `ThemGiaoDichNguon` + helper + 6 tệp
    nhắc `getExpenseCategories` + fixture 10 tệp (phụ lục B, C) · test rows chuyển + đổi tên · `nguon_doc_gia`. Rút 6 domain khỏi
    `conChoDomain`, **xoá khoá `Category`** khỏi `conChoKieu`. Ước ~45 tệp `lib` + ~45 tệp test — **đếm ở kế hoạch**.
+   **Phép đo của người soát (bắt buộc; kế hoạch viết script ở scratchpad):** lấy `git diff -U0` của commit, chuẩn hoá các thay thế
+   được phép trên dòng `-` (`\bCategory\b` không theo sau bởi `Entity|Tree|Group|Suggestion|Keyword|Management|Validation` →
+   `CategoryEntity`; `watchAllRows → watchAll`; `getRowById → getById`; dòng `import … core/database/app_database.dart` ↔
+   `… category_entity.dart`), rồi so tập dòng `-` đã chuẩn hoá với tập dòng `+` — **phải rỗng** ngoài fixture test và docstring.
+   Lệch một dòng là một chỗ "tiện tay sửa" cần giải thích.
 4. Cụm phản hồi tái phân bổ (mục 7) + 6 tệp test; rút `ap_dung_ke_hoach` khỏi `conChoDomain`.
 5. `watchGoalTransactions` (8.1) + 2 fake + 3 ca; rút hai tệp khỏi `conChoDynamic` → rỗng.
 6. Runner dời (8.2) + test dời + 7 import; rút khoá tạm `Goal` và tệp cuối của `conChoDomain` → rỗng.
@@ -297,13 +309,13 @@ xong); `flutter analyze` **20** (tám phép ép + một `as List<dynamic>?` ở 
 
 **Nghiệm thu máy ảo `FlowMoney_16G`** (`-gpu host`, bản debug, cuộn giữ-rồi-thả, cắt 100 px thanh trạng thái). "Trước" = bản **đang cài**
 `94394e4c…` (mã `3252db88`; `lib/` không đổi tới `6971dfab` — không dựng lại); "sau" xác nhận bằng
-`dumpsys package com.flowmoney.flowmoney | grep lastUpdateTime` **và** SHA-1 APK. **Khoản thử** (chốt 3): trên bản *trước*, màn Thêm
-giao dịch ghi **một khoản chi không chọn danh mục**, ghi chú tự gõ có từ khoá seed (vd. `test c1 cafe` — thẻ gợi ý hiện luôn ở cả hai
-bản), Lưu → chụp thẻ *"Có 1 giao dịch chưa có danh mục"* ở Sổ + màn C1 (**không bấm Áp dụng**) + bảng chọn danh mục của C1; cài bản
-sau, chụp lại cùng bộ; cuối lượt **xoá khoản ấy qua giao diện** (xoá mềm, quy tắc 5), kiểm `demChuaGan` về 0. Màn: Danh mục (ba tab,
+`dumpsys package com.flowmoney.flowmoney | grep lastUpdateTime` **và** SHA-1 APK. **Không ghi dữ liệu thử** (chốt 3 lật khi soát —
+mục 1): màn C1 và thẻ *"Có N giao dịch chưa có danh mục"* không chụp được trên máy ảo (`demChuaGan` = 0, như đợt 2) — ghi **lỗ** vào
+biên bản; `gan_danh_muc_page`, `chon_danh_muc_gan_sheet` và `GanDanhMucNguon` do widget test / test nguồn phủ (đếm số ca khi xong).
+Thẻ gợi ý ở Thêm giao dịch chụp bằng cách gõ ghi chú có từ khoá seed (vd. `cafe`) **không Lưu**, thoát bằng Back. Màn: Danh mục (ba tab,
 nhóm) · Thêm / Sửa danh mục (khối từ khoá, công tắc Cố định) · Chọn danh mục · Thêm giao dịch có thẻ gợi ý · Sổ + chip lọc danh mục ·
 Trang chủ · Hoá đơn Thêm / Sửa (dropdown danh mục — ca canh đẳng thức 4.1) + chi tiết · Ngân sách form + *Đề xuất cân đối* nếu dữ liệu có ·
-Chi tiết mục tiêu (lịch sử tích luỹ — 8.1) · C1. Mục tiêu **0 px khác** ngoài lệch thời gian đã biết (`20_ns_chi_tiet` đợt 2), vàng
+Chi tiết mục tiêu (lịch sử tích luỹ — 8.1). Mục tiêu **0 px khác** ngoài lệch thời gian đã biết (`20_ns_chi_tiet` đợt 2), vàng
 thuần `#FFFF00` **0**. Tool `danh_muc` / `goi_y_han_muc` của Trợ lý AI không đo trên máy ảo (rơi về mẫu câu) — `cong_cu_danh_muc_test`,
 `cong_cu_goi_y_han_muc_test` phủ. Ảnh ở scratchpad, không vào repo.
 
@@ -321,8 +333,9 @@ thuần `#FFFF00` **0**. Tool `danh_muc` / `goi_y_han_muc` của Trợ lý AI kh
 - `AppNotification` ở 2 tệp giao diện + 7 tệp `core/notification` — đợt Thông báo (4/4), gắn với gạch 5.
 - `CategoryEntity` không mang `isLocalOnly` / `deletedAt` — không chỗ đổi kiểu nào đọc; mở khi có chỗ đọc thật.
 - `core/sync` đọc payload JSON bằng `List<dynamic>` — đúng vai, luật 3 cố ý không quét.
-- `GoalEntity` / `BudgetEntity` không đổi; `goal_repository.dart` còn hàm nào trả hàng Drift không — luật 3 không bắt kiểu rõ, đo ở kế hoạch
-  bằng `grep -nE "<(Goal|Transaction|Wallet)[>?]" goal_repository.dart` và ghi lại nếu còn.
+- `GoalEntity` / `BudgetEntity` không đổi; `goal_repository.dart` **không** còn hàm nào trả hàng Drift theo kiểu rõ (đo 2026-10-15:
+  `grep -nE "<(Goal|Transaction|Wallet)[>?]|\bGoal\b [a-z]|\bTransaction\b [a-z]"` = 0) — sau 8.1 interface ấy sạch Drift cả kiểu rõ
+  lẫn `dynamic`.
 - `vi_trung_ten_nguon.banGhiBiGiuTuHang` cố ý ở Drift.
 
 ## 13. Tài liệu cập nhật khi xong
