@@ -15,6 +15,8 @@ const AppLayout = () => {
   const [dismissed, setDismissed] = useState(false);
   const [mitigating, setMitigating] = useState(false);
   const [mitigatedSuccess, setMitigatedSuccess] = useState(false);
+  const [maintenanceState, setMaintenanceState] = useState(null);
+  const [restoredToast, setRestoredToast] = useState(false);
 
   const navigate = useNavigate();
   const socket = useSocket();
@@ -38,6 +40,13 @@ const AppLayout = () => {
 
   useEffect(() => {
     checkThreatStatus();
+    adminApi.getMaintenanceStatus().then((res) => {
+      const data = res?.data || res;
+      if (data && data.active) {
+        setMaintenanceState(data);
+      }
+    }).catch(() => {});
+
     const interval = setInterval(checkThreatStatus, 15000);
     return () => clearInterval(interval);
   }, []);
@@ -62,11 +71,28 @@ const AppLayout = () => {
       setTimeout(() => setBlockedToast(null), 7000);
     };
 
+    const handleMaintenanceChanged = (data) => {
+      if (data) {
+        if (data.active) {
+          setMaintenanceState(data);
+          setRestoredToast(false);
+        } else {
+          setMaintenanceState(null);
+          setRestoredToast(true);
+          setTimeout(() => setRestoredToast(false), 7000);
+        }
+      }
+    };
+
     socket.on('admin.security_alert', handleSocketAlert);
     socket.on('admin.security_blocked', handleSecurityBlocked);
+    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
+    socket.on('system.maintenance_changed', handleMaintenanceChanged);
     return () => {
       socket.off('admin.security_alert', handleSocketAlert);
       socket.off('admin.security_blocked', handleSecurityBlocked);
+      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
+      socket.off('system.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);
 
@@ -90,9 +116,44 @@ const AppLayout = () => {
   };
 
   const isAlertVisible = threatAlert && (threatAlert.recommendedAction === 'EMERGENCY_MAINTENANCE' || threatAlert.vectorScores?.resource >= 85) && !dismissed;
+  const isMaintenanceVisible = Boolean(maintenanceState?.active) && !isAlertVisible;
 
   return (
     <div className="min-h-screen relative">
+      {/* ─── GLOBAL MAINTENANCE MODE BANNER ─── */}
+      {isMaintenanceVisible && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 border-b-2 border-amber-800 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[20px] text-amber-200">
+              engineering
+            </span>
+            <div>
+              <span className="font-extrabold uppercase tracking-wide mr-1.5">
+                {t('appLayout.maintenanceBannerTitle', '⚠️ HỆ THỐNG ĐANG BẢO TRÌ:')}
+              </span>
+              <span>
+                {maintenanceState.reason || t('appLayout.maintenanceDefaultReason', 'Đang thực hiện bảo trì kỹ thuật')}
+              </span>
+              {maintenanceState.activatedBy && (
+                <span className="opacity-90 ml-1">
+                  ({t('appLayout.activatedBy', 'bởi')} <b>{maintenanceState.activatedBy}</b>)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => navigate('/broadcast')}
+              className="bg-white text-amber-800 hover:bg-amber-50 px-3 py-1 rounded-lg font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[15px]">construction</span>
+              <span>{t('appLayout.manageMaintenanceBtn', 'Quản trị bảo trì')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── GLOBAL AIOPS CRITICAL THREAT BANNER (Chỉ kích hoạt khi HẠ TẦNG quá tải nghiêm trọng) ─── */}
       {isAlertVisible && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 border-b-2 border-red-800 text-xs">
@@ -151,11 +212,33 @@ const AppLayout = () => {
       <AppHeader onMenuToggle={toggleSidebar} />
       
       {/* Main Content Canvas */}
-      <main className={`${isAlertVisible ? 'pt-[130px]' : 'pt-[88px]'} md:pl-[304px] px-page-padding pb-page-padding min-h-screen transition-all duration-200`}>
+      <main className={`${isAlertVisible || isMaintenanceVisible ? 'pt-[130px]' : 'pt-[88px]'} md:pl-[304px] px-page-padding pb-page-padding min-h-screen transition-all duration-200`}>
         <div className="max-w-[1440px] mx-auto">
           <Outlet />
         </div>
       </main>
+
+      {/* ─── REALTIME MAINTENANCE RESTORED TOAST ─── */}
+      {restoredToast && (
+        <div className="fixed bottom-6 left-6 z-50 bg-emerald-950 text-white rounded-2xl p-4 shadow-2xl border border-emerald-500/80 flex items-start gap-3 max-w-md animate-in slide-in-from-bottom-5 duration-200">
+          <div className="w-9 h-9 rounded-xl bg-emerald-600/30 text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/40">
+            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+          </div>
+          <div className="flex-1 text-xs">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-emerald-400 uppercase tracking-wider">
+                {t('appLayout.restoredToastTitle', 'Hệ Thống Đã Kết Thúc Bảo Trì')}
+              </span>
+              <button onClick={() => setRestoredToast(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </div>
+            <p className="text-emerald-100 font-medium">
+              {t('appLayout.restoredToastDesc', 'Hệ thống đã hoàn tất bảo trì và hoạt động bình thường trở lại.')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ─── REALTIME AUTO-QUARANTINE TOAST ─── */}
       {blockedToast && (

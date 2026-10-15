@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { SettingsProvider, useSettings } from '../store/settings.context';
-import { AuthProvider } from '../store/auth.context';
+import { AuthProvider, useAuthContext } from '../store/auth.context';
 import LockScreenModal from '../components/layout/LockScreenModal';
 import { STORAGE_KEYS } from '../utils/constants';
 import authApi from '../api/auth.api';
@@ -344,6 +344,60 @@ describe('Admin-web Auto-Lock & Token Wipe Security Suite (2-Tier Testing)', () 
       } finally {
         window.confirm = origConfirm;
       }
+    });
+
+    it('2.7. Đăng nhập mới thành công giải phóng hoàn toàn trạng thái khóa (Fresh Login Reset)', async () => {
+      // Giả lập trạng thái trước đó bị khóa
+      localStorage.setItem(STORAGE_KEYS.IS_LOCKED, 'true');
+      localStorage.setItem(STORAGE_KEYS.LOCKED_AT, '20:51');
+      localStorage.setItem(STORAGE_KEYS.LOCKED_USER, JSON.stringify(mockUser));
+
+      authApi.login.mockResolvedValue({
+        data: {
+          accessToken: 'fresh_access_token_123',
+          refreshToken: 'fresh_refresh_token_123',
+          user: mockUser,
+        },
+      });
+
+      const TestLoginWrapper = () => {
+        const { isLocked } = useSettings();
+        const { login } = useAuthContext();
+        return (
+          <div>
+            <div data-testid="lock-flag">{isLocked ? 'IS_LOCKED' : 'IS_UNLOCKED'}</div>
+            <button
+              data-testid="btn-login-fresh"
+              onClick={() => login({ username: 'admin_security', password: 'ValidPass@123' })}
+            >
+              Đăng Nhập Mới
+            </button>
+          </div>
+        );
+      };
+
+      render(
+        <SettingsProvider>
+          <AuthProvider>
+            <TestLoginWrapper />
+          </AuthProvider>
+        </SettingsProvider>
+      );
+
+      // Ban đầu bị khóa
+      expect(screen.getByTestId('lock-flag').textContent).toBe('IS_LOCKED');
+
+      // Thực hiện đăng nhập mới
+      await act(async () => {
+        screen.getByTestId('btn-login-fresh').click();
+      });
+
+      // Trạng thái khóa phải được giải phóng hoàn toàn
+      expect(screen.getByTestId('lock-flag').textContent).toBe('IS_UNLOCKED');
+      expect(localStorage.getItem(STORAGE_KEYS.IS_LOCKED)).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEYS.LOCKED_AT)).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEYS.LOCKED_USER)).toBeNull();
+      expect(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)).toBe('fresh_access_token_123');
     });
   });
 });

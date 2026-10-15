@@ -283,4 +283,37 @@ describe('Admin-web Users Suite — UserListPage', () => {
     expect(screen.getByText('Trần Thị B')).toBeInTheDocument();
     expect(screen.getByText('Lê Văn C')).toBeInTheDocument();
   });
+
+  it('3.8. [Tầng 1 & Tầng 2] Xóa mềm người dùng: Tài khoản không biến mất mà chuyển sang trạng thái Đã xóa trên danh sách', async () => {
+    adminApi.deleteUser.mockResolvedValueOnce({ data: { success: true } });
+
+    render(<UserListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Trần Thị B')).toBeInTheDocument();
+    });
+
+    // Tìm nút xóa của tài khoản Inactive (Trần Thị B)
+    const deleteBtn = screen.getByTitle('Xóa người dùng');
+    fireEvent.click(deleteBtn);
+
+    // Banner cảnh báo xóa mềm xuất hiện
+    expect(screen.getByText(/Xác nhận xóa người dùng:/i)).toBeInTheDocument();
+
+    // Nhấn nút xác nhận xóa trên banner
+    const confirmBtn = screen.getByRole('button', { name: /xác nhận xóa/i });
+    fireEvent.click(confirmBtn);
+
+    // Tầng 2 (System Impact): Gọi API xóa mềm tới backend
+    await waitFor(() => {
+      expect(adminApi.deleteUser).toHaveBeenCalledWith(2);
+    });
+
+    // Tầng 1 (UI Rendering & Interaction):
+    // CRITICAL: Trần Thị B KHÔNG ĐƯỢC PHÉP BIẾN MẤT khỏi giao diện!
+    expect(screen.getByText('Trần Thị B')).toBeInTheDocument();
+
+    // Trạng thái được cập nhật thành "Đã xóa" ở cả cột trạng thái và cột hành động
+    expect(screen.getAllByText('Đã xóa').length).toBeGreaterThanOrEqual(2);
+  });
 });

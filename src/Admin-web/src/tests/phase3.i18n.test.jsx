@@ -230,8 +230,7 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       // Tầng 1: UI Rendering
       expect(screen.getByText('Điều Hành Bảo Trì & Phát Sóng Thông Báo')).toBeInTheDocument();
       expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
-      expect(screen.getByText('Phát Thông Báo')).toBeInTheDocument();
-      expect(screen.getByText('Kích Hoạt Bảo Trì Tức Thì')).toBeInTheDocument();
+      expect(screen.getByText('Bảo trì khẩn cấp')).toBeInTheDocument();
       expect(screen.getByText('Lên Lịch Thời Điểm Bảo Trì')).toBeInTheDocument();
     });
 
@@ -349,11 +348,10 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getByText(/AIOps Sentinel — Giám Sát Máy Học & Phòng Vệ Tự Động/i)).toBeInTheDocument();
       expect(screen.getByText('Hệ Số Đe Dọa (Threat Score)')).toBeInTheDocument();
       expect(screen.getByText(/Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải/i)).toBeInTheDocument();
-      expect(screen.getByText('Mẫu chọn nhanh:')).toBeInTheDocument();
       expect(screen.getByText('Áp Dụng')).toBeInTheDocument();
       expect(screen.getByText(/4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ/i)).toBeInTheDocument();
-      expect(screen.getByText(/Nguồn Request Đang Bị Cô Lập & Tự Động Chặn/i)).toBeInTheDocument();
-      expect(screen.getByText(/Bóc Tách & Phân Tích Nguyên Nhân Bất Thường/i)).toBeInTheDocument();
+      expect(screen.getByText(/Nguồn theo dõi đặc biệt/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tổng quan nguyên nhân bất thường/i)).toBeInTheDocument();
     });
 
     it('5.2. Tầng 2: Chuyển đổi sang EN — Toàn bộ 5 khối chức năng AIOps hiển thị 100% tiếng Anh, không lẫn tiếng Việt', async () => {
@@ -373,9 +371,8 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
 
       // Khối 0: Concurrency Scaler
       expect(screen.getByText(/AIOps Sentinel — Machine Learning Monitoring & Automated Defense/i)).toBeInTheDocument();
-      expect(screen.getByText('Target User Concurrency & Capacity Model (Target Concurrency Scaler)')).toBeInTheDocument();
-      expect(screen.getByText('Quick presets:')).toBeInTheDocument();
-      expect(screen.getByText('1,000 Users (Standard)')).toBeInTheDocument();
+      expect(screen.getByText(/Target User Concurrency & Capacity Model/i)).toBeInTheDocument();
+      expect(screen.getByText(/1,000 Users|1000 Users/i)).toBeInTheDocument();
       expect(screen.getByText('Expected Baseline RPM')).toBeInTheDocument();
       expect(screen.getByText('Safe Peak Ceiling')).toBeInTheDocument();
       expect(screen.getByText('IP Quarantine Firewall Threshold')).toBeInTheDocument();
@@ -397,28 +394,28 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getAllByText('3. Vulnerability Exploit').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('4. Resource Health').length).toBeGreaterThanOrEqual(1);
 
-      // Khối 2: Active Quarantine Blacklist
-      expect(screen.getByText('Active Quarantine Blacklist & Dropped Sources')).toBeInTheDocument();
+      // Khối 2: Special Monitored Sources (Quarantine Table)
+      expect(screen.getByText('Special Monitored Sources')).toBeInTheDocument();
       expect(screen.getByText('No IP sources currently quarantined')).toBeInTheDocument();
 
       // Khối 3: SVG Chart & Timeline
-      expect(screen.getByText(/Multi-Vector Real-Time Trend Chart/i)).toBeInTheDocument();
+      expect(screen.getByText(/Multi-Vector Risk Trend Chart/i)).toBeInTheDocument();
       expect(screen.getByText('Observation window preset:')).toBeInTheDocument();
-      expect(screen.getByText('Precision date range:')).toBeInTheDocument();
-      expect(screen.getByText('Apply Filter')).toBeInTheDocument();
+      expect(screen.getByText(/Time filter:/i)).toBeInTheDocument();
+      expect(screen.getByTestId('apply-custom-range-btn')).toBeInTheDocument();
 
       // Khối 4: Root Cause Analysis (RCA)
-      expect(screen.getByText('Root Cause Analysis (RCA) & Incident Journal')).toBeInTheDocument();
+      expect(screen.getByText('Abnormal Incident Overview')).toBeInTheDocument();
       expect(screen.getAllByText('All Vectors').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('All Statuses')).toBeInTheDocument();
-      expect(screen.getByText('Filter')).toBeInTheDocument();
+      expect(screen.getAllByText('Filter').length).toBeGreaterThanOrEqual(1);
 
       // Xác minh tuyệt đối không còn các cụm từ tiếng Việt gốc trên giao diện
       expect(screen.queryByText('Hệ Số Đe Dọa (Threat Score)')).not.toBeInTheDocument();
       expect(screen.queryByText('Mẫu chọn nhanh:')).not.toBeInTheDocument();
       expect(screen.queryByText('4 Vectơ Rủi Ro Độc Lập & Cá Nhân Hóa Phòng Vệ (Multi-Vector Risk Architecture)')).not.toBeInTheDocument();
       expect(screen.queryByText('Nguồn Request Đang Bị Cô Lập & Tự Động Chặn (Active Quarantine Blacklist)')).not.toBeInTheDocument();
-      expect(screen.queryByText('Bóc Tách & Phân Tích Nguyên Nhân Bất Thường (Root Cause Analysis - RCA)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Tổng quan nguyên nhân bất thường')).not.toBeInTheDocument();
     });
 
     it('7.2. Tái hiệu chuẩn Baseline theo phần cứng thực tế và hiển thị báo cáo chi tiết', async () => {

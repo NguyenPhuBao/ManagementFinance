@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '../../store/auth.context';
+import { useSettingsSafe } from '../../store/settings.context';
 import { useLanguageSafe } from '../../store/language.context';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuthContext();
+  const settingsCtx = useSettingsSafe();
   const { t, currentLang, changeLanguage } = useLanguageSafe();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -14,12 +16,22 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Đảm bảo khi người dùng ở trang đăng nhập, dọn sạch mọi cờ khóa cũ tồn đọng
+  useEffect(() => {
+    if (settingsCtx?.resetLockState) {
+      settingsCtx.resetLockState();
+    }
+  }, [settingsCtx]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       await login({ username: email, password: password });
+      if (settingsCtx?.resetLockState) {
+        settingsCtx.resetLockState();
+      }
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || err.message || t('auth.login.failedToast');

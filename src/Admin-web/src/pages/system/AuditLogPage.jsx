@@ -22,11 +22,12 @@ const AuditLogPage = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [newLogsCount, setNewLogsCount] = useState(0);
 
   const socket = useSocket();
   const [socketConnected, setSocketConnected] = useState(false);
@@ -74,27 +75,49 @@ const AuditLogPage = () => {
     const onDisconnect = () => setSocketConnected(false);
 
     const handleRealtimeLog = (data) => {
-      // Chỉ tự chèn vào đầu bảng nếu đang ở Trang 1 và không có bộ lọc tìm kiếm
-      if (page === 1 && !search.trim() && !statusFilter && !dateFrom && !dateTo) {
-        const newLog = {
-          idlog: data.id || Date.now(),
-          idaccount: data.idaccount,
-          request: data.action || t('auditLogs.defaultAction'),
-          req_status: data.status || 'Pass',
-          reason: data.reason || null,
-          time_req: data.time_req || new Date().toISOString(),
-          time_res: data.time_res || new Date().toISOString(),
-          account: {
-            username: data.username || data.user || t('auditLogs.defaultUser'),
-            User: { fullname: data.user || null },
-          },
-          ip: data.ip || '127.0.0.1',
-        };
+      const incomingId = data.id || data.idlog || Date.now();
+      const timeReq = data.timeReq || data.time_req || new Date().toISOString();
+      const timeRes = data.timeRes || data.time_res || new Date().toISOString();
+      const reqStatus = data.status || data.req_status || 'Pass';
+      const actionName = data.action || data.request || t('auditLogs.defaultAction');
+      const uname = data.username || data.user || t('auditLogs.defaultUser');
+
+      const newLog = {
+        id: incomingId,
+        idlog: incomingId,
+        idaccount: data.idaccount,
+        username: uname,
+        account: {
+          username: uname,
+          User: { fullname: data.user || null },
+        },
+        request: actionName,
+        req_status: reqStatus,
+        reason: data.reason || null,
+        timeReq,
+        timeRes,
+        time_req: timeReq,
+        time_res: timeRes,
+        ip: data.ip || '127.0.0.1',
+      };
+
+      // Kiểm tra xem log mới có khớp với bộ lọc hiện tại hay không
+      const matchesStatus = !statusFilter || reqStatus === statusFilter;
+      const matchesSearch =
+        !search.trim() ||
+        actionName.toLowerCase().includes(search.trim().toLowerCase()) ||
+        uname.toLowerCase().includes(search.trim().toLowerCase());
+
+      const canPrepend = page === 1 && matchesStatus && matchesSearch && !dateFrom && !dateTo;
+
+      if (canPrepend) {
         setLogs((prev) => {
-          const filtered = prev.filter((item) => item.idlog !== newLog.idlog);
+          const filtered = prev.filter((item) => (item.id || item.idlog) !== incomingId);
           return [newLog, ...filtered].slice(0, pageSize);
         });
         setTotal((prev) => prev + 1);
+      } else {
+        setNewLogsCount((prev) => prev + 1);
       }
     };
 
@@ -107,7 +130,7 @@ const AuditLogPage = () => {
       socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleRealtimeLog);
     };
-  }, [socket, page, pageSize, search, statusFilter, dateFrom, dateTo]);
+  }, [socket, page, pageSize, search, statusFilter, dateFrom, dateTo, t]);
 
   const fmt = (dt) => {
     if (!dt) return '—';
@@ -128,6 +151,7 @@ const AuditLogPage = () => {
     setDateFrom('');
     setDateTo('');
     setPage(1);
+    setNewLogsCount(0);
   };
 
   return (
@@ -225,6 +249,31 @@ const AuditLogPage = () => {
         </div>
       </div>
 
+      {/* Real-time New Logs Alert Banner */}
+      {newLogsCount > 0 && (
+        <div
+          data-testid="new-logs-banner"
+          className="bg-primary/10 border border-primary/30 text-primary rounded-xl p-3 px-4 flex items-center justify-between shadow-2xs animate-fadeIn transition-all"
+        >
+          <div className="flex items-center gap-2.5 text-xs font-semibold">
+            <span className="material-symbols-outlined text-[20px] animate-pulse">notifications_active</span>
+            <span>{t('auditLogs.newLogsBanner', { count: newLogsCount })}</span>
+          </div>
+          <button
+            data-testid="btn-view-new-logs"
+            onClick={() => {
+              setNewLogsCount(0);
+              handleResetFilters();
+              loadLogs();
+            }}
+            className="text-xs bg-primary text-white font-medium px-3.5 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm cursor-pointer flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[15px]">autorenew</span>
+            {t('auditLogs.viewNewLogs')}
+          </button>
+        </div>
+      )}
+
       {/* Table Card */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
         <div className="overflow-x-auto min-h-[300px]">
@@ -288,10 +337,10 @@ const AuditLogPage = () => {
                         {log.reason || '—'}
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant whitespace-nowrap font-mono text-[11px]">
-                        {fmt(log.timeReq)}
+                        {fmt(log.timeReq || log.time_req)}
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant whitespace-nowrap font-mono text-[11px]">
-                        {fmt(log.timeRes)}
+                        {fmt(log.timeRes || log.time_res)}
                       </td>
                     </tr>
                   );
@@ -306,7 +355,7 @@ const AuditLogPage = () => {
           currentPage={page}
           pageSize={pageSize}
           total={total}
-          pageSizeOptions={[20, 50, 100, 200]}
+          pageSizeOptions={[10, 20, 50, 100, 200]}
           onPageChange={(p) => setPage(p)}
           onPageSizeChange={(newSize) => {
             setPageSize(newSize);

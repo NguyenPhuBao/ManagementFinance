@@ -69,12 +69,12 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     });
   });
 
-  it('4.1. Tải và hiển thị danh sách nhật ký kiểm toán (Audit Logs) đúng cấu trúc', async () => {
+  it('4.1. Tải và hiển thị danh sách nhật ký kiểm toán (Audit Logs) đúng cấu trúc và mặc định 10 dòng/trang', async () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
       expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 50 })
+        expect.objectContaining({ page: 1, limit: 10 })
       );
       expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
       expect(screen.getByText('DELETE /api/v1/admin/categories/10')).toBeInTheDocument();
@@ -140,4 +140,197 @@ describe('Admin-web System Suite — AuditLogPage', () => {
       expect(call.limit).toBeLessThanOrEqual(200);
     });
   });
+
+  it('4.5. [Tầng 2 - System Impact] Nhận Socket event hiển thị đúng thời gian thực tế, không bị gạch ngang "—"', async () => {
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    const auditHandler = socketListeners['audit_activity'];
+    expect(auditHandler).toBeDefined();
+
+    act(() => {
+      auditHandler({
+        id: 777,
+        idaccount: 'acc-777',
+        action: 'POST /api/v1/wallets/transfer',
+        status: 'Pass',
+        time_req: '2026-03-10T14:30:00.000Z',
+        time_res: '2026-03-10T14:30:00.120Z',
+        username: 'nguyen_van_a',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/wallets/transfer')).toBeInTheDocument();
+      const row = screen.getByText('POST /api/v1/wallets/transfer').closest('tr');
+      expect(row).not.toBeNull();
+      const cells = row.querySelectorAll('td');
+      // Cột 5 (Thời gian gửi) và Cột 6 (Thời gian phản hồi) KHÔNG ĐƯỢC LÀ '—'
+      expect(cells[5].textContent.trim()).not.toBe('—');
+      expect(cells[6].textContent.trim()).not.toBe('—');
+      expect(cells[5].textContent.trim().length).toBeGreaterThan(5);
+      expect(cells[6].textContent.trim().length).toBeGreaterThan(5);
+    });
+  });
+
+  it('4.6. [Tầng 2 - Deduplication] Bộ lọc trùng ID hoạt động chính xác giữa REST item (id) và Socket item (idlog)', async () => {
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    const auditHandler = socketListeners['audit_activity'];
+    // Emit lại sự kiện với cùng ID = 1 (trùng với mockLog 1 ban đầu)
+    act(() => {
+      auditHandler({
+        id: 1,
+        idaccount: 'acc-1',
+        action: 'POST /api/v1/auth/login',
+        status: 'Pass',
+        time_req: '2026-03-10T10:00:00Z',
+        time_res: '2026-03-10T10:00:00.050Z',
+        username: 'admin',
+      });
+    });
+
+    await waitFor(() => {
+      // Số lượng row hiển thị không được tăng lên thành 2 row cùng có POST /api/v1/auth/login
+      const rows = screen.getAllByText('POST /api/v1/auth/login');
+      expect(rows.length).toBe(1);
+    });
+  });
+
+  it('4.7. [Tầng 2 - Filter Matching] Khi đang lọc Rejected, log Rejected được chèn còn log Pass kích hoạt banner thông báo', async () => {
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    // Chọn bộ lọc trạng thái sang 'Rejected'
+    const statusSelect = screen.getAllByRole('combobox')[0];
+    fireEvent.change(statusSelect, { target: { value: 'Rejected' } });
+
+    const auditHandler = socketListeners['audit_activity'];
+
+    // 1. Gửi log Pass (không khớp bộ lọc Rejected hiện tại)
+    act(() => {
+      auditHandler({
+        id: 501,
+        idaccount: 'acc-501',
+        action: 'GET /api/v1/categories',
+        status: 'Pass',
+        time_req: '2026-03-10T16:00:00Z',
+        time_res: '2026-03-10T16:00:00.020Z',
+        username: 'user_pass',
+      });
+    });
+
+    // Phải hiển thị banner thông báo sự kiện mới
+    await waitFor(() => {
+      expect(screen.getByTestId('new-logs-banner')).toBeInTheDocument();
+    });
+
+    // 2. Gửi log Rejected (khớp bộ lọc Rejected)
+    act(() => {
+      auditHandler({
+        id: 502,
+        idaccount: 'acc-502',
+        action: 'POST /api/v1/admin/forbidden-action',
+        status: 'Rejected',
+        reason: 'Không đủ thẩm quyền',
+        time_req: '2026-03-10T16:05:00Z',
+        time_res: '2026-03-10T16:05:00.010Z',
+        username: 'intruder',
+      });
+    });
+
+    // Log Rejected khớp bộ lọc nên được chèn trực tiếp vào bảng
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/admin/forbidden-action')).toBeInTheDocument();
+      expect(screen.getByText('Không đủ thẩm quyền')).toBeInTheDocument();
+    });
+  });
+
+  it('4.8. [Tầng 2 - Pagination Alert] Khi ở trang > 1, sự kiện socket kích hoạt banner và nhấn nút đưa về trang 1', async () => {
+    // Mock API trả về total: 100 để có nhiều trang
+    adminApi.getAuditLogs.mockResolvedValueOnce({
+      data: {
+        items: mockLogs,
+        total: 100,
+      },
+    });
+
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    // Chuyển sang trang 2 bằng nút trang "2"
+    const page2Btn = screen.getByRole('button', { name: '2' });
+    fireEvent.click(page2Btn);
+
+    const auditHandler = socketListeners['audit_activity'];
+    act(() => {
+      auditHandler({
+        id: 888,
+        idaccount: 'acc-888',
+        action: 'POST /api/v1/transactions/create',
+        status: 'Pass',
+        time_req: '2026-03-10T17:00:00Z',
+        time_res: '2026-03-10T17:00:00.030Z',
+        username: 'user_page_2',
+      });
+    });
+
+    // Phải xuất hiện banner thông báo sự kiện mới
+    await waitFor(() => {
+      expect(screen.getByTestId('new-logs-banner')).toBeInTheDocument();
+    });
+
+    // Click nút "Xem ngay" trên banner
+    const viewBtn = screen.getByTestId('btn-view-new-logs');
+    fireEvent.click(viewBtn);
+
+    // Banner biến mất và API getAuditLogs được gọi lại cho trang 1
+    await waitFor(() => {
+      expect(screen.queryByTestId('new-logs-banner')).not.toBeInTheDocument();
+      expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1 })
+      );
+    });
+  });
+
+  it('4.8. [Tầng 2 - Pagination] Toolbar phân trang hỗ trợ tùy chọn 10/page và đổi page size thành công', async () => {
+    render(<AuditLogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+    });
+
+    const selects = screen.getAllByRole('combobox');
+    const pageSizeSelect = selects.find((sel) => sel.value === '10');
+    expect(pageSizeSelect).toBeInTheDocument();
+
+    // Kiểm tra có option 10 dòng / trang
+    const options = Array.from(pageSizeSelect.options).map((opt) => opt.value);
+    expect(options).toContain('10');
+    expect(options).toContain('20');
+    expect(options).toContain('50');
+
+    // Thao tác đổi page size sang 20
+    fireEvent.change(pageSizeSelect, { target: { value: '20' } });
+
+    await waitFor(() => {
+      expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 20 })
+      );
+    });
+  });
 });
+

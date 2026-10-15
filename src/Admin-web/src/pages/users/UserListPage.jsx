@@ -82,6 +82,7 @@ const UserListPage = () => {
     active: users.filter((u) => u.status === 'active').length,
     inactive: users.filter((u) => u.status === 'inactive').length,
     pendingDelete: users.filter((u) => u.status === 'pendingdelete').length,
+    deleted: users.filter((u) => u.status === 'deleted').length,
   };
 
   useEffect(() => {
@@ -264,7 +265,20 @@ const UserListPage = () => {
     try {
       await adminApi.deleteUser(userToDelete.id);
       const userName = userToDelete.name || userToDelete.email || t('dashboard.recentActivities.defaultUser');
-      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userToDelete.id
+            ? { ...u, status: 'deleted', delete_at: new Date().toISOString() }
+            : u
+        )
+      );
+      // Đảm bảo bộ lọc cho phép hiển thị bản ghi đã xóa trên màn hình
+      setFilter((prev) => {
+        if (!prev.statuses?.includes('deleted')) {
+          return { ...prev, statuses: [...ALL_STATUS_KEYS] };
+        }
+        return prev;
+      });
       setUserToDelete(null);
       toggleModal('deleteAlert', false);
       if (alert) alert.success(t('users.alerts.deletedSuccess', { name: userName }));
@@ -476,6 +490,7 @@ const UserListPage = () => {
               { id: 'active', label: t('users.tabs.active'), icon: 'check_circle', count: stats.active },
               { id: 'inactive', label: t('users.tabs.inactive'), icon: 'block', count: stats.inactive },
               { id: 'pendingdelete', label: t('users.tabs.pendingDelete'), icon: 'schedule', count: stats.pendingDelete },
+              { id: 'deleted', label: t('users.tabs.deleted') || 'Đã Xóa', icon: 'delete_sweep', count: stats.deleted },
             ].map((tab) => {
               const currentStatuses = filter.statuses || [];
               const isActive =

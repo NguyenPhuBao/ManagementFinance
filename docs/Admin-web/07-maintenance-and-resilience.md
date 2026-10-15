@@ -11,7 +11,11 @@
 
 Chức năng **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp** là công tắc ngắt mạch trung tâm (Circuit Breaker) của toàn bộ nền tảng. Khi hệ thống cần nâng cấp phiên bản, thực hiện migrate cơ sở dữ liệu lớn hoặc đối mặt với sự cố an ninh nghiêm trọng, chức năng này cho phép quản trị viên cách ly an toàn máy chủ khỏi lưu lượng người dùng di động.
 
-Đặc biệt, hệ thống triển khai **Quy Tắc Cốt Lõi Của PO**: Khi kích hoạt Bảo trì Khẩn Cấp, hệ thống sẽ **tự động hủy bỏ và xóa sạch lịch bảo trì đã hẹn trước**, chuyển đổi toàn bộ nguồn lực sang chế độ phản ứng thảm họa tức thì.
+Đặc biệt, hệ thống triển khai **Quy Tắc Quản Trị Bảo Trì Chuẩn Hóa**:
+1. **Chặn kích hoạt lặp:** Khi hệ thống đã đang ở trạng thái bảo trì (`active === true`), tuyệt đối **không cho phép kích hoạt thêm phiên bảo trì khẩn cấp** đè lên. Quản trị viên phải tắt phiên hiện tại trước khi bắt đầu phiên mới.
+2. **Bảo toàn lịch hẹn tương lai:** Kích hoạt bảo trì khẩn cấp **không hủy bỏ toàn bộ các lịch bảo trì đã cài đặt trước**. Chỉ các lịch bảo trì bị vướng vào trong suốt thời gian bảo trì khẩn cấp (`scheduled.start_time <= emergency.end_time`) mới bị hủy bỏ tự động. Các lịch xa hơn trong tương lai được bảo toàn nguyên vẹn.
+3. **Lưu trữ CSDL & Vòng đời 4 trạng thái:** Mọi lịch bảo trì đều được lưu trực tiếp vào CSDL PostgreSQL (`maintenance_history`) ngay khi tạo lịch với trạng thái `SCHEDULED`, sau đó chuyển tiếp qua `ONGOING`, `COMPLETED` hoặc `CANCELLED`.
+4. **Giao diện tinh gọn 1 Form:** Loại bỏ box bảo trì khẩn cấp riêng biệt và tag thừa; tích hợp Checkbox "Bảo trì khẩn cấp" trực tiếp vào form lập lịch, tự động đổi nút bấm sang chế độ khẩn cấp (màu đỏ) kèm popup modal xác nhận.
 
 ---
 
@@ -19,19 +23,23 @@ Chức năng **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp** l
 
 ```mermaid
 graph TD
-    subgraph "Admin-web Điều Hành"
-        A1[Admin Bật Bảo Trì Thông Thường]
-        A2[Admin Bật Bảo Trì Khẩn Cấp]
-        A3[Admin Lên Lịch Bảo Trì Hẹn Giờ]
-        A4[Admin Hủy Lịch Bảo Trì]
+    subgraph "Admin-web Điều Hành (BroadcastPage.jsx)"
+        A1[Form Điều Hành Duy Nhất]
+        A2[Tick Checkbox: Bảo trì khẩn cấp]
+        A3[Nút bấm đổi sang: Bảo trì khẩn cấp - Đỏ]
+        A4[Popup Modal Xác Nhận Kích Hoạt]
+        A5[Lên Lịch Bảo Trì Bình Thường - Xanh]
     end
 
     subgraph "Động Cơ Bảo Trì Backend (maintenance.manager.js)"
+        B0{Hệ thống đang bảo trì active?}
+        B0_ERR[Ném lỗi 400: Không cho kích hoạt đè]
         B1{Có lịch hẹn trước?}
-        B2[Xóa sạch lịch hẹn & Hủy Timer]
-        B3[Cập nhật trạng thái In-Memory & Redis]
-        B4[Khởi tạo Timer đếm ngược delayMs]
-        B5[Fast-Lane Guard: req.isAdmin = true]
+        B2{Lịch hẹn vướng vào thời gian khẩn cấp?}
+        B2_YES[Hủy lịch bị vướng & set CANCELLED trong CSDL]
+        B2_NO[Giữ nguyên lịch hẹn tương lai]
+        B3[Cập nhật trạng thái In-Memory, Redis & CSDL ONGOING]
+        B4[Lưu CSDL SCHEDULED & Hẹn Timer delayMs]
     end
 
     subgraph "Socket.io Hub"
@@ -39,32 +47,33 @@ graph TD
         S2[Phát admin.maintenance_changed tới admin_room]
     end
 
-    subgraph "Tác Động Tới Mobile App (Client-app)"
-        M1[Bảo trì thông thường: Chặn HTTP 503 im lặng]
-        M2[Bảo trì khẩn cấp: Modal Đỏ toàn màn hình]
-    end
-
-    A1 -->|isEmergency = false| B3 --> S2
-    A3 --> B4 --> S2
-    A4 --> B2 --> S2
-
-    A2 -->|isEmergency = true| B1
-    B1 -- "Có lịch" --> B2 --> B3
+    A2 --> A3 --> A4 --> B0
+    B0 -- "Đang active" --> B0_ERR
+    B0 -- "Chưa active" --> B1
+    B1 -- "Có lịch" --> B2
+    B2 -- "start_time <= end_time" --> B2_YES --> B3
+    B2 -- "start_time > end_time" --> B2_NO --> B3
     B1 -- "Không có" --> B3
     B3 --> S1 & S2
-    
-    B3 --> M1
-    S1 --> M2
+
+    A5 --> B4 --> S2
 ```
 
-### 2.1. Hai Loại Bảo Trì Rõ Ràng (Dual Categorized Maintenance)
-1. **Bảo trì Khẩn Cấp (Emergency Maintenance - Luôn là chế độ mặc định của Bảo trì tức thì):**
-   - **Giao diện:** Nút điều khiển luôn có màu ĐỎ (`bg-red-600`), ghi rõ **"Bật Bảo Trì Khẩn Cấp"** (khi hệ thống bình thường) hoặc **"Tắt Bảo Trì Khẩn Cấp"** (khi đang bảo trì).
-   - **Tối ưu UX:** Đã loại bỏ hoàn toàn ô checkbox "Bảo trì khẩn cấp" vì bị thừa, do toàn bộ thao tác bảo trì tức thì luôn được hiểu là bảo trì khẩn cấp.
-   - **Tác động:** Luôn luôn cắt tải mọi người dùng di động (mã **HTTP 503 Service Unavailable**), tự động hủy toàn bộ lịch bảo trì hẹn trước, và phát sóng còi báo động đỏ real-time qua Socket.IO tới toàn bộ Client-app.
+### 2.1. Hai Loại Bảo Trì & Vòng Đời Trạng Thái CSDL
+1. **Bảo trì Khẩn Cấp (Emergency Maintenance):**
+   - Kích hoạt thông qua Checkbox "Bảo trì khẩn cấp" trên form điều hành.
+   - Nút hành động đổi thành màu ĐỎ với nhãn **"Bảo trì khẩn cấp"**, yêu cầu xác nhận qua Popup Modal trước khi gửi lệnh.
+   - Nếu hệ thống đang trong phiên bảo trì, Backend từ chối kích hoạt lần 2 nhằm ngăn chặn xung đột thời gian và ghi đè trạng thái.
+   - Chỉ hủy những lịch bảo trì tương lai bị giao thoa (vướng) vào khoảng thời gian khẩn cấp; giữ nguyên các lịch bảo trì sau khoảng thời gian đó.
 2. **Bảo trì Theo Lịch (Scheduled Maintenance):**
-   - Áp dụng khi quản trị viên cần hẹn giờ trước thời điểm bắt đầu và thời điểm kết thúc dự kiến (ví dụ nâng cấp hạ tầng lúc 2h sáng).
-   - Tự động phát sóng thông báo trước cho người dùng khi đến giờ hẹn.
+   - Được lưu vào bảng `maintenance_history` của CSDL PostgreSQL ngay khi tạo với trạng thái ban đầu là `SCHEDULED`.
+   - Vòng đời trạng thái:
+     - `SCHEDULED`: Đã lên lịch, lưu CSDL, đang đếm ngược timer.
+     - `ONGOING`: Đến giờ hẹn, tự động kích hoạt bảo trì, cắt tải Client và gửi cảnh báo.
+     - `COMPLETED`: Kết thúc bảo trì đúng dự kiến hoặc được tắt thủ công.
+     - `CANCELLED`: Bị hủy chủ động bởi Admin hoặc bị hủy do vướng vào phiên khẩn cấp.
+3. **Phân trang Bảng Lịch Sử Bảo Trì:**
+   - Mặc định phân trang 5 bản ghi/trang mỗi khi tải trang (hỗ trợ tùy chọn linh hoạt [5, 10, 20, 50]).
 
 ---
 
@@ -120,7 +129,13 @@ graph TD
      - `Thời điểm bắt đầu` & `Thời điểm kết thúc`: Chuyển đổi theo định dạng ngày giờ Việt Nam.
      - `Thời lượng`: Đo lường chi tiết phiên bảo trì (Ví dụ: `25 phút`, `1 giờ 15 phút`, hoặc `Đang diễn ra...`).
      - `Trạng thái`: Badge màu (Đang diễn ra, Đã hoàn thành, Đã hủy).
-   - **Tính năng mở rộng:** Bộ lọc theo Loại (Tất cả / Khẩn cấp / Theo lịch), Bộ lọc Trạng thái (Tất cả / Đang diễn ra / Đã hoàn thành / Đã hủy), Phân trang và Nút làm mới dữ liệu.
+   - **Tính năng mở rộng:** Bộ lọc theo Loại (Tất cả / Khẩn cấp / Theo lịch), Bộ lọc Trạng thái (Tất cả / Đang diễn ra / Đã hoàn thành / Đã hủy), và Nút làm mới dữ liệu.
+    - **Bộ Phân Trang Chuẩn (`Pagination.jsx`):** Bổ sung bộ phân trang hoàn chỉnh gồm hiển thị dải phần tử (`1 - 10 of {total}`), lựa chọn số dòng hiển thị (5, 10, 20, 50 phiên/trang), điều hướng Trước/Sau và chọn trang.
+5. **Tối Giản Giao Diện:** Đã loại bỏ hoàn toàn các khối ghi chú màu đỏ (Nguyên tắc bảo trì) và khối quy tắc màu vàng (PO Policy) rườm rà để giao diện tinh gọn, tập trung vào điều hành.
+6. **Cơ Chế Thông Báo & Ngăn Chặn Thao Tác Toàn Hệ Thống:**
+   - **Khi Bắt Đầu Bảo Trì:** Backend tự động gửi Broadcast khẩn cấp (`⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP`) và Socket.IO; Admin-web hiển thị Global Banner màu cam/đỏ trên toàn bộ trang.
+   - **Khi Kết Thúc Bảo Trì:** Backend tự động phát sóng thông báo khôi phục (`✅ HỆ THỐNG ĐÃ KẾT THÚC BẢO TRÌ`) qua NotificationService và Socket.IO; Admin-web hiển thị Toast xanh thông báo hệ thống đã trở lại hoạt động bình thường.
+   - **Ngăn Chặn Xung Đột Dữ Liệu:** Client-app bị chặn 100% request ghi/đọc (HTTP 503 `MAINTENANCE_MODE`); trên Admin-web, form và các nút thao tác lên lịch mới bị vô hiệu hóa hoàn toàn trong suốt phiên bảo trì.
 
 ---
 

@@ -76,10 +76,10 @@ graph TD
 1. Khi Admin tạo danh mục `"Tiền Điện"`, Backend kiểm tra trong các danh mục hệ thống đang active (`delete_at: null`). Nếu đã có danh mục cùng tên (so sánh không phân biệt hoa thường - `mode: 'insensitive'`), hệ thống báo lỗi HTTP 400.
 2. Nếu danh mục `"Tiền Điện"` đã từng bị xóa mềm trong quá khứ (`delete_at: { not: null }`), hệ thống **tự động phục hồi bản ghi cũ**, cập nhật lại `delete_at = null`, gán icon và từ khóa mới. Cơ chế này giúp giữ nguyên khóa chính `idcategory`, bảo toàn tính toàn vẹn cho các giao dịch lịch sử trước đây từng liên kết với danh mục này.
 
-### 2.3. Phòng Vệ Chiều Sâu 3 Tầng (Defense-in-Depth Privacy)
-- **Tầng 1 (Query Level):** Mọi câu lệnh truy vấn từ Admin Repository luôn bắt buộc có điều kiện `where: { is_default: true, delete_at: null }`.
+### 2.3. Phòng Vệ Chiều Sâu 3 Tầng (Defense-in-Depth Privacy) & Cơ Chế Hiển Thị Xóa Mềm
+- **Tầng 1 (Query Level & Soft-Delete Visibility):** Mọi câu lệnh truy vấn từ Admin Repository luôn bắt buộc có điều kiện `where: { is_default: true }` để bảo vệ quyền riêng tư người dùng. Đặc biệt, hệ thống giữ lại các danh mục hệ thống đã bị xóa mềm (`delete_at !== null`) để hiển thị trên màn hình quản lý kèm nhãn trạng thái `"Đã xóa"` (thay vì làm biến mất khỏi giao diện), giúp quản trị viên theo dõi toàn diện lịch sử danh mục.
 - **Tầng 2 (Masking Fallback):** Nếu vì lỗi hệ thống hoặc dữ liệu bất thường mà một danh mục của người dùng lọt vào kết quả, service tự động che tên và từ khóa thành `***` trước khi gửi ra response.
-- **Tầng 3 (Mutation Guard):** Tại API Update và Delete, service kiểm tra cờ `if (!currentCat.is_default)`. Nếu phát hiện là danh mục cá nhân của người dùng, server lập tức ném lỗi HTTP 403: *"Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng"*.
+- **Tầng 3 (Mutation Guard):** Tại API Update và Delete, service kiểm tra cờ `if (!currentCat.is_default)`. Nếu phát hiện là danh mục cá nhân của người dùng, server lập tức ném lỗi HTTP 403: *"Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng"*. Với danh mục đã bị xóa mềm, hệ thống vô hiệu hóa các nút Sửa/Xóa trên giao diện và chặn can thiệp tiếp.
 
 ---
 

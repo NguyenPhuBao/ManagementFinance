@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../modules/admin/admin.controller');
 const aiopsController = require('../modules/aiops/aiops.controller');
+const paymentController = require('../modules/payment/payment.controller');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
@@ -18,8 +19,15 @@ router.post('/aiops/incidents/clear', aiopsController.clearIncidents);
 router.post('/aiops/calibrate', aiopsController.calibrate);
 router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
+router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics);
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
 router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
+router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
+router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
+router.post('/aiops/quarantine/temporary-ip', aiopsController.temporaryBlockIp);
+router.post('/aiops/quarantine/unblock-account', aiopsController.unblockAccount);
+router.post('/aiops/quarantine/permanent-account', aiopsController.permanentBanAccount);
+router.post('/aiops/quarantine/temporary-account', aiopsController.temporaryBlockAccount);
 
 // Dashboard — thống kê
 router.get('/totaluser', adminController.totalUsers);
@@ -53,4 +61,13 @@ router.delete('/deletecategory/:id', adminController.deleteCategory);
 router.get('/permissions', adminController.getPermissions);
 router.put('/permissions', adminController.updatePermissions);
 
+// Quản lý & Theo dõi lịch sử thanh toán (Payment History & Orders)
+router.get('/payments/orders', paymentController.getOrdersForAdmin);
+router.get('/payments/stats', paymentController.getPaymentStatsForAdmin);
+router.get('/payments/orders/:id', paymentController.getOrderDetailForAdmin);
+router.get('/payments/payos-qr', paymentController.getPayosQr);
+router.post('/payments/sample', paymentController.createSampleOrder);
+router.delete('/payments/sample', paymentController.deleteSampleOrders);
+
 module.exports = router;
+

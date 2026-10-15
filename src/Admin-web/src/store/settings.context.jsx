@@ -211,6 +211,19 @@ export const SettingsProvider = ({ children }) => {
     return true;
   }, []);
 
+  // 5.1. Giải phóng và reset sạch sẽ trạng thái khóa (Dùng khi Fresh Login hoặc Logout)
+  const resetLockState = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.IS_LOCKED);
+      localStorage.removeItem(STORAGE_KEYS.LOCKED_AT);
+      localStorage.removeItem(STORAGE_KEYS.LOCKED_USER);
+      localStorage.setItem(STORAGE_KEYS.LAST_ACTIVE_AT, String(Date.now()));
+      setIsLocked(false);
+      setLockedAt(null);
+      leftAtRef.current = null;
+    } catch (_) {}
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
@@ -252,10 +265,12 @@ export const SettingsProvider = ({ children }) => {
         } catch (_) {}
       } else {
         // Người dùng quay lại website: kiểm tra xem đã rời đi bao lâu
+        // CHỈ KHÓA KHI ĐANG CÓ PHIÊN ĐĂNG NHẬP (hasTokens)
+        const hasTokens = Boolean(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) || localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN));
         const lastActive = Number(localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_AT) || leftAtRef.current || now);
         const awayDuration = now - lastActive;
         leftAtRef.current = null;
-        if (awayDuration >= lockThresholdMs && !isLocked) {
+        if (hasTokens && awayDuration >= lockThresholdMs && !isLocked) {
           lockScreen();
         } else {
           recordUserActivity();
@@ -266,6 +281,10 @@ export const SettingsProvider = ({ children }) => {
     // Định kỳ kiểm tra trong trường hợp tab đang ở background hoặc nhàn rỗi quá ngưỡng
     const checkInterval = setInterval(() => {
       if (isLocked) return;
+      // CHỈ KHÓA KHI ĐANG CÓ PHIÊN ĐĂNG NHẬP (hasTokens)
+      const hasTokens = Boolean(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) || localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN));
+      if (!hasTokens) return;
+
       const lastActive = Number(localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_AT) || Date.now());
       const awayDuration = Date.now() - lastActive;
       if (awayDuration >= lockThresholdMs) {
@@ -373,6 +392,7 @@ export const SettingsProvider = ({ children }) => {
     lockedAt,
     lockScreen,
     unlockScreen,
+    resetLockState,
     pingLatency,
     isPinging,
     testPingLatency,
@@ -394,6 +414,7 @@ export const useSettings = () => {
       lockedAt: null,
       lockScreen: () => {},
       unlockScreen: async () => true,
+      resetLockState: () => {},
       pingLatency: null,
       isPinging: false,
       testPingLatency: async () => 0,

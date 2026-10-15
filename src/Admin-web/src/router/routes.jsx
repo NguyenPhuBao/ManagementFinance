@@ -8,6 +8,7 @@ import AuditLogPage from '../pages/system/AuditLogPage';
 import BroadcastPage from '../pages/system/BroadcastPage';
 import AIOpsPage from '../pages/system/AIOpsPage';
 import PermissionManagementPage from '../pages/system/PermissionManagementPage';
+import PaymentHistoryPage from '../pages/payments/PaymentHistoryPage';
 
 const routes = [
   // Public routes
@@ -41,6 +42,10 @@ const routes = [
   {
     path: '/permissions',
     element: <PermissionManagementPage />,
+  },
+  {
+    path: '/payments',
+    element: <PaymentHistoryPage />,
   },
   {
     path: '/audit-logs',

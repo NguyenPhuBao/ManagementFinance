@@ -16,42 +16,66 @@ const { initSocket } = require('./core/socket');
 
 async function bootstrap() {
   try {
-    // 1. Verify PostgreSQL connection
-    logger.info('Connecting to PostgreSQL...');
-    await verifyConnection();
-
-    // 2. Verify Redis connection (non-blocking)
-    logger.info('Connecting to Redis...');
-    const redisOk = await verifyRedisConnection();
-    if (redisOk) {
-      // 2b. Start workers (BullMQ) — chỉ khi Redis available
-      logger.info('Starting AI Worker...');
-      require('./workers/ai.worker');
-
-      logger.info('Starting Notification Worker...');
-      require('./workers/notification.worker');
-    } else {
-      logger.warn('Redis unavailable — running without cache/queues');
-    }
-
-
-    // 3. Create HTTP Server & Initialize Socket.io
+    // 1. Tạo HTTP Server & Initialize Socket.io
     const httpServer = http.createServer(app);
     initSocket(httpServer);
 
-    // 3b. Initialize Notification Service Listeners
-    const notificationService = require('./modules/notification/notification.service');
-    await notificationService.initNotificationListeners();
+    // 2. Mở cổng HTTP Server NGAY LẬP TỨC để Render / Cloud Port Scanner phát hiện thành công trong < 100ms
+    const port = config.port;
+    const host = config.host || '0.0.0.0';
+    await new Promise((resolve, reject) => {
+      httpServer.listen(port, host, () => {
+        logger.info(`WealthCommand Backend running at http://${host}:${port}`);
+        logger.info(`Environment: ${config.env}`);
+        logger.info(`Database: PersonFinance @ PostgreSQL`);
+        logger.info(`Health check: http://${host}:${port}/health`);
+        resolve();
+      });
+      httpServer.on('error', reject);
+    });
 
-    // 3c. Initialize Scheduler Service (Daily Countdown at 0h00 UTC+7)
+    // 3. Kết nối PostgreSQL (Supabase) bất đồng bộ và kiểm tra kết nối
+    logger.info('Connecting to PostgreSQL...');
+    verifyConnection()
+      .then(() => logger.info('PostgreSQL connected successfully'))
+      .catch((err) => logger.error('PostgreSQL connection failed at startup', { error: err.message }));
+
+    // 4. Kết nối Redis (non-blocking) và khởi động Worker nếu khả dụng
+    logger.info('Connecting to Redis...');
+    verifyRedisConnection()
+      .then((redisOk) => {
+        if (redisOk) {
+          logger.info('Starting AI Worker...');
+          require('./workers/ai.worker');
+
+          logger.info('Starting Notification Worker...');
+          require('./workers/notification.worker');
+        } else {
+          logger.warn('Redis unavailable — running without cache/queues');
+        }
+      })
+      .catch((err) => logger.warn('Redis check failed', { error: err.message }));
+
+    // 5. Initialize Notification Service Listeners
+    const notificationService = require('./modules/notification/notification.service');
+    notificationService.initNotificationListeners().catch((err) => logger.warn('Notification listeners init error', { error: err.message }));
+
+    // 6. Initialize Scheduler Service (Daily Countdown at 0h00 UTC+7)
     const { initScheduler } = require('./core/scheduler.service');
     initScheduler();
 
-    // 3d. Start AIOps Sentinel Machine Learning Monitoring Engine (10s cycle)
+    // 7. Start AIOps Sentinel Machine Learning Monitoring Engine (10s cycle)
     const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
     defaultAIOpsService.start();
 
-    // 3e. Khởi động System Metrics Streamer (3s/lần) phát nhịp tim tới admin_room
+    // 7b. Khởi tạo 3 bảng CSDL và Hydrate dữ liệu phong tỏa còn hiệu lực vào RAM Cache (Zero-loss on restart)
+    const { defaultAIOpsQuarantine } = require('./modules/aiops/aiops.quarantine');
+    const { defaultAIOpsQuarantineRepository } = require('./modules/aiops/aiops.quarantine.repository');
+    defaultAIOpsQuarantineRepository.initTables()
+      .then(() => defaultAIOpsQuarantine.hydrateFromDatabase())
+      .catch((err) => logger.warn('[AIOps] Không thể nạp phong tỏa từ DB:', err.message));
+
+    // 8. Khởi động System Metrics Streamer (3s/lần) phát nhịp tim tới admin_room
     const { emitSystemMetricsStream } = require('./core/socket');
     const { defaultEventLoopMonitor } = require('./core/resilience/event-loop-monitor');
     const { defaultDbBulkhead } = require('./core/resilience/db-bulkhead');
@@ -106,14 +130,6 @@ async function bootstrap() {
       }
     }, 3000);
     metricsInterval.unref();
-
-    // 4. Start listening
-    httpServer.listen(config.port, config.host, () => {
-      logger.info(`WealthCommand Backend running at http://${config.host}:${config.port}`);
-      logger.info(`Environment: ${config.env}`);
-      logger.info(`Database: PersonFinance @ PostgreSQL`);
-      logger.info(`Health check: http://localhost:${config.port}/health`);
-    });
   } catch (error) {
     logger.error('Failed to bootstrap application', { error: error.message });
     process.exit(1);

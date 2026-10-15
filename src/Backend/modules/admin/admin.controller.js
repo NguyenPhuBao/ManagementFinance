@@ -188,12 +188,16 @@ const adminController = {
     }
 
     // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp)
-    const emergencyFlag = isEmergency !== undefined ? Boolean(isEmergency) : true;
-    const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency: emergencyFlag });
-    const msg = active
-      ? 'Đã kích hoạt chế độ bảo trì khẩn cấp'
-      : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
-    return ResponseHandler.success(res, status, msg);
+    try {
+      const emergencyFlag = isEmergency !== undefined ? Boolean(isEmergency) : true;
+      const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency: emergencyFlag });
+      const msg = active
+        ? 'Đã kích hoạt chế độ bảo trì khẩn cấp'
+        : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
+      return ResponseHandler.success(res, status, msg);
+    } catch (err) {
+      return ResponseHandler.badRequest(res, err.message);
+    }
   },
 
   cancelScheduledMaintenance(req, res) {

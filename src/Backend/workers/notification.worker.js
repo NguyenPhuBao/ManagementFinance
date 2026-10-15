@@ -50,6 +50,8 @@ async function processNotificationJob(job, dependencies = {}) {
   }
 }
 
+const config = require('../config');
+
 /**
  * Factory khởi tạo BullMQ Worker
  */
@@ -62,6 +64,9 @@ function createNotificationWorker(connection) {
     {
       connection,
       concurrency: 5,
+      stalledInterval: config.queue?.stalledInterval || 300000,
+      drainDelay: config.queue?.drainDelay || 5,
+      lockDuration: config.queue?.lockDuration || 60000,
       limiter: {
         max: 30,
         duration: 60000,
@@ -75,6 +80,19 @@ function createNotificationWorker(connection) {
 
   worker.on('failed', (job, err) => {
     logger.error(`[Notification Worker] Job ${job?.id} failed`, { error: err.message });
+  });
+
+  worker.on('error', (err) => {
+    if (err?.message?.includes('max requests limit exceeded')) {
+      logger.error('[Notification Worker] Redis Upstash quota limit exceeded (500k reached). Pausing worker to avoid loop.', {
+        error: err.message,
+      });
+      try {
+        worker.pause(true);
+      } catch (_) {}
+    } else {
+      logger.error('[Notification Worker] Worker connection error', { error: err.message });
+    }
   });
 
   logger.info('Notification Worker started — listening on queue: send-notification');

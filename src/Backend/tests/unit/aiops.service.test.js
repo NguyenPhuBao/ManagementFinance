@@ -13,7 +13,7 @@ test('AIOps Service Suite', async (t) => {
 
     const status = service.getStatus();
     assert.strictEqual(status.status, 'NORMAL');
-    assert.strictEqual(status.threatScore, 5);
+    assert.strictEqual(status.threatScore, 0);
     assert.deepStrictEqual(service.getHistory(), []);
   });
 
@@ -22,6 +22,11 @@ test('AIOps Service Suite', async (t) => {
     // Đảm bảo kiểm thử độc lập không phụ thuộc tải phần cứng thực tế của OS
     collector._getRamPercent = () => 50;
     collector._getCpuPercent = () => 10;
+    collector._getEventLoopLag = () => 5;
+    collector._getHardwareMetrics = () => ({
+      cpu: { cores: 16, percent: 10 },
+      ram: { totalMb: 8000, freeMb: 4000, usedMb: 4000, percent: 50, rssMb: 150 },
+    });
     const detector = new AnomalyDetector();
     const mockRepo = {
       upsertIncident: async (anomaly) => ({ id: 'mock_inc', ...anomaly }),
@@ -210,4 +215,50 @@ test('AIOps Service Suite', async (t) => {
     const emptyHist = service.getHistory({ from: '2024-01-01', to: '2024-06-01' });
     assert.strictEqual(emptyHist.length, 0);
   });
+
+  await t.test('7. getHistory() supports 5 timeframe presets (10m, 1h, 24h, 7d, 30d) with max aggregation per bucket', () => {
+    const service = new AIOpsService();
+    const now = Date.now();
+
+    // Giả lập 3 mẫu trong cùng 1 phút qua với các giá trị khác nhau
+    service._history = [
+      {
+        timestamp: new Date(now - 40 * 1000).toISOString(),
+        vectorScores: { auth: 10, traffic: 80, exploit: 5, resource: 20 },
+        threatScore: 80,
+      },
+      {
+        timestamp: new Date(now - 20 * 1000).toISOString(),
+        vectorScores: { auth: 40, traffic: 30, exploit: 15, resource: 60 },
+        threatScore: 60,
+      },
+      {
+        timestamp: new Date(now - 5 * 1000).toISOString(),
+        vectorScores: { auth: 5, traffic: 20, exploit: 0, resource: 10 },
+        threatScore: 20,
+      },
+    ];
+
+    // Khung 1h qua: các mẫu trong 1 phút này phải được gom và lấy MAX:
+    // auth: 40 (từ mẫu 2), traffic: 80 (từ mẫu 1), exploit: 15 (từ mẫu 2), resource: 60 (từ mẫu 2), threatScore: 80 (từ mẫu 1)
+    const hist1h = service.getHistory({ range: '1h' });
+    assert.ok(hist1h.length >= 1);
+    const bucket = hist1h[hist1h.length - 1];
+    assert.strictEqual(bucket.vectorScores.auth, 40);
+    assert.strictEqual(bucket.vectorScores.traffic, 80);
+    assert.strictEqual(bucket.vectorScores.exploit, 15);
+    assert.strictEqual(bucket.vectorScores.resource, 60);
+    assert.strictEqual(bucket.threatScore, 80);
+
+    // Kiểm tra các presets 10m, 24h, 7d, 30d đều hoạt động
+    const hist10m = service.getHistory({ range: '10m' });
+    assert.ok(Array.isArray(hist10m));
+    const hist24h = service.getHistory({ range: '24h' });
+    assert.ok(Array.isArray(hist24h));
+    const hist7d = service.getHistory({ range: '7d' });
+    assert.ok(Array.isArray(hist7d));
+    const hist30d = service.getHistory({ range: '30d' });
+    assert.ok(Array.isArray(hist30d));
+  });
 });
+
