@@ -1935,6 +1935,13 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
    đạt; logcat 0 dòng `FATAL` / `is not a subtype`. ⚠️ Hai lỗ còn mở: *Đề xuất cân đối ngân sách* (5g) không hiện (dữ liệu không đủ điều kiện) và C1 / thẻ *"Có N giao dịch chưa có danh mục"*
    (`demChuaGan` = 0, cấm ghi dữ liệu; chốt *ghi khoản thử* đã lật vì `chuanBiLuu` chặn lưu thiếu danh mục) — C1 phủ bằng `gan_danh_muc_page_test` (11 ca), `gan_danh_muc_nguon_test` (5), `gan_danh_muc_nguon_lop_test` (2).
    Ảnh ở scratchpad, không vào repo. Còn **một đợt**: Thông báo.
+   📝 **2026-10-15 — đợt 4/4 (Thông báo) + gạch 5 + gạch 6: spec duyệt** `specs/2026-10-15-entity-thong-bao-application-design.md` (`b8f17510` +
+   `2c24c990`) + kế hoạch 8 task + Task 0 `plans/2026-10-15-entity-thong-bao-application.md` (gitignore), **chưa thi công** (người dùng chọn bàn giao;
+   lối thi công chưa chốt). Chốt trong brainstorm: Entity và gạch 5 một spec (4/9 tệp chờ chỉ dựng Companion → về `application/` là hợp lệ, chỉ 5 tệp
+   cần Entity); `NotificationEntity` 14 trường (bỏ cột chết `osScheduledId`); `ThongBaoRepository` + Impl tách tệp thay `ThongBaoNguon`; `chenLai(Entity)`
+   thay `insertIfAbsent(Companion)`; record `SuKienNhatKy` cho `deXuatThongBao`; quét 27 thêm `AppNotificationEvent`, luật 3 quét `application/`, luật 4
+   (interface repository không import Drift), `mauKieu` bắt `is X &&`. Đo 2026-10-15: `core/notification` 35 tệp / 6.869 dòng, 26 tệp lib + 22 test ngoài
+   mảng import; `ThongBaoNguon` 10 lib + 7 test (từ trọn); ratchet quét 25 dự kiến 43 → 18.
 4. **43 dòng hạ tầng `core` import `features/`** (đo lại 2026-10-15 sau đợt Danh mục: TOTAL **185**, ratchet **43 giữ**, không đổi; đo 2026-10-14 sau đợt Giao dịch + Ví bằng `grep -rcE "^(import|export) .*features/" lib/core` = 185; trừ điểm ghép 142 — DI
    87 · router 53 · `chay_nen` 2; ảnh chụp sau đợt Hoá đơn là 182 = 142 + 40; đo 2026-10-10 là 175 = 138 + 37, trước đợt dọn vị trí tệp 172 = 136 + 36)): `notification_rules` 12
    · `sync_engine` 7 · `notification_scanner` 7 · `lich_nen` 4 · `de_xuat_thong_bao_nguon` 1 · `sync_payload_normalizer` 2 · `noi_bo_nghe_ket_qua_day` 2
@@ -1951,11 +1958,20 @@ tệp cho vị trí đồng nhất?"* — **có, nhưng là đợt dọn riêng*
 5. **`core/notification` (35 tệp) là một mảng nghiệp vụ nằm trong `core`** — luật của 20 loại thông báo, bộ quét, nhập biến động /
    biên lai / phiên ngân hàng. Chỗ đúng là `features/notification/{data,domain}`; giao diện đã ở `features/notification/presentation`.
    Cổng `ThongBaoNguon` (đợt này) đặt tạm ở `core/notification` cùng lý do.
+   📝 **2026-10-15 spec duyệt, chưa thi công** (cùng spec với đợt 4/4 gạch 3 — mục 3): 31 tệp về `features/notification/{domain 10, data/datasources 10,
+   data 3, application 8}`, 3 tệp hạ tầng về `core/utils` (`tuan_iso`) · `core/nen` (`app_lifecycle_watcher`) · `core/ocr` (`ten_tep_bien_lai`); cổng
+   thành `ThongBaoRepository` ở `data/repositories/`; `chuDeCore` quét 25 còn 15, `phien_dieu_phoi_that` vào `diemGhep`; dời bằng `git mv` + script tính
+   lại import, test soi gương 39 tệp.
 6. **`data/services/` là tầng application chưa có tên** — ở ví (`so_du_vi_service`, `gop_vi_service`, `dieu_chinh_so_du_service`,
    `vi_trung_ten_resolver`, `tha_vi_bi_giu`, `default_account_data_initializer`), hoá đơn (`bill_payment_conflict_resolver`),
    danh mục (`default_category_seeder`, `personal_default_categories`, `category_suggestion_engine`). Nếu cần tầng thứ tư thì **đổi tên thư mục**, không thêm tầng mới (người dùng hỏi 2026-10-10, trả lời: không).
    📝 **2026-10-11 người dùng chốt: ĐỔI TÊN thư mục** (vẫn không thêm tầng), ghép vào đợt gạch 4 + 5; tên cụ thể (vd.
    `application/`) chốt ở spec đợt ấy — dời tệp bằng script, sửa luật mục 8 `KIEN_TRUC_CLIENT_APP.md` và test quét 25.
+   📝 **2026-10-15 người dùng chốt tên `features/<x>/application/`** (ngang `data` · `domain` · `presentation`; **chiều một hướng**: `data/` và `domain/`
+   không import `application/` — quét 25 luật 7 mới) trong spec đợt 4/4 gạch 3 (mục 3), **chưa thi công**. Đo trước khi chốt: 3 repository impl
+   (hoá đơn, mục tiêu, giao dịch) gọi `so_du_vi_service` và `transaction/domain/doc_cau_giao_dich` gọi `category_suggestion_engine` → hai tệp ấy **không**
+   vào `application/`: `so_du_vi_service` ở lại `wallet/data/` (bộ ghi `balance` bọc DAO), engine về `category/domain/` (thuần). 10 tệp còn lại + 8 tệp
+   Thông báo = 18 tệp `application/`.
 7. ~~**Vị trí tệp lệch luật mục 8 `docs/KIEN_TRUC_CLIENT_APP.md`**~~ ✅ **đóng 2026-10-10** (spec
    `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`, thi công bằng agent con mỗi task, 12 task):
    `current_account` → `auth/presentation/bloc/`; `dem_nguoc_xoa` → `auth/domain/`; `buoc_dang_xuat` **ở lại** `core/auth`
