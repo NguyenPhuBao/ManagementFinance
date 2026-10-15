@@ -59,7 +59,7 @@ Mọi số đếm bằng `grep` / `find` / công cụ Grep, chạy từ `src/Cli
 | `notification_rules` import ngoài mảng không hợp `domain/` | **3** dòng | `budget/presentation/widgets/budget_visuals.dart` (chỉ dùng `budgetHealthOf` :423) · hai runner (chỉ dùng `GoalAutoDepositEvent` / `BillAutoPayEvent` — lớp dữ liệu thuần khai trong tệp runner) |
 | Chỗ dùng `budgetHealthOf` / `BudgetHealth` | **5** tệp | rules · `budget_visuals` · `budget_detail_view` · `budget_tabs_view` · `home_budget_card` |
 | Chỗ import hai lớp `*Event` | **5** tệp | DI · rules · scanner · hai runner |
-| Tệp nhắc `ThongBaoNguon` | **12** lib + **8** test | phụ lục B; tài liệu được theo dõi 26 dòng (`KIEN_TRUC` 4 · `CLAUDE.md` 2 · `PROJECT_CONTEXT` 2 · `NOTIFICATION_FEATURE` 1 · `KNOWN_GAPS` 1 · spec cũ 16) |
+| Tệp nhắc `ThongBaoNguon` (**từ trọn** `\bThongBaoNguon\b` — lượt đo chuỗi con dính `DeXuatThongBaoNguon`) | **10** lib + **7** test | phụ lục B (3 trong 7 test chỉ nhắc `ThongBaoNguonDrift`); `notification_settings_page` và `de_xuat_thong_bao_nguon` chỉ dùng `DeXuatThongBaoNguon` — **không đổi**; tài liệu được theo dõi 19 dòng (`KIEN_TRUC` 4 · `CLAUDE.md` 1 · `PROJECT_CONTEXT` 1 · `KNOWN_GAPS` 1 · spec cũ 12) |
 | `features/*/data/services/` | **12** tệp lib · **3** test | ví 6 · danh mục 3 · hoá đơn 2 · mục tiêu 1 (mục 8); 48 tệp lib / test mang đường dẫn ấy; tài liệu được theo dõi 57 dòng |
 | Ai gọi vào `data/services` ngược chiều (nếu nó thành tầng trên `data`) | **3** repository impl + **1** domain | `bill` / `goal` / `transaction_repository_impl` → `so_du_vi_service`; `transaction/domain/doc_cau_giao_dich` → `category_suggestion_engine` (thuần: Entity + `core/category/category_name`) |
 | `<dynamic>` trần ở 12 tệp `data/services` + 8 tệp Thông báo sắp vào `application/` | **0** | luật 3 quét 27 mở rộng sang `application/` không cần danh sách chờ |
@@ -145,7 +145,7 @@ Test `hoc_gio_thong_bao_test` (14,5 KB): fixture `AppNotificationEvent(` → rec
 
 ### 4.5 Chỗ gọi đổi tên
 
-12 tệp lib (phụ lục B): `sl<ThongBaoNguon>()` → `sl<ThongBaoRepository>()` **trên một dòng** (quét 22 nhận diện nguồn đăng ký DI theo tên lớp —
+10 tệp lib (phụ lục B — đếm từ trọn): `sl<ThongBaoNguon>()` → `sl<ThongBaoRepository>()` **trên một dòng** (quét 22 nhận diện nguồn đăng ký DI theo tên lớp —
 sửa chữ ở test ấy; quét 2 `wallet_picker_sources_test` nhắc tên cổng trong phân loại — sửa chữ). Tham số kiểu `ThongBaoNguon dao` ở
 `notification_center_page` (`_danhSach`, `_doiTrangThaiDoc`, `_xoaCoHoanTac`) đổi kiểu, giữ tên biến `dao` (không đổi thân). `them_giao_dich_nguon`
 :290 đọc `n.deeplink` · `n.kind` · `n.dismissedAt` — trường Entity cùng tên, thân giữ. Helper `test/helpers/nguon_doc_gia.dart` đăng ký
@@ -262,7 +262,10 @@ Docstring hai tệp cập nhật ngày và spec này. Bảng *Test quét `lib/`*
 - **`KIEN_TRUC` mục 4 (ba tầng → bốn):** `domain/` Dart thuần → 10 tệp `domain/` mới của Thông báo không import Flutter / Drift / `sl` / `application`
   (kiểm bằng máy — `notification_rules` sau mục 5 + 7; `hoc_gio` sau 4.4; `notification_prefs` chỉ import rules; `nhom_tu_khoa` chỉ rules + prefs);
   `data/` được `core/database` → 10 datasource, 3 tệp rời, impl repository giữ import là đúng vai; interface repository **không** import Drift (luật 4);
-  `presentation/` đọc qua repository → hai trang đổi kiểu qua cửa có sẵn; `application/` hàng mới (mục 8).
+  `presentation/` đọc qua repository → hai trang đổi kiểu qua cửa có sẵn; `application/` hàng mới (mục 8). **Domain import hàm thuần ở `core`**
+  (`notification_rules` → `core/utils/tuan_iso`; engine → `core/category/category_name`): hàng mục 4 chỉ ghi *"Dart thuần, domain khác, Entity"* nhưng
+  **tiền lệ đã có** — `analytics/domain/pham_vi_ky`, `uoc_tinh_chi_tuy_y`, `ai_edge/domain/ma_ky` import `tuan_iso` từ `core`; hàng mục 8 *"kiểu / hàm Dart
+  thuần hạ tầng `core` cần"* ngầm cho phép. Ghi rõ vào hàng `domain/` mục 4 khi cập nhật (mục 13), không phải lệch mới.
 - **Mục 8 (vị trí tệp):** Entity ở `data/models/` ✓; repository tách interface / impl ở `data/repositories/` ✓ (luật 3 quét 25 tự canh vì tên `_repository`);
   datasource ở `data/datasources/` ✓; `*_nguon` / `*_store` tệp rời `data/` ✓ (tiền lệ); bộ điều phối ở `application/` ✓ (hàng đổi); hàm thuần hạ tầng
   cần ở `core/<chủ đề>/` ✓ (`tuan_iso`, `ten_tep_bien_lai`, watcher); test soi gương theo thư mục ✓ (phụ lục C).
@@ -282,7 +285,7 @@ Docstring hai tệp cập nhật ngày và spec này. Bảng *Test quét `lib/`*
 | Gạch | Sau đợt |
 |---|---|
 | 1 · 2 · 7 | đã đóng (2026-10-11 · 10-13 · 10-10) |
-| 3 — UI cầm hàng Drift | **đóng**: `conChoKieu` rỗng, Entity 7/14 (ví, giao dịch, mục tiêu, ngân sách, hoá đơn, danh mục, **thông báo**); 7 mảng còn lại (auth, analytics, ai_edge, ai_chat, home, profile, premium…) không có bảng Drift của riêng mình để cầm — đo bằng quét 27 luật 1 (mọi kiểu trong `kieuDrift` đều có chỗ chờ rỗng) |
+| 3 — UI cầm hàng Drift | **đóng**: `conChoKieu` rỗng, Entity 7/14 (ví, giao dịch, mục tiêu, ngân sách, hoá đơn, danh mục, **thông báo**) — bảy kiểu hàng chính trong `kieuDrift` không còn chỗ chờ; bảng phụ v24–v30 (phản hồi gợi ý, nhật ký xem, khoá chạy nền…) chỉ dùng trong `data/` nên không cần Entity (câu G88.3 có sẵn) — riêng `AppNotificationEvent` vào `kieuDrift` vì nó từng lên tới một hàm luật |
 | 4 — `core` import `features/` | **43 → 18** dòng hạ tầng (còn `sync_engine` 7 · `lich_nen` 4 · hai tệp sync 2 + 2 · `kho_anh_quet` 1 · hai DAO 1 + 1) — **vẫn mở**, không thuộc Thông báo; ghi số mới |
 | 5 — `core/notification` là mảng trong `core` | **đóng**: thư mục không còn; 35 tệp về `features/notification/` + 3 về `core/utils` · `nen` · `ocr` |
 | 6 — `data/services/` tầng application chưa tên | **đóng**: `features/<x>/application/`, luật mục 4 / 8, quét 25 luật 7 |
@@ -294,7 +297,7 @@ Docstring hai tệp cập nhật ngày và spec này. Bảng *Test quét `lib/`*
 1. **Quét 27 mở rộng** với danh sách chờ **hiện trạng**: `kieuDrift` + `AppNotificationEvent` (`conChoKieu` tạm 2 tệp), luật 3 quét thêm `application/`
    (chưa có thư mục — 0 tệp, sàn vẫn > 50 nhờ `data/`), luật 4 interface, `mauKieu` ` &&` / ` ||`. Bản sai thử đỏ cho từng luật.
 2. **`notification_entity.dart`** + `notification_entity_companion.dart` + test (4.1, 4.3).
-3. **Một commit đổi kiểu "trục Thông báo"**: `thong_bao_repository.dart` + `_impl` (4.2) · xoá `thong_bao_nguon.dart` · DI · 12 tệp lib + 8 test đổi tên
+3. **Một commit đổi kiểu "trục Thông báo"**: `thong_bao_repository.dart` + `_impl` (4.2) · xoá `thong_bao_nguon.dart` · DI · 10 tệp lib + 7 test đổi tên
    (phụ lục B) · helper `nguon_doc_gia` · hai trang nhận `NotificationEntity`, `_xoaCoHoanTac` gọi `chenLai(item)` · `notification_panel_test` fixture ·
    `thong_bao_nguon_test` → `thong_bao_repository_test` (+ ca `chenLai`). Rút 3 tệp khỏi `conChoKieu['AppNotification']` (2 trang + cổng).
 4. **Hai tệp luật** (mục 5, 4.4): `hang*` + `deXuatThongBao` + `SuKienNhatKy`; `DeXuatThongBaoNguon.tai` map; `notification_scanner` :670 map tại chỗ;
@@ -361,8 +364,9 @@ phiên ngân hàng (cần Kotlin + máy thật — chưa cắm), chạy nền Wo
   quét); hàng *Thông báo* và *đọc biến động số dư* (đường dẫn `core/notification/…` → `features/notification/…`, `ThongBaoNguon` → `ThongBaoRepository`);
   hàng *quản lý ví* (`so_du_vi_service` đường mới), *hoá đơn* / *mục tiêu* (runner ở `application/`); bảng *Test quét `lib/`* hàng 25 / 27; mốc `flutter test`;
   G88 câu *"Nợ còn lại có tên"*.
-- `docs/KIEN_TRUC_CLIENT_APP.md`: mục 1 (Entity 7/14, lộ trình gạch 3 xong), 3 (cây có `application/`, không `core/notification`), 4 (hàng `application/`,
-  điểm ghép thứ tư biết bộ quét, số dòng `features/` trong `core` đo lại), 6 (quét 25 / 27 chữ), 8 (hàng *Bộ điều phối* → `application/`; test soi gương),
+- `docs/KIEN_TRUC_CLIENT_APP.md`: mục 1 (Entity 7/14, lộ trình gạch 3 xong), 3 (cây có `application/`, không `core/notification`), 4 (hàng `application/`;
+  hàng `domain/` ghi rõ được import hàm thuần ở `core/utils` · `core/category` — tiền lệ `tuan_iso`; điểm ghép thứ tư biết bộ quét; số dòng `features/` trong
+  `core` đo lại), 6 (quét 25 / 27 chữ), 8 (hàng *Bộ điều phối* → `application/`; test soi gương),
   9 (nhược điểm còn lại: bỏ *"UI cầm kiểu Drift ở AppNotification"* và *"Luật thông báo nằm trong core"*; thêm ba lệch domain → repository), 10.
 - `docs/CLIENT_APP_KNOWN_GAPS.md`: G88 gạch 3 ✅ đóng (đợt 4/4), gạch 5 ✅, gạch 6 ✅ (tên `application/`), gạch 4 số mới 18; dòng *Cập nhật* đầu tệp.
 - `docs/NOTIFICATION_FEATURE.md`: mục 4 cây tệp (27 đường dẫn `core/notification` → mới; mục 4.4 bộ luật ở `domain/`; cổng); bảng test mục cuối (đường
@@ -398,16 +402,17 @@ sửa hằng, không phải import) · `features/wallet/gop_vi_service_test.dart
 `features/home/drawer_trang_chu_test.dart` · `features/transaction/presentation/add_transaction_goi_y_so_tien_test.dart` · `form_bien_lai_test.dart` ·
 `dien_tu_phien_test.dart` · `dien_tu_bien_dong_test.dart` · `features/transaction/domain/dien_san_bien_dong_test.dart`.
 
-## Phụ lục B — Tệp nhắc `ThongBaoNguon` (đo 2026-10-15): 12 lib + 8 test
+## Phụ lục B — Tệp nhắc `ThongBaoNguon` / `ThongBaoNguonDrift` theo từ trọn (đo 2026-10-15, `grep -rlw`): 10 lib + 7 test
 
-**lib:** `core/di/injection_container.dart` · `core/notification/de_xuat_thong_bao_nguon.dart` · `core/notification/thong_bao_nguon.dart` (xoá) ·
-`features/goal/presentation/pages/goal_page.dart` · `features/home/presentation/pages/home_page.dart` · `features/notification/presentation/pages/notification_center_page.dart` ·
-`notification_settings_page.dart` · `features/notification/presentation/widgets/notification_panel.dart` · `features/profile/presentation/pages/profile_page.dart` ·
+**lib (10):** `core/di/injection_container.dart` (cả hai tên) · `core/notification/thong_bao_nguon.dart` (xoá) · `features/goal/presentation/pages/goal_page.dart` ·
+`features/home/presentation/pages/home_page.dart` · `features/notification/presentation/pages/notification_center_page.dart` ·
+`features/notification/presentation/widgets/notification_panel.dart` · `features/profile/presentation/pages/profile_page.dart` ·
 `features/transaction/data/them_giao_dich_nguon.dart` · `features/transaction/presentation/pages/add_transaction_page.dart` · `transaction_page.dart`.
+**Không đổi** (chỉ nhắc `DeXuatThongBaoNguon`): `notification_settings_page.dart`, `de_xuat_thong_bao_nguon.dart` và test của chúng.
 
-**test:** `core/notification/de_xuat_thong_bao_nguon_test.dart` · `core/notification/thong_bao_nguon_test.dart` (đổi tên) · `core/ui/presentation_khong_cham_csdl_test.dart`
-(chữ) · `features/notification/notification_center_de_xuat_test.dart` · `notification_center_nhat_ky_test.dart` · `notification_center_page_test.dart` ·
-`features/wallet/wallet_picker_sources_test.dart` (chữ) · `helpers/nguon_doc_gia.dart`.
+**test (7):** `core/notification/thong_bao_nguon_test.dart` (đổi tên, cả hai tên) · `helpers/nguon_doc_gia.dart` (cả hai tên) ·
+`core/ui/presentation_khong_cham_csdl_test.dart` (chữ) · `features/wallet/wallet_picker_sources_test.dart` (chữ) · ba tệp chỉ nhắc `ThongBaoNguonDrift`:
+`features/notification/notification_center_de_xuat_test.dart` · `notification_center_nhat_ky_test.dart` · `notification_center_page_test.dart`.
 
 ## Phụ lục C — 40 tệp `test/core/notification/` → đích soi gương (đo 2026-10-15; bỏ tiền tố `test/`)
 
