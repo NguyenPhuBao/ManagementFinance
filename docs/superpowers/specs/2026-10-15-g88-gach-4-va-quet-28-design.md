@@ -4,8 +4,9 @@
 > thu). **Chưa có kế hoạch, chưa thi công** — người dùng chốt *"viết bàn giao cho phiên sau thực hiện"*; lối thi công (agent con
 > mỗi task hay inline) **chưa chọn** — phiên sau hỏi. Không bật backend dev cho đợt này (người dùng chốt).
 >
-> Mọi số đo ở đây đo bằng máy ở HEAD `f06ad54e`/`fce511a1` (mã `lib/` không đổi từ `08effea7`), ngày 2026-10-15. Thi công
-> thì **đo lại**, đừng chép.
+> Mọi số đo ở đây đo bằng máy ở HEAD `f06ad54e`/`fce511a1` (mã `lib/` không đổi **hành vi** từ `08effea7` — soát lại ở
+> `a2892281`: ba tệp đổi sau mốc ấy, cả ba chỉ ở dòng chú thích, commit `7d55b900`), ngày 2026-10-15. Thi công thì **đo lại**,
+> đừng chép.
 
 **Người dùng thấy gì khác trên app:** không gì cả. Đợt này đổi chiều phụ thuộc giữa các thư mục, không đổi hành vi, không đổi
 giao diện, không đổi lược đồ / payload đồng bộ. Sau đợt, **G88 đóng hẳn** (gạch 1, 2, 3, 5, 6 đã đóng trước đó).
@@ -90,8 +91,13 @@ quét 25 luật 7.
   ⚠️ Giữ cam kết G63: engine **không** nhắc tên cột cờ (`bi_tu_choi_trung_ten`) — test quét hiện có canh.
 - Constructor: `required CongSoDuVi soDuVi, required CongViBiGiu viBiGiu` — **bắt buộc**, không mặc định. Thiếu là lỗi biên dịch
   (một tham số tuỳ chọn `null` = bỏ bước sẽ là hỏng im lặng). DI (:166) truyền `sl<SoDuViService>()` và bản thi hành ví.
-- Test: helper mới ở `test/helpers/` (vd. `taoSyncEngineThu({dioClient, db, …})`) truyền bản thật dựng trên `db` — 41 chỗ dựng ở
-  26 tệp đổi sang helper (hoặc truyền thẳng hai tham số). **Không ca nào đổi kỳ vọng.**
+- Test: **một** helper mới ở `test/helpers/` (vd. `taoSyncEngineThu({dioClient, db, …})`) — mọi chỗ dựng `SyncEngine(` trong
+  `test/` (41 chỗ ở 26 tệp, đo 2026-10-15) đi qua nó, không tệp nào tự truyền hai cổng. Helper mặc định dùng **bản thật** dựng
+  trên `db` (`SoDuViService(db:)` + bản thi hành ví) và nhận hai cổng tuỳ chọn cho ca muốn tiêm bản giả — mặc định ấy là bản
+  thật, **không** phải no-op (mục 9). **Không ca nào đổi kỳ vọng.**
+- `test/features/wallet/vi_trung_ten_cuc_bo_test.dart` (G63 — đường đồng bộ không nhắc tên cột cờ): thêm
+  `lib/core/sync/cong_vi_bi_giu.dart` vào danh sách `duongDongBo` (+1 ca) và sửa docstring dòng 4 (engine hỏi qua
+  `CongViBiGiu`, không còn qua `ViTrungTenNguon`).
 
 ### 3.2 `noiBoNgheKetQuaDay` về DI
 
@@ -99,6 +105,12 @@ Hàm 19 dòng chỉ gọi `sl<…Resolver>().batDauNghe(sl<SyncEngine>().pushRes
 docstring) vào `injection_container.dart`; DI đã import cả hai resolver (đăng ký chúng). Giữ cam kết: gọi **đúng một lần** mỗi
 engine Dart, ở `main.dart` và `chay_nen.dart` (hai điểm ghép). Quét 5 (`bill_conflict_resolver_wiring_test`) và
 `vi_trung_ten_resolver_wiring_test` phải xanh sau bước này — chạy riêng hai tệp.
+
+Hai test đọc **đường tệp** cũ bằng chuỗi — đổi đường sang `lib/core/di/injection_container.dart`, giữ nguyên phép kiểm:
+`test/core/nen/noi_bo_nghe_hai_noi_test.dart` :23 (tệp **định nghĩa** được miễn khỏi phép cấm gọi `batDauNghe`) và
+`test/features/wallet/vi_trung_ten_resolver_wiring_test.dart` :25 (đọc hàm nối chung để đòi `batDauNghe`); docstring dòng 1
+của tệp sau nhắc tên hàm, không nhắc đường — giữ. Ca 1 của `noi_bo_nghe_hai_noi_test` (đòi chuỗi `noiBoNgheKetQuaDay();` ở
+`main.dart` + `chay_nen.dart`) không đổi.
 
 ### 3.3 Tách `lichNenKeTiep`
 
@@ -144,7 +156,8 @@ bản thi hành cổng ví) — điểm ghép, không trần. Bốn điểm ghé
   `package:flowmoney/…` lẫn đường tương đối, BOM (khuôn quét 25 luật 5 / 7).
   - **Luật 1:** không import đường chứa `/presentation/`.
   - **Luật 2:** đường chứa `/data/` thì phải chứa `/data/models/`.
-- Ca tiền đề: số tệp domain thấy được > **80** (đo 2026-10-15: dùng số thật lúc viết test, sàn ≈ nửa).
+- Ca tiền đề: số tệp domain thấy được > **80** (đo 2026-10-15 bằng `find lib/features -path "*/domain/*" -name "*.dart"`:
+  **175** — sàn ≈ nửa; đo lại lúc viết test).
 - Danh sách chờ `conCho` (chỉ-được-giảm, "sạch mà quên rút thì đỏ") khởi đầu đúng 5 tệp của 2.2 → rỗng ở cuối bước sửa.
 - Bản sai: thêm `import '../presentation/…'` vào một tệp domain → luật 1 đỏ; thêm import `data/repositories/…` → luật 2 đỏ.
 
@@ -171,6 +184,9 @@ bản thi hành cổng ví) — điểm ghép, không trần. Bốn điểm ghé
 7. Tách `lich_nen` (→ 8). **Toàn bộ `flutter test`.**
 8. Quét 25: `conChoCoreImport` → `domainThuanChoCore` + ca thuần + bản sai. **Toàn bộ `flutter test`.**
 9. Đo, tài liệu (mục 8), bộ ảnh "sau", review toàn nhánh.
+
+Bước 4–7 mỗi bước **rút đúng mục / số dòng** của tệp vừa sạch khỏi `conChoCoreImport` (`vi_tri_tep_theo_luat_test.dart` :52–64)
+trong cùng commit — ratchet *"sạch mà quên rút thì đỏ"*; bước 8 mới bỏ hẳn hằng ấy.
 
 Mỗi bước: test vùng vừa sửa xanh, `flutter analyze` = **20**, không ca nào đổi kỳ vọng. Mốc nền: **7.075 pass / 10 skip**;
 cuối đợt kỳ vọng thêm số ca của quét 28 (+ ca thuần ở quét 25) — ghi số thật.
