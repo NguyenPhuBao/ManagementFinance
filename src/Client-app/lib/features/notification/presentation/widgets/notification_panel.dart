@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../data/models/notification_entity.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/notification/thong_bao_nguon.dart';
+import '../../data/repositories/thong_bao_repository.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
 
@@ -16,7 +16,7 @@ class NotificationPanel extends StatelessWidget {
   final int? idaccount;
 
   /// Cho phép test bơm dữ liệu mà không cần dựng DI.
-  final Stream<List<AppNotification>>? feed;
+  final Stream<List<NotificationEntity>>? feed;
 
   /// Đồng hồ cho "10 phút trước" — test ghim mốc; bỏ trống là giờ thật. Thiếu nó
   /// thì ca test thời gian tương đối đỏ khi chạy trong 00:00–00:10 ("Hôm qua").
@@ -32,13 +32,13 @@ class NotificationPanel extends StatelessWidget {
     final stream = feed ??
         (id == null
             ? null
-            : sl<ThongBaoNguon>().watchFeed(id, limit: _soMucHienThi));
+            : sl<ThongBaoRepository>().watchFeed(id, limit: _soMucHienThi));
     if (stream == null) return const SizedBox.shrink();
 
-    return StreamBuilder<List<AppNotification>>(
+    return StreamBuilder<List<NotificationEntity>>(
       stream: stream,
       builder: (context, snapshot) {
-        final items = (snapshot.data ?? const <AppNotification>[])
+        final items = (snapshot.data ?? const <NotificationEntity>[])
             .take(_soMucHienThi)
             .toList();
         if (items.isEmpty) return const SizedBox.shrink();
@@ -95,7 +95,7 @@ class NotificationPanel extends StatelessWidget {
 }
 
 class _Muc extends StatelessWidget {
-  final AppNotification item;
+  final NotificationEntity item;
   final DateTime Function()? clock;
   const _Muc({required this.item, this.clock});
 

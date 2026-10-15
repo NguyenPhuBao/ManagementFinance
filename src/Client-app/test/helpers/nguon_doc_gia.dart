@@ -9,7 +9,8 @@ import 'package:flowmoney/features/transaction/data/models/transaction_entity.da
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
-import 'package:flowmoney/core/notification/thong_bao_nguon.dart';
+import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository.dart';
+import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository_impl.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
@@ -116,7 +117,7 @@ void _dat<T extends Object>(T moi, bool Function(Object) laGiaCuaHelper) {
 }
 
 void dangKyNguonDocGia(AppDatabase db) {
-  _dat<ThongBaoNguon>(ThongBaoNguonDrift(db.notificationDao), (o) => o is ThongBaoNguonDrift);
+  _dat<ThongBaoRepository>(ThongBaoRepositoryImpl(db.notificationDao), (o) => o is ThongBaoRepositoryImpl);
   _dat<WalletRepository>(ViGia(db), (o) => o is ViGia);
   _dat<TransactionRepository>(GiaoDichGia(db), (o) => o is GiaoDichGia);
   _dat<CategoryManagementRepository>(DanhMucGia(db), (o) => o is DanhMucGia);

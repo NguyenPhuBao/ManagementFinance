@@ -8,7 +8,7 @@ import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
-import '../../../../core/notification/thong_bao_nguon.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
@@ -140,7 +140,7 @@ class _TransactionPageState extends State<TransactionPage> {
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
         sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
-        sl<ThongBaoNguon>().watchDemBienDong(idaccount);
+        sl<ThongBaoRepository>().watchDemBienDong(idaccount);
   }
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với

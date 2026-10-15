@@ -1,4 +1,4 @@
-import '../../../../core/notification/thong_bao_nguon.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -166,7 +166,7 @@ class _GoalPageContent extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<ThongBaoNguon>().watchUnreadCount(currentAccountIdOrNull(context)!),
+                : sl<ThongBaoRepository>().watchUnreadCount(currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),
         ],

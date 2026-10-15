@@ -26,7 +26,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/data/repositories/transaction_repository.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
-import '../../../../core/notification/thong_bao_nguon.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
@@ -256,7 +256,7 @@ class HomePage extends StatelessWidget {
           child: NotificationBell(
             unreadCount: idaccount == null
                 ? null
-                : sl<ThongBaoNguon>().watchUnreadCount(idaccount),
+                : sl<ThongBaoRepository>().watchUnreadCount(idaccount),
             onTap: () => context.push('/notifications'),
           ),
         ),

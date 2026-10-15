@@ -115,7 +115,7 @@ void main() {
 
   /// Trang giữ repository trong trường (`_vi.getAll(`) không viết `WalletRepository>().` nên lách được mẫu trên.
   /// Với tệp có nhắc `WalletRepository`, bắt mọi dòng `.getAll(` / `.watchAll(` bất kể người nhận, trừ dòng
-  /// `TransactionRepository>()` · `CategoryManagementRepository>()` · `ThongBaoNguon>()` (hàng chờ D1 của
+  /// `TransactionRepository>()` · `CategoryManagementRepository>()` · `ThongBaoRepository>()` (hàng chờ D1 của
   /// `them_giao_dich_nguon`). (Dương tính giả — trường giữ repo giao dịch trong tệp có cả ví — thì
   /// phân loại tệp ấy vào `duocDocMoiVi` kèm lý do.)
   Set<String> tepDocViQuaTruong() {
@@ -128,8 +128,8 @@ void main() {
                 mau.hasMatch(d) &&
                 !d.contains('TransactionRepository>()') &&
                 !d.contains('CategoryManagementRepository>()') &&
-                // them_giao_dich_nguon đọc hàng chờ D1 qua sl<ThongBaoNguon>().getAll( — không phải ví.
-                !d.contains('ThongBaoNguon>()')))
+                // them_giao_dich_nguon đọc hàng chờ D1 qua sl<ThongBaoRepository>().getAll( — không phải ví.
+                !d.contains('ThongBaoRepository>()')))
           e.key
     };
   }
@@ -138,7 +138,7 @@ void main() {
     expect(tepDocViQuaTruong(), contains('features/bill/presentation/pages/bill_page.dart'),
         reason: 'bill_page.dart đọc `sl<WalletRepository>().getAll(` — phép bắt phải thấy nó, nếu không regex hỏng.');
     expect(tepDocViQuaTruong(), isNot(contains('features/transaction/data/them_giao_dich_nguon.dart')),
-        reason: 'Bộ chọn ví không được bị gắn nhãn "đọc mọi ví" vì dòng sl<ThongBaoNguon>().getAll(.');
+        reason: 'Bộ chọn ví không được bị gắn nhãn "đọc mọi ví" vì dòng sl<ThongBaoRepository>().getAll(.');
   });
 
   test('không chỗ nào ngoài danh sách được đọc MỌI ví', () {

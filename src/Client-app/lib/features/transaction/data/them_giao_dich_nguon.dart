@@ -19,7 +19,7 @@ import '../../category/data/models/category_entity.dart';
 import '../../../core/database/daos/notification_dao.dart' show kKindBienDongSoDu;
 import '../../../core/di/injection_container.dart';
 import '../../../core/notification/kho_bien_lai.dart';
-import '../../../core/notification/thong_bao_nguon.dart';
+import '../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../core/ocr/kho_anh_quet.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
@@ -287,7 +287,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     final tiem = _hangBienDongChoTiem;
     if (tiem != null) return tiem(idaccount);
     final ds = <DienSanBienDong>[];
-    for (final n in await sl<ThongBaoNguon>().getAll(idaccount)) {
+    for (final n in await sl<ThongBaoRepository>().getAll(idaccount)) {
       final link = n.deeplink;
       if (n.kind != kKindBienDongSoDu || n.dismissedAt != null || link == null) continue;
       final h = dienSanBienDongTuQuery(Uri.tryParse(link)?.queryParameters ?? const {});
@@ -310,7 +310,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   /// Từ `_xoaHangBienDong` của trang.
   @override
   Future<void> xoaHangBienDong(int idaccount, String khoa) async {
-    final xoa = _xoaBienDongTiem ?? (sl.isRegistered<ThongBaoNguon>() ? sl<ThongBaoNguon>().xoaCung : null);
+    final xoa = _xoaBienDongTiem ?? (sl.isRegistered<ThongBaoRepository>() ? sl<ThongBaoRepository>().xoaCung : null);
     try {
       await xoa?.call(idaccount, khoa);
     } catch (e) {

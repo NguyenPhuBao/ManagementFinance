@@ -60,7 +60,7 @@ void main() {
     for (final e in thay.entries) {
       final tran = conCho[e.key];
       if (tran == null) {
-        loi.add('${e.key}: ${e.value} dòng cầm CSDL — đi qua repository của mảng hoặc ThongBaoNguon (spec mục 4.2).');
+        loi.add('${e.key}: ${e.value} dòng cầm CSDL — đi qua repository của mảng hoặc ThongBaoRepository (spec mục 4.2; cổng đổi tên 2026-10-15).');
       } else if (e.value > tran) {
         loi.add('${e.key}: ${e.value} dòng, danh sách cho phép $tran — chỉ được giảm.');
       }
