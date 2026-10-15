@@ -18,11 +18,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Tệp domain còn vi phạm (đường tương đối `src/Client-app`). Đo gốc 2026-10-15: năm tệp — rút ở Task 2 (hai tệp mượn
-/// `pickHomeBudget`) và Task 3 (ba tệp mượn kiểu của repository Phân tích).
+/// Tệp domain còn vi phạm (đường tương đối `src/Client-app`). Đo gốc 2026-10-15: năm tệp — hai tệp mượn `pickHomeBudget` rút 2026-10-15
+/// (hàm về `budget/domain`); còn ba tệp mượn kiểu repository Phân tích.
 const conCho = <String>{
-  'lib/features/ai_edge/domain/goi_so_trang_chu.dart',
-  'lib/features/ai_edge/domain/goi_so_ngan_sach.dart',
   'lib/features/ai_edge/domain/goi_so_phan_tich.dart',
   'lib/features/ai_edge/domain/hang_tong_quan.dart',
   'lib/features/transaction/domain/tim_giao_dich.dart',

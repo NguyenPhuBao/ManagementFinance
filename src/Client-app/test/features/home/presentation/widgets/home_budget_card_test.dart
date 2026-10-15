@@ -2,7 +2,7 @@
 ///
 /// Vì sao cần: trước 2026-09-06 thẻ này là dữ liệu giả cứng ("Ăn uống", "Chưa
 /// thiết lập", thanh 0%) dù `watchBudgets` đã có. Stitch màn Home vẽ đúng một
-/// ngân sách ("Đã dùng 2.100k / 3.000k · 68%"), nên phép chọn phải có test —
+/// ngân sách ("Đã dùng 2.100k / 3.000k · 68%"), nên phép chọn phải có test (ở `test/features/budget/domain/pick_home_budget_test.dart` từ 2026-10-15) —
 /// chọn sai là trang chủ khoe một ngân sách đang ổn trong khi cái khác vượt.
 library;
 
@@ -37,54 +37,6 @@ void main() {
       categoryName: name,
     );
   }
-
-  group('pickHomeBudget', () {
-    test('chọn ngân sách có tỉ lệ đã chi cao nhất', () {
-      final picked = pickHomeBudget(
-        [view(id: 'a', spent: 300000), view(id: 'b', spent: 900000)],
-        now,
-      );
-      expect(picked?.budget.id, 'b');
-    });
-
-    test('ngân sách vượt thắng ngân sách gần hết dù số tiền nhỏ hơn', () {
-      final picked = pickHomeBudget(
-        [
-          view(id: 'gan', spent: 950000),
-          view(id: 'vuot', amount: 100000, spent: 150000),
-        ],
-        now,
-      );
-      expect(picked?.budget.id, 'vuot',
-          reason: 'So theo TỈ LỆ, không theo số tiền: 150% căng hơn 95%.');
-    });
-
-    test('bỏ qua ngân sách đã hết hạn', () {
-      final picked = pickHomeBudget(
-        [
-          view(id: 'chet', spent: 999999, start: DateTime(2026, 1, 1),
-              recurrence: false),
-          view(id: 'song', spent: 100000),
-        ],
-        now,
-      );
-      expect(picked?.budget.id, 'song',
-          reason: 'Trang chủ nói về việc còn tiêu được bao nhiêu; ngân sách '
-              'chết không còn gì để tiêu.');
-    });
-
-    test('không có ngân sách nào đang chạy thì null', () {
-      expect(pickHomeBudget(const [], now), isNull);
-      expect(
-        pickHomeBudget(
-          [view(id: 'chet', spent: 0, start: DateTime(2026, 1, 1),
-              recurrence: false)],
-          now,
-        ),
-        isNull,
-      );
-    });
-  });
 
   group('HomeBudgetCard', () {
     Future<void> dung(
