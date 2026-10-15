@@ -96,6 +96,10 @@ void main() {
       expect(gopLichNen([(moc: null, coTuDong: true), (moc: m, coTuDong: false)]), (moc: m, coTuDong: true));
       expect(gopLichNen([(moc: DateTime(2026, 10, 13), coTuDong: true), (moc: m, coTuDong: true)]),
           (moc: m, coTuDong: true));
+      expect(gopLichNen([(moc: m, coTuDong: true), (moc: DateTime(2026, 10, 13), coTuDong: false)]), (moc: m, coTuDong: true),
+          reason: 'mốc sớm hơn đứng TRƯỚC vẫn phải thắng — DI đặt phần hoá đơn trước phần mục tiêu');
+      expect(gopLichNen([(moc: null, coTuDong: false), (moc: null, coTuDong: false)]), (moc: null, coTuDong: false),
+          reason: 'không phần nào bật tự động thì không giữ lượt định kỳ — không đánh thức máy vô cớ');
     });
 
     test('DI chỉ đưa phần có quyền gói vào (thay ca traDuoc / trichDuoc của lichNenKeTiep cũ — điều kiện nằm ở DI)', () {
