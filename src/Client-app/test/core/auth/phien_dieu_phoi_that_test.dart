@@ -24,6 +24,8 @@ import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
 
+import '../../helpers/sync_engine_thu.dart';
+
 class _FakeDioClient implements DioClient {
   @override
   final Dio dio = Dio();
@@ -39,7 +41,8 @@ class _Offline implements Connectivity {
 }
 
 class _SpySyncEngine extends SyncEngine {
-  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity});
+  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
+      : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
   final nhatKy = <String>[];
   bool daKeoVe = false;
   final _chet = StreamController<void>.broadcast();

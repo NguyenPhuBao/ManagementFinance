@@ -12,9 +12,9 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 const acc = 7;
 const idP = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -94,7 +94,7 @@ void main() {
       };
 
   Future<void> chay(List<Map<String, dynamic>> viKeoVe) async {
-    final engine = SyncEngine(dioClient: _Client(_Adapter(viKeoVe)), db: db, connectivity: _Online());
+    final engine = taoSyncEngineThu(dioClient: _Client(_Adapter(viKeoVe)), db: db, connectivity: _Online());
     final xong = engine.statusStream.where((s) => s.isTerminal).first;
     unawaited(engine.start(idaccount: acc));
     await xong.timeout(const Duration(seconds: 5));

@@ -21,8 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -48,7 +48,7 @@ void main() {
     // xanh mà app chết trên máy thật.
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final engine =
-        SyncEngine(dioClient: _Client(), db: db, connectivity: _Online());
+        taoSyncEngineThu(dioClient: _Client(), db: db, connectivity: _Online());
     addTearDown(() async {
       engine.dispose();
       await db.close();

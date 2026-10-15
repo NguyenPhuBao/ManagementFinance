@@ -23,10 +23,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 const accountId = 7;
 const idVi = '11111111-1111-4111-8111-111111111111';
@@ -136,7 +136,7 @@ void main() {
   tearDown(() => db.close());
 
   Future<void> chayMotChuKy(_Adapter adapter) async {
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _Client(adapter),
       db: db,
       connectivity: _Online(),
@@ -330,7 +330,7 @@ class _AdapterViMoi implements HttpClientAdapter {
 /// Chạy một chu kỳ với adapter bất kỳ.
 Future<void> chayMotChuKy2(AppDatabase db, HttpClientAdapter adapter) async {
   final client = _ClientChung(adapter);
-  final engine = SyncEngine(
+  final engine = taoSyncEngineThu(
     dioClient: client,
     db: db,
     connectivity: _Online(),

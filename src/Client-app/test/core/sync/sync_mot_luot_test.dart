@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -60,7 +61,7 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     client = _Client();
-    engine = SyncEngine(dioClient: client, db: db, connectivity: _Online());
+    engine = taoSyncEngineThu(dioClient: client, db: db, connectivity: _Online());
   });
 
   tearDown(() async {

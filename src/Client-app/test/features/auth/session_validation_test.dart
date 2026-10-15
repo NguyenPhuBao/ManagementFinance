@@ -33,6 +33,7 @@ import 'package:flowmoney/features/wallet/application/default_account_data_initi
 import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _FakeDioClient implements DioClient {
   @override
@@ -53,7 +54,8 @@ class _Offline implements Connectivity {
 /// Ghi lại việc SyncEngine có bị khởi động / dừng hay không, và cho phép test
 /// tự phát tín hiệu "phiên chết" như engine thật sẽ làm.
 class _SpySyncEngine extends SyncEngine {
-  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity});
+  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
+      : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
 
   final List<int> startedWith = [];
   int stopCalls = 0;
@@ -463,7 +465,7 @@ void main() {
       ));
 
       // Engine thật (không phải spy) nhưng CHƯA gọi start().
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _FakeDioClient(),
         db: db,
         connectivity: _Offline(),

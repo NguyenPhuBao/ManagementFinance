@@ -7,12 +7,11 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../../features/bill/domain/bill_recurrence.dart';
 import '../database/app_database.dart';
-import '../../features/wallet/data/so_du_vi_service.dart';
-import '../../features/wallet/data/tha_vi_bi_giu.dart';
-import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
+import 'cong_so_du_vi.dart';
+import 'cong_vi_bi_giu.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
@@ -51,12 +50,12 @@ class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
 
-  /// Nơi duy nhất ghi `wallets.balance`. Dùng ở cuối mỗi lần kéo về.
-  final SoDuViService _soDuVi;
+  /// Nơi duy nhất ghi `wallets.balance` — `SoDuViService`, qua cổng (G88 gạch 4). Dùng ở cuối mỗi lần kéo về.
+  final CongSoDuVi _soDuVi;
 
-  /// Ví nào đang bị giữ vì trùng tên (G63). Engine KHÔNG đọc cột cờ trực tiếp —
-  /// test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
-  final ViTrungTenNguon _viTrungTen;
+  /// Ví nào đang bị giữ vì trùng tên (G63) — qua cổng, bản thật `ViBiGiuDongBo` (`features/wallet/data/`). Engine KHÔNG đọc
+  /// cột cờ trực tiếp — test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
+  final CongViBiGiu _viBiGiu;
   final AppDatabase _db;
   final Connectivity _connectivity;
 
@@ -253,13 +252,13 @@ class SyncEngine {
   SyncEngine({
     required DioClient dioClient,
     required AppDatabase db,
+    required CongSoDuVi soDuVi,
+    required CongViBiGiu viBiGiu,
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
-    SoDuViService? soDuVi,
-    ViTrungTenNguon? viTrungTen,
-  })  : _soDuVi = soDuVi ?? SoDuViService(db: db),
-        _viTrungTen = viTrungTen ?? ViTrungTenNguonImpl(db: db),
+  })  : _soDuVi = soDuVi,
+        _viBiGiu = viBiGiu,
         _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
@@ -1223,14 +1222,12 @@ class SyncEngine {
     // theo giờ ghi của máy, giờ ghi cũ nằm dưới mốc của máy khác và không bao giờ
     // được kéo. Từ G67 (2026-10-08) mốc theo giờ-server nên ca ấy đã hết; việc
     // làm mới giờ sửa vẫn giữ — với server chưa có `maxSince` nó vẫn cần.
-    for (final id in await _viTrungTen.viCanTha(idaccount)) {
-      await ThaViBiGiu(db: _db).tha(id);
-    }
+    await _viBiGiu.thaViKhongConCap(idaccount);
     final pendingGoals = await _db.goalDao.getPending(idaccount);
     final pendingBills = await _db.billDao.getPending(idaccount);
     final pendingTx = await _db.transactionDao.getPending(idaccount);
-    final giu = ViTrungTenNguonImpl.banGhiBiGiuTuHang(
-      viBiGiu: await _viTrungTen.viDangBiGiu(idaccount),
+    final giu = await _viBiGiu.banGhiGiuKhoiDay(
+      idaccount,
       hoaDon: pendingBills,
       mucTieu: pendingGoals,
       giaoDich: pendingTx,

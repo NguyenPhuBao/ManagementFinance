@@ -17,8 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -142,7 +142,7 @@ void main() {
     }
 
     Future<SyncResult> chay(String? ma) async {
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _Client(_Adapter(ma)),
         db: db,
         connectivity: _Online(),

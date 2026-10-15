@@ -34,6 +34,8 @@ import 'package:flowmoney/features/wallet/application/default_account_data_initi
 import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 
+import '../../helpers/sync_engine_thu.dart';
+
 class _FakeDioClient implements DioClient {
   @override
   final Dio dio = Dio();
@@ -57,7 +59,7 @@ class _SpySyncEngine extends SyncEngine {
     required super.dioClient,
     required super.db,
     super.connectivity,
-  });
+  }) : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
 
   int stopCalls = 0;
 

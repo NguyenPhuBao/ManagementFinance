@@ -64,6 +64,7 @@ import '../../features/wallet/application/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/so_du_vi_service.dart';
 import '../../features/wallet/application/vi_trung_ten_resolver.dart';
 import '../../features/wallet/application/gop_vi_service.dart';
+import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
@@ -166,6 +167,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => SyncEngine(
       dioClient: sl(),
       db: sl(),
+      // Hai cổng BẮT BUỘC (G88 gạch 4): engine ở `core` không biết mảng ví — DI nối bản thật. Đừng thêm bản rỗng
+      // "cho tiện": bỏ bước neo số dư / thả ví là hỏng im lặng (spec 2026-10-15 mục 9).
+      soDuVi: sl<SoDuViService>(),
+      viBiGiu: ViBiGiuDongBo(db: sl()),
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
@@ -255,7 +260,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     ),
   );
   // G63: chỗ đọc ví trùng tên cho thẻ ở Quản lý ví và dòng nhắc ở Trang chủ.
-  // (SyncEngine tự dựng bản của nó — lớp này không giữ trạng thái.)
+  // (SyncEngine đọc qua `ViBiGiuDongBo`, bản riêng của nó — lớp này không giữ trạng thái.)
   sl.registerLazySingleton<ViTrungTenNguon>(
     () => ViTrungTenNguonImpl(db: sl()),
   );

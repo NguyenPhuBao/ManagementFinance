@@ -27,6 +27,7 @@ import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_draft.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -95,7 +96,7 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     client = _Client();
-    engine = SyncEngine(dioClient: client, db: db, connectivity: _Online());
+    engine = taoSyncEngineThu(dioClient: client, db: db, connectivity: _Online());
     repository =
         BillRepositoryImpl(dataSource: BillLocalDataSource(db), db: db);
 

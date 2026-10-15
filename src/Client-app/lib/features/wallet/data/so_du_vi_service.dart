@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/sync/cong_so_du_vi.dart';
 import '../domain/so_du_mo_so.dart';
 import '../domain/wallet_type.dart';
 
@@ -22,7 +23,7 @@ import '../domain/wallet_type.dart';
 /// còn gì để mất.
 ///
 /// Thiết kế: `docs/superpowers/specs/2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md`.
-class SoDuViService {
+class SoDuViService implements CongSoDuVi {
   SoDuViService({required AppDatabase db}) : _db = db;
 
   final AppDatabase _db;
@@ -56,6 +57,7 @@ class SoDuViService {
   }
 
   /// Tính lại cho nhiều ví; id trùng nhau chỉ chạy một lần.
+  @override
   Future<void> tinhLaiNhieuVi(Iterable<String> walletIds) async {
     for (final id in walletIds.toSet()) {
       await tinhLaiSoDu(id);
@@ -70,6 +72,7 @@ class SoDuViService {
   /// 1.000.000 ghi một khoản chi 350.000 sẽ có neo **1.350.000** và số dư đứng
   /// im ở 1.000.000 — khoản chi coi như chưa từng xảy ra. Đã vấp thật: **53 ca
   /// test đỏ** khi `tinhLaiSoDu` là nơi duy nhất đặt neo.
+  @override
   Future<void> datNeoNhieuVi(Iterable<String> walletIds) async {
     for (final id in walletIds.toSet()) {
       final vi = await _db.walletDao.getById(id);
