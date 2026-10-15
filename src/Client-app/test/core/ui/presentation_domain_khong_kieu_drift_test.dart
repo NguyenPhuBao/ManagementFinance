@@ -46,16 +46,13 @@ const companionCua = {
 /// Luật 1 — kiểu → tệp (tương đối `lib/`) còn cầm kiểu ấy. Mỗi đợt Entity xoá một khoá (Bill 2026-10-14; Wallet, Transaction cùng ngày, đợt 2; Category đợt 3 2026-10-15; AppNotification + AppNotificationEvent đợt 4 2026-10-15).
 const conChoKieu = <String, Set<String>>{
   'AppNotification': {
-    'core/notification/hoc_gio_thong_bao.dart',
     'core/notification/nhap_bien_dong.dart',
     'core/notification/nhap_bien_lai.dart',
     'core/notification/nhap_phien_ngan_hang.dart',
-    'core/notification/notification_rules.dart',
     'core/notification/notification_scanner.dart',
   },
   // Bảng sự kiện B5a (v26) — `deXuatThongBao` nhận record `SuKienNhatKy` ở Task 4 đợt Thông báo; `nhat_ky_thong_bao` về `data/` ở Task 6.
   'AppNotificationEvent': {
-    'core/notification/hoc_gio_thong_bao.dart',
     'core/notification/nhat_ky_thong_bao.dart',
   },
 };

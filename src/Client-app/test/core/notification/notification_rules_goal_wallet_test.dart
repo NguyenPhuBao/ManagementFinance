@@ -11,7 +11,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/notification/data/models/notification_entity.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
@@ -671,8 +671,8 @@ void main() {
   // Đo Realme 2026-09-30: "Ví MB Bank chỉ còn 0 đồng" vẫn nằm trên khay sau khi ví đã nhận 10.000 đ — khoá
   // gộp theo NGÀY nên hàng không tự mất, và không ai gỡ nó.
   group('hàng "sắp cạn" lỗi thời tự gỡ (ví đã hồi, hoặc đã âm — G81)', () {
-    AppNotification hang(String id, {String kind = 'walletLowBalance', String? vi, DateTime? daGo, DateTime? daDoc}) =>
-        AppNotification(
+    NotificationEntity hang(String id, {String kind = 'walletLowBalance', String? vi, DateTime? daGo, DateTime? daDoc}) =>
+        NotificationEntity(
           id: id,
           idaccount: 7,
           kind: kind,
@@ -719,7 +719,7 @@ void main() {
   });
 
   group('hàng "ví âm" tự gỡ khi ví đã hồi (E6)', () {
-    AppNotification hang(String id, {String kind = 'walletNegative', String? vi, DateTime? daGo}) => AppNotification(
+    NotificationEntity hang(String id, {String kind = 'walletNegative', String? vi, DateTime? daGo}) => NotificationEntity(
           id: id,
           idaccount: 7,
           kind: kind,
@@ -750,8 +750,8 @@ void main() {
   });
 
   group('G71 — hàng của ví ĐÃ XOÁ được gỡ', () {
-    AppNotification hang(String id, {String kind = 'walletNegative', String subjectType = 'wallet', String? vi, DateTime? daGo}) =>
-        AppNotification(
+    NotificationEntity hang(String id, {String kind = 'walletNegative', String subjectType = 'wallet', String? vi, DateTime? daGo}) =>
+        NotificationEntity(
           id: id,
           idaccount: 7,
           kind: kind,

@@ -10,24 +10,16 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/hoc_gio_thong_bao.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/su_kien_thong_bao.dart';
+import 'package:flowmoney/features/notification/data/models/notification_entity.dart';
 
 var _id = 0;
 
-AppNotificationEvent _sk(String khoa, String suKien, DateTime luc) =>
-    AppNotificationEvent(
-      id: 'e${_id++}',
-      idaccount: 7,
-      dedupeKey: khoa,
-      suKien: suKien,
-      luc: luc,
-      osId: null,
-    );
+SuKienNhatKy _sk(String khoa, String suKien, DateTime luc) => (dedupeKey: khoa, suKien: suKien, luc: luc);
 
-AppNotification _tb(String khoa, {DateTime? daBan}) => AppNotification(
+NotificationEntity _tb(String khoa, {DateTime? daBan}) => NotificationEntity(
       id: 'n${_id++}',
       idaccount: 7,
       kind: 'x',
@@ -45,8 +37,8 @@ void main() {
   const prefs = NotificationPrefs(gioNhac: 8, phutNhac: 0);
 
   List<DeXuatThongBao> chay({
-    List<AppNotificationEvent> nhatKy = const [],
-    List<AppNotification> thongBao = const [],
+    List<SuKienNhatKy> nhatKy = const [],
+    List<NotificationEntity> thongBao = const [],
     List<DateTime> mocGhi = const [],
     NotificationPrefs p = prefs,
     bool coQuyen = true,
@@ -64,7 +56,7 @@ void main() {
       r.where((e) => e.loai == l).firstOrNull;
 
   /// 12 cú lúc 20:00–20:11 + 13 cú rải 07:45 → 18:45 (ô 07:30 được 2).
-  List<AppNotificationEvent> chamHd({String khoa = khoaHd, String suKien = SuKienThongBao.chamHdh, int bot = 0}) => [
+  List<SuKienNhatKy> chamHd({String khoa = khoaHd, String suKien = SuKienThongBao.chamHdh, int bot = 0}) => [
         for (var i = 0; i < 12; i++) _sk(khoa, suKien, DateTime(2027, 1, 1 + i, 20, i)),
         for (var i = 0; i < 13 - bot; i++)
           _sk(khoa, suKien, DateTime(2027, 2, 1 + i, 7 + (i % 12), 45)),
@@ -159,7 +151,7 @@ void main() {
 
     test('phản ứng cũ hơn 180 ngày không đếm', () {
       final nk = [
-        for (final e in chamHd()) e.copyWith(luc: e.luc.subtract(const Duration(days: 200))),
+        for (final e in chamHd()) _sk(e.dedupeKey, e.suKien, e.luc.subtract(const Duration(days: 200))),
       ];
       expect(loai(chay(nhatKy: nk), LoaiDeXuat.gioHoaDon), isNull);
     });
@@ -277,7 +269,7 @@ void main() {
 
     group('lịch đặt trước — đếm theo khoá', () {
       /// 20 lời nhắc hoá đơn nổ 08:00, lùi từ 01/02.
-      List<AppNotificationEvent> dat() => [
+      List<SuKienNhatKy> dat() => [
             for (var i = 0; i < 20; i++)
               _sk('billDue:h$i:2027-01-01:3', SuKienThongBao.datLich,
                   DateTime(2027, 2, 1, 8).subtract(Duration(days: 3 * i))),
@@ -320,7 +312,7 @@ void main() {
 
   group('Bỏ qua', () {
     test('bo_qua_de_xuat 29 ngày trước → im; 31 ngày → hiện lại', () {
-      AppNotificationEvent boQua(int ngay) => _sk('deXuat:gioHoaDon', SuKienThongBao.boQuaDeXuat,
+      SuKienNhatKy boQua(int ngay) => _sk('deXuat:gioHoaDon', SuKienThongBao.boQuaDeXuat,
           now.subtract(Duration(days: ngay)));
       expect(loai(chay(nhatKy: [...chamHd(), boQua(29)]), LoaiDeXuat.gioHoaDon), isNull);
       expect(loai(chay(nhatKy: [...chamHd(), boQua(31)]), LoaiDeXuat.gioHoaDon), isNotNull);

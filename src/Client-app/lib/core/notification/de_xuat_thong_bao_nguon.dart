@@ -10,6 +10,7 @@ library;
 // data class danh mục của Drift.
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../features/notification/data/models/notification_entity.dart';
 import '../../features/transaction/data/models/transaction_entity.dart';
 import '../database/app_database.dart';
 import 'hoc_gio_thong_bao.dart';
@@ -63,8 +64,11 @@ class DeXuatThongBaoNguon {
           TransactionEntity.fromDrift(t),
       ];
       return deXuatThongBao(
-        nhatKy: await db.notificationEventDao.getAll(idaccount),
-        thongBao: await db.notificationDao.getAll(idaccount),
+        nhatKy: [
+          for (final e in await db.notificationEventDao.getAll(idaccount))
+            (dedupeKey: e.dedupeKey, suKien: e.suKien, luc: e.luc),
+        ],
+        thongBao: [for (final n in await db.notificationDao.getAll(idaccount)) NotificationEntity.fromDrift(n)],
         mocGhiGiaoDich: mocGhiGiaoDichTu(giaoDich),
         prefs: prefs,
         coQuyen: coQuyen,

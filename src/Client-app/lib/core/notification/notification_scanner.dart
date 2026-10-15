@@ -22,6 +22,7 @@ import '../../features/goal/data/services/goal_auto_deposit_runner.dart';
 import '../../features/bill/data/services/bill_auto_pay_runner.dart';
 import '../../features/bill/data/models/bill_entity.dart';
 import '../../features/wallet/data/models/wallet_entity.dart';
+import '../../features/notification/data/models/notification_entity.dart';
 import 'badge_updater.dart';
 import 'hang_cho_su_kien.dart';
 import 'nhap_bien_dong.dart';
@@ -667,7 +668,7 @@ class NotificationScanner {
       // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
       final docViDaXoa = loadViDaXoa;
       if (wallets.isNotEmpty || docViDaXoa != null) {
-        final hang = await dao.getAll(idaccount);
+        final hang = (await dao.getAll(idaccount)).map(NotificationEntity.fromDrift).toList();
         final conHangVi = hang.any((h) => h.subjectType == 'wallet' && h.dismissedAt == null);
         final viDaXoa = (docViDaXoa != null && conHangVi) ? await docViDaXoa(idaccount) : const <String>{};
         // E6 ◐ (2026-10-07): hàng "ví âm" tự gỡ vì ví HỒI thì NHẢ khoá — ví âm lại cùng đợt (người dùng

@@ -17,10 +17,14 @@
 ///   đã hết cửa 48 giờ theo dõi.
 library;
 
-import '../database/app_database.dart';
+import '../../features/notification/data/models/notification_entity.dart';
 import 'nhom_tu_khoa.dart';
 import 'prefs/notification_prefs.dart';
 import 'su_kien_thong_bao.dart';
+
+/// Một dòng nhật ký B5a dưới dạng thuần — đúng ba trường [deXuatThongBao] đọc (spec Entity Thông báo 2026-10-15 mục 4.4). Nguồn
+/// `DeXuatThongBaoNguon` map hàng `AppNotificationEvent` sang đây ở MỘT chỗ; hàm luật không cầm hàng Drift (quét 27 luật 1 + 2).
+typedef SuKienNhatKy = ({String dedupeKey, String suKien, DateTime luc});
 
 enum LoaiDeXuat { gioHoaDon, gioTongKet, gioGhiChep, tatNhom }
 
@@ -121,8 +125,8 @@ int? _thuDongNhat(List<DateTime> moc, int dat) {
 }
 
 List<DeXuatThongBao> deXuatThongBao({
-  required List<AppNotificationEvent> nhatKy,
-  required List<AppNotification> thongBao,
+  required List<SuKienNhatKy> nhatKy,
+  required List<NotificationEntity> thongBao,
   required List<DateTime> mocGhiGiaoDich,
   required NotificationPrefs prefs,
   required bool coQuyen,

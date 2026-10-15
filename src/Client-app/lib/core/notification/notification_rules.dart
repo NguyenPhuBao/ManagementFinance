@@ -1,4 +1,4 @@
-import '../database/app_database.dart';
+import '../../features/notification/data/models/notification_entity.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
@@ -881,7 +881,7 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 ///   luật sắp cạn nên hàng không sinh lại.
 ///
 /// Chỉ loại `walletLowBalance`; ví không còn trong [wallets] thì không đoán.
-List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<WalletEntity> wallets, int nguong) {
+List<String> hangSapCanLoiThoi(Iterable<NotificationEntity> hang, List<WalletEntity> wallets, int nguong) {
   final soDu = {for (final v in wallets) if (!v.isDeleted) v.id: v.balance};
   bool loiThoi(double? s) => s != null && (s < 0 || (nguong > 0 && s > nguong));
   return [
@@ -903,7 +903,7 @@ List<String> hangSapCanLoiThoi(Iterable<AppNotification> hang, List<WalletEntity
 /// ví có `deletedAt`, nên ví đã xoá chỉ đơn giản là **biến mất** — và [hangSapCanLoiThoi] / [hangAmDaHoi] cố ý
 /// không đoán khi không thấy ví. [viDaXoa] là id ví mà CSDL **ghi rõ** đã xoá mềm (xoá trên máy này hoặc kéo
 /// về từ máy khác), nên gỡ ở đây là chắc chứ không đoán.
-List<String> hangCuaViDaXoa(Iterable<AppNotification> hang, Set<String> viDaXoa) {
+List<String> hangCuaViDaXoa(Iterable<NotificationEntity> hang, Set<String> viDaXoa) {
   if (viDaXoa.isEmpty) return const [];
   return [
     for (final h in hang)
@@ -911,7 +911,7 @@ List<String> hangCuaViDaXoa(Iterable<AppNotification> hang, Set<String> viDaXoa)
   ];
 }
 
-List<String> hangAmDaHoi(Iterable<AppNotification> hang, List<WalletEntity> wallets) {
+List<String> hangAmDaHoi(Iterable<NotificationEntity> hang, List<WalletEntity> wallets) {
   final heAm = {
     for (final v in wallets)
       if (!v.isDeleted) v.id: v.balance >= 0 || v.allowNegative,
