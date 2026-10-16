@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const { Resend } = require('resend');
 const config = require('../config');
 const logger = require('./logger');
@@ -24,7 +25,7 @@ function getSmtpTransporter() {
   return smtpTransporter;
 }
 
-// Khởi tạo Resend client
+// Khởi tạo Resend client (Kênh dự phòng)
 let resendClient = null;
 function getResendClient() {
   if (!resendClient && config.resend && config.resend.apiKey) {
@@ -34,7 +35,7 @@ function getResendClient() {
 }
 
 /**
- * Bọc timeout cho Promise (Fail-safe, ngăn chặn treo quá 30s)
+ * Bọc timeout cho Promise (Fail-safe, ngăn chặn treo quá thời gian cho phép)
  */
 function withTimeout(promise, ms, errorMsg) {
   let timer;
@@ -51,12 +52,68 @@ function withTimeout(promise, ms, errorMsg) {
 
 const emailService = {
   /**
-   * Phương thức gửi email cốt lõi đa kênh (Resend HTTP REST API -> SMTP -> Mock)
+   * Gửi email qua Brevo REST API v3 (Port 443 HTTPS)
+   * Không bị chặn cổng mạng, gửi được cho bất kỳ email người nhận nào mà không cần Custom Domain.
+   */
+  async sendViaBrevo({ to, subject, html }) {
+    const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({
+      email: typeof email === 'string' ? email.trim() : email.email,
+    }));
+
+    const senderEmail = config.brevo.senderEmail || config.smtp.user || 'phubao12as@gmail.com';
+    const senderName = config.brevo.senderName || 'FlowMoney';
+
+    const payload = {
+      sender: {
+        name: senderName,
+        email: senderEmail,
+      },
+      to: recipients,
+      subject,
+      htmlContent: html,
+    };
+
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
+      headers: {
+        'api-key': config.brevo.apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      timeout: 8000,
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Phương thức gửi email cốt lõi đa kênh:
+   * 1. Brevo HTTP REST API (Cổng 443 HTTPS - Gửi mọi email, khuyên dùng nhất)
+   * 2. Resend HTTP REST API (Cổng 443 HTTPS - Dự phòng)
+   * 3. Nodemailer SMTP (Cổng 587 - Khi chạy máy cục bộ)
+   * 4. Mock Email (Môi trường test / dev không cấu hình)
    */
   async sendMail({ from, to, subject, html }) {
-    const resend = getResendClient();
+    // 1. Ưu tiên 1: Brevo HTTP REST API (Cổng 443 HTTPS - gửi được mọi email)
+    if (config.brevo && config.brevo.apiKey) {
+      try {
+        const data = await this.sendViaBrevo({ to, subject, html });
+        logger.info('Email sent successfully via Brevo API', {
+          messageId: data?.messageId,
+          to,
+          subject,
+        });
+        return { success: true, provider: 'brevo', messageId: data?.messageId };
+      } catch (err) {
+        const errorDetail = err.response?.data?.message || err.message;
+        logger.error('Failed to send email via Brevo API, attempting fallback', {
+          error: errorDetail,
+          to,
+        });
+      }
+    }
 
-    // 1. Ưu tiên 1: Dùng Resend HTTP REST API (Cổng 443 HTTPS - Không bị chặn trên Cloud)
+    // 2. Ưu tiên 2: Resend HTTP REST API (Cổng 443 HTTPS - Kênh dự phòng)
+    const resend = getResendClient();
     if (resend) {
       try {
         const sender = from || config.resend.from || 'FlowMoney <onboarding@resend.dev>';
@@ -69,7 +126,6 @@ const emailService = {
           html,
         });
 
-        // Bọc timeout 8s cho HTTP API call
         const response = await withTimeout(
           sendPromise,
           8000,
@@ -94,7 +150,7 @@ const emailService = {
       }
     }
 
-    // 2. Ưu tiên 2: Dùng Nodemailer SMTP (Chạy trên local hoặc server mở port SMTP)
+    // 3. Ưu tiên 3: Nodemailer SMTP (Chạy trên local hoặc server mở port SMTP)
     const hasSmtpConfig =
       config.smtp.user &&
       config.smtp.user !== 'your-email@gmail.com' &&
@@ -110,7 +166,6 @@ const emailService = {
           html,
         };
 
-        // Bọc timeout 7s để chống treo lơ lửng trên Render Free
         await withTimeout(
           transporter.sendMail(mailOptions),
           7000,
@@ -128,7 +183,7 @@ const emailService = {
       }
     }
 
-    // 3. Ưu tiên 3: Mock email (Khi không có cấu hình thật, môi trường dev/test)
+    // 4. Ưu tiên 4: Mock email (Khi không có cấu hình thật, môi trường dev/test)
     logger.info(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
     return { success: true, provider: 'mock' };
   },
