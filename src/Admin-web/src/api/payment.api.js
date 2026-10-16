@@ -35,6 +35,25 @@ const paymentApi = {
    * Xóa tất cả các đơn hàng mẫu thử nghiệm
    */
   deleteSampleOrders: () => axiosClient.delete('/admin/payments/sample'),
+
+  /**
+   * Người dùng xác nhận hoặc từ chối kích hoạt gói khi chuyển thừa tiền
+   * @param {object} data { orderCode, accept }
+   */
+  confirmUpgrade: (data) => axiosClient.post('/payment/confirm-upgrade', data),
+
+  /**
+   * Admin xử lý hoàn tiền cho khách hàng kèm upload minh chứng
+   * @param {string} orderId
+   * @param {object} data { refundedAmount, refundProof, refundReason, refundedAt }
+   */
+  processRefund: (orderId, data) => axiosClient.put(`/admin/payments/orders/${orderId}/refund`, data),
+
+  /**
+   * Admin giả lập Webhook cho chế độ Sandbox Roleplay
+   * @param {object} data { orderCode, simulateType }
+   */
+  simulateWebhook: (data) => axiosClient.post('/admin/payments/simulate-webhook', data),
 };
 
 export default paymentApi;

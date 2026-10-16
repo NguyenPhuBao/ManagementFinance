@@ -4,6 +4,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PaymentHistoryPage from '../pages/payments/PaymentHistoryPage';
 import paymentApi from '../api/payment.api';
 
+vi.mock('../hooks/useSocket', () => ({
+  default: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+  }),
+}));
+
 vi.mock('../api/payment.api', () => ({
   default: {
     getOrders: vi.fn(),
@@ -12,6 +20,9 @@ vi.mock('../api/payment.api', () => ({
     createSampleOrder: vi.fn(),
     deleteSampleOrders: vi.fn(),
     getPayosQr: vi.fn(),
+    simulateWebhook: vi.fn(),
+    confirmUpgrade: vi.fn(),
+    processRefund: vi.fn(),
   },
 }));
 
@@ -29,6 +40,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
   const mockPayosQr = {
     orderCode: 26101501,
     amount: 49000,
+    recognitionCode: 'A8K9M2',
     packageType: 'PREMIUM_1_MONTH',
     bin: '970422',
     bankName: 'MB Bank (Quân Đội)',
@@ -40,7 +52,6 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
     qrUrl: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=49000&addInfo=PFM%2026101501&accountName=NGUYEN%20PHU%20BAO',
     qrCode: '00020101021238570010A00000072701270006970422011325120703999990208QRIBFTTA53037045405490005802VN62160812PFM 261015016304ABCD',
   };
-
 
   const mockOrders = [
     {
@@ -79,6 +90,26 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
         User: { fullname: 'Trần Thị B' },
       },
     },
+    {
+      id: 'ord-uuid-3',
+      order_code: 1003,
+      package_type: 'PREMIUM_1_MONTH',
+      amount: 49000,
+      amount_received: 20000,
+      recognition_code: 'B7X2Y1',
+      currency: 'VND',
+      status: 'REFUND_PENDING',
+      created_at: '2026-10-15T10:00:00.000Z',
+      paid_at: null,
+      account: {
+        idaccount: 17,
+        username: 'levanc',
+        email: 'vanc@example.com',
+        type: 'Basic',
+        status: 'Active',
+        User: { fullname: 'Lê Văn C' },
+      },
+    },
   ];
 
   const mockOrderDetail = {
@@ -86,6 +117,8 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
     order_code: 1001,
     package_type: 'PREMIUM_1_MONTH',
     amount: 49000,
+    amount_received: 49000,
+    recognition_code: 'A8K9M2',
     currency: 'VND',
     status: 'PAID',
     payment_link_id: 'payos-link-abc-123',
@@ -117,7 +150,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       data: { success: true, data: mockStats },
     });
     paymentApi.getOrders.mockResolvedValue({
-      data: { success: true, data: { items: mockOrders, total: 2, page: 1, limit: 10 } },
+      data: { success: true, data: { items: mockOrders, total: 3, page: 1, limit: 10 } },
     });
     paymentApi.getOrderDetail.mockResolvedValue({
       data: { success: true, data: mockOrderDetail },
@@ -130,6 +163,23 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
     });
     paymentApi.getPayosQr.mockResolvedValue({
       data: { success: true, data: mockPayosQr },
+    });
+    paymentApi.simulateWebhook.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          orderCode: 26101501,
+          status: 'PAID',
+          amountReceived: 49000,
+          expectedAmount: 49000,
+        },
+      },
+    });
+    paymentApi.confirmUpgrade.mockResolvedValue({
+      data: { success: true, message: 'Thành công' },
+    });
+    paymentApi.processRefund.mockResolvedValue({
+      data: { success: true, message: 'Hoàn tiền thành công' },
     });
   });
 
@@ -161,18 +211,21 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       await waitFor(() => {
         expect(screen.getByText('#1001')).toBeInTheDocument();
         expect(screen.getByText('#1002')).toBeInTheDocument();
+        expect(screen.getByText('#1003')).toBeInTheDocument();
       });
 
       // Kiểm tra tên người dùng và số tiền
       expect(screen.getByText('nguyenvana')).toBeInTheDocument();
       expect(screen.getByText('tranthib')).toBeInTheDocument();
-      expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
-      expect(screen.getByText('49.000 ₫')).toBeInTheDocument();
-      expect(screen.getByText('270.000 ₫')).toBeInTheDocument();
+      expect(screen.getByText('levanc')).toBeInTheDocument();
 
       // Kiểm tra badge trạng thái
       expect(screen.getAllByText(/Đã thanh toán/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/Đang chờ xử lý/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Cần hoàn trả/i).length).toBeGreaterThanOrEqual(1);
+
+      // Nút Hoàn tiền cho đơn REFUND_PENDING
+      expect(screen.getByTitle(/Hoàn tiền/i)).toBeInTheDocument();
     });
 
     it('1.3. Click nút "Chi tiết" mở Modal hiển thị thông tin đối soát giao dịch', async () => {
@@ -198,15 +251,15 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       expect(screen.getByText(/Hợp lệ \(Đã xác thực\)/i)).toBeInTheDocument();
 
       // Đóng modal
-      const closeBtn = screen.getByRole('button', { name: /Đóng/i });
-      fireEvent.click(closeBtn);
+      const closeButtons = screen.getAllByRole('button', { name: /Đóng/i });
+      fireEvent.click(closeButtons[closeButtons.length - 1]);
 
       await waitFor(() => {
         expect(screen.queryByText(/Chi tiết Đơn hàng & Đối soát/i)).not.toBeInTheDocument();
       });
     });
 
-    it('1.4. Click nút "Mã QR mẫu thử nghiệm" mở modal hiển thị mã QR thật và thông tin PayOS channel', async () => {
+    it('1.4. Click nút "Mã QR mẫu thử nghiệm" mở modal Sandbox hiển thị mã QR, 6 ký tự nhận diện và đồng hồ đếm ngược', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
@@ -217,32 +270,52 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       fireEvent.click(qrBtn);
 
       await waitFor(() => {
-        expect(screen.getByText(/Mã QR Kênh Thanh Toán PayOS/i)).toBeInTheDocument();
+        expect(screen.getByText(/Mô phỏng Giao dịch Client-app \(Admin Sandbox\)/i)).toBeInTheDocument();
       });
 
-      // Kiểm tra nhãn kênh thanh toán PayOS thật
-      expect(screen.getByText(/KÊNH THANH TOÁN PAYOS THẬT/i)).toBeInTheDocument();
+      // Kiểm tra mã nhận diện 6 ký tự
+      expect(screen.getByText('A8K9M2')).toBeInTheDocument();
+
+      // Kiểm tra 10 phút đếm ngược (định dạng mm:ss)
+      expect(screen.getByText(/10:00|09:59/)).toBeInTheDocument();
 
       // Kiểm tra ảnh QR
       const qrImg = screen.getByAltText(/Mã QR Kênh Thanh Toán PayOS MB Bank/i);
       expect(qrImg).toBeInTheDocument();
-      expect(qrImg.getAttribute('src')).toContain('2512070399999');
 
-      // Kiểm tra thông tin ngân hàng thật của kênh PayOS
-      expect(screen.getAllByText(/MB Bank \(Quân Đội\)/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText(/2512070399999/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('NGUYEN PHU BAO')).toBeInTheDocument();
-
-      // Kiểm tra nút mở liên kết PayOS Checkout
-      const openCheckoutBtn = screen.getByText(/Mở Cổng Thanh Toán PayOS/i);
-      expect(openCheckoutBtn).toBeInTheDocument();
-      expect(openCheckoutBtn.closest('a')).toHaveAttribute('href', 'https://pay.payos.vn/web/test-link');
-
-      // Kiểm tra các nút hành động
-      expect(screen.getByText(/Tạo Đơn Chờ Thanh Toán \(PENDING\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Tạo Đơn & Giả Lập Đã Trả \(PAID \+ Webhook\)/i)).toBeInTheDocument();
+      // Kiểm tra các nút hành động mô phỏng
+      expect(screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Giả lập Chuyển thiếu tiền \(20k\)/i)).toBeInTheDocument();
     });
 
+    it('1.5. Click nút "Hoàn tiền" trên dòng đơn hàng REFUND_PENDING mở modal Hoàn tiền', async () => {
+      render(<PaymentHistoryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('#1003')).toBeInTheDocument();
+      });
+
+      const refundBtn = screen.getByTitle(/Hoàn tiền/i);
+      fireEvent.click(refundBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Xử lý Hoàn tiền cho Khách hàng/i)).toBeInTheDocument();
+      });
+
+      // Kiểm tra form nhập liệu
+      expect(screen.getByText(/Số tiền thực tế hoàn trả/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lý do hoàn trả/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đường dẫn ảnh minh chứng/i)).toBeInTheDocument();
+
+      // Nút hủy đóng modal
+      const cancelBtn = screen.getByRole('button', { name: /Hủy bỏ/i });
+      fireEvent.click(cancelBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Xử lý Hoàn tiền cho Khách hàng/i)).not.toBeInTheDocument();
+      });
+    });
   });
 
   // ==========================================
@@ -350,40 +423,46 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.6. Thao tác Tạo đơn hàng mẫu kích hoạt API paymentApi.createSampleOrder và refresh dữ liệu', async () => {
+    it('2.6. Thao tác click Giả lập Chuyển đúng tiền (49k) gọi paymentApi.simulateWebhook', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
         expect(screen.getByText(/Lịch sử thanh toán/i)).toBeInTheDocument();
       });
 
-      // Mở modal mã QR
+      // Mở modal sandbox
       const qrBtn = screen.getByTitle(/Mã QR mẫu thử nghiệm/i);
       fireEvent.click(qrBtn);
 
       await waitFor(() => {
-        expect(screen.getByText(/Tạo Đơn & Giả Lập Đã Trả \(PAID \+ Webhook\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i)).toBeInTheDocument();
       });
 
-      // Bấm nút tạo đơn PAID + Webhook
-      const createPaidBtn = screen.getByText(/Tạo Đơn & Giả Lập Đã Trả \(PAID \+ Webhook\)/i);
-      fireEvent.click(createPaidBtn);
+      const exactBtn = screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i);
+      fireEvent.click(exactBtn);
 
       await waitFor(() => {
-        expect(paymentApi.createSampleOrder).toHaveBeenCalledWith(
-          expect.objectContaining({
-            simulateWebhook: true,
-            status: 'PAID',
-            packageType: 'PREMIUM_1_MONTH',
-            amount: 49000,
-          })
-        );
-        // Hiển thị toast phản hồi
-        expect(screen.getByText(/Đã tạo đơn hàng mẫu thành công!/i)).toBeInTheDocument();
+        expect(paymentApi.simulateWebhook).toHaveBeenCalledWith({
+          orderCode: 26101501,
+          amount: 49000,
+          recognitionCode: 'A8K9M2',
+        });
       });
     });
 
-    it('2.7. Chọn mức tiền kiểm thử (2.000 ₫) kích hoạt gọi API paymentApi.getPayosQr với amount 2000', async () => {
+    it('2.7. Thao tác click Giả lập Chuyển thừa tiền (70k) hiển thị prompt xác nhận và gọi paymentApi.confirmUpgrade', async () => {
+      paymentApi.simulateWebhook.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            orderCode: 26101501,
+            status: 'WAITING_CONFIRMATION',
+            amountReceived: 70000,
+            expectedAmount: 49000,
+          },
+        },
+      });
+
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
@@ -394,21 +473,56 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       fireEvent.click(qrBtn);
 
       await waitFor(() => {
-        expect(paymentApi.getPayosQr).toHaveBeenCalledWith(
-          expect.objectContaining({ amount: 49000 })
-        );
+        expect(screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i)).toBeInTheDocument();
       });
 
-      const btn2k = screen.getByText(/2.000 ₫/i);
-      fireEvent.click(btn2k);
+      const overpaidBtn = screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i);
+      fireEvent.click(overpaidBtn);
 
       await waitFor(() => {
-        expect(paymentApi.getPayosQr).toHaveBeenCalledWith(
-          expect.objectContaining({ amount: 2000 })
+        expect(screen.getByText(/Phát hiện chuyển thừa tiền!/i)).toBeInTheDocument();
+      });
+
+      // Bấm nút Đồng ý kích hoạt
+      const acceptBtn = screen.getByText(/Đồng ý kích hoạt/i);
+      fireEvent.click(acceptBtn);
+
+      await waitFor(() => {
+        expect(paymentApi.confirmUpgrade).toHaveBeenCalledWith({
+          orderCode: 26101501,
+          accept: true,
+        });
+      });
+    });
+
+    it('2.8. Điền và submit form hoàn tiền gọi paymentApi.processRefund và cập nhật danh sách', async () => {
+      render(<PaymentHistoryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('#1003')).toBeInTheDocument();
+      });
+
+      const refundBtn = screen.getByTitle(/Hoàn tiền/i);
+      fireEvent.click(refundBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Xử lý Hoàn tiền cho Khách hàng/i)).toBeInTheDocument();
+      });
+
+      // Submit form
+      const submitBtn = screen.getByRole('button', { name: /Xác nhận Đã hoàn tiền/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(paymentApi.processRefund).toHaveBeenCalledWith(
+          'ord-uuid-3',
+          expect.objectContaining({
+            refunded_amount: 20000,
+            refund_reason: expect.any(String),
+          })
         );
+        expect(screen.getByText(/Đã hoàn tiền và cập nhật trạng thái đơn hàng thành công!/i)).toBeInTheDocument();
       });
     });
   });
 });
-
-

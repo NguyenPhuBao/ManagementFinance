@@ -48,17 +48,32 @@ function generateOrderCode() {
 }
 
 /**
+ * Sinh mã nhận diện ngẫu nhiên 6 ký tự gồm chữ in hoa và chữ số (A-Z, 0-9)
+ * @returns {string}
+ */
+function generateRecognitionCode() {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    const randIndex = Math.floor(Math.random() * chars.length);
+    result += chars[randIndex];
+  }
+  return result;
+}
+
+/**
  * Tạo liên kết thanh toán PayOS (VietQR / Ngân hàng)
  * @param {object} param0
  * @param {number} param0.orderCode
  * @param {number} param0.amount
  * @param {string} param0.description
+ * @param {number} [param0.expiredAt] Unix timestamp tính bằng giây
  * @param {string} [param0.returnUrl]
  * @param {string} [param0.cancelUrl]
  * @param {Array} [param0.items]
  * @returns {Promise<{ checkoutUrl: string, paymentLinkId: string, orderCode: number, amount: number }>}
  */
-async function createPaymentLink({ orderCode, amount, description, returnUrl, cancelUrl, items }) {
+async function createPaymentLink({ orderCode, amount, description, expiredAt, returnUrl, cancelUrl, items }) {
   const client = getPayOSClient();
 
   const body = {
@@ -68,6 +83,10 @@ async function createPaymentLink({ orderCode, amount, description, returnUrl, ca
     returnUrl: returnUrl || config.payos.returnUrl,
     cancelUrl: cancelUrl || config.payos.cancelUrl,
   };
+
+  if (expiredAt) {
+    body.expiredAt = expiredAt;
+  }
 
   if (Array.isArray(items) && items.length > 0) {
     body.items = items;
@@ -122,6 +141,7 @@ module.exports = {
   getPayOSClient,
   setPayOSClientMock,
   generateOrderCode,
+  generateRecognitionCode,
   createPaymentLink,
   verifyWebhookData,
   confirmWebhook,
