@@ -50,7 +50,71 @@ class MaintenanceManager {
     const maintenanceType = options.type || (isEmergency ? 'EMERGENCY' : 'SCHEDULED');
 
     if (isActivating && this.active) {
-      throw new Error('Hệ thống hiện đang trong chế độ bảo trì, không thể kích hoạt bảo trì nữa');
+      // ĐẶC BIỆT: Nếu đang bảo trì thông thường, cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt đè lên để can thiệp
+      if (!this.isEmergency && isEmergency) {
+        this.isEmergency = true;
+        if (reason) this.reason = reason;
+        this.activatedBy = activatedBy;
+        this.activatedAt = new Date().toISOString();
+
+        logger.warn(`[MAINTENANCE] NÂNG CẤP phiên bảo trì lên [KHẨN CẤP]`, {
+          reason: this.reason,
+          isEmergency: this.isEmergency,
+          activatedBy: this.activatedBy,
+          activatedAt: this.activatedAt,
+        });
+
+        // Cập nhật CSDL trạng thái ONGOING sang EMERGENCY
+        try {
+          const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+          defaultMaintenanceRepository.updateOngoingToEmergency({
+            reason: this.reason,
+            activated_by: this.activatedBy,
+          }).catch((err) => {
+            logger.warn('[MAINTENANCE] Lỗi cập nhật nâng cấp CSDL sang EMERGENCY', { error: err.message });
+          });
+        } catch (repoErr) {
+          logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi nâng cấp khẩn cấp', { error: repoErr.message });
+        }
+
+        // Phát broadcast khẩn cấp tới toàn bộ client-app & người dùng
+        const notifService = this.getNotificationService();
+        if (notifService && typeof notifService.broadcast === 'function') {
+          notifService.broadcast({
+            title: '⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP',
+            message: this.reason,
+            level: 'CRITICAL',
+            metadata: {
+              type: 'EMERGENCY_MAINTENANCE',
+              isEmergency: true,
+              activatedAt: this.activatedAt,
+              activatedBy: this.activatedBy,
+            },
+          }).catch((err) => {
+            logger.error('[MAINTENANCE] Lỗi phát thông báo khẩn cấp khi nâng cấp', { error: err.message });
+          });
+        }
+
+        // Đồng bộ vào Redis nếu có
+        if (this.redis && typeof this.redis.set === 'function') {
+          const payload = JSON.stringify(this.getStatus());
+          this.redis.set('system:maintenance_mode', payload).catch(() => {});
+        }
+
+        // Phát sự kiện realtime tới admin_room và toàn bộ client
+        try {
+          const { emitMaintenanceChanged } = require('../socket');
+          emitMaintenanceChanged(this.getStatus());
+        } catch (_) {}
+
+        return this.getStatus();
+      }
+
+      if (this.isEmergency) {
+        throw new Error('Hệ thống hiện đang trong chế độ bảo trì khẩn cấp, không thể kích hoạt bảo trì nữa');
+      }
+
+      throw new Error('Hệ thống hiện đang trong phiên bảo trì thông thường. Chỉ có thể kích hoạt bảo trì khẩn cấp để can thiệp.');
     }
 
     this.active = isActivating;
@@ -171,6 +235,10 @@ class MaintenanceManager {
       throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');
     }
 
+    if (this.scheduled) {
+      throw new Error('Đã có lịch bảo trì đang chờ thực hiện. Không thể lên thêm lịch bảo trì mới để tránh đè chéo thời gian. Vui lòng hủy lịch cũ trước nếu muốn thay đổi.');
+    }
+
     if (!scheduledAt) {
       throw new Error('Vui lòng chọn thời điểm bảo trì');
     }
@@ -190,9 +258,6 @@ class MaintenanceManager {
         throw new Error('Thời điểm kết thúc bảo trì phải sau thời điểm bắt đầu bảo trì!');
       }
     }
-
-    // Hủy timer cũ nếu có
-    this.cancelScheduledMaintenance();
 
     this.scheduled = {
       recordId: null,

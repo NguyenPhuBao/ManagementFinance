@@ -1,8 +1,8 @@
 # 📘 Tài Liệu Kỹ Thuật Module Notification — Backend
 
-> **Trạng thái:** Đã hoàn thành triển khai & kiểm thử 100% (2026-09-29)  
+> **Trạng thái:** Đã hoàn thành triển khai & kiểm thử 100%  
 > **Phạm vi:** `src/Backend/modules/notification/`, `src/Backend/core/socket.js`, `src/Backend/workers/notification.worker.js`, `src/Backend/api/notification.routes.js`  
-> **Kiểm thử:** **27/27 tests Notification PASS**, **88/88 tests toàn hệ thống PASS 100%**
+> **Kiểm thử:** **377/377 tests toàn hệ thống PASS 100% (45+ suites xanh tuyệt đối)**
 
 ---
 
@@ -29,8 +29,9 @@ graph TD
         E1[AI OCR Engine: ocr.completed / ocr.duplicate] --> EB[EventBus]
         E2[Sync Engine: sync.completed] --> EB
         E3[Daily Scheduler 0h00: account.countdown] --> EB
-        E4[Resilience Load Shedding: system.overload] --> EB
-        E5[Auth Service: changePassword / scheduleDeletion] --> Q[BullMQ: send-notification]
+        E4[Resilience: system.maintenance_changed / system.overload] --> EB
+        E5[Payment Engine: account.upgraded / payment.*] --> EB
+        E6[Auth Service: changePassword / scheduleDeletion] --> Q[BullMQ: send-notification]
     end
 
     subgraph "Tầng Xử Lý Trung Tâm (Notification Module)"
@@ -57,6 +58,27 @@ graph TD
 ```
 
 ---
+
+## 3. Danh Mục Sự Kiện Realtime Socket.IO & HTTP Signals
+
+Hệ thống triển khai chuẩn hóa theo bảng danh mục sự kiện tại `docs/Admin-web/Event-Notification-to-ClientApp.md`:
+
+### 3.1. Sự kiện Socket.IO tới Mobile User (`room: account_${idaccount}`)
+- `account.upgraded`: Thông báo tài khoản đã nâng cấp Premium thành công sau khi đối soát thanh toán.
+- `payment.overpaid_confirmation`: Thông báo khách chuyển thừa tiền, yêu cầu xác nhận kích hoạt gói hoặc hoàn trả.
+- `payment.underpaid_warning`: Cảnh báo chuyển thiếu tiền, từ chối kích hoạt và xếp vào danh sách chờ hoàn tiền.
+- `payment.refunded`: Thông báo đã hoàn tiền thành công kèm link xem ảnh ủy nhiệm chi/biên lai chuyển khoản.
+- `account.countdown`: Thông báo số ngày ân hạn còn lại trước khi tài khoản bị xóa vĩnh viễn (30 ngày).
+- `account.disabled`: Cưỡng chế đăng xuất tức thì khi tài khoản bị Admin khóa hoặc vô hiệu hóa.
+- `ocr.completed` & `ocr.duplicate`: Thông báo hoàn tất bóc tách hóa đơn hoặc cảnh báo trùng lặp.
+- `sync.completed`: Báo hiệu có dữ liệu mới trên Cloud để Client-app đánh thức tiến trình Pull.
+
+### 3.2. Sự kiện Socket.IO Broadcast toàn hệ thống & Phòng Admin (`admin_room`)
+- `system.maintenance_changed`: Phát toàn mạng khi hệ thống bật/tắt bảo trì khẩn cấp hoặc theo lịch (kèm HTTP 503 `MAINTENANCE_MODE`).
+- `admin.maintenance_changed`: Cập nhật trạng thái công tắc và lịch bảo trì trên mọi tab Admin-web.
+- `payment.order_created`: Thông báo đơn hàng mới được khởi tạo (phục vụ đối soát realtime).
+- `payment.success`: Thông báo đơn hàng thanh toán thành công, tự động cập nhật doanh thu KPI.
+- `aiops.alert`: Cảnh báo tự động từ AIOps Sentinel khi phát hiện mối đe dọa tấn công hoặc nghẽn tài nguyên.
 
 ## 3. Chi Tiết Các Thành Phần
 
@@ -164,12 +186,12 @@ graph TD
 
 ---
 
-## 5. Kết Quả Kiểm Thử Khép Kín (TDD 100% PASS)
+## 6. Kết Quả Kiểm Thử Khép Kín (TDD 100% PASS)
 
-Toàn bộ 4 test suites chuyên biệt cho Module Notification đã được kiểm thử khép kín:
+Toàn bộ các test suites chuyên biệt cho Module Notification và liên module đã được kiểm thử khép kín:
 1. `tests/unit/notification.store.test.js`: **10 / 10 tests PASS** (CRUD thông báo, auto-trim 50 items, TTL, phân lập tài khoản, đồng nhất kiểu dữ liệu Number/String).
 2. `tests/unit/notification.service.test.js`: **4 / 4 tests PASS** (bắt sự kiện EventBus, lưu Store, phát Socket.io, broadcast).
 3. `tests/unit/notification.controller.test.js`: **10 / 10 tests PASS** (các REST API endpoints, validation middleware).
 4. `tests/unit/notification.worker.test.js`: **3 / 3 tests PASS** (xử lý job email nền, validate email, delayed socket dispatch).
 
-**Tổng số test toàn bộ Backend:** **88 / 88 tests PASS 100% (25 suites xanh tuyệt đối)**.
+**Tổng số test toàn bộ Backend:** **377 / 377 tests PASS 100% (45+ suites xanh tuyệt đối, bao gồm 100% test 2 tầng và DB Guard)**.

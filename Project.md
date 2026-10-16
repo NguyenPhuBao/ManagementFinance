@@ -80,7 +80,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ, cơ chế chặn kích hoạt lặp khi đang active và bảo toàn lịch tương lai ngoài thời gian khẩn cấp; (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart); (6) Quản Lý Thanh Toán & Kênh PayOS Thật (`/payments`): Theo dõi doanh thu KPI, tra cứu lịch sử đơn hàng phân trang đa bộ lọc, đối soát webhook PayOS kèm xác thực chữ ký HMAC-SHA256, modal sinh mã QR Napas 247 thật và liên kết Checkout trực tiếp từ cổng PayOS thật (MB Bank `2512070399999` - `NGUYEN PHU BAO`) với các mức tiền thử nghiệm linh hoạt. Xem chi tiết tại `docs/Admin-web/07-maintenance-and-resilience.md`, `02-dashboard-and-analytics.md` và `09-aiops-sentinel-and-quarantine.md`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ; Cơ chế độc quyền lịch bảo trì (chặn đứng mọi hành vi lên lịch bảo trì đè nhau khi đã có một lịch đang chờ); Cơ chế can thiệp khẩn cấp (cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt nâng cấp khi đang trong phiên bảo trì thông thường, tự động phát broadcast cảnh báo đỏ và cập nhật CSDL sang `EMERGENCY`); Cơ chế triệt tiêu thông báo trùng lặp 3 tầng (chỉ định kênh `admin.maintenance_changed` cho Admin-web, cờ `isActionInitiatorRef` bỏ qua toast socket khi admin tự thao tác, và Deduplication Debounce 1500ms tại `AlertContext`); (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart); (6) Quản Lý Thanh Toán & Kênh PayOS Thật (`/payments`): Theo dõi doanh thu KPI, tra cứu lịch sử đơn hàng phân trang đa bộ lọc, lọc động danh sách gói cước từ CSDL, đối soát webhook PayOS kèm xác thực chữ ký HMAC-SHA256, phân biệt đơn mẫu (`is_template`) kèm checkbox "Loại bỏ mẫu", nút Hoàn tiền thông minh (sáng khi `REFUND_PENDING`, disabled mờ khi khác), upload lưu trữ ảnh minh chứng hoàn tiền tại `src/Backend/Assets/Refunds`, modal sinh mã QR Napas 247 PayOS chỉ tạo đơn khi nhấn nút `+ Đơn PENDING`, và cơ chế Tự động đối soát tức thì (Just-in-Time Sync - JIT Sync) khi xem chi tiết hoặc polling trạng thái: tự động kiểm tra cổng PayOS khi đơn ở trạng thái `PENDING`, phát hiện tức thì các đơn bị Hủy (`CANCELLED`) hoặc Hết hạn (`EXPIRED`) trên PayOS mà không cần phụ thuộc Webhook, đồng thời tự động triệt tiêu `qr_url` và `checkout_url` trong CSDL và phát Socket đồng bộ thời gian thực cho Admin-web và Client-app. Xem chi tiết tại `docs/Payment/PAYMENT_WORKFLOW_SPEC.md`. |
 
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
@@ -121,7 +121,8 @@ ModuleName/
 > **Lưu ý**: SMS parsing chạy **offline trên Mobile** (không qua backend). Sync xử lý **đồng bộ qua REST API** (`/api/sync/push`), không cần queue.
 
 - **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (Gemini 3.8 Flash).
-> **Lưu ý cài đặt Backend**: Khi kéo mã nguồn mới nhất từ Git, cần chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói: `@google/generative-ai`, `ioredis`, `express-rate-limit`.
+> 🆕 **2026-10-16 (Redis Provider Switcher)**: Hệ thống tích hợp bộ phân giải kết nối đa nhà cung cấp `src/Backend/config/redis.resolver.js` qua biến môi trường `REDIS_PROVIDER` (`railway` | `upstash` | `local`). Mặc định kích hoạt `railway` (`REDIS_RAILWAY_URL`) để vận hành BullMQ 24/7 không giới hạn số lượng lệnh request (Unlimited Commands), đồng thời vẫn bảo toàn `REDIS_UPSTASH_URL` trong `.env` để có thể chuyển đổi tức thì khi cần kiểm thử.
+> **Lưu ý cài đặt Backend**: Khi kéo mã nguồn mới nhất từ Git, cần chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói: `@google/generative-ai`, `ioredis`, `express-rate-limit`. Kiểm tra kết nối Redis bằng lệnh: `npm run redis:test`.
 
 #### 3.2.4 Database — PostgreSQL (PersonFinance)
 
@@ -377,14 +378,19 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 
 ### 3.3 Kiến Trúc Client-app (Offline-first, Flutter)
 
+> *Tài liệu chi tiết nguồn sự thật do Client-app quản lý:* [`docs/KIEN_TRUC_CLIENT_APP.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/KIEN_TRUC_CLIENT_APP.md)
+
 | Tầng | Công nghệ / Pattern | Mô tả |
 |------|---------------------|-------|
-| **Local DB** | SQLite (sqflite/drift) | Mirror schema backend + `sync_status` (pending/synced/conflict) + `updated_at` |
-| **Repository** | Repository Pattern | Abstract nguồn dữ liệu (local/remote), ưu tiên đọc local |
-| **Sync Engine** | `POST /api/sync/push` + `GET /api/sync/pull` | Push mảng operations lên server (LWW) & pull data về |
-| **Conflict Resolution** | Backend = source of truth | Ưu tiên theo timestamp, báo conflict nếu cần |
-| **Real-time** | Socket.IO | Backend push sự kiện → client cập nhật local DB + UI |
-| **State Management** | BLoC | Mỗi màn hình có BLoC riêng (loading/loaded/error) |
+| **Local DB** | SQLite (drift) | Mirror schema backend + `sync_status` (pending/synced/conflict) + `updated_at` |
+| **Repository** | Repository Pattern | Interface ở tầng data, trả Entity (ví, giao dịch, mục tiêu, ngân sách) hoặc hàng Drift (hoá đơn, danh mục); chỉ đọc/ghi SQLite — mạng là việc của Sync Engine |
+| **Sync Engine** | `POST /api/sync/push` + `GET /api/sync/pull` | Push mảng operations lên server (LWW) & pull data về theo `Server_update_at` |
+| **Conflict Resolution** | Backend = source of truth | Ưu tiên theo timestamp (Last-Write-Wins), báo conflict nếu cần |
+| **Real-time** | Socket.IO | Sự kiện là tín hiệu: client chỉ đọc tên sự kiện rồi kéo dữ liệu qua `/sync/pull` (trừ `account.force_logout` mang lý do) |
+| **State Management** | BLoC + Cubit | BLoC + Cubit cho 10 màn có luồng ghi (3 Bloc, 7 Cubit); màn đọc dùng stream Drift; trạng thái màn trong widget |
+| **Test quét kiến trúc** | Test đọc mã nguồn `lib/` | 29 test quét canh các luật một-định-nghĩa: tầng giao diện không cầm CSDL, chỉ một tệp import mỗi gói native, không fallback tài khoản admin… |
+| **Cổng nền tảng** | Interface + bản giả | OsNotifier (thông báo), DocChuAnh (OCR ML Kit), SlmRuntime (Gemma trên máy), kênh Kotlin `flowmoney/*` — mọi ranh giới nền tảng thay được bằng bản giả trong test |
+| **Chạy nền** | WorkManager (Android) | Tự trả hoá đơn / tự trích mục tiêu chạy cả khi app đóng: WorkManager đánh thức engine Flutter không giao diện, đồng bộ trong lượt nền (2026-10-10) |
 
 - **Trigger sync**: App vào foreground, sau mỗi thay đổi (debounce), chu kỳ 15 phút
 - **Business logic**: Tính số dư ví, kiểm tra ngân sách, phân loại tạm thời → xử lý trên client
@@ -4131,4 +4137,112 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - **Backend:** Thêm bộ test `src/Backend/tests/unit/admin.payment.test.js` gồm 12 tests bao quát Tầng 1 (API HTTP contract) và Tầng 2 (Truy vấn CSDL, sinh QR PayOS, khởi tạo đơn đối soát, sanitize BigInt). Kết quả: **282/282 tests PASS (100%)**.
   - **Admin-web:** Thêm bộ test `src/Admin-web/src/tests/payment.page.test.jsx` gồm 11 tests bao quát Tầng 1 (Render đầy đủ controls, badges, Modal QR PayOS) và Tầng 2 (Tác động hệ thống: gọi API đúng filter params, refresh dữ liệu, chuyển đổi mức tiền kiểm thử). Kết quả: **11/11 tests PASS (100%)**, `vite build` thành công không lỗi.
 
+### 7.18 Quy Trình Đối Soát Đơn Hàng Nâng Cấp Gói & Cơ Chế Hoàn Tiền Đa Nền Tảng (🆕 2026-10-15)
+- **Bối cảnh & Quyết định Nghiệp Vụ từ PO:**
+  - Quy trình thanh toán chuyển khoản ngân hàng qua kênh PayOS (MB Bank) phát sinh các tình huống khách hàng chuyển thừa, thiếu tiền hoặc ghi sai mã nội dung.
+  - PO phê duyệt quy trình 6 bước chuẩn mực:
+    1. Người dùng chọn gói Premium (49.000đ/tháng) và bấm thanh toán.
+    2. Backend sinh đơn hàng với `order_code` duy nhất và sinh `recognition_code` gồm 6 ký tự ngẫu nhiên alphanumeric (`^[A-Z0-9]{6}$`). Backend gọi PayOS API tạo link thanh toán và mã VietQR có nội dung chuyển khoản chứa mã nhận diện.
+    3. Cổng PayOS trả về `checkoutUrl` và mã QR động.
+    4. Giao diện hiển thị VietQR, mã nhận diện 6 ký tự nổi bật có nút sao chép nhanh, đồng hồ đếm ngược 10 phút.
+    5. Khách hàng quét mã chuyển tiền qua App Ngân hàng (MB Bank/Napas 247).
+    6. PayOS gửi Webhook biến động số dư về Backend. Backend tách mã nhận diện, đối soát số tiền thực nhận (`amountReceived`):
+       - **Trường hợp Đủ tiền (`amountReceived == amount`):** Tự động chuyển đơn thành `PAID`, kích hoạt gói Premium ngay lập tức, phát sự kiện realtime `account.upgraded` qua Socket.IO.
+       - **Trường hợp 6.1: Thừa tiền (`amountReceived > amount`):** Chuyển trạng thái đơn sang `WAITING_CONFIRMATION`, KHÔNG tự động nâng cấp. Client-app/Admin Sandbox hiển thị hộp thoại hỏi ý kiến khách hàng:
+         + *Đồng ý quy đổi ngày:* Nâng cấp Premium và cộng thêm số ngày tương ứng với số tiền thừa (`daysToAdd = Math.floor(excessAmount / dailyRate)`). Trạng thái đơn chuyển thành `PAID`.
+         + *Từ chối quy đổi:* Chuyển đơn sang `REFUND_PENDING` để Admin thực hiện hoàn lại tiền thừa.
+       - **Trường hợp 6.2: Thiếu tiền (`amountReceived < amount`):** Chuyển trạng thái đơn sang `REFUND_PENDING`, KHÔNG nâng cấp gói. Gửi cảnh báo về Client-app và chuyển cho Admin xử lý hoàn tiền toàn bộ.
+- **Nâng Cấp CSDL Supabase (Migration 20 & DB Guard Tuân Thủ Rule 10):**
+  - Script SQL: `src/Backend/database/20_add_payment_reconciliation_and_refund_fields.sql`.
+  - Bổ sung 8 cột vào bảng `payment_order`:
+    + `recognition_code` VARCHAR(6): Mã nhận diện 6 ký tự ngẫu nhiên.
+    + `amount_received` DECIMAL(15,2): Số tiền thực nhận qua ngân hàng.
+    + `fee` DECIMAL(15,2): Phí giao dịch đối tác.
+    + `transfer_content` TEXT: Nội dung chuyển khoản thực tế.
+    + `refunded_amount` DECIMAL(15,2): Số tiền hoàn trả.
+    + `refunded_at` TIMESTAMPTZ: Thời điểm hoàn trả tiền.
+    + `refund_reason` TEXT: Lý do hoàn trả.
+    + `refund_proof` TEXT: Đường dẫn minh chứng hoàn tiền (UNC/biên lai chuyển khoản).
+  - Đảm bảo Partial Indexes và Triggers an toàn 100% qua `rtk npm run db:verify-indexes`.
+- **Thực thi Kỹ thuật Backend:**
+  - `src/Backend/modules/payment/payment.service.js`:
+    + Sinh mã nhận diện ngẫu nhiên `generateRecognitionCode()` (chữ in hoa và số).
+    + Triển khai logic phân nhánh đối soát 6.1 vs 6.2 trong `handlePayOSWebhook()`.
+    + Triển khai `confirmUpgrade(orderCode, accountId, accept)`: Xử lý chấp thuận bù ngày hoặc từ chối chuyển sang hoàn tiền.
+    + Triển khai `processRefund(orderId, adminId, refundData)`: Ghi nhận hoàn tiền, lưu lý do và minh chứng.
+    + Triển khai `simulateWebhook(orderCode, amountReceived)`: Phục vụ Sandbox kiểm thử nhanh.
+  - Endpoints mới:
+    + `POST /api/payment/confirm-upgrade` (User token)
+    + `POST /api/payment/simulate-webhook` (Internal/Sandbox)
+    + `POST /api/admin/payments/orders/:id/refund` (Admin token)
+- **Thực thi Kỹ thuật Admin-web:**
+  - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
+    + **Sandbox Giả Lập Client-app ("Thử nghiệm QR"):** Hiển thị mã nhận diện 6 ký tự, đồng hồ đếm ngược 10 phút, 3 nút kiểm thử biến động số dư giả lập (49k đủ tiền, 70k thừa tiền, 20k thiếu tiền). Lắng nghe Socket.IO thời gian thực khi đơn đổi trạng thái. Khi nhận thông báo thừa tiền, hiển thị hộp thoại xác nhận ngay tại Sandbox để Admin đóng vai người dùng xác nhận bù ngày hoặc yêu cầu hoàn tiền.
+    + **Modal Xử Lý Hoàn Tiền (`RefundModal`):** Dành cho các đơn `REFUND_PENDING`. Cho phép Admin nhập số tiền hoàn trả, lý do và đính kèm đường link minh chứng biên lai hoàn tiền.
+  - `src/Admin-web/src/api/payment.api.js`: Bổ sung `confirmUpgrade`, `processRefund`, `simulateWebhook`.
+- **Thực thi Kỹ thuật Client-app (Flutter):**
+  - Domain Model: Cập nhật `DonThanhToan` và `DongLichSu` với các thuộc tính `recognitionCode`, `qrUrl`, `transferContent`, `amountReceived`, `fee`, `refundedAmount`, `refundedAt`, `refundReason` và các trạng thái `WAITING_CONFIRMATION`, `REFUND_PENDING`, `REFUNDED`.
+  - Màn hình `ChoThanhToanPage`:
+    + Render mã nhận diện 6 ký tự đóng khung nổi bật kèm nút sao chép nhanh (`Clipboard.setData`).
+    + Đếm ngược thời gian 10 phút.
+    + Trạng thái `WAITING_CONFIRMATION`: Hiển thị thông báo thừa tiền kèm 2 lựa chọn (Đồng ý quy đổi ngày dùng Premium / Hoàn tiền thừa).
+    + Trạng thái `REFUND_PENDING`: Hiển thị cảnh báo chuyển tiền chưa đủ hoặc yêu cầu hoàn tiền, cung cấp nút liên hệ Admin hỗ trợ.
+    + Trạng thái `REFUNDED`: Hiển thị thông tin hoàn tiền thành công kèm lý do.
+- **Thẩm Tra Kiểm Thử 2 Tầng (2-Tier Testing Architecture - Rule 11):**
+  - **Backend:** `payment.reconciliation.test.js` (8/8 tests pass) kiểm thử đủ Tầng 1 (API status code, schema response) và Tầng 2 (Tác động CSDL thực tế: update trạng thái `PAID`/`WAITING_CONFIRMATION`/`REFUND_PENDING`/`REFUNDED`, bù hạn ngày dùng Premium, audit log). Toàn bộ 346/346 tests pass.
+  - **Admin-web:** `payment.page.test.jsx` (13/13 tests pass) kiểm thử Tầng 1 (Render Sandbox modal, Countdown timer, 6-char code, Refund modal) và Tầng 2 (Tác động hệ thống: gọi API simulateWebhook, xác nhận quy đổi thừa tiền, thực hiện hoàn tiền).
+  - **Client-app:** Bộ kiểm thử `test/features/premium/` (118/118 tests pass) bao gồm toàn bộ Tầng 1 (Giao diện hiển thị, mã nhận diện, nút sao chép) và Tầng 2 (Xử lý sự kiện realtime, gọi API xác nhận nâng cấp, chuyển trạng thái màn hình).
+
+### 7.19 Đồng Bộ Trạng Thái Đơn Hàng & Cơ Chế Xóa Mã QR Khi Hoàn Tất Giao Dịch (2026-10-16)
+- **Bối cảnh & Yêu cầu PO:**
+  1. Trạng thái được ghi nhận bên ngoài danh sách bị lệch so với khi xem chi tiết modal (ví dụ khi quá hạn 10 phút, ngoài bảng hiện Đang chờ xử lý, trong modal hiện Đã hết hạn nhưng thông tin đơn hàng lại ghi PENDING). Phải đồng bộ 100% trạng thái 'Đã hết hạn' (EXPIRED) ở cả 2 nơi.
+  2. Khi đơn hàng đã hoàn tất (không còn chờ xử lý như PAID, EXPIRED, REFUNDED, CANCELLED), tiến hành xóa QR tương ứng của đơn hàng đi, tránh người dùng chuyển khoản lại nhầm lẫn. Mã QR và thông tin liên quan phải được lưu bền vững tại CSDL Supabase (cột `qr_url` trong bảng `payment_order`), không lưu tại web tránh load lại mất và sai lệch dữ liệu.
+- **Nâng Cấp CSDL Supabase (Migration 27 & DB Guard Rule 10):**
+  - Script SQL: `src/Backend/database/27_add_qr_url_to_payment_order.sql`.
+  - Cột mới: `qr_url TEXT NULL` trong bảng `payment_order`.
+  - Thẩm tra toàn vẹn CSDL: Chạy `rtk npm run db:verify-indexes` xác nhận 100% partial indexes và triggers bảo vệ dữ liệu.
+- **Thực thi Kỹ thuật Backend:**
+  - `src/Backend/modules/payment/payment.repository.js`:
+    - Thêm `autoExpirePendingOrders()`: Quét và cập nhật atomic các đơn PENDING có `expired_at <= now` thành `status = 'EXPIRED'`, gán `qr_url = null`, `checkout_url = null`.
+    - Tích hợp `autoExpirePendingOrders()` trước mọi truy vấn danh sách, thống kê và chi tiết đơn hàng.
+    - Cập nhật `sanitizeOrderData()` tự động ép `status = 'EXPIRED'` và xóa `qr_url`, `checkout_url` khi đơn quá hạn.
+    - Cập nhật `activatePremiumSubscription()`, `updateOrderStatus()`, `updateOrderPaymentStatus()`, `processRefund()` tự động xóa `qr_url` và `checkout_url` khi đơn chuyển sang `PAID`, `REFUNDED` hoặc trạng thái hoàn tất khác.
+    - Lưu trữ bền vững `qr_url` vào CSDL trong `getOrCreatePayosQr()`, `createPremiumOrder()`, và `createSampleOrder()`.
+  - `src/Backend/modules/payment/payment.service.js`:
+    - Thiết lập worker `initPaymentAutoExpiryJob()` định kỳ 30s tự động quét các đơn quá hạn, phát sự kiện socket `payment.order_expired` tới `admin_room`.
+- **Thực thi Kỹ thuật Admin-web:**
+  - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
+    - Lắng nghe sự kiện `payment.order_expired`, tự động reload danh sách và thống kê.
+    - Đồng bộ `effectiveStatus` ngoài bảng: tự động hiển thị badge `Đã hết hạn` (màu rose-700, icon `timer_off`) nếu đơn quá hạn hoặc trạng thái là `EXPIRED`.
+    - Modal chi tiết: Khi đơn không còn `PENDING`, ẩn hoàn toàn ảnh QR và nút PayOS, thay bằng Banner an toàn giao dịch tương ứng (Xanh lá cho PAID, Đỏ cho EXPIRED, Tím cho REFUNDED, Xám cho CANCELLED).
+    - Đồng bộ phần 'Thông tin đơn hàng' trong modal: hiển thị badge trạng thái chuẩn theo `STATUS_CONFIG` và `getStatusLabel(effStatus, t)` ('Đã hết hạn').
+    - Chuẩn hóa nhãn `statusExpired: 'Đã hết hạn'` trong `vi.js`.
+- **Kiểm định chất lượng 2 tầng (Rule 11):**
+  - Backend Unit Tests: `tests/unit/admin.payment.test.js` (19/19 tests pass), toàn bộ backend 353/353 tests pass.
+  - Admin-web Tests: `src/tests/payment.page.test.jsx` (16/16 tests pass), toàn bộ Admin-web test suite pass 100%.
+
+### 4.9. Đợt Chuẩn Hóa & Vá Lỗi Kỹ Thuật Toàn Diện (Mục 41, 43, 44 CAN-LAM) (2026-10-16)
+- **Mục 44 (A & D): Khử trùng số file migration & Nới rộng cột trạng thái:**
+  - Đổi tên `20_add_payment_reconciliation_and_refund_fields.sql` $\rightarrow$ `28_add_payment_reconciliation_and_refund_fields.sql`.
+  - Đổi tên `24_add_is_template_to_payment_order.sql` $\rightarrow$ `29_add_is_template_to_payment_order.sql`.
+  - Khôi phục `src/Backend/scripts/apply_migration_20.js` trỏ đúng về `20_add_server_update_at_sync_tables.sql`.
+  - Cập nhật `apply_migration_24.js` trỏ về `24_add_actor_role_to_aiops_incident.sql`.
+  - Tạo mới `apply_migration_28.js` và `apply_migration_29.js`.
+  - Thêm `ALTER TABLE "payment_order" ALTER COLUMN "status" TYPE VARCHAR(25);` vào migration 28.
+- **Mục 44 (B, C, E) & Mục 43 (B): Siết an toàn quy trình thanh toán & Webhook:**
+  - Sửa regex trích xuất mã nhận diện đơn hàng trong `payment.service.js`: Lấy token cuối cùng của chuỗi chuyển khoản (`description.trim().split(/\s+/).pop()`) để không bắt nhầm tiền tố `CSCYDE` do PayOS thêm vào.
+  - Idempotency Webhook: Chặn ghi đè đối với các đơn đã ở trạng thái kết thúc (`PAID`, `REFUNDED`, `CANCELLED`).
+  - Webhook an toàn: Bỏ việc tự động gán đơn hàng lạ cho tài khoản Admin, trả 2xx log warning.
+  - Siết chặt kiểu boolean bắt buộc cho `accept` trong `confirmUpgrade` ở cả tầng Controller và Service.
+- **Mục 43 (A & C): An toàn tài khoản & Trải nghiệm bảo trì hệ thống:**
+  - AIOps phong tỏa tài khoản: Chuyển sang ghi `status = 'Inactive'` (thay vì `'Locked'`), tuân thủ CHECK constraint `ck_account_status`.
+  - `middleware/auth.js`: Nguyên tắc an toàn mặc định `accountRejection` trả `ACCOUNT_INACTIVE` cho mọi trạng thái không phải `Deleted`, ngăn ngừa tuyệt đối việc Client-app tự động xóa CSDL SQLite cục bộ khi gặp trạng thái lạ.
+  - `auth.controller.js`: Xử lý đăng nhập lúc bảo trì trả về HTTP 503 kèm header `Retry-After: 60` và `code: 'MAINTENANCE_MODE'`.
+- **Mục 41: Chống trả tiền hai lần cho cùng một kỳ hóa đơn (Kỳ anh em):**
+  - Mở rộng hàm `chanTraHaiLan` trong `src/Backend/modules/sync/sync.repository.js` kiểm tra các kỳ hóa đơn anh em cùng `previous_bill_id` và cùng `due_date`, ném mã lỗi riêng `BILL_PERIOD_ALREADY_PAID`.
+  - `src/Backend/modules/sync/sync.service.js`: Ánh xạ mã lỗi `BILL_PERIOD_ALREADY_PAID` thành phản hồi chuẩn hóa `friendlyMessage` cho Client-app.
+- **Kiểm định chất lượng 2 tầng (Rule 11):**
+  - `src/Backend`: 377/377 unit tests pass 100% (bao gồm `payment.reconciliation.test.js`, `sync.brother_bill.test.js`, `auth.safety.and.maintenance.test.js`).
+  - `src/Admin-web`: Vitest suite pass 100%.
+  - `src/Client-app`: 159/159 Flutter tests pass 100%.
 

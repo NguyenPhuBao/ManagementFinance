@@ -147,7 +147,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
       () => {
         mgr.setMaintenance(true, 'Cố kích hoạt khẩn cấp lần 2', 'admin-02', { isEmergency: true });
       },
-      /Hệ thống hiện đang trong chế độ bảo trì, không thể kích hoạt bảo trì nữa/
+      /Hệ thống hiện đang trong chế độ bảo trì.*không thể kích hoạt bảo trì nữa/
     );
 
     // 3. Tắt bảo trì thành công
@@ -181,6 +181,97 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     // Dọn dẹp
     mgr.cancelScheduledMaintenance();
     mgr.setMaintenance(false, 'Xong', 'admin');
+  });
+
+  await t.test('8.2. CHÍNH SÁCH MỚI: Chỉ duy nhất bảo trì khẩn cấp có thể kích hoạt khi đang trong thời gian bảo trì thông thường', () => {
+    let broadcastPayload = null;
+    const mockNotif = {
+      broadcast: async (payload) => {
+        broadcastPayload = payload;
+      },
+    };
+    const mgr = new MaintenanceManager({ notificationService: mockNotif });
+
+    // 1. Kích hoạt bảo trì THÔNG THƯỜNG (isEmergency: false)
+    mgr.setMaintenance(true, 'Bảo trì bảo dưỡng định kỳ', 'admin-01', { isEmergency: false });
+    assert.strictEqual(mgr.isMaintenanceActive(), true);
+    assert.strictEqual(mgr.isEmergencyMode(), false);
+    assert.strictEqual(broadcastPayload, null, 'Bảo trì thông thường không phát broadcast');
+
+    // 2. Cố tình kích hoạt thêm bảo trì thông thường -> BỊ TỪ CHỐI
+    assert.throws(
+      () => {
+        mgr.setMaintenance(true, 'Bảo trì thông thường lần 2', 'admin-02', { isEmergency: false });
+      },
+      /Hệ thống hiện đang trong phiên bảo trì thông thường\. Chỉ có thể kích hoạt bảo trì khẩn cấp/
+    );
+
+    // 3. Kích hoạt BẢO TRÌ KHẨN CẤP khi đang bảo trì thông thường -> ĐƯỢC PHÉP NÂNG CẤP!
+    const upgradedStatus = mgr.setMaintenance(true, 'SỰ CỐ KHẨN CẤP PHÁT SINH TRONG LÚC BẢO TRÌ', 'admin-lead', { isEmergency: true });
+    assert.strictEqual(upgradedStatus.active, true);
+    assert.strictEqual(upgradedStatus.isEmergency, true);
+    assert.strictEqual(mgr.isEmergencyMode(), true);
+    assert.ok(broadcastPayload, 'Bảo trì khẩn cấp phải phát broadcast cảnh báo');
+    assert.strictEqual(broadcastPayload.level, 'CRITICAL');
+
+    // 4. Khi đã ở chế độ khẩn cấp, không cho phép kích hoạt thêm bất kỳ bảo trì nào đè lên nữa
+    assert.throws(
+      () => {
+        mgr.setMaintenance(true, 'Cố kích hoạt thêm lần nữa', 'admin-03', { isEmergency: true });
+      },
+      /Hệ thống hiện đang trong chế độ bảo trì khẩn cấp, không thể kích hoạt bảo trì nữa/
+    );
+
+    // Tắt bảo trì
+    mgr.setMaintenance(false, 'Khôi phục hoàn toàn', 'admin');
+    assert.strictEqual(mgr.isMaintenanceActive(), false);
+  });
+
+  await t.test('8.3. CHÍNH SÁCH MỚI: Không cho phép bảo trì theo lịch đè nhau', () => {
+    const mgr = new MaintenanceManager();
+    const futureDate1 = new Date(Date.now() + 100000).toISOString();
+    const futureDate2 = new Date(Date.now() + 200000).toISOString();
+
+    // 1. Đặt lịch bảo trì lần 1 thành công
+    mgr.scheduleMaintenance({
+      scheduledAt: futureDate1,
+      reason: 'Bảo trì máy chủ 1',
+      isEmergency: false,
+      createdBy: 'admin-01',
+    });
+    assert.ok(mgr.getStatus().scheduled);
+    assert.strictEqual(mgr.getStatus().scheduled.scheduledAt, futureDate1);
+
+    // 2. Cố gắng đặt lịch bảo trì lần 2 đè lên lịch cũ -> BẮT BUỘC BỊ TỪ CHỐI
+    assert.throws(
+      () => {
+        mgr.scheduleMaintenance({
+          scheduledAt: futureDate2,
+          reason: 'Bảo trì máy chủ 2 đè lên',
+          isEmergency: false,
+          createdBy: 'admin-02',
+        });
+      },
+      /Đã có lịch bảo trì đang chờ thực hiện\. Không thể lên thêm lịch bảo trì mới/
+    );
+
+    // 3. Bảo toàn lịch cũ không bị ghi đè
+    assert.strictEqual(mgr.getStatus().scheduled.scheduledAt, futureDate1);
+
+    // 4. Sau khi hủy lịch 1, mới được phép lên lịch mới
+    mgr.cancelScheduledMaintenance();
+    assert.strictEqual(mgr.getStatus().scheduled, null);
+
+    mgr.scheduleMaintenance({
+      scheduledAt: futureDate2,
+      reason: 'Bảo trì máy chủ 2 hợp lệ sau khi hủy lịch 1',
+      isEmergency: false,
+      createdBy: 'admin-02',
+    });
+    assert.strictEqual(mgr.getStatus().scheduled.scheduledAt, futureDate2);
+
+    // Dọn dẹp
+    mgr.cancelScheduledMaintenance();
   });
 
   await t.test('9. Lên lịch bảo trì với thời điểm kết thúc hợp lệ (scheduledEndAt)', () => {

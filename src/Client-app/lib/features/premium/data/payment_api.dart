@@ -15,6 +15,9 @@ abstract class PaymentApi {
 
   /// `GET /payment/history` → `items`.
   Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20});
+
+  /// `POST /payment/confirm-upgrade` → xác nhận hoặc từ chối nâng cấp khi chuyển thừa.
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept});
 }
 
 /// Bóc `data` khỏi bao `{success, message, data}` của backend. Không có `data`
@@ -64,4 +67,12 @@ class DioPaymentApi implements PaymentApi {
             .data,
         'items',
       );
+
+  @override
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept}) async =>
+      bocData((await _dio.post(
+        '/payment/confirm-upgrade',
+        data: {'orderCode': orderCode, 'accept': accept},
+      ))
+          .data);
 }

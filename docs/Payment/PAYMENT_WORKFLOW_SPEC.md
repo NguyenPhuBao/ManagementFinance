@@ -10,9 +10,11 @@
 
 Quy trình thanh toán gói cước Premium qua cổng **PayOS** và ngân hàng **MB Bank** được thiết kế nhằm đảm bảo:
 1. **Tự động hóa 100%:** Người dùng quét mã VietQR trên App ngân hàng bất kỳ, PayOS phát hiện biến động số dư và đẩy Webhook về Backend để kích hoạt tài khoản trong vòng 1 - 3 giây.
-2. **Khớp mã nhận diện ngẫu nhiên (6 ký tự):** Mỗi đơn hàng gắn liền với một mã nhận diện độc nhất gồm 6 ký tự chữ và số `[A-Z0-9]` do Backend sinh ra, kết hợp với tiền tố động của PayOS (`[TIỀN TỐ ĐỘNG PAYOS] [MÃ NHẬN DIỆN]`) trong nội dung chuyển khoản để loại trừ hoàn toàn rủi ro nhầm lẫn giao dịch.
+2. **Khớp mã nhận diện ngẫu nhiên linh hoạt (6 ký tự):** Mỗi đơn hàng gắn liền với một mã nhận diện độc nhất gồm 6 ký tự chữ và số `[A-Z0-9]` do Backend sinh ra. Backend sử dụng regex linh hoạt nhận diện chính xác mã này kể cả khi token động của PayOS nằm ở đầu chuỗi (`[TOKEN] [MÃ NHẬN DIỆN]`) hoặc ở cuối chuỗi (`[MÃ NHẬN DIỆN] [TOKEN]`).
 3. **Minh bạch & Xử lý sai lệch số tiền (Overpayment / Underpayment):** Phân định rạch ròi giữa số tiền cần thanh toán (`amount`) và số tiền thực nhận (`amount_received`). Có kịch bản tự động xử lý khi khách chuyển thừa hoặc chuyển thiếu.
-4. **Vết kiểm toán & Bảo vệ pháp lý (Audit Trail):** Lưu giữ đầy đủ thông tin giao dịch, minh chứng hoàn trả (Ủy nhiệm chi / Biên lai), phục vụ công tác thanh tra tài chính và điều tra pháp lý theo Nghị định 13/2023/NĐ-CP và `Data_Security.md`.
+4. **Cơ chế Đối soát Tức thời (Just-in-Time Sync - JIT Sync):** Khi mạng lag hoặc Webhook bị trễ, Client-app hoặc Admin-web chỉ cần gọi `GET /api/payment/orders/:orderCode/status`, Backend sẽ chủ động truy vấn cổng PayOS và tự động kích hoạt gói ngay lập tức nếu tiền đã vào, loại bỏ hoàn toàn việc người dùng bị treo ở màn hình chờ.
+5. **Vết kiểm toán & Bảo vệ pháp lý (Audit Trail):** Lưu giữ đầy đủ thông tin giao dịch, minh chứng hoàn trả (Ủy nhiệm chi / Biên lai), phục vụ công tác thanh tra tài chính và điều tra pháp lý theo Nghị định 13/2023/NĐ-CP và `Data_Security.md`.
+6. **Bảo vệ Idempotency Tuyệt Đối:** Chặn xử lý lặp lại và dừng ngay nếu đơn hàng đã ở các trạng thái kết thúc `['PAID', 'REFUNDED', 'CANCELLED']`.
 
 ---
 

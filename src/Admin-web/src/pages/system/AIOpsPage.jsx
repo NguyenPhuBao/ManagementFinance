@@ -668,7 +668,6 @@ const AIOpsPage = () => {
     socket.on('admin.quarantine_updated', handleQuarantineUpdated);
     socket.on('admin.anomaly_detected', handleAnomalyDetected);
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
-    socket.on('system.maintenance_changed', handleMaintenanceChanged);
     socket.on('admin.vector_config_changed', handleVectorConfigChanged);
 
     return () => {
@@ -678,7 +677,6 @@ const AIOpsPage = () => {
       socket.off('admin.quarantine_updated', handleQuarantineUpdated);
       socket.off('admin.anomaly_detected', handleAnomalyDetected);
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
-      socket.off('system.maintenance_changed', handleMaintenanceChanged);
       socket.off('admin.vector_config_changed', handleVectorConfigChanged);
     };
   }, [socket]);

@@ -170,6 +170,9 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
                       color: switch (d.trangThai) {
                         TrangThaiDon.paid => AppColors.income,
                         TrangThaiDon.pending => AppColors.warning,
+                        TrangThaiDon.waitingConfirmation => const Color(0xFF7B1FA2),
+                        TrangThaiDon.refundPending => const Color(0xFFE65100),
+                        TrangThaiDon.refunded => const Color(0xFF00796B),
                         TrangThaiDon.cancelled || TrangThaiDon.expired => AppColors.textSecondary,
                       })),
             ],

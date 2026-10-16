@@ -288,4 +288,143 @@ test('Payment Reconciliation & Refund Suite (2-Tier Testing)', async (t) => {
       paymentRepository.processRefund = origProcessRefund;
     }
   });
+
+  await t.test('8. [Tier 2] Tra cứu theo mã nhận diện: Nội dung "CSCYDEZ2N10 A8B9K2" phải trích xuất đúng "A8B9K2" để tìm đơn', async () => {
+    let queriedRecognitionCode = null;
+    const origFindByCode = paymentRepository.findOrderByCode;
+    const origFindByRecognition = paymentRepository.findOrderByRecognitionCode;
+    const origActivate = paymentRepository.activatePremiumSubscription;
+
+    paymentRepository.findOrderByCode = async () => null; // Giả lập orderCode không khớp
+    paymentRepository.findOrderByRecognitionCode = async (code) => {
+      queriedRecognitionCode = code;
+      return {
+        id: 'order-matched-by-code',
+        idaccount: 12,
+        order_code: 999999999n,
+        amount: 49000,
+        status: 'PENDING',
+        recognition_code: code,
+        account: { type: 'Basic' },
+      };
+    };
+    paymentRepository.activatePremiumSubscription = async () => true;
+
+    payosClient.setPayOSClientMock({
+      webhooks: {
+        verify: () => ({
+          orderCode: 999999999,
+          amount: 49000,
+          reference: 'REF-RECOG-01',
+          transactionDateTime: '2026-10-16T10:00:00Z',
+          description: 'CSCYDEZ2N10 A8B9K2',
+        }),
+      },
+    });
+
+    try {
+      const res = await paymentService.handlePayOSWebhook({ data: { orderCode: 999999999 } });
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(queriedRecognitionCode, 'A8B9K2', 'Phải trích xuất đúng token cuối cùng làm mã nhận diện');
+    } finally {
+      paymentRepository.findOrderByCode = origFindByCode;
+      paymentRepository.findOrderByRecognitionCode = origFindByRecognition;
+      paymentRepository.activatePremiumSubscription = origActivate;
+      payosClient.setPayOSClientMock(null);
+    }
+  });
+
+  await t.test('9. [Tier 2] Webhook Idempotency: Đơn đã REFUNDED hoặc CANCELLED không bị kéo ngược trạng thái', async () => {
+    const origFindByCode = paymentRepository.findOrderByCode;
+    const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+    let updateCalled = false;
+
+    paymentRepository.findOrderByCode = async () => ({
+      id: 'order-refunded-uuid',
+      idaccount: 15,
+      order_code: 888888888n,
+      amount: 49000,
+      status: 'REFUNDED',
+      account: { type: 'Basic' },
+    });
+    paymentRepository.updateOrderPaymentStatus = async () => {
+      updateCalled = true;
+    };
+
+    payosClient.setPayOSClientMock({
+      webhooks: {
+        verify: () => ({
+          orderCode: 888888888,
+          amount: 20000, // Chuyển thiếu
+          reference: 'REF-ALREADY-REFUNDED',
+          transactionDateTime: '2026-10-16T11:00:00Z',
+          description: 'CSCYDEZ2N10 X1Y2Z3',
+        }),
+      },
+    });
+
+    try {
+      const res = await paymentService.handlePayOSWebhook({ data: { orderCode: 888888888 } });
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(updateCalled, false, 'Tuyệt đối không được cập nhật lại đơn đã REFUNDED');
+    } finally {
+      paymentRepository.findOrderByCode = origFindByCode;
+      paymentRepository.updateOrderPaymentStatus = origUpdateStatus;
+      payosClient.setPayOSClientMock(null);
+    }
+  });
+
+  await t.test('10. [Tier 2] Webhook an toàn: Gặp orderCode không tồn tại -> Trả 2xx, KHÔNG tự tạo đơn gán cho Admin', async () => {
+    const origFindByCode = paymentRepository.findOrderByCode;
+    const origFindByRecognition = paymentRepository.findOrderByRecognitionCode;
+    const origFindOrCreate = paymentRepository.findOrCreateOrderByCode;
+    let findOrCreateCalled = false;
+
+    paymentRepository.findOrderByCode = async () => null;
+    paymentRepository.findOrderByRecognitionCode = async () => null;
+    paymentRepository.findOrCreateOrderByCode = async () => {
+      findOrCreateCalled = true;
+      return null;
+    };
+
+    payosClient.setPayOSClientMock({
+      webhooks: {
+        verify: () => ({
+          orderCode: 111222333,
+          amount: 49000,
+          reference: 'REF-UNKNOWN-ORDER',
+          transactionDateTime: '2026-10-16T12:00:00Z',
+          description: 'TEST WEBHOOK KHONG RO NGUON GOC',
+        }),
+      },
+    });
+
+    try {
+      const res = await paymentService.handlePayOSWebhook({ data: { orderCode: 111222333 } });
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(findOrCreateCalled, false, 'Không được tự ý tạo đơn gán cho admin');
+    } finally {
+      paymentRepository.findOrderByCode = origFindByCode;
+      paymentRepository.findOrderByRecognitionCode = origFindByRecognition;
+      paymentRepository.findOrCreateOrderByCode = origFindOrCreate;
+      payosClient.setPayOSClientMock(null);
+    }
+  });
+
+  await t.test('11. [Tier 1] confirmUpgrade() kiểm tra nghiêm ngặt accept bắt buộc là boolean', async () => {
+    await assert.rejects(
+      async () => {
+        await paymentService.confirmUpgrade(50, { orderCode: 123456, accept: 'false' });
+      },
+      /Trường accept bắt buộc là kiểu boolean/
+    );
+
+    await assert.rejects(
+      async () => {
+        await paymentService.confirmUpgrade(50, { orderCode: 123456, accept: undefined });
+      },
+      /Trường accept bắt buộc là kiểu boolean/
+    );
+  });
 });
+

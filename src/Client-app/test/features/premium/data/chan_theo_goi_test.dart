@@ -41,6 +41,9 @@ class ApiIm implements PaymentApi {
   @override
   Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) =>
       throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept}) =>
+      throw UnimplementedError();
 }
 
 /// Kho mà lượt `doc` treo tới khi test gọi [tra] — dựng lại khoảnh khắc khởi động nguội: `noiPhien` đã gán tài khoản,

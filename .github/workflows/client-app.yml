@@ -39,22 +39,47 @@ jobs:
       - name: flutter analyze (info/warning không fatal — mức nền 20 cảnh báo)
         run: |
           set -o pipefail
-          flutter analyze --no-fatal-infos --no-fatal-warnings | tee analyze.txt
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee analyze.txt
 
       - name: Số cảnh báo không vượt mức nền
         run: |
-          MUC_NEN=20   # Giảm dần, KHÔNG tăng. Đổi cùng lúc với "mức nền" ở CLAUDE.md.
-          if grep -q 'No issues found' analyze.txt; then
-            N=0
-          else
-            N=$(grep -oE '[0-9]+ issues? found' analyze.txt | grep -oE '^[0-9]+' | head -1 || true)
-            if [ -z "$N" ]; then
-              echo "::error::không đọc được số cảnh báo từ analyze.txt"
-              exit 1
-            fi
-          fi
-          echo "issues=$N muc_nen=$MUC_NEN"
-          test "$N" -le "$MUC_NEN"
+          python3 - <<'PY'
+          import re, sys
+
+          MUC_NEN = 20   # Giảm dần, KHÔNG tăng. Đổi cùng lúc với "mức nền" ở CLAUDE.md.
+
+          try:
+              with open('analyze.txt', 'r', encoding='utf-8', errors='ignore') as f:
+                  content = f.read()
+          except Exception as e:
+              print(f"::error::Không mở được analyze.txt: {e}")
+              sys.exit(1)
+
+          clean = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', content)
+
+          n = None
+          m = re.search(r'(\d+)\s+issues?\s+found', clean)
+          if m:
+              n = int(m.group(1))
+          elif 'No issues found' in clean:
+              n = 0
+          else:
+              issue_lines = [line for line in clean.splitlines() if re.search(r'^\s*(info|warning|error)\s+[-•]', line)]
+              if issue_lines:
+                  n = len(issue_lines)
+
+          if n is None:
+              print("::error::không đọc được số cảnh báo từ analyze.txt")
+              print("--- 20 dòng cuối của analyze.txt ---")
+              for line in clean.splitlines()[-20:]:
+                  print(line)
+              sys.exit(1)
+
+          print(f"issues={n} muc_nen={MUC_NEN}")
+          if n > MUC_NEN:
+              print(f"::error::Số cảnh báo ({n}) vượt mức nền ({MUC_NEN})")
+              sys.exit(1)
+          PY
 
       - name: flutter test (đầu ra người đọc + tệp JSON cho bước in annotation)
         id: test

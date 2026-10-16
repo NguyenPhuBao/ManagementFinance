@@ -34,13 +34,16 @@ Theo quy định tại `docs/Rule_Project/Data_Security.md`, Nghị định 13/2
    - Webhook của PayOS được thẩm tra bằng thuật toán chữ ký **HMAC-SHA256** với `PAYOS_CHECKSUM_KEY`. Mọi request không khớp chữ ký đều bị từ chối với HTTP 400.
    - Băm SHA-256 nội dung webhook (`raw_webhook_hash`) để phục vụ đối soát, không lưu dữ liệu nhạy cảm dạng plaintext.
 4. **Idempotency (Chống xử lý lặp / Replay Attack):**
-   - Webhook có thể được PayOS gửi lại nhiều lần (retry). Server phải kiểm tra trạng thái đơn hàng: Nếu đã ở trạng thái `PAID` thì lập tức trả về HTTP 200 OK và không cộng dồn thời hạn lần 2.
+   - Webhook có thể được PayOS gửi lại nhiều lần (retry). Server kiểm tra trạng thái đơn hàng: Nếu đã ở bất kỳ trạng thái kết thúc nào trong danh sách `['PAID', 'REFUNDED', 'CANCELLED']`, server lập tức trả về HTTP 200 OK và dừng xử lý ngay (không ghi đè trạng thái, không cộng dồn thời hạn lần 2).
 
 ---
 
 ## 3. THIẾT KẾ CƠ SỞ DỮ LIỆU & QUY TRÌNH MIGRATION
 
-Tuân thủ **Rule 10 (DB Guard)**: Toàn bộ DDL được viết vào tệp `database/15_create_payment_subscription.sql` để thực thi trên Supabase SQL Editor. Cấm chạy `prisma migrate dev` hay `db push`.
+Tuân thủ **Rule 10 (DB Guard)**: Toàn bộ DDL được viết vào các tệp migration kiểm soát trong `database/` để thực thi trên Supabase SQL Editor. Cấm tuyệt đối chạy `prisma migrate dev` hay `db push`.
+- `database/15_create_payment_subscription.sql`: Khởi tạo bảng `payment_order`, `payment_transaction` và cột `premium_expires_at` trong `account`.
+- `database/19_expand_payment_order_reconciliation.sql`: Bổ sung các trường đối soát nâng cao (`recognition_code`, `amount_received`, `fee`, `transfer_content`, `is_template`, `refunded_at`, `refunded_amount`, `refund_reason`, `refund_proof`).
+- `database/28_expand_payment_order_status_length.sql`: Mở rộng độ dài cột `status` lên `VARCHAR(25)` để chứa đủ các trạng thái đối soát mới (`WAITING_CONFIRMATION`, `REFUND_PENDING`).
 
 ### 3.1. Sơ đồ Quan hệ Thực thể (ERD)
 
@@ -66,7 +69,7 @@ erDiagram
         varchar package_type "PREMIUM_1_MONTH"
         decimal amount "49000.00"
         varchar currency "VND"
-        varchar status "PENDING | PAID | CANCELLED | EXPIRED"
+        varchar status "VARCHAR(25): PENDING | PAID | CANCELLED | EXPIRED | WAITING_CONFIRMATION | REFUND_PENDING | REFUNDED"
         text checkout_url "PayOS checkout URL"
         varchar payment_link_id "PayOS link ID"
         timestamp created_at
@@ -231,9 +234,13 @@ const webhookData = payOS.webhooks.verify(req.body);
   }
   ```
 
-### 5.2. `GET /api/payment/order-status/:orderCode`
-- **Mô tả:** Kiểm tra trạng thái đơn hàng (phục vụ client polling khi cần).
+### 5.2. `GET /api/payment/orders/:orderCode/status` (Just-in-Time Sync)
+- **Mô tả:** Kiểm tra trạng thái đơn hàng kết hợp **Cơ chế Tự động Đối soát Tức thời (Just-in-Time Sync - JIT Sync)**.
 - **Bảo mật:** Yêu cầu JWT Token (`authenticate`).
+- **Cơ chế JIT Sync:**
+  1. Kiểm tra đơn hàng trong CSDL nội bộ. Nếu đơn vẫn ở trạng thái `PENDING` hoặc client chủ động bấm "Kiểm tra thanh toán", Backend gọi API PayOS `getPaymentLinkInformation(orderCode)` để kiểm tra trạng thái thực tế từ cổng thanh toán.
+  2. Nếu PayOS báo `PAID` trong khi Webhook bị trễ/thất lạc: Backend tự động ghi nhận thanh toán vào CSDL, kích hoạt nâng cấp Premium 30 ngày cho người dùng, ghi nhận transaction và phát tán Socket.IO `account.upgraded` tức thì.
+  3. Nếu PayOS báo `CANCELLED` hoặc đơn đã quá hạn 10 phút: CSDL tự động chuyển sang `CANCELLED` hoặc `EXPIRED`.
 - **Response Success (HTTP 200):**
   ```json
   {
@@ -242,7 +249,10 @@ const webhookData = payOS.webhooks.verify(req.body);
     "data": {
       "orderCode": 1728123456789,
       "status": "PAID",
-      "paidAt": "2026-10-05T12:20:15.000Z"
+      "amount": 49000,
+      "amountReceived": 49000,
+      "paidAt": "2026-10-16T12:20:15.000Z",
+      "syncSource": "JIT_SYNC"
     }
   }
   ```

@@ -230,12 +230,10 @@ const ServerHealthPanel = () => {
 
     socket.on('admin.metrics_stream', handleMetricsStream);
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
-    socket.on('system.maintenance_changed', handleMaintenanceChanged);
 
     return () => {
       socket.off('admin.metrics_stream', handleMetricsStream);
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
-      socket.off('system.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);
 

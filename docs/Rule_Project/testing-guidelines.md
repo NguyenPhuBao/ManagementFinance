@@ -123,8 +123,8 @@ graph TD
 
 ### 4.3. Module `src/Client-app`
 - **Tính năng Nâng cấp gói cước Realtime:**
-  - *Tầng 1:* Nhận sự kiện Socket -> Icon huy hiệu Premium trên AppBar đổi màu vàng.
-  - *Tầng 2:* `GoiCubit` cập nhật state, các cổng OCR và Chatbot AI mở khóa hạn mức, dữ liệu được ghi vào `FlutterSecureStorage`.
+  - *Tầng 1:* Nhận sự kiện Socket hoặc kết quả thanh toán -> Thẻ Gói tại trang Cá nhân (`profile_page.dart`) chuyển sang trạng thái "Premium", badge hiển thị số ngày còn lại; màn Chờ thanh toán chuyển sang màn "Chúc mừng nâng cấp".
+  - *Tầng 2:* `GoiCubit` cập nhật state `TrangThaiGoi(laPremium: true)`, các cổng OCR, Chatbot AI và trần giới hạn 3/3/3 (Ví, Ngân sách, Mục tiêu) mở khóa hoàn toàn; dữ liệu hạn gói được lưu bền vững vào `FlutterSecureStorage` (`goi_tai_khoan_<id>`).
 
 ---
 
