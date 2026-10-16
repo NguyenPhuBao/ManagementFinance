@@ -166,14 +166,12 @@ stateDiagram-v2
      > *"Bạn đã chuyển thiếu tiền ([amount_received] / [amount] VNĐ). Gói cước không đủ điều kiện kích hoạt. Khoản tiền sẽ được hoàn trả lại cho bạn sau khi trừ phí giao dịch [fee] VNĐ."*
 
 ### 5.2. Dành cho Admin-Web (Mô phỏng Sandbox & Đối soát Realtime)
-1. **Mô phỏng Giao dịch Client-app (Admin Roleplay / Sandbox Mode):**
-   - Tại nút "Mã QR mẫu thử nghiệm" trên trang Quản lý thanh toán: Mở modal xem thông tin mã QR PayOS trực tiếp.
-   - **Chỉ tạo đơn mẫu khi nhấn nút `+ Đơn PENDING`**: Khi mở modal, Backend chỉ truy vấn thông tin QR từ PayOS mà không chèn đơn pending vào CSDL (`persistOrder: false`). Chỉ khi bấm nút `+ Đơn PENDING`, hệ thống mới ghi nhận đơn hàng mẫu với cờ `is_template: true`.
-   - Giao diện được tinh gọn: Lược bỏ các nhãn roleplay dư thừa, loại bỏ banner live gateway tĩnh và loại bỏ nút "Xóa các đơn mẫu".
-   - Bộ công cụ giả lập kiểm thử Webhook tức thì:
-     - Nút *"Giả lập chuyển đúng tiền (49k)"* $\rightarrow$ Kích hoạt luồng 6.1 (status `PAID`).
-     - Nút *"Giả lập chuyển thừa tiền (70k)"* $\rightarrow$ Kích hoạt luồng 6.2a (hiện prompt xác nhận ngay trên modal, status `WAITING_CONFIRMATION`).
-     - Nút *"Giả lập chuyển thiếu tiền (20k)"* $\rightarrow$ Kích hoạt luồng 6.2b (chuyển sang hàng đợi hoàn tiền, status `REFUND_PENDING`).
+1. **Mô phỏng Giao dịch Client-app (Admin Sandbox Mode):**
+   - **Ban đầu chưa có QR ngay:** Khi mở modal Sandbox qua nút "Mã QR mẫu thử nghiệm", hệ thống hiển thị màn hình chờ hướng dẫn (Empty State), chưa gọi PayOS và chưa chèn dữ liệu rác vào CSDL.
+   - **Tạo đơn Pending & Sinh mã QR theo yêu cầu:** Chỉ khi Admin chọn mức tiền kiểm thử và nhấn `[+ Tạo đơn Pending & Sinh mã QR]`, Backend mới tạo bản ghi `payment_order` trong CSDL với `status = 'PENDING'`, `is_template = true`, gọi API PayOS sinh mã VietQR thật (MB Bank 2512070399999) và mã nhận diện 6 ký tự.
+   - **Loại bỏ 3 nút giả lập Webhook:** Đã loại bỏ hoàn toàn 3 nút giả lập webhook cũ (*Đúng tiền*, *Thừa tiền*, *Thiếu tiền*) để phản ánh 100% luồng giao dịch thật. Admin dùng App ngân hàng bất kỳ hoặc MoMo quét trực tiếp mã QR được hiển thị; PayOS sẽ bắn Webhook thời gian thực về máy chủ Backend để đối soát.
+   - **Cơ chế Tự động Render Realtime (Auto-render):** Ngay khi tạo đơn mới hoặc khi PayOS gửi dữ liệu về, sự kiện Socket.IO (`payment.order_created`, `payment.success`) được phát tán; trang Admin-web tự động làm mới danh sách đơn hàng và 4 thẻ KPI doanh thu mà không cần tải lại trang.
+   - **Đồng hồ đếm ngược 10 phút:** Trên khung mã QR hiển thị đồng hồ đếm lùi trực quan `10:00` $\rightarrow$ `00:00`.
 2. **Bộ lọc, Phân loại đơn mẫu & Tra cứu đa chiều:**
    - **Dropdown gói cước (LOV):** Truy vấn động từ CSDL qua endpoint `GET /admin/payments/packages` (Basic mặc định, Premium).
    - **Cột Đơn hàng & Badge `[Mẫu]`:** Các đơn hàng thử nghiệm mang cờ `is_template: true` được gắn badge nhận diện `[Mẫu]` màu hổ phách bên cạnh mã đơn.
@@ -185,4 +183,7 @@ stateDiagram-v2
      - Cho phép Admin nhập số tiền hoàn trả thực tế, lý do hoàn trả, và trực tiếp upload file ảnh minh chứng (Ủy nhiệm chi / Biên lai chuyển khoản ngân hàng).
      - File ảnh được lưu trữ an toàn tại thư mục tĩnh `src/Backend/Assets/Refunds` với đường dẫn public `/assets/Refunds/{filename}`.
      - Sau khi xác nhận hoàn tiền: CSDL cập nhật `status = 'REFUNDED'`, `refunded_at = now()`, `refunded_amount`, `refund_proof = '/assets/Refunds/...'`, và phát sự kiện Socket.IO thông báo cho Client-app.
-   - **Modal Chi tiết Đơn hàng:** Xem đầy đủ thông tin giao dịch, nhật ký đối soát Webhook, và hiển thị ảnh thumbnail minh chứng kèm link xem trực tiếp toàn màn hình.
+   - **Modal Chi tiết Đơn hàng & Đối soát:**
+     - Tích hợp khung hiển thị mã **VietQR (MB Bank)** sắc nét kèm thông tin tài khoản và nút mở cổng PayOS Checkout.
+     - **Đồng hồ đếm ngược thời gian còn lại (10 phút)** đếm lùi theo từng giây cho các đơn hàng `PENDING`.
+     - Hiển thị đầy đủ thông tin giao dịch, nhật ký đối soát Webhook, và ảnh thumbnail minh chứng kèm link xem trực tiếp toàn màn hình.

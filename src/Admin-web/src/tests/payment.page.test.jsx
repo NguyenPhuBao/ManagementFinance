@@ -166,7 +166,24 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       data: { success: true, data: mockOrderDetail },
     });
     paymentApi.createSampleOrder.mockResolvedValue({
-      data: { success: true, data: { order_code: 9999, status: 'PAID' } },
+      data: {
+        success: true,
+        data: {
+          id: 'sample-ord-9999',
+          order_code: 9999,
+          status: 'PENDING',
+          package_type: 'PREMIUM_1_MONTH',
+          amount: 49000,
+          recognition_code: 'TST123',
+          qr_url: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
+          transfer_content: 'TST123',
+          bank_info: {
+            bankName: 'MB Bank (Quân Đội)',
+            accountNumber: '2512070399999',
+            accountName: 'NGUYEN PHU BAO',
+          },
+        },
+      },
     });
     paymentApi.deleteSampleOrders.mockResolvedValue({
       data: { success: true, data: { deletedCount: 1 } },
@@ -276,7 +293,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('1.4. Click nút "Mã QR mẫu thử nghiệm" mở modal Sandbox hiển thị mã QR, 6 ký tự nhận diện và đồng hồ đếm ngược', async () => {
+    it('1.4. Click nút "Mã QR mẫu thử nghiệm" mở modal Sandbox ban đầu chưa có QR, nhấn "Tạo đơn Pending & Sinh mã QR" hiển thị mã QR và đếm ngược', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
@@ -288,22 +305,27 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
 
       await waitFor(() => {
         expect(screen.getByText(/Mô phỏng Giao dịch Client-app \(Admin Sandbox\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Chưa kích hoạt đơn kiểm thử nào/i)).toBeInTheDocument();
       });
 
-      // Kiểm tra mã nhận diện 6 ký tự
-      expect(screen.getByText('A8K9M2')).toBeInTheDocument();
+      // Nhấn nút Tạo đơn Pending & Sinh mã QR
+      const createPendingBtn = screen.getByRole('button', { name: /\+ Tạo đơn Pending & Sinh mã QR/i });
+      fireEvent.click(createPendingBtn);
 
-      // Kiểm tra 10 phút đếm ngược (định dạng mm:ss)
-      expect(screen.getByText(/10:00|09:59/)).toBeInTheDocument();
+      await waitFor(() => {
+        // Kiểm tra mã nhận diện 6 ký tự từ đơn hàng vừa tạo
+        expect(screen.getAllByText('TST123').length).toBeGreaterThanOrEqual(1);
+        // Kiểm tra 10 phút đếm ngược (định dạng mm:ss)
+        expect(screen.getByText(/10:00|09:59/)).toBeInTheDocument();
+        // Kiểm tra ảnh QR
+        const qrImg = screen.getByAltText(/Mã QR Kênh Thanh Toán PayOS MB Bank/i);
+        expect(qrImg).toBeInTheDocument();
+      });
 
-      // Kiểm tra ảnh QR
-      const qrImg = screen.getByAltText(/Mã QR Kênh Thanh Toán PayOS MB Bank/i);
-      expect(qrImg).toBeInTheDocument();
-
-      // Kiểm tra các nút hành động mô phỏng
-      expect(screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Giả lập Chuyển thiếu tiền \(20k\)/i)).toBeInTheDocument();
+      // Xác nhận 3 nút giả lập webhook cũ không còn tồn tại
+      expect(screen.queryByText(/Giả lập Chuyển đúng tiền/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Giả lập Chuyển thừa tiền/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Giả lập Chuyển thiếu tiền/i)).not.toBeInTheDocument();
     });
 
     it('1.5. Click nút "Hoàn tiền" trên dòng đơn hàng REFUND_PENDING mở modal Hoàn tiền', async () => {
@@ -440,7 +462,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.6. Thao tác click Giả lập Chuyển đúng tiền (49k) gọi paymentApi.simulateWebhook', async () => {
+    it('2.6. Mở modal Sandbox ban đầu chưa có QR, nhấn Tạo đơn Pending mới sinh QR và reload danh sách', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
@@ -451,64 +473,45 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       const qrBtn = screen.getByTitle(/Mã QR mẫu thử nghiệm/i);
       fireEvent.click(qrBtn);
 
+      // Ban đầu CHƯA CÓ QR, hiển thị empty state
       await waitFor(() => {
-        expect(screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Chưa kích hoạt đơn kiểm thử nào/i)).toBeInTheDocument();
       });
 
-      const exactBtn = screen.getByText(/Giả lập Chuyển đúng tiền \(49k\)/i);
-      fireEvent.click(exactBtn);
+      // Nhấn nút Tạo đơn Pending & Sinh mã QR
+      const createPendingBtn = screen.getByRole('button', { name: /\+ Tạo đơn Pending & Sinh mã QR/i });
+      fireEvent.click(createPendingBtn);
 
       await waitFor(() => {
-        expect(paymentApi.simulateWebhook).toHaveBeenCalledWith({
-          orderCode: 26101501,
+        expect(paymentApi.createSampleOrder).toHaveBeenCalledWith({
+          simulateWebhook: false,
+          status: 'PENDING',
+          packageType: 'PREMIUM_1_MONTH',
           amount: 49000,
-          recognitionCode: 'A8K9M2',
         });
+        // Sau khi tạo đơn, hiển thị mã đơn và STK MB Bank
+        expect(screen.getByText(/#9999/)).toBeInTheDocument();
+        expect(screen.getByText('2512070399999')).toBeInTheDocument();
+        // Tự động reload danh sách
+        expect(paymentApi.getOrders).toHaveBeenCalled();
       });
     });
 
-    it('2.7. Thao tác click Giả lập Chuyển thừa tiền (70k) hiển thị prompt xác nhận và gọi paymentApi.confirmUpgrade', async () => {
-      paymentApi.simulateWebhook.mockResolvedValueOnce({
-        data: {
-          success: true,
-          data: {
-            orderCode: 26101501,
-            status: 'WAITING_CONFIRMATION',
-            amountReceived: 70000,
-            expectedAmount: 49000,
-          },
-        },
-      });
-
+    it('2.7. Xem chi tiết đơn hàng (Modal Chi tiết) hiển thị kèm mã VietQR và thông tin thanh toán', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Lịch sử thanh toán/i)).toBeInTheDocument();
+        expect(screen.getByText('#1001')).toBeInTheDocument();
       });
 
-      const qrBtn = screen.getByTitle(/Mã QR mẫu thử nghiệm/i);
-      fireEvent.click(qrBtn);
+      // Click xem chi tiết đơn #1001
+      const detailButtons = screen.getAllByTitle(/Xem chi tiết/i);
+      fireEvent.click(detailButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i)).toBeInTheDocument();
-      });
-
-      const overpaidBtn = screen.getByText(/Giả lập Chuyển thừa tiền \(70k\)/i);
-      fireEvent.click(overpaidBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Phát hiện chuyển thừa tiền!/i)).toBeInTheDocument();
-      });
-
-      // Bấm nút Đồng ý kích hoạt
-      const acceptBtn = screen.getByText(/Đồng ý kích hoạt/i);
-      fireEvent.click(acceptBtn);
-
-      await waitFor(() => {
-        expect(paymentApi.confirmUpgrade).toHaveBeenCalledWith({
-          orderCode: 26101501,
-          accept: true,
-        });
+        expect(paymentApi.getOrderDetail).toHaveBeenCalledWith('ord-uuid-1');
+        expect(screen.getByText(/Mã QR Thanh toán VietQR \(MB Bank\)/i)).toBeInTheDocument();
+        expect(screen.getByAltText(/VietQR MB Bank/i)).toBeInTheDocument();
       });
     });
 
