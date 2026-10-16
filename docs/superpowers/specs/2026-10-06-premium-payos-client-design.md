@@ -48,6 +48,9 @@ bản này theo **mã**.
 - 5 route `api/payment.routes.js`: `POST /create-order` · `GET /order-status/:orderCode` · `GET /subscription-info` ·
   `GET /history` · `POST /webhook`. Giá **49.000 đ / 30 ngày**; mua khi còn hạn thì **cộng dồn** 30 ngày
   (`payment.service.js:111-117`). Đơn hết hạn sau **30 phút** (`:16`).
+  ⚠️ *(2026-10-16, gộp `main` @ `d72ccd45`)* hạn đơn nay **10 phút**. Backend thêm `POST /confirm-upgrade` và ba trạng
+  thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED` mà spec này chưa biết — **G94**
+  `CLIENT_APP_KNOWN_GAPS.md`.
 - Scheduler 0h: cảnh báo trước 3 ngày và hạ về Basic khi hết hạn — **chỉ đi EventBus** (`payment.expiring_soon`,
   `payment.expired`), app không nhận gì.
 - `/auth/login`, `/auth/profile` và JWT **đã trả `type`** (`Basic` | `Premium`) — không kèm hạn. Hạn chỉ có ở

@@ -610,7 +610,42 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
-### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-16)
+### 🔀 Gộp `main` @ `d72ccd45` (2026-10-16, commit gộp `e49100ed`) — Payment premium: đối soát chuyển thừa / thiếu, hoàn tiền có minh chứng, mã nhận diện 6 ký tự, hạn đơn 10 phút; client đặt đơn 44, mở G94
+
+- **Không xung đột** (`git merge-tree` sạch, không tệp nào cả hai bên cùng đổi). 8 commit `main` (PR #138, NPBao), chỉ
+  chạm `src/Backend`, `src/Admin-web`, `docs/Payment/`. Cây `src/Client-app` **không đổi hash** (`2b3b5ecb…` trước và
+  sau) → không chạy lại `flutter test` (mốc vẫn 7.085 / 10 skip). `CAN-LAM/` không đổi (backend chưa trả lời đơn 41, 42,
+  43). `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart` **không khớp**. Client không `npm install`,
+  không `prisma generate`, không áp migration.
+- ⚠️ **Backend dev KHÔNG khởi động được ngay sau gộp:** `api/admin.routes.js` require `middleware/upload.middleware.js`
+  → `multer`, mà `node_modules` dev chưa có. `npm install` sẽ tự `prisma generate` (bẫy *Ghi chú vận hành*). Lúc ấy
+  `schema.prisma` mang 9 cột mới của `payment_order` mà CSDL dev **chưa có**: đo 2026-10-16 bảng có 12 cột, 0 cột mới,
+  `status varchar(20)`; `Server_update_at` vẫn đủ 6 bảng. Mọi truy vấn `payment_order` sẽ vỡ `P2022`. Chạy lại backend
+  dev cần **ba việc, mỗi việc một phép đích danh** (quy tắc 1): `npm install`; áp
+  `database/20_add_payment_reconciliation_and_refund_fields.sql` + `24_add_is_template_to_payment_order.sql`; khởi động.
+- **Thứ chạm client** (đọc mã ở `d72ccd45`): ba trạng thái đơn mới `WAITING_CONFIRMATION` · `REFUND_PENDING` ·
+  `REFUNDED`, `POST /api/payment/confirm-upgrade` `{ orderCode, accept }`, ba sự kiện tới phòng tài khoản
+  (`payment.overpaid_confirmation`, `payment.underpaid_warning`, `payment.refunded`). Hạn đơn 30 → **10 phút**.
+  `order-status` trả thêm `amountReceived`, `recognitionCode`, `transferContent`. `create-order` thêm `recognitionCode`,
+  `transferContent` (`description` = nội dung chuyển khoản). Endpoint cũ giữ hình dạng. Client đọc ba trạng thái mới là
+  `pending` → **G94** (`CLIENT_APP_KNOWN_GAPS.md`): người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*, không có lối gọi
+  `confirm-upgrade`, lịch sử ghi đơn đã hoàn tiền là *"Chờ thanh toán"*, năm chỗ chữ *30 phút* nay sai. Người dùng
+  **chưa chọn** lúc làm.
+- **Đơn 44** `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`:
+  - **A (cao):** tệp thanh toán số 20 và 24 **trùng số** với `20_add_server_update_at_sync_tables.sql` /
+    `24_add_actor_role_to_aiops_incident.sql`; `apply_migration_20.js` bị viết đè sang tệp thanh toán, nên migration
+    đồng bộ `Server_update_at` không còn script áp (`git grep`: 0 chỗ nhắc).
+  - **B (vừa):** webhook chỉ chặn xử lý lại khi `PAID` → `REFUNDED` lùi về `REFUND_PENDING`, `amount_received` bị ghi đè.
+  - **C (vừa):** `/([A-Z0-9]{6})/` bắt `CSCYDE` (tiền tố PayOS) thay mã nhận diện (chạy thử `node -e`).
+  - **D (vừa):** `schema.prisma` `status VarChar(25)` mà không SQL nào nới (`WAITING_CONFIRMATION` đúng 20 ký tự).
+  - **E (thấp):** `confirm-upgrade` thiếu `accept` thì mặc định kích hoạt.
+  - **F (thấp):** hợp đồng mới chưa vào `Event-Notification-to-ClientApp.md`.
+  
+  **Đơn 43 B vẫn mở:** `findOrCreateOrderByCode` giống hệt từng dòng; đơn tự tạo lấy `amount` từ webhook nên luôn đi
+  nhánh PAID, hậu quả không đổi.
+- Nhánh **push** cùng lượt này (người dùng chọn 2026-10-16): từ `13900b8d` tới commit tài liệu sau gộp.
+
+### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, đã push 2026-10-16 cùng lượt gộp `d72ccd45`; nghiệm thu máy ảo ✅ đạt 2026-10-16)
 
 Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối ✅ đầu tệp); kế hoạch 9 task `plans/2026-10-15-g88-gach-4-va-quet-28.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát). Đợt cuối của G88: 18 dòng / 7 tệp hạ tầng `core` → `features/` còn **8** dòng / 4 tệp, cả tám trỏ vào **năm tệp domain thuần** hợp thức hoá bằng danh sách cố định.
 
@@ -620,7 +655,7 @@ Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối
 - ✅ **Nghiệm thu máy ảo** (APK `006ea8b0…`, `lastUpdateTime` 2026-10-16 01:06:11; 15 ảnh trước/sau, cắt 100 px thanh trạng thái): 3 cặp giống hệt (01 · 08 · 10), phần còn lại lệch giải thích được — ngày 15 → 16/10 (số ngày còn lại, nhịp chi, ngày hoá đơn, danh sách cam kết 30 ngày), toast đồng bộ khi backend tắt (09), cuộn lệch vài px, con trỏ nhấp nháy (11); vàng `#FFFF00` **0** ở 15 ảnh; `E/flutter` **0**; `SyncEngine` khởi động (17 dòng); app không chết lúc mở. ⚠️ **Lỗ:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về *"Chưa có mô hình"* (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng `datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test` — bắt cả bản "vá neo sau khi ghi" và ví chỉ chạm qua giao dịch kéo về; cổng làm rỗng thì ca *"pull KHÔNG ghi đè số dư"* vốn đã đỏ).
 - **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
 
-### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-15)
+### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 
 Spec `docs/superpowers/specs/2026-10-15-entity-thong-bao-application-design.md` (khối ✅ *"Số đo sau thi công"* và *"Nghiệm thu máy ảo"* đầu tệp); kế hoạch 8 task `plans/2026-10-15-entity-thong-bao-application.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát), mọi task qua soát không lỗi Quan trọng. Một đợt xong **ba gạch** của G88: gạch 3 (Entity Thông báo — đợt cuối), gạch 5 (`core/notification` dời hết) và gạch 6 (`data/services/` → `application/`).
 
@@ -632,7 +667,7 @@ Spec `docs/superpowers/specs/2026-10-15-entity-thong-bao-application-design.md` 
 - ⚠️ **Tham chiếu cũ biết và để nguyên:** chú thích Kotlin `MainActivity.kt:42` · `:48` và `PhienNganHang.kt:43` còn nêu `lib/core/notification/…` (các `*_noi_day_test` chỉ so hằng, không hỏng im lặng). Các khối 🧱 / 🧩 / 🗂️ bên dưới là lịch sử có ngày — đường dẫn `core/notification/…` và `data/services/…` trong chúng là đường **tại thời điểm ấy**.
 - Đợt kế của G88: **gạch 4** (18 dòng `core` → `features`).
 
-### 🧱 Entity Danh mục — G88 gạch 3, đợt 3/4 ĐÓNG (2026-10-15, 6 commit mã `f443a647` → `811e1ea8`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-15)
+### 🧱 Entity Danh mục — G88 gạch 3, đợt 3/4 ĐÓNG (2026-10-15, 6 commit mã `f443a647` → `811e1ea8`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 
 Spec `docs/superpowers/specs/2026-10-15-entity-danh-muc-design.md` (khối ✅ *"Số đo sau thi công"* và *"Nghiệm thu máy ảo"* đầu tệp); kế hoạch 7 task `plans/2026-10-15-entity-danh-muc.md` (gitignore); thi công bằng **agent con mỗi task**, mọi task qua soát (không lỗi Quan trọng). Gộp ba việc: Danh mục + hai nợ Mục tiêu + `ghiPhanHoi`.
 
@@ -642,7 +677,7 @@ Spec `docs/superpowers/specs/2026-10-15-entity-danh-muc-design.md` (khối ✅ *
 - `flutter test` 7.065 → **7.069** pass / **10** skip, `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo `FlowMoney_16G`:** APK trước `94394e4c…`, sau `d3b7b9083a981c80110e8228eba5f200d4354562` (`lastUpdateTime` 2026-10-15 12:09:02); 27/29 cặp ảnh 0 px, hai cặp (`17`, `18` — Thêm hoá đơn) lệch do cuộn dừng lệch 1 px; vàng thuần 0; chip lọc danh mục ở Sổ, thẻ gợi ý danh mục (`food`) và `pop<CategoryEntity>` của form đạt; logcat sạch. ⚠️ Lỗ còn mở: *Đề xuất cân đối ngân sách* (không hiện, dữ liệu không đủ) và C1 (`demChuaGan` = 0; phủ bằng test).
 - Đợt kế: **Thông báo** (gạch 3 còn 1/4, cùng gạch 4–5 `core/notification`).
 
-### 🧩 Entity Giao dịch + Ví — G88 gạch 3, đợt 2/4 ĐÓNG (2026-10-14, mã `54a6efd1` → `3252db88`, chưa push; nghiệm thu máy ảo ✅ đạt 2026-10-14, `14e9284c` tài liệu + `692c7091` tệp đo)
+### 🧩 Entity Giao dịch + Ví — G88 gạch 3, đợt 2/4 ĐÓNG (2026-10-14, mã `54a6efd1` → `3252db88`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-14, `14e9284c` tài liệu + `692c7091` tệp đo)
 
 Spec `docs/superpowers/specs/2026-10-14-entity-giao-dich-vi-design.md` (khối ✅ *"Số đo sau thi công"* đầu tệp; duyệt `c2c723cb`); kế hoạch 9 task `plans/2026-10-14-entity-giao-dich-vi.md` (gitignore); thi công bằng **agent con mỗi task** (Task 1 `54a6efd1` + `2b0922bd` · Task 2 `a8deac2a` · Task 3 `3bbb988e` · Task 4 `d89d79c4` · Task 5 `08014289` · Task 6 `908b99ec` + `92d39914` · Task 7 `3252db88`). Thuần đổi kiểu, cùng khuôn đợt Hoá đơn.
 
@@ -652,7 +687,7 @@ Spec `docs/superpowers/specs/2026-10-14-entity-giao-dich-vi-design.md` (khối �
 - `flutter test` 7.057 → **7.065** (9 skip, 0 fail ở `3252db88`; **10** skip từ `692c7091` — tệp đo `do_from_drift_test` chạy tay), `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo 2026-10-14 ĐẠT** (`FlowMoney_16G`, `-gpu host`, demo mode 12:00, backend dev tắt — không có máy thật cắm): bản trước `b0164475…` (`lastUpdateTime` 14:05:48) ↔ bản sau `94394e4c88b237b2010a04b7c4a82a51cc73c7d9` (HEAD `84628ee1`, `lastUpdateTime` 21:29:25); **24 cặp ảnh**, cắt 100 px thanh trạng thái: **22/24 cặp 0 px khác**; 2 cặp lệch, không cặp nào do mã — (1) `20_ns_chi_tiet` 997 px, do thời gian: số *"Theo thời gian đã trôi"* tính theo `DateTime.now()` (22.403 đ lúc 21:21, 22.416 đ lúc 21:33 = 50.000 × ngày trôi / 31; +13 đ ≈ 11,5 phút × 1,12 đ/phút); (2) `22_pt_du_bao` 2 px, nhiễu vẽ: hai điểm khử răng cưa trên nét đứt *"Theo ngân sách"*, mọi px khác kể cả số cuối đường bằng 0. Vàng thuần `#FFFF00` **0** trên cả 24 ảnh sau. Nhập nhanh (đo lại có ảnh `nn2_1…3`): chọn **Ví MoMo** ở bảng chọn ví (ảnh xác nhận ví ≠ Tiền mặt), gõ `45k tien mat` (ví vẫn MoMo, số tiền 0 đ), bấm Điền → ví **Tiền mặt**, số tiền 45.000 đ, dòng *"Đã điền: 45.000 đ · Tiền mặt"*; KHÔNG Lưu, thoát bằng Back. `fromDrift` toàn sổ (`test/tool/do_from_drift_test.dart`, `692c7091`): **92 hàng · trung vị 0,028 ms** / 20 lượt (nhỏ nhất 0,026, lớn nhất 0,652) ≈ 0,3 µs mỗi hàng — không đáng tối ưu. Hai lỗ: màn Gắn danh mục (C1) không chụp được — 4 hàng sống không danh mục (ngoài chuyển khoản) đều là ghi chú máy (*Tích lũy…*, *Điều chỉnh số dư*, *Số dư ban đầu*) nên `demChuaGan` = 0, muốn có màn phải ghi dữ liệu (cấm); thẻ gợi ý danh mục ở màn Thêm giao dịch không có ảnh. Ảnh ở scratchpad, không vào repo. Commit: tệp đo `692c7091`, tài liệu `14e9284c` + vòng sửa sau.
 - Đợt kế: **Danh mục** → Thông báo (gạch 3 còn 2/4). ✅ Danh mục đã đóng 2026-10-15 — xem khối 🧱 Entity Danh mục ngay trên.
 
-### 🧱 Entity Hoá đơn — G88 gạch 3, đợt 1/4 ĐÓNG (2026-10-14, 6 commit mã `2a912871` → `a085deb0`, chưa push)
+### 🧱 Entity Hoá đơn — G88 gạch 3, đợt 1/4 ĐÓNG (2026-10-14, 6 commit mã `2a912871` → `a085deb0`, đã push tới `fce511a1`)
 
 Spec `docs/superpowers/specs/2026-10-14-entity-hoa-don-design.md` (khối ✅ *"Số đo sau thi công"* đầu tệp); kế hoạch 7 task `plans/2026-10-14-entity-hoa-don.md` (gitignore); thi công bằng **agent con mỗi task**. Thuần đổi kiểu: thân hàm domain / widget / luật thông báo không đổi.
 
