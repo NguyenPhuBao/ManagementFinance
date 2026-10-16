@@ -630,7 +630,7 @@ src/Backend/
   `transferContent` (`description` = nội dung chuyển khoản). Endpoint cũ giữ hình dạng. Client đọc ba trạng thái mới là
   `pending` → **G94** (`CLIENT_APP_KNOWN_GAPS.md`): người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*, không có lối gọi
   `confirm-upgrade`, lịch sử ghi đơn đã hoàn tiền là *"Chờ thanh toán"*, năm chỗ chữ *30 phút* nay sai. Người dùng
-  **chưa chọn** lúc làm.
+  chốt: làm **cùng lượt G89**, sau khi backend đóng đơn 43.
 - **Đơn 44** `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`:
   - **A (cao):** tệp thanh toán số 20 và 24 **trùng số** với `20_add_server_update_at_sync_tables.sql` /
     `24_add_actor_role_to_aiops_incident.sql`; `apply_migration_20.js` bị viết đè sang tệp thanh toán, nên migration
@@ -643,7 +643,8 @@ src/Backend/
   
   **Đơn 43 B vẫn mở:** `findOrCreateOrderByCode` giống hệt từng dòng; đơn tự tạo lấy `amount` từ webhook nên luôn đi
   nhánh PAID, hậu quả không đổi.
-- Nhánh **push** cùng lượt này (người dùng chọn 2026-10-16): từ `13900b8d` tới commit tài liệu sau gộp.
+- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e` (đo `git rev-parse` remote = HEAD).
+  Commit ghi lựa chọn G94 sau đó chưa push.
 
 ### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, đã push 2026-10-16 cùng lượt gộp `d72ccd45`; nghiệm thu máy ảo ✅ đạt 2026-10-16)
 

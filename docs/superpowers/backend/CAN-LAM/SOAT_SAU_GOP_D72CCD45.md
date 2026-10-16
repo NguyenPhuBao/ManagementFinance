@@ -160,5 +160,5 @@ hiện `message` của server (chuỗi dùng `₫` và số không ngăn nghìn,
 
 Phía client có một khoảng trống mới, **G94** (`docs/CLIENT_APP_KNOWN_GAPS.md`). Client chưa biết ba trạng thái mới
 nên coi là `pending`: người chuyển thừa ngồi ở màn *Chờ thanh toán* tới hết hạn mà không thấy hộp xác nhận. Câu *"chỉ
-có hiệu lực 30 phút"* nay sai. Người dùng chưa chọn lúc làm G94. G94 **không** chờ đơn này (A–F không chặn client),
-trừ trường hợp thiết kế chốt cần thêm trường ở `order-status` (mục F).
+có hiệu lực 30 phút"* nay sai. A–F không chặn client. Người dùng chốt làm G94 **cùng lượt** với phần client của đơn 43,
+sau khi đơn 43 đóng. Nếu thiết kế lúc ấy cần thêm trường ở `order-status` (mục F), client sẽ đặt đơn riêng.

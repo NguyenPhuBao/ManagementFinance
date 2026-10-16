@@ -10,7 +10,7 @@ và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-pa
 dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
 Admin-web `/permissions`.
 
-**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`) — client CHƯA làm, G94:** backend thêm ba trạng
+**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`) — client CHƯA làm, G94 (hoãn — làm cùng lượt G89 khi backend đóng đơn 43):** backend thêm ba trạng
 thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`, `POST /payment/confirm-upgrade` và ba sự kiện
 `payment.*`, và rút hạn đơn còn **10 phút** (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0). Client đọc ba trạng thái
 mới là `pending`, nên người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*. Chi tiết và năm chỗ chữ *30 phút* đã sai:
