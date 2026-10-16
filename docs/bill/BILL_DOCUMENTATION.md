@@ -93,8 +93,11 @@ lib/features/bill/
 │   │                           # application/, dời 2026-10-14 ra data/services/, 2026-10-15 sang application/)
 │   ├── bill_chain.dart         # (06/09 tối) chuoiKyCua: chuỗi kỳ theo
 │   │                           # generatedFromBillId, mới nhất đứng đầu
-│   └── bill_note.dart          # kGhiChuTraHoaDon + ghiChuTraHoaDon(tên,
-│                               # ghi chú lần trả) — tiền tố luôn đứng trước
+│   ├── bill_note.dart          # ghiChuTraHoaDon(tên, ghi chú lần trả) —
+│   │                           # tiền tố luôn đứng trước (hằng kGhiChuTraHoaDon
+│   │                           # ở transaction/domain/transaction_owner.dart)
+│   └── khoan_lap.dart          # (B2, dời từ transaction/domain 2026-10-16)
+│                               # Nhận diện khoản chi lặp — hàm thuần
 ├── data/
 │   ├── datasources/
 │   │   └── bill_local_datasource.dart
@@ -927,7 +930,7 @@ tay cùng một khoản chi mỗi tháng / tuần mà chưa có hoá đơn; tran
 dùng bấm xác nhận** (bất biến ④): **Tạo** mở form điền sẵn, lưu hay không là việc
 của họ. Không phát thông báo, không có trên Trang chủ (người dùng chốt).
 
-**Nhận diện — hàm thuần `transaction/domain/khoan_lap.dart`.** Khoá nhóm
+**Nhận diện — hàm thuần `bill/domain/khoan_lap.dart` (từ 2026-10-16).** Khoá nhóm
 `khoaNhomCua(t)` = *(ghi chú chuẩn hoá, danh mục)*: bỏ dấu, chữ thường, bỏ từ có
 chữ số và chữ *tháng* / *t* đứng ngay trước nó — *"Tiền nhà T9"*, *"tiền nhà tháng
 10"*, *"Tien nha 11/2026"* về một nhóm `tien nha`. Bỏ dấu được phép vì đây là
@@ -1252,7 +1255,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/bill_payment_conflict_resolver_test.dart` | Resolver lọc đúng `entity` + `code`; hai bản ghi thoát hàng đợi (khoản chi `synced`, **hoá đơn thì KHÔNG**); hoá đơn phải ở trạng thái **đã trả**, không được về `Pending`; thông báo sinh đúng một lần và không nêu số tiền |
 | `test/features/bill/bill_conflict_go_dung_khoan_chi_test.dart` | Dựng `BillRepositoryImpl` **thật** vì fake không thấy được lỗi: gỡ **đúng** khoản mang `localId` bị từ chối bất kể thứ tự hàng, không hoàn tiền hai lần khi phát lại, hoàn vào **đúng ví**, và vẫn gỡ được khi pull đã kéo hoá đơn về `Pending` |
 | `test/features/bill/bill_conflict_resolver_wiring_test.dart` | Resolver được **bắt đầu nghe** chứ không chỉ được dựng; `pushResultStream` chịu được hai người nghe |
-| `test/features/transaction/domain/khoan_lap_test.dart` | *(B2)* Chuẩn hoá ghi chú (*"Tiền nhà T9"* · *"tháng 10"* · *"11/2026"* → một nhóm); ba lần tháng / tuần; khoảng cách phá chuỗi; lệch 11 % vs 9 %; 45 vs 46 ngày; bảy vế loại trừ kèm đối chứng; gộp cùng ngày; ví hay dùng + hoà; ngày gốc qua tháng 2 năm thường, năm nhuận, tháng 30 ngày |
+| `test/features/bill/domain/khoan_lap_test.dart` | *(B2)* Chuẩn hoá ghi chú (*"Tiền nhà T9"* · *"tháng 10"* · *"11/2026"* → một nhóm); ba lần tháng / tuần; khoảng cách phá chuỗi; lệch 11 % vs 9 %; 45 vs 46 ngày; bảy vế loại trừ kèm đối chứng; gộp cùng ngày; ví hay dùng + hoà; ngày gốc qua tháng 2 năm thường, năm nhuận, tháng 30 ngày |
 | `test/features/bill/domain/de_xuat_hoa_don_test.dart` | *(B2)* Loại nhóm trùng tên hoá đơn **đang sống** (đã xoá / trả hết không lặp thì không loại); `bo_qua` + 2 / + 3 khoản sau mốc; mốc là lần bỏ qua **cuối**; `da_tao` vĩnh viễn; trần 3 và thứ tự; rỗng → `null` |
 | `test/features/bill/domain/dien_san_hoa_don_test.dart` | *(B2)* Khứ hồi `queryTuKhoanLap` ↔ `dienSanTuQuery`; query hỏng → đúng trường ấy `null` |
 | `test/features/bill/presentation/pages/bill_add_route_dien_san_test.dart` | *(B2)* Query tới được form qua **`AppRouter.createRouter` thật** — route đọc nhầm chỗ thì mọi ca khác vẫn xanh |

@@ -437,7 +437,7 @@ chip nét đứt *"+ Chọn danh mục"*. Bấm *Áp dụng N* mới ghi, từng
 
 ### Chỗ dễ làm hỏng nhất
 
-- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`category/domain/gan_hang_loat.dart`):
+- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`transaction/domain/gan_hang_loat.dart`, từ 2026-10-16):
   chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay` của
   B1). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
   số khác. Khoản điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn cố ý không có danh mục.

@@ -610,6 +610,27 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
+### 🔗 Gỡ vòng cụm {analytics, bill, category, transaction} ở tầng domain — quét 29 `conCho` rỗng (2026-10-16, người dùng chốt)
+
+Người dùng chốt: chiều chuẩn **`analytics → bill → transaction → category`**; cả ba lát một đợt; lát 3 **tách theo dữ
+liệu hàm đọc** (không dời nguyên bốn tệp — `category/data/models/category_suggestion.dart` đọc hằng `kNguonGoiY*` nên dời
+nguyên tệp sinh vòng ẩn qua `data/models` mà quét 29 không thấy). Spec `docs/superpowers/specs/2026-10-16-go-vong-mang-domain-design.md`.
+Không màn hình, số liệu, hành vi nào đổi.
+
+- **Lát 1** (`a74ea68d`): `khoan_vao_thong_ke.dart` → `transaction/domain/`; `LuaChonLoc` → `transaction/data/models/`.
+  Rút 5 cạnh.
+- **Lát 2** (`3e1d9e0d`): hằng `kGhiChuTraHoaDon` → `transaction/domain/transaction_owner.dart` (`bill_note.dart` giữ hàm
+  `ghiChuTraHoaDon`); `khoan_lap.dart` → `bill/domain/`. Rút 3 cạnh.
+- **Lát 3** (`f702a884`): `laGhiChuMay` → `khoan_vao_thong_ke.dart`; `mauHocTu` + `mauSoTienTu` → tệp mới
+  `transaction/domain/mau_hoc_danh_muc.dart`; `gan_hang_loat.dart` → `transaction/domain/` trừ `hopLeTheoChieu` →
+  `category/domain/category_classify.dart`; `kDungSaiTien` → `core/utils/dung_sai_tien.dart`. Rút 2 cạnh — `conCho` rỗng.
+- Bằng chứng mỗi lát: quét 29 đỏ đúng các dòng *"đã gỡ — rút"* (5 · 3 · 2) trước khi sửa danh sách. Mốc
+  `flutter test` **7.146 pass / 10 skip** không đổi qua ba lát; `flutter analyze` 20.
+- Đo sau đợt: 14 mảng, 180 tệp domain, 26 cạnh mảng (trước: 14 · 179 · 32). Số tệp `.dart` (`git ls-files`, 2026-10-16):
+  `lib/` 618 · `features/` 508 · `core` 96 · analytics 61 · transaction 76 · bill 39 · category 22 · tệp `*_test.dart` 629.
+- Còn để: chú thích của `kGhiChuTraHoaDon` (dời nguyên văn) nói `TransactionEntity` không mang `billId` — đã cũ, chưa sửa
+  (ngoài phạm vi, báo người dùng).
+
 ### 🔕 Hoá đơn tắt nhắc là tắt THẬT; nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16, người dùng chốt)
 
 Lượt soát toàn đợt 🧹 phát hiện `bill.timeNotification` NULL bị **ba nơi hiểu ba cách**: form Thêm hoá đơn ghi NULL khi
