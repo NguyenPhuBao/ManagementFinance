@@ -623,8 +623,8 @@ Người dùng chốt năm việc, thi công bằng agent con; không màn hình
 - **Bộ đọc chỉ thị chung** (`4ddb182e`, `6d167603`): `test/helpers/chi_thi_dart.dart` (`duongChiThi`, `dichTrongLib`;
   13 ca ở `chi_thi_dart_test.dart`, test helper không đếm vào dãy quét). Quét 25 (luật 5, 5b, 7), quét 28 và quét 27 (luật 2,
   4) đọc chỉ thị qua nó: thấy `part` (không `part of`), từng vế `if (…)` của import có điều kiện, chỉ thị xuống dòng, và
-  `export` (quét 27 trước chỉ đọc dòng `import `). Hai giới hạn đã biết ghi ở docstring helper (dòng dạng chỉ thị trong chuỗi
-  `'''`; chú thích chen giữa các vế điều kiện) — hiện 0 trường hợp trong `lib/`.
+  `export` (quét 27 trước chỉ đọc dòng `import `). Ba giới hạn đã biết ghi ở docstring helper (dòng dạng chỉ thị trong chuỗi
+  `'''`; chú thích chen giữa các vế điều kiện; dòng chỉ thị trong chú thích khối `/* … */`) — hiện 0 trường hợp trong `lib/`.
 - **Quét 27 luật 1** (`bf3bb08d`): `mauKieu` bắt thêm `is X ?` và `X(` (hai dạng tách bạch: mẫu `case X(…)` của Dart 3, và dựng hàng `X(…)` trực tiếp). Đo: 0 chỗ trúng
   mới trong phạm vi quét.
 - **Quét 29** (`45113fd0`) `core/ui/domain_khong_vong_mang_test.dart`: đồ thị cấp mảng (nguồn chỉ `features/*/domain/`, đích
