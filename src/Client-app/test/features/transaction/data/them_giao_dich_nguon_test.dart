@@ -1,5 +1,6 @@
 // test/features/transaction/data/them_giao_dich_nguon_test.dart
 
+import 'package:flowmoney/features/category/data/danh_muc_ai_doan_store.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
@@ -85,6 +86,19 @@ class _GiaoDichNemGhiChu extends TransactionEntity {
   String get note => throw StateError('đọc ghi chú hỏng');
 }
 
+/// Bảng dấu "danh mục do AI chọn, lưu nguyên" trong bộ nhớ.
+class _AiDoanGia implements DanhMucAiDoanStore {
+  _AiDoanGia(this.ids);
+  final Set<String> ids;
+  @override
+  Future<Set<String>> idsCua(int idaccount) async => ids;
+  @override
+  Future<void> danhDau({required int idaccount, required String transactionId, required String categoryId}) async =>
+      ids.add(transactionId);
+  @override
+  Future<void> go({required int idaccount, required String transactionId}) async => ids.remove(transactionId);
+}
+
 TransactionEntity _gd(String id, String cat, String wallet, String note) => TransactionEntity(
       id: id,
       walletId: wallet,
@@ -167,6 +181,34 @@ void main() {
       final ls = await ThemGiaoDichNguonThat(boPhanLoaiTiem: bo).napLichSu(1);
       expect(ls.boPhanLoai, same(bo), reason: 'đã tiêm thì không học lại, nên không chạm ghi chú lỗi');
       expect(ls.boSoTien, isNull);
+    });
+
+    test('⭐ B1 BỎ giao dịch mang dấu "AI chọn, lưu nguyên" (người dùng chốt 2026-10-16)', () async {
+      // Gemma đoán "đổ xăng" → Ăn uống sáu lần, người dùng lưu nguyên cả sáu; 12 khoản "grab" → Di chuyển là mẫu thật.
+      // Sau khi lọc vẫn còn 12 mẫu (≥ kToiThieuMauTong) — B1 im vì CHƯA từng thấy "xang", không vì sổ mỏng.
+      final hang = [
+        for (var i = 0; i < 6; i++) _gd('ai$i', 'food', 'w', 'do xang'),
+        for (var i = 0; i < 12; i++) _gd('g$i', 'move', 'w', 'grab'),
+      ];
+      sl.registerSingleton<TransactionRepository>(_SoGia(hang));
+      const hopLe = {'food', 'move'};
+
+      final khongDau = await ThemGiaoDichNguonThat(aiDoan: _AiDoanGia({})).napLichSu(1);
+      expect(khongDau.boPhanLoai!.doan('do xang', hopLe: hopLe)?.categoryId, 'food',
+          reason: 'không lọc: cái sai của AI thành mẫu, B1 nói lại nó — vòng lặp học sai (ca có răng)');
+
+      final coDau = await ThemGiaoDichNguonThat(aiDoan: _AiDoanGia({for (var i = 0; i < 6; i++) 'ai$i'})).napLichSu(1);
+      expect(coDau.boPhanLoai!.doan('do xang', hopLe: hopLe), isNull,
+          reason: 'mẫu mang dấu ra khỏi phép học — B1 không khoá cái sai của AI lại');
+      expect(coDau.boPhanLoai!.doan('grab', hopLe: hopLe)?.categoryId, 'move', reason: 'mẫu thật vẫn học');
+      expect(coDau.viHayDung['food'], 'w', reason: 'chỉ B1 bỏ mẫu — bảng ví hay dùng vẫn đếm mọi giao dịch');
+    });
+
+    test('đường SỬA: mẫu đề xuất cũng bỏ giao dịch mang dấu AI', () async {
+      sl.registerSingleton<TransactionRepository>(_SoGia(
+          [_gd('a', 'food', 'w', 'cafe'), _gd('b', 'food', 'w', 'cafe'), _gd('ai', 'food', 'w', 'cafe')]));
+      final ls = await ThemGiaoDichNguonThat(aiDoan: _AiDoanGia({'ai'})).napLichSu(1, dangSua: 'a');
+      expect(ls.mauDeXuat, hasLength(1), reason: 'bỏ "a" (đang sửa) và "ai" (dấu AI) — còn "b"');
     });
 
     test('đường SỬA: mẫu đề xuất bỏ chính giao dịch đang sửa', () async {

@@ -10825,6 +10825,292 @@ class KhoaTuChuyenTiensCompanion extends UpdateCompanion<KhoaTuChuyenTien> {
   }
 }
 
+class $DanhMucAiDoansTable extends DanhMucAiDoans
+    with TableInfo<$DanhMucAiDoansTable, DanhMucAiDoan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DanhMucAiDoansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _transactionIdMeta =
+      const VerificationMeta('transactionId');
+  @override
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
+      'transaction_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _categoryIdMeta =
+      const VerificationMeta('categoryId');
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+      'category_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [transactionId, idaccount, categoryId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'danh_muc_ai_doans';
+  @override
+  VerificationContext validateIntegrity(Insertable<DanhMucAiDoan> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+          _transactionIdMeta,
+          transactionId.isAcceptableOrUnknown(
+              data['transaction_id']!, _transactionIdMeta));
+    } else if (isInserting) {
+      context.missing(_transactionIdMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+          _categoryIdMeta,
+          categoryId.isAcceptableOrUnknown(
+              data['category_id']!, _categoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {transactionId};
+  @override
+  DanhMucAiDoan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DanhMucAiDoan(
+      transactionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}transaction_id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      categoryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $DanhMucAiDoansTable createAlias(String alias) {
+    return $DanhMucAiDoansTable(attachedDatabase, alias);
+  }
+}
+
+class DanhMucAiDoan extends DataClass implements Insertable<DanhMucAiDoan> {
+  final String transactionId;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này (quy tắc 2).
+  final int idaccount;
+
+  /// Danh mục AI chọn lúc lưu — để đọc lại khi cần đo, không dùng trong phép lọc.
+  final String categoryId;
+  final DateTime createdAt;
+  const DanhMucAiDoan(
+      {required this.transactionId,
+      required this.idaccount,
+      required this.categoryId,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['transaction_id'] = Variable<String>(transactionId);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['category_id'] = Variable<String>(categoryId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DanhMucAiDoansCompanion toCompanion(bool nullToAbsent) {
+    return DanhMucAiDoansCompanion(
+      transactionId: Value(transactionId),
+      idaccount: Value(idaccount),
+      categoryId: Value(categoryId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DanhMucAiDoan.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DanhMucAiDoan(
+      transactionId: serializer.fromJson<String>(json['transactionId']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'transactionId': serializer.toJson<String>(transactionId),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DanhMucAiDoan copyWith(
+          {String? transactionId,
+          int? idaccount,
+          String? categoryId,
+          DateTime? createdAt}) =>
+      DanhMucAiDoan(
+        transactionId: transactionId ?? this.transactionId,
+        idaccount: idaccount ?? this.idaccount,
+        categoryId: categoryId ?? this.categoryId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  DanhMucAiDoan copyWithCompanion(DanhMucAiDoansCompanion data) {
+    return DanhMucAiDoan(
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      categoryId:
+          data.categoryId.present ? data.categoryId.value : this.categoryId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DanhMucAiDoan(')
+          ..write('transactionId: $transactionId, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(transactionId, idaccount, categoryId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DanhMucAiDoan &&
+          other.transactionId == this.transactionId &&
+          other.idaccount == this.idaccount &&
+          other.categoryId == this.categoryId &&
+          other.createdAt == this.createdAt);
+}
+
+class DanhMucAiDoansCompanion extends UpdateCompanion<DanhMucAiDoan> {
+  final Value<String> transactionId;
+  final Value<int> idaccount;
+  final Value<String> categoryId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DanhMucAiDoansCompanion({
+    this.transactionId = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DanhMucAiDoansCompanion.insert({
+    required String transactionId,
+    required int idaccount,
+    required String categoryId,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : transactionId = Value(transactionId),
+        idaccount = Value(idaccount),
+        categoryId = Value(categoryId),
+        createdAt = Value(createdAt);
+  static Insertable<DanhMucAiDoan> custom({
+    Expression<String>? transactionId,
+    Expression<int>? idaccount,
+    Expression<String>? categoryId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (categoryId != null) 'category_id': categoryId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DanhMucAiDoansCompanion copyWith(
+      {Value<String>? transactionId,
+      Value<int>? idaccount,
+      Value<String>? categoryId,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return DanhMucAiDoansCompanion(
+      transactionId: transactionId ?? this.transactionId,
+      idaccount: idaccount ?? this.idaccount,
+      categoryId: categoryId ?? this.categoryId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<String>(transactionId.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DanhMucAiDoansCompanion(')
+          ..write('transactionId: $transactionId, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10854,6 +11140,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PhanTichThuTuPhanHoisTable(this);
   late final $KhoaTuChuyenTiensTable khoaTuChuyenTiens =
       $KhoaTuChuyenTiensTable(this);
+  late final $DanhMucAiDoansTable danhMucAiDoans = $DanhMucAiDoansTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -10874,6 +11161,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ThuTuKhoiDao thuTuKhoiDao = ThuTuKhoiDao(this as AppDatabase);
   late final KhoaTuChuyenTienDao khoaTuChuyenTienDao =
       KhoaTuChuyenTienDao(this as AppDatabase);
+  late final DanhMucAiDoanDao danhMucAiDoanDao =
+      DanhMucAiDoanDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10895,6 +11184,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         phanTichGiayXems,
         phanTichThuTuPhanHois,
         khoaTuChuyenTiens,
+        danhMucAiDoans,
         idxAppnotifFeed
       ];
 }
@@ -15850,6 +16140,166 @@ typedef $$KhoaTuChuyenTiensTableProcessedTableManager = ProcessedTableManager<
     ),
     KhoaTuChuyenTien,
     PrefetchHooks Function()>;
+typedef $$DanhMucAiDoansTableCreateCompanionBuilder = DanhMucAiDoansCompanion
+    Function({
+  required String transactionId,
+  required int idaccount,
+  required String categoryId,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$DanhMucAiDoansTableUpdateCompanionBuilder = DanhMucAiDoansCompanion
+    Function({
+  Value<String> transactionId,
+  Value<int> idaccount,
+  Value<String> categoryId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$DanhMucAiDoansTableFilterComposer
+    extends Composer<_$AppDatabase, $DanhMucAiDoansTable> {
+  $$DanhMucAiDoansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get transactionId => $composableBuilder(
+      column: $table.transactionId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$DanhMucAiDoansTableOrderingComposer
+    extends Composer<_$AppDatabase, $DanhMucAiDoansTable> {
+  $$DanhMucAiDoansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get transactionId => $composableBuilder(
+      column: $table.transactionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DanhMucAiDoansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DanhMucAiDoansTable> {
+  $$DanhMucAiDoansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get transactionId => $composableBuilder(
+      column: $table.transactionId, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DanhMucAiDoansTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DanhMucAiDoansTable,
+    DanhMucAiDoan,
+    $$DanhMucAiDoansTableFilterComposer,
+    $$DanhMucAiDoansTableOrderingComposer,
+    $$DanhMucAiDoansTableAnnotationComposer,
+    $$DanhMucAiDoansTableCreateCompanionBuilder,
+    $$DanhMucAiDoansTableUpdateCompanionBuilder,
+    (
+      DanhMucAiDoan,
+      BaseReferences<_$AppDatabase, $DanhMucAiDoansTable, DanhMucAiDoan>
+    ),
+    DanhMucAiDoan,
+    PrefetchHooks Function()> {
+  $$DanhMucAiDoansTableTableManager(
+      _$AppDatabase db, $DanhMucAiDoansTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DanhMucAiDoansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DanhMucAiDoansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DanhMucAiDoansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> transactionId = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> categoryId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DanhMucAiDoansCompanion(
+            transactionId: transactionId,
+            idaccount: idaccount,
+            categoryId: categoryId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String transactionId,
+            required int idaccount,
+            required String categoryId,
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DanhMucAiDoansCompanion.insert(
+            transactionId: transactionId,
+            idaccount: idaccount,
+            categoryId: categoryId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DanhMucAiDoansTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DanhMucAiDoansTable,
+    DanhMucAiDoan,
+    $$DanhMucAiDoansTableFilterComposer,
+    $$DanhMucAiDoansTableOrderingComposer,
+    $$DanhMucAiDoansTableAnnotationComposer,
+    $$DanhMucAiDoansTableCreateCompanionBuilder,
+    $$DanhMucAiDoansTableUpdateCompanionBuilder,
+    (
+      DanhMucAiDoan,
+      BaseReferences<_$AppDatabase, $DanhMucAiDoansTable, DanhMucAiDoan>
+    ),
+    DanhMucAiDoan,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15888,4 +16338,6 @@ class $AppDatabaseManager {
       $$PhanTichThuTuPhanHoisTableTableManager(_db, _db.phanTichThuTuPhanHois);
   $$KhoaTuChuyenTiensTableTableManager get khoaTuChuyenTiens =>
       $$KhoaTuChuyenTiensTableTableManager(_db, _db.khoaTuChuyenTiens);
+  $$DanhMucAiDoansTableTableManager get danhMucAiDoans =>
+      $$DanhMucAiDoansTableTableManager(_db, _db.danhMucAiDoans);
 }

@@ -107,6 +107,7 @@ import '../../features/category/application/personal_default_categories.dart';
 import '../../features/category/domain/category_suggestion_engine.dart';
 import '../../features/category/data/gan_danh_muc_nguon.dart';
 import '../../features/category/data/goi_y_phan_hoi_store.dart';
+import '../../features/category/data/danh_muc_ai_doan_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
 import '../../features/notification/application/reminder_scheduler.dart';
@@ -363,6 +364,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
   sl.registerLazySingleton<GoiYPhanHoiStore>(
     () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
+  );
+  // B1 bỏ mẫu "danh mục do AI chọn, lưu nguyên" — bảng cục bộ v31, không đồng bộ (người dùng chốt 2026-10-16).
+  sl.registerLazySingleton<DanhMucAiDoanStore>(
+    () => DanhMucAiDoanStoreDrift(sl<AppDatabase>()),
   );
   // C1 — nguồn màn Gắn danh mục nhanh gom phụ thuộc, để trang không cầm AppDatabase (spec bịt điểm rò mục 4.5).
   sl.registerLazySingleton<GanDanhMucNguon>(

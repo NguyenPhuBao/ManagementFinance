@@ -214,6 +214,8 @@ KetQuaDocCau ketQuaTuBienDong(
     ngay: t == null ? null : DateTime(t.year, t.month, t.day),
     walletId: walletId,
     categoryId: dmAi?.id ?? dm?.categoryId,
+    // Gemma nhìn ảnh chọn danh mục → B1 không học từ nó khi người dùng lưu nguyên (người dùng chốt 2026-10-16).
+    danhMucTuAi: dmAi != null,
     doan: dm?.doan,
     lyDoDanhMuc: dm?.lyDo,
     goiY: dm?.goiY,

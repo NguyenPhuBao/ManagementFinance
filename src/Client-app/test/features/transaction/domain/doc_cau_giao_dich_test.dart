@@ -444,9 +444,14 @@ void main() {
       final b1 = docAi('grab 50k', const KetQuaAi(danhMuc: 'Ăn uống'), mo: mo);
       expect(b1.categoryId, 'c-dc', reason: 'B1 thắng khi nó chắc — người dùng chốt');
       expect(b1.doan, isNotNull);
+      expect(b1.danhMucTuAi, isFalse, reason: 'danh mục từ B1 không phải do AI chọn');
+      expect(docAi('45k ăn uống', const KetQuaAi(danhMuc: 'Di chuyển'), mo: mo).danhMucTuAi, isFalse,
+          reason: 'danh mục từ tên nêu trong câu không phải do AI chọn');
       final ai = docAi('bún chả 45k', const KetQuaAi(danhMuc: 'Ăn uống'), mo: mo);
       expect(ai.categoryId, 'c-an', reason: 'B1 im (chưa thấy "bún chả") → danh mục AI');
       expect(ai.doan, isNull, reason: 'không phải B1 — không ghi phản hồi B1');
+      expect(ai.danhMucTuAi, isTrue,
+          reason: 'cờ cho B1 bỏ mẫu "AI điền, lưu không sửa" (người dùng chốt 2026-10-16) — chỉ bật ở nhánh AI');
       expect(docAi('bún chả 45k', const KetQuaAi(danhMuc: 'Ăn vặt')).categoryId, isNull, reason: 'không có thật');
       expect(docAi('bún chả 45k', const KetQuaAi(loai: 'thu', danhMuc: 'Ăn uống')).categoryId, isNull,
           reason: 'AI nói thu mà chọn danh mục chi — không hợp chiều');

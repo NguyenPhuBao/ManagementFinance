@@ -12,6 +12,7 @@ import 'tables/notification_event_table.dart';
 import 'tables/goi_y_hoa_don_phan_hoi_table.dart';
 import 'tables/phan_tich_thu_tu_table.dart';
 import 'tables/khoa_tu_chuyen_tien_table.dart';
+import 'tables/danh_muc_ai_doan_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
@@ -23,6 +24,7 @@ import 'daos/notification_event_dao.dart';
 import 'daos/goi_y_hoa_don_dao.dart';
 import 'daos/thu_tu_khoi_dao.dart';
 import 'daos/khoa_tu_chuyen_tien_dao.dart';
+import 'daos/danh_muc_ai_doan_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -59,6 +61,7 @@ part 'app_database.g.dart';
     PhanTichGiayXems,
     PhanTichThuTuPhanHois,
     KhoaTuChuyenTiens,
+    DanhMucAiDoans,
   ],
   daos: [
     WalletDao,
@@ -74,6 +77,7 @@ part 'app_database.g.dart';
     GoiYHoaDonDao,
     ThuTuKhoiDao,
     KhoaTuChuyenTienDao,
+    DanhMucAiDoanDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -81,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration {
@@ -530,6 +534,11 @@ class AppDatabase extends _$AppDatabase {
           // không đi qua đồng bộ (test quét 15). Chỉ tạo bảng.
           await m.createTable(khoaTuChuyenTiens);
         }
+        if (from < 31) {
+          // Vòng lặp học sai của B1 (người dùng chốt 2026-10-16, mục 5d `CATEGORY_RATIONALE.md`): dấu "danh mục do AI
+          // chọn, lưu nguyên" — CỤC BỘ, không đi qua đồng bộ (test quét 15). Chỉ tạo bảng; giao dịch cũ không có dấu.
+          await m.createTable(danhMucAiDoans);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -630,11 +639,15 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(phanTichThuTuPhanHois)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Dấu "danh mục do AI chọn" (v31) — cùng lý lẽ.
+      removed += await (delete(danhMucAiDoans)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
   }
 
-  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười lăm bảng mà
+  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười sáu bảng mà
   /// [purgeDataForOtherAccounts] đụng tới, cùng thứ tự con → cha.
   ///
   /// Dùng khi server nói tài khoản này **đã bị xoá**: bên kia đã ẩn danh hoá
@@ -698,6 +711,9 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
       removed += await (delete(phanTichThuTuPhanHois)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(danhMucAiDoans)
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });

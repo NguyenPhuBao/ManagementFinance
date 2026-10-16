@@ -15,7 +15,7 @@ void main() {
   // Tiền tố từng DAO (`wallet` -> `walletDao`). Ca tiền đề dưới đếm lớp DAO thật để danh sách này không cũ.
   const tenDao = [
     'wallet', 'transaction', 'category', 'budget', 'bill', 'goal', 'notification', 'notificationEvent', 'aiFeedback',
-    'goiYPhanHoi', 'goiYHoaDon', 'thuTuKhoi', 'khoaTuChuyenTien',
+    'goiYPhanHoi', 'goiYHoaDon', 'thuTuKhoi', 'khoaTuChuyenTien', 'danhMucAiDoan',
   ];
   final cam = <RegExp>[
     RegExp(r'\bsl(\.isRegistered)?<AppDatabase>'),

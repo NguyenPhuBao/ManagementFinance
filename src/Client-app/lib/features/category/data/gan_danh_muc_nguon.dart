@@ -41,8 +41,11 @@ Future<DuLieuGanDanhMuc> taiDuLieuGan({
   final chonDuoc = await danhMuc.selectableChildrenAll(accountId: idaccount);
   BoPhanLoaiGhiChu? mo;
   try {
+    // Giao dịch mang dấu "danh mục do AI chọn, lưu nguyên" ra khỏi mẫu B1 — cùng luật màn Thêm giao dịch (2026-10-16).
+    final aiDoan = await db.danhMucAiDoanDao.idsCua(idaccount);
     mo = BoPhanLoaiGhiChu.hoc(mauHocTu([
-      for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+      for (final t in txs)
+        if (!aiDoan.contains(t.id)) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
     ]));
   } catch (e) {
     debugPrint('[GanDanhMuc] học mô hình lỗi: $e');

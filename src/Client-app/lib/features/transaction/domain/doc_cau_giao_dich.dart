@@ -72,6 +72,13 @@ class KetQuaDocCau {
   /// vẫn là *"Đọc bằng luật"* (người dùng chốt 2026-09-30 sau lượt đo 3).
   final bool quaAi;
 
+  /// Danh mục do AI (Gemma) chọn — không phải tên nêu trong câu, B1 hay từ khoá. Màn nhớ nó; lưu giao dịch MỚI với
+  /// đúng danh mục ấy thì đánh dấu để B1 bỏ khỏi mẫu học (người dùng chốt 2026-10-16, vòng lặp học sai mục 5d
+  /// `CATEGORY_RATIONALE.md`). Bật ở hai nơi dựng [KetQuaDocCau]: nhánh AI của [docCauGiaoDich] (Nhập nhanh gõ / nói)
+  /// và `ketQuaTuBienDong` khi Gemma nhìn ảnh quét chọn danh mục (A5). Lệnh tạo C3 không tạo giao dịch (chỉ hoá đơn /
+  /// mục tiêu / ngân sách — `LoaiLenhTao`), nên không có đường thứ ba.
+  final bool danhMucTuAi;
+
   /// C4 (spec 2026-10-12 §3.4): số tiền do LUẬT đọc bằng một dạng nói mới học (N1 *X đơn vị Y*, N2 số 10–999 × 1.000)
   /// — màn cho Gemma kiểm chéo, lệch thì hai chip. `false` khi số đến từ dạng có đơn vị / chữ số đủ, hay từ AI.
   final bool soTienCanKiem;
@@ -93,6 +100,7 @@ class KetQuaDocCau {
     required this.ghiChu,
     this.canhBao = const [],
     this.quaAi = false,
+    this.danhMucTuAi = false,
     this.soTienCanKiem = false,
   });
 
@@ -479,6 +487,7 @@ KetQuaDocCau docCauGiaoDich(
     tuKhoa: tuKhoa,
   );
   var categoryId = dm.categoryId;
+  var danhMucTuAi = false;
   final doan = dm.doan;
   final lyDo = dm.lyDo;
   final goiY = dm.goiY;
@@ -488,6 +497,7 @@ KetQuaDocCau docCauGiaoDich(
     if (k is KhopMot<CategoryEntity>) {
       categoryId = k.muc.id;
       aiLap = true;
+      danhMucTuAi = true;
     }
   }
 
@@ -518,6 +528,7 @@ KetQuaDocCau docCauGiaoDich(
     ghiChu: ghiChu,
     canhBao: canhBao,
     quaAi: aiLap,
+    danhMucTuAi: danhMucTuAi,
     soTienCanKiem: soTienCanKiem,
   );
 }

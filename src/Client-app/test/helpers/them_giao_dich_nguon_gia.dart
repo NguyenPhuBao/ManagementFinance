@@ -49,6 +49,10 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   Completer<List<CategoryEntity>>? choDanhMuc;
 
   final phanHoiDaGhi = <({String goiY, String ketQua, String? chon})>[];
+
+  /// Dấu "danh mục do AI chọn, lưu nguyên" (người dùng chốt 2026-10-16).
+  final aiDoanDaDanhDau = <({String tx, String dm})>[];
+  final aiDoanDaGo = <String>[];
   final viDaNho = <String>[];
   final hangDaXoa = <String>[];
   final anhBienLaiDaXoa = <String?>[];
@@ -65,6 +69,13 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   @override
   void ghiPhanHoi({required int idaccount, required CategorySuggestion goiY, required String ketQua, String? chon}) =>
       phanHoiDaGhi.add((goiY: goiY.categoryId, ketQua: ketQua, chon: chon));
+
+  @override
+  void danhDauDanhMucAi({required int idaccount, required String transactionId, required String categoryId}) =>
+      aiDoanDaDanhDau.add((tx: transactionId, dm: categoryId));
+
+  @override
+  void goDanhDauDanhMucAi({required int idaccount, required String transactionId}) => aiDoanDaGo.add(transactionId);
   @override
   Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount) => choDanhMuc?.future ?? Future.value(danhMuc);
   @override

@@ -108,6 +108,25 @@ void main() {
       expect(kq.chonDuoc.map((c) => c.id), containsAll(['c-dc', 'c-an', 'c-luong']));
     });
 
+    test('⭐ B1 bỏ giao dịch mang dấu "AI chọn, lưu nguyên" (người dùng chốt 2026-10-16)', () async {
+      // AI xếp "grab" vào Ăn uống tám lần, người dùng lưu nguyên; mười khoản "com trua" Ăn uống là mẫu thật (sau lọc
+      // vẫn ≥ kToiThieuMauTong — B1 im vì chưa thấy "grab", không vì sổ mỏng).
+      final ai = [for (var i = 0; i < 8; i++) await them('grab', cat: 'c-an', ngay: DateTime(2026, 8, 1 + i))];
+      for (var i = 0; i < 10; i++) {
+        await them('com trua', cat: 'c-an', ngay: DateTime(2026, 8, 10 + i));
+      }
+      await them('grab');
+      Future<DuLieuGanDanhMuc> tai() => taiDuLieuGan(
+          db: db, danhMuc: CategoryManagementRepositoryImpl(db: db), phanHoi: _StoreGhiLai(), idaccount: 7);
+
+      expect((await tai()).dong.single.doan?.categoryId, 'c-an',
+          reason: 'không dấu: B1 học cái sai của AI và gợi ý lại nó cho khoản chưa gắn (ca có răng)');
+      for (final id in ai) {
+        await db.danhMucAiDoanDao.danhDau(idaccount: 7, transactionId: id, categoryId: 'c-an');
+      }
+      expect((await tai()).dong.single.doan, isNull, reason: 'mẫu mang dấu ra khỏi phép học của màn Gắn danh mục');
+    });
+
     test('cặp đang bị thôi gợi ý trong bảng phản hồi thì không đoán', () async {
       for (var i = 0; i < 8; i++) {
         await them('grab', cat: 'c-dc', ngay: DateTime(2026, 8, 1 + i));
