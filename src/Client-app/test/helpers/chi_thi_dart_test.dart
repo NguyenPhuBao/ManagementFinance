@@ -35,7 +35,8 @@ void main() {
       const nguon = "import '../../domain/bill_x.dart'\n    show A, B;\nimport 'dart:async';\n";
       expect(duongChiThi(nguon), ['../../domain/bill_x.dart', 'dart:async'],
           reason: '`show` / `hide` / `as` / `deferred as` sau đường không làm hụt chỉ thị kế tiếp.');
-      expect(duongChiThi("import 'a.dart' deferred as a;\nimport 'b.dart' hide Z;\n"), ['a.dart', 'b.dart']);
+      expect(duongChiThi("import 'a.dart' deferred as a;\nimport 'b.dart' hide Z;\n"), ['a.dart', 'b.dart'],
+          reason: '`deferred as` và `hide` sau đường cũng không được làm hụt chỉ thị.');
     });
 
     test('nháy kép', () {
@@ -55,7 +56,8 @@ void main() {
     });
 
     test('thụt lề bằng dấu cách hoặc tab vẫn thấy', () {
-      expect(duongChiThi("  import 'a.dart';\n\texport 'b.dart';\n"), ['a.dart', 'b.dart']);
+      expect(duongChiThi("  import 'a.dart';\n\texport 'b.dart';\n"), ['a.dart', 'b.dart'],
+          reason: 'Thụt lề bằng dấu cách / tab không được làm hụt chỉ thị (regex cho phép khoảng trắng đầu dòng).');
     });
 
     test("import'a.dart'; không khoảng trắng", () {
@@ -72,17 +74,21 @@ void main() {
   group('dichTrongLib', () {
     test('đường tương đối có .. và .', () {
       expect(dichTrongLib('lib/features/bill/domain/a.dart', '../data/models/b.dart'),
-          'lib/features/bill/data/models/b.dart');
-      expect(dichTrongLib('lib/features/bill/domain/a.dart', './c.dart'), 'lib/features/bill/domain/c.dart');
+          'lib/features/bill/data/models/b.dart',
+          reason: '`..` phải lùi một thư mục — sai ở đây là luật vị trí so nhầm đích.');
+      expect(dichTrongLib('lib/features/bill/domain/a.dart', './c.dart'), 'lib/features/bill/domain/c.dart',
+          reason: '`.` phải bị bỏ, không để lại đoạn rỗng trong đường.');
     });
 
     test('package:flowmoney/ về lib/', () {
       expect(dichTrongLib('lib/core/x.dart', 'package:flowmoney/features/a/domain/b.dart'),
-          'lib/features/a/domain/b.dart');
+          'lib/features/a/domain/b.dart',
+          reason: 'Đường `package:flowmoney/` phải về cùng dạng `lib/…` với đường tương đối để so được với nhau.');
     });
 
     test('dart: và gói ngoài là null', () {
-      expect(dichTrongLib('lib/core/x.dart', 'dart:io'), isNull);
+      expect(dichTrongLib('lib/core/x.dart', 'dart:io'), isNull,
+          reason: '`dart:` không thuộc lib/ — trả đường thì luật nhầm thành tệp trong dự án.');
       expect(dichTrongLib('lib/core/x.dart', 'package:drift/drift.dart'), isNull,
           reason: 'Gói ngoài không thuộc lib/ — người gọi tự xử lý.');
     });
