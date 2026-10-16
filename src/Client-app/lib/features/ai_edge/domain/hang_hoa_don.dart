@@ -1,7 +1,7 @@
 /// Tool `danh_sach_hoa_don` — hàng theo TÊN kèm trạng thái và số tiền (spec 4b
 /// mục 3.4). Không tính gì: trạng thái từ `billDisplayStatusOf`, tổng hợp từ
-/// `summarizeBills`, bộ lọc kỳ chép đúng `GoiSoHoaDon` — hàng và tổng phải nói
-/// về **một** tập hoá đơn.
+/// `summarizeBills`, tập kỳ này qua `thuocKyNay` — cùng định nghĩa với thẻ tổng
+/// và `GoiSoHoaDon` — hàng và tổng phải nói về **một** tập hoá đơn.
 ///
 /// [ky] (spec mở rộng tool 2026-09-27 §5.1) chọn TẬP hoá đơn; hàng, số đếm và
 /// tổng tiền luôn tính trên cùng tập ấy:
@@ -11,7 +11,8 @@
 ///   `payBill` sinh hàng thật, cùng phép với dự báo 30 ngày). ⚠️ Spec viết "chiếu
 ///   từ hoá đơn đã trả kỳ này"; mã thật thì trả tiền là SINH LUÔN hàng kỳ sau,
 ///   nên hàng đã trả không còn gì để chiếu — chiếu từ nó là đếm đôi.
-/// - `tat_ca`: mọi hàng bất kể tháng — tập của tab *Cần thanh toán*.
+/// - `tat_ca`: mọi hàng bất kể tháng — cùng `chua_tra` là toàn bộ tab *Cần thanh
+///   toán* (kỳ này + nhóm *Các tháng sau*; số trên tab chỉ đếm kỳ này).
 ///
 /// *Cố định mỗi tháng* luôn là của KỲ NÀY (hoá đơn lặp chu kỳ tháng, kể cả đã
 /// trả), không theo [ky]: nó trả lời "mỗi tháng tôi gánh bao nhiêu".
@@ -114,12 +115,14 @@ KetQuaCongCu hangHoaDon(
     return tuChoiGiaTri('ky', ky, kKyHoaDon);
   }
 
-  // Cùng phép chặn cuối tháng với `summarizeBills` và `GoiSoHoaDon.tu`.
-  final cuoiKy = DateTime(now.year, now.month + 1, 1);
+  // Kỳ này: CÙNG định nghĩa `thuocKyNay` với `summarizeBills`, `GoiSoHoaDon.tu`
+  // và số trên tab *Cần thanh toán* — không chép lại phép chặn cuối tháng.
   final kyNay = [
     for (final b in bills)
-      if (b.dueDate.isBefore(cuoiKy)) b,
+      if (thuocKyNay(b, now)) b,
   ];
+  // Biên mở của kỳ này cũng là đầu kỳ tới (`ky_toi`).
+  final dauKyToi = DateTime(now.year, now.month + 1, 1);
 
   // Tập của [ky] và MỐC đưa cho `summarizeBills` — hàm ấy chặn ở cuối tháng
   // của mốc, nên mốc phải nằm trong tháng của hạn xa nhất trong tập.
@@ -135,8 +138,8 @@ KetQuaCongCu hangHoaDon(
   } else {
     switch (ky) {
       case 'ky_toi':
-        tap = _tapKyToi(bills, cuoiKy, DateTime(now.year, now.month + 2, 1));
-        mocTom = cuoiKy;
+        tap = _tapKyToi(bills, dauKyToi, DateTime(now.year, now.month + 2, 1));
+        mocTom = dauKyToi;
       case 'tat_ca':
         tap = [for (final b in bills) (b: b, duKien: false)];
         var xa = now;

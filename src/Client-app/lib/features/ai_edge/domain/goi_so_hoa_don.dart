@@ -2,8 +2,8 @@
 /// đầu trang đang nói tới.
 ///
 /// Mọi con số đến từ `summarizeBills` và `billDisplayStatusOf`; lớp này không
-/// tính gì (test quét thứ 14). Riêng phép đếm quá hạn phải lặp lại **cùng hai
-/// bộ lọc** của `summarizeBills` — xem chú thích ở [GoiSoHoaDon.tu].
+/// tính gì (test quét thứ 14). Riêng phép đếm quá hạn phải lọc **cùng tập** với
+/// `summarizeBills` — qua chính định nghĩa `thuocKyNay`, xem [GoiSoHoaDon.tu].
 library;
 
 import '../../bill/data/models/bill_entity.dart';
@@ -38,12 +38,11 @@ class GoiSoHoaDon extends GoiSo {
     // câu, đếm trên hai tập khác nhau, và không có gì báo.
     //
     // `billDisplayStatusOf` tự trả `skipped` cho kỳ bỏ qua nên vế ấy không cần
-    // lặp lại; vế còn phải lặp là **chặn ở cuối tháng** (hoá đơn kỳ sau không
-    // thuộc kỳ này).
-    final cuoiKy = DateTime(now.year, now.month + 1, 1);
+    // lặp lại; vế còn lại là **kỳ này** — gọi đúng `thuocKyNay` mà
+    // `summarizeBills` gọi, không chép lại phép chặn cuối tháng (2026-10-16).
     var quaHan = 0;
     for (final b in bills) {
-      if (!b.dueDate.isBefore(cuoiKy)) continue;
+      if (!thuocKyNay(b, now)) continue;
       if (billDisplayStatusOf(b, now) == BillDisplayStatus.overdue) quaHan++;
     }
 
@@ -51,15 +50,15 @@ class GoiSoHoaDon extends GoiSo {
     // "hoá đơn nào quá hạn" đáp được bằng tên (câu 13 bảng đo, mục 5.6
     // `docs/AI_AGENT_ARCHITECTURE.md` — câu ấy trả lời sang hẳn chủ đề khác).
     //
-    // ⚠️ Lặp ĐÚNG phép chặn ở cuối tháng của vòng đếm quá hạn ngay trên: nếu
-    // không, danh sách nói về một tập hoá đơn khác với các con số tổng ngay
-    // cạnh nó — hai vế của cùng một câu, đếm trên hai tập, và không gì báo.
+    // ⚠️ Cùng `thuocKyNay` với vòng đếm quá hạn ngay trên: nếu không, danh
+    // sách nói về một tập hoá đơn khác với các con số tổng ngay cạnh nó — hai
+    // vế của cùng một câu, đếm trên hai tập, và không gì báo.
     //
     // ⚠️ Vị từ "còn phải trả" có MỘT định nghĩa duy nhất ở `bill_pay_status`.
     // Hạn gần nhất trước, nên hoá đơn quá hạn tự đứng đầu.
     final conTra = [
       for (final b in bills)
-        if (b.dueDate.isBefore(cuoiKy) && conPhaiTra(b)) b,
+        if (thuocKyNay(b, now) && conPhaiTra(b)) b,
     ]..sort((x, y) => x.dueDate.compareTo(y.dueDate));
     // ⚠️ Hoá đơn quá hạn mang nhãn NÓI RÕ là quá hạn, không dùng chung nhãn
     // `Phải trả`. Đo máy thật 2026-09-23: gói nói `Quá hạn: 1` và riêng rẽ

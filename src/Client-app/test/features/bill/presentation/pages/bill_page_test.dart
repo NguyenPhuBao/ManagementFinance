@@ -566,6 +566,9 @@ void main() {
 
       final tieuDe = find.byKey(const ValueKey('bill-nhom-cac-thang-sau'));
       expect(tester.widget<Text>(tieuDe).data, 'CÁC THÁNG SAU (1)');
+      expect(tester.widget<Text>(tieuDe).style?.color, const Color(0xFF454743),
+          reason: 'Màn Stitch f4ed09da… vẽ tiêu đề bằng on-surface-variant '
+              '#454743; AppColors.onSurfaceVariant là #767872, nhạt hơn.');
       final yTieuDe = tester.getTopLeft(tieuDe).dy;
       expect(tester.getTopLeft(find.byKey(const ValueKey('bill-accent-b'))).dy,
           lessThan(yTieuDe),

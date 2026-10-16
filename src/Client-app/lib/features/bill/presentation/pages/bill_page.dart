@@ -339,11 +339,15 @@ class _BillPageState extends State<BillPage> {
                   key: const ValueKey('bill-nhom-cac-thang-sau'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  // Màn Stitch `f4ed09da…` "Hoá đơn - Có mục Các tháng sau":
+                  // label-md 12/600/0.05em, on-surface-variant #454743. KHÔNG
+                  // dùng `AppColors.onSurfaceVariant` — hằng ấy là bí danh
+                  // `textSecondary` (#767872), nhạt hơn màu Stitch.
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.6,
-                    color: AppColors.textSecondary,
+                    color: Color(0xFF454743),
                   ),
                 ),
               ),
