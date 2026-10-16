@@ -356,13 +356,13 @@ class HomePage extends StatelessWidget {
 
   Widget _buildQuickActions(BuildContext context) => HangNutNhanh(nut: [
         NutNhanh(
-          bieuTuong: Icons.account_balance_wallet_outlined,
+          bieuTuong: Icons.arrow_downward,
           nhan: 'Thêm thu',
-          dam: true,
+          dam: false,
           onTap: () => context.push('/add', extra: 'thu'),
         ),
         NutNhanh(
-          bieuTuong: Icons.payments_outlined,
+          bieuTuong: Icons.arrow_upward,
           nhan: 'Thêm chi',
           dam: true,
           onTap: () => context.push('/add', extra: 'chi'),
@@ -374,7 +374,7 @@ class HomePage extends StatelessWidget {
           onTap: () => context.push('/add', extra: 'transfer'),
         ),
         NutNhanh(
-          bieuTuong: Icons.document_scanner_outlined,
+          bieuTuong: Icons.qr_code_scanner,
           nhan: 'Quét',
           dam: false,
           onTap: () {
@@ -389,7 +389,7 @@ class HomePage extends StatelessWidget {
         ),
         NutNhanh(
           khoa: const Key('nut-nhanh-noi'),
-          bieuTuong: Icons.mic_none,
+          bieuTuong: Icons.mic,
           nhan: 'Nói',
           dam: false,
           // C4 §2.3: có quyền → mở form và nghe ngay; Basic → màn Nâng cấp.

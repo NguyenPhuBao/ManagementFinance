@@ -75,4 +75,27 @@ void main() {
     expect(nguon.contains('HangNutNhanh('), isTrue);
     expect(nguon.contains('_buildActionItem'), isFalse, reason: 'C4 2026-10-12: đã tách thành HangNutNhanh.');
   });
+
+  test('năm nút theo Stitch c8f09f19: biểu tượng, và chỉ Thêm chi nền đậm (người dùng chốt 2026-10-16)', () {
+    // Quét nguồn: mỗi khối NutNhanh từ biểu tượng tới cờ `dam` nằm liền nhau trong `_buildQuickActions`.
+    String khoiCua(String nhan) {
+      final i = nguon.indexOf("nhan: '$nhan'");
+      expect(i, greaterThan(0), reason: 'Không tìm thấy nút "$nhan".');
+      final dau = nguon.lastIndexOf('NutNhanh(', i);
+      return nguon.substring(dau, nguon.indexOf('onTap:', i));
+    }
+
+    for (final (nhan, bieuTuong, dam) in [
+      ('Thêm thu', 'Icons.arrow_downward,', false),
+      ('Thêm chi', 'Icons.arrow_upward,', true),
+      ('Chuyển', 'Icons.sync_alt,', false),
+      ('Quét', 'Icons.qr_code_scanner,', false),
+      ('Nói', 'Icons.mic,', false),
+    ]) {
+      final khoi = khoiCua(nhan);
+      expect(khoi.contains('bieuTuong: $bieuTuong'), isTrue, reason: 'Stitch vẽ "$nhan" bằng $bieuTuong');
+      expect(khoi.contains('dam: $dam'), isTrue,
+          reason: 'Stitch: chỉ Thêm chi nền đậm; Thêm thu nền trắng viền như ba nút còn lại.');
+    }
+  });
 }

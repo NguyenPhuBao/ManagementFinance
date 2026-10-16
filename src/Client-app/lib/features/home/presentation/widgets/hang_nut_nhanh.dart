@@ -1,7 +1,9 @@
 // lib/features/home/presentation/widgets/hang_nut_nhanh.dart
 /// Hàng nút nhanh ở Trang chủ — tách từ `_buildActionItem` của `home_page.dart` ngày 2026-10-12 khi thêm nút *Nói* (C4
 /// §2.3, Stitch *"Trang chủ - Năm nút nhanh có Nói"*). Năm vòng 56 dp `spaceBetween` tràn ở 320 dp; nay mỗi nút một ô
-/// `Expanded`, vòng 52 dp, nhãn co bằng `FittedBox`.
+/// `Expanded`, vòng 52 dp, nhãn co bằng `FittedBox`. Kiểu dáng theo Stitch từ 2026-10-16 (người dùng chốt): chỉ *Thêm
+/// chi* nền đặc `#1A1A19`, bốn nút còn lại nền trắng viền `#D5D5CE`, nhãn cách vòng 6 dp. Giữ `Expanded` thay
+/// `justify-between` của Stitch — kiểu ấy tràn ở 320 dp.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,7 +18,7 @@ class NutNhanh {
   final IconData bieuTuong;
   final String nhan;
 
-  /// Nền đen (gradient) — *Thêm thu*, *Thêm chi*; còn lại nền trắng viền.
+  /// Nền đặc `#1A1A19` — chỉ *Thêm chi* (Stitch `c8f09f19…`); còn lại nền trắng viền.
   final bool dam;
   final VoidCallback onTap;
   final Key? khoa;
@@ -51,21 +53,21 @@ class _Nut extends StatelessWidget {
             Container(
               width: 52,
               height: 52,
+              // Stitch `c8f09f19…`: đậm = `bg-[#1A1A19] shadow-md`, trắng = `border-[#D5D5CE] shadow-sm`.
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: n.dam ? AppColors.primary : Colors.white,
-                border: n.dam ? null : Border.all(color: Colors.black12),
-                gradient: n.dam
-                    ? const LinearGradient(
-                        colors: [Color(0xFF1A1A19), Color(0xFF374151)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+                border: n.dam ? null : Border.all(color: const Color(0xFFD5D5CE)),
+                boxShadow: n.dam
+                    ? const [
+                        BoxShadow(color: Color(0x1A000000), offset: Offset(0, 4), blurRadius: 6, spreadRadius: -1),
+                        BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4, spreadRadius: -2),
+                      ]
+                    : const [BoxShadow(color: Color(0x0D000000), offset: Offset(0, 1), blurRadius: 2)],
               ),
               child: Icon(n.bieuTuong, color: n.dam ? Colors.white : AppColors.primary, size: 24),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
