@@ -13,10 +13,10 @@
 const { Worker } = require('bullmq');
 const logger = require('../core/logger');
 const config = require('../config');
-
+const { resolveRedisUrl } = require('../config/redis.resolver');
 const Redis = require('ioredis');
 
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const connection = new Redis(resolveRedisUrl(), {
   maxRetriesPerRequest: null,
 });
 /**const connection = {

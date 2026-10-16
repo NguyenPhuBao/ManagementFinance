@@ -1,5 +1,6 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { resolveRedisUrl } = require('./redis.resolver');
 
 const config = {
   env: process.env.NODE_ENV || 'development',
@@ -11,7 +12,7 @@ const config = {
   },
 
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: resolveRedisUrl(),
   },
 
   jwt: {
