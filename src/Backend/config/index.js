@@ -57,6 +57,12 @@ const config = {
     from: process.env.RESEND_FROM || 'FlowMoney <onboarding@resend.dev>',
   },
 
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY,
+    senderEmail: process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'phubao12as@gmail.com',
+    senderName: process.env.BREVO_SENDER_NAME || 'FlowMoney',
+  },
+
   casso: {
     apiUrl: process.env.CASSO_API_URL || 'https://api.casso.vn/v2',
     apiKey: process.env.CASSO_API_KEY,
