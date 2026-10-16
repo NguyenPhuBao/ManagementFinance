@@ -174,7 +174,7 @@ lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
 thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–29 phủ **30
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **33** (đếm bằng máy 2026-10-16, sau quét 27, 28 và 29). Đếm: `grep -rlE "Directory\(['\"]lib" test` (28 tệp quét cây, đo
+**3** tệp cùng khuôn không đánh số, tổng **33** (đếm bằng máy 2026-10-16, sau quét 27, 28 và 29). Đếm: `grep -rlE "Directory\(['\"]lib" test` (29 tệp quét cây, đo
 2026-10-16) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **30**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
@@ -299,6 +299,6 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 2. **Gọi đúng tên.** Feature-first ba tầng + `application/` (bộ điều phối), offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 610 tệp `lib/` (đếm 2026-10-16), 32 tệp test quét, 7.085 ca test (đo 2026-10-16), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+4. **Con số.** 14 mảng, 615 tệp `lib/` (đếm 2026-10-16), 33 tệp test quét, 7.133 ca test (đo 2026-10-16), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
 5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 7/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Danh mục, Thông báo (2026-10-15); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần), còn bốn cặp hai chiều của cụm {analytics, bill, category, transaction} (vòng `bill_status` ↔ `notification_rules` đã gỡ 2026-10-16), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói các vòng ấy
    là nợ có tên ngoài G88 (G88 đóng 2026-10-16), tức là đã biết, không phải chưa nhìn thấy.
