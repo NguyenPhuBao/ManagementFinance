@@ -330,7 +330,7 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.ok(sample);
       assert.strictEqual(sample.status, 'PAID');
       assert.strictEqual(sample.amount, 49000);
-      assert.ok(sample.qr_url.includes('vietqr.io'));
+      assert.strictEqual(sample.qr_url, null); // Theo yêu cầu bảo vệ CSDL: Đơn đã thanh toán (PAID) phải xóa QR tránh chuyển khoản trùng
       assert.ok(createdTxData);
       assert.strictEqual(createdTxData.bank_code, 'MBBANK');
       assert.strictEqual(createdTxData.signature_verified, true);
@@ -548,6 +548,114 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     } finally {
       paymentService.processOrderRefund = origProcessOrderRefund;
     }
+  });
+
+  await t.test('16. Tầng 1 & 2: paymentRepository.autoExpirePendingOrders quét các đơn quá hạn, chuyển sang EXPIRED và xóa qr_url, checkout_url', async () => {
+    const origUpdateMany = prisma.payment_order.updateMany;
+    let capturedWhere = null;
+    let capturedData = null;
+
+    try {
+      prisma.payment_order.updateMany = async (args) => {
+        capturedWhere = args.where;
+        capturedData = args.data;
+        return { count: 3 };
+      };
+
+      const expiredCount = await paymentRepository.autoExpirePendingOrders();
+
+      // Tầng 1: Đếm số lượng đơn hết hạn thành công
+      assert.strictEqual(expiredCount, 3);
+
+      // Tầng 2 (Tác động CSDL thực tế):
+      // Đảm bảo chỉ quét các đơn PENDING có expired_at <= now
+      assert.strictEqual(capturedWhere.status, 'PENDING');
+      assert.ok(Array.isArray(capturedWhere.OR));
+
+      // Đảm bảo cập nhật status thành EXPIRED và xóa vĩnh viễn qr_url, checkout_url
+      assert.strictEqual(capturedData.status, 'EXPIRED');
+      assert.strictEqual(capturedData.qr_url, null);
+      assert.strictEqual(capturedData.checkout_url, null);
+    } finally {
+      prisma.payment_order.updateMany = origUpdateMany;
+    }
+  });
+
+  await t.test('17. Tầng 1 & 2: paymentService.getOrderDetailForAdmin triệt tiêu QR khi đơn đã PAID hoặc EXPIRED; giữ QR khi PENDING còn hạn', async () => {
+    const origGetDetail = paymentRepository.getOrderDetailForAdmin;
+
+    try {
+      // Case A: Đơn đã PAID -> Không còn QR, checkout_url = null
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1001,
+        status: 'PAID',
+        qr_url: null,
+        checkout_url: null,
+        amount: 49000,
+      });
+
+      const paidDetail = await paymentService.getOrderDetailForAdmin('ord-paid-1');
+      assert.strictEqual(paidDetail.status, 'PAID');
+      assert.strictEqual(paidDetail.qr_url, null);
+      assert.strictEqual(paidDetail.checkout_url, null);
+
+      // Case B: Đơn đã EXPIRED -> Không còn QR, checkout_url = null
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1002,
+        status: 'EXPIRED',
+        qr_url: null,
+        checkout_url: null,
+        amount: 49000,
+      });
+
+      const expiredDetail = await paymentService.getOrderDetailForAdmin('ord-exp-2');
+      assert.strictEqual(expiredDetail.status, 'EXPIRED');
+      assert.strictEqual(expiredDetail.qr_url, null);
+      assert.strictEqual(expiredDetail.checkout_url, null);
+
+      // Case C: Đơn PENDING còn hạn -> Bảo toàn QR để thanh toán
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1003,
+        status: 'PENDING',
+        qr_url: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
+        checkout_url: 'https://pay.payos.vn/web/test',
+        amount: 49000,
+        expired_at: new Date(Date.now() + 600000),
+      });
+
+      const pendingDetail = await paymentService.getOrderDetailForAdmin('ord-pending-3');
+      assert.strictEqual(pendingDetail.status, 'PENDING');
+      assert.ok(pendingDetail.qr_url.includes('vietqr.io'));
+      assert.strictEqual(pendingDetail.checkout_url, 'https://pay.payos.vn/web/test');
+    } finally {
+      paymentRepository.getOrderDetailForAdmin = origGetDetail;
+    }
+  });
+
+  await t.test('18. Tầng 1 & 2: paymentRepository.sanitizeOrderData tự động ép status=EXPIRED và xóa qr_url khi đơn PENDING đã quá hạn', async () => {
+    // Đơn PENDING nhưng expired_at ở quá khứ
+    const expiredRawOrder = {
+      order_code: BigInt(8888),
+      amount: { toNumber: () => 49000 },
+      status: 'PENDING',
+      expired_at: new Date(Date.now() - 60000),
+      qr_url: 'https://img.vietqr.io/image/test.png',
+      checkout_url: 'https://pay.payos.vn/test',
+    };
+
+    const sanitized = paymentRepository.sanitizeOrderData(expiredRawOrder);
+
+    // Tầng 1: Chuyển đổi kiểu dữ liệu BigInt & Decimal thành Number
+    assert.strictEqual(sanitized.order_code, 8888);
+    assert.strictEqual(sanitized.amount, 49000);
+
+    // Tầng 2: Tác động logic an toàn - chuyển EXPIRED và triệt tiêu QR
+    assert.strictEqual(sanitized.status, 'EXPIRED');
+    assert.strictEqual(sanitized.qr_url, null);
+    assert.strictEqual(sanitized.checkout_url, null);
   });
 });
 

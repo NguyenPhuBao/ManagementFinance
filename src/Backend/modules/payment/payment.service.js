@@ -26,8 +26,12 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
   });
 
   const transferContent = payosResponse.description || `CS... ${recognitionCode}`;
+  const bin = payosResponse.bin || '970422';
+  const accountNumber = payosResponse.accountNumber || '2512070399999';
+  const accountName = payosResponse.accountName || 'NGUYEN PHU BAO';
+  const qrUrl = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(accountName)}`;
 
-  // Lưu bản ghi đơn hàng trạng thái PENDING với mã nhận diện 6 ký tự
+  // Lưu bản ghi đơn hàng trạng thái PENDING với mã nhận diện 6 ký tự và qr_url bền vững
   const order = await paymentRepository.createOrder({
     id: orderId,
     idaccount,
@@ -41,6 +45,7 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
     currency: 'VND',
     status: 'PENDING',
     checkoutUrl: payosResponse.checkoutUrl,
+    qrUrl,
     paymentLinkId: payosResponse.paymentLinkId,
     expiredAt,
   });
@@ -73,6 +78,7 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
     recognitionCode,
     transferContent,
     checkoutUrl: order.checkout_url || payosResponse.checkoutUrl,
+    qrUrl,
     qrCode: payosResponse.qrCode || null,
     bin: payosResponse.bin || null,
     accountNumber: payosResponse.accountNumber || null,
@@ -664,6 +670,46 @@ async function getOrCreatePayosQr(options) {
   return paymentRepository.getOrCreatePayosQr(options);
 }
 
+let _expiryInterval = null;
+
+/**
+ * Khởi động tác vụ định kỳ quét đơn hàng hết hạn (30 giây / lần)
+ * Tự động chuyển PENDING sang EXPIRED, xóa QR và checkout URL, đồng thời phát socket realtime
+ */
+function initPaymentAutoExpiryJob() {
+  if (_expiryInterval) return _expiryInterval;
+  _expiryInterval = setInterval(async () => {
+    try {
+      const count = await paymentRepository.autoExpirePendingOrders();
+      if (count > 0) {
+        logger.info(`[PAYMENT_CRON] Đã tự động chuyển ${count} đơn hàng quá hạn sang EXPIRED và xóa mã QR`);
+        try {
+          const { getIO } = require('../../core/socket');
+          const io = getIO();
+          if (io) {
+            io.to('admin_room').emit('payment.order_expired', { count });
+          }
+        } catch (_) {}
+      }
+    } catch (err) {
+      // Bỏ qua lỗi ngầm để tránh dừng tiến trình
+    }
+  }, 30 * 1000);
+
+  if (_expiryInterval.unref) _expiryInterval.unref();
+  return _expiryInterval;
+}
+
+function stopPaymentAutoExpiryJob() {
+  if (_expiryInterval) {
+    clearInterval(_expiryInterval);
+    _expiryInterval = null;
+  }
+}
+
+// Tự động kích hoạt khi module được nạp
+initPaymentAutoExpiryJob();
+
 module.exports = {
   createPremiumOrder,
   handlePayOSWebhook,
@@ -680,6 +726,8 @@ module.exports = {
   createSampleOrder,
   deleteSampleOrders,
   getOrCreatePayosQr,
+  initPaymentAutoExpiryJob,
+  stopPaymentAutoExpiryJob,
 };
 
 

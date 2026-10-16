@@ -1262,7 +1262,7 @@ export default {
       statusRefundPending: 'Cần hoàn trả',
       statusRefunded: 'Đã hoàn trả',
       statusCancelled: 'Đã hủy',
-      statusExpired: 'Hết hạn',
+      statusExpired: 'Đã hết hạn',
       packageLabel: 'Gói cước',
       packageAll: 'Tất cả gói cước',
       packageMonth: 'Gói 1 Tháng',

@@ -25,7 +25,49 @@ function sanitizeOrderData(obj) {
   if (typeof clone.refunded_amount === 'object' && clone.refunded_amount !== null && typeof clone.refunded_amount.toNumber === 'function') {
     clone.refunded_amount = clone.refunded_amount.toNumber();
   }
+
+  // Đồng bộ trạng thái và loại bỏ QR/checkout URL nếu đơn đã hết hạn hoặc không còn PENDING
+  const isPastExpiry = clone.expired_at && new Date(clone.expired_at) <= new Date();
+  if (clone.status === 'PENDING' && isPastExpiry) {
+    clone.status = 'EXPIRED';
+  }
+  if (clone.status !== 'PENDING') {
+    clone.checkout_url = null;
+    clone.qr_url = null;
+  }
+
   return clone;
+}
+
+/**
+ * Tự động quét và cập nhật trạng thái EXPIRED cho các đơn hàng PENDING đã quá hạn
+ * Xóa vĩnh viễn qr_url và checkout_url trong CSDL để tránh người dùng chuyển khoản lại
+ */
+async function autoExpirePendingOrders() {
+  const now = new Date();
+  try {
+    const result = await prisma.payment_order.updateMany({
+      where: {
+        status: 'PENDING',
+        OR: [
+          { expired_at: { lte: now } },
+          {
+            expired_at: null,
+            created_at: { lte: new Date(now.getTime() - 10 * 60 * 1000) },
+          },
+        ],
+      },
+      data: {
+        status: 'EXPIRED',
+        checkout_url: null,
+        qr_url: null,
+      },
+    });
+    return result?.count || 0;
+  } catch (err) {
+    console.warn('[PAYMENT] Lỗi khi autoExpirePendingOrders:', err.message);
+    return 0;
+  }
 }
 
 /**
@@ -47,6 +89,7 @@ async function createOrder(data) {
       currency: data.currency || 'VND',
       status: data.status || 'PENDING',
       checkout_url: data.checkoutUrl || null,
+      qr_url: data.qrUrl || null,
       payment_link_id: data.paymentLinkId || null,
       expired_at: data.expiredAt || null,
       is_template: data.isTemplate ?? false,
@@ -60,6 +103,7 @@ async function createOrder(data) {
  * @param {number|string|bigint} orderCode 
  */
 async function findOrderByCode(orderCode) {
+  await autoExpirePendingOrders();
   const order = await prisma.payment_order.findUnique({
     where: {
       order_code: BigInt(orderCode),
@@ -133,6 +177,7 @@ async function findOrCreateOrderByCode(orderCode, amount, packageType = 'PREMIUM
  * @param {string} orderId 
  */
 async function findOrderById(orderId) {
+  await autoExpirePendingOrders();
   const order = await prisma.payment_order.findUnique({
     where: { id: orderId },
   });
@@ -145,6 +190,7 @@ async function findOrderById(orderId) {
  * @param {object} options 
  */
 async function findOrdersByAccount(idaccount, { page = 1, limit = 20 } = {}) {
+  await autoExpirePendingOrders();
   const skip = (Math.max(1, page) - 1) * limit;
   const [total, items] = await Promise.all([
     prisma.payment_order.count({ where: { idaccount } }),
@@ -171,9 +217,14 @@ async function findOrdersByAccount(idaccount, { page = 1, limit = 20 } = {}) {
  * @param {object} updateData 
  */
 async function updateOrderStatus(orderId, updateData) {
+  const data = { ...updateData };
+  if (data.status && data.status !== 'PENDING') {
+    data.checkout_url = null;
+    data.qr_url = null;
+  }
   const updated = await prisma.payment_order.update({
     where: { id: orderId },
-    data: updateData,
+    data,
   });
   return sanitizeOrderData(updated);
 }
@@ -183,7 +234,13 @@ async function updateOrderStatus(orderId, updateData) {
  */
 async function updateOrderPaymentStatus({ orderId, status, amountReceived, paidAt, transferContent, refundReason, fee }) {
   const data = {};
-  if (status !== undefined) data.status = status;
+  if (status !== undefined) {
+    data.status = status;
+    if (status !== 'PENDING') {
+      data.checkout_url = null;
+      data.qr_url = null;
+    }
+  }
   if (amountReceived !== undefined) data.amount_received = amountReceived;
   if (paidAt !== undefined) data.paid_at = paidAt;
   if (transferContent !== undefined) data.transfer_content = transferContent;
@@ -234,6 +291,8 @@ async function processRefund({ orderId, refundedAmount, refundProof, refundReaso
       refunded_amount: refundedAmount,
       refund_proof: refundProof || null,
       refund_reason: refundReason || null,
+      checkout_url: null,
+      qr_url: null,
     },
   });
   return sanitizeOrderData(updated);
@@ -266,13 +325,15 @@ async function recordTransaction(data) {
  */
 async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpiresAt, transactionData }) {
   return prisma.$transaction(async (tx) => {
-    // 1. Cập nhật trạng thái đơn hàng -> PAID
+    // 1. Cập nhật trạng thái đơn hàng -> PAID và xóa mã QR, checkout link
     const order = await tx.payment_order.update({
       where: { id: orderId },
       data: {
         status: 'PAID',
         paid_at: paidAt || new Date(),
         amount_received: transactionData ? transactionData.amount : undefined,
+        checkout_url: null,
+        qr_url: null,
       },
     });
 
@@ -414,6 +475,7 @@ async function findOrdersForAdmin({
   toDate,
   excludeTemplate = false,
 } = {}) {
+  await autoExpirePendingOrders();
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const take = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
   const skip = (currentPage - 1) * take;
@@ -534,6 +596,7 @@ async function findOrdersForAdmin({
  * @param {object} options
  */
 async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = false } = {}) {
+  await autoExpirePendingOrders();
   const where = {};
   if (excludeTemplate === 'true' || excludeTemplate === true) {
     where.is_template = false;
@@ -588,6 +651,8 @@ async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = fals
  * @param {string} orderId
  */
 async function getOrderDetailForAdmin(orderId) {
+  await autoExpirePendingOrders();
+
   const order = await prisma.payment_order.findUnique({
     where: { id: orderId },
     include: {
@@ -625,20 +690,29 @@ async function getOrderDetailForAdmin(orderId) {
     });
   }
 
-  const bin = '970422';
-  const accountNumber = '2512070399999';
-  const accountName = 'NGUYEN PHU BAO';
-  const description = sanitized.transfer_content || sanitized.recognition_code || '';
-  sanitized.qr_url = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${sanitized.amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-  sanitized.bank_info = {
-    bin,
-    bankName: 'MB Bank (Quân Đội)',
-    accountNumber,
-    accountName,
-  };
-
   if (!sanitized.expired_at && sanitized.created_at) {
     sanitized.expired_at = new Date(new Date(sanitized.created_at).getTime() + 10 * 60 * 1000);
+  }
+
+  const isPendingAndActive = sanitized.status === 'PENDING' && (!sanitized.expired_at || new Date(sanitized.expired_at) > new Date());
+
+  if (isPendingAndActive) {
+    const bin = '970422';
+    const accountNumber = '2512070399999';
+    const accountName = 'NGUYEN PHU BAO';
+    const description = sanitized.transfer_content || sanitized.recognition_code || '';
+    sanitized.qr_url = sanitized.qr_url || `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${sanitized.amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+    sanitized.bank_info = {
+      bin,
+      bankName: 'MB Bank (Quân Đội)',
+      accountNumber,
+      accountName,
+    };
+  } else {
+    // Đơn hoàn tất hoặc đã hết hạn: Triệt tiêu mã QR và thông tin chuyển khoản tránh thanh toán trùng
+    sanitized.qr_url = null;
+    sanitized.checkout_url = null;
+    sanitized.bank_info = null;
   }
 
   return sanitized;
@@ -712,6 +786,7 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
           currency: 'VND',
           status: 'PENDING',
           checkout_url: checkoutUrl,
+          qr_url: qrUrl,
           payment_link_id: paymentLinkId,
           created_at: now,
           expired_at: expiredAt,
@@ -786,7 +861,8 @@ async function createSampleOrder({
       amount: amount,
       currency: 'VND',
       status: isPaid ? 'PAID' : 'PENDING',
-      checkout_url: payosInfo.checkoutUrl,
+      checkout_url: isPaid ? null : payosInfo.checkoutUrl,
+      qr_url: isPaid ? null : payosInfo.qrUrl,
       payment_link_id: payosInfo.paymentLinkId,
       recognition_code: payosInfo.recognitionCode || null,
       transfer_content: payosInfo.transferContent || null,
@@ -826,17 +902,24 @@ async function createSampleOrder({
   }
 
   const sanitized = sanitizeOrderData(createdOrder);
-  sanitized.qr_url = payosInfo.qrUrl;
-  sanitized.qr_code = payosInfo.qrCode;
-  sanitized.bank_info = {
-    bin: payosInfo.bin,
-    bankName: payosInfo.bankName,
-    accountNumber: payosInfo.accountNumber,
-    accountName: payosInfo.accountName,
-    amount: payosInfo.amount,
-    description: payosInfo.description,
-    checkoutUrl: payosInfo.checkoutUrl,
-  };
+  if (!isPaid) {
+    sanitized.qr_url = payosInfo.qrUrl;
+    sanitized.qr_code = payosInfo.qrCode;
+    sanitized.bank_info = {
+      bin: payosInfo.bin,
+      bankName: payosInfo.bankName,
+      accountNumber: payosInfo.accountNumber,
+      accountName: payosInfo.accountName,
+      amount: payosInfo.amount,
+      description: payosInfo.description,
+      checkoutUrl: payosInfo.checkoutUrl,
+    };
+  } else {
+    sanitized.qr_url = null;
+    sanitized.qr_code = null;
+    sanitized.checkout_url = null;
+    sanitized.bank_info = null;
+  }
 
   return sanitized;
 }
@@ -900,6 +983,8 @@ module.exports = {
   deleteSampleOrders,
   getOrCreatePayosQr,
   findOrCreateOrderByCode,
+  autoExpirePendingOrders,
+  sanitizeOrderData,
 };
 
 
