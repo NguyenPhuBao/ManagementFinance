@@ -230,6 +230,24 @@ async function updateOrderStatus(orderId, updateData) {
 }
 
 /**
+ * Cập nhật trạng thái đối soát tức thì (JIT Sync) từ PayOS và triệt tiêu QR khi đơn bị hủy/hết hạn
+ * @param {string} orderId 
+ * @param {object} updateData 
+ */
+async function updateOrderSyncStatus(orderId, updateData) {
+  const data = { ...updateData };
+  if (data.status && data.status !== 'PENDING') {
+    data.checkout_url = null;
+    data.qr_url = null;
+  }
+  const updated = await prisma.payment_order.update({
+    where: { id: orderId },
+    data,
+  });
+  return sanitizeOrderData(updated);
+}
+
+/**
  * Cập nhật trạng thái đối soát đơn hàng (WAITING_CONFIRMATION, REFUND_PENDING, PAID...)
  */
 async function updateOrderPaymentStatus({ orderId, status, amountReceived, paidAt, transferContent, refundReason, fee }) {
@@ -985,6 +1003,7 @@ module.exports = {
   findOrCreateOrderByCode,
   autoExpirePendingOrders,
   sanitizeOrderData,
+  updateOrderSyncStatus,
 };
 
 

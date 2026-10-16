@@ -521,16 +521,177 @@ async function simulateWebhook({ orderCode, simulateType = 'EXACT' }) {
 }
 
 /**
+ * Tự động đối soát tức thì (Just-in-Time Sync) trạng thái đơn hàng PENDING với cổng PayOS
+ * @param {object} order Đơn hàng cần đồng bộ
+ * @returns {Promise<object>} Đơn hàng đã được đồng bộ trạng thái mới nhất
+ */
+async function syncOrderWithPayOS(order) {
+  if (!order || order.status !== 'PENDING' || order.is_template) {
+    return order;
+  }
+
+  const orderCode = order.order_code;
+  if (!orderCode) {
+    return order;
+  }
+
+  try {
+    const payosInfo = await payosClient.getPaymentLinkInfo(orderCode);
+
+    if (payosInfo) {
+      if (payosInfo.status === 'CANCELLED') {
+        logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã bị hủy trên PayOS', { orderCode, orderId: order.id });
+        await paymentRepository.updateOrderSyncStatus(order.id, {
+          status: 'CANCELLED',
+          qr_url: null,
+          checkout_url: null,
+        });
+
+        order.status = 'CANCELLED';
+        order.qr_url = null;
+        order.checkout_url = null;
+        order.bank_info = null;
+
+        try {
+          const { emitToAccount, getIO } = require('../../core/socket');
+          if (order.idaccount) {
+            emitToAccount(order.idaccount, 'payment.order_cancelled', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'CANCELLED',
+              message: 'Đơn hàng đã bị hủy trên cổng thanh toán PayOS',
+            });
+          }
+          const io = getIO();
+          if (io) {
+            io.to('admin_room').emit('payment.order_cancelled', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'CANCELLED',
+            });
+          }
+        } catch (_) {}
+
+        return order;
+      }
+
+      if (payosInfo.status === 'EXPIRED') {
+        logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã hết hạn trên PayOS', { orderCode, orderId: order.id });
+        await paymentRepository.updateOrderSyncStatus(order.id, {
+          status: 'EXPIRED',
+          qr_url: null,
+          checkout_url: null,
+        });
+
+        order.status = 'EXPIRED';
+        order.qr_url = null;
+        order.checkout_url = null;
+        order.bank_info = null;
+
+        try {
+          const { emitToAccount, getIO } = require('../../core/socket');
+          if (order.idaccount) {
+            emitToAccount(order.idaccount, 'payment.order_expired', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'EXPIRED',
+            });
+          }
+          const io = getIO();
+          if (io) {
+            io.to('admin_room').emit('payment.status_changed', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'EXPIRED',
+            });
+          }
+        } catch (_) {}
+
+        return order;
+      }
+
+      if (payosInfo.status === 'PAID') {
+        logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã được thanh toán trên PayOS (Bù trừ Webhook)', { orderCode, orderId: order.id });
+        const receivedAmount = Number(payosInfo.amountPaid || order.amount);
+        const paidAt = new Date();
+
+        await paymentRepository.updateOrderPaymentStatus({
+          orderId: order.id,
+          status: 'PAID',
+          amountReceived: receivedAmount,
+          paidAt,
+        });
+
+        await paymentRepository.activatePremiumSubscription(order.idaccount, {
+          packageType: order.package_type || 'PREMIUM_1_MONTH',
+          orderId: order.id,
+        });
+
+        order.status = 'PAID';
+        order.qr_url = null;
+        order.checkout_url = null;
+        order.bank_info = null;
+        order.paid_at = paidAt;
+
+        try {
+          const { emitToAccount, getIO } = require('../../core/socket');
+          if (order.idaccount) {
+            emitToAccount(order.idaccount, 'payment.success', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'PAID',
+            });
+          }
+          const io = getIO();
+          if (io) {
+            io.to('admin_room').emit('payment.order_paid', {
+              orderId: order.id,
+              orderCode: Number(orderCode),
+              status: 'PAID',
+            });
+          }
+        } catch (_) {}
+
+        return order;
+      }
+    }
+  } catch (err) {
+    logger.warn('[PAYOS_JIT_SYNC] Bỏ qua lỗi tạm thời khi gọi PayOS JIT sync (Graceful degradation)', {
+      orderCode,
+      error: err.message,
+    });
+  }
+
+  // Nếu đã quá thời gian hết hạn cục bộ thì cập nhật sang EXPIRED
+  if (order.expired_at && new Date(order.expired_at) <= new Date()) {
+    await paymentRepository.updateOrderSyncStatus(order.id, {
+      status: 'EXPIRED',
+      qr_url: null,
+      checkout_url: null,
+    });
+    order.status = 'EXPIRED';
+    order.qr_url = null;
+    order.checkout_url = null;
+    order.bank_info = null;
+  }
+
+  return order;
+}
+
+/**
  * Lấy trạng thái đơn hàng (kiểm tra phân quyền sở hữu)
  * @param {number|string} orderCode 
  * @param {number} idaccount 
  */
 async function getOrderStatus(orderCode, idaccount) {
-  const order = await paymentRepository.findOrderByCode(orderCode);
+  let order = await paymentRepository.findOrderByCode(orderCode);
   if (!order || order.idaccount !== idaccount) {
     const error = new Error('Đơn hàng không tồn tại hoặc không thuộc quyền sở hữu của bạn');
     error.statusCode = 404;
     throw error;
+  }
+  if (order.status === 'PENDING') {
+    order = await syncOrderWithPayOS(order);
   }
   return {
     orderId: order.id,
@@ -543,6 +704,8 @@ async function getOrderStatus(orderCode, idaccount) {
     packageType: order.package_type,
     paidAt: order.paid_at,
     expiredAt: order.expired_at,
+    qrUrl: order.qr_url,
+    checkoutUrl: order.checkout_url,
   };
 }
 
@@ -615,11 +778,14 @@ async function getPaymentStatsForAdmin(options) {
  * @param {string} orderId
  */
 async function getOrderDetailForAdmin(orderId) {
-  const order = await paymentRepository.getOrderDetailForAdmin(orderId);
+  let order = await paymentRepository.getOrderDetailForAdmin(orderId);
   if (!order) {
     const error = new Error('Không tìm thấy đơn hàng');
     error.statusCode = 404;
     throw error;
+  }
+  if (order.status === 'PENDING') {
+    order = await syncOrderWithPayOS(order);
   }
   return order;
 }
@@ -728,6 +894,7 @@ module.exports = {
   getOrCreatePayosQr,
   initPaymentAutoExpiryJob,
   stopPaymentAutoExpiryJob,
+  syncOrderWithPayOS,
 };
 
 
