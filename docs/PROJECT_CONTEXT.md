@@ -610,6 +610,42 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
+### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification`, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
+
+Người dùng chốt năm việc, thi công bằng agent con; không màn hình, số liệu, hành vi app nào đổi. Sáu commit trên nhánh
+`TranQuangDat` từ `e01bd561`:
+
+- **Gỡ vòng ở tầng domain** (`16f0997e`): `billLeadDays` + `mocNhacMacDinh` dời từ `notification/domain/notification_rules.dart`
+  về `bill/domain/bill_nhac_truoc.dart` — luật thuần nằm ở mảng của dữ liệu nó đọc. `bill_status.dart` thôi import
+  `notification_rules.dart`; `reminder_scheduler.dart` và bộ luật import từ tệp mới. ⚠️ Cạnh
+  `bill/application/bill_payment_conflict_resolver.dart → notification_rules.dart` (`NotificationKind.billPaidOnOtherDevice`)
+  **còn và cố ý**: bộ điều phối phát thông báo, không phải luật thuần.
+- **Bộ đọc chỉ thị chung** (`4ddb182e`, `6d167603`): `test/helpers/chi_thi_dart.dart` (`duongChiThi`, `dichTrongLib`;
+  13 ca ở `chi_thi_dart_test.dart`, test helper không đếm vào dãy quét). Quét 25 (luật 5, 5b, 7), quét 28 và quét 27 (luật 2,
+  4) đọc chỉ thị qua nó: thấy `part` (không `part of`), từng vế `if (…)` của import có điều kiện, chỉ thị xuống dòng, và
+  `export` (quét 27 trước chỉ đọc dòng `import `). Hai giới hạn đã biết ghi ở docstring helper (dòng dạng chỉ thị trong chuỗi
+  `'''`; chú thích chen giữa các vế điều kiện) — hiện 0 trường hợp trong `lib/`.
+- **Quét 27 luật 1** (`bf3bb08d`): `mauKieu` bắt thêm `is X ?` và `X(` (`case X(` của Dart 3 dựng hàng Drift). Đo: 0 chỗ trúng
+  mới trong phạm vi quét.
+- **Quét 29** (`45113fd0`) `core/ui/domain_khong_vong_mang_test.dart`: đồ thị cấp mảng (nguồn chỉ `features/*/domain/`, đích
+  mọi tầng của mảng khác); mọi cạnh có hai đầu cùng một thành phần liên thông mạnh > 1 phải ở danh sách chờ `conCho`
+  **mười cạnh**, chỉ được giảm (cạnh trong danh sách mà hết nằm trên vòng → đỏ "rút"). Đo 2026-10-16: 14 mảng, 178 tệp domain,
+  32 cạnh; cụm duy nhất {analytics, bill, category, transaction} = bốn cặp hai chiều (`analytics|category`,
+  `analytics|transaction`, `bill|transaction`, `category|transaction`) + hai cạnh một chiều (`analytics->bill`,
+  `category->bill`). Luật trên **cạnh** (không trên cặp) vì thiết kế "cặp + cụm" mù ca cuối — vòng dài kéo thêm mảng vào cụm.
+- **Hai ca `moc_tu_tra_nen_test` / `moc_trich_nen_test`** (`949b5e62`): *mốc sớm nhất thắng* chạy cả hai thứ tự — thứ tự gốc
+  bắt bản sai "phần tử đầu thắng", thứ tự đảo bắt "phần tử cuối thắng"; mỗi bản sai chỉ một `expect` bắt được, cần cả hai.
+- **Số đo** (2026-10-16, sau `949b5e62`): `flutter test` **7.133 / 10 skip / 0 fail** (trước 7.118; +13 helper +2 quét 29),
+  `flutter analyze` **20** (mức nền không đổi, `MUC_NEN` không đổi). Test quét: **33** tệp (30 mang số 1–29, hai tệp số 14, 3
+  không số); số kế tiếp **30**.
+- **Bản sai đã chạy** (cấy vào `lib/` rồi hoàn tác): (a) `bill_note.dart` + import có điều kiện xuống dòng — quét 28 cũ XANH, mới
+  đỏ; (b) `uu_tien_hop_le.dart` + `export 'package:drift/drift.dart';` — quét 27 luật 2 cũ xanh, mới đỏ; (c) `so_du_vi_service.dart`
+  + `part '../application/x.dart';` — quét 25 luật 7 cũ xanh, mới đỏ; quét 29: xoá `'bill->transaction'` khỏi `conCho` · thêm
+  `'goal->wallet'` · cấy `import notification_rules.dart` lại vào `bill_status.dart` (cụm phình thêm ai_edge, notification) ·
+  cấy `category_classify.dart` vào `budget/domain/budget_health.dart` (budget kéo vào cụm) — cả bốn đỏ đúng chỗ.
+- **Nợ còn giữ có tên:** bốn cặp hai chiều của cụm {analytics, bill, category, transaction} (mười cạnh chờ của quét 29) —
+  người dùng chốt không gỡ đợt này. Cạnh `application/` → `notification` còn, cố ý.
+
 ### 🗳️ Bốn quyết định chờ người dùng — chốt và thi công (2026-10-16 tối)
 
 Người dùng chọn làm *"phần B"* trong danh sách việc không chờ backend (những việc chỉ cần họ quyết), rồi chốt cả bốn qua
@@ -710,7 +746,7 @@ Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối
 - **Test quét:** quét 25 nay **tám** luật; **quét 28** mới (hai luật: `features/*/domain/` không import `presentation/`; đường `data/` phải là `data/models/`; `conCho` rỗng); số quét kế tiếp **29**.
 - **Đo bằng máy 2026-10-16 (HEAD `4b7740a3`):** `lib/core` import `features/` **178** = điểm ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (`sync_engine` 4 · `sync_payload_normalizer` 2 · `wallet_dao` 1 · `other_daos` 1); trước đợt 184 = 166 + 18. Domain → `presentation/` / `data/` ngoài `data/models/` **0**; 178 tệp domain. `flutter test` 7.075 → **7.085** pass / **10** skip (đo ở `36180d62` — lượt sửa sau review toàn nhánh thêm 3 ca; tại `4b7740a3` là 7.082), `flutter analyze` **20**.
 - ✅ **Nghiệm thu máy ảo** (APK `006ea8b0…`, `lastUpdateTime` 2026-10-16 01:06:11; 15 ảnh trước/sau, cắt 100 px thanh trạng thái): 3 cặp giống hệt (01 · 08 · 10), phần còn lại lệch giải thích được — ngày 15 → 16/10 (số ngày còn lại, nhịp chi, ngày hoá đơn, danh sách cam kết 30 ngày), toast đồng bộ khi backend tắt (09), cuộn lệch vài px, con trỏ nhấp nháy (11); vàng `#FFFF00` **0** ở 15 ảnh; `E/flutter` **0**; `SyncEngine` khởi động (17 dòng); app không chết lúc mở. ⚠️ **Lỗ:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về *"Chưa có mô hình"* (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng `datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test` — bắt cả bản "vá neo sau khi ghi" và ví chỉ chạm qua giao dịch kéo về; cổng làm rỗng thì ca *"pull KHÔNG ghi đè số dư"* vốn đã đỏ).
-- **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
+- **Nợ còn giữ có tên, không thuộc G88 (cập nhật 2026-10-16):** vòng `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` và regex quét 27 còn hở **đã trả** — xem khối 🧹 đầu mục này (mục 14); còn bốn cặp hai chiều của cụm {analytics, bill, category, transaction} (mười cạnh chờ của quét 29). Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
 
 ### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 

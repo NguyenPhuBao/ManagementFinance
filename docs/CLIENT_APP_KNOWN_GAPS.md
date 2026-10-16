@@ -2107,7 +2107,7 @@ thêm 3 ca; tại `4b7740a3` là 7.082), `flutter analyze` **20** (không đổi
 **Nghiệm thu máy ảo ✅ đạt** (15 cặp ảnh trước/sau): 3 cặp giống hệt, phần còn lại lệch giải thích được (ngày 15 → 16/10 đổi số ngày còn lại và nhịp chi, toast đồng bộ khi backend tắt, cuộn lệch vài px),
 vàng `#FFFF00` = 0, `E/flutter` = 0, `SyncEngine` khởi động, app không chết lúc mở. **Lỗ nghiệm thu:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền
 WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về "Chưa có mô hình" (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng
-`datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test`). **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở.
+`datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test`). **Nợ còn giữ có tên, không thuộc G88 (cập nhật 2026-10-16):** hai nợ nêu ở đây lúc ấy — vòng `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` và regex quét 27 còn hở — **đã trả** trong đợt nợ kiến trúc nhỏ cùng ngày (`billLeadDays` về `bill/domain/bill_nhac_truoc.dart`; quét 27 bắt thêm `is X ?` / `X(` / `export`). Còn lại: bốn cặp hai chiều của cụm {analytics, bill, category, transaction} — mười cạnh chờ của quét 29, chỉ được giảm; cạnh `bill/application/bill_payment_conflict_resolver.dart → notification_rules.dart` còn, cố ý.
 
 ---
 

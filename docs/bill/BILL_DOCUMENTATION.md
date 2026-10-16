@@ -1075,7 +1075,7 @@ cùng lúc.
 | `paid` | `daCoKhoanChi` (đọc cả hai cột) | thắng mọi thứ, kể cả đã quá hạn |
 | `skipped` | `daBoQua` — `payStatus == 'Skipped'` | ⚠️ phải xét **TRƯỚC** mọi phép so ngày, nếu không kỳ bỏ qua đã trễ lại đeo nhãn đỏ "QUÁ HẠN" (mục 6.7) |
 | `overdue` | hạn **trước** hôm nay (so theo **ngày**) | đến hạn đúng hôm nay **chưa** quá hạn — cùng quy ước với `markOverdue` |
-| `dueSoon` | hạn trong `billLeadDays(bill)` ngày tới | **dùng lại** ngưỡng của bộ luật thông báo — hai mốc riêng thì dải nhắc và nhãn nói hai chuyện khác nhau về cùng một hoá đơn |
+| `dueSoon` | hạn trong `billLeadDays(bill)` ngày tới | **dùng lại** ngưỡng của bộ luật thông báo — định nghĩa nay ở `bill/domain/bill_nhac_truoc.dart` (cùng với `mocNhacMacDinh`; dời từ `notification_rules.dart` 2026-10-16 để `bill/domain` không import `notification`, quét 29), bộ luật thông báo và bộ đặt lịch import ngược về đó — hai mốc riêng thì dải nhắc và nhãn nói hai chuyện khác nhau về cùng một hoá đơn |
 | `pending` | còn lại | |
 
 Trước đó hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" kèm vạch màu
