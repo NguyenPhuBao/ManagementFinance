@@ -450,6 +450,106 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       prisma.payment_order.create = origCreate;
     }
   });
+
+  await t.test('12. Tầng 2: findOrdersForAdmin với excludeTemplate: true lọc đúng where.is_template = false', async () => {
+    const origFindMany = prisma.payment_order.findMany;
+    const origCount = prisma.payment_order.count;
+    let capturedWhere = null;
+    try {
+      prisma.payment_order.count = async ({ where }) => {
+        capturedWhere = where;
+        return 1;
+      };
+      prisma.payment_order.findMany = async () => [];
+
+      await paymentRepository.findOrdersForAdmin({ excludeTemplate: true });
+      assert.strictEqual(capturedWhere.is_template, false);
+    } finally {
+      prisma.payment_order.findMany = origFindMany;
+      prisma.payment_order.count = origCount;
+    }
+  });
+
+  await t.test('13. Tầng 1 & 2: getOrderDetailForAdmin trả về chi tiết đơn hàng đầy đủ', async () => {
+    const testId = 'ord-detail-123';
+    const origRepoDetail = paymentRepository.getOrderDetailForAdmin;
+    try {
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 752600277632,
+        amount: 49000,
+        status: 'PENDING',
+        account: { username: 'test_admin' },
+        payment_transaction: [],
+      });
+
+      const order = await paymentService.getOrderDetailForAdmin(testId);
+      assert.ok(order);
+      assert.strictEqual(order.id, testId);
+      assert.strictEqual(order.order_code, 752600277632);
+    } finally {
+      paymentRepository.getOrderDetailForAdmin = origRepoDetail;
+    }
+  });
+
+  await t.test('14. Tầng 1 & 2: getPackageTypes trả về danh sách gói cước (Basic, Premium)', async () => {
+    const origPermFindMany = prisma.account_type_permission.findMany;
+    try {
+      prisma.account_type_permission.findMany = async () => [
+        { account_type: 'Basic' },
+        { account_type: 'Premium' },
+      ];
+
+      const packages = await paymentService.getPackageTypes();
+      assert.ok(Array.isArray(packages));
+      assert.strictEqual(packages.length, 2);
+      assert.strictEqual(packages[0].id, 'Basic');
+      assert.strictEqual(packages[1].id, 'Premium');
+    } finally {
+      prisma.account_type_permission.findMany = origPermFindMany;
+    }
+  });
+
+  await t.test('15. Tầng 1 & 2: processRefund tiếp nhận file upload minh chứng và lưu đường dẫn /assets/Refunds', async () => {
+    const origProcessOrderRefund = paymentService.processOrderRefund;
+    let capturedData = null;
+    try {
+      paymentService.processOrderRefund = async (orderId, data) => {
+        capturedData = { orderId, ...data };
+        return { success: true, status: 'REFUNDED', ...data };
+      };
+
+      const req = {
+        params: { id: 'ord-ref-999' },
+        body: { refundedAmount: 20000, refundReason: 'Chuyển thiếu tiền' },
+        file: { filename: 'refund-proof-123.png' },
+      };
+      let statusCode = null;
+      let jsonBody = null;
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          jsonBody = data;
+          return this;
+        },
+      };
+
+      await paymentController.processRefund(req, res, (err) => {
+        if (err) throw err;
+      });
+
+      assert.strictEqual(statusCode, 200);
+      assert.strictEqual(jsonBody.success, true);
+      assert.strictEqual(capturedData.orderId, 'ord-ref-999');
+      assert.strictEqual(capturedData.refundProof, '/assets/Refunds/refund-proof-123.png');
+    } finally {
+      paymentService.processOrderRefund = origProcessOrderRefund;
+    }
+  });
 });
+
 
 

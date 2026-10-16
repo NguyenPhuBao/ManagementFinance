@@ -617,6 +617,13 @@ async function deleteSampleOrders() {
 }
 
 /**
+ * Lấy danh mục các gói cước từ CSDL
+ */
+async function getPackageTypes() {
+  return paymentRepository.getPackageTypes();
+}
+
+/**
  * Lấy hoặc sinh mã QR từ kênh thanh toán PayOS
  */
 async function getOrCreatePayosQr(options) {
@@ -635,6 +642,7 @@ module.exports = {
   getOrdersForAdmin,
   getPaymentStatsForAdmin,
   getOrderDetailForAdmin,
+  getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
   getOrCreatePayosQr,

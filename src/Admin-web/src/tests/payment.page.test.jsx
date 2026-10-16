@@ -23,6 +23,7 @@ vi.mock('../api/payment.api', () => ({
     simulateWebhook: vi.fn(),
     confirmUpgrade: vi.fn(),
     processRefund: vi.fn(),
+    getPackageTypes: vi.fn(),
   },
 }));
 
@@ -61,6 +62,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       amount: 49000,
       currency: 'VND',
       status: 'PAID',
+      is_template: false,
       created_at: '2026-10-15T08:00:00.000Z',
       paid_at: '2026-10-15T08:05:00.000Z',
       account: {
@@ -79,6 +81,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       amount: 270000,
       currency: 'VND',
       status: 'PENDING',
+      is_template: true,
       created_at: '2026-10-15T09:00:00.000Z',
       paid_at: null,
       account: {
@@ -99,6 +102,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       recognition_code: 'B7X2Y1',
       currency: 'VND',
       status: 'REFUND_PENDING',
+      is_template: false,
       created_at: '2026-10-15T10:00:00.000Z',
       paid_at: null,
       account: {
@@ -146,6 +150,9 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
 
   beforeEach(() => {
     vi.clearAllMocks();
+    paymentApi.getPackageTypes.mockResolvedValue({
+      data: { success: true, data: ['Basic', 'Premium'] },
+    });
     paymentApi.getStats.mockResolvedValue({
       data: { success: true, data: mockStats },
     });
@@ -219,13 +226,20 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       expect(screen.getByText('tranthib')).toBeInTheDocument();
       expect(screen.getByText('levanc')).toBeInTheDocument();
 
+      // Kiểm tra badge Mẫu
+      expect(screen.getByText('Mẫu')).toBeInTheDocument();
+
       // Kiểm tra badge trạng thái
       expect(screen.getAllByText(/Đã thanh toán/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/Đang chờ xử lý/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/Cần hoàn trả/i).length).toBeGreaterThanOrEqual(1);
 
-      // Nút Hoàn tiền cho đơn REFUND_PENDING
-      expect(screen.getByTitle(/Hoàn tiền/i)).toBeInTheDocument();
+      // Nút Hoàn tiền cho đơn REFUND_PENDING (enabled) và đơn khác (disabled)
+      const refundBtns = screen.getAllByTitle(/Hoàn tiền|Chỉ khả dụng khi đơn hàng cần hoàn trả/i);
+      expect(refundBtns.length).toBe(3);
+      expect(refundBtns[0]).toBeDisabled();
+      expect(refundBtns[1]).toBeDisabled();
+      expect(refundBtns[2]).not.toBeDisabled();
     });
 
     it('1.3. Click nút "Chi tiết" mở Modal hiển thị thông tin đối soát giao dịch', async () => {
@@ -306,7 +320,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       // Kiểm tra form nhập liệu
       expect(screen.getByText(/Số tiền thực tế hoàn trả/i)).toBeInTheDocument();
       expect(screen.getByText(/Lý do hoàn trả/i)).toBeInTheDocument();
-      expect(screen.getByText(/Đường dẫn ảnh minh chứng/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tải lên ảnh minh chứng/i)).toBeInTheDocument();
 
       // Nút hủy đóng modal
       const cancelBtn = screen.getByRole('button', { name: /Hủy bỏ/i });
@@ -516,12 +530,50 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       await waitFor(() => {
         expect(paymentApi.processRefund).toHaveBeenCalledWith(
           'ord-uuid-3',
-          expect.objectContaining({
-            refunded_amount: 20000,
-            refund_reason: expect.any(String),
-          })
+          expect.any(FormData)
         );
         expect(screen.getByText(/Đã hoàn tiền và cập nhật trạng thái đơn hàng thành công!/i)).toBeInTheDocument();
+      });
+    });
+
+    it('2.9. Checkbox "Loại bỏ mẫu" kích hoạt gọi API getOrders và getStats kèm tham số excludeTemplate', async () => {
+      render(<PaymentHistoryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('#1001')).toBeInTheDocument();
+      });
+
+      const checkbox = screen.getByLabelText(/Loại bỏ mẫu/i);
+      expect(checkbox).not.toBeChecked();
+
+      fireEvent.click(checkbox);
+      expect(checkbox).toBeChecked();
+
+      await waitFor(() => {
+        expect(paymentApi.getOrders).toHaveBeenCalledWith(
+          expect.objectContaining({ excludeTemplate: 'true', page: 1 })
+        );
+        expect(paymentApi.getStats).toHaveBeenCalledWith(
+          expect.objectContaining({ excludeTemplate: 'true' })
+        );
+      });
+    });
+
+    it('2.10. Dropdown Gói cước nạp danh sách từ getPackageTypes và kích hoạt lọc theo gói', async () => {
+      render(<PaymentHistoryPage />);
+
+      await waitFor(() => {
+        expect(paymentApi.getPackageTypes).toHaveBeenCalled();
+        expect(screen.getByText(/Basic \(Mặc định\)/i)).toBeInTheDocument();
+      });
+
+      const select = screen.getByDisplayValue(/Tất cả gói cước/i);
+      fireEvent.change(select, { target: { value: 'Premium' } });
+
+      await waitFor(() => {
+        expect(paymentApi.getOrders).toHaveBeenCalledWith(
+          expect.objectContaining({ packageType: 'Premium', page: 1 })
+        );
       });
     });
   });
