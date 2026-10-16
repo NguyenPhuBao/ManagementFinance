@@ -52,6 +52,11 @@ const config = {
     from: process.env.SMTP_FROM || '"FlowMoney" <no-reply@flowmoney.app>',
   },
 
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    from: process.env.RESEND_FROM || 'FlowMoney <onboarding@resend.dev>',
+  },
+
   casso: {
     apiUrl: process.env.CASSO_API_URL || 'https://api.casso.vn/v2',
     apiKey: process.env.CASSO_API_KEY,
