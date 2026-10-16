@@ -14,6 +14,7 @@
 /// kiểu không có chỗ chờ trong phạm vi quét — nhắc tới là đỏ ngay.
 /// Mở rộng 2026-10-14 (spec Entity Giao dịch + Ví mục 8); 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain, luật 3;
 /// 2026-10-15 (spec Entity Thông báo mục 9): `AppNotificationEvent`, luật 3 quét `application/`, luật 4, `mauKieu` bắt ` &&` / ` ||`.
+/// 2026-10-16: `mauKieu` bắt thêm `is X ?` và `X(` (`case X(:final id)`, dựng hàng) — hai dạng từng lọt.
 library;
 
 import 'dart:io';
@@ -68,10 +69,12 @@ String boChuThich(String d) {
   return i < 0 ? d : d.substring(0, i);
 }
 
-/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` · `is Bill &&` · `is Bill ||` — nhưng KHÔNG `BillBloc`,
-/// `BillEntity`, `BillRepository`, `BillEntity.fromDrift(`. (`>[` / `>(` đã bắt qua `>`.)
+/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` · `is Bill &&` · `is Bill ||` · `is Bill ?` ·
+/// `Bill(` (mẫu `case Bill(:final id)` của Dart 3 và dựng hàng `Bill(id: …)`) — nhưng KHÔNG `BillBloc`, `BillEntity`,
+/// `BillRepository`, `BillEntity.fromDrift(`, `BillEntity(`, `isBill ?`, `BillsCompanion(` (companion có [mauCompanion] riêng).
+/// (`>[` / `>(` đã bắt qua `>`.)
 RegExp mauKieu(String ten) =>
-    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|)');
+    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|| \\?|\\()');
 
 /// Đường (URI) trong chỉ thị `import` / `export` / `part` mà luật 2 (features/*/domain/) và luật 4 (interface repository)
 /// cấm: core/database hoặc package:drift. Nhận ĐƯỜNG do `duongChiThi` tách ra, không nhận dòng — nên thấy cả `export`, `part`
@@ -108,6 +111,22 @@ void main() {
     expect(m.hasMatch('if (x is Bill && x.isPaid) {'), isTrue,
         reason: 'is X && từng lọt (bàn giao đợt 3) — sau dấu cách là & chứ không phải tên biến.');
     expect(m.hasMatch('final ok = y is Bill || z;'), isTrue);
+    expect(m.hasMatch('final b = x is Bill ? x : null;'), isTrue,
+        reason: 'is X ? (có dấu cách trước ?) từng lọt — chỉ `X?` liền nhau được nhận.');
+    expect(m.hasMatch('case Bill(:final id):'), isTrue,
+        reason: 'mẫu đối tượng của Dart 3 (case X(...)) không có kiểu đứng riêng nào để nhận.');
+    expect(m.hasMatch("final h = Bill(id: 'x');"), isTrue,
+        reason: 'dựng hàng Drift trực tiếp bằng X( từng lọt.');
+    expect(m.hasMatch('final b = x is BillEntity ? x : null;'), isFalse,
+        reason: 'BillEntity là kiểu thuần — \\b + tên + ? phải đứng sát.');
+    expect(m.hasMatch('BillEntity('), isFalse,
+        reason: 'dựng BillEntity không phải dựng hàng Drift.');
+    expect(m.hasMatch('final v = isBill ? a : b;'), isFalse,
+        reason: 'isBill là một tên biến — \\b chặn dương tính giả.');
+    expect(m.hasMatch('billLeadDays(bill)'), isFalse,
+        reason: 'hàm chữ thường bắt đầu bằng bill — không phải kiểu.');
+    expect(m.hasMatch('return BillsCompanion('), isFalse,
+        reason: 'companion có mẫu riêng (mauCompanion) — mauKieu không được nhận lẫn.');
     expect(m.hasMatch('if (x is BillEntity && x.isPaid) {'), isFalse);
     expect(m.hasMatch('BillEntity.fromDrift(row)'), isFalse);
     expect(m.hasMatch('class BillBloc extends Bloc<BillEvent, BillState> {'),
