@@ -610,6 +610,28 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
+### 🔕 Hoá đơn tắt nhắc là tắt THẬT; nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16, người dùng chốt)
+
+Lượt soát toàn đợt 🧹 phát hiện `bill.timeNotification` NULL bị **ba nơi hiểu ba cách**: form Thêm hoá đơn ghi NULL khi
+tắt công tắc "Nhắc trước hạn" và màn Chi tiết / bảng Thanh toán hiện "Không nhắc"; bộ luật thông báo và bộ đặt lịch hệ
+điều hành lấp NULL bằng tuỳ chọn "Nhắc trước" chung (**tắt mà vẫn bị nhắc** — cả thông báo trong app lẫn lịch màn hình
+khoá); nhãn "Sắp đến hạn" dùng mốc 3 cố định. Người dùng chọn "Sửa luôn" rồi "tắt là tắt thật". Đo PostgreSQL dev cùng
+ngày (chỉ đọc): 37 hoá đơn sống, **0** mang NULL — dữ liệu hiện có không đổi hành vi.
+
+- `d657b065` — `soNgayNhacRieng(bill)` (`bill/domain/bill_nhac_truoc.dart`; NULL / chuỗi không đọc được → `null` = tắt).
+  Bộ luật bỏ hoá đơn tắt nhắc **sau** nhánh quá hạn (quá hạn vẫn báo); bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch
+  cũ bị huỷ ở `resync` kế). `NotificationRuleInput.defaultBillLeadDays` gỡ (không còn người đọc).
+  `billDisplayStatusOf(…, {macDinh})`. Bốn ca ghim cách cũ lật (rules ×2, scheduler, scanner) + ca "tắt nhắc vẫn báo
+  quá hạn", "tắt nhắc thì lịch cũ bị huỷ", `bill_nhac_truoc_test`.
+- `d956bd9a` — cổng `bill/data/so_ngay_nhac_nguon.dart` (DI nối `NotificationPrefsStore`; `bill/` không import
+  `notification/`); trang danh sách, trang chi tiết, bảng Thanh toán truyền tuỳ chọn vào nhãn. Mỗi ca đỏ trước khi nối.
+- Commit tài liệu cùng đợt: mục 7b / 7c `BILL_DOCUMENTATION.md` (kèm sửa câu cũ *"cột không nằm trong payload đẩy"* —
+  sai, payload 21 trường có `time_notification`), `NOTIFICATION_FEATURE.md`, câu phụ hàng "Nhắc trước" ở Cài đặt thông
+  báo (`hang_nguong.dart`: câu cũ hứa nhắc cho hoá đơn không tự đặt số ngày).
+- **Còn để:** tuỳ chọn "Nhắc trước" chỉ còn là ngưỡng nhãn của hoá đơn tắt nhắc — đổi thành *mặc định cho hoá đơn mới*
+  hay gỡ hàng là việc người dùng **chưa chọn**; tool AI `danh_sach_hoa_don` (`hang_hoa_don.dart`) gọi
+  `billDisplayStatusOf` không truyền `macDinh` (mốc 3).
+
 ### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification` ở tầng domain, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
 
 Người dùng chốt năm việc, thi công bằng agent con; không màn hình, số liệu, hành vi app nào đổi. Sáu commit mã / test (cộng hai commit tài liệu và một commit sửa chữ cuối) trên nhánh

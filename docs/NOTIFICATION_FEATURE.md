@@ -1448,15 +1448,20 @@ quét chạy → `insertOrIgnore` sinh đúng hàng ấy, một lần. Trước 
 được dựng bằng chuỗi nội tuyến trong bộ luật; trích ra thành hàm là để hai nơi
 không thể lệch nhau.
 
-Tuỳ chọn **"nhắc trước N ngày"** của lát 7 nay được tiêu thụ thật:
-`NotificationRuleInput.defaultBillLeadDays` và `billLeadDays()`. Số ngày đặt
-riêng cho một hoá đơn vẫn thắng giá trị mặc định chung. ⚠️ Từ 2026-10-16
-`billLeadDays` và `mocNhacMacDinh` (mặc định 3) được định nghĩa ở
-`bill/domain/bill_nhac_truoc.dart`, không còn ở `notification_rules.dart`: luật
-thuần phải nằm ở mảng của dữ liệu nó đọc, và nhãn "sắp đến hạn" của
-`bill_status.dart` cần cùng hàm — để ở thông báo là `bill/domain` import
-`notification/domain` còn `notification` import ngược `bill` (vòng, gỡ 2026-10-16,
-quét 29 canh). Bộ luật và `reminder_scheduler.dart` import từ đó. ⚠️ Cùng một hàm (giá trị riêng của hoá đơn thắng) nhưng **mặc định khác nhau**: nhãn gọi với `mocNhacMacDinh`, bộ luật và bộ đặt lịch truyền `soNgayNhacHoaDon` — người đổi mặc định nhắc thì nhãn *Sắp đến hạn* và dải nhắc lệch (có từ trước, chưa sửa).
+⚠️ **Đổi 2026-10-16 — hoá đơn tắt nhắc là tắt THẬT** (người dùng chốt). Lát 7 cho
+tuỳ chọn **"nhắc trước N ngày"** lấp vào hoá đơn có `timeNotification` NULL — mà NULL
+chính là "tắt nhắc" (form ghi NULL khi tắt công tắc, màn Chi tiết hiện "Không nhắc",
+mục 7b `BILL_DOCUMENTATION.md`), nên hoá đơn đã tắt nhắc vẫn nhận "Hoá đơn sắp đến
+hạn" và lịch trên màn hình khoá. Nay bộ luật và `reminder_scheduler.dart` đọc
+`soNgayNhacRieng(bill)` (`bill/domain/bill_nhac_truoc.dart`; `null` = tắt): bộ luật bỏ
+hoá đơn tắt nhắc **sau** nhánh quá hạn (quá hạn vẫn báo), bộ đặt lịch bỏ nó **trước**
+`khongHuy.add` nên lịch cũ bị huỷ. `NotificationRuleInput.defaultBillLeadDays` gỡ (không
+còn người đọc). Tuỳ chọn "Nhắc trước" nay chỉ còn là ngưỡng nhãn "Sắp đến hạn" của hoá
+đơn tắt nhắc trên trang Hoá đơn (cổng `bill/data/so_ngay_nhac_nguon.dart`, DI nối kho
+tuỳ chọn) — đổi nó thành "mặc định cho hoá đơn mới" hay gỡ hàng là việc người dùng
+chưa chọn. Hàm và hằng ở mảng hoá đơn (dời khỏi `notification_rules.dart` 2026-10-16:
+luật thuần nằm ở mảng của dữ liệu nó đọc; để ở thông báo là `bill/domain` ↔
+`notification/domain` thành vòng — gỡ 2026-10-16, quét 29 canh).
 
 `AndroidScheduleMode.inexactAllowWhileIdle`, có test canh riêng — xem lát 4.
 

@@ -1053,9 +1053,18 @@ phải chuỗi rỗng — chuỗi rỗng bị `/sync/push` từ chối.
 `BillDao.updateFields` chỉ ghi những cột **có mặt**, nên vắng mặt nghĩa là
 "giữ nguyên" và thao tác tắt nhắc nhở sẽ không có tác dụng gì. Có test canh.
 
-Cột này **không nằm trong payload đẩy** hiện tại, nên cấu hình nhắc là **cục
-bộ từng máy** — nhất quán với quyết định không đồng bộ thông báo, không phải
-lỗi.
+✅ **NULL là tắt nhắc THẬT từ 2026-10-16** (người dùng chốt). Trước đó bộ luật thông
+báo và bộ đặt lịch hệ điều hành lấp NULL bằng tuỳ chọn "Nhắc trước" chung, nên hoá
+đơn đã tắt nhắc (màn Chi tiết ghi "Không nhắc") vẫn nhận "Hoá đơn sắp đến hạn" và
+lịch trên màn hình khoá. Nay một định nghĩa `soNgayNhacRieng` (`bill/domain/bill_nhac_truoc.dart`:
+NULL hoặc chuỗi không đọc được → `null` = tắt): bộ luật bỏ hoá đơn tắt nhắc **sau**
+nhánh quá hạn (nợ quá hạn vẫn báo), bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch
+cũ bị huỷ ở lượt `resync` kế). Tuỳ chọn "Nhắc trước" chung nay chỉ còn là ngưỡng
+nhãn "Sắp đến hạn" của hoá đơn tắt nhắc (mục 7c). Đo PostgreSQL dev cùng ngày: 37 hoá
+đơn sống, 0 mang NULL.
+
+Cột đi qua đồng bộ (`time_notification`, payload hoá đơn **21 trường**) — câu cũ ở đây
+nói nó *"không nằm trong payload đẩy"* đã sai từ khi payload hoá đơn mở rộng.
 
 Trên form Thêm, bốn chip số ngày nằm trong `Wrap` — chip '7 ngày' thêm ngày
 04/09 là giọt nước làm hàng cũ tràn 115px ở 411dp.
@@ -1075,7 +1084,7 @@ cùng lúc.
 | `paid` | `daCoKhoanChi` (đọc cả hai cột) | thắng mọi thứ, kể cả đã quá hạn |
 | `skipped` | `daBoQua` — `payStatus == 'Skipped'` | ⚠️ phải xét **TRƯỚC** mọi phép so ngày, nếu không kỳ bỏ qua đã trễ lại đeo nhãn đỏ "QUÁ HẠN" (mục 6.7) |
 | `overdue` | hạn **trước** hôm nay (so theo **ngày**) | đến hạn đúng hôm nay **chưa** quá hạn — cùng quy ước với `markOverdue` |
-| `dueSoon` | hạn trong `billLeadDays(bill)` ngày tới | **dùng lại** hàm của bộ luật thông báo (một luật "giá trị riêng của hoá đơn thắng") — định nghĩa nay ở `bill/domain/bill_nhac_truoc.dart` (cùng với `mocNhacMacDinh`; dời từ `notification_rules.dart` 2026-10-16 để `bill/domain` không import `notification`, quét 29), bộ luật thông báo và bộ đặt lịch import ngược về đó — ⚠️ mặc định thì khác: nhãn gọi `billLeadDays(bill)` với `mocNhacMacDinh` (3), còn bộ luật thông báo và bộ đặt lịch truyền `soNgayNhacHoaDon` (tuỳ chọn người dùng đổi được) — người đổi mặc định nhắc thì nhãn và dải nhắc lệch nhau (lệch có từ trước, chưa sửa) |
+| `dueSoon` | hạn trong `billLeadDays(bill, fallback: macDinh)` ngày tới | định nghĩa ở `bill/domain/bill_nhac_truoc.dart` (dời từ `notification_rules.dart` 2026-10-16 để `bill/domain` không import `notification`, quét 29). Hoá đơn đặt số ngày riêng: đúng số bộ nhắc dùng. Hoá đơn **tắt nhắc** (NULL): `macDinh` — trang danh sách, trang chi tiết và bảng Thanh toán đọc tuỳ chọn "Nhắc trước" qua cổng `bill/data/so_ngay_nhac_nguon.dart` (DI nối với kho tuỳ chọn thông báo) rồi truyền vào; không truyền thì `mocNhacMacDinh` (3). Trước 2026-10-16 nhãn luôn dùng 3 trong khi bộ nhắc dùng tuỳ chọn — người dùng chốt sửa cùng lượt "tắt là tắt thật" (mục 7b). Còn để: tool AI `danh_sach_hoa_don` (`hang_hoa_don.dart`) vẫn gọi không truyền `macDinh` |
 | `pending` | còn lại | |
 
 Trước đó hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" kèm vạch màu

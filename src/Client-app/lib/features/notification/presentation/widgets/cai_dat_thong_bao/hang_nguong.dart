@@ -24,7 +24,10 @@ class HangSoNgay extends StatelessWidget {
     return KhungCaiDat(
       icon: Icons.event_outlined,
       nhan: 'Nhắc trước',
-      phu: 'Dùng cho hoá đơn không tự đặt số ngày.',
+      // Từ 2026-10-16 hoá đơn tắt nhắc không được nhắc nữa (tắt là tắt thật);
+      // số này chỉ còn là ngưỡng nhãn "Sắp đến hạn" của chúng trên trang Hoá
+      // đơn. Câu cũ "Dùng cho hoá đơn không tự đặt số ngày" hứa một lời nhắc.
+      phu: 'Ngưỡng "Sắp đến hạn" cho hoá đơn đã tắt nhắc.',
       trailing: DropdownButton<int>(
         value: luaChon.contains(prefs.soNgayNhacHoaDon)
             ? prefs.soNgayNhacHoaDon
