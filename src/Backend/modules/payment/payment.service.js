@@ -47,6 +47,23 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
 
   logger.info('[PAYMENT] Đã tạo đơn hàng thành công', { orderId, orderCode, recognitionCode, idaccount, amount });
 
+  try {
+    const { getIO } = require('../../core/socket');
+    const io = getIO();
+    if (io) {
+      io.to('admin_room').emit('payment.order_created', {
+        orderId: order.id,
+        orderCode: order.order_code ?? order.orderCode ?? orderCode,
+        amount: order.amount ?? amount,
+        status: order.status,
+        packageType: order.package_type || packageType,
+        isTemplate: false,
+      });
+    }
+  } catch (socketErr) {
+    logger.warn('[PAYMENT] Không thể gửi socket payment.order_created:', socketErr.message);
+  }
+
   return {
     orderId: order.id,
     orderCode: order.order_code ?? order.orderCode ?? orderCode,
@@ -606,7 +623,24 @@ async function getOrderDetailForAdmin(orderId) {
  * @param {object} options
  */
 async function createSampleOrder(options) {
-  return paymentRepository.createSampleOrder(options);
+  const result = await paymentRepository.createSampleOrder(options);
+  try {
+    const { getIO } = require('../../core/socket');
+    const io = getIO();
+    if (io) {
+      io.to('admin_room').emit('payment.order_created', {
+        orderId: result.id,
+        orderCode: result.order_code,
+        amount: result.amount,
+        status: result.status,
+        packageType: result.package_type,
+        isTemplate: true,
+      });
+    }
+  } catch (socketErr) {
+    logger.warn('[PAYMENT] Không thể gửi socket payment.order_created:', socketErr.message);
+  }
+  return result;
 }
 
 /**

@@ -625,6 +625,22 @@ async function getOrderDetailForAdmin(orderId) {
     });
   }
 
+  const bin = '970422';
+  const accountNumber = '2512070399999';
+  const accountName = 'NGUYEN PHU BAO';
+  const description = sanitized.transfer_content || sanitized.recognition_code || '';
+  sanitized.qr_url = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${sanitized.amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+  sanitized.bank_info = {
+    bin,
+    bankName: 'MB Bank (Quân Đội)',
+    accountNumber,
+    accountName,
+  };
+
+  if (!sanitized.expired_at && sanitized.created_at) {
+    sanitized.expired_at = new Date(new Date(sanitized.created_at).getTime() + 10 * 60 * 1000);
+  }
+
   return sanitized;
 }
 

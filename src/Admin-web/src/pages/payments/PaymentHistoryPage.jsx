@@ -84,6 +84,7 @@ const PaymentHistoryPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
+  const [detailCountdown, setDetailCountdown] = useState(null);
 
   // Sample QR Modal & Live PayOS Channel State (Client-app Sandbox Roleplay)
   const [showSampleModal, setShowSampleModal] = useState(false);
@@ -94,10 +95,6 @@ const PaymentHistoryPage = () => {
   const [selectedSamplePackage, setSelectedSamplePackage] = useState('PREMIUM_1_MONTH');
   const [countdownSeconds, setCountdownSeconds] = useState(600);
   const [copiedCode, setCopiedCode] = useState(false);
-
-  // Sandbox Roleplay Feedback State
-  const [sandboxConfirmation, setSandboxConfirmation] = useState(null);
-  const [sandboxUnderpaid, setSandboxUnderpaid] = useState(null);
 
   // Refund Processing Modal State
   const [refundTargetOrder, setRefundTargetOrder] = useState(null);
@@ -229,12 +226,21 @@ const PaymentHistoryPage = () => {
       loadOrders();
     };
 
+    const onOrderCreated = (data) => {
+      loadStats();
+      loadOrders();
+      setFeedbackMsg(`🆕 Đơn hàng mới: #${data.orderCode || data.order_code || ''}`);
+      setTimeout(() => setFeedbackMsg(null), 3500);
+    };
+
+    socket.on('payment.order_created', onOrderCreated);
     socket.on('payment.success', onPaymentSuccess);
     socket.on('payment.overpaid_confirmation', onOverpaidConfirmation);
     socket.on('payment.underpaid_warning', onUnderpaidWarning);
     socket.on('payment.refunded', onRefunded);
 
     return () => {
+      socket.off('payment.order_created', onOrderCreated);
       socket.off('payment.success', onPaymentSuccess);
       socket.off('payment.overpaid_confirmation', onOverpaidConfirmation);
       socket.off('payment.underpaid_warning', onUnderpaidWarning);
@@ -242,27 +248,29 @@ const PaymentHistoryPage = () => {
     };
   }, [socket, loadStats, loadOrders, t]);
 
-  // Load live PayOS QR data
-  const loadPayosQr = useCallback(async (amount = selectedSampleAmount, packageType = selectedSamplePackage) => {
-    setPayosLoading(true);
-    try {
-      const res = await paymentApi.getPayosQr({ amount, packageType, persistOrder: false });
-      const data = res?.data?.data || res?.data || res;
-      if (data && data.qrUrl) {
-        setPayosData(data);
-      }
-    } catch (err) {
-      console.error('[PAYMENT_PAGE] Lỗi khi tải mã QR PayOS:', err);
-    } finally {
-      setPayosLoading(false);
-    }
-  }, [selectedSampleAmount, selectedSamplePackage]);
-
+  // Countdown Timer for Selected Order in Detail Modal
   useEffect(() => {
-    if (showSampleModal) {
-      loadPayosQr(selectedSampleAmount, selectedSamplePackage);
+    if (!selectedOrder) {
+      setDetailCountdown(null);
+      return;
     }
-  }, [showSampleModal, selectedSampleAmount, selectedSamplePackage, loadPayosQr]);
+
+    const calcRemaining = () => {
+      if (selectedOrder.status !== 'PENDING') return null;
+      const targetTime = selectedOrder.expired_at
+        ? new Date(selectedOrder.expired_at).getTime()
+        : (selectedOrder.created_at ? new Date(selectedOrder.created_at).getTime() + 10 * 60 * 1000 : null);
+      if (!targetTime) return null;
+      return Math.max(0, Math.floor((targetTime - Date.now()) / 1000));
+    };
+
+    setDetailCountdown(calcRemaining());
+    const interval = setInterval(() => {
+      setDetailCountdown(calcRemaining());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedOrder]);
 
   useEffect(() => {
     loadStats();
@@ -314,6 +322,18 @@ const PaymentHistoryPage = () => {
       });
       const data = res?.data?.data || res?.data || res;
       if (res?.success || res?.data?.success || data?.order_code) {
+        setPayosData({
+          orderCode: data.order_code,
+          qrUrl: data.qr_url,
+          recognitionCode: data.recognition_code,
+          description: data.transfer_content || data.recognition_code,
+          amount: data.amount,
+          bankName: data.bank_info?.bankName || 'MB Bank (Quân Đội)',
+          accountNumber: data.bank_info?.accountNumber || '2512070399999',
+          accountName: data.bank_info?.accountName || 'NGUYEN PHU BAO',
+          checkoutUrl: data.checkout_url || data.bank_info?.checkoutUrl,
+        });
+        setCountdownSeconds(600);
         setFeedbackMsg(t('payments.createSampleSuccess'));
         await Promise.all([loadStats(), loadOrders()]);
         setTimeout(() => setFeedbackMsg(null), 3500);
@@ -336,69 +356,6 @@ const PaymentHistoryPage = () => {
       }
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi dọn dẹp đơn mẫu:', err);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Sandbox Webhook Simulator
-  const handleSimulateWebhook = async (simulatedAmount) => {
-    if (!payosData?.orderCode) return;
-    setActionLoading(true);
-    try {
-      const res = await paymentApi.simulateWebhook({
-        orderCode: payosData.orderCode,
-        amount: simulatedAmount,
-        recognitionCode: payosData.recognitionCode,
-      });
-      const data = res?.data?.data || res?.data || res;
-      if (res?.success || res?.data?.success || data?.status) {
-        if (data.status === 'WAITING_CONFIRMATION') {
-          setSandboxConfirmation({
-            orderCode: data.orderCode,
-            amountReceived: data.amountReceived,
-            expectedAmount: data.expectedAmount,
-            difference: data.amountReceived - data.expectedAmount,
-          });
-        } else if (data.status === 'REFUND_PENDING') {
-          setSandboxUnderpaid({
-            orderCode: data.orderCode,
-            amountReceived: data.amountReceived,
-            expectedAmount: data.expectedAmount,
-          });
-        } else {
-          setFeedbackMsg(t('payments.sandbox.successTitle'));
-          setTimeout(() => setFeedbackMsg(null), 3500);
-        }
-        await Promise.all([loadStats(), loadOrders()]);
-      }
-    } catch (err) {
-      console.error('[PAYMENT_PAGE] Lỗi khi giả lập Webhook:', err);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Customer Decision: Confirm or Decline Upgrade
-  const handleConfirmUpgrade = async (orderCode, accept) => {
-    setActionLoading(true);
-    try {
-      const res = await paymentApi.confirmUpgrade({ orderCode, accept });
-      if (res?.success || res?.data?.success) {
-        setSandboxConfirmation(null);
-        setFeedbackMsg(
-          accept
-            ? 'Đã xác nhận kích hoạt gói Premium thành công!'
-            : 'Đã từ chối và chuyển đơn hàng sang trạng thái cần hoàn tiền (REFUND_PENDING).'
-        );
-        if (selectedOrder && (selectedOrder.order_code === orderCode || selectedOrder.order_code === Number(orderCode))) {
-          handleViewDetail(selectedOrder.id);
-        }
-        await Promise.all([loadStats(), loadOrders()]);
-        setTimeout(() => setFeedbackMsg(null), 3500);
-      }
-    } catch (err) {
-      console.error('[PAYMENT_PAGE] Lỗi khi xác nhận nâng cấp:', err);
     } finally {
       setActionLoading(false);
     }
@@ -473,7 +430,10 @@ const PaymentHistoryPage = () => {
             </span>
           )}
           <button
-            onClick={() => setShowSampleModal(true)}
+            onClick={() => {
+              setPayosData(null);
+              setShowSampleModal(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200 cursor-pointer font-semibold text-sm active:scale-95"
             title={t('payments.sampleQrBtn')}
           >
@@ -882,6 +842,119 @@ const PaymentHistoryPage = () => {
                   </button>
                 </div>
 
+                {/* QR Code & Payment Countdown for Order */}
+                {selectedOrder && (
+                  <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-outline-variant/60">
+                      <span className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-primary text-base">qr_code_2</span>
+                        Mã QR Thanh toán VietQR (MB Bank)
+                      </span>
+                      {selectedOrder.status === 'PENDING' && (
+                        <div className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 ${
+                          detailCountdown !== null && detailCountdown > 0
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700'
+                            : 'bg-red-100 text-red-900 border border-red-300 dark:bg-red-950/50 dark:text-red-200 dark:border-red-700'
+                        }`}>
+                          <span className="material-symbols-outlined text-sm">
+                            {detailCountdown !== null && detailCountdown > 0 ? 'timer' : 'error'}
+                          </span>
+                          <span>
+                            {detailCountdown !== null && detailCountdown > 0
+                              ? `Thời gian còn lại: ${formatCountdown(detailCountdown)}`
+                              : 'Đã hết hạn thanh toán'}
+                          </span>
+                        </div>
+                      )}
+                      {selectedOrder.status === 'PAID' && (
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">verified</span>
+                          Đã thanh toán thành công
+                        </span>
+                      )}
+                      {selectedOrder.status === 'REFUNDED' && (
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-700 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">history</span>
+                          Đã hoàn tiền
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      {/* QR Image */}
+                      <div className="flex flex-col items-center justify-center p-2 bg-white rounded-xl border border-slate-200 text-center">
+                        <img
+                          src={
+                            selectedOrder.qr_url ||
+                            `https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=${selectedOrder.amount}&addInfo=${encodeURIComponent(selectedOrder.transfer_content || selectedOrder.recognition_code || '')}&accountName=NGUYEN%20PHU%20BAO`
+                          }
+                          alt="VietQR MB Bank"
+                          className="w-40 h-auto object-contain rounded"
+                          loading="lazy"
+                        />
+                        <span className="text-[10px] text-slate-500 font-medium mt-1">Quét bằng App Ngân hàng / MoMo</span>
+                      </div>
+
+                      {/* Bank & Transfer Info */}
+                      <div className="md:col-span-2 space-y-2 text-xs">
+                        <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                          <span className="text-on-surface-variant">Ngân hàng:</span>
+                          <span className="font-semibold text-on-surface">MB Bank (Quân Đội)</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                          <span className="text-on-surface-variant">Số tài khoản:</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono font-bold text-on-surface">2512070399999</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyRecognitionCode('2512070399999')}
+                              className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                              title="Sao chép STK"
+                            >
+                              <span className="material-symbols-outlined text-sm">content_copy</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                          <span className="text-on-surface-variant">Chủ tài khoản:</span>
+                          <span className="font-bold text-on-surface">NGUYEN PHU BAO</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                          <span className="text-on-surface-variant">Nội dung CK:</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono font-bold text-primary bg-surface-container px-2 py-0.5 rounded break-all">
+                              {selectedOrder.transfer_content || selectedOrder.recognition_code || '—'}
+                            </span>
+                            {(selectedOrder.transfer_content || selectedOrder.recognition_code) && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyRecognitionCode(selectedOrder.transfer_content || selectedOrder.recognition_code)}
+                                className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                                title="Sao chép nội dung CK"
+                              >
+                                <span className="material-symbols-outlined text-sm">content_copy</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {selectedOrder.checkout_url && (
+                          <div className="pt-1">
+                            <a
+                              href={selectedOrder.checkout_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                              <span>Mở Cổng Thanh Toán PayOS</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Section 1: Order Information */}
                 <div>
                   <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">
@@ -1280,285 +1353,278 @@ const PaymentHistoryPage = () => {
 
             <div className="p-6 space-y-5">
 
-              {/* Overpaid Confirmation Modal Prompt in Sandbox */}
-              {sandboxConfirmation && (
-                <div className="p-4 bg-purple-100 dark:bg-purple-950/40 border border-purple-300 dark:border-purple-800 rounded-xl space-y-3 animate-fadeIn">
-                  <div className="flex items-start gap-2 text-purple-900 dark:text-purple-200">
-                    <span className="material-symbols-outlined text-purple-700 text-xl">help</span>
-                    <div className="text-xs space-y-1">
-                      <p className="font-bold">{t('payments.sandbox.overpaidPrompt')}</p>
-                      <p className="text-[11px] opacity-90">
-                        Cần TT: {formatVnd(sandboxConfirmation.expectedAmount)} — Thực nhận:{' '}
-                        {formatVnd(sandboxConfirmation.amountReceived)} (Thừa:{' '}
-                        {formatVnd(sandboxConfirmation.difference)})
-                      </p>
+              {/* Amount Quick Selector & Create Pending Button */}
+              <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-bold text-on-surface uppercase tracking-wider block mb-1.5">
+                      {t('payments.sampleModal.selectAmountLabel')}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSampleAmount(2000);
+                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedSampleAmount === 2000
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
+                        }`}
+                      >
+                        {t('payments.sampleModal.amount2k')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSampleAmount(49000);
+                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedSampleAmount === 49000
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
+                        }`}
+                      >
+                        {t('payments.sampleModal.amountMonth')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSampleAmount(270000);
+                          setSelectedSamplePackage('PREMIUM_6_MONTHS');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedSampleAmount === 270000
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
+                        }`}
+                      >
+                        {t('payments.sampleModal.amount6Months')}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  {/* Button Create Pending Order & Get QR */}
+                  <div className="self-end">
                     <button
-                      onClick={() => handleConfirmUpgrade(sandboxConfirmation.orderCode, true)}
+                      type="button"
+                      onClick={() => handleCreateSampleOrder(false)}
                       disabled={actionLoading}
-                      className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                     >
-                      {t('payments.sandbox.confirmAcceptBtn')}
-                    </button>
-                    <button
-                      onClick={() => handleConfirmUpgrade(sandboxConfirmation.orderCode, false)}
-                      disabled={actionLoading}
-                      className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                    >
-                      {t('payments.sandbox.confirmRejectBtn')}
+                      {actionLoading ? (
+                        <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-base">qr_code_2</span>
+                      )}
+                      <span>+ Tạo đơn Pending & Sinh mã QR</span>
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* Underpaid Alert in Sandbox */}
-              {sandboxUnderpaid && (
-                <div className="p-4 bg-orange-100 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800 rounded-xl flex items-start gap-2 text-orange-900 dark:text-orange-200 animate-fadeIn">
-                  <span className="material-symbols-outlined text-orange-700 text-xl">warning</span>
-                  <div className="text-xs space-y-1">
-                    <p className="font-bold">{t('payments.sandbox.underpaidAlert')}</p>
-                    <p className="text-[11px] opacity-90">
-                      Cần TT: {formatVnd(sandboxUnderpaid.expectedAmount)} — Thực nhận:{' '}
-                      {formatVnd(sandboxUnderpaid.amountReceived)} (Thiếu:{' '}
-                      {formatVnd(sandboxUnderpaid.expectedAmount - sandboxUnderpaid.amountReceived)})
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Amount Quick Selector */}
-              <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant space-y-2">
-                <span className="text-xs font-bold text-on-surface uppercase tracking-wider block">
-                  {t('payments.sampleModal.selectAmountLabel')}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedSampleAmount(2000);
-                      setSelectedSamplePackage('PREMIUM_1_MONTH');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      selectedSampleAmount === 2000
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
-                    }`}
-                  >
-                    {t('payments.sampleModal.amount2k')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedSampleAmount(49000);
-                      setSelectedSamplePackage('PREMIUM_1_MONTH');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      selectedSampleAmount === 49000
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
-                    }`}
-                  >
-                    {t('payments.sampleModal.amountMonth')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedSampleAmount(270000);
-                      setSelectedSamplePackage('PREMIUM_6_MONTHS');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      selectedSampleAmount === 270000
-                        ? 'bg-primary text-white shadow-sm'
-                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant'
-                    }`}
-                  >
-                    {t('payments.sampleModal.amount6Months')}
-                  </button>
                 </div>
               </div>
 
-              {/* 2 Columns: Left = QR Code with live image, Right = Transfer Info & Test Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                {/* Left Column: QR Code & Countdown */}
-                <div className="flex flex-col items-center bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant text-center relative group min-h-[340px] justify-center">
-                  {/* Badge on QR */}
-                  <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow tracking-wider flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px]">verified</span>
-                    {t('payments.sampleModal.payosTag')}
+              {/* Sandbox Content Area */}
+              {!payosData ? (
+                <div className="bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant text-center space-y-3">
+                  <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-3xl">qr_code_scanner</span>
                   </div>
-
-                  {/* 10-Minute Countdown Timer */}
-                  <div className="absolute top-3 right-3 bg-slate-800 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px] text-amber-400">timer</span>
-                    <span>{formatCountdown(countdownSeconds)}</span>
-                  </div>
-
-                  {payosLoading ? (
-                    <div className="py-20 text-center text-on-surface-variant space-y-2">
-                      <span className="material-symbols-outlined text-3xl animate-spin text-primary block mx-auto">
-                        progress_activity
-                      </span>
-                      <p className="text-xs">{t('common.loading')}</p>
+                  <h4 className="text-base font-bold text-on-surface">Chưa kích hoạt đơn kiểm thử nào</h4>
+                  <p className="text-xs text-on-surface-variant max-w-lg mx-auto leading-relaxed">
+                    Vui lòng chọn mức tiền kiểm thử phía trên và nhấn <strong className="text-primary font-semibold">"Tạo đơn Pending & Sinh mã QR"</strong>. Hệ thống sẽ lưu đơn hàng vào CSDL ở trạng thái <strong className="font-semibold text-amber-600">PENDING</strong>, kết nối kênh PayOS thật để cấp mã QR và tự động cập nhật danh sách ngoài bảng quản trị.
+                  </p>
+                </div>
+              ) : (
+                /* 2 Columns when payosData exists */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  {/* Left Column: QR Code & Countdown */}
+                  <div className="flex flex-col items-center bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant text-center relative group min-h-[340px] justify-center">
+                    {/* Badge on QR */}
+                    <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow tracking-wider flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px]">verified</span>
+                      {t('payments.sampleModal.payosTag')}
                     </div>
-                  ) : (
-                    <>
-                      <div className="p-2 bg-white rounded-xl shadow-md border border-slate-200 my-2">
-                        <img
-                          src={payosData?.qrUrl || `https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=${selectedSampleAmount}&addInfo=PFM%20TEST&accountName=NGUYEN%20PHU%20BAO`}
-                          alt="Mã QR Kênh Thanh Toán PayOS MB Bank"
-                          className="w-56 h-auto object-contain mx-auto rounded"
-                          loading="lazy"
-                        />
-                      </div>
 
-                      {/* 6-Character Recognition Code */}
-                      {payosData?.recognitionCode && (
-                        <div className="mt-2 w-full bg-surface-container p-2 rounded-lg border border-outline-variant flex items-center justify-between text-xs">
-                          <span className="text-on-surface-variant">{t('payments.sandbox.recognitionCodeLabel')}</span>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-primary text-sm tracking-wider">
-                              {payosData.recognitionCode}
-                            </span>
+                    {/* 10-Minute Countdown Timer */}
+                    <div className="absolute top-3 right-3 bg-slate-800 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px] text-amber-400">timer</span>
+                      <span>{formatCountdown(countdownSeconds)}</span>
+                    </div>
+
+                    {payosLoading ? (
+                      <div className="py-20 text-center text-on-surface-variant space-y-2">
+                        <span className="material-symbols-outlined text-3xl animate-spin text-primary block mx-auto">
+                          progress_activity
+                        </span>
+                        <p className="text-xs">{t('common.loading')}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="p-2 bg-white rounded-xl shadow-md border border-slate-200 my-2">
+                          <img
+                            src={payosData?.qrUrl || `https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=${selectedSampleAmount}&addInfo=PFM%20TEST&accountName=NGUYEN%20PHU%20BAO`}
+                            alt="Mã QR Kênh Thanh Toán PayOS MB Bank"
+                            className="w-56 h-auto object-contain mx-auto rounded"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* 6-Character Recognition Code */}
+                        {payosData?.recognitionCode && (
+                          <div className="mt-2 w-full bg-surface-container p-2 rounded-lg border border-outline-variant flex items-center justify-between text-xs">
+                            <span className="text-on-surface-variant">{t('payments.sandbox.recognitionCodeLabel')}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono font-bold text-primary text-sm tracking-wider">
+                                {payosData.recognitionCode}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyRecognitionCode(payosData.recognitionCode)}
+                                className="text-on-surface-variant hover:text-primary p-1 cursor-pointer"
+                                title="Sao chép"
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  {copiedCode ? 'check' : 'content_copy'}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-2 font-medium">
+                          <span className="material-symbols-outlined text-sm text-primary">smartphone</span>
+                          <span>{t('payments.sampleModal.scanNotice')}</span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-on-surface-variant/70 font-mono">
+                          {payosData?.bankName || 'MB Bank (Quân Đội)'} • STK: {payosData?.accountNumber || '2512070399999'}
+                        </div>
+
+                        {payosData?.checkoutUrl && (
+                          <a
+                            href={payosData.checkoutUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            <span>{t('payments.sampleModal.openPayosCheckout')}</span>
+                          </a>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Right Column: Transfer Info & Realtime Instructions */}
+                  <div className="space-y-4">
+                    <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-2.5 text-xs">
+                      <h4 className="font-bold text-on-surface uppercase tracking-wider text-[11px] flex items-center justify-between pb-2 border-b border-outline-variant/60">
+                        <span className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-primary">account_balance</span>
+                          {t('payments.sampleModal.bankInfo')}
+                        </span>
+                        {payosData?.orderCode && (
+                          <span className="font-mono text-[11px] text-primary font-bold">
+                            #{payosData.orderCode}
+                          </span>
+                        )}
+                      </h4>
+                      <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.bankName')}:</span>
+                        <span className="font-semibold text-on-surface">
+                          {payosData?.bankName || t('payments.sampleModal.bankValue')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.accountNo')}:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-on-surface">
+                            {payosData?.accountNumber || '2512070399999'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyRecognitionCode(payosData?.accountNumber || '2512070399999')}
+                            className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                            title="Sao chép STK"
+                          >
+                            <span className="material-symbols-outlined text-sm">content_copy</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.accountName')}:</span>
+                        <span className="font-bold text-on-surface">
+                          {payosData?.accountName || 'NGUYEN PHU BAO'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.package')}:</span>
+                        <span className="font-semibold text-primary">
+                          {selectedSamplePackage === 'PREMIUM_6_MONTHS'
+                            ? t('payments.filter.package6Months')
+                            : t('payments.filter.packageMonth')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.amount')}:</span>
+                        <span className="font-mono font-bold text-emerald-600 text-sm">
+                          {formatVnd(payosData?.amount || selectedSampleAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                        <span className="text-on-surface-variant">{t('payments.sampleModal.transferContent')}:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-primary bg-surface-container px-2 py-0.5 rounded break-all">
+                            {payosData?.description || 'PFM PREMIUM TEST'}
+                          </span>
+                          {payosData?.description && (
                             <button
                               type="button"
-                              onClick={() => handleCopyRecognitionCode(payosData.recognitionCode)}
-                              className="text-on-surface-variant hover:text-primary p-1 cursor-pointer"
-                              title="Sao chép"
+                              onClick={() => handleCopyRecognitionCode(payosData.description)}
+                              className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                              title="Sao chép nội dung CK"
                             >
-                              <span className="material-symbols-outlined text-sm">
-                                {copiedCode ? 'check' : 'content_copy'}
-                              </span>
+                              <span className="material-symbols-outlined text-sm">content_copy</span>
                             </button>
-                          </div>
+                          )}
                         </div>
-                      )}
-
-                      <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-2 font-medium">
-                        <span className="material-symbols-outlined text-sm text-primary">smartphone</span>
-                        <span>{t('payments.sampleModal.scanNotice')}</span>
                       </div>
-                      <div className="mt-1 text-[11px] text-on-surface-variant/70 font-mono">
-                        {payosData?.bankName || 'MB Bank (Quân Đội)'} • STK: {payosData?.accountNumber || '2512070399999'}
-                      </div>
-
-                      {payosData?.checkoutUrl && (
-                        <a
-                          href={payosData.checkoutUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-sm">open_in_new</span>
-                          <span>{t('payments.sampleModal.openPayosCheckout')}</span>
-                        </a>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Right Column: Transfer Info & Simulation Actions */}
-                <div className="space-y-4">
-                  <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-2.5 text-xs">
-                    <h4 className="font-bold text-on-surface uppercase tracking-wider text-[11px] flex items-center justify-between pb-2 border-b border-outline-variant/60">
-                      <span className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-primary">account_balance</span>
-                        {t('payments.sampleModal.bankInfo')}
-                      </span>
-                      {payosData?.orderCode && (
-                        <span className="font-mono text-[11px] text-primary font-bold">
-                          #{payosData.orderCode}
+                      <div className="flex justify-between py-1">
+                        <span className="text-on-surface-variant">Trạng thái đơn:</span>
+                        <span className="font-semibold text-amber-600 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs animate-spin">sync</span>
+                          PENDING (Chờ thanh toán)
                         </span>
-                      )}
-                    </h4>
-                    <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.bankName')}:</span>
-                      <span className="font-semibold text-on-surface">
-                        {payosData?.bankName || t('payments.sampleModal.bankValue')}
-                      </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.accountNo')}:</span>
-                      <span className="font-mono font-bold text-on-surface">
-                        {payosData?.accountNumber || '2512070399999'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.accountName')}:</span>
-                      <span className="font-bold text-on-surface">
-                        {payosData?.accountName || 'NGUYEN PHU BAO'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.package')}:</span>
-                      <span className="font-semibold text-primary">
-                        {selectedSamplePackage === 'PREMIUM_6_MONTHS'
-                          ? t('payments.filter.package6Months')
-                          : t('payments.filter.packageMonth')}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.amount')}:</span>
-                      <span className="font-mono font-bold text-emerald-600 text-sm">
-                        {formatVnd(payosData?.amount || selectedSampleAmount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="text-on-surface-variant">{t('payments.sampleModal.transferContent')}:</span>
-                      <span className="font-mono font-bold text-on-surface bg-surface-container-high px-2 py-0.5 rounded break-all">
-                        {payosData?.description || 'PFM PREMIUM TEST'}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Roleplay Simulation Actions (Po Spec) */}
-                  <div className="space-y-2 pt-1">
-                    <p className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">terminal</span>
-                      Giả lập Webhook:
-                    </p>
+                    {/* Notice for Real Bank Transfer & Auto-update */}
+                    <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/60 text-xs text-on-surface-variant space-y-1.5">
+                      <p className="font-semibold text-on-surface flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-primary">lightbulb</span>
+                        Quét QR hoặc Chuyển khoản thật:
+                      </p>
+                      <p className="text-[11px] leading-relaxed">
+                        Dùng App Ngân hàng bất kỳ hoặc MoMo quét mã QR bên cạnh. Sau khi chuyển khoản thành công, PayOS sẽ gửi Webhook về máy chủ và bảng quản trị sẽ tự động cập nhật trạng thái đơn hàng thời gian thực.
+                      </p>
+                    </div>
 
-                    <button
-                      onClick={() => handleSimulateWebhook(payosData?.amount || 49000)}
-                      disabled={actionLoading || !payosData?.orderCode}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-base">task_alt</span>
-                      <span>{t('payments.sandbox.simulateExactBtn')}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSimulateWebhook(70000)}
-                      disabled={actionLoading || !payosData?.orderCode}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-base">price_change</span>
-                      <span>{t('payments.sandbox.simulateOverpaidBtn')}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSimulateWebhook(20000)}
-                      disabled={actionLoading || !payosData?.orderCode}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-base">report_problem</span>
-                      <span>{t('payments.sandbox.simulateUnderpaidBtn')}</span>
-                    </button>
-
-                    <div className="pt-2 border-t border-outline-variant/50">
+                    {/* Button Create Another Pending Sample */}
+                    <div className="pt-1">
                       <button
+                        type="button"
                         onClick={() => handleCreateSampleOrder(false)}
                         disabled={actionLoading}
                         className="w-full py-2 px-3 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-xs font-bold border border-outline-variant cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                       >
                         <span className="material-symbols-outlined text-sm">add_circle</span>
-                        <span>+ Đơn PENDING</span>
+                        <span>+ Tạo đơn Pending khác</span>
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Footer */}
