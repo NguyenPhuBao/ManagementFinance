@@ -53,7 +53,7 @@ lib/
 │   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
 │   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
 │   ├── constants/     2      app_constants, app_localization
-│   ├── database/     39      AppDatabase, 10 tệp DAO, bảng, kết nối (native / web)
+│   ├── database/     42      AppDatabase, 10 tệp DAO, bảng, kết nối (native / web)
 │   ├── di/            1      injection_container (943 dòng) ← điểm ghép duy nhất của DI
 │   ├── errors/        1      app_exceptions
 │   ├── nen/           7      chạy nền: chay_nen, luot_nen, lich_nen, kênh `flowmoney/tu_chuyen_tien`, `app_lifecycle_watcher`
@@ -63,7 +63,7 @@ lib/
 │   ├── router/        1      app_router (GoRouter) ← điểm ghép
 │   ├── sync/          9      SyncEngine, normalizer, checkpoint, hai cổng `CongSoDuVi` · `CongViBiGiu` (2026-10-16; `noiBoNgheKetQuaDay` đã về DI)
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
-│   └── utils/         8      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
+│   └── utils/         9      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
 ├── features/        508 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
 │   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
 │   ├── transaction/  76      data 19 · domain 28 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
@@ -301,5 +301,4 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
 4. **Con số.** 14 mảng, 618 tệp `lib/` (đếm 2026-10-16 sau gỡ cụm), 33 tệp test quét, 7.146 ca test (đo 2026-10-16 khuya), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
-5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 7/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Danh mục, Thông báo (2026-10-15); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần), bốn cặp hai chiều của cụm {analytics, bill, category, transaction} đã gỡ 2026-10-16 (cùng vòng `bill_status` ↔ `notification_rules`), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói các vòng ấy
-   là nợ có tên ngoài G88 (G88 đóng 2026-10-16), tức là đã biết, không phải chưa nhìn thấy.
+5. **Tự nêu nhược điểm trước khi bị hỏi.** Còn mở: Entity mới 7/14 mảng (xong Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục, Thông báo 2026-10-15); `SyncEngine` một tệp 2.163 dòng; không logger, không mã hoá SQLite; `setState` vẫn là cách giữ trạng thái chủ đạo; và cạnh `bill/application/bill_payment_conflict_resolver.dart` → `notification_rules.dart` giữ cố ý (bộ điều phối phát thông báo, quét 29 chỉ đọc nguồn `domain/`). Đã trả, có ngày: G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần; bốn trang trên 1.200 dòng tách xong 2026-10-13), vòng `bill_status` ↔ `notification_rules` và bốn cặp hai chiều của cụm {analytics, bill, category, transaction} gỡ 2026-10-16 — quét 29 canh vòng mới, `conCho` rỗng. Nói cả hai nhóm, tức là đã biết, không phải chưa nhìn thấy.
