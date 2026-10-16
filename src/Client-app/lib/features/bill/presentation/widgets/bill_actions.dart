@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../bloc/bill_bloc.dart';
@@ -16,7 +17,10 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// trang chi tiết. Đều bắn sự kiện vào `BillBloc` của [context]; nơi gọi tự
 /// lắng `BillOperationSuccess`/`BillError` để báo và nạp lại.
 
-Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill) async {
+/// [soNgayNhac]: ngưỡng nhãn "Sắp đến hạn" trang đang dùng (tuỳ chọn "Nhắc
+/// trước"), để nhãn trên bảng khớp nhãn của dòng vừa chạm.
+Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill,
+    {int soNgayNhac = mocNhacMacDinh}) async {
   // Không có phiên thì không có ví nào để thanh toán bằng. Trước đây chỗ này
   // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
   // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
@@ -44,6 +48,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill) async 
       bill: bill,
       wallets: wallets,
       categoryName: danhMuc?.name,
+      soNgayNhacMacDinh: soNgayNhac,
       onConfirmed: (wallet, soTien, ngay, ghiChu) {
         context.read<BillBloc>().add(
               PayBillEvent(

@@ -38,6 +38,7 @@ void main() {
     String note = '',
     bool tuTra = false,
     DateTime? periodEnd,
+    String? nhac = '3',
   }) =>
       BillEntity(
         id: 'a',
@@ -53,7 +54,7 @@ void main() {
         payStatus: 'Pending',
         isPaid: false,
         autoPayEnabled: tuTra,
-        timeNotification: '3',
+        timeNotification: nhac,
         isRecurrence: true,
         timeRecurrence: kBillCycleMonth,
         recurrence: 'monthly',
@@ -71,6 +72,7 @@ void main() {
     required void Function(WalletEntity, double, DateTime, String?) onConfirmed,
     List<WalletEntity>? wallets,
     BillEntity? bill,
+    int soNgayNhac = 3,
   }) async {
     tester.view.physicalSize = const Size(411, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -89,6 +91,7 @@ void main() {
                 categoryName: 'Điện nước',
                 today: homNay,
                 onConfirmed: onConfirmed,
+                soNgayNhacMacDinh: soNgayNhac,
               ),
             ),
             child: const Text('mở'),
@@ -99,6 +102,24 @@ void main() {
     await tester.tap(find.text('mở'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+      'hoá đơn TẮT nhắc: nhãn "Sắp đến hạn" dùng số ngày trang truyền vào '
+      '(2026-10-16)', (tester) async {
+    // Hạn 11/09; tuỳ chọn "Nhắc trước 7 ngày" do trang đọc rồi truyền xuống.
+    await moBang(
+      tester,
+      onConfirmed: (_, __, ___, ____) {},
+      bill: hoaDon(dueDate: DateTime(2026, 9, 11), nhac: null),
+      soNgayNhac: 7,
+    );
+
+    expect(find.text('SẮP ĐẾN HẠN'), findsOneWidget,
+        reason: 'Cùng ngưỡng với trang mở bảng — bảng Thanh toán đổi nhãn so '
+            'với dòng vừa chạm là hai chỗ nói hai chuyện.');
+    expect(find.text('Không nhắc'), findsOneWidget,
+        reason: 'Hoá đơn vẫn tắt nhắc.');
+  });
 
   testWidgets('hiện thông tin hoá đơn và nút trả bằng ví của hoá đơn',
       (tester) async {

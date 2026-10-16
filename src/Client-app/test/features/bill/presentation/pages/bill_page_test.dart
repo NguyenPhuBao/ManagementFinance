@@ -26,6 +26,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
+import 'package:flowmoney/features/bill/data/so_ngay_nhac_nguon.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
@@ -151,6 +152,7 @@ void main() {
     List<BillEntity> bills, {
     bool seed = false,
     Size kho = const Size(411, 2000),
+    SoNgayNhacNguon? soNgayNhac,
   }) async {
     if (seed) await gieoViVaDanhMuc();
 
@@ -176,11 +178,41 @@ void main() {
         BlocProvider<AuthBloc>.value(value: auth),
         BlocProvider<BillBloc>.value(value: bloc),
       ],
-      child: MaterialApp(home: BillPage(now: now)),
+      child: MaterialApp(home: BillPage(now: now, soNgayNhac: soNgayNhac)),
     ));
     bloc.add(LoadBillsEvent(idaccount: 10));
     await tester.pumpAndSettle();
   }
+
+  group('nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16)', () {
+    // Hạn 11/09, hôm nay 06/09 ⇒ còn 5 ngày.
+    testWidgets('hoá đơn TẮT nhắc: nhãn dùng số ngày của Cài đặt thông báo',
+        (tester) async {
+      await dungTrang(
+        tester,
+        [_bill(id: 'a', dueDate: DateTime(2026, 9, 11), timeNotification: null)],
+        soNgayNhac: SoNgayNhacNguon((_) async => 7),
+      );
+
+      expect(find.text('SẮP ĐẾN HẠN'), findsOneWidget,
+          reason: 'Người dùng đặt "Nhắc trước 7 ngày"; hoá đơn tắt nhắc còn 5 '
+              'ngày. Trước 2026-10-16 nhãn dùng mốc 3 cố định nên hoá đơn ấy '
+              'chưa "sắp đến hạn" dù tuỳ chọn nói đã tới.');
+    });
+
+    testWidgets('hoá đơn đặt số ngày riêng: tuỳ chọn chung KHÔNG đè lên',
+        (tester) async {
+      await dungTrang(
+        tester,
+        [_bill(id: 'a', dueDate: DateTime(2026, 9, 11), timeNotification: '1')],
+        soNgayNhac: SoNgayNhacNguon((_) async => 7),
+      );
+
+      expect(find.text('SẮP ĐẾN HẠN'), findsNothing,
+          reason: 'Nhắc trước 1 ngày, còn 5 ngày — cùng số bộ nhắc dùng cho '
+              'hoá đơn ấy, nhãn và dải nhắc nói cùng một chuyện.');
+    });
+  });
 
   Color vachMau(WidgetTester tester, String id) {
     final c = tester.widget<Container>(find.byKey(ValueKey('bill-accent-$id')));

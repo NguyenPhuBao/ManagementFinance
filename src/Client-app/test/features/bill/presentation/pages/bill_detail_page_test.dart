@@ -14,6 +14,7 @@ import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.d
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_detail_page.dart';
+import 'package:flowmoney/features/bill/data/so_ngay_nhac_nguon.dart';
 import 'package:flowmoney/features/bill/presentation/widgets/bill_payment_sheet.dart';
 
 /// Trang chi tiết hoá đơn (`/bills/:id`): mở khi chạm một dòng chưa trả.
@@ -77,6 +78,7 @@ void main() {
     bool tuTra = false,
     String note = '',
     DateTime? periodEnd,
+    String? nhac = '3',
   }) =>
       db.billDao.insert(BillsCompanion.insert(
         id: id,
@@ -93,7 +95,7 @@ void main() {
             drift.Value(boQua ? 'Skipped' : (paid ? 'Payed' : 'Pending')),
         isPaid: drift.Value(paid),
         autoPayEnabled: drift.Value(tuTra),
-        timeNotification: const drift.Value('3'),
+        timeNotification: drift.Value(nhac),
         isRecurrence: const drift.Value(true),
         timeRecurrence: const drift.Value(kBillCycleMonth),
         note: drift.Value(note),
@@ -113,7 +115,8 @@ void main() {
         updatedAt: ngay,
       ));
 
-  Future<void> dungTrang(WidgetTester tester, String id) async {
+  Future<void> dungTrang(WidgetTester tester, String id,
+      {SoNgayNhacNguon? soNgayNhac}) async {
     tester.view.physicalSize = const Size(411, 2200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -135,10 +138,25 @@ void main() {
         BlocProvider<AuthBloc>.value(value: auth),
         BlocProvider<BillBloc>.value(value: bloc),
       ],
-      child: MaterialApp(home: BillDetailPage(id: id, now: now)),
+      child: MaterialApp(
+          home: BillDetailPage(id: id, now: now, soNgayNhac: soNgayNhac)),
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+      'hoá đơn TẮT nhắc: nhãn "Sắp đến hạn" dùng số ngày của Cài đặt thông báo '
+      '(2026-10-16)', (tester) async {
+    // Hạn 11/09, hôm nay 06/09 ⇒ còn 5 ngày; tuỳ chọn "Nhắc trước 7 ngày".
+    await hoaDon('k1', DateTime(2026, 9, 11), nhac: null);
+    await dungTrang(tester, 'k1', soNgayNhac: SoNgayNhacNguon((_) async => 7));
+
+    expect(find.text('SẮP ĐẾN HẠN'), findsOneWidget,
+        reason: 'Cùng ngưỡng với trang danh sách — mở chi tiết mà nhãn đổi là '
+            'hai trang nói hai chuyện về cùng một hoá đơn.');
+    expect(find.text('Không nhắc'), findsOneWidget,
+        reason: 'Hoá đơn vẫn tắt nhắc — nhãn trạng thái không phải lời nhắc.');
+  });
 
   testWidgets('hiện đủ thông tin của kỳ đang mở, không tràn ở 411dp',
       (tester) async {

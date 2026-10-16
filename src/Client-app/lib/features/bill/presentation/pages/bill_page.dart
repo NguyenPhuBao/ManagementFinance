@@ -27,6 +27,8 @@ import '../widgets/bill_actions.dart';
 import '../widgets/bill_status_visuals.dart';
 import '../widgets/the_khoan_lap.dart';
 import '../../data/de_xuat_hoa_don_nguon.dart';
+import '../../data/so_ngay_nhac_nguon.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/ui/do_chu.dart';
 
@@ -40,7 +42,11 @@ class BillPage extends StatefulWidget {
   /// thêm gì.
   final DeXuatHoaDonNguon? deXuatNguon;
 
-  const BillPage({super.key, this.now, this.deXuatNguon});
+  /// Tuỳ chọn "Nhắc trước" — ngưỡng nhãn "Sắp đến hạn" của hoá đơn tắt nhắc.
+  /// `null` thì lấy từ DI nếu đã đăng ký, không thì mốc 3 ngày.
+  final SoNgayNhacNguon? soNgayNhac;
+
+  const BillPage({super.key, this.now, this.deXuatNguon, this.soNgayNhac});
 
   @override
   State<BillPage> createState() => _BillPageState();
@@ -51,6 +57,10 @@ class _BillPageState extends State<BillPage> {
   /// dịch. Hoá đơn chỉ lưu id; trước 2026-09-06 danh sách không hiện cái nào
   /// trong hai thứ đó.
   TransactionLookup _lookup = TransactionLookup.empty;
+
+  /// Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc — tuỳ chọn "Nhắc trước",
+  /// nạp cùng lượt với tên ví / danh mục ([_napTenGoi]).
+  int _soNgayNhac = mocNhacMacDinh;
 
   /// Tài khoản đã nạp xong, để không nạp lại ở mỗi lần dựng.
   int? _daNapCho;
@@ -90,8 +100,14 @@ class _BillPageState extends State<BillPage> {
     final vi = await sl<WalletRepository>().getAll(accountId);
     // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
     final dm = await sl<CategoryManagementRepository>().loadBangTraTen(accountId: accountId);
+    final nguon = widget.soNgayNhac ??
+        (sl.isRegistered<SoNgayNhacNguon>() ? sl<SoNgayNhacNguon>() : null);
+    final soNgay = nguon == null ? mocNhacMacDinh : await nguon.doc(accountId);
     if (!mounted) return;
-    setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
+    setState(() {
+      _lookup = TransactionLookup(wallets: vi, categories: dm);
+      _soNgayNhac = soNgay;
+    });
   }
 
   @override
@@ -392,7 +408,7 @@ class _BillPageState extends State<BillPage> {
     // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
     // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
     // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
-    final status = billDisplayStatusOf(bill, now);
+    final status = billDisplayStatusOf(bill, now, macDinh: _soNgayNhac);
     final danhMuc = _lookup.category(bill.categoryId);
     // Khoản chi của lần trả — chỉ có với khoản ghi từ v16 trên máy này.
     // Không có thì KHÔNG đoán ngày trả; chỉ ghi hạn như cũ.
@@ -609,6 +625,7 @@ class _BillPageState extends State<BillPage> {
                       amount: amount,
                       isPaid: isPaid,
                       daBoQua: daBoQua,
+                      soNgayNhac: _soNgayNhac,
                     ),
                   ],
                 ),
@@ -720,12 +737,16 @@ class _HangSoTien extends StatelessWidget {
     required this.amount,
     required this.isPaid,
     required this.daBoQua,
+    required this.soNgayNhac,
   });
 
   final BillEntity bill;
   final String amount;
   final bool isPaid;
   final bool daBoQua;
+
+  /// Ngưỡng nhãn "Sắp đến hạn" của trang, chuyển cho bảng Thanh toán.
+  final int soNgayNhac;
 
   static const _kieuSoTien =
       TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
@@ -873,7 +894,8 @@ class _HangSoTien extends StatelessWidget {
       );
     }
     return ElevatedButton(
-      onPressed: () => moBangThanhToanHoaDon(context, bill),
+      onPressed: () =>
+          moBangThanhToanHoaDon(context, bill, soNgayNhac: soNgayNhac),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,

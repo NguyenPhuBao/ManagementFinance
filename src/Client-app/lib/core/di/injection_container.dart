@@ -100,6 +100,7 @@ import '../../features/bill/application/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/data/de_xuat_hoa_don_nguon.dart';
+import '../../features/bill/data/so_ngay_nhac_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/repositories/category_management_repository_impl.dart';
 import '../../features/category/application/default_category_seeder.dart';
@@ -344,6 +345,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   );
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
+  );
+  // Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc = tuỳ chọn "Nhắc trước" của Cài
+  // đặt thông báo. Hàm đọc đặt ở đây (điểm ghép) để `bill/` không import
+  // `notification/` (quét 29). Đọc lúc gọi nên đăng ký trước kho tuỳ chọn vẫn được.
+  sl.registerLazySingleton<SoNgayNhacNguon>(
+    () => SoNgayNhacNguon((id) async =>
+        (await sl<NotificationPrefsStore>().read(id)).soNgayNhacHoaDon),
   );
   // Thẻ "Có vẻ là khoản lặp" trên trang Hoá đơn (B2) — trang tự lấy nguồn này
   // khi đã đăng ký, không thì không dựng thẻ.
