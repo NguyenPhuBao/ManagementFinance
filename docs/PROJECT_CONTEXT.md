@@ -630,8 +630,12 @@ câu hỏi chọn được:
   (tạo mới, không tách) và gỡ ở đường sửa, B1 bỏ mẫu mang dấu ở `_hocTuSo` (mô hình + mẫu đề xuất) và `taiDuLieuGan`. Mục 5d
   `CATEGORY_RATIONALE.md`. Ca canh học chạy hai chiều trên cùng sổ; bốn bản sai có chủ ý đều bị bắt. Hai ca canh có sẵn
   phải sửa theo: số schema ở `bill_schema_v21_test` / `schema_v24` / `v29` / `v30`, danh sách DAO cấm của quét 22.
-- `flutter test` **7.118 / 10 skip / 0 fail** (+22 ca), `flutter analyze` **20**. Chưa chạy trên máy (máy ảo đã tắt; không máy thật cắm) — hàng nút và ô Nhập nhanh lúc nói cần
-  nghiệm thu bằng mắt, cùng lượt kiểm C4 trên OnePlus.
+- `flutter test` **7.118 / 10 skip / 0 fail** (+22 ca), `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug cài 15:18 dựng từ
+  `af4963d7`): hàng năm nút đúng Stitch; ô Nhập nhanh chờ có nhãn *"Giọng nói & Gõ"*; bấm micro → nhãn *"● Đang nghe…"*,
+  viền đỏ, nút ■ đỏ, Điền khoá — đúng Stitch; 0 điểm ảnh vàng thuần trên ba ảnh. CSDL máy ảo di trú lên `user_version 31`,
+  dữ liệu nguyên (tài khoản 10: 138 giao dịch, 7 ví, 30 hoá đơn). Khung hình đầu sau lần mở đầu có di trú hiện 0 đ trước khi
+  dữ liệu nạp xong (vài giây sau đủ). Chưa đo: hai chip trong thẻ (cần câu nói thật lệch số), máy thật 320 dp — để lượt C4
+  trên OnePlus.
 
 ### 🧾 Trang Hoá đơn — tab "Cần thanh toán" đếm theo kỳ này, kỳ các tháng sau dưới tiêu đề nhóm (2026-10-16, người dùng chốt)
 

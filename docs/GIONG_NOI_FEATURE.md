@@ -196,6 +196,9 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
 - [ ] RAM đỉnh bản mô hình hai cờ (PSS + swap) khi Quét rồi Nói và ngược lại; không sập native ở OnePlus GPU.
 - [ ] Hộp hỏi quyền micro trên ColorOS; trạng thái *bị chặn* → nút Mở cài đặt.
 - [ ] Hàng năm nút Trang chủ trên máy 320 dp thật; màn Thêm giao dịch bốn trạng thái so với Stitch.
+      *(2026-10-16 app đã sửa theo Stitch — mục 8. Lúc nói phải thấy: nhãn đỏ "● Đang nghe…" ở góc trên thẻ, viền ô đỏ
+      `#BA1A1A`, nút dừng là ô vuông đỏ trong vòng nhạt, hai chip số tiền nằm TRONG thẻ. Lệch có chủ ý: hai dòng "đang
+      ghi / chép lời" và "đang kiểm" hiện lần lượt; tia sét `#F25F5C`.)*
 - [ ] Thời gian thật của kiểm chéo; chip hiện đúng khi lệch.
 - [ ] Sau bảng đo: người dùng quyết giữ hai lối hay bỏ một (gỡ gói của lối bỏ).
 
