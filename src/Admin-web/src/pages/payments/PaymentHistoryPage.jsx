@@ -115,8 +115,9 @@ const PaymentHistoryPage = () => {
     const fetchPackageTypes = async () => {
       try {
         const res = await paymentApi.getPackageTypes();
-        const types = res?.data || res;
-        if (Array.isArray(types) && types.length > 0) {
+        const raw = res?.data?.data || res?.data || res;
+        const types = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+        if (types.length > 0) {
           setPackageTypes(types);
         }
       } catch (err) {
@@ -619,11 +620,19 @@ const PaymentHistoryPage = () => {
               className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
               <option value="ALL">{t('payments.filter.packageAll')}</option>
-              {packageTypes.map((pkg) => (
-                <option key={pkg} value={pkg}>
-                  {pkg === 'Basic' ? 'Basic (Mặc định)' : pkg === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : pkg}
-                </option>
-              ))}
+              {packageTypes.map((pkg) => {
+                const pkgId = typeof pkg === 'object' && pkg !== null ? pkg.id : pkg;
+                const pkgName = typeof pkg === 'object' && pkg !== null ? (pkg.name || pkg.id) : pkg;
+                const isDefault = (typeof pkg === 'object' && pkg !== null && pkg.isDefault) || pkgId === 'Basic';
+                const pkgLabel = isDefault
+                  ? (pkgName.includes('Mặc định') ? pkgName : `${pkgName} (Mặc định)`)
+                  : (pkgId === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : pkgName);
+                return (
+                  <option key={pkgId} value={pkgId}>
+                    {pkgLabel}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
