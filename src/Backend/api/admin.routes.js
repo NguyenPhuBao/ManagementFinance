@@ -3,6 +3,7 @@ const router = express.Router();
 const adminController = require('../modules/admin/admin.controller');
 const aiopsController = require('../modules/aiops/aiops.controller');
 const paymentController = require('../modules/payment/payment.controller');
+const { uploadRefundProof } = require('../middleware/upload.middleware');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
@@ -64,10 +65,24 @@ router.put('/permissions', adminController.updatePermissions);
 // Quản lý & Theo dõi lịch sử thanh toán (Payment History & Orders)
 router.get('/payments/orders', paymentController.getOrdersForAdmin);
 router.get('/payments/stats', paymentController.getPaymentStatsForAdmin);
+router.get('/payments/packages', paymentController.getPackageTypes);
 router.get('/payments/orders/:id', paymentController.getOrderDetailForAdmin);
+router.put(
+  '/payments/orders/:id/refund',
+  (req, res, next) => {
+    uploadRefundProof.single('proofFile')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      next();
+    });
+  },
+  paymentController.processRefund
+);
 router.get('/payments/payos-qr', paymentController.getPayosQr);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
+router.post('/payments/simulate-webhook', paymentController.simulateWebhook);
 
 module.exports = router;
 

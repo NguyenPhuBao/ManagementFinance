@@ -16,6 +16,15 @@ function sanitizeOrderData(obj) {
   if (typeof clone.amount === 'object' && clone.amount !== null && typeof clone.amount.toNumber === 'function') {
     clone.amount = clone.amount.toNumber();
   }
+  if (typeof clone.amount_received === 'object' && clone.amount_received !== null && typeof clone.amount_received.toNumber === 'function') {
+    clone.amount_received = clone.amount_received.toNumber();
+  }
+  if (typeof clone.fee === 'object' && clone.fee !== null && typeof clone.fee.toNumber === 'function') {
+    clone.fee = clone.fee.toNumber();
+  }
+  if (typeof clone.refunded_amount === 'object' && clone.refunded_amount !== null && typeof clone.refunded_amount.toNumber === 'function') {
+    clone.refunded_amount = clone.refunded_amount.toNumber();
+  }
   return clone;
 }
 
@@ -31,11 +40,16 @@ async function createOrder(data) {
       order_code: BigInt(data.orderCode),
       package_type: data.packageType || 'PREMIUM_1_MONTH',
       amount: data.amount,
+      amount_received: data.amountReceived || 0,
+      fee: data.fee || 0,
+      recognition_code: data.recognitionCode || null,
+      transfer_content: data.transferContent || null,
       currency: data.currency || 'VND',
       status: data.status || 'PENDING',
       checkout_url: data.checkoutUrl || null,
       payment_link_id: data.paymentLinkId || null,
       expired_at: data.expiredAt || null,
+      is_template: data.isTemplate ?? false,
     },
   });
   return sanitizeOrderData(created);
@@ -165,6 +179,67 @@ async function updateOrderStatus(orderId, updateData) {
 }
 
 /**
+ * Cập nhật trạng thái đối soát đơn hàng (WAITING_CONFIRMATION, REFUND_PENDING, PAID...)
+ */
+async function updateOrderPaymentStatus({ orderId, status, amountReceived, paidAt, transferContent, refundReason, fee }) {
+  const data = {};
+  if (status !== undefined) data.status = status;
+  if (amountReceived !== undefined) data.amount_received = amountReceived;
+  if (paidAt !== undefined) data.paid_at = paidAt;
+  if (transferContent !== undefined) data.transfer_content = transferContent;
+  if (refundReason !== undefined) data.refund_reason = refundReason;
+  if (fee !== undefined) data.fee = fee;
+
+  const updated = await prisma.payment_order.update({
+    where: { id: orderId },
+    data,
+  });
+  return sanitizeOrderData(updated);
+}
+
+/**
+ * Tìm đơn hàng theo mã nhận diện 6 ký tự
+ * @param {string} recognitionCode
+ */
+async function findOrderByRecognitionCode(recognitionCode) {
+  if (!recognitionCode) return null;
+  const order = await prisma.payment_order.findFirst({
+    where: {
+      recognition_code: recognitionCode.trim(),
+    },
+    include: {
+      account: {
+        select: {
+          idaccount: true,
+          username: true,
+          email: true,
+          type: true,
+          premium_expires_at: true,
+        },
+      },
+    },
+  });
+  return sanitizeOrderData(order);
+}
+
+/**
+ * Xử lý hoàn tiền đơn hàng (Admin)
+ */
+async function processRefund({ orderId, refundedAmount, refundProof, refundReason, refundedAt }) {
+  const updated = await prisma.payment_order.update({
+    where: { id: orderId },
+    data: {
+      status: 'REFUNDED',
+      refunded_at: refundedAt || new Date(),
+      refunded_amount: refundedAmount,
+      refund_proof: refundProof || null,
+      refund_reason: refundReason || null,
+    },
+  });
+  return sanitizeOrderData(updated);
+}
+
+/**
  * Ghi nhận nhật ký giao dịch đối soát Webhook
  * @param {object} data 
  */
@@ -197,6 +272,7 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
       data: {
         status: 'PAID',
         paid_at: paidAt || new Date(),
+        amount_received: transactionData ? transactionData.amount : undefined,
       },
     });
 
@@ -336,6 +412,7 @@ async function findOrdersForAdmin({
   packageType,
   fromDate,
   toDate,
+  excludeTemplate = false,
 } = {}) {
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const take = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
@@ -348,7 +425,15 @@ async function findOrdersForAdmin({
   }
 
   if (packageType && packageType !== 'ALL') {
-    where.package_type = packageType;
+    if (packageType.toUpperCase() === 'PREMIUM') {
+      where.package_type = { startsWith: 'PREMIUM', mode: 'insensitive' };
+    } else {
+      where.package_type = packageType;
+    }
+  }
+
+  if (excludeTemplate === 'true' || excludeTemplate === true) {
+    where.is_template = false;
   }
 
   if (fromDate || toDate) {
@@ -448,8 +533,11 @@ async function findOrdersForAdmin({
  * Lấy thống kê tổng quan doanh thu và đơn hàng cho Admin
  * @param {object} options
  */
-async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
+async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = false } = {}) {
   const where = {};
+  if (excludeTemplate === 'true' || excludeTemplate === true) {
+    where.is_template = false;
+  }
   if (fromDate || toDate) {
     where.created_at = {};
     if (fromDate) {
@@ -537,6 +625,22 @@ async function getOrderDetailForAdmin(orderId) {
     });
   }
 
+  const bin = '970422';
+  const accountNumber = '2512070399999';
+  const accountName = 'NGUYEN PHU BAO';
+  const description = sanitized.transfer_content || sanitized.recognition_code || '';
+  sanitized.qr_url = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${sanitized.amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+  sanitized.bank_info = {
+    bin,
+    bankName: 'MB Bank (Quân Đội)',
+    accountNumber,
+    accountName,
+  };
+
+  if (!sanitized.expired_at && sanitized.created_at) {
+    sanitized.expired_at = new Date(new Date(sanitized.created_at).getTime() + 10 * 60 * 1000);
+  }
+
   return sanitized;
 }
 
@@ -546,19 +650,23 @@ async function getOrderDetailForAdmin(orderId) {
  */
 async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MONTH', persistOrder = false, idaccount } = {}) {
   const orderCode = payosClient.generateOrderCode();
-  let description = `PFM ${orderCode}`.slice(0, 25);
+  const recognitionCode = payosClient.generateRecognitionCode();
+  let description = recognitionCode;
   let bin = '970422';
   let accountNumber = '2512070399999';
   let accountName = 'NGUYEN PHU BAO';
   let checkoutUrl = `https://pay.payos.vn/web/${orderCode}`;
   let paymentLinkId = `sample-link-${orderCode}`;
   let qrCode = null;
+  const now = new Date();
+  const expiredAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 phút đếm ngược
 
   try {
     const payosRes = await payosClient.createPaymentLink({
       orderCode,
       amount: Number(amount),
-      description,
+      description: recognitionCode,
+      expiredAt: Math.floor(expiredAt.getTime() / 1000),
     });
     if (payosRes) {
       checkoutUrl = payosRes.checkoutUrl || checkoutUrl;
@@ -576,6 +684,8 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
   // URL ảnh VietQR chuẩn Napas với kênh MB Bank thật của người dùng
   const qrUrl = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
 
+  let orderId = crypto.randomUUID();
+
   // Tự động lưu bản ghi đơn hàng PENDING khi được yêu cầu (phục vụ đối soát tự động khi PayOS bắn Webhook về Cloud Backend)
   if (persistOrder) {
     try {
@@ -588,8 +698,6 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
         });
         accountId = defaultAcc ? defaultAcc.idaccount : 1;
       }
-      const orderId = crypto.randomUUID();
-      const now = new Date();
       await prisma.payment_order.create({
         data: {
           id: orderId,
@@ -597,12 +705,17 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
           order_code: BigInt(orderCode),
           package_type: packageType,
           amount: Number(amount),
+          amount_received: 0,
+          fee: 0,
+          recognition_code: recognitionCode,
+          transfer_content: description,
           currency: 'VND',
           status: 'PENDING',
           checkout_url: checkoutUrl,
           payment_link_id: paymentLinkId,
           created_at: now,
-          expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+          expired_at: expiredAt,
+          is_template: true,
         },
       });
     } catch (dbErr) {
@@ -611,7 +724,10 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
   }
 
   return {
+    orderId,
     orderCode,
+    recognitionCode,
+    transferContent: description,
     amount: Number(amount),
     packageType,
     bin,
@@ -623,6 +739,7 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
     paymentLinkId,
     qrUrl,
     qrCode,
+    expiredAt,
   };
 }
 
@@ -671,9 +788,12 @@ async function createSampleOrder({
       status: isPaid ? 'PAID' : 'PENDING',
       checkout_url: payosInfo.checkoutUrl,
       payment_link_id: payosInfo.paymentLinkId,
+      recognition_code: payosInfo.recognitionCode || null,
+      transfer_content: payosInfo.transferContent || null,
       created_at: now,
       paid_at: isPaid ? now : null,
-      expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+      expired_at: new Date(now.getTime() + 10 * 60 * 1000),
+      is_template: true,
     },
     include: {
       account: {
@@ -735,12 +855,38 @@ async function deleteSampleOrders() {
   return { deletedCount: deleted.count };
 }
 
+/**
+ * Lấy danh sách các gói cước từ CSDL (account_type_permission)
+ */
+async function getPackageTypes() {
+  const permissions = await prisma.account_type_permission.findMany({
+    select: { account_type: true },
+    distinct: ['account_type'],
+    orderBy: { account_type: 'asc' },
+  });
+  let types = permissions.map((p) => p.account_type).filter(Boolean);
+  if (types.length === 0) {
+    types = ['Basic', 'Premium'];
+  }
+  if (!types.includes('Basic')) types.unshift('Basic');
+  if (!types.includes('Premium')) types.push('Premium');
+
+  return types.map((type) => ({
+    id: type,
+    name: type === 'Basic' ? 'Gói Basic' : 'Gói Premium',
+    isDefault: type === 'Basic',
+  }));
+}
+
 module.exports = {
   createOrder,
   findOrderByCode,
   findOrderById,
   findOrdersByAccount,
   updateOrderStatus,
+  updateOrderPaymentStatus,
+  findOrderByRecognitionCode,
+  processRefund,
   recordTransaction,
   activatePremiumSubscription,
   findAccountSubscription,
@@ -749,6 +895,7 @@ module.exports = {
   findOrdersForAdmin,
   getPaymentSummaryStats,
   getOrderDetailForAdmin,
+  getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
   getOrCreatePayosQr,

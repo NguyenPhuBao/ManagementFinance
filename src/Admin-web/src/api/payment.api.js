@@ -35,6 +35,35 @@ const paymentApi = {
    * Xóa tất cả các đơn hàng mẫu thử nghiệm
    */
   deleteSampleOrders: () => axiosClient.delete('/admin/payments/sample'),
+
+  /**
+   * Người dùng xác nhận hoặc từ chối kích hoạt gói khi chuyển thừa tiền
+   * @param {object} data { orderCode, accept }
+   */
+  confirmUpgrade: (data) => axiosClient.post('/payment/confirm-upgrade', data),
+
+  /**
+   * Lấy danh sách các loại gói cước hiện có trong CSDL
+   */
+  getPackageTypes: () => axiosClient.get('/admin/payments/packages'),
+
+  /**
+   * Admin xử lý hoàn tiền cho khách hàng kèm upload minh chứng
+   * @param {string} orderId
+   * @param {object|FormData} data { refundedAmount, refundProof, refundReason, refundedAt, proofFile }
+   */
+  processRefund: (orderId, data) => {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+    return axiosClient.put(`/admin/payments/orders/${orderId}/refund`, data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
+  },
+
+  /**
+   * Admin giả lập Webhook cho chế độ Sandbox Roleplay
+   * @param {object} data { orderCode, simulateType }
+   */
+  simulateWebhook: (data) => axiosClient.post('/admin/payments/simulate-webhook', data),
 };
 
 export default paymentApi;

@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -15,7 +16,12 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// Static Assets Serving (Refund Proofs, Uploads)
+app.use('/assets', express.static(path.join(__dirname, 'Assets')));
 
 // CORS
 const { createCorsOriginValidator } = require('./config/cors');
