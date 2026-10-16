@@ -1,4 +1,4 @@
--- Migration 20: Thêm các cột đối soát số tiền thực nhận, mã nhận diện 6 ký tự và thông tin hoàn tiền minh bạch
+-- Migration 28: Thêm các cột đối soát số tiền thực nhận, mã nhận diện 6 ký tự và thông tin hoàn tiền minh bạch
 -- Module: Payment (WealthCommand FinanceManagement)
 -- Mục tiêu: Hỗ trợ quy trình thanh toán 6 bước PayOS, xử lý chuyển thừa/thiếu tiền và minh chứng hoàn tiền pháp lý.
 
@@ -13,6 +13,9 @@ ADD COLUMN IF NOT EXISTS "refunded_amount" DECIMAL(15,2),
 ADD COLUMN IF NOT EXISTS "refund_reason" TEXT,
 ADD COLUMN IF NOT EXISTS "refund_proof" TEXT;
 
--- 2. Đảm bảo ràng buộc chỉ mục hiệu năng cao cho việc tra cứu đối soát
+-- 2. Đảm bảo độ rộng cột status chứa được các trạng thái mới (WAITING_CONFIRMATION, REFUND_PENDING)
+ALTER TABLE "payment_order" ALTER COLUMN "status" TYPE VARCHAR(25);
+
+-- 3. Đảm bảo ràng buộc chỉ mục hiệu năng cao cho việc tra cứu đối soát
 CREATE INDEX IF NOT EXISTS "idx_payment_order_recognition_code" ON "payment_order"("recognition_code");
 CREATE INDEX IF NOT EXISTS "idx_payment_order_status" ON "payment_order"("status");

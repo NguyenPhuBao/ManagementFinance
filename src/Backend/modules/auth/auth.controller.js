@@ -58,6 +58,20 @@ const authController = {
     } catch (error) {
       const statusCode = error.statusCode || 500;
       logger.warn('Login failed', { username: req.body.username, error: error.message });
+      if (statusCode === 503) {
+        if (typeof res.setHeader === 'function') {
+          res.setHeader('Retry-After', '60');
+        }
+        return res.status(503).json({
+          success: false,
+          statusCode: 503,
+          code: error.code || 'MAINTENANCE_MODE',
+          message: error.message,
+          isEmergency: Boolean(error.isEmergency),
+          activatedAt: error.activatedAt,
+          timestamp: new Date().toISOString(),
+        });
+      }
       const extra = {};
       if (error.code) extra.code = error.code;
       if (error.reason_inactive) extra.reason_inactive = error.reason_inactive;

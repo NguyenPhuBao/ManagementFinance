@@ -29,17 +29,20 @@
 ```
 ManagementFinance/
 ├── src/
-│   ├── Backend/          ← Node.js + Express + Prisma + PostgreSQL
-│   └── Client-app/       ← Flutter (Web/Mobile, Dart)
+│   ├── Backend/          ← Node.js + Express + Prisma + PostgreSQL + Redis (WealthCommand API)
+│   ├── Admin-web/        ← React + Vite + Tailwind CSS (Admin Operations & Command Center)
+│   └── Client-app/       ← Flutter (Web/Mobile, Dart, SQLite Drift, Offline-First)
 ├── docs/
-│   ├── Rule_Project/
-│   │   ├── New_Database.md   ← Schema chuẩn PostgreSQL (nguồn sự thật)
-│   │   ├── Data_Security.md  ← Nguyên tắc bảo mật & phân loại dữ liệu
-│   │   └── Rule_project.md   ← Quy tắc toàn dự án
-│   └── superpowers/
-│       └── plans/
-│           └── PROGRESS-BACKEND.md
-└── Project.md            ← Tài liệu gốc của dự án
+│   ├── Admin-web/        ← 13 tài liệu đặc tả chức năng trung tâm điều hành Admin-web
+│   ├── Payment/          ← Đặc tả thanh toán PayOS, VietQR, JIT Sync và đối soát sai lệch tiền
+│   ├── Rule_Project/     ← Nguồn sự thật CSDL, Data Security, DB Guard, 2-Tier Testing
+│   ├── Notification/     ← Tài liệu Hub điều phối thông báo đa kênh & Realtime Socket.IO
+│   ├── AI/               ← Tài liệu kiến trúc AI (Edge SLM On-device & Cloud RAG Copilot)
+│   ├── Bank/             ← Tài liệu tích hợp SePay/Casso (Lưu trữ Backend, tạm dừng phía Client)
+│   ├── Deploy/           ← Quy trình triển khai Cloud, phân luồng Fast-Lane và SLA
+│   ├── bill/             ← Tài liệu chi tiết module Hóa đơn
+│   └── progress/         ← Báo cáo tiến độ hoàn thiện thực tế của Backend và Client-app
+└── Project.md            ← Tài liệu nguồn sự thật tổng thể của dự án
 ```
 
 ---

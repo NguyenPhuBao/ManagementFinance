@@ -40,6 +40,7 @@ graph TD
         AIOpsMod[9. AIOps Sentinel & Quarantine]
         CopilotMod[10. AI Copilot & FHS Snapshot]
         RTBusMod[11. Full Real-time Event Bus]
+        PayMod[12. Payment & Realtime Reconciliation]
     end
 
     Client -->|API Requests & Sync| AuthServ
@@ -84,6 +85,7 @@ Mỗi chức năng của Admin-web được ghi nhận độc lập tại một 
 | **09** | [`09-aiops-sentinel-and-quarantine.md`](./09-aiops-sentinel-and-quarantine.md) | **AIOps Sentinel & Tường Lửa Tự Động Phong Tỏa** | Máy học Online giám sát 13 thông số, tính Threat Score, bóc tách Root Cause, và tự động cách ly nguồn IP tấn công (HTTP 403). |
 | **10** | [`10-ai-copilot-and-financial-health.md`](./10-ai-copilot-and-financial-health.md) | **Trợ Lý AI Tài Chính & Điểm Sức Khỏe FHS** | ⚠️ Đã loại bỏ khỏi Admin-web theo quyết định của PO (Bảo lưu toàn bộ mã nguồn Backend cho ứng dụng di động Client-app). |
 | **11** | [`11-full-realtime-architecture.md`](./11-full-realtime-architecture.md) | **Kiến Trúc Real-Time Toàn Diện Qua Socket.io** | Trục điều phối sự kiện thời gian thực tập trung qua `admin_room`, cập nhật tức thì 100% trang không cần tải lại trang (F5). |
+| **12** | [`../Payment/PAYMENT_WORKFLOW_SPEC.md`](../Payment/PAYMENT_WORKFLOW_SPEC.md) | **Quản Trị Thanh Toán & Đối Soát Realtime** | Đối soát giao dịch PayOS VietQR, Sandbox Mode thử nghiệm sinh đơn thật, Just-in-Time Sync, và xử lý hoàn tiền Refund đính kèm minh chứng. |
 
 ---
 
@@ -112,6 +114,9 @@ Hệ thống quản trị Admin-web có quyền lực điều phối trực ti�
 ├────────────────────────────────────────┼────────────────────────────────────────────────────────┤
 │ 6. Thêm/Sửa danh mục hệ thống          │ Tự động đồng bộ vào danh mục mặc định của ứng dụng khi  │
 │                                        │ Client thực hiện Pull Sync.                            │
+├────────────────────────────────────────┼────────────────────────────────────────────────────────┤
+│ 7. Xử lý Hoàn tiền (Refund)            │ Phát Socket.io `payment.refunded` thông báo hoàn tiền   │
+│                                        │ thành công kèm biên lai minh chứng đến Client-app.     │
 └────────────────────────────────────────┴────────────────────────────────────────────────────────┘
 ```
 

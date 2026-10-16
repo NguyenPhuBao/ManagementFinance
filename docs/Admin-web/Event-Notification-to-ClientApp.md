@@ -65,18 +65,22 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | **9** | `ocr.completed` | Socket.IO | Worker hoàn tất bóc tách OCR | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
 | **10** | `ocr.duplicate` | Socket.IO | AI phát hiện hóa đơn trùng lặp | Riêng tư (`account_<id>`) | ⚠️ Cảnh báo |
 | **11** | `user.notification` | Socket.IO | Hệ thống gửi tin nhắn riêng | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **12** | HTTP 503 `MAINTENANCE_MODE` | REST API | Chế độ bảo trì hệ thống | Mọi Client gọi API | 🚨 Khẩn cấp |
-| **13** | HTTP 503 `SERVER_OVERLOADED` | REST API | Load Shedding (Lag > 100ms) | Mọi Client gọi API | ⚠️ Tạm thời |
-| **14** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | REST API | Bão request lặp (> 3 retries) | IP / Client vi phạm | ⚠️ Tạm thời |
-| **15** | HTTP 403 `AIOPS_QUARANTINED` | REST API | Tường lửa Sentinel chặn IP | IP vi phạm | 🚫 Chặn truy cập |
-| **16** | HTTP 403 `FEATURE_DISABLED` | REST API | Chặn tính năng ngoài gói | Tài khoản gói Basic | 🔒 Giới hạn |
-| **17** | HTTP 401 `ACCOUNT_INACTIVE` | REST API | Admin khóa tài khoản | Tài khoản bị khóa | 🚨 Đăng xuất |
-| **18** | HTTP 401 `ACCOUNT_DELETED` | REST API | Admin xóa mềm tài khoản | Tài khoản bị xóa | 🚨 Đăng xuất & Xóa |
-| **19** | Socket Handshake Error | WebSocket | Bắt tay kết nối thất bại | Client kết nối Socket | 🚨 Ngắt kết nối |
+| **12** | `payment.overpaid_confirmation` | Socket.IO | Webhook PayOS chuyển thừa tiền | Riêng tư (`account_<id>`) | ⚠️ Cao |
+| **13** | `payment.underpaid_warning` | Socket.IO | Webhook PayOS chuyển thiếu tiền | Riêng tư (`account_<id>`) | ⚠️ Cảnh báo |
+| **14** | `payment.refunded` | Socket.IO | Admin hoàn tất chuyển tiền hoàn | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
+| **15** | `payment.order_expired` | Socket.IO | Worker 30s hủy đơn hết hạn 10p | Riêng tư & Admin room | ℹ️ Tiêu chuẩn |
+| **16** | HTTP 503 `MAINTENANCE_MODE` | REST API | Chế độ bảo trì hệ thống | Mọi Client gọi API | 🚨 Khẩn cấp |
+| **17** | HTTP 503 `SERVER_OVERLOADED` | REST API | Load Shedding (Lag > 100ms) | Mọi Client gọi API | ⚠️ Tạm thời |
+| **18** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | REST API | Bão request lặp (> 3 retries) | IP / Client vi phạm | ⚠️ Tạm thời |
+| **19** | HTTP 403 `AIOPS_QUARANTINED` | REST API | Tường lửa Sentinel chặn IP | IP vi phạm | 🚫 Chặn truy cập |
+| **20** | HTTP 403 `FEATURE_DISABLED` | REST API | Chặn tính năng ngoài gói | Tài khoản gói Basic | 🔒 Giới hạn |
+| **21** | HTTP 401 `ACCOUNT_INACTIVE` | REST API | Admin khóa tài khoản | Tài khoản bị khóa | 🚨 Đăng xuất |
+| **22** | HTTP 401 `ACCOUNT_DELETED` | REST API | Admin xóa mềm tài khoản | Tài khoản bị xóa | 🚨 Đăng xuất & Xóa |
+| **23** | Socket Handshake Error | WebSocket | Bắt tay kết nối thất bại | Client kết nối Socket | 🚨 Ngắt kết nối |
 
 ---
 
-## 3. PHẦN I: ĐẶC TẢ 11 SỰ KIỆN KÊNH THỜI GIAN THỰC (SOCKET.IO EVENTS)
+## 3. PHẦN I: ĐẶC TẢ 15 SỰ KIỆN KÊNH THỜI GIAN THỰC (SOCKET.IO EVENTS)
 
 ### 3.1. `account.force_logout` — Cưỡng Chế Đăng Xuất Tức Thì
 * **Kênh phát:** `account_<idaccount>`
@@ -341,6 +345,90 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   1. Hiển thị thông báo In-app Notification.
   2. Tăng số đếm Badge chuông thông báo trên Header giao diện di động.
   3. Lưu vào danh sách thông báo để người dùng xem lại.
+
+---
+
+### 3.12. `payment.overpaid_confirmation` — Khách Hàng Chuyển Thừa Tiền (Yêu Cầu Xác Nhận)
+* **Kênh phát:** `account_<idaccount>`
+* **Nguồn kích hoạt:**
+  - Webhook PayOS ghi nhận `amountReceived > expectedAmount` (Luồng 6.2a) $\rightarrow$ Trạng thái đơn đổi thành `WAITING_CONFIRMATION` ([payment.service.js:183](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L183)).
+* **Cấu trúc Payload chuẩn:**
+```json
+{
+  "orderId": "uuid-order",
+  "orderCode": 123456789,
+  "expectedAmount": 49000,
+  "amountReceived": 70000,
+  "excessAmount": 21000,
+  "message": "Bạn đã chuyển thừa 21.000đ. Bạn có muốn quy đổi thành thêm ngày sử dụng Premium không?"
+}
+```
+* **Xử lý bắt buộc trên Client-app:**
+  1. Nếu người dùng đang mở màn hình Chờ Thanh Toán (`ChoThanhToanPage`), hiển thị ngay Hộp thoại Xác Nhận (Dialog):
+     - Lựa chọn 1: *"Đồng ý nâng cấp & cộng ngày"* $\rightarrow$ Gọi API `POST /api/payment/confirm-upgrade` với `{ "orderCode": 123456789, "accept": true }`.
+     - Lựa chọn 2: *"Yêu cầu hoàn tiền"* $\rightarrow$ Gọi API `POST /api/payment/confirm-upgrade` với `{ "orderCode": 123456789, "accept": false }`.
+  2. Cập nhật trạng thái đơn thành `WAITING_CONFIRMATION`.
+
+---
+
+### 3.13. `payment.underpaid_warning` — Khách Hàng Chuyển Thiếu Tiền (Chờ Hoàn Trả)
+* **Kênh phát:** `account_<idaccount>`
+* **Nguồn kích hoạt:**
+  - Webhook PayOS ghi nhận `amountReceived < expectedAmount` (Luồng 6.2b) $\rightarrow$ Trạng thái đơn đổi thành `REFUND_PENDING` ([payment.service.js:231](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L231)).
+* **Cấu trúc Payload chuẩn:**
+```json
+{
+  "orderId": "uuid-order",
+  "orderCode": 123456789,
+  "expectedAmount": 49000,
+  "amountReceived": 20000,
+  "shortage": 29000,
+  "fee": 0,
+  "message": "Số tiền chuyển khoản (20.000đ) không đủ để kích hoạt gói Premium (49.000đ). Đơn hàng đã được chuyển cho Quản trị viên xử lý hoàn tiền."
+}
+```
+* **Xử lý bắt buộc trên Client-app:**
+  1. Hiển thị Banner cảnh báo lỗi chuyển thiếu tiền trên màn hình thanh toán.
+  2. Dừng đếm ngược và thông báo: *"Hệ thống sẽ liên hệ và hoàn trả 20.000đ cho bạn trong thời gian sớm nhất"*.
+
+---
+
+### 3.14. `payment.refunded` — Quản Trị Viên Đã Hoàn Tiền Thành Công
+* **Kênh phát:** `account_<idaccount>`
+* **Nguồn kích hoạt:**
+  - Admin bấm Hoàn tiền thành công trên `PaymentHistoryPage.jsx` $\rightarrow$ API `POST /api/admin/payments/orders/:id/refund` ([payment.service.js:451](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L451)).
+* **Cấu trúc Payload chuẩn:**
+```json
+{
+  "orderId": "uuid-order",
+  "refundedAmount": 20000,
+  "refundedAt": "2026-10-16T10:30:00.000Z",
+  "refundReason": "Khách chuyển thiếu tiền",
+  "refundProof": "/assets/Refunds/proof-123.jpg"
+}
+```
+* **Xử lý bắt buộc trên Client-app:**
+  1. Cập nhật trạng thái đơn trong Lịch sử thanh toán thành `REFUNDED` ("Đã hoàn tiền").
+  2. Hiển thị thông báo hoặc xem chi tiết biên lai hoàn tiền qua `refundProof`.
+
+---
+
+### 3.15. `payment.order_expired` — Đơn Hàng Hết Hạn Sau 10 Phút
+* **Kênh phát:** `admin_room` & `account_<idaccount>`
+* **Nguồn kích hoạt:**
+  - Worker quét tự động định kỳ 30 giây phát hiện đơn PENDING đã quá 10 phút $\rightarrow$ Cập nhật `status = 'EXPIRED'`, gán `qr_url = null`.
+* **Cấu trúc Payload chuẩn:**
+```json
+{
+  "orderId": "uuid-order",
+  "orderCode": 123456789,
+  "expiredAt": "2026-10-16T10:10:00.000Z",
+  "message": "Đơn hàng đã hết hạn thanh toán"
+}
+```
+* **Xử lý bắt buộc trên Client-app:**
+  1. Đổi giao diện `ChoThanhToanPage` sang trạng thái Đã hết hạn, ẩn ảnh QR.
+  2. Nút bấm *"Tạo mã QR mới"* để bắt đầu lượt thanh toán mới.
 
 ---
 

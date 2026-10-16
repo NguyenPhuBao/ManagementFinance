@@ -61,6 +61,9 @@ Mặc dù hệ thống thông báo nội bộ của Client-app rất hoàn chỉ
 |---|---|---|
 | **Sự kiện `account.countdown`** (Socket.io) | `realtime_event.dart` chưa hỗ trợ → rơi vào `default: return null` | Người dùng đã yêu cầu xoá tài khoản không nhận được cảnh báo đếm ngược 30 ngày ân hạn trên app. |
 | **Sự kiện `system.broadcast`** (Socket.io) | Chưa bắt sự kiện broadcast từ Admin | Khi quản trị viên phát thông báo bảo trì/nâng cấp hệ thống, Client-app không hiển thị. |
+| **Sự kiện `system.maintenance_changed`** (Socket.io) | Client-app nhận tín hiệu và hiển thị thông báo bảo trì | Cần xử lý Dialog/Modal chặn thao tác khi bảo trì khẩn cấp bật (HTTP 503 `MAINTENANCE_MODE`). |
+| **Sự kiện `account.upgraded`** (Socket.io) | Đã bắt qua `RealtimeEvent.taiKhoanNangCap` | Client-app gọi lại `/subscription-info` để làm mới `GoiCubit` và mở khóa toàn bộ quyền hạn Premium. |
+| **Sự kiện `payment.*` (`overpaid_confirmation`, `underpaid_warning`, `refunded`)** | Đang được mở rộng trong mô hình xử lý đối soát | Hiển thị Dialog xác nhận nâng cấp khi chuyển thừa, thông báo hoàn tiền khi chuyển thiếu hoặc đã hoàn tất. |
 | **Sự kiện `user.notification`** (Socket.io) | Chưa bắt sự kiện thông báo trực tiếp từ Backend | Các cảnh báo bảo mật, cảnh báo hệ thống từ server bị bỏ sót. |
 | **REST API `/api/notifications/*`** | Client-app chưa có `NotificationApiClient` | Không kéo được lịch sử thông báo server khi offline quay lại; trạng thái đọc không được đồng bộ lên backend. |
 | **Widget `NotificationBell`** | Đã hiển thị số lượng chưa đọc động (0 ẩn, 1–99, `99+`) từ 2026-09-30 | Đồng bộ chuẩn UX theo badge số đếm. |

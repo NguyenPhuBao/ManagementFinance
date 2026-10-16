@@ -611,3 +611,48 @@ Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích
 * `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** test suite hồi quy tổng hợp.
 * `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** test suite bảo mật dữ liệu nhạy cảm.
 
+---
+
+## 19. Module Quản Trị Hệ Thống Admin-Web & Vận Hành Khẩn Cấp (Admin Ops Center)
+
+Đã hoàn thành xây dựng và tích hợp trục điều hành quản trị tập trung `src/Admin-web` với Backend:
+1. **Làn Ưu Tiên Fast-Lane & Khóa Thoát Hiểm Khẩn Cấp:**
+   - Middleware `admin.middleware.js` cấp quyền ưu tiên bỏ qua Rate Limiter thường và Load Shedding.
+   - Hỗ trợ khóa khẩn cấp `X-Emergency-Admin-Key` cho quản trị viên cứu nạn khi hệ thống gặp bão tải.
+2. **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp (Mục 43):**
+   - **Đặc quyền Emergency Override:** Cho phép bảo trì khẩn cấp kích hoạt đè khi đang bảo trì thường để ứng phó thảm họa máy chủ/an ninh mạng.
+   - **Chặn lịch đè lịch:** Cấm tuyệt đối đặt 2 lịch bảo trì chồng chéo trong tương lai.
+   - **Broadcast De-duplication:** Cơ chế lọc và gom thông báo thông minh, ngăn chặn triệt để hiện tượng bắn trùng lặp thông báo bảo trì gây phiền người dùng.
+   - **Mã lỗi chuẩn hóa:** Trả về HTTP 503 `MAINTENANCE_MODE` kèm Header `Retry-After: 3600`.
+3. **Giám Sát Sức Khỏe SLA 30 Ngày & AIOps Sentinel:**
+   - Theo dõi Event Loop Lag, CPU, RAM (RSS), DB Pool Headroom (20% dành riêng cho Admin).
+   - Tường lửa AIOps Sentinel tự động cách ly nguồn IP tấn công với HTTP 403 `AIOPS_QUARANTINED`.
+
+---
+
+## 20. Module Thanh Toán Tự Động PayOS & Vòng Đời Gói Cước Premium (Payment & Subscription)
+
+Đã hoàn thiện toàn diện phân hệ thanh toán trực tuyến và đối soát sai lệch số tiền:
+1. **Tích hợp Cổng PayOS & VietQR Động (MB Bank 2512070399999):**
+   - Tự động sinh `order_code` duy nhất và mã nhận diện 6 ký tự `[A-Z0-9]{6}`.
+   - Thời hạn thanh toán chuẩn PayOS: **10 phút** đếm ngược.
+2. **Cơ Chế Đối Soát Tức Thời (Just-in-Time Sync - JIT Sync):**
+   - Endpoint `GET /api/payment/orders/:orderCode/status` cho phép Client-app hoặc Admin chủ động kích hoạt đồng bộ trực tiếp từ PayOS khi Webhook bị nghẽn/trễ. Tự động nâng cấp tài khoản ngay lập tức nếu tiền đã vào.
+3. **Mở Rộng Vòng Đời Đơn Hàng & Idempotency Tuyệt Đối:**
+   - Đầy đủ 7 trạng thái: `PENDING`, `PAID`, `CANCELLED`, `EXPIRED`, `WAITING_CONFIRMATION` (chuyển thừa), `REFUND_PENDING` (chuyển thiếu hoặc từ chối), `REFUNDED` (đã hoàn tiền kèm minh chứng).
+   - Migration 28 mở rộng cột `status` lên `VARCHAR(25)`.
+   - Webhook Idempotency dừng ngay lập tức khi đơn đã ở `['PAID', 'REFUNDED', 'CANCELLED']`.
+   - Regex linh hoạt nhận diện mã chuyển khoản dù token PayOS nằm ở đầu hay cuối chuỗi.
+4. **Admin Sandbox Mode & Xử Lý Hoàn Tiền (Refund):**
+   - Chế độ Sandbox tạo đơn thật với cờ `is_template: true` để quét QR thật từ App ngân hàng.
+   - Modal hoàn tiền hỗ trợ upload file ảnh ủy nhiệm chi/biên lai chuyển khoản lưu tại `src/Backend/Assets/Refunds/`.
+
+---
+
+## 21. Tổng Kết Kiểm Thử Toàn Diện & DB Guard Tuân Thủ Pháp Luật
+
+* **Tổng số bài kiểm thử Backend:** **377 / 377 tests PASS 100%** (xanh tuyệt đối trên toàn bộ các suites).
+* **Tuân thủ Rule 10 (DB Guard):** Toàn bộ Prisma scripts được bảo vệ qua `db-guard.js`, chặn đứng việc chạy `migrate dev`/`db push` trên Cloud Supabase, bảo vệ 100% các Triggers và Partial Unique Indexes (`WHERE "Delete_at" IS NULL`).
+* **Tuân thủ Rule 11 (2-Tier Testing Architecture):** 100% các tính năng mới đều có kiểm thử cả Tầng 1 (Hiển thị & Thao tác) và Tầng 2 (Tác động đo lường được đến CSDL / DOM / Event Bus / Side-effects).
+
+

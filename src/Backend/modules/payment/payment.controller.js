@@ -204,6 +204,9 @@ async function confirmUpgrade(req, res, next) {
     if (!orderCode) {
       return ResponseHandler.badRequest(res, 'Mã đơn hàng orderCode là bắt buộc');
     }
+    if (typeof accept !== 'boolean') {
+      return ResponseHandler.badRequest(res, 'Trường accept bắt buộc là kiểu boolean (true/false)');
+    }
     const result = await paymentService.confirmUpgrade(idaccount, { orderCode, accept });
     return ResponseHandler.success(res, result, result.message);
   } catch (error) {

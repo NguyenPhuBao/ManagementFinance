@@ -298,9 +298,11 @@ const syncRepository = {
     const mapped = mapEntityFields('transaction', data);
     const existing = await prisma.transaction.findUnique({ where: { idtran: mapped.idtran } });
 
-    // Chốt chống thanh toán hai lần (BILL_ALREADY_PAID)
+    // Chốt chống thanh toán hai lần (BILL_ALREADY_PAID) và chống thanh toán kỳ anh em trùng lặp (BILL_PERIOD_ALREADY_PAID - Mục 41 CAN-LAM)
     const chanTraHaiLan = async ({ idtran, idbill, deleted_at }) => {
       if (!idbill || deleted_at) return;
+
+      // 1. Chặn khoản chi thứ hai cho cùng một Idbill
       const khac = await prisma.transaction.findFirst({
         where: {
           idbill,
@@ -312,6 +314,32 @@ const syncRepository = {
       if (khac) {
         throw Object.assign(new Error('Hóa đơn đã được thanh toán bằng một giao dịch khác'), {
           code: 'BILL_ALREADY_PAID',
+        });
+      }
+
+      // 2. Chặn khoản chi cho kỳ anh em cùng Previous_bill_id và cùng Due_date (Mục 41 CAN-LAM)
+      const ky = await prisma.bill.findUnique({
+        where: { idbill },
+        select: { previous_bill_id: true, due_date: true },
+      });
+      if (!ky?.previous_bill_id || !ky?.due_date) return;
+
+      const kyAnhEmKhac = await prisma.transaction.findFirst({
+        where: {
+          deleted_at: null,
+          idtran: { notIn: [idtran, ...dangXoaTrongLo] },
+          idbill: { not: idbill },
+          bill: {
+            previous_bill_id: ky.previous_bill_id,
+            due_date: ky.due_date,
+            delete_at: null,
+          },
+        },
+        select: { idtran: true },
+      });
+      if (kyAnhEmKhac) {
+        throw Object.assign(new Error('Kỳ hoá đơn này đã được thanh toán ở một kỳ trùng'), {
+          code: 'BILL_PERIOD_ALREADY_PAID',
         });
       }
     };

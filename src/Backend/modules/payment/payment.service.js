@@ -119,23 +119,22 @@ async function handlePayOSWebhook(webhookPayload) {
   // 2. Tra cứu đơn hàng theo orderCode hoặc theo mã nhận diện 6 ký tự
   let order = await paymentRepository.findOrderByCode(orderCode);
   if (!order && description) {
-    const match = description.match(/([A-Z0-9]{6})/);
-    if (match) {
-      order = await paymentRepository.findOrderByRecognitionCode(match[1]);
+    // PayOS có thể đính kèm tiền tố CSCYDE... Token cuối cùng trong nội dung chuyển khoản là mã nhận diện đơn
+    const tokens = description.trim().split(/\s+/);
+    const lastToken = tokens[tokens.length - 1];
+    if (lastToken && /^[A-Z0-9]{6}$/.test(lastToken)) {
+      order = await paymentRepository.findOrderByRecognitionCode(lastToken);
     }
   }
 
   if (!order) {
-    logger.warn('[PAYMENT_WEBHOOK] Đơn hàng chưa tồn tại trong CSDL cho orderCode, tự động khởi tạo đơn đối soát từ Webhook hợp lệ', { orderCode });
-    order = await paymentRepository.findOrCreateOrderByCode(orderCode, amount);
-    if (!order) {
-      return { success: true, message: 'Đơn hàng không tồn tại' };
-    }
+    logger.warn('[PAYMENT_WEBHOOK] Đơn hàng không tồn tại trong CSDL cho orderCode từ Webhook hợp lệ', { orderCode });
+    return { success: true, message: 'Đơn hàng không tồn tại trong hệ thống' };
   }
 
-  // 3. Xử lý Idempotency - Tránh Replay Attack
-  if (order.status === 'PAID') {
-    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã được xử lý trước đó (Idempotent)', { orderCode });
+  // 3. Xử lý Idempotency - Tránh Replay Attack và chống kéo ngược trạng thái
+  if (['PAID', 'REFUNDED', 'CANCELLED'].includes(order.status)) {
+    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã ở trạng thái kết thúc (Idempotent)', { orderCode, status: order.status });
     return { success: true, message: 'Đơn hàng đã được xử lý thành công trước đó' };
   }
 
@@ -332,7 +331,13 @@ async function handlePayOSWebhook(webhookPayload) {
  * @param {number} idaccount
  * @param {object} param1 { orderCode, accept }
  */
-async function confirmUpgrade(idaccount, { orderCode, accept = true }) {
+async function confirmUpgrade(idaccount, { orderCode, accept } = {}) {
+  if (typeof accept !== 'boolean') {
+    const error = new Error('Trường accept bắt buộc là kiểu boolean (true/false)');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const order = await paymentRepository.findOrderByCode(orderCode);
   if (!order || (idaccount && order.idaccount !== idaccount)) {
     const error = new Error('Đơn hàng không tồn tại hoặc không thuộc quyền sở hữu của bạn');

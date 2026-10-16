@@ -121,7 +121,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
   - Bảng `refreshtoken` được làm sạch tự động định kỳ, thu hồi các token hết hạn (`Status = true`).
 - **Đến Mobile App (Client-app):**
   - Cơ chế phân quyền cách ly hoàn toàn người dùng di động khỏi các route quản trị (`/api/admin/*`). Nếu người dùng Client-app thử gọi API Admin, server trả về ngay HTTP 403 mà không tốn tài nguyên xử lý logic.
-  - Khi Admin thực hiện đổi mật khẩu hoặc khóa tài khoản của người dùng từ Admin-web, Backend phát lệnh Socket cưỡng chế đăng xuất Mobile App tức thời.
+  - Khi Admin thực hiện khóa hoặc vô hiệu hóa tài khoản của người dùng từ Admin-web (`PATCH /api/admin/updatestatus/:id`), Backend phát lệnh Socket (`account.disabled` / `account.status_changed`) và thu hồi Refresh Token, cưỡng chế đăng xuất Mobile App tức thời. (Lưu ý: Tuân thủ nguyên tắc bảo mật Zero-Knowledge, Admin tuyệt đối không có quyền can thiệp hay đổi mật khẩu người dùng).
 
 ---
 

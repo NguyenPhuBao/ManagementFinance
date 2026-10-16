@@ -378,14 +378,19 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 
 ### 3.3 Kiến Trúc Client-app (Offline-first, Flutter)
 
+> *Tài liệu chi tiết nguồn sự thật do Client-app quản lý:* [`docs/KIEN_TRUC_CLIENT_APP.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/KIEN_TRUC_CLIENT_APP.md)
+
 | Tầng | Công nghệ / Pattern | Mô tả |
 |------|---------------------|-------|
-| **Local DB** | SQLite (sqflite/drift) | Mirror schema backend + `sync_status` (pending/synced/conflict) + `updated_at` |
-| **Repository** | Repository Pattern | Abstract nguồn dữ liệu (local/remote), ưu tiên đọc local |
-| **Sync Engine** | `POST /api/sync/push` + `GET /api/sync/pull` | Push mảng operations lên server (LWW) & pull data về |
-| **Conflict Resolution** | Backend = source of truth | Ưu tiên theo timestamp, báo conflict nếu cần |
-| **Real-time** | Socket.IO | Backend push sự kiện → client cập nhật local DB + UI |
-| **State Management** | BLoC | Mỗi màn hình có BLoC riêng (loading/loaded/error) |
+| **Local DB** | SQLite (drift) | Mirror schema backend + `sync_status` (pending/synced/conflict) + `updated_at` |
+| **Repository** | Repository Pattern | Interface ở tầng data, trả Entity (ví, giao dịch, mục tiêu, ngân sách) hoặc hàng Drift (hoá đơn, danh mục); chỉ đọc/ghi SQLite — mạng là việc của Sync Engine |
+| **Sync Engine** | `POST /api/sync/push` + `GET /api/sync/pull` | Push mảng operations lên server (LWW) & pull data về theo `Server_update_at` |
+| **Conflict Resolution** | Backend = source of truth | Ưu tiên theo timestamp (Last-Write-Wins), báo conflict nếu cần |
+| **Real-time** | Socket.IO | Sự kiện là tín hiệu: client chỉ đọc tên sự kiện rồi kéo dữ liệu qua `/sync/pull` (trừ `account.force_logout` mang lý do) |
+| **State Management** | BLoC + Cubit | BLoC + Cubit cho 10 màn có luồng ghi (3 Bloc, 7 Cubit); màn đọc dùng stream Drift; trạng thái màn trong widget |
+| **Test quét kiến trúc** | Test đọc mã nguồn `lib/` | 29 test quét canh các luật một-định-nghĩa: tầng giao diện không cầm CSDL, chỉ một tệp import mỗi gói native, không fallback tài khoản admin… |
+| **Cổng nền tảng** | Interface + bản giả | OsNotifier (thông báo), DocChuAnh (OCR ML Kit), SlmRuntime (Gemma trên máy), kênh Kotlin `flowmoney/*` — mọi ranh giới nền tảng thay được bằng bản giả trong test |
+| **Chạy nền** | WorkManager (Android) | Tự trả hoá đơn / tự trích mục tiêu chạy cả khi app đóng: WorkManager đánh thức engine Flutter không giao diện, đồng bộ trong lượt nền (2026-10-10) |
 
 - **Trigger sync**: App vào foreground, sau mỗi thay đổi (debounce), chu kỳ 15 phút
 - **Business logic**: Tính số dư ví, kiểm tra ngân sách, phân loại tạm thời → xử lý trên client
@@ -4215,3 +4220,29 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
 - **Kiểm định chất lượng 2 tầng (Rule 11):**
   - Backend Unit Tests: `tests/unit/admin.payment.test.js` (19/19 tests pass), toàn bộ backend 353/353 tests pass.
   - Admin-web Tests: `src/tests/payment.page.test.jsx` (16/16 tests pass), toàn bộ Admin-web test suite pass 100%.
+
+### 4.9. Đợt Chuẩn Hóa & Vá Lỗi Kỹ Thuật Toàn Diện (Mục 41, 43, 44 CAN-LAM) (2026-10-16)
+- **Mục 44 (A & D): Khử trùng số file migration & Nới rộng cột trạng thái:**
+  - Đổi tên `20_add_payment_reconciliation_and_refund_fields.sql` $\rightarrow$ `28_add_payment_reconciliation_and_refund_fields.sql`.
+  - Đổi tên `24_add_is_template_to_payment_order.sql` $\rightarrow$ `29_add_is_template_to_payment_order.sql`.
+  - Khôi phục `src/Backend/scripts/apply_migration_20.js` trỏ đúng về `20_add_server_update_at_sync_tables.sql`.
+  - Cập nhật `apply_migration_24.js` trỏ về `24_add_actor_role_to_aiops_incident.sql`.
+  - Tạo mới `apply_migration_28.js` và `apply_migration_29.js`.
+  - Thêm `ALTER TABLE "payment_order" ALTER COLUMN "status" TYPE VARCHAR(25);` vào migration 28.
+- **Mục 44 (B, C, E) & Mục 43 (B): Siết an toàn quy trình thanh toán & Webhook:**
+  - Sửa regex trích xuất mã nhận diện đơn hàng trong `payment.service.js`: Lấy token cuối cùng của chuỗi chuyển khoản (`description.trim().split(/\s+/).pop()`) để không bắt nhầm tiền tố `CSCYDE` do PayOS thêm vào.
+  - Idempotency Webhook: Chặn ghi đè đối với các đơn đã ở trạng thái kết thúc (`PAID`, `REFUNDED`, `CANCELLED`).
+  - Webhook an toàn: Bỏ việc tự động gán đơn hàng lạ cho tài khoản Admin, trả 2xx log warning.
+  - Siết chặt kiểu boolean bắt buộc cho `accept` trong `confirmUpgrade` ở cả tầng Controller và Service.
+- **Mục 43 (A & C): An toàn tài khoản & Trải nghiệm bảo trì hệ thống:**
+  - AIOps phong tỏa tài khoản: Chuyển sang ghi `status = 'Inactive'` (thay vì `'Locked'`), tuân thủ CHECK constraint `ck_account_status`.
+  - `middleware/auth.js`: Nguyên tắc an toàn mặc định `accountRejection` trả `ACCOUNT_INACTIVE` cho mọi trạng thái không phải `Deleted`, ngăn ngừa tuyệt đối việc Client-app tự động xóa CSDL SQLite cục bộ khi gặp trạng thái lạ.
+  - `auth.controller.js`: Xử lý đăng nhập lúc bảo trì trả về HTTP 503 kèm header `Retry-After: 60` và `code: 'MAINTENANCE_MODE'`.
+- **Mục 41: Chống trả tiền hai lần cho cùng một kỳ hóa đơn (Kỳ anh em):**
+  - Mở rộng hàm `chanTraHaiLan` trong `src/Backend/modules/sync/sync.repository.js` kiểm tra các kỳ hóa đơn anh em cùng `previous_bill_id` và cùng `due_date`, ném mã lỗi riêng `BILL_PERIOD_ALREADY_PAID`.
+  - `src/Backend/modules/sync/sync.service.js`: Ánh xạ mã lỗi `BILL_PERIOD_ALREADY_PAID` thành phản hồi chuẩn hóa `friendlyMessage` cho Client-app.
+- **Kiểm định chất lượng 2 tầng (Rule 11):**
+  - `src/Backend`: 377/377 unit tests pass 100% (bao gồm `payment.reconciliation.test.js`, `sync.brother_bill.test.js`, `auth.safety.and.maintenance.test.js`).
+  - `src/Admin-web`: Vitest suite pass 100%.
+  - `src/Client-app`: 159/159 Flutter tests pass 100%.
+

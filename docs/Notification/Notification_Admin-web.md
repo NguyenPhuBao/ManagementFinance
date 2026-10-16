@@ -97,6 +97,10 @@ graph TD
 | **Hệ thống bị nghẽn (Event Loop Lag > 100ms)** | `CRITICAL` | `Load Shedding Middleware` | Header rung chuông, badge tăng số đỏ, thông báo "Cảnh báo quá tải hệ thống (Load Shedding)". |
 | **CSDL đạt ngưỡng 80% kết nối (Supabase Pool)** | `WARNING` | `DB Bulkhead Middleware` | Header hiển thị cảnh báo chạm trần 80% kết nối, nhắc nhở quản trị viên. |
 | **Phát hiện xâm nhập / Brute-force đăng nhập** | `WARNING` | `Security / Auth Service` | Header hiển thị cảnh báo địa chỉ IP và tần suất bất thường. |
+| **Cảnh báo từ AIOps Sentinel (`aiops.alert`)** | `CRITICAL` / `WARNING` | `AIOps Engine` | Rung chuông cảnh báo mối đe dọa an ninh, hiển thị phân tích nguyên nhân gốc (Root Cause). |
+| **Thay đổi Chế độ Bảo trì (`admin.maintenance_changed`)** | `INFO` / `WARNING` | `Maintenance Manager` | Tự động đồng bộ trạng thái công tắc và lịch bảo trì trên mọi tab Admin-web đang mở. |
+| **Thanh toán thành công (`payment.success`)** | `INFO` | `Payment Engine` | Tự động cập nhật 4 thẻ KPI doanh thu và danh sách giao dịch không cần F5. |
+| **Đơn hàng mới tạo (`payment.order_created`)** | `INFO` | `Payment Engine` | Hiển thị đơn hàng mới trong bảng đối soát thời gian thực. |
 | **Thông báo khẩn cấp toàn hệ thống (Broadcast)** | `INFO` / `WARNING` | `Admin Broadcast API` | Lưu vào lịch sử cảnh báo và gửi tới tất cả người dùng đang online. |
 
 ---
