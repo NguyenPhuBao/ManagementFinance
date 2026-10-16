@@ -622,8 +622,9 @@ src/Backend/
 - **Mã:** `thuocKyNay(bill, now)` ở `bill/domain/bill_status.dart` là định nghĩa duy nhất của "kỳ này", dùng chung
   cho `summarizeBills` và `splitBills(bills, now)`. `BillSections` có thêm `chuaDongCacThangSau`.
   `bill_page.dart` dựng thêm tiêu đề nhóm (key `bill-nhom-cac-thang-sau`) và dòng *"trong tháng này"*
-  (key `bill-thang-nay-trong`). Còn **chép tay** phép chặn cuối tháng, chưa chuyển sang `thuocKyNay`:
-  `ai_edge/domain/goi_so_hoa_don.dart:43–46, 62`, `hang_hoa_don.dart:118–121`.
+  (key `bill-thang-nay-trong`). Lượt sau cùng ngày: khối Nhận xét (`ai_edge/domain/goi_so_hoa_don.dart`) và tool
+  `danh_sach_hoa_don` (`hang_hoa_don.dart`, tập `ky_nay`) thôi chép tay phép chặn cuối tháng, gọi `thuocKyNay`
+  (refactor không đổi hành vi — 1.845 ca `ai_edge` + `bill` xanh trước và sau).
 - **Test:** +11 ca (7 domain, gồm ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; 4 widget, gồm 360 dp). Bảy
   bản sai có chủ ý làm đỏ **10/11** ca mới: luật cũ của `splitBills`, biên đóng, biên 00:00 ngày cuối tháng, so cùng
   tháng (bỏ nợ cũ), chia kỳ trước khi xét đã trả, số tab cộng cả các tháng sau, luôn dựng nhóm. Ca *không tràn ở
@@ -631,8 +632,12 @@ src/Backend/
 - **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug 13:36): thẻ *"4 hóa đơn chưa thanh toán"* =
   tab *(4)*. Nhóm *"CÁC THÁNG SAU"* hiện dưới kỳ quá hạn cuối, đếm đúng sau khi thêm rồi xoá mềm một hoá đơn thử hạn
   16/11 (2 → 1). Ở 360 dp (`wm density 480`) có 0 điểm ảnh vàng thuần; mật độ đã trả về 420.
-- **Stitch:** lệnh `edit_screens` lên màn `e8b460b4…` (thêm khối *"CÁC THÁNG SAU (1)"* + một thẻ Netflix 05/10) trả
-  **timeout**. Lần kiểm sau đó qua API chưa thấy đổi. Người dùng mở Stitch xem là phép đo duy nhất.
+- **Stitch:** lệnh `edit_screens` lên màn `e8b460b4…` trả **timeout** và không đổi màn ấy. Người dùng tự tạo màn mới
+  **`f4ed09da…` "Hoá đơn - Có mục Các tháng sau"** (đo `list_screens`: 128 → 129 màn, chỉ thêm màn này). Đối chiếu
+  HTML: tiêu đề `text-[12px] font-semibold tracking-[0.05em] uppercase text-[#454743] mt-6 mb-2` — bản Flutter khớp cỡ,
+  độ đậm, giãn chữ và khoảng cách (đệm đáy thẻ 16 + đệm trên 8 = 24; dưới 8), **lệch màu**: đã dùng
+  `AppColors.textSecondary` `#767872` → đổi sang `Color(0xFF454743)` cục bộ (cùng khuôn `the_cho_xoa_trang_chu.dart`;
+  `AppColors.onSurfaceVariant` là bí danh của `#767872`), ca widget canh màu.
 
 ### 🔀 Gộp `main` @ `d72ccd45` (2026-10-16, commit gộp `e49100ed`) — Payment premium: đối soát chuyển thừa / thiếu, hoàn tiền có minh chứng, mã nhận diện 6 ký tự, hạn đơn 10 phút; client đặt đơn 44, mở G94
 

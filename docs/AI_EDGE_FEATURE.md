@@ -4416,8 +4416,9 @@ số hoá đơn của **kỳ này**, `billDisplayStatusOf` cho phép đếm quá
 Bốn nhánh mẫu câu: kỳ rỗng · **có quá hạn** (mức cảnh báo, nói trước mọi thứ khác vì đó
 là điều duy nhất cần làm ngay) · còn nợ · đã trả xong cả kỳ.
 
-⚠️ **Phép đếm quá hạn phải lặp lại bộ lọc "chặn ở cuối tháng" của `summarizeBills`.**
-Thiếu nó thì con số quá hạn nói về một tập hoá đơn khác với con số tiền đứng ngay cạnh
+⚠️ **Phép đếm quá hạn phải lọc cùng tập "kỳ này" với `summarizeBills`** — từ 2026-10-16
+qua chính định nghĩa `thuocKyNay` (`bill/domain/bill_status.dart`), không chép lại phép chặn
+cuối tháng; tool `danh_sach_hoa_don` (`hang_hoa_don.dart`, tập `ky_nay`) cũng vậy. Thiếu nó thì con số quá hạn nói về một tập hoá đơn khác với con số tiền đứng ngay cạnh
 trong cùng một câu, và không có gì báo. (Vế "bỏ kỳ đã bỏ qua" thì không cần lặp —
 `billDisplayStatusOf` tự trả `skipped`.)
 
@@ -4438,11 +4439,14 @@ trọng hơn: khối lấy bớt chiều cao của `Expanded`, mà **trạng th�
 155.000 đ."* với viền cảnh báo, năm thẻ số liệu, **0 dòng tràn bố cục** trong logcat, con
 số khớp thẻ tổng ngay trên nó.
 
-⚠️ **Một chỗ lệch CÓ TỪ TRƯỚC, không phải do lượt này:** thẻ tổng và khối Nhận xét nói
+✅ **Đã chốt 2026-10-16:** tab *Cần thanh toán (N)* nay đếm **kỳ này** (`thuocKyNay`), kỳ các
+tháng sau nằm dưới tiêu đề nhóm — xem `BILL_DOCUMENTATION.md` mục 1. Đoạn dưới là lịch sử.
+
+~~⚠️ **Một chỗ lệch CÓ TỪ TRƯỚC, không phải do lượt này:** thẻ tổng và khối Nhận xét nói
 *"3 hoá đơn"* trong khi tab nói *"Cần thanh toán (4)"*. Hai con số đếm hai thứ khác nhau
 — thẻ và khối nói về **kỳ này** (chặn ở cuối tháng), tab liệt kê **mọi hoá đơn chưa
 đóng** kể cả kỳ sau. Đừng "sửa" cho khớp mà chưa quyết xem con số nào mới là con số người
-dùng cần.
+dùng cần.~~
 
 ---
 

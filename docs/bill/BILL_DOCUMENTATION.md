@@ -1095,9 +1095,10 @@ trả / bỏ qua vào `daDong` **bất kể hạn**. **Không sắp xếp tại 
 **`thuocKyNay(bill, now)`** — định nghĩa **duy nhất** của "kỳ này": hạn trước
 đầu tháng sau (biên **mở**), kể cả nợ quá hạn tháng trước. `summarizeBills` và
 `splitBills` cùng gọi nó; ca bất biến *"số trên tab = số trên thẻ"* ở
-`bill_status_test.dart` canh hai nơi không tách luật lần nữa. ⚠️ Khối Nhận xét
-(`goi_so_hoa_don.dart`) và tool hoá đơn của Trợ lý AI (`hang_hoa_don.dart`) còn
-**chép tay** phép chặn cuối tháng — chưa chuyển sang `thuocKyNay`.
+`bill_status_test.dart` canh hai nơi không tách luật lần nữa. Khối Nhận xét
+(`goi_so_hoa_don.dart`) và tool `danh_sach_hoa_don` của Trợ lý AI (`hang_hoa_don.dart`,
+tập `ky_nay`) cũng gọi `thuocKyNay` — đừng chép lại phép chặn cuối tháng. Tiêu đề nhóm
+theo màn Stitch `f4ed09da…` *"Hoá đơn - Có mục Các tháng sau"*.
 
 **`summarizeBills(bills, now)`** → `BillSummary`: gộp mọi hoá đơn đến hạn
 **tới hết tháng của `now`**, kể cả nợ cũ chưa trả từ tháng trước. Chặn ở cuối
