@@ -15,7 +15,7 @@ import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
-import '../../../category/domain/gan_hang_loat.dart';
+import '../../domain/gan_hang_loat.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';

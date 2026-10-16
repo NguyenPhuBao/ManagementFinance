@@ -10,6 +10,7 @@ import 'package:flowmoney/features/category/domain/category_suggestion_engine.da
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart'
     show kKetQuaGoiYBoQua, kKetQuaGoiYChon, kKetQuaGoiYKhac, kNguonGoiYHoc;
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';

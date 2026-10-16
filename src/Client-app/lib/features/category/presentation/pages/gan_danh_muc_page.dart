@@ -10,7 +10,8 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/gan_danh_muc_nguon.dart';
 import '../../data/goi_y_phan_hoi_store.dart';
-import '../../domain/gan_hang_loat.dart';
+import '../../../transaction/domain/gan_hang_loat.dart';
+import '../../domain/category_classify.dart' show hopLeTheoChieu;
 import '../widgets/chon_danh_muc_gan_sheet.dart';
 
 typedef TaiDuLieuGan = Future<DuLieuGanDanhMuc> Function(int idaccount);

@@ -2,9 +2,7 @@
 /// được: bộ mười mẫu, hai danh mục, xem khối chú thích của `muoiMau`.
 library;
 
-import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
-import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MauGhiChu m(String c, String ghiChu, [int ngay = 1]) =>
@@ -30,34 +28,6 @@ void main() {
     });
     test('rỗng / chỉ dấu câu → rỗng', () {
       expect(amTietCua('  ...  '), isEmpty);
-    });
-  });
-
-  group('laGhiChuMay / mauHocTu', () {
-    test('⭐ mọi ghi chú máy sinh bị loại — học chúng là dạy "thanh toán hóa đơn" là một danh mục', () {
-      for (final g in [
-        '${kGhiChuTraHoaDon}Tiền điện',
-        '${kGhiChuNapMucTieu}MuaXe',
-        '${kGhiChuRutMucTieu}MuaXe',
-        'Tích lũy nhận từ Tiền mặt',
-      ]) {
-        expect(laGhiChuMay(loai: 'chi', categoryId: 'c', ghiChu: g), isTrue, reason: g);
-      }
-      expect(laGhiChuMay(loai: 'thu', categoryId: null, ghiChu: 'Điều chỉnh số dư'), isTrue);
-      expect(laGhiChuMay(loai: 'thu', categoryId: null, ghiChu: 'Số dư ban đầu'), isTrue);
-      expect(laGhiChuMay(loai: 'chi', categoryId: 'c', ghiChu: 'cafe'), isFalse);
-    });
-    test('bỏ: không danh mục, ghi chú rỗng, khoản chuyển, ghi chú chỉ toàn số; giữ phần còn lại', () {
-      final ra = mauHocTu([
-        (loai: 'chi', categoryId: null, ghiChu: 'cafe', ngay: DateTime(2026, 9, 1)),
-        (loai: 'chi', categoryId: 'au', ghiChu: '   ', ngay: DateTime(2026, 9, 1)),
-        (loai: 'transfer', categoryId: 'au', ghiChu: 'cafe', ngay: DateTime(2026, 9, 1)),
-        (loai: 'chi', categoryId: 'au', ghiChu: '50000', ngay: DateTime(2026, 9, 1)),
-        (loai: 'chi', categoryId: 'au', ghiChu: 'Cafe sáng', ngay: DateTime(2026, 9, 2)),
-      ]);
-      // ⚠️ Không so bản ghi chứa List: Dart so List theo danh tính, ca đỏ oan.
-      expect(ra.single.categoryId, 'au');
-      expect(ra.single.amTiet, ['cafe', 'sang']);
     });
   });
 

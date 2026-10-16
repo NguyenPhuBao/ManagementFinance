@@ -8,7 +8,7 @@ library;
 import 'package:uuid/uuid.dart';
 
 import '../data/models/transaction_entity.dart';
-import 'khoang_tien.dart';
+import '../../../core/utils/dung_sai_tien.dart';
 
 class PhanTach {
   const PhanTach({required this.categoryId, required this.soTien, this.monIds = const {}});

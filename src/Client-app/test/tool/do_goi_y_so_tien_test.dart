@@ -35,8 +35,9 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
-import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
+import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

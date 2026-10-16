@@ -10,7 +10,7 @@ library;
 import '../../../core/category/category_name.dart';
 import '../../category/data/models/category_entity.dart';
 import '../../../core/ocr/ten_tep_bien_lai.dart';
-import '../../category/domain/gan_hang_loat.dart';
+import '../../category/domain/category_classify.dart' show hopLeTheoChieu;
 import '../../category/domain/phan_loai_ghi_chu.dart';
 import 'doc_anh_quet.dart';
 import 'doc_cau_giao_dich.dart';

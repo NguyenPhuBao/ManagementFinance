@@ -9,6 +9,7 @@
 /// `showDatePicker` trả 00:00), không phải giờ chi.
 ///
 /// Đặt ở `category/domain/`, không ở `ai_edge/`: nó đọc sổ giao dịch và so chiều tiền — thứ test quét 14 cấm ở đó.
+/// Từ 2026-10-16 bộ dựng mẫu `mauSoTienTu` ở `transaction/domain/mau_hoc_danh_muc.dart` (quét 29).
 /// Cùng chỗ với `phan_loai_ghi_chu.dart` (B1); dùng lại `kToiThieuMauTong` và hai hằng của luật thôi gợi ý, nhưng
 /// ngưỡng xác suất và số khoản ở bậc thì CHẶT hơn B1 — xem [kNguongXacSuatSoTien].
 library;
@@ -16,7 +17,7 @@ library;
 import 'dart:math' as math;
 
 import '../../../core/utils/currency_formatter.dart';
-import '../../transaction/domain/khoang_tien.dart';
+import '../../../core/utils/dung_sai_tien.dart';
 import 'phan_loai_ghi_chu.dart';
 
 /// Giá trị cột `nguon` của bảng phản hồi cho thẻ gợi ý theo số tiền.
@@ -83,38 +84,6 @@ class MauSoTien {
     required this.ngay,
   });
 }
-
-/// Mẫu có nhãn: khoản thu / chi có danh mục, chưa xoá, số tiền dương, không do máy sinh (`laGhiChuMay` của B1 — trả
-/// hoá đơn, nạp / rút mục tiêu, điều chỉnh số dư, số dư ban đầu). Có hay không có ghi chú đều tính — khác `mauHocTu`
-/// của B1 ở đúng chỗ ấy: tín hiệu ở đây là số tiền, không phải chữ.
-List<MauSoTien> mauSoTienTu(
-        Iterable<
-                ({
-                  String loai,
-                  String? categoryId,
-                  String? ghiChu,
-                  double soTien,
-                  String walletId,
-                  DateTime ngay,
-                  bool daXoa
-                })>
-            giaoDich) =>
-    [
-      for (final t in giaoDich)
-        if (!t.daXoa &&
-            t.categoryId != null &&
-            (t.loai == 'thu' || t.loai == 'chi') &&
-            t.soTien > 0 &&
-            !laGhiChuMay(loai: t.loai, categoryId: t.categoryId, ghiChu: t.ghiChu))
-          MauSoTien(
-            categoryId: t.categoryId!,
-            chieu: t.loai,
-            maBac: maBacCua(bacTienCua(t.soTien)),
-            nhomThu: nhomThuCua(t.ngay),
-            walletId: t.walletId,
-            ngay: t.ngay,
-          ),
-    ];
 
 class DoanSoTien {
   final String categoryId;

@@ -7,7 +7,7 @@ import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
-import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
+import 'package:flowmoney/features/transaction/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';

@@ -70,3 +70,17 @@ bool laNuaCapNapMucTieuCu({
   final g = (ghiChu ?? '').trimLeft();
   return g.startsWith(kGhiChuNapMucTieuCu) || g.startsWith(kGhiChuNapMucTieu);
 }
+
+/// Ghi chú do MÁY gắn chứ không phải người dùng gõ — học chúng là dạy mô hình rằng *"thanh toán hóa đơn"* là một
+/// danh mục. Gom mọi nhận dạng ĐÃ CÓ, không viết lại chuỗi nào.
+///
+/// Ở đây từ 2026-10-16 (trước ở `category/domain/phan_loai_ghi_chu.dart`, quét 29): luật của HÀNG SỔ, dùng bởi
+/// `mauHocTu` / `mauSoTienTu` (`mau_hoc_danh_muc.dart`) và `xetGan` (`gan_hang_loat.dart`).
+bool laGhiChuMay({required String loai, required String? categoryId, required String? ghiChu}) {
+  if (!khoanVaoThongKe(loai: loai, categoryId: categoryId, ghiChu: ghiChu)) return true;
+  final g = ghiChu ?? '';
+  return g.startsWith(kGhiChuTraHoaDon) ||
+      g.startsWith(kGhiChuNapMucTieu) ||
+      g.startsWith(kGhiChuRutMucTieu) ||
+      g.startsWith(kGhiChuNapMucTieuCu);
+}

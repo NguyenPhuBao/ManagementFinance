@@ -2,15 +2,14 @@
 // `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §2).
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
-import 'package:flowmoney/features/category/data/models/category_entity.dart';
-import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
+import 'package:flowmoney/features/transaction/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flowmoney/features/wallet/domain/dieu_chinh_so_du.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../presentation/category_test_fakes.dart';
+import '../../category/presentation/category_test_fakes.dart';
 
 var _dem = 0;
 
@@ -100,37 +99,6 @@ void main() {
     expect(demChuaGan(ds), 2);
     expect(demChuaGan(ds), ds.where(xetGan).length,
         reason: 'thẻ ở Sổ giao dịch và màn duyệt phải nói cùng một con số');
-  });
-
-  group('hopLeTheoChieu', () {
-    test('khoản chi → danh mục chi và vay/nợ', () {
-      expect(hopLeTheoChieu('chi', _chonDuoc), {'c-dc', 'c-an', 'c-vay'});
-    });
-
-    test('khoản thu → danh mục thu và vay/nợ', () {
-      expect(hopLeTheoChieu('thu', _chonDuoc), {'c-luong', 'c-vay'});
-    });
-
-    test('bỏ danh mục đã xoá và nhóm', () {
-      final goc = makeCategory(id: 'c-xoa', name: 'Cũ');
-      final xoa = CategoryEntity(
-        id: goc.id,
-        idaccount: goc.idaccount,
-        name: goc.name,
-        classify: goc.classify,
-        icon: goc.icon,
-        colour: goc.colour,
-        isDefault: goc.isDefault,
-        isDeleted: true,
-        parentId: goc.parentId,
-        isGroup: goc.isGroup,
-        aiCoDinh: goc.aiCoDinh,
-        syncStatus: goc.syncStatus,
-        updatedAt: goc.updatedAt,
-      );
-      final nhom = makeCategory(id: 'c-nhom', name: 'Nhóm', isGroup: true);
-      expect(hopLeTheoChieu('chi', [..._chonDuoc, xoa, nhom]), {'c-dc', 'c-an', 'c-vay'});
-    });
   });
 
   group('dungDanhSachGan', () {

@@ -9,20 +9,21 @@
 /// về được A). Mọi cạnh có hai đầu cùng một thành phần liên thông mạnh lớn hơn một mảng phải nằm trong [conCho]; cạnh trong
 /// [conCho] mà không còn tồn tại hoặc không còn nằm trên vòng thì đỏ "đã gỡ — rút". Luật này bắt MỌI vòng mới: cặp hai chiều
 /// mới, vòng dài kéo thêm mảng vào cụm, cạnh mới giữa hai mảng đã trong cụm (thiết kế "cặp + cụm" bị bỏ vì mù ca cuối).
-/// Giới hạn: luật đếm CẠNH, không đếm tệp — thêm một tệp import dọc một cạnh đã có trong [conCho] (vd. thêm import
+/// Giới hạn: luật đếm CẠNH, không đếm tệp — thêm một tệp import dọc một cạnh xuôi chiều đã có (vd. thêm import
 /// `analytics → bill`) không đỏ, vì không tạo vòng mới.
 ///
 /// **Vì sao:** mảng phụ thuộc vòng thì không tách và không thay được mảng nào ra khỏi vòng; luật thuần phải nằm ở mảng của
 /// DỮ LIỆU nó đọc (khuôn `bill/domain/bill_nhac_truoc.dart`, 2026-10-16: `billLeadDays` dời khỏi `notification` để gỡ vòng
 /// `bill` ↔ `notification`).
 ///
-/// [conCho] — **mười cạnh** của cụm {analytics, bill, category, transaction}, đo gốc 2026-10-16: bốn cặp hai chiều
-/// (`analytics|category`, `analytics|transaction`, `bill|transaction`, `category|transaction`) và hai cạnh một chiều trong
-/// cùng cụm (`analytics->bill`, `category->bill`). Chỉ được giảm; thêm vào là mở lại nợ (phải có lý do + ngày). Khuôn danh
-/// sách chờ của quét 22 / 25 / 27 / 28.
-/// Lát 1 của spec `2026-10-16-go-vong-mang-domain-design.md` (2026-10-16) rút năm cạnh — `khoan_vao_thong_ke` và
-/// `LuaChonLoc` về transaction, analytics ra khỏi vòng.
-/// Lát 2 rút ba — `kGhiChuTraHoaDon` về `transaction_owner`, `khoan_lap` về bill; bill ra khỏi vòng.
+/// [conCho] — **rỗng từ 2026-10-16**. Đo gốc cùng ngày: mười cạnh của cụm {analytics, bill, category, transaction} — bốn
+/// cặp hai chiều (`analytics|category`, `analytics|transaction`, `bill|transaction`, `category|transaction`) và hai cạnh
+/// một chiều trong cụm (`analytics->bill`, `category->bill`); gỡ hết theo spec `2026-10-16-go-vong-mang-domain-design.md`
+/// (chiều chuẩn `analytics → bill → transaction → category`): lát 1 rút năm (`khoan_vao_thong_ke`, `LuaChonLoc` về
+/// transaction), lát 2 rút ba (`kGhiChuTraHoaDon` về `transaction_owner`, `khoan_lap` về bill), lát 3 rút hai
+/// (`laGhiChuMay`, `mauHocTu`, `mauSoTienTu`, `gan_hang_loat` về transaction; `hopLeTheoChieu` về `category_classify`;
+/// `kDungSaiTien` ra `core/utils`). Giữ hằng làm khuôn danh sách chờ của quét 22 / 25 / 27 / 28: thêm vào là mở lại nợ
+/// (phải có lý do + ngày).
 library;
 
 import 'dart:io';
@@ -31,11 +32,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/chi_thi_dart.dart';
 
-/// Cạnh `'nguồn->đích'` còn nằm trên vòng. Đo gốc 2026-10-16 (sau gỡ vòng `bill`/`notification`).
-const conCho = <String>{
-  'category->transaction',
-  'transaction->category',
-};
+/// Cạnh `'nguồn->đích'` còn nằm trên vòng — rỗng từ 2026-10-16 (ba lát gỡ cụm, xem docstring).
+const conCho = <String>{};
 
 String _duong(FileSystemEntity e) => e.path.replaceAll('\\', '/');
 
@@ -129,10 +127,9 @@ void main() {
     expect(soMang, greaterThanOrEqualTo(14),
         reason: 'Phải thấy ≥ 14 mảng dưới lib/features (đo 2026-10-16: 14; hai mảng ai_chat, profile không có domain/).');
     expect(g.soTepDomain, greaterThan(80),
-        reason: 'Phải thấy features/*/domain (đo 2026-10-16: 179 tệp) — đang quét sai thư mục.');
+        reason: 'Phải thấy features/*/domain (đo 2026-10-16 sau gỡ cụm: 180 tệp) — đang quét sai thư mục.');
     expect(g.chungCu.length, greaterThan(20),
-        reason: 'Phải thấy > 20 cạnh mảng (đo 2026-10-16: 32) — đọc chỉ thị hỏng thì đồ thị rỗng, luật xanh im lặng.');
-  });
+        reason: 'Phải thấy > 20 cạnh mảng (đo 2026-10-16 sau gỡ cụm: 26) — đọc chỉ thị hỏng thì đồ thị rỗng, luật xanh im lặng.');  });
 
   test(
       'domain không tạo vòng mới giữa các mảng — mọi cạnh trên vòng phải nằm trong conCho rút dần',

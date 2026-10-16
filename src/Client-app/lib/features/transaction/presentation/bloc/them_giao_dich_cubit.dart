@@ -24,7 +24,6 @@ import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/domain/category_suggestion_engine.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../category/domain/de_xuat_tu_khoa.dart';
-import '../../../category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../category/domain/phan_loai_ghi_chu.dart';
 import '../../../category/domain/phan_loai_so_tien.dart';
 import '../../data/dong_hang_bien_dong.dart';

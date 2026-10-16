@@ -27,7 +27,7 @@ import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
 import '../../category/data/models/category_suggestion.dart';
 import '../../category/domain/category_suggestion_engine.dart';
-import '../../category/domain/gan_hang_loat.dart';
+import '../../category/domain/category_classify.dart' show hopLeTheoChieu;
 import '../../category/domain/phan_loai_ghi_chu.dart';
 
 /// Ô CÂU CÓ NHẮC mà luật (và AI, nếu đã hỏi) không đọc được — người dùng chốt 2026-09-30 (§8 câu 2, 9 spec): màn chỉ gọi
