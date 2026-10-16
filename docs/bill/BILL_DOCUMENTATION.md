@@ -35,6 +35,14 @@ Quản lý các khoản chi định kỳ (điện, nước, internet, thuê nhà
   trạng thái**: Đã thanh toán / Quá hạn / Sắp đến hạn / Chưa thanh toán.
 - Thẻ tổng đầu trang đo **kỳ này**: tiền và số hoá đơn còn phải trả tới hết
   tháng (kể cả nợ cũ), thanh tiến độ là tỉ lệ tiền đã trả.
+- 🔄 **2026-10-16 (người dùng chốt):** số trên tab *Cần thanh toán (N)* đếm
+  **kỳ này**, cùng định nghĩa `thuocKyNay` với thẻ tổng, nên luôn bằng
+  *"N hóa đơn chưa thanh toán"*. Trước đó tab đếm mọi kỳ chưa đóng, mà `payBill`
+  sinh ngay kỳ tháng sau mỗi lần trả một hoá đơn lặp, nên tab thường lớn hơn
+  thẻ một. Kỳ chưa trả có hạn từ đầu tháng sau **vẫn hiện** trong tab (trả
+  trước được), dưới tiêu đề nhóm **"CÁC THÁNG SAU (n)"**. Tháng này hết nợ mà
+  còn nhóm ấy thì tab hiện *"Không còn hoá đơn nào phải trả trong tháng này."*
+  thay câu trống chung.
 - Tạo / sửa / xoá mềm hoá đơn, có ngày bắt đầu và chu kỳ (ngày đến hạn suy
   ra), công tắc "Lặp lại theo chu kỳ", ví thanh toán, danh mục, nhắc trước hạn.
 - **Thanh toán theo số tiền thật của kỳ** (bố cục tối 06/09): bảng thanh toán
@@ -1074,11 +1082,22 @@ Trước đó hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" kè
 `AppColors.income` — màu xanh lá của khoản **thu**. Stitch chỉ vẽ ba nhãn vì
 lúc ấy chưa có `'Overdue'` ở đâu; nhãn thứ tư là để nói đúng cột đó.
 
-**`splitBills(bills)`** → `BillSections(unpaid, paid)`. Mỗi kỳ của hoá đơn lặp
+**`splitBills(bills, now)`** → `BillSections(chuaDong, chuaDongCacThangSau,
+daDong)` (tham số `now` và nhóm giữa thêm 2026-10-16). Mỗi kỳ của hoá đơn lặp
 là **một hàng mới** với UUID riêng, nên danh sách phẳng xếp theo hạn có lịch
 sử đã trả lẫn vào giữa hoá đơn đang chờ (máy thật: kỳ đã trả của "di h0c" nằm
-giữa hai hoá đơn chưa trả; hoá đơn tuần sinh 52 hàng/năm). **Không sắp xếp tại
-chỗ** — danh sách đến từ stream của bloc và nhiều nơi khác đọc chung.
+giữa hai hoá đơn chưa trả; hoá đơn tuần sinh 52 hàng/năm). Kỳ còn phải trả
+chia theo **`thuocKyNay`**: thuộc kỳ này → `chuaDong` (số trên tab), hạn từ đầu
+tháng sau → `chuaDongCacThangSau` (nhóm "CÁC THÁNG SAU", không vào số). Kỳ đã
+trả / bỏ qua vào `daDong` **bất kể hạn**. **Không sắp xếp tại chỗ** — danh sách
+đến từ stream của bloc và nhiều nơi khác đọc chung.
+
+**`thuocKyNay(bill, now)`** — định nghĩa **duy nhất** của "kỳ này": hạn trước
+đầu tháng sau (biên **mở**), kể cả nợ quá hạn tháng trước. `summarizeBills` và
+`splitBills` cùng gọi nó; ca bất biến *"số trên tab = số trên thẻ"* ở
+`bill_status_test.dart` canh hai nơi không tách luật lần nữa. ⚠️ Khối Nhận xét
+(`goi_so_hoa_don.dart`) và tool hoá đơn của Trợ lý AI (`hang_hoa_don.dart`) còn
+**chép tay** phép chặn cuối tháng — chưa chuyển sang `thuocKyNay`.
 
 **`summarizeBills(bills, now)`** → `BillSummary`: gộp mọi hoá đơn đến hạn
 **tới hết tháng của `now`**, kể cả nợ cũ chưa trả từ tháng trước. Chặn ở cuối
@@ -1175,7 +1194,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái |
 | `test/features/bill/domain/bill_schedule_test.dart` | Ngày đến hạn suy từ chu kỳ ở cả bốn chu kỳ; bất biến bắt đầu < đến hạn; công tắc lặp lại không đụng cách tính hạn; `fromBill` phát hiện hạn cũ lệch và cảnh báo |
 | `test/features/bill/domain/bill_draft_test.dart` | Companion mang ví/danh mục; ghi chu kỳ khớp ở cả hai cột; companion SỬA không đụng `isPaid`/`payStatus`/`startDate`/cờ xoá |
-| `test/features/bill/domain/bill_status_test.dart` | **Năm** trạng thái (quá hạn ≠ sắp đến hạn, hôm nay chưa quá hạn, `billLeadDays` riêng thắng chung, đã trả thắng quá hạn, đọc cả hai cột; **kỳ bỏ qua thắng quá hạn** và không phải "đã thanh toán"); `splitBills` sắp xếp đúng chiều, không đụng danh sách gốc, **đẩy kỳ bỏ qua sang nhóm `daDong`**; `summarizeBills` chặn cuối tháng, giữ nợ cũ, tiến độ không phải hằng số, không chia 0, tháng 12 không tràn năm, 29/02 năm nhuận, **kỳ bỏ qua không vào CẢ HAI vế** |
+| `test/features/bill/domain/bill_status_test.dart` | **Năm** trạng thái (quá hạn ≠ sắp đến hạn, hôm nay chưa quá hạn, `billLeadDays` riêng thắng chung, đã trả thắng quá hạn, đọc cả hai cột; **kỳ bỏ qua thắng quá hạn** và không phải "đã thanh toán"); `splitBills` sắp xếp đúng chiều, không đụng danh sách gốc, **đẩy kỳ bỏ qua sang nhóm `daDong`**, tách **nhóm các tháng sau** khỏi số trên tab (2026-10-16); `thuocKyNay` biên mở ở đầu tháng sau, tháng 12 → tháng 1; ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; `summarizeBills` chặn cuối tháng, giữ nợ cũ, tiến độ không phải hằng số, không chia 0, tháng 12 không tràn năm, 29/02 năm nhuận, **kỳ bỏ qua không vào CẢ HAI vế** |
 | `test/features/bill/data/repositories/bill_repository_impl_test.dart` | `payBill(note:)` nối ghi chú SAU tiền tố, rỗng thì như cũ; `editBill` không xoá cột vắng mặt và không hồi sinh hàng đã xoá; `payBill` đặt cả hai cột trạng thái, gắn danh mục vào giao dịch, kế thừa đủ thuộc tính cho kỳ sau, đọc chu kỳ từ `isRecurrence`, chặn thanh toán lần hai |
 | `test/features/bill/data/repositories/bill_payment_test.dart` | Số tiền truyền vào thắng số đã lưu; hoá đơn ghi lại số thật; kỳ sau kế thừa số vừa trả; số ≤ 0 bị từ chối **không ghi gì**; hoàn tác: về chưa trả, hoàn đúng ví đúng số, xoá mềm khoản chi và kỳ sau, hoá đơn không lặp không có gì để gỡ, chưa trả bị từ chối, **khoản trả cũ không có `billId` thì từ chối KHÔNG đoán**, hoàn tác rồi trả lại chỉ sinh đúng một kỳ |
 | `test/features/bill/domain/bill_pay_status_test.dart` | **Định nghĩa duy nhất** của trạng thái trả: ba vị từ trên cả bốn giá trị; hàng lệch hai cột theo **cả hai** chiều; giá trị lạ đọc là *còn phải trả* và **không** đọc là *bỏ qua* |

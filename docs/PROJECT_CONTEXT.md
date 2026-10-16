@@ -610,6 +610,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
+### 🧾 Trang Hoá đơn — tab "Cần thanh toán" đếm theo kỳ này, kỳ các tháng sau dưới tiêu đề nhóm (2026-10-16, người dùng chốt)
+
+- **Lệch cũ:** thẻ tổng (`summarizeBills`) đếm hoá đơn chưa trả có hạn trước đầu tháng sau (kể cả nợ quá hạn), còn tab
+  (`splitBills`) đếm **mọi** kỳ chưa đóng. `payBill` sinh ngay kỳ tháng sau mỗi lần trả một hoá đơn lặp, nên lệch là
+  ca **thường**: máy ảo `FlowMoney_16G` có sẵn một hoá đơn hạn 04/12, tức với luật cũ tab ghi (5) khi thẻ ghi 4.
+- **Chốt** (người dùng chọn trong ba phương án, có xem bản vẽ ASCII): tab đếm **kỳ này**. Kỳ chưa trả có hạn từ đầu
+  tháng sau vẫn hiện trong tab, dưới tiêu đề **"CÁC THÁNG SAU (n)"**, không vào số. Tháng này hết nợ mà còn nhóm ấy
+  thì hiện *"Không còn hoá đơn nào phải trả trong tháng này."*. Phương án *"thẻ đếm mọi hoá đơn"* bị loại vì ngược
+  quyết định cũ (thẻ từng hiện 183.000 đ khi tháng ấy chỉ nợ 60.000 đ).
+- **Mã:** `thuocKyNay(bill, now)` ở `bill/domain/bill_status.dart` là định nghĩa duy nhất của "kỳ này", dùng chung
+  cho `summarizeBills` và `splitBills(bills, now)`. `BillSections` có thêm `chuaDongCacThangSau`.
+  `bill_page.dart` dựng thêm tiêu đề nhóm (key `bill-nhom-cac-thang-sau`) và dòng *"trong tháng này"*
+  (key `bill-thang-nay-trong`). Còn **chép tay** phép chặn cuối tháng, chưa chuyển sang `thuocKyNay`:
+  `ai_edge/domain/goi_so_hoa_don.dart:43–46, 62`, `hang_hoa_don.dart:118–121`.
+- **Test:** +11 ca (7 domain, gồm ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; 4 widget, gồm 360 dp). Mỗi
+  ca canh đều đỏ với ít nhất một bản sai có chủ ý (luật cũ của `splitBills`, biên ngày đóng, số tab cộng cả các tháng
+  sau). `flutter test` **7.096 / 10 skip / 0 fail**, `flutter analyze` **20**.
+- **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug 13:36): thẻ *"4 hóa đơn chưa thanh toán"* =
+  tab *(4)*. Nhóm *"CÁC THÁNG SAU"* hiện dưới kỳ quá hạn cuối, đếm đúng sau khi thêm rồi xoá mềm một hoá đơn thử hạn
+  16/11 (2 → 1). Ở 360 dp (`wm density 480`) có 0 điểm ảnh vàng thuần; mật độ đã trả về 420.
+- **Stitch:** lệnh `edit_screens` lên màn `e8b460b4…` (thêm khối *"CÁC THÁNG SAU (1)"* + một thẻ Netflix 05/10) trả
+  **timeout**. Lần kiểm sau đó qua API chưa thấy đổi. Người dùng mở Stitch xem là phép đo duy nhất.
+
 ### 🔀 Gộp `main` @ `d72ccd45` (2026-10-16, commit gộp `e49100ed`) — Payment premium: đối soát chuyển thừa / thiếu, hoàn tiền có minh chứng, mã nhận diện 6 ký tự, hạn đơn 10 phút; client đặt đơn 44, mở G94
 
 - **Không xung đột** (`git merge-tree` sạch, không tệp nào cả hai bên cùng đổi). 8 commit `main` (PR #138, NPBao), chỉ
@@ -643,8 +666,8 @@ src/Backend/
   
   **Đơn 43 B vẫn mở:** `findOrCreateOrderByCode` giống hệt từng dòng; đơn tự tạo lấy `amount` từ webhook nên luôn đi
   nhánh PAID, hậu quả không đổi.
-- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e` (đo `git rev-parse` remote = HEAD).
-  Commit ghi lựa chọn G94 sau đó chưa push.
+- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e`, rồi `51df7ff7` (commit ghi lựa
+  chọn G94) — đo `git rev-parse` remote = HEAD cả hai lần.
 
 ### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, đã push 2026-10-16 cùng lượt gộp `d72ccd45`; nghiệm thu máy ảo ✅ đạt 2026-10-16)
 
