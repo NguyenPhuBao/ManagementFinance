@@ -8,8 +8,9 @@
 /// ⚠️ KHÔNG có giờ: giờ lưu trong giao dịch là giờ NHẬP (màn Thêm giao dịch khởi tạo ngày bằng `DateTime.now()`, và
 /// `showDatePicker` trả 00:00), không phải giờ chi.
 ///
-/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó đọc sổ giao dịch và so chiều tiền — thứ test quét 14 cấm ở đó.
-/// Từ 2026-10-16 bộ dựng mẫu `mauSoTienTu` ở `transaction/domain/mau_hoc_danh_muc.dart` (quét 29).
+/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó TÍNH (Naive Bayes) trên mẫu dựng từ sổ giao dịch và so chiều
+/// tiền — thứ test quét 14 cấm ở đó. Từ 2026-10-16 bộ dựng mẫu `mauSoTienTu` ở `transaction/domain/mau_hoc_danh_muc.dart`
+/// (quét 29); tệp này chỉ nhận mẫu.
 /// Cùng chỗ với `phan_loai_ghi_chu.dart` (B1); dùng lại `kToiThieuMauTong` và hai hằng của luật thôi gợi ý, nhưng
 /// ngưỡng xác suất và số khoản ở bậc thì CHẶT hơn B1 — xem [kNguongXacSuatSoTien].
 library;

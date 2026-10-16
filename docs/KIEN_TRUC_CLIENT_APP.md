@@ -43,7 +43,7 @@ canh bằng test quét mã nguồn (mục 6).
 ## 3. Cây thư mục
 
 `lib/` có **618** tệp `.dart`, **124.393** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
-và `… | xargs cat | wc -l`. `test/` có **629** tệp `*_test.dart` (640 tệp `.dart` kể cả helper), **126.455** dòng (đếm lại **2026-10-16 sau gỡ cụm**, HEAD `f702a884`). (Trước đó 2026-10-15: 626 tệp test, 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
+và `… | xargs cat | wc -l`. `test/` có **629** tệp `*_test.dart` (640 tệp `.dart` kể cả helper), **126.455** dòng (đếm lại **2026-10-16 sau gỡ cụm**, HEAD `f702a884`). (Trước đó 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
 
 ```
 lib/

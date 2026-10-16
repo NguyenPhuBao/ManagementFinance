@@ -129,7 +129,8 @@ void main() {
     expect(g.soTepDomain, greaterThan(80),
         reason: 'Phải thấy features/*/domain (đo 2026-10-16 sau gỡ cụm: 180 tệp) — đang quét sai thư mục.');
     expect(g.chungCu.length, greaterThan(20),
-        reason: 'Phải thấy > 20 cạnh mảng (đo 2026-10-16 sau gỡ cụm: 26) — đọc chỉ thị hỏng thì đồ thị rỗng, luật xanh im lặng.');  });
+        reason: 'Phải thấy > 20 cạnh mảng (đo 2026-10-16 sau gỡ cụm: 26) — đọc chỉ thị hỏng thì đồ thị rỗng, luật xanh im lặng.');
+  });
 
   test(
       'domain không tạo vòng mới giữa các mảng — mọi cạnh trên vòng phải nằm trong conCho rút dần',

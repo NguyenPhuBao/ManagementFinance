@@ -289,7 +289,8 @@ Mô hình đi **trước** bảng từ khoá; trả `null` (sổ mỏng, ghi ch�
 0,6, hoà, cặp đang bị thôi gợi ý) thì rơi về bảng từ khoá như cũ. Dòng lý do đổi
 theo nguồn: *"Bạn thường ghi “grab” cho Di chuyển (5/5 lần)."* với nguồn học. Hàm
 thuần nằm ở `category/domain/phan_loai_ghi_chu.dart`, **không** ở `ai_edge/`: nó
-đọc sổ giao dịch, thứ test quét 14 cấm trong `ai_edge/`.
+tính (Naive Bayes) trên mẫu dựng từ sổ giao dịch, thứ test quét 14 cấm trong
+`ai_edge/`; bộ dựng mẫu ở `transaction/domain/mau_hoc_danh_muc.dart`.
 
 ### Chỗ dễ làm hỏng nhất
 
@@ -438,8 +439,8 @@ chip nét đứt *"+ Chọn danh mục"*. Bấm *Áp dụng N* mới ghi, từng
 ### Chỗ dễ làm hỏng nhất
 
 - **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`transaction/domain/gan_hang_loat.dart`, từ 2026-10-16):
-  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay` của
-  B1). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
+  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay`
+  (`khoan_vao_thong_ke.dart`)). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
   số khác. Khoản điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn cố ý không có danh mục.
 - **Lọc theo chiều tiền** — `hopLeTheoChieu`: khoản chi chỉ nhận danh mục `chi` / `vay_no`,
   khoản thu chỉ `thu` / `vay_no`. B1 học trên **cả ba** phân loại, nên thiếu bộ lọc là gắn được

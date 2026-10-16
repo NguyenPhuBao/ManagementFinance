@@ -5,10 +5,11 @@
 /// bằng chứng), làm trơn Laplace. Xác suất tính trên MỌI danh mục đã học; `hopLe` chỉ lọc ứng viên — tính trên phần
 /// còn lại là đẩy danh mục duy nhất còn sống lên 100 % cho một ghi chú chẳng liên quan.
 ///
-/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó đọc sổ giao dịch, thứ test quét 14 cấm trong `ai_edge/`. Bỏ
-/// dấu (`removeVietnameseTones`) ở đây là đúng chỗ của nó — đây là GỢI Ý, không phải quy tắc trùng tên (quy tắc 7).
-/// Từ 2026-10-16 phần đọc sổ — `laGhiChuMay` (`transaction/domain/khoan_vao_thong_ke.dart`) và `mauHocTu`
-/// (`transaction/domain/mau_hoc_danh_muc.dart`) — ở mảng giao dịch (quét 29); tệp này nhận mẫu, không đọc hàng sổ.
+/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó TÍNH (Naive Bayes) trên mẫu dựng từ sổ giao dịch, thứ test quét
+/// 14 cấm trong `ai_edge/`. Bỏ dấu (`removeVietnameseTones`) ở đây là đúng chỗ của nó — đây là GỢI Ý, không phải quy
+/// tắc trùng tên (quy tắc 7). Từ 2026-10-16 phần đọc sổ — `laGhiChuMay` (`transaction/domain/khoan_vao_thong_ke.dart`)
+/// và bộ dựng mẫu `mauHocTu` (`transaction/domain/mau_hoc_danh_muc.dart`) — ở mảng giao dịch (quét 29); tệp này chỉ
+/// nhận mẫu, không đọc hàng sổ.
 library;
 
 import 'dart:math' as math;

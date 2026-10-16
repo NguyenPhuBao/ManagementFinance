@@ -20,7 +20,7 @@ List<MauGhiChu> mauHocTu(
             MauGhiChu(categoryId: t.categoryId!, amTiet: a, ngay: t.ngay),
     ];
 
-/// Mẫu có nhãn: khoản thu / chi có danh mục, chưa xoá, số tiền dương, không do máy sinh (`laGhiChuMay` của B1 — trả
+/// Mẫu có nhãn: khoản thu / chi có danh mục, chưa xoá, số tiền dương, không do máy sinh (`laGhiChuMay`, `khoan_vao_thong_ke.dart` — trả
 /// hoá đơn, nạp / rút mục tiêu, điều chỉnh số dư, số dư ban đầu). Có hay không có ghi chú đều tính — khác `mauHocTu`
 /// của B1 ở đúng chỗ ấy: tín hiệu ở đây là số tiền, không phải chữ.
 List<MauSoTien> mauSoTienTu(
