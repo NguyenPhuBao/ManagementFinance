@@ -610,9 +610,9 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
-### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification`, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
+### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification` ở tầng domain, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
 
-Người dùng chốt năm việc, thi công bằng agent con; không màn hình, số liệu, hành vi app nào đổi. Sáu commit trên nhánh
+Người dùng chốt năm việc, thi công bằng agent con; không màn hình, số liệu, hành vi app nào đổi. Sáu commit mã / test (cộng hai commit tài liệu và một commit sửa chữ cuối) trên nhánh
 `TranQuangDat` từ `e01bd561`:
 
 - **Gỡ vòng ở tầng domain** (`16f0997e`): `billLeadDays` + `mocNhacMacDinh` dời từ `notification/domain/notification_rules.dart`
@@ -625,11 +625,11 @@ Người dùng chốt năm việc, thi công bằng agent con; không màn hình
   4) đọc chỉ thị qua nó: thấy `part` (không `part of`), từng vế `if (…)` của import có điều kiện, chỉ thị xuống dòng, và
   `export` (quét 27 trước chỉ đọc dòng `import `). Hai giới hạn đã biết ghi ở docstring helper (dòng dạng chỉ thị trong chuỗi
   `'''`; chú thích chen giữa các vế điều kiện) — hiện 0 trường hợp trong `lib/`.
-- **Quét 27 luật 1** (`bf3bb08d`): `mauKieu` bắt thêm `is X ?` và `X(` (`case X(` của Dart 3 dựng hàng Drift). Đo: 0 chỗ trúng
+- **Quét 27 luật 1** (`bf3bb08d`): `mauKieu` bắt thêm `is X ?` và `X(` (hai dạng tách bạch: mẫu `case X(…)` của Dart 3, và dựng hàng `X(…)` trực tiếp). Đo: 0 chỗ trúng
   mới trong phạm vi quét.
 - **Quét 29** (`45113fd0`) `core/ui/domain_khong_vong_mang_test.dart`: đồ thị cấp mảng (nguồn chỉ `features/*/domain/`, đích
   mọi tầng của mảng khác); mọi cạnh có hai đầu cùng một thành phần liên thông mạnh > 1 phải ở danh sách chờ `conCho`
-  **mười cạnh**, chỉ được giảm (cạnh trong danh sách mà hết nằm trên vòng → đỏ "rút"). Đo 2026-10-16: 14 mảng, 178 tệp domain,
+  **mười cạnh**, chỉ được giảm (cạnh trong danh sách mà hết nằm trên vòng → đỏ "rút"). Đo 2026-10-16: 14 mảng, 179 tệp domain,
   32 cạnh; cụm duy nhất {analytics, bill, category, transaction} = bốn cặp hai chiều (`analytics|category`,
   `analytics|transaction`, `bill|transaction`, `category|transaction`) + hai cạnh một chiều (`analytics->bill`,
   `category->bill`). Luật trên **cạnh** (không trên cặp) vì thiết kế "cặp + cụm" mù ca cuối — vòng dài kéo thêm mảng vào cụm.

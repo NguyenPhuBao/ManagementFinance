@@ -9,6 +9,8 @@
 /// về được A). Mọi cạnh có hai đầu cùng một thành phần liên thông mạnh lớn hơn một mảng phải nằm trong [conCho]; cạnh trong
 /// [conCho] mà không còn tồn tại hoặc không còn nằm trên vòng thì đỏ "đã gỡ — rút". Luật này bắt MỌI vòng mới: cặp hai chiều
 /// mới, vòng dài kéo thêm mảng vào cụm, cạnh mới giữa hai mảng đã trong cụm (thiết kế "cặp + cụm" bị bỏ vì mù ca cuối).
+/// Giới hạn: luật đếm CẠNH, không đếm tệp — thêm một tệp import dọc một cạnh đã có trong [conCho] (vd. thêm import
+/// `analytics → bill`) không đỏ, vì không tạo vòng mới.
 ///
 /// **Vì sao:** mảng phụ thuộc vòng thì không tách và không thay được mảng nào ra khỏi vòng; luật thuần phải nằm ở mảng của
 /// DỮ LIỆU nó đọc (khuôn `bill/domain/bill_nhac_truoc.dart`, 2026-10-16: `billLeadDays` dời khỏi `notification` để gỡ vòng
@@ -132,7 +134,7 @@ void main() {
     expect(soMang, greaterThanOrEqualTo(14),
         reason: 'Phải thấy ≥ 14 mảng dưới lib/features (đo 2026-10-16: 14; hai mảng ai_chat, profile không có domain/).');
     expect(g.soTepDomain, greaterThan(80),
-        reason: 'Phải thấy features/*/domain (đo 2026-10-16: 178 tệp) — đang quét sai thư mục.');
+        reason: 'Phải thấy features/*/domain (đo 2026-10-16: 179 tệp) — đang quét sai thư mục.');
     expect(g.chungCu.length, greaterThan(20),
         reason: 'Phải thấy > 20 cạnh mảng (đo 2026-10-16: 32) — đọc chỉ thị hỏng thì đồ thị rỗng, luật xanh im lặng.');
   });

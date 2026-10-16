@@ -31,8 +31,8 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// đúng hôm nay chưa phải quá hạn, người dùng vẫn còn cả ngày để trả.
 ///
 /// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] (`bill_nhac_truoc.dart`) —
-/// **cùng một định nghĩa** bộ luật thông báo dùng cho dải nhắc. Hai mốc riêng thì dải nhắc và nhãn trên danh sách nói hai
-/// chuyện khác nhau về cùng một hoá đơn.
+/// **cùng một hàm** bộ luật thông báo dùng cho dải nhắc, nhưng với mặc định [mocNhacMacDinh]; bộ luật và bộ đặt lịch
+/// truyền tuỳ chọn người dùng, nên người đổi mặc định nhắc sẽ thấy nhãn và dải nhắc lệch (có từ trước, chưa sửa).
 BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now) {
   if (daCoKhoanChi(bill)) return BillDisplayStatus.paid;
   // TRƯỚC mọi phép so ngày: một kỳ bỏ qua đã trễ hạn vẫn là kỳ bỏ qua, không

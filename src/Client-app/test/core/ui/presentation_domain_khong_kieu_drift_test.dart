@@ -118,7 +118,7 @@ void main() {
     expect(m.hasMatch("final h = Bill(id: 'x');"), isTrue,
         reason: 'dựng hàng Drift trực tiếp bằng X( từng lọt.');
     expect(m.hasMatch('final b = x is BillEntity ? x : null;'), isFalse,
-        reason: 'BillEntity là kiểu thuần — \\b + tên + ? phải đứng sát.');
+        reason: 'BillEntity là kiểu thuần — sau `Bill` là chữ `E` nối tiếp tên, không mở nhánh nào của mauKieu.');
     expect(m.hasMatch('BillEntity('), isFalse,
         reason: 'dựng BillEntity không phải dựng hàng Drift.');
     expect(m.hasMatch('final v = isBill ? a : b;'), isFalse,

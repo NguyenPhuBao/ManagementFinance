@@ -5,8 +5,9 @@
 /// (2) vế `if (dart.library.x) '…'` của import có điều kiện, thường nằm ở dòng kế; (3) chỉ thị trải nhiều dòng (`show` /
 /// `as` xuống dòng); (4) `export` ở quét 27. Đọc cả tệp một lần bằng regex nhiều dòng thì bốn thứ ấy thấy hết.
 ///
-/// Hai giới hạn đã biết (preflight 2026-10-16: hiện 0 trường hợp trong `lib/`): dòng DẠNG chỉ thị nằm TRONG chuỗi `'''`
-/// bị bắt nhầm; chú thích chen GIỮA các vế `if (…)` làm hụt vế sau.
+/// Ba giới hạn đã biết (preflight 2026-10-16: hiện 0 trường hợp trong `lib/`): dòng DẠNG chỉ thị nằm TRONG chuỗi `'''`
+/// bị bắt nhầm; chú thích chen GIỮA các vế `if (…)` làm hụt vế sau;
+/// (3) dòng chỉ thị nằm trong chú thích khối `/* … */` bị bắt nhầm (regex cũ cũng vậy).
 library;
 
 /// Dựng BOM bằng mã ký tự, không gõ ký tự thật vào mã nguồn.

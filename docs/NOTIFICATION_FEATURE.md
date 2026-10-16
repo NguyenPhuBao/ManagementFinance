@@ -1454,9 +1454,9 @@ riêng cho một hoá đơn vẫn thắng giá trị mặc định chung. ⚠️
 `billLeadDays` và `mocNhacMacDinh` (mặc định 3) được định nghĩa ở
 `bill/domain/bill_nhac_truoc.dart`, không còn ở `notification_rules.dart`: luật
 thuần phải nằm ở mảng của dữ liệu nó đọc, và nhãn "sắp đến hạn" của
-`bill_status.dart` cần cùng ngưỡng — để ở thông báo là `bill/domain` import
-`notification/domain` còn `notification` import ngược `bill` (vòng, gỡ đợt này,
-quét 29 canh). Bộ luật và `reminder_scheduler.dart` import từ đó.
+`bill_status.dart` cần cùng hàm — để ở thông báo là `bill/domain` import
+`notification/domain` còn `notification` import ngược `bill` (vòng, gỡ 2026-10-16,
+quét 29 canh). Bộ luật và `reminder_scheduler.dart` import từ đó. ⚠️ Cùng một hàm (giá trị riêng của hoá đơn thắng) nhưng **mặc định khác nhau**: nhãn gọi với `mocNhacMacDinh`, bộ luật và bộ đặt lịch truyền `soNgayNhacHoaDon` — người đổi mặc định nhắc thì nhãn *Sắp đến hạn* và dải nhắc lệch (có từ trước, chưa sửa).
 
 `AndroidScheduleMode.inexactAllowWhileIdle`, có test canh riêng — xem lát 4.
 
