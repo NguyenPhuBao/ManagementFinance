@@ -193,9 +193,70 @@ async function getPayosQr(req, res, next) {
   }
 }
 
+/**
+ * Người dùng xác nhận hoặc từ chối nâng cấp gói khi chuyển thừa tiền
+ */
+async function confirmUpgrade(req, res, next) {
+  try {
+    const idaccount = req.user && req.user.idaccount;
+    const { orderCode, accept } = req.body;
+    if (!orderCode) {
+      return ResponseHandler.badRequest(res, 'Mã đơn hàng orderCode là bắt buộc');
+    }
+    const result = await paymentService.confirmUpgrade(idaccount, { orderCode, accept });
+    return ResponseHandler.success(res, result, result.message);
+  } catch (error) {
+    if (error.statusCode === 400) return ResponseHandler.badRequest(res, error.message);
+    if (error.statusCode === 404) return ResponseHandler.notFound(res, error.message);
+    return next(error);
+  }
+}
+
+/**
+ * Admin xử lý hoàn tiền cho khách hàng kèm upload minh chứng
+ */
+async function processRefund(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { refundedAmount, refundProof, refundReason, refundedAt } = req.body;
+    if (!refundedAmount) {
+      return ResponseHandler.badRequest(res, 'Số tiền hoàn trả là bắt buộc');
+    }
+    const result = await paymentService.processOrderRefund(id, {
+      refundedAmount,
+      refundProof,
+      refundReason,
+      refundedAt,
+    });
+    return ResponseHandler.success(res, result, 'Cập nhật hoàn tiền thành công');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/**
+ * Admin giả lập Webhook cho chế độ Sandbox Roleplay
+ */
+async function simulateWebhook(req, res, next) {
+  try {
+    const { orderCode, simulateType } = req.body;
+    if (!orderCode) {
+      return ResponseHandler.badRequest(res, 'Mã đơn hàng orderCode là bắt buộc');
+    }
+    const result = await paymentService.simulateWebhook({ orderCode, simulateType });
+    return ResponseHandler.success(res, result, 'Giả lập giao dịch Webhook thành công');
+  } catch (error) {
+    if (error.statusCode === 404) return ResponseHandler.notFound(res, error.message);
+    return next(error);
+  }
+}
+
 module.exports = {
   createOrder,
   handleWebhook,
+  confirmUpgrade,
+  processRefund,
+  simulateWebhook,
   getOrderStatus,
   getSubscriptionInfo,
   getOrderHistory,

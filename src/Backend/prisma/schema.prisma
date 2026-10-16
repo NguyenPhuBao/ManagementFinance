@@ -419,13 +419,21 @@ model payment_order {
   order_code          BigInt                @unique @map("order_code")
   package_type        String                @default("PREMIUM_1_MONTH") @db.VarChar(30) @map("package_type")
   amount              Decimal               @default(49000.00) @db.Decimal(15, 2) @map("amount")
+  amount_received     Decimal               @default(0.00) @db.Decimal(15, 2) @map("amount_received")
+  fee                 Decimal               @default(0.00) @db.Decimal(15, 2) @map("fee")
+  recognition_code    String?               @db.VarChar(10) @map("recognition_code")
+  transfer_content    String?               @db.VarChar(100) @map("transfer_content")
   currency            String                @default("VND") @db.VarChar(3) @map("currency")
-  status              String                @default("PENDING") @db.VarChar(20) @map("status")
+  status              String                @default("PENDING") @db.VarChar(25) @map("status")
   checkout_url        String?               @db.Text @map("checkout_url")
   payment_link_id     String?               @db.VarChar(100) @map("payment_link_id")
   created_at          DateTime              @default(now()) @db.Timestamp(6) @map("created_at")
   paid_at             DateTime?             @db.Timestamp(6) @map("paid_at")
   expired_at          DateTime?             @db.Timestamp(6) @map("expired_at")
+  refunded_at         DateTime?             @db.Timestamp(6) @map("refunded_at")
+  refunded_amount     Decimal?              @db.Decimal(15, 2) @map("refunded_amount")
+  refund_reason       String?               @db.Text @map("refund_reason")
+  refund_proof        String?               @db.Text @map("refund_proof")
 
   account             account               @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_account")
   payment_transaction payment_transaction[]
@@ -433,6 +441,7 @@ model payment_order {
   @@index([idaccount], map: "idx_payment_order_account")
   @@index([status], map: "idx_payment_order_status")
   @@index([order_code], map: "idx_payment_order_code")
+  @@index([recognition_code], map: "idx_payment_order_recognition_code")
   @@map("payment_order")
 }
 

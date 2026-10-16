@@ -2,10 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import paymentApi from '../../api/payment.api';
 import Pagination from '../../components/common/Pagination';
 import { useLanguageSafe } from '../../store/language.context';
+import useSocket from '../../hooks/useSocket';
 
 const STATUS_CONFIG = {
   PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'check_circle' },
   PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: 'schedule' },
+  WAITING_CONFIRMATION: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: 'rule' },
+  REFUND_PENDING: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: 'currency_exchange' },
+  REFUNDED: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', icon: 'assignment_return' },
   CANCELLED: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-300', icon: 'cancel' },
   EXPIRED: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', icon: 'timer_off' },
 };
@@ -28,8 +32,30 @@ const formatDate = (dateStr) => {
   });
 };
 
+const getStatusLabel = (status, t) => {
+  switch (status) {
+    case 'PAID':
+      return t('payments.filter.statusPaid');
+    case 'PENDING':
+      return t('payments.filter.statusPending');
+    case 'WAITING_CONFIRMATION':
+      return t('payments.filter.statusWaitingConfirmation');
+    case 'REFUND_PENDING':
+      return t('payments.filter.statusRefundPending');
+    case 'REFUNDED':
+      return t('payments.filter.statusRefunded');
+    case 'CANCELLED':
+      return t('payments.filter.statusCancelled');
+    case 'EXPIRED':
+      return t('payments.filter.statusExpired');
+    default:
+      return status;
+  }
+};
+
 const PaymentHistoryPage = () => {
   const { t } = useLanguageSafe();
+  const socket = useSocket();
 
   // State
   const [orders, setOrders] = useState([]);
@@ -57,34 +83,46 @@ const PaymentHistoryPage = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
-  // Sample QR Modal & Live PayOS Channel State
+  // Sample QR Modal & Live PayOS Channel State (Client-app Sandbox Roleplay)
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [payosData, setPayosData] = useState(null);
   const [payosLoading, setPayosLoading] = useState(false);
   const [selectedSampleAmount, setSelectedSampleAmount] = useState(49000);
   const [selectedSamplePackage, setSelectedSamplePackage] = useState('PREMIUM_1_MONTH');
+  const [countdownSeconds, setCountdownSeconds] = useState(600);
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  // Load live PayOS QR data
-  const loadPayosQr = useCallback(async (amount = selectedSampleAmount, packageType = selectedSamplePackage) => {
-    setPayosLoading(true);
-    try {
-      const res = await paymentApi.getPayosQr({ amount, packageType });
-      if (res.data?.success && res.data?.data) {
-        setPayosData(res.data.data);
-      }
-    } catch (err) {
-      console.error('[PAYMENT_PAGE] Lỗi khi tải mã QR PayOS:', err);
-    } finally {
-      setPayosLoading(false);
-    }
-  }, [selectedSampleAmount, selectedSamplePackage]);
+  // Sandbox Roleplay Feedback State
+  const [sandboxConfirmation, setSandboxConfirmation] = useState(null);
+  const [sandboxUnderpaid, setSandboxUnderpaid] = useState(null);
 
+  // Refund Processing Modal State
+  const [refundTargetOrder, setRefundTargetOrder] = useState(null);
+  const [refundForm, setRefundForm] = useState({
+    refunded_amount: '',
+    refund_reason: 'Chuyển thiếu tiền, hoàn trả khách hàng',
+    refund_proof: '',
+  });
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+
+  // Countdown Timer for Sandbox Modal (10 mins)
   useEffect(() => {
-    if (showSampleModal) {
-      loadPayosQr(selectedSampleAmount, selectedSamplePackage);
+    if (!showSampleModal) {
+      setCountdownSeconds(600);
+      return;
     }
-  }, [showSampleModal, selectedSampleAmount, selectedSamplePackage, loadPayosQr]);
+    const timer = setInterval(() => {
+      setCountdownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [showSampleModal]);
+
+  const formatCountdown = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   // Fetch KPI Stats
   const loadStats = useCallback(async () => {
@@ -129,6 +167,77 @@ const PaymentHistoryPage = () => {
       setLoading(false);
     }
   }, [page, pageSize, search, statusFilter, packageFilter, fromDate, toDate]);
+
+  // Socket.IO Real-time Events
+  useEffect(() => {
+    if (!socket) return;
+
+    const onPaymentSuccess = (data) => {
+      loadStats();
+      loadOrders();
+      setFeedbackMsg(`🎉 ${t('payments.sandbox.successTitle')} (#${data.orderCode || data.order_code})`);
+      setTimeout(() => setFeedbackMsg(null), 4000);
+    };
+
+    const onOverpaidConfirmation = (data) => {
+      loadStats();
+      loadOrders();
+      setSandboxConfirmation({
+        orderCode: data.orderCode,
+        amountReceived: data.amountReceived,
+        expectedAmount: data.expectedAmount,
+        difference: data.difference,
+      });
+    };
+
+    const onUnderpaidWarning = (data) => {
+      loadStats();
+      loadOrders();
+      setSandboxUnderpaid({
+        orderCode: data.orderCode,
+        amountReceived: data.amountReceived,
+        expectedAmount: data.expectedAmount,
+      });
+    };
+
+    const onRefunded = () => {
+      loadStats();
+      loadOrders();
+    };
+
+    socket.on('payment.success', onPaymentSuccess);
+    socket.on('payment.overpaid_confirmation', onOverpaidConfirmation);
+    socket.on('payment.underpaid_warning', onUnderpaidWarning);
+    socket.on('payment.refunded', onRefunded);
+
+    return () => {
+      socket.off('payment.success', onPaymentSuccess);
+      socket.off('payment.overpaid_confirmation', onOverpaidConfirmation);
+      socket.off('payment.underpaid_warning', onUnderpaidWarning);
+      socket.off('payment.refunded', onRefunded);
+    };
+  }, [socket, loadStats, loadOrders, t]);
+
+  // Load live PayOS QR data
+  const loadPayosQr = useCallback(async (amount = selectedSampleAmount, packageType = selectedSamplePackage) => {
+    setPayosLoading(true);
+    try {
+      const res = await paymentApi.getPayosQr({ amount, packageType });
+      if (res.data?.success && res.data?.data) {
+        setPayosData(res.data.data);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_PAGE] Lỗi khi tải mã QR PayOS:', err);
+    } finally {
+      setPayosLoading(false);
+    }
+  }, [selectedSampleAmount, selectedSamplePackage]);
+
+  useEffect(() => {
+    if (showSampleModal) {
+      loadPayosQr(selectedSampleAmount, selectedSamplePackage);
+    }
+  }, [showSampleModal, selectedSampleAmount, selectedSamplePackage, loadPayosQr]);
 
   useEffect(() => {
     loadStats();
@@ -202,6 +311,114 @@ const PaymentHistoryPage = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Sandbox Webhook Simulator
+  const handleSimulateWebhook = async (simulatedAmount) => {
+    if (!payosData?.orderCode) return;
+    setActionLoading(true);
+    try {
+      const res = await paymentApi.simulateWebhook({
+        orderCode: payosData.orderCode,
+        amount: simulatedAmount,
+        recognitionCode: payosData.recognitionCode,
+      });
+      if (res.data?.success) {
+        const data = res.data.data;
+        if (data.status === 'WAITING_CONFIRMATION') {
+          setSandboxConfirmation({
+            orderCode: data.orderCode,
+            amountReceived: data.amountReceived,
+            expectedAmount: data.expectedAmount,
+            difference: data.amountReceived - data.expectedAmount,
+          });
+        } else if (data.status === 'REFUND_PENDING') {
+          setSandboxUnderpaid({
+            orderCode: data.orderCode,
+            amountReceived: data.amountReceived,
+            expectedAmount: data.expectedAmount,
+          });
+        } else {
+          setFeedbackMsg(t('payments.sandbox.successTitle'));
+          setTimeout(() => setFeedbackMsg(null), 3500);
+        }
+        await Promise.all([loadStats(), loadOrders()]);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_PAGE] Lỗi khi giả lập Webhook:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Customer Decision: Confirm or Decline Upgrade
+  const handleConfirmUpgrade = async (orderCode, accept) => {
+    setActionLoading(true);
+    try {
+      const res = await paymentApi.confirmUpgrade({ orderCode, accept });
+      if (res.data?.success) {
+        setSandboxConfirmation(null);
+        setFeedbackMsg(
+          accept
+            ? 'Đã xác nhận kích hoạt gói Premium thành công!'
+            : 'Đã từ chối và chuyển đơn hàng sang trạng thái cần hoàn tiền (REFUND_PENDING).'
+        );
+        if (selectedOrder && (selectedOrder.order_code === orderCode || selectedOrder.order_code === Number(orderCode))) {
+          handleViewDetail(selectedOrder.id);
+        }
+        await Promise.all([loadStats(), loadOrders()]);
+        setTimeout(() => setFeedbackMsg(null), 3500);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_PAGE] Lỗi khi xác nhận nâng cấp:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Open Refund Modal
+  const handleOpenRefundModal = (order) => {
+    setRefundTargetOrder(order);
+    setRefundForm({
+      refunded_amount: order.amount_received || order.amount || '',
+      refund_reason: 'Chuyển thiếu tiền, hoàn trả khách hàng',
+      refund_proof: '',
+    });
+  };
+
+  // Submit Refund Form
+  const handleSubmitRefund = async (e) => {
+    e.preventDefault();
+    if (!refundTargetOrder) return;
+    setRefundSubmitting(true);
+    try {
+      const res = await paymentApi.processRefund(refundTargetOrder.id, {
+        refunded_amount: Number(refundForm.refunded_amount),
+        refund_reason: refundForm.refund_reason,
+        refund_proof: refundForm.refund_proof,
+        refunded_at: new Date().toISOString(),
+      });
+      if (res.data?.success) {
+        setRefundTargetOrder(null);
+        setFeedbackMsg(t('payments.refundModal.successMsg'));
+        if (selectedOrder && selectedOrder.id === refundTargetOrder.id) {
+          handleViewDetail(selectedOrder.id);
+        }
+        await Promise.all([loadStats(), loadOrders()]);
+        setTimeout(() => setFeedbackMsg(null), 3500);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_PAGE] Lỗi khi xử lý hoàn tiền:', err);
+    } finally {
+      setRefundSubmitting(false);
+    }
+  };
+
+  const handleCopyRecognitionCode = (code) => {
+    if (!code) return;
+    navigator.clipboard?.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   return (
@@ -352,6 +569,9 @@ const PaymentHistoryPage = () => {
               <option value="ALL">{t('payments.filter.statusAll')}</option>
               <option value="PAID">{t('payments.filter.statusPaid')}</option>
               <option value="PENDING">{t('payments.filter.statusPending')}</option>
+              <option value="WAITING_CONFIRMATION">{t('payments.filter.statusWaitingConfirmation')}</option>
+              <option value="REFUND_PENDING">{t('payments.filter.statusRefundPending')}</option>
+              <option value="REFUNDED">{t('payments.filter.statusRefunded')}</option>
               <option value="CANCELLED">{t('payments.filter.statusCancelled')}</option>
               <option value="EXPIRED">{t('payments.filter.statusExpired')}</option>
             </select>
@@ -464,7 +684,14 @@ const PaymentHistoryPage = () => {
                       className="hover:bg-surface-container-lowest/60 transition-colors"
                     >
                       <td className="py-3.5 px-4 font-mono font-bold text-on-surface">
-                        #{order.order_code}
+                        <div className="flex flex-col">
+                          <span>#{order.order_code}</span>
+                          {order.recognition_code && (
+                            <span className="text-[11px] font-mono text-primary font-normal">
+                              Mã: {order.recognition_code}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-on-surface flex items-center gap-1.5">
@@ -486,22 +713,19 @@ const PaymentHistoryPage = () => {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-emerald-600 font-mono">
-                        {formatVnd(order.amount)}
+                        <div>{formatVnd(order.amount)}</div>
+                        {order.amount_received && order.amount_received !== order.amount && (
+                          <div className="text-[11px] text-on-surface-variant">
+                            Thực nhận: {formatVnd(order.amount_received)}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
                         >
                           <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-                          {order.status === 'PAID'
-                            ? t('payments.filter.statusPaid')
-                            : order.status === 'PENDING'
-                            ? t('payments.filter.statusPending')
-                            : order.status === 'CANCELLED'
-                            ? t('payments.filter.statusCancelled')
-                            : order.status === 'EXPIRED'
-                            ? t('payments.filter.statusExpired')
-                            : order.status}
+                          {getStatusLabel(order.status, t)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-on-surface-variant font-mono text-xs whitespace-nowrap">
@@ -511,14 +735,26 @@ const PaymentHistoryPage = () => {
                         {formatDate(order.paid_at)}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => handleViewDetail(order.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-primary hover:text-white bg-primary/10 hover:bg-primary rounded-lg transition-colors cursor-pointer"
-                          title={t('payments.table.viewDetail')}
-                        >
-                          <span className="material-symbols-outlined text-sm">visibility</span>
-                          {t('common.details')}
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleViewDetail(order.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-primary hover:text-white bg-primary/10 hover:bg-primary rounded-lg transition-colors cursor-pointer"
+                            title={t('payments.table.viewDetail')}
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            {t('common.details')}
+                          </button>
+                          {order.status === 'REFUND_PENDING' && (
+                            <button
+                              onClick={() => handleOpenRefundModal(order)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:text-white bg-orange-100 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer border border-orange-300"
+                              title={t('payments.table.refundBtn')}
+                            >
+                              <span className="material-symbols-outlined text-sm">currency_exchange</span>
+                              {t('payments.table.refundBtn')}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -592,6 +828,14 @@ const PaymentHistoryPage = () => {
                       <p className="font-mono font-bold text-emerald-600">{formatVnd(selectedOrder.amount)}</p>
                     </div>
                     <div>
+                      <span className="text-on-surface-variant text-xs">{t('payments.detailModal.amountReceived')}:</span>
+                      <p className="font-mono font-bold text-on-surface">{formatVnd(selectedOrder.amount_received || selectedOrder.amount)}</p>
+                    </div>
+                    <div>
+                      <span className="text-on-surface-variant text-xs">{t('payments.detailModal.recognitionCode')}:</span>
+                      <p className="font-mono font-bold text-primary">{selectedOrder.recognition_code || '—'}</p>
+                    </div>
+                    <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.packageType')}:</span>
                       <p className="font-semibold text-on-surface">{selectedOrder.package_type}</p>
                     </div>
@@ -603,6 +847,12 @@ const PaymentHistoryPage = () => {
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.paidAt')}:</span>
                       <p className="font-mono text-xs text-on-surface">{formatDate(selectedOrder.paid_at)}</p>
                     </div>
+                    {selectedOrder.transfer_content && (
+                      <div className="col-span-2">
+                        <span className="text-on-surface-variant text-xs">{t('payments.detailModal.transferContent')}:</span>
+                        <p className="font-mono text-xs text-on-surface bg-surface-container p-1.5 rounded">{selectedOrder.transfer_content}</p>
+                      </div>
+                    )}
                     {selectedOrder.payment_link_id && (
                       <div className="col-span-2">
                         <span className="text-on-surface-variant text-xs">{t('payments.detailModal.payosLinkId')}:</span>
@@ -611,6 +861,64 @@ const PaymentHistoryPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Refund Information (if applicable) */}
+                {(selectedOrder.status === 'REFUND_PENDING' || selectedOrder.status === 'REFUNDED' || selectedOrder.refunded_at) && (
+                  <div>
+                    <h4 className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm">currency_exchange</span>
+                      Thông tin hoàn tiền
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm bg-orange-50/50 dark:bg-orange-950/20 p-4 rounded-xl border border-orange-200 dark:border-orange-900/40">
+                      <div>
+                        <span className="text-on-surface-variant text-xs">{t('payments.detailModal.refundedAmount')}:</span>
+                        <p className="font-mono font-bold text-orange-700">{formatVnd(selectedOrder.refunded_amount || selectedOrder.amount_received)}</p>
+                      </div>
+                      <div>
+                        <span className="text-on-surface-variant text-xs">{t('payments.detailModal.refundedAt')}:</span>
+                        <p className="font-mono text-xs text-on-surface">{formatDate(selectedOrder.refunded_at)}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-on-surface-variant text-xs">{t('payments.detailModal.refundReason')}:</span>
+                        <p className="text-xs text-on-surface">{selectedOrder.refund_reason || '—'}</p>
+                      </div>
+                      {selectedOrder.refund_proof && (
+                        <div className="col-span-2">
+                          <span className="text-on-surface-variant text-xs">{t('payments.detailModal.refundProof')}:</span>
+                          <p className="font-mono text-xs text-primary break-all">{selectedOrder.refund_proof}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions for WAITING_CONFIRMATION */}
+                {selectedOrder.status === 'WAITING_CONFIRMATION' && (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl space-y-3">
+                    <div className="flex items-start gap-2 text-purple-900">
+                      <span className="material-symbols-outlined text-purple-700">warning</span>
+                      <div className="text-xs">
+                        <span className="font-bold">Đơn hàng chuyển thừa tiền:</span> Khách hàng đã chuyển {formatVnd(selectedOrder.amount_received)} thay vì {formatVnd(selectedOrder.amount)}.
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleConfirmUpgrade(selectedOrder.order_code, true)}
+                        disabled={actionLoading}
+                        className="flex-1 py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        {t('payments.sandbox.confirmAcceptBtn')}
+                      </button>
+                      <button
+                        onClick={() => handleConfirmUpgrade(selectedOrder.order_code, false)}
+                        disabled={actionLoading}
+                        className="flex-1 py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        {t('payments.sandbox.confirmRejectBtn')}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Section 2: Customer Information */}
                 <div>
@@ -694,7 +1002,18 @@ const PaymentHistoryPage = () => {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="flex justify-end pt-4 border-t border-outline-variant">
+                <div className="flex items-center justify-between pt-4 border-t border-outline-variant">
+                  {selectedOrder.status === 'REFUND_PENDING' ? (
+                    <button
+                      onClick={() => {
+                        handleOpenRefundModal(selectedOrder);
+                      }}
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-base">currency_exchange</span>
+                      {t('payments.table.refundBtn')}
+                    </button>
+                  ) : <div />}
                   <button
                     onClick={() => setSelectedOrder(null)}
                     className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg font-semibold text-sm transition-colors cursor-pointer"
@@ -708,7 +1027,113 @@ const PaymentHistoryPage = () => {
         </div>
       )}
 
-      {/* Sample Test QR Code Modal */}
+      {/* Refund Processing Modal */}
+      {refundTargetOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-surface-container rounded-2xl border border-outline-variant shadow-2xl max-w-lg w-full">
+            <div className="p-6 border-b border-outline-variant flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-2xl">currency_exchange</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-on-surface">
+                    {t('payments.refundModal.title')}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    {t('payments.refundModal.subtitle')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRefundTargetOrder(null)}
+                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-container-highest cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitRefund} className="p-6 space-y-4">
+              <div className="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">{t('payments.refundModal.orderCode')}:</span>
+                  <span className="font-mono font-bold text-on-surface">#{refundTargetOrder.order_code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">{t('payments.refundModal.customer')}:</span>
+                  <span className="font-semibold text-on-surface">{refundTargetOrder.account?.username}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">{t('payments.refundModal.expectedAmount')}:</span>
+                  <span className="font-mono font-semibold">{formatVnd(refundTargetOrder.amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">{t('payments.refundModal.receivedAmount')}:</span>
+                  <span className="font-mono font-bold text-orange-600">{formatVnd(refundTargetOrder.amount_received || refundTargetOrder.amount)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase mb-1">
+                  {t('payments.refundModal.refundAmountLabel')}
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={refundForm.refunded_amount}
+                  onChange={(e) => setRefundForm({ ...refundForm, refunded_amount: e.target.value })}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase mb-1">
+                  {t('payments.refundModal.refundReasonLabel')}
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={refundForm.refund_reason}
+                  onChange={(e) => setRefundForm({ ...refundForm, refund_reason: e.target.value })}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface uppercase mb-1">
+                  {t('payments.refundModal.proofLabel')}
+                </label>
+                <input
+                  type="text"
+                  placeholder={t('payments.refundModal.proofPlaceholder')}
+                  value={refundForm.refund_proof}
+                  onChange={(e) => setRefundForm({ ...refundForm, refund_proof: e.target.value })}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-outline-variant">
+                <button
+                  type="button"
+                  onClick={() => setRefundTargetOrder(null)}
+                  className="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg font-semibold text-xs cursor-pointer"
+                >
+                  {t('payments.refundModal.cancelBtn')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={refundSubmitting}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {refundSubmitting ? t('common.loading') : t('payments.refundModal.submitBtn')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sample Test QR Code Modal (Client-App Sandbox Roleplay) */}
       {showSampleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fadeIn">
           <div className="bg-surface-container rounded-2xl border border-outline-variant shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto">
@@ -720,10 +1145,10 @@ const PaymentHistoryPage = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-on-surface">
-                    {t('payments.sampleModal.title')}
+                    {t('payments.sandbox.title')}
                   </h3>
                   <p className="text-xs text-on-surface-variant">
-                    {t('payments.sampleModal.subtitle')}
+                    {t('payments.sandbox.subtitle')}
                   </p>
                 </div>
               </div>
@@ -753,6 +1178,54 @@ const PaymentHistoryPage = () => {
                   </p>
                 </div>
               </div>
+
+              {/* Overpaid Confirmation Modal Prompt in Sandbox */}
+              {sandboxConfirmation && (
+                <div className="p-4 bg-purple-100 dark:bg-purple-950/40 border border-purple-300 dark:border-purple-800 rounded-xl space-y-3 animate-fadeIn">
+                  <div className="flex items-start gap-2 text-purple-900 dark:text-purple-200">
+                    <span className="material-symbols-outlined text-purple-700 text-xl">help</span>
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold">{t('payments.sandbox.overpaidPrompt')}</p>
+                      <p className="text-[11px] opacity-90">
+                        Cần TT: {formatVnd(sandboxConfirmation.expectedAmount)} — Thực nhận:{' '}
+                        {formatVnd(sandboxConfirmation.amountReceived)} (Thừa:{' '}
+                        {formatVnd(sandboxConfirmation.difference)})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleConfirmUpgrade(sandboxConfirmation.orderCode, true)}
+                      disabled={actionLoading}
+                      className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    >
+                      {t('payments.sandbox.confirmAcceptBtn')}
+                    </button>
+                    <button
+                      onClick={() => handleConfirmUpgrade(sandboxConfirmation.orderCode, false)}
+                      disabled={actionLoading}
+                      className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                    >
+                      {t('payments.sandbox.confirmRejectBtn')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Underpaid Alert in Sandbox */}
+              {sandboxUnderpaid && (
+                <div className="p-4 bg-orange-100 dark:bg-orange-950/40 border border-orange-300 dark:border-orange-800 rounded-xl flex items-start gap-2 text-orange-900 dark:text-orange-200 animate-fadeIn">
+                  <span className="material-symbols-outlined text-orange-700 text-xl">warning</span>
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold">{t('payments.sandbox.underpaidAlert')}</p>
+                    <p className="text-[11px] opacity-90">
+                      Cần TT: {formatVnd(sandboxUnderpaid.expectedAmount)} — Thực nhận:{' '}
+                      {formatVnd(sandboxUnderpaid.amountReceived)} (Thiếu:{' '}
+                      {formatVnd(sandboxUnderpaid.expectedAmount - sandboxUnderpaid.amountReceived)})
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Amount Quick Selector */}
               <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant space-y-2">
@@ -807,12 +1280,18 @@ const PaymentHistoryPage = () => {
 
               {/* 2 Columns: Left = QR Code with live image, Right = Transfer Info & Test Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                {/* Left Column: QR Code */}
+                {/* Left Column: QR Code & Countdown */}
                 <div className="flex flex-col items-center bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant text-center relative group min-h-[340px] justify-center">
                   {/* Badge on QR */}
                   <div className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shadow tracking-wider flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px]">verified</span>
                     {t('payments.sampleModal.payosTag')}
+                  </div>
+
+                  {/* 10-Minute Countdown Timer */}
+                  <div className="absolute top-3 right-3 bg-slate-800 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px] text-amber-400">timer</span>
+                    <span>{formatCountdown(countdownSeconds)}</span>
                   </div>
 
                   {payosLoading ? (
@@ -832,6 +1311,29 @@ const PaymentHistoryPage = () => {
                           loading="lazy"
                         />
                       </div>
+
+                      {/* 6-Character Recognition Code */}
+                      {payosData?.recognitionCode && (
+                        <div className="mt-2 w-full bg-surface-container p-2 rounded-lg border border-outline-variant flex items-center justify-between text-xs">
+                          <span className="text-on-surface-variant">{t('payments.sandbox.recognitionCodeLabel')}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono font-bold text-primary text-sm tracking-wider">
+                              {payosData.recognitionCode}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyRecognitionCode(payosData.recognitionCode)}
+                              className="text-on-surface-variant hover:text-primary p-1 cursor-pointer"
+                              title="Sao chép"
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                {copiedCode ? 'check' : 'content_copy'}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-2 font-medium">
                         <span className="material-symbols-outlined text-sm text-primary">smartphone</span>
                         <span>{t('payments.sampleModal.scanNotice')}</span>
@@ -855,7 +1357,7 @@ const PaymentHistoryPage = () => {
                   )}
                 </div>
 
-                {/* Right Column: Transfer Info & Actions */}
+                {/* Right Column: Transfer Info & Simulation Actions */}
                 <div className="space-y-4">
                   <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-2.5 text-xs">
                     <h4 className="font-bold text-on-surface uppercase tracking-wider text-[11px] flex items-center justify-between pb-2 border-b border-outline-variant/60">
@@ -909,38 +1411,56 @@ const PaymentHistoryPage = () => {
                     </div>
                   </div>
 
-                  {/* Test Actions */}
+                  {/* Roleplay Simulation Actions (Po Spec) */}
                   <div className="space-y-2 pt-1">
-                    <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-                      {t('payments.sampleModal.testActions')}:
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">terminal</span>
+                      {t('payments.sandbox.subtitle')}:
                     </p>
-                    
-                    <button
-                      onClick={() => handleCreateSampleOrder(false)}
-                      disabled={actionLoading}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-base">add_circle</span>
-                      <span>{t('payments.sampleModal.createPendingBtn')}</span>
-                    </button>
 
                     <button
-                      onClick={() => handleCreateSampleOrder(true)}
-                      disabled={actionLoading}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-50"
+                      onClick={() => handleSimulateWebhook(payosData?.amount || 49000)}
+                      disabled={actionLoading || !payosData?.orderCode}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-base">task_alt</span>
-                      <span>{t('payments.sampleModal.createPaidBtn')}</span>
+                      <span>{t('payments.sandbox.simulateExactBtn')}</span>
                     </button>
 
                     <button
-                      onClick={handleCleanSampleOrders}
-                      disabled={actionLoading}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-on-surface-variant hover:text-rose-600 bg-surface-container-high hover:bg-rose-50 border border-outline-variant rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer disabled:opacity-50"
+                      onClick={() => handleSimulateWebhook(70000)}
+                      disabled={actionLoading || !payosData?.orderCode}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
                     >
-                      <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                      <span>{t('payments.sampleModal.cleanBtn')}</span>
+                      <span className="material-symbols-outlined text-base">price_change</span>
+                      <span>{t('payments.sandbox.simulateOverpaidBtn')}</span>
                     </button>
+
+                    <button
+                      onClick={() => handleSimulateWebhook(20000)}
+                      disabled={actionLoading || !payosData?.orderCode}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-base">report_problem</span>
+                      <span>{t('payments.sandbox.simulateUnderpaidBtn')}</span>
+                    </button>
+
+                    <div className="pt-2 border-t border-outline-variant/50 flex gap-2">
+                      <button
+                        onClick={() => handleCreateSampleOrder(false)}
+                        disabled={actionLoading}
+                        className="flex-1 py-1.5 px-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg text-[11px] font-semibold border border-outline-variant cursor-pointer disabled:opacity-50"
+                      >
+                        + Đơn PENDING
+                      </button>
+                      <button
+                        onClick={handleCleanSampleOrders}
+                        disabled={actionLoading}
+                        className="py-1.5 px-2 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold border border-rose-200 cursor-pointer disabled:opacity-50"
+                      >
+                        {t('payments.sampleModal.cleanBtn')}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

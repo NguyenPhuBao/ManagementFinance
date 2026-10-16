@@ -19,4 +19,7 @@ router.get('/history', authenticate, paymentController.getOrderHistory);
 // 5. Endpoint tiếp nhận Webhook từ cổng thanh toán PayOS (Công khai, bảo vệ bằng HMAC-SHA256)
 router.post('/webhook', paymentController.handleWebhook);
 
+// 6. Xác nhận kích hoạt gói khi chuyển thừa tiền (hoặc từ chối để hoàn tiền)
+router.post('/confirm-upgrade', authenticate, paymentController.confirmUpgrade);
+
 module.exports = router;

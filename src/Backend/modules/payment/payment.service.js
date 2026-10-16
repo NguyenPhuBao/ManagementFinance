@@ -13,23 +13,31 @@ const payosClient = require('./payos.client');
 async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' } = {}) {
   const orderId = crypto.randomUUID();
   const orderCode = payosClient.generateOrderCode();
+  const recognitionCode = payosClient.generateRecognitionCode();
   const amount = config.payment.premiumPriceVnd || 49000;
-  const expiredAt = new Date(Date.now() + 30 * 60 * 1000); // Link hết hạn sau 30 phút
+  const expiredAt = new Date(Date.now() + 10 * 60 * 1000); // Link hết hạn sau 10 phút
 
-  // Gọi PayOS tạo liên kết thanh toán
+  // Gọi PayOS tạo liên kết thanh toán với description là mã nhận diện 6 ký tự
   const payosResponse = await payosClient.createPaymentLink({
     orderCode,
     amount,
-    description: `PFM Premium 1 Thang`.slice(0, 25),
+    description: recognitionCode,
+    expiredAt: Math.floor(expiredAt.getTime() / 1000),
   });
 
-  // Lưu bản ghi đơn hàng trạng thái PENDING
+  const transferContent = payosResponse.description || `CS... ${recognitionCode}`;
+
+  // Lưu bản ghi đơn hàng trạng thái PENDING với mã nhận diện 6 ký tự
   const order = await paymentRepository.createOrder({
     id: orderId,
     idaccount,
     orderCode,
     packageType,
     amount,
+    amountReceived: 0,
+    fee: 0,
+    recognitionCode,
+    transferContent,
     currency: 'VND',
     status: 'PENDING',
     checkoutUrl: payosResponse.checkoutUrl,
@@ -37,7 +45,7 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
     expiredAt,
   });
 
-  logger.info('[PAYMENT] Đã tạo đơn hàng thành công', { orderId, orderCode, idaccount, amount });
+  logger.info('[PAYMENT] Đã tạo đơn hàng thành công', { orderId, orderCode, recognitionCode, idaccount, amount });
 
   return {
     orderId: order.id,
@@ -45,12 +53,14 @@ async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' }
     packageType: order.package_type || packageType,
     amount: order.amount ?? amount,
     currency: order.currency || 'VND',
+    recognitionCode,
+    transferContent,
     checkoutUrl: order.checkout_url || payosResponse.checkoutUrl,
     qrCode: payosResponse.qrCode || null,
     bin: payosResponse.bin || null,
     accountNumber: payosResponse.accountNumber || null,
     accountName: payosResponse.accountName || null,
-    description: payosResponse.description || null,
+    description: transferContent,
     expiredAt: order.expired_at || expiredAt,
   };
 }
@@ -77,14 +87,21 @@ async function handlePayOSWebhook(webhookPayload) {
     throw error;
   }
 
-  const { orderCode, amount, reference, transactionDateTime } = verifiedData || {};
+  const { orderCode, amount, reference, transactionDateTime, description } = verifiedData || {};
   if (!orderCode) {
     logger.info('[PAYMENT_WEBHOOK] Webhook không chứa orderCode (Test ping có chữ ký từ PayOS)');
     return { success: true, message: 'Webhook ping verified successfully' };
   }
 
-  // 2. Tra cứu đơn hàng theo orderCode (tự động khởi tạo nếu đơn chưa có sẵn trong CSDL để không thất thoát giao dịch)
+  // 2. Tra cứu đơn hàng theo orderCode hoặc theo mã nhận diện 6 ký tự
   let order = await paymentRepository.findOrderByCode(orderCode);
+  if (!order && description) {
+    const match = description.match(/([A-Z0-9]{6})/);
+    if (match) {
+      order = await paymentRepository.findOrderByRecognitionCode(match[1]);
+    }
+  }
+
   if (!order) {
     logger.warn('[PAYMENT_WEBHOOK] Đơn hàng chưa tồn tại trong CSDL cho orderCode, tự động khởi tạo đơn đối soát từ Webhook hợp lệ', { orderCode });
     order = await paymentRepository.findOrCreateOrderByCode(orderCode, amount);
@@ -99,18 +116,120 @@ async function handlePayOSWebhook(webhookPayload) {
     return { success: true, message: 'Đơn hàng đã được xử lý thành công trước đó' };
   }
 
-  // 4. So khớp số tiền thanh toán thực tế với đơn hàng
-  if (Number(amount) < Number(order.amount)) {
-    logger.error('[PAYMENT_WEBHOOK] Số tiền thanh toán không khớp với đơn hàng', { 
-      orderCode, 
-      receivedAmount: amount, 
-      expectedAmount: order.amount 
+  const now = new Date();
+  const txTime = transactionDateTime ? new Date(transactionDateTime) : now;
+  const receivedAmount = Number(amount);
+  const expectedAmount = Number(order.amount);
+
+  // Băm SHA-256 payload webhook để lưu vết đối soát (Data_Security.md)
+  const rawWebhookHash = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(webhookPayload))
+    .digest('hex');
+
+  const txData = {
+    id: crypto.randomUUID(),
+    orderId: order.id,
+    idaccount: order.idaccount,
+    payosTransactionId: reference || String(orderCode),
+    amount: receivedAmount,
+    bankCode: verifiedData.counterAccountBankId || null,
+    transactionTime: txTime,
+    signatureVerified: true,
+    rawWebhookHash,
+  };
+
+  // -------------------------------------------------------------
+  // PHÂN LUỒNG 6.1 VS 6.2 THEO ĐẶC TẢ TÀI CHÍNH
+  // -------------------------------------------------------------
+
+  // 6.2a: Chuyển THỪA TIỀN (receivedAmount > expectedAmount)
+  if (receivedAmount > expectedAmount) {
+    await paymentRepository.recordTransaction(txData);
+    await paymentRepository.updateOrderPaymentStatus({
+      orderId: order.id,
+      status: 'WAITING_CONFIRMATION',
+      amountReceived: receivedAmount,
+      transferContent: description || order.transfer_content,
     });
-    return { success: false, message: 'Số tiền thanh toán không khớp' };
+
+    try {
+      const { emitToAccount, getIO } = require('../../core/socket');
+      emitToAccount(order.idaccount, 'payment.overpaid_confirmation', {
+        orderId: order.id,
+        orderCode: Number(order.order_code || orderCode),
+        expectedAmount,
+        amountReceived: receivedAmount,
+        excessAmount: receivedAmount - expectedAmount,
+        message: `Bạn đã chuyển thừa ${receivedAmount - expectedAmount} ₫. Vui lòng xác nhận có muốn dùng số tiền này để kích hoạt gói Premium 30 ngày hay không.`,
+      });
+
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.amount_mismatch', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          expectedAmount,
+          amountReceived: receivedAmount,
+          diff: receivedAmount - expectedAmount,
+          type: 'OVERPAID',
+          status: 'WAITING_CONFIRMATION',
+        });
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      action: 'WAITING_CONFIRMATION',
+      message: 'Giao dịch chuyển thừa tiền, đang chờ người dùng xác nhận kích hoạt',
+    };
   }
 
-  // 5. Tính toán ngày hết hạn gói Premium (Hỗ trợ Stacking cộng dồn 30 ngày)
-  const now = new Date();
+  // 6.2b: Chuyển THIẾU TIỀN (receivedAmount < expectedAmount)
+  if (receivedAmount < expectedAmount) {
+    await paymentRepository.recordTransaction(txData);
+    await paymentRepository.updateOrderPaymentStatus({
+      orderId: order.id,
+      status: 'REFUND_PENDING',
+      amountReceived: receivedAmount,
+      refundReason: 'Số tiền thanh toán không hợp lệ',
+      transferContent: description || order.transfer_content,
+    });
+
+    try {
+      const { emitToAccount, getIO } = require('../../core/socket');
+      emitToAccount(order.idaccount, 'payment.underpaid_warning', {
+        orderId: order.id,
+        orderCode: Number(order.order_code || orderCode),
+        expectedAmount,
+        amountReceived: receivedAmount,
+        shortage: expectedAmount - receivedAmount,
+        fee: Number(order.fee || 0),
+        message: `Bạn đã chuyển thiếu ${expectedAmount - receivedAmount} ₫. Đơn hàng không đủ điều kiện kích hoạt. Số tiền sẽ được hoàn trả lại sau khi trừ phí giao dịch.`,
+      });
+
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.amount_mismatch', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          expectedAmount,
+          amountReceived: receivedAmount,
+          diff: receivedAmount - expectedAmount,
+          type: 'UNDERPAID',
+          status: 'REFUND_PENDING',
+        });
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      action: 'REFUND_PENDING',
+      message: 'Giao dịch chuyển thiếu tiền, đã chuyển trạng thái chờ hoàn trả',
+    };
+  }
+
+  // 6.1: Số tiền KHỚP HOÀN TOÀN (receivedAmount == expectedAmount)
   const DURATION_MS = (config.payment.packageDurationDays || 30) * 24 * 60 * 60 * 1000;
 
   let currentExpiry = null;
@@ -125,41 +244,27 @@ async function handlePayOSWebhook(webhookPayload) {
     ? new Date(currentExpiry.getTime() + DURATION_MS) 
     : new Date(now.getTime() + DURATION_MS);
 
-  // Băm SHA-256 payload webhook để lưu vết đối soát (Data_Security.md)
-  const rawWebhookHash = crypto
-    .createHash('sha256')
-    .update(JSON.stringify(webhookPayload))
-    .digest('hex');
-
-  // 6. Thực thi kích hoạt nâng cấp nguyên tử qua Prisma $transaction
+  // Kích hoạt nâng cấp nguyên tử qua Prisma $transaction
   const activationResult = await paymentRepository.activatePremiumSubscription({
     idaccount: order.idaccount,
     orderId: order.id,
-    paidAt: transactionDateTime ? new Date(transactionDateTime) : now,
+    paidAt: txTime,
     newExpiresAt,
-    transactionData: {
-      id: crypto.randomUUID(),
-      payosTransactionId: reference || String(orderCode),
-      amount,
-      bankCode: verifiedData.counterAccountBankId || null,
-      transactionTime: transactionDateTime ? new Date(transactionDateTime) : now,
-      signatureVerified: true,
-      rawWebhookHash,
-    },
+    transactionData: txData,
   });
 
-  // 7. Xóa cache xác thực tài khoản để cập nhật tức thì quyền hạn
+  // Xóa cache xác thực tài khoản để cập nhật tức thì quyền hạn
   try {
     const { invalidateAccountCache } = require('../../middleware/auth');
     invalidateAccountCache(order.idaccount);
   } catch (_) {}
 
-  // 8. Bắn sự kiện thời gian thực qua EventBus & Socket.IO
+  // Bắn sự kiện thời gian thực qua EventBus & Socket.IO
   try {
     const eventBus = require('../../core/event-bus');
     eventBus.publish('payment.success', {
       idaccount: order.idaccount,
-      orderCode: order.order_code,
+      orderCode: Number(order.order_code || orderCode),
       amount: order.amount,
       premiumExpiresAt: newExpiresAt,
       title: 'Nâng cấp Premium thành công',
@@ -168,24 +273,228 @@ async function handlePayOSWebhook(webhookPayload) {
   } catch (_) {}
 
   try {
-    const { emitToAccount } = require('../../core/socket');
+    const { emitToAccount, getIO } = require('../../core/socket');
     emitToAccount(order.idaccount, 'account.upgraded', {
       type: 'Premium',
       premiumExpiresAt: newExpiresAt,
     });
+    const io = getIO();
+    if (io) {
+      io.to('admin_room').emit('payment.success', {
+        orderId: order.id,
+        orderCode: Number(order.order_code || orderCode),
+        amount: order.amount,
+        status: 'PAID',
+        paidAt: txTime,
+      });
+    }
   } catch (_) {}
 
   logger.info('[PAYMENT_WEBHOOK] Kích hoạt Premium thành công cho tài khoản', { 
     idaccount: order.idaccount, 
-    orderCode, 
+    orderCode: Number(order.order_code || orderCode), 
     newExpiresAt 
   });
 
   return {
     success: true,
+    action: 'PAID',
     message: 'Kích hoạt gói Premium thành công',
     data: activationResult,
   };
+}
+
+/**
+ * Xác nhận kích hoạt gói Premium khi khách chuyển thừa tiền hoặc từ chối hoàn tiền
+ * @param {number} idaccount
+ * @param {object} param1 { orderCode, accept }
+ */
+async function confirmUpgrade(idaccount, { orderCode, accept = true }) {
+  const order = await paymentRepository.findOrderByCode(orderCode);
+  if (!order || (idaccount && order.idaccount !== idaccount)) {
+    const error = new Error('Đơn hàng không tồn tại hoặc không thuộc quyền sở hữu của bạn');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (order.status !== 'WAITING_CONFIRMATION') {
+    const error = new Error(`Đơn hàng đang ở trạng thái ${order.status}, không thể thực hiện xác nhận`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (accept) {
+    const now = new Date();
+    const DURATION_MS = (config.payment.packageDurationDays || 30) * 24 * 60 * 60 * 1000;
+    let currentExpiry = null;
+    if (order.account && order.account.type === 'Premium' && order.account.premium_expires_at) {
+      const expDate = new Date(order.account.premium_expires_at);
+      if (expDate > now) {
+        currentExpiry = expDate;
+      }
+    }
+    const newExpiresAt = currentExpiry 
+      ? new Date(currentExpiry.getTime() + DURATION_MS) 
+      : new Date(now.getTime() + DURATION_MS);
+
+    await paymentRepository.activatePremiumSubscription({
+      idaccount: order.idaccount,
+      orderId: order.id,
+      paidAt: now,
+      newExpiresAt,
+      transactionData: {
+        id: crypto.randomUUID(),
+        payosTransactionId: `OVERPAID-CONFIRMED-${orderCode}`,
+        amount: Number(order.amount_received || order.amount),
+        bankCode: 'VIETQR',
+        transactionTime: now,
+        signatureVerified: true,
+        rawWebhookHash: 'CONFIRMED_BY_USER',
+      },
+    });
+
+    try {
+      const { invalidateAccountCache } = require('../../middleware/auth');
+      invalidateAccountCache(order.idaccount);
+    } catch (_) {}
+
+    try {
+      const { emitToAccount, getIO } = require('../../core/socket');
+      emitToAccount(order.idaccount, 'account.upgraded', {
+        type: 'Premium',
+        premiumExpiresAt: newExpiresAt,
+      });
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.success', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          amount: order.amount,
+          status: 'PAID',
+          paidAt: now,
+        });
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      status: 'PAID',
+      message: 'Đã xác nhận và kích hoạt gói Premium thành công',
+      newExpiresAt,
+    };
+  } else {
+    await paymentRepository.updateOrderPaymentStatus({
+      orderId: order.id,
+      status: 'REFUND_PENDING',
+      refundReason: 'Do người dùng từ chối nâng cấp gói',
+    });
+
+    try {
+      const { getIO } = require('../../core/socket');
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.refund_pending', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          amount: order.amount_received,
+          reason: 'Do người dùng từ chối nâng cấp gói',
+        });
+      }
+    } catch (_) {}
+
+    return {
+      success: true,
+      status: 'REFUND_PENDING',
+      message: 'Đã từ chối kích hoạt, đơn hàng chuyển sang hàng đợi hoàn tiền',
+    };
+  }
+}
+
+/**
+ * Xử lý hoàn trả tiền cho khách hàng (Admin)
+ * @param {string} orderId
+ * @param {object} param1 { refundedAmount, refundProof, refundReason }
+ */
+async function processOrderRefund(orderId, { refundedAmount, refundProof, refundReason, refundedAt }) {
+  const refundDate = refundedAt ? new Date(refundedAt) : new Date();
+  const result = await paymentRepository.processRefund({
+    orderId,
+    refundedAmount: Number(refundedAmount),
+    refundProof,
+    refundReason,
+    refundedAt: refundDate,
+  });
+
+  try {
+    const { emitToAccount, getIO } = require('../../core/socket');
+    if (result.idaccount) {
+      emitToAccount(result.idaccount, 'payment.refunded', {
+        orderId,
+        refundedAmount: Number(refundedAmount),
+        refundedAt: result.refunded_at || new Date(),
+        refundReason,
+        refundProof,
+      });
+    }
+    const io = getIO();
+    if (io) {
+      io.to('admin_room').emit('payment.refunded', {
+        orderId,
+        refundedAmount: Number(refundedAmount),
+        status: 'REFUNDED',
+      });
+    }
+  } catch (_) {}
+
+  return {
+    success: true,
+    message: 'Hoàn tiền thành công',
+    data: result,
+  };
+}
+
+/**
+ * Giả lập Webhook dành cho chế độ Sandbox Roleplay của Admin
+ * @param {object} param0 { orderCode, simulateType }
+ */
+async function simulateWebhook({ orderCode, simulateType = 'EXACT' }) {
+  const order = await paymentRepository.findOrderByCode(orderCode);
+  if (!order) {
+    const error = new Error('Không tìm thấy đơn hàng để giả lập');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  let simulatedAmount = Number(order.amount);
+  if (simulateType === 'OVERPAID') {
+    simulatedAmount = Number(order.amount) + 21000;
+  } else if (simulateType === 'UNDERPAID') {
+    simulatedAmount = Math.max(1000, Number(order.amount) - 29000);
+  }
+
+  const mockPayload = {
+    code: '00',
+    desc: 'Success',
+    data: {
+      orderCode: Number(order.order_code),
+      amount: simulatedAmount,
+      description: order.transfer_content || `CSCYDEZ2N10 ${order.recognition_code || 'MOCK6C'}`,
+      accountNumber: '2512070399999',
+      reference: `SIM-REF-${Date.now()}`,
+      transactionDateTime: new Date().toISOString(),
+      counterAccountBankId: 'MBBANK',
+    },
+    signature: 'SIMULATED_HMAC_SHA256_PASS',
+  };
+
+  const origVerify = payosClient.verifyWebhookData;
+  payosClient.verifyWebhookData = async () => mockPayload.data;
+
+  try {
+    return await handlePayOSWebhook(mockPayload);
+  } finally {
+    payosClient.verifyWebhookData = origVerify;
+  }
 }
 
 /**
@@ -205,6 +514,9 @@ async function getOrderStatus(orderCode, idaccount) {
     orderCode: order.order_code,
     status: order.status,
     amount: order.amount,
+    amountReceived: order.amount_received,
+    recognitionCode: order.recognition_code,
+    transferContent: order.transfer_content,
     packageType: order.package_type,
     paidAt: order.paid_at,
     expiredAt: order.expired_at,
@@ -314,6 +626,9 @@ async function getOrCreatePayosQr(options) {
 module.exports = {
   createPremiumOrder,
   handlePayOSWebhook,
+  confirmUpgrade,
+  processOrderRefund,
+  simulateWebhook,
   getOrderStatus,
   getSubscriptionInfo,
   getOrderHistory,

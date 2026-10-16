@@ -65,9 +65,11 @@ router.put('/permissions', adminController.updatePermissions);
 router.get('/payments/orders', paymentController.getOrdersForAdmin);
 router.get('/payments/stats', paymentController.getPaymentStatsForAdmin);
 router.get('/payments/orders/:id', paymentController.getOrderDetailForAdmin);
+router.put('/payments/orders/:id/refund', paymentController.processRefund);
 router.get('/payments/payos-qr', paymentController.getPayosQr);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
+router.post('/payments/simulate-webhook', paymentController.simulateWebhook);
 
 module.exports = router;
 
