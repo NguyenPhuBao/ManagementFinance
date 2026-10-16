@@ -653,6 +653,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('khoi-chon-so-tien')), findsOneWidget);
+    expect(find.descendant(of: find.byType(ONhapNhanh), matching: find.byKey(const Key('khoi-chon-so-tien'))),
+        findsOneWidget,
+        reason: 'Stitch d696e81e (trạng thái 4): khối hai chip nằm TRONG thẻ Nhập nhanh — người dùng chốt 2026-10-16.');
     await tester.ensureVisible(find.byKey(const Key('chon-so-tien-1')));
     await tester.tap(find.byKey(const Key('chon-so-tien-1')));
     await tester.pumpAndSettle();

@@ -12,6 +12,11 @@ import 'dong_dang_nghe.dart';
 
 /// Thẻ *Nhập nhanh* (C2, spec §3): ô một dòng + nút **Điền**; dưới là dòng tóm tắt những ô đã điền, cảnh báo, và câu lý
 /// do khi danh mục đến từ B1.
+///
+/// Phần giọng nói theo màn Stitch `d696e81e…` (người dùng chốt 2026-10-16): nhãn *"Giọng nói & Gõ"* / *"Đang nghe…"* ở
+/// đầu thẻ, đỏ lỗi [_doNghe] cho viền ô · nút dừng ■ · chấm đang ghi, khối hai chip ([khoiChonSoTien]) nằm TRONG thẻ.
+/// Lệch giữ có chủ ý: dòng *"Đang ghi âm / chép lời"* và *"Đang kiểm"* hiện LẦN LƯỢT (Stitch vẽ cùng lúc) — hai việc
+/// chạy nối tiếp. Tia sét giữ `AppColors.expense` theo màn C2 `8afdfe11…`.
 class ONhapNhanh extends StatelessWidget {
   const ONhapNhanh({
     super.key,
@@ -29,6 +34,7 @@ class ONhapNhanh extends StatelessWidget {
     this.giayGhi = 0,
     this.onMicro,
     this.onHuyNghe,
+    this.khoiChonSoTien,
   });
 
   final TextEditingController controller;
@@ -47,6 +53,12 @@ class ONhapNhanh extends StatelessWidget {
   final int giayGhi;
   final VoidCallback? onMicro;
   final VoidCallback? onHuyNghe;
+
+  /// Khối hai chip khi luật và Gemma đọc ra hai số khác nhau (C4 §3.4) — vẽ ở đáy thẻ.
+  final Widget? khoiChonSoTien;
+
+  /// Đỏ của trạng thái nghe — `error` của Stitch `d696e81e…`.
+  static const _doNghe = AppColors.error;
 
   @override
   Widget build(BuildContext context) {
@@ -68,11 +80,11 @@ class ONhapNhanh extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.bolt, size: 16, color: AppColors.expense),
-              SizedBox(width: 4),
-              Text(
+              const Icon(Icons.bolt, size: 16, color: AppColors.expense),
+              const SizedBox(width: 4),
+              const Text(
                 'NHẬP NHANH',
                 style: TextStyle(
                   fontSize: 12,
@@ -81,6 +93,17 @@ class ONhapNhanh extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+              const Spacer(),
+              if (dangThu)
+                const _NhanDangNghe()
+              else if (laPremium && coMicro)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(4)),
+                  child: const Text('Giọng nói & Gõ',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -96,7 +119,7 @@ class ONhapNhanh extends StatelessWidget {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
                 border: focusNode.hasFocus || dangThu
-                    ? Border.all(color: dangThu ? AppColors.expense : AppColors.primary, width: 2)
+                    ? Border.all(color: dangThu ? _doNghe : AppColors.primary, width: 2)
                     : Border.all(
                         color: AppColors.outlineVariant.withValues(alpha: 0.5)),
               ),
@@ -128,8 +151,9 @@ class ONhapNhanh extends StatelessWidget {
                       // G84: hai câu cũ bị cắt ở 320 dp ("VD: hôm qua ăn phở …" mất đúng phần số tiền + ví).
                       // Có micro (36 dp) thì ô hẹp lại: ở 300–320 dp "phở 45k tiền mặt" bị cắt (đo vòng sửa 1, Task 14);
                       // vẫn phải nêu ví (nguyên tắc G84) nên bỏ chữ "phở" chứ không bỏ ví (review toàn nhánh, I2).
+                      // Đang nghe thì trạng thái nằm ở nhãn đầu thẻ (Stitch) — ô để trống chờ chữ chép lời.
                       hintText: dangThu
-                          ? 'Đang nghe…'
+                          ? null
                           : (laPremium ? (coMicro ? '45k tiền mặt' : 'phở 45k tiền mặt') : 'Chỉ Premium'),
                       hintStyle: const TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
@@ -145,10 +169,23 @@ class ONhapNhanh extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints.tightFor(width: 36, height: 36),
                     onPressed: trangThaiNghe == TrangThaiNghe.dangChep ? null : onMicro,
-                    icon: Icon(
-                      dangThu ? Icons.stop_circle : Icons.mic_none,
-                      color: dangThu ? AppColors.expense : AppColors.primary,
-                    ),
+                    // Stitch: dừng = vòng 32 dp nền đỏ 10 % + ô vuông 14 dp đỏ, không phải icon.
+                    icon: dangThu
+                        ? Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration:
+                                BoxDecoration(color: _doNghe.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            child: Container(
+                              key: const Key('nhap-nhanh-dung'),
+                              width: 14,
+                              height: 14,
+                              decoration:
+                                  BoxDecoration(color: _doNghe, borderRadius: BorderRadius.circular(2)),
+                            ),
+                          )
+                        : const Icon(Icons.mic_none, color: AppColors.primary),
                   ),
                 const SizedBox(width: 6),
                 // `minimumSize` hữu hạn: theme của app ép mọi ElevatedButton rộng vô hạn (bẫy 4.11).
@@ -297,8 +334,34 @@ class ONhapNhanh extends StatelessWidget {
               onHuy: onHuyKiem,
               khoaHuy: const Key('nhap-nhanh-huy-kiem'),
             ),
+          if (khoiChonSoTien case final k?) ...[const SizedBox(height: 10), k],
         ],
       ),
     );
   }
+}
+
+/// Nhãn *"● Đang nghe…"* ở đầu thẻ — Stitch `d696e81e…` trạng thái 2: chữ 11 / 600 đỏ lỗi trên nền đỏ 10 %, viên tròn.
+class _NhanDangNghe extends StatelessWidget {
+  const _NhanDangNghe();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('nhap-nhanh-dang-nghe'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration:
+            BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+            const SizedBox(width: 4),
+            const Text('Đang nghe…',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.error)),
+          ],
+        ),
+      );
 }

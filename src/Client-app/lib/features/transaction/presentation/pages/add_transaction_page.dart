@@ -302,6 +302,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         giayGhi: s?.giay ?? 0,
         onMicro: () => unawaited(_bamMicro()),
         onHuyNghe: () => unawaited(_nghe?.huy()),
+        khoiChonSoTien: _s.luaChonTienCau.isEmpty
+            ? null
+            : KhoiChonSoTien(
+                ds: _s.luaChonTienCau,
+                dangChon: ketQuaBieuThuc(_s.chuoiSoTien),
+                onChon: _cubit.chonSoTien,
+              ),
       );
 
   /// Huỷ lượt AI đang chạy (đọc câu / kiểm số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp lại
@@ -701,20 +708,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             const SizedBox(height: 12),
                           ],
                         ] else if (!_isEditing) ...[
+                          // Khối hai chip của câu nói / Nhập nhanh nằm TRONG thẻ (`_oNhapNhanh`, Stitch `d696e81e…`).
                           _nghe == null
                               ? _oNhapNhanh(null)
                               : BlocBuilder<NgheGiongNoiCubit, NgheGiongNoiState>(
                                   bloc: _nghe,
                                   builder: (_, s) => _oNhapNhanh(s),
                                 ),
-                          if (_s.luaChonTienCau.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            KhoiChonSoTien(
-                              ds: _s.luaChonTienCau,
-                              dangChon: ketQuaBieuThuc(_s.chuoiSoTien),
-                              onChon: _cubit.chonSoTien,
-                            ),
-                          ],
                           const SizedBox(height: 12),
                         ],
                         _theForm(context),
