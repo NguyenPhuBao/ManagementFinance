@@ -137,6 +137,16 @@ async function getPaymentLinkInfo(orderIdOrCode) {
   return client.paymentRequests.get(orderIdOrCode);
 }
 
+/**
+ * Hủy link thanh toán theo mã đơn hàng
+ * @param {number|string} orderIdOrCode 
+ * @param {string} [cancellationReason]
+ */
+async function cancelPaymentLink(orderIdOrCode, cancellationReason = 'Admin/Hệ thống yêu cầu hủy link') {
+  const client = getPayOSClient();
+  return client.paymentRequests.cancel(orderIdOrCode, cancellationReason);
+}
+
 module.exports = {
   getPayOSClient,
   setPayOSClientMock,
@@ -146,5 +156,6 @@ module.exports = {
   verifyWebhookData,
   confirmWebhook,
   getPaymentLinkInfo,
+  cancelPaymentLink,
 };
 
