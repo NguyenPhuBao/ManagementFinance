@@ -35,7 +35,7 @@ canh bằng test quét mã nguồn (mục 6).
 
 | Ràng buộc của bài toán | Quyết định | Ở đâu trong mã |
 |---|---|---|
-| Ghi chép phải chạy khi không có mạng (đi chợ, đi tàu) — một khoản bị mất vì rớt sóng là app hết đáng tin | **Offline-first**: mọi lệnh ghi vào SQLite trước, giao diện đọc từ SQLite; mạng chỉ là chuyện đồng bộ | `core/database/` (Drift, schema v30), mọi repository |
+| Ghi chép phải chạy khi không có mạng (đi chợ, đi tàu) — một khoản bị mất vì rớt sóng là app hết đáng tin | **Offline-first**: mọi lệnh ghi vào SQLite trước, giao diện đọc từ SQLite; mạng chỉ là chuyện đồng bộ | `core/database/` (Drift, schema v31), mọi repository |
 | Hai máy cùng tài khoản ghi khi offline; server không có khái niệm "bản nháp" | **Đồng bộ tự viết, hai chiều, LWW theo `update_at`**, đẩy lô thao tác + kéo theo mốc giờ-server | `core/sync/sync_engine.dart` (2.166 dòng), `sync_payload_normalizer.dart`, `moc_keo_ve.dart` |
 | Người dùng chọn AI **trên máy** để chạy không mạng và không gửi dữ liệu tài chính đi | **Hai tầng AI**: luật + hàm thuần (`ai_edge/domain`) cho mọi màn; mô hình Gemma 4 E2B trên máy chỉ cho hỏi đáp / đọc câu / đọc ảnh, mọi con số đi qua lớp chắn | `features/ai_edge/`, `features/ai_chat/` |
 | Tự trả hoá đơn, tự trích mục tiêu phải xảy ra đúng lúc kể cả khi app đóng | **Chạy nền bằng WorkManager** đánh thức một engine Flutter không giao diện, dùng lại đúng bộ quét của app | `android/.../TuChuyenTien*.kt`, `core/nen/` |

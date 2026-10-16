@@ -610,6 +610,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
 
+### 🗳️ Bốn quyết định chờ người dùng — chốt và thi công (2026-10-16 tối)
+
+Người dùng chọn làm *"phần B"* trong danh sách việc không chờ backend (những việc chỉ cần họ quyết), rồi chốt cả bốn qua
+câu hỏi chọn được:
+
+- **Hàng năm nút nhanh Trang chủ → theo Stitch `c8f09f19…`** (`c65092c1`): chỉ *Thêm chi* nền đặc `#1A1A19`, bốn nút
+  trắng viền `#D5D5CE` + bóng, biểu tượng `arrow_downward` · `arrow_upward` · `sync_alt` · `qr_code_scanner` · `mic`, nhãn
+  cách 6 dp; giữ `Expanded` (kiểu `justify-between` của Stitch tràn ở 320 dp). Các màn Trang chủ khác trên Stitch không
+  vẽ hàng nút này — `c8f09f19…` là thiết kế duy nhất.
+- **Ô Nhập nhanh lúc nói → theo Stitch `d696e81e…`, trừ một điểm** (`796250ce`): nhãn *"Giọng nói & Gõ"* /
+  *"● Đang nghe…"*, đỏ lỗi `#BA1A1A` (viền · nút dừng ■ · chấm ghi), khối hai chip vào trong thẻ; GIỮ hai dòng trạng thái
+  hiện lần lượt. Tia sét giữ `#F25F5C` — hai màn Stitch (C2 `8afdfe11…`, C4) mâu thuẫn. Mục 8 `GIONG_NOI_FEATURE.md`.
+- **Dự án A / phép thử A2 → hoãn tới khi `litert-torch` #1013 đóng.** Kiểm 2026-10-16: còn mở, bình luận cuối 27/08. Mục
+  10.6 `AI_EDGE_FEATURE.md`.
+- **B1 học sai → đánh dấu + bỏ qua** (thiết kế duyệt cùng ngày, phương án gỡ: *mở Sửa rồi Lưu*): bảng cục bộ
+  `DanhMucAiDoans` (**schema v31**), `KetQuaDocCau.danhMucTuAi` (nhánh AI của `docCauGiaoDich`; `ketQuaTuBienDong` khi
+  Gemma chọn danh mục ảnh quét — lệnh tạo C3 không tạo giao dịch nên không có đường thứ ba), cubit đánh dấu ở `daGuiLuu`
+  (tạo mới, không tách) và gỡ ở đường sửa, B1 bỏ mẫu mang dấu ở `_hocTuSo` (mô hình + mẫu đề xuất) và `taiDuLieuGan`. Mục 5d
+  `CATEGORY_RATIONALE.md`. Ca canh học chạy hai chiều trên cùng sổ; bốn bản sai có chủ ý đều bị bắt. Hai ca canh có sẵn
+  phải sửa theo: số schema ở `bill_schema_v21_test` / `schema_v24` / `v29` / `v30`, danh sách DAO cấm của quét 22.
+- `flutter test` **7.118 / 10 skip / 0 fail** (+22 ca), `flutter analyze` **20**. Chưa chạy trên máy (máy ảo đã tắt; không máy thật cắm) — hàng nút và ô Nhập nhanh lúc nói cần
+  nghiệm thu bằng mắt, cùng lượt kiểm C4 trên OnePlus.
+
 ### 🧾 Trang Hoá đơn — tab "Cần thanh toán" đếm theo kỳ này, kỳ các tháng sau dưới tiêu đề nhóm (2026-10-16, người dùng chốt)
 
 - **Lệch cũ:** thẻ tổng (`summarizeBills`) đếm hoá đơn chưa trả có hạn trước đầu tháng sau (kể cả nợ quá hạn), còn tab

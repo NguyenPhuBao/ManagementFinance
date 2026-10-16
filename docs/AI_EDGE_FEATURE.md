@@ -4047,8 +4047,11 @@ thử thật trên máy.*
   người dùng phải tải lại một tệp ~2,4 GB cho mỗi bản.
 - Muốn biết thật thì cần **A2 — phép thử có mã, ~1–2 phiên**: Colab → tinh chỉnh rất nhỏ (hoặc xuất **nguyên bản không
   tinh chỉnh** trước, để tách lỗi của bước xuất khỏi lỗi của tinh chỉnh) → nạp trên Realme và OnePlus → đo lại 10 câu
-  C3 + lưới 72 câu. Cổng: nạp được, tool calling không tụt so với bundle gốc, RAM / tốc độ không xấu hơn. **Chưa làm —
-  chờ người dùng quyết** có làm A2 hay đi thẳng B.
+  C3 + lưới 72 câu. Cổng: nạp được, tool calling không tụt so với bundle gốc, RAM / tốc độ không xấu hơn.
+  ⏸️ **Người dùng chốt 2026-10-16: HOÃN A2 tới khi `litert-torch` #1013 đóng.** Kiểm cùng ngày: issue **còn mở**; bình
+  luận 06/05 đo lại với `cache_length=512` hết lỗi định dạng (0/144) nhưng hành vi đúng vẫn 67/144, xác nhận / từ chối
+  0/12; bình luận cuối 27/08 chỉ hỏi tiến độ. Lý do thêm từ lúc spike: Quét ảnh (A5, Gemma nhìn ảnh) và C4 (Gemma chép lời)
+  nay **dùng đúng** phần ảnh / âm thanh mà bundle tự xuất bỏ đi (rủi ro 2) — bản tinh chỉnh kiểu ấy sẽ tắt cả hai.
 
 Nguồn (đọc 2026-10-02): [litetune](https://github.com/DenisovAV/litetune) ·
 [litert-torch #1013](https://github.com/google-ai-edge/litert-torch/issues/1013) ·
